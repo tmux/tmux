@@ -449,7 +449,7 @@ Oct Hex  *  	(* marks function used in DEC VT series or LA series terminals)
 	 *	[16h = TTM - Transmit Termination Mode, send scrolling region
 		[17h = SATM - Send Area Transmit Mode, send entire buffer
 		[18h = TSM - Tabulation Stop Mode, lines are independent
-		[19h = EBM - Editing Boundry Mode, all of memory affected
+		[19h = EBM - Editing Boundary Mode, all of memory affected
 	 *	[20h = LNM - Linefeed Newline Mode, LF interpreted as CR LF
 	 *	[?1h = DECCKM - Cursor Keys Mode, send ESC O A for cursor up
 	 *	[?2h = DECANM - ANSI Mode, use ESC < to switch VT52 to ANSI
