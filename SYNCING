@@ -115,7 +115,7 @@ From there, merge the result in, fixing up any conflicts which might arise.
 
 % git merge obsd-master
 
-Then ensure things look correct by BULDING the result of that sync:
+Then ensure things look correct by BUILDING the result of that sync:
 
 % make clean && ./autogen.sh && ./configure && make
 
