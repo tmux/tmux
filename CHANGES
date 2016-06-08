@@ -1018,7 +1018,7 @@ The list of older changes is below.
 * -u flag to scroll-mode and copy-mode to start scrolled one page
   up. scroll-mode -u is bound to prefix,page-up (ppage) by default.
 * Allow status, mode and message attributes to be changed by three new options:
-  status-attr, mode-attr, message-attr. A comma-separataed list is accepted
+  status-attr, mode-attr, message-attr. A comma-separated list is accepted
   containing: bright, dim, underscore, blink, reverse, hidden, italics, for
   example:
 
