@@ -365,7 +365,7 @@ Oct Hex  *  	(* marks function used in DEC VT series or LA series terminals)
 115 4D M * DL  - Delete Line, lines below current move up (VT102 series)
 		[2M = Delete 2 lines if currently in scrolling region
 116 4E N   EF  - Erase in Field (as bounded by protected fields)
-		[0N, [1N, [2N act like [L but within currend field
+		[0N, [1N, [2N act like [L but within current field
 117 4F O   EA  - Erase in qualified Area (defined by DAQ)
 		[0O, [1O, [2O act like [J but within current area
 120 50 P * DCH - Delete Character, from current position to end of field
