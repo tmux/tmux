@@ -553,7 +553,7 @@ Oct Hex  *  	(* marks function used in DEC VT series or LA series terminals)
 		[8m = Concealed (do not display character echoed locally)
 		[9m = Reserved for future standardization
 	 *	[10m = Select primary font (LA100)
-	 *	[11m - [19m = Selete alternate font (LA100 has 11 thru 14)
+	 *	[11m - [19m = Select alternate font (LA100 has 11 thru 14)
 		[20m = FRAKTUR (whatever that means)
 	 *	[22m = Cancel bold or dim attribute only (VT220)
 	 *	[24m = Cancel underline attribute only (VT220)
