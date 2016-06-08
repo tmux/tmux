@@ -218,7 +218,7 @@ Normal Changes
   socket directory to be set outside of TMPDIR (/tmp/ if not set).
 * If -s not given to swap-pane the current pane is assumed.
 * A #{pane_syncronized} format specifier has been added to be a conditional
-  format if a pane is in a syncronised mode (c.f. syncronize-panes)
+  format if a pane is in a synchronised mode (c.f. syncronize-panes)
 * Tmux now runs under Cygwin natively.
 * Formats can now be nested within each other and expanded accordingly.
 * Added 'automatic-rename-format' option to allow the automatic rename
