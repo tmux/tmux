@@ -268,7 +268,7 @@ Oct Hex  *	(* marks function used in DEC VT series or LA series terminals)
 073 3B ;
 074 3C < * DECANSI - Switch from VT52 mode to VT100 mode
 075 3D = * DECKPAM - Set keypad to applications mode (ESCape instead of digits)
-076 3E > * DECKPNM - Set keypad to numeric mode (digits intead of ESCape seq)
+076 3E > * DECKPNM - Set keypad to numeric mode (digits instead of ESCape seq)
 077 3F ?
 
     DCS Device Control Strings used by DEC terminals (ends with ST)
