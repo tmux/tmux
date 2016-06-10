@@ -19,7 +19,7 @@ Standardized Video Terminals" in the April-1984 issue of BYTE magazine.
 ANSI X3.4-1977 defines the 7-bit ASCII character set (C0 and G0).  It was
 written in 1968, revised in 1977, and explains the decisions made in laying out
 the ASCII code.  In particular, it explains why ANSI chose to make ASCII
-incompatible with EBCDIC in order to make it self-consistant.
+incompatible with EBCDIC in order to make it self-consistent.
 
 ANSI X3.41-1974 introduces the idea of an 8-bit ASCII character set (C1 and G1
 in addition to the existing C0 and G0).  It describes how to use the 8-bit
@@ -184,7 +184,7 @@ Oct Hex Name *	(* marks function used in DEC VT series or LA series terminals)
 230 98 X	Reserved for for future standard
 231 99 Y	Reserved
 232 9A Z     *	Reserved, but causes DEC terminals to respond with DA codes
-233 9B [ CSI *	Control Sequence Introducer (described in a seperate table)
+233 9B [ CSI *	Control Sequence Introducer (described in a separate table)
 234 9C \ ST  *	String Terminator (VT125 exits graphics)
 235 9D ] OSC	Operating System Command (reprograms intelligent terminal)
 236 9E ^ PM	Privacy Message (password verification), terminated by ST
@@ -268,7 +268,7 @@ Oct Hex  *	(* marks function used in DEC VT series or LA series terminals)
 073 3B ;
 074 3C < * DECANSI - Switch from VT52 mode to VT100 mode
 075 3D = * DECKPAM - Set keypad to applications mode (ESCape instead of digits)
-076 3E > * DECKPNM - Set keypad to numeric mode (digits intead of ESCape seq)
+076 3E > * DECKPNM - Set keypad to numeric mode (digits instead of ESCape seq)
 077 3F ?
 
     DCS Device Control Strings used by DEC terminals (ends with ST)
@@ -294,7 +294,7 @@ Pt = Start VT105 graphics on a VT125
 
 ==============================================================================
 
-    Indepenent control functions (from Appendix E of X3.64-1977).
+    Independent control functions (from Appendix E of X3.64-1977).
     These four controls have the same meaning regardless of the current
     definition of the C0 and C1 control sets.  Each control is a two-character
     ESCape sequence, the 2nd character is lowercase.
@@ -365,7 +365,7 @@ Oct Hex  *  	(* marks function used in DEC VT series or LA series terminals)
 115 4D M * DL  - Delete Line, lines below current move up (VT102 series)
 		[2M = Delete 2 lines if currently in scrolling region
 116 4E N   EF  - Erase in Field (as bounded by protected fields)
-		[0N, [1N, [2N act like [L but within currend field
+		[0N, [1N, [2N act like [L but within current field
 117 4F O   EA  - Erase in qualified Area (defined by DAQ)
 		[0O, [1O, [2O act like [J but within current area
 120 50 P * DCH - Delete Character, from current position to end of field
@@ -449,7 +449,7 @@ Oct Hex  *  	(* marks function used in DEC VT series or LA series terminals)
 	 *	[16h = TTM - Transmit Termination Mode, send scrolling region
 		[17h = SATM - Send Area Transmit Mode, send entire buffer
 		[18h = TSM - Tabulation Stop Mode, lines are independent
-		[19h = EBM - Editing Boundry Mode, all of memory affected
+		[19h = EBM - Editing Boundary Mode, all of memory affected
 	 *	[20h = LNM - Linefeed Newline Mode, LF interpreted as CR LF
 	 *	[?1h = DECCKM - Cursor Keys Mode, send ESC O A for cursor up
 	 *	[?2h = DECANM - ANSI Mode, use ESC < to switch VT52 to ANSI
@@ -553,7 +553,7 @@ Oct Hex  *  	(* marks function used in DEC VT series or LA series terminals)
 		[8m = Concealed (do not display character echoed locally)
 		[9m = Reserved for future standardization
 	 *	[10m = Select primary font (LA100)
-	 *	[11m - [19m = Selete alternate font (LA100 has 11 thru 14)
+	 *	[11m - [19m = Select alternate font (LA100 has 11 thru 14)
 		[20m = FRAKTUR (whatever that means)
 	 *	[22m = Cancel bold or dim attribute only (VT220)
 	 *	[24m = Cancel underline attribute only (VT220)
