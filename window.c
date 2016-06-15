@@ -17,6 +17,7 @@
  */
 
 #include <sys/types.h>
+#include <sys/ioctl.h>
 
 #include <errno.h>
 #include <fcntl.h>
@@ -1061,14 +1062,37 @@ window_pane_alternate_off(struct window_pane *wp, struct grid_cell *gc,
 	wp->flags |= PANE_REDRAW;
 }
 
+static void
+window_pane_mode_timer(__unused int fd, __unused short events, void *arg)
+{
+	struct window_pane	*wp = arg;
+	struct timeval		 tv = { .tv_sec = 10 };
+	int			 n = 0;
+
+	evtimer_del(&wp->modetimer);
+	evtimer_add(&wp->modetimer, &tv);
+
+	log_debug("%%%u in mode: last=%ld", wp->id, (long)wp->modelast);
+
+	if (wp->modelast < time(NULL) - WINDOW_MODE_TIMEOUT) {
+		if (ioctl(wp->fd, FIONREAD, &n) == -1 || n > 0)
+			window_pane_reset_mode(wp);
+	}
+}
+
 int
 window_pane_set_mode(struct window_pane *wp, const struct window_mode *mode)
 {
 	struct screen	*s;
+	struct timeval	 tv = { .tv_sec = 10 };
 
 	if (wp->mode != NULL)
 		return (1);
 	wp->mode = mode;
+
+	wp->modelast = time(NULL);
+	evtimer_set(&wp->modetimer, window_pane_mode_timer, wp);
+	evtimer_add(&wp->modetimer, &tv);
 
 	if ((s = wp->mode->init(wp)) != NULL)
 		wp->screen = s;
@@ -1083,6 +1107,8 @@ window_pane_reset_mode(struct window_pane *wp)
 {
 	if (wp->mode == NULL)
 		return;
+
+	evtimer_del(&wp->modetimer);
 
 	wp->mode->free(wp);
 	wp->mode = NULL;
@@ -1103,6 +1129,7 @@ window_pane_key(struct window_pane *wp, struct client *c, struct session *s,
 		return;
 
 	if (wp->mode != NULL) {
+		wp->modelast = time(NULL);
 		if (wp->mode->key != NULL)
 			wp->mode->key(wp, c, s, key, m);
 		return;
