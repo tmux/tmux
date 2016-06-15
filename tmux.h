@@ -823,6 +823,7 @@ struct window_mode {
 	void	(*key)(struct window_pane *, struct client *, struct session *,
 		    key_code, struct mouse_event *);
 };
+#define WINDOW_MODE_TIMEOUT 180
 
 /* Structures for choose mode. */
 struct window_choose_data {
@@ -905,6 +906,8 @@ struct window_pane {
 
 	const struct window_mode *mode;
 	void		*modedata;
+	struct event	 modetimer;
+	time_t		 modelast;
 
 	TAILQ_ENTRY(window_pane) entry;
 	RB_ENTRY(window_pane) tree_entry;
