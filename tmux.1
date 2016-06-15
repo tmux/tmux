@@ -773,7 +773,9 @@ section.
 If
 .Ar target-session
 is specified, list only clients connected to that session.
-.It Ic list-commands
+.It Xo Ic list-commands
+.Op Fl F Ar format
+.Xc
 .D1 (alias: Ic lscm )
 List the syntax of all commands supported by
 .Nm .
@@ -3492,6 +3494,9 @@ The following variables are available, where appropriate:
 .It Li "client_width" Ta "" Ta "Width of client"
 .It Li "command_hooked" Ta "" Ta "Name of command hooked, if any"
 .It Li "command_name" Ta "" Ta "Name of command in use, if any"
+.It Li "command_list_name" Ta "" Ta "Command name if listing commands"
+.It Li "command_list_alias" Ta "" Ta "Command alias if listing commands"
+.It Li "command_list_usage" Ta "" Ta "Command usage if listing commands"
 .It Li "cursor_flag" Ta "" Ta "Pane cursor flag"
 .It Li "cursor_x" Ta "" Ta "Cursor X position in pane"
 .It Li "cursor_y" Ta "" Ta "Cursor Y position in pane"
