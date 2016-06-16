@@ -1462,7 +1462,11 @@ flag, see the
 .Sx FORMATS
 section.
 This command works only if at least one client is attached.
-.It Ic display-panes Op Fl t Ar target-client
+.It Xo
+.Ic display-panes
+.Op Fl t Ar target-client
+.Op Ar template
+.Xc
 .D1 (alias: Ic displayp )
 Display a visible indicator of each pane shown by
 .Ar target-client .
@@ -1472,11 +1476,18 @@ See the
 and
 .Ic display-panes-active-colour
 session options.
-While the indicator is on screen, a pane may be selected with the
+While the indicator is on screen, a pane may be chosen with the
 .Ql 0
 to
 .Ql 9
-keys.
+keys, which will cause
+.Ar template
+to be executed as a command with
+.Ql %%
+substituted by the pane ID.
+The default
+.Ar template
+is "select-pane -t '%%'".
 .It Xo Ic find-window
 .Op Fl CNT
 .Op Fl F Ar format

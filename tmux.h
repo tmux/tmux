@@ -1279,6 +1279,8 @@ struct client {
 	struct key_table *keytable;
 
 	struct event	 identify_timer;
+	void		(*identify_callback)(struct client *, struct window_pane *);
+	void		*identify_callback_data;
 
 	char		*message_string;
 	struct event	 message_timer;
@@ -1939,7 +1941,7 @@ void	 server_destroy_session_group(struct session *);
 void	 server_destroy_session(struct session *);
 void	 server_check_unattached(void);
 void	 server_set_identify(struct client *);
-void	 server_clear_identify(struct client *);
+void	 server_clear_identify(struct client *, struct window_pane *);
 int	 server_set_stdin_callback(struct client *, void (*)(struct client *,
 	     int, void *), void *, char **);
 void	 server_unzoom_window(struct window *);
