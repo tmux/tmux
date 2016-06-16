@@ -441,21 +441,23 @@ server_set_identify(struct client *c)
 }
 
 void
-server_clear_identify(struct client *c)
+server_clear_identify(struct client *c, struct window_pane *wp)
 {
-	if (c->flags & CLIENT_IDENTIFY) {
-		c->flags &= ~CLIENT_IDENTIFY;
-		c->tty.flags &= ~(TTY_FREEZE|TTY_NOCURSOR);
-		server_redraw_client(c);
-	}
+	if (~c->flags & CLIENT_IDENTIFY)
+		return;
+	c->flags &= ~CLIENT_IDENTIFY;
+
+	if (c->identify_callback != NULL)
+		c->identify_callback(c, wp);
+
+	c->tty.flags &= ~(TTY_FREEZE|TTY_NOCURSOR);
+	server_redraw_client(c);
 }
 
 void
 server_callback_identify(__unused int fd, __unused short events, void *data)
 {
-	struct client	*c = data;
-
-	server_clear_identify(c);
+	server_clear_identify(data, NULL);
 }
 
 /* Set stdin callback. */

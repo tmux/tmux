@@ -184,6 +184,7 @@ server_client_lost(struct client *c)
 
 	c->flags |= CLIENT_DEAD;
 
+	server_clear_identify(c, NULL);
 	status_prompt_clear(c);
 	status_message_clear(c);
 
@@ -606,16 +607,16 @@ server_client_handle_key(struct client *c, key_code key)
 			return;
 		window_unzoom(w);
 		wp = window_pane_at_index(w, key - '0');
-		if (wp != NULL && window_pane_visible(wp))
-			window_set_active_pane(w, wp);
-		server_clear_identify(c);
+		if (wp != NULL && !window_pane_visible(wp))
+			wp = NULL;
+		server_clear_identify(c, wp);
 		return;
 	}
 
 	/* Handle status line. */
 	if (!(c->flags & CLIENT_READONLY)) {
 		status_message_clear(c);
-		server_clear_identify(c);
+		server_clear_identify(c, NULL);
 	}
 	if (c->prompt_string != NULL) {
 		if (!(c->flags & CLIENT_READONLY))
