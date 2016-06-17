@@ -27,10 +27,10 @@
  * List key bindings.
  */
 
-enum cmd_retval	 cmd_list_keys_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	 cmd_list_keys_exec(struct cmd *, struct cmd_q *);
 
-enum cmd_retval	 cmd_list_keys_table(struct cmd *, struct cmd_q *);
-enum cmd_retval	 cmd_list_keys_commands(struct cmd_q *);
+static enum cmd_retval	 cmd_list_keys_table(struct cmd *, struct cmd_q *);
+static enum cmd_retval	 cmd_list_keys_commands(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_list_keys_entry = {
 	.name = "list-keys",
@@ -47,14 +47,14 @@ const struct cmd_entry cmd_list_commands_entry = {
 	.name = "list-commands",
 	.alias = "lscm",
 
-	.args = { "", 0, 0 },
-	.usage = "",
+	.args = { "F:", 0, 0 },
+	.usage = "[-F format]",
 
 	.flags = CMD_STARTSERVER,
 	.exec = cmd_list_keys_exec
 };
 
-enum cmd_retval
+static enum cmd_retval
 cmd_list_keys_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
@@ -65,7 +65,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmd_q *cmdq)
 	int			 repeat, width, tablewidth, keywidth;
 
 	if (self->entry == &cmd_list_commands_entry)
-		return (cmd_list_keys_commands(cmdq));
+		return (cmd_list_keys_commands(self, cmdq));
 
 	if (args_has(args, 't'))
 		return (cmd_list_keys_table(self, cmdq));
@@ -131,7 +131,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmd_q *cmdq)
 	return (CMD_RETURN_NORMAL);
 }
 
-enum cmd_retval
+static enum cmd_retval
 cmd_list_keys_table(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args			*args = self->args;
@@ -180,21 +180,44 @@ cmd_list_keys_table(struct cmd *self, struct cmd_q *cmdq)
 	return (CMD_RETURN_NORMAL);
 }
 
-enum cmd_retval
-cmd_list_keys_commands(struct cmd_q *cmdq)
+static enum cmd_retval
+cmd_list_keys_commands(struct cmd *self, struct cmd_q *cmdq)
 {
+	struct args		*args = self->args;
 	const struct cmd_entry	**entryp;
 	const struct cmd_entry	 *entry;
+	struct format_tree	 *ft;
+	const char		 *template;
+	char			 *line;
+
+	if ((template = args_get(args, 'F')) == NULL) {
+		template = "#{command_list_name}"
+		    "#{?command_list_alias, (#{command_list_alias}),} "
+		    "#{command_list_usage}";
+	}
+
+	ft = format_create(cmdq, 0);
+	format_defaults(ft, NULL, NULL, NULL, NULL);
 
 	for (entryp = cmd_table; *entryp != NULL; entryp++) {
 		entry = *entryp;
-		if (entry->alias == NULL) {
-			cmdq_print(cmdq, "%s %s", entry->name, entry->usage);
-			continue;
+
+		format_add(ft, "command_list_name", "%s", entry->name);
+		if (entry->alias != NULL) {
+			format_add(ft, "command_list_alias", "%s",
+			    entry->alias);
 		}
-		cmdq_print(cmdq, "%s (%s) %s", entry->name, entry->alias,
-		    entry->usage);
+		if (entry->alias != NULL) {
+			format_add(ft, "command_list_usage", "%s",
+			    entry->usage);
+		}
+
+		line = format_expand(ft, template);
+		if (*line != '\0')
+			cmdq_print(cmdq, "%s", line);
+		free(line);
 	}
 
+	format_free(ft);
 	return (CMD_RETURN_NORMAL);
 }

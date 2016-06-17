@@ -777,7 +777,9 @@ section.
 If
 .Ar target-session
 is specified, list only clients connected to that session.
-.It Ic list-commands
+.It Xo Ic list-commands
+.Op Fl F Ar format
+.Xc
 .D1 (alias: Ic lscm )
 List the syntax of all commands supported by
 .Nm .
@@ -1488,7 +1490,11 @@ flag, see the
 .Sx FORMATS
 section.
 This command works only if at least one client is attached.
-.It Ic display-panes Op Fl t Ar target-client
+.It Xo
+.Ic display-panes
+.Op Fl t Ar target-client
+.Op Ar template
+.Xc
 .D1 (alias: Ic displayp )
 Display a visible indicator of each pane shown by
 .Ar target-client .
@@ -1498,11 +1504,18 @@ See the
 and
 .Ic display-panes-active-colour
 session options.
-While the indicator is on screen, a pane may be selected with the
+While the indicator is on screen, a pane may be chosen with the
 .Ql 0
 to
 .Ql 9
-keys.
+keys, which will cause
+.Ar template
+to be executed as a command with
+.Ql %%
+substituted by the pane ID.
+The default
+.Ar template
+is "select-pane -t '%%'".
 .It Xo Ic find-window
 .Op Fl CNT
 .Op Fl F Ar format
@@ -3506,6 +3519,7 @@ The following variables are available, where appropriate:
 .It Li "alternate_on" Ta "" Ta "If pane is in alternate screen"
 .It Li "alternate_saved_x" Ta "" Ta "Saved cursor X in alternate screen"
 .It Li "alternate_saved_y" Ta "" Ta "Saved cursor Y in alternate screen"
+.It Li "buffer_name" Ta "" Ta "Name of buffer"
 .It Li "buffer_sample" Ta "" Ta "Sample of start of buffer"
 .It Li "buffer_size" Ta "" Ta "Size of the specified buffer in bytes"
 .It Li "client_activity" Ta "" Ta "Integer time client last had activity"
@@ -3524,6 +3538,9 @@ The following variables are available, where appropriate:
 .It Li "client_width" Ta "" Ta "Width of client"
 .It Li "command_hooked" Ta "" Ta "Name of command hooked, if any"
 .It Li "command_name" Ta "" Ta "Name of command in use, if any"
+.It Li "command_list_name" Ta "" Ta "Command name if listing commands"
+.It Li "command_list_alias" Ta "" Ta "Command alias if listing commands"
+.It Li "command_list_usage" Ta "" Ta "Command usage if listing commands"
 .It Li "cursor_flag" Ta "" Ta "Pane cursor flag"
 .It Li "cursor_x" Ta "" Ta "Cursor X position in pane"
 .It Li "cursor_y" Ta "" Ta "Cursor Y position in pane"
