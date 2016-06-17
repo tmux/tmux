@@ -33,7 +33,7 @@
 	"(created #{t:session_created}) "		\
 	"[#{session_width}x#{session_height}]"		\
 	"#{?session_grouped, (group ,}"			\
-	"#{session_group}#{?session_grouped,),}"	\
+	"#{session_group}#{?session_group_named,:,}#{session_group_name}#{?session_grouped,),}"	\
 	"#{?session_attached, (attached),}"
 
 enum cmd_retval	 cmd_list_sessions_exec(struct cmd *, struct cmd_q *);
@@ -54,7 +54,7 @@ cmd_list_sessions_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
 	struct session		*s;
-	u_int		 	 n;
+	u_int			 n;
 	struct format_tree	*ft;
 	const char		*template;
 	char			*line;

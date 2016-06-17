@@ -218,7 +218,7 @@ format_job_callback(struct job *job)
 
 	if (fj->status) {
 		TAILQ_FOREACH(c, &clients, entry)
-		    server_status_client(c);
+			server_status_client(c);
 		fj->status = 0;
 	}
 
@@ -245,7 +245,7 @@ format_job_get(struct format_tree *ft, const char *cmd)
 	t = time(NULL);
 	if (fj->job == NULL && ((ft->flags & FORMAT_FORCE) || fj->last != t)) {
 		fj->job = job_run(fj->cmd, NULL, NULL, format_job_callback,
-		    NULL, fj);
+			NULL, fj);
 		if (fj->job == NULL) {
 			free(fj->out);
 			xasprintf(&fj->out, "<'%s' didn't start>", fj->cmd);
@@ -888,7 +888,7 @@ format_expand(struct format_tree *ft, const char *fmt)
 	char		*buf, *tmp, *cmd, *out;
 	const char	*ptr, *s, *saved = fmt;
 	size_t		 off, len, n, outlen;
-	int     	 ch, brackets;
+	int		 ch, brackets;
 
 	if (fmt == NULL)
 		return (xstrdup(""));
@@ -1034,8 +1034,14 @@ format_defaults_session(struct format_tree *ft, struct session *s)
 
 	sg = session_group_find(s);
 	format_add(ft, "session_grouped", "%d", sg != NULL);
-	if (sg != NULL)
+	if (sg != NULL) {
 		format_add(ft, "session_group", "%u", session_group_index(sg));
+		format_add(ft, "session_group_named", "%d", sg->name != NULL);
+		if (sg->name != NULL) {
+			format_add(ft, "session_group_name", "%s", sg->name);
+		}
+	}
+
 
 	format_add_tv(ft, "session_created", &s->creation_time);
 	format_add_tv(ft, "session_last_attached", &s->last_attached_time);
@@ -1152,7 +1158,7 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 {
 	struct grid	*gd = wp->base.grid;
 	u_int		 idx;
-	int  		 status, scroll_position;
+	int		 status, scroll_position;
 
 	if (ft->w == NULL)
 		ft->w = wp->window;
