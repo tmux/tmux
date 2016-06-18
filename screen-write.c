@@ -1016,7 +1016,7 @@ screen_write_clearhistory(struct screen_write_ctx *ctx)
 	struct grid	*gd = s->grid;
 
 	grid_move_lines(gd, 0, gd->hsize, gd->sy);
-	gd->hsize = 0;
+	gd->hscrolled = gd->hsize = 0;
 }
 
 /* Write cell data. */
