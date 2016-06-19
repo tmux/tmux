@@ -3,6 +3,7 @@
 *.diff
 *.patch
 *.core
+cscope.*
 core
 tags
 .deps/

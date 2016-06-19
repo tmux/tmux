@@ -39,9 +39,9 @@ const struct cmd_entry cmd_new_session_entry = {
 	.name = "new-session",
 	.alias = "new",
 
-	.args = { "AN:c:dDEF:n:Ps:t:x:y:", 0, -1 },
+	.args = { "Ag:c:dDEF:n:Ps:t:x:y:", 0, -1 },
 	.usage = "[-AdDEP] [-c start-directory] [-F format] [-n window-name] "
-		 "[-s session-name] " CMD_TARGET_SESSION_USAGE "[-N group-name] [-x width] "
+		 "[-s session-name] " CMD_TARGET_SESSION_USAGE "[-g group-name] [-x width] "
 		 "[-y height] [command]",
 
 	.tflag = CMD_SESSION_CANFAIL,
@@ -95,13 +95,14 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 		return (CMD_RETURN_ERROR);
 	}
 
-	if ((sg_name = args_get(args, 'N')) != NULL) {
+	if ((sg_name = args_get(args, 'g')) != NULL) {
 		if (!session_check_name(sg_name)) {
 			cmdq_error(cmdq, "invalid group name: %s", sg_name);
 			return (CMD_RETURN_ERROR);
 		}
 
-		if ((sg = session_group_find_by_name(sg_name)) != NULL) {
+		if (args_has(args, 'A') && 
+		    (sg = session_group_find_by_name(sg_name)) != NULL) {
 			if ((as = session_group_find_detached(sg)) != NULL) {
 				/*
 				 * This cmdq is now destined for
@@ -133,8 +134,8 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 				 */
 				cmd_find_from_session(&cmdq->state.tflag, as);
 				return (cmd_attach_session(cmdq,
-					args_has(args, 'D'), 0, NULL,
-					args_has(args, 'E')));
+				    args_has(args, 'D'), 0, NULL,
+				    args_has(args, 'E')));
 			}
 			cmdq_error(cmdq, "duplicate session: %s", newname);
 			return (CMD_RETURN_ERROR);
@@ -182,7 +183,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 	if (!detached && !already_attached && c->tty.fd != -1) {
 		if (server_client_check_nested(cmdq->client)) {
 			cmdq_error(cmdq, "sessions should be nested with care, "
-				"unset $TMUX to force");
+			    "unset $TMUX to force");
 			return (CMD_RETURN_ERROR);
 		}
 		if (tcgetattr(c->tty.fd, &tio) != 0)
@@ -258,14 +259,14 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 	env = environ_create();
 	if (c != NULL && !args_has(args, 'E')) {
 		update = options_get_string(global_s_options,
-			"update-environment");
+		    "update-environment");
 		environ_update(update, c->environ, env);
 	}
 
 	/* Create the new session. */
 	idx = -1 - options_get_number(global_s_options, "base-index");
 	s = session_create(newname, argc, argv, path, cwd, env, tiop, idx, sx,
-		sy, &cause, sg_name);
+	    sy, &cause, sg_name);
 	environ_free(env);
 	if (s == NULL) {
 		cmdq_error(cmdq, "create session failed: %s", cause);

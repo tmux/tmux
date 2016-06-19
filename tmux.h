@@ -1022,6 +1022,7 @@ struct environ_entry {
 
 /* Client session. */
 struct session_group {
+	u_int id;
 	char *name;
 	TAILQ_HEAD(, session) sessions;
 

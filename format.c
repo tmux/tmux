@@ -218,7 +218,7 @@ format_job_callback(struct job *job)
 
 	if (fj->status) {
 		TAILQ_FOREACH(c, &clients, entry)
-			server_status_client(c);
+		    server_status_client(c);
 		fj->status = 0;
 	}
 
@@ -245,7 +245,7 @@ format_job_get(struct format_tree *ft, const char *cmd)
 	t = time(NULL);
 	if (fj->job == NULL && ((ft->flags & FORMAT_FORCE) || fj->last != t)) {
 		fj->job = job_run(fj->cmd, NULL, NULL, format_job_callback,
-			NULL, fj);
+		    NULL, fj);
 		if (fj->job == NULL) {
 			free(fj->out);
 			xasprintf(&fj->out, "<'%s' didn't start>", fj->cmd);
@@ -1158,7 +1158,7 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 {
 	struct grid	*gd = wp->base.grid;
 	u_int		 idx;
-	int		 status, scroll_position;
+	int  		 status, scroll_position;
 
 	if (ft->w == NULL)
 		ft->w = wp->window;

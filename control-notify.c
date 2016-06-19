@@ -161,12 +161,17 @@ void
 control_notify_attached_session_changed(struct client *c)
 {
 	struct session	*s;
+	struct session_group *sg;
 
 	if (!CONTROL_SHOULD_NOTIFY_CLIENT(c) || c->session == NULL)
 		return;
 	s = c->session;
 
-	control_write(c, "%%session-changed $%u %s", s->id, s->name);
+	if ((sg = session_group_find(s)) != NULL) {
+		control_write(c, "%%session-changed $%u %s %u", s->id, s->name, sg->id);
+		return;
+	}
+	control_write(c, "%%session-changed $%u %s NULL", s->id, s->name);
 }
 
 void

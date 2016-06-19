@@ -808,7 +808,7 @@ Lock all clients attached to
 .Op Fl F Ar format
 .Op Fl n Ar window-name
 .Op Fl s Ar session-name
-.Op Fl N Ar group-name
+.Op Fl g Ar group-name
 .Op Fl t Ar target-session
 .Op Fl x Ar width
 .Op Fl y Ar height
@@ -845,6 +845,8 @@ behave like
 .Ic attach-session
 if
 .Ar session-name
+or
+.Ar session-group
 already exists; in this case,
 .Fl D
 behaves like
@@ -873,7 +875,7 @@ are invalid if
 is used.
 .Pp
 If
-.Fl N
+.Fl g
 is given, the new session is
 .Em grouped
 with
@@ -881,22 +883,11 @@ with
 This means they share the same set of windows - all windows from
 .Ar group-name
 are linked to the new session, any new windows are linked to both sessions and
-any windows closed removed from both sessions.
-The current and previous window and any session options remain independent and
-either session may be killed without affecting the other.
-In addition, if the
+any windows closed removed from both sessions.  The current and previous window
+and any session options remain independent and either session may be killed
+without affecting the other.  In addition, if the
 .Ar group-name
 does not exist, then it will be created.
-Further, if there are any unattached sessions in
-.Ar group-name
-then one of those will be re-attached rather than a new session created.
-.Fl n , 
-.Fl t ,
-and
-.Ar shell-command
-are invalid if
-.Fl N
-does not create a new session group.
 .Pp
 The
 .Fl P

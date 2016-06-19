@@ -28,6 +28,7 @@
 
 struct sessions	sessions;
 u_int		next_session_id;
+u_int		next_session_group_id;
 struct session_groups session_groups;
 
 void	session_free(int, short, void *);
@@ -595,7 +596,7 @@ session_group_index(struct session_group *sg)
 }
 
 /*
- * Add a session to the session group containing target, creating it if
+ * Add a session to the named session group, creating it if
  * necessary.
  */
 int
@@ -610,6 +611,7 @@ session_group_add_name(const char *name, struct session *s)
 		TAILQ_INSERT_TAIL(&session_groups, sg, entry);
 		TAILQ_INIT(&sg->sessions);
 		sg->name = xstrdup(name);
+        sg->id = next_session_group_id++;
 	}
 	TAILQ_INSERT_TAIL(&sg->sessions, s, gentry);
 	return r;
@@ -629,6 +631,7 @@ session_group_add(struct session *target, struct session *s)
 		TAILQ_INSERT_TAIL(&session_groups, sg, entry);
 		TAILQ_INIT(&sg->sessions);
 		sg->name = NULL;
+        sg->id = next_session_group_id++;
 		TAILQ_INSERT_TAIL(&sg->sessions, target, gentry);
 	}
 	TAILQ_INSERT_TAIL(&sg->sessions, s, gentry);
@@ -664,7 +667,7 @@ session_group_count(struct session_group *sg)
 
 	n = 0;
 	TAILQ_FOREACH(s, &sg->sessions, gentry)
-	n++;
+	    n++;
 	return (n);
 }
 
