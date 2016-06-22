@@ -348,7 +348,7 @@ session_new(struct session *s, const char *name, int argc, char **argv,
 
 	hlimit = options_get_number(s->options, "history-limit");
 	w = window_create(name, argc, argv, path, shell, cwd, env, s->tio,
-		s->sx, s->sy, hlimit, cause);
+	    s->sx, s->sy, hlimit, cause);
 	if (w == NULL) {
 		winlink_remove(&s->windows, wl);
 		environ_free(env);
@@ -611,7 +611,7 @@ session_group_add_name(const char *name, struct session *s)
 		TAILQ_INSERT_TAIL(&session_groups, sg, entry);
 		TAILQ_INIT(&sg->sessions);
 		sg->name = xstrdup(name);
-        sg->id = next_session_group_id++;
+		sg->id = next_session_group_id++;
 	}
 	TAILQ_INSERT_TAIL(&sg->sessions, s, gentry);
 	return r;
@@ -631,7 +631,7 @@ session_group_add(struct session *target, struct session *s)
 		TAILQ_INSERT_TAIL(&session_groups, sg, entry);
 		TAILQ_INIT(&sg->sessions);
 		sg->name = NULL;
-        sg->id = next_session_group_id++;
+		sg->id = next_session_group_id++;
 		TAILQ_INSERT_TAIL(&sg->sessions, target, gentry);
 	}
 	TAILQ_INSERT_TAIL(&sg->sessions, s, gentry);

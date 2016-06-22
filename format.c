@@ -888,7 +888,7 @@ format_expand(struct format_tree *ft, const char *fmt)
 	char		*buf, *tmp, *cmd, *out;
 	const char	*ptr, *s, *saved = fmt;
 	size_t		 off, len, n, outlen;
-	int		 ch, brackets;
+	int     	 ch, brackets;
 
 	if (fmt == NULL)
 		return (xstrdup(""));

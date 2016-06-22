@@ -158,25 +158,23 @@ enum cmd_retval
 cmd_attach_session_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args	*args = self->args;
-    struct session_group *sg;
-    struct session *as;
-    const char *sg_name;
+	struct session_group *sg;
+	struct session *as;
+	const char *sg_name;
 
-    if ((sg_name = args_get(args, 'g')) != NULL) {
-        if ((sg = session_group_find_by_name(sg_name)) == NULL) {
-            cmdq_error(cmdq, "failed to find session group %s", sg_name);
-            return (CMD_RETURN_ERROR);
-        }
-        if ((as = session_group_find_detached(sg)) == NULL) {
-            cmdq_error(cmdq, 
-                    "failed to find detached session in session group %s", sg_name);
-            return (CMD_RETURN_ERROR);
-        }
-        cmd_find_from_session(&cmdq->state.tflag, as);
-    }
+	if ((sg_name = args_get(args, 'g')) != NULL) {
+		if ((sg = session_group_find_by_name(sg_name)) == NULL) {
+			cmdq_error(cmdq, "failed to find session group %s", sg_name);
+			return (CMD_RETURN_ERROR);
+		}
+		if ((as = session_group_find_detached(sg)) == NULL) {
+			cmdq_error(cmdq, 
+			    "failed to find detached session in session group %s", sg_name);
+			return (CMD_RETURN_ERROR);
+		}
+		cmd_find_from_session(&cmdq->state.tflag, as);
+	}
 
 	return (cmd_attach_session(cmdq, args_has(args, 'd'),
-	                                 args_has(args, 'r'), 
-                                     args_get(args, 'c'), 
-                                     args_has(args, 'E')));
+	    args_has(args, 'r'), args_get(args, 'c'), args_has(args, 'E')));
 }
