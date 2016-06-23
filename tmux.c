@@ -271,15 +271,9 @@ main(int argc, char **argv)
 	if (getenv("TMUX") != NULL)
 		flags |= CLIENT_UTF8;
 	else {
-		s = getenv("LC_ALL");
-		if (s == NULL || *s == '\0')
-			s = getenv("LC_CTYPE");
-		if (s == NULL || *s == '\0')
-			s = getenv("LANG");
-		if (s == NULL || *s == '\0')
-			s = "";
-		if (strcasestr(s, "UTF-8") != NULL ||
-		    strcasestr(s, "UTF8") != NULL)
+		s = nl_langinfo(CODESET);
+		if(strcasecmp(s, "UTF-8") != 0 ||
+		   strcasecmp(s, "UTF8") != 0)
 			flags |= CLIENT_UTF8;
 	}
 
