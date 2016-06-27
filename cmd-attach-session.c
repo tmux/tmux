@@ -36,8 +36,8 @@ const struct cmd_entry cmd_attach_session_entry = {
 	.name = "attach-session",
 	.alias = "attach",
 
-	.args = { "c:dErt:", 0, 0 },
-	.usage = "[-dEr] [-c working-directory] " CMD_TARGET_SESSION_USAGE,
+	.args = { "c:dErg:t:", 0, 0 },
+	.usage = "[-dEr] [-g group-name] [-c working-directory] " CMD_TARGET_SESSION_USAGE,
 
 	.tflag = CMD_SESSION_WITHPANE,
 
@@ -158,6 +158,22 @@ enum cmd_retval
 cmd_attach_session_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args	*args = self->args;
+	struct session_group *sg;
+	struct session *as;
+	const char *sg_name;
+
+	if ((sg_name = args_get(args, 'g')) != NULL) {
+		if ((sg = session_group_find_by_name(sg_name)) == NULL) {
+			cmdq_error(cmdq, "failed to find session group %s", sg_name);
+			return (CMD_RETURN_ERROR);
+		}
+		if ((as = session_group_find_detached(sg)) == NULL) {
+			cmdq_error(cmdq, 
+			    "failed to find detached session in session group %s", sg_name);
+			return (CMD_RETURN_ERROR);
+		}
+		cmd_find_from_session(&cmdq->state.tflag, as);
+	}
 
 	return (cmd_attach_session(cmdq, args_has(args, 'd'),
 	    args_has(args, 'r'), args_get(args, 'c'), args_has(args, 'E')));

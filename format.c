@@ -1034,8 +1034,14 @@ format_defaults_session(struct format_tree *ft, struct session *s)
 
 	sg = session_group_find(s);
 	format_add(ft, "session_grouped", "%d", sg != NULL);
-	if (sg != NULL)
+	if (sg != NULL) {
 		format_add(ft, "session_group", "%u", session_group_index(sg));
+		format_add(ft, "session_group_named", "%d", sg->name != NULL);
+		if (sg->name != NULL) {
+			format_add(ft, "session_group_name", "%s", sg->name);
+		}
+	}
+
 
 	format_add_tv(ft, "session_created", &s->creation_time);
 	format_add_tv(ft, "session_last_attached", &s->last_attached_time);

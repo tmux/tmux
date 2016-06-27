@@ -1022,6 +1022,8 @@ struct environ_entry {
 
 /* Client session. */
 struct session_group {
+	u_int id;
+	char *name;
 	TAILQ_HEAD(, session) sessions;
 
 	TAILQ_ENTRY(session_group) entry;
@@ -2293,7 +2295,7 @@ struct session	*session_find_by_id_str(const char *);
 struct session	*session_find_by_id(u_int);
 struct session	*session_create(const char *, int, char **, const char *,
 		     const char *, struct environ *, struct termios *, int,
-		     u_int, u_int, char **);
+		     u_int, u_int, char **, const char *);
 void		 session_destroy(struct session *);
 void		 session_unref(struct session *);
 int		 session_check_name(const char *);
@@ -2313,8 +2315,11 @@ int		 session_select(struct session *, int);
 int		 session_last(struct session *);
 int		 session_set_current(struct session *, struct winlink *);
 struct session_group *session_group_find(struct session *);
+struct session_group *session_group_find_by_name(const char*);
+struct session *session_group_find_detached(struct session_group *);
 u_int		 session_group_index(struct session_group *);
 void		 session_group_add(struct session *, struct session *);
+int		 session_group_add_name(const char*, struct session *);
 void		 session_group_remove(struct session *);
 u_int		 session_group_count(struct session_group *);
 void		 session_group_synchronize_to(struct session *);

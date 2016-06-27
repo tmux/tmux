@@ -39,9 +39,9 @@ const struct cmd_entry cmd_new_session_entry = {
 	.name = "new-session",
 	.alias = "new",
 
-	.args = { "Ac:dDEF:n:Ps:t:x:y:", 0, -1 },
+	.args = { "Ag:c:dDEF:n:Ps:t:x:y:", 0, -1 },
 	.usage = "[-AdDEP] [-c start-directory] [-F format] [-n window-name] "
-		 "[-s session-name] " CMD_TARGET_SESSION_USAGE " [-x width] "
+		 "[-s session-name] " CMD_TARGET_SESSION_USAGE "[-g group-name] [-x width] "
 		 "[-y height] [command]",
 
 	.tflag = CMD_SESSION_CANFAIL,
@@ -70,11 +70,12 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct client		*c = cmdq->client;
 	struct session		*s, *as;
 	struct session		*groupwith = cmdq->state.tflag.s;
+	struct session_group	*sg;
 	struct window		*w;
 	struct environ		*env;
 	struct termios		 tio, *tiop;
 	const char		*newname, *target, *update, *errstr, *template;
-	const char		*path, *cwd, *to_free = NULL;
+	const char		*path, *cwd, *sg_name, *to_free = NULL;
 	char		       **argv, *cmd, *cause, *cp;
 	int			 detached, already_attached, idx, argc;
 	u_int			 sx, sy;
@@ -92,6 +93,29 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 	if (args_has(args, 't') && (args->argc != 0 || args_has(args, 'n'))) {
 		cmdq_error(cmdq, "command or window name given with target");
 		return (CMD_RETURN_ERROR);
+	}
+
+	if ((sg_name = args_get(args, 'g')) != NULL) {
+		if (!session_check_name(sg_name)) {
+			cmdq_error(cmdq, "invalid group name: %s", sg_name);
+			return (CMD_RETURN_ERROR);
+		}
+
+		if (args_has(args, 'A') && 
+		    (sg = session_group_find_by_name(sg_name)) != NULL) {
+			if ((as = session_group_find_detached(sg)) != NULL) {
+				/*
+				 * This cmdq is now destined for
+				 * attach-session.  Because attach-session
+				 * will have already been prepared, copy this
+				 * session into its tflag so it can be used.
+				 */
+				cmd_find_from_session(&cmdq->state.tflag, as);
+				return (cmd_attach_session(cmdq,
+					args_has(args, 'D'), 0, NULL,
+					args_has(args, 'E')));
+			}
+		}
 	}
 
 	newname = args_get(args, 's');
@@ -242,7 +266,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 	/* Create the new session. */
 	idx = -1 - options_get_number(global_s_options, "base-index");
 	s = session_create(newname, argc, argv, path, cwd, env, tiop, idx, sx,
-	    sy, &cause);
+	    sy, &cause, sg_name);
 	environ_free(env);
 	if (s == NULL) {
 		cmdq_error(cmdq, "create session failed: %s", cause);
@@ -265,6 +289,11 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 		session_group_add(groupwith, s);
 		session_group_synchronize_to(s);
 		session_select(s, RB_MIN(winlinks, &s->windows)->idx);
+	} else if (sg_name != NULL) {
+		if (session_group_add_name(sg_name, s)) {
+			session_group_synchronize_to(s);
+			session_select(s, RB_MIN(winlinks, &s->windows)->idx);
+		}
 	}
 
 	/*

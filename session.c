@@ -28,6 +28,7 @@
 
 struct sessions	sessions;
 u_int		next_session_id;
+u_int		next_session_group_id;
 struct session_groups session_groups;
 
 void	session_free(int, short, void *);
@@ -104,7 +105,7 @@ session_find_by_id(u_int id)
 struct session *
 session_create(const char *name, int argc, char **argv, const char *path,
     const char *cwd, struct environ *env, struct termios *tio, int idx,
-    u_int sx, u_int sy, char **cause)
+    u_int sx, u_int sy, char **cause, const char* group_name)
 {
 	struct session	*s;
 	struct winlink	*wl;
@@ -143,7 +144,10 @@ session_create(const char *name, int argc, char **argv, const char *path,
 		do {
 			s->id = next_session_id++;
 			free(s->name);
-			xasprintf(&s->name, "%u", s->id);
+			if (group_name != NULL)
+				xasprintf(&s->name, "%s-%u", group_name, s->id);
+			else
+				xasprintf(&s->name, "%u", s->id);
 		} while (RB_FIND(sessions, &sessions, s) != NULL);
 	}
 	RB_INSERT(sessions, &sessions, s);
@@ -545,6 +549,35 @@ session_group_find(struct session *target)
 	return (NULL);
 }
 
+struct session*
+session_group_find_detached(struct session_group *sg)
+{
+	struct session *s;
+	TAILQ_FOREACH(s, &sg->sessions, gentry) {
+		if (!s->attached) {
+			return (s);
+		}
+	}
+	return (NULL);
+}
+
+/* Find the session group by name. */
+struct session_group *
+session_group_find_by_name(const char* name)
+{
+	struct session_group	*sg;
+
+	if (name == NULL)
+		return (NULL);
+
+	TAILQ_FOREACH(sg, &session_groups, entry) {
+		if (sg->name != NULL && strcmp(name, sg->name) == 0) {
+			return (sg);
+		}
+	}
+	return (NULL);
+}
+
 /* Find session group index. */
 u_int
 session_group_index(struct session_group *sg)
@@ -563,6 +596,28 @@ session_group_index(struct session_group *sg)
 }
 
 /*
+ * Add a session to the named session group, creating it if
+ * necessary.
+ */
+int
+session_group_add_name(const char *name, struct session *s)
+{
+	struct session_group	*sg;
+	int r = 1;
+
+	if ((sg = session_group_find_by_name(name)) == NULL) {
+		r = 0;
+		sg = xmalloc(sizeof *sg);
+		TAILQ_INSERT_TAIL(&session_groups, sg, entry);
+		TAILQ_INIT(&sg->sessions);
+		sg->name = xstrdup(name);
+		sg->id = next_session_group_id++;
+	}
+	TAILQ_INSERT_TAIL(&sg->sessions, s, gentry);
+	return r;
+}
+
+/*
  * Add a session to the session group containing target, creating it if
  * necessary.
  */
@@ -575,6 +630,8 @@ session_group_add(struct session *target, struct session *s)
 		sg = xmalloc(sizeof *sg);
 		TAILQ_INSERT_TAIL(&session_groups, sg, entry);
 		TAILQ_INIT(&sg->sessions);
+		sg->name = NULL;
+		sg->id = next_session_group_id++;
 		TAILQ_INSERT_TAIL(&sg->sessions, target, gentry);
 	}
 	TAILQ_INSERT_TAIL(&sg->sessions, s, gentry);
@@ -589,10 +646,14 @@ session_group_remove(struct session *s)
 	if ((sg = session_group_find(s)) == NULL)
 		return;
 	TAILQ_REMOVE(&sg->sessions, s, gentry);
-	if (TAILQ_NEXT(TAILQ_FIRST(&sg->sessions), gentry) == NULL)
+
+	/* don't keep single member unnamed session groups */
+	if (sg->name == NULL && !TAILQ_EMPTY(&sg->sessions) && TAILQ_NEXT(TAILQ_FIRST(&sg->sessions), gentry) == NULL)
 		TAILQ_REMOVE(&sg->sessions, TAILQ_FIRST(&sg->sessions), gentry);
+
 	if (TAILQ_EMPTY(&sg->sessions)) {
 		TAILQ_REMOVE(&session_groups, sg, entry);
+		free(sg->name);
 		free(sg);
 	}
 }
