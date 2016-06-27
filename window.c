@@ -29,7 +29,6 @@
 #include <termios.h>
 #include <time.h>
 #include <unistd.h>
-#include <time.h>
 
 #include "tmux.h"
 
