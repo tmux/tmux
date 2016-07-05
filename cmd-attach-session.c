@@ -36,8 +36,8 @@ const struct cmd_entry cmd_attach_session_entry = {
 	.name = "attach-session",
 	.alias = "attach",
 
-	.args = { "c:dErt:", 0, 0 },
-	.usage = "[-dEr] [-c working-directory] " CMD_TARGET_SESSION_USAGE,
+	.args = { "c:dErnt:", 0, 0 },
+	.usage = "[-dErn] [-c working-directory] " CMD_TARGET_SESSION_USAGE,
 
 	.tflag = CMD_SESSION_WITHPANE,
 
@@ -47,7 +47,7 @@ const struct cmd_entry cmd_attach_session_entry = {
 
 enum cmd_retval
 cmd_attach_session(struct cmd_q *cmdq, int dflag, int rflag, const char *cflag,
-    int Eflag)
+    int Eflag, int nrflag)
 {
 	struct session		*s = cmdq->state.tflag.s;
 	struct client		*c = cmdq->client, *c_loop;
@@ -119,6 +119,9 @@ cmd_attach_session(struct cmd_q *cmdq, int dflag, int rflag, const char *cflag,
 		if (rflag)
 			c->flags |= CLIENT_READONLY;
 
+		if (nrflag)
+			c->flags |= CLIENT_NORESIZE;
+
 		if (dflag) {
 			TAILQ_FOREACH(c_loop, &clients, entry) {
 				if (c_loop->session != s || c == c_loop)
@@ -160,5 +163,5 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct args	*args = self->args;
 
 	return (cmd_attach_session(cmdq, args_has(args, 'd'),
-	    args_has(args, 'r'), args_get(args, 'c'), args_has(args, 'E')));
+	    args_has(args, 'r'), args_get(args, 'c'), args_has(args, 'E'), args_has(args, 'n')));
 }
