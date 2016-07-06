@@ -34,7 +34,7 @@ static int	screen_write_combine(struct screen_write_ctx *,
 		    const struct utf8_data *);
 
 static const struct grid_cell screen_write_pad_cell = {
-	GRID_FLAG_PADDING, 0, { .fg = 8 }, { .bg = 8 }, { { 0 }, 0, 0, 0 }
+	GRID_FLAG_PADDING, 0, 8, 8, { { 0 }, 0, 0, 0 }
 };
 
 /* Initialise writing with a window. */
@@ -1031,10 +1031,6 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 		tmp_gc.attr = tmp_gc.attr & ~GRID_ATTR_CHARSET;
 		tmp_gc.attr |= gc->attr & GRID_ATTR_CHARSET;
 		tmp_gc.flags = gc->flags;
-		tmp_gc.flags &= ~(GRID_FLAG_FGRGB|GRID_FLAG_BGRGB);
-		tmp_gc.flags &= ~(GRID_FLAG_FG256|GRID_FLAG_BG256);
-		tmp_gc.flags |= s->sel.cell.flags &
-		    (GRID_FLAG_FG256|GRID_FLAG_BG256);
 		ttyctx.cell = &tmp_gc;
 		tty_write(tty_cmd_cell, &ttyctx);
 	} else if (!skip) {

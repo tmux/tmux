@@ -37,7 +37,7 @@
 
 /* Default grid cell data. */
 const struct grid_cell grid_default_cell = {
-	0, 0, { .fg = 8 }, { .bg = 8 }, { { ' ' }, 0, 1, 1 }
+	0, 0, 8, 8, { { ' ' }, 0, 1, 1 }
 };
 const struct grid_cell_entry grid_default_entry = {
 	0, { .data = { 0, 8, 8, ' ' } }
@@ -297,7 +297,8 @@ grid_set_cell(struct grid *gd, u_int px, u_int py, const struct grid_cell *gc)
 	extended = (gce->flags & GRID_FLAG_EXTENDED);
 	if (!extended && (gc->data.size != 1 || gc->data.width != 1))
 		extended = 1;
-	if (!extended && (gc->flags & (GRID_FLAG_FGRGB|GRID_FLAG_BGRGB)))
+	if (!extended && ((gc->fg & COLOUR_FLAG_24BITCOLOUR) ||
+	    (gc->bg & COLOUR_FLAG_24BITCOLOUR)))
 		extended = 1;
 	if (extended) {
 		if (~gce->flags & GRID_FLAG_EXTENDED) {
@@ -446,18 +447,20 @@ size_t
 grid_string_cells_fg(const struct grid_cell *gc, int *values)
 {
 	size_t	n;
+	u_char	r, g, b;
 
 	n = 0;
-	if (gc->flags & GRID_FLAG_FG256) {
+	if (gc->fg & COLOUR_FLAG_256COLOURS) {
 		values[n++] = 38;
 		values[n++] = 5;
 		values[n++] = gc->fg;
-	} else if (gc->flags & GRID_FLAG_FGRGB) {
+	} else if (gc->fg & COLOUR_FLAG_24BITCOLOUR) {
 		values[n++] = 38;
 		values[n++] = 2;
-		values[n++] = gc->fg_rgb.r;
-		values[n++] = gc->fg_rgb.g;
-		values[n++] = gc->fg_rgb.b;
+		colour_24bittorgb(gc->fg, &r, &g, &b);
+		values[n++] = r;
+		values[n++] = g;
+		values[n++] = b;
 	} else {
 		switch (gc->fg) {
 		case 0:
@@ -493,18 +496,20 @@ size_t
 grid_string_cells_bg(const struct grid_cell *gc, int *values)
 {
 	size_t	n;
+	u_char	r, g, b;
 
 	n = 0;
-	if (gc->flags & GRID_FLAG_BG256) {
+	if (gc->bg & COLOUR_FLAG_256COLOURS) {
 		values[n++] = 48;
 		values[n++] = 5;
 		values[n++] = gc->bg;
-	} else if (gc->flags & GRID_FLAG_BGRGB) {
+	} else if (gc->bg & COLOUR_FLAG_24BITCOLOUR) {
 		values[n++] = 48;
 		values[n++] = 2;
-		values[n++] = gc->bg_rgb.r;
-		values[n++] = gc->bg_rgb.g;
-		values[n++] = gc->bg_rgb.b;
+		colour_24bittorgb(gc->bg, &r, &g, &b);
+		values[n++] = r;
+		values[n++] = g;
+		values[n++] = b;
 	} else {
 		switch (gc->bg) {
 		case 0:
@@ -525,7 +530,7 @@ grid_string_cells_bg(const struct grid_cell *gc, int *values)
 		case 102:
 		case 103:
 		case 104:
-			case 105:
+		case 105:
 		case 106:
 		case 107:
 			values[n++] = gc->bg - 10;
