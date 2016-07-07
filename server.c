@@ -258,7 +258,7 @@ server_update_socket(void)
 
 		if (stat(socket_path, &sb) != 0)
 			return;
-		mode = sb.st_mode;
+		mode = sb.st_mode & ACCESSPERMS;
 		if (n != 0) {
 			if (mode & S_IRUSR)
 				mode |= S_IXUSR;
