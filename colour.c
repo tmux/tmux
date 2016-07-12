@@ -150,7 +150,6 @@ colour_fromstring(const char *s)
 {
 	const char	*errstr;
 	const char	*cp;
-	int		 len;
 	int		 n;
 	u_char		 r, g, b;
 
@@ -159,8 +158,7 @@ colour_fromstring(const char *s)
 			;
 		if (*cp != '\0')
 			return (-1);
-		len = strlen(s);
-		if (len == 7)
+		if (strlen(s) == 7)
 			n = sscanf(s + 1, "%2hhx%2hhx%2hhx", &r, &g, &b);
 		else
 			return (-1);

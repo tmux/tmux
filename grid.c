@@ -270,7 +270,7 @@ grid_get_cell(struct grid *gd, u_int px, u_int py, struct grid_cell *gc)
 		return;
 	}
 
-	gc->flags = gce->flags & ~GRID_FLAG_EXTENDED;
+	gc->flags = gce->flags & ~(GRID_FLAG_FG256|GRID_FLAG_BG256);
 	gc->attr = gce->data.attr;
 	gc->fg = gce->data.fg;
 	if (gce->flags & GRID_FLAG_FG256)
@@ -319,7 +319,7 @@ grid_set_cell(struct grid *gd, u_int px, u_int py, const struct grid_cell *gc)
 		return;
 	}
 
-	gce->flags = gc->flags & ~GRID_FLAG_EXTENDED;
+	gce->flags = gc->flags;
 	gce->data.attr = gc->attr;
 	gce->data.fg = gc->fg & 0xFF;
 	if (gc->fg & COLOUR_FLAG_256)
