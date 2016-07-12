@@ -158,7 +158,7 @@ colour_fromstring(const char *s)
 			;
 		if (*cp != '\0')
 			return (-1);
-                n = sscanf(s + 1, "%2hhx%2hhx%2hhx", &r, &g, &b);
+		n = sscanf(s + 1, "%2hhx%2hhx%2hhx", &r, &g, &b);
 		if (n != 3)
 			return (-1);
 		return (colour_rgbto24bit(r, g, b));
