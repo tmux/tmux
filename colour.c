@@ -153,15 +153,12 @@ colour_fromstring(const char *s)
 	int		 n;
 	u_char		 r, g, b;
 
-	if (*s == '#') {
+	if (*s == '#' && strlen(s) == 7) {
 		for (cp = s + 1; isxdigit((u_char) *cp); cp++)
 			;
 		if (*cp != '\0')
 			return (-1);
-		if (strlen(s) == 7)
-			n = sscanf(s + 1, "%2hhx%2hhx%2hhx", &r, &g, &b);
-		else
-			return (-1);
+                n = sscanf(s + 1, "%2hhx%2hhx%2hhx", &r, &g, &b);
 		if (n != 3)
 			return (-1);
 		return (colour_rgbto24bit(r, g, b));
