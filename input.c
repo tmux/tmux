@@ -1635,9 +1635,9 @@ input_csi_dispatch_sgr_256(struct input_ctx *ictx, int fgbg, u_int *i)
 		}
 	} else {
 		if (fgbg == 38) {
-			gc->fg = c | COLOUR_FLAG_256COLOURS;
+			gc->fg = c | COLOUR_FLAG_256;
 		} else if (fgbg == 48) {
-			gc->bg = c | COLOUR_FLAG_256COLOURS;
+			gc->bg = c | COLOUR_FLAG_256;
 		}
 	}
 }

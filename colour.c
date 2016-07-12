@@ -68,7 +68,7 @@ colour_rgbto256(u_char r, u_char g, u_char b)
 	/* If we have hit the colour exactly, return early. */
 	if (cr == r && cg == g && cb == b)
 		return ((16 + (36 * qr) + (6 * qg) + qb) |
-		    COLOUR_FLAG_256COLOURS);
+		    COLOUR_FLAG_256);
 
 	/* Work out the closest grey (average of RGB). */
 	grey_avg = (r + g + b) / 3;
@@ -84,7 +84,7 @@ colour_rgbto256(u_char r, u_char g, u_char b)
 		idx = 232 + grey_idx;
 	else
 		idx = 16 + (36 * qr) + (6 * qg) + qb;
-	return (idx | COLOUR_FLAG_256COLOURS);
+	return (idx | COLOUR_FLAG_256);
 }
 
 /* Convert colour to a string. */
@@ -92,14 +92,15 @@ const char *
 colour_tostring(int c)
 {
 	static char	s[32];
+	u_char		r, g, b;
 
-	if (c & COLOUR_FLAG_24BITCOLOUR) {
-		xsnprintf(s, sizeof s, "#%02X%02X%02X", (c >> 16) & 0xFF,
-		    (c >> 8) & 0xFF, c & 0xFF);
+	if (c & COLOUR_FLAG_RGB) {
+		colour_24bittorgb(c, &r, &g, &b);
+		xsnprintf(s, sizeof s, "#%02X%02X%02X", r, g, b);
 		return (s);
 	}
 
-	if (c & COLOUR_FLAG_256COLOURS) {
+	if (c & COLOUR_FLAG_256) {
 		xsnprintf(s, sizeof s, "colour%d", c & 0xFF);
 		return (s);
 	}
@@ -161,12 +162,7 @@ colour_fromstring(const char *s)
 		len = strlen(s);
 		if (len == 7)
 			n = sscanf(s + 1, "%2hhx%2hhx%2hhx", &r, &g, &b);
-		else if (len == 4) {
-			n = sscanf(s + 1, "%1hhx%1hhx%1hhx", &r, &g, &b);
-			r *= 0x11;
-			g *= 0x11;
-			b *= 0x11;
-		} else
+		else
 			return (-1);
 		if (n != 3)
 			return (-1);
@@ -177,7 +173,7 @@ colour_fromstring(const char *s)
 		n = strtonum(s + (sizeof "colour") - 1, 0, 255, &errstr);
 		if (errstr != NULL)
 			return (-1);
-		return (n | COLOUR_FLAG_256COLOURS);
+		return (n | COLOUR_FLAG_256);
 	}
 
 	if (strcasecmp(s, "black") == 0 || strcmp(s, "0") == 0)
@@ -248,7 +244,7 @@ colour_rgbto24bit(u_char r, u_char g, u_char b)
 {
 	return ((((u_int) ((r) & 0xFF)) << 16) |
 		(((u_int) ((g) & 0xFF)) << 8) |
-		(((u_int) ((b) & 0xFF))) | COLOUR_FLAG_24BITCOLOUR);
+		(((u_int) ((b) & 0xFF))) | COLOUR_FLAG_RGB);
 }
 
 void

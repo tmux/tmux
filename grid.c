@@ -273,7 +273,11 @@ grid_get_cell(struct grid *gd, u_int px, u_int py, struct grid_cell *gc)
 	gc->flags = gce->flags & ~GRID_FLAG_EXTENDED;
 	gc->attr = gce->data.attr;
 	gc->fg = gce->data.fg;
+	if (gce->flags & GRID_FLAG_FG256)
+		gc->fg |= COLOUR_FLAG_256;
 	gc->bg = gce->data.bg;
+	if (gce->flags & GRID_FLAG_BG256)
+		gc->bg |= COLOUR_FLAG_256;
 	utf8_set(&gc->data, gce->data.data);
 }
 
@@ -297,8 +301,8 @@ grid_set_cell(struct grid *gd, u_int px, u_int py, const struct grid_cell *gc)
 	extended = (gce->flags & GRID_FLAG_EXTENDED);
 	if (!extended && (gc->data.size != 1 || gc->data.width != 1))
 		extended = 1;
-	if (!extended && ((gc->fg & COLOUR_FLAG_24BITCOLOUR) ||
-	    (gc->bg & COLOUR_FLAG_24BITCOLOUR)))
+	if (!extended && ((gc->fg & COLOUR_FLAG_RGB) ||
+	    (gc->bg & COLOUR_FLAG_RGB)))
 		extended = 1;
 	if (extended) {
 		if (~gce->flags & GRID_FLAG_EXTENDED) {
@@ -317,8 +321,12 @@ grid_set_cell(struct grid *gd, u_int px, u_int py, const struct grid_cell *gc)
 
 	gce->flags = gc->flags & ~GRID_FLAG_EXTENDED;
 	gce->data.attr = gc->attr;
-	gce->data.fg = gc->fg;
-	gce->data.bg = gc->bg;
+	gce->data.fg = gc->fg & 0xFF;
+	if (gc->fg & COLOUR_FLAG_256)
+		gce->flags |= GRID_FLAG_FG256;
+	gce->data.bg = gc->bg & 0xFF;
+	if (gc->bg & COLOUR_FLAG_256)
+		gce->flags |= GRID_FLAG_BG256;
 	gce->data.data = gc->data.data[0];
 }
 
@@ -450,11 +458,11 @@ grid_string_cells_fg(const struct grid_cell *gc, int *values)
 	u_char	r, g, b;
 
 	n = 0;
-	if (gc->fg & COLOUR_FLAG_256COLOURS) {
+	if (gc->fg & COLOUR_FLAG_256) {
 		values[n++] = 38;
 		values[n++] = 5;
 		values[n++] = gc->fg;
-	} else if (gc->fg & COLOUR_FLAG_24BITCOLOUR) {
+	} else if (gc->fg & COLOUR_FLAG_RGB) {
 		values[n++] = 38;
 		values[n++] = 2;
 		colour_24bittorgb(gc->fg, &r, &g, &b);
@@ -499,11 +507,11 @@ grid_string_cells_bg(const struct grid_cell *gc, int *values)
 	u_char	r, g, b;
 
 	n = 0;
-	if (gc->bg & COLOUR_FLAG_256COLOURS) {
+	if (gc->bg & COLOUR_FLAG_256) {
 		values[n++] = 48;
 		values[n++] = 5;
 		values[n++] = gc->bg;
-	} else if (gc->bg & COLOUR_FLAG_24BITCOLOUR) {
+	} else if (gc->bg & COLOUR_FLAG_RGB) {
 		values[n++] = 48;
 		values[n++] = 2;
 		colour_24bittorgb(gc->bg, &r, &g, &b);

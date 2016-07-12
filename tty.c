@@ -1495,7 +1495,7 @@ tty_check_fg(struct tty *tty, struct grid_cell *gc)
 	u_int	colours;
 
 	/* Is this a 24-bit colour? */
-        if (gc->fg & COLOUR_FLAG_24BITCOLOUR) {
+        if (gc->fg & COLOUR_FLAG_RGB) {
 		/* Not a 24-bit terminal? Translate to 256-colour palette. */
 		if (!tty_term_flag(tty->term, TTYC_TC)) {
 			colour_24bittorgb(gc->fg, &r, &g, &b);
@@ -1507,7 +1507,7 @@ tty_check_fg(struct tty *tty, struct grid_cell *gc)
 	colours = tty_term_number(tty->term, TTYC_COLORS);
 
 	/* Is this a 256-colour colour? */
-        if (gc->fg & COLOUR_FLAG_256COLOURS) {
+        if (gc->fg & COLOUR_FLAG_256) {
 		/* And not a 256 colour mode? */
 		if (!(tty->term->flags & TERM_256COLOURS) &&
 		    !(tty->term_flags & TERM_256COLOURS)) {
@@ -1538,7 +1538,7 @@ tty_check_bg(struct tty *tty, struct grid_cell *gc)
 	u_int	colours;
 
 	/* Is this a 24-bit colour? */
-        if (gc->bg & COLOUR_FLAG_24BITCOLOUR) {
+        if (gc->bg & COLOUR_FLAG_RGB) {
 		/* Not a 24-bit terminal? Translate to 256-colour palette. */
 		if (!tty_term_flag(tty->term, TTYC_TC)) {
 			colour_24bittorgb(gc->bg, &r, &g, &b);
@@ -1550,7 +1550,7 @@ tty_check_bg(struct tty *tty, struct grid_cell *gc)
 	colours = tty_term_number(tty->term, TTYC_COLORS);
 
 	/* Is this a 256-colour colour? */
-        if (gc->bg & COLOUR_FLAG_256COLOURS) {
+        if (gc->bg & COLOUR_FLAG_256) {
 		/*
 		 * And not a 256 colour mode? Translate to 16-colour
 		 * palette. Bold background doesn't exist portably, so just
@@ -1580,8 +1580,8 @@ tty_colours_fg(struct tty *tty, const struct grid_cell *gc)
 	char			 s[32];
 
 	/* Is this a 24-bit or 256-colour colour? */
-	if (gc->fg & COLOUR_FLAG_24BITCOLOUR ||
-	    gc->fg & COLOUR_FLAG_256COLOURS) {
+	if (gc->fg & COLOUR_FLAG_RGB ||
+	    gc->fg & COLOUR_FLAG_256) {
 		if (tty_try_colour(tty, gc->fg, "38") == 0)
 			goto save_fg;
 		/* Should not get here, already converted in tty_check_fg. */
@@ -1610,8 +1610,8 @@ tty_colours_bg(struct tty *tty, const struct grid_cell *gc)
 	char			 s[32];
 
 	/* Is this a 24-bit or 256-colour colour? */
-	if (gc->bg & COLOUR_FLAG_24BITCOLOUR ||
-	    gc->bg & COLOUR_FLAG_256COLOURS) {
+	if (gc->bg & COLOUR_FLAG_RGB ||
+	    gc->bg & COLOUR_FLAG_256) {
 		if (tty_try_colour(tty, gc->bg, "48") == 0)
 			goto save_bg;
 		/* Should not get here, already converted in tty_check_bg. */
@@ -1639,7 +1639,7 @@ tty_try_colour(struct tty *tty, int colour, const char *type)
 	u_char	r, g, b;
 	char	s[32];
 
-	if (colour & COLOUR_FLAG_256COLOURS) {
+	if (colour & COLOUR_FLAG_256) {
 		colour &= 0xFF;
 		/*
 		 * If the user has specified -2 to the client, setaf and setab
@@ -1670,7 +1670,7 @@ tty_try_colour(struct tty *tty, int colour, const char *type)
 		    (u_char) colour);
 		tty_puts(tty, s);
 		return (0);
-	} else if (colour & COLOUR_FLAG_24BITCOLOUR) {
+	} else if (colour & COLOUR_FLAG_RGB) {
 		colour &= 0xFFFFFF;
 		if (!tty_term_flag(tty->term, TTYC_TC))
 			return (-1);

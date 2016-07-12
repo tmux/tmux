@@ -628,8 +628,8 @@ enum utf8_state {
 };
 
 /* Colour flags. */
-#define COLOUR_FLAG_256COLOURS 0x01000000
-#define COLOUR_FLAG_24BITCOLOUR 0x02000000
+#define COLOUR_FLAG_256 0x01000000
+#define COLOUR_FLAG_RGB 0x02000000
 
 /* Grid attributes. */
 #define GRID_ATTR_BRIGHT 0x1
@@ -642,9 +642,11 @@ enum utf8_state {
 #define GRID_ATTR_CHARSET 0x80	/* alternative character set */
 
 /* Grid flags. */
-#define GRID_FLAG_PADDING 0x1
-#define GRID_FLAG_EXTENDED 0x2
-#define GRID_FLAG_SELECTED 0x4
+#define GRID_FLAG_FG256 0x1
+#define GRID_FLAG_BG256 0x2
+#define GRID_FLAG_PADDING 0x4
+#define GRID_FLAG_EXTENDED 0x8
+#define GRID_FLAG_SELECTED 0x10
 
 /* Grid line flags. */
 #define GRID_LINE_WRAPPED 0x1
@@ -664,8 +666,8 @@ struct grid_cell_entry {
 		u_int		offset;
 		struct {
 			u_char	attr;
-			u_int	fg;
-			u_int	bg;
+			u_char	fg;
+			u_char	bg;
 			u_char	data;
 		} data;
 	};
