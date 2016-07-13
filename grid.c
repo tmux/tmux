@@ -461,7 +461,7 @@ grid_string_cells_fg(const struct grid_cell *gc, int *values)
 	if (gc->fg & COLOUR_FLAG_256) {
 		values[n++] = 38;
 		values[n++] = 5;
-		values[n++] = gc->fg;
+		values[n++] = gc->fg & 0xFF;
 	} else if (gc->fg & COLOUR_FLAG_RGB) {
 		values[n++] = 38;
 		values[n++] = 2;
@@ -510,7 +510,7 @@ grid_string_cells_bg(const struct grid_cell *gc, int *values)
 	if (gc->bg & COLOUR_FLAG_256) {
 		values[n++] = 48;
 		values[n++] = 5;
-		values[n++] = gc->bg;
+		values[n++] = gc->bg & 0xFF;
 	} else if (gc->bg & COLOUR_FLAG_RGB) {
 		values[n++] = 48;
 		values[n++] = 2;
