@@ -54,7 +54,7 @@ colour_to_6cube(int v)
  * evenly spread (8, 18, 28 ... 238).
  */
 int
-colour_find_rgb(u_char r, u_char g, u_char b)
+colour_rgbto256(u_char r, u_char g, u_char b)
 {
 	static const int	q2c[6] = { 0x00, 0x5f, 0x87, 0xaf, 0xd7, 0xff };
 	int			qr, qg, qb, cr, cg, cb, d, idx;
@@ -67,7 +67,8 @@ colour_find_rgb(u_char r, u_char g, u_char b)
 
 	/* If we have hit the colour exactly, return early. */
 	if (cr == r && cg == g && cb == b)
-		return (16 + (36 * qr) + (6 * qg) + qb);
+		return ((16 + (36 * qr) + (6 * qg) + qb) |
+		    COLOUR_FLAG_256);
 
 	/* Work out the closest grey (average of RGB). */
 	grey_avg = (r + g + b) / 3;
@@ -83,25 +84,7 @@ colour_find_rgb(u_char r, u_char g, u_char b)
 		idx = 232 + grey_idx;
 	else
 		idx = 16 + (36 * qr) + (6 * qg) + qb;
-	return (idx);
-}
-
-/* Set grid cell foreground colour. */
-void
-colour_set_fg(struct grid_cell *gc, int c)
-{
-	if (c & 0x100)
-		gc->flags |= GRID_FLAG_FG256;
-	gc->fg = c;
-}
-
-/* Set grid cell background colour. */
-void
-colour_set_bg(struct grid_cell *gc, int c)
-{
-	if (c & 0x100)
-		gc->flags |= GRID_FLAG_BG256;
-	gc->bg = c;
+	return (idx | COLOUR_FLAG_256);
 }
 
 /* Convert colour to a string. */
@@ -109,9 +92,16 @@ const char *
 colour_tostring(int c)
 {
 	static char	s[32];
+	u_char		r, g, b;
 
-	if (c & 0x100) {
-		xsnprintf(s, sizeof s, "colour%d", c & ~0x100);
+	if (c & COLOUR_FLAG_RGB) {
+		colour_24bittorgb(c, &r, &g, &b);
+		xsnprintf(s, sizeof s, "#%02X%02X%02X", r, g, b);
+		return (s);
+	}
+
+	if (c & COLOUR_FLAG_256) {
+		xsnprintf(s, sizeof s, "colour%d", c & 0xFF);
 		return (s);
 	}
 
@@ -171,14 +161,14 @@ colour_fromstring(const char *s)
 		n = sscanf(s + 1, "%2hhx%2hhx%2hhx", &r, &g, &b);
 		if (n != 3)
 			return (-1);
-		return (colour_find_rgb(r, g, b) | 0x100);
+		return (colour_rgbto24bit(r, g, b));
 	}
 
 	if (strncasecmp(s, "colour", (sizeof "colour") - 1) == 0) {
 		n = strtonum(s + (sizeof "colour") - 1, 0, 255, &errstr);
 		if (errstr != NULL)
 			return (-1);
-		return (n | 0x100);
+		return (n | COLOUR_FLAG_256);
 	}
 
 	if (strcasecmp(s, "black") == 0 || strcmp(s, "0") == 0)
@@ -242,4 +232,20 @@ colour_256to16(u_char c)
 	};
 
 	return (table[c]);
+}
+
+int
+colour_rgbto24bit(u_char r, u_char g, u_char b)
+{
+	return ((((u_int) ((r) & 0xFF)) << 16) |
+		(((u_int) ((g) & 0xFF)) << 8) |
+		(((u_int) ((b) & 0xFF))) | COLOUR_FLAG_RGB);
+}
+
+void
+colour_24bittorgb(int val, u_char *r, u_char *g, u_char *b)
+{
+	*r = (val >> 16) & 0xFF;
+	*g = (val >> 8) & 0xFF;
+	*b = val & 0xFF;
 }

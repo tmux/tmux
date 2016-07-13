@@ -627,6 +627,10 @@ enum utf8_state {
 	UTF8_ERROR
 };
 
+/* Colour flags. */
+#define COLOUR_FLAG_256 0x01000000
+#define COLOUR_FLAG_RGB 0x02000000
+
 /* Grid attributes. */
 #define GRID_ATTR_BRIGHT 0x1
 #define GRID_ATTR_DIM 0x2
@@ -642,32 +646,17 @@ enum utf8_state {
 #define GRID_FLAG_BG256 0x2
 #define GRID_FLAG_PADDING 0x4
 #define GRID_FLAG_EXTENDED 0x8
-#define GRID_FLAG_FGRGB 0x10
-#define GRID_FLAG_BGRGB 0x20
-#define GRID_FLAG_SELECTED 0x40
+#define GRID_FLAG_SELECTED 0x10
 
 /* Grid line flags. */
 #define GRID_LINE_WRAPPED 0x1
-
-/* Grid cell RGB colours. */
-struct grid_cell_rgb {
-	u_char	r;
-	u_char	g;
-	u_char	b;
-};
 
 /* Grid cell data. */
 struct grid_cell {
 	u_char			flags;
 	u_char			attr;
-	union {
-		u_char		fg;
-		struct grid_cell_rgb	fg_rgb;
-	};
-	union {
-		u_char		bg;
-		struct grid_cell_rgb	bg_rgb;
-	};
+	u_int			fg;
+	u_int			bg;
 	struct utf8_data	data;
 
 };
@@ -1982,12 +1971,12 @@ char	*xterm_keys_lookup(key_code);
 int	 xterm_keys_find(const char *, size_t, size_t *, key_code *);
 
 /* colour.c */
-int	 colour_find_rgb(u_char, u_char, u_char);
-void	 colour_set_fg(struct grid_cell *, int);
-void	 colour_set_bg(struct grid_cell *, int);
+int	 colour_rgbto256(u_char, u_char, u_char);
 const char *colour_tostring(int);
-int	 colour_fromstring(const char *);
+int	 colour_fromstring(const char *s);
 u_char	 colour_256to16(u_char);
+int	 colour_rgbto24bit(u_char, u_char, u_char);
+void	 colour_24bittorgb(int, u_char *, u_char *, u_char *);
 
 /* attributes.c */
 const char *attributes_tostring(u_char);
