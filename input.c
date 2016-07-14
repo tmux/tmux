@@ -113,6 +113,7 @@ void	input_enter_apc(struct input_ctx *);
 void	input_exit_apc(struct input_ctx *);
 void	input_enter_rename(struct input_ctx *);
 void	input_exit_rename(struct input_ctx *);
+void	input_exit_terminology_escape(struct input_ctx *);
 
 /* Input state handlers. */
 int	input_print(struct input_ctx *);
@@ -296,6 +297,7 @@ const struct input_transition input_state_consume_st_table[];
 const struct input_transition input_state_utf8_three_table[];
 const struct input_transition input_state_utf8_two_table[];
 const struct input_transition input_state_utf8_one_table[];
+const struct input_transition input_state_terminology_escape_table[];
 
 /* ground state definition. */
 const struct input_state input_state_ground = {
@@ -437,6 +439,13 @@ const struct input_state input_state_utf8_one = {
 	input_state_utf8_one_table
 };
 
+/* terminology_escape state definition. */
+const struct input_state input_state_terminology_escape = {
+	"utf8_one",
+	NULL, input_exit_terminology_escape,
+	input_state_terminology_escape_table
+};
+
 /* ground state table. */
 const struct input_transition input_state_ground_table[] = {
 	INPUT_STATE_ANYWHERE,
@@ -476,7 +485,9 @@ const struct input_transition input_state_esc_enter_table[] = {
 	{ 0x5f, 0x5f, NULL,		  &input_state_apc_string },
 	{ 0x60, 0x6a, input_esc_dispatch, &input_state_ground },
 	{ 0x6b, 0x6b, NULL,		  &input_state_rename_string },
-	{ 0x6c, 0x7e, input_esc_dispatch, &input_state_ground },
+	{ 0x6c, 0x7c, input_esc_dispatch, &input_state_ground },
+	{ 0x7d, 0x7d, NULL, &input_state_terminology_escape },
+	{ 0x7e, 0x7e, input_esc_dispatch, &input_state_ground },
 	{ 0x7f, 0xff, NULL,		  NULL },
 
 	{ -1, -1, NULL, NULL }
@@ -725,6 +736,16 @@ const struct input_transition input_state_utf8_one_table[] = {
 	{ 0x00, 0x7f, NULL,		&input_state_ground },
 	{ 0x80, 0xbf, input_utf8_close, &input_state_ground },
 	{ 0xc0, 0xff, NULL,		&input_state_ground },
+
+	{ -1, -1, NULL, NULL }
+};
+
+/* terminology_escape state table. */
+const struct input_transition input_state_terminology_escape_table[] = {
+  INPUT_STATE_ANYWHERE,
+
+	{ 0x00, 0x00, NULL, &input_state_ground },
+	{ 0x01, 0xff, NULL, NULL },
 
 	{ -1, -1, NULL, NULL }
 };
@@ -1924,6 +1945,26 @@ input_exit_rename(struct input_ctx *ictx)
 	options_set_number(ictx->wp->window->options, "automatic-rename", 0);
 
 	server_status_window(ictx->wp->window);
+}
+
+/* Terminology escape terminator (\000) received. */
+void
+input_exit_terminology_escape(struct input_ctx *ictx)
+{
+  /* get a copy of the complete event buffer since the last ground state */
+  const u_int since_ground_len = evbuffer_get_length(ictx->since_ground);
+  u_char sg_buf[since_ground_len+2];
+  evbuffer_copyout(ictx->since_ground, sg_buf, since_ground_len);
+  sg_buf[since_ground_len]='\000';
+
+  if (ictx->flags & INPUT_DISCARD)
+		return;
+	log_debug("%s: \"%s - %s\"", __func__, ictx->input_buf, sg_buf);
+
+  /* output the whole buffer as raw string and hope that terminology
+   * is on the other side. listening... */
+  screen_write_rawstring(&ictx->ctx, sg_buf, since_ground_len+1);
+
 }
 
 /* Open UTF-8 character. */
