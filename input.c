@@ -441,7 +441,7 @@ const struct input_state input_state_utf8_one = {
 
 /* terminology_escape state definition. */
 const struct input_state input_state_terminology_escape = {
-	"utf8_one",
+	"terminology_escape",
 	NULL, input_exit_terminology_escape,
 	input_state_terminology_escape_table
 };
