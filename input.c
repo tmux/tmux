@@ -1628,17 +1628,15 @@ input_csi_dispatch_sgr_256(struct input_ctx *ictx, int fgbg, u_int *i)
 	(*i)++;
 	c = input_get(ictx, *i, 0, -1);
 	if (c == -1) {
-		if (fgbg == 38) {
+		if (fgbg == 38)
 			gc->fg = 8;
-		} else if (fgbg == 48) {
+		else if (fgbg == 48)
 			gc->bg = 8;
-		}
 	} else {
-		if (fgbg == 38) {
+		if (fgbg == 38)
 			gc->fg = c | COLOUR_FLAG_256;
-		} else if (fgbg == 48) {
+		else if (fgbg == 48)
 			gc->bg = c | COLOUR_FLAG_256;
-		}
 	}
 }
 
@@ -1662,11 +1660,10 @@ input_csi_dispatch_sgr_rgb(struct input_ctx *ictx, int fgbg, u_int *i)
 	if (b == -1 || b > 255)
 		return;
 
-	if (fgbg == 38) {
-		gc->fg = colour_rgbto24bit(r, g, b);
-	} else if (fgbg == 48) {
-		gc->bg = colour_rgbto24bit(r, g, b);
-	}
+	if (fgbg == 38)
+		gc->fg = colour_join_rgb(r, g, b);
+	else if (fgbg == 48)
+		gc->bg = colour_join_rgb(r, g, b);
 }
 
 /* Handle CSI SGR. */

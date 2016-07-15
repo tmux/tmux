@@ -43,8 +43,6 @@ const struct grid_cell_entry grid_default_entry = {
 	0, { .data = { 0, 8, 8, ' ' } }
 };
 
-int	grid_check_y(struct grid *, u_int);
-
 void	grid_reflow_copy(struct grid_line *, u_int, struct grid_line *l,
 	    u_int, u_int);
 void	grid_reflow_join(struct grid *, u_int *, struct grid_line *, u_int);
@@ -64,7 +62,7 @@ grid_clear_cell(struct grid *gd, u_int px, u_int py)
 }
 
 /* Check grid y position. */
-int
+static int
 grid_check_y(struct grid *gd, u_int py)
 {
 	if ((py) >= (gd)->hsize + (gd)->sy) {
@@ -72,6 +70,21 @@ grid_check_y(struct grid *gd, u_int py)
 		return (-1);
 	}
 	return (0);
+}
+
+/* Compare grid cells. Return 1 if equal, 0 if not. */
+int
+grid_cells_equal(const struct grid_cell *gca, const struct grid_cell *gcb)
+{
+	if (gca->fg != gcb->fg || gca->bg != gcb->bg)
+		return (0);
+	if (gca->attr != gcb->attr || gca->flags != gcb->flags)
+		return (0);
+	if (gca->data.width != gcb->data.width)
+		return (0);
+	if (gca->data.size != gcb->data.size)
+		return (0);
+	return (memcmp(gca->data.data, gcb->data.data, gca->data.size) == 0);
 }
 
 /* Create a new grid. */
@@ -131,7 +144,7 @@ grid_compare(struct grid *ga, struct grid *gb)
 		for (xx = 0; xx < gla->cellsize; xx++) {
 			grid_get_cell(ga, xx, yy, &gca);
 			grid_get_cell(gb, xx, yy, &gcb);
-			if (memcmp(&gca, &gcb, sizeof (struct grid_cell)) != 0)
+			if (!grid_cells_equal(&gca, &gcb))
 				return (1);
 		}
 	}
@@ -305,6 +318,8 @@ grid_set_cell(struct grid *gd, u_int px, u_int py, const struct grid_cell *gc)
 	    (gc->bg & COLOUR_FLAG_RGB)))
 		extended = 1;
 	if (extended) {
+		gl->flags |= GRID_LINE_EXTENDED;
+
 		if (~gce->flags & GRID_FLAG_EXTENDED) {
 			gl->extddata = xreallocarray(gl->extddata,
 			    gl->extdsize + 1, sizeof *gl->extddata);
@@ -321,10 +336,10 @@ grid_set_cell(struct grid *gd, u_int px, u_int py, const struct grid_cell *gc)
 
 	gce->flags = gc->flags;
 	gce->data.attr = gc->attr;
-	gce->data.fg = gc->fg & 0xFF;
+	gce->data.fg = gc->fg & 0xff;
 	if (gc->fg & COLOUR_FLAG_256)
 		gce->flags |= GRID_FLAG_FG256;
-	gce->data.bg = gc->bg & 0xFF;
+	gce->data.bg = gc->bg & 0xff;
 	if (gc->bg & COLOUR_FLAG_256)
 		gce->flags |= GRID_FLAG_BG256;
 	gce->data.data = gc->data.data[0];
@@ -461,11 +476,11 @@ grid_string_cells_fg(const struct grid_cell *gc, int *values)
 	if (gc->fg & COLOUR_FLAG_256) {
 		values[n++] = 38;
 		values[n++] = 5;
-		values[n++] = gc->fg & 0xFF;
+		values[n++] = gc->fg & 0xff;
 	} else if (gc->fg & COLOUR_FLAG_RGB) {
 		values[n++] = 38;
 		values[n++] = 2;
-		colour_24bittorgb(gc->fg, &r, &g, &b);
+		colour_split_rgb(gc->fg, &r, &g, &b);
 		values[n++] = r;
 		values[n++] = g;
 		values[n++] = b;
@@ -510,11 +525,11 @@ grid_string_cells_bg(const struct grid_cell *gc, int *values)
 	if (gc->bg & COLOUR_FLAG_256) {
 		values[n++] = 48;
 		values[n++] = 5;
-		values[n++] = gc->bg & 0xFF;
+		values[n++] = gc->bg & 0xff;
 	} else if (gc->bg & COLOUR_FLAG_RGB) {
 		values[n++] = 48;
 		values[n++] = 2;
-		colour_24bittorgb(gc->bg, &r, &g, &b);
+		colour_split_rgb(gc->bg, &r, &g, &b);
 		values[n++] = r;
 		values[n++] = g;
 		values[n++] = b;

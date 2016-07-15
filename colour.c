@@ -67,8 +67,7 @@ colour_rgbto256(u_char r, u_char g, u_char b)
 
 	/* If we have hit the colour exactly, return early. */
 	if (cr == r && cg == g && cb == b)
-		return ((16 + (36 * qr) + (6 * qg) + qb) |
-		    COLOUR_FLAG_256);
+		return ((16 + (36 * qr) + (6 * qg) + qb) | COLOUR_FLAG_256);
 
 	/* Work out the closest grey (average of RGB). */
 	grey_avg = (r + g + b) / 3;
@@ -87,6 +86,24 @@ colour_rgbto256(u_char r, u_char g, u_char b)
 	return (idx | COLOUR_FLAG_256);
 }
 
+/* Join RGB into a colour. */
+int
+colour_join_rgb(u_char r, u_char g, u_char b)
+{
+	return ((((int)((r) & 0xff)) << 16) |
+	    (((int)((g) & 0xff)) << 8) |
+	    (((int)((b) & 0xff))) | COLOUR_FLAG_RGB);
+}
+
+/* Split colour into RGB. */
+void
+colour_split_rgb(int c, u_char *r, u_char *g, u_char *b)
+{
+	*r = (c >> 16) & 0xff;
+	*g = (c >> 8) & 0xff;
+	*b = c & 0xff;
+}
+
 /* Convert colour to a string. */
 const char *
 colour_tostring(int c)
@@ -95,13 +112,13 @@ colour_tostring(int c)
 	u_char		r, g, b;
 
 	if (c & COLOUR_FLAG_RGB) {
-		colour_24bittorgb(c, &r, &g, &b);
-		xsnprintf(s, sizeof s, "#%02X%02X%02X", r, g, b);
+		colour_split_rgb(c, &r, &g, &b);
+		xsnprintf(s, sizeof s, "#%02x%02x%02x", r, g, b);
 		return (s);
 	}
 
 	if (c & COLOUR_FLAG_256) {
-		xsnprintf(s, sizeof s, "colour%d", c & 0xFF);
+		xsnprintf(s, sizeof s, "colour%u", c & 0xff);
 		return (s);
 	}
 
@@ -161,7 +178,7 @@ colour_fromstring(const char *s)
 		n = sscanf(s + 1, "%2hhx%2hhx%2hhx", &r, &g, &b);
 		if (n != 3)
 			return (-1);
-		return (colour_rgbto24bit(r, g, b));
+		return (colour_join_rgb(r, g, b));
 	}
 
 	if (strncasecmp(s, "colour", (sizeof "colour") - 1) == 0) {

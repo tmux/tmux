@@ -73,12 +73,15 @@ check_window_name(struct window *w)
 		if (!event_initialized(&w->name_event))
 			evtimer_set(&w->name_event, name_time_callback, w);
 		if (!evtimer_pending(&w->name_event, NULL)) {
-			log_debug("@%u name timer queued (%d left)", w->id, left);
+			log_debug("@%u name timer queued (%d left)", w->id,
+			    left);
 			timerclear(&next);
 			next.tv_usec = left;
 			event_add(&w->name_event, &next);
-		} else
-			log_debug("@%u name timer already queued (%d left)", w->id, left);
+		} else {
+			log_debug("@%u name timer already queued (%d left)",
+			    w->id, left);
+		}
 		return;
 	}
 	memcpy(&w->name_time, &tv, sizeof w->name_time);

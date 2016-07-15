@@ -62,17 +62,15 @@ style_parse(const struct grid_cell *defgc, struct grid_cell *gc,
 			if ((val = colour_fromstring(tmp + 3)) == -1)
 				goto error;
 			if (*in == 'f' || *in == 'F') {
-				if (val != 8) {
+				if (val != 8)
 					fg = val;
-				} else {
+				else
 					fg = defgc->fg;
-				}
 			} else if (*in == 'b' || *in == 'B') {
-				if (val != 8) {
+				if (val != 8)
 					bg = val;
-				} else {
+				else
 					bg = defgc->bg;
-				}
 			} else
 				goto error;
 		} else if (strcasecmp(tmp, "none") == 0)
@@ -200,12 +198,10 @@ style_apply_update(struct grid_cell *gc, struct options *oo, const char *name)
 	struct grid_cell	*gcp;
 
 	gcp = options_get_style(oo, name);
-	if (gcp->fg != 8) {
+	if (gcp->fg != 8)
 		gc->fg = gcp->fg;
-	}
-	if (gcp->bg != 8) {
+	if (gcp->bg != 8)
 		gc->bg = gcp->bg;
-	}
 	if (gcp->attr != 0)
 		gc->attr |= gcp->attr;
 }
@@ -214,10 +210,10 @@ style_apply_update(struct grid_cell *gc, struct options *oo, const char *name)
 int
 style_equal(const struct grid_cell *gc1, const struct grid_cell *gc2)
 {
-	return gc1->fg == gc2->fg &&
-		gc1->bg == gc2->bg &&
-		(gc1->flags & ~GRID_FLAG_PADDING) ==
-		(gc2->flags & ~GRID_FLAG_PADDING) &&
-		(gc1->attr & ~GRID_ATTR_CHARSET) ==
-		(gc2->attr & ~GRID_ATTR_CHARSET);
+	return (gc1->fg == gc2->fg &&
+	    gc1->bg == gc2->bg &&
+	    (gc1->flags & ~GRID_FLAG_PADDING) ==
+	    (gc2->flags & ~GRID_FLAG_PADDING) &&
+	    (gc1->attr & ~GRID_ATTR_CHARSET) ==
+	    (gc2->attr & ~GRID_ATTR_CHARSET));
 }
