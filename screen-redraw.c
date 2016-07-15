@@ -552,9 +552,9 @@ screen_redraw_draw_number(struct client *c, struct window_pane *wp, u_int top)
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	if (w->active == wp)
-		colour_set_bg(&gc, active_colour);
+		gc.bg = active_colour;
 	else
-		colour_set_bg(&gc, colour);
+		gc.bg = colour;
 	tty_attributes(tty, &gc, wp);
 	for (ptr = buf; *ptr != '\0'; ptr++) {
 		if (*ptr < '0' || *ptr > '9')
@@ -579,9 +579,9 @@ screen_redraw_draw_number(struct client *c, struct window_pane *wp, u_int top)
 draw_text:
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	if (w->active == wp)
-		colour_set_fg(&gc, active_colour);
+		gc.fg = active_colour;
 	else
-		colour_set_fg(&gc, colour);
+		gc.fg = colour;
 	tty_attributes(tty, &gc, wp);
 	tty_puts(tty, buf);
 

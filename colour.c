@@ -67,7 +67,7 @@ colour_find_rgb(u_char r, u_char g, u_char b)
 
 	/* If we have hit the colour exactly, return early. */
 	if (cr == r && cg == g && cb == b)
-		return (16 + (36 * qr) + (6 * qg) + qb);
+		return ((16 + (36 * qr) + (6 * qg) + qb) | COLOUR_FLAG_256);
 
 	/* Work out the closest grey (average of RGB). */
 	grey_avg = (r + g + b) / 3;
@@ -83,25 +83,25 @@ colour_find_rgb(u_char r, u_char g, u_char b)
 		idx = 232 + grey_idx;
 	else
 		idx = 16 + (36 * qr) + (6 * qg) + qb;
-	return (idx);
+	return (idx | COLOUR_FLAG_256);
 }
 
-/* Set grid cell foreground colour. */
-void
-colour_set_fg(struct grid_cell *gc, int c)
+/* Join RGB into a colour. */
+int
+colour_join_rgb(u_char r, u_char g, u_char b)
 {
-	if (c & 0x100)
-		gc->flags |= GRID_FLAG_FG256;
-	gc->fg = c;
+	return ((((int)((r) & 0xff)) << 16) |
+	    (((int)((g) & 0xff)) << 8) |
+	    (((int)((b) & 0xff))) | COLOUR_FLAG_RGB);
 }
 
-/* Set grid cell background colour. */
+/* Split colour into RGB. */
 void
-colour_set_bg(struct grid_cell *gc, int c)
+colour_split_rgb(int c, u_char *r, u_char *g, u_char *b)
 {
-	if (c & 0x100)
-		gc->flags |= GRID_FLAG_BG256;
-	gc->bg = c;
+	*r = (c >> 16) & 0xff;
+	*g = (c >> 8) & 0xff;
+	*b = c & 0xff;
 }
 
 /* Convert colour to a string. */
@@ -109,9 +109,16 @@ const char *
 colour_tostring(int c)
 {
 	static char	s[32];
+	u_char		r, g, b;
 
-	if (c & 0x100) {
-		xsnprintf(s, sizeof s, "colour%d", c & ~0x100);
+	if (c & COLOUR_FLAG_RGB) {
+		colour_split_rgb(c, &r, &g, &b);
+		xsnprintf(s, sizeof s, "#%02x%02x%02x", r, g, b);
+		return (s);
+	}
+
+	if (c & COLOUR_FLAG_256) {
+		xsnprintf(s, sizeof s, "colour%u", c & 0xff);
 		return (s);
 	}
 
@@ -171,14 +178,14 @@ colour_fromstring(const char *s)
 		n = sscanf(s + 1, "%2hhx%2hhx%2hhx", &r, &g, &b);
 		if (n != 3)
 			return (-1);
-		return (colour_find_rgb(r, g, b) | 0x100);
+		return (colour_join_rgb(r, g, b));
 	}
 
 	if (strncasecmp(s, "colour", (sizeof "colour") - 1) == 0) {
 		n = strtonum(s + (sizeof "colour") - 1, 0, 255, &errstr);
 		if (errstr != NULL)
 			return (-1);
-		return (n | 0x100);
+		return (n | COLOUR_FLAG_256);
 	}
 
 	if (strcasecmp(s, "black") == 0 || strcmp(s, "0") == 0)
