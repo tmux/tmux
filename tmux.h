@@ -1986,8 +1986,6 @@ void	 colour_split_rgb(int, u_char *, u_char *, u_char *);
 const char *colour_tostring(int);
 int	 colour_fromstring(const char *s);
 u_char	 colour_256to16(u_char);
-int	 colour_rgbto24bit(u_char, u_char, u_char);
-void	 colour_24bittorgb(int, u_char *, u_char *, u_char *);
 
 /* attributes.c */
 const char *attributes_tostring(u_char);

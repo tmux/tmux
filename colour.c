@@ -54,7 +54,7 @@ colour_to_6cube(int v)
  * evenly spread (8, 18, 28 ... 238).
  */
 int
-colour_rgbto256(u_char r, u_char g, u_char b)
+colour_find_rgb(u_char r, u_char g, u_char b)
 {
 	static const int	q2c[6] = { 0x00, 0x5f, 0x87, 0xaf, 0xd7, 0xff };
 	int			qr, qg, qb, cr, cg, cb, d, idx;
@@ -249,20 +249,4 @@ colour_256to16(u_char c)
 	};
 
 	return (table[c]);
-}
-
-int
-colour_rgbto24bit(u_char r, u_char g, u_char b)
-{
-	return ((((u_int) ((r) & 0xFF)) << 16) |
-		(((u_int) ((g) & 0xFF)) << 8) |
-		(((u_int) ((b) & 0xFF))) | COLOUR_FLAG_RGB);
-}
-
-void
-colour_24bittorgb(int val, u_char *r, u_char *g, u_char *b)
-{
-	*r = (val >> 16) & 0xFF;
-	*g = (val >> 8) & 0xFF;
-	*b = val & 0xFF;
 }
