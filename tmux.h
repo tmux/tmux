@@ -60,7 +60,7 @@ struct tmuxproc;
 #define NAME_INTERVAL 500000
 
 /* The maximum amount of data to hold from a pty (the event high watermark). */
-#define READ_SIZE 128
+#define READ_SIZE 4096
 
 /* Attribute to make gcc check printf-like arguments. */
 #define printflike(a, b) __attribute__ ((format (printf, a, b)))
@@ -625,6 +625,10 @@ enum utf8_state {
 	UTF8_ERROR
 };
 
+/* Colour flags. */
+#define COLOUR_FLAG_256 0x01000000
+#define COLOUR_FLAG_RGB 0x02000000
+
 /* Grid attributes. */
 #define GRID_ATTR_BRIGHT 0x1
 #define GRID_ATTR_DIM 0x2
@@ -640,32 +644,18 @@ enum utf8_state {
 #define GRID_FLAG_BG256 0x2
 #define GRID_FLAG_PADDING 0x4
 #define GRID_FLAG_EXTENDED 0x8
-#define GRID_FLAG_FGRGB 0x10
-#define GRID_FLAG_BGRGB 0x20
-#define GRID_FLAG_SELECTED 0x40
+#define GRID_FLAG_SELECTED 0x10
 
 /* Grid line flags. */
 #define GRID_LINE_WRAPPED 0x1
-
-/* Grid cell RGB colours. */
-struct grid_cell_rgb {
-	u_char	r;
-	u_char	g;
-	u_char	b;
-};
+#define GRID_LINE_EXTENDED 0x2
 
 /* Grid cell data. */
 struct grid_cell {
 	u_char			flags;
 	u_char			attr;
-	union {
-		u_char		fg;
-		struct grid_cell_rgb	fg_rgb;
-	};
-	union {
-		u_char		bg;
-		struct grid_cell_rgb	bg_rgb;
-	};
+	int			fg;
+	int			bg;
 	struct utf8_data	data;
 
 };
@@ -780,30 +770,38 @@ struct screen_sel {
 
 /* Virtual screen. */
 struct screen {
-	char		*title;
+	char			*title;
 
-	struct grid	*grid;		/* grid data */
+	struct grid		*grid;		/* grid data */
 
-	u_int		 cx;		/* cursor x */
-	u_int		 cy;		/* cursor y */
+	u_int			 cx;		/* cursor x */
+	u_int			 cy;		/* cursor y */
 
-	u_int		 cstyle;	/* cursor style */
-	char		*ccolour;	/* cursor colour string */
+	u_int			 cstyle;	/* cursor style */
+	char			*ccolour;	/* cursor colour string */
 
-	u_int		 rupper;	/* scroll region top */
-	u_int		 rlower;	/* scroll region bottom */
+	u_int			 rupper;	/* scroll region top */
+	u_int		 	 rlower;	/* scroll region bottom */
 
-	int		 mode;
+	int			 mode;
 
-	bitstr_t	*tabs;
+	bitstr_t		*tabs;
 
-	struct screen_sel sel;
+	bitstr_t		*dirty;
+	u_int			 dirtysize;
+
+	struct screen_sel	 sel;
 };
 
 /* Screen write context. */
 struct screen_write_ctx {
-	struct window_pane *wp;
-	struct screen	*s;
+	struct window_pane	*wp;
+	struct screen		*s;
+	u_int			 dirty;
+
+	u_int			 cells;
+	u_int			 written;
+	u_int			 skipped;
 };
 
 /* Screen size. */
@@ -1209,7 +1207,6 @@ struct tty_ctx {
 
 	/* Saved last cell on line. */
 	struct grid_cell last_cell;
-	u_int		 last_width;
 };
 
 /* Saved message entry. */
@@ -1981,10 +1978,10 @@ int	 xterm_keys_find(const char *, size_t, size_t *, key_code *);
 
 /* colour.c */
 int	 colour_find_rgb(u_char, u_char, u_char);
-void	 colour_set_fg(struct grid_cell *, int);
-void	 colour_set_bg(struct grid_cell *, int);
+int	 colour_join_rgb(u_char, u_char, u_char);
+void	 colour_split_rgb(int, u_char *, u_char *, u_char *);
 const char *colour_tostring(int);
-int	 colour_fromstring(const char *);
+int	 colour_fromstring(const char *s);
 u_char	 colour_256to16(u_char);
 
 /* attributes.c */
@@ -1993,6 +1990,7 @@ int	 attributes_fromstring(const char *);
 
 /* grid.c */
 extern const struct grid_cell grid_default_cell;
+int	 grid_cells_equal(const struct grid_cell *, const struct grid_cell *);
 struct grid *grid_create(u_int, u_int, u_int);
 void	 grid_destroy(struct grid *);
 int	 grid_compare(struct grid *, struct grid *);
