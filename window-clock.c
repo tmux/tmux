@@ -230,7 +230,7 @@ window_clock_draw_screen(struct window_pane *wp)
 			screen_write_cursormove(&ctx, x, y);
 
 			memcpy(&gc, &grid_default_cell, sizeof gc);
-			colour_set_fg(&gc, colour);
+			gc.fg = colour;
 			screen_write_puts(&ctx, &gc, "%s", tim);
 		}
 
@@ -242,7 +242,7 @@ window_clock_draw_screen(struct window_pane *wp)
 	y = (screen_size_y(s) / 2) - 3;
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
-	colour_set_bg(&gc, colour);
+	gc.bg = colour;
 	for (ptr = tim; *ptr != '\0'; ptr++) {
 		if (*ptr >= '0' && *ptr <= '9')
 			idx = *ptr - '0';
