@@ -206,10 +206,14 @@ environ_push(struct environ *env)
 
 /* Log the environment. */
 void
-environ_log(struct environ *env)
+environ_log(struct environ *env, const char *prefix)
 {
 	struct environ_entry	*envent;
 
-	RB_FOREACH(envent, environ, env)
-	    log_debug("%s=%s", envent->name, envent->value);
+	RB_FOREACH(envent, environ, env) {
+		if (envent->value != NULL && *envent->name != '\0') {
+			log_debug("%s%s=%s", prefix, envent->name,
+			    envent->value);
+		}
+	}
 }

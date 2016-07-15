@@ -842,7 +842,7 @@ window_pane_spawn(struct window_pane *wp, int argc, char **argv,
 	log_debug("spawn: %s -- %s", wp->shell, cmd);
 	for (i = 0; i < wp->argc; i++)
 		log_debug("spawn: argv[%d] = %s", i, wp->argv[i]);
-	environ_log(env);
+	environ_log(env, "spawn: ");
 
 	memset(&ws, 0, sizeof ws);
 	ws.ws_col = screen_size_x(&wp->base);
