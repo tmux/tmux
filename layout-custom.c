@@ -23,14 +23,17 @@
 
 #include "tmux.h"
 
-struct layout_cell     *layout_find_bottomright(struct layout_cell *);
-u_short			layout_checksum(const char *);
-int			layout_append(struct layout_cell *, char *, size_t);
-struct layout_cell     *layout_construct(struct layout_cell *, const char **);
-void			layout_assign(struct window_pane **, struct layout_cell *);
+static struct layout_cell	*layout_find_bottomright(struct layout_cell *);
+static u_short			 layout_checksum(const char *);
+static int			 layout_append(struct layout_cell *, char *,
+				     size_t);
+static struct layout_cell	*layout_construct(struct layout_cell *,
+				     const char **);
+static void			 layout_assign(struct window_pane **,
+				     struct layout_cell *);
 
 /* Find the bottom-right cell. */
-struct layout_cell *
+static struct layout_cell *
 layout_find_bottomright(struct layout_cell *lc)
 {
 	if (lc->type == LAYOUT_WINDOWPANE)
@@ -40,7 +43,7 @@ layout_find_bottomright(struct layout_cell *lc)
 }
 
 /* Calculate layout checksum. */
-u_short
+static u_short
 layout_checksum(const char *layout)
 {
 	u_short	csum;
@@ -63,12 +66,12 @@ layout_dump(struct layout_cell *root)
 	if (layout_append(root, layout, sizeof layout) != 0)
 		return (NULL);
 
-	xasprintf(&out, "%04x,%s", layout_checksum(layout), layout);
+	xasprintf(&out, "%04hx,%s", layout_checksum(layout), layout);
 	return (out);
 }
 
 /* Append information for a single cell. */
-int
+static int
 layout_append(struct layout_cell *lc, char *buf, size_t len)
 {
 	struct layout_cell     *lcchild;
@@ -182,7 +185,7 @@ fail:
 }
 
 /* Assign panes into cells. */
-void
+static void
 layout_assign(struct window_pane **wp, struct layout_cell *lc)
 {
 	struct layout_cell	*lcchild;
@@ -201,7 +204,7 @@ layout_assign(struct window_pane **wp, struct layout_cell *lc)
 }
 
 /* Construct a cell from all or part of a layout tree. */
-struct layout_cell *
+static struct layout_cell *
 layout_construct(struct layout_cell *lcparent, const char **layout)
 {
 	struct layout_cell     *lc, *lcchild;

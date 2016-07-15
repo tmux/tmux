@@ -1695,6 +1695,7 @@ void	environ_put(struct environ *, const char *);
 void	environ_unset(struct environ *, const char *);
 void	environ_update(const char *, struct environ *, struct environ *);
 void	environ_push(struct environ *);
+void	environ_log(struct environ *, const char *);
 
 /* tty.c */
 void	tty_create_log(void);

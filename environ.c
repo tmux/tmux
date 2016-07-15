@@ -203,3 +203,17 @@ environ_push(struct environ *env)
 			setenv(envent->name, envent->value, 1);
 	}
 }
+
+/* Log the environment. */
+void
+environ_log(struct environ *env, const char *prefix)
+{
+	struct environ_entry	*envent;
+
+	RB_FOREACH(envent, environ, env) {
+		if (envent->value != NULL && *envent->name != '\0') {
+			log_debug("%s%s=%s", prefix, envent->name,
+			    envent->value);
+		}
+	}
+}
