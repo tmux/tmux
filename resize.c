@@ -58,7 +58,7 @@ recalculate_sizes(void)
 		s->attached = 0;
 		ssx = ssy = UINT_MAX;
 		TAILQ_FOREACH(c, &clients, entry) {
-			if (c->flags & CLIENT_SUSPENDED)
+			if (c->flags & (CLIENT_SUSPENDED | CLIENT_NORESIZE))
 				continue;
 			if (c->session == s) {
 				if (c->tty.sx < ssx)

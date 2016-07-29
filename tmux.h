@@ -1272,6 +1272,7 @@ struct client {
 #define CLIENT_256COLOURS 0x20000
 #define CLIENT_IDENTIFIED 0x40000
 #define CLIENT_STATUSFORCE 0x80000
+#define CLIENT_NORESIZE 0x100000
 	int		 flags;
 	struct key_table *keytable;
 
@@ -1834,7 +1835,7 @@ extern const struct cmd_entry *cmd_table[];
 
 /* cmd-attach-session.c */
 enum cmd_retval	 cmd_attach_session(struct cmd_q *, int, int, const char *,
-    int);
+    int, int);
 
 /* cmd-list.c */
 struct cmd_list	*cmd_list_parse(int, char **, const char *, u_int, char **);

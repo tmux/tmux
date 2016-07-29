@@ -111,7 +111,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 				cmd_find_from_session(&cmdq->state.tflag, as);
 				return (cmd_attach_session(cmdq,
 				    args_has(args, 'D'), 0, NULL,
-				    args_has(args, 'E')));
+				    args_has(args, 'E'), 0));
 			}
 			cmdq_error(cmdq, "duplicate session: %s", newname);
 			return (CMD_RETURN_ERROR);
