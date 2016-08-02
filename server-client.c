@@ -914,7 +914,7 @@ server_client_check_redraw(struct client *c)
 		else if (c->prompt_string != NULL)
 			redraw = status_prompt_redraw(c);
 		else{
-			aux_status_redraw(c);
+			redraw = aux_status_redraw(c);
 			redraw = status_redraw(c);
         }
 		if (!redraw)
