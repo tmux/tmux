@@ -32,9 +32,11 @@
  * cell a pointer to its parent cell.
  */
 
-static int	layout_resize_pane_grow(struct layout_cell *, enum layout_type,
-		    int);
-static int	layout_resize_pane_shrink(struct layout_cell *,
+static u_int	layout_resize_check(struct window *, struct layout_cell *,
+		    enum layout_type);
+static int	layout_resize_pane_grow(struct window *, struct layout_cell *,
+		    enum layout_type, int);
+static int	layout_resize_pane_shrink(struct window *, struct layout_cell *,
 		    enum layout_type, int);
 static int	layout_need_status(struct layout_cell *, int);
 
@@ -282,33 +284,38 @@ layout_count_cells(struct layout_cell *lc)
 }
 
 /* Calculate how much size is available to be removed from a cell. */
-u_int
-layout_resize_check(struct layout_cell *lc, enum layout_type type)
+static u_int
+layout_resize_check(struct window *w, struct layout_cell *lc,
+    enum layout_type type)
 {
 	struct layout_cell	*lcchild;
 	u_int			 available, minimum;
 
 	if (lc->type == LAYOUT_WINDOWPANE) {
 		/* Space available in this cell only. */
+		minimum = PANE_MINIMUM;
 		if (type == LAYOUT_LEFTRIGHT)
 			available = lc->sx;
-		else
+		else {
 			available = lc->sy;
-
-		if (available > PANE_MINIMUM)
-			available -= PANE_MINIMUM;
+			minimum += layout_need_status(lc,
+			    options_get_number(w->options,
+			    "pane-border-status") == 1);
+		}
+		if (available > minimum)
+			available -= minimum;
 		else
 			available = 0;
 	} else if (lc->type == type) {
 		/* Same type: total of available space in all child cells. */
 		available = 0;
 		TAILQ_FOREACH(lcchild, &lc->cells, entry)
-			available += layout_resize_check(lcchild, type);
+			available += layout_resize_check(w, lcchild, type);
 	} else {
 		/* Different type: minimum of available space in child cells. */
 		minimum = UINT_MAX;
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
-			available = layout_resize_check(lcchild, type);
+			available = layout_resize_check(w, lcchild, type);
 			if (available < minimum)
 				minimum = available;
 		}
@@ -323,7 +330,8 @@ layout_resize_check(struct layout_cell *lc, enum layout_type type)
  * expects the change to have already been bounded to the space available.
  */
 void
-layout_resize_adjust(struct layout_cell *lc, enum layout_type type, int change)
+layout_resize_adjust(struct window *w, struct layout_cell *lc,
+    enum layout_type type, int change)
 {
 	struct layout_cell	*lcchild;
 
@@ -340,7 +348,7 @@ layout_resize_adjust(struct layout_cell *lc, enum layout_type type, int change)
 	/* Child cell runs in a different direction. */
 	if (lc->type != type) {
 		TAILQ_FOREACH(lcchild, &lc->cells, entry)
-			layout_resize_adjust(lcchild, type, change);
+			layout_resize_adjust(w, lcchild, type, change);
 		return;
 	}
 
@@ -353,12 +361,12 @@ layout_resize_adjust(struct layout_cell *lc, enum layout_type type, int change)
 			if (change == 0)
 				break;
 			if (change > 0) {
-				layout_resize_adjust(lcchild, type, 1);
+				layout_resize_adjust(w, lcchild, type, 1);
 				change--;
 				continue;
 			}
-			if (layout_resize_check(lcchild, type) > 0) {
-				layout_resize_adjust(lcchild, type, -1);
+			if (layout_resize_check(w, lcchild, type) > 0) {
+				layout_resize_adjust(w, lcchild, type, -1);
 				change++;
 			}
 		}
@@ -367,7 +375,8 @@ layout_resize_adjust(struct layout_cell *lc, enum layout_type type, int change)
 
 /* Destroy a cell and redistribute the space. */
 void
-layout_destroy_cell(struct layout_cell *lc, struct layout_cell **lcroot)
+layout_destroy_cell(struct window *w, struct layout_cell *lc,
+    struct layout_cell **lcroot)
 {
 	struct layout_cell     *lcother, *lcparent;
 
@@ -388,9 +397,9 @@ layout_destroy_cell(struct layout_cell *lc, struct layout_cell **lcroot)
 	else
 		lcother = TAILQ_PREV(lc, layout_cells, entry);
 	if (lcparent->type == LAYOUT_LEFTRIGHT)
-		layout_resize_adjust(lcother, lcparent->type, lc->sx + 1);
+		layout_resize_adjust(w, lcother, lcparent->type, lc->sx + 1);
 	else
-		layout_resize_adjust(lcother, lcparent->type, lc->sy + 1);
+		layout_resize_adjust(w, lcother, lcparent->type, lc->sy + 1);
 
 	/* Remove this from the parent's list. */
 	TAILQ_REMOVE(&lcparent->cells, lc, entry);
@@ -454,7 +463,7 @@ layout_resize(struct window *w, u_int sx, u_int sy)
 	 * window size.
 	 */
 	xchange = sx - w->sx;
-	xlimit = layout_resize_check(lc, LAYOUT_LEFTRIGHT);
+	xlimit = layout_resize_check(w, lc, LAYOUT_LEFTRIGHT);
 	if (xchange < 0 && xchange < -xlimit)
 		xchange = -xlimit;
 	if (xlimit == 0) {
@@ -464,11 +473,11 @@ layout_resize(struct window *w, u_int sx, u_int sy)
 			xchange = sx - lc->sx;
 	}
 	if (xchange != 0)
-		layout_resize_adjust(lc, LAYOUT_LEFTRIGHT, xchange);
+		layout_resize_adjust(w, lc, LAYOUT_LEFTRIGHT, xchange);
 
 	/* Adjust vertically in a similar fashion. */
 	ychange = sy - w->sy;
-	ylimit = layout_resize_check(lc, LAYOUT_TOPBOTTOM);
+	ylimit = layout_resize_check(w, lc, LAYOUT_TOPBOTTOM);
 	if (ychange < 0 && ychange < -ylimit)
 		ychange = -ylimit;
 	if (ylimit == 0) {
@@ -478,7 +487,7 @@ layout_resize(struct window *w, u_int sx, u_int sy)
 			ychange = sy - lc->sy;
 	}
 	if (ychange != 0)
-		layout_resize_adjust(lc, LAYOUT_TOPBOTTOM, ychange);
+		layout_resize_adjust(w, lc, LAYOUT_TOPBOTTOM, ychange);
 
 	/* Fix cell offsets. */
 	layout_fix_offsets(lc);
@@ -522,8 +531,9 @@ layout_resize_pane_to(struct window_pane *wp, enum layout_type type,
 void
 layout_resize_pane(struct window_pane *wp, enum layout_type type, int change)
 {
-	struct layout_cell     *lc, *lcparent;
-	int			needed, size;
+	struct window		*w = wp->window;
+	struct layout_cell	*lc, *lcparent;
+	int			 needed, size;
 
 	lc = wp->layout_cell;
 
@@ -544,10 +554,10 @@ layout_resize_pane(struct window_pane *wp, enum layout_type type, int change)
 	needed = change;
 	while (needed != 0) {
 		if (change > 0) {
-			size = layout_resize_pane_grow(lc, type, needed);
+			size = layout_resize_pane_grow(w, lc, type, needed);
 			needed -= size;
 		} else {
-			size = layout_resize_pane_shrink(lc, type, needed);
+			size = layout_resize_pane_shrink(w, lc, type, needed);
 			needed += size;
 		}
 
@@ -563,8 +573,8 @@ layout_resize_pane(struct window_pane *wp, enum layout_type type, int change)
 
 /* Helper function to grow pane. */
 static int
-layout_resize_pane_grow(struct layout_cell *lc, enum layout_type type,
-    int needed)
+layout_resize_pane_grow(struct window *w, struct layout_cell *lc,
+    enum layout_type type, int needed)
 {
 	struct layout_cell	*lcadd, *lcremove;
 	u_int			 size;
@@ -575,7 +585,7 @@ layout_resize_pane_grow(struct layout_cell *lc, enum layout_type type,
 	/* Look towards the tail for a suitable cell for reduction. */
 	lcremove = TAILQ_NEXT(lc, entry);
 	while (lcremove != NULL) {
-		size = layout_resize_check(lcremove, type);
+		size = layout_resize_check(w, lcremove, type);
 		if (size > 0)
 			break;
 		lcremove = TAILQ_NEXT(lcremove, entry);
@@ -585,7 +595,7 @@ layout_resize_pane_grow(struct layout_cell *lc, enum layout_type type,
 	if (lcremove == NULL) {
 		lcremove = TAILQ_PREV(lc, layout_cells, entry);
 		while (lcremove != NULL) {
-			size = layout_resize_check(lcremove, type);
+			size = layout_resize_check(w, lcremove, type);
 			if (size > 0)
 				break;
 			lcremove = TAILQ_PREV(lcremove, layout_cells, entry);
@@ -597,15 +607,15 @@ layout_resize_pane_grow(struct layout_cell *lc, enum layout_type type,
 	/* Change the cells. */
 	if (size > (u_int) needed)
 		size = needed;
-	layout_resize_adjust(lcadd, type, size);
-	layout_resize_adjust(lcremove, type, -size);
+	layout_resize_adjust(w, lcadd, type, size);
+	layout_resize_adjust(w, lcremove, type, -size);
 	return (size);
 }
 
 /* Helper function to shrink pane. */
 static int
-layout_resize_pane_shrink(struct layout_cell *lc, enum layout_type type,
-    int needed)
+layout_resize_pane_shrink(struct window *w, struct layout_cell *lc,
+    enum layout_type type, int needed)
 {
 	struct layout_cell	*lcadd, *lcremove;
 	u_int			 size;
@@ -613,7 +623,7 @@ layout_resize_pane_shrink(struct layout_cell *lc, enum layout_type type,
 	/* Shrinking. Find cell to remove from by walking towards head. */
 	lcremove = lc;
 	do {
-		size = layout_resize_check(lcremove, type);
+		size = layout_resize_check(w, lcremove, type);
 		if (size != 0)
 			break;
 		lcremove = TAILQ_PREV(lcremove, layout_cells, entry);
@@ -629,8 +639,8 @@ layout_resize_pane_shrink(struct layout_cell *lc, enum layout_type type,
 	/* Change the cells. */
 	if (size > (u_int) -needed)
 		size = -needed;
-	layout_resize_adjust(lcadd, type, size);
-	layout_resize_adjust(lcremove, type, -size);
+	layout_resize_adjust(w, lcadd, type, size);
+	layout_resize_adjust(w, lcremove, type, -size);
 	return (size);
 }
 
@@ -769,13 +779,15 @@ layout_split_pane(struct window_pane *wp, enum layout_type type, int size,
 void
 layout_close_pane(struct window_pane *wp)
 {
+	struct window	*w = wp->window;
+
 	/* Remove the cell. */
-	layout_destroy_cell(wp->layout_cell, &wp->window->layout_root);
+	layout_destroy_cell(w, wp->layout_cell, &w->layout_root);
 
 	/* Fix pane offsets and sizes. */
-	if (wp->window->layout_root != NULL) {
-		layout_fix_offsets(wp->window->layout_root);
-		layout_fix_panes(wp->window, wp->window->sx, wp->window->sy);
+	if (w->layout_root != NULL) {
+		layout_fix_offsets(w->layout_root);
+		layout_fix_panes(w, w->sx, w->sy);
 	}
-	notify_window_layout_changed(wp->window);
+	notify_window_layout_changed(w);
 }
