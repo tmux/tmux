@@ -150,7 +150,7 @@ layout_parse(struct window *w, const char *layout)
 
 		/* Fewer panes than cells - close the bottom right. */
 		lcchild = layout_find_bottomright(lc);
-		layout_destroy_cell(lcchild, &lc);
+		layout_destroy_cell(w, lcchild, &lc);
 	}
 
 	/* Save the old window size and resize to the layout size. */

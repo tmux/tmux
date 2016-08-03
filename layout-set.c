@@ -155,7 +155,8 @@ layout_set_even_h(struct window *w)
 	/* Allocate any remaining space. */
 	if (w->sx > xoff - 1) {
 		lc = TAILQ_LAST(&lc->cells, layout_cells);
-		layout_resize_adjust(lc, LAYOUT_LEFTRIGHT, w->sx - (xoff - 1));
+		layout_resize_adjust(w, lc, LAYOUT_LEFTRIGHT,
+		    w->sx - (xoff - 1));
 	}
 
 	/* Fix cell offsets. */
@@ -208,7 +209,8 @@ layout_set_even_v(struct window *w)
 	/* Allocate any remaining space. */
 	if (w->sy > yoff - 1) {
 		lc = TAILQ_LAST(&lc->cells, layout_cells);
-		layout_resize_adjust(lc, LAYOUT_TOPBOTTOM, w->sy - (yoff - 1));
+		layout_resize_adjust(w, lc, LAYOUT_TOPBOTTOM,
+		    w->sy - (yoff - 1));
 	}
 
 	/* Fix cell offsets. */
@@ -322,14 +324,16 @@ layout_set_main_h(struct window *w)
 		if (w->sx <= used)
 			continue;
 		lcchild = TAILQ_LAST(&lcrow->cells, layout_cells);
-		layout_resize_adjust(lcchild, LAYOUT_LEFTRIGHT, w->sx - used);
+		layout_resize_adjust(w, lcchild, LAYOUT_LEFTRIGHT,
+		    w->sx - used);
 	}
 
 	/* Adjust the last row height to fit if necessary. */
 	used = mainheight + (rows * height) + rows - 1;
 	if (w->sy > used) {
 		lcrow = TAILQ_LAST(&lc->cells, layout_cells);
-		layout_resize_adjust(lcrow, LAYOUT_TOPBOTTOM, w->sy - used);
+		layout_resize_adjust(w, lcrow, LAYOUT_TOPBOTTOM,
+		    w->sy - used);
 	}
 
 	/* Fix cell offsets. */
@@ -443,14 +447,16 @@ layout_set_main_v(struct window *w)
 		if (w->sy <= used)
 			continue;
 		lcchild = TAILQ_LAST(&lccolumn->cells, layout_cells);
-		layout_resize_adjust(lcchild, LAYOUT_TOPBOTTOM, w->sy - used);
+		layout_resize_adjust(w, lcchild, LAYOUT_TOPBOTTOM,
+		    w->sy - used);
 	}
 
 	/* Adjust the last column width to fit if necessary. */
 	used = mainwidth + (columns * width) + columns - 1;
 	if (w->sx > used) {
 		lccolumn = TAILQ_LAST(&lc->cells, layout_cells);
-		layout_resize_adjust(lccolumn, LAYOUT_LEFTRIGHT, w->sx - used);
+		layout_resize_adjust(w, lccolumn, LAYOUT_LEFTRIGHT,
+		    w->sx - used);
 	}
 
 	/* Fix cell offsets. */
@@ -543,14 +549,16 @@ layout_set_tiled(struct window *w)
 		if (w->sx <= used)
 			continue;
 		lcchild = TAILQ_LAST(&lcrow->cells, layout_cells);
-		layout_resize_adjust(lcchild, LAYOUT_LEFTRIGHT, w->sx - used);
+		layout_resize_adjust(w, lcchild, LAYOUT_LEFTRIGHT,
+		    w->sx - used);
 	}
 
 	/* Adjust the last row height to fit if necessary. */
 	used = (rows * height) + rows - 1;
 	if (w->sy > used) {
 		lcrow = TAILQ_LAST(&lc->cells, layout_cells);
-		layout_resize_adjust(lcrow, LAYOUT_TOPBOTTOM, w->sy - used);
+		layout_resize_adjust(w, lcrow, LAYOUT_TOPBOTTOM,
+		    w->sy - used);
 	}
 
 	/* Fix cell offsets. */

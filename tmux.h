@@ -2185,7 +2185,7 @@ u_int		 layout_count_cells(struct layout_cell *);
 struct layout_cell *layout_create_cell(struct layout_cell *);
 void		 layout_free_cell(struct layout_cell *);
 void		 layout_print_cell(struct layout_cell *, const char *, u_int);
-void		 layout_destroy_cell(struct layout_cell *,
+void		 layout_destroy_cell(struct window *, struct layout_cell *,
 		     struct layout_cell **);
 void		 layout_set_size(struct layout_cell *, u_int, u_int, u_int,
 		     u_int);
@@ -2193,9 +2193,8 @@ void		 layout_make_leaf(struct layout_cell *, struct window_pane *);
 void		 layout_make_node(struct layout_cell *, enum layout_type);
 void		 layout_fix_offsets(struct layout_cell *);
 void		 layout_fix_panes(struct window *, u_int, u_int);
-u_int		 layout_resize_check(struct layout_cell *, enum layout_type);
-void		 layout_resize_adjust(struct layout_cell *, enum layout_type,
-		     int);
+void		 layout_resize_adjust(struct window *, struct layout_cell *,
+		     enum layout_type, int);
 void		 layout_init(struct window *, struct window_pane *);
 void		 layout_free(struct window *);
 void		 layout_resize(struct window *, u_int, u_int);
