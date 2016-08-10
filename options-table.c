@@ -892,6 +892,12 @@ const struct options_table_entry options_table[] = {
 	  .default_str = "default"
 	},
 
+	{ .name = "wrap-select-pane",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .default_num = 1
+	},
+
 	{ .name = "wrap-search",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .scope = OPTIONS_TABLE_WINDOW,
