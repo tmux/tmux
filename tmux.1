@@ -991,7 +991,7 @@ bind-key -Troot   a switch-client -Ttable1
 .Sh WINDOWS AND PANES
 A
 .Nm
-window may be in one of several modes.
+window may be in one of two modes.
 The default permits direct access to the terminal attached to the window.
 The other is copy mode, which permits a section of a window or its
 history to be copied to a
@@ -3878,7 +3878,7 @@ and so on.
 When the
 .Ic buffer-limit
 option is reached, the oldest automatically named buffer is deleted.
-Explicitly named are not subject to
+Explicitly named buffers are not subject to
 .Ic buffer-limit
 and may be deleted with
 .Ic delete-buffer
