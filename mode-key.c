@@ -335,7 +335,7 @@ const struct mode_key_entry mode_key_vi_copy[] = {
 	{ 'o',			    0, MODEKEYCOPY_OTHEREND },
 	{ 't',			    0, MODEKEYCOPY_JUMPTO },
 	{ 'q',			    0, MODEKEYCOPY_CANCEL },
-	{ 'v',			    0, MODEKEYCOPY_RECTANGLETOGGLE },
+	{ '\026' /* C-v */,	    0, MODEKEYCOPY_RECTANGLETOGGLE },
 	{ 'w',			    0, MODEKEYCOPY_NEXTWORD },
 	{ '{',			    0, MODEKEYCOPY_PREVIOUSPARAGRAPH },
 	{ '}',			    0, MODEKEYCOPY_NEXTPARAGRAPH },
