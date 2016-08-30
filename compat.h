@@ -110,6 +110,10 @@ typedef uint64_t u_int64_t;
 	    (struct cmsghdr *)NULL)
 #endif
 
+#ifdef BROKEN_WCWIDTH
+#include "compat/utf8proc.h"
+#endif
+
 #ifndef CMSG_ALIGN
 #ifdef _CMSG_DATA_ALIGN
 #define CMSG_ALIGN _CMSG_DATA_ALIGN

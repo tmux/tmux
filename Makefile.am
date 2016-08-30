@@ -249,6 +249,9 @@ endif
 if NO_REALLOCARRAY
 nodist_tmux_SOURCES += compat/reallocarray.c
 endif
+if NO_WORKING_WCWIDTH
+nodist_tmux_SOURCES += compat/utf8proc.c
+endif
 
 # Install tmux.1 in the right format.
 install-exec-hook:

@@ -553,6 +553,7 @@ case "$host_os" in
 	*darwin*)
 		AC_MSG_RESULT(darwin)
 		AC_DEFINE(BROKEN_CMSG_FIRSTHDR)
+		AC_DEFINE(BROKEN_WCWIDTH)
 		PLATFORM=darwin
 		;;
 	*dragonfly*)
@@ -608,6 +609,8 @@ AM_CONDITIONAL(IS_OPENBSD, test "x$PLATFORM" = xopenbsd)
 AM_CONDITIONAL(IS_SUNOS, test "x$PLATFORM" = xsunos)
 AM_CONDITIONAL(IS_HPUX, test "x$PLATFORM" = xhpux)
 AM_CONDITIONAL(IS_UNKNOWN, test "x$PLATFORM" = xunknown)
+
+AM_CONDITIONAL(NO_WORKING_WCWIDTH, test "x$PLATFORM" = xdarwin)
 
 # autoconf should create a Makefile.
 AC_OUTPUT(Makefile)
