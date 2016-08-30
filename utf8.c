@@ -109,23 +109,23 @@ utf8_width(wchar_t wc)
 {
 	int	width;
 
-#ifdef BROKEN_WCWIDTH
-	const int cat = utf8proc_category(wc);
-	if (cat == UTF8PROC_CATEGORY_CO)
-		// private use category is where powerline and
-		// similar codepoints are stored, they have
-		// "ambiguous" widths, so use 1
-		width = 1;
-	else if (cat == UTF8PROC_CATEGORY_SO)
-		// symbols, like emoji, should always use width 1
-		width = 1;
-	else
-		width = utf8proc_charwidth(wc);
-#else
 	width = wcwidth(wc);
-#endif
 	if (width < 0 || width > 0xff) {
 		log_debug("Unicode %04x, wcwidth() %d", wc, width);
+
+#ifndef __OpenBSD__
+		/*
+		 * Many platforms (particularly and inevitably OS X) have no
+		 * width for relatively common characters (wcwidth() returns
+		 * -1); assume width 1 in this case. This will be wrong for
+		 * genuinely nonprintable characters, but they should be
+		 * rare. We may pass through stuff that ideally we would block,
+		 * but this is no worse than sending the same to the terminal
+		 * without tmux.
+		 */
+		if (width < 0)
+			return (1);
+#endif
 		return (-1);
 	}
 	return (width);
@@ -135,12 +135,6 @@ utf8_width(wchar_t wc)
 enum utf8_state
 utf8_combine(const struct utf8_data *ud, wchar_t *wc)
 {
-#ifdef BROKEN_WCWIDTH
-	const utf8proc_ssize_t slen = utf8proc_iterate(ud->data, ud->size, wc);
-	if (*wc == -1 || slen < 0)
-		return (UTF8_ERROR);
-	return (UTF8_DONE);
-#else
 	switch (mbtowc(wc, ud->data, ud->size)) {
 	case -1:
 		log_debug("UTF-8 %.*s, mbtowc() %d", (int)ud->size, ud->data,
@@ -152,7 +146,6 @@ utf8_combine(const struct utf8_data *ud, wchar_t *wc)
 	default:
 		return (UTF8_DONE);
 	}
-#endif
 }
 
 /* Split Unicode into UTF-8. */
@@ -162,11 +155,7 @@ utf8_split(wchar_t wc, struct utf8_data *ud)
 	char	s[MB_LEN_MAX];
 	int	slen;
 
-#ifdef BROKEN_WCWIDTH
-	slen = utf8proc_encode_char(wc, s);
-#else
 	slen = wctomb(s, wc);
-#endif
 	if (slen <= 0 || slen > (int)sizeof ud->data)
 		return (UTF8_ERROR);
 

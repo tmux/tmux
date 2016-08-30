@@ -196,6 +196,28 @@ if test "x$found_utempter" = xyes; then
 	fi
 fi
 
+# Look for utf8proc.
+AC_ARG_ENABLE(
+	utf8proc,
+	AC_HELP_STRING(--enable-utf8proc, use utf8proc if it is installed),
+	found_utf8proc=$enable_utf8proc,
+	found_utf8proc=yes
+)
+if test "x$found_utf8proc" = xyes; then
+	AC_CHECK_HEADER(utf8proc.h, found_utf8proc=yes, found_utf8proc=no)
+	if test "x$found_utf8proc" = xyes; then
+		AC_SEARCH_LIBS(
+			utf8proc_charwidth,
+			utf8proc,
+			found_utf8proc=yes,
+			found_utf8proc=no
+		)
+		if test "x$found_utf8proc" = xyes; then
+			AC_DEFINE(HAVE_UTF8PROC)
+		fi
+	fi
+fi
+
 # Check for b64_ntop.
 AC_MSG_CHECKING(for b64_ntop)
 AC_TRY_LINK(
@@ -553,7 +575,6 @@ case "$host_os" in
 	*darwin*)
 		AC_MSG_RESULT(darwin)
 		AC_DEFINE(BROKEN_CMSG_FIRSTHDR)
-		AC_DEFINE(BROKEN_WCWIDTH)
 		PLATFORM=darwin
 		;;
 	*dragonfly*)
@@ -609,8 +630,6 @@ AM_CONDITIONAL(IS_OPENBSD, test "x$PLATFORM" = xopenbsd)
 AM_CONDITIONAL(IS_SUNOS, test "x$PLATFORM" = xsunos)
 AM_CONDITIONAL(IS_HPUX, test "x$PLATFORM" = xhpux)
 AM_CONDITIONAL(IS_UNKNOWN, test "x$PLATFORM" = xunknown)
-
-AM_CONDITIONAL(NO_WORKING_WCWIDTH, test "x$PLATFORM" = xdarwin)
 
 # autoconf should create a Makefile.
 AC_OUTPUT(Makefile)
