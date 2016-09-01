@@ -279,7 +279,14 @@ int		 openat(int, const char *, int, ...);
 
 #ifndef HAVE_REALLOCARRAY
 /* reallocarray.c */
-void		*reallocarray(void *, size_t, size_t size);
+void		*reallocarray(void *, size_t, size_t);
+#endif
+
+#ifdef HAVE_UTF8PROC
+/* utf8proc.c */
+int		 utf8proc_wcwidth(wchar_t);
+int		 utf8proc_mbtowc(wchar_t *, const char *, size_t);
+int		 utf8proc_wctomb(char *, wchar_t);
 #endif
 
 #ifdef HAVE_GETOPT

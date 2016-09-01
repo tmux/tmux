@@ -152,7 +152,7 @@ if test "x$found_libevent" = xno; then
 	AC_MSG_ERROR("libevent not found")
 fi
 
-# Look for ncurses
+# Look for ncurses.
 PKG_CHECK_MODULES(
 	LIBNCURSES,
 	ncurses,
@@ -195,6 +195,29 @@ if test "x$found_utempter" = xyes; then
 		fi
 	fi
 fi
+
+# Look for utf8proc.
+AC_ARG_ENABLE(
+	utf8proc,
+	AC_HELP_STRING(--enable-utf8proc, use utf8proc if it is installed),
+	found_utf8proc=$enable_utf8proc,
+	found_utf8proc=yes
+)
+if test "x$found_utf8proc" = xyes; then
+	AC_CHECK_HEADER(utf8proc.h, found_utf8proc=yes, found_utf8proc=no)
+	if test "x$found_utf8proc" = xyes; then
+		AC_SEARCH_LIBS(
+			utf8proc_charwidth,
+			utf8proc,
+			found_utf8proc=yes,
+			found_utf8proc=no
+		)
+		if test "x$found_utf8proc" = xyes; then
+			AC_DEFINE(HAVE_UTF8PROC)
+		fi
+	fi
+fi
+AM_CONDITIONAL(HAVE_UTF8PROC, [test "x$found_utf8proc" = xyes])
 
 # Check for b64_ntop.
 AC_MSG_CHECKING(for b64_ntop)
