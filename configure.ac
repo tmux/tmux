@@ -152,7 +152,7 @@ if test "x$found_libevent" = xno; then
 	AC_MSG_ERROR("libevent not found")
 fi
 
-# Look for ncurses
+# Look for ncurses.
 PKG_CHECK_MODULES(
 	LIBNCURSES,
 	ncurses,
@@ -217,6 +217,7 @@ if test "x$found_utf8proc" = xyes; then
 		fi
 	fi
 fi
+AM_CONDITIONAL(HAVE_UTF8PROC, [test "x$found_utf8proc" = xyes])
 
 # Check for b64_ntop.
 AC_MSG_CHECKING(for b64_ntop)

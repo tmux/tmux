@@ -110,10 +110,6 @@ typedef uint64_t u_int64_t;
 	    (struct cmsghdr *)NULL)
 #endif
 
-#ifdef HAVE_UTF8PROC
-#include "compat/charwidth.h"
-#endif
-
 #ifndef CMSG_ALIGN
 #ifdef _CMSG_DATA_ALIGN
 #define CMSG_ALIGN _CMSG_DATA_ALIGN
@@ -283,7 +279,14 @@ int		 openat(int, const char *, int, ...);
 
 #ifndef HAVE_REALLOCARRAY
 /* reallocarray.c */
-void		*reallocarray(void *, size_t, size_t size);
+void		*reallocarray(void *, size_t, size_t);
+#endif
+
+#ifdef HAVE_UTF8PROC
+/* utf8proc.c */
+int		 utf8proc_wcwidth(wchar_t);
+int		 utf8proc_mbtowc(wchar_t *, const char *, size_t);
+int		 utf8proc_wctomb(char *, wchar_t);
 #endif
 
 #ifdef HAVE_GETOPT
