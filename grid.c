@@ -99,6 +99,7 @@ grid_create(u_int sx, u_int sy, u_int hlimit)
 
 	gd->flags = GRID_HISTORY;
 
+	gd->hscrolled = 0;
 	gd->hsize = 0;
 	gd->hlimit = hlimit;
 
@@ -170,6 +171,8 @@ grid_collect_history(struct grid *gd)
 
 	grid_move_lines(gd, 0, yy, gd->hsize + gd->sy - yy);
 	gd->hsize -= yy;
+	if (gd->hscrolled > gd->hsize)
+		gd->hscrolled = gd->hsize;
 }
 
 /*
@@ -186,6 +189,7 @@ grid_scroll_history(struct grid *gd)
 	    sizeof *gd->linedata);
 	memset(&gd->linedata[yy], 0, sizeof gd->linedata[yy]);
 
+	gd->hscrolled++;
 	gd->hsize++;
 }
 
@@ -196,7 +200,9 @@ grid_clear_history(struct grid *gd)
 	grid_clear_lines(gd, 0, gd->hsize);
 	grid_move_lines(gd, 0, gd->hsize, gd->sy);
 
+	gd->hscrolled = 0;
 	gd->hsize = 0;
+
 	gd->linedata = xreallocarray(gd->linedata, gd->sy,
 	    sizeof *gd->linedata);
 }
@@ -231,6 +237,7 @@ grid_scroll_history_region(struct grid *gd, u_int upper, u_int lower)
 	memset(gl_lower, 0, sizeof *gl_lower);
 
 	/* Move the history offset down over the line. */
+	gd->hscrolled++;
 	gd->hsize++;
 }
 
@@ -914,6 +921,10 @@ grid_reflow(struct grid *dst, struct grid *src, u_int new_x)
 			grid_reflow_join(dst, &py, src_gl, new_x);
 		}
 		previous_wrapped = (src_gl->flags & GRID_LINE_WRAPPED);
+
+		/* This is where we started scrolling. */
+		if (line == sy + src->hsize - src->hscrolled - 1)
+			dst->hscrolled = 0;
 	}
 
 	grid_destroy(src);

@@ -693,6 +693,7 @@ struct grid {
 	u_int			 sx;
 	u_int			 sy;
 
+	u_int			 hscrolled;
 	u_int			 hsize;
 	u_int			 hlimit;
 
