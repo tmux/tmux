@@ -67,6 +67,7 @@ grid_view_clear_history(struct grid *gd)
 		grid_collect_history(gd);
 		grid_scroll_history(gd);
 	}
+	gd->hscrolled = 0;
 }
 
 /* Clear area. */
