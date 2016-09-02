@@ -95,12 +95,10 @@ AC_MSG_RESULT($found_glibc)
 AC_CHECK_HEADERS(
 	[ \
 		bitstring.h \
-		curses.h \
 		dirent.h \
 		fcntl.h \
 		inttypes.h \
 		libutil.h \
-		ncurses.h \
 		ndir.h \
 		paths.h \
 		pty.h \
@@ -148,6 +146,11 @@ PKG_CHECK_MODULES(
 		)
 	]
 )
+AC_CHECK_HEADER(
+	event.h,
+	,
+	found_libevent=no
+)
 if test "x$found_libevent" = xno; then
 	AC_MSG_ERROR("libevent not found")
 fi
@@ -169,6 +172,15 @@ PKG_CHECK_MODULES(
 			found_curses=no
 		)
 	]
+)
+AC_CHECK_HEADER(
+	ncurses.h,
+	AC_DEFINE(HAVE_NCURSES_H),
+	AC_CHECK_HEADER(
+		curses.h,
+		AC_DEFINE(HAVE_CURSES_H),
+		found_curses=no
+	)
 )
 if test "x$found_curses" = xno; then
 	AC_MSG_ERROR("curses not found")
