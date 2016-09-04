@@ -2207,7 +2207,7 @@ void		 layout_resize_pane_to(struct window_pane *, enum layout_type,
 		     u_int);
 void		 layout_assign_pane(struct layout_cell *, struct window_pane *);
 struct layout_cell *layout_split_pane(struct window_pane *, enum layout_type,
-		     int, int);
+		     int, int, int);
 void		 layout_close_pane(struct window_pane *);
 
 /* layout-custom.c */

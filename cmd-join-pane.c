@@ -124,7 +124,7 @@ join_pane(struct cmd *self, struct cmd_q *cmdq, int not_same_window)
 		else
 			size = (dst_wp->sx * percentage) / 100;
 	}
-	lc = layout_split_pane(dst_wp, type, size, args_has(args, 'b'));
+	lc = layout_split_pane(dst_wp, type, size, args_has(args, 'b'), 0);
 	if (lc == NULL) {
 		cmdq_error(cmdq, "create pane failed: pane too small");
 		return (CMD_RETURN_ERROR);
