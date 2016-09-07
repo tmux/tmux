@@ -30,6 +30,10 @@
 #include <time.h>
 #include <unistd.h>
 
+#ifndef FIONREAD
+#include <sys/filio.h>
+#endif
+
 #include "tmux.h"
 
 /*

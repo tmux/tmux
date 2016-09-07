@@ -34,6 +34,10 @@
 #include <time.h>
 #include <unistd.h>
 
+#ifndef ACCESSPERMS
+#define ACCESSPERMS (S_IRWXU|S_IRWXG|S_IRWXO) 
+#endif
+
 #include "tmux.h"
 
 /*
