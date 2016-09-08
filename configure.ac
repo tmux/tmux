@@ -162,28 +162,44 @@ PKG_CHECK_MODULES(
 	[
 		CPPFLAGS="$LIBNCURSES_CFLAGS $CPPFLAGS"
 		LIBS="$LIBNCURSES_LIBS $LIBS"
-		found_curses=yes
+		found_ncurses=yes
 	],
-	[
-		AC_SEARCH_LIBS(
-			setupterm,
-			[ncurses curses terminfo],
-			found_curses=yes,
-			found_curses=no
-		)
-	]
+	found_ncurses=no
 )
-AC_CHECK_HEADER(
-	ncurses.h,
-	AC_DEFINE(HAVE_NCURSES_H),
+if test "x$found_ncurses" = xno; then
+	# pkg-config didn't work, try ncurses.
+	AC_CHECK_LIB(
+		ncurses,
+		setupterm,
+		found_ncurses=yes,
+		found_ncurses=no
+	)
 	AC_CHECK_HEADER(
-		curses.h,
-		AC_DEFINE(HAVE_CURSES_H),
+		ncurses.h,
+		,
+		found_ncurses=no)
+fi
+if test "x$found_ncurses" = xyes; then
+	LIBS="$LIBS -lncurses"
+	AC_DEFINE(HAVE_NCURSES_H)
+else
+	# No ncurses, try curses.
+	AC_CHECK_LIB(
+		curses,
+		setupterm,
+		found_curses=yes,
 		found_curses=no
 	)
-)
-if test "x$found_curses" = xno; then
-	AC_MSG_ERROR("curses not found")
+	AC_CHECK_HEADER(
+		curses.h,
+		,
+		found_curses=no)
+	if test "x$found_curses" = xyes; then
+		LIBS="$LIBS -lcurses"
+		AC_DEFINE(HAVE_CURSES_H)
+	else
+		AC_MSG_ERROR("curses or ncurses not found")
+	fi
 fi
 
 # Look for utempter.
