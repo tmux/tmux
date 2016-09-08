@@ -166,7 +166,7 @@ PKG_CHECK_MODULES(
 	],
 	[
 		AC_SEARCH_LIBS(
-			setupterm,
+			delterm,
 			[ncurses curses terminfo],
 			found_curses=yes,
 			found_curses=no

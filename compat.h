@@ -315,4 +315,12 @@ int	BSDgetopt(int, char *const *, const char *);
 #define optarg             BSDoptarg
 #endif
 
+#ifndef ACCESSPERMS
+#define ACCESSPERMS (S_IRWXU|S_IRWXG|S_IRWXO)
+#endif
+
+#ifndef FIONREAD
+#include <sys/filio.h>
+#endif
+
 #endif /* COMPAT_H */
