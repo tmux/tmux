@@ -35,6 +35,14 @@
 #define ECHOPRT 0
 #endif
 
+#ifndef ACCESSPERMS
+#define ACCESSPERMS (S_IRWXU|S_IRWXG|S_IRWXO)
+#endif
+
+#if !defined(FIONREAD) && defined(__sun)
+#include <sys/filio.h>
+#endif
+
 #ifndef HAVE_BSD_TYPES
 typedef uint8_t u_int8_t;
 typedef uint16_t u_int16_t;
