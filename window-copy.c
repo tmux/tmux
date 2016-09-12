@@ -538,7 +538,9 @@ window_copy_key(struct window_pane *wp, struct client *c, struct session *sess,
 		return;
 	}
 
-	cmd = mode_key_lookup(&data->mdata, key, &arg);
+	cmd = mode_key_lookup(&data->mdata, key, &arg, &np);
+	if (data->numprefix > 0)
+		np = data->numprefix;
 	if (cmd != MODEKEYCOPY_PREVIOUSPAGE &&
 	    cmd != MODEKEYCOPY_NEXTPAGE &&
 	    cmd != MODEKEYCOPY_SCROLLUP &&
@@ -900,11 +902,11 @@ window_copy_key_input(struct window_pane *wp, key_code key)
 	struct screen			*s = &data->screen;
 	const char			*bufdata;
 	size_t				 inputlen, n, bufsize;
-	int				 np;
+	u_int				 np;
 	struct paste_buffer		*pb;
 	u_char				 ch;
 
-	switch (mode_key_lookup(&data->mdata, key, NULL)) {
+	switch (mode_key_lookup(&data->mdata, key, NULL, &np)) {
 	case MODEKEYEDIT_CANCEL:
 		data->numprefix = -1;
 		return (-1);
@@ -932,10 +934,8 @@ window_copy_key_input(struct window_pane *wp, key_code key)
 		data->inputstr[inputlen + n] = '\0';
 		break;
 	case MODEKEYEDIT_ENTER:
-		np = data->numprefix;
-		if (np <= 0)
-			np = 1;
-
+		if (data->numprefix > 0)
+			np = data->numprefix;
 		switch (data->inputtype) {
 		case WINDOW_COPY_OFF:
 		case WINDOW_COPY_JUMPFORWARD:

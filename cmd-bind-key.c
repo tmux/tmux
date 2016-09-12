@@ -36,9 +36,9 @@ const struct cmd_entry cmd_bind_key_entry = {
 	.name = "bind-key",
 	.alias = "bind",
 
-	.args = { "cnrt:T:", 1, -1 },
-	.usage = "[-cnr] [-t mode-table] [-T key-table] key command "
-		 "[arguments]",
+	.args = { "cnrR:t:T:", 1, -1 },
+	.usage = "[-cnr] [-t mode-table] [-R repeat-count] [-T key-table] key "
+	         "command [arguments]",
 
 	.flags = 0,
 	.exec = cmd_bind_key_exec
@@ -97,11 +97,12 @@ enum cmd_retval
 cmd_bind_key_mode_table(struct cmd *self, struct cmd_q *cmdq, key_code key)
 {
 	struct args			*args = self->args;
-	const char			*tablename;
+	const char			*tablename, *arg;
 	const struct mode_key_table	*mtab;
 	struct mode_key_binding		*mbind, mtmp;
 	enum mode_key_cmd		 cmd;
-	const char			*arg;
+	char				*cause;
+	u_int				 repeat;
 
 	tablename = args_get(args, 't');
 	if ((mtab = mode_key_findtable(tablename)) == NULL) {
@@ -145,6 +146,16 @@ cmd_bind_key_mode_table(struct cmd *self, struct cmd_q *cmdq, key_code key)
 		break;
 	}
 
+	repeat = 1;
+	if (args_has(args, 'R')) {
+		repeat = args_strtonum(args, 'R', 1, SHRT_MAX, &cause);
+		if (cause != NULL) {
+			cmdq_error(cmdq, "repeat count %s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
+		}
+	}
+
 	mtmp.key = key;
 	mtmp.mode = !!args_has(args, 'c');
 	if ((mbind = RB_FIND(mode_key_tree, mtab->tree, &mtmp)) == NULL) {
@@ -153,6 +164,7 @@ cmd_bind_key_mode_table(struct cmd *self, struct cmd_q *cmdq, key_code key)
 		mbind->mode = mtmp.mode;
 		RB_INSERT(mode_key_tree, mtab->tree, mbind);
 	}
+	mbind->repeat = repeat;
 	mbind->cmd = cmd;
 	mbind->arg = arg != NULL ? xstrdup(arg) : NULL;
 	return (CMD_RETURN_NORMAL);
