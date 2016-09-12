@@ -17,7 +17,9 @@
  */
 
 #include <sys/types.h>
+#include <sys/sysctl.h>
 
+#include <Availability.h>
 #include <event.h>
 #include <libproc.h>
 #include <stdlib.h>
@@ -33,18 +35,34 @@ struct event_base	*osdep_event_init(void);
 char *
 osdep_get_name(int fd, __unused char *tty)
 {
-	struct proc_bsdinfo		bsdinfo;
+#ifdef __MAC_10_7
+	struct proc_bsdshortinfo	bsdinfo;
 	pid_t				pgrp;
 	int				ret;
 
 	if ((pgrp = tcgetpgrp(fd)) == -1)
 		return (NULL);
 
-	ret = proc_pidinfo(pgrp, PROC_PIDTBSDINFO, 0,
-	    &bsdinfo, sizeof bsdinfo);
-	if (ret == sizeof bsdinfo && *bsdinfo.pbi_comm != '\0')
-		return (strdup(bsdinfo.pbi_comm));
-	return (NULL);
+	ret = proc_pidinfo(pgrp, PROC_PIDT_SHORTBSDINFO, 0,
+			&bsdinfo, sizeof bsdinfo);
+	if (ret == sizeof bsdinfo && *bsdinfo.pbsi_comm != '\0')
+		return (strdup(bsdinfo.pbsi_comm));
+#else
+	int	mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PID, 0 };
+	size_t	size;
+	struct kinfo_proc kp;
+
+	if ((mib[3] = tcgetpgrp(fd)) == -1)
+		return (NULL);
+
+	size = sizeof kp;
+	if (sysctl(mib, 4, &kp, &size, NULL, 0) == -1)
+		return (NULL);
+	if (*kp.kp_proc.p_comm == '\0')
+		return (NULL);
+
+	return (strdup(kp.kp_proc.p_comm));
+#endif
 }
 
 char *
