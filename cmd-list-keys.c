@@ -135,11 +135,11 @@ static enum cmd_retval
 cmd_list_keys_table(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args			*args = self->args;
-	const char			*tablename;
+	const char			*tablename, *key, *cmdstr, *mode;
 	const struct mode_key_table	*mtab;
 	struct mode_key_binding		*mbind;
-	const char			*key, *cmdstr, *mode;
-	int			 	 width, keywidth, any_mode;
+	char				 repeat[16];
+	int			 	 width, keywidth, repeatwidth, any_mode;
 
 	tablename = args_get(args, 't');
 	if ((mtab = mode_key_findtable(tablename)) == NULL) {
@@ -147,7 +147,7 @@ cmd_list_keys_table(struct cmd *self, struct cmd_q *cmdq)
 		return (CMD_RETURN_ERROR);
 	}
 
-	width = 0;
+	keywidth = repeatwidth = 0;
 	any_mode = 0;
 	RB_FOREACH(mbind, mode_key_tree, mtab->tree) {
 		key = key_string_lookup_key(mbind->key);
@@ -155,9 +155,16 @@ cmd_list_keys_table(struct cmd *self, struct cmd_q *cmdq)
 		if (mbind->mode != 0)
 			any_mode = 1;
 
-		keywidth = strlen(key);
-		if (keywidth > width)
-			width = keywidth;
+		width = strlen(key);
+		if (width > keywidth)
+			keywidth = width;
+
+		if (mbind->repeat != 1) {
+			snprintf(repeat, sizeof repeat, "%u", mbind->repeat);
+			width = strlen(repeat);
+			if (width > repeatwidth)
+				repeatwidth = width;
+		}
 	}
 
 	RB_FOREACH(mbind, mode_key_tree, mtab->tree) {
@@ -166,11 +173,17 @@ cmd_list_keys_table(struct cmd *self, struct cmd_q *cmdq)
 		mode = "";
 		if (mbind->mode != 0)
 			mode = "c";
+		snprintf(repeat, sizeof repeat, "%u", mbind->repeat);
 		cmdstr = mode_key_tostring(mtab->cmdstr, mbind->cmd);
 		if (cmdstr != NULL) {
-			cmdq_print(cmdq, "bind-key -%st %s%s %*s %s%s%s%s",
+			cmdq_print(cmdq,
+			    "bind-key -%st %s%s%s%*s %*s %s%s%s%s",
 			    mode, any_mode && *mode == '\0' ? " " : "",
-			    mtab->name, (int) width, key, cmdstr,
+			    mtab->name,
+			    mbind->repeat != 1 ? " -R " :
+			    (repeatwidth == 0 ? "" : "    "),
+			    repeatwidth, mbind->repeat != 1 ? repeat : "",
+			    (int)keywidth, key, cmdstr,
 			    mbind->arg != NULL ? " \"" : "",
 			    mbind->arg != NULL ? mbind->arg : "",
 			    mbind->arg != NULL ? "\"": "");

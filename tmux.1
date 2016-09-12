@@ -2137,6 +2137,7 @@ Commands related to key bindings are as follows:
 .Bl -tag -width Ds
 .It Xo Ic bind-key
 .Op Fl cnr
+.Op Fl R Ar repeat-count
 .Op Fl t Ar mode-table
 .Op Fl T Ar key-table
 .Ar key Ar command Op Ar arguments
@@ -2195,6 +2196,14 @@ is bound in
 the binding for command mode with
 .Fl c
 or for normal mode without.
+For keys in the
+.Em vi-copy
+or
+.Em emacs-copy
+tables,
+.Fl R
+specifies how many times the command should be repeated.
+.Pp
 See the
 .Sx WINDOWS AND PANES
 section and the

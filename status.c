@@ -818,7 +818,7 @@ status_prompt_key(struct client *c, key_code key)
 	size_t			 size, n, off, idx, bufsize;
 
 	size = strlen(c->prompt_buffer);
-	switch (mode_key_lookup(&c->prompt_mdata, key, NULL)) {
+	switch (mode_key_lookup(&c->prompt_mdata, key, NULL, NULL)) {
 	case MODEKEYEDIT_CURSORLEFT:
 		if (c->prompt_index > 0) {
 			c->prompt_index--;
