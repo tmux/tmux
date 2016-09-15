@@ -229,7 +229,7 @@ AC_ARG_ENABLE(
 	utf8proc,
 	AC_HELP_STRING(--enable-utf8proc, use utf8proc if it is installed),
 	found_utf8proc=$enable_utf8proc,
-	found_utf8proc=yes
+	found_utf8proc=no
 )
 if test "x$found_utf8proc" = xyes; then
 	AC_CHECK_HEADER(utf8proc.h, found_utf8proc=yes, found_utf8proc=no)
