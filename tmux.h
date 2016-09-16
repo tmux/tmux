@@ -59,8 +59,18 @@ struct tmuxproc;
 /* Automatic name refresh interval, in microseconds. Must be < 1 second. */
 #define NAME_INTERVAL 500000
 
-/* The maximum amount of data to hold from a pty (the event high watermark). */
-#define READ_SIZE 4096
+/*
+ * Event watermarks. We start with FAST then if we hit full size for HITS reads
+ * in succession switch to SLOW, and return when we hit EMPTY the same number
+ * of times.
+ */
+#define READ_FAST_SIZE 4096
+#define READ_SLOW_SIZE 128
+
+#define READ_FULL_SIZE (4096 - 16)
+#define READ_EMPTY_SIZE 16
+
+#define READ_CHANGE_HITS 3
 
 /* Attribute to make gcc check printf-like arguments. */
 #define printflike(a, b) __attribute__ ((format (printf, a, b)))
@@ -883,6 +893,9 @@ struct window_pane {
 
 	int		 fd;
 	struct bufferevent *event;
+
+	u_int		 wmark_size;
+	u_int		 wmark_hits;
 
 	struct input_ctx *ictx;
 
