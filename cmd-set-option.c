@@ -227,10 +227,11 @@ enum cmd_retval
 cmd_set_option_user(struct cmd *self, struct cmd_q *cmdq, const char *optstr,
     const char *valstr)
 {
-	struct args	*args = self->args;
-	struct session	*s = cmdq->state.tflag.s;
-	struct winlink	*wl = cmdq->state.tflag.wl;
-	struct options	*oo;
+	struct args		*args = self->args;
+	struct session		*s = cmdq->state.tflag.s;
+	struct winlink		*wl = cmdq->state.tflag.wl;
+	struct options		*oo;
+	struct options_entry	*o;
 
 	if (args_has(args, 's'))
 		oo = global_options;
@@ -262,18 +263,22 @@ cmd_set_option_user(struct cmd *self, struct cmd_q *cmdq, const char *optstr,
 		}
 		options_remove(oo, optstr);
 	} else {
-		if (valstr == NULL) {
-			cmdq_error(cmdq, "empty value");
-			return (CMD_RETURN_ERROR);
-		}
-		if (args_has(args, 'o') && options_find1(oo, optstr) != NULL) {
+		o = options_find1(oo, optstr);
+		if (args_has(args, 'o') && o != NULL) {
 			if (!args_has(args, 'q')) {
 				cmdq_error(cmdq, "already set: %s", optstr);
 				return (CMD_RETURN_ERROR);
 			}
 			return (CMD_RETURN_NORMAL);
 		}
-		options_set_string(oo, optstr, "%s", valstr);
+		if (valstr == NULL) {
+			cmdq_error(cmdq, "empty value");
+			return (CMD_RETURN_ERROR);
+		}
+		if (o != NULL && args_has(args, 'a'))
+			options_set_string(oo, optstr, "%s%s", o->str, valstr);
+		else
+			options_set_string(oo, optstr, "%s", valstr);
 	}
 	return (CMD_RETURN_NORMAL);
 }
