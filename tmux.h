@@ -1815,6 +1815,7 @@ int		 cmd_find_target(struct cmd_find_state *,
 		     struct cmd_find_state *, struct cmd_q *, const char *,
 		     enum cmd_find_type, int);
 struct client	*cmd_find_client(struct cmd_q *, const char *, int);
+pid_t		 cmd_find_ppid(pid_t);
 void		 cmd_find_clear_state(struct cmd_find_state *, struct cmd_q *,
 		     int);
 int		 cmd_find_valid_state(struct cmd_find_state *);
@@ -2169,6 +2170,7 @@ u_int		 window_count_panes(struct window *);
 void		 window_destroy_panes(struct window *);
 struct window_pane *window_pane_find_by_id_str(const char *);
 struct window_pane *window_pane_find_by_id(u_int);
+struct window_pane *window_pane_find_by_pid(pid_t);
 struct window_pane *window_pane_create(struct window *, u_int, u_int, u_int);
 void		 window_pane_destroy(struct window_pane *);
 int		 window_pane_spawn(struct window_pane *, int, char **,

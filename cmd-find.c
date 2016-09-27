@@ -973,9 +973,35 @@ cmd_find_target(struct cmd_find_state *fs, struct cmd_find_state *current,
 	else
 		fs->current = current;
 
-	/* An empty or NULL target is the current. */
-	if (target == NULL || *target == '\0')
+	/* An empty or NULL target is default. */
+	if (target == NULL || *target == '\0') {
+		/*
+		 * Follow parent pids from client until reaching a window_pane.
+		 * If this window_pane is in current session, use it.
+		 * Otherwise, default to whatever window the user is looking at.
+		 */
+		if (cmdq->client) {
+			pid_t pid = cmdq->client->pid;
+			struct window_pane *wp = NULL;
+			struct winlink *wl;
+			while (pid != 0 &&
+			       (wp = window_pane_find_by_pid(pid)) == NULL)
+				pid = cmd_find_ppid(pid);
+			if (wp &&
+			    (wl = winlink_find_by_window(
+				    &fs->current->s->windows, wp->window))) {
+				fs->s = fs->current->s;
+				fs->wl = wl;
+				if (window_pane_index(wp, &fs->idx) != 0) {
+					fs->idx = -1;
+				}
+				fs->w = wp->window;
+				fs->wp = wp;
+				goto found;
+			}
+		}
 		goto current;
+	}
 
 	/* Mouse target is a plain = or {mouse}. */
 	if (strcmp(target, "=") == 0 || strcmp(target, "{mouse}") == 0) {
@@ -1254,4 +1280,27 @@ cmd_find_client(struct cmd_q *cmdq, const char *target, int quiet)
 	free(copy);
 	log_debug("%s: target %s, return %p", __func__, target, c);
 	return (c);
+}
+
+/* Returns the parent process id from the given pid, like "ps -o pid,ppid" */
+pid_t
+cmd_find_ppid(pid_t pid)
+{
+	char statpath[256];
+	FILE *f = NULL;
+	char _state;
+	int ppid = 0;
+	char c;
+	sprintf(statpath, "/proc/%d/stat", (int)pid);
+	if ((f = fopen(statpath, "r")) == NULL) {
+		log_debug("%s: can't open \"%s\"", __func__, statpath);
+		return ppid;
+	}
+	/* f = "31985 (tmux: client) S 4167 31985 4167 34834"... */
+	while ((c = fgetc(f)) != EOF && c != ')')
+		;
+	if (fscanf(f, "%1s %d", &_state, &ppid) != 2)
+		log_debug("%s: can't parse \"%s\"", __func__, statpath);
+	fclose(f);
+	return (pid_t)ppid;
 }

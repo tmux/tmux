@@ -732,6 +732,19 @@ window_pane_find_by_id(u_int id)
 }
 
 struct window_pane *
+window_pane_find_by_pid(pid_t pid)
+{
+	struct window_pane *wp;
+
+	RB_FOREACH(wp, window_pane_tree, &all_window_panes) {
+		if (wp->pid == pid) {
+			return (wp);
+		}
+	}
+	return (NULL);
+}
+
+struct window_pane *
 window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 {
 	struct window_pane	*wp;
