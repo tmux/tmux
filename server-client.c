@@ -765,11 +765,13 @@ server_client_loop(void)
 	}
 }
 
-/* Check if pane should be resized. */
-void
-server_client_check_resize(struct window_pane *wp)
+static void
+server_client_resize_event(__unused int fd, __unused short events, void *data)
 {
-	struct winsize	ws;
+	struct window_pane	*wp = data;
+	struct winsize		 ws;
+
+	evtimer_del(&wp->resize_timer);
 
 	if (!(wp->flags & PANE_RESIZE))
 		return;
@@ -782,6 +784,36 @@ server_client_check_resize(struct window_pane *wp)
 		fatal("ioctl failed");
 
 	wp->flags &= ~PANE_RESIZE;
+}
+
+/* Check if pane should be resized. */
+void
+server_client_check_resize(struct window_pane *wp)
+{
+	struct timeval	 tv = { .tv_usec = 250000 };
+
+	if (!(wp->flags & PANE_RESIZE))
+		return;
+
+	if (!event_initialized(&wp->resize_timer))
+		evtimer_set(&wp->resize_timer, server_client_resize_event, wp);
+
+	/*
+	 * The first resize should happen immediately, so if the timer is not
+	 * running, do it now.
+	 */
+	if (!evtimer_pending(&wp->resize_timer, NULL))
+		server_client_resize_event(-1, 0, wp);
+
+	/*
+	 * If the pane is in the alternate screen, let the timer expire and
+	 * resize to give the application a chance to redraw. If not, keep
+	 * pushing the timer back.
+	 */
+	if (wp->saved_grid != NULL && evtimer_pending(&wp->resize_timer, NULL))
+		return;
+	evtimer_del(&wp->resize_timer);
+	evtimer_add(&wp->resize_timer, &tv);
 }
 
 /* Check whether pane should be focused. */

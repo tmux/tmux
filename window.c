@@ -803,6 +803,9 @@ window_pane_destroy(struct window_pane *wp)
 		close(wp->pipe_fd);
 	}
 
+	if (event_initialized(&wp->resize_timer))
+		event_del(&wp->resize_timer);
+
 	RB_REMOVE(window_pane_tree, &all_window_panes, wp);
 
 	free((void *)wp->cwd);

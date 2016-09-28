@@ -894,6 +894,8 @@ struct window_pane {
 	int		 fd;
 	struct bufferevent *event;
 
+	struct event	 resize_timer;
+
 	u_int		 wmark_size;
 	u_int		 wmark_hits;
 
