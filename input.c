@@ -961,7 +961,7 @@ input_reply(struct input_ctx *ictx, const char *fmt, ...)
 	char   *reply;
 
 	va_start(ap, fmt);
-	vasprintf(&reply, fmt, ap);
+	xvasprintf(&reply, fmt, ap);
 	va_end(ap);
 
 	bufferevent_write(ictx->wp->event, reply, strlen(reply));
