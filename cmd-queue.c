@@ -80,7 +80,7 @@ cmdq_print(struct cmd_q *cmdq, const char *fmt, ...)
 		/* nothing */;
 	else if (c->session == NULL || (c->flags & CLIENT_CONTROL)) {
 		if (~c->flags & CLIENT_UTF8) {
-			vasprintf(&tmp, fmt, ap);
+			xvasprintf(&tmp, fmt, ap);
 			msg = utf8_sanitize(tmp);
 			free(tmp);
 			evbuffer_add(c->stdout_data, msg, strlen(msg));
