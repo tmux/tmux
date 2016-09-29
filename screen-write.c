@@ -1267,10 +1267,10 @@ screen_write_overwrite(struct screen_write_ctx *ctx, struct grid_cell *gc,
 	}
 
 	/*
-	 * Overwrite any padding cells that belong to a UTF-8 character
-	 * we'll be overwriting with the current character.
+	 * Overwrite any padding cells that belong to any UTF-8 characters we'll be
+	 * overwriting with the current character.
 	 */
-	if (gc->data.width != 1 || gc->flags & GRID_FLAG_PADDING) {
+	if (width != 1 || gc->data.width != 1 || gc->flags & GRID_FLAG_PADDING) {
 		xx = s->cx + width - 1;
 		while (++xx < screen_size_x(s)) {
 			grid_view_get_cell(gd, xx, s->cy, &tmp_gc);
