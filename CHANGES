@@ -1,3 +1,24 @@
+CHANGES FROM 2.2 to 2.3 29 September 2016
+
+Incompatible Changes
+====================
+
+None.
+
+Normal Changes
+==============
+
+* New option 'pane-border-status' to add text in the oane borders.
+* Support for hooks on commands: 'after' and 'before' hooks.
+* 'source-file' understands '-q' to supress errors for nonexistent files.
+* Lots of UTF8 improvements, especially on MacOS.
+* 'window-status-separator' understands #[] expansions.
+* 'split-window' understands '-f' for performing a full-width split.
+* Allow report count to be specified when using 'bind-key -R'.
+* 'set -a' for appending to user options (@foo) is now supported.
+* 'display-panes' can now accept a command to run, rather than always
+  selecting the pane.
+
 CHANGES FROM 2.1 to 2.2 10 April 2016
 
 Incompatible Changes
