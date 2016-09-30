@@ -8,9 +8,9 @@ None.
 Normal Changes
 ==============
 
-* New option 'pane-border-status' to add text in the oane borders.
+* New option 'pane-border-status' to add text in the pane borders.
 * Support for hooks on commands: 'after' and 'before' hooks.
-* 'source-file' understands '-q' to supress errors for nonexistent files.
+* 'source-file' understands '-q' to suppress errors for nonexistent files.
 * Lots of UTF8 improvements, especially on MacOS.
 * 'window-status-separator' understands #[] expansions.
 * 'split-window' understands '-f' for performing a full-width split.
@@ -31,7 +31,7 @@ Incompatible Changes
 can be used.
 
 * Support for TMPDIR has been removed.  Use TMUX_TMPDIR instead.
-* UTF8 detection how happens automatically if the client supports it, hence
+* UTF8 detection now happens automatically if the client supports it, hence
   the:
 
   mouse-utf8
