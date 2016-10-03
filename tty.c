@@ -747,7 +747,9 @@ tty_cmd_insertcharacter(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
 
-	if (!tty_pane_full_width(tty, ctx)) {
+	if (!tty_pane_full_width(tty, ctx) || tty_fake_bce(tty, wp) ||
+	    (!tty_term_has(tty->term, TTYC_DCH) &&
+	    !tty_term_has(tty->term, TTYC_DCH1))) {
 		tty_draw_pane(tty, wp, ctx->ocy, ctx->xoff, ctx->yoff);
 		return;
 	}
@@ -756,11 +758,7 @@ tty_cmd_insertcharacter(struct tty *tty, const struct tty_ctx *ctx)
 
 	tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
 
-	if (!tty_fake_bce(tty, wp) && (tty_term_has(tty->term, TTYC_ICH) ||
-	    tty_term_has(tty->term, TTYC_ICH1)))
-		tty_emulate_repeat(tty, TTYC_ICH, TTYC_ICH1, ctx->num);
-	else
-		tty_draw_pane(tty, wp, ctx->ocy, ctx->xoff, ctx->yoff);
+	tty_emulate_repeat(tty, TTYC_ICH, TTYC_ICH1, ctx->num);
 }
 
 void
@@ -779,9 +777,7 @@ tty_cmd_deletecharacter(struct tty *tty, const struct tty_ctx *ctx)
 
 	tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
 
-	if (tty_term_has(tty->term, TTYC_DCH) ||
-	    tty_term_has(tty->term, TTYC_DCH1))
-		tty_emulate_repeat(tty, TTYC_DCH, TTYC_DCH1, ctx->num);
+	tty_emulate_repeat(tty, TTYC_DCH, TTYC_DCH1, ctx->num);
 }
 
 void
