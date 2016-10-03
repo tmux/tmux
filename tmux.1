@@ -3321,12 +3321,14 @@ Run when the program running in a pane exits.
 Hooks are managed with these commands:
 .Bl -tag -width Ds
 .It Xo Ic set-hook
-.Op Fl g
+.Op Fl gu
 .Op Fl t Ar target-session
 .Ar hook-name
 .Ar command
 .Xc
-Sets hook
+Sets (or with
+.Fl u
+unsets) hook
 .Ar hook-name
 to
 .Ar command .
