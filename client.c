@@ -34,11 +34,11 @@
 
 #include "tmux.h"
 
-struct tmuxproc	*client_proc;
-struct tmuxpeer	*client_peer;
-int		 client_flags;
-struct event	 client_stdin;
-enum {
+static struct tmuxproc	*client_proc;
+static struct tmuxpeer	*client_peer;
+static int		 client_flags;
+static struct event	 client_stdin;
+static enum {
 	CLIENT_EXIT_NONE,
 	CLIENT_EXIT_DETACHED,
 	CLIENT_EXIT_DETACHED_HUP,
@@ -48,29 +48,29 @@ enum {
 	CLIENT_EXIT_EXITED,
 	CLIENT_EXIT_SERVER_EXITED,
 } client_exitreason = CLIENT_EXIT_NONE;
-int		 client_exitval;
-enum msgtype	 client_exittype;
-const char	*client_exitsession;
-int		 client_attached;
+static int		 client_exitval;
+static enum msgtype	 client_exittype;
+static const char	*client_exitsession;
+static int		 client_attached;
 
-__dead void	client_exec(const char *,const char *);
-int		client_get_lock(char *);
-int		client_connect(struct event_base *, const char *, int);
-void		client_send_identify(const char *, const char *);
-void		client_stdin_callback(int, short, void *);
-void		client_write(int, const char *, size_t);
-void		client_signal(int);
-void		client_dispatch(struct imsg *, void *);
-void		client_dispatch_attached(struct imsg *);
-void		client_dispatch_wait(struct imsg *, const char *);
-const char     *client_exit_message(void);
+static __dead void	 client_exec(const char *,const char *);
+static int		 client_get_lock(char *);
+static int		 client_connect(struct event_base *, const char *, int);
+static void		 client_send_identify(const char *, const char *);
+static void		 client_stdin_callback(int, short, void *);
+static void		 client_write(int, const char *, size_t);
+static void		 client_signal(int);
+static void		 client_dispatch(struct imsg *, void *);
+static void		 client_dispatch_attached(struct imsg *);
+static void		 client_dispatch_wait(struct imsg *, const char *);
+static const char	*client_exit_message(void);
 
 /*
  * Get server create lock. If already held then server start is happening in
  * another client, so block until the lock is released and return -2 to
  * retry. Return -1 on failure to continue and start the server anyway.
  */
-int
+static int
 client_get_lock(char *lockfile)
 {
 	int lockfd;
@@ -97,7 +97,7 @@ client_get_lock(char *lockfile)
 }
 
 /* Connect client to server. */
-int
+static int
 client_connect(struct event_base *base, const char *path, int start_server)
 {
 	struct sockaddr_un	sa;
@@ -380,7 +380,7 @@ client_main(struct event_base *base, int argc, char **argv, int flags,
 }
 
 /* Send identify messages to server. */
-void
+static void
 client_send_identify(const char *ttynam, const char *cwd)
 {
 	const char	 *s;
@@ -417,7 +417,7 @@ client_send_identify(const char *ttynam, const char *cwd)
 }
 
 /* Callback for client stdin read events. */
-void
+static void
 client_stdin_callback(__unused int fd, __unused short events,
     __unused void *arg)
 {
@@ -433,7 +433,7 @@ client_stdin_callback(__unused int fd, __unused short events,
 }
 
 /* Force write to file descriptor. */
-void
+static void
 client_write(int fd, const char *data, size_t size)
 {
 	ssize_t	used;
@@ -451,7 +451,7 @@ client_write(int fd, const char *data, size_t size)
 }
 
 /* Run command in shell; used for -c. */
-__dead void
+static __dead void
 client_exec(const char *shell, const char *shellcmd)
 {
 	const char	*name, *ptr;
@@ -480,7 +480,7 @@ client_exec(const char *shell, const char *shellcmd)
 }
 
 /* Callback to handle signals in the client. */
-void
+static void
 client_signal(int sig)
 {
 	struct sigaction sigact;
@@ -520,7 +520,7 @@ client_signal(int sig)
 }
 
 /* Callback for client read events. */
-void
+static void
 client_dispatch(struct imsg *imsg, void *arg)
 {
 	if (imsg == NULL) {
@@ -537,7 +537,7 @@ client_dispatch(struct imsg *imsg, void *arg)
 }
 
 /* Dispatch imsgs when in wait state (before MSG_READY). */
-void
+static void
 client_dispatch_wait(struct imsg *imsg, const char *shellcmd)
 {
 	char			*data;
@@ -631,7 +631,7 @@ client_dispatch_wait(struct imsg *imsg, const char *shellcmd)
 }
 
 /* Dispatch imsgs in attached state (after MSG_READY). */
-void
+static void
 client_dispatch_attached(struct imsg *imsg)
 {
 	struct sigaction	 sigact;

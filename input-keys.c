@@ -31,7 +31,7 @@
  * direction with output).
  */
 
-void	 input_key_mouse(struct window_pane *, struct mouse_event *);
+static void	 input_key_mouse(struct window_pane *, struct mouse_event *);
 
 struct input_key_ent {
 	key_code	 key;
@@ -42,7 +42,7 @@ struct input_key_ent {
 #define INPUTKEY_CURSOR 0x2	/* cursor key */
 };
 
-const struct input_key_ent input_keys[] = {
+static const struct input_key_ent input_keys[] = {
 	/* Backspace key. */
 	{ KEYC_BSPACE,		"\177",		0 },
 
@@ -232,7 +232,7 @@ input_key(struct window_pane *wp, key_code key, struct mouse_event *m)
 }
 
 /* Translate mouse and output. */
-void
+static void
 input_key_mouse(struct window_pane *wp, struct mouse_event *m)
 {
 	char	buf[40];
