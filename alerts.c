@@ -22,21 +22,21 @@
 
 #include "tmux.h"
 
-int	alerts_fired;
+static int	alerts_fired;
 
-void	alerts_timer(int, short, void *);
-int	alerts_enabled(struct window *, int);
-void	alerts_callback(int, short, void *);
-void	alerts_reset(struct window *);
+static void	alerts_timer(int, short, void *);
+static int	alerts_enabled(struct window *, int);
+static void	alerts_callback(int, short, void *);
+static void	alerts_reset(struct window *);
 
-void	alerts_run_hook(struct session *, struct winlink *, int);
-int	alerts_check_all(struct session *, struct winlink *);
-int	alerts_check_bell(struct session *, struct winlink *);
-int	alerts_check_activity(struct session *, struct winlink *);
-int	alerts_check_silence(struct session *, struct winlink *);
-void	alerts_ring_bell(struct session *);
+static void	alerts_run_hook(struct session *, struct winlink *, int);
+static int	alerts_check_all(struct session *, struct winlink *);
+static int	alerts_check_bell(struct session *, struct winlink *);
+static int	alerts_check_activity(struct session *, struct winlink *);
+static int	alerts_check_silence(struct session *, struct winlink *);
+static void	alerts_ring_bell(struct session *);
 
-void
+static void
 alerts_timer(__unused int fd, __unused short events, void *arg)
 {
 	struct window	*w = arg;
@@ -46,7 +46,7 @@ alerts_timer(__unused int fd, __unused short events, void *arg)
 	alerts_queue(w, WINDOW_SILENCE);
 }
 
-void
+static void
 alerts_callback(__unused int fd, __unused short events, __unused void *arg)
 {
 	struct window	*w;
@@ -72,7 +72,7 @@ alerts_callback(__unused int fd, __unused short events, __unused void *arg)
 	alerts_fired = 0;
 }
 
-void
+static void
 alerts_run_hook(struct session *s, struct winlink *wl, int flags)
 {
 	struct cmd_find_state	 fs;
@@ -88,7 +88,7 @@ alerts_run_hook(struct session *s, struct winlink *wl, int flags)
 		hooks_run(s->hooks, NULL, &fs, "alert-activity");
 }
 
-int
+static int
 alerts_check_all(struct session *s, struct winlink *wl)
 {
 	int	alerts;
@@ -113,7 +113,7 @@ alerts_check_session(struct session *s)
 		alerts_check_all(s, wl);
 }
 
-int
+static int
 alerts_enabled(struct window *w, int flags)
 {
 	if (flags & WINDOW_BELL)
@@ -138,7 +138,7 @@ alerts_reset_all(void)
 		alerts_reset(w);
 }
 
-void
+static void
 alerts_reset(struct window *w)
 {
 	struct timeval	tv;
@@ -175,7 +175,7 @@ alerts_queue(struct window *w, int flags)
 	}
 }
 
-int
+static int
 alerts_check_bell(struct session *s, struct winlink *wl)
 {
 	struct client	*c;
@@ -218,7 +218,7 @@ alerts_check_bell(struct session *s, struct winlink *wl)
 	return (WINDOW_BELL);
 }
 
-int
+static int
 alerts_check_activity(struct session *s, struct winlink *wl)
 {
 	struct client	*c;
@@ -250,7 +250,7 @@ alerts_check_activity(struct session *s, struct winlink *wl)
 	return (WINDOW_ACTIVITY);
 }
 
-int
+static int
 alerts_check_silence(struct session *s, struct winlink *wl)
 {
 	struct client	*c;
@@ -282,7 +282,7 @@ alerts_check_silence(struct session *s, struct winlink *wl)
 	return (WINDOW_SILENCE);
 }
 
-void
+static void
 alerts_ring_bell(struct session *s)
 {
 	struct client	*c;

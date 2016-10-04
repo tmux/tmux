@@ -32,25 +32,25 @@
  */
 
 /* Choice option type lists. */
-const char *options_table_mode_keys_list[] = {
+static const char *options_table_mode_keys_list[] = {
 	"emacs", "vi", NULL
 };
-const char *options_table_clock_mode_style_list[] = {
+static const char *options_table_clock_mode_style_list[] = {
 	"12", "24", NULL
 };
-const char *options_table_status_keys_list[] = {
+static const char *options_table_status_keys_list[] = {
 	"emacs", "vi", NULL
 };
-const char *options_table_status_justify_list[] = {
+static const char *options_table_status_justify_list[] = {
 	"left", "centre", "right", NULL
 };
-const char *options_table_status_position_list[] = {
+static const char *options_table_status_position_list[] = {
 	"top", "bottom", NULL
 };
-const char *options_table_bell_action_list[] = {
+static const char *options_table_bell_action_list[] = {
 	"none", "any", "current", "other", NULL
 };
-const char *options_table_pane_status_list[] = {
+static const char *options_table_pane_status_list[] = {
 	"off", "top", "bottom", NULL
 };
 

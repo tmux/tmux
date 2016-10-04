@@ -66,9 +66,6 @@ cmd_move_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	char		*cause;
 	int		 idx = cmdq->state.tflag.idx, kflag, dflag, sflag;
 
-	kflag = args_has(self->args, 'k');
-	dflag = args_has(self->args, 'd');
-
 	if (args_has(args, 'r')) {
 		session_renumber_windows(dst);
 		recalculate_sizes();
