@@ -34,6 +34,7 @@ struct paste_buffer {
 	size_t		 size;
 
 	char		*name;
+	time_t		 created;
 	int		 automatic;
 	u_int		 order;
 
@@ -78,6 +79,20 @@ paste_buffer_name(struct paste_buffer *pb)
 	return (pb->name);
 }
 
+/* Get paste buffer order. */
+u_int
+paste_buffer_order(struct paste_buffer *pb)
+{
+	return (pb->order);
+}
+
+/* Get paste buffer created. */
+time_t
+paste_buffer_created(struct paste_buffer *pb)
+{
+	return (pb->created);
+}
+
 /* Get paste buffer data. */
 const char *
 paste_buffer_data(struct paste_buffer *pb, size_t *size)
@@ -87,7 +102,7 @@ paste_buffer_data(struct paste_buffer *pb, size_t *size)
 	return (pb->data);
 }
 
-/* Walk paste buffers by name. */
+/* Walk paste buffers by time. */
 struct paste_buffer *
 paste_walk(struct paste_buffer *pb)
 {
@@ -172,6 +187,8 @@ paste_add(char *data, size_t size)
 
 	pb->automatic = 1;
 	paste_num_automatic++;
+
+	pb->created = time(NULL);
 
 	pb->order = paste_next_order++;
 	RB_INSERT(paste_name_tree, &paste_by_name, pb);
@@ -262,6 +279,8 @@ paste_set(char *data, size_t size, const char *name, char **cause)
 
 	pb->automatic = 0;
 	pb->order = paste_next_order++;
+
+	pb->created = time(NULL);
 
 	if ((old = paste_get_name(name)) != NULL)
 		paste_free(old);
