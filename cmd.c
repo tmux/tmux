@@ -601,8 +601,10 @@ cmd_mouse_at(struct window_pane *wp, struct mouse_event *m, u_int *xp,
 	if (y < wp->yoff || y >= wp->yoff + wp->sy)
 		return (-1);
 
-	*xp = x - wp->xoff;
-	*yp = y - wp->yoff;
+	if (xp != NULL)
+		*xp = x - wp->xoff;
+	if (yp != NULL)
+		*yp = y - wp->yoff;
 	return (0);
 }
 
