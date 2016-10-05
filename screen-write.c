@@ -394,38 +394,18 @@ screen_write_copy(struct screen_write_ctx *ctx, struct screen *src, u_int px,
 {
 	struct screen		*s = ctx->s;
 	struct grid		*gd = src->grid;
-	struct grid_line	*gl;
 	struct grid_cell	 gc;
-	u_int		 	 xx, yy, cx, cy, ax, bx;
+	u_int		 	 xx, yy, cx, cy;
 
 	cx = s->cx;
 	cy = s->cy;
-	for (yy = py; yy < py + ny; yy++) {
-		gl = &gd->linedata[yy];
-		if (yy < gd->hsize + gd->sy) {
-			/*
-			 * Find start and end position and copy between
-			 * them. Limit to the real end of the line then use a
-			 * clear EOL only if copying to the end, otherwise
-			 * could overwrite whatever is there already.
-			 */
-			if (px > gl->cellsize)
-				ax = gl->cellsize;
-			else
-				ax = px;
-			if (px + nx == gd->sx && px + nx > gl->cellsize)
-				bx = gl->cellsize;
-			else
-				bx = px + nx;
 
-			for (xx = ax; xx < bx; xx++) {
-				grid_get_cell(gd, xx, yy, &gc);
-				screen_write_cell(ctx, &gc);
-			}
-			if (px + nx == gd->sx && px + nx > gl->cellsize)
-				screen_write_clearendofline(ctx);
-		} else
-			screen_write_clearline(ctx);
+	for (yy = py; yy < py + ny; yy++) {
+		for (xx = px; xx < px + nx; xx++) {
+			grid_get_cell(gd, xx, yy, &gc);
+			screen_write_cell(ctx, &gc);
+		}
+
 		cy++;
 		screen_write_cursormove(ctx, cx, cy);
 	}
