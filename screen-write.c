@@ -389,8 +389,8 @@ screen_write_cnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
 
 /* Copy from another screen. */
 void
-screen_write_copy(struct screen_write_ctx *ctx,
-    struct screen *src, u_int px, u_int py, u_int nx, u_int ny)
+screen_write_copy(struct screen_write_ctx *ctx, struct screen *src, u_int px,
+    u_int py, u_int nx, u_int ny)
 {
 	struct screen		*s = ctx->s;
 	struct grid		*gd = src->grid;
@@ -1111,7 +1111,7 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 			gce = &gl->celldata[s->cx];
 			if (gce->flags & GRID_FLAG_EXTENDED)
 				skip = 0;
-			else if (gc->flags != (gce->flags & ~GRID_FLAG_EXTENDED))
+			else if (gc->flags != gce->flags)
 				skip = 0;
 			else if (gc->attr != gce->data.attr)
 				skip = 0;
@@ -1119,7 +1119,9 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 				skip = 0;
 			else if (gc->bg != gce->data.bg)
 				skip = 0;
-			else if (gc->data.width != 1 || gce->data.data != gc->data.data[0])
+			else if (gc->data.width != 1)
+				skip = 0;
+			else if (gce->data.data != gc->data.data[0])
 				skip = 0;
 		}
 	}
@@ -1267,10 +1269,12 @@ screen_write_overwrite(struct screen_write_ctx *ctx, struct grid_cell *gc,
 	}
 
 	/*
-	 * Overwrite any padding cells that belong to any UTF-8 characters we'll be
-	 * overwriting with the current character.
+	 * Overwrite any padding cells that belong to any UTF-8 characters
+	 * we'll be overwriting with the current character.
 	 */
-	if (width != 1 || gc->data.width != 1 || gc->flags & GRID_FLAG_PADDING) {
+	if (width != 1 ||
+	    gc->data.width != 1 ||
+	    gc->flags & GRID_FLAG_PADDING) {
 		xx = s->cx + width - 1;
 		while (++xx < screen_size_x(s)) {
 			grid_view_get_cell(gd, xx, s->cy, &tmp_gc);
