@@ -1288,7 +1288,8 @@ window_copy_write_line(struct window_pane *wp, struct screen_write_ctx *ctx,
 			xoff = size = xsnprintf(hdr, limit,
 			    "Repeat: %d", data->numprefix);
 		} else {
-			xoff = size = xsnprintf(hdr, limit,
+			/* We don't care about truncation. */
+			xoff = size = snprintf(hdr, limit,
 			    "%s: %s", data->inputprompt, data->inputstr);
 		}
 		screen_write_cursormove(ctx, 0, last);

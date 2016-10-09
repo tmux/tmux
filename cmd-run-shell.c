@@ -97,7 +97,7 @@ cmd_run_shell_exec(struct cmd *self, struct cmd_q *cmdq)
 	shellcmd = format_expand(ft, args->argv[0]);
 	format_free(ft);
 
-	cdata = xmalloc(sizeof *cdata);
+	cdata = xcalloc(1, sizeof *cdata);
 	cdata->cmd = shellcmd;
 	cdata->bflag = args_has(args, 'b');
 	cdata->wp_id = wp != NULL ? (int) wp->id : -1;
