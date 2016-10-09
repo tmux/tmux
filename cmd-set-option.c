@@ -232,6 +232,7 @@ cmd_set_option_user(struct cmd *self, struct cmd_q *cmdq, const char *optstr,
 	struct winlink		*wl = cmdq->state.tflag.wl;
 	struct options		*oo;
 	struct options_entry	*o;
+	const char		*target;
 
 	if (args_has(args, 's'))
 		oo = global_options;
@@ -239,12 +240,28 @@ cmd_set_option_user(struct cmd *self, struct cmd_q *cmdq, const char *optstr,
 	    self->entry == &cmd_set_window_option_entry) {
 		if (args_has(self->args, 'g'))
 			oo = global_w_options;
-		else
+		else if (wl == NULL) {
+			target = args_get(args, 't');
+			if (target != NULL) {
+				cmdq_error(cmdq, "no such window: %s",
+				    target);
+			} else
+				cmdq_error(cmdq, "no current window");
+			return (CMD_RETURN_ERROR);
+		} else
 			oo = wl->window->options;
 	} else {
 		if (args_has(self->args, 'g'))
 			oo = global_s_options;
-		else
+		else if (s == NULL) {
+			target = args_get(args, 't');
+			if (target != NULL) {
+				cmdq_error(cmdq, "no such session: %s",
+				    target);
+			} else
+				cmdq_error(cmdq, "no current session");
+			return (CMD_RETURN_ERROR);
+		} else
 			oo = s->options;
 	}
 
