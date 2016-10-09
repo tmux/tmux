@@ -50,6 +50,9 @@ const struct cmd_entry cmd_if_shell_entry = {
 };
 
 struct cmd_if_shell_data {
+	char			*file;
+	u_int			 line;
+
 	char			*cmd_if;
 	char			*cmd_else;
 
@@ -106,7 +109,11 @@ cmd_if_shell_exec(struct cmd *self, struct cmd_q *cmdq)
 		return (CMD_RETURN_NORMAL);
 	}
 
-	cdata = xmalloc(sizeof *cdata);
+	cdata = xcalloc(1, sizeof *cdata);
+	if (self->file != NULL) {
+		cdata->file = xstrdup(self->file);
+		cdata->line = self->line;
+	}
 
 	cdata->cmd_if = xstrdup(args->argv[1]);
 	if (args->argc == 3)
@@ -148,7 +155,8 @@ cmd_if_shell_callback(struct job *job)
 	if (cmd == NULL)
 		return;
 
-	if (cmd_string_parse(cmd, &cmdlist, NULL, 0, &cause) != 0) {
+	if (cmd_string_parse(cmd, &cmdlist, cdata->file, cdata->line,
+	    &cause) != 0) {
 		if (cause != NULL) {
 			cmdq_error(cmdq, "%s", cause);
 			free(cause);
@@ -184,6 +192,8 @@ cmd_if_shell_done(struct cmd_q *cmdq1)
 
 	free(cdata->cmd_else);
 	free(cdata->cmd_if);
+
+	free(cdata->file);
 	free(cdata);
 }
 
@@ -201,5 +211,7 @@ cmd_if_shell_free(void *data)
 
 	free(cdata->cmd_else);
 	free(cdata->cmd_if);
+
+	free(cdata->file);
 	free(cdata);
 }
