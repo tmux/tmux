@@ -951,7 +951,7 @@ server_client_check_redraw(struct client *c)
 	struct session		*s = c->session;
 	struct tty		*tty = &c->tty;
 	struct window_pane	*wp;
-	int		 	 flags, masked, redraw;
+	int		 	 flags, masked;
 
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
 		return;
@@ -959,15 +959,7 @@ server_client_check_redraw(struct client *c)
 	if (c->flags & (CLIENT_REDRAW|CLIENT_STATUS)) {
 		if (options_get_number(s->options, "set-titles"))
 			server_client_set_title(c);
-
-		if (c->message_string != NULL)
-			redraw = status_message_redraw(c);
-		else if (c->prompt_string != NULL)
-			redraw = status_prompt_redraw(c);
-		else
-			redraw = status_redraw(c);
-		if (!redraw)
-			c->flags &= ~CLIENT_STATUS;
+		screen_redraw_update(c); /* will adjust flags */
 	}
 
 	flags = tty->flags & (TTY_FREEZE|TTY_NOCURSOR);
