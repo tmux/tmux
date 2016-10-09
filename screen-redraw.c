@@ -328,6 +328,35 @@ screen_redraw_draw_pane_status(struct client *c, int pane_status)
 	tty_cursor(tty, 0, 0);
 }
 
+/* Update status line and change flags if unchanged. */
+void
+screen_redraw_update(struct client *c)
+{
+	struct window		*w = c->session->curw->window;
+	struct window_pane	*wp;
+	struct options		*wo = w->options;
+	int			 redraw;
+
+	if (c->message_string != NULL)
+		redraw = status_message_redraw(c);
+	else if (c->prompt_string != NULL)
+		redraw = status_prompt_redraw(c);
+	else
+		redraw = status_redraw(c);
+	if (!redraw)
+		c->flags &= ~CLIENT_STATUS;
+
+	if (options_get_number(wo, "pane-border-status") != CELL_STATUS_OFF) {
+		redraw = 0;
+		TAILQ_FOREACH(wp, &w->panes, entry) {
+			if (screen_redraw_make_pane_status(c, w, wp))
+				redraw = 1;
+		}
+		if (redraw)
+			c->flags |= CLIENT_BORDERS;
+	}
+}
+
 /* Redraw entire screen. */
 void
 screen_redraw_screen(struct client *c, int draw_panes, int draw_status,
@@ -336,7 +365,7 @@ screen_redraw_screen(struct client *c, int draw_panes, int draw_status,
 	struct options		*oo = c->session->options;
 	struct tty		*tty = &c->tty;
 	struct window		*w = c->session->curw->window;
-	struct window_pane	*wp;
+	struct options		*wo = w->options;
 	u_int			 top;
 	int	 		 status, pane_status, spos;
 
@@ -356,24 +385,17 @@ screen_redraw_screen(struct client *c, int draw_panes, int draw_status,
 	if (!status)
 		draw_status = 0;
 
-	/* Update pane status lines. */
-	pane_status = options_get_number(w->options, "pane-border-status");
-	if (pane_status != CELL_STATUS_OFF && (draw_borders || draw_status)) {
-		TAILQ_FOREACH(wp, &w->panes, entry) {
-			if (screen_redraw_make_pane_status(c, w, wp))
-				draw_borders = draw_status = 1;
-		}
-	}
-
 	/* Draw the elements. */
-	if (draw_borders)
+	if (draw_borders) {
+		pane_status = options_get_number(wo, "pane-border-status");
 		screen_redraw_draw_borders(c, status, pane_status, top);
+		if (pane_status != CELL_STATUS_OFF)
+			screen_redraw_draw_pane_status(c, pane_status);
+	}
 	if (draw_panes)
 		screen_redraw_draw_panes(c, top);
 	if (draw_status)
 		screen_redraw_draw_status(c, top);
-	if (pane_status != CELL_STATUS_OFF && (draw_borders || draw_status))
-		screen_redraw_draw_pane_status(c, pane_status);
 	tty_reset(tty);
 }
 
