@@ -29,33 +29,33 @@
 
 #include "tmux.h"
 
-char   *status_redraw_get_left(struct client *, time_t, struct grid_cell *,
-	    size_t *);
-char   *status_redraw_get_right(struct client *, time_t, struct grid_cell *,
-	    size_t *);
-char   *status_print(struct client *, struct winlink *, time_t,
-	    struct grid_cell *);
-char   *status_replace(struct client *, struct winlink *, const char *, time_t);
-void	status_message_callback(int, short, void *);
-void	status_timer_callback(int, short, void *);
+static char	*status_redraw_get_left(struct client *, time_t,
+		     struct grid_cell *, size_t *);
+static char	*status_redraw_get_right(struct client *, time_t,
+		     struct grid_cell *, size_t *);
+static char	*status_print(struct client *, struct winlink *, time_t,
+		     struct grid_cell *);
+static char	*status_replace(struct client *, struct winlink *, const char *,
+		     time_t);
+static void	 status_message_callback(int, short, void *);
+static void	 status_timer_callback(int, short, void *);
 
-const char *status_prompt_up_history(u_int *);
-const char *status_prompt_down_history(u_int *);
-void	status_prompt_add_history(const char *);
+static char	*status_prompt_find_history_file(void);
+static const char *status_prompt_up_history(u_int *);
+static const char *status_prompt_down_history(u_int *);
+static void	 status_prompt_add_history(const char *);
 
-const char **status_prompt_complete_list(u_int *, const char *);
-char   *status_prompt_complete_prefix(const char **, u_int);
-char   *status_prompt_complete(struct session *, const char *);
-
-char   *status_prompt_find_history_file(void);
+static const char **status_prompt_complete_list(u_int *, const char *);
+static char	*status_prompt_complete_prefix(const char **, u_int);
+static char	*status_prompt_complete(struct session *, const char *);
 
 /* Status prompt history. */
 #define PROMPT_HISTORY 100
-char	**status_prompt_hlist;
-u_int	  status_prompt_hsize;
+static char	**status_prompt_hlist;
+static u_int	  status_prompt_hsize;
 
 /* Find the history file to load/save from/to. */
-char *
+static char *
 status_prompt_find_history_file(void)
 {
 	const char	*home, *history_file;
@@ -144,7 +144,7 @@ status_prompt_save_history(void)
 }
 
 /* Status timer callback. */
-void
+static void
 status_timer_callback(__unused int fd, __unused short events, void *arg)
 {
 	struct client	*c = arg;
@@ -207,7 +207,7 @@ status_at_line(struct client *c)
 }
 
 /* Retrieve options for left string. */
-char *
+static char *
 status_redraw_get_left(struct client *c, time_t t, struct grid_cell *gc,
     size_t *size)
 {
@@ -229,7 +229,7 @@ status_redraw_get_left(struct client *c, time_t t, struct grid_cell *gc,
 }
 
 /* Retrieve options for right string. */
-char *
+static char *
 status_redraw_get_right(struct client *c, time_t t, struct grid_cell *gc,
     size_t *size)
 {
@@ -493,7 +493,7 @@ out:
 }
 
 /* Replace special sequences in fmt. */
-char *
+static char *
 status_replace(struct client *c, struct winlink *wl, const char *fmt, time_t t)
 {
 	struct format_tree	*ft;
@@ -515,7 +515,7 @@ status_replace(struct client *c, struct winlink *wl, const char *fmt, time_t t)
 }
 
 /* Return winlink status line entry and adjust gc as necessary. */
-char *
+static char *
 status_print(struct client *c, struct winlink *wl, time_t t,
     struct grid_cell *gc)
 {
@@ -607,7 +607,7 @@ status_message_clear(struct client *c)
 }
 
 /* Clear status line message after timer expires. */
-void
+static void
 status_message_callback(__unused int fd, __unused short event, void *data)
 {
 	struct client	*c = data;
@@ -1139,7 +1139,7 @@ status_prompt_key(struct client *c, key_code key)
 }
 
 /* Get previous line from the history. */
-const char *
+static const char *
 status_prompt_up_history(u_int *idx)
 {
 	/*
@@ -1154,7 +1154,7 @@ status_prompt_up_history(u_int *idx)
 }
 
 /* Get next line from the history. */
-const char *
+static const char *
 status_prompt_down_history(u_int *idx)
 {
 	if (status_prompt_hsize == 0 || *idx == 0)
@@ -1166,7 +1166,7 @@ status_prompt_down_history(u_int *idx)
 }
 
 /* Add line to the history. */
-void
+static void
 status_prompt_add_history(const char *line)
 {
 	size_t	size;
@@ -1191,7 +1191,7 @@ status_prompt_add_history(const char *line)
 }
 
 /* Build completion list. */
-const char **
+static const char **
 status_prompt_complete_list(u_int *size, const char *s)
 {
 	const char				**list = NULL, **layout;
@@ -1225,7 +1225,7 @@ status_prompt_complete_list(u_int *size, const char *s)
 }
 
 /* Find longest prefix. */
-char *
+static char *
 status_prompt_complete_prefix(const char **list, u_int size)
 {
 	char	 *out;
@@ -1246,7 +1246,7 @@ status_prompt_complete_prefix(const char **list, u_int size)
 }
 
 /* Complete word. */
-char *
+static char *
 status_prompt_complete(struct session *sess, const char *s)
 {
 	const char	**list = NULL, *colon;

@@ -32,21 +32,21 @@
 
 #include "tmux.h"
 
-void		server_client_free(int, short, void *);
-void		server_client_check_focus(struct window_pane *);
-void		server_client_check_resize(struct window_pane *);
-key_code	server_client_check_mouse(struct client *);
-void		server_client_repeat_timer(int, short, void *);
-void		server_client_check_exit(struct client *);
-void		server_client_check_redraw(struct client *);
-void		server_client_set_title(struct client *);
-void		server_client_reset_state(struct client *);
-int		server_client_assume_paste(struct session *);
+static void	server_client_free(int, short, void *);
+static void	server_client_check_focus(struct window_pane *);
+static void	server_client_check_resize(struct window_pane *);
+static key_code	server_client_check_mouse(struct client *);
+static void	server_client_repeat_timer(int, short, void *);
+static void	server_client_check_exit(struct client *);
+static void	server_client_check_redraw(struct client *);
+static void	server_client_set_title(struct client *);
+static void	server_client_reset_state(struct client *);
+static int	server_client_assume_paste(struct session *);
 
-void		server_client_dispatch(struct imsg *, void *);
-void		server_client_dispatch_command(struct client *, struct imsg *);
-void		server_client_dispatch_identify(struct client *, struct imsg *);
-void		server_client_dispatch_shell(struct client *);
+static void	server_client_dispatch(struct imsg *, void *);
+static void	server_client_dispatch_command(struct client *, struct imsg *);
+static void	server_client_dispatch_identify(struct client *, struct imsg *);
+static void	server_client_dispatch_shell(struct client *);
 
 /* Check if this client is inside this server. */
 int
@@ -264,7 +264,7 @@ server_client_unref(struct client *c)
 }
 
 /* Free dead client. */
-void
+static void
 server_client_free(__unused int fd, __unused short events, void *arg)
 {
 	struct client	*c = arg;
@@ -289,7 +289,7 @@ server_client_detach(struct client *c, enum msgtype msgtype)
 }
 
 /* Check for mouse keys. */
-key_code
+static key_code
 server_client_check_mouse(struct client *c)
 {
 	struct session				*s = c->session;
@@ -555,7 +555,7 @@ server_client_check_mouse(struct client *c)
 }
 
 /* Is this fast enough to probably be a paste? */
-int
+static int
 server_client_assume_paste(struct session *s)
 {
 	struct timeval	tv;
@@ -787,7 +787,7 @@ server_client_resize_event(__unused int fd, __unused short events, void *data)
 }
 
 /* Check if pane should be resized. */
-void
+static void
 server_client_check_resize(struct window_pane *wp)
 {
 	struct timeval	 tv = { .tv_usec = 250000 };
@@ -817,7 +817,7 @@ server_client_check_resize(struct window_pane *wp)
 }
 
 /* Check whether pane should be focused. */
-void
+static void
 server_client_check_focus(struct window_pane *wp)
 {
 	struct client	*c;
@@ -878,7 +878,7 @@ focused:
  * tty_region/tty_reset/tty_update_mode already take care of not resetting
  * things that are already in their default state.
  */
-void
+static void
 server_client_reset_state(struct client *c)
 {
 	struct window		*w = c->session->curw->window;
@@ -914,7 +914,7 @@ server_client_reset_state(struct client *c)
 }
 
 /* Repeat time callback. */
-void
+static void
 server_client_repeat_timer(__unused int fd, __unused short events, void *data)
 {
 	struct client	*c = data;
@@ -927,7 +927,7 @@ server_client_repeat_timer(__unused int fd, __unused short events, void *data)
 }
 
 /* Check if client should be exited. */
-void
+static void
 server_client_check_exit(struct client *c)
 {
 	if (!(c->flags & CLIENT_EXIT))
@@ -945,7 +945,7 @@ server_client_check_exit(struct client *c)
 }
 
 /* Check for client redraws. */
-void
+static void
 server_client_check_redraw(struct client *c)
 {
 	struct session		*s = c->session;
@@ -1001,7 +1001,7 @@ server_client_check_redraw(struct client *c)
 }
 
 /* Set client title. */
-void
+static void
 server_client_set_title(struct client *c)
 {
 	struct session		*s = c->session;
@@ -1026,7 +1026,7 @@ server_client_set_title(struct client *c)
 }
 
 /* Dispatch message from client. */
-void
+static void
 server_client_dispatch(struct imsg *imsg, void *arg)
 {
 	struct client		*c = arg;
@@ -1130,7 +1130,7 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 }
 
 /* Handle command message. */
-void
+static void
 server_client_dispatch_command(struct client *c, struct imsg *imsg)
 {
 	struct msg_command_data	  data;
@@ -1183,7 +1183,7 @@ error:
 }
 
 /* Handle identify message. */
-void
+static void
 server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 {
 	const char	*data, *home;
@@ -1291,7 +1291,7 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 }
 
 /* Handle shell message. */
-void
+static void
 server_client_dispatch_shell(struct client *c)
 {
 	const char	*shell;

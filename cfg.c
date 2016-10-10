@@ -36,7 +36,7 @@ char		**cfg_causes;
 u_int		  cfg_ncauses;
 struct client	 *cfg_client;
 
-void	cfg_default_done(struct cmd_q *);
+static void	  cfg_default_done(struct cmd_q *);
 
 void
 set_cfg_file(const char *path)
@@ -126,7 +126,7 @@ load_cfg(const char *path, struct cmd_q *cmdq, int quiet)
 	return (found);
 }
 
-void
+static void
 cfg_default_done(__unused struct cmd_q *cmdq)
 {
 	if (--cfg_references != 0)

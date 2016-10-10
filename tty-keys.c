@@ -50,7 +50,7 @@ struct tty_default_key_raw {
 	const char	       *string;
 	key_code	 	key;
 };
-const struct tty_default_key_raw tty_default_raw_keys[] = {
+static const struct tty_default_key_raw tty_default_raw_keys[] = {
 	/*
 	 * Numeric keypad. Just use the vt100 escape sequences here and always
 	 * put the terminal into keypad_xmit mode. Translation of numbers
@@ -170,7 +170,7 @@ struct tty_default_key_code {
 	enum tty_code_code	code;
 	key_code	 	key;
 };
-const struct tty_default_key_code tty_default_code_keys[] = {
+static const struct tty_default_key_code tty_default_code_keys[] = {
 	/* Function keys. */
 	{ TTYC_KF1, KEYC_F1 },
 	{ TTYC_KF2, KEYC_F2 },

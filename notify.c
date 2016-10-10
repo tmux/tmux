@@ -43,12 +43,13 @@ struct notify_entry {
 
 	TAILQ_ENTRY(notify_entry) entry;
 };
-TAILQ_HEAD(, notify_entry) notify_queue = TAILQ_HEAD_INITIALIZER(notify_queue);
-int	notify_enabled = 1;
+TAILQ_HEAD(notify_queue, notify_entry);
+static struct notify_queue notify_queue = TAILQ_HEAD_INITIALIZER(notify_queue);
+static int	notify_enabled = 1;
 
-void	notify_drain(void);
-void	notify_add(enum notify_type, struct client *, struct session *,
-	    struct window *);
+static void	notify_drain(void);
+static void	notify_add(enum notify_type, struct client *, struct session *,
+		    struct window *);
 
 void
 notify_enable(void)
@@ -63,7 +64,7 @@ notify_disable(void)
 	notify_enabled = 0;
 }
 
-void
+static void
 notify_add(enum notify_type type, struct client *c, struct session *s,
     struct window *w)
 {
@@ -84,7 +85,7 @@ notify_add(enum notify_type type, struct client *c, struct session *s,
 		w->references++;
 }
 
-void
+static void
 notify_drain(void)
 {
 	struct notify_entry	*ne, *ne1;

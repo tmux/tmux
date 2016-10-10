@@ -27,16 +27,16 @@
 
 #include "tmux.h"
 
-struct sessions	sessions;
-u_int		next_session_id;
-struct session_groups session_groups;
+struct sessions		sessions;
+static u_int		next_session_id;
+struct session_groups	session_groups;
 
-void	session_free(int, short, void *);
+static void	session_free(int, short, void *);
 
-void	session_lock_timer(int, short, void *);
+static void	session_lock_timer(int, short, void *);
 
-struct winlink *session_next_alert(struct winlink *);
-struct winlink *session_previous_alert(struct winlink *);
+static struct winlink *session_next_alert(struct winlink *);
+static struct winlink *session_previous_alert(struct winlink *);
 
 RB_GENERATE(sessions, session, entry, session_cmp);
 
@@ -182,7 +182,7 @@ session_unref(struct session *s)
 }
 
 /* Free session. */
-void
+static void
 session_free(__unused int fd, __unused short events, void *arg)
 {
 	struct session	*s = arg;
@@ -239,7 +239,7 @@ session_check_name(const char *name)
 }
 
 /* Lock session if it has timed out. */
-void
+static void
 session_lock_timer(__unused int fd, __unused short events, void *arg)
 {
 	struct session	*s = arg;
@@ -426,7 +426,7 @@ session_is_linked(struct session *s, struct window *w)
 	return (w->references != 1);
 }
 
-struct winlink *
+static struct winlink *
 session_next_alert(struct winlink *wl)
 {
 	while (wl != NULL) {
@@ -457,7 +457,7 @@ session_next(struct session *s, int alert)
 	return (session_set_current(s, wl));
 }
 
-struct winlink *
+static struct winlink *
 session_previous_alert(struct winlink *wl)
 {
 	while (wl != NULL) {

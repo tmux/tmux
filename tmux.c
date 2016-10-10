@@ -44,10 +44,10 @@ struct hooks	*global_hooks;
 struct timeval	 start_time;
 const char	*socket_path;
 
-__dead void	 usage(void);
-static char	*make_label(const char *);
+static __dead void	 usage(void);
+static char		*make_label(const char *);
 
-__dead void
+static __dead void
 usage(void)
 {
 	fprintf(stderr,

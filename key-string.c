@@ -25,7 +25,7 @@
 static key_code	key_string_search_table(const char *);
 static key_code	key_string_get_modifiers(const char **);
 
-const struct {
+static const struct {
 	const char     *string;
 	key_code	key;
 } key_string_table[] = {

@@ -28,8 +28,8 @@
 
 #include "tmux.h"
 
-struct session *server_next_session(struct session *);
-void		server_callback_identify(int, short, void *);
+static struct session	*server_next_session(struct session *);
+static void		 server_callback_identify(int, short, void *);
 
 void
 server_fill_environ(struct session *s, struct environ *env)
@@ -355,7 +355,7 @@ server_destroy_session_group(struct session *s)
 	}
 }
 
-struct session *
+static struct session *
 server_next_session(struct session *s)
 {
 	struct session *s_loop, *s_out;
@@ -454,7 +454,7 @@ server_clear_identify(struct client *c, struct window_pane *wp)
 	server_redraw_client(c);
 }
 
-void
+static void
 server_callback_identify(__unused int fd, __unused short events, void *data)
 {
 	server_clear_identify(data, NULL);

@@ -54,7 +54,7 @@ struct mode_key_entry {
 };
 
 /* Edit keys command strings. */
-const struct mode_key_cmdstr mode_key_cmdstr_edit[] = {
+static const struct mode_key_cmdstr mode_key_cmdstr_edit[] = {
 	{ MODEKEYEDIT_BACKSPACE, "backspace" },
 	{ MODEKEYEDIT_CANCEL, "cancel" },
 	{ MODEKEYEDIT_COMPLETE, "complete" },
@@ -89,7 +89,7 @@ const struct mode_key_cmdstr mode_key_cmdstr_edit[] = {
 };
 
 /* Choice keys command strings. */
-const struct mode_key_cmdstr mode_key_cmdstr_choice[] = {
+static const struct mode_key_cmdstr mode_key_cmdstr_choice[] = {
 	{ MODEKEYCHOICE_BACKSPACE, "backspace" },
 	{ MODEKEYCHOICE_BOTTOMLINE, "bottom-line"},
 	{ MODEKEYCHOICE_CANCEL, "cancel" },
@@ -114,7 +114,7 @@ const struct mode_key_cmdstr mode_key_cmdstr_choice[] = {
 };
 
 /* Copy keys command strings. */
-const struct mode_key_cmdstr mode_key_cmdstr_copy[] = {
+static const struct mode_key_cmdstr mode_key_cmdstr_copy[] = {
 	{ MODEKEYCOPY_APPENDSELECTION, "append-selection" },
 	{ MODEKEYCOPY_BACKTOINDENTATION, "back-to-indentation" },
 	{ MODEKEYCOPY_BOTTOMLINE, "bottom-line" },
@@ -170,7 +170,7 @@ const struct mode_key_cmdstr mode_key_cmdstr_copy[] = {
 };
 
 /* vi editing keys. */
-const struct mode_key_entry mode_key_vi_edit[] = {
+static const struct mode_key_entry mode_key_vi_edit[] = {
 	{ '\003' /* C-c */,	    0, MODEKEYEDIT_CANCEL, 1 },
 	{ '\010' /* C-h */,	    0, MODEKEYEDIT_BACKSPACE, 1 },
 	{ '\011' /* Tab */,	    0, MODEKEYEDIT_COMPLETE, 1 },
@@ -229,7 +229,7 @@ const struct mode_key_entry mode_key_vi_edit[] = {
 struct mode_key_tree mode_key_tree_vi_edit;
 
 /* vi choice selection keys. */
-const struct mode_key_entry mode_key_vi_choice[] = {
+static const struct mode_key_entry mode_key_vi_choice[] = {
 	{ '0' | KEYC_ESCAPE,	    0, MODEKEYCHOICE_STARTNUMBERPREFIX, 1 },
 	{ '1' | KEYC_ESCAPE,	    0, MODEKEYCHOICE_STARTNUMBERPREFIX, 1 },
 	{ '2' | KEYC_ESCAPE,	    0, MODEKEYCHOICE_STARTNUMBERPREFIX, 1 },
@@ -278,7 +278,7 @@ const struct mode_key_entry mode_key_vi_choice[] = {
 struct mode_key_tree mode_key_tree_vi_choice;
 
 /* vi copy mode keys. */
-const struct mode_key_entry mode_key_vi_copy[] = {
+static const struct mode_key_entry mode_key_vi_copy[] = {
 	{ ' ',			    0, MODEKEYCOPY_STARTSELECTION, 1 },
 	{ '"',			    0, MODEKEYCOPY_STARTNAMEDBUFFER, 1 },
 	{ '$',			    0, MODEKEYCOPY_ENDOFLINE, 1 },
@@ -359,7 +359,7 @@ const struct mode_key_entry mode_key_vi_copy[] = {
 struct mode_key_tree mode_key_tree_vi_copy;
 
 /* emacs editing keys. */
-const struct mode_key_entry mode_key_emacs_edit[] = {
+static const struct mode_key_entry mode_key_emacs_edit[] = {
 	{ '\001' /* C-a */,	    0, MODEKEYEDIT_STARTOFLINE, 1 },
 	{ '\002' /* C-b */,	    0, MODEKEYEDIT_CURSORLEFT, 1 },
 	{ '\003' /* C-c */,	    0, MODEKEYEDIT_CANCEL, 1 },
@@ -395,7 +395,7 @@ const struct mode_key_entry mode_key_emacs_edit[] = {
 struct mode_key_tree mode_key_tree_emacs_edit;
 
 /* emacs choice selection keys. */
-const struct mode_key_entry mode_key_emacs_choice[] = {
+static const struct mode_key_entry mode_key_emacs_choice[] = {
 	{ '0' | KEYC_ESCAPE,	    0, MODEKEYCHOICE_STARTNUMBERPREFIX, 1 },
 	{ '1' | KEYC_ESCAPE,	    0, MODEKEYCHOICE_STARTNUMBERPREFIX, 1 },
 	{ '2' | KEYC_ESCAPE,	    0, MODEKEYCHOICE_STARTNUMBERPREFIX, 1 },
@@ -442,7 +442,7 @@ const struct mode_key_entry mode_key_emacs_choice[] = {
 struct mode_key_tree mode_key_tree_emacs_choice;
 
 /* emacs copy mode keys. */
-const struct mode_key_entry mode_key_emacs_copy[] = {
+static const struct mode_key_entry mode_key_emacs_copy[] = {
 	{ ' ',			    0, MODEKEYCOPY_NEXTPAGE, 1 },
 	{ ',',			    0, MODEKEYCOPY_JUMPREVERSE, 1 },
 	{ ';',			    0, MODEKEYCOPY_JUMPAGAIN, 1 },

@@ -27,8 +27,8 @@
 
 #include "tmux.h"
 
-void	 tty_term_override(struct tty_term *, const char *);
-char	*tty_term_strip(const char *);
+static void	 tty_term_override(struct tty_term *, const char *);
+static char	*tty_term_strip(const char *);
 
 struct tty_terms tty_terms = LIST_HEAD_INITIALIZER(tty_terms);
 
@@ -53,7 +53,7 @@ struct tty_term_code_entry {
 	const char	       *name;
 };
 
-const struct tty_term_code_entry tty_term_codes[] = {
+static const struct tty_term_code_entry tty_term_codes[] = {
 	[TTYC_ACSC] = { TTYCODE_STRING, "acsc" },
 	[TTYC_AX] = { TTYCODE_FLAG, "AX" },
 	[TTYC_BCE] = { TTYCODE_FLAG, "bce" },
@@ -264,7 +264,7 @@ tty_term_ncodes(void)
 	return (nitems(tty_term_codes));
 }
 
-char *
+static char *
 tty_term_strip(const char *s)
 {
 	const char     *ptr;
@@ -293,7 +293,7 @@ tty_term_strip(const char *s)
 	return (xstrdup(buf));
 }
 
-void
+static void
 tty_term_override(struct tty_term *term, const char *overrides)
 {
 	const struct tty_term_code_entry	*ent;

@@ -31,31 +31,32 @@
 
 #include "tmux.h"
 
-static int tty_log_fd = -1;
+static int	tty_log_fd = -1;
 
-void	tty_read_callback(struct bufferevent *, void *);
-void	tty_error_callback(struct bufferevent *, short, void *);
+static void	tty_read_callback(struct bufferevent *, void *);
+static void	tty_error_callback(struct bufferevent *, short, void *);
 
-static int tty_client_ready(struct client *, struct window_pane *);
+static int	tty_client_ready(struct client *, struct window_pane *);
 
-void	tty_set_italics(struct tty *);
-int	tty_try_colour(struct tty *, int, const char *);
+static void	tty_set_italics(struct tty *);
+static int	tty_try_colour(struct tty *, int, const char *);
 
-void	tty_colours(struct tty *, const struct grid_cell *);
-void	tty_check_fg(struct tty *, struct grid_cell *);
-void	tty_check_bg(struct tty *, struct grid_cell *);
-void	tty_colours_fg(struct tty *, const struct grid_cell *);
-void	tty_colours_bg(struct tty *, const struct grid_cell *);
+static void	tty_colours(struct tty *, const struct grid_cell *);
+static void	tty_check_fg(struct tty *, struct grid_cell *);
+static void	tty_check_bg(struct tty *, struct grid_cell *);
+static void	tty_colours_fg(struct tty *, const struct grid_cell *);
+static void	tty_colours_bg(struct tty *, const struct grid_cell *);
 
-int	tty_large_region(struct tty *, const struct tty_ctx *);
-int	tty_fake_bce(const struct tty *, const struct window_pane *);
-void	tty_redraw_region(struct tty *, const struct tty_ctx *);
-void	tty_emulate_repeat(struct tty *, enum tty_code_code, enum tty_code_code,
-	    u_int);
-void	tty_repeat_space(struct tty *, u_int);
-void	tty_cell(struct tty *, const struct grid_cell *,
-	    const struct window_pane *);
-void	tty_default_colours(struct grid_cell *, const struct window_pane *);
+static int	tty_large_region(struct tty *, const struct tty_ctx *);
+static int	tty_fake_bce(const struct tty *, const struct window_pane *);
+static void	tty_redraw_region(struct tty *, const struct tty_ctx *);
+static void	tty_emulate_repeat(struct tty *, enum tty_code_code,
+		    enum tty_code_code, u_int);
+static void	tty_repeat_space(struct tty *, u_int);
+static void	tty_cell(struct tty *, const struct grid_cell *,
+		    const struct window_pane *);
+static void	tty_default_colours(struct grid_cell *,
+		    const struct window_pane *);
 
 #define tty_use_acs(tty) \
 	(tty_term_has((tty)->term, TTYC_ACSC) && !((tty)->flags & TTY_UTF8))
@@ -173,7 +174,7 @@ tty_open(struct tty *tty, char **cause)
 	return (0);
 }
 
-void
+static void
 tty_read_callback(__unused struct bufferevent *bufev, void *data)
 {
 	struct tty	*tty = data;
@@ -182,7 +183,7 @@ tty_read_callback(__unused struct bufferevent *bufev, void *data)
 		;
 }
 
-void
+static void
 tty_error_callback(__unused struct bufferevent *bufev, __unused short what,
     __unused void *data)
 {
@@ -450,7 +451,7 @@ tty_putn(struct tty *tty, const void *buf, size_t len, u_int width)
 	tty->cx += width;
 }
 
-void
+static void
 tty_set_italics(struct tty *tty)
 {
 	const char	*s;
@@ -559,7 +560,7 @@ tty_update_mode(struct tty *tty, int mode, struct screen *s)
 	tty->mode = mode;
 }
 
-void
+static void
 tty_emulate_repeat(struct tty *tty, enum tty_code_code code,
     enum tty_code_code code1, u_int n)
 {
@@ -571,7 +572,7 @@ tty_emulate_repeat(struct tty *tty, enum tty_code_code code,
 	}
 }
 
-void
+static void
 tty_repeat_space(struct tty *tty, u_int n)
 {
 	while (n-- > 0)
@@ -583,7 +584,7 @@ tty_repeat_space(struct tty *tty, u_int n)
  * probably several times now? Currently yes if it is more than 50% of the
  * pane.
  */
-int
+static int
 tty_large_region(__unused struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
@@ -595,7 +596,7 @@ tty_large_region(__unused struct tty *tty, const struct tty_ctx *ctx)
  * Return if BCE is needed but the terminal doesn't have it - it'll need to be
  * emulated.
  */
-int
+static int
 tty_fake_bce(const struct tty *tty, const struct window_pane *wp)
 {
 	struct grid_cell	gc;
@@ -614,7 +615,7 @@ tty_fake_bce(const struct tty *tty, const struct window_pane *wp)
  * CSR not supported, or window is a pane that doesn't take up the full
  * width of the terminal.
  */
-void
+static void
 tty_redraw_region(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
@@ -1129,7 +1130,7 @@ tty_cmd_rawstring(struct tty *tty, const struct tty_ctx *ctx)
 	tty_cursor(tty, 0, 0);
 }
 
-void
+static void
 tty_cell(struct tty *tty, const struct grid_cell *gc,
     const struct window_pane *wp)
 {
@@ -1419,7 +1420,7 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
 		tty_putcode(tty, TTYC_SMACS);
 }
 
-void
+static void
 tty_colours(struct tty *tty, const struct grid_cell *gc)
 {
 	struct grid_cell	*tc = &tty->cell;
@@ -1559,7 +1560,7 @@ tty_check_bg(struct tty *tty, struct grid_cell *gc)
 		gc->bg -= 90;
 }
 
-void
+static void
 tty_colours_fg(struct tty *tty, const struct grid_cell *gc)
 {
 	struct grid_cell	*tc = &tty->cell;
@@ -1589,7 +1590,7 @@ save_fg:
 	tc->fg = gc->fg;
 }
 
-void
+static void
 tty_colours_bg(struct tty *tty, const struct grid_cell *gc)
 {
 	struct grid_cell	*tc = &tty->cell;
@@ -1619,7 +1620,7 @@ save_bg:
 	tc->bg = gc->bg;
 }
 
-int
+static int
 tty_try_colour(struct tty *tty, int colour, const char *type)
 {
 	u_char	r, g, b;
@@ -1672,7 +1673,7 @@ fallback_256:
 	return (0);
 }
 
-void
+static void
 tty_default_colours(struct grid_cell *gc, const struct window_pane *wp)
 {
 	struct window		*w = wp->window;
