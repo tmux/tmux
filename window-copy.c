@@ -24,7 +24,11 @@
 
 #include "tmux.h"
 
+#define COPY_CLICK_TIMEOUT 200
+
 struct screen *window_copy_init(struct window_pane *);
+void	window_copy_click_timer(int, short, void *);
+void	window_copy_init_from_pane(struct window_pane *, int);
 void	window_copy_free(struct window_pane *);
 void	window_copy_pagedown(struct window_pane *, int);
 void	window_copy_next_paragraph(struct window_pane *);
@@ -93,7 +97,12 @@ void	window_copy_scroll_up(struct window_pane *, u_int);
 void	window_copy_scroll_down(struct window_pane *, u_int);
 void	window_copy_rectangle_toggle(struct window_pane *);
 void	window_copy_drag_update(struct client *, struct mouse_event *);
-void	window_copy_drag_release(struct client *, struct mouse_event *);
+void	window_copy_cursor_select_forward(struct window_pane *, const char *);
+void	window_copy_cursor_select_back(struct window_pane *, const char *);
+void	window_copy_select_word(struct client *, struct mouse_event *, int);
+void	window_copy_update_word(struct client *, struct mouse_event *);
+void	window_copy_select_line(struct client *, struct mouse_event *, int);
+void	window_copy_update_line(struct client *, struct mouse_event *);
 
 const struct window_mode window_copy_mode = {
 	window_copy_init,
@@ -113,6 +122,12 @@ enum window_copy_input_type {
 	WINDOW_COPY_JUMPTOFORWARD,
 	WINDOW_COPY_JUMPTOBACK,
 	WINDOW_COPY_GOTOLINE,
+};
+
+enum window_copy_click_state {
+	WINDOW_COPY_CLICK_NONE,
+	WINDOW_COPY_CLICK_DOUBLE,
+	WINDOW_COPY_CLICK_TRIPLE,
 };
 
 /*
@@ -165,7 +180,26 @@ struct window_copy_mode_data {
 
 	enum window_copy_input_type jumptype;
 	char			 jumpchar;
+
+	enum window_copy_click_state click_state;
+	struct event		 click_timer;
+	u_int			 click_button;
 };
+
+int
+window_enter_copy_mode(struct window_pane *wp, int scroll_exit)
+{
+	if (wp == NULL)
+		return 1;
+
+	if (wp->mode != &window_copy_mode) {
+		if (window_pane_set_mode(wp, &window_copy_mode) != 0)
+			return 1;
+		window_copy_init_from_pane(wp, scroll_exit);
+	}
+
+	return 0;
+}
 
 struct screen *
 window_copy_init(struct window_pane *wp)
@@ -201,6 +235,10 @@ window_copy_init(struct window_pane *wp)
 	data->jumptype = WINDOW_COPY_OFF;
 	data->jumpchar = '\0';
 
+	data->click_state = WINDOW_COPY_CLICK_NONE;
+	evtimer_set(&data->click_timer, window_copy_click_timer, data);
+	data->click_button = 0;
+
 	s = &data->screen;
 	screen_init(s, screen_size_x(&wp->base), screen_size_y(&wp->base), 0);
 
@@ -214,6 +252,15 @@ window_copy_init(struct window_pane *wp)
 	data->backing = NULL;
 
 	return (s);
+}
+
+void
+window_copy_click_timer(__unused int fd, __unused short events, void *arg)
+{
+	struct window_copy_mode_data	*data = arg;
+
+	data->click_state = WINDOW_COPY_CLICK_NONE;
+	data->click_button = 0;
 }
 
 void
@@ -259,6 +306,8 @@ window_copy_free(struct window_pane *wp)
 
 	if (wp->fd != -1)
 		bufferevent_enable(wp->event, EV_READ|EV_WRITE);
+
+	evtimer_del(&data->click_timer);
 
 	free(data->searchstr);
 	free(data->inputstr);
@@ -654,7 +703,7 @@ window_copy_key(struct window_pane *wp, struct client *c, struct session *sess,
 	case MODEKEYCOPY_STARTSELECTION:
 		if (KEYC_IS_MOUSE(key)) {
 			if (c != NULL)
-				window_copy_start_drag(c, m);
+				window_copy_start_drag(c, m, 0);
 		} else {
 			s->sel.lineflag = LINE_SEL_NONE;
 			window_copy_start_selection(wp);
@@ -2337,13 +2386,13 @@ window_copy_rectangle_toggle(struct window_pane *wp)
 }
 
 void
-window_copy_start_drag(struct client *c, struct mouse_event *m)
+window_copy_start_drag(struct client *c, struct mouse_event *m, int scroll_exit)
 {
 	struct window_pane	*wp;
 	u_int			 x, y;
 
 	wp = cmd_mouse_pane(m, NULL, NULL);
-	if (wp == NULL || wp->mode != &window_copy_mode)
+	if (window_enter_copy_mode(wp, scroll_exit) != 0)
 		return;
 
 	if (cmd_mouse_at(wp, m, &x, &y, 1) != 0)
@@ -2376,4 +2425,231 @@ window_copy_drag_update(__unused struct client *c, struct mouse_event *m)
 	window_copy_update_cursor(wp, x, y);
 	if (window_copy_update_selection(wp, 1))
 		window_copy_redraw_selection(wp, old_cy);
+}
+
+void
+window_copy_mouse_down(struct client *c, struct mouse_event *m, int scroll_exit)
+{
+	struct window_pane		*wp;
+	struct window_copy_mode_data	*data;
+	struct timeval			 tv;
+
+	wp = cmd_mouse_pane(m, NULL, NULL);
+	if (window_enter_copy_mode(wp, scroll_exit) != 0)
+		return;
+	data = wp->modedata;
+
+	evtimer_del(&data->click_timer);
+	switch (data->click_state) {
+	case WINDOW_COPY_CLICK_NONE:
+		data->click_state = WINDOW_COPY_CLICK_DOUBLE;
+		data->click_button = MOUSE_BUTTONS(m->b);
+		break;
+	case WINDOW_COPY_CLICK_DOUBLE:
+		if (MOUSE_BUTTONS(m->b) != data->click_button) {
+			data->click_state = WINDOW_COPY_CLICK_NONE;
+			return;
+		}
+		data->click_state = WINDOW_COPY_CLICK_TRIPLE;
+		window_copy_select_word(c, m, scroll_exit);
+		break;
+	case WINDOW_COPY_CLICK_TRIPLE:
+		data->click_state = WINDOW_COPY_CLICK_NONE;
+		if (MOUSE_BUTTONS(m->b) == data->click_button)
+			window_copy_select_line(c, m, scroll_exit);
+		return;
+	}
+	tv.tv_sec = COPY_CLICK_TIMEOUT / 1000;
+	tv.tv_usec = (COPY_CLICK_TIMEOUT % 1000) * 1000L;
+	evtimer_add(&data->click_timer, &tv);
+}
+
+void
+window_copy_select_word(struct client *c, struct mouse_event *m, int scroll_exit)
+{
+	struct session                  *sess = c->session;
+	struct window_pane		*wp;
+	struct window_copy_mode_data	*data;
+	struct screen			*s;
+	const char			*word_separators;
+	u_int				 x, y;
+
+	wp = cmd_mouse_pane(m, NULL, NULL);
+	if (window_enter_copy_mode(wp, scroll_exit) != 0)
+		return;
+	data = wp->modedata;
+	s = &data->screen;
+
+	if (cmd_mouse_at(wp, m, &x, &y, 0) != 0)
+		return;
+
+	word_separators = options_get_string(sess->options, "word-separators");
+
+	c->tty.mouse_drag_update = window_copy_update_word;
+	c->tty.mouse_drag_release = NULL; /* will fire MouseUp key */
+
+	window_copy_update_cursor(wp, x, y);
+	window_copy_cursor_select_back(wp, word_separators);
+	s->sel.lineflag = LINE_SEL_NONE;
+	window_copy_start_selection(wp);
+	window_copy_cursor_select_forward(wp, word_separators);
+	window_copy_redraw_screen(wp);
+}
+
+void
+window_copy_update_word(struct client *c, struct mouse_event *m)
+{
+	struct session                  *sess = c->session;
+	struct window_pane		*wp;
+	struct window_copy_mode_data	*data;
+	const char			*word_separators;
+	u_int				 x, y, py, old_py;
+	int				 fwd, old_fwd;
+
+	wp = cmd_mouse_pane(m, NULL, NULL);
+	if (wp == NULL || wp->mode != &window_copy_mode)
+		return;
+	data = wp->modedata;
+
+	if (cmd_mouse_at(wp, m, &x, &y, 0) != 0)
+		return;
+
+	word_separators = options_get_string(sess->options, "word-separators");
+
+	old_py = screen_hsize(data->backing) + data->cy - data->oy;
+	old_fwd = (old_py > data->sely) ||
+	    (old_py == data->sely && data->cx > data->selx);
+	py = screen_hsize(data->backing) + y - data->oy;
+	fwd = (py > data->sely) || (py == data->sely && x > data->selx);
+
+	if (old_fwd != fwd) {
+		data->cx = data->selx;
+		data->cy = data->sely + data->oy - screen_hsize(data->backing);
+		if (fwd)
+			window_copy_cursor_select_back(wp, word_separators);
+		else
+			window_copy_cursor_select_forward(wp, word_separators);
+		data->selx = data->cx;
+	}
+
+	window_copy_update_cursor(wp, x, y);
+
+	if (fwd)
+		window_copy_cursor_select_forward(wp, word_separators);
+	else
+		window_copy_cursor_select_back(wp, word_separators);
+
+	window_copy_redraw_screen(wp);
+}
+
+void
+window_copy_cursor_select_forward(struct window_pane *wp,
+    const char *separators)
+{
+	struct window_copy_mode_data	*data = wp->modedata;
+	struct screen			*back_s = data->backing;
+	u_int				 px, py, xx;
+	int				 expected;
+
+	px = data->cx;
+	py = screen_hsize(back_s) + data->cy - data->oy;
+	xx = window_copy_find_length(wp, py);
+
+	expected = window_copy_in_set(wp, px, py, separators);
+	while (px + 1 < xx &&
+	       window_copy_in_set(wp, px + 1, py, separators) == expected)
+		px++;
+
+	window_copy_update_cursor(wp, px, data->cy);
+	if (window_copy_update_selection(wp, 1))
+		window_copy_redraw_lines(wp, data->cy, 1);
+}
+
+void
+window_copy_cursor_select_back(struct window_pane *wp, const char *separators)
+{
+	struct window_copy_mode_data	*data = wp->modedata;
+	u_int				 px, py;
+	int				 expected;
+
+	px = data->cx;
+	py = screen_hsize(data->backing) + data->cy - data->oy;
+
+	expected = window_copy_in_set(wp, px, py, separators);
+	while (px > 0 &&
+	       window_copy_in_set(wp, px - 1, py, separators) == expected)
+		px--;
+
+	window_copy_update_cursor(wp, px, data->cy);
+	if (window_copy_update_selection(wp, 1))
+		window_copy_redraw_lines(wp, data->cy, 1);
+}
+
+void
+window_copy_select_line(__unused struct client *c, struct mouse_event *m, int scroll_exit)
+{
+	struct window_pane		*wp;
+	struct window_copy_mode_data	*data;
+	struct screen			*s;
+	u_int				 x, y;
+
+	wp = cmd_mouse_pane(m, NULL, NULL);
+	if (window_enter_copy_mode(wp, scroll_exit) != 0)
+		return;
+	data = wp->modedata;
+	s = &data->screen;
+
+	if (cmd_mouse_at(wp, m, &x, &y, 0) != 0)
+		return;
+
+	c->tty.mouse_drag_update = window_copy_update_line;
+	c->tty.mouse_drag_release = NULL; /* will fire MouseUp key */
+
+	window_copy_update_cursor(wp, x, y);
+
+	s->sel.lineflag = LINE_SEL_LEFT_RIGHT;
+	data->rectflag = 0;
+	window_copy_cursor_start_of_line(wp);
+	window_copy_start_selection(wp);
+	window_copy_cursor_end_of_line(wp);
+	window_copy_redraw_screen(wp);
+}
+
+void
+window_copy_update_line(__unused struct client *c, struct mouse_event *m)
+{
+	struct window_pane		*wp;
+	struct window_copy_mode_data	*data;
+	struct screen			*s;
+	u_int				 x, y, py, cx;
+
+	wp = cmd_mouse_pane(m, NULL, NULL);
+	if (wp == NULL || wp->mode != &window_copy_mode)
+		return;
+	data = wp->modedata;
+	s = &data->screen;
+
+	if (cmd_mouse_at(wp, m, &x, &y, 0) != 0)
+		return;
+
+	py = screen_hsize(data->backing) + y - data->oy;
+	if ((s->sel.lineflag == LINE_SEL_LEFT_RIGHT && py < data->sely) ||
+	    (s->sel.lineflag == LINE_SEL_RIGHT_LEFT && py > data->sely)) {
+		if (s->sel.lineflag == LINE_SEL_LEFT_RIGHT)
+			s->sel.lineflag = LINE_SEL_RIGHT_LEFT;
+		else if (s->sel.lineflag == LINE_SEL_RIGHT_LEFT)
+			s->sel.lineflag = LINE_SEL_LEFT_RIGHT;
+		cx = data->cx;
+		data->cx = data->selx;
+		data->selx = cx;
+	}
+
+	window_copy_update_cursor(wp, data->cx, y);
+
+	if (s->sel.lineflag == LINE_SEL_LEFT_RIGHT)
+		window_copy_cursor_end_of_line(wp);
+	else if (s->sel.lineflag == LINE_SEL_RIGHT_LEFT)
+		window_copy_cursor_start_of_line(wp);
+
+	window_copy_redraw_screen(wp);
 }
