@@ -36,7 +36,7 @@
 static u_int	layout_resize_check(struct window *, struct layout_cell *,
 		    enum layout_type);
 static int	layout_resize_pane_grow(struct window *, struct layout_cell *,
-		    enum layout_type, int);
+		    enum layout_type, int, int);
 static int	layout_resize_pane_shrink(struct window *, struct layout_cell *,
 		    enum layout_type, int);
 static int	layout_need_status(struct layout_cell *, int);
@@ -532,12 +532,13 @@ layout_resize_pane_to(struct window_pane *wp, enum layout_type type,
 		change = new_size - size;
 
 	/* Resize the pane. */
-	layout_resize_pane(wp, type, change);
+	layout_resize_pane(wp, type, change, 1);
 }
 
 /* Resize a single pane within the layout. */
 void
-layout_resize_pane(struct window_pane *wp, enum layout_type type, int change)
+layout_resize_pane(struct window_pane *wp, enum layout_type type, int change,
+    int opposite)
 {
 	struct window		*w = wp->window;
 	struct layout_cell	*lc, *lcparent;
@@ -562,7 +563,8 @@ layout_resize_pane(struct window_pane *wp, enum layout_type type, int change)
 	needed = change;
 	while (needed != 0) {
 		if (change > 0) {
-			size = layout_resize_pane_grow(w, lc, type, needed);
+			size = layout_resize_pane_grow(w, lc, type, needed,
+			    opposite);
 			needed -= size;
 		} else {
 			size = layout_resize_pane_shrink(w, lc, type, needed);
@@ -582,10 +584,10 @@ layout_resize_pane(struct window_pane *wp, enum layout_type type, int change)
 /* Helper function to grow pane. */
 static int
 layout_resize_pane_grow(struct window *w, struct layout_cell *lc,
-    enum layout_type type, int needed)
+    enum layout_type type, int needed, int opposite)
 {
 	struct layout_cell	*lcadd, *lcremove;
-	u_int			 size;
+	u_int			 size = 0;
 
 	/* Growing. Always add to the current cell. */
 	lcadd = lc;
@@ -600,7 +602,7 @@ layout_resize_pane_grow(struct window *w, struct layout_cell *lc,
 	}
 
 	/* If none found, look towards the head. */
-	if (lcremove == NULL) {
+	if (opposite && lcremove == NULL) {
 		lcremove = TAILQ_PREV(lc, layout_cells, entry);
 		while (lcremove != NULL) {
 			size = layout_resize_check(w, lcremove, type);
@@ -608,9 +610,9 @@ layout_resize_pane_grow(struct window *w, struct layout_cell *lc,
 				break;
 			lcremove = TAILQ_PREV(lcremove, layout_cells, entry);
 		}
-		if (lcremove == NULL)
-			return (0);
 	}
+	if (lcremove == NULL)
+		return (0);
 
 	/* Change the cells. */
 	if (size > (u_int) needed)
