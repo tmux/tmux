@@ -2219,7 +2219,7 @@ void		 layout_init(struct window *, struct window_pane *);
 void		 layout_free(struct window *);
 void		 layout_resize(struct window *, u_int, u_int);
 void		 layout_resize_pane(struct window_pane *, enum layout_type,
-		     int);
+		     int, int);
 void		 layout_resize_pane_to(struct window_pane *, enum layout_type,
 		     u_int);
 void		 layout_assign_pane(struct layout_cell *, struct window_pane *);
