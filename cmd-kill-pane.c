@@ -26,7 +26,7 @@
  * Kill pane.
  */
 
-enum cmd_retval	 cmd_kill_pane_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	 cmd_kill_pane_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_kill_pane_entry = {
 	.name = "kill-pane",
@@ -41,7 +41,7 @@ const struct cmd_entry cmd_kill_pane_entry = {
 	.exec = cmd_kill_pane_exec
 };
 
-enum cmd_retval
+static enum cmd_retval
 cmd_kill_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct winlink		*wl = cmdq->state.tflag.wl;

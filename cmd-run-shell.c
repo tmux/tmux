@@ -29,11 +29,11 @@
  * Runs a command without a window.
  */
 
-enum cmd_retval	 cmd_run_shell_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	 cmd_run_shell_exec(struct cmd *, struct cmd_q *);
 
-void	cmd_run_shell_callback(struct job *);
-void	cmd_run_shell_free(void *);
-void	cmd_run_shell_print(struct job *, const char *);
+static void	cmd_run_shell_callback(struct job *);
+static void	cmd_run_shell_free(void *);
+static void	cmd_run_shell_print(struct job *, const char *);
 
 const struct cmd_entry cmd_run_shell_entry = {
 	.name = "run-shell",
@@ -55,7 +55,7 @@ struct cmd_run_shell_data {
 	int		 wp_id;
 };
 
-void
+static void
 cmd_run_shell_print(struct job *job, const char *msg)
 {
 	struct cmd_run_shell_data	*cdata = job->data;
@@ -74,7 +74,7 @@ cmd_run_shell_print(struct job *job, const char *msg)
 		window_copy_add(wp, "%s", msg);
 }
 
-enum cmd_retval
+static enum cmd_retval
 cmd_run_shell_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args			*args = self->args;
@@ -113,7 +113,7 @@ cmd_run_shell_exec(struct cmd *self, struct cmd_q *cmdq)
 	return (CMD_RETURN_WAIT);
 }
 
-void
+static void
 cmd_run_shell_callback(struct job *job)
 {
 	struct cmd_run_shell_data	*cdata = job->data;
@@ -161,7 +161,7 @@ cmd_run_shell_callback(struct job *job)
 	free(msg);
 }
 
-void
+static void
 cmd_run_shell_free(void *data)
 {
 	struct cmd_run_shell_data	*cdata = data;

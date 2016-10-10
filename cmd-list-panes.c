@@ -26,13 +26,13 @@
  * List panes on given window.
  */
 
-enum cmd_retval	 cmd_list_panes_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	 cmd_list_panes_exec(struct cmd *, struct cmd_q *);
 
-void	cmd_list_panes_server(struct cmd *, struct cmd_q *);
-void	cmd_list_panes_session(struct cmd *, struct session *, struct cmd_q *,
-	    int);
-void	cmd_list_panes_window(struct cmd *, struct session *, struct winlink *,
-	    struct cmd_q *, int);
+static void	cmd_list_panes_server(struct cmd *, struct cmd_q *);
+static void	cmd_list_panes_session(struct cmd *, struct session *,
+		    struct cmd_q *, int);
+static void	cmd_list_panes_window(struct cmd *, struct session *,
+		    struct winlink *, struct cmd_q *, int);
 
 const struct cmd_entry cmd_list_panes_entry = {
 	.name = "list-panes",
@@ -47,7 +47,7 @@ const struct cmd_entry cmd_list_panes_entry = {
 	.exec = cmd_list_panes_exec
 };
 
-enum cmd_retval
+static enum cmd_retval
 cmd_list_panes_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args	*args = self->args;
@@ -64,7 +64,7 @@ cmd_list_panes_exec(struct cmd *self, struct cmd_q *cmdq)
 	return (CMD_RETURN_NORMAL);
 }
 
-void
+static void
 cmd_list_panes_server(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct session	*s;
@@ -73,7 +73,7 @@ cmd_list_panes_server(struct cmd *self, struct cmd_q *cmdq)
 		cmd_list_panes_session(self, s, cmdq, 2);
 }
 
-void
+static void
 cmd_list_panes_session(struct cmd *self, struct session *s, struct cmd_q *cmdq,
     int type)
 {
@@ -83,7 +83,7 @@ cmd_list_panes_session(struct cmd *self, struct session *s, struct cmd_q *cmdq,
 		cmd_list_panes_window(self, s, wl, cmdq, type);
 }
 
-void
+static void
 cmd_list_panes_window(struct cmd *self, struct session *s, struct winlink *wl,
     struct cmd_q *cmdq, int type)
 {

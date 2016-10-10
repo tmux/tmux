@@ -26,7 +26,7 @@
  * Switch window to selected layout.
  */
 
-enum cmd_retval	 cmd_select_layout_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	 cmd_select_layout_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_select_layout_entry = {
 	.name = "select-layout",
@@ -67,7 +67,7 @@ const struct cmd_entry cmd_previous_layout_entry = {
 	.exec = cmd_select_layout_exec
 };
 
-enum cmd_retval
+static enum cmd_retval
 cmd_select_layout_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args	*args = self->args;

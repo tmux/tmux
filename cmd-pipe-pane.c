@@ -33,9 +33,9 @@
  * Open pipe to redirect pane output. If already open, close first.
  */
 
-enum cmd_retval	 cmd_pipe_pane_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	 cmd_pipe_pane_exec(struct cmd *, struct cmd_q *);
 
-void	cmd_pipe_pane_error_callback(struct bufferevent *, short, void *);
+static void cmd_pipe_pane_error_callback(struct bufferevent *, short, void *);
 
 const struct cmd_entry cmd_pipe_pane_entry = {
 	.name = "pipe-pane",
@@ -50,7 +50,7 @@ const struct cmd_entry cmd_pipe_pane_entry = {
 	.exec = cmd_pipe_pane_exec
 };
 
-enum cmd_retval
+static enum cmd_retval
 cmd_pipe_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
@@ -142,7 +142,7 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 	}
 }
 
-void
+static void
 cmd_pipe_pane_error_callback(__unused struct bufferevent *bufev,
     __unused short what, void *data)
 {

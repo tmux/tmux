@@ -27,7 +27,7 @@
  * Switch client to a different session.
  */
 
-enum cmd_retval	 cmd_switch_client_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	 cmd_switch_client_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_switch_client_entry = {
 	.name = "switch-client",
@@ -44,7 +44,7 @@ const struct cmd_entry cmd_switch_client_entry = {
 	.exec = cmd_switch_client_exec
 };
 
-enum cmd_retval
+static enum cmd_retval
 cmd_switch_client_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;

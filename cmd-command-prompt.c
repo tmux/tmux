@@ -29,10 +29,10 @@
  * Prompt for command in client.
  */
 
-enum cmd_retval	cmd_command_prompt_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_command_prompt_exec(struct cmd *, struct cmd_q *);
 
-int	cmd_command_prompt_callback(void *, const char *);
-void	cmd_command_prompt_free(void *);
+static int	cmd_command_prompt_callback(void *, const char *);
+static void	cmd_command_prompt_free(void *);
 
 const struct cmd_entry cmd_command_prompt_entry = {
 	.name = "command-prompt",
@@ -58,7 +58,7 @@ struct cmd_command_prompt_cdata {
 	int		 idx;
 };
 
-enum cmd_retval
+static enum cmd_retval
 cmd_command_prompt_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args			*args = self->args;
@@ -115,7 +115,7 @@ cmd_command_prompt_exec(struct cmd *self, struct cmd_q *cmdq)
 	return (CMD_RETURN_NORMAL);
 }
 
-int
+static int
 cmd_command_prompt_callback(void *data, const char *s)
 {
 	struct cmd_command_prompt_cdata	*cdata = data;
@@ -162,7 +162,7 @@ cmd_command_prompt_callback(void *data, const char *s)
 	return (0);
 }
 
-void
+static void
 cmd_command_prompt_free(void *data)
 {
 	struct cmd_command_prompt_cdata	*cdata = data;

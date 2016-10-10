@@ -30,7 +30,7 @@
  * Attach existing session to the current terminal.
  */
 
-enum cmd_retval	cmd_attach_session_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_attach_session_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_attach_session_entry = {
 	.name = "attach-session",
@@ -154,7 +154,7 @@ cmd_attach_session(struct cmd_q *cmdq, int dflag, int rflag, const char *cflag,
 	return (CMD_RETURN_NORMAL);
 }
 
-enum cmd_retval
+static enum cmd_retval
 cmd_attach_session_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args	*args = self->args;

@@ -29,11 +29,11 @@
  * Executes a tmux command if a shell command returns true or false.
  */
 
-enum cmd_retval	 cmd_if_shell_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	 cmd_if_shell_exec(struct cmd *, struct cmd_q *);
 
-void	cmd_if_shell_callback(struct job *);
-void	cmd_if_shell_done(struct cmd_q *);
-void	cmd_if_shell_free(void *);
+static void	cmd_if_shell_callback(struct job *);
+static void	cmd_if_shell_done(struct cmd_q *);
+static void	cmd_if_shell_free(void *);
 
 const struct cmd_entry cmd_if_shell_entry = {
 	.name = "if-shell",
@@ -63,7 +63,7 @@ struct cmd_if_shell_data {
 	int			 references;
 };
 
-enum cmd_retval
+static enum cmd_retval
 cmd_if_shell_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args			*args = self->args;
@@ -137,7 +137,7 @@ cmd_if_shell_exec(struct cmd *self, struct cmd_q *cmdq)
 	return (CMD_RETURN_WAIT);
 }
 
-void
+static void
 cmd_if_shell_callback(struct job *job)
 {
 	struct cmd_if_shell_data	*cdata = job->data;
@@ -174,7 +174,7 @@ cmd_if_shell_callback(struct job *job)
 	cmd_list_free(cmdlist);
 }
 
-void
+static void
 cmd_if_shell_done(struct cmd_q *cmdq1)
 {
 	struct cmd_if_shell_data	*cdata = cmdq1->data;
@@ -197,7 +197,7 @@ cmd_if_shell_done(struct cmd_q *cmdq1)
 	free(cdata);
 }
 
-void
+static void
 cmd_if_shell_free(void *data)
 {
 	struct cmd_if_shell_data	*cdata = data;

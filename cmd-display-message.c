@@ -32,7 +32,7 @@
 	"#{window_name}, current pane #{pane_index} "	\
 	"- (%H:%M %d-%b-%y)"
 
-enum cmd_retval	 cmd_display_message_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	 cmd_display_message_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_display_message_entry = {
 	.name = "display-message",
@@ -49,7 +49,7 @@ const struct cmd_entry cmd_display_message_entry = {
 	.exec = cmd_display_message_exec
 };
 
-enum cmd_retval
+static enum cmd_retval
 cmd_display_message_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;

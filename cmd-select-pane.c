@@ -24,7 +24,7 @@
  * Select pane.
  */
 
-enum cmd_retval	 cmd_select_pane_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	 cmd_select_pane_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_select_pane_entry = {
 	.name = "select-pane",
@@ -52,7 +52,7 @@ const struct cmd_entry cmd_last_pane_entry = {
 	.exec = cmd_select_pane_exec
 };
 
-enum cmd_retval
+static enum cmd_retval
 cmd_select_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;

@@ -27,12 +27,12 @@
  * Show options.
  */
 
-enum cmd_retval	 cmd_show_options_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_show_options_exec(struct cmd *, struct cmd_q *);
 
-enum cmd_retval	cmd_show_options_one(struct cmd *, struct cmd_q *,
-		    struct options *, int);
-enum cmd_retval cmd_show_options_all(struct cmd *, struct cmd_q *,
-	    	    struct options *, enum options_table_scope);
+static enum cmd_retval	cmd_show_options_one(struct cmd *, struct cmd_q *,
+			    struct options *, int);
+static enum cmd_retval	cmd_show_options_all(struct cmd *, struct cmd_q *,
+		    	    struct options *, enum options_table_scope);
 
 const struct cmd_entry cmd_show_options_entry = {
 	.name = "show-options",
@@ -60,7 +60,7 @@ const struct cmd_entry cmd_show_window_options_entry = {
 	.exec = cmd_show_options_exec
 };
 
-enum cmd_retval
+static enum cmd_retval
 cmd_show_options_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args			*args = self->args;
@@ -110,7 +110,7 @@ cmd_show_options_exec(struct cmd *self, struct cmd_q *cmdq)
 		return (cmd_show_options_one(self, cmdq, oo, quiet));
 }
 
-enum cmd_retval
+static enum cmd_retval
 cmd_show_options_one(struct cmd *self, struct cmd_q *cmdq,
     struct options *oo, int quiet)
 {
@@ -160,7 +160,7 @@ retry:
 	return (CMD_RETURN_NORMAL);
 }
 
-enum cmd_retval
+static enum cmd_retval
 cmd_show_options_all(struct cmd *self, struct cmd_q *cmdq, struct options *oo,
     enum options_table_scope scope)
 {

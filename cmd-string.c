@@ -31,14 +31,14 @@
  * Parse a command from a string.
  */
 
-int	 cmd_string_getc(const char *, size_t *);
-void	 cmd_string_ungetc(size_t *);
-void	 cmd_string_copy(char **, char *, size_t *);
-char	*cmd_string_string(const char *, size_t *, char, int);
-char	*cmd_string_variable(const char *, size_t *);
-char	*cmd_string_expand_tilde(const char *, size_t *);
+static int	 cmd_string_getc(const char *, size_t *);
+static void	 cmd_string_ungetc(size_t *);
+static void	 cmd_string_copy(char **, char *, size_t *);
+static char	*cmd_string_string(const char *, size_t *, char, int);
+static char	*cmd_string_variable(const char *, size_t *);
+static char	*cmd_string_expand_tilde(const char *, size_t *);
 
-int
+static int
 cmd_string_getc(const char *s, size_t *p)
 {
 	const u_char	*ucs = s;
@@ -48,7 +48,7 @@ cmd_string_getc(const char *s, size_t *p)
 	return (ucs[(*p)++]);
 }
 
-void
+static void
 cmd_string_ungetc(size_t *p)
 {
 	(*p)--;
@@ -173,7 +173,7 @@ out:
 	return (rval);
 }
 
-void
+static void
 cmd_string_copy(char **dst, char *src, size_t *len)
 {
 	size_t srclen;
@@ -187,7 +187,7 @@ cmd_string_copy(char **dst, char *src, size_t *len)
 	free(src);
 }
 
-char *
+static char *
 cmd_string_string(const char *s, size_t *p, char endch, int esc)
 {
 	int	ch;
@@ -245,7 +245,7 @@ error:
 	return (NULL);
 }
 
-char *
+static char *
 cmd_string_variable(const char *s, size_t *p)
 {
 	int			ch, fch;
@@ -314,7 +314,7 @@ error:
 	return (NULL);
 }
 
-char *
+static char *
 cmd_string_expand_tilde(const char *s, size_t *p)
 {
 	struct passwd		*pw;
@@ -337,7 +337,10 @@ cmd_string_expand_tilde(const char *s, size_t *p)
 		cp = user = xmalloc(strlen(s));
 		for (;;) {
 			last = cmd_string_getc(s, p);
-			if (last == EOF || last == '/' || last == ' '|| last == '\t')
+			if (last == EOF ||
+			    last == '/' ||
+			    last == ' '||
+			    last == '\t')
 				break;
 			*cp++ = last;
 		}

@@ -26,7 +26,7 @@
  * Change session name.
  */
 
-enum cmd_retval	 cmd_rename_session_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	 cmd_rename_session_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_rename_session_entry = {
 	.name = "rename-session",
@@ -41,7 +41,7 @@ const struct cmd_entry cmd_rename_session_entry = {
 	.exec = cmd_rename_session_exec
 };
 
-enum cmd_retval
+static enum cmd_retval
 cmd_rename_session_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args	*args = self->args;

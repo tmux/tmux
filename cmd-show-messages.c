@@ -29,7 +29,7 @@
  * Show client message log.
  */
 
-enum cmd_retval	 cmd_show_messages_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	 cmd_show_messages_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_show_messages_entry = {
 	.name = "show-messages",
@@ -55,10 +55,10 @@ const struct cmd_entry cmd_server_info_entry = {
 	.exec = cmd_show_messages_exec
 };
 
-int	cmd_show_messages_terminals(struct cmd_q *, int);
-int	cmd_show_messages_jobs(struct cmd_q *, int);
+static int	cmd_show_messages_terminals(struct cmd_q *, int);
+static int	cmd_show_messages_jobs(struct cmd_q *, int);
 
-int
+static int
 cmd_show_messages_terminals(struct cmd_q *cmdq, int blank)
 {
 	struct tty_term	*term;
@@ -79,7 +79,7 @@ cmd_show_messages_terminals(struct cmd_q *cmdq, int blank)
 	return (n != 0);
 }
 
-int
+static int
 cmd_show_messages_jobs(struct cmd_q *cmdq, int blank)
 {
 	struct job	*job;
@@ -98,7 +98,7 @@ cmd_show_messages_jobs(struct cmd_q *cmdq, int blank)
 	return (n != 0);
 }
 
-enum cmd_retval
+static enum cmd_retval
 cmd_show_messages_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;

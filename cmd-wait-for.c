@@ -28,7 +28,7 @@
  * Block or wake a client on a named wait channel.
  */
 
-enum cmd_retval cmd_wait_for_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval cmd_wait_for_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_wait_for_entry = {
 	.name = "wait-for",
@@ -52,31 +52,30 @@ struct wait_channel {
 	RB_ENTRY(wait_channel)	entry;
 };
 RB_HEAD(wait_channels, wait_channel);
-struct wait_channels wait_channels = RB_INITIALIZER(wait_channels);
+static struct wait_channels wait_channels = RB_INITIALIZER(wait_channels);
 
-int	wait_channel_cmp(struct wait_channel *, struct wait_channel *);
-RB_PROTOTYPE(wait_channels, wait_channel, entry, wait_channel_cmp);
-RB_GENERATE(wait_channels, wait_channel, entry, wait_channel_cmp);
+static int wait_channel_cmp(struct wait_channel *, struct wait_channel *);
+RB_GENERATE_STATIC(wait_channels, wait_channel, entry, wait_channel_cmp);
 
-int
+static int
 wait_channel_cmp(struct wait_channel *wc1, struct wait_channel *wc2)
 {
 	return (strcmp(wc1->name, wc2->name));
 }
 
-enum cmd_retval	cmd_wait_for_signal(struct cmd_q *, const char *,
-		    struct wait_channel *);
-enum cmd_retval	cmd_wait_for_wait(struct cmd_q *, const char *,
-		    struct wait_channel *);
-enum cmd_retval	cmd_wait_for_lock(struct cmd_q *, const char *,
-		    struct wait_channel *);
-enum cmd_retval	cmd_wait_for_unlock(struct cmd_q *, const char *,
-		    struct wait_channel *);
+static enum cmd_retval	cmd_wait_for_signal(struct cmd_q *, const char *,
+			    struct wait_channel *);
+static enum cmd_retval	cmd_wait_for_wait(struct cmd_q *, const char *,
+			    struct wait_channel *);
+static enum cmd_retval	cmd_wait_for_lock(struct cmd_q *, const char *,
+			    struct wait_channel *);
+static enum cmd_retval	cmd_wait_for_unlock(struct cmd_q *, const char *,
+			    struct wait_channel *);
 
-struct wait_channel	*cmd_wait_for_add(const char *);
-void			 cmd_wait_for_remove(struct wait_channel *wc);
+static struct wait_channel	*cmd_wait_for_add(const char *);
+static void			 cmd_wait_for_remove(struct wait_channel *wc);
 
-struct wait_channel *
+static struct wait_channel *
 cmd_wait_for_add(const char *name)
 {
 	struct wait_channel *wc;
@@ -97,7 +96,7 @@ cmd_wait_for_add(const char *name)
 	return (wc);
 }
 
-void
+static void
 cmd_wait_for_remove(struct wait_channel *wc)
 {
 	if (wc->locked)
@@ -113,7 +112,7 @@ cmd_wait_for_remove(struct wait_channel *wc)
 	free(wc);
 }
 
-enum cmd_retval
+static enum cmd_retval
 cmd_wait_for_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args     	*args = self->args;
@@ -132,7 +131,7 @@ cmd_wait_for_exec(struct cmd *self, struct cmd_q *cmdq)
 	return (cmd_wait_for_wait(cmdq, name, wc));
 }
 
-enum cmd_retval
+static enum cmd_retval
 cmd_wait_for_signal(__unused struct cmd_q *cmdq, const char *name,
     struct wait_channel *wc)
 {
@@ -158,7 +157,7 @@ cmd_wait_for_signal(__unused struct cmd_q *cmdq, const char *name,
 	return (CMD_RETURN_NORMAL);
 }
 
-enum cmd_retval
+static enum cmd_retval
 cmd_wait_for_wait(struct cmd_q *cmdq, const char *name,
     struct wait_channel *wc)
 {
@@ -185,7 +184,7 @@ cmd_wait_for_wait(struct cmd_q *cmdq, const char *name,
 	return (CMD_RETURN_WAIT);
 }
 
-enum cmd_retval
+static enum cmd_retval
 cmd_wait_for_lock(struct cmd_q *cmdq, const char *name,
     struct wait_channel *wc)
 {
@@ -207,7 +206,7 @@ cmd_wait_for_lock(struct cmd_q *cmdq, const char *name,
 	return (CMD_RETURN_NORMAL);
 }
 
-enum cmd_retval
+static enum cmd_retval
 cmd_wait_for_unlock(struct cmd_q *cmdq, const char *name,
     struct wait_channel *wc)
 {
