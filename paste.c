@@ -42,27 +42,27 @@ struct paste_buffer {
 	RB_ENTRY(paste_buffer) time_entry;
 };
 
-u_int	paste_next_index;
-u_int	paste_next_order;
-u_int	paste_num_automatic;
+static u_int	paste_next_index;
+static u_int	paste_next_order;
+static u_int	paste_num_automatic;
 RB_HEAD(paste_name_tree, paste_buffer) paste_by_name;
 RB_HEAD(paste_time_tree, paste_buffer) paste_by_time;
 
-int paste_cmp_names(const struct paste_buffer *, const struct paste_buffer *);
-RB_PROTOTYPE(paste_name_tree, paste_buffer, name_entry, paste_cmp_names);
-RB_GENERATE(paste_name_tree, paste_buffer, name_entry, paste_cmp_names);
+static int	paste_cmp_names(const struct paste_buffer *,
+		    const struct paste_buffer *);
+RB_GENERATE_STATIC(paste_name_tree, paste_buffer, name_entry, paste_cmp_names);
 
-int paste_cmp_times(const struct paste_buffer *, const struct paste_buffer *);
-RB_PROTOTYPE(paste_time_tree, paste_buffer, time_entry, paste_cmp_times);
-RB_GENERATE(paste_time_tree, paste_buffer, time_entry, paste_cmp_times);
+static int	paste_cmp_times(const struct paste_buffer *,
+		    const struct paste_buffer *);
+RB_GENERATE_STATIC(paste_time_tree, paste_buffer, time_entry, paste_cmp_times);
 
-int
+static int
 paste_cmp_names(const struct paste_buffer *a, const struct paste_buffer *b)
 {
 	return (strcmp(a->name, b->name));
 }
 
-int
+static int
 paste_cmp_times(const struct paste_buffer *a, const struct paste_buffer *b)
 {
 	if (a->order > b->order)
