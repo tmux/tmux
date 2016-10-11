@@ -38,6 +38,12 @@
  * (any matching MODEKEYEDIT_SWITCHMODE*) are special-cased to do this.
  */
 
+/* Command to string mapping. */
+struct mode_key_cmdstr {
+	enum mode_key_cmd	 cmd;
+	const char		*name;
+};
+
 /* Entry in the default mode key tables. */
 struct mode_key_entry {
 	key_code		key;
@@ -304,7 +310,7 @@ static const struct mode_key_entry mode_key_emacs_choice[] = {
 struct mode_key_tree mode_key_tree_emacs_choice;
 
 /* Table mapping key table names to default settings and trees. */
-const struct mode_key_table mode_key_tables[] = {
+static const struct mode_key_table mode_key_tables[] = {
 	{ "vi-edit", mode_key_cmdstr_edit,
 	  &mode_key_tree_vi_edit, mode_key_vi_edit },
 	{ "vi-choice", mode_key_cmdstr_choice,

@@ -91,7 +91,7 @@ struct format_job {
 /* Format job tree. */
 static struct event format_job_event;
 static int format_job_cmp(struct format_job *, struct format_job *);
-RB_HEAD(format_job_tree, format_job) format_jobs = RB_INITIALIZER();
+static RB_HEAD(format_job_tree, format_job) format_jobs = RB_INITIALIZER();
 RB_GENERATE_STATIC(format_job_tree, format_job, entry, format_job_cmp);
 
 /* Format job tree comparison function. */

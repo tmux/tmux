@@ -33,7 +33,7 @@ static void	layout_set_main_h(struct window *);
 static void	layout_set_main_v(struct window *);
 static void	layout_set_tiled(struct window *);
 
-const struct {
+static const struct {
 	const char	*name;
 	void	      	(*arrange)(struct window *);
 } layout_sets[] = {

@@ -46,8 +46,8 @@ struct paste_buffer {
 static u_int	paste_next_index;
 static u_int	paste_next_order;
 static u_int	paste_num_automatic;
-RB_HEAD(paste_name_tree, paste_buffer) paste_by_name;
-RB_HEAD(paste_time_tree, paste_buffer) paste_by_time;
+static RB_HEAD(paste_name_tree, paste_buffer) paste_by_name;
+static RB_HEAD(paste_time_tree, paste_buffer) paste_by_time;
 
 static int	paste_cmp_names(const struct paste_buffer *,
 		    const struct paste_buffer *);

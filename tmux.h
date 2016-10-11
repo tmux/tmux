@@ -42,6 +42,7 @@ struct args;
 struct client;
 struct environ;
 struct input_ctx;
+struct mode_key_cmdstr;
 struct mouse_event;
 struct options;
 struct session;
@@ -541,12 +542,6 @@ struct mode_key_binding {
 	RB_ENTRY(mode_key_binding)	 entry;
 };
 RB_HEAD(mode_key_tree, mode_key_binding);
-
-/* Command to string mapping. */
-struct mode_key_cmdstr {
-	enum mode_key_cmd	 cmd;
-	const char		*name;
-};
 
 /* Named mode key table description. */
 struct mode_key_entry;
@@ -1598,13 +1593,10 @@ int printflike(4, 5) hooks_wait(struct hooks *, struct cmd_q *,
 		    struct cmd_find_state *, const char *, ...);
 
 /* mode-key.c */
-extern const struct mode_key_table mode_key_tables[];
 extern struct mode_key_tree mode_key_tree_vi_edit;
 extern struct mode_key_tree mode_key_tree_vi_choice;
-extern struct mode_key_tree mode_key_tree_vi_copy;
 extern struct mode_key_tree mode_key_tree_emacs_edit;
 extern struct mode_key_tree mode_key_tree_emacs_choice;
-extern struct mode_key_tree mode_key_tree_emacs_copy;
 int	mode_key_cmp(struct mode_key_binding *, struct mode_key_binding *);
 RB_PROTOTYPE(mode_key_tree, mode_key_binding, entry, mode_key_cmp);
 const char *mode_key_tostring(const struct mode_key_cmdstr *,
