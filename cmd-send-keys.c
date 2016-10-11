@@ -33,8 +33,8 @@ const struct cmd_entry cmd_send_keys_entry = {
 	.name = "send-keys",
 	.alias = "send",
 
-	.args = { "lRMt:", 0, -1 },
-	.usage = "[-lRM] " CMD_TARGET_PANE_USAGE " key ...",
+	.args = { "lXRMN:t:", 0, -1 },
+	.usage = "[-lXRM] [-N repeat-count] " CMD_TARGET_PANE_USAGE " key ...",
 
 	.tflag = CMD_PANE,
 
@@ -59,12 +59,44 @@ static enum cmd_retval
 cmd_send_keys_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
+	struct client		*c = cmdq->state.c;
 	struct window_pane	*wp = cmdq->state.tflag.wp;
 	struct session		*s = cmdq->state.tflag.s;
 	struct mouse_event	*m = &cmdq->item->mouse;
 	const u_char		*keystr;
 	int			 i, literal;
 	key_code		 key;
+	u_int			 np;
+	char			*cause = NULL;
+
+	if (args_has(args, 'N')) {
+		if (wp->mode == NULL || wp->mode->command == NULL) {
+			cmdq_error(cmdq, "not in a mode");
+			return (CMD_RETURN_ERROR);
+		}
+		np = args_strtonum(args, 'N', 1, UINT_MAX, &cause);
+		if (cause != NULL) {
+			cmdq_error(cmdq, "prefix %s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
+		}
+		wp->modeprefix = np;
+	}
+
+	if (args_has(args, 'X')) {
+		if (wp->mode == NULL || wp->mode->command == NULL) {
+			cmdq_error(cmdq, "not in a mode");
+			return (CMD_RETURN_ERROR);
+		}
+		if (!m->valid)
+			wp->mode->command(wp, c, s, args, NULL);
+		else
+			wp->mode->command(wp, c, s, args, m);
+		return (CMD_RETURN_NORMAL);
+	}
+
+	if (args_has(args, 'N')) /* only with -X */
+		return (CMD_RETURN_NORMAL);
 
 	if (args_has(args, 'M')) {
 		wp = cmd_mouse_pane(m, &s, NULL);

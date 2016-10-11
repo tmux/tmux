@@ -1124,6 +1124,7 @@ window_pane_reset_mode(struct window_pane *wp)
 
 	wp->mode->free(wp);
 	wp->mode = NULL;
+	wp->modeprefix = 1;
 
 	wp->screen = &wp->base;
 	wp->flags |= (PANE_REDRAW|PANE_CHANGED);

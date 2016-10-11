@@ -1002,63 +1002,76 @@ It is also entered when a command that produces output, such as
 .Ic list-keys ,
 is executed from a key binding.
 .Pp
-The keys available depend on whether emacs or vi mode is selected
-(see the
+Commands are sent to copy mode using the
+.Fl X
+flag to the
+.Ic send-keys
+command.
+When a key is pressed, copy mode automatically uses one of two key tables,
+depending on the
 .Ic mode-keys
-option).
-The following keys are supported as appropriate for the mode:
-.Bl -column "FunctionXXXXXXXXXXXXXXXXX" "viXXXXXXXXXX" "emacs" -offset indent
-.It Sy "Function" Ta Sy "vi" Ta Sy "emacs"
-.It Li "Append selection" Ta "A" Ta ""
-.It Li "Back to indentation" Ta "^" Ta "M-m"
-.It Li "Bottom of history" Ta "G" Ta "M-<"
-.It Li "Clear selection" Ta "Escape" Ta "C-g"
-.It Li "Copy selection" Ta "Enter" Ta "M-w"
-.It Li "Copy to named buffer" Ta \&" Ta ""
-.It Li "Cursor down" Ta "j" Ta "Down"
-.It Li "Cursor left" Ta "h" Ta "Left"
-.It Li "Cursor right" Ta "l" Ta "Right"
-.It Li "Cursor to bottom line" Ta "L" Ta ""
-.It Li "Cursor to middle line" Ta "M" Ta "M-r"
-.It Li "Cursor to top line" Ta "H" Ta "M-R"
-.It Li "Cursor up" Ta "k" Ta "Up"
-.It Li "Delete entire line" Ta "d" Ta "C-u"
-.It Li "Delete/Copy to end of line" Ta "D" Ta "C-k"
-.It Li "End of line" Ta "$" Ta "C-e"
-.It Li "Go to line" Ta ":" Ta "g"
-.It Li "Half page down" Ta "C-d" Ta "M-Down"
-.It Li "Half page up" Ta "C-u" Ta "M-Up"
-.It Li "Jump again" Ta ";" Ta ";"
-.It Li "Jump again in reverse" Ta "," Ta ","
-.It Li "Jump backward" Ta "F" Ta "F"
-.It Li "Jump forward" Ta "f" Ta "f"
-.It Li "Jump to backward" Ta "T" Ta ""
-.It Li "Jump to forward" Ta "t" Ta ""
-.It Li "Next page" Ta "C-f" Ta "Page down"
-.It Li "Next paragraph" Ta "}" Ta "M-}"
-.It Li "Next space" Ta "W" Ta ""
-.It Li "Next space, end of word" Ta "E" Ta ""
-.It Li "Next word" Ta "w" Ta ""
-.It Li "Next word end" Ta "e" Ta "M-f"
-.It Li "Other end of selection" Ta "o" Ta ""
-.It Li "Paste buffer" Ta "p" Ta "C-y"
-.It Li "Previous page" Ta "C-b" Ta "Page up"
-.It Li "Previous paragraph" Ta "{" Ta "M-{"
-.It Li "Previous space" Ta "B" Ta ""
-.It Li "Previous word" Ta "b" Ta "M-b"
-.It Li "Quit mode" Ta "q" Ta "Escape"
-.It Li "Rectangle toggle" Ta "v" Ta "R"
-.It Li "Scroll down" Ta "C-Down or C-e" Ta "C-Down"
-.It Li "Scroll up" Ta "C-Up or C-y" Ta "C-Up"
-.It Li "Search again" Ta "n" Ta "n"
-.It Li "Search again in reverse" Ta "N" Ta "N"
-.It Li "Search backward" Ta "?" Ta "C-r"
-.It Li "Search forward" Ta "/" Ta "C-s"
-.It Li "Select line" Ta "V" Ta ""
-.It Li "Start of line" Ta "0" Ta "C-a"
-.It Li "Start selection" Ta "Space" Ta "C-Space"
-.It Li "Top of history" Ta "g" Ta "M->"
-.It Li "Transpose characters" Ta "" Ta "C-t"
+option:
+.Ic copy-mode
+for emacs, or
+.Ic copy-mode-vi
+for vi.
+Key tables may be viewed with the
+.Ic list-keys
+command.
+.Pp
+The following commands are supported in copy mode:
+.Bl -column "CommandXXXXXXXXXXXXXXXXX" "viXXXXXXXXXX" "emacs" -offset indent
+.It Sy "Command" Ta Sy "vi" Ta Sy "emacs"
+.It Li "append-selection" Ta "" Ta ""
+.It Li "append-selection-and-cancel" Ta "A" Ta ""
+.It Li "back-to-indentation" Ta "^" Ta "M-m"
+.It Li "begin-selection" Ta "Space" Ta "C-Space"
+.It Li "bottom-line" Ta "L" Ta ""
+.It Li "cancel" Ta "q" Ta "Escape"
+.It Li "clear-selection" Ta "Escape" Ta "C-g"
+.It Li "copy-end-of-line" Ta "D" Ta "C-k"
+.It Li "copy-line" Ta "" Ta ""
+.It Li "copy-pipe <command>" Ta "" Ta ""
+.It Li "copy-selection" Ta "" Ta ""
+.It Li "copy-selection-and-cancel" Ta "Enter" Ta "M-w"
+.It Li "cursor-down" Ta "j" Ta "Down"
+.It Li "cursor-left" Ta "h" Ta "Left"
+.It Li "cursor-right" Ta "l" Ta "Right"
+.It Li "cursor-up" Ta "k" Ta "Up"
+.It Li "end-of-line" Ta "$" Ta "C-e"
+.It Li "goto-line <line>" Ta ":" Ta "g"
+.It Li "halfpage-down" Ta "C-d" Ta "M-Down"
+.It Li "halfpage-up" Ta "C-u" Ta "M-Up"
+.It Li "history-bottom" Ta "G" Ta "M-<"
+.It Li "history-top" Ta "g" Ta "M->"
+.It Li "jump-again" Ta ";" Ta ";"
+.It Li "jump-backward <to>" Ta "F" Ta "F"
+.It Li "jump-forward <to>" Ta "f" Ta "f"
+.It Li "jump-reverse" Ta "," Ta ","
+.It Li "jump-to-backward <to>" Ta "T" Ta ""
+.It Li "jump-to-forward <to>" Ta "t" Ta ""
+.It Li "middle-line" Ta "M" Ta "M-r"
+.It Li "next-paragraph" Ta "}" Ta "M-}"
+.It Li "next-space" Ta "W" Ta ""
+.It Li "next-space-end" Ta "E" Ta ""
+.It Li "next-word" Ta "w" Ta ""
+.It Li "next-word-end" Ta "e" Ta "M-f"
+.It Li "other-end" Ta "o" Ta ""
+.It Li "page-down" Ta "C-f" Ta "PageDown"
+.It Li "page-up" Ta "C-b" Ta "PageUp"
+.It Li "previous-paragraph" Ta "{" Ta "M-{"
+.It Li "previous-space" Ta "B" Ta ""
+.It Li "previous-word" Ta "b" Ta "M-b"
+.It Li "rectangle-toggle" Ta "v" Ta "R"
+.It Li "scroll-down" Ta "C-e" Ta "C-Down"
+.It Li "scroll-up" Ta "C-y" Ta "C-Up"
+.It Li "search-again" Ta "n" Ta "n"
+.It Li "search-backward <for>" Ta "?" Ta "C-r"
+.It Li "search-forward <for>" Ta "/" Ta "C-s"
+.It Li "search-reverse" Ta "N" Ta "N"
+.It Li "select-line" Ta "V" Ta ""
+.It Li "start-of-line" Ta "0" Ta "C-a"
+.It Li "top-line" Ta "H" Ta "M-R"
 .El
 .Pp
 The next and previous word keys use space and the
@@ -1090,59 +1103,18 @@ will then jump to the next occurrence.
 Commands in copy mode may be prefaced by an optional repeat count.
 With vi key bindings, a prefix is entered using the number keys; with
 emacs, the Alt (meta) key and a number begins prefix entry.
-For example, to move the cursor forward by ten words, use
-.Ql M-1 0 M-f
-in emacs mode, and
-.Ql 10w
-in vi.
 .Pp
 Mode key bindings are defined in a set of named tables:
 .Em vi-edit
 and
 .Em emacs-edit
-for keys used when line editing at the command prompt;
+for keys used when line editing at the command prompt; and
 .Em vi-choice
 and
 .Em emacs-choice
 for keys used when choosing from lists (such as produced by the
 .Ic choose-window
-command); and
-.Em vi-copy
-and
-.Em emacs-copy
-used in copy mode.
-The tables may be viewed with the
-.Ic list-keys
-command and keys modified or removed with
-.Ic bind-key
-and
-.Ic unbind-key .
-If
-.Ic append-selection ,
-.Ic copy-selection ,
-or
-.Ic start-named-buffer
-are given the
-.Fl x
-flag,
-.Nm
-will not exit copy mode after copying.
-.Ic copy-pipe
-copies the selection and pipes it to a command.
-For example the following will bind
-.Ql C-w
-not to exit after copying and
-.Ql C-q
-to copy the selection into
-.Pa /tmp
-as well as the paste buffer:
-.Bd -literal -offset indent
-bind-key -temacs-copy C-w copy-selection -x
-bind-key -temacs-copy C-q copy-pipe "cat >/tmp/out"
-.Ed
-.Pp
-The paste buffer key pastes the first line from the top paste buffer on the
-stack.
+command).
 .Pp
 The synopsis for the
 .Ic copy-mode
@@ -2133,7 +2105,6 @@ Commands related to key bindings are as follows:
 .Bl -tag -width Ds
 .It Xo Ic bind-key
 .Op Fl cnr
-.Op Fl R Ar repeat-count
 .Op Fl t Ar mode-table
 .Op Fl T Ar key-table
 .Ar key Ar command Op Ar arguments
@@ -2192,19 +2163,6 @@ is bound in
 the binding for command mode with
 .Fl c
 or for normal mode without.
-For keys in the
-.Em vi-copy
-or
-.Em emacs-copy
-tables,
-.Fl R
-specifies how many times the command should be repeated.
-.Pp
-See the
-.Sx WINDOWS AND PANES
-section and the
-.Ic list-keys
-command for information on mode key bindings.
 .Pp
 To view the default bindings and possible commands, see the
 .Ic list-keys
@@ -2236,7 +2194,8 @@ are listed; this may be one of:
 or
 .Em emacs-copy .
 .It Xo Ic send-keys
-.Op Fl lMR
+.Op Fl lMRX
+.Op Fl N Ar repeat-count
 .Op Fl t Ar target-pane
 .Ar key Ar ...
 .Xc
@@ -2261,6 +2220,14 @@ flag causes the terminal state to be reset.
 .Fl M
 passes through a mouse event (only valid if bound to a mouse key binding, see
 .Sx MOUSE SUPPORT ) .
+.Pp
+.Fl X
+is used to send a command into copy mode - see
+the
+.Sx WINDOWS AND PANES
+section.
+.Fl N
+specifies a repeat count to a copy mode command.
 .It Xo Ic send-prefix
 .Op Fl 2
 .Op Fl t Ar target-pane
@@ -3779,6 +3746,7 @@ session option.
 Commands related to the status line are as follows:
 .Bl -tag -width Ds
 .It Xo Ic command-prompt
+.Op Fl 1
 .Op Fl I Ar inputs
 .Op Fl p Ar prompts
 .Op Fl t Ar target-client
@@ -3828,6 +3796,10 @@ Up to nine prompt responses may be replaced
 to
 .Ql %9
 .Pc .
+.Pp
+.Fl 1
+makes the prompt only accept one key press, in this case the resulting input
+is a single character.
 .It Xo Ic confirm-before
 .Op Fl p Ar prompt
 .Op Fl t Ar target-client

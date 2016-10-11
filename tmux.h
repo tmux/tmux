@@ -38,6 +38,7 @@
 
 extern char   **environ;
 
+struct args;
 struct client;
 struct environ;
 struct input_ctx;
@@ -511,58 +512,6 @@ enum mode_key_cmd {
 	MODEKEYCHOICE_TREE_EXPAND_ALL,
 	MODEKEYCHOICE_TREE_TOGGLE,
 	MODEKEYCHOICE_UP,
-
-	/* Copy keys. */
-	MODEKEYCOPY_APPENDSELECTION,
-	MODEKEYCOPY_BACKTOINDENTATION,
-	MODEKEYCOPY_BOTTOMLINE,
-	MODEKEYCOPY_CANCEL,
-	MODEKEYCOPY_CLEARSELECTION,
-	MODEKEYCOPY_COPYPIPE,
-	MODEKEYCOPY_COPYLINE,
-	MODEKEYCOPY_COPYENDOFLINE,
-	MODEKEYCOPY_COPYSELECTION,
-	MODEKEYCOPY_DOWN,
-	MODEKEYCOPY_ENDOFLINE,
-	MODEKEYCOPY_GOTOLINE,
-	MODEKEYCOPY_HALFPAGEDOWN,
-	MODEKEYCOPY_HALFPAGEUP,
-	MODEKEYCOPY_HISTORYBOTTOM,
-	MODEKEYCOPY_HISTORYTOP,
-	MODEKEYCOPY_JUMP,
-	MODEKEYCOPY_JUMPAGAIN,
-	MODEKEYCOPY_JUMPREVERSE,
-	MODEKEYCOPY_JUMPBACK,
-	MODEKEYCOPY_JUMPTO,
-	MODEKEYCOPY_JUMPTOBACK,
-	MODEKEYCOPY_LEFT,
-	MODEKEYCOPY_MIDDLELINE,
-	MODEKEYCOPY_NEXTPAGE,
-	MODEKEYCOPY_NEXTPARAGRAPH,
-	MODEKEYCOPY_NEXTSPACE,
-	MODEKEYCOPY_NEXTSPACEEND,
-	MODEKEYCOPY_NEXTWORD,
-	MODEKEYCOPY_NEXTWORDEND,
-	MODEKEYCOPY_OTHEREND,
-	MODEKEYCOPY_PREVIOUSPAGE,
-	MODEKEYCOPY_PREVIOUSPARAGRAPH,
-	MODEKEYCOPY_PREVIOUSSPACE,
-	MODEKEYCOPY_PREVIOUSWORD,
-	MODEKEYCOPY_RECTANGLETOGGLE,
-	MODEKEYCOPY_RIGHT,
-	MODEKEYCOPY_SCROLLDOWN,
-	MODEKEYCOPY_SCROLLUP,
-	MODEKEYCOPY_SEARCHAGAIN,
-	MODEKEYCOPY_SEARCHDOWN,
-	MODEKEYCOPY_SEARCHREVERSE,
-	MODEKEYCOPY_SEARCHUP,
-	MODEKEYCOPY_SELECTLINE,
-	MODEKEYCOPY_STARTNAMEDBUFFER,
-	MODEKEYCOPY_STARTNUMBERPREFIX,
-	MODEKEYCOPY_STARTOFLINE,
-	MODEKEYCOPY_STARTSELECTION,
-	MODEKEYCOPY_TOPLINE,
-	MODEKEYCOPY_UP,
 };
 
 /* Data required while mode keys are in use. */
@@ -576,11 +525,9 @@ struct mode_key_data {
 /* Binding between a key and a command. */
 struct mode_key_binding {
 	key_code			 key;
-	u_int				 repeat;
 
 	int				 mode;
 	enum mode_key_cmd		 cmd;
-	const char			*arg;
 
 	RB_ENTRY(mode_key_binding)	 entry;
 };
@@ -832,6 +779,10 @@ struct window_mode {
 	void	(*resize)(struct window_pane *, u_int, u_int);
 	void	(*key)(struct window_pane *, struct client *, struct session *,
 		    key_code, struct mouse_event *);
+
+	const char *(*key_table)(struct window_pane *);
+	void	(*command)(struct window_pane *, struct client *,
+		    struct session *, struct args *, struct mouse_event *);
 };
 #define WINDOW_MODE_TIMEOUT 180
 
@@ -923,6 +874,7 @@ struct window_pane {
 	void		*modedata;
 	struct event	 modetimer;
 	time_t		 modelast;
+	u_int		 modeprefix;
 
 	TAILQ_ENTRY(window_pane) entry;
 	RB_ENTRY(window_pane) tree_entry;
@@ -1650,8 +1602,7 @@ enum mode_key_cmd mode_key_fromstring(const struct mode_key_cmdstr *,
 const struct mode_key_table *mode_key_findtable(const char *);
 void	mode_key_init_trees(void);
 void	mode_key_init(struct mode_key_data *, struct mode_key_tree *);
-enum mode_key_cmd mode_key_lookup(struct mode_key_data *, key_code,
-	    const char **, u_int *);
+enum mode_key_cmd mode_key_lookup(struct mode_key_data *, key_code);
 
 /* notify.c */
 void	notify_enable(void);
@@ -1920,6 +1871,7 @@ void	 server_add_accept(int);
 /* server-client.c */
 void	 server_client_set_key_table(struct client *, const char *);
 const char *server_client_get_key_table(struct client *);
+int	 server_client_is_default_key_table(struct client *);
 int	 server_client_check_nested(struct client *);
 void	 server_client_handle_key(struct client *, key_code);
 void	 server_client_create(int);
