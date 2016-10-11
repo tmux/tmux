@@ -91,6 +91,7 @@ void	window_copy_cursor_previous_word(struct window_pane *, const char *);
 void	window_copy_scroll_up(struct window_pane *, u_int);
 void	window_copy_scroll_down(struct window_pane *, u_int);
 void	window_copy_rectangle_toggle(struct window_pane *);
+void	window_copy_move_mouse(struct mouse_event *);
 void	window_copy_drag_update(struct client *, struct mouse_event *);
 void	window_copy_drag_release(struct client *, struct mouse_event *);
 
@@ -479,6 +480,9 @@ window_copy_command(struct window_pane *wp, struct client *c, struct session *s,
 		return;
 	command = args->argv[0];
 
+	if (m != NULL && m->valid)
+		window_copy_move_mouse(m);
+
 	if (args->argc == 1) {
 		if (strcmp(command, "append-selection") == 0) {
 			if (s != NULL)
@@ -731,9 +735,17 @@ window_copy_command(struct window_pane *wp, struct client *c, struct session *s,
 			window_copy_cursor_end_of_line(wp);
 			window_copy_redraw_screen(wp);
 		}
-		if (strcmp(command, "start-of-line") == 0) {
-			window_copy_cursor_start_of_line(wp);
+		if (strcmp(command, "select-word") == 0) {
+			sn->sel.lineflag = LINE_SEL_LEFT_RIGHT;
+			data->rectflag = 0;
+			ws = options_get_string(s->options, "word-separators");
+			window_copy_cursor_previous_word(wp, ws);
+			window_copy_start_selection(wp);
+			window_copy_cursor_next_word_end(wp, ws);
+			window_copy_redraw_screen(wp);
 		}
+		if (strcmp(command, "start-of-line") == 0)
+			window_copy_cursor_start_of_line(wp);
 		if (strcmp(command, "top-line") == 0) {
 			data->cx = 0;
 			data->cy = 0;
@@ -2103,6 +2115,22 @@ window_copy_rectangle_toggle(struct window_pane *wp)
 
 	window_copy_update_selection(wp, 1);
 	window_copy_redraw_screen(wp);
+}
+
+void
+window_copy_move_mouse(struct mouse_event *m)
+{
+	struct window_pane	*wp;
+	u_int			 x, y;
+
+	wp = cmd_mouse_pane(m, NULL, NULL);
+	if (wp == NULL || wp->mode != &window_copy_mode)
+		return;
+
+	if (cmd_mouse_at(wp, m, &x, &y, 1) != 0)
+		return;
+
+	window_copy_update_cursor(wp, x, y);
 }
 
 void

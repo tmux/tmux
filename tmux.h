@@ -105,6 +105,9 @@ struct tmuxproc;
 #define KEYC_IS_MOUSE(key) (((key) & KEYC_MASK_KEY) >= KEYC_MOUSE &&	\
     ((key) & KEYC_MASK_KEY) < KEYC_BSPACE)
 
+/* Multiple click timeout. */
+#define KEYC_CLICK_TIMEOUT 300
+
 /* Mouse key codes. */
 #define KEYC_MOUSE_KEY(name)				\
 	KEYC_ ## name ## _PANE,				\
@@ -143,6 +146,12 @@ enum {
 	KEYC_MOUSE_KEY(MOUSEDRAGEND3),
 	KEYC_MOUSE_KEY(WHEELUP),
 	KEYC_MOUSE_KEY(WHEELDOWN),
+	KEYC_MOUSE_KEY(DOUBLECLICK1),
+	KEYC_MOUSE_KEY(DOUBLECLICK2),
+	KEYC_MOUSE_KEY(DOUBLECLICK3),
+	KEYC_MOUSE_KEY(TRIPLECLICK1),
+	KEYC_MOUSE_KEY(TRIPLECLICK2),
+	KEYC_MOUSE_KEY(TRIPLECLICK3),
 
 	/* Backspace key. */
 	KEYC_BSPACE,
@@ -1216,6 +1225,9 @@ struct client {
 
 	struct event	 repeat_timer;
 
+	struct event	 click_timer;
+	u_int            click_button;
+
 	struct event	 status_timer;
 	struct screen	 status;
 
@@ -1239,6 +1251,8 @@ struct client {
 #define CLIENT_256COLOURS 0x20000
 #define CLIENT_IDENTIFIED 0x40000
 #define CLIENT_STATUSFORCE 0x80000
+#define CLIENT_DOUBLECLICK 0x100000
+#define CLIENT_TRIPLECLICK 0x200000
 	int		 flags;
 	struct key_table *keytable;
 
