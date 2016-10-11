@@ -60,15 +60,23 @@ static u_int	next_window_pane_id;
 static u_int	next_window_id;
 static u_int	next_active_point;
 
+static struct window_pane *window_pane_create(struct window *, u_int, u_int,
+		    u_int);
+static void	window_pane_destroy(struct window_pane *);
+
 static void	window_pane_set_watermark(struct window_pane *, size_t);
 
 static void	window_pane_read_callback(struct bufferevent *, void *);
 static void	window_pane_error_callback(struct bufferevent *, short, void *);
 
+static int	winlink_next_index(struct winlinks *, int);
+
 static struct window_pane *window_pane_choose_best(struct window_pane **,
 		    u_int);
 
 RB_GENERATE(windows, window, entry, window_cmp);
+RB_GENERATE(winlinks, winlink, entry, winlink_cmp);
+RB_GENERATE(window_pane_tree, window_pane, tree_entry, window_pane_cmp);
 
 int
 window_cmp(struct window *w1, struct window *w2)
@@ -76,15 +84,11 @@ window_cmp(struct window *w1, struct window *w2)
 	return (w1->id - w2->id);
 }
 
-RB_GENERATE(winlinks, winlink, entry, winlink_cmp);
-
 int
 winlink_cmp(struct winlink *wl1, struct winlink *wl2)
 {
 	return (wl1->idx - wl2->idx);
 }
-
-RB_GENERATE(window_pane_tree, window_pane, tree_entry, window_pane_cmp);
 
 int
 window_pane_cmp(struct window_pane *wp1, struct window_pane *wp2)
@@ -129,7 +133,7 @@ winlink_find_by_window_id(struct winlinks *wwl, u_int id)
 	return (NULL);
 }
 
-int
+static int
 winlink_next_index(struct winlinks *wwl, int idx)
 {
 	int	i;
@@ -731,7 +735,7 @@ window_pane_find_by_id(u_int id)
 	return (RB_FIND(window_pane_tree, &all_window_panes, &wp));
 }
 
-struct window_pane *
+static struct window_pane *
 window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 {
 	struct window_pane	*wp;
@@ -782,7 +786,7 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	return (wp);
 }
 
-void
+static void
 window_pane_destroy(struct window_pane *wp)
 {
 	window_pane_reset_mode(wp);

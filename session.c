@@ -38,6 +38,10 @@ static void	session_lock_timer(int, short, void *);
 static struct winlink *session_next_alert(struct winlink *);
 static struct winlink *session_previous_alert(struct winlink *);
 
+static void	session_group_remove(struct session *);
+static u_int	session_group_count(struct session_group *);
+static void	session_group_synchronize1(struct session *, struct session *);
+
 RB_GENERATE(sessions, session, entry, session_cmp);
 
 int
@@ -582,7 +586,7 @@ session_group_add(struct session *target, struct session *s)
 }
 
 /* Remove a session from its group and destroy the group if empty. */
-void
+static void
 session_group_remove(struct session *s)
 {
 	struct session_group	*sg;
@@ -599,7 +603,7 @@ session_group_remove(struct session *s)
 }
 
 /* Count number of sessions in session group. */
-u_int
+static u_int
 session_group_count(struct session_group *sg)
 {
 	struct session	*s;
@@ -650,7 +654,7 @@ session_group_synchronize_from(struct session *target)
  * winlinks then recreating them, then updating the current window, last window
  * stack and alerts.
  */
-void
+static void
 session_group_synchronize1(struct session *target, struct session *s)
 {
 	struct winlinks		 old_windows, *ww;

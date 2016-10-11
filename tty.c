@@ -33,6 +33,8 @@
 
 static int	tty_log_fd = -1;
 
+static void	tty_init_termios(int, struct termios *, struct bufferevent *);
+
 static void	tty_read_callback(struct bufferevent *, void *);
 static void	tty_error_callback(struct bufferevent *, short, void *);
 
@@ -40,6 +42,9 @@ static int	tty_client_ready(struct client *, struct window_pane *);
 
 static void	tty_set_italics(struct tty *);
 static int	tty_try_colour(struct tty *, int, const char *);
+static void	tty_force_cursor_colour(struct tty *, const char *);
+static void	tty_cursor_pane(struct tty *, const struct tty_ctx *, u_int,
+		    u_int);
 
 static void	tty_colours(struct tty *, const struct grid_cell *);
 static void	tty_check_fg(struct tty *, struct grid_cell *);
@@ -47,6 +52,8 @@ static void	tty_check_bg(struct tty *, struct grid_cell *);
 static void	tty_colours_fg(struct tty *, const struct grid_cell *);
 static void	tty_colours_bg(struct tty *, const struct grid_cell *);
 
+static void	tty_region_pane(struct tty *, const struct tty_ctx *, u_int,
+		    u_int);
 static int	tty_large_region(struct tty *, const struct tty_ctx *);
 static int	tty_fake_bce(const struct tty *, const struct window_pane *);
 static void	tty_redraw_region(struct tty *, const struct tty_ctx *);
@@ -189,7 +196,7 @@ tty_error_callback(__unused struct bufferevent *bufev, __unused short what,
 {
 }
 
-void
+static void
 tty_init_termios(int fd, struct termios *orig_tio, struct bufferevent *bufev)
 {
 	struct termios	tio;
@@ -478,7 +485,7 @@ tty_set_title(struct tty *tty, const char *title)
 	tty_putcode(tty, TTYC_FSL);
 }
 
-void
+static void
 tty_force_cursor_colour(struct tty *tty, const char *ccolour)
 {
 	if (*ccolour == '\0')
@@ -1182,7 +1189,7 @@ tty_reset(struct tty *tty)
 }
 
 /* Set region inside pane. */
-void
+static void
 tty_region_pane(struct tty *tty, const struct tty_ctx *ctx, u_int rupper,
     u_int rlower)
 {
@@ -1215,7 +1222,7 @@ tty_region(struct tty *tty, u_int rupper, u_int rlower)
 }
 
 /* Move cursor inside pane. */
-void
+static void
 tty_cursor_pane(struct tty *tty, const struct tty_ctx *ctx, u_int cx, u_int cy)
 {
 	tty_cursor(tty, ctx->xoff + cx, ctx->yoff + cy);

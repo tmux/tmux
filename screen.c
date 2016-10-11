@@ -27,6 +27,8 @@
 static void	screen_resize_x(struct screen *, u_int);
 static void	screen_resize_y(struct screen *, u_int);
 
+static void	screen_reflow(struct screen *, u_int);
+
 /* Create a new screen. */
 void
 screen_init(struct screen *s, u_int sx, u_int sy, u_int hlimit)
@@ -370,7 +372,7 @@ screen_check_selection(struct screen *s, u_int px, u_int py)
 }
 
 /* Reflow wrapped lines. */
-void
+static void
 screen_reflow(struct screen *s, u_int new_x)
 {
 	struct grid	*old = s->grid;

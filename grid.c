@@ -43,6 +43,8 @@ const struct grid_cell_entry grid_default_entry = {
 	0, { .data = { 0, 8, 8, ' ' } }
 };
 
+static void	grid_expand_line(struct grid *, u_int, u_int);
+
 static void	grid_reflow_copy(struct grid_line *, u_int, struct grid_line *,
 		    u_int, u_int);
 static void	grid_reflow_join(struct grid *, u_int *, struct grid_line *,
@@ -50,6 +52,7 @@ static void	grid_reflow_join(struct grid *, u_int *, struct grid_line *,
 static void	grid_reflow_split(struct grid *, u_int *, struct grid_line *,
 		    u_int, u_int);
 static void	grid_reflow_move(struct grid *, u_int *, struct grid_line *);
+
 static size_t	grid_string_cells_fg(const struct grid_cell *, int *);
 static size_t	grid_string_cells_bg(const struct grid_cell *, int *);
 static void	grid_string_cells_code(const struct grid_cell *,
@@ -243,7 +246,7 @@ grid_scroll_history_region(struct grid *gd, u_int upper, u_int lower)
 }
 
 /* Expand line to fit to cell. */
-void
+static void
 grid_expand_line(struct grid *gd, u_int py, u_int sx)
 {
 	struct grid_line	*gl;

@@ -35,6 +35,7 @@ struct args_entry {
 	RB_ENTRY(args_entry)	 entry;
 };
 
+static void			 args_set(struct args *, u_char, const char *);
 static struct args_entry	*args_find(struct args *, u_char);
 
 static int	args_cmp(struct args_entry *, struct args_entry *);
@@ -45,30 +46,6 @@ static int
 args_cmp(struct args_entry *a1, struct args_entry *a2)
 {
 	return (a1->flag - a2->flag);
-}
-
-/* Create an arguments set with no flags. */
-struct args *
-args_create(int argc, ...)
-{
-	struct args	*args;
-	va_list		 ap;
-	int		 i;
-
-	args = xcalloc(1, sizeof *args);
-
-	args->argc = argc;
-	if (argc == 0)
-		args->argv = NULL;
-	else
-		args->argv = xcalloc(argc, sizeof *args->argv);
-
-	va_start(ap, argc);
-	for (i = 0; i < argc; i++)
-		args->argv[i] = xstrdup(va_arg(ap, char *));
-	va_end(ap);
-
-	return (args);
 }
 
 /* Find a flag in the arguments tree. */
@@ -206,7 +183,7 @@ args_has(struct args *args, u_char ch)
 }
 
 /* Set argument value in the arguments tree. */
-void
+static void
 args_set(struct args *args, u_char ch, const char *value)
 {
 	struct args_entry	*entry;

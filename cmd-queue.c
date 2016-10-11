@@ -26,6 +26,7 @@
 #include "tmux.h"
 
 static enum cmd_retval	cmdq_continue_one(struct cmd_q *);
+static void		cmdq_flush(struct cmd_q *);
 
 /* Create new command queue. */
 struct cmd_q *
@@ -319,7 +320,7 @@ out:
 }
 
 /* Flush command queue. */
-void
+static void
 cmdq_flush(struct cmd_q *cmdq)
 {
 	struct cmd_q_item	*item, *item1;

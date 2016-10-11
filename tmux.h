@@ -1520,8 +1520,6 @@ extern struct options	*global_w_options;
 extern struct environ	*global_environ;
 extern struct timeval	 start_time;
 extern const char	*socket_path;
-const char	*getshell(void);
-int		 checkshell(const char *);
 int		 areshell(const char *);
 void		 setblocking(int, int);
 const char	*find_home(void);
@@ -1681,14 +1679,11 @@ void	environ_log(struct environ *, const char *);
 
 /* tty.c */
 void	tty_create_log(void);
-void	tty_init_termios(int, struct termios *, struct bufferevent *);
 void	tty_raw(struct tty *, const char *);
 void	tty_attributes(struct tty *, const struct grid_cell *,
 	    const struct window_pane *);
 void	tty_reset(struct tty *);
-void	tty_region_pane(struct tty *, const struct tty_ctx *, u_int, u_int);
 void	tty_region(struct tty *, u_int, u_int);
-void	tty_cursor_pane(struct tty *, const struct tty_ctx *, u_int, u_int);
 void	tty_cursor(struct tty *, u_int, u_int);
 void	tty_putcode(struct tty *, enum tty_code_code);
 void	tty_putcode1(struct tty *, enum tty_code_code, int);
@@ -1706,7 +1701,6 @@ void	tty_start_tty(struct tty *);
 void	tty_stop_tty(struct tty *);
 void	tty_set_title(struct tty *, const char *);
 void	tty_update_mode(struct tty *, int, struct screen *);
-void	tty_force_cursor_colour(struct tty *, const char *);
 void	tty_draw_pane(struct tty *, const struct window_pane *, u_int, u_int,
 	    u_int);
 void	tty_draw_line(struct tty *, const struct window_pane *, struct screen *,
@@ -1763,12 +1757,10 @@ void		tty_keys_free(struct tty *);
 key_code	tty_keys_next(struct tty *);
 
 /* arguments.c */
-struct args	*args_create(int, ...);
 struct args	*args_parse(const char *, int, char **);
 void		 args_free(struct args *);
 char		*args_print(struct args *);
 int		 args_has(struct args *, u_char);
-void		 args_set(struct args *, u_char, const char *);
 const char	*args_get(struct args *, u_char);
 long long	 args_strtonum(struct args *, u_char, long long, long long,
 		     char **);
@@ -1832,7 +1824,6 @@ void		 cmdq_run(struct cmd_q *, struct cmd_list *,
 void		 cmdq_append(struct cmd_q *, struct cmd_list *,
 		     struct mouse_event *);
 int		 cmdq_continue(struct cmd_q *);
-void		 cmdq_flush(struct cmd_q *);
 
 /* cmd-string.c */
 int	cmd_string_parse(const char *, struct cmd_list **, const char *,
@@ -1916,7 +1907,6 @@ int	 server_link_window(struct session *,
 	     struct winlink *, struct session *, int, int, int, char **);
 void	 server_unlink_window(struct session *, struct winlink *);
 void	 server_destroy_pane(struct window_pane *, int);
-void	 server_destroy_session_group(struct session *);
 void	 server_destroy_session(struct session *);
 void	 server_check_unattached(void);
 void	 server_set_identify(struct client *);
@@ -1982,7 +1972,6 @@ void	 grid_collect_history(struct grid *);
 void	 grid_scroll_history(struct grid *);
 void	 grid_scroll_history_region(struct grid *, u_int, u_int);
 void	 grid_clear_history(struct grid *);
-void	 grid_expand_line(struct grid *, u_int, u_int);
 const struct grid_line *grid_peek_line(struct grid *, u_int);
 void	 grid_get_cell(struct grid *, u_int, u_int, struct grid_cell *);
 void	 grid_set_cell(struct grid *, u_int, u_int, const struct grid_cell *);
@@ -2078,7 +2067,6 @@ void	 screen_set_selection(struct screen *,
 	     u_int, u_int, u_int, u_int, u_int, struct grid_cell *);
 void	 screen_clear_selection(struct screen *);
 int	 screen_check_selection(struct screen *, u_int, u_int);
-void	 screen_reflow(struct screen *, u_int);
 
 /* window.c */
 extern struct windows windows;
@@ -2092,7 +2080,6 @@ RB_PROTOTYPE(window_pane_tree, window_pane, tree_entry, window_pane_cmp);
 struct winlink	*winlink_find_by_index(struct winlinks *, int);
 struct winlink	*winlink_find_by_window(struct winlinks *, struct window *);
 struct winlink	*winlink_find_by_window_id(struct winlinks *, u_int);
-int		 winlink_next_index(struct winlinks *, int);
 u_int		 winlink_count(struct winlinks *);
 struct winlink	*winlink_add(struct winlinks *, int);
 void		 winlink_set_window(struct winlink *, struct window *);
@@ -2136,8 +2123,6 @@ u_int		 window_count_panes(struct window *);
 void		 window_destroy_panes(struct window *);
 struct window_pane *window_pane_find_by_id_str(const char *);
 struct window_pane *window_pane_find_by_id(u_int);
-struct window_pane *window_pane_create(struct window *, u_int, u_int, u_int);
-void		 window_pane_destroy(struct window_pane *);
 int		 window_pane_spawn(struct window_pane *, int, char **,
 		     const char *, const char *, const char *, struct environ *,
 		     struct termios *, char **);
@@ -2223,7 +2208,6 @@ void		 window_choose_ready(struct window_pane *,
 		     u_int, void (*)(struct window_choose_data *));
 struct window_choose_data	*window_choose_data_create (int,
 		     struct client *, struct session *);
-void	window_choose_data_free(struct window_choose_data *);
 void	window_choose_data_run(struct window_choose_data *);
 struct window_choose_data	*window_choose_add_window(struct window_pane *,
 			struct client *, struct session *, struct winlink *,
@@ -2232,13 +2216,11 @@ struct window_choose_data	*window_choose_add_session(struct window_pane *,
 			struct client *, struct session *, const char *,
 			const char *, u_int);
 void	window_choose_expand_all(struct window_pane *);
-void	window_choose_collapse_all(struct window_pane *);
 void	window_choose_set_current(struct window_pane *, u_int);
 
 /* names.c */
 void	 check_window_name(struct window *);
 char	*default_window_name(struct window *);
-char	*format_window_name(struct window *);
 char	*parse_window_name(const char *);
 
 /* signal.c */
@@ -2295,11 +2277,8 @@ int		 session_set_current(struct session *, struct winlink *);
 struct session_group *session_group_find(struct session *);
 u_int		 session_group_index(struct session_group *);
 void		 session_group_add(struct session *, struct session *);
-void		 session_group_remove(struct session *);
-u_int		 session_group_count(struct session_group *);
 void		 session_group_synchronize_to(struct session *);
 void		 session_group_synchronize_from(struct session *);
-void		 session_group_synchronize1(struct session *, struct session *);
 void		 session_renumber_windows(struct session *);
 
 /* utf8.c */
