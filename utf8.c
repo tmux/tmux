@@ -236,6 +236,33 @@ utf8_sanitize(const char *src)
 	return (dst);
 }
 
+/* Get UTF-8 buffer length. */
+size_t
+utf8_strlen(const struct utf8_data *s)
+{
+	size_t	i;
+
+	for (i = 0; s[i].size != 0; i++)
+		/* nothing */;
+	return (i);
+}
+
+/* Get UTF-8 string width. */
+u_int
+utf8_strwidth(const struct utf8_data *s, ssize_t n)
+{
+	ssize_t	i;
+	u_int	width;
+
+	width = 0;
+	for (i = 0; s[i].size != 0; i++) {
+		if (n != -1 && n == i)
+			break;
+		width += s[i].width;
+	}
+	return (width);
+}
+
 /*
  * Convert a string into a buffer of UTF-8 characters. Terminated by size == 0.
  * Caller frees.

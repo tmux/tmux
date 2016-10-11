@@ -1300,7 +1300,7 @@ struct client {
 	TAILQ_HEAD(, message_entry) message_log;
 
 	char		*prompt_string;
-	char		*prompt_buffer;
+	struct utf8_data *prompt_buffer;
 	size_t		 prompt_index;
 	int		 (*prompt_callbackfn)(void *, const char *);
 	void		 (*prompt_freefn)(void *);
@@ -2345,6 +2345,8 @@ enum utf8_state	 utf8_combine(const struct utf8_data *, wchar_t *);
 enum utf8_state	 utf8_split(wchar_t, struct utf8_data *);
 int		 utf8_strvis(char *, const char *, size_t, int);
 char		*utf8_sanitize(const char *);
+size_t		 utf8_strlen(const struct utf8_data *);
+u_int		 utf8_strwidth(const struct utf8_data *, ssize_t);
 struct utf8_data *utf8_fromcstr(const char *);
 char		*utf8_tocstr(struct utf8_data *);
 u_int		 utf8_cstrwidth(const char *);
