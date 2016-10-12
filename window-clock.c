@@ -24,20 +24,20 @@
 
 #include "tmux.h"
 
-struct screen *window_clock_init(struct window_pane *);
-void	window_clock_free(struct window_pane *);
-void	window_clock_resize(struct window_pane *, u_int, u_int);
-void	window_clock_key(struct window_pane *, struct client *,
-	    struct session *, key_code, struct mouse_event *);
+static struct screen *window_clock_init(struct window_pane *);
+static void	window_clock_free(struct window_pane *);
+static void	window_clock_resize(struct window_pane *, u_int, u_int);
+static void	window_clock_key(struct window_pane *, struct client *,
+		    struct session *, key_code, struct mouse_event *);
 
-void	window_clock_timer_callback(int, short, void *);
-void	window_clock_draw_screen(struct window_pane *);
+static void	window_clock_timer_callback(int, short, void *);
+static void	window_clock_draw_screen(struct window_pane *);
 
 const struct window_mode window_clock_mode = {
-	window_clock_init,
-	window_clock_free,
-	window_clock_resize,
-	window_clock_key,
+	.init = window_clock_init,
+	.free = window_clock_free,
+	.resize = window_clock_resize,
+	.key = window_clock_key,
 };
 
 struct window_clock_mode_data {
@@ -119,7 +119,7 @@ const char window_clock_table[14][5][5] = {
 	  { 1,0,0,0,1 } },
 };
 
-void
+static void
 window_clock_timer_callback(__unused int fd, __unused short events, void *arg)
 {
 	struct window_pane		*wp = arg;
@@ -142,7 +142,7 @@ window_clock_timer_callback(__unused int fd, __unused short events, void *arg)
 	server_redraw_window(wp->window);
 }
 
-struct screen *
+static struct screen *
 window_clock_init(struct window_pane *wp)
 {
 	struct window_clock_mode_data	*data;
@@ -164,7 +164,7 @@ window_clock_init(struct window_pane *wp)
 	return (s);
 }
 
-void
+static void
 window_clock_free(struct window_pane *wp)
 {
 	struct window_clock_mode_data	*data = wp->modedata;
@@ -174,7 +174,7 @@ window_clock_free(struct window_pane *wp)
 	free(data);
 }
 
-void
+static void
 window_clock_resize(struct window_pane *wp, u_int sx, u_int sy)
 {
 	struct window_clock_mode_data	*data = wp->modedata;
@@ -184,7 +184,7 @@ window_clock_resize(struct window_pane *wp, u_int sx, u_int sy)
 	window_clock_draw_screen(wp);
 }
 
-void
+static void
 window_clock_key(struct window_pane *wp, __unused struct client *c,
     __unused struct session *sess, __unused key_code key,
     __unused struct mouse_event *m)
@@ -192,7 +192,7 @@ window_clock_key(struct window_pane *wp, __unused struct client *c,
 	window_pane_reset_mode(wp);
 }
 
-void
+static void
 window_clock_draw_screen(struct window_pane *wp)
 {
 	struct window_clock_mode_data	*data = wp->modedata;

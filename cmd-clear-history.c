@@ -24,7 +24,7 @@
  * Clear pane history.
  */
 
-enum cmd_retval	 cmd_clear_history_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	 cmd_clear_history_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_clear_history_entry = {
 	.name = "clear-history",
@@ -39,7 +39,7 @@ const struct cmd_entry cmd_clear_history_entry = {
 	.exec = cmd_clear_history_exec
 };
 
-enum cmd_retval
+static enum cmd_retval
 cmd_clear_history_exec(__unused struct cmd *self, struct cmd_q *cmdq)
 {
 	struct window_pane	*wp = cmdq->state.tflag.wp;

@@ -27,40 +27,40 @@
  * Set an option.
  */
 
-enum cmd_retval	cmd_set_option_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_set_option_exec(struct cmd *, struct cmd_q *);
 
-enum cmd_retval	cmd_set_option_user(struct cmd *, struct cmd_q *,
+static enum cmd_retval	cmd_set_option_user(struct cmd *, struct cmd_q *,
 	    const char *, const char *);
 
-int	cmd_set_option_unset(struct cmd *, struct cmd_q *,
-	    const struct options_table_entry *, struct options *,
-	    const char *);
-int	cmd_set_option_set(struct cmd *, struct cmd_q *,
-	    const struct options_table_entry *, struct options *,
-	    const char *);
+static int	cmd_set_option_unset(struct cmd *, struct cmd_q *,
+		    const struct options_table_entry *, struct options *,
+		    const char *);
+static int	cmd_set_option_set(struct cmd *, struct cmd_q *,
+		    const struct options_table_entry *, struct options *,
+		    const char *);
 
-struct options_entry *cmd_set_option_string(struct cmd *, struct cmd_q *,
+static struct options_entry *cmd_set_option_string(struct cmd *, struct cmd_q *,
 	    const struct options_table_entry *, struct options *,
 	    const char *);
-struct options_entry *cmd_set_option_number(struct cmd *, struct cmd_q *,
+static struct options_entry *cmd_set_option_number(struct cmd *, struct cmd_q *,
 	    const struct options_table_entry *, struct options *,
 	    const char *);
-struct options_entry *cmd_set_option_key(struct cmd *, struct cmd_q *,
+static struct options_entry *cmd_set_option_key(struct cmd *, struct cmd_q *,
 	    const struct options_table_entry *, struct options *,
 	    const char *);
-struct options_entry *cmd_set_option_colour(struct cmd *, struct cmd_q *,
+static struct options_entry *cmd_set_option_colour(struct cmd *, struct cmd_q *,
 	    const struct options_table_entry *, struct options *,
 	    const char *);
-struct options_entry *cmd_set_option_attributes(struct cmd *, struct cmd_q *,
+static struct options_entry *cmd_set_option_attributes(struct cmd *,
+	    struct cmd_q *, const struct options_table_entry *,
+	    struct options *, const char *);
+static struct options_entry *cmd_set_option_flag(struct cmd *, struct cmd_q *,
 	    const struct options_table_entry *, struct options *,
 	    const char *);
-struct options_entry *cmd_set_option_flag(struct cmd *, struct cmd_q *,
+static struct options_entry *cmd_set_option_choice(struct cmd *, struct cmd_q *,
 	    const struct options_table_entry *, struct options *,
 	    const char *);
-struct options_entry *cmd_set_option_choice(struct cmd *, struct cmd_q *,
-	    const struct options_table_entry *, struct options *,
-	    const char *);
-struct options_entry *cmd_set_option_style(struct cmd *, struct cmd_q *,
+static struct options_entry *cmd_set_option_style(struct cmd *, struct cmd_q *,
 	    const struct options_table_entry *, struct options *,
 	    const char *);
 
@@ -90,7 +90,7 @@ const struct cmd_entry cmd_set_window_option_entry = {
 	.exec = cmd_set_option_exec
 };
 
-enum cmd_retval
+static enum cmd_retval
 cmd_set_option_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args				*args = self->args;
@@ -223,7 +223,7 @@ cmd_set_option_exec(struct cmd *self, struct cmd_q *cmdq)
 }
 
 /* Set user option. */
-enum cmd_retval
+static enum cmd_retval
 cmd_set_option_user(struct cmd *self, struct cmd_q *cmdq, const char *optstr,
     const char *valstr)
 {
@@ -301,7 +301,7 @@ cmd_set_option_user(struct cmd *self, struct cmd_q *cmdq, const char *optstr,
 }
 
 /* Unset an option. */
-int
+static int
 cmd_set_option_unset(struct cmd *self, struct cmd_q *cmdq,
     const struct options_table_entry *oe, struct options *oo,
     const char *value)
@@ -331,7 +331,7 @@ cmd_set_option_unset(struct cmd *self, struct cmd_q *cmdq,
 }
 
 /* Set an option. */
-int
+static int
 cmd_set_option_set(struct cmd *self, struct cmd_q *cmdq,
     const struct options_table_entry *oe, struct options *oo,
     const char *value)
@@ -386,7 +386,7 @@ cmd_set_option_set(struct cmd *self, struct cmd_q *cmdq,
 }
 
 /* Set a string option. */
-struct options_entry *
+static struct options_entry *
 cmd_set_option_string(struct cmd *self, __unused struct cmd_q *cmdq,
     const struct options_table_entry *oe, struct options *oo,
     const char *value)
@@ -408,7 +408,7 @@ cmd_set_option_string(struct cmd *self, __unused struct cmd_q *cmdq,
 }
 
 /* Set a number option. */
-struct options_entry *
+static struct options_entry *
 cmd_set_option_number(__unused struct cmd *self, struct cmd_q *cmdq,
     const struct options_table_entry *oe, struct options *oo,
     const char *value)
@@ -426,7 +426,7 @@ cmd_set_option_number(__unused struct cmd *self, struct cmd_q *cmdq,
 }
 
 /* Set a key option. */
-struct options_entry *
+static struct options_entry *
 cmd_set_option_key(__unused struct cmd *self, struct cmd_q *cmdq,
     const struct options_table_entry *oe, struct options *oo,
     const char *value)
@@ -443,7 +443,7 @@ cmd_set_option_key(__unused struct cmd *self, struct cmd_q *cmdq,
 }
 
 /* Set a colour option. */
-struct options_entry *
+static struct options_entry *
 cmd_set_option_colour(__unused struct cmd *self, struct cmd_q *cmdq,
     const struct options_table_entry *oe, struct options *oo,
     const char *value)
@@ -459,7 +459,7 @@ cmd_set_option_colour(__unused struct cmd *self, struct cmd_q *cmdq,
 }
 
 /* Set an attributes option. */
-struct options_entry *
+static struct options_entry *
 cmd_set_option_attributes(__unused struct cmd *self, struct cmd_q *cmdq,
     const struct options_table_entry *oe, struct options *oo,
     const char *value)
@@ -475,7 +475,7 @@ cmd_set_option_attributes(__unused struct cmd *self, struct cmd_q *cmdq,
 }
 
 /* Set a flag option. */
-struct options_entry *
+static struct options_entry *
 cmd_set_option_flag(__unused struct cmd *self, struct cmd_q *cmdq,
     const struct options_table_entry *oe, struct options *oo,
     const char *value)
@@ -503,7 +503,7 @@ cmd_set_option_flag(__unused struct cmd *self, struct cmd_q *cmdq,
 }
 
 /* Set a choice option. */
-struct options_entry *
+static struct options_entry *
 cmd_set_option_choice(__unused struct cmd *self, struct cmd_q *cmdq,
     const struct options_table_entry *oe, struct options *oo,
     const char *value)
@@ -538,7 +538,7 @@ cmd_set_option_choice(__unused struct cmd *self, struct cmd_q *cmdq,
 }
 
 /* Set a style option. */
-struct options_entry *
+static struct options_entry *
 cmd_set_option_style(struct cmd *self, struct cmd_q *cmdq,
     const struct options_table_entry *oe, struct options *oo,
     const char *value)

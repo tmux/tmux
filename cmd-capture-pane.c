@@ -27,13 +27,14 @@
  * Write the entire contents of a pane to a buffer or stdout.
  */
 
-enum cmd_retval	 cmd_capture_pane_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	 cmd_capture_pane_exec(struct cmd *, struct cmd_q *);
 
-char		*cmd_capture_pane_append(char *, size_t *, char *, size_t);
-char		*cmd_capture_pane_pending(struct args *, struct window_pane *,
-		     size_t *);
-char		*cmd_capture_pane_history(struct args *, struct cmd_q *,
-		     struct window_pane *, size_t *);
+static char		*cmd_capture_pane_append(char *, size_t *, char *,
+			     size_t);
+static char		*cmd_capture_pane_pending(struct args *,
+			     struct window_pane *, size_t *);
+static char		*cmd_capture_pane_history(struct args *, struct cmd_q *,
+			     struct window_pane *, size_t *);
 
 const struct cmd_entry cmd_capture_pane_entry = {
 	.name = "capture-pane",
@@ -49,7 +50,7 @@ const struct cmd_entry cmd_capture_pane_entry = {
 	.exec = cmd_capture_pane_exec
 };
 
-char *
+static char *
 cmd_capture_pane_append(char *buf, size_t *len, char *line, size_t linelen)
 {
 	buf = xrealloc(buf, *len + linelen + 1);
@@ -58,7 +59,7 @@ cmd_capture_pane_append(char *buf, size_t *len, char *line, size_t linelen)
 	return (buf);
 }
 
-char *
+static char *
 cmd_capture_pane_pending(struct args *args, struct window_pane *wp,
     size_t *len)
 {
@@ -90,7 +91,7 @@ cmd_capture_pane_pending(struct args *args, struct window_pane *wp,
 	return (buf);
 }
 
-char *
+static char *
 cmd_capture_pane_history(struct args *args, struct cmd_q *cmdq,
     struct window_pane *wp, size_t *len)
 {
@@ -175,7 +176,7 @@ cmd_capture_pane_history(struct args *args, struct cmd_q *cmdq,
 	return (buf);
 }
 
-enum cmd_retval
+static enum cmd_retval
 cmd_capture_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;

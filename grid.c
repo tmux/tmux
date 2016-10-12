@@ -43,16 +43,20 @@ const struct grid_cell_entry grid_default_entry = {
 	0, { .data = { 0, 8, 8, ' ' } }
 };
 
-void	grid_reflow_copy(struct grid_line *, u_int, struct grid_line *l,
-	    u_int, u_int);
-void	grid_reflow_join(struct grid *, u_int *, struct grid_line *, u_int);
-void	grid_reflow_split(struct grid *, u_int *, struct grid_line *, u_int,
-	    u_int);
-void	grid_reflow_move(struct grid *, u_int *, struct grid_line *);
-size_t	grid_string_cells_fg(const struct grid_cell *, int *);
-size_t	grid_string_cells_bg(const struct grid_cell *, int *);
-void	grid_string_cells_code(const struct grid_cell *,
-	    const struct grid_cell *, char *, size_t, int);
+static void	grid_expand_line(struct grid *, u_int, u_int);
+
+static void	grid_reflow_copy(struct grid_line *, u_int, struct grid_line *,
+		    u_int, u_int);
+static void	grid_reflow_join(struct grid *, u_int *, struct grid_line *,
+		    u_int);
+static void	grid_reflow_split(struct grid *, u_int *, struct grid_line *,
+		    u_int, u_int);
+static void	grid_reflow_move(struct grid *, u_int *, struct grid_line *);
+
+static size_t	grid_string_cells_fg(const struct grid_cell *, int *);
+static size_t	grid_string_cells_bg(const struct grid_cell *, int *);
+static void	grid_string_cells_code(const struct grid_cell *,
+		    const struct grid_cell *, char *, size_t, int);
 
 /* Copy default into a cell. */
 static void
@@ -242,7 +246,7 @@ grid_scroll_history_region(struct grid *gd, u_int upper, u_int lower)
 }
 
 /* Expand line to fit to cell. */
-void
+static void
 grid_expand_line(struct grid *gd, u_int py, u_int sx)
 {
 	struct grid_line	*gl;
@@ -473,7 +477,7 @@ grid_move_cells(struct grid *gd, u_int dx, u_int px, u_int py, u_int nx)
 }
 
 /* Get ANSI foreground sequence. */
-size_t
+static size_t
 grid_string_cells_fg(const struct grid_cell *gc, int *values)
 {
 	size_t	n;
@@ -522,7 +526,7 @@ grid_string_cells_fg(const struct grid_cell *gc, int *values)
 }
 
 /* Get ANSI background sequence. */
-size_t
+static size_t
 grid_string_cells_bg(const struct grid_cell *gc, int *values)
 {
 	size_t	n;
@@ -575,7 +579,7 @@ grid_string_cells_bg(const struct grid_cell *gc, int *values)
  * given a current state. The output buffer must be able to hold at least 57
  * bytes.
  */
-void
+static void
 grid_string_cells_code(const struct grid_cell *lastgc,
     const struct grid_cell *gc, char *buf, size_t len, int escape_c0)
 {
@@ -773,7 +777,7 @@ grid_duplicate_lines(struct grid *dst, u_int dy, struct grid *src, u_int sy,
 }
 
 /* Copy a section of a line. */
-void
+static void
 grid_reflow_copy(struct grid_line *dst_gl, u_int to, struct grid_line *src_gl,
     u_int from, u_int to_copy)
 {
@@ -798,7 +802,7 @@ grid_reflow_copy(struct grid_line *dst_gl, u_int to, struct grid_line *src_gl,
 }
 
 /* Join line data. */
-void
+static void
 grid_reflow_join(struct grid *dst, u_int *py, struct grid_line *src_gl,
     u_int new_x)
 {
@@ -833,7 +837,7 @@ grid_reflow_join(struct grid *dst, u_int *py, struct grid_line *src_gl,
 }
 
 /* Split line data. */
-void
+static void
 grid_reflow_split(struct grid *dst, u_int *py, struct grid_line *src_gl,
     u_int new_x, u_int offset)
 {
@@ -873,7 +877,7 @@ grid_reflow_split(struct grid *dst, u_int *py, struct grid_line *src_gl,
 }
 
 /* Move line data. */
-void
+static void
 grid_reflow_move(struct grid *dst, u_int *py, struct grid_line *src_gl)
 {
 	struct grid_line	*dst_gl;

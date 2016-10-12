@@ -28,7 +28,7 @@
 
 #define BREAK_PANE_TEMPLATE "#{session_name}:#{window_index}.#{pane_index}"
 
-enum cmd_retval	 cmd_break_pane_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	 cmd_break_pane_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_break_pane_entry = {
 	.name = "break-pane",
@@ -44,7 +44,7 @@ const struct cmd_entry cmd_break_pane_entry = {
 	.exec = cmd_break_pane_exec
 };
 
-enum cmd_retval
+static enum cmd_retval
 cmd_break_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;

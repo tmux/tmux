@@ -27,11 +27,11 @@
  * Show environment.
  */
 
-enum cmd_retval	cmd_show_environment_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_show_environment_exec(struct cmd *, struct cmd_q *);
 
-char	*cmd_show_environment_escape(struct environ_entry *);
-void	 cmd_show_environment_print(struct cmd *, struct cmd_q *,
-	     struct environ_entry *);
+static char	*cmd_show_environment_escape(struct environ_entry *);
+static void	 cmd_show_environment_print(struct cmd *, struct cmd_q *,
+		     struct environ_entry *);
 
 const struct cmd_entry cmd_show_environment_entry = {
 	.name = "show-environment",
@@ -46,7 +46,7 @@ const struct cmd_entry cmd_show_environment_entry = {
 	.exec = cmd_show_environment_exec
 };
 
-char *
+static char *
 cmd_show_environment_escape(struct environ_entry *envent)
 {
 	const char	*value = envent->value;
@@ -64,7 +64,7 @@ cmd_show_environment_escape(struct environ_entry *envent)
 	return (ret);
 }
 
-void
+static void
 cmd_show_environment_print(struct cmd *self, struct cmd_q *cmdq,
     struct environ_entry *envent)
 {
@@ -87,7 +87,7 @@ cmd_show_environment_print(struct cmd *self, struct cmd_q *cmdq,
 		cmdq_print(cmdq, "unset %s;", envent->name);
 }
 
-enum cmd_retval
+static enum cmd_retval
 cmd_show_environment_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;

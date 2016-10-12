@@ -31,7 +31,7 @@
  * Saves a paste buffer to a file.
  */
 
-enum cmd_retval	 cmd_save_buffer_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	 cmd_save_buffer_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_save_buffer_entry = {
 	.name = "save-buffer",
@@ -55,7 +55,7 @@ const struct cmd_entry cmd_show_buffer_entry = {
 	.exec = cmd_save_buffer_exec
 };
 
-enum cmd_retval
+static enum cmd_retval
 cmd_save_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;

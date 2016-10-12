@@ -29,33 +29,33 @@
 
 #include "tmux.h"
 
-char   *status_redraw_get_left(struct client *, time_t, struct grid_cell *,
-	    size_t *);
-char   *status_redraw_get_right(struct client *, time_t, struct grid_cell *,
-	    size_t *);
-char   *status_print(struct client *, struct winlink *, time_t,
-	    struct grid_cell *);
-char   *status_replace(struct client *, struct winlink *, const char *, time_t);
-void	status_message_callback(int, short, void *);
-void	status_timer_callback(int, short, void *);
+static char	*status_redraw_get_left(struct client *, time_t,
+		     struct grid_cell *, size_t *);
+static char	*status_redraw_get_right(struct client *, time_t,
+		     struct grid_cell *, size_t *);
+static char	*status_print(struct client *, struct winlink *, time_t,
+		     struct grid_cell *);
+static char	*status_replace(struct client *, struct winlink *, const char *,
+		     time_t);
+static void	 status_message_callback(int, short, void *);
+static void	 status_timer_callback(int, short, void *);
 
-const char *status_prompt_up_history(u_int *);
-const char *status_prompt_down_history(u_int *);
-void	status_prompt_add_history(const char *);
+static char	*status_prompt_find_history_file(void);
+static const char *status_prompt_up_history(u_int *);
+static const char *status_prompt_down_history(u_int *);
+static void	 status_prompt_add_history(const char *);
 
-const char **status_prompt_complete_list(u_int *, const char *);
-char   *status_prompt_complete_prefix(const char **, u_int);
-char   *status_prompt_complete(struct session *, const char *);
-
-char   *status_prompt_find_history_file(void);
+static const char **status_prompt_complete_list(u_int *, const char *);
+static char	*status_prompt_complete_prefix(const char **, u_int);
+static char	*status_prompt_complete(struct session *, const char *);
 
 /* Status prompt history. */
 #define PROMPT_HISTORY 100
-char	**status_prompt_hlist;
-u_int	  status_prompt_hsize;
+static char	**status_prompt_hlist;
+static u_int	  status_prompt_hsize;
 
 /* Find the history file to load/save from/to. */
-char *
+static char *
 status_prompt_find_history_file(void)
 {
 	const char	*home, *history_file;
@@ -144,7 +144,7 @@ status_prompt_save_history(void)
 }
 
 /* Status timer callback. */
-void
+static void
 status_timer_callback(__unused int fd, __unused short events, void *arg)
 {
 	struct client	*c = arg;
@@ -207,7 +207,7 @@ status_at_line(struct client *c)
 }
 
 /* Retrieve options for left string. */
-char *
+static char *
 status_redraw_get_left(struct client *c, time_t t, struct grid_cell *gc,
     size_t *size)
 {
@@ -229,7 +229,7 @@ status_redraw_get_left(struct client *c, time_t t, struct grid_cell *gc,
 }
 
 /* Retrieve options for right string. */
-char *
+static char *
 status_redraw_get_right(struct client *c, time_t t, struct grid_cell *gc,
     size_t *size)
 {
@@ -493,7 +493,7 @@ out:
 }
 
 /* Replace special sequences in fmt. */
-char *
+static char *
 status_replace(struct client *c, struct winlink *wl, const char *fmt, time_t t)
 {
 	struct format_tree	*ft;
@@ -515,7 +515,7 @@ status_replace(struct client *c, struct winlink *wl, const char *fmt, time_t t)
 }
 
 /* Return winlink status line entry and adjust gc as necessary. */
-char *
+static char *
 status_print(struct client *c, struct winlink *wl, time_t t,
     struct grid_cell *gc)
 {
@@ -607,7 +607,7 @@ status_message_clear(struct client *c)
 }
 
 /* Clear status line message after timer expires. */
-void
+static void
 status_message_callback(__unused int fd, __unused short event, void *data)
 {
 	struct client	*c = data;
@@ -662,18 +662,21 @@ status_prompt_set(struct client *c, const char *msg, const char *input,
 	struct format_tree	*ft;
 	int			 keys;
 	time_t			 t;
+	char			*tmp;
 
 	ft = format_create(NULL, 0);
 	format_defaults(ft, c, NULL, NULL, NULL);
+
 	t = time(NULL);
+	tmp = format_expand_time(ft, input, t);
 
 	status_message_clear(c);
 	status_prompt_clear(c);
 
 	c->prompt_string = format_expand_time(ft, msg, t);
 
-	c->prompt_buffer = format_expand_time(ft, input, t);
-	c->prompt_index = strlen(c->prompt_buffer);
+	c->prompt_buffer = utf8_fromcstr(tmp);
+	c->prompt_index = utf8_strlen(c->prompt_buffer);
 
 	c->prompt_callbackfn = callbackfn;
 	c->prompt_freefn = freefn;
@@ -692,6 +695,7 @@ status_prompt_set(struct client *c, const char *msg, const char *input,
 	c->tty.flags |= (TTY_NOCURSOR|TTY_FREEZE);
 	c->flags |= CLIENT_STATUS;
 
+	free(tmp);
 	format_free(ft);
 }
 
@@ -723,22 +727,26 @@ status_prompt_update(struct client *c, const char *msg, const char *input)
 {
 	struct format_tree	*ft;
 	time_t			 t;
+	char			*tmp;
 
 	ft = format_create(NULL, 0);
 	format_defaults(ft, c, NULL, NULL, NULL);
+
 	t = time(NULL);
+	tmp = format_expand_time(ft, input, t);
 
 	free(c->prompt_string);
 	c->prompt_string = format_expand_time(ft, msg, t);
 
 	free(c->prompt_buffer);
-	c->prompt_buffer = format_expand_time(ft, input, t);
-	c->prompt_index = strlen(c->prompt_buffer);
+	c->prompt_buffer = utf8_fromcstr(tmp);
+	c->prompt_index = utf8_strlen(c->prompt_buffer);
 
 	c->prompt_hindex = 0;
 
 	c->flags |= CLIENT_STATUS;
 
+	free(tmp);
 	format_free(ft);
 }
 
@@ -746,56 +754,79 @@ status_prompt_update(struct client *c, const char *msg, const char *input)
 int
 status_prompt_redraw(struct client *c)
 {
-	struct screen_write_ctx		ctx;
-	struct session		       *s = c->session;
-	struct screen		        old_status;
-	size_t			        i, size, left, len, off;
-	struct grid_cell		gc;
+	struct screen_write_ctx	 ctx;
+	struct session		*s = c->session;
+	struct screen		 old_status;
+	u_int			 i, offset, left, start, pcursor, pwidth, width;
+	struct grid_cell	 gc, cursorgc;
 
 	if (c->tty.sx == 0 || c->tty.sy == 0)
 		return (0);
 	memcpy(&old_status, &c->status, sizeof old_status);
 	screen_init(&c->status, c->tty.sx, 1, 0);
 
-	len = screen_write_strlen("%s", c->prompt_string);
-	if (len > c->tty.sx)
-		len = c->tty.sx;
-	off = 0;
-
-	/* Change colours for command mode. */
 	if (c->prompt_mdata.mode == 1)
 		style_apply(&gc, s->options, "message-command-style");
 	else
 		style_apply(&gc, s->options, "message-style");
 
+	memcpy(&cursorgc, &gc, sizeof cursorgc);
+	cursorgc.attr ^= GRID_ATTR_REVERSE;
+
+	start = screen_write_strlen("%s", c->prompt_string);
+	if (start > c->tty.sx)
+		start = c->tty.sx;
+
 	screen_write_start(&ctx, NULL, &c->status);
-
 	screen_write_cursormove(&ctx, 0, 0);
-	screen_write_nputs(&ctx, len, &gc, "%s", c->prompt_string);
+	screen_write_nputs(&ctx, start, &gc, "%s", c->prompt_string);
+	while (c->status.cx < screen_size_x(&c->status))
+		screen_write_putc(&ctx, &gc, ' ');
+	screen_write_cursormove(&ctx, start, 0);
 
-	left = c->tty.sx - len;
-	if (left != 0) {
-		size = screen_write_strlen("%s", c->prompt_buffer);
-		if (c->prompt_index >= left) {
-			off = c->prompt_index - left + 1;
-			if (c->prompt_index == size)
-				left--;
-			size = left;
+	left = c->tty.sx - start;
+	if (left == 0)
+		goto finished;
+
+	pcursor = utf8_strwidth(c->prompt_buffer, c->prompt_index);
+	pwidth = utf8_strwidth(c->prompt_buffer, -1);
+	if (pcursor >= left) {
+		/*
+		 * The cursor would be outside the screen so start drawing
+		 * with it on the right.
+		 */
+		offset = (pcursor - left) + 1;
+		pwidth = left;
+	} else
+		offset = 0;
+	if (pwidth > left)
+		pwidth = left;
+
+	width = 0;
+	for (i = 0; c->prompt_buffer[i].size != 0; i++) {
+		if (width < offset) {
+			width += c->prompt_buffer[i].width;
+			continue;
 		}
-		screen_write_nputs(&ctx, left, &gc, "%s", c->prompt_buffer +
-		    off);
+		if (width >= offset + pwidth)
+			break;
+		width += c->prompt_buffer[i].width;
+		if (width > offset + pwidth)
+			break;
 
-		for (i = len + size; i < c->tty.sx; i++)
-			screen_write_putc(&ctx, &gc, ' ');
+		if (i != c->prompt_index) {
+			utf8_copy(&gc.data, &c->prompt_buffer[i]);
+			screen_write_cell(&ctx, &gc);
+		} else {
+			utf8_copy(&cursorgc.data, &c->prompt_buffer[i]);
+			screen_write_cell(&ctx, &cursorgc);
+		}
 	}
+	if (c->status.cx < screen_size_x(&c->status) && c->prompt_index >= i)
+		screen_write_putc(&ctx, &cursorgc, ' ');
 
+finished:
 	screen_write_stop(&ctx);
-
-	/* Apply fake cursor. */
-	off = len + c->prompt_index - off;
-	grid_view_get_cell(c->status.grid, off, 0, &gc);
-	gc.attr ^= GRID_ATTR_REVERSE;
-	grid_view_set_cell(c->status.grid, off, 0, &gc);
 
 	if (grid_compare(c->status.grid, old_status.grid) == 0) {
 		screen_free(&old_status);
@@ -805,20 +836,38 @@ status_prompt_redraw(struct client *c)
 	return (1);
 }
 
+/* Is this a separator? */
+static int
+status_prompt_in_list(const char *ws, const struct utf8_data *ud)
+{
+	if (ud->size != 1 || ud->width != 1)
+		return (0);
+	return (strchr(ws, *ud->data) != NULL);
+}
+
+/* Is this a space? */
+static int
+status_prompt_space(const struct utf8_data *ud)
+{
+	if (ud->size != 1 || ud->width != 1)
+		return (0);
+	return (*ud->data == ' ');
+}
+
 /* Handle keys in prompt. */
 void
 status_prompt_key(struct client *c, key_code key)
 {
-	struct session		*sess = c->session;
-	struct options		*oo = sess->options;
+	struct options		*oo = c->session->options;
 	struct paste_buffer	*pb;
-	char			*s, *first, *last, word[64], swapc;
-	const char		*histstr, *bufdata, *wsep = NULL;
+	char			*s, word[64];
+	const char		*histstr, *bufdata, *ws = NULL;
 	u_char			 ch;
-	size_t			 size, n, off, idx, bufsize;
+	size_t			 size, n, off, idx, bufsize, used;
+	struct utf8_data	 tmp, *first, *last, *ud;
 
-	size = strlen(c->prompt_buffer);
-	switch (mode_key_lookup(&c->prompt_mdata, key, NULL, NULL)) {
+	size = utf8_strlen(c->prompt_buffer);
+	switch (mode_key_lookup(&c->prompt_mdata, key)) {
 	case MODEKEYEDIT_CURSORLEFT:
 		if (c->prompt_index > 0) {
 			c->prompt_index--;
@@ -856,7 +905,7 @@ status_prompt_key(struct client *c, key_code key)
 		}
 		break;
 	case MODEKEYEDIT_COMPLETE:
-		if (*c->prompt_buffer == '\0')
+		if (c->prompt_buffer[0].size == 0)
 			break;
 
 		idx = c->prompt_index;
@@ -864,40 +913,50 @@ status_prompt_key(struct client *c, key_code key)
 			idx--;
 
 		/* Find the word we are in. */
-		first = c->prompt_buffer + idx;
-		while (first > c->prompt_buffer && *first != ' ')
+		first = &c->prompt_buffer[idx];
+		while (first > c->prompt_buffer && !status_prompt_space(first))
 			first--;
-		while (*first == ' ')
+		while (first->size != 0 && status_prompt_space(first))
 			first++;
-		last = c->prompt_buffer + idx;
-		while (*last != '\0' && *last != ' ')
+		last = &c->prompt_buffer[idx];
+		while (last->size != 0 && !status_prompt_space(last))
 			last++;
-		while (*last == ' ')
+		while (last > c->prompt_buffer && status_prompt_space(last))
 			last--;
-		if (*last != '\0')
+		if (last->size != 0)
 			last++;
-		if (last <= first ||
-		    ((size_t) (last - first)) > (sizeof word) - 1)
+		if (last <= first)
 			break;
-		memcpy(word, first, last - first);
-		word[last - first] = '\0';
+
+		used = 0;
+		for (ud = first; ud < last; ud++) {
+			if (used + ud->size >= sizeof word)
+				break;
+			memcpy(word + used, ud->data, ud->size);
+			used += ud->size;
+		}
+		if (ud != last)
+			break;
+		word[used] = '\0';
 
 		/* And try to complete it. */
-		if ((s = status_prompt_complete(sess, word)) == NULL)
+		if ((s = status_prompt_complete(c->session, word)) == NULL)
 			break;
 
 		/* Trim out word. */
 		n = size - (last - c->prompt_buffer) + 1; /* with \0 */
-		memmove(first, last, n);
+		memmove(first, last, n * sizeof *c->prompt_buffer);
 		size -= last - first;
 
 		/* Insert the new word. */
 		size += strlen(s);
 		off = first - c->prompt_buffer;
-		c->prompt_buffer = xrealloc(c->prompt_buffer, size + 1);
+		c->prompt_buffer = xreallocarray(c->prompt_buffer, size + 1,
+		    sizeof *c->prompt_buffer);
 		first = c->prompt_buffer + off;
-		memmove(first + strlen(s), first, n);
-		memcpy(first, s, strlen(s));
+		memmove(first + strlen(s), first, n * sizeof *c->prompt_buffer);
+		for (idx = 0; idx < strlen(s); idx++)
+			utf8_set(&first[idx], s[idx]);
 
 		c->prompt_index = (first - c->prompt_buffer) + strlen(s);
 		free(s);
@@ -907,11 +966,12 @@ status_prompt_key(struct client *c, key_code key)
 	case MODEKEYEDIT_BACKSPACE:
 		if (c->prompt_index != 0) {
 			if (c->prompt_index == size)
-				c->prompt_buffer[--c->prompt_index] = '\0';
+				c->prompt_buffer[--c->prompt_index].size = 0;
 			else {
 				memmove(c->prompt_buffer + c->prompt_index - 1,
 				    c->prompt_buffer + c->prompt_index,
-				    size + 1 - c->prompt_index);
+				    (size + 1 - c->prompt_index) *
+				    sizeof *c->prompt_buffer);
 				c->prompt_index--;
 			}
 			c->flags |= CLIENT_STATUS;
@@ -922,38 +982,39 @@ status_prompt_key(struct client *c, key_code key)
 		if (c->prompt_index != size) {
 			memmove(c->prompt_buffer + c->prompt_index,
 			    c->prompt_buffer + c->prompt_index + 1,
-			    size + 1 - c->prompt_index);
+			    (size + 1 - c->prompt_index) *
+			    sizeof *c->prompt_buffer);
 			c->flags |= CLIENT_STATUS;
 		}
 		break;
 	case MODEKEYEDIT_DELETELINE:
 	case MODEKEYEDIT_SWITCHMODESUBSTITUTELINE:
-		*c->prompt_buffer = '\0';
+		c->prompt_buffer[0].size = 0;
 		c->prompt_index = 0;
 		c->flags |= CLIENT_STATUS;
 		break;
 	case MODEKEYEDIT_DELETETOENDOFLINE:
 	case MODEKEYEDIT_SWITCHMODECHANGELINE:
 		if (c->prompt_index < size) {
-			c->prompt_buffer[c->prompt_index] = '\0';
+			c->prompt_buffer[c->prompt_index].size = 0;
 			c->flags |= CLIENT_STATUS;
 		}
 		break;
 	case MODEKEYEDIT_DELETEWORD:
-		wsep = options_get_string(oo, "word-separators");
+		ws = options_get_string(oo, "word-separators");
 		idx = c->prompt_index;
 
 		/* Find a non-separator. */
 		while (idx != 0) {
 			idx--;
-			if (!strchr(wsep, c->prompt_buffer[idx]))
+			if (!status_prompt_in_list(ws, &c->prompt_buffer[idx]))
 				break;
 		}
 
 		/* Find the separator at the beginning of the word. */
 		while (idx != 0) {
 			idx--;
-			if (strchr(wsep, c->prompt_buffer[idx])) {
+			if (status_prompt_in_list(ws, &c->prompt_buffer[idx])) {
 				/* Go back to the word. */
 				idx++;
 				break;
@@ -962,53 +1023,55 @@ status_prompt_key(struct client *c, key_code key)
 
 		memmove(c->prompt_buffer + idx,
 		    c->prompt_buffer + c->prompt_index,
-		    size + 1 - c->prompt_index);
+		    (size + 1 - c->prompt_index) *
+		    sizeof *c->prompt_buffer);
 		memset(c->prompt_buffer + size - (c->prompt_index - idx),
-		    '\0', c->prompt_index - idx);
+		    '\0', (c->prompt_index - idx) * sizeof *c->prompt_buffer);
 		c->prompt_index = idx;
+
 		c->flags |= CLIENT_STATUS;
 		break;
 	case MODEKEYEDIT_NEXTSPACE:
-		wsep = " ";
+		ws = " ";
 		/* FALLTHROUGH */
 	case MODEKEYEDIT_NEXTWORD:
-		if (wsep == NULL)
-			wsep = options_get_string(oo, "word-separators");
+		if (ws == NULL)
+			ws = options_get_string(oo, "word-separators");
 
 		/* Find a separator. */
 		while (c->prompt_index != size) {
-			c->prompt_index++;
-			if (strchr(wsep, c->prompt_buffer[c->prompt_index]))
+			idx = ++c->prompt_index;
+			if (status_prompt_in_list(ws, &c->prompt_buffer[idx]))
 				break;
 		}
 
-		/* Find the word right after the separation. */
+		/* Find the word right after the separator. */
 		while (c->prompt_index != size) {
-			c->prompt_index++;
-			if (!strchr(wsep, c->prompt_buffer[c->prompt_index]))
+			idx = ++c->prompt_index;
+			if (!status_prompt_in_list(ws, &c->prompt_buffer[idx]))
 				break;
 		}
 
 		c->flags |= CLIENT_STATUS;
 		break;
 	case MODEKEYEDIT_NEXTSPACEEND:
-		wsep = " ";
+		ws = " ";
 		/* FALLTHROUGH */
 	case MODEKEYEDIT_NEXTWORDEND:
-		if (wsep == NULL)
-			wsep = options_get_string(oo, "word-separators");
+		if (ws == NULL)
+			ws = options_get_string(oo, "word-separators");
 
 		/* Find a word. */
 		while (c->prompt_index != size) {
-			c->prompt_index++;
-			if (!strchr(wsep, c->prompt_buffer[c->prompt_index]))
+			idx = ++c->prompt_index;
+			if (!status_prompt_in_list(ws, &c->prompt_buffer[idx]))
 				break;
 		}
 
 		/* Find the separator at the end of the word. */
 		while (c->prompt_index != size) {
-			c->prompt_index++;
-			if (strchr(wsep, c->prompt_buffer[c->prompt_index]))
+			idx = ++c->prompt_index;
+			if (status_prompt_in_list(ws, &c->prompt_buffer[idx]))
 				break;
 		}
 
@@ -1020,23 +1083,23 @@ status_prompt_key(struct client *c, key_code key)
 		c->flags |= CLIENT_STATUS;
 		break;
 	case MODEKEYEDIT_PREVIOUSSPACE:
-		wsep = " ";
+		ws = " ";
 		/* FALLTHROUGH */
 	case MODEKEYEDIT_PREVIOUSWORD:
-		if (wsep == NULL)
-			wsep = options_get_string(oo, "word-separators");
+		if (ws == NULL)
+			ws = options_get_string(oo, "word-separators");
 
 		/* Find a non-separator. */
 		while (c->prompt_index != 0) {
-			c->prompt_index--;
-			if (!strchr(wsep, c->prompt_buffer[c->prompt_index]))
+			idx = --c->prompt_index;
+			if (!status_prompt_in_list(ws, &c->prompt_buffer[idx]))
 				break;
 		}
 
 		/* Find the separator at the beginning of the word. */
 		while (c->prompt_index != 0) {
-			c->prompt_index--;
-			if (strchr(wsep, c->prompt_buffer[c->prompt_index])) {
+			idx = --c->prompt_index;
+			if (status_prompt_in_list(ws, &c->prompt_buffer[idx])) {
 				/* Go back to the word. */
 				c->prompt_index++;
 				break;
@@ -1050,8 +1113,8 @@ status_prompt_key(struct client *c, key_code key)
 		if (histstr == NULL)
 			break;
 		free(c->prompt_buffer);
-		c->prompt_buffer = xstrdup(histstr);
-		c->prompt_index = strlen(c->prompt_buffer);
+		c->prompt_buffer = utf8_fromcstr(histstr);
+		c->prompt_index = utf8_strlen(c->prompt_buffer);
 		c->flags |= CLIENT_STATUS;
 		break;
 	case MODEKEYEDIT_HISTORYDOWN:
@@ -1059,8 +1122,8 @@ status_prompt_key(struct client *c, key_code key)
 		if (histstr == NULL)
 			break;
 		free(c->prompt_buffer);
-		c->prompt_buffer = xstrdup(histstr);
-		c->prompt_index = strlen(c->prompt_buffer);
+		c->prompt_buffer = utf8_fromcstr(histstr);
+		c->prompt_index = utf8_strlen(c->prompt_buffer);
 		c->flags |= CLIENT_STATUS;
 		break;
 	case MODEKEYEDIT_PASTE:
@@ -1069,20 +1132,28 @@ status_prompt_key(struct client *c, key_code key)
 		bufdata = paste_buffer_data(pb, &bufsize);
 		for (n = 0; n < bufsize; n++) {
 			ch = (u_char)bufdata[n];
-			if (ch < 32 || ch == 127)
+			if (ch < 32 || ch >= 127)
 				break;
 		}
 
-		c->prompt_buffer = xrealloc(c->prompt_buffer, size + n + 1);
+		c->prompt_buffer = xreallocarray(c->prompt_buffer, size + n + 1,
+		    sizeof *c->prompt_buffer);
 		if (c->prompt_index == size) {
-			memcpy(c->prompt_buffer + c->prompt_index, bufdata, n);
+			for (idx = 0; idx < n; idx++) {
+				ud = &c->prompt_buffer[c->prompt_index + idx];
+				utf8_set(ud, bufdata[idx]);
+			}
 			c->prompt_index += n;
-			c->prompt_buffer[c->prompt_index] = '\0';
+			c->prompt_buffer[c->prompt_index].size = 0;
 		} else {
 			memmove(c->prompt_buffer + c->prompt_index + n,
 			    c->prompt_buffer + c->prompt_index,
-			    size + 1 - c->prompt_index);
-			memcpy(c->prompt_buffer + c->prompt_index, bufdata, n);
+			    (size + 1 - c->prompt_index) *
+			    sizeof *c->prompt_buffer);
+			for (idx = 0; idx < n; idx++) {
+				ud = &c->prompt_buffer[c->prompt_index + idx];
+				utf8_set(ud, bufdata[idx]);
+			}
 			c->prompt_index += n;
 		}
 
@@ -1093,42 +1164,55 @@ status_prompt_key(struct client *c, key_code key)
 		if (idx < size)
 			idx++;
 		if (idx >= 2) {
-			swapc = c->prompt_buffer[idx - 2];
-			c->prompt_buffer[idx - 2] = c->prompt_buffer[idx - 1];
-			c->prompt_buffer[idx - 1] = swapc;
+			utf8_copy(&tmp, &c->prompt_buffer[idx - 2]);
+			utf8_copy(&c->prompt_buffer[idx - 2],
+			    &c->prompt_buffer[idx - 1]);
+			utf8_copy(&c->prompt_buffer[idx - 1], &tmp);
 			c->prompt_index = idx;
 			c->flags |= CLIENT_STATUS;
 		}
 		break;
 	case MODEKEYEDIT_ENTER:
-		if (*c->prompt_buffer != '\0')
-			status_prompt_add_history(c->prompt_buffer);
-		if (c->prompt_callbackfn(c->prompt_data, c->prompt_buffer) == 0)
+		s = utf8_tocstr(c->prompt_buffer);
+		if (*s != '\0')
+			status_prompt_add_history(s);
+		if (c->prompt_callbackfn(c->prompt_data, s) == 0)
 			status_prompt_clear(c);
+		free(s);
 		break;
 	case MODEKEYEDIT_CANCEL:
 		if (c->prompt_callbackfn(c->prompt_data, NULL) == 0)
 			status_prompt_clear(c);
 		break;
 	case MODEKEY_OTHER:
-		if (key <= 0x1f || key >= 0x7f)
+		if (key <= 0x1f || key >= KEYC_BASE)
 			break;
-		c->prompt_buffer = xrealloc(c->prompt_buffer, size + 2);
+		if (utf8_split(key, &tmp) != UTF8_DONE)
+			break;
+
+		c->prompt_buffer = xreallocarray(c->prompt_buffer, size + 2,
+		    sizeof *c->prompt_buffer);
 
 		if (c->prompt_index == size) {
-			c->prompt_buffer[c->prompt_index++] = key;
-			c->prompt_buffer[c->prompt_index] = '\0';
+			utf8_copy(&c->prompt_buffer[c->prompt_index], &tmp);
+			c->prompt_index++;
+			c->prompt_buffer[c->prompt_index].size = 0;
 		} else {
 			memmove(c->prompt_buffer + c->prompt_index + 1,
 			    c->prompt_buffer + c->prompt_index,
-			    size + 1 - c->prompt_index);
-			c->prompt_buffer[c->prompt_index++] = key;
+			    (size + 1 - c->prompt_index) *
+			    sizeof *c->prompt_buffer);
+			utf8_copy(&c->prompt_buffer[c->prompt_index], &tmp);
+			c->prompt_index++;
 		}
 
 		if (c->prompt_flags & PROMPT_SINGLE) {
-			if (c->prompt_callbackfn(c->prompt_data,
-			    c->prompt_buffer) == 0)
+			s = utf8_tocstr(c->prompt_buffer);
+			if (strlen(s) != 1)
 				status_prompt_clear(c);
+			else if (c->prompt_callbackfn(c->prompt_data, s) == 0)
+				status_prompt_clear(c);
+			free(s);
 		}
 
 		c->flags |= CLIENT_STATUS;
@@ -1139,7 +1223,7 @@ status_prompt_key(struct client *c, key_code key)
 }
 
 /* Get previous line from the history. */
-const char *
+static const char *
 status_prompt_up_history(u_int *idx)
 {
 	/*
@@ -1154,7 +1238,7 @@ status_prompt_up_history(u_int *idx)
 }
 
 /* Get next line from the history. */
-const char *
+static const char *
 status_prompt_down_history(u_int *idx)
 {
 	if (status_prompt_hsize == 0 || *idx == 0)
@@ -1166,7 +1250,7 @@ status_prompt_down_history(u_int *idx)
 }
 
 /* Add line to the history. */
-void
+static void
 status_prompt_add_history(const char *line)
 {
 	size_t	size;
@@ -1191,7 +1275,7 @@ status_prompt_add_history(const char *line)
 }
 
 /* Build completion list. */
-const char **
+static const char **
 status_prompt_complete_list(u_int *size, const char *s)
 {
 	const char				**list = NULL, **layout;
@@ -1225,7 +1309,7 @@ status_prompt_complete_list(u_int *size, const char *s)
 }
 
 /* Find longest prefix. */
-char *
+static char *
 status_prompt_complete_prefix(const char **list, u_int size)
 {
 	char	 *out;
@@ -1246,8 +1330,8 @@ status_prompt_complete_prefix(const char **list, u_int size)
 }
 
 /* Complete word. */
-char *
-status_prompt_complete(struct session *sess, const char *s)
+static char *
+status_prompt_complete(struct session *session, const char *s)
 {
 	const char	**list = NULL, *colon;
 	u_int		  size = 0, i;
@@ -1300,7 +1384,7 @@ status_prompt_complete(struct session *sess, const char *s)
 
 	colon = "";
 	if (*s == ':') {
-		RB_FOREACH(wl, winlinks, &sess->windows) {
+		RB_FOREACH(wl, winlinks, &session->windows) {
 			xasprintf(&tmp, ":%s", wl->window->name);
 			if (strncmp(tmp, s, strlen(s)) == 0){
 				list = xreallocarray(list, size + 1,

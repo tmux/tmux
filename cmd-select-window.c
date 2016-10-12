@@ -26,7 +26,7 @@
  * Select window by index.
  */
 
-enum cmd_retval	 cmd_select_window_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	 cmd_select_window_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_select_window_entry = {
 	.name = "select-window",
@@ -80,7 +80,7 @@ const struct cmd_entry cmd_last_window_entry = {
 	.exec = cmd_select_window_exec
 };
 
-enum cmd_retval
+static enum cmd_retval
 cmd_select_window_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct winlink	*wl = cmdq->state.tflag.wl;

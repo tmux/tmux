@@ -29,17 +29,17 @@
  * Prompt for command in client.
  */
 
-enum cmd_retval	cmd_command_prompt_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_command_prompt_exec(struct cmd *, struct cmd_q *);
 
-int	cmd_command_prompt_callback(void *, const char *);
-void	cmd_command_prompt_free(void *);
+static int	cmd_command_prompt_callback(void *, const char *);
+static void	cmd_command_prompt_free(void *);
 
 const struct cmd_entry cmd_command_prompt_entry = {
 	.name = "command-prompt",
 	.alias = NULL,
 
-	.args = { "I:p:t:", 0, 1 },
-	.usage = "[-I inputs] [-p prompts] " CMD_TARGET_CLIENT_USAGE " "
+	.args = { "1I:p:t:", 0, 1 },
+	.usage = "[-1] [-I inputs] [-p prompts] " CMD_TARGET_CLIENT_USAGE " "
 		 "[template]",
 
 	.tflag = CMD_CLIENT,
@@ -58,7 +58,7 @@ struct cmd_command_prompt_cdata {
 	int		 idx;
 };
 
-enum cmd_retval
+static enum cmd_retval
 cmd_command_prompt_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args			*args = self->args;
@@ -67,6 +67,7 @@ cmd_command_prompt_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct client			*c = cmdq->state.c;
 	char				*prompt, *ptr, *input = NULL;
 	size_t				 n;
+	int				 flags;
 
 	if (c->prompt_string != NULL)
 		return (CMD_RETURN_NORMAL);
@@ -108,14 +109,17 @@ cmd_command_prompt_exec(struct cmd *self, struct cmd_q *cmdq)
 		input = strsep(&cdata->next_input, ",");
 	}
 
+	flags = 0;
+	if (args_has(args, '1'))
+		flags |= PROMPT_SINGLE;
 	status_prompt_set(c, prompt, input, cmd_command_prompt_callback,
-	    cmd_command_prompt_free, cdata, 0);
+	    cmd_command_prompt_free, cdata, flags);
 	free(prompt);
 
 	return (CMD_RETURN_NORMAL);
 }
 
-int
+static int
 cmd_command_prompt_callback(void *data, const char *s)
 {
 	struct cmd_command_prompt_cdata	*cdata = data;
@@ -162,7 +166,7 @@ cmd_command_prompt_callback(void *data, const char *s)
 	return (0);
 }
 
-void
+static void
 cmd_command_prompt_free(void *data)
 {
 	struct cmd_command_prompt_cdata	*cdata = data;

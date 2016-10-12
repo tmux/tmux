@@ -27,10 +27,7 @@
  * Paste paste buffer if present.
  */
 
-enum cmd_retval	 cmd_paste_buffer_exec(struct cmd *, struct cmd_q *);
-
-void	cmd_paste_buffer_filter(struct window_pane *,
-	    const char *, size_t, const char *, int);
+static enum cmd_retval	 cmd_paste_buffer_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_paste_buffer_entry = {
 	.name = "paste-buffer",
@@ -46,7 +43,7 @@ const struct cmd_entry cmd_paste_buffer_entry = {
 	.exec = cmd_paste_buffer_exec
 };
 
-enum cmd_retval
+static enum cmd_retval
 cmd_paste_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;

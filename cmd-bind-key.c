@@ -27,24 +27,24 @@
  * Bind a key to a command, this recurses through cmd_*.
  */
 
-enum cmd_retval	 cmd_bind_key_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	 cmd_bind_key_exec(struct cmd *, struct cmd_q *);
 
-enum cmd_retval	 cmd_bind_key_mode_table(struct cmd *, struct cmd_q *,
-		     key_code);
+static enum cmd_retval	 cmd_bind_key_mode_table(struct cmd *, struct cmd_q *,
+			     key_code);
 
 const struct cmd_entry cmd_bind_key_entry = {
 	.name = "bind-key",
 	.alias = "bind",
 
-	.args = { "cnrR:t:T:", 1, -1 },
-	.usage = "[-cnr] [-t mode-table] [-R repeat-count] [-T key-table] key "
+	.args = { "cnrt:T:", 1, -1 },
+	.usage = "[-cnr] [-t mode-table] [-T key-table] key "
 	         "command [arguments]",
 
 	.flags = 0,
 	.exec = cmd_bind_key_exec
 };
 
-enum cmd_retval
+static enum cmd_retval
 cmd_bind_key_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args	*args = self->args;
@@ -93,16 +93,14 @@ cmd_bind_key_exec(struct cmd *self, struct cmd_q *cmdq)
 	return (CMD_RETURN_NORMAL);
 }
 
-enum cmd_retval
+static enum cmd_retval
 cmd_bind_key_mode_table(struct cmd *self, struct cmd_q *cmdq, key_code key)
 {
 	struct args			*args = self->args;
-	const char			*tablename, *arg;
+	const char			*tablename;
 	const struct mode_key_table	*mtab;
 	struct mode_key_binding		*mbind, mtmp;
 	enum mode_key_cmd		 cmd;
-	char				*cause;
-	u_int				 repeat;
 
 	tablename = args_get(args, 't');
 	if ((mtab = mode_key_findtable(tablename)) == NULL) {
@@ -116,44 +114,9 @@ cmd_bind_key_mode_table(struct cmd *self, struct cmd_q *cmdq, key_code key)
 		return (CMD_RETURN_ERROR);
 	}
 
-	switch (cmd) {
-	case MODEKEYCOPY_APPENDSELECTION:
-	case MODEKEYCOPY_COPYSELECTION:
-	case MODEKEYCOPY_STARTNAMEDBUFFER:
-		if (args->argc == 2)
-			arg = NULL;
-		else {
-			arg = args->argv[2];
-			if (strcmp(arg, "-x") != 0) {
-				cmdq_error(cmdq, "unknown argument");
-				return (CMD_RETURN_ERROR);
-			}
-		}
-		break;
-	case MODEKEYCOPY_COPYPIPE:
-		if (args->argc != 3) {
-			cmdq_error(cmdq, "no argument given");
-			return (CMD_RETURN_ERROR);
-		}
-		arg = args->argv[2];
-		break;
-	default:
-		if (args->argc != 2) {
-			cmdq_error(cmdq, "no argument allowed");
-			return (CMD_RETURN_ERROR);
-		}
-		arg = NULL;
-		break;
-	}
-
-	repeat = 1;
-	if (args_has(args, 'R')) {
-		repeat = args_strtonum(args, 'R', 1, SHRT_MAX, &cause);
-		if (cause != NULL) {
-			cmdq_error(cmdq, "repeat count %s", cause);
-			free(cause);
-			return (CMD_RETURN_ERROR);
-		}
+	if (args->argc != 2) {
+		cmdq_error(cmdq, "no argument allowed");
+		return (CMD_RETURN_ERROR);
 	}
 
 	mtmp.key = key;
@@ -164,8 +127,6 @@ cmd_bind_key_mode_table(struct cmd *self, struct cmd_q *cmdq, key_code key)
 		mbind->mode = mtmp.mode;
 		RB_INSERT(mode_key_tree, mtab->tree, mbind);
 	}
-	mbind->repeat = repeat;
 	mbind->cmd = cmd;
-	mbind->arg = arg != NULL ? xstrdup(arg) : NULL;
 	return (CMD_RETURN_NORMAL);
 }

@@ -39,11 +39,11 @@
 	"(#{window_panes} panes) "				\
 	"[#{window_width}x#{window_height}] "
 
-enum cmd_retval	 cmd_list_windows_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	 cmd_list_windows_exec(struct cmd *, struct cmd_q *);
 
-void	cmd_list_windows_server(struct cmd *, struct cmd_q *);
-void	cmd_list_windows_session(struct cmd *, struct session *,
-	    struct cmd_q *, int);
+static void	cmd_list_windows_server(struct cmd *, struct cmd_q *);
+static void	cmd_list_windows_session(struct cmd *, struct session *,
+		    struct cmd_q *, int);
 
 const struct cmd_entry cmd_list_windows_entry = {
 	.name = "list-windows",
@@ -58,7 +58,7 @@ const struct cmd_entry cmd_list_windows_entry = {
 	.exec = cmd_list_windows_exec
 };
 
-enum cmd_retval
+static enum cmd_retval
 cmd_list_windows_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args	*args = self->args;
@@ -71,7 +71,7 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_q *cmdq)
 	return (CMD_RETURN_NORMAL);
 }
 
-void
+static void
 cmd_list_windows_server(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct session	*s;
@@ -80,7 +80,7 @@ cmd_list_windows_server(struct cmd *self, struct cmd_q *cmdq)
 		cmd_list_windows_session(self, s, cmdq, 1);
 }
 
-void
+static void
 cmd_list_windows_session(struct cmd *self, struct session *s,
     struct cmd_q *cmdq, int type)
 {

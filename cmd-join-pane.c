@@ -28,9 +28,7 @@
  * Join or move a pane into another (like split/swap/kill).
  */
 
-enum cmd_retval	 cmd_join_pane_exec(struct cmd *, struct cmd_q *);
-
-enum cmd_retval	 join_pane(struct cmd *, struct cmd_q *, int);
+static enum cmd_retval	 cmd_join_pane_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_join_pane_entry = {
 	.name = "join-pane",
@@ -60,14 +58,8 @@ const struct cmd_entry cmd_move_pane_entry = {
 	.exec = cmd_join_pane_exec
 };
 
-enum cmd_retval
+static enum cmd_retval
 cmd_join_pane_exec(struct cmd *self, struct cmd_q *cmdq)
-{
-	return (join_pane(self, cmdq, self->entry == &cmd_join_pane_entry));
-}
-
-enum cmd_retval
-join_pane(struct cmd *self, struct cmd_q *cmdq, int not_same_window)
 {
 	struct args		*args = self->args;
 	struct session		*dst_s;
@@ -78,6 +70,12 @@ join_pane(struct cmd *self, struct cmd_q *cmdq, int not_same_window)
 	int			 size, percentage, dst_idx;
 	enum layout_type	 type;
 	struct layout_cell	*lc;
+	int			 not_same_window;
+
+	if (self->entry == &cmd_join_pane_entry)
+		not_same_window = 1;
+	else
+		not_same_window = 0;
 
 	dst_s = cmdq->state.tflag.s;
 	dst_wl = cmdq->state.tflag.wl;

@@ -41,7 +41,7 @@
 	"#{window_index}: #{window_name}#{window_flags} "	\
 	"\"#{pane_title}\""
 
-enum cmd_retval	cmd_choose_tree_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_choose_tree_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_choose_tree_entry = {
 	.name = "choose-tree",
@@ -83,7 +83,7 @@ const struct cmd_entry cmd_choose_window_entry = {
 	.exec = cmd_choose_tree_exec
 };
 
-enum cmd_retval
+static enum cmd_retval
 cmd_choose_tree_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args			*args = self->args;

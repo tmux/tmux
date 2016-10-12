@@ -26,7 +26,7 @@
  * Swap two panes.
  */
 
-enum cmd_retval	 cmd_swap_pane_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	 cmd_swap_pane_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_swap_pane_entry = {
 	.name = "swap-pane",
@@ -42,7 +42,7 @@ const struct cmd_entry cmd_swap_pane_entry = {
 	.exec = cmd_swap_pane_exec
 };
 
-enum cmd_retval
+static enum cmd_retval
 cmd_swap_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct window		*src_w, *dst_w;

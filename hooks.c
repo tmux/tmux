@@ -29,8 +29,7 @@ struct hooks {
 };
 
 static int	hooks_cmp(struct hook *, struct hook *);
-RB_PROTOTYPE(hooks_tree, hook, entry, hooks_cmp);
-RB_GENERATE(hooks_tree, hook, entry, hooks_cmp);
+RB_GENERATE_STATIC(hooks_tree, hook, entry, hooks_cmp);
 
 static struct hook	*hooks_find1(struct hooks *, const char *);
 static void		 hooks_free1(struct hooks *, struct hook *);

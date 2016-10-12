@@ -31,8 +31,9 @@
  * Loads a paste buffer from a file.
  */
 
-enum cmd_retval	 cmd_load_buffer_exec(struct cmd *, struct cmd_q *);
-void		 cmd_load_buffer_callback(struct client *, int, void *);
+static enum cmd_retval	 cmd_load_buffer_exec(struct cmd *, struct cmd_q *);
+
+static void		 cmd_load_buffer_callback(struct client *, int, void *);
 
 const struct cmd_entry cmd_load_buffer_entry = {
 	.name = "load-buffer",
@@ -45,7 +46,7 @@ const struct cmd_entry cmd_load_buffer_entry = {
 	.exec = cmd_load_buffer_exec
 };
 
-enum cmd_retval
+static enum cmd_retval
 cmd_load_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args	*args = self->args;
@@ -132,7 +133,7 @@ error:
 	return (CMD_RETURN_ERROR);
 }
 
-void
+static void
 cmd_load_buffer_callback(struct client *c, int closed, void *data)
 {
 	const char	*bufname = data;

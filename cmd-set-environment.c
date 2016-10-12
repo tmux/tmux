@@ -27,7 +27,7 @@
  * Set an environment variable.
  */
 
-enum cmd_retval	 cmd_set_environment_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	 cmd_set_environment_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_set_environment_entry = {
 	.name = "set-environment",
@@ -42,7 +42,7 @@ const struct cmd_entry cmd_set_environment_entry = {
 	.exec = cmd_set_environment_exec
 };
 
-enum cmd_retval
+static enum cmd_retval
 cmd_set_environment_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args	*args = self->args;

@@ -25,10 +25,12 @@
 
 #include "tmux.h"
 
-void	name_time_callback(int, short, void *);
-int	name_time_expired(struct window *, struct timeval *);
+static void	 name_time_callback(int, short, void *);
+static int	 name_time_expired(struct window *, struct timeval *);
 
-void
+static char	*format_window_name(struct window *);
+
+static void
 name_time_callback(__unused int fd, __unused short events, void *arg)
 {
 	struct window	*w = arg;
@@ -37,7 +39,7 @@ name_time_callback(__unused int fd, __unused short events, void *arg)
 	log_debug("@%u name timer expired", w->id);
 }
 
-int
+static int
 name_time_expired(struct window *w, struct timeval *tv)
 {
 	struct timeval	offset;
@@ -115,7 +117,7 @@ default_window_name(struct window *w)
 	return (s);
 }
 
-char *
+static char *
 format_window_name(struct window *w)
 {
 	struct format_tree	*ft;

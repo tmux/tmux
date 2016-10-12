@@ -24,7 +24,7 @@
  * Destroy window.
  */
 
-enum cmd_retval	 cmd_kill_window_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	 cmd_kill_window_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_kill_window_entry = {
 	.name = "kill-window",
@@ -52,7 +52,7 @@ const struct cmd_entry cmd_unlink_window_entry = {
 	.exec = cmd_kill_window_exec
 };
 
-enum cmd_retval
+static enum cmd_retval
 cmd_kill_window_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;

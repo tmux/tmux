@@ -33,9 +33,9 @@
 	"#{?client_utf8, (utf8),}#{?client_readonly, (ro),} "	\
 	"(last used #{t:client_activity})"
 
-enum cmd_retval	 cmd_choose_client_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	 cmd_choose_client_exec(struct cmd *, struct cmd_q *);
 
-void	cmd_choose_client_callback(struct window_choose_data *);
+static void	cmd_choose_client_callback(struct window_choose_data *);
 
 const struct cmd_entry cmd_choose_client_entry = {
 	.name = "choose-client",
@@ -54,7 +54,7 @@ struct cmd_choose_client_data {
 	struct client	*client;
 };
 
-enum cmd_retval
+static enum cmd_retval
 cmd_choose_client_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args			*args = self->args;
@@ -110,7 +110,7 @@ cmd_choose_client_exec(struct cmd *self, struct cmd_q *cmdq)
 	return (CMD_RETURN_NORMAL);
 }
 
-void
+static void
 cmd_choose_client_callback(struct window_choose_data *cdata)
 {
 	struct client  	*c;

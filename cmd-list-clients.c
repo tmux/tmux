@@ -33,7 +33,7 @@
 	"[#{client_width}x#{client_height} #{client_termname}]"	\
 	"#{?client_utf8, (utf8),} #{?client_readonly, (ro),}"
 
-enum cmd_retval	cmd_list_clients_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_list_clients_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_list_clients_entry = {
 	.name = "list-clients",
@@ -48,7 +48,7 @@ const struct cmd_entry cmd_list_clients_entry = {
 	.exec = cmd_list_clients_exec
 };
 
-enum cmd_retval
+static enum cmd_retval
 cmd_list_clients_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args 		*args = self->args;

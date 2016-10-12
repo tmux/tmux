@@ -32,7 +32,7 @@
 
 #define SPLIT_WINDOW_TEMPLATE "#{session_name}:#{window_index}.#{pane_index}"
 
-enum cmd_retval	 cmd_split_window_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	 cmd_split_window_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_split_window_entry = {
 	.name = "split-window",
@@ -48,7 +48,7 @@ const struct cmd_entry cmd_split_window_entry = {
 	.exec = cmd_split_window_exec
 };
 
-enum cmd_retval
+static enum cmd_retval
 cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;

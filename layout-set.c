@@ -27,13 +27,13 @@
  * one-off and generate a layout tree.
  */
 
-void	layout_set_even_h(struct window *);
-void	layout_set_even_v(struct window *);
-void	layout_set_main_h(struct window *);
-void	layout_set_main_v(struct window *);
-void	layout_set_tiled(struct window *);
+static void	layout_set_even_h(struct window *);
+static void	layout_set_even_v(struct window *);
+static void	layout_set_main_h(struct window *);
+static void	layout_set_main_v(struct window *);
+static void	layout_set_tiled(struct window *);
 
-const struct {
+static const struct {
 	const char	*name;
 	void	      	(*arrange)(struct window *);
 } layout_sets[] = {
@@ -114,7 +114,7 @@ layout_set_previous(struct window *w)
 	return (layout);
 }
 
-void
+static void
 layout_set_even_h(struct window *w)
 {
 	struct window_pane	*wp;
@@ -168,7 +168,7 @@ layout_set_even_h(struct window *w)
 	server_redraw_window(w);
 }
 
-void
+static void
 layout_set_even_v(struct window *w)
 {
 	struct window_pane	*wp;
@@ -222,7 +222,7 @@ layout_set_even_v(struct window *w)
 	server_redraw_window(w);
 }
 
-void
+static void
 layout_set_main_h(struct window *w)
 {
 	struct window_pane	*wp;
@@ -345,7 +345,7 @@ layout_set_main_h(struct window *w)
 	server_redraw_window(w);
 }
 
-void
+static void
 layout_set_main_v(struct window *w)
 {
 	struct window_pane	*wp;

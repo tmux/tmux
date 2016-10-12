@@ -43,21 +43,20 @@
 struct clients		 clients;
 
 struct tmuxproc		*server_proc;
-int			 server_fd;
-int			 server_exit;
-struct event		 server_ev_accept;
+static int		 server_fd;
+static int		 server_exit;
+static struct event	 server_ev_accept;
 
 struct cmd_find_state	 marked_pane;
 
-int	server_create_socket(void);
-int	server_loop(void);
-int	server_should_exit(void);
-void	server_send_exit(void);
-void	server_accept(int, short, void *);
-void	server_signal(int);
-void	server_child_signal(void);
-void	server_child_exited(pid_t, int);
-void	server_child_stopped(pid_t, int);
+static int	server_create_socket(void);
+static int	server_loop(void);
+static void	server_send_exit(void);
+static void	server_accept(int, short, void *);
+static void	server_signal(int);
+static void	server_child_signal(void);
+static void	server_child_exited(pid_t, int);
+static void	server_child_stopped(pid_t, int);
 
 /* Set marked pane. */
 void
@@ -98,7 +97,7 @@ server_check_marked(void)
 }
 
 /* Create server socket. */
-int
+static int
 server_create_socket(void)
 {
 	struct sockaddr_un	sa;
@@ -189,7 +188,7 @@ server_start(struct event_base *base, int lockfd, char *lockfile)
 }
 
 /* Server loop callback. */
-int
+static int
 server_loop(void)
 {
 	struct client	*c;
@@ -218,7 +217,7 @@ server_loop(void)
 }
 
 /* Exit the server by killing all clients and windows. */
-void
+static void
 server_send_exit(void)
 {
 	struct client	*c, *c1;
@@ -275,7 +274,7 @@ server_update_socket(void)
 }
 
 /* Callback for server socket. */
-void
+static void
 server_accept(int fd, short events, __unused void *data)
 {
 	struct sockaddr_storage	sa;
@@ -328,7 +327,7 @@ server_add_accept(int timeout)
 }
 
 /* Signal handler. */
-void
+static void
 server_signal(int sig)
 {
 	int	fd;
@@ -355,7 +354,7 @@ server_signal(int sig)
 }
 
 /* Handle SIGCHLD. */
-void
+static void
 server_child_signal(void)
 {
 	int	 status;
@@ -378,7 +377,7 @@ server_child_signal(void)
 }
 
 /* Handle exited children. */
-void
+static void
 server_child_exited(pid_t pid, int status)
 {
 	struct window		*w, *w1;
@@ -404,7 +403,7 @@ server_child_exited(pid_t pid, int status)
 }
 
 /* Handle stopped children. */
-void
+static void
 server_child_stopped(pid_t pid, int status)
 {
 	struct window		*w;

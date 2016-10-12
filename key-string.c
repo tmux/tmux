@@ -25,7 +25,7 @@
 static key_code	key_string_search_table(const char *);
 static key_code	key_string_get_modifiers(const char **);
 
-const struct {
+static const struct {
 	const char     *string;
 	key_code	key;
 } key_string_table[] = {
@@ -98,6 +98,12 @@ const struct {
 	KEYC_MOUSE_STRING(MOUSEDRAGEND3, MouseDragEnd3),
 	KEYC_MOUSE_STRING(WHEELUP, WheelUp),
 	KEYC_MOUSE_STRING(WHEELDOWN, WheelDown),
+	KEYC_MOUSE_STRING(DOUBLECLICK1, DoubleClick1),
+	KEYC_MOUSE_STRING(DOUBLECLICK2, DoubleClick2),
+	KEYC_MOUSE_STRING(DOUBLECLICK3, DoubleClick3),
+	KEYC_MOUSE_STRING(TRIPLECLICK1, TripleClick1),
+	KEYC_MOUSE_STRING(TRIPLECLICK2, TripleClick2),
+	KEYC_MOUSE_STRING(TRIPLECLICK3, TripleClick3),
 };
 
 /* Find key string in table. */
