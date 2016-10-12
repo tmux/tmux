@@ -727,9 +727,10 @@ server_client_handle_key(struct client *c, key_code key)
 		server_clear_identify(c, NULL);
 	}
 	if (c->prompt_string != NULL) {
-		if (!(c->flags & CLIENT_READONLY))
-			status_prompt_key(c, key);
-		return;
+		if (c->flags & CLIENT_READONLY)
+			return;
+		if (status_prompt_key(c, key) == 0)
+			return;
 	}
 
 	/* Check for mouse keys. */

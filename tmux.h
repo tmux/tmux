@@ -1269,6 +1269,7 @@ struct client {
 	u_int		 prompt_hindex;
 
 #define PROMPT_SINGLE 0x1
+#define PROMPT_NUMERIC 0x2
 	int		 prompt_flags;
 
 	struct mode_key_data prompt_mdata;
@@ -1920,7 +1921,7 @@ void	 status_prompt_set(struct client *, const char *, const char *,
 	     int (*)(void *, const char *), void (*)(void *), void *, int);
 void	 status_prompt_clear(struct client *);
 int	 status_prompt_redraw(struct client *);
-void	 status_prompt_key(struct client *, key_code);
+int	 status_prompt_key(struct client *, key_code);
 void	 status_prompt_update(struct client *, const char *, const char *);
 void	 status_prompt_load_history(void);
 void	 status_prompt_save_history(void);

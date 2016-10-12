@@ -3748,7 +3748,7 @@ session option.
 Commands related to the status line are as follows:
 .Bl -tag -width Ds
 .It Xo Ic command-prompt
-.Op Fl 1
+.Op Fl 1N
 .Op Fl I Ar inputs
 .Op Fl p Ar prompts
 .Op Fl t Ar target-client
@@ -3802,6 +3802,8 @@ to
 .Fl 1
 makes the prompt only accept one key press, in this case the resulting input
 is a single character.
+.Fl N
+accepts only numbers and exit the prompt on any other key press.
 .It Xo Ic confirm-before
 .Op Fl p Ar prompt
 .Op Fl t Ar target-client

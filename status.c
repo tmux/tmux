@@ -855,7 +855,7 @@ status_prompt_space(const struct utf8_data *ud)
 }
 
 /* Handle keys in prompt. */
-void
+int
 status_prompt_key(struct client *c, key_code key)
 {
 	struct options		*oo = c->session->options;
@@ -867,6 +867,17 @@ status_prompt_key(struct client *c, key_code key)
 	struct utf8_data	 tmp, *first, *last, *ud;
 
 	size = utf8_strlen(c->prompt_buffer);
+
+	if (c->prompt_flags & PROMPT_NUMERIC) {
+		if (key >= '0' && key <= '9')
+			goto append_key;
+		s = utf8_tocstr(c->prompt_buffer);
+		c->prompt_callbackfn(c->prompt_data, s);
+		status_prompt_clear(c);
+		free(s);
+		return (1);
+	}
+
 	switch (mode_key_lookup(&c->prompt_mdata, key)) {
 	case MODEKEYEDIT_CURSORLEFT:
 		if (c->prompt_index > 0) {
@@ -1185,41 +1196,44 @@ status_prompt_key(struct client *c, key_code key)
 			status_prompt_clear(c);
 		break;
 	case MODEKEY_OTHER:
-		if (key <= 0x1f || key >= KEYC_BASE)
-			break;
-		if (utf8_split(key, &tmp) != UTF8_DONE)
-			break;
-
-		c->prompt_buffer = xreallocarray(c->prompt_buffer, size + 2,
-		    sizeof *c->prompt_buffer);
-
-		if (c->prompt_index == size) {
-			utf8_copy(&c->prompt_buffer[c->prompt_index], &tmp);
-			c->prompt_index++;
-			c->prompt_buffer[c->prompt_index].size = 0;
-		} else {
-			memmove(c->prompt_buffer + c->prompt_index + 1,
-			    c->prompt_buffer + c->prompt_index,
-			    (size + 1 - c->prompt_index) *
-			    sizeof *c->prompt_buffer);
-			utf8_copy(&c->prompt_buffer[c->prompt_index], &tmp);
-			c->prompt_index++;
-		}
-
-		if (c->prompt_flags & PROMPT_SINGLE) {
-			s = utf8_tocstr(c->prompt_buffer);
-			if (strlen(s) != 1)
-				status_prompt_clear(c);
-			else if (c->prompt_callbackfn(c->prompt_data, s) == 0)
-				status_prompt_clear(c);
-			free(s);
-		}
-
-		c->flags |= CLIENT_STATUS;
 		break;
 	default:
-		break;
+		return (0);
 	}
+
+append_key:
+	if (key <= 0x1f || key >= KEYC_BASE)
+		return (0);
+	if (utf8_split(key, &tmp) != UTF8_DONE)
+		return (0);
+
+	c->prompt_buffer = xreallocarray(c->prompt_buffer, size + 2,
+	    sizeof *c->prompt_buffer);
+
+	if (c->prompt_index == size) {
+		utf8_copy(&c->prompt_buffer[c->prompt_index], &tmp);
+		c->prompt_index++;
+		c->prompt_buffer[c->prompt_index].size = 0;
+	} else {
+		memmove(c->prompt_buffer + c->prompt_index + 1,
+		    c->prompt_buffer + c->prompt_index,
+		    (size + 1 - c->prompt_index) *
+		    sizeof *c->prompt_buffer);
+		utf8_copy(&c->prompt_buffer[c->prompt_index], &tmp);
+		c->prompt_index++;
+	}
+
+	if (c->prompt_flags & PROMPT_SINGLE) {
+		s = utf8_tocstr(c->prompt_buffer);
+		if (strlen(s) != 1)
+			status_prompt_clear(c);
+		else if (c->prompt_callbackfn(c->prompt_data, s) == 0)
+			status_prompt_clear(c);
+		free(s);
+	}
+
+	c->flags |= CLIENT_STATUS;
+	return (0);
 }
 
 /* Get previous line from the history. */
