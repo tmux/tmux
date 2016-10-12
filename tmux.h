@@ -2060,6 +2060,8 @@ void	 screen_set_selection(struct screen *,
 	     u_int, u_int, u_int, u_int, u_int, struct grid_cell *);
 void	 screen_clear_selection(struct screen *);
 int	 screen_check_selection(struct screen *, u_int, u_int);
+void	 screen_select_cell(struct screen *, struct grid_cell *,
+	     const struct grid_cell *);
 
 /* window.c */
 extern struct windows windows;
