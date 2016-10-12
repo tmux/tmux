@@ -63,6 +63,11 @@ if IS_AIX
 DEFS += -D_LINUX_SOURCE_COMPAT=1
 endif
 
+# Set flags for NetBSD.
+if IS_NETBSD
+CPPFLAGS += -D_OPENBSD_SOURCE
+endif
+
 # List of sources.
 dist_tmux_SOURCES = \
 	alerts.c \
