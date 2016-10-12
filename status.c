@@ -660,7 +660,6 @@ status_prompt_set(struct client *c, const char *msg, const char *input,
     void *data, int flags)
 {
 	struct format_tree	*ft;
-	int			 keys;
 	time_t			 t;
 	char			*tmp;
 
@@ -685,12 +684,7 @@ status_prompt_set(struct client *c, const char *msg, const char *input,
 	c->prompt_hindex = 0;
 
 	c->prompt_flags = flags;
-
-	keys = options_get_number(c->session->options, "status-keys");
-	if (keys == MODEKEY_EMACS)
-		mode_key_init(&c->prompt_mdata, &mode_key_tree_emacs_edit);
-	else
-		mode_key_init(&c->prompt_mdata, &mode_key_tree_vi_edit);
+	c->prompt_mode = PROMPT_ENTRY;
 
 	c->tty.flags |= (TTY_NOCURSOR|TTY_FREEZE);
 	c->flags |= CLIENT_STATUS;
@@ -765,7 +759,7 @@ status_prompt_redraw(struct client *c)
 	memcpy(&old_status, &c->status, sizeof old_status);
 	screen_init(&c->status, c->tty.sx, 1, 0);
 
-	if (c->prompt_mdata.mode == 1)
+	if (c->prompt_mode == PROMPT_COMMAND)
 		style_apply(&gc, s->options, "message-command-style");
 	else
 		style_apply(&gc, s->options, "message-style");
@@ -854,6 +848,127 @@ status_prompt_space(const struct utf8_data *ud)
 	return (*ud->data == ' ');
 }
 
+/*
+ * Translate key from emacs to vi. Return 0 to drop key, 1 to process the key
+ * as an emacs key; return 2 to append to the buffer.
+ */
+static int
+status_prompt_translate_key(struct client *c, key_code key, key_code *new_key)
+{
+	if (c->prompt_mode == PROMPT_ENTRY) {
+		switch (key) {
+		case '\003': /* C-c */
+		case '\010': /* C-h */
+		case '\011': /* Tab */
+		case '\025': /* C-u */
+		case '\027': /* C-w */
+		case '\n':
+		case '\r':
+		case KEYC_BSPACE:
+		case KEYC_DC:
+		case KEYC_DOWN:
+		case KEYC_END:
+		case KEYC_HOME:
+		case KEYC_LEFT:
+		case KEYC_RIGHT:
+		case KEYC_UP:
+			*new_key = key;
+			return (1);
+		case '\033': /* Escape */
+			c->prompt_mode = PROMPT_COMMAND;
+			c->flags |= CLIENT_STATUS;
+			return (0);
+		}
+		*new_key = key;
+		return (2);
+	}
+
+	switch (key) {
+	case 'A':
+	case 'I':
+	case 'C':
+	case 's':
+	case 'a':
+		c->prompt_mode = PROMPT_ENTRY;
+		c->flags |= CLIENT_STATUS;
+		break; /* switch mode and... */
+	case 'S':
+		c->prompt_mode = PROMPT_ENTRY;
+		c->flags |= CLIENT_STATUS;
+		*new_key = '\025'; /* C-u */
+		return (1);
+	case 'i':
+	case '\033': /* Escape */
+		c->prompt_mode = PROMPT_ENTRY;
+		c->flags |= CLIENT_STATUS;
+		return (0);
+	}
+
+	switch (key) {
+	case 'A':
+	case '$':
+		*new_key = KEYC_END;
+		return (1);
+	case 'I':
+	case '0':
+	case '^':
+		*new_key = KEYC_HOME;
+		return (1);
+	case 'C':
+	case 'D':
+		*new_key = '\013'; /* C-k */
+		return (1);
+	case KEYC_BSPACE:
+	case 'X':
+		*new_key = KEYC_BSPACE;
+		return (1);
+	case 'b':
+	case 'B':
+		*new_key = 'b'|KEYC_ESCAPE;
+		return (1);
+	case 'd':
+		*new_key = '\025';
+		return (1);
+	case 'e':
+	case 'E':
+	case 'w':
+	case 'W':
+		*new_key = 'f'|KEYC_ESCAPE;
+		return (1);
+	case 'p':
+		*new_key = '\031'; /* C-y */
+		return (1);
+	case 's':
+	case KEYC_DC:
+	case 'x':
+		*new_key = KEYC_DC;
+		return (1);
+	case KEYC_DOWN:
+	case 'j':
+		*new_key = KEYC_DOWN;
+		return (1);
+	case KEYC_LEFT:
+	case 'h':
+		*new_key = KEYC_LEFT;
+		return (1);
+	case 'a':
+	case KEYC_RIGHT:
+	case 'l':
+		*new_key = KEYC_RIGHT;
+		return (1);
+	case KEYC_UP:
+	case 'k':
+		*new_key = KEYC_UP;
+		return (1);
+	case '\010' /* C-h */:
+	case '\003' /* C-c */:
+	case '\n':
+	case '\r':
+		return (1);
+	}
+	return (0);
+}
+
 /* Handle keys in prompt. */
 int
 status_prompt_key(struct client *c, key_code key)
@@ -865,6 +980,7 @@ status_prompt_key(struct client *c, key_code key)
 	u_char			 ch;
 	size_t			 size, n, off, idx, bufsize, used;
 	struct utf8_data	 tmp, *first, *last, *ud;
+	int			 keys;
 
 	size = utf8_strlen(c->prompt_buffer);
 
@@ -878,44 +994,49 @@ status_prompt_key(struct client *c, key_code key)
 		return (1);
 	}
 
-	switch (mode_key_lookup(&c->prompt_mdata, key)) {
-	case MODEKEYEDIT_CURSORLEFT:
+	keys = options_get_number(c->session->options, "status-keys");
+	if (keys == MODEKEY_VI) {
+		switch (status_prompt_translate_key(c, key, &key)) {
+		case 1:
+			goto process_key;
+		case 2:
+			goto append_key;
+		default:
+			return (0);
+		}
+	}
+
+process_key:
+	switch (key) {
+	case KEYC_LEFT:
+	case '\002': /* C-b */
 		if (c->prompt_index > 0) {
 			c->prompt_index--;
 			c->flags |= CLIENT_STATUS;
 		}
 		break;
-	case MODEKEYEDIT_SWITCHMODE:
-		c->flags |= CLIENT_STATUS;
-		break;
-	case MODEKEYEDIT_SWITCHMODEAPPEND:
-		c->flags |= CLIENT_STATUS;
-		/* FALLTHROUGH */
-	case MODEKEYEDIT_CURSORRIGHT:
+	case KEYC_RIGHT:
+	case '\006': /* C-f */
 		if (c->prompt_index < size) {
 			c->prompt_index++;
 			c->flags |= CLIENT_STATUS;
 		}
 		break;
-	case MODEKEYEDIT_SWITCHMODEBEGINLINE:
-		c->flags |= CLIENT_STATUS;
-		/* FALLTHROUGH */
-	case MODEKEYEDIT_STARTOFLINE:
+	case KEYC_HOME:
+	case '\001': /* C-a */
 		if (c->prompt_index != 0) {
 			c->prompt_index = 0;
 			c->flags |= CLIENT_STATUS;
 		}
 		break;
-	case MODEKEYEDIT_SWITCHMODEAPPENDLINE:
-		c->flags |= CLIENT_STATUS;
-		/* FALLTHROUGH */
-	case MODEKEYEDIT_ENDOFLINE:
+	case KEYC_END:
+	case '\005': /* C-e */
 		if (c->prompt_index != size) {
 			c->prompt_index = size;
 			c->flags |= CLIENT_STATUS;
 		}
 		break;
-	case MODEKEYEDIT_COMPLETE:
+	case '\011': /* Tab */
 		if (c->prompt_buffer[0].size == 0)
 			break;
 
@@ -974,7 +1095,8 @@ status_prompt_key(struct client *c, key_code key)
 
 		c->flags |= CLIENT_STATUS;
 		break;
-	case MODEKEYEDIT_BACKSPACE:
+	case KEYC_BSPACE:
+	case '\010': /* C-h */
 		if (c->prompt_index != 0) {
 			if (c->prompt_index == size)
 				c->prompt_buffer[--c->prompt_index].size = 0;
@@ -988,8 +1110,8 @@ status_prompt_key(struct client *c, key_code key)
 			c->flags |= CLIENT_STATUS;
 		}
 		break;
-	case MODEKEYEDIT_DELETE:
-	case MODEKEYEDIT_SWITCHMODESUBSTITUTE:
+	case KEYC_DC:
+	case '\004': /* C-d */
 		if (c->prompt_index != size) {
 			memmove(c->prompt_buffer + c->prompt_index,
 			    c->prompt_buffer + c->prompt_index + 1,
@@ -998,20 +1120,18 @@ status_prompt_key(struct client *c, key_code key)
 			c->flags |= CLIENT_STATUS;
 		}
 		break;
-	case MODEKEYEDIT_DELETELINE:
-	case MODEKEYEDIT_SWITCHMODESUBSTITUTELINE:
+	case '\025': /* C-u */
 		c->prompt_buffer[0].size = 0;
 		c->prompt_index = 0;
 		c->flags |= CLIENT_STATUS;
 		break;
-	case MODEKEYEDIT_DELETETOENDOFLINE:
-	case MODEKEYEDIT_SWITCHMODECHANGELINE:
+	case '\013': /* C-k */
 		if (c->prompt_index < size) {
 			c->prompt_buffer[c->prompt_index].size = 0;
 			c->flags |= CLIENT_STATUS;
 		}
 		break;
-	case MODEKEYEDIT_DELETEWORD:
+	case '\027': /* C-w */
 		ws = options_get_string(oo, "word-separators");
 		idx = c->prompt_index;
 
@@ -1042,35 +1162,8 @@ status_prompt_key(struct client *c, key_code key)
 
 		c->flags |= CLIENT_STATUS;
 		break;
-	case MODEKEYEDIT_NEXTSPACE:
-		ws = " ";
-		/* FALLTHROUGH */
-	case MODEKEYEDIT_NEXTWORD:
-		if (ws == NULL)
-			ws = options_get_string(oo, "word-separators");
-
-		/* Find a separator. */
-		while (c->prompt_index != size) {
-			idx = ++c->prompt_index;
-			if (status_prompt_in_list(ws, &c->prompt_buffer[idx]))
-				break;
-		}
-
-		/* Find the word right after the separator. */
-		while (c->prompt_index != size) {
-			idx = ++c->prompt_index;
-			if (!status_prompt_in_list(ws, &c->prompt_buffer[idx]))
-				break;
-		}
-
-		c->flags |= CLIENT_STATUS;
-		break;
-	case MODEKEYEDIT_NEXTSPACEEND:
-		ws = " ";
-		/* FALLTHROUGH */
-	case MODEKEYEDIT_NEXTWORDEND:
-		if (ws == NULL)
-			ws = options_get_string(oo, "word-separators");
+	case 'f'|KEYC_ESCAPE:
+		ws = options_get_string(oo, "word-separators");
 
 		/* Find a word. */
 		while (c->prompt_index != size) {
@@ -1093,12 +1186,8 @@ status_prompt_key(struct client *c, key_code key)
 
 		c->flags |= CLIENT_STATUS;
 		break;
-	case MODEKEYEDIT_PREVIOUSSPACE:
-		ws = " ";
-		/* FALLTHROUGH */
-	case MODEKEYEDIT_PREVIOUSWORD:
-		if (ws == NULL)
-			ws = options_get_string(oo, "word-separators");
+	case 'b'|KEYC_ESCAPE:
+		ws = options_get_string(oo, "word-separators");
 
 		/* Find a non-separator. */
 		while (c->prompt_index != 0) {
@@ -1119,7 +1208,8 @@ status_prompt_key(struct client *c, key_code key)
 
 		c->flags |= CLIENT_STATUS;
 		break;
-	case MODEKEYEDIT_HISTORYUP:
+	case KEYC_UP:
+	case '\020': /* C-p */
 		histstr = status_prompt_up_history(&c->prompt_hindex);
 		if (histstr == NULL)
 			break;
@@ -1128,7 +1218,8 @@ status_prompt_key(struct client *c, key_code key)
 		c->prompt_index = utf8_strlen(c->prompt_buffer);
 		c->flags |= CLIENT_STATUS;
 		break;
-	case MODEKEYEDIT_HISTORYDOWN:
+	case KEYC_DOWN:
+	case '\016': /* C-n */
 		histstr = status_prompt_down_history(&c->prompt_hindex);
 		if (histstr == NULL)
 			break;
@@ -1137,7 +1228,7 @@ status_prompt_key(struct client *c, key_code key)
 		c->prompt_index = utf8_strlen(c->prompt_buffer);
 		c->flags |= CLIENT_STATUS;
 		break;
-	case MODEKEYEDIT_PASTE:
+	case '\031': /* C-y */
 		if ((pb = paste_get_top(NULL)) == NULL)
 			break;
 		bufdata = paste_buffer_data(pb, &bufsize);
@@ -1170,7 +1261,7 @@ status_prompt_key(struct client *c, key_code key)
 
 		c->flags |= CLIENT_STATUS;
 		break;
-	case MODEKEYEDIT_TRANSPOSECHARS:
+	case '\024': /* C-t */
 		idx = c->prompt_index;
 		if (idx < size)
 			idx++;
@@ -1183,7 +1274,8 @@ status_prompt_key(struct client *c, key_code key)
 			c->flags |= CLIENT_STATUS;
 		}
 		break;
-	case MODEKEYEDIT_ENTER:
+	case '\r':
+	case '\n':
 		s = utf8_tocstr(c->prompt_buffer);
 		if (*s != '\0')
 			status_prompt_add_history(s);
@@ -1191,14 +1283,11 @@ status_prompt_key(struct client *c, key_code key)
 			status_prompt_clear(c);
 		free(s);
 		break;
-	case MODEKEYEDIT_CANCEL:
+	case '\033': /* Escape */
+	case '\003': /* C-c */
 		if (c->prompt_callbackfn(c->prompt_data, NULL) == 0)
 			status_prompt_clear(c);
 		break;
-	case MODEKEY_OTHER:
-		break;
-	default:
-		return (0);
 	}
 
 append_key:

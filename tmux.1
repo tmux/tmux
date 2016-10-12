@@ -1104,11 +1104,7 @@ Commands in copy mode may be prefaced by an optional repeat count.
 With vi key bindings, a prefix is entered using the number keys; with
 emacs, the Alt (meta) key and a number begins prefix entry.
 .Pp
-Mode key bindings are defined in a set of named tables:
-.Em vi-edit
-and
-.Em emacs-edit
-for keys used when line editing at the command prompt; and
+Mode key bindings are defined in two tables:
 .Em vi-choice
 and
 .Em emacs-choice
@@ -3000,10 +2996,8 @@ layouts.
 .It Xo Ic mode-keys
 .Op Ic vi | emacs
 .Xc
-Use vi or emacs-style key bindings in copy and choice modes.
-As with the
-.Ic status-keys
-option, the default is emacs, unless
+Use vi or emacs-style key bindings in copy mode.
+The default is emacs, unless
 .Ev VISUAL
 or
 .Ev EDITOR
@@ -3748,7 +3742,7 @@ session option.
 Commands related to the status line are as follows:
 .Bl -tag -width Ds
 .It Xo Ic command-prompt
-.Op Fl 1N
+.Op Fl 1
 .Op Fl I Ar inputs
 .Op Fl p Ar prompts
 .Op Fl t Ar target-client
@@ -3776,13 +3770,6 @@ if it is present, or
 .Ql \&:
 if not.
 .Pp
-Both
-.Ar inputs
-and
-.Ar prompts
-may contain the special character sequences supported by the
-.Ic status-left
-option.
 .Pp
 Before the command is executed, the first occurrence of the string
 .Ql %%
@@ -3802,8 +3789,30 @@ to
 .Fl 1
 makes the prompt only accept one key press, in this case the resulting input
 is a single character.
-.Fl N
-accepts only numbers and exit the prompt on any other key press.
+.Pp
+The following keys have a special meaning in the command prompt, depending
+on the value of the
+.Ic status-keys
+option:
+.Bl -column "FunctionXXXXXXXXXXXXXXXXXXXXXXXXX" "viXXXX" "emacsX" -offset indent
+.It Sy "Function" Ta Sy "vi" Ta Sy "emacs"
+.It Li "Cancel command prompt" Ta "Escape" Ta "Escape"
+.It Li "Delete current word" Ta "" Ta "C-w"
+.It Li "Delete entire command" Ta "d" Ta "C-u"
+.It Li "Delete from cursor to end" Ta "D" Ta "C-k"
+.It Li "Execute command" Ta "Enter" Ta "Enter"
+.It Li "Get next command from history" Ta "" Ta "Down"
+.It Li "Get previous command from history" Ta "" Ta "Up"
+.It Li "Insert top paste buffer" Ta "p" Ta "C-y"
+.It Li "Look for completions" Ta "Tab" Ta "Tab"
+.It Li "Move cursor left" Ta "h" Ta "Left"
+.It Li "Move cursor right" Ta "l" Ta "Right"
+.It Li "Move cursor to end" Ta "$" Ta "C-e"
+.It Li "Move cursor to next word" Ta "w" Ta "M-f"
+.It Li "Move cursor to previous word" Ta "b" Ta "M-b"
+.It Li "Move cursor to start" Ta "0" Ta "C-a"
+.It Li "Transpose characters" Ta "" Ta "C-t"
+.El
 .It Xo Ic confirm-before
 .Op Fl p Ar prompt
 .Op Fl t Ar target-client
