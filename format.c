@@ -63,6 +63,9 @@ static void	 format_cb_history_bytes(struct format_tree *,
 static void	 format_cb_pane_tabs(struct format_tree *,
 		     struct format_entry *);
 
+static void	 format_cb_current_path(struct format_tree *,
+		     struct format_entry *);
+
 static char	*format_find(struct format_tree *, const char *, int);
 static void	 format_add_cb(struct format_tree *, const char *, format_cb);
 static void	 format_add_tv(struct format_tree *, const char *,
