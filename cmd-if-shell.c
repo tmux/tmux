@@ -165,7 +165,6 @@ cmd_if_shell_callback(struct job *job)
 	}
 
 	cmdq1 = cmdq_new(cmdq->client);
-	cmdq1->flags |= cmdq->flags & CMD_Q_NOHOOKS;
 	cmdq1->emptyfn = cmd_if_shell_done;
 	cmdq1->data = cdata;
 

@@ -124,12 +124,5 @@ cmd_swap_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 	server_redraw_window(src_w);
 	server_redraw_window(dst_w);
 
-	cmd_find_clear_state(&cmdq->current, NULL, 0);
-	cmdq->current.s = cmdq->state.tflag.s;
-	cmdq->current.wl = cmdq->state.tflag.wl;
-	cmdq->current.w = dst_w;
-	cmdq->current.wp = src_wp;
-	cmd_find_log_state(__func__, &cmdq->current);
-
 	return (CMD_RETURN_NORMAL);
 }

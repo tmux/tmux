@@ -182,34 +182,16 @@ cmdq_append(struct cmd_q *cmdq, struct cmd_list *cmdlist, struct mouse_event *m)
 		item->mouse.valid = 0;
 }
 
-/* Find hooks list. */
-static struct hooks *
-cmdq_get_hooks(struct cmd_q *cmdq)
-{
-	struct session	*s;
-
-	s = NULL;
-	if (cmdq->state.tflag.s != NULL)
-		s = cmdq->state.tflag.s;
-	else if (cmdq->state.sflag.s != NULL)
-		s = cmdq->state.sflag.s;
-	else if (cmdq->state.c != NULL)
-		s = cmdq->state.c->session;
-	if (s != NULL)
-		return (s->hooks);
-	return (global_hooks);
-}
-
 /* Process one command. */
 static enum cmd_retval
 cmdq_continue_one(struct cmd_q *cmdq)
 {
-	struct cmd	*cmd = cmdq->cmd;
-	const char	*name = cmd->entry->name;
-	struct hooks	*hooks;
-	enum cmd_retval	 retval;
-	char		*tmp;
-	int		 flags = !!(cmd->flags & CMD_CONTROL);
+	struct cmd		*cmd = cmdq->cmd;
+	enum cmd_retval		 retval;
+	char			*tmp;
+	int			 flags = !!(cmd->flags & CMD_CONTROL);
+	const char		*name;
+	struct cmd_find_state	*fsp, fs;
 
 	tmp = cmd_print(cmd);
 	log_debug("cmdq %p: %s", cmdq, tmp);
@@ -218,44 +200,35 @@ cmdq_continue_one(struct cmd_q *cmdq)
 	cmdq->time = time(NULL);
 	cmdq->number++;
 
-	if (~cmdq->flags & CMD_Q_REENTRY)
-		cmdq_guard(cmdq, "begin", flags);
+	cmdq_guard(cmdq, "begin", flags);
 
 	if (cmd_prepare_state(cmd, cmdq, cmdq->parent) != 0)
 		goto error;
-
-	if (~cmdq->flags & CMD_Q_NOHOOKS) {
-		hooks = cmdq_get_hooks(cmdq);
-		if (~cmdq->flags & CMD_Q_REENTRY) {
-			cmdq->flags |= CMD_Q_REENTRY;
-			if (hooks_wait(hooks, cmdq, NULL,
-			    "before-%s", name) == 0)
-				return (CMD_RETURN_WAIT);
-			if (cmd_prepare_state(cmd, cmdq, cmdq->parent) != 0)
-				goto error;
-		}
-	} else
-		hooks = NULL;
-	cmdq->flags &= ~CMD_Q_REENTRY;
 
 	retval = cmd->entry->exec(cmd, cmdq);
 	if (retval == CMD_RETURN_ERROR)
 		goto error;
 
-	if (hooks != NULL) {
-		if (cmd_prepare_state(cmd, cmdq, cmdq->parent) != 0)
-			goto error;
-		hooks = cmdq_get_hooks(cmdq);
-		if (hooks_wait(hooks, cmdq, NULL, "after-%s", name) == 0)
-			retval = CMD_RETURN_WAIT;
-	}
-	cmdq_guard(cmdq, "end", flags);
+	if (~cmd->entry->flags & CMD_AFTERHOOK)
+		goto end;
 
+	if (cmd_find_valid_state(&cmdq->state.tflag))
+		fsp = &cmdq->state.tflag;
+	else {
+		if (cmd_find_current(&fs, cmdq, CMD_FIND_QUIET) != 0)
+			goto end;
+		fsp = &fs;
+	}
+	name = cmd->entry->name;
+	if (hooks_wait(fsp->s->hooks, cmdq, fsp, "after-%s", name) == 0)
+		retval = CMD_RETURN_WAIT;
+
+end:
+	cmdq_guard(cmdq, "end", flags);
 	return (retval);
 
 error:
 	cmdq_guard(cmdq, "error", flags);
-	cmdq->flags &= ~CMD_Q_REENTRY;
 	return (CMD_RETURN_ERROR);
 }
 
@@ -271,8 +244,6 @@ cmdq_continue(struct cmd_q *cmdq)
 	cmdq->references++;
 	notify_disable();
 
-	cmd_find_clear_state(&cmdq->current, NULL, 0);
-
 	log_debug("continuing cmdq %p: flags %#x, client %p", cmdq, cmdq->flags,
 	    c);
 
@@ -280,18 +251,11 @@ cmdq_continue(struct cmd_q *cmdq)
 	if (empty)
 		goto empty;
 
-	/*
-	 * If the command isn't in the middle of running hooks (due to
-	 * CMD_RETURN_WAIT), move onto the next command; otherwise, leave the
-	 * state of the queue as it is.
-	 */
-	if (~cmdq->flags & CMD_Q_REENTRY) {
-		if (cmdq->item == NULL) {
-			cmdq->item = TAILQ_FIRST(&cmdq->queue);
-			cmdq->cmd = TAILQ_FIRST(&cmdq->item->cmdlist->list);
-		} else
-			cmdq->cmd = TAILQ_NEXT(cmdq->cmd, qentry);
-	}
+	if (cmdq->item == NULL) {
+		cmdq->item = TAILQ_FIRST(&cmdq->queue);
+		cmdq->cmd = TAILQ_FIRST(&cmdq->item->cmdlist->list);
+	} else
+		cmdq->cmd = TAILQ_NEXT(cmdq->cmd, qentry);
 
 	do {
 		while (cmdq->cmd != NULL) {
