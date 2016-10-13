@@ -658,7 +658,7 @@ void
 tty_draw_line(struct tty *tty, const struct window_pane *wp,
     struct screen *s, u_int py, u_int ox, u_int oy)
 {
-	struct grid_cell	 gc;
+	struct grid_cell	 gc, tmp_gc;
 	struct grid_line	*gl;
 	u_int			 i, sx;
 	int			 flags;
@@ -687,7 +687,11 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 
 	for (i = 0; i < sx; i++) {
 		grid_view_get_cell(s->grid, i, py, &gc);
-		tty_cell(tty, &gc, wp);
+		if (gc.flags & GRID_FLAG_SELECTED) {
+			screen_select_cell(s, &tmp_gc, &gc);
+			tty_cell(tty, &tmp_gc, wp);
+		} else
+			tty_cell(tty, &gc, wp);
 	}
 
 	if (sx < tty->sx) {

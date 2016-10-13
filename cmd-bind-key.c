@@ -120,11 +120,9 @@ cmd_bind_key_mode_table(struct cmd *self, struct cmd_q *cmdq, key_code key)
 	}
 
 	mtmp.key = key;
-	mtmp.mode = !!args_has(args, 'c');
 	if ((mbind = RB_FIND(mode_key_tree, mtab->tree, &mtmp)) == NULL) {
 		mbind = xmalloc(sizeof *mbind);
 		mbind->key = mtmp.key;
-		mbind->mode = mtmp.mode;
 		RB_INSERT(mode_key_tree, mtab->tree, mbind);
 	}
 	mbind->cmd = cmd;

@@ -371,6 +371,22 @@ screen_check_selection(struct screen *s, u_int px, u_int py)
 	return (1);
 }
 
+/* Get selected grid cell. */
+void
+screen_select_cell(struct screen *s, struct grid_cell *dst,
+    const struct grid_cell *src)
+{
+	if (!s->sel.flag)
+		return;
+
+	memcpy(dst, &s->sel.cell, sizeof *dst);
+
+	utf8_copy(&dst->data, &src->data);
+	dst->attr = dst->attr & ~GRID_ATTR_CHARSET;
+	dst->attr |= src->attr & GRID_ATTR_CHARSET;
+	dst->flags = src->flags;
+}
+
 /* Reflow wrapped lines. */
 static void
 screen_reflow(struct screen *s, u_int new_x)

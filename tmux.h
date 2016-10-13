@@ -473,37 +473,6 @@ enum mode_key_cmd {
 	MODEKEY_NONE,
 	MODEKEY_OTHER,
 
-	/* Editing keys. */
-	MODEKEYEDIT_BACKSPACE,
-	MODEKEYEDIT_CANCEL,
-	MODEKEYEDIT_COMPLETE,
-	MODEKEYEDIT_CURSORLEFT,
-	MODEKEYEDIT_CURSORRIGHT,
-	MODEKEYEDIT_DELETE,
-	MODEKEYEDIT_DELETELINE,
-	MODEKEYEDIT_DELETETOENDOFLINE,
-	MODEKEYEDIT_DELETEWORD,
-	MODEKEYEDIT_ENDOFLINE,
-	MODEKEYEDIT_ENTER,
-	MODEKEYEDIT_HISTORYDOWN,
-	MODEKEYEDIT_HISTORYUP,
-	MODEKEYEDIT_NEXTSPACE,
-	MODEKEYEDIT_NEXTSPACEEND,
-	MODEKEYEDIT_NEXTWORD,
-	MODEKEYEDIT_NEXTWORDEND,
-	MODEKEYEDIT_PASTE,
-	MODEKEYEDIT_PREVIOUSSPACE,
-	MODEKEYEDIT_PREVIOUSWORD,
-	MODEKEYEDIT_STARTOFLINE,
-	MODEKEYEDIT_SWITCHMODE,
-	MODEKEYEDIT_SWITCHMODEAPPEND,
-	MODEKEYEDIT_SWITCHMODEAPPENDLINE,
-	MODEKEYEDIT_SWITCHMODEBEGINLINE,
-	MODEKEYEDIT_SWITCHMODECHANGELINE,
-	MODEKEYEDIT_SWITCHMODESUBSTITUTE,
-	MODEKEYEDIT_SWITCHMODESUBSTITUTELINE,
-	MODEKEYEDIT_TRANSPOSECHARS,
-
 	/* Menu (choice) keys. */
 	MODEKEYCHOICE_BACKSPACE,
 	MODEKEYCHOICE_BOTTOMLINE,
@@ -529,7 +498,6 @@ enum mode_key_cmd {
 /* Data required while mode keys are in use. */
 struct mode_key_data {
 	struct mode_key_tree   *tree;
-	int			mode;
 };
 #define MODEKEY_EMACS 0
 #define MODEKEY_VI 1
@@ -537,8 +505,6 @@ struct mode_key_data {
 /* Binding between a key and a command. */
 struct mode_key_binding {
 	key_code			 key;
-
-	int				 mode;
 	enum mode_key_cmd		 cmd;
 
 	RB_ENTRY(mode_key_binding)	 entry;
@@ -1269,11 +1235,11 @@ struct client {
 	void		 (*prompt_freefn)(void *);
 	void		*prompt_data;
 	u_int		 prompt_hindex;
+	enum { PROMPT_ENTRY, PROMPT_COMMAND } prompt_mode;
 
 #define PROMPT_SINGLE 0x1
+#define PROMPT_NUMERIC 0x2
 	int		 prompt_flags;
-
-	struct mode_key_data prompt_mdata;
 
 	struct session	*session;
 	struct session	*last_session;
@@ -1595,9 +1561,7 @@ int printflike(4, 5) hooks_wait(struct hooks *, struct cmd_q *,
 		    struct cmd_find_state *, const char *, ...);
 
 /* mode-key.c */
-extern struct mode_key_tree mode_key_tree_vi_edit;
 extern struct mode_key_tree mode_key_tree_vi_choice;
-extern struct mode_key_tree mode_key_tree_emacs_edit;
 extern struct mode_key_tree mode_key_tree_emacs_choice;
 int	mode_key_cmp(struct mode_key_binding *, struct mode_key_binding *);
 RB_PROTOTYPE(mode_key_tree, mode_key_binding, entry, mode_key_cmp);
@@ -1922,7 +1886,7 @@ void	 status_prompt_set(struct client *, const char *, const char *,
 	     int (*)(void *, const char *), void (*)(void *), void *, int);
 void	 status_prompt_clear(struct client *);
 int	 status_prompt_redraw(struct client *);
-void	 status_prompt_key(struct client *, key_code);
+int	 status_prompt_key(struct client *, key_code);
 void	 status_prompt_update(struct client *, const char *, const char *);
 void	 status_prompt_load_history(void);
 void	 status_prompt_save_history(void);
@@ -2061,6 +2025,8 @@ void	 screen_set_selection(struct screen *,
 	     u_int, u_int, u_int, u_int, u_int, struct grid_cell *);
 void	 screen_clear_selection(struct screen *);
 int	 screen_check_selection(struct screen *, u_int, u_int);
+void	 screen_select_cell(struct screen *, struct grid_cell *,
+	     const struct grid_cell *);
 
 /* window.c */
 extern struct windows windows;

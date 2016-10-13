@@ -269,8 +269,9 @@ screen_redraw_make_pane_status(struct client *c, struct window *w,
 	const char		*fmt;
 	struct format_tree	*ft;
 	char			*out;
-	size_t			 outlen, old_size = wp->status_size;
+	size_t			 outlen;
 	struct screen_write_ctx	 ctx;
+	struct screen		 old;
 
 	if (wp == w->active)
 		style_apply(&gc, w->options, "pane-active-border-style");
@@ -282,7 +283,7 @@ screen_redraw_make_pane_status(struct client *c, struct window *w,
 	ft = format_create(NULL, 0);
 	format_defaults(ft, c, NULL, NULL, wp);
 
-	screen_free(&wp->status_screen);
+	memcpy(&old, &wp->status_screen, sizeof old);
 	screen_init(&wp->status_screen, wp->sx, 1, 0);
 	wp->status_screen.mode = 0;
 
@@ -301,7 +302,13 @@ screen_redraw_make_pane_status(struct client *c, struct window *w,
 	format_free(ft);
 
 	wp->status_size = outlen;
-	return (wp->status_size != old_size);
+
+	if (grid_compare(wp->status_screen.grid, old.grid) == 0) {
+		screen_free(&old);
+		return (0);
+	}
+	screen_free(&old);
+	return (1);
 }
 
 /* Draw pane status. */
@@ -317,6 +324,8 @@ screen_redraw_draw_pane_status(struct client *c, int pane_status)
 
 	spos = options_get_number(oo, "status-position");
 	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (!window_pane_visible(wp))
+			continue;
 		if (pane_status == CELL_STATUS_TOP)
 			yoff = wp->yoff - 1;
 		else

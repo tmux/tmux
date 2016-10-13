@@ -103,6 +103,7 @@ screen_write_flush(struct screen_write_ctx *ctx)
 	if (ctx->dirty == 0)
 		return;
 	dirty = 0;
+	log_debug("%s: dirty %u", __func__, ctx->dirty);
 
 	cx = s->cx;
 	cy = s->cy;
@@ -1044,9 +1045,12 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	screen_write_initctx(ctx, &ttyctx);
 
 	/* If in insert mode, make space for the cells. */
-	if ((s->mode & MODE_INSERT) && s->cx <= sx - width) {
-		xx = sx - s->cx - width;
-		grid_move_cells(s->grid, s->cx + width, s->cx, s->cy, xx);
+	if (s->mode & MODE_INSERT) {
+		if (s->cx <= sx - width) {
+			screen_write_flush(ctx);
+			xx = sx - s->cx - width;
+			grid_view_insert_cells(s->grid, s->cx, s->cy, xx);
+		}
 		insert = 1;
 	} else
 		insert = 0;
@@ -1133,20 +1137,14 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 
 	/* Create space for character in insert mode. */
 	if (insert) {
-		if (!wrapped)
-			screen_write_flush(ctx);
 		ttyctx.num = width;
 		tty_write(tty_cmd_insertcharacter, &ttyctx);
 	}
 
 	/* Write to the screen. */
 	if (selected) {
-		memcpy(&tmp_gc, &s->sel.cell, sizeof tmp_gc);
-		utf8_copy(&tmp_gc.data, &gc->data);
-		tmp_gc.attr = tmp_gc.attr & ~GRID_ATTR_CHARSET;
-		tmp_gc.attr |= gc->attr & GRID_ATTR_CHARSET;
-		tmp_gc.flags = gc->flags;
 		screen_write_flush(ctx);
+		screen_select_cell(s, &tmp_gc, gc);
 		ttyctx.cell = &tmp_gc;
 		tty_write(tty_cmd_cell, &ttyctx);
 		ctx->written++;

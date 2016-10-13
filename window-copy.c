@@ -1069,11 +1069,10 @@ window_copy_write_line(struct window_pane *wp, struct screen_write_ctx *ctx,
 	struct options			*oo = wp->window->options;
 	struct grid_cell		 gc;
 	char				 hdr[512];
-	size_t				 last, xoff = 0, size = 0;
+	size_t				 xoff = 0, size = 0;
 
 	style_apply(&gc, oo, "mode-style");
 
-	last = screen_size_y(s) - 1;
 	if (py == 0) {
 		size = xsnprintf(hdr, sizeof hdr,
 		    "[%u/%u]", data->oy, screen_hsize(data->backing));
