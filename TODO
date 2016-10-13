@@ -52,7 +52,6 @@
 
 - better UTF-8 support:
 	* message display
-	* prompt input
 	* searching in copy mode
 
 - copy/paste improvements:
@@ -61,16 +60,6 @@
 	* command to toggle selection not to move it in copy-mode
 	* regex searching
 	* copy-pipe should have -x as well
-	* copy mode key bindings should just be a standard key table, using
-          something like "copy-mode start-selection"; it could use
-          command-prompt for search, goto, etc:
-
-              bind -Temacs command-prompt -p'Search Up: ' 'copy-mode search-up %%'
-
-          it'd need a separate lookup, because modes are per-pane, perhaps a
-          table() cb to give the table name ("vi" or "emacs"). anything in the
-          table fires the command, anything not in the table is injected as a
-          key
 	* searching in copy mode should unwrap lines, so if you search for "foobar"
           then it should be found even if it is now "foo\nbar" (if the WRAP flag
           is set on the line)
@@ -101,7 +90,10 @@
 	* instead of separate window and session options, just one master
 	  options list with each option having a type (window or session), then
 	  options on window, on session, and global. for window options we look
-	  window->session->global, and for session we look session->global
+	  window->session->global, and for session we look session->global.
+          problem: what about windows in multiple sessions? there are contexts
+          where we do not know which session, or where multiple choices makes
+          no sense
 	* the way pane, window, session destroy is handled is too complicated
 	  and the distinction between session.c, window.c and server-fn.c
 	  functions is not clear. could we just have kill_pane(),
@@ -139,5 +131,3 @@
 	* multiline status line? separate command prompt and status line?
 	* customizable command aliases
 	* automatic pane logging
-	* BCE? We are halfway there (output side is done for pane backgrounds),
-	  just need to change how screen/grid handles erase
