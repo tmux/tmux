@@ -2052,7 +2052,7 @@ window_copy_scroll_up(struct window_pane *wp, u_int ny)
 
 	screen_write_start(&ctx, wp, NULL);
 	screen_write_cursormove(&ctx, 0, 0);
-	screen_write_deleteline(&ctx, ny);
+	screen_write_deleteline(&ctx, ny, 8);
 	window_copy_write_lines(wp, &ctx, screen_size_y(s) - ny, ny);
 	window_copy_write_line(wp, &ctx, 0);
 	if (screen_size_y(s) > 1)
@@ -2085,7 +2085,7 @@ window_copy_scroll_down(struct window_pane *wp, u_int ny)
 
 	screen_write_start(&ctx, wp, NULL);
 	screen_write_cursormove(&ctx, 0, 0);
-	screen_write_insertline(&ctx, ny);
+	screen_write_insertline(&ctx, ny, 8);
 	window_copy_write_lines(wp, &ctx, 0, ny);
 	if (s->sel.flag && screen_size_y(s) > ny)
 		window_copy_write_line(wp, &ctx, ny);

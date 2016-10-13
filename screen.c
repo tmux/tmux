@@ -60,7 +60,7 @@ screen_reinit(struct screen *s)
 
 	screen_reset_tabs(s);
 
-	grid_clear_lines(s->grid, s->grid->hsize, s->grid->sy);
+	grid_clear_lines(s->grid, s->grid->hsize, s->grid->sy, 8);
 
 	screen_clear_selection(s);
 }
@@ -193,7 +193,8 @@ screen_resize_y(struct screen *s, u_int sy)
 		if (available > 0) {
 			if (available > needed)
 				available = needed;
-			grid_view_delete_lines(gd, oldy - available, available);
+			grid_view_delete_lines(gd, oldy - available, available,
+			    8);
 		}
 		needed -= available;
 
@@ -209,7 +210,7 @@ screen_resize_y(struct screen *s, u_int sy)
 		} else if (needed > 0 && available > 0) {
 			if (available > needed)
 				available = needed;
-			grid_view_delete_lines(gd, 0, available);
+			grid_view_delete_lines(gd, 0, available, 8);
 		}
 		s->cy -= needed;
 	}

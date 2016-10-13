@@ -295,7 +295,7 @@ screen_redraw_make_pane_status(struct client *c, struct window *w,
 
 	screen_write_start(&ctx, NULL, &wp->status_screen);
 	screen_write_cursormove(&ctx, 0, 0);
-	screen_write_clearline(&ctx);
+	screen_write_clearline(&ctx, 8);
 	screen_write_cnputs(&ctx, outlen, &gc, "%s", out);
 	screen_write_stop(&ctx);
 

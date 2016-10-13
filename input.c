@@ -1283,7 +1283,8 @@ input_csi_dispatch(struct input_ctx *ictx)
 		screen_write_clearcharacter(sctx, input_get(ictx, 0, 1, 1));
 		break;
 	case INPUT_CSI_DCH:
-		screen_write_deletecharacter(sctx, input_get(ictx, 0, 1, 1));
+		screen_write_deletecharacter(sctx, input_get(ictx, 0, 1, 1),
+		    ictx->cell.cell.bg);
 		break;
 	case INPUT_CSI_DECSTBM:
 		n = input_get(ictx, 0, 1, 1);
@@ -1291,7 +1292,8 @@ input_csi_dispatch(struct input_ctx *ictx)
 		screen_write_scrollregion(sctx, n - 1, m - 1);
 		break;
 	case INPUT_CSI_DL:
-		screen_write_deleteline(sctx, input_get(ictx, 0, 1, 1));
+		screen_write_deleteline(sctx, input_get(ictx, 0, 1, 1),
+		    ictx->cell.cell.bg);
 		break;
 	case INPUT_CSI_DSR:
 		switch (input_get(ictx, 0, 0, 0)) {
@@ -1309,13 +1311,13 @@ input_csi_dispatch(struct input_ctx *ictx)
 	case INPUT_CSI_ED:
 		switch (input_get(ictx, 0, 0, 0)) {
 		case 0:
-			screen_write_clearendofscreen(sctx);
+			screen_write_clearendofscreen(sctx, ictx->cell.cell.bg);
 			break;
 		case 1:
 			screen_write_clearstartofscreen(sctx);
 			break;
 		case 2:
-			screen_write_clearscreen(sctx);
+			screen_write_clearscreen(sctx, ictx->cell.cell.bg);
 			break;
 		case 3:
 			switch (input_get(ictx, 1, 0, 0)) {
@@ -1336,13 +1338,13 @@ input_csi_dispatch(struct input_ctx *ictx)
 	case INPUT_CSI_EL:
 		switch (input_get(ictx, 0, 0, 0)) {
 		case 0:
-			screen_write_clearendofline(sctx);
+			screen_write_clearendofline(sctx, ictx->cell.cell.bg);
 			break;
 		case 1:
-			screen_write_clearstartofline(sctx);
+			screen_write_clearstartofline(sctx, ictx->cell.cell.bg);
 			break;
 		case 2:
-			screen_write_clearline(sctx);
+			screen_write_clearline(sctx, ictx->cell.cell.bg);
 			break;
 		default:
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);
@@ -1354,10 +1356,12 @@ input_csi_dispatch(struct input_ctx *ictx)
 		screen_write_cursormove(sctx, n - 1, s->cy);
 		break;
 	case INPUT_CSI_ICH:
-		screen_write_insertcharacter(sctx, input_get(ictx, 0, 1, 1));
+		screen_write_insertcharacter(sctx, input_get(ictx, 0, 1, 1),
+		    ictx->cell.cell.bg);
 		break;
 	case INPUT_CSI_IL:
-		screen_write_insertline(sctx, input_get(ictx, 0, 1, 1));
+		screen_write_insertline(sctx, input_get(ictx, 0, 1, 1),
+			ictx->cell.cell.bg);
 		break;
 	case INPUT_CSI_RCP:
 		memcpy(&ictx->cell, &ictx->old_cell, sizeof ictx->cell);
@@ -1445,7 +1449,8 @@ input_csi_dispatch_rm_private(struct input_ctx *ictx)
 			break;
 		case 3:		/* DECCOLM */
 			screen_write_cursormove(&ictx->ctx, 0, 0);
-			screen_write_clearscreen(&ictx->ctx);
+			screen_write_clearscreen(&ictx->ctx,
+			    ictx->cell.cell.bg);
 			break;
 		case 7:		/* DECAWM */
 			screen_write_mode_clear(&ictx->ctx, MODE_WRAP);
@@ -1522,7 +1527,8 @@ input_csi_dispatch_sm_private(struct input_ctx *ictx)
 			break;
 		case 3:		/* DECCOLM */
 			screen_write_cursormove(&ictx->ctx, 0, 0);
-			screen_write_clearscreen(&ictx->ctx);
+			screen_write_clearscreen(&ictx->ctx,
+			    ictx->cell.cell.bg);
 			break;
 		case 7:		/* DECAWM */
 			screen_write_mode_set(&ictx->ctx, MODE_WRAP);

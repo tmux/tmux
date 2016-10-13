@@ -602,6 +602,7 @@ struct grid_cell_entry {
 
 /* Grid line. */
 struct grid_line {
+	u_int			 cellused;
 	u_int			 cellsize;
 	struct grid_cell_entry	*celldata;
 
@@ -710,7 +711,7 @@ struct screen {
 	char			*ccolour;	/* cursor colour string */
 
 	u_int			 rupper;	/* scroll region top */
-	u_int		 	 rlower;	/* scroll region bottom */
+	u_int			 rlower;	/* scroll region bottom */
 
 	int			 mode;
 
@@ -1144,6 +1145,9 @@ struct tty_ctx {
 	u_int		 xoff;
 	u_int		 yoff;
 
+	/* The background colour used for clearing (erasing). */
+	u_int		 bg;
+
 	/* Saved last cell on line. */
 	struct grid_cell last_cell;
 };
@@ -1187,7 +1191,7 @@ struct client {
 	struct event	 repeat_timer;
 
 	struct event	 click_timer;
-	u_int            click_button;
+	u_int		 click_button;
 
 	struct event	 status_timer;
 	struct screen	 status;
@@ -1271,10 +1275,10 @@ struct cmd_find_state {
 	int			 flags;
 	struct cmd_find_state	*current;
 
-	struct session          *s;
-	struct winlink          *wl;
+	struct session		*s;
+	struct winlink		*wl;
 	struct window		*w;
-	struct window_pane      *wp;
+	struct window_pane	*wp;
 	int			 idx;
 };
 
@@ -1544,7 +1548,7 @@ void		 format_defaults_paste_buffer(struct format_tree *,
 
 /* hooks.c */
 struct hook;
-struct hooks 	*hooks_get(struct session *);
+struct hooks	*hooks_get(struct session *);
 struct hooks	*hooks_create(struct hooks *);
 void		 hooks_free(struct hooks *);
 struct hook	*hooks_first(struct hooks *);
@@ -1925,17 +1929,17 @@ int	 grid_cells_equal(const struct grid_cell *, const struct grid_cell *);
 struct grid *grid_create(u_int, u_int, u_int);
 void	 grid_destroy(struct grid *);
 int	 grid_compare(struct grid *, struct grid *);
-void	 grid_collect_history(struct grid *);
-void	 grid_scroll_history(struct grid *);
+void	 grid_collect_history(struct grid *, u_int);
+void	 grid_scroll_history(struct grid *, u_int);
 void	 grid_scroll_history_region(struct grid *, u_int, u_int);
 void	 grid_clear_history(struct grid *);
 const struct grid_line *grid_peek_line(struct grid *, u_int);
 void	 grid_get_cell(struct grid *, u_int, u_int, struct grid_cell *);
 void	 grid_set_cell(struct grid *, u_int, u_int, const struct grid_cell *);
-void	 grid_clear(struct grid *, u_int, u_int, u_int, u_int);
-void	 grid_clear_lines(struct grid *, u_int, u_int);
-void	 grid_move_lines(struct grid *, u_int, u_int, u_int);
-void	 grid_move_cells(struct grid *, u_int, u_int, u_int, u_int);
+void	 grid_clear(struct grid *, u_int, u_int, u_int, u_int, u_int);
+void	 grid_clear_lines(struct grid *, u_int, u_int, u_int);
+void	 grid_move_lines(struct grid *, u_int, u_int, u_int, u_int);
+void	 grid_move_cells(struct grid *, u_int, u_int, u_int, u_int, u_int);
 char	*grid_string_cells(struct grid *, u_int, u_int, u_int,
 	     struct grid_cell **, int, int, int);
 void	 grid_duplicate_lines(struct grid *, u_int, struct grid *, u_int,
@@ -1946,16 +1950,18 @@ u_int	 grid_reflow(struct grid *, struct grid *, u_int);
 void	 grid_view_get_cell(struct grid *, u_int, u_int, struct grid_cell *);
 void	 grid_view_set_cell(struct grid *, u_int, u_int,
 	     const struct grid_cell *);
-void	 grid_view_clear_history(struct grid *);
-void	 grid_view_clear(struct grid *, u_int, u_int, u_int, u_int);
+void	 grid_view_clear_history(struct grid *, u_int);
+void	 grid_view_clear(struct grid *, u_int, u_int, u_int, u_int, u_int);
 void	 grid_view_scroll_region_up(struct grid *, u_int, u_int);
 void	 grid_view_scroll_region_down(struct grid *, u_int, u_int);
-void	 grid_view_insert_lines(struct grid *, u_int, u_int);
-void	 grid_view_insert_lines_region(struct grid *, u_int, u_int, u_int);
-void	 grid_view_delete_lines(struct grid *, u_int, u_int);
-void	 grid_view_delete_lines_region(struct grid *, u_int, u_int, u_int);
-void	 grid_view_insert_cells(struct grid *, u_int, u_int, u_int);
-void	 grid_view_delete_cells(struct grid *, u_int, u_int, u_int);
+void	 grid_view_insert_lines(struct grid *, u_int, u_int, u_int);
+void	 grid_view_insert_lines_region(struct grid *, u_int, u_int, u_int,
+	u_int);
+void	 grid_view_delete_lines(struct grid *, u_int, u_int, u_int);
+void	 grid_view_delete_lines_region(struct grid *, u_int, u_int, u_int,
+	u_int);
+void	 grid_view_insert_cells(struct grid *, u_int, u_int, u_int, u_int);
+void	 grid_view_delete_cells(struct grid *, u_int, u_int, u_int, u_int);
 char	*grid_view_string_cells(struct grid *, u_int, u_int, u_int);
 
 /* screen-write.c */
@@ -1985,22 +1991,22 @@ void	 screen_write_cursordown(struct screen_write_ctx *, u_int);
 void	 screen_write_cursorright(struct screen_write_ctx *, u_int);
 void	 screen_write_cursorleft(struct screen_write_ctx *, u_int);
 void	 screen_write_alignmenttest(struct screen_write_ctx *);
-void	 screen_write_insertcharacter(struct screen_write_ctx *, u_int);
-void	 screen_write_deletecharacter(struct screen_write_ctx *, u_int);
+void	 screen_write_insertcharacter(struct screen_write_ctx *, u_int, u_int);
+void	 screen_write_deletecharacter(struct screen_write_ctx *, u_int, u_int);
 void	 screen_write_clearcharacter(struct screen_write_ctx *, u_int);
-void	 screen_write_insertline(struct screen_write_ctx *, u_int);
-void	 screen_write_deleteline(struct screen_write_ctx *, u_int);
-void	 screen_write_clearline(struct screen_write_ctx *);
-void	 screen_write_clearendofline(struct screen_write_ctx *);
-void	 screen_write_clearstartofline(struct screen_write_ctx *);
+void	 screen_write_insertline(struct screen_write_ctx *, u_int, u_int);
+void	 screen_write_deleteline(struct screen_write_ctx *, u_int, u_int);
+void	 screen_write_clearline(struct screen_write_ctx *, u_int);
+void	 screen_write_clearendofline(struct screen_write_ctx *, u_int);
+void	 screen_write_clearstartofline(struct screen_write_ctx *, u_int);
 void	 screen_write_cursormove(struct screen_write_ctx *, u_int, u_int);
 void	 screen_write_reverseindex(struct screen_write_ctx *);
 void	 screen_write_scrollregion(struct screen_write_ctx *, u_int, u_int);
 void	 screen_write_linefeed(struct screen_write_ctx *, int);
 void	 screen_write_carriagereturn(struct screen_write_ctx *);
-void	 screen_write_clearendofscreen(struct screen_write_ctx *);
+void	 screen_write_clearendofscreen(struct screen_write_ctx *, u_int);
 void	 screen_write_clearstartofscreen(struct screen_write_ctx *);
-void	 screen_write_clearscreen(struct screen_write_ctx *);
+void	 screen_write_clearscreen(struct screen_write_ctx *, u_int);
 void	 screen_write_clearhistory(struct screen_write_ctx *);
 void	 screen_write_cell(struct screen_write_ctx *, const struct grid_cell *);
 void	 screen_write_setselection(struct screen_write_ctx *, u_char *, u_int);

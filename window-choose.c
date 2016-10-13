@@ -900,7 +900,7 @@ window_choose_scroll_up(struct window_pane *wp)
 
 	screen_write_start(&ctx, wp, NULL);
 	screen_write_cursormove(&ctx, 0, 0);
-	screen_write_insertline(&ctx, 1);
+	screen_write_insertline(&ctx, 1, 8);
 	window_choose_write_line(wp, &ctx, 0);
 	if (screen_size_y(&data->screen) > 1)
 		window_choose_write_line(wp, &ctx, 1);
@@ -920,7 +920,7 @@ window_choose_scroll_down(struct window_pane *wp)
 
 	screen_write_start(&ctx, wp, NULL);
 	screen_write_cursormove(&ctx, 0, 0);
-	screen_write_deleteline(&ctx, 1);
+	screen_write_deleteline(&ctx, 1, 8);
 	window_choose_write_line(wp, &ctx, screen_size_y(s) - 1);
 	if (screen_size_y(&data->screen) > 1)
 		window_choose_write_line(wp, &ctx, screen_size_y(s) - 2);
