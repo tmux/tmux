@@ -112,12 +112,6 @@
 	  or even guarantee that cmdq->c != NULL and provide a better way to
 	  tell when in the config file - then we use cmdq->c if we need a
 	  client w/o a session else cmd_current_client
-	* we do more work than we should if a single read() contains operations
-          that cancel each other out: for example, writing twice to the same
-          cell, or writing and then clearing a line; it would be nice to
-          optimize these. would it mean processing the entire read() data first
-          then applying changes? or an initial optimization step? or something
-          else?
 
 - miscellaneous
 	* way to keep a job running just read its last line of output for #()
@@ -131,3 +125,8 @@
 	* multiline status line? separate command prompt and status line?
 	* customizable command aliases
 	* automatic pane logging
+
+- hooks
+	* more hooks for various things
+	* after-*/before-* hooks are a bit weird, particularly with targets
+	* multiple hooks with the same name
