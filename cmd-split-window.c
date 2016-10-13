@@ -177,6 +177,13 @@ cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	}
 	notify_window_layout_changed(w);
 
+	cmd_find_clear_state(&cmdq->current, NULL, 0);
+	cmdq->current.s = s;
+	cmdq->current.wl = wl;
+	cmdq->current.w = wl->window;
+	cmdq->current.wp = new_wp;
+	cmd_find_log_state(__func__, &cmdq->current);
+
 	if (to_free != NULL)
 		free((void *)to_free);
 	return (CMD_RETURN_NORMAL);

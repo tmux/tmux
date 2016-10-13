@@ -310,6 +310,8 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 		format_free(ft);
 	}
 
+	cmd_find_from_session(&cmdq->current, s);
+
 	if (!detached)
 		cmdq->client_exit = 0;
 
