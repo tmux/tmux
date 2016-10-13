@@ -182,13 +182,30 @@ cmdq_append(struct cmd_q *cmdq, struct cmd_list *cmdlist, struct mouse_event *m)
 		item->mouse.valid = 0;
 }
 
+/* Find hooks list. */
+static struct hooks *
+cmdq_get_hooks(struct cmd_q *cmdq)
+{
+	struct session	*s;
+
+	s = NULL;
+	if (cmdq->state.tflag.s != NULL)
+		s = cmdq->state.tflag.s;
+	else if (cmdq->state.sflag.s != NULL)
+		s = cmdq->state.sflag.s;
+	else if (cmdq->state.c != NULL)
+		s = cmdq->state.c->session;
+	if (s != NULL)
+		return (s->hooks);
+	return (global_hooks);
+}
+
 /* Process one command. */
 static enum cmd_retval
 cmdq_continue_one(struct cmd_q *cmdq)
 {
 	struct cmd	*cmd = cmdq->cmd;
 	const char	*name = cmd->entry->name;
-	struct session	*s;
 	struct hooks	*hooks;
 	enum cmd_retval	 retval;
 	char		*tmp;
@@ -208,18 +225,7 @@ cmdq_continue_one(struct cmd_q *cmdq)
 		goto error;
 
 	if (~cmdq->flags & CMD_Q_NOHOOKS) {
-		s = NULL;
-		if (cmdq->state.tflag.s != NULL)
-			s = cmdq->state.tflag.s;
-		else if (cmdq->state.sflag.s != NULL)
-			s = cmdq->state.sflag.s;
-		else if (cmdq->state.c != NULL)
-			s = cmdq->state.c->session;
-		if (s != NULL)
-			hooks = s->hooks;
-		else
-			hooks = global_hooks;
-
+		hooks = cmdq_get_hooks(cmdq);
 		if (~cmdq->flags & CMD_Q_REENTRY) {
 			cmdq->flags |= CMD_Q_REENTRY;
 			if (hooks_wait(hooks, cmdq, NULL,
@@ -236,9 +242,13 @@ cmdq_continue_one(struct cmd_q *cmdq)
 	if (retval == CMD_RETURN_ERROR)
 		goto error;
 
-	if (hooks != NULL && hooks_wait(hooks, cmdq, NULL,
-	    "after-%s", name) == 0)
-		retval = CMD_RETURN_WAIT;
+	if (hooks != NULL) {
+		if (cmd_prepare_state(cmd, cmdq, cmdq->parent) != 0)
+			goto error;
+		hooks = cmdq_get_hooks(cmdq);
+		if (hooks_wait(hooks, cmdq, NULL, "after-%s", name) == 0)
+			retval = CMD_RETURN_WAIT;
+	}
 	cmdq_guard(cmdq, "end", flags);
 
 	return (retval);
@@ -260,6 +270,8 @@ cmdq_continue(struct cmd_q *cmdq)
 
 	cmdq->references++;
 	notify_disable();
+
+	cmd_find_clear_state(&cmdq->current, NULL, 0);
 
 	log_debug("continuing cmdq %p: flags %#x, client %p", cmdq, cmdq->flags,
 	    c);

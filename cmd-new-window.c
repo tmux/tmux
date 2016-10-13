@@ -152,6 +152,8 @@ cmd_new_window_exec(struct cmd *self, struct cmd_q *cmdq)
 		format_free(ft);
 	}
 
+	cmd_find_from_winlink(&cmdq->current, s, wl);
+
 	if (to_free != NULL)
 		free((void *)to_free);
 	return (CMD_RETURN_NORMAL);

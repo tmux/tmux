@@ -803,6 +803,15 @@ cmd_find_clear_state(struct cmd_find_state *fs, struct cmd_q *cmdq, int flags)
 	fs->idx = -1;
 }
 
+/* Check if state is empty/ */
+int
+cmd_find_empty_state(struct cmd_find_state *fs)
+{
+	if (fs->s == NULL && fs->wl == NULL && fs->w == NULL && fs->wp == NULL)
+		return (1);
+	return (0);
+}
+
 /* Check if a state if valid. */
 int
 cmd_find_valid_state(struct cmd_find_state *fs)
@@ -959,12 +968,19 @@ cmd_find_target(struct cmd_find_state *fs, struct cmd_find_state *current,
 	cmd_find_clear_state(fs, cmdq, flags);
 
 	/* Find current state. */
-	if (server_check_marked() && (flags & CMD_FIND_DEFAULT_MARKED))
+	if (server_check_marked() && (flags & CMD_FIND_DEFAULT_MARKED)) {
 		fs->current = &marked_pane;
-	else if (cmd_find_valid_state(&cmdq->current))
+		log_debug("    current is marked pane");
+	} else if (cmd_find_valid_state(&cmdq->current)) {
 		fs->current = &cmdq->current;
-	else
+		log_debug("    current is from queue");
+	} else {
 		fs->current = current;
+		log_debug("    current is from argument");
+	}
+	if (!cmd_find_empty_state(fs->current) &&
+	    !cmd_find_valid_state(fs->current))
+		fatalx("invalid current find state");
 
 	/* An empty or NULL target is the current. */
 	if (target == NULL || *target == '\0')

@@ -156,5 +156,12 @@ cmd_join_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 		notify_window_layout_changed(src_w);
 	notify_window_layout_changed(dst_w);
 
+	cmd_find_clear_state(&cmdq->current, NULL, 0);
+	cmdq->current.s = dst_s;
+	cmdq->current.wl = dst_wl;
+	cmdq->current.w = dst_w;
+	cmdq->current.wp = dst_wp;
+	cmd_find_log_state(__func__, &cmdq->current);
+
 	return (CMD_RETURN_NORMAL);
 }

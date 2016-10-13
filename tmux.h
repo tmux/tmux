@@ -1730,6 +1730,7 @@ int		 cmd_find_target(struct cmd_find_state *,
 struct client	*cmd_find_client(struct cmd_q *, const char *, int);
 void		 cmd_find_clear_state(struct cmd_find_state *, struct cmd_q *,
 		     int);
+int		 cmd_find_empty_state(struct cmd_find_state *);
 int		 cmd_find_valid_state(struct cmd_find_state *);
 void		 cmd_find_copy_state(struct cmd_find_state *,
 		     struct cmd_find_state *);
