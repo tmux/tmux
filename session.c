@@ -359,9 +359,6 @@ session_new(struct session *s, const char *name, int argc, char **argv,
 	notify_window_linked(s, w);
 	environ_free(env);
 
-	if (options_get_number(s->options, "set-remain-on-exit"))
-		options_set_number(w->options, "remain-on-exit", 1);
-
 	session_group_synchronize_from(s);
 	return (wl);
 }
