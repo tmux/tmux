@@ -253,9 +253,6 @@ endif
 if NO_CFMAKERAW
 nodist_tmux_SOURCES += compat/cfmakeraw.c
 endif
-if NO_OPENAT
-nodist_tmux_SOURCES += compat/openat.c
-endif
 if NO_REALLOCARRAY
 nodist_tmux_SOURCES += compat/reallocarray.c
 endif

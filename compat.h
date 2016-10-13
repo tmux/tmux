@@ -279,12 +279,6 @@ int		 unsetenv(const char *);
 void		 cfmakeraw(struct termios *);
 #endif
 
-#ifndef HAVE_OPENAT
-/* openat.c */
-#define AT_FDCWD -100
-int		 openat(int, const char *, int, ...);
-#endif
-
 #ifndef HAVE_REALLOCARRAY
 /* reallocarray.c */
 void		*reallocarray(void *, size_t, size_t);

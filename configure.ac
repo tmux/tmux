@@ -458,13 +458,6 @@ if test "x$found_cfmakeraw" = xyes; then
 fi
 AM_CONDITIONAL(NO_CFMAKERAW, [test "x$found_cfmakeraw" = xno])
 
-# Look for openat, compat/openat.c used if missing.
-AC_CHECK_FUNC(openat, found_openat=yes, found_openat=no)
-if test "x$found_openat" = xyes; then
-	AC_DEFINE(HAVE_OPENAT)
-fi
-AM_CONDITIONAL(NO_OPENAT, [test "x$found_openat" = xno])
-
 # Look for reallocarray, compat/reallocarray.c used if missing.
 AC_CHECK_FUNC(reallocarray, found_reallocarray=yes, found_reallocarray=no)
 if test "x$found_reallocarray" = xyes; then
