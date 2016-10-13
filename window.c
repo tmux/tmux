@@ -1038,7 +1038,7 @@ window_pane_alternate_on(struct window_pane *wp, struct grid_cell *gc,
 	}
 	memcpy(&wp->saved_cell, gc, sizeof wp->saved_cell);
 
-	grid_view_clear(s->grid, 0, 0, sx, sy);
+	grid_view_clear(s->grid, 0, 0, sx, sy, 8);
 
 	wp->base.grid->flags &= ~GRID_HISTORY;
 

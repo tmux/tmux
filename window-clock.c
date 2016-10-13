@@ -221,7 +221,7 @@ window_clock_draw_screen(struct window_pane *wp)
 	} else
 		strftime(tim, sizeof tim, "%H:%M", tm);
 
-	screen_write_clearscreen(&ctx);
+	screen_write_clearscreen(&ctx, 8);
 
 	if (screen_size_x(s) < 6 * strlen(tim) || screen_size_y(s) < 6) {
 		if (screen_size_x(s) >= strlen(tim) && screen_size_y(s) != 0) {
