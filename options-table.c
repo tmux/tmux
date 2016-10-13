@@ -319,12 +319,6 @@ const struct options_table_entry options_table[] = {
 	  .default_num = 500
 	},
 
-	{ .name = "set-remain-on-exit",
-	  .type = OPTIONS_TABLE_FLAG,
-	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_num = 0
-	},
-
 	{ .name = "set-titles",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .scope = OPTIONS_TABLE_SESSION,
