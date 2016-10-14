@@ -68,6 +68,8 @@ cmd_source_file_exec(struct cmd *self, struct cmd_q *cmdq)
 		return (CMD_RETURN_NORMAL);
 	}
 
+	log_debug("%s: cmdq %p, parent %p", __func__, cmdq1, cmdq);
+
 	cmdq->references++;
 	cfg_references++;
 
@@ -80,16 +82,15 @@ cmd_source_file_done(struct cmd_q *cmdq1)
 {
 	struct cmd_q	*cmdq = cmdq1->data;
 
+	log_debug("%s: cmdq %p, parent %p", __func__, cmdq1, cmdq);
+
 	if (cmdq1->client_exit >= 0)
 		cmdq->client_exit = cmdq1->client_exit;
-
 	cmdq_free(cmdq1);
 
 	cfg_references--;
-
 	if (cmdq_free(cmdq))
 		return;
-
 	if (cfg_references == 0)
 		cfg_print_causes(cmdq);
 	cmdq_continue(cmdq);

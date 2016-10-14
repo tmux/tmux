@@ -55,6 +55,8 @@ cmdq_new(struct client *c)
 int
 cmdq_free(struct cmd_q *cmdq)
 {
+	log_debug("cmdq %p free: %u references", cmdq, cmdq->references);
+
 	if (--cmdq->references != 0) {
 		if (cmdq->flags & CMD_Q_DEAD)
 			return (1);
@@ -186,12 +188,15 @@ cmdq_append(struct cmd_q *cmdq, struct cmd_list *cmdlist, struct mouse_event *m)
 static enum cmd_retval
 cmdq_continue_one(struct cmd_q *cmdq)
 {
+	struct cmd_list		*cmdlist = cmdq->item->cmdlist;
 	struct cmd		*cmd = cmdq->cmd;
 	enum cmd_retval		 retval;
 	char			*tmp;
 	int			 flags = !!(cmd->flags & CMD_CONTROL);
 	const char		*name;
 	struct cmd_find_state	*fsp, fs;
+
+	cmdlist->references++;
 
 	tmp = cmd_print(cmd);
 	log_debug("cmdq %p: %s", cmdq, tmp);
@@ -225,10 +230,12 @@ cmdq_continue_one(struct cmd_q *cmdq)
 
 end:
 	cmdq_guard(cmdq, "end", flags);
+	cmd_list_free(cmdlist);
 	return (retval);
 
 error:
 	cmdq_guard(cmdq, "error", flags);
+	cmd_list_free(cmdlist);
 	return (CMD_RETURN_ERROR);
 }
 
@@ -244,8 +251,7 @@ cmdq_continue(struct cmd_q *cmdq)
 	cmdq->references++;
 	notify_disable();
 
-	log_debug("continuing cmdq %p: flags %#x, client %p", cmdq, cmdq->flags,
-	    c);
+	log_debug("continuing cmdq %p: flags %#x (%p)", cmdq, cmdq->flags, c);
 
 	empty = TAILQ_EMPTY(&cmdq->queue);
 	if (empty)
@@ -282,6 +288,7 @@ cmdq_continue(struct cmd_q *cmdq)
 	} while (cmdq->item != NULL);
 
 empty:
+	log_debug("cmdq %p empty", cmdq);
 	if (cmdq->client_exit > 0)
 		cmdq->client->flags |= CLIENT_EXIT;
 	if (cmdq->emptyfn != NULL)
