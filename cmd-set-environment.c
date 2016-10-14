@@ -38,7 +38,7 @@ const struct cmd_entry cmd_set_environment_entry = {
 
 	.tflag = CMD_SESSION_CANFAIL,
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_set_environment_exec
 };
 

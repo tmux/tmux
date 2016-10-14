@@ -37,7 +37,7 @@ const struct cmd_entry cmd_unbind_key_entry = {
 	.args = { "ant:T:", 0, 1 },
 	.usage = "[-an] [-t mode-table] [-T key-table] key",
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_unbind_key_exec
 };
 

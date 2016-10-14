@@ -37,7 +37,7 @@ const struct cmd_entry cmd_select_layout_entry = {
 
 	.tflag = CMD_WINDOW,
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_select_layout_exec
 };
 
@@ -50,7 +50,7 @@ const struct cmd_entry cmd_next_layout_entry = {
 
 	.tflag = CMD_WINDOW,
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_select_layout_exec
 };
 
@@ -63,7 +63,7 @@ const struct cmd_entry cmd_previous_layout_entry = {
 
 	.tflag = CMD_WINDOW,
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_select_layout_exec
 };
 

@@ -36,7 +36,7 @@ const struct cmd_entry cmd_set_buffer_entry = {
 	.args = { "ab:n:", 0, 1 },
 	.usage = "[-a] " CMD_BUFFER_USAGE " [-n new-buffer-name] data",
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_set_buffer_exec
 };
 
@@ -47,7 +47,7 @@ const struct cmd_entry cmd_delete_buffer_entry = {
 	.args = { "b:", 0, 0 },
 	.usage = CMD_BUFFER_USAGE,
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_set_buffer_exec
 };
 

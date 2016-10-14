@@ -41,7 +41,7 @@ const struct cmd_entry cmd_resize_pane_entry = {
 
 	.tflag = CMD_PANE,
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_resize_pane_exec
 };
 

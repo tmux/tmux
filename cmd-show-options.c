@@ -43,7 +43,7 @@ const struct cmd_entry cmd_show_options_entry = {
 
 	.tflag = CMD_WINDOW_CANFAIL,
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_show_options_exec
 };
 
@@ -56,7 +56,7 @@ const struct cmd_entry cmd_show_window_options_entry = {
 
 	.tflag = CMD_WINDOW_CANFAIL,
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_show_options_exec
 };
 

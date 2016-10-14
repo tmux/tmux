@@ -35,7 +35,7 @@ const struct cmd_entry cmd_copy_mode_entry = {
 
 	.tflag = CMD_PANE,
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_copy_mode_exec
 };
 
@@ -48,7 +48,7 @@ const struct cmd_entry cmd_clock_mode_entry = {
 
 	.tflag = CMD_PANE,
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_copy_mode_exec
 };
 

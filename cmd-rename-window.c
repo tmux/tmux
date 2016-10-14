@@ -37,7 +37,7 @@ const struct cmd_entry cmd_rename_window_entry = {
 
 	.tflag = CMD_WINDOW,
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_rename_window_exec
 };
 
