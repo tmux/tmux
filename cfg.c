@@ -129,7 +129,10 @@ load_cfg(const char *path, struct cmd_q *cmdq, int quiet)
 static void
 cfg_default_done(__unused struct cmd_q *cmdq)
 {
-	if (--cfg_references != 0)
+	log_debug("%s: %u references%s", __func__, cfg_references,
+	    cfg_finished ? " (finished)" : "");
+
+	if (cfg_finished || --cfg_references != 0)
 		return;
 	cfg_finished = 1;
 
