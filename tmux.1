@@ -1247,7 +1247,7 @@ By default, it uses the format
 but a different format may be specified with
 .Fl F .
 .It Xo Ic capture-pane
-.Op Fl aepPq
+.Op Fl aepPqCJ
 .Op Fl b Ar buffer-name
 .Op Fl E Ar end-line
 .Op Fl S Ar start-line
@@ -1387,19 +1387,16 @@ can be used and will be replaced with the session name and window index.
 When a window is chosen from the list, the session command is run before the
 window command.
 .Pp
-If
 .Fl S
-is given will display the specified format instead of the default session
-format.
-If
+uses
+.Ar format
+instead of the default session
+format and
 .Fl W
-is given will display the specified format instead of the default window
-format.
-For the meaning of the
-.Fl s
-and
-.Fl w
-options, see the
+instead of the default window format.
+For the meaning of
+.Ar format ,
+see the
 .Sx FORMATS
 section.
 .Pp
