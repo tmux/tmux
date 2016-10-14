@@ -334,6 +334,8 @@ window_create_spawn(const char *name, int argc, char **argv, const char *path,
 	wp = window_add_pane(w, NULL, hlimit);
 	layout_init(w, wp);
 
+	othermux_add_window(w, env);
+
 	if (window_pane_spawn(wp, argc, argv, path, shell, cwd,
 	    env, tio, cause) != 0) {
 		window_destroy(w);
@@ -367,6 +369,7 @@ window_destroy(struct window *w)
 	if (event_initialized(&w->alerts_timer))
 		evtimer_del(&w->alerts_timer);
 
+	othermux_remove_window(w);
 	options_free(w->options);
 
 	window_destroy_panes(w);

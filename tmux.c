@@ -44,7 +44,6 @@ struct timeval	 start_time;
 const char	*socket_path;
 
 static __dead void	 usage(void);
-static char		*make_label(const char *);
 
 static const char	*getshell(void);
 static int		 checkshell(const char *);
@@ -105,7 +104,7 @@ areshell(const char *shell)
 	return (0);
 }
 
-static char *
+char *
 make_label(const char *label)
 {
 	char		*base, resolved[PATH_MAX], *path, *s;

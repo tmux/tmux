@@ -155,6 +155,7 @@ server_client_create(int fd)
 
 	evtimer_set(&c->repeat_timer, server_client_repeat_timer, c);
 	evtimer_set(&c->click_timer, server_client_click_timer, c);
+	SLIST_INIT(&c->backings);
 
 	TAILQ_INSERT_TAIL(&clients, c, entry);
 	log_debug("new client %p", c);
@@ -194,6 +195,7 @@ server_client_lost(struct client *c)
 	server_clear_identify(c, NULL);
 	status_prompt_clear(c);
 	status_message_clear(c);
+	othermux_remove_client(c);
 
 	if (c->stdin_callback != NULL)
 		c->stdin_callback(c, 1, c->stdin_callback_data);
@@ -1370,7 +1372,7 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 		if (datalen == 0 || data[datalen - 1] != '\0')
 			fatalx("bad MSG_IDENTIFY_ENVIRON string");
 		if (strchr(data, '=') != NULL)
-			environ_put(c->environ, data);
+			othermux_add_client(c, environ_put(c->environ, data));
 		log_debug("client %p IDENTIFY_ENVIRON %s", c, data);
 		break;
 	case MSG_IDENTIFY_CLIENTPID:

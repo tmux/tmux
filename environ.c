@@ -101,7 +101,7 @@ environ_find(struct environ *env, const char *name)
 }
 
 /* Set an environment variable. */
-void
+struct environ_entry *
 environ_set(struct environ *env, const char *name, const char *fmt, ...)
 {
 	struct environ_entry	*envent;
@@ -118,6 +118,7 @@ environ_set(struct environ *env, const char *name, const char *fmt, ...)
 		RB_INSERT(environ, env, envent);
 	}
 	va_end(ap);
+	return envent;
 }
 
 /* Clear an environment variable. */
@@ -138,21 +139,23 @@ environ_clear(struct environ *env, const char *name)
 }
 
 /* Set an environment variable from a NAME=VALUE string. */
-void
+struct environ_entry *
 environ_put(struct environ *env, const char *var)
 {
 	char	*name, *value;
+	struct environ_entry *result;
 
 	value = strchr(var, '=');
 	if (value == NULL)
-		return;
+		return NULL;
 	value++;
 
 	name = xstrdup(var);
 	name[strcspn(name, "=")] = '\0';
 
-	environ_set(env, name, "%s", value);
+	result = environ_set(env, name, "%s", value);
 	free(name);
+	return result;
 }
 
 /* Unset an environment variable. */

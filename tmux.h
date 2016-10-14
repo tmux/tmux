@@ -47,6 +47,8 @@ struct input_ctx;
 struct mode_key_cmdstr;
 struct mouse_event;
 struct options;
+struct othermux_backing;
+struct othermux_offering;
 struct session;
 struct tmuxpeer;
 struct tmuxproc;
@@ -894,6 +896,7 @@ struct window {
 
 	struct grid_cell style;
 	struct grid_cell active_style;
+	SLIST_HEAD(, othermux_offering) offerings;
 
 	u_int		 references;
 
@@ -1248,6 +1251,8 @@ struct client {
 	struct session	*session;
 	struct session	*last_session;
 
+	SLIST_HEAD(, othermux_backing) backings;
+
 	int		 wlmouse;
 
 	struct cmd_q	*cmdq;
@@ -1490,6 +1495,7 @@ extern const char	*socket_path;
 int		 areshell(const char *);
 void		 setblocking(int, int);
 const char	*find_home(void);
+char	*make_label(const char *);
 
 /* proc.c */
 struct imsg;
@@ -1629,10 +1635,10 @@ struct environ_entry *environ_first(struct environ *);
 struct environ_entry *environ_next(struct environ_entry *);
 void	environ_copy(struct environ *, struct environ *);
 struct environ_entry *environ_find(struct environ *, const char *);
-void printflike(3, 4) environ_set(struct environ *, const char *, const char *,
+struct environ_entry *	printflike(3, 4) environ_set(struct environ *, const char *, const char *,
 	    ...);
 void	environ_clear(struct environ *, const char *);
-void	environ_put(struct environ *, const char *);
+struct environ_entry *	environ_put(struct environ *, const char *);
 void	environ_unset(struct environ *, const char *);
 void	environ_update(const char *, struct environ *, struct environ *);
 void	environ_push(struct environ *);
@@ -2294,5 +2300,12 @@ void		 style_apply_update(struct grid_cell *, struct options *,
 		     const char *);
 int		 style_equal(const struct grid_cell *,
 		     const struct grid_cell *);
+
+/* othermux.c */
+
+void othermux_add_window(struct window *, struct environ *);
+void othermux_remove_window(struct window *);
+void othermux_add_client(struct client *, struct environ_entry *);
+void othermux_remove_client(struct client *);
 
 #endif /* TMUX_H */
