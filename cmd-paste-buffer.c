@@ -40,7 +40,7 @@ const struct cmd_entry cmd_paste_buffer_entry = {
 
 	.tflag = CMD_PANE,
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_paste_buffer_exec
 };
 

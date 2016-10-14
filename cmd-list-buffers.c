@@ -39,7 +39,7 @@ const struct cmd_entry cmd_list_buffers_entry = {
 	.args = { "F:", 0, 0 },
 	.usage = "[-F format]",
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_list_buffers_exec
 };
 

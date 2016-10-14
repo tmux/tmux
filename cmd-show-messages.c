@@ -40,7 +40,7 @@ const struct cmd_entry cmd_show_messages_entry = {
 
 	.tflag = CMD_CLIENT,
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_show_messages_exec
 };
 
@@ -51,7 +51,7 @@ const struct cmd_entry cmd_server_info_entry = {
 	.args = { "", 0, 0 },
 	.usage = "",
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_show_messages_exec
 };
 

@@ -35,7 +35,7 @@ const struct cmd_entry cmd_refresh_client_entry = {
 
 	.tflag = CMD_CLIENT,
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_refresh_client_exec
 };
 

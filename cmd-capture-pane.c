@@ -46,7 +46,7 @@ const struct cmd_entry cmd_capture_pane_entry = {
 
 	.tflag = CMD_PANE,
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_capture_pane_exec
 };
 

@@ -44,7 +44,7 @@ const struct cmd_entry cmd_list_clients_entry = {
 
 	.tflag = CMD_SESSION,
 
-	.flags = CMD_READONLY,
+	.flags = CMD_READONLY|CMD_AFTERHOOK,
 	.exec = cmd_list_clients_exec
 };
 

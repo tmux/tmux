@@ -43,7 +43,7 @@ const struct cmd_entry cmd_list_panes_entry = {
 
 	.tflag = CMD_WINDOW,
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_list_panes_exec
 };
 

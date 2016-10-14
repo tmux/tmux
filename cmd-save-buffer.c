@@ -41,7 +41,7 @@ const struct cmd_entry cmd_save_buffer_entry = {
 	.args = { "ab:", 1, 1 },
 	.usage = "[-a] " CMD_BUFFER_USAGE " path",
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_save_buffer_exec
 };
 
@@ -52,7 +52,7 @@ const struct cmd_entry cmd_show_buffer_entry = {
 	.args = { "b:", 0, 0 },
 	.usage = CMD_BUFFER_USAGE,
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_save_buffer_exec
 };
 

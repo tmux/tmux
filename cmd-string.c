@@ -133,7 +133,8 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, const char *file,
 			if (argc == 0)
 				goto out;
 
-			*cmdlist = cmd_list_parse(argc, argv, file, line, cause);
+			*cmdlist = cmd_list_parse(argc, argv, file, line,
+			    cause);
 			if (*cmdlist == NULL)
 				goto out;
 

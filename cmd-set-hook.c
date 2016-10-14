@@ -38,7 +38,7 @@ const struct cmd_entry cmd_set_hook_entry = {
 
 	.tflag = CMD_SESSION_CANFAIL,
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_set_hook_exec
 };
 
@@ -51,7 +51,7 @@ const struct cmd_entry cmd_show_hooks_entry = {
 
 	.tflag = CMD_SESSION,
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_set_hook_exec
 };
 

@@ -40,7 +40,7 @@ const struct cmd_entry cmd_bind_key_entry = {
 	.usage = "[-cnr] [-t mode-table] [-T key-table] key "
 	         "command [arguments]",
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_bind_key_exec
 };
 

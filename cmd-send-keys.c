@@ -38,7 +38,7 @@ const struct cmd_entry cmd_send_keys_entry = {
 
 	.tflag = CMD_PANE,
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_send_keys_exec
 };
 
@@ -51,7 +51,7 @@ const struct cmd_entry cmd_send_prefix_entry = {
 
 	.tflag = CMD_PANE,
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_send_keys_exec
 };
 

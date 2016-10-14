@@ -42,7 +42,7 @@ const struct cmd_entry cmd_show_environment_entry = {
 
 	.tflag = CMD_SESSION_CANFAIL,
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_show_environment_exec
 };
 

@@ -35,7 +35,7 @@ const struct cmd_entry cmd_clear_history_entry = {
 
 	.tflag = CMD_PANE,
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_clear_history_exec
 };
 

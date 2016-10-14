@@ -37,7 +37,7 @@ const struct cmd_entry cmd_rename_session_entry = {
 
 	.tflag = CMD_SESSION,
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_rename_session_exec
 };
 
