@@ -196,6 +196,9 @@ hooks_wait(struct hooks *hooks, struct cmd_q *cmdq, struct cmd_find_state *fs,
 	va_list		 ap;
 	char		*name;
 
+	if (cmdq->flags & CMD_Q_NOHOOKS)
+		return (-1);
+
 	va_start(ap, fmt);
 	xvasprintf(&name, fmt, ap);
 	va_end(ap);

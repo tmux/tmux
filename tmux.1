@@ -3208,20 +3208,16 @@ shows only the option value, not the name.
 .Nm
 allows commands to run on various triggers, called
 .Em hooks .
-Each
+Most
 .Nm
-command has a
-.Em before
-hook and an
+commands have an
 .Em after
 hook and there are a number of hooks not associated with commands.
 .Pp
-A command's before hook is run before the command is executed and its after
-hook is run afterwards, except when the command is run as part of a hook
+A command's after
+hook is run after it completes, except when the command is run as part of a hook
 itself.
-Before hooks are named using the
-.Ql before-
-prefix and after hooks the
+They are named with an
 .Ql after-
 prefix.
 For example, the following command adds a hook to select the even-vertical
@@ -3229,11 +3225,6 @@ layout after every
 .Ic split-window :
 .Bd -literal -offset indent
 set-hook after-split-window "selectl even-vertical"
-.Ed
-.Pp
-Or to write when each new window is created to a file:
-.Bd -literal -offset indent
-set-hook before-new-window 'run "date >>/tmp/log"'
 .Ed
 .Pp
 In addition, the following hooks are available:

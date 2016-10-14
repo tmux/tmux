@@ -84,12 +84,5 @@ cmd_swap_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	}
 	recalculate_sizes();
 
-	cmd_find_clear_state(&cmdq->current, NULL, 0);
-	cmdq->current.s = dst;
-	cmdq->current.wl = wl_dst;
-	cmdq->current.w = wl_dst->window;
-	cmdq->current.wp = cmdq->state.sflag.wp;
-	cmd_find_log_state(__func__, &cmdq->current);
-
 	return (CMD_RETURN_NORMAL);
 }

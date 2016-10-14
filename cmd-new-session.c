@@ -80,6 +80,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 	u_int			 sx, sy;
 	struct format_tree	*ft;
 	struct environ_entry	*envent;
+	struct cmd_find_state	 fs;
 
 	if (self->entry == &cmd_has_session_entry) {
 		/*
@@ -310,13 +311,15 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 		format_free(ft);
 	}
 
-	cmd_find_from_session(&cmdq->current, s);
-
 	if (!detached)
 		cmdq->client_exit = 0;
 
 	if (to_free != NULL)
 		free((void *)to_free);
+
+	cmd_find_from_session(&fs, s);
+	if (hooks_wait(s->hooks, cmdq, &fs, "after-new-session") == 0)
+		return (CMD_RETURN_WAIT);
 	return (CMD_RETURN_NORMAL);
 
 error:

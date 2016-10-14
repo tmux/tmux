@@ -45,7 +45,7 @@ const struct cmd_entry cmd_display_message_entry = {
 	.cflag = CMD_CLIENT_CANFAIL,
 	.tflag = CMD_PANE,
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_display_message_exec
 };
 
