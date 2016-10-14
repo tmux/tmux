@@ -424,7 +424,6 @@ void
 tty_putc(struct tty *tty, u_char ch)
 {
 	const char	*acs;
-	u_int		 sx;
 
 	if (tty->cell.attr & GRID_ATTR_CHARSET) {
 		acs = tty_acs_get(tty, ch);
@@ -436,14 +435,18 @@ tty_putc(struct tty *tty, u_char ch)
 		bufferevent_write(tty->event, &ch, 1);
 
 	if (ch >= 0x20 && ch != 0x7f) {
-		sx = tty->sx;
-		if (tty->term->flags & TERM_EARLYWRAP)
-			sx--;
-
-		if (tty->cx >= sx) {
+		if (tty->cx >= tty->sx) {
 			tty->cx = 1;
 			if (tty->cy != tty->rlower)
 				tty->cy++;
+
+			/*
+			 * On !xenl terminals, force the cursor position to
+			 * where we think it should be after a line wrap - this
+			 * means it works on sensible terminals as well.
+			 */
+			if (tty->term->flags & TERM_EARLYWRAP)
+				tty_putcode2(tty, TTYC_CUP, tty->cy, tty->cx);
 		} else
 			tty->cx++;
 	}
@@ -1169,8 +1172,9 @@ tty_cell(struct tty *tty, const struct grid_cell *gc,
 	u_int	i;
 
 	/* Skip last character if terminal is stupid. */
-	if (tty->term->flags & TERM_EARLYWRAP &&
-	    tty->cy == tty->sy - 1 && tty->cx == tty->sx - 1)
+	if ((tty->term->flags & TERM_EARLYWRAP) &&
+	    tty->cy == tty->sy - 1 &&
+	    tty->cx == tty->sx - 1)
 		return;
 
 	/* If this is a padding character, do nothing. */
