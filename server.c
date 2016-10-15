@@ -192,6 +192,7 @@ server_loop(void)
 	struct client	*c;
 
 	server_client_loop();
+	notify_drain();
 
 	if (!options_get_number(global_options, "exit-unattached")) {
 		if (!RB_EMPTY(&sessions))
