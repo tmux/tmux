@@ -34,6 +34,17 @@ enum notify_type {
 	NOTIFY_SESSION_CLOSED
 };
 
+static const char *notify_hooks[] = {
+	"window-layout-changed",
+	NULL, /* "window-unlinked", */
+	NULL, /* "window-linked", */
+	"window-renamed",
+	NULL, /* "attached-session-changed", */
+	"session-renamed",
+	NULL, /* "session-created", */
+	NULL, /* "session-closed" */
+};
+
 struct notify_entry {
 	enum notify_type	 type;
 
@@ -48,6 +59,43 @@ static struct notify_queue notify_queue = TAILQ_HEAD_INITIALIZER(notify_queue);
 
 static void	notify_add(enum notify_type, struct client *, struct session *,
 		    struct window *);
+
+static void
+notify_hook(struct notify_entry *ne)
+{
+	const char		*name;
+	struct cmd_find_state	 fs;
+	struct hook		*hook;
+	struct cmd_q		*hooks_cmdq;
+
+	name = notify_hooks[ne->type];
+	if (name == NULL)
+		return;
+
+	cmd_find_clear_state(&fs, NULL, 0);
+	if (ne->session != NULL && ne->window != NULL)
+		cmd_find_from_session_window(&fs, ne->session, ne->window);
+	else if (ne->window != NULL)
+		cmd_find_from_window(&fs, ne->window);
+	else if (ne->session != NULL)
+		cmd_find_from_session(&fs, ne->session);
+	if (cmd_find_empty_state(&fs) || !cmd_find_valid_state(&fs))
+		return;
+
+	hook = hooks_find(fs.s->hooks, name);
+	if (hook == NULL)
+		return;
+	log_debug("notify hook %s", name);
+
+	hooks_cmdq = cmdq_new(NULL);
+	hooks_cmdq->flags |= CMD_Q_NOHOOKS;
+
+	cmd_find_copy_state(&hooks_cmdq->current, &fs);
+	hooks_cmdq->parent = NULL;
+
+	cmdq_run(hooks_cmdq, hook->cmdlist, NULL);
+	cmdq_free(hooks_cmdq);
+}
 
 static void
 notify_add(enum notify_type type, struct client *c, struct session *s,
@@ -102,6 +150,8 @@ notify_drain(void)
 			control_notify_session_close(ne->session);
 			break;
 		}
+		TAILQ_REMOVE(&notify_queue, ne, entry);
+		notify_hook(ne);
 
 		if (ne->client != NULL)
 			server_client_unref(ne->client);
@@ -109,8 +159,6 @@ notify_drain(void)
 			session_unref(ne->session);
 		if (ne->window != NULL)
 			window_remove_ref(ne->window);
-
-		TAILQ_REMOVE(&notify_queue, ne, entry);
 		free(ne);
 	}
 }
