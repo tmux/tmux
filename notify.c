@@ -147,7 +147,7 @@ notify_drain(void)
 			control_notify_session_created(ne->session);
 			break;
 		case NOTIFY_SESSION_CLOSED:
-			control_notify_session_close(ne->session);
+			control_notify_session_closed(ne->session);
 			break;
 		}
 		TAILQ_REMOVE(&notify_queue, ne, entry);

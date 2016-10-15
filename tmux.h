@@ -2208,7 +2208,7 @@ void	control_notify_window_renamed(struct window *);
 void	control_notify_attached_session_changed(struct client *);
 void	control_notify_session_renamed(struct session *);
 void	control_notify_session_created(struct session *);
-void	control_notify_session_close(struct session *);
+void	control_notify_session_closed(struct session *);
 
 /* session.c */
 extern struct sessions sessions;

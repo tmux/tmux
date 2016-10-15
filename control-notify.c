@@ -196,7 +196,7 @@ control_notify_session_created(__unused struct session *s)
 }
 
 void
-control_notify_session_close(__unused struct session *s)
+control_notify_session_closed(__unused struct session *s)
 {
 	struct client	*c;
 
