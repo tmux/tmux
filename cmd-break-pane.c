@@ -75,7 +75,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 	window_lost_pane(w, wp);
 	layout_close_pane(wp);
 
-	w = wp->window = window_create1(dst_s->sx, dst_s->sy);
+	w = wp->window = window_create(dst_s->sx, dst_s->sy);
 	TAILQ_INSERT_HEAD(&w->panes, wp, entry);
 	w->active = wp;
 	name = default_window_name(w);
