@@ -903,6 +903,23 @@ cmd_find_from_winlink(struct cmd_find_state *fs, struct session *s,
 	return (0);
 }
 
+/* Find state from a session and window. */
+int
+cmd_find_from_session_window(struct cmd_find_state *fs, struct session *s,
+    struct window *w)
+{
+	cmd_find_clear_state(fs, NULL, 0);
+
+	fs->s = s;
+	fs->w = w;
+	if (cmd_find_best_winlink_with_window(fs) != 0)
+		return (-1);
+	fs->wp = fs->w->active;
+
+	cmd_find_log_state(__func__, fs);
+	return (0);
+}
+
 /* Find state from a window. */
 int
 cmd_find_from_window(struct cmd_find_state *fs, struct window *w)
@@ -914,6 +931,7 @@ cmd_find_from_window(struct cmd_find_state *fs, struct window *w)
 		return (-1);
 	if (cmd_find_best_winlink_with_window(fs) != 0)
 		return (-1);
+	fs->wp = fs->w->active;
 
 	cmd_find_log_state(__func__, fs);
 	return (0);

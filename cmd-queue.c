@@ -248,10 +248,8 @@ cmdq_continue(struct cmd_q *cmdq)
 	enum cmd_retval		 retval;
 	int			 empty;
 
-	cmdq->references++;
-	notify_disable();
-
 	log_debug("continuing cmdq %p: flags %#x (%p)", cmdq, cmdq->flags, c);
+	cmdq->references++;
 
 	empty = TAILQ_EMPTY(&cmdq->queue);
 	if (empty)
@@ -296,9 +294,7 @@ empty:
 	empty = 1;
 
 out:
-	notify_enable();
 	cmdq_free(cmdq);
-
 	return (empty);
 }
 

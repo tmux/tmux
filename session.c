@@ -210,6 +210,7 @@ session_destroy(struct session *s)
 	struct winlink	*wl;
 
 	log_debug("session %s destroyed", s->name);
+	s->curw = NULL;
 
 	RB_REMOVE(sessions, &sessions, s);
 	notify_session_closed(s);
@@ -384,14 +385,17 @@ int
 session_detach(struct session *s, struct winlink *wl)
 {
 	if (s->curw == wl &&
-	    session_last(s) != 0 && session_previous(s, 0) != 0)
+	    session_last(s) != 0 &&
+	    session_previous(s, 0) != 0)
 		session_next(s, 0);
 
 	wl->flags &= ~WINLINK_ALERTFLAGS;
 	notify_window_unlinked(s, wl->window);
 	winlink_stack_remove(&s->lastw, wl);
 	winlink_remove(&s->windows, wl);
+
 	session_group_synchronize_from(s);
+
 	if (RB_EMPTY(&s->windows)) {
 		session_destroy(s);
 		return (1);
