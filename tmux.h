@@ -2063,8 +2063,8 @@ void		 winlink_stack_remove(struct winlink_stack *, struct winlink *);
 struct window	*window_find_by_id_str(const char *);
 struct window	*window_find_by_id(u_int);
 void		 window_update_activity(struct window *);
-struct window	*window_create1(u_int, u_int);
-struct window	*window_create(const char *, int, char **, const char *,
+struct window	*window_create(u_int, u_int);
+struct window	*window_create_spawn(const char *, int, char **, const char *,
 		     const char *, const char *, struct environ *,
 		     struct termios *, u_int, u_int, u_int, char **);
 void		 window_destroy(struct window *);

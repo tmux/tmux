@@ -293,7 +293,7 @@ window_update_activity(struct window *w)
 }
 
 struct window *
-window_create1(u_int sx, u_int sy)
+window_create(u_int sx, u_int sy)
 {
 	struct window	*w;
 
@@ -323,19 +323,19 @@ window_create1(u_int sx, u_int sy)
 }
 
 struct window *
-window_create(const char *name, int argc, char **argv, const char *path,
+window_create_spawn(const char *name, int argc, char **argv, const char *path,
     const char *shell, const char *cwd, struct environ *env,
     struct termios *tio, u_int sx, u_int sy, u_int hlimit, char **cause)
 {
 	struct window		*w;
 	struct window_pane	*wp;
 
-	w = window_create1(sx, sy);
+	w = window_create(sx, sy);
 	wp = window_add_pane(w, NULL, hlimit);
 	layout_init(w, wp);
 
-	if (window_pane_spawn(wp, argc, argv, path, shell, cwd, env, tio,
-	    cause) != 0) {
+	if (window_pane_spawn(wp, argc, argv, path, shell, cwd,
+	    env, tio, cause) != 0) {
 		window_destroy(w);
 		return (NULL);
 	}
