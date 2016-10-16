@@ -26,9 +26,9 @@
  * Sources a configuration file.
  */
 
-static enum cmd_retval	cmd_source_file_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_source_file_exec(struct cmd *, struct cmdq_item *);
 
-static enum cmd_retval	cmd_source_file_done(struct cmd_q *, void *);
+static enum cmd_retval	cmd_source_file_done(struct cmdq_item *, void *);
 
 const struct cmd_entry cmd_source_file_entry = {
 	.name = "source-file",
@@ -42,34 +42,34 @@ const struct cmd_entry cmd_source_file_entry = {
 };
 
 static enum cmd_retval
-cmd_source_file_exec(struct cmd *self, struct cmd_q *cmdq)
+cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args	*args = self->args;
-	struct client	*c = cmdq->client;
-	int		 quiet;
-	struct cmd_q	*new_cmdq;
+	struct args		*args = self->args;
+	struct client		*c = item->client;
+	int			 quiet;
+	struct cmdq_item	*new_item;
 
 	quiet = args_has(args, 'q');
-	switch (load_cfg(args->argv[0], c, cmdq, quiet)) {
+	switch (load_cfg(args->argv[0], c, item, quiet)) {
 	case -1:
 		if (cfg_finished)
-			cfg_print_causes(cmdq);
+			cfg_print_causes(item);
 		return (CMD_RETURN_ERROR);
 	case 0:
 		if (cfg_finished)
-			cfg_print_causes(cmdq);
+			cfg_print_causes(item);
 		return (CMD_RETURN_NORMAL);
 	}
 	if (cfg_finished) {
-		new_cmdq = cmdq_get_callback(cmd_source_file_done, NULL);
-		cmdq_insert_after(cmdq, new_cmdq);
+		new_item = cmdq_get_callback(cmd_source_file_done, NULL);
+		cmdq_insert_after(item, new_item);
 	}
 	return (CMD_RETURN_NORMAL);
 }
 
 static enum cmd_retval
-cmd_source_file_done(struct cmd_q *cmdq, __unused void *data)
+cmd_source_file_done(struct cmdq_item *item, __unused void *data)
 {
-	cfg_print_causes(cmdq);
+	cfg_print_causes(item);
 	return (CMD_RETURN_NORMAL);
 }

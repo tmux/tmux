@@ -470,7 +470,7 @@ format_cb_pane_tabs(struct format_tree *ft, struct format_entry *fe)
 
 /* Create a new tree. */
 struct format_tree *
-format_create(struct cmd_q *cmdq, int flags)
+format_create(struct cmdq_item *item, int flags)
 {
 	struct format_tree	*ft;
 
@@ -489,10 +489,10 @@ format_create(struct cmd_q *cmdq, int flags)
 	format_add(ft, "socket_path", "%s", socket_path);
 	format_add_tv(ft, "start_time", &start_time);
 
-	if (cmdq != NULL && cmdq->cmd != NULL)
-		format_add(ft, "command", "%s", cmdq->cmd->entry->name);
-	if (cmdq != NULL && cmdq->hook != NULL)
-		format_add(ft, "hook", "%s", cmdq->hook);
+	if (item != NULL && item->cmd != NULL)
+		format_add(ft, "command", "%s", item->cmd->entry->name);
+	if (item != NULL && item->hook != NULL)
+		format_add(ft, "hook", "%s", item->hook);
 
 	return (ft);
 }

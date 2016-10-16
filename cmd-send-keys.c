@@ -27,7 +27,7 @@
  * Send keys to client.
  */
 
-static enum cmd_retval	 cmd_send_keys_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_send_keys_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_send_keys_entry = {
 	.name = "send-keys",
@@ -56,13 +56,13 @@ const struct cmd_entry cmd_send_prefix_entry = {
 };
 
 static enum cmd_retval
-cmd_send_keys_exec(struct cmd *self, struct cmd_q *cmdq)
+cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
-	struct client		*c = cmdq->state.c;
-	struct window_pane	*wp = cmdq->state.tflag.wp;
-	struct session		*s = cmdq->state.tflag.s;
-	struct mouse_event	*m = &cmdq->mouse;
+	struct client		*c = item->state.c;
+	struct window_pane	*wp = item->state.tflag.wp;
+	struct session		*s = item->state.tflag.s;
+	struct mouse_event	*m = &item->mouse;
 	const u_char		*keystr;
 	int			 i, literal;
 	key_code		 key;
@@ -71,12 +71,12 @@ cmd_send_keys_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	if (args_has(args, 'N')) {
 		if (wp->mode == NULL || wp->mode->command == NULL) {
-			cmdq_error(cmdq, "not in a mode");
+			cmdq_error(item, "not in a mode");
 			return (CMD_RETURN_ERROR);
 		}
 		np = args_strtonum(args, 'N', 1, UINT_MAX, &cause);
 		if (cause != NULL) {
-			cmdq_error(cmdq, "prefix %s", cause);
+			cmdq_error(item, "prefix %s", cause);
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
@@ -85,7 +85,7 @@ cmd_send_keys_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	if (args_has(args, 'X')) {
 		if (wp->mode == NULL || wp->mode->command == NULL) {
-			cmdq_error(cmdq, "not in a mode");
+			cmdq_error(item, "not in a mode");
 			return (CMD_RETURN_ERROR);
 		}
 		if (!m->valid)
@@ -101,7 +101,7 @@ cmd_send_keys_exec(struct cmd *self, struct cmd_q *cmdq)
 	if (args_has(args, 'M')) {
 		wp = cmd_mouse_pane(m, &s, NULL);
 		if (wp == NULL) {
-			cmdq_error(cmdq, "no mouse target");
+			cmdq_error(item, "no mouse target");
 			return (CMD_RETURN_ERROR);
 		}
 		window_pane_key(wp, NULL, s, m->key, m);

@@ -26,7 +26,7 @@
 #include "tmux.h"
 
 /* Global command queue. */
-static struct cmd_q_list global_queue = TAILQ_HEAD_INITIALIZER(global_queue);
+static struct cmdq_list global_queue = TAILQ_HEAD_INITIALIZER(global_queue);
 
 /* Get command queue name. */
 static const char *
@@ -41,7 +41,7 @@ cmdq_name(struct client *c)
 }
 
 /* Get command queue from client. */
-static struct cmd_q_list *
+static struct cmdq_list *
 cmdq_get(struct client *c)
 {
 	if (c == NULL)
@@ -51,67 +51,67 @@ cmdq_get(struct client *c)
 
 /* Append an item. */
 void
-cmdq_append(struct client *c, struct cmd_q *cmdq)
+cmdq_append(struct client *c, struct cmdq_item *item)
 {
-	struct cmd_q_list	*queue = cmdq_get(c);
-	struct cmd_q		*next;
+	struct cmdq_list	*queue = cmdq_get(c);
+	struct cmdq_item	*next;
 
 	do {
-		next = cmdq->next;
-		cmdq->next = NULL;
+		next = item->next;
+		item->next = NULL;
 
 		if (c != NULL)
 			c->references++;
-		cmdq->client = c;
+		item->client = c;
 
-		cmdq->queue = queue;
-		TAILQ_INSERT_TAIL(queue, cmdq, entry);
+		item->queue = queue;
+		TAILQ_INSERT_TAIL(queue, item, entry);
 
-		cmdq = next;
-	} while (cmdq != NULL);
+		item = next;
+	} while (item != NULL);
 }
 
 /* Insert an item. */
 void
-cmdq_insert_after(struct cmd_q *after, struct cmd_q *cmdq)
+cmdq_insert_after(struct cmdq_item *after, struct cmdq_item *item)
 {
 	struct client		*c = after->client;
-	struct cmd_q_list	*queue = after->queue;
-	struct cmd_q		*next;
+	struct cmdq_list	*queue = after->queue;
+	struct cmdq_item	*next;
 
 	do {
-		next = cmdq->next;
-		cmdq->next = NULL;
+		next = item->next;
+		item->next = NULL;
 
 		if (c != NULL)
 			c->references++;
-		cmdq->client = c;
+		item->client = c;
 
-		cmdq->queue = queue;
+		item->queue = queue;
 		if (after->next != NULL)
-			TAILQ_INSERT_AFTER(queue, after->next, cmdq, entry);
+			TAILQ_INSERT_AFTER(queue, after->next, item, entry);
 		else
-			TAILQ_INSERT_AFTER(queue, after, cmdq, entry);
-		after->next = cmdq;
+			TAILQ_INSERT_AFTER(queue, after, item, entry);
+		after->next = item;
 
-		cmdq = next;
-	} while (cmdq != NULL);
+		item = next;
+	} while (item != NULL);
 }
 
 /* Remove an item. */
 static void
-cmdq_remove(struct cmd_q *cmdq)
+cmdq_remove(struct cmdq_item *item)
 {
-	free((void *)cmdq->hook);
+	free((void *)item->hook);
 
-	if (cmdq->client != NULL)
-		server_client_unref(cmdq->client);
+	if (item->client != NULL)
+		server_client_unref(item->client);
 
-	if (cmdq->type == CMD_Q_COMMAND)
-		cmd_list_free(cmdq->cmdlist);
+	if (item->type == CMDQ_COMMAND)
+		cmd_list_free(item->cmdlist);
 
-	TAILQ_REMOVE(cmdq->queue, cmdq, entry);
-	free(cmdq);
+	TAILQ_REMOVE(item->queue, item, entry);
+	free(item);
 }
 
 /* Set command group. */
@@ -125,129 +125,129 @@ cmdq_next_group(void)
 
 /* Remove all subsequent items that match this item's group. */
 static void
-cmdq_remove_group(struct cmd_q *cmdq)
+cmdq_remove_group(struct cmdq_item *item)
 {
-	struct cmd_q	*this, *next;
+	struct cmdq_item	*this, *next;
 
-	this = TAILQ_NEXT(cmdq, entry);
+	this = TAILQ_NEXT(item, entry);
 	while (this != NULL) {
 		next = TAILQ_NEXT(this, entry);
-		if (this->group == cmdq->group)
+		if (this->group == item->group)
 			cmdq_remove(this);
 		this = next;
 	}
 }
 
 /* Get a command for the command queue. */
-struct cmd_q *
+struct cmdq_item *
 cmdq_get_command(struct cmd_list *cmdlist, struct cmd_find_state *current,
     struct mouse_event *m, int flags)
 {
-	struct cmd_q	*cmdq, *first = NULL, *last = NULL;
-	struct cmd	*cmd;
-	u_int		 group = cmdq_next_group();
+	struct cmdq_item	*item, *first = NULL, *last = NULL;
+	struct cmd		*cmd;
+	u_int			 group = cmdq_next_group();
 
 	TAILQ_FOREACH(cmd, &cmdlist->list, qentry) {
-		cmdq = xcalloc(1, sizeof *cmdq);
-		cmdq->type = CMD_Q_COMMAND;
-		cmdq->group = group;
-		cmdq->flags = flags;
+		item = xcalloc(1, sizeof *item);
+		item->type = CMDQ_COMMAND;
+		item->group = group;
+		item->flags = flags;
 
-		cmdq->cmdlist = cmdlist;
-		cmdq->cmd = cmd;
+		item->cmdlist = cmdlist;
+		item->cmd = cmd;
 
 		if (current != NULL)
-			cmd_find_copy_state(&cmdq->current, current);
+			cmd_find_copy_state(&item->current, current);
 		if (m != NULL)
-			memcpy(&cmdq->mouse, m, sizeof cmdq->mouse);
+			memcpy(&item->mouse, m, sizeof item->mouse);
 		cmdlist->references++;
 
 		if (first == NULL)
-			first = cmdq;
+			first = item;
 		if (last != NULL)
-			last->next = cmdq;
-		last = cmdq;
+			last->next = item;
+		last = item;
 	}
 	return (first);
 }
 
 /* Fire command on command queue. */
 static enum cmd_retval
-cmdq_fire_command(struct cmd_q *cmdq)
+cmdq_fire_command(struct cmdq_item *item)
 {
-	struct client		*c = cmdq->client;
-	struct cmd		*cmd = cmdq->cmd;
+	struct client		*c = item->client;
+	struct cmd		*cmd = item->cmd;
 	enum cmd_retval		 retval;
 	const char		*name;
 	struct cmd_find_state	*fsp, fs;
 	int			 flags;
 
 	flags = !!(cmd->flags & CMD_CONTROL);
-	cmdq_guard(cmdq, "begin", flags);
+	cmdq_guard(item, "begin", flags);
 
-	if (cmd_prepare_state(cmd, cmdq) != 0) {
+	if (cmd_prepare_state(cmd, item) != 0) {
 		retval = CMD_RETURN_ERROR;
 		goto out;
 	}
-	if (cmdq->client == NULL)
-		cmdq->client = cmd_find_client(cmdq, NULL, CMD_FIND_QUIET);
+	if (item->client == NULL)
+		item->client = cmd_find_client(item, NULL, CMD_FIND_QUIET);
 
-	retval = cmd->entry->exec(cmd, cmdq);
+	retval = cmd->entry->exec(cmd, item);
 	if (retval == CMD_RETURN_ERROR)
 		goto out;
 
 	if (cmd->entry->flags & CMD_AFTERHOOK) {
 		name = cmd->entry->name;
-		if (cmd_find_valid_state(&cmdq->state.tflag))
-			fsp = &cmdq->state.tflag;
+		if (cmd_find_valid_state(&item->state.tflag))
+			fsp = &item->state.tflag;
 		else {
-			if (cmd_find_current(&fs, cmdq, CMD_FIND_QUIET) != 0)
+			if (cmd_find_current(&fs, item, CMD_FIND_QUIET) != 0)
 				goto out;
 			fsp = &fs;
 		}
-		hooks_insert(fsp->s->hooks, cmdq, fsp, "after-%s", name);
+		hooks_insert(fsp->s->hooks, item, fsp, "after-%s", name);
 	}
 
 out:
-	cmdq->client = c;
+	item->client = c;
 	if (retval == CMD_RETURN_ERROR)
-		cmdq_guard(cmdq, "error", flags);
+		cmdq_guard(item, "error", flags);
 	else
-		cmdq_guard(cmdq, "end", flags);
+		cmdq_guard(item, "end", flags);
 	return (retval);
 }
 
 /* Get a callback for the command queue. */
-struct cmd_q *
-cmdq_get_callback(cmd_q_cb cb, void *data)
+struct cmdq_item *
+cmdq_get_callback(cmdq_cb cb, void *data)
 {
-	struct cmd_q	*cmdq;
+	struct cmdq_item	*item;
 
-	cmdq = xcalloc(1, sizeof *cmdq);
-	cmdq->type = CMD_Q_CALLBACK;
-	cmdq->group = 0;
-	cmdq->flags = 0;
+	item = xcalloc(1, sizeof *item);
+	item->type = CMDQ_CALLBACK;
+	item->group = 0;
+	item->flags = 0;
 
-	cmdq->cb = cb;
-	cmdq->data = data;
+	item->cb = cb;
+	item->data = data;
 
-	return (cmdq);
+	return (item);
 }
 
 /* Fire callback on callback queue. */
 static enum cmd_retval
-cmdq_fire_callback(struct cmd_q *cmdq)
+cmdq_fire_callback(struct cmdq_item *item)
 {
-	return (cmdq->cb(cmdq, cmdq->data));
+	return (item->cb(item, item->data));
 }
 
 /* Process next item on command queue. */
 u_int
 cmdq_next(struct client *c)
 {
-	struct cmd_q_list	*queue = cmdq_get(c);
+	struct cmdq_list	*queue = cmdq_get(c);
 	const char		*name = cmdq_name(c);
-	struct cmd_q		*cmdq;
+	struct cmdq_item	*item;
 	enum cmd_retval		 retval;
 	u_int			 items = 0;
 	static u_int		 number;
@@ -256,63 +256,63 @@ cmdq_next(struct client *c)
 		log_debug("%s %s: empty", __func__, name);
 		return (0);
 	}
-	if (TAILQ_FIRST(queue)->flags & CMD_Q_WAITING) {
+	if (TAILQ_FIRST(queue)->flags & CMDQ_WAITING) {
 		log_debug("%s %s: waiting", __func__, name);
 		return (0);
 	}
 
 	log_debug("%s %s: enter", __func__, name);
 	for (;;) {
-		cmdq = TAILQ_FIRST(queue);
-		if (cmdq == NULL)
+		item = TAILQ_FIRST(queue);
+		if (item == NULL)
 			break;
 		log_debug("%s %s: type %d, flags %x", __func__, name,
-		    cmdq->type, cmdq->flags);
+		    item->type, item->flags);
 
 		/*
 		 * Any item with the waiting flag set waits until an external
 		 * event clears the flag (for example, a job - look at
 		 * run-shell).
 		 */
-		if (cmdq->flags & CMD_Q_WAITING)
+		if (item->flags & CMDQ_WAITING)
 			goto waiting;
 
 		/*
 		 * Items are only fired once, once the fired flag is set, a
 		 * waiting flag can only be cleared by an external event.
 		 */
-		if (~cmdq->flags & CMD_Q_FIRED) {
-			cmdq->time = time(NULL);
-			cmdq->number = ++number;
+		if (~item->flags & CMDQ_FIRED) {
+			item->time = time(NULL);
+			item->number = ++number;
 
-			switch (cmdq->type)
+			switch (item->type)
 			{
-			case CMD_Q_COMMAND:
-				retval = cmdq_fire_command(cmdq);
+			case CMDQ_COMMAND:
+				retval = cmdq_fire_command(item);
 
 				/*
 				 * If a command returns an error, remove any
 				 * subsequent commands in the same group.
 				 */
 				if (retval == CMD_RETURN_ERROR)
-					cmdq_remove_group(cmdq);
+					cmdq_remove_group(item);
 				break;
-			case CMD_Q_CALLBACK:
-				retval = cmdq_fire_callback(cmdq);
+			case CMDQ_CALLBACK:
+				retval = cmdq_fire_callback(item);
 				break;
 			default:
 				retval = CMD_RETURN_ERROR;
 				break;
 			}
-			cmdq->flags |= CMD_Q_FIRED;
+			item->flags |= CMDQ_FIRED;
 
 			if (retval == CMD_RETURN_WAIT) {
-				cmdq->flags |= CMD_Q_WAITING;
+				item->flags |= CMDQ_WAITING;
 				goto waiting;
 			}
 			items++;
 		}
-		cmdq_remove(cmdq);
+		cmdq_remove(item);
 	}
 
 	log_debug("%s %s: exit (empty)", __func__, name);
@@ -325,23 +325,23 @@ waiting:
 
 /* Print a guard line. */
 void
-cmdq_guard(struct cmd_q *cmdq, const char *guard, int flags)
+cmdq_guard(struct cmdq_item *item, const char *guard, int flags)
 {
-	struct client	*c = cmdq->client;
+	struct client	*c = item->client;
 
 	if (c == NULL || !(c->flags & CLIENT_CONTROL))
 		return;
 
 	evbuffer_add_printf(c->stdout_data, "%%%s %ld %u %d\n", guard,
-	    (long)cmdq->time, cmdq->number, flags);
+	    (long)item->time, item->number, flags);
 	server_client_push_stdout(c);
 }
 
 /* Show message from command. */
 void
-cmdq_print(struct cmd_q *cmdq, const char *fmt, ...)
+cmdq_print(struct cmdq_item *item, const char *fmt, ...)
 {
-	struct client	*c = cmdq->client;
+	struct client	*c = item->client;
 	struct window	*w;
 	va_list		 ap;
 	char		*tmp, *msg;
@@ -376,10 +376,10 @@ cmdq_print(struct cmd_q *cmdq, const char *fmt, ...)
 
 /* Show error from command. */
 void
-cmdq_error(struct cmd_q *cmdq, const char *fmt, ...)
+cmdq_error(struct cmdq_item *item, const char *fmt, ...)
 {
-	struct client	*c = cmdq->client;
-	struct cmd	*cmd = cmdq->cmd;
+	struct client	*c = item->client;
+	struct cmd	*cmd = item->cmd;
 	va_list		 ap;
 	char		*msg;
 	size_t		 msglen;

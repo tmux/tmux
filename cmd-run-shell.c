@@ -29,7 +29,7 @@
  * Runs a command without a window.
  */
 
-static enum cmd_retval	 cmd_run_shell_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_run_shell_exec(struct cmd *, struct cmdq_item *);
 
 static void	cmd_run_shell_callback(struct job *);
 static void	cmd_run_shell_free(void *);
@@ -49,9 +49,9 @@ const struct cmd_entry cmd_run_shell_entry = {
 };
 
 struct cmd_run_shell_data {
-	char		*cmd;
-	struct cmd_q	*cmdq;
-	int		 wp_id;
+	char			*cmd;
+	struct cmdq_item	*item;
+	int			 wp_id;
 };
 
 static void
@@ -63,7 +63,7 @@ cmd_run_shell_print(struct job *job, const char *msg)
 	if (cdata->wp_id != -1)
 		wp = window_pane_find_by_id(cdata->wp_id);
 	if (wp == NULL) {
-		cmdq_print(cdata->cmdq, "%s", msg);
+		cmdq_print(cdata->item, "%s", msg);
 		return;
 	}
 
@@ -74,26 +74,26 @@ cmd_run_shell_print(struct job *job, const char *msg)
 }
 
 static enum cmd_retval
-cmd_run_shell_exec(struct cmd *self, struct cmd_q *cmdq)
+cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = self->args;
 	struct cmd_run_shell_data	*cdata;
 	char				*shellcmd;
-	struct session			*s = cmdq->state.tflag.s;
-	struct winlink			*wl = cmdq->state.tflag.wl;
-	struct window_pane		*wp = cmdq->state.tflag.wp;
+	struct session			*s = item->state.tflag.s;
+	struct winlink			*wl = item->state.tflag.wl;
+	struct window_pane		*wp = item->state.tflag.wp;
 	struct format_tree		*ft;
 	const char			*cwd;
 
-	if (cmdq->client != NULL && cmdq->client->session == NULL)
-		cwd = cmdq->client->cwd;
+	if (item->client != NULL && item->client->session == NULL)
+		cwd = item->client->cwd;
 	else if (s != NULL)
 		cwd = s->cwd;
 	else
 		cwd = NULL;
 
-	ft = format_create(cmdq, 0);
-	format_defaults(ft, cmdq->state.c, s, wl, wp);
+	ft = format_create(item, 0);
+	format_defaults(ft, item->state.c, s, wl, wp);
 	shellcmd = format_expand(ft, args->argv[0]);
 	format_free(ft);
 
@@ -111,7 +111,7 @@ cmd_run_shell_exec(struct cmd *self, struct cmd_q *cmdq)
 		cdata->wp_id = -1;
 
 	if (!args_has(args, 'b'))
-		cdata->cmdq = cmdq;
+		cdata->item = item;
 
 	job_run(shellcmd, s, cwd, cmd_run_shell_callback, cmd_run_shell_free,
 	    cdata);
@@ -163,8 +163,8 @@ cmd_run_shell_callback(struct job *job)
 		cmd_run_shell_print(job, msg);
 	free(msg);
 
-	if (cdata->cmdq != NULL)
-		cdata->cmdq->flags &= ~CMD_Q_WAITING;
+	if (cdata->item != NULL)
+		cdata->item->flags &= ~CMDQ_WAITING;
 }
 
 static void

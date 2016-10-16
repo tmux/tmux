@@ -26,9 +26,10 @@
  * Unbind key from command.
  */
 
-static enum cmd_retval	cmd_unbind_key_exec(struct cmd *, struct cmd_q *);
-static enum cmd_retval	cmd_unbind_key_mode_table(struct cmd *, struct cmd_q *,
-			    key_code);
+static enum cmd_retval	cmd_unbind_key_exec(struct cmd *, struct cmdq_item *);
+
+static enum cmd_retval	cmd_unbind_key_mode_table(struct cmd *,
+			    struct cmdq_item *, key_code);
 
 const struct cmd_entry cmd_unbind_key_entry = {
 	.name = "unbind-key",
@@ -42,7 +43,7 @@ const struct cmd_entry cmd_unbind_key_entry = {
 };
 
 static enum cmd_retval
-cmd_unbind_key_exec(struct cmd *self, struct cmd_q *cmdq)
+cmd_unbind_key_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args	*args = self->args;
 	key_code	 key;
@@ -50,24 +51,24 @@ cmd_unbind_key_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	if (!args_has(args, 'a')) {
 		if (args->argc != 1) {
-			cmdq_error(cmdq, "missing key");
+			cmdq_error(item, "missing key");
 			return (CMD_RETURN_ERROR);
 		}
 		key = key_string_lookup_string(args->argv[0]);
 		if (key == KEYC_NONE || key == KEYC_UNKNOWN) {
-			cmdq_error(cmdq, "unknown key: %s", args->argv[0]);
+			cmdq_error(item, "unknown key: %s", args->argv[0]);
 			return (CMD_RETURN_ERROR);
 		}
 	} else {
 		if (args->argc != 0) {
-			cmdq_error(cmdq, "key given with -a");
+			cmdq_error(item, "key given with -a");
 			return (CMD_RETURN_ERROR);
 		}
 		key = KEYC_UNKNOWN;
 	}
 
 	if (args_has(args, 't'))
-		return (cmd_unbind_key_mode_table(self, cmdq, key));
+		return (cmd_unbind_key_mode_table(self, item, key));
 
 	if (key == KEYC_UNKNOWN) {
 		tablename = args_get(args, 'T');
@@ -77,7 +78,7 @@ cmd_unbind_key_exec(struct cmd *self, struct cmd_q *cmdq)
 			return (CMD_RETURN_NORMAL);
 		}
 		if (key_bindings_get_table(tablename, 0) == NULL) {
-			cmdq_error(cmdq, "table %s doesn't exist", tablename);
+			cmdq_error(item, "table %s doesn't exist", tablename);
 			return (CMD_RETURN_ERROR);
 		}
 		key_bindings_remove_table(tablename);
@@ -87,7 +88,7 @@ cmd_unbind_key_exec(struct cmd *self, struct cmd_q *cmdq)
 	if (args_has(args, 'T')) {
 		tablename = args_get(args, 'T');
 		if (key_bindings_get_table(tablename, 0) == NULL) {
-			cmdq_error(cmdq, "table %s doesn't exist", tablename);
+			cmdq_error(item, "table %s doesn't exist", tablename);
 			return (CMD_RETURN_ERROR);
 		}
 	} else if (args_has(args, 'n'))
@@ -99,7 +100,8 @@ cmd_unbind_key_exec(struct cmd *self, struct cmd_q *cmdq)
 }
 
 static enum cmd_retval
-cmd_unbind_key_mode_table(struct cmd *self, struct cmd_q *cmdq, key_code key)
+cmd_unbind_key_mode_table(struct cmd *self, struct cmdq_item *item,
+    key_code key)
 {
 	struct args			*args = self->args;
 	const char			*tablename;
@@ -108,7 +110,7 @@ cmd_unbind_key_mode_table(struct cmd *self, struct cmd_q *cmdq, key_code key)
 
 	tablename = args_get(args, 't');
 	if ((mtab = mode_key_findtable(tablename)) == NULL) {
-		cmdq_error(cmdq, "unknown key table: %s", tablename);
+		cmdq_error(item, "unknown key table: %s", tablename);
 		return (CMD_RETURN_ERROR);
 	}
 

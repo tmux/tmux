@@ -26,7 +26,8 @@
  * Change session name.
  */
 
-static enum cmd_retval	 cmd_rename_session_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_rename_session_exec(struct cmd *,
+			    struct cmdq_item *);
 
 const struct cmd_entry cmd_rename_session_entry = {
 	.name = "rename-session",
@@ -42,19 +43,19 @@ const struct cmd_entry cmd_rename_session_entry = {
 };
 
 static enum cmd_retval
-cmd_rename_session_exec(struct cmd *self, struct cmd_q *cmdq)
+cmd_rename_session_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args	*args = self->args;
-	struct session	*s = cmdq->state.tflag.s;
+	struct session	*s = item->state.tflag.s;
 	const char	*newname;
 
 	newname = args->argv[0];
 	if (!session_check_name(newname)) {
-		cmdq_error(cmdq, "bad session name: %s", newname);
+		cmdq_error(item, "bad session name: %s", newname);
 		return (CMD_RETURN_ERROR);
 	}
 	if (session_find(newname) != NULL) {
-		cmdq_error(cmdq, "duplicate session: %s", newname);
+		cmdq_error(item, "duplicate session: %s", newname);
 		return (CMD_RETURN_ERROR);
 	}
 

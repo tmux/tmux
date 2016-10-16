@@ -1254,9 +1254,9 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 
 /* Callback when command is done. */
 static enum cmd_retval
-server_client_command_done(struct cmd_q *cmdq, __unused void *data)
+server_client_command_done(struct cmdq_item *item, __unused void *data)
 {
-	struct client	*c = cmdq->client;
+	struct client	*c = item->client;
 
 	if (~c->flags & CLIENT_ATTACHED)
 		c->flags |= CLIENT_EXIT;
@@ -1265,11 +1265,11 @@ server_client_command_done(struct cmd_q *cmdq, __unused void *data)
 
 /* Show an error message. */
 static enum cmd_retval
-server_client_command_error(struct cmd_q *cmdq, void *data)
+server_client_command_error(struct cmdq_item *item, void *data)
 {
 	char	*error = data;
 
-	cmdq_error(cmdq, "%s", error);
+	cmdq_error(item, "%s", error);
 	free(error);
 
 	return (CMD_RETURN_NORMAL);

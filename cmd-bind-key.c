@@ -27,10 +27,10 @@
  * Bind a key to a command, this recurses through cmd_*.
  */
 
-static enum cmd_retval	 cmd_bind_key_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_bind_key_exec(struct cmd *, struct cmdq_item *);
 
-static enum cmd_retval	 cmd_bind_key_mode_table(struct cmd *, struct cmd_q *,
-			     key_code);
+static enum cmd_retval	cmd_bind_key_mode_table(struct cmd *,
+			    struct cmdq_item *, key_code);
 
 const struct cmd_entry cmd_bind_key_entry = {
 	.name = "bind-key",
@@ -45,7 +45,7 @@ const struct cmd_entry cmd_bind_key_entry = {
 };
 
 static enum cmd_retval
-cmd_bind_key_exec(struct cmd *self, struct cmd_q *cmdq)
+cmd_bind_key_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args	*args = self->args;
 	char		*cause;
@@ -55,24 +55,24 @@ cmd_bind_key_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	if (args_has(args, 't')) {
 		if (args->argc != 2 && args->argc != 3) {
-			cmdq_error(cmdq, "not enough arguments");
+			cmdq_error(item, "not enough arguments");
 			return (CMD_RETURN_ERROR);
 		}
 	} else {
 		if (args->argc < 2) {
-			cmdq_error(cmdq, "not enough arguments");
+			cmdq_error(item, "not enough arguments");
 			return (CMD_RETURN_ERROR);
 		}
 	}
 
 	key = key_string_lookup_string(args->argv[0]);
 	if (key == KEYC_NONE || key == KEYC_UNKNOWN) {
-		cmdq_error(cmdq, "unknown key: %s", args->argv[0]);
+		cmdq_error(item, "unknown key: %s", args->argv[0]);
 		return (CMD_RETURN_ERROR);
 	}
 
 	if (args_has(args, 't'))
-		return (cmd_bind_key_mode_table(self, cmdq, key));
+		return (cmd_bind_key_mode_table(self, item, key));
 
 	if (args_has(args, 'T'))
 		tablename = args_get(args, 'T');
@@ -84,7 +84,7 @@ cmd_bind_key_exec(struct cmd *self, struct cmd_q *cmdq)
 	cmdlist = cmd_list_parse(args->argc - 1, args->argv + 1, NULL, 0,
 	    &cause);
 	if (cmdlist == NULL) {
-		cmdq_error(cmdq, "%s", cause);
+		cmdq_error(item, "%s", cause);
 		free(cause);
 		return (CMD_RETURN_ERROR);
 	}
@@ -94,7 +94,7 @@ cmd_bind_key_exec(struct cmd *self, struct cmd_q *cmdq)
 }
 
 static enum cmd_retval
-cmd_bind_key_mode_table(struct cmd *self, struct cmd_q *cmdq, key_code key)
+cmd_bind_key_mode_table(struct cmd *self, struct cmdq_item *item, key_code key)
 {
 	struct args			*args = self->args;
 	const char			*tablename;
@@ -104,18 +104,18 @@ cmd_bind_key_mode_table(struct cmd *self, struct cmd_q *cmdq, key_code key)
 
 	tablename = args_get(args, 't');
 	if ((mtab = mode_key_findtable(tablename)) == NULL) {
-		cmdq_error(cmdq, "unknown key table: %s", tablename);
+		cmdq_error(item, "unknown key table: %s", tablename);
 		return (CMD_RETURN_ERROR);
 	}
 
 	cmd = mode_key_fromstring(mtab->cmdstr, args->argv[1]);
 	if (cmd == MODEKEY_NONE) {
-		cmdq_error(cmdq, "unknown command: %s", args->argv[1]);
+		cmdq_error(item, "unknown command: %s", args->argv[1]);
 		return (CMD_RETURN_ERROR);
 	}
 
 	if (args->argc != 2) {
-		cmdq_error(cmdq, "no argument allowed");
+		cmdq_error(item, "no argument allowed");
 		return (CMD_RETURN_ERROR);
 	}
 

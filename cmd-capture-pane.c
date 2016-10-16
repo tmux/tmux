@@ -27,14 +27,13 @@
  * Write the entire contents of a pane to a buffer or stdout.
  */
 
-static enum cmd_retval	 cmd_capture_pane_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_capture_pane_exec(struct cmd *, struct cmdq_item *);
 
-static char		*cmd_capture_pane_append(char *, size_t *, char *,
-			     size_t);
-static char		*cmd_capture_pane_pending(struct args *,
-			     struct window_pane *, size_t *);
-static char		*cmd_capture_pane_history(struct args *, struct cmd_q *,
-			     struct window_pane *, size_t *);
+static char	*cmd_capture_pane_append(char *, size_t *, char *, size_t);
+static char	*cmd_capture_pane_pending(struct args *, struct window_pane *,
+		     size_t *);
+static char	*cmd_capture_pane_history(struct args *, struct cmdq_item *,
+		     struct window_pane *, size_t *);
 
 const struct cmd_entry cmd_capture_pane_entry = {
 	.name = "capture-pane",
@@ -92,7 +91,8 @@ cmd_capture_pane_pending(struct args *args, struct window_pane *wp,
 }
 
 static char *
-cmd_capture_pane_history(struct args *args, struct cmd_q *cmdq,
+
+cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
     struct window_pane *wp, size_t *len)
 {
 	struct grid		*gd;
@@ -109,7 +109,7 @@ cmd_capture_pane_history(struct args *args, struct cmd_q *cmdq,
 		gd = wp->saved_grid;
 		if (gd == NULL) {
 			if (!args_has(args, 'q')) {
-				cmdq_error(cmdq, "no alternate screen");
+				cmdq_error(item, "no alternate screen");
 				return (NULL);
 			}
 			return (xstrdup(""));
@@ -177,11 +177,11 @@ cmd_capture_pane_history(struct args *args, struct cmd_q *cmdq,
 }
 
 static enum cmd_retval
-cmd_capture_pane_exec(struct cmd *self, struct cmd_q *cmdq)
+cmd_capture_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
 	struct client		*c;
-	struct window_pane	*wp = cmdq->state.tflag.wp;
+	struct window_pane	*wp = item->state.tflag.wp;
 	char			*buf, *cause;
 	const char		*bufname;
 	size_t			 len;
@@ -190,15 +190,15 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 	if (args_has(args, 'P'))
 		buf = cmd_capture_pane_pending(args, wp, &len);
 	else
-		buf = cmd_capture_pane_history(args, cmdq, wp, &len);
+		buf = cmd_capture_pane_history(args, item, wp, &len);
 	if (buf == NULL)
 		return (CMD_RETURN_ERROR);
 
 	if (args_has(args, 'p')) {
-		c = cmdq->client;
+		c = item->client;
 		if (c == NULL ||
 		    (c->session != NULL && !(c->flags & CLIENT_CONTROL))) {
-			cmdq_error(cmdq, "can't write to stdout");
+			cmdq_error(item, "can't write to stdout");
 			free(buf);
 			return (CMD_RETURN_ERROR);
 		}
@@ -213,7 +213,7 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 			bufname = args_get(args, 'b');
 
 		if (paste_set(buf, len, bufname, &cause) != 0) {
-			cmdq_error(cmdq, "%s", cause);
+			cmdq_error(item, "%s", cause);
 			free(cause);
 			free(buf);
 			return (CMD_RETURN_ERROR);
