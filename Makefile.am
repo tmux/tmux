@@ -163,6 +163,7 @@ dist_tmux_SOURCES = \
 	notify.c \
 	options-table.c \
 	options.c \
+	othermux.c \
 	paste.c \
 	proc.c \
 	resize.c \
