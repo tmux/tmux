@@ -168,7 +168,7 @@ session_create(const char *name, int argc, char **argv, const char *path,
 	}
 
 	log_debug("session %s created", s->name);
-	notify_session_created(s);
+	notify_session("session-created", s);
 
 	return (s);
 }
@@ -213,7 +213,7 @@ session_destroy(struct session *s)
 	s->curw = NULL;
 
 	RB_REMOVE(sessions, &sessions, s);
-	notify_session_closed(s);
+	notify_session("session-closed", s);
 
 	free(s->tio);
 
@@ -226,7 +226,7 @@ session_destroy(struct session *s)
 		winlink_stack_remove(&s->lastw, TAILQ_FIRST(&s->lastw));
 	while (!RB_EMPTY(&s->windows)) {
 		wl = RB_ROOT(&s->windows);
-		notify_window_unlinked(s, wl->window);
+		notify_session_window("window-unlinked", s, wl->window);
 		winlink_remove(&s->windows, wl);
 	}
 
@@ -356,7 +356,7 @@ session_new(struct session *s, const char *name, int argc, char **argv,
 		return (NULL);
 	}
 	winlink_set_window(wl, w);
-	notify_window_linked(s, w);
+	notify_session_window("window-linked", s, w);
 	environ_free(env);
 
 	session_group_synchronize_from(s);
@@ -374,7 +374,7 @@ session_attach(struct session *s, struct window *w, int idx, char **cause)
 		return (NULL);
 	}
 	winlink_set_window(wl, w);
-	notify_window_linked(s, w);
+	notify_session_window("window-linked", s, w);
 
 	session_group_synchronize_from(s);
 	return (wl);
@@ -390,7 +390,7 @@ session_detach(struct session *s, struct winlink *wl)
 		session_next(s, 0);
 
 	wl->flags &= ~WINLINK_ALERTFLAGS;
-	notify_window_unlinked(s, wl->window);
+	notify_session_window("window-unlinked", s, wl->window);
 	winlink_stack_remove(&s->lastw, wl);
 	winlink_remove(&s->windows, wl);
 
@@ -680,7 +680,7 @@ session_group_synchronize1(struct session *target, struct session *s)
 	RB_FOREACH(wl, winlinks, ww) {
 		wl2 = winlink_add(&s->windows, wl->idx);
 		winlink_set_window(wl2, wl->window);
-		notify_window_linked(s, wl2->window);
+		notify_session_window("window-linked", s, wl2->window);
 		wl2->flags |= wl->flags & WINLINK_ALERTFLAGS;
 	}
 
@@ -704,7 +704,7 @@ session_group_synchronize1(struct session *target, struct session *s)
 		wl = RB_ROOT(&old_windows);
 		wl2 = winlink_find_by_window_id(&s->windows, wl->window->id);
 		if (wl2 == NULL)
-			notify_window_unlinked(s, wl->window);
+			notify_session_window("window-unlinked", s, wl->window);
 		winlink_remove(&old_windows, wl);
 	}
 }

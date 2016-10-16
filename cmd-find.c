@@ -227,7 +227,7 @@ cmd_find_best_winlink_with_window(struct cmd_find_state *fs)
 	struct winlink	 *wl, *wl_loop;
 
 	wl = NULL;
-	if (fs->s->curw->window == fs->w)
+	if (fs->s->curw != NULL && fs->s->curw->window == fs->w)
 		wl = fs->s->curw;
 	else {
 		RB_FOREACH(wl_loop, winlinks, &fs->s->windows) {

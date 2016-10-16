@@ -177,7 +177,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 
 		format_free(ft);
 	}
-	notify_window_layout_changed(w);
+	notify_window("window-layout-changed", w);
 
 	if (to_free != NULL)
 		free((void *)to_free);

@@ -1585,14 +1585,12 @@ enum mode_key_cmd mode_key_lookup(struct mode_key_data *, key_code);
 
 /* notify.c */
 void	notify_input(struct window_pane *, struct evbuffer *);
-void	notify_window_layout_changed(struct window *);
-void	notify_window_unlinked(struct session *, struct window *);
-void	notify_window_linked(struct session *, struct window *);
-void	notify_window_renamed(struct window *);
-void	notify_attached_session_changed(struct client *);
-void	notify_session_renamed(struct session *);
-void	notify_session_created(struct session *);
-void	notify_session_closed(struct session *);
+void	notify_client(const char *, struct client *);
+void	notify_session(const char *, struct session *);
+void	notify_winlink(const char *, struct session *, struct winlink *);
+void	notify_session_window(const char *, struct session *, struct window *);
+void	notify_window(const char *, struct window *);
+void	notify_pane(const char *, struct window_pane *);
 
 /* options.c */
 struct options *options_create(struct options *);
@@ -2211,7 +2209,7 @@ void	control_notify_window_layout_changed(struct window *);
 void	control_notify_window_unlinked(struct session *, struct window *);
 void	control_notify_window_linked(struct session *, struct window *);
 void	control_notify_window_renamed(struct window *);
-void	control_notify_attached_session_changed(struct client *);
+void	control_notify_client_session_changed(struct client *);
 void	control_notify_session_renamed(struct session *);
 void	control_notify_session_created(struct session *);
 void	control_notify_session_closed(struct session *);
