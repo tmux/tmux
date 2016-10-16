@@ -59,7 +59,7 @@ notify_hook(struct cmdq_item *item, struct notify_entry *ne)
 	const char		*name;
 	struct cmd_find_state	 fs;
 	struct hook		*hook;
-	struct cmdq_item	*new_item, *loop;
+	struct cmdq_item	*new_item;
 
 	name = notify_hooks[ne->type];
 	if (name == NULL)
@@ -83,10 +83,7 @@ notify_hook(struct cmdq_item *item, struct notify_entry *ne)
 	log_debug("notify hook %s", name);
 
 	new_item = cmdq_get_command(hook->cmdlist, &fs, NULL, CMDQ_NOHOOKS);
-
-	for (loop = new_item; loop != NULL; loop = loop->next)
-		loop->hook = xstrdup(name);
-
+	cmdq_format(new_item, "hook", "%s", name);
 	cmdq_insert_after(item, new_item);
 }
 

@@ -1250,7 +1250,8 @@ struct cmdq_item {
 	u_int			 number;
 	time_t			 time;
 
-	const char		*hook;
+	struct format_tree	*formats;
+
 	int			 flags;
 #define CMDQ_FIRED 0x1
 #define CMDQ_WAITING 0x2
@@ -1783,6 +1784,8 @@ struct cmdq_item *cmdq_get_command(struct cmd_list *, struct cmd_find_state *,
 struct cmdq_item *cmdq_get_callback(cmdq_cb, void *);
 void		 cmdq_insert_after(struct cmdq_item *, struct cmdq_item *);
 void		 cmdq_append(struct client *, struct cmdq_item *);
+void printflike(3, 4) cmdq_format(struct cmdq_item *, const char *,
+		     const char *, ...);
 u_int		 cmdq_next(struct client *);
 void		 cmdq_guard(struct cmdq_item *, const char *, int);
 void printflike(2, 3) cmdq_print(struct cmdq_item *, const char *, ...);

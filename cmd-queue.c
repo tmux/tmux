@@ -102,7 +102,8 @@ cmdq_insert_after(struct cmdq_item *after, struct cmdq_item *item)
 static void
 cmdq_remove(struct cmdq_item *item)
 {
-	free((void *)item->hook);
+	if (item->formats != NULL)
+		format_free(item->formats);
 
 	if (item->client != NULL)
 		server_client_unref(item->client);
@@ -240,6 +241,28 @@ cmdq_fire_callback(struct cmdq_item *item)
 {
 	return (item->cb(item, item->data));
 }
+
+/* Add a format to command queue. */
+void
+cmdq_format(struct cmdq_item *item, const char *key, const char *fmt, ...)
+{
+	va_list			 ap;
+	struct cmdq_item	*loop;
+	char			*value;
+
+	va_start(ap, fmt);
+	xvasprintf(&value, fmt, ap);
+	va_end(ap);
+
+	for (loop = item; loop != NULL; loop = item->next) {
+		if (loop->formats == NULL)
+			loop->formats = format_create(NULL, 0);
+		format_add(loop->formats, key, "%s", value);
+	}
+
+	free(value);
+}
+
 
 /* Process next item on command queue. */
 u_int

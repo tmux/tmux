@@ -468,6 +468,19 @@ format_cb_pane_tabs(struct format_tree *ft, struct format_entry *fe)
 	evbuffer_free(buffer);
 }
 
+/* Merge a format tree. */
+static void
+format_merge(struct format_tree *ft, struct format_tree *from)
+{
+	struct format_entry	*fe;
+
+	RB_FOREACH(fe, format_entry_tree, &from->tree) {
+		if (fe->value != NULL)
+			format_add(ft, fe->key, "%s", fe->value);
+	}
+
+}
+
 /* Create a new tree. */
 struct format_tree *
 format_create(struct cmdq_item *item, int flags)
@@ -491,8 +504,8 @@ format_create(struct cmdq_item *item, int flags)
 
 	if (item != NULL && item->cmd != NULL)
 		format_add(ft, "command", "%s", item->cmd->entry->name);
-	if (item != NULL && item->hook != NULL)
-		format_add(ft, "hook", "%s", item->hook);
+	if (item != NULL && item->formats != NULL)
+		format_merge(ft, item->formats);
 
 	return (ft);
 }
