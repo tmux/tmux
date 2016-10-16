@@ -28,7 +28,7 @@
 
 static enum cmd_retval	cmd_source_file_exec(struct cmd *, struct cmd_q *);
 
-static void		cmd_source_file_done(struct cmd_q *);
+static enum cmd_retval	cmd_source_file_done(struct cmd_q *, void *);
 
 const struct cmd_entry cmd_source_file_entry = {
 	.name = "source-file",
@@ -45,53 +45,31 @@ static enum cmd_retval
 cmd_source_file_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args	*args = self->args;
-	struct cmd_q	*cmdq1;
+	struct client	*c = cmdq->client;
 	int		 quiet;
-
-	cmdq1 = cmdq_new(cmdq->client);
-	cmdq1->emptyfn = cmd_source_file_done;
-	cmdq1->data = cmdq;
+	struct cmd_q	*new_cmdq;
 
 	quiet = args_has(args, 'q');
-	switch (load_cfg(args->argv[0], cmdq1, quiet)) {
+	switch (load_cfg(args->argv[0], c, cmdq, quiet)) {
 	case -1:
-		cmdq_free(cmdq1);
-		if (cfg_references == 0) {
+		if (cfg_finished)
 			cfg_print_causes(cmdq);
-			return (CMD_RETURN_ERROR);
-		}
-		return (CMD_RETURN_NORMAL);
+		return (CMD_RETURN_ERROR);
 	case 0:
-		cmdq_free(cmdq1);
-		if (cfg_references == 0)
+		if (cfg_finished)
 			cfg_print_causes(cmdq);
 		return (CMD_RETURN_NORMAL);
 	}
-
-	log_debug("%s: cmdq %p, parent %p", __func__, cmdq1, cmdq);
-
-	cmdq->references++;
-	cfg_references++;
-
-	cmdq_continue(cmdq1);
-	return (CMD_RETURN_WAIT);
+	if (cfg_finished) {
+		new_cmdq = cmdq_get_callback(cmd_source_file_done, NULL);
+		cmdq_insert_after(cmdq, new_cmdq);
+	}
+	return (CMD_RETURN_NORMAL);
 }
 
-static void
-cmd_source_file_done(struct cmd_q *cmdq1)
+static enum cmd_retval
+cmd_source_file_done(struct cmd_q *cmdq, __unused void *data)
 {
-	struct cmd_q	*cmdq = cmdq1->data;
-
-	log_debug("%s: cmdq %p, parent %p", __func__, cmdq1, cmdq);
-
-	if (cmdq1->client_exit >= 0)
-		cmdq->client_exit = cmdq1->client_exit;
-	cmdq_free(cmdq1);
-
-	cfg_references--;
-	if (cmdq_free(cmdq))
-		return;
-	if (cfg_references == 0)
-		cfg_print_causes(cmdq);
-	cmdq_continue(cmdq);
+	cfg_print_causes(cmdq);
+	return (CMD_RETURN_NORMAL);
 }

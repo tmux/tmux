@@ -377,18 +377,22 @@ key_bindings_init(void)
 	struct cmd_list	*cmdlist;
 	char		*cause;
 	int		 error;
-	struct cmd_q	*cmdq;
 
-	cmdq = cmdq_new(NULL);
 	for (i = 0; i < nitems(defaults); i++) {
 		error = cmd_string_parse(defaults[i], &cmdlist,
 		    "<default-keys>", i, &cause);
 		if (error != 0)
 			fatalx("bad default key");
-		cmdq_run(cmdq, cmdlist, NULL);
+		cmdq_append(NULL, cmdq_get_command(cmdlist, NULL, NULL, 0));
 		cmd_list_free(cmdlist);
 	}
-	cmdq_free(cmdq);
+}
+
+static enum cmd_retval
+key_bindings_read_only(struct cmd_q *cmdq, __unused void *data)
+{
+	cmdq_error(cmdq, "client is read-only");
+	return (CMD_RETURN_ERROR);
 }
 
 void
@@ -403,10 +407,8 @@ key_bindings_dispatch(struct key_binding *bd, struct client *c,
 		if (!(cmd->entry->flags & CMD_READONLY))
 			readonly = 0;
 	}
-	if (!readonly && (c->flags & CLIENT_READONLY)) {
-		cmdq_error(c->cmdq, "client is read-only");
-		return;
-	}
-
-	cmdq_run(c->cmdq, bd->cmdlist, m);
+	if (!readonly && (c->flags & CLIENT_READONLY))
+		cmdq_append(c, cmdq_get_callback(key_bindings_read_only, NULL));
+	else
+		cmdq_append(c, cmdq_get_command(bd->cmdlist, NULL, m, 0));
 }

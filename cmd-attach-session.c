@@ -145,7 +145,7 @@ cmd_attach_session(struct cmd_q *cmdq, int dflag, int rflag, const char *cflag,
 		if (~c->flags & CLIENT_CONTROL)
 			proc_send(c->peer, MSG_READY, -1, NULL, 0);
 		hooks_run(c->session->hooks, c, NULL, "client-attached");
-		cmdq->client_exit = 0;
+		c->flags |= CLIENT_ATTACHED;
 	}
 	recalculate_sizes();
 	alerts_check_session(s);

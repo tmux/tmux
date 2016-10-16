@@ -246,6 +246,7 @@ window_choose_data_run(struct window_choose_data *cdata)
 {
 	struct cmd_list	*cmdlist;
 	char		*cause;
+	struct cmd_q	*cmdq;
 
 	/*
 	 * The command template will have already been replaced. But if it's
@@ -263,7 +264,8 @@ window_choose_data_run(struct window_choose_data *cdata)
 		return;
 	}
 
-	cmdq_run(cdata->start_client->cmdq, cmdlist, NULL);
+	cmdq = cmdq_get_command(cmdlist, NULL, NULL, 0);
+	cmdq_append(cdata->start_client, cmdq);
 	cmd_list_free(cmdlist);
 }
 

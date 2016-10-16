@@ -60,12 +60,12 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 	int			 x, y;
 
 	if (args_has(args, 'M')) {
-		if (cmd_mouse_window(&cmdq->item->mouse, &s) == NULL)
+		if (cmd_mouse_window(&cmdq->mouse, &s) == NULL)
 			return (CMD_RETURN_NORMAL);
 		if (c == NULL || c->session != s)
 			return (CMD_RETURN_NORMAL);
 		c->tty.mouse_drag_update = cmd_resize_pane_mouse_update;
-		cmd_resize_pane_mouse_update(c, &cmdq->item->mouse);
+		cmd_resize_pane_mouse_update(c, &cmdq->mouse);
 		return (CMD_RETURN_NORMAL);
 	}
 

@@ -124,8 +124,7 @@ server_client_create(int fd)
 	c->fd = -1;
 	c->cwd = NULL;
 
-	c->cmdq = cmdq_new(c);
-	c->cmdq->client_exit = 1;
+	TAILQ_INIT(&c->queue);
 
 	c->stdin_data = evbuffer_new();
 	c->stdout_data = evbuffer_new();
@@ -242,10 +241,6 @@ server_client_lost(struct client *c)
 	free(c->prompt_string);
 	free(c->prompt_buffer);
 
-	c->cmdq->flags |= CMD_Q_DEAD;
-	cmdq_free(c->cmdq);
-	c->cmdq = NULL;
-
 	environ_free(c->environ);
 
 	proc_remove_peer(c->peer);
@@ -278,6 +273,9 @@ server_client_free(__unused int fd, __unused short events, void *arg)
 	struct client	*c = arg;
 
 	log_debug("free client %p (%d references)", c, c->references);
+
+	if (!TAILQ_EMPTY(&c->queue))
+		fatalx("queue not empty");
 
 	if (c->references == 0)
 		free(c);
@@ -1262,6 +1260,29 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 	}
 }
 
+/* Callback when command is done. */
+static enum cmd_retval
+server_client_command_done(struct cmd_q *cmdq, __unused void *data)
+{
+	struct client	*c = cmdq->client;
+
+	if (~c->flags & CLIENT_ATTACHED)
+		c->flags |= CLIENT_EXIT;
+	return (CMD_RETURN_NORMAL);
+}
+
+/* Show an error message. */
+static enum cmd_retval
+server_client_command_error(struct cmd_q *cmdq, void *data)
+{
+	char	*error = data;
+
+	cmdq_error(cmdq, "%s", error);
+	free(error);
+
+	return (CMD_RETURN_NORMAL);
+}
+
 /* Handle command message. */
 static void
 server_client_dispatch_command(struct client *c, struct imsg *imsg)
@@ -1284,7 +1305,7 @@ server_client_dispatch_command(struct client *c, struct imsg *imsg)
 
 	argc = data.argc;
 	if (cmd_unpack_argv(buf, len, argc, &argv) != 0) {
-		cmdq_error(c->cmdq, "command too long");
+		cause = xstrdup("command too long");
 		goto error;
 	}
 
@@ -1295,20 +1316,19 @@ server_client_dispatch_command(struct client *c, struct imsg *imsg)
 	}
 
 	if ((cmdlist = cmd_list_parse(argc, argv, NULL, 0, &cause)) == NULL) {
-		cmdq_error(c->cmdq, "%s", cause);
 		cmd_free_argv(argc, argv);
 		goto error;
 	}
 	cmd_free_argv(argc, argv);
 
-	if (c != cfg_client || cfg_finished)
-		cmdq_run(c->cmdq, cmdlist, NULL);
-	else
-		cmdq_append(c->cmdq, cmdlist, NULL);
+	cmdq_append(c, cmdq_get_command(cmdlist, NULL, NULL, 0));
+	cmdq_append(c, cmdq_get_callback(server_client_command_done, NULL));
 	cmd_list_free(cmdlist);
 	return;
 
 error:
+	cmdq_append(c, cmdq_get_callback(server_client_command_error, cause));
+
 	if (cmdlist != NULL)
 		cmd_list_free(cmdlist);
 

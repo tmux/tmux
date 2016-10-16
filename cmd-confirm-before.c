@@ -83,12 +83,24 @@ cmd_confirm_before_exec(struct cmd *self, struct cmd_q *cmdq)
 	return (CMD_RETURN_NORMAL);
 }
 
+static enum cmd_retval
+cmd_confirm_before_error(struct cmd_q *cmdq, void *data)
+{
+	char	*error = data;
+
+	cmdq_error(cmdq, "%s", error);
+	free(error);
+
+	return (CMD_RETURN_NORMAL);
+}
+
 static int
 cmd_confirm_before_callback(void *data, const char *s)
 {
 	struct cmd_confirm_before_data	*cdata = data;
 	struct client			*c = cdata->client;
 	struct cmd_list			*cmdlist;
+	struct cmd_q			*new_cmdq;
 	char				*cause;
 
 	if (c->flags & CLIENT_DEAD)
@@ -101,14 +113,17 @@ cmd_confirm_before_callback(void *data, const char *s)
 
 	if (cmd_string_parse(cdata->cmd, &cmdlist, NULL, 0, &cause) != 0) {
 		if (cause != NULL) {
-			cmdq_error(c->cmdq, "%s", cause);
-			free(cause);
-		}
-		return (0);
+			new_cmdq = cmdq_get_callback(cmd_confirm_before_error,
+			    cause);
+		} else
+			new_cmdq = NULL;
+	} else {
+		new_cmdq = cmdq_get_command(cmdlist, NULL, NULL, 0);
+		cmd_list_free(cmdlist);
 	}
 
-	cmdq_run(c->cmdq, cmdlist, NULL);
-	cmd_list_free(cmdlist);
+	if (new_cmdq != NULL)
+		cmdq_append(c, new_cmdq);
 
 	return (0);
 }
