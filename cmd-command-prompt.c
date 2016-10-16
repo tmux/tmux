@@ -29,7 +29,8 @@
  * Prompt for command in client.
  */
 
-static enum cmd_retval	cmd_command_prompt_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_command_prompt_exec(struct cmd *,
+			    struct cmdq_item *);
 
 static int	cmd_command_prompt_callback(void *, const char *);
 static void	cmd_command_prompt_free(void *);
@@ -59,12 +60,12 @@ struct cmd_command_prompt_cdata {
 };
 
 static enum cmd_retval
-cmd_command_prompt_exec(struct cmd *self, struct cmd_q *cmdq)
+cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = self->args;
 	const char			*inputs, *prompts;
 	struct cmd_command_prompt_cdata	*cdata;
-	struct client			*c = cmdq->state.c;
+	struct client			*c = item->state.c;
 	char				*prompt, *ptr, *input = NULL;
 	size_t				 n;
 	int				 flags;
@@ -122,11 +123,11 @@ cmd_command_prompt_exec(struct cmd *self, struct cmd_q *cmdq)
 }
 
 static enum cmd_retval
-cmd_command_prompt_error(struct cmd_q *cmdq, void *data)
+cmd_command_prompt_error(struct cmdq_item *item, void *data)
 {
 	char	*error = data;
 
-	cmdq_error(cmdq, "%s", error);
+	cmdq_error(item, "%s", error);
 	free(error);
 
 	return (CMD_RETURN_NORMAL);
@@ -138,7 +139,7 @@ cmd_command_prompt_callback(void *data, const char *s)
 	struct cmd_command_prompt_cdata	*cdata = data;
 	struct client			*c = cdata->c;
 	struct cmd_list			*cmdlist;
-	struct cmd_q			*new_cmdq;
+	struct cmdq_item		*new_item;
 	char				*cause, *new_template, *prompt, *ptr;
 	char				*input = NULL;
 
@@ -165,17 +166,17 @@ cmd_command_prompt_callback(void *data, const char *s)
 
 	if (cmd_string_parse(new_template, &cmdlist, NULL, 0, &cause) != 0) {
 		if (cause != NULL) {
-			new_cmdq = cmdq_get_callback(cmd_command_prompt_error,
+			new_item = cmdq_get_callback(cmd_command_prompt_error,
 			    cause);
 		} else
-			new_cmdq = NULL;
+			new_item = NULL;
 	} else {
-		new_cmdq = cmdq_get_command(cmdlist, NULL, NULL, 0);
+		new_item = cmdq_get_command(cmdlist, NULL, NULL, 0);
 		cmd_list_free(cmdlist);
 	}
 
-	if (new_cmdq != NULL)
-		cmdq_append(c, new_cmdq);
+	if (new_item != NULL)
+		cmdq_append(c, new_item);
 
 	if (c->prompt_callbackfn != (void *)&cmd_command_prompt_callback)
 		return (1);

@@ -143,10 +143,10 @@ void
 hooks_run(struct hooks *hooks, struct client *c, struct cmd_find_state *fs,
     const char *fmt, ...)
 {
-	struct hook	*hook;
-	va_list		 ap;
-	char		*name;
-	struct cmd_q	*new_cmdq, *loop;
+	struct hook		*hook;
+	va_list			 ap;
+	char			*name;
+	struct cmdq_item	*new_item;
 
 	va_start(ap, fmt);
 	xvasprintf(&name, fmt, ap);
@@ -159,25 +159,23 @@ hooks_run(struct hooks *hooks, struct client *c, struct cmd_find_state *fs,
 	}
 	log_debug("running hook %s", name);
 
-	new_cmdq = cmdq_get_command(hook->cmdlist, fs, NULL, CMD_Q_NOHOOKS);
+	new_item = cmdq_get_command(hook->cmdlist, fs, NULL, CMDQ_NOHOOKS);
+	cmdq_format(new_item, "hook", "%s", name);
+	cmdq_append(c, new_item);
 
-	for (loop = new_cmdq; loop != NULL; loop = loop->next)
-		loop->hook = xstrdup(name);
 	free(name);
-
-	cmdq_append(c, new_cmdq);
 }
 
 void
-hooks_insert(struct hooks *hooks, struct cmd_q *cmdq, struct cmd_find_state *fs,
-    const char *fmt, ...)
+hooks_insert(struct hooks *hooks, struct cmdq_item *item,
+    struct cmd_find_state *fs, const char *fmt, ...)
 {
-	struct hook	*hook;
-	va_list		 ap;
-	char		*name;
-	struct cmd_q	*new_cmdq, *loop;
+	struct hook		*hook;
+	va_list			 ap;
+	char			*name;
+	struct cmdq_item	*new_item;
 
-	if (cmdq->flags & CMD_Q_NOHOOKS)
+	if (item->flags & CMDQ_NOHOOKS)
 		return;
 
 	va_start(ap, fmt);
@@ -189,16 +187,14 @@ hooks_insert(struct hooks *hooks, struct cmd_q *cmdq, struct cmd_find_state *fs,
 		free(name);
 		return;
 	}
-	log_debug("running hook %s (parent %p)", name, cmdq);
+	log_debug("running hook %s (parent %p)", name, item);
 
-	new_cmdq = cmdq_get_command(hook->cmdlist, fs, NULL, CMD_Q_NOHOOKS);
-
-	for (loop = new_cmdq; loop != NULL; loop = loop->next)
-		loop->hook = xstrdup(name);
-	free(name);
-
-	if (cmdq != NULL)
-		cmdq_insert_after(cmdq, new_cmdq);
+	new_item = cmdq_get_command(hook->cmdlist, fs, NULL, CMDQ_NOHOOKS);
+	cmdq_format(new_item, "hook", "%s", name);
+	if (item != NULL)
+		cmdq_insert_after(item, new_item);
 	else
-		cmdq_append(NULL, new_cmdq);
+		cmdq_append(NULL, new_item);
+
+	free(name);
 }

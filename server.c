@@ -194,8 +194,6 @@ server_loop(void)
 	struct client	*c;
 	u_int		 items;
 
-	notify_drain();
-
 	do {
 		items = cmdq_next(NULL);
 		TAILQ_FOREACH(c, &clients, entry)

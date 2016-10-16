@@ -389,9 +389,9 @@ key_bindings_init(void)
 }
 
 static enum cmd_retval
-key_bindings_read_only(struct cmd_q *cmdq, __unused void *data)
+key_bindings_read_only(struct cmdq_item *item, __unused void *data)
 {
-	cmdq_error(cmdq, "client is read-only");
+	cmdq_error(item, "client is read-only");
 	return (CMD_RETURN_ERROR);
 }
 

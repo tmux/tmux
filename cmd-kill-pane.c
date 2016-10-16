@@ -26,7 +26,7 @@
  * Kill pane.
  */
 
-static enum cmd_retval	 cmd_kill_pane_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_kill_pane_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_kill_pane_entry = {
 	.name = "kill-pane",
@@ -42,10 +42,10 @@ const struct cmd_entry cmd_kill_pane_entry = {
 };
 
 static enum cmd_retval
-cmd_kill_pane_exec(struct cmd *self, struct cmd_q *cmdq)
+cmd_kill_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct winlink		*wl = cmdq->state.tflag.wl;
-	struct window_pane	*loopwp, *tmpwp, *wp = cmdq->state.tflag.wp;
+	struct winlink		*wl = item->state.tflag.wl;
+	struct window_pane	*loopwp, *tmpwp, *wp = item->state.tflag.wp;
 
 	server_unzoom_window(wl->window);
 

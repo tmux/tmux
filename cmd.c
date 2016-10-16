@@ -389,7 +389,7 @@ usage:
 
 static int
 cmd_prepare_state_flag(char c, const char *target, enum cmd_entry_flag flag,
-    struct cmd_q *cmdq)
+    struct cmdq_item *item)
 {
 	int			 targetflags, error;
 	struct cmd_find_state	*fs = NULL;
@@ -401,9 +401,9 @@ cmd_prepare_state_flag(char c, const char *target, enum cmd_entry_flag flag,
 		return (0);
 
 	if (c == 't')
-		fs = &cmdq->state.tflag;
+		fs = &item->state.tflag;
 	else if (c == 's')
-		fs = &cmdq->state.sflag;
+		fs = &item->state.sflag;
 
 	if (flag == CMD_SESSION_WITHPANE) {
 		if (target != NULL && target[strcspn(target, ":.")] != '\0')
@@ -449,7 +449,7 @@ cmd_prepare_state_flag(char c, const char *target, enum cmd_entry_flag flag,
 	}
 	log_debug("%s: flag %c %d %#x", __func__, c, flag, targetflags);
 
-	error = cmd_find_current(&current, cmdq, targetflags);
+	error = cmd_find_current(&current, item, targetflags);
 	if (error != 0 && ~targetflags & CMD_FIND_QUIET)
 		return (-1);
 	if (!cmd_find_empty_state(&current) && !cmd_find_valid_state(&current))
@@ -464,13 +464,13 @@ cmd_prepare_state_flag(char c, const char *target, enum cmd_entry_flag flag,
 	case CMD_SESSION_CANFAIL:
 	case CMD_SESSION_PREFERUNATTACHED:
 	case CMD_SESSION_WITHPANE:
-		error = cmd_find_target(fs, &current, cmdq, target,
+		error = cmd_find_target(fs, &current, item, target,
 		    CMD_FIND_SESSION, targetflags);
 		if (error != 0 && ~targetflags & CMD_FIND_QUIET)
 			return (-1);
 		break;
 	case CMD_MOVEW_R:
-		error = cmd_find_target(fs, &current, cmdq, target,
+		error = cmd_find_target(fs, &current, item, target,
 		    CMD_FIND_SESSION, CMD_FIND_QUIET);
 		if (error == 0)
 			break;
@@ -479,7 +479,7 @@ cmd_prepare_state_flag(char c, const char *target, enum cmd_entry_flag flag,
 	case CMD_WINDOW_CANFAIL:
 	case CMD_WINDOW_MARKED:
 	case CMD_WINDOW_INDEX:
-		error = cmd_find_target(fs, &current, cmdq, target,
+		error = cmd_find_target(fs, &current, item, target,
 		    CMD_FIND_WINDOW, targetflags);
 		if (error != 0 && ~targetflags & CMD_FIND_QUIET)
 			return (-1);
@@ -487,7 +487,7 @@ cmd_prepare_state_flag(char c, const char *target, enum cmd_entry_flag flag,
 	case CMD_PANE:
 	case CMD_PANE_CANFAIL:
 	case CMD_PANE_MARKED:
-		error = cmd_find_target(fs, &current, cmdq, target,
+		error = cmd_find_target(fs, &current, item, target,
 		    CMD_FIND_PANE, targetflags);
 		if (error != 0 && ~targetflags & CMD_FIND_QUIET)
 			return (-1);
@@ -499,17 +499,17 @@ cmd_prepare_state_flag(char c, const char *target, enum cmd_entry_flag flag,
 }
 
 int
-cmd_prepare_state(struct cmd *cmd, struct cmd_q *cmdq)
+cmd_prepare_state(struct cmd *cmd, struct cmdq_item *item)
 {
 	const struct cmd_entry	*entry = cmd->entry;
-	struct cmd_state	*state = &cmdq->state;
+	struct cmd_state	*state = &item->state;
 	char			*tmp;
 	enum cmd_entry_flag	 flag;
 	const char		*s;
 	int			 error;
 
 	tmp = cmd_print(cmd);
-	log_debug("preparing state for %s (client %p)", tmp, cmdq->client);
+	log_debug("preparing state for %s (client %p)", tmp, item->client);
 	free(tmp);
 
 	state->c = NULL;
@@ -527,12 +527,12 @@ cmd_prepare_state(struct cmd *cmd, struct cmd_q *cmdq)
 		s = args_get(cmd->args, 'c');
 	switch (flag) {
 	case CMD_CLIENT:
-		state->c = cmd_find_client(cmdq, s, 0);
+		state->c = cmd_find_client(item, s, 0);
 		if (state->c == NULL)
 			return (-1);
 		break;
 	default:
-		state->c = cmd_find_client(cmdq, s, 1);
+		state->c = cmd_find_client(item, s, 1);
 		break;
 	}
 	log_debug("using client %p", state->c);
@@ -540,14 +540,14 @@ cmd_prepare_state(struct cmd *cmd, struct cmd_q *cmdq)
 	s = args_get(cmd->args, 't');
 	log_debug("preparing -t state: target %s", s == NULL ? "none" : s);
 
-	error = cmd_prepare_state_flag('t', s, entry->tflag, cmdq);
+	error = cmd_prepare_state_flag('t', s, entry->tflag, item);
 	if (error != 0)
 		return (error);
 
 	s = args_get(cmd->args, 's');
 	log_debug("preparing -s state: target %s", s == NULL ? "none" : s);
 
-	error = cmd_prepare_state_flag('s', s, entry->sflag, cmdq);
+	error = cmd_prepare_state_flag('s', s, entry->sflag, item);
 	if (error != 0)
 		return (error);
 

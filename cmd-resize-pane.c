@@ -26,7 +26,7 @@
  * Increase or decrease pane size.
  */
 
-static enum cmd_retval	 cmd_resize_pane_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_resize_pane_exec(struct cmd *, struct cmdq_item *);
 
 static void	cmd_resize_pane_mouse_update(struct client *,
 		    struct mouse_event *);
@@ -46,26 +46,26 @@ const struct cmd_entry cmd_resize_pane_entry = {
 };
 
 static enum cmd_retval
-cmd_resize_pane_exec(struct cmd *self, struct cmd_q *cmdq)
+cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
-	struct window_pane	*wp = cmdq->state.tflag.wp;
-	struct winlink		*wl = cmdq->state.tflag.wl;
+	struct window_pane	*wp = item->state.tflag.wp;
+	struct winlink		*wl = item->state.tflag.wl;
 	struct window		*w = wl->window;
-	struct client		*c = cmdq->client;
-	struct session		*s = cmdq->state.tflag.s;
+	struct client		*c = item->client;
+	struct session		*s = item->state.tflag.s;
 	const char	       	*errstr;
 	char			*cause;
 	u_int			 adjust;
 	int			 x, y;
 
 	if (args_has(args, 'M')) {
-		if (cmd_mouse_window(&cmdq->mouse, &s) == NULL)
+		if (cmd_mouse_window(&item->mouse, &s) == NULL)
 			return (CMD_RETURN_NORMAL);
 		if (c == NULL || c->session != s)
 			return (CMD_RETURN_NORMAL);
 		c->tty.mouse_drag_update = cmd_resize_pane_mouse_update;
-		cmd_resize_pane_mouse_update(c, &cmdq->mouse);
+		cmd_resize_pane_mouse_update(c, &item->mouse);
 		return (CMD_RETURN_NORMAL);
 	}
 
@@ -85,7 +85,7 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 	else {
 		adjust = strtonum(args->argv[0], 1, INT_MAX, &errstr);
 		if (errstr != NULL) {
-			cmdq_error(cmdq, "adjustment %s", errstr);
+			cmdq_error(item, "adjustment %s", errstr);
 			return (CMD_RETURN_ERROR);
 		}
 	}
@@ -94,7 +94,7 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 		x = args_strtonum(self->args, 'x', PANE_MINIMUM, INT_MAX,
 		    &cause);
 		if (cause != NULL) {
-			cmdq_error(cmdq, "width %s", cause);
+			cmdq_error(item, "width %s", cause);
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
@@ -104,7 +104,7 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 		y = args_strtonum(self->args, 'y', PANE_MINIMUM, INT_MAX,
 		    &cause);
 		if (cause != NULL) {
-			cmdq_error(cmdq, "height %s", cause);
+			cmdq_error(item, "height %s", cause);
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}

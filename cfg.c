@@ -34,7 +34,7 @@ static u_int		  cfg_ncauses;
 struct client		 *cfg_client;
 
 static enum cmd_retval
-cfg_done(__unused struct cmd_q *cmdq, __unused void *data)
+cfg_done(__unused struct cmdq_item *item, __unused void *data)
 {
 	if (cfg_finished)
 		return (CMD_RETURN_NORMAL);
@@ -78,15 +78,15 @@ start_cfg(void)
 }
 
 int
-load_cfg(const char *path, struct client *c, struct cmd_q *cmdq, int quiet)
+load_cfg(const char *path, struct client *c, struct cmdq_item *item, int quiet)
 {
-	FILE		*f;
-	char		 delim[3] = { '\\', '\\', '\0' };
-	u_int		 found;
-	size_t		 line = 0;
-	char		*buf, *cause1, *p;
-	struct cmd_list	*cmdlist;
-	struct cmd_q	*new_cmdq;
+	FILE			*f;
+	char			 delim[3] = { '\\', '\\', '\0' };
+	u_int			 found;
+	size_t			 line = 0;
+	char			*buf, *cause1, *p;
+	struct cmd_list		*cmdlist;
+	struct cmdq_item	*new_item;
 
 	log_debug("loading %s", path);
 	if ((f = fopen(path, "rb")) == NULL) {
@@ -122,11 +122,11 @@ load_cfg(const char *path, struct client *c, struct cmd_q *cmdq, int quiet)
 
 		if (cmdlist == NULL)
 			continue;
-		new_cmdq = cmdq_get_command(cmdlist, NULL, NULL, 0);
-		if (cmdq != NULL)
-			cmdq_insert_after(cmdq, new_cmdq);
+		new_item = cmdq_get_command(cmdlist, NULL, NULL, 0);
+		if (item != NULL)
+			cmdq_insert_after(item, new_item);
 		else
-			cmdq_append(c, new_cmdq);
+			cmdq_append(c, new_item);
 		cmd_list_free(cmdlist);
 
 		found++;
@@ -152,12 +152,12 @@ cfg_add_cause(const char *fmt, ...)
 }
 
 void
-cfg_print_causes(struct cmd_q *cmdq)
+cfg_print_causes(struct cmdq_item *item)
 {
 	u_int	 i;
 
 	for (i = 0; i < cfg_ncauses; i++) {
-		cmdq_print(cmdq, "%s", cfg_causes[i]);
+		cmdq_print(item, "%s", cfg_causes[i]);
 		free(cfg_causes[i]);
 	}
 

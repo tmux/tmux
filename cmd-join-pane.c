@@ -28,7 +28,7 @@
  * Join or move a pane into another (like split/swap/kill).
  */
 
-static enum cmd_retval	 cmd_join_pane_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_join_pane_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_join_pane_entry = {
 	.name = "join-pane",
@@ -59,7 +59,7 @@ const struct cmd_entry cmd_move_pane_entry = {
 };
 
 static enum cmd_retval
-cmd_join_pane_exec(struct cmd *self, struct cmd_q *cmdq)
+cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
 	struct session		*dst_s;
@@ -77,24 +77,24 @@ cmd_join_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 	else
 		not_same_window = 0;
 
-	dst_s = cmdq->state.tflag.s;
-	dst_wl = cmdq->state.tflag.wl;
-	dst_wp = cmdq->state.tflag.wp;
+	dst_s = item->state.tflag.s;
+	dst_wl = item->state.tflag.wl;
+	dst_wp = item->state.tflag.wp;
 	dst_w = dst_wl->window;
 	dst_idx = dst_wl->idx;
 	server_unzoom_window(dst_w);
 
-	src_wl = cmdq->state.sflag.wl;
-	src_wp = cmdq->state.sflag.wp;
+	src_wl = item->state.sflag.wl;
+	src_wp = item->state.sflag.wp;
 	src_w = src_wl->window;
 	server_unzoom_window(src_w);
 
 	if (not_same_window && src_w == dst_w) {
-		cmdq_error(cmdq, "can't join a pane to its own window");
+		cmdq_error(item, "can't join a pane to its own window");
 		return (CMD_RETURN_ERROR);
 	}
 	if (!not_same_window && src_wp == dst_wp) {
-		cmdq_error(cmdq, "source and target panes must be different");
+		cmdq_error(item, "source and target panes must be different");
 		return (CMD_RETURN_ERROR);
 	}
 
@@ -106,14 +106,14 @@ cmd_join_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 	if (args_has(args, 'l')) {
 		size = args_strtonum(args, 'l', 0, INT_MAX, &cause);
 		if (cause != NULL) {
-			cmdq_error(cmdq, "size %s", cause);
+			cmdq_error(item, "size %s", cause);
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
 	} else if (args_has(args, 'p')) {
 		percentage = args_strtonum(args, 'p', 0, 100, &cause);
 		if (cause != NULL) {
-			cmdq_error(cmdq, "percentage %s", cause);
+			cmdq_error(item, "percentage %s", cause);
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
@@ -124,7 +124,7 @@ cmd_join_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 	}
 	lc = layout_split_pane(dst_wp, type, size, args_has(args, 'b'), 0);
 	if (lc == NULL) {
-		cmdq_error(cmdq, "create pane failed: pane too small");
+		cmdq_error(item, "create pane failed: pane too small");
 		return (CMD_RETURN_ERROR);
 	}
 

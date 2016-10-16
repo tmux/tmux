@@ -30,7 +30,8 @@
  * Attach existing session to the current terminal.
  */
 
-static enum cmd_retval	cmd_attach_session_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_attach_session_exec(struct cmd *,
+			    struct cmdq_item *);
 
 const struct cmd_entry cmd_attach_session_entry = {
 	.name = "attach-session",
@@ -46,26 +47,26 @@ const struct cmd_entry cmd_attach_session_entry = {
 };
 
 enum cmd_retval
-cmd_attach_session(struct cmd_q *cmdq, int dflag, int rflag, const char *cflag,
-    int Eflag)
+cmd_attach_session(struct cmdq_item *item, int dflag, int rflag,
+    const char *cflag, int Eflag)
 {
-	struct session		*s = cmdq->state.tflag.s;
-	struct client		*c = cmdq->client, *c_loop;
-	struct winlink		*wl = cmdq->state.tflag.wl;
-	struct window_pane	*wp = cmdq->state.tflag.wp;
+	struct session		*s = item->state.tflag.s;
+	struct client		*c = item->client, *c_loop;
+	struct winlink		*wl = item->state.tflag.wl;
+	struct window_pane	*wp = item->state.tflag.wp;
 	const char		*update;
 	char			*cause, *cwd;
 	struct format_tree	*ft;
 
 	if (RB_EMPTY(&sessions)) {
-		cmdq_error(cmdq, "no sessions");
+		cmdq_error(item, "no sessions");
 		return (CMD_RETURN_ERROR);
 	}
 
 	if (c == NULL)
 		return (CMD_RETURN_NORMAL);
 	if (server_client_check_nested(c)) {
-		cmdq_error(cmdq, "sessions should be nested with care, "
+		cmdq_error(item, "sessions should be nested with care, "
 		    "unset $TMUX to force");
 		return (CMD_RETURN_ERROR);
 	}
@@ -77,7 +78,7 @@ cmd_attach_session(struct cmd_q *cmdq, int dflag, int rflag, const char *cflag,
 	}
 
 	if (cflag != NULL) {
-		ft = format_create(cmdq, 0);
+		ft = format_create(item, 0);
 		format_defaults(ft, c, s, wl, wp);
 		cwd = format_expand(ft, cflag);
 		format_free(ft);
@@ -111,7 +112,7 @@ cmd_attach_session(struct cmd_q *cmdq, int dflag, int rflag, const char *cflag,
 		s->curw->flags &= ~WINLINK_ALERTFLAGS;
 	} else {
 		if (server_client_open(c, &cause) != 0) {
-			cmdq_error(cmdq, "open terminal failed: %s", cause);
+			cmdq_error(item, "open terminal failed: %s", cause);
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
@@ -155,10 +156,10 @@ cmd_attach_session(struct cmd_q *cmdq, int dflag, int rflag, const char *cflag,
 }
 
 static enum cmd_retval
-cmd_attach_session_exec(struct cmd *self, struct cmd_q *cmdq)
+cmd_attach_session_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args	*args = self->args;
 
-	return (cmd_attach_session(cmdq, args_has(args, 'd'),
+	return (cmd_attach_session(item, args_has(args, 'd'),
 	    args_has(args, 'r'), args_get(args, 'c'), args_has(args, 'E')));
 }

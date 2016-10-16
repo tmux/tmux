@@ -26,7 +26,8 @@
  * Detach a client.
  */
 
-static enum cmd_retval	 cmd_detach_client_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_detach_client_exec(struct cmd *,
+			    struct cmdq_item *);
 
 const struct cmd_entry cmd_detach_client_entry = {
 	.name = "detach-client",
@@ -56,10 +57,10 @@ const struct cmd_entry cmd_suspend_client_entry = {
 };
 
 static enum cmd_retval
-cmd_detach_client_exec(struct cmd *self, struct cmd_q *cmdq)
+cmd_detach_client_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args	*args = self->args;
-	struct client	*c = cmdq->state.c, *cloop;
+	struct client	*c = item->state.c, *cloop;
 	struct session	*s;
 	enum msgtype	 msgtype;
 
@@ -76,7 +77,7 @@ cmd_detach_client_exec(struct cmd *self, struct cmd_q *cmdq)
 		msgtype = MSG_DETACH;
 
 	if (args_has(args, 's')) {
-		s = cmdq->state.sflag.s;
+		s = item->state.sflag.s;
 		TAILQ_FOREACH(cloop, &clients, entry) {
 			if (cloop->session == s)
 				server_client_detach(cloop, msgtype);

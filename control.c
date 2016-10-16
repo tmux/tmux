@@ -51,14 +51,14 @@ control_write_buffer(struct client *c, struct evbuffer *buffer)
 
 /* Control error callback. */
 static enum cmd_retval
-control_error(struct cmd_q *cmdq, void *data)
+control_error(struct cmdq_item *item, void *data)
 {
-	struct client	*c = cmdq->client;
+	struct client	*c = item->client;
 	char		*error = data;
 
-	cmdq_guard(cmdq, "begin", 1);
+	cmdq_guard(item, "begin", 1);
 	control_write(c, "parse error: %s", error);
-	cmdq_guard(cmdq, "error", 1);
+	cmdq_guard(item, "error", 1);
 
 	free(error);
 	return (CMD_RETURN_NORMAL);
@@ -68,10 +68,10 @@ control_error(struct cmd_q *cmdq, void *data)
 void
 control_callback(struct client *c, int closed, __unused void *data)
 {
-	char		*line, *cause;
-	struct cmd_list	*cmdlist;
-	struct cmd	*cmd;
-	struct cmd_q	*cmdq;
+	char			*line, *cause;
+	struct cmd_list		*cmdlist;
+	struct cmd		*cmd;
+	struct cmdq_item	*item;
 
 	if (closed)
 		c->flags |= CLIENT_EXIT;
@@ -86,13 +86,13 @@ control_callback(struct client *c, int closed, __unused void *data)
 		}
 
 		if (cmd_string_parse(line, &cmdlist, NULL, 0, &cause) != 0) {
-			cmdq = cmdq_get_callback(control_error, cause);
-			cmdq_append(c, cmdq);
+			item = cmdq_get_callback(control_error, cause);
+			cmdq_append(c, item);
 		} else {
 			TAILQ_FOREACH(cmd, &cmdlist->list, qentry)
 				cmd->flags |= CMD_CONTROL;
-			cmdq = cmdq_get_command(cmdlist, NULL, NULL, 0);
-			cmdq_append(c, cmdq);
+			item = cmdq_get_command(cmdlist, NULL, NULL, 0);
+			cmdq_append(c, item);
 			cmd_list_free(cmdlist);
 		}
 
