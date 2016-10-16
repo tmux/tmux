@@ -100,7 +100,11 @@ cmd_run_shell_exec(struct cmd *self, struct cmd_q *cmdq)
 	cdata = xcalloc(1, sizeof *cdata);
 	cdata->cmd = shellcmd;
 	cdata->bflag = args_has(args, 'b');
-	cdata->wp_id = wp != NULL ? (int) wp->id : -1;
+
+	if (args_has(args, 't') && wp != NULL)
+		cdata->wp_id = wp->id;
+	else
+		cdata->wp_id = -1;
 
 	cdata->cmdq = cmdq;
 	cmdq->references++;
