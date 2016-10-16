@@ -3244,6 +3244,10 @@ Run when the program running in a pane exits, but
 is on so the pane has not closed.
 .It pane-exited
 Run when the program running in a pane exits.
+.It session-created
+Run when a new session created.
+.It session-closed
+Run when a session closed.
 .It session-renamed
 Run when a session is renamed.
 .It window-renamed
@@ -3467,6 +3471,10 @@ The following variables are available, where appropriate:
 .It Li "history_limit" Ta "" Ta "Maximum window history lines"
 .It Li "history_size" Ta "" Ta "Size of history in bytes"
 .It Li "hook" Ta "" Ta "Name of running hook, if any"
+.It Li "hook_session" Ta "" Ta "ID of session where hook was run, if any"
+.It Li "hook_session_name" Ta "" Ta "Name of session where hook was run, if any"
+.It Li "hook_window" Ta "" Ta "ID of window where hook was run, if any"
+.It Li "hook_window_name" Ta "" Ta "Name of window where hook was run, if any"
 .It Li "host" Ta "#H" Ta "Hostname of local host"
 .It Li "host_short" Ta "#h" Ta "Hostname of local host (no domain name)"
 .It Li "insert_flag" Ta "" Ta "Pane insert flag"

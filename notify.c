@@ -41,8 +41,8 @@ static const char *notify_hooks[] = {
 	"window-renamed",
 	NULL, /* "attached-session-changed", */
 	"session-renamed",
-	NULL, /* "session-created", */
-	NULL, /* "session-closed" */
+	"session-created",
+	"session-closed"
 };
 
 struct notify_entry {
@@ -60,18 +60,20 @@ notify_hook(struct cmdq_item *item, struct notify_entry *ne)
 	struct cmd_find_state	 fs;
 	struct hook		*hook;
 	struct cmdq_item	*new_item;
+	struct session		*s = ne->session;
+	struct window		*w = ne->window;
 
 	name = notify_hooks[ne->type];
 	if (name == NULL)
 		return;
 
 	cmd_find_clear_state(&fs, NULL, 0);
-	if (ne->session != NULL && ne->window != NULL)
-		cmd_find_from_session_window(&fs, ne->session, ne->window);
-	else if (ne->window != NULL)
-		cmd_find_from_window(&fs, ne->window);
-	else if (ne->session != NULL)
-		cmd_find_from_session(&fs, ne->session);
+	if (s != NULL && w != NULL)
+		cmd_find_from_session_window(&fs, s, w);
+	else if (w != NULL)
+		cmd_find_from_window(&fs, w);
+	else if (s != NULL && session_alive(s))
+		cmd_find_from_session(&fs, s);
 	else
 		cmd_find_current(&fs, item, CMD_FIND_QUIET);
 	if (cmd_find_empty_state(&fs) || !cmd_find_valid_state(&fs))
@@ -84,6 +86,16 @@ notify_hook(struct cmdq_item *item, struct notify_entry *ne)
 
 	new_item = cmdq_get_command(hook->cmdlist, &fs, NULL, CMDQ_NOHOOKS);
 	cmdq_format(new_item, "hook", "%s", name);
+
+	if (s != NULL) {
+		cmdq_format(new_item, "hook_session", "$%u", s->id);
+		cmdq_format(new_item, "hook_session_name", "%s", s->name);
+	}
+	if (w != NULL) {
+		cmdq_format(new_item, "hook_window", "@%u", w->id);
+		cmdq_format(new_item, "hook_window_name", "%s", w->name);
+	}
+
 	cmdq_insert_after(item, new_item);
 }
 
