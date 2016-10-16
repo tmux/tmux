@@ -51,7 +51,6 @@ const struct cmd_entry cmd_run_shell_entry = {
 struct cmd_run_shell_data {
 	char		*cmd;
 	struct cmd_q	*cmdq;
-	int		 bflag;
 	int		 wp_id;
 };
 
@@ -92,6 +91,7 @@ cmd_run_shell_exec(struct cmd *self, struct cmd_q *cmdq)
 		cwd = s->cwd;
 	else
 		cwd = NULL;
+
 	ft = format_create(cmdq, 0);
 	format_defaults(ft, cmdq->state.c, s, wl, wp);
 	shellcmd = format_expand(ft, args->argv[0]);
@@ -99,20 +99,24 @@ cmd_run_shell_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	cdata = xcalloc(1, sizeof *cdata);
 	cdata->cmd = shellcmd;
-	cdata->bflag = args_has(args, 'b');
 
 	if (args_has(args, 't') && wp != NULL)
 		cdata->wp_id = wp->id;
 	else
 		cdata->wp_id = -1;
 
-	cdata->cmdq = cmdq;
-	cmdq->references++;
+	if (args_has(args, 't') && wp != NULL)
+		cdata->wp_id = wp->id;
+	else
+		cdata->wp_id = -1;
+
+	if (!args_has(args, 'b'))
+		cdata->cmdq = cmdq;
 
 	job_run(shellcmd, s, cwd, cmd_run_shell_callback, cmd_run_shell_free,
 	    cdata);
 
-	if (cdata->bflag)
+	if (args_has(args, 'b'))
 		return (CMD_RETURN_NORMAL);
 	return (CMD_RETURN_WAIT);
 }
@@ -121,15 +125,10 @@ static void
 cmd_run_shell_callback(struct job *job)
 {
 	struct cmd_run_shell_data	*cdata = job->data;
-	struct cmd_q			*cmdq = cdata->cmdq;
-	char				*cmd, *msg, *line;
+	char				*cmd = cdata->cmd, *msg, *line;
 	size_t				 size;
 	int				 retcode;
 	u_int				 lines;
-
-	if (cmdq->flags & CMD_Q_DEAD)
-		return;
-	cmd = cdata->cmd;
 
 	lines = 0;
 	do {
@@ -163,16 +162,15 @@ cmd_run_shell_callback(struct job *job)
 	if (msg != NULL)
 		cmd_run_shell_print(job, msg);
 	free(msg);
+
+	if (cdata->cmdq != NULL)
+		cdata->cmdq->flags &= ~CMD_Q_WAITING;
 }
 
 static void
 cmd_run_shell_free(void *data)
 {
 	struct cmd_run_shell_data	*cdata = data;
-	struct cmd_q			*cmdq = cdata->cmdq;
-
-	if (!cmdq_free(cmdq) && !cdata->bflag)
-		cmdq_continue(cmdq);
 
 	free(cdata->cmd);
 	free(cdata);

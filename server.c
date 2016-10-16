@@ -190,9 +190,17 @@ static int
 server_loop(void)
 {
 	struct client	*c;
+	u_int		 items;
+
+	notify_drain();
+
+	do {
+		items = cmdq_next(NULL);
+		TAILQ_FOREACH(c, &clients, entry)
+		    items += cmdq_next(c);
+	} while (items != 0);
 
 	server_client_loop();
-	notify_drain();
 
 	if (!options_get_number(global_options, "exit-unattached")) {
 		if (!RB_EMPTY(&sessions))

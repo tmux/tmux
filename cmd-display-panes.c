@@ -65,32 +65,48 @@ cmd_display_panes_exec(struct cmd *self, struct cmd_q *cmdq)
 	return (CMD_RETURN_NORMAL);
 }
 
+static enum cmd_retval
+cmd_display_panes_error(struct cmd_q *cmdq, void *data)
+{
+	char	*error = data;
+
+	cmdq_error(cmdq, "%s", error);
+	free(error);
+
+	return (CMD_RETURN_NORMAL);
+}
+
 static void
 cmd_display_panes_callback(struct client *c, struct window_pane *wp)
 {
 	struct cmd_list	*cmdlist;
+	struct cmd_q	*new_cmdq;
 	char		*template, *cmd, *expanded, *cause;
 
 	template = c->identify_callback_data;
-	if (wp != NULL) {
-		xasprintf(&expanded, "%%%u", wp->id);
-		cmd = cmd_template_replace(template, expanded, 1);
+	if (wp == NULL)
+		goto out;
+	xasprintf(&expanded, "%%%u", wp->id);
+	cmd = cmd_template_replace(template, expanded, 1);
 
-		if (cmd_string_parse(cmd, &cmdlist, NULL, 0, &cause) != 0) {
-			if (cause != NULL) {
-				*cause = toupper((u_char) *cause);
-				status_message_set(c, "%s", cause);
-				free(cause);
-			}
-		} else {
-			cmdq_run(c->cmdq, cmdlist, NULL);
-			cmd_list_free(cmdlist);
-		}
-
-		free(cmd);
-		free(expanded);
+	if (cmd_string_parse(cmd, &cmdlist, NULL, 0, &cause) != 0) {
+		if (cause != NULL) {
+			new_cmdq = cmdq_get_callback(cmd_display_panes_error,
+			    cause);
+		} else
+			new_cmdq = NULL;
+	} else {
+		new_cmdq = cmdq_get_command(cmdlist, NULL, NULL, 0);
+		cmd_list_free(cmdlist);
 	}
 
+	if (new_cmdq != NULL)
+		cmdq_append(c, new_cmdq);
+
+	free(cmd);
+	free(expanded);
+
+out:
 	free(c->identify_callback_data);
 	c->identify_callback_data = NULL;
 	c->identify_callback = NULL;

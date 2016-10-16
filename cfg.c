@@ -29,14 +29,25 @@
 #include "tmux.h"
 
 char			 *cfg_file;
-static struct cmd_q	 *cfg_cmd_q;
 int			  cfg_finished;
-int			  cfg_references;
 static char		**cfg_causes;
 static u_int		  cfg_ncauses;
 struct client		 *cfg_client;
 
-static void	  cfg_default_done(struct cmd_q *);
+static enum cmd_retval
+cfg_done(__unused struct cmd_q *cmdq, __unused void *data)
+{
+	if (cfg_finished)
+		return (CMD_RETURN_NORMAL);
+	cfg_finished = 1;
+
+	if (!RB_EMPTY(&sessions))
+		cfg_show_causes(RB_MIN(sessions, &sessions));
+
+	if (cfg_client != NULL)
+		server_client_unref(cfg_client);
+	return (CMD_RETURN_NORMAL);
+}
 
 void
 set_cfg_file(const char *path)
@@ -51,30 +62,24 @@ start_cfg(void)
 	const char	*home;
 	int		 quiet = 0;
 
-	cfg_cmd_q = cmdq_new(NULL);
-	cfg_cmd_q->emptyfn = cfg_default_done;
-
-	cfg_finished = 0;
-	cfg_references = 1;
-
 	cfg_client = TAILQ_FIRST(&clients);
 	if (cfg_client != NULL)
 		cfg_client->references++;
 
-	load_cfg(TMUX_CONF, cfg_cmd_q, 1);
+	load_cfg(TMUX_CONF, cfg_client, NULL, 1);
 
 	if (cfg_file == NULL && (home = find_home()) != NULL) {
 		xasprintf(&cfg_file, "%s/.tmux.conf", home);
 		quiet = 1;
 	}
 	if (cfg_file != NULL)
-		load_cfg(cfg_file, cfg_cmd_q, quiet);
+		load_cfg(cfg_file, cfg_client, NULL, quiet);
 
-	cmdq_continue(cfg_cmd_q);
+	cmdq_append(cfg_client, cmdq_get_callback(cfg_done, NULL));
 }
 
 int
-load_cfg(const char *path, struct cmd_q *cmdq, int quiet)
+load_cfg(const char *path, struct client *c, struct cmd_q *cmdq, int quiet)
 {
 	FILE		*f;
 	char		 delim[3] = { '\\', '\\', '\0' };
@@ -82,6 +87,7 @@ load_cfg(const char *path, struct cmd_q *cmdq, int quiet)
 	size_t		 line = 0;
 	char		*buf, *cause1, *p;
 	struct cmd_list	*cmdlist;
+	struct cmd_q	*new_cmdq;
 
 	log_debug("loading %s", path);
 	if ((f = fopen(path, "rb")) == NULL) {
@@ -117,44 +123,18 @@ load_cfg(const char *path, struct cmd_q *cmdq, int quiet)
 
 		if (cmdlist == NULL)
 			continue;
-		cmdq_append(cmdq, cmdlist, NULL);
+		new_cmdq = cmdq_get_command(cmdlist, NULL, NULL, 0);
+		if (cmdq != NULL)
+			cmdq_insert_after(cmdq, new_cmdq);
+		else
+			cmdq_append(c, new_cmdq);
 		cmd_list_free(cmdlist);
+
 		found++;
 	}
 	fclose(f);
 
 	return (found);
-}
-
-static void
-cfg_default_done(__unused struct cmd_q *cmdq)
-{
-	log_debug("%s: %u references%s", __func__, cfg_references,
-	    cfg_finished ? " (finished)" : "");
-
-	if (cfg_finished || --cfg_references != 0)
-		return;
-	cfg_finished = 1;
-
-	if (!RB_EMPTY(&sessions))
-		cfg_show_causes(RB_MIN(sessions, &sessions));
-
-	cmdq_free(cfg_cmd_q);
-	cfg_cmd_q = NULL;
-
-	if (cfg_client != NULL) {
-		/*
-		 * The client command queue starts with client_exit set to 1 so
-		 * only continue if not empty (that is, we have been delayed
-		 * during configuration parsing for long enough that the
-		 * MSG_COMMAND has arrived), else the client will exit before
-		 * the MSG_COMMAND which might tell it not to.
-		 */
-		if (!TAILQ_EMPTY(&cfg_client->cmdq->queue))
-			cmdq_continue(cfg_client->cmdq);
-		server_client_unref(cfg_client);
-		cfg_client = NULL;
-	}
 }
 
 void

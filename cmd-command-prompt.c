@@ -121,12 +121,24 @@ cmd_command_prompt_exec(struct cmd *self, struct cmd_q *cmdq)
 	return (CMD_RETURN_NORMAL);
 }
 
+static enum cmd_retval
+cmd_command_prompt_error(struct cmd_q *cmdq, void *data)
+{
+	char	*error = data;
+
+	cmdq_error(cmdq, "%s", error);
+	free(error);
+
+	return (CMD_RETURN_NORMAL);
+}
+
 static int
 cmd_command_prompt_callback(void *data, const char *s)
 {
 	struct cmd_command_prompt_cdata	*cdata = data;
 	struct client			*c = cdata->c;
 	struct cmd_list			*cmdlist;
+	struct cmd_q			*new_cmdq;
 	char				*cause, *new_template, *prompt, *ptr;
 	char				*input = NULL;
 
@@ -153,17 +165,19 @@ cmd_command_prompt_callback(void *data, const char *s)
 
 	if (cmd_string_parse(new_template, &cmdlist, NULL, 0, &cause) != 0) {
 		if (cause != NULL) {
-			*cause = toupper((u_char) *cause);
-			status_message_set(c, "%s", cause);
-			free(cause);
-		}
-		return (0);
+			new_cmdq = cmdq_get_callback(cmd_command_prompt_error,
+			    cause);
+		} else
+			new_cmdq = NULL;
+	} else {
+		new_cmdq = cmdq_get_command(cmdlist, NULL, NULL, 0);
+		cmd_list_free(cmdlist);
 	}
 
-	cmdq_run(c->cmdq, cmdlist, NULL);
-	cmd_list_free(cmdlist);
+	if (new_cmdq != NULL)
+		cmdq_append(c, new_cmdq);
 
-	if (c->prompt_callbackfn != (void *) &cmd_command_prompt_callback)
+	if (c->prompt_callbackfn != (void *)&cmd_command_prompt_callback)
 		return (1);
 	return (0);
 }

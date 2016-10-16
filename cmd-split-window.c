@@ -188,8 +188,8 @@ cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	fs.w = w;
 	fs.wp = new_wp;
 	cmd_find_log_state(__func__, &fs);
-	if (hooks_wait(s->hooks, cmdq, &fs, "after-split-window") == 0)
-		return (CMD_RETURN_WAIT);
+	hooks_insert(s->hooks, cmdq, &fs, "after-split-window");
+
 	return (CMD_RETURN_NORMAL);
 
 error:

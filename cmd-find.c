@@ -1006,7 +1006,7 @@ cmd_find_target(struct cmd_find_state *fs, struct cmd_find_state *current,
 
 	/* Mouse target is a plain = or {mouse}. */
 	if (strcmp(target, "=") == 0 || strcmp(target, "{mouse}") == 0) {
-		m = &cmdq->item->mouse;
+		m = &cmdq->mouse;
 		switch (type) {
 		case CMD_FIND_PANE:
 			fs->wp = cmd_mouse_pane(m, &fs->s, &fs->wl);

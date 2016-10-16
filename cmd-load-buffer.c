@@ -46,17 +46,24 @@ const struct cmd_entry cmd_load_buffer_entry = {
 	.exec = cmd_load_buffer_exec
 };
 
+struct cmd_load_buffer_data {
+	struct cmd_q	*cmdq;
+	char		*bufname;
+};
+
 static enum cmd_retval
 cmd_load_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 {
-	struct args	*args = self->args;
-	struct client	*c = cmdq->client;
-	struct session  *s;
-	FILE		*f;
-	const char	*path, *bufname, *cwd;
-	char		*pdata, *new_pdata, *cause, *file, resolved[PATH_MAX];
-	size_t		 psize;
-	int		 ch, error;
+	struct args			*args = self->args;
+	struct cmd_load_buffer_data	*cdata;
+	struct client			*c = cmdq->client;
+	struct session  		*s;
+	FILE				*f;
+	const char			*path, *bufname, *cwd;
+	char				*pdata, *new_pdata, *cause, *file;
+	char				 resolved[PATH_MAX];
+	size_t				 psize;
+	int				 ch, error;
 
 	bufname = NULL;
 	if (args_has(args, 'b'))
@@ -64,8 +71,12 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	path = args->argv[0];
 	if (strcmp(path, "-") == 0) {
+		cdata = xcalloc(1, sizeof *cdata);
+		cdata->cmdq = cmdq;
+		cdata->bufname = xstrdup(bufname);
+
 		error = server_set_stdin_callback(c, cmd_load_buffer_callback,
-		    (void *)bufname, &cause);
+		    cdata, &cause);
 		if (error != 0) {
 			cmdq_error(cmdq, "%s: %s", path, cause);
 			free(cause);
@@ -136,9 +147,9 @@ error:
 static void
 cmd_load_buffer_callback(struct client *c, int closed, void *data)
 {
-	const char	*bufname = data;
-	char		*pdata, *cause, *saved;
-	size_t		 psize;
+	struct cmd_load_buffer_data	*cdata = data;
+	char				*pdata, *cause, *saved;
+	size_t				 psize;
 
 	if (!closed)
 		return;
@@ -146,7 +157,7 @@ cmd_load_buffer_callback(struct client *c, int closed, void *data)
 
 	server_client_unref(c);
 	if (c->flags & CLIENT_DEAD)
-		return;
+		goto out;
 
 	psize = EVBUFFER_LENGTH(c->stdin_data);
 	if (psize == 0 || (pdata = malloc(psize + 1)) == NULL)
@@ -156,7 +167,7 @@ cmd_load_buffer_callback(struct client *c, int closed, void *data)
 	pdata[psize] = '\0';
 	evbuffer_drain(c->stdin_data, psize);
 
-	if (paste_set(pdata, psize, bufname, &cause) != 0) {
+	if (paste_set(pdata, psize, cdata->bufname, &cause) != 0) {
 		/* No context so can't use server_client_msg_error. */
 		if (~c->flags & CLIENT_UTF8) {
 			saved = cause;
@@ -168,7 +179,9 @@ cmd_load_buffer_callback(struct client *c, int closed, void *data)
 		free(pdata);
 		free(cause);
 	}
-
 out:
-	cmdq_continue(c->cmdq);
+	cdata->cmdq->flags &= ~CMD_Q_WAITING;
+
+	free(cdata->bufname);
+	free(cdata);
 }

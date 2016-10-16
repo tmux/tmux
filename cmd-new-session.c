@@ -312,14 +312,14 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 	}
 
 	if (!detached)
-		cmdq->client_exit = 0;
+		c->flags |= CLIENT_ATTACHED;
 
 	if (to_free != NULL)
 		free((void *)to_free);
 
 	cmd_find_from_session(&fs, s);
-	if (hooks_wait(s->hooks, cmdq, &fs, "after-new-session") == 0)
-		return (CMD_RETURN_WAIT);
+	hooks_insert(s->hooks, cmdq, &fs, "after-new-session");
+
 	return (CMD_RETURN_NORMAL);
 
 error:
