@@ -128,5 +128,8 @@
 
 - hooks
 	* more hooks for various things
-	* after-*/before-* hooks are a bit weird, particularly with targets
+	* finish after hooks for special commands
 	* multiple hooks with the same name
+	* finish hooks for notifys
+	* existing hooks should go via notifys
+	* for session_closed, if no sessions at all, perhaps fake up a temporary one
