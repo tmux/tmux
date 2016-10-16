@@ -112,7 +112,7 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 		 * Can't use session_detach as it will destroy session if this
 		 * makes it empty.
 		 */
-		notify_window_unlinked(s, wl->window);
+		notify_session_window("window-unlinked", s, wl->window);
 		wl->flags &= ~WINLINK_ALERTFLAGS;
 		winlink_stack_remove(&s->lastw, wl);
 		winlink_remove(&s->windows, wl);

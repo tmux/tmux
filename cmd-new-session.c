@@ -281,7 +281,7 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 		c->session = s;
 		server_client_set_key_table(c, NULL);
 		status_timer_start(c);
-		notify_attached_session_changed(c);
+		notify_client("client-session-changed", c);
 		session_update_activity(s, NULL);
 		gettimeofday(&s->last_attached_time, NULL);
 		server_redraw_client(c);

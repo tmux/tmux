@@ -105,7 +105,7 @@ cmd_attach_session(struct cmdq_item *item, int dflag, int rflag,
 		c->session = s;
 		server_client_set_key_table(c, NULL);
 		status_timer_start(c);
-		notify_attached_session_changed(c);
+		notify_client("client-session-changed", c);
 		session_update_activity(s, NULL);
 		gettimeofday(&s->last_attached_time, NULL);
 		server_redraw_client(c);
@@ -137,7 +137,7 @@ cmd_attach_session(struct cmdq_item *item, int dflag, int rflag,
 		c->session = s;
 		server_client_set_key_table(c, NULL);
 		status_timer_start(c);
-		notify_attached_session_changed(c);
+		notify_client("client-session-changed", c);
 		session_update_activity(s, NULL);
 		gettimeofday(&s->last_attached_time, NULL);
 		server_redraw_client(c);
@@ -145,7 +145,7 @@ cmd_attach_session(struct cmdq_item *item, int dflag, int rflag,
 
 		if (~c->flags & CLIENT_CONTROL)
 			proc_send(c->peer, MSG_READY, -1, NULL, 0);
-		hooks_run(c->session->hooks, c, NULL, "client-attached");
+		notify_client("client-attached", c);
 		c->flags |= CLIENT_ATTACHED;
 	}
 	recalculate_sizes();

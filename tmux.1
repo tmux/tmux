@@ -3238,6 +3238,8 @@ Run when a client is attached.
 Run when a client is detached
 .It client-resized
 Run when a client is resized.
+.It client-session-changed
+Run when a client's attached session is changed.
 .It pane-died
 Run when the program running in a pane exits, but
 .Ic remain-on-exit
@@ -3250,8 +3252,12 @@ Run when a new session created.
 Run when a session closed.
 .It session-renamed
 Run when a session is renamed.
+.It window-linked
+Run when a window is linked into a session.
 .It window-renamed
 Run when a window is renamed.
+.It window-unlinked
+Run when a window is unlinked from a session.
 .El
 .Pp
 Hooks are managed with these commands:
@@ -3471,6 +3477,7 @@ The following variables are available, where appropriate:
 .It Li "history_limit" Ta "" Ta "Maximum window history lines"
 .It Li "history_size" Ta "" Ta "Size of history in bytes"
 .It Li "hook" Ta "" Ta "Name of running hook, if any"
+.It Li "hook_pane" Ta "" Ta "ID of pane where hook was run, if any"
 .It Li "hook_session" Ta "" Ta "ID of session where hook was run, if any"
 .It Li "hook_session_name" Ta "" Ta "Name of session where hook was run, if any"
 .It Li "hook_window" Ta "" Ta "ID of window where hook was run, if any"

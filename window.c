@@ -390,7 +390,7 @@ window_set_name(struct window *w, const char *new_name)
 {
 	free(w->name);
 	w->name = xstrdup(new_name);
-	notify_window_renamed(w);
+	notify_window("window-renamed", w);
 }
 
 void
@@ -532,7 +532,7 @@ window_zoom(struct window_pane *wp)
 	w->saved_layout_root = w->layout_root;
 	layout_init(w, wp);
 	w->flags |= WINDOW_ZOOMED;
-	notify_window_layout_changed(w);
+	notify_window("window-layout-changed", w);
 
 	return (0);
 }
@@ -555,7 +555,7 @@ window_unzoom(struct window *w)
 		wp->saved_layout_cell = NULL;
 	}
 	layout_fix_panes(w, w->sx, w->sy);
-	notify_window_layout_changed(w);
+	notify_window("window-layout-changed", w);
 
 	return (0);
 }
