@@ -75,17 +75,12 @@ alerts_callback(__unused int fd, __unused short events, __unused void *arg)
 static void
 alerts_run_hook(struct session *s, struct winlink *wl, int flags)
 {
-	struct cmd_find_state	 fs;
-
-	if (cmd_find_from_winlink(&fs, s, wl) != 0)
-		return;
-
 	if (flags & WINDOW_BELL)
-		hooks_run(s->hooks, NULL, &fs, "alert-bell");
+		notify_winlink("alert-bell", s, wl);
 	if (flags & WINDOW_SILENCE)
-		hooks_run(s->hooks, NULL, &fs, "alert-silence");
+		notify_winlink("alert-silence", s, wl);
 	if (flags & WINDOW_ACTIVITY)
-		hooks_run(s->hooks, NULL, &fs, "alert-activity");
+		notify_winlink("alert-activity", s, wl);
 }
 
 static int
