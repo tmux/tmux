@@ -13,49 +13,49 @@ dist-hook:
 	grep "^#found_debug=" configure
 
 # Preprocessor flags.
-CPPFLAGS += @XOPEN_DEFINES@ -DTMUX_CONF="\"$(sysconfdir)/tmux.conf\""
+AM_CPPFLAGS = @XOPEN_DEFINES@ -DTMUX_CONF="\"$(sysconfdir)/tmux.conf\""
 
 # glibc as usual does things ass-backwards and hides useful things by default,
 # so everyone has to add this.
 if IS_GLIBC
-CFLAGS += -D_GNU_SOURCE
+AM_CFLAGS += -D_GNU_SOURCE
 endif
 
 # Set flags for gcc.
 if IS_GCC
-CFLAGS += -std=gnu99 -O2
+AM_CFLAGS += -std=gnu99 -O2
 if IS_DEBUG
-CFLAGS += -g
-CFLAGS += -Wno-long-long -Wall -W -Wformat=2
-CFLAGS += -Wmissing-prototypes -Wstrict-prototypes -Wmissing-declarations
-CFLAGS += -Wwrite-strings -Wshadow -Wpointer-arith -Wsign-compare
-CFLAGS += -Wundef -Wbad-function-cast -Winline -Wcast-align
-CFLAGS += -Wdeclaration-after-statement -Wno-pointer-sign -Wno-attributes
-CPPFLAGS += -DDEBUG
+AM_CFLAGS += -g
+AM_CFLAGS += -Wno-long-long -Wall -W -Wformat=2
+AM_CFLAGS += -Wmissing-prototypes -Wstrict-prototypes -Wmissing-declarations
+AM_CFLAGS += -Wwrite-strings -Wshadow -Wpointer-arith -Wsign-compare
+AM_CFLAGS += -Wundef -Wbad-function-cast -Winline -Wcast-align
+AM_CFLAGS += -Wdeclaration-after-statement -Wno-pointer-sign -Wno-attributes
+AM_CPPFLAGS += -DDEBUG
 endif
 if IS_COVERAGE
-CFLAGS += -g -O0 --coverage
-LDFLAGS += --coverage
+AM_CFLAGS += -g -O0 --coverage
+AM_LDFLAGS += --coverage
 endif
 if IS_PROFILE
-CFLAGS += -g -O0 -pg
-LDFLAGS += -pg
+AM_CFLAGS += -g -O0 -pg
+AM_LDFLAGS += -pg
 endif
-CPPFLAGS += -iquote.
+AM_CPPFLAGS += -iquote.
 endif
 
 # Set flags for Solaris.
 if IS_SUNOS
 if IS_GCC
-CPPFLAGS += -D_XPG6 -D__EXTENSIONS__ -D_POSIX_PTHREAD_SEMANTICS
+AM_CPPFLAGS += -D_XPG6 -D__EXTENSIONS__ -D_POSIX_PTHREAD_SEMANTICS
 else
-CPPFLAGS += -D_XPG4_2 -D__EXTENSIONS__ -D_POSIX_PTHREAD_SEMANTICS
+AM_CPPFLAGS += -D_XPG4_2 -D__EXTENSIONS__ -D_POSIX_PTHREAD_SEMANTICS
 endif
 endif
 
 # Set flags for Sun CC.
 if IS_SUNCC
-CFLAGS += -erroff=E_EMPTY_DECLARATION
+AM_CFLAGS += -erroff=E_EMPTY_DECLARATION
 endif
 
 # Set _LINUX_SOURCE_COMPAT for AIX for malloc(0).
@@ -65,7 +65,7 @@ endif
 
 # Set flags for NetBSD.
 if IS_NETBSD
-CPPFLAGS += -D_OPENBSD_SOURCE
+AM_CPPFLAGS += -D_OPENBSD_SOURCE
 endif
 
 # List of sources.
