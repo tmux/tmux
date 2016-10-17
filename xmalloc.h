@@ -20,7 +20,7 @@
 #define XMALLOC_H
 
 #if !defined(__bounded__)
-# define __bounded__(x, y, z)
+#define __bounded__(x, y, z)
 #endif
 
 void	*xmalloc(size_t);

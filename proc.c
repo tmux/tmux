@@ -190,7 +190,6 @@ proc_start(const char *name, struct event_base *base, int forkflag,
 	}
 
 	log_open(name);
-
 	setproctitle("%s (%s)", name, socket_path);
 
 	if (uname(&u) < 0)
