@@ -13,7 +13,7 @@ dist-hook:
 	grep "^#found_debug=" configure
 
 # Preprocessor flags.
-AM_CPPFLAGS = @XOPEN_DEFINES@ -DTMUX_CONF="\"$(sysconfdir)/tmux.conf\""
+AM_CPPFLAGS += @XOPEN_DEFINES@ -DTMUX_CONF="\"$(sysconfdir)/tmux.conf\""
 
 # glibc as usual does things ass-backwards and hides useful things by default,
 # so everyone has to add this.

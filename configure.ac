@@ -52,7 +52,7 @@ AC_ARG_ENABLE(
 )
 if test "x$enable_static" = xyes; then
 	test "x$PKG_CONFIG" != x && PKG_CONFIG="$PKG_CONFIG --static"
-	AM_LDFLAGS="-static"
+	AM_LDFLAGS="$AM_LDFLAGS -static"
 fi
 
 # Is this gcc?
