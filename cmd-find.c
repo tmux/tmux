@@ -990,13 +990,13 @@ cmd_find_target(struct cmd_find_state *fs, struct cmd_find_state *current,
 	/* Find current state. */
 	if (server_check_marked() && (flags & CMD_FIND_DEFAULT_MARKED)) {
 		fs->current = &marked_pane;
-		log_debug("    current is marked pane");
+		log_debug("%s: current is marked pane", __func__);
 	} else if (cmd_find_valid_state(&item->current)) {
 		fs->current = &item->current;
-		log_debug("    current is from queue");
+		log_debug("%s: current is from queue", __func__);
 	} else {
 		fs->current = current;
-		log_debug("    current is from argument");
+		log_debug("%s: current is from argument", __func__);
 	}
 	if (!cmd_find_empty_state(fs->current) &&
 	    !cmd_find_valid_state(fs->current))
@@ -1207,7 +1207,7 @@ current:
 
 error:
 	fs->current = NULL;
-	log_debug("    error");
+	log_debug("%s: error", __func__);
 
 	free(copy);
 	return (-1);
