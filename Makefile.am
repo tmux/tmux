@@ -10,7 +10,7 @@ EXTRA_DIST = \
 	compat.h tmux.h osdep-*.c xmalloc.h mdoc2man.awk tmux.1
 dist-hook:
 	make clean
-	grep "^#found_debug=" configure
+	grep "^#enable_debug=" configure
 
 # Preprocessor flags.
 AM_CPPFLAGS += @XOPEN_DEFINES@ -DTMUX_CONF="\"$(sysconfdir)/tmux.conf\""

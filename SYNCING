@@ -140,7 +140,7 @@ to compat/ as and when appropriate.
 Release tmux for next version
 =============================
 
-1. Comment the "found_debug=yes" line in configure.ac, since releases
+1. Comment the "enable_debug=yes" line in configure.ac, since releases
    don't have debugging enabled, otherwise make(1) aborts when
    preparing the distribution.
 
@@ -172,5 +172,5 @@ Release tmux for next version
    the Makefile.  Commit it, and run 'make' to replace %%VERSION%%.  Push
    the result out.
 
-8. Bump version in tmux/tmux.git configure.ac and uncomment "found_debug=yes" to
+8. Bump version in tmux/tmux.git configure.ac and uncomment "enable_debug=yes" to
    create a debug build by default.
