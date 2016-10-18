@@ -7,7 +7,7 @@ CLEANFILES = tmux.1.mdoc tmux.1.man
 # Distribution tarball options.
 EXTRA_DIST = \
 	CHANGES FAQ README TODO COPYING example_tmux.conf compat/*.[ch] \
-	compat.h tmux.h osdep-*.c xmalloc.h mdoc2man.awk tmux.1
+	osdep-*.c mdoc2man.awk tmux.1
 dist-hook:
 	make clean
 	grep "^#enable_debug=" configure
@@ -89,8 +89,8 @@ dist_tmux_SOURCES = \
 	cmd-detach-client.c \
 	cmd-display-message.c \
 	cmd-display-panes.c \
-	cmd-find.c \
 	cmd-find-window.c \
+	cmd-find.c \
 	cmd-if-shell.c \
 	cmd-join-pane.c \
 	cmd-kill-pane.c \
@@ -142,8 +142,9 @@ dist_tmux_SOURCES = \
 	cmd-wait-for.c \
 	cmd.c \
 	colour.c \
-	control.c \
+	compat.h \
 	control-notify.c \
+	control.c \
 	environ.c \
 	format.c \
 	grid-view.c \
@@ -177,6 +178,7 @@ dist_tmux_SOURCES = \
 	status.c \
 	style.c \
 	tmux.c \
+	tmux.h \
 	tty-acs.c \
 	tty-keys.c \
 	tty-term.c \
@@ -187,6 +189,7 @@ dist_tmux_SOURCES = \
 	window-copy.c \
 	window.c \
 	xmalloc.c \
+	xmalloc.h \
 	xterm-keys.c
 nodist_tmux_SOURCES = osdep-@PLATFORM@.c
 
