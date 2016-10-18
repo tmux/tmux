@@ -9,7 +9,6 @@ EXTRA_DIST = \
 	CHANGES FAQ README TODO COPYING example_tmux.conf compat/*.[ch] \
 	osdep-*.c mdoc2man.awk tmux.1
 dist-hook:
-	make clean
 	grep "^#enable_debug=" configure
 
 # Preprocessor flags.
