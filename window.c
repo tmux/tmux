@@ -970,7 +970,7 @@ window_pane_read_callback(__unused struct bufferevent *bufev, void *data)
 
 	input_parse(wp);
 
-	wp->pipe_off = size;
+	wp->pipe_off = EVBUFFER_LENGTH(evb);
 }
 
 static void
