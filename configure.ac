@@ -51,8 +51,8 @@ AC_ARG_ENABLE(
 	AC_HELP_STRING(--enable-static, create a static build)
 )
 if test "x$enable_static" = xyes; then
+	LDFLAGS="$LDFLAGS -static"
 	test "x$PKG_CONFIG" != x && PKG_CONFIG="$PKG_CONFIG --static"
-	AM_LDFLAGS="$AM_LDFLAGS -static"
 fi
 
 # Is this gcc?
@@ -129,7 +129,7 @@ PKG_CHECK_MODULES(
 	LIBEVENT,
 	libevent,
 	[
-		AM_CFLAGS="$LIBEVENT_CFLAGS $AM_CFLAGS"
+		CPPFLAGS="$LIBEVENT_CFLAGS $CPPFLAGS"
 		LIBS="$LIBEVENT_LIBS $LIBS"
 		found_libevent=yes
 	],
@@ -156,7 +156,7 @@ PKG_CHECK_MODULES(
 	LIBNCURSES,
 	ncurses,
 	[
-		AM_CFLAGS="$LIBNCURSES_CFLAGS $AM_CFLAGS"
+		CPPFLAGS="$LIBNCURSES_CFLAGS $CPPFLAGS"
 		LIBS="$LIBNCURSES_LIBS $LIBS"
 		found_ncurses=yes
 	],
@@ -646,7 +646,4 @@ AM_CONDITIONAL(IS_HPUX, test "x$PLATFORM" = xhpux)
 AM_CONDITIONAL(IS_UNKNOWN, test "x$PLATFORM" = xunknown)
 
 # autoconf should create a Makefile.
-AC_SUBST(AM_CFLAGS)
-AC_SUBST(AM_CPPFLAGS)
-AC_SUBST(AM_LDFLAGS)
 AC_OUTPUT(Makefile)
