@@ -1239,6 +1239,7 @@ enum cmdq_type {
 /* Command queue item. */
 typedef enum cmd_retval (*cmdq_cb) (struct cmdq_item *, void *);
 struct cmdq_item {
+	const char		*name;
 	struct cmdq_list	*queue;
 	struct cmdq_item	*next;
 
@@ -1779,7 +1780,8 @@ char		*cmd_list_print(struct cmd_list *);
 /* cmd-queue.c */
 struct cmdq_item *cmdq_get_command(struct cmd_list *, struct cmd_find_state *,
 		     struct mouse_event *, int);
-struct cmdq_item *cmdq_get_callback(cmdq_cb, void *);
+#define cmdq_get_callback(cb, data) cmdq_get_callback1(#cb, cb, data)
+struct cmdq_item *cmdq_get_callback1(const char *, cmdq_cb, void *);
 void		 cmdq_insert_after(struct cmdq_item *, struct cmdq_item *);
 void		 cmdq_append(struct client *, struct cmdq_item *);
 void printflike(3, 4) cmdq_format(struct cmdq_item *, const char *,

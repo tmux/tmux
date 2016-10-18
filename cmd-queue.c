@@ -112,6 +112,8 @@ cmdq_remove(struct cmdq_item *item)
 		cmd_list_free(item->cmdlist);
 
 	TAILQ_REMOVE(item->queue, item, entry);
+
+	free((void *)item->name);
 	free(item);
 }
 
@@ -147,10 +149,15 @@ cmdq_get_command(struct cmd_list *cmdlist, struct cmd_find_state *current,
 	struct cmdq_item	*item, *first = NULL, *last = NULL;
 	struct cmd		*cmd;
 	u_int			 group = cmdq_next_group();
+	char			*tmp;
 
 	TAILQ_FOREACH(cmd, &cmdlist->list, qentry) {
+		xasprintf(&tmp, "command[%s]", cmd->entry->name);
+
 		item = xcalloc(1, sizeof *item);
+		item->name = tmp;
 		item->type = CMDQ_COMMAND;
+
 		item->group = group;
 		item->flags = flags;
 
@@ -220,12 +227,17 @@ out:
 
 /* Get a callback for the command queue. */
 struct cmdq_item *
-cmdq_get_callback(cmdq_cb cb, void *data)
+cmdq_get_callback1(const char *name, cmdq_cb cb, void *data)
 {
 	struct cmdq_item	*item;
+	char			*tmp;
+
+	xasprintf(&tmp, "callback[%s]", name);
 
 	item = xcalloc(1, sizeof *item);
+	item->name = tmp;
 	item->type = CMDQ_CALLBACK;
+
 	item->group = 0;
 	item->flags = 0;
 
@@ -289,8 +301,8 @@ cmdq_next(struct client *c)
 		item = TAILQ_FIRST(queue);
 		if (item == NULL)
 			break;
-		log_debug("%s %s: type %d, flags %x", __func__, name,
-		    item->type, item->flags);
+		log_debug("%s %s: %s (%d), flags %x", __func__, name,
+		    item->name, item->type, item->flags);
 
 		/*
 		 * Any item with the waiting flag set waits until an external
