@@ -130,6 +130,7 @@ screen_write_flush(struct screen_write_ctx *ctx)
 		if (dirty == ctx->dirty)
 			break;
 	}
+	ctx->dirty = 0;
 
 	s->cx = cx;
 	s->cy = cy;
