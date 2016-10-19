@@ -169,7 +169,6 @@ session_create(const char *name, int argc, char **argv, const char *path,
 	}
 
 	log_debug("session %s created", s->name);
-	notify_session("session-created", s);
 
 	return (s);
 }

@@ -267,6 +267,7 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 		session_group_synchronize_to(s);
 		session_select(s, RB_MIN(winlinks, &s->windows)->idx);
 	}
+	notify_session("session-created", s);
 
 	/*
 	 * Set the client to the new session. If a command client exists, it is
