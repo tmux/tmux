@@ -296,7 +296,6 @@ key_bindings_init(void)
 		"bind -Tcopy-mode C-Up send -X scroll-up",
 		"bind -Tcopy-mode C-Down send -X scroll-down",
 
-		"bind -Tcopy-mode-vi C-b send -X page-up",
 		"bind -Tcopy-mode-vi C-c send -X cancel",
 		"bind -Tcopy-mode-vi C-d send -X halfpage-down",
 		"bind -Tcopy-mode-vi C-e send -X scroll-down",
