@@ -12,6 +12,13 @@ AC_CANONICAL_HOST
 # empty default.
 : ${CFLAGS=""}
 
+# Save user CPPFLAGS, CFLAGS and LDFLAGS. We need to change them because
+# AC_CHECK_HEADER doesn't give us any other way to update the include
+# paths. But for Makefile.am we want to use AM_CPPFLAGS and friends.
+SAVED_CFLAGS="$CFLAGS"
+SAVED_CPPFLAGS="$CPPFLAGS"
+SAVED_LDFLAGS="$LDFLAGS"
+
 # Set up the compiler in two different ways and say yes we may want to install.
 AC_PROG_CC
 AM_PROG_CC_C_O
@@ -51,8 +58,9 @@ AC_ARG_ENABLE(
 	AC_HELP_STRING(--enable-static, create a static build)
 )
 if test "x$enable_static" = xyes; then
-	LDFLAGS="$LDFLAGS -static"
 	test "x$PKG_CONFIG" != x && PKG_CONFIG="$PKG_CONFIG --static"
+	AM_LDFLAGS="-static $AM_LDFLAGS"
+	LDFLAGS="$AM_LDFLAGS $SAVED_LDFLAGS"
 fi
 
 # Is this gcc?
@@ -129,7 +137,8 @@ PKG_CHECK_MODULES(
 	LIBEVENT,
 	libevent,
 	[
-		CPPFLAGS="$LIBEVENT_CFLAGS $CPPFLAGS"
+		AM_CFLAGS="$LIBEVENT_CFLAGS $AM_CFLAGS"
+		CFLAGS="$AM_CFLAGS $SAVED_CFLAGS"
 		LIBS="$LIBEVENT_LIBS $LIBS"
 		found_libevent=yes
 	],
@@ -156,7 +165,8 @@ PKG_CHECK_MODULES(
 	LIBNCURSES,
 	ncurses,
 	[
-		CPPFLAGS="$LIBNCURSES_CFLAGS $CPPFLAGS"
+		AM_CFLAGS="$LIBNCURSES_CFLAGS $AM_CFLAGS"
+		CFLAGS="$AM_CFLAGS $SAVED_CFLAGS"
 		LIBS="$LIBNCURSES_LIBS $LIBS"
 		found_ncurses=yes
 	],
@@ -644,6 +654,15 @@ AM_CONDITIONAL(IS_OPENBSD, test "x$PLATFORM" = xopenbsd)
 AM_CONDITIONAL(IS_SUNOS, test "x$PLATFORM" = xsunos)
 AM_CONDITIONAL(IS_HPUX, test "x$PLATFORM" = xhpux)
 AM_CONDITIONAL(IS_UNKNOWN, test "x$PLATFORM" = xunknown)
+
+# Save our CFLAGS/CPPFLAGS/LDFLAGS for the Makefile and restore the old user
+# variables.
+AC_SUBST(AM_CPPFLAGS)
+CPPFLAGS="$SAVED_CPPFLAGS"
+AC_SUBST(AM_CFLAGS)
+CFLAGS="$SAVED_CFLAGS"
+AC_SUBST(AM_LDFLAGS)
+LDFLAGS="$SAVED_LDFLAGS"
 
 # autoconf should create a Makefile.
 AC_OUTPUT(Makefile)
