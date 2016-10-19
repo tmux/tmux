@@ -851,6 +851,7 @@ server_client_loop(void)
 	struct client		*c;
 	struct window		*w;
 	struct window_pane	*wp;
+	int			 focus;
 
 	TAILQ_FOREACH(c, &clients, entry) {
 		server_client_check_exit(c);
@@ -864,11 +865,13 @@ server_client_loop(void)
 	 * Any windows will have been redrawn as part of clients, so clear
 	 * their flags now. Also check pane focus and resize.
 	 */
+	focus = options_get_number(global_options, "focus-events");
 	RB_FOREACH(w, windows, &windows) {
 		w->flags &= ~WINDOW_REDRAW;
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (wp->fd != -1) {
-				server_client_check_focus(wp);
+				if (focus)
+					server_client_check_focus(wp);
 				server_client_check_resize(wp);
 			}
 			wp->flags &= ~PANE_REDRAW;
@@ -944,10 +947,6 @@ server_client_check_focus(struct window_pane *wp)
 {
 	struct client	*c;
 	int		 push;
-
-	/* Are focus events off? */
-	if (!options_get_number(global_options, "focus-events"))
-		return;
 
 	/* Do we need to push the focus state? */
 	push = wp->flags & PANE_FOCUSPUSH;

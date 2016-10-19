@@ -891,12 +891,16 @@ struct window {
 #define WINDOW_STYLECHANGED 0x8000
 #define WINDOW_ALERTFLAGS (WINDOW_BELL|WINDOW_ACTIVITY|WINDOW_SILENCE)
 
+	int		 alerts_queued;
+	TAILQ_ENTRY(window) alerts_entry;
+
 	struct options	*options;
 
 	struct grid_cell style;
 	struct grid_cell active_style;
 
 	u_int		 references;
+	TAILQ_HEAD(, winlink) winlinks;
 
 	RB_ENTRY(window) entry;
 };
@@ -905,6 +909,7 @@ RB_HEAD(windows, window);
 /* Entry on local window list. */
 struct winlink {
 	int		 idx;
+	struct session	*session;
 	struct window	*window;
 
 	size_t		 status_width;
@@ -918,6 +923,7 @@ struct winlink {
 #define WINLINK_ALERTFLAGS (WINLINK_BELL|WINLINK_ACTIVITY|WINLINK_SILENCE)
 
 	RB_ENTRY(winlink) entry;
+	TAILQ_ENTRY(winlink) wentry;
 	TAILQ_ENTRY(winlink) sentry;
 };
 RB_HEAD(winlinks, winlink);
@@ -992,6 +998,7 @@ struct session {
 
 #define SESSION_UNATTACHED 0x1	/* not attached to any clients */
 #define SESSION_PASTING 0x2
+#define SESSION_ALERTED 0x4
 	int		 flags;
 
 	u_int		 attached;
@@ -2071,7 +2078,6 @@ struct window	*window_create(u_int, u_int);
 struct window	*window_create_spawn(const char *, int, char **, const char *,
 		     const char *, const char *, struct environ *,
 		     struct termios *, u_int, u_int, u_int, char **);
-void		 window_destroy(struct window *);
 struct window_pane *window_get_active_at(struct window *, u_int, u_int);
 struct window_pane *window_find_string(struct window *, const char *);
 int		 window_has_pane(struct window *, struct window_pane *);
