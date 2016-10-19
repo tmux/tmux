@@ -60,6 +60,8 @@ static u_int	next_window_pane_id;
 static u_int	next_window_id;
 static u_int	next_active_point;
 
+static void	window_destroy(struct window *);
+
 static struct window_pane *window_pane_create(struct window *, u_int, u_int,
 		    u_int);
 static void	window_pane_destroy(struct window_pane *);
@@ -184,6 +186,11 @@ winlink_add(struct winlinks *wwl, int idx)
 void
 winlink_set_window(struct winlink *wl, struct window *w)
 {
+	if (wl->window != NULL) {
+		TAILQ_REMOVE(&wl->window->winlinks, wl, wentry);
+		window_remove_ref(w);
+	}
+	TAILQ_INSERT_TAIL(&w->winlinks, wl, wentry);
 	wl->window = w;
 	w->references++;
 }
@@ -193,12 +200,14 @@ winlink_remove(struct winlinks *wwl, struct winlink *wl)
 {
 	struct window	*w = wl->window;
 
+	if (w != NULL) {
+		TAILQ_REMOVE(&w->winlinks, wl, wentry);
+		window_remove_ref(w);
+	}
+
 	RB_REMOVE(winlinks, wwl, wl);
 	free(wl->status_text);
 	free(wl);
-
-	if (w != NULL)
-		window_remove_ref(w);
 }
 
 struct winlink *
@@ -313,6 +322,7 @@ window_create(u_int sx, u_int sy)
 	w->options = options_create(global_w_options);
 
 	w->references = 0;
+	TAILQ_INIT(&w->winlinks);
 
 	w->id = next_window_id++;
 	RB_INSERT(windows, &windows, w);
@@ -350,9 +360,12 @@ window_create_spawn(const char *name, int argc, char **argv, const char *path,
 	return (w);
 }
 
-void
+static void
 window_destroy(struct window *w)
 {
+	if (!TAILQ_EMPTY(&w->winlinks))
+		fatalx("window destroyed with winlinks");
+
 	RB_REMOVE(windows, &windows, w);
 
 	if (w->layout_root != NULL)
@@ -1421,19 +1434,13 @@ window_pane_find_right(struct window_pane *wp)
 void
 winlink_clear_flags(struct winlink *wl)
 {
-	struct session	*s;
-	struct winlink	*wl_loop;
+	struct winlink	*loop;
 
-	RB_FOREACH(s, sessions, &sessions) {
-		RB_FOREACH(wl_loop, winlinks, &s->windows) {
-			if (wl_loop->window != wl->window)
-				continue;
-			if ((wl_loop->flags & WINLINK_ALERTFLAGS) == 0)
-				continue;
-
-			wl_loop->flags &= ~WINLINK_ALERTFLAGS;
-			wl_loop->window->flags &= ~WINDOW_ALERTFLAGS;
-			server_status_session(s);
+	wl->window->flags &= ~WINDOW_ALERTFLAGS;
+	TAILQ_FOREACH(loop, &wl->window->winlinks, wentry) {
+		if ((loop->flags & WINLINK_ALERTFLAGS) != 0) {
+			loop->flags &= ~WINLINK_ALERTFLAGS;
+			server_status_session(loop->session);
 		}
 	}
 }

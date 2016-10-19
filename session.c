@@ -337,6 +337,7 @@ session_new(struct session *s, const char *name, int argc, char **argv,
 		xasprintf(cause, "index in use: %d", idx);
 		return (NULL);
 	}
+	wl->session = s;
 
 	env = environ_create();
 	environ_copy(global_environ, env);
@@ -373,6 +374,7 @@ session_attach(struct session *s, struct window *w, int idx, char **cause)
 		xasprintf(cause, "index in use: %d", idx);
 		return (NULL);
 	}
+	wl->session = s;
 	winlink_set_window(wl, w);
 	notify_session_window("window-linked", s, w);
 
@@ -409,8 +411,8 @@ session_has(struct session *s, struct window *w)
 {
 	struct winlink	*wl;
 
-	RB_FOREACH(wl, winlinks, &s->windows) {
-		if (wl->window == w)
+	TAILQ_FOREACH(wl, &w->winlinks, wentry) {
+		if (wl->session == s)
 			return (1);
 	}
 	return (0);
@@ -679,6 +681,7 @@ session_group_synchronize1(struct session *target, struct session *s)
 	/* Link all the windows from the target. */
 	RB_FOREACH(wl, winlinks, ww) {
 		wl2 = winlink_add(&s->windows, wl->idx);
+		wl2->session = s;
 		winlink_set_window(wl2, wl->window);
 		notify_session_window("window-linked", s, wl2->window);
 		wl2->flags |= wl->flags & WINLINK_ALERTFLAGS;
@@ -729,6 +732,7 @@ session_renumber_windows(struct session *s)
 	/* Go through the winlinks and assign new indexes. */
 	RB_FOREACH(wl, winlinks, &old_wins) {
 		wl_new = winlink_add(&s->windows, new_idx);
+		wl_new->session = s;
 		winlink_set_window(wl_new, wl->window);
 		wl_new->flags |= wl->flags & WINLINK_ALERTFLAGS;
 
