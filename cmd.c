@@ -653,8 +653,8 @@ char *
 cmd_template_replace(const char *template, const char *s, int idx)
 {
 	char		 ch, *buf;
-	const char	*ptr;
-	int		 replaced;
+	const char	*ptr, *cp;
+	int		 replaced, quoted;
 	size_t		 len;
 
 	if (strchr(template, '%') == NULL)
@@ -676,9 +676,17 @@ cmd_template_replace(const char *template, const char *s, int idx)
 			}
 			ptr++;
 
-			len += strlen(s);
-			buf = xrealloc(buf, len + 1);
-			strlcat(buf, s, len + 1);
+			quoted = (*ptr == '%');
+			if (quoted)
+				ptr++;
+
+			buf = xrealloc(buf, len + (strlen(s) * 2) + 1);
+			for (cp = s; *cp != '\0'; cp++) {
+				if (quoted && *cp == '"')
+					buf[len++] = '\\';
+				buf[len++] = *cp;
+			}
+			buf[len] = '\0';
 			continue;
 		}
 		buf = xrealloc(buf, len + 2);
