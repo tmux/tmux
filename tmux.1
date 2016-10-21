@@ -3151,6 +3151,7 @@ option.
 .Xc
 If this option is set, searches will wrap around the end of the pane contents.
 The default is on.
+.Pp
 .It Xo Ic xterm-keys
 .Op Ic on | off
 .Xc
@@ -3161,7 +3162,6 @@ will generate
 function key sequences; these have a number included to indicate modifiers such
 as Shift, Alt or Ctrl.
 The default is off.
-.Pp
 .El
 .It Xo Ic show-options
 .Op Fl gqsvw
@@ -3775,6 +3775,10 @@ Up to nine prompt responses may be replaced
 to
 .Ql %9
 .Pc .
+.Ql %%%
+is like
+.Ql %%
+but any quotation marks are escaped.
 .Pp
 .Fl 1
 makes the prompt only accept one key press, in this case the resulting input
