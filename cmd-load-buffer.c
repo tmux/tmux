@@ -73,7 +73,9 @@ cmd_load_buffer_exec(struct cmd *self, struct cmdq_item *item)
 	if (strcmp(path, "-") == 0) {
 		cdata = xcalloc(1, sizeof *cdata);
 		cdata->item = item;
-		cdata->bufname = xstrdup(bufname);
+
+		if (bufname != NULL)
+			cdata->bufname = xstrdup(bufname);
 
 		error = server_set_stdin_callback(c, cmd_load_buffer_callback,
 		    cdata, &cause);
