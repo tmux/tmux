@@ -450,8 +450,11 @@ cmd_prepare_state_flag(char c, const char *target, enum cmd_entry_flag flag,
 	log_debug("%s: flag %c %d %#x", __func__, c, flag, targetflags);
 
 	error = cmd_find_current(&current, item, targetflags);
-	if (error != 0 && ~targetflags & CMD_FIND_QUIET)
-		return (-1);
+	if (error != 0) {
+		if (~targetflags & CMD_FIND_QUIET)
+			return (-1);
+		cmd_find_clear_state(&current, NULL, 0);
+	}
 	if (!cmd_find_empty_state(&current) && !cmd_find_valid_state(&current))
 		fatalx("invalid current state");
 
@@ -466,8 +469,8 @@ cmd_prepare_state_flag(char c, const char *target, enum cmd_entry_flag flag,
 	case CMD_SESSION_WITHPANE:
 		error = cmd_find_target(fs, &current, item, target,
 		    CMD_FIND_SESSION, targetflags);
-		if (error != 0 && ~targetflags & CMD_FIND_QUIET)
-			return (-1);
+		if (error != 0)
+			goto error;
 		break;
 	case CMD_MOVEW_R:
 		error = cmd_find_target(fs, &current, item, target,
@@ -481,20 +484,26 @@ cmd_prepare_state_flag(char c, const char *target, enum cmd_entry_flag flag,
 	case CMD_WINDOW_INDEX:
 		error = cmd_find_target(fs, &current, item, target,
 		    CMD_FIND_WINDOW, targetflags);
-		if (error != 0 && ~targetflags & CMD_FIND_QUIET)
-			return (-1);
+		if (error != 0)
+			goto error;
 		break;
 	case CMD_PANE:
 	case CMD_PANE_CANFAIL:
 	case CMD_PANE_MARKED:
 		error = cmd_find_target(fs, &current, item, target,
 		    CMD_FIND_PANE, targetflags);
-		if (error != 0 && ~targetflags & CMD_FIND_QUIET)
-			return (-1);
+		if (error != 0)
+			goto error;
 		break;
 	default:
 		fatalx("unknown %cflag %d", c, flag);
 	}
+	return (0);
+
+error:
+	if (~targetflags & CMD_FIND_QUIET)
+		return (-1);
+	cmd_find_clear_state(fs, NULL, 0);
 	return (0);
 }
 
