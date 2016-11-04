@@ -93,7 +93,7 @@ struct tmuxproc;
 /* Special key codes. */
 #define KEYC_NONE 0xffff00000000ULL
 #define KEYC_UNKNOWN 0xfffe00000000ULL
-#define KEYC_BASE 0x100000000000ULL
+#define KEYC_BASE 0x000010000000ULL
 
 /* Key modifier bits. */
 #define KEYC_ESCAPE 0x200000000000ULL
