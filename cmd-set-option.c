@@ -187,6 +187,8 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 	/* Start or stop timers if necessary. */
 	if (strcmp(oe->name, "automatic-rename") == 0) {
 		RB_FOREACH(w, windows, &windows) {
+			if (w->active == NULL)
+				continue;
 			if (options_get_number(w->options, "automatic-rename"))
 				w->active->flags |= PANE_CHANGED;
 		}
