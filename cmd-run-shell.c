@@ -62,7 +62,7 @@ cmd_run_shell_print(struct job *job, const char *msg)
 
 	if (cdata->wp_id != -1)
 		wp = window_pane_find_by_id(cdata->wp_id);
-	if (wp == NULL) {
+	if (cdata->item != NULL && wp == NULL) {
 		cmdq_print(cdata->item, "%s", msg);
 		return;
 	}
@@ -99,11 +99,6 @@ cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 
 	cdata = xcalloc(1, sizeof *cdata);
 	cdata->cmd = shellcmd;
-
-	if (args_has(args, 't') && wp != NULL)
-		cdata->wp_id = wp->id;
-	else
-		cdata->wp_id = -1;
 
 	if (args_has(args, 't') && wp != NULL)
 		cdata->wp_id = wp->id;
