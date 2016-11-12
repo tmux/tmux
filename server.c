@@ -196,8 +196,10 @@ server_loop(void)
 
 	do {
 		items = cmdq_next(NULL);
-		TAILQ_FOREACH(c, &clients, entry)
-		    items += cmdq_next(c);
+		TAILQ_FOREACH(c, &clients, entry) {
+			if (c->flags & CLIENT_IDENTIFIED)
+				items += cmdq_next(c);
+		}
 	} while (items != 0);
 
 	server_client_loop();
