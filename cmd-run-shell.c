@@ -59,12 +59,20 @@ cmd_run_shell_print(struct job *job, const char *msg)
 {
 	struct cmd_run_shell_data	*cdata = job->data;
 	struct window_pane		*wp = NULL;
+	struct cmd_find_state		 fs;
 
 	if (cdata->wp_id != -1)
 		wp = window_pane_find_by_id(cdata->wp_id);
-	if (cdata->item != NULL && wp == NULL) {
-		cmdq_print(cdata->item, "%s", msg);
-		return;
+	if (wp == NULL) {
+		if (cdata->item != NULL) {
+			cmdq_print(cdata->item, "%s", msg);
+			return;
+		}
+		if (cmd_find_current (&fs, NULL, CMD_FIND_QUIET) != 0)
+			return;
+		wp = fs.wp;
+		if (wp == NULL)
+			return;
 	}
 
 	if (window_pane_set_mode(wp, &window_copy_mode) == 0)
