@@ -49,6 +49,8 @@ cmd_rotate_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct layout_cell	*lc;
 	u_int			 sx, sy, xoff, yoff;
 
+	server_unzoom_window(w);
+
 	if (args_has(self->args, 'D')) {
 		wp = TAILQ_LAST(&w->panes, window_panes);
 		TAILQ_REMOVE(&w->panes, wp, entry);
