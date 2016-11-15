@@ -73,7 +73,7 @@ static void	tty_default_attributes(struct tty *, const struct window_pane *,
 #define tty_use_acs(tty) \
 	(tty_term_has((tty)->term, TTYC_ACSC) && !((tty)->flags & TTY_UTF8))
 #define tty_use_margin(tty) \
-	((tty)->term_type == TTY_VT420)
+	(0 && (tty)->term_type == TTY_VT420)
 
 #define tty_pane_full_width(tty, ctx) \
 	((ctx)->xoff == 0 && screen_size_x((ctx)->wp->screen) >= (tty)->sx)
