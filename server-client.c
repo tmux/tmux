@@ -421,7 +421,7 @@ have_event:
 		m->wp = -1;
 
 	/* Stop dragging if needed. */
-	if (type != DRAG && c->tty.mouse_drag_flag) {
+	if (type != DRAG && type != WHEEL && c->tty.mouse_drag_flag) {
 		if (c->tty.mouse_drag_release != NULL)
 			c->tty.mouse_drag_release(c, m);
 
