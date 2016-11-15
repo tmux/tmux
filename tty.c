@@ -21,6 +21,7 @@
 
 #include <netinet/in.h>
 
+#include <curses.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <resolv.h>
@@ -54,6 +55,7 @@ static void	tty_colours_bg(struct tty *, const struct grid_cell *);
 
 static void	tty_region_pane(struct tty *, const struct tty_ctx *, u_int,
 		    u_int);
+static void	tty_margin_pane(struct tty *, const struct tty_ctx *);
 static int	tty_large_region(struct tty *, const struct tty_ctx *);
 static int	tty_fake_bce(const struct tty *, const struct window_pane *,
 		    u_int);
@@ -70,6 +72,8 @@ static void	tty_default_attributes(struct tty *, const struct window_pane *,
 
 #define tty_use_acs(tty) \
 	(tty_term_has((tty)->term, TTYC_ACSC) && !((tty)->flags & TTY_UTF8))
+#define tty_use_margin(tty) \
+	((tty)->term_type == TTY_VT420)
 
 #define tty_pane_full_width(tty, ctx) \
 	((ctx)->xoff == 0 && screen_size_x((ctx)->wp->screen) >= (tty)->sx)
@@ -110,7 +114,9 @@ tty_init(struct tty *tty, struct client *c, int fd, char *term)
 	tty->ccolour = xstrdup("");
 
 	tty->flags = 0;
+
 	tty->term_flags = 0;
+	tty->term_type = TTY_UNKNOWN;
 
 	return (0);
 }
@@ -138,8 +144,8 @@ tty_resize(struct tty *tty)
 	tty->cx = UINT_MAX;
 	tty->cy = UINT_MAX;
 
-	tty->rupper = UINT_MAX;
-	tty->rlower = UINT_MAX;
+	tty->rupper = tty->rleft = UINT_MAX;
+	tty->rlower = tty->rright = UINT_MAX;
 
 	/*
 	 * If the terminal has been started, reset the actual scroll region and
@@ -148,13 +154,15 @@ tty_resize(struct tty *tty)
 	if (tty->flags & TTY_STARTED) {
 		tty_cursor(tty, 0, 0);
 		tty_region(tty, 0, tty->sy - 1);
+		tty_margin(tty, 0, tty->sx - 1);
 	}
 
 	return (1);
 }
 
 int
-tty_set_size(struct tty *tty, u_int sx, u_int sy) {
+tty_set_size(struct tty *tty, u_int sx, u_int sy)
+{
 	if (sx == tty->sx && sy == tty->sy)
 		return (0);
 	tty->sx = sx;
@@ -248,13 +256,14 @@ tty_start_tty(struct tty *tty)
 			tty->flags |= TTY_FOCUS;
 			tty_puts(tty, "\033[?1004h");
 		}
+		tty_puts(tty, "\033[c");
 	}
 
 	tty->cx = UINT_MAX;
 	tty->cy = UINT_MAX;
 
-	tty->rlower = UINT_MAX;
-	tty->rupper = UINT_MAX;
+	tty->rupper = tty->rleft = UINT_MAX;
+	tty->rlower = tty->rright = UINT_MAX;
 
 	tty->mode = MODE_CURSOR;
 
@@ -315,6 +324,8 @@ tty_stop_tty(struct tty *tty)
 		}
 	}
 
+	if (tty_use_margin(tty))
+		tty_raw(tty, "\033[?69l"); /* DECLRMM */
 	tty_raw(tty, tty_term_string(tty->term, TTYC_RMCUP));
 
 	setblocking(tty->fd, 1);
@@ -350,6 +361,15 @@ tty_free(struct tty *tty)
 	free(tty->ccolour);
 	free(tty->path);
 	free(tty->termname);
+}
+
+void
+tty_set_type(struct tty *tty, int type)
+{
+	tty->term_type = type;
+
+	if (tty_use_margin(tty))
+		tty_puts(tty, "\033[?69h"); /* DECLRMM */
 }
 
 void
@@ -835,6 +855,7 @@ tty_cmd_insertline(struct tty *tty, const struct tty_ctx *ctx)
 	tty_default_attributes(tty, ctx->wp, ctx->bg);
 
 	tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
+	tty_margin_pane(tty, ctx);
 	tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
 
 	tty_emulate_repeat(tty, TTYC_IL, TTYC_IL1, ctx->num);
@@ -854,6 +875,7 @@ tty_cmd_deleteline(struct tty *tty, const struct tty_ctx *ctx)
 	tty_default_attributes(tty, ctx->wp, ctx->bg);
 
 	tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
+	tty_margin_pane(tty, ctx);
 	tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
 
 	tty_emulate_repeat(tty, TTYC_DL, TTYC_DL1, ctx->num);
@@ -930,6 +952,7 @@ tty_cmd_reverseindex(struct tty *tty, const struct tty_ctx *ctx)
 	tty_attributes(tty, &grid_default_cell, ctx->wp);
 
 	tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
+	tty_margin_pane(tty, ctx);
 	tty_cursor_pane(tty, ctx, ctx->ocx, ctx->orupper);
 
 	tty_putcode(tty, TTYC_RI);
@@ -943,7 +966,7 @@ tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 	if (ctx->ocy != ctx->orlower)
 		return;
 
-	if (!tty_pane_full_width(tty, ctx) ||
+	if ((!tty_pane_full_width(tty, ctx) && !tty_use_margin(tty)) ||
 	    tty_fake_bce(tty, wp, ctx->bg) ||
 	    !tty_term_has(tty->term, TTYC_CSR)) {
 		if (tty_large_region(tty, ctx))
@@ -954,17 +977,30 @@ tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 	}
 
 	/*
-	 * If this line wrapped naturally (ctx->num is nonzero), don't do
-	 * anything - the cursor can just be moved to the last cell and wrap
-	 * naturally.
+	 * If this line wrapped naturally (ctx->num is nonzero) and we are not
+	 * using margins, don't do anything - the cursor can just be moved
+	 * to the last cell and wrap naturally.
 	 */
-	if (ctx->num && !(tty->term->flags & TERM_EARLYWRAP))
+	if (!tty_use_margin(tty) &&
+	    ctx->num != 0 &&
+	    !(tty->term->flags & TERM_EARLYWRAP)) {
 		return;
+	}
 
 	tty_attributes(tty, &grid_default_cell, wp);
 
 	tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
-	tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
+	tty_margin_pane(tty, ctx);
+
+	/*
+	 * If we want to wrap a pane, the cursor needs to be exactly on the
+	 * right of the region. But if the pane isn't on the right, it may be
+	 * off the edge - if so, move the cursor back to the right.
+	 */
+	if (ctx->xoff + ctx->ocx > tty->rright)
+		tty_cursor(tty, tty->rright, ctx->yoff + ctx->ocy);
+	else
+		tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
 
 	tty_putc(tty, '\n');
 }
@@ -979,6 +1015,7 @@ tty_cmd_clearendofscreen(struct tty *tty, const struct tty_ctx *ctx)
 	tty_default_attributes(tty, wp, ctx->bg);
 
 	tty_region_pane(tty, ctx, 0, screen_size_y(s) - 1);
+	tty_margin_pane(tty, ctx);
 	tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
 
 	if (tty_pane_full_width(tty, ctx) &&
@@ -1014,6 +1051,7 @@ tty_cmd_clearstartofscreen(struct tty *tty, const struct tty_ctx *ctx)
 	tty_attributes(tty, &grid_default_cell, wp);
 
 	tty_region_pane(tty, ctx, 0, screen_size_y(s) - 1);
+	tty_margin_pane(tty, ctx);
 	tty_cursor_pane(tty, ctx, 0, 0);
 
 	if (tty_pane_full_width(tty, ctx) &&
@@ -1043,6 +1081,7 @@ tty_cmd_clearscreen(struct tty *tty, const struct tty_ctx *ctx)
 	tty_default_attributes(tty, wp, ctx->bg);
 
 	tty_region_pane(tty, ctx, 0, screen_size_y(s) - 1);
+	tty_margin_pane(tty, ctx);
 	tty_cursor_pane(tty, ctx, 0, 0);
 
 	if (tty_pane_full_width(tty, ctx) &&
@@ -1073,6 +1112,7 @@ tty_cmd_alignmenttest(struct tty *tty, const struct tty_ctx *ctx)
 	tty_attributes(tty, &grid_default_cell, wp);
 
 	tty_region_pane(tty, ctx, 0, screen_size_y(s) - 1);
+	tty_margin_pane(tty, ctx);
 
 	for (j = 0; j < screen_size_y(s); j++) {
 		tty_cursor_pane(tty, ctx, 0, j);
@@ -1090,6 +1130,7 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 
 	if (ctx->ocy == ctx->orlower)
 		tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
+	tty_margin_pane(tty, ctx);
 
 	/* Is the cursor in the very last position? */
 	width = ctx->cell->data.width;
@@ -1247,6 +1288,32 @@ tty_region(struct tty *tty, u_int rupper, u_int rlower)
 		tty_cursor(tty, 0, tty->cy);
 
 	tty_putcode2(tty, TTYC_CSR, tty->rupper, tty->rlower);
+	tty_cursor(tty, 0, 0);
+}
+
+/* Set margin inside pane. */
+static void
+tty_margin_pane(struct tty *tty, const struct tty_ctx *ctx)
+{
+	tty_margin(tty, ctx->xoff, ctx->xoff + ctx->wp->sx - 1);
+}
+
+/* Set margin at absolute position. */
+void
+tty_margin(struct tty *tty, u_int rleft, u_int rright)
+{
+	char s[64];
+
+	if (!tty_use_margin(tty))
+		return;
+	if (tty->rleft == rleft && tty->rright == rright)
+		return;
+
+	tty->rleft = rleft;
+	tty->rright = rright;
+
+	snprintf(s, sizeof s, "\033[%u;%us", rleft + 1, rright + 1);
+	tty_puts(tty, s);
 	tty_cursor(tty, 0, 0);
 }
 

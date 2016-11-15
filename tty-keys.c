@@ -44,6 +44,8 @@ static int	tty_keys_next1(struct tty *, const char *, size_t, key_code *,
 		    size_t *, int);
 static void	tty_keys_callback(int, short, void *);
 static int	tty_keys_mouse(struct tty *, const char *, size_t, size_t *);
+static int	tty_keys_device_attributes(struct tty *, const char *, size_t,
+		    size_t *);
 
 /* Default raw keys. */
 struct tty_default_key_raw {
@@ -537,6 +539,17 @@ tty_keys_next(struct tty *tty)
 		return (0);
 	log_debug("keys are %zu (%.*s)", len, (int)len, buf);
 
+	/* Is this a device attributes response? */
+	switch (tty_keys_device_attributes(tty, buf, len, &size)) {
+	case 0:		/* yes */
+		key = KEYC_UNKNOWN;
+		goto complete_key;
+	case -1:	/* no, or not valid */
+		break;
+	case 1:		/* partial */
+		goto partial_key;
+	}
+
 	/* Is this a mouse key press? */
 	switch (tty_keys_mouse(tty, buf, len, &size)) {
 	case 0:		/* yes */
@@ -812,6 +825,87 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size)
 	m->b = b;
 	m->sgr_type = sgr_type;
 	m->sgr_b = sgr_b;
+
+	return (0);
+}
+
+/*
+ * Handle device attributes input. Returns 0 for success, -1 for failure, 1 for
+ * partial.
+ */
+static int
+tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
+    size_t *size)
+{
+	u_int		 i, a, b;
+	char		 tmp[64], *endptr;
+	const char	*s;
+
+	*size = 0;
+
+	/* First three bytes are always \033[?. */
+	if (buf[0] != '\033')
+		return (-1);
+	if (len == 1)
+		return (1);
+	if (buf[1] != '[')
+		return (-1);
+	if (len == 2)
+		return (1);
+	if (buf[2] != '?')
+		return (-1);
+	if (len == 3)
+		return (1);
+
+	/* Copy the rest up to a 'c'. */
+	for (i = 0; i < (sizeof tmp) - 1 && buf[3 + i] != 'c'; i++) {
+		if (3 + i == len)
+			return (1);
+		tmp[i] = buf[3 + i];
+	}
+	if (i == (sizeof tmp) - 1)
+		return (-1);
+	tmp[i] = '\0';
+	*size = 4 + i;
+
+	/* Convert version numbers. */
+	a = strtoul(tmp, &endptr, 10);
+	if (*endptr == ';') {
+		b = strtoul(endptr + 1, &endptr, 10);
+		if (*endptr != '\0' && *endptr != ';')
+			b = 0;
+	} else
+		a = b = 0;
+
+	s = "UNKNOWN";
+	switch (a) {
+	case 1:
+		if (b == 2) {
+			tty_set_type(tty, TTY_VT100);
+			s = "VT100";
+		} else if (b == 0) {
+			tty_set_type(tty, TTY_VT101);
+			s = "VT101";
+		}
+		break;
+	case 6:
+		tty_set_type(tty, TTY_VT102);
+		s = "VT102";
+		break;
+	case 62:
+		tty_set_type(tty, TTY_VT220);
+		s = "VT220";
+		break;
+	case 63:
+		tty_set_type(tty, TTY_VT320);
+		s = "VT320";
+		break;
+	case 64:
+		tty_set_type(tty, TTY_VT420);
+		s = "VT420";
+		break;
+	}
+	log_debug("received DA %.*s (%s)", (int)*size, buf, s);
 
 	return (0);
 }
