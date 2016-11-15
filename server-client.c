@@ -326,7 +326,7 @@ server_client_check_mouse(struct client *c)
 		type = WHEEL;
 		x = m->x, y = m->y, b = m->b;
 		log_debug("wheel at %u,%u", x, y);
-	} else if (MOUSE_BUTTONS(m->b) == 3) {
+	} else if (MOUSE_RELEASE(m->b)) {
 		type = UP;
 		x = m->x, y = m->y, b = m->lb;
 		log_debug("up at %u,%u", x, y);
@@ -733,11 +733,12 @@ server_client_handle_key(struct client *c, key_code key)
 	if (key == KEYC_MOUSE) {
 		if (c->flags & CLIENT_READONLY)
 			return;
+		m->valid = 1;
+
 		key = server_client_check_mouse(c);
 		if (key == KEYC_UNKNOWN)
 			return;
 
-		m->valid = 1;
 		m->key = key;
 
 		if (!options_get_number(s->options, "mouse"))
