@@ -763,6 +763,11 @@ window_copy_command(struct window_pane *wp, struct client *c, struct session *s,
 		if (strcmp(command, "copy-pipe") == 0) {
 			if (s != NULL) {
 				window_copy_copy_pipe(wp, s, NULL, argument);
+			}
+		}
+		if (strcmp(command, "copy-pipe-and-cancel") == 0) {
+			if (s != NULL) {
+				window_copy_copy_pipe(wp, s, NULL, argument);
 				window_pane_reset_mode(wp);
 			}
 		}
