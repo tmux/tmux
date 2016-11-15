@@ -63,7 +63,7 @@ static void	window_copy_goto_line(struct window_pane *, const char *);
 static void	window_copy_update_cursor(struct window_pane *, u_int, u_int);
 static void	window_copy_start_selection(struct window_pane *);
 static int	window_copy_update_selection(struct window_pane *, int);
-static void   *window_copy_get_selection(struct window_pane *, size_t *);
+static void    *window_copy_get_selection(struct window_pane *, size_t *);
 static void	window_copy_copy_buffer(struct window_pane *, const char *,
 		    void *, size_t);
 static void	window_copy_copy_pipe(struct window_pane *, struct session *,
@@ -761,6 +761,10 @@ window_copy_command(struct window_pane *wp, struct client *c, struct session *s,
 	} else if (args->argc == 2 && *args->argv[1] != '\0') {
 		argument = args->argv[1];
 		if (strcmp(command, "copy-pipe") == 0) {
+			if (s != NULL)
+				window_copy_copy_pipe(wp, s, NULL, argument);
+		}
+		if (strcmp(command, "copy-pipe-and-cancel") == 0) {
 			if (s != NULL) {
 				window_copy_copy_pipe(wp, s, NULL, argument);
 				window_pane_reset_mode(wp);
