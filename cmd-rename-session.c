@@ -19,6 +19,7 @@
 #include <sys/types.h>
 
 #include <stdlib.h>
+#include <string.h>
 
 #include "tmux.h"
 
@@ -54,7 +55,7 @@ cmd_rename_session_exec(struct cmd *self, struct cmdq_item *item)
 		cmdq_error(item, "bad session name: %s", newname);
 		return (CMD_RETURN_ERROR);
 	}
-	if (session_find(newname) != NULL) {
+	if (strcmp(newname, s->name) != 0 && session_find(newname) != NULL) {
 		cmdq_error(item, "duplicate session: %s", newname);
 		return (CMD_RETURN_ERROR);
 	}
