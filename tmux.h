@@ -1100,6 +1100,9 @@ struct tty {
 	u_int		 rlower;
 	u_int		 rupper;
 
+	u_int		 rleft;
+	u_int		 rright;
+
 	char		*termname;
 	struct tty_term	*term;
 
@@ -1120,6 +1123,15 @@ struct tty {
 	int		 flags;
 
 	int		 term_flags;
+	enum {
+		TTY_VT100,
+		TTY_VT101,
+		TTY_VT102,
+		TTY_VT220,
+		TTY_VT320,
+		TTY_VT420,
+		TTY_UNKNOWN
+	} term_type;
 
 	struct mouse_event mouse;
 	int		 mouse_drag_flag;
@@ -1654,7 +1666,8 @@ void	tty_raw(struct tty *, const char *);
 void	tty_attributes(struct tty *, const struct grid_cell *,
 	    const struct window_pane *);
 void	tty_reset(struct tty *);
-void	tty_region(struct tty *, u_int, u_int);
+void	tty_region_off(struct tty *);
+void	tty_margin_off(struct tty *);
 void	tty_cursor(struct tty *, u_int, u_int);
 void	tty_putcode(struct tty *, enum tty_code_code);
 void	tty_putcode1(struct tty *, enum tty_code_code, int);
@@ -1679,6 +1692,7 @@ void	tty_draw_line(struct tty *, const struct window_pane *, struct screen *,
 int	tty_open(struct tty *, char **);
 void	tty_close(struct tty *);
 void	tty_free(struct tty *);
+void	tty_set_type(struct tty *, int);
 void	tty_write(void (*)(struct tty *, const struct tty_ctx *),
 	    struct tty_ctx *);
 void	tty_cmd_alignmenttest(struct tty *, const struct tty_ctx *);

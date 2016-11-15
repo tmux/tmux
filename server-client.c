@@ -1011,7 +1011,8 @@ server_client_reset_state(struct client *c)
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
 		return;
 
-	tty_region(&c->tty, 0, c->tty.sy - 1);
+	tty_region_off(&c->tty);
+	tty_margin_off(&c->tty);
 
 	status = options_get_number(oo, "status");
 	if (!window_pane_visible(wp) || wp->yoff + s->cy >= c->tty.sy - status)
