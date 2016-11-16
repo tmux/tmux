@@ -657,7 +657,7 @@ cmd_find_get_pane(struct cmd_find_state *fs, const char *pane)
 	/* Check for pane ids starting with %. */
 	if (*pane == '%') {
 		fs->wp = window_pane_find_by_id_str(pane);
-		if (fs->wp == NULL)
+		if (fs->wp == NULL || window_pane_outside(fs->wp))
 			return (-1);
 		fs->w = fs->wp->window;
 		return (cmd_find_best_session_with_window(fs));
@@ -694,7 +694,7 @@ cmd_find_get_pane_with_session(struct cmd_find_state *fs, const char *pane)
 	/* Check for pane ids starting with %. */
 	if (*pane == '%') {
 		fs->wp = window_pane_find_by_id_str(pane);
-		if (fs->wp == NULL)
+		if (fs->wp == NULL || window_pane_outside(fs->wp))
 			return (-1);
 		fs->w = fs->wp->window;
 		return (cmd_find_best_winlink_with_window(fs));
@@ -726,7 +726,9 @@ cmd_find_get_pane_with_window(struct cmd_find_state *fs, const char *pane)
 	/* Check for pane ids starting with %. */
 	if (*pane == '%') {
 		fs->wp = window_pane_find_by_id_str(pane);
-		if (fs->wp == NULL || fs->wp->window != fs->w)
+		if (fs->wp == NULL || window_pane_outside(fs->wp))
+			return (-1);
+		if (fs->wp->window != fs->w)
 			return (-1);
 		return (0);
 	}
@@ -736,25 +738,27 @@ cmd_find_get_pane_with_window(struct cmd_find_state *fs, const char *pane)
 		if (fs->w->last == NULL)
 			return (-1);
 		fs->wp = fs->w->last;
+		if (fs->wp == NULL || window_pane_outside(fs->wp))
+			return (-1);
 		return (0);
 	} else if (strcmp(pane, "{up-of}") == 0) {
 		fs->wp = window_pane_find_up(fs->w->active);
-		if (fs->wp == NULL)
+		if (fs->wp == NULL || window_pane_outside(fs->wp))
 			return (-1);
 		return (0);
 	} else if (strcmp(pane, "{down-of}") == 0) {
 		fs->wp = window_pane_find_down(fs->w->active);
-		if (fs->wp == NULL)
+		if (fs->wp == NULL || window_pane_outside(fs->wp))
 			return (-1);
 		return (0);
 	} else if (strcmp(pane, "{left-of}") == 0) {
 		fs->wp = window_pane_find_left(fs->w->active);
-		if (fs->wp == NULL)
+		if (fs->wp == NULL || window_pane_outside(fs->wp))
 			return (-1);
 		return (0);
 	} else if (strcmp(pane, "{right-of}") == 0) {
 		fs->wp = window_pane_find_right(fs->w->active);
-		if (fs->wp == NULL)
+		if (fs->wp == NULL || window_pane_outside(fs->wp))
 			return (-1);
 		return (0);
 	}
@@ -770,7 +774,7 @@ cmd_find_get_pane_with_window(struct cmd_find_state *fs, const char *pane)
 			fs->wp = window_pane_next_by_number(fs->w, wp, n);
 		else
 			fs->wp = window_pane_previous_by_number(fs->w, wp, n);
-		if (fs->wp != NULL)
+		if (fs->wp != NULL && !window_pane_outside(fs->wp))
 			return (0);
 	}
 
@@ -778,13 +782,13 @@ cmd_find_get_pane_with_window(struct cmd_find_state *fs, const char *pane)
 	idx = strtonum(pane, 0, INT_MAX, &errstr);
 	if (errstr == NULL) {
 		fs->wp = window_pane_at_index(fs->w, idx);
-		if (fs->wp != NULL)
+		if (fs->wp != NULL && !window_pane_outside(fs->wp))
 			return (0);
 	}
 
 	/* Try as a description. */
 	fs->wp = window_find_string(fs->w, pane);
-	if (fs->wp != NULL)
+	if (fs->wp != NULL && !window_pane_outside(fs->wp))
 		return (0);
 
 	return (-1);
@@ -836,7 +840,7 @@ cmd_find_valid_state(struct cmd_find_state *fs)
 
 	if (!window_has_pane(fs->w, fs->wp))
 		return (0);
-	return (window_pane_visible(fs->wp));
+	return (!window_pane_outside(fs->wp));
 }
 
 /* Copy a state. */
@@ -944,6 +948,8 @@ cmd_find_from_pane(struct cmd_find_state *fs, struct window_pane *wp)
 {
 	if (cmd_find_from_window(fs, wp->window) != 0)
 		return (-1);
+	if (window_pane_outside(wp))
+		return (-1);
 	fs->wp = wp;
 
 	cmd_find_log_state(__func__, fs);
@@ -1011,7 +1017,7 @@ cmd_find_target(struct cmd_find_state *fs, struct cmd_find_state *current,
 		switch (type) {
 		case CMD_FIND_PANE:
 			fs->wp = cmd_mouse_pane(m, &fs->s, &fs->wl);
-			if (fs->wp != NULL)
+			if (fs->wp != NULL && !window_pane_outside(fs->wp))
 				fs->w = fs->wl->window;
 			break;
 		case CMD_FIND_WINDOW:
