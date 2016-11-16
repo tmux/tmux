@@ -258,6 +258,8 @@ screen_set_selection(struct screen *s, u_int sx, u_int sy,
 
 	memcpy(&sel->cell, gc, sizeof sel->cell);
 	sel->flag = 1;
+	sel->hidden = 0;
+
 	sel->rectflag = rectflag;
 
 	sel->sx = sx; sel->sy = sy;
@@ -271,8 +273,19 @@ screen_clear_selection(struct screen *s)
 	struct screen_sel	*sel = &s->sel;
 
 	sel->flag = 0;
+	sel->hidden = 0;
 	sel->lineflag = LINE_SEL_NONE;
 }
+
+/* Hide selection. */
+void
+screen_hide_selection(struct screen *s)
+{
+	struct screen_sel	*sel = &s->sel;
+
+	sel->hidden = 1;
+}
+
 
 /* Check if cell in selection. */
 int
@@ -281,7 +294,7 @@ screen_check_selection(struct screen *s, u_int px, u_int py)
 	struct screen_sel	*sel = &s->sel;
 	u_int			 xx;
 
-	if (!sel->flag)
+	if (!sel->flag || sel->hidden)
 		return (0);
 
 	if (sel->rectflag) {
@@ -377,7 +390,7 @@ void
 screen_select_cell(struct screen *s, struct grid_cell *dst,
     const struct grid_cell *src)
 {
-	if (!s->sel.flag)
+	if (!s->sel.flag || s->sel.hidden)
 		return;
 
 	memcpy(dst, &s->sel.cell, sizeof *dst);
