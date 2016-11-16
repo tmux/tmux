@@ -1004,7 +1004,7 @@ tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 	 * off the edge - if so, move the cursor back to the right.
 	 */
 	if (ctx->xoff + ctx->ocx > tty->rright)
-		tty_cursor(tty, tty->rright, ctx->yoff + ctx->ocy);
+		tty_cursor(tty, tty->rright, tty->rlower);
 	else
 		tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
 
@@ -1134,8 +1134,12 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 	struct screen		*s = wp->screen;
 	u_int			 cx, width;
 
-	if (ctx->ocy == ctx->orlower)
+	if (ctx->xoff + ctx->ocx > tty->sx - 1 &&
+	    ctx->yoff + ctx->ocy == ctx->orlower &&
+	    tty_pane_full_width(tty, ctx))
 		tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
+	else
+		tty_region_off(tty);
 	tty_margin_off(tty);
 
 	/* Is the cursor in the very last position? */
