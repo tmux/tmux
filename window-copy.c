@@ -24,6 +24,13 @@
 
 #include "tmux.h"
 
+/* Used by window_copy_adjust_selection */
+enum relative_position {
+	RELATIVE_POSITION_ABOVE,
+	RELATIVE_POSITION_ON_SCREEN,
+	RELATIVE_POSITION_BELOW,
+};
+
 static const char *window_copy_key_table(struct window_pane *);
 static void	window_copy_command(struct window_pane *, struct client *,
 		    struct session *, struct args *, struct mouse_event *);
@@ -63,7 +70,7 @@ static void	window_copy_goto_line(struct window_pane *, const char *);
 static void	window_copy_update_cursor(struct window_pane *, u_int, u_int);
 static void	window_copy_start_selection(struct window_pane *);
 static enum relative_position	window_copy_adjust_selection(struct window_pane *wp,
-		    u_int *selx, u_int *sely)
+		    u_int *selx, u_int *sely);
 static int	window_copy_update_selection(struct window_pane *, int);
 static void    *window_copy_get_selection(struct window_pane *, size_t *);
 static void	window_copy_copy_buffer(struct window_pane *, const char *,
@@ -103,13 +110,6 @@ static void	window_copy_rectangle_toggle(struct window_pane *);
 static void	window_copy_move_mouse(struct mouse_event *);
 static void	window_copy_drag_update(struct client *, struct mouse_event *);
 static void	window_copy_synchronize_cursor(struct window_pane *wp);
-
-/* Used by window_copy_adjust_selection */
-enum relative_position {
-	RELATIVE_POSITION_ABOVE,
-	RELATIVE_POSITION_ON_SCREEN,
-	RELATIVE_POSITION_BELOW,
-};
 
 const struct window_mode window_copy_mode = {
 	.init = window_copy_init,
@@ -1237,12 +1237,6 @@ window_copy_start_selection(struct window_pane *wp)
 	window_copy_update_selection(wp, 1);
 }
 
-enum relative_position {
-	RELATIVE_POSITION_ABOVE,
-	RELATIVE_POSITION_ON_SCREEN,
-	RELATIVE_POSITION_BELOW,
-};
-
 static enum relative_position
 window_copy_adjust_selection(struct window_pane *wp, u_int *selx, u_int *sely)
 {
@@ -1285,7 +1279,7 @@ window_copy_update_selection(struct window_pane *wp, int may_redraw)
 	struct screen			*s = &data->screen;
 	struct options			*oo = wp->window->options;
 	struct grid_cell		 gc;
-	u_int				 sx, sy, ty, cy, endsx, endsy;
+	u_int				 sx, sy, cy, endsx, endsy;
 	enum relative_position	 startrelpos, endrelpos;
 
 	if (!s->sel.flag && s->sel.lineflag == LINE_SEL_NONE)
@@ -1727,7 +1721,7 @@ window_copy_other_end(struct window_pane *wp)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
-	u_int				 selx, sely, cx, cy, yy, hsize;
+	u_int				 selx, sely, cy, yy, hsize;
 
 	if (!s->sel.flag && s->sel.lineflag == LINE_SEL_NONE)
 		return;
@@ -1754,7 +1748,6 @@ window_copy_other_end(struct window_pane *wp)
 		sely = data->sely;
 	}
 
-	cx = data->cx;
 	cy = data->cy;
 	yy = screen_hsize(data->backing) + data->cy - data->oy;
 
