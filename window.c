@@ -1185,17 +1185,23 @@ window_pane_key(struct window_pane *wp, struct client *c, struct session *s,
 }
 
 int
-window_pane_visible(struct window_pane *wp)
+window_pane_outside(struct window_pane *wp)
 {
 	struct window	*w = wp->window;
 
+	if (wp->xoff >= w->sx || wp->yoff >= w->sy)
+		return (1);
+	if (wp->xoff + wp->sx > w->sx || wp->yoff + wp->sy > w->sy)
+		return (1);
+	return (0);
+}
+
+int
+window_pane_visible(struct window_pane *wp)
+{
 	if (wp->layout_cell == NULL)
 		return (0);
-	if (wp->xoff >= w->sx || wp->yoff >= w->sy)
-		return (0);
-	if (wp->xoff + wp->sx > w->sx || wp->yoff + wp->sy > w->sy)
-		return (0);
-	return (1);
+	return (!window_pane_outside(wp));
 }
 
 char *
