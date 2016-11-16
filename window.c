@@ -769,6 +769,7 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	wp->event = NULL;
 
 	wp->mode = NULL;
+	wp->modeprefix = 1;
 
 	wp->layout_cell = NULL;
 
