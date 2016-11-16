@@ -326,7 +326,7 @@ server_client_check_mouse(struct client *c)
 		type = WHEEL;
 		x = m->x, y = m->y, b = m->b;
 		log_debug("wheel at %u,%u", x, y);
-	} else if (MOUSE_BUTTONS(m->b) == 3) {
+	} else if (MOUSE_RELEASE(m->b)) {
 		type = UP;
 		x = m->x, y = m->y, b = m->lb;
 		log_debug("up at %u,%u", x, y);
@@ -421,7 +421,7 @@ have_event:
 		m->wp = -1;
 
 	/* Stop dragging if needed. */
-	if (type != DRAG && c->tty.mouse_drag_flag) {
+	if (type != DRAG && type != WHEEL && c->tty.mouse_drag_flag) {
 		if (c->tty.mouse_drag_release != NULL)
 			c->tty.mouse_drag_release(c, m);
 
