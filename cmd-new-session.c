@@ -105,8 +105,8 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 			if (args_has(args, 'A')) {
 				/*
 				 * This item is now destined for
-				 * attach-session.  Because attach-session
-				 * will have already been prepared, copy this
+				 * attach-session. Because attach-session will
+				 * have already been prepared, copy this
 				 * session into its tflag so it can be used.
 				 */
 				cmd_find_from_session(&item->state.tflag, as);
