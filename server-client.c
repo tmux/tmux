@@ -472,8 +472,35 @@ have_event:
 	case NOTYPE:
 		break;
 	case DRAG:
-		if (c->tty.mouse_drag_update != NULL)
+		if (c->tty.mouse_drag_update != NULL) {
 			c->tty.mouse_drag_update(c, m);
+			switch (MOUSE_BUTTONS(b)) {
+				case 0:
+					if (where == PANE)
+						key = KEYC_MOUSEDRAGUPDATE1_PANE;
+					if (where == STATUS);
+						key = KEYC_MOUSEDRAGUPDATE1_STATUS;
+					if (where == BORDER)
+						key = KEYC_MOUSEDRAGUPDATE1_BORDER;
+					break;
+				case 1:
+					if (where == PANE)
+						key = KEYC_MOUSEDRAGUPDATE2_PANE;
+					if (where == STATUS);
+						key = KEYC_MOUSEDRAGUPDATE2_STATUS;
+					if (where == BORDER)
+						key = KEYC_MOUSEDRAGUPDATE2_BORDER;
+					break;
+				case 2:
+					if (where == PANE)
+						key = KEYC_MOUSEDRAGUPDATE3_PANE;
+					if (where == STATUS);
+						key = KEYC_MOUSEDRAGUPDATE3_STATUS;
+					if (where == BORDER)
+						key = KEYC_MOUSEDRAGUPDATE3_BORDER;
+					break;
+			}
+		}
 		else {
 			switch (MOUSE_BUTTONS(b)) {
 			case 0:
@@ -729,13 +756,17 @@ server_client_handle_key(struct client *c, key_code key)
 			return;
 	}
 
+
 	/* Check for mouse keys. */
 	if (key == KEYC_MOUSE) {
 		if (c->flags & CLIENT_READONLY)
 			return;
 		key = server_client_check_mouse(c);
-		if (key == KEYC_UNKNOWN)
+
+		if (key == KEYC_UNKNOWN) {
+			m->valid = 0;
 			return;
+		}
 
 		m->valid = 1;
 		m->key = key;
