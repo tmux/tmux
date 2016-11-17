@@ -82,6 +82,7 @@ static void	 format_defaults_winlink(struct format_tree *, struct session *,
 /* Entry in format job tree. */
 struct format_job {
 	const char		*cmd;
+	const char		*expanded;
 
 	time_t			 last;
 	char			*out;
@@ -236,22 +237,33 @@ format_job_callback(struct job *job)
 static char *
 format_job_get(struct format_tree *ft, const char *cmd)
 {
-	struct format_job	fj0, *fj;
-	time_t			t;
+	struct format_job	 fj0, *fj;
+	time_t			 t;
+	char			*expanded;
+	int			 force;
 
 	fj0.cmd = cmd;
 	if ((fj = RB_FIND(format_job_tree, &format_jobs, &fj0)) == NULL) {
 		fj = xcalloc(1, sizeof *fj);
 		fj->cmd = xstrdup(cmd);
+		fj->expanded = NULL;
 
 		xasprintf(&fj->out, "<'%s' not ready>", fj->cmd);
 
 		RB_INSERT(format_job_tree, &format_jobs, fj);
 	}
 
+	expanded = format_expand(ft, cmd);
+	if (fj->expanded == NULL || strcmp(expanded, fj->expanded) != 0) {
+		free((void *)fj->expanded);
+		fj->expanded = xstrdup(expanded);
+		force = 1;
+	} else
+		force = (ft->flags & FORMAT_FORCE);
+
 	t = time(NULL);
-	if (fj->job == NULL && ((ft->flags & FORMAT_FORCE) || fj->last != t)) {
-		fj->job = job_run(fj->cmd, NULL, NULL, format_job_callback,
+	if (fj->job == NULL && (force || fj->last != t)) {
+		fj->job = job_run(expanded, NULL, NULL, format_job_callback,
 		    NULL, fj);
 		if (fj->job == NULL) {
 			free(fj->out);
@@ -263,6 +275,7 @@ format_job_get(struct format_tree *ft, const char *cmd)
 	if (ft->flags & FORMAT_STATUS)
 		fj->status = 1;
 
+	free(expanded);
 	return (format_expand(ft, fj->out));
 }
 
@@ -285,6 +298,7 @@ format_job_timer(__unused int fd, __unused short events, __unused void *arg)
 		if (fj->job != NULL)
 			job_free(fj->job);
 
+		free((void *)fj->expanded);
 		free((void *)fj->cmd);
 		free(fj->out);
 
@@ -902,7 +916,7 @@ format_expand_time(struct format_tree *ft, const char *fmt, time_t t)
 char *
 format_expand(struct format_tree *ft, const char *fmt)
 {
-	char		*buf, *tmp, *cmd, *out;
+	char		*buf, *out;
 	const char	*ptr, *s, *saved = fmt;
 	size_t		 off, len, n, outlen;
 	int     	 ch, brackets;
@@ -939,16 +953,8 @@ format_expand(struct format_tree *ft, const char *fmt)
 				break;
 			n = ptr - fmt;
 
-			tmp = xmalloc(n + 1);
-			memcpy(tmp, fmt, n);
-			tmp[n] = '\0';
-			cmd = format_expand(ft, tmp);
-
-			out = format_job_get(ft, cmd);
+			out = format_job_get(ft, xstrndup(fmt, n));
 			outlen = strlen(out);
-
-			free(cmd);
-			free(tmp);
 
 			while (len - off < outlen + 1) {
 				buf = xreallocarray(buf, 2, len);
