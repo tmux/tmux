@@ -258,7 +258,7 @@ main(int argc, char **argv)
 	if (shellcmd != NULL && argc != 0)
 		usage();
 
-#ifdef __OpenBSD__
+#ifdef HAVE_PLEDGE
 	if (pledge("stdio rpath wpath cpath flock fattr unix getpw sendfd "
 	    "recvfd proc exec tty ps", NULL) != 0)
 		err(1, "pledge");

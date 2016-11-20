@@ -287,7 +287,7 @@ client_main(struct event_base *base, int argc, char **argv, int flags,
 	if ((ttynam = ttyname(STDIN_FILENO)) == NULL)
 		ttynam = "";
 
-#ifdef __OpenBSD__
+#ifdef HAVE_PLEDGE
 	/*
 	 * Drop privileges for client. "proc exec" is needed for -c and for
 	 * locking (which uses system(3)).
@@ -548,7 +548,7 @@ client_dispatch_wait(struct imsg *imsg, const char *shellcmd)
 	struct msg_stdout_data	 stdoutdata;
 	struct msg_stderr_data	 stderrdata;
 	int			 retval;
-#ifdef __OpenBSD__
+#ifdef HAVE_PLEDGE
 	static int		 pledge_applied;
 
 	/*
