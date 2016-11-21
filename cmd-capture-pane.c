@@ -100,7 +100,7 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 	const struct grid_line	*gl;
 	struct grid_cell	*gc = NULL;
 	int			 n, with_codes, error, escape_c0, join_lines;
-	u_int			 i, k, sx, top, bottom, tmp;
+	u_int			 i, sx, top, bottom, tmp;
 	char			*cause, *buf, *line, *subset;
 	const char		*Sflag, *Eflag, *regex;
 	size_t			 linelen;
