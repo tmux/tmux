@@ -111,6 +111,12 @@ utf8_width(wchar_t wc)
 
 #ifdef HAVE_UTF8PROC
 	width = utf8proc_wcwidth(wc);
+#elif defined(USE_WCWIDTH9)
+  width = wcwidth9(wc);
+  if (width < -1)
+    return (1);
+
+  return (width);
 #else
 	width = wcwidth(wc);
 #endif

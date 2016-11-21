@@ -228,6 +228,14 @@ if test "x$enable_utempter" = xyes; then
 	fi
 fi
 
+AC_ARG_ENABLE(
+  wcwidth9,
+	AC_HELP_STRING(--enable-wcwidth9, use unicode 9 character widths)
+)
+if test "x$enable_wcwidth9" = xyes; then
+  AC_DEFINE(USE_WCWIDTH9)
+fi
+
 # Look for utf8proc.
 AC_ARG_ENABLE(
 	utf8proc,

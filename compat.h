@@ -291,6 +291,10 @@ int		 utf8proc_mbtowc(wchar_t *, const char *, size_t);
 int		 utf8proc_wctomb(char *, wchar_t);
 #endif
 
+#ifdef USE_WCWIDTH9
+#include "compat/wcwidth9.h"
+#endif
+
 #ifdef HAVE_GETOPT
 #include <getopt.h>
 #else
