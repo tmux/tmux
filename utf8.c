@@ -109,9 +109,7 @@ utf8_width(wchar_t wc)
 {
 	int	width;
 
-#ifdef HAVE_UTF8PROC
-	width = utf8proc_wcwidth(wc);
-#elif defined(USE_WCWIDTH9)
+#ifdef USE_WCWIDTH9
   width = wcwidth9(wc);
   if (width < -1)
     return (1);
@@ -145,11 +143,7 @@ utf8_width(wchar_t wc)
 enum utf8_state
 utf8_combine(const struct utf8_data *ud, wchar_t *wc)
 {
-#ifdef HAVE_UTF8PROC
-	switch (utf8proc_mbtowc(wc, ud->data, ud->size)) {
-#else
 	switch (mbtowc(wc, ud->data, ud->size)) {
-#endif
 	case -1:
 		log_debug("UTF-8 %.*s, mbtowc() %d", (int)ud->size, ud->data,
 		    errno);
@@ -169,11 +163,7 @@ utf8_split(wchar_t wc, struct utf8_data *ud)
 	char	s[MB_LEN_MAX];
 	int	slen;
 
-#ifdef HAVE_UTF8PROC
-	slen = utf8proc_wctomb(s, wc);
-#else
 	slen = wctomb(s, wc);
-#endif
 	if (slen <= 0 || slen > (int)sizeof ud->data)
 		return (UTF8_ERROR);
 

@@ -192,11 +192,6 @@ dist_tmux_SOURCES = \
 	xterm-keys.c
 nodist_tmux_SOURCES = osdep-@PLATFORM@.c
 
-# Add compat file for utf8proc.
-if HAVE_UTF8PROC
-nodist_tmux_SOURCES += compat/utf8proc.c
-endif
-
 # Add compat for missing or broken functions.
 if NO_FORKPTY
 nodist_tmux_SOURCES += compat/forkpty-@PLATFORM@.c
