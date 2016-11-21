@@ -108,6 +108,7 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 	int			 regex_flags = REG_EXTENDED,
 				 only_matching = args_has(args, 'o');
 	regmatch_t		 match[1];
+	char			 regex_error[512];
 
 	sx = screen_size_x(&wp->base);
 	if (args_has(args, 'a')) {
@@ -172,8 +173,10 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 			regex_flags |= REG_ICASE;
 		}
 		if ((error = regcomp(&reg, regex, regex_flags))) {
-			// TODO: Return stringified error message
-			cmdq_error(item, "unable to compile regular expression");
+			regerror(error, &reg, regex_error, sizeof(regex_error));
+			cmdq_error(item,
+			    "unable to compile regular expression: %s",
+			    regex_error);
 			return (NULL);
 		}
 	} else if (only_matching) {
