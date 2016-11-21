@@ -193,13 +193,7 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 		if (regex && regexec(&reg, line, only_matching ? 1 : 0, match, 0))
 			continue;
 
-		if (!regex || !only_matching) {
-			buf = cmd_capture_pane_append(buf, len, line, linelen);
-
-			gl = grid_peek_line(gd, i);
-			if (!join_lines || !(gl->flags & GRID_LINE_WRAPPED))
-				buf[(*len)++] = '\n';
-		} else if (only_matching) {
+		if (only_matching) {
 			subset = line;
 			do {
 				linelen = match[0].rm_eo - match[0].rm_so;
@@ -208,6 +202,11 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 				buf[(*len)++] = '\n';
 				subset += match[0].rm_eo;
 			} while (!regexec(&reg, subset, 1, match, REG_NOTBOL));
+		} else {
+			buf = cmd_capture_pane_append(buf, len, line, linelen);
+			gl = grid_peek_line(gd, i);
+			if (!join_lines || !(gl->flags & GRID_LINE_WRAPPED))
+				buf[(*len)++] = '\n';
 		}
 
 		free(line);
