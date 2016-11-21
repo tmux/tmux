@@ -165,7 +165,7 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 	join_lines = args_has(args, 'J');
 
 	if (join_lines && only_matching) {
-		cmdq_error(cmdq, "cannot use -o with -J");
+		cmdq_error(item, "cannot use -o with -J");
 		return (NULL);
 	} else if ((regex = args_get(args, 'r'))) {
 		if (args_has(args, 'i')) {
@@ -173,11 +173,11 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 		}
 		if ((error = regcomp(&reg, regex, regex_flags))) {
 			// TODO: Return stringified error message
-			cmdq_error(cmdq, "unable to compile regular expression");
+			cmdq_error(item, "unable to compile regular expression");
 			return (NULL);
 		}
 	} else if (only_matching) {
-		cmdq_error(cmdq, "cannot use -o without -r");
+		cmdq_error(item, "cannot use -o without -r");
 		return (NULL);
 	}
 
