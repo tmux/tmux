@@ -1252,9 +1252,10 @@ By default, it uses the format
 but a different format may be specified with
 .Fl F .
 .It Xo Ic capture-pane
-.Op Fl aepPqCJ
+.Op Fl aeiopPqCJ
 .Op Fl b Ar buffer-name
 .Op Fl E Ar end-line
+.Op Fl r Ar regex
 .Op Fl S Ar start-line
 .Op Fl t Ar target-pane
 .Xc
@@ -1275,6 +1276,16 @@ If
 .Fl e
 is given, the output includes escape sequences for text and background
 attributes.
+If
+.Fl r
+is given, the output will only include lines matching the given extended regular
+expression. The regular expression is case-sensitive unless
+.Fl i
+is given. Using
+.Fl o
+with
+.Fl r
+will cause only the matching parts of the text to be printed.
 .Fl C
 also escapes non-printable characters as octal \exxx.
 .Fl J
