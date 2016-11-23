@@ -396,7 +396,7 @@ key_bindings_read_only(struct cmdq_item *item, __unused void *data)
 
 void
 key_bindings_dispatch(struct key_binding *bd, struct client *c,
-    struct mouse_event *m)
+    struct mouse_event *m, struct cmd_find_state *fs)
 {
 	struct cmd	*cmd;
 	int		 readonly;
@@ -409,5 +409,5 @@ key_bindings_dispatch(struct key_binding *bd, struct client *c,
 	if (!readonly && (c->flags & CLIENT_READONLY))
 		cmdq_append(c, cmdq_get_callback(key_bindings_read_only, NULL));
 	else
-		cmdq_append(c, cmdq_get_command(bd->cmdlist, NULL, m, 0));
+		cmdq_append(c, cmdq_get_command(bd->cmdlist, fs, m, 0));
 }
