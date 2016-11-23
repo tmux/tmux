@@ -692,6 +692,7 @@ server_client_handle_key(struct client *c, key_code key)
 	struct key_table	*table;
 	struct key_binding	 bd_find, *bd;
 	int			 xtimeout;
+	struct cmd_find_state	 fs;
 
 	/* Check the client is good to accept input. */
 	if (s == NULL || (c->flags & (CLIENT_DEAD|CLIENT_SUSPENDED)) != 0)
@@ -804,8 +805,21 @@ retry:
 		}
 		server_status_client(c);
 
+		/* Find default state if the pane is known. */
+		cmd_find_clear_state(&fs, NULL, 0);
+		if (wp != NULL) {
+			fs.s = s;
+			fs.wl = fs.s->curw;
+			fs.w = fs.wl->window;
+			fs.wp = wp;
+			cmd_find_log_state(__func__, &fs);
+
+			if (!cmd_find_valid_state(&fs))
+				fatalx("invalid key state");
+		}
+
 		/* Dispatch the key binding. */
-		key_bindings_dispatch(bd, c, m);
+		key_bindings_dispatch(bd, c, m, &fs);
 		key_bindings_unref_table(table);
 		return;
 	}
