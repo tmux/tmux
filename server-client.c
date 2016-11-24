@@ -474,9 +474,10 @@ have_event:
 	case NOTYPE:
 		break;
 	case DRAG:
-		if (c->tty.mouse_drag_update != NULL)
+		if (c->tty.mouse_drag_update != NULL) {
 			c->tty.mouse_drag_update(c, m);
-		else {
+			key = KEYC_MOUSE;
+		} else {
 			switch (MOUSE_BUTTONS(b)) {
 			case 0:
 				if (where == PANE)
@@ -738,6 +739,13 @@ server_client_handle_key(struct client *c, key_code key)
 
 		m->valid = 1;
 		m->key = key;
+
+		/*
+		 * A mouse event that continues to be valid but that we do not
+		 * want to pass through.
+		 */
+		if (key == KEYC_MOUSE)
+			return;
 	} else
 		m->valid = 0;
 
