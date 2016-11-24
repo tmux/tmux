@@ -698,10 +698,6 @@ server_client_handle_key(struct client *c, key_code key)
 	if (s == NULL || (c->flags & (CLIENT_DEAD|CLIENT_SUSPENDED)) != 0)
 		return;
 	w = s->curw->window;
-	if (KEYC_IS_MOUSE(key))
-		wp = cmd_mouse_pane(m, NULL, NULL);
-	else
-		wp = w->active;
 
 	/* Update the activity timer. */
 	if (gettimeofday(&c->activity_time, NULL) != 0)
@@ -742,11 +738,18 @@ server_client_handle_key(struct client *c, key_code key)
 
 		m->valid = 1;
 		m->key = key;
-
-		if (!options_get_number(s->options, "mouse"))
-			goto forward;
 	} else
 		m->valid = 0;
+
+	/* Find affected pane. */
+	if (KEYC_IS_MOUSE(key) && m->valid)
+		wp = cmd_mouse_pane(m, NULL, NULL);
+	else
+		wp = w->active;
+
+	/* Forward mouse keys if disabled. */
+	if (key == KEYC_MOUSE && !options_get_number(s->options, "mouse"))
+		goto forward;
 
 	/* Treat everything as a regular key when pasting is detected. */
 	if (!KEYC_IS_MOUSE(key) && server_client_assume_paste(s))
@@ -764,6 +767,10 @@ retry:
 		table = c->keytable;
 	else
 		table = key_bindings_get_table(name, 1);
+	if (wp == NULL)
+		log_debug("key table %s (no pane)", table->name);
+	else
+		log_debug("key table %s (pane %%%u)", table->name, wp->id);
 
 	/* Try to see if there is a key binding in the current table. */
 	bd_find.key = key;
