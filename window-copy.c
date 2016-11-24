@@ -62,7 +62,10 @@ static void	window_copy_search_down(struct window_pane *, const char *,
 static void	window_copy_goto_line(struct window_pane *, const char *);
 static void	window_copy_update_cursor(struct window_pane *, u_int, u_int);
 static void	window_copy_start_selection(struct window_pane *);
+static int	window_copy_adjust_selection(struct window_pane *, u_int *,
+		    u_int *);
 static int	window_copy_update_selection(struct window_pane *, int);
+static void	window_copy_synchronize_cursor(struct window_pane *wp);
 static void    *window_copy_get_selection(struct window_pane *, size_t *);
 static void	window_copy_copy_buffer(struct window_pane *, const char *,
 		    void *, size_t);
@@ -119,21 +122,25 @@ enum {
 	WINDOW_COPY_JUMPTOBACKWARD,
 };
 
+enum {
+	WINDOW_COPY_REL_POS_ABOVE,
+	WINDOW_COPY_REL_POS_ON_SCREEN,
+	WINDOW_COPY_REL_POS_BELOW,
+};
+
 /*
- * Copy-mode's visible screen (the "screen" field) is filled from one of
- * two sources: the original contents of the pane (used when we
- * actually enter via the "copy-mode" command, to copy the contents of
- * the current pane), or else a series of lines containing the output
- * from an output-writing tmux command (such as any of the "show-*" or
- * "list-*" commands).
+ * Copy mode's visible screen (the "screen" field) is filled from one of two
+ * sources: the original contents of the pane (used when we actually enter via
+ * the "copy-mode" command, to copy the contents of the current pane), or else
+ * a series of lines containing the output from an output-writing tmux command
+ * (such as any of the "show-*" or "list-*" commands).
  *
- * In either case, the full content of the copy-mode grid is pointed at
- * by the "backing" field, and is copied into "screen" as needed (that
- * is, when scrolling occurs). When copy-mode is backed by a pane,
- * backing points directly at that pane's screen structure (&wp->base);
- * when backed by a list of output-lines from a command, it points at
- * a newly-allocated screen structure (which is deallocated when the
- * mode ends).
+ * In either case, the full content of the copy-mode grid is pointed at by the
+ * "backing" field, and is copied into "screen" as needed (that is, when
+ * scrolling occurs). When copy-mode is backed by a pane, backing points
+ * directly at that pane's screen structure (&wp->base); when backed by a list
+ * of output-lines from a command, it points at a newly-allocated screen
+ * structure (which is deallocated when the mode ends).
  */
 struct window_copy_mode_data {
 	struct screen	 screen;
@@ -141,10 +148,19 @@ struct window_copy_mode_data {
 	struct screen	*backing;
 	int		 backing_written; /* backing display started */
 
-	u_int		 oy;
+	u_int		 oy; /* number of lines scrolled up */
 
-	u_int		 selx;
+	u_int		 selx; /* beginning of selection */
 	u_int		 sely;
+
+	u_int		 endselx; /* end of selection */
+	u_int		 endsely;
+
+	enum {
+		CURSORDRAG_NONE,	/* selection is independent of cursor */
+		CURSORDRAG_ENDSEL,	/* end is synchronized with cursor */
+		CURSORDRAG_SEL,		/* start is synchronized with cursor */
+	} cursordrag;
 
 	int		 rectflag;	/* in rectangle copy mode? */
 	int		 scroll_exit;	/* exit on scroll to end? */
@@ -172,6 +188,8 @@ window_copy_init(struct window_pane *wp)
 	data->oy = 0;
 	data->cx = 0;
 	data->cy = 0;
+
+	data->cursordrag = CURSORDRAG_NONE;
 
 	data->lastcx = 0;
 	data->lastsx = 0;
@@ -358,7 +376,7 @@ window_copy_pagedown(struct window_pane *wp, int half_page)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
-	u_int				 n, ox, oy;
+	u_int				 n, ox, oy, px, py;
 
 	oy = screen_hsize(data->backing) + data->cy - data->oy;
 	ox = window_copy_find_length(wp, oy);
@@ -386,9 +404,10 @@ window_copy_pagedown(struct window_pane *wp, int half_page)
 		data->oy -= n;
 
 	if (!data->screen.sel.flag || !data->rectflag) {
-		u_int py = screen_hsize(data->backing) + data->cy - data->oy;
-		u_int px = window_copy_find_length(wp, py);
-		if ((data->cx >= data->lastsx && data->cx != px) || data->cx > px)
+		py = screen_hsize(data->backing) + data->cy - data->oy;
+		px = window_copy_find_length(wp, py);
+		if ((data->cx >= data->lastsx && data->cx != px) ||
+		    data->cx > px)
 			window_copy_cursor_end_of_line(wp);
 	}
 
@@ -514,6 +533,8 @@ window_copy_command(struct window_pane *wp, struct client *c, struct session *s,
 				window_copy_redraw_screen(wp);
 			}
 		}
+		if (strcmp(command, "stop-selection") == 0)
+			data->cursordrag = CURSORDRAG_NONE;
 		if (strcmp(command, "bottom-line") == 0) {
 			data->cx = 0;
 			data->cy = screen_size_y(sn) - 1;
@@ -1151,6 +1172,29 @@ window_copy_redraw_screen(struct window_pane *wp)
 }
 
 static void
+window_copy_synchronize_cursor(struct window_pane *wp)
+{
+	struct window_copy_mode_data	*data = wp->modedata;
+	u_int				 xx, yy;
+
+	xx = data->cx;
+	yy = screen_hsize(data->backing) + data->cy - data->oy;
+
+	switch (data->cursordrag) {
+	case CURSORDRAG_ENDSEL:
+		data->endselx = xx;
+		data->endsely = yy;
+		break;
+	case CURSORDRAG_SEL:
+		data->selx = xx;
+		data->sely = yy;
+		break;
+	case CURSORDRAG_NONE:
+		break;
+	}
+}
+
+static void
 window_copy_update_cursor(struct window_pane *wp, u_int cx, u_int cy)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
@@ -1180,8 +1224,45 @@ window_copy_start_selection(struct window_pane *wp)
 	data->selx = data->cx;
 	data->sely = screen_hsize(data->backing) + data->cy - data->oy;
 
+	data->endselx = data->selx;
+	data->endsely = data->sely;
+
+	data->cursordrag = CURSORDRAG_ENDSEL;
+
 	s->sel.flag = 1;
 	window_copy_update_selection(wp, 1);
+}
+
+static int
+window_copy_adjust_selection(struct window_pane *wp, u_int *selx, u_int *sely)
+{
+	struct window_copy_mode_data	*data = wp->modedata;
+	struct screen			*s = &data->screen;
+	u_int 				 sx, sy, ty;
+	int				 relpos;
+
+	sx = *selx;
+	sy = *sely;
+
+	ty = screen_hsize(data->backing) - data->oy;
+	if (sy < ty) {
+		relpos = WINDOW_COPY_REL_POS_ABOVE;
+		if (!data->rectflag)
+			sx = 0;
+		sy = 0;
+	} else if (sy > ty + screen_size_y(s) - 1) {
+		relpos = WINDOW_COPY_REL_POS_BELOW;
+		if (!data->rectflag)
+			sx = screen_size_x(s) - 1;
+		sy = screen_size_y(s) - 1;
+	} else {
+		relpos = WINDOW_COPY_REL_POS_ON_SCREEN;
+		sy -= ty;
+	}
+
+	*selx = sx;
+	*sely = screen_hsize(s) + sy;
+	return (relpos);
 }
 
 static int
@@ -1191,34 +1272,34 @@ window_copy_update_selection(struct window_pane *wp, int may_redraw)
 	struct screen			*s = &data->screen;
 	struct options			*oo = wp->window->options;
 	struct grid_cell		 gc;
-	u_int				 sx, sy, ty, cy;
+	u_int				 sx, sy, cy, endsx, endsy;
+	int				 startrelpos, endrelpos;
 
 	if (!s->sel.flag && s->sel.lineflag == LINE_SEL_NONE)
 		return (0);
 
-	/* Set colours. */
-	style_apply(&gc, oo, "mode-style");
-
-	/* Find top of screen. */
-	ty = screen_hsize(data->backing) - data->oy;
+	window_copy_synchronize_cursor(wp);
 
 	/* Adjust the selection. */
 	sx = data->selx;
 	sy = data->sely;
-	if (sy < ty) {					/* above screen */
-		if (!data->rectflag)
-			sx = 0;
-		sy = 0;
-	} else if (sy > ty + screen_size_y(s) - 1) {	/* below screen */
-		if (!data->rectflag)
-			sx = screen_size_x(s) - 1;
-		sy = screen_size_y(s) - 1;
-	} else
-		sy -= ty;
-	sy = screen_hsize(s) + sy;
+	startrelpos = window_copy_adjust_selection(wp, &sx, &sy);
 
-	screen_set_selection(s,
-	    sx, sy, data->cx, screen_hsize(s) + data->cy, data->rectflag, &gc);
+	/* Adjust the end of selection. */
+	endsx = data->endselx;
+	endsy = data->endsely;
+	endrelpos = window_copy_adjust_selection(wp, &endsx, &endsy);
+
+	/* Selection is outside of the current screen */
+	if (startrelpos == endrelpos &&
+	    startrelpos != WINDOW_COPY_REL_POS_ON_SCREEN) {
+		screen_hide_selection(s);
+		return (0);
+	}
+
+	/* Set colours and selection. */
+	style_apply(&gc, oo, "mode-style");
+	screen_set_selection(s, sx, sy, endsx, endsy, data->rectflag, &gc);
 
 	if (data->rectflag && may_redraw) {
 		/*
@@ -1261,8 +1342,8 @@ window_copy_get_selection(struct window_pane *wp, size_t *len)
 	 */
 
 	/* Find start and end. */
-	xx = data->cx;
-	yy = screen_hsize(data->backing) + data->cy - data->oy;
+	xx = data->endselx;
+	yy = data->endsely;
 	if (yy < data->sely || (yy == data->sely && xx < data->selx)) {
 		sx = xx; sy = yy;
 		ex = data->selx; ey = data->sely;
@@ -1500,6 +1581,8 @@ window_copy_clear_selection(struct window_pane *wp)
 
 	screen_clear_selection(&data->screen);
 
+	data->cursordrag = CURSORDRAG_NONE;
+
 	py = screen_hsize(data->backing) + data->cy - data->oy;
 	px = window_copy_find_length(wp, py);
 	if (data->cx > px)
@@ -1630,7 +1713,7 @@ window_copy_other_end(struct window_pane *wp)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
-	u_int				 selx, sely, cx, cy, yy, hsize;
+	u_int				 selx, sely, cy, yy, hsize;
 
 	if (!s->sel.flag && s->sel.lineflag == LINE_SEL_NONE)
 		return;
@@ -1640,26 +1723,39 @@ window_copy_other_end(struct window_pane *wp)
 	else if (s->sel.lineflag == LINE_SEL_RIGHT_LEFT)
 		s->sel.lineflag = LINE_SEL_LEFT_RIGHT;
 
-	selx = data->selx;
-	sely = data->sely;
-	cx = data->cx;
+	switch (data->cursordrag) {
+		case CURSORDRAG_NONE:
+		case CURSORDRAG_SEL:
+			data->cursordrag = CURSORDRAG_ENDSEL;
+			break;
+		case CURSORDRAG_ENDSEL:
+			data->cursordrag = CURSORDRAG_SEL;
+			break;
+	}
+
+	selx = data->endselx;
+	sely = data->endsely;
+	if (data->cursordrag == CURSORDRAG_SEL) {
+		selx = data->selx;
+		sely = data->sely;
+	}
+
 	cy = data->cy;
 	yy = screen_hsize(data->backing) + data->cy - data->oy;
 
-	data->selx = cx;
-	data->sely = yy;
 	data->cx = selx;
 
 	hsize = screen_hsize(data->backing);
-	if (sely < hsize - data->oy) {
+	if (sely < hsize - data->oy) { /* above */
 		data->oy = hsize - sely;
 		data->cy = 0;
-	} else if (sely > hsize - data->oy + screen_size_y(s)) {
+	} else if (sely > hsize - data->oy + screen_size_y(s)) { /* below */
 		data->oy = hsize - sely + screen_size_y(s) - 1;
 		data->cy = screen_size_y(s) - 1;
 	} else
 		data->cy = cy + sely - yy;
 
+	window_copy_update_selection(wp, 1);
 	window_copy_redraw_screen(wp);
 }
 
