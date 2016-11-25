@@ -338,9 +338,6 @@ window_copy_pageup(struct window_pane *wp, int half_page)
 	oy = screen_hsize(data->backing) + data->cy - data->oy;
 	ox = window_copy_find_length(wp, oy);
 
-	if (s->sel.lineflag == LINE_SEL_LEFT_RIGHT && oy == data->sely)
-		window_copy_other_end(wp);
-
 	if (data->cx != ox) {
 		data->lastcx = data->cx;
 		data->lastsx = ox;
@@ -380,9 +377,6 @@ window_copy_pagedown(struct window_pane *wp, int half_page)
 
 	oy = screen_hsize(data->backing) + data->cy - data->oy;
 	ox = window_copy_find_length(wp, oy);
-
-	if (s->sel.lineflag == LINE_SEL_RIGHT_LEFT && oy == data->sely)
-		window_copy_other_end(wp);
 
 	if (data->cx != ox) {
 		data->lastcx = data->cx;
@@ -528,7 +522,6 @@ window_copy_command(struct window_pane *wp, struct client *c, struct session *s,
 			if (m != NULL)
 				window_copy_start_drag(c, m);
 			else {
-				sn->sel.lineflag = LINE_SEL_NONE;
 				window_copy_start_selection(wp);
 				window_copy_redraw_screen(wp);
 			}
@@ -719,7 +712,6 @@ window_copy_command(struct window_pane *wp, struct client *c, struct session *s,
 				window_copy_cursor_previous_word(wp, ws);
 		}
 		if (strcmp(command, "rectangle-toggle") == 0) {
-			sn->sel.lineflag = LINE_SEL_NONE;
 			window_copy_rectangle_toggle(wp);
 		}
 		if (strcmp(command, "scroll-down") == 0) {
@@ -753,7 +745,6 @@ window_copy_command(struct window_pane *wp, struct client *c, struct session *s,
 			}
 		}
 		if (strcmp(command, "select-line") == 0) {
-			sn->sel.lineflag = LINE_SEL_LEFT_RIGHT;
 			data->rectflag = 0;
 			window_copy_cursor_start_of_line(wp);
 			window_copy_start_selection(wp);
@@ -763,7 +754,6 @@ window_copy_command(struct window_pane *wp, struct client *c, struct session *s,
 			window_copy_redraw_screen(wp);
 		}
 		if (strcmp(command, "select-word") == 0) {
-			sn->sel.lineflag = LINE_SEL_LEFT_RIGHT;
 			data->rectflag = 0;
 			ws = options_get_string(s->options, "word-separators");
 			window_copy_cursor_previous_word(wp, ws);
@@ -1275,7 +1265,7 @@ window_copy_update_selection(struct window_pane *wp, int may_redraw)
 	u_int				 sx, sy, cy, endsx, endsy;
 	int				 startrelpos, endrelpos;
 
-	if (!s->sel.flag && s->sel.lineflag == LINE_SEL_NONE)
+	if (!s->sel.flag)
 		return (0);
 
 	window_copy_synchronize_cursor(wp);
@@ -1328,7 +1318,7 @@ window_copy_get_selection(struct window_pane *wp, size_t *len)
 	u_int				 firstsx, lastex, restex, restsx;
 	int				 keys;
 
-	if (!s->sel.flag && s->sel.lineflag == LINE_SEL_NONE)
+	if (!s->sel.flag)
 		return (NULL);
 
 	buf = xmalloc(1);
@@ -1641,7 +1631,7 @@ window_copy_cursor_start_of_line(struct window_pane *wp)
 	struct grid			*gd = back_s->grid;
 	u_int				 py;
 
-	if (data->cx == 0 && s->sel.lineflag == LINE_SEL_NONE) {
+	if (data->cx == 0) {
 		py = screen_hsize(back_s) + data->cy - data->oy;
 		while (py > 0 &&
 		    gd->linedata[py-1].flags & GRID_LINE_WRAPPED) {
@@ -1689,7 +1679,7 @@ window_copy_cursor_end_of_line(struct window_pane *wp)
 	py = screen_hsize(back_s) + data->cy - data->oy;
 	px = window_copy_find_length(wp, py);
 
-	if (data->cx == px && s->sel.lineflag == LINE_SEL_NONE) {
+	if (data->cx == px) {
 		if (data->screen.sel.flag && data->rectflag)
 			px = screen_size_x(back_s);
 		if (gd->linedata[py].flags & GRID_LINE_WRAPPED) {
@@ -1715,13 +1705,8 @@ window_copy_other_end(struct window_pane *wp)
 	struct screen			*s = &data->screen;
 	u_int				 selx, sely, cy, yy, hsize;
 
-	if (!s->sel.flag && s->sel.lineflag == LINE_SEL_NONE)
+	if (!s->sel.flag)
 		return;
-
-	if (s->sel.lineflag == LINE_SEL_LEFT_RIGHT)
-		s->sel.lineflag = LINE_SEL_RIGHT_LEFT;
-	else if (s->sel.lineflag == LINE_SEL_RIGHT_LEFT)
-		s->sel.lineflag = LINE_SEL_LEFT_RIGHT;
 
 	switch (data->cursordrag) {
 		case CURSORDRAG_NONE:
@@ -1814,9 +1799,6 @@ window_copy_cursor_up(struct window_pane *wp, int scroll_only)
 		data->lastsx = ox;
 	}
 
-	if (s->sel.lineflag == LINE_SEL_LEFT_RIGHT && oy == data->sely)
-		window_copy_other_end(wp);
-
 	data->cx = data->lastcx;
 	if (scroll_only || data->cy == 0) {
 		window_copy_scroll_down(wp, 1);
@@ -1843,11 +1825,6 @@ window_copy_cursor_up(struct window_pane *wp, int scroll_only)
 		    data->cx > px)
 			window_copy_cursor_end_of_line(wp);
 	}
-
-	if (s->sel.lineflag == LINE_SEL_LEFT_RIGHT)
-		window_copy_cursor_end_of_line(wp);
-	else if (s->sel.lineflag == LINE_SEL_RIGHT_LEFT)
-		window_copy_cursor_start_of_line(wp);
 }
 
 static void
@@ -1863,9 +1840,6 @@ window_copy_cursor_down(struct window_pane *wp, int scroll_only)
 		data->lastcx = data->cx;
 		data->lastsx = ox;
 	}
-
-	if (s->sel.lineflag == LINE_SEL_RIGHT_LEFT && oy == data->sely)
-		window_copy_other_end(wp);
 
 	data->cx = data->lastcx;
 	if (scroll_only || data->cy == screen_size_y(s) - 1) {
@@ -1885,11 +1859,6 @@ window_copy_cursor_down(struct window_pane *wp, int scroll_only)
 		    data->cx > px)
 			window_copy_cursor_end_of_line(wp);
 	}
-
-	if (s->sel.lineflag == LINE_SEL_LEFT_RIGHT)
-		window_copy_cursor_end_of_line(wp);
-	else if (s->sel.lineflag == LINE_SEL_RIGHT_LEFT)
-		window_copy_cursor_start_of_line(wp);
 }
 
 static void

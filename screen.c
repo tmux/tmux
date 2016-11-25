@@ -274,7 +274,6 @@ screen_clear_selection(struct screen *s)
 
 	sel->flag = 0;
 	sel->hidden = 0;
-	sel->lineflag = LINE_SEL_NONE;
 }
 
 /* Hide selection. */
