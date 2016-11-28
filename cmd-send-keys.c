@@ -66,21 +66,16 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 	const u_char		*keystr;
 	int			 i, literal;
 	key_code		 key;
-	u_int			 np;
+	u_int			 ui, np = 1;
 	char			*cause = NULL;
 
 	if (args_has(args, 'N')) {
-		if (wp->mode == NULL || wp->mode->command == NULL) {
-			cmdq_error(item, "not in a mode");
-			return (CMD_RETURN_ERROR);
-		}
 		np = args_strtonum(args, 'N', 1, UINT_MAX, &cause);
 		if (cause != NULL) {
-			cmdq_error(item, "prefix %s", cause);
+			cmdq_error(item, "repeat count %s", cause);
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
-		wp->modeprefix = np;
 	}
 
 	if (args_has(args, 'X')) {
@@ -88,6 +83,7 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 			cmdq_error(item, "not in a mode");
 			return (CMD_RETURN_ERROR);
 		}
+		wp->modeprefix = np;
 		if (!m->valid)
 			wp->mode->command(wp, c, s, args, NULL);
 		else
@@ -95,10 +91,11 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 	}
 
-	if (args_has(args, 'N')) /* only with -X */
-		return (CMD_RETURN_NORMAL);
-
 	if (args_has(args, 'M')) {
+		if (args_has(args, 'N')) {
+			cmdq_error(item, "-M and -N are incompatible");
+			return (CMD_RETURN_ERROR);
+		}
 		wp = cmd_mouse_pane(m, &s, NULL);
 		if (wp == NULL) {
 			cmdq_error(item, "no mouse target");
@@ -120,19 +117,22 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'R'))
 		input_reset(wp, 1);
 
-	for (i = 0; i < args->argc; i++) {
-		literal = args_has(args, 'l');
-		if (!literal) {
-			key = key_string_lookup_string(args->argv[i]);
-			if (key != KEYC_NONE && key != KEYC_UNKNOWN)
-				window_pane_key(wp, NULL, s, key, NULL);
-			else
-				literal = 1;
+	for (ui = 0; ui < np; ++ui) {
+		for (i = 0; i < args->argc; i++) {
+			literal = args_has(args, 'l');
+			if (!literal) {
+				key = key_string_lookup_string(args->argv[i]);
+				if (key != KEYC_NONE && key != KEYC_UNKNOWN)
+					window_pane_key(wp, NULL, s, key, NULL);
+				else
+					literal = 1;
+			}
+			if (literal) {
+				for (keystr = args->argv[i]; *keystr != '\0'; keystr++)
+					window_pane_key(wp, NULL, s, *keystr, NULL);
+			}
 		}
-		if (literal) {
-			for (keystr = args->argv[i]; *keystr != '\0'; keystr++)
-				window_pane_key(wp, NULL, s, *keystr, NULL);
-		}
+
 	}
 
 	return (CMD_RETURN_NORMAL);
