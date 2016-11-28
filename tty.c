@@ -989,9 +989,8 @@ tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 	if ((!tty_use_margin(tty) ||
 	    tty_pane_full_width(tty, ctx)) &&
 	    ctx->num != 0 &&
-	    !(tty->term->flags & TERM_EARLYWRAP)) {
+	    !(tty->term->flags & TERM_EARLYWRAP))
 		return;
-	}
 
 	tty_attributes(tty, &grid_default_cell, wp);
 
@@ -1004,7 +1003,7 @@ tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 	 * off the edge - if so, move the cursor back to the right.
 	 */
 	if (ctx->xoff + ctx->ocx > tty->rright)
-		tty_cursor(tty, tty->rright, tty->rlower);
+		tty_cursor(tty, tty->rright, ctx->yoff + ctx->ocy);
 	else
 		tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
 
@@ -1135,7 +1134,7 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 	u_int			 cx, width;
 
 	if (ctx->xoff + ctx->ocx > tty->sx - 1 &&
-	    ctx->yoff + ctx->ocy == ctx->orlower &&
+	    ctx->ocy == ctx->orlower &&
 	    tty_pane_full_width(tty, ctx))
 		tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
 	else
@@ -1145,7 +1144,7 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 	/* Is the cursor in the very last position? */
 	width = ctx->cell->data.width;
 	if (ctx->ocx > wp->sx - width) {
-		if (ctx->xoff != 0 || wp->sx != tty->sx) {
+		if (!tty_pane_full_width(tty, ctx)) {
 			/*
 			 * The pane doesn't fill the entire line, the linefeed
 			 * will already have happened, so just move the cursor.
@@ -1157,7 +1156,7 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 		} else if (tty->cx < tty->sx) {
 			/*
 			 * The cursor isn't in the last position already, so
-			 * move as far left as possible and redraw the last
+			 * move as far right as possible and redraw the last
 			 * cell to move into the last position.
 			 */
 			cx = screen_size_x(s) - ctx->last_cell.data.width;
