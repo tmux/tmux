@@ -1153,7 +1153,7 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 				tty_cursor_pane(tty, ctx, 0, ctx->ocy + 1);
 			else
 				tty_cursor_pane(tty, ctx, 0, ctx->ocy);
-		} else if (tty->cx < tty->sx) {
+		} else if (tty->cx != tty->sx - 1) {
 			/*
 			 * The cursor isn't in the last position already, so
 			 * move as far right as possible and redraw the last
