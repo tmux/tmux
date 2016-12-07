@@ -782,6 +782,18 @@ retry:
 	else
 		log_debug("key table %s (pane %%%u)", table->name, wp->id);
 
+	/*
+	 * The prefix always takes precedence and forces a switch to the prefix
+	 * table, unless we are already there.
+	 */
+	if ((key == (key_code)options_get_number(s->options, "prefix") ||
+	    key == (key_code)options_get_number(s->options, "prefix2")) &&
+	    strcmp(table->name, "prefix") != 0) {
+		server_client_set_key_table(c, "prefix");
+		server_status_client(c);
+		return;
+	}
+
 	/* Try to see if there is a key binding in the current table. */
 	bd_find.key = key;
 	bd = RB_FIND(key_bindings, &table->key_bindings, &bd_find);
@@ -854,18 +866,8 @@ retry:
 
 	/* If no match and we're not in the root table, that's it. */
 	if (name == NULL && !server_client_is_default_key_table(c)) {
+		log_debug("no key in key table %s", table->name);
 		server_client_set_key_table(c, NULL);
-		server_status_client(c);
-		return;
-	}
-
-	/*
-	 * No match, but in the root table. Prefix switches to the prefix table
-	 * and everything else is passed through.
-	 */
-	if (key == (key_code)options_get_number(s->options, "prefix") ||
-	    key == (key_code)options_get_number(s->options, "prefix2")) {
-		server_client_set_key_table(c, "prefix");
 		server_status_client(c);
 		return;
 	}
