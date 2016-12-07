@@ -554,7 +554,6 @@ status_message_set(struct client *c, const char *fmt, ...)
 
 	limit = options_get_number(global_options, "message-limit");
 
-	status_prompt_clear(c);
 	status_message_clear(c);
 
 	va_start(ap, fmt);
@@ -600,7 +599,8 @@ status_message_clear(struct client *c)
 	free(c->message_string);
 	c->message_string = NULL;
 
-	c->tty.flags &= ~(TTY_NOCURSOR|TTY_FREEZE);
+	if (c->prompt_string == NULL)
+		c->tty.flags &= ~(TTY_NOCURSOR|TTY_FREEZE);
 	c->flags |= CLIENT_REDRAW; /* screen was frozen and may have changed */
 
 	screen_reinit(&c->status);
