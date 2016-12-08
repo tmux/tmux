@@ -63,7 +63,8 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 	struct window_pane	*wp = item->state.tflag.wp;
 	struct session		*s = item->state.tflag.s;
 	struct mouse_event	*m = &item->mouse;
-	const u_char		*keystr;
+	struct utf8_data	*ud, *uc;
+	wchar_t			 wc;
 	int			 i, literal;
 	key_code		 key;
 	u_int			 np = 1;
@@ -124,8 +125,12 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 					literal = 1;
 			}
 			if (literal) {
-				for (keystr = args->argv[i]; *keystr != '\0'; keystr++)
-					window_pane_key(wp, NULL, s, *keystr, NULL);
+				ud = utf8_fromcstr(args->argv[i]);
+				for (uc = ud; uc->size != 0; uc++) {
+					if (utf8_combine(uc, &wc) == UTF8_DONE)
+						window_pane_key(wp, NULL, s, wc, NULL);
+				}
+				free(ud);
 			}
 		}
 
