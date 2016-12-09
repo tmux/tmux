@@ -321,7 +321,7 @@ main(int argc, char **argv)
 		s = getenv("TMUX");
 		if (s != NULL && *s != '\0' && *s != ',') {
 			path = xstrdup(s);
-			path[strcspn (path, ",")] = '\0';
+			path[strcspn(path, ",")] = '\0';
 		}
 	}
 	if (path == NULL && (path = make_label(label)) == NULL) {
