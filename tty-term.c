@@ -403,7 +403,7 @@ tty_term_find(char *name, int fd, char **cause)
 	term->name = xstrdup(name);
 	term->references = 1;
 	term->flags = 0;
-	term->codes = xcalloc (tty_term_ncodes(), sizeof *term->codes);
+	term->codes = xcalloc(tty_term_ncodes(), sizeof *term->codes);
 	LIST_INSERT_HEAD(&tty_terms, term, entry);
 
 	/* Set up curses terminal. */

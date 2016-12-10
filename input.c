@@ -780,7 +780,7 @@ input_free(struct window_pane *wp)
 	free(ictx->input_buf);
 	evbuffer_free(ictx->since_ground);
 
-	free (ictx);
+	free(ictx);
 	wp->ictx = NULL;
 }
 
