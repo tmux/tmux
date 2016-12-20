@@ -10,13 +10,17 @@ tmux depends on libevent 2.x. Download it from:
 
 	http://libevent.org
 
-To build tmux from a release tarball, do:
+It also depends on ncurses, available from:
+
+	http://invisible-island.net/ncurses/
+
+To build tmux from a release tarball, use:
 
 	$ ./configure && make
 	$ sudo make install
 
-By default, tmux will use the utempter library to update utmp(5), if it is
-installed. Run configure with --disable-utempter to disable this.
+tmux can use the utempter library to update utmp(5), if it is installed - run
+configure with --enable-utempter to enable this.
 
 To get and build the latest from version control:
 
