@@ -895,7 +895,7 @@ const struct options_table_entry options_table[] = {
 	{ .name = "xterm-keys",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_num = 0
+	  .default_num = 1
 	},
 
 	{ .name = NULL }
