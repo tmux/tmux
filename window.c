@@ -943,9 +943,9 @@ window_pane_spawn(struct window_pane *wp, int argc, char **argv,
 			fatal("execl failed");
 		}
 		if (ptr != NULL && *(ptr + 1) != '\0')
-			xasprintf(&argv0, "-%s", ptr + 1);
+			xasprintf(&argv0, "%s", ptr + 1);
 		else
-			xasprintf(&argv0, "-%s", wp->shell);
+			xasprintf(&argv0, "%s", wp->shell);
 		execl(wp->shell, argv0, (char *)NULL);
 		fatal("execl failed");
 	}
