@@ -831,6 +831,8 @@ struct window_pane {
 
 	struct grid_cell colgc;
 
+	int		 palette[256];
+
 	int		 pipe_fd;
 	struct bufferevent *pipe_event;
 	size_t		 pipe_off;
@@ -1115,6 +1117,7 @@ struct tty {
 	struct termios	 tio;
 
 	struct grid_cell cell;
+	const struct window_pane *last_wp;
 
 #define TTY_NOCURSOR 0x1
 #define TTY_FREEZE 0x2
@@ -2127,6 +2130,7 @@ void		 window_pane_alternate_on(struct window_pane *,
 		     struct grid_cell *, int);
 void		 window_pane_alternate_off(struct window_pane *,
 		     struct grid_cell *, int);
+void		 window_pane_initc(struct window_pane *, const char *);
 int		 window_pane_set_mode(struct window_pane *,
 		     const struct window_mode *);
 void		 window_pane_reset_mode(struct window_pane *);

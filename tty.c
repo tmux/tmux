@@ -47,11 +47,14 @@ static void	tty_force_cursor_colour(struct tty *, const char *);
 static void	tty_cursor_pane(struct tty *, const struct tty_ctx *, u_int,
 		    u_int);
 
-static void	tty_colours(struct tty *, const struct grid_cell *);
+static void	tty_colours(struct tty *, const struct window_pane *,
+		    const struct grid_cell *);
 static void	tty_check_fg(struct tty *, struct grid_cell *);
 static void	tty_check_bg(struct tty *, struct grid_cell *);
-static void	tty_colours_fg(struct tty *, const struct grid_cell *);
-static void	tty_colours_bg(struct tty *, const struct grid_cell *);
+static void	tty_colours_fg(struct tty *, const struct window_pane *wp,
+		    const struct grid_cell *);
+static void	tty_colours_bg(struct tty *, const struct window_pane *wp,
+		    const struct grid_cell *);
 
 static void	tty_region_pane(struct tty *, const struct tty_ctx *, u_int,
 		    u_int);
@@ -1518,7 +1521,7 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
 	 * Set the colours. This may call tty_reset() (so it comes next) and
 	 * may add to (NOT remove) the desired attributes by changing new_attr.
 	 */
-	tty_colours(tty, &gc2);
+	tty_colours(tty, wp, &gc2);
 
 	/* Filter out attribute bits already set. */
 	changed = gc2.attr & ~tc->attr;
@@ -1548,10 +1551,20 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
 }
 
 static void
-tty_colours(struct tty *tty, const struct grid_cell *gc)
+tty_colours(struct tty *tty, const struct window_pane *wp,
+    const struct grid_cell *gc)
 {
 	struct grid_cell	*tc = &tty->cell;
 	int			 have_ax;
+
+	/* If switched panes, palettes might be different */
+	if (tty->last_wp != wp) {
+		tc->fg = -1;
+		tc->bg = -1;
+	}
+
+	int			 fg_changed = wp && wp->palette[7];
+	int			 bg_changed = wp && wp->palette[0];
 
 	/* No changes? Nothing is necessary. */
 	if (gc->fg == tc->fg && gc->bg == tc->bg)
@@ -1562,8 +1575,12 @@ tty_colours(struct tty *tty, const struct grid_cell *gc)
 	 * best solution might be to reset both colours to default, in which
 	 * case if only one is default need to fall onward to set the other
 	 * colour.
+	 *
+	 * If initc has been called for either color 0 or 7, then the
+	 * special sequences no longer apply, so we make sure to fall through
+	 * to tty_colours_{fg,bg}.
 	 */
-	if (gc->fg == 8 || gc->bg == 8) {
+	if ((!fg_changed && gc->fg == 8) || (!bg_changed && gc->bg == 8)) {
 		/*
 		 * If don't have AX but do have op, send sgr0 (op can't
 		 * actually be used because it is sometimes the same as sgr0
@@ -1575,14 +1592,14 @@ tty_colours(struct tty *tty, const struct grid_cell *gc)
 		if (!have_ax && tty_term_has(tty->term, TTYC_OP))
 			tty_reset(tty);
 		else {
-			if (gc->fg == 8 && tc->fg != 8) {
+			if (!fg_changed && gc->fg == 8 && tc->fg != 8) {
 				if (have_ax)
 					tty_puts(tty, "\033[39m");
 				else if (tc->fg != 7)
 					tty_putcode1(tty, TTYC_SETAF, 7);
 				tc->fg = 8;
 			}
-			if (gc->bg == 8 && tc->bg != 8) {
+			if (!bg_changed && gc->bg == 8 && tc->bg != 8) {
 				if (have_ax)
 					tty_puts(tty, "\033[49m");
 				else if (tc->bg != 0)
@@ -1593,15 +1610,17 @@ tty_colours(struct tty *tty, const struct grid_cell *gc)
 	}
 
 	/* Set the foreground colour. */
-	if (gc->fg != 8 && gc->fg != tc->fg)
-		tty_colours_fg(tty, gc);
+	if ((fg_changed || gc->fg != 8) && gc->fg != tc->fg)
+		tty_colours_fg(tty, wp, gc);
 
 	/*
 	 * Set the background colour. This must come after the foreground as
 	 * tty_colour_fg() can call tty_reset().
 	 */
-	if (gc->bg != 8 && gc->bg != tc->bg)
-		tty_colours_bg(tty, gc);
+	if ((bg_changed || gc->bg != 8) && gc->bg != tc->bg)
+		tty_colours_bg(tty, wp, gc);
+
+	tty->last_wp = wp;
 }
 
 void
@@ -1688,29 +1707,39 @@ tty_check_bg(struct tty *tty, struct grid_cell *gc)
 }
 
 static void
-tty_colours_fg(struct tty *tty, const struct grid_cell *gc)
+tty_colours_fg(struct tty *tty, const struct window_pane *wp,
+    const struct grid_cell *gc)
 {
 	struct grid_cell	*tc = &tty->cell;
 	char			 s[32];
+	int			 colour = 0;
+
+	/* If this color has been set by initc, substitute */
+	if (gc->fg == 8 && wp && wp->palette[7])
+		colour = wp->palette[7];
+	else if (wp && !(gc->fg & COLOUR_FLAG_RGB) && wp->palette[gc->fg & 0xff])
+		colour = wp->palette[gc->fg & 0xff];
+	else
+		colour = gc->fg;
 
 	/* Is this a 24-bit or 256-colour colour? */
-	if (gc->fg & COLOUR_FLAG_RGB ||
-	    gc->fg & COLOUR_FLAG_256) {
-		if (tty_try_colour(tty, gc->fg, "38") == 0)
+	if (colour & COLOUR_FLAG_RGB ||
+	    colour & COLOUR_FLAG_256) {
+		if (tty_try_colour(tty, colour, "38") == 0)
 			goto save_fg;
 		/* Should not get here, already converted in tty_check_fg. */
 		return;
 	}
 
 	/* Is this an aixterm bright colour? */
-	if (gc->fg >= 90 && gc->fg <= 97) {
-		xsnprintf(s, sizeof s, "\033[%dm", gc->fg);
+	if (colour >= 90 && colour <= 97) {
+		xsnprintf(s, sizeof s, "\033[%dm", colour);
 		tty_puts(tty, s);
 		goto save_fg;
 	}
 
 	/* Otherwise set the foreground colour. */
-	tty_putcode1(tty, TTYC_SETAF, gc->fg);
+	tty_putcode1(tty, TTYC_SETAF, colour);
 
 save_fg:
 	/* Save the new values in the terminal current cell. */
@@ -1718,29 +1747,39 @@ save_fg:
 }
 
 static void
-tty_colours_bg(struct tty *tty, const struct grid_cell *gc)
+tty_colours_bg(struct tty *tty, const struct window_pane *wp,
+    const struct grid_cell *gc)
 {
 	struct grid_cell	*tc = &tty->cell;
 	char			 s[32];
+	int			 colour = 0;
+
+	/* If this color has been set by initc, substitute */
+	if (gc->bg == 8 && wp && wp->palette[0])
+		colour = wp->palette[0];
+	else if (wp && !(gc->bg & COLOUR_FLAG_RGB) && wp->palette[gc->bg & 0xff])
+		colour = wp->palette[gc->bg & 0xff];
+	else
+		colour = gc->bg;
 
 	/* Is this a 24-bit or 256-colour colour? */
-	if (gc->bg & COLOUR_FLAG_RGB ||
-	    gc->bg & COLOUR_FLAG_256) {
-		if (tty_try_colour(tty, gc->bg, "48") == 0)
+	if (colour & COLOUR_FLAG_RGB ||
+	    colour & COLOUR_FLAG_256) {
+		if (tty_try_colour(tty, colour, "48") == 0)
 			goto save_bg;
 		/* Should not get here, already converted in tty_check_bg. */
 		return;
 	}
 
 	/* Is this an aixterm bright colour? */
-	if (gc->bg >= 90 && gc->bg <= 97) {
-		xsnprintf(s, sizeof s, "\033[%dm", gc->bg + 10);
+	if (colour >= 90 && colour <= 97) {
+		xsnprintf(s, sizeof s, "\033[%dm", colour + 10);
 		tty_puts(tty, s);
 		goto save_bg;
 	}
 
 	/* Otherwise set the background colour. */
-	tty_putcode1(tty, TTYC_SETAB, gc->bg);
+	tty_putcode1(tty, TTYC_SETAB, colour);
 
 save_bg:
 	/* Save the new values in the terminal current cell. */

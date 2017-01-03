@@ -162,6 +162,7 @@ enum input_esc_type {
 	INPUT_ESC_SCSG0_ON,
 	INPUT_ESC_SCSG1_OFF,
 	INPUT_ESC_SCSG1_ON,
+	INPUT_ESC_ST,
 };
 
 /* Escape command table. */
@@ -179,6 +180,7 @@ static const struct input_table_entry input_esc_table[] = {
 	{ 'E', "",  INPUT_ESC_NEL },
 	{ 'H', "",  INPUT_ESC_HTS },
 	{ 'M', "",  INPUT_ESC_RI },
+	{ '\\', "", INPUT_ESC_ST },
 	{ 'c', "",  INPUT_ESC_RIS },
 };
 
@@ -1188,6 +1190,9 @@ input_esc_dispatch(struct input_ctx *ictx)
 	case INPUT_ESC_SCSG1_OFF:
 		ictx->cell.g1set = 0;
 		break;
+	case INPUT_ESC_ST:
+		/* ST terminates OSC, but the state transition already did that */
+		break;
 	}
 
 	return (0);
@@ -1849,6 +1854,9 @@ input_exit_osc(struct input_ctx *ictx)
 	case 2:
 		screen_set_title(ictx->ctx.s, p);
 		server_status_window(ictx->wp->window);
+		break;
+	case 4:
+		window_pane_initc(ictx->wp, p);
 		break;
 	case 12:
 		if (*p != '?') /* ? is colour request */
