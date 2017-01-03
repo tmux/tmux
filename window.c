@@ -1125,6 +1125,19 @@ window_pane_initc(struct window_pane *wp, const char *s)
 	wp->flags |= PANE_REDRAW;
 }
 
+void
+window_pane_reset_palette(struct window_pane *wp)
+{
+	if (!wp)
+		return;
+
+	u_int i;
+	for (i = 0; i < 0x100; ++i)
+		wp->palette[i] = 0;
+
+	wp->flags |= PANE_REDRAW;
+}
+
 static void
 window_pane_mode_timer(__unused int fd, __unused short events, void *arg)
 {

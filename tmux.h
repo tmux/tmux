@@ -2131,6 +2131,7 @@ void		 window_pane_alternate_on(struct window_pane *,
 void		 window_pane_alternate_off(struct window_pane *,
 		     struct grid_cell *, int);
 void		 window_pane_initc(struct window_pane *, const char *);
+void		 window_pane_reset_palette(struct window_pane *);
 int		 window_pane_set_mode(struct window_pane *,
 		     const struct window_mode *);
 void		 window_pane_reset_mode(struct window_pane *);
