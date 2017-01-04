@@ -79,6 +79,8 @@ static void	 format_defaults_client(struct format_tree *, struct client *);
 static void	 format_defaults_winlink(struct format_tree *, struct session *,
 		     struct winlink *);
 
+static const char	*shorten_tty(const char *);
+
 /* Entry in format job tree. */
 struct format_job {
 	const char		*cmd;
@@ -1083,8 +1085,10 @@ format_defaults_client(struct format_tree *ft, struct client *c)
 	format_add(ft, "client_pid", "%ld", (long) c->pid);
 	format_add(ft, "client_height", "%u", c->tty.sy);
 	format_add(ft, "client_width", "%u", c->tty.sx);
-	if (c->tty.path != NULL)
+	if (c->tty.path != NULL) {
 		format_add(ft, "client_tty", "%s", c->tty.path);
+		format_add(ft, "client_tty_short", "%s", shorten_tty(c->tty.path));
+	}
 	if (c->tty.termname != NULL)
 		format_add(ft, "client_termname", "%s", c->tty.termname);
 	format_add(ft, "client_control_mode", "%d",
@@ -1213,6 +1217,7 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 	    !!options_get_number(wp->window->options, "synchronize-panes"));
 
 	format_add(ft, "pane_tty", "%s", wp->tty);
+	format_add(ft, "pane_tty_short", "%s", shorten_tty(wp->tty));
 	format_add(ft, "pane_pid", "%ld", (long) wp->pid);
 	format_add_cb(ft, "pane_start_command", format_cb_start_command);
 	format_add_cb(ft, "pane_current_command", format_cb_current_command);
@@ -1266,4 +1271,19 @@ format_defaults_paste_buffer(struct format_tree *ft, struct paste_buffer *pb)
 	s = paste_make_sample(pb);
 	format_add(ft, "buffer_sample", "%s", s);
 	free(s);
+}
+
+/* Removes /dev/ or /dev/tty from the front of the string */
+static const char *
+shorten_tty(const char *tty)
+{
+	if (strncmp(tty, _PATH_TTY, (sizeof _PATH_TTY) - 1) == 0) {
+		return (tty + (sizeof _PATH_TTY) - 1);
+	}
+
+	if (strncmp(tty, _PATH_DEV, (sizeof _PATH_DEV) - 1) == 0) {
+		return (tty + (sizeof _PATH_DEV) - 1);
+	}
+
+	return (tty);
 }
