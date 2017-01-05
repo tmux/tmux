@@ -407,7 +407,7 @@ screen_redraw_screen(struct client *c, int draw_panes, int draw_status,
 		screen_redraw_draw_panes(c, top);
 	if (draw_status)
 		screen_redraw_draw_status(c, top);
-	tty_reset(tty, w->active);
+	tty_reset(tty);
 }
 
 /* Draw a single pane. */
@@ -425,7 +425,7 @@ screen_redraw_pane(struct client *c, struct window_pane *wp)
 
 	for (i = 0; i < wp->sy; i++)
 		tty_draw_pane(&c->tty, wp, i, wp->xoff, yoff);
-	tty_reset(&c->tty, wp);
+	tty_reset(&c->tty);
 }
 
 /* Draw the borders. */

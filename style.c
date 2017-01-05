@@ -223,10 +223,6 @@ int
 style_switch_implies_redraw(const struct window_pane *wp)
 {
 	if (wp != NULL && wp->palette != NULL) {
-		if (wp->colgc.fg == 8 && wp->palette[7])
-			return 1;
-		if (wp->colgc.bg == 8 && wp->palette[0])
-			return 1;
 		if ((wp->colgc.fg < 0x100 || wp->colgc.fg & COLOUR_FLAG_256) &&
 		    wp->palette[wp->colgc.fg & 0xff])
 			return 1;
