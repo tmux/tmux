@@ -462,9 +462,9 @@ window_redraw_active_switch(struct window *w, struct window_pane *wp)
 	wgc = options_get_style(w->options, "window-style");
 	if (style_equal(agc, wgc))
 		return;
-	if (style_default(w->active))
+	if (style_switch_implies_redraw(w->active))
 		w->active->flags |= PANE_REDRAW;
-	if (style_default(wp))
+	if (style_switch_implies_redraw(wp))
 		wp->flags |= PANE_REDRAW;
 }
 
