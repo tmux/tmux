@@ -1880,6 +1880,8 @@ tty_default_colours(struct grid_cell *gc, const struct window_pane *wp)
 		if (wp->palette != NULL) {
 			if (gc->fg == 8 && wp->palette[7])
 				gc->fg = wp->palette[7];
+			else if (gc->fg == 8)
+				gc->fg = 7;
 			else if ((gc->fg & COLOUR_FLAG_256 ||
 			          gc->fg < 0x100) &&
 			         wp->palette[gc->fg & 0xff])
@@ -1898,6 +1900,8 @@ tty_default_colours(struct grid_cell *gc, const struct window_pane *wp)
 		if (wp->palette != NULL) {
 			if (gc->bg == 8 && wp->palette[0])
 				gc->bg = wp->palette[0];
+			else if (gc->bg == 8)
+				gc->bg = 0;
 			else if ((gc->bg & COLOUR_FLAG_256 ||
 			          gc->bg < 0x100) &&
 			         wp->palette[gc->bg & 0xff])
