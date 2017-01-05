@@ -1670,8 +1670,6 @@ void	tty_create_log(void);
 void	tty_raw(struct tty *, const char *);
 void	tty_attributes(struct tty *, const struct grid_cell *,
 	    const struct window_pane *);
-void	tty_osc_4(struct window_pane *, const char *);
-void	tty_osc_104(struct window_pane *, const char *);
 void	tty_reset(struct tty *, const struct window_pane *);
 void	tty_region_off(struct tty *);
 void	tty_margin_off(struct tty *);

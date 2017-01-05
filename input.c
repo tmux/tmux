@@ -104,6 +104,8 @@ static void printflike(2, 3) input_reply(struct input_ctx *, const char *, ...);
 static void	input_set_state(struct window_pane *,
 		    const struct input_transition *);
 static void	input_reset_cell(struct input_ctx *);
+static void	input_osc_4(struct window_pane *, const char *);
+static void	input_osc_104(struct window_pane *, const char *);
 
 /* Transition entry/exit handlers. */
 static void	input_clear(struct input_ctx *);
@@ -755,6 +757,66 @@ input_reset_cell(struct input_ctx *ictx)
 	memcpy(&ictx->old_cell, &ictx->cell, sizeof ictx->old_cell);
 	ictx->old_cx = 0;
 	ictx->old_cy = 0;
+}
+
+/* Handle the OSC 4 sequence for setting (multiple) entries */
+static void input_osc_4(struct window_pane *wp, const char *p)
+{
+	char *copy = xstrdup(p);
+	char *s = copy;
+	char *next = NULL;
+	long int idx = 0;
+	unsigned int r, g, b;
+
+	while (s != NULL && *s != '\0') {
+		idx = strtol(s, &next, 10);
+
+		if (*next++ != ';')
+			goto bad_spec;
+
+		s = strsep(&next, ";");
+
+		if (sscanf(s, "rgb:%2x/%2x/%2x", &r, &g, &b) != 3)
+			goto bad_spec;
+
+		if (idx < 0 || idx > 0x100)
+			goto bad_spec;
+
+		window_pane_set_palette(wp, idx, colour_join_rgb(r, g, b));
+		s = next;
+		continue;
+bad_spec:
+		log_debug("Bad OSC 4 spec %s", p);
+		break;
+	}
+
+	free(copy);
+}
+
+/* Handle the OSC 104 sequence for unsetting (multiple) entries */
+static void input_osc_104(struct window_pane *wp, const char *p)
+{
+	char *copy = xstrdup(p);
+	char *s = copy;
+	long l;
+
+	if (*p == '\0') {
+		window_pane_reset_palette(wp);
+		return;
+	}
+
+	while (*s != '\0') {
+		l = strtol(s, &s, 10);
+		if ((*s != '\0' && *s != ';') || l < 0 || l > 0x100) {
+			log_debug("Bad OSC 104 params %s", p);
+			break;
+		}
+		window_pane_unset_palette(wp, l);
+		if (*s == ';')
+			s++;
+	}
+
+	free(copy);
 }
 
 /* Initialise input parser. */
@@ -1857,14 +1919,14 @@ input_exit_osc(struct input_ctx *ictx)
 		server_status_window(ictx->wp->window);
 		break;
 	case 4:
-		tty_osc_4(ictx->wp, p);
+		input_osc_4(ictx->wp, p);
 		break;
 	case 12:
 		if (*p != '?') /* ? is colour request */
 			screen_set_cursor_colour(ictx->ctx.s, p);
 		break;
 	case 104:
-		tty_osc_104(ictx->wp, p);
+		input_osc_104(ictx->wp, p);
 		break;
 	case 112:
 		if (*p == '\0') /* no arguments allowed */
