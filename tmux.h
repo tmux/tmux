@@ -1670,6 +1670,8 @@ void	tty_create_log(void);
 void	tty_raw(struct tty *, const char *);
 void	tty_attributes(struct tty *, const struct grid_cell *,
 	    const struct window_pane *);
+void	tty_osc_4(struct window_pane *, const char *);
+void	tty_osc_104(struct window_pane *, const char *);
 void	tty_reset(struct tty *, const struct window_pane *);
 void	tty_region_off(struct tty *);
 void	tty_margin_off(struct tty *);
@@ -2129,6 +2131,10 @@ void		 window_pane_alternate_on(struct window_pane *,
 		     struct grid_cell *, int);
 void		 window_pane_alternate_off(struct window_pane *,
 		     struct grid_cell *, int);
+void		 window_pane_set_palette(struct window_pane *, u_int n,
+		     int colour);
+void		 window_pane_unset_palette(struct window_pane *, u_int n);
+void		 window_pane_reset_palette(struct window_pane *);
 int		 window_pane_set_mode(struct window_pane *,
 		     const struct window_mode *);
 void		 window_pane_reset_mode(struct window_pane *);

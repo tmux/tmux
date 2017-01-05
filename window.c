@@ -1108,6 +1108,43 @@ window_pane_alternate_off(struct window_pane *wp, struct grid_cell *gc,
 	wp->flags |= PANE_REDRAW;
 }
 
+void
+window_pane_set_palette(struct window_pane *wp, unsigned int n, int colour)
+{
+	if (!wp || n > 0xff)
+		return;
+
+	if (!wp->palette)
+		wp->palette = xcalloc(0x100, sizeof *(wp->palette));
+
+	wp->palette[n] = colour;
+	wp->flags |= PANE_REDRAW;
+}
+
+void
+window_pane_unset_palette(struct window_pane *wp, unsigned int n)
+{
+	if (!wp || n > 0xff)
+		return;
+
+	if (!wp->palette)
+		return;
+
+	wp->palette[n] = 0;
+	wp->flags |= PANE_REDRAW;
+}
+
+void
+window_pane_reset_palette(struct window_pane *wp)
+{
+	if (!wp)
+		return;
+
+	free(wp->palette);
+	wp->palette = 0;
+	wp->flags |= PANE_REDRAW;
+}
+
 static void
 window_pane_mode_timer(__unused int fd, __unused short events, void *arg)
 {

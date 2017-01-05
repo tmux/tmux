@@ -1143,6 +1143,7 @@ input_esc_dispatch(struct input_ctx *ictx)
 
 	switch (entry->type) {
 	case INPUT_ESC_RIS:
+		window_pane_reset_palette(ictx->wp);
 		input_reset_cell(ictx);
 		screen_write_reset(sctx);
 		break;
@@ -1855,9 +1856,15 @@ input_exit_osc(struct input_ctx *ictx)
 		screen_set_title(ictx->ctx.s, p);
 		server_status_window(ictx->wp->window);
 		break;
+	case 4:
+		tty_osc_4(ictx->wp, p);
+		break;
 	case 12:
 		if (*p != '?') /* ? is colour request */
 			screen_set_cursor_colour(ictx->ctx.s, p);
+		break;
+	case 104:
+		tty_osc_104(ictx->wp, p);
 		break;
 	case 112:
 		if (*p == '\0') /* no arguments allowed */

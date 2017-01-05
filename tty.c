@@ -1709,6 +1709,123 @@ tty_check_bg(struct tty *tty, struct grid_cell *gc)
 		gc->bg -= 90;
 }
 
+static int
+twohex(const char *p, u_char *h)
+{
+	if (!p[0] || !p[1])
+		return -1;
+
+	if ('a' <= p[0] && p[0] <= 'f')
+		*h = (p[0] - 'a' + 10) * 16;
+	else if ('A' <= p[0] && p[0] <= 'F')
+		*h = (p[0] - 'A' + 10) * 16;
+	else if ('0' <= p[0] && p[0] <= '9')
+		*h = (p[0] - '0') * 16;
+	else
+		return -1;
+
+	if ('a' <= p[1] && p[1] <= 'f')
+		*h += (p[1] - 'a' + 10);
+	else if ('A' <= p[1] && p[1] <= 'F')
+		*h += (p[1] - 'A' + 10);
+	else if ('0' <= p[1] && p[1] <= '9')
+		*h += (p[1] - '0');
+	else
+		return -1;
+
+	return 0;
+}
+
+void
+tty_osc_4(struct window_pane *wp, const char *s)
+{
+	u_int	idx;
+	u_char	r, g, b;
+	const char *p;
+
+	/* Repeatedly match ';'-separated "<n>;rgb:<rr>/<gg/bb" */
+	while(*s) {
+		/* <n>; */
+		idx = 0;
+		p = s;
+		while (*p && '0' <= *p && *p <= '9')
+			idx = (idx * 10) + (*p++ - '0');
+		if (idx > 0xff || *p != ';')
+			goto bad_spec;
+		p++;
+
+		/* rgb: */
+		if (strncmp(p, "rgb:", 4))
+			goto bad_spec;
+		p+=4;
+
+		/* rr/ */
+		if (twohex(p, &r) || p[2] != '/')
+			goto bad_spec;
+		p+=3;
+
+		/* gg/ */
+		if (twohex(p, &g) || p[2] != '/')
+			goto bad_spec;
+		p+=3;
+
+		/* bb */
+		if (twohex(p, &b))
+			goto bad_spec;
+		p+=2;
+
+		window_pane_set_palette(wp, idx, colour_join_rgb(r, g, b));
+
+		if (!*p)
+			break;
+		else if (*p == ';')
+			s = p + 1;
+		else
+			goto bad_spec;
+	}
+
+	wp->flags |= PANE_REDRAW;
+
+	return;
+
+bad_spec:
+	log_debug("bad OSC 4 spec %s", s);
+	return;
+}
+
+void
+tty_osc_104(struct window_pane *wp, const char *s)
+{
+	u_int idx;
+	const char *p;
+
+	if (!*s) {
+		window_pane_reset_palette(wp);
+		return;
+	}
+
+	while (*s) {
+		p = s;
+		idx = 0;
+		while (*p && '0' <= *p && *p <= '9')
+			idx = (idx * 10) + (*p++ - '0');
+		if (idx > 0xff || (*p && *p != ';'))
+			goto bad_number;
+		window_pane_unset_palette(wp, idx);
+		if (!*p)
+			break;
+		s = p + 1;
+	}
+
+	wp->flags |= PANE_REDRAW;
+
+	return;
+
+bad_number:
+	log_debug("bad OSC 104 parameter %s", s);
+	return;
+}
+
 static void
 tty_colours_fg(struct tty *tty, const struct window_pane *wp,
     const struct grid_cell *gc)
