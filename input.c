@@ -802,7 +802,7 @@ static void input_osc_104(struct window_pane *wp, const char *p)
 
 	if (*p == '\0') {
 		window_pane_reset_palette(wp);
-		return;
+		goto finished;
 	}
 
 	while (*s != '\0') {
@@ -816,6 +816,7 @@ static void input_osc_104(struct window_pane *wp, const char *p)
 			s++;
 	}
 
+finished:
 	free(copy);
 }
 
