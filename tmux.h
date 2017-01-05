@@ -831,6 +831,8 @@ struct window_pane {
 
 	struct grid_cell colgc;
 
+	int		*palette;
+
 	int		 pipe_fd;
 	struct bufferevent *pipe_event;
 	size_t		 pipe_off;
@@ -1668,7 +1670,7 @@ void	tty_create_log(void);
 void	tty_raw(struct tty *, const char *);
 void	tty_attributes(struct tty *, const struct grid_cell *,
 	    const struct window_pane *);
-void	tty_reset(struct tty *);
+void	tty_reset(struct tty *, const struct window_pane *);
 void	tty_region_off(struct tty *);
 void	tty_margin_off(struct tty *);
 void	tty_cursor(struct tty *, u_int, u_int);
@@ -2323,5 +2325,6 @@ void		 style_apply_update(struct grid_cell *, struct options *,
 		     const char *);
 int		 style_equal(const struct grid_cell *,
 		     const struct grid_cell *);
+int		 style_default(const struct window_pane *);
 
 #endif /* TMUX_H */

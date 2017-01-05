@@ -462,9 +462,9 @@ window_redraw_active_switch(struct window *w, struct window_pane *wp)
 	wgc = options_get_style(w->options, "window-style");
 	if (style_equal(agc, wgc))
 		return;
-	if (style_equal(&grid_default_cell, &w->active->colgc))
+	if (style_default(w->active))
 		w->active->flags |= PANE_REDRAW;
-	if (style_equal(&grid_default_cell, &wp->colgc))
+	if (style_default(wp))
 		wp->flags |= PANE_REDRAW;
 }
 
@@ -832,6 +832,7 @@ window_pane_destroy(struct window_pane *wp)
 	free((void *)wp->cwd);
 	free(wp->shell);
 	cmd_free_argv(wp->argc, wp->argv);
+	free(wp->palette);
 	free(wp);
 }
 

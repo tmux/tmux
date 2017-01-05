@@ -407,7 +407,7 @@ screen_redraw_screen(struct client *c, int draw_panes, int draw_status,
 		screen_redraw_draw_panes(c, top);
 	if (draw_status)
 		screen_redraw_draw_status(c, top);
-	tty_reset(tty);
+	tty_reset(tty, w->active);
 }
 
 /* Draw a single pane. */
@@ -425,7 +425,7 @@ screen_redraw_pane(struct client *c, struct window_pane *wp)
 
 	for (i = 0; i < wp->sy; i++)
 		tty_draw_pane(&c->tty, wp, i, wp->xoff, yoff);
-	tty_reset(&c->tty);
+	tty_reset(&c->tty, wp);
 }
 
 /* Draw the borders. */
@@ -523,14 +523,20 @@ screen_redraw_draw_panes(struct client *c, u_int top)
 	struct tty		*tty = &c->tty;
 	struct window_pane	*wp;
 	u_int		 	 i;
+	int			*stored_palette = 0;
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if (!window_pane_visible(wp))
 			continue;
 		for (i = 0; i < wp->sy; i++)
 			tty_draw_pane(tty, wp, i, wp->xoff, top + wp->yoff);
-		if (c->flags & CLIENT_IDENTIFY)
+		if (c->flags & CLIENT_IDENTIFY) {
+			/* Pretend there's no color swapping */
+			stored_palette = wp->palette;
+			wp->palette = 0;
 			screen_redraw_draw_number(c, wp, top);
+			wp->palette = stored_palette;
+		}
 	}
 }
 

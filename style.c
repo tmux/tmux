@@ -217,3 +217,15 @@ style_equal(const struct grid_cell *gc1, const struct grid_cell *gc2)
 	    (gc1->attr & ~GRID_ATTR_CHARSET) ==
 	    (gc2->attr & ~GRID_ATTR_CHARSET));
 }
+
+/* Check if a window_pane has default style, taking palette into account */
+int
+style_default(const struct window_pane *wp)
+{
+	if (wp && wp->palette &&
+	    ((wp->colgc.fg < 0x100 && wp->palette[wp->colgc.fg]) ||
+	     (wp->colgc.bg < 0x100 && wp->palette[wp->colgc.bg])))
+		return 0;
+
+	return style_equal(&grid_default_cell, &wp->colgc);
+}
