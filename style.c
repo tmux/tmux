@@ -217,4 +217,3 @@ style_equal(const struct grid_cell *gc1, const struct grid_cell *gc2)
 	    (gc1->attr & ~GRID_ATTR_CHARSET) ==
 	    (gc2->attr & ~GRID_ATTR_CHARSET));
 }
-

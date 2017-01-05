@@ -841,14 +841,9 @@ window_pane_destroy(struct window_pane *wp)
 static int
 window_pane_is_default_style(const struct window_pane *wp)
 {
-	if (wp->palette != NULL) {
-		if ((wp->colgc.fg < 0x100 || wp->colgc.fg & COLOUR_FLAG_256) &&
-		    wp->palette[wp->colgc.fg & 0xff])
+	if (WINDOW_PANE_PALETTE_HAS(wp, wp->colgc.fg) ||
+	    WINDOW_PANE_PALETTE_HAS(wp, wp->colgc.bg))
 		return 1;
-		if ((wp->colgc.bg < 0x100 || wp->colgc.bg & COLOUR_FLAG_256) &&
-		    wp->palette[wp->colgc.bg & 0xff])
-		return 1;
-	}
 
 	return style_equal(&grid_default_cell, &wp->colgc);
 }
