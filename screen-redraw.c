@@ -523,7 +523,7 @@ screen_redraw_draw_panes(struct client *c, u_int top)
 	struct tty		*tty = &c->tty;
 	struct window_pane	*wp;
 	u_int		 	 i;
-	int			*stored_palette = 0;
+	int			*stored_palette = NULL;
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if (!window_pane_visible(wp))
@@ -533,7 +533,7 @@ screen_redraw_draw_panes(struct client *c, u_int top)
 		if (c->flags & CLIENT_IDENTIFY) {
 			/* Pretend there's no color swapping */
 			stored_palette = wp->palette;
-			wp->palette = 0;
+			wp->palette = NULL;
 			screen_redraw_draw_number(c, wp, top);
 			wp->palette = stored_palette;
 		}

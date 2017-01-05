@@ -1066,7 +1066,7 @@ server_client_reset_state(struct client *c)
 	/* Set the terminal mode and reset attributes. */
 	tty_update_mode(&c->tty, mode, s);
 	/* Don't use wp - it might not have default attributes */
-	tty_reset(&c->tty, 0);
+	tty_reset(&c->tty, NULL);
 }
 
 /* Repeat time callback. */

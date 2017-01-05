@@ -1263,14 +1263,14 @@ tty_reset(struct tty *tty, const struct window_pane *wp)
 	struct grid_cell	*gc = &tty->cell;
 
 	if (grid_cells_equal(gc, &grid_default_cell) &&
-	    (!wp || !wp->palette))
+	    (wp == NULL || wp->palette == NULL))
 		return;
 
 	if ((gc->attr & GRID_ATTR_CHARSET) && tty_use_acs(tty))
 		tty_putcode(tty, TTYC_RMACS);
 	tty_putcode(tty, TTYC_SGR0);
 	memcpy(gc, &grid_default_cell, sizeof *gc);
-	if (wp && wp->palette) {
+	if (wp != NULL && wp->palette != NULL) {
 		if (wp->palette[7]) {
 			tty_try_colour(tty, wp->palette[7], "38");
 			gc->fg = wp->palette[7];
@@ -1567,10 +1567,12 @@ tty_colours(struct tty *tty, const struct window_pane *wp,
 {
 	struct grid_cell	*tc = &tty->cell;
 	int			 have_ax;
-	int			 fg_remap = wp && wp->palette &&
-                                    wp->palette[7];
-	int			 bg_remap = wp && wp->palette &&
-                                    wp->palette[0];
+	int			 fg_remap = wp != NULL &&
+				     wp->palette != NULL &&
+				     wp->palette[7];
+	int			 bg_remap = wp != NULL &&
+				     wp->palette != NULL &&
+				     wp->palette[0];
 	/* No changes? Nothing is necessary. */
 	if (gc->fg == tc->fg && gc->bg == tc->bg)
 		return;
@@ -1835,10 +1837,12 @@ tty_colours_fg(struct tty *tty, const struct window_pane *wp,
 	int			 colour = 0;
 
 	/* If this color has been set by initc, substitute */
-	if (gc->fg == 8 && wp && wp->palette && wp->palette[7])
+	if (gc->fg == 8 && wp != NULL && wp->palette != NULL &&
+	    wp->palette[7])
 		colour = wp->palette[7];
-	else if (wp && wp->palette && !(gc->fg & COLOUR_FLAG_RGB) &&
-		    wp->palette[gc->fg & 0xff])
+	else if (wp != NULL && wp->palette != NULL &&
+	         !(gc->fg & COLOUR_FLAG_RGB) &&
+	         wp->palette[gc->fg & 0xff])
 		colour = wp->palette[gc->fg & 0xff];
 	else
 		colour = gc->fg;
@@ -1876,10 +1880,12 @@ tty_colours_bg(struct tty *tty, const struct window_pane *wp,
 	int			 colour = 0;
 
 	/* If this color has been set by initc, substitute */
-	if (gc->bg == 8 && wp && wp->palette && wp->palette[0])
+	if (gc->bg == 8 && wp != NULL && wp->palette != NULL &&
+	    wp->palette[0])
 		colour = wp->palette[0];
-	else if (wp && wp->palette && !(gc->bg & COLOUR_FLAG_RGB) &&
-		    wp->palette[gc->bg & 0xff])
+	else if (wp != NULL && wp->palette != NULL &&
+	         !(gc->bg & COLOUR_FLAG_RGB) &&
+	         wp->palette[gc->bg & 0xff])
 		colour = wp->palette[gc->bg & 0xff];
 	else
 		colour = gc->bg;
@@ -1988,7 +1994,7 @@ tty_default_colours(struct grid_cell *gc, const struct window_pane *wp)
 		else
 			gc->fg = wgc->fg;
 
-		if (wp->palette) {
+		if (wp->palette != NULL) {
 			if (gc->fg == 8 && wp->palette[7])
 				gc->fg = wp->palette[7];
 			else if ((gc->fg & COLOUR_FLAG_256 ||
@@ -2006,7 +2012,7 @@ tty_default_colours(struct grid_cell *gc, const struct window_pane *wp)
 		else
 			gc->bg = wgc->bg;
 
-		if (wp->palette) {
+		if (wp->palette != NULL) {
 			if (gc->bg == 8 && wp->palette[0])
 				gc->bg = wp->palette[0];
 			else if ((gc->bg & COLOUR_FLAG_256 ||

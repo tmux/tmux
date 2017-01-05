@@ -1111,10 +1111,10 @@ window_pane_alternate_off(struct window_pane *wp, struct grid_cell *gc,
 void
 window_pane_set_palette(struct window_pane *wp, unsigned int n, int colour)
 {
-	if (!wp || n > 0xff)
+	if (wp == NULL || n > 0xff)
 		return;
 
-	if (!wp->palette)
+	if (wp->palette == NULL)
 		wp->palette = xcalloc(0x100, sizeof *(wp->palette));
 
 	wp->palette[n] = colour;
@@ -1124,10 +1124,7 @@ window_pane_set_palette(struct window_pane *wp, unsigned int n, int colour)
 void
 window_pane_unset_palette(struct window_pane *wp, unsigned int n)
 {
-	if (!wp || n > 0xff)
-		return;
-
-	if (!wp->palette)
+	if (wp == NULL || n > 0xff || wp->palette == NULL)
 		return;
 
 	wp->palette[n] = 0;
@@ -1137,11 +1134,11 @@ window_pane_unset_palette(struct window_pane *wp, unsigned int n)
 void
 window_pane_reset_palette(struct window_pane *wp)
 {
-	if (!wp)
+	if (wp == NULL)
 		return;
 
 	free(wp->palette);
-	wp->palette = 0;
+	wp->palette = NULL;
 	wp->flags |= PANE_REDRAW;
 }
 
