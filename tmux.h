@@ -2011,7 +2011,7 @@ void	 screen_write_vnputs(struct screen_write_ctx *, ssize_t,
 void	 screen_write_putc(struct screen_write_ctx *, const struct grid_cell *,
 	     u_char);
 void	 screen_write_copy(struct screen_write_ctx *, struct screen *, u_int,
-	     u_int, u_int, u_int);
+	     u_int, u_int, u_int, bitstr_t *, const struct grid_cell *);
 void	 screen_write_backspace(struct screen_write_ctx *);
 void	 screen_write_mode_set(struct screen_write_ctx *, int);
 void	 screen_write_mode_clear(struct screen_write_ctx *, int);

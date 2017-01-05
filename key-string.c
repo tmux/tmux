@@ -142,7 +142,7 @@ key_string_get_modifiers(const char **string)
 			break;
 		default:
 			*string = NULL;
-			return 0;
+			return (0);
 		}
 		*string += 2;
 	}
