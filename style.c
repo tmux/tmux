@@ -222,10 +222,14 @@ style_equal(const struct grid_cell *gc1, const struct grid_cell *gc2)
 int
 style_default(const struct window_pane *wp)
 {
-	if (wp != NULL && wp->palette != NULL &&
-	    ((wp->colgc.fg < 0x100 && wp->palette[wp->colgc.fg]) ||
-	     (wp->colgc.bg < 0x100 && wp->palette[wp->colgc.bg])))
-		return 0;
+	if (wp != NULL && wp->palette != NULL) {
+		if ((wp->colgc.fg < 0x100 || wp->colgc.fg & COLOUR_FLAG_256) &&
+		    wp->palette[wp->colgc.fg & 0xff])
+			return 0;
+		if ((wp->colgc.bg < 0x100 || wp->colgc.bg & COLOUR_FLAG_256) &&
+		    wp->palette[wp->colgc.bg & 0xff])
+			return 0;
+	}
 
 	return style_equal(&grid_default_cell, &wp->colgc);
 }
