@@ -218,18 +218,3 @@ style_equal(const struct grid_cell *gc1, const struct grid_cell *gc2)
 	    (gc2->attr & ~GRID_ATTR_CHARSET));
 }
 
-/* Check if a window_pane has default style, taking palette into account */
-int
-style_switch_implies_redraw(const struct window_pane *wp)
-{
-	if (wp != NULL && wp->palette != NULL) {
-		if ((wp->colgc.fg < 0x100 || wp->colgc.fg & COLOUR_FLAG_256) &&
-		    wp->palette[wp->colgc.fg & 0xff])
-			return 1;
-		if ((wp->colgc.bg < 0x100 || wp->colgc.bg & COLOUR_FLAG_256) &&
-		    wp->palette[wp->colgc.bg & 0xff])
-			return 1;
-	}
-
-	return style_equal(&grid_default_cell, &wp->colgc);
-}

@@ -2329,6 +2329,5 @@ void		 style_apply_update(struct grid_cell *, struct options *,
 		     const char *);
 int		 style_equal(const struct grid_cell *,
 		     const struct grid_cell *);
-int		 style_switch_implies_redraw(const struct window_pane *);
 
 #endif /* TMUX_H */

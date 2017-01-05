@@ -68,6 +68,8 @@ static void	window_pane_destroy(struct window_pane *);
 
 static void	window_pane_set_watermark(struct window_pane *, size_t);
 
+static int	window_pane_is_default_style(const struct window_pane *);
+
 static void	window_pane_read_callback(struct bufferevent *, void *);
 static void	window_pane_error_callback(struct bufferevent *, short, void *);
 
@@ -462,9 +464,9 @@ window_redraw_active_switch(struct window *w, struct window_pane *wp)
 	wgc = options_get_style(w->options, "window-style");
 	if (style_equal(agc, wgc))
 		return;
-	if (style_switch_implies_redraw(w->active))
+	if (window_pane_is_default_style(w->active))
 		w->active->flags |= PANE_REDRAW;
-	if (style_switch_implies_redraw(wp))
+	if (window_pane_is_default_style(wp))
 		wp->flags |= PANE_REDRAW;
 }
 
@@ -834,6 +836,21 @@ window_pane_destroy(struct window_pane *wp)
 	cmd_free_argv(wp->argc, wp->argv);
 	free(wp->palette);
 	free(wp);
+}
+
+static int
+window_pane_is_default_style(const struct window_pane *wp)
+{
+	if (wp->palette != NULL) {
+		if ((wp->colgc.fg < 0x100 || wp->colgc.fg & COLOUR_FLAG_256) &&
+		    wp->palette[wp->colgc.fg & 0xff])
+		return 1;
+		if ((wp->colgc.bg < 0x100 || wp->colgc.bg & COLOUR_FLAG_256) &&
+		    wp->palette[wp->colgc.bg & 0xff])
+		return 1;
+	}
+
+	return style_equal(&grid_default_cell, &wp->colgc);
 }
 
 static void
