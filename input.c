@@ -779,7 +779,7 @@ static void input_osc_4(struct window_pane *wp, const char *p)
 		if (sscanf(s, "rgb:%2x/%2x/%2x", &r, &g, &b) != 3)
 			goto bad_spec;
 
-		if (idx < 0 || idx > 0x100)
+		if (idx < 0 || idx >= 0x100)
 			goto bad_spec;
 
 		window_pane_set_palette(wp, idx, colour_join_rgb(r, g, b));
