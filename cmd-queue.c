@@ -275,7 +275,6 @@ cmdq_format(struct cmdq_item *item, const char *key, const char *fmt, ...)
 	free(value);
 }
 
-
 /* Process next item on command queue. */
 u_int
 cmdq_next(struct client *c)
