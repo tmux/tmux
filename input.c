@@ -104,6 +104,8 @@ static void printflike(2, 3) input_reply(struct input_ctx *, const char *, ...);
 static void	input_set_state(struct window_pane *,
 		    const struct input_transition *);
 static void	input_reset_cell(struct input_ctx *);
+static void	input_osc_4(struct window_pane *, const char *);
+static void	input_osc_104(struct window_pane *, const char *);
 
 /* Transition entry/exit handlers. */
 static void	input_clear(struct input_ctx *);
@@ -162,6 +164,7 @@ enum input_esc_type {
 	INPUT_ESC_SCSG0_ON,
 	INPUT_ESC_SCSG1_OFF,
 	INPUT_ESC_SCSG1_ON,
+	INPUT_ESC_ST,
 };
 
 /* Escape command table. */
@@ -179,6 +182,7 @@ static const struct input_table_entry input_esc_table[] = {
 	{ 'E', "",  INPUT_ESC_NEL },
 	{ 'H', "",  INPUT_ESC_HTS },
 	{ 'M', "",  INPUT_ESC_RI },
+	{ '\\', "", INPUT_ESC_ST },
 	{ 'c', "",  INPUT_ESC_RIS },
 };
 
@@ -755,6 +759,67 @@ input_reset_cell(struct input_ctx *ictx)
 	ictx->old_cy = 0;
 }
 
+/* Handle the OSC 4 sequence for setting (multiple) entries */
+static void input_osc_4(struct window_pane *wp, const char *p)
+{
+	char *copy = xstrdup(p);
+	char *s = copy;
+	char *next = NULL;
+	long int idx = 0;
+	unsigned int r, g, b;
+
+	while (s != NULL && *s != '\0') {
+		idx = strtol(s, &next, 10);
+
+		if (*next++ != ';')
+			goto bad_spec;
+
+		s = strsep(&next, ";");
+
+		if (sscanf(s, "rgb:%2x/%2x/%2x", &r, &g, &b) != 3)
+			goto bad_spec;
+
+		if (idx < 0 || idx >= 0x100)
+			goto bad_spec;
+
+		window_pane_set_palette(wp, idx, colour_join_rgb(r, g, b));
+		s = next;
+		continue;
+bad_spec:
+		log_debug("Bad OSC 4 spec %s", p);
+		break;
+	}
+
+	free(copy);
+}
+
+/* Handle the OSC 104 sequence for unsetting (multiple) entries */
+static void input_osc_104(struct window_pane *wp, const char *p)
+{
+	char *copy = xstrdup(p);
+	char *s = copy;
+	long l;
+
+	if (*p == '\0') {
+		window_pane_reset_palette(wp);
+		goto finished;
+	}
+
+	while (*s != '\0') {
+		l = strtol(s, &s, 10);
+		if ((*s != '\0' && *s != ';') || l < 0 || l > 0x100) {
+			log_debug("Bad OSC 104 params %s", p);
+			break;
+		}
+		window_pane_unset_palette(wp, l);
+		if (*s == ';')
+			s++;
+	}
+
+finished:
+	free(copy);
+}
+
 /* Initialise input parser. */
 void
 input_init(struct window_pane *wp)
@@ -1141,6 +1206,7 @@ input_esc_dispatch(struct input_ctx *ictx)
 
 	switch (entry->type) {
 	case INPUT_ESC_RIS:
+		window_pane_reset_palette(ictx->wp);
 		input_reset_cell(ictx);
 		screen_write_reset(sctx);
 		break;
@@ -1187,6 +1253,9 @@ input_esc_dispatch(struct input_ctx *ictx)
 		break;
 	case INPUT_ESC_SCSG1_OFF:
 		ictx->cell.g1set = 0;
+		break;
+	case INPUT_ESC_ST:
+		/* ST terminates OSC, but the state transition already did that */
 		break;
 	}
 
@@ -1850,9 +1919,15 @@ input_exit_osc(struct input_ctx *ictx)
 		screen_set_title(ictx->ctx.s, p);
 		server_status_window(ictx->wp->window);
 		break;
+	case 4:
+		input_osc_4(ictx->wp, p);
+		break;
 	case 12:
 		if (*p != '?') /* ? is colour request */
 			screen_set_cursor_colour(ictx->ctx.s, p);
+		break;
+	case 104:
+		input_osc_104(ictx->wp, p);
 		break;
 	case 112:
 		if (*p == '\0') /* no arguments allowed */

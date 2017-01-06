@@ -68,6 +68,8 @@ static void	window_pane_destroy(struct window_pane *);
 
 static void	window_pane_set_watermark(struct window_pane *, size_t);
 
+static int	window_pane_is_default_style(const struct window_pane *);
+
 static void	window_pane_read_callback(struct bufferevent *, void *);
 static void	window_pane_error_callback(struct bufferevent *, short, void *);
 
@@ -462,9 +464,9 @@ window_redraw_active_switch(struct window *w, struct window_pane *wp)
 	wgc = options_get_style(w->options, "window-style");
 	if (style_equal(agc, wgc))
 		return;
-	if (style_equal(&grid_default_cell, &w->active->colgc))
+	if (window_pane_is_default_style(w->active))
 		w->active->flags |= PANE_REDRAW;
-	if (style_equal(&grid_default_cell, &wp->colgc))
+	if (window_pane_is_default_style(wp))
 		wp->flags |= PANE_REDRAW;
 }
 
@@ -832,7 +834,18 @@ window_pane_destroy(struct window_pane *wp)
 	free((void *)wp->cwd);
 	free(wp->shell);
 	cmd_free_argv(wp->argc, wp->argv);
+	free(wp->palette);
 	free(wp);
+}
+
+static int
+window_pane_is_default_style(const struct window_pane *wp)
+{
+	if (WINDOW_PANE_PALETTE_HAS(wp, wp->colgc.fg) ||
+	    WINDOW_PANE_PALETTE_HAS(wp, wp->colgc.bg))
+		return 1;
+
+	return style_equal(&grid_default_cell, &wp->colgc);
 }
 
 static void
@@ -1104,6 +1117,40 @@ window_pane_alternate_off(struct window_pane *wp, struct grid_cell *gc,
 	grid_destroy(wp->saved_grid);
 	wp->saved_grid = NULL;
 
+	wp->flags |= PANE_REDRAW;
+}
+
+void
+window_pane_set_palette(struct window_pane *wp, unsigned int n, int colour)
+{
+	if (wp == NULL || n > 0xff)
+		return;
+
+	if (wp->palette == NULL)
+		wp->palette = xcalloc(0x100, sizeof *(wp->palette));
+
+	wp->palette[n] = colour;
+	wp->flags |= PANE_REDRAW;
+}
+
+void
+window_pane_unset_palette(struct window_pane *wp, unsigned int n)
+{
+	if (wp == NULL || n > 0xff || wp->palette == NULL)
+		return;
+
+	wp->palette[n] = 0;
+	wp->flags |= PANE_REDRAW;
+}
+
+void
+window_pane_reset_palette(struct window_pane *wp)
+{
+	if (wp == NULL)
+		return;
+
+	free(wp->palette);
+	wp->palette = NULL;
 	wp->flags |= PANE_REDRAW;
 }
 
