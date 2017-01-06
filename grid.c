@@ -339,14 +339,19 @@ grid_get_cell(struct grid *gd, u_int px, u_int py, struct grid_cell *gc)
 		return;
 	}
 
-	gc->flags = gce->flags & ~(GRID_FLAG_FG256|GRID_FLAG_BG256);
+	gc->flags = gce->flags &
+		~(GRID_FLAG_FG256|GRID_FLAG_BG256|GRID_FLAG_FGRGB|GRID_FLAG_BGRGB);
 	gc->attr = gce->data.attr;
 	gc->fg = gce->data.fg;
 	if (gce->flags & GRID_FLAG_FG256)
 		gc->fg |= COLOUR_FLAG_256;
+	if (gce->flags & GRID_FLAG_FGRGB)
+		gc->fg |= COLOUR_FLAG_RGB;
 	gc->bg = gce->data.bg;
 	if (gce->flags & GRID_FLAG_BG256)
 		gc->bg |= COLOUR_FLAG_256;
+	if (gce->flags & GRID_FLAG_BGRGB)
+		gc->bg |= COLOUR_FLAG_RGB;
 	utf8_set(&gc->data, gce->data.data);
 }
 
@@ -386,9 +391,13 @@ grid_set_cell(struct grid *gd, u_int px, u_int py, const struct grid_cell *gc)
 	gce->data.fg = gc->fg & 0xff;
 	if (gc->fg & COLOUR_FLAG_256)
 		gce->flags |= GRID_FLAG_FG256;
+	if (gc->fg & COLOUR_FLAG_RGB)
+		gce->flags |= GRID_FLAG_FGRGB;
 	gce->data.bg = gc->bg & 0xff;
 	if (gc->bg & COLOUR_FLAG_256)
 		gce->flags |= GRID_FLAG_BG256;
+	if (gc->bg & COLOUR_FLAG_RGB)
+		gce->flags |= GRID_FLAG_BGRGB;
 	gce->data.data = gc->data.data[0];
 }
 
