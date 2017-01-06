@@ -1107,6 +1107,37 @@ window_pane_alternate_off(struct window_pane *wp, struct grid_cell *gc,
 	wp->flags |= PANE_REDRAW;
 }
 
+void
+window_pane_initc(struct window_pane *wp, const char *s)
+{
+	unsigned int idx = 0;
+	int r = 0, g = 0, b = 0;
+	char dummy;
+
+	/* This must be something like "177;rgb:00/3a/ff" */
+	if (sscanf(s, "%3u;rgb:%2x/%2x/%2x%c", &idx, &r, &g, &b, &dummy) != 4 ||
+	    idx > 0xff) {
+		log_debug("invalid initc sequence %s", s);
+		return;
+	}
+
+	wp->palette[idx] = colour_join_rgb(r, g, b);
+	wp->flags |= PANE_REDRAW;
+}
+
+void
+window_pane_reset_palette(struct window_pane *wp)
+{
+	if (!wp)
+		return;
+
+	u_int i;
+	for (i = 0; i < 0x100; ++i)
+		wp->palette[i] = 0;
+
+	wp->flags |= PANE_REDRAW;
+}
+
 static void
 window_pane_mode_timer(__unused int fd, __unused short events, void *arg)
 {
