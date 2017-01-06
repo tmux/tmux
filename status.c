@@ -657,7 +657,7 @@ status_message_redraw(struct client *c)
 /* Enable status line prompt. */
 void
 status_prompt_set(struct client *c, const char *msg, const char *input,
-    int (*callbackfn)(void *, const char *), void (*freefn)(void *),
+    int (*callbackfn)(void *, const char *, int), void (*freefn)(void *),
     void *data, int flags)
 {
 	struct format_tree	*ft;
@@ -687,7 +687,8 @@ status_prompt_set(struct client *c, const char *msg, const char *input,
 	c->prompt_flags = flags;
 	c->prompt_mode = PROMPT_ENTRY;
 
-	c->tty.flags |= (TTY_NOCURSOR|TTY_FREEZE);
+	if (~flags & PROMPT_INCREMENTAL)
+		c->tty.flags |= (TTY_NOCURSOR|TTY_FREEZE);
 	c->flags |= CLIENT_STATUS;
 
 	free(tmp);
@@ -976,7 +977,7 @@ status_prompt_key(struct client *c, key_code key)
 {
 	struct options		*oo = c->session->options;
 	struct paste_buffer	*pb;
-	char			*s, word[64];
+	char			*s, *cp, word[64], prefix = '=';
 	const char		*histstr, *bufdata, *ws = NULL;
 	u_char			 ch;
 	size_t			 size, n, off, idx, bufsize, used;
@@ -989,7 +990,7 @@ status_prompt_key(struct client *c, key_code key)
 		if (key >= '0' && key <= '9')
 			goto append_key;
 		s = utf8_tocstr(c->prompt_buffer);
-		c->prompt_callbackfn(c->prompt_data, s);
+		c->prompt_callbackfn(c->prompt_data, s, 1);
 		status_prompt_clear(c);
 		free(s);
 		return (1);
@@ -1013,28 +1014,28 @@ process_key:
 	case '\002': /* C-b */
 		if (c->prompt_index > 0) {
 			c->prompt_index--;
-			c->flags |= CLIENT_STATUS;
+			break;
 		}
 		break;
 	case KEYC_RIGHT:
 	case '\006': /* C-f */
 		if (c->prompt_index < size) {
 			c->prompt_index++;
-			c->flags |= CLIENT_STATUS;
+			break;
 		}
 		break;
 	case KEYC_HOME:
 	case '\001': /* C-a */
 		if (c->prompt_index != 0) {
 			c->prompt_index = 0;
-			c->flags |= CLIENT_STATUS;
+			break;
 		}
 		break;
 	case KEYC_END:
 	case '\005': /* C-e */
 		if (c->prompt_index != size) {
 			c->prompt_index = size;
-			c->flags |= CLIENT_STATUS;
+			break;
 		}
 		break;
 	case '\011': /* Tab */
@@ -1094,8 +1095,7 @@ process_key:
 		c->prompt_index = (first - c->prompt_buffer) + strlen(s);
 		free(s);
 
-		c->flags |= CLIENT_STATUS;
-		break;
+		goto changed;
 	case KEYC_BSPACE:
 	case '\010': /* C-h */
 		if (c->prompt_index != 0) {
@@ -1108,7 +1108,7 @@ process_key:
 				    sizeof *c->prompt_buffer);
 				c->prompt_index--;
 			}
-			c->flags |= CLIENT_STATUS;
+			goto changed;
 		}
 		break;
 	case KEYC_DC:
@@ -1118,18 +1118,17 @@ process_key:
 			    c->prompt_buffer + c->prompt_index + 1,
 			    (size + 1 - c->prompt_index) *
 			    sizeof *c->prompt_buffer);
-			c->flags |= CLIENT_STATUS;
+			goto changed;
 		}
 		break;
 	case '\025': /* C-u */
 		c->prompt_buffer[0].size = 0;
 		c->prompt_index = 0;
-		c->flags |= CLIENT_STATUS;
-		break;
+		goto changed;
 	case '\013': /* C-k */
 		if (c->prompt_index < size) {
 			c->prompt_buffer[c->prompt_index].size = 0;
-			c->flags |= CLIENT_STATUS;
+			goto changed;
 		}
 		break;
 	case '\027': /* C-w */
@@ -1161,8 +1160,7 @@ process_key:
 		    '\0', (c->prompt_index - idx) * sizeof *c->prompt_buffer);
 		c->prompt_index = idx;
 
-		c->flags |= CLIENT_STATUS;
-		break;
+		goto changed;
 	case 'f'|KEYC_ESCAPE:
 		ws = options_get_string(oo, "word-separators");
 
@@ -1185,8 +1183,7 @@ process_key:
 		    c->prompt_index != 0)
 			c->prompt_index--;
 
-		c->flags |= CLIENT_STATUS;
-		break;
+		goto changed;
 	case 'b'|KEYC_ESCAPE:
 		ws = options_get_string(oo, "word-separators");
 
@@ -1206,9 +1203,7 @@ process_key:
 				break;
 			}
 		}
-
-		c->flags |= CLIENT_STATUS;
-		break;
+		goto changed;
 	case KEYC_UP:
 	case '\020': /* C-p */
 		histstr = status_prompt_up_history(&c->prompt_hindex);
@@ -1217,8 +1212,7 @@ process_key:
 		free(c->prompt_buffer);
 		c->prompt_buffer = utf8_fromcstr(histstr);
 		c->prompt_index = utf8_strlen(c->prompt_buffer);
-		c->flags |= CLIENT_STATUS;
-		break;
+		goto changed;
 	case KEYC_DOWN:
 	case '\016': /* C-n */
 		histstr = status_prompt_down_history(&c->prompt_hindex);
@@ -1227,8 +1221,7 @@ process_key:
 		free(c->prompt_buffer);
 		c->prompt_buffer = utf8_fromcstr(histstr);
 		c->prompt_index = utf8_strlen(c->prompt_buffer);
-		c->flags |= CLIENT_STATUS;
-		break;
+		goto changed;
 	case '\031': /* C-y */
 		if ((pb = paste_get_top(NULL)) == NULL)
 			break;
@@ -1259,9 +1252,7 @@ process_key:
 			}
 			c->prompt_index += n;
 		}
-
-		c->flags |= CLIENT_STATUS;
-		break;
+		goto changed;
 	case '\024': /* C-t */
 		idx = c->prompt_index;
 		if (idx < size)
@@ -1272,7 +1263,7 @@ process_key:
 			    &c->prompt_buffer[idx - 1]);
 			utf8_copy(&c->prompt_buffer[idx - 1], &tmp);
 			c->prompt_index = idx;
-			c->flags |= CLIENT_STATUS;
+			goto changed;
 		}
 		break;
 	case '\r':
@@ -1280,16 +1271,33 @@ process_key:
 		s = utf8_tocstr(c->prompt_buffer);
 		if (*s != '\0')
 			status_prompt_add_history(s);
-		if (c->prompt_callbackfn(c->prompt_data, s) == 0)
+		if (c->prompt_callbackfn(c->prompt_data, s, 1) == 0)
 			status_prompt_clear(c);
 		free(s);
 		break;
 	case '\033': /* Escape */
 	case '\003': /* C-c */
-		if (c->prompt_callbackfn(c->prompt_data, NULL) == 0)
+		if (c->prompt_callbackfn(c->prompt_data, NULL, 1) == 0)
 			status_prompt_clear(c);
 		break;
+	case '\022': /* C-r */
+		if (c->prompt_flags & PROMPT_INCREMENTAL) {
+			prefix = '-';
+			goto changed;
+		}
+		break;
+	case '\023': /* C-s */
+		if (c->prompt_flags & PROMPT_INCREMENTAL) {
+			prefix = '+';
+			goto changed;
+		}
+		break;
+	default:
+		goto append_key;
 	}
+
+	c->flags |= CLIENT_STATUS;
+	return (0);
 
 append_key:
 	if (key <= 0x1f || key >= KEYC_BASE)
@@ -1317,12 +1325,20 @@ append_key:
 		s = utf8_tocstr(c->prompt_buffer);
 		if (strlen(s) != 1)
 			status_prompt_clear(c);
-		else if (c->prompt_callbackfn(c->prompt_data, s) == 0)
+		else if (c->prompt_callbackfn(c->prompt_data, s, 1) == 0)
 			status_prompt_clear(c);
 		free(s);
 	}
 
+changed:
 	c->flags |= CLIENT_STATUS;
+	if (c->prompt_flags & PROMPT_INCREMENTAL) {
+		s = utf8_tocstr(c->prompt_buffer);
+		xasprintf(&cp, "%c%s", prefix, s);
+		c->prompt_callbackfn(c->prompt_data, cp, 0);
+		free(cp);
+		free(s);
+	}
 	return (0);
 }
 

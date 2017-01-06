@@ -1419,7 +1419,7 @@ struct client {
 	char		*prompt_string;
 	struct utf8_data *prompt_buffer;
 	size_t		 prompt_index;
-	int		 (*prompt_callbackfn)(void *, const char *);
+	int		 (*prompt_callbackfn)(void *, const char *, int);
 	void		 (*prompt_freefn)(void *);
 	void		*prompt_data;
 	u_int		 prompt_hindex;
@@ -1427,6 +1427,7 @@ struct client {
 
 #define PROMPT_SINGLE 0x1
 #define PROMPT_NUMERIC 0x2
+#define PROMPT_INCREMENTAL 0x4
 	int		 prompt_flags;
 
 	struct session	*session;
@@ -1917,7 +1918,7 @@ void printflike(2, 3) status_message_set(struct client *, const char *, ...);
 void	 status_message_clear(struct client *);
 int	 status_message_redraw(struct client *);
 void	 status_prompt_set(struct client *, const char *, const char *,
-	     int (*)(void *, const char *), void (*)(void *), void *, int);
+	     int (*)(void *, const char *, int), void (*)(void *), void *, int);
 void	 status_prompt_clear(struct client *);
 int	 status_prompt_redraw(struct client *);
 int	 status_prompt_key(struct client *, key_code);
