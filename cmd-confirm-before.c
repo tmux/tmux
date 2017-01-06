@@ -31,7 +31,7 @@
 static enum cmd_retval	cmd_confirm_before_exec(struct cmd *,
 			    struct cmdq_item *);
 
-static int	cmd_confirm_before_callback(void *, const char *);
+static int	cmd_confirm_before_callback(void *, const char *, int);
 static void	cmd_confirm_before_free(void *);
 
 const struct cmd_entry cmd_confirm_before_entry = {
@@ -96,7 +96,7 @@ cmd_confirm_before_error(struct cmdq_item *item, void *data)
 }
 
 static int
-cmd_confirm_before_callback(void *data, const char *s)
+cmd_confirm_before_callback(void *data, const char *s, __unused int done)
 {
 	struct cmd_confirm_before_data	*cdata = data;
 	struct client			*c = cdata->client;

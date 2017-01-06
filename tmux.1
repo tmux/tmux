@@ -1020,7 +1020,7 @@ Key tables may be viewed with the
 command.
 .Pp
 The following commands are supported in copy mode:
-.Bl -column "CommandXXXXXXXXXXXXXXXXX" "viXXXXXXXXXX" "emacs" -offset indent
+.Bl -column "CommandXXXXXXXXXXXXXXXXXXXXXXXXXX" "viXXXXXXXXXX" "emacs" -offset indent
 .It Sy "Command" Ta Sy "vi" Ta Sy "emacs"
 .It Li "append-selection" Ta "" Ta ""
 .It Li "append-selection-and-cancel" Ta "A" Ta ""
@@ -1067,8 +1067,10 @@ The following commands are supported in copy mode:
 .It Li "scroll-down" Ta "C-e" Ta "C-Down"
 .It Li "scroll-up" Ta "C-y" Ta "C-Up"
 .It Li "search-again" Ta "n" Ta "n"
-.It Li "search-backward <for>" Ta "?" Ta "C-r"
-.It Li "search-forward <for>" Ta "/" Ta "C-s"
+.It Li "search-backward <for>" Ta "?" Ta ""
+.It Li "search-forward <for>" Ta "/" Ta ""
+.It Li "search-backward-incremental <for>" Ta "" Ta "C-r"
+.It Li "search-forward-incremental <for>" Ta "" Ta "C-s"
 .It Li "search-reverse" Ta "N" Ta "N"
 .It Li "select-line" Ta "V" Ta ""
 .It Li "start-of-line" Ta "0" Ta "C-a"
@@ -3730,7 +3732,7 @@ session option.
 Commands related to the status line are as follows:
 .Bl -tag -width Ds
 .It Xo Ic command-prompt
-.Op Fl 1
+.Op Fl 1i
 .Op Fl I Ar inputs
 .Op Fl p Ar prompts
 .Op Fl t Ar target-client
@@ -3780,6 +3782,9 @@ but any quotation marks are escaped.
 .Fl 1
 makes the prompt only accept one key press, in this case the resulting input
 is a single character.
+.Fl i
+executes the command every time the prompt input changes instead of when the
+user exits the command prompt.
 .Pp
 The following keys have a special meaning in the command prompt, depending
 on the value of the
