@@ -89,7 +89,7 @@ cmd_load_buffer_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (c != NULL && c->session == NULL && c->cwd != NULL)
 		cwd = c->cwd;
-	else if ((s = c->session) != NULL && s->cwd != NULL)
+	else if (c != NULL && (s = c->session) != NULL && s->cwd != NULL)
 		cwd = s->cwd;
 	else
 		cwd = ".";

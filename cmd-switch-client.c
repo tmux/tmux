@@ -102,7 +102,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 		}
 	}
 
-	if (c != NULL && !args_has(args, 'E')) {
+	if (!args_has(args, 'E')) {
 		update = options_get_string(s->options, "update-environment");
 		environ_update(update, c->environ, s->environ);
 	}
