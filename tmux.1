@@ -4113,6 +4113,16 @@ is not set, \&Ss with argument 0 will be used to reset the cursor style instead.
 Indicate that the terminal supports the
 .Ql direct colour
 RGB escape sequence (for example, \ee[38;2;255;255;255m).
+.Pp
+If supported, this is used for the OSC initialize colour escape sequence (which
+may be enabled by adding the
+.Ql initc
+and
+.Ql ccc
+capabilities to the
+.Nm
+.Xr terminfo 5
+entry).
 .It Em \&Ms
 Store the current buffer in the host terminal's selection (clipboard).
 See the
