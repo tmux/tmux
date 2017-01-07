@@ -1253,6 +1253,7 @@ window_copy_write_line(struct window_pane *wp, struct screen_write_ctx *ctx,
 	size_t				 size = 0;
 
 	style_apply(&gc, oo, "mode-style");
+	gc.flags |= GRID_FLAG_NOPALETTE;
 
 	if (py == 0) {
 		size = xsnprintf(hdr, sizeof hdr,
@@ -1455,6 +1456,7 @@ window_copy_update_selection(struct window_pane *wp, int may_redraw)
 
 	/* Set colours and selection. */
 	style_apply(&gc, oo, "mode-style");
+	gc.flags |= GRID_FLAG_NOPALETTE;
 	screen_set_selection(s, sx, sy, endsx, endsy, data->rectflag, &gc);
 
 	if (data->rectflag && may_redraw) {

@@ -588,6 +588,8 @@ screen_redraw_draw_number(struct client *c, struct window_pane *wp, u_int top)
 		gc.bg = active_colour;
 	else
 		gc.bg = colour;
+	gc.flags |= GRID_FLAG_NOPALETTE;
+
 	tty_attributes(tty, &gc, wp);
 	for (ptr = buf; *ptr != '\0'; ptr++) {
 		if (*ptr < '0' || *ptr > '9')
@@ -615,6 +617,8 @@ draw_text:
 		gc.fg = active_colour;
 	else
 		gc.fg = colour;
+	gc.flags |= GRID_FLAG_NOPALETTE;
+
 	tty_attributes(tty, &gc, wp);
 	tty_puts(tty, buf);
 

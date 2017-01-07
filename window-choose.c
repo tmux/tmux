@@ -796,6 +796,7 @@ window_choose_write_line(struct window_pane *wp, struct screen_write_ctx *ctx,
 
 	last = screen_size_y(s) - 1;
 	memcpy(&gc, &grid_default_cell, sizeof gc);
+	gc.flags |= GRID_FLAG_NOPALETTE;
 	if (data->selected == data->top + py)
 		style_apply(&gc, oo, "mode-style");
 

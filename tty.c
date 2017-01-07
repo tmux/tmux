@@ -48,8 +48,10 @@ static void	tty_cursor_pane(struct tty *, const struct tty_ctx *, u_int,
 		    u_int);
 
 static void	tty_colours(struct tty *, const struct grid_cell *);
-static void	tty_check_fg(struct tty *, struct grid_cell *);
-static void	tty_check_bg(struct tty *, struct grid_cell *);
+static void	tty_check_fg(struct tty *, const struct window_pane *,
+		    struct grid_cell *);
+static void	tty_check_bg(struct tty *, const struct window_pane *,
+		    struct grid_cell *);
 static void	tty_colours_fg(struct tty *, const struct grid_cell *);
 static void	tty_colours_bg(struct tty *, const struct grid_cell *);
 
@@ -1507,8 +1509,8 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
 	}
 
 	/* Fix up the colours if necessary. */
-	tty_check_fg(tty, &gc2);
-	tty_check_bg(tty, &gc2);
+	tty_check_fg(tty, wp, &gc2);
+	tty_check_bg(tty, wp, &gc2);
 
 	/* If any bits are being cleared, reset everything. */
 	if (tc->attr & ~gc2.attr)
@@ -1604,11 +1606,17 @@ tty_colours(struct tty *tty, const struct grid_cell *gc)
 		tty_colours_bg(tty, gc);
 }
 
-void
-tty_check_fg(struct tty *tty, struct grid_cell *gc)
+static void
+tty_check_fg(struct tty *tty, const struct window_pane *wp,
+    struct grid_cell *gc)
 {
 	u_char	r, g, b;
 	u_int	colours;
+
+	/* Perform substitution if this pane has a palette */
+	if ((~gc->flags & GRID_FLAG_NOPALETTE) &&
+	    gc->fg != 8 && WINDOW_PANE_PALETTE_HAS(wp, gc->fg))
+		gc->fg = wp->palette[gc->fg & 0xff];
 
 	/* Is this a 24-bit colour? */
 	if (gc->fg & COLOUR_FLAG_RGB) {
@@ -1646,11 +1654,17 @@ tty_check_fg(struct tty *tty, struct grid_cell *gc)
 	}
 }
 
-void
-tty_check_bg(struct tty *tty, struct grid_cell *gc)
+static void
+tty_check_bg(struct tty *tty, const struct window_pane *wp,
+    struct grid_cell *gc)
 {
 	u_char	r, g, b;
 	u_int	colours;
+
+	/* Perform substitution if this pane has a palette */
+	if ((~gc->flags & GRID_FLAG_NOPALETTE) &&
+	    gc->bg != 8 && WINDOW_PANE_PALETTE_HAS(wp, gc->bg))
+		gc->bg = wp->palette[gc->bg & 0xff];
 
 	/* Is this a 24-bit colour? */
 	if (gc->bg & COLOUR_FLAG_RGB) {
@@ -1826,6 +1840,9 @@ tty_default_colours(struct grid_cell *gc, const struct window_pane *wp)
 			gc->fg = agc->fg;
 		else
 			gc->fg = wgc->fg;
+
+		if (gc->fg != 8 && WINDOW_PANE_PALETTE_HAS(wp, gc->fg))
+			gc->fg = wp->palette[gc->fg & 0xff];
 	}
 
 	if (gc->bg == 8) {
@@ -1835,6 +1852,9 @@ tty_default_colours(struct grid_cell *gc, const struct window_pane *wp)
 			gc->bg = agc->bg;
 		else
 			gc->bg = wgc->bg;
+
+		if (gc->bg != 8 && WINDOW_PANE_PALETTE_HAS(wp, gc->bg))
+			gc->bg = wp->palette[gc->bg & 0xff];
 	}
 }
 

@@ -112,8 +112,10 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 	}
 
-	if (args_has(args, 'R'))
+	if (args_has(args, 'R')) {
+		window_pane_reset_palette(wp);
 		input_reset(wp, 1);
+	}
 
 	for (; np != 0; np--) {
 		for (i = 0; i < args->argc; i++) {
@@ -128,8 +130,9 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 			if (literal) {
 				ud = utf8_fromcstr(args->argv[i]);
 				for (uc = ud; uc->size != 0; uc++) {
-					if (utf8_combine(uc, &wc) == UTF8_DONE)
-						window_pane_key(wp, NULL, s, wc, NULL);
+					if (utf8_combine(uc, &wc) != UTF8_DONE)
+						continue;
+					window_pane_key(wp, NULL, s, wc, NULL);
 				}
 				free(ud);
 			}
