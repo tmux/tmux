@@ -576,6 +576,7 @@ enum utf8_state {
 #define GRID_FLAG_PADDING 0x4
 #define GRID_FLAG_EXTENDED 0x8
 #define GRID_FLAG_SELECTED 0x10
+#define GRID_FLAG_NOPALETTE 0x20
 
 /* Grid line flags. */
 #define GRID_LINE_WRAPPED 0x1
@@ -829,6 +830,8 @@ struct window_pane {
 
 	struct grid_cell colgc;
 
+	int		*palette;
+
 	int		 pipe_fd;
 	struct bufferevent *pipe_event;
 	size_t		 pipe_off;
@@ -856,6 +859,11 @@ struct window_pane {
 };
 TAILQ_HEAD(window_panes, window_pane);
 RB_HEAD(window_pane_tree, window_pane);
+
+#define WINDOW_PANE_PALETTE_HAS(wp, c)			\
+	((wp) != NULL && (wp)->palette != NULL &&	\
+	    ((c) < 0x100 || (c) & COLOUR_FLAG_256) &&	\
+	    (wp)->palette[(c) & 0xff] != 0)
 
 /* Window structure. */
 struct window {
@@ -2126,6 +2134,9 @@ void		 window_pane_alternate_on(struct window_pane *,
 		     struct grid_cell *, int);
 void		 window_pane_alternate_off(struct window_pane *,
 		     struct grid_cell *, int);
+void		 window_pane_set_palette(struct window_pane *, u_int, int);
+void		 window_pane_unset_palette(struct window_pane *, u_int);
+void		 window_pane_reset_palette(struct window_pane *);
 int		 window_pane_set_mode(struct window_pane *,
 		     const struct window_mode *);
 void		 window_pane_reset_mode(struct window_pane *);

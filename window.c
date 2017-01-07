@@ -447,24 +447,30 @@ window_set_active_pane(struct window *w, struct window_pane *wp)
 void
 window_redraw_active_switch(struct window *w, struct window_pane *wp)
 {
-	const struct grid_cell	*agc, *wgc;
+	const struct grid_cell	*gc;
 
 	if (wp == w->active)
 		return;
 
 	/*
 	 * If window-style and window-active-style are the same, we don't need
-	 * to redraw panes when switching active panes. Otherwise, if the
-	 * active or inactive pane do not have a custom style, they will need
-	 * to be redrawn.
+	 * to redraw panes when switching active panes.
 	 */
-	agc = options_get_style(w->options, "window-active-style");
-	wgc = options_get_style(w->options, "window-style");
-	if (style_equal(agc, wgc))
+	gc = options_get_style(w->options, "window-active-style");
+	if (style_equal(gc, options_get_style(w->options, "window-style")))
 		return;
-	if (style_equal(&grid_default_cell, &w->active->colgc))
+
+	/*
+	 * If the now active or inactive pane do not have a custom style or if
+	 * the palette is different, they need to be redrawn.
+	 */
+	if (WINDOW_PANE_PALETTE_HAS(w->active, w->active->colgc.fg) ||
+	    WINDOW_PANE_PALETTE_HAS(w->active, w->active->colgc.bg) ||
+	    style_equal(&grid_default_cell, &w->active->colgc))
 		w->active->flags |= PANE_REDRAW;
-	if (style_equal(&grid_default_cell, &wp->colgc))
+	if (WINDOW_PANE_PALETTE_HAS(wp, wp->colgc.fg) ||
+	    WINDOW_PANE_PALETTE_HAS(wp, wp->colgc.bg) ||
+	    style_equal(&grid_default_cell, &wp->colgc))
 		wp->flags |= PANE_REDRAW;
 }
 
@@ -829,6 +835,7 @@ window_pane_destroy(struct window_pane *wp)
 	free((void *)wp->cwd);
 	free(wp->shell);
 	cmd_free_argv(wp->argc, wp->argv);
+	free(wp->palette);
 	free(wp);
 }
 
@@ -1089,6 +1096,40 @@ window_pane_alternate_off(struct window_pane *wp, struct grid_cell *gc,
 	grid_destroy(wp->saved_grid);
 	wp->saved_grid = NULL;
 
+	wp->flags |= PANE_REDRAW;
+}
+
+void
+window_pane_set_palette(struct window_pane *wp, u_int n, int colour)
+{
+	if (n > 0xff)
+		return;
+
+	if (wp->palette == NULL)
+		wp->palette = xcalloc(0x100, sizeof *wp->palette);
+
+	wp->palette[n] = colour;
+	wp->flags |= PANE_REDRAW;
+}
+
+void
+window_pane_unset_palette(struct window_pane *wp, u_int n)
+{
+	if (n > 0xff || wp->palette == NULL)
+		return;
+
+	wp->palette[n] = 0;
+	wp->flags |= PANE_REDRAW;
+}
+
+void
+window_pane_reset_palette(struct window_pane *wp)
+{
+	if (wp->palette == NULL)
+		return;
+
+	free(wp->palette);
+	wp->palette = NULL;
 	wp->flags |= PANE_REDRAW;
 }
 
