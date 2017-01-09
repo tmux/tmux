@@ -727,6 +727,50 @@ found:
 	return (copy);
 }
 
+/* Skip until comma. */
+static char *
+format_skip(char *s)
+{
+	int	brackets = 0;
+
+	for (; *s != '\0'; s++) {
+		if (*s == '{')
+			brackets++;
+		if (*s == '}')
+			brackets--;
+		if (*s == ',' && brackets == 0)
+			break;
+	}
+	if (*s == '\0')
+		return (NULL);
+	return (s);
+}
+
+/* Return left and right alternatives separated by commas. */
+static int
+format_choose(char *s, char **left, char **right)
+{
+	char	*cp;
+
+	cp = format_skip(s);
+	if (cp == NULL)
+		return (-1);
+	*cp = '\0';
+
+	*left = s;
+	*right = cp + 1;
+	return (0);
+}
+
+/* Is this true? */
+static int
+format_true(const char *s)
+{
+	if (s != NULL && *s != '\0' && (s[0] != '0' || s[1] != '\0'))
+		return (1);
+	return (0);
+}
+
 /*
  * Replace a key/value pair in buffer. #{blah} is expanded directly,
  * #{?blah,a,b} is replace with a if blah exists and is nonzero else b.
@@ -736,10 +780,10 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
     char **buf, size_t *len, size_t *off)
 {
 	char		*copy, *copy0, *endptr, *ptr, *found, *new, *value;
-	char		*from = NULL, *to = NULL;
+	char		*from = NULL, *to = NULL, *left, *right;
 	size_t		 valuelen, newlen, fromlen, tolen, used;
 	long		 limit = 0;
-	int		 modifiers = 0, brackets;
+	int		 modifiers = 0, compare = 0;
 
 	/* Make a copy of the key. */
 	copy0 = copy = xmalloc(keylen + 1);
@@ -748,7 +792,19 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 
 	/* Is there a length limit or whatnot? */
 	switch (copy[0]) {
+	case '!':
+		if (copy[1] == '=' && copy[2] == ':') {
+			compare = -1;
+			copy += 3;
+			break;
+		}
+		break;
 	case '=':
+		if (copy[1] == '=' && copy[2] == ':') {
+			compare = 1;
+			copy += 3;
+			break;
+		}
 		errno = 0;
 		limit = strtol(copy + 1, &endptr, 10);
 		if (errno == ERANGE && (limit == LONG_MIN || limit == LONG_MAX))
@@ -800,39 +856,42 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 		break;
 	}
 
-	/*
-	 * Is this a conditional? If so, check it exists and extract either the
-	 * first or second element. If not, look up the key directly.
-	 */
-	if (*copy == '?') {
-		ptr = strchr(copy, ',');
+	/* Is this a comparison or a conditional? */
+	if (compare != 0) {
+		/* Comparison: compare comma-separated left and right. */
+		if (format_choose(copy, &left, &right) != 0)
+			goto fail;
+		left = format_expand(ft, left);
+		right = format_expand(ft, right);
+		if (compare == 1 && strcmp(left, right) == 0)
+			value = xstrdup("1");
+		else if (compare == -1 && strcmp(left, right) != 0)
+			value = xstrdup("1");
+		else
+			value = xstrdup("0");
+		free(right);
+		free(left);
+	} else if (*copy == '?') {
+		/* Conditional: check first and choose second or third. */
+		ptr = format_skip(copy);
 		if (ptr == NULL)
 			goto fail;
 		*ptr = '\0';
 
-		value = ptr + 1;
 		found = format_find(ft, copy + 1, modifiers);
-
-		brackets = 0;
-		for (ptr = ptr + 1; *ptr != '\0'; ptr++) {
-			if (*ptr == '{')
-				brackets++;
-			if (*ptr == '}')
-				brackets--;
-			if (*ptr == ',' && brackets == 0)
-				break;
-		}
-		if (*ptr == '\0')
+		if (found == NULL) {
+			log_debug("XXX %s", copy + 1);
+			found = format_expand(ft, copy + 1);}
+		if (format_choose(ptr + 1, &left, &right) != 0)
 			goto fail;
 
-		if (found != NULL && *found != '\0' &&
-		    (found[0] != '0' || found[1] != '\0')) {
-			*ptr = '\0';
-		} else
-			value = ptr + 1;
-		value = format_expand(ft, value);
+		if (format_true(found))
+			value = format_expand(ft, left);
+		else
+			value = format_expand(ft, right);
 		free(found);
 	} else {
+		/* Neither: look up directly. */
 		value = format_find(ft, copy, modifiers);
 		if (value == NULL)
 			value = xstrdup("");
@@ -954,7 +1013,10 @@ format_expand(struct format_tree *ft, const char *fmt)
 				break;
 			n = ptr - fmt;
 
-			out = format_job_get(ft, xstrndup(fmt, n));
+			if (ft->flags & FORMAT_NOJOBS)
+				out = xstrdup("");
+			else
+				out = format_job_get(ft, xstrndup(fmt, n));
 			outlen = strlen(out);
 
 			while (len - off < outlen + 1) {
