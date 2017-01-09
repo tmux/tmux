@@ -76,7 +76,7 @@ struct tmuxproc;
 
 #define READ_CHANGE_HITS 3
 
-/* Attribute to make gcc check printf-like arguments. */
+/* Attribute to make GCC check printf-like arguments. */
 #define printflike(a, b) __attribute__ ((format (printf, a, b)))
 
 /* Number of items in array. */

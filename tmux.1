@@ -921,7 +921,10 @@ show debugging information about jobs and terminals.
 .Xc
 .D1 (alias: Ic source )
 Execute commands from
-.Ar path .
+.Ar path
+(which may be a
+.Xr glob 3
+pattern).
 If
 .Fl q
 is given, no error will be returned if
