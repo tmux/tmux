@@ -930,6 +930,30 @@ If
 is given, no error will be returned if
 .Ar path
 does not exist.
+.Pp
+Within a configuration file, commands may be made conditional by surrounding
+them with
+.Em %if
+and
+.Em %endif
+lines.
+The argument to
+.Em %if
+is expanded as a format and if it evaluates to false
+.Ns ( Ql 0
+or empty), subsequent lines are ignored until
+.Em %endif .
+For example:
+.Bd -literal -offset indent
+%if #{==:#{host},myhost}
+set -g status-style bg=red
+%endif
+.Ed
+.Pp
+Will change the status line to red if running on
+.Ql myhost .
+.Em %if
+may not be nested.
 .It Ic start-server
 .D1 (alias: Ic start )
 Start the

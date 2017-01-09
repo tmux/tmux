@@ -82,12 +82,14 @@ int
 load_cfg(const char *path, struct client *c, struct cmdq_item *item, int quiet)
 {
 	FILE			*f;
-	char			 delim[3] = { '\\', '\\', '\0' };
-	u_int			 found;
+	const char		 delim[3] = { '\\', '\\', '\0' };
+	u_int			 found = 0;
 	size_t			 line = 0;
-	char			*buf, *cause1, *p;
+	char			*buf, *cause1, *p, *q, *s;
 	struct cmd_list		*cmdlist;
 	struct cmdq_item	*new_item;
+	int			 condition = 0;
+	struct format_tree	*ft;
 
 	log_debug("loading %s", path);
 	if ((f = fopen(path, "rb")) == NULL) {
@@ -97,20 +99,48 @@ load_cfg(const char *path, struct client *c, struct cmdq_item *item, int quiet)
 		return (-1);
 	}
 
-	found = 0;
 	while ((buf = fparseln(f, NULL, &line, delim, 0)) != NULL) {
 		log_debug("%s: %s", path, buf);
 
-		/* Skip empty lines. */
 		p = buf;
-		while (isspace((u_char) *p))
+		while (isspace((u_char)*p))
 			p++;
 		if (*p == '\0') {
 			free(buf);
 			continue;
 		}
+		q = p + strlen(p) - 1;
+		while (q != p && isspace((u_char)*q))
+			*q-- = '\0';
 
-		/* Parse and run the command. */
+		if (condition != 0 && strcmp(p, "%endif") == 0) {
+			condition = 0;
+			continue;
+		}
+		if (strncmp(p, "%if ", 4) == 0) {
+			if (condition != 0) {
+				cfg_add_cause("%s:%zu: nested %%if", path,
+				    line);
+				continue;
+			}
+			ft = format_create(NULL, FORMAT_NOJOBS);
+
+			s = p + 3;
+			while (isspace((u_char)*s))
+				s++;
+			s = format_expand(ft, s);
+			if (*s != '\0' && (s[0] != '0' || s[1] != '\0'))
+				condition = 1;
+			else
+				condition = -1;
+			free(s);
+
+			format_free(ft);
+			continue;
+		}
+		if (condition == -1)
+			continue;
+
 		if (cmd_string_parse(p, &cmdlist, path, line, &cause1) != 0) {
 			free(buf);
 			if (cause1 == NULL)
