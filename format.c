@@ -529,6 +529,7 @@ format_create(struct cmdq_item *item, int flags)
 	RB_INIT(&ft->tree);
 	ft->flags = flags;
 
+	format_add(ft, "version", "%s", VERSION);
 	format_add_cb(ft, "host", format_cb_host);
 	format_add_cb(ft, "host_short", format_cb_host_short);
 	format_add_cb(ft, "pid", format_cb_pid);
