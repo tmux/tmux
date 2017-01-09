@@ -55,11 +55,13 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 	glob_t			 g;
 	int			 i;
 
+	quiet = args_has(args, 'q');
 	if (glob(args->argv[0], 0, NULL, &g) != 0) {
+		if (quiet && errno == ENOENT)
+			return (CMD_RETURN_NORMAL);
 		cmdq_error(item, "%s: %s", args->argv[0], strerror(errno));
 		return (CMD_RETURN_ERROR);
 	}
-	quiet = args_has(args, 'q');
 
 	retval = CMD_RETURN_NORMAL;
 	for (i = 0; i < g.gl_pathc; i++) {
