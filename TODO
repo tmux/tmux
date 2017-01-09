@@ -14,7 +14,6 @@
 	* options for error handling: && and ||?
 
 - options bits and pieces:
-	* set-remain-on-exit is a complete hack
 	* way to set socket path from config file
 
 - format improvements:
@@ -123,13 +122,15 @@
 	  jobs and run-shell and lock command all start with slightly different
 	  environments
 	* multiline status line? separate command prompt and status line?
-	* customizable command aliases
+	* customizable command aliases -- don't really want a whole alias tree
+          and set-alias commands like hooks/options/environ. maybe array
+          options, so you set command-alias[0] to foo=bar? array options would
+          be useful for other stuff...
 	* automatic pane logging
 
 - hooks
 	* more hooks for various things
 	* finish after hooks for special commands
-	* multiple hooks with the same name
+	* multiple hooks with the same name?
 	* finish hooks for notifys
-	* existing hooks should go via notifys
 	* for session_closed, if no sessions at all, perhaps fake up a temporary one
