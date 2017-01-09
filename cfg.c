@@ -27,11 +27,11 @@
 
 #include "tmux.h"
 
-char			 *cfg_file;
-int			  cfg_finished;
-static char		**cfg_causes;
-static u_int		  cfg_ncauses;
-struct client		 *cfg_client;
+char		 *cfg_file;
+int		  cfg_finished;
+static char	**cfg_causes;
+static u_int	  cfg_ncauses;
+struct client	 *cfg_client;
 
 static enum cmd_retval
 cfg_done(__unused struct cmdq_item *item, __unused void *data)
