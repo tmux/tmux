@@ -18,7 +18,6 @@
 
 - format improvements:
 	* option to quote format (#{q:session_name})
-	* formats need conditions for >0 (for #P)
 	* some way to pad # stuff with spaces
 	* formats to show if a window is linked into multiple sessions, into
 	  multiple attached sessions, and is the active window in multiple
@@ -77,8 +76,6 @@
 	* panning over window (window larger than visible)
 	* a mode where one application can cross two panes (ie x|y, width =
 	  COLUMNS/2 but height = ROWS * 2)
-	* general key to space cells out evenly (horiz or vert) within their
-	  parent cell (could replace even-vert/even-horiz layouts)
 	* separate active panes for different clients
 
 - terminfo bits
@@ -125,7 +122,7 @@
 	* customizable command aliases -- don't really want a whole alias tree
           and set-alias commands like hooks/options/environ. maybe array
           options, so you set command-alias[0] to foo=bar? array options would
-          be useful for other stuff...
+          be useful for other stuff
 	* automatic pane logging
 
 - hooks
