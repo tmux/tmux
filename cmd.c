@@ -689,10 +689,14 @@ cmd_template_replace(const char *template, const char *s, int idx)
 			if (quoted)
 				ptr++;
 
-			buf = xrealloc(buf, len + (strlen(s) * 2) + 1);
+			buf = xrealloc(buf, len + (strlen(s) * 3) + 1);
 			for (cp = s; *cp != '\0'; cp++) {
 				if (quoted && strchr(quote, *cp) != NULL)
 					buf[len++] = '\\';
+				if (quoted && *cp == ';') {
+					buf[len++] = '\\';
+					buf[len++] = '\\';
+				}
 				buf[len++] = *cp;
 			}
 			buf[len] = '\0';
