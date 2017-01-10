@@ -176,14 +176,16 @@ is specified, the default socket directory is not used and any
 .Fl L
 flag is ignored.
 .It Fl u
+When starting,
 .Nm
-attempts to guess if the terminal is likely to support UTF-8 by checking the
-first of the
+looks for the
 .Ev LC_ALL ,
 .Ev LC_CTYPE
 and
 .Ev LANG
-environment variables to be set for the string "UTF-8".
+environment variables: if the first found contains
+.Ql UTF-8 ,
+then the terminal is assumed to support UTF-8.
 This is not always correct: the
 .Fl u
 flag explicitly informs
@@ -1183,11 +1185,11 @@ flag) or vertically.
 Panes may be resized with the
 .Ic resize-pane
 command (bound to
-.Ql C-up ,
-.Ql C-down
-.Ql C-left
+.Ql C-Up ,
+.Ql C-Down
+.Ql C-Left
 and
-.Ql C-right
+.Ql C-Right
 by default), the current pane may be changed with the
 .Ic select-pane
 command and the
@@ -1724,12 +1726,14 @@ option to change this behaviour.
 The
 .Ev TERM
 environment variable must be set to
-.Dq screen
+.Ql screen
+or
+.Ql tmux
 for all programs running
 .Em inside
 .Nm .
 New windows will automatically have
-.Dq TERM=screen
+.Ql TERM=screen
 added to their environment, but care must be taken not to reset this in shell
 start-up files.
 .Pp
@@ -2222,8 +2226,8 @@ Each argument
 is the name of the key (such as
 .Ql C-a
 or
-.Ql npage
-) to send; if the string is not recognised as a key, it is sent as a series of
+.Ql NPage )
+to send; if the string is not recognised as a key, it is sent as a series of
 characters.
 The
 .Fl l
