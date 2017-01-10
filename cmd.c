@@ -662,7 +662,7 @@ char *
 cmd_template_replace(const char *template, const char *s, int idx)
 {
 	char		 ch, *buf;
-	const char	*ptr, *cp;
+	const char	*ptr, *cp, quote[] = "\"\\$";
 	int		 replaced, quoted;
 	size_t		 len;
 
@@ -691,7 +691,7 @@ cmd_template_replace(const char *template, const char *s, int idx)
 
 			buf = xrealloc(buf, len + (strlen(s) * 2) + 1);
 			for (cp = s; *cp != '\0'; cp++) {
-				if (quoted && (*cp == '"' || *cp == '$'))
+				if (quoted && strchr(quote, *cp) != NULL)
 					buf[len++] = '\\';
 				buf[len++] = *cp;
 			}
