@@ -24,7 +24,8 @@
  * Refresh client.
  */
 
-static enum cmd_retval	cmd_refresh_client_exec(struct cmd *, struct cmdq_item *);
+static enum cmd_retval	cmd_refresh_client_exec(struct cmd *,
+			    struct cmdq_item *);
 
 const struct cmd_entry cmd_refresh_client_entry = {
 	.name = "refresh-client",
