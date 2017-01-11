@@ -105,9 +105,9 @@ tty_init(struct tty *tty, struct client *c, int fd, char *term)
 	memset(tty, 0, sizeof *tty);
 
 	if (term == NULL || *term == '\0')
-		tty->termname = xstrdup("unknown");
+		tty->term_name = xstrdup("unknown");
 	else
-		tty->termname = xstrdup(term);
+		tty->term_name = xstrdup(term);
 	tty->fd = fd;
 	tty->client = c;
 
@@ -177,7 +177,7 @@ tty_set_size(struct tty *tty, u_int sx, u_int sy)
 int
 tty_open(struct tty *tty, char **cause)
 {
-	tty->term = tty_term_find(tty->termname, tty->fd, cause);
+	tty->term = tty_term_find(tty->term_name, tty->fd, cause);
 	if (tty->term == NULL) {
 		tty_close(tty);
 		return (-1);
@@ -364,7 +364,7 @@ tty_free(struct tty *tty)
 
 	free(tty->ccolour);
 	free(tty->path);
-	free(tty->termname);
+	free(tty->term_name);
 }
 
 void

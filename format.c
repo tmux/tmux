@@ -1119,19 +1119,24 @@ format_defaults_client(struct format_tree *ft, struct client *c)
 {
 	struct session	*s;
 	const char	*name;
+	struct tty	*tty = &c->tty;
+	const char	*types[] = TTY_TYPES;
 
 	if (ft->s == NULL)
 		ft->s = c->session;
 
 	format_add(ft, "client_pid", "%ld", (long) c->pid);
-	format_add(ft, "client_height", "%u", c->tty.sy);
-	format_add(ft, "client_width", "%u", c->tty.sx);
-	if (c->tty.path != NULL)
-		format_add(ft, "client_tty", "%s", c->tty.path);
-	if (c->tty.termname != NULL)
-		format_add(ft, "client_termname", "%s", c->tty.termname);
+	format_add(ft, "client_height", "%u", tty->sy);
+	format_add(ft, "client_width", "%u", tty->sx);
+	if (tty->path != NULL)
+		format_add(ft, "client_tty", "%s", tty->path);
 	format_add(ft, "client_control_mode", "%d",
 		!!(c->flags & CLIENT_CONTROL));
+
+	if (tty->term_name != NULL)
+		format_add(ft, "client_termname", "%s", tty->term_name);
+	if (tty->term_name != NULL)
+		format_add(ft, "client_termtype", "%s", types[tty->term_type]);
 
 	format_add_tv(ft, "client_created", &c->creation_time);
 	format_add_tv(ft, "client_activity", &c->activity_time);
@@ -1143,7 +1148,7 @@ format_defaults_client(struct format_tree *ft, struct client *c)
 		format_add(ft, "client_prefix", "%d", 1);
 	format_add(ft, "client_key_table", "%s", c->keytable->name);
 
-	if (c->tty.flags & TTY_UTF8)
+	if (tty->flags & TTY_UTF8)
 		format_add(ft, "client_utf8", "%d", 1);
 	else
 		format_add(ft, "client_utf8", "%d", 0);
