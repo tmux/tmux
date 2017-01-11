@@ -837,9 +837,10 @@ static int
 tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
     size_t *size)
 {
-	u_int		 i, a, b;
-	char		 tmp[64], *endptr;
-	const char	*s;
+	u_int			 i, a, b;
+	char			 tmp[64], *endptr;
+	static const char	*types[] = TTY_TYPES;
+	int			 type;
 
 	*size = 0;
 
@@ -877,35 +878,29 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 	} else
 		a = b = 0;
 
-	s = "UNKNOWN";
+	type = TTY_UNKNOWN;
 	switch (a) {
 	case 1:
-		if (b == 2) {
-			tty_set_type(tty, TTY_VT100);
-			s = "VT100";
-		} else if (b == 0) {
-			tty_set_type(tty, TTY_VT101);
-			s = "VT101";
-		}
+		if (b == 2)
+			type = TTY_VT100;
+		else if (b == 0)
+			type = TTY_VT101;
 		break;
 	case 6:
-		tty_set_type(tty, TTY_VT102);
-		s = "VT102";
+		type = TTY_VT102;
 		break;
 	case 62:
-		tty_set_type(tty, TTY_VT220);
-		s = "VT220";
+		type = TTY_VT220;
 		break;
 	case 63:
-		tty_set_type(tty, TTY_VT320);
-		s = "VT320";
+		type = TTY_VT320;
 		break;
 	case 64:
-		tty_set_type(tty, TTY_VT420);
-		s = "VT420";
+		type = TTY_VT420;
 		break;
 	}
-	log_debug("received DA %.*s (%s)", (int)*size, buf, s);
+	tty_set_type(tty, type);
 
+	log_debug("received DA %.*s (%s)", (int)*size, buf, types[type]);
 	return (0);
 }
