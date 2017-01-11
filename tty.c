@@ -1133,13 +1133,12 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 	struct screen		*s = wp->screen;
 	u_int			 cx, width;
 
-	if (ctx->xoff + ctx->ocx > tty->sx - 1 &&
-	    ctx->ocy == ctx->orlower &&
-	    tty_pane_full_width(tty, ctx))
-		tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
-	else
-		tty_region_off(tty);
-	tty_margin_off(tty);
+	if (ctx->xoff + ctx->ocx > tty->sx - 1 && ctx->ocy == ctx->orlower) {
+		if (tty_pane_full_width(tty, ctx))
+			tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
+		else
+			tty_margin_off(tty);
+	}
 
 	/* Is the cursor in the very last position? */
 	width = ctx->cell->data.width;
