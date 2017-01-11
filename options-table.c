@@ -946,8 +946,8 @@ options_table_print_entry(const struct options_table_entry *oe,
 		xsnprintf(out, sizeof out, "%lld", o->num);
 		break;
 	case OPTIONS_TABLE_KEY:
-		xsnprintf(out, sizeof out, "%s",
-		    key_string_lookup_key(o->num));
+		s = key_string_lookup_key(o->num);
+		xsnprintf(out, sizeof out, "%s", s);
 		break;
 	case OPTIONS_TABLE_COLOUR:
 		s = colour_tostring(o->num);

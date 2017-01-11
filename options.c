@@ -37,8 +37,6 @@ struct options {
 static int	options_cmp(struct options_entry *, struct options_entry *);
 RB_GENERATE_STATIC(options_tree, options_entry, entry, options_cmp);
 
-static void	options_free1(struct options *, struct options_entry *);
-
 static int
 options_cmp(struct options_entry *o1, struct options_entry *o2)
 {
@@ -64,6 +62,28 @@ options_free1(struct options *oo, struct options_entry *o)
 	if (o->type == OPTIONS_STRING)
 		free(o->str);
 	free(o);
+}
+
+static struct options_entry *
+options_new(struct options *oo, const char *name, char **s)
+{
+	struct options_entry	*o;
+
+	if (s != NULL)
+		*s = NULL;
+
+	if ((o = options_find1(oo, name)) == NULL) {
+		o = xmalloc(sizeof *o);
+		o->name = xstrdup(name);
+		RB_INSERT(options_tree, &oo->tree, o);
+		memcpy(&o->style, &grid_default_cell, sizeof o->style);
+	} else if (o->type == OPTIONS_STRING) {
+		if (s != NULL)
+			*s = o->str;
+		else
+			free(o->str);
+	}
+	return (o);
 }
 
 void
@@ -129,21 +149,14 @@ options_set_string(struct options *oo, const char *name, const char *fmt, ...)
 	va_list			 ap;
 	char			*s;
 
-	s = NULL;
-	if ((o = options_find1(oo, name)) == NULL) {
-		o = xmalloc(sizeof *o);
-		o->name = xstrdup(name);
-		RB_INSERT(options_tree, &oo->tree, o);
-		memcpy(&o->style, &grid_default_cell, sizeof o->style);
-	} else if (o->type == OPTIONS_STRING)
-		s = o->str;
-
 	va_start(ap, fmt);
+
+	o = options_new(oo, name, &s);
 	o->type = OPTIONS_STRING;
 	xvasprintf(&o->str, fmt, ap);
-	va_end(ap);
-
 	free(s);
+
+	va_end(ap);
 	return (o);
 }
 
@@ -164,16 +177,10 @@ options_set_number(struct options *oo, const char *name, long long value)
 {
 	struct options_entry	*o;
 
-	if ((o = options_find1(oo, name)) == NULL) {
-		o = xmalloc(sizeof *o);
-		o->name = xstrdup(name);
-		RB_INSERT(options_tree, &oo->tree, o);
-		memcpy(&o->style, &grid_default_cell, sizeof o->style);
-	} else if (o->type == OPTIONS_STRING)
-		free(o->str);
-
+	o = options_new(oo, name, NULL);
 	o->type = OPTIONS_NUMBER;
 	o->num = value;
+
 	return (o);
 }
 
@@ -205,15 +212,10 @@ options_set_style(struct options *oo, const char *name, const char *value,
 	if (style_parse(&grid_default_cell, &tmpgc, value) == -1)
 		return (NULL);
 
-	if (o == NULL) {
-		o = xmalloc(sizeof *o);
-		o->name = xstrdup(name);
-		RB_INSERT(options_tree, &oo->tree, o);
-	} else if (o->type == OPTIONS_STRING)
-		free(o->str);
-
+	o = options_new(oo, name, NULL);
 	o->type = OPTIONS_STYLE;
 	memcpy(&o->style, &tmpgc, sizeof o->style);
+
 	return (o);
 }
 

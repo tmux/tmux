@@ -656,7 +656,7 @@ struct options_entry {
 	long long		 num;
 	struct grid_cell	 style;
 
-	RB_ENTRY(options_entry) entry;
+	RB_ENTRY(options_entry)	 entry;
 };
 
 /* Scheduled job. */

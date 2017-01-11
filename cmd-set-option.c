@@ -117,7 +117,7 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 	if (*optstr == '@')
 		return (cmd_set_option_user(self, item, optstr, valstr));
 
-	/* Find the option entry, try each table. */
+	/* Find the option entry. */
 	oe = NULL;
 	if (options_table_find(optstr, &oe) != 0) {
 		if (!args_has(args, 'q')) {
@@ -184,7 +184,7 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 			return (CMD_RETURN_ERROR);
 	}
 
-	/* Start or stop timers if necessary. */
+	/* Update timers and so on for various options. */
 	if (strcmp(oe->name, "automatic-rename") == 0) {
 		RB_FOREACH(w, windows, &windows) {
 			if (w->active == NULL)
@@ -207,8 +207,6 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 		RB_FOREACH(w, windows, &windows)
 			w->flags |= WINDOW_STYLECHANGED;
 	}
-
-	/* When the pane-border-status option has been changed, resize panes. */
 	if (strcmp(oe->name, "pane-border-status") == 0) {
 		RB_FOREACH(w, windows, &windows)
 			layout_fix_panes(w, w->sx, w->sy);
