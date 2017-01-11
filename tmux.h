@@ -1152,6 +1152,8 @@ struct tty {
 	struct event	 key_timer;
 	struct tty_key	*key_tree;
 };
+#define TTY_TYPES \
+	{ "VT100", "VT101", "VT102", "VT220", "VT320", "VT420", "UNKNOWN" }
 
 /* TTY command context. */
 struct tty_ctx {
