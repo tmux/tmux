@@ -77,6 +77,8 @@ notify_callback(struct cmdq_item *item, void *data)
 {
 	struct notify_entry	*ne = data;
 
+	log_debug("%s: %s", __func__, ne->name);
+
 	if (strcmp(ne->name, "window-layout-changed") == 0)
 		control_notify_window_layout_changed(ne->window);
 	if (strcmp(ne->name, "window-unlinked") == 0)
