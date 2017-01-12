@@ -299,7 +299,8 @@ main(int argc, char **argv)
 
 	global_s_options = options_create(NULL);
 	options_table_populate_tree(OPTIONS_TABLE_SESSION, global_s_options);
-	options_set_string(global_s_options, "default-shell", "%s", getshell());
+	options_set_string(global_s_options, "default-shell", 0, "%s",
+	    getshell());
 
 	global_w_options = options_create(NULL);
 	options_table_populate_tree(OPTIONS_TABLE_WINDOW, global_w_options);
