@@ -247,8 +247,14 @@ key_string_lookup_key(key_code key)
 	/* Handle special keys. */
 	if (key == KEYC_UNKNOWN)
 		return ("Unknown");
+	if (key == KEYC_FOCUS_IN)
+		return ("FocusIn");
+	if (key == KEYC_FOCUS_OUT)
+		return ("FocusOut");
 	if (key == KEYC_MOUSE)
 		return ("Mouse");
+	if (key == KEYC_DRAGGING)
+		return ("Dragging");
 
 	/*
 	 * Special case: display C-@ as C-Space. Could do this below in

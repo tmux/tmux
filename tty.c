@@ -565,9 +565,7 @@ tty_update_mode(struct tty *tty, int mode, struct screen *s)
 		if (mode & ALL_MOUSE_MODES) {
 			/*
 			 * Enable the SGR (1006) extension unconditionally, as
-			 * this is safe from misinterpretation. Do it in this
-			 * order, because in some terminals it's the last one
-			 * that takes effect and SGR is the preferred one.
+			 * it is safe from misinterpretation.
 			 */
 			tty_puts(tty, "\033[?1006h");
 			if (mode & MODE_MOUSE_BUTTON)
@@ -1135,13 +1133,12 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 	struct screen		*s = wp->screen;
 	u_int			 cx, width;
 
-	if (ctx->xoff + ctx->ocx > tty->sx - 1 &&
-	    ctx->ocy == ctx->orlower &&
-	    tty_pane_full_width(tty, ctx))
-		tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
-	else
-		tty_region_off(tty);
-	tty_margin_off(tty);
+	if (ctx->xoff + ctx->ocx > tty->sx - 1 && ctx->ocy == ctx->orlower) {
+		if (tty_pane_full_width(tty, ctx))
+			tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
+		else
+			tty_margin_off(tty);
+	}
 
 	/* Is the cursor in the very last position? */
 	width = ctx->cell->data.width;

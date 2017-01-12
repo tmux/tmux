@@ -756,7 +756,7 @@ server_client_handle_key(struct client *c, key_code key)
 		wp = w->active;
 
 	/* Forward mouse keys if disabled. */
-	if (key == KEYC_MOUSE && !options_get_number(s->options, "mouse"))
+	if (KEYC_IS_MOUSE(key) && !options_get_number(s->options, "mouse"))
 		goto forward;
 
 	/* Treat everything as a regular key when pasting is detected. */
