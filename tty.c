@@ -1625,13 +1625,17 @@ tty_check_fg(struct tty *tty, const struct window_pane *wp,
 		} else
 			return;
 	}
-	colours = tty_term_number(tty->term, TTYC_COLORS);
+
+	/* How many colours does this terminal have? */
+	if ((tty->term->flags|tty->term_flags) & TERM_256COLOURS)
+		colours = 256;
+	else
+		colours = tty_term_number(tty->term, TTYC_COLORS);
 
 	/* Is this a 256-colour colour? */
 	if (gc->fg & COLOUR_FLAG_256) {
 		/* And not a 256 colour mode? */
-		if (!(tty->term->flags & TERM_256COLOURS) &&
-		    !(tty->term_flags & TERM_256COLOURS)) {
+		if (colours != 256) {
 			gc->fg = colour_256to16(gc->fg);
 			if (gc->fg & 8) {
 				gc->fg &= 7;
@@ -1674,7 +1678,12 @@ tty_check_bg(struct tty *tty, const struct window_pane *wp,
 		} else
 			return;
 	}
-	colours = tty_term_number(tty->term, TTYC_COLORS);
+
+	/* How many colours does this terminal have? */
+	if ((tty->term->flags|tty->term_flags) & TERM_256COLOURS)
+		colours = 256;
+	else
+		colours = tty_term_number(tty->term, TTYC_COLORS);
 
 	/* Is this a 256-colour colour? */
 	if (gc->bg & COLOUR_FLAG_256) {
@@ -1683,8 +1692,7 @@ tty_check_bg(struct tty *tty, const struct window_pane *wp,
 		 * palette. Bold background doesn't exist portably, so just
 		 * discard the bold bit if set.
 		 */
-		if (!(tty->term->flags & TERM_256COLOURS) &&
-		    !(tty->term_flags & TERM_256COLOURS)) {
+		if (colours != 256) {
 			gc->bg = colour_256to16(gc->bg);
 			if (gc->bg & 8) {
 				gc->bg &= 7;
