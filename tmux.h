@@ -862,11 +862,6 @@ struct window_pane {
 TAILQ_HEAD(window_panes, window_pane);
 RB_HEAD(window_pane_tree, window_pane);
 
-#define WINDOW_PANE_PALETTE_HAS(wp, c)			\
-	((wp) != NULL && (wp)->palette != NULL &&	\
-	    ((c) < 0x100 || (c) & COLOUR_FLAG_256) &&	\
-	    (wp)->palette[(c) & 0xff] != 0)
-
 /* Window structure. */
 struct window {
 	u_int		 id;
@@ -2159,6 +2154,7 @@ void		 window_set_name(struct window *, const char *);
 void		 window_remove_ref(struct window *);
 void		 winlink_clear_flags(struct winlink *);
 int		 winlink_shuffle_up(struct session *, struct winlink *);
+int		 window_pane_get_palette(const struct window_pane *, int);
 
 /* layout.c */
 u_int		 layout_count_cells(struct layout_cell *);

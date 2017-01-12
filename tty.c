@@ -1609,11 +1609,12 @@ tty_check_fg(struct tty *tty, const struct window_pane *wp,
 {
 	u_char	r, g, b;
 	u_int	colours;
+	int	c;
 
 	/* Perform substitution if this pane has a palette */
 	if ((~gc->flags & GRID_FLAG_NOPALETTE) &&
-	    gc->fg != 8 && WINDOW_PANE_PALETTE_HAS(wp, gc->fg))
-		gc->fg = wp->palette[gc->fg & 0xff];
+	    (c = window_pane_get_palette(wp, gc->fg)) != -1)
+		gc->fg = c;
 
 	/* Is this a 24-bit colour? */
 	if (gc->fg & COLOUR_FLAG_RGB) {
@@ -1624,13 +1625,17 @@ tty_check_fg(struct tty *tty, const struct window_pane *wp,
 		} else
 			return;
 	}
-	colours = tty_term_number(tty->term, TTYC_COLORS);
+
+	/* How many colours does this terminal have? */
+	if ((tty->term->flags|tty->term_flags) & TERM_256COLOURS)
+		colours = 256;
+	else
+		colours = tty_term_number(tty->term, TTYC_COLORS);
 
 	/* Is this a 256-colour colour? */
 	if (gc->fg & COLOUR_FLAG_256) {
 		/* And not a 256 colour mode? */
-		if (!(tty->term->flags & TERM_256COLOURS) &&
-		    !(tty->term_flags & TERM_256COLOURS)) {
+		if (colours != 256) {
 			gc->fg = colour_256to16(gc->fg);
 			if (gc->fg & 8) {
 				gc->fg &= 7;
@@ -1657,11 +1662,12 @@ tty_check_bg(struct tty *tty, const struct window_pane *wp,
 {
 	u_char	r, g, b;
 	u_int	colours;
+	int	c;
 
 	/* Perform substitution if this pane has a palette */
 	if ((~gc->flags & GRID_FLAG_NOPALETTE) &&
-	    gc->bg != 8 && WINDOW_PANE_PALETTE_HAS(wp, gc->bg))
-		gc->bg = wp->palette[gc->bg & 0xff];
+	    (c = window_pane_get_palette(wp, gc->bg)) != -1)
+		gc->bg = c;
 
 	/* Is this a 24-bit colour? */
 	if (gc->bg & COLOUR_FLAG_RGB) {
@@ -1672,7 +1678,12 @@ tty_check_bg(struct tty *tty, const struct window_pane *wp,
 		} else
 			return;
 	}
-	colours = tty_term_number(tty->term, TTYC_COLORS);
+
+	/* How many colours does this terminal have? */
+	if ((tty->term->flags|tty->term_flags) & TERM_256COLOURS)
+		colours = 256;
+	else
+		colours = tty_term_number(tty->term, TTYC_COLORS);
 
 	/* Is this a 256-colour colour? */
 	if (gc->bg & COLOUR_FLAG_256) {
@@ -1681,8 +1692,7 @@ tty_check_bg(struct tty *tty, const struct window_pane *wp,
 		 * palette. Bold background doesn't exist portably, so just
 		 * discard the bold bit if set.
 		 */
-		if (!(tty->term->flags & TERM_256COLOURS) &&
-		    !(tty->term_flags & TERM_256COLOURS)) {
+		if (colours != 256) {
 			gc->bg = colour_256to16(gc->bg);
 			if (gc->bg & 8) {
 				gc->bg &= 7;
@@ -1817,6 +1827,7 @@ tty_default_colours(struct grid_cell *gc, const struct window_pane *wp)
 	struct window		*w = wp->window;
 	struct options		*oo = w->options;
 	const struct grid_cell	*agc, *pgc, *wgc;
+	int			 c;
 
 	if (w->flags & WINDOW_STYLECHANGED) {
 		w->flags &= ~WINDOW_STYLECHANGED;
@@ -1838,8 +1849,9 @@ tty_default_colours(struct grid_cell *gc, const struct window_pane *wp)
 		else
 			gc->fg = wgc->fg;
 
-		if (gc->fg != 8 && WINDOW_PANE_PALETTE_HAS(wp, gc->fg))
-			gc->fg = wp->palette[gc->fg & 0xff];
+		if (gc->fg != 8 &&
+		    (c = window_pane_get_palette(wp, gc->fg)) != -1)
+			gc->fg = c;
 	}
 
 	if (gc->bg == 8) {
@@ -1850,8 +1862,9 @@ tty_default_colours(struct grid_cell *gc, const struct window_pane *wp)
 		else
 			gc->bg = wgc->bg;
 
-		if (gc->bg != 8 && WINDOW_PANE_PALETTE_HAS(wp, gc->bg))
-			gc->bg = wp->palette[gc->bg & 0xff];
+		if (gc->bg != 8 &&
+		    (c = window_pane_get_palette(wp, gc->bg)) != -1)
+			gc->bg = c;
 	}
 }
 
