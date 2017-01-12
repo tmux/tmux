@@ -1148,6 +1148,26 @@ window_pane_reset_palette(struct window_pane *wp)
 	wp->flags |= PANE_REDRAW;
 }
 
+int
+window_pane_get_palette(const struct window_pane *wp, int c)
+{
+	int	new;
+
+	if (wp == NULL || wp->palette == NULL)
+		return (-1);
+
+	new = -1;
+	if (c < 8)
+		new = wp->palette[c];
+	else if (c >= 90 && c <= 97)
+		new = wp->palette[8 + c - 90];
+	else if (c & COLOUR_FLAG_256)
+		new = wp->palette[c & ~COLOUR_FLAG_256];
+	if (new == 0)
+		return (-1);
+	return (new);
+}
+
 static void
 window_pane_mode_timer(__unused int fd, __unused short events, void *arg)
 {
@@ -1531,24 +1551,4 @@ winlink_shuffle_up(struct session *s, struct winlink *wl)
 	}
 
 	return (idx);
-}
-
-int
-window_pane_get_palette(const struct window_pane *wp, int c)
-{
-	int	new;
-
-	if (wp == NULL || wp->palette == NULL)
-		return (-1);
-
-	new = -1;
-	if (c < 8)
-		new = wp->palette[c];
-	else if (c >= 90 && c <= 97)
-		new = wp->palette[8 + c - 90];
-	else if (c & COLOUR_FLAG_256)
-		new = wp->palette[c & ~COLOUR_FLAG_256];
-	if (new == 0)
-		return (-1);
-	return (new);
 }

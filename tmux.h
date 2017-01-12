@@ -2136,6 +2136,7 @@ void		 window_pane_alternate_off(struct window_pane *,
 void		 window_pane_set_palette(struct window_pane *, u_int, int);
 void		 window_pane_unset_palette(struct window_pane *, u_int);
 void		 window_pane_reset_palette(struct window_pane *);
+int		 window_pane_get_palette(const struct window_pane *, int);
 int		 window_pane_set_mode(struct window_pane *,
 		     const struct window_mode *);
 void		 window_pane_reset_mode(struct window_pane *);
@@ -2154,7 +2155,6 @@ void		 window_set_name(struct window *, const char *);
 void		 window_remove_ref(struct window *);
 void		 winlink_clear_flags(struct winlink *);
 int		 winlink_shuffle_up(struct session *, struct winlink *);
-int		 window_pane_get_palette(const struct window_pane *, int);
 
 /* layout.c */
 u_int		 layout_count_cells(struct layout_cell *);
