@@ -292,10 +292,8 @@ cmd_set_option_user(struct cmd *self, struct cmdq_item *item,
 			cmdq_error(item, "empty value");
 			return (CMD_RETURN_ERROR);
 		}
-		if (o != NULL && args_has(args, 'a'))
-			options_set_string(oo, optstr, "%s%s", o->str, valstr);
-		else
-			options_set_string(oo, optstr, "%s", valstr);
+		options_set_string(oo, optstr, args_has(args, 'a'), "%s",
+		    valstr);
 	}
 	return (CMD_RETURN_NORMAL);
 }
@@ -316,10 +314,11 @@ cmd_set_option_unset(struct cmd *self, struct cmdq_item *item,
 	if (args_has(args, 'g') || oo == global_options) {
 		switch (oe->type) {
 		case OPTIONS_TABLE_STRING:
-			options_set_string(oo, oe->name, "%s", oe->default_str);
+			options_set_string(oo, oe->name, 0, "%s",
+			    oe->default_str);
 			break;
 		case OPTIONS_TABLE_STYLE:
-			options_set_style(oo, oe->name, oe->default_str, 0);
+			options_set_style(oo, oe->name, 0, oe->default_str);
 			break;
 		default:
 			options_set_number(oo, oe->name, oe->default_num);
@@ -391,20 +390,10 @@ cmd_set_option_string(struct cmd *self, __unused struct cmdq_item *item,
     const struct options_table_entry *oe, struct options *oo,
     const char *value)
 {
-	struct args		*args = self->args;
-	struct options_entry	*o;
-	char			*oldval, *newval;
+	struct args	*args = self->args;
+	int		 append = args_has(args, 'a');
 
-	if (args_has(args, 'a')) {
-		oldval = options_get_string(oo, oe->name);
-		xasprintf(&newval, "%s%s", oldval, value);
-	} else
-		newval = xstrdup(value);
-
-	o = options_set_string(oo, oe->name, "%s", newval);
-
-	free(newval);
-	return (o);
+	return (options_set_string(oo, oe->name, append, "%s", value));
 }
 
 /* Set a number option. */
@@ -544,11 +533,10 @@ cmd_set_option_style(struct cmd *self, struct cmdq_item *item,
     const char *value)
 {
 	struct args		*args = self->args;
+	int			 append = args_has(args, 'a');
 	struct options_entry	*o;
-	int			 append;
 
-	append = args_has(args, 'a');
-	if ((o = options_set_style(oo, oe->name, value, append)) == NULL) {
+	if ((o = options_set_style(oo, oe->name, append, value)) == NULL) {
 		cmdq_error(item, "bad style: %s", value);
 		return (NULL);
 	}

@@ -915,10 +915,11 @@ options_table_populate_tree(enum options_table_scope scope, struct options *oo)
 			continue;
 		switch (oe->type) {
 		case OPTIONS_TABLE_STRING:
-			options_set_string(oo, oe->name, "%s", oe->default_str);
+			options_set_string(oo, oe->name, 0, "%s",
+			    oe->default_str);
 			break;
 		case OPTIONS_TABLE_STYLE:
-			options_set_style(oo, oe->name, oe->default_str, 0);
+			options_set_style(oo, oe->name, 0, oe->default_str);
 			break;
 		default:
 			options_set_number(oo, oe->name, oe->default_num);
