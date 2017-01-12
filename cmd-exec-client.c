@@ -33,7 +33,7 @@ const struct cmd_entry cmd_exec_client_entry = {
 	.name = "exec-client",
 	.alias = "exec",
 
-	.args = { "as:t:P", 1, 1 },
+	.args = { "", 1, 1 },
 	.usage = "command" CMD_TARGET_CLIENT_USAGE,
 
 	.sflag = CMD_SESSION,
