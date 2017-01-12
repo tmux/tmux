@@ -19,7 +19,7 @@
 #ifndef TMUX_H
 #define TMUX_H
 
-#define PROTOCOL_VERSION 8
+#define PROTOCOL_VERSION 9
 
 #include <sys/time.h>
 #include <sys/uio.h>
@@ -431,6 +431,7 @@ enum msgtype {
 	MSG_COMMAND = 200,
 	MSG_DETACH,
 	MSG_DETACHKILL,
+	MSG_EXEC,
 	MSG_EXIT,
 	MSG_EXITED,
 	MSG_EXITING,
@@ -1882,6 +1883,7 @@ int	 server_client_open(struct client *, char **);
 void	 server_client_unref(struct client *);
 void	 server_client_lost(struct client *);
 void	 server_client_detach(struct client *, enum msgtype);
+void	 server_client_exec(struct client *, enum msgtype, const char *);
 void	 server_client_loop(void);
 void	 server_client_push_stdout(struct client *);
 void	 server_client_push_stderr(struct client *);

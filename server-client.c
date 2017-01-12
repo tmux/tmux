@@ -294,6 +294,13 @@ server_client_detach(struct client *c, enum msgtype msgtype)
 	proc_send_s(c->peer, msgtype, s->name);
 }
 
+/* Exec in a client */
+void
+server_client_exec(struct client *c, enum msgtype msgtype, const char * cmd)
+{
+  proc_send_s(c->peer, msgtype, cmd);
+}
+
 /* Check for mouse keys. */
 static key_code
 server_client_check_mouse(struct client *c)
