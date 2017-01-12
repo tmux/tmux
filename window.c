@@ -464,12 +464,12 @@ window_redraw_active_switch(struct window *w, struct window_pane *wp)
 	 * If the now active or inactive pane do not have a custom style or if
 	 * the palette is different, they need to be redrawn.
 	 */
-	if (WINDOW_PANE_PALETTE_HAS(w->active, w->active->colgc.fg) ||
-	    WINDOW_PANE_PALETTE_HAS(w->active, w->active->colgc.bg) ||
+	if (window_pane_get_palette(w->active, w->active->colgc.fg) != -1 ||
+	    window_pane_get_palette(w->active, w->active->colgc.bg) != -1 ||
 	    style_equal(&grid_default_cell, &w->active->colgc))
 		w->active->flags |= PANE_REDRAW;
-	if (WINDOW_PANE_PALETTE_HAS(wp, wp->colgc.fg) ||
-	    WINDOW_PANE_PALETTE_HAS(wp, wp->colgc.bg) ||
+	if (window_pane_get_palette(wp, wp->colgc.fg) != -1 ||
+	    window_pane_get_palette(wp, wp->colgc.bg) != -1 ||
 	    style_equal(&grid_default_cell, &wp->colgc))
 		wp->flags |= PANE_REDRAW;
 }
@@ -1516,4 +1516,24 @@ winlink_shuffle_up(struct session *s, struct winlink *wl)
 	}
 
 	return (idx);
+}
+
+int
+window_pane_get_palette(const struct window_pane *wp, int c)
+{
+	int	new;
+
+	if (wp == NULL || wp->palette == NULL)
+		return (-1);
+
+	new = -1;
+	if (c < 8)
+		new = wp->palette[c];
+	else if (c >= 90 && c <= 97)
+		new = wp->palette[7 + c - 90];
+	else if (c & COLOUR_FLAG_256)
+		new = wp->palette[c & ~COLOUR_FLAG_256];
+	if (new == 0)
+		return (-1);
+	return (new);
 }
