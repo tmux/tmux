@@ -298,7 +298,18 @@ server_client_detach(struct client *c, enum msgtype msgtype)
 void
 server_client_exec(struct client *c, enum msgtype msgtype, const char * cmd)
 {
-  proc_send_s(c->peer, msgtype, cmd);
+	char * msg;
+	char * shell;
+	size_t cmd_size, shell_size, msg_size;
+
+	shell = options_get_string(global_s_options, "default-shell");
+	shell_size = strlen(shell);
+	cmd_size = strlen(cmd);
+	msg_size = cmd_size + shell_size + 2;
+	msg = alloca(msg_size);
+	memcpy(msg, cmd, cmd_size + 1);
+	memcpy(msg + cmd_size + 1, shell, shell_size + 1);
+	proc_send(c->peer, msgtype, -1, msg, msg_size);
 }
 
 /* Check for mouse keys. */

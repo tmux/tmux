@@ -51,6 +51,7 @@ static int		 client_exitval;
 static enum msgtype	 client_exittype;
 static const char	*client_exitsession;
 static const char	*client_execstr;
+static const char	*client_execshell;
 static int		 client_attached;
 
 static __dead void	 client_exec(const char *,const char *);
@@ -364,7 +365,7 @@ client_main(struct event_base *base, int argc, char **argv, int flags,
 
 
 	if(client_exittype == MSG_EXEC) {
-		execl("/bin/sh", "sh", "-c", client_execstr, NULL);
+		client_exec(client_execshell, client_execstr);
 	}
 	/* Print the exit message, if any, and exit. */
 	if (client_attached) {
@@ -669,6 +670,7 @@ client_dispatch_attached(struct imsg *imsg)
 		if (datalen == 0 || data[datalen - 1] != '\0')
 			fatalx("bad MSG_EXEC string");
 		client_execstr = xstrdup(data);
+		client_execshell = xstrdup(data + strlen(data) + 1);
 		client_exittype = imsg->hdr.type;
 		proc_send(client_peer, MSG_EXITING, -1, NULL, 0);
 		break;
