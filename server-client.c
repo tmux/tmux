@@ -296,20 +296,26 @@ server_client_detach(struct client *c, enum msgtype msgtype)
 
 /* Exec in a client */
 void
-server_client_exec(struct client *c, enum msgtype msgtype, const char * cmd)
+server_client_exec(struct client *c, const char * cmd)
 {
-	char * msg;
-	char * shell;
-	size_t cmd_size, shell_size, msg_size;
+	char	*msg;
+	char	*shell;
+	size_t	cmd_size, shell_size, msg_size;
+	struct session	*s = c->session;
 
-	shell = options_get_string(global_s_options, "default-shell");
+	if (s != NULL)
+		shell = options_get_string(s->options, "default-shell");
+	else
+		shell = options_get_string(global_s_options, "default-shell");
+
 	shell_size = strlen(shell);
 	cmd_size = strlen(cmd);
 	msg_size = cmd_size + shell_size + 2;
-	msg = alloca(msg_size);
+	msg = malloc(msg_size);
 	memcpy(msg, cmd, cmd_size + 1);
 	memcpy(msg + cmd_size + 1, shell, shell_size + 1);
-	proc_send(c->peer, msgtype, -1, msg, msg_size);
+	proc_send(c->peer, MSG_EXEC, -1, msg, msg_size);
+	free(msg);
 }
 
 /* Check for mouse keys. */

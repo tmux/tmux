@@ -86,7 +86,6 @@ dist_tmux_SOURCES = \
 	cmd-confirm-before.c \
 	cmd-copy-mode.c \
 	cmd-detach-client.c \
-	cmd-exec-client.c \
 	cmd-display-message.c \
 	cmd-display-panes.c \
 	cmd-find-window.c \
