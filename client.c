@@ -50,6 +50,8 @@ static enum {
 static int		 client_exitval;
 static enum msgtype	 client_exittype;
 static const char	*client_exitsession;
+static const char	*client_execstr;
+static const char	*client_execshell;
 static int		 client_attached;
 
 static __dead void	 client_exec(const char *,const char *);
@@ -361,6 +363,10 @@ client_main(struct event_base *base, int argc, char **argv, int flags,
 	/* Start main loop. */
 	proc_loop(client_proc, NULL);
 
+	/* If user requested exec, exec instead of exiting */
+	if (client_exittype == MSG_EXEC)
+		client_exec(client_execshell, client_execstr);
+
 	/* Print the exit message, if any, and exit. */
 	if (client_attached) {
 		if (client_exitreason != CLIENT_EXIT_NONE)
@@ -658,6 +664,15 @@ client_dispatch_attached(struct imsg *imsg)
 			client_exitreason = CLIENT_EXIT_DETACHED_HUP;
 		else
 			client_exitreason = CLIENT_EXIT_DETACHED;
+		proc_send(client_peer, MSG_EXITING, -1, NULL, 0);
+		break;
+	case MSG_EXEC:
+		if (datalen == 0 || data[datalen - 1] != '\0' ||
+		    strlen(data) + 1 == (unsigned) datalen)
+			fatalx("bad MSG_EXEC string");
+		client_execstr = xstrdup(data);
+		client_execshell = xstrdup(data + strlen(data) + 1);
+		client_exittype = imsg->hdr.type;
 		proc_send(client_peer, MSG_EXITING, -1, NULL, 0);
 		break;
 	case MSG_EXIT:

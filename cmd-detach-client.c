@@ -33,8 +33,8 @@ const struct cmd_entry cmd_detach_client_entry = {
 	.name = "detach-client",
 	.alias = "detach",
 
-	.args = { "as:t:P", 0, 0 },
-	.usage = "[-P] [-a] [-s target-session] " CMD_TARGET_CLIENT_USAGE,
+	.args = { "as:t:PE:", 0, 0 },
+	.usage = "[-P] [-a] [-s target-session] [-E exec-cmd] " CMD_TARGET_CLIENT_USAGE,
 
 	.sflag = CMD_SESSION,
 	.tflag = CMD_CLIENT,
@@ -69,6 +69,11 @@ cmd_detach_client_exec(struct cmd *self, struct cmdq_item *item)
 		c->flags |= CLIENT_SUSPENDED;
 		proc_send(c->peer, MSG_SUSPEND, -1, NULL, 0);
 		return (CMD_RETURN_NORMAL);
+	}
+
+	if (args_has(args, 'E')) {
+		server_client_exec(c, args_get(args,'E'));
+		return (CMD_RETURN_STOP);
 	}
 
 	if (args_has(args, 'P'))
