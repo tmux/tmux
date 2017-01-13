@@ -278,18 +278,19 @@ status_get_window_at(struct client *c, u_int x)
 int
 status_redraw(struct client *c)
 {
-	struct screen_write_ctx	ctx;
-	struct session	       *s = c->session;
-	struct winlink	       *wl;
-	struct screen		old_status, window_list;
-	struct grid_cell	stdgc, lgc, rgc, gc;
-	struct options	       *oo;
-	time_t			t;
-	char		       *left, *right, *sep;
-	u_int			offset, needed;
-	u_int			wlstart, wlwidth, wlavailable, wloffset, wlsize;
-	size_t			llen, rlen, seplen;
-	int			larrow, rarrow;
+	struct screen_write_ctx	 ctx;
+	struct session		*s = c->session;
+	struct winlink		*wl;
+	struct screen		 old_status, window_list;
+	struct grid_cell	 stdgc, lgc, rgc, gc;
+	struct options		*oo;
+	time_t			 t;
+	char			*left, *right;
+	const char		*sep;
+	u_int			 offset, needed;
+	u_int			 wlstart, wlwidth, wlavailable, wloffset, wlsize;
+	size_t			 llen, rlen, seplen;
+	int			 larrow, rarrow;
 
 	/* No status line? */
 	if (c->tty.sy == 0 || !options_get_number(s->options, "status"))

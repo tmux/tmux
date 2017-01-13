@@ -74,8 +74,8 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	struct environ		*env;
 	struct termios		 tio, *tiop;
 	const char		*newname, *target, *update, *errstr, *template;
-	const char		*path, *cwd, *to_free = NULL;
-	char		       **argv, *cmd, *cause, *cp;
+	const char		*path, *cmd, *cwd, *to_free = NULL;
+	char		       **argv, *cause, *cp;
 	int			 detached, already_attached, idx, argc;
 	u_int			 sx, sy;
 	struct format_tree	*ft;
@@ -217,7 +217,7 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 		cmd = options_get_string(global_s_options, "default-command");
 		if (cmd != NULL && *cmd != '\0') {
 			argc = 1;
-			argv = &cmd;
+			argv = (char **)&cmd;
 		} else {
 			argc = 0;
 			argv = NULL;

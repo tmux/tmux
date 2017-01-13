@@ -182,7 +182,7 @@ style_update_old(struct options *oo, const char *name, struct grid_cell *gc)
 void
 style_apply(struct grid_cell *gc, struct options *oo, const char *name)
 {
-	struct grid_cell	*gcp;
+	const struct grid_cell	*gcp;
 
 	memcpy(gc, &grid_default_cell, sizeof *gc);
 	gcp = options_get_style(oo, name);
@@ -195,7 +195,7 @@ style_apply(struct grid_cell *gc, struct options *oo, const char *name)
 void
 style_apply_update(struct grid_cell *gc, struct options *oo, const char *name)
 {
-	struct grid_cell	*gcp;
+	const struct grid_cell	*gcp;
 
 	gcp = options_get_style(oo, name);
 	if (gcp->fg != 8)

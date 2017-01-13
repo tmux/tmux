@@ -33,9 +33,9 @@ static void		 server_destroy_session_group(struct session *);
 void
 server_fill_environ(struct session *s, struct environ *env)
 {
-	char	*term;
-	u_int	 idx;
-	long	 pid;
+	const char	*term;
+	u_int		 idx;
+	long		 pid;
 
 	if (s != NULL) {
 		term = options_get_string(global_options, "default-terminal");
