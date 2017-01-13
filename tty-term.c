@@ -385,8 +385,7 @@ tty_term_find(char *name, int fd, char **cause)
 	struct tty_code				*code;
 	u_int					 i;
 	int		 			 n, error;
-	char					*s;
-	const char				*acs;
+	const char				*s, *acs;
 
 	LIST_FOREACH(term, &tty_terms, entry) {
 		if (strcmp(term->name, name) == 0) {

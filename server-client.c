@@ -296,12 +296,13 @@ server_client_detach(struct client *c, enum msgtype msgtype)
 	proc_send_s(c->peer, msgtype, s->name);
 }
 
-/* Execute command to replace a client, */
+/* Execute command to replace a client. */
 void
 server_client_exec(struct client *c, const char *cmd)
 {
 	struct session	*s = c->session;
-	char		*msg, *shell;
+	char		*msg;
+	const char	*shell;
 	size_t		 cmdsize, shellsize;
 
 	if (*cmd == '\0')
