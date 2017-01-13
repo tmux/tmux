@@ -29,14 +29,14 @@
 
 #define LIST_WINDOWS_TEMPLATE					\
 	"#{window_index}: #{window_name}#{window_flags} "	\
-	"(#{window_panes} panes) "				\
+	"(#{window_panes} #{window_panes_string}) "		\
 	"[#{window_width}x#{window_height}] "			\
 	"[layout #{window_layout}] #{window_id}"		\
 	"#{?window_active, (active),}";
 #define LIST_WINDOWS_WITH_SESSION_TEMPLATE			\
 	"#{session_name}:"					\
 	"#{window_index}: #{window_name}#{window_flags} "	\
-	"(#{window_panes} panes) "				\
+	"(#{window_panes} #{window_panes_string}) "		\
 	"[#{window_width}x#{window_height}] "
 
 static enum cmd_retval	cmd_list_windows_exec(struct cmd *, struct cmdq_item *);
