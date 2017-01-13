@@ -728,6 +728,7 @@ is used, the
 option will not be applied.
 .It Xo Ic detach-client
 .Op Fl aP
+.Op Fl E Ar shell-command
 .Op Fl s Ar target-session
 .Op Fl t Ar target-client
 .Xc
@@ -744,6 +745,11 @@ If
 .Fl P
 is given, send SIGHUP to the parent process of the client, typically causing it
 to exit.
+With
+.Fl E ,
+run
+.Ar shell-command
+to replace the client.
 .It Ic has-session Op Fl t Ar target-session
 .D1 (alias: Ic has )
 Report an error and exit with 1 if the specified session does not exist.
