@@ -364,9 +364,8 @@ client_main(struct event_base *base, int argc, char **argv, int flags,
 	proc_loop(client_proc, NULL);
 
 	/* If user requested exec, exec instead of exiting */
-	if (client_exittype == MSG_EXEC) {
+	if (client_exittype == MSG_EXEC)
 		client_exec(client_execshell, client_execstr);
-	}
 
 	/* Print the exit message, if any, and exit. */
 	if (client_attached) {
