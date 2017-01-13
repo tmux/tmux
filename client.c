@@ -363,10 +363,11 @@ client_main(struct event_base *base, int argc, char **argv, int flags,
 	/* Start main loop. */
 	proc_loop(client_proc, NULL);
 
-
-	if(client_exittype == MSG_EXEC) {
+	/* If user requested exec, exec instead of exiting */
+	if (client_exittype == MSG_EXEC) {
 		client_exec(client_execshell, client_execstr);
 	}
+
 	/* Print the exit message, if any, and exit. */
 	if (client_attached) {
 		if (client_exitreason != CLIENT_EXIT_NONE)
