@@ -162,7 +162,7 @@ options_set_string(struct options *oo, const char *name, int append,
 	return (o);
 }
 
-char *
+const char *
 options_get_string(struct options *oo, const char *name)
 {
 	struct options_entry	*o;
@@ -221,7 +221,7 @@ options_set_style(struct options *oo, const char *name, int append,
 	return (o);
 }
 
-struct grid_cell *
+const struct grid_cell *
 options_get_style(struct options *oo, const char *name)
 {
 	struct options_entry	*o;

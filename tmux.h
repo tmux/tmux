@@ -1630,13 +1630,13 @@ struct options_entry *options_find(struct options *, const char *);
 void	options_remove(struct options *, const char *);
 struct options_entry * printflike(4, 5) options_set_string(struct options *,
 	    const char *, int, const char *, ...);
-char   *options_get_string(struct options *, const char *);
+const char *options_get_string(struct options *, const char *);
 struct options_entry *options_set_number(struct options *, const char *,
 	    long long);
 long long options_get_number(struct options *, const char *);
 struct options_entry *options_set_style(struct options *, const char *, int,
 	    const char *);
-struct grid_cell *options_get_style(struct options *, const char *);
+const struct grid_cell *options_get_style(struct options *, const char *);
 
 /* options-table.c */
 extern const struct options_table_entry options_table[];
