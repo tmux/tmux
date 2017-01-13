@@ -668,7 +668,8 @@ client_dispatch_attached(struct imsg *imsg)
 		proc_send(client_peer, MSG_EXITING, -1, NULL, 0);
 		break;
 	case MSG_EXEC:
-		if (datalen == 0 || data[datalen - 1] != '\0' || strlen(data) == datalen - 1)
+		if (datalen == 0 || data[datalen - 1] != '\0' ||
+		    strlen(data) + 1 == (unsigned) datalen)
 			fatalx("bad MSG_EXEC string");
 		client_execstr = xstrdup(data);
 		client_execshell = xstrdup(data + strlen(data) + 1);
