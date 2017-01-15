@@ -83,6 +83,8 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 	/* Parse option name and index. */
 	name = options_match(args->argv[0], &idx, &ambiguous);
 	if (name == NULL) {
+		if (args_has(args, 'q'))
+			return (CMD_RETURN_NORMAL);
 		if (ambiguous)
 			cmdq_error(item, "ambiguous option: %s", args->argv[0]);
 		else
@@ -114,6 +116,8 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 		}
 	}
 	if (scope == OPTIONS_TABLE_NONE) {
+		if (args_has(args, 'q'))
+			return (CMD_RETURN_NORMAL);
 		cmdq_error(item, "%s", cause);
 		free(cause);
 		return (CMD_RETURN_ERROR);
