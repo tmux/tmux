@@ -151,7 +151,7 @@ options_set_string(struct options *oo, const char *name, int append,
 	if (o == NULL || !append)
 		value = s;
 	else {
-		xasprintf(&value, "%s%s", s, o->str);
+		xasprintf(&value, "%s%s", o->str, s);
 		free(s);
 	}
 
