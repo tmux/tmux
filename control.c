@@ -85,7 +85,8 @@ control_callback(struct client *c, int closed, __unused void *data)
 			break;
 		}
 
-		if (cmd_string_parse(line, &cmdlist, NULL, 0, &cause) != 0) {
+		cmdlist = cmd_string_parse(line, NULL, 0, &cause);
+		if (cmdlist == NULL) {
 			item = cmdq_get_callback(control_error, cause);
 			cmdq_append(c, item);
 		} else {

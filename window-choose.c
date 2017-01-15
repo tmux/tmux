@@ -255,7 +255,8 @@ window_choose_data_run(struct window_choose_data *cdata)
 	if (cdata->command == NULL)
 		return;
 
-	if (cmd_string_parse(cdata->command, &cmdlist, NULL, 0, &cause) != 0) {
+	cmdlist = cmd_string_parse(cdata->command, NULL, 0, &cause);
+	if (cmdlist == NULL) {
 		if (cause != NULL) {
 			*cause = toupper((u_char) *cause);
 			status_message_set(cdata->start_client, "%s", cause);

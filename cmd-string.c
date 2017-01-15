@@ -54,32 +54,17 @@ cmd_string_ungetc(size_t *p)
 	(*p)--;
 }
 
-/*
- * Parse command string. Returns -1 on error. If returning -1, cause is error
- * string, or NULL for empty command.
- */
-int
-cmd_string_parse(const char *s, struct cmd_list **cmdlist, const char *file,
-    u_int line, char **cause)
+struct cmd_list *
+cmd_string_parse(const char *s, const char *file, u_int line, char **cause)
 {
-	size_t		p;
-	int		ch, i, argc, rval;
-	char	      **argv, *buf, *t;
-	const char     *whitespace, *equals;
-	size_t		len;
-
-	argv = NULL;
-	argc = 0;
-
-	buf = NULL;
-	len = 0;
+	size_t		  p = 0;
+	int		  ch, i, argc = 0;
+	char		**argv = NULL, *buf = NULL, *t;
+	const char	 *whitespace, *equals;
+	size_t		  len = 0;
+	struct cmd_list	 *cmdlist = NULL;
 
 	*cause = NULL;
-
-	*cmdlist = NULL;
-	rval = -1;
-
-	p = 0;
 	for (;;) {
 		ch = cmd_string_getc(s, &p);
 		switch (ch) {
@@ -133,12 +118,7 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, const char *file,
 			if (argc == 0)
 				goto out;
 
-			*cmdlist = cmd_list_parse(argc, argv, file, line,
-			    cause);
-			if (*cmdlist == NULL)
-				goto out;
-
-			rval = 0;
+			cmdlist = cmd_list_parse(argc, argv, file, line, cause);
 			goto out;
 		case '~':
 			if (buf == NULL) {
@@ -171,7 +151,7 @@ out:
 		free(argv);
 	}
 
-	return (rval);
+	return (cmdlist);
 }
 
 static void

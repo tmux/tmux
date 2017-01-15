@@ -112,7 +112,8 @@ cmd_confirm_before_callback(void *data, const char *s, __unused int done)
 	if (tolower((u_char) s[0]) != 'y' || s[1] != '\0')
 		return (0);
 
-	if (cmd_string_parse(cdata->cmd, &cmdlist, NULL, 0, &cause) != 0) {
+	cmdlist = cmd_string_parse(cdata->cmd, NULL, 0, &cause);
+	if (cmdlist == NULL) {
 		if (cause != NULL) {
 			new_item = cmdq_get_callback(cmd_confirm_before_error,
 			    cause);
