@@ -55,7 +55,7 @@ static const char *options_table_pane_status_list[] = {
 	"off", "top", "bottom", NULL
 };
 
-/* Server options. */
+/* Top-level options. */
 const struct options_table_entry options_table[] = {
 	{ .name = "buffer-limit",
 	  .type = OPTIONS_TABLE_NUMBER,
@@ -895,100 +895,3 @@ const struct options_table_entry options_table[] = {
 
 	{ .name = NULL }
 };
-
-/* Populate an options tree from a table. */
-void
-options_table_populate_tree(enum options_table_scope scope, struct options *oo)
-{
-	const struct options_table_entry	*oe;
-
-	for (oe = options_table; oe->name != NULL; oe++) {
-		if (oe->scope == OPTIONS_TABLE_NONE)
-			fatalx("no scope for %s", oe->name);
-		if (oe->scope != scope)
-			continue;
-		switch (oe->type) {
-		case OPTIONS_TABLE_STRING:
-			options_set_string(oo, oe->name, 0, "%s",
-			    oe->default_str);
-			break;
-		case OPTIONS_TABLE_STYLE:
-			options_set_style(oo, oe->name, 0, oe->default_str);
-			break;
-		default:
-			options_set_number(oo, oe->name, oe->default_num);
-			break;
-		}
-	}
-}
-
-/* Print an option using its type from the table. */
-const char *
-options_table_print_entry(const struct options_table_entry *oe,
-    struct options_entry *o, int no_quotes)
-{
-	static char	 out[BUFSIZ];
-	const char	*s;
-
-	*out = '\0';
-	switch (oe->type) {
-	case OPTIONS_TABLE_STRING:
-		if (no_quotes)
-			xsnprintf(out, sizeof out, "%s", o->str);
-		else
-			xsnprintf(out, sizeof out, "\"%s\"", o->str);
-		break;
-	case OPTIONS_TABLE_NUMBER:
-		xsnprintf(out, sizeof out, "%lld", o->num);
-		break;
-	case OPTIONS_TABLE_KEY:
-		s = key_string_lookup_key(o->num);
-		xsnprintf(out, sizeof out, "%s", s);
-		break;
-	case OPTIONS_TABLE_COLOUR:
-		s = colour_tostring(o->num);
-		xsnprintf(out, sizeof out, "%s", s);
-		break;
-	case OPTIONS_TABLE_ATTRIBUTES:
-		s = attributes_tostring(o->num);
-		xsnprintf(out, sizeof out, "%s", s);
-		break;
-	case OPTIONS_TABLE_FLAG:
-		if (o->num)
-			strlcpy(out, "on", sizeof out);
-		else
-			strlcpy(out, "off", sizeof out);
-		break;
-	case OPTIONS_TABLE_CHOICE:
-		s = oe->choices[o->num];
-		xsnprintf(out, sizeof out, "%s", s);
-		break;
-	case OPTIONS_TABLE_STYLE:
-		s = style_tostring(&o->style);
-		xsnprintf(out, sizeof out, "%s", s);
-		break;
-	}
-	return (out);
-}
-
-/* Find an option. */
-int
-options_table_find(const char *optstr, const struct options_table_entry **oe)
-{
-	const struct options_table_entry	*oe_loop;
-
-	for (oe_loop = options_table; oe_loop->name != NULL; oe_loop++) {
-		if (strncmp(oe_loop->name, optstr, strlen(optstr)) != 0)
-			continue;
-
-		/* If already found, ambiguous. */
-		if (*oe != NULL)
-			return (-1);
-		*oe = oe_loop;
-
-		/* Bail now if an exact match. */
-		if (strcmp(oe_loop->name, optstr) == 0)
-			break;
-	}
-	return (0);
-}

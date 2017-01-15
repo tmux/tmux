@@ -20,6 +20,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <vis.h>
 
 #include "tmux.h"
 
@@ -30,9 +31,9 @@
 static enum cmd_retval	cmd_show_options_exec(struct cmd *, struct cmdq_item *);
 
 static enum cmd_retval	cmd_show_options_one(struct cmd *, struct cmdq_item *,
-			    struct options *, int);
+			    struct options *);
 static enum cmd_retval	cmd_show_options_all(struct cmd *, struct cmdq_item *,
-		    	    struct options *, enum options_table_scope);
+		    	    struct options *);
 
 const struct cmd_entry cmd_show_options_entry = {
 	.name = "show-options",
@@ -64,134 +65,106 @@ static enum cmd_retval
 cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = self->args;
-	struct session			*s = item->state.tflag.s;
-	struct winlink			*wl = item->state.tflag.wl;
+	struct cmd_find_state		*fs = &item->state.tflag;
 	struct options			*oo;
 	enum options_table_scope	 scope;
-	int				 quiet;
-	const char			*target;
+	char				*cause;
+	int				 window;
 
-	if (args_has(self->args, 's')) {
-		oo = global_options;
-		scope = OPTIONS_TABLE_SERVER;
-	} else if (args_has(self->args, 'w') ||
-	    self->entry == &cmd_show_window_options_entry) {
-		scope = OPTIONS_TABLE_WINDOW;
-		if (args_has(self->args, 'g'))
-			oo = global_w_options;
-		else if (wl == NULL) {
-			target = args_get(args, 't');
-			if (target != NULL) {
-				cmdq_error(item, "no such window: %s", target);
-			} else
-				cmdq_error(item, "no current window");
-			return (CMD_RETURN_ERROR);
-		} else
-			oo = wl->window->options;
-	} else {
-		scope = OPTIONS_TABLE_SESSION;
-		if (args_has(self->args, 'g'))
-			oo = global_s_options;
-		else if (s == NULL) {
-			target = args_get(args, 't');
-			if (target != NULL) {
-				cmdq_error(item, "no such session: %s", target);
-			} else
-				cmdq_error(item, "no current session");
-			return (CMD_RETURN_ERROR);
-		} else
-			oo = s->options;
+	window = (self->entry == &cmd_show_window_options_entry);
+	scope = options_scope_from_flags(args, window, fs, &oo, &cause);
+	if (scope == OPTIONS_TABLE_NONE) {
+		cmdq_error(item, "%s", cause);
+		free(cause);
+		return (CMD_RETURN_ERROR);
 	}
 
-	quiet = args_has(self->args, 'q');
 	if (args->argc == 0)
-		return (cmd_show_options_all(self, item, oo, scope));
+		return (cmd_show_options_all(self, item, oo));
 	else
-		return (cmd_show_options_one(self, item, oo, quiet));
+		return (cmd_show_options_one(self, item, oo));
+}
+
+static void
+cmd_show_options_print(struct cmd *self, struct cmdq_item *item,
+    struct option *o, int idx)
+{
+	const char	*name;
+	const char	*value;
+	char		*tmp, *escaped;
+
+	if (idx != -1) {
+		xasprintf(&tmp, "%s[%d]", options_name(o), idx);
+		name = tmp;
+	} else {
+		tmp = NULL;
+		name = options_name(o);
+	}
+
+	value = options_tostring(o, idx);
+	if (args_has(self->args, 'v'))
+		cmdq_print(item, "%s", value);
+	else if (options_isstring(o)) {
+		stravis(&escaped, value, VIS_OCTAL|VIS_TAB|VIS_NL|VIS_DQ);
+		cmdq_print(item, "%s \"%s\"", name, escaped);
+		free(escaped);
+	} else
+		cmdq_print(item, "%s %s", name, value);
+
+	free(tmp);
 }
 
 static enum cmd_retval
 cmd_show_options_one(struct cmd *self, struct cmdq_item *item,
-    struct options *oo, int quiet)
+    struct options *oo)
 {
-	struct args				*args = self->args;
-	const char				*name = args->argv[0];
-	const struct options_table_entry	*oe;
-	struct options_entry			*o;
-	const char				*optval;
+	struct args	*args = self->args;
+	struct option	*o;
+	int		 idx, ambiguous;
+	const char	*name = args->argv[0];
 
-retry:
-	if (*name == '@') {
-		if ((o = options_find1(oo, name)) == NULL) {
-			if (quiet)
-				return (CMD_RETURN_NORMAL);
-			cmdq_error(item, "unknown option: %s", name);
+	o = options_match_get(oo, name, &idx, 1, &ambiguous);
+	if (o == NULL) {
+		if (args_has(args, 'q'))
+			return (CMD_RETURN_NORMAL);
+		if (ambiguous) {
+			cmdq_error(item, "ambiguous option: %s", name);
 			return (CMD_RETURN_ERROR);
 		}
-		if (args_has(self->args, 'v'))
-			cmdq_print(item, "%s", o->str);
-		else
-			cmdq_print(item, "%s \"%s\"", o->name, o->str);
-		return (CMD_RETURN_NORMAL);
-	}
-
-	oe = NULL;
-	if (options_table_find(name, &oe) != 0) {
-		cmdq_error(item, "ambiguous option: %s", name);
-		return (CMD_RETURN_ERROR);
-	}
-	if (oe == NULL) {
-		if (quiet)
+		if (options_match_get(oo, name, &idx, 0, &ambiguous) != NULL)
 			return (CMD_RETURN_NORMAL);
 		cmdq_error(item, "unknown option: %s", name);
 		return (CMD_RETURN_ERROR);
 	}
-	if (oe->style != NULL) {
-		name = oe->style;
-		goto retry;
-	}
-	if ((o = options_find1(oo, oe->name)) == NULL)
-		return (CMD_RETURN_NORMAL);
-	optval = options_table_print_entry(oe, o, args_has(self->args, 'v'));
-	if (args_has(self->args, 'v'))
-		cmdq_print(item, "%s", optval);
-	else
-		cmdq_print(item, "%s %s", oe->name, optval);
+	cmd_show_options_print(self, item, o, idx);
 	return (CMD_RETURN_NORMAL);
 }
 
 static enum cmd_retval
 cmd_show_options_all(struct cmd *self, struct cmdq_item *item,
-    struct options *oo, enum options_table_scope scope)
+    struct options *oo)
 {
-	const struct options_table_entry	*oe;
-	struct options_entry			*o;
-	const char				*optval;
-	int					 vflag;
+	struct option			 *o;
+	const struct options_table_entry *oe;
+	u_int			 	 size, idx;
 
 	o = options_first(oo);
 	while (o != NULL) {
-		if (*o->name == '@') {
-			if (args_has(self->args, 'v'))
-				cmdq_print(item, "%s", o->str);
-			else
-				cmdq_print(item, "%s \"%s\"", o->name, o->str);
+		oe = options_table_entry(o);
+		if (oe != NULL && oe->style != NULL) {
+			o = options_next(o);
+			continue;
+		}
+		if (options_array_size(o, &size) == -1)
+			cmd_show_options_print(self, item, o, -1);
+		else {
+			for (idx = 0; idx < size; idx++) {
+				if (options_array_get(o, idx) == NULL)
+					continue;
+				cmd_show_options_print(self, item, o, idx);
+			}
 		}
 		o = options_next(o);
 	}
-
-	vflag = args_has(self->args, 'v');
-	for (oe = options_table; oe->name != NULL; oe++) {
-		if (oe->style != NULL || oe->scope != scope)
-			continue;
-		if ((o = options_find1(oo, oe->name)) == NULL)
-			continue;
-		optval = options_table_print_entry(oe, o, vflag);
-		if (vflag)
-			cmdq_print(item, "%s", optval);
-		else
-			cmdq_print(item, "%s %s", oe->name, optval);
-	}
-
 	return (CMD_RETURN_NORMAL);
 }

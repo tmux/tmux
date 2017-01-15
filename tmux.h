@@ -641,23 +641,6 @@ struct hook {
 	RB_ENTRY(hook)	 entry;
 };
 
-/* Option data structures. */
-struct options_entry {
-	const char		*name;
-
-	enum {
-		OPTIONS_STRING,
-		OPTIONS_NUMBER,
-		OPTIONS_STYLE
-	} type;
-
-	char			*str;
-	long long		 num;
-	struct grid_cell	 style;
-
-	RB_ENTRY(options_entry)	 entry;
-};
-
 /* Scheduled job. */
 struct job {
 	enum {
@@ -1477,7 +1460,8 @@ enum options_table_type {
 	OPTIONS_TABLE_ATTRIBUTES,
 	OPTIONS_TABLE_FLAG,
 	OPTIONS_TABLE_CHOICE,
-	OPTIONS_TABLE_STYLE
+	OPTIONS_TABLE_STYLE,
+	OPTIONS_TABLE_ARRAY,
 };
 enum options_table_scope {
 	OPTIONS_TABLE_NONE,
@@ -1621,29 +1605,45 @@ void	notify_window(const char *, struct window *);
 void	notify_pane(const char *, struct window_pane *);
 
 /* options.c */
-struct options *options_create(struct options *);
-void	options_free(struct options *);
-struct options_entry *options_first(struct options *);
-struct options_entry *options_next(struct options_entry *);
-struct options_entry *options_find1(struct options *, const char *);
-struct options_entry *options_find(struct options *, const char *);
-void	options_remove(struct options *, const char *);
-struct options_entry * printflike(4, 5) options_set_string(struct options *,
-	    const char *, int, const char *, ...);
-const char *options_get_string(struct options *, const char *);
-struct options_entry *options_set_number(struct options *, const char *,
-	    long long);
-long long options_get_number(struct options *, const char *);
-struct options_entry *options_set_style(struct options *, const char *, int,
-	    const char *);
+struct options	*options_create(struct options *);
+void		 options_free(struct options *);
+struct option	*options_first(struct options *);
+struct option	*options_next(struct option *);
+struct option	*options_empty(struct options *,
+		     const struct options_table_entry *);
+struct option	*options_default(struct options *,
+		     const struct options_table_entry *);
+const char	*options_name(struct option *);
+const struct options_table_entry *options_table_entry(struct option *);
+struct option	*options_get_only(struct options *, const char *);
+struct option	*options_get(struct options *, const char *);
+void		 options_remove(struct option *);
+const char	*options_array_get(struct option *, u_int);
+int		 options_array_set(struct option *, u_int, const char *);
+int		 options_array_size(struct option *, u_int *);
+int		 options_isstring(struct option *);
+const char	*options_tostring(struct option *, int);
+char		*options_parse(const char *, int *);
+struct option	*options_parse_get(struct options *, const char *, int *,
+		    int);
+char		*options_match(const char *, int *, int *);
+struct option	*options_match_get(struct options *, const char *, int *,
+		    int, int *);
+const char	*options_get_string(struct options *, const char *);
+long long	 options_get_number(struct options *, const char *);
 const struct grid_cell *options_get_style(struct options *, const char *);
+struct option * printflike(4, 5) options_set_string(struct options *,
+		     const char *, int, const char *, ...);
+struct option	*options_set_number(struct options *, const char *, long long);
+struct option	*options_set_style(struct options *, const char *, int,
+		     const char *);
+enum options_table_scope options_scope_from_flags(struct args *, int,
+		     struct cmd_find_state *, struct options **, char **);
+void		 options_style_update_new(struct options *, struct option *);
+void		 options_style_update_old(struct options *, struct option *);
 
 /* options-table.c */
 extern const struct options_table_entry options_table[];
-void	options_table_populate_tree(enum options_table_scope, struct options *);
-const char *options_table_print_entry(const struct options_table_entry *,
-	    struct options_entry *, int);
-int	options_table_find(const char *, const struct options_table_entry **);
 
 /* job.c */
 extern struct joblist all_jobs;
@@ -2322,9 +2322,6 @@ __dead void printflike(1, 2) fatalx(const char *, ...);
 int		 style_parse(const struct grid_cell *,
 		     struct grid_cell *, const char *);
 const char	*style_tostring(struct grid_cell *);
-void		 style_update_new(struct options *, const char *, const char *);
-void		 style_update_old(struct options *, const char *,
-		     struct grid_cell *);
 void		 style_apply(struct grid_cell *, struct options *,
 		     const char *);
 void		 style_apply_update(struct grid_cell *, struct options *,
