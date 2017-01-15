@@ -105,12 +105,6 @@ const struct options_table_entry options_table[] = {
 	  .default_num = 100
 	},
 
-	{ .name = "quiet",
-	  .type = OPTIONS_TABLE_FLAG,
-	  .scope = OPTIONS_TABLE_SERVER,
-	  .default_num = 0
-	},
-
 	{ .name = "set-clipboard",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .scope = OPTIONS_TABLE_SERVER,
