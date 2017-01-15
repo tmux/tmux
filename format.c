@@ -640,39 +640,29 @@ static char *
 format_find(struct format_tree *ft, const char *key, int modifiers)
 {
 	struct format_entry	*fe, fe_find;
-	struct options_entry	*o;
 	struct environ_entry	*envent;
 	static char		 s[64];
+	struct option		*o;
 	const char		*found;
+	int			 idx;
 	char			*copy, *saved;
 
-	found = NULL;
-
 	if (~modifiers & FORMAT_TIMESTRING) {
-		o = options_find(global_options, key);
+		o = options_parse_get(global_options, key, &idx, 0);
 		if (o == NULL && ft->w != NULL)
-			o = options_find(ft->w->options, key);
+			o = options_parse_get(ft->w->options, key, &idx, 0);
 		if (o == NULL)
-			o = options_find(global_w_options, key);
+			o = options_parse_get(global_w_options, key, &idx, 0);
 		if (o == NULL && ft->s != NULL)
-			o = options_find(ft->s->options, key);
+			o = options_parse_get(ft->s->options, key, &idx, 0);
 		if (o == NULL)
-			o = options_find(global_s_options, key);
+			o = options_parse_get(global_s_options, key, &idx, 0);
 		if (o != NULL) {
-			switch (o->type) {
-			case OPTIONS_STRING:
-				found = o->str;
-				goto found;
-			case OPTIONS_NUMBER:
-				xsnprintf(s, sizeof s, "%lld", o->num);
-				found = s;
-				goto found;
-			case OPTIONS_STYLE:
-				found = style_tostring(&o->style);
-				goto found;
-			}
+			found = options_tostring(o, idx);
+			goto found;
 		}
 	}
+	found = NULL;
 
 	fe_find.key = (char *) key;
 	fe = RB_FIND(format_entry_tree, &ft->tree, &fe_find);
