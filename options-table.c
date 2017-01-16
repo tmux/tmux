@@ -65,13 +65,6 @@ const struct options_table_entry options_table[] = {
 	  .default_num = 20
 	},
 
-	{ .name = "command-alias",
-	  .type = OPTIONS_TABLE_ARRAY,
-	  .scope = OPTIONS_TABLE_SERVER,
-	  .default_str = "split-pane=split-window,"
-	                 "splitp=split-window"
-	},
-
 	{ .name = "default-terminal",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SERVER,
