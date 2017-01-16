@@ -642,7 +642,7 @@ format_find(struct format_tree *ft, const char *key, int modifiers)
 	struct format_entry	*fe, fe_find;
 	struct environ_entry	*envent;
 	static char		 s[64];
-	struct option		*o;
+	struct options_entry	*o;
 	const char		*found;
 	int			 idx;
 	char			*copy, *saved;
