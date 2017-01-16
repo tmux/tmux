@@ -1,6 +1,6 @@
 # configure.ac
 
-AC_INIT(tmux, 2.4)
+AC_INIT(tmux, master)
 
 AC_CONFIG_AUX_DIR(etc)
 AM_INIT_AUTOMAKE([foreign subdir-objects])
@@ -452,8 +452,12 @@ if test "x$found_stravis" = xyes; then
 	AC_CHECK_DECL(
 		VIS_DQ,
 		,
-		[found_stravis=no]),
-		[#include <vis.h>])
+		found_stravis=no,
+		[
+			#include <stdlib.h>
+			#include <vis.h>
+		]
+)
 fi
 if test "x$found_stravis" = xyes; then
 	AC_DEFINE(HAVE_VIS)
