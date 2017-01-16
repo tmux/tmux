@@ -175,7 +175,8 @@ cmd_command_prompt_callback(void *data, const char *s, int done)
 		return (1);
 	}
 
-	if (cmd_string_parse(new_template, &cmdlist, NULL, 0, &cause) != 0) {
+	cmdlist = cmd_string_parse(new_template, NULL, 0, &cause);
+	if (cmdlist == NULL) {
 		if (cause != NULL) {
 			new_item = cmdq_get_callback(cmd_command_prompt_error,
 			    cause);

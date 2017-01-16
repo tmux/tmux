@@ -379,12 +379,10 @@ key_bindings_init(void)
 	u_int		 i;
 	struct cmd_list	*cmdlist;
 	char		*cause;
-	int		 error;
 
 	for (i = 0; i < nitems(defaults); i++) {
-		error = cmd_string_parse(defaults[i], &cmdlist,
-		    "<default-keys>", i, &cause);
-		if (error != 0)
+		cmdlist = cmd_string_parse(defaults[i], "<default>", i, &cause);
+		if (cmdlist == NULL)
 			fatalx("bad default key");
 		cmdq_append(NULL, cmdq_get_command(cmdlist, NULL, NULL, 0));
 		cmd_list_free(cmdlist);

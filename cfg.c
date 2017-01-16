@@ -140,7 +140,8 @@ load_cfg(const char *path, struct client *c, struct cmdq_item *item, int quiet)
 		if (condition == -1)
 			continue;
 
-		if (cmd_string_parse(p, &cmdlist, path, line, &cause1) != 0) {
+		cmdlist = cmd_string_parse(p, path, line, &cause1);
+		if (cmdlist == NULL) {
 			free(buf);
 			if (cause1 == NULL)
 				continue;

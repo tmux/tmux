@@ -115,7 +115,8 @@ cmd_set_hook_exec(struct cmd *self, struct cmdq_item *item)
 		cmdq_error(item, "no command to set hook: %s", name);
 		return (CMD_RETURN_ERROR);
 	}
-	if (cmd_string_parse(cmd, &cmdlist, NULL, 0, &cause) != 0) {
+	cmdlist = cmd_string_parse(cmd, NULL, 0, &cause);
+	if (cmdlist == NULL) {
 		if (cause != NULL) {
 			cmdq_error(item, "%s", cause);
 			free(cause);

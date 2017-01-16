@@ -90,7 +90,8 @@ cmd_display_panes_callback(struct client *c, struct window_pane *wp)
 	xasprintf(&expanded, "%%%u", wp->id);
 	cmd = cmd_template_replace(template, expanded, 1);
 
-	if (cmd_string_parse(cmd, &cmdlist, NULL, 0, &cause) != 0) {
+	cmdlist = cmd_string_parse(cmd, NULL, 0, &cause);
+	if (cmdlist == NULL) {
 		if (cause != NULL) {
 			new_item = cmdq_get_callback(cmd_display_panes_error,
 			    cause);
