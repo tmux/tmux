@@ -449,6 +449,13 @@ if test "x$found_stravis" = xyes; then
 	fi
 fi
 if test "x$found_stravis" = xyes; then
+	AC_CHECK_DECL(
+		VIS_DQ,
+		,
+		[found_stravis=no]),
+		[#include <vis.h>])
+fi
+if test "x$found_stravis" = xyes; then
 	AC_DEFINE(HAVE_VIS)
 fi
 AM_CONDITIONAL(NO_VIS, [test "x$found_stravis" = xno])
