@@ -30,7 +30,7 @@
 static enum cmd_retval	cmd_set_option_exec(struct cmd *, struct cmdq_item *);
 
 static int	cmd_set_option_set(struct cmd *, struct cmdq_item *,
-		    struct options *, struct option *, const char *);
+		    struct options *, struct options_entry *, const char *);
 static int	cmd_set_option_flag(struct cmdq_item *,
 		    const struct options_table_entry *, struct options *,
 		    const char *);
@@ -75,7 +75,7 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 	struct client			*c;
 	enum options_table_scope	 scope;
 	struct options			*oo;
-	struct option			*parent, *o;
+	struct options_entry		*parent, *o;
 	const char			*name, *value, *target;
 	int				 window, idx, already, error, ambiguous;
 	char				*cause;
@@ -256,12 +256,12 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 
 static int
 cmd_set_option_set(struct cmd *self, struct cmdq_item *item, struct options *oo,
-    struct option *parent, const char *value)
+    struct options_entry *parent, const char *value)
 {
 	const struct options_table_entry	*oe;
 	struct args				*args = self->args;
 	int					 append = args_has(args, 'a');
-	struct option				*o;
+	struct options_entry			*o;
 	long long				 number;
 	const char				*errstr;
 	key_code				 key;

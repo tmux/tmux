@@ -308,21 +308,74 @@ cmd_stringify_argv(int argc, char **argv)
 	return (buf);
 }
 
+static int
+cmd_try_alias(int *argc, char ***argv)
+{
+	struct options_entry	 *o;
+	int			  old_argc = *argc, new_argc;
+	char			**old_argv = *argv, **new_argv;
+	u_int			  size, idx;
+	int			  i;
+	size_t			  wanted;
+	const char		 *s, *cp = NULL;
+
+	o = options_get_only(global_options, "command-alias");
+	if (o == NULL || options_array_size(o, &size) == -1 || size == 0)
+		return (-1);
+
+	wanted = strlen(old_argv[0]);
+	for (idx = 0; idx < size; idx++) {
+		s = options_array_get(o, idx);
+		if (s == NULL)
+			continue;
+
+		cp = strchr(s, '=');
+		if (cp == NULL || (size_t)(cp - s) != wanted)
+			continue;
+		if (strncmp(old_argv[0], s, wanted) == 0)
+			break;
+	}
+	if (idx == size)
+		return (-1);
+
+	if (cmd_string_split(cp + 1, &new_argc, &new_argv) != 0)
+		return (-1);
+
+	*argc = new_argc + old_argc - 1;
+	*argv = xcalloc((*argc) + 1, sizeof **argv);
+
+	for (i = 0; i < new_argc; i++)
+		(*argv)[i] = xstrdup(new_argv[i]);
+	for (i = 1; i < old_argc; i++)
+		(*argv)[new_argc + i - 1] = xstrdup(old_argv[i]);
+
+	log_debug("alias: %s=%s", old_argv[0], cp + 1);
+	for (i = 0; i < *argc; i++)
+		log_debug("alias: argv[%d] = %s", i, (*argv)[i]);
+
+	cmd_free_argv(new_argc, new_argv);
+	return (0);
+}
+
 struct cmd *
 cmd_parse(int argc, char **argv, const char *file, u_int line, char **cause)
 {
+	const char		*name;
 	const struct cmd_entry **entryp, *entry;
 	struct cmd		*cmd;
 	struct args		*args;
 	char			 s[BUFSIZ];
-	int			 ambiguous = 0;
+	int			 ambiguous, allocated = 0;
 
 	*cause = NULL;
 	if (argc == 0) {
 		xasprintf(cause, "no command");
 		return (NULL);
 	}
+	name = argv[0];
 
+retry:
+	ambiguous = 0;
 	entry = NULL;
 	for (entryp = cmd_table; *entryp != NULL; entryp++) {
 		if ((*entryp)->alias != NULL &&
@@ -342,10 +395,17 @@ cmd_parse(int argc, char **argv, const char *file, u_int line, char **cause)
 		if (strcmp(entry->name, argv[0]) == 0)
 			break;
 	}
+	if ((ambiguous || entry == NULL) &&
+	    server_proc != NULL &&
+	    !allocated &&
+	    cmd_try_alias(&argc, &argv) == 0) {
+		allocated = 1;
+		goto retry;
+	}
 	if (ambiguous)
 		goto ambiguous;
 	if (entry == NULL) {
-		xasprintf(cause, "unknown command: %s", argv[0]);
+		xasprintf(cause, "unknown command: %s", name);
 		return (NULL);
 	}
 
@@ -365,6 +425,8 @@ cmd_parse(int argc, char **argv, const char *file, u_int line, char **cause)
 		cmd->file = xstrdup(file);
 	cmd->line = line;
 
+	if (allocated)
+		cmd_free_argv(argc, argv);
 	return (cmd);
 
 ambiguous:
@@ -378,7 +440,7 @@ ambiguous:
 			break;
 	}
 	s[strlen(s) - 2] = '\0';
-	xasprintf(cause, "ambiguous command: %s, could be: %s", argv[0], s);
+	xasprintf(cause, "ambiguous command: %s, could be: %s", name, s);
 	return (NULL);
 
 usage:

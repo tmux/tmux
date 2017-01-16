@@ -87,7 +87,7 @@ cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 
 static void
 cmd_show_options_print(struct cmd *self, struct cmdq_item *item,
-    struct option *o, int idx)
+    struct options_entry *o, int idx)
 {
 	const char	*name;
 	const char	*value;
@@ -118,10 +118,10 @@ static enum cmd_retval
 cmd_show_options_one(struct cmd *self, struct cmdq_item *item,
     struct options *oo)
 {
-	struct args	*args = self->args;
-	struct option	*o;
-	int		 idx, ambiguous;
-	const char	*name = args->argv[0];
+	struct args		*args = self->args;
+	struct options_entry	*o;
+	int			 idx, ambiguous;
+	const char		*name = args->argv[0];
 
 	o = options_match_get(oo, name, &idx, 1, &ambiguous);
 	if (o == NULL) {
@@ -144,9 +144,9 @@ static enum cmd_retval
 cmd_show_options_all(struct cmd *self, struct cmdq_item *item,
     struct options *oo)
 {
-	struct option			 *o;
-	const struct options_table_entry *oe;
-	u_int			 	 size, idx;
+	struct options_entry			 *o;
+	const struct options_table_entry	*oe;
+	u_int					 size, idx;
 
 	o = options_first(oo);
 	while (o != NULL) {

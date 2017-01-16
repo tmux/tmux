@@ -47,6 +47,7 @@ struct input_ctx;
 struct mode_key_cmdstr;
 struct mouse_event;
 struct options;
+struct options_entry;
 struct session;
 struct tmuxpeer;
 struct tmuxproc;
@@ -1447,11 +1448,7 @@ struct key_table {
 };
 RB_HEAD(key_tables, key_table);
 
-/*
- * Option table entries. The option table is the user-visible part of the
- * option, as opposed to the internal options (struct option) which are just
- * number or string.
- */
+/* Option table entries. */
 enum options_table_type {
 	OPTIONS_TABLE_STRING,
 	OPTIONS_TABLE_NUMBER,
@@ -1607,40 +1604,43 @@ void	notify_pane(const char *, struct window_pane *);
 /* options.c */
 struct options	*options_create(struct options *);
 void		 options_free(struct options *);
-struct option	*options_first(struct options *);
-struct option	*options_next(struct option *);
-struct option	*options_empty(struct options *,
+struct options_entry *options_first(struct options *);
+struct options_entry *options_next(struct options_entry *);
+struct options_entry *options_empty(struct options *,
 		     const struct options_table_entry *);
-struct option	*options_default(struct options *,
+struct options_entry *options_default(struct options *,
 		     const struct options_table_entry *);
-const char	*options_name(struct option *);
-const struct options_table_entry *options_table_entry(struct option *);
-struct option	*options_get_only(struct options *, const char *);
-struct option	*options_get(struct options *, const char *);
-void		 options_remove(struct option *);
-const char	*options_array_get(struct option *, u_int);
-int		 options_array_set(struct option *, u_int, const char *);
-int		 options_array_size(struct option *, u_int *);
-int		 options_isstring(struct option *);
-const char	*options_tostring(struct option *, int);
+const char	*options_name(struct options_entry *);
+const struct options_table_entry *options_table_entry(struct options_entry *);
+struct options_entry *options_get_only(struct options *, const char *);
+struct options_entry *options_get(struct options *, const char *);
+void		 options_remove(struct options_entry *);
+const char	*options_array_get(struct options_entry *, u_int);
+int		 options_array_set(struct options_entry *, u_int, const char *);
+int		 options_array_size(struct options_entry *, u_int *);
+int		 options_isstring(struct options_entry *);
+const char	*options_tostring(struct options_entry *, int);
 char		*options_parse(const char *, int *);
-struct option	*options_parse_get(struct options *, const char *, int *,
+struct options_entry *options_parse_get(struct options *, const char *, int *,
 		    int);
 char		*options_match(const char *, int *, int *);
-struct option	*options_match_get(struct options *, const char *, int *,
+struct options_entry *options_match_get(struct options *, const char *, int *,
 		    int, int *);
 const char	*options_get_string(struct options *, const char *);
 long long	 options_get_number(struct options *, const char *);
 const struct grid_cell *options_get_style(struct options *, const char *);
-struct option * printflike(4, 5) options_set_string(struct options *,
+struct options_entry * printflike(4, 5) options_set_string(struct options *,
 		     const char *, int, const char *, ...);
-struct option	*options_set_number(struct options *, const char *, long long);
-struct option	*options_set_style(struct options *, const char *, int,
+struct options_entry *options_set_number(struct options *, const char *,
+		     long long);
+struct options_entry *options_set_style(struct options *, const char *, int,
 		     const char *);
 enum options_table_scope options_scope_from_flags(struct args *, int,
 		     struct cmd_find_state *, struct options **, char **);
-void		 options_style_update_new(struct options *, struct option *);
-void		 options_style_update_old(struct options *, struct option *);
+void		 options_style_update_new(struct options *,
+		     struct options_entry *);
+void		 options_style_update_old(struct options *,
+		     struct options_entry *);
 
 /* options-table.c */
 extern const struct options_table_entry options_table[];
@@ -1823,6 +1823,7 @@ void printflike(2, 3) cmdq_print(struct cmdq_item *, const char *, ...);
 void printflike(2, 3) cmdq_error(struct cmdq_item *, const char *, ...);
 
 /* cmd-string.c */
+int		 cmd_string_split(const char *, int *, char ***);
 struct cmd_list	*cmd_string_parse(const char *, const char *, u_int, char **);
 
 /* cmd-wait-for.c */

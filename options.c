@@ -30,7 +30,7 @@
  * a red-black tree.
  */
 
-struct option {
+struct options_entry {
 	struct options				 *owner;
 
 	const char				 *name;
@@ -46,15 +46,15 @@ struct option {
 		};
 	};
 
-	RB_ENTRY(option)			  entry;
+	RB_ENTRY(options_entry)			  entry;
 };
 
 struct options {
-	RB_HEAD(options_tree, option)		 tree;
+	RB_HEAD(options_tree, options_entry)	 tree;
 	struct options				*parent;
 };
 
-static struct option	*options_add(struct options *, const char *);
+static struct options_entry	*options_add(struct options *, const char *);
 
 #define OPTIONS_ARRAY_LIMIT 1000
 
@@ -76,11 +76,11 @@ static struct option	*options_add(struct options *, const char *);
 	((o)->tableentry != NULL &&					\
 	    (o)->tableentry->type == OPTIONS_TABLE_ARRAY)
 
-static int	options_cmp(struct option *, struct option *);
-RB_GENERATE_STATIC(options_tree, option, entry, options_cmp);
+static int	options_cmp(struct options_entry *, struct options_entry *);
+RB_GENERATE_STATIC(options_tree, options_entry, entry, options_cmp);
 
 static int
-options_cmp(struct option *lhs, struct option *rhs)
+options_cmp(struct options_entry *lhs, struct options_entry *rhs)
 {
 	return (strcmp(lhs->name, rhs->name));
 }
@@ -88,7 +88,7 @@ options_cmp(struct option *lhs, struct option *rhs)
 static const struct options_table_entry *
 options_parent_table_entry(struct options *oo, const char *s)
 {
-	struct option	*o;
+	struct options_entry	*o;
 
 	if (oo->parent == NULL)
 		fatalx("no parent options for %s", s);
@@ -112,38 +112,38 @@ options_create(struct options *parent)
 void
 options_free(struct options *oo)
 {
-	struct option	*o, *tmp;
+	struct options_entry	*o, *tmp;
 
 	RB_FOREACH_SAFE (o, options_tree, &oo->tree, tmp)
 		options_remove(o);
 	free(oo);
 }
 
-struct option *
+struct options_entry *
 options_first(struct options *oo)
 {
 	return (RB_MIN(options_tree, &oo->tree));
 }
 
-struct option *
-options_next(struct option *o)
+struct options_entry *
+options_next(struct options_entry *o)
 {
 	return (RB_NEXT(options_tree, &oo->tree, o));
 }
 
-struct option *
+struct options_entry *
 options_get_only(struct options *oo, const char *name)
 {
-	struct option	o;
+	struct options_entry	o;
 
 	o.name = name;
 	return (RB_FIND(options_tree, &oo->tree, &o));
 }
 
-struct option *
+struct options_entry *
 options_get(struct options *oo, const char *name)
 {
-	struct option	*o;
+	struct options_entry	*o;
 
 	o = options_get_only(oo, name);
 	while (o == NULL) {
@@ -155,10 +155,10 @@ options_get(struct options *oo, const char *name)
 	return (o);
 }
 
-struct option *
+struct options_entry *
 options_empty(struct options *oo, const struct options_table_entry *oe)
 {
-	struct option	*o;
+	struct options_entry	*o;
 
 	o = options_add(oo, oe->name);
 	o->tableentry = oe;
@@ -166,12 +166,12 @@ options_empty(struct options *oo, const struct options_table_entry *oe)
 	return (o);
 }
 
-struct option *
+struct options_entry *
 options_default(struct options *oo, const struct options_table_entry *oe)
 {
-	struct option	*o;
-	char		*cp, *copy, *next;
-	u_int		 idx = 0;
+	struct options_entry	*o;
+	char			*cp, *copy, *next;
+	u_int			 idx = 0;
 
 	o = options_empty(oo, oe);
 
@@ -195,10 +195,10 @@ options_default(struct options *oo, const struct options_table_entry *oe)
 	return (o);
 }
 
-static struct option *
+static struct options_entry *
 options_add(struct options *oo, const char *name)
 {
-	struct option	*o;
+	struct options_entry	*o;
 
 	o = options_get_only(oo, name);
 	if (o != NULL)
@@ -213,7 +213,7 @@ options_add(struct options *oo, const char *name)
 }
 
 void
-options_remove(struct option *o)
+options_remove(struct options_entry *o)
 {
 	struct options	*oo = o->owner;
 	u_int		 i;
@@ -231,19 +231,19 @@ options_remove(struct option *o)
 }
 
 const char *
-options_name(struct option *o)
+options_name(struct options_entry *o)
 {
 	return (o->name);
 }
 
 const struct options_table_entry *
-options_table_entry(struct option *o)
+options_table_entry(struct options_entry *o)
 {
 	return (o->tableentry);
 }
 
 const char *
-options_array_get(struct option *o, u_int idx)
+options_array_get(struct options_entry *o, u_int idx)
 {
 	if (!OPTIONS_IS_ARRAY(o))
 		return (NULL);
@@ -253,7 +253,7 @@ options_array_get(struct option *o, u_int idx)
 }
 
 int
-options_array_set(struct option *o, u_int idx, const char *value)
+options_array_set(struct options_entry *o, u_int idx, const char *value)
 {
 	u_int	i;
 
@@ -278,7 +278,7 @@ options_array_set(struct option *o, u_int idx, const char *value)
 }
 
 int
-options_array_size(struct option *o, u_int *size)
+options_array_size(struct options_entry *o, u_int *size)
 {
 	if (!OPTIONS_IS_ARRAY(o))
 		return (-1);
@@ -288,7 +288,7 @@ options_array_size(struct option *o, u_int *size)
 }
 
 int
-options_isstring(struct option *o)
+options_isstring(struct options_entry *o)
 {
 	if (o->tableentry == NULL)
 		return (1);
@@ -296,7 +296,7 @@ options_isstring(struct option *o)
 }
 
 const char *
-options_tostring(struct option *o, int idx)
+options_tostring(struct options_entry *o, int idx)
 {
 	static char	 s[1024];
 	const char	*tmp;
@@ -370,11 +370,11 @@ options_parse(const char *name, int *idx)
 	return (copy);
 }
 
-struct option *
+struct options_entry *
 options_parse_get(struct options *oo, const char *s, int *idx, int only)
 {
-	struct option	*o;
-	char		*name;
+	struct options_entry	*o;
+	char			*name;
 
 	name = options_parse(s, idx);
 	if (name == NULL)
@@ -426,12 +426,12 @@ options_match(const char *s, int *idx, int* ambiguous)
 	return (xstrdup(found->name));
 }
 
-struct option *
+struct options_entry *
 options_match_get(struct options *oo, const char *s, int *idx, int only,
     int* ambiguous)
 {
-	char		*name;
-	struct option	*o;
+	char			*name;
+	struct options_entry	*o;
 
 	name = options_match(s, idx, ambiguous);
 	if (name == NULL)
@@ -455,7 +455,7 @@ options_match_get(struct options *oo, const char *s, int *idx, int only,
 const char *
 options_get_string(struct options *oo, const char *name)
 {
-	struct option	*o;
+	struct options_entry	*o;
 
 	o = options_get(oo, name);
 	if (o == NULL)
@@ -468,7 +468,7 @@ options_get_string(struct options *oo, const char *name)
 long long
 options_get_number(struct options *oo, const char *name)
 {
-	struct option	*o;
+	struct options_entry	*o;
 
 	o = options_get(oo, name);
 	if (o == NULL)
@@ -481,7 +481,7 @@ options_get_number(struct options *oo, const char *name)
 const struct grid_cell *
 options_get_style(struct options *oo, const char *name)
 {
-	struct option	*o;
+	struct options_entry	*o;
 
 	o = options_get(oo, name);
 	if (o == NULL)
@@ -491,13 +491,13 @@ options_get_style(struct options *oo, const char *name)
 	return (&o->style);
 }
 
-struct option *
+struct options_entry *
 options_set_string(struct options *oo, const char *name, int append,
     const char *fmt, ...)
 {
-	struct option	*o;
-	va_list		 ap;
-	char		*s, *value;
+	struct options_entry	*o;
+	va_list			 ap;
+	char			*s, *value;
 
 	va_start(ap, fmt);
 	xvasprintf(&s, fmt, ap);
@@ -524,10 +524,10 @@ options_set_string(struct options *oo, const char *name, int append,
 	return (o);
 }
 
-struct option *
+struct options_entry *
 options_set_number(struct options *oo, const char *name, long long value)
 {
-	struct option	*o;
+	struct options_entry	*o;
 
 	if (*name == '@')
 		fatalx("user option %s must be a string", name);
@@ -545,11 +545,11 @@ options_set_number(struct options *oo, const char *name, long long value)
 	return (o);
 }
 
-struct option *
+struct options_entry *
 options_set_style(struct options *oo, const char *name, int append,
     const char *value)
 {
-	struct option		*o;
+	struct options_entry	*o;
 	struct grid_cell	 gc;
 
 	if (*name == '@')
@@ -619,10 +619,10 @@ options_scope_from_flags(struct args *args, int window,
 }
 
 void
-options_style_update_new(struct options *oo, struct option *o)
+options_style_update_new(struct options *oo, struct options_entry *o)
 {
-	const char	*newname = o->tableentry->style;
-	struct option	*new;
+	const char		*newname = o->tableentry->style;
+	struct options_entry	*new;
 
 	if (newname == NULL)
 		return;
@@ -639,7 +639,7 @@ options_style_update_new(struct options *oo, struct option *o)
 }
 
 void
-options_style_update_old(struct options *oo, struct option *o)
+options_style_update_old(struct options *oo, struct options_entry *o)
 {
 	char	newname[128];
 	int	size;
