@@ -20,7 +20,12 @@
 
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef HAVE_VIS
 #include <vis.h>
+#else
+#include "compat/vis.h"
+#endif
 
 #include "tmux.h"
 
