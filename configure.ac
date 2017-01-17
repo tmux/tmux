@@ -228,26 +228,13 @@ if test "x$enable_utempter" = xyes; then
 	fi
 fi
 
-# Look for utf8proc.
 AC_ARG_ENABLE(
-	utf8proc,
-	AC_HELP_STRING(--enable-utf8proc, use utf8proc if it is installed)
+  wcwidth9,
+	AC_HELP_STRING(--enable-wcwidth9, use unicode 9 character widths)
 )
-if test "x$enable_utf8proc" = xyes; then
-	AC_CHECK_HEADER(utf8proc.h, enable_utf8proc=yes, enable_utf8proc=no)
-	if test "x$enable_utf8proc" = xyes; then
-		AC_SEARCH_LIBS(
-			utf8proc_charwidth,
-			utf8proc,
-			enable_utf8proc=yes,
-			enable_utf8proc=no
-		)
-		if test "x$enable_utf8proc" = xyes; then
-			AC_DEFINE(HAVE_UTF8PROC)
-		fi
-	fi
+if test "x$enable_wcwidth9" = xyes; then
+  AC_DEFINE(USE_WCWIDTH9)
 fi
-AM_CONDITIONAL(HAVE_UTF8PROC, [test "x$enable_utf8proc" = xyes])
 
 # Check for b64_ntop.
 AC_MSG_CHECKING(for b64_ntop)
