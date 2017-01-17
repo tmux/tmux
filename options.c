@@ -647,11 +647,14 @@ options_style_update_old(struct options *oo, struct options_entry *o)
 	size = strrchr(o->name, '-') - o->name;
 
 	xsnprintf(newname, sizeof newname, "%.*s-bg", size, o->name);
-	options_set_number(oo, newname, o->style.bg);
+	if (options_get(oo, newname) != NULL)
+		options_set_number(oo, newname, o->style.bg);
 
 	xsnprintf(newname, sizeof newname, "%.*s-fg", size, o->name);
-	options_set_number(oo, newname, o->style.fg);
+	if (options_get(oo, newname) != NULL)
+		options_set_number(oo, newname, o->style.fg);
 
 	xsnprintf(newname, sizeof newname, "%.*s-attr", size, o->name);
-	options_set_number(oo, newname, o->style.attr);
+	if (options_get(oo, newname) != NULL)
+		options_set_number(oo, newname, o->style.attr);
 }
