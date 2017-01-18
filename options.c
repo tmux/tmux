@@ -403,7 +403,6 @@ options_match(const char *s, int *idx, int* ambiguous)
 	name = options_parse(s, idx);
 	namelen = strlen(name);
 
-	*idx = -1;
 	if (*name == '@') {
 		*ambiguous = 0;
 		return (xstrdup(name));
