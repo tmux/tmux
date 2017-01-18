@@ -162,7 +162,7 @@ args_print(struct args *args)
 		flags = VIS_OCTAL|VIS_TAB|VIS_NL;
 		if (entry->value[strcspn(entry->value, quoted)] != '\0')
 			flags |= VIS_DQ;
-		stravis(&escaped, entry->value, flags);
+		utf8_stravis(&escaped, entry->value, flags);
 		if (flags & VIS_DQ)
 			args_print_add(&buf, &len, "\"%s\"", escaped);
 		else
@@ -178,7 +178,7 @@ args_print(struct args *args)
 		flags = VIS_OCTAL|VIS_TAB|VIS_NL;
 		if (args->argv[i][strcspn(args->argv[i], quoted)] != '\0')
 			flags |= VIS_DQ;
-		stravis(&escaped, args->argv[i], flags);
+		utf8_stravis(&escaped, args->argv[i], flags);
 		if (flags & VIS_DQ)
 			args_print_add(&buf, &len, "\"%s\"", escaped);
 		else

@@ -193,6 +193,20 @@ utf8_strvis(char *dst, const char *src, size_t len, int flag)
 	return (dst - start);
 }
 
+/* Same as utf8_strvis but allocate the buffer. */
+int
+utf8_stravis(char **dst, const char *src, int flag)
+{
+	char	*buf;
+	int	 len;
+
+	buf = xreallocarray(NULL, 4, strlen(src) + 1);
+	len = utf8_strvis(buf, src, strlen(src), flag);
+
+	*dst = xrealloc(buf, len + 1);
+	return (len);
+}
+
 /*
  * Sanitize a string, changing any UTF-8 characters to '_'. Caller should free
  * the returned string. Anything not valid printable ASCII or UTF-8 is
