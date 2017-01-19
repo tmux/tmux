@@ -173,6 +173,18 @@ PKG_CHECK_MODULES(
 	found_ncurses=no
 )
 if test "x$found_ncurses" = xno; then
+PKG_CHECK_MODULES(
+	LIBNCURSES,
+	ncursesw,
+	[
+		CPPFLAGS="$LIBNCURSES_CFLAGS $CPPFLAGS"
+		LIBS="$LIBNCURSES_LIBS $LIBS"
+		found_ncurses=yes
+	],
+	found_ncurses=no
+)
+fi
+if test "x$found_ncurses" = xno; then
 	# pkg-config didn't work, try ncurses.
 	AC_CHECK_LIB(
 		ncurses,
@@ -184,9 +196,11 @@ if test "x$found_ncurses" = xno; then
 		ncurses.h,
 		,
 		found_ncurses=no)
+	if test "x$found_ncurses" = xyes; then
+		LIBS="$LIBS -lncurses"
+	fi
 fi
 if test "x$found_ncurses" = xyes; then
-	LIBS="$LIBS -lncurses"
 	AC_DEFINE(HAVE_NCURSES_H)
 else
 	# No ncurses, try curses.
