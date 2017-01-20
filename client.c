@@ -314,8 +314,11 @@ client_main(struct event_base *base, int argc, char **argv, int flags,
 	event_set(&client_stdin, STDIN_FILENO, EV_READ|EV_PERSIST,
 	    client_stdin_callback, NULL);
 	if (client_flags & CLIENT_CONTROLCONTROL) {
-		if (tcgetattr(STDIN_FILENO, &saved_tio) != 0)
-			fatal("tcgetattr failed");
+		if (tcgetattr(STDIN_FILENO, &saved_tio) != 0) {
+			fprintf(stderr, "tcgetattr failed: %s\n",
+			    strerror(errno));
+			return (1);
+		}
 		cfmakeraw(&tio);
 		tio.c_iflag = ICRNL|IXANY;
 		tio.c_oflag = OPOST|ONLCR;
