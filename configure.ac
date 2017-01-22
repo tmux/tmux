@@ -260,7 +260,7 @@ if test "x$enable_utf8proc" = xyes; then
 fi
 AM_CONDITIONAL(HAVE_UTF8PROC, [test "x$enable_utf8proc" = xyes])
 
-# Check for b64_ntop.
+# Check for b64_ntop. If we have b64_ntop, we assume b64_pton as well.
 AC_MSG_CHECKING(for b64_ntop)
 AC_TRY_LINK(
 	[

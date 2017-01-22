@@ -250,7 +250,7 @@ if NO_STRTONUM
 nodist_tmux_SOURCES += compat/strtonum.c
 endif
 if NO_B64_NTOP
-nodist_tmux_SOURCES += compat/b64_ntop.c
+nodist_tmux_SOURCES += compat/base64.c
 endif
 if NO_CFMAKERAW
 nodist_tmux_SOURCES += compat/cfmakeraw.c
