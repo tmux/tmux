@@ -18,6 +18,9 @@
 
 #include <sys/types.h>
 
+#include <netinet/in.h>
+
+#include <resolv.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -106,6 +109,7 @@ static void	input_set_state(struct window_pane *,
 static void	input_reset_cell(struct input_ctx *);
 
 static void	input_osc_4(struct window_pane *, const char *);
+static void	input_osc_52(struct window_pane *, const char *);
 static void	input_osc_104(struct window_pane *, const char *);
 
 /* Transition entry/exit handlers. */
@@ -1862,6 +1866,9 @@ input_exit_osc(struct input_ctx *ictx)
 	case 4:
 		input_osc_4(ictx->wp, p);
 		break;
+	case 52:
+		input_osc_52(ictx->wp, p);
+		break;
 	case 12:
 		if (*p != '?') /* ? is colour request */
 			screen_set_cursor_colour(ictx->ctx.s, p);
@@ -2009,6 +2016,40 @@ input_osc_4(struct window_pane *wp, const char *p)
 bad:
 	log_debug("bad OSC 4: %s", p);
 	free(copy);
+}
+
+/* Handle the OSC 52 sequence for setting the clipboard. */
+static void
+input_osc_52(struct window_pane *wp, const char *p)
+{
+	char			*end;
+	size_t			 len;
+	u_char			*out;
+	int			 outlen;
+	struct screen_write_ctx	 ctx;
+
+	if ((end = strchr(p, ';')) == NULL)
+		return;
+	end++;
+	if (*end == '\0')
+		return;
+
+	len = (strlen(end) / 4) * 3;
+	if (len == 0)
+		return;
+
+	out = xmalloc(len);
+	if ((outlen = b64_pton(end, out, len)) == -1) {
+		free(out);
+		return;
+	}
+
+	if (options_get_number(global_options, "set-clipboard")) {
+		screen_write_start(&ctx, wp, NULL);
+		screen_write_setselection(&ctx, out, outlen);
+		screen_write_stop(&ctx);
+	}
+	paste_add(out, outlen);
 }
 
 /* Handle the OSC 104 sequence for unsetting (multiple) palette entries. */
