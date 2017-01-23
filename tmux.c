@@ -43,6 +43,7 @@ struct hooks	*global_hooks;
 
 struct timeval	 start_time;
 const char	*socket_path;
+int		 ptm_fd = -1;
 
 static __dead void	 usage(void);
 static char		*make_label(const char *);
@@ -258,6 +259,8 @@ main(int argc, char **argv)
 	if (shellcmd != NULL && argc != 0)
 		usage();
 
+	if (pty_open(&ptm_fd) != 0)
+		errx(1, "open(\"/dev/ptm\"");
 	if (pledge("stdio rpath wpath cpath flock fattr unix getpw sendfd "
 	    "recvfd proc exec tty ps", NULL) != 0)
 		err(1, "pledge");

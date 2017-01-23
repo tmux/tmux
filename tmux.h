@@ -1501,6 +1501,7 @@ extern struct options	*global_w_options;
 extern struct environ	*global_environ;
 extern struct timeval	 start_time;
 extern const char	*socket_path;
+extern int		 ptm_fd;
 int		 areshell(const char *);
 void		 setblocking(int, int);
 const char	*find_home(void);
@@ -2328,5 +2329,9 @@ void		 style_apply_update(struct grid_cell *, struct options *,
 		     const char *);
 int		 style_equal(const struct grid_cell *,
 		     const struct grid_cell *);
+
+/* pty.c */
+int		 pty_open(int *);
+pid_t		 pty_fork(int, int *, char *, size_t, struct winsize *);
 
 #endif /* TMUX_H */
