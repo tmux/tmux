@@ -58,6 +58,10 @@ typedef uint64_t u_int64_t;
 #define _PATH_DEV	"/dev/"
 #endif
 
+#ifndef __OpenBSD__
+#define pledge(s, p) (0)
+#endif
+
 #ifdef HAVE_QUEUE_H
 #include <sys/queue.h>
 #else

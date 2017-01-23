@@ -289,7 +289,6 @@ client_main(struct event_base *base, int argc, char **argv, int flags,
 	if ((ttynam = ttyname(STDIN_FILENO)) == NULL)
 		ttynam = "";
 
-#ifdef __OpenBSD__
 	/*
 	 * Drop privileges for client. "proc exec" is needed for -c and for
 	 * locking (which uses system(3)).
@@ -301,7 +300,6 @@ client_main(struct event_base *base, int argc, char **argv, int flags,
 	 */
 	if (pledge("stdio unix sendfd proc exec tty", NULL) != 0)
 		fatal("pledge failed");
-#endif
 
 	/* Free stuff that is not used in the client. */
 	if (ptm_fd != -1)
@@ -563,7 +561,6 @@ client_dispatch_wait(struct imsg *imsg, const char *shellcmd)
 	struct msg_stdout_data	 stdoutdata;
 	struct msg_stderr_data	 stderrdata;
 	int			 retval;
-#ifdef __OpenBSD__
 	static int		 pledge_applied;
 
 	/*
@@ -577,7 +574,6 @@ client_dispatch_wait(struct imsg *imsg, const char *shellcmd)
 			fatal("pledge failed");
 		pledge_applied = 1;
 	};
-#endif
 
 	data = imsg->data;
 	datalen = imsg->hdr.len - IMSG_HEADER_SIZE;

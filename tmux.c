@@ -261,13 +261,11 @@ main(int argc, char **argv)
 	if (shellcmd != NULL && argc != 0)
 		usage();
 
-#ifdef __OpenBSD__
 	if (pty_open(&ptm_fd) != 0)
 		errx(1, "open(\"/dev/ptm\"");
 	if (pledge("stdio rpath wpath cpath flock fattr unix getpw sendfd "
 	    "recvfd proc exec tty ps", NULL) != 0)
 		err(1, "pledge");
-#endif
 
 	/*
 	 * tmux is a UTF-8 terminal, so if TMUX is set, assume UTF-8.
