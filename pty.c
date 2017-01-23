@@ -19,13 +19,14 @@
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <sys/time.h>
+#ifdef __OpenBSD__
 #include <sys/tty.h>
+#endif
 
 #include <fcntl.h>
 #include <string.h>
 #include <termios.h>
 #include <unistd.h>
-#include <util.h>
 
 int	pty_open(int *);
 pid_t	pty_fork(int, int *, char *, size_t, struct winsize *);
@@ -33,15 +34,20 @@ pid_t	pty_fork(int, int *, char *, size_t, struct winsize *);
 int
 pty_open(int *fd)
 {
+#ifdef __OpenBSD__
 	*fd = open(PATH_PTMDEV, O_RDWR|O_CLOEXEC);
 	if (*fd < 0)
 	    return (-1);
+#else
+	*fd = -1;
+#endif
 	return (0);
 }
 
 pid_t
 pty_fork(int ptmfd, int *fd, char *name, size_t namelen, struct winsize *ws)
 {
+#ifdef __OpenBSD__
 	struct ptmget	ptm;
 	pid_t		pid;
 
@@ -64,4 +70,7 @@ pty_fork(int ptmfd, int *fd, char *name, size_t namelen, struct winsize *ws)
 	*fd = ptm.cfd;
 	close(ptm.sfd);
 	return (pid);
+#else
+	return (forkpty(fd, name, NULL, ws));
+#endif
 }
