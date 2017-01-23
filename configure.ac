@@ -126,6 +126,7 @@ AC_CHECK_FUNCS(
 		prctl \
 		sysconf \
 		cfmakeraw \
+		pledge \
 	]
 )
 
