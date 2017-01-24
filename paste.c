@@ -162,8 +162,10 @@ paste_add(char *data, size_t size)
 	struct paste_buffer	*pb, *pb1;
 	u_int			 limit;
 
-	if (size == 0)
+	if (size == 0) {
+		free(data);
 		return;
+	}
 
 	limit = options_get_number(global_options, "buffer-limit");
 	RB_FOREACH_REVERSE_SAFE(pb, paste_time_tree, &paste_by_time, pb1) {
