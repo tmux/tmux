@@ -2495,12 +2495,12 @@ disallowedWindowOps: 20,21,SetXprop
 Or changing this property from the
 .Xr xterm 1
 interactive menu when required.
-.It Ic terminal-overrides Ar string
-Contains a list of entries which override terminal descriptions read using
-.Xr terminfo 5 .
-.Ar string
-is a comma-separated list of items each a colon-separated string made up of a
-terminal type pattern (matched using
+.It Ic terminal-overrides[] Ar string
+Allow terminal descriptions read using
+.Xr terminfo 5
+to be overriden.
+Each entry is a colon-separated string made up of a terminal type pattern
+(matched using
 .Xr fnmatch 3 )
 and a set of
 .Em name=value
@@ -2511,16 +2511,10 @@ For example, to set the
 .Xr terminfo 5
 entry to
 .Ql \ee[H\ee[2J
-for all terminal types and the
-.Ql dch1
-entry to
-.Ql \ee[P
-for the
-.Ql rxvt
-terminal type, the option could be set to the string:
-.Bd -literal -offset indent
-"*:clear=\ee[H\ee[2J,rxvt:dch1=\ee[P"
-.Ed
+for all terminal types matching
+.Ql rxvt* :
+.Pp
+.Dl "rxvt*:clear=\ee[H\ee[2J"
 .Pp
 The terminal entry value is passed through
 .Xr strunvis 3
