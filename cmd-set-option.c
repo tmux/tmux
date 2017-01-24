@@ -160,11 +160,17 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 			cmdq_error(item, "not an array: %s", args->argv[0]);
 			return (CMD_RETURN_ERROR);
 		}
-	} else {
-		if (*name != '@' && options_array_size(parent, NULL) != -1) {
-			cmdq_error(item, "is an array: %s", args->argv[0]);
-			return (CMD_RETURN_ERROR);
+	} else if (*name != '@' && options_array_size(parent, NULL) != -1) {
+		if (value == NULL) {
+			cmdq_error(item, "empty value");
+			return (-1);
 		}
+		if (o == NULL)
+			o = options_empty(oo, options_table_entry(parent));
+		if (!args_has(args, 'a'))
+			options_array_clear(o);
+		options_array_assign(o, value);
+		return (CMD_RETURN_NORMAL);
 	}
 
 	/* With -o, check this option is not already set. */
@@ -197,7 +203,7 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 			else
 				options_remove(o);
 		} else
-			options_array_set(o, idx, NULL);
+			options_array_set(o, idx, NULL, 0);
 	} else if (*name == '@')
 		options_set_string(oo, name, args_has(args, 'a'), "%s", value);
 	else if (idx == -1) {
@@ -207,7 +213,7 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 	} else {
 		if (o == NULL)
 			o = options_empty(oo, options_table_entry(parent));
-		if (options_array_set(o, idx, value) != 0) {
+		if (options_array_set(o, idx, value, 1) != 0) {
 			cmdq_error(item, "invalid index: %s", args->argv[0]);
 			return (CMD_RETURN_ERROR);
 		}

@@ -1481,6 +1481,7 @@ struct options_table_entry {
 	const char		 *default_str;
 	long long		  default_num;
 
+	const char		 *separator;
 	const char		 *style;
 };
 
@@ -1618,17 +1619,20 @@ const struct options_table_entry *options_table_entry(struct options_entry *);
 struct options_entry *options_get_only(struct options *, const char *);
 struct options_entry *options_get(struct options *, const char *);
 void		 options_remove(struct options_entry *);
+void		 options_array_clear(struct options_entry *);
 const char	*options_array_get(struct options_entry *, u_int);
-int		 options_array_set(struct options_entry *, u_int, const char *);
+int		 options_array_set(struct options_entry *, u_int, const char *,
+		     int);
 int		 options_array_size(struct options_entry *, u_int *);
+void		 options_array_assign(struct options_entry *, const char *);
 int		 options_isstring(struct options_entry *);
 const char	*options_tostring(struct options_entry *, int);
 char		*options_parse(const char *, int *);
 struct options_entry *options_parse_get(struct options *, const char *, int *,
-		    int);
+		     int);
 char		*options_match(const char *, int *, int *);
 struct options_entry *options_match_get(struct options *, const char *, int *,
-		    int, int *);
+		     int, int *);
 const char	*options_get_string(struct options *, const char *);
 long long	 options_get_number(struct options *, const char *);
 const struct grid_cell *options_get_style(struct options *, const char *);
