@@ -1671,7 +1671,7 @@ void printflike(3, 4) environ_set(struct environ *, const char *, const char *,
 void	environ_clear(struct environ *, const char *);
 void	environ_put(struct environ *, const char *);
 void	environ_unset(struct environ *, const char *);
-void	environ_update(const char *, struct environ *, struct environ *);
+void	environ_update(struct options *, struct environ *, struct environ *);
 void	environ_push(struct environ *);
 void	environ_log(struct environ *, const char *);
 
@@ -1830,6 +1830,7 @@ void printflike(2, 3) cmdq_print(struct cmdq_item *, const char *, ...);
 void printflike(2, 3) cmdq_error(struct cmdq_item *, const char *, ...);
 
 /* cmd-string.c */
+int		 cmd_string_split(const char *, int *, char ***);
 struct cmd_list	*cmd_string_parse(const char *, const char *, u_int, char **);
 
 /* cmd-wait-for.c */

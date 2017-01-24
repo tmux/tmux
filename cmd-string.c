@@ -54,17 +54,15 @@ cmd_string_ungetc(size_t *p)
 	(*p)--;
 }
 
-struct cmd_list *
-cmd_string_parse(const char *s, const char *file, u_int line, char **cause)
+int
+cmd_string_split(const char *s, int *rargc, char ***rargv)
 {
-	size_t		  p = 0;
-	int		  ch, i, argc = 0;
-	char		**argv = NULL, *buf = NULL, *t;
-	const char	 *whitespace, *equals;
-	size_t		  len = 0;
-	struct cmd_list	 *cmdlist = NULL;
+	size_t		p = 0;
+	int		ch, argc = 0, append = 0;
+	char	      **argv = NULL, *buf = NULL, *t;
+	const char     *whitespace, *equals;
+	size_t		len = 0;
 
-	*cause = NULL;
 	for (;;) {
 		ch = cmd_string_getc(s, &p);
 		switch (ch) {
@@ -115,43 +113,67 @@ cmd_string_parse(const char *s, const char *file, u_int line, char **cause)
 				argc--;
 				memmove(argv, argv + 1, argc * (sizeof *argv));
 			}
-			if (argc == 0)
-				goto out;
-
-			cmdlist = cmd_list_parse(argc, argv, file, line, cause);
-			goto out;
+			goto done;
 		case '~':
-			if (buf == NULL) {
-				t = cmd_string_expand_tilde(s, &p);
-				if (t == NULL)
-					goto error;
-				cmd_string_copy(&buf, t, &len);
+			if (buf != NULL) {
+				append = 1;
 				break;
 			}
-			/* FALLTHROUGH */
-		default:
-			if (len >= SIZE_MAX - 2)
+			t = cmd_string_expand_tilde(s, &p);
+			if (t == NULL)
 				goto error;
-
-			buf = xrealloc(buf, len + 1);
-			buf[len++] = ch;
+			cmd_string_copy(&buf, t, &len);
+			break;
+		default:
+			append = 1;
 			break;
 		}
+		if (append) {
+			if (len >= SIZE_MAX - 2)
+				goto error;
+			buf = xrealloc(buf, len + 1);
+			buf[len++] = ch;
+		}
+		append = 0;
 	}
+
+done:
+	*rargc = argc;
+	*rargv = argv;
+
+	free(buf);
+	return (0);
+
+error:
+	if (argv != NULL)
+		cmd_free_argv(argc, argv);
+	free(buf);
+	return (-1);
+}
+
+struct cmd_list *
+cmd_string_parse(const char *s, const char *file, u_int line, char **cause)
+{
+	struct cmd_list	 *cmdlist = NULL;
+	int		  argc;
+	char		**argv;
+
+	*cause = NULL;
+	if (cmd_string_split(s, &argc, &argv) != 0)
+		goto error;
+	if (argc != 0) {
+		cmdlist = cmd_list_parse(argc, argv, file, line, cause);
+		if (cmdlist == NULL) {
+			cmd_free_argv(argc, argv);
+			goto error;
+		}
+	}
+	cmd_free_argv(argc, argv);
+	return (cmdlist);
 
 error:
 	xasprintf(cause, "invalid or unknown command: %s", s);
-
-out:
-	free(buf);
-
-	if (argv != NULL) {
-		for (i = 0; i < argc; i++)
-			free(argv[i]);
-		free(argv);
-	}
-
-	return (cmdlist);
+	return (NULL);
 }
 
 static void

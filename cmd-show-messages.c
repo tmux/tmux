@@ -44,17 +44,6 @@ const struct cmd_entry cmd_show_messages_entry = {
 	.exec = cmd_show_messages_exec
 };
 
-const struct cmd_entry cmd_server_info_entry = {
-	.name = "server-info",
-	.alias = "info",
-
-	.args = { "", 0, 0 },
-	.usage = "",
-
-	.flags = CMD_AFTERHOOK,
-	.exec = cmd_show_messages_exec
-};
-
 static int	cmd_show_messages_terminals(struct cmdq_item *, int);
 static int	cmd_show_messages_jobs(struct cmdq_item *, int);
 
@@ -108,11 +97,11 @@ cmd_show_messages_exec(struct cmd *self, struct cmdq_item *item)
 	int			 done, blank;
 
 	done = blank = 0;
-	if (args_has(args, 'T') || self->entry == &cmd_server_info_entry) {
+	if (args_has(args, 'T')) {
 		blank = cmd_show_messages_terminals(item, blank);
 		done = 1;
 	}
-	if (args_has(args, 'J') || self->entry == &cmd_server_info_entry) {
+	if (args_has(args, 'J')) {
 		cmd_show_messages_jobs(item, blank);
 		done = 1;
 	}

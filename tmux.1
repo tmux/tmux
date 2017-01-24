@@ -2414,6 +2414,30 @@ Available server options are:
 Set the number of buffers; as new buffers are added to the top of the stack,
 old ones are removed from the bottom if necessary to maintain this maximum
 length.
+.It Xo Ic command-alias[]
+.Ar name=value
+.Xc
+This is an array of custom aliases for commands.
+If an unknown command matches
+.Ar name ,
+it is replaced with
+.Ar value .
+For example, after:
+.Pp
+.Dl set -s command-alias[2] zoom='resize-pane -Z'
+.Pp
+Using:
+.Pp
+.Dl zoom -t:.1
+.Pp
+Is equivalent to:
+.Pp
+.Dl resize-pane -Z -t:.1
+.Pp
+Note that aliases are expanded when a command is parsed rather than when it is
+executed, so binding an alias with
+.Ic bind-key
+will bind the expanded form.
 .It Ic default-terminal Ar terminal
 Set the default terminal for new windows created in this session - the
 default value of the
@@ -2475,12 +2499,12 @@ disallowedWindowOps: 20,21,SetXprop
 Or changing this property from the
 .Xr xterm 1
 interactive menu when required.
-.It Ic terminal-overrides Ar string
-Contains a list of entries which override terminal descriptions read using
-.Xr terminfo 5 .
-.Ar string
-is a comma-separated list of items each a colon-separated string made up of a
-terminal type pattern (matched using
+.It Ic terminal-overrides[] Ar string
+Allow terminal descriptions read using
+.Xr terminfo 5
+to be overriden.
+Each entry is a colon-separated string made up of a terminal type pattern
+(matched using
 .Xr fnmatch 3 )
 and a set of
 .Em name=value
@@ -2491,26 +2515,14 @@ For example, to set the
 .Xr terminfo 5
 entry to
 .Ql \ee[H\ee[2J
-for all terminal types and the
-.Ql dch1
-entry to
-.Ql \ee[P
-for the
-.Ql rxvt
-terminal type, the option could be set to the string:
-.Bd -literal -offset indent
-"*:clear=\ee[H\ee[2J,rxvt:dch1=\ee[P"
-.Ed
+for all terminal types matching
+.Ql rxvt* :
+.Pp
+.Dl "rxvt*:clear=\ee[H\ee[2J"
 .Pp
 The terminal entry value is passed through
 .Xr strunvis 3
 before interpretation.
-The default value forcibly corrects the
-.Ql colors
-entry for terminals which support 256 colours:
-.Bd -literal -offset indent
-"*256col*:colors=256,xterm*:XT"
-.Ed
 .El
 .Pp
 Available session options are:
@@ -2861,19 +2873,15 @@ For how to specify
 see the
 .Ic message-command-style
 option.
-.It Ic update-environment Ar variables
-Set a space-separated string containing a list of environment variables to be
-copied into the session environment when a new session is created or an
-existing session is attached.
+.It Ic update-environment[] Ar variable
+Set list of environment variables to be copied into the session environment
+when a new session is created or an existing session is attached.
 Any variables that do not exist in the source environment are set to be
 removed from the session environment (as if
 .Fl r
 was given to the
 .Ic set-environment
 command).
-The default is
-"DISPLAY SSH_ASKPASS SSH_AUTH_SOCK SSH_AGENT_PID SSH_CONNECTION WINDOWID
-XAUTHORITY".
 .It Xo Ic visual-activity
 .Op Ic on | off
 .Xc
