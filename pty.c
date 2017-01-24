@@ -28,6 +28,8 @@
 #include <termios.h>
 #include <unistd.h>
 
+#include "compat.h"
+
 int	pty_open(int *);
 pid_t	pty_fork(int, int *, char *, size_t, struct winsize *);
 
