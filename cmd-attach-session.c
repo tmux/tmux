@@ -54,7 +54,6 @@ cmd_attach_session(struct cmdq_item *item, int dflag, int rflag,
 	struct client		*c = item->client, *c_loop;
 	struct winlink		*wl = item->state.tflag.wl;
 	struct window_pane	*wp = item->state.tflag.wp;
-	const char		*update;
 	char			*cause, *cwd;
 	struct format_tree	*ft;
 
@@ -95,12 +94,8 @@ cmd_attach_session(struct cmdq_item *item, int dflag, int rflag,
 				server_client_detach(c_loop, MSG_DETACH);
 			}
 		}
-
-		if (!Eflag) {
-			update = options_get_string(s->options,
-			    "update-environment");
-			environ_update(update, c->environ, s->environ);
-		}
+		if (!Eflag)
+			environ_update(s->options, c->environ, s->environ);
 
 		c->session = s;
 		server_client_set_key_table(c, NULL);
@@ -116,7 +111,6 @@ cmd_attach_session(struct cmdq_item *item, int dflag, int rflag,
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
-
 		if (rflag)
 			c->flags |= CLIENT_READONLY;
 
@@ -127,12 +121,8 @@ cmd_attach_session(struct cmdq_item *item, int dflag, int rflag,
 				server_client_detach(c_loop, MSG_DETACH);
 			}
 		}
-
-		if (!Eflag) {
-			update = options_get_string(s->options,
-			    "update-environment");
-			environ_update(update, c->environ, s->environ);
-		}
+		if (!Eflag)
+			environ_update(s->options, c->environ, s->environ);
 
 		c->session = s;
 		server_client_set_key_table(c, NULL);

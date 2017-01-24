@@ -482,11 +482,10 @@ const struct options_table_entry options_table[] = {
 	},
 
 	{ .name = "update-environment",
-	  .type = OPTIONS_TABLE_STRING,
+	  .type = OPTIONS_TABLE_ARRAY,
 	  .scope = OPTIONS_TABLE_SESSION,
 	  .default_str = "DISPLAY SSH_ASKPASS SSH_AUTH_SOCK SSH_AGENT_PID "
 	                 "SSH_CONNECTION WINDOWID XAUTHORITY"
-
 	},
 
 	{ .name = "visual-activity",

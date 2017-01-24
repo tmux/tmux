@@ -2869,19 +2869,15 @@ For how to specify
 see the
 .Ic message-command-style
 option.
-.It Ic update-environment Ar variables
-Set a space-separated string containing a list of environment variables to be
-copied into the session environment when a new session is created or an
-existing session is attached.
+.It Ic update-environment[] Ar variable
+Set list of environment variables to be copied into the session environment
+when a new session is created or an existing session is attached.
 Any variables that do not exist in the source environment are set to be
 removed from the session environment (as if
 .Fl r
 was given to the
 .Ic set-environment
 command).
-The default is
-"DISPLAY SSH_ASKPASS SSH_AUTH_SOCK SSH_AGENT_PID SSH_CONNECTION WINDOWID
-XAUTHORITY".
 .It Xo Ic visual-activity
 .Op Ic on | off
 .Xc

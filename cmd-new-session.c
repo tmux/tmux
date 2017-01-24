@@ -73,7 +73,7 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	struct window		*w;
 	struct environ		*env;
 	struct termios		 tio, *tiop;
-	const char		*newname, *target, *update, *errstr, *template;
+	const char		*newname, *target, *errstr, *template;
 	const char		*path, *cmd, *cwd, *to_free = NULL;
 	char		       **argv, *cause, *cp;
 	int			 detached, already_attached, idx, argc;
@@ -234,11 +234,8 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 
 	/* Construct the environment. */
 	env = environ_create();
-	if (c != NULL && !args_has(args, 'E')) {
-		update = options_get_string(global_s_options,
-		    "update-environment");
-		environ_update(update, c->environ, env);
-	}
+	if (c != NULL && !args_has(args, 'E'))
+		environ_update(global_s_options, c->environ, env);
 
 	/* Create the new session. */
 	idx = -1 - options_get_number(global_s_options, "base-index");
