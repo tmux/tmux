@@ -2410,6 +2410,30 @@ Available server options are:
 Set the number of buffers; as new buffers are added to the top of the stack,
 old ones are removed from the bottom if necessary to maintain this maximum
 length.
+.It Xo Ic command-alias[]
+.Ar name=value
+.Xc
+This is an array of custom aliases for commands.
+If an unknown command matches
+.Ar name ,
+it is replaced with
+.Ar value .
+For example, after:
+.Pp
+.Dl set -s command-alias[2] zoom='resize-pane -Z'
+.Pp
+Using:
+.Pp
+.Dl zoom -t:.1
+.Pp
+Is equivalent to:
+.Pp
+.Dl resize-pane -Z -t:.1
+.Pp
+Note that aliases are expanded when a command is parsed rather than when it is
+executed, so binding an alias with
+.Ic bind-key
+will bind the expanded form.
 .It Ic default-terminal Ar terminal
 Set the default terminal for new windows created in this session - the
 default value of the
