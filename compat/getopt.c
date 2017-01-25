@@ -29,7 +29,7 @@
 
 /* OPENBSD ORIGINAL: lib/libc/stdlib/getopt.c */
 
-#include "tmux.h"
+#include "compat.h"
 
 #include <stdio.h>
 #include <stdlib.h>

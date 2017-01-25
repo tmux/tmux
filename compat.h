@@ -17,6 +17,12 @@
 #ifndef COMPAT_H
 #define COMPAT_H
 
+#include <sys/types.h>
+#include <sys/uio.h>
+
+#include <limits.h>
+#include <stdio.h>
+
 #ifndef __GNUC__
 #define __attribute__(a)
 #endif
@@ -60,6 +66,12 @@ typedef uint64_t u_int64_t;
 
 #ifndef __OpenBSD__
 #define pledge(s, p) (0)
+#endif
+
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#else
+#include <inttypes.h>
 #endif
 
 #ifdef HAVE_QUEUE_H
@@ -106,12 +118,6 @@ typedef uint64_t u_int64_t;
 #include <imsg.h>
 #else
 #include "compat/imsg.h"
-#endif
-
-#ifdef HAVE_STDINT_H
-#include <stdint.h>
-#else
-#include <inttypes.h>
 #endif
 
 #ifdef BROKEN_CMSG_FIRSTHDR

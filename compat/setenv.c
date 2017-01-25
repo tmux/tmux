@@ -18,7 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "tmux.h"
+#include "compat.h"
 
 int
 setenv(const char *name, const char *value, unused int overwrite)

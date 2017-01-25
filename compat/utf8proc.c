@@ -18,7 +18,7 @@
 
 #include <utf8proc.h>
 
-#include "tmux.h"
+#include "compat.h"
 
 int
 utf8proc_wcwidth(wchar_t wc)

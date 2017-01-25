@@ -25,7 +25,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "tmux.h"
+#include "compat.h"
 #include "imsg.h"
 
 int	 imsg_fd_overhead = 0;

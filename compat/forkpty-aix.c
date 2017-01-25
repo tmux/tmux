@@ -23,7 +23,7 @@
 #include <unistd.h>
 #include <errno.h>
 
-#include "tmux.h"
+#include "compat.h"
 
 pid_t
 forkpty(int *master, unused char *name, struct termios *tio, struct winsize *ws)

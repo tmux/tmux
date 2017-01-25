@@ -32,7 +32,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-#include "tmux.h"
+#include "compat.h"
 
 int
 daemon(int nochdir, int noclose)
