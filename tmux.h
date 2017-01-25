@@ -471,57 +471,9 @@ struct msg_stderr_data {
 	char	data[BUFSIZ];
 };
 
-/* Mode key commands. */
-enum mode_key_cmd {
-	MODEKEY_NONE,
-	MODEKEY_OTHER,
-
-	/* Menu (choice) keys. */
-	MODEKEYCHOICE_BACKSPACE,
-	MODEKEYCHOICE_BOTTOMLINE,
-	MODEKEYCHOICE_CANCEL,
-	MODEKEYCHOICE_CHOOSE,
-	MODEKEYCHOICE_DOWN,
-	MODEKEYCHOICE_ENDOFLIST,
-	MODEKEYCHOICE_PAGEDOWN,
-	MODEKEYCHOICE_PAGEUP,
-	MODEKEYCHOICE_SCROLLDOWN,
-	MODEKEYCHOICE_SCROLLUP,
-	MODEKEYCHOICE_STARTNUMBERPREFIX,
-	MODEKEYCHOICE_STARTOFLIST,
-	MODEKEYCHOICE_TOPLINE,
-	MODEKEYCHOICE_TREE_COLLAPSE,
-	MODEKEYCHOICE_TREE_COLLAPSE_ALL,
-	MODEKEYCHOICE_TREE_EXPAND,
-	MODEKEYCHOICE_TREE_EXPAND_ALL,
-	MODEKEYCHOICE_TREE_TOGGLE,
-	MODEKEYCHOICE_UP,
-};
-
-/* Data required while mode keys are in use. */
-struct mode_key_data {
-	struct mode_key_tree   *tree;
-};
+/* Mode keys. */
 #define MODEKEY_EMACS 0
 #define MODEKEY_VI 1
-
-/* Binding between a key and a command. */
-struct mode_key_binding {
-	key_code			 key;
-	enum mode_key_cmd		 cmd;
-
-	RB_ENTRY(mode_key_binding)	 entry;
-};
-RB_HEAD(mode_key_tree, mode_key_binding);
-
-/* Named mode key table description. */
-struct mode_key_entry;
-struct mode_key_table {
-	const char			*name;
-	const struct mode_key_cmdstr	*cmdstr;
-	struct mode_key_tree		*tree;
-	const struct mode_key_entry	*table;	/* default entries */
-};
 
 /* Modes. */
 #define MODE_CURSOR 0x1
@@ -1580,20 +1532,6 @@ void printflike(4, 5) hooks_run(struct hooks *, struct client *,
 void printflike(4, 5) hooks_insert(struct hooks *, struct cmdq_item *,
 		    struct cmd_find_state *, const char *, ...);
 
-/* mode-key.c */
-extern struct mode_key_tree mode_key_tree_vi_choice;
-extern struct mode_key_tree mode_key_tree_emacs_choice;
-int	mode_key_cmp(struct mode_key_binding *, struct mode_key_binding *);
-RB_PROTOTYPE(mode_key_tree, mode_key_binding, entry, mode_key_cmp);
-const char *mode_key_tostring(const struct mode_key_cmdstr *,
-	    enum mode_key_cmd);
-enum mode_key_cmd mode_key_fromstring(const struct mode_key_cmdstr *,
-	    const char *);
-const struct mode_key_table *mode_key_findtable(const char *);
-void	mode_key_init_trees(void);
-void	mode_key_init(struct mode_key_data *, struct mode_key_tree *);
-enum mode_key_cmd mode_key_lookup(struct mode_key_data *, key_code);
-
 /* notify.c */
 void	notify_input(struct window_pane *, struct evbuffer *);
 void	notify_client(const char *, struct client *);
@@ -1950,7 +1888,7 @@ void	 input_parse(struct window_pane *);
 void	 input_key(struct window_pane *, key_code, struct mouse_event *);
 
 /* xterm-keys.c */
-char	*xterm_keys_lookup(key_code);
+char	*xterm_keys_lookup(key_code, int);
 int	 xterm_keys_find(const char *, size_t, size_t *, key_code *);
 
 /* colour.c */

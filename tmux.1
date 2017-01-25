@@ -1142,14 +1142,6 @@ Commands in copy mode may be prefaced by an optional repeat count.
 With vi key bindings, a prefix is entered using the number keys; with
 emacs, the Alt (meta) key and a number begins prefix entry.
 .Pp
-Mode key bindings are defined in two tables:
-.Em vi-choice
-and
-.Em emacs-choice
-for keys used when choosing from lists (such as produced by the
-.Ic choose-window
-command).
-.Pp
 The synopsis for the
 .Ic copy-mode
 command is:
@@ -2138,7 +2130,6 @@ Commands related to key bindings are as follows:
 .Bl -tag -width Ds
 .It Xo Ic bind-key
 .Op Fl nr
-.Op Fl t Ar mode-table
 .Op Fl T Ar key-table
 .Ar key Ar command Op Ar arguments
 .Xc
@@ -2187,18 +2178,10 @@ flag indicates this key may repeat, see the
 .Ic repeat-time
 option.
 .Pp
-If
-.Fl t
-is present,
-.Ar key
-is bound in
-.Ar mode-table .
-.Pp
 To view the default bindings and possible commands, see the
 .Ic list-keys
 command.
 .It Xo Ic list-keys
-.Op Fl t Ar mode-table
 .Op Fl T Ar key-table
 .Xc
 .D1 (alias: Ic lsk )
@@ -2210,15 +2193,6 @@ With
 .Fl T
 only
 .Ar key-table .
-.Pp
-With
-.Fl t ,
-the key bindings in
-.Ar mode-table
-are listed; this may be one of:
-.Em vi-choice
-or
-.Em emacs-choice .
 .It Xo Ic send-keys
 .Op Fl lMRX
 .Op Fl N Ar repeat-count
@@ -2263,17 +2237,15 @@ Send the prefix key, or with
 the secondary prefix key, to a window as if it was pressed.
 .It Xo Ic unbind-key
 .Op Fl an
-.Op Fl t Ar mode-table
 .Op Fl T Ar key-table
 .Ar key
 .Xc
 .D1 (alias: Ic unbind )
 Unbind the command bound to
 .Ar key .
-.Fl n ,
-.Fl T
+.Fl n
 and
-.Fl t
+.Fl T
 are the same as for
 .Ic bind-key .
 If
@@ -2498,7 +2470,7 @@ interactive menu when required.
 .It Ic terminal-overrides[] Ar string
 Allow terminal descriptions read using
 .Xr terminfo 5
-to be overriden.
+to be overridden.
 Each entry is a colon-separated string made up of a terminal type pattern
 (matched using
 .Xr fnmatch 3 )

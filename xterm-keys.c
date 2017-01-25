@@ -50,7 +50,17 @@ struct xterm_keys_entry {
 	const char	*template;
 };
 
-static const struct xterm_keys_entry xterm_keys_table[] = {
+static const struct xterm_keys_entry xterm_keys_standard[] = {
+	{ KEYC_HOME,	"\033[H" },
+	{ KEYC_END,	"\033[F" },
+};
+
+static const struct xterm_keys_entry xterm_keys_cursor[] = {
+	{ KEYC_HOME,	"\033OH" },
+	{ KEYC_END,	"\033OF" },
+};
+
+static const struct xterm_keys_entry xterm_keys_modified[] = {
 	{ KEYC_F1,	"\033[1;_P" },
 	{ KEYC_F1,	"\033O1;_P" },
 	{ KEYC_F1,	"\033O_P" },
@@ -189,8 +199,8 @@ xterm_keys_find(const char *buf, size_t len, size_t *size, key_code *key)
 	int				 matched;
 	key_code			 modifiers;
 
-	for (i = 0; i < nitems(xterm_keys_table); i++) {
-		entry = &xterm_keys_table[i];
+	for (i = 0; i < nitems(xterm_keys_modified); i++) {
+		entry = &xterm_keys_modified[i];
 
 		matched = xterm_keys_match(entry->template, buf, len, size,
 		    &modifiers);
@@ -205,10 +215,10 @@ xterm_keys_find(const char *buf, size_t len, size_t *size, key_code *key)
 
 /* Lookup a key number from the table. */
 char *
-xterm_keys_lookup(key_code key)
+xterm_keys_lookup(key_code key, int mode)
 {
-	const struct xterm_keys_entry	*entry;
-	u_int				 i;
+	const struct xterm_keys_entry	*table, *entry;
+	u_int				 items, i;
 	key_code			 modifiers;
 	char				*out;
 
@@ -224,21 +234,32 @@ xterm_keys_lookup(key_code key)
 	 * If the key has no modifiers, return NULL and let it fall through to
 	 * the normal lookup.
 	 */
-	if (modifiers == 1)
-		return (NULL);
+	if (modifiers != 1) {
+		table = xterm_keys_modified;
+		items = nitems(xterm_keys_modified);
+	} else {
+		if (mode & MODE_KCURSOR) {
+			table = xterm_keys_cursor;
+			items = nitems(xterm_keys_cursor);
+		} else {
+			table = xterm_keys_standard;
+			items = nitems(xterm_keys_standard);
+		}
+	}
 
 	/* Otherwise, find the key in the table. */
 	key &= ~(KEYC_SHIFT|KEYC_ESCAPE|KEYC_CTRL);
-	for (i = 0; i < nitems(xterm_keys_table); i++) {
-		entry = &xterm_keys_table[i];
+	for (i = 0; i < items; i++) {
+		entry = &table[i];
 		if (key == entry->key)
 			break;
 	}
-	if (i == nitems(xterm_keys_table))
+	if (i == items)
 		return (NULL);
 
 	/* Copy the template and replace the modifier. */
 	out = xstrdup(entry->template);
-	out[strcspn(out, "_")] = '0' + modifiers;
+	if (modifiers != 1)
+		out[strcspn(out, "_")] = '0' + modifiers;
 	return (out);
 }
