@@ -158,7 +158,6 @@ input_key(struct window_pane *wp, key_code key, struct mouse_event *m)
 	char				*out;
 	key_code			 justkey;
 	struct utf8_data		 ud;
-	int				 mode;
 
 	log_debug("writing key 0x%llx (%s) to %%%u", key,
 	    key_string_lookup_key(key), wp->id);
@@ -195,9 +194,8 @@ input_key(struct window_pane *wp, key_code key, struct mouse_event *m)
 	 * Then try to look this up as an xterm key, if the flag to output them
 	 * is set.
 	 */
-	mode = wp->screen->mode;
 	if (options_get_number(wp->window->options, "xterm-keys")) {
-		if ((out = xterm_keys_lookup(key, mode)) != NULL) {
+		if ((out = xterm_keys_lookup(key)) != NULL) {
 			bufferevent_write(wp->event, out, strlen(out));
 			free(out);
 			return;
@@ -208,9 +206,11 @@ input_key(struct window_pane *wp, key_code key, struct mouse_event *m)
 	for (i = 0; i < nitems(input_keys); i++) {
 		ike = &input_keys[i];
 
-		if ((ike->flags & INPUTKEY_KEYPAD) && (~mode & MODE_KKEYPAD))
+		if ((ike->flags & INPUTKEY_KEYPAD) &&
+		    !(wp->screen->mode & MODE_KKEYPAD))
 			continue;
-		if ((ike->flags & INPUTKEY_CURSOR) && (~mode & MODE_KCURSOR))
+		if ((ike->flags & INPUTKEY_CURSOR) &&
+		    !(wp->screen->mode & MODE_KCURSOR))
 			continue;
 
 		if ((key & KEYC_ESCAPE) && (ike->key | KEYC_ESCAPE) == key)

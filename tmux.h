@@ -1888,7 +1888,7 @@ void	 input_parse(struct window_pane *);
 void	 input_key(struct window_pane *, key_code, struct mouse_event *);
 
 /* xterm-keys.c */
-char	*xterm_keys_lookup(key_code, int);
+char	*xterm_keys_lookup(key_code);
 int	 xterm_keys_find(const char *, size_t, size_t *, key_code *);
 
 /* colour.c */
