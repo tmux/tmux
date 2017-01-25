@@ -26,6 +26,7 @@
 #include <errno.h>
 #include <event.h>
 #include <fcntl.h>
+#include <paths.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -147,7 +148,6 @@ server_start(struct event_base *base, int lockfd, char *lockfile)
 
 	if (log_get_level() > 3)
 		tty_create_log();
-
 	if (pledge("stdio rpath wpath cpath fattr unix getpw recvfd proc exec "
 	    "tty ps", NULL) != 0)
 		fatal("pledge failed");
@@ -157,7 +157,6 @@ server_start(struct event_base *base, int lockfd, char *lockfile)
 	TAILQ_INIT(&clients);
 	RB_INIT(&sessions);
 	TAILQ_INIT(&session_groups);
-	mode_key_init_trees();
 	key_bindings_init();
 
 	gettimeofday(&start_time, NULL);

@@ -24,20 +24,17 @@
 #include "tmux.h"
 
 /*
- * Bind a key to a command, this recurses through cmd_*.
+ * Bind a key to a command.
  */
 
 static enum cmd_retval	cmd_bind_key_exec(struct cmd *, struct cmdq_item *);
-
-static enum cmd_retval	cmd_bind_key_mode_table(struct cmd *,
-			    struct cmdq_item *, key_code);
 
 const struct cmd_entry cmd_bind_key_entry = {
 	.name = "bind-key",
 	.alias = "bind",
 
-	.args = { "cnrt:T:", 1, -1 },
-	.usage = "[-cnr] [-t mode-table] [-T key-table] key "
+	.args = { "cnrT:", 2, -1 },
+	.usage = "[-cnr] [-T key-table] key "
 	         "command [arguments]",
 
 	.flags = CMD_AFTERHOOK,
@@ -53,26 +50,11 @@ cmd_bind_key_exec(struct cmd *self, struct cmdq_item *item)
 	key_code	 key;
 	const char	*tablename;
 
-	if (args_has(args, 't')) {
-		if (args->argc != 2 && args->argc != 3) {
-			cmdq_error(item, "not enough arguments");
-			return (CMD_RETURN_ERROR);
-		}
-	} else {
-		if (args->argc < 2) {
-			cmdq_error(item, "not enough arguments");
-			return (CMD_RETURN_ERROR);
-		}
-	}
-
 	key = key_string_lookup_string(args->argv[0]);
 	if (key == KEYC_NONE || key == KEYC_UNKNOWN) {
 		cmdq_error(item, "unknown key: %s", args->argv[0]);
 		return (CMD_RETURN_ERROR);
 	}
-
-	if (args_has(args, 't'))
-		return (cmd_bind_key_mode_table(self, item, key));
 
 	if (args_has(args, 'T'))
 		tablename = args_get(args, 'T');
@@ -90,41 +72,5 @@ cmd_bind_key_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	key_bindings_add(tablename, key, args_has(args, 'r'), cmdlist);
-	return (CMD_RETURN_NORMAL);
-}
-
-static enum cmd_retval
-cmd_bind_key_mode_table(struct cmd *self, struct cmdq_item *item, key_code key)
-{
-	struct args			*args = self->args;
-	const char			*tablename;
-	const struct mode_key_table	*mtab;
-	struct mode_key_binding		*mbind, mtmp;
-	enum mode_key_cmd		 cmd;
-
-	tablename = args_get(args, 't');
-	if ((mtab = mode_key_findtable(tablename)) == NULL) {
-		cmdq_error(item, "unknown key table: %s", tablename);
-		return (CMD_RETURN_ERROR);
-	}
-
-	cmd = mode_key_fromstring(mtab->cmdstr, args->argv[1]);
-	if (cmd == MODEKEY_NONE) {
-		cmdq_error(item, "unknown command: %s", args->argv[1]);
-		return (CMD_RETURN_ERROR);
-	}
-
-	if (args->argc != 2) {
-		cmdq_error(item, "no argument allowed");
-		return (CMD_RETURN_ERROR);
-	}
-
-	mtmp.key = key;
-	if ((mbind = RB_FIND(mode_key_tree, mtab->tree, &mtmp)) == NULL) {
-		mbind = xmalloc(sizeof *mbind);
-		mbind->key = mtmp.key;
-		RB_INSERT(mode_key_tree, mtab->tree, mbind);
-	}
-	mbind->cmd = cmd;
 	return (CMD_RETURN_NORMAL);
 }

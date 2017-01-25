@@ -28,15 +28,12 @@
 
 static enum cmd_retval	cmd_unbind_key_exec(struct cmd *, struct cmdq_item *);
 
-static enum cmd_retval	cmd_unbind_key_mode_table(struct cmd *,
-			    struct cmdq_item *, key_code);
-
 const struct cmd_entry cmd_unbind_key_entry = {
 	.name = "unbind-key",
 	.alias = "unbind",
 
-	.args = { "ant:T:", 0, 1 },
-	.usage = "[-an] [-t mode-table] [-T key-table] key",
+	.args = { "anT:", 0, 1 },
+	.usage = "[-an] [-T key-table] key",
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_unbind_key_exec
@@ -67,9 +64,6 @@ cmd_unbind_key_exec(struct cmd *self, struct cmdq_item *item)
 		key = KEYC_UNKNOWN;
 	}
 
-	if (args_has(args, 't'))
-		return (cmd_unbind_key_mode_table(self, item, key));
-
 	if (key == KEYC_UNKNOWN) {
 		tablename = args_get(args, 'T');
 		if (tablename == NULL) {
@@ -96,37 +90,5 @@ cmd_unbind_key_exec(struct cmd *self, struct cmdq_item *item)
 	else
 		tablename = "prefix";
 	key_bindings_remove(tablename, key);
-	return (CMD_RETURN_NORMAL);
-}
-
-static enum cmd_retval
-cmd_unbind_key_mode_table(struct cmd *self, struct cmdq_item *item,
-    key_code key)
-{
-	struct args			*args = self->args;
-	const char			*tablename;
-	const struct mode_key_table	*mtab;
-	struct mode_key_binding		*mbind, mtmp;
-
-	tablename = args_get(args, 't');
-	if ((mtab = mode_key_findtable(tablename)) == NULL) {
-		cmdq_error(item, "unknown key table: %s", tablename);
-		return (CMD_RETURN_ERROR);
-	}
-
-	if (key == KEYC_UNKNOWN) {
-		while (!RB_EMPTY(mtab->tree)) {
-			mbind = RB_ROOT(mtab->tree);
-			RB_REMOVE(mode_key_tree, mtab->tree, mbind);
-			free(mbind);
-		}
-		return (CMD_RETURN_NORMAL);
-	}
-
-	mtmp.key = key;
-	if ((mbind = RB_FIND(mode_key_tree, mtab->tree, &mtmp)) != NULL) {
-		RB_REMOVE(mode_key_tree, mtab->tree, mbind);
-		free(mbind);
-	}
 	return (CMD_RETURN_NORMAL);
 }
