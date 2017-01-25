@@ -26,7 +26,6 @@
 #include <errno.h>
 #include <event.h>
 #include <fcntl.h>
-#include <paths.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
