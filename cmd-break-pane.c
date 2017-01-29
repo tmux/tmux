@@ -34,8 +34,8 @@ const struct cmd_entry cmd_break_pane_entry = {
 	.name = "break-pane",
 	.alias = "breakp",
 
-	.args = { "dPF:s:t:", 0, 0 },
-	.usage = "[-dP] [-F format] [-s src-pane] [-t dst-window]",
+	.args = { "dPF:n:s:t:", 0, 0 },
+	.usage = "[-dP] [-F format] [-n window-name] [-s src-pane] [-t dst-window]",
 
 	.sflag = CMD_PANE,
 	.tflag = CMD_WINDOW_INDEX,
@@ -78,9 +78,16 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	w = wp->window = window_create(dst_s->sx, dst_s->sy);
 	TAILQ_INSERT_HEAD(&w->panes, wp, entry);
 	w->active = wp;
-	name = default_window_name(w);
-	window_set_name(w, name);
-	free(name);
+
+	if ((name = (char *)args_get(args, 'n')) == NULL) {
+		name = default_window_name(w);
+		window_set_name(w, name);
+		free(name);
+	} else {
+		window_set_name(w, name);
+		options_set_number(w->options, "automatic-rename", 0);
+	}
+
 	layout_init(w, wp);
 	wp->flags |= PANE_CHANGED;
 
