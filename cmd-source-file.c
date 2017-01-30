@@ -53,7 +53,7 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmdq_item	*new_item;
 	enum cmd_retval		 retval;
 	glob_t			 g;
-	int			 i;
+	u_int			 i;
 
 	quiet = args_has(args, 'q');
 	if (glob(args->argv[0], 0, NULL, &g) != 0) {
@@ -64,7 +64,7 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	retval = CMD_RETURN_NORMAL;
-	for (i = 0; i < g.gl_pathc; i++) {
+	for (i = 0; i < (u_int)g.gl_pathc; i++) {
 		if (load_cfg(g.gl_pathv[i], c, item, quiet) != 0)
 			retval = CMD_RETURN_ERROR;
 	}
