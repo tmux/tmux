@@ -638,7 +638,7 @@ format_find(struct format_tree *ft, const char *key, int modifiers)
 		if (o == NULL)
 			o = options_parse_get(global_s_options, key, &idx, 0);
 		if (o != NULL) {
-			found = options_tostring(o, idx);
+			found = options_tostring(o, idx, 1);
 			goto found;
 		}
 	}
