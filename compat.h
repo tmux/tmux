@@ -22,6 +22,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include <wchar.h>
 
 #ifndef __GNUC__
 #define __attribute__(a)
