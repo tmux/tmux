@@ -109,7 +109,7 @@ cmd_show_options_print(struct cmd *self, struct cmdq_item *item,
 		name = options_name(o);
 	}
 
-	value = options_tostring(o, idx);
+	value = options_tostring(o, idx, 0);
 	if (args_has(self->args, 'v'))
 		cmdq_print(item, "%s", value);
 	else if (options_isstring(o)) {

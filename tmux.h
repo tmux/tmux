@@ -1564,7 +1564,7 @@ int		 options_array_set(struct options_entry *, u_int, const char *,
 int		 options_array_size(struct options_entry *, u_int *);
 void		 options_array_assign(struct options_entry *, const char *);
 int		 options_isstring(struct options_entry *);
-const char	*options_tostring(struct options_entry *, int);
+const char	*options_tostring(struct options_entry *, int, int);
 char		*options_parse(const char *, int *);
 struct options_entry *options_parse_get(struct options *, const char *, int *,
 		     int);
