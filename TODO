@@ -87,9 +87,10 @@
 	  options list with each option having a type (window or session), then
 	  options on window, on session, and global. for window options we look
 	  window->session->global, and for session we look session->global.
-          problem: what about windows in multiple sessions? there are contexts
-          where we do not know which session, or where multiple choices makes
-          no sense
+	  problem: what about windows in multiple sessions? there are contexts
+	  where we do not know which session, or where multiple choices makes
+	  no sense... could at least have one global list for all types of
+	  global options and keep separate window,session lists
 	* the way pane, window, session destroy is handled is too complicated
 	  and the distinction between session.c, window.c and server-fn.c
 	  functions is not clear. could we just have kill_pane(),
