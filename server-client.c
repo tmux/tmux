@@ -335,14 +335,27 @@ server_client_check_mouse(struct client *c)
 	int			 flag;
 	key_code		 key;
 	struct timeval		 tv;
-	enum { NOTYPE, DOWN, UP, DRAG, WHEEL, DOUBLE, TRIPLE } type = NOTYPE;
-	enum { NOWHERE, PANE, STATUS, BORDER } where = NOWHERE;
+	enum { NOTYPE, MOVE, DOWN, UP, DRAG, WHEEL, DOUBLE, TRIPLE } type;
+	enum { NOWHERE, PANE, STATUS, BORDER } where;
+
+	type = NOTYPE;
+	where = NOWHERE;
 
 	log_debug("mouse %02x at %u,%u (last %u,%u) (%d)", m->b, m->x, m->y,
 	    m->lx, m->ly, c->tty.mouse_drag_flag);
 
 	/* What type of event is this? */
-	if (MOUSE_DRAG(m->b)) {
+	if ((m->sgr_type != ' ' &&
+	    MOUSE_DRAG(m->sgr_b) &&
+	    MOUSE_BUTTONS(m->sgr_b) == 3) ||
+	    (m->sgr_type == ' ' &&
+	    MOUSE_DRAG(m->b) &&
+	    MOUSE_BUTTONS(m->b) == 3 &&
+	    MOUSE_BUTTONS(m->lb) == 3)) {
+		type = MOVE;
+		x = m->x, y = m->y, b = 0;
+		log_debug("move at %u,%u", x, y);
+	} else if (MOUSE_DRAG(m->b)) {
 		type = DRAG;
 		if (c->tty.mouse_drag_flag) {
 			x = m->x, y = m->y, b = m->b;
@@ -499,6 +512,14 @@ have_event:
 	key = KEYC_UNKNOWN;
 	switch (type) {
 	case NOTYPE:
+		break;
+	case MOVE:
+		if (where == PANE)
+			key = KEYC_MOUSEMOVE_PANE;
+		if (where == STATUS)
+			key = KEYC_MOUSEMOVE_STATUS;
+		if (where == BORDER)
+			key = KEYC_MOUSEMOVE_BORDER;
 		break;
 	case DRAG:
 		if (c->tty.mouse_drag_update != NULL)
@@ -1055,7 +1076,7 @@ static void
 server_client_reset_state(struct client *c)
 {
 	struct window		*w = c->session->curw->window;
-	struct window_pane	*wp = w->active;
+	struct window_pane	*wp = w->active, *loop;
 	struct screen		*s = wp->screen;
 	struct options		*oo = c->session->options;
 	int			 status, mode, o;
@@ -1079,8 +1100,15 @@ server_client_reset_state(struct client *c)
 	 * mode.
 	 */
 	mode = s->mode;
-	if (options_get_number(oo, "mouse"))
-		mode = (mode & ~ALL_MOUSE_MODES) | MODE_MOUSE_BUTTON;
+	if (options_get_number(oo, "mouse")) {
+		mode &= ~ALL_MOUSE_MODES;
+		TAILQ_FOREACH(loop, &w->panes, entry) {
+			if (loop->screen->mode & MODE_MOUSE_ALL)
+				mode |= MODE_MOUSE_ALL;
+		}
+		if (~mode & MODE_MOUSE_ALL)
+			mode |= MODE_MOUSE_BUTTON;
+	}
 
 	/* Set the terminal mode and reset attributes. */
 	tty_update_mode(&c->tty, mode, s);
