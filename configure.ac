@@ -160,60 +160,86 @@ if test "x$found_libevent" = xno; then
 	AC_MSG_ERROR("libevent not found")
 fi
 
-# Look for ncurses.
+found_ncurses_h=no
+found_curses_h=no
+
 PKG_CHECK_MODULES(
-	LIBNCURSES,
-	ncurses,
-	found_ncurses=yes,
-	found_ncurses=no
+	[TERMINFO],
+	[tinfo],
+	found_ncurses_h=yes
+	CPPFLAGS="$TERMINFO_CFLAGS $CPPFLAGS"
+	LIBS="$TERMINFO_LIBS $LIBS",
+	[PKG_CHECK_MODULES(
+	 	[NCURSES],
+		[ncurses],
+		found_ncurses_h=yes
+		CPPFLAGS="$NCURSES_CFLAGS $CPPFLAGS"
+		LIBS="$NCURSES_LIBS $LIBS",
+		[PKG_CHECK_MODULES(
+			[NCURSESW],
+			[ncursesw],
+			found_ncurses_h=yes
+			CPPFLAGS="$NCURSESW_CFLAGS $CPPFLAGS"
+			LIBS="$NCURSESW_LIBS $LIBS",
+			[PKG_CHECK_MODULES(
+				[CURSES],
+				[curses],
+				found_curses_h=yes
+				CPPFLAGS="$CURSES_CFLAGS $CPPFLAGS"
+				LIBS="$CURSES_LIBS $LIBS"
+			)]
+		)]
+	)]
 )
-if test "x$found_ncurses" = xno; then
-	PKG_CHECK_MODULES(
-		LIBNCURSES,
-		ncursesw,
-		found_ncurses=yes,
-		found_ncurses=no
-	)
-fi
-if test "x$found_ncurses" = xyes; then
-	CPPFLAGS="$LIBNCURSES_CFLAGS $CPPFLAGS"
-	LIBS="$LIBNCURSES_LIBS $LIBS"
-else
-	# pkg-config didn't work, try ncurses.
-	AC_CHECK_LIB(
-		ncurses,
-		setupterm,
-		found_ncurses=yes,
-		found_ncurses=no
-	)
-	if test "x$found_ncurses" = xyes; then
-		AC_CHECK_HEADER(
-			ncurses.h,
-			LIBS="$LIBS -lncurses",
-			found_ncurses=no)
-	fi
-fi
-if test "x$found_ncurses" = xyes; then
-	AC_DEFINE(HAVE_NCURSES_H)
-else
-	# No ncurses, try curses.
-	AC_CHECK_LIB(
-		curses,
-		setupterm,
-		found_curses=yes,
-		found_curses=no
-	)
+
+if test "x$found_ncurses_h" = xno && test "x$found_curses_h" = xno; then
+
+	# pkg-config didn't work, try terminfo, ncurses, ncursesw
 	AC_CHECK_HEADER(
-		curses.h,
-		,
-		found_curses=no)
-	if test "x$found_curses" = xyes; then
-		LIBS="$LIBS -lcurses"
-		AC_DEFINE(HAVE_CURSES_H)
-	else
-		AC_MSG_ERROR("curses or ncurses not found")
+		ncurses.h,
+		AC_CHECK_LIB(
+			tinfo,
+			setupterm,
+			found_ncurses_h=yes
+			LIBS="-ltinfo $LIBS",
+			AC_CHECK_LIB(
+				ncurses,
+				setupterm,
+				found_ncurses_h=yes
+				LIBS="-lncurses $LIBS",
+				AC_CHECK_LIB(
+					ncursesw,
+					setupterm,
+					found_ncurses_h=yes
+					LIBS="-lncursesw $LIBS"
+				)
+			)
+		)
+	)
+
+	# now try curses
+	if test "x$found_ncurses_h" = xno; then
+		AC_CHECK_HEADER(
+			curses.h,
+			AC_CHECK_LIB(
+				curses,
+				setupterm,
+				found_curses_h=yes
+				LIBS="-lcurses $LIBS"
+			),
+		)
 	fi
+
 fi
+
+if test "x$found_ncurses_h" = xyes; then
+	AC_DEFINE(HAVE_NCURSES_H)
+elif test "x$found_curses_h" = xyes; then
+	AC_DEFINE(HAVE_CURSES_H)
+else
+	AC_MSG_ERROR("terminfo, ncurses, ncursesw or curses not found!")
+fi
+
 
 # Look for utempter.
 AC_ARG_ENABLE(
