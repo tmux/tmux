@@ -658,7 +658,7 @@ format_find(struct format_tree *ft, const char *key, int modifiers)
 		if (o == NULL)
 			o = options_parse_get(global_s_options, key, &idx, 0);
 		if (o != NULL) {
-			found = options_tostring(o, idx);
+			found = options_tostring(o, idx, 1);
 			goto found;
 		}
 	}
@@ -1301,11 +1301,13 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 	    !!(wp->base.mode & MODE_WRAP));
 
 	format_add(ft, "mouse_any_flag", "%d",
-	    !!(wp->base.mode & (MODE_MOUSE_STANDARD|MODE_MOUSE_BUTTON)));
+	    !!(wp->base.mode & ALL_MOUSE_MODES));
 	format_add(ft, "mouse_standard_flag", "%d",
 	    !!(wp->base.mode & MODE_MOUSE_STANDARD));
 	format_add(ft, "mouse_button_flag", "%d",
 	    !!(wp->base.mode & MODE_MOUSE_BUTTON));
+	format_add(ft, "mouse_all_flag", "%d",
+	    !!(wp->base.mode & MODE_MOUSE_ALL));
 
 	format_add_cb(ft, "pane_tabs", format_cb_pane_tabs);
 }

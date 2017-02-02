@@ -139,6 +139,7 @@ enum {
 	/* Mouse keys. */
 	KEYC_MOUSE, /* unclassified mouse event */
 	KEYC_DRAGGING, /* dragging in progress */
+	KEYC_MOUSE_KEY(MOUSEMOVE),
 	KEYC_MOUSE_KEY(MOUSEDOWN1),
 	KEYC_MOUSE_KEY(MOUSEDOWN2),
 	KEYC_MOUSE_KEY(MOUSEDOWN3),
@@ -490,8 +491,9 @@ struct msg_stderr_data {
 #define MODE_MOUSE_SGR 0x200
 #define MODE_BRACKETPASTE 0x400
 #define MODE_FOCUSON 0x800
+#define MODE_MOUSE_ALL 0x1000
 
-#define ALL_MOUSE_MODES (MODE_MOUSE_STANDARD|MODE_MOUSE_BUTTON)
+#define ALL_MOUSE_MODES (MODE_MOUSE_STANDARD|MODE_MOUSE_BUTTON|MODE_MOUSE_ALL)
 
 /*
  * A single UTF-8 character. UTF8_SIZE must be big enough to hold at least one
@@ -1564,7 +1566,7 @@ int		 options_array_set(struct options_entry *, u_int, const char *,
 int		 options_array_size(struct options_entry *, u_int *);
 void		 options_array_assign(struct options_entry *, const char *);
 int		 options_isstring(struct options_entry *);
-const char	*options_tostring(struct options_entry *, int);
+const char	*options_tostring(struct options_entry *, int, int);
 char		*options_parse(const char *, int *);
 struct options_entry *options_parse_get(struct options *, const char *, int *,
 		     int);
