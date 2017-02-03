@@ -29,7 +29,6 @@
 
 static enum cmd_retval	cmd_list_keys_exec(struct cmd *, struct cmdq_item *);
 
-static enum cmd_retval	cmd_list_keys_table(struct cmd *, struct cmdq_item *);
 static enum cmd_retval	cmd_list_keys_commands(struct cmd *,
 			    struct cmdq_item *);
 
@@ -37,8 +36,8 @@ const struct cmd_entry cmd_list_keys_entry = {
 	.name = "list-keys",
 	.alias = "lsk",
 
-	.args = { "t:T:", 0, 0 },
-	.usage = "[-t mode-table] [-T key-table]",
+	.args = { "T:", 0, 0 },
+	.usage = "[-T key-table]",
 
 	.flags = CMD_STARTSERVER|CMD_AFTERHOOK,
 	.exec = cmd_list_keys_exec
@@ -67,9 +66,6 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (self->entry == &cmd_list_commands_entry)
 		return (cmd_list_keys_commands(self, item));
-
-	if (args_has(args, 't'))
-		return (cmd_list_keys_table(self, item));
 
 	tablename = args_get(args, 'T');
 	if (tablename != NULL && key_bindings_get_table(tablename, 0) == NULL) {
@@ -133,40 +129,6 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 }
 
 static enum cmd_retval
-cmd_list_keys_table(struct cmd *self, struct cmdq_item *item)
-{
-	struct args			*args = self->args;
-	const char			*tablename, *cmdstr;
-	const struct mode_key_table	*mtab;
-	struct mode_key_binding		*mbind;
-	int			 	 width, keywidth;
-
-	tablename = args_get(args, 't');
-	if ((mtab = mode_key_findtable(tablename)) == NULL) {
-		cmdq_error(item, "unknown key table: %s", tablename);
-		return (CMD_RETURN_ERROR);
-	}
-
-	keywidth = 0;
-	RB_FOREACH(mbind, mode_key_tree, mtab->tree) {
-		width = strlen(key_string_lookup_key(mbind->key));
-		if (width > keywidth)
-			keywidth = width;
-	}
-
-	RB_FOREACH(mbind, mode_key_tree, mtab->tree) {
-		cmdstr = mode_key_tostring(mtab->cmdstr, mbind->cmd);
-		if (cmdstr != NULL) {
-			cmdq_print(item, "bind-key -t %s %*s %s",
-			    mtab->name, (int)keywidth,
-			    key_string_lookup_key(mbind->key), cmdstr);
-		}
-	}
-
-	return (CMD_RETURN_NORMAL);
-}
-
-static enum cmd_retval
 cmd_list_keys_commands(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
@@ -182,7 +144,7 @@ cmd_list_keys_commands(struct cmd *self, struct cmdq_item *item)
 		    "#{command_list_usage}";
 	}
 
-	ft = format_create(item, 0);
+	ft = format_create(item, FORMAT_NONE, 0);
 	format_defaults(ft, NULL, NULL, NULL, NULL);
 
 	for (entryp = cmd_table; *entryp != NULL; entryp++) {
