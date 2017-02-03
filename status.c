@@ -192,17 +192,26 @@ status_timer_start_all(void)
 		status_timer_start(c);
 }
 
+/* Update status cache. */
+void
+status_update_saved(struct session *s)
+{
+	if (!options_get_number(s->options, "status"))
+		s->statusat = -1;
+	else if (options_get_number(s->options, "status-position") == 0)
+		s->statusat = 0;
+	else
+		s->statusat = 1;
+}
+
 /* Get screen line of status line. -1 means off. */
 int
 status_at_line(struct client *c)
 {
 	struct session	*s = c->session;
 
-	if (!options_get_number(s->options, "status"))
-		return (-1);
-
-	if (options_get_number(s->options, "status-position") == 0)
-		return (0);
+	if (s->statusat != 1)
+		return (s->statusat);
 	return (c->tty.sy - 1);
 }
 
