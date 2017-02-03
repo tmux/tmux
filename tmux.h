@@ -545,7 +545,6 @@ struct grid_cell {
 	int			fg;
 	int			bg;
 	struct utf8_data	data;
-
 };
 struct grid_cell_entry {
 	u_char			flags;
@@ -935,6 +934,8 @@ struct session {
 	struct winlink	*curw;
 	struct winlink_stack lastw;
 	struct winlinks	 windows;
+
+	int		 statusat;
 
 	struct hooks	*hooks;
 	struct options	*options;
@@ -1864,6 +1865,7 @@ void	 server_unzoom_window(struct window *);
 /* status.c */
 void	 status_timer_start(struct client *);
 void	 status_timer_start_all(void);
+void	 status_update_saved(struct session *s);
 int	 status_at_line(struct client *);
 struct window *status_get_window_at(struct client *, u_int);
 int	 status_redraw(struct client *);

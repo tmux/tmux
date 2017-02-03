@@ -131,6 +131,8 @@ session_create(const char *name, int argc, char **argv, const char *path,
 	s->options = options_create(global_s_options);
 	s->hooks = hooks_create(global_hooks);
 
+	status_update_saved(s);
+
 	s->tio = NULL;
 	if (tio != NULL) {
 		s->tio = xmalloc(sizeof *s->tio);

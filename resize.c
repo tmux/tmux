@@ -89,6 +89,8 @@ recalculate_sizes(void)
 
 		s->sx = ssx;
 		s->sy = ssy;
+
+		status_update_saved(s);
 	}
 
 	RB_FOREACH(w, windows, &windows) {
