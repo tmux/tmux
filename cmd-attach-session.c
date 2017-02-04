@@ -98,6 +98,7 @@ cmd_attach_session(struct cmdq_item *item, int dflag, int rflag,
 			environ_update(s->options, c->environ, s->environ);
 
 		c->session = s;
+		server_client_set_key_table(c, NULL);
 		status_timer_start(c);
 		notify_client("client-session-changed", c);
 		session_update_activity(s, NULL);
