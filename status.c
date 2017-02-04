@@ -192,17 +192,26 @@ status_timer_start_all(void)
 		status_timer_start(c);
 }
 
+/* Update status cache. */
+void
+status_update_saved(struct session *s)
+{
+	if (!options_get_number(s->options, "status"))
+		s->statusat = -1;
+	else if (options_get_number(s->options, "status-position") == 0)
+		s->statusat = 0;
+	else
+		s->statusat = 1;
+}
+
 /* Get screen line of status line. -1 means off. */
 int
 status_at_line(struct client *c)
 {
 	struct session	*s = c->session;
 
-	if (!options_get_number(s->options, "status"))
-		return (-1);
-
-	if (options_get_number(s->options, "status-position") == 0)
-		return (0);
+	if (s->statusat != 1)
+		return (s->statusat);
 	return (c->tty.sy - 1);
 }
 
@@ -500,14 +509,19 @@ status_replace(struct client *c, struct winlink *wl, const char *fmt, time_t t)
 {
 	struct format_tree	*ft;
 	char			*expanded;
+	u_int			 tag;
 
 	if (fmt == NULL)
 		return (xstrdup(""));
 
-	if (c->flags & CLIENT_STATUSFORCE)
-		ft = format_create(NULL, FORMAT_STATUS|FORMAT_FORCE);
+	if (wl != NULL)
+		tag = FORMAT_WINDOW|wl->window->id;
 	else
-		ft = format_create(NULL, FORMAT_STATUS);
+		tag = FORMAT_NONE;
+	if (c->flags & CLIENT_STATUSFORCE)
+		ft = format_create(NULL, tag, FORMAT_STATUS|FORMAT_FORCE);
+	else
+		ft = format_create(NULL, tag, FORMAT_STATUS);
 	format_defaults(ft, c, NULL, wl, NULL);
 
 	expanded = format_expand_time(ft, fmt, t);
@@ -665,7 +679,7 @@ status_prompt_set(struct client *c, const char *msg, const char *input,
 	time_t			 t;
 	char			*tmp;
 
-	ft = format_create(NULL, 0);
+	ft = format_create(NULL, FORMAT_NONE, 0);
 	format_defaults(ft, c, NULL, NULL, NULL);
 
 	t = time(NULL);
@@ -726,7 +740,7 @@ status_prompt_update(struct client *c, const char *msg, const char *input)
 	time_t			 t;
 	char			*tmp;
 
-	ft = format_create(NULL, 0);
+	ft = format_create(NULL, FORMAT_NONE, 0);
 	format_defaults(ft, c, NULL, NULL, NULL);
 
 	t = time(NULL);

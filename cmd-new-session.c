@@ -139,7 +139,7 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 
 	/* Get the new session working directory. */
 	if (args_has(args, 'c')) {
-		ft = format_create(item, 0);
+		ft = format_create(item, FORMAT_NONE, 0);
 		format_defaults(ft, c, NULL, NULL, NULL);
 		to_free = cwd = format_expand(ft, args_get(args, 'c'));
 		format_free(ft);
@@ -298,7 +298,7 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 		if ((template = args_get(args, 'F')) == NULL)
 			template = NEW_SESSION_TEMPLATE;
 
-		ft = format_create(item, 0);
+		ft = format_create(item, FORMAT_NONE, 0);
 		format_defaults(ft, c, s, NULL, NULL);
 
 		cp = format_expand(ft, template);

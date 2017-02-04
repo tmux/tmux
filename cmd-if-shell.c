@@ -82,7 +82,7 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 	else
 		cwd = NULL;
 
-	ft = format_create(item, 0);
+	ft = format_create(item, FORMAT_NONE, 0);
 	format_defaults(ft, item->state.c, s, wl, wp);
 	shellcmd = format_expand(ft, args->argv[0]);
 	format_free(ft);
