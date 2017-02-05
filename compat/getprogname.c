@@ -19,11 +19,10 @@
 #include "compat.h"
 
 #if defined(HAVE_PROGRAM_INVOCATION_SHORT_NAME)
+#include <errno.h>
 const char *
 getprogname(void)
 {
-	extern char	*program_invocation_short_name;
-
 	return (program_invocation_short_name);
 }
 #elif defined(HAVE___PROGNAME)
