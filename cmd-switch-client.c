@@ -108,6 +108,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 	if (c->session != NULL && c->session != s)
 		c->last_session = c->session;
 	c->session = s;
+	server_client_set_key_table(c, NULL);
 	status_timer_start(c);
 	session_update_activity(s, NULL);
 	gettimeofday(&s->last_attached_time, NULL);
