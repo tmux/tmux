@@ -971,24 +971,25 @@ screen_write_clearendofscreen(struct screen_write_ctx *ctx, u_int bg)
 
 /* Clear to start of screen. */
 void
-screen_write_clearstartofscreen(struct screen_write_ctx *ctx)
+screen_write_clearstartofscreen(struct screen_write_ctx *ctx, u_int bg)
 {
 	struct screen	*s = ctx->s;
 	struct tty_ctx	 ttyctx;
 	u_int		 sx = screen_size_x(s);
 
 	screen_write_initctx(ctx, &ttyctx);
+	ttyctx.bg = bg;
 
 	if (s->cy > 0) {
 		screen_dirty_clear(s, 0, 0, sx - 1, s->cy);
-		grid_view_clear(s->grid, 0, 0, sx, s->cy, 8);
+		grid_view_clear(s->grid, 0, 0, sx, s->cy, bg);
 	}
 	if (s->cx > sx - 1) {
 		screen_dirty_clear(s, 0, s->cy, sx - 1, s->cy);
-		grid_view_clear(s->grid, 0, s->cy, sx, 1, 8);
+		grid_view_clear(s->grid, 0, s->cy, sx, 1, bg);
 	} else {
 		screen_dirty_clear(s, 0, s->cy, s->cx, s->cy);
-		grid_view_clear(s->grid, 0, s->cy, s->cx + 1, 1, 8);
+		grid_view_clear(s->grid, 0, s->cy, s->cx + 1, 1, bg);
 	}
 
 	tty_write(tty_cmd_clearstartofscreen, &ttyctx);

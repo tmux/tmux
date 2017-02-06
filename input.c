@@ -1330,7 +1330,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 			screen_write_clearendofscreen(sctx, ictx->cell.cell.bg);
 			break;
 		case 1:
-			screen_write_clearstartofscreen(sctx);
+			screen_write_clearstartofscreen(sctx, ictx->cell.cell.bg);
 			break;
 		case 2:
 			screen_write_clearscreen(sctx, ictx->cell.cell.bg);
