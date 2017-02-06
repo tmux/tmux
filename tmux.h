@@ -1226,6 +1226,7 @@ struct cmdq_item {
 
 	struct cmd_list		*cmdlist;
 	struct cmd		*cmd;
+	int			 repeat;
 
 	cmdq_cb			 cb;
 	void			*data;
