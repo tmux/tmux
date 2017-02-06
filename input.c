@@ -871,8 +871,9 @@ input_parse(struct window_pane *wp)
 
 	buf = EVBUFFER_DATA(evb);
 	len = EVBUFFER_LENGTH(evb);
-	notify_input(wp, evb);
 	off = 0;
+
+	notify_input(wp, evb);
 
 	log_debug("%s: %%%u %s, %zu bytes: %.*s", __func__, wp->id,
 	    ictx->state->name, len, (int)len, buf);
@@ -1218,10 +1219,12 @@ input_csi_dispatch(struct input_ctx *ictx)
 
 	if (ictx->flags & INPUT_DISCARD)
 		return (0);
-	if (input_split(ictx) != 0)
-		return (0);
+
 	log_debug("%s: '%c' \"%s\" \"%s\"",
 	    __func__, ictx->ch, ictx->interm_buf, ictx->param_buf);
+
+	if (input_split(ictx) != 0)
+		return (0);
 
 	entry = bsearch(ictx, input_csi_table, nitems(input_csi_table),
 	    sizeof input_csi_table[0], input_table_compare);

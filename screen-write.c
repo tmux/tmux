@@ -31,8 +31,8 @@ static void	screen_write_flush(struct screen_write_ctx *);
 
 static int	screen_write_overwrite(struct screen_write_ctx *,
 		    struct grid_cell *, u_int);
-static int	screen_write_combine(struct screen_write_ctx *,
-		    const struct utf8_data *);
+static const struct grid_cell *screen_write_combine(struct screen_write_ctx *,
+		    const struct utf8_data *, u_int *);
 
 static const struct grid_cell screen_write_pad_cell = {
 	GRID_FLAG_PADDING, 0, 8, 8, { { 0 }, 0, 0, 0 }
@@ -1061,9 +1061,11 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	 * there is space.
 	 */
 	if (width == 0) {
-		if (screen_write_combine(ctx, &gc->data) == 0) {
+		if ((gc = screen_write_combine(ctx, &gc->data, &xx)) != 0) {
+			screen_write_cursormove(ctx, xx, s->cy);
 			screen_write_initctx(ctx, &ttyctx);
-			tty_write(tty_cmd_utf8character, &ttyctx);
+			ttyctx.cell = gc;
+			tty_write(tty_cmd_cell, &ttyctx);
 		}
 		return;
 	}
@@ -1203,36 +1205,48 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 }
 
 /* Combine a UTF-8 zero-width character onto the previous. */
-static int
-screen_write_combine(struct screen_write_ctx *ctx, const struct utf8_data *ud)
+static const struct grid_cell *
+screen_write_combine(struct screen_write_ctx *ctx, const struct utf8_data *ud,
+    u_int *xx)
 {
 	struct screen		*s = ctx->s;
 	struct grid		*gd = s->grid;
-	struct grid_cell	 gc;
+	static struct grid_cell	 gc;
+	u_int			 n;
 
 	/* Can't combine if at 0. */
 	if (s->cx == 0)
-		return (-1);
+		return (NULL);
 
 	/* Empty data is out. */
 	if (ud->size == 0)
 		fatalx("UTF-8 data empty");
 
 	/* Retrieve the previous cell. */
-	grid_view_get_cell(gd, s->cx - 1, s->cy, &gc);
+	for (n = 1; n < s->cx; n++) {
+		grid_view_get_cell(gd, s->cx - n, s->cy, &gc);
+		if (~gc.flags & GRID_FLAG_PADDING)
+			break;
+	}
+	if (n == s->cx)
+		return (NULL);
+	*xx = s->cx - n;
 
 	/* Check there is enough space. */
 	if (gc.data.size + ud->size > sizeof gc.data.data)
-		return (-1);
+		return (NULL);
+
+	log_debug("%s: %.*s onto %.*s at %u,%u", __func__, (int)ud->size,
+	    ud->data, (int)gc.data.size, gc.data.data, *xx, s->cy);
 
 	/* Append the data. */
 	memcpy(gc.data.data + gc.data.size, ud->data, ud->size);
 	gc.data.size += ud->size;
 
 	/* Set the new cell. */
-	grid_view_set_cell(gd, s->cx - 1, s->cy, &gc);
+	grid_view_set_cell(gd, *xx, s->cy, &gc);
 
-	return (0);
+	return (&gc);
 }
 
 /*

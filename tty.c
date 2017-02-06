@@ -1174,18 +1174,6 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 }
 
 void
-tty_cmd_utf8character(struct tty *tty, const struct tty_ctx *ctx)
-{
-	struct window_pane	*wp = ctx->wp;
-
-	/*
-	 * Cannot rely on not being a partial character, so just redraw the
-	 * whole line.
-	 */
-	tty_draw_pane(tty, wp, ctx->ocy, ctx->xoff, ctx->yoff);
-}
-
-void
 tty_cmd_setselection(struct tty *tty, const struct tty_ctx *ctx)
 {
 	char	*buf;
