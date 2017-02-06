@@ -87,6 +87,7 @@ struct input_ctx {
 	struct utf8_data	utf8data;
 
 	int			ch;
+
 	int			flags;
 #define INPUT_DISCARD 0x1
 
