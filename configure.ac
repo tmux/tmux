@@ -533,6 +533,12 @@ AC_COMPILE_IFELSE([AC_LANG_SOURCE(
 
 # Look for a suitable queue.h.
 AC_CHECK_DECL(
+	TAILQ_CONCAT,
+	found_queue_h=yes,
+	found_queue_h=no,
+	[#include <sys/queue.h>]
+)
+AC_CHECK_DECL(
 	TAILQ_PREV,
 	found_queue_h=yes,
 	found_queue_h=no,
