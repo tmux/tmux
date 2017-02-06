@@ -1056,6 +1056,9 @@ struct tty {
 
 	struct grid_cell cell;
 
+	int              last_wp;
+	struct grid_cell last_cell;
+
 #define TTY_NOCURSOR 0x1
 #define TTY_FREEZE 0x2
 #define TTY_TIMER 0x4
