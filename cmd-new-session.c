@@ -277,6 +277,8 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 		} else if (c->session != NULL)
 			c->last_session = c->session;
 		c->session = s;
+		if (!item->repeat)
+			server_client_set_key_table(c, NULL);
 		status_timer_start(c);
 		notify_client("client-session-changed", c);
 		session_update_activity(s, NULL);
