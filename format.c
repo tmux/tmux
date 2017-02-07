@@ -859,9 +859,8 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 		*ptr = '\0';
 
 		found = format_find(ft, copy + 1, modifiers);
-		if (found == NULL) {
-			log_debug("XXX %s", copy + 1);
-			found = format_expand(ft, copy + 1);}
+		if (found == NULL)
+			found = format_expand(ft, copy + 1);
 		if (format_choose(ptr + 1, &left, &right) != 0)
 			goto fail;
 
