@@ -242,6 +242,7 @@ enum tty_code_code {
 	TTYC_DL1,	/* delete_line, dl */
 	TTYC_E3,
 	TTYC_ECH,	/* erase_chars, ec */
+	TTYC_ED,	/* csr_eos, cd */
 	TTYC_EL,	/* clr_eol, ce */
 	TTYC_EL1,	/* clr_bol, cb */
 	TTYC_ENACS,	/* ena_acs, eA */
