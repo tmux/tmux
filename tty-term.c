@@ -87,6 +87,7 @@ static const struct tty_term_code_entry tty_term_codes[] = {
 	[TTYC_DL1] = { TTYCODE_STRING, "dl1" },
 	[TTYC_E3] = { TTYCODE_STRING, "E3" },
 	[TTYC_ECH] = { TTYCODE_STRING, "ech" },
+	[TTYC_ED] = { TTYCODE_STRING, "ed" },
 	[TTYC_EL] = { TTYCODE_STRING, "el" },
 	[TTYC_EL1] = { TTYCODE_STRING, "el1" },
 	[TTYC_ENACS] = { TTYCODE_STRING, "enacs" },
