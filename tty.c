@@ -445,6 +445,7 @@ tty_puts(struct tty *tty, const char *s)
 
 	if (tty_log_fd != -1)
 		write(tty_log_fd, s, strlen(s));
+	log_debug("%s: %s", tty->path, s);
 }
 
 void
@@ -454,12 +455,17 @@ tty_putc(struct tty *tty, u_char ch)
 
 	if (tty->cell.attr & GRID_ATTR_CHARSET) {
 		acs = tty_acs_get(tty, ch);
-		if (acs != NULL)
+		if (acs != NULL) {
 			bufferevent_write(tty->event, acs, strlen(acs));
-		else
+			log_debug("%s: %s", tty->path, acs);
+		} else {
 			bufferevent_write(tty->event, &ch, 1);
-	} else
+			log_debug("%s: %c", tty->path, ch);
+		}
+	} else {
 		bufferevent_write(tty->event, &ch, 1);
+		log_debug("%s: %c", tty->path, ch);
+	}
 
 	if (ch >= 0x20 && ch != 0x7f) {
 		if (tty->cx >= tty->sx) {
@@ -486,8 +492,11 @@ void
 tty_putn(struct tty *tty, const void *buf, size_t len, u_int width)
 {
 	bufferevent_write(tty->event, buf, len);
+
 	if (tty_log_fd != -1)
 		write(tty_log_fd, buf, len);
+	log_debug("%s: %.*s", tty->path, (int)len, (char *)buf);
+
 	tty->cx += width;
 }
 
@@ -1319,7 +1328,7 @@ tty_region(struct tty *tty, u_int rupper, u_int rlower)
 		tty_cursor(tty, 0, tty->cy);
 
 	tty_putcode2(tty, TTYC_CSR, tty->rupper, tty->rlower);
-	tty_cursor(tty, 0, 0);
+	tty->cx = tty->cy = 0;
 }
 
 /* Turn off margin. */
@@ -1347,12 +1356,15 @@ tty_margin(struct tty *tty, u_int rleft, u_int rright)
 	if (tty->rleft == rleft && tty->rright == rright)
 		return;
 
+	tty->rupper = 0;
+	tty->rlower = tty->sy - 1;
+
 	tty->rleft = rleft;
 	tty->rright = rright;
 
-	snprintf(s, sizeof s, "\033[%u;%us", rleft + 1, rright + 1);
+	snprintf(s, sizeof s, "\033[r\033[%u;%us", rleft + 1, rright + 1);
 	tty_puts(tty, s);
-	tty_cursor(tty, 0, 0);
+	tty->cx = tty->cy = 0;
 }
 
 /* Move cursor inside pane. */
