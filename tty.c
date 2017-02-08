@@ -1170,6 +1170,15 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 }
 
 void
+tty_cmd_cells(struct tty *tty, const struct tty_ctx *ctx)
+{
+	tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
+
+	tty_attributes(tty, ctx->cell, ctx->wp);
+	tty_putn(tty, ctx->ptr, ctx->num, ctx->num);
+}
+
+void
 tty_cmd_setselection(struct tty *tty, const struct tty_ctx *ctx)
 {
 	char	*buf;

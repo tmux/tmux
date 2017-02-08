@@ -896,6 +896,16 @@ input_parse(struct window_pane *wp)
 		}
 
 		/*
+		 * Any state except print stops the current collection. This is
+		 * an optimization to avoid checking if the attributes have
+		 * changed for every character. It will stop unnecessarily for
+		 * sequences that don't make a terminal change, but they should
+		 * be the minority.
+		 */
+		if (itr->handler != input_print)
+			screen_write_collect_end(&ictx->ctx);
+
+		/*
 		 * Execute the handler, if any. Don't switch state if it
 		 * returns non-zero.
 		 */
@@ -1020,7 +1030,7 @@ input_print(struct input_ctx *ictx)
 		ictx->cell.cell.attr &= ~GRID_ATTR_CHARSET;
 
 	utf8_set(&ictx->cell.cell.data, ictx->ch);
-	screen_write_cell(&ictx->ctx, &ictx->cell.cell);
+	screen_write_collect_add(&ictx->ctx, &ictx->cell.cell);
 
 	ictx->cell.cell.attr &= ~GRID_ATTR_CHARSET;
 
