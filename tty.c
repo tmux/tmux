@@ -954,14 +954,15 @@ tty_cmd_clearstartofline(struct tty *tty, const struct tty_ctx *ctx)
 
 	tty_default_attributes(tty, wp, ctx->bg);
 
-	tty_cursor_pane(tty, ctx, 0, ctx->ocy);
-
 	if (ctx->xoff == 0 &&
 	    tty_term_has(tty->term, TTYC_EL1) &&
-	    !tty_fake_bce(tty, ctx->wp, ctx->bg))
+	    !tty_fake_bce(tty, ctx->wp, ctx->bg)) {
+		tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
 		tty_putcode(tty, TTYC_EL1);
-	else
+	} else {
+		tty_cursor_pane(tty, ctx, 0, ctx->ocy);
 		tty_repeat_space(tty, ctx->ocx + 1);
+	}
 }
 
 void
