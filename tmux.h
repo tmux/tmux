@@ -483,6 +483,7 @@ struct msg_stderr_data {
 #define MODE_FOCUSON 0x800
 #define MODE_MOUSE_ALL 0x1000
 
+#define ALL_MODES 0xffffff
 #define ALL_MOUSE_MODES (MODE_MOUSE_STANDARD|MODE_MOUSE_BUTTON|MODE_MOUSE_ALL)
 
 /*
@@ -1085,9 +1086,9 @@ struct tty {
 
 /* TTY command context. */
 struct tty_ctx {
-	struct window_pane *wp;
+	struct window_pane	*wp;
 
-	const struct grid_cell *cell;
+	const struct grid_cell	*cell;
 
 	u_int		 num;
 	void		*ptr;
