@@ -839,6 +839,8 @@ screen_write_scrollregion(struct screen_write_ctx *ctx, u_int rupper,
 	if (rupper >= rlower)	/* cannot be one line */
 		return;
 
+	screen_write_collect_flush(ctx);
+
 	/* Cursor moves to top-left. */
 	s->cx = 0;
 	s->cy = 0;
@@ -854,7 +856,6 @@ screen_write_linefeed(struct screen_write_ctx *ctx, int wrapped)
 	struct screen		*s = ctx->s;
 	struct grid		*gd = s->grid;
 	struct grid_line	*gl;
-	struct tty_ctx		 ttyctx;
 
 	gl = &gd->linedata[gd->hsize + s->cy];
 	if (wrapped)
@@ -864,12 +865,30 @@ screen_write_linefeed(struct screen_write_ctx *ctx, int wrapped)
 
 	if (s->cy == s->rlower) {
 		grid_view_scroll_region_up(gd, s->rupper, s->rlower);
-
 		screen_write_collect_scroll(ctx);
-		screen_write_initctx(ctx, &ttyctx);
-		tty_write(tty_cmd_linefeed, &ttyctx);
+		ctx->scrolled++;
 	} else if (s->cy < screen_size_y(s) - 1)
 		s->cy++;
+}
+
+/* Scroll up. */
+void
+screen_write_scrollup(struct screen_write_ctx *ctx, u_int lines)
+{
+	struct screen	*s = ctx->s;
+	struct grid	*gd = s->grid;
+	u_int		 i;
+
+	if (lines == 0)
+		lines = 1;
+	else if (lines > s->rlower - s->rupper + 1)
+		lines = s->rlower - s->rupper + 1;
+
+	for (i = 0; i < lines; i++) {
+		grid_view_scroll_region_up(gd, s->rupper, s->rlower);
+		screen_write_collect_scroll(ctx);
+	}
+	ctx->scrolled += lines;
 }
 
 /* Carriage return (cursor to start of line). */
@@ -1008,6 +1027,18 @@ screen_write_collect_flush(struct screen_write_ctx *ctx)
 	struct screen_write_collect_item	*ci, *tmp;
 	u_int					 y, cx, cy;
 	struct tty_ctx				 ttyctx;
+
+	if (ctx->scrolled != 0) {
+		log_debug("%s: scrolled %u (region %u-%u)", __func__,
+		    ctx->scrolled, s->rupper, s->rlower);
+		if (ctx->scrolled > s->rlower - s->rupper + 1)
+			ctx->scrolled = s->rlower - s->rupper + 1;
+
+		screen_write_initctx(ctx, &ttyctx);
+		ttyctx.num = ctx->scrolled;
+		tty_write(tty_cmd_scrollup, &ttyctx);
+	}
+	ctx->scrolled = 0;
 
 	cx = s->cx; cy = s->cy;
 	for (y = 0; y < screen_size_y(s); y++) {
