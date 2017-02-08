@@ -292,11 +292,12 @@ grid_expand_line(struct grid *gd, u_int py, u_int sx, u_int bg)
 	if (sx <= gl->cellsize)
 		return;
 
-	if (sx < gd->sx) {
-		sx *= 2;
-		if (sx > gd->sx)
-			sx = gd->sx;
-	}
+	if (sx < gd->sx / 4)
+		sx = gd->sx / 4;
+	else if (sx < gd->sx / 2)
+		sx = gd->sx / 2;
+	else
+		sx = gd->sx;
 
 	gl->celldata = xreallocarray(gl->celldata, sx, sizeof *gl->celldata);
 	for (xx = gl->cellsize; xx < sx; xx++)
