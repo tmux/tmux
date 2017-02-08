@@ -13,6 +13,10 @@ Please also include:
 - logs from tmux (see below);
 - at most one or two screenshots, if helpful.
 
+This should include at least the output of:
+
+    $ uname -sp && tmux -V && echo $TERM
+
 Please do not report bugs (crashes, incorrect behaviour) without reproducing on
 a tmux built from Git master.
 
