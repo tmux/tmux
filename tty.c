@@ -439,32 +439,36 @@ tty_putcode_ptr2(struct tty *tty, enum tty_code_code code, const void *a,
 void
 tty_puts(struct tty *tty, const char *s)
 {
+	size_t	size = EVBUFFER_LENGTH(tty->event->output);
+
 	if (*s == '\0')
 		return;
+
 	bufferevent_write(tty->event, s, strlen(s));
+	log_debug("%s (%zu): %s", tty->path, size, s);
 
 	if (tty_log_fd != -1)
 		write(tty_log_fd, s, strlen(s));
-	log_debug("%s: %s", tty->path, s);
 }
 
 void
 tty_putc(struct tty *tty, u_char ch)
 {
+	size_t		 size = EVBUFFER_LENGTH(tty->event->output);
 	const char	*acs;
 
 	if (tty->cell.attr & GRID_ATTR_CHARSET) {
 		acs = tty_acs_get(tty, ch);
 		if (acs != NULL) {
 			bufferevent_write(tty->event, acs, strlen(acs));
-			log_debug("%s: %s", tty->path, acs);
+			log_debug("%s (%zu): %s", tty->path, size, acs);
 		} else {
 			bufferevent_write(tty->event, &ch, 1);
-			log_debug("%s: %c", tty->path, ch);
+			log_debug("%s (%zu): %c", tty->path, size, ch);
 		}
 	} else {
 		bufferevent_write(tty->event, &ch, 1);
-		log_debug("%s: %c", tty->path, ch);
+		log_debug("%s (%zu): %c", tty->path, size, ch);
 	}
 
 	if (ch >= 0x20 && ch != 0x7f) {
@@ -491,11 +495,13 @@ tty_putc(struct tty *tty, u_char ch)
 void
 tty_putn(struct tty *tty, const void *buf, size_t len, u_int width)
 {
+	size_t	size = EVBUFFER_LENGTH(tty->event->output);
+
 	bufferevent_write(tty->event, buf, len);
+	log_debug("%s (%zu): %.*s", tty->path, size, (int)len, (char *)buf);
 
 	if (tty_log_fd != -1)
 		write(tty_log_fd, buf, len);
-	log_debug("%s: %.*s", tty->path, (int)len, (char *)buf);
 
 	tty->cx += width;
 }
