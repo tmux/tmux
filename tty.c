@@ -142,6 +142,7 @@ tty_resize(struct tty *tty)
 		sx = 80;
 		sy = 24;
 	}
+	log_debug("%s: %s now %ux%u", __func__, tty->path, sx, sy);
 	if (!tty_set_size(tty, sx, sy))
 		return (0);
 

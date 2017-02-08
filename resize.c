@@ -84,8 +84,8 @@ recalculate_sizes(void)
 		if (s->sx == ssx && s->sy == ssy)
 			continue;
 
-		log_debug("session size %u,%u (was %u,%u)", ssx, ssy, s->sx,
-		    s->sy);
+		log_debug("session $%u size %u,%u (was %u,%u)", s->id, ssx, ssy,
+		    s->sx, s->sy);
 
 		s->sx = ssx;
 		s->sy = ssy;
@@ -130,8 +130,8 @@ recalculate_sizes(void)
 
 		if (w->sx == ssx && w->sy == ssy)
 			continue;
-		log_debug("window size %u,%u (was %u,%u)", ssx, ssy, w->sx,
-		    w->sy);
+		log_debug("window @%u size %u,%u (was %u,%u)", w->id, ssx, ssy,
+		    w->sx, w->sy);
 
 		w->flags &= ~(WINDOW_FORCEWIDTH|WINDOW_FORCEHEIGHT);
 		w->flags |= forced;
