@@ -222,6 +222,7 @@ enum input_csi_type {
 	INPUT_CSI_SGR,
 	INPUT_CSI_SM,
 	INPUT_CSI_SM_PRIVATE,
+	INPUT_CSI_SU,
 	INPUT_CSI_TBC,
 	INPUT_CSI_VPA,
 	INPUT_CSI_WINOPS,
@@ -243,6 +244,7 @@ static const struct input_table_entry input_csi_table[] = {
 	{ 'L', "",  INPUT_CSI_IL },
 	{ 'M', "",  INPUT_CSI_DL },
 	{ 'P', "",  INPUT_CSI_DCH },
+	{ 'S', "",  INPUT_CSI_SU },
 	{ 'X', "",  INPUT_CSI_ECH },
 	{ 'Z', "",  INPUT_CSI_CBT },
 	{ 'c', "",  INPUT_CSI_DA },
@@ -896,6 +898,16 @@ input_parse(struct window_pane *wp)
 		}
 
 		/*
+		 * Any state except print stops the current collection. This is
+		 * an optimization to avoid checking if the attributes have
+		 * changed for every character. It will stop unnecessarily for
+		 * sequences that don't make a terminal change, but they should
+		 * be the minority.
+		 */
+		if (itr->handler != input_print)
+			screen_write_collect_end(&ictx->ctx);
+
+		/*
 		 * Execute the handler, if any. Don't switch state if it
 		 * returns non-zero.
 		 */
@@ -920,7 +932,6 @@ input_parse(struct window_pane *wp)
 /* Split the parameter list (if any). */
 static int
 input_split(struct input_ctx *ictx)
-
 {
 	const char	*errstr;
 	char		*ptr, *out;
@@ -1021,7 +1032,7 @@ input_print(struct input_ctx *ictx)
 		ictx->cell.cell.attr &= ~GRID_ATTR_CHARSET;
 
 	utf8_set(&ictx->cell.cell.data, ictx->ch);
-	screen_write_cell(&ictx->ctx, &ictx->cell.cell);
+	screen_write_collect_add(&ictx->ctx, &ictx->cell.cell);
 
 	ictx->cell.cell.attr &= ~GRID_ATTR_CHARSET;
 
@@ -1403,6 +1414,9 @@ input_csi_dispatch(struct input_ctx *ictx)
 		break;
 	case INPUT_CSI_SM_PRIVATE:
 		input_csi_dispatch_sm_private(ictx);
+		break;
+	case INPUT_CSI_SU:
+		screen_write_scrollup(sctx, input_get(ictx, 0, 1, 1));
 		break;
 	case INPUT_CSI_TBC:
 		switch (input_get(ictx, 0, 0, 0)) {

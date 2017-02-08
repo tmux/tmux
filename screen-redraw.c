@@ -423,6 +423,9 @@ screen_redraw_pane(struct client *c, struct window_pane *wp)
 	if (status_at_line(c) == 0)
 		yoff++;
 
+	log_debug("%s: redraw pane %%%u (at %u,%u)", c->tty.path, wp->id,
+	    wp->xoff, yoff);
+
 	for (i = 0; i < wp->sy; i++)
 		tty_draw_pane(&c->tty, wp, i, wp->xoff, yoff);
 	tty_reset(&c->tty);

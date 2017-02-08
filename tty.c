@@ -954,14 +954,15 @@ tty_cmd_clearstartofline(struct tty *tty, const struct tty_ctx *ctx)
 
 	tty_default_attributes(tty, wp, ctx->bg);
 
-	tty_cursor_pane(tty, ctx, 0, ctx->ocy);
-
 	if (ctx->xoff == 0 &&
 	    tty_term_has(tty->term, TTYC_EL1) &&
-	    !tty_fake_bce(tty, ctx->wp, ctx->bg))
+	    !tty_fake_bce(tty, ctx->wp, ctx->bg)) {
+		tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
 		tty_putcode(tty, TTYC_EL1);
-	else
+	} else {
+		tty_cursor_pane(tty, ctx, 0, ctx->ocy);
 		tty_repeat_space(tty, ctx->ocx + 1);
+	}
 }
 
 void
@@ -1018,6 +1019,32 @@ tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 		tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
 
 	tty_putc(tty, '\n');
+}
+
+void
+tty_cmd_scrollup(struct tty *tty, const struct tty_ctx *ctx)
+{
+	struct window_pane	*wp = ctx->wp;
+	u_int			 i;
+
+	if ((!tty_pane_full_width(tty, ctx) && !tty_use_margin(tty)) ||
+	    tty_fake_bce(tty, wp, ctx->bg) ||
+	    !tty_term_has(tty->term, TTYC_CSR)) {
+		tty_redraw_region(tty, ctx);
+		return;
+	}
+
+	tty_attributes(tty, &grid_default_cell, wp);
+
+	tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
+	tty_margin_pane(tty, ctx);
+
+	if (ctx->num == 1 || !tty_term_has(tty->term, TTYC_INDN)) {
+		tty_cursor(tty, tty->rright, ctx->yoff + tty->rlower);
+		for (i = 0; i < ctx->num; i++)
+			tty_putc(tty, '\n');
+	} else
+		tty_putcode1(tty, TTYC_INDN, ctx->num);
 }
 
 void
@@ -1156,8 +1183,6 @@ tty_cmd_alignmenttest(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 {
-	struct window_pane	*wp = ctx->wp;
-
 	if (ctx->xoff + ctx->ocx > tty->sx - 1 && ctx->ocy == ctx->orlower) {
 		if (tty_pane_full_width(tty, ctx))
 			tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
@@ -1167,7 +1192,16 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 
 	tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
 
-	tty_cell(tty, ctx->cell, wp);
+	tty_cell(tty, ctx->cell, ctx->wp);
+}
+
+void
+tty_cmd_cells(struct tty *tty, const struct tty_ctx *ctx)
+{
+	tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
+
+	tty_attributes(tty, ctx->cell, ctx->wp);
+	tty_putn(tty, ctx->ptr, ctx->num, ctx->num);
 }
 
 void

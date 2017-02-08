@@ -243,6 +243,7 @@ enum tty_code_code {
 	TTYC_ICH1,	/* insert_character, ic */
 	TTYC_IL,	/* parm_insert_line, IL */
 	TTYC_IL1,	/* insert_line, il */
+	TTYC_INDN,      /* parm_index, indn */
 	TTYC_INVIS,	/* enter_secure_mode, mk */
 	TTYC_IS1,	/* init_1string, i1 */
 	TTYC_IS2,	/* init_2string, i2 */
@@ -653,17 +654,19 @@ struct screen {
 
 	bitstr_t		*tabs;
 
-	bitstr_t		*dirty;
-	u_int			 dirtysize;
-
 	struct screen_sel	 sel;
 };
 
 /* Screen write context. */
+struct screen_write_collect_item;
+struct screen_write_collect_line;
 struct screen_write_ctx {
 	struct window_pane	*wp;
 	struct screen		*s;
-	u_int			 dirty;
+
+	struct screen_write_collect_item *item;
+	struct screen_write_collect_line *list;
+	u_int			 scrolled;
 
 	u_int			 cells;
 	u_int			 written;
@@ -1044,7 +1047,7 @@ struct tty {
 
 	struct grid_cell cell;
 
-	int              last_wp;
+	int		 last_wp;
 	struct grid_cell last_cell;
 
 #define TTY_NOCURSOR 0x1
@@ -1645,6 +1648,7 @@ void	tty_write(void (*)(struct tty *, const struct tty_ctx *),
 	    struct tty_ctx *);
 void	tty_cmd_alignmenttest(struct tty *, const struct tty_ctx *);
 void	tty_cmd_cell(struct tty *, const struct tty_ctx *);
+void	tty_cmd_cells(struct tty *, const struct tty_ctx *);
 void	tty_cmd_clearendofline(struct tty *, const struct tty_ctx *);
 void	tty_cmd_clearendofscreen(struct tty *, const struct tty_ctx *);
 void	tty_cmd_clearline(struct tty *, const struct tty_ctx *);
@@ -1658,6 +1662,7 @@ void	tty_cmd_erasecharacter(struct tty *, const struct tty_ctx *);
 void	tty_cmd_insertcharacter(struct tty *, const struct tty_ctx *);
 void	tty_cmd_insertline(struct tty *, const struct tty_ctx *);
 void	tty_cmd_linefeed(struct tty *, const struct tty_ctx *);
+void	tty_cmd_scrollup(struct tty *, const struct tty_ctx *);
 void	tty_cmd_reverseindex(struct tty *, const struct tty_ctx *);
 void	tty_cmd_setselection(struct tty *, const struct tty_ctx *);
 void	tty_cmd_rawstring(struct tty *, const struct tty_ctx *);
@@ -1913,6 +1918,8 @@ void	 grid_clear_history(struct grid *);
 const struct grid_line *grid_peek_line(struct grid *, u_int);
 void	 grid_get_cell(struct grid *, u_int, u_int, struct grid_cell *);
 void	 grid_set_cell(struct grid *, u_int, u_int, const struct grid_cell *);
+void	 grid_set_cells(struct grid *, u_int, u_int, const struct grid_cell *,
+	     const char *, size_t);
 void	 grid_clear(struct grid *, u_int, u_int, u_int, u_int, u_int);
 void	 grid_clear_lines(struct grid *, u_int, u_int, u_int);
 void	 grid_move_lines(struct grid *, u_int, u_int, u_int, u_int);
@@ -1927,6 +1934,8 @@ u_int	 grid_reflow(struct grid *, struct grid *, u_int);
 void	 grid_view_get_cell(struct grid *, u_int, u_int, struct grid_cell *);
 void	 grid_view_set_cell(struct grid *, u_int, u_int,
 	     const struct grid_cell *);
+void	 grid_view_set_cells(struct grid *, u_int, u_int,
+	     const struct grid_cell *, const char *, size_t);
 void	 grid_view_clear_history(struct grid *, u_int);
 void	 grid_view_clear(struct grid *, u_int, u_int, u_int, u_int, u_int);
 void	 grid_view_scroll_region_up(struct grid *, u_int, u_int);
@@ -1980,11 +1989,15 @@ void	 screen_write_cursormove(struct screen_write_ctx *, u_int, u_int);
 void	 screen_write_reverseindex(struct screen_write_ctx *);
 void	 screen_write_scrollregion(struct screen_write_ctx *, u_int, u_int);
 void	 screen_write_linefeed(struct screen_write_ctx *, int);
+void	 screen_write_scrollup(struct screen_write_ctx *, u_int);
 void	 screen_write_carriagereturn(struct screen_write_ctx *);
 void	 screen_write_clearendofscreen(struct screen_write_ctx *, u_int);
 void	 screen_write_clearstartofscreen(struct screen_write_ctx *, u_int);
 void	 screen_write_clearscreen(struct screen_write_ctx *, u_int);
 void	 screen_write_clearhistory(struct screen_write_ctx *);
+void	 screen_write_collect_end(struct screen_write_ctx *);
+void	 screen_write_collect_add(struct screen_write_ctx *,
+	     const struct grid_cell *);
 void	 screen_write_cell(struct screen_write_ctx *, const struct grid_cell *);
 void	 screen_write_setselection(struct screen_write_ctx *, u_char *, u_int);
 void	 screen_write_rawstring(struct screen_write_ctx *, u_char *, u_int);

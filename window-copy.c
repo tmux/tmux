@@ -29,7 +29,7 @@ static void	window_copy_command(struct window_pane *, struct client *,
 		    struct session *, struct args *, struct mouse_event *);
 static struct screen *window_copy_init(struct window_pane *);
 static void	window_copy_free(struct window_pane *);
-static void	window_copy_pagedown(struct window_pane *, int);
+static int	window_copy_pagedown(struct window_pane *, int);
 static void	window_copy_next_paragraph(struct window_pane *);
 static void	window_copy_previous_paragraph(struct window_pane *);
 static void	window_copy_resize(struct window_pane *, u_int, u_int);
@@ -380,7 +380,7 @@ window_copy_pageup(struct window_pane *wp, int half_page)
 	window_copy_redraw_screen(wp);
 }
 
-static void
+static int
 window_copy_pagedown(struct window_pane *wp, int half_page)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
@@ -420,13 +420,11 @@ window_copy_pagedown(struct window_pane *wp, int half_page)
 			window_copy_cursor_end_of_line(wp);
 	}
 
-	if (data->scroll_exit && data->oy == 0) {
-		window_pane_reset_mode(wp);
-		return;
-	}
-
+	if (data->scroll_exit && data->oy == 0)
+		return (1);
 	window_copy_update_selection(wp, 1);
 	window_copy_redraw_screen(wp);
+	return (0);
 }
 
 static void
@@ -621,8 +619,12 @@ window_copy_command(struct window_pane *wp, struct client *c, struct session *s,
 		if (strcmp(command, "end-of-line") == 0)
 			window_copy_cursor_end_of_line(wp);
 		if (strcmp(command, "halfpage-down") == 0) {
-			for (; np != 0; np--)
-				window_copy_pagedown(wp, 1);
+			for (; np != 0; np--) {
+				if (window_copy_pagedown(wp, 1)) {
+					cancel = 1;
+					break;
+				}
+			}
 		}
 		if (strcmp(command, "halfpage-up") == 0) {
 			for (; np != 0; np--)
@@ -715,8 +717,12 @@ window_copy_command(struct window_pane *wp, struct client *c, struct session *s,
 				window_copy_other_end(wp);
 		}
 		if (strcmp(command, "page-down") == 0) {
-			for (; np != 0; np--)
-				window_copy_pagedown(wp, 0);
+			for (; np != 0; np--) {
+				if (window_copy_pagedown(wp, 0)) {
+					cancel = 1;
+					break;
+				}
+			}
 		}
 		if (strcmp(command, "page-up") == 0) {
 			for (; np != 0; np--)
