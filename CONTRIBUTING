@@ -13,6 +13,11 @@ Please also include:
 - logs from tmux (see below);
 - at most one or two screenshots, if helpful.
 
+On ubuntu show output of:
+```
+tmux -V && ecoh $TERM && lsb_release -a
+```
+
 Please do not report bugs (crashes, incorrect behaviour) without reproducing on
 a tmux built from Git master.
 
