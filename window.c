@@ -66,8 +66,6 @@ static struct window_pane *window_pane_create(struct window *, u_int, u_int,
 		    u_int);
 static void	window_pane_destroy(struct window_pane *);
 
-static void	window_pane_set_watermark(struct window_pane *, size_t);
-
 static void	window_pane_read_callback(struct bufferevent *, void *);
 static void	window_pane_error_callback(struct bufferevent *, short, void *);
 
@@ -842,14 +840,6 @@ window_pane_destroy(struct window_pane *wp)
 	free(wp);
 }
 
-static void
-window_pane_set_watermark(struct window_pane *wp, size_t size)
-{
-	wp->wmark_hits = 0;
-	wp->wmark_size = size;
-	bufferevent_setwatermark(wp->event, EV_READ, 0, size);
-}
-
 int
 window_pane_spawn(struct window_pane *wp, int argc, char **argv,
     const char *path, const char *shell, const char *cwd, struct environ *env,
@@ -969,7 +959,7 @@ window_pane_spawn(struct window_pane *wp, int argc, char **argv,
 	wp->event = bufferevent_new(wp->fd, window_pane_read_callback, NULL,
 	    window_pane_error_callback, wp);
 
-	window_pane_set_watermark(wp, READ_FAST_SIZE);
+	bufferevent_setwatermark(wp->event, EV_READ, 0, READ_SIZE);
 	bufferevent_enable(wp->event, EV_READ|EV_WRITE);
 
 	free(cmd);
@@ -985,26 +975,13 @@ window_pane_read_callback(__unused struct bufferevent *bufev, void *data)
 	char			*new_data;
 	size_t			 new_size;
 
-	if (wp->wmark_size == READ_FAST_SIZE) {
-		if (size > READ_FULL_SIZE)
-			wp->wmark_hits++;
-		if (wp->wmark_hits == READ_CHANGE_HITS)
-			window_pane_set_watermark(wp, READ_SLOW_SIZE);
-	} else if (wp->wmark_size == READ_SLOW_SIZE) {
-		if (size < READ_EMPTY_SIZE)
-			wp->wmark_hits++;
-		if (wp->wmark_hits == READ_CHANGE_HITS)
-			window_pane_set_watermark(wp, READ_FAST_SIZE);
-	}
-	log_debug("%%%u has %zu bytes (of %u, %u hits)", wp->id, size,
-	    wp->wmark_size, wp->wmark_hits);
-
 	new_size = size - wp->pipe_off;
 	if (wp->pipe_fd != -1 && new_size > 0) {
 		new_data = EVBUFFER_DATA(evb) + wp->pipe_off;
 		bufferevent_write(wp->pipe_event, new_data, new_size);
 	}
 
+	log_debug("%%%u has %zu bytes", wp->id, size);
 	input_parse(wp);
 
 	wp->pipe_off = EVBUFFER_LENGTH(evb);
