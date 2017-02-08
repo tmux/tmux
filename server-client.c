@@ -963,6 +963,7 @@ server_client_loop(void)
 	}
 }
 
+/* Resize timer event. */
 static void
 server_client_resize_event(__unused int fd, __unused short events, void *data)
 {

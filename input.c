@@ -920,7 +920,6 @@ input_parse(struct window_pane *wp)
 /* Split the parameter list (if any). */
 static int
 input_split(struct input_ctx *ictx)
-
 {
 	const char	*errstr;
 	char		*ptr, *out;

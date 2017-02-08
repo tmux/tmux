@@ -1156,8 +1156,6 @@ tty_cmd_alignmenttest(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 {
-	struct window_pane	*wp = ctx->wp;
-
 	if (ctx->xoff + ctx->ocx > tty->sx - 1 && ctx->ocy == ctx->orlower) {
 		if (tty_pane_full_width(tty, ctx))
 			tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
@@ -1167,7 +1165,7 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 
 	tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
 
-	tty_cell(tty, ctx->cell, wp);
+	tty_cell(tty, ctx->cell, ctx->wp);
 }
 
 void
