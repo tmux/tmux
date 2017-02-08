@@ -25,8 +25,6 @@
 
 static void	screen_write_initctx(struct screen_write_ctx *,
 		    struct tty_ctx *);
-static void	screen_write_save_last(struct screen_write_ctx *,
-		    struct tty_ctx *);
 static void	screen_write_flush(struct screen_write_ctx *);
 
 static int	screen_write_overwrite(struct screen_write_ctx *,
@@ -435,24 +433,6 @@ screen_write_initctx(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx)
 
 	ttyctx->orlower = s->rlower;
 	ttyctx->orupper = s->rupper;
-}
-
-/* Save last cell on screen. */
-static void
-screen_write_save_last(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx)
-{
-	struct screen		*s = ctx->s;
-	struct grid		*gd = s->grid;
-	struct grid_cell	 gc;
-	u_int			 xx;
-
-	memcpy(&gc, &grid_default_cell, sizeof gc);
-	for (xx = 1; xx <= screen_size_x(s); xx++) {
-		grid_view_get_cell(gd, screen_size_x(s) - xx, s->cy, &gc);
-		if (~gc.flags & GRID_FLAG_PADDING)
-			break;
-	}
-	memcpy(&ttyctx->last_cell, &gc, sizeof ttyctx->last_cell);
 }
 
 /* Set a mode. */
@@ -1040,7 +1020,7 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	struct grid_line	*gl;
 	struct grid_cell 	 tmp_gc, now_gc;
 	struct grid_cell_entry	*gce;
-	int			 insert, skip, selected, wrapped = 0;
+	int			 insert, skip, selected;
 
 	ctx->cells++;
 
@@ -1071,9 +1051,6 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 		return;
 	}
 
-	/* Initialise the redraw context. */
-	screen_write_initctx(ctx, &ttyctx);
-
 	/* If in insert mode, make space for the cells. */
 	if (s->mode & MODE_INSERT) {
 		if (s->cx <= sx - width) {
@@ -1088,17 +1065,16 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 
 	/* Check this will fit on the current line and wrap if not. */
 	if ((s->mode & MODE_WRAP) && s->cx > sx - width) {
-		screen_write_flush(ctx);
-		screen_write_save_last(ctx, &ttyctx);
 		screen_write_linefeed(ctx, 1);
 		s->cx = 0;	/* carriage return */
-		skip = 0;
-		wrapped = 1;
 	}
 
 	/* Sanity check cursor position. */
 	if (s->cx > sx - width || s->cy > sy - 1)
 		return;
+
+	/* Initialise the redraw context. */
+	screen_write_initctx(ctx, &ttyctx);
 
 	/* Handle overwriting of UTF-8 characters. */
 	gl = &s->grid->linedata[s->grid->hsize + s->cy];
@@ -1179,27 +1155,20 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 		tty_write(tty_cmd_cell, &ttyctx);
 		ctx->written++;
 	} else if (!skip) {
-		if (wrapped) {
-			ttyctx.cell = gc;
-			tty_write(tty_cmd_cell, &ttyctx);
-			ctx->written++;
-		} else {
-			/*
-			 * If wp is NULL, we are not updating the terminal and
-			 * don't care about actually writing the cells
-			 * (tty_write will just return). So don't even bother
-			 * allocating the dirty array.
-			 */
-			if (ctx->wp != NULL && s->dirty == NULL) {
-				log_debug("%s: allocating %u bits", __func__,
-				    s->dirtysize);
-				s->dirty = bit_alloc(s->dirtysize);
-			}
-			if (s->dirty != NULL) {
-				bit_set(s->dirty, screen_dirty_bit(s,
-				    ttyctx.ocx, ttyctx.ocy));
-				ctx->dirty++;
-			}
+		/*
+		 * If wp is NULL, we are not updating the terminal and don't
+		 * care about actually writing the cells (tty_write will just
+		 * return). So don't even bother allocating the dirty array.
+		 */
+		if (ctx->wp != NULL && s->dirty == NULL) {
+			log_debug("%s: allocating %u bits", __func__,
+			    s->dirtysize);
+			s->dirty = bit_alloc(s->dirtysize);
+		}
+		if (s->dirty != NULL) {
+			bit_set(s->dirty, screen_dirty_bit(s,
+			    ttyctx.ocx, ttyctx.ocy));
+			ctx->dirty++;
 		}
 	} else
 		ctx->skipped++;

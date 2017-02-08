@@ -1105,9 +1105,6 @@ struct tty_ctx {
 
 	/* The background colour used for clearing (erasing). */
 	u_int		 bg;
-
-	/* Saved last cell on line. */
-	struct grid_cell last_cell;
 };
 
 /* Saved message entry. */
