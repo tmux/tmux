@@ -125,6 +125,7 @@
           options, so you set command-alias[0] to foo=bar? array options would
           be useful for other stuff
 	* automatic pane logging
+	* marks in history, automatically add (move?) one when pane is changed
 
 - hooks
 	* more hooks for various things
