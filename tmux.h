@@ -1828,6 +1828,8 @@ void	 server_client_exec(struct client *, const char *);
 void	 server_client_loop(void);
 void	 server_client_push_stdout(struct client *);
 void	 server_client_push_stderr(struct client *);
+void printflike(2, 3) server_client_add_message(struct client *, const char *,
+	     ...);
 
 /* server-fn.c */
 void	 server_fill_environ(struct session *, struct environ *);
