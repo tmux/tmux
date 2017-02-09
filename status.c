@@ -562,13 +562,9 @@ status_print(struct client *c, struct winlink *wl, time_t t,
 void
 status_message_set(struct client *c, const char *fmt, ...)
 {
-	struct timeval		 tv;
-	struct message_entry	*msg, *msg1;
-	va_list			 ap;
-	int			 delay;
-	u_int			 limit;
-
-	limit = options_get_number(global_options, "message-limit");
+	struct timeval	tv;
+	va_list		ap;
+	int		delay;
 
 	status_message_clear(c);
 
@@ -576,19 +572,7 @@ status_message_set(struct client *c, const char *fmt, ...)
 	xvasprintf(&c->message_string, fmt, ap);
 	va_end(ap);
 
-	msg = xcalloc(1, sizeof *msg);
-	msg->msg_time = time(NULL);
-	msg->msg_num = c->message_next++;
-	msg->msg = xstrdup(c->message_string);
-	TAILQ_INSERT_TAIL(&c->message_log, msg, entry);
-
-	TAILQ_FOREACH_SAFE(msg, &c->message_log, entry, msg1) {
-		if (msg->msg_num + limit >= c->message_next)
-			break;
-		free(msg->msg);
-		TAILQ_REMOVE(&c->message_log, msg, entry);
-		free(msg);
-	}
+	server_client_add_message(c, "%s", c->message_string);
 
 	delay = options_get_number(c->session->options, "display-time");
 	if (delay > 0) {
