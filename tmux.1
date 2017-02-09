@@ -888,6 +888,7 @@ is used, the
 .Ic update-environment
 option will not be applied.
 .It Xo Ic refresh-client
+.Op Fl C Ar width,height
 .Op Fl S
 .Op Fl t Ar target-client
 .Xc
@@ -898,6 +899,9 @@ with
 If
 .Fl S
 is specified, only update the client's status bar.
+.Pp
+.Fl C
+sets the width and height of a control client.
 .It Xo Ic rename-session
 .Op Fl t Ar target-session
 .Ar new-name
@@ -4196,6 +4200,11 @@ For example:
 0: ksh* (1 panes) [80x24] [layout b25f,80x24,0,0,2] @2 (active)
 %end 1363006971 2
 .Ed
+.Pp
+The
+.Ic refresh-client
+.Fl C
+command may be used to set the size of a client in control mode.
 .Pp
 In control mode,
 .Nm
