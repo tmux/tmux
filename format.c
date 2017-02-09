@@ -1097,10 +1097,10 @@ format_defaults_session(struct format_tree *ft, struct session *s)
 	format_add(ft, "session_height", "%u", s->sy);
 	format_add(ft, "session_id", "$%u", s->id);
 
-	sg = session_group_find(s);
+	sg = session_group_contains(s);
 	format_add(ft, "session_grouped", "%d", sg != NULL);
 	if (sg != NULL)
-		format_add(ft, "session_group", "%u", session_group_index(sg));
+		format_add(ft, "session_group", "%s", sg->name);
 
 	format_add_tv(ft, "session_created", &s->creation_time);
 	format_add_tv(ft, "session_last_attached", &s->last_attached_time);
