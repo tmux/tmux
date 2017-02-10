@@ -1041,7 +1041,10 @@ struct tty {
 	u_int		 rright;
 
 	int		 fd;
-	struct bufferevent *event;
+	struct event	 event_in;
+	struct evbuffer	*in;
+	struct event	 event_out;
+	struct evbuffer	*out;
 
 	struct termios	 tio;
 

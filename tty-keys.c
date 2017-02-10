@@ -532,8 +532,8 @@ tty_keys_next(struct tty *tty)
 	key_code	 key;
 
 	/* Get key buffer. */
-	buf = EVBUFFER_DATA(tty->event->input);
-	len = EVBUFFER_LENGTH(tty->event->input);
+	buf = EVBUFFER_DATA(tty->in);
+	len = EVBUFFER_LENGTH(tty->in);
 
 	if (len == 0)
 		return (0);
@@ -645,7 +645,7 @@ complete_key:
 		key = (key & KEYC_MASK_MOD) | KEYC_BSPACE;
 
 	/* Remove data from buffer. */
-	evbuffer_drain(tty->event->input, size);
+	evbuffer_drain(tty->in, size);
 
 	/* Remove key timer. */
 	if (event_initialized(&tty->key_timer))
@@ -671,7 +671,7 @@ discard_key:
 	log_debug("discard key %.*s %#llx", (int)size, buf, key);
 
 	/* Remove data from buffer. */
-	evbuffer_drain(tty->event->input, size);
+	evbuffer_drain(tty->in, size);
 
 	return (1);
 }
