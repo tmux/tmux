@@ -182,8 +182,8 @@ tty_write_callback(__unused int fd, __unused short events, void *data)
 		return;
 	log_debug("%s: wrote %d bytes (of %zu)", tty->path, nwrite, size);
 
-	if (EVBUFFER_LENGTH(tty->out) == 0)
-		event_del(&tty->event_out);
+	if (EVBUFFER_LENGTH(tty->out) != 0)
+		event_add(&tty->event_out, NULL);
 }
 
 int
