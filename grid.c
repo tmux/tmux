@@ -78,6 +78,20 @@ grid_store_cell(struct grid_cell_entry *gce, const struct grid_cell *gc,
 	gce->data.data = c;
 }
 
+/* Check if a cell should be extended. */
+static int
+grid_need_extended_cell(const struct grid_cell_entry *gce,
+    const struct grid_cell *gc)
+{
+	if (gce->flags & GRID_FLAG_EXTENDED)
+		return (1);
+	if (gc->data.size != 1 || gc->data.width != 1)
+		return (1);
+	if ((gc->fg & COLOUR_FLAG_RGB) ||(gc->bg & COLOUR_FLAG_RGB))
+		return (1);
+	return (0);
+}
+
 /* Set cell as extended. */
 static struct grid_cell *
 grid_extended_cell(struct grid_line *gl, struct grid_cell_entry *gce,
@@ -382,7 +396,6 @@ grid_set_cell(struct grid *gd, u_int px, u_int py, const struct grid_cell *gc)
 {
 	struct grid_line	*gl;
 	struct grid_cell_entry	*gce;
-	int			 extended;
 
 	if (grid_check_y(gd, py) != 0)
 		return;
@@ -394,14 +407,7 @@ grid_set_cell(struct grid *gd, u_int px, u_int py, const struct grid_cell *gc)
 		gl->cellused = px + 1;
 
 	gce = &gl->celldata[px];
-	extended = (gce->flags & GRID_FLAG_EXTENDED);
-	if (!extended && (gc->data.size != 1 || gc->data.width != 1))
-		extended = 1;
-	if (!extended && (gc->fg & COLOUR_FLAG_RGB))
-		extended = 1;
-	if (!extended && (gc->bg & COLOUR_FLAG_RGB))
-		extended = 1;
-	if (extended)
+	if (grid_need_extended_cell(gce, gc))
 		grid_extended_cell(gl, gce, gc);
 	else
 		grid_store_cell(gce, gc, gc->data.data[0]);
@@ -428,9 +434,8 @@ grid_set_cells(struct grid *gd, u_int px, u_int py, const struct grid_cell *gc,
 
 	for (i = 0; i < slen; i++) {
 		gce = &gl->celldata[px + i];
-		if (gce->flags & GRID_FLAG_EXTENDED) {
-			gcp = &gl->extddata[gce->offset];
-			memcpy(gcp, gc, sizeof *gcp);
+		if (grid_need_extended_cell(gce, gc)) {
+			gcp = grid_extended_cell(gl, gce, gc);
 			utf8_set(&gcp->data, s[i]);
 		} else
 			grid_store_cell(gce, gc, s[i]);
