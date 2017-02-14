@@ -61,11 +61,10 @@ cmd_save_buffer_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
 	struct client		*c = item->client;
-	struct session          *s;
 	struct paste_buffer	*pb;
-	const char		*path, *bufname, *bufdata, *start, *end, *cwd;
+	const char		*path, *bufname, *bufdata, *start, *end;
 	const char		*flags;
-	char			*msg, *file, resolved[PATH_MAX];
+	char			*msg, *file;
 	size_t			 size, used, msglen, bufsize;
 	FILE			*f;
 
@@ -98,39 +97,26 @@ cmd_save_buffer_exec(struct cmd *self, struct cmdq_item *item)
 		goto do_print;
 	}
 
-	if (c != NULL && c->session == NULL && c->cwd != NULL)
-		cwd = c->cwd;
-	else if (c != NULL && (s = c->session) != NULL && s->cwd != NULL)
-		cwd = s->cwd;
-	else
-		cwd = ".";
-
 	flags = "wb";
 	if (args_has(self->args, 'a'))
 		flags = "ab";
 
-	if (*path == '/')
-		file = xstrdup(path);
-	else
-		xasprintf(&file, "%s/%s", cwd, path);
-	if (realpath(file, resolved) == NULL &&
-	    strlcpy(resolved, file, sizeof resolved) >= sizeof resolved) {
-		cmdq_error(item, "%s: %s", file, strerror(ENAMETOOLONG));
-		return (CMD_RETURN_ERROR);
-	}
-	f = fopen(resolved, flags);
-	free(file);
+	file = server_client_get_path(c, path);
+	f = fopen(file, flags);
 	if (f == NULL) {
-		cmdq_error(item, "%s: %s", resolved, strerror(errno));
+		cmdq_error(item, "%s: %s", file, strerror(errno));
+		free(file);
 		return (CMD_RETURN_ERROR);
 	}
 
 	if (fwrite(bufdata, 1, bufsize, f) != bufsize) {
-		cmdq_error(item, "%s: write error", resolved);
+		cmdq_error(item, "%s: write error", file);
 		fclose(f);
 		return (CMD_RETURN_ERROR);
 	}
+
 	fclose(f);
+	free(file);
 
 	return (CMD_RETURN_NORMAL);
 

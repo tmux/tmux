@@ -1655,3 +1655,32 @@ server_client_add_message(struct client *c, const char *fmt, ...)
 		free(msg);
 	}
 }
+
+/* Get client working directory. */
+const char *
+server_client_get_cwd(struct client *c)
+{
+	struct session	*s;
+
+	if (c != NULL && c->session == NULL && c->cwd != NULL)
+		return (c->cwd);
+	if (c != NULL && (s = c->session) != NULL && s->cwd != NULL)
+		return (s->cwd);
+	return (".");
+}
+
+/* Resolve an absolute path or relative to client working directory. */
+char *
+server_client_get_path(struct client *c, const char *file)
+{
+	char	*path, resolved[PATH_MAX];
+
+	if (*file == '/')
+		path = xstrdup(file);
+	else
+		xasprintf(&path, "%s/%s", server_client_get_cwd(c), file);
+	if (realpath(path, resolved) == NULL)
+		return (path);
+	free(path);
+	return (xstrdup(resolved));
+}
