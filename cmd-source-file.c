@@ -49,21 +49,44 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
 	struct client		*c = item->client;
+	struct session  	*s;
 	int			 quiet;
 	struct cmdq_item	*new_item;
 	enum cmd_retval		 retval;
+	char			*glob_pattern, *tmp;
+	const char		*cwd;
 	glob_t			 g;
 	u_int			 i;
 
-	quiet = args_has(args, 'q');
-	if (glob(args->argv[0], 0, NULL, &g) != 0) {
-		if (quiet && errno == ENOENT)
-			return (CMD_RETURN_NORMAL);
-		cmdq_error(item, "%s: %s", args->argv[0], strerror(errno));
-		return (CMD_RETURN_ERROR);
+	if (*args->argv[0] == '/')
+		glob_pattern = xstrdup(args->argv[0]);
+	else {
+		if (c != NULL && c->session == NULL && c->cwd != NULL)
+			cwd = c->cwd;
+		else if (c != NULL && (s = c->session) != NULL && s->cwd != NULL)
+			cwd = s->cwd;
+		else
+			cwd = ".";
+
+		utf8_stravis(&tmp, cwd, VIS_GLOB);
+		xasprintf(&glob_pattern, "%s/%s", tmp, args->argv[0]);
+		free(tmp);
 	}
 
+	log_debug("source-file glob %s", glob_pattern);
+
+	quiet = args_has(args, 'q');
 	retval = CMD_RETURN_NORMAL;
+	if (glob(glob_pattern, 0, NULL, &g) != 0) {
+		if (!quiet || errno != ENOENT) {
+			cmdq_error(item, "%s: %s", args->argv[0], strerror(errno));
+			retval = CMD_RETURN_ERROR;
+		}
+		free(glob_pattern);
+		return (retval);
+	}
+	free(glob_pattern);
+
 	for (i = 0; i < (u_int)g.gl_pathc; i++) {
 		if (load_cfg(g.gl_pathv[i], c, item, quiet) != 0)
 			retval = CMD_RETURN_ERROR;
