@@ -1836,6 +1836,8 @@ void	 server_client_push_stdout(struct client *);
 void	 server_client_push_stderr(struct client *);
 void printflike(2, 3) server_client_add_message(struct client *, const char *,
 	     ...);
+char	*server_client_get_path(struct client *, const char *);
+const char *server_client_get_cwd(struct client *);
 
 /* server-fn.c */
 void	 server_fill_environ(struct session *, struct environ *);

@@ -22,6 +22,7 @@
 #include <glob.h>
 #include <stdlib.h>
 #include <string.h>
+#include <vis.h>
 
 #include "tmux.h"
 
@@ -48,22 +49,35 @@ static enum cmd_retval
 cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
+	int			 quiet = args_has(args, 'q');
 	struct client		*c = item->client;
-	int			 quiet;
 	struct cmdq_item	*new_item;
 	enum cmd_retval		 retval;
+	char			*pattern, *tmp;
+	const char		*path = args->argv[0];
 	glob_t			 g;
 	u_int			 i;
 
-	quiet = args_has(args, 'q');
-	if (glob(args->argv[0], 0, NULL, &g) != 0) {
-		if (quiet && errno == ENOENT)
-			return (CMD_RETURN_NORMAL);
-		cmdq_error(item, "%s: %s", args->argv[0], strerror(errno));
-		return (CMD_RETURN_ERROR);
+	if (*path == '/')
+		pattern = xstrdup(path);
+	else {
+		utf8_stravis(&tmp, server_client_get_cwd(c), VIS_GLOB);
+		xasprintf(&pattern, "%s/%s", tmp, path);
+		free(tmp);
 	}
+	log_debug("%s: %s", __func__, pattern);
 
 	retval = CMD_RETURN_NORMAL;
+	if (glob(pattern, 0, NULL, &g) != 0) {
+		if (!quiet || errno != ENOENT) {
+			cmdq_error(item, "%s: %s", path, strerror(errno));
+			retval = CMD_RETURN_ERROR;
+		}
+		free(pattern);
+		return (retval);
+	}
+	free(pattern);
+
 	for (i = 0; i < (u_int)g.gl_pathc; i++) {
 		if (load_cfg(g.gl_pathv[i], c, item, quiet) != 0)
 			retval = CMD_RETURN_ERROR;

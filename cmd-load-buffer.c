@@ -57,11 +57,9 @@ cmd_load_buffer_exec(struct cmd *self, struct cmdq_item *item)
 	struct args			*args = self->args;
 	struct cmd_load_buffer_data	*cdata;
 	struct client			*c = item->client;
-	struct session  		*s;
 	FILE				*f;
-	const char			*path, *bufname, *cwd;
+	const char			*path, *bufname;
 	char				*pdata, *new_pdata, *cause, *file;
-	char				 resolved[PATH_MAX];
 	size_t				 psize;
 	int				 ch, error;
 
@@ -87,26 +85,11 @@ cmd_load_buffer_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_WAIT);
 	}
 
-	if (c != NULL && c->session == NULL && c->cwd != NULL)
-		cwd = c->cwd;
-	else if (c != NULL && (s = c->session) != NULL && s->cwd != NULL)
-		cwd = s->cwd;
-	else
-		cwd = ".";
-
-	if (*path == '/')
-		file = xstrdup(path);
-	else
-		xasprintf(&file, "%s/%s", cwd, path);
-	if (realpath(file, resolved) == NULL &&
-	    strlcpy(resolved, file, sizeof resolved) >= sizeof resolved) {
-		cmdq_error(item, "%s: %s", file, strerror(ENAMETOOLONG));
-		return (CMD_RETURN_ERROR);
-	}
-	f = fopen(resolved, "rb");
-	free(file);
+	file = server_client_get_path(c, path);
+	f = fopen(file, "rb");
 	if (f == NULL) {
-		cmdq_error(item, "%s: %s", resolved, strerror(errno));
+		cmdq_error(item, "%s: %s", file, strerror(errno));
+		free(file);
 		return (CMD_RETURN_ERROR);
 	}
 
@@ -122,13 +105,14 @@ cmd_load_buffer_exec(struct cmd *self, struct cmdq_item *item)
 		pdata[psize++] = ch;
 	}
 	if (ferror(f)) {
-		cmdq_error(item, "%s: read error", resolved);
+		cmdq_error(item, "%s: read error", file);
 		goto error;
 	}
 	if (pdata != NULL)
 		pdata[psize] = '\0';
 
 	fclose(f);
+	free(file);
 
 	if (paste_set(pdata, psize, bufname, &cause) != 0) {
 		cmdq_error(item, "%s", cause);
