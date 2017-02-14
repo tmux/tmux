@@ -816,7 +816,7 @@ Lock all clients attached to
 .Op Fl F Ar format
 .Op Fl n Ar window-name
 .Op Fl s Ar session-name
-.Op Fl t Ar target-session
+.Op Fl t Ar group-name
 .Op Fl x Ar width
 .Op Fl y Ar height
 .Op Ar shell-command
@@ -861,16 +861,27 @@ to
 .Pp
 If
 .Fl t
-is given, the new session is
-.Em grouped
-with
-.Ar target-session .
-This means they share the same set of windows - all windows from
-.Ar target-session
-are linked to the new session, any new windows are linked to both sessions and
-any windows closed removed from both sessions.
+is given, it specifies a
+.Ic session group .
+Sessions in the same group share the same set of windows - new windows are
+linked to all sessions in the group and any windows closed removed from all
+sessions.
 The current and previous window and any session options remain independent and
-either session may be killed without affecting the other.
+any session in a group may be killed without affecting the others.
+The
+.Ar group-name
+argument may be:
+.Bl -enum -width Ds
+.It
+the name of an existing group, in which case the new session is added to that
+group;
+.It
+the name of an existing session - the new session is added to the same group
+as that session, creating a new group if necessary;
+.It
+the name for a new group containing only the new session.
+.El
+.Pp
 .Fl n
 and
 .Ar shell-command
@@ -892,6 +903,7 @@ is used, the
 .Ic update-environment
 option will not be applied.
 .It Xo Ic refresh-client
+.Op Fl C Ar width,height
 .Op Fl S
 .Op Fl t Ar target-client
 .Xc
@@ -902,6 +914,9 @@ with
 If
 .Fl S
 is specified, only update the client's status bar.
+.Pp
+.Fl C
+sets the width and height of a control client.
 .It Xo Ic rename-session
 .Op Fl t Ar target-session
 .Ar new-name
@@ -3563,7 +3578,7 @@ The following variables are available, where appropriate:
 .It Li "session_activity" Ta "" Ta "Integer time of session last activity"
 .It Li "session_created" Ta "" Ta "Integer time session created"
 .It Li "session_last_attached" Ta "" Ta "Integer time session last attached"
-.It Li "session_group" Ta "" Ta "Number of session group"
+.It Li "session_group" Ta "" Ta "Name of session group"
 .It Li "session_grouped" Ta "" Ta "1 if session in a group"
 .It Li "session_height" Ta "" Ta "Height of session"
 .It Li "session_id" Ta "" Ta "Unique session ID"
@@ -4202,6 +4217,11 @@ For example:
 0: ksh* (1 panes) [80x24] [layout b25f,80x24,0,0,2] @2 (active)
 %end 1363006971 2
 .Ed
+.Pp
+The
+.Ic refresh-client
+.Fl C
+command may be used to set the size of a client in control mode.
 .Pp
 In control mode,
 .Nm

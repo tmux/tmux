@@ -76,7 +76,7 @@ server_redraw_session_group(struct session *s)
 {
 	struct session_group	*sg;
 
-	if ((sg = session_group_find(s)) == NULL)
+	if ((sg = session_group_contains(s)) == NULL)
 		server_redraw_session(s);
 	else {
 		TAILQ_FOREACH(s, &sg->sessions, gentry)
@@ -100,7 +100,7 @@ server_status_session_group(struct session *s)
 {
 	struct session_group	*sg;
 
-	if ((sg = session_group_find(s)) == NULL)
+	if ((sg = session_group_contains(s)) == NULL)
 		server_status_session(s);
 	else {
 		TAILQ_FOREACH(s, &sg->sessions, gentry)
@@ -218,7 +218,7 @@ server_kill_window(struct window *w)
 		}
 
 		if (options_get_number(s->options, "renumber-windows")) {
-			if ((sg = session_group_find(s)) != NULL) {
+			if ((sg = session_group_contains(s)) != NULL) {
 				TAILQ_FOREACH(target_s, &sg->sessions, gentry)
 					session_renumber_windows(target_s);
 			} else
@@ -236,8 +236,8 @@ server_link_window(struct session *src, struct winlink *srcwl,
 	struct winlink		*dstwl;
 	struct session_group	*srcsg, *dstsg;
 
-	srcsg = session_group_find(src);
-	dstsg = session_group_find(dst);
+	srcsg = session_group_contains(src);
+	dstsg = session_group_contains(dst);
 	if (src != dst && srcsg != NULL && dstsg != NULL && srcsg == dstsg) {
 		xasprintf(cause, "sessions are grouped");
 		return (-1);
@@ -349,7 +349,7 @@ server_destroy_session_group(struct session *s)
 	struct session_group	*sg;
 	struct session		*s1;
 
-	if ((sg = session_group_find(s)) == NULL)
+	if ((sg = session_group_contains(s)) == NULL)
 		server_destroy_session(s);
 	else {
 		TAILQ_FOREACH_SAFE(s, &sg->sessions, gentry, s1) {
