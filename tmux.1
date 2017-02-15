@@ -909,7 +909,7 @@ with
 .Fl t .
 If
 .Fl S
-is specified, only update the client's status bar.
+is specified, only update the client's status line.
 .Pp
 .Fl C
 sets the width and height of a control client.
@@ -2759,7 +2759,7 @@ section.
 .Xc
 Show or hide the status line.
 .It Ic status-interval Ar interval
-Update the status bar every
+Update the status line every
 .Ar interval
 seconds.
 By default, updates will occur every 15 seconds.
@@ -2783,7 +2783,7 @@ environment variables are set and contain the string
 .It Ic status-left Ar string
 Display
 .Ar string
-(by default the session name) to the left of the status bar.
+(by default the session name) to the left of the status line.
 .Ar string
 will be passed through
 .Xr strftime 3
@@ -2813,7 +2813,7 @@ The default is
 .It Ic status-left-length Ar length
 Set the maximum
 .Ar length
-of the left component of the status bar.
+of the left component of the status line.
 The default is 10.
 .It Ic status-left-style Ar style
 Set the style of the left part of the status line.
@@ -2829,7 +2829,7 @@ Set the position of the status line.
 .It Ic status-right Ar string
 Display
 .Ar string
-to the right of the status bar.
+to the right of the status line.
 By default, the current window title in double quotes, the date and the time
 are shown.
 As with
@@ -2841,7 +2841,7 @@ and character pairs are replaced.
 .It Ic status-right-length Ar length
 Set the maximum
 .Ar length
-of the right component of the status bar.
+of the right component of the status line.
 The default is 40.
 .It Ic status-right-style Ar style
 Set the style of the right part of the status line.
