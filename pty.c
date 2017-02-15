@@ -33,23 +33,28 @@
 int	pty_open(int *);
 pid_t	pty_fork(int, int *, char *, size_t, struct winsize *);
 
+#ifdef __OpenBSD__
 int
 pty_open(int *fd)
 {
-#ifdef __OpenBSD__
 	*fd = open(PATH_PTMDEV, O_RDWR|O_CLOEXEC);
 	if (*fd < 0)
 	    return (-1);
-#else
-	*fd = -1;
-#endif
 	return (0);
 }
+#else
+int
+pty_open(__unused int *fd)
+{
+	*fd = -1;
+	return (0);
+}
+#endif
 
+#ifdef __OpenBSD__
 pid_t
 pty_fork(int ptmfd, int *fd, char *name, size_t namelen, struct winsize *ws)
 {
-#ifdef __OpenBSD__
 	struct ptmget	ptm;
 	pid_t		pid;
 
@@ -72,7 +77,12 @@ pty_fork(int ptmfd, int *fd, char *name, size_t namelen, struct winsize *ws)
 	*fd = ptm.cfd;
 	close(ptm.sfd);
 	return (pid);
-#else
-	return (forkpty(fd, name, NULL, ws));
-#endif
 }
+#else
+pid_t
+pty_fork(__unused int ptmfd, int *fd, char *name, __unused size_t namelen,
+    struct winsize *ws)
+{
+	return (forkpty(fd, name, NULL, ws));
+}
+#endif

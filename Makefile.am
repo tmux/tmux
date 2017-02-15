@@ -30,6 +30,7 @@ AM_CFLAGS += -Wmissing-prototypes -Wstrict-prototypes -Wmissing-declarations
 AM_CFLAGS += -Wwrite-strings -Wshadow -Wpointer-arith -Wsign-compare
 AM_CFLAGS += -Wundef -Wbad-function-cast -Winline -Wcast-align
 AM_CFLAGS += -Wdeclaration-after-statement -Wno-pointer-sign -Wno-attributes
+AM_CFLAGS += -Wno-unused-result
 AM_CPPFLAGS += -DDEBUG
 endif
 if IS_COVERAGE
