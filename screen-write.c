@@ -1260,6 +1260,7 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 
 	/* Create space for character in insert mode. */
 	if (s->mode & MODE_INSERT) {
+		screen_write_collect_flush(ctx, 0);
 		ttyctx.num = width;
 		tty_write(tty_cmd_insertcharacter, &ttyctx);
 	}
