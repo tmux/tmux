@@ -1321,7 +1321,7 @@ tty_region(struct tty *tty, u_int rupper, u_int rlower)
 		tty_cursor(tty, 0, tty->cy);
 
 	tty_putcode2(tty, TTYC_CSR, tty->rupper, tty->rlower);
-	tty->cx = tty->cy = 0;
+	tty->cx = tty->cy = UINT_MAX;
 }
 
 /* Turn off margin. */
@@ -1359,7 +1359,7 @@ tty_margin(struct tty *tty, u_int rleft, u_int rright)
 	else
 		snprintf(s, sizeof s, "\033[%u;%us", rleft + 1, rright + 1);
 	tty_puts(tty, s);
-	tty->cx = tty->cy = 0;
+	tty->cx = tty->cy = UINT_MAX;
 }
 
 /* Move cursor inside pane. */

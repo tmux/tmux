@@ -1389,7 +1389,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 		break;
 	case INPUT_CSI_IL:
 		screen_write_insertline(sctx, input_get(ictx, 0, 1, 1),
-			ictx->cell.cell.bg);
+		    ictx->cell.cell.bg);
 		break;
 	case INPUT_CSI_RCP:
 		memcpy(&ictx->cell, &ictx->old_cell, sizeof ictx->cell);
