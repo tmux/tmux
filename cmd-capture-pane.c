@@ -49,6 +49,19 @@ const struct cmd_entry cmd_capture_pane_entry = {
 	.exec = cmd_capture_pane_exec
 };
 
+const struct cmd_entry cmd_clear_history_entry = {
+	.name = "clear-history",
+	.alias = "clearhist",
+
+	.args = { "t:", 0, 0 },
+	.usage = CMD_TARGET_PANE_USAGE,
+
+	.tflag = CMD_PANE,
+
+	.flags = CMD_AFTERHOOK,
+	.exec = cmd_capture_pane_exec
+};
+
 static char *
 cmd_capture_pane_append(char *buf, size_t *len, char *line, size_t linelen)
 {
@@ -91,7 +104,6 @@ cmd_capture_pane_pending(struct args *args, struct window_pane *wp,
 }
 
 static char *
-
 cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
     struct window_pane *wp, size_t *len)
 {
@@ -185,6 +197,13 @@ cmd_capture_pane_exec(struct cmd *self, struct cmdq_item *item)
 	char			*buf, *cause;
 	const char		*bufname;
 	size_t			 len;
+
+	if (self->entry == &cmd_clear_history_entry) {
+		if (wp->mode == &window_copy_mode)
+			window_pane_reset_mode(wp);
+		grid_clear_history(wp->base.grid);
+		return (CMD_RETURN_NORMAL);
+	}
 
 	len = 0;
 	if (args_has(args, 'P'))
