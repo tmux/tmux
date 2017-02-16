@@ -5,8 +5,6 @@
 	* ' and " should be parsed the same (eg "\e" vs '\e') in config
 	  and command prompt
 	* last-pane across sessions
-	* list-keys should quote output so that bindings can just be used in
-          config file as-is
 	* resize-pane -p to match split-window -p
 
 - make command sequences more usable
@@ -25,9 +23,7 @@
 
 - choose mode improvements:
 	* choose-pane command (augment choose-tree to do this?)
-	* choose-mode and copy-mode are very similar, make choose-mode a subset?
 	* flag to choose-* for sort order
-	* choose mode would be better per client than per window?
 	* two choices (first one then second, for swap-pane and join-pane)
 	* choose modes should ditch the key bindings and just have fixed keys, and
           be more customized to their purpose (d to delete a buffer for choose-buffer,
@@ -46,14 +42,11 @@
 - warts on current naming:
 	* display-time but message-fg/bg/attr
 	* list-* vs show-*
-	* split-window -> split-pane?
 
 - better UTF-8 support:
-	* message display
 	* searching in copy mode
 
 - copy/paste improvements:
-	* incremental searching
 	* paste w/o trailing whitespace
 	* command to toggle selection not to move it in copy-mode
 	* regex searching
@@ -77,10 +70,6 @@
 	* a mode where one application can cross two panes (ie x|y, width =
 	  COLUMNS/2 but height = ROWS * 2)
 	* separate active panes for different clients
-
-- terminfo bits
-	* use a better termcap internally instead of screen, perhaps xterm
-	* use screen-256color when started on 256 colour terminal?
 
 - code cleanup
 	* instead of separate window and session options, just one master
@@ -120,10 +109,6 @@
 	  jobs and run-shell and lock command all start with slightly different
 	  environments
 	* multiline status line? separate command prompt and status line?
-	* customizable command aliases -- don't really want a whole alias tree
-          and set-alias commands like hooks/options/environ. maybe array
-          options, so you set command-alias[0] to foo=bar? array options would
-          be useful for other stuff
 	* automatic pane logging
 	* marks in history, automatically add (move?) one when pane is changed
 
