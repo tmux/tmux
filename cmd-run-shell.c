@@ -131,14 +131,11 @@ cmd_run_shell_callback(struct job *job)
 	char				*cmd = cdata->cmd, *msg, *line;
 	size_t				 size;
 	int				 retcode;
-	u_int				 lines;
 
-	lines = 0;
 	do {
 		if ((line = evbuffer_readline(job->event->input)) != NULL) {
 			cmd_run_shell_print(job, line);
 			free(line);
-			lines++;
 		}
 	} while (line != NULL);
 
@@ -149,7 +146,6 @@ cmd_run_shell_callback(struct job *job)
 		line[size] = '\0';
 
 		cmd_run_shell_print(job, line);
-		lines++;
 
 		free(line);
 	}

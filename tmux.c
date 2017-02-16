@@ -80,7 +80,7 @@ getshell(void)
 static int
 checkshell(const char *shell)
 {
-	if (shell == NULL || *shell == '\0' || *shell != '/')
+	if (shell == NULL || *shell != '/')
 		return (0);
 	if (areshell(shell))
 		return (0);

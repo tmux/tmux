@@ -910,7 +910,7 @@ window_choose_write_line(struct window_pane *wp, struct screen_write_ctx *ctx,
 		     * expanded or not.
 		     */
 		    (item->wcd->type & TREE_SESSION) ?
-		    (item->state & TREE_EXPANDED ? "-" : "+") : "", item->name);
+		    ((item->state & TREE_EXPANDED) ? "-" : "+") : "", item->name);
 	}
 	while (s->cx < screen_size_x(s) - 1)
 		screen_write_putc(ctx, &gc, ' ');
