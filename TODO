@@ -55,6 +55,8 @@
           then it should be found even if it is now "foo\nbar" (if the WRAP flag
           is set on the line)
 	* capture-pane option to preserve spaces but not join lines
+	* improve word and line selection in copy mode (for example when dragging
+          it should select by word. compare how xterm works. GitHub issue 682)
 
 - layout stuff
 	* way to tag a layout as a number/name
