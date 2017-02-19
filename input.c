@@ -1779,6 +1779,9 @@ input_csi_dispatch_sgr(struct input_ctx *ictx)
 		case 27:
 			gc->attr &= ~GRID_ATTR_REVERSE;
 			break;
+		case 28:
+			gc->attr &= ~GRID_ATTR_HIDDEN;
+			break;
 		case 30:
 		case 31:
 		case 32:
