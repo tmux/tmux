@@ -85,13 +85,14 @@ osdep_get_name(int fd, __unused char *tty)
 	mib[1] = KERN_PROC2;
 	mib[2] = KERN_PROC_PGRP;
 	mib[4] = sizeof (*buf);
-	mib[5] = 0;
 
 retry:
+	mib[5] = 0;
+
 	if (sysctl(mib, __arraycount(mib), NULL, &len, NULL, 0) == -1)
 		return (NULL);
 
-	if ((newbuf = realloc(buf, len * sizeof (*buf))) == NULL)
+	if ((newbuf = realloc(buf, len)) == NULL)
 		goto error;
 	buf = newbuf;
 
