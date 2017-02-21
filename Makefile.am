@@ -82,7 +82,6 @@ dist_tmux_SOURCES = \
 	cmd-choose-buffer.c \
 	cmd-choose-client.c \
 	cmd-choose-tree.c \
-	cmd-clear-history.c \
 	cmd-command-prompt.c \
 	cmd-confirm-before.c \
 	cmd-copy-mode.c \
