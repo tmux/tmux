@@ -741,6 +741,7 @@ screen_write_clearline(struct screen_write_ctx *ctx, u_int bg)
 	grid_view_clear(s->grid, 0, s->cy, sx, 1, bg);
 
 	screen_write_collect_clear(ctx, s->cy, 1);
+	screen_write_collect_flush(ctx, 0);
 	tty_write(tty_cmd_clearline, &ttyctx);
 }
 
@@ -764,8 +765,7 @@ screen_write_clearendofline(struct screen_write_ctx *ctx, u_int bg)
 
 	if (s->cx == 0)
 		screen_write_collect_clear(ctx, s->cy, 1);
-	else
-		screen_write_collect_flush(ctx, 0);
+	screen_write_collect_flush(ctx, 0);
 	tty_write(tty_cmd_clearendofline, &ttyctx);
 }
 
@@ -787,8 +787,7 @@ screen_write_clearstartofline(struct screen_write_ctx *ctx, u_int bg)
 
 	if (s->cx > sx - 1)
 		screen_write_collect_clear(ctx, s->cy, 1);
-	else
-		screen_write_collect_flush(ctx, 0);
+	screen_write_collect_flush(ctx, 0);
 	tty_write(tty_cmd_clearstartofline, &ttyctx);
 }
 
@@ -862,6 +861,9 @@ screen_write_linefeed(struct screen_write_ctx *ctx, int wrapped)
 		gl->flags |= GRID_LINE_WRAPPED;
 	else
 		gl->flags &= ~GRID_LINE_WRAPPED;
+
+	log_debug("%s: at %u,%u (region %u-%u)", __func__, s->cx, s->cy,
+	    s->rupper, s->rlower);
 
 	if (s->cy == s->rlower) {
 		grid_view_scroll_region_up(gd, s->rupper, s->rlower);
@@ -999,7 +1001,7 @@ screen_write_collect_clear(struct screen_write_ctx *ctx, u_int y, u_int n)
 			free(ci);
 		}
 		ctx->skipped += size;
-		log_debug("discarding %zu bytes on line %u", size, i);
+		log_debug("%s: dropped %zu bytes (line %u)", __func__, size, i);
 	}
 }
 
@@ -1010,6 +1012,9 @@ screen_write_collect_scroll(struct screen_write_ctx *ctx)
 	struct screen				*s = ctx->s;
 	struct screen_write_collect_line	*cl;
 	u_int					 y;
+
+	log_debug("%s: at %u,%u (region %u-%u)", __func__, s->cx, s->cy,
+	    s->rupper, s->rlower);
 
 	screen_write_collect_clear(ctx, s->rupper, 1);
 	for (y = s->rupper; y < s->rlower; y++) {
@@ -1122,6 +1127,7 @@ screen_write_collect_add(struct screen_write_ctx *ctx,
 	if (s->cx > sx - 1 || ctx->item->used > sx - 1 - s->cx)
 		screen_write_collect_end(ctx);
 	if (s->cx > sx - 1) {
+		log_debug("%s: wrapped at %u,%u", __func__, s->cx, s->cy);
 		screen_write_linefeed(ctx, 1);
 		s->cx = 0;
 	}
