@@ -682,12 +682,12 @@ void
 tty_draw_line(struct tty *tty, const struct window_pane *wp,
     struct screen *s, u_int py, u_int ox, u_int oy)
 {
-	struct grid_cell	 gc, tmp_gc;
-	struct grid_line	*gl;
-	u_int			 i, sx;
-	int			 flags;
+	struct grid_cell	 gc, last;
+	u_int			 i, j, sx, width;
+	int			 flags = (tty->flags & TTY_NOCURSOR);
+	char			 buf[512];
+	size_t			 len;
 
-	flags = tty->flags & TTY_NOCURSOR;
 	tty->flags |= TTY_NOCURSOR;
 	tty_update_mode(tty, tty->mode, s);
 
@@ -695,30 +695,50 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 	tty_margin_off(tty);
 
 	sx = screen_size_x(s);
-	if (sx > s->grid->linedata[s->grid->hsize + py].cellsize)
-		sx = s->grid->linedata[s->grid->hsize + py].cellsize;
+	if (sx > s->grid->linedata[s->grid->hsize + py].cellused)
+		sx = s->grid->linedata[s->grid->hsize + py].cellused;
 	if (sx > tty->sx)
 		sx = tty->sx;
 
-	/*
-	 * Don't move the cursor to the start position if it will wrap there
-	 * itself.
-	 */
-	gl = NULL;
-	if (py != 0)
-		gl = &s->grid->linedata[s->grid->hsize + py - 1];
-	if (oy + py == 0 || gl == NULL || !(gl->flags & GRID_LINE_WRAPPED) ||
-	    tty->cx < tty->sx || ox != 0 ||
-	    (oy + py != tty->cy + 1 && tty->cy != s->rlower + oy))
-		tty_cursor(tty, ox, oy + py);
+	tty_cursor(tty, ox, oy + py);
+
+	memcpy(&last, &grid_default_cell, sizeof last);
+	len = 0;
+	width = 0;
 
 	for (i = 0; i < sx; i++) {
 		grid_view_get_cell(s->grid, i, py, &gc);
-		if (gc.flags & GRID_FLAG_SELECTED) {
-			screen_select_cell(s, &tmp_gc, &gc);
-			tty_cell(tty, &tmp_gc, wp);
-		} else
-			tty_cell(tty, &gc, wp);
+		if (len != 0 &&
+		    (gc.attr & GRID_ATTR_CHARSET ||
+		    gc.flags != last.flags ||
+		    gc.attr != last.attr ||
+		    gc.fg != last.fg ||
+		    gc.bg != last.bg ||
+		    (sizeof buf) - len < gc.data.size)) {
+			tty_attributes(tty, &last, wp);
+			tty_putn(tty, buf, len, width);
+
+			len = 0;
+			width = 0;
+		}
+
+		if (gc.flags & GRID_FLAG_SELECTED)
+			screen_select_cell(s, &last, &gc);
+		else
+			memcpy(&last, &gc, sizeof last);
+		if (gc.attr & GRID_ATTR_CHARSET) {
+			tty_attributes(tty, &last, wp);
+			for (j = 0; j < gc.data.size; j++)
+				tty_putc(tty, gc.data.data[j]);
+		} else {
+			memcpy(buf + len, gc.data.data, gc.data.size);
+			len += gc.data.size;
+			width += gc.data.width;
+		}
+	}
+	if (len != 0) {
+		tty_attributes(tty, &last, wp);
+		tty_putn(tty, buf, len, width);
 	}
 
 	if (sx < tty->sx) {
