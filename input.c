@@ -1389,7 +1389,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 		break;
 	case INPUT_CSI_IL:
 		screen_write_insertline(sctx, input_get(ictx, 0, 1, 1),
-			ictx->cell.cell.bg);
+		    ictx->cell.cell.bg);
 		break;
 	case INPUT_CSI_RCP:
 		memcpy(&ictx->cell, &ictx->old_cell, sizeof ictx->cell);
@@ -1778,6 +1778,9 @@ input_csi_dispatch_sgr(struct input_ctx *ictx)
 			break;
 		case 27:
 			gc->attr &= ~GRID_ATTR_REVERSE;
+			break;
+		case 28:
+			gc->attr &= ~GRID_ATTR_HIDDEN;
 			break;
 		case 30:
 		case 31:
