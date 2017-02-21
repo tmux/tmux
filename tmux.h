@@ -245,9 +245,6 @@ enum tty_code_code {
 	TTYC_IL1,	/* insert_line, il */
 	TTYC_INDN,      /* parm_index, indn */
 	TTYC_INVIS,	/* enter_secure_mode, mk */
-	TTYC_IS1,	/* init_1string, i1 */
-	TTYC_IS2,	/* init_2string, i2 */
-	TTYC_IS3,	/* init_3string, i3 */
 	TTYC_KCBT,	/* key_btab, kB */
 	TTYC_KCUB1,	/* key_left, kl */
 	TTYC_KCUD1,	/* key_down, kd */
