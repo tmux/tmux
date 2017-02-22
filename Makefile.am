@@ -7,60 +7,65 @@ CLEANFILES = tmux.1.mdoc tmux.1.man
 # Distribution tarball options.
 EXTRA_DIST = \
 	CHANGES FAQ README TODO COPYING example_tmux.conf compat/*.[ch] \
-	compat.h tmux.h osdep-*.c xmalloc.h mdoc2man.awk tmux.1
+	osdep-*.c mdoc2man.awk tmux.1
 dist-hook:
-	make clean
-	grep "^#found_debug=" configure
+	grep "^#enable_debug=" configure
 
 # Preprocessor flags.
-CPPFLAGS += @XOPEN_DEFINES@ -DTMUX_CONF="\"$(sysconfdir)/tmux.conf\""
+AM_CPPFLAGS += @XOPEN_DEFINES@ -DTMUX_CONF="\"$(sysconfdir)/tmux.conf\""
 
 # glibc as usual does things ass-backwards and hides useful things by default,
 # so everyone has to add this.
 if IS_GLIBC
-CFLAGS += -D_GNU_SOURCE
+AM_CFLAGS += -D_GNU_SOURCE
 endif
 
 # Set flags for gcc.
 if IS_GCC
-CFLAGS += -std=gnu99 -O2
+AM_CFLAGS += -std=gnu99 -O2
 if IS_DEBUG
-CFLAGS += -g
-CFLAGS += -Wno-long-long -Wall -W -Wformat=2
-CFLAGS += -Wmissing-prototypes -Wstrict-prototypes -Wmissing-declarations
-CFLAGS += -Wwrite-strings -Wshadow -Wpointer-arith -Wsign-compare
-CFLAGS += -Wundef -Wbad-function-cast -Winline -Wcast-align
-CFLAGS += -Wdeclaration-after-statement -Wno-pointer-sign -Wno-attributes
-CPPFLAGS += -DDEBUG
+AM_CFLAGS += -g
+AM_CFLAGS += -Wno-long-long -Wall -W -Wformat=2
+AM_CFLAGS += -Wmissing-prototypes -Wstrict-prototypes -Wmissing-declarations
+AM_CFLAGS += -Wwrite-strings -Wshadow -Wpointer-arith -Wsign-compare
+AM_CFLAGS += -Wundef -Wbad-function-cast -Winline -Wcast-align
+AM_CFLAGS += -Wdeclaration-after-statement -Wno-pointer-sign -Wno-attributes
+AM_CFLAGS += -Wno-unused-result
+AM_CPPFLAGS += -DDEBUG
 endif
 if IS_COVERAGE
-CFLAGS += -g -O0 --coverage
-LDFLAGS += --coverage
+AM_CFLAGS += -g -O0 --coverage
+AM_LDFLAGS += --coverage
 endif
 if IS_PROFILE
-CFLAGS += -g -O0 -pg
-LDFLAGS += -pg
+AM_CFLAGS += -g -O0 -pg
+AM_LDFLAGS += -pg
 endif
-CPPFLAGS += -iquote.
+AM_CPPFLAGS += -iquote.
 endif
 
 # Set flags for Solaris.
 if IS_SUNOS
 if IS_GCC
-CPPFLAGS += -D_XPG6 -D__EXTENSIONS__ -D_POSIX_PTHREAD_SEMANTICS
+AM_CPPFLAGS += -D_XPG6 -D__EXTENSIONS__ -D_POSIX_PTHREAD_SEMANTICS
 else
-CPPFLAGS += -D_XPG4_2 -D__EXTENSIONS__ -D_POSIX_PTHREAD_SEMANTICS
+AM_CPPFLAGS += -D_XPG4_2 -D__EXTENSIONS__ -D_POSIX_PTHREAD_SEMANTICS
 endif
 endif
 
 # Set flags for Sun CC.
 if IS_SUNCC
-CFLAGS += -erroff=E_EMPTY_DECLARATION
+AM_CFLAGS += -erroff=E_EMPTY_DECLARATION
 endif
 
 # Set _LINUX_SOURCE_COMPAT for AIX for malloc(0).
 if IS_AIX
 DEFS += -D_LINUX_SOURCE_COMPAT=1
+endif
+
+# Set flags for NetBSD.
+if IS_NETBSD
+AM_CPPFLAGS += -D_OPENBSD_SOURCE
 endif
 
 # List of sources.
@@ -77,15 +82,14 @@ dist_tmux_SOURCES = \
 	cmd-choose-buffer.c \
 	cmd-choose-client.c \
 	cmd-choose-tree.c \
-	cmd-clear-history.c \
 	cmd-command-prompt.c \
 	cmd-confirm-before.c \
 	cmd-copy-mode.c \
 	cmd-detach-client.c \
 	cmd-display-message.c \
 	cmd-display-panes.c \
-	cmd-find.c \
 	cmd-find-window.c \
+	cmd-find.c \
 	cmd-if-shell.c \
 	cmd-join-pane.c \
 	cmd-kill-pane.c \
@@ -137,8 +141,9 @@ dist_tmux_SOURCES = \
 	cmd-wait-for.c \
 	cmd.c \
 	colour.c \
-	control.c \
+	compat.h \
 	control-notify.c \
+	control.c \
 	environ.c \
 	format.c \
 	grid-view.c \
@@ -153,13 +158,13 @@ dist_tmux_SOURCES = \
 	layout-set.c \
 	layout.c \
 	log.c \
-	mode-key.c \
 	names.c \
 	notify.c \
 	options-table.c \
 	options.c \
 	paste.c \
 	proc.c \
+	pty.c \
 	resize.c \
 	screen-redraw.c \
 	screen-write.c \
@@ -172,6 +177,7 @@ dist_tmux_SOURCES = \
 	status.c \
 	style.c \
 	tmux.c \
+	tmux.h \
 	tty-acs.c \
 	tty-keys.c \
 	tty-term.c \
@@ -182,10 +188,16 @@ dist_tmux_SOURCES = \
 	window-copy.c \
 	window.c \
 	xmalloc.c \
+	xmalloc.h \
 	xterm-keys.c
 nodist_tmux_SOURCES = osdep-@PLATFORM@.c
 
-# Pile in all the compat/ stuff that is needed.
+# Add compat file for utf8proc.
+if HAVE_UTF8PROC
+nodist_tmux_SOURCES += compat/utf8proc.c
+endif
+
+# Add compat for missing or broken functions.
 if NO_FORKPTY
 nodist_tmux_SOURCES += compat/forkpty-@PLATFORM@.c
 endif
@@ -238,13 +250,10 @@ if NO_STRTONUM
 nodist_tmux_SOURCES += compat/strtonum.c
 endif
 if NO_B64_NTOP
-nodist_tmux_SOURCES += compat/b64_ntop.c
+nodist_tmux_SOURCES += compat/base64.c
 endif
 if NO_CFMAKERAW
 nodist_tmux_SOURCES += compat/cfmakeraw.c
-endif
-if NO_OPENAT
-nodist_tmux_SOURCES += compat/openat.c
 endif
 if NO_REALLOCARRAY
 nodist_tmux_SOURCES += compat/reallocarray.c

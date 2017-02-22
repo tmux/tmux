@@ -32,13 +32,13 @@ attributes_tostring(u_char attr)
 		return ("none");
 
 	len = xsnprintf(buf, sizeof buf, "%s%s%s%s%s%s%s",
-		attr & GRID_ATTR_BRIGHT ? "bright," : "",
-		attr & GRID_ATTR_DIM ? "dim," : "",
-		attr & GRID_ATTR_UNDERSCORE ? "underscore," : "",
-		attr & GRID_ATTR_BLINK ? "blink," : "",
-		attr & GRID_ATTR_REVERSE ? "reverse," : "",
-		attr & GRID_ATTR_HIDDEN ? "hidden," : "",
-		attr & GRID_ATTR_ITALICS ? "italics," : "");
+	    (attr & GRID_ATTR_BRIGHT) ? "bright," : "",
+	    (attr & GRID_ATTR_DIM) ? "dim," : "",
+	    (attr & GRID_ATTR_UNDERSCORE) ? "underscore," : "",
+	    (attr & GRID_ATTR_BLINK)? "blink," : "",
+	    (attr & GRID_ATTR_REVERSE) ? "reverse," : "",
+	    (attr & GRID_ATTR_HIDDEN) ? "hidden," : "",
+	    (attr & GRID_ATTR_ITALICS) ? "italics," : "");
 	if (len > 0)
 		buf[len - 1] = '\0';
 

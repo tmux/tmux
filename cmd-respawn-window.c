@@ -27,7 +27,8 @@
  * Respawn a window (restart the command). Kill existing if -k given.
  */
 
-enum cmd_retval	 cmd_respawn_window_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_respawn_window_exec(struct cmd *,
+			    struct cmdq_item *);
 
 const struct cmd_entry cmd_respawn_window_entry = {
 	.name = "respawn-window",
@@ -42,12 +43,12 @@ const struct cmd_entry cmd_respawn_window_entry = {
 	.exec = cmd_respawn_window_exec
 };
 
-enum cmd_retval
-cmd_respawn_window_exec(struct cmd *self, struct cmd_q *cmdq)
+static enum cmd_retval
+cmd_respawn_window_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
-	struct session		*s = cmdq->state.tflag.s;
-	struct winlink		*wl = cmdq->state.tflag.wl;
+	struct session		*s = item->state.tflag.s;
+	struct winlink		*wl = item->state.tflag.wl;
 	struct window		*w = wl->window;
 	struct window_pane	*wp;
 	struct environ		*env;
@@ -59,7 +60,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_q *cmdq)
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (wp->fd == -1)
 				continue;
-			cmdq_error(cmdq, "window still active: %s:%d", s->name,
+			cmdq_error(item, "window still active: %s:%d", s->name,
 			    wl->idx);
 			return (CMD_RETURN_ERROR);
 		}
@@ -78,8 +79,8 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	window_pane_resize(wp, w->sx, w->sy);
 
 	path = NULL;
-	if (cmdq->client != NULL && cmdq->client->session == NULL)
-		envent = environ_find(cmdq->client->environ, "PATH");
+	if (item->client != NULL && item->client->session == NULL)
+		envent = environ_find(item->client->environ, "PATH");
 	else
 		envent = environ_find(s->environ, "PATH");
 	if (envent != NULL)
@@ -87,7 +88,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	if (window_pane_spawn(wp, args->argc, args->argv, path, NULL, NULL, env,
 	    s->tio, &cause) != 0) {
-		cmdq_error(cmdq, "respawn window failed: %s", cause);
+		cmdq_error(item, "respawn window failed: %s", cause);
 		free(cause);
 		environ_free(env);
 		server_destroy_pane(wp, 0);

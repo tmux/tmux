@@ -26,7 +26,8 @@
  * Switch window to selected layout.
  */
 
-enum cmd_retval	 cmd_select_layout_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_select_layout_exec(struct cmd *,
+			    struct cmdq_item *);
 
 const struct cmd_entry cmd_select_layout_entry = {
 	.name = "select-layout",
@@ -37,7 +38,7 @@ const struct cmd_entry cmd_select_layout_entry = {
 
 	.tflag = CMD_WINDOW,
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_select_layout_exec
 };
 
@@ -50,7 +51,7 @@ const struct cmd_entry cmd_next_layout_entry = {
 
 	.tflag = CMD_WINDOW,
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_select_layout_exec
 };
 
@@ -63,15 +64,15 @@ const struct cmd_entry cmd_previous_layout_entry = {
 
 	.tflag = CMD_WINDOW,
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_select_layout_exec
 };
 
-enum cmd_retval
-cmd_select_layout_exec(struct cmd *self, struct cmd_q *cmdq)
+static enum cmd_retval
+cmd_select_layout_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args	*args = self->args;
-	struct winlink	*wl = cmdq->state.tflag.wl;
+	struct winlink	*wl = item->state.tflag.wl;
 	struct window	*w;
 	const char	*layoutname;
 	char		*oldlayout;
@@ -118,7 +119,7 @@ cmd_select_layout_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	if (layoutname != NULL) {
 		if (layout_parse(w, layoutname) == -1) {
-			cmdq_error(cmdq, "can't set layout: %s", layoutname);
+			cmdq_error(item, "can't set layout: %s", layoutname);
 			goto error;
 		}
 		goto changed;

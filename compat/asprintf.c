@@ -23,8 +23,6 @@
 #endif
 #include <string.h>
 
-#include "tmux.h"
-
 int
 asprintf(char **ret, const char *fmt, ...)
 {

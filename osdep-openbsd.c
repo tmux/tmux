@@ -37,12 +37,12 @@
 #define is_stopped(p) \
 	((p)->p_stat == SSTOP || (p)->p_stat == SDEAD)
 
-struct kinfo_proc	*cmp_procs(struct kinfo_proc *, struct kinfo_proc *);
-char			*osdep_get_name(int, char *);
-char			*osdep_get_cwd(int);
-struct event_base	*osdep_event_init(void);
+static struct kinfo_proc *cmp_procs(struct kinfo_proc *, struct kinfo_proc *);
+char			 *osdep_get_name(int, char *);
+char			 *osdep_get_cwd(int);
+struct event_base	 *osdep_event_init(void);
 
-struct kinfo_proc *
+static struct kinfo_proc *
 cmp_procs(struct kinfo_proc *p1, struct kinfo_proc *p2)
 {
 	if (is_runnable(p1) && !is_runnable(p2))

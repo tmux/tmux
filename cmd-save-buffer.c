@@ -31,7 +31,7 @@
  * Saves a paste buffer to a file.
  */
 
-enum cmd_retval	 cmd_save_buffer_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_save_buffer_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_save_buffer_entry = {
 	.name = "save-buffer",
@@ -40,7 +40,7 @@ const struct cmd_entry cmd_save_buffer_entry = {
 	.args = { "ab:", 1, 1 },
 	.usage = "[-a] " CMD_BUFFER_USAGE " path",
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_save_buffer_exec
 };
 
@@ -51,33 +51,32 @@ const struct cmd_entry cmd_show_buffer_entry = {
 	.args = { "b:", 0, 0 },
 	.usage = CMD_BUFFER_USAGE,
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_save_buffer_exec
 };
 
-enum cmd_retval
-cmd_save_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
+static enum cmd_retval
+cmd_save_buffer_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
-	struct client		*c = cmdq->client;
-	struct session          *s;
+	struct client		*c = item->client;
 	struct paste_buffer	*pb;
-	const char		*path, *bufname, *bufdata, *start, *end, *cwd;
+	const char		*path, *bufname, *bufdata, *start, *end;
 	const char		*flags;
-	char			*msg, *file, resolved[PATH_MAX];
+	char			*msg, *file;
 	size_t			 size, used, msglen, bufsize;
 	FILE			*f;
 
 	if (!args_has(args, 'b')) {
 		if ((pb = paste_get_top(NULL)) == NULL) {
-			cmdq_error(cmdq, "no buffers");
+			cmdq_error(item, "no buffers");
 			return (CMD_RETURN_ERROR);
 		}
 	} else {
 		bufname = args_get(args, 'b');
 		pb = paste_get_name(bufname);
 		if (pb == NULL) {
-			cmdq_error(cmdq, "no buffer %s", bufname);
+			cmdq_error(item, "no buffer %s", bufname);
 			return (CMD_RETURN_ERROR);
 		}
 	}
@@ -89,7 +88,7 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 		path = args->argv[0];
 	if (strcmp(path, "-") == 0) {
 		if (c == NULL) {
-			cmdq_error(cmdq, "can't write to stdout");
+			cmdq_error(item, "can't write to stdout");
 			return (CMD_RETURN_ERROR);
 		}
 		if (c->session == NULL || (c->flags & CLIENT_CONTROL))
@@ -97,39 +96,26 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 		goto do_print;
 	}
 
-	if (c != NULL && c->session == NULL && c->cwd != NULL)
-		cwd = c->cwd;
-	else if ((s = c->session) != NULL && s->cwd != NULL)
-		cwd = s->cwd;
-	else
-		cwd = ".";
-
 	flags = "wb";
 	if (args_has(self->args, 'a'))
 		flags = "ab";
 
-	if (*path == '/')
-		file = xstrdup(path);
-	else
-		xasprintf(&file, "%s/%s", cwd, path);
-	if (realpath(file, resolved) == NULL &&
-	    strlcpy(resolved, file, sizeof resolved) >= sizeof resolved) {
-		cmdq_error(cmdq, "%s: %s", file, strerror(ENAMETOOLONG));
-		return (CMD_RETURN_ERROR);
-	}
-	f = fopen(resolved, flags);
-	free(file);
+	file = server_client_get_path(c, path);
+	f = fopen(file, flags);
 	if (f == NULL) {
-		cmdq_error(cmdq, "%s: %s", resolved, strerror(errno));
+		cmdq_error(item, "%s: %s", file, strerror(errno));
+		free(file);
 		return (CMD_RETURN_ERROR);
 	}
 
 	if (fwrite(bufdata, 1, bufsize, f) != bufsize) {
-		cmdq_error(cmdq, "%s: write error", resolved);
+		cmdq_error(item, "%s: write error", file);
 		fclose(f);
 		return (CMD_RETURN_ERROR);
 	}
+
 	fclose(f);
+	free(file);
 
 	return (CMD_RETURN_NORMAL);
 
@@ -140,7 +126,7 @@ do_stdout:
 
 do_print:
 	if (bufsize > (INT_MAX / 4) - 1) {
-		cmdq_error(cmdq, "buffer too big");
+		cmdq_error(item, "buffer too big");
 		return (CMD_RETURN_ERROR);
 	}
 	msg = NULL;
@@ -158,7 +144,7 @@ do_print:
 		msg = xrealloc(msg, msglen);
 
 		strvisx(msg, start, size, VIS_OCTAL|VIS_TAB);
-		cmdq_print(cmdq, "%s", msg);
+		cmdq_print(item, "%s", msg);
 
 		used += size + (end != NULL);
 	}

@@ -92,7 +92,6 @@ extern const struct cmd_entry cmd_select_pane_entry;
 extern const struct cmd_entry cmd_select_window_entry;
 extern const struct cmd_entry cmd_send_keys_entry;
 extern const struct cmd_entry cmd_send_prefix_entry;
-extern const struct cmd_entry cmd_server_info_entry;
 extern const struct cmd_entry cmd_set_buffer_entry;
 extern const struct cmd_entry cmd_set_environment_entry;
 extern const struct cmd_entry cmd_set_hook_entry;
@@ -181,7 +180,6 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_select_window_entry,
 	&cmd_send_keys_entry,
 	&cmd_send_prefix_entry,
-	&cmd_server_info_entry,
 	&cmd_set_buffer_entry,
 	&cmd_set_environment_entry,
 	&cmd_set_hook_entry,
@@ -307,21 +305,74 @@ cmd_stringify_argv(int argc, char **argv)
 	return (buf);
 }
 
+static int
+cmd_try_alias(int *argc, char ***argv)
+{
+	struct options_entry	 *o;
+	int			  old_argc = *argc, new_argc;
+	char			**old_argv = *argv, **new_argv;
+	u_int			  size, idx;
+	int			  i;
+	size_t			  wanted;
+	const char		 *s, *cp = NULL;
+
+	o = options_get_only(global_options, "command-alias");
+	if (o == NULL || options_array_size(o, &size) == -1 || size == 0)
+		return (-1);
+
+	wanted = strlen(old_argv[0]);
+	for (idx = 0; idx < size; idx++) {
+		s = options_array_get(o, idx);
+		if (s == NULL)
+			continue;
+
+		cp = strchr(s, '=');
+		if (cp == NULL || (size_t)(cp - s) != wanted)
+			continue;
+		if (strncmp(old_argv[0], s, wanted) == 0)
+			break;
+	}
+	if (idx == size)
+		return (-1);
+
+	if (cmd_string_split(cp + 1, &new_argc, &new_argv) != 0)
+		return (-1);
+
+	*argc = new_argc + old_argc - 1;
+	*argv = xcalloc((*argc) + 1, sizeof **argv);
+
+	for (i = 0; i < new_argc; i++)
+		(*argv)[i] = xstrdup(new_argv[i]);
+	for (i = 1; i < old_argc; i++)
+		(*argv)[new_argc + i - 1] = xstrdup(old_argv[i]);
+
+	log_debug("alias: %s=%s", old_argv[0], cp + 1);
+	for (i = 0; i < *argc; i++)
+		log_debug("alias: argv[%d] = %s", i, (*argv)[i]);
+
+	cmd_free_argv(new_argc, new_argv);
+	return (0);
+}
+
 struct cmd *
 cmd_parse(int argc, char **argv, const char *file, u_int line, char **cause)
 {
+	const char		*name;
 	const struct cmd_entry **entryp, *entry;
 	struct cmd		*cmd;
 	struct args		*args;
 	char			 s[BUFSIZ];
-	int			 ambiguous = 0;
+	int			 ambiguous, allocated = 0;
 
 	*cause = NULL;
 	if (argc == 0) {
 		xasprintf(cause, "no command");
 		return (NULL);
 	}
+	name = argv[0];
 
+retry:
+	ambiguous = 0;
 	entry = NULL;
 	for (entryp = cmd_table; *entryp != NULL; entryp++) {
 		if ((*entryp)->alias != NULL &&
@@ -341,10 +392,17 @@ cmd_parse(int argc, char **argv, const char *file, u_int line, char **cause)
 		if (strcmp(entry->name, argv[0]) == 0)
 			break;
 	}
+	if ((ambiguous || entry == NULL) &&
+	    server_proc != NULL &&
+	    !allocated &&
+	    cmd_try_alias(&argc, &argv) == 0) {
+		allocated = 1;
+		goto retry;
+	}
 	if (ambiguous)
 		goto ambiguous;
 	if (entry == NULL) {
-		xasprintf(cause, "unknown command: %s", argv[0]);
+		xasprintf(cause, "unknown command: %s", name);
 		return (NULL);
 	}
 
@@ -364,6 +422,8 @@ cmd_parse(int argc, char **argv, const char *file, u_int line, char **cause)
 		cmd->file = xstrdup(file);
 	cmd->line = line;
 
+	if (allocated)
+		cmd_free_argv(argc, argv);
 	return (cmd);
 
 ambiguous:
@@ -377,7 +437,7 @@ ambiguous:
 			break;
 	}
 	s[strlen(s) - 2] = '\0';
-	xasprintf(cause, "ambiguous command: %s, could be: %s", argv[0], s);
+	xasprintf(cause, "ambiguous command: %s, could be: %s", name, s);
 	return (NULL);
 
 usage:
@@ -389,12 +449,11 @@ usage:
 
 static int
 cmd_prepare_state_flag(char c, const char *target, enum cmd_entry_flag flag,
-    struct cmd_q *cmdq, struct cmd_q *parent)
+    struct cmdq_item *item)
 {
 	int			 targetflags, error;
 	struct cmd_find_state	*fs = NULL;
-	struct cmd_find_state	*current = NULL;
-	struct cmd_find_state	 tmp;
+	struct cmd_find_state	 current;
 
 	if (flag == CMD_NONE ||
 	    flag == CMD_CLIENT ||
@@ -402,15 +461,15 @@ cmd_prepare_state_flag(char c, const char *target, enum cmd_entry_flag flag,
 		return (0);
 
 	if (c == 't')
-		fs = &cmdq->state.tflag;
+		fs = &item->state.tflag;
 	else if (c == 's')
-		fs = &cmdq->state.sflag;
+		fs = &item->state.sflag;
 
 	if (flag == CMD_SESSION_WITHPANE) {
 		if (target != NULL && target[strcspn(target, ":.")] != '\0')
 			flag = CMD_PANE;
 		else
-			flag = CMD_SESSION;
+			flag = CMD_SESSION_PREFERUNATTACHED;
 	}
 
 	targetflags = 0;
@@ -418,6 +477,7 @@ cmd_prepare_state_flag(char c, const char *target, enum cmd_entry_flag flag,
 	case CMD_SESSION:
 	case CMD_SESSION_CANFAIL:
 	case CMD_SESSION_PREFERUNATTACHED:
+	case CMD_SESSION_WITHPANE:
 		if (flag == CMD_SESSION_CANFAIL)
 			targetflags |= CMD_FIND_QUIET;
 		if (flag == CMD_SESSION_PREFERUNATTACHED)
@@ -448,19 +508,16 @@ cmd_prepare_state_flag(char c, const char *target, enum cmd_entry_flag flag,
 	default:
 		fatalx("unknown %cflag %d", c, flag);
 	}
-
 	log_debug("%s: flag %c %d %#x", __func__, c, flag, targetflags);
-	if (parent != NULL) {
-		if (c == 't')
-			current = &parent->state.tflag;
-		else if (c == 's')
-			current = &parent->state.sflag;
-	} else {
-		error = cmd_find_current(&tmp, cmdq, targetflags);
-		if (error != 0 && ~targetflags & CMD_FIND_QUIET)
+
+	error = cmd_find_current(&current, item, targetflags);
+	if (error != 0) {
+		if (~targetflags & CMD_FIND_QUIET)
 			return (-1);
-		current = &tmp;
+		cmd_find_clear_state(&current, NULL, 0);
 	}
+	if (!cmd_find_empty_state(&current) && !cmd_find_valid_state(&current))
+		fatalx("invalid current state");
 
 	switch (flag) {
 	case CMD_NONE:
@@ -471,13 +528,13 @@ cmd_prepare_state_flag(char c, const char *target, enum cmd_entry_flag flag,
 	case CMD_SESSION_CANFAIL:
 	case CMD_SESSION_PREFERUNATTACHED:
 	case CMD_SESSION_WITHPANE:
-		error = cmd_find_target(fs, current, cmdq, target,
+		error = cmd_find_target(fs, &current, item, target,
 		    CMD_FIND_SESSION, targetflags);
-		if (error != 0 && ~targetflags & CMD_FIND_QUIET)
-			return (-1);
+		if (error != 0)
+			goto error;
 		break;
 	case CMD_MOVEW_R:
-		error = cmd_find_target(fs, current, cmdq, target,
+		error = cmd_find_target(fs, &current, item, target,
 		    CMD_FIND_SESSION, CMD_FIND_QUIET);
 		if (error == 0)
 			break;
@@ -486,37 +543,43 @@ cmd_prepare_state_flag(char c, const char *target, enum cmd_entry_flag flag,
 	case CMD_WINDOW_CANFAIL:
 	case CMD_WINDOW_MARKED:
 	case CMD_WINDOW_INDEX:
-		error = cmd_find_target(fs, current, cmdq, target,
+		error = cmd_find_target(fs, &current, item, target,
 		    CMD_FIND_WINDOW, targetflags);
-		if (error != 0 && ~targetflags & CMD_FIND_QUIET)
-			return (-1);
+		if (error != 0)
+			goto error;
 		break;
 	case CMD_PANE:
 	case CMD_PANE_CANFAIL:
 	case CMD_PANE_MARKED:
-		error = cmd_find_target(fs, current, cmdq, target,
+		error = cmd_find_target(fs, &current, item, target,
 		    CMD_FIND_PANE, targetflags);
-		if (error != 0 && ~targetflags & CMD_FIND_QUIET)
-			return (-1);
+		if (error != 0)
+			goto error;
 		break;
 	default:
 		fatalx("unknown %cflag %d", c, flag);
 	}
 	return (0);
+
+error:
+	if (~targetflags & CMD_FIND_QUIET)
+		return (-1);
+	cmd_find_clear_state(fs, NULL, 0);
+	return (0);
 }
 
 int
-cmd_prepare_state(struct cmd *cmd, struct cmd_q *cmdq, struct cmd_q *parent)
+cmd_prepare_state(struct cmd *cmd, struct cmdq_item *item)
 {
-	const struct cmd_entry		*entry = cmd->entry;
-	struct cmd_state		*state = &cmdq->state;
-	char				*tmp;
-	enum cmd_entry_flag		 flag;
-	const char			*s;
-	int				 error;
+	const struct cmd_entry	*entry = cmd->entry;
+	struct cmd_state	*state = &item->state;
+	char			*tmp;
+	enum cmd_entry_flag	 flag;
+	const char		*s;
+	int			 error;
 
 	tmp = cmd_print(cmd);
-	log_debug("preparing state for %s (client %p)", tmp, cmdq->client);
+	log_debug("preparing state for %s (client %p)", tmp, item->client);
 	free(tmp);
 
 	state->c = NULL;
@@ -534,28 +597,36 @@ cmd_prepare_state(struct cmd *cmd, struct cmd_q *cmdq, struct cmd_q *parent)
 		s = args_get(cmd->args, 'c');
 	switch (flag) {
 	case CMD_CLIENT:
-		state->c = cmd_find_client(cmdq, s, 0);
+		state->c = cmd_find_client(item, s, 0);
 		if (state->c == NULL)
 			return (-1);
 		break;
 	default:
-		state->c = cmd_find_client(cmdq, s, 1);
+		state->c = cmd_find_client(item, s, 1);
 		break;
 	}
+	log_debug("using client %p", state->c);
 
 	s = args_get(cmd->args, 't');
 	log_debug("preparing -t state: target %s", s == NULL ? "none" : s);
 
-	error = cmd_prepare_state_flag('t', s, entry->tflag, cmdq, parent);
+	error = cmd_prepare_state_flag('t', s, entry->tflag, item);
 	if (error != 0)
 		return (error);
 
 	s = args_get(cmd->args, 's');
 	log_debug("preparing -s state: target %s", s == NULL ? "none" : s);
 
-	error = cmd_prepare_state_flag('s', s, entry->sflag, cmdq, parent);
+	error = cmd_prepare_state_flag('s', s, entry->sflag, item);
 	if (error != 0)
 		return (error);
+
+	if (!cmd_find_empty_state(&state->tflag) &&
+	    !cmd_find_valid_state(&state->tflag))
+		fatalx("invalid -t state");
+	if (!cmd_find_empty_state(&state->sflag) &&
+	    !cmd_find_valid_state(&state->sflag))
+		fatalx("invalid -s state");
 
 	return (0);
 }
@@ -600,8 +671,10 @@ cmd_mouse_at(struct window_pane *wp, struct mouse_event *m, u_int *xp,
 	if (y < wp->yoff || y >= wp->yoff + wp->sy)
 		return (-1);
 
-	*xp = x - wp->xoff;
-	*yp = y - wp->yoff;
+	if (xp != NULL)
+		*xp = x - wp->xoff;
+	if (yp != NULL)
+		*yp = y - wp->yoff;
 	return (0);
 }
 
@@ -649,8 +722,8 @@ char *
 cmd_template_replace(const char *template, const char *s, int idx)
 {
 	char		 ch, *buf;
-	const char	*ptr;
-	int		 replaced;
+	const char	*ptr, *cp, quote[] = "\"\\$";
+	int		 replaced, quoted;
 	size_t		 len;
 
 	if (strchr(template, '%') == NULL)
@@ -672,9 +745,21 @@ cmd_template_replace(const char *template, const char *s, int idx)
 			}
 			ptr++;
 
-			len += strlen(s);
-			buf = xrealloc(buf, len + 1);
-			strlcat(buf, s, len + 1);
+			quoted = (*ptr == '%');
+			if (quoted)
+				ptr++;
+
+			buf = xrealloc(buf, len + (strlen(s) * 3) + 1);
+			for (cp = s; *cp != '\0'; cp++) {
+				if (quoted && strchr(quote, *cp) != NULL)
+					buf[len++] = '\\';
+				if (quoted && *cp == ';') {
+					buf[len++] = '\\';
+					buf[len++] = '\\';
+				}
+				buf[len++] = *cp;
+			}
+			buf[len] = '\0';
 			continue;
 		}
 		buf = xrealloc(buf, len + 2);

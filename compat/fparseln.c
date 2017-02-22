@@ -38,7 +38,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "tmux.h"
+#include "compat.h"
 
 /*
  * fparseln() specific operation flags.

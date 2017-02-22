@@ -26,9 +26,10 @@
  * Increase or decrease pane size.
  */
 
-enum cmd_retval	 cmd_resize_pane_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_resize_pane_exec(struct cmd *, struct cmdq_item *);
 
-void	cmd_resize_pane_mouse_update(struct client *, struct mouse_event *);
+static void	cmd_resize_pane_mouse_update(struct client *,
+		    struct mouse_event *);
 
 const struct cmd_entry cmd_resize_pane_entry = {
 	.name = "resize-pane",
@@ -40,31 +41,31 @@ const struct cmd_entry cmd_resize_pane_entry = {
 
 	.tflag = CMD_PANE,
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_resize_pane_exec
 };
 
-enum cmd_retval
-cmd_resize_pane_exec(struct cmd *self, struct cmd_q *cmdq)
+static enum cmd_retval
+cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
-	struct window_pane	*wp = cmdq->state.tflag.wp;
-	struct winlink		*wl = cmdq->state.tflag.wl;
+	struct window_pane	*wp = item->state.tflag.wp;
+	struct winlink		*wl = item->state.tflag.wl;
 	struct window		*w = wl->window;
-	struct client		*c = cmdq->client;
-	struct session		*s = cmdq->state.tflag.s;
+	struct client		*c = item->client;
+	struct session		*s = item->state.tflag.s;
 	const char	       	*errstr;
 	char			*cause;
 	u_int			 adjust;
 	int			 x, y;
 
 	if (args_has(args, 'M')) {
-		if (cmd_mouse_window(&cmdq->item->mouse, &s) == NULL)
+		if (cmd_mouse_window(&item->mouse, &s) == NULL)
 			return (CMD_RETURN_NORMAL);
 		if (c == NULL || c->session != s)
 			return (CMD_RETURN_NORMAL);
 		c->tty.mouse_drag_update = cmd_resize_pane_mouse_update;
-		cmd_resize_pane_mouse_update(c, &cmdq->item->mouse);
+		cmd_resize_pane_mouse_update(c, &item->mouse);
 		return (CMD_RETURN_NORMAL);
 	}
 
@@ -84,7 +85,7 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 	else {
 		adjust = strtonum(args->argv[0], 1, INT_MAX, &errstr);
 		if (errstr != NULL) {
-			cmdq_error(cmdq, "adjustment %s", errstr);
+			cmdq_error(item, "adjustment %s", errstr);
 			return (CMD_RETURN_ERROR);
 		}
 	}
@@ -93,7 +94,7 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 		x = args_strtonum(self->args, 'x', PANE_MINIMUM, INT_MAX,
 		    &cause);
 		if (cause != NULL) {
-			cmdq_error(cmdq, "width %s", cause);
+			cmdq_error(item, "width %s", cause);
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
@@ -103,7 +104,7 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 		y = args_strtonum(self->args, 'y', PANE_MINIMUM, INT_MAX,
 		    &cause);
 		if (cause != NULL) {
-			cmdq_error(cmdq, "height %s", cause);
+			cmdq_error(item, "height %s", cause);
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
@@ -111,19 +112,19 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 	}
 
 	if (args_has(self->args, 'L'))
-		layout_resize_pane(wp, LAYOUT_LEFTRIGHT, -adjust);
+		layout_resize_pane(wp, LAYOUT_LEFTRIGHT, -adjust, 1);
 	else if (args_has(self->args, 'R'))
-		layout_resize_pane(wp, LAYOUT_LEFTRIGHT, adjust);
+		layout_resize_pane(wp, LAYOUT_LEFTRIGHT, adjust, 1);
 	else if (args_has(self->args, 'U'))
-		layout_resize_pane(wp, LAYOUT_TOPBOTTOM, -adjust);
+		layout_resize_pane(wp, LAYOUT_TOPBOTTOM, -adjust, 1);
 	else if (args_has(self->args, 'D'))
-		layout_resize_pane(wp, LAYOUT_TOPBOTTOM, adjust);
+		layout_resize_pane(wp, LAYOUT_TOPBOTTOM, adjust, 1);
 	server_redraw_window(wl->window);
 
 	return (CMD_RETURN_NORMAL);
 }
 
-void
+static void
 cmd_resize_pane_mouse_update(struct client *c, struct mouse_event *m)
 {
 	struct winlink		*wl;
@@ -154,13 +155,15 @@ cmd_resize_pane_mouse_update(struct client *c, struct mouse_event *m)
 			continue;
 
 		if (wp->xoff + wp->sx == m->lx &&
-		    wp->yoff <= 1 + ly && wp->yoff + wp->sy >= ly) {
-			layout_resize_pane(wp, LAYOUT_LEFTRIGHT, m->x - m->lx);
+		    wp->yoff <= 1 + ly &&
+		    wp->yoff + wp->sy >= ly) {
+			layout_resize_pane(wp, LAYOUT_LEFTRIGHT, m->x - m->lx, 0);
 			found = 1;
 		}
 		if (wp->yoff + wp->sy == ly &&
-		    wp->xoff <= 1 + m->lx && wp->xoff + wp->sx >= m->lx) {
-			layout_resize_pane(wp, LAYOUT_TOPBOTTOM, y - ly);
+		    wp->xoff <= 1 + m->lx &&
+		    wp->xoff + wp->sx >= m->lx) {
+			layout_resize_pane(wp, LAYOUT_TOPBOTTOM, y - ly, 0);
 			found = 1;
 		}
 	}

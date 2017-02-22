@@ -16,9 +16,10 @@
 
 #include <sys/types.h>
 
+#include <stdarg.h>
 #include <string.h>
 
-#include "tmux.h"
+#include "compat.h"
 
 #if defined(HAVE_PRCTL) && defined(HAVE_PR_SET_NAME)
 

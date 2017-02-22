@@ -24,8 +24,10 @@
 
 #include "tmux.h"
 
-void	screen_resize_x(struct screen *, u_int);
-void	screen_resize_y(struct screen *, u_int);
+static void	screen_resize_x(struct screen *, u_int);
+static void	screen_resize_y(struct screen *, u_int);
+
+static void	screen_reflow(struct screen *, u_int);
 
 /* Create a new screen. */
 void
@@ -37,9 +39,6 @@ screen_init(struct screen *s, u_int sx, u_int sy, u_int hlimit)
 	s->cstyle = 0;
 	s->ccolour = xstrdup("");
 	s->tabs = NULL;
-
-	s->dirty = NULL;
-	s->dirtysize = 0;
 
 	screen_reinit(s);
 }
@@ -58,7 +57,7 @@ screen_reinit(struct screen *s)
 
 	screen_reset_tabs(s);
 
-	grid_clear_lines(s->grid, s->grid->hsize, s->grid->sy);
+	grid_clear_lines(s->grid, s->grid->hsize, s->grid->sy, 8);
 
 	screen_clear_selection(s);
 }
@@ -67,7 +66,6 @@ screen_reinit(struct screen *s)
 void
 screen_free(struct screen *s)
 {
-	free(s->dirty);
 	free(s->tabs);
 	free(s->title);
 	free(s->ccolour);
@@ -139,7 +137,7 @@ screen_resize(struct screen *s, u_int sx, u_int sy, int reflow)
 		screen_reflow(s, sx);
 }
 
-void
+static void
 screen_resize_x(struct screen *s, u_int sx)
 {
 	struct grid		*gd = s->grid;
@@ -161,7 +159,7 @@ screen_resize_x(struct screen *s, u_int sx)
 	gd->sx = sx;
 }
 
-void
+static void
 screen_resize_y(struct screen *s, u_int sy)
 {
 	struct grid	*gd = s->grid;
@@ -177,8 +175,9 @@ screen_resize_y(struct screen *s, u_int sy)
 	 * If the height is decreasing, delete lines from the bottom until
 	 * hitting the cursor, then push lines from the top into the history.
 	 *
-	 * When increasing, pull as many lines as possible from the history to
-	 * the top, then fill the remaining with blanks at the bottom.
+	 * When increasing, pull as many lines as possible from scrolled
+	 * history (not explicitly cleared from view) to the top, then fill the
+	 * remaining with blanks at the bottom.
 	 */
 
 	/* Size decreasing. */
@@ -190,7 +189,8 @@ screen_resize_y(struct screen *s, u_int sy)
 		if (available > 0) {
 			if (available > needed)
 				available = needed;
-			grid_view_delete_lines(gd, oldy - available, available);
+			grid_view_delete_lines(gd, oldy - available, available,
+			    8);
 		}
 		needed -= available;
 
@@ -200,12 +200,13 @@ screen_resize_y(struct screen *s, u_int sy)
 		 * lines from the top.
 		 */
 		available = s->cy;
-		if (gd->flags & GRID_HISTORY)
+		if (gd->flags & GRID_HISTORY) {
+			gd->hscrolled += needed;
 			gd->hsize += needed;
-		else if (needed > 0 && available > 0) {
+		} else if (needed > 0 && available > 0) {
 			if (available > needed)
 				available = needed;
-			grid_view_delete_lines(gd, 0, available);
+			grid_view_delete_lines(gd, 0, available, 8);
 		}
 		s->cy -= needed;
 	}
@@ -219,13 +220,14 @@ screen_resize_y(struct screen *s, u_int sy)
 		needed = sy - oldy;
 
 		/*
-		 * Try to pull as much as possible out of the history, if is
-		 * is enabled.
+		 * Try to pull as much as possible out of scrolled history, if
+		 * is is enabled.
 		 */
-		available = gd->hsize;
+		available = gd->hscrolled;
 		if (gd->flags & GRID_HISTORY && available > 0) {
 			if (available > needed)
 				available = needed;
+			gd->hscrolled -= available;
 			gd->hsize -= available;
 			s->cy += available;
 		} else
@@ -252,6 +254,8 @@ screen_set_selection(struct screen *s, u_int sx, u_int sy,
 
 	memcpy(&sel->cell, gc, sizeof sel->cell);
 	sel->flag = 1;
+	sel->hidden = 0;
+
 	sel->rectflag = rectflag;
 
 	sel->sx = sx; sel->sy = sy;
@@ -265,7 +269,17 @@ screen_clear_selection(struct screen *s)
 	struct screen_sel	*sel = &s->sel;
 
 	sel->flag = 0;
+	sel->hidden = 0;
 	sel->lineflag = LINE_SEL_NONE;
+}
+
+/* Hide selection. */
+void
+screen_hide_selection(struct screen *s)
+{
+	struct screen_sel	*sel = &s->sel;
+
+	sel->hidden = 1;
 }
 
 /* Check if cell in selection. */
@@ -275,7 +289,7 @@ screen_check_selection(struct screen *s, u_int px, u_int py)
 	struct screen_sel	*sel = &s->sel;
 	u_int			 xx;
 
-	if (!sel->flag)
+	if (!sel->flag || sel->hidden)
 		return (0);
 
 	if (sel->rectflag) {
@@ -340,7 +354,7 @@ screen_check_selection(struct screen *s, u_int px, u_int py)
 				xx = sel->sx - 1;
 			else
 				xx = sel->sx;
-			if (py == sel->sy && px > xx)
+			if (py == sel->sy && (sel->sx == 0 || px > xx))
 				return (0);
 		} else {
 			/* starting line == ending line. */
@@ -366,8 +380,24 @@ screen_check_selection(struct screen *s, u_int px, u_int py)
 	return (1);
 }
 
-/* Reflow wrapped lines. */
+/* Get selected grid cell. */
 void
+screen_select_cell(struct screen *s, struct grid_cell *dst,
+    const struct grid_cell *src)
+{
+	if (!s->sel.flag || s->sel.hidden)
+		return;
+
+	memcpy(dst, &s->sel.cell, sizeof *dst);
+
+	utf8_copy(&dst->data, &src->data);
+	dst->attr = dst->attr & ~GRID_ATTR_CHARSET;
+	dst->attr |= src->attr & GRID_ATTR_CHARSET;
+	dst->flags = src->flags;
+}
+
+/* Reflow wrapped lines. */
+static void
 screen_reflow(struct screen *s, u_int new_x)
 {
 	struct grid	*old = s->grid;

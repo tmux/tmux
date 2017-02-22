@@ -1,6 +1,6 @@
 # configure.ac
 
-AC_INIT(tmux, 2.3)
+AC_INIT(tmux, master)
 
 AC_CONFIG_AUX_DIR(etc)
 AM_INIT_AUTOMAKE([foreign subdir-objects])
@@ -11,6 +11,13 @@ AC_CANONICAL_HOST
 # autoconf will automatically use CFLAGS="-O2 -g". Prevent that by using an
 # empty default.
 : ${CFLAGS=""}
+
+# Save user CPPFLAGS, CFLAGS and LDFLAGS. We need to change them because
+# AC_CHECK_HEADER doesn't give us any other way to update the include
+# paths. But for Makefile.am we want to use AM_CPPFLAGS and friends.
+SAVED_CFLAGS="$CFLAGS"
+SAVED_CPPFLAGS="$CPPFLAGS"
+SAVED_LDFLAGS="$LDFLAGS"
 
 # Set up the compiler in two different ways and say yes we may want to install.
 AC_PROG_CC
@@ -24,39 +31,36 @@ PKG_PROG_PKG_CONFIG
 test "$sysconfdir" = '${prefix}/etc' && sysconfdir=/etc
 
 # Is this --enable-debug?
-found_debug=yes
+enable_debug=yes
 AC_ARG_ENABLE(
 	debug,
 	AC_HELP_STRING(--enable-debug, enable debug build flags),
-	found_debug=$enable_debug
 )
-AM_CONDITIONAL(IS_DEBUG, test "x$found_debug" = xyes)
+AM_CONDITIONAL(IS_DEBUG, test "x$enable_debug" = xyes)
 
 # Is this --enable-coverage?
 AC_ARG_ENABLE(
 	coverage,
-	AC_HELP_STRING(--enable-coverage, enable coverage build flags),
-	found_coverage=$enable_coverage
+	AC_HELP_STRING(--enable-coverage, enable coverage build flags)
 )
-AM_CONDITIONAL(IS_COVERAGE, test "x$found_coverage" = xyes)
+AM_CONDITIONAL(IS_COVERAGE, test "x$enable_coverage" = xyes)
 
 # Is this --enable-profile?
 AC_ARG_ENABLE(
 	profile,
-	AC_HELP_STRING(--enable-profile, enable profile build flags),
-	found_profile=$enable_profile
+	AC_HELP_STRING(--enable-profile, enable profile build flags)
 )
-AM_CONDITIONAL(IS_PROFILE, test "x$found_profile" = xyes)
+AM_CONDITIONAL(IS_PROFILE, test "x$enable_profile" = xyes)
 
 # Is this a static build?
 AC_ARG_ENABLE(
 	static,
-	AC_HELP_STRING(--enable-static, create a static build),
-	found_static=$enable_static
+	AC_HELP_STRING(--enable-static, create a static build)
 )
-if test "x$found_static" = xyes; then
-	LDFLAGS="$LDFLAGS -static"
+if test "x$enable_static" = xyes; then
 	test "x$PKG_CONFIG" != x && PKG_CONFIG="$PKG_CONFIG --static"
+	AM_LDFLAGS="-static $AM_LDFLAGS"
+	LDFLAGS="$AM_LDFLAGS $SAVED_LDFLAGS"
 fi
 
 # Is this gcc?
@@ -95,12 +99,10 @@ AC_MSG_RESULT($found_glibc)
 AC_CHECK_HEADERS(
 	[ \
 		bitstring.h \
-		curses.h \
 		dirent.h \
 		fcntl.h \
 		inttypes.h \
 		libutil.h \
-		ncurses.h \
 		ndir.h \
 		paths.h \
 		pty.h \
@@ -135,7 +137,8 @@ PKG_CHECK_MODULES(
 	LIBEVENT,
 	libevent,
 	[
-		CPPFLAGS="$LIBEVENT_CFLAGS $CPPFLAGS"
+		AM_CFLAGS="$LIBEVENT_CFLAGS $AM_CFLAGS"
+		CFLAGS="$AM_CFLAGS $SAVED_CFLAGS"
 		LIBS="$LIBEVENT_LIBS $LIBS"
 		found_libevent=yes
 	],
@@ -148,55 +151,124 @@ PKG_CHECK_MODULES(
 		)
 	]
 )
+AC_CHECK_HEADER(
+	event.h,
+	,
+	found_libevent=no
+)
 if test "x$found_libevent" = xno; then
 	AC_MSG_ERROR("libevent not found")
 fi
 
-# Look for ncurses
+# Look for ncurses.
 PKG_CHECK_MODULES(
-	LIBNCURSES,
-	ncurses,
-	[
-		CPPFLAGS="$LIBNCURSES_CFLAGS $CPPFLAGS"
-		LIBS="$LIBNCURSES_LIBS $LIBS"
-		found_curses=yes
-	],
-	[
-		AC_SEARCH_LIBS(
-			setupterm,
-			[ncurses curses terminfo],
-			found_curses=yes,
-			found_curses=no
-		)
-	]
+	LIBTINFO,
+	tinfo,
+	found_ncurses=yes,
+	found_ncurses=no
 )
-if test "x$found_curses" = xno; then
-	AC_MSG_ERROR("curses not found")
+if test "x$found_ncurses" = xno; then
+	PKG_CHECK_MODULES(
+		LIBNCURSES,
+		ncurses,
+		found_ncurses=yes,
+		found_ncurses=no
+	)
+fi
+if test "x$found_ncurses" = xno; then
+	PKG_CHECK_MODULES(
+		LIBNCURSES,
+		ncursesw,
+		found_ncurses=yes,
+		found_ncurses=no
+	)
+fi
+if test "x$found_ncurses" = xyes; then
+	CPPFLAGS="$LIBNCURSES_CFLAGS $LIBTINFO_CFLAGS $CPPFLAGS"
+	LIBS="$LIBNCURSES_LIBS $LIBTINFO_LIBS $LIBS"
+else
+	# pkg-config didn't work, try ncurses.
+	AC_CHECK_LIB(
+		[tinfo ncurses],
+		setupterm,
+		found_ncurses=yes,
+		found_ncurses=no
+	)
+	if test "x$found_ncurses" = xyes; then
+		AC_CHECK_HEADER(
+			ncurses.h,
+			LIBS="$LIBS -lncurses",
+			found_ncurses=no)
+	fi
+fi
+if test "x$found_ncurses" = xyes; then
+	AC_DEFINE(HAVE_NCURSES_H)
+else
+	# No ncurses, try curses.
+	AC_CHECK_LIB(
+		curses,
+		setupterm,
+		found_curses=yes,
+		found_curses=no
+	)
+	AC_CHECK_HEADER(
+		curses.h,
+		,
+		found_curses=no)
+	if test "x$found_curses" = xyes; then
+		LIBS="$LIBS -lcurses"
+		AC_DEFINE(HAVE_CURSES_H)
+	else
+		AC_MSG_ERROR("curses not found")
+	fi
 fi
 
 # Look for utempter.
 AC_ARG_ENABLE(
 	utempter,
-	AC_HELP_STRING(--enable-utempter, use utempter if it is installed),
-	found_utempter=$enable_utempter,
-	found_utempter=yes
+	AC_HELP_STRING(--enable-utempter, use utempter if it is installed)
 )
-if test "x$found_utempter" = xyes; then
-	AC_CHECK_HEADER(utempter.h, found_utempter=yes, found_utempter=no)
-	if test "x$found_utempter" = xyes; then
+if test "x$enable_utempter" = xyes; then
+	AC_CHECK_HEADER(utempter.h, enable_utempter=yes, enable_utempter=no)
+	if test "x$enable_utempter" = xyes; then
 		AC_SEARCH_LIBS(
 			utempter_add_record,
 			utempter,
-			found_utempter=yes,
-			found_utempter=no
+			enable_utempter=yes,
+			enable_utempter=no
 		)
-		if test "x$found_utempter" = xyes; then
-			AC_DEFINE(HAVE_UTEMPTER)
-		fi
+	fi
+	if test "x$enable_utempter" = xyes; then
+		AC_DEFINE(HAVE_UTEMPTER)
+	else
+		AC_MSG_ERROR("utempter not found")
 	fi
 fi
 
-# Check for b64_ntop.
+# Look for utf8proc.
+AC_ARG_ENABLE(
+	utf8proc,
+	AC_HELP_STRING(--enable-utf8proc, use utf8proc if it is installed)
+)
+if test "x$enable_utf8proc" = xyes; then
+	AC_CHECK_HEADER(utf8proc.h, enable_utf8proc=yes, enable_utf8proc=no)
+	if test "x$enable_utf8proc" = xyes; then
+		AC_SEARCH_LIBS(
+			utf8proc_charwidth,
+			utf8proc,
+			enable_utf8proc=yes,
+			enable_utf8proc=no
+		)
+	fi
+	if test "x$enable_utf8proc" = xyes; then
+		AC_DEFINE(HAVE_UTF8PROC)
+	else
+		AC_MSG_ERROR("utf8proc not found")
+	fi
+fi
+AM_CONDITIONAL(HAVE_UTF8PROC, [test "x$enable_utf8proc" = xyes])
+
+# Check for b64_ntop. If we have b64_ntop, we assume b64_pton as well.
 AC_MSG_CHECKING(for b64_ntop)
 AC_TRY_LINK(
 	[
@@ -396,6 +468,17 @@ if test "x$found_stravis" = xyes; then
 	fi
 fi
 if test "x$found_stravis" = xyes; then
+	AC_CHECK_DECL(
+		VIS_DQ,
+		,
+		found_stravis=no,
+		[
+			#include <stdlib.h>
+			#include <vis.h>
+		]
+)
+fi
+if test "x$found_stravis" = xyes; then
 	AC_DEFINE(HAVE_VIS)
 fi
 AM_CONDITIONAL(NO_VIS, [test "x$found_stravis" = xno])
@@ -406,13 +489,6 @@ if test "x$found_cfmakeraw" = xyes; then
 	AC_DEFINE(HAVE_CFMAKERAW)
 fi
 AM_CONDITIONAL(NO_CFMAKERAW, [test "x$found_cfmakeraw" = xno])
-
-# Look for openat, compat/openat.c used if missing.
-AC_CHECK_FUNC(openat, found_openat=yes, found_openat=no)
-if test "x$found_openat" = xyes; then
-	AC_DEFINE(HAVE_OPENAT)
-fi
-AM_CONDITIONAL(NO_OPENAT, [test "x$found_openat" = xno])
 
 # Look for reallocarray, compat/reallocarray.c used if missing.
 AC_CHECK_FUNC(reallocarray, found_reallocarray=yes, found_reallocarray=no)
@@ -464,6 +540,12 @@ AC_COMPILE_IFELSE([AC_LANG_SOURCE(
 )
 
 # Look for a suitable queue.h.
+AC_CHECK_DECL(
+	TAILQ_CONCAT,
+	found_queue_h=yes,
+	found_queue_h=no,
+	[#include <sys/queue.h>]
+)
 AC_CHECK_DECL(
 	TAILQ_PREV,
 	found_queue_h=yes,
@@ -608,6 +690,15 @@ AM_CONDITIONAL(IS_OPENBSD, test "x$PLATFORM" = xopenbsd)
 AM_CONDITIONAL(IS_SUNOS, test "x$PLATFORM" = xsunos)
 AM_CONDITIONAL(IS_HPUX, test "x$PLATFORM" = xhpux)
 AM_CONDITIONAL(IS_UNKNOWN, test "x$PLATFORM" = xunknown)
+
+# Save our CFLAGS/CPPFLAGS/LDFLAGS for the Makefile and restore the old user
+# variables.
+AC_SUBST(AM_CPPFLAGS)
+CPPFLAGS="$SAVED_CPPFLAGS"
+AC_SUBST(AM_CFLAGS)
+CFLAGS="$SAVED_CFLAGS"
+AC_SUBST(AM_LDFLAGS)
+LDFLAGS="$SAVED_LDFLAGS"
 
 # autoconf should create a Makefile.
 AC_OUTPUT(Makefile)

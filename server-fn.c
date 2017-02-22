@@ -26,15 +26,16 @@
 
 #include "tmux.h"
 
-struct session *server_next_session(struct session *);
-void		server_callback_identify(int, short, void *);
+static struct session	*server_next_session(struct session *);
+static void		 server_callback_identify(int, short, void *);
+static void		 server_destroy_session_group(struct session *);
 
 void
 server_fill_environ(struct session *s, struct environ *env)
 {
-	char	*term;
-	u_int	 idx;
-	long	 pid;
+	const char	*term;
+	u_int		 idx;
+	long		 pid;
 
 	if (s != NULL) {
 		term = options_get_string(global_options, "default-terminal");
@@ -75,7 +76,7 @@ server_redraw_session_group(struct session *s)
 {
 	struct session_group	*sg;
 
-	if ((sg = session_group_find(s)) == NULL)
+	if ((sg = session_group_contains(s)) == NULL)
 		server_redraw_session(s);
 	else {
 		TAILQ_FOREACH(s, &sg->sessions, gentry)
@@ -99,7 +100,7 @@ server_status_session_group(struct session *s)
 {
 	struct session_group	*sg;
 
-	if ((sg = session_group_find(s)) == NULL)
+	if ((sg = session_group_contains(s)) == NULL)
 		server_status_session(s);
 	else {
 		TAILQ_FOREACH(s, &sg->sessions, gentry)
@@ -217,7 +218,7 @@ server_kill_window(struct window *w)
 		}
 
 		if (options_get_number(s->options, "renumber-windows")) {
-			if ((sg = session_group_find(s)) != NULL) {
+			if ((sg = session_group_contains(s)) != NULL) {
 				TAILQ_FOREACH(target_s, &sg->sessions, gentry)
 					session_renumber_windows(target_s);
 			} else
@@ -235,8 +236,8 @@ server_link_window(struct session *src, struct winlink *srcwl,
 	struct winlink		*dstwl;
 	struct session_group	*srcsg, *dstsg;
 
-	srcsg = session_group_find(src);
-	dstsg = session_group_find(dst);
+	srcsg = session_group_contains(src);
+	dstsg = session_group_contains(dst);
 	if (src != dst && srcsg != NULL && dstsg != NULL && srcsg == dstsg) {
 		xasprintf(cause, "sessions are grouped");
 		return (-1);
@@ -255,7 +256,8 @@ server_link_window(struct session *src, struct winlink *srcwl,
 			 * Can't use session_detach as it will destroy session
 			 * if this makes it empty.
 			 */
-			notify_window_unlinked(dst, dstwl->window);
+			notify_session_window("window-unlinked", dst,
+			    dstwl->window);
 			dstwl->flags &= ~WINLINK_ALERTFLAGS;
 			winlink_stack_remove(&dst->lastw, dstwl);
 			winlink_remove(&dst->windows, dstwl);
@@ -291,13 +293,12 @@ server_unlink_window(struct session *s, struct winlink *wl)
 }
 
 void
-server_destroy_pane(struct window_pane *wp, int hooks)
+server_destroy_pane(struct window_pane *wp, int notify)
 {
 	struct window		*w = wp->window;
 	int			 old_fd;
 	struct screen_write_ctx	 ctx;
 	struct grid_cell	 gc;
-	struct cmd_find_state	 fs;
 
 	old_fd = wp->fd;
 	if (wp->fd != -1) {
@@ -312,6 +313,10 @@ server_destroy_pane(struct window_pane *wp, int hooks)
 	if (options_get_number(w->options, "remain-on-exit")) {
 		if (old_fd == -1)
 			return;
+
+		if (notify)
+			notify_pane("pane-died", wp);
+
 		screen_write_start(&ctx, wp, &wp->base);
 		screen_write_scrollregion(&ctx, 0, screen_size_y(ctx.s) - 1);
 		screen_write_cursormove(&ctx, 0, screen_size_y(ctx.s) - 1);
@@ -322,17 +327,15 @@ server_destroy_pane(struct window_pane *wp, int hooks)
 		screen_write_stop(&ctx);
 		wp->flags |= PANE_REDRAW;
 
-		if (hooks && cmd_find_from_pane(&fs, wp) == 0)
-			hooks_run(hooks_get(fs.s), NULL, &fs, "pane-died");
 		return;
 	}
+
+	if (notify)
+		notify_pane("pane-exited", wp);
 
 	server_unzoom_window(w);
 	layout_close_pane(wp);
 	window_remove_pane(w, wp);
-
-	if (hooks && cmd_find_from_window(&fs, w) == 0)
-		hooks_run(hooks_get(fs.s), NULL, &fs, "pane-exited");
 
 	if (TAILQ_EMPTY(&w->panes))
 		server_kill_window(w);
@@ -340,13 +343,13 @@ server_destroy_pane(struct window_pane *wp, int hooks)
 		server_redraw_window(w);
 }
 
-void
+static void
 server_destroy_session_group(struct session *s)
 {
 	struct session_group	*sg;
 	struct session		*s1;
 
-	if ((sg = session_group_find(s)) == NULL)
+	if ((sg = session_group_contains(s)) == NULL)
 		server_destroy_session(s);
 	else {
 		TAILQ_FOREACH_SAFE(s, &sg->sessions, gentry, s1) {
@@ -356,7 +359,7 @@ server_destroy_session_group(struct session *s)
 	}
 }
 
-struct session *
+static struct session *
 server_next_session(struct session *s)
 {
 	struct session *s_loop, *s_out;
@@ -394,7 +397,7 @@ server_destroy_session(struct session *s)
 			c->session = s_new;
 			server_client_set_key_table(c, NULL);
 			status_timer_start(c);
-			notify_attached_session_changed(c);
+			notify_client("client-session-changed", c);
 			session_update_activity(s_new, NULL);
 			gettimeofday(&s_new->last_attached_time, NULL);
 			server_redraw_client(c);
@@ -455,7 +458,7 @@ server_clear_identify(struct client *c, struct window_pane *wp)
 	server_redraw_client(c);
 }
 
-void
+static void
 server_callback_identify(__unused int fd, __unused short events, void *data)
 {
 	server_clear_identify(data, NULL);

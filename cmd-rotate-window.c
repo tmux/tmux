@@ -24,7 +24,8 @@
  * Rotate the panes in a window.
  */
 
-enum cmd_retval	 cmd_rotate_window_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_rotate_window_exec(struct cmd *,
+			    struct cmdq_item *);
 
 const struct cmd_entry cmd_rotate_window_entry = {
 	.name = "rotate-window",
@@ -39,14 +40,16 @@ const struct cmd_entry cmd_rotate_window_entry = {
 	.exec = cmd_rotate_window_exec
 };
 
-enum cmd_retval
-cmd_rotate_window_exec(struct cmd *self, struct cmd_q *cmdq)
+static enum cmd_retval
+cmd_rotate_window_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct winlink		*wl = cmdq->state.tflag.wl;
+	struct winlink		*wl = item->state.tflag.wl;
 	struct window		*w = wl->window;
 	struct window_pane	*wp, *wp2;
 	struct layout_cell	*lc;
 	u_int			 sx, sy, xoff, yoff;
+
+	server_unzoom_window(w);
 
 	if (args_has(self->args, 'D')) {
 		wp = TAILQ_LAST(&w->panes, window_panes);

@@ -44,13 +44,15 @@ static int	tty_keys_next1(struct tty *, const char *, size_t, key_code *,
 		    size_t *, int);
 static void	tty_keys_callback(int, short, void *);
 static int	tty_keys_mouse(struct tty *, const char *, size_t, size_t *);
+static int	tty_keys_device_attributes(struct tty *, const char *, size_t,
+		    size_t *);
 
 /* Default raw keys. */
 struct tty_default_key_raw {
 	const char	       *string;
 	key_code	 	key;
 };
-const struct tty_default_key_raw tty_default_raw_keys[] = {
+static const struct tty_default_key_raw tty_default_raw_keys[] = {
 	/*
 	 * Numeric keypad. Just use the vt100 escape sequences here and always
 	 * put the terminal into keypad_xmit mode. Translation of numbers
@@ -170,7 +172,7 @@ struct tty_default_key_code {
 	enum tty_code_code	code;
 	key_code	 	key;
 };
-const struct tty_default_key_code tty_default_code_keys[] = {
+static const struct tty_default_key_code tty_default_code_keys[] = {
 	/* Function keys. */
 	{ TTYC_KF1, KEYC_F1 },
 	{ TTYC_KF2, KEYC_F2 },
@@ -530,12 +532,23 @@ tty_keys_next(struct tty *tty)
 	key_code	 key;
 
 	/* Get key buffer. */
-	buf = EVBUFFER_DATA(tty->event->input);
-	len = EVBUFFER_LENGTH(tty->event->input);
+	buf = EVBUFFER_DATA(tty->in);
+	len = EVBUFFER_LENGTH(tty->in);
 
 	if (len == 0)
 		return (0);
 	log_debug("keys are %zu (%.*s)", len, (int)len, buf);
+
+	/* Is this a device attributes response? */
+	switch (tty_keys_device_attributes(tty, buf, len, &size)) {
+	case 0:		/* yes */
+		key = KEYC_UNKNOWN;
+		goto complete_key;
+	case -1:	/* no, or not valid */
+		break;
+	case 1:		/* partial */
+		goto partial_key;
+	}
 
 	/* Is this a mouse key press? */
 	switch (tty_keys_mouse(tty, buf, len, &size)) {
@@ -632,7 +645,7 @@ complete_key:
 		key = (key & KEYC_MASK_MOD) | KEYC_BSPACE;
 
 	/* Remove data from buffer. */
-	evbuffer_drain(tty->event->input, size);
+	evbuffer_drain(tty->in, size);
 
 	/* Remove key timer. */
 	if (event_initialized(&tty->key_timer))
@@ -658,7 +671,7 @@ discard_key:
 	log_debug("discard key %.*s %#llx", (int)size, buf, key);
 
 	/* Remove data from buffer. */
-	evbuffer_drain(tty->event->input, size);
+	evbuffer_drain(tty->in, size);
 
 	return (1);
 }
@@ -813,5 +826,81 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size)
 	m->sgr_type = sgr_type;
 	m->sgr_b = sgr_b;
 
+	return (0);
+}
+
+/*
+ * Handle device attributes input. Returns 0 for success, -1 for failure, 1 for
+ * partial.
+ */
+static int
+tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
+    size_t *size)
+{
+	u_int			 i, a, b;
+	char			 tmp[64], *endptr;
+	static const char	*types[] = TTY_TYPES;
+	int			 type;
+
+	*size = 0;
+
+	/* First three bytes are always \033[?. */
+	if (buf[0] != '\033')
+		return (-1);
+	if (len == 1)
+		return (1);
+	if (buf[1] != '[')
+		return (-1);
+	if (len == 2)
+		return (1);
+	if (buf[2] != '?')
+		return (-1);
+	if (len == 3)
+		return (1);
+
+	/* Copy the rest up to a 'c'. */
+	for (i = 0; i < (sizeof tmp) - 1 && buf[3 + i] != 'c'; i++) {
+		if (3 + i == len)
+			return (1);
+		tmp[i] = buf[3 + i];
+	}
+	if (i == (sizeof tmp) - 1)
+		return (-1);
+	tmp[i] = '\0';
+	*size = 4 + i;
+
+	/* Convert version numbers. */
+	a = strtoul(tmp, &endptr, 10);
+	if (*endptr == ';') {
+		b = strtoul(endptr + 1, &endptr, 10);
+		if (*endptr != '\0' && *endptr != ';')
+			b = 0;
+	} else
+		a = b = 0;
+
+	type = TTY_UNKNOWN;
+	switch (a) {
+	case 1:
+		if (b == 2)
+			type = TTY_VT100;
+		else if (b == 0)
+			type = TTY_VT101;
+		break;
+	case 6:
+		type = TTY_VT102;
+		break;
+	case 62:
+		type = TTY_VT220;
+		break;
+	case 63:
+		type = TTY_VT320;
+		break;
+	case 64:
+		type = TTY_VT420;
+		break;
+	}
+	tty_set_type(tty, type);
+
+	log_debug("received DA %.*s (%s)", (int)*size, buf, types[type]);
 	return (0);
 }

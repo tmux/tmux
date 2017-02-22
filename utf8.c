@@ -109,7 +109,11 @@ utf8_width(wchar_t wc)
 {
 	int	width;
 
+#ifdef HAVE_UTF8PROC
+	width = utf8proc_wcwidth(wc);
+#else
 	width = wcwidth(wc);
+#endif
 	if (width < 0 || width > 0xff) {
 		log_debug("Unicode %04x, wcwidth() %d", wc, width);
 
@@ -135,7 +139,11 @@ utf8_width(wchar_t wc)
 enum utf8_state
 utf8_combine(const struct utf8_data *ud, wchar_t *wc)
 {
+#ifdef HAVE_UTF8PROC
+	switch (utf8proc_mbtowc(wc, ud->data, ud->size)) {
+#else
 	switch (mbtowc(wc, ud->data, ud->size)) {
+#endif
 	case -1:
 		log_debug("UTF-8 %.*s, mbtowc() %d", (int)ud->size, ud->data,
 		    errno);
@@ -155,7 +163,11 @@ utf8_split(wchar_t wc, struct utf8_data *ud)
 	char	s[MB_LEN_MAX];
 	int	slen;
 
+#ifdef HAVE_UTF8PROC
+	slen = utf8proc_wctomb(s, wc);
+#else
 	slen = wctomb(s, wc);
+#endif
 	if (slen <= 0 || slen > (int)sizeof ud->data)
 		return (UTF8_ERROR);
 
@@ -206,6 +218,20 @@ utf8_strvis(char *dst, const char *src, size_t len, int flag)
 	return (dst - start);
 }
 
+/* Same as utf8_strvis but allocate the buffer. */
+int
+utf8_stravis(char **dst, const char *src, int flag)
+{
+	char	*buf;
+	int	 len;
+
+	buf = xreallocarray(NULL, 4, strlen(src) + 1);
+	len = utf8_strvis(buf, src, strlen(src), flag);
+
+	*dst = xrealloc(buf, len + 1);
+	return (len);
+}
+
 /*
  * Sanitize a string, changing any UTF-8 characters to '_'. Caller should free
  * the returned string. Anything not valid printable ASCII or UTF-8 is
@@ -247,6 +273,33 @@ utf8_sanitize(const char *src)
 	dst = xreallocarray(dst, n + 1, sizeof *dst);
 	dst[n] = '\0';
 	return (dst);
+}
+
+/* Get UTF-8 buffer length. */
+size_t
+utf8_strlen(const struct utf8_data *s)
+{
+	size_t	i;
+
+	for (i = 0; s[i].size != 0; i++)
+		/* nothing */;
+	return (i);
+}
+
+/* Get UTF-8 string width. */
+u_int
+utf8_strwidth(const struct utf8_data *s, ssize_t n)
+{
+	ssize_t	i;
+	u_int	width;
+
+	width = 0;
+	for (i = 0; s[i].size != 0; i++) {
+		if (n != -1 && n == i)
+			break;
+		width += s[i].width;
+	}
+	return (width);
 }
 
 /*

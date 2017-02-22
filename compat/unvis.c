@@ -31,7 +31,7 @@
 #include <sys/types.h>
 #include <ctype.h>
 
-#include "tmux.h"
+#include "compat.h"
 
 /*
  * decode driven by state machine

@@ -28,7 +28,8 @@
  * Show client message log.
  */
 
-enum cmd_retval	 cmd_show_messages_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_show_messages_exec(struct cmd *,
+			    struct cmdq_item *);
 
 const struct cmd_entry cmd_show_messages_entry = {
 	.name = "show-messages",
@@ -39,26 +40,15 @@ const struct cmd_entry cmd_show_messages_entry = {
 
 	.tflag = CMD_CLIENT,
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_show_messages_exec
 };
 
-const struct cmd_entry cmd_server_info_entry = {
-	.name = "server-info",
-	.alias = "info",
+static int	cmd_show_messages_terminals(struct cmdq_item *, int);
+static int	cmd_show_messages_jobs(struct cmdq_item *, int);
 
-	.args = { "", 0, 0 },
-	.usage = "",
-
-	.flags = 0,
-	.exec = cmd_show_messages_exec
-};
-
-int	cmd_show_messages_terminals(struct cmd_q *, int);
-int	cmd_show_messages_jobs(struct cmd_q *, int);
-
-int
-cmd_show_messages_terminals(struct cmd_q *cmdq, int blank)
+static int
+cmd_show_messages_terminals(struct cmdq_item *item, int blank)
 {
 	struct tty_term	*term;
 	u_int		 i, n;
@@ -66,20 +56,20 @@ cmd_show_messages_terminals(struct cmd_q *cmdq, int blank)
 	n = 0;
 	LIST_FOREACH(term, &tty_terms, entry) {
 		if (blank) {
-			cmdq_print(cmdq, "%s", "");
+			cmdq_print(item, "%s", "");
 			blank = 0;
 		}
-		cmdq_print(cmdq, "Terminal %u: %s [references=%u, flags=0x%x]:",
+		cmdq_print(item, "Terminal %u: %s [references=%u, flags=0x%x]:",
 		    n, term->name, term->references, term->flags);
 		n++;
 		for (i = 0; i < tty_term_ncodes(); i++)
-			cmdq_print(cmdq, "%s", tty_term_describe(term, i));
+			cmdq_print(item, "%s", tty_term_describe(term, i));
 	}
 	return (n != 0);
 }
 
-int
-cmd_show_messages_jobs(struct cmd_q *cmdq, int blank)
+static int
+cmd_show_messages_jobs(struct cmdq_item *item, int blank)
 {
 	struct job	*job;
 	u_int		 n;
@@ -87,32 +77,32 @@ cmd_show_messages_jobs(struct cmd_q *cmdq, int blank)
 	n = 0;
 	LIST_FOREACH(job, &all_jobs, lentry) {
 		if (blank) {
-			cmdq_print(cmdq, "%s", "");
+			cmdq_print(item, "%s", "");
 			blank = 0;
 		}
-		cmdq_print(cmdq, "Job %u: %s [fd=%d, pid=%d, status=%d]",
+		cmdq_print(item, "Job %u: %s [fd=%d, pid=%d, status=%d]",
 		    n, job->cmd, job->fd, job->pid, job->status);
 		n++;
 	}
 	return (n != 0);
 }
 
-enum cmd_retval
-cmd_show_messages_exec(struct cmd *self, struct cmd_q *cmdq)
+static enum cmd_retval
+cmd_show_messages_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
-	struct client		*c = cmdq->state.c;
+	struct client		*c = item->state.c;
 	struct message_entry	*msg;
 	char			*tim;
 	int			 done, blank;
 
 	done = blank = 0;
-	if (args_has(args, 'T') || self->entry == &cmd_server_info_entry) {
-		blank = cmd_show_messages_terminals(cmdq, blank);
+	if (args_has(args, 'T')) {
+		blank = cmd_show_messages_terminals(item, blank);
 		done = 1;
 	}
-	if (args_has(args, 'J') || self->entry == &cmd_server_info_entry) {
-		cmd_show_messages_jobs(cmdq, blank);
+	if (args_has(args, 'J')) {
+		cmd_show_messages_jobs(item, blank);
 		done = 1;
 	}
 	if (done)
@@ -122,7 +112,7 @@ cmd_show_messages_exec(struct cmd *self, struct cmd_q *cmdq)
 		tim = ctime(&msg->msg_time);
 		*strchr(tim, '\n') = '\0';
 
-		cmdq_print(cmdq, "%s %s", tim, msg->msg);
+		cmdq_print(item, "%s %s", tim, msg->msg);
 	}
 
 	return (CMD_RETURN_NORMAL);

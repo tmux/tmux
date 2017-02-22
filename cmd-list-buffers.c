@@ -30,7 +30,7 @@
 #define LIST_BUFFERS_TEMPLATE						\
 	"#{buffer_name}: #{buffer_size} bytes: \"#{buffer_sample}\""
 
-enum cmd_retval	 cmd_list_buffers_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_list_buffers_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_list_buffers_entry = {
 	.name = "list-buffers",
@@ -39,12 +39,12 @@ const struct cmd_entry cmd_list_buffers_entry = {
 	.args = { "F:", 0, 0 },
 	.usage = "[-F format]",
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_list_buffers_exec
 };
 
-enum cmd_retval
-cmd_list_buffers_exec(struct cmd *self, struct cmd_q *cmdq)
+static enum cmd_retval
+cmd_list_buffers_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
 	struct paste_buffer	*pb;
@@ -57,11 +57,11 @@ cmd_list_buffers_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	pb = NULL;
 	while ((pb = paste_walk(pb)) != NULL) {
-		ft = format_create(cmdq, 0);
+		ft = format_create(item, FORMAT_NONE, 0);
 		format_defaults_paste_buffer(ft, pb);
 
 		line = format_expand(ft, template);
-		cmdq_print(cmdq, "%s", line);
+		cmdq_print(item, "%s", line);
 		free(line);
 
 		format_free(ft);

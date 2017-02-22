@@ -33,9 +33,9 @@
 	"[#{window_width}x#{window_height}] "			\
 	"(#{window_panes} panes) #{window_find_matches}"
 
-enum cmd_retval	 cmd_find_window_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_find_window_exec(struct cmd *, struct cmdq_item *);
 
-void	cmd_find_window_callback(struct window_choose_data *);
+static void		cmd_find_window_callback(struct window_choose_data *);
 
 /* Flags for determining matching behavior. */
 #define CMD_FIND_WINDOW_BY_TITLE   0x1
@@ -68,11 +68,11 @@ struct cmd_find_window_data {
 };
 TAILQ_HEAD(cmd_find_window_list, cmd_find_window_data);
 
-u_int	cmd_find_window_match_flags(struct args *);
-void	cmd_find_window_match(struct cmd_find_window_list *, int,
-	    struct winlink *, const char *, const char *);
+static u_int	cmd_find_window_match_flags(struct args *);
+static void	cmd_find_window_match(struct cmd_find_window_list *, int,
+		    struct winlink *, const char *, const char *);
 
-u_int
+static u_int
 cmd_find_window_match_flags(struct args *args)
 {
 	u_int	match_flags = 0;
@@ -92,7 +92,7 @@ cmd_find_window_match_flags(struct args *args)
 	return (match_flags);
 }
 
-void
+static void
 cmd_find_window_match(struct cmd_find_window_list *find_list,
     int match_flags, struct winlink *wl, const char *str,
     const char *searchstr)
@@ -138,14 +138,14 @@ cmd_find_window_match(struct cmd_find_window_list *find_list,
 		free(find_data);
 }
 
-enum cmd_retval
-cmd_find_window_exec(struct cmd *self, struct cmd_q *cmdq)
+static enum cmd_retval
+cmd_find_window_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = self->args;
-	struct client			*c = cmdq->state.c;
+	struct client			*c = item->state.c;
 	struct window_choose_data	*cdata;
-	struct session			*s = cmdq->state.tflag.s;
-	struct winlink			*wl = cmdq->state.tflag.wl, *wm;
+	struct session			*s = item->state.tflag.s;
+	struct winlink			*wl = item->state.tflag.wl, *wm;
 	struct cmd_find_window_list	 find_list;
 	struct cmd_find_window_data	*find_data;
 	struct cmd_find_window_data	*find_data1;
@@ -154,7 +154,7 @@ cmd_find_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	u_int				 i, match_flags;
 
 	if (c == NULL) {
-		cmdq_error(cmdq, "no client available");
+		cmdq_error(item, "no client available");
 		return (CMD_RETURN_ERROR);
 	}
 
@@ -172,7 +172,7 @@ cmd_find_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	free(searchstr);
 
 	if (TAILQ_EMPTY(&find_list)) {
-		cmdq_error(cmdq, "no windows matching: %s", str);
+		cmdq_error(item, "no windows matching: %s", str);
 		return (CMD_RETURN_ERROR);
 	}
 
@@ -216,7 +216,7 @@ out:
 	return (CMD_RETURN_NORMAL);
 }
 
-void
+static void
 cmd_find_window_callback(struct window_choose_data *cdata)
 {
 	struct session		*s;

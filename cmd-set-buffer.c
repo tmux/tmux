@@ -27,7 +27,7 @@
  * Add, set, append to or delete a paste buffer.
  */
 
-enum cmd_retval	 cmd_set_buffer_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_set_buffer_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_set_buffer_entry = {
 	.name = "set-buffer",
@@ -36,7 +36,7 @@ const struct cmd_entry cmd_set_buffer_entry = {
 	.args = { "ab:n:", 0, 1 },
 	.usage = "[-a] " CMD_BUFFER_USAGE " [-n new-buffer-name] data",
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_set_buffer_exec
 };
 
@@ -47,12 +47,12 @@ const struct cmd_entry cmd_delete_buffer_entry = {
 	.args = { "b:", 0, 0 },
 	.usage = CMD_BUFFER_USAGE,
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_set_buffer_exec
 };
 
-enum cmd_retval
-cmd_set_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
+static enum cmd_retval
+cmd_set_buffer_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
 	struct paste_buffer	*pb;
@@ -70,7 +70,7 @@ cmd_set_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 		if (pb == NULL)
 			pb = paste_get_top(&bufname);
 		if (pb == NULL) {
-			cmdq_error(cmdq, "no buffer");
+			cmdq_error(item, "no buffer");
 			return (CMD_RETURN_ERROR);
 		}
 		paste_free(pb);
@@ -81,11 +81,11 @@ cmd_set_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 		if (pb == NULL)
 			pb = paste_get_top(&bufname);
 		if (pb == NULL) {
-			cmdq_error(cmdq, "no buffer");
+			cmdq_error(item, "no buffer");
 			return (CMD_RETURN_ERROR);
 		}
 		if (paste_rename(bufname, args_get(args, 'n'), &cause) != 0) {
-			cmdq_error(cmdq, "%s", cause);
+			cmdq_error(item, "%s", cause);
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
@@ -93,7 +93,7 @@ cmd_set_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 	}
 
 	if (args->argc != 1) {
-		cmdq_error(cmdq, "no data specified");
+		cmdq_error(item, "no data specified");
 		return (CMD_RETURN_ERROR);
 	}
 	if ((newsize = strlen(args->argv[0])) == 0)
@@ -113,7 +113,7 @@ cmd_set_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 	bufsize += newsize;
 
 	if (paste_set(bufdata, bufsize, bufname, &cause) != 0) {
-		cmdq_error(cmdq, "%s", cause);
+		cmdq_error(item, "%s", cause);
 		free(bufdata);
 		free(cause);
 		return (CMD_RETURN_ERROR);

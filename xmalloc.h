@@ -20,7 +20,7 @@
 #define XMALLOC_H
 
 #if !defined(__bounded__)
-# define __bounded__(x, y, z)
+#define __bounded__(x, y, z)
 #endif
 
 void	*xmalloc(size_t);
@@ -28,6 +28,7 @@ void	*xcalloc(size_t, size_t);
 void	*xrealloc(void *, size_t);
 void	*xreallocarray(void *, size_t, size_t);
 char	*xstrdup(const char *);
+char	*xstrndup(const char *, size_t);
 int	 xasprintf(char **, const char *, ...)
 		__attribute__((__format__ (printf, 2, 3)))
 		__attribute__((__nonnull__ (2)));

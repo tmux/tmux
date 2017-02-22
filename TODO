@@ -5,8 +5,6 @@
 	* ' and " should be parsed the same (eg "\e" vs '\e') in config
 	  and command prompt
 	* last-pane across sessions
-	* list-keys should quote output so that bindings can just be used in
-          config file as-is
 	* resize-pane -p to match split-window -p
 
 - make command sequences more usable
@@ -14,12 +12,10 @@
 	* options for error handling: && and ||?
 
 - options bits and pieces:
-	* set-remain-on-exit is a complete hack
 	* way to set socket path from config file
 
 - format improvements:
 	* option to quote format (#{q:session_name})
-	* formats need conditions for >0 (for #P)
 	* some way to pad # stuff with spaces
 	* formats to show if a window is linked into multiple sessions, into
 	  multiple attached sessions, and is the active window in multiple
@@ -27,9 +23,7 @@
 
 - choose mode improvements:
 	* choose-pane command (augment choose-tree to do this?)
-	* choose-mode and copy-mode are very similar, make choose-mode a subset?
 	* flag to choose-* for sort order
-	* choose mode would be better per client than per window?
 	* two choices (first one then second, for swap-pane and join-pane)
 	* choose modes should ditch the key bindings and just have fixed keys, and
           be more customized to their purpose (d to delete a buffer for choose-buffer,
@@ -48,33 +42,21 @@
 - warts on current naming:
 	* display-time but message-fg/bg/attr
 	* list-* vs show-*
-	* split-window -> split-pane?
 
 - better UTF-8 support:
-	* message display
-	* prompt input
 	* searching in copy mode
 
 - copy/paste improvements:
-	* incremental searching
 	* paste w/o trailing whitespace
 	* command to toggle selection not to move it in copy-mode
 	* regex searching
 	* copy-pipe should have -x as well
-	* copy mode key bindings should just be a standard key table, using
-          something like "copy-mode start-selection"; it could use
-          command-prompt for search, goto, etc:
-
-              bind -Temacs command-prompt -p'Search Up: ' 'copy-mode search-up %%'
-
-          it'd need a separate lookup, because modes are per-pane, perhaps a
-          table() cb to give the table name ("vi" or "emacs"). anything in the
-          table fires the command, anything not in the table is injected as a
-          key
 	* searching in copy mode should unwrap lines, so if you search for "foobar"
           then it should be found even if it is now "foo\nbar" (if the WRAP flag
           is set on the line)
 	* capture-pane option to preserve spaces but not join lines
+	* improve word and line selection in copy mode (for example when dragging
+          it should select by word. compare how xterm works. GitHub issue 682)
 
 - layout stuff
 	* way to tag a layout as a number/name
@@ -89,19 +71,17 @@
 	* panning over window (window larger than visible)
 	* a mode where one application can cross two panes (ie x|y, width =
 	  COLUMNS/2 but height = ROWS * 2)
-	* general key to space cells out evenly (horiz or vert) within their
-	  parent cell (could replace even-vert/even-horiz layouts)
 	* separate active panes for different clients
-
-- terminfo bits
-	* use a better termcap internally instead of screen, perhaps xterm
-	* use screen-256color when started on 256 colour terminal?
 
 - code cleanup
 	* instead of separate window and session options, just one master
 	  options list with each option having a type (window or session), then
 	  options on window, on session, and global. for window options we look
-	  window->session->global, and for session we look session->global
+	  window->session->global, and for session we look session->global.
+	  problem: what about windows in multiple sessions? there are contexts
+	  where we do not know which session, or where multiple choices makes
+	  no sense... could at least have one global list for all types of
+	  global options and keep separate window,session lists
 	* the way pane, window, session destroy is handled is too complicated
 	  and the distinction between session.c, window.c and server-fn.c
 	  functions is not clear. could we just have kill_pane(),
@@ -120,12 +100,6 @@
 	  or even guarantee that cmdq->c != NULL and provide a better way to
 	  tell when in the config file - then we use cmdq->c if we need a
 	  client w/o a session else cmd_current_client
-	* we do more work than we should if a single read() contains operations
-          that cancel each other out: for example, writing twice to the same
-          cell, or writing and then clearing a line; it would be nice to
-          optimize these. would it mean processing the entire read() data first
-          then applying changes? or an initial optimization step? or something
-          else?
 
 - miscellaneous
 	* way to keep a job running just read its last line of output for #()
@@ -137,7 +111,12 @@
 	  jobs and run-shell and lock command all start with slightly different
 	  environments
 	* multiline status line? separate command prompt and status line?
-	* customizable command aliases
 	* automatic pane logging
-	* BCE? We are halfway there (output side is done for pane backgrounds),
-	  just need to change how screen/grid handles erase
+	* marks in history, automatically add (move?) one when pane is changed
+
+- hooks
+	* more hooks for various things
+	* finish after hooks for special commands
+	* multiple hooks with the same name?
+	* finish hooks for notifys
+	* for session_closed, if no sessions at all, perhaps fake up a temporary one

@@ -27,7 +27,7 @@
  * Kill the server and do nothing else.
  */
 
-enum cmd_retval	 cmd_kill_server_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_kill_server_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_kill_server_entry = {
 	.name = "kill-server",
@@ -51,8 +51,8 @@ const struct cmd_entry cmd_start_server_entry = {
 	.exec = cmd_kill_server_exec
 };
 
-enum cmd_retval
-cmd_kill_server_exec(struct cmd *self, __unused struct cmd_q *cmdq)
+static enum cmd_retval
+cmd_kill_server_exec(struct cmd *self, __unused struct cmdq_item *item)
 {
 	if (self->entry == &cmd_kill_server_entry)
 		kill(getpid(), SIGTERM);

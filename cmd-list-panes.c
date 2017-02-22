@@ -26,13 +26,13 @@
  * List panes on given window.
  */
 
-enum cmd_retval	 cmd_list_panes_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_list_panes_exec(struct cmd *, struct cmdq_item *);
 
-void	cmd_list_panes_server(struct cmd *, struct cmd_q *);
-void	cmd_list_panes_session(struct cmd *, struct session *, struct cmd_q *,
-	    int);
-void	cmd_list_panes_window(struct cmd *, struct session *, struct winlink *,
-	    struct cmd_q *, int);
+static void	cmd_list_panes_server(struct cmd *, struct cmdq_item *);
+static void	cmd_list_panes_session(struct cmd *, struct session *,
+		    struct cmdq_item *, int);
+static void	cmd_list_panes_window(struct cmd *, struct session *,
+		    struct winlink *, struct cmdq_item *, int);
 
 const struct cmd_entry cmd_list_panes_entry = {
 	.name = "list-panes",
@@ -43,49 +43,49 @@ const struct cmd_entry cmd_list_panes_entry = {
 
 	.tflag = CMD_WINDOW,
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_list_panes_exec
 };
 
-enum cmd_retval
-cmd_list_panes_exec(struct cmd *self, struct cmd_q *cmdq)
+static enum cmd_retval
+cmd_list_panes_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args	*args = self->args;
-	struct session	*s = cmdq->state.tflag.s;
-	struct winlink	*wl = cmdq->state.tflag.wl;
+	struct session	*s = item->state.tflag.s;
+	struct winlink	*wl = item->state.tflag.wl;
 
 	if (args_has(args, 'a'))
-		cmd_list_panes_server(self, cmdq);
+		cmd_list_panes_server(self, item);
 	else if (args_has(args, 's'))
-		cmd_list_panes_session(self, s, cmdq, 1);
+		cmd_list_panes_session(self, s, item, 1);
 	else
-		cmd_list_panes_window(self, s, wl, cmdq, 0);
+		cmd_list_panes_window(self, s, wl, item, 0);
 
 	return (CMD_RETURN_NORMAL);
 }
 
-void
-cmd_list_panes_server(struct cmd *self, struct cmd_q *cmdq)
+static void
+cmd_list_panes_server(struct cmd *self, struct cmdq_item *item)
 {
 	struct session	*s;
 
 	RB_FOREACH(s, sessions, &sessions)
-		cmd_list_panes_session(self, s, cmdq, 2);
+		cmd_list_panes_session(self, s, item, 2);
 }
 
-void
-cmd_list_panes_session(struct cmd *self, struct session *s, struct cmd_q *cmdq,
-    int type)
+static void
+cmd_list_panes_session(struct cmd *self, struct session *s,
+    struct cmdq_item *item, int type)
 {
 	struct winlink	*wl;
 
 	RB_FOREACH(wl, winlinks, &s->windows)
-		cmd_list_panes_window(self, s, wl, cmdq, type);
+		cmd_list_panes_window(self, s, wl, item, type);
 }
 
-void
+static void
 cmd_list_panes_window(struct cmd *self, struct session *s, struct winlink *wl,
-    struct cmd_q *cmdq, int type)
+    struct cmdq_item *item, int type)
 {
 	struct args		*args = self->args;
 	struct window_pane	*wp;
@@ -123,12 +123,12 @@ cmd_list_panes_window(struct cmd *self, struct session *s, struct winlink *wl,
 
 	n = 0;
 	TAILQ_FOREACH(wp, &wl->window->panes, entry) {
-		ft = format_create(cmdq, 0);
+		ft = format_create(item, FORMAT_NONE, 0);
 		format_add(ft, "line", "%u", n);
 		format_defaults(ft, NULL, s, wl, wp);
 
 		line = format_expand(ft, template);
-		cmdq_print(cmdq, "%s", line);
+		cmdq_print(item, "%s", line);
 		free(line);
 
 		format_free(ft);

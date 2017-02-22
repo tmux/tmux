@@ -1,5 +1,7 @@
+/*	$OpenBSD: base64.c,v 1.8 2015/01/16 16:48:51 deraadt Exp $	*/
+
 /*
- * Copyright (c) 1996, 1998 by Internet Software Consortium.
+ * Copyright (c) 1996 by Internet Software Consortium.
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -41,18 +43,17 @@
  */
 
 #include <sys/types.h>
-#include <sys/param.h>
 #include <sys/socket.h>
-
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <arpa/nameser.h>
 
 #include <ctype.h>
+#include <resolv.h>
 #include <stdio.h>
+
 #include <stdlib.h>
 #include <string.h>
-
-#define Assert(Cond) if (!(Cond)) abort()
 
 static const char Base64[] =
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -122,11 +123,16 @@ static const char Pad64 = '=';
    */
 
 int
-b64_ntop(uint8_t const *src, size_t srclength, char *target, size_t targsize) {
+b64_ntop(src, srclength, target, targsize)
+	u_char const *src;
+	size_t srclength;
+	char *target;
+	size_t targsize;
+{
 	size_t datalength = 0;
-	uint8_t input[3];
-	uint8_t output[4];
-	size_t i;
+	u_char input[3];
+	u_char output[4];
+	int i;
 
 	while (2 < srclength) {
 		input[0] = *src++;
@@ -138,10 +144,6 @@ b64_ntop(uint8_t const *src, size_t srclength, char *target, size_t targsize) {
 		output[1] = ((input[0] & 0x03) << 4) + (input[1] >> 4);
 		output[2] = ((input[1] & 0x0f) << 2) + (input[2] >> 6);
 		output[3] = input[2] & 0x3f;
-		Assert(output[0] < 64);
-		Assert(output[1] < 64);
-		Assert(output[2] < 64);
-		Assert(output[3] < 64);
 
 		if (datalength + 4 > targsize)
 			return (-1);
@@ -161,9 +163,6 @@ b64_ntop(uint8_t const *src, size_t srclength, char *target, size_t targsize) {
 		output[0] = input[0] >> 2;
 		output[1] = ((input[0] & 0x03) << 4) + (input[1] >> 4);
 		output[2] = ((input[1] & 0x0f) << 2) + (input[2] >> 6);
-		Assert(output[0] < 64);
-		Assert(output[1] < 64);
-		Assert(output[2] < 64);
 
 		if (datalength + 4 > targsize)
 			return (-1);
@@ -179,4 +178,138 @@ b64_ntop(uint8_t const *src, size_t srclength, char *target, size_t targsize) {
 		return (-1);
 	target[datalength] = '\0';	/* Returned value doesn't count \0. */
 	return (datalength);
+}
+
+/* skips all whitespace anywhere.
+   converts characters, four at a time, starting at (or after)
+   src from base - 64 numbers into three 8 bit bytes in the target area.
+   it returns the number of data bytes stored at the target, or -1 on error.
+ */
+
+int
+b64_pton(src, target, targsize)
+	char const *src;
+	u_char *target;
+	size_t targsize;
+{
+	int tarindex, state, ch;
+	u_char nextbyte;
+	char *pos;
+
+	state = 0;
+	tarindex = 0;
+
+	while ((ch = (unsigned char)*src++) != '\0') {
+		if (isspace(ch))	/* Skip whitespace anywhere. */
+			continue;
+
+		if (ch == Pad64)
+			break;
+
+		pos = strchr(Base64, ch);
+		if (pos == 0) 		/* A non-base64 character. */
+			return (-1);
+
+		switch (state) {
+		case 0:
+			if (target) {
+				if (tarindex >= targsize)
+					return (-1);
+				target[tarindex] = (pos - Base64) << 2;
+			}
+			state = 1;
+			break;
+		case 1:
+			if (target) {
+				if (tarindex >= targsize)
+					return (-1);
+				target[tarindex]   |=  (pos - Base64) >> 4;
+				nextbyte = ((pos - Base64) & 0x0f) << 4;
+				if (tarindex + 1 < targsize)
+					target[tarindex+1] = nextbyte;
+				else if (nextbyte)
+					return (-1);
+			}
+			tarindex++;
+			state = 2;
+			break;
+		case 2:
+			if (target) {
+				if (tarindex >= targsize)
+					return (-1);
+				target[tarindex]   |=  (pos - Base64) >> 2;
+				nextbyte = ((pos - Base64) & 0x03) << 6;
+				if (tarindex + 1 < targsize)
+					target[tarindex+1] = nextbyte;
+				else if (nextbyte)
+					return (-1);
+			}
+			tarindex++;
+			state = 3;
+			break;
+		case 3:
+			if (target) {
+				if (tarindex >= targsize)
+					return (-1);
+				target[tarindex] |= (pos - Base64);
+			}
+			tarindex++;
+			state = 0;
+			break;
+		}
+	}
+
+	/*
+	 * We are done decoding Base-64 chars.  Let's see if we ended
+	 * on a byte boundary, and/or with erroneous trailing characters.
+	 */
+
+	if (ch == Pad64) {			/* We got a pad char. */
+		ch = (unsigned char)*src++;	/* Skip it, get next. */
+		switch (state) {
+		case 0:		/* Invalid = in first position */
+		case 1:		/* Invalid = in second position */
+			return (-1);
+
+		case 2:		/* Valid, means one byte of info */
+			/* Skip any number of spaces. */
+			for (; ch != '\0'; ch = (unsigned char)*src++)
+				if (!isspace(ch))
+					break;
+			/* Make sure there is another trailing = sign. */
+			if (ch != Pad64)
+				return (-1);
+			ch = (unsigned char)*src++;		/* Skip the = */
+			/* Fall through to "single trailing =" case. */
+			/* FALLTHROUGH */
+
+		case 3:		/* Valid, means two bytes of info */
+			/*
+			 * We know this char is an =.  Is there anything but
+			 * whitespace after it?
+			 */
+			for (; ch != '\0'; ch = (unsigned char)*src++)
+				if (!isspace(ch))
+					return (-1);
+
+			/*
+			 * Now make sure for cases 2 and 3 that the "extra"
+			 * bits that slopped past the last full byte were
+			 * zeros.  If we don't check them, they become a
+			 * subliminal channel.
+			 */
+			if (target && tarindex < targsize &&
+			    target[tarindex] != 0)
+				return (-1);
+		}
+	} else {
+		/*
+		 * We ended by seeing the end of the string.  Make sure we
+		 * have no partial bytes lying around.
+		 */
+		if (state != 0)
+			return (-1);
+	}
+
+	return (tarindex);
 }

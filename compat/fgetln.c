@@ -22,7 +22,7 @@
 #include <stdlib.h>
 #include <errno.h>
 
-#include "tmux.h"
+#include "compat.h"
 
 char *
 fgetln(FILE *fp, size_t *len)

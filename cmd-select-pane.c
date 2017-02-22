@@ -24,7 +24,7 @@
  * Select pane.
  */
 
-enum cmd_retval	 cmd_select_pane_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_select_pane_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_select_pane_entry = {
 	.name = "select-pane",
@@ -52,20 +52,19 @@ const struct cmd_entry cmd_last_pane_entry = {
 	.exec = cmd_select_pane_exec
 };
 
-enum cmd_retval
-cmd_select_pane_exec(struct cmd *self, struct cmd_q *cmdq)
+static enum cmd_retval
+cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
-	struct winlink		*wl = cmdq->state.tflag.wl;
+	struct winlink		*wl = item->state.tflag.wl;
 	struct window		*w = wl->window;
-	struct session		*s = cmdq->state.tflag.s;
-	struct window_pane	*wp = cmdq->state.tflag.wp, *lastwp, *markedwp;
+	struct session		*s = item->state.tflag.s;
+	struct window_pane	*wp = item->state.tflag.wp, *lastwp, *markedwp;
 	const char		*style;
 
 	if (self->entry == &cmd_last_pane_entry || args_has(args, 'l')) {
-
 		if (wl->window->last == NULL) {
-			cmdq_error(cmdq, "no last pane");
+			cmdq_error(item, "no last pane");
 			return (CMD_RETURN_ERROR);
 		}
 
@@ -112,13 +111,13 @@ cmd_select_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 			style = args_get(args, 'P');
 			if (style_parse(&grid_default_cell, &wp->colgc,
 			    style) == -1) {
-				cmdq_error(cmdq, "bad style: %s", style);
+				cmdq_error(item, "bad style: %s", style);
 				return (CMD_RETURN_ERROR);
 			}
 			wp->flags |= PANE_REDRAW;
 		}
 		if (args_has(self->args, 'g'))
-			cmdq_print(cmdq, "%s", style_tostring(&wp->colgc));
+			cmdq_print(item, "%s", style_tostring(&wp->colgc));
 		return (CMD_RETURN_NORMAL);
 	}
 
@@ -151,7 +150,7 @@ cmd_select_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 		return (CMD_RETURN_NORMAL);
 	server_unzoom_window(wp->window);
 	if (!window_pane_visible(wp)) {
-		cmdq_error(cmdq, "pane not visible");
+		cmdq_error(item, "pane not visible");
 		return (CMD_RETURN_ERROR);
 	}
 	window_redraw_active_switch(w, wp);

@@ -33,7 +33,7 @@
 	"[#{client_width}x#{client_height} #{client_termname}]"	\
 	"#{?client_utf8, (utf8),} #{?client_readonly, (ro),}"
 
-enum cmd_retval	cmd_list_clients_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_list_clients_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_list_clients_entry = {
 	.name = "list-clients",
@@ -44,12 +44,12 @@ const struct cmd_entry cmd_list_clients_entry = {
 
 	.tflag = CMD_SESSION,
 
-	.flags = CMD_READONLY,
+	.flags = CMD_READONLY|CMD_AFTERHOOK,
 	.exec = cmd_list_clients_exec
 };
 
-enum cmd_retval
-cmd_list_clients_exec(struct cmd *self, struct cmd_q *cmdq)
+static enum cmd_retval
+cmd_list_clients_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args 		*args = self->args;
 	struct client		*c;
@@ -60,7 +60,7 @@ cmd_list_clients_exec(struct cmd *self, struct cmd_q *cmdq)
 	char			*line;
 
 	if (args_has(args, 't'))
-		s = cmdq->state.tflag.s;
+		s = item->state.tflag.s;
 	else
 		s = NULL;
 
@@ -72,12 +72,12 @@ cmd_list_clients_exec(struct cmd *self, struct cmd_q *cmdq)
 		if (c->session == NULL || (s != NULL && s != c->session))
 			continue;
 
-		ft = format_create(cmdq, 0);
+		ft = format_create(item, FORMAT_NONE, 0);
 		format_add(ft, "line", "%u", idx);
 		format_defaults(ft, c, NULL, NULL, NULL);
 
 		line = format_expand(ft, template);
-		cmdq_print(cmdq, "%s", line);
+		cmdq_print(item, "%s", line);
 		free(line);
 
 		format_free(ft);

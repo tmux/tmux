@@ -18,8 +18,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "tmux.h"
-
 #ifndef _IMSG_H_
 #define _IMSG_H_
 

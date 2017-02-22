@@ -27,12 +27,12 @@
  * Write the entire contents of a pane to a buffer or stdout.
  */
 
-enum cmd_retval	 cmd_capture_pane_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_capture_pane_exec(struct cmd *, struct cmdq_item *);
 
-char		*cmd_capture_pane_append(char *, size_t *, char *, size_t);
-char		*cmd_capture_pane_pending(struct args *, struct window_pane *,
+static char	*cmd_capture_pane_append(char *, size_t *, char *, size_t);
+static char	*cmd_capture_pane_pending(struct args *, struct window_pane *,
 		     size_t *);
-char		*cmd_capture_pane_history(struct args *, struct cmd_q *,
+static char	*cmd_capture_pane_history(struct args *, struct cmdq_item *,
 		     struct window_pane *, size_t *);
 
 const struct cmd_entry cmd_capture_pane_entry = {
@@ -45,11 +45,24 @@ const struct cmd_entry cmd_capture_pane_entry = {
 
 	.tflag = CMD_PANE,
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_capture_pane_exec
 };
 
-char *
+const struct cmd_entry cmd_clear_history_entry = {
+	.name = "clear-history",
+	.alias = "clearhist",
+
+	.args = { "t:", 0, 0 },
+	.usage = CMD_TARGET_PANE_USAGE,
+
+	.tflag = CMD_PANE,
+
+	.flags = CMD_AFTERHOOK,
+	.exec = cmd_capture_pane_exec
+};
+
+static char *
 cmd_capture_pane_append(char *buf, size_t *len, char *line, size_t linelen)
 {
 	buf = xrealloc(buf, *len + linelen + 1);
@@ -58,7 +71,7 @@ cmd_capture_pane_append(char *buf, size_t *len, char *line, size_t linelen)
 	return (buf);
 }
 
-char *
+static char *
 cmd_capture_pane_pending(struct args *args, struct window_pane *wp,
     size_t *len)
 {
@@ -77,7 +90,7 @@ cmd_capture_pane_pending(struct args *args, struct window_pane *wp,
 	buf = xstrdup("");
 	if (args_has(args, 'C')) {
 		for (i = 0; i < linelen; i++) {
-			if (line[i] >= ' ') {
+			if (line[i] >= ' ' && line[i] != '\\') {
 				tmp[0] = line[i];
 				tmp[1] = '\0';
 			} else
@@ -90,8 +103,8 @@ cmd_capture_pane_pending(struct args *args, struct window_pane *wp,
 	return (buf);
 }
 
-char *
-cmd_capture_pane_history(struct args *args, struct cmd_q *cmdq,
+static char *
+cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
     struct window_pane *wp, size_t *len)
 {
 	struct grid		*gd;
@@ -108,7 +121,7 @@ cmd_capture_pane_history(struct args *args, struct cmd_q *cmdq,
 		gd = wp->saved_grid;
 		if (gd == NULL) {
 			if (!args_has(args, 'q')) {
-				cmdq_error(cmdq, "no alternate screen");
+				cmdq_error(item, "no alternate screen");
 				return (NULL);
 			}
 			return (xstrdup(""));
@@ -175,29 +188,36 @@ cmd_capture_pane_history(struct args *args, struct cmd_q *cmdq,
 	return (buf);
 }
 
-enum cmd_retval
-cmd_capture_pane_exec(struct cmd *self, struct cmd_q *cmdq)
+static enum cmd_retval
+cmd_capture_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
 	struct client		*c;
-	struct window_pane	*wp = cmdq->state.tflag.wp;
+	struct window_pane	*wp = item->state.tflag.wp;
 	char			*buf, *cause;
 	const char		*bufname;
 	size_t			 len;
+
+	if (self->entry == &cmd_clear_history_entry) {
+		if (wp->mode == &window_copy_mode)
+			window_pane_reset_mode(wp);
+		grid_clear_history(wp->base.grid);
+		return (CMD_RETURN_NORMAL);
+	}
 
 	len = 0;
 	if (args_has(args, 'P'))
 		buf = cmd_capture_pane_pending(args, wp, &len);
 	else
-		buf = cmd_capture_pane_history(args, cmdq, wp, &len);
+		buf = cmd_capture_pane_history(args, item, wp, &len);
 	if (buf == NULL)
 		return (CMD_RETURN_ERROR);
 
 	if (args_has(args, 'p')) {
-		c = cmdq->client;
+		c = item->client;
 		if (c == NULL ||
 		    (c->session != NULL && !(c->flags & CLIENT_CONTROL))) {
-			cmdq_error(cmdq, "can't write to stdout");
+			cmdq_error(item, "can't write to stdout");
 			free(buf);
 			return (CMD_RETURN_ERROR);
 		}
@@ -212,7 +232,7 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 			bufname = args_get(args, 'b');
 
 		if (paste_set(buf, len, bufname, &cause) != 0) {
-			cmdq_error(cmdq, "%s", cause);
+			cmdq_error(item, "%s", cause);
 			free(cause);
 			free(buf);
 			return (CMD_RETURN_ERROR);

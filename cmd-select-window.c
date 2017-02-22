@@ -26,7 +26,8 @@
  * Select window by index.
  */
 
-enum cmd_retval	 cmd_select_window_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_select_window_exec(struct cmd *,
+			    struct cmdq_item *);
 
 const struct cmd_entry cmd_select_window_entry = {
 	.name = "select-window",
@@ -80,11 +81,11 @@ const struct cmd_entry cmd_last_window_entry = {
 	.exec = cmd_select_window_exec
 };
 
-enum cmd_retval
-cmd_select_window_exec(struct cmd *self, struct cmd_q *cmdq)
+static enum cmd_retval
+cmd_select_window_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct winlink	*wl = cmdq->state.tflag.wl;
-	struct session	*s = cmdq->state.tflag.s;
+	struct winlink	*wl = item->state.tflag.wl;
+	struct session	*s = item->state.tflag.s;
 	int		 next, previous, last, activity;
 
 	next = self->entry == &cmd_next_window_entry;
@@ -101,17 +102,17 @@ cmd_select_window_exec(struct cmd *self, struct cmd_q *cmdq)
 		activity = args_has(self->args, 'a');
 		if (next) {
 			if (session_next(s, activity) != 0) {
-				cmdq_error(cmdq, "no next window");
+				cmdq_error(item, "no next window");
 				return (CMD_RETURN_ERROR);
 			}
 		} else if (previous) {
 			if (session_previous(s, activity) != 0) {
-				cmdq_error(cmdq, "no previous window");
+				cmdq_error(item, "no previous window");
 				return (CMD_RETURN_ERROR);
 			}
 		} else {
 			if (session_last(s) != 0) {
-				cmdq_error(cmdq, "no last window");
+				cmdq_error(item, "no last window");
 				return (CMD_RETURN_ERROR);
 			}
 		}
@@ -124,7 +125,7 @@ cmd_select_window_exec(struct cmd *self, struct cmd_q *cmdq)
 		 */
 		if (args_has(self->args, 'T') && wl == s->curw) {
 			if (session_last(s) != 0) {
-				cmdq_error(cmdq, "no last window");
+				cmdq_error(item, "no last window");
 				return (-1);
 			}
 			server_redraw_session(s);

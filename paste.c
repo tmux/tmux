@@ -17,10 +17,10 @@
  */
 
 #include <sys/types.h>
-#include <sys/time.h>
 
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "tmux.h"
 
@@ -34,6 +34,7 @@ struct paste_buffer {
 	size_t		 size;
 
 	char		*name;
+	time_t		 created;
 	int		 automatic;
 	u_int		 order;
 
@@ -41,27 +42,27 @@ struct paste_buffer {
 	RB_ENTRY(paste_buffer) time_entry;
 };
 
-u_int	paste_next_index;
-u_int	paste_next_order;
-u_int	paste_num_automatic;
-RB_HEAD(paste_name_tree, paste_buffer) paste_by_name;
-RB_HEAD(paste_time_tree, paste_buffer) paste_by_time;
+static u_int	paste_next_index;
+static u_int	paste_next_order;
+static u_int	paste_num_automatic;
+static RB_HEAD(paste_name_tree, paste_buffer) paste_by_name;
+static RB_HEAD(paste_time_tree, paste_buffer) paste_by_time;
 
-int paste_cmp_names(const struct paste_buffer *, const struct paste_buffer *);
-RB_PROTOTYPE(paste_name_tree, paste_buffer, name_entry, paste_cmp_names);
-RB_GENERATE(paste_name_tree, paste_buffer, name_entry, paste_cmp_names);
+static int	paste_cmp_names(const struct paste_buffer *,
+		    const struct paste_buffer *);
+RB_GENERATE_STATIC(paste_name_tree, paste_buffer, name_entry, paste_cmp_names);
 
-int paste_cmp_times(const struct paste_buffer *, const struct paste_buffer *);
-RB_PROTOTYPE(paste_time_tree, paste_buffer, time_entry, paste_cmp_times);
-RB_GENERATE(paste_time_tree, paste_buffer, time_entry, paste_cmp_times);
+static int	paste_cmp_times(const struct paste_buffer *,
+		    const struct paste_buffer *);
+RB_GENERATE_STATIC(paste_time_tree, paste_buffer, time_entry, paste_cmp_times);
 
-int
+static int
 paste_cmp_names(const struct paste_buffer *a, const struct paste_buffer *b)
 {
 	return (strcmp(a->name, b->name));
 }
 
-int
+static int
 paste_cmp_times(const struct paste_buffer *a, const struct paste_buffer *b)
 {
 	if (a->order > b->order)
@@ -78,6 +79,20 @@ paste_buffer_name(struct paste_buffer *pb)
 	return (pb->name);
 }
 
+/* Get paste buffer order. */
+u_int
+paste_buffer_order(struct paste_buffer *pb)
+{
+	return (pb->order);
+}
+
+/* Get paste buffer created. */
+time_t
+paste_buffer_created(struct paste_buffer *pb)
+{
+	return (pb->created);
+}
+
 /* Get paste buffer data. */
 const char *
 paste_buffer_data(struct paste_buffer *pb, size_t *size)
@@ -87,7 +102,7 @@ paste_buffer_data(struct paste_buffer *pb, size_t *size)
 	return (pb->data);
 }
 
-/* Walk paste buffers by name. */
+/* Walk paste buffers by time. */
 struct paste_buffer *
 paste_walk(struct paste_buffer *pb)
 {
@@ -147,8 +162,10 @@ paste_add(char *data, size_t size)
 	struct paste_buffer	*pb, *pb1;
 	u_int			 limit;
 
-	if (size == 0)
+	if (size == 0) {
+		free(data);
 		return;
+	}
 
 	limit = options_get_number(global_options, "buffer-limit");
 	RB_FOREACH_REVERSE_SAFE(pb, paste_time_tree, &paste_by_time, pb1) {
@@ -172,6 +189,8 @@ paste_add(char *data, size_t size)
 
 	pb->automatic = 1;
 	paste_num_automatic++;
+
+	pb->created = time(NULL);
 
 	pb->order = paste_next_order++;
 	RB_INSERT(paste_name_tree, &paste_by_name, pb);
@@ -262,6 +281,8 @@ paste_set(char *data, size_t size, const char *name, char **cause)
 
 	pb->automatic = 0;
 	pb->order = paste_next_order++;
+
+	pb->created = time(NULL);
 
 	if ((old = paste_get_name(name)) != NULL)
 		paste_free(old);

@@ -24,7 +24,7 @@
  * Destroy window.
  */
 
-enum cmd_retval	 cmd_kill_window_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_kill_window_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_kill_window_entry = {
 	.name = "kill-window",
@@ -52,17 +52,17 @@ const struct cmd_entry cmd_unlink_window_entry = {
 	.exec = cmd_kill_window_exec
 };
 
-enum cmd_retval
-cmd_kill_window_exec(struct cmd *self, struct cmd_q *cmdq)
+static enum cmd_retval
+cmd_kill_window_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
-	struct winlink		*wl = cmdq->state.tflag.wl, *wl2, *wl3;
+	struct winlink		*wl = item->state.tflag.wl, *wl2, *wl3;
 	struct window		*w = wl->window;
-	struct session		*s = cmdq->state.tflag.s;
+	struct session		*s = item->state.tflag.s;
 
 	if (self->entry == &cmd_unlink_window_entry) {
 		if (!args_has(self->args, 'k') && !session_is_linked(s, w)) {
-			cmdq_error(cmdq, "window only linked to one session");
+			cmdq_error(item, "window only linked to one session");
 			return (CMD_RETURN_ERROR);
 		}
 		server_unlink_window(s, wl);

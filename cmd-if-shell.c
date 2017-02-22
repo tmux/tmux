@@ -29,11 +29,11 @@
  * Executes a tmux command if a shell command returns true or false.
  */
 
-enum cmd_retval	 cmd_if_shell_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_if_shell_exec(struct cmd *, struct cmdq_item *);
 
-void	cmd_if_shell_callback(struct job *);
-void	cmd_if_shell_done(struct cmd_q *);
-void	cmd_if_shell_free(void *);
+static enum cmd_retval	cmd_if_shell_error(struct cmdq_item *, void *);
+static void		cmd_if_shell_callback(struct job *);
+static void		cmd_if_shell_free(void *);
 
 const struct cmd_entry cmd_if_shell_entry = {
 	.name = "if-shell",
@@ -50,38 +50,40 @@ const struct cmd_entry cmd_if_shell_entry = {
 };
 
 struct cmd_if_shell_data {
+	char			*file;
+	u_int			 line;
+
 	char			*cmd_if;
 	char			*cmd_else;
 
-	struct cmd_q		*cmdq;
+	struct client		*client;
+	struct cmdq_item	*item;
 	struct mouse_event	 mouse;
-
-	int			 bflag;
-	int			 references;
 };
 
-enum cmd_retval
-cmd_if_shell_exec(struct cmd *self, struct cmd_q *cmdq)
+static enum cmd_retval
+cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = self->args;
 	struct cmd_if_shell_data	*cdata;
 	char				*shellcmd, *cmd, *cause;
 	struct cmd_list			*cmdlist;
-	struct session			*s = cmdq->state.tflag.s;
-	struct winlink			*wl = cmdq->state.tflag.wl;
-	struct window_pane		*wp = cmdq->state.tflag.wp;
+	struct cmdq_item		*new_item;
+	struct session			*s = item->state.tflag.s;
+	struct winlink			*wl = item->state.tflag.wl;
+	struct window_pane		*wp = item->state.tflag.wp;
 	struct format_tree		*ft;
 	const char			*cwd;
 
-	if (cmdq->client != NULL && cmdq->client->session == NULL)
-		cwd = cmdq->client->cwd;
+	if (item->client != NULL && item->client->session == NULL)
+		cwd = item->client->cwd;
 	else if (s != NULL)
 		cwd = s->cwd;
 	else
 		cwd = NULL;
 
-	ft = format_create(cmdq, 0);
-	format_defaults(ft, cmdq->state.c, s, wl, wp);
+	ft = format_create(item, FORMAT_NONE, 0);
+	format_defaults(ft, item->state.c, s, wl, wp);
 	shellcmd = format_expand(ft, args->argv[0]);
 	format_free(ft);
 
@@ -94,19 +96,25 @@ cmd_if_shell_exec(struct cmd *self, struct cmd_q *cmdq)
 		free(shellcmd);
 		if (cmd == NULL)
 			return (CMD_RETURN_NORMAL);
-		if (cmd_string_parse(cmd, &cmdlist, NULL, 0, &cause) != 0) {
+		cmdlist = cmd_string_parse(cmd, NULL, 0, &cause);
+		if (cmdlist == NULL) {
 			if (cause != NULL) {
-				cmdq_error(cmdq, "%s", cause);
+				cmdq_error(item, "%s", cause);
 				free(cause);
 			}
 			return (CMD_RETURN_ERROR);
 		}
-		cmdq_run(cmdq, cmdlist, &cmdq->item->mouse);
+		new_item = cmdq_get_command(cmdlist, NULL, &item->mouse, 0);
+		cmdq_insert_after(item, new_item);
 		cmd_list_free(cmdlist);
 		return (CMD_RETURN_NORMAL);
 	}
 
-	cdata = xmalloc(sizeof *cdata);
+	cdata = xcalloc(1, sizeof *cdata);
+	if (self->file != NULL) {
+		cdata->file = xstrdup(self->file);
+		cdata->line = self->line;
+	}
 
 	cdata->cmd_if = xstrdup(args->argv[1]);
 	if (args->argc == 3)
@@ -114,92 +122,85 @@ cmd_if_shell_exec(struct cmd *self, struct cmd_q *cmdq)
 	else
 		cdata->cmd_else = NULL;
 
-	cdata->bflag = args_has(args, 'b');
+	cdata->client = item->client;
+	cdata->client->references++;
 
-	cdata->cmdq = cmdq;
-	memcpy(&cdata->mouse, &cmdq->item->mouse, sizeof cdata->mouse);
-	cmdq->references++;
+	if (!args_has(args, 'b'))
+		cdata->item = item;
+	else
+		cdata->item = NULL;
+	memcpy(&cdata->mouse, &item->mouse, sizeof cdata->mouse);
 
-	cdata->references = 1;
 	job_run(shellcmd, s, cwd, cmd_if_shell_callback, cmd_if_shell_free,
 	    cdata);
 	free(shellcmd);
 
-	if (cdata->bflag)
+	if (args_has(args, 'b'))
 		return (CMD_RETURN_NORMAL);
 	return (CMD_RETURN_WAIT);
 }
 
-void
+static enum cmd_retval
+cmd_if_shell_error(struct cmdq_item *item, void *data)
+{
+	char	*error = data;
+
+	cmdq_error(item, "%s", error);
+	free(error);
+
+	return (CMD_RETURN_NORMAL);
+}
+
+static void
 cmd_if_shell_callback(struct job *job)
 {
 	struct cmd_if_shell_data	*cdata = job->data;
-	struct cmd_q			*cmdq = cdata->cmdq, *cmdq1;
+	struct client			*c = cdata->client;
 	struct cmd_list			*cmdlist;
-	char				*cause, *cmd;
-
-	if (cmdq->flags & CMD_Q_DEAD)
-		return;
+	struct cmdq_item		*new_item;
+	char				*cause, *cmd, *file = cdata->file;
+	u_int				 line = cdata->line;
 
 	if (!WIFEXITED(job->status) || WEXITSTATUS(job->status) != 0)
 		cmd = cdata->cmd_else;
 	else
 		cmd = cdata->cmd_if;
 	if (cmd == NULL)
-		return;
+		goto out;
 
-	if (cmd_string_parse(cmd, &cmdlist, NULL, 0, &cause) != 0) {
-		if (cause != NULL) {
-			cmdq_error(cmdq, "%s", cause);
-			free(cause);
-		}
-		return;
+	cmdlist = cmd_string_parse(cmd, file, line, &cause);
+	if (cmdlist == NULL) {
+		if (cause != NULL)
+			new_item = cmdq_get_callback(cmd_if_shell_error, cause);
+		else
+			new_item = NULL;
+	} else {
+		new_item = cmdq_get_command(cmdlist, NULL, &cdata->mouse, 0);
+		cmd_list_free(cmdlist);
 	}
 
-	cmdq1 = cmdq_new(cmdq->client);
-	cmdq1->flags |= cmdq->flags & CMD_Q_NOHOOKS;
-	cmdq1->emptyfn = cmd_if_shell_done;
-	cmdq1->data = cdata;
+	if (new_item != NULL) {
+		if (cdata->item == NULL)
+			cmdq_append(c, new_item);
+		else
+			cmdq_insert_after(cdata->item, new_item);
+	}
 
-	cdata->references++;
-	cmdq_run(cmdq1, cmdlist, &cdata->mouse);
-	cmd_list_free(cmdlist);
+out:
+	if (cdata->item != NULL)
+		cdata->item->flags &= ~CMDQ_WAITING;
 }
 
-void
-cmd_if_shell_done(struct cmd_q *cmdq1)
-{
-	struct cmd_if_shell_data	*cdata = cmdq1->data;
-	struct cmd_q			*cmdq = cdata->cmdq;
-
-	if (cmdq1->client_exit >= 0)
-		cmdq->client_exit = cmdq1->client_exit;
-	cmdq_free(cmdq1);
-
-	if (--cdata->references != 0)
-		return;
-
-	if (!cmdq_free(cmdq) && !cdata->bflag)
-		cmdq_continue(cmdq);
-
-	free(cdata->cmd_else);
-	free(cdata->cmd_if);
-	free(cdata);
-}
-
-void
+static void
 cmd_if_shell_free(void *data)
 {
 	struct cmd_if_shell_data	*cdata = data;
-	struct cmd_q			*cmdq = cdata->cmdq;
 
-	if (--cdata->references != 0)
-		return;
-
-	if (!cmdq_free(cmdq) && !cdata->bflag)
-		cmdq_continue(cmdq);
+	server_client_unref(cdata->client);
 
 	free(cdata->cmd_else);
 	free(cdata->cmd_if);
+
+	free(cdata->file);
 	free(cdata);
 }

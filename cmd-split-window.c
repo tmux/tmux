@@ -32,14 +32,15 @@
 
 #define SPLIT_WINDOW_TEMPLATE "#{session_name}:#{window_index}.#{pane_index}"
 
-enum cmd_retval	 cmd_split_window_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_split_window_exec(struct cmd *,
+			    struct cmdq_item *);
 
 const struct cmd_entry cmd_split_window_entry = {
 	.name = "split-window",
 	.alias = "splitw",
 
-	.args = { "bc:dF:l:hp:Pt:v", 0, -1 },
-	.usage = "[-bdhvP] [-c start-directory] [-F format] "
+	.args = { "bc:dfF:l:hp:Pt:v", 0, -1 },
+	.usage = "[-bdfhvP] [-c start-directory] [-F format] "
 		 "[-p percentage|-l size] " CMD_TARGET_PANE_USAGE " [command]",
 
 	.tflag = CMD_PANE,
@@ -48,14 +49,14 @@ const struct cmd_entry cmd_split_window_entry = {
 	.exec = cmd_split_window_exec
 };
 
-enum cmd_retval
-cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
+static enum cmd_retval
+cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
-	struct session		*s = cmdq->state.tflag.s;
-	struct winlink		*wl = cmdq->state.tflag.wl;
+	struct session		*s = item->state.tflag.s;
+	struct winlink		*wl = item->state.tflag.wl;
 	struct window		*w = wl->window;
-	struct window_pane	*wp = cmdq->state.tflag.wp, *new_wp = NULL;
+	struct window_pane	*wp = item->state.tflag.wp, *new_wp = NULL;
 	struct environ		*env;
 	const char		*cmd, *path, *shell, *template, *cwd, *to_free;
 	char		       **argv, *cause, *new_cause, *cp;
@@ -65,6 +66,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct layout_cell	*lc;
 	struct format_tree	*ft;
 	struct environ_entry	*envent;
+	struct cmd_find_state    fs;
 
 	server_unzoom_window(w);
 
@@ -89,12 +91,12 @@ cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	to_free = NULL;
 	if (args_has(args, 'c')) {
-		ft = format_create(cmdq, 0);
-		format_defaults(ft, cmdq->state.c, s, NULL, NULL);
+		ft = format_create(item, FORMAT_NONE, 0);
+		format_defaults(ft, item->state.c, s, NULL, NULL);
 		to_free = cwd = format_expand(ft, args_get(args, 'c'));
 		format_free(ft);
-	} else if (cmdq->client != NULL && cmdq->client->session == NULL)
-		cwd = cmdq->client->cwd;
+	} else if (item->client != NULL && item->client->session == NULL)
+		cwd = item->client->cwd;
 	else
 		cwd = s->cwd;
 
@@ -130,7 +132,8 @@ cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	if (*shell == '\0' || areshell(shell))
 		shell = _PATH_BSHELL;
 
-	lc = layout_split_pane(wp, type, size, args_has(args, 'b'));
+	lc = layout_split_pane(wp, type, size, args_has(args, 'b'),
+	    args_has(args, 'f'));
 	if (lc == NULL) {
 		cause = xstrdup("pane too small");
 		goto error;
@@ -139,8 +142,8 @@ cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	layout_assign_pane(lc, new_wp);
 
 	path = NULL;
-	if (cmdq->client != NULL && cmdq->client->session == NULL)
-		envent = environ_find(cmdq->client->environ, "PATH");
+	if (item->client != NULL && item->client->session == NULL)
+		envent = environ_find(item->client->environ, "PATH");
 	else
 		envent = environ_find(s->environ, "PATH");
 	if (envent != NULL)
@@ -165,19 +168,28 @@ cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 		if ((template = args_get(args, 'F')) == NULL)
 			template = SPLIT_WINDOW_TEMPLATE;
 
-		ft = format_create(cmdq, 0);
-		format_defaults(ft, cmdq->state.c, s, wl, new_wp);
+		ft = format_create(item, FORMAT_NONE, 0);
+		format_defaults(ft, item->state.c, s, wl, new_wp);
 
 		cp = format_expand(ft, template);
-		cmdq_print(cmdq, "%s", cp);
+		cmdq_print(item, "%s", cp);
 		free(cp);
 
 		format_free(ft);
 	}
-	notify_window_layout_changed(w);
+	notify_window("window-layout-changed", w);
 
 	if (to_free != NULL)
 		free((void *)to_free);
+
+	cmd_find_clear_state(&fs, NULL, 0);
+	fs.s = s;
+	fs.wl = wl;
+	fs.w = w;
+	fs.wp = new_wp;
+	cmd_find_log_state(__func__, &fs);
+	hooks_insert(s->hooks, item, &fs, "after-split-window");
+
 	return (CMD_RETURN_NORMAL);
 
 error:
@@ -186,7 +198,7 @@ error:
 		layout_close_pane(new_wp);
 		window_remove_pane(w, new_wp);
 	}
-	cmdq_error(cmdq, "create pane failed: %s", cause);
+	cmdq_error(item, "create pane failed: %s", cause);
 	free(cause);
 
 	if (to_free != NULL)

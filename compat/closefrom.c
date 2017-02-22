@@ -45,7 +45,7 @@
 # endif
 #endif
 
-#include "tmux.h"
+#include "compat.h"
 
 #ifndef OPEN_MAX
 # define OPEN_MAX	256

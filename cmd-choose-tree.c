@@ -41,7 +41,7 @@
 	"#{window_index}: #{window_name}#{window_flags} "	\
 	"\"#{pane_title}\""
 
-enum cmd_retval	cmd_choose_tree_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_choose_tree_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_choose_tree_entry = {
 	.name = "choose-tree",
@@ -83,13 +83,13 @@ const struct cmd_entry cmd_choose_window_entry = {
 	.exec = cmd_choose_tree_exec
 };
 
-enum cmd_retval
-cmd_choose_tree_exec(struct cmd *self, struct cmd_q *cmdq)
+static enum cmd_retval
+cmd_choose_tree_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = self->args;
-	struct client			*c = cmdq->state.c;
-	struct winlink			*wl = cmdq->state.tflag.wl, *wm;
-	struct session			*s = cmdq->state.tflag.s, *s2;
+	struct client			*c = item->state.c;
+	struct winlink			*wl = item->state.tflag.wl, *wm;
+	struct session			*s = item->state.tflag.s, *s2;
 	struct window_choose_data	*wcd = NULL;
 	const char			*ses_template, *win_template;
 	char				*final_win_action, *cur_win_template;
@@ -103,7 +103,7 @@ cmd_choose_tree_exec(struct cmd *self, struct cmd_q *cmdq)
 	ses_action = win_action = NULL;
 
 	if (c == NULL) {
-		cmdq_error(cmdq, "no client available");
+		cmdq_error(item, "no client available");
 		return (CMD_RETURN_ERROR);
 	}
 

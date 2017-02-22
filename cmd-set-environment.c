@@ -27,7 +27,8 @@
  * Set an environment variable.
  */
 
-enum cmd_retval	 cmd_set_environment_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_set_environment_exec(struct cmd *,
+			    struct cmdq_item *);
 
 const struct cmd_entry cmd_set_environment_entry = {
 	.name = "set-environment",
@@ -38,12 +39,12 @@ const struct cmd_entry cmd_set_environment_entry = {
 
 	.tflag = CMD_SESSION_CANFAIL,
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_set_environment_exec
 };
 
-enum cmd_retval
-cmd_set_environment_exec(struct cmd *self, struct cmd_q *cmdq)
+static enum cmd_retval
+cmd_set_environment_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args	*args = self->args;
 	struct environ	*env;
@@ -51,11 +52,11 @@ cmd_set_environment_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	name = args->argv[0];
 	if (*name == '\0') {
-		cmdq_error(cmdq, "empty variable name");
+		cmdq_error(item, "empty variable name");
 		return (CMD_RETURN_ERROR);
 	}
 	if (strchr(name, '=') != NULL) {
-		cmdq_error(cmdq, "variable name contains =");
+		cmdq_error(item, "variable name contains =");
 		return (CMD_RETURN_ERROR);
 	}
 
@@ -67,32 +68,32 @@ cmd_set_environment_exec(struct cmd *self, struct cmd_q *cmdq)
 	if (args_has(self->args, 'g'))
 		env = global_environ;
 	else {
-		if (cmdq->state.tflag.s == NULL) {
+		if (item->state.tflag.s == NULL) {
 			target = args_get(args, 't');
 			if (target != NULL)
-				cmdq_error(cmdq, "no such session: %s", target);
+				cmdq_error(item, "no such session: %s", target);
 			else
-				cmdq_error(cmdq, "no current session");
+				cmdq_error(item, "no current session");
 			return (CMD_RETURN_ERROR);
 		}
-		env = cmdq->state.tflag.s->environ;
+		env = item->state.tflag.s->environ;
 	}
 
 	if (args_has(self->args, 'u')) {
 		if (value != NULL) {
-			cmdq_error(cmdq, "can't specify a value with -u");
+			cmdq_error(item, "can't specify a value with -u");
 			return (CMD_RETURN_ERROR);
 		}
 		environ_unset(env, name);
 	} else if (args_has(self->args, 'r')) {
 		if (value != NULL) {
-			cmdq_error(cmdq, "can't specify a value with -r");
+			cmdq_error(item, "can't specify a value with -r");
 			return (CMD_RETURN_ERROR);
 		}
 		environ_clear(env, name);
 	} else {
 		if (value == NULL) {
-			cmdq_error(cmdq, "no value specified");
+			cmdq_error(item, "no value specified");
 			return (CMD_RETURN_ERROR);
 		}
 		environ_set(env, name, "%s", value);

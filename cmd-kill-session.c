@@ -27,7 +27,7 @@
  * Note this deliberately has no alias to make it hard to hit by accident.
  */
 
-enum cmd_retval	 cmd_kill_session_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_kill_session_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_kill_session_entry = {
 	.name = "kill-session",
@@ -42,14 +42,14 @@ const struct cmd_entry cmd_kill_session_entry = {
 	.exec = cmd_kill_session_exec
 };
 
-enum cmd_retval
-cmd_kill_session_exec(struct cmd *self, struct cmd_q *cmdq)
+static enum cmd_retval
+cmd_kill_session_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args	*args = self->args;
 	struct session	*s, *sloop, *stmp;
 	struct winlink	*wl;
 
-	s = cmdq->state.tflag.s;
+	s = item->state.tflag.s;
 
 	if (args_has(args, 'C')) {
 		RB_FOREACH(wl, winlinks, &s->windows) {

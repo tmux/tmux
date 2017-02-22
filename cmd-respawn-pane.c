@@ -28,7 +28,7 @@
  * Respawn a pane (restart the command). Kill existing if -k given.
  */
 
-enum cmd_retval	 cmd_respawn_pane_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_respawn_pane_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_respawn_pane_entry = {
 	.name = "respawn-pane",
@@ -43,14 +43,14 @@ const struct cmd_entry cmd_respawn_pane_entry = {
 	.exec = cmd_respawn_pane_exec
 };
 
-enum cmd_retval
-cmd_respawn_pane_exec(struct cmd *self, struct cmd_q *cmdq)
+static enum cmd_retval
+cmd_respawn_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
-	struct winlink		*wl = cmdq->state.tflag.wl;
+	struct winlink		*wl = item->state.tflag.wl;
 	struct window		*w = wl->window;
-	struct window_pane	*wp = cmdq->state.tflag.wp;
-	struct session		*s = cmdq->state.tflag.s;
+	struct window_pane	*wp = item->state.tflag.wp;
+	struct session		*s = item->state.tflag.s;
 	struct environ		*env;
 	const char		*path;
 	char			*cause;
@@ -60,7 +60,7 @@ cmd_respawn_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 	if (!args_has(self->args, 'k') && wp->fd != -1) {
 		if (window_pane_index(wp, &idx) != 0)
 			fatalx("index not found");
-		cmdq_error(cmdq, "pane still active: %s:%d.%u",
+		cmdq_error(item, "pane still active: %s:%d.%u",
 		    s->name, wl->idx, idx);
 		return (CMD_RETURN_ERROR);
 	}
@@ -75,8 +75,8 @@ cmd_respawn_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 	input_init(wp);
 
 	path = NULL;
-	if (cmdq->client != NULL && cmdq->client->session == NULL)
-		envent = environ_find(cmdq->client->environ, "PATH");
+	if (item->client != NULL && item->client->session == NULL)
+		envent = environ_find(item->client->environ, "PATH");
 	else
 		envent = environ_find(s->environ, "PATH");
 	if (envent != NULL)
@@ -84,7 +84,7 @@ cmd_respawn_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	if (window_pane_spawn(wp, args->argc, args->argv, path, NULL, NULL, env,
 	    s->tio, &cause) != 0) {
-		cmdq_error(cmdq, "respawn pane failed: %s", cause);
+		cmdq_error(item, "respawn pane failed: %s", cause);
 		free(cause);
 		environ_free(env);
 		return (CMD_RETURN_ERROR);

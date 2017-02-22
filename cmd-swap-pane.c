@@ -26,7 +26,7 @@
  * Swap two panes.
  */
 
-enum cmd_retval	 cmd_swap_pane_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_swap_pane_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_swap_pane_entry = {
 	.name = "swap-pane",
@@ -42,18 +42,18 @@ const struct cmd_entry cmd_swap_pane_entry = {
 	.exec = cmd_swap_pane_exec
 };
 
-enum cmd_retval
-cmd_swap_pane_exec(struct cmd *self, struct cmd_q *cmdq)
+static enum cmd_retval
+cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct window		*src_w, *dst_w;
 	struct window_pane	*tmp_wp, *src_wp, *dst_wp;
 	struct layout_cell	*src_lc, *dst_lc;
 	u_int			 sx, sy, xoff, yoff;
 
-	dst_w = cmdq->state.tflag.wl->window;
-	dst_wp = cmdq->state.tflag.wp;
-	src_w = cmdq->state.sflag.wl->window;
-	src_wp = cmdq->state.sflag.wp;
+	dst_w = item->state.tflag.wl->window;
+	dst_wp = item->state.tflag.wp;
+	src_w = item->state.sflag.wl->window;
+	src_wp = item->state.sflag.wp;
 	server_unzoom_window(dst_w);
 
 	if (args_has(self->args, 'D')) {

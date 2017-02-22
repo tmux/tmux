@@ -81,6 +81,16 @@ xstrdup(const char *str)
 	return cp;
 }
 
+char *
+xstrndup(const char *str, size_t maxlen)
+{
+	char *cp;
+
+	if ((cp = strndup(str, maxlen)) == NULL)
+		fatalx("xstrndup: %s", strerror(errno));
+	return cp;
+}
+
 int
 xasprintf(char **ret, const char *fmt, ...)
 {

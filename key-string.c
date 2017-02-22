@@ -25,7 +25,7 @@
 static key_code	key_string_search_table(const char *);
 static key_code	key_string_get_modifiers(const char **);
 
-const struct {
+static const struct {
 	const char     *string;
 	key_code	key;
 } key_string_table[] = {
@@ -98,6 +98,12 @@ const struct {
 	KEYC_MOUSE_STRING(MOUSEDRAGEND3, MouseDragEnd3),
 	KEYC_MOUSE_STRING(WHEELUP, WheelUp),
 	KEYC_MOUSE_STRING(WHEELDOWN, WheelDown),
+	KEYC_MOUSE_STRING(DOUBLECLICK1, DoubleClick1),
+	KEYC_MOUSE_STRING(DOUBLECLICK2, DoubleClick2),
+	KEYC_MOUSE_STRING(DOUBLECLICK3, DoubleClick3),
+	KEYC_MOUSE_STRING(TRIPLECLICK1, TripleClick1),
+	KEYC_MOUSE_STRING(TRIPLECLICK2, TripleClick2),
+	KEYC_MOUSE_STRING(TRIPLECLICK3, TripleClick3),
 };
 
 /* Find key string in table. */
@@ -134,6 +140,9 @@ key_string_get_modifiers(const char **string)
 		case 's':
 			modifiers |= KEYC_SHIFT;
 			break;
+		default:
+			*string = NULL;
+			return (0);
 		}
 		*string += 2;
 	}
@@ -173,7 +182,7 @@ key_string_lookup_string(const char *string)
 		string++;
 	}
 	modifiers |= key_string_get_modifiers(&string);
-	if (string[0] == '\0')
+	if (string == NULL || string[0] == '\0')
 		return (KEYC_UNKNOWN);
 
 	/* Is this a standard ASCII key? */
@@ -223,7 +232,7 @@ key_string_lookup_string(const char *string)
 const char *
 key_string_lookup_key(key_code key)
 {
-	static char		out[24];
+	static char		out[32];
 	char			tmp[8];
 	u_int			i;
 	struct utf8_data	ud;
@@ -238,8 +247,20 @@ key_string_lookup_key(key_code key)
 	/* Handle special keys. */
 	if (key == KEYC_UNKNOWN)
 		return ("Unknown");
+	if (key == KEYC_FOCUS_IN)
+		return ("FocusIn");
+	if (key == KEYC_FOCUS_OUT)
+		return ("FocusOut");
 	if (key == KEYC_MOUSE)
 		return ("Mouse");
+	if (key == KEYC_DRAGGING)
+		return ("Dragging");
+	if (key == KEYC_MOUSEMOVE_PANE)
+		return ("MouseMovePane");
+	if (key == KEYC_MOUSEMOVE_STATUS)
+		return ("MouseMoveStatus");
+	if (key == KEYC_MOUSEMOVE_BORDER)
+		return ("MouseMoveBorder");
 
 	/*
 	 * Special case: display C-@ as C-Space. Could do this below in

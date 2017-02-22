@@ -28,14 +28,14 @@
 
 #define BREAK_PANE_TEMPLATE "#{session_name}:#{window_index}.#{pane_index}"
 
-enum cmd_retval	 cmd_break_pane_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_break_pane_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_break_pane_entry = {
 	.name = "break-pane",
 	.alias = "breakp",
 
-	.args = { "dPF:s:t:", 0, 0 },
-	.usage = "[-dP] [-F format] [-s src-pane] [-t dst-window]",
+	.args = { "dPF:n:s:t:", 0, 0 },
+	.usage = "[-dP] [-F format] [-n window-name] [-s src-pane] [-t dst-window]",
 
 	.sflag = CMD_PANE,
 	.tflag = CMD_WINDOW_INDEX,
@@ -44,29 +44,28 @@ const struct cmd_entry cmd_break_pane_entry = {
 	.exec = cmd_break_pane_exec
 };
 
-enum cmd_retval
-cmd_break_pane_exec(struct cmd *self, struct cmd_q *cmdq)
+static enum cmd_retval
+cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
-	struct winlink		*wl = cmdq->state.sflag.wl;
-	struct session		*src_s = cmdq->state.sflag.s;
-	struct session		*dst_s = cmdq->state.tflag.s;
-	struct window_pane	*wp = cmdq->state.sflag.wp;
+	struct winlink		*wl = item->state.sflag.wl;
+	struct session		*src_s = item->state.sflag.s;
+	struct session		*dst_s = item->state.tflag.s;
+	struct window_pane	*wp = item->state.sflag.wp;
 	struct window		*w = wl->window;
-	char			*name;
-	char			*cause;
-	int			 idx = cmdq->state.tflag.idx;
+	char			*name, *cause;
+	int			 idx = item->state.tflag.idx;
 	struct format_tree	*ft;
 	const char		*template;
 	char			*cp;
 
 	if (idx != -1 && winlink_find_by_index(&dst_s->windows, idx) != NULL) {
-		cmdq_error(cmdq, "index %d already in use", idx);
+		cmdq_error(item, "index %d already in use", idx);
 		return (CMD_RETURN_ERROR);
 	}
 
 	if (window_count_panes(w) == 1) {
-		cmdq_error(cmdq, "can't break with only one pane");
+		cmdq_error(item, "can't break with only one pane");
 		return (CMD_RETURN_ERROR);
 	}
 	server_unzoom_window(w);
@@ -75,12 +74,19 @@ cmd_break_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 	window_lost_pane(w, wp);
 	layout_close_pane(wp);
 
-	w = wp->window = window_create1(dst_s->sx, dst_s->sy);
+	w = wp->window = window_create(dst_s->sx, dst_s->sy);
 	TAILQ_INSERT_HEAD(&w->panes, wp, entry);
 	w->active = wp;
-	name = default_window_name(w);
-	window_set_name(w, name);
-	free(name);
+
+	if (!args_has(args, 'n')) {
+		name = default_window_name(w);
+		window_set_name(w, name);
+		free(name);
+	} else {
+		window_set_name(w, args_get(args, 'n'));
+		options_set_number(w->options, "automatic-rename", 0);
+	}
+
 	layout_init(w, wp);
 	wp->flags |= PANE_CHANGED;
 
@@ -101,11 +107,11 @@ cmd_break_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 		if ((template = args_get(args, 'F')) == NULL)
 			template = BREAK_PANE_TEMPLATE;
 
-		ft = format_create(cmdq, 0);
-		format_defaults(ft, cmdq->state.c, dst_s, wl, wp);
+		ft = format_create(item, FORMAT_NONE, 0);
+		format_defaults(ft, item->state.c, dst_s, wl, wp);
 
 		cp = format_expand(ft, template);
-		cmdq_print(cmdq, "%s", cp);
+		cmdq_print(item, "%s", cp);
 		free(cp);
 
 		format_free(ft);

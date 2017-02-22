@@ -24,12 +24,12 @@
 
 #include "tmux.h"
 
-struct event	ev_sighup;
-struct event	ev_sigchld;
-struct event	ev_sigcont;
-struct event	ev_sigterm;
-struct event	ev_sigusr1;
-struct event	ev_sigwinch;
+static struct event	ev_sighup;
+static struct event	ev_sigchld;
+static struct event	ev_sigcont;
+static struct event	ev_sigterm;
+static struct event	ev_sigusr1;
+static struct event	ev_sigwinch;
 
 void
 set_signals(void (*handler)(int, short, void *), void *arg)

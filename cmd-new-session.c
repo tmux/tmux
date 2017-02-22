@@ -33,7 +33,7 @@
 
 #define NEW_SESSION_TEMPLATE "#{session_name}:"
 
-enum cmd_retval	 cmd_new_session_exec(struct cmd *, struct cmd_q *);
+static enum cmd_retval	cmd_new_session_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_new_session_entry = {
 	.name = "new-session",
@@ -63,23 +63,24 @@ const struct cmd_entry cmd_has_session_entry = {
 	.exec = cmd_new_session_exec
 };
 
-enum cmd_retval
-cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
+static enum cmd_retval
+cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
-	struct client		*c = cmdq->client;
-	struct session		*s, *as;
-	struct session		*groupwith = cmdq->state.tflag.s;
+	struct client		*c = item->client;
+	struct session		*s, *as, *groupwith;
 	struct window		*w;
 	struct environ		*env;
 	struct termios		 tio, *tiop;
-	const char		*newname, *target, *update, *errstr, *template;
-	const char		*path, *cwd, *to_free = NULL;
-	char		       **argv, *cmd, *cause, *cp;
+	struct session_group	*sg;
+	const char		*newname, *errstr, *template, *group, *prefix;
+	const char		*path, *cmd, *cwd, *to_free = NULL;
+	char		       **argv, *cause, *cp;
 	int			 detached, already_attached, idx, argc;
 	u_int			 sx, sy;
 	struct format_tree	*ft;
 	struct environ_entry	*envent;
+	struct cmd_find_state	 fs;
 
 	if (self->entry == &cmd_has_session_entry) {
 		/*
@@ -90,41 +91,57 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 	}
 
 	if (args_has(args, 't') && (args->argc != 0 || args_has(args, 'n'))) {
-		cmdq_error(cmdq, "command or window name given with target");
+		cmdq_error(item, "command or window name given with target");
 		return (CMD_RETURN_ERROR);
 	}
 
 	newname = args_get(args, 's');
 	if (newname != NULL) {
 		if (!session_check_name(newname)) {
-			cmdq_error(cmdq, "bad session name: %s", newname);
+			cmdq_error(item, "bad session name: %s", newname);
 			return (CMD_RETURN_ERROR);
 		}
 		if ((as = session_find(newname)) != NULL) {
 			if (args_has(args, 'A')) {
 				/*
-				 * This cmdq is now destined for
-				 * attach-session.  Because attach-session
-				 * will have already been prepared, copy this
+				 * This item is now destined for
+				 * attach-session. Because attach-session will
+				 * have already been prepared, copy this
 				 * session into its tflag so it can be used.
 				 */
-				cmd_find_from_session(&cmdq->state.tflag, as);
-				return (cmd_attach_session(cmdq,
+				cmd_find_from_session(&item->state.tflag, as);
+				return (cmd_attach_session(item,
 				    args_has(args, 'D'), 0, NULL,
 				    args_has(args, 'E')));
 			}
-			cmdq_error(cmdq, "duplicate session: %s", newname);
+			cmdq_error(item, "duplicate session: %s", newname);
 			return (CMD_RETURN_ERROR);
 		}
 	}
 
-	if ((target = args_get(args, 't')) != NULL) {
+	/* Is this going to be part of a session group? */
+	group = args_get(args, 't');
+	if (group != NULL) {
+		groupwith = item->state.tflag.s;
 		if (groupwith == NULL) {
-			cmdq_error(cmdq, "no such session: %s", target);
-			goto error;
-		}
-	} else
+			if (!session_check_name(group)) {
+				cmdq_error(item, "bad group name: %s", group);
+				goto error;
+			}
+			sg = session_group_find(group);
+		} else
+			sg = session_group_contains(groupwith);
+		if (sg != NULL)
+			prefix = sg->name;
+		else if (groupwith != NULL)
+			prefix = groupwith->name;
+		else
+			prefix = group;
+	} else {
 		groupwith = NULL;
+		sg = NULL;
+		prefix = NULL;
+	}
 
 	/* Set -d if no client. */
 	detached = args_has(args, 'd');
@@ -138,7 +155,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	/* Get the new session working directory. */
 	if (args_has(args, 'c')) {
-		ft = format_create(cmdq, 0);
+		ft = format_create(item, FORMAT_NONE, 0);
 		format_defaults(ft, c, NULL, NULL, NULL);
 		to_free = cwd = format_expand(ft, args_get(args, 'c'));
 		format_free(ft);
@@ -157,8 +174,8 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 	 * over.
 	 */
 	if (!detached && !already_attached && c->tty.fd != -1) {
-		if (server_client_check_nested(cmdq->client)) {
-			cmdq_error(cmdq, "sessions should be nested with care, "
+		if (server_client_check_nested(item->client)) {
+			cmdq_error(item, "sessions should be nested with care, "
 			    "unset $TMUX to force");
 			return (CMD_RETURN_ERROR);
 		}
@@ -171,7 +188,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 	/* Open the terminal if necessary. */
 	if (!detached && !already_attached) {
 		if (server_client_open(c, &cause) != 0) {
-			cmdq_error(cmdq, "open terminal failed: %s", cause);
+			cmdq_error(item, "open terminal failed: %s", cause);
 			free(cause);
 			goto error;
 		}
@@ -188,14 +205,14 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 	if (detached && args_has(args, 'x')) {
 		sx = strtonum(args_get(args, 'x'), 1, USHRT_MAX, &errstr);
 		if (errstr != NULL) {
-			cmdq_error(cmdq, "width %s", errstr);
+			cmdq_error(item, "width %s", errstr);
 			goto error;
 		}
 	}
 	if (detached && args_has(args, 'y')) {
 		sy = strtonum(args_get(args, 'y'), 1, USHRT_MAX, &errstr);
 		if (errstr != NULL) {
-			cmdq_error(cmdq, "height %s", errstr);
+			cmdq_error(item, "height %s", errstr);
 			goto error;
 		}
 	}
@@ -212,11 +229,11 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 	if (!args_has(args, 't') && args->argc != 0) {
 		argc = args->argc;
 		argv = args->argv;
-	} else if (groupwith == NULL) {
+	} else if (sg == NULL && groupwith == NULL) {
 		cmd = options_get_string(global_s_options, "default-command");
 		if (cmd != NULL && *cmd != '\0') {
 			argc = 1;
-			argv = &cmd;
+			argv = (char **)&cmd;
 		} else {
 			argc = 0;
 			argv = NULL;
@@ -233,19 +250,16 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	/* Construct the environment. */
 	env = environ_create();
-	if (c != NULL && !args_has(args, 'E')) {
-		update = options_get_string(global_s_options,
-		    "update-environment");
-		environ_update(update, c->environ, env);
-	}
+	if (c != NULL && !args_has(args, 'E'))
+		environ_update(global_s_options, c->environ, env);
 
 	/* Create the new session. */
 	idx = -1 - options_get_number(global_s_options, "base-index");
-	s = session_create(newname, argc, argv, path, cwd, env, tiop, idx, sx,
-	    sy, &cause);
+	s = session_create(prefix, newname, argc, argv, path, cwd, env, tiop,
+	    idx, sx, sy, &cause);
 	environ_free(env);
 	if (s == NULL) {
-		cmdq_error(cmdq, "create session failed: %s", cause);
+		cmdq_error(item, "create session failed: %s", cause);
 		free(cause);
 		goto error;
 	}
@@ -261,11 +275,19 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 	 * If a target session is given, this is to be part of a session group,
 	 * so add it to the group and synchronize.
 	 */
-	if (groupwith != NULL) {
-		session_group_add(groupwith, s);
+	if (group != NULL) {
+		if (sg == NULL) {
+			if (groupwith != NULL) {
+				sg = session_group_new(groupwith->name);
+				session_group_add(sg, groupwith);
+			} else
+				sg = session_group_new(group);
+		}
+		session_group_add(sg, s);
 		session_group_synchronize_to(s);
 		session_select(s, RB_MIN(winlinks, &s->windows)->idx);
 	}
+	notify_session("session-created", s);
 
 	/*
 	 * Set the client to the new session. If a command client exists, it is
@@ -278,9 +300,10 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 		} else if (c->session != NULL)
 			c->last_session = c->session;
 		c->session = s;
-		server_client_set_key_table(c, NULL);
+		if (!item->repeat)
+			server_client_set_key_table(c, NULL);
 		status_timer_start(c);
-		notify_attached_session_changed(c);
+		notify_client("client-session-changed", c);
 		session_update_activity(s, NULL);
 		gettimeofday(&s->last_attached_time, NULL);
 		server_redraw_client(c);
@@ -300,21 +323,25 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 		if ((template = args_get(args, 'F')) == NULL)
 			template = NEW_SESSION_TEMPLATE;
 
-		ft = format_create(cmdq, 0);
+		ft = format_create(item, FORMAT_NONE, 0);
 		format_defaults(ft, c, s, NULL, NULL);
 
 		cp = format_expand(ft, template);
-		cmdq_print(cmdq, "%s", cp);
+		cmdq_print(item, "%s", cp);
 		free(cp);
 
 		format_free(ft);
 	}
 
 	if (!detached)
-		cmdq->client_exit = 0;
+		c->flags |= CLIENT_ATTACHED;
 
 	if (to_free != NULL)
 		free((void *)to_free);
+
+	cmd_find_from_session(&fs, s);
+	hooks_insert(s->hooks, item, &fs, "after-new-session");
+
 	return (CMD_RETURN_NORMAL);
 
 error:

@@ -34,43 +34,21 @@ struct args_entry {
 	RB_ENTRY(args_entry)	 entry;
 };
 
-struct args_entry	*args_find(struct args *, u_char);
+static void			 args_set(struct args *, u_char, const char *);
+static struct args_entry	*args_find(struct args *, u_char);
 
-RB_GENERATE(args_tree, args_entry, entry, args_cmp);
+static int	args_cmp(struct args_entry *, struct args_entry *);
+RB_GENERATE_STATIC(args_tree, args_entry, entry, args_cmp);
 
 /* Arguments tree comparison function. */
-int
+static int
 args_cmp(struct args_entry *a1, struct args_entry *a2)
 {
 	return (a1->flag - a2->flag);
 }
 
-/* Create an arguments set with no flags. */
-struct args *
-args_create(int argc, ...)
-{
-	struct args	*args;
-	va_list		 ap;
-	int		 i;
-
-	args = xcalloc(1, sizeof *args);
-
-	args->argc = argc;
-	if (argc == 0)
-		args->argv = NULL;
-	else
-		args->argv = xcalloc(argc, sizeof *args->argv);
-
-	va_start(ap, argc);
-	for (i = 0; i < argc; i++)
-		args->argv[i] = xstrdup(va_arg(ap, char *));
-	va_end(ap);
-
-	return (args);
-}
-
 /* Find a flag in the arguments tree. */
-struct args_entry *
+static struct args_entry *
 args_find(struct args *args, u_char ch)
 {
 	struct args_entry	entry;
@@ -151,9 +129,10 @@ char *
 args_print(struct args *args)
 {
 	size_t		 	 len;
-	char			*buf;
-	int			 i;
+	char			*buf, *escaped;
+	int			 i, flags;
 	struct args_entry	*entry;
+	static const char	 quoted[] = " #\"';$";
 
 	len = 1;
 	buf = xcalloc(1, len);
@@ -177,20 +156,32 @@ args_print(struct args *args)
 			args_print_add(&buf, &len, " -%c ", entry->flag);
 		else
 			args_print_add(&buf, &len, "-%c ", entry->flag);
-		if (strchr(entry->value, ' ') != NULL)
-			args_print_add(&buf, &len, "\"%s\"", entry->value);
+
+		flags = VIS_OCTAL|VIS_TAB|VIS_NL;
+		if (entry->value[strcspn(entry->value, quoted)] != '\0')
+			flags |= VIS_DQ;
+		utf8_stravis(&escaped, entry->value, flags);
+		if (flags & VIS_DQ)
+			args_print_add(&buf, &len, "\"%s\"", escaped);
 		else
-			args_print_add(&buf, &len, "%s", entry->value);
+			args_print_add(&buf, &len, "%s", escaped);
+		free(escaped);
 	}
 
 	/* And finally the argument vector. */
 	for (i = 0; i < args->argc; i++) {
 		if (*buf != '\0')
 			args_print_add(&buf, &len, " ");
-		if (strchr(args->argv[i], ' ') != NULL)
-			args_print_add(&buf, &len, "\"%s\"", args->argv[i]);
+
+		flags = VIS_OCTAL|VIS_TAB|VIS_NL;
+		if (args->argv[i][strcspn(args->argv[i], quoted)] != '\0')
+			flags |= VIS_DQ;
+		utf8_stravis(&escaped, args->argv[i], flags);
+		if (flags & VIS_DQ)
+			args_print_add(&buf, &len, "\"%s\"", escaped);
 		else
-			args_print_add(&buf, &len, "%s", args->argv[i]);
+			args_print_add(&buf, &len, "%s", escaped);
+		free(escaped);
 	}
 
 	return (buf);
@@ -204,7 +195,7 @@ args_has(struct args *args, u_char ch)
 }
 
 /* Set argument value in the arguments tree. */
-void
+static void
 args_set(struct args *args, u_char ch, const char *value)
 {
 	struct args_entry	*entry;
