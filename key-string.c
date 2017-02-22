@@ -232,7 +232,7 @@ key_string_lookup_string(const char *string)
 const char *
 key_string_lookup_key(key_code key)
 {
-	static char		out[24];
+	static char		out[32];
 	char			tmp[8];
 	u_int			i;
 	struct utf8_data	ud;

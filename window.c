@@ -1491,6 +1491,7 @@ winlink_clear_flags(struct winlink *wl)
 	}
 }
 
+/* Shuffle window indexes up. */
 int
 winlink_shuffle_up(struct session *s, struct winlink *wl)
 {
