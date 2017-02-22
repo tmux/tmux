@@ -39,7 +39,7 @@
 const struct grid_cell grid_default_cell = {
 	0, 0, 8, 8, { { ' ' }, 0, 1, 1 }
 };
-const struct grid_cell_entry grid_default_entry = {
+static const struct grid_cell_entry grid_default_entry = {
 	0, { .data = { 0, 8, 8, ' ' } }
 };
 
