@@ -339,7 +339,7 @@ window_create_spawn(const char *name, int argc, char **argv, const char *path,
 	struct window_pane	*wp;
 
 	w = window_create(sx, sy);
-	wp = window_add_pane(w, NULL, hlimit);
+	wp = window_add_pane(w, NULL, 0, hlimit);
 	layout_init(w, wp);
 
 	if (window_pane_spawn(wp, argc, argv, path, shell, cwd,
@@ -426,6 +426,7 @@ window_has_pane(struct window *w, struct window_pane *wp)
 int
 window_set_active_pane(struct window *w, struct window_pane *wp)
 {
+	log_debug("%s: pane %%%u (was %%%u)", __func__, wp->id, w->active->id);
 	if (wp == w->active)
 		return (0);
 	w->last = w->active;
@@ -578,19 +579,21 @@ window_unzoom(struct window *w)
 }
 
 struct window_pane *
-window_add_pane(struct window *w, struct window_pane *after, u_int hlimit)
+window_add_pane(struct window *w, struct window_pane *other, int before,
+    u_int hlimit)
 {
 	struct window_pane	*wp;
+
+	if (other == NULL)
+		other = w->active;
 
 	wp = window_pane_create(w, w->sx, w->sy, hlimit);
 	if (TAILQ_EMPTY(&w->panes))
 		TAILQ_INSERT_HEAD(&w->panes, wp, entry);
-	else {
-		if (after == NULL)
-			TAILQ_INSERT_AFTER(&w->panes, w->active, wp, entry);
-		else
-			TAILQ_INSERT_AFTER(&w->panes, after, wp, entry);
-	}
+	else if (before)
+		TAILQ_INSERT_BEFORE(other, wp, entry);
+	else
+		TAILQ_INSERT_AFTER(&w->panes, other, wp, entry);
 	return (wp);
 }
 

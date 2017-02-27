@@ -139,7 +139,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		cause = xstrdup("pane too small");
 		goto error;
 	}
-	new_wp = window_add_pane(w, wp, hlimit);
+	new_wp = window_add_pane(w, wp, args_has(args, 'b'), hlimit);
 	layout_assign_pane(lc, new_wp);
 
 	path = NULL;
