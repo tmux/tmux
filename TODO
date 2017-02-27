@@ -43,14 +43,10 @@
 	* display-time but message-fg/bg/attr
 	* list-* vs show-*
 
-- better UTF-8 support:
-	* searching in copy mode
-
 - copy/paste improvements:
 	* paste w/o trailing whitespace
 	* command to toggle selection not to move it in copy-mode
 	* regex searching
-	* copy-pipe should have -x as well
 	* searching in copy mode should unwrap lines, so if you search for "foobar"
           then it should be found even if it is now "foo\nbar" (if the WRAP flag
           is set on the line)
