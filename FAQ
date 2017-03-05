@@ -434,10 +434,19 @@ Or for inside and outside copy mode with the prefix key:
 
         bind C-y run -b "tmux save-buffer - | xclip -i"
 
-On OS X, reattach-to-usernamespace lets pbcopy/pbpaste work:
+On OS X (macOS) you'll want to use the `pbcopy` and `pbpaste` commands.
+
+* On OS X (macOS) why don't some commands work?
+
+On macOS you may find that commands like `say`, `pbcopy`, `pbpaste`,
+and even `ssh` may not behave correctly when run from a shell inside a
+tmux session.  In the case of `ssh` it's because it can't connect to the
+ssh-agent daemon. So you may not notice any problems with that command
+if you're not using `ssh-add` to cache your connection keys. The solution
+is to use the `reattach-to-user-namespace` command that you can find here:
 
         https://github.com/ChrisJohnsen/tmux-MacOSX-pasteboard
- 
+
 * Why do I see dots around a session when I attach to it?
 
 tmux limits the size of the window to the smallest attached session. If
