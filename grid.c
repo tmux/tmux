@@ -553,6 +553,8 @@ grid_move_cells(struct grid *gd, u_int dx, u_int px, u_int py, u_int nx,
 	grid_expand_line(gd, py, dx + nx, 8);
 	memmove(&gl->celldata[dx], &gl->celldata[px],
 	    nx * sizeof *gl->celldata);
+	if (dx + nx > gl->cellused)
+		gl->cellused = dx + nx;
 
 	/* Wipe any cells that have been moved. */
 	for (xx = px; xx < px + nx; xx++) {

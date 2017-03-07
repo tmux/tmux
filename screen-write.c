@@ -1030,8 +1030,9 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only)
 {
 	struct screen				*s = ctx->s;
 	struct screen_write_collect_item	*ci, *tmp;
-	u_int					 y, cx, cy;
+	u_int					 y, cx, cy, items = 0;
 	struct tty_ctx				 ttyctx;
+	size_t					 written = 0;
 
 	if (ctx->scrolled != 0) {
 		log_debug("%s: scrolled %u (region %u-%u)", __func__,
@@ -1056,13 +1057,18 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only)
 			ttyctx.ptr = ci->data;
 			ttyctx.num = ci->used;
 			tty_write(tty_cmd_cells, &ttyctx);
-			ctx->written += ci->used;
+
+			items++;
+			written += ci->used;
 
 			TAILQ_REMOVE(&ctx->list[y].items, ci, entry);
 			free(ci);
 		}
 	}
 	s->cx = cx; s->cy = cy;
+
+	log_debug("%s: flushed %u items (%zu bytes)", __func__, items, written);
+	ctx->written += written;
 }
 
 /* Finish and store collected cells. */
@@ -1101,9 +1107,9 @@ screen_write_collect_add(struct screen_write_ctx *ctx,
 
 	/*
 	 * Don't need to check that the attributes and whatnot are still the
-	 * same - input_parse will do a flush when anything that isn't a plain
-	 * character is encountered. Also nothing should make it here that
-	 * isn't a single ASCII character.
+	 * same - input_parse will end the collection when anything that isn't
+	 * a plain character is encountered. Also nothing should make it here
+	 * that isn't a single ASCII character.
 	 */
 
 	collect = 1;
@@ -1119,6 +1125,7 @@ screen_write_collect_add(struct screen_write_ctx *ctx,
 		collect = 0;
 	if (!collect) {
 		screen_write_collect_end(ctx);
+		screen_write_collect_flush(ctx, 0);
 		screen_write_cell(ctx, gc);
 		return;
 	}
