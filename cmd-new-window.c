@@ -59,7 +59,6 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	const char		*cmd, *path, *template, *cwd, *to_free;
 	char		       **argv, *cause, *cp;
 	int			 argc, detached;
-	struct format_tree	*ft;
 	struct environ_entry	*envent;
 	struct cmd_find_state	 fs;
 
@@ -95,10 +94,8 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 
 	to_free = NULL;
 	if (args_has(args, 'c')) {
-		ft = format_create(item, FORMAT_NONE, 0);
-		format_defaults(ft, c, s, NULL, NULL);
-		cwd = to_free = format_expand(ft, args_get(args, 'c'));
-		format_free(ft);
+		cwd = args_get(args, 'c');
+		to_free = cwd = format_single(item, cwd, c, s, NULL, NULL);
 	} else if (item->client != NULL && item->client->session == NULL)
 		cwd = item->client->cwd;
 	else
@@ -142,15 +139,9 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'P')) {
 		if ((template = args_get(args, 'F')) == NULL)
 			template = NEW_WINDOW_TEMPLATE;
-
-		ft = format_create(item, FORMAT_NONE, 0);
-		format_defaults(ft, c, s, wl, NULL);
-
-		cp = format_expand(ft, template);
+		cp = format_single(item, template, c, s, wl, NULL);
 		cmdq_print(item, "%s", cp);
 		free(cp);
-
-		format_free(ft);
 	}
 
 	if (to_free != NULL)
