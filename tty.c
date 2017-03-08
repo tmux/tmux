@@ -235,7 +235,7 @@ tty_start_tty(struct tty *tty)
 
 	tty_putcode(tty, TTYC_SMCUP);
 
-	tty_putcode(tty, TTYC_RMKX);
+	tty_putcode(tty, TTYC_SMKX);
 	if (tty_use_acs(tty))
 		tty_putcode(tty, TTYC_ENACS);
 	tty_putcode(tty, TTYC_CLEAR);
@@ -572,12 +572,6 @@ tty_update_mode(struct tty *tty, int mode, struct screen *s)
 				tty_puts(tty, "\033[?1000l");
 			tty_puts(tty, "\033[?1006l");
 		}
-	}
-	if (changed & MODE_KKEYPAD) {
-		if (mode & MODE_KKEYPAD)
-			tty_putcode(tty, TTYC_SMKX);
-		else
-			tty_putcode(tty, TTYC_RMKX);
 	}
 	if (changed & MODE_BRACKETPASTE) {
 		if (mode & MODE_BRACKETPASTE)

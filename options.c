@@ -427,6 +427,8 @@ options_match(const char *s, int *idx, int* ambiguous)
 	size_t					 namelen;
 
 	name = options_parse(s, idx);
+	if (name == NULL)
+		return (NULL);
 	namelen = strlen(name);
 
 	if (*name == '@') {
