@@ -54,6 +54,7 @@ static enum cmd_retval
 cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
+	struct client		*c = item->state.c;
 	struct session		*s = item->state.tflag.s;
 	struct winlink		*wl = item->state.tflag.wl;
 	struct window		*w = wl->window;
@@ -65,7 +66,6 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	int			 argc, size, percentage;
 	enum layout_type	 type;
 	struct layout_cell	*lc;
-	struct format_tree	*ft;
 	struct environ_entry	*envent;
 	struct cmd_find_state    fs;
 
@@ -92,10 +92,8 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 
 	to_free = NULL;
 	if (args_has(args, 'c')) {
-		ft = format_create(item, FORMAT_NONE, 0);
-		format_defaults(ft, item->state.c, s, NULL, NULL);
-		to_free = cwd = format_expand(ft, args_get(args, 'c'));
-		format_free(ft);
+		cwd = args_get(args, 'c');
+		to_free = cwd = format_single(item, cwd, c, s, NULL, NULL);
 	} else if (item->client != NULL && item->client->session == NULL)
 		cwd = item->client->cwd;
 	else
@@ -168,15 +166,9 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'P')) {
 		if ((template = args_get(args, 'F')) == NULL)
 			template = SPLIT_WINDOW_TEMPLATE;
-
-		ft = format_create(item, FORMAT_NONE, 0);
-		format_defaults(ft, item->state.c, s, wl, new_wp);
-
-		cp = format_expand(ft, template);
+		cp = format_single(item, template, c, s, wl, new_wp);
 		cmdq_print(item, "%s", cp);
 		free(cp);
-
-		format_free(ft);
 	}
 	notify_window("window-layout-changed", w);
 
