@@ -55,7 +55,9 @@ struct tmuxpeer;
 struct tmuxproc;
 
 /* Default global configuration file. */
+#ifndef TMUX_CONF
 #define TMUX_CONF "/etc/tmux.conf"
+#endif
 
 /*
  * Minimum layout cell size, NOT including separator line. The scroll region
