@@ -519,7 +519,6 @@ format_merge(struct format_tree *ft, struct format_tree *from)
 		if (fe->value != NULL)
 			format_add(ft, fe->key, "%s", fe->value);
 	}
-
 }
 
 /* Create a new tree. */
@@ -1079,6 +1078,22 @@ format_expand(struct format_tree *ft, const char *fmt)
 
 	log_debug("format '%s' -> '%s'", saved, buf);
 	return (buf);
+}
+
+/* Expand a single string. */
+char *
+format_single(struct cmdq_item *item, const char *fmt, struct client *c,
+    struct session *s, struct winlink *wl, struct window_pane *wp)
+{
+	struct format_tree	*ft;
+	char			*expanded;
+
+	ft = format_create(item, FORMAT_NONE, 0);
+	format_defaults(ft, c, s, wl, wp);
+
+	expanded = format_expand(ft, fmt);
+	format_free(ft);
+	return (expanded);
 }
 
 /* Set defaults for any of arguments that are not NULL. */

@@ -54,8 +54,7 @@ cmd_attach_session(struct cmdq_item *item, int dflag, int rflag,
 	struct client		*c = item->client, *c_loop;
 	struct winlink		*wl = item->state.tflag.wl;
 	struct window_pane	*wp = item->state.tflag.wp;
-	char			*cause, *cwd;
-	struct format_tree	*ft;
+	char			*cause;
 
 	if (RB_EMPTY(&sessions)) {
 		cmdq_error(item, "no sessions");
@@ -77,13 +76,8 @@ cmd_attach_session(struct cmdq_item *item, int dflag, int rflag,
 	}
 
 	if (cflag != NULL) {
-		ft = format_create(item, FORMAT_NONE, 0);
-		format_defaults(ft, c, s, wl, wp);
-		cwd = format_expand(ft, cflag);
-		format_free(ft);
-
 		free((void *)s->cwd);
-		s->cwd = cwd;
+		s->cwd = format_single(item, cflag, c, s, wl, wp);
 	}
 
 	if (c->session != NULL) {

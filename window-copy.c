@@ -1604,29 +1604,23 @@ window_copy_copy_buffer(struct window_pane *wp, const char *bufname, void *buf,
 }
 
 static void
-window_copy_copy_pipe(struct window_pane *wp, struct session *sess,
+window_copy_copy_pipe(struct window_pane *wp, struct session *s,
     const char *bufname, const char *arg)
 {
-	void			*buf;
-	size_t			 len;
-	struct job		*job;
-	struct format_tree	*ft;
-	char			*expanded;
+	void		*buf;
+	size_t		 len;
+	struct job	*job;
+	char		*expanded;
 
 	buf = window_copy_get_selection(wp, &len);
 	if (buf == NULL)
 		return;
+	expanded = format_single(NULL, arg, NULL, s, NULL, wp);
 
-	ft = format_create(NULL, FORMAT_NONE, 0);
-	format_defaults(ft, NULL, sess, NULL, wp);
-	expanded = format_expand(ft, arg);
-
-	job = job_run(expanded, sess, NULL, NULL, NULL, NULL);
+	job = job_run(expanded, s, NULL, NULL, NULL, NULL);
 	bufferevent_write(job->event, buf, len);
 
 	free(expanded);
-	format_free(ft);
-
 	window_copy_copy_buffer(wp, bufname, buf, len);
 }
 
@@ -1927,14 +1921,22 @@ static void
 window_copy_cursor_left(struct window_pane *wp)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
-	u_int				 py;
+	u_int				 py, cx;
+	struct grid_cell		 gc;
 
 	py = screen_hsize(data->backing) + data->cy - data->oy;
-	if (data->cx == 0 && py > 0) {
+	cx = data->cx;
+	while (cx > 0) {
+		grid_get_cell(data->backing->grid, cx, py, &gc);
+		if (~gc.flags & GRID_FLAG_PADDING)
+			break;
+		cx--;
+	}
+	if (cx == 0 && py > 0) {
 		window_copy_cursor_up(wp, 0);
 		window_copy_cursor_end_of_line(wp);
-	} else if (data->cx > 0) {
-		window_copy_update_cursor(wp, data->cx - 1, data->cy);
+	} else if (cx > 0) {
+		window_copy_update_cursor(wp, cx - 1, data->cy);
 		if (window_copy_update_selection(wp, 1))
 			window_copy_redraw_lines(wp, data->cy, 1);
 	}
@@ -1944,21 +1946,29 @@ static void
 window_copy_cursor_right(struct window_pane *wp)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
-	u_int				 px, py, yy;
+	u_int				 px, py, yy, cx, cy;
+	struct grid_cell		 gc;
 
 	py = screen_hsize(data->backing) + data->cy - data->oy;
 	yy = screen_hsize(data->backing) + screen_size_y(data->backing) - 1;
 	if (data->screen.sel.flag && data->rectflag)
 		px = screen_size_x(&data->screen);
-	else {
+	else
 		px = window_copy_find_length(wp, py);
-	}
 
 	if (data->cx >= px && py < yy) {
 		window_copy_cursor_start_of_line(wp);
 		window_copy_cursor_down(wp, 0);
 	} else if (data->cx < px) {
-		window_copy_update_cursor(wp, data->cx + 1, data->cy);
+		cx = data->cx + 1;
+		cy = screen_hsize(data->backing) + data->cy - data->oy;
+		while (cx < px) {
+			grid_get_cell(data->backing->grid, cx, cy, &gc);
+			if (~gc.flags & GRID_FLAG_PADDING)
+				break;
+			cx++;
+		}
+		window_copy_update_cursor(wp, cx, data->cy);
 		if (window_copy_update_selection(wp, 1))
 			window_copy_redraw_lines(wp, data->cy, 1);
 	}

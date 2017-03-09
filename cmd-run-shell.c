@@ -86,11 +86,10 @@ cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = self->args;
 	struct cmd_run_shell_data	*cdata;
-	char				*shellcmd;
+	struct client			*c = item->state.c;
 	struct session			*s = item->state.tflag.s;
 	struct winlink			*wl = item->state.tflag.wl;
 	struct window_pane		*wp = item->state.tflag.wp;
-	struct format_tree		*ft;
 	const char			*cwd;
 
 	if (item->client != NULL && item->client->session == NULL)
@@ -100,13 +99,8 @@ cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 	else
 		cwd = NULL;
 
-	ft = format_create(item, FORMAT_NONE, 0);
-	format_defaults(ft, item->state.c, s, wl, wp);
-	shellcmd = format_expand(ft, args->argv[0]);
-	format_free(ft);
-
 	cdata = xcalloc(1, sizeof *cdata);
-	cdata->cmd = shellcmd;
+	cdata->cmd = format_single(item, args->argv[0], c, s, wl, wp);
 
 	if (args_has(args, 't') && wp != NULL)
 		cdata->wp_id = wp->id;
@@ -116,7 +110,7 @@ cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 	if (!args_has(args, 'b'))
 		cdata->item = item;
 
-	job_run(shellcmd, s, cwd, cmd_run_shell_callback, cmd_run_shell_free,
+	job_run(cdata->cmd, s, cwd, cmd_run_shell_callback, cmd_run_shell_free,
 	    cdata);
 
 	if (args_has(args, 'b'))

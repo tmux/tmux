@@ -69,10 +69,10 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 	char				*shellcmd, *cmd, *cause;
 	struct cmd_list			*cmdlist;
 	struct cmdq_item		*new_item;
+	struct client			*c = item->state.c;
 	struct session			*s = item->state.tflag.s;
 	struct winlink			*wl = item->state.tflag.wl;
 	struct window_pane		*wp = item->state.tflag.wp;
-	struct format_tree		*ft;
 	const char			*cwd;
 
 	if (item->client != NULL && item->client->session == NULL)
@@ -82,11 +82,7 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 	else
 		cwd = NULL;
 
-	ft = format_create(item, FORMAT_NONE, 0);
-	format_defaults(ft, item->state.c, s, wl, wp);
-	shellcmd = format_expand(ft, args->argv[0]);
-	format_free(ft);
-
+	shellcmd = format_single(item, args->argv[0], c, s, wl, wp);
 	if (args_has(args, 'F')) {
 		cmd = NULL;
 		if (*shellcmd != '0' && *shellcmd != '\0')
