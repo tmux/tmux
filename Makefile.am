@@ -204,6 +204,9 @@ endif
 if NO_IMSG
 nodist_tmux_SOURCES += compat/imsg.c compat/imsg-buffer.c
 endif
+if NO_ERR_H
+nodist_tmux_SOURCES += compat/err.c
+endif
 if NO_CLOSEFROM
 nodist_tmux_SOURCES += compat/closefrom.c
 endif

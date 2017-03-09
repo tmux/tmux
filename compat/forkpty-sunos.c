@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <strings.h>
 #include <stropts.h>
+#include <termios.h>
 #include <unistd.h>
 
 #include "compat.h"

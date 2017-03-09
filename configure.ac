@@ -350,6 +350,16 @@ if test "x$found_cmsg_data" = xno; then
 fi
 AC_SUBST(XOPEN_DEFINES)
 
+# Look for err and friends in err.h.
+AC_CHECK_FUNC(err, found_err_h=yes, found_err_h=no)
+AC_CHECK_FUNC(errx, , found_err_h=no)
+AC_CHECK_FUNC(warn, , found_err_h=no)
+AC_CHECK_FUNC(warnx, , found_err_h=no)
+if test "x$found_err_h" = xyes; then
+	AC_CHECK_HEADER(err.h, , found_err_h=no)
+fi
+AM_CONDITIONAL(NO_ERR_H, [test "x$found_err_h" = xno])
+
 # Look for imsg in libutil. compat/imsg.c is linked by Makefile.am if missing.
 AC_SEARCH_LIBS(imsg_init, util, found_imsg_init=yes, found_imsg_init=no)
 if test "x$found_imsg_init" = xyes; then
