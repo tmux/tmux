@@ -189,11 +189,19 @@ if test "x$found_ncurses" = xyes; then
 else
 	# pkg-config didn't work, try ncurses.
 	AC_CHECK_LIB(
-		[tinfo ncurses],
+		tinfo,
 		setupterm,
 		found_ncurses=yes,
 		found_ncurses=no
 	)
+	if test "x$found_ncurses" = xno; then
+		AC_CHECK_LIB(
+			ncurses,
+			setupterm,
+			found_ncurses=yes,
+			found_ncurses=no
+		)
+	fi
 	if test "x$found_ncurses" = xyes; then
 		AC_CHECK_HEADER(
 			ncurses.h,
