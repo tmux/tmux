@@ -56,6 +56,19 @@ typedef uint32_t u_int32_t;
 typedef uint64_t u_int64_t;
 #endif
 
+#ifdef HAVE_ERR_H
+#include <err.h>
+#else
+#define err(exitcode, format, args...) \
+  errx(exitcode, format ": %s", ## args, strerror(errno))
+#define errx(exitcode, format, args...) \
+  { warnx(format, ## args); exit(exitcode); }
+#define warn(format, args...) \
+  warnx(format ": %s", ## args, strerror(errno))
+#define warnx(format, args...) \
+  fprintf(stderr, format "\n", ## args)
+#endif
+
 #ifndef HAVE_PATHS_H
 #define	_PATH_BSHELL	"/bin/sh"
 #define	_PATH_TMP	"/tmp/"
