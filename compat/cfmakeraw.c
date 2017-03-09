@@ -18,6 +18,7 @@
 #include <string.h>
 
 #include "compat.h"
+#include "tmux.h"
 
 void
 cfmakeraw(struct termios *tio)

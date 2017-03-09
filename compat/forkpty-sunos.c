@@ -23,6 +23,7 @@
 #include <stropts.h>
 #include <unistd.h>
 
+#include "tmux.h"
 #include "compat.h"
 
 pid_t
