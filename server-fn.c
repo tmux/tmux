@@ -29,7 +29,6 @@
 #include "tmux.h"
 
 static struct session	*server_next_session(struct session *);
-static void		 server_callback_identify(int, short, void *);
 static void		 server_destroy_session_group(struct session *);
 
 void
@@ -403,46 +402,6 @@ server_check_unattached(void)
 		if (options_get_number (s->options, "destroy-unattached"))
 			session_destroy(s);
 	}
-}
-
-void
-server_set_identify(struct client *c)
-{
-	struct timeval	tv;
-	int		delay;
-
-	delay = options_get_number(c->session->options, "display-panes-time");
-	tv.tv_sec = delay / 1000;
-	tv.tv_usec = (delay % 1000) * 1000L;
-
-	if (event_initialized(&c->identify_timer))
-		evtimer_del(&c->identify_timer);
-	evtimer_set(&c->identify_timer, server_callback_identify, c);
-	evtimer_add(&c->identify_timer, &tv);
-
-	c->flags |= CLIENT_IDENTIFY;
-	c->tty.flags |= (TTY_FREEZE|TTY_NOCURSOR);
-	server_redraw_client(c);
-}
-
-void
-server_clear_identify(struct client *c, struct window_pane *wp)
-{
-	if (~c->flags & CLIENT_IDENTIFY)
-		return;
-	c->flags &= ~CLIENT_IDENTIFY;
-
-	if (c->identify_callback != NULL)
-		c->identify_callback(c, wp);
-
-	c->tty.flags &= ~(TTY_FREEZE|TTY_NOCURSOR);
-	server_redraw_client(c);
-}
-
-static void
-server_callback_identify(__unused int fd, __unused short events, void *data)
-{
-	server_clear_identify(data, NULL);
 }
 
 /* Set stdin callback. */

@@ -61,7 +61,7 @@ cmd_display_panes_exec(struct cmd *self, struct cmdq_item *item)
 	else
 		c->identify_callback_data = xstrdup("select-pane -t '%%'");
 
-	server_set_identify(c);
+	server_client_set_identify(c);
 
 	return (CMD_RETURN_NORMAL);
 }

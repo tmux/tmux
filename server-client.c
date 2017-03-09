@@ -49,6 +49,49 @@ static void	server_client_dispatch_command(struct client *, struct imsg *);
 static void	server_client_dispatch_identify(struct client *, struct imsg *);
 static void	server_client_dispatch_shell(struct client *);
 
+/* Idenfity mode callback. */
+static void
+server_client_callback_identify(__unused int fd, __unused short events, void *data)
+{
+	server_client_clear_identify(data, NULL);
+}
+
+/* Set identify mode on client. */
+void
+server_client_set_identify(struct client *c)
+{
+	struct timeval	tv;
+	int		delay;
+
+	delay = options_get_number(c->session->options, "display-panes-time");
+	tv.tv_sec = delay / 1000;
+	tv.tv_usec = (delay % 1000) * 1000L;
+
+	if (event_initialized(&c->identify_timer))
+		evtimer_del(&c->identify_timer);
+	evtimer_set(&c->identify_timer, server_client_callback_identify, c);
+	evtimer_add(&c->identify_timer, &tv);
+
+	c->flags |= CLIENT_IDENTIFY;
+	c->tty.flags |= (TTY_FREEZE|TTY_NOCURSOR);
+	server_redraw_client(c);
+}
+
+/* Clear identify mode on client. */
+void
+server_client_clear_identify(struct client *c, struct window_pane *wp)
+{
+	if (~c->flags & CLIENT_IDENTIFY)
+		return;
+	c->flags &= ~CLIENT_IDENTIFY;
+
+	if (c->identify_callback != NULL)
+		c->identify_callback(c, wp);
+
+	c->tty.flags &= ~(TTY_FREEZE|TTY_NOCURSOR);
+	server_redraw_client(c);
+}
+
 /* Check if this client is inside this server. */
 int
 server_client_check_nested(struct client *c)
@@ -192,7 +235,7 @@ server_client_lost(struct client *c)
 
 	c->flags |= CLIENT_DEAD;
 
-	server_clear_identify(c, NULL);
+	server_client_clear_identify(c, NULL);
 	status_prompt_clear(c);
 	status_message_clear(c);
 
@@ -760,14 +803,14 @@ server_client_handle_key(struct client *c, key_code key)
 		wp = window_pane_at_index(w, key - '0');
 		if (wp != NULL && !window_pane_visible(wp))
 			wp = NULL;
-		server_clear_identify(c, wp);
+		server_client_clear_identify(c, wp);
 		return;
 	}
 
 	/* Handle status line. */
 	if (!(c->flags & CLIENT_READONLY)) {
 		status_message_clear(c);
-		server_clear_identify(c, NULL);
+		server_client_clear_identify(c, NULL);
 	}
 	if (c->prompt_string != NULL) {
 		if (c->flags & CLIENT_READONLY)
