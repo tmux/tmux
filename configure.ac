@@ -112,6 +112,7 @@ AC_CHECK_HEADERS(
 		sys/tree.h \
 		term.h \
 		util.h \
+		err.h \
 	]
 )
 
