@@ -354,16 +354,12 @@ session_new(struct session *s, const char *name, int argc, char **argv,
 	}
 	wl->session = s;
 
-	env = environ_create();
-	environ_copy(global_environ, env);
-	environ_copy(s->environ, env);
-	server_fill_environ(s, env);
-
 	shell = options_get_string(s->options, "default-shell");
 	if (*shell == '\0' || areshell(shell))
 		shell = _PATH_BSHELL;
 
 	hlimit = options_get_number(s->options, "history-limit");
+	env = environ_for_session(s);
 	w = window_create_spawn(name, argc, argv, path, shell, cwd, env, s->tio,
 	    s->sx, s->sy, hlimit, cause);
 	if (w == NULL) {
@@ -372,8 +368,8 @@ session_new(struct session *s, const char *name, int argc, char **argv,
 		return (NULL);
 	}
 	winlink_set_window(wl, w);
-	notify_session_window("window-linked", s, w);
 	environ_free(env);
+	notify_session_window("window-linked", s, w);
 
 	session_group_synchronize_from(s);
 	return (wl);
