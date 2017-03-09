@@ -228,6 +228,12 @@ endif
 if NO_STRLCPY
 nodist_tmux_SOURCES += compat/strlcpy.c
 endif
+if NO_STRNLEN
+nodist_tmux_SOURCES += compat/strnlen.c
+endif
+if NO_STRNDUP
+nodist_tmux_SOURCES += compat/strndup.c
+endif
 if NO_ASPRINTF
 nodist_tmux_SOURCES += compat/asprintf.c
 endif

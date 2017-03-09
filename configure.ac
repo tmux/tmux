@@ -423,6 +423,20 @@ if test "x$found_strlcat" = xyes; then
 fi
 AM_CONDITIONAL(NO_STRLCAT, [test "x$found_strlcat" = xno])
 
+# Look for strnlen, compat/strnlen.c used if missing.
+AC_CHECK_FUNC(strnlen, found_strnlen=yes, found_strnlen=no)
+if test "x$found_strnlen" = xyes; then
+	AC_DEFINE(HAVE_STRNLEN)
+fi
+AM_CONDITIONAL(NO_STRNLEN, [test "x$found_strnlen" = xno])
+
+# Look for strndup, compat/strndup.c used if missing.
+AC_CHECK_FUNC(strndup, found_strndup=yes, found_strndup=no)
+if test "x$found_strndup" = xyes; then
+	AC_DEFINE(HAVE_STRNDUP)
+fi
+AM_CONDITIONAL(NO_STRNDUP, [test "x$found_strndup" = xno])
+
 # Look for asprintf, compat/asprintf.c used if missing.
 AC_CHECK_FUNC(asprintf, found_asprintf=yes, found_asprintf=no)
 if test "x$found_asprintf" = xyes; then

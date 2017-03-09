@@ -247,6 +247,16 @@ size_t	 	 strlcpy(char *, const char *, size_t);
 size_t	 	 strlcat(char *, const char *, size_t);
 #endif
 
+#ifndef HAVE_STRNLEN
+/* strnlen.c */
+size_t		 strnlen(const char *, size_t);
+#endif
+
+#ifndef HAVE_STRNDUP
+/* strndup.c */
+char		*strndup(const char *, size_t);
+#endif
+
 #ifndef HAVE_DAEMON
 /* daemon.c */
 int	 	 daemon(int, int);
