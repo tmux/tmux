@@ -272,6 +272,8 @@ int		 b64_ntop(const char *, size_t, char *, size_t);
 int		 b64_pton(const char *, u_char *, size_t);
 #endif
 
+#include <termios.h>
+
 #ifndef HAVE_FORKPTY
 /* forkpty.c */
 #include <sys/ioctl.h>
