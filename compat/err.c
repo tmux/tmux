@@ -51,10 +51,8 @@ errx(int eval, const char *fmt, ...)
 	fprintf(stderr, "%s: ", getprogname());
 
 	va_start(ap, fmt);
-	if (fmt != NULL) {
+	if (fmt != NULL)
 		vfprintf(stderr, fmt, ap);
-		fprintf(stderr, ": ");
-	}
 	va_end(ap);
 
 	putc('\n', stderr);
@@ -87,10 +85,8 @@ warnx(const char *fmt, ...)
 	fprintf(stderr, "%s: ", getprogname());
 
 	va_start(ap, fmt);
-	if (fmt != NULL) {
+	if (fmt != NULL)
 		vfprintf(stderr, fmt, ap);
-		fprintf(stderr, ": ");
-	}
 	va_end(ap);
 
 	putc('\n', stderr);
