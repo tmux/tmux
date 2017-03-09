@@ -20,6 +20,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "tmux.h"
 
@@ -217,4 +218,29 @@ environ_log(struct environ *env, const char *prefix)
 			    envent->value);
 		}
 	}
+}
+
+/* Create initial environment for new child. */
+struct environ *
+environ_for_session(struct session *s)
+{
+	struct environ	*env;
+	const char	*value;
+	int		 idx;
+
+	env = environ_create();
+	environ_copy(global_environ, env);
+	if (s != NULL)
+		environ_copy(s->environ, env);
+
+	value = options_get_string(global_options, "default-terminal");
+	environ_set(env, "TERM", "%s", value);
+
+	if (s != NULL)
+		idx = s->id;
+	else
+		idx = -1;
+	environ_set(env, "TMUX", "%s,%ld,%d", socket_path, (long)getpid(), idx);
+
+	return (env);
 }

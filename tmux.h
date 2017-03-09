@@ -1617,6 +1617,7 @@ void	environ_unset(struct environ *, const char *);
 void	environ_update(struct options *, struct environ *, struct environ *);
 void	environ_push(struct environ *);
 void	environ_log(struct environ *, const char *);
+struct environ *environ_for_session(struct session *);
 
 /* tty.c */
 void	tty_create_log(void);
@@ -1822,6 +1823,8 @@ void	 server_update_socket(void);
 void	 server_add_accept(int);
 
 /* server-client.c */
+void	 server_client_set_identify(struct client *);
+void	 server_client_clear_identify(struct client *, struct window_pane *);
 void	 server_client_set_key_table(struct client *, const char *);
 const char *server_client_get_key_table(struct client *);
 int	 server_client_is_default_key_table(struct client *);
@@ -1842,7 +1845,6 @@ char	*server_client_get_path(struct client *, const char *);
 const char *server_client_get_cwd(struct client *);
 
 /* server-fn.c */
-void	 server_fill_environ(struct session *, struct environ *);
 void	 server_redraw_client(struct client *);
 void	 server_status_client(struct client *);
 void	 server_redraw_session(struct session *);
@@ -1862,8 +1864,6 @@ void	 server_unlink_window(struct session *, struct winlink *);
 void	 server_destroy_pane(struct window_pane *, int);
 void	 server_destroy_session(struct session *);
 void	 server_check_unattached(void);
-void	 server_set_identify(struct client *);
-void	 server_clear_identify(struct client *, struct window_pane *);
 int	 server_set_stdin_callback(struct client *, void (*)(struct client *,
 	     int, void *), void *, char **);
 void	 server_unzoom_window(struct window *);
