@@ -71,11 +71,6 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 
 	server_unzoom_window(w);
 
-	env = environ_create();
-	environ_copy(global_environ, env);
-	environ_copy(s->environ, env);
-	server_fill_environ(s, env);
-
 	if (args->argc == 0) {
 		cmd = options_get_string(s->options, "default-command");
 		if (cmd != NULL && *cmd != '\0') {
@@ -148,9 +143,13 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (envent != NULL)
 		path = envent->value;
 
+	env = environ_for_session(s);
 	if (window_pane_spawn(new_wp, argc, argv, path, shell, cwd, env,
-	    s->tio, &cause) != 0)
+	    s->tio, &cause) != 0) {
+		environ_free(env);
 		goto error;
+	}
+	environ_free(env);
 
 	server_redraw_window(w);
 
@@ -160,8 +159,6 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		server_redraw_session(s);
 	} else
 		server_status_session(s);
-
-	environ_free(env);
 
 	if (args_has(args, 'P')) {
 		if ((template = args_get(args, 'F')) == NULL)
@@ -186,7 +183,6 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	return (CMD_RETURN_NORMAL);
 
 error:
-	environ_free(env);
 	if (new_wp != NULL) {
 		layout_close_pane(new_wp);
 		window_remove_pane(w, new_wp);

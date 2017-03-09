@@ -1613,6 +1613,7 @@ void	environ_unset(struct environ *, const char *);
 void	environ_update(struct options *, struct environ *, struct environ *);
 void	environ_push(struct environ *);
 void	environ_log(struct environ *, const char *);
+struct environ *environ_for_session(struct session *);
 
 /* tty.c */
 void	tty_create_log(void);
@@ -1838,7 +1839,6 @@ char	*server_client_get_path(struct client *, const char *);
 const char *server_client_get_cwd(struct client *);
 
 /* server-fn.c */
-void	 server_fill_environ(struct session *, struct environ *);
 void	 server_redraw_client(struct client *);
 void	 server_status_client(struct client *);
 void	 server_redraw_session(struct session *);

@@ -33,24 +33,6 @@ static void		 server_callback_identify(int, short, void *);
 static void		 server_destroy_session_group(struct session *);
 
 void
-server_fill_environ(struct session *s, struct environ *env)
-{
-	const char	*term;
-	u_int		 idx;
-	long		 pid;
-
-	if (s != NULL) {
-		term = options_get_string(global_options, "default-terminal");
-		environ_set(env, "TERM", "%s", term);
-
-		idx = s->id;
-	} else
-		idx = (u_int)-1;
-	pid = getpid();
-	environ_set(env, "TMUX", "%s,%ld,%u", socket_path, pid, idx);
-}
-
-void
 server_redraw_client(struct client *c)
 {
 	c->flags |= CLIENT_REDRAW;
