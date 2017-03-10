@@ -1162,6 +1162,10 @@ server_client_reset_state(struct client *c)
 			mode |= MODE_MOUSE_BUTTON;
 	}
 
+	/* Clear bracketed paste mode if at the prompt. */
+	if (c->prompt_string != NULL)
+		mode &= ~MODE_BRACKETPASTE;
+
 	/* Set the terminal mode and reset attributes. */
 	tty_update_mode(&c->tty, mode, s);
 	tty_reset(&c->tty);
