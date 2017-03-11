@@ -904,10 +904,11 @@ layout_split_pane(struct window_pane *wp, enum layout_type type, int size,
 
 		/* Create the new cell. */
 		lcnew = layout_create_cell(lc);
+		size = saved_size - 1 - new_size;
 		if (lc->type == LAYOUT_LEFTRIGHT)
-			layout_set_size(lcnew, new_size, sy, 0, 0);
+			layout_set_size(lcnew, size, sy, 0, 0);
 		else if (lc->type == LAYOUT_TOPBOTTOM)
-			layout_set_size(lcnew, sx, new_size, 0, 0);
+			layout_set_size(lcnew, sx, size, 0, 0);
 		if (insert_before)
 			TAILQ_INSERT_HEAD(&lc->cells, lcnew, entry);
 		else
