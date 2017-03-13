@@ -588,12 +588,16 @@ window_add_pane(struct window *w, struct window_pane *other, int before,
 		other = w->active;
 
 	wp = window_pane_create(w, w->sx, w->sy, hlimit);
-	if (TAILQ_EMPTY(&w->panes))
+	if (TAILQ_EMPTY(&w->panes)) {
+		log_debug("%s: @%u at start", __func__, w->id);
 		TAILQ_INSERT_HEAD(&w->panes, wp, entry);
-	else if (before)
+	} else if (before) {
+		log_debug("%s: @%u before %%%u", __func__, w->id, wp->id);
 		TAILQ_INSERT_BEFORE(other, wp, entry);
-	else
+	} else {
+		log_debug("%s: @%u after %%%u", __func__, w->id, wp->id);
 		TAILQ_INSERT_AFTER(&w->panes, other, wp, entry);
+	}
 	return (wp);
 }
 
