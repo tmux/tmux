@@ -476,7 +476,10 @@ void
 tty_putn(struct tty *tty, const void *buf, size_t len, u_int width)
 {
 	tty_add(tty, buf, len);
-	tty->cx += width;
+	if (tty->cx + width > tty->sx)
+		tty->cx = tty->cy = UINT_MAX;
+	else
+		tty->cx += width;
 }
 
 static void
@@ -1403,7 +1406,8 @@ tty_cursor_pane_unless_wrap(struct tty *tty, const struct tty_ctx *ctx,
 	    (tty->term->flags & TERM_EARLYWRAP) ||
 	    ctx->xoff + cx != 0 ||
 	    ctx->yoff + cy != tty->cy + 1 ||
-	    tty->cx < tty->sx)
+	    tty->cx < tty->sx ||
+	    tty->cy == tty->rlower)
 		tty_cursor_pane(tty, ctx, cx, cy);
 	else
 		log_debug("%s: will wrap at %u,%u", __func__, tty->cx, tty->cy);
