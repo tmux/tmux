@@ -41,6 +41,8 @@ static int	tty_try_colour(struct tty *, int, const char *);
 static void	tty_force_cursor_colour(struct tty *, const char *);
 static void	tty_cursor_pane(struct tty *, const struct tty_ctx *, u_int,
 		    u_int);
+static void	tty_cursor_pane_unless_wrap(struct tty *,
+		    const struct tty_ctx *, u_int, u_int);
 static void	tty_invalidate(struct tty *);
 static void	tty_colours(struct tty *, const struct grid_cell *);
 static void	tty_check_fg(struct tty *, const struct window_pane *,
@@ -1188,7 +1190,7 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 			tty_margin_off(tty);
 	}
 
-	tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
+	tty_cursor_pane_unless_wrap(tty, ctx, ctx->ocx, ctx->ocy);
 
 	tty_cell(tty, ctx->cell, ctx->wp);
 }
@@ -1196,7 +1198,7 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cmd_cells(struct tty *tty, const struct tty_ctx *ctx)
 {
-	tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
+	tty_cursor_pane_unless_wrap(tty, ctx, ctx->ocx, ctx->ocy);
 
 	tty_attributes(tty, ctx->cell, ctx->wp);
 	tty_putn(tty, ctx->ptr, ctx->num, ctx->num);
@@ -1387,6 +1389,24 @@ tty_margin(struct tty *tty, u_int rleft, u_int rright)
 		snprintf(s, sizeof s, "\033[%u;%us", rleft + 1, rright + 1);
 	tty_puts(tty, s);
 	tty->cx = tty->cy = UINT_MAX;
+}
+
+/*
+ * Move the cursor, unless it would wrap itself when the next character is
+ * printed.
+ */
+static void
+tty_cursor_pane_unless_wrap(struct tty *tty, const struct tty_ctx *ctx,
+    u_int cx, u_int cy)
+{
+	if (!tty_pane_full_width(tty, ctx) ||
+	    (tty->term->flags & TERM_EARLYWRAP) ||
+	    ctx->xoff + cx != 0 ||
+	    ctx->yoff + cy != tty->cy + 1 ||
+	    tty->cx < tty->sx)
+		tty_cursor_pane(tty, ctx, cx, cy);
+	else
+		log_debug("%s: will wrap at %u,%u", __func__, tty->cx, tty->cy);
 }
 
 /* Move cursor inside pane. */
