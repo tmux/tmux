@@ -112,7 +112,7 @@ utf8_width(wchar_t wc)
 
 	width = wcwidth(wc);
 	if (width < 0 || width > 0xff) {
-		log_debug("Unicode %04x, wcwidth() %d", wc, width);
+		log_debug("Unicode %04lx, wcwidth() %d", (long)wc, width);
 		return (-1);
 	}
 	return (width);
