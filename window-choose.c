@@ -563,8 +563,6 @@ window_choose_translate_key(key_code key)
 	case '\r':
 	case KEYC_BSPACE:
 	case ' ':
-	case KEYC_LEFT:
-	case KEYC_RIGHT:
 	case KEYC_LEFT|KEYC_CTRL:
 	case KEYC_RIGHT|KEYC_CTRL:
 	case KEYC_MOUSEDOWN1_PANE:
@@ -584,12 +582,18 @@ window_choose_translate_key(key_code key)
 	case '\006': /* C-f */
 	case KEYC_NPAGE:
 		return (KEYC_NPAGE);
+	case 'h':
+	case KEYC_LEFT:
+		return (KEYC_LEFT);
 	case 'j':
 	case KEYC_DOWN:
 		return (KEYC_DOWN);
 	case 'k':
 	case KEYC_UP:
 		return (KEYC_UP);
+	case 'l':
+	case KEYC_RIGHT:
+		return (KEYC_RIGHT);
 	case 'g':
 	case KEYC_HOME:
 		return (KEYC_HOME);
