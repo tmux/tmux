@@ -36,6 +36,8 @@
 #include <ctype.h>
 #include <string.h>
 
+#include "compat.h"
+
 /*
  * Find the first occurrence of find in s, ignore case.
  */

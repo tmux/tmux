@@ -26,6 +26,9 @@
 
 #include "compat.h"
 
+void fatal(const char *, ...);
+void fatalx(const char *, ...);
+
 pid_t
 forkpty(int *master, char *name, struct termios *tio, struct winsize *ws)
 {
