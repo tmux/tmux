@@ -27,7 +27,7 @@ To get and build the latest from version control:
 	$ git clone https://github.com/tmux/tmux.git
 	$ cd tmux
 	$ sh autogen.sh
-	$ ./configure && make
+	$ ./configure && make install
 
 For more information see http://git-scm.com. Patches should be sent by email to
 the mailing list at tmux-users@googlegroups.com.
