@@ -14,7 +14,7 @@ It also depends on ncurses, available from:
 
 	http://invisible-island.net/ncurses/
 
-To build tmux from a release tarball, use:
+To build and install tmux from a release tarball, use:
 
 	$ ./configure && make
 	$ sudo make install
