@@ -615,9 +615,9 @@ AC_LINK_IFELSE([AC_LANG_SOURCE(
 AC_MSG_CHECKING(for program_invocation_short_name)
 AC_LINK_IFELSE([AC_LANG_SOURCE(
 	[
+		#include <errno.h>
 		#include <stdio.h>
 		#include <stdlib.h>
-		extern char *program_invocation_short_name;
 		int main(void) {
 			const char *cp = program_invocation_short_name;
 			printf("%s\n", cp);
