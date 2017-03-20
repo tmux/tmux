@@ -618,12 +618,6 @@ struct screen_sel {
 	int		 hidden;
 
 	int		 rectflag;
-	enum {
-		LINE_SEL_NONE,
-		LINE_SEL_LEFT_RIGHT,
-		LINE_SEL_RIGHT_LEFT,
-	} lineflag;
-
 	int		 modekeys;
 
 	u_int		 sx;
