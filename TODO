@@ -111,6 +111,8 @@
 	* multiline status line? separate command prompt and status line?
 	* automatic pane logging
 	* marks in history, automatically add (move?) one when pane is changed
+	* this doesn't work, need pane reference count probably:
+	  bind -n DoubleClick3Status confirm-before -p "kill-window #I? (y/n)" kill-window
 
 - hooks
 	* more hooks for various things
