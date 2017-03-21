@@ -2038,7 +2038,7 @@ window_copy_cursor_down(struct window_pane *wp, int scroll_only)
 		data->lastsx = ox;
 	}
 
-	if (s->sel.lineflag == LINE_SEL_RIGHT_LEFT && oy == data->sely)
+	if (s->sel.lineflag == LINE_SEL_RIGHT_LEFT && oy == data->endsely)
 		window_copy_other_end(wp);
 
 	data->cx = data->lastcx;

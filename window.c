@@ -1272,7 +1272,7 @@ window_pane_search(struct window_pane *wp, const char *searchstr,
 {
 	struct screen	*s = &wp->base;
 	char		*newsearchstr, *line, *msg;
-	u_int	 	 i;
+	u_int		 i;
 
 	msg = NULL;
 	xasprintf(&newsearchstr, "*%s*", searchstr);
@@ -1320,17 +1320,18 @@ window_pane_find_up(struct window_pane *wp)
 {
 	struct window_pane	*next, *best, **list;
 	u_int			 edge, left, right, end, size;
-	int			 found;
+	int			 status, found;
 
 	if (wp == NULL || !window_pane_visible(wp))
 		return (NULL);
+	status = options_get_number(wp->window->options, "pane-border-status");
 
 	list = NULL;
 	size = 0;
 
 	edge = wp->yoff;
-	if (edge == 0)
-		edge = wp->window->sy + 1;
+	if (edge == (status == 1 ? 1 : 0))
+		edge = wp->window->sy + 1 - (status == 2 ? 1 : 0);
 
 	left = wp->xoff;
 	right = wp->xoff + wp->sx;
@@ -1366,17 +1367,18 @@ window_pane_find_down(struct window_pane *wp)
 {
 	struct window_pane	*next, *best, **list;
 	u_int			 edge, left, right, end, size;
-	int			 found;
+	int			 status, found;
 
 	if (wp == NULL || !window_pane_visible(wp))
 		return (NULL);
+	status = options_get_number(wp->window->options, "pane-border-status");
 
 	list = NULL;
 	size = 0;
 
 	edge = wp->yoff + wp->sy + 1;
-	if (edge >= wp->window->sy)
-		edge = 0;
+	if (edge >= wp->window->sy - (status == 2 ? 1 : 0))
+		edge = (status == 1 ? 1 : 0);
 
 	left = wp->xoff;
 	right = wp->xoff + wp->sx;
