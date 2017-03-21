@@ -29,7 +29,7 @@
 #include "tmux.h"
 
 char *
-osdep_get_name(int fd, char *tty)
+osdep_get_name(__unused int fd, char *tty)
 {
 	struct psinfo	 p;
 	struct stat	 st;
