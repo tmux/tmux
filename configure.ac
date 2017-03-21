@@ -110,7 +110,6 @@ AC_CHECK_HEADERS(
 		sys/dir.h \
 		sys/ndir.h \
 		sys/tree.h \
-		term.h \
 		util.h \
 	]
 )
