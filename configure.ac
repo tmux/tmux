@@ -1,6 +1,7 @@
 # configure.ac
 
 AC_INIT(tmux, master)
+AC_PREREQ([2.60])
 
 AC_CONFIG_AUX_DIR(etc)
 AM_INIT_AUTOMAKE([foreign subdir-objects])
@@ -26,6 +27,7 @@ AC_PROG_CPP
 AC_PROG_EGREP
 AC_PROG_INSTALL
 PKG_PROG_PKG_CONFIG
+AC_USE_SYSTEM_EXTENSIONS
 
 # Default tmux.conf goes in /etc not ${prefix}/etc.
 test "$sysconfdir" = '${prefix}/etc' && sysconfdir=/etc
@@ -78,22 +80,6 @@ AC_EGREP_CPP(
 	found_suncc=no
 )
 AM_CONDITIONAL(IS_SUNCC, test "x$found_suncc" = xyes)
-
-# Is this glibc?
-AC_MSG_CHECKING(for glibc)
-AC_EGREP_CPP(
-	yes,
-	[
-		#include <features.h>
-		#ifdef __GLIBC__
-		yes
-		#endif
-	],
-	found_glibc=yes,
-	found_glibc=no
-)
-AM_CONDITIONAL(IS_GLIBC, test "x$found_glibc" = xyes)
-AC_MSG_RESULT($found_glibc)
 
 # Check for various headers. Alternatives included from compat.h.
 AC_CHECK_HEADERS(
@@ -390,6 +376,15 @@ AM_CONDITIONAL(NO_CLOSEFROM, [test "x$found_closefrom" = xno])
 
 # Look for daemon, compat/daemon.c used if missing.
 AC_CHECK_FUNC(daemon, found_daemon=yes, found_daemon=no)
+AC_CHECK_DECL(
+	daemon,
+	,
+	found_daemon=no,
+	[
+		#include <stdlib.h>
+		#include <unistd.h>
+	]
+)
 if test "x$found_daemon" = xyes; then
 	AC_DEFINE(HAVE_DAEMON)
 fi

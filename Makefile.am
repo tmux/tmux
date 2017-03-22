@@ -14,12 +14,6 @@ dist-hook:
 # Preprocessor flags.
 AM_CPPFLAGS += @XOPEN_DEFINES@ -DTMUX_CONF="\"$(sysconfdir)/tmux.conf\""
 
-# glibc as usual does things ass-backwards and hides useful things by default,
-# so everyone has to add this.
-if IS_GLIBC
-AM_CFLAGS += -D_GNU_SOURCE
-endif
-
 # Set flags for gcc.
 if IS_GCC
 AM_CFLAGS += -std=gnu99 -O2
@@ -47,9 +41,9 @@ endif
 # Set flags for Solaris.
 if IS_SUNOS
 if IS_GCC
-AM_CPPFLAGS += -D_XPG6 -D__EXTENSIONS__ -D_POSIX_PTHREAD_SEMANTICS
+AM_CPPFLAGS += -D_XPG6 -D_POSIX_PTHREAD_SEMANTICS
 else
-AM_CPPFLAGS += -D_XPG4_2 -D__EXTENSIONS__ -D_POSIX_PTHREAD_SEMANTICS
+AM_CPPFLAGS += -D_XPG4_2 -D_POSIX_PTHREAD_SEMANTICS
 endif
 endif
 
