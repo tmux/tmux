@@ -85,6 +85,8 @@ grid_need_extended_cell(const struct grid_cell_entry *gce,
 {
 	if (gce->flags & GRID_FLAG_EXTENDED)
 		return (1);
+	if (gc->attr > 0xff)
+		return (1);
 	if (gc->data.size != 1 || gc->data.width != 1)
 		return (1);
 	if ((gc->fg & COLOUR_FLAG_RGB) ||(gc->bg & COLOUR_FLAG_RGB))
@@ -687,7 +689,8 @@ grid_string_cells_code(const struct grid_cell *lastgc,
 		{ GRID_ATTR_UNDERSCORE, 4 },
 		{ GRID_ATTR_BLINK, 5 },
 		{ GRID_ATTR_REVERSE, 7 },
-		{ GRID_ATTR_HIDDEN, 8 }
+		{ GRID_ATTR_HIDDEN, 8 },
+		{ GRID_ATTR_STRIKETHROUGH, 9 }
 	};
 	n = 0;
 
