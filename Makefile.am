@@ -54,7 +54,7 @@ endif
 
 # Set _LINUX_SOURCE_COMPAT for AIX for malloc(0).
 if IS_AIX
-DEFS += -D_LINUX_SOURCE_COMPAT=1
+AM_CPPFLAGS += -D_LINUX_SOURCE_COMPAT=1
 endif
 
 # Set flags for NetBSD.
