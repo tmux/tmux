@@ -42,20 +42,6 @@ AC_ARG_ENABLE(
 )
 AM_CONDITIONAL(IS_DEBUG, test "x$enable_debug" = xyes)
 
-# Is this --enable-coverage?
-AC_ARG_ENABLE(
-	coverage,
-	AC_HELP_STRING(--enable-coverage, enable coverage build flags)
-)
-AM_CONDITIONAL(IS_COVERAGE, test "x$enable_coverage" = xyes)
-
-# Is this --enable-profile?
-AC_ARG_ENABLE(
-	profile,
-	AC_HELP_STRING(--enable-profile, enable profile build flags)
-)
-AM_CONDITIONAL(IS_PROFILE, test "x$enable_profile" = xyes)
-
 # Is this a static build?
 AC_ARG_ENABLE(
 	static,

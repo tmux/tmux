@@ -30,14 +30,6 @@ AM_CFLAGS += -Wdeclaration-after-statement -Wno-pointer-sign -Wno-attributes
 AM_CFLAGS += -Wno-unused-result
 AM_CPPFLAGS += -DDEBUG
 endif
-if IS_COVERAGE
-AM_CFLAGS += -g -O0 --coverage
-AM_LDFLAGS += --coverage
-endif
-if IS_PROFILE
-AM_CFLAGS += -g -O0 -pg
-AM_LDFLAGS += -pg
-endif
 AM_CPPFLAGS += -iquote.
 endif
 
