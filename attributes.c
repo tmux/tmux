@@ -23,7 +23,7 @@
 #include "tmux.h"
 
 const char *
-attributes_tostring(u_char attr)
+attributes_tostring(int attr)
 {
 	static char	buf[128];
 	size_t		len;
@@ -31,14 +31,15 @@ attributes_tostring(u_char attr)
 	if (attr == 0)
 		return ("none");
 
-	len = xsnprintf(buf, sizeof buf, "%s%s%s%s%s%s%s",
+	len = xsnprintf(buf, sizeof buf, "%s%s%s%s%s%s%s%s",
 	    (attr & GRID_ATTR_BRIGHT) ? "bright," : "",
 	    (attr & GRID_ATTR_DIM) ? "dim," : "",
 	    (attr & GRID_ATTR_UNDERSCORE) ? "underscore," : "",
 	    (attr & GRID_ATTR_BLINK)? "blink," : "",
 	    (attr & GRID_ATTR_REVERSE) ? "reverse," : "",
 	    (attr & GRID_ATTR_HIDDEN) ? "hidden," : "",
-	    (attr & GRID_ATTR_ITALICS) ? "italics," : "");
+	    (attr & GRID_ATTR_ITALICS) ? "italics," : "",
+	    (attr & GRID_ATTR_STRIKETHROUGH) ? "strikethrough," : "");
 	if (len > 0)
 		buf[len - 1] = '\0';
 
@@ -49,7 +50,7 @@ int
 attributes_fromstring(const char *str)
 {
 	const char	delimiters[] = " ,|";
-	u_char		attr;
+	int		attr;
 	size_t		end;
 
 	if (*str == '\0' || strcspn(str, delimiters) == 0)
@@ -78,6 +79,8 @@ attributes_fromstring(const char *str)
 			attr |= GRID_ATTR_HIDDEN;
 		else if (end == 7 && strncasecmp(str, "italics", end) == 0)
 			attr |= GRID_ATTR_ITALICS;
+		else if (end == 13 && strncasecmp(str, "strikethrough", end) == 0)
+			attr |= GRID_ATTR_STRIKETHROUGH;
 		else
 			return (-1);
 		str += end + strspn(str + end, delimiters);
