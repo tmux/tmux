@@ -372,7 +372,7 @@ else
 	AC_LIBOBJ(err)
 fi
 
-# Look for imsg in libutil. compat/imsg.c is linked by Makefile.am if missing.
+# Look for imsg_init in libutil.
 AC_SEARCH_LIBS(imsg_init, util, found_imsg_init=yes, found_imsg_init=no)
 if test "x$found_imsg_init" = xyes; then
 	AC_DEFINE(HAVE_IMSG)
@@ -381,7 +381,9 @@ else
 	AC_LIBOBJ(imsg-buffer)
 fi
 
-# Look for daemon, compat/daemon.c used if missing.
+# Look for daemon, compat/daemon.c used if missing. Solaris 10 has it in
+# libresolv, but no declaration anywhere, so check for declaration as well as
+# function.
 AC_CHECK_FUNC(daemon, found_daemon=yes, found_daemon=no)
 AC_CHECK_DECL(
 	daemon,
