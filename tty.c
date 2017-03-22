@@ -1557,7 +1557,7 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
     const struct window_pane *wp)
 {
 	struct grid_cell	*tc = &tty->cell, gc2;
-	u_char			 changed;
+	int			 changed;
 
 	/* Ignore cell if it is the same as the last one. */
 	if (wp != NULL &&
@@ -1627,6 +1627,8 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
 	}
 	if (changed & GRID_ATTR_HIDDEN)
 		tty_putcode(tty, TTYC_INVIS);
+	if (changed & GRID_ATTR_STRIKETHROUGH)
+		tty_putcode(tty, TTYC_SMXX);
 	if ((changed & GRID_ATTR_CHARSET) && tty_use_acs(tty))
 		tty_putcode(tty, TTYC_SMACS);
 }

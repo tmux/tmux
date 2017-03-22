@@ -395,6 +395,7 @@ enum tty_code_code {
 	TTYC_SMKX,	/* keypad_xmit, ks */
 	TTYC_SMSO,	/* enter_standout_mode, so */
 	TTYC_SMUL,	/* enter_underline_mode, us */
+	TTYC_SMXX,
 	TTYC_SS,	/* set cursor style, Ss */
 	TTYC_TC,	/* 24-bit "true" colour, Tc */
 	TTYC_TSL,	/* to_status_line, tsl */
@@ -506,7 +507,7 @@ enum utf8_state {
 #define COLOUR_FLAG_256 0x01000000
 #define COLOUR_FLAG_RGB 0x02000000
 
-/* Grid attributes. */
+/* Grid attributes. Anything above 0xff is stored in an extended cell. */
 #define GRID_ATTR_BRIGHT 0x1
 #define GRID_ATTR_DIM 0x2
 #define GRID_ATTR_UNDERSCORE 0x4
@@ -515,6 +516,7 @@ enum utf8_state {
 #define GRID_ATTR_HIDDEN 0x20
 #define GRID_ATTR_ITALICS 0x40
 #define GRID_ATTR_CHARSET 0x80	/* alternative character set */
+#define GRID_ATTR_STRIKETHROUGH 0x100
 
 /* Grid flags. */
 #define GRID_FLAG_FG256 0x1
@@ -531,7 +533,7 @@ enum utf8_state {
 /* Grid cell data. */
 struct grid_cell {
 	u_char			flags;
-	u_char			attr;
+	u_short			attr;
 	int			fg;
 	int			bg;
 	struct utf8_data	data;
@@ -1909,7 +1911,7 @@ int	 colour_fromstring(const char *s);
 u_char	 colour_256to16(u_char);
 
 /* attributes.c */
-const char *attributes_tostring(u_char);
+const char *attributes_tostring(int);
 int	 attributes_fromstring(const char *);
 
 /* grid.c */
