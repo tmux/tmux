@@ -102,9 +102,12 @@ AC_REPLACE_FUNCS([ \
 	asprintf \
 	cfmakeraw \
 	closefrom \
+	explicit_bzero \
 	fgetln \
 	fparseln \
+	getdtablecount \
 	getprogname \
+	recallocarray \
 	reallocarray \
 	setenv \
 	setproctitle \
@@ -456,23 +459,6 @@ if test "x$found_forkpty" = xyes; then
 	AC_DEFINE(HAVE_FORKPTY)
 fi
 AM_CONDITIONAL(NEED_FORKPTY, test "x$found_forkpty" = xno)
-
-# Check for BSD-style integer types.
-AC_MSG_CHECKING(for BSD-style unsigned types)
-AC_COMPILE_IFELSE([AC_LANG_SOURCE(
-	[
-		#include <sys/types.h>
-		#ifdef HAVE_STDINT_H
-		#include <stdint.h>
-		#else
-		#include <inttypes.h>
-		#endif
-		int main(void)
-		{ u_int8_t u8; u_int16_t u16; u_int32_t u32; u_int64_t u64; }
-	])],
-	[AC_DEFINE(HAVE_BSD_TYPES) AC_MSG_RESULT(yes)],
-	AC_MSG_RESULT(no)
-)
 
 # Look for a suitable queue.h.
 AC_CHECK_DECL(

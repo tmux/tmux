@@ -1,4 +1,4 @@
-/*	$OpenBSD: imsg.c,v 1.9 2015/07/12 18:40:49 nicm Exp $	*/
+/*	$OpenBSD: imsg.c,v 1.14 2017/03/24 09:34:12 nicm Exp $	*/
 
 /*
  * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
@@ -31,40 +31,6 @@
 int	 imsg_fd_overhead = 0;
 
 int	 imsg_get_fd(struct imsgbuf *);
-
-int	 available_fds(unsigned int);
-
-/*
- * The original code calls getdtablecount() which is OpenBSD specific. Use
- * available_fds() from OpenSMTPD instead.
- */
-int
-available_fds(unsigned int n)
-{
-	unsigned int	i;
-	int		ret, fds[256];
-
-	if (n > (sizeof(fds)/sizeof(fds[0])))
-		return (1);
-
-	ret = 0;
-	for (i = 0; i < n; i++) {
-		fds[i] = -1;
-		if ((fds[i] = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-			if (errno == EAFNOSUPPORT || errno == EPROTONOSUPPORT)
-				fds[i] = socket(AF_INET6, SOCK_DGRAM, 0);
-			if (fds[i] < 0) {
-				ret = 1;
-				break;
-			}
-		}
-	}
-
-	for (i = 0; i < n && fds[i] >= 0; i++)
-		close(fds[i]);
-
-	return (ret);
-}
 
 void
 imsg_init(struct imsgbuf *ibuf, int fd)
@@ -105,19 +71,18 @@ imsg_read(struct imsgbuf *ibuf)
 		return (-1);
 
 again:
-	if (available_fds(imsg_fd_overhead +
-	    (CMSG_SPACE(sizeof(int))-CMSG_SPACE(0))/sizeof(int))) {
+	if (getdtablecount() + imsg_fd_overhead +
+	    (int)((CMSG_SPACE(sizeof(int))-CMSG_SPACE(0))/sizeof(int))
+	    >= getdtablesize()) {
 		errno = EAGAIN;
 		free(ifd);
 		return (-1);
 	}
 
 	if ((n = recvmsg(ibuf->fd, &msg, 0)) == -1) {
-		if (errno == EMSGSIZE)
-			goto fail;
-		if (errno != EINTR && errno != EAGAIN)
-			goto fail;
-		goto again;
+		if (errno == EINTR)
+			goto again;
+		goto fail;
 	}
 
 	ibuf->r.wpos += n;
@@ -151,8 +116,7 @@ again:
 	}
 
 fail:
-	if (ifd)
-		free(ifd);
+	free(ifd);
 	return (n);
 }
 
@@ -176,7 +140,9 @@ imsg_get(struct imsgbuf *ibuf, struct imsg *imsg)
 		return (0);
 	datalen = imsg->hdr.len - IMSG_HEADER_SIZE;
 	ibuf->r.rptr = ibuf->r.buf + IMSG_HEADER_SIZE;
-	if ((imsg->data = malloc(datalen)) == NULL)
+	if (datalen == 0)
+		imsg->data = NULL;
+	else if ((imsg->data = malloc(datalen)) == NULL)
 		return (-1);
 
 	if (imsg->hdr.flags & IMSGF_HASFD)
@@ -197,8 +163,8 @@ imsg_get(struct imsgbuf *ibuf, struct imsg *imsg)
 }
 
 int
-imsg_compose(struct imsgbuf *ibuf, u_int32_t type, u_int32_t peerid,
-    pid_t pid, int fd, const void *data, u_int16_t datalen)
+imsg_compose(struct imsgbuf *ibuf, uint32_t type, uint32_t peerid, pid_t pid,
+    int fd, const void *data, uint16_t datalen)
 {
 	struct ibuf	*wbuf;
 
@@ -216,8 +182,8 @@ imsg_compose(struct imsgbuf *ibuf, u_int32_t type, u_int32_t peerid,
 }
 
 int
-imsg_composev(struct imsgbuf *ibuf, u_int32_t type, u_int32_t peerid,
-    pid_t pid, int fd, const struct iovec *iov, int iovcnt)
+imsg_composev(struct imsgbuf *ibuf, uint32_t type, uint32_t peerid, pid_t pid,
+    int fd, const struct iovec *iov, int iovcnt)
 {
 	struct ibuf	*wbuf;
 	int		 i, datalen = 0;
@@ -241,8 +207,8 @@ imsg_composev(struct imsgbuf *ibuf, u_int32_t type, u_int32_t peerid,
 
 /* ARGSUSED */
 struct ibuf *
-imsg_create(struct imsgbuf *ibuf, u_int32_t type, u_int32_t peerid,
-    pid_t pid, u_int16_t datalen)
+imsg_create(struct imsgbuf *ibuf, uint32_t type, uint32_t peerid, pid_t pid,
+    uint16_t datalen)
 {
 	struct ibuf	*wbuf;
 	struct imsg_hdr	 hdr;
@@ -268,7 +234,7 @@ imsg_create(struct imsgbuf *ibuf, u_int32_t type, u_int32_t peerid,
 }
 
 int
-imsg_add(struct ibuf *msg, const void *data, u_int16_t datalen)
+imsg_add(struct ibuf *msg, const void *data, uint16_t datalen)
 {
 	if (datalen)
 		if (ibuf_add(msg, data, datalen) == -1) {
@@ -289,7 +255,7 @@ imsg_close(struct imsgbuf *ibuf, struct ibuf *msg)
 	if (msg->fd != -1)
 		hdr->flags |= IMSGF_HASFD;
 
-	hdr->len = (u_int16_t)msg->wpos;
+	hdr->len = (uint16_t)msg->wpos;
 
 	ibuf_close(&ibuf->w, msg);
 }
