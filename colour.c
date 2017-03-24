@@ -48,7 +48,7 @@ colour_to_6cube(int v)
  * map our RGB colour to the closest in the cube, also work out the closest
  * grey, and use the nearest of the two.
  *
- * Note that the xterm has much lower resolution for darker colors (they are
+ * Note that the xterm has much lower resolution for darker colours (they are
  * not evenly spread out), so our 6 levels are not evenly spread: 0x0, 0x5f
  * (95), 0x87 (135), 0xaf (175), 0xd7 (215) and 0xff (255). Greys are more
  * evenly spread (8, 18, 28 ... 238).

@@ -174,6 +174,8 @@ struct window_copy_mode_data {
 	int		 searchtype;
 	char		*searchstr;
 	bitstr_t        *searchmark;
+	u_int		 searchcount;
+	int		 searchthis;
 	int		 searchx;
 	int		 searchy;
 	int		 searcho;
@@ -1170,7 +1172,7 @@ window_copy_search_marks(struct window_pane *wp, struct screen *ssp)
 	struct screen			*s = data->backing, ss;
 	struct screen_write_ctx		 ctx;
 	struct grid			*gd = s->grid;
-	int				 found, cis;
+	int				 found, cis, which = -1;
 	u_int				 px, py, b, nfound = 0, width;
 
 	if (ssp == NULL) {
@@ -1196,7 +1198,10 @@ window_copy_search_marks(struct window_pane *wp, struct screen *ssp)
 			    px, gd->sx, cis);
 			if (!found)
 				break;
+
 			nfound++;
+			if (px == data->cx && py == gd->hsize + data->cy - data->oy)
+				which = nfound;
 
 			b = (py * gd->sx) + px;
 			bit_nset(data->searchmark, b, b + width - 1);
@@ -1204,6 +1209,12 @@ window_copy_search_marks(struct window_pane *wp, struct screen *ssp)
 			px++;
 		}
 	}
+
+	if (which != -1)
+		data->searchthis = 1 + nfound - which;
+	else
+		data->searchthis = -1;
+	data->searchcount = nfound;
 
 	if (ssp == &ss)
 		screen_free(&ss);
@@ -1262,8 +1273,21 @@ window_copy_write_line(struct window_pane *wp, struct screen_write_ctx *ctx,
 	gc.flags |= GRID_FLAG_NOPALETTE;
 
 	if (py == 0) {
-		size = xsnprintf(hdr, sizeof hdr,
-		    "[%u/%u]", data->oy, screen_hsize(data->backing));
+		if (data->searchmark == NULL) {
+			size = xsnprintf(hdr, sizeof hdr,
+			    "[%u/%u]", data->oy, screen_hsize(data->backing));
+		} else {
+			if (data->searchthis == -1) {
+				size = xsnprintf(hdr, sizeof hdr,
+				    "(%u results) [%d/%u]", data->searchcount,
+				    data->oy, screen_hsize(data->backing));
+			} else {
+				size = xsnprintf(hdr, sizeof hdr,
+				    "(%u/%u results) [%d/%u]", data->searchthis,
+				    data->searchcount, data->oy,
+				    screen_hsize(data->backing));
+			}
+		}
 		if (size > screen_size_x(s))
 			size = screen_size_x(s);
 		screen_write_cursormove(ctx, screen_size_x(s) - size, 0);
