@@ -220,11 +220,11 @@ client_main(struct event_base *base, int argc, char **argv, int flags,
 	struct cmd		*cmd;
 	struct cmd_list		*cmdlist;
 	struct msg_command_data	*data;
-	int			 cmdflags, fd, i;
+	int			 cmdflags, fd, i, ret;
 	const char		*ttynam, *cwd;
 	pid_t			 ppid;
 	enum msgtype		 msg;
-	char			*cause, path[PATH_MAX];
+	char			*cause, path[PATH_MAX], ttynam_in_ns[PATH_MAX];
 	struct termios		 tio, saved_tio;
 	size_t			 size;
 
@@ -283,7 +283,22 @@ client_main(struct event_base *base, int argc, char **argv, int flags,
 		if ((cwd = find_home()) == NULL)
 			cwd = "/";
 	}
-	if ((ttynam = ttyname(STDIN_FILENO)) == NULL)
+
+	/* In case STDIN_FILENO refers to a /dev/pts/<n> device existing in
+	 * another namespace or refers to a /dev/pts/<n> device that exists in
+	 * the current namespace but its st_dev and st_ino fields do not match
+	 * then ttyname{_r}() will set errno to ENODEV. In this case we have
+	 * tmux operate directly on the symlink itself.
+	 */
+	errno = 0;
+	ttynam = ttyname(STDIN_FILENO);
+	if (errno == ENODEV) {
+		ret = snprintf(ttynam_in_ns, PATH_MAX, "/proc/%d/fd/%d", getpid(), STDIN_FILENO);
+		if (ret < 0 || ret >= PATH_MAX)
+			return (1);
+		errno = ENODEV;
+		ttynam = ttynam_in_ns;
+	} else if (ttynam == NULL)
 		ttynam = "";
 
 	/*

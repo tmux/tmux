@@ -95,6 +95,10 @@ int
 tty_init(struct tty *tty, struct client *c, int fd, char *term)
 {
 	char	*path;
+	/* len(/proc/self/fd/) = 14 + len(64-bit-int-in-chars) = 21 */
+	#define MAXPROC_SYMLINKLEN (14 + 21)
+	char	tmppath[MAXPROC_SYMLINKLEN];
+	int	ret, saved_errno;
 
 	if (!isatty(fd))
 		return (-1);
@@ -108,8 +112,27 @@ tty_init(struct tty *tty, struct client *c, int fd, char *term)
 	tty->fd = fd;
 	tty->client = c;
 
-	if ((path = ttyname(fd)) == NULL)
+	errno = 0;
+	saved_errno = 0;
+	path = ttyname(fd);
+	if (errno == ENODEV) {
+		/* In case STDIN_FILENO refers to a /dev/pts/<n> device existing
+		 * in another namespace or refers to a /dev/pts/<n> device that
+		 * exists in the current namespace but its st_dev and st_ino
+		 * fields do not match then ttyname{_r}() will set errno to
+		 * ENODEV. In this case we have tmux operate directly on the
+		 * symlink itself.
+		 * We save the errno so that callers of tty_init() can check for
+		 * ENODEV as well.
+		 */
+		saved_errno = ENODEV;
+		ret = snprintf(tmppath, MAXPROC_SYMLINKLEN, "/proc/self/fd/%d", fd);
+		if (ret < 0 || ret >= MAXPROC_SYMLINKLEN)
+			return (-1);
+		path = tmppath;
+	} else if (path == NULL)
 		return (-1);
+
 	tty->path = xstrdup(path);
 	tty->cstyle = 0;
 	tty->ccolour = xstrdup("");
@@ -119,6 +142,8 @@ tty_init(struct tty *tty, struct client *c, int fd, char *term)
 	tty->term_flags = 0;
 	tty->term_type = TTY_UNKNOWN;
 
+	/* Make it possible for callers to check for ENODEV. */
+	errno = saved_errno;
 	return (0);
 }
 
