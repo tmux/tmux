@@ -539,6 +539,9 @@ session_set_current(struct session *s, struct winlink *wl)
 	if (wl == s->curw)
 		return (1);
 
+	if ((s->curw != NULL) && (s->curw->window != NULL))
+		gettimeofday(&s->curw->window->background_time, NULL);
+
 	winlink_stack_remove(&s->lastw, wl);
 	winlink_stack_push(&s->lastw, s->curw);
 	s->curw = wl;

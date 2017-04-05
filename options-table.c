@@ -627,6 +627,14 @@ const struct options_table_entry options_table[] = {
 	  .default_num = 0
 	},
 
+	{ .name = "monitor-activity-ignore-delay",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .minimum = 0,
+	  .maximum = INT_MAX,
+	  .default_num = 0
+	},
+
 	{ .name = "monitor-silence",
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .scope = OPTIONS_TABLE_WINDOW,

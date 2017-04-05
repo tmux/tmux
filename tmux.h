@@ -803,6 +803,7 @@ struct window {
 
 	struct event	 alerts_timer;
 
+	struct timeval	 background_time;
 	struct timeval	 activity_time;
 
 	struct window_pane *active;

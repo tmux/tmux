@@ -311,6 +311,9 @@ window_create(u_int sx, u_int sy)
 	TAILQ_INIT(&w->panes);
 	w->active = NULL;
 
+	w->background_time.tv_sec = 0;
+	w->background_time.tv_usec = 0;
+
 	w->lastlayout = -1;
 	w->layout_root = NULL;
 
