@@ -367,7 +367,8 @@ or
 These specify the client, session, window or pane which a command should affect.
 .Pp
 .Ar target-client
-should be the name of the
+should be the name of the client,
+typically the
 .Xr pty 4
 file to which the client is connected, for example either of
 .Pa /dev/ttyp1
@@ -3510,6 +3511,7 @@ The following variables are available, where appropriate:
 .It Li "client_height" Ta "" Ta "Height of client"
 .It Li "client_key_table" Ta "" Ta "Current key table"
 .It Li "client_last_session" Ta "" Ta "Name of the client's last session"
+.It Li "client_name" Ta "" Ta "Name of client"
 .It Li "client_pid" Ta "" Ta "PID of client process"
 .It Li "client_prefix" Ta "" Ta "1 if prefix key has been pressed"
 .It Li "client_readonly" Ta "" Ta "1 if client is readonly"

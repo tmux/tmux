@@ -256,9 +256,9 @@ cmd_find_current_session_with_client(struct cmd_find_state *fs)
 	 * sessions to those containing that pane (we still use the current
 	 * window in the best session).
 	 */
-	if (fs->item != NULL && fs->item->client->tty.path != NULL) {
+	if (fs->item != NULL) {
 		RB_FOREACH(wp, window_pane_tree, &all_window_panes) {
-			if (strcmp(wp->tty, fs->item->client->tty.path) == 0)
+			if (strcmp(wp->tty, fs->item->client->ttyname) == 0)
 				break;
 		}
 	} else
@@ -1248,7 +1248,6 @@ cmd_find_client(struct cmdq_item *item, const char *target, int quiet)
 	struct client	*c;
 	char		*copy;
 	size_t		 size;
-	const char	*path;
 
 	/* A NULL argument means the current client. */
 	if (item != NULL && target == NULL) {
@@ -1265,20 +1264,20 @@ cmd_find_client(struct cmdq_item *item, const char *target, int quiet)
 	if (size != 0 && copy[size - 1] == ':')
 		copy[size - 1] = '\0';
 
-	/* Check path of each client. */
+	/* Check name and path of each client. */
 	TAILQ_FOREACH(c, &clients, entry) {
-		if (c->session == NULL || c->tty.path == NULL)
+		if (c->session == NULL)
 			continue;
-		path = c->tty.path;
-
-		/* Try for exact match. */
-		if (strcmp(copy, path) == 0)
+		if (strcmp(copy, c->name) == 0)
 			break;
 
-		/* Try without leading /dev. */
-		if (strncmp(path, _PATH_DEV, (sizeof _PATH_DEV) - 1) != 0)
+		if (*c->ttyname == '\0')
 			continue;
-		if (strcmp(copy, path + (sizeof _PATH_DEV) - 1) == 0)
+		if (strcmp(copy, c->ttyname) == 0)
+			break;
+		if (strncmp(c->ttyname, _PATH_DEV, (sizeof _PATH_DEV) - 1) != 0)
+			continue;
+		if (strcmp(copy, c->ttyname + (sizeof _PATH_DEV) - 1) == 0)
 			break;
 	}
 

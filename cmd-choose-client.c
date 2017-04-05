@@ -28,7 +28,7 @@
  */
 
 #define CHOOSE_CLIENT_TEMPLATE					\
-	"#{client_tty}: #{session_name} "			\
+	"#{client_name}: #{session_name} "			\
 	"[#{client_width}x#{client_height} #{client_termname}]"	\
 	"#{?client_utf8, (utf8),}#{?client_readonly, (ro),} "	\
 	"(last used #{t:client_activity})"
@@ -85,7 +85,7 @@ cmd_choose_client_exec(struct cmd *self, struct cmdq_item *item)
 
 	cur = idx = 0;
 	TAILQ_FOREACH(c1, &clients, entry) {
-		if (c1->session == NULL || c1->tty.path == NULL)
+		if (c1->session == NULL)
 			continue;
 		if (c1 == item->client)
 			cur = idx;
@@ -97,7 +97,7 @@ cmd_choose_client_exec(struct cmd *self, struct cmdq_item *item)
 		format_add(cdata->ft, "line", "%u", idx);
 		format_defaults(cdata->ft, c1, NULL, NULL, NULL);
 
-		cdata->command = cmd_template_replace(action, c1->tty.path, 1);
+		cdata->command = cmd_template_replace(action, c1->name, 1);
 
 		window_choose_add(wl->window->active, cdata);
 

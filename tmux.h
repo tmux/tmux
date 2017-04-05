@@ -1021,7 +1021,6 @@ LIST_HEAD(tty_terms, tty_term);
 
 struct tty {
 	struct client	*client;
-	char		*path;
 
 	u_int		 sx;
 	u_int		 sy;
@@ -1285,6 +1284,7 @@ struct cmd_entry {
 
 /* Client connection. */
 struct client {
+	const char	*name;
 	struct tmuxpeer	*peer;
 	struct cmdq_list queue;
 

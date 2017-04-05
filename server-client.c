@@ -99,15 +99,12 @@ server_client_check_nested(struct client *c)
 	struct environ_entry	*envent;
 	struct window_pane	*wp;
 
-	if (c->tty.path == NULL)
-		return (0);
-
 	envent = environ_find(c->environ, "TMUX");
 	if (envent == NULL || *envent->value == '\0')
 		return (0);
 
 	RB_FOREACH(wp, window_pane_tree, &all_window_panes) {
-		if (strcmp(wp->tty, c->tty.path) == 0)
+		if (strcmp(wp->tty, c->ttyname) == 0)
 			return (1);
 	}
 	return (0);
@@ -322,8 +319,10 @@ server_client_free(__unused int fd, __unused short events, void *arg)
 	if (!TAILQ_EMPTY(&c->queue))
 		fatalx("queue not empty");
 
-	if (c->references == 0)
+	if (c->references == 0) {
+		free((void *)c->name);
 		free(c);
+	}
 }
 
 /* Detach a client. */
@@ -1470,6 +1469,7 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 	const char	*data, *home;
 	size_t	 	 datalen;
 	int		 flags;
+	char		*name;
 
 	if (c->flags & CLIENT_IDENTIFIED)
 		fatalx("out-of-order identify message");
@@ -1534,6 +1534,13 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 	if (imsg->hdr.type != MSG_IDENTIFY_DONE)
 		return;
 	c->flags |= CLIENT_IDENTIFIED;
+
+	if (*c->ttyname != '\0')
+		name = xstrdup(c->ttyname);
+	else
+		xasprintf(&name, "client-%ld", (long)c->pid);
+	c->name = name;
+	log_debug("client %p name is %s", c, c->name);
 
 	if (c->flags & CLIENT_CONTROL) {
 		c->stdin_callback = control_callback;
@@ -1685,7 +1692,7 @@ server_client_add_message(struct client *c, const char *fmt, ...)
 	xvasprintf(&s, fmt, ap);
 	va_end(ap);
 
-	log_debug("%s: message %s", c->tty.path, s);
+	log_debug("message %s (client %p)", s, c);
 
 	msg = xcalloc(1, sizeof *msg);
 	msg->msg_time = time(NULL);
