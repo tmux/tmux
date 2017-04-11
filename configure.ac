@@ -105,6 +105,7 @@ AC_REPLACE_FUNCS([ \
 	explicit_bzero \
 	fgetln \
 	fparseln \
+	freezero \
 	getdtablecount \
 	getprogname \
 	recallocarray \
