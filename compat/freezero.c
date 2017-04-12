@@ -24,6 +24,8 @@
 void
 freezero(void *ptr, size_t size)
 {
-	memset(ptr, 0, size);
-	free(ptr);
+	if (ptr != NULL) {
+		memset(ptr, 0, size);
+		free(ptr);
+	}
 }
