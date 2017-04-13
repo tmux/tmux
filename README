@@ -14,7 +14,7 @@ It also depends on ncurses, available from:
 
 	http://invisible-island.net/ncurses/
 
-To build tmux from a release tarball, use:
+To build and install tmux from a release tarball, use:
 
 	$ ./configure && make
 	$ sudo make install
@@ -42,8 +42,8 @@ TODO file and an example configuration in example_tmux.conf.
 
 A vim(1) syntax file is available at:
 
-	https://github.com/keith/tmux.vim
-	https://raw.githubusercontent.com/keith/tmux.vim/master/syntax/tmux.vim
+	https://github.com/ericpruitt/tmux.vim
+	https://raw.githubusercontent.com/ericpruitt/tmux.vim/master/vim/syntax/tmux.vim
 
 And a bash(1) completion file at:
 

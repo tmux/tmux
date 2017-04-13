@@ -1,8 +1,10 @@
 # configure.ac
 
 AC_INIT(tmux, master)
+AC_PREREQ([2.60])
 
 AC_CONFIG_AUX_DIR(etc)
+AC_CONFIG_LIBOBJ_DIR(compat)
 AM_INIT_AUTOMAKE([foreign subdir-objects])
 
 AC_CANONICAL_HOST
@@ -22,10 +24,12 @@ SAVED_LDFLAGS="$LDFLAGS"
 # Set up the compiler in two different ways and say yes we may want to install.
 AC_PROG_CC
 AM_PROG_CC_C_O
+AC_PROG_CC_C99
 AC_PROG_CPP
 AC_PROG_EGREP
 AC_PROG_INSTALL
 PKG_PROG_PKG_CONFIG
+AC_USE_SYSTEM_EXTENSIONS
 
 # Default tmux.conf goes in /etc not ${prefix}/etc.
 test "$sysconfdir" = '${prefix}/etc' && sysconfdir=/etc
@@ -37,20 +41,6 @@ AC_ARG_ENABLE(
 	AC_HELP_STRING(--enable-debug, enable debug build flags),
 )
 AM_CONDITIONAL(IS_DEBUG, test "x$enable_debug" = xyes)
-
-# Is this --enable-coverage?
-AC_ARG_ENABLE(
-	coverage,
-	AC_HELP_STRING(--enable-coverage, enable coverage build flags)
-)
-AM_CONDITIONAL(IS_COVERAGE, test "x$enable_coverage" = xyes)
-
-# Is this --enable-profile?
-AC_ARG_ENABLE(
-	profile,
-	AC_HELP_STRING(--enable-profile, enable profile build flags)
-)
-AM_CONDITIONAL(IS_PROFILE, test "x$enable_profile" = xyes)
 
 # Is this a static build?
 AC_ARG_ENABLE(
@@ -79,55 +69,57 @@ AC_EGREP_CPP(
 )
 AM_CONDITIONAL(IS_SUNCC, test "x$found_suncc" = xyes)
 
-# Is this glibc?
-AC_MSG_CHECKING(for glibc)
-AC_EGREP_CPP(
-	yes,
-	[
-		#include <features.h>
-		#ifdef __GLIBC__
-		yes
-		#endif
-	],
-	found_glibc=yes,
-	found_glibc=no
-)
-AM_CONDITIONAL(IS_GLIBC, test "x$found_glibc" = xyes)
-AC_MSG_RESULT($found_glibc)
-
 # Check for various headers. Alternatives included from compat.h.
-AC_CHECK_HEADERS(
-	[ \
-		bitstring.h \
-		dirent.h \
-		fcntl.h \
-		inttypes.h \
-		libutil.h \
-		ndir.h \
-		paths.h \
-		pty.h \
-		stdint.h \
-		sys/dir.h \
-		sys/ndir.h \
-		sys/tree.h \
-		term.h \
-		util.h \
-	]
-)
+AC_CHECK_HEADERS([ \
+	bitstring.h \
+	dirent.h \
+	fcntl.h \
+	inttypes.h \
+	libutil.h \
+	ndir.h \
+	paths.h \
+	pty.h \
+	stdint.h \
+	sys/dir.h \
+	sys/ndir.h \
+	sys/tree.h \
+	util.h \
+])
 
 # Look for library needed for flock.
 AC_SEARCH_LIBS(flock, bsd)
 
-# Check for some functions that are replaced or omitted.
-AC_CHECK_FUNCS(
-	[ \
-		dirfd \
-		flock \
-		prctl \
-		sysconf \
-		cfmakeraw \
-	]
-)
+# Check for functions that are replaced or omitted.
+AC_CHECK_FUNCS([ \
+	dirfd \
+	flock \
+	prctl \
+	sysconf \
+])
+
+# Check for functions with a compatibility implementation.
+AC_REPLACE_FUNCS([ \
+	asprintf \
+	cfmakeraw \
+	closefrom \
+	explicit_bzero \
+	fgetln \
+	fparseln \
+	freezero \
+	getdtablecount \
+	getprogname \
+	recallocarray \
+	reallocarray \
+	setenv \
+	setproctitle \
+	strcasestr \
+	strlcat \
+	strlcpy \
+	strndup \
+	strsep \
+	strtonum \
+])
+AC_FUNC_STRNLEN
 
 # Look for clock_gettime. Must come before event_init.
 AC_SEARCH_LIBS(clock_gettime, rt)
@@ -189,11 +181,19 @@ if test "x$found_ncurses" = xyes; then
 else
 	# pkg-config didn't work, try ncurses.
 	AC_CHECK_LIB(
-		[tinfo ncurses],
+		tinfo,
 		setupterm,
 		found_ncurses=yes,
 		found_ncurses=no
 	)
+	if test "x$found_ncurses" = xno; then
+		AC_CHECK_LIB(
+			ncurses,
+			setupterm,
+			found_ncurses=yes,
+			found_ncurses=no
+		)
+	fi
 	if test "x$found_ncurses" = xyes; then
 		AC_CHECK_HEADER(
 			ncurses.h,
@@ -302,8 +302,9 @@ fi
 if test "x$found_b64_ntop" = xyes; then
 	AC_DEFINE(HAVE_B64_NTOP)
 	AC_MSG_RESULT(yes)
+else
+	AC_LIBOBJ(base64)
 fi
-AM_CONDITIONAL(NO_B64_NTOP, [test "x$found_b64_ntop" = xno])
 
 # Look for networking libraries.
 AC_SEARCH_LIBS(inet_ntoa, nsl)
@@ -350,110 +351,44 @@ if test "x$found_cmsg_data" = xno; then
 fi
 AC_SUBST(XOPEN_DEFINES)
 
-# Look for imsg in libutil. compat/imsg.c is linked by Makefile.am if missing.
+# Look for err and friends in err.h.
+AC_CHECK_FUNC(err, found_err_h=yes, found_err_h=no)
+AC_CHECK_FUNC(errx, , found_err_h=no)
+AC_CHECK_FUNC(warn, , found_err_h=no)
+AC_CHECK_FUNC(warnx, , found_err_h=no)
+if test "x$found_err_h" = xyes; then
+	AC_CHECK_HEADER(err.h, , found_err_h=no)
+else
+	AC_LIBOBJ(err)
+fi
+
+# Look for imsg_init in libutil.
 AC_SEARCH_LIBS(imsg_init, util, found_imsg_init=yes, found_imsg_init=no)
 if test "x$found_imsg_init" = xyes; then
 	AC_DEFINE(HAVE_IMSG)
+else
+	AC_LIBOBJ(imsg)
+	AC_LIBOBJ(imsg-buffer)
 fi
-AM_CONDITIONAL(NO_IMSG, [test "x$found_imsg_init" = xno])
 
-# Look for forkpty in libutil. compat/forkpty-*.c is linked if not found.
-AC_SEARCH_LIBS(forkpty, util, found_forkpty=yes, found_forkpty=no)
-if test "x$found_forkpty" = xyes; then
-	AC_DEFINE(HAVE_FORKPTY)
-fi
-AM_CONDITIONAL(NO_FORKPTY, [test "x$found_forkpty" = xno])
-
-# Look for closefrom, compat/closefrom.c used if missing.
-AC_CHECK_FUNC(closefrom, found_closefrom=yes, found_closefrom=no)
-if test "x$found_closefrom" = xyes; then
-	AC_DEFINE(HAVE_CLOSEFROM)
-fi
-AM_CONDITIONAL(NO_CLOSEFROM, [test "x$found_closefrom" = xno])
-
-# Look for daemon, compat/daemon.c used if missing.
+# Look for daemon, compat/daemon.c used if missing. Solaris 10 has it in
+# libresolv, but no declaration anywhere, so check for declaration as well as
+# function.
 AC_CHECK_FUNC(daemon, found_daemon=yes, found_daemon=no)
+AC_CHECK_DECL(
+	daemon,
+	,
+	found_daemon=no,
+	[
+		#include <stdlib.h>
+		#include <unistd.h>
+	]
+)
 if test "x$found_daemon" = xyes; then
 	AC_DEFINE(HAVE_DAEMON)
+else
+	AC_LIBOBJ(daemon)
 fi
-AM_CONDITIONAL(NO_DAEMON, [test "x$found_daemon" = xno])
-
-# Look for getprogname, compat/getprogname.c used if missing.
-AC_CHECK_FUNC(getprogname, found_getprogname=yes, found_getprogname=no)
-if test "x$found_getprogname" = xyes; then
-	AC_DEFINE(HAVE_GETPROGNAME)
-fi
-AM_CONDITIONAL(NO_GETPROGNAME, [test "x$found_getprogname" = xno])
-
-# Look for setproctitle, compat/setproctitle.c used if missing.
-AC_CHECK_FUNC(setproctitle, found_setproctitle=yes, found_setproctitle=no)
-if test "x$found_setproctitle" = xyes; then
-	AC_DEFINE(HAVE_SETPROCTITLE)
-fi
-AM_CONDITIONAL(NO_SETPROCTITLE, [test "x$found_setproctitle" = xno])
-
-# Look for setenv, compat/setenv.c used if missing.
-AC_CHECK_FUNC(setenv, found_setenv=yes, found_setenv=no)
-if test "x$found_setenv" = xyes; then
-	AC_DEFINE(HAVE_SETENV)
-fi
-AM_CONDITIONAL(NO_SETENV, [test "x$found_setenv" = xno])
-
-# Look for strlcpy, compat/strlcpy.c used if missing.
-AC_CHECK_FUNC(strlcpy, found_strlcpy=yes, found_strlcpy=no)
-if test "x$found_strlcpy" = xyes; then
-	AC_DEFINE(HAVE_STRLCPY)
-fi
-AM_CONDITIONAL(NO_STRLCPY, [test "x$found_strlcpy" = xno])
-
-# Look for strlcat, compat/strlcat.c used if missing.
-AC_CHECK_FUNC(strlcat, found_strlcat=yes, found_strlcat=no)
-if test "x$found_strlcat" = xyes; then
-	AC_DEFINE(HAVE_STRLCAT)
-fi
-AM_CONDITIONAL(NO_STRLCAT, [test "x$found_strlcat" = xno])
-
-# Look for asprintf, compat/asprintf.c used if missing.
-AC_CHECK_FUNC(asprintf, found_asprintf=yes, found_asprintf=no)
-if test "x$found_asprintf" = xyes; then
-	AC_DEFINE(HAVE_ASPRINTF)
-fi
-AM_CONDITIONAL(NO_ASPRINTF, [test "x$found_asprintf" = xno])
-
-# Look for fgetln, compat/fgetln.c used if missing.
-AC_CHECK_FUNC(fgetln, found_fgetln=yes, found_fgetln=no)
-if test "x$found_fgetln" = xyes; then
-	AC_DEFINE(HAVE_FGETLN)
-fi
-AM_CONDITIONAL(NO_FGETLN, [test "x$found_fgetln" = xno])
-
-# Look for fparseln, compat/fparseln.c used if missing.
-AC_CHECK_FUNC(fparseln, found_fparseln=yes, found_fparseln=no)
-if test "x$found_fparseln" = xyes; then
-	AC_DEFINE(HAVE_FPARSELN)
-fi
-AM_CONDITIONAL(NO_FPARSELN, [test "x$found_fparseln" = xno])
-
-# Look for strcasestr, compat/strcasestr.c used if missing.
-AC_CHECK_FUNC(strcasestr, found_strcasestr=yes, found_strcasestr=no)
-if test "x$found_strcasestr" = xyes; then
-	AC_DEFINE(HAVE_STRCASESTR)
-fi
-AM_CONDITIONAL(NO_STRCASESTR, [test "x$found_strcasestr" = xno])
-
-# Look for strsep, compat/strsep.c used if missing.
-AC_CHECK_FUNC(strsep, found_strsep=yes, found_strsep=no)
-if test "x$found_strsep" = xyes; then
-	AC_DEFINE(HAVE_STRSEP)
-fi
-AM_CONDITIONAL(NO_STRSEP, [test "x$found_strsep" = xno])
-
-# Look for strtonum, compat/strtonum.c used if missing.
-AC_CHECK_FUNC(strtonum, found_strtonum=yes, found_strtonum=no)
-if test "x$found_strtonum" = xyes; then
-	AC_DEFINE(HAVE_STRTONUM)
-fi
-AM_CONDITIONAL(NO_STRTONUM, [test "x$found_strtonum" = xno])
 
 # Look for stravis, compat/{vis,unvis}.c used if missing.
 AC_CHECK_FUNC(stravis, found_stravis=yes, found_stravis=no)
@@ -480,64 +415,51 @@ if test "x$found_stravis" = xyes; then
 fi
 if test "x$found_stravis" = xyes; then
 	AC_DEFINE(HAVE_VIS)
+else
+	AC_LIBOBJ(vis)
+	AC_LIBOBJ(unvis)
 fi
-AM_CONDITIONAL(NO_VIS, [test "x$found_stravis" = xno])
-
-# Look for cfmakeraw, compat/cfmakeraw.c used if missing.
-AC_CHECK_FUNC(cfmakeraw, found_cfmakeraw=yes, found_cfmakeraw=no)
-if test "x$found_cfmakeraw" = xyes; then
-	AC_DEFINE(HAVE_CFMAKERAW)
-fi
-AM_CONDITIONAL(NO_CFMAKERAW, [test "x$found_cfmakeraw" = xno])
-
-# Look for reallocarray, compat/reallocarray.c used if missing.
-AC_CHECK_FUNC(reallocarray, found_reallocarray=yes, found_reallocarray=no)
-if test "x$found_reallocarray" = xyes; then
-	AC_DEFINE(HAVE_REALLOCARRAY)
-fi
-AM_CONDITIONAL(NO_REALLOCARRAY, [test "x$found_reallocarray" = xno])
 
 # Look for getopt. glibc's getopt does not enforce argument order and the ways
 # of making it do so are stupid, so just use our own instead.
 AC_CHECK_FUNC(getopt, found_getopt=yes, found_getopt=no)
-if test "x$found_getopt" != xno; then	
+if test "x$found_getopt" != xno; then
+	AC_MSG_CHECKING(if getopt is suitable)
+	AC_EGREP_CPP(
+		yes,
+		[
+			#include <features.h>
+			#ifdef __GLIBC__
+			yes
+			#endif
+		],
+		[
+			found_getopt=no
+			AC_MSG_RESULT(no)
+		],
+		AC_MSG_RESULT(yes))
+fi
+if test "x$found_getopt" != xno; then
 	AC_CHECK_DECLS(
 		[optarg, optind, optreset],
 		,
 		found_getopt=no,
 		[
 			#include <unistd.h>
-		]
-	)	
-	if test "x$found_getopt" != xno; then	
-		AC_MSG_CHECKING(if system getopt should be avoided)
-		if test "x$found_glibc" = xyes; then
-			found_getopt=no
-			AC_MSG_RESULT(yes)
-		else
-			AC_MSG_RESULT(no)
-			AC_DEFINE(HAVE_GETOPT)
-		fi
-	fi
+		])
 fi
-AM_CONDITIONAL(NO_GETOPT, [test "x$found_getopt" = xno])
+if test "x$found_getopt" != xno; then
+	AC_DEFINE(HAVE_GETOPT)
+else
+	AC_LIBOBJ(getopt)
+fi
 
-# Check for BSD-style integer types.
-AC_MSG_CHECKING(for BSD-style unsigned types)
-AC_COMPILE_IFELSE([AC_LANG_SOURCE(
-	[
-		#include <sys/types.h>
-		#ifdef HAVE_STDINT_H
-		#include <stdint.h>
-		#else
-		#include <inttypes.h>
-		#endif
-		int main(void)
-		{ u_int8_t u8; u_int16_t u16; u_int32_t u32; u_int64_t u64; }
-	])],
-	[AC_DEFINE(HAVE_BSD_TYPES) AC_MSG_RESULT(yes)],
-	AC_MSG_RESULT(no)
-)
+# Look for forkpty in libutil. compat/forkpty-*.c is linked if not found.
+AC_SEARCH_LIBS(forkpty, util, found_forkpty=yes, found_forkpty=no)
+if test "x$found_forkpty" = xyes; then
+	AC_DEFINE(HAVE_FORKPTY)
+fi
+AM_CONDITIONAL(NEED_FORKPTY, test "x$found_forkpty" = xno)
 
 # Look for a suitable queue.h.
 AC_CHECK_DECL(
@@ -583,9 +505,9 @@ AC_LINK_IFELSE([AC_LANG_SOURCE(
 AC_MSG_CHECKING(for program_invocation_short_name)
 AC_LINK_IFELSE([AC_LANG_SOURCE(
 	[
+		#include <errno.h>
 		#include <stdio.h>
 		#include <stdlib.h>
-		extern char *program_invocation_short_name;
 		int main(void) {
 			const char *cp = program_invocation_short_name;
 			printf("%s\n", cp);
@@ -625,7 +547,7 @@ fi
 MANFORMAT=mdoc
 AC_SUBST(MANFORMAT)
 
-# Figure out the platform for osdep-*.c and forkpty-*.c.
+# Figure out the platform.
 AC_MSG_CHECKING(platform)
 case "$host_os" in
 	*aix*)
@@ -677,7 +599,7 @@ case "$host_os" in
 	*)
 		AC_MSG_RESULT(unknown)
 		PLATFORM=unknown
-		;;	
+		;;
 esac
 AC_SUBST(PLATFORM)
 AM_CONDITIONAL(IS_AIX, test "x$PLATFORM" = xaix)

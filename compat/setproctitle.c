@@ -46,7 +46,7 @@ setproctitle(const char *fmt, ...)
 }
 #else
 void
-setproctitle(const char *fmt, ...)
+setproctitle(__unused const char *fmt, ...)
 {
 }
 #endif

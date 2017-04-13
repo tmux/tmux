@@ -339,7 +339,7 @@ window_create_spawn(const char *name, int argc, char **argv, const char *path,
 	struct window_pane	*wp;
 
 	w = window_create(sx, sy);
-	wp = window_add_pane(w, NULL, hlimit);
+	wp = window_add_pane(w, NULL, 0, hlimit);
 	layout_init(w, wp);
 
 	if (window_pane_spawn(wp, argc, argv, path, shell, cwd,
@@ -426,6 +426,7 @@ window_has_pane(struct window *w, struct window_pane *wp)
 int
 window_set_active_pane(struct window *w, struct window_pane *wp)
 {
+	log_debug("%s: pane %%%u (was %%%u)", __func__, wp->id, w->active->id);
 	if (wp == w->active)
 		return (0);
 	w->last = w->active;
@@ -578,18 +579,24 @@ window_unzoom(struct window *w)
 }
 
 struct window_pane *
-window_add_pane(struct window *w, struct window_pane *after, u_int hlimit)
+window_add_pane(struct window *w, struct window_pane *other, int before,
+    u_int hlimit)
 {
 	struct window_pane	*wp;
 
+	if (other == NULL)
+		other = w->active;
+
 	wp = window_pane_create(w, w->sx, w->sy, hlimit);
-	if (TAILQ_EMPTY(&w->panes))
+	if (TAILQ_EMPTY(&w->panes)) {
+		log_debug("%s: @%u at start", __func__, w->id);
 		TAILQ_INSERT_HEAD(&w->panes, wp, entry);
-	else {
-		if (after == NULL)
-			TAILQ_INSERT_AFTER(&w->panes, w->active, wp, entry);
-		else
-			TAILQ_INSERT_AFTER(&w->panes, after, wp, entry);
+	} else if (before) {
+		log_debug("%s: @%u before %%%u", __func__, w->id, wp->id);
+		TAILQ_INSERT_BEFORE(other, wp, entry);
+	} else {
+		log_debug("%s: @%u after %%%u", __func__, w->id, wp->id);
+		TAILQ_INSERT_AFTER(&w->panes, other, wp, entry);
 	}
 	return (wp);
 }
@@ -1265,7 +1272,7 @@ window_pane_search(struct window_pane *wp, const char *searchstr,
 {
 	struct screen	*s = &wp->base;
 	char		*newsearchstr, *line, *msg;
-	u_int	 	 i;
+	u_int		 i;
 
 	msg = NULL;
 	xasprintf(&newsearchstr, "*%s*", searchstr);
@@ -1313,17 +1320,18 @@ window_pane_find_up(struct window_pane *wp)
 {
 	struct window_pane	*next, *best, **list;
 	u_int			 edge, left, right, end, size;
-	int			 found;
+	int			 status, found;
 
 	if (wp == NULL || !window_pane_visible(wp))
 		return (NULL);
+	status = options_get_number(wp->window->options, "pane-border-status");
 
 	list = NULL;
 	size = 0;
 
 	edge = wp->yoff;
-	if (edge == 0)
-		edge = wp->window->sy + 1;
+	if (edge == (status == 1 ? 1 : 0))
+		edge = wp->window->sy + 1 - (status == 2 ? 1 : 0);
 
 	left = wp->xoff;
 	right = wp->xoff + wp->sx;
@@ -1359,17 +1367,18 @@ window_pane_find_down(struct window_pane *wp)
 {
 	struct window_pane	*next, *best, **list;
 	u_int			 edge, left, right, end, size;
-	int			 found;
+	int			 status, found;
 
 	if (wp == NULL || !window_pane_visible(wp))
 		return (NULL);
+	status = options_get_number(wp->window->options, "pane-border-status");
 
 	list = NULL;
 	size = 0;
 
 	edge = wp->yoff + wp->sy + 1;
-	if (edge >= wp->window->sy)
-		edge = 0;
+	if (edge >= wp->window->sy - (status == 2 ? 1 : 0))
+		edge = (status == 1 ? 1 : 0);
 
 	left = wp->xoff;
 	right = wp->xoff + wp->sx;

@@ -65,11 +65,6 @@ cmd_respawn_pane_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_ERROR);
 	}
 
-	env = environ_create();
-	environ_copy(global_environ, env);
-	environ_copy(s->environ, env);
-	server_fill_environ(s, env);
-
 	window_pane_reset_mode(wp);
 	screen_reinit(&wp->base);
 	input_init(wp);
@@ -82,6 +77,7 @@ cmd_respawn_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (envent != NULL)
 		path = envent->value;
 
+	env = environ_for_session(s);
 	if (window_pane_spawn(wp, args->argc, args->argv, path, NULL, NULL, env,
 	    s->tio, &cause) != 0) {
 		cmdq_error(item, "respawn pane failed: %s", cause);
@@ -89,9 +85,10 @@ cmd_respawn_pane_exec(struct cmd *self, struct cmdq_item *item)
 		environ_free(env);
 		return (CMD_RETURN_ERROR);
 	}
+	environ_free(env);
+
 	wp->flags |= PANE_REDRAW;
 	server_status_window(w);
 
-	environ_free(env);
 	return (CMD_RETURN_NORMAL);
 }

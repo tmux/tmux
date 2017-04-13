@@ -66,11 +66,6 @@ cmd_respawn_window_exec(struct cmd *self, struct cmdq_item *item)
 		}
 	}
 
-	env = environ_create();
-	environ_copy(global_environ, env);
-	environ_copy(s->environ, env);
-	server_fill_environ(s, env);
-
 	wp = TAILQ_FIRST(&w->panes);
 	TAILQ_REMOVE(&w->panes, wp, entry);
 	layout_free(w);
@@ -86,6 +81,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (envent != NULL)
 		path = envent->value;
 
+	env = environ_for_session(s);
 	if (window_pane_spawn(wp, args->argc, args->argv, path, NULL, NULL, env,
 	    s->tio, &cause) != 0) {
 		cmdq_error(item, "respawn window failed: %s", cause);
@@ -94,6 +90,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmdq_item *item)
 		server_destroy_pane(wp, 0);
 		return (CMD_RETURN_ERROR);
 	}
+	environ_free(env);
 	layout_init(w, wp);
 	window_pane_reset_mode(wp);
 	screen_reinit(&wp->base);
@@ -103,6 +100,5 @@ cmd_respawn_window_exec(struct cmd *self, struct cmdq_item *item)
 	recalculate_sizes();
 	server_redraw_window(w);
 
-	environ_free(env);
 	return (CMD_RETURN_NORMAL);
 }

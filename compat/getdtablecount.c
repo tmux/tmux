@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006 Nicholas Marriott <nicholas.marriott@gmail.com>
+ * Copyright (c) 2017 Nicholas Marriott <nicholas.marriott@gmail.com>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -16,47 +16,40 @@
 
 #include <sys/types.h>
 
-#include <stdarg.h>
-#include <stdio.h>
-#include <string.h>
+#include <glob.h>
+#include <unistd.h>
 
 #include "compat.h"
 
+void fatal(const char *, ...);
+void fatalx(const char *, ...);
+
+#ifdef HAVE_PROC_PID
 int
-asprintf(char **ret, const char *fmt, ...)
+getdtablecount(void)
 {
-	va_list	ap;
+	char	path[PATH_MAX];
+	glob_t	g;
 	int	n;
 
-	va_start(ap, fmt);
-	n = vasprintf(ret, fmt, ap);
-	va_end(ap);
-
-	return (n);
-}
-
-int
-vasprintf(char **ret, const char *fmt, va_list ap)
-{
-	int	 n;
-	va_list  ap2;
-
-	va_copy(ap2, ap);
-
-	if ((n = vsnprintf(NULL, 0, fmt, ap)) < 0)
-		goto error;
-
-	*ret = xmalloc(n + 1);
-	if ((n = vsnprintf(*ret, n + 1, fmt, ap2)) < 0) {
-		free(*ret);
-		goto error;
+	if (snprintf(path, sizeof path, "/proc/%ld/fd/*", (long)getpid()) < 0)
+		fatal("snprintf overflow");
+	switch (glob(path, 0, NULL, &g)) {
+	case GLOB_NOMATCH:
+		return (0);
+	case 0:
+		break;
+	default:
+		fatal("glob(\"%s\") failed", path);
 	}
-	va_end(ap2);
-
+	n = g.gl_pathc;
+	globfree(&g);
 	return (n);
-
-error:
-	va_end(ap2);
-	*ret = NULL;
-	return (-1);
 }
+#else
+int
+getdtablecount(void)
+{
+	return (0);
+}
+#endif

@@ -55,7 +55,9 @@ struct tmuxpeer;
 struct tmuxproc;
 
 /* Default global configuration file. */
+#ifndef TMUX_CONF
 #define TMUX_CONF "/etc/tmux.conf"
+#endif
 
 /*
  * Minimum layout cell size, NOT including separator line. The scroll region
@@ -397,6 +399,7 @@ enum tty_code_code {
 	TTYC_SMKX,	/* keypad_xmit, ks */
 	TTYC_SMSO,	/* enter_standout_mode, so */
 	TTYC_SMUL,	/* enter_underline_mode, us */
+	TTYC_SMXX,
 	TTYC_SS,	/* set cursor style, Ss */
 	TTYC_TC,	/* 24-bit "true" colour, Tc */
 	TTYC_TSL,	/* to_status_line, tsl */
@@ -508,7 +511,7 @@ enum utf8_state {
 #define COLOUR_FLAG_256 0x01000000
 #define COLOUR_FLAG_RGB 0x02000000
 
-/* Grid attributes. */
+/* Grid attributes. Anything above 0xff is stored in an extended cell. */
 #define GRID_ATTR_BRIGHT 0x1
 #define GRID_ATTR_DIM 0x2
 #define GRID_ATTR_UNDERSCORE 0x4
@@ -517,6 +520,7 @@ enum utf8_state {
 #define GRID_ATTR_HIDDEN 0x20
 #define GRID_ATTR_ITALICS 0x40
 #define GRID_ATTR_CHARSET 0x80	/* alternative character set */
+#define GRID_ATTR_STRIKETHROUGH 0x100
 
 /* Grid flags. */
 #define GRID_FLAG_FG256 0x1
@@ -533,7 +537,7 @@ enum utf8_state {
 /* Grid cell data. */
 struct grid_cell {
 	u_char			flags;
-	u_char			attr;
+	u_short			attr;
 	int			fg;
 	int			bg;
 	struct utf8_data	data;
@@ -1021,7 +1025,6 @@ LIST_HEAD(tty_terms, tty_term);
 
 struct tty {
 	struct client	*client;
-	char		*path;
 
 	u_int		 sx;
 	u_int		 sy;
@@ -1285,6 +1288,7 @@ struct cmd_entry {
 
 /* Client connection. */
 struct client {
+	const char	*name;
 	struct tmuxpeer	*peer;
 	struct cmdq_list queue;
 
@@ -1510,6 +1514,9 @@ void printflike(3, 4) format_add(struct format_tree *, const char *,
 		     const char *, ...);
 char		*format_expand_time(struct format_tree *, const char *, time_t);
 char		*format_expand(struct format_tree *, const char *);
+char		*format_single(struct cmdq_item *, const char *,
+		     struct client *, struct session *, struct winlink *,
+		     struct window_pane *);
 void		 format_defaults(struct format_tree *, struct client *,
 		     struct session *, struct winlink *, struct window_pane *);
 void		 format_defaults_window(struct format_tree *, struct window *);
@@ -1612,6 +1619,7 @@ void	environ_unset(struct environ *, const char *);
 void	environ_update(struct options *, struct environ *, struct environ *);
 void	environ_push(struct environ *);
 void	environ_log(struct environ *, const char *);
+struct environ *environ_for_session(struct session *);
 
 /* tty.c */
 void	tty_create_log(void);
@@ -1817,6 +1825,8 @@ void	 server_update_socket(void);
 void	 server_add_accept(int);
 
 /* server-client.c */
+void	 server_client_set_identify(struct client *);
+void	 server_client_clear_identify(struct client *, struct window_pane *);
 void	 server_client_set_key_table(struct client *, const char *);
 const char *server_client_get_key_table(struct client *);
 int	 server_client_is_default_key_table(struct client *);
@@ -1837,7 +1847,6 @@ char	*server_client_get_path(struct client *, const char *);
 const char *server_client_get_cwd(struct client *);
 
 /* server-fn.c */
-void	 server_fill_environ(struct session *, struct environ *);
 void	 server_redraw_client(struct client *);
 void	 server_status_client(struct client *);
 void	 server_redraw_session(struct session *);
@@ -1857,8 +1866,6 @@ void	 server_unlink_window(struct session *, struct winlink *);
 void	 server_destroy_pane(struct window_pane *, int);
 void	 server_destroy_session(struct session *);
 void	 server_check_unattached(void);
-void	 server_set_identify(struct client *);
-void	 server_clear_identify(struct client *, struct window_pane *);
 int	 server_set_stdin_callback(struct client *, void (*)(struct client *,
 	     int, void *), void *, char **);
 void	 server_unzoom_window(struct window *);
@@ -1908,7 +1915,7 @@ int	 colour_fromstring(const char *s);
 u_char	 colour_256to16(u_char);
 
 /* attributes.c */
-const char *attributes_tostring(u_char);
+const char *attributes_tostring(int);
 int	 attributes_fromstring(const char *);
 
 /* grid.c */
@@ -2068,7 +2075,7 @@ int		 window_set_active_pane(struct window *, struct window_pane *);
 void		 window_redraw_active_switch(struct window *,
 		     struct window_pane *);
 struct window_pane *window_add_pane(struct window *, struct window_pane *,
-		     u_int);
+		     int, u_int);
 void		 window_resize(struct window *, u_int, u_int);
 int		 window_zoom(struct window_pane *);
 int		 window_unzoom(struct window *);

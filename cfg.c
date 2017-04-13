@@ -27,7 +27,7 @@
 
 #include "tmux.h"
 
-char		 *cfg_file;
+static char	 *cfg_file;
 int		  cfg_finished;
 static char	**cfg_causes;
 static u_int	  cfg_ncauses;

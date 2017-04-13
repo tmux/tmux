@@ -6,6 +6,8 @@
 	  and command prompt
 	* last-pane across sessions
 	* resize-pane -p to match split-window -p
+	* flag to wait-for to have a timeout and/or to stop waiting when the
+	  client gets a signal
 
 - make command sequences more usable
 	* don't require space after ;
@@ -26,8 +28,8 @@
 	* flag to choose-* for sort order
 	* two choices (first one then second, for swap-pane and join-pane)
 	* choose modes should ditch the key bindings and just have fixed keys, and
-          be more customized to their purpose (d to delete a buffer for choose-buffer,
-          a preview of buffer contents, etc)
+	  be more customized to their purpose (d to delete a buffer for choose-buffer,
+	  a preview of buffer contents, etc)
 
 - improve monitor-*:
 	* straighten out rules for multiple clients
@@ -43,20 +45,16 @@
 	* display-time but message-fg/bg/attr
 	* list-* vs show-*
 
-- better UTF-8 support:
-	* searching in copy mode
-
 - copy/paste improvements:
 	* paste w/o trailing whitespace
 	* command to toggle selection not to move it in copy-mode
 	* regex searching
-	* copy-pipe should have -x as well
 	* searching in copy mode should unwrap lines, so if you search for "foobar"
-          then it should be found even if it is now "foo\nbar" (if the WRAP flag
-          is set on the line)
+	  then it should be found even if it is now "foo\nbar" (if the WRAP flag
+	  is set on the line)
 	* capture-pane option to preserve spaces but not join lines
 	* improve word and line selection in copy mode (for example when dragging
-          it should select by word. compare how xterm works. GitHub issue 682)
+	  it should select by word. compare how xterm works. GitHub issue 682)
 
 - layout stuff
 	* way to tag a layout as a number/name
@@ -113,6 +111,8 @@
 	* multiline status line? separate command prompt and status line?
 	* automatic pane logging
 	* marks in history, automatically add (move?) one when pane is changed
+	* this doesn't work, need pane reference count probably:
+	  bind -n DoubleClick3Status confirm-before -p "kill-window #I? (y/n)" kill-window
 
 - hooks
 	* more hooks for various things

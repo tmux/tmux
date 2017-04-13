@@ -85,6 +85,8 @@ grid_need_extended_cell(const struct grid_cell_entry *gce,
 {
 	if (gce->flags & GRID_FLAG_EXTENDED)
 		return (1);
+	if (gc->attr > 0xff)
+		return (1);
 	if (gc->data.size != 1 || gc->data.width != 1)
 		return (1);
 	if ((gc->fg & COLOUR_FLAG_RGB) ||(gc->bg & COLOUR_FLAG_RGB))
@@ -553,6 +555,8 @@ grid_move_cells(struct grid *gd, u_int dx, u_int px, u_int py, u_int nx,
 	grid_expand_line(gd, py, dx + nx, 8);
 	memmove(&gl->celldata[dx], &gl->celldata[px],
 	    nx * sizeof *gl->celldata);
+	if (dx + nx > gl->cellused)
+		gl->cellused = dx + nx;
 
 	/* Wipe any cells that have been moved. */
 	for (xx = px; xx < px + nx; xx++) {
@@ -685,7 +689,8 @@ grid_string_cells_code(const struct grid_cell *lastgc,
 		{ GRID_ATTR_UNDERSCORE, 4 },
 		{ GRID_ATTR_BLINK, 5 },
 		{ GRID_ATTR_REVERSE, 7 },
-		{ GRID_ATTR_HIDDEN, 8 }
+		{ GRID_ATTR_HIDDEN, 8 },
+		{ GRID_ATTR_STRIKETHROUGH, 9 }
 	};
 	n = 0;
 

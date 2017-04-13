@@ -14,11 +14,8 @@ dist-hook:
 # Preprocessor flags.
 AM_CPPFLAGS += @XOPEN_DEFINES@ -DTMUX_CONF="\"$(sysconfdir)/tmux.conf\""
 
-# glibc as usual does things ass-backwards and hides useful things by default,
-# so everyone has to add this.
-if IS_GLIBC
-AM_CFLAGS += -D_GNU_SOURCE
-endif
+# Additional object files.
+LDADD = $(LIBOBJS)
 
 # Set flags for gcc.
 if IS_GCC
@@ -33,23 +30,15 @@ AM_CFLAGS += -Wdeclaration-after-statement -Wno-pointer-sign -Wno-attributes
 AM_CFLAGS += -Wno-unused-result
 AM_CPPFLAGS += -DDEBUG
 endif
-if IS_COVERAGE
-AM_CFLAGS += -g -O0 --coverage
-AM_LDFLAGS += --coverage
-endif
-if IS_PROFILE
-AM_CFLAGS += -g -O0 -pg
-AM_LDFLAGS += -pg
-endif
 AM_CPPFLAGS += -iquote.
 endif
 
 # Set flags for Solaris.
 if IS_SUNOS
 if IS_GCC
-AM_CPPFLAGS += -D_XPG6 -D__EXTENSIONS__ -D_POSIX_PTHREAD_SEMANTICS
+AM_CPPFLAGS += -D_XPG6
 else
-AM_CPPFLAGS += -D_XPG4_2 -D__EXTENSIONS__ -D_POSIX_PTHREAD_SEMANTICS
+AM_CPPFLAGS += -D_XPG4_2
 endif
 endif
 
@@ -60,7 +49,7 @@ endif
 
 # Set _LINUX_SOURCE_COMPAT for AIX for malloc(0).
 if IS_AIX
-DEFS += -D_LINUX_SOURCE_COMPAT=1
+AM_CPPFLAGS += -D_LINUX_SOURCE_COMPAT=1
 endif
 
 # Set flags for NetBSD.
@@ -192,71 +181,14 @@ dist_tmux_SOURCES = \
 	xterm-keys.c
 nodist_tmux_SOURCES = osdep-@PLATFORM@.c
 
+# Add compat file for forkpty.
+if NEED_FORKPTY
+nodist_tmux_SOURCES += compat/forkpty-@PLATFORM@.c
+endif
+
 # Add compat file for utf8proc.
 if HAVE_UTF8PROC
 nodist_tmux_SOURCES += compat/utf8proc.c
-endif
-
-# Add compat for missing or broken functions.
-if NO_FORKPTY
-nodist_tmux_SOURCES += compat/forkpty-@PLATFORM@.c
-endif
-if NO_IMSG
-nodist_tmux_SOURCES += compat/imsg.c compat/imsg-buffer.c
-endif
-if NO_CLOSEFROM
-nodist_tmux_SOURCES += compat/closefrom.c
-endif
-if NO_DAEMON
-nodist_tmux_SOURCES += compat/daemon.c
-endif
-if NO_GETPROGNAME
-nodist_tmux_SOURCES += compat/getprogname.c
-endif
-if NO_SETPROCTITLE
-nodist_tmux_SOURCES += compat/setproctitle.c
-endif
-if NO_SETENV
-nodist_tmux_SOURCES += compat/setenv.c
-endif
-if NO_STRLCAT
-nodist_tmux_SOURCES += compat/strlcat.c
-endif
-if NO_STRLCPY
-nodist_tmux_SOURCES += compat/strlcpy.c
-endif
-if NO_ASPRINTF
-nodist_tmux_SOURCES += compat/asprintf.c
-endif
-if NO_FGETLN
-nodist_tmux_SOURCES += compat/fgetln.c
-endif
-if NO_FPARSELN
-nodist_tmux_SOURCES += compat/fparseln.c
-endif
-if NO_GETOPT
-nodist_tmux_SOURCES += compat/getopt.c
-endif
-if NO_STRCASESTR
-nodist_tmux_SOURCES += compat/strcasestr.c
-endif
-if NO_STRSEP
-nodist_tmux_SOURCES += compat/strsep.c
-endif
-if NO_VIS
-nodist_tmux_SOURCES += compat/vis.c compat/unvis.c
-endif
-if NO_STRTONUM
-nodist_tmux_SOURCES += compat/strtonum.c
-endif
-if NO_B64_NTOP
-nodist_tmux_SOURCES += compat/base64.c
-endif
-if NO_CFMAKERAW
-nodist_tmux_SOURCES += compat/cfmakeraw.c
-endif
-if NO_REALLOCARRAY
-nodist_tmux_SOURCES += compat/reallocarray.c
 endif
 
 # Install tmux.1 in the right format.

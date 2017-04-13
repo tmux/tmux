@@ -78,7 +78,6 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	char		       **argv, *cause, *cp;
 	int			 detached, already_attached, idx, argc;
 	u_int			 sx, sy;
-	struct format_tree	*ft;
 	struct environ_entry	*envent;
 	struct cmd_find_state	 fs;
 
@@ -155,10 +154,8 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 
 	/* Get the new session working directory. */
 	if (args_has(args, 'c')) {
-		ft = format_create(item, FORMAT_NONE, 0);
-		format_defaults(ft, c, NULL, NULL, NULL);
-		to_free = cwd = format_expand(ft, args_get(args, 'c'));
-		format_free(ft);
+		cwd = args_get(args, 'c');
+		to_free = cwd = format_single(item, cwd, c, NULL, NULL, NULL);
 	} else if (c != NULL && c->session == NULL && c->cwd != NULL)
 		cwd = c->cwd;
 	else
@@ -322,15 +319,9 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'P')) {
 		if ((template = args_get(args, 'F')) == NULL)
 			template = NEW_SESSION_TEMPLATE;
-
-		ft = format_create(item, FORMAT_NONE, 0);
-		format_defaults(ft, c, s, NULL, NULL);
-
-		cp = format_expand(ft, template);
+		cp = format_single(item, template, c, s, NULL, NULL);
 		cmdq_print(item, "%s", cp);
 		free(cp);
-
-		format_free(ft);
 	}
 
 	if (!detached)

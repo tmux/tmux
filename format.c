@@ -519,7 +519,6 @@ format_merge(struct format_tree *ft, struct format_tree *from)
 		if (fe->value != NULL)
 			format_add(ft, fe->key, "%s", fe->value);
 	}
-
 }
 
 /* Create a new tree. */
@@ -1081,6 +1080,22 @@ format_expand(struct format_tree *ft, const char *fmt)
 	return (buf);
 }
 
+/* Expand a single string. */
+char *
+format_single(struct cmdq_item *item, const char *fmt, struct client *c,
+    struct session *s, struct winlink *wl, struct window_pane *wp)
+{
+	struct format_tree	*ft;
+	char			*expanded;
+
+	ft = format_create(item, FORMAT_NONE, 0);
+	format_defaults(ft, c, s, wl, wp);
+
+	expanded = format_expand(ft, fmt);
+	format_free(ft);
+	return (expanded);
+}
+
 /* Set defaults for any of arguments that are not NULL. */
 void
 format_defaults(struct format_tree *ft, struct client *c, struct session *s,
@@ -1144,11 +1159,11 @@ format_defaults_client(struct format_tree *ft, struct client *c)
 	if (ft->s == NULL)
 		ft->s = c->session;
 
+	format_add(ft, "client_name", "%s", c->name);
 	format_add(ft, "client_pid", "%ld", (long) c->pid);
 	format_add(ft, "client_height", "%u", tty->sy);
 	format_add(ft, "client_width", "%u", tty->sx);
-	if (tty->path != NULL)
-		format_add(ft, "client_tty", "%s", tty->path);
+	format_add(ft, "client_tty", "%s", c->ttyname);
 	format_add(ft, "client_control_mode", "%d",
 		!!(c->flags & CLIENT_CONTROL));
 

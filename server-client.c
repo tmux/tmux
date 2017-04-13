@@ -47,6 +47,49 @@ static void	server_client_dispatch_command(struct client *, struct imsg *);
 static void	server_client_dispatch_identify(struct client *, struct imsg *);
 static void	server_client_dispatch_shell(struct client *);
 
+/* Idenfity mode callback. */
+static void
+server_client_callback_identify(__unused int fd, __unused short events, void *data)
+{
+	server_client_clear_identify(data, NULL);
+}
+
+/* Set identify mode on client. */
+void
+server_client_set_identify(struct client *c)
+{
+	struct timeval	tv;
+	int		delay;
+
+	delay = options_get_number(c->session->options, "display-panes-time");
+	tv.tv_sec = delay / 1000;
+	tv.tv_usec = (delay % 1000) * 1000L;
+
+	if (event_initialized(&c->identify_timer))
+		evtimer_del(&c->identify_timer);
+	evtimer_set(&c->identify_timer, server_client_callback_identify, c);
+	evtimer_add(&c->identify_timer, &tv);
+
+	c->flags |= CLIENT_IDENTIFY;
+	c->tty.flags |= (TTY_FREEZE|TTY_NOCURSOR);
+	server_redraw_client(c);
+}
+
+/* Clear identify mode on client. */
+void
+server_client_clear_identify(struct client *c, struct window_pane *wp)
+{
+	if (~c->flags & CLIENT_IDENTIFY)
+		return;
+	c->flags &= ~CLIENT_IDENTIFY;
+
+	if (c->identify_callback != NULL)
+		c->identify_callback(c, wp);
+
+	c->tty.flags &= ~(TTY_FREEZE|TTY_NOCURSOR);
+	server_redraw_client(c);
+}
+
 /* Check if this client is inside this server. */
 int
 server_client_check_nested(struct client *c)
@@ -54,15 +97,12 @@ server_client_check_nested(struct client *c)
 	struct environ_entry	*envent;
 	struct window_pane	*wp;
 
-	if (c->tty.path == NULL)
-		return (0);
-
 	envent = environ_find(c->environ, "TMUX");
 	if (envent == NULL || *envent->value == '\0')
 		return (0);
 
 	RB_FOREACH(wp, window_pane_tree, &all_window_panes) {
-		if (strcmp(wp->tty, c->tty.path) == 0)
+		if (strcmp(wp->tty, c->ttyname) == 0)
 			return (1);
 	}
 	return (0);
@@ -190,7 +230,7 @@ server_client_lost(struct client *c)
 
 	c->flags |= CLIENT_DEAD;
 
-	server_clear_identify(c, NULL);
+	server_client_clear_identify(c, NULL);
 	status_prompt_clear(c);
 	status_message_clear(c);
 
@@ -277,8 +317,10 @@ server_client_free(__unused int fd, __unused short events, void *arg)
 	if (!TAILQ_EMPTY(&c->queue))
 		fatalx("queue not empty");
 
-	if (c->references == 0)
+	if (c->references == 0) {
+		free((void *)c->name);
 		free(c);
+	}
 }
 
 /* Detach a client. */
@@ -758,14 +800,14 @@ server_client_handle_key(struct client *c, key_code key)
 		wp = window_pane_at_index(w, key - '0');
 		if (wp != NULL && !window_pane_visible(wp))
 			wp = NULL;
-		server_clear_identify(c, wp);
+		server_client_clear_identify(c, wp);
 		return;
 	}
 
 	/* Handle status line. */
 	if (!(c->flags & CLIENT_READONLY)) {
 		status_message_clear(c);
-		server_clear_identify(c, NULL);
+		server_client_clear_identify(c, NULL);
 	}
 	if (c->prompt_string != NULL) {
 		if (c->flags & CLIENT_READONLY)
@@ -1119,6 +1161,10 @@ server_client_reset_state(struct client *c)
 			mode |= MODE_MOUSE_BUTTON;
 	}
 
+	/* Clear bracketed paste mode if at the prompt. */
+	if (c->prompt_string != NULL)
+		mode &= ~MODE_BRACKETPASTE;
+
 	/* Set the terminal mode and reset attributes. */
 	tty_update_mode(&c->tty, mode, s);
 	tty_reset(&c->tty);
@@ -1431,6 +1477,7 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 	const char	*data, *home;
 	size_t	 	 datalen;
 	int		 flags;
+	char		*name;
 
 	if (c->flags & CLIENT_IDENTIFIED)
 		fatalx("out-of-order identify message");
@@ -1495,6 +1542,13 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 	if (imsg->hdr.type != MSG_IDENTIFY_DONE)
 		return;
 	c->flags |= CLIENT_IDENTIFIED;
+
+	if (*c->ttyname != '\0')
+		name = xstrdup(c->ttyname);
+	else
+		xasprintf(&name, "client-%ld", (long)c->pid);
+	c->name = name;
+	log_debug("client %p name is %s", c, c->name);
 
 #ifdef __CYGWIN__
 	c->fd = open(c->ttyname, O_RDWR|O_NOCTTY);
@@ -1650,7 +1704,7 @@ server_client_add_message(struct client *c, const char *fmt, ...)
 	xvasprintf(&s, fmt, ap);
 	va_end(ap);
 
-	log_debug("%s: message %s", c->tty.path, s);
+	log_debug("message %s (client %p)", s, c);
 
 	msg = xcalloc(1, sizeof *msg);
 	msg->msg_time = time(NULL);

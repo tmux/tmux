@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006 Nicholas Marriott <nicholas.marriott@gmail.com>
+ * Copyright (c) 2017 Nicholas Marriott <nicholas.marriott@gmail.com>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -16,47 +16,16 @@
 
 #include <sys/types.h>
 
-#include <stdarg.h>
-#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "compat.h"
 
-int
-asprintf(char **ret, const char *fmt, ...)
+void
+freezero(void *ptr, size_t size)
 {
-	va_list	ap;
-	int	n;
-
-	va_start(ap, fmt);
-	n = vasprintf(ret, fmt, ap);
-	va_end(ap);
-
-	return (n);
-}
-
-int
-vasprintf(char **ret, const char *fmt, va_list ap)
-{
-	int	 n;
-	va_list  ap2;
-
-	va_copy(ap2, ap);
-
-	if ((n = vsnprintf(NULL, 0, fmt, ap)) < 0)
-		goto error;
-
-	*ret = xmalloc(n + 1);
-	if ((n = vsnprintf(*ret, n + 1, fmt, ap2)) < 0) {
-		free(*ret);
-		goto error;
+	if (ptr != NULL) {
+		memset(ptr, 0, size);
+		free(ptr);
 	}
-	va_end(ap2);
-
-	return (n);
-
-error:
-	va_end(ap2);
-	*ret = NULL;
-	return (-1);
 }
