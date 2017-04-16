@@ -693,10 +693,11 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 {
 	struct grid_cell	 gc, last;
 	u_int			 i, j, sx, width;
-	int			 flags = (tty->flags & TTY_NOCURSOR);
+	int			 flags, cleared = 0;
 	char			 buf[512];
 	size_t			 len;
 
+	flags = (tty->flags & TTY_NOCURSOR);
 	tty->flags |= TTY_NOCURSOR;
 	tty_update_mode(tty, tty->mode, s);
 
@@ -709,6 +710,16 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 	if (sx > tty->sx)
 		sx = tty->sx;
 
+	if (screen_size_x(s) < tty->sx &&
+	    ox == 0 &&
+	    sx != screen_size_x(s) &&
+	    tty_term_has(tty->term, TTYC_EL1) &&
+	    !tty_fake_bce(tty, wp, 8)) {
+		tty_default_attributes(tty, wp, 8);
+		tty_cursor(tty, screen_size_x(s) - 1, oy + py);
+		tty_putcode(tty, TTYC_EL1);
+		cleared = 1;
+	}
 	tty_cursor(tty, ox, oy + py);
 
 	memcpy(&last, &grid_default_cell, sizeof last);
@@ -763,7 +774,7 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 		tty_putn(tty, buf, len, width);
 	}
 
-	if (sx < tty->sx) {
+	if (!cleared && sx < tty->sx) {
 		tty_default_attributes(tty, wp, 8);
 
 		tty_cursor(tty, ox + sx, oy + py);
