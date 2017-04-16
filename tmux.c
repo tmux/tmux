@@ -139,6 +139,8 @@ make_label(const char *label)
 	if (realpath(base, resolved) == NULL)
 		strlcpy(resolved, base, sizeof resolved);
 	xasprintf(&path, "%s/%s", resolved, label);
+
+	free(base);
 	return (path);
 
 fail:
