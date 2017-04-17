@@ -76,7 +76,7 @@ osdep_get_cwd(int fd)
 	n = readlink(path, target, MAXPATHLEN);
 	free(path);
 
-	if (n == -1 && ioctl(fd, TIOCGSID, &sid) != -1) {
+	if (ioctl(fd, TIOCGSID, &sid) != -1) {
 		xasprintf(&path, "/proc/%lld/cwd", (long long) sid);
 		n = readlink(path, target, MAXPATHLEN);
 		free(path);
