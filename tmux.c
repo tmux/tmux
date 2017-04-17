@@ -131,7 +131,11 @@ make_label(const char *label)
 		errno = ENOTDIR;
 		goto fail;
 	}
+#ifdef __CYGWIN__
+	if (sb.st_uid != uid) {
+#else
 	if (sb.st_uid != uid || (sb.st_mode & S_IRWXO) != 0) {
+#endif
 		errno = EACCES;
 		goto fail;
 	}
