@@ -990,7 +990,6 @@ server_client_loop(void)
 	 */
 	focus = options_get_number(global_options, "focus-events");
 	RB_FOREACH(w, windows, &windows) {
-		w->flags &= ~WINDOW_REDRAW;
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (wp->fd != -1) {
 				if (focus)
@@ -1235,11 +1234,6 @@ server_client_check_redraw(struct client *c)
 		tty_update_mode(tty, tty->mode, NULL);
 		screen_redraw_screen(c, 1, 1, 1);
 		c->flags &= ~(CLIENT_STATUS|CLIENT_BORDERS);
-	} else if (c->flags & CLIENT_REDRAWWINDOW) {
-		tty_update_mode(tty, tty->mode, NULL);
-		TAILQ_FOREACH(wp, &c->session->curw->window->panes, entry)
-			screen_redraw_pane(c, wp);
-		c->flags &= ~CLIENT_REDRAWWINDOW;
 	} else {
 		TAILQ_FOREACH(wp, &c->session->curw->window->panes, entry) {
 			if (wp->flags & PANE_REDRAW) {

@@ -820,7 +820,7 @@ struct window {
 	int		 flags;
 #define WINDOW_BELL 0x1
 #define WINDOW_ACTIVITY 0x2
-#define WINDOW_REDRAW 0x4
+/* 0x4 unused */
 #define WINDOW_SILENCE 0x8
 #define WINDOW_ZOOMED 0x1000
 #define WINDOW_FORCEWIDTH 0x2000
@@ -1336,7 +1336,7 @@ struct client {
 #define CLIENT_DEAD 0x200
 #define CLIENT_BORDERS 0x400
 #define CLIENT_READONLY 0x800
-#define CLIENT_REDRAWWINDOW 0x1000
+/* 0x1000 unused */
 #define CLIENT_CONTROL 0x2000
 #define CLIENT_CONTROLCONTROL 0x4000
 #define CLIENT_FOCUSED 0x8000

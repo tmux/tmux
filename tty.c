@@ -720,7 +720,8 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 		tty_putcode(tty, TTYC_EL1);
 		cleared = 1;
 	}
-	tty_cursor(tty, ox, oy + py);
+	if (sx != 0)
+		tty_cursor(tty, ox, oy + py);
 
 	memcpy(&last, &grid_default_cell, sizeof last);
 	len = 0;
@@ -776,7 +777,6 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 
 	if (!cleared && sx < tty->sx) {
 		tty_default_attributes(tty, wp, 8);
-
 		tty_cursor(tty, ox + sx, oy + py);
 		if (sx != screen_size_x(s) &&
 		    ox + screen_size_x(s) >= tty->sx &&
@@ -816,9 +816,7 @@ tty_write(void (*cmdfn)(struct tty *, const struct tty_ctx *),
 	if (wp == NULL)
 		return;
 
-	if (wp->window->flags & WINDOW_REDRAW || wp->flags & PANE_REDRAW)
-		return;
-	if (!window_pane_visible(wp) || wp->flags & PANE_DROP)
+	if ((wp->flags & (PANE_REDRAW|PANE_DROP)) || !window_pane_visible(wp))
 		return;
 
 	TAILQ_FOREACH(c, &clients, entry) {
