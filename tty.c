@@ -816,9 +816,7 @@ tty_write(void (*cmdfn)(struct tty *, const struct tty_ctx *),
 	if (wp == NULL)
 		return;
 
-	if (wp->window->flags & WINDOW_REDRAW || wp->flags & PANE_REDRAW)
-		return;
-	if (!window_pane_visible(wp) || wp->flags & PANE_DROP)
+	if ((wp->flags & (PANE_REDRAW|PANE_DROP)) || !window_pane_visible(wp))
 		return;
 
 	TAILQ_FOREACH(c, &clients, entry) {
