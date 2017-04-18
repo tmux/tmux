@@ -427,6 +427,7 @@ tty_add(struct tty *tty, const char *buf, size_t len)
 
 	evbuffer_add(tty->out, buf, len);
 	log_debug("%s: %.*s", c->name, (int)len, (const char *)buf);
+	tty->written += len;
 
 	if (tty_log_fd != -1)
 		write(tty_log_fd, buf, len);

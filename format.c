@@ -1154,6 +1154,7 @@ format_defaults_client(struct format_tree *ft, struct client *c)
 
 	format_add_tv(ft, "client_created", &c->creation_time);
 	format_add_tv(ft, "client_activity", &c->activity_time);
+	format_add(ft, "client_written", "%zu", tty->written);
 
 	name = server_client_get_key_table(c);
 	if (strcmp(c->keytable->name, name) == 0)
