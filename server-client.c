@@ -1209,6 +1209,14 @@ server_client_check_exit(struct client *c)
 	c->flags &= ~CLIENT_EXIT;
 }
 
+/* Redraw timer callback. */
+static void
+server_client_redraw_timer(__unused int fd, __unused short events,
+    __unused void* data)
+{
+	log_debug("redraw timer fired");
+}
+
 /* Check for client redraws. */
 static void
 server_client_check_redraw(struct client *c)
@@ -1216,10 +1224,52 @@ server_client_check_redraw(struct client *c)
 	struct session		*s = c->session;
 	struct tty		*tty = &c->tty;
 	struct window_pane	*wp;
-	int		 	 flags, masked;
+	int		 	 needed, flags, masked;
+	struct timeval		 tv = { .tv_usec = 1000 };
+	static struct event	 ev;
+	size_t			 left;
 
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
 		return;
+
+	/*
+	 * If there is outstanding data, defer the redraw until it has been
+	 * consumed. We can just add a timer to get out of the event loop and
+	 * end up back here.
+	 */
+	needed = 0;
+	if (c->flags & CLIENT_REDRAW)
+		needed = 1;
+	else {
+		TAILQ_FOREACH(wp, &c->session->curw->window->panes, entry) {
+			if (wp->flags & PANE_REDRAW) {
+				needed = 1;
+				break;
+			}
+		}
+	}
+	if (needed) {
+		left = EVBUFFER_LENGTH(tty->out);
+		if (left != 0) {
+			log_debug("%s: redraw deferred (%zu left)", c->name, left);
+			if (evtimer_initialized(&ev) && evtimer_pending(&ev, NULL))
+				return;
+			log_debug("redraw timer started");
+			evtimer_set(&ev, server_client_redraw_timer, NULL);
+			evtimer_add(&ev, &tv);
+
+			/*
+			 * We may have got here for a single pane redraw, but
+			 * force a full redraw next time in case other panes
+			 * have been updated.
+			 */
+			c->flags |= CLIENT_REDRAW;
+			return;
+		}
+		if (evtimer_initialized(&ev))
+			evtimer_del(&ev);
+		log_debug("%s: redraw needed", c->name);
+	}
 
 	if (c->flags & (CLIENT_REDRAW|CLIENT_STATUS)) {
 		if (options_get_number(s->options, "set-titles"))
