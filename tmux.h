@@ -1047,6 +1047,7 @@ struct tty {
 	struct evbuffer	*in;
 	struct event	 event_out;
 	struct evbuffer	*out;
+	size_t		 written;
 
 	struct termios	 tio;
 
