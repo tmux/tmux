@@ -1075,6 +1075,7 @@ struct tty {
 		TTY_VT220,
 		TTY_VT320,
 		TTY_VT420,
+		TTY_ITERM2,
 		TTY_UNKNOWN
 	} term_type;
 
@@ -1089,7 +1090,8 @@ struct tty {
 	struct tty_key	*key_tree;
 };
 #define TTY_TYPES \
-	{ "VT100", "VT101", "VT102", "VT220", "VT320", "VT420", "UNKNOWN" }
+	{ "VT100", "VT101", "VT102", "VT220", "VT320", "VT420", "iTerm2", \
+	  "Unknown" }
 
 /* TTY command context. */
 struct tty_ctx {

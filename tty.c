@@ -74,9 +74,9 @@ static void	tty_default_attributes(struct tty *, const struct window_pane *,
 #define tty_use_acs(tty) \
 	(tty_term_has((tty)->term, TTYC_ACSC) && !((tty)->flags & TTY_UTF8))
 #define tty_use_margin(tty) \
-	((tty)->term_type == TTY_VT420)
+	((tty)->term_type == TTY_VT420 || (tty)->term_type == TTY_ITERM2)
 
-#define tty_pane_full_width(tty, ctx)					\
+#define tty_pane_full_width(tty, ctx) \
 	((ctx)->xoff == 0 && screen_size_x((ctx)->wp->screen) >= (tty)->sx)
 
 void
@@ -251,7 +251,7 @@ tty_start_tty(struct tty *tty)
 			tty->flags |= TTY_FOCUS;
 			tty_puts(tty, "\033[?1004h");
 		}
-		tty_puts(tty, "\033[c");
+		tty_puts(tty, "\033[c\033[1337n");
 	}
 
 	tty->flags |= TTY_STARTED;
