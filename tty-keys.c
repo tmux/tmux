@@ -46,6 +46,8 @@ static void	tty_keys_callback(int, short, void *);
 static int	tty_keys_mouse(struct tty *, const char *, size_t, size_t *);
 static int	tty_keys_device_attributes(struct tty *, const char *, size_t,
 		    size_t *);
+static int	tty_keys_iterm2_version(struct tty *, const char *, size_t,
+		    size_t *);
 
 /* Default raw keys. */
 struct tty_default_key_raw {
@@ -553,6 +555,17 @@ tty_keys_next(struct tty *tty)
 		goto partial_key;
 	}
 
+	/* Or a response from iTerm2? */
+	switch (tty_keys_iterm2_version(tty, buf, len, &size)) {
+	case 0:		/* yes */
+		key = KEYC_UNKNOWN;
+		goto complete_key;
+	case -1:	/* no, or not valid */
+		break;
+	case 1:		/* partial */
+		goto partial_key;
+	}
+
 	/* Is this a mouse key press? */
 	switch (tty_keys_mouse(tty, buf, len, &size)) {
 	case 0:		/* yes */
@@ -910,5 +923,36 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 
 	log_debug("%s: received DA %.*s (%s)", c->name, (int)*size, buf,
 	    types[type]);
+	return (0);
+}
+
+/*
+ * Handle a version response from iTerm2. Returns 0 for success, -1 for
+ * failure, 1 for partial.
+ */
+static int
+tty_keys_iterm2_version(struct tty *tty, const char *buf, size_t len,
+    size_t *size)
+{
+	struct client	*c = tty->client;
+	u_int		 i;
+
+	*size = 0;
+
+	if (memcmp("\033[ITERM2 ", buf, (len > 9) ? 9 : len) != 0)
+		return (-1);
+	if (len < 10)
+		return (1);
+	for (i = 9; i < len; i++) {
+		if (buf[i] == 'n')
+			break;
+	}
+	if (i == len)
+		return (1);
+	*size = i + 1;
+
+	tty_set_type(tty, TTY_ITERM2);
+
+	log_debug("%s: this is iTerm2", c->name);
 	return (0);
 }
