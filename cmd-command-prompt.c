@@ -192,7 +192,7 @@ cmd_command_prompt_callback(void *data, const char *s, int done)
 
 	if (!done)
 		free(new_template);
-	if (c->prompt_callbackfn != (void *)&cmd_command_prompt_callback)
+	if (c->prompt_callbackfn != cmd_command_prompt_callback)
 		return (1);
 	return (0);
 }
