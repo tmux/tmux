@@ -117,7 +117,7 @@ make_label(const char *label)
 		label = "default";
 	uid = getuid();
 
-	if ((s = getenv("TMUX_TMPDIR")) != NULL && *s != '\0')
+	if ((s = getenv("TMPDIR")) != NULL && *s != '\0')
 		xasprintf(&base, "%s/tmux-%u", s, uid);
 	else
 		xasprintf(&base, "%s/tmux-%ld", _PATH_TMP, (long)uid);
