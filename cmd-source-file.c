@@ -79,7 +79,7 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 	free(pattern);
 
 	for (i = 0; i < (u_int)g.gl_pathc; i++) {
-		if (load_cfg(g.gl_pathv[i], c, item, quiet) != 0)
+		if (load_cfg(g.gl_pathv[i], c, item, quiet) < 0)
 			retval = CMD_RETURN_ERROR;
 	}
 	if (cfg_finished) {
