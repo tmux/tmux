@@ -1277,8 +1277,8 @@ server_client_check_redraw(struct client *c)
 		screen_redraw_update(c); /* will adjust flags */
 	}
 
-	flags = tty->flags & (TTY_FREEZE|TTY_NOCURSOR);
-	tty->flags = (tty->flags & ~TTY_FREEZE) | TTY_NOCURSOR;
+	flags = tty->flags & (TTY_BLOCK|TTY_FREEZE|TTY_NOCURSOR);
+	tty->flags = (tty->flags & ~(TTY_BLOCK|TTY_FREEZE)) | TTY_NOCURSOR;
 
 	if (c->flags & CLIENT_REDRAW) {
 		tty_update_mode(tty, tty->mode, NULL);
