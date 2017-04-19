@@ -315,6 +315,11 @@ int		 unsetenv(const char *);
 void		 cfmakeraw(struct termios *);
 #endif
 
+#ifndef HAVE_FREEZERO
+/* freezero.c */
+void		 freezero(void *, size_t);
+#endif
+
 #ifndef HAVE_REALLOCARRAY
 /* reallocarray.c */
 void		*reallocarray(void *, size_t, size_t);
