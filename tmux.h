@@ -1043,7 +1043,8 @@ struct tty {
 	struct evbuffer	*in;
 	struct event	 event_out;
 	struct evbuffer	*out;
-	size_t		 written;
+	struct event	 timer;
+	size_t		 discarded;
 
 	struct termios	 tio;
 
@@ -1059,6 +1060,7 @@ struct tty {
 #define TTY_STARTED 0x10
 #define TTY_OPENED 0x20
 #define TTY_FOCUS 0x40
+#define TTY_BLOCK 0x80
 	int		 flags;
 
 	struct tty_term	*term;
@@ -1305,6 +1307,9 @@ struct client {
 	char		*term;
 	char		*ttyname;
 	struct tty	 tty;
+
+	size_t		 written;
+	size_t		 discarded;
 
 	void		(*stdin_callback)(struct client *, int, void *);
 	void		*stdin_callback_data;
