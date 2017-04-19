@@ -49,7 +49,7 @@ static void	server_client_dispatch_command(struct client *, struct imsg *);
 static void	server_client_dispatch_identify(struct client *, struct imsg *);
 static void	server_client_dispatch_shell(struct client *);
 
-/* Idenfity mode callback. */
+/* Identify mode callback. */
 static void
 server_client_callback_identify(__unused int fd, __unused short events, void *data)
 {
@@ -325,15 +325,30 @@ server_client_free(__unused int fd, __unused short events, void *arg)
 	}
 }
 
+/* Suspend a client. */
+void
+server_client_suspend(struct client *c)
+{
+	struct session  *s = c->session;
+
+	if (s == NULL || (c->flags & CLIENT_DETACHING))
+		return;
+
+	tty_stop_tty(&c->tty);
+	c->flags |= CLIENT_SUSPENDED;
+	proc_send(c->peer, MSG_SUSPEND, -1, NULL, 0);
+}
+
 /* Detach a client. */
 void
 server_client_detach(struct client *c, enum msgtype msgtype)
 {
-	struct session	*s = c->session;
+	struct session  *s = c->session;
 
-	if (s == NULL)
+	if (s == NULL || (c->flags & CLIENT_DETACHING))
 		return;
 
+	c->flags |= CLIENT_DETACHING;
 	notify_client("client-detached", c);
 	proc_send_s(c->peer, msgtype, s->name);
 }

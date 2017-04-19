@@ -67,9 +67,7 @@ cmd_detach_client_exec(struct cmd *self, struct cmdq_item *item)
 	const char	*cmd = args_get(args, 'E');
 
 	if (self->entry == &cmd_suspend_client_entry) {
-		tty_stop_tty(&c->tty);
-		c->flags |= CLIENT_SUSPENDED;
-		proc_send(c->peer, MSG_SUSPEND, -1, NULL, 0);
+		server_client_suspend(c);
 		return (CMD_RETURN_NORMAL);
 	}
 
