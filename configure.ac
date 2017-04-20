@@ -35,7 +35,7 @@ AC_USE_SYSTEM_EXTENSIONS
 test "$sysconfdir" = '${prefix}/etc' && sysconfdir=/etc
 
 # Is this --enable-debug?
-enable_debug=yes
+test "x$VERSION" = xmaster && enable_debug=yes
 AC_ARG_ENABLE(
 	debug,
 	AC_HELP_STRING(--enable-debug, enable debug build flags),

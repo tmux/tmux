@@ -140,16 +140,12 @@ to compat/ as and when appropriate.
 Release tmux for next version
 =============================
 
-1. Comment the "enable_debug=yes" line in configure.ac, since releases
-   don't have debugging enabled, otherwise make(1) aborts when
-   preparing the distribution.
-
-2. Update and commit README and CHANGES.  The former should be checked for
+1. Update and commit README and CHANGES.  The former should be checked for
    anything outdated and updated with a list of things that might break
    upgrades and the latter should mention all the major changes since
    the last version.
 
-3. Tag with:
+2. Tag with:
 
    % git tag -a 2.X
 
@@ -157,20 +153,20 @@ Release tmux for next version
 
    Push the tag out with:
 
-   % git push 2.X
+   % git push --tags
 
-4. Build the tarball with 'make dist'.
+3. Build the tarball with 'make dist'.
 
-5. Check the tarball.  If it's good, go here to select the tag just pushed:
+4. Check the tarball.  If it's good, go here to select the tag just pushed:
 
    https://github.com/tmux/tmux/tags
 
    Click the "Add release notes", upload the tarball and add a link in the
    description field to the CHANGES file.
 
-7. Clone the tmux.github.io repository, and change the RELEASE version in
-   the Makefile.  Commit it, and run 'make' to replace %%VERSION%%.  Push
-   the result out.
+5. Clone the tmux.github.io repository, and change the RELEASE version in the
+   Makefile.  Commit it, and run 'make' to replace %%VERSION%%.  Push the
+   result out.
 
-8. Bump version in tmux/tmux.git configure.ac and uncomment "enable_debug=yes" to
-   create a debug build by default.
+6. Bump version in tmux/tmux.git configure.ac and uncomment "enable_debug=yes"
+   to create a debug build by default.

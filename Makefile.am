@@ -8,8 +8,6 @@ CLEANFILES = tmux.1.mdoc tmux.1.man
 EXTRA_DIST = \
 	CHANGES FAQ README TODO COPYING example_tmux.conf compat/*.[ch] \
 	osdep-*.c mdoc2man.awk tmux.1
-dist-hook:
-	grep "^#enable_debug=" configure
 
 # Preprocessor flags.
 AM_CPPFLAGS += @XOPEN_DEFINES@ -DTMUX_CONF="\"$(sysconfdir)/tmux.conf\""
