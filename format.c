@@ -1237,17 +1237,14 @@ format_defaults_winlink(struct format_tree *ft, struct session *s,
     struct winlink *wl)
 {
 	struct window	*w = wl->window;
-	char		*flags;
 
 	if (ft->w == NULL)
 		ft->w = wl->window;
 
-	flags = window_printable_flags(s, wl);
-
 	format_defaults_window(ft, w);
 
 	format_add(ft, "window_index", "%d", wl->idx);
-	format_add(ft, "window_flags", "%s", flags);
+	format_add(ft, "window_flags", "%s", window_printable_flags(s, wl));
 	format_add(ft, "window_active", "%d", wl == s->curw);
 
 	format_add(ft, "window_bell_flag", "%d",
@@ -1259,8 +1256,6 @@ format_defaults_winlink(struct format_tree *ft, struct session *s,
 	format_add(ft, "window_last_flag", "%d",
 	    !!(wl == TAILQ_FIRST(&s->lastw)));
 	format_add(ft, "window_linked", "%d", session_is_linked(s, wl->window));
-
-	free(flags);
 }
 
 /* Set default format keys for a window pane. */

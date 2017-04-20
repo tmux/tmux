@@ -710,11 +710,11 @@ window_destroy_panes(struct window *w)
 }
 
 /* Retuns the printable flags on a window, empty string if no flags set. */
-char *
+const char *
 window_printable_flags(struct session *s, struct winlink *wl)
 {
-	char	flags[32];
-	int	pos;
+	static char	flags[32];
+	int		pos;
 
 	pos = 0;
 	if (wl->flags & WINLINK_ACTIVITY)
@@ -732,7 +732,7 @@ window_printable_flags(struct session *s, struct winlink *wl)
 	if (wl->window->flags & WINDOW_ZOOMED)
 		flags[pos++] = 'Z';
 	flags[pos] = '\0';
-	return (xstrdup(flags));
+	return (flags);
 }
 
 struct window_pane *
