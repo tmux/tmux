@@ -110,8 +110,8 @@ cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 	if (!args_has(args, 'b'))
 		cdata->item = item;
 
-	job_run(cdata->cmd, s, cwd, cmd_run_shell_callback, cmd_run_shell_free,
-	    cdata);
+	job_run(cdata->cmd, s, cwd, NULL, cmd_run_shell_callback,
+	    cmd_run_shell_free, cdata);
 
 	if (args_has(args, 'b'))
 		return (CMD_RETURN_NORMAL);

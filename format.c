@@ -40,7 +40,6 @@
 struct format_entry;
 typedef void (*format_cb)(struct format_tree *, struct format_entry *);
 
-static void	 format_job_callback(struct job *);
 static char	*format_job_get(struct format_tree *, const char *);
 static void	 format_job_timer(int, short, void *);
 
@@ -76,7 +75,7 @@ static int	 format_replace(struct format_tree *, const char *, size_t,
 static void	 format_defaults_session(struct format_tree *,
 		     struct session *);
 static void	 format_defaults_client(struct format_tree *, struct client *);
-static void	 format_defaults_winlink(struct format_tree *, struct session *,
+static void	 format_defaults_winlink(struct format_tree *,
 		     struct winlink *);
 
 /* Entry in format job tree. */
@@ -87,6 +86,7 @@ struct format_job {
 
 	time_t			 last;
 	char			*out;
+	int			 updated;
 
 	struct job		*job;
 	int			 status;
@@ -207,9 +207,35 @@ static const char *format_lower[] = {
 	NULL		/* z */
 };
 
-/* Format job callback. */
+/* Format job update callback. */
 static void
-format_job_callback(struct job *job)
+format_job_update(struct job *job)
+{
+	struct format_job	*fj = job->data;
+	char			*line;
+	time_t			 t;
+	struct client		*c;
+
+	if ((line = evbuffer_readline(job->event->input)) == NULL)
+		return;
+	fj->updated = 1;
+
+	free(fj->out);
+	fj->out = line;
+
+	log_debug("%s: %s: %s", __func__, fj->cmd, fj->out);
+
+	t = time (NULL);
+	if (fj->status && fj->last != t) {
+		TAILQ_FOREACH(c, &clients, entry)
+		    server_status_client(c);
+		fj->last = t;
+	}
+}
+
+/* Format job complete callback. */
+static void
+format_job_complete(struct job *job)
 {
 	struct format_job	*fj = job->data;
 	char			*line, *buf;
@@ -217,7 +243,6 @@ format_job_callback(struct job *job)
 	struct client		*c;
 
 	fj->job = NULL;
-	free(fj->out);
 
 	buf = NULL;
 	if ((line = evbuffer_readline(job->event->input)) == NULL) {
@@ -228,15 +253,19 @@ format_job_callback(struct job *job)
 		buf[len] = '\0';
 	} else
 		buf = line;
-	fj->out = buf;
+
+	if (*buf != '\0' || !fj->updated) {
+		free(fj->out);
+		fj->out = buf;
+		log_debug("%s: %s: %s", __func__, fj->cmd, fj->out);
+	} else
+		free(buf);
 
 	if (fj->status) {
 		TAILQ_FOREACH(c, &clients, entry)
 		    server_status_client(c);
 		fj->status = 0;
 	}
-
-	log_debug("%s: %s: %s", __func__, fj->cmd, fj->out);
 }
 
 /* Find a job. */
@@ -271,8 +300,8 @@ format_job_get(struct format_tree *ft, const char *cmd)
 
 	t = time(NULL);
 	if (fj->job == NULL && (force || fj->last != t)) {
-		fj->job = job_run(expanded, NULL, NULL, format_job_callback,
-		    NULL, fj);
+		fj->job = job_run(expanded, NULL, NULL, format_job_update,
+		    format_job_complete, NULL, fj);
 		if (fj->job == NULL) {
 			free(fj->out);
 			xasprintf(&fj->out, "<'%s' didn't start>", fj->cmd);
@@ -1112,8 +1141,8 @@ format_defaults(struct format_tree *ft, struct client *c, struct session *s,
 		format_defaults_client(ft, c);
 	if (s != NULL)
 		format_defaults_session(ft, s);
-	if (s != NULL && wl != NULL)
-		format_defaults_winlink(ft, s, wl);
+	if (wl != NULL)
+		format_defaults_winlink(ft, wl);
 	if (wp != NULL)
 		format_defaults_pane(ft, wp);
 }
@@ -1224,21 +1253,18 @@ format_defaults_window(struct format_tree *ft, struct window *w)
 
 /* Set default format keys for a winlink. */
 static void
-format_defaults_winlink(struct format_tree *ft, struct session *s,
-    struct winlink *wl)
+format_defaults_winlink(struct format_tree *ft, struct winlink *wl)
 {
+	struct session	*s = wl->session;
 	struct window	*w = wl->window;
-	char		*flags;
 
 	if (ft->w == NULL)
 		ft->w = wl->window;
 
-	flags = window_printable_flags(s, wl);
-
 	format_defaults_window(ft, w);
 
 	format_add(ft, "window_index", "%d", wl->idx);
-	format_add(ft, "window_flags", "%s", flags);
+	format_add(ft, "window_flags", "%s", window_printable_flags(wl));
 	format_add(ft, "window_active", "%d", wl == s->curw);
 
 	format_add(ft, "window_bell_flag", "%d",
@@ -1250,8 +1276,6 @@ format_defaults_winlink(struct format_tree *ft, struct session *s,
 	format_add(ft, "window_last_flag", "%d",
 	    !!(wl == TAILQ_FIRST(&s->lastw)));
 	format_add(ft, "window_linked", "%d", session_is_linked(s, wl->window));
-
-	free(flags);
 }
 
 /* Set default format keys for a window pane. */

@@ -133,7 +133,8 @@ server_create_socket(void)
 int
 server_start(struct event_base *base, int lockfd, char *lockfile)
 {
-	int	pair[2];
+	int		 pair[2];
+	struct job	*job;
 
 	if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, pair) != 0)
 		fatal("socketpair failed");
@@ -179,6 +180,12 @@ server_start(struct event_base *base, int lockfd, char *lockfile)
 	server_add_accept(0);
 
 	proc_loop(server_proc, server_loop);
+
+	LIST_FOREACH(job, &all_jobs, entry) {
+		if (job->pid != -1)
+			kill(job->pid, SIGTERM);
+	}
+
 	status_prompt_save_history();
 	exit(0);
 }
@@ -399,7 +406,7 @@ server_child_exited(pid_t pid, int status)
 		}
 	}
 
-	LIST_FOREACH(job, &all_jobs, lentry) {
+	LIST_FOREACH(job, &all_jobs, entry) {
 		if (pid == job->pid) {
 			job_died(job, status);	/* might free job */
 			break;

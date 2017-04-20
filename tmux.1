@@ -3494,6 +3494,8 @@ does not wait for
 .Ql #()
 commands to finish; instead, the previous result from running the same command is used,
 or a placeholder if the command has not been run before.
+If the command hasn't exited, the most recent line of output will be used, but the status
+line will not be updated more than once a second.
 Commands are executed with the
 .Nm
 global environment set (see the

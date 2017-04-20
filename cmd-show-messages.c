@@ -75,7 +75,7 @@ cmd_show_messages_jobs(struct cmdq_item *item, int blank)
 	u_int		 n;
 
 	n = 0;
-	LIST_FOREACH(job, &all_jobs, lentry) {
+	LIST_FOREACH(job, &all_jobs, entry) {
 		if (blank) {
 			cmdq_print(item, "%s", "");
 			blank = 0;
