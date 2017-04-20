@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2010 Dagobert Michelsen
- * Copyright (c) 2010 Nicholas Marriott <nicholas.marriott@gmail.com>
+ * Copyright (c) 2017 Nicholas Marriott <nicholas.marriott@gmail.com>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -17,33 +16,19 @@
 
 #include <sys/types.h>
 
-#include <stdlib.h>
-#include <string.h>
+#include <limits.h>
 
 #include "compat.h"
 
 int
-setenv(const char *name, const char *value, __unused int overwrite)
+getptmfd(void)
 {
-	char	*newval;
-
-	xasprintf(&newval, "%s=%s", name, value);
-	return (putenv(newval));
+	return (INT_MAX);
 }
 
-int
-unsetenv(const char *name)
+pid_t
+fdforkpty(__unused int ptmfd, int *master, char *name, struct termios *tio,
+    struct winsize *ws)
 {
-	char  **envptr;
-	int	namelen;
-
-	namelen = strlen(name);
-	for (envptr = environ; *envptr != NULL; envptr++) {
-		if (strncmp(name, *envptr, namelen) == 0 &&
-		    ((*envptr)[namelen] == '=' || (*envptr)[namelen] == '\0'))
-			break;
-	}
-	for (; *envptr != NULL; envptr++)
-		*envptr = *(envptr + 1);
-	return (0);
+	return (forkpty(master, name, tio, ws));
 }

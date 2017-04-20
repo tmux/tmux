@@ -454,7 +454,13 @@ else
 	AC_LIBOBJ(getopt)
 fi
 
-# Look for forkpty in libutil. compat/forkpty-*.c is linked if not found.
+# Look for fdforkpty and forkpty in libutil.
+AC_SEARCH_LIBS(fdforkpty, util, found_fdforkpty=yes, found_fdforkpty=no)
+if test "x$found_fdforkpty" = xyes; then
+	AC_DEFINE(HAVE_FDFORKPTY)
+else
+	AC_LIBOBJ(fdforkpty)
+fi
 AC_SEARCH_LIBS(forkpty, util, found_forkpty=yes, found_forkpty=no)
 if test "x$found_forkpty" = xyes; then
 	AC_DEFINE(HAVE_FORKPTY)

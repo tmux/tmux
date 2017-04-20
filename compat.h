@@ -18,6 +18,7 @@
 #define COMPAT_H
 
 #include <sys/types.h>
+#include <sys/ioctl.h>
 #include <sys/uio.h>
 
 #include <limits.h>
@@ -283,9 +284,15 @@ int		 b64_ntop(const char *, size_t, char *, size_t);
 int		 b64_pton(const char *, u_char *, size_t);
 #endif
 
+#ifndef HAVE_FDFORKPTY
+/* fdforkpty.c */
+int		 getptmfd(void);
+pid_t		 fdforkpty(int, int *, char *, struct termios *,
+		     struct winsize *);
+#endif
+
 #ifndef HAVE_FORKPTY
 /* forkpty.c */
-#include <sys/ioctl.h>
 pid_t		 forkpty(int *, char *, struct termios *, struct winsize *);
 #endif
 
