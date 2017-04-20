@@ -113,6 +113,7 @@
 	* marks in history, automatically add (move?) one when pane is changed
 	* this doesn't work, need pane reference count probably:
 	  bind -n DoubleClick3Status confirm-before -p "kill-window #I? (y/n)" kill-window
+	* respawn -c flag same as neww etc
 
 - hooks
 	* more hooks for various things
