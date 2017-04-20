@@ -938,8 +938,8 @@ retry:
 		server_status_client(c);
 
 		/* Find default state if the pane is known. */
-		cmd_find_clear_state(&fs, NULL, 0);
-		if (wp != NULL) {
+		if (KEYC_IS_MOUSE(key) && m->valid && wp != NULL) {
+			cmd_find_clear_state(&fs, NULL, 0);
 			fs.s = s;
 			fs.wl = fs.s->curw;
 			fs.w = fs.wl->window;
@@ -948,10 +948,9 @@ retry:
 
 			if (!cmd_find_valid_state(&fs))
 				fatalx("invalid key state");
-		}
-
-		/* Dispatch the key binding. */
-		key_bindings_dispatch(bd, c, m, &fs);
+			key_bindings_dispatch(bd, c, m, &fs);
+		} else
+			key_bindings_dispatch(bd, c, m, NULL);
 		key_bindings_unref_table(table);
 		return;
 	}
