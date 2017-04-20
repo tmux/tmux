@@ -71,7 +71,7 @@ static int	 format_replace(struct format_tree *, const char *, size_t,
 static void	 format_defaults_session(struct format_tree *,
 		     struct session *);
 static void	 format_defaults_client(struct format_tree *, struct client *);
-static void	 format_defaults_winlink(struct format_tree *, struct session *,
+static void	 format_defaults_winlink(struct format_tree *,
 		     struct winlink *);
 
 /* Entry in format job tree. */
@@ -1121,8 +1121,8 @@ format_defaults(struct format_tree *ft, struct client *c, struct session *s,
 		format_defaults_client(ft, c);
 	if (s != NULL)
 		format_defaults_session(ft, s);
-	if (s != NULL && wl != NULL)
-		format_defaults_winlink(ft, s, wl);
+	if (wl != NULL)
+		format_defaults_winlink(ft, wl);
 	if (wp != NULL)
 		format_defaults_pane(ft, wp);
 }
@@ -1233,9 +1233,9 @@ format_defaults_window(struct format_tree *ft, struct window *w)
 
 /* Set default format keys for a winlink. */
 static void
-format_defaults_winlink(struct format_tree *ft, struct session *s,
-    struct winlink *wl)
+format_defaults_winlink(struct format_tree *ft, struct winlink *wl)
 {
+	struct session	*s = wl->session;
 	struct window	*w = wl->window;
 
 	if (ft->w == NULL)
@@ -1244,7 +1244,7 @@ format_defaults_winlink(struct format_tree *ft, struct session *s,
 	format_defaults_window(ft, w);
 
 	format_add(ft, "window_index", "%d", wl->idx);
-	format_add(ft, "window_flags", "%s", window_printable_flags(s, wl));
+	format_add(ft, "window_flags", "%s", window_printable_flags(wl));
 	format_add(ft, "window_active", "%d", wl == s->curw);
 
 	format_add(ft, "window_bell_flag", "%d",

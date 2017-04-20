@@ -709,12 +709,12 @@ window_destroy_panes(struct window *w)
 	}
 }
 
-/* Retuns the printable flags on a window, empty string if no flags set. */
 const char *
-window_printable_flags(struct session *s, struct winlink *wl)
+window_printable_flags(struct winlink *wl)
 {
-	static char	flags[32];
-	int		pos;
+	struct session	*s = wl->session;
+	static char	 flags[32];
+	int		 pos;
 
 	pos = 0;
 	if (wl->flags & WINLINK_ACTIVITY)
