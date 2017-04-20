@@ -588,6 +588,10 @@ struct hook {
 };
 
 /* Scheduled job. */
+struct job;
+typedef void (*job_update_cb) (struct job *);
+typedef void (*job_complete_cb) (struct job *);
+typedef void (*job_free_cb) (void *);
 struct job {
 	enum {
 		JOB_RUNNING,
@@ -595,18 +599,19 @@ struct job {
 		JOB_CLOSED
 	} state;
 
-	char		*cmd;
-	pid_t		 pid;
-	int		 status;
+	char			*cmd;
+	pid_t			 pid;
+	int			 status;
 
-	int		 fd;
-	struct bufferevent *event;
+	int			 fd;
+	struct bufferevent	*event;
 
-	void		(*callbackfn)(struct job *);
-	void		(*freefn)(void *);
-	void		*data;
+	job_update_cb		 updatecb;
+	job_complete_cb		 completecb;
+	job_free_cb		 freecb;
+	void			*data;
 
-	LIST_ENTRY(job)	 lentry;
+	LIST_ENTRY(job)	 	 entry;
 };
 LIST_HEAD(joblist, job);
 
@@ -1601,10 +1606,10 @@ extern const struct options_table_entry options_table[];
 
 /* job.c */
 extern struct joblist all_jobs;
-struct job *job_run(const char *, struct session *, const char *,
-	    void (*)(struct job *), void (*)(void *), void *);
-void	job_free(struct job *);
-void	job_died(struct job *, int);
+struct job	*job_run(const char *, struct session *, const char *,
+		     job_update_cb, job_complete_cb, job_free_cb, void *);
+void		 job_free(struct job *);
+void		 job_died(struct job *, int);
 
 /* environ.c */
 struct environ *environ_create(void);

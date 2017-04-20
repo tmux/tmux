@@ -127,8 +127,8 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 		cdata->item = NULL;
 	memcpy(&cdata->mouse, &item->mouse, sizeof cdata->mouse);
 
-	job_run(shellcmd, s, cwd, cmd_if_shell_callback, cmd_if_shell_free,
-	    cdata);
+	job_run(shellcmd, s, cwd, NULL, cmd_if_shell_callback,
+	    cmd_if_shell_free, cdata);
 	free(shellcmd);
 
 	if (args_has(args, 'b'))

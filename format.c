@@ -39,7 +39,6 @@
 struct format_entry;
 typedef void (*format_cb)(struct format_tree *, struct format_entry *);
 
-static void	 format_job_callback(struct job *);
 static char	*format_job_get(struct format_tree *, const char *);
 static void	 format_job_timer(int, short, void *);
 
@@ -83,6 +82,7 @@ struct format_job {
 
 	time_t			 last;
 	char			*out;
+	int			 updated;
 
 	struct job		*job;
 	int			 status;
@@ -203,9 +203,35 @@ static const char *format_lower[] = {
 	NULL		/* z */
 };
 
-/* Format job callback. */
+/* Format job update callback. */
 static void
-format_job_callback(struct job *job)
+format_job_update(struct job *job)
+{
+	struct format_job	*fj = job->data;
+	char			*line;
+	time_t			 t;
+	struct client		*c;
+
+	if ((line = evbuffer_readline(job->event->input)) == NULL)
+		return;
+	fj->updated = 1;
+
+	free(fj->out);
+	fj->out = line;
+
+	log_debug("%s: %s: %s", __func__, fj->cmd, fj->out);
+
+	t = time (NULL);
+	if (fj->status && fj->last != t) {
+		TAILQ_FOREACH(c, &clients, entry)
+		    server_status_client(c);
+		fj->last = t;
+	}
+}
+
+/* Format job complete callback. */
+static void
+format_job_complete(struct job *job)
 {
 	struct format_job	*fj = job->data;
 	char			*line, *buf;
@@ -213,7 +239,6 @@ format_job_callback(struct job *job)
 	struct client		*c;
 
 	fj->job = NULL;
-	free(fj->out);
 
 	buf = NULL;
 	if ((line = evbuffer_readline(job->event->input)) == NULL) {
@@ -224,15 +249,19 @@ format_job_callback(struct job *job)
 		buf[len] = '\0';
 	} else
 		buf = line;
-	fj->out = buf;
+
+	if (*buf != '\0' || !fj->updated) {
+		free(fj->out);
+		fj->out = buf;
+		log_debug("%s: %s: %s", __func__, fj->cmd, fj->out);
+	} else
+		free(buf);
 
 	if (fj->status) {
 		TAILQ_FOREACH(c, &clients, entry)
 		    server_status_client(c);
 		fj->status = 0;
 	}
-
-	log_debug("%s: %s: %s", __func__, fj->cmd, fj->out);
 }
 
 /* Find a job. */
@@ -267,8 +296,8 @@ format_job_get(struct format_tree *ft, const char *cmd)
 
 	t = time(NULL);
 	if (fj->job == NULL && (force || fj->last != t)) {
-		fj->job = job_run(expanded, NULL, NULL, format_job_callback,
-		    NULL, fj);
+		fj->job = job_run(expanded, NULL, NULL, format_job_update,
+		    format_job_complete, NULL, fj);
 		if (fj->job == NULL) {
 			free(fj->out);
 			xasprintf(&fj->out, "<'%s' didn't start>", fj->cmd);
