@@ -1,3 +1,90 @@
+CHANGES FROM 2.3 to 2.4 XXXX April 2017
+
+Incompatible Changes
+====================
+
+* Key tables have undergone some changes, in particular the following tables
+  have been removed:
+
+  vi-edit
+  vi-copy
+  emacs-edit
+  emacs-copy
+
+  As an example:
+
+  The vi-copy and emacs-copy mode key tables are gone, and instead copy
+  mode commands are bound in one of two normal key tables ("copy-mode" or
+  "copy-mode-vi"). Keys are bound to "send-keys -X copy-mode-command". So:
+
+      bind -temacs-copy C-Up scroll-up
+      bind -temacs-copy -R5 WheelUpPane scroll-up
+
+ Becomes:
+
+      bind -Tcopy-mode C-Up send -X scroll-up
+      bind -Tcopy-mode WheelUpPane send -N5 -X scroll-up
+
+ This allows the full command parser and command set to be used - for
+ example, we can use the normal command prompt for searching, jumping,
+ and so on instead of a custom one:
+
+      bind -Tcopy-mode C-r command-prompt -p'search up' "send -X search-backward '%%'"
+
+  command-prompt also gets a -1 option to only require on key press, which
+  is needed for jumping.
+
+* Edit-mode key table has gone away -- instead, fixed key-bindings are used.
+* bind-key -c flag has been removed.
+* set-remain-on-exit has gone away -- can be achieved with hooks instead.
+* Hooks:
+
+  - before- hooks have gone away;
+  - Set number of commands now have hooks.
+
+* The xterm-keys option now defaults to on.
+
+Normal Changes
+==============
+
+* Mouse support for double and triple clicks has been added.
+* command-prompt understands -N
+* BCE (Background Colour Erase) is now supported.
+* copy-mode learned the copy-pipe-and-cancel command.
+* send -N now works for all keys, not just in copy mode.
+* All occurrences of a search string in copy mode are now highlighted;
+  additionally, the number of search results is also displayed.
+* Copy mode now supports incremental search.
+* source-file now understands glob patterns.
+* Formats now have simple comparisons:
+
+  For instance:
+
+  #{==:a,b}
+  #{!=a,b}
+
+* Formats also learned the following new placeholders:
+
+  - #{version} -- the tmux server version.
+  - #{client_termtype} -- the terminal type of the client.
+  - #{client_name} -- the name of a client.
+  - #{client_written} -- Number of bytes written to the client.
+
+* The configuration file now accepts %if/%endif conditional blocks; the argument
+  is a format string (useful with the new format comparison options).
+* detach-client learned -E to exec a command to replace the client instead of
+  exiting.
+* Add support for custom command aliases, this is an array option which
+  contains items of the form "alias=command". This is consulted when an
+  unknown command is parsed.
+* break-pane learned -n
+* OSC52 support has been added for clipboard inside tmux.
+* Mouse "all event" mode (1003) has been added.
+* Palette setting is now possible.
+* Strikethrough support has been added (a recent terminfo is required)
+* Grouped sessions can now be named (new -t).
+* There has also been many performance improvements as part of this version.
+
 CHANGES FROM 2.2 to 2.3 29 September 2016
 
 Incompatible Changes
