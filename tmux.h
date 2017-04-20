@@ -2307,8 +2307,4 @@ void		 style_apply_update(struct grid_cell *, struct options *,
 int		 style_equal(const struct grid_cell *,
 		     const struct grid_cell *);
 
-/* pty.c */
-int		 pty_open(int *);
-pid_t		 pty_fork(int, int *, char *, size_t, struct winsize *);
-
 #endif /* TMUX_H */
