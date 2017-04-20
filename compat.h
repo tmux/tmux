@@ -344,9 +344,7 @@ int		 utf8proc_mbtowc(wchar_t *, const char *, size_t);
 int		 utf8proc_wctomb(char *, wchar_t);
 #endif
 
-#ifdef HAVE_GETOPT
-#include <getopt.h>
-#else
+#ifndef HAVE_GETOPT
 /* getopt.c */
 extern int	BSDopterr;
 extern int	BSDoptind;
