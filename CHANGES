@@ -51,7 +51,7 @@ Normal Changes
 * Formats now have simple comparisons:
 
     #{==:a,b}
-    #{!=a,b}
+    #{!=:a,b}
 
 * There are the following new formats:
 
