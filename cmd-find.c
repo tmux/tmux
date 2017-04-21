@@ -974,9 +974,8 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 		fs->current = &current;
 		log_debug("%s: current is from client", __func__);
 	} else
-		return (-1);
-	if (!cmd_find_empty_state(fs->current) &&
-	    !cmd_find_valid_state(fs->current))
+		goto error;
+	if (!cmd_find_valid_state(fs->current))
 		fatalx("invalid current find state");
 
 	/* An empty or NULL target is the current. */

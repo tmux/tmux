@@ -203,13 +203,13 @@ cmdq_fire_command(struct cmdq_item *item)
 	flags = !!(cmd->flags & CMD_CONTROL);
 	cmdq_guard(item, "begin", flags);
 
+	if (item->client == NULL)
+		item->client = cmd_find_client(item, NULL, 1);
+
 	if (cmd_prepare_state(cmd, item) != 0) {
 		retval = CMD_RETURN_ERROR;
 		goto out;
 	}
-
-	if (item->client == NULL)
-		item->client = cmd_find_client(item, NULL, 1);
 
 	retval = cmd->entry->exec(cmd, item);
 	if (retval == CMD_RETURN_ERROR)
