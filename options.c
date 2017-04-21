@@ -433,7 +433,9 @@ options_match(const char *s, int *idx, int* ambiguous)
 
 	if (*name == '@') {
 		*ambiguous = 0;
-		return (xstrdup(name));
+		char *cp = xstrdup(name);
+		free(name);
+		return (cp);
 	}
 
 	found = NULL;
