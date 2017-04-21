@@ -1145,7 +1145,6 @@ enum cmd_find_type {
 	CMD_FIND_SESSION,
 };
 struct cmd_find_state {
-	struct cmdq_item	*item;
 	int			 flags;
 	struct cmd_find_state	*current;
 
@@ -1730,14 +1729,10 @@ long long	 args_strtonum(struct args *, u_char, long long, long long,
 		     char **);
 
 /* cmd-find.c */
-int		 cmd_find_current(struct cmd_find_state *, struct cmdq_item *,
-		     int);
-int		 cmd_find_target(struct cmd_find_state *,
-		     struct cmd_find_state *, struct cmdq_item *, const char *,
-		     enum cmd_find_type, int);
+int		 cmd_find_target(struct cmd_find_state *, struct cmdq_item *,
+		     const char *, enum cmd_find_type, int);
 struct client	*cmd_find_client(struct cmdq_item *, const char *, int);
-void		 cmd_find_clear_state(struct cmd_find_state *,
-		     struct cmdq_item *, int);
+void		 cmd_find_clear_state(struct cmd_find_state *, int);
 int		 cmd_find_empty_state(struct cmd_find_state *);
 int		 cmd_find_valid_state(struct cmd_find_state *);
 void		 cmd_find_copy_state(struct cmd_find_state *,
@@ -1750,10 +1745,14 @@ void		 cmd_find_from_winlink(struct cmd_find_state *,
 int		 cmd_find_from_session_window(struct cmd_find_state *,
 		     struct session *, struct window *);
 int		 cmd_find_from_window(struct cmd_find_state *, struct window *);
-int		 cmd_find_from_pane(struct cmd_find_state *,
-		     struct window_pane *);
 void		 cmd_find_from_winlink_pane(struct cmd_find_state *,
 		     struct winlink *, struct window_pane *);
+int		 cmd_find_from_pane(struct cmd_find_state *,
+		     struct window_pane *);
+int		 cmd_find_from_client(struct cmd_find_state *, struct client *);
+int		 cmd_find_from_mouse(struct cmd_find_state *,
+		     struct mouse_event *);
+int		 cmd_find_from_nothing(struct cmd_find_state *);
 
 /* cmd.c */
 int		 cmd_pack_argv(int, char **, char *, size_t);

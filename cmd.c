@@ -454,7 +454,6 @@ cmd_prepare_state_flag(char c, const char *target, enum cmd_entry_flag flag,
 {
 	int			 targetflags, error;
 	struct cmd_find_state	*fs = NULL;
-	struct cmd_find_state	 current;
 
 	if (flag == CMD_NONE ||
 	    flag == CMD_CLIENT ||
@@ -511,15 +510,6 @@ cmd_prepare_state_flag(char c, const char *target, enum cmd_entry_flag flag,
 	}
 	log_debug("%s: flag %c %d %#x", __func__, c, flag, targetflags);
 
-	error = cmd_find_current(&current, item, targetflags);
-	if (error != 0) {
-		if (~targetflags & CMD_FIND_QUIET)
-			return (-1);
-		cmd_find_clear_state(&current, NULL, 0);
-	}
-	if (!cmd_find_empty_state(&current) && !cmd_find_valid_state(&current))
-		fatalx("invalid current state");
-
 	switch (flag) {
 	case CMD_NONE:
 	case CMD_CLIENT:
@@ -529,14 +519,14 @@ cmd_prepare_state_flag(char c, const char *target, enum cmd_entry_flag flag,
 	case CMD_SESSION_CANFAIL:
 	case CMD_SESSION_PREFERUNATTACHED:
 	case CMD_SESSION_WITHPANE:
-		error = cmd_find_target(fs, &current, item, target,
-		    CMD_FIND_SESSION, targetflags);
+		error = cmd_find_target(fs, item, target, CMD_FIND_SESSION,
+		    targetflags);
 		if (error != 0)
 			goto error;
 		break;
 	case CMD_MOVEW_R:
-		error = cmd_find_target(fs, &current, item, target,
-		    CMD_FIND_SESSION, CMD_FIND_QUIET);
+		error = cmd_find_target(fs, item, target, CMD_FIND_SESSION,
+		    CMD_FIND_QUIET);
 		if (error == 0)
 			break;
 		/* FALLTHROUGH */
@@ -544,16 +534,16 @@ cmd_prepare_state_flag(char c, const char *target, enum cmd_entry_flag flag,
 	case CMD_WINDOW_CANFAIL:
 	case CMD_WINDOW_MARKED:
 	case CMD_WINDOW_INDEX:
-		error = cmd_find_target(fs, &current, item, target,
-		    CMD_FIND_WINDOW, targetflags);
+		error = cmd_find_target(fs, item, target, CMD_FIND_WINDOW,
+		    targetflags);
 		if (error != 0)
 			goto error;
 		break;
 	case CMD_PANE:
 	case CMD_PANE_CANFAIL:
 	case CMD_PANE_MARKED:
-		error = cmd_find_target(fs, &current, item, target,
-		    CMD_FIND_PANE, targetflags);
+		error = cmd_find_target(fs, item, target, CMD_FIND_PANE,
+		    targetflags);
 		if (error != 0)
 			goto error;
 		break;
@@ -565,7 +555,7 @@ cmd_prepare_state_flag(char c, const char *target, enum cmd_entry_flag flag,
 error:
 	if (~targetflags & CMD_FIND_QUIET)
 		return (-1);
-	cmd_find_clear_state(fs, NULL, 0);
+	cmd_find_clear_state(fs, 0);
 	return (0);
 }
 
@@ -584,8 +574,8 @@ cmd_prepare_state(struct cmd *cmd, struct cmdq_item *item)
 	free(tmp);
 
 	state->c = NULL;
-	cmd_find_clear_state(&state->tflag, NULL, 0);
-	cmd_find_clear_state(&state->sflag, NULL, 0);
+	cmd_find_clear_state(&state->tflag, 0);
+	cmd_find_clear_state(&state->sflag, 0);
 
 	flag = cmd->entry->cflag;
 	if (flag == CMD_NONE) {

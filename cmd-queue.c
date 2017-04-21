@@ -216,11 +216,12 @@ cmdq_fire_command(struct cmdq_item *item)
 		name = cmd->entry->name;
 		if (cmd_find_valid_state(&item->state.tflag))
 			fsp = &item->state.tflag;
-		else {
-			if (cmd_find_current(&fs, item, CMD_FIND_QUIET) != 0)
-				goto out;
+		else if (cmd_find_valid_state(&item->shared->current))
+			fsp = &item->shared->current;
+		else if (cmd_find_from_client(&fs, item->client) == 0)
 			fsp = &fs;
-		}
+		else
+			goto out;
 		hooks_insert(fsp->s->hooks, item, fsp, "after-%s", name);
 	}
 

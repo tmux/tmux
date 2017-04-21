@@ -68,7 +68,7 @@ cmd_run_shell_print(struct job *job, const char *msg)
 			cmdq_print(cdata->item, "%s", msg);
 			return;
 		}
-		if (cmd_find_current (&fs, NULL, CMD_FIND_QUIET) != 0)
+		if (cmd_find_from_nothing(&fs) != 0)
 			return;
 		wp = fs.wp;
 		if (wp == NULL)
