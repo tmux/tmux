@@ -41,7 +41,6 @@ extern char   **environ;
 struct args;
 struct client;
 struct cmdq_item;
-struct cmdq_subitem;
 struct cmdq_list;
 struct environ;
 struct input_ctx;

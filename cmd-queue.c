@@ -206,7 +206,7 @@ cmdq_fire_command(struct cmdq_item *item)
 		goto out;
 	}
 	if (item->client == NULL)
-		item->client = cmd_find_client(item, NULL, CMD_FIND_QUIET);
+		item->client = cmd_find_client(item, NULL, 1);
 
 	retval = cmd->entry->exec(cmd, item);
 	if (retval == CMD_RETURN_ERROR)
@@ -325,8 +325,7 @@ cmdq_next(struct client *c)
 			item->time = time(NULL);
 			item->number = ++number;
 
-			switch (item->type)
-			{
+			switch (item->type) {
 			case CMDQ_COMMAND:
 				retval = cmdq_fire_command(item);
 
