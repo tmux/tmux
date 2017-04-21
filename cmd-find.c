@@ -894,12 +894,11 @@ cmd_find_from_session(struct cmd_find_state *fs, struct session *s)
 
 /* Find state from a winlink. */
 int
-cmd_find_from_winlink(struct cmd_find_state *fs, struct session *s,
-    struct winlink *wl)
+cmd_find_from_winlink(struct cmd_find_state *fs, struct winlink *wl)
 {
 	cmd_find_clear_state(fs, NULL, 0);
 
-	fs->s = s;
+	fs->s = wl->session;
 	fs->wl = wl;
 	fs->w = wl->window;
 	fs->wp = wl->window->active;
@@ -997,8 +996,8 @@ cmd_find_target(struct cmd_find_state *fs, struct cmd_find_state *current,
 	if (server_check_marked() && (flags & CMD_FIND_DEFAULT_MARKED)) {
 		fs->current = &marked_pane;
 		log_debug("%s: current is marked pane", __func__);
-	} else if (cmd_find_valid_state(&item->current)) {
-		fs->current = &item->current;
+	} else if (cmd_find_valid_state(&item->shared->current)) {
+		fs->current = &item->shared->current;
 		log_debug("%s: current is from queue", __func__);
 	} else {
 		fs->current = current;
@@ -1014,7 +1013,7 @@ cmd_find_target(struct cmd_find_state *fs, struct cmd_find_state *current,
 
 	/* Mouse target is a plain = or {mouse}. */
 	if (strcmp(target, "=") == 0 || strcmp(target, "{mouse}") == 0) {
-		m = &item->mouse;
+		m = &item->shared->mouse;
 		switch (type) {
 		case CMD_FIND_PANE:
 			fs->wp = cmd_mouse_pane(m, &fs->s, &fs->wl);

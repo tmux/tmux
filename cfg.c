@@ -31,7 +31,6 @@ static char	 *cfg_file;
 int		  cfg_finished;
 static char	**cfg_causes;
 static u_int	  cfg_ncauses;
-struct client	 *cfg_client;
 
 static enum cmd_retval
 cfg_done(__unused struct cmdq_item *item, __unused void *data)
@@ -43,8 +42,8 @@ cfg_done(__unused struct cmdq_item *item, __unused void *data)
 	if (!RB_EMPTY(&sessions))
 		cfg_show_causes(RB_MIN(sessions, &sessions));
 
-	if (cfg_client != NULL)
-		server_client_unref(cfg_client);
+	status_prompt_load_history();
+
 	return (CMD_RETURN_NORMAL);
 }
 
@@ -61,20 +60,22 @@ start_cfg(void)
 	const char	*home;
 	int		 quiet = 0;
 
-	cfg_client = TAILQ_FIRST(&clients);
-	if (cfg_client != NULL)
-		cfg_client->references++;
+	/*
+	 * Note that the configuration files are loaded without a client, so
+	 * NULL is passed into load_cfg() which means that commands run in the
+	 * global queue and item->client is NULL for all commands.
+	 */
 
-	load_cfg(TMUX_CONF, cfg_client, NULL, 1);
+	load_cfg(TMUX_CONF, NULL, NULL, 1);
 
 	if (cfg_file == NULL && (home = find_home()) != NULL) {
 		xasprintf(&cfg_file, "%s/.tmux.conf", home);
 		quiet = 1;
 	}
 	if (cfg_file != NULL)
-		load_cfg(cfg_file, cfg_client, NULL, quiet);
+		load_cfg(cfg_file, NULL, NULL, quiet);
 
-	cmdq_append(cfg_client, cmdq_get_callback(cfg_done, NULL));
+	cmdq_append(NULL, cmdq_get_callback(cfg_done, NULL));
 }
 
 int

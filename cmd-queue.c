@@ -102,8 +102,11 @@ cmdq_insert_after(struct cmdq_item *after, struct cmdq_item *item)
 static void
 cmdq_remove(struct cmdq_item *item)
 {
-	if (item->formats != NULL)
-		format_free(item->formats);
+	if (item->shared != NULL && --item->shared->references == 0) {
+		if (item->shared->formats != NULL)
+			format_free(item->shared->formats);
+		free(item->shared);
+	}
 
 	if (item->client != NULL)
 		server_client_unref(item->client);
@@ -150,6 +153,13 @@ cmdq_get_command(struct cmd_list *cmdlist, struct cmd_find_state *current,
 	struct cmd		*cmd;
 	u_int			 group = cmdq_next_group();
 	char			*tmp;
+	struct cmdq_shared	*shared;
+
+	shared = xcalloc(1, sizeof *shared);
+	if (current != NULL)
+		cmd_find_copy_state(&shared->current, current);
+	if (m != NULL)
+		memcpy(&shared->mouse, m, sizeof shared->mouse);
 
 	TAILQ_FOREACH(cmd, &cmdlist->list, qentry) {
 		xasprintf(&tmp, "command[%s]", cmd->entry->name);
@@ -161,13 +171,11 @@ cmdq_get_command(struct cmd_list *cmdlist, struct cmd_find_state *current,
 		item->group = group;
 		item->flags = flags;
 
+		item->shared = shared;
 		item->cmdlist = cmdlist;
 		item->cmd = cmd;
 
-		if (current != NULL)
-			cmd_find_copy_state(&item->current, current);
-		if (m != NULL)
-			memcpy(&item->mouse, m, sizeof item->mouse);
+		shared->references++;
 		cmdlist->references++;
 
 		if (first == NULL)
@@ -258,19 +266,17 @@ cmdq_fire_callback(struct cmdq_item *item)
 void
 cmdq_format(struct cmdq_item *item, const char *key, const char *fmt, ...)
 {
+	struct cmdq_shared	*shared = item->shared;
 	va_list			 ap;
-	struct cmdq_item	*loop;
 	char			*value;
 
 	va_start(ap, fmt);
 	xvasprintf(&value, fmt, ap);
 	va_end(ap);
 
-	for (loop = item; loop != NULL; loop = item->next) {
-		if (loop->formats == NULL)
-			loop->formats = format_create(NULL, FORMAT_NONE, 0);
-		format_add(loop->formats, key, "%s", value);
-	}
+	if (shared->formats == NULL)
+		shared->formats = format_create(NULL, FORMAT_NONE, 0);
+	format_add(shared->formats, key, "%s", value);
 
 	free(value);
 }

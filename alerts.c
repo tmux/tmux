@@ -178,7 +178,7 @@ alerts_check_bell(struct window *w)
 		s = wl->session;
 		if (s->curw != wl) {
 			wl->flags |= WINLINK_BELL;
-			notify_winlink("alert-bell", s, wl);
+			notify_winlink("alert-bell", wl);
 		}
 
 		if (s->flags & SESSION_ALERTED)
@@ -239,7 +239,7 @@ alerts_check_activity(struct window *w)
 			continue;
 
 		wl->flags |= WINLINK_ACTIVITY;
-		notify_winlink("alert-activity", s, wl);
+		notify_winlink("alert-activity", wl);
 
 		if (s->flags & SESSION_ALERTED)
 			continue;
@@ -275,7 +275,7 @@ alerts_check_silence(struct window *w)
 		if (s->curw == wl)
 			continue;
 		wl->flags |= WINLINK_SILENCE;
-		notify_winlink("alert-silence", s, wl);
+		notify_winlink("alert-silence", wl);
 
 		if (s->flags & SESSION_ALERTED)
 			continue;

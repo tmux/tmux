@@ -49,6 +49,7 @@ static enum cmd_retval
 cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
+	struct cmdq_shared	*shared = item->shared;
 	struct window_pane	*wp = item->state.tflag.wp;
 	struct winlink		*wl = item->state.tflag.wl;
 	struct window		*w = wl->window;
@@ -60,12 +61,12 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 	int			 x, y;
 
 	if (args_has(args, 'M')) {
-		if (cmd_mouse_window(&item->mouse, &s) == NULL)
+		if (cmd_mouse_window(&shared->mouse, &s) == NULL)
 			return (CMD_RETURN_NORMAL);
 		if (c == NULL || c->session != s)
 			return (CMD_RETURN_NORMAL);
 		c->tty.mouse_drag_update = cmd_resize_pane_mouse_update;
-		cmd_resize_pane_mouse_update(c, &item->mouse);
+		cmd_resize_pane_mouse_update(c, &shared->mouse);
 		return (CMD_RETURN_NORMAL);
 	}
 

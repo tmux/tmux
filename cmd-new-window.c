@@ -147,7 +147,7 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (to_free != NULL)
 		free((void *)to_free);
 
-	cmd_find_from_winlink(&fs, s, wl);
+	cmd_find_from_winlink(&fs, wl);
 	hooks_insert(s->hooks, item, &fs, "after-new-window");
 
 	return (CMD_RETURN_NORMAL);

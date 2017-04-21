@@ -43,6 +43,7 @@ extern char   **environ;
 struct args;
 struct client;
 struct cmdq_item;
+struct cmdq_subitem;
 struct cmdq_list;
 struct environ;
 struct input_ctx;
@@ -1208,6 +1209,19 @@ enum cmdq_type {
 	CMDQ_CALLBACK,
 };
 
+/* Command queue item shared state. */
+struct cmdq_shared {
+	int			 references;
+
+	int			 flags;
+#define CMDQ_SHARED_REPEAT 0x1
+
+	struct format_tree	*formats;
+
+	struct mouse_event	 mouse;
+	struct cmd_find_state	 current;
+};
+
 /* Command queue item. */
 typedef enum cmd_retval (*cmdq_cb) (struct cmdq_item *, void *);
 struct cmdq_item {
@@ -1223,24 +1237,19 @@ struct cmdq_item {
 	u_int			 number;
 	time_t			 time;
 
-	struct format_tree	*formats;
-
 	int			 flags;
 #define CMDQ_FIRED 0x1
 #define CMDQ_WAITING 0x2
 #define CMDQ_NOHOOKS 0x4
 
+	struct cmdq_shared	*shared;
 	struct cmd_list		*cmdlist;
 	struct cmd		*cmd;
-	int			 repeat;
 
 	cmdq_cb			 cb;
 	void			*data;
 
-	struct cmd_find_state	 current;
 	struct cmd_state	 state;
-
-	struct mouse_event	 mouse;
 
 	TAILQ_ENTRY(cmdq_item)	 entry;
 };
@@ -1398,7 +1407,9 @@ TAILQ_HEAD(clients, client);
 struct key_binding {
 	key_code		 key;
 	struct cmd_list		*cmdlist;
-	int			 can_repeat;
+
+	int			 flags;
+#define KEY_BINDING_REPEAT 0x1
 
 	RB_ENTRY(key_binding)	 entry;
 };
@@ -1556,7 +1567,7 @@ void printflike(4, 5) hooks_insert(struct hooks *, struct cmdq_item *,
 void	notify_input(struct window_pane *, struct evbuffer *);
 void	notify_client(const char *, struct client *);
 void	notify_session(const char *, struct session *);
-void	notify_winlink(const char *, struct session *, struct winlink *);
+void	notify_winlink(const char *, struct winlink *);
 void	notify_session_window(const char *, struct session *, struct window *);
 void	notify_window(const char *, struct window *);
 void	notify_pane(const char *, struct window_pane *);
@@ -1740,7 +1751,7 @@ void		 cmd_find_log_state(const char *, struct cmd_find_state *);
 int		 cmd_find_from_session(struct cmd_find_state *,
 		     struct session *);
 int		 cmd_find_from_winlink(struct cmd_find_state *,
-		     struct session *, struct winlink *);
+		     struct winlink *);
 int		 cmd_find_from_session_window(struct cmd_find_state *,
 		     struct session *, struct window *);
 int		 cmd_find_from_window(struct cmd_find_state *, struct window *);

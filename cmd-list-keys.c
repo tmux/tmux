@@ -81,7 +81,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 		RB_FOREACH(bd, key_bindings, &table->key_bindings) {
 			key = key_string_lookup_key(bd->key);
 
-			if (bd->can_repeat)
+			if (bd->flags & KEY_BINDING_REPEAT)
 				repeat = 1;
 
 			width = utf8_cstrwidth(table->name);
@@ -101,7 +101,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 
 			if (!repeat)
 				r = "";
-			else if (bd->can_repeat)
+			else if (bd->flags & KEY_BINDING_REPEAT)
 				r = "-r ";
 			else
 				r = "   ";

@@ -62,7 +62,7 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 	struct client		*c = item->state.c;
 	struct window_pane	*wp = item->state.tflag.wp;
 	struct session		*s = item->state.tflag.s;
-	struct mouse_event	*m = &item->mouse;
+	struct mouse_event	*m = &item->shared->mouse;
 	struct utf8_data	*ud, *uc;
 	wchar_t			 wc;
 	int			 i, literal;
