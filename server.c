@@ -176,8 +176,6 @@ server_start(struct event_base *base, int lockfd, char *lockfile)
 
 	start_cfg();
 
-	status_prompt_load_history();
-
 	server_add_accept(0);
 
 	proc_loop(server_proc, server_loop);

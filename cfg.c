@@ -43,6 +43,8 @@ cfg_done(__unused struct cmdq_item *item, __unused void *data)
 	if (!RB_EMPTY(&sessions))
 		cfg_show_causes(RB_MIN(sessions, &sessions));
 
+	status_prompt_load_history();
+
 	return (CMD_RETURN_NORMAL);
 }
 
