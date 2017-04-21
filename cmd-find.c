@@ -878,7 +878,7 @@ cmd_find_log_state(const char *prefix, struct cmd_find_state *fs)
 }
 
 /* Find state from a session. */
-int
+void
 cmd_find_from_session(struct cmd_find_state *fs, struct session *s)
 {
 	cmd_find_clear_state(fs, NULL, 0);
@@ -889,11 +889,10 @@ cmd_find_from_session(struct cmd_find_state *fs, struct session *s)
 	fs->wp = fs->w->active;
 
 	cmd_find_log_state(__func__, fs);
-	return (0);
 }
 
 /* Find state from a winlink. */
-int
+void
 cmd_find_from_winlink(struct cmd_find_state *fs, struct winlink *wl)
 {
 	cmd_find_clear_state(fs, NULL, 0);
@@ -904,7 +903,6 @@ cmd_find_from_winlink(struct cmd_find_state *fs, struct winlink *wl)
 	fs->wp = wl->window->active;
 
 	cmd_find_log_state(__func__, fs);
-	return (0);
 }
 
 /* Find state from a session and window. */
@@ -939,6 +937,22 @@ cmd_find_from_window(struct cmd_find_state *fs, struct window *w)
 
 	cmd_find_log_state(__func__, fs);
 	return (0);
+}
+
+/* Find state from a winlink and pane. */
+void
+cmd_find_from_winlink_pane(struct cmd_find_state *fs, struct winlink *wl,
+    struct window_pane *wp)
+{
+	cmd_find_clear_state(fs, NULL, 0);
+
+	fs->s = wl->session;
+	fs->wl = wl;
+	fs->idx = fs->wl->idx;
+	fs->w = fs->wl->window;
+	fs->wp = wp;
+
+	cmd_find_log_state(__func__, fs);
 }
 
 /* Find state from a pane. */
