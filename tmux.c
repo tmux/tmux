@@ -29,6 +29,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <util.h>
 
 #include "tmux.h"
 
@@ -260,8 +261,8 @@ main(int argc, char **argv)
 	if (shellcmd != NULL && argc != 0)
 		usage();
 
-	if (pty_open(&ptm_fd) != 0)
-		errx(1, "open(\"/dev/ptm\"");
+	if ((ptm_fd = getptmfd()) == -1)
+		err(1, "getptmfd");
 	if (pledge("stdio rpath wpath cpath flock fattr unix getpw sendfd "
 	    "recvfd proc exec tty ps", NULL) != 0)
 		err(1, "pledge");

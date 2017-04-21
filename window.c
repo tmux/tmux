@@ -889,7 +889,7 @@ window_pane_spawn(struct window_pane *wp, int argc, char **argv,
 	ws.ws_col = screen_size_x(&wp->base);
 	ws.ws_row = screen_size_y(&wp->base);
 
-	wp->pid = pty_fork(ptm_fd, &wp->fd, wp->tty, sizeof wp->tty, &ws);
+	wp->pid = fdforkpty(ptm_fd, &wp->fd, wp->tty, NULL, &ws);
 	switch (wp->pid) {
 	case -1:
 		wp->fd = -1;
