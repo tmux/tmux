@@ -748,8 +748,10 @@ cmd_find_from_session_window(struct cmd_find_state *fs, struct session *s,
 
 	fs->s = s;
 	fs->w = w;
-	if (cmd_find_best_winlink_with_window(fs) != 0)
+	if (cmd_find_best_winlink_with_window(fs) != 0) {
+		cmd_find_clear_state(fs, 0);
 		return (-1);
+	}
 	fs->wp = fs->w->active;
 
 	cmd_find_log_state(__func__, fs);
@@ -763,10 +765,14 @@ cmd_find_from_window(struct cmd_find_state *fs, struct window *w)
 	cmd_find_clear_state(fs, 0);
 
 	fs->w = w;
-	if (cmd_find_best_session_with_window(fs) != 0)
+	if (cmd_find_best_session_with_window(fs) != 0) {
+		cmd_find_clear_state(fs, 0);
 		return (-1);
-	if (cmd_find_best_winlink_with_window(fs) != 0)
+	}
+	if (cmd_find_best_winlink_with_window(fs) != 0) {
+		cmd_find_clear_state(fs, 0);
 		return (-1);
+	}
 	fs->wp = fs->w->active;
 
 	cmd_find_log_state(__func__, fs);
@@ -795,8 +801,10 @@ cmd_find_from_pane(struct cmd_find_state *fs, struct window_pane *wp)
 {
 	if (cmd_find_from_window(fs, wp->window) != 0)
 		return (-1);
-	if (window_pane_outside(wp))
+	if (window_pane_outside(wp)) {
+		cmd_find_clear_state(fs, 0);
 		return (-1);
+	}
 	fs->wp = wp;
 
 	cmd_find_log_state(__func__, fs);
@@ -810,8 +818,10 @@ cmd_find_from_nothing(struct cmd_find_state *fs)
 	cmd_find_clear_state(fs, 0);
 
 	fs->s = cmd_find_best_session(NULL, 0, fs->flags);
-	if (fs->s == NULL)
+	if (fs->s == NULL) {
+		cmd_find_clear_state(fs, 0);
 		return (-1);
+	}
 	fs->wl = fs->s->curw;
 	fs->idx = fs->wl->idx;
 	fs->w = fs->wl->window;
@@ -831,8 +841,10 @@ cmd_find_from_mouse(struct cmd_find_state *fs, struct mouse_event *m)
 		return (-1);
 
 	fs->wp = cmd_mouse_pane(m, &fs->s, &fs->wl);
-	if (fs->wp == NULL)
+	if (fs->wp == NULL) {
+		cmd_find_clear_state(fs, 0);
 		return (-1);
+	}
 	fs->w = fs->wl->window;
 
 	cmd_find_log_state(__func__, fs);
@@ -901,6 +913,7 @@ cmd_find_from_client(struct cmd_find_state *fs, struct client *c)
 			 */
 			goto unknown_pane;
 		}
+		cmd_find_clear_state(fs, 0);
 		return (-1);
 	}
 	fs->wl = fs->s->curw;
@@ -960,9 +973,8 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 		fs->current = &current;
 		log_debug("%s: current is from client", __func__);
 	} else
-		return (-1);
-	if (!cmd_find_empty_state(fs->current) &&
-	    !cmd_find_valid_state(fs->current))
+		goto error;
+	if (!cmd_find_valid_state(fs->current))
 		fatalx("invalid current find state");
 
 	/* An empty or NULL target is the current. */
@@ -1082,8 +1094,8 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 	if (pane != NULL)
 		pane = cmd_find_map_table(cmd_find_pane_table, pane);
 
-	log_debug("target %s (flags %#x): session=%s, window=%s, pane=%s",
-	    target, flags, session == NULL ? "none" : session,
+	log_debug("%s: target %s (flags %#x): session=%s, window=%s, pane=%s",
+	    __func__, target, flags, session == NULL ? "none" : session,
 	    window == NULL ? "none" : window, pane == NULL ? "none" : pane);
 
 	/* No pane is allowed if want an index. */

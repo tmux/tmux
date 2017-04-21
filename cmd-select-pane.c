@@ -63,24 +63,24 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 	const char		*style;
 
 	if (self->entry == &cmd_last_pane_entry || args_has(args, 'l')) {
-		if (wl->window->last == NULL) {
+		lastwp = w->last;
+		if (lastwp == NULL) {
 			cmdq_error(item, "no last pane");
 			return (CMD_RETURN_ERROR);
 		}
 
 		if (args_has(self->args, 'e'))
-			w->last->flags &= ~PANE_INPUTOFF;
+			lastwp->flags &= ~PANE_INPUTOFF;
 		else if (args_has(self->args, 'd'))
-			w->last->flags |= PANE_INPUTOFF;
+			lastwp->flags |= PANE_INPUTOFF;
 		else {
 			server_unzoom_window(w);
-			window_redraw_active_switch(w, w->last);
-			if (window_set_active_pane(w, w->last)) {
+			window_redraw_active_switch(w, lastwp);
+			if (window_set_active_pane(w, lastwp)) {
 				server_status_window(w);
 				server_redraw_window_borders(w);
 			}
 		}
-
 		return (CMD_RETURN_NORMAL);
 	}
 
