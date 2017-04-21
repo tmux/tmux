@@ -172,12 +172,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (to_free != NULL)
 		free((void *)to_free);
 
-	cmd_find_clear_state(&fs, NULL, 0);
-	fs.s = s;
-	fs.wl = wl;
-	fs.w = w;
-	fs.wp = new_wp;
-	cmd_find_log_state(__func__, &fs);
+	cmd_find_from_winlink_pane(&fs, wl, new_wp);
 	hooks_insert(s->hooks, item, &fs, "after-split-window");
 
 	return (CMD_RETURN_NORMAL);
