@@ -900,6 +900,8 @@ retry:
 		log_debug("key table %s (no pane)", table->name);
 	else
 		log_debug("key table %s (pane %%%u)", table->name, wp->id);
+	if (c->flags & CLIENT_REPEAT)
+		log_debug("currently repeating");
 
 	/* Try to see if there is a key binding in the current table. */
 	bd_find.key = key;
