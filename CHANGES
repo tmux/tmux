@@ -23,7 +23,7 @@ Incompatible Changes
     bind -Tcopy-mode C-Up send -X scroll-up
     bind -Tcopy-mode WheelUpPane send -N5 -X scroll-up
 
-  This changes allows the full command parser (including command sequences) and
+  These changes allows the full command parser (including command sequences) and
   command set to be used - for example, the normal command prompt with editing
   and history is now used for searching, jumping, and so on instead of a custom
   one. The default C-r binding is now:
