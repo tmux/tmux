@@ -184,12 +184,12 @@ notify_session(const char *name, struct session *s)
 }
 
 void
-notify_winlink(const char *name, struct session *s, struct winlink *wl)
+notify_winlink(const char *name, struct winlink *wl)
 {
 	struct cmd_find_state	fs;
 
-	cmd_find_from_winlink(&fs, s, wl);
-	notify_add(name, &fs, NULL, s, wl->window, NULL);
+	cmd_find_from_winlink(&fs, wl);
+	notify_add(name, &fs, NULL, wl->session, wl->window, NULL);
 }
 
 void

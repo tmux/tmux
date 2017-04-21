@@ -895,12 +895,11 @@ cmd_find_from_session(struct cmd_find_state *fs, struct session *s)
 
 /* Find state from a winlink. */
 int
-cmd_find_from_winlink(struct cmd_find_state *fs, struct session *s,
-    struct winlink *wl)
+cmd_find_from_winlink(struct cmd_find_state *fs, struct winlink *wl)
 {
 	cmd_find_clear_state(fs, NULL, 0);
 
-	fs->s = s;
+	fs->s = wl->session;
 	fs->wl = wl;
 	fs->w = wl->window;
 	fs->wp = wl->window->active;
