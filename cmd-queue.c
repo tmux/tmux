@@ -158,6 +158,8 @@ cmdq_get_command(struct cmd_list *cmdlist, struct cmd_find_state *current,
 	shared = xcalloc(1, sizeof *shared);
 	if (current != NULL)
 		cmd_find_copy_state(&shared->current, current);
+	else
+		cmd_find_clear_state(&shared->current, 0);
 	if (m != NULL)
 		memcpy(&shared->mouse, m, sizeof shared->mouse);
 
@@ -205,6 +207,7 @@ cmdq_fire_command(struct cmdq_item *item)
 		retval = CMD_RETURN_ERROR;
 		goto out;
 	}
+
 	if (item->client == NULL)
 		item->client = cmd_find_client(item, NULL, 1);
 
@@ -216,11 +219,12 @@ cmdq_fire_command(struct cmdq_item *item)
 		name = cmd->entry->name;
 		if (cmd_find_valid_state(&item->state.tflag))
 			fsp = &item->state.tflag;
-		else {
-			if (cmd_find_current(&fs, item, CMD_FIND_QUIET) != 0)
-				goto out;
+		else if (cmd_find_valid_state(&item->shared->current))
+			fsp = &item->shared->current;
+		else if (cmd_find_from_client(&fs, item->client) == 0)
 			fsp = &fs;
-		}
+		else
+			goto out;
 		hooks_insert(fsp->s->hooks, item, fsp, "after-%s", name);
 	}
 

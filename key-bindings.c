@@ -100,7 +100,7 @@ key_bindings_add(const char *name, key_code key, int repeat,
 		free(bd);
 	}
 
-	bd = xmalloc(sizeof *bd);
+	bd = xcalloc(1, sizeof *bd);
 	bd->key = key;
 	RB_INSERT(key_bindings, &table->key_bindings, bd);
 

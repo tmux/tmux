@@ -62,7 +62,7 @@ static void	server_child_stopped(pid_t, int);
 void
 server_set_marked(struct session *s, struct winlink *wl, struct window_pane *wp)
 {
-	cmd_find_clear_state(&marked_pane, NULL, 0);
+	cmd_find_clear_state(&marked_pane, 0);
 	marked_pane.s = s;
 	marked_pane.wl = wl;
 	marked_pane.w = wl->window;
@@ -73,7 +73,7 @@ server_set_marked(struct session *s, struct winlink *wl, struct window_pane *wp)
 void
 server_clear_marked(void)
 {
-	cmd_find_clear_state(&marked_pane, NULL, 0);
+	cmd_find_clear_state(&marked_pane, 0);
 }
 
 /* Is this the marked pane? */
