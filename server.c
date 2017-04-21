@@ -118,12 +118,16 @@ server_create_socket(void)
 		return (-1);
 
 	mask = umask(S_IXUSR|S_IXGRP|S_IRWXO);
-	if (bind(fd, (struct sockaddr *) &sa, sizeof(sa)) == -1)
+	if (bind(fd, (struct sockaddr *) &sa, sizeof(sa)) == -1) {
+		close(fd);
 		return (-1);
+	}
 	umask(mask);
 
-	if (listen(fd, 128) == -1)
+	if (listen(fd, 128) == -1) {
+		close(fd);
 		return (-1);
+	}
 	setblocking(fd, 0);
 
 	return (fd);

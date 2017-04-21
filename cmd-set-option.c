@@ -197,6 +197,7 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 	} else if (*name == '@') {
 		if (value == NULL) {
 			cmdq_error(item, "empty value");
+			free(name);
 			return (CMD_RETURN_ERROR);
 		}
 		options_set_string(oo, name, append, "%s", value);
