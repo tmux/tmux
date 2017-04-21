@@ -908,7 +908,8 @@ retry:
 		 * non-repeating binding was found, stop repeating and try
 		 * again in the root table.
 		 */
-		if ((c->flags & CLIENT_REPEAT) && !bd->can_repeat) {
+		if ((c->flags & CLIENT_REPEAT) &&
+		    (~bd->flags & KEY_BINDING_REPEAT)) {
 			server_client_set_key_table(c, NULL);
 			c->flags &= ~CLIENT_REPEAT;
 			server_status_client(c);
@@ -926,7 +927,7 @@ retry:
 		 * the client back to the root table.
 		 */
 		xtimeout = options_get_number(s->options, "repeat-time");
-		if (xtimeout != 0 && bd->can_repeat) {
+		if (xtimeout != 0 && (bd->flags & KEY_BINDING_REPEAT)) {
 			c->flags |= CLIENT_REPEAT;
 
 			tv.tv_sec = xtimeout / 1000;
