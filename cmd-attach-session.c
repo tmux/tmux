@@ -50,6 +50,7 @@ enum cmd_retval
 cmd_attach_session(struct cmdq_item *item, int dflag, int rflag,
     const char *cflag, int Eflag)
 {
+	struct cmd_find_state	*current = &item->shared->current;
 	struct session		*s = item->state.tflag.s;
 	struct client		*c = item->client, *c_loop;
 	struct winlink		*wl = item->state.tflag.wl;
@@ -73,6 +74,10 @@ cmd_attach_session(struct cmdq_item *item, int dflag, int rflag,
 		if (wp != NULL)
 			window_set_active_pane(wp->window, wp);
 		session_set_current(s, wl);
+		if (wp != NULL)
+			cmd_find_from_winlink_pane(current, wl, wp);
+		else
+			cmd_find_from_winlink(current, wl);
 	}
 
 	if (cflag != NULL) {

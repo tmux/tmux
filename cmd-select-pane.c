@@ -56,6 +56,7 @@ static enum cmd_retval
 cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
+	struct cmd_find_state	*current = &item->shared->current;
 	struct winlink		*wl = item->state.tflag.wl;
 	struct window		*w = wl->window;
 	struct session		*s = item->state.tflag.s;
@@ -68,7 +69,6 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 			cmdq_error(item, "no last pane");
 			return (CMD_RETURN_ERROR);
 		}
-
 		if (args_has(self->args, 'e'))
 			lastwp->flags &= ~PANE_INPUTOFF;
 		else if (args_has(self->args, 'd'))
@@ -77,6 +77,7 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 			server_unzoom_window(w);
 			window_redraw_active_switch(w, lastwp);
 			if (window_set_active_pane(w, lastwp)) {
+				cmd_find_from_winlink(current, wl);
 				server_status_window(w);
 				server_redraw_window_borders(w);
 			}
@@ -155,6 +156,7 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	window_redraw_active_switch(w, wp);
 	if (window_set_active_pane(w, wp)) {
+		cmd_find_from_winlink(current, wl);
 		server_status_window(w);
 		server_redraw_window_borders(w);
 	}

@@ -142,6 +142,7 @@ static enum cmd_retval
 cmd_find_window_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = self->args;
+	struct cmd_find_state		*current = &item->shared->current;
 	struct client			*c = item->state.c;
 	struct window_choose_data	*cdata;
 	struct session			*s = item->state.tflag.s;
@@ -177,8 +178,10 @@ cmd_find_window_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (TAILQ_NEXT(TAILQ_FIRST(&find_list), entry) == NULL) {
-		if (session_select(s, TAILQ_FIRST(&find_list)->wl->idx) == 0)
+		if (session_select(s, TAILQ_FIRST(&find_list)->wl->idx) == 0) {
+			cmd_find_from_session(current, s);
 			server_redraw_session(s);
+		}
 		recalculate_sizes();
 		goto out;
 	}

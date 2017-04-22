@@ -52,6 +52,7 @@ static enum cmd_retval
 cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
+	struct cmd_find_state	*current = &item->shared->current;
 	struct session		*s = item->state.tflag.s;
 	struct winlink		*wl = item->state.tflag.wl;
 	struct client		*c = item->state.c;
@@ -132,6 +133,7 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	if (!detached) {
 		session_select(s, wl->idx);
+		cmd_find_from_winlink(current, wl);
 		server_redraw_session_group(s);
 	} else
 		server_status_session_group(s);

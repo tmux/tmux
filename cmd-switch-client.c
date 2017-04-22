@@ -99,6 +99,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 			if (wp != NULL)
 				window_set_active_pane(wp->window, wp);
 			session_set_current(s, state->tflag.wl);
+			cmd_find_from_session(&item->shared->current, s);
 		}
 	}
 

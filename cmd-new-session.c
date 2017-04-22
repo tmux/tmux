@@ -324,8 +324,10 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 		free(cp);
 	}
 
-	if (!detached)
+	if (!detached) {
 		c->flags |= CLIENT_ATTACHED;
+		cmd_find_from_session(&item->shared->current, s);
+	}
 
 	if (to_free != NULL)
 		free((void *)to_free);

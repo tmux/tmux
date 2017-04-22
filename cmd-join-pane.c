@@ -63,6 +63,7 @@ static enum cmd_retval
 cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
+	struct cmd_find_state	*current = &item->shared->current;
 	struct session		*dst_s;
 	struct winlink		*src_wl, *dst_wl;
 	struct window		*src_w, *dst_w;
@@ -146,6 +147,7 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (!args_has(args, 'd')) {
 		window_set_active_pane(dst_w, src_wp);
 		session_select(dst_s, dst_idx);
+		cmd_find_from_session(current, dst_s);
 		server_redraw_session(dst_s);
 	} else
 		server_status_session(dst_s);
