@@ -891,7 +891,7 @@ cmd_find_from_client(struct cmd_find_state *fs, struct client *c)
 		}
 		if (wl != NULL) {
 			fs->s = s;
-			fs->wl = s->curw; /* use active session */
+			fs->wl = s->curw; /* use current session */
 			fs->w = fs->wl->window;
 			fs->wp = fs->w->active; /* use active pane */
 
