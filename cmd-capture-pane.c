@@ -43,7 +43,7 @@ const struct cmd_entry cmd_capture_pane_entry = {
 	.usage = "[-aCeJpPq] " CMD_BUFFER_USAGE " [-E end-line] "
 		 "[-S start-line]" CMD_TARGET_PANE_USAGE,
 
-	.tflag = CMD_PANE,
+	.target = { 't', CMD_FIND_PANE, 0 },
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_capture_pane_exec
@@ -56,7 +56,7 @@ const struct cmd_entry cmd_clear_history_entry = {
 	.args = { "t:", 0, 0 },
 	.usage = CMD_TARGET_PANE_USAGE,
 
-	.tflag = CMD_PANE,
+	.target = { 't', CMD_FIND_PANE, 0 },
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_capture_pane_exec
@@ -193,7 +193,7 @@ cmd_capture_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
 	struct client		*c;
-	struct window_pane	*wp = item->state.tflag.wp;
+	struct window_pane	*wp = item->target.wp;
 	char			*buf, *cause;
 	const char		*bufname;
 	size_t			 len;

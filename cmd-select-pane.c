@@ -33,7 +33,7 @@ const struct cmd_entry cmd_select_pane_entry = {
 	.args = { "DdegLlMmP:Rt:U", 0, 0 },
 	.usage = "[-DdegLlMmRU] [-P style] " CMD_TARGET_PANE_USAGE,
 
-	.tflag = CMD_PANE,
+	.target = { 't', CMD_FIND_PANE, 0 },
 
 	.flags = 0,
 	.exec = cmd_select_pane_exec
@@ -46,7 +46,7 @@ const struct cmd_entry cmd_last_pane_entry = {
 	.args = { "det:", 0, 0 },
 	.usage = "[-de] " CMD_TARGET_WINDOW_USAGE,
 
-	.tflag = CMD_WINDOW,
+	.target = { 't', CMD_FIND_WINDOW, 0 },
 
 	.flags = 0,
 	.exec = cmd_select_pane_exec
@@ -57,10 +57,10 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
 	struct cmd_find_state	*current = &item->shared->current;
-	struct winlink		*wl = item->state.tflag.wl;
+	struct winlink		*wl = item->target.wl;
 	struct window		*w = wl->window;
-	struct session		*s = item->state.tflag.s;
-	struct window_pane	*wp = item->state.tflag.wp, *lastwp, *markedwp;
+	struct session		*s = item->target.s;
+	struct window_pane	*wp = item->target.wp, *lastwp, *markedwp;
 	const char		*style;
 
 	if (self->entry == &cmd_last_pane_entry || args_has(args, 'l')) {

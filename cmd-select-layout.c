@@ -36,7 +36,7 @@ const struct cmd_entry cmd_select_layout_entry = {
 	.args = { "nopt:", 0, 1 },
 	.usage = "[-nop] " CMD_TARGET_WINDOW_USAGE " [layout-name]",
 
-	.tflag = CMD_WINDOW,
+	.target = { 't', CMD_FIND_WINDOW, 0 },
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_select_layout_exec
@@ -49,7 +49,7 @@ const struct cmd_entry cmd_next_layout_entry = {
 	.args = { "t:", 0, 0 },
 	.usage = CMD_TARGET_WINDOW_USAGE,
 
-	.tflag = CMD_WINDOW,
+	.target = { 't', CMD_FIND_WINDOW, 0 },
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_select_layout_exec
@@ -62,7 +62,7 @@ const struct cmd_entry cmd_previous_layout_entry = {
 	.args = { "t:", 0, 0 },
 	.usage = CMD_TARGET_WINDOW_USAGE,
 
-	.tflag = CMD_WINDOW,
+	.target = { 't', CMD_FIND_WINDOW, 0 },
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_select_layout_exec
@@ -72,7 +72,7 @@ static enum cmd_retval
 cmd_select_layout_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args	*args = self->args;
-	struct winlink	*wl = item->state.tflag.wl;
+	struct winlink	*wl = item->target.wl;
 	struct window	*w;
 	const char	*layoutname;
 	char		*oldlayout;

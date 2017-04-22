@@ -40,8 +40,6 @@ const struct cmd_entry cmd_display_panes_entry = {
 	.args = { "t:", 0, 1 },
 	.usage = CMD_TARGET_CLIENT_USAGE,
 
-	.tflag = CMD_CLIENT,
-
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_display_panes_exec
 };
@@ -50,7 +48,10 @@ static enum cmd_retval
 cmd_display_panes_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args	*args = self->args;
-	struct client	*c = item->state.c;
+	struct client	*c;
+
+	if ((c = cmd_find_client(item, args_get(args, 't'), 0)) == NULL)
+		return (CMD_RETURN_ERROR);
 
 	if (c->identify_callback != NULL)
 		return (CMD_RETURN_NORMAL);

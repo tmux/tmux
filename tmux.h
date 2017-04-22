@@ -1162,13 +1162,7 @@ struct cmd_find_state {
 #define CMD_FIND_DEFAULT_MARKED 0x8
 #define CMD_FIND_EXACT_SESSION 0x10
 #define CMD_FIND_EXACT_WINDOW 0x20
-
-/* Context for command being executed. */
-struct cmd_state {
-	struct client		*c;
-	struct cmd_find_state	 tflag;
-	struct cmd_find_state	 sflag;
-};
+#define CMD_FIND_CANFAIL 0x40
 
 /* Command and list of commands. */
 struct cmd {
@@ -1237,40 +1231,24 @@ struct cmdq_item {
 #define CMDQ_NOHOOKS 0x4
 
 	struct cmdq_shared	*shared;
+	struct cmd_find_state	 source;
+	struct cmd_find_state	 target;
+
 	struct cmd_list		*cmdlist;
 	struct cmd		*cmd;
 
 	cmdq_cb			 cb;
 	void			*data;
 
-	struct cmd_state	 state;
-
 	TAILQ_ENTRY(cmdq_item)	 entry;
 };
 TAILQ_HEAD(cmdq_list, cmdq_item);
 
-/* Command -c, -t or -s flags. */
-enum cmd_entry_flag {
-	CMD_NONE,
-
-	CMD_CLIENT,
-	CMD_CLIENT_CANFAIL,
-
-	CMD_SESSION,
-	CMD_SESSION_CANFAIL,
-	CMD_SESSION_PREFERUNATTACHED,
-	CMD_SESSION_WITHPANE, /* implies PREFERUNATTACHED */
-
-	CMD_WINDOW,
-	CMD_WINDOW_CANFAIL,
-	CMD_WINDOW_MARKED,
-	CMD_WINDOW_INDEX,
-
-	CMD_PANE,
-	CMD_PANE_CANFAIL,
-	CMD_PANE_MARKED,
-
-	CMD_MOVEW_R,
+/* Command definition flag. */
+struct cmd_entry_flag {
+	char			 flag;
+	enum cmd_find_type	 type;
+	int			 flags;
 };
 
 /* Command definition. */
@@ -1285,16 +1263,15 @@ struct cmd_entry {
 	} args;
 	const char		*usage;
 
-	enum cmd_entry_flag	 tflag;
-	enum cmd_entry_flag	 sflag;
-	enum cmd_entry_flag	 cflag;
+	struct cmd_entry_flag	 source;
+	struct cmd_entry_flag	 target;
 
 #define CMD_STARTSERVER 0x1
 #define CMD_READONLY 0x2
 #define CMD_AFTERHOOK 0x4
 	int		 flags;
 
-	enum cmd_retval		 (*exec)(struct cmd *, struct cmdq_item *);
+	enum cmd_retval	 (*exec)(struct cmd *, struct cmdq_item *);
 };
 
 /* Client connection. */
@@ -1761,7 +1738,6 @@ char	       **cmd_copy_argv(int, char **);
 void		 cmd_free_argv(int, char **);
 char		*cmd_stringify_argv(int, char **);
 struct cmd	*cmd_parse(int, char **, const char *, u_int, char **);
-int		 cmd_prepare_state(struct cmd *, struct cmdq_item *);
 char		*cmd_print(struct cmd *);
 int		 cmd_mouse_at(struct window_pane *, struct mouse_event *,
 		     u_int *, u_int *, int);
@@ -1772,8 +1748,8 @@ char		*cmd_template_replace(const char *, const char *, int);
 extern const struct cmd_entry *cmd_table[];
 
 /* cmd-attach-session.c */
-enum cmd_retval	 cmd_attach_session(struct cmdq_item *, int, int, const char *,
-		     int);
+enum cmd_retval	 cmd_attach_session(struct cmdq_item *, const char *, int, int,
+		     const char *, int);
 
 /* cmd-list.c */
 struct cmd_list	*cmd_list_parse(int, char **, const char *, u_int, char **);

@@ -35,10 +35,11 @@ const struct cmd_entry cmd_break_pane_entry = {
 	.alias = "breakp",
 
 	.args = { "dPF:n:s:t:", 0, 0 },
-	.usage = "[-dP] [-F format] [-n window-name] [-s src-pane] [-t dst-window]",
+	.usage = "[-dP] [-F format] [-n window-name] [-s src-pane] "
+		 "[-t dst-window]",
 
-	.sflag = CMD_PANE,
-	.tflag = CMD_WINDOW_INDEX,
+	.source = { 's', CMD_FIND_PANE, 0 },
+	.target = { 't', CMD_FIND_WINDOW, CMD_FIND_WINDOW_INDEX },
 
 	.flags = 0,
 	.exec = cmd_break_pane_exec
@@ -49,14 +50,14 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
 	struct cmd_find_state	*current = &item->shared->current;
-	struct client		*c = item->state.c;
-	struct winlink		*wl = item->state.sflag.wl;
-	struct session		*src_s = item->state.sflag.s;
-	struct session		*dst_s = item->state.tflag.s;
-	struct window_pane	*wp = item->state.sflag.wp;
+	struct client		*c = cmd_find_client(item, NULL, 1);
+	struct winlink		*wl = item->source.wl;
+	struct session		*src_s = item->source.s;
+	struct session		*dst_s = item->target.s;
+	struct window_pane	*wp = item->source.wp;
 	struct window		*w = wl->window;
 	char			*name, *cause;
-	int			 idx = item->state.tflag.idx;
+	int			 idx = item->target.idx;
 	const char		*template;
 	char			*cp;
 

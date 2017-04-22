@@ -41,7 +41,7 @@ const struct cmd_entry cmd_list_panes_entry = {
 	.args = { "asF:t:", 0, 0 },
 	.usage = "[-as] [-F format] " CMD_TARGET_WINDOW_USAGE,
 
-	.tflag = CMD_WINDOW,
+	.target = { 't', CMD_FIND_WINDOW, 0 },
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_list_panes_exec
@@ -51,8 +51,8 @@ static enum cmd_retval
 cmd_list_panes_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args	*args = self->args;
-	struct session	*s = item->state.tflag.s;
-	struct winlink	*wl = item->state.tflag.wl;
+	struct session	*s = item->target.s;
+	struct winlink	*wl = item->target.wl;
 
 	if (args_has(args, 'a'))
 		cmd_list_panes_server(self, item);

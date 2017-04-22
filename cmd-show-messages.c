@@ -39,8 +39,6 @@ const struct cmd_entry cmd_show_messages_entry = {
 	.args = { "JTt:", 0, 0 },
 	.usage = "[-JT] " CMD_TARGET_CLIENT_USAGE,
 
-	.tflag = CMD_CLIENT,
-
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_show_messages_exec
 };
@@ -92,10 +90,13 @@ static enum cmd_retval
 cmd_show_messages_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
-	struct client		*c = item->state.c;
+	struct client		*c;
 	struct message_entry	*msg;
 	char			*tim;
 	int			 done, blank;
+
+	if ((c = cmd_find_client(item, args_get(args, 't'), 0)) == NULL)
+		return (CMD_RETURN_ERROR);
 
 	done = blank = 0;
 	if (args_has(args, 'T')) {

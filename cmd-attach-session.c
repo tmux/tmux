@@ -40,21 +40,23 @@ const struct cmd_entry cmd_attach_session_entry = {
 	.args = { "c:dErt:", 0, 0 },
 	.usage = "[-dEr] [-c working-directory] " CMD_TARGET_SESSION_USAGE,
 
-	.tflag = CMD_SESSION_WITHPANE,
+	/* -t is special */
 
 	.flags = CMD_STARTSERVER,
 	.exec = cmd_attach_session_exec
 };
 
 enum cmd_retval
-cmd_attach_session(struct cmdq_item *item, int dflag, int rflag,
-    const char *cflag, int Eflag)
+cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
+    int rflag, const char *cflag, int Eflag)
 {
 	struct cmd_find_state	*current = &item->shared->current;
-	struct session		*s = item->state.tflag.s;
+	enum cmd_find_type	 type;
+	int			 flags;
 	struct client		*c = item->client, *c_loop;
-	struct winlink		*wl = item->state.tflag.wl;
-	struct window_pane	*wp = item->state.tflag.wp;
+	struct session		*s;
+	struct winlink		*wl;
+	struct window_pane	*wp;
 	char			*cause;
 
 	if (RB_EMPTY(&sessions)) {
@@ -69,6 +71,19 @@ cmd_attach_session(struct cmdq_item *item, int dflag, int rflag,
 		    "unset $TMUX to force");
 		return (CMD_RETURN_ERROR);
 	}
+
+	if (tflag != NULL && tflag[strcspn(tflag, ":.")] != '\0') {
+		type = CMD_FIND_PANE;
+		flags = 0;
+	} else {
+		type = CMD_FIND_SESSION;
+		flags = CMD_FIND_PREFER_UNATTACHED;
+	}
+	if (cmd_find_target(&item->target, item, tflag, type, flags) != 0)
+		return (CMD_RETURN_ERROR);
+	s = item->target.s;
+	wl = item->target.wl;
+	wp = item->target.wp;
 
 	if (wl != NULL) {
 		if (wp != NULL)
@@ -150,6 +165,7 @@ cmd_attach_session_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args	*args = self->args;
 
-	return (cmd_attach_session(item, args_has(args, 'd'),
-	    args_has(args, 'r'), args_get(args, 'c'), args_has(args, 'E')));
+	return (cmd_attach_session(item, args_get(args, 't'),
+	    args_has(args, 'd'), args_has(args, 'r'), args_get(args, 'c'),
+	    args_has(args, 'E')));
 }

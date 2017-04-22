@@ -44,7 +44,7 @@ const struct cmd_entry cmd_new_session_entry = {
 		 "[-s session-name] " CMD_TARGET_SESSION_USAGE " [-x width] "
 		 "[-y height] [command]",
 
-	.tflag = CMD_SESSION_CANFAIL,
+	.target = { 't', CMD_FIND_SESSION, CMD_FIND_CANFAIL },
 
 	.flags = CMD_STARTSERVER,
 	.exec = cmd_new_session_exec
@@ -57,7 +57,7 @@ const struct cmd_entry cmd_has_session_entry = {
 	.args = { "t:", 0, 0 },
 	.usage = CMD_TARGET_SESSION_USAGE,
 
-	.tflag = CMD_SESSION,
+	.target = { 't', CMD_FIND_SESSION, 0 },
 
 	.flags = 0,
 	.exec = cmd_new_session_exec
@@ -108,10 +108,10 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 				 * have already been prepared, copy this
 				 * session into its tflag so it can be used.
 				 */
-				cmd_find_from_session(&item->state.tflag, as);
+				cmd_find_from_session(&item->target, as);
 				return (cmd_attach_session(item,
-				    args_has(args, 'D'), 0, NULL,
-				    args_has(args, 'E')));
+				    args_get(args, 't'), args_has(args, 'D'),
+				    0, NULL, args_has(args, 'E')));
 			}
 			cmdq_error(item, "duplicate session: %s", newname);
 			return (CMD_RETURN_ERROR);
@@ -121,7 +121,7 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	/* Is this going to be part of a session group? */
 	group = args_get(args, 't');
 	if (group != NULL) {
-		groupwith = item->state.tflag.s;
+		groupwith = item->target.s;
 		if (groupwith == NULL) {
 			if (!session_check_name(group)) {
 				cmdq_error(item, "bad group name: %s", group);

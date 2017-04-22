@@ -37,7 +37,7 @@ const struct cmd_entry cmd_rename_session_entry = {
 	.args = { "t:", 1, 1 },
 	.usage = CMD_TARGET_SESSION_USAGE " new-name",
 
-	.tflag = CMD_SESSION,
+	.target = { 't', CMD_FIND_SESSION, 0 },
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_rename_session_exec
@@ -47,7 +47,7 @@ static enum cmd_retval
 cmd_rename_session_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args	*args = self->args;
-	struct session	*s = item->state.tflag.s;
+	struct session	*s = item->target.s;
 	const char	*newname;
 
 	newname = args->argv[0];
