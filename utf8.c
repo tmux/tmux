@@ -68,7 +68,8 @@ utf8_open(struct utf8_data *ud, u_char ch)
 		ud->size = 4;
 	else
 		return (UTF8_ERROR);
-	utf8_append(ud, ch);
+	if (utf8_append(ud, ch) == UTF8_ERROR)
+		return (UTF8_ERROR);
 	return (UTF8_MORE);
 }
 
