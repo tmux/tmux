@@ -2011,7 +2011,7 @@ input_utf8_close(struct input_ctx *ictx)
 	    (int)ud->size, ud->data, ud->width);
 
 	utf8_copy(&ictx->cell.cell.data, ud);
-	screen_write_cell(&ictx->ctx, &ictx->cell.cell);
+	screen_write_collect_add(&ictx->ctx, &ictx->cell.cell);
 
 	return (0);
 }
