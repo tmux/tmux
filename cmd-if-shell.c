@@ -120,7 +120,8 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 		cdata->cmd_else = NULL;
 
 	cdata->client = item->client;
-	cdata->client->references++;
+	if (cdata->client != NULL)
+		cdata->client->references++;
 
 	if (!args_has(args, 'b'))
 		cdata->item = item;
@@ -193,7 +194,8 @@ cmd_if_shell_free(void *data)
 {
 	struct cmd_if_shell_data	*cdata = data;
 
-	server_client_unref(cdata->client);
+	if (cdata->client != NULL)
+		server_client_unref(cdata->client);
 
 	free(cdata->cmd_else);
 	free(cdata->cmd_if);
