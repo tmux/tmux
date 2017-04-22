@@ -41,7 +41,7 @@ const struct cmd_entry cmd_show_options_entry = {
 	.args = { "gqst:vw", 0, 1 },
 	.usage = "[-gqsvw] [-t target-session|target-window] [option]",
 
-	.tflag = CMD_WINDOW_CANFAIL,
+	.target = { 't', CMD_FIND_WINDOW, CMD_FIND_CANFAIL },
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_show_options_exec
@@ -54,7 +54,7 @@ const struct cmd_entry cmd_show_window_options_entry = {
 	.args = { "gvt:", 0, 1 },
 	.usage = "[-gv] " CMD_TARGET_WINDOW_USAGE " [option]",
 
-	.tflag = CMD_WINDOW_CANFAIL,
+	.target = { 't', CMD_FIND_WINDOW, CMD_FIND_CANFAIL },
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_show_options_exec
@@ -64,7 +64,7 @@ static enum cmd_retval
 cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = self->args;
-	struct cmd_find_state		*fs = &item->state.tflag;
+	struct cmd_find_state		*fs = &item->target;
 	struct options			*oo;
 	enum options_table_scope	 scope;
 	char				*cause;

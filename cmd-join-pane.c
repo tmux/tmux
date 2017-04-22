@@ -37,8 +37,8 @@ const struct cmd_entry cmd_join_pane_entry = {
 	.args = { "bdhvp:l:s:t:", 0, 0 },
 	.usage = "[-bdhv] [-p percentage|-l size] " CMD_SRCDST_PANE_USAGE,
 
-	.sflag = CMD_PANE_MARKED,
-	.tflag = CMD_PANE,
+	.source = { 's', CMD_FIND_PANE, CMD_FIND_DEFAULT_MARKED },
+	.target = { 't', CMD_FIND_PANE, 0 },
 
 	.flags = 0,
 	.exec = cmd_join_pane_exec
@@ -51,8 +51,8 @@ const struct cmd_entry cmd_move_pane_entry = {
 	.args = { "bdhvp:l:s:t:", 0, 0 },
 	.usage = "[-bdhv] [-p percentage|-l size] " CMD_SRCDST_PANE_USAGE,
 
-	.sflag = CMD_PANE,
-	.tflag = CMD_PANE,
+	.source = { 's', CMD_FIND_PANE, 0 },
+	.target = { 't', CMD_FIND_PANE, 0 },
 
 	.flags = 0,
 	.exec = cmd_join_pane_exec
@@ -62,6 +62,7 @@ static enum cmd_retval
 cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
+	struct cmd_find_state	*current = &item->shared->current;
 	struct session		*dst_s;
 	struct winlink		*src_wl, *dst_wl;
 	struct window		*src_w, *dst_w;
@@ -77,15 +78,15 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	else
 		not_same_window = 0;
 
-	dst_s = item->state.tflag.s;
-	dst_wl = item->state.tflag.wl;
-	dst_wp = item->state.tflag.wp;
+	dst_s = item->target.s;
+	dst_wl = item->target.wl;
+	dst_wp = item->target.wp;
 	dst_w = dst_wl->window;
 	dst_idx = dst_wl->idx;
 	server_unzoom_window(dst_w);
 
-	src_wl = item->state.sflag.wl;
-	src_wp = item->state.sflag.wp;
+	src_wl = item->source.wl;
+	src_wp = item->source.wp;
 	src_w = src_wl->window;
 	server_unzoom_window(src_w);
 
@@ -145,6 +146,7 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (!args_has(args, 'd')) {
 		window_set_active_pane(dst_w, src_wp);
 		session_select(dst_s, dst_idx);
+		cmd_find_from_session(current, dst_s);
 		server_redraw_session(dst_s);
 	} else
 		server_status_session(dst_s);

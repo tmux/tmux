@@ -43,8 +43,6 @@ const struct cmd_entry cmd_command_prompt_entry = {
 	.usage = "[-1Ni] [-I inputs] [-p prompts] " CMD_TARGET_CLIENT_USAGE " "
 		 "[template]",
 
-	.tflag = CMD_CLIENT,
-
 	.flags = 0,
 	.exec = cmd_command_prompt_exec
 };
@@ -69,9 +67,12 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 	struct args			*args = self->args;
 	const char			*inputs, *prompts;
 	struct cmd_command_prompt_cdata	*cdata;
-	struct client			*c = item->state.c;
+	struct client			*c;
 	char				*prompt, *ptr, *input = NULL;
 	size_t				 n;
+
+	if ((c = cmd_find_client(item, args_get(args, 't'), 0)) == NULL)
+		return (CMD_RETURN_ERROR);
 
 	if (c->prompt_string != NULL)
 		return (CMD_RETURN_NORMAL);

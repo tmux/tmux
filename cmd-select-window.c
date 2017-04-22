@@ -36,7 +36,7 @@ const struct cmd_entry cmd_select_window_entry = {
 	.args = { "lnpTt:", 0, 0 },
 	.usage = "[-lnpT] " CMD_TARGET_WINDOW_USAGE,
 
-	.tflag = CMD_WINDOW,
+	.target = { 't', CMD_FIND_WINDOW, 0 },
 
 	.flags = 0,
 	.exec = cmd_select_window_exec
@@ -49,7 +49,7 @@ const struct cmd_entry cmd_next_window_entry = {
 	.args = { "at:", 0, 0 },
 	.usage = "[-a] " CMD_TARGET_SESSION_USAGE,
 
-	.tflag = CMD_SESSION,
+	.target = { 't', CMD_FIND_SESSION, 0 },
 
 	.flags = 0,
 	.exec = cmd_select_window_exec
@@ -62,7 +62,7 @@ const struct cmd_entry cmd_previous_window_entry = {
 	.args = { "at:", 0, 0 },
 	.usage = "[-a] " CMD_TARGET_SESSION_USAGE,
 
-	.tflag = CMD_SESSION,
+	.target = { 't', CMD_FIND_SESSION, 0 },
 
 	.flags = 0,
 	.exec = cmd_select_window_exec
@@ -75,7 +75,7 @@ const struct cmd_entry cmd_last_window_entry = {
 	.args = { "t:", 0, 0 },
 	.usage = CMD_TARGET_SESSION_USAGE,
 
-	.tflag = CMD_SESSION,
+	.target = { 't', CMD_FIND_SESSION, 0 },
 
 	.flags = 0,
 	.exec = cmd_select_window_exec
@@ -84,9 +84,10 @@ const struct cmd_entry cmd_last_window_entry = {
 static enum cmd_retval
 cmd_select_window_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct winlink	*wl = item->state.tflag.wl;
-	struct session	*s = item->state.tflag.s;
-	int		 next, previous, last, activity;
+	struct cmd_find_state	*current = &item->shared->current;
+	struct winlink		*wl = item->target.wl;
+	struct session		*s = item->target.s;
+	int			 next, previous, last, activity;
 
 	next = self->entry == &cmd_next_window_entry;
 	if (args_has(self->args, 'n'))
@@ -116,7 +117,7 @@ cmd_select_window_exec(struct cmd *self, struct cmdq_item *item)
 				return (CMD_RETURN_ERROR);
 			}
 		}
-
+		cmd_find_from_session(&item->shared->current, s);
 		server_redraw_session(s);
 	} else {
 		/*
@@ -128,9 +129,13 @@ cmd_select_window_exec(struct cmd *self, struct cmdq_item *item)
 				cmdq_error(item, "no last window");
 				return (-1);
 			}
+			if (current->s == s)
+				cmd_find_from_session(current, s);
 			server_redraw_session(s);
-		} else if (session_select(s, wl->idx) == 0)
+		} else if (session_select(s, wl->idx) == 0) {
+			cmd_find_from_session(current, s);
 			server_redraw_session(s);
+		}
 	}
 	recalculate_sizes();
 

@@ -45,7 +45,7 @@ const struct cmd_entry cmd_choose_client_entry = {
 	.args = { "F:t:", 0, 1 },
 	.usage = CMD_TARGET_WINDOW_USAGE " [-F format] [template]",
 
-	.tflag = CMD_WINDOW,
+	.target = { 't', CMD_FIND_WINDOW, 0 },
 
 	.flags = 0,
 	.exec = cmd_choose_client_exec
@@ -59,10 +59,10 @@ static enum cmd_retval
 cmd_choose_client_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = self->args;
-	struct client			*c = item->state.c;
+	struct client			*c = cmd_find_client(item, NULL, 1);
 	struct client			*c1;
 	struct window_choose_data	*cdata;
-	struct winlink			*wl = item->state.tflag.wl;
+	struct winlink			*wl = item->target.wl;
 	const char			*template;
 	char				*action;
 	u_int			 	 idx, cur;

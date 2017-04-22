@@ -45,7 +45,7 @@ const struct cmd_entry cmd_set_option_entry = {
 	.args = { "agoqst:uw", 1, 2 },
 	.usage = "[-agosquw] [-t target-window] option [value]",
 
-	.tflag = CMD_WINDOW_CANFAIL,
+	.target = { 't', CMD_FIND_WINDOW, CMD_FIND_CANFAIL },
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_set_option_exec
@@ -58,7 +58,7 @@ const struct cmd_entry cmd_set_window_option_entry = {
 	.args = { "agoqt:u", 1, 2 },
 	.usage = "[-agoqu] " CMD_TARGET_WINDOW_USAGE " option [value]",
 
-	.tflag = CMD_WINDOW_CANFAIL,
+	.target = { 't', CMD_FIND_WINDOW, CMD_FIND_CANFAIL },
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_set_option_exec
@@ -69,7 +69,7 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = self->args;
 	int				 append = args_has(args, 'a');
-	struct cmd_find_state		*fs = &item->state.tflag;
+	struct cmd_find_state		*fs = &item->target;
 	struct session			*s = fs->s;
 	struct winlink			*wl = fs->wl;
 	struct window			*w;

@@ -854,10 +854,9 @@ server_client_handle_key(struct client *c, key_code key)
 		m->valid = 0;
 
 	/* Find affected pane. */
-	if (KEYC_IS_MOUSE(key) && m->valid)
-		wp = cmd_mouse_pane(m, NULL, NULL);
-	else
-		wp = w->active;
+	if (!KEYC_IS_MOUSE(key) || cmd_find_from_mouse(&fs, m) != 0)
+		cmd_find_from_session(&fs, s);
+	wp = fs.wp;
 
 	/* Forward mouse keys if disabled. */
 	if (KEYC_IS_MOUSE(key) && !options_get_number(s->options, "mouse"))
@@ -944,13 +943,8 @@ retry:
 		}
 		server_status_client(c);
 
-		/* Find default state if the pane is known. */
-		if (KEYC_IS_MOUSE(key) && m->valid && wp != NULL) {
-			cmd_find_from_winlink_pane(&fs, s->curw, wp);
-			cmd_find_log_state(__func__, &fs);
-			key_bindings_dispatch(bd, c, m, &fs);
-		} else
-			key_bindings_dispatch(bd, c, m, NULL);
+		/* Execute the key binding. */
+		key_bindings_dispatch(bd, c, m, &fs);
 		key_bindings_unref_table(table);
 		return;
 	}

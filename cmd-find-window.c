@@ -54,7 +54,7 @@ const struct cmd_entry cmd_find_window_entry = {
 	.args = { "F:CNt:T", 1, 4 },
 	.usage = "[-CNT] [-F format] " CMD_TARGET_WINDOW_USAGE " match-string",
 
-	.tflag = CMD_WINDOW,
+	.target = { 't', CMD_FIND_WINDOW, 0 },
 
 	.flags = 0,
 	.exec = cmd_find_window_exec
@@ -142,10 +142,11 @@ static enum cmd_retval
 cmd_find_window_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = self->args;
-	struct client			*c = item->state.c;
+	struct cmd_find_state		*current = &item->shared->current;
+	struct client			*c = cmd_find_client(item, NULL, 1);
 	struct window_choose_data	*cdata;
-	struct session			*s = item->state.tflag.s;
-	struct winlink			*wl = item->state.tflag.wl, *wm;
+	struct session			*s = item->target.s;
+	struct winlink			*wl = item->target.wl, *wm;
 	struct cmd_find_window_list	 find_list;
 	struct cmd_find_window_data	*find_data;
 	struct cmd_find_window_data	*find_data1;
@@ -177,8 +178,10 @@ cmd_find_window_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (TAILQ_NEXT(TAILQ_FIRST(&find_list), entry) == NULL) {
-		if (session_select(s, TAILQ_FIRST(&find_list)->wl->idx) == 0)
+		if (session_select(s, TAILQ_FIRST(&find_list)->wl->idx) == 0) {
+			cmd_find_from_session(current, s);
 			server_redraw_session(s);
+		}
 		recalculate_sizes();
 		goto out;
 	}

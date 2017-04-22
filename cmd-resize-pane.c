@@ -39,7 +39,7 @@ const struct cmd_entry cmd_resize_pane_entry = {
 	.usage = "[-DLMRUZ] [-x width] [-y height] " CMD_TARGET_PANE_USAGE " "
 		 "[adjustment]",
 
-	.tflag = CMD_PANE,
+	.target = { 't', CMD_FIND_PANE, 0 },
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_resize_pane_exec
@@ -50,11 +50,11 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
 	struct cmdq_shared	*shared = item->shared;
-	struct window_pane	*wp = item->state.tflag.wp;
-	struct winlink		*wl = item->state.tflag.wl;
+	struct window_pane	*wp = item->target.wp;
+	struct winlink		*wl = item->target.wl;
 	struct window		*w = wl->window;
 	struct client		*c = item->client;
-	struct session		*s = item->state.tflag.s;
+	struct session		*s = item->target.s;
 	const char	       	*errstr;
 	char			*cause;
 	u_int			 adjust;

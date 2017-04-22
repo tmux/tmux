@@ -952,6 +952,10 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 	const char		*session, *window, *pane;
 	int			 window_only = 0, pane_only = 0;
 
+	/* Can fail flag implies quiet. */
+	if (flags & CMD_FIND_CANFAIL)
+		flags |= CMD_FIND_QUIET;
+
 	/* Log the arguments. */
 	if (target == NULL)
 		log_debug("%s: target none, type %d", __func__, type);
@@ -1189,6 +1193,8 @@ error:
 	log_debug("%s: error", __func__);
 
 	free(copy);
+	if (flags & CMD_FIND_CANFAIL)
+		return (0);
 	return (-1);
 
 found:

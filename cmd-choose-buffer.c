@@ -40,7 +40,7 @@ const struct cmd_entry cmd_choose_buffer_entry = {
 	.args = { "F:t:", 0, 1 },
 	.usage = CMD_TARGET_WINDOW_USAGE " [-F format] [template]",
 
-	.tflag = CMD_WINDOW,
+	.target = { 't', CMD_FIND_WINDOW, 0 },
 
 	.flags = 0,
 	.exec = cmd_choose_buffer_exec
@@ -50,8 +50,8 @@ static enum cmd_retval
 cmd_choose_buffer_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = self->args;
-	struct client			*c = item->state.c;
-	struct winlink			*wl = item->state.tflag.wl;
+	struct client			*c = cmd_find_client(item, NULL, 1);
+	struct winlink			*wl = item->target.wl;
 	struct window_choose_data	*cdata;
 	struct paste_buffer		*pb;
 	char				*action, *action_data;

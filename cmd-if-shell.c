@@ -43,7 +43,7 @@ const struct cmd_entry cmd_if_shell_entry = {
 	.usage = "[-bF] " CMD_TARGET_PANE_USAGE " shell-command command "
 		 "[command]",
 
-	.tflag = CMD_PANE_CANFAIL,
+	.target = { 't', CMD_FIND_PANE, CMD_FIND_CANFAIL },
 
 	.flags = 0,
 	.exec = cmd_if_shell_exec
@@ -70,10 +70,10 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 	char				*shellcmd, *cmd, *cause;
 	struct cmd_list			*cmdlist;
 	struct cmdq_item		*new_item;
-	struct client			*c = item->state.c;
-	struct session			*s = item->state.tflag.s;
-	struct winlink			*wl = item->state.tflag.wl;
-	struct window_pane		*wp = item->state.tflag.wp;
+	struct client			*c = cmd_find_client(item, NULL, 1);
+	struct session			*s = item->target.s;
+	struct winlink			*wl = item->target.wl;
+	struct window_pane		*wp = item->target.wp;
 	const char			*cwd;
 
 	if (item->client != NULL && item->client->session == NULL)

@@ -35,8 +35,8 @@ const struct cmd_entry cmd_swap_window_entry = {
 	.args = { "ds:t:", 0, 0 },
 	.usage = "[-d] " CMD_SRCDST_WINDOW_USAGE,
 
-	.sflag = CMD_WINDOW_MARKED,
-	.tflag = CMD_WINDOW,
+	.source = { 's', CMD_FIND_WINDOW, CMD_FIND_DEFAULT_MARKED },
+	.target = { 't', CMD_FIND_WINDOW, 0 },
 
 	.flags = 0,
 	.exec = cmd_swap_window_exec
@@ -50,12 +50,12 @@ cmd_swap_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct winlink		*wl_src, *wl_dst;
 	struct window		*w_src, *w_dst;
 
-	wl_src = item->state.sflag.wl;
-	src = item->state.sflag.s;
+	wl_src = item->source.wl;
+	src = item->source.s;
 	sg_src = session_group_contains(src);
 
-	wl_dst = item->state.tflag.wl;
-	dst = item->state.tflag.s;
+	wl_dst = item->target.wl;
+	dst = item->target.s;
 	sg_dst = session_group_contains(dst);
 
 	if (src != dst && sg_src != NULL && sg_dst != NULL &&

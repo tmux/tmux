@@ -37,7 +37,7 @@ const struct cmd_entry cmd_respawn_pane_entry = {
 	.args = { "kt:", 0, -1 },
 	.usage = "[-k] " CMD_TARGET_PANE_USAGE " [command]",
 
-	.tflag = CMD_PANE,
+	.target = { 't', CMD_FIND_PANE, 0 },
 
 	.flags = 0,
 	.exec = cmd_respawn_pane_exec
@@ -47,10 +47,10 @@ static enum cmd_retval
 cmd_respawn_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
-	struct winlink		*wl = item->state.tflag.wl;
+	struct winlink		*wl = item->target.wl;
 	struct window		*w = wl->window;
-	struct window_pane	*wp = item->state.tflag.wp;
-	struct session		*s = item->state.tflag.s;
+	struct window_pane	*wp = item->target.wp;
+	struct session		*s = item->target.s;
 	struct environ		*env;
 	const char		*path;
 	char			*cause;

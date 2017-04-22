@@ -189,14 +189,34 @@ cmdq_get_command(struct cmd_list *cmdlist, struct cmd_find_state *current,
 	return (first);
 }
 
+/* Fill in flag for a command. */
+static enum cmd_retval
+cmdq_find_flag(struct cmdq_item *item, struct cmd_find_state *fs,
+    const struct cmd_entry_flag *flag)
+{
+	const char	*value;
+
+	if (flag->flag == 0) {
+		cmd_find_clear_state(fs, 0);
+		return (CMD_RETURN_NORMAL);
+	}
+
+	value = args_get(item->cmd->args, flag->flag);
+	if (cmd_find_target(fs, item, value, flag->type, flag->flags) != 0) {
+		cmd_find_clear_state(fs, 0);
+		return (CMD_RETURN_ERROR);
+	}
+	return (CMD_RETURN_NORMAL);
+}
+
 /* Fire command on command queue. */
 static enum cmd_retval
 cmdq_fire_command(struct cmdq_item *item)
 {
 	struct client		*c = item->client;
 	struct cmd		*cmd = item->cmd;
+	const struct cmd_entry	*entry = cmd->entry;
 	enum cmd_retval		 retval;
-	const char		*name;
 	struct cmd_find_state	*fsp, fs;
 	int			 flags;
 
@@ -205,27 +225,27 @@ cmdq_fire_command(struct cmdq_item *item)
 
 	if (item->client == NULL)
 		item->client = cmd_find_client(item, NULL, 1);
-
-	if (cmd_prepare_state(cmd, item) != 0) {
-		retval = CMD_RETURN_ERROR;
+	retval = cmdq_find_flag(item, &item->source, &entry->source);
+	if (retval == CMD_RETURN_ERROR)
 		goto out;
-	}
-
-	retval = cmd->entry->exec(cmd, item);
+	retval = cmdq_find_flag(item, &item->target, &entry->target);
 	if (retval == CMD_RETURN_ERROR)
 		goto out;
 
-	if (cmd->entry->flags & CMD_AFTERHOOK) {
-		name = cmd->entry->name;
-		if (cmd_find_valid_state(&item->state.tflag))
-			fsp = &item->state.tflag;
+	retval = entry->exec(cmd, item);
+	if (retval == CMD_RETURN_ERROR)
+		goto out;
+
+	if (entry->flags & CMD_AFTERHOOK) {
+		if (cmd_find_valid_state(&item->target))
+			fsp = &item->target;
 		else if (cmd_find_valid_state(&item->shared->current))
 			fsp = &item->shared->current;
 		else if (cmd_find_from_client(&fs, item->client) == 0)
 			fsp = &fs;
 		else
 			goto out;
-		hooks_insert(fsp->s->hooks, item, fsp, "after-%s", name);
+		hooks_insert(fsp->s->hooks, item, fsp, "after-%s", entry->name);
 	}
 
 out:

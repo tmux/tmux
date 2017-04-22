@@ -52,7 +52,7 @@ const struct cmd_entry cmd_list_windows_entry = {
 	.args = { "F:at:", 0, 0 },
 	.usage = "[-a] [-F format] " CMD_TARGET_SESSION_USAGE,
 
-	.tflag = CMD_SESSION,
+	.target = { 't', CMD_FIND_SESSION, 0 },
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_list_windows_exec
@@ -66,7 +66,7 @@ cmd_list_windows_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'a'))
 		cmd_list_windows_server(self, item);
 	else
-		cmd_list_windows_session(self, item->state.tflag.s, item, 0);
+		cmd_list_windows_session(self, item->target.s, item, 0);
 
 	return (CMD_RETURN_NORMAL);
 }
