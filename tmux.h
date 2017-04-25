@@ -1099,6 +1099,7 @@ struct tty_ctx {
 	struct window_pane	*wp;
 
 	const struct grid_cell	*cell;
+	int			 wrapped;
 
 	u_int		 num;
 	void		*ptr;

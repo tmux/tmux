@@ -41,6 +41,7 @@ static const struct grid_cell screen_write_pad_cell = {
 
 struct screen_write_collect_item {
 	u_int			 x;
+	int			 wrapped;
 
 	u_int			 used;
 	char			 data[256];
@@ -1054,6 +1055,7 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only)
 			screen_write_cursormove(ctx, ci->x, y);
 			screen_write_initctx(ctx, &ttyctx);
 			ttyctx.cell = &ci->gc;
+			ttyctx.wrapped = ci->wrapped;
 			ttyctx.ptr = ci->data;
 			ttyctx.num = ci->used;
 			tty_write(tty_cmd_cells, &ttyctx);
@@ -1133,13 +1135,15 @@ screen_write_collect_add(struct screen_write_ctx *ctx,
 
 	if (s->cx > sx - 1 || ctx->item->used > sx - 1 - s->cx)
 		screen_write_collect_end(ctx);
+	ci = ctx->item; /* may have changed */
+
 	if (s->cx > sx - 1) {
 		log_debug("%s: wrapped at %u,%u", __func__, s->cx, s->cy);
+		ci->wrapped = 1;
 		screen_write_linefeed(ctx, 1);
 		s->cx = 0;
 	}
 
-	ci = ctx->item; /* may have changed */
 	if (ci->used == 0)
 		memcpy(&ci->gc, gc, sizeof ci->gc);
 	ci->data[ci->used++] = gc->data.data[0];
