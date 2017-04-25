@@ -31,7 +31,6 @@
 
 static enum cmd_retval	cmd_if_shell_exec(struct cmd *, struct cmdq_item *);
 
-static enum cmd_retval	cmd_if_shell_error(struct cmdq_item *, void *);
 static void		cmd_if_shell_callback(struct job *);
 static void		cmd_if_shell_free(void *);
 
@@ -138,17 +137,6 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 	return (CMD_RETURN_WAIT);
 }
 
-static enum cmd_retval
-cmd_if_shell_error(struct cmdq_item *item, void *data)
-{
-	char	*error = data;
-
-	cmdq_error(item, "%s", error);
-	free(error);
-
-	return (CMD_RETURN_NORMAL);
-}
-
 static void
 cmd_if_shell_callback(struct job *job)
 {
@@ -168,10 +156,10 @@ cmd_if_shell_callback(struct job *job)
 
 	cmdlist = cmd_string_parse(cmd, file, line, &cause);
 	if (cmdlist == NULL) {
-		if (cause != NULL)
-			new_item = cmdq_get_callback(cmd_if_shell_error, cause);
-		else
-			new_item = NULL;
+		if (cause != NULL && cdata->item != NULL)
+			cmdq_error(cdata->item, "%s", cause);
+		free(cause);
+		new_item = NULL;
 	} else {
 		new_item = cmdq_get_command(cmdlist, NULL, &cdata->mouse, 0);
 		cmd_list_free(cmdlist);
