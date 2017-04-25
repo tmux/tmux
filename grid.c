@@ -678,6 +678,7 @@ grid_string_cells_code(const struct grid_cell *lastgc,
 	u_int	attr = gc->attr;
 	u_int	lastattr = lastgc->attr;
 	char	tmp[64];
+	int	attrchanged = 0;
 
 	struct {
 		u_int	mask;
@@ -699,27 +700,31 @@ grid_string_cells_code(const struct grid_cell *lastgc,
 		if (!(attr & attrs[i].mask) && (lastattr & attrs[i].mask)) {
 			s[n++] = 0;
 			lastattr &= GRID_ATTR_CHARSET;
+			attrchanged = 1;
 			break;
 		}
 	}
 	/* For each attribute that is newly set, add its code. */
 	for (i = 0; i < nitems(attrs); i++) {
 		if ((attr & attrs[i].mask) && !(lastattr & attrs[i].mask))
+		{
 			s[n++] = attrs[i].code;
+			attrchanged = 1;
+		}
 	}
 
-	/* If the foreground colour changed, append its parameters. */
+	/* If the foreground colour or the attributes changed, append the colour's parameters. */
 	nnewc = grid_string_cells_fg(gc, newc);
 	noldc = grid_string_cells_fg(lastgc, oldc);
-	if (nnewc != noldc || memcmp(newc, oldc, nnewc * sizeof newc[0]) != 0) {
+	if (nnewc != noldc || memcmp(newc, oldc, nnewc * sizeof newc[0]) != 0 || attrchanged == 1) {
 		for (i = 0; i < nnewc; i++)
 			s[n++] = newc[i];
 	}
 
-	/* If the background colour changed, append its parameters. */
+	/* If the background colour or the attributes changed, append the colour's parameters. */
 	nnewc = grid_string_cells_bg(gc, newc);
 	noldc = grid_string_cells_bg(lastgc, oldc);
-	if (nnewc != noldc || memcmp(newc, oldc, nnewc * sizeof newc[0]) != 0) {
+	if (nnewc != noldc || memcmp(newc, oldc, nnewc * sizeof newc[0]) != 0 || attrchanged == 1) {
 		for (i = 0; i < nnewc; i++)
 			s[n++] = newc[i];
 	}
