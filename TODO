@@ -120,27 +120,3 @@
 	* multiple hooks with the same name?
 	* finish hooks for notifys
 	* for session_closed, if no sessions at all, perhaps fake up a temporary one
-
-- current target resolution is still confusing and probably wrong:
-	* what if I
-		bind -n DoubleClick1Pane selectp -U\; resizep -Z
-	  and click on a pane that isn't the active pane? It should make the
-	  pane above the one I clicked on active and zoom it
-	* bind q select-pane -U\; resize-pane -Z should do the obvious
-	* bind q neww\; splitw as well
-	* should we always start with a "current target" and commands can
-	  update it?
-	* a few cases:
-		1) normal key bindings - fine, we always know the full target
-		   but it is important that commands like neww and selectp
-		   use the updated active window or pane;
-		2) mouse key binding - same, but needs to be the mouse target;
-		3) from a new client ("tmux whatever") - we may know the best
-		   s,wl,wp from the pty, guess the client, or guess all if
-		   we don't know;
-		4) hooks - we may know or we may not;
-		5) control mode - same as a key binding really, and not
-		   specifying a target is stupid anyway;
-		6) if-shell/run-shell - may be able to preserve its target,
-		   else guess.
-	* of course -t and -s override the current target as now.
