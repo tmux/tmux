@@ -1103,6 +1103,7 @@ struct tty_ctx {
 	struct window_pane	*wp;
 
 	const struct grid_cell	*cell;
+	int			 wrapped;
 
 	u_int		 num;
 	void		*ptr;
@@ -1474,7 +1475,6 @@ void	proc_kill_peer(struct tmuxpeer *);
 
 /* cfg.c */
 extern int cfg_finished;
-extern struct client *cfg_client;
 void	start_cfg(void);
 int	load_cfg(const char *, struct client *, struct cmdq_item *, int);
 void	set_cfg_file(const char *);

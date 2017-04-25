@@ -540,9 +540,13 @@ void
 tty_putn(struct tty *tty, const void *buf, size_t len, u_int width)
 {
 	tty_add(tty, buf, len);
-	if (tty->cx + width > tty->sx)
-		tty->cx = tty->cy = UINT_MAX;
-	else
+	if (tty->cx + width > tty->sx) {
+		tty->cx = (tty->cx + width) - tty->sx;
+		if (tty->cx <= tty->sx)
+			tty->cy++;
+		else
+			tty->cx = tty->cy = UINT_MAX;
+	} else
 		tty->cx += width;
 }
 
@@ -773,18 +777,26 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 	if (sx > tty->sx)
 		sx = tty->sx;
 
-	if (screen_size_x(s) < tty->sx &&
-	    ox == 0 &&
-	    sx != screen_size_x(s) &&
-	    tty_term_has(tty->term, TTYC_EL1) &&
-	    !tty_fake_bce(tty, wp, 8)) {
-		tty_default_attributes(tty, wp, 8);
-		tty_cursor(tty, screen_size_x(s) - 1, oy + py);
-		tty_putcode(tty, TTYC_EL1);
-		cleared = 1;
-	}
-	if (sx != 0)
-		tty_cursor(tty, ox, oy + py);
+	if (wp == NULL ||
+	    py == 0 ||
+	    (~s->grid->linedata[s->grid->hsize + py - 1].flags & GRID_LINE_WRAPPED) ||
+	    ox != 0 ||
+	    tty->cx < tty->sx ||
+	    screen_size_x(s) < tty->sx) {
+		if (screen_size_x(s) < tty->sx &&
+		    ox == 0 &&
+		    sx != screen_size_x(s) &&
+		    tty_term_has(tty->term, TTYC_EL1) &&
+		    !tty_fake_bce(tty, wp, 8)) {
+			tty_default_attributes(tty, wp, 8);
+			tty_cursor(tty, screen_size_x(s) - 1, oy + py);
+			tty_putcode(tty, TTYC_EL1);
+			cleared = 1;
+		}
+		if (sx != 0)
+			tty_cursor(tty, ox, oy + py);
+	} else
+		log_debug("%s: wrapped line %u", __func__, oy + py);
 
 	memcpy(&last, &grid_default_cell, sizeof last);
 	len = 0;
@@ -1477,7 +1489,8 @@ static void
 tty_cursor_pane_unless_wrap(struct tty *tty, const struct tty_ctx *ctx,
     u_int cx, u_int cy)
 {
-	if (!tty_pane_full_width(tty, ctx) ||
+	if (!ctx->wrapped ||
+	    !tty_pane_full_width(tty, ctx) ||
 	    (tty->term->flags & TERM_EARLYWRAP) ||
 	    ctx->xoff + cx != 0 ||
 	    ctx->yoff + cy != tty->cy + 1 ||
