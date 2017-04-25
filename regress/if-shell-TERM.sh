@@ -1,6 +1,7 @@
 #!/bin/sh
 
 # 882
+# TERM should come from outside tmux for if-shell from the config file
 
 PATH=/bin:/usr/bin
 TERM=screen

@@ -1,7 +1,8 @@
 #!/bin/sh
 
-# 883
-# if-shell with an error should not core :-)
+# 869
+# new with no client (that is, from the config file) should imply -d and
+# not attach
 
 PATH=/bin:/usr/bin
 TERM=screen
@@ -14,13 +15,11 @@ TMP=$(mktemp)
 trap "rm -f $TMP" 0 1 15
 
 cat <<EOF >$TMP
-if 'true' 'wibble wobble'
+new -stest
 EOF
 
-$TMUX -f$TMP new -d || exit 1
-sleep 1
-E=$($TMUX display -p '#{pane_in_mode}')
+$TMUX -f$TMP start || exit 1
+sleep 1 && $TMUX has -t=test: || exit 1
 $TMUX kill-server 2>/dev/null
-[ "$E" = "1" ] || exit 1
 
 exit 0
