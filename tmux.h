@@ -1470,7 +1470,6 @@ void	proc_kill_peer(struct tmuxpeer *);
 
 /* cfg.c */
 extern int cfg_finished;
-extern struct client *cfg_client;
 void	start_cfg(void);
 int	load_cfg(const char *, struct client *, struct cmdq_item *, int);
 void	set_cfg_file(const char *);
