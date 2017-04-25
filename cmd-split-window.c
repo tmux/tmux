@@ -143,7 +143,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (envent != NULL)
 		path = envent->value;
 
-	env = environ_for_session(s);
+	env = environ_for_session(s, 0);
 	if (window_pane_spawn(new_wp, argc, argv, path, shell, cwd, env,
 	    s->tio, &cause) != 0) {
 		environ_free(env);

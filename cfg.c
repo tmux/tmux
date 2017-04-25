@@ -27,10 +27,19 @@
 
 #include "tmux.h"
 
-static char	 *cfg_file;
-int		  cfg_finished;
-static char	**cfg_causes;
-static u_int	  cfg_ncauses;
+static char		 *cfg_file;
+int			  cfg_finished;
+static char		**cfg_causes;
+static u_int		  cfg_ncauses;
+static struct cmdq_item	 *cfg_item;
+
+static enum cmd_retval
+cfg_client_done(__unused struct cmdq_item *item, __unused void *data)
+{
+	if (!cfg_finished)
+		return (CMD_RETURN_WAIT);
+	return (CMD_RETURN_NORMAL);
+}
 
 static enum cmd_retval
 cfg_done(__unused struct cmdq_item *item, __unused void *data)
@@ -41,6 +50,9 @@ cfg_done(__unused struct cmdq_item *item, __unused void *data)
 
 	if (!RB_EMPTY(&sessions))
 		cfg_show_causes(RB_MIN(sessions, &sessions));
+
+	if (cfg_item != NULL)
+		cfg_item->flags &= ~CMDQ_WAITING;
 
 	status_prompt_load_history();
 
@@ -59,12 +71,24 @@ start_cfg(void)
 {
 	const char	*home;
 	int		 quiet = 0;
+	struct client	*c;
 
 	/*
-	 * Note that the configuration files are loaded without a client, so
-	 * NULL is passed into load_cfg() which means that commands run in the
-	 * global queue and item->client is NULL for all commands.
+	 * Configuration files are loaded without a client, so NULL is passed
+	 * into load_cfg() and commands run in the global queue with
+	 * item->client NULL.
+	 *
+	 * However, we must block the initial client (but just the initial
+	 * client) so that its command runs after the configuration is loaded.
+	 * Because start_cfg() is called so early, we can be sure the client's
+	 * command queue is currently empty and our callback will be at the
+	 * front - we need to get in before MSG_COMMAND.
 	 */
+	c = TAILQ_FIRST(&clients);
+	if (c != NULL) {
+		cfg_item = cmdq_get_callback(cfg_client_done, NULL);
+		cmdq_append(c, cfg_item);
+	}
 
 	load_cfg(TMUX_CONF, NULL, NULL, 1);
 
