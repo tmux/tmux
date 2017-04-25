@@ -77,7 +77,7 @@ cmd_respawn_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (envent != NULL)
 		path = envent->value;
 
-	env = environ_for_session(s);
+	env = environ_for_session(s, 0);
 	if (window_pane_spawn(wp, args->argc, args->argv, path, NULL, NULL, env,
 	    s->tio, &cause) != 0) {
 		cmdq_error(item, "respawn pane failed: %s", cause);

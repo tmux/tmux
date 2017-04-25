@@ -222,7 +222,7 @@ environ_log(struct environ *env, const char *prefix)
 
 /* Create initial environment for new child. */
 struct environ *
-environ_for_session(struct session *s)
+environ_for_session(struct session *s, int no_TERM)
 {
 	struct environ	*env;
 	const char	*value;
@@ -233,8 +233,10 @@ environ_for_session(struct session *s)
 	if (s != NULL)
 		environ_copy(s->environ, env);
 
-	value = options_get_string(global_options, "default-terminal");
-	environ_set(env, "TERM", "%s", value);
+	if (!no_TERM) {
+		value = options_get_string(global_options, "default-terminal");
+		environ_set(env, "TERM", "%s", value);
+	}
 
 	if (s != NULL)
 		idx = s->id;
