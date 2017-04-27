@@ -10,8 +10,9 @@ TMUX="$TEST_TMUX -Ltest"
 $TMUX kill-server 2>/dev/null
 
 TMP=$(mktemp)
+OUT=$(mktemp)
 SCRIPT=$(mktemp)
-trap "rm -f $TMP $SCRIPT" 0 1 15
+trap "rm -f $TMP $OUT $SCRIPT" 0 1 15
 
 cat <<EOF >$SCRIPT
 (
@@ -20,7 +21,7 @@ echo PWD=\$(pwd)
 echo PATH=\$PATH
 echo SHELL=\$SHELL
 echo TEST=\$TEST
-) >$TMP
+) >$OUT
 EOF
 
 cat <<EOF >$TMP
@@ -30,7 +31,7 @@ EOF
 (cd /; env -i TERM=ansi TEST=test1 PATH=1 SHELL=/bin/sh \
 	$TMUX -f$TMP start) || exit 1
 sleep 1
-(cat <<EOF|cmp -s - $TMP) || exit 1
+(cat <<EOF|cmp -s - $OUT) || exit 1
 TERM=screen
 PWD=/
 PATH=1
@@ -41,7 +42,18 @@ EOF
 (cd /; env -i TERM=ansi TEST=test2 PATH=2 SHELL=/bin/sh \
 	$TMUX new -d -- /bin/sh $SCRIPT) || exit 1
 sleep 1
-(cat <<EOF|cmp -s - $TMP) || exit 1
+(cat <<EOF|cmp -s - $OUT) || exit 1
+TERM=screen
+PWD=/
+PATH=2
+SHELL=/bin/sh
+TEST=test2
+EOF
+
+(cd /; env -i TERM=ansi TEST=test3 PATH=3 SHELL=/bin/sh \
+	$TMUX new -d source $TMP) || exit 1
+sleep 1
+(cat <<EOF|cmp -s - $OUT) || exit 1
 TERM=screen
 PWD=/
 PATH=2
