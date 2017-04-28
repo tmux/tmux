@@ -189,13 +189,21 @@ session_create(const char *prefix, const char *name, int argc, char **argv,
 	return (s);
 }
 
+/* Add a reference to a session. */
+void
+session_add_ref(struct session *s, const char *from)
+{
+	s->references++;
+	log_debug("%s: %s %s, now %d", __func__, s->name, from, s->references);
+}
+
 /* Remove a reference from a session. */
 void
-session_unref(struct session *s)
+session_remove_ref(struct session *s, const char *from)
 {
-	log_debug("session %s has %d references", s->name, s->references);
-
 	s->references--;
+	log_debug("%s: %s %s, now %d", __func__, s->name, from, s->references);
+
 	if (s->references == 0)
 		event_once(-1, EV_TIMEOUT, session_free, s, NULL);
 }
@@ -248,7 +256,7 @@ session_destroy(struct session *s)
 
 	free((void *)s->cwd);
 
-	session_unref(s);
+	session_remove_ref(s, __func__);
 }
 
 /* Check a session name is valid: not empty and no colons or periods. */

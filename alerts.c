@@ -64,7 +64,7 @@ alerts_callback(__unused int fd, __unused short events, __unused void *arg)
 		TAILQ_REMOVE(&alerts_list, w, alerts_entry);
 
 		w->flags &= ~WINDOW_ALERTFLAGS;
-		window_remove_ref(w);
+		window_remove_ref(w, __func__);
 	}
 	alerts_fired = 0;
 }
@@ -148,7 +148,7 @@ alerts_queue(struct window *w, int flags)
 		if (!w->alerts_queued) {
 			w->alerts_queued = 1;
 			TAILQ_INSERT_TAIL(&alerts_list, w, alerts_entry);
-			w->references++;
+			window_add_ref(w, __func__);
 		}
 
 		if (!alerts_fired) {
