@@ -1117,7 +1117,7 @@ void
 tty_cmd_scrollup(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
-	u_int			 i;
+	u_int			 i, lines;
 
 	if ((!tty_pane_full_width(tty, ctx) && !tty_use_margin(tty)) ||
 	    tty_fake_bce(tty, wp, 8) ||
@@ -1131,12 +1131,21 @@ tty_cmd_scrollup(struct tty *tty, const struct tty_ctx *ctx)
 	tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
 	tty_margin_pane(tty, ctx);
 
-	if (ctx->num == 1 || !tty_term_has(tty->term, TTYC_INDN)) {
+	/*
+	 * Konsole has a bug where it will ignore SU if the parameter is more
+	 * than the height of the scroll region. Clamping the parameter doesn't
+	 * hurt in any case.
+	 */
+	lines = tty->rlower - tty->rupper;
+	if (lines > ctx->num)
+		lines = ctx->num;
+
+	if (lines == 1 || !tty_term_has(tty->term, TTYC_INDN)) {
 		tty_cursor(tty, tty->rright, tty->rlower);
-		for (i = 0; i < ctx->num; i++)
+		for (i = 0; i < lines; i++)
 			tty_putc(tty, '\n');
 	} else
-		tty_putcode1(tty, TTYC_INDN, ctx->num);
+		tty_putcode1(tty, TTYC_INDN, lines);
 }
 
 void
