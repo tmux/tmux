@@ -186,7 +186,7 @@ winlink_set_window(struct winlink *wl, struct window *w)
 {
 	if (wl->window != NULL) {
 		TAILQ_REMOVE(&wl->window->winlinks, wl, wentry);
-		window_remove_ref(w);
+		window_remove_ref(wl->window);
 	}
 	TAILQ_INSERT_TAIL(&w->winlinks, wl, wentry);
 	wl->window = w;
