@@ -225,10 +225,10 @@ static void
 window_choose_data_free(struct window_choose_data *wcd)
 {
 	server_client_unref(wcd->start_client);
-	session_unref(wcd->start_session);
+	session_remove_ref(wcd->start_session, __func__);
 
 	if (wcd->tree_session != NULL)
-		session_unref(wcd->tree_session);
+		session_remove_ref(wcd->tree_session, __func__);
 
 	free(wcd->ft_template);
 	format_free(wcd->ft);

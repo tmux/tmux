@@ -2116,7 +2116,8 @@ struct window_pane *window_pane_find_down(struct window_pane *);
 struct window_pane *window_pane_find_left(struct window_pane *);
 struct window_pane *window_pane_find_right(struct window_pane *);
 void		 window_set_name(struct window *, const char *);
-void		 window_remove_ref(struct window *);
+void		 window_add_ref(struct window *, const char *);
+void		 window_remove_ref(struct window *, const char *);
 void		 winlink_clear_flags(struct winlink *);
 int		 winlink_shuffle_up(struct session *, struct winlink *);
 
@@ -2230,7 +2231,8 @@ struct session	*session_create(const char *, const char *, int, char **,
 		     const char *, const char *, struct environ *,
 		     struct termios *, int, u_int, u_int, char **);
 void		 session_destroy(struct session *);
-void		 session_unref(struct session *);
+void		 session_add_ref(struct session *, const char *);
+void		 session_remove_ref(struct session *, const char *);
 int		 session_check_name(const char *);
 void		 session_update_activity(struct session *, struct timeval *);
 struct session	*session_next_session(struct session *);
