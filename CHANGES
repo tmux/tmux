@@ -28,7 +28,7 @@ Incompatible Changes
   and history is now used for searching, jumping, and so on instead of a custom
   one. The default C-r binding is now:
 
-    bind -Tcopy-mode C-r command-prompt -p'search up' "send -X search-backward '%%'"
+    bind -Tcopy-mode C-r command-prompt -p'search up' "send -X search-backward-incremental '%%'"
 
   There are also some new commmands available with send -X, such as
   copy-pipe-and-cancel.
