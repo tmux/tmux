@@ -144,16 +144,18 @@ alerts_queue(struct window *w, int flags)
 		log_debug("@%u alerts flags added %#x", w->id, flags);
 	}
 
-	if (!w->alerts_queued) {
-		w->alerts_queued = 1;
-		TAILQ_INSERT_TAIL(&alerts_list, w, alerts_entry);
-		w->references++;
-	}
+	if (alerts_enabled(w, flags)) {
+		if (!w->alerts_queued) {
+			w->alerts_queued = 1;
+			TAILQ_INSERT_TAIL(&alerts_list, w, alerts_entry);
+			w->references++;
+		}
 
-	if (!alerts_fired && alerts_enabled(w, flags)) {
-		log_debug("alerts check queued (by @%u)", w->id);
-		event_once(-1, EV_TIMEOUT, alerts_callback, NULL, NULL);
-		alerts_fired = 1;
+		if (!alerts_fired) {
+			log_debug("alerts check queued (by @%u)", w->id);
+			event_once(-1, EV_TIMEOUT, alerts_callback, NULL, NULL);
+			alerts_fired = 1;
+		}
 	}
 }
 
