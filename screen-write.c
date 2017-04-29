@@ -1316,12 +1316,12 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct utf8_data *ud,
 		fatalx("UTF-8 data empty");
 
 	/* Retrieve the previous cell. */
-	for (n = 1; n < s->cx; n++) {
+	for (n = 1; n <= s->cx; n++) {
 		grid_view_get_cell(gd, s->cx - n, s->cy, &gc);
 		if (~gc.flags & GRID_FLAG_PADDING)
 			break;
 	}
-	if (n == s->cx)
+	if (n > s->cx)
 		return (NULL);
 	*xx = s->cx - n;
 
