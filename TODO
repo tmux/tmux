@@ -22,6 +22,8 @@
 	* formats to show if a window is linked into multiple sessions, into
 	  multiple attached sessions, and is the active window in multiple
 	  attached sessions?
+	* comparison operators like < and > (for #{version}?)
+	* %else statement in config file
 
 - choose mode improvements:
 	* choose-pane command (augment choose-tree to do this?)
