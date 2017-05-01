@@ -43,6 +43,7 @@ struct client;
 struct cmdq_item;
 struct cmdq_list;
 struct environ;
+struct format_job_tree;
 struct input_ctx;
 struct mode_key_cmdstr;
 struct mouse_event;
@@ -1290,6 +1291,7 @@ struct client {
 	struct timeval	 activity_time;
 
 	struct environ	*environ;
+	struct format_job_tree	*jobs;
 
 	char		*title;
 	const char	*cwd;
@@ -1501,7 +1503,8 @@ char		*paste_make_sample(struct paste_buffer *);
 #define FORMAT_PANE 0x80000000U
 #define FORMAT_WINDOW 0x40000000U
 struct format_tree;
-struct format_tree *format_create(struct cmdq_item *, int, int);
+struct format_tree *format_create(struct client *, struct cmdq_item *, int,
+		     int);
 void		 format_free(struct format_tree *);
 void printflike(3, 4) format_add(struct format_tree *, const char *,
 		     const char *, ...);
@@ -1517,6 +1520,7 @@ void		 format_defaults_pane(struct format_tree *,
 		     struct window_pane *);
 void		 format_defaults_paste_buffer(struct format_tree *,
 		     struct paste_buffer *);
+void		 format_lost_client(struct client *);
 
 /* hooks.c */
 struct hook;

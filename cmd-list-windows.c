@@ -86,7 +86,7 @@ cmd_list_windows_session(struct cmd *self, struct session *s,
 {
 	struct args		*args = self->args;
 	struct winlink		*wl;
-	u_int			n;
+	u_int			 n;
 	struct format_tree	*ft;
 	const char		*template;
 	char			*line;
@@ -105,7 +105,7 @@ cmd_list_windows_session(struct cmd *self, struct session *s,
 
 	n = 0;
 	RB_FOREACH(wl, winlinks, &s->windows) {
-		ft = format_create(item, FORMAT_NONE, 0);
+		ft = format_create(item->client, item, FORMAT_NONE, 0);
 		format_add(ft, "line", "%u", n);
 		format_defaults(ft, NULL, s, wl, NULL);
 

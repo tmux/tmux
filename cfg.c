@@ -148,7 +148,8 @@ load_cfg(const char *path, struct client *c, struct cmdq_item *item, int quiet)
 				    line);
 				continue;
 			}
-			ft = format_create(NULL, FORMAT_NONE, FORMAT_NOJOBS);
+			ft = format_create(NULL, NULL, FORMAT_NONE,
+			    FORMAT_NOJOBS);
 
 			s = p + 3;
 			while (isspace((u_char)*s))

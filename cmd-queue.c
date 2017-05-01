@@ -299,7 +299,7 @@ cmdq_format(struct cmdq_item *item, const char *key, const char *fmt, ...)
 	va_end(ap);
 
 	if (shared->formats == NULL)
-		shared->formats = format_create(NULL, FORMAT_NONE, 0);
+		shared->formats = format_create(NULL, NULL, FORMAT_NONE, 0);
 	format_add(shared->formats, key, "%s", value);
 
 	free(value);
