@@ -80,6 +80,7 @@ static void	 format_defaults_winlink(struct format_tree *,
 
 /* Entry in format job tree. */
 struct format_job {
+	struct client		*client;
 	u_int			 tag;
 	const char		*cmd;
 	const char		*expanded;
@@ -132,6 +133,7 @@ struct format_tree {
 	struct session		*s;
 	struct window_pane	*wp;
 
+	struct client		*client;
 	u_int			 tag;
 	int			 flags;
 
@@ -240,7 +242,6 @@ format_job_complete(struct job *job)
 	struct format_job	*fj = job->data;
 	char			*line, *buf;
 	size_t			 len;
-	struct client		*c;
 
 	fj->job = NULL;
 
@@ -262,8 +263,8 @@ format_job_complete(struct job *job)
 		free(buf);
 
 	if (fj->status) {
-		TAILQ_FOREACH(c, &clients, entry)
-		    server_status_client(c);
+		if (fj->client != NULL)
+			server_status_client(fj->client);
 		fj->status = 0;
 	}
 }
@@ -272,22 +273,33 @@ format_job_complete(struct job *job)
 static char *
 format_job_get(struct format_tree *ft, const char *cmd)
 {
+	struct format_job_tree	*jobs;
 	struct format_job	 fj0, *fj;
 	time_t			 t;
 	char			*expanded;
 	int			 force;
 
+	if (ft->client == NULL)
+		jobs = &format_jobs;
+	else if (ft->client->jobs != NULL)
+		jobs = ft->client->jobs;
+	else {
+		jobs = ft->client->jobs = xmalloc(sizeof *ft->client->jobs);
+		RB_INIT(jobs);
+	}
+
 	fj0.tag = ft->tag;
 	fj0.cmd = cmd;
-	if ((fj = RB_FIND(format_job_tree, &format_jobs, &fj0)) == NULL) {
+	if ((fj = RB_FIND(format_job_tree, jobs, &fj0)) == NULL) {
 		fj = xcalloc(1, sizeof *fj);
+		fj->client = ft->client;
 		fj->tag = ft->tag;
 		fj->cmd = xstrdup(cmd);
 		fj->expanded = NULL;
 
 		xasprintf(&fj->out, "<'%s' not ready>", fj->cmd);
 
-		RB_INSERT(format_job_tree, &format_jobs, fj);
+		RB_INSERT(format_job_tree, jobs, fj);
 	}
 
 	expanded = format_expand(ft, cmd);
@@ -318,17 +330,16 @@ format_job_get(struct format_tree *ft, const char *cmd)
 
 /* Remove old jobs. */
 static void
-format_job_timer(__unused int fd, __unused short events, __unused void *arg)
+format_job_tidy(struct format_job_tree *jobs, int force)
 {
 	struct format_job	*fj, *fj1;
 	time_t			 now;
-	struct timeval		 tv = { .tv_sec = 60 };
 
 	now = time(NULL);
-	RB_FOREACH_SAFE(fj, format_job_tree, &format_jobs, fj1) {
-		if (fj->last > now || now - fj->last < 3600)
+	RB_FOREACH_SAFE(fj, format_job_tree, jobs, fj1) {
+		if (!force && (fj->last > now || now - fj->last < 3600))
 			continue;
-		RB_REMOVE(format_job_tree, &format_jobs, fj);
+		RB_REMOVE(format_job_tree, jobs, fj);
 
 		log_debug("%s: %s", __func__, fj->cmd);
 
@@ -340,6 +351,29 @@ format_job_timer(__unused int fd, __unused short events, __unused void *arg)
 		free(fj->out);
 
 		free(fj);
+	}
+}
+
+/* Remove old jobs for client. */
+void
+format_lost_client(struct client *c)
+{
+	if (c->jobs != NULL)
+		format_job_tidy(c->jobs, 1);
+	free(c->jobs);
+}
+
+/* Remove old jobs periodically. */
+static void
+format_job_timer(__unused int fd, __unused short events, __unused void *arg)
+{
+	struct client	*c;
+	struct timeval	 tv = { .tv_sec = 60 };
+
+	format_job_tidy(&format_jobs, 0);
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (c->jobs != NULL)
+			format_job_tidy(c->jobs, 0);
 	}
 
 	evtimer_del(&format_job_event);
@@ -552,7 +586,7 @@ format_merge(struct format_tree *ft, struct format_tree *from)
 
 /* Create a new tree. */
 struct format_tree *
-format_create(struct cmdq_item *item, int tag, int flags)
+format_create(struct client *c, struct cmdq_item *item, int tag, int flags)
 {
 	struct format_tree	*ft;
 
@@ -563,6 +597,11 @@ format_create(struct cmdq_item *item, int tag, int flags)
 
 	ft = xcalloc(1, sizeof *ft);
 	RB_INIT(&ft->tree);
+
+	if (c != NULL) {
+		ft->client = c;
+		ft->client->references++;
+	}
 
 	ft->tag = tag;
 	ft->flags = flags;
@@ -597,6 +636,8 @@ format_free(struct format_tree *ft)
 		free(fe);
 	}
 
+	if (ft->client != NULL)
+		server_client_unref(ft->client);
 	free(ft);
 }
 
@@ -1119,7 +1160,10 @@ format_single(struct cmdq_item *item, const char *fmt, struct client *c,
 	struct format_tree	*ft;
 	char			*expanded;
 
-	ft = format_create(item, FORMAT_NONE, 0);
+	if (item != NULL)
+		ft = format_create(item->client, item, FORMAT_NONE, 0);
+	else
+		ft = format_create(NULL, item, FORMAT_NONE, 0);
 	format_defaults(ft, c, s, wl, wp);
 
 	expanded = format_expand(ft, fmt);

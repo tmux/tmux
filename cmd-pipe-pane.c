@@ -89,7 +89,7 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	/* Expand the command. */
-	ft = format_create(item, FORMAT_NONE, 0);
+	ft = format_create(item->client, item, FORMAT_NONE, 0);
 	format_defaults(ft, c, s, wl, wp);
 	cmd = format_expand_time(ft, args->argv[0], time(NULL));
 	format_free(ft);

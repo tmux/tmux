@@ -144,7 +144,7 @@ cmd_list_keys_commands(struct cmd *self, struct cmdq_item *item)
 		    "#{command_list_usage}";
 	}
 
-	ft = format_create(item, FORMAT_NONE, 0);
+	ft = format_create(item->client, item, FORMAT_NONE, 0);
 	format_defaults(ft, NULL, NULL, NULL, NULL);
 
 	for (entryp = cmd_table; *entryp != NULL; entryp++) {
