@@ -2480,3 +2480,16 @@ window_copy_drag_update(__unused struct client *c, struct mouse_event *m)
 	if (window_copy_update_selection(wp, 1))
 		window_copy_redraw_selection(wp, old_cy);
 }
+
+const char *
+window_copy_search_string(struct window_pane *wp)
+{
+	struct window_copy_mode_data	*data;
+
+	if (wp->mode != &window_copy_mode)
+		return ("");
+	data = wp->modedata;
+	if (data->searchtype == WINDOW_COPY_OFF || data->searchstr == NULL)
+		return ("");
+	return (data->searchstr);
+}
