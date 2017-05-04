@@ -129,6 +129,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 	if (~item->shared->flags & CMDQ_SHARED_REPEAT)
 		server_client_set_key_table(c, NULL);
 	status_timer_start(c);
+	notify_client("client-session-changed", c);
 	session_update_activity(s, NULL);
 	gettimeofday(&s->last_attached_time, NULL);
 

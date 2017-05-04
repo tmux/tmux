@@ -4237,6 +4237,11 @@ A notification will never occur inside an output block.
 .Pp
 The following notifications are defined:
 .Bl -tag -width Ds
+.It Ic %client-session-changed Ar client Ar session-id Ar name
+The client is now attached to the session with ID
+.Ar session-id ,
+which is named
+.Ar name .
 .It Ic %exit Op Ar reason
 The
 .Nm
@@ -4259,6 +4264,10 @@ and the window flags are
 A window pane produced output.
 .Ar value
 escapes non-printable characters and backslash as octal \\xxx.
+.It Ic %pane-mode-changed Ar pane-id
+The pane with ID
+.Ar pane-id
+has changed mode.
 .It Ic %session-changed Ar session-id Ar name
 The client is now attached to the session with ID
 .Ar session-id ,
@@ -4267,6 +4276,11 @@ which is named
 .It Ic %session-renamed Ar name
 The current session was renamed to
 .Ar name .
+.It Ic %session-window-changed Ar session-id Ar window-id
+The session with ID
+.Ar session-id
+changed its active window to the window with ID
+.Ar window-id .
 .It Ic %sessions-changed
 A session was created or destroyed.
 .It Ic %unlinked-window-add Ar window-id
@@ -4281,6 +4295,11 @@ was linked to the current session.
 The window with ID
 .Ar window-id
 closed.
+.It Ic %window-pane-changed Ar window-id Ar pane-id
+The active pane in the window with ID
+.Ar window-id
+changed to the pane with ID
+.Ar pane-id .
 .It Ic %window-renamed Ar window-id Ar name
 The window with ID
 .Ar window-id

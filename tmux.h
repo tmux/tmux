@@ -2212,7 +2212,9 @@ void	control_write_buffer(struct client *, struct evbuffer *);
 /* control-notify.c */
 void	control_notify_input(struct client *, struct window_pane *,
 	    struct evbuffer *);
+void	control_notify_pane_mode_changed(int);
 void	control_notify_window_layout_changed(struct window *);
+void	control_notify_window_pane_changed(struct window *);
 void	control_notify_window_unlinked(struct session *, struct window *);
 void	control_notify_window_linked(struct session *, struct window *);
 void	control_notify_window_renamed(struct window *);
@@ -2220,6 +2222,7 @@ void	control_notify_client_session_changed(struct client *);
 void	control_notify_session_renamed(struct session *);
 void	control_notify_session_created(struct session *);
 void	control_notify_session_closed(struct session *);
+void	control_notify_session_window_changed(struct session *);
 
 /* session.c */
 extern struct sessions sessions;

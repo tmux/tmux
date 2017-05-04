@@ -355,6 +355,8 @@ window_create_spawn(const char *name, int argc, char **argv, const char *path,
 	} else
 		w->name = default_window_name(w);
 
+	notify_window("window-pane-changed", w);
+
 	return (w);
 }
 
@@ -441,11 +443,14 @@ window_set_active_pane(struct window *w, struct window_pane *wp)
 		w->active = TAILQ_PREV(w->active, window_panes, entry);
 		if (w->active == NULL)
 			w->active = TAILQ_LAST(&w->panes, window_panes);
-		if (w->active == wp)
+		if (w->active == wp) {
+			notify_window("window-pane-changed", w);
 			return (1);
+		}
 	}
 	w->active->active_point = next_active_point++;
 	w->active->flags |= PANE_CHANGED;
+	notify_window("window-pane-changed", w);
 	return (1);
 }
 
@@ -621,8 +626,10 @@ window_lost_pane(struct window *w, struct window_pane *wp)
 			if (w->active == NULL)
 				w->active = TAILQ_NEXT(wp, entry);
 		}
-		if (w->active != NULL)
+		if (w->active != NULL) {
 			w->active->flags |= PANE_CHANGED;
+			notify_window("window-pane-changed", w);
+		}
 	} else if (wp == w->last)
 		w->last = NULL;
 }
@@ -1196,6 +1203,7 @@ window_pane_set_mode(struct window_pane *wp, const struct window_mode *mode)
 	wp->flags |= (PANE_REDRAW|PANE_CHANGED);
 
 	server_status_window(wp->window);
+	notify_pane("pane-mode-changed", wp);
 	return (0);
 }
 
@@ -1215,6 +1223,7 @@ window_pane_reset_mode(struct window_pane *wp)
 	wp->flags |= (PANE_REDRAW|PANE_CHANGED);
 
 	server_status_window(wp->window);
+	notify_pane("pane-mode-changed", wp);
 }
 
 void
