@@ -42,25 +42,6 @@ typedef void (*format_cb)(struct format_tree *, struct format_entry *);
 static char	*format_job_get(struct format_tree *, const char *);
 static void	 format_job_timer(int, short, void *);
 
-static void	 format_cb_host(struct format_tree *, struct format_entry *);
-static void	 format_cb_host_short(struct format_tree *,
-		     struct format_entry *);
-static void	 format_cb_pid(struct format_tree *, struct format_entry *);
-static void	 format_cb_session_alerts(struct format_tree *,
-		     struct format_entry *);
-static void	 format_cb_window_layout(struct format_tree *,
-		     struct format_entry *);
-static void	 format_cb_window_visible_layout(struct format_tree *,
-		     struct format_entry *);
-static void	 format_cb_start_command(struct format_tree *,
-		     struct format_entry *);
-static void	 format_cb_current_command(struct format_tree *,
-		     struct format_entry *);
-static void	 format_cb_history_bytes(struct format_tree *,
-		     struct format_entry *);
-static void	 format_cb_pane_tabs(struct format_tree *,
-		     struct format_entry *);
-
 static char	*format_find(struct format_tree *, const char *, int);
 static void	 format_add_cb(struct format_tree *, const char *, format_cb);
 static void	 format_add_tv(struct format_tree *, const char *,
@@ -126,6 +107,7 @@ struct format_entry {
 /* Format entry tree. */
 struct format_tree {
 	struct window		*w;
+	struct winlink		*wl;
 	struct session		*s;
 	struct window_pane	*wp;
 
@@ -416,7 +398,7 @@ format_cb_session_alerts(struct format_tree *ft, struct format_entry *fe)
 {
 	struct session	*s = ft->s;
 	struct winlink	*wl;
-	char		 alerts[256], tmp[16];
+	char		 alerts[1024], tmp[16];
 
 	if (s == NULL)
 		return;
@@ -438,6 +420,48 @@ format_cb_session_alerts(struct format_tree *ft, struct format_entry *fe)
 			strlcat(alerts, "~", sizeof alerts);
 	}
 	fe->value = xstrdup(alerts);
+}
+
+/* Callback for session_stack. */
+static void
+format_cb_session_stack(struct format_tree *ft, struct format_entry *fe)
+{
+	struct session	*s = ft->s;
+	struct winlink	*wl;
+	char		 result[1024], tmp[16];
+
+	if (s == NULL)
+		return;
+
+	xsnprintf(result, sizeof result, "%u", s->curw->idx);
+	TAILQ_FOREACH(wl, &s->lastw, sentry) {
+		xsnprintf(tmp, sizeof tmp, "%u", wl->idx);
+
+		if (*result != '\0')
+			strlcat(result, ",", sizeof result);
+		strlcat(result, tmp, sizeof result);
+	}
+	fe->value = xstrdup(result);
+}
+
+/* Callback for window_stack_index. */
+static void
+format_cb_window_stack_index(struct format_tree *ft, struct format_entry *fe)
+{
+	struct session	*s = ft->wl->session;
+	struct winlink	*wl;
+	u_int		 idx;
+
+	idx = 0;
+	TAILQ_FOREACH(wl, &s->lastw, sentry) {
+		idx++;
+		if (wl == ft->wl)
+			break;
+	}
+	if (wl != NULL)
+		xasprintf(&fe->value, "%u", idx);
+	else
+		fe->value = xstrdup("0");
 }
 
 /* Callback for window_layout. */
@@ -1200,6 +1224,7 @@ format_defaults_session(struct format_tree *ft, struct session *s)
 	format_add(ft, "session_many_attached", "%d", s->attached > 1);
 
 	format_add_cb(ft, "session_alerts", format_cb_session_alerts);
+	format_add_cb(ft, "session_stack", format_cb_session_stack);
 }
 
 /* Set default format keys for a client. */
@@ -1286,10 +1311,12 @@ format_defaults_winlink(struct format_tree *ft, struct winlink *wl)
 
 	if (ft->w == NULL)
 		ft->w = wl->window;
+	ft->wl = wl;
 
 	format_defaults_window(ft, w);
 
 	format_add(ft, "window_index", "%d", wl->idx);
+	format_add_cb(ft, "window_stack_index", format_cb_window_stack_index);
 	format_add(ft, "window_flags", "%s", window_printable_flags(wl));
 	format_add(ft, "window_active", "%d", wl == s->curw);
 
