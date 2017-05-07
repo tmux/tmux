@@ -689,15 +689,18 @@ struct screen_write_ctx {
  * right function to handle input and output.
  */
 struct window_mode {
-	struct screen *(*init)(struct window_pane *);
-	void	(*free)(struct window_pane *);
-	void	(*resize)(struct window_pane *, u_int, u_int);
-	void	(*key)(struct window_pane *, struct client *, struct session *,
-		    key_code, struct mouse_event *);
+	const char	*name;
 
-	const char *(*key_table)(struct window_pane *);
-	void	(*command)(struct window_pane *, struct client *,
-		    struct session *, struct args *, struct mouse_event *);
+	struct screen	*(*init)(struct window_pane *);
+	void		 (*free)(struct window_pane *);
+	void		 (*resize)(struct window_pane *, u_int, u_int);
+	void		 (*key)(struct window_pane *, struct client *,
+			     struct session *, key_code, struct mouse_event *);
+
+	const char	*(*key_table)(struct window_pane *);
+	void		 (*command)(struct window_pane *, struct client *,
+			     struct session *, struct args *,
+			     struct mouse_event *);
 };
 #define WINDOW_MODE_TIMEOUT 180
 

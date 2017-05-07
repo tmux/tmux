@@ -1371,6 +1371,9 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 	}
 
 	format_add(ft, "pane_in_mode", "%d", wp->screen != &wp->base);
+	if (wp->mode != NULL)
+		format_add(ft, "pane_mode", "%s", wp->mode->name);
+
 	format_add(ft, "pane_synchronized", "%d",
 	    !!options_get_number(wp->window->options, "synchronize-panes"));
 	format_add(ft, "pane_search_string", "%s",

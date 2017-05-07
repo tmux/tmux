@@ -57,6 +57,8 @@ enum window_choose_input_type {
 };
 
 const struct window_mode window_choose_mode = {
+	.name = "choose-mode",
+
 	.init = window_choose_init,
 	.free = window_choose_free,
 	.resize = window_choose_resize,

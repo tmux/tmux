@@ -34,6 +34,8 @@ static void	window_clock_timer_callback(int, short, void *);
 static void	window_clock_draw_screen(struct window_pane *);
 
 const struct window_mode window_clock_mode = {
+	.name = "clock-mode",
+
 	.init = window_clock_init,
 	.free = window_clock_free,
 	.resize = window_clock_resize,
