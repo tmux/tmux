@@ -197,7 +197,7 @@ xterm_keys_find(const char *buf, size_t len, size_t *size, key_code *key)
 		if (matched == -1)
 			continue;
 		if (matched == 0)
-			*key = entry->key | modifiers;
+			*key = (entry->key|modifiers|KEYC_XTERM);
 		return (matched);
 	}
 	return (-1);
@@ -227,8 +227,16 @@ xterm_keys_lookup(key_code key)
 	if (modifiers == 1)
 		return (NULL);
 
+	/*
+	 * If this has the escape modifier, but was not originally an xterm
+	 * key, it may be a genuine escape + key. So don't pass it through as
+	 * an xterm key or programs like vi may be confused.
+	 */
+	if ((key & (KEYC_ESCAPE|KEYC_XTERM)) == KEYC_ESCAPE)
+		return (NULL);
+
 	/* Otherwise, find the key in the table. */
-	key &= ~(KEYC_SHIFT|KEYC_ESCAPE|KEYC_CTRL);
+	key &= KEYC_MASK_KEY;
 	for (i = 0; i < nitems(xterm_keys_table); i++) {
 		entry = &xterm_keys_table[i];
 		if (key == entry->key)

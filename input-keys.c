@@ -201,6 +201,7 @@ input_key(struct window_pane *wp, key_code key, struct mouse_event *m)
 			return;
 		}
 	}
+	key &= ~KEYC_XTERM;
 
 	/* Otherwise look the key up in the table. */
 	for (i = 0; i < nitems(input_keys); i++) {

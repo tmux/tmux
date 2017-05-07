@@ -904,7 +904,7 @@ retry:
 		log_debug("currently repeating");
 
 	/* Try to see if there is a key binding in the current table. */
-	bd_find.key = key;
+	bd_find.key = (key & ~KEYC_XTERM);
 	bd = RB_FIND(key_bindings, &table->key_bindings, &bd_find);
 	if (bd != NULL) {
 		/*
