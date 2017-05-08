@@ -24,12 +24,26 @@
 #include "tmux.h"
 
 struct hooks {
-	RB_HEAD(hooks_tree, hook) tree;
+        struct hooksTree_tree tree;
 	struct hooks	*parent;
 };
 
 static int	hooks_cmp(struct hook *, struct hook *);
-RB_GENERATE_STATIC(hooks_tree, hook, entry, hooks_cmp);
+
+static struct hook *get_hook(struct hooksTree_head *head)
+{
+        return (struct hook *)((char *) head - offsetof(struct hook, entry));
+}
+
+static struct hooksTree_head *get_hook_entry(struct hook *hook)
+{
+        return &hook->entry;
+}
+
+RB3_GEN_INLINE_PROTO(hooksTree, struct hook, get_hook_entry, get_hook);
+RB3_GEN_INLINE(hooksTree, struct hook, get_hook_entry, get_hook);
+RB3_GEN_NODECMP_PROTO(hooksTree, /* no suffix */, struct hook, get_hook_entry, get_hook, hooks_cmp);
+RB3_GEN_NODECMP(hooksTree, /* no suffix */, struct hook, get_hook_entry, get_hook, hooks_cmp);
 
 static struct hook	*hooks_find1(struct hooks *, const char *);
 static void		 hooks_free1(struct hooks *, struct hook *);
@@ -54,7 +68,7 @@ hooks_create(struct hooks *parent)
 	struct hooks	*hooks;
 
 	hooks = xcalloc(1, sizeof *hooks);
-	RB_INIT(&hooks->tree);
+	hooksTree_init(&hooks->tree);
 	hooks->parent = parent;
 	return (hooks);
 }
@@ -62,7 +76,7 @@ hooks_create(struct hooks *parent)
 static void
 hooks_free1(struct hooks *hooks, struct hook *hook)
 {
-	RB_REMOVE(hooks_tree, &hooks->tree, hook);
+	hooksTree_delete(hook, &hooks->tree);
 	cmd_list_free(hook->cmdlist);
 	free((char *)hook->name);
 	free(hook);
@@ -73,7 +87,7 @@ hooks_free(struct hooks *hooks)
 {
 	struct hook	*hook, *hook1;
 
-	RB_FOREACH_SAFE(hook, hooks_tree, &hooks->tree, hook1)
+	RB3_FOREACH_SAFE(hooksTree, &hooks->tree, hook, hook1)
 		hooks_free1(hooks, hook);
 	free(hooks);
 }
@@ -81,13 +95,13 @@ hooks_free(struct hooks *hooks)
 struct hook *
 hooks_first(struct hooks *hooks)
 {
-	return (RB_MIN(hooks_tree, &hooks->tree));
+	return hooksTree_get_min(&hooks->tree);
 }
 
 struct hook *
 hooks_next(struct hook *hook)
 {
-	return (RB_NEXT(hooks_tree, &hooks->tree, hook));
+	return hooksTree_get_next(hook);
 }
 
 void
@@ -102,7 +116,7 @@ hooks_add(struct hooks *hooks, const char *name, struct cmd_list *cmdlist)
 	hook->name = xstrdup(name);
 	hook->cmdlist = cmdlist;
 	hook->cmdlist->references++;
-	RB_INSERT(hooks_tree, &hooks->tree, hook);
+	hooksTree_insert(hook, &hooks->tree);
 }
 
 void
@@ -120,7 +134,7 @@ hooks_find1(struct hooks *hooks, const char *name)
 	struct hook	hook;
 
 	hook.name = name;
-	return (RB_FIND(hooks_tree, &hooks->tree, &hook));
+	return (hooksTree_find(&hooks->tree, &hook));
 }
 
 struct hook *
@@ -129,12 +143,12 @@ hooks_find(struct hooks *hooks, const char *name)
 	struct hook	 hook0, *hook;
 
 	hook0.name = name;
-	hook = RB_FIND(hooks_tree, &hooks->tree, &hook0);
+	hook = hooksTree_find(&hooks->tree, &hook0);
 	while (hook == NULL) {
 		hooks = hooks->parent;
 		if (hooks == NULL)
 			break;
-		hook = RB_FIND(hooks_tree, &hooks->tree, &hook0);
+		hook = hooksTree_find(&hooks->tree, &hook0);
 	}
 	return (hook);
 }

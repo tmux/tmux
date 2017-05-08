@@ -586,13 +586,15 @@ struct grid {
 	struct grid_line	*linedata;
 };
 
+RB3_GEN_STRUCTS(hooksTree);
+
 /* Hook data structures. */
 struct hook {
 	const char	*name;
 
 	struct cmd_list	*cmdlist;
 
-	RB_ENTRY(hook)	 entry;
+	struct hooksTree_head entry;
 };
 
 /* Scheduled job. */
