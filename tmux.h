@@ -38,6 +38,9 @@
 #include "compat.h"
 #include "xmalloc.h"
 
+#include "rb3ptr.h"
+#include "rb3ptr-gen.h"
+
 extern char   **environ;
 
 struct args;
