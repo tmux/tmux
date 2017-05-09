@@ -157,7 +157,7 @@ cmd_find_best_session(struct session **slist, u_int ssize, int flags)
 				s = slist[i];
 		}
 	} else {
-		RB_FOREACH(s_loop, sessions, &sessions) {
+		RB3_FOREACH(sessions, &sessions, s_loop) {
 			if (cmd_find_session_better(s_loop, s, flags))
 				s = s_loop;
 		}
@@ -174,7 +174,7 @@ cmd_find_best_session_with_window(struct cmd_find_state *fs)
 	struct session	 *s;
 
 	ssize = 0;
-	RB_FOREACH(s, sessions, &sessions) {
+	RB3_FOREACH(sessions, &sessions, s) {
 		if (!session_has(s, fs->w))
 			continue;
 		slist = xreallocarray(slist, ssize + 1, sizeof *slist);
@@ -268,7 +268,7 @@ cmd_find_get_session(struct cmd_find_state *fs, const char *session)
 
 	/* Otherwise look for prefix. */
 	s = NULL;
-	RB_FOREACH(s_loop, sessions, &sessions) {
+	RB3_FOREACH(sessions, &sessions, s_loop) {
 		if (strncmp(session, s_loop->name, strlen(session)) == 0) {
 			if (s != NULL)
 				return (-1);
@@ -282,7 +282,7 @@ cmd_find_get_session(struct cmd_find_state *fs, const char *session)
 
 	/* Then as a pattern. */
 	s = NULL;
-	RB_FOREACH(s_loop, sessions, &sessions) {
+	RB3_FOREACH(sessions, &sessions, s_loop) {
 		if (fnmatch(session, s_loop->name, 0) == 0) {
 			if (s != NULL)
 				return (-1);

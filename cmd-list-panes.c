@@ -69,7 +69,7 @@ cmd_list_panes_server(struct cmd *self, struct cmdq_item *item)
 {
 	struct session	*s;
 
-	RB_FOREACH(s, sessions, &sessions)
+	RB3_FOREACH(sessions, &sessions, s)
 		cmd_list_panes_session(self, s, item, 2);
 }
 

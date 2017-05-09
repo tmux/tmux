@@ -171,7 +171,7 @@ cmd_choose_tree_exec(struct cmd *self, struct cmdq_item *item)
 		final_win_template_middle = final_win_template_last = NULL;
 
 	idx_ses = cur_win = -1;
-	RB_FOREACH(s2, sessions, &sessions) {
+	RB3_FOREACH(sessions, &sessions, s2) {
 		idx_ses++;
 
 		/*

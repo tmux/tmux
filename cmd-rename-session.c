@@ -63,10 +63,10 @@ cmd_rename_session_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_ERROR);
 	}
 
-	RB_REMOVE(sessions, &sessions, s);
+	sessions_delete(s, &sessions);
 	free(s->name);
 	s->name = xstrdup(newname);
-	RB_INSERT(sessions, &sessions, s);
+	sessions_insert(s, &sessions);
 
 	server_status_session(s);
 	notify_session("session-renamed", s);

@@ -58,7 +58,7 @@ cmd_kill_session_exec(struct cmd *self, struct cmdq_item *item)
 		}
 		server_redraw_session(s);
 	} else if (args_has(args, 'a')) {
-		RB_FOREACH_SAFE(sloop, sessions, &sessions, stmp) {
+		RB3_FOREACH_SAFE(sessions, &sessions, stmp, sloop) {
 			if (sloop != s) {
 				server_destroy_session(sloop);
 				session_destroy(sloop);

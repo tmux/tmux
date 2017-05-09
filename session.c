@@ -26,7 +26,7 @@
 
 #include "tmux.h"
 
-struct sessions		sessions;
+struct sessions_tree    sessions;
 static u_int		next_session_id;
 struct session_groups_tree	session_groups;
 
@@ -44,7 +44,8 @@ static void	session_group_synchronize1(struct session *, struct session *);
 static u_int	session_group_count(struct session_group *);
 static void	session_group_synchronize1(struct session *, struct session *);
 
-RB_GENERATE(sessions, session, entry, session_cmp);
+RB3_GEN_INLINE(sessions, struct session, get_session_entry, get_session);
+RB3_GEN_NODECMP(sessions, /**/, struct session, get_session_entry, get_session, session_cmp);
 
 int
 session_cmp(struct session *s1, struct session *s2)
@@ -81,7 +82,7 @@ session_group_cmp(struct session_group *s1, struct session_group *s2)
 void
 session_module_init(void)
 {
-        RB_INIT(&sessions);
+        sessions_init(&sessions);
         session_groups_init(&session_groups);
 }
 
@@ -94,7 +95,7 @@ session_alive(struct session *s)
 {
 	struct session *s_loop;
 
-	RB_FOREACH(s_loop, sessions, &sessions) {
+	RB3_FOREACH(sessions, &sessions, s_loop) {
 		if (s_loop == s)
 			return (1);
 	}
@@ -108,7 +109,7 @@ session_find(const char *name)
 	struct session	s;
 
 	s.name = (char *) name;
-	return (RB_FIND(sessions, &sessions, &s));
+	return (sessions_find(&sessions, &s));
 }
 
 /* Find session by id parsed from a string. */
@@ -133,7 +134,7 @@ session_find_by_id(u_int id)
 {
 	struct session	*s;
 
-	RB_FOREACH(s, sessions, &sessions) {
+	RB3_FOREACH(sessions, &sessions, s) {
 		if (s->id == id)
 			return (s);
 	}
@@ -189,9 +190,9 @@ session_create(const char *prefix, const char *name, int argc, char **argv,
 				xasprintf(&s->name, "%s-%u", prefix, s->id);
 			else
 				xasprintf(&s->name, "%u", s->id);
-		} while (RB_FIND(sessions, &sessions, s) != NULL);
+		} while (sessions_find(&sessions, s) != NULL);
 	}
-	RB_INSERT(sessions, &sessions, s);
+	sessions_insert(s, &sessions);
 
 	log_debug("new session %s $%u", s->name, s->id);
 
@@ -260,7 +261,7 @@ session_destroy(struct session *s)
 	log_debug("session %s destroyed", s->name);
 	s->curw = NULL;
 
-	RB_REMOVE(sessions, &sessions, s);
+	sessions_delete(s, &sessions);
 	notify_session("session-closed", s);
 
 	free(s->tio);
@@ -342,12 +343,12 @@ session_next_session(struct session *s)
 {
 	struct session *s2;
 
-	if (RB_EMPTY(&sessions) || !session_alive(s))
+	if (sessions_isempty(&sessions) || !session_alive(s))
 		return (NULL);
 
-	s2 = RB_NEXT(sessions, &sessions, s);
+	s2 = sessions_get_next(s);
 	if (s2 == NULL)
-		s2 = RB_MIN(sessions, &sessions);
+		s2 = sessions_get_min(&sessions);
 	if (s2 == s)
 		return (NULL);
 	return (s2);
@@ -359,12 +360,12 @@ session_previous_session(struct session *s)
 {
 	struct session *s2;
 
-	if (RB_EMPTY(&sessions) || !session_alive(s))
+	if (sessions_isempty(&sessions) || !session_alive(s))
 		return (NULL);
 
-	s2 = RB_PREV(sessions, &sessions, s);
+	s2 = sessions_get_prev(s);
 	if (s2 == NULL)
-		s2 = RB_MAX(sessions, &sessions);
+		s2 = sessions_get_max(&sessions);
 	if (s2 == s)
 		return (NULL);
 	return (s2);

@@ -923,6 +923,9 @@ struct session_group {
         struct session_groups_head	 entry;
 };
 
+
+RB3_GEN_STRUCTS(sessions);
+
 struct session {
 	u_int		 id;
 
@@ -962,9 +965,10 @@ struct session {
 	int		 references;
 
 	TAILQ_ENTRY(session) gentry;
-	RB_ENTRY(session)    entry;
+
+        struct sessions_head entry;
 };
-RB_HEAD(sessions, session);
+
 
 /* Mouse button masks. */
 #define MOUSE_MASK_BUTTONS 3
@@ -2231,9 +2235,25 @@ void	control_notify_session_closed(struct session *);
 void	control_notify_session_window_changed(struct session *);
 
 /* session.c */
-extern struct sessions sessions;
+extern struct sessions_tree sessions;
 int	session_cmp(struct session *, struct session *);
-RB_PROTOTYPE(sessions, session, entry, session_cmp);
+
+static struct sessions_head *get_session_entry(struct session *session);
+static struct session *get_session(struct sessions_head *head);
+
+static struct sessions_head *get_session_entry(struct session *session)
+{
+        return &session->entry;
+}
+
+static struct session *get_session(struct sessions_head *head)
+{
+        return (struct session *) ((char *) head - offsetof(struct session, entry));
+}
+
+RB3_GEN_INLINE_PROTO(sessions, struct session, get_session_entry, get_session);
+RB3_GEN_NODECMP_PROTO(sessions, /**/,struct session, get_session_entry, get_session, session_cmp);
+
 int		 session_alive(struct session *);
 struct session	*session_find(const char *);
 struct session	*session_find_by_id_str(const char *);

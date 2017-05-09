@@ -209,7 +209,7 @@ server_loop(void)
 	server_client_loop();
 
 	if (!options_get_number(global_options, "exit-unattached")) {
-		if (!RB_EMPTY(&sessions))
+		if (!sessions_isempty(&sessions))
 			return (0);
 	}
 
@@ -246,7 +246,7 @@ server_send_exit(void)
 		c->session = NULL;
 	}
 
-	RB_FOREACH_SAFE(s, sessions, &sessions, s1)
+	RB3_FOREACH_SAFE(sessions, &sessions, s, s1)
 		session_destroy(s);
 }
 
@@ -260,7 +260,7 @@ server_update_socket(void)
 	struct stat      sb;
 
 	n = 0;
-	RB_FOREACH(s, sessions, &sessions) {
+	RB3_FOREACH(sessions, &sessions, s) {
 		if (!(s->flags & SESSION_UNATTACHED)) {
 			n++;
 			break;
