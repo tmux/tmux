@@ -1306,6 +1306,7 @@ struct client {
 
 	size_t		 written;
 	size_t		 discarded;
+	size_t		 redraw;
 
 	void		(*stdin_callback)(struct client *, int, void *);
 	void		*stdin_callback_data;
