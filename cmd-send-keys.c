@@ -55,6 +55,29 @@ const struct cmd_entry cmd_send_prefix_entry = {
 	.exec = cmd_send_keys_exec
 };
 
+static void
+cmd_send_keys_inject(struct client *c, struct cmdq_item *item, key_code key)
+{
+	struct window_pane	*wp = item->target.wp;
+	struct session		*s = item->target.s;
+	struct key_table	*table;
+	struct key_binding	*bd, bd_find;
+
+	if (wp->mode == NULL || wp->mode->key_table == NULL) {
+		window_pane_key(wp, NULL, s, key, NULL);
+		return;
+	}
+	table = key_bindings_get_table(wp->mode->key_table(wp), 1);
+
+	bd_find.key = (key & ~KEYC_XTERM);
+	bd = RB_FIND(key_bindings, &table->key_bindings, &bd_find);
+	if (bd != NULL) {
+		table->references++;
+		key_bindings_dispatch(bd, c, NULL, &item->target);
+		key_bindings_unref_table(table);
+	}
+}
+
 static enum cmd_retval
 cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 {
@@ -108,7 +131,7 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 			key = options_get_number(s->options, "prefix2");
 		else
 			key = options_get_number(s->options, "prefix");
-		window_pane_key(wp, NULL, s, key, NULL);
+		cmd_send_keys_inject(c, item, key);
 		return (CMD_RETURN_NORMAL);
 	}
 
@@ -123,7 +146,7 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 			if (!literal) {
 				key = key_string_lookup_string(args->argv[i]);
 				if (key != KEYC_NONE && key != KEYC_UNKNOWN)
-					window_pane_key(wp, NULL, s, key, NULL);
+					cmd_send_keys_inject(c, item, key);
 				else
 					literal = 1;
 			}
@@ -132,7 +155,7 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 				for (uc = ud; uc->size != 0; uc++) {
 					if (utf8_combine(uc, &wc) != UTF8_DONE)
 						continue;
-					window_pane_key(wp, NULL, s, wc, NULL);
+					cmd_send_keys_inject(c, item, wc);
 				}
 				free(ud);
 			}
