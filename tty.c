@@ -233,7 +233,14 @@ tty_write_callback(__unused int fd, __unused short events, void *data)
 		return;
 	log_debug("%s: wrote %d bytes (of %zu)", c->name, nwrite, size);
 
-	if (tty_block_maybe(tty))
+	if (c->redraw > 0) {
+		if ((size_t)nwrite >= c->redraw)
+			c->redraw = 0;
+		else
+			c->redraw -= nwrite;
+		log_debug("%s: waiting for redraw, %zu bytes left", c->name,
+		    c->redraw);
+	} else if (tty_block_maybe(tty))
 		return;
 
 	if (EVBUFFER_LENGTH(tty->out) != 0)
@@ -488,7 +495,7 @@ tty_add(struct tty *tty, const char *buf, size_t len)
 	}
 
 	evbuffer_add(tty->out, buf, len);
-	log_debug("%s: %.*s", c->name, (int)len, (const char *)buf);
+	log_debug("%s: %.*s", c->name, (int)len, buf);
 	c->written += len;
 
 	if (tty_log_fd != -1)
