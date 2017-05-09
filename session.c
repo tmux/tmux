@@ -52,6 +52,20 @@ session_cmp(struct session *s1, struct session *s2)
 	return (strcmp(s1->name, s2->name));
 }
 
+static struct session_group *get_session_group(struct session_groups_head *entry)
+{
+        return (struct session_group *) ((char *) entry - offsetof(struct session_group, entry));
+}
+
+static struct session_groups_head *get_session_group_entry(struct session_group *node)
+{
+        return &node->entry;
+}
+
+int	session_group_cmp(struct session_group *, struct session_group *);
+RB3_GEN_INLINE_PROTO(session_groups, struct session_group, get_session_group_entry, get_session_group);
+RB3_GEN_NODECMP_PROTO(session_groups, /* no suffix */, struct session_group, get_session_group_entry, get_session_group, session_group_cmp);
+
 RB3_GEN_INLINE(session_groups, struct session_group, get_session_group_entry, get_session_group);
 RB3_GEN_NODECMP(session_groups, /* no suffix */, struct session_group, get_session_group_entry, get_session_group, session_group_cmp);
 
@@ -59,6 +73,16 @@ int
 session_group_cmp(struct session_group *s1, struct session_group *s2)
 {
 	return (strcmp(s1->name, s2->name));
+}
+
+/*
+ * Initialize session module
+ */
+void
+session_module_init(void)
+{
+        RB_INIT(&sessions);
+        session_groups_init(&session_groups);
 }
 
 /*

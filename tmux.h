@@ -923,16 +923,6 @@ struct session_group {
         struct session_groups_head	 entry;
 };
 
-static struct session_group *get_session_group(struct session_groups_head *entry)
-{
-        return (struct session_group *) ((char *) entry - offsetof(struct session_group, entry));
-}
-
-static struct session_groups_head *get_session_group_entry(struct session_group *node)
-{
-        return &node->entry;
-}
-
 struct session {
 	u_int		 id;
 
@@ -2242,12 +2232,8 @@ void	control_notify_session_window_changed(struct session *);
 
 /* session.c */
 extern struct sessions sessions;
-extern struct session_groups_tree session_groups;
 int	session_cmp(struct session *, struct session *);
 RB_PROTOTYPE(sessions, session, entry, session_cmp);
-int	session_group_cmp(struct session_group *, struct session_group *);
-RB3_GEN_INLINE_PROTO(session_groups, struct session_group, get_session_group_entry, get_session_group);
-RB3_GEN_NODECMP_PROTO(session_groups, /* no suffix */, struct session_group, get_session_group_entry, get_session_group, session_group_cmp);
 int		 session_alive(struct session *);
 struct session	*session_find(const char *);
 struct session	*session_find_by_id_str(const char *);
@@ -2255,6 +2241,7 @@ struct session	*session_find_by_id(u_int);
 struct session	*session_create(const char *, const char *, int, char **,
 		     const char *, const char *, struct environ *,
 		     struct termios *, int, u_int, u_int, char **);
+void		 session_module_init(void);
 void		 session_destroy(struct session *);
 void		 session_add_ref(struct session *, const char *);
 void		 session_remove_ref(struct session *, const char *);
