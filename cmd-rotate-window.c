@@ -43,6 +43,7 @@ const struct cmd_entry cmd_rotate_window_entry = {
 static enum cmd_retval
 cmd_rotate_window_exec(struct cmd *self, struct cmdq_item *item)
 {
+	struct cmd_find_state	*current = &item->shared->current;
 	struct winlink		*wl = item->target.wl;
 	struct window		*w = wl->window;
 	struct window_pane	*wp, *wp2;
@@ -77,6 +78,7 @@ cmd_rotate_window_exec(struct cmd *self, struct cmdq_item *item)
 		if ((wp = TAILQ_PREV(w->active, window_panes, entry)) == NULL)
 			wp = TAILQ_LAST(&w->panes, window_panes);
 		window_set_active_pane(w, wp);
+		cmd_find_from_winlink_pane(current, wl, wp);
 		server_redraw_window(w);
 	} else {
 		wp = TAILQ_FIRST(&w->panes);
@@ -104,6 +106,7 @@ cmd_rotate_window_exec(struct cmd *self, struct cmdq_item *item)
 		if ((wp = TAILQ_NEXT(w->active, entry)) == NULL)
 			wp = TAILQ_FIRST(&w->panes);
 		window_set_active_pane(w, wp);
+		cmd_find_from_winlink_pane(current, wl, wp);
 		server_redraw_window(w);
 	}
 
