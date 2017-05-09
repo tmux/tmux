@@ -8,7 +8,7 @@ CHANGES FROM 2.4 to 2.5 09 May 2017
 * Add pane_mode format.
 
 * Differentiate M-Up from Escape+Up when possible (that is, in terminals with
-  xterm(1) style functions keys). GitHub issue 907.
+  xterm(1) style function keys). GitHub issue 907.
 
 * Add session_stack and window_stack_index formats.
 
