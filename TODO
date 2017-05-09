@@ -55,8 +55,9 @@
 	  then it should be found even if it is now "foo\nbar" (if the WRAP flag
 	  is set on the line)
 	* capture-pane option to preserve spaces but not join lines
-	* improve word and line selection in copy mode (for example when dragging
-	  it should select by word. compare how xterm works. GitHub issue 682)
+	* improve word and line selection in copy mode (for example when
+	  dragging it should select by word. compare how xterm works. GitHub
+	  issue 682)
 
 - layout stuff
 	* way to tag a layout as a number/name
@@ -72,6 +73,8 @@
 	* a mode where one application can cross two panes (ie x|y, width =
 	  COLUMNS/2 but height = ROWS * 2)
 	* separate active panes for different clients
+	* way to choose where the freed space goes when a pane is killed:
+	  option to kill-pane? GitHub issue 918
 
 - code cleanup
 	* instead of separate window and session options, just one master
