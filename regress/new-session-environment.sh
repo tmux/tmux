@@ -40,7 +40,7 @@ TEST=test1
 EOF
 
 (cd /; env -i TERM=ansi TEST=test2 PATH=2 SHELL=/bin/sh \
-	$TMUX new -d -- /bin/sh $SCRIPT) || exit 1
+	$TMUX -f$TMP new -d -- /bin/sh $SCRIPT) || exit 1
 sleep 1
 (cat <<EOF|cmp -s - $OUT) || exit 1
 TERM=screen
@@ -51,7 +51,7 @@ TEST=test2
 EOF
 
 (cd /; env -i TERM=ansi TEST=test3 PATH=3 SHELL=/bin/sh \
-	$TMUX new -d source $TMP) || exit 1
+	$TMUX -f/dev/null new -d source $TMP) || exit 1
 sleep 1
 (cat <<EOF|cmp -s - $OUT) || exit 1
 TERM=screen
