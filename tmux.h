@@ -913,14 +913,25 @@ struct environ_entry {
 	RB_ENTRY(environ_entry) entry;
 };
 
+RB3_GEN_STRUCTS(session_groups);
+
 /* Client session. */
 struct session_group {
 	const char		*name;
 	TAILQ_HEAD(, session)	 sessions;
 
-	RB_ENTRY(session_group)	 entry;
+        struct session_groups_head	 entry;
 };
-RB_HEAD(session_groups, session_group);
+
+static struct session_group *get_session_group(struct session_groups_head *entry)
+{
+        return (struct session_group *) ((char *) entry - offsetof(struct session_group, entry));
+}
+
+static struct session_groups_head *get_session_group_entry(struct session_group *node)
+{
+        return &node->entry;
+}
 
 struct session {
 	u_int		 id;
@@ -2231,11 +2242,12 @@ void	control_notify_session_window_changed(struct session *);
 
 /* session.c */
 extern struct sessions sessions;
-extern struct session_groups session_groups;
+extern struct session_groups_tree session_groups;
 int	session_cmp(struct session *, struct session *);
 RB_PROTOTYPE(sessions, session, entry, session_cmp);
 int	session_group_cmp(struct session_group *, struct session_group *);
-RB_PROTOTYPE(session_groups, session_group, entry, session_group_cmp);
+RB3_GEN_INLINE_PROTO(session_groups, struct session_group, get_session_group_entry, get_session_group);
+RB3_GEN_NODECMP_PROTO(session_groups, /* no suffix */, struct session_group, get_session_group_entry, get_session_group, session_group_cmp);
 int		 session_alive(struct session *);
 struct session	*session_find(const char *);
 struct session	*session_find_by_id_str(const char *);

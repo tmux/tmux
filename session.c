@@ -28,7 +28,7 @@
 
 struct sessions		sessions;
 static u_int		next_session_id;
-struct session_groups	session_groups;
+struct session_groups_tree	session_groups;
 
 static void	session_free(int, short, void *);
 
@@ -52,7 +52,8 @@ session_cmp(struct session *s1, struct session *s2)
 	return (strcmp(s1->name, s2->name));
 }
 
-RB_GENERATE(session_groups, session_group, entry, session_group_cmp);
+RB3_GEN_INLINE(session_groups, struct session_group, get_session_group_entry, get_session_group);
+RB3_GEN_NODECMP(session_groups, /* no suffix */, struct session_group, get_session_group_entry, get_session_group, session_group_cmp);
 
 int
 session_group_cmp(struct session_group *s1, struct session_group *s2)
@@ -563,7 +564,7 @@ session_group_contains(struct session *target)
 	struct session_group	*sg;
 	struct session		*s;
 
-	RB_FOREACH(sg, session_groups, &session_groups) {
+	RB3_FOREACH(session_groups, &session_groups, sg) {
 		TAILQ_FOREACH(s, &sg->sessions, gentry) {
 			if (s == target)
 				return (sg);
@@ -579,7 +580,7 @@ session_group_find(const char *name)
 	struct session_group	sg;
 
 	sg.name = name;
-	return (RB_FIND(session_groups, &session_groups, &sg));
+	return (session_groups_find(&session_groups, &sg));
 }
 
 /* Create a new session group. */
@@ -595,7 +596,7 @@ session_group_new(const char *name)
 	sg->name = xstrdup(name);
 	TAILQ_INIT(&sg->sessions);
 
-	RB_INSERT(session_groups, &session_groups, sg);
+	session_groups_insert(sg, &session_groups);
 	return (sg);
 }
 
@@ -617,7 +618,7 @@ session_group_remove(struct session *s)
 		return;
 	TAILQ_REMOVE(&sg->sessions, s, gentry);
 	if (TAILQ_EMPTY(&sg->sessions)) {
-		RB_REMOVE(session_groups, &session_groups, sg);
+		session_groups_delete(sg, &session_groups);
 		free(sg);
 	}
 }
