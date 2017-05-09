@@ -92,7 +92,7 @@ key_bindings_add(const char *name, key_code key, int repeat,
 
 	table = key_bindings_get_table(name, 1);
 
-	bd_find.key = key;
+	bd_find.key = (key & ~KEYC_XTERM);
 	bd = RB_FIND(key_bindings, &table->key_bindings, &bd_find);
 	if (bd != NULL) {
 		RB_REMOVE(key_bindings, &table->key_bindings, bd);
@@ -119,7 +119,7 @@ key_bindings_remove(const char *name, key_code key)
 	if (table == NULL)
 		return;
 
-	bd_find.key = key;
+	bd_find.key = (key & ~KEYC_XTERM);
 	bd = RB_FIND(key_bindings, &table->key_bindings, &bd_find);
 	if (bd == NULL)
 		return;

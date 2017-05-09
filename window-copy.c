@@ -105,6 +105,8 @@ static void	window_copy_move_mouse(struct mouse_event *);
 static void	window_copy_drag_update(struct client *, struct mouse_event *);
 
 const struct window_mode window_copy_mode = {
+	.name = "copy-mode",
+
 	.init = window_copy_init,
 	.free = window_copy_free,
 	.resize = window_copy_resize,

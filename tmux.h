@@ -95,9 +95,10 @@ struct tmuxproc;
 #define KEYC_ESCAPE 0x200000000000ULL
 #define KEYC_CTRL   0x400000000000ULL
 #define KEYC_SHIFT  0x800000000000ULL
+#define KEYC_XTERM 0x1000000000000ULL
 
 /* Mask to obtain key w/o modifiers. */
-#define KEYC_MASK_MOD (KEYC_ESCAPE|KEYC_CTRL|KEYC_SHIFT)
+#define KEYC_MASK_MOD (KEYC_ESCAPE|KEYC_CTRL|KEYC_SHIFT|KEYC_XTERM)
 #define KEYC_MASK_KEY (~KEYC_MASK_MOD)
 
 /* Is this a mouse key? */
@@ -692,15 +693,18 @@ struct screen_write_ctx {
  * right function to handle input and output.
  */
 struct window_mode {
-	struct screen *(*init)(struct window_pane *);
-	void	(*free)(struct window_pane *);
-	void	(*resize)(struct window_pane *, u_int, u_int);
-	void	(*key)(struct window_pane *, struct client *, struct session *,
-		    key_code, struct mouse_event *);
+	const char	*name;
 
-	const char *(*key_table)(struct window_pane *);
-	void	(*command)(struct window_pane *, struct client *,
-		    struct session *, struct args *, struct mouse_event *);
+	struct screen	*(*init)(struct window_pane *);
+	void		 (*free)(struct window_pane *);
+	void		 (*resize)(struct window_pane *, u_int, u_int);
+	void		 (*key)(struct window_pane *, struct client *,
+			     struct session *, key_code, struct mouse_event *);
+
+	const char	*(*key_table)(struct window_pane *);
+	void		 (*command)(struct window_pane *, struct client *,
+			     struct session *, struct args *,
+			     struct mouse_event *);
 };
 #define WINDOW_MODE_TIMEOUT 180
 

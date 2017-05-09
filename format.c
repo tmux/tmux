@@ -130,6 +130,7 @@ struct format_entry {
 /* Format entry tree. */
 struct format_tree {
 	struct window		*w;
+	struct winlink		*wl;
 	struct session		*s;
 	struct window_pane	*wp;
 
@@ -420,7 +421,7 @@ format_cb_session_alerts(struct format_tree *ft, struct format_entry *fe)
 {
 	struct session	*s = ft->s;
 	struct winlink	*wl;
-	char		 alerts[256], tmp[16];
+	char		 alerts[1024], tmp[16];
 
 	if (s == NULL)
 		return;
@@ -442,6 +443,48 @@ format_cb_session_alerts(struct format_tree *ft, struct format_entry *fe)
 			strlcat(alerts, "~", sizeof alerts);
 	}
 	fe->value = xstrdup(alerts);
+}
+
+/* Callback for session_stack. */
+static void
+format_cb_session_stack(struct format_tree *ft, struct format_entry *fe)
+{
+	struct session	*s = ft->s;
+	struct winlink	*wl;
+	char		 result[1024], tmp[16];
+
+	if (s == NULL)
+		return;
+
+	xsnprintf(result, sizeof result, "%u", s->curw->idx);
+	TAILQ_FOREACH(wl, &s->lastw, sentry) {
+		xsnprintf(tmp, sizeof tmp, "%u", wl->idx);
+
+		if (*result != '\0')
+			strlcat(result, ",", sizeof result);
+		strlcat(result, tmp, sizeof result);
+	}
+	fe->value = xstrdup(result);
+}
+
+/* Callback for window_stack_index. */
+static void
+format_cb_window_stack_index(struct format_tree *ft, struct format_entry *fe)
+{
+	struct session	*s = ft->wl->session;
+	struct winlink	*wl;
+	u_int		 idx;
+
+	idx = 0;
+	TAILQ_FOREACH(wl, &s->lastw, sentry) {
+		idx++;
+		if (wl == ft->wl)
+			break;
+	}
+	if (wl != NULL)
+		xasprintf(&fe->value, "%u", idx);
+	else
+		fe->value = xstrdup("0");
 }
 
 /* Callback for window_layout. */
@@ -1220,6 +1263,7 @@ format_defaults_session(struct format_tree *ft, struct session *s)
 	format_add(ft, "session_many_attached", "%d", s->attached > 1);
 
 	format_add_cb(ft, "session_alerts", format_cb_session_alerts);
+	format_add_cb(ft, "session_stack", format_cb_session_stack);
 }
 
 /* Set default format keys for a client. */
@@ -1306,10 +1350,12 @@ format_defaults_winlink(struct format_tree *ft, struct winlink *wl)
 
 	if (ft->w == NULL)
 		ft->w = wl->window;
+	ft->wl = wl;
 
 	format_defaults_window(ft, w);
 
 	format_add(ft, "window_index", "%d", wl->idx);
+	format_add_cb(ft, "window_stack_index", format_cb_window_stack_index);
 	format_add(ft, "window_flags", "%s", window_printable_flags(wl));
 	format_add(ft, "window_active", "%d", wl == s->curw);
 
@@ -1364,6 +1410,9 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 	}
 
 	format_add(ft, "pane_in_mode", "%d", wp->screen != &wp->base);
+	if (wp->mode != NULL)
+		format_add(ft, "pane_mode", "%s", wp->mode->name);
+
 	format_add(ft, "pane_synchronized", "%d",
 	    !!options_get_number(wp->window->options, "synchronize-panes"));
 	format_add(ft, "pane_search_string", "%s",
