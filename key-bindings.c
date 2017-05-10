@@ -400,11 +400,11 @@ key_bindings_read_only(struct cmdq_item *item, __unused void *data)
 }
 
 void
-key_bindings_dispatch(struct key_binding *bd, struct client *c,
-    struct mouse_event *m, struct cmd_find_state *fs)
+key_bindings_dispatch(struct key_binding *bd, struct cmdq_item *item,
+    struct client *c, struct mouse_event *m, struct cmd_find_state *fs)
 {
 	struct cmd		*cmd;
-	struct cmdq_item	*item;
+	struct cmdq_item	*new_item;
 	int			 readonly;
 
 	readonly = 1;
@@ -413,11 +413,14 @@ key_bindings_dispatch(struct key_binding *bd, struct client *c,
 			readonly = 0;
 	}
 	if (!readonly && (c->flags & CLIENT_READONLY))
-		cmdq_append(c, cmdq_get_callback(key_bindings_read_only, NULL));
+		new_item = cmdq_get_callback(key_bindings_read_only, NULL);
 	else {
-		item = cmdq_get_command(bd->cmdlist, fs, m, 0);
+		new_item = cmdq_get_command(bd->cmdlist, fs, m, 0);
 		if (bd->flags & KEY_BINDING_REPEAT)
-			item->shared->flags |= CMDQ_SHARED_REPEAT;
-		cmdq_append(c, item);
+			new_item->shared->flags |= CMDQ_SHARED_REPEAT;
 	}
+	if (item != NULL)
+		cmdq_insert_after(item, new_item);
+	else
+		cmdq_append(c, new_item);
 }

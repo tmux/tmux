@@ -945,7 +945,7 @@ retry:
 		server_status_client(c);
 
 		/* Execute the key binding. */
-		key_bindings_dispatch(bd, c, m, &fs);
+		key_bindings_dispatch(bd, NULL, c, m, &fs);
 		key_bindings_unref_table(table);
 		return;
 	}
