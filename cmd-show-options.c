@@ -127,25 +127,36 @@ cmd_show_options_one(struct cmd *self, struct cmdq_item *item,
     struct options *oo)
 {
 	struct args		*args = self->args;
+	struct client		*c = cmd_find_client(item, NULL, 1);
+	struct session		*s = item->target.s;
+	struct winlink		*wl = item->target.wl;
 	struct options_entry	*o;
 	int			 idx, ambiguous;
-	const char		*name = args->argv[0];
+	char			*name;
 
+	name = format_single(item, args->argv[0], c, s, wl, NULL);
 	o = options_match_get(oo, name, &idx, 1, &ambiguous);
 	if (o == NULL) {
-		if (args_has(args, 'q'))
+		if (args_has(args, 'q')) {
+			free(name);
 			return (CMD_RETURN_NORMAL);
+		}
 		if (ambiguous) {
 			cmdq_error(item, "ambiguous option: %s", name);
+			free(name);
 			return (CMD_RETURN_ERROR);
 		}
 		if (*name != '@' &&
-		    options_match_get(oo, name, &idx, 0, &ambiguous) != NULL)
+		    options_match_get(oo, name, &idx, 0, &ambiguous) != NULL) {
+			free(name);
 			return (CMD_RETURN_NORMAL);
+		}
 		cmdq_error(item, "unknown option: %s", name);
+		free(name);
 		return (CMD_RETURN_ERROR);
 	}
 	cmd_show_options_print(self, item, o, idx);
+	free(name);
 	return (CMD_RETURN_NORMAL);
 }
 
