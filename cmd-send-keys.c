@@ -73,7 +73,7 @@ cmd_send_keys_inject(struct client *c, struct cmdq_item *item, key_code key)
 	bd = RB_FIND(key_bindings, &table->key_bindings, &bd_find);
 	if (bd != NULL) {
 		table->references++;
-		key_bindings_dispatch(bd, c, NULL, &item->target);
+		key_bindings_dispatch(bd, item, c, NULL, &item->target);
 		key_bindings_unref_table(table);
 	}
 }
