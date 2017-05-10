@@ -2331,7 +2331,7 @@ abc123
 Commands which set options are as follows:
 .Bl -tag -width Ds
 .It Xo Ic set-option
-.Op Fl agoqsuw
+.Op Fl aFgoqsuw
 .Op Fl t Ar target-session | Ar target-window
 .Ar option Ar value
 .Xc
@@ -2347,6 +2347,8 @@ otherwise a session option.
 If
 .Fl g
 is given, the global session or window option is set.
+.Fl F
+expands formats in the option value.
 The
 .Fl u
 flag unsets an option, so a session inherits the option from the global
@@ -2897,7 +2899,7 @@ The default is
 .Ql \ -_@ .
 .El
 .It Xo Ic set-window-option
-.Op Fl agoqu
+.Op Fl aFgoqu
 .Op Fl t Ar target-window
 .Ar option Ar value
 .Xc
@@ -2905,6 +2907,7 @@ The default is
 Set a window option.
 The
 .Fl a ,
+.Fl F ,
 .Fl g ,
 .Fl o ,
 .Fl q
