@@ -60,6 +60,9 @@ recalculate_sizes(void)
 		TAILQ_FOREACH(c, &clients, entry) {
 			if (c->flags & CLIENT_SUSPENDED)
 				continue;
+			if ((c->flags & (CLIENT_CONTROL|CLIENT_SIZECHANGED)) ==
+			    CLIENT_CONTROL)
+				continue;
 			if (c->session == s) {
 				if (c->tty.sx < ssx)
 					ssx = c->tty.sx;

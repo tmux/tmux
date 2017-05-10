@@ -67,8 +67,10 @@ cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 			cmdq_error(item, "not a control client");
 			return (CMD_RETURN_ERROR);
 		}
-		if (tty_set_size(&c->tty, w, h))
+		if (tty_set_size(&c->tty, w, h)) {
+			c->flags |= CLIENT_SIZECHANGED;
 			recalculate_sizes();
+		}
 	} else if (args_has(args, 'S')) {
 		c->flags |= CLIENT_STATUSFORCE;
 		server_status_client(c);
