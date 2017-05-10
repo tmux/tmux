@@ -789,6 +789,7 @@ tty_clear_line(struct tty *tty, const struct window_pane *wp, u_int py,
 	}
 
 	/* Couldn't use an escape sequence, use spaces. */
+	tty_cursor(tty, px, py);
 	tty_repeat_space(tty, nx);
 }
 
