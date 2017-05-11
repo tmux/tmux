@@ -77,7 +77,11 @@ control_callback(struct client *c, int closed, __unused void *data)
 		c->flags |= CLIENT_EXIT;
 
 	for (;;) {
+#if defined(_EVENT_NUMERIC_VERSION) && _EVENT_NUMERIC_VERSION >= 0x2000000
 		line = evbuffer_readln(c->stdin_data, NULL, EVBUFFER_EOL_LF);
+#else
+		line = evbuffer_readline(c->stdin_data);
+#endif
 		if (line == NULL)
 			break;
 		if (*line == '\0') { /* empty line exit */
