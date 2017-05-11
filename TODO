@@ -10,7 +10,6 @@
 	  client gets a signal
 
 - make command sequences more usable
-	* don't require space after ;
 	* options for error handling: && and ||?
 
 - options bits and pieces:

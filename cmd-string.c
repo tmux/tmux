@@ -66,6 +66,18 @@ cmd_string_split(const char *s, int *rargc, char ***rargv)
 	for (;;) {
 		ch = cmd_string_getc(s, &p);
 		switch (ch) {
+        case ';':
+            buf = xrealloc(buf, len + 2);
+            buf[len++] = ch;
+            buf[len] = '\0';
+
+            argv = xreallocarray(argv, argc + 1,
+                sizeof *argv);
+            argv[argc++] = buf;
+
+            buf = NULL;
+            len = 0;
+            break;
 		case '\'':
 			if ((t = cmd_string_string(s, &p, '\'', 0)) == NULL)
 				goto error;
