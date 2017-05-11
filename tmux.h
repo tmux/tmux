@@ -1625,7 +1625,7 @@ void	environ_put(struct environ *, const char *);
 void	environ_unset(struct environ *, const char *);
 void	environ_update(struct options *, struct environ *, struct environ *);
 void	environ_push(struct environ *);
-void	environ_log(struct environ *, const char *);
+void printflike(2, 3) environ_log(struct environ *, const char *, ...);
 struct environ *environ_for_session(struct session *, int);
 
 /* tty.c */
