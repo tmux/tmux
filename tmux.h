@@ -792,6 +792,7 @@ struct window_pane {
 	struct event	 modetimer;
 	time_t		 modelast;
 	u_int		 modeprefix;
+	char		*searchstr;
 
 	TAILQ_ENTRY(window_pane) entry;
 	RB_ENTRY(window_pane) tree_entry;
@@ -1996,7 +1997,7 @@ void	 screen_write_cursorleft(struct screen_write_ctx *, u_int);
 void	 screen_write_alignmenttest(struct screen_write_ctx *);
 void	 screen_write_insertcharacter(struct screen_write_ctx *, u_int, u_int);
 void	 screen_write_deletecharacter(struct screen_write_ctx *, u_int, u_int);
-void	 screen_write_clearcharacter(struct screen_write_ctx *, u_int);
+void	 screen_write_clearcharacter(struct screen_write_ctx *, u_int, u_int);
 void	 screen_write_insertline(struct screen_write_ctx *, u_int, u_int);
 void	 screen_write_deleteline(struct screen_write_ctx *, u_int, u_int);
 void	 screen_write_clearline(struct screen_write_ctx *, u_int);
@@ -2177,7 +2178,6 @@ void		 window_copy_vadd(struct window_pane *, const char *, va_list);
 void		 window_copy_pageup(struct window_pane *, int);
 void		 window_copy_start_drag(struct client *, struct mouse_event *);
 int		 window_copy_scroll_position(struct window_pane *);
-const char	*window_copy_search_string(struct window_pane *);
 
 /* window-choose.c */
 extern const struct window_mode window_choose_mode;
