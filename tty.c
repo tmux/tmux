@@ -834,7 +834,10 @@ tty_clear_area(struct tty *tty, const struct window_pane *wp, u_int py,
 		 * If margins are supported, can just scroll the area off to
 		 * clear it.
 		 */
-		if (tty_use_margin(tty) && tty_term_has(tty->term, TTYC_INDN)) {
+		if (nx > 2 &&
+		    ny > 2 &&
+		    tty_use_margin(tty) &&
+		    tty_term_has(tty->term, TTYC_INDN)) {
 			tty_region(tty, py, py + ny - 1);
 			tty_margin(tty, px, px + nx - 1);
 			tty_putcode1(tty, TTYC_INDN, ny);
