@@ -798,6 +798,7 @@ tty_clear_area(struct tty *tty, const struct window_pane *wp, u_int py,
     u_int ny, u_int px, u_int nx, u_int bg)
 {
 	u_int	yy;
+	char	tmp[64];
 
 	log_debug("%s: %u,%u at %u,%u", __func__, nx, ny, px, py);
 
@@ -807,12 +808,39 @@ tty_clear_area(struct tty *tty, const struct window_pane *wp, u_int py,
 
 	/* If genuine BCE is available, can try escape sequences. */
 	if (!tty_fake_bce(tty, wp, bg)) {
+		/* Use ED if clearing off the bottom of the terminal. */
 		if (px == 0 &&
 		    px + nx >= tty->sx &&
 		    py + ny >= tty->sy &&
 		    tty_term_has(tty->term, TTYC_ED)) {
 			tty_cursor(tty, 0, py);
 			tty_putcode(tty, TTYC_ED);
+			return;
+		}
+
+		/*
+		 * On VT420 compatible terminals we can use DECFRA if the
+		 * background colour isn't default (because it doesn't work
+		 * after SGR 0).
+		 */
+		if (tty->term_type == TTY_VT420 && bg != 8) {
+			xsnprintf(tmp, sizeof tmp, "\033[32;%u;%u;%u;%u$x",
+			    py + 1, px + 1, py + ny, px + nx);
+			tty_puts(tty, tmp);
+			return;
+		}
+
+		/*
+		 * If margins are supported, can just scroll the area off to
+		 * clear it.
+		 */
+		if (nx > 2 &&
+		    ny > 2 &&
+		    tty_use_margin(tty) &&
+		    tty_term_has(tty->term, TTYC_INDN)) {
+			tty_region(tty, py, py + ny - 1);
+			tty_margin(tty, px, px + nx - 1);
+			tty_putcode1(tty, TTYC_INDN, ny);
 			return;
 		}
 	}
@@ -1023,7 +1051,7 @@ tty_cmd_deletecharacter(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cmd_clearcharacter(struct tty *tty, const struct tty_ctx *ctx)
 {
-	tty_attributes(tty, &grid_default_cell, ctx->wp);
+	tty_default_attributes(tty, ctx->wp, ctx->bg);
 
 	tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
 

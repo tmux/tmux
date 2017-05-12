@@ -828,6 +828,7 @@ static void
 window_pane_destroy(struct window_pane *wp)
 {
 	window_pane_reset_mode(wp);
+	free(wp->searchstr);
 
 	if (wp->fd != -1) {
 #ifdef HAVE_UTEMPTER

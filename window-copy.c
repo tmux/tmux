@@ -208,8 +208,13 @@ window_copy_init(struct window_pane *wp)
 	data->rectflag = 0;
 	data->scroll_exit = 0;
 
-	data->searchtype = WINDOW_COPY_OFF;
-	data->searchstr = NULL;
+	if (wp->searchstr != NULL) {
+		data->searchtype = WINDOW_COPY_SEARCHUP;
+		data->searchstr = xstrdup(wp->searchstr);
+	} else {
+		data->searchtype = WINDOW_COPY_OFF;
+		data->searchstr = NULL;
+	}
 	data->searchmark = NULL;
 	data->searchx = data->searchy = data->searcho = -1;
 
@@ -1133,6 +1138,9 @@ window_copy_search(struct window_pane *wp, int direction, int moveflag)
 	struct grid			*gd = s->grid;
 	u_int				 fx, fy, endline;
 	int				 wrapflag, cis, found;
+
+	free(wp->searchstr);
+	wp->searchstr = xstrdup(data->searchstr);
 
 	fx = data->cx;
 	fy = screen_hsize(data->backing) - data->oy + data->cy;
@@ -2481,17 +2489,4 @@ window_copy_drag_update(__unused struct client *c, struct mouse_event *m)
 	window_copy_update_cursor(wp, x, y);
 	if (window_copy_update_selection(wp, 1))
 		window_copy_redraw_selection(wp, old_cy);
-}
-
-const char *
-window_copy_search_string(struct window_pane *wp)
-{
-	struct window_copy_mode_data	*data;
-
-	if (wp->mode != &window_copy_mode)
-		return ("");
-	data = wp->modedata;
-	if (data->searchtype == WINDOW_COPY_OFF || data->searchstr == NULL)
-		return ("");
-	return (data->searchstr);
 }
