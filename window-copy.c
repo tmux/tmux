@@ -321,7 +321,7 @@ window_copy_vadd(struct window_pane *wp, const char *fmt, va_list ap)
 		 * (so it's on a new line).
 		 */
 		screen_write_carriagereturn(&back_ctx);
-		screen_write_linefeed(&back_ctx, 0);
+		screen_write_linefeed(&back_ctx, 0, 8);
 	} else
 		data->backing_written = 1;
 	old_cy = backing->cy;

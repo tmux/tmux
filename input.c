@@ -1123,7 +1123,7 @@ input_c0_dispatch(struct input_ctx *ictx)
 	case '\012':	/* LF */
 	case '\013':	/* VT */
 	case '\014':	/* FF */
-		screen_write_linefeed(sctx, 0);
+		screen_write_linefeed(sctx, 0, ictx->cell.cell.bg);
 		break;
 	case '\015':	/* CR */
 		screen_write_carriagereturn(sctx);
@@ -1168,18 +1168,18 @@ input_esc_dispatch(struct input_ctx *ictx)
 		screen_write_reset(sctx);
 		break;
 	case INPUT_ESC_IND:
-		screen_write_linefeed(sctx, 0);
+		screen_write_linefeed(sctx, 0, ictx->cell.cell.bg);
 		break;
 	case INPUT_ESC_NEL:
 		screen_write_carriagereturn(sctx);
-		screen_write_linefeed(sctx, 0);
+		screen_write_linefeed(sctx, 0, ictx->cell.cell.bg);
 		break;
 	case INPUT_ESC_HTS:
 		if (s->cx < screen_size_x(s))
 			bit_set(s->tabs, s->cx);
 		break;
 	case INPUT_ESC_RI:
-		screen_write_reverseindex(sctx);
+		screen_write_reverseindex(sctx, ictx->cell.cell.bg);
 		break;
 	case INPUT_ESC_DECKPAM:
 		screen_write_mode_set(sctx, MODE_KKEYPAD);
@@ -1417,7 +1417,8 @@ input_csi_dispatch(struct input_ctx *ictx)
 		input_csi_dispatch_sm_private(ictx);
 		break;
 	case INPUT_CSI_SU:
-		screen_write_scrollup(sctx, input_get(ictx, 0, 1, 1));
+		screen_write_scrollup(sctx, input_get(ictx, 0, 1, 1),
+		    ictx->cell.cell.bg);
 		break;
 	case INPUT_CSI_TBC:
 		switch (input_get(ictx, 0, 0, 0)) {

@@ -226,12 +226,12 @@ format_job_update(struct job *job)
 	free(fj->out);
 	fj->out = line;
 
-	log_debug("%s: %s: %s", __func__, fj->cmd, fj->out);
+	log_debug("%s: %p %s: %s", __func__, fj, fj->cmd, fj->out);
 
 	t = time (NULL);
 	if (fj->status && fj->last != t) {
-		TAILQ_FOREACH(c, &clients, entry)
-		    server_status_client(c);
+		if (fj->client != NULL)
+			server_status_client(fj->client);
 		fj->last = t;
 	}
 }
@@ -256,10 +256,11 @@ format_job_complete(struct job *job)
 	} else
 		buf = line;
 
+	log_debug("%s: %p %s: %s", __func__, fj, fj->cmd, buf);
+
 	if (*buf != '\0' || !fj->updated) {
 		free(fj->out);
 		fj->out = buf;
-		log_debug("%s: %s: %s", __func__, fj->cmd, fj->out);
 	} else
 		free(buf);
 
