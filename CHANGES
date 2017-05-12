@@ -1,5 +1,9 @@
 CHANGES FROM 2.4 to 2.5 09 May 2017
 
+* Fix ECH with a background colour.
+
+* Do not rely on the terminal not moving the cursor after DL or EL.
+
 * Fix send-keys and send-prefix in copy-mode (so C-b C-b works). GitHub issue
   905.
 
