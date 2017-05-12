@@ -387,6 +387,8 @@ screen_write_initctx(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx)
 {
 	struct screen	*s = ctx->s;
 
+	memset(ttyctx, 0, sizeof *ttyctx);
+
 	ttyctx->wp = ctx->wp;
 
 	ttyctx->ocx = s->cx;
