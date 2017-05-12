@@ -472,7 +472,7 @@ grid_clear(struct grid *gd, u_int px, u_int py, u_int nx, u_int ny, u_int bg)
 			gd->linedata[yy].cellsize = px;
 			continue;
 		}
-		grid_expand_line(gd, yy, px + nx, bg);
+		grid_expand_line(gd, yy, px + nx, 8); /* default bg first */
 		for (xx = px; xx < px + nx; xx++)
 			grid_clear_cell(gd, xx, yy, bg);
 	}
