@@ -832,7 +832,7 @@ tty_clear_area(struct tty *tty, const struct window_pane *wp, u_int py,
 
 		/* Full lines can be scrolled away to clear them. */
 		if (px == 0 &&
-		    px + nx > tty->sx &&
+		    px + nx >= tty->sx &&
 		    ny > 2 &&
 		    tty_term_has(tty->term, TTYC_CSR) &&
 		    tty_term_has(tty->term, TTYC_INDN)) {
