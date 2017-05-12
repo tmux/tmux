@@ -672,6 +672,7 @@ struct screen_write_ctx {
 	struct screen_write_collect_item *item;
 	struct screen_write_collect_line *list;
 	u_int			 scrolled;
+	u_int                    bg;
 
 	u_int			 cells;
 	u_int			 written;
@@ -1931,7 +1932,7 @@ void	 grid_destroy(struct grid *);
 int	 grid_compare(struct grid *, struct grid *);
 void	 grid_collect_history(struct grid *, u_int);
 void	 grid_scroll_history(struct grid *, u_int);
-void	 grid_scroll_history_region(struct grid *, u_int, u_int);
+void	 grid_scroll_history_region(struct grid *, u_int, u_int, u_int);
 void	 grid_clear_history(struct grid *);
 const struct grid_line *grid_peek_line(struct grid *, u_int);
 void	 grid_get_cell(struct grid *, u_int, u_int, struct grid_cell *);
@@ -1956,8 +1957,8 @@ void	 grid_view_set_cells(struct grid *, u_int, u_int,
 	     const struct grid_cell *, const char *, size_t);
 void	 grid_view_clear_history(struct grid *, u_int);
 void	 grid_view_clear(struct grid *, u_int, u_int, u_int, u_int, u_int);
-void	 grid_view_scroll_region_up(struct grid *, u_int, u_int);
-void	 grid_view_scroll_region_down(struct grid *, u_int, u_int);
+void	 grid_view_scroll_region_up(struct grid *, u_int, u_int, u_int);
+void	 grid_view_scroll_region_down(struct grid *, u_int, u_int, u_int);
 void	 grid_view_insert_lines(struct grid *, u_int, u_int, u_int);
 void	 grid_view_insert_lines_region(struct grid *, u_int, u_int, u_int,
 	u_int);
@@ -2004,10 +2005,10 @@ void	 screen_write_clearline(struct screen_write_ctx *, u_int);
 void	 screen_write_clearendofline(struct screen_write_ctx *, u_int);
 void	 screen_write_clearstartofline(struct screen_write_ctx *, u_int);
 void	 screen_write_cursormove(struct screen_write_ctx *, u_int, u_int);
-void	 screen_write_reverseindex(struct screen_write_ctx *);
+void	 screen_write_reverseindex(struct screen_write_ctx *, u_int);
 void	 screen_write_scrollregion(struct screen_write_ctx *, u_int, u_int);
-void	 screen_write_linefeed(struct screen_write_ctx *, int);
-void	 screen_write_scrollup(struct screen_write_ctx *, u_int);
+void	 screen_write_linefeed(struct screen_write_ctx *, int, u_int);
+void	 screen_write_scrollup(struct screen_write_ctx *, u_int, u_int);
 void	 screen_write_carriagereturn(struct screen_write_ctx *);
 void	 screen_write_clearendofscreen(struct screen_write_ctx *, u_int);
 void	 screen_write_clearstartofscreen(struct screen_write_ctx *, u_int);
