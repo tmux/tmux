@@ -838,7 +838,7 @@ tty_clear_area(struct tty *tty, const struct window_pane *wp, u_int py,
 		    tty_term_has(tty->term, TTYC_INDN)) {
 			tty_region(tty, py, py + ny - 1);
 			tty_margin_off(tty);
-			tty_putcode1(tty, TTYC_INDN, ny);
+			tty_putcode1(tty, TTYC_INDN, ny - 1);
 			return;
 		}
 
@@ -853,7 +853,7 @@ tty_clear_area(struct tty *tty, const struct window_pane *wp, u_int py,
 		    tty_term_has(tty->term, TTYC_INDN)) {
 			tty_region(tty, py, py + ny - 1);
 			tty_margin(tty, px, px + nx - 1);
-			tty_putcode1(tty, TTYC_INDN, ny);
+			tty_putcode1(tty, TTYC_INDN, ny - 1);
 			return;
 		}
 	}
