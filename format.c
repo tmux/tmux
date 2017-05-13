@@ -320,6 +320,7 @@ format_job_get(struct format_tree *ft, const char *cmd)
 			xasprintf(&fj->out, "<'%s' didn't start>", fj->cmd);
 		}
 		fj->last = t;
+		fj->updated = 0;
 	}
 
 	if (ft->flags & FORMAT_STATUS)
