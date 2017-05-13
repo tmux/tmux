@@ -286,7 +286,7 @@ grid_clear_history(struct grid *gd)
 void
 grid_scroll_history_region(struct grid *gd, u_int upper, u_int lower, u_int bg)
 {
-	struct grid_line	*gl_history, *gl_upper, *gl_lower;
+	struct grid_line	*gl_history, *gl_upper;
 	u_int			 yy;
 
 	/* Create a space for a new line. */
@@ -302,7 +302,6 @@ grid_scroll_history_region(struct grid *gd, u_int upper, u_int lower, u_int bg)
 	upper++;
 	gl_upper = &gd->linedata[upper];
 	lower++;
-	gl_lower = &gd->linedata[lower];
 
 	/* Move the line into the history. */
 	memcpy(gl_history, gl_upper, sizeof *gl_history);
