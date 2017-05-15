@@ -81,7 +81,7 @@ tty_acs_get(struct tty *tty, u_char ch)
 	struct tty_acs_entry *entry;
 
 	/* If not a UTF-8 terminal, use the ACS set. */
-	if (tty != NULL && (!(tty->flags & TTY_UTF8) || (tty->flags & TTY_FORCEACS))) {
+	if (tty != NULL && !(tty->flags & TTY_UTF8)) {
 		if (tty->term->acs[ch][0] == '\0')
 			return (NULL);
 		return (&tty->term->acs[ch][0]);

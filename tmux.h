@@ -1077,7 +1077,6 @@ struct tty {
 #define TTY_OPENED 0x20
 #define TTY_FOCUS 0x40
 #define TTY_BLOCK 0x80
-#define TTY_FORCEACS 0x100
 	int		 flags;
 
 	struct tty_term	*term;
@@ -1353,7 +1352,6 @@ struct client {
 #define CLIENT_DOUBLECLICK 0x100000
 #define CLIENT_TRIPLECLICK 0x200000
 #define CLIENT_SIZECHANGED 0x400000
-#define CLIENT_FORCEACS 0x800000
 	int		 flags;
 	struct key_table *keytable;
 

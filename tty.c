@@ -72,7 +72,7 @@ static void	tty_default_attributes(struct tty *, const struct window_pane *,
 		    u_int);
 
 #define tty_use_acs(tty) \
-	((tty_term_has((tty)->term, TTYC_ACSC)) && ((!((tty)->flags & TTY_UTF8)) || ((tty)->flags & TTY_FORCEACS)))
+	(tty_term_has((tty)->term, TTYC_ACSC) && !((tty)->flags & TTY_UTF8))
 #define tty_use_margin(tty) \
 	((tty)->term_type == TTY_VT420)
 

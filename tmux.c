@@ -210,13 +210,10 @@ main(int argc, char **argv)
 		flags = 0;
 
 	label = path = NULL;
-	while ((opt = getopt(argc, argv, "2ac:Cdf:lL:qS:uUVv")) != -1) {
+	while ((opt = getopt(argc, argv, "2c:Cdf:lL:qS:uUVv")) != -1) {
 		switch (opt) {
 		case '2':
 			flags |= CLIENT_256COLOURS;
-			break;
-		case 'a':
-			flags |= CLIENT_FORCEACS;
 			break;
 		case 'c':
 			free(shellcmd);
