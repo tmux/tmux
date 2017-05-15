@@ -71,8 +71,6 @@ static void	tty_default_colours(struct grid_cell *,
 static void	tty_default_attributes(struct tty *, const struct window_pane *,
 		    u_int);
 
-#define tty_use_acs(tty) \
-	(tty_term_has((tty)->term, TTYC_ACSC) && !((tty)->flags & TTY_UTF8))
 #define tty_use_margin(tty) \
 	((tty)->term_type == TTY_VT420)
 
@@ -278,7 +276,8 @@ tty_open(struct tty *tty, char **cause)
 void
 tty_start_tty(struct tty *tty)
 {
-	struct termios	tio;
+	struct client	*c = tty->client;
+	struct termios	 tio;
 
 	if (tty->fd != -1 && tcgetattr(tty->fd, &tty->tio) == 0) {
 		setblocking(tty->fd, 0);
@@ -299,9 +298,13 @@ tty_start_tty(struct tty *tty)
 	tty_putcode(tty, TTYC_SMCUP);
 
 	tty_putcode(tty, TTYC_SMKX);
-	if (tty_use_acs(tty))
-		tty_putcode(tty, TTYC_ENACS);
 	tty_putcode(tty, TTYC_CLEAR);
+
+	if (tty_acs_needed(tty)) {
+		log_debug("%s: using capabilities for ACS", c->name);
+		tty_putcode(tty, TTYC_ENACS);
+	} else
+		log_debug("%s: using UTF-8 for ACS", c->name);
 
 	tty_putcode(tty, TTYC_CNORM);
 	if (tty_term_has(tty->term, TTYC_KMOUS))
@@ -351,7 +354,7 @@ tty_stop_tty(struct tty *tty)
 		return;
 
 	tty_raw(tty, tty_term_string2(tty->term, TTYC_CSR, 0, ws.ws_row - 1));
-	if (tty_use_acs(tty))
+	if (tty_acs_needed(tty))
 		tty_raw(tty, tty_term_string(tty->term, TTYC_RMACS));
 	tty_raw(tty, tty_term_string(tty->term, TTYC_SGR0));
 	tty_raw(tty, tty_term_string(tty->term, TTYC_RMKX));
@@ -1417,7 +1420,7 @@ tty_reset(struct tty *tty)
 	struct grid_cell	*gc = &tty->cell;
 
 	if (!grid_cells_equal(gc, &grid_default_cell)) {
-		if ((gc->attr & GRID_ATTR_CHARSET) && tty_use_acs(tty))
+		if ((gc->attr & GRID_ATTR_CHARSET) && tty_acs_needed(tty))
 			tty_putcode(tty, TTYC_RMACS);
 		tty_putcode(tty, TTYC_SGR0);
 		memcpy(gc, &grid_default_cell, sizeof *gc);
@@ -1767,7 +1770,7 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
 		tty_putcode(tty, TTYC_INVIS);
 	if (changed & GRID_ATTR_STRIKETHROUGH)
 		tty_putcode(tty, TTYC_SMXX);
-	if ((changed & GRID_ATTR_CHARSET) && tty_use_acs(tty))
+	if ((changed & GRID_ATTR_CHARSET) && tty_acs_needed(tty))
 		tty_putcode(tty, TTYC_SMACS);
 }
 
