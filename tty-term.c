@@ -257,6 +257,7 @@ static const struct tty_term_code_entry tty_term_codes[] = {
 	[TTYC_TC] = { TTYCODE_FLAG, "Tc" },
 	[TTYC_TSL] = { TTYCODE_STRING, "tsl" },
 	[TTYC_VPA] = { TTYCODE_STRING, "vpa" },
+	[TTYC_U8] = { TTYCODE_NUMBER, "U8" },
 	[TTYC_XENL] = { TTYCODE_FLAG, "xenl" },
 	[TTYC_XT] = { TTYCODE_FLAG, "XT" },
 };
