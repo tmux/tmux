@@ -74,23 +74,48 @@ tty_acs_cmp(const void *key, const void *value)
 	return (ch - entry->key);
 }
 
+/* Should this terminal use ACS instead of UTF-8 line drawing? */
+int
+tty_acs_needed(struct tty *tty)
+{
+	if (tty == NULL)
+		return (0);
+
+	/*
+	 * If the U8 flag is present, it marks whether a terminal supports
+	 * UTF-8 and ACS together.
+	 *
+	 * If it is present and zero, we force ACS - this gives users a way to
+	 * turn off UTF-8 line drawing.
+	 *
+	 * If it is nonzero, we can fall through to the default and use UTF-8
+	 * line drawing on UTF-8 terminals.
+	 */
+	if (tty_term_has(tty->term, TTYC_U8) &&
+	    tty_term_number(tty->term, TTYC_U8) == 0)
+		return (1);
+
+	if (tty->flags & TTY_UTF8)
+		return (0);
+	return (1);
+}
+
 /* Retrieve ACS to output as a string. */
 const char *
 tty_acs_get(struct tty *tty, u_char ch)
 {
-	struct tty_acs_entry *entry;
+	struct tty_acs_entry	*entry;
 
-	/* If not a UTF-8 terminal, use the ACS set. */
-	if (tty != NULL && !(tty->flags & TTY_UTF8)) {
+	/* Use the ACS set instead of UTF-8 if needed. */
+	if (tty_acs_needed(tty)) {
 		if (tty->term->acs[ch][0] == '\0')
 			return (NULL);
 		return (&tty->term->acs[ch][0]);
 	}
 
 	/* Otherwise look up the UTF-8 translation. */
-	entry = bsearch(&ch,
-	    tty_acs_table, nitems(tty_acs_table), sizeof tty_acs_table[0],
-	    tty_acs_cmp);
+	entry = bsearch(&ch, tty_acs_table, nitems(tty_acs_table),
+	    sizeof tty_acs_table[0], tty_acs_cmp);
 	if (entry == NULL)
 		return (NULL);
 	return (entry->string);

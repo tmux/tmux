@@ -401,6 +401,7 @@ enum tty_code_code {
 	TTYC_SS,	/* set cursor style, Ss */
 	TTYC_TC,	/* 24-bit "true" colour, Tc */
 	TTYC_TSL,	/* to_status_line, tsl */
+	TTYC_U8,
 	TTYC_VPA,	/* row_address, cv */
 	TTYC_XENL,	/* eat_newline_glitch, xn */
 	TTYC_XT,	/* xterm(1)-compatible title, XT */
@@ -1701,6 +1702,7 @@ int		 tty_term_flag(struct tty_term *, enum tty_code_code);
 const char	*tty_term_describe(struct tty_term *, enum tty_code_code);
 
 /* tty-acs.c */
+int		 tty_acs_needed(struct tty *);
 const char	*tty_acs_get(struct tty *, u_char);
 
 /* tty-keys.c */
