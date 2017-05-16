@@ -43,28 +43,6 @@ typedef void (*format_cb)(struct format_tree *, struct format_entry *);
 static char	*format_job_get(struct format_tree *, const char *);
 static void	 format_job_timer(int, short, void *);
 
-static void	 format_cb_host(struct format_tree *, struct format_entry *);
-static void	 format_cb_host_short(struct format_tree *,
-		     struct format_entry *);
-static void	 format_cb_pid(struct format_tree *, struct format_entry *);
-static void	 format_cb_session_alerts(struct format_tree *,
-		     struct format_entry *);
-static void	 format_cb_window_layout(struct format_tree *,
-		     struct format_entry *);
-static void	 format_cb_window_visible_layout(struct format_tree *,
-		     struct format_entry *);
-static void	 format_cb_start_command(struct format_tree *,
-		     struct format_entry *);
-static void	 format_cb_current_command(struct format_tree *,
-		     struct format_entry *);
-static void	 format_cb_history_bytes(struct format_tree *,
-		     struct format_entry *);
-static void	 format_cb_pane_tabs(struct format_tree *,
-		     struct format_entry *);
-
-static void	 format_cb_current_path(struct format_tree *,
-		     struct format_entry *);
-
 static char	*format_find(struct format_tree *, const char *, int);
 static void	 format_add_cb(struct format_tree *, const char *, format_cb);
 static void	 format_add_tv(struct format_tree *, const char *,
