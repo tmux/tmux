@@ -49,7 +49,8 @@ static void	server_client_dispatch_shell(struct client *);
 
 /* Identify mode callback. */
 static void
-server_client_callback_identify(__unused int fd, __unused short events, void *data)
+server_client_callback_identify(__unused int fd, __unused short events,
+    void *data)
 {
 	server_client_clear_identify(data, NULL);
 }
@@ -328,7 +329,7 @@ server_client_free(__unused int fd, __unused short events, void *arg)
 void
 server_client_suspend(struct client *c)
 {
-	struct session  *s = c->session;
+	struct session	*s = c->session;
 
 	if (s == NULL || (c->flags & CLIENT_DETACHING))
 		return;
@@ -342,7 +343,7 @@ server_client_suspend(struct client *c)
 void
 server_client_detach(struct client *c, enum msgtype msgtype)
 {
-	struct session  *s = c->session;
+	struct session	*s = c->session;
 
 	if (s == NULL || (c->flags & CLIENT_DETACHING))
 		return;
@@ -1238,7 +1239,7 @@ server_client_check_redraw(struct client *c)
 	struct session		*s = c->session;
 	struct tty		*tty = &c->tty;
 	struct window_pane	*wp;
-	int		 	 needed, flags, masked;
+	int			 needed, flags, masked;
 	struct timeval		 tv = { .tv_usec = 1000 };
 	static struct event	 ev;
 	size_t			 left;
@@ -1543,7 +1544,7 @@ static void
 server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 {
 	const char	*data, *home;
-	size_t	 	 datalen;
+	size_t		 datalen;
 	int		 flags;
 	char		*name;
 
@@ -1688,7 +1689,7 @@ void
 server_client_push_stdout(struct client *c)
 {
 	struct msg_stdout_data data;
-	size_t                 sent, left;
+	size_t		       sent, left;
 
 	left = EVBUFFER_LENGTH(c->stdout_data);
 	while (left != 0) {
@@ -1729,7 +1730,7 @@ void
 server_client_push_stderr(struct client *c)
 {
 	struct msg_stderr_data data;
-	size_t                 sent, left;
+	size_t		       sent, left;
 
 	if (c->stderr_data == c->stdout_data) {
 		server_client_push_stdout(c);
