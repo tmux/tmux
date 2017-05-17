@@ -104,7 +104,6 @@ AC_REPLACE_FUNCS([ \
 	closefrom \
 	explicit_bzero \
 	fgetln \
-	fparseln \
 	freezero \
 	getdtablecount \
 	getprogname \
@@ -452,6 +451,14 @@ if test "x$found_getopt" != xno; then
 	AC_DEFINE(HAVE_GETOPT)
 else
 	AC_LIBOBJ(getopt)
+fi
+
+# Look for fparseln in libutil.
+AC_SEARCH_LIBS(fparseln, util, found_fparseln=yes, found_fparseln=no)
+if test "x$found_fparseln" = xyes; then
+	AC_DEFINE(HAVE_FPARSELN)
+else
+	AC_LIBOBJ(fparseln)
 fi
 
 # Look for fdforkpty and forkpty in libutil.
