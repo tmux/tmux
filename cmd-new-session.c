@@ -208,6 +208,8 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	if (sy > 0 && options_get_number(global_s_options, "status"))
 		sy--;
+	if (sy > 0 && options_get_number(&global_s_options, "bottom-border"))
+		sy--;
 	if (sx == 0)
 		sx = 1;
 	if (sy == 0)
