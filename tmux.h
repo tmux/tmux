@@ -1288,6 +1288,8 @@ struct cmd_entry {
 };
 
 /* Client connection. */
+typedef int (*prompt_input_cb)(struct client *, void *, const char *, int);
+typedef void (*prompt_free_cb)(void *);
 struct client {
 	const char	*name;
 	struct tmuxpeer	*peer;
@@ -1357,7 +1359,8 @@ struct client {
 	struct key_table *keytable;
 
 	struct event	 identify_timer;
-	void		(*identify_callback)(struct client *, struct window_pane *);
+	void		(*identify_callback)(struct client *,
+			     struct window_pane *);
 	void		*identify_callback_data;
 
 	char		*message_string;
@@ -1368,8 +1371,8 @@ struct client {
 	char		*prompt_string;
 	struct utf8_data *prompt_buffer;
 	size_t		 prompt_index;
-	int		 (*prompt_callbackfn)(void *, const char *, int);
-	void		 (*prompt_freefn)(void *);
+	prompt_input_cb	 prompt_inputcb;
+	prompt_free_cb	 prompt_freecb;
 	void		*prompt_data;
 	u_int		 prompt_hindex;
 	enum { PROMPT_ENTRY, PROMPT_COMMAND } prompt_mode;
@@ -1893,7 +1896,7 @@ void printflike(2, 3) status_message_set(struct client *, const char *, ...);
 void	 status_message_clear(struct client *);
 int	 status_message_redraw(struct client *);
 void	 status_prompt_set(struct client *, const char *, const char *,
-	     int (*)(void *, const char *, int), void (*)(void *), void *, int);
+	     prompt_input_cb, prompt_free_cb, void *, int);
 void	 status_prompt_clear(struct client *);
 int	 status_prompt_redraw(struct client *);
 int	 status_prompt_key(struct client *, key_code);
