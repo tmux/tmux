@@ -837,11 +837,12 @@ server_client_handle_key(struct client *c, key_code key)
 	if (key == KEYC_MOUSE) {
 		if (c->flags & CLIENT_READONLY)
 			return;
+		m->valid = 1;
+
 		key = server_client_check_mouse(c);
 		if (key == KEYC_UNKNOWN)
 			return;
 
-		m->valid = 1;
 		m->key = key;
 
 		/*
