@@ -490,9 +490,9 @@ layout_set_tiled(struct window *w)
 	/* How many rows and columns are wanted? */
 	rows = columns = 1;
 	while (rows * columns < n) {
-		rows++;
+		columns++;
 		if (rows * columns < n)
-			columns++;
+			rows++;
 	}
 
 	/* What width and height should they be? */
