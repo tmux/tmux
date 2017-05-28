@@ -14,7 +14,7 @@ TMP=$(mktemp)
 OUT=$(mktemp)
 trap "rm -f $TMP $OUT" 0 1 15
 
-$TMUX -f/dev/null new -d </dev/null || exit 1
+$TMUX -f/dev/null new -d || exit 1
 sleep 1
 cat <<EOF|$TMUX -C a >$TMP
 ls -F':#{session_width} #{session_height}'
@@ -25,7 +25,7 @@ grep ^: $TMP >$OUT
 printf ":80 24\n:100 50\n"|cmp -s $OUT || exit 1
 $TMUX kill-server 2>/dev/null
 
-$TMUX -f/dev/null new -d </dev/null || exit 1
+$TMUX -f/dev/null new -d || exit 1
 sleep 1
 cat <<EOF|$TMUX -C a >$TMP
 ls -F':#{session_width} #{session_height}'
