@@ -31,7 +31,7 @@
 #define FIND_WINDOW_TEMPLATE					\
 	"#{window_index}: #{window_name} "			\
 	"[#{window_width}x#{window_height}] "			\
-	"(#{window_panes} panes) #{window_find_matches}"
+	"(#{window_panes} #{window_panes_string}) #{window_find_matches}"
 
 static enum cmd_retval	cmd_find_window_exec(struct cmd *, struct cmdq_item *);
 

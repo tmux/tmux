@@ -1224,7 +1224,11 @@ format_defaults_session(struct format_tree *ft, struct session *s)
 	ft->s = s;
 
 	format_add(ft, "session_name", "%s", s->name);
-	format_add(ft, "session_windows", "%u", winlink_count(&s->windows));
+
+	u_int number_of_windows = winlink_count(&s->windows);
+	format_add(ft, "session_windows", "%u", number_of_windows);
+	format_add(ft, "session_window_string", "%s",
+		(number_of_windows > 1)? "windows" : "window");
 	format_add(ft, "session_width", "%u", s->sx);
 	format_add(ft, "session_height", "%u", s->sy);
 	format_add(ft, "session_id", "$%u", s->id);
@@ -1315,7 +1319,11 @@ format_defaults_window(struct format_tree *ft, struct window *w)
 	format_add_cb(ft, "window_layout", format_cb_window_layout);
 	format_add_cb(ft, "window_visible_layout",
 	    format_cb_window_visible_layout);
-	format_add(ft, "window_panes", "%u", window_count_panes(w));
+
+	u_int number_of_panes =  window_count_panes(w);
+	format_add(ft, "window_panes", "%u", number_of_panes);
+	format_add(ft, "window_panes_string", "%s",
+		(number_of_panes > 1)? "panes" : "pane");
 	format_add(ft, "window_zoomed_flag", "%d",
 	    !!(w->flags & WINDOW_ZOOMED));
 }
