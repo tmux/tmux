@@ -58,6 +58,8 @@ recalculate_sizes(void)
 		s->attached = 0;
 		ssx = ssy = UINT_MAX;
 		TAILQ_FOREACH(c, &clients, entry) {
+			if (c->flags & CLIENT_CONTROL) 
+			        continue;
 			if (c->flags & CLIENT_SUSPENDED)
 				continue;
 			if ((c->flags & (CLIENT_CONTROL|CLIENT_SIZECHANGED)) ==
