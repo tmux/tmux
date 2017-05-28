@@ -110,6 +110,7 @@ static void	input_set_state(struct window_pane *,
 static void	input_reset_cell(struct input_ctx *);
 
 static void	input_osc_4(struct window_pane *, const char *);
+static void	input_osc_11(struct window_pane *, const char *);
 static void	input_osc_52(struct window_pane *, const char *);
 static void	input_osc_104(struct window_pane *, const char *);
 
@@ -1900,6 +1901,9 @@ input_exit_osc(struct input_ctx *ictx)
 	case 4:
 		input_osc_4(ictx->wp, p);
 		break;
+    case 11:
+        input_osc_11(ictx->wp, p);
+        break;
 	case 52:
 		input_osc_52(ictx->wp, p);
 		break;
@@ -2050,6 +2054,27 @@ input_osc_4(struct window_pane *wp, const char *p)
 bad:
 	log_debug("bad OSC 4: %s", p);
 	free(copy);
+}
+
+/* Handle the OSC 11 sequence for setting background color. */
+static void
+input_osc_11(struct window_pane *wp, const char *p)
+{
+	char	*s;
+	u_int	 r, g, b;
+	s = xstrdup(p);
+	if (sscanf(s, "rgb:%2x/%2x/%2x", &r, &g, &b) != 3) {
+	    goto bad;
+	}
+	wp->colgc.bg = colour_join_rgb(r, g, b);
+	wp->flags |= PANE_REDRAW;
+
+	free(s);
+	return;
+
+bad:
+	log_debug("bad OSC 11: %s", p);
+	free(s);
 }
 
 /* Handle the OSC 52 sequence for setting the clipboard. */
