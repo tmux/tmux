@@ -1,3 +1,27 @@
+CHANGES FROM 2.5 to master
+
+* Check the U8 capability to determine whether to use UTF-8 line drawing
+  characters for ACS.
+
+* Some missing notifications for layout changes.
+
+* Control mode clients now do not affect session sizes until they issue
+  refresh-client -C. new-session -x and -y works with control clients even if
+  the session is not detached.
+
+* All new sessions that are unattached (whether with -d or started with no
+  terminal) are now created with size 80 x 24. Whether the status line is on or
+  off does not affect the size of new sessions until they are attached.
+
+* Expand formats in option names and add -F flag to expand them in option values.
+
+* Remember the search string for a pane even if copy mode is exited and entered
+  again.
+
+* Some further BCE fixes (scroll up, reverse index).
+
+* Improvements to how terminals are cleared (entirely or partially).
+
 CHANGES FROM 2.4 to 2.5 09 May 2017
 
 * Reset updated flag when restarting #() command so that new output is properly
