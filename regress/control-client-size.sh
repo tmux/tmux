@@ -1,7 +1,8 @@
 #!/bin/sh
 
 # 947
-# size in control mode should change after refresh-client -C
+# size in control mode should change after refresh-client -C, and -x and -y
+# should work without -d for control clients
 
 PATH=/bin:/usr/bin
 TERM=screen
@@ -34,6 +35,15 @@ ls -F':#{session_width} #{session_height}'
 EOF
 grep ^: $TMP >$OUT
 printf ":80 24\n:80 24\n"|cmp -s $OUT || exit 1
+$TMUX kill-server 2>/dev/null
+
+cat <<EOF|$TMUX -C new -x 100 -y 50 >$TMP
+ls -F':#{session_width} #{session_height}'
+refresh -C 80,24
+ls -F':#{session_width} #{session_height}'
+EOF
+grep ^: $TMP >$OUT
+printf ":100 50\n:80 24\n"|cmp -s $OUT || exit 1
 $TMUX kill-server 2>/dev/null
 
 exit 0
