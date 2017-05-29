@@ -1328,6 +1328,8 @@ struct client {
 	struct event	 status_timer;
 	struct screen	 status;
 
+	struct screen	*old_status;
+
 #define CLIENT_TERMINAL 0x1
 #define CLIENT_LOGIN 0x2
 #define CLIENT_EXIT 0x4
@@ -1376,6 +1378,7 @@ struct client {
 #define PROMPT_SINGLE 0x1
 #define PROMPT_NUMERIC 0x2
 #define PROMPT_INCREMENTAL 0x4
+#define PROMPT_NOFORMAT 0x8
 	int		 prompt_flags;
 
 	struct session	*session;
