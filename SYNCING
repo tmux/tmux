@@ -145,7 +145,9 @@ Release tmux for next version
    upgrades and the latter should mention all the major changes since
    the last version.
 
-2. Tag with:
+2. Make sure configure.ac has the new version number.
+
+3. Tag with:
 
    % git tag -a 2.X
 
@@ -155,18 +157,17 @@ Release tmux for next version
 
    % git push --tags
 
-3. Build the tarball with 'make dist'.
+4. Build the tarball with 'make dist'.
 
-4. Check the tarball.  If it's good, go here to select the tag just pushed:
+5. Check the tarball.  If it's good, go here to select the tag just pushed:
 
    https://github.com/tmux/tmux/tags
 
    Click the "Add release notes", upload the tarball and add a link in the
    description field to the CHANGES file.
 
-5. Clone the tmux.github.io repository, and change the RELEASE version in the
-   Makefile.  Commit it, and run 'make' to replace %%VERSION%%.  Push the
+6. Clone the tmux.github.io repository, and change the RELEASE version in the
+   Makefile.  Commit it, and run 'make' to replace %%RELEASE%%.  Push the
    result out.
 
-6. Bump version in tmux/tmux.git configure.ac and uncomment "enable_debug=yes"
-   to create a debug build by default.
+7. Change version back to master in configure.ac.
