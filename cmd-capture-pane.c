@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <regex.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -39,9 +40,9 @@ const struct cmd_entry cmd_capture_pane_entry = {
 	.name = "capture-pane",
 	.alias = "capturep",
 
-	.args = { "ab:CeE:JpPqS:t:", 0, 0 },
-	.usage = "[-aCeJpPq] " CMD_BUFFER_USAGE " [-E end-line] "
-		 "[-S start-line]" CMD_TARGET_PANE_USAGE,
+	.args = { "ab:CeE:iJopPr:qS:t:", 0, 0 },
+	.usage = "[-aCeJiopPq] " CMD_BUFFER_USAGE " [-E end-line] "
+		 "[-S start-line] " "[-r REGEX]" CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -110,11 +111,16 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 	struct grid		*gd;
 	const struct grid_line	*gl;
 	struct grid_cell	*gc = NULL;
-	int			 n, with_codes, escape_c0, join_lines;
+	int			 n, with_codes, error, escape_c0, join_lines;
 	u_int			 i, sx, top, bottom, tmp;
-	char			*cause, *buf, *line;
-	const char		*Sflag, *Eflag;
+	char			*cause, *buf, *line, *subset;
+	const char		*Sflag, *Eflag, *regex;
 	size_t			 linelen;
+	regex_t			 reg;
+	int			 regex_flags = REG_EXTENDED,
+				 only_matching = args_has(args, 'o');
+	regmatch_t		 match[1];
+	char			 regex_error[512];
 
 	sx = screen_size_x(&wp->base);
 	if (args_has(args, 'a')) {
@@ -171,20 +177,56 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 	escape_c0 = args_has(args, 'C');
 	join_lines = args_has(args, 'J');
 
+	if (join_lines && only_matching) {
+		cmdq_error(item, "cannot use -o with -J");
+		return (NULL);
+	} else if ((regex = args_get(args, 'r'))) {
+		if (args_has(args, 'i')) {
+			regex_flags |= REG_ICASE;
+		}
+		if ((error = regcomp(&reg, regex, regex_flags))) {
+			regerror(error, &reg, regex_error, sizeof(regex_error));
+			cmdq_error(item,
+			    "unable to compile regular expression: %s",
+			    regex_error);
+			return (NULL);
+		}
+	} else if (only_matching) {
+		cmdq_error(item, "cannot use -o without -r");
+		return (NULL);
+	}
+
 	buf = NULL;
 	for (i = top; i <= bottom; i++) {
 		line = grid_string_cells(gd, 0, i, sx, &gc, with_codes,
 		    escape_c0, !join_lines);
 		linelen = strlen(line);
 
-		buf = cmd_capture_pane_append(buf, len, line, linelen);
+		if (regex && regexec(&reg, line, only_matching ? 1 : 0, match, 0))
+			continue;
 
-		gl = grid_peek_line(gd, i);
-		if (!join_lines || !(gl->flags & GRID_LINE_WRAPPED))
-			buf[(*len)++] = '\n';
+		if (only_matching) {
+			subset = line;
+			do {
+				linelen = match[0].rm_eo - match[0].rm_so;
+				buf = cmd_capture_pane_append(buf, len,
+				   subset + match[0].rm_so, linelen);
+				buf[(*len)++] = '\n';
+				subset += match[0].rm_eo;
+			} while (!regexec(&reg, subset, 1, match, REG_NOTBOL));
+		} else {
+			buf = cmd_capture_pane_append(buf, len, line, linelen);
+			gl = grid_peek_line(gd, i);
+			if (!join_lines || !(gl->flags & GRID_LINE_WRAPPED))
+				buf[(*len)++] = '\n';
+		}
 
 		free(line);
 	}
+
+	if (regex)
+		regfree(&reg);
+
 	return (buf);
 }
 
