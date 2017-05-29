@@ -1,5 +1,7 @@
 CHANGES FROM 2.5 to master
 
+* Support OSC 10 and OSC 11 to set foreground and background colours.
+
 * Check the U8 capability to determine whether to use UTF-8 line drawing
   characters for ACS.
 
