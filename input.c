@@ -110,6 +110,8 @@ static void	input_set_state(struct window_pane *,
 static void	input_reset_cell(struct input_ctx *);
 
 static void	input_osc_4(struct window_pane *, const char *);
+static void	input_osc_10(struct window_pane *, const char *);
+static void	input_osc_11(struct window_pane *, const char *);
 static void	input_osc_52(struct window_pane *, const char *);
 static void	input_osc_104(struct window_pane *, const char *);
 
@@ -1900,12 +1902,18 @@ input_exit_osc(struct input_ctx *ictx)
 	case 4:
 		input_osc_4(ictx->wp, p);
 		break;
-	case 52:
-		input_osc_52(ictx->wp, p);
+	case 10:
+		input_osc_10(ictx->wp, p);
+		break;
+	case 11:
+		input_osc_11(ictx->wp, p);
 		break;
 	case 12:
 		if (*p != '?') /* ? is colour request */
 			screen_set_cursor_colour(ictx->ctx.s, p);
+		break;
+	case 52:
+		input_osc_52(ictx->wp, p);
 		break;
 	case 104:
 		input_osc_104(ictx->wp, p);
@@ -2050,6 +2058,42 @@ input_osc_4(struct window_pane *wp, const char *p)
 bad:
 	log_debug("bad OSC 4: %s", p);
 	free(copy);
+}
+
+/* Handle the OSC 10 sequence for setting background colour. */
+static void
+input_osc_10(struct window_pane *wp, const char *p)
+{
+	u_int	 r, g, b;
+
+	if (sscanf(p, "rgb:%2x/%2x/%2x", &r, &g, &b) != 3)
+	    goto bad;
+
+	wp->colgc.fg = colour_join_rgb(r, g, b);
+	wp->flags |= PANE_REDRAW;
+
+	return;
+
+bad:
+	log_debug("bad OSC 10: %s", p);
+}
+
+/* Handle the OSC 11 sequence for setting background colour. */
+static void
+input_osc_11(struct window_pane *wp, const char *p)
+{
+	u_int	 r, g, b;
+
+	if (sscanf(p, "rgb:%2x/%2x/%2x", &r, &g, &b) != 3)
+	    goto bad;
+
+	wp->colgc.bg = colour_join_rgb(r, g, b);
+	wp->flags |= PANE_REDRAW;
+
+	return;
+
+bad:
+	log_debug("bad OSC 11: %s", p);
 }
 
 /* Handle the OSC 52 sequence for setting the clipboard. */
