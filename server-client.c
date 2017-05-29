@@ -49,6 +49,21 @@ static void	server_client_dispatch_command(struct client *, struct imsg *);
 static void	server_client_dispatch_identify(struct client *, struct imsg *);
 static void	server_client_dispatch_shell(struct client *);
 
+/* Number of attached clients. */
+u_int
+server_client_how_many(void)
+{
+	struct client  	*c;
+	u_int		 n;
+
+	n = 0;
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (c->session != NULL && (~c->flags & CLIENT_DETACHING))
+			n++;
+	}
+	return (n);
+}
+
 /* Identify mode callback. */
 static void
 server_client_callback_identify(__unused int fd, __unused short events,
