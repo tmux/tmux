@@ -1267,8 +1267,32 @@ window_pane_visible(struct window_pane *wp)
 	return (!window_pane_outside(wp));
 }
 
+u_int
+window_pane_search(struct window_pane *wp, const char *searchstr)
+{
+	struct screen	*s = &wp->base;
+	char		*newsearchstr, *line;
+	u_int		 i;
+
+	xasprintf(&newsearchstr, "*%s*", searchstr);
+
+	for (i = 0; i < screen_size_y(s); i++) {
+		line = grid_view_string_cells(s->grid, 0, i, screen_size_x(s));
+		if (fnmatch(newsearchstr, line, 0) == 0) {
+			free(line);
+			break;
+		}
+		free(line);
+	}
+
+	free(newsearchstr);
+	if (i == screen_size_y(s))
+		return (0);
+	return (i + 1);
+}
+
 char *
-window_pane_search(struct window_pane *wp, const char *searchstr,
+window_pane_search_old(struct window_pane *wp, const char *searchstr,
     u_int *lineno)
 {
 	struct screen	*s = &wp->base;
