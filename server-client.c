@@ -275,6 +275,10 @@ server_client_lost(struct client *c)
 	if (event_initialized(&c->status_timer))
 		evtimer_del(&c->status_timer);
 	screen_free(&c->status);
+	if (c->old_status != NULL) {
+		screen_free(c->old_status);
+		free(c->old_status);
+	}
 
 	free(c->title);
 	free((void *)c->cwd);
