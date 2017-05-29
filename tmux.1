@@ -3434,7 +3434,7 @@ is enabled, or
 .Ql no
 if not.
 .Pp
-Simple comparisons may be expressed by prefixing two comma-separated
+Comparisons may be expressed by prefixing two comma-separated
 alternatives by
 .Ql ==
 or
@@ -3447,14 +3447,26 @@ will be replaced by
 if running on
 .Ql myhost ,
 otherwise by
-.Ql 0.
+.Ql 0 .
 An
 .Ql m
-specifies a
+specifies an
 .Xr fnmatch 3
-comparison - the first argument is the pattern and the second the string to
-compare. For example,
+comparison where the first argument is the pattern and the second the string to
+compare, for example
 .Ql #{m:*foo*,#{host}} .
+.Ql ||
+and
+.Ql &&
+evaluate to true if either or both of two comma-separated alternatives are
+true, for example
+.Ql #{||,#{pane_in_mode},#{alternate_on}} .
+A
+.Ql C
+performs a search for an
+.Xr fnmatch 3
+pattern in the pane content and evaluates to zero if not found, or a line
+number if found.
 .Pp
 A limit may be placed on the length of the resultant string by prefixing it
 by an

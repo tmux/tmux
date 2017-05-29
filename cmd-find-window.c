@@ -122,7 +122,7 @@ cmd_find_window_match(struct cmd_find_window_list *find_list,
 		}
 
 		if (match_flags & CMD_FIND_WINDOW_BY_CONTENT &&
-		    (sres = window_pane_search(wp, str, &line)) != NULL) {
+		    (sres = window_pane_search_old(wp, str, &line)) != NULL) {
 			xasprintf(&find_data->list_ctx,
 			    "pane %u line %u: \"%s\"", i - 1, line + 1, sres);
 			free(sres);

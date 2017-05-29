@@ -865,19 +865,17 @@ format_true(const char *s)
 	return (0);
 }
 
-/*
- * Replace a key/value pair in buffer. #{blah} is expanded directly,
- * #{?blah,a,b} is replace with a if blah exists and is nonzero else b.
- */
+/* Replace a key. */
 static int
 format_replace(struct format_tree *ft, const char *key, size_t keylen,
     char **buf, size_t *len, size_t *off)
 {
-	char		*copy, *copy0, *endptr, *ptr, *found, *new, *value;
-	char		*from = NULL, *to = NULL, *left, *right;
-	size_t		 valuelen, newlen, fromlen, tolen, used;
-	long		 limit = 0;
-	int		 modifiers = 0, compare = 0;
+	struct window_pane	*wp = ft->wp;
+	char			*copy, *copy0, *endptr, *ptr, *found, *new;
+	char			*value, *from = NULL, *to = NULL, *left, *right;
+	size_t			 valuelen, newlen, fromlen, tolen, used;
+	long			 limit = 0;
+	int			 modifiers = 0, compare = 0, search = 0;
 
 	/* Make a copy of the key. */
 	copy0 = copy = xmalloc(keylen + 1);
@@ -891,6 +889,24 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 			break;
 		compare = -2;
 		copy += 2;
+		break;
+	case 'C':
+		if (copy[1] != ':')
+			break;
+		search = 1;
+		copy += 2;
+		break;
+	case '|':
+		if (copy[1] != '|' || copy[2] != ':')
+			break;
+		compare = -3;
+		copy += 3;
+		break;
+	case '&':
+		if (copy[1] != '&' || copy[2] != ':')
+			break;
+		compare = -4;
+		copy += 3;
 		break;
 	case '!':
 		if (copy[1] == '=' && copy[2] == ':') {
@@ -957,13 +973,25 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 	}
 
 	/* Is this a comparison or a conditional? */
-	if (compare != 0) {
+	if (search) {
+		/* Search in pane. */
+		if (wp == NULL)
+			value = xstrdup("0");
+		else
+			xasprintf(&value, "%u", window_pane_search(wp, copy));
+	} else if (compare != 0) {
 		/* Comparison: compare comma-separated left and right. */
 		if (format_choose(copy, &left, &right) != 0)
 			goto fail;
 		left = format_expand(ft, left);
 		right = format_expand(ft, right);
-		if (compare == 1 && strcmp(left, right) == 0)
+		if (compare == -3 &&
+		    (format_true(left) || format_true(right)))
+			value = xstrdup("1");
+		else if (compare == -4 &&
+		    (format_true(left) && format_true(right)))
+			value = xstrdup("1");
+		else if (compare == 1 && strcmp(left, right) == 0)
 			value = xstrdup("1");
 		else if (compare == -1 && strcmp(left, right) != 0)
 			value = xstrdup("1");
