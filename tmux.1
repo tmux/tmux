@@ -3448,6 +3448,13 @@ if running on
 .Ql myhost ,
 otherwise by
 .Ql 0.
+An
+.Ql m
+specifies a
+.Xr fnmatch 3
+comparison - the first argument is the pattern and the second the string to
+compare. For example,
+.Ql #{m:*foo*,#{host}} .
 .Pp
 A limit may be placed on the length of the resultant string by prefixing it
 by an

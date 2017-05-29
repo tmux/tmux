@@ -22,6 +22,7 @@
 
 #include <ctype.h>
 #include <errno.h>
+#include <fnmatch.h>
 #include <libgen.h>
 #include <netdb.h>
 #include <stdarg.h>
@@ -885,6 +886,12 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 
 	/* Is there a length limit or whatnot? */
 	switch (copy[0]) {
+	case 'm':
+		if (copy[1] != ':')
+			break;
+		compare = -2;
+		copy += 2;
+		break;
 	case '!':
 		if (copy[1] == '=' && copy[2] == ':') {
 			compare = -1;
@@ -959,6 +966,8 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 		if (compare == 1 && strcmp(left, right) == 0)
 			value = xstrdup("1");
 		else if (compare == -1 && strcmp(left, right) != 0)
+			value = xstrdup("1");
+		else if (compare == -2 && fnmatch(left, right, 0) == 0)
 			value = xstrdup("1");
 		else
 			value = xstrdup("0");
