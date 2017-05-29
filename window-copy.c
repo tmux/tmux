@@ -1458,7 +1458,7 @@ window_copy_adjust_selection(struct window_pane *wp, u_int *selx, u_int *sely)
 	}
 
 	*selx = sx;
-	*sely = screen_hsize(s) + sy;
+	*sely = sy;
 	return (relpos);
 }
 
