@@ -70,7 +70,9 @@ const struct options_table_entry options_table[] = {
 	  .default_str = "split-pane=split-window,"
 			 "splitp=split-window,"
 			 "server-info=show-messages -JT,"
-			 "info=show-messages -JT",
+			 "info=show-messages -JT,"
+			 "set-server-option=set-option -s,"
+			 "set-session-option=set-option",
 	  .separator = ","
 	},
 
