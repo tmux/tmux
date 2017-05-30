@@ -75,7 +75,7 @@ cmd_run_shell_print(struct job *job, const char *msg)
 			return;
 	}
 
-	if (window_pane_set_mode(wp, &window_copy_mode) == 0)
+	if (window_pane_set_mode(wp, &window_copy_mode, NULL, NULL) == 0)
 		window_copy_init_for_output(wp);
 	if (wp->mode == &window_copy_mode)
 		window_copy_add(wp, "%s", msg);

@@ -134,7 +134,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		goto error;
 	}
 	new_wp = window_add_pane(w, wp, args_has(args, 'b'), hlimit);
-	layout_assign_pane(lc, new_wp);
+	layout_make_leaf(lc, new_wp);
 
 	path = NULL;
 	if (item->client != NULL && item->client->session == NULL)
@@ -152,6 +152,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	environ_free(env);
 
+	layout_fix_panes(w, w->sx, w->sy);
 	server_redraw_window(w);
 
 	if (!args_has(args, 'd')) {

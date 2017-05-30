@@ -19,11 +19,9 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#include <ctype.h>
 #include <errno.h>
 #include <fnmatch.h>
 #include <libgen.h>
-#include <netdb.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
@@ -840,7 +838,7 @@ format_choose(char *s, char **left, char **right)
 }
 
 /* Is this true? */
-static int
+int
 format_true(const char *s)
 {
 	if (s != NULL && *s != '\0' && (s[0] != '0' || s[1] != '\0'))
