@@ -159,8 +159,7 @@ server_start(struct event_base *base, int lockfd, char *lockfile)
 	RB_INIT(&windows);
 	RB_INIT(&all_window_panes);
 	TAILQ_INIT(&clients);
-	RB_INIT(&sessions);
-	RB_INIT(&session_groups);
+        session_module_init();
 	key_bindings_init();
 
 	gettimeofday(&start_time, NULL);
@@ -210,7 +209,7 @@ server_loop(void)
 	server_client_loop();
 
 	if (!options_get_number(global_options, "exit-unattached")) {
-		if (!RB_EMPTY(&sessions))
+		if (!sessions_isempty(&sessions))
 			return (0);
 	}
 
@@ -247,7 +246,7 @@ server_send_exit(void)
 		c->session = NULL;
 	}
 
-	RB_FOREACH_SAFE(s, sessions, &sessions, s1)
+	RB3_FOREACH_SAFE(sessions, &sessions, s, s1)
 		session_destroy(s);
 }
 
@@ -261,7 +260,7 @@ server_update_socket(void)
 	struct stat      sb;
 
 	n = 0;
-	RB_FOREACH(s, sessions, &sessions) {
+	RB3_FOREACH(sessions, &sessions, s) {
 		if (!(s->flags & SESSION_UNATTACHED)) {
 			n++;
 			break;

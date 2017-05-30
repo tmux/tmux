@@ -52,7 +52,7 @@ recalculate_sizes(void)
 	u_int			 ssx, ssy, has, limit;
 	int			 flag, has_status, is_zoomed, forced;
 
-	RB_FOREACH(s, sessions, &sessions) {
+	RB3_FOREACH(sessions, &sessions, s) {
 		has_status = options_get_number(s->options, "status");
 
 		s->attached = 0;
@@ -102,7 +102,7 @@ recalculate_sizes(void)
 		flag = options_get_number(w->options, "aggressive-resize");
 
 		ssx = ssy = UINT_MAX;
-		RB_FOREACH(s, sessions, &sessions) {
+		RB3_FOREACH(sessions, &sessions, s) {
 			if (s->flags & SESSION_UNATTACHED)
 				continue;
 			if (flag)

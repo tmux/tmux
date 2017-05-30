@@ -76,7 +76,7 @@ cmd_list_windows_server(struct cmd *self, struct cmdq_item *item)
 {
 	struct session	*s;
 
-	RB_FOREACH(s, sessions, &sessions)
+	RB3_FOREACH(sessions, &sessions, s)
 		cmd_list_windows_session(self, s, item, 1);
 }
 

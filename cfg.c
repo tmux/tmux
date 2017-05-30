@@ -48,8 +48,8 @@ cfg_done(__unused struct cmdq_item *item, __unused void *data)
 		return (CMD_RETURN_NORMAL);
 	cfg_finished = 1;
 
-	if (!RB_EMPTY(&sessions))
-		cfg_show_causes(RB_MIN(sessions, &sessions));
+	if (!sessions_isempty(&sessions))
+		cfg_show_causes(sessions_get_min(&sessions));
 
 	if (cfg_item != NULL)
 		cfg_item->flags &= ~CMDQ_WAITING;

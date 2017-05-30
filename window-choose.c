@@ -414,7 +414,7 @@ window_choose_collapse_all(struct window_pane *wp)
 
 	chosen = data->list[data->selected].wcd->start_session;
 
-	RB_FOREACH(s, sessions, &sessions)
+	RB3_FOREACH(sessions, &sessions, s)
 		window_choose_collapse(wp, s, data->selected);
 
 	/* Reset the selection back to the starting session. */
@@ -439,7 +439,7 @@ window_choose_expand_all(struct window_pane *wp)
 	struct session			*s;
 	u_int				 i;
 
-	RB_FOREACH(s, sessions, &sessions) {
+	RB3_FOREACH(sessions, &sessions, s) {
 		for (i = 0; i < data->list_size; i++) {
 			item = &data->list[i];
 

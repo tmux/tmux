@@ -122,7 +122,7 @@ server_status_window(struct window *w)
 	 * current window.
 	 */
 
-	RB_FOREACH(s, sessions, &sessions) {
+	RB3_FOREACH(sessions, &sessions, s) {
 		if (session_has(s, w))
 			server_status_session(s);
 	}
@@ -181,10 +181,10 @@ server_kill_window(struct window *w)
 	struct session_group	*sg;
 	struct winlink		*wl;
 
-	next_s = RB_MIN(sessions, &sessions);
+	next_s = sessions_get_min(&sessions);
 	while (next_s != NULL) {
 		s = next_s;
-		next_s = RB_NEXT(sessions, &sessions, s);
+		next_s = sessions_get_next(s);
 
 		if (!session_has(s, w))
 			continue;
@@ -345,7 +345,7 @@ server_next_session(struct session *s)
 	struct session *s_loop, *s_out;
 
 	s_out = NULL;
-	RB_FOREACH(s_loop, sessions, &sessions) {
+	RB3_FOREACH(sessions, &sessions, s_loop) {
 		if (s_loop == s)
 			continue;
 		if (s_out == NULL ||
@@ -396,7 +396,7 @@ server_check_unattached(void)
 	 * If any sessions are no longer attached and have destroy-unattached
 	 * set, collect them.
 	 */
-	RB_FOREACH(s, sessions, &sessions) {
+	RB3_FOREACH(sessions, &sessions, s) {
 		if (!(s->flags & SESSION_UNATTACHED))
 			continue;
 		if (options_get_number (s->options, "destroy-unattached"))

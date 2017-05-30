@@ -59,7 +59,7 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 	struct window_pane	*wp;
 	char			*cause;
 
-	if (RB_EMPTY(&sessions)) {
+	if (sessions_isempty(&sessions)) {
 		cmdq_error(item, "no sessions");
 		return (CMD_RETURN_ERROR);
 	}

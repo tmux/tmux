@@ -38,6 +38,9 @@
 #include "compat.h"
 #include "xmalloc.h"
 
+#include "rb3ptr.h"
+#include "rb3ptr-gen.h"
+
 extern char   **environ;
 
 struct args;
@@ -585,13 +588,15 @@ struct grid {
 	struct grid_line	*linedata;
 };
 
+RB3_GEN_STRUCTS(hooksTree);
+
 /* Hook data structures. */
 struct hook {
 	const char	*name;
 
 	struct cmd_list	*cmdlist;
 
-	RB_ENTRY(hook)	 entry;
+	struct hooksTree_head entry;
 };
 
 /* Scheduled job. */
@@ -915,14 +920,18 @@ struct environ_entry {
 	RB_ENTRY(environ_entry) entry;
 };
 
+RB3_GEN_STRUCTS(session_groups);
+
 /* Client session. */
 struct session_group {
 	const char		*name;
 	TAILQ_HEAD(, session)	 sessions;
 
-	RB_ENTRY(session_group)	 entry;
+        struct session_groups_head	 entry;
 };
-RB_HEAD(session_groups, session_group);
+
+
+RB3_GEN_STRUCTS(sessions);
 
 struct session {
 	u_int		 id;
@@ -963,9 +972,10 @@ struct session {
 	int		 references;
 
 	TAILQ_ENTRY(session) gentry;
-	RB_ENTRY(session)    entry;
+
+        struct sessions_head entry;
 };
-RB_HEAD(sessions, session);
+
 
 /* Mouse button masks. */
 #define MOUSE_MASK_BUTTONS 3
@@ -2242,12 +2252,25 @@ void	control_notify_session_closed(struct session *);
 void	control_notify_session_window_changed(struct session *);
 
 /* session.c */
-extern struct sessions sessions;
-extern struct session_groups session_groups;
+extern struct sessions_tree sessions;
 int	session_cmp(struct session *, struct session *);
-RB_PROTOTYPE(sessions, session, entry, session_cmp);
-int	session_group_cmp(struct session_group *, struct session_group *);
-RB_PROTOTYPE(session_groups, session_group, entry, session_group_cmp);
+
+static struct sessions_head *get_session_entry(struct session *session);
+static struct session *get_session(struct sessions_head *head);
+
+static struct sessions_head *get_session_entry(struct session *session)
+{
+        return &session->entry;
+}
+
+static struct session *get_session(struct sessions_head *head)
+{
+        return (struct session *) ((char *) head - offsetof(struct session, entry));
+}
+
+RB3_GEN_INLINE_PROTO(sessions, struct session, get_session_entry, get_session);
+RB3_GEN_NODECMP_PROTO(sessions, /**/,struct session, get_session_entry, get_session, session_cmp);
+
 int		 session_alive(struct session *);
 struct session	*session_find(const char *);
 struct session	*session_find_by_id_str(const char *);
@@ -2255,6 +2278,7 @@ struct session	*session_find_by_id(u_int);
 struct session	*session_create(const char *, const char *, int, char **,
 		     const char *, const char *, struct environ *,
 		     struct termios *, int, u_int, u_int, char **);
+void		 session_module_init(void);
 void		 session_destroy(struct session *);
 void		 session_add_ref(struct session *, const char *);
 void		 session_remove_ref(struct session *, const char *);

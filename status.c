@@ -1512,7 +1512,7 @@ status_prompt_complete(struct session *session, const char *s)
 		colon = "";
 	s = copy + 2;
 
-	RB_FOREACH(s_loop, sessions, &sessions) {
+	RB3_FOREACH(sessions, &sessions, s_loop) {
 		if (strncmp(s_loop->name, s, strlen(s)) == 0) {
 			list = xreallocarray(list, size + 2, sizeof *list);
 			list[size++] = s_loop->name;
@@ -1553,7 +1553,7 @@ status_prompt_complete(struct session *session, const char *s)
 			free(tmp);
 		}
 	} else {
-		RB_FOREACH(s_loop, sessions, &sessions) {
+		RB3_FOREACH(sessions, &sessions, s_loop) {
 			RB_FOREACH(wl, winlinks, &s_loop->windows) {
 				w = wl->window;
 
