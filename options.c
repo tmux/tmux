@@ -114,7 +114,7 @@ options_free(struct options *oo)
 {
 	struct options_entry	*o, *tmp;
 
-	RB_FOREACH_SAFE (o, options_tree, &oo->tree, tmp)
+	RB_FOREACH_SAFE(o, options_tree, &oo->tree, tmp)
 		options_remove(o);
 	free(oo);
 }
