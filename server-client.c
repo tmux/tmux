@@ -1038,6 +1038,44 @@ server_client_loop(void)
 	}
 }
 
+/* Check if we need to force a resize. */
+static int
+server_client_resize_force(struct window_pane *wp)
+{
+	struct timeval	tv = { .tv_usec = 100000 };
+	struct winsize	ws;
+
+	/*
+	 * If we are resizing to the same size as when we entered the loop
+	 * (that is, to the same size the application currently thinks it is),
+	 * tmux may have gone through several resizes internally and thrown
+	 * away parts of the screen. So we need the application to actually
+	 * redraw even though its final size has not changed.
+	 */
+
+	if (wp->flags & PANE_RESIZEFORCE) {
+		wp->flags &= ~PANE_RESIZEFORCE;
+		return (0);
+	}
+
+	if (wp->sx != wp->osx ||
+	    wp->sy != wp->osy ||
+	    wp->sx <= 1 ||
+	    wp->sy <= 1)
+		return (0);
+
+	memset(&ws, 0, sizeof ws);
+	ws.ws_col = wp->sx;
+	ws.ws_row = wp->sy - 1;
+	if (ioctl(wp->fd, TIOCSWINSZ, &ws) == -1)
+		fatal("ioctl failed");
+	log_debug("%s: %%%u forcing resize", __func__, wp->id);
+
+	evtimer_add(&wp->resize_timer, &tv);
+	wp->flags |= PANE_RESIZEFORCE;
+	return (1);
+}
+
 /* Resize timer event. */
 static void
 server_client_resize_event(__unused int fd, __unused short events, void *data)
@@ -1049,25 +1087,8 @@ server_client_resize_event(__unused int fd, __unused short events, void *data)
 
 	if (!(wp->flags & PANE_RESIZE))
 		return;
-
-	/*
-	 * If we are resizing to the same size as when we entered the loop
-	 * (that is, to the same size the application currently thinks it is),
-	 * tmux may have gone through several resizes internally and thrown
-	 * away parts of the screen. So we need the application to actually
-	 * redraw even though its final size has not changed.
-	 */
-	if (wp->sx == wp->osx &&
-	    wp->sy == wp->osy &&
-	    wp->sx > 1 &&
-	    wp->sy > 1) {
-		memset(&ws, 0, sizeof ws);
-		ws.ws_col = wp->sx - 1;
-		ws.ws_row = wp->sy - 1;
-		if (ioctl(wp->fd, TIOCSWINSZ, &ws) == -1)
-			fatal("ioctl failed");
-		log_debug("%s: %%%u forcing resize", __func__, wp->id);
-	}
+	if (server_client_resize_force(wp))
+		return;
 
 	memset(&ws, 0, sizeof ws);
 	ws.ws_col = wp->sx;

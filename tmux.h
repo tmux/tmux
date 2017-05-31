@@ -756,9 +756,10 @@ struct window_pane {
 #define PANE_DROP 0x2
 #define PANE_FOCUSED 0x4
 #define PANE_RESIZE 0x8
-#define PANE_FOCUSPUSH 0x10
-#define PANE_INPUTOFF 0x20
-#define PANE_CHANGED 0x40
+#define PANE_RESIZEFORCE 0x10
+#define PANE_FOCUSPUSH 0x20
+#define PANE_INPUTOFF 0x40
+#define PANE_CHANGED 0x80
 
 	int		 argc;
 	char	       **argv;
