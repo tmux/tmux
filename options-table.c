@@ -61,7 +61,7 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_SERVER,
 	  .minimum = 1,
 	  .maximum = INT_MAX,
-	  .default_num = 20
+	  .default_num = 50
 	},
 
 	{ .name = "command-alias",
@@ -70,7 +70,9 @@ const struct options_table_entry options_table[] = {
 	  .default_str = "split-pane=split-window,"
 			 "splitp=split-window,"
 			 "server-info=show-messages -JT,"
-			 "info=show-messages -JT",
+			 "info=show-messages -JT,"
+			 "choose-window=choose-tree -w,"
+			 "choose-session=choose-tree -s",
 	  .separator = ","
 	},
 

@@ -800,8 +800,8 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	wp->xoff = 0;
 	wp->yoff = 0;
 
-	wp->sx = sx;
-	wp->sy = sy;
+	wp->sx = wp->osx = sx;
+	wp->sy = wp->osx = sy;
 
 	wp->pipe_fd = -1;
 	wp->pipe_off = 0;
@@ -1186,7 +1186,8 @@ window_pane_mode_timer(__unused int fd, __unused short events, void *arg)
 }
 
 int
-window_pane_set_mode(struct window_pane *wp, const struct window_mode *mode)
+window_pane_set_mode(struct window_pane *wp, const struct window_mode *mode,
+    struct cmd_find_state *fs, struct args *args)
 {
 	struct screen	*s;
 	struct timeval	 tv = { .tv_sec = 10 };
@@ -1199,7 +1200,7 @@ window_pane_set_mode(struct window_pane *wp, const struct window_mode *mode)
 	evtimer_set(&wp->modetimer, window_pane_mode_timer, wp);
 	evtimer_add(&wp->modetimer, &tv);
 
-	if ((s = wp->mode->init(wp)) != NULL)
+	if ((s = wp->mode->init(wp, fs, args)) != NULL)
 		wp->screen = s;
 	wp->flags |= (PANE_REDRAW|PANE_CHANGED);
 
@@ -1304,32 +1305,6 @@ window_pane_search(struct window_pane *wp, const char *searchstr)
 	if (i == screen_size_y(s))
 		return (0);
 	return (i + 1);
-}
-
-char *
-window_pane_search_old(struct window_pane *wp, const char *searchstr,
-    u_int *lineno)
-{
-	struct screen	*s = &wp->base;
-	char		*newsearchstr, *line, *msg;
-	u_int		 i;
-
-	msg = NULL;
-	xasprintf(&newsearchstr, "*%s*", searchstr);
-
-	for (i = 0; i < screen_size_y(s); i++) {
-		line = grid_view_string_cells(s->grid, 0, i, screen_size_x(s));
-		if (fnmatch(newsearchstr, line, 0) == 0) {
-			msg = line;
-			if (lineno != NULL)
-				*lineno = i;
-			break;
-		}
-		free(line);
-	}
-
-	free(newsearchstr);
-	return (msg);
 }
 
 /* Get MRU pane from a list. */

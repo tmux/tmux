@@ -120,7 +120,7 @@ tty_init(struct tty *tty, struct client *c, int fd, char *term)
 	return (0);
 }
 
-int
+void
 tty_resize(struct tty *tty)
 {
 	struct client	*c = tty->client;
@@ -139,21 +139,15 @@ tty_resize(struct tty *tty)
 		sy = 24;
 	}
 	log_debug("%s: %s now %ux%u", __func__, c->name, sx, sy);
-
-	if (!tty_set_size(tty, sx, sy))
-		return (0);
+	tty_set_size(tty, sx, sy);
 	tty_invalidate(tty);
-	return (1);
 }
 
-int
+void
 tty_set_size(struct tty *tty, u_int sx, u_int sy)
 {
-	if (sx == tty->sx && sy == tty->sy)
-		return (0);
 	tty->sx = sx;
 	tty->sy = sy;
-	return (1);
 }
 
 static void
@@ -470,6 +464,14 @@ tty_putcode2(struct tty *tty, enum tty_code_code code, int a, int b)
 	if (a < 0 || b < 0)
 		return;
 	tty_puts(tty, tty_term_string2(tty->term, code, a, b));
+}
+
+void
+tty_putcode3(struct tty *tty, enum tty_code_code code, int a, int b, int c)
+{
+	if (a < 0 || b < 0 || c < 0)
+		return;
+	tty_puts(tty, tty_term_string3(tty->term, code, a, b, c));
 }
 
 void
@@ -1847,7 +1849,7 @@ tty_check_fg(struct tty *tty, const struct window_pane *wp,
 	/* Is this a 24-bit colour? */
 	if (gc->fg & COLOUR_FLAG_RGB) {
 		/* Not a 24-bit terminal? Translate to 256-colour palette. */
-		if (!tty_term_flag(tty->term, TTYC_TC)) {
+		if (!tty_term_has(tty->term, TTYC_SETRGBF)) {
 			colour_split_rgb(gc->fg, &r, &g, &b);
 			gc->fg = colour_find_rgb(r, g, b);
 		} else
@@ -1900,7 +1902,7 @@ tty_check_bg(struct tty *tty, const struct window_pane *wp,
 	/* Is this a 24-bit colour? */
 	if (gc->bg & COLOUR_FLAG_RGB) {
 		/* Not a 24-bit terminal? Translate to 256-colour palette. */
-		if (!tty_term_flag(tty->term, TTYC_TC)) {
+		if (!tty_term_has(tty->term, TTYC_SETRGBB)) {
 			colour_split_rgb(gc->bg, &r, &g, &b);
 			gc->bg = colour_find_rgb(r, g, b);
 		} else
@@ -2031,13 +2033,17 @@ tty_try_colour(struct tty *tty, int colour, const char *type)
 	}
 
 	if (colour & COLOUR_FLAG_RGB) {
-		if (!tty_term_flag(tty->term, TTYC_TC))
-			return (-1);
-
-		colour_split_rgb(colour & 0xffffff, &r, &g, &b);
-		xsnprintf(s, sizeof s, "\033[%s;2;%hhu;%hhu;%hhum", type,
-		    r, g, b);
-		tty_puts(tty, s);
+		if (*type == '3') {
+			if (!tty_term_has(tty->term, TTYC_SETRGBF))
+				return (-1);
+			colour_split_rgb(colour & 0xffffff, &r, &g, &b);
+			tty_putcode3(tty, TTYC_SETRGBF, r, g, b);
+		} else {
+			if (!tty_term_has(tty->term, TTYC_SETRGBB))
+				return (-1);
+			colour_split_rgb(colour & 0xffffff, &r, &g, &b);
+			tty_putcode3(tty, TTYC_SETRGBB, r, g, b);
+		}
 		return (0);
 	}
 

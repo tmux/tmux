@@ -60,6 +60,7 @@ cmd_copy_mode_exec(struct cmd *self, struct cmdq_item *item)
 	struct client		*c = item->client;
 	struct session		*s;
 	struct window_pane	*wp = item->target.wp;
+	int			 flag;
 
 	if (args_has(args, 'M')) {
 		if ((wp = cmd_mouse_pane(&shared->mouse, &s, NULL)) == NULL)
@@ -69,12 +70,13 @@ cmd_copy_mode_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (self->entry == &cmd_clock_mode_entry) {
-		window_pane_set_mode(wp, &window_clock_mode);
+		window_pane_set_mode(wp, &window_clock_mode, NULL, NULL);
 		return (CMD_RETURN_NORMAL);
 	}
 
 	if (wp->mode != &window_copy_mode) {
-		if (window_pane_set_mode(wp, &window_copy_mode) != 0)
+		flag = window_pane_set_mode(wp, &window_copy_mode, NULL, NULL);
+		if (flag != 0)
 			return (CMD_RETURN_NORMAL);
 		window_copy_init_from_pane(wp, args_has(self->args, 'e'));
 	}
