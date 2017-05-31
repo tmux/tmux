@@ -25,14 +25,6 @@
 	* comparison operators like < and > (for #{version}?)
 	* %else statement in config file
 
-- choose mode improvements:
-	* choose-pane command (augment choose-tree to do this?)
-	* flag to choose-* for sort order
-	* two choices (first one then second, for swap-pane and join-pane)
-	* choose modes should ditch the key bindings and just have fixed keys, and
-	  be more customized to their purpose (d to delete a buffer for choose-buffer,
-	  a preview of buffer contents, etc)
-
 - improve monitor-*:
 	* straighten out rules for multiple clients
 	* think about what happens across sessions
