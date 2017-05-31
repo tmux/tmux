@@ -79,7 +79,7 @@ cmd_find_window_exec(struct cmd *self, struct cmdq_item *item)
 		xasprintf(&filter, "#{C:%s}", s);
 	else if (N)
 		xasprintf(&filter, "#{m:*%s*,#{window_name}}", s);
-	else if (T)
+	else
 		xasprintf(&filter, "#{m:*%s*,#{pane_title}}", s);
 
 	new_args = args_parse("", 1, &argv);
