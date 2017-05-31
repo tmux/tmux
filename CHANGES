@@ -1,5 +1,16 @@
 CHANGES FROM 2.5 to master
 
+* Fix redrawing panes when they are resized several times but end up with the
+  size unchanged (for example, splitw/resizep -Z/breakp).
+
+* Major rewrite of choose mode. Now includes preview, sorting and tagging;
+  commands that can be executed directly from the mode (for example, to delete
+  one or more buffers); and filtering in tree mode. The ability to specify the
+  format for each line (the -F flag) has been removed.
+
+* choose-window and choose-session are now aliases of choose-tree (in the
+  command-alias option).
+
 * Support OSC 10 and OSC 11 to set foreground and background colours.
 
 * Check the U8 capability to determine whether to use UTF-8 line drawing
