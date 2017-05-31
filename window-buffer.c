@@ -20,7 +20,7 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <vis.h>
+#include <time.h>
 
 #include "tmux.h"
 

@@ -528,7 +528,7 @@ format_cb_current_command(struct format_tree *ft, struct format_entry *fe)
 }
 
 /* Callback for pane_current_path. */
-void
+static void
 format_cb_current_path(struct format_tree *ft, struct format_entry *fe)
 {
 	struct window_pane	*wp = ft->wp;
