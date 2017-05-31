@@ -120,7 +120,7 @@ tty_init(struct tty *tty, struct client *c, int fd, char *term)
 	return (0);
 }
 
-int
+void
 tty_resize(struct tty *tty)
 {
 	struct client	*c = tty->client;
@@ -139,21 +139,15 @@ tty_resize(struct tty *tty)
 		sy = 24;
 	}
 	log_debug("%s: %s now %ux%u", __func__, c->name, sx, sy);
-
-	if (!tty_set_size(tty, sx, sy))
-		return (0);
+	tty_set_size(tty, sx, sy);
 	tty_invalidate(tty);
-	return (1);
 }
 
-int
+void
 tty_set_size(struct tty *tty, u_int sx, u_int sy)
 {
-	if (sx == tty->sx && sy == tty->sy)
-		return (0);
 	tty->sx = sx;
 	tty->sy = sy;
-	return (1);
 }
 
 static void

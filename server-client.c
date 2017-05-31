@@ -1451,10 +1451,9 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 
 		if (c->flags & CLIENT_CONTROL)
 			break;
-		if (tty_resize(&c->tty)) {
-			recalculate_sizes();
-			server_redraw_client(c);
-		}
+		tty_resize(&c->tty);
+		recalculate_sizes();
+		server_redraw_client(c);
 		if (c->session != NULL)
 			notify_client("client-resized", c);
 		break;
