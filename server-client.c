@@ -1050,14 +1050,36 @@ server_client_resize_event(__unused int fd, __unused short events, void *data)
 	if (!(wp->flags & PANE_RESIZE))
 		return;
 
+	/*
+	 * If we are resizing to the same size as when we entered the loop
+	 * (that is, to the same size the application currently thinks it is),
+	 * tmux may have gone through several resizes internally and thrown
+	 * away parts of the screen. So we need the application to actually
+	 * redraw even though its final size has not changed.
+	 */
+	if (wp->sx == wp->osx &&
+	    wp->sy == wp->osy &&
+	    wp->sx > 1 &&
+	    wp->sy > 1) {
+		memset(&ws, 0, sizeof ws);
+		ws.ws_col = wp->sx - 1;
+		ws.ws_row = wp->sy - 1;
+		if (ioctl(wp->fd, TIOCSWINSZ, &ws) == -1)
+			fatal("ioctl failed");
+		log_debug("%s: %%%u forcing resize", __func__, wp->id);
+	}
+
 	memset(&ws, 0, sizeof ws);
 	ws.ws_col = wp->sx;
 	ws.ws_row = wp->sy;
-
 	if (ioctl(wp->fd, TIOCSWINSZ, &ws) == -1)
 		fatal("ioctl failed");
+	log_debug("%s: %%%u resize to %u,%u", __func__, wp->id, wp->sx, wp->sy);
 
 	wp->flags &= ~PANE_RESIZE;
+
+	wp->osx = wp->sx;
+	wp->osy = wp->sy;
 }
 
 /* Check if pane should be resized. */
@@ -1068,6 +1090,7 @@ server_client_check_resize(struct window_pane *wp)
 
 	if (!(wp->flags & PANE_RESIZE))
 		return;
+	log_debug("%s: %%%u resize to %u,%u", __func__, wp->id, wp->sx, wp->sy);
 
 	if (!event_initialized(&wp->resize_timer))
 		evtimer_set(&wp->resize_timer, server_client_resize_event, wp);

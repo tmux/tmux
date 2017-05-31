@@ -745,6 +745,9 @@ struct window_pane {
 	u_int		 sx;
 	u_int		 sy;
 
+	u_int		 osx;
+	u_int		 osy;
+
 	u_int		 xoff;
 	u_int		 yoff;
 
