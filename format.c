@@ -17,7 +17,6 @@
  */
 
 #include <sys/types.h>
-#include <sys/param.h>
 #include <sys/wait.h>
 
 #include <errno.h>

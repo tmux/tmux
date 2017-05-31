@@ -1105,6 +1105,7 @@ server_client_resize_event(__unused int fd, __unused short events, void *data)
 		if (errno != EINVAL && errno != ENXIO)
 #endif
 		fatal("ioctl failed");
+	log_debug("%s: %%%u resize to %u,%u", __func__, wp->id, wp->sx, wp->sy);
 
 	wp->flags &= ~PANE_RESIZE;
 
