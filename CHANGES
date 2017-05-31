@@ -1,5 +1,8 @@
 CHANGES FROM 2.5 to master
 
+* Use setrgbf and setrgbb terminfo(5) capabilities to set RGB colours, if they
+  are available. (Tc is still supported as well.)
+
 * Fix redrawing panes when they are resized several times but end up with the
   size unchanged (for example, splitw/resizep -Z/breakp).
 
