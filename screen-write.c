@@ -48,7 +48,7 @@ struct screen_write_collect_item {
 
 	struct grid_cell	 gc;
 
-	TAILQ_ENTRY (screen_write_collect_item) entry;
+	TAILQ_ENTRY(screen_write_collect_item) entry;
 };
 struct screen_write_collect_line {
 	TAILQ_HEAD(, screen_write_collect_item) items;

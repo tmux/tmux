@@ -427,8 +427,7 @@ utf8_rtrimcstr(const char *s, u_int width)
 	next = end - 1;
 
 	at = 0;
-	for (;;)
-	{
+	for (;;) {
 		if (at + next->width > width) {
 			next++;
 			break;

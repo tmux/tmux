@@ -203,7 +203,7 @@ format_job_update(struct job *job)
 
 	log_debug("%s: %p %s: %s", __func__, fj, fj->cmd, fj->out);
 
-	t = time (NULL);
+	t = time(NULL);
 	if (fj->status && fj->last != t) {
 		if (fj->client != NULL)
 			server_status_client(fj->client);

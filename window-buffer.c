@@ -198,7 +198,7 @@ window_buffer_draw(__unused void *modedata, void *itemdata, u_int sx, u_int sy)
 	screen_write_start(&ctx, NULL, &s);
 	screen_write_clearscreen(&ctx, 8);
 
-	pdata = end = paste_buffer_data (pb, &psize);
+	pdata = end = paste_buffer_data(pb, &psize);
 	for (i = 0; i < sy; i++) {
 		at = 0;
 		while (end != pdata + psize && *end != '\n') {
