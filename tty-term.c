@@ -21,12 +21,19 @@
 #if defined(HAVE_CURSES_H)
 #include <curses.h>
 #elif defined(HAVE_NCURSES_H)
+#ifdef __sun
+#include <ncurses/ncurses.h>
+#endif /* __sun */
 #include <ncurses.h>
 #endif
 #include <fnmatch.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef __sun
+#include <ncurses/term.h>
+#else
 #include <term.h>
+#endif
 
 #include "tmux.h"
 
