@@ -2103,8 +2103,12 @@ input_osc_52(struct window_pane *wp, const char *p)
 	char			*end;
 	size_t			 len;
 	u_char			*out;
-	int			 outlen;
+	int			 outlen, state;
 	struct screen_write_ctx	 ctx;
+
+	state = options_get_number(global_options, "set-clipboard");
+	if (state != 2)
+		return;
 
 	if ((end = strchr(p, ';')) == NULL)
 		return;
@@ -2122,11 +2126,10 @@ input_osc_52(struct window_pane *wp, const char *p)
 		return;
 	}
 
-	if (options_get_number(global_options, "set-clipboard")) {
-		screen_write_start(&ctx, wp, NULL);
-		screen_write_setselection(&ctx, out, outlen);
-		screen_write_stop(&ctx);
-	}
+	screen_write_start(&ctx, wp, NULL);
+	screen_write_setselection(&ctx, out, outlen);
+	screen_write_stop(&ctx);
+
 	paste_add(out, outlen);
 }
 
