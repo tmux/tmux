@@ -54,6 +54,9 @@ static const char *options_table_bell_action_list[] = {
 static const char *options_table_pane_status_list[] = {
 	"off", "top", "bottom", NULL
 };
+static const char *options_table_set_clipboard_list[] = {
+	"off", "external", "on", NULL
+};
 
 /* Top-level options. */
 const struct options_table_entry options_table[] = {
@@ -118,8 +121,9 @@ const struct options_table_entry options_table[] = {
 	},
 
 	{ .name = "set-clipboard",
-	  .type = OPTIONS_TABLE_FLAG,
+	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_SERVER,
+	  .choices = options_table_set_clipboard_list,
 	  .default_num = 1
 	},
 

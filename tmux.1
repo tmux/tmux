@@ -2398,17 +2398,34 @@ Set the number of error or information messages to save in the message log for
 each client.
 The default is 100.
 .It Xo Ic set-clipboard
-.Op Ic on | off
+.Op Ic on | external | off
 .Xc
 Attempt to set the terminal clipboard content using the
 \ee]52;...\e007
 .Xr xterm 1
-escape sequences.
-This option is on by default if there is an
+escape sequences, if there is an
 .Em \&Ms
 entry in the
 .Xr terminfo 5
-description for the client terminal.
+description.
+If set to
+.Ic on ,
+.Nm
+will both accept the escape sequence to create a buffer and attempt to set
+the terminal clipboard.
+If set to
+.Ic external ,
+.Nm
+will attempt to set the terminal clipboard but ignore attempts
+by applications to set
+.Nm
+buffers.
+If
+.Ic off ,
+.Nm
+will neither accept the clipboard escape sequence nor attempt to set the
+clipboard.
+.Pp
 Note that this feature needs to be enabled in
 .Xr xterm 1
 by setting the resource:
