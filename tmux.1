@@ -199,7 +199,6 @@ characters to the terminal it is running (if not, they are replaced by
 .Ql _ ) .
 .It Fl v
 Request verbose logging.
-This option may be specified multiple times for increasing verbosity.
 Log messages will be saved into
 .Pa tmux-client-PID.log
 and
@@ -207,6 +206,22 @@ and
 files in the current directory, where
 .Em PID
 is the PID of the server or client process.
+.Pp
+If
+.Fl v
+is specified twice, an additional
+.Pa tmux-out-PID.log
+file is generated with a copy of everything
+.Nm
+writes to the terminal.
+.Pp
+The
+.Dv SIGUSR2
+signal may be sent to the
+.Nm
+server process to toggle logging between on (as if
+.Fl v
+was given) and off.
 .It Ar command Op Ar flags
 This specifies one of a set of commands used to control
 .Nm ,
