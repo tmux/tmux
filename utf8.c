@@ -214,7 +214,6 @@ utf8_isvalid(const char *s)
 	struct utf8_data	 ud;
 	const char		*end;
 	enum utf8_state		 more;
-	size_t			 i;
 
 	end = s + strlen(s);
 	while (s < end) {
