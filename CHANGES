@@ -1,5 +1,11 @@
 CHANGES FROM 2.5 to master
 
+* Make set-clipboard a three state option: on (tmux both sends to outside
+  terminal and accepts from applications inside); external (tmux sends outside
+  but does not accept inside); and off.
+
+* Fix OSC 4 palette setting for bright foreground colours. GitHub issue 954.
+
 * Use setrgbf and setrgbb terminfo(5) capabilities to set RGB colours, if they
   are available. (Tc is still supported as well.)
 
