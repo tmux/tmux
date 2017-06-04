@@ -1896,8 +1896,10 @@ input_exit_osc(struct input_ctx *ictx)
 	switch (option) {
 	case 0:
 	case 2:
-		screen_set_title(ictx->ctx.s, p);
-		server_status_window(ictx->wp->window);
+		if (utf8_isvalid(p)) {
+			screen_set_title(ictx->ctx.s, p);
+			server_status_window(ictx->wp->window);
+		}
 		break;
 	case 4:
 		input_osc_4(ictx->wp, p);
@@ -1909,7 +1911,7 @@ input_exit_osc(struct input_ctx *ictx)
 		input_osc_11(ictx->wp, p);
 		break;
 	case 12:
-		if (*p != '?') /* ? is colour request */
+		if (utf8_isvalid(p) && *p != '?') /* ? is colour request */
 			screen_set_cursor_colour(ictx->ctx.s, p);
 		break;
 	case 52:
@@ -1945,6 +1947,8 @@ input_exit_apc(struct input_ctx *ictx)
 		return;
 	log_debug("%s: \"%s\"", __func__, ictx->input_buf);
 
+	if (!utf8_isvalid(ictx->input_buf))
+		return;
 	screen_set_title(ictx->ctx.s, ictx->input_buf);
 	server_status_window(ictx->wp->window);
 }
@@ -1968,9 +1972,10 @@ input_exit_rename(struct input_ctx *ictx)
 		return;
 	log_debug("%s: \"%s\"", __func__, ictx->input_buf);
 
+	if (!utf8_isvalid(ictx->input_buf))
+		return;
 	window_set_name(ictx->wp->window, ictx->input_buf);
 	options_set_number(ictx->wp->window->options, "automatic-rename", 0);
-
 	server_status_window(ictx->wp->window);
 }
 
