@@ -1390,7 +1390,7 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 		}
 	}
 
-	/* Update the selection the flag and set the cell. */
+	/* Update the selected flag and set the cell. */
 	selected = screen_check_selection(s, s->cx, s->cy);
 	if (selected && (~gc->flags & GRID_FLAG_SELECTED)) {
 		memcpy(&tmp_gc, gc, sizeof tmp_gc);

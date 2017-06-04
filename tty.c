@@ -1848,7 +1848,7 @@ tty_check_fg(struct tty *tty, const struct window_pane *wp,
 	 */
 	if (~gc->flags & GRID_FLAG_NOPALETTE) {
 		c = gc->fg;
-		if (gc->fg < 8 && gc->attr & GRID_ATTR_BRIGHT)
+		if (c < 8 && gc->attr & GRID_ATTR_BRIGHT)
 			c += 90;
 		if ((c = window_pane_get_palette(wp, c)) != -1)
 			gc->fg = c;
