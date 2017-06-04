@@ -685,8 +685,11 @@ mode_tree_run_command(struct client *c, struct cmd_find_state *fs,
 	char			*command, *cause;
 
 	command = cmd_template_replace(template, name, 1);
-	if (command == NULL || *command == '\0')
+	if (command == NULL || *command == '\0') {
+		if (*command == '\0')
+			free(command);
 		return;
+	}
 
 	cmdlist = cmd_string_parse(command, NULL, 0, &cause);
 	if (cmdlist == NULL) {

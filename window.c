@@ -29,6 +29,9 @@
 #include <termios.h>
 #include <time.h>
 #include <unistd.h>
+#ifdef HAVE_UTEMPTER
+#include <signal.h>
+#endif
 
 #include "tmux.h"
 
