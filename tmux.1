@@ -199,7 +199,6 @@ characters to the terminal it is running (if not, they are replaced by
 .Ql _ ) .
 .It Fl v
 Request verbose logging.
-This option may be specified multiple times for increasing verbosity.
 Log messages will be saved into
 .Pa tmux-client-PID.log
 and
@@ -211,6 +210,22 @@ is the PID of the server or client process.
 Report the
 .Nm
 version.
+.Pp
+If
+.Fl v
+is specified twice, an additional
+.Pa tmux-out-PID.log
+file is generated with a copy of everything
+.Nm
+writes to the terminal.
+.Pp
+The
+.Dv SIGUSR2
+signal may be sent to the
+.Nm
+server process to toggle logging between on (as if
+.Fl v
+was given) and off.
 .It Ar command Op Ar flags
 This specifies one of a set of commands used to control
 .Nm ,
@@ -1398,7 +1413,7 @@ The following keys may be used in tree mode:
 .It Li "t" Ta "Toggle if item is tagged"
 .It Li "T" Ta "Tag no items"
 .It Li "C-t" Ta "Tag all items"
-.It Li ":" Ta "Run a command for each tagged item"
+.It Li "\&:" Ta "Run a command for each tagged item"
 .It Li "f" Ta "Enter a format to filter items"
 .It Li "O" Ta "Change sort order"
 .It Li "q" Ta "Exit mode"
@@ -3742,7 +3757,7 @@ The flag is one of the following symbols appended to the window name:
 .It Li "*" Ta "Denotes the current window."
 .It Li "-" Ta "Marks the last window (previously selected)."
 .It Li "#" Ta "Window is monitored and activity has been detected."
-.It Li "!" Ta "A bell has occurred in the window."
+.It Li "\&!" Ta "A bell has occurred in the window."
 .It Li "~" Ta "The window has been silent for the monitor-silence interval."
 .It Li "M" Ta "The window contains the marked pane."
 .It Li "Z" Ta "The window's active pane is zoomed."

@@ -150,7 +150,7 @@ server_start(struct event_base *base, int lockfd, char *lockfile)
 	}
 	close(pair[0]);
 
-	if (log_get_level() > 3)
+	if (log_get_level() > 1)
 		tty_create_log();
 	if (pledge("stdio rpath wpath cpath fattr unix getpw recvfd proc exec "
 	    "tty ps", NULL) != 0)
@@ -363,6 +363,9 @@ server_signal(int sig)
 			server_update_socket();
 		}
 		server_add_accept(0);
+		break;
+	case SIGUSR2:
+		proc_toggle_log(server_proc);
 		break;
 	}
 }

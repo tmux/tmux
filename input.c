@@ -93,6 +93,8 @@ struct input_ctx {
 
 	const struct input_state *state;
 
+	struct event		timer;
+
 	/*
 	 * All input received since we were last in the ground state. Sent to
 	 * control clients on connection.
@@ -118,6 +120,7 @@ static void	input_osc_104(struct window_pane *, const char *);
 /* Transition entry/exit handlers. */
 static void	input_clear(struct input_ctx *);
 static void	input_ground(struct input_ctx *);
+static void	input_enter_dcs(struct input_ctx *);
 static void	input_enter_osc(struct input_ctx *);
 static void	input_exit_osc(struct input_ctx *);
 static void	input_enter_apc(struct input_ctx *);
@@ -364,7 +367,7 @@ static const struct input_state input_state_csi_ignore = {
 /* dcs_enter state definition. */
 static const struct input_state input_state_dcs_enter = {
 	"dcs_enter",
-	input_clear, NULL,
+	input_enter_dcs, NULL,
 	input_state_dcs_enter_table
 };
 
@@ -756,6 +759,30 @@ input_table_compare(const void *key, const void *value)
 	return (strcmp(ictx->interm_buf, entry->interm));
 }
 
+/*
+ * Timer - if this expires then have been waiting for a terminator for too
+ * long, so reset to ground.
+ */
+static void
+input_timer_callback(__unused int fd, __unused short events, void *arg)
+{
+	struct input_ctx	*ictx = arg;
+	struct window_pane	*wp = ictx->wp;
+
+	log_debug("%s: %%%u %s expired" , __func__, wp->id, ictx->state->name);
+	input_reset(wp, 0);
+}
+
+/* Start the timer. */
+static void
+input_start_timer(struct input_ctx *ictx)
+{
+	struct timeval	tv = { .tv_usec = 100000 };
+
+	event_del(&ictx->timer);
+	event_add(&ictx->timer, &tv);
+}
+
 /* Reset cell state to default. */
 static void
 input_reset_cell(struct input_ctx *ictx)
@@ -782,6 +809,8 @@ input_init(struct window_pane *wp)
 
 	ictx->since_ground = evbuffer_new();
 
+	evtimer_set(&ictx->timer, input_timer_callback, ictx);
+
 	input_reset(wp, 0);
 }
 
@@ -790,6 +819,8 @@ void
 input_free(struct window_pane *wp)
 {
 	struct input_ctx	*ictx = wp->ictx;
+
+	event_del(&ictx->timer);
 
 	free(ictx->input_buf);
 	evbuffer_free(ictx->since_ground);
@@ -815,14 +846,7 @@ input_reset(struct window_pane *wp, int clear)
 		screen_write_stop(&ictx->ctx);
 	}
 
-	*ictx->interm_buf = '\0';
-	ictx->interm_len = 0;
-
-	*ictx->param_buf = '\0';
-	ictx->param_len = 0;
-
-	*ictx->input_buf = '\0';
-	ictx->input_len = 0;
+	input_clear(ictx);
 
 	ictx->state = &input_state_ground;
 	ictx->flags = 0;
@@ -997,6 +1021,8 @@ input_reply(struct input_ctx *ictx, const char *fmt, ...)
 static void
 input_clear(struct input_ctx *ictx)
 {
+	event_del(&ictx->timer);
+
 	*ictx->interm_buf = '\0';
 	ictx->interm_len = 0;
 
@@ -1013,6 +1039,7 @@ input_clear(struct input_ctx *ictx)
 static void
 input_ground(struct input_ctx *ictx)
 {
+	event_del(&ictx->timer);
 	evbuffer_drain(ictx->since_ground, EVBUFFER_LENGTH(ictx->since_ground));
 
 	if (ictx->input_space > INPUT_BUF_START) {
@@ -1842,6 +1869,16 @@ input_csi_dispatch_sgr(struct input_ctx *ictx)
 	}
 }
 
+/* DCS string started. */
+static void
+input_enter_dcs(struct input_ctx *ictx)
+{
+	log_debug("%s", __func__);
+
+	input_clear(ictx);
+	input_start_timer(ictx);
+}
+
 /* DCS terminator (ST) received. */
 static int
 input_dcs_dispatch(struct input_ctx *ictx)
@@ -1871,6 +1908,7 @@ input_enter_osc(struct input_ctx *ictx)
 	log_debug("%s", __func__);
 
 	input_clear(ictx);
+	input_start_timer(ictx);
 }
 
 /* OSC terminator (ST) received. */
@@ -1896,8 +1934,10 @@ input_exit_osc(struct input_ctx *ictx)
 	switch (option) {
 	case 0:
 	case 2:
-		screen_set_title(ictx->ctx.s, p);
-		server_status_window(ictx->wp->window);
+		if (utf8_isvalid(p)) {
+			screen_set_title(ictx->ctx.s, p);
+			server_status_window(ictx->wp->window);
+		}
 		break;
 	case 4:
 		input_osc_4(ictx->wp, p);
@@ -1909,7 +1949,7 @@ input_exit_osc(struct input_ctx *ictx)
 		input_osc_11(ictx->wp, p);
 		break;
 	case 12:
-		if (*p != '?') /* ? is colour request */
+		if (utf8_isvalid(p) && *p != '?') /* ? is colour request */
 			screen_set_cursor_colour(ictx->ctx.s, p);
 		break;
 	case 52:
@@ -1935,6 +1975,7 @@ input_enter_apc(struct input_ctx *ictx)
 	log_debug("%s", __func__);
 
 	input_clear(ictx);
+	input_start_timer(ictx);
 }
 
 /* APC terminator (ST) received. */
@@ -1945,6 +1986,8 @@ input_exit_apc(struct input_ctx *ictx)
 		return;
 	log_debug("%s: \"%s\"", __func__, ictx->input_buf);
 
+	if (!utf8_isvalid(ictx->input_buf))
+		return;
 	screen_set_title(ictx->ctx.s, ictx->input_buf);
 	server_status_window(ictx->wp->window);
 }
@@ -1956,6 +1999,7 @@ input_enter_rename(struct input_ctx *ictx)
 	log_debug("%s", __func__);
 
 	input_clear(ictx);
+	input_start_timer(ictx);
 }
 
 /* Rename terminator (ST) received. */
@@ -1968,9 +2012,10 @@ input_exit_rename(struct input_ctx *ictx)
 		return;
 	log_debug("%s: \"%s\"", __func__, ictx->input_buf);
 
+	if (!utf8_isvalid(ictx->input_buf))
+		return;
 	window_set_name(ictx->wp->window, ictx->input_buf);
 	options_set_number(ictx->wp->window->options, "automatic-rename", 0);
-
 	server_status_window(ictx->wp->window);
 }
 
