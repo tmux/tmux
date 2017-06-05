@@ -27,7 +27,7 @@ case before opening an issue.
 To run tmux without a config and get logs, run:
 
     tmux -Ltest kill-server
-    tmux -vvvv -Ltest -f/dev/null new
+    tmux -vv -Ltest -f/dev/null new
 
 Then reproduce the problem, exit tmux, and attach the tmux-server-*.log file
 from the current directory to the issue.

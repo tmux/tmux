@@ -1,5 +1,13 @@
 CHANGES FROM 2.5 to master
 
+* Do not allow escape sequences which expect a specific terminator (APC, DSC,
+  OSC) to wait for forever - use a small timeout. This reduces the chance of
+  the pane locking up completely when sent garbage (cat /dev/random or
+  similar).
+
+* Support SIGUSR2 to toggle logging on a running server, also generate the
+  "out" log file with -vv not -vvvv.
+
 * Make set-clipboard a three state option: on (tmux both sends to outside
   terminal and accepts from applications inside); external (tmux sends outside
   but does not accept inside); and off.
