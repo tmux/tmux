@@ -29,6 +29,7 @@ static struct event	ev_sigchld;
 static struct event	ev_sigcont;
 static struct event	ev_sigterm;
 static struct event	ev_sigusr1;
+static struct event	ev_sigusr2;
 static struct event	ev_sigwinch;
 
 void
@@ -59,6 +60,8 @@ set_signals(void (*handler)(int, short, void *), void *arg)
 	signal_add(&ev_sigterm, NULL);
 	signal_set(&ev_sigusr1, SIGUSR1, handler, arg);
 	signal_add(&ev_sigusr1, NULL);
+	signal_set(&ev_sigusr2, SIGUSR2, handler, arg);
+	signal_add(&ev_sigusr2, NULL);
 	signal_set(&ev_sigwinch, SIGWINCH, handler, arg);
 	signal_add(&ev_sigwinch, NULL);
 }
@@ -92,6 +95,8 @@ clear_signals(int after_fork)
 			fatal("sigaction failed");
 		if (sigaction(SIGUSR1, &sigact, NULL) != 0)
 			fatal("sigaction failed");
+		if (sigaction(SIGUSR2, &sigact, NULL) != 0)
+			fatal("sigaction failed");
 		if (sigaction(SIGWINCH, &sigact, NULL) != 0)
 			fatal("sigaction failed");
 	} else {
@@ -100,6 +105,7 @@ clear_signals(int after_fork)
 		event_del(&ev_sigcont);
 		event_del(&ev_sigterm);
 		event_del(&ev_sigusr1);
+		event_del(&ev_sigusr2);
 		event_del(&ev_sigwinch);
 	}
 }

@@ -111,6 +111,7 @@ cmd_save_buffer_exec(struct cmd *self, struct cmdq_item *item)
 	if (fwrite(bufdata, 1, bufsize, f) != bufsize) {
 		cmdq_error(item, "%s: write error", file);
 		fclose(f);
+		free(file);
 		return (CMD_RETURN_ERROR);
 	}
 

@@ -22,14 +22,8 @@
 	* formats to show if a window is linked into multiple sessions, into
 	  multiple attached sessions, and is the active window in multiple
 	  attached sessions?
-
-- choose mode improvements:
-	* choose-pane command (augment choose-tree to do this?)
-	* flag to choose-* for sort order
-	* two choices (first one then second, for swap-pane and join-pane)
-	* choose modes should ditch the key bindings and just have fixed keys, and
-	  be more customized to their purpose (d to delete a buffer for choose-buffer,
-	  a preview of buffer contents, etc)
+	* comparison operators like < and > (for #{version}?)
+	* %else statement in config file
 
 - improve monitor-*:
 	* straighten out rules for multiple clients
@@ -53,8 +47,9 @@
 	  then it should be found even if it is now "foo\nbar" (if the WRAP flag
 	  is set on the line)
 	* capture-pane option to preserve spaces but not join lines
-	* improve word and line selection in copy mode (for example when dragging
-	  it should select by word. compare how xterm works. GitHub issue 682)
+	* improve word and line selection in copy mode (for example when
+	  dragging it should select by word. compare how xterm works. GitHub
+	  issue 682)
 
 - layout stuff
 	* way to tag a layout as a number/name
@@ -70,6 +65,8 @@
 	* a mode where one application can cross two panes (ie x|y, width =
 	  COLUMNS/2 but height = ROWS * 2)
 	* separate active panes for different clients
+	* way to choose where the freed space goes when a pane is killed:
+	  option to kill-pane? GitHub issue 918
 
 - code cleanup
 	* instead of separate window and session options, just one master
@@ -100,7 +97,6 @@
 	  client w/o a session else cmd_current_client
 
 - miscellaneous
-	* way to keep a job running just read its last line of output for #()
 	* link panes into multiple windows
 	* live update: server started with -U connects to server, requests
 	  sessions and windows, receives file descriptors
@@ -113,6 +109,7 @@
 	* marks in history, automatically add (move?) one when pane is changed
 	* this doesn't work, need pane reference count probably:
 	  bind -n DoubleClick3Status confirm-before -p "kill-window #I? (y/n)" kill-window
+	* respawn -c flag same as neww etc
 
 - hooks
 	* more hooks for various things

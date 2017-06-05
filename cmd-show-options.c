@@ -41,7 +41,7 @@ const struct cmd_entry cmd_show_options_entry = {
 	.args = { "gqst:vw", 0, 1 },
 	.usage = "[-gqsvw] [-t target-session|target-window] [option]",
 
-	.tflag = CMD_WINDOW_CANFAIL,
+	.target = { 't', CMD_FIND_WINDOW, CMD_FIND_CANFAIL },
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_show_options_exec
@@ -54,7 +54,7 @@ const struct cmd_entry cmd_show_window_options_entry = {
 	.args = { "gvt:", 0, 1 },
 	.usage = "[-gv] " CMD_TARGET_WINDOW_USAGE " [option]",
 
-	.tflag = CMD_WINDOW_CANFAIL,
+	.target = { 't', CMD_FIND_WINDOW, CMD_FIND_CANFAIL },
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_show_options_exec
@@ -64,7 +64,7 @@ static enum cmd_retval
 cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = self->args;
-	struct cmd_find_state		*fs = &item->state.tflag;
+	struct cmd_find_state		*fs = &item->target;
 	struct options			*oo;
 	enum options_table_scope	 scope;
 	char				*cause;
@@ -127,25 +127,36 @@ cmd_show_options_one(struct cmd *self, struct cmdq_item *item,
     struct options *oo)
 {
 	struct args		*args = self->args;
+	struct client		*c = cmd_find_client(item, NULL, 1);
+	struct session		*s = item->target.s;
+	struct winlink		*wl = item->target.wl;
 	struct options_entry	*o;
 	int			 idx, ambiguous;
-	const char		*name = args->argv[0];
+	char			*name;
 
+	name = format_single(item, args->argv[0], c, s, wl, NULL);
 	o = options_match_get(oo, name, &idx, 1, &ambiguous);
 	if (o == NULL) {
-		if (args_has(args, 'q'))
+		if (args_has(args, 'q')) {
+			free(name);
 			return (CMD_RETURN_NORMAL);
+		}
 		if (ambiguous) {
 			cmdq_error(item, "ambiguous option: %s", name);
+			free(name);
 			return (CMD_RETURN_ERROR);
 		}
 		if (*name != '@' &&
-		    options_match_get(oo, name, &idx, 0, &ambiguous) != NULL)
+		    options_match_get(oo, name, &idx, 0, &ambiguous) != NULL) {
+			free(name);
 			return (CMD_RETURN_NORMAL);
+		}
 		cmdq_error(item, "unknown option: %s", name);
+		free(name);
 		return (CMD_RETURN_ERROR);
 	}
 	cmd_show_options_print(self, item, o, idx);
+	free(name);
 	return (CMD_RETURN_NORMAL);
 }
 

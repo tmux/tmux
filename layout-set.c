@@ -165,6 +165,7 @@ layout_set_even_h(struct window *w)
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
+	notify_window("window-layout-changed", w);
 	server_redraw_window(w);
 }
 
@@ -219,6 +220,7 @@ layout_set_even_v(struct window *w)
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
+	notify_window("window-layout-changed", w);
 	server_redraw_window(w);
 }
 
@@ -342,6 +344,7 @@ layout_set_main_h(struct window *w)
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
+	notify_window("window-layout-changed", w);
 	server_redraw_window(w);
 }
 
@@ -465,6 +468,7 @@ layout_set_main_v(struct window *w)
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
+	notify_window("window-layout-changed", w);
 	server_redraw_window(w);
 }
 
@@ -567,5 +571,6 @@ layout_set_tiled(struct window *w)
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
+	notify_window("window-layout-changed", w);
 	server_redraw_window(w);
 }

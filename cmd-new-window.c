@@ -42,7 +42,7 @@ const struct cmd_entry cmd_new_window_entry = {
 	.usage = "[-adkP] [-c start-directory] [-F format] [-n window-name] "
 		 CMD_TARGET_WINDOW_USAGE " [command]",
 
-	.tflag = CMD_WINDOW_INDEX,
+	.target = { 't', CMD_FIND_WINDOW, CMD_FIND_WINDOW_INDEX },
 
 	.flags = 0,
 	.exec = cmd_new_window_exec
@@ -52,10 +52,11 @@ static enum cmd_retval
 cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
-	struct session		*s = item->state.tflag.s;
-	struct winlink		*wl = item->state.tflag.wl;
-	struct client		*c = item->state.c;
-	int			 idx = item->state.tflag.idx;
+	struct cmd_find_state	*current = &item->shared->current;
+	struct session		*s = item->target.s;
+	struct winlink		*wl = item->target.wl;
+	struct client		*c = cmd_find_client(item, NULL, 1);
+	int			 idx = item->target.idx;
 	const char		*cmd, *path, *template, *cwd, *to_free;
 	char		       **argv, *cause, *cp;
 	int			 argc, detached;
@@ -132,6 +133,7 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	if (!detached) {
 		session_select(s, wl->idx);
+		cmd_find_from_winlink(current, wl);
 		server_redraw_session_group(s);
 	} else
 		server_status_session_group(s);
@@ -147,7 +149,7 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (to_free != NULL)
 		free((void *)to_free);
 
-	cmd_find_from_winlink(&fs, s, wl);
+	cmd_find_from_winlink(&fs, wl);
 	hooks_insert(s->hooks, item, &fs, "after-new-window");
 
 	return (CMD_RETURN_NORMAL);

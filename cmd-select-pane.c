@@ -33,7 +33,7 @@ const struct cmd_entry cmd_select_pane_entry = {
 	.args = { "DdegLlMmP:Rt:U", 0, 0 },
 	.usage = "[-DdegLlMmRU] [-P style] " CMD_TARGET_PANE_USAGE,
 
-	.tflag = CMD_PANE,
+	.target = { 't', CMD_FIND_PANE, 0 },
 
 	.flags = 0,
 	.exec = cmd_select_pane_exec
@@ -46,7 +46,7 @@ const struct cmd_entry cmd_last_pane_entry = {
 	.args = { "det:", 0, 0 },
 	.usage = "[-de] " CMD_TARGET_WINDOW_USAGE,
 
-	.tflag = CMD_WINDOW,
+	.target = { 't', CMD_FIND_WINDOW, 0 },
 
 	.flags = 0,
 	.exec = cmd_select_pane_exec
@@ -56,31 +56,32 @@ static enum cmd_retval
 cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
-	struct winlink		*wl = item->state.tflag.wl;
+	struct cmd_find_state	*current = &item->shared->current;
+	struct winlink		*wl = item->target.wl;
 	struct window		*w = wl->window;
-	struct session		*s = item->state.tflag.s;
-	struct window_pane	*wp = item->state.tflag.wp, *lastwp, *markedwp;
+	struct session		*s = item->target.s;
+	struct window_pane	*wp = item->target.wp, *lastwp, *markedwp;
 	const char		*style;
 
 	if (self->entry == &cmd_last_pane_entry || args_has(args, 'l')) {
-		if (wl->window->last == NULL) {
+		lastwp = w->last;
+		if (lastwp == NULL) {
 			cmdq_error(item, "no last pane");
 			return (CMD_RETURN_ERROR);
 		}
-
 		if (args_has(self->args, 'e'))
-			w->last->flags &= ~PANE_INPUTOFF;
+			lastwp->flags &= ~PANE_INPUTOFF;
 		else if (args_has(self->args, 'd'))
-			w->last->flags |= PANE_INPUTOFF;
+			lastwp->flags |= PANE_INPUTOFF;
 		else {
 			server_unzoom_window(w);
-			window_redraw_active_switch(w, w->last);
-			if (window_set_active_pane(w, w->last)) {
+			window_redraw_active_switch(w, lastwp);
+			if (window_set_active_pane(w, lastwp)) {
+				cmd_find_from_winlink(current, wl);
 				server_status_window(w);
 				server_redraw_window_borders(w);
 			}
 		}
-
 		return (CMD_RETURN_NORMAL);
 	}
 
@@ -155,6 +156,7 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	window_redraw_active_switch(w, wp);
 	if (window_set_active_pane(w, wp)) {
+		cmd_find_from_winlink(current, wl);
 		server_status_window(w);
 		server_redraw_window_borders(w);
 	}

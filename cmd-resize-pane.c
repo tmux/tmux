@@ -39,7 +39,7 @@ const struct cmd_entry cmd_resize_pane_entry = {
 	.usage = "[-DLMRUZ] [-x width] [-y height] " CMD_TARGET_PANE_USAGE " "
 		 "[adjustment]",
 
-	.tflag = CMD_PANE,
+	.target = { 't', CMD_FIND_PANE, 0 },
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_resize_pane_exec
@@ -49,23 +49,24 @@ static enum cmd_retval
 cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
-	struct window_pane	*wp = item->state.tflag.wp;
-	struct winlink		*wl = item->state.tflag.wl;
+	struct cmdq_shared	*shared = item->shared;
+	struct window_pane	*wp = item->target.wp;
+	struct winlink		*wl = item->target.wl;
 	struct window		*w = wl->window;
 	struct client		*c = item->client;
-	struct session		*s = item->state.tflag.s;
+	struct session		*s = item->target.s;
 	const char	       	*errstr;
 	char			*cause;
 	u_int			 adjust;
 	int			 x, y;
 
 	if (args_has(args, 'M')) {
-		if (cmd_mouse_window(&item->mouse, &s) == NULL)
+		if (cmd_mouse_window(&shared->mouse, &s) == NULL)
 			return (CMD_RETURN_NORMAL);
 		if (c == NULL || c->session != s)
 			return (CMD_RETURN_NORMAL);
 		c->tty.mouse_drag_update = cmd_resize_pane_mouse_update;
-		cmd_resize_pane_mouse_update(c, &item->mouse);
+		cmd_resize_pane_mouse_update(c, &shared->mouse);
 		return (CMD_RETURN_NORMAL);
 	}
 
@@ -128,9 +129,8 @@ static void
 cmd_resize_pane_mouse_update(struct client *c, struct mouse_event *m)
 {
 	struct winlink		*wl;
-	struct window_pane	*wp;
-	int			 found;
-	u_int			 y, ly;
+	struct window_pane	*loop, *wp_x, *wp_y;
+	u_int			 y, ly, x, lx, sx, sy, ex, ey;
 
 	wl = cmd_mouse_window(m, NULL);
 	if (wl == NULL) {
@@ -138,37 +138,48 @@ cmd_resize_pane_mouse_update(struct client *c, struct mouse_event *m)
 		return;
 	}
 
-	y = m->y;
+	y = m->y; x = m->x;
 	if (m->statusat == 0 && y > 0)
 		y--;
 	else if (m->statusat > 0 && y >= (u_int)m->statusat)
 		y = m->statusat - 1;
-	ly = m->ly;
+	ly = m->ly; lx = m->lx;
 	if (m->statusat == 0 && ly > 0)
 		ly--;
 	else if (m->statusat > 0 && ly >= (u_int)m->statusat)
 		ly = m->statusat - 1;
 
-	found = 0;
-	TAILQ_FOREACH(wp, &wl->window->panes, entry) {
-		if (!window_pane_visible(wp))
+	wp_x = wp_y = NULL;
+	TAILQ_FOREACH(loop, &wl->window->panes, entry) {
+		if (!window_pane_visible(loop))
 			continue;
 
-		if (wp->xoff + wp->sx == m->lx &&
-		    wp->yoff <= 1 + ly &&
-		    wp->yoff + wp->sy >= ly) {
-			layout_resize_pane(wp, LAYOUT_LEFTRIGHT, m->x - m->lx, 0);
-			found = 1;
-		}
-		if (wp->yoff + wp->sy == ly &&
-		    wp->xoff <= 1 + m->lx &&
-		    wp->xoff + wp->sx >= m->lx) {
-			layout_resize_pane(wp, LAYOUT_TOPBOTTOM, y - ly, 0);
-			found = 1;
-		}
+		sx = loop->xoff;
+		if (sx != 0)
+			sx--;
+		ex = loop->xoff + loop->sx;
+
+		sy = loop->yoff;
+		if (sy != 0)
+			sy--;
+		ey = loop->yoff + loop->sy;
+
+		if ((lx == sx || lx == ex) &&
+		    (ly >= sy && ly <= ey) &&
+		    (wp_x == NULL || loop->sy > wp_x->sy))
+			wp_x = loop;
+		if ((ly == sy || ly == ey) &&
+		    (lx >= sx && lx <= ex) &&
+		    (wp_y == NULL || loop->sx > wp_y->sx))
+			wp_y = loop;
 	}
-	if (found)
-		server_redraw_window(wl->window);
-	else
+	if (wp_x == NULL && wp_y == NULL) {
 		c->tty.mouse_drag_update = NULL;
+		return;
+	}
+	if (wp_x != NULL)
+		layout_resize_pane(wp_x, LAYOUT_LEFTRIGHT, x - lx, 0);
+	if (wp_y != NULL)
+		layout_resize_pane(wp_y, LAYOUT_TOPBOTTOM, y - ly, 0);
+	server_redraw_window(wl->window);
 }

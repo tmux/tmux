@@ -37,7 +37,7 @@ const struct cmd_entry cmd_set_environment_entry = {
 	.args = { "grt:u", 1, 2 },
 	.usage = "[-gru] " CMD_TARGET_SESSION_USAGE " name [value]",
 
-	.tflag = CMD_SESSION_CANFAIL,
+	.target = { 't', CMD_FIND_SESSION, CMD_FIND_CANFAIL },
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_set_environment_exec
@@ -68,7 +68,7 @@ cmd_set_environment_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(self->args, 'g'))
 		env = global_environ;
 	else {
-		if (item->state.tflag.s == NULL) {
+		if (item->target.s == NULL) {
 			target = args_get(args, 't');
 			if (target != NULL)
 				cmdq_error(item, "no such session: %s", target);
@@ -76,7 +76,7 @@ cmd_set_environment_exec(struct cmd *self, struct cmdq_item *item)
 				cmdq_error(item, "no current session");
 			return (CMD_RETURN_ERROR);
 		}
-		env = item->state.tflag.s->environ;
+		env = item->target.s->environ;
 	}
 
 	if (args_has(self->args, 'u')) {

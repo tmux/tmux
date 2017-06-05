@@ -263,3 +263,9 @@ proc_kill_peer(struct tmuxpeer *peer)
 {
 	peer->flags |= PEER_BAD;
 }
+
+void
+proc_toggle_log(struct tmuxproc *tp)
+{
+	log_toggle(tp->name);
+}

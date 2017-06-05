@@ -42,7 +42,7 @@ const struct cmd_entry cmd_run_shell_entry = {
 	.args = { "bt:", 1, 1 },
 	.usage = "[-b] " CMD_TARGET_PANE_USAGE " shell-command",
 
-	.tflag = CMD_PANE_CANFAIL,
+	.target = { 't', CMD_FIND_PANE, CMD_FIND_CANFAIL },
 
 	.flags = 0,
 	.exec = cmd_run_shell_exec
@@ -68,14 +68,14 @@ cmd_run_shell_print(struct job *job, const char *msg)
 			cmdq_print(cdata->item, "%s", msg);
 			return;
 		}
-		if (cmd_find_current (&fs, NULL, CMD_FIND_QUIET) != 0)
+		if (cmd_find_from_nothing(&fs) != 0)
 			return;
 		wp = fs.wp;
 		if (wp == NULL)
 			return;
 	}
 
-	if (window_pane_set_mode(wp, &window_copy_mode) == 0)
+	if (window_pane_set_mode(wp, &window_copy_mode, NULL, NULL) == 0)
 		window_copy_init_for_output(wp);
 	if (wp->mode == &window_copy_mode)
 		window_copy_add(wp, "%s", msg);
@@ -86,10 +86,10 @@ cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = self->args;
 	struct cmd_run_shell_data	*cdata;
-	struct client			*c = item->state.c;
-	struct session			*s = item->state.tflag.s;
-	struct winlink			*wl = item->state.tflag.wl;
-	struct window_pane		*wp = item->state.tflag.wp;
+	struct client			*c = cmd_find_client(item, NULL, 1);
+	struct session			*s = item->target.s;
+	struct winlink			*wl = item->target.wl;
+	struct window_pane		*wp = item->target.wp;
 	const char			*cwd;
 
 	if (item->client != NULL && item->client->session == NULL)
@@ -110,8 +110,8 @@ cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 	if (!args_has(args, 'b'))
 		cdata->item = item;
 
-	job_run(cdata->cmd, s, cwd, cmd_run_shell_callback, cmd_run_shell_free,
-	    cdata);
+	job_run(cdata->cmd, s, cwd, NULL, cmd_run_shell_callback,
+	    cmd_run_shell_free, cdata);
 
 	if (args_has(args, 'b'))
 		return (CMD_RETURN_NORMAL);

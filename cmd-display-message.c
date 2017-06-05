@@ -43,8 +43,7 @@ const struct cmd_entry cmd_display_message_entry = {
 	.usage = "[-p] [-c target-client] [-F format] "
 		 CMD_TARGET_PANE_USAGE " [message]",
 
-	.cflag = CMD_CLIENT_CANFAIL,
-	.tflag = CMD_PANE,
+	.target = { 't', CMD_FIND_PANE, 0 },
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_display_message_exec
@@ -54,10 +53,10 @@ static enum cmd_retval
 cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
-	struct client		*c = item->state.c;
-	struct session		*s = item->state.tflag.s;
-	struct winlink		*wl = item->state.tflag.wl;
-	struct window_pane	*wp = item->state.tflag.wp;
+	struct client		*c;
+	struct session		*s = item->target.s;
+	struct winlink		*wl = item->target.wl;
+	struct window_pane	*wp = item->target.wp;
 	const char		*template;
 	char			*msg;
 	struct format_tree	*ft;
@@ -66,6 +65,7 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 		cmdq_error(item, "only one of -F or argument must be given");
 		return (CMD_RETURN_ERROR);
 	}
+	c = cmd_find_client(item, args_get(args, 'c'), 1);
 
 	template = args_get(args, 'F');
 	if (args->argc != 0)
@@ -73,7 +73,7 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 	if (template == NULL)
 		template = DISPLAY_MESSAGE_TEMPLATE;
 
-	ft = format_create(item, FORMAT_NONE, 0);
+	ft = format_create(item->client, item, FORMAT_NONE, 0);
 	format_defaults(ft, c, s, wl, wp);
 
 	msg = format_expand_time(ft, template, time(NULL));

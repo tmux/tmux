@@ -53,6 +53,9 @@ static const char *options_table_bell_action_list[] = {
 static const char *options_table_pane_status_list[] = {
 	"off", "top", "bottom", NULL
 };
+static const char *options_table_set_clipboard_list[] = {
+	"off", "external", "on", NULL
+};
 
 /* Top-level options. */
 const struct options_table_entry options_table[] = {
@@ -61,7 +64,7 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_SERVER,
 	  .minimum = 1,
 	  .maximum = INT_MAX,
-	  .default_num = 20
+	  .default_num = 50
 	},
 
 	{ .name = "command-alias",
@@ -70,7 +73,9 @@ const struct options_table_entry options_table[] = {
 	  .default_str = "split-pane=split-window,"
 			 "splitp=split-window,"
 			 "server-info=show-messages -JT,"
-			 "info=show-messages -JT",
+			 "info=show-messages -JT,"
+			 "choose-window=choose-tree -w,"
+			 "choose-session=choose-tree -s",
 	  .separator = ","
 	},
 
@@ -115,8 +120,9 @@ const struct options_table_entry options_table[] = {
 	},
 
 	{ .name = "set-clipboard",
-	  .type = OPTIONS_TABLE_FLAG,
+	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_SERVER,
+	  .choices = options_table_set_clipboard_list,
 	  .default_num = 1
 	},
 
@@ -124,7 +130,7 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_ARRAY,
 	  .scope = OPTIONS_TABLE_SERVER,
 	  .default_str = "xterm*:XT:Ms=\\E]52;%p1%s;%p2%s\\007"
-	                 ":Cs=\\E]12;%p1%s\\007:Cr=\\E]112\\007"
+			 ":Cs=\\E]12;%p1%s\\007:Cr=\\E]112\\007"
 			 ":Ss=\\E[%p1%d q:Se=\\E[2 q,screen*:XT",
 	  .separator = ","
 	},
@@ -484,7 +490,7 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_ARRAY,
 	  .scope = OPTIONS_TABLE_SESSION,
 	  .default_str = "DISPLAY SSH_ASKPASS SSH_AUTH_SOCK SSH_AGENT_PID "
-	                 "SSH_CONNECTION WINDOWID XAUTHORITY"
+			 "SSH_CONNECTION WINDOWID XAUTHORITY"
 	},
 
 	{ .name = "visual-activity",
@@ -539,7 +545,7 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,
 	  .default_str = "#{?pane_in_mode,[tmux],#{pane_current_command}}"
-	                 "#{?pane_dead,[dead],}"
+			 "#{?pane_dead,[dead],}"
 	},
 
 	{ .name = "clock-mode-colour",
@@ -697,7 +703,7 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,
 	  .default_str = "#{?pane_active,#[reverse],}#{pane_index}#[default] "
-	                 "\"#{pane_title}\""
+			 "\"#{pane_title}\""
 	},
 
 	{ .name = "pane-border-status",

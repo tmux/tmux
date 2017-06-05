@@ -32,7 +32,8 @@
 static enum cmd_retval	cmd_command_prompt_exec(struct cmd *,
 			    struct cmdq_item *);
 
-static int	cmd_command_prompt_callback(void *, const char *, int);
+static int	cmd_command_prompt_callback(struct client *, void *,
+		    const char *, int);
 static void	cmd_command_prompt_free(void *);
 
 const struct cmd_entry cmd_command_prompt_entry = {
@@ -43,24 +44,21 @@ const struct cmd_entry cmd_command_prompt_entry = {
 	.usage = "[-1Ni] [-I inputs] [-p prompts] " CMD_TARGET_CLIENT_USAGE " "
 		 "[template]",
 
-	.tflag = CMD_CLIENT,
-
 	.flags = 0,
 	.exec = cmd_command_prompt_exec
 };
 
 struct cmd_command_prompt_cdata {
-	struct client	*c;
-	int		 flags;
+	int	 flags;
 
-	char		*inputs;
-	char		*next_input;
+	char	*inputs;
+	char	*next_input;
 
-	char		*prompts;
-	char		*next_prompt;
+	char	*prompts;
+	char	*next_prompt;
 
-	char		*template;
-	int		 idx;
+	char	*template;
+	int	 idx;
 };
 
 static enum cmd_retval
@@ -69,15 +67,17 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 	struct args			*args = self->args;
 	const char			*inputs, *prompts;
 	struct cmd_command_prompt_cdata	*cdata;
-	struct client			*c = item->state.c;
+	struct client			*c;
 	char				*prompt, *ptr, *input = NULL;
 	size_t				 n;
+
+	if ((c = cmd_find_client(item, args_get(args, 't'), 0)) == NULL)
+		return (CMD_RETURN_ERROR);
 
 	if (c->prompt_string != NULL)
 		return (CMD_RETURN_NORMAL);
 
 	cdata = xcalloc(1, sizeof *cdata);
-	cdata->c = c;
 
 	cdata->inputs = NULL;
 	cdata->next_input = NULL;
@@ -141,10 +141,10 @@ cmd_command_prompt_error(struct cmdq_item *item, void *data)
 }
 
 static int
-cmd_command_prompt_callback(void *data, const char *s, int done)
+cmd_command_prompt_callback(struct client *c, void *data, const char *s,
+    int done)
 {
 	struct cmd_command_prompt_cdata	*cdata = data;
-	struct client			*c = cdata->c;
 	struct cmd_list			*cmdlist;
 	struct cmdq_item		*new_item;
 	char				*cause, *new_template, *prompt, *ptr;
@@ -192,7 +192,7 @@ cmd_command_prompt_callback(void *data, const char *s, int done)
 
 	if (!done)
 		free(new_template);
-	if (c->prompt_callbackfn != (void *)&cmd_command_prompt_callback)
+	if (c->prompt_inputcb != cmd_command_prompt_callback)
 		return (1);
 	return (0);
 }

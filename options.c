@@ -114,7 +114,7 @@ options_free(struct options *oo)
 {
 	struct options_entry	*o, *tmp;
 
-	RB_FOREACH_SAFE (o, options_tree, &oo->tree, tmp)
+	RB_FOREACH_SAFE(o, options_tree, &oo->tree, tmp)
 		options_remove(o);
 	free(oo);
 }
@@ -433,7 +433,7 @@ options_match(const char *s, int *idx, int* ambiguous)
 
 	if (*name == '@') {
 		*ambiguous = 0;
-		return (xstrdup(name));
+		return (name);
 	}
 
 	found = NULL;

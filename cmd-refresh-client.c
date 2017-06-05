@@ -34,8 +34,6 @@ const struct cmd_entry cmd_refresh_client_entry = {
 	.args = { "C:St:", 0, 0 },
 	.usage = "[-S] [-C size] " CMD_TARGET_CLIENT_USAGE,
 
-	.tflag = CMD_CLIENT,
-
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_refresh_client_exec
 };
@@ -44,9 +42,12 @@ static enum cmd_retval
 cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args	*args = self->args;
-	struct client	*c = item->state.c;
+	struct client	*c;
 	const char	*size;
 	u_int		 w, h;
+
+	if ((c = cmd_find_client(item, args_get(args, 't'), 0)) == NULL)
+		return (CMD_RETURN_ERROR);
 
 	if (args_has(args, 'C')) {
 		if ((size = args_get(args, 'C')) == NULL) {
@@ -66,8 +67,9 @@ cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 			cmdq_error(item, "not a control client");
 			return (CMD_RETURN_ERROR);
 		}
-		if (tty_set_size(&c->tty, w, h))
-			recalculate_sizes();
+		tty_set_size(&c->tty, w, h);
+		c->flags |= CLIENT_SIZECHANGED;
+		recalculate_sizes();
 	} else if (args_has(args, 'S')) {
 		c->flags |= CLIENT_STATUSFORCE;
 		server_status_client(c);

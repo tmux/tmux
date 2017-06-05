@@ -33,9 +33,7 @@ extern const struct cmd_entry cmd_break_pane_entry;
 extern const struct cmd_entry cmd_capture_pane_entry;
 extern const struct cmd_entry cmd_choose_buffer_entry;
 extern const struct cmd_entry cmd_choose_client_entry;
-extern const struct cmd_entry cmd_choose_session_entry;
 extern const struct cmd_entry cmd_choose_tree_entry;
-extern const struct cmd_entry cmd_choose_window_entry;
 extern const struct cmd_entry cmd_clear_history_entry;
 extern const struct cmd_entry cmd_clock_mode_entry;
 extern const struct cmd_entry cmd_command_prompt_entry;
@@ -122,9 +120,7 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_capture_pane_entry,
 	&cmd_choose_buffer_entry,
 	&cmd_choose_client_entry,
-	&cmd_choose_session_entry,
 	&cmd_choose_tree_entry,
-	&cmd_choose_window_entry,
 	&cmd_clear_history_entry,
 	&cmd_clock_mode_entry,
 	&cmd_command_prompt_entry,
@@ -445,190 +441,6 @@ usage:
 		args_free(args);
 	xasprintf(cause, "usage: %s %s", entry->name, entry->usage);
 	return (NULL);
-}
-
-static int
-cmd_prepare_state_flag(char c, const char *target, enum cmd_entry_flag flag,
-    struct cmdq_item *item)
-{
-	int			 targetflags, error;
-	struct cmd_find_state	*fs = NULL;
-	struct cmd_find_state	 current;
-
-	if (flag == CMD_NONE ||
-	    flag == CMD_CLIENT ||
-	    flag == CMD_CLIENT_CANFAIL)
-		return (0);
-
-	if (c == 't')
-		fs = &item->state.tflag;
-	else if (c == 's')
-		fs = &item->state.sflag;
-
-	if (flag == CMD_SESSION_WITHPANE) {
-		if (target != NULL && target[strcspn(target, ":.")] != '\0')
-			flag = CMD_PANE;
-		else
-			flag = CMD_SESSION_PREFERUNATTACHED;
-	}
-
-	targetflags = 0;
-	switch (flag) {
-	case CMD_SESSION:
-	case CMD_SESSION_CANFAIL:
-	case CMD_SESSION_PREFERUNATTACHED:
-	case CMD_SESSION_WITHPANE:
-		if (flag == CMD_SESSION_CANFAIL)
-			targetflags |= CMD_FIND_QUIET;
-		if (flag == CMD_SESSION_PREFERUNATTACHED)
-			targetflags |= CMD_FIND_PREFER_UNATTACHED;
-		break;
-	case CMD_MOVEW_R:
-		flag = CMD_WINDOW_INDEX;
-		/* FALLTHROUGH */
-	case CMD_WINDOW:
-	case CMD_WINDOW_CANFAIL:
-	case CMD_WINDOW_MARKED:
-	case CMD_WINDOW_INDEX:
-		if (flag == CMD_WINDOW_CANFAIL)
-			targetflags |= CMD_FIND_QUIET;
-		if (flag == CMD_WINDOW_MARKED)
-			targetflags |= CMD_FIND_DEFAULT_MARKED;
-		if (flag == CMD_WINDOW_INDEX)
-			targetflags |= CMD_FIND_WINDOW_INDEX;
-		break;
-	case CMD_PANE:
-	case CMD_PANE_CANFAIL:
-	case CMD_PANE_MARKED:
-		if (flag == CMD_PANE_CANFAIL)
-			targetflags |= CMD_FIND_QUIET;
-		if (flag == CMD_PANE_MARKED)
-			targetflags |= CMD_FIND_DEFAULT_MARKED;
-		break;
-	default:
-		fatalx("unknown %cflag %d", c, flag);
-	}
-	log_debug("%s: flag %c %d %#x", __func__, c, flag, targetflags);
-
-	error = cmd_find_current(&current, item, targetflags);
-	if (error != 0) {
-		if (~targetflags & CMD_FIND_QUIET)
-			return (-1);
-		cmd_find_clear_state(&current, NULL, 0);
-	}
-	if (!cmd_find_empty_state(&current) && !cmd_find_valid_state(&current))
-		fatalx("invalid current state");
-
-	switch (flag) {
-	case CMD_NONE:
-	case CMD_CLIENT:
-	case CMD_CLIENT_CANFAIL:
-		return (0);
-	case CMD_SESSION:
-	case CMD_SESSION_CANFAIL:
-	case CMD_SESSION_PREFERUNATTACHED:
-	case CMD_SESSION_WITHPANE:
-		error = cmd_find_target(fs, &current, item, target,
-		    CMD_FIND_SESSION, targetflags);
-		if (error != 0)
-			goto error;
-		break;
-	case CMD_MOVEW_R:
-		error = cmd_find_target(fs, &current, item, target,
-		    CMD_FIND_SESSION, CMD_FIND_QUIET);
-		if (error == 0)
-			break;
-		/* FALLTHROUGH */
-	case CMD_WINDOW:
-	case CMD_WINDOW_CANFAIL:
-	case CMD_WINDOW_MARKED:
-	case CMD_WINDOW_INDEX:
-		error = cmd_find_target(fs, &current, item, target,
-		    CMD_FIND_WINDOW, targetflags);
-		if (error != 0)
-			goto error;
-		break;
-	case CMD_PANE:
-	case CMD_PANE_CANFAIL:
-	case CMD_PANE_MARKED:
-		error = cmd_find_target(fs, &current, item, target,
-		    CMD_FIND_PANE, targetflags);
-		if (error != 0)
-			goto error;
-		break;
-	default:
-		fatalx("unknown %cflag %d", c, flag);
-	}
-	return (0);
-
-error:
-	if (~targetflags & CMD_FIND_QUIET)
-		return (-1);
-	cmd_find_clear_state(fs, NULL, 0);
-	return (0);
-}
-
-int
-cmd_prepare_state(struct cmd *cmd, struct cmdq_item *item)
-{
-	const struct cmd_entry	*entry = cmd->entry;
-	struct cmd_state	*state = &item->state;
-	char			*tmp;
-	enum cmd_entry_flag	 flag;
-	const char		*s;
-	int			 error;
-
-	tmp = cmd_print(cmd);
-	log_debug("preparing state for %s (client %p)", tmp, item->client);
-	free(tmp);
-
-	state->c = NULL;
-	cmd_find_clear_state(&state->tflag, NULL, 0);
-	cmd_find_clear_state(&state->sflag, NULL, 0);
-
-	flag = cmd->entry->cflag;
-	if (flag == CMD_NONE) {
-		flag = cmd->entry->tflag;
-		if (flag == CMD_CLIENT || flag == CMD_CLIENT_CANFAIL)
-			s = args_get(cmd->args, 't');
-		else
-			s = NULL;
-	} else
-		s = args_get(cmd->args, 'c');
-	switch (flag) {
-	case CMD_CLIENT:
-		state->c = cmd_find_client(item, s, 0);
-		if (state->c == NULL)
-			return (-1);
-		break;
-	default:
-		state->c = cmd_find_client(item, s, 1);
-		break;
-	}
-	log_debug("using client %p", state->c);
-
-	s = args_get(cmd->args, 't');
-	log_debug("preparing -t state: target %s", s == NULL ? "none" : s);
-
-	error = cmd_prepare_state_flag('t', s, entry->tflag, item);
-	if (error != 0)
-		return (error);
-
-	s = args_get(cmd->args, 's');
-	log_debug("preparing -s state: target %s", s == NULL ? "none" : s);
-
-	error = cmd_prepare_state_flag('s', s, entry->sflag, item);
-	if (error != 0)
-		return (error);
-
-	if (!cmd_find_empty_state(&state->tflag) &&
-	    !cmd_find_valid_state(&state->tflag))
-		fatalx("invalid -t state");
-	if (!cmd_find_empty_state(&state->sflag) &&
-	    !cmd_find_valid_state(&state->sflag))
-		fatalx("invalid -s state");
-
-	return (0);
 }
 
 char *

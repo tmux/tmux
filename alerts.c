@@ -64,7 +64,7 @@ alerts_callback(__unused int fd, __unused short events, __unused void *arg)
 		TAILQ_REMOVE(&alerts_list, w, alerts_entry);
 
 		w->flags &= ~WINDOW_ALERTFLAGS;
-		window_remove_ref(w);
+		window_remove_ref(w, __func__);
 	}
 	alerts_fired = 0;
 }
@@ -144,16 +144,18 @@ alerts_queue(struct window *w, int flags)
 		log_debug("@%u alerts flags added %#x", w->id, flags);
 	}
 
-	if (!w->alerts_queued) {
-		w->alerts_queued = 1;
-		TAILQ_INSERT_TAIL(&alerts_list, w, alerts_entry);
-		w->references++;
-	}
+	if (alerts_enabled(w, flags)) {
+		if (!w->alerts_queued) {
+			w->alerts_queued = 1;
+			TAILQ_INSERT_TAIL(&alerts_list, w, alerts_entry);
+			window_add_ref(w, __func__);
+		}
 
-	if (!alerts_fired && alerts_enabled(w, flags)) {
-		log_debug("alerts check queued (by @%u)", w->id);
-		event_once(-1, EV_TIMEOUT, alerts_callback, NULL, NULL);
-		alerts_fired = 1;
+		if (!alerts_fired) {
+			log_debug("alerts check queued (by @%u)", w->id);
+			event_once(-1, EV_TIMEOUT, alerts_callback, NULL, NULL);
+			alerts_fired = 1;
+		}
 	}
 }
 
@@ -178,7 +180,7 @@ alerts_check_bell(struct window *w)
 		s = wl->session;
 		if (s->curw != wl) {
 			wl->flags |= WINLINK_BELL;
-			notify_winlink("alert-bell", s, wl);
+			notify_winlink("alert-bell", wl);
 		}
 
 		if (s->flags & SESSION_ALERTED)
@@ -239,7 +241,7 @@ alerts_check_activity(struct window *w)
 			continue;
 
 		wl->flags |= WINLINK_ACTIVITY;
-		notify_winlink("alert-activity", s, wl);
+		notify_winlink("alert-activity", wl);
 
 		if (s->flags & SESSION_ALERTED)
 			continue;
@@ -275,7 +277,7 @@ alerts_check_silence(struct window *w)
 		if (s->curw == wl)
 			continue;
 		wl->flags |= WINLINK_SILENCE;
-		notify_winlink("alert-silence", s, wl);
+		notify_winlink("alert-silence", wl);
 
 		if (s->flags & SESSION_ALERTED)
 			continue;

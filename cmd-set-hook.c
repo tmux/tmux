@@ -36,7 +36,7 @@ const struct cmd_entry cmd_set_hook_entry = {
 	.args = { "gt:u", 1, 2 },
 	.usage = "[-gu] " CMD_TARGET_SESSION_USAGE " hook-name [command]",
 
-	.tflag = CMD_SESSION_CANFAIL,
+	.target = { 't', CMD_FIND_SESSION, CMD_FIND_CANFAIL },
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_set_hook_exec
@@ -49,7 +49,7 @@ const struct cmd_entry cmd_show_hooks_entry = {
 	.args = { "gt:", 0, 1 },
 	.usage = "[-g] " CMD_TARGET_SESSION_USAGE,
 
-	.tflag = CMD_SESSION,
+	.target = { 't', CMD_FIND_SESSION, 0 },
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_set_hook_exec
@@ -68,7 +68,7 @@ cmd_set_hook_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'g'))
 		hooks = global_hooks;
 	else {
-		if (item->state.tflag.s == NULL) {
+		if (item->target.s == NULL) {
 			target = args_get(args, 't');
 			if (target != NULL)
 				cmdq_error(item, "no such session: %s", target);
@@ -76,7 +76,7 @@ cmd_set_hook_exec(struct cmd *self, struct cmdq_item *item)
 				cmdq_error(item, "no current session");
 			return (CMD_RETURN_ERROR);
 		}
-		hooks = item->state.tflag.s->hooks;
+		hooks = item->target.s->hooks;
 	}
 
 	if (self->entry == &cmd_show_hooks_entry) {

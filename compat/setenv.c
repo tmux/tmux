@@ -15,13 +15,15 @@
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <sys/types.h>
+
 #include <stdlib.h>
 #include <string.h>
 
 #include "compat.h"
 
 int
-setenv(const char *name, const char *value, unused int overwrite)
+setenv(const char *name, const char *value, __unused int overwrite)
 {
 	char	*newval;
 

@@ -24,7 +24,8 @@
 
 #include "tmux.h"
 
-static struct screen *window_clock_init(struct window_pane *);
+static struct screen *window_clock_init(struct window_pane *,
+		    struct cmd_find_state *, struct args *);
 static void	window_clock_free(struct window_pane *);
 static void	window_clock_resize(struct window_pane *, u_int, u_int);
 static void	window_clock_key(struct window_pane *, struct client *,
@@ -34,6 +35,8 @@ static void	window_clock_timer_callback(int, short, void *);
 static void	window_clock_draw_screen(struct window_pane *);
 
 const struct window_mode window_clock_mode = {
+	.name = "clock-mode",
+
 	.init = window_clock_init,
 	.free = window_clock_free,
 	.resize = window_clock_resize,
@@ -143,7 +146,8 @@ window_clock_timer_callback(__unused int fd, __unused short events, void *arg)
 }
 
 static struct screen *
-window_clock_init(struct window_pane *wp)
+window_clock_init(struct window_pane *wp, __unused struct cmd_find_state *fs,
+    __unused struct args *args)
 {
 	struct window_clock_mode_data	*data;
 	struct screen			*s;

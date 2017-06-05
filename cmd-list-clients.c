@@ -42,7 +42,7 @@ const struct cmd_entry cmd_list_clients_entry = {
 	.args = { "F:t:", 0, 0 },
 	.usage = "[-F format] " CMD_TARGET_SESSION_USAGE,
 
-	.tflag = CMD_SESSION,
+	.target = { 't', CMD_FIND_SESSION, 0 },
 
 	.flags = CMD_READONLY|CMD_AFTERHOOK,
 	.exec = cmd_list_clients_exec
@@ -60,7 +60,7 @@ cmd_list_clients_exec(struct cmd *self, struct cmdq_item *item)
 	char			*line;
 
 	if (args_has(args, 't'))
-		s = item->state.tflag.s;
+		s = item->target.s;
 	else
 		s = NULL;
 
@@ -72,7 +72,7 @@ cmd_list_clients_exec(struct cmd *self, struct cmdq_item *item)
 		if (c->session == NULL || (s != NULL && s != c->session))
 			continue;
 
-		ft = format_create(item, FORMAT_NONE, 0);
+		ft = format_create(item->client, item, FORMAT_NONE, 0);
 		format_add(ft, "line", "%u", idx);
 		format_defaults(ft, c, NULL, NULL, NULL);
 

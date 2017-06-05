@@ -18,6 +18,7 @@
 #define COMPAT_H
 
 #include <sys/types.h>
+#include <sys/ioctl.h>
 #include <sys/uio.h>
 
 #include <limits.h>
@@ -283,9 +284,15 @@ int		 b64_ntop(const char *, size_t, char *, size_t);
 int		 b64_pton(const char *, u_char *, size_t);
 #endif
 
+#ifndef HAVE_FDFORKPTY
+/* fdforkpty.c */
+int		 getptmfd(void);
+pid_t		 fdforkpty(int, int *, char *, struct termios *,
+		     struct winsize *);
+#endif
+
 #ifndef HAVE_FORKPTY
 /* forkpty.c */
-#include <sys/ioctl.h>
 pid_t		 forkpty(int *, char *, struct termios *, struct winsize *);
 #endif
 
@@ -315,6 +322,11 @@ int		 unsetenv(const char *);
 void		 cfmakeraw(struct termios *);
 #endif
 
+#ifndef HAVE_FREEZERO
+/* freezero.c */
+void		 freezero(void *, size_t);
+#endif
+
 #ifndef HAVE_REALLOCARRAY
 /* reallocarray.c */
 void		*reallocarray(void *, size_t, size_t);
@@ -332,9 +344,7 @@ int		 utf8proc_mbtowc(wchar_t *, const char *, size_t);
 int		 utf8proc_wctomb(char *, wchar_t);
 #endif
 
-#ifdef HAVE_GETOPT
-#include <getopt.h>
-#else
+#ifndef HAVE_GETOPT
 /* getopt.c */
 extern int	BSDopterr;
 extern int	BSDoptind;

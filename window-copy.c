@@ -27,7 +27,8 @@
 static const char *window_copy_key_table(struct window_pane *);
 static void	window_copy_command(struct window_pane *, struct client *,
 		    struct session *, struct args *, struct mouse_event *);
-static struct screen *window_copy_init(struct window_pane *);
+static struct screen *window_copy_init(struct window_pane *,
+		    struct cmd_find_state *, struct args *);
 static void	window_copy_free(struct window_pane *);
 static int	window_copy_pagedown(struct window_pane *, int);
 static void	window_copy_next_paragraph(struct window_pane *);
@@ -105,6 +106,8 @@ static void	window_copy_move_mouse(struct mouse_event *);
 static void	window_copy_drag_update(struct client *, struct mouse_event *);
 
 const struct window_mode window_copy_mode = {
+	.name = "copy-mode",
+
 	.init = window_copy_init,
 	.free = window_copy_free,
 	.resize = window_copy_resize,
@@ -185,7 +188,8 @@ struct window_copy_mode_data {
 };
 
 static struct screen *
-window_copy_init(struct window_pane *wp)
+window_copy_init(struct window_pane *wp, __unused struct cmd_find_state *fs,
+    __unused struct args *args)
 {
 	struct window_copy_mode_data	*data;
 	struct screen			*s;
@@ -206,8 +210,13 @@ window_copy_init(struct window_pane *wp)
 	data->rectflag = 0;
 	data->scroll_exit = 0;
 
-	data->searchtype = WINDOW_COPY_OFF;
-	data->searchstr = NULL;
+	if (wp->searchstr != NULL) {
+		data->searchtype = WINDOW_COPY_SEARCHUP;
+		data->searchstr = xstrdup(wp->searchstr);
+	} else {
+		data->searchtype = WINDOW_COPY_OFF;
+		data->searchstr = NULL;
+	}
 	data->searchmark = NULL;
 	data->searchx = data->searchy = data->searcho = -1;
 
@@ -314,7 +323,7 @@ window_copy_vadd(struct window_pane *wp, const char *fmt, va_list ap)
 		 * (so it's on a new line).
 		 */
 		screen_write_carriagereturn(&back_ctx);
-		screen_write_linefeed(&back_ctx, 0);
+		screen_write_linefeed(&back_ctx, 0, 8);
 	} else
 		data->backing_written = 1;
 	old_cy = backing->cy;
@@ -1132,6 +1141,9 @@ window_copy_search(struct window_pane *wp, int direction, int moveflag)
 	u_int				 fx, fy, endline;
 	int				 wrapflag, cis, found;
 
+	free(wp->searchstr);
+	wp->searchstr = xstrdup(data->searchstr);
+
 	fx = data->cx;
 	fy = screen_hsize(data->backing) - data->oy + data->cy;
 
@@ -1448,7 +1460,7 @@ window_copy_adjust_selection(struct window_pane *wp, u_int *selx, u_int *sely)
 	}
 
 	*selx = sx;
-	*sely = screen_hsize(s) + sy;
+	*sely = sy;
 	return (relpos);
 }
 
@@ -1617,7 +1629,7 @@ window_copy_copy_buffer(struct window_pane *wp, const char *bufname, void *buf,
 {
 	struct screen_write_ctx	ctx;
 
-	if (options_get_number(global_options, "set-clipboard")) {
+	if (options_get_number(global_options, "set-clipboard") != 0) {
 		screen_write_start(&ctx, wp, NULL);
 		screen_write_setselection(&ctx, buf, len);
 		screen_write_stop(&ctx);
@@ -1641,7 +1653,7 @@ window_copy_copy_pipe(struct window_pane *wp, struct session *s,
 		return;
 	expanded = format_single(NULL, arg, NULL, s, NULL, wp);
 
-	job = job_run(expanded, s, NULL, NULL, NULL, NULL);
+	job = job_run(expanded, s, NULL, NULL, NULL, NULL, NULL);
 	bufferevent_write(job->event, buf, len);
 
 	free(expanded);
@@ -1674,7 +1686,7 @@ window_copy_append_selection(struct window_pane *wp, const char *bufname)
 	if (buf == NULL)
 		return;
 
-	if (options_get_number(global_options, "set-clipboard")) {
+	if (options_get_number(global_options, "set-clipboard") != 0) {
 		screen_write_start(&ctx, wp, NULL);
 		screen_write_setselection(&ctx, buf, len);
 		screen_write_stop(&ctx);

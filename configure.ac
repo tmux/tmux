@@ -35,7 +35,7 @@ AC_USE_SYSTEM_EXTENSIONS
 test "$sysconfdir" = '${prefix}/etc' && sysconfdir=/etc
 
 # Is this --enable-debug?
-enable_debug=yes
+test "x$VERSION" = xmaster && enable_debug=yes
 AC_ARG_ENABLE(
 	debug,
 	AC_HELP_STRING(--enable-debug, enable debug build flags),
@@ -104,7 +104,6 @@ AC_REPLACE_FUNCS([ \
 	closefrom \
 	explicit_bzero \
 	fgetln \
-	fparseln \
 	freezero \
 	getdtablecount \
 	getprogname \
@@ -454,7 +453,21 @@ else
 	AC_LIBOBJ(getopt)
 fi
 
-# Look for forkpty in libutil. compat/forkpty-*.c is linked if not found.
+# Look for fparseln in libutil.
+AC_SEARCH_LIBS(fparseln, util, found_fparseln=yes, found_fparseln=no)
+if test "x$found_fparseln" = xyes; then
+	AC_DEFINE(HAVE_FPARSELN)
+else
+	AC_LIBOBJ(fparseln)
+fi
+
+# Look for fdforkpty and forkpty in libutil.
+AC_SEARCH_LIBS(fdforkpty, util, found_fdforkpty=yes, found_fdforkpty=no)
+if test "x$found_fdforkpty" = xyes; then
+	AC_DEFINE(HAVE_FDFORKPTY)
+else
+	AC_LIBOBJ(fdforkpty)
+fi
 AC_SEARCH_LIBS(forkpty, util, found_forkpty=yes, found_forkpty=no)
 if test "x$found_forkpty" = xyes; then
 	AC_DEFINE(HAVE_FORKPTY)

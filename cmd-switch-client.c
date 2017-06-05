@@ -38,8 +38,7 @@ const struct cmd_entry cmd_switch_client_entry = {
 	.usage = "[-Elnpr] [-c target-client] [-t target-session] "
 		 "[-T key-table]",
 
-	.cflag = CMD_CLIENT,
-	.tflag = CMD_SESSION_WITHPANE,
+	/* -t is special */
 
 	.flags = CMD_READONLY,
 	.exec = cmd_switch_client_exec
@@ -49,12 +48,31 @@ static enum cmd_retval
 cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
-	struct cmd_state	*state = &item->state;
-	struct client		*c = state->c;
-	struct session		*s = item->state.tflag.s;
+	const char		*tflag = args_get(args, 't');
+	enum cmd_find_type	 type;
+	int			 flags;
+	struct client		*c;
+	struct session		*s;
+	struct winlink		*wl;
 	struct window_pane	*wp;
 	const char		*tablename;
 	struct key_table	*table;
+
+	if ((c = cmd_find_client(item, args_get(args, 'c'), 0)) == NULL)
+		return (CMD_RETURN_ERROR);
+
+	if (tflag != NULL && tflag[strcspn(tflag, ":.")] != '\0') {
+		type = CMD_FIND_PANE;
+		flags = 0;
+	} else {
+		type = CMD_FIND_SESSION;
+		flags = CMD_FIND_PREFER_UNATTACHED;
+	}
+	if (cmd_find_target(&item->target, item, tflag, type, flags) != 0)
+		return (CMD_RETURN_ERROR);
+	s = item->target.s;
+	wl = item->target.wl;
+	wp = item->target.wp;
 
 	if (args_has(args, 'r'))
 		c->flags ^= CLIENT_READONLY;
@@ -94,11 +112,11 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 	} else {
 		if (item->client == NULL)
 			return (CMD_RETURN_NORMAL);
-		if (state->tflag.wl != NULL) {
-			wp = state->tflag.wp;
+		if (wl != NULL) {
 			if (wp != NULL)
 				window_set_active_pane(wp->window, wp);
-			session_set_current(s, state->tflag.wl);
+			session_set_current(s, wl);
+			cmd_find_from_session(&item->shared->current, s);
 		}
 	}
 
@@ -108,9 +126,10 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 	if (c->session != NULL && c->session != s)
 		c->last_session = c->session;
 	c->session = s;
-	if (!item->repeat)
+	if (~item->shared->flags & CMDQ_SHARED_REPEAT)
 		server_client_set_key_table(c, NULL);
 	status_timer_start(c);
+	notify_client("client-session-changed", c);
 	session_update_activity(s, NULL);
 	gettimeofday(&s->last_attached_time, NULL);
 

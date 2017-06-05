@@ -84,7 +84,7 @@ key_bindings_unref_table(struct key_table *table)
 }
 
 void
-key_bindings_add(const char *name, key_code key, int can_repeat,
+key_bindings_add(const char *name, key_code key, int repeat,
     struct cmd_list *cmdlist)
 {
 	struct key_table	*table;
@@ -92,7 +92,7 @@ key_bindings_add(const char *name, key_code key, int can_repeat,
 
 	table = key_bindings_get_table(name, 1);
 
-	bd_find.key = key;
+	bd_find.key = (key & ~KEYC_XTERM);
 	bd = RB_FIND(key_bindings, &table->key_bindings, &bd_find);
 	if (bd != NULL) {
 		RB_REMOVE(key_bindings, &table->key_bindings, bd);
@@ -100,11 +100,12 @@ key_bindings_add(const char *name, key_code key, int can_repeat,
 		free(bd);
 	}
 
-	bd = xmalloc(sizeof *bd);
+	bd = xcalloc(1, sizeof *bd);
 	bd->key = key;
 	RB_INSERT(key_bindings, &table->key_bindings, bd);
 
-	bd->can_repeat = can_repeat;
+	if (repeat)
+		bd->flags |= KEY_BINDING_REPEAT;
 	bd->cmdlist = cmdlist;
 }
 
@@ -118,7 +119,7 @@ key_bindings_remove(const char *name, key_code key)
 	if (table == NULL)
 		return;
 
-	bd_find.key = key;
+	bd_find.key = (key & ~KEYC_XTERM);
 	bd = RB_FIND(key_bindings, &table->key_bindings, &bd_find);
 	if (bd == NULL)
 		return;
@@ -195,9 +196,9 @@ key_bindings_init(void)
 		"bind p previous-window",
 		"bind q display-panes",
 		"bind r refresh-client",
-		"bind s choose-tree",
+		"bind s choose-tree -s",
 		"bind t clock-mode",
-		"bind w choose-window",
+		"bind w choose-tree -w",
 		"bind x confirm-before -p\"kill-pane #P? (y/n)\" kill-pane",
 		"bind z resize-pane -Z",
 		"bind { swap-pane -U",
@@ -243,8 +244,8 @@ key_bindings_init(void)
 		"bind -Tcopy-mode C-k send -X copy-end-of-line",
 		"bind -Tcopy-mode C-n send -X cursor-down",
 		"bind -Tcopy-mode C-p send -X cursor-up",
-		"bind -Tcopy-mode C-r command-prompt -ip'search up' 'send -X search-backward-incremental \"%%%\"'",
-		"bind -Tcopy-mode C-s command-prompt -ip'search down' 'send -X search-forward-incremental \"%%%\"'",
+		"bind -Tcopy-mode C-r command-prompt -ip'search up' -I'#{pane_search_string}' 'send -X search-backward-incremental \"%%%\"'",
+		"bind -Tcopy-mode C-s command-prompt -ip'search down' -I'#{pane_search_string}' 'send -X search-forward-incremental \"%%%\"'",
 		"bind -Tcopy-mode C-v send -X page-down",
 		"bind -Tcopy-mode C-w send -X copy-selection-and-cancel",
 		"bind -Tcopy-mode Escape send -X cancel",
@@ -399,11 +400,11 @@ key_bindings_read_only(struct cmdq_item *item, __unused void *data)
 }
 
 void
-key_bindings_dispatch(struct key_binding *bd, struct client *c,
-    struct mouse_event *m, struct cmd_find_state *fs)
+key_bindings_dispatch(struct key_binding *bd, struct cmdq_item *item,
+    struct client *c, struct mouse_event *m, struct cmd_find_state *fs)
 {
 	struct cmd		*cmd;
-	struct cmdq_item	*item;
+	struct cmdq_item	*new_item;
 	int			 readonly;
 
 	readonly = 1;
@@ -412,10 +413,14 @@ key_bindings_dispatch(struct key_binding *bd, struct client *c,
 			readonly = 0;
 	}
 	if (!readonly && (c->flags & CLIENT_READONLY))
-		cmdq_append(c, cmdq_get_callback(key_bindings_read_only, NULL));
+		new_item = cmdq_get_callback(key_bindings_read_only, NULL);
 	else {
-		item = cmdq_get_command(bd->cmdlist, fs, m, 0);
-		item->repeat = bd->can_repeat;
-		cmdq_append(c, item);
+		new_item = cmdq_get_command(bd->cmdlist, fs, m, 0);
+		if (bd->flags & KEY_BINDING_REPEAT)
+			new_item->shared->flags |= CMDQ_SHARED_REPEAT;
 	}
+	if (item != NULL)
+		cmdq_insert_after(item, new_item);
+	else
+		cmdq_append(c, new_item);
 }

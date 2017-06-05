@@ -35,8 +35,8 @@ const struct cmd_entry cmd_move_window_entry = {
 	.args = { "adkrs:t:", 0, 0 },
 	.usage = "[-dkr] " CMD_SRCDST_WINDOW_USAGE,
 
-	.sflag = CMD_WINDOW,
-	.tflag = CMD_MOVEW_R,
+	.source = { 's', CMD_FIND_WINDOW, 0 },
+	/* -t is special */
 
 	.flags = 0,
 	.exec = cmd_move_window_exec
@@ -49,8 +49,8 @@ const struct cmd_entry cmd_link_window_entry = {
 	.args = { "adks:t:", 0, 0 },
 	.usage = "[-dk] " CMD_SRCDST_WINDOW_USAGE,
 
-	.sflag = CMD_WINDOW,
-	.tflag = CMD_WINDOW_INDEX,
+	.source = { 's', CMD_FIND_WINDOW, 0 },
+	/* -t is special */
 
 	.flags = 0,
 	.exec = cmd_move_window_exec
@@ -60,18 +60,31 @@ static enum cmd_retval
 cmd_move_window_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args	*args = self->args;
-	struct session	*src = item->state.sflag.s;
-	struct session	*dst = item->state.tflag.s;
-	struct winlink	*wl = item->state.sflag.wl;
+	const char	*tflag = args_get(args, 't');
+	struct session	*src;
+	struct session	*dst;
+	struct winlink	*wl;
 	char		*cause;
-	int		 idx = item->state.tflag.idx, kflag, dflag, sflag;
+	int		 idx, kflag, dflag, sflag;
 
 	if (args_has(args, 'r')) {
-		session_renumber_windows(dst);
+		if (cmd_find_target(&item->target, item, tflag,
+		    CMD_FIND_SESSION, CMD_FIND_QUIET) != 0)
+			return (CMD_RETURN_ERROR);
+
+		session_renumber_windows(item->target.s);
 		recalculate_sizes();
+		server_status_session(item->target.s);
 
 		return (CMD_RETURN_NORMAL);
 	}
+	if (cmd_find_target(&item->target, item, tflag, CMD_FIND_WINDOW,
+	    CMD_FIND_WINDOW_INDEX) != 0)
+		return (CMD_RETURN_ERROR);
+	src = item->source.s;
+	dst = item->target.s;
+	wl = item->source.wl;
+	idx = item->target.idx;
 
 	kflag = args_has(self->args, 'k');
 	dflag = args_has(self->args, 'd');

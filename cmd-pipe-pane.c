@@ -43,7 +43,7 @@ const struct cmd_entry cmd_pipe_pane_entry = {
 	.args = { "ot:", 0, 1 },
 	.usage = "[-o] " CMD_TARGET_PANE_USAGE " [command]",
 
-	.tflag = CMD_PANE,
+	.target = { 't', CMD_FIND_PANE, 0 },
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_pipe_pane_exec
@@ -53,10 +53,10 @@ static enum cmd_retval
 cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
-	struct client		*c = item->state.c;
-	struct window_pane	*wp = item->state.tflag.wp;
-	struct session		*s = item->state.tflag.s;
-	struct winlink		*wl = item->state.tflag.wl;
+	struct client		*c = cmd_find_client(item, NULL, 1);
+	struct window_pane	*wp = item->target.wp;
+	struct session		*s = item->target.s;
+	struct winlink		*wl = item->target.wl;
 	char			*cmd;
 	int			 old_fd, pipe_fd[2], null_fd;
 	struct format_tree	*ft;
@@ -89,7 +89,7 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	/* Expand the command. */
-	ft = format_create(item, FORMAT_NONE, 0);
+	ft = format_create(item->client, item, FORMAT_NONE, 0);
 	format_defaults(ft, c, s, wl, wp);
 	cmd = format_expand_time(ft, args->argv[0], time(NULL));
 	format_free(ft);

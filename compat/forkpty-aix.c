@@ -29,7 +29,8 @@ void fatal(const char *, ...);
 void fatalx(const char *, ...);
 
 pid_t
-forkpty(int *master, unused char *name, struct termios *tio, struct winsize *ws)
+forkpty(int *master, __unused char *name, struct termios *tio,
+    struct winsize *ws)
 {
 	int	slave = -1, fd, pipe_fd[2];
 	char   *path, dummy;

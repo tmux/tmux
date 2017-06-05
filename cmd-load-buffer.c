@@ -127,6 +127,7 @@ error:
 	free(pdata);
 	if (f != NULL)
 		fclose(f);
+	free(file);
 	return (CMD_RETURN_ERROR);
 }
 

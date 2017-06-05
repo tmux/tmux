@@ -98,7 +98,6 @@ server_redraw_window(struct window *w)
 		if (c->session != NULL && c->session->curw->window == w)
 			server_redraw_client(c);
 	}
-	w->flags |= WINDOW_REDRAW;
 }
 
 void
@@ -301,7 +300,7 @@ server_destroy_pane(struct window_pane *wp, int notify)
 		screen_write_start(&ctx, wp, &wp->base);
 		screen_write_scrollregion(&ctx, 0, screen_size_y(ctx.s) - 1);
 		screen_write_cursormove(&ctx, 0, screen_size_y(ctx.s) - 1);
-		screen_write_linefeed(&ctx, 1);
+		screen_write_linefeed(&ctx, 1, 8);
 		memcpy(&gc, &grid_default_cell, sizeof gc);
 		gc.attr |= GRID_ATTR_BRIGHT;
 		screen_write_puts(&ctx, &gc, "Pane is dead");

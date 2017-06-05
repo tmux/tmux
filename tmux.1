@@ -199,7 +199,6 @@ characters to the terminal it is running (if not, they are replaced by
 .Ql _ ) .
 .It Fl v
 Request verbose logging.
-This option may be specified multiple times for increasing verbosity.
 Log messages will be saved into
 .Pa tmux-client-PID.log
 and
@@ -211,6 +210,22 @@ is the PID of the server or client process.
 Report the
 .Nm
 version.
+.Pp
+If
+.Fl v
+is specified twice, an additional
+.Pa tmux-out-PID.log
+file is generated with a copy of everything
+.Nm
+writes to the terminal.
+.Pp
+The
+.Dv SIGUSR2
+signal may be sent to the
+.Nm
+server process to toggle logging between on (as if
+.Fl v
+was given) and off.
 .It Ar command Op Ar flags
 This specifies one of a set of commands used to control
 .Nm ,
@@ -833,13 +848,13 @@ is given.
 and
 .Ar shell-command
 are the name of and shell command to execute in the initial window.
-If
-.Fl d
-is used,
+With
+.Fl d ,
+the initial size is 80 x 24;
 .Fl x
 and
 .Fl y
-specify the size of the initial window.
+can be used to specify a different size.
 .Pp
 If run from a terminal, any
 .Xr termios 4
@@ -1343,136 +1358,76 @@ the end of the visible pane.
 The default is to capture only the visible contents of the pane.
 .It Xo
 .Ic choose-client
-.Op Fl F Ar format
-.Op Fl t Ar target-window
+.Op Fl t Ar target-pane
 .Op Ar template
 .Xc
-Put a window into client choice mode, allowing a client to be selected
-interactively from a list.
+Put a pane into client mode, allowing a client to be selected interactively from
+a list.
+The following keys may be used in client mode:
+.Bl -column "Key" "Function" -offset indent
+.It Sy "Key" Ta Sy "Function"
+.It Li "Enter" Ta "Choose selected client"
+.It Li "Up" Ta "Select previous client"
+.It Li "Down" Ta "Select next client"
+.It Li "t" Ta "Toggle if client is tagged"
+.It Li "T" Ta "Tag no clients"
+.It Li "C-t" Ta "Tag all clients"
+.It Li "d" Ta "Detach selected client"
+.It Li "D" Ta "Detach tagged clients"
+.It Li "x" Ta "Detach and HUP selected client"
+.It Li "X" Ta "Detach and HUP tagged clients"
+.It Li "z" Ta "Suspend selected client"
+.It Li "Z" Ta "Suspend tagged clients"
+.It Li "O" Ta "Change sort order"
+.It Li "q" Ta "Exit mode"
+.El
+.Pp
 After a client is chosen,
 .Ql %%
-is replaced by the client
-.Xr pty 4
-path in
+is replaced by the client name in
 .Ar template
 and the result executed as a command.
 If
 .Ar template
 is not given, "detach-client -t '%%'" is used.
-For the meaning of the
-.Fl F
-flag, see the
-.Sx FORMATS
-section.
+.Pp
 This command works only if at least one client is attached.
 .It Xo
-.Ic choose-session
-.Op Fl F Ar format
-.Op Fl t Ar target-window
+.Ic choose-tree
+.Op Fl sw
+.Op Fl t Ar target-pane
 .Op Ar template
 .Xc
-Put a window into session choice mode, where a session may be selected
+Put a pane into tree mode, where a session, window or pane may be chosen
 interactively from a list.
-When one is chosen,
+.Fl s
+starts with sessions collapsed and
+.Fl w
+with windows collapsed.
+The following keys may be used in tree mode:
+.Bl -column "Key" "Function" -offset indent
+.It Sy "Key" Ta Sy "Function"
+.It Li "Enter" Ta "Choose selected item"
+.It Li "Up" Ta "Select previous item"
+.It Li "Down" Ta "Select next item"
+.It Li "t" Ta "Toggle if item is tagged"
+.It Li "T" Ta "Tag no items"
+.It Li "C-t" Ta "Tag all items"
+.It Li "\&:" Ta "Run a command for each tagged item"
+.It Li "f" Ta "Enter a format to filter items"
+.It Li "O" Ta "Change sort order"
+.It Li "q" Ta "Exit mode"
+.El
+.Pp
+After a session, window or pane is chosen,
 .Ql %%
-is replaced by the session name in
+is replaced by the target in
 .Ar template
 and the result executed as a command.
 If
 .Ar template
 is not given, "switch-client -t '%%'" is used.
-For the meaning of the
-.Fl F
-flag, see the
-.Sx FORMATS
-section.
-This command works only if at least one client is attached.
-.It Xo
-.Ic choose-tree
-.Op Fl suw
-.Op Fl b Ar session-template
-.Op Fl c Ar window-template
-.Op Fl S Ar format
-.Op Fl W Ar format
-.Op Fl t Ar target-window
-.Xc
-Put a window into tree choice mode, where either sessions or windows may be
-selected interactively from a list.
-By default, windows belonging to a session are indented to show their
-relationship to a session.
 .Pp
-Note that the
-.Ic choose-window
-and
-.Ic choose-session
-commands are wrappers around
-.Ic choose-tree .
-.Pp
-If
-.Fl s
-is given, will show sessions.
-If
-.Fl w
-is given, will show windows.
-.Pp
-By default, the tree is collapsed and sessions must be expanded to windows
-with the right arrow key.
-The
-.Fl u
-option will start with all sessions expanded instead.
-.Pp
-If
-.Fl b
-is given, will override the default session command.
-Note that
-.Ql %%
-can be used and will be replaced with the session name.
-The default option if not specified is "switch-client -t '%%'".
-If
-.Fl c
-is given, will override the default window command.
-Like
-.Fl b ,
-.Ql %%
-can be used and will be replaced with the session name and window index.
-When a window is chosen from the list, the session command is run before the
-window command.
-.Pp
-.Fl S
-uses
-.Ar format
-instead of the default session
-format and
-.Fl W
-instead of the default window format.
-For the meaning of
-.Ar format ,
-see the
-.Sx FORMATS
-section.
-.Pp
-This command works only if at least one client is attached.
-.It Xo
-.Ic choose-window
-.Op Fl F Ar format
-.Op Fl t Ar target-window
-.Op Ar template
-.Xc
-Put a window into window choice mode, where a window may be chosen
-interactively from a list.
-After a window is selected,
-.Ql %%
-is replaced by the session name and window index in
-.Ar template
-and the result executed as a command.
-If
-.Ar template
-is not given, "select-window -t '%%'" is used.
-For the meaning of the
-.Fl F
-flag, see the
-.Sx FORMATS
-section.
 This command works only if at least one client is attached.
 .It Xo
 .Ic display-panes
@@ -1502,8 +1457,7 @@ The default
 is "select-pane -t '%%'".
 .It Xo Ic find-window
 .Op Fl CNT
-.Op Fl F Ar format
-.Op Fl t Ar target-window
+.Op Fl t Ar target-pane
 .Ar match-string
 .Xc
 .D1 (alias: Ic findw )
@@ -1521,13 +1475,7 @@ matches only the window name and
 matches only the window title.
 The default is
 .Fl CNT .
-If only one window is matched, it'll be automatically selected,
-otherwise a choice list is shown.
-For the meaning of the
-.Fl F
-flag, see the
-.Sx FORMATS
-section.
+.Pp
 This command works only if at least one client is attached.
 .It Xo Ic join-pane
 .Op Fl bdhv
@@ -2335,7 +2283,7 @@ abc123
 Commands which set options are as follows:
 .Bl -tag -width Ds
 .It Xo Ic set-option
-.Op Fl agoqsuw
+.Op Fl aFgoqsuw
 .Op Fl t Ar target-session | Ar target-window
 .Ar option Ar value
 .Xc
@@ -2351,6 +2299,8 @@ otherwise a session option.
 If
 .Fl g
 is given, the global session or window option is set.
+.Fl F
+expands formats in the option value.
 The
 .Fl u
 flag unsets an option, so a session inherits the option from the global
@@ -2467,17 +2417,34 @@ Set the number of error or information messages to save in the message log for
 each client.
 The default is 100.
 .It Xo Ic set-clipboard
-.Op Ic on | off
+.Op Ic on | external | off
 .Xc
 Attempt to set the terminal clipboard content using the
 \ee]52;...\e007
 .Xr xterm 1
-escape sequences.
-This option is on by default if there is an
+escape sequences, if there is an
 .Em \&Ms
 entry in the
 .Xr terminfo 5
-description for the client terminal.
+description.
+If set to
+.Ic on ,
+.Nm
+will both accept the escape sequence to create a buffer and attempt to set
+the terminal clipboard.
+If set to
+.Ic external ,
+.Nm
+will attempt to set the terminal clipboard but ignore attempts
+by applications to set
+.Nm
+buffers.
+If
+.Ic off ,
+.Nm
+will neither accept the clipboard escape sequence nor attempt to set the
+clipboard.
+.Pp
 Note that this feature needs to be enabled in
 .Xr xterm 1
 by setting the resource:
@@ -2901,7 +2868,7 @@ The default is
 .Ql \ -_@ .
 .El
 .It Xo Ic set-window-option
-.Op Fl agoqu
+.Op Fl aFgoqu
 .Op Fl t Ar target-window
 .Ar option Ar value
 .Xc
@@ -2909,6 +2876,7 @@ The default is
 Set a window option.
 The
 .Fl a ,
+.Fl F ,
 .Fl g ,
 .Fl o ,
 .Fl q
@@ -3199,7 +3167,6 @@ will generate
 .Xr xterm 1 -style
 function key sequences; these have a number included to indicate modifiers such
 as Shift, Alt or Ctrl.
-The default is off.
 .El
 .It Xo Ic show-options
 .Op Fl gqsvw
@@ -3432,20 +3399,39 @@ is enabled, or
 .Ql no
 if not.
 .Pp
-Simple comparisons may be expressed by prefixing two comma-separated
+Comparisons may be expressed by prefixing two comma-separated
 alternatives by
 .Ql ==
 or
 .Ql !=
 and a colon.
 For example
-.Ql #{==,#{host},myhost}
+.Ql #{==:#{host},myhost}
 will be replaced by
 .Ql 1
 if running on
 .Ql myhost ,
 otherwise by
-.Ql 0.
+.Ql 0 .
+An
+.Ql m
+specifies an
+.Xr fnmatch 3
+comparison where the first argument is the pattern and the second the string to
+compare, for example
+.Ql #{m:*foo*,#{host}} .
+.Ql ||
+and
+.Ql &&
+evaluate to true if either or both of two comma-separated alternatives are
+true, for example
+.Ql #{||,#{pane_in_mode},#{alternate_on}} .
+A
+.Ql C
+performs a search for an
+.Xr fnmatch 3
+pattern in the pane content and evaluates to zero if not found, or a line
+number if found.
 .Pp
 A limit may be placed on the length of the resultant string by prefixing it
 by an
@@ -3494,6 +3480,8 @@ does not wait for
 .Ql #()
 commands to finish; instead, the previous result from running the same command is used,
 or a placeholder if the command has not been run before.
+If the command hasn't exited, the most recent line of output will be used, but the status
+line will not be updated more than once a second.
 Commands are executed with the
 .Nm
 global environment set (see the
@@ -3512,6 +3500,7 @@ The following variables are available, where appropriate:
 .It Li "client_activity" Ta "" Ta "Integer time client last had activity"
 .It Li "client_created" Ta "" Ta "Integer time client created"
 .It Li "client_control_mode" Ta "" Ta "1 if client is in control mode"
+.It Li "client_discarded" Ta "" Ta "Bytes discarded when client behind"
 .It Li "client_height" Ta "" Ta "Height of client"
 .It Li "client_key_table" Ta "" Ta "Current key table"
 .It Li "client_last_session" Ta "" Ta "Name of the client's last session"
@@ -3525,6 +3514,7 @@ The following variables are available, where appropriate:
 .It Li "client_tty" Ta "" Ta "Pseudo terminal of client"
 .It Li "client_utf8" Ta "" Ta "1 if client supports utf8"
 .It Li "client_width" Ta "" Ta "Width of client"
+.It Li "client_written" Ta "" Ta "Bytes written to client"
 .It Li "command" Ta "" Ta "Name of command in use, if any"
 .It Li "command_list_name" Ta "" Ta "Command name if listing commands"
 .It Li "command_list_alias" Ta "" Ta "Command alias if listing commands"
@@ -3563,8 +3553,10 @@ The following variables are available, where appropriate:
 .It Li "pane_input_off" Ta "" Ta "If input to pane is disabled"
 .It Li "pane_index" Ta "#P" Ta "Index of pane"
 .It Li "pane_left" Ta "" Ta "Left of pane"
+.It Li "pane_mode" Ta "" Ta "Name of pane mode, if any."
 .It Li "pane_pid" Ta "" Ta "PID of first process in pane"
 .It Li "pane_right" Ta "" Ta "Right of pane"
+.It Li "pane_search_string" Ta "" Ta "Last search string in copy mode"
 .It Li "pane_start_command" Ta "" Ta "Command pane started with"
 .It Li "pane_synchronized" Ta "" Ta "If pane is synchronized"
 .It Li "pane_tabs" Ta "" Ta "Pane tab positions"
@@ -3587,6 +3579,7 @@ The following variables are available, where appropriate:
 .It Li "session_id" Ta "" Ta "Unique session ID"
 .It Li "session_many_attached" Ta "" Ta "1 if multiple clients attached"
 .It Li "session_name" Ta "#S" Ta "Name of session"
+.It Li "session_stack" Ta "" Ta "Window indexes in most recent order"
 .It Li "session_width" Ta "" Ta "Width of session"
 .It Li "session_windows" Ta "" Ta "Number of windows in session"
 .It Li "socket_path" Ta "" Ta "Server socket path"
@@ -3607,6 +3600,7 @@ The following variables are available, where appropriate:
 .It Li "window_name" Ta "#W" Ta "Name of window"
 .It Li "window_panes" Ta "" Ta "Number of panes in window"
 .It Li "window_silence_flag" Ta "" Ta "1 if window has silence alert"
+.It Li "window_stack_index" Ta "" Ta "Index in session most recent stack"
 .It Li "window_visible_layout" Ta "" Ta "Window layout description, respecting zoomed window panes"
 .It Li "window_width" Ta "" Ta "Width of window"
 .It Li "window_zoomed_flag" Ta "" Ta "1 if window is zoomed"
@@ -3763,7 +3757,7 @@ The flag is one of the following symbols appended to the window name:
 .It Li "*" Ta "Denotes the current window."
 .It Li "-" Ta "Marks the last window (previously selected)."
 .It Li "#" Ta "Window is monitored and activity has been detected."
-.It Li "!" Ta "A bell has occurred in the window."
+.It Li "\&!" Ta "A bell has occurred in the window."
 .It Li "~" Ta "The window has been silent for the monitor-silence interval."
 .It Li "M" Ta "The window contains the marked pane."
 .It Li "Z" Ta "The window's active pane is zoomed."
@@ -3959,13 +3953,27 @@ The buffer commands are as follows:
 .Bl -tag -width Ds
 .It Xo
 .Ic choose-buffer
-.Op Fl F Ar format
-.Op Fl t Ar target-window
+.Op Fl t Ar target-pane
 .Op Ar template
 .Xc
-Put a window into buffer choice mode, where a buffer may be chosen
-interactively from a list.
-After a buffer is selected,
+Put a pane into buffer mode, where a buffer may be chosen interactively from
+a list.
+The following keys may be used in buffer mode:
+.Bl -column "Key" "Function" -offset indent
+.It Sy "Key" Ta Sy "Function"
+.It Li "Enter" Ta "Choose selected buffer"
+.It Li "Up" Ta "Select previous buffer"
+.It Li "Down" Ta "Select next buffer"
+.It Li "t" Ta "Toggle if buffer is tagged"
+.It Li "T" Ta "Tag no buffers"
+.It Li "C-t" Ta "Tag all buffers"
+.It Li "d" Ta "Delete selected buffer"
+.It Li "D" Ta "Delete tagged buffers"
+.It Li "O" Ta "Change sort order"
+.It Li "q" Ta "Exit mode"
+.El
+.Pp
+After a buffer is chosen,
 .Ql %%
 is replaced by the buffer name in
 .Ar template
@@ -3973,11 +3981,7 @@ and the result executed as a command.
 If
 .Ar template
 is not given, "paste-buffer -b '%%'" is used.
-For the meaning of the
-.Fl F
-flag, see the
-.Sx FORMATS
-section.
+.Pp
 This command works only if at least one client is attached.
 .It Ic clear-history Op Fl t Ar target-pane
 .D1 (alias: Ic clearhist )
@@ -4233,6 +4237,11 @@ A notification will never occur inside an output block.
 .Pp
 The following notifications are defined:
 .Bl -tag -width Ds
+.It Ic %client-session-changed Ar client Ar session-id Ar name
+The client is now attached to the session with ID
+.Ar session-id ,
+which is named
+.Ar name .
 .It Ic %exit Op Ar reason
 The
 .Nm
@@ -4255,6 +4264,10 @@ and the window flags are
 A window pane produced output.
 .Ar value
 escapes non-printable characters and backslash as octal \\xxx.
+.It Ic %pane-mode-changed Ar pane-id
+The pane with ID
+.Ar pane-id
+has changed mode.
 .It Ic %session-changed Ar session-id Ar name
 The client is now attached to the session with ID
 .Ar session-id ,
@@ -4263,6 +4276,11 @@ which is named
 .It Ic %session-renamed Ar name
 The current session was renamed to
 .Ar name .
+.It Ic %session-window-changed Ar session-id Ar window-id
+The session with ID
+.Ar session-id
+changed its active window to the window with ID
+.Ar window-id .
 .It Ic %sessions-changed
 A session was created or destroyed.
 .It Ic %unlinked-window-add Ar window-id
@@ -4277,6 +4295,11 @@ was linked to the current session.
 The window with ID
 .Ar window-id
 closed.
+.It Ic %window-pane-changed Ar window-id Ar pane-id
+The active pane in the window with ID
+.Ar window-id
+changed to the pane with ID
+.Ar pane-id .
 .It Ic %window-renamed Ar window-id Ar name
 The window with ID
 .Ar window-id

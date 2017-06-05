@@ -31,7 +31,6 @@
 
 static enum cmd_retval	cmd_if_shell_exec(struct cmd *, struct cmdq_item *);
 
-static enum cmd_retval	cmd_if_shell_error(struct cmdq_item *, void *);
 static void		cmd_if_shell_callback(struct job *);
 static void		cmd_if_shell_free(void *);
 
@@ -43,7 +42,7 @@ const struct cmd_entry cmd_if_shell_entry = {
 	.usage = "[-bF] " CMD_TARGET_PANE_USAGE " shell-command command "
 		 "[command]",
 
-	.tflag = CMD_PANE_CANFAIL,
+	.target = { 't', CMD_FIND_PANE, CMD_FIND_CANFAIL },
 
 	.flags = 0,
 	.exec = cmd_if_shell_exec
@@ -65,14 +64,15 @@ static enum cmd_retval
 cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = self->args;
+	struct cmdq_shared		*shared = item->shared;
 	struct cmd_if_shell_data	*cdata;
 	char				*shellcmd, *cmd, *cause;
 	struct cmd_list			*cmdlist;
 	struct cmdq_item		*new_item;
-	struct client			*c = item->state.c;
-	struct session			*s = item->state.tflag.s;
-	struct winlink			*wl = item->state.tflag.wl;
-	struct window_pane		*wp = item->state.tflag.wp;
+	struct client			*c = cmd_find_client(item, NULL, 1);
+	struct session			*s = item->target.s;
+	struct winlink			*wl = item->target.wl;
+	struct window_pane		*wp = item->target.wp;
 	const char			*cwd;
 
 	if (item->client != NULL && item->client->session == NULL)
@@ -100,7 +100,7 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 			}
 			return (CMD_RETURN_ERROR);
 		}
-		new_item = cmdq_get_command(cmdlist, NULL, &item->mouse, 0);
+		new_item = cmdq_get_command(cmdlist, NULL, &shared->mouse, 0);
 		cmdq_insert_after(item, new_item);
 		cmd_list_free(cmdlist);
 		return (CMD_RETURN_NORMAL);
@@ -119,32 +119,22 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 		cdata->cmd_else = NULL;
 
 	cdata->client = item->client;
-	cdata->client->references++;
+	if (cdata->client != NULL)
+		cdata->client->references++;
 
 	if (!args_has(args, 'b'))
 		cdata->item = item;
 	else
 		cdata->item = NULL;
-	memcpy(&cdata->mouse, &item->mouse, sizeof cdata->mouse);
+	memcpy(&cdata->mouse, &shared->mouse, sizeof cdata->mouse);
 
-	job_run(shellcmd, s, cwd, cmd_if_shell_callback, cmd_if_shell_free,
-	    cdata);
+	job_run(shellcmd, s, cwd, NULL, cmd_if_shell_callback,
+	    cmd_if_shell_free, cdata);
 	free(shellcmd);
 
 	if (args_has(args, 'b'))
 		return (CMD_RETURN_NORMAL);
 	return (CMD_RETURN_WAIT);
-}
-
-static enum cmd_retval
-cmd_if_shell_error(struct cmdq_item *item, void *data)
-{
-	char	*error = data;
-
-	cmdq_error(item, "%s", error);
-	free(error);
-
-	return (CMD_RETURN_NORMAL);
 }
 
 static void
@@ -166,10 +156,10 @@ cmd_if_shell_callback(struct job *job)
 
 	cmdlist = cmd_string_parse(cmd, file, line, &cause);
 	if (cmdlist == NULL) {
-		if (cause != NULL)
-			new_item = cmdq_get_callback(cmd_if_shell_error, cause);
-		else
-			new_item = NULL;
+		if (cause != NULL && cdata->item != NULL)
+			cmdq_error(cdata->item, "%s", cause);
+		free(cause);
+		new_item = NULL;
 	} else {
 		new_item = cmdq_get_command(cmdlist, NULL, &cdata->mouse, 0);
 		cmd_list_free(cmdlist);
@@ -192,7 +182,8 @@ cmd_if_shell_free(void *data)
 {
 	struct cmd_if_shell_data	*cdata = data;
 
-	server_client_unref(cdata->client);
+	if (cdata->client != NULL)
+		server_client_unref(cdata->client);
 
 	free(cdata->cmd_else);
 	free(cdata->cmd_if);

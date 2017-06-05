@@ -23,15 +23,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 #include "tmux.h"
 
-static char	 *cfg_file;
-int		  cfg_finished;
-static char	**cfg_causes;
-static u_int	  cfg_ncauses;
-struct client	 *cfg_client;
+static char		 *cfg_file;
+int			  cfg_finished;
+static char		**cfg_causes;
+static u_int		  cfg_ncauses;
+static struct cmdq_item	 *cfg_item;
+
+static enum cmd_retval
+cfg_client_done(__unused struct cmdq_item *item, __unused void *data)
+{
+	if (!cfg_finished)
+		return (CMD_RETURN_WAIT);
+	return (CMD_RETURN_NORMAL);
+}
 
 static enum cmd_retval
 cfg_done(__unused struct cmdq_item *item, __unused void *data)
@@ -43,8 +50,11 @@ cfg_done(__unused struct cmdq_item *item, __unused void *data)
 	if (!RB_EMPTY(&sessions))
 		cfg_show_causes(RB_MIN(sessions, &sessions));
 
-	if (cfg_client != NULL)
-		server_client_unref(cfg_client);
+	if (cfg_item != NULL)
+		cfg_item->flags &= ~CMDQ_WAITING;
+
+	status_prompt_load_history();
+
 	return (CMD_RETURN_NORMAL);
 }
 
@@ -60,21 +70,35 @@ start_cfg(void)
 {
 	const char	*home;
 	int		 quiet = 0;
+	struct client	*c;
 
-	cfg_client = TAILQ_FIRST(&clients);
-	if (cfg_client != NULL)
-		cfg_client->references++;
+	/*
+	 * Configuration files are loaded without a client, so NULL is passed
+	 * into load_cfg() and commands run in the global queue with
+	 * item->client NULL.
+	 *
+	 * However, we must block the initial client (but just the initial
+	 * client) so that its command runs after the configuration is loaded.
+	 * Because start_cfg() is called so early, we can be sure the client's
+	 * command queue is currently empty and our callback will be at the
+	 * front - we need to get in before MSG_COMMAND.
+	 */
+	c = TAILQ_FIRST(&clients);
+	if (c != NULL) {
+		cfg_item = cmdq_get_callback(cfg_client_done, NULL);
+		cmdq_append(c, cfg_item);
+	}
 
-	load_cfg(TMUX_CONF, cfg_client, NULL, 1);
+	load_cfg(TMUX_CONF, NULL, NULL, 1);
 
 	if (cfg_file == NULL && (home = find_home()) != NULL) {
 		xasprintf(&cfg_file, "%s/.tmux.conf", home);
 		quiet = 1;
 	}
 	if (cfg_file != NULL)
-		load_cfg(cfg_file, cfg_client, NULL, quiet);
+		load_cfg(cfg_file, NULL, NULL, quiet);
 
-	cmdq_append(cfg_client, cmdq_get_callback(cfg_done, NULL));
+	cmdq_append(NULL, cmdq_get_callback(cfg_done, NULL));
 }
 
 int
@@ -122,7 +146,8 @@ load_cfg(const char *path, struct client *c, struct cmdq_item *item, int quiet)
 				    line);
 				continue;
 			}
-			ft = format_create(NULL, FORMAT_NONE, FORMAT_NOJOBS);
+			ft = format_create(NULL, NULL, FORMAT_NONE,
+			    FORMAT_NOJOBS);
 
 			s = p + 3;
 			while (isspace((u_char)*s))
@@ -207,7 +232,7 @@ cfg_show_causes(struct session *s)
 		return;
 	wp = s->curw->window->active;
 
-	window_pane_set_mode(wp, &window_copy_mode);
+	window_pane_set_mode(wp, &window_copy_mode, NULL, NULL);
 	window_copy_init_for_output(wp);
 	for (i = 0; i < cfg_ncauses; i++) {
 		window_copy_add(wp, "%s", cfg_causes[i]);

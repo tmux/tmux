@@ -107,7 +107,7 @@ void
 screen_set_title(struct screen *s, const char *title)
 {
 	free(s->title);
-	s->title = xstrdup(title);
+	utf8_stravis(&s->title, title, VIS_OCTAL|VIS_CSTYLE|VIS_TAB|VIS_NL);
 }
 
 /* Resize screen. */

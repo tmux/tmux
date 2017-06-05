@@ -102,8 +102,11 @@ cmdq_insert_after(struct cmdq_item *after, struct cmdq_item *item)
 static void
 cmdq_remove(struct cmdq_item *item)
 {
-	if (item->formats != NULL)
-		format_free(item->formats);
+	if (item->shared != NULL && --item->shared->references == 0) {
+		if (item->shared->formats != NULL)
+			format_free(item->shared->formats);
+		free(item->shared);
+	}
 
 	if (item->client != NULL)
 		server_client_unref(item->client);
@@ -150,6 +153,15 @@ cmdq_get_command(struct cmd_list *cmdlist, struct cmd_find_state *current,
 	struct cmd		*cmd;
 	u_int			 group = cmdq_next_group();
 	char			*tmp;
+	struct cmdq_shared	*shared;
+
+	shared = xcalloc(1, sizeof *shared);
+	if (current != NULL)
+		cmd_find_copy_state(&shared->current, current);
+	else
+		cmd_find_clear_state(&shared->current, 0);
+	if (m != NULL)
+		memcpy(&shared->mouse, m, sizeof shared->mouse);
 
 	TAILQ_FOREACH(cmd, &cmdlist->list, qentry) {
 		xasprintf(&tmp, "command[%s]", cmd->entry->name);
@@ -161,13 +173,11 @@ cmdq_get_command(struct cmd_list *cmdlist, struct cmd_find_state *current,
 		item->group = group;
 		item->flags = flags;
 
+		item->shared = shared;
 		item->cmdlist = cmdlist;
 		item->cmd = cmd;
 
-		if (current != NULL)
-			cmd_find_copy_state(&item->current, current);
-		if (m != NULL)
-			memcpy(&item->mouse, m, sizeof item->mouse);
+		shared->references++;
 		cmdlist->references++;
 
 		if (first == NULL)
@@ -179,41 +189,63 @@ cmdq_get_command(struct cmd_list *cmdlist, struct cmd_find_state *current,
 	return (first);
 }
 
+/* Fill in flag for a command. */
+static enum cmd_retval
+cmdq_find_flag(struct cmdq_item *item, struct cmd_find_state *fs,
+    const struct cmd_entry_flag *flag)
+{
+	const char	*value;
+
+	if (flag->flag == 0) {
+		cmd_find_clear_state(fs, 0);
+		return (CMD_RETURN_NORMAL);
+	}
+
+	value = args_get(item->cmd->args, flag->flag);
+	if (cmd_find_target(fs, item, value, flag->type, flag->flags) != 0) {
+		cmd_find_clear_state(fs, 0);
+		return (CMD_RETURN_ERROR);
+	}
+	return (CMD_RETURN_NORMAL);
+}
+
 /* Fire command on command queue. */
 static enum cmd_retval
 cmdq_fire_command(struct cmdq_item *item)
 {
 	struct client		*c = item->client;
 	struct cmd		*cmd = item->cmd;
+	const struct cmd_entry	*entry = cmd->entry;
 	enum cmd_retval		 retval;
-	const char		*name;
 	struct cmd_find_state	*fsp, fs;
 	int			 flags;
 
 	flags = !!(cmd->flags & CMD_CONTROL);
 	cmdq_guard(item, "begin", flags);
 
-	if (cmd_prepare_state(cmd, item) != 0) {
-		retval = CMD_RETURN_ERROR;
-		goto out;
-	}
 	if (item->client == NULL)
-		item->client = cmd_find_client(item, NULL, CMD_FIND_QUIET);
-
-	retval = cmd->entry->exec(cmd, item);
+		item->client = cmd_find_client(item, NULL, 1);
+	retval = cmdq_find_flag(item, &item->source, &entry->source);
+	if (retval == CMD_RETURN_ERROR)
+		goto out;
+	retval = cmdq_find_flag(item, &item->target, &entry->target);
 	if (retval == CMD_RETURN_ERROR)
 		goto out;
 
-	if (cmd->entry->flags & CMD_AFTERHOOK) {
-		name = cmd->entry->name;
-		if (cmd_find_valid_state(&item->state.tflag))
-			fsp = &item->state.tflag;
-		else {
-			if (cmd_find_current(&fs, item, CMD_FIND_QUIET) != 0)
-				goto out;
+	retval = entry->exec(cmd, item);
+	if (retval == CMD_RETURN_ERROR)
+		goto out;
+
+	if (entry->flags & CMD_AFTERHOOK) {
+		if (cmd_find_valid_state(&item->target))
+			fsp = &item->target;
+		else if (cmd_find_valid_state(&item->shared->current))
+			fsp = &item->shared->current;
+		else if (cmd_find_from_client(&fs, item->client) == 0)
 			fsp = &fs;
-		}
-		hooks_insert(fsp->s->hooks, item, fsp, "after-%s", name);
+		else
+			goto out;
+		hooks_insert(fsp->s->hooks, item, fsp, "after-%s", entry->name);
 	}
 
 out:
@@ -258,19 +290,17 @@ cmdq_fire_callback(struct cmdq_item *item)
 void
 cmdq_format(struct cmdq_item *item, const char *key, const char *fmt, ...)
 {
+	struct cmdq_shared	*shared = item->shared;
 	va_list			 ap;
-	struct cmdq_item	*loop;
 	char			*value;
 
 	va_start(ap, fmt);
 	xvasprintf(&value, fmt, ap);
 	va_end(ap);
 
-	for (loop = item; loop != NULL; loop = item->next) {
-		if (loop->formats == NULL)
-			loop->formats = format_create(NULL, FORMAT_NONE, 0);
-		format_add(loop->formats, key, "%s", value);
-	}
+	if (shared->formats == NULL)
+		shared->formats = format_create(NULL, NULL, FORMAT_NONE, 0);
+	format_add(shared->formats, key, "%s", value);
 
 	free(value);
 }
@@ -319,8 +349,7 @@ cmdq_next(struct client *c)
 			item->time = time(NULL);
 			item->number = ++number;
 
-			switch (item->type)
-			{
+			switch (item->type) {
 			case CMDQ_COMMAND:
 				retval = cmdq_fire_command(item);
 
@@ -399,7 +428,8 @@ cmdq_print(struct cmdq_item *item, const char *fmt, ...)
 		w = c->session->curw->window;
 		if (w->active->mode != &window_copy_mode) {
 			window_pane_reset_mode(w->active);
-			window_pane_set_mode(w->active, &window_copy_mode);
+			window_pane_set_mode(w->active, &window_copy_mode, NULL,
+			    NULL);
 			window_copy_init_for_output(w->active);
 		}
 		window_copy_vadd(w->active, fmt, ap);

@@ -232,6 +232,30 @@ utf8_stravis(char **dst, const char *src, int flag)
 	return (len);
 }
 
+/* Does this string contain anything that isn't valid UTF-8? */
+int
+utf8_isvalid(const char *s)
+{
+	struct utf8_data	 ud;
+	const char		*end;
+	enum utf8_state		 more;
+
+	end = s + strlen(s);
+	while (s < end) {
+		if ((more = utf8_open(&ud, *s)) == UTF8_MORE) {
+			while (++s < end && more == UTF8_MORE)
+				more = utf8_append(&ud, *s);
+			if (more == UTF8_DONE)
+				continue;
+			return (0);
+		}
+		if (*s < 0x20 || *s > 0x7e)
+			return (0);
+		s++;
+	}
+	return (1);
+}
+
 /*
  * Sanitize a string, changing any UTF-8 characters to '_'. Caller should free
  * the returned string. Anything not valid printable ASCII or UTF-8 is
@@ -427,8 +451,7 @@ utf8_rtrimcstr(const char *s, u_int width)
 	next = end - 1;
 
 	at = 0;
-	for (;;)
-	{
+	for (;;) {
 		if (at + next->width > width) {
 			next++;
 			break;
