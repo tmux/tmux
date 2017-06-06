@@ -764,6 +764,11 @@ const struct options_table_entry options_table[] = {
 	  .style = "window-status-activity-style"
 	},
 
+	{ .name = "window-status-activity-format",
+	  .type = OPTIONS_TABLE_STRING,
+	  .default_str = "#I:#W#{?window_flags,#{window_flags}, }"
+	},
+
 	{ .name = "window-status-activity-style",
 	  .type = OPTIONS_TABLE_STYLE,
 	  .scope = OPTIONS_TABLE_WINDOW,
@@ -796,6 +801,11 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_WINDOW,
 	  .default_num = 8,
 	  .style = "window-status-bell-style"
+	},
+
+	{ .name = "window-status-bell-format",
+	  .type = OPTIONS_TABLE_STRING,
+	  .default_str = "#I:#W#{?window_flags,#{window_flags}, }"
 	},
 
 	{ .name = "window-status-bell-style",
@@ -876,6 +886,11 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_WINDOW,
 	  .default_num = 8,
 	  .style = "window-status-last-style"
+	},
+
+	{ .name = "window-status-last-format",
+	  .type = OPTIONS_TABLE_STRING,
+	  .default_str = "#I:#W#{?window_flags,#{window_flags}, }"
 	},
 
 	{ .name = "window-status-last-style",

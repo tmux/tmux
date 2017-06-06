@@ -3087,6 +3087,11 @@ see the
 .Ic message-command-style
 option.
 .Pp
+.It Ic window-status-activity-format Ar string
+Like
+.Ar window-status-format ,
+but is the format used when the window has an activity alert.
+.Pp
 .It Ic window-status-activity-style Ar style
 Set status line style for windows with an activity alert.
 For how to specify
@@ -3094,6 +3099,11 @@ For how to specify
 see the
 .Ic message-command-style
 option.
+.Pp
+.It Ic window-status-bell-format Ar string
+Like
+.Ar window-status-format ,
+but is the format used when the window has a bell alert.
 .Pp
 .It Ic window-status-bell-style Ar style
 Set status line style for windows with a bell alert.
@@ -3123,6 +3133,11 @@ See the
 option for details of special character sequences available.
 The default is
 .Ql #I:#W#F .
+.Pp
+.It Ic window-status-last-format Ar string
+Like
+.Ar window-status-format ,
+but is the format used for the last active window.
 .Pp
 .It Ic window-status-last-style Ar style
 Set status line style for the last active window.
