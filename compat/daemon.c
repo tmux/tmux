@@ -28,11 +28,17 @@
  * SUCH DAMAGE.
  */
 
+#include <sys/types.h>
+
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
 
 #include "compat.h"
+
+#ifdef __APPLE__
+extern void daemon_darwin(void);
+#endif
 
 int
 daemon(int nochdir, int noclose)
@@ -61,5 +67,9 @@ daemon(int nochdir, int noclose)
 		if (fd > 2)
 			(void)close (fd);
 	}
+
+#ifdef __APPLE__
+	daemon_darwin();
+#endif
 	return (0);
 }
