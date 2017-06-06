@@ -699,7 +699,7 @@ window_tree_key(struct window_pane *wp, struct client *c,
 		name = window_tree_get_target(item, &fs);
 		window_pane_reset_mode(wp);
 		if (name != NULL)
-			mode_tree_run_command(c, &fs, command, name);
+			mode_tree_run_command(c, NULL, command, name);
 		free(name);
 		free(command);
 		return;

@@ -1,5 +1,8 @@
 CHANGES FROM 2.5 to master
 
+* Do a dance on OS X 10.10 and above to return tmux to the user namespace,
+  allowing access to the clipboard.
+
 * Do not allow escape sequences which expect a specific terminator (APC, DSC,
   OSC) to wait for forever - use a small timeout. This reduces the chance of
   the pane locking up completely when sent garbage (cat /dev/random or

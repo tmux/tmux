@@ -569,8 +569,15 @@ case "$host_os" in
 		;;
 	*darwin*)
 		AC_MSG_RESULT(darwin)
-		AC_DEFINE(BROKEN_CMSG_FIRSTHDR)
 		PLATFORM=darwin
+		#
+		# OS X CMSG_FIRSTHDR is broken, so redefine it with a working
+		# one. daemon works but has some stupid side effects, so use
+		# our internal version which has a workaround.
+		#
+		AC_DEFINE(BROKEN_CMSG_FIRSTHDR)
+		AC_LIBOBJ(daemon)
+		AC_LIBOBJ(daemon-darwin)
 		;;
 	*dragonfly*)
 		AC_MSG_RESULT(dragonfly)
