@@ -7,6 +7,9 @@ AC_CONFIG_AUX_DIR(etc)
 AC_CONFIG_LIBOBJ_DIR(compat)
 AM_INIT_AUTOMAKE([foreign subdir-objects])
 
+# enable silent build by default
+m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes]]))
+
 AC_CANONICAL_HOST
 
 # When CFLAGS isn't set at this stage and gcc is detected by the macro below,
