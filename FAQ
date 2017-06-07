@@ -109,7 +109,7 @@ Or:
 And make sure that TERM outside tmux also shows 256 colours, or use the tmux -2
 flag.
 
-* My tmux pane separators are dashed rather than continuous lines
+* Why are tmux pane separators dashed rather than continuous lines?
 
 Some terminals (such as mintty) or certain fonts (particularly some Japanese
 fonts) do not correctly handle UTF-8 line drawing characters.
