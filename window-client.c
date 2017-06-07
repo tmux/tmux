@@ -224,7 +224,7 @@ window_client_init(struct window_pane *wp, __unused struct cmd_find_state *fs,
 		data->command = xstrdup(args->argv[0]);
 
 	data->data = mode_tree_start(wp, window_client_build,
-	    window_client_draw, data, window_client_sort_list,
+	    window_client_draw, NULL, data, window_client_sort_list,
 	    nitems(window_client_sort_list), &s);
 
 	mode_tree_build(data->data);
@@ -301,7 +301,7 @@ window_client_key(struct window_pane *wp, struct client *c,
 	 * Enter = detach client
 	 */
 
-	finished = mode_tree_key(data->data, &key, m);
+	finished = mode_tree_key(data->data, c, &key, m);
 	switch (key) {
 	case 'd':
 	case 'x':
