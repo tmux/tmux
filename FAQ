@@ -109,6 +109,15 @@ Or:
 And make sure that TERM outside tmux also shows 256 colours, or use the tmux -2
 flag.
 
+* My tmux pane separators are dashed rather than continuous lines
+
+Some terminals (such as mintty) or certain fonts (particularly some Japanese
+fonts) do not correctly handle UTF-8 line drawing characters.
+
+The U8 capability forces tmux to use ACS instead of UTF-8 line drawing:
+
+	set -as terminal-overrides ",*:U8=0"
+
 * How do I make Ctrl-PgUp and Ctrl-PgDn work inside tmux?
 
 tmux sends modified function keys using xterm(1)-style escape
