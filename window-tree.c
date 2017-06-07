@@ -465,7 +465,7 @@ window_tree_search(__unused void *modedata, void *itemdata, const char *ss)
 	case WINDOW_TREE_PANE:
 		if (s == NULL || wl == NULL || wp == NULL)
 			break;
-		cmd = get_proc_name(wp->fd, wp->tty);
+		cmd = osdep_get_name(wp->fd, wp->tty);
 		if (cmd == NULL || *cmd == '\0')
 			return (0);
 		return (strstr(cmd, ss) != NULL);
