@@ -440,6 +440,39 @@ window_tree_draw(__unused void *modedata, void *itemdata, u_int sx, u_int sy)
 	return (&s);
 }
 
+static int
+window_tree_search(__unused void *modedata, void *itemdata, const char *ss)
+{
+	struct window_tree_itemdata	*item = itemdata;
+	struct session			*s;
+	struct winlink			*wl;
+	struct window_pane		*wp;
+	const char			*cmd;
+
+	window_tree_pull_item(item, &s, &wl, &wp);
+
+	switch (item->type) {
+	case WINDOW_TREE_NONE:
+		return (0);
+	case WINDOW_TREE_SESSION:
+		if (s == NULL)
+			return (0);
+		return (strstr(s->name, ss) != NULL);
+	case WINDOW_TREE_WINDOW:
+		if (s == NULL || wl == NULL)
+			return (0);
+		return (strstr(wl->window->name, ss) != NULL);
+	case WINDOW_TREE_PANE:
+		if (s == NULL || wl == NULL || wp == NULL)
+			break;
+		cmd = get_proc_name(wp->fd, wp->tty);
+		if (cmd == NULL || *cmd == '\0')
+			return (0);
+		return (strstr(cmd, ss) != NULL);
+	}
+	return (0);
+}
+
 static struct screen *
 window_tree_init(struct window_pane *wp, struct cmd_find_state *fs,
     struct args *args)
@@ -470,8 +503,8 @@ window_tree_init(struct window_pane *wp, struct cmd_find_state *fs,
 	else
 		data->command = xstrdup(args->argv[0]);
 
-	data->data = mode_tree_start(wp, window_tree_build,
-	    window_tree_draw, data, window_tree_sort_list,
+	data->data = mode_tree_start(wp, window_tree_build, window_tree_draw,
+	    window_tree_search, data, window_tree_sort_list,
 	    nitems(window_tree_sort_list), &s);
 
 	mode_tree_build(data->data);
@@ -674,7 +707,7 @@ window_tree_key(struct window_pane *wp, struct client *c,
 	 * f = enter filter
 	 */
 
-	finished = mode_tree_key(data->data, &key, m);
+	finished = mode_tree_key(data->data, c, &key, m);
 	switch (key) {
 	case 'f':
 		data->references++;

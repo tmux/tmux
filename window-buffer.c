@@ -226,6 +226,22 @@ window_buffer_draw(__unused void *modedata, void *itemdata, u_int sx, u_int sy)
 	return (&s);
 }
 
+static int
+window_buffer_search(__unused void *modedata, void *itemdata, const char *ss)
+{
+	struct window_buffer_itemdata	*item = itemdata;
+	struct paste_buffer		*pb;
+	const char			*bufdata;
+	size_t				 bufsize;
+
+	if ((pb = paste_get_name(item->name)) == NULL)
+		return (0);
+	if (strstr(item->name, ss) != NULL)
+		return (0);
+	bufdata = paste_buffer_data(pb, &bufsize);
+	return (memmem(bufdata, bufsize, ss, strlen(ss)) != NULL);
+}
+
 static struct screen *
 window_buffer_init(struct window_pane *wp, __unused struct cmd_find_state *fs,
     struct args *args)
@@ -241,8 +257,8 @@ window_buffer_init(struct window_pane *wp, __unused struct cmd_find_state *fs,
 		data->command = xstrdup(args->argv[0]);
 
 	data->data = mode_tree_start(wp, window_buffer_build,
-	    window_buffer_draw, data, window_buffer_sort_list,
-	    nitems(window_buffer_sort_list), &s);
+	    window_buffer_draw, window_buffer_search, data,
+	    window_buffer_sort_list, nitems(window_buffer_sort_list), &s);
 
 	mode_tree_build(data->data);
 	mode_tree_draw(data->data);
@@ -311,7 +327,7 @@ window_buffer_key(struct window_pane *wp, struct client *c,
 	 * Enter = paste buffer
 	 */
 
-	finished = mode_tree_key(data->data, &key, m);
+	finished = mode_tree_key(data->data, c, &key, m);
 	switch (key) {
 	case 'd':
 		item = mode_tree_get_current(data->data);
