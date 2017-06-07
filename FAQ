@@ -309,6 +309,13 @@ on the Window -> Translation configuration page. For example, change UTF-8 to
 ISO-8859-1 or CP437. It may also be necessary to adjust the way PuTTY treats
 line drawing characters in the lower part of the same configuration page.
 
+* I use Mintty and my tmux window pane separators are dashed lines
+
+You can force tmux to draw window pane separators using ACS instead of UTF-8 by
+adding the following to your configuration file:
+
+	set -g terminal-overrides "*:U8=0"
+
 * What is the best way to display the load average? Why no #L?
 
 It isn't possible to get the load average portably in code and it is preferable
