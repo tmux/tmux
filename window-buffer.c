@@ -237,7 +237,7 @@ window_buffer_search(__unused void *modedata, void *itemdata, const char *ss)
 	if ((pb = paste_get_name(item->name)) == NULL)
 		return (0);
 	if (strstr(item->name, ss) != NULL)
-		return (0);
+		return (1);
 	bufdata = paste_buffer_data(pb, &bufsize);
 	return (memmem(bufdata, bufsize, ss, strlen(ss)) != NULL);
 }
