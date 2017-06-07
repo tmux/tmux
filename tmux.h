@@ -617,7 +617,7 @@ struct job {
 	job_free_cb		 freecb;
 	void			*data;
 
-	LIST_ENTRY(job)	 	 entry;
+	LIST_ENTRY(job)		 entry;
 };
 LIST_HEAD(joblist, job);
 
@@ -676,7 +676,7 @@ struct screen_write_ctx {
 	struct screen_write_collect_item *item;
 	struct screen_write_collect_line *list;
 	u_int			 scrolled;
-	u_int                    bg;
+	u_int			 bg;
 
 	u_int			 cells;
 	u_int			 written;

@@ -595,7 +595,7 @@ mode_tree_search_for(struct mode_tree_data *mtd)
 			continue;
 		}
 		if (mtd->searchcb(mtd->modedata, mti->itemdata, mtd->ss))
-		    return (mti);
+			return (mti);
 	}
 	return (NULL);
 }

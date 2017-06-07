@@ -47,7 +47,7 @@ struct tmuxpeer {
 #define PEER_BAD 0x1
 
 	void		(*dispatchcb)(struct imsg *, void *);
-	void		*arg;
+	void		 *arg;
 };
 
 static int	peer_check_version(struct tmuxpeer *, struct imsg *);
