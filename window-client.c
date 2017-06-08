@@ -47,11 +47,13 @@ const struct window_mode window_client_mode = {
 
 enum window_client_sort_type {
 	WINDOW_CLIENT_BY_NAME,
+	WINDOW_CLIENT_BY_SIZE,
 	WINDOW_CLIENT_BY_CREATION_TIME,
 	WINDOW_CLIENT_BY_ACTIVITY_TIME,
 };
 static const char *window_client_sort_list[] = {
 	"name",
+	"size",
 	"creation time",
 	"activity time"
 };
@@ -96,6 +98,23 @@ window_client_cmp_name(const void *a0, const void *b0)
 }
 
 static int
+window_client_cmp_size(const void *a0, const void *b0)
+{
+	const struct window_client_itemdata *const *a = a0;
+	const struct window_client_itemdata *const *b = b0;
+
+	if ((*a)->c->tty.sx < (*b)->c->tty.sx)
+		return (-1);
+	if ((*a)->c->tty.sx > (*b)->c->tty.sx)
+		return (1);
+	if ((*a)->c->tty.sy < (*b)->c->tty.sy)
+		return (-1);
+	if ((*a)->c->tty.sy > (*b)->c->tty.sy)
+		return (1);
+	return (strcmp((*a)->c->name, (*b)->c->name));
+}
+
+static int
 window_client_cmp_creation_time(const void *a0, const void *b0)
 {
 	const struct window_client_itemdata *const *a = a0;
@@ -105,7 +124,7 @@ window_client_cmp_creation_time(const void *a0, const void *b0)
 		return (-1);
 	if (timercmp(&(*a)->c->creation_time, &(*b)->c->creation_time, <))
 		return (1);
-	return (0);
+	return (strcmp((*a)->c->name, (*b)->c->name));
 }
 
 static int
@@ -118,7 +137,7 @@ window_client_cmp_activity_time(const void *a0, const void *b0)
 		return (-1);
 	if (timercmp(&(*a)->c->activity_time, &(*b)->c->activity_time, <))
 		return (1);
-	return (0);
+	return (strcmp((*a)->c->name, (*b)->c->name));
 }
 
 static void
@@ -152,6 +171,10 @@ window_client_build(void *modedata, u_int sort_type, __unused uint64_t *tag)
 		qsort(data->item_list, data->item_size, sizeof *data->item_list,
 		    window_client_cmp_name);
 		break;
+	case WINDOW_CLIENT_BY_SIZE:
+		qsort(data->item_list, data->item_size, sizeof *data->item_list,
+		    window_client_cmp_size);
+		break;
 	case WINDOW_CLIENT_BY_CREATION_TIME:
 		qsort(data->item_list, data->item_size, sizeof *data->item_list,
 		    window_client_cmp_creation_time);
@@ -169,7 +192,8 @@ window_client_build(void *modedata, u_int sort_type, __unused uint64_t *tag)
 		tim = ctime(&c->activity_time.tv_sec);
 		*strchr(tim, '\n') = '\0';
 
-		xasprintf(&text, "session %s (%s)", c->session->name, tim);
+		xasprintf(&text, "session %s (%ux%u, %s)", c->session->name,
+		    c->tty.sx, c->tty.sy, tim);
 		mode_tree_add(data->data, NULL, item, (uint64_t)c, c->name,
 		    text, -1);
 		free(text);
