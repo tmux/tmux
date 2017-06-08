@@ -6,7 +6,7 @@ CLEANFILES = tmux.1.mdoc tmux.1.man
 
 # Distribution tarball options.
 EXTRA_DIST = \
-	CHANGES FAQ README TODO COPYING example_tmux.conf compat/*.[ch] \
+	CHANGES README COPYING example_tmux.conf compat/*.[ch] \
 	osdep-*.c mdoc2man.awk tmux.1
 
 # Preprocessor flags.

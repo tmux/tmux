@@ -37,8 +37,7 @@ the source tree with:
 
 	$ nroff -mdoc tmux.1|less
 
-Some common questions are answered in the FAQ file, a rough todo list is in the
-TODO file and an example configuration in example_tmux.conf.
+A small example configuration in example_tmux.conf.
 
 A vim(1) syntax file is available at:
 
