@@ -1584,6 +1584,7 @@ status_prompt_complete(struct session *session, const char *s)
 		out = status_prompt_complete_prefix(list, size);
 	if (out != NULL) {
 		xasprintf(&tmp, "-%c%s%s", copy[1], out, colon);
+		free(out);
 		out = tmp;
 	}
 
