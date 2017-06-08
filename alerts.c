@@ -224,6 +224,9 @@ alerts_check_activity(struct window *w)
 {
 	struct winlink	*wl;
 	struct session	*s;
+	struct timeval	now;
+	struct timeval	tv;
+	u_int			delayms;
 
 	if (~w->flags & WINDOW_ACTIVITY)
 		return (0);
@@ -233,11 +236,19 @@ alerts_check_activity(struct window *w)
 	TAILQ_FOREACH(wl, &w->winlinks, wentry)
 		wl->session->flags &= ~SESSION_ALERTED;
 
+	gettimeofday(&now, NULL);
+
 	TAILQ_FOREACH(wl, &w->winlinks, wentry) {
 		if (wl->flags & WINLINK_ACTIVITY)
 			continue;
 		s = wl->session;
 		if (s->curw == wl)
+			continue;
+
+		timersub(&now, &wl->window->background_time, &tv);
+		delayms = options_get_number(wl->window->options, "monitor-activity-ignore-delay");
+
+		if ((tv.tv_sec * 1000) + (tv.tv_usec / 1000) < delayms)
 			continue;
 
 		wl->flags |= WINLINK_ACTIVITY;
