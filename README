@@ -29,8 +29,8 @@ To get and build the latest from version control:
 	$ sh autogen.sh
 	$ ./configure && make
 
-(Note that is requires at least a working compiler, make, autoconf, automake,
-pkg-config as well as libevent and ncurses libraries and headers.)
+(Note that this requires at least a working C compiler, make, autoconf,
+automake, pkg-config as well as libevent and ncurses libraries and headers.)
 
 For more information see http://git-scm.com. Patches should be sent by email to
 the mailing list at tmux-users@googlegroups.com.
