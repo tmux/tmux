@@ -274,7 +274,7 @@ format_job_get(struct format_tree *ft, const char *cmd)
 		fj->cmd = xstrdup(cmd);
 		fj->expanded = NULL;
 
-		xasprintf(&fj->out, "<'%s' not ready>", fj->cmd);
+		log_debug("%s: <'%s' not ready>", __func__, fj->cmd);
 
 		RB_INSERT(format_job_tree, jobs, fj);
 	}
@@ -292,8 +292,7 @@ format_job_get(struct format_tree *ft, const char *cmd)
 		fj->job = job_run(expanded, NULL, NULL, format_job_update,
 		    format_job_complete, NULL, fj);
 		if (fj->job == NULL) {
-			free(fj->out);
-			xasprintf(&fj->out, "<'%s' didn't start>", fj->cmd);
+		    log_debug("%s: <'%s' didn't start>", __func__, fj->cmd);
 		}
 		fj->last = t;
 		fj->updated = 0;
