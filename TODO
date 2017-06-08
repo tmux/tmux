@@ -1,7 +1,6 @@
 - command bits and pieces:
 	* allow multiple targets: fnmatch for -t/-c, for example detach all
 	  clients with -t*
-	* add -c for new-session like new-window
 	* ' and " should be parsed the same (eg "\e" vs '\e') in config
 	  and command prompt
 	* last-pane across sessions

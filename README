@@ -29,6 +29,9 @@ To get and build the latest from version control:
 	$ sh autogen.sh
 	$ ./configure && make
 
+(Note that this requires at least a working C compiler, make, autoconf,
+automake, pkg-config as well as libevent and ncurses libraries and headers.)
+
 For more information see http://git-scm.com. Patches should be sent by email to
 the mailing list at tmux-users@googlegroups.com.
 
@@ -37,8 +40,7 @@ the source tree with:
 
 	$ nroff -mdoc tmux.1|less
 
-Some common questions are answered in the FAQ file, a rough todo list is in the
-TODO file and an example configuration in example_tmux.conf.
+A small example configuration in example_tmux.conf.
 
 A vim(1) syntax file is available at:
 
