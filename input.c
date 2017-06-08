@@ -2174,6 +2174,7 @@ input_osc_52(struct window_pane *wp, const char *p)
 	screen_write_start(&ctx, wp, NULL);
 	screen_write_setselection(&ctx, out, outlen);
 	screen_write_stop(&ctx);
+	notify_pane("pane-set-clipboard", wp);
 
 	paste_add(out, outlen);
 }
