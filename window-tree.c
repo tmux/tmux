@@ -81,8 +81,6 @@ struct window_tree_modedata {
 	struct client			 *client;
 	const char			 *entered;
 
-	char				 *filter;
-
 	struct cmd_find_state		  fs;
 	enum window_tree_type		  type;
 };
@@ -227,7 +225,7 @@ window_tree_build_pane(struct session *s, struct winlink *wl,
 
 static int
 window_tree_build_window(struct session *s, struct winlink *wl, void* modedata,
-    u_int sort_type, struct mode_tree_item *parent, int no_filter)
+    u_int sort_type, struct mode_tree_item *parent, const char *filter)
 {
 	struct window_tree_modedata	*data = modedata;
 	struct window_tree_itemdata	*item;
@@ -261,8 +259,8 @@ window_tree_build_window(struct session *s, struct winlink *wl, void* modedata,
 	l = NULL;
 	n = 0;
 	TAILQ_FOREACH(wp, &wl->window->panes, entry) {
-		if (!no_filter && data->filter != NULL) {
-			cp = format_single(NULL, data->filter, NULL, s, wl, wp);
+		if (filter != NULL) {
+			cp = format_single(NULL, filter, NULL, s, wl, wp);
 			if (!format_true(cp)) {
 				free(cp);
 				continue;
@@ -298,7 +296,7 @@ window_tree_build_window(struct session *s, struct winlink *wl, void* modedata,
 
 static void
 window_tree_build_session(struct session *s, void* modedata,
-    u_int sort_type, int no_filter)
+    u_int sort_type, const char *filter)
 {
 	struct window_tree_modedata	*data = modedata;
 	struct window_tree_itemdata	*item;
@@ -349,7 +347,7 @@ window_tree_build_session(struct session *s, void* modedata,
 	empty = 0;
 	for (i = 0; i < n; i++) {
 		if (!window_tree_build_window(s, l[i], modedata, sort_type, mti,
-		    no_filter))
+		    filter))
 			empty++;
 	}
 	if (empty == n) {
@@ -361,14 +359,13 @@ window_tree_build_session(struct session *s, void* modedata,
 }
 
 static void
-window_tree_build(void *modedata, u_int sort_type, uint64_t *tag)
+window_tree_build(void *modedata, u_int sort_type, uint64_t *tag,
+    const char *filter)
 {
 	struct window_tree_modedata	*data = modedata;
 	struct session			*s, **l;
 	u_int				 n, i;
-	int				 no_filter = 0;
 
-restart:
 	for (i = 0; i < data->item_size; i++)
 		window_tree_free_item(data->item_list[i]);
 	free(data->item_list);
@@ -393,13 +390,8 @@ restart:
 	}
 
 	for (i = 0; i < n; i++)
-		window_tree_build_session(l[i], modedata, sort_type, no_filter);
+		window_tree_build_session(l[i], modedata, sort_type, filter);
 	free(l);
-
-	if (!no_filter && data->item_size == 0) {
-		no_filter = 1;
-		goto restart;
-	}
 
 	switch (data->type) {
 	case WINDOW_TREE_NONE:
@@ -493,18 +485,13 @@ window_tree_init(struct window_pane *wp, struct cmd_find_state *fs,
 	data->wp = wp;
 	data->references = 1;
 
-	if (args_has(args, 'f'))
-		data->filter = xstrdup(args_get(args, 'f'));
-	else
-		data->filter = NULL;
-
 	if (args == NULL || args->argc == 0)
 		data->command = xstrdup(WINDOW_TREE_DEFAULT_COMMAND);
 	else
 		data->command = xstrdup(args->argv[0]);
 
-	data->data = mode_tree_start(wp, window_tree_build, window_tree_draw,
-	    window_tree_search, data, window_tree_sort_list,
+	data->data = mode_tree_start(wp, args, window_tree_build,
+	    window_tree_draw, window_tree_search, data, window_tree_sort_list,
 	    nitems(window_tree_sort_list), &s);
 
 	mode_tree_build(data->data);
@@ -528,8 +515,6 @@ window_tree_destroy(struct window_tree_modedata *data)
 	for (i = 0; i < data->item_size; i++)
 		window_tree_free_item(data->item_list[i]);
 	free(data->item_list);
-
-	free(data->filter);
 
 	free(data->command);
 	free(data);
@@ -653,37 +638,6 @@ window_tree_command_free(void *modedata)
 	window_tree_destroy(data);
 }
 
-static int
-window_tree_filter_callback(__unused struct client *c, void *modedata,
-    const char *s, __unused int done)
-{
-	struct window_tree_modedata	*data = modedata;
-
-	if (data->dead)
-		return (0);
-
-	if (data->filter != NULL)
-		free(data->filter);
-	if (s == NULL || *s == '\0')
-		data->filter = NULL;
-	else
-		data->filter = xstrdup(s);
-
-	mode_tree_build(data->data);
-	mode_tree_draw(data->data);
-	data->wp->flags |= PANE_REDRAW;
-
-	return (0);
-}
-
-static void
-window_tree_filter_free(void *modedata)
-{
-	struct window_tree_modedata	*data = modedata;
-
-	window_tree_destroy(data);
-}
-
 static void
 window_tree_key(struct window_pane *wp, struct client *c,
     __unused struct session *s, key_code key, struct mouse_event *m)
@@ -695,26 +649,8 @@ window_tree_key(struct window_pane *wp, struct client *c,
 	int				 finished;
 	u_int				 tagged;
 
-	/*
-	 * t = toggle tag
-	 * T = tag none
-	 * C-t = tag all
-	 * q = exit
-	 * O = change sort order
-	 *
-	 * Enter = select item
-	 * : = enter command
-	 * f = enter filter
-	 */
-
 	finished = mode_tree_key(data->data, c, &key, m);
 	switch (key) {
-	case 'f':
-		data->references++;
-		status_prompt_set(c, "(filter) ", data->filter,
-		    window_tree_filter_callback, window_tree_filter_free, data,
-		    PROMPT_NOFORMAT);
-		break;
 	case ':':
 		tagged = mode_tree_count_tagged(data->data);
 		if (tagged != 0)

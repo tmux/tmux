@@ -45,13 +45,13 @@ const struct window_mode window_buffer_mode = {
 };
 
 enum window_buffer_sort_type {
-	WINDOW_BUFFER_BY_NAME,
 	WINDOW_BUFFER_BY_TIME,
+	WINDOW_BUFFER_BY_NAME,
 	WINDOW_BUFFER_BY_SIZE,
 };
 static const char *window_buffer_sort_list[] = {
-	"name",
 	"time",
+	"name",
 	"size"
 };
 
@@ -124,14 +124,15 @@ window_buffer_cmp_size(const void *a0, const void *b0)
 }
 
 static void
-window_buffer_build(void *modedata, u_int sort_type, __unused uint64_t *tag)
+window_buffer_build(void *modedata, u_int sort_type, __unused uint64_t *tag,
+    const char *filter)
 {
 	struct window_buffer_modedata	*data = modedata;
 	struct window_buffer_itemdata	*item;
 	u_int				 i;
 	struct paste_buffer		*pb;
-	char				*tim;
-	char				*text;
+	char				*tim, *text, *cp;
+	struct format_tree		*ft;
 
 	for (i = 0; i < data->item_size; i++)
 		window_buffer_free_item(data->item_list[i]);
@@ -165,6 +166,22 @@ window_buffer_build(void *modedata, u_int sort_type, __unused uint64_t *tag)
 
 	for (i = 0; i < data->item_size; i++) {
 		item = data->item_list[i];
+
+		if (filter != NULL) {
+			pb = paste_get_name(item->name);
+			if (pb == NULL)
+				continue;
+			ft = format_create(NULL, NULL, FORMAT_NONE, 0);
+			format_defaults_paste_buffer(ft, pb);
+			cp = format_expand(ft, filter);
+			if (!format_true(cp)) {
+				free(cp);
+				format_free(ft);
+				continue;
+			}
+			free(cp);
+			format_free(ft);
+		}
 
 		tim = ctime(&item->created);
 		*strchr(tim, '\n') = '\0';
@@ -256,7 +273,7 @@ window_buffer_init(struct window_pane *wp, __unused struct cmd_find_state *fs,
 	else
 		data->command = xstrdup(args->argv[0]);
 
-	data->data = mode_tree_start(wp, window_buffer_build,
+	data->data = mode_tree_start(wp, args, window_buffer_build,
 	    window_buffer_draw, window_buffer_search, data,
 	    window_buffer_sort_list, nitems(window_buffer_sort_list), &s);
 
