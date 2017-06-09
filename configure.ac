@@ -107,6 +107,7 @@ AC_REPLACE_FUNCS([ \
 	freezero \
 	getdtablecount \
 	getprogname \
+	memmem \
 	recallocarray \
 	reallocarray \
 	setenv \
