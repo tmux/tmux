@@ -2420,13 +2420,15 @@ The default is 100.
 .Op Ic on | external | off
 .Xc
 Attempt to set the terminal clipboard content using the
-\ee]52;...\e007
 .Xr xterm 1
-escape sequences, if there is an
+escape sequence, if there is an
 .Em \&Ms
 entry in the
 .Xr terminfo 5
-description.
+description (see the
+.Sx TERMINFO EXTENSIONS
+section).
+.Pp
 If set to
 .Ic on ,
 .Nm
@@ -3230,7 +3232,7 @@ set-hook after-split-window "selectl even-vertical"
 .Ed
 .Pp
 In addition, the following hooks are available:
-.Bl -tag -width "XXXXXXXXXXXXXXXX"
+.Bl -tag -width "XXXXXXXXXXXXXXXXXXXXXX"
 .It alert-activity
 Run when a window has activity.
 See
@@ -3255,6 +3257,10 @@ Run when the program running in a pane exits, but
 is on so the pane has not closed.
 .It pane-exited
 Run when the program running in a pane exits.
+.It pane-set-clipboard
+Run when the terminal clipboard is set using the
+.Xr xterm 1
+escape sequence.
 .It session-created
 Run when a new session created.
 .It session-closed
