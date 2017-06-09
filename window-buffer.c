@@ -46,13 +46,13 @@ const struct window_mode window_buffer_mode = {
 };
 
 enum window_buffer_sort_type {
-	WINDOW_BUFFER_BY_NAME,
 	WINDOW_BUFFER_BY_TIME,
+	WINDOW_BUFFER_BY_NAME,
 	WINDOW_BUFFER_BY_SIZE,
 };
 static const char *window_buffer_sort_list[] = {
-	"name",
 	"time",
+	"name",
 	"size"
 };
 
