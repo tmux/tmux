@@ -503,8 +503,8 @@ window_tree_init(struct window_pane *wp, struct cmd_find_state *fs,
 	else
 		data->command = xstrdup(args->argv[0]);
 
-	data->data = mode_tree_start(wp, window_tree_build, window_tree_draw,
-	    window_tree_search, data, window_tree_sort_list,
+	data->data = mode_tree_start(wp, args, window_tree_build,
+	    window_tree_draw, window_tree_search, data, window_tree_sort_list,
 	    nitems(window_tree_sort_list), &s);
 
 	mode_tree_build(data->data);

@@ -2201,7 +2201,7 @@ void	 mode_tree_each_tagged(struct mode_tree_data *, void (*)(void *, void *,
 	     key_code), key_code, int);
 void	 mode_tree_up(struct mode_tree_data *, int);
 void	 mode_tree_down(struct mode_tree_data *, int);
-struct mode_tree_data *mode_tree_start(struct window_pane *,
+struct mode_tree_data *mode_tree_start(struct window_pane *, struct args *,
 	     void (*)(void *, u_int, uint64_t *), struct screen *(*)(void *,
 	     void *, u_int, u_int), int (*)(void *, void *, const char *),
 	     void *, const char **, u_int, struct screen **);

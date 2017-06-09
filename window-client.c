@@ -54,8 +54,8 @@ enum window_client_sort_type {
 static const char *window_client_sort_list[] = {
 	"name",
 	"size",
-	"creation time",
-	"activity time"
+	"creation",
+	"activity"
 };
 
 struct window_client_itemdata {
@@ -247,7 +247,7 @@ window_client_init(struct window_pane *wp, __unused struct cmd_find_state *fs,
 	else
 		data->command = xstrdup(args->argv[0]);
 
-	data->data = mode_tree_start(wp, window_client_build,
+	data->data = mode_tree_start(wp, args, window_client_build,
 	    window_client_draw, NULL, data, window_client_sort_list,
 	    nitems(window_client_sort_list), &s);
 

@@ -1354,6 +1354,7 @@ the end of the visible pane.
 The default is to capture only the visible contents of the pane.
 .It Xo
 .Ic choose-client
+.Op Fl O Ar sort-order
 .Op Fl t Ar target-pane
 .Op Ar template
 .Xc
@@ -1389,10 +1390,18 @@ If
 .Ar template
 is not given, "detach-client -t '%%'" is used.
 .Pp
+.Fl O
+specifies the initial sort order: one of
+.Ql name ,
+.Ql size ,
+.Ql creation ,
+or
+.Ql activity .
 This command works only if at least one client is attached.
 .It Xo
 .Ic choose-tree
 .Op Fl sw
+.Op Fl O Ar sort-order
 .Op Fl t Ar target-pane
 .Op Ar template
 .Xc
@@ -1428,6 +1437,12 @@ If
 .Ar template
 is not given, "switch-client -t '%%'" is used.
 .Pp
+.Fl O
+specifies the initial sort order: one of
+.Ql index ,
+.Ql name ,
+or
+.Ql time .
 This command works only if at least one client is attached.
 .It Xo
 .Ic display-panes
@@ -3957,6 +3972,7 @@ The buffer commands are as follows:
 .Bl -tag -width Ds
 .It Xo
 .Ic choose-buffer
+.Op Fl O Ar sort-order
 .Op Fl t Ar target-pane
 .Op Ar template
 .Xc
@@ -3988,6 +4004,12 @@ If
 .Ar template
 is not given, "paste-buffer -b '%%'" is used.
 .Pp
+.Fl O
+specifies the initial sort order: one of
+.Ql time ,
+.Ql name
+or
+.Ql size .
 This command works only if at least one client is attached.
 .It Ic clear-history Op Fl t Ar target-pane
 .D1 (alias: Ic clearhist )
