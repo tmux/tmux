@@ -141,14 +141,14 @@ window_client_cmp_activity_time(const void *a0, const void *b0)
 }
 
 static void
-window_client_build(void *modedata, u_int sort_type, __unused uint64_t *tag)
+window_client_build(void *modedata, u_int sort_type, __unused uint64_t *tag,
+    const char *filter)
 {
 	struct window_client_modedata	*data = modedata;
 	struct window_client_itemdata	*item;
 	u_int				 i;
 	struct client			*c;
-	char				*tim;
-	char				*text;
+	char				*tim, *text, *cp;
 
 	for (i = 0; i < data->item_size; i++)
 		window_client_free_item(data->item_list[i]);
@@ -188,6 +188,15 @@ window_client_build(void *modedata, u_int sort_type, __unused uint64_t *tag)
 	for (i = 0; i < data->item_size; i++) {
 		item = data->item_list[i];
 		c = item->c;
+
+		if (filter != NULL) {
+			cp = format_single(NULL, filter, c, NULL, NULL, NULL);
+			if (!format_true(cp)) {
+				free(cp);
+				continue;
+			}
+			free(cp);
+		}
 
 		tim = ctime(&c->activity_time.tv_sec);
 		*strchr(tim, '\n') = '\0';

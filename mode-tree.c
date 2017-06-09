@@ -39,7 +39,8 @@ struct mode_tree_data {
 	u_int			  sort_size;
 	u_int			  sort_type;
 
-	void			 (*buildcb)(void *, u_int, uint64_t *);
+	void			 (*buildcb)(void *, u_int, uint64_t *,
+				     const char *);
 	struct screen		*(*drawcb)(void *, void *, u_int, u_int);
 	int			 (*searchcb)(void*, void *, const char *);
 
@@ -59,7 +60,8 @@ struct mode_tree_data {
 
 	struct screen		  screen;
 
-	char			 *ss;
+	char			 *search;
+	char			 *filter;
 };
 
 struct mode_tree_item {
@@ -274,7 +276,7 @@ mode_tree_each_tagged(struct mode_tree_data *mtd, void (*cb)(void *, void *,
 
 struct mode_tree_data *
 mode_tree_start(struct window_pane *wp, struct args *args,
-    void (*buildcb)(void *, u_int, uint64_t *),
+    void (*buildcb)(void *, u_int, uint64_t *, const char *),
     struct screen *(*drawcb)(void *, void *, u_int, u_int),
     int (*searchcb)(void *, void *, const char *), void *modedata,
     const char **sort_list, u_int sort_size, struct screen **s)
@@ -300,6 +302,11 @@ mode_tree_start(struct window_pane *wp, struct args *args,
 				mtd->sort_type = i;
 		}
 	}
+
+	if (args_has(args, 'f'))
+		mtd->filter = xstrdup(args_get(args, 'f'));
+	else
+		mtd->filter = NULL;
 
 	mtd->buildcb = buildcb;
 	mtd->drawcb = drawcb;
@@ -328,7 +335,9 @@ mode_tree_build(struct mode_tree_data *mtd)
 	TAILQ_CONCAT(&mtd->saved, &mtd->children, entry);
 	TAILQ_INIT(&mtd->children);
 
-	mtd->buildcb(mtd->modedata, mtd->sort_type, &tag);
+	mtd->buildcb(mtd->modedata, mtd->sort_type, &tag, mtd->filter);
+	if (TAILQ_EMPTY(&mtd->children))
+		mtd->buildcb(mtd->modedata, mtd->sort_type, &tag, NULL);
 
 	mode_tree_free_items(&mtd->saved);
 	TAILQ_INIT(&mtd->saved);
@@ -361,6 +370,9 @@ mode_tree_free(struct mode_tree_data *mtd)
 	mode_tree_free_items(&mtd->children);
 	mode_tree_clear_lines(mtd);
 	screen_free(&mtd->screen);
+
+	free(mtd->search);
+	free(mtd->filter);
 
 	mtd->dead = 1;
 	mode_tree_remove_ref(mtd);
@@ -575,7 +587,7 @@ mode_tree_search_for(struct mode_tree_data *mtd)
 {
 	struct mode_tree_item	*mti, *last, *next;
 
-	if (mtd->ss == NULL)
+	if (mtd->search == NULL)
 		return (NULL);
 
 	mti = last = mtd->line_list[mtd->current].item;
@@ -601,11 +613,11 @@ mode_tree_search_for(struct mode_tree_data *mtd)
 			break;
 
 		if (mtd->searchcb == NULL) {
-			if (strstr(mti->name, mtd->ss) != NULL)
+			if (strstr(mti->name, mtd->search) != NULL)
 				return (mti);
 			continue;
 		}
-		if (mtd->searchcb(mtd->modedata, mti->itemdata, mtd->ss))
+		if (mtd->searchcb(mtd->modedata, mti->itemdata, mtd->search))
 			return (mti);
 	}
 	return (NULL);
@@ -627,10 +639,11 @@ mode_tree_search_set(struct mode_tree_data *mtd)
 		loop->expanded = 1;
 		loop = loop->parent;
 	}
-	mode_tree_build(mtd);
 
+	mode_tree_build(mtd);
 	mode_tree_set_current(mtd, tag);
 	mode_tree_draw(mtd);
+	mtd->wp->flags |= PANE_REDRAW;
 }
 
 static int
@@ -642,12 +655,12 @@ mode_tree_search_callback(__unused struct client *c, void *data, const char *s,
 	if (mtd->dead)
 		return (0);
 
-	free(mtd->ss);
-	if (*s == '\0') {
-		mtd->ss = NULL;
+	free(mtd->search);
+	if (s == NULL || *s == '\0') {
+		mtd->search = NULL;
 		return (0);
 	}
-	mtd->ss = xstrdup(s);
+	mtd->search = xstrdup(s);
 	mode_tree_search_set(mtd);
 
 	return (0);
@@ -655,6 +668,35 @@ mode_tree_search_callback(__unused struct client *c, void *data, const char *s,
 
 static void
 mode_tree_search_free(void *data)
+{
+	mode_tree_remove_ref(data);
+}
+
+static int
+mode_tree_filter_callback(__unused struct client *c, void *data, const char *s,
+    __unused int done)
+{
+	struct mode_tree_data	*mtd = data;
+
+	if (mtd->dead)
+		return (0);
+
+	if (mtd->filter != NULL)
+		free(mtd->filter);
+	if (s == NULL || *s == '\0')
+		mtd->filter = NULL;
+	else
+		mtd->filter = xstrdup(s);
+
+	mode_tree_build(mtd);
+	mode_tree_draw(mtd);
+	mtd->wp->flags |= PANE_REDRAW;
+
+	return (0);
+}
+
+static void
+mode_tree_filter_free(void *data)
 {
 	mode_tree_remove_ref(data);
 }
@@ -811,6 +853,12 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 		break;
 	case 'n':
 		mode_tree_search_set(mtd);
+		break;
+	case 'f':
+		mtd->references++;
+		status_prompt_set(c, "(filter) ", mtd->filter,
+		    mode_tree_filter_callback, mode_tree_filter_free, mtd,
+		    PROMPT_NOFORMAT);
 		break;
 	}
 	return (0);

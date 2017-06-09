@@ -125,14 +125,15 @@ window_buffer_cmp_size(const void *a0, const void *b0)
 }
 
 static void
-window_buffer_build(void *modedata, u_int sort_type, __unused uint64_t *tag)
+window_buffer_build(void *modedata, u_int sort_type, __unused uint64_t *tag,
+    const char *filter)
 {
 	struct window_buffer_modedata	*data = modedata;
 	struct window_buffer_itemdata	*item;
 	u_int				 i;
 	struct paste_buffer		*pb;
-	char				*tim;
-	char				*text;
+	char				*tim, *text, *cp;
+	struct format_tree		*ft;
 
 	for (i = 0; i < data->item_size; i++)
 		window_buffer_free_item(data->item_list[i]);
@@ -166,6 +167,22 @@ window_buffer_build(void *modedata, u_int sort_type, __unused uint64_t *tag)
 
 	for (i = 0; i < data->item_size; i++) {
 		item = data->item_list[i];
+
+		if (filter != NULL) {
+			pb = paste_get_name(item->name);
+			if (pb == NULL)
+				continue;
+			ft = format_create(NULL, NULL, FORMAT_NONE, 0);
+			format_defaults_paste_buffer(ft, pb);
+			cp = format_expand(ft, filter);
+			if (!format_true(cp)) {
+				free(cp);
+				format_free(ft);
+				continue;
+			}
+			free(cp);
+			format_free(ft);
+		}
 
 		tim = ctime(&item->created);
 		*strchr(tim, '\n') = '\0';

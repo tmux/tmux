@@ -1354,6 +1354,7 @@ the end of the visible pane.
 The default is to capture only the visible contents of the pane.
 .It Xo
 .Ic choose-client
+.Op Fl f Ar filter
 .Op Fl O Ar sort-order
 .Op Fl t Ar target-pane
 .Op Ar template
@@ -1377,6 +1378,7 @@ The following keys may be used in client mode:
 .It Li "X" Ta "Detach and HUP tagged clients"
 .It Li "z" Ta "Suspend selected client"
 .It Li "Z" Ta "Suspend tagged clients"
+.It Li "f" Ta "Enter a format to filter items"
 .It Li "O" Ta "Change sort order"
 .It Li "q" Ta "Exit mode"
 .El
@@ -1397,10 +1399,13 @@ specifies the initial sort order: one of
 .Ql creation ,
 or
 .Ql activity .
+.Fl f
+specifies an initial filter.
 This command works only if at least one client is attached.
 .It Xo
 .Ic choose-tree
 .Op Fl sw
+.Op Fl f Ar filter
 .Op Fl O Ar sort-order
 .Op Fl t Ar target-pane
 .Op Ar template
@@ -1443,6 +1448,8 @@ specifies the initial sort order: one of
 .Ql name ,
 or
 .Ql time .
+.Fl f
+specifies an initial filter.
 This command works only if at least one client is attached.
 .It Xo
 .Ic display-panes
@@ -3972,6 +3979,7 @@ The buffer commands are as follows:
 .Bl -tag -width Ds
 .It Xo
 .Ic choose-buffer
+.Op Fl f Ar filter
 .Op Fl O Ar sort-order
 .Op Fl t Ar target-pane
 .Op Ar template
@@ -3991,6 +3999,7 @@ The following keys may be used in buffer mode:
 .It Li "C-t" Ta "Tag all buffers"
 .It Li "d" Ta "Delete selected buffer"
 .It Li "D" Ta "Delete tagged buffers"
+.It Li "f" Ta "Enter a format to filter items"
 .It Li "O" Ta "Change sort order"
 .It Li "q" Ta "Exit mode"
 .El
@@ -4010,6 +4019,8 @@ specifies the initial sort order: one of
 .Ql name
 or
 .Ql size .
+.Fl f
+specifies an initial filter.
 This command works only if at least one client is attached.
 .It Ic clear-history Op Fl t Ar target-pane
 .D1 (alias: Ic clearhist )
