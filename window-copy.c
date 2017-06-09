@@ -1633,6 +1633,7 @@ window_copy_copy_buffer(struct window_pane *wp, const char *bufname, void *buf,
 		screen_write_start(&ctx, wp, NULL);
 		screen_write_setselection(&ctx, buf, len);
 		screen_write_stop(&ctx);
+		notify_pane("pane-set-clipboard", wp);
 	}
 
 	if (paste_set(buf, len, bufname, NULL) != 0)
@@ -1690,6 +1691,7 @@ window_copy_append_selection(struct window_pane *wp, const char *bufname)
 		screen_write_start(&ctx, wp, NULL);
 		screen_write_setselection(&ctx, buf, len);
 		screen_write_stop(&ctx);
+		notify_pane("pane-set-clipboard", wp);
 	}
 
 	if (bufname == NULL || *bufname == '\0')
