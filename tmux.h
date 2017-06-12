@@ -127,6 +127,10 @@ enum {
 	KEYC_FOCUS_IN = KEYC_BASE,
 	KEYC_FOCUS_OUT,
 
+	/* Paste brackets. */
+	KEYC_PASTE_START,
+	KEYC_PASTE_END,
+
 	/* Mouse keys. */
 	KEYC_MOUSE, /* unclassified mouse event */
 	KEYC_DRAGGING, /* dragging in progress */
