@@ -165,6 +165,10 @@ static const struct tty_default_key_raw tty_default_raw_keys[] = {
 	/* Focus tracking. */
 	{ "\033[I", KEYC_FOCUS_IN },
 	{ "\033[O", KEYC_FOCUS_OUT },
+
+	/* Paste keys. */
+	{ "\033[200~", KEYC_PASTE_START },
+	{ "\033[201~", KEYC_PASTE_END },
 };
 
 /* Default terminfo(5) keys. */

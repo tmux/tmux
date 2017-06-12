@@ -45,6 +45,10 @@ static const struct input_key_ent input_keys[] = {
 	/* Backspace key. */
 	{ KEYC_BSPACE,		"\177",		0 },
 
+	/* Paste keys. */
+	{ KEYC_PASTE_START,	"\033[200~",	0 },
+	{ KEYC_PASTE_END,	"\033[201~",	0 },
+
 	/* Function keys. */
 	{ KEYC_F1,		"\033OP",	0 },
 	{ KEYC_F2,		"\033OQ",	0 },

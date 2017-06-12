@@ -251,6 +251,10 @@ key_string_lookup_key(key_code key)
 		return ("FocusIn");
 	if (key == KEYC_FOCUS_OUT)
 		return ("FocusOut");
+	if (key == KEYC_PASTE_START)
+		return ("PasteStart");
+	if (key == KEYC_PASTE_END)
+		return ("PasteEnd");
 	if (key == KEYC_MOUSE)
 		return ("Mouse");
 	if (key == KEYC_DRAGGING)
