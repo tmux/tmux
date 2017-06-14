@@ -976,8 +976,11 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 	} else if (cmd_find_from_client(&current, item->client) == 0) {
 		fs->current = &current;
 		log_debug("%s: current is from client", __func__);
-	} else
+	} else {
+		if (~flags & CMD_FIND_QUIET)
+			cmdq_error(item, "no current target");
 		goto error;
+	}
 	if (!cmd_find_valid_state(fs->current))
 		fatalx("invalid current find state");
 
