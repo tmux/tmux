@@ -393,8 +393,8 @@ tty_term_find(char *name, int fd, char **cause)
 			return (term);
 		}
 	}
-
 	log_debug("new term: %s", name);
+
 	term = xmalloc(sizeof *term);
 	term->name = xstrdup(name);
 	term->references = 1;
@@ -534,6 +534,10 @@ tty_term_find(char *name, int fd, char **cause)
 		code->value.string = xstrdup("\033[48;2;%p1%d;%p2%d;%p3%dm");
 		code->type = TTYCODE_STRING;
 	}
+
+	/* Log it. */
+	for (i = 0; i < tty_term_ncodes(); i++)
+		log_debug("%s%s", name, tty_term_describe(term, i));
 
 	return (term);
 
