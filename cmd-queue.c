@@ -453,6 +453,8 @@ cmdq_error(struct cmdq_item *item, const char *fmt, ...)
 	msglen = xvasprintf(&msg, fmt, ap);
 	va_end(ap);
 
+	log_debug("%s: %s", __func__, msg);
+
 	if (c == NULL)
 		cfg_add_cause("%s:%u: %s", cmd->file, cmd->line, msg);
 	else if (c->session == NULL || (c->flags & CLIENT_CONTROL)) {
