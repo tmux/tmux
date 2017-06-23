@@ -391,6 +391,9 @@ tty_keys_build(struct tty *tty)
 	const struct tty_default_key_code	*tdkc;
 	u_int		 			 i;
 	const char				*s;
+	const char				*value;
+	u_int					size;
+	struct options_entry			*o;
 
 	if (tty->key_tree != NULL)
 		tty_keys_free(tty);
@@ -410,6 +413,17 @@ tty_keys_build(struct tty *tty)
 		if (*s != '\0')
 			tty_keys_add(tty, s, tdkc->key);
 
+	}
+
+	o = options_get(global_options, "user-keys");
+	if (o == NULL || options_array_size(o, &size) == -1)
+		return;
+	for (i = 0; i < size; i++) {
+		value = options_array_get(o, i);
+		if (value == NULL)
+			continue;
+
+		tty_keys_add(tty, value, KEYC_USER + i);
 	}
 }
 

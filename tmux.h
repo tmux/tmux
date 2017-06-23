@@ -91,6 +91,8 @@ struct tmuxproc;
 #define KEYC_NONE 0xffff00000000ULL
 #define KEYC_UNKNOWN 0xfffe00000000ULL
 #define KEYC_BASE 0x000010000000ULL
+#define KEYC_USER 0x000020000000ULL
+#define KEYC_NUSER 1000
 
 /* Key modifier bits. */
 #define KEYC_ESCAPE 0x200000000000ULL
