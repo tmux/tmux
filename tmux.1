@@ -2867,6 +2867,18 @@ removed from the session environment (as if
 was given to the
 .Ic set-environment
 command).
+.It Ic user-keys[] Ar key
+Set list of user-defined key escape sequences.
+Each item is associated with a key named
+.Ql User0,
+.Ql User1,
+and so on.
+.Pp
+For example:
+.Bd -literal -offset indent
+set -s user-keys[0] '\e[5;30012~'
+bind User0 resize-pane -L 3
+.Ed
 .It Xo Ic visual-activity
 .Op Ic on | off
 .Xc

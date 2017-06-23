@@ -240,6 +240,12 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 		TAILQ_FOREACH(loop, &clients, entry)
 			server_client_set_key_table(loop, NULL);
 	}
+	if (strcmp(name, "user-keys") == 0) {
+		TAILQ_FOREACH(loop, &clients, entry) {
+			if (loop->tty.flags & TTY_OPENED)
+				tty_keys_build(&loop->tty);
+		}
+	}
 	if (strcmp(name, "status") == 0 ||
 	    strcmp(name, "status-interval") == 0)
 		status_timer_start_all();

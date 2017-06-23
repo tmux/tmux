@@ -135,6 +135,13 @@ const struct options_table_entry options_table[] = {
 	  .separator = ","
 	},
 
+	{ .name = "user-keys",
+	  .type = OPTIONS_TABLE_ARRAY,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .default_str = "",
+	  .separator = ","
+	},
+
 	{ .name = "assume-paste-time",
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .scope = OPTIONS_TABLE_SESSION,
