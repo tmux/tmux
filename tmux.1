@@ -2867,6 +2867,17 @@ removed from the session environment (as if
 was given to the
 .Ic set-environment
 command).
+.It Ic user-keys[] Ar variable
+Set list of user-defined escape sequences for the terminals. These will be
+be associated with keys named 'User<index>', and can be used with the
+.Fl bind
+command.
+.Pp
+For example:
+.Bd -literal -offset indent
+set -s user-keys[0] '\e[5;30012~'
+bind User0 resize-pane -L 3
+.Ed
 .It Xo Ic visual-activity
 .Op Ic on | off
 .Xc
