@@ -1434,6 +1434,18 @@ struct key_table {
 };
 RB_HEAD(key_tables, key_table);
 
+/* macros and macro table */
+struct macro {
+	const char		*name;
+	struct cmd_list		*cmdlist;
+
+	int			flags;
+	u_int			 references;
+
+	RB_ENTRY(macro)	entry;
+};
+RB_HEAD(macro_table, macro);
+
 /* Option table entries. */
 enum options_table_type {
 	OPTIONS_TABLE_STRING,
@@ -1844,6 +1856,18 @@ void	 key_bindings_dispatch(struct key_binding *, struct cmdq_item *,
 /* key-string.c */
 key_code	 key_string_lookup_string(const char *);
 const char	*key_string_lookup_key(key_code);
+
+/* macros */
+RB_PROTOTYPE(macro_table, macro, entry, macro_cmp);
+extern struct macro_table macro_table;
+int macro_cmp(struct macro *, struct macro *);
+void	 macro_unref_table(struct macro_table *);
+void	 macro_add(const char *, struct cmd_list *);
+void	 macro_remove(const char *);
+void	 macro_remove_table(const char *);
+void	 macro_init(void);
+void	 macro_dispatch(struct macro *, struct cmdq_item *,
+	     struct client *, struct mouse_event *, struct cmd_find_state *);
 
 /* alerts.c */
 void	alerts_reset_all(void);

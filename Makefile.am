@@ -90,6 +90,7 @@ dist_tmux_SOURCES = \
 	cmd-list.c \
 	cmd-load-buffer.c \
 	cmd-lock-server.c \
+	cmd-macro.c \
 	cmd-move-window.c \
 	cmd-new-session.c \
 	cmd-new-window.c \
@@ -144,6 +145,7 @@ dist_tmux_SOURCES = \
 	layout.c \
 	log.c \
 	mode-tree.c \
+	macros.c \
 	names.c \
 	notify.c \
 	options-table.c \
