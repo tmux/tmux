@@ -1240,7 +1240,7 @@ window_pane_key(struct window_pane *wp, struct client *c, struct session *s,
 	if (wp->mode != NULL) {
 		wp->modelast = time(NULL);
 		if (wp->mode->key != NULL)
-			wp->mode->key(wp, c, s, key, m);
+			wp->mode->key(wp, c, s, (key & ~KEYC_XTERM), m);
 		return;
 	}
 

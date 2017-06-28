@@ -98,8 +98,8 @@ struct tmuxproc;
 
 /* Key modifier bits. */
 #define KEYC_ESCAPE 0x200000000000ULL
-#define KEYC_CTRL   0x400000000000ULL
-#define KEYC_SHIFT  0x800000000000ULL
+#define KEYC_CTRL 0x400000000000ULL
+#define KEYC_SHIFT 0x800000000000ULL
 #define KEYC_XTERM 0x1000000000000ULL
 
 /* Mask to obtain key w/o modifiers. */
