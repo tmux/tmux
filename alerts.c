@@ -285,8 +285,7 @@ alerts_check_silence(struct window *w)
 
 		if (options_get_number(s->options, "bell-on-alert"))
 			alerts_ring_bell(s);
-
-		if (!options_get_number(s->options, "visual-silence"))
+		if (options_get_number(s->options, "visual-silence"))
 			alerts_set_message(s, "Silence in window %d", wl->idx);
 	}
 
