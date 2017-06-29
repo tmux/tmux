@@ -66,6 +66,7 @@ extern const struct cmd_entry cmd_load_buffer_entry;
 extern const struct cmd_entry cmd_lock_client_entry;
 extern const struct cmd_entry cmd_lock_server_entry;
 extern const struct cmd_entry cmd_lock_session_entry;
+extern const struct cmd_entry cmd_macro_entry;
 extern const struct cmd_entry cmd_move_pane_entry;
 extern const struct cmd_entry cmd_move_window_entry;
 extern const struct cmd_entry cmd_new_session_entry;
@@ -152,6 +153,7 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_lock_client_entry,
 	&cmd_lock_server_entry,
 	&cmd_lock_session_entry,
+	&cmd_macro_entry,
 	&cmd_move_pane_entry,
 	&cmd_move_window_entry,
 	&cmd_new_session_entry,
@@ -355,6 +357,7 @@ cmd_parse(int argc, char **argv, const char *file, u_int line, char **cause)
 {
 	const char		*name;
 	const struct cmd_entry **entryp, *entry;
+	struct macro *recordp, record;
 	struct cmd		*cmd;
 	struct args		*args;
 	char			 s[BUFSIZ];
@@ -395,6 +398,14 @@ retry:
 		allocated = 1;
 		goto retry;
 	}
+
+	record.name = argv[0];
+	recordp = RB_FIND(macro_table, &macro_table, &record);
+	if ( recordp != NULL )
+	{
+		entry = recordp->cmdlist->list.tqh_first->entry;
+	}
+
 	if (ambiguous)
 		goto ambiguous;
 	if (entry == NULL) {
