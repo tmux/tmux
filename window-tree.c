@@ -432,6 +432,8 @@ window_tree_draw_session(struct session *s, struct screen_write_ctx *ctx,
 	each = sx / n;
 	if (each < 24) {
 		n = (sx - 6) / 24;
+		if (n == 0)
+			n = 1;
 		each = (sx - 6) / n;
 		left = sx - (n * each);
 
@@ -440,7 +442,7 @@ window_tree_draw_session(struct session *s, struct screen_write_ctx *ctx,
 		screen_write_cursormove(ctx, sx - left + left / 2, sy / 2);
 		screen_write_puts(ctx, &grid_default_cell, "...");
 
-		if (sx == left)
+		if (each == 0)
 			return;
 		left = 0;
 	} else
@@ -466,7 +468,8 @@ window_tree_draw_session(struct session *s, struct screen_write_ctx *ctx,
 			xasprintf(&label, " %u ", wl->idx);
 		len = strlen(label) / 2;
 		screen_write_cursormove(ctx, i * each + each / 2 - len, sy / 2);
-		screen_write_puts(ctx, &gc, "%s", label);
+		if (len <= width)
+			screen_write_puts(ctx, &gc, "%s", label);
 		free(label);
 
 		if (i != n - 1) {
@@ -500,6 +503,8 @@ window_tree_draw_window(struct session *s, struct window *w,
 	each = sx / n;
 	if (each < 24) {
 		n = (sx - 6) / 24;
+		if (n == 0)
+			n = 1;
 		each = (sx - 6) / n;
 		left = sx - (n * each);
 
@@ -508,7 +513,7 @@ window_tree_draw_window(struct session *s, struct window *w,
 		screen_write_cursormove(ctx, sx - left + left / 2, sy / 2);
 		screen_write_puts(ctx, &grid_default_cell, "...");
 
-		if (sx == left)
+		if (each == 0)
 			return;
 		left = 0;
 	} else
@@ -531,7 +536,8 @@ window_tree_draw_window(struct session *s, struct window *w,
 		xasprintf(&label, " %u ", i);
 		len = strlen(label) / 2;
 		screen_write_cursormove(ctx, i * each + each / 2 - len, sy / 2);
-		screen_write_puts(ctx, &gc, "%s", label);
+		if (len <= width)
+			screen_write_puts(ctx, &gc, "%s", label);
 		free(label);
 
 		if (i != n - 1) {
