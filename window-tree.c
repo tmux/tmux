@@ -468,7 +468,7 @@ window_tree_draw_session(struct session *s, struct screen_write_ctx *ctx,
 			xasprintf(&label, " %u ", wl->idx);
 		len = strlen(label) / 2;
 		screen_write_cursormove(ctx, i * each + each / 2 - len, sy / 2);
-		if (len <= width)
+		if (len < width)
 			screen_write_puts(ctx, &gc, "%s", label);
 		free(label);
 
@@ -536,7 +536,7 @@ window_tree_draw_window(struct session *s, struct window *w,
 		xasprintf(&label, " %u ", i);
 		len = strlen(label) / 2;
 		screen_write_cursormove(ctx, i * each + each / 2 - len, sy / 2);
-		if (len <= width)
+		if (len < width)
 			screen_write_puts(ctx, &gc, "%s", label);
 		free(label);
 
