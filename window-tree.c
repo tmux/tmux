@@ -408,6 +408,146 @@ window_tree_build(void *modedata, u_int sort_type, uint64_t *tag,
 	}
 }
 
+static void
+window_tree_draw_session(struct session *s, struct screen_write_ctx *ctx,
+    u_int sx, u_int sy)
+{
+	struct options		*oo = s->options;
+	struct winlink		*wl;
+	struct window		*w;
+	u_int			 i, n, each, width, left;
+	struct grid_cell	 gc;
+	int			 colour, active_colour;
+	char			*label;
+	size_t			 len;
+
+	if (sx < 6)
+		return;
+	n = winlink_count(&s->windows);
+
+	memcpy(&gc, &grid_default_cell, sizeof gc);
+	colour = options_get_number(oo, "display-panes-colour");
+	active_colour = options_get_number(oo, "display-panes-active-colour");
+
+	each = sx / n;
+	if (each < 24) {
+		n = (sx - 6) / 24;
+		if (n == 0)
+			n = 1;
+		each = (sx - 6) / n;
+		left = sx - (n * each);
+
+		screen_write_cursormove(ctx, sx - left, 0);
+		screen_write_vline(ctx, sy, 0, 0);
+		screen_write_cursormove(ctx, sx - left + left / 2, sy / 2);
+		screen_write_puts(ctx, &grid_default_cell, "...");
+
+		if (each == 0)
+			return;
+		left = 0;
+	} else
+		left = sx - (n * each);
+
+	wl = RB_MIN(winlinks, &s->windows);
+	for (i = 0; i < n; i++) {
+		if (wl == s->curw)
+			gc.fg = active_colour;
+		else
+			gc.fg = colour;
+		if (i == n - 1)
+			width = each + left;
+		else
+			width = each - 1;
+		w = wl->window;
+
+		screen_write_cursormove(ctx, i * each, 0);
+		screen_write_preview(ctx, &w->active->base, width, sy);
+
+		xasprintf(&label, " %u:%s ", wl->idx, w->name);
+		if (strlen(label) > width)
+			xasprintf(&label, " %u ", wl->idx);
+		len = strlen(label) / 2;
+		screen_write_cursormove(ctx, i * each + each / 2 - len, sy / 2);
+		if (len < width)
+			screen_write_puts(ctx, &gc, "%s", label);
+		free(label);
+
+		if (i != n - 1) {
+			screen_write_cursormove(ctx, i * each + width, 0);
+			screen_write_vline(ctx, sy, 0, 0);
+		}
+		wl = RB_NEXT(winlinks, &s->windows, wl);
+	}
+}
+
+static void
+window_tree_draw_window(struct session *s, struct window *w,
+    struct screen_write_ctx *ctx, u_int sx, u_int sy)
+{
+	struct options		*oo = s->options;
+	struct window_pane	*wp;
+	u_int			 i, n, each, width, left;
+	struct grid_cell	 gc;
+	int			 colour, active_colour;
+	char			*label;
+	size_t			 len;
+
+	if (sx < 6)
+		return;
+	n = window_count_panes(w);
+
+	memcpy(&gc, &grid_default_cell, sizeof gc);
+	colour = options_get_number(oo, "display-panes-colour");
+	active_colour = options_get_number(oo, "display-panes-active-colour");
+
+	each = sx / n;
+	if (each < 24) {
+		n = (sx - 6) / 24;
+		if (n == 0)
+			n = 1;
+		each = (sx - 6) / n;
+		left = sx - (n * each);
+
+		screen_write_cursormove(ctx, sx - left, 0);
+		screen_write_vline(ctx, sy, 0, 0);
+		screen_write_cursormove(ctx, sx - left + left / 2, sy / 2);
+		screen_write_puts(ctx, &grid_default_cell, "...");
+
+		if (each == 0)
+			return;
+		left = 0;
+	} else
+		left = sx - (n * each);
+
+	wp = TAILQ_FIRST(&w->panes);
+	for (i = 0; i < n; i++) {
+		if (wp == w->active)
+			gc.fg = active_colour;
+		else
+			gc.fg = colour;
+		if (i == n - 1)
+			width = each + left;
+		else
+			width = each - 1;
+
+		screen_write_cursormove(ctx, i * each, 0);
+		screen_write_preview(ctx, &wp->base, width, sy);
+
+		xasprintf(&label, " %u ", i);
+		len = strlen(label) / 2;
+		screen_write_cursormove(ctx, i * each + each / 2 - len, sy / 2);
+		if (len < width)
+			screen_write_puts(ctx, &gc, "%s", label);
+		free(label);
+
+		if (i != n - 1) {
+			screen_write_cursormove(ctx, i * each + width, 0);
+			screen_write_vline(ctx, sy, 0, 0);
+		}
+		wp = TAILQ_NEXT(wp, entry);
+	}
+}
+
 static struct screen *
 window_tree_draw(__unused void *modedata, void *itemdata, u_int sx, u_int sy)
 {
@@ -423,10 +563,21 @@ window_tree_draw(__unused void *modedata, void *itemdata, u_int sx, u_int sy)
 		return (NULL);
 
 	screen_init(&s, sx, sy, 0);
-
 	screen_write_start(&ctx, NULL, &s);
 
-	screen_write_preview(&ctx, &wp->base, sx, sy);
+	switch (item->type) {
+	case WINDOW_TREE_NONE:
+		return (0);
+	case WINDOW_TREE_SESSION:
+		window_tree_draw_session(sp, &ctx, sx, sy);
+		break;
+	case WINDOW_TREE_WINDOW:
+		window_tree_draw_window(sp, wlp->window, &ctx, sx, sy);
+		break;
+	case WINDOW_TREE_PANE:
+		screen_write_preview(&ctx, &wp->base, sx, sy);
+		break;
+	}
 
 	screen_write_stop(&ctx);
 	return (&s);
