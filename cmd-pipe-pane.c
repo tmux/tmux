@@ -34,6 +34,7 @@
 
 static enum cmd_retval	cmd_pipe_pane_exec(struct cmd *, struct cmdq_item *);
 
+static void cmd_pipe_pane_write_callback(struct bufferevent *, void *);
 static void cmd_pipe_pane_error_callback(struct bufferevent *, short, void *);
 
 const struct cmd_entry cmd_pipe_pane_entry = {
@@ -67,6 +68,11 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 		bufferevent_free(wp->pipe_event);
 		close(wp->pipe_fd);
 		wp->pipe_fd = -1;
+
+		if (window_pane_destroy_ready(wp)) {
+			server_destroy_pane(wp, 1);
+			return (CMD_RETURN_NORMAL);
+		}
 	}
 
 	/* If no pipe command, that is enough. */
@@ -130,8 +136,9 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 		wp->pipe_fd = pipe_fd[0];
 		wp->pipe_off = EVBUFFER_LENGTH(wp->event->input);
 
-		wp->pipe_event = bufferevent_new(wp->pipe_fd,
-		    NULL, NULL, cmd_pipe_pane_error_callback, wp);
+		wp->pipe_event = bufferevent_new(wp->pipe_fd, NULL,
+		    cmd_pipe_pane_write_callback, cmd_pipe_pane_error_callback,
+		    wp);
 		bufferevent_enable(wp->pipe_event, EV_WRITE);
 
 		setblocking(wp->pipe_fd, 0);
@@ -142,12 +149,27 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 }
 
 static void
+cmd_pipe_pane_write_callback(__unused struct bufferevent *bufev, void *data)
+{
+	struct window_pane	*wp = data;
+
+	log_debug("%%%u pipe empty", wp->id);
+	if (window_pane_destroy_ready(wp))
+		server_destroy_pane(wp, 1);
+}
+
+static void
 cmd_pipe_pane_error_callback(__unused struct bufferevent *bufev,
     __unused short what, void *data)
 {
 	struct window_pane	*wp = data;
 
+	log_debug("%%%u pipe error", wp->id);
+
 	bufferevent_free(wp->pipe_event);
 	close(wp->pipe_fd);
 	wp->pipe_fd = -1;
+
+	if (window_pane_destroy_ready(wp))
+		server_destroy_pane(wp, 1);
 }

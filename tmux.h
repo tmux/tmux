@@ -772,6 +772,8 @@ struct window_pane {
 #define PANE_FOCUSPUSH 0x20
 #define PANE_INPUTOFF 0x40
 #define PANE_CHANGED 0x80
+#define PANE_ERROR 0x100
+#define PANE_EXITED 0x200
 
 	int		 argc;
 	char	       **argv;
@@ -2137,6 +2139,7 @@ u_int		 window_count_panes(struct window *);
 void		 window_destroy_panes(struct window *);
 struct window_pane *window_pane_find_by_id_str(const char *);
 struct window_pane *window_pane_find_by_id(u_int);
+int		 window_pane_destroy_ready(struct window_pane *);
 int		 window_pane_spawn(struct window_pane *, int, char **,
 		     const char *, const char *, const char *, struct environ *,
 		     struct termios *, char **);
@@ -2158,7 +2161,6 @@ void		 window_pane_key(struct window_pane *, struct client *,
 int		 window_pane_outside(struct window_pane *);
 int		 window_pane_visible(struct window_pane *);
 u_int		 window_pane_search(struct window_pane *, const char *);
-
 const char	*window_printable_flags(struct winlink *);
 struct window_pane *window_pane_find_up(struct window_pane *);
 struct window_pane *window_pane_find_down(struct window_pane *);
