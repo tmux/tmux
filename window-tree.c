@@ -415,68 +415,119 @@ window_tree_draw_session(struct session *s, struct screen_write_ctx *ctx,
 	struct options		*oo = s->options;
 	struct winlink		*wl;
 	struct window		*w;
-	u_int			 i, n, each, width, left;
+	u_int			 loop, total, visible, each, width, offset;
+	u_int			 current, start, end, remaining, i;
 	struct grid_cell	 gc;
-	int			 colour, active_colour;
+	int			 colour, active_colour, left, right;
 	char			*label;
 	size_t			 len;
 
-	if (sx < 6)
+	if (sx == 0)
 		return;
-	n = winlink_count(&s->windows);
+	total = winlink_count(&s->windows);
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	colour = options_get_number(oo, "display-panes-colour");
 	active_colour = options_get_number(oo, "display-panes-active-colour");
 
-	each = sx / n;
-	if (each < 24) {
-		n = (sx - 6) / 24;
-		if (n == 0)
-			n = 1;
-		each = (sx - 6) / n;
-		left = sx - (n * each);
-
-		screen_write_cursormove(ctx, sx - left, 0);
-		screen_write_vline(ctx, sy, 0, 0);
-		screen_write_cursormove(ctx, sx - left + left / 2, sy / 2);
-		screen_write_puts(ctx, &grid_default_cell, "...");
-
-		if (each == 0)
-			return;
-		left = 0;
+	if (sx / total < 24) {
+		visible = sx / 24;
+		if (visible == 0)
+			visible = 1;
 	} else
-		left = sx - (n * each);
+		visible = total;
 
-	wl = RB_MIN(winlinks, &s->windows);
-	for (i = 0; i < n; i++) {
+	current = 0;
+	RB_FOREACH(wl, winlinks, &s->windows) {
+		if (wl == s->curw)
+			break;
+		current++;
+	}
+
+	if (current < visible) {
+		start = 0;
+		end = visible;
+	} else if (current >= total - visible) {
+		start = total - visible;
+		end = total;
+	} else {
+		start = current - (visible / 2);
+		end = start + visible;
+	}
+
+	left = (start != 0);
+	right = (end != total);
+	if (((left && right) && sx <= 6) || ((left || right) && sx <= 3))
+		left = right = 0;
+	if (left && right) {
+		each = (sx - 6) / visible;
+		remaining = (sx - 6) - (visible * each);
+	} else if (left || right) {
+		each = (sx - 3) / visible;
+		remaining = (sx - 3) - (visible * each);
+	} else {
+		each = sx / visible;
+		remaining = sx - (visible * each);
+	}
+	if (each == 0)
+		return;
+
+	if (left) {
+		screen_write_cursormove(ctx, 2, 0);
+		screen_write_vline(ctx, sy, 0, 0);
+		screen_write_cursormove(ctx, 0, sy / 2);
+		screen_write_puts(ctx, &grid_default_cell, "<");
+	}
+	if (right) {
+		screen_write_cursormove(ctx, sx - 3, 0);
+		screen_write_vline(ctx, sy, 0, 0);
+		screen_write_cursormove(ctx, sx - 1, sy / 2);
+		screen_write_puts(ctx, &grid_default_cell, ">");
+	}
+
+	i = loop = 0;
+	RB_FOREACH(wl, winlinks, &s->windows) {
+		if (loop == end)
+			break;
+		if (loop < start) {
+			loop++;
+			continue;
+		}
+		w = wl->window;
+
 		if (wl == s->curw)
 			gc.fg = active_colour;
 		else
 			gc.fg = colour;
-		if (i == n - 1)
-			width = each + left;
+
+		if (left)
+			offset = 3 + (i * each);
+		else
+			offset = (i * each);
+		if (loop == end - 1)
+			width = each - 1 + remaining;
 		else
 			width = each - 1;
-		w = wl->window;
 
-		screen_write_cursormove(ctx, i * each, 0);
+		screen_write_cursormove(ctx, offset, 0);
 		screen_write_preview(ctx, &w->active->base, width, sy);
 
 		xasprintf(&label, " %u:%s ", wl->idx, w->name);
 		if (strlen(label) > width)
 			xasprintf(&label, " %u ", wl->idx);
 		len = strlen(label) / 2;
-		screen_write_cursormove(ctx, i * each + each / 2 - len, sy / 2);
+		screen_write_cursormove(ctx, offset + (each / 2) - len, sy / 2);
 		if (len < width)
 			screen_write_puts(ctx, &gc, "%s", label);
 		free(label);
 
-		if (i != n - 1) {
-			screen_write_cursormove(ctx, i * each + width, 0);
+		if (loop != end - 1) {
+			screen_write_cursormove(ctx, offset + width, 0);
 			screen_write_vline(ctx, sy, 0, 0);
 		}
-		wl = RB_NEXT(winlinks, &s->windows, wl);
+		loop++;
+
+		i++;
 	}
 }
 
@@ -486,65 +537,116 @@ window_tree_draw_window(struct session *s, struct window *w,
 {
 	struct options		*oo = s->options;
 	struct window_pane	*wp;
-	u_int			 i, n, each, width, left;
+	u_int			 loop, total, visible, each, width, offset;
+	u_int			 current, start, end, remaining, i;
 	struct grid_cell	 gc;
-	int			 colour, active_colour;
+	int			 colour, active_colour, left, right;
 	char			*label;
 	size_t			 len;
 
-	if (sx < 6)
+	if (sx == 0)
 		return;
-	n = window_count_panes(w);
+	total = window_count_panes(w);
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	colour = options_get_number(oo, "display-panes-colour");
 	active_colour = options_get_number(oo, "display-panes-active-colour");
 
-	each = sx / n;
-	if (each < 24) {
-		n = (sx - 6) / 24;
-		if (n == 0)
-			n = 1;
-		each = (sx - 6) / n;
-		left = sx - (n * each);
-
-		screen_write_cursormove(ctx, sx - left, 0);
-		screen_write_vline(ctx, sy, 0, 0);
-		screen_write_cursormove(ctx, sx - left + left / 2, sy / 2);
-		screen_write_puts(ctx, &grid_default_cell, "...");
-
-		if (each == 0)
-			return;
-		left = 0;
+	if (sx / total < 24) {
+		visible = sx / 24;
+		if (visible == 0)
+			visible = 1;
 	} else
-		left = sx - (n * each);
+		visible = total;
 
-	wp = TAILQ_FIRST(&w->panes);
-	for (i = 0; i < n; i++) {
+	current = 0;
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (wp == w->active)
+			break;
+		current++;
+	}
+
+	if (current < visible) {
+		start = 0;
+		end = visible;
+	} else if (current >= total - visible) {
+		start = total - visible;
+		end = total;
+	} else {
+		start = current - (visible / 2);
+		end = start + visible;
+	}
+
+	left = (start != 0);
+	right = (end != total);
+	if (((left && right) && sx <= 6) || ((left || right) && sx <= 3))
+		left = right = 0;
+	if (left && right) {
+		each = (sx - 6) / visible;
+		remaining = (sx - 6) - (visible * each);
+	} else if (left || right) {
+		each = (sx - 3) / visible;
+		remaining = (sx - 3) - (visible * each);
+	} else {
+		each = sx / visible;
+		remaining = sx - (visible * each);
+	}
+	if (each == 0)
+		return;
+
+	if (left) {
+		screen_write_cursormove(ctx, 2, 0);
+		screen_write_vline(ctx, sy, 0, 0);
+		screen_write_cursormove(ctx, 0, sy / 2);
+		screen_write_puts(ctx, &grid_default_cell, "<");
+	}
+	if (right) {
+		screen_write_cursormove(ctx, sx - 3, 0);
+		screen_write_vline(ctx, sy, 0, 0);
+		screen_write_cursormove(ctx, sx - 1, sy / 2);
+		screen_write_puts(ctx, &grid_default_cell, ">");
+	}
+
+	i = loop = 0;
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (loop == end)
+			break;
+		if (loop < start) {
+			loop++;
+			continue;
+		}
+
 		if (wp == w->active)
 			gc.fg = active_colour;
 		else
 			gc.fg = colour;
-		if (i == n - 1)
-			width = each + left;
+
+		if (left)
+			offset = 3 + (i * each);
+		else
+			offset = (i * each);
+		if (loop == end - 1)
+			width = each - 1 + remaining;
 		else
 			width = each - 1;
 
-		screen_write_cursormove(ctx, i * each, 0);
+		screen_write_cursormove(ctx, offset, 0);
 		screen_write_preview(ctx, &wp->base, width, sy);
 
-		xasprintf(&label, " %u ", i);
+		xasprintf(&label, " %u ", loop);
 		len = strlen(label) / 2;
-		screen_write_cursormove(ctx, i * each + each / 2 - len, sy / 2);
+		screen_write_cursormove(ctx, offset + (each / 2) - len, sy / 2);
 		if (len < width)
 			screen_write_puts(ctx, &gc, "%s", label);
 		free(label);
 
-		if (i != n - 1) {
-			screen_write_cursormove(ctx, i * each + width, 0);
+		if (loop != end - 1) {
+			screen_write_cursormove(ctx, offset + width, 0);
 			screen_write_vline(ctx, sy, 0, 0);
 		}
-		wp = TAILQ_NEXT(wp, entry);
+		loop++;
+
+		i++;
 	}
 }
 
