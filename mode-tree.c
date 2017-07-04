@@ -445,7 +445,7 @@ void
 mode_tree_draw(struct mode_tree_data *mtd)
 {
 	struct window_pane	*wp = mtd->wp;
-	struct screen		*s = &mtd->screen, *box;
+	struct screen		*s = &mtd->screen, *box = NULL;
 	struct mode_tree_line	*line;
 	struct mode_tree_item	*mti;
 	struct options		*oo = wp->window->options;
@@ -571,7 +571,8 @@ mode_tree_draw(struct mode_tree_data *mtd)
 	box_x = w - 4;
 	box_y = sy - h - 2;
 
-	box = mtd->drawcb(mtd->modedata, mti->itemdata, box_x, box_y);
+	if (box_x != 0 && box_y != 0)
+		box = mtd->drawcb(mtd->modedata, mti->itemdata, box_x, box_y);
 	if (box != NULL) {
 		screen_write_cursormove(&ctx, 2, h + 1);
 		screen_write_copy(&ctx, box, 0, 0, box_x, box_y, NULL, NULL);
