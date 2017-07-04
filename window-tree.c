@@ -422,8 +422,6 @@ window_tree_draw_session(struct session *s, struct screen_write_ctx *ctx,
 	char			*label;
 	size_t			 len;
 
-	if (sx == 0)
-		return;
 	total = winlink_count(&s->windows);
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
@@ -544,8 +542,6 @@ window_tree_draw_window(struct session *s, struct window *w,
 	char			*label;
 	size_t			 len;
 
-	if (sx == 0)
-		return;
 	total = window_count_panes(w);
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
