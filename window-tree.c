@@ -83,6 +83,8 @@ struct window_tree_modedata {
 
 	struct cmd_find_state		  fs;
 	enum window_tree_type		  type;
+
+	int				  offset;
 };
 
 static void
@@ -409,8 +411,8 @@ window_tree_build(void *modedata, u_int sort_type, uint64_t *tag,
 }
 
 static void
-window_tree_draw_session(struct session *s, struct screen_write_ctx *ctx,
-    u_int sx, u_int sy)
+window_tree_draw_session(struct window_tree_modedata *data, struct session *s,
+    struct screen_write_ctx *ctx, u_int sx, u_int sy)
 {
 	struct options		*oo = s->options;
 	struct winlink		*wl;
@@ -452,6 +454,13 @@ window_tree_draw_session(struct session *s, struct screen_write_ctx *ctx,
 		start = current - (visible / 2);
 		end = start + visible;
 	}
+
+	if (data->offset < -(int)start)
+		data->offset = -(int)start;
+	if (data->offset > (int)(total - end))
+		data->offset = (int)(total - end);
+	start += data->offset;
+	end += data->offset;
 
 	left = (start != 0);
 	right = (end != total);
@@ -530,8 +539,8 @@ window_tree_draw_session(struct session *s, struct screen_write_ctx *ctx,
 }
 
 static void
-window_tree_draw_window(struct session *s, struct window *w,
-    struct screen_write_ctx *ctx, u_int sx, u_int sy)
+window_tree_draw_window(struct window_tree_modedata *data, struct session *s,
+    struct window *w, struct screen_write_ctx *ctx, u_int sx, u_int sy)
 {
 	struct options		*oo = s->options;
 	struct window_pane	*wp;
@@ -572,6 +581,13 @@ window_tree_draw_window(struct session *s, struct window *w,
 		start = current - (visible / 2);
 		end = start + visible;
 	}
+
+	if (data->offset < -(int)start)
+		data->offset = -(int)start;
+	if (data->offset > (int)(total - end))
+		data->offset = (int)(total - end);
+	start += data->offset;
+	end += data->offset;
 
 	left = (start != 0);
 	right = (end != total);
@@ -647,7 +663,7 @@ window_tree_draw_window(struct session *s, struct window *w,
 }
 
 static struct screen *
-window_tree_draw(__unused void *modedata, void *itemdata, u_int sx, u_int sy)
+window_tree_draw(void *modedata, void *itemdata, u_int sx, u_int sy)
 {
 	struct window_tree_itemdata	*item = itemdata;
 	struct session			*sp;
@@ -667,10 +683,10 @@ window_tree_draw(__unused void *modedata, void *itemdata, u_int sx, u_int sy)
 	case WINDOW_TREE_NONE:
 		return (0);
 	case WINDOW_TREE_SESSION:
-		window_tree_draw_session(sp, &ctx, sx, sy);
+		window_tree_draw_session(modedata, sp, &ctx, sx, sy);
 		break;
 	case WINDOW_TREE_WINDOW:
-		window_tree_draw_window(sp, wlp->window, &ctx, sx, sy);
+		window_tree_draw_window(modedata, sp, wlp->window, &ctx, sx, sy);
 		break;
 	case WINDOW_TREE_PANE:
 		screen_write_preview(&ctx, &wp->base, sx, sy);
@@ -898,8 +914,17 @@ window_tree_key(struct window_pane *wp, struct client *c,
 	int				 finished;
 	u_int				 tagged;
 
+	item = mode_tree_get_current(data->data);
 	finished = mode_tree_key(data->data, c, &key, m);
+	if (item != mode_tree_get_current(data->data))
+		data->offset = 0;
 	switch (key) {
+	case '<':
+		data->offset--;
+		break;
+	case '>':
+		data->offset++;
+		break;
 	case ':':
 		tagged = mode_tree_count_tagged(data->data);
 		if (tagged != 0)
