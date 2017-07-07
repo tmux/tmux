@@ -512,7 +512,7 @@ window_tree_draw_session(struct window_tree_modedata *data, struct session *s,
 		else
 			offset = (i * each);
 		if (loop == end - 1)
-			width = each - 1 + remaining;
+			width = each + remaining;
 		else
 			width = each - 1;
 
@@ -638,7 +638,7 @@ window_tree_draw_window(struct window_tree_modedata *data, struct session *s,
 		else
 			offset = (i * each);
 		if (loop == end - 1)
-			width = each - 1 + remaining;
+			width = each + remaining;
 		else
 			width = each - 1;
 

@@ -1409,6 +1409,7 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 	format_add(ft, "pane_id", "%%%u", wp->id);
 	format_add(ft, "pane_active", "%d", wp == wp->window->active);
 	format_add(ft, "pane_input_off", "%d", !!(wp->flags & PANE_INPUTOFF));
+	format_add(ft, "pane_pipe", "%d", wp->pipe_fd != -1);
 
 	status = wp->status;
 	if (wp->fd == -1 && WIFEXITED(status))
