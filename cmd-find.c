@@ -96,6 +96,22 @@ cmd_find_try_TMUX(struct client *c)
 	return (session_find_by_id(session));
 }
 
+/* Find pane containing client if any. */
+static struct window_pane *
+cmd_find_inside_pane(struct client *c)
+{
+	struct window_pane	*wp;
+
+	if (c == NULL)
+		return (NULL);
+
+	RB_FOREACH(wp, window_pane_tree, &all_window_panes) {
+		if (strcmp(wp->tty, c->ttyname) == 0)
+			break;
+	}
+	return (wp);
+}
+
 /* Is this client better? */
 static int
 cmd_find_client_better(struct client *c, struct client *than)
@@ -875,10 +891,7 @@ cmd_find_from_client(struct cmd_find_state *fs, struct client *c)
 	 * If this is an unattached client running in a pane, we can use that
 	 * to limit the list of sessions to those containing that pane.
 	 */
-	RB_FOREACH(wp, window_pane_tree, &all_window_panes) {
-		if (strcmp(wp->tty, c->ttyname) == 0)
-			break;
-	}
+	wp = cmd_find_inside_pane(c);
 	if (wp == NULL)
 		goto unknown_pane;
 
@@ -1232,30 +1245,46 @@ no_pane:
 	goto error;
 }
 
+/* Find the current client. */
+static struct client *
+cmd_find_current_client(struct cmdq_item *item, int quiet)
+{
+	struct client		*c;
+	struct session		*s;
+	struct window_pane	*wp;
+	struct cmd_find_state	 fs;
+
+	if (item->client != NULL && item->client->session != NULL)
+		return (item->client);
+
+	c = NULL;
+	if ((wp = cmd_find_inside_pane(item->client)) != NULL) {
+		cmd_find_clear_state(&fs, CMD_FIND_QUIET);
+		fs.w = wp->window;
+		if (cmd_find_best_session_with_window(&fs) == 0)
+			c = cmd_find_best_client(fs.s);
+	} else {
+		s = cmd_find_best_session(NULL, 0, CMD_FIND_QUIET);
+		if (s != NULL)
+			c = cmd_find_best_client(s);
+	}
+	if (c == NULL && !quiet)
+		cmdq_error(item, "no current client");
+	log_debug("%s: no target, return %p", __func__, c);
+	return (c);
+}
+
 /* Find the target client or report an error and return NULL. */
 struct client *
 cmd_find_client(struct cmdq_item *item, const char *target, int quiet)
 {
 	struct client	*c;
-	struct session	*s;
 	char		*copy;
 	size_t		 size;
 
 	/* A NULL argument means the current client. */
-	if (target == NULL) {
-		c = NULL;
-		if (item->client != NULL && item->client->session != NULL)
-			c = item->client;
-		else {
-			s = cmd_find_best_session(NULL, 0, CMD_FIND_QUIET);
-			if (s != NULL)
-				c = cmd_find_best_client(s);
-		}
-		if (c == NULL && !quiet)
-			cmdq_error(item, "no current client");
-		log_debug("%s: no target, return %p", __func__, c);
-		return (c);
-	}
+	if (target == NULL)
+		return (cmd_find_current_client(item, quiet));
 	copy = xstrdup(target);
 
 	/* Trim a single trailing colon if any. */
