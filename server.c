@@ -249,7 +249,7 @@ server_send_exit(void)
 	}
 
 	RB_FOREACH_SAFE(s, sessions, &sessions, s1)
-		session_destroy(s);
+		session_destroy(s, __func__);
 }
 
 /* Update socket execute permissions based on whether sessions are attached. */
@@ -347,6 +347,7 @@ server_signal(int sig)
 {
 	int	fd;
 
+	log_debug("%s: %s", __func__, strsignal(sig));
 	switch (sig) {
 	case SIGTERM:
 		server_exit = 1;
