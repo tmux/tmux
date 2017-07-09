@@ -177,7 +177,7 @@ session_create(const char *prefix, const char *name, int argc, char **argv,
 	if (argc >= 0) {
 		wl = session_new(s, NULL, argc, argv, path, cwd, idx, cause);
 		if (wl == NULL) {
-			session_destroy(s);
+			session_destroy(s, __func__);
 			return (NULL);
 		}
 		session_select(s, RB_ROOT(&s->windows)->idx);
@@ -228,11 +228,11 @@ session_free(__unused int fd, __unused short events, void *arg)
 
 /* Destroy a session. */
 void
-session_destroy(struct session *s)
+session_destroy(struct session *s, const char *from)
 {
 	struct winlink	*wl;
 
-	log_debug("session %s destroyed", s->name);
+	log_debug("session %s destroyed (%s)", s->name, from);
 	s->curw = NULL;
 
 	RB_REMOVE(sessions, &sessions, s);
@@ -418,7 +418,7 @@ session_detach(struct session *s, struct winlink *wl)
 	session_group_synchronize_from(s);
 
 	if (RB_EMPTY(&s->windows)) {
-		session_destroy(s);
+		session_destroy(s, __func__);
 		return (1);
 	}
 	return (0);

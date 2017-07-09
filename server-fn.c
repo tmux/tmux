@@ -334,7 +334,7 @@ server_destroy_session_group(struct session *s)
 	else {
 		TAILQ_FOREACH_SAFE(s, &sg->sessions, gentry, s1) {
 			server_destroy_session(s);
-			session_destroy(s);
+			session_destroy(s, __func__);
 		}
 	}
 }
@@ -400,7 +400,7 @@ server_check_unattached(void)
 		if (!(s->flags & SESSION_UNATTACHED))
 			continue;
 		if (options_get_number (s->options, "destroy-unattached"))
-			session_destroy(s);
+			session_destroy(s, __func__);
 	}
 }
 
