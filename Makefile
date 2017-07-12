@@ -102,7 +102,6 @@ SRCS=	alerts.c \
 	server-fn.c \
 	server.c \
 	session.c \
-	signal.c \
 	status.c \
 	style.c \
 	tmux.c \

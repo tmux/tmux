@@ -1485,6 +1485,7 @@ extern struct options	*global_w_options;
 extern struct environ	*global_environ;
 extern struct timeval	 start_time;
 extern const char	*socket_path;
+extern const char	*shell_command;
 extern int		 ptm_fd;
 extern const char	*shell_command;
 int		 areshell(const char *);
@@ -1494,10 +1495,11 @@ const char	*find_home(void);
 /* proc.c */
 struct imsg;
 int	proc_send(struct tmuxpeer *, enum msgtype, int, const void *, size_t);
-struct tmuxproc *proc_start(const char *, struct event_base *, int,
-	    void (*)(int));
+struct tmuxproc *proc_start(const char *);
 void	proc_loop(struct tmuxproc *, int (*)(void));
 void	proc_exit(struct tmuxproc *);
+void	proc_set_signals(struct tmuxproc *, void(*)(int));
+void	proc_clear_signals(struct tmuxproc *);
 struct tmuxpeer *proc_add_peer(struct tmuxproc *, int,
 	    void (*)(struct imsg *, void *), void *);
 void	proc_remove_peer(struct tmuxpeer *);
@@ -1857,7 +1859,7 @@ void	 server_clear_marked(void);
 int	 server_is_marked(struct session *, struct winlink *,
 	     struct window_pane *);
 int	 server_check_marked(void);
-int	 server_start(struct event_base *, int, char *);
+int	 server_start(struct tmuxproc *, struct event_base *, int, char *);
 void	 server_update_socket(void);
 void	 server_add_accept(int);
 
@@ -2256,10 +2258,6 @@ int		 window_copy_scroll_position(struct window_pane *);
 void	 check_window_name(struct window *);
 char	*default_window_name(struct window *);
 char	*parse_window_name(const char *);
-
-/* signal.c */
-void	set_signals(void(*)(int, short, void *), void *);
-void	clear_signals(int);
 
 /* control.c */
 void	control_callback(struct client *, int, void *);

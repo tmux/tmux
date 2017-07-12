@@ -157,7 +157,7 @@ retry:
 			close(lockfd);
 			return (-1);
 		}
-		fd = server_start(base, lockfd, lockfile);
+		fd = server_start(client_proc, base, lockfd, lockfile);
 	}
 
 	if (locked && lockfd >= 0) {
@@ -261,7 +261,8 @@ client_main(struct event_base *base, int argc, char **argv, int flags)
 	}
 
 	/* Create client process structure (starts logging). */
-	client_proc = proc_start("client", base, 0, client_signal);
+	client_proc = proc_start("client");
+	proc_set_signals(client_proc, client_signal);
 
 	/* Initialize the client socket and start the server. */
 	fd = client_connect(base, socket_path, cmdflags & CMD_STARTSERVER);
@@ -364,7 +365,7 @@ client_main(struct event_base *base, int argc, char **argv, int flags)
 	if (client_exittype == MSG_EXEC) {
 		if (client_flags & CLIENT_CONTROLCONTROL)
 			tcsetattr(STDOUT_FILENO, TCSAFLUSH, &saved_tio);
-		clear_signals(0);
+		proc_clear_signals(client_proc);
 		client_exec(client_execshell, client_execcmd);
 	}
 
@@ -627,7 +628,7 @@ client_dispatch_wait(struct imsg *imsg)
 		if (datalen == 0 || data[datalen - 1] != '\0')
 			fatalx("bad MSG_SHELL string");
 
-		clear_signals(0);
+		proc_clear_signals(client_proc);
 		client_exec(data, shell_command);
 		/* NOTREACHED */
 	case MSG_DETACH:

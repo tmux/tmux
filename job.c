@@ -68,7 +68,7 @@ job_run(const char *cmd, struct session *s, const char *cwd,
 		close(out[1]);
 		return (NULL);
 	case 0:		/* child */
-		clear_signals(1);
+		proc_clear_signals(server_proc);
 
 		if (cwd == NULL || chdir(cwd) != 0) {
 			if ((home = find_home()) == NULL || chdir(home) != 0)

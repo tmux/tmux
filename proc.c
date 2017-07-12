@@ -24,6 +24,7 @@
 #include <errno.h>
 #include <event.h>
 #include <imsg.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -35,6 +36,14 @@ struct tmuxproc {
 	int		  exit;
 
 	void		(*signalcb)(int);
+
+	struct event	  ev_sighup;
+	struct event	  ev_sigchld;
+	struct event	  ev_sigcont;
+	struct event	  ev_sigterm;
+	struct event	  ev_sigusr1;
+	struct event	  ev_sigusr2;
+	struct event	  ev_sigwinch;
 };
 
 struct tmuxpeer {
@@ -162,28 +171,10 @@ proc_send(struct tmuxpeer *peer, enum msgtype type, int fd, const void *buf,
 }
 
 struct tmuxproc *
-proc_start(const char *name, struct event_base *base, int forkflag,
-    void (*signalcb)(int))
+proc_start(const char *name)
 {
 	struct tmuxproc	*tp;
 	struct utsname	 u;
-
-	if (forkflag) {
-		switch (fork()) {
-		case -1:
-			fatal("fork failed");
-		case 0:
-			break;
-		default:
-			return (NULL);
-		}
-		if (daemon(1, 0) != 0)
-			fatal("daemon failed");
-
-		clear_signals(0);
-		if (event_reinit(base) != 0)
-			fatalx("event_reinit failed");
-	}
 
 	log_open(name);
 	setproctitle("%s (%s)", name, socket_path);
@@ -198,9 +189,6 @@ proc_start(const char *name, struct event_base *base, int forkflag,
 
 	tp = xcalloc(1, sizeof *tp);
 	tp->name = xstrdup(name);
-
-	tp->signalcb = signalcb;
-	set_signals(proc_signal_cb, tp);
 
 	return (tp);
 }
@@ -219,6 +207,63 @@ void
 proc_exit(struct tmuxproc *tp)
 {
 	tp->exit = 1;
+}
+
+void
+proc_set_signals(struct tmuxproc *tp, void (*signalcb)(int))
+{
+	struct sigaction	sa;
+
+	tp->signalcb = signalcb;
+
+	memset(&sa, 0, sizeof sa);
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = SA_RESTART;
+	sa.sa_handler = SIG_IGN;
+
+	sigaction(SIGINT, &sa, NULL);
+	sigaction(SIGPIPE, &sa, NULL);
+	sigaction(SIGUSR2, &sa, NULL);
+	sigaction(SIGTSTP, &sa, NULL);
+
+	signal_set(&tp->ev_sighup, SIGHUP, proc_signal_cb, tp);
+	signal_add(&tp->ev_sighup, NULL);
+	signal_set(&tp->ev_sigchld, SIGCHLD, proc_signal_cb, tp);
+	signal_add(&tp->ev_sigchld, NULL);
+	signal_set(&tp->ev_sigcont, SIGCONT, proc_signal_cb, tp);
+	signal_add(&tp->ev_sigcont, NULL);
+	signal_set(&tp->ev_sigterm, SIGTERM, proc_signal_cb, tp);
+	signal_add(&tp->ev_sigterm, NULL);
+	signal_set(&tp->ev_sigusr1, SIGUSR1, proc_signal_cb, tp);
+	signal_add(&tp->ev_sigusr1, NULL);
+	signal_set(&tp->ev_sigusr2, SIGUSR2, proc_signal_cb, tp);
+	signal_add(&tp->ev_sigusr2, NULL);
+	signal_set(&tp->ev_sigwinch, SIGWINCH, proc_signal_cb, tp);
+	signal_add(&tp->ev_sigwinch, NULL);
+}
+
+void
+proc_clear_signals(struct tmuxproc *tp)
+{
+	struct sigaction	sa;
+
+	memset(&sa, 0, sizeof sa);
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = SA_RESTART;
+	sa.sa_handler = SIG_DFL;
+
+	sigaction(SIGINT, &sa, NULL);
+	sigaction(SIGPIPE, &sa, NULL);
+	sigaction(SIGUSR2, &sa, NULL);
+	sigaction(SIGTSTP, &sa, NULL);
+
+	event_del(&tp->ev_sighup);
+	event_del(&tp->ev_sigchld);
+	event_del(&tp->ev_sigcont);
+	event_del(&tp->ev_sigterm);
+	event_del(&tp->ev_sigusr1);
+	event_del(&tp->ev_sigusr2);
+	event_del(&tp->ev_sigwinch);
 }
 
 struct tmuxpeer *

@@ -943,7 +943,7 @@ window_pane_spawn(struct window_pane *wp, int argc, char **argv,
 		environ_set(env, "TMUX_PANE", "%%%u", wp->id);
 		environ_push(env);
 
-		clear_signals(1);
+		proc_clear_signals(server_proc);
 		log_close();
 
 		setenv("SHELL", wp->shell, 1);
