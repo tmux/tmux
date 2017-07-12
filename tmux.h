@@ -1493,7 +1493,6 @@ const char	*find_home(void);
 /* proc.c */
 struct imsg;
 int	proc_send(struct tmuxpeer *, enum msgtype, int, const void *, size_t);
-int	proc_send_s(struct tmuxpeer *, enum msgtype, const char *);
 struct tmuxproc *proc_start(const char *, struct event_base *, int,
 	    void (*)(int));
 void	proc_loop(struct tmuxproc *, int (*)(void));

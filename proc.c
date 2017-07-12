@@ -161,12 +161,6 @@ proc_send(struct tmuxpeer *peer, enum msgtype type, int fd, const void *buf,
 	return (0);
 }
 
-int
-proc_send_s(struct tmuxpeer *peer, enum msgtype type, const char *s)
-{
-	return (proc_send(peer, type, -1, s, strlen(s) + 1));
-}
-
 struct tmuxproc *
 proc_start(const char *name, struct event_base *base, int forkflag,
     void (*signalcb)(int))
