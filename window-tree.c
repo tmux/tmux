@@ -258,8 +258,12 @@ window_tree_build_window(struct session *s, struct winlink *wl, void* modedata,
 	free(text);
 	free(name);
 
+	if (window_count_panes(wl->window) == 1)
+		return (1);
+
 	l = NULL;
 	n = 0;
+
 	TAILQ_FOREACH(wp, &wl->window->panes, entry) {
 		if (filter != NULL) {
 			cp = format_single(NULL, filter, NULL, s, wl, wp);
