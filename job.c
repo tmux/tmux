@@ -51,6 +51,7 @@ job_run(const char *cmd, struct session *s, const char *cwd,
 	pid_t		 pid;
 	int		 nullfd, out[2];
 	const char	*home;
+	sigset_t	 set, oldset;
 
 	if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, out) != 0)
 		return (NULL);
@@ -61,14 +62,18 @@ job_run(const char *cmd, struct session *s, const char *cwd,
 	 */
 	env = environ_for_session(s, !cfg_finished);
 
+	sigfillset(&set);
+	sigprocmask(SIG_BLOCK, &set, &oldset);
 	switch (pid = fork()) {
 	case -1:
+		sigprocmask(SIG_SETMASK, &oldset, NULL);
 		environ_free(env);
 		close(out[0]);
 		close(out[1]);
 		return (NULL);
-	case 0:		/* child */
+	case 0:
 		proc_clear_signals(server_proc);
+		sigprocmask(SIG_SETMASK, &oldset, NULL);
 
 		if (cwd == NULL || chdir(cwd) != 0) {
 			if ((home = find_home()) == NULL || chdir(home) != 0)
@@ -100,7 +105,7 @@ job_run(const char *cmd, struct session *s, const char *cwd,
 		fatal("execl failed");
 	}
 
-	/* parent */
+	sigprocmask(SIG_SETMASK, &oldset, NULL);
 	environ_free(env);
 	close(out[1]);
 

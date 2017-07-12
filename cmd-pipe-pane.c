@@ -22,6 +22,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <paths.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -62,6 +63,7 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 	char			*cmd;
 	int			 old_fd, pipe_fd[2], null_fd;
 	struct format_tree	*ft;
+	sigset_t		 set, oldset;
 
 	/* Destroy the old pipe. */
 	old_fd = wp->pipe_fd;
@@ -102,16 +104,20 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 	format_free(ft);
 
 	/* Fork the child. */
+	sigfillset(&set);
+	sigprocmask(SIG_BLOCK, &set, &oldset);
 	switch (fork()) {
 	case -1:
+		sigprocmask(SIG_SETMASK, &oldset, NULL);
 		cmdq_error(item, "fork error: %s", strerror(errno));
 
 		free(cmd);
 		return (CMD_RETURN_ERROR);
 	case 0:
 		/* Child process. */
-		close(pipe_fd[0]);
 		proc_clear_signals(server_proc);
+		sigprocmask(SIG_SETMASK, &oldset, NULL);
+		close(pipe_fd[0]);
 
 		if (dup2(pipe_fd[1], STDIN_FILENO) == -1)
 			_exit(1);
@@ -132,6 +138,7 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 		_exit(1);
 	default:
 		/* Parent process. */
+		sigprocmask(SIG_SETMASK, &oldset, NULL);
 		close(pipe_fd[1]);
 
 		wp->pipe_fd = pipe_fd[0];

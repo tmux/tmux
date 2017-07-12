@@ -22,6 +22,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <fnmatch.h>
+#include <signal.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -886,6 +887,7 @@ window_pane_spawn(struct window_pane *wp, int argc, char **argv,
 	const char	*ptr, *first, *home;
 	struct termios	 tio2;
 	int		 i;
+	sigset_t	 set, oldset;
 
 	if (wp->fd != -1) {
 		bufferevent_free(wp->event);
@@ -915,14 +917,21 @@ window_pane_spawn(struct window_pane *wp, int argc, char **argv,
 	ws.ws_col = screen_size_x(&wp->base);
 	ws.ws_row = screen_size_y(&wp->base);
 
-	wp->pid = fdforkpty(ptm_fd, &wp->fd, wp->tty, NULL, &ws);
-	switch (wp->pid) {
+	sigfillset(&set);
+	sigprocmask(SIG_BLOCK, &set, &oldset);
+	switch (wp->pid = fdforkpty(ptm_fd, &wp->fd, wp->tty, NULL, &ws)) {
 	case -1:
 		wp->fd = -1;
+
 		xasprintf(cause, "%s: %s", cmd, strerror(errno));
 		free(cmd);
+
+		sigprocmask(SIG_SETMASK, &oldset, NULL);
 		return (-1);
 	case 0:
+		proc_clear_signals(server_proc);
+		sigprocmask(SIG_SETMASK, &oldset, NULL);
+
 		if (chdir(wp->cwd) != 0) {
 			if ((home = find_home()) == NULL || chdir(home) != 0)
 				chdir("/");
@@ -936,15 +945,13 @@ window_pane_spawn(struct window_pane *wp, int argc, char **argv,
 		if (tcsetattr(STDIN_FILENO, TCSANOW, &tio2) != 0)
 			fatal("tcgetattr failed");
 
+		log_close();
 		closefrom(STDERR_FILENO + 1);
 
 		if (path != NULL)
 			environ_set(env, "PATH", "%s", path);
 		environ_set(env, "TMUX_PANE", "%%%u", wp->id);
 		environ_push(env);
-
-		proc_clear_signals(server_proc);
-		log_close();
 
 		setenv("SHELL", wp->shell, 1);
 		ptr = strrchr(wp->shell, '/');
@@ -978,6 +985,7 @@ window_pane_spawn(struct window_pane *wp, int argc, char **argv,
 		fatal("execl failed");
 	}
 
+	sigprocmask(SIG_SETMASK, &oldset, NULL);
 	setblocking(wp->fd, 0);
 
 	wp->event = bufferevent_new(wp->fd, window_pane_read_callback, NULL,

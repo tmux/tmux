@@ -141,21 +141,24 @@ server_start(struct tmuxproc *client, struct event_base *base, int lockfd,
 {
 	int		 pair[2];
 	struct job	*job;
+	sigset_t	 set, oldset;
 
 	if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, pair) != 0)
 		fatal("socketpair failed");
 
+	sigfillset(&set);
+	sigprocmask(SIG_BLOCK, &set, &oldset);
 	switch (fork()) {
 	case -1:
 		fatal("fork failed");
 	case 0:
 		break;
 	default:
+		sigprocmask(SIG_SETMASK, &oldset, NULL);
 		close(pair[1]);
 		return (pair[0]);
 	}
 	close(pair[0]);
-
 	if (daemon(1, 0) != 0)
 		fatal("daemon failed");
 	proc_clear_signals(client);
@@ -163,6 +166,7 @@ server_start(struct tmuxproc *client, struct event_base *base, int lockfd,
 		fatalx("event_reinit failed");
 	server_proc = proc_start("server");
 	proc_set_signals(server_proc, server_signal);
+	sigprocmask(SIG_SETMASK, &oldset, NULL);
 
 	if (log_get_level() > 1)
 		tty_create_log();
