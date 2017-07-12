@@ -1486,6 +1486,7 @@ extern struct environ	*global_environ;
 extern struct timeval	 start_time;
 extern const char	*socket_path;
 extern int		 ptm_fd;
+extern const char	*shell_command;
 int		 areshell(const char *);
 void		 setblocking(int, int);
 const char	*find_home(void);
@@ -1820,7 +1821,7 @@ struct cmd_list	*cmd_string_parse(const char *, const char *, u_int, char **);
 void	cmd_wait_for_flush(void);
 
 /* client.c */
-int	client_main(struct event_base *, int, char **, int, const char *);
+int	client_main(struct event_base *, int, char **, int);
 
 /* key-bindings.c */
 RB_PROTOTYPE(key_bindings, key_binding, entry, key_bindings_cmp);

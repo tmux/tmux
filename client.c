@@ -64,7 +64,7 @@ static void		 client_write(int, const char *, size_t);
 static void		 client_signal(int);
 static void		 client_dispatch(struct imsg *, void *);
 static void		 client_dispatch_attached(struct imsg *);
-static void		 client_dispatch_wait(struct imsg *, const char *);
+static void		 client_dispatch_wait(struct imsg *);
 static const char	*client_exit_message(void);
 
 /*
@@ -215,8 +215,7 @@ client_exit_message(void)
 
 /* Client main loop. */
 int
-client_main(struct event_base *base, int argc, char **argv, int flags,
-    const char *shellcmd)
+client_main(struct event_base *base, int argc, char **argv, int flags)
 {
 	struct cmd		*cmd;
 	struct cmd_list		*cmdlist;
@@ -237,7 +236,7 @@ client_main(struct event_base *base, int argc, char **argv, int flags,
 
 	/* Set up the initial command. */
 	cmdflags = 0;
-	if (shellcmd != NULL) {
+	if (shell_command != NULL) {
 		msg = MSG_SHELL;
 		cmdflags = CMD_STARTSERVER;
 	} else if (argc == 0) {
@@ -276,8 +275,7 @@ client_main(struct event_base *base, int argc, char **argv, int flags,
 		}
 		return (1);
 	}
-	client_peer = proc_add_peer(client_proc, fd, client_dispatch,
-	    (void *)shellcmd);
+	client_peer = proc_add_peer(client_proc, fd, client_dispatch, NULL);
 
 	/* Save these before pledge(). */
 	if ((cwd = getcwd(path, sizeof path)) == NULL) {
@@ -533,7 +531,7 @@ client_signal(int sig)
 
 /* Callback for client read events. */
 static void
-client_dispatch(struct imsg *imsg, void *arg)
+client_dispatch(struct imsg *imsg, __unused void *arg)
 {
 	if (imsg == NULL) {
 		client_exitreason = CLIENT_EXIT_LOST_SERVER;
@@ -545,12 +543,12 @@ client_dispatch(struct imsg *imsg, void *arg)
 	if (client_attached)
 		client_dispatch_attached(imsg);
 	else
-		client_dispatch_wait(imsg, arg);
+		client_dispatch_wait(imsg);
 }
 
 /* Dispatch imsgs when in wait state (before MSG_READY). */
 static void
-client_dispatch_wait(struct imsg *imsg, const char *shellcmd)
+client_dispatch_wait(struct imsg *imsg)
 {
 	char			*data;
 	ssize_t			 datalen;
@@ -630,7 +628,7 @@ client_dispatch_wait(struct imsg *imsg, const char *shellcmd)
 			fatalx("bad MSG_SHELL string");
 
 		clear_signals(0);
-		client_exec(data, shellcmd);
+		client_exec(data, shell_command);
 		/* NOTREACHED */
 	case MSG_DETACH:
 	case MSG_DETACHKILL:
