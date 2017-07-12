@@ -221,7 +221,6 @@ proc_set_signals(struct tmuxproc *tp, void (*signalcb)(int))
 
 	sigaction(SIGINT, &sa, NULL);
 	sigaction(SIGPIPE, &sa, NULL);
-	sigaction(SIGUSR2, &sa, NULL);
 	sigaction(SIGTSTP, &sa, NULL);
 
 	signal_set(&tp->ev_sighup, SIGHUP, proc_signal_cb, tp);
@@ -252,7 +251,6 @@ proc_clear_signals(struct tmuxproc *tp)
 
 	sigaction(SIGINT, &sa, NULL);
 	sigaction(SIGPIPE, &sa, NULL);
-	sigaction(SIGUSR2, &sa, NULL);
 	sigaction(SIGTSTP, &sa, NULL);
 
 	event_del(&tp->ev_sighup);
