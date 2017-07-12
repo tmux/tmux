@@ -171,7 +171,7 @@ server_lock_client(struct client *c)
 	tty_raw(&c->tty, tty_term_string(c->tty.term, TTYC_E3));
 
 	c->flags |= CLIENT_SUSPENDED;
-	proc_send_s(c->peer, MSG_LOCK, cmd);
+	proc_send(c->peer, MSG_LOCK, -1, cmd, strlen(cmd) + 1);
 }
 
 void
