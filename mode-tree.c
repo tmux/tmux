@@ -487,7 +487,7 @@ mode_tree_draw(struct mode_tree_data *mtd)
 		screen_write_cursormove(&ctx, 0, i - mtd->offset);
 
 		if (i < 10)
-			snprintf(key, sizeof key, "(%c)", '0' + i);
+			snprintf(key, sizeof key, "(%c)  ", '0' + i);
 		else if (i < 36)
 			snprintf(key, sizeof key, "(M-%c)", 'a' + (i - 10));
 		else
