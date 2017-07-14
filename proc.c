@@ -255,13 +255,13 @@ proc_clear_signals(struct tmuxproc *tp)
 	sigaction(SIGPIPE, &sa, NULL);
 	sigaction(SIGTSTP, &sa, NULL);
 
-	event_del(&tp->ev_sighup);
-	event_del(&tp->ev_sigchld);
-	event_del(&tp->ev_sigcont);
-	event_del(&tp->ev_sigterm);
-	event_del(&tp->ev_sigusr1);
-	event_del(&tp->ev_sigusr2);
-	event_del(&tp->ev_sigwinch);
+	signal_del(&tp->ev_sighup);
+	signal_del(&tp->ev_sigchld);
+	signal_del(&tp->ev_sigcont);
+	signal_del(&tp->ev_sigterm);
+	signal_del(&tp->ev_sigusr1);
+	signal_del(&tp->ev_sigusr2);
+	signal_del(&tp->ev_sigwinch);
 }
 
 struct tmuxpeer *
