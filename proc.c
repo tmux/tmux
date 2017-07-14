@@ -242,7 +242,7 @@ proc_set_signals(struct tmuxproc *tp, void (*signalcb)(int))
 }
 
 void
-proc_clear_signals(struct tmuxproc *tp)
+proc_clear_signals(struct tmuxproc *tp, int defaults)
 {
 	struct sigaction	sa;
 
@@ -262,6 +262,16 @@ proc_clear_signals(struct tmuxproc *tp)
 	signal_del(&tp->ev_sigusr1);
 	signal_del(&tp->ev_sigusr2);
 	signal_del(&tp->ev_sigwinch);
+
+	if (defaults) {
+		sigaction(SIGHUP, &sa, NULL);
+		sigaction(SIGCHLD, &sa, NULL);
+		sigaction(SIGCONT, &sa, NULL);
+		sigaction(SIGTERM, &sa, NULL);
+		sigaction(SIGUSR1, &sa, NULL);
+		sigaction(SIGUSR2, &sa, NULL);
+		sigaction(SIGWINCH, &sa, NULL);
+	}
 }
 
 struct tmuxpeer *

@@ -365,7 +365,6 @@ client_main(struct event_base *base, int argc, char **argv, int flags)
 	if (client_exittype == MSG_EXEC) {
 		if (client_flags & CLIENT_CONTROLCONTROL)
 			tcsetattr(STDOUT_FILENO, TCSAFLUSH, &saved_tio);
-		proc_clear_signals(client_proc);
 		client_exec(client_execshell, client_execcmd);
 	}
 
@@ -480,6 +479,8 @@ client_exec(const char *shell, const char *shellcmd)
 	else
 		xasprintf(&argv0, "%s", name);
 	setenv("SHELL", shell, 1);
+
+	proc_clear_signals(client_proc, 1);
 
 	setblocking(STDIN_FILENO, 1);
 	setblocking(STDOUT_FILENO, 1);
@@ -628,7 +629,6 @@ client_dispatch_wait(struct imsg *imsg)
 		if (datalen == 0 || data[datalen - 1] != '\0')
 			fatalx("bad MSG_SHELL string");
 
-		proc_clear_signals(client_proc);
 		client_exec(data, shell_command);
 		/* NOTREACHED */
 	case MSG_DETACH:

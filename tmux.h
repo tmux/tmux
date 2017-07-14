@@ -1499,7 +1499,7 @@ struct tmuxproc *proc_start(const char *);
 void	proc_loop(struct tmuxproc *, int (*)(void));
 void	proc_exit(struct tmuxproc *);
 void	proc_set_signals(struct tmuxproc *, void(*)(int));
-void	proc_clear_signals(struct tmuxproc *);
+void	proc_clear_signals(struct tmuxproc *, int);
 struct tmuxpeer *proc_add_peer(struct tmuxproc *, int,
 	    void (*)(struct imsg *, void *), void *);
 void	proc_remove_peer(struct tmuxpeer *);
