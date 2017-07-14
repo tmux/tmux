@@ -160,7 +160,7 @@ server_start(struct tmuxproc *client, struct event_base *base, int lockfd,
 	close(pair[0]);
 	if (daemon(1, 0) != 0)
 		fatal("daemon failed");
-	proc_clear_signals(client);
+	proc_clear_signals(client, 0);
 	if (event_reinit(base) != 0)
 		fatalx("event_reinit failed");
 	server_proc = proc_start("server");

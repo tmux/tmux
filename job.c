@@ -71,7 +71,7 @@ job_run(const char *cmd, struct session *s, const char *cwd,
 		close(out[1]);
 		return (NULL);
 	case 0:
-		proc_clear_signals(server_proc);
+		proc_clear_signals(server_proc, 1);
 		sigprocmask(SIG_SETMASK, &oldset, NULL);
 
 		if (cwd == NULL || chdir(cwd) != 0) {

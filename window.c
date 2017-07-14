@@ -933,7 +933,7 @@ window_pane_spawn(struct window_pane *wp, int argc, char **argv,
 		sigprocmask(SIG_SETMASK, &oldset, NULL);
 		return (-1);
 	case 0:
-		proc_clear_signals(server_proc);
+		proc_clear_signals(server_proc, 1);
 		sigprocmask(SIG_SETMASK, &oldset, NULL);
 
 		if (chdir(wp->cwd) != 0) {
