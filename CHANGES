@@ -1,5 +1,22 @@
 CHANGES FROM 2.5 to master
 
+* Wait for any remaining data to flush when a pane is closed while pipe-pane is
+  in use.
+
+* Try to fallback to C.UTF-8 as well as en_US.UTF-8 when looking for a UTF-8
+  locale.
+
+* Fix visual-silence option.
+
+* Add user-keys option for user-defined key escape sequences (mapped to User0
+  to User999 keys).
+
+* Add pane-set-clipboard hook.
+
+* FAQ file has moved out of repository to online.
+
+* Fix problem with high CPU usage when a client dies unexpectedly. GitHub issue 941.
+
 * Do a dance on OS X 10.10 and above to return tmux to the user namespace,
   allowing access to the clipboard.
 
@@ -23,10 +40,10 @@ CHANGES FROM 2.5 to master
 * Fix redrawing panes when they are resized several times but end up with the
   size unchanged (for example, splitw/resizep -Z/breakp).
 
-* Major rewrite of choose mode. Now includes preview, sorting and tagging;
-  commands that can be executed directly from the mode (for example, to delete
-  one or more buffers); and filtering in tree mode. The ability to specify the
-  format for each line (the -F flag) has been removed.
+* Major rewrite of choose mode. Now includes preview, sorting, searching and
+  tagging; commands that can be executed directly from the mode (for example,
+  to delete one or more buffers); and filtering in tree mode. The ability to
+  specify the format for each line (the -F flag) has been removed.
 
 * choose-window and choose-session are now aliases of choose-tree (in the
   command-alias option).
