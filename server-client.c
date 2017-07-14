@@ -1331,28 +1331,23 @@ server_client_check_redraw(struct client *c)
 			}
 		}
 	}
-	if (needed) {
-		left = EVBUFFER_LENGTH(tty->out);
-		if (left != 0) {
-			log_debug("%s: redraw deferred (%zu left)", c->name, left);
-			if (evtimer_initialized(&ev) && evtimer_pending(&ev, NULL))
-				return;
-			log_debug("redraw timer started");
+	if (needed && (left = EVBUFFER_LENGTH(tty->out)) != 0) {
+		log_debug("%s: redraw deferred (%zu left)", c->name, left);
+		if (!evtimer_initialized(&ev))
 			evtimer_set(&ev, server_client_redraw_timer, NULL);
+		if (!evtimer_pending(&ev, NULL)) {
+			log_debug("redraw timer started");
 			evtimer_add(&ev, &tv);
-
-			/*
-			 * We may have got here for a single pane redraw, but
-			 * force a full redraw next time in case other panes
-			 * have been updated.
-			 */
-			c->flags |= CLIENT_REDRAW;
-			return;
 		}
-		if (evtimer_initialized(&ev))
-			evtimer_del(&ev);
+
+		/*
+		 * We may have got here for a single pane redraw, but force a
+		 * full redraw next time in case other panes have been updated.
+		 */
+		c->flags |= CLIENT_REDRAW;
+		return;
+	} else if (needed)
 		log_debug("%s: redraw needed", c->name);
-	}
 
 	if (c->flags & (CLIENT_REDRAW|CLIENT_STATUS)) {
 		if (options_get_number(s->options, "set-titles"))
