@@ -885,7 +885,7 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 	u_int			 i, j, sx, nx, width;
 	int			 flags, cleared = 0;
 	char			 buf[512];
-	size_t			 len, old_len;
+	size_t			 len;
 
 	flags = (tty->flags & TTY_NOCURSOR);
 	tty->flags |= TTY_NOCURSOR;
@@ -973,17 +973,8 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 		}
 	}
 	if (len != 0) {
-		if (grid_cells_equal(&last, &grid_default_cell)) {
-			old_len = len;
-			while (len > 0 && buf[len - 1] == ' ')
-				len--;
-			log_debug("%s: trimmed %zu spaces", __func__,
-			    old_len - len);
-		}
-		if (len != 0) {
-			tty_attributes(tty, &last, wp);
-			tty_putn(tty, buf, len, width);
-		}
+		tty_attributes(tty, &last, wp);
+		tty_putn(tty, buf, len, width);
 	}
 
 	nx = screen_size_x(s) - sx;
