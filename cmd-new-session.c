@@ -74,8 +74,8 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	struct termios		 tio, *tiop;
 	struct session_group	*sg;
 	const char		*newname, *errstr, *template, *group, *prefix;
-	const char		*path, *cmd, *cwd, *to_free = NULL;
-	char		       **argv, *cause, *cp;
+	const char		*path, *cmd, *cwd;
+	char		       **argv, *cause, *cp, *to_free = NULL;
 	int			 detached, already_attached, idx, argc;
 	int			 is_control = 0;
 	u_int			 sx, sy;
@@ -151,7 +151,8 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	/* Get the new session working directory. */
 	if (args_has(args, 'c')) {
 		cwd = args_get(args, 'c');
-		to_free = cwd = format_single(item, cwd, c, NULL, NULL, NULL);
+		to_free = format_single(item, cwd, c, NULL, NULL, NULL);
+		cwd = to_free;
 	} else if (c != NULL && c->session == NULL && c->cwd != NULL)
 		cwd = c->cwd;
 	else
@@ -327,16 +328,13 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 		cmd_find_from_session(&item->shared->current, s);
 	}
 
-	if (to_free != NULL)
-		free((void *)to_free);
-
 	cmd_find_from_session(&fs, s);
 	hooks_insert(s->hooks, item, &fs, "after-new-session");
 
+	free(to_free);
 	return (CMD_RETURN_NORMAL);
 
 error:
-	if (to_free != NULL)
-		free((void *)to_free);
+	free(to_free);
 	return (CMD_RETURN_ERROR);
 }

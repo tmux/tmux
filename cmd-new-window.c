@@ -57,8 +57,8 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct winlink		*wl = item->target.wl;
 	struct client		*c = cmd_find_client(item, NULL, 1);
 	int			 idx = item->target.idx;
-	const char		*cmd, *path, *template, *cwd, *to_free;
-	char		       **argv, *cause, *cp;
+	const char		*cmd, *path, *template, *cwd;
+	char		       **argv, *cause, *cp, *to_free = NULL;
 	int			 argc, detached;
 	struct environ_entry	*envent;
 	struct cmd_find_state	 fs;
@@ -93,10 +93,10 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (envent != NULL)
 		path = envent->value;
 
-	to_free = NULL;
 	if (args_has(args, 'c')) {
 		cwd = args_get(args, 'c');
-		to_free = cwd = format_single(item, cwd, c, s, NULL, NULL);
+		to_free = format_single(item, cwd, c, s, NULL, NULL);
+		cwd = to_free;
 	} else if (item->client != NULL && item->client->session == NULL)
 		cwd = item->client->cwd;
 	else
@@ -146,16 +146,13 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 		free(cp);
 	}
 
-	if (to_free != NULL)
-		free((void *)to_free);
-
 	cmd_find_from_winlink(&fs, wl);
 	hooks_insert(s->hooks, item, &fs, "after-new-window");
 
+	free(to_free);
 	return (CMD_RETURN_NORMAL);
 
 error:
-	if (to_free != NULL)
-		free((void *)to_free);
+	free(to_free);
 	return (CMD_RETURN_ERROR);
 }

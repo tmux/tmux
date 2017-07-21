@@ -34,8 +34,9 @@ const struct cmd_entry cmd_respawn_pane_entry = {
 	.name = "respawn-pane",
 	.alias = "respawnp",
 
-	.args = { "kt:", 0, -1 },
-	.usage = "[-k] " CMD_TARGET_PANE_USAGE " [command]",
+	.args = { "c:kt:", 0, -1 },
+	.usage = "[-c start-directory] [-k] " CMD_TARGET_PANE_USAGE
+	         " [command]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -50,10 +51,11 @@ cmd_respawn_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct winlink		*wl = item->target.wl;
 	struct window		*w = wl->window;
 	struct window_pane	*wp = item->target.wp;
+	struct client           *c = cmd_find_client(item, NULL, 1);
 	struct session		*s = item->target.s;
 	struct environ		*env;
-	const char		*path;
-	char			*cause;
+	const char		*path = NULL, *cp;
+	char			*cause, *cwd = NULL;
 	u_int			 idx;
 	struct environ_entry	*envent;
 
@@ -69,7 +71,6 @@ cmd_respawn_pane_exec(struct cmd *self, struct cmdq_item *item)
 	screen_reinit(&wp->base);
 	input_init(wp);
 
-	path = NULL;
 	if (item->client != NULL && item->client->session == NULL)
 		envent = environ_find(item->client->environ, "PATH");
 	else
@@ -77,15 +78,20 @@ cmd_respawn_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (envent != NULL)
 		path = envent->value;
 
+	if ((cp = args_get(args, 'c')) != NULL)
+		cwd = format_single(item, cp, c, s, NULL, NULL);
+
 	env = environ_for_session(s, 0);
-	if (window_pane_spawn(wp, args->argc, args->argv, path, NULL, NULL, env,
+	if (window_pane_spawn(wp, args->argc, args->argv, path, NULL, cwd, env,
 	    s->tio, &cause) != 0) {
 		cmdq_error(item, "respawn pane failed: %s", cause);
 		free(cause);
 		environ_free(env);
+		free(cwd);
 		return (CMD_RETURN_ERROR);
 	}
 	environ_free(env);
+	free(cwd);
 
 	wp->flags |= PANE_REDRAW;
 	server_status_window(w);

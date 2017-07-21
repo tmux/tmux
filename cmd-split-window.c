@@ -61,8 +61,8 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct window		*w = wl->window;
 	struct window_pane	*wp = item->target.wp, *new_wp = NULL;
 	struct environ		*env;
-	const char		*cmd, *path, *shell, *template, *cwd, *to_free;
-	char		       **argv, *cause, *new_cause, *cp;
+	const char		*cmd, *path, *shell, *template, *cwd;
+	char		       **argv, *cause, *new_cause, *cp, *to_free = NULL;
 	u_int			 hlimit;
 	int			 argc, size, percentage;
 	enum layout_type	 type;
@@ -86,10 +86,10 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		argv = args->argv;
 	}
 
-	to_free = NULL;
 	if (args_has(args, 'c')) {
 		cwd = args_get(args, 'c');
-		to_free = cwd = format_single(item, cwd, c, s, NULL, NULL);
+		to_free = format_single(item, cwd, c, s, NULL, NULL);
+		cwd = to_free;
 	} else if (item->client != NULL && item->client->session == NULL)
 		cwd = item->client->cwd;
 	else
@@ -172,12 +172,10 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	notify_window("window-layout-changed", w);
 
-	if (to_free != NULL)
-		free((void *)to_free);
-
 	cmd_find_from_winlink_pane(&fs, wl, new_wp);
 	hooks_insert(s->hooks, item, &fs, "after-split-window");
 
+	free(to_free);
 	return (CMD_RETURN_NORMAL);
 
 error:
@@ -188,7 +186,6 @@ error:
 	cmdq_error(item, "create pane failed: %s", cause);
 	free(cause);
 
-	if (to_free != NULL)
-		free((void *)to_free);
+	free(to_free);
 	return (CMD_RETURN_ERROR);
 }
