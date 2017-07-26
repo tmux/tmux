@@ -2515,6 +2515,25 @@ before interpretation.
 .Pp
 Available session options are:
 .Bl -tag -width Ds
+.It Xo Ic activity-action
+.Op Ic any | none | current | other
+.Xc
+Set action on window activity when
+.Ic monitor-activity
+is on.
+.Ic any
+means activity in any window linked to a session causes a bell or message
+(depending on
+.Ic visual-activity )
+in the current window of that session,
+.Ic none
+means all activity is ignored (equivalent to
+.Ic monitor-activity
+being off),
+.Ic current
+means only activity in windows other than the current window are ignored and
+.Ic other
+means activity in the current window is ignored but not those in other windows.
 .It Ic assume-paste-time Ar milliseconds
 If keys are entered faster than one in
 .Ar milliseconds ,
@@ -2530,20 +2549,8 @@ The default is zero.
 .Op Ic any | none | current | other
 .Xc
 Set action on window bell.
-.Ic any
-means a bell in any window linked to a session causes a bell in the current
-window of that session,
-.Ic none
-means all bells are ignored,
-.Ic current
-means only bells in windows other than the current window are ignored and
-.Ic other
-means bells in the current window are ignored but not those in other windows.
-.It Xo Ic bell-on-alert
-.Op Ic on | off
-.Xc
-If on, ring the terminal bell when an alert
-occurs.
+The values are the same as those for
+.Ic activity-action .
 .It Ic default-command Ar shell-command
 Set the command used for new windows (if not specified when the window is
 created) to
@@ -2759,6 +2766,15 @@ is on.
 Formats are expanded, see the
 .Sx FORMATS
 section.
+.It Xo Ic silence-action
+.Op Ic any | none | current | other
+.Xc
+Set action on window silence when
+.Ic monitor-silence
+is on.
+The values are the same as those for
+.Ic activity-action .
+.Pp
 .It Xo Ic status
 .Op Ic on | off
 .Xc
@@ -2884,26 +2900,30 @@ set -s user-keys[0] '\e[5;30012~'
 bind User0 resize-pane -L 3
 .Ed
 .It Xo Ic visual-activity
-.Op Ic on | off
+.Op Ic on | off | both
 .Xc
-If on, display a status line message when activity occurs in a window
-for which the
+If on, display a message instead of sending a bell when activity occurs in a
+window for which the
 .Ic monitor-activity
 window option is enabled.
+If set to both, a bell and a message are produced.
 .It Xo Ic visual-bell
-.Op Ic on | off
+.Op Ic on | off | both
 .Xc
-If this option is on, a message is shown on a bell instead of it being passed
-through to the terminal (which normally makes a sound).
+If on, a message is shown on a bell instead of it being passed through to the
+terminal (which normally makes a sound).
+If set to both, a bell and a message are produced.
 Also see the
 .Ic bell-action
 option.
 .It Xo Ic visual-silence
-.Op Ic on | off
+.Op Ic on | off | both
 .Xc
 If
 .Ic monitor-silence
-is enabled, prints a message after the interval has expired on a given window.
+is enabled, prints a message after the interval has expired on a given window
+instead of sending a bell.
+If set to both, a bell and a message are produced.
 .It Ic word-separators Ar string
 Sets the session's conception of what characters are considered word
 separators, for the purposes of the next and previous word commands in

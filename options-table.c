@@ -51,6 +51,9 @@ static const char *options_table_status_position_list[] = {
 static const char *options_table_bell_action_list[] = {
 	"none", "any", "current", "other", NULL
 };
+static const char *options_table_visual_bell_list[] = {
+	"off", "on", "both", NULL
+};
 static const char *options_table_pane_status_list[] = {
 	"off", "top", "bottom", NULL
 };
@@ -143,6 +146,13 @@ const struct options_table_entry options_table[] = {
 	  .separator = ","
 	},
 
+	{ .name = "activity-action",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .choices = options_table_bell_action_list,
+	  .default_num = BELL_OTHER
+	},
+
 	{ .name = "assume-paste-time",
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .scope = OPTIONS_TABLE_SESSION,
@@ -164,12 +174,6 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_SESSION,
 	  .choices = options_table_bell_action_list,
 	  .default_num = BELL_ANY
-	},
-
-	{ .name = "bell-on-alert",
-	  .type = OPTIONS_TABLE_FLAG,
-	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_num = 0
 	},
 
 	{ .name = "default-command",
@@ -350,6 +354,13 @@ const struct options_table_entry options_table[] = {
 	  .default_str = "#S:#I:#W - \"#T\" #{session_alerts}"
 	},
 
+	{ .name = "silence-action",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .choices = options_table_bell_action_list,
+	  .default_num = BELL_OTHER
+	},
+
 	{ .name = "status",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .scope = OPTIONS_TABLE_SESSION,
@@ -502,21 +513,24 @@ const struct options_table_entry options_table[] = {
 	},
 
 	{ .name = "visual-activity",
-	  .type = OPTIONS_TABLE_FLAG,
+	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_num = 0
+	  .choices = options_table_visual_bell_list,
+	  .default_num = VISUAL_OFF
 	},
 
 	{ .name = "visual-bell",
-	  .type = OPTIONS_TABLE_FLAG,
+	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_num = 0
+	  .choices = options_table_visual_bell_list,
+	  .default_num = VISUAL_OFF
 	},
 
 	{ .name = "visual-silence",
-	  .type = OPTIONS_TABLE_FLAG,
+	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_num = 0
+	  .choices = options_table_visual_bell_list,
+	  .default_num = VISUAL_OFF
 	},
 
 	{ .name = "word-separators",

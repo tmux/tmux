@@ -83,6 +83,11 @@ struct tmuxproc;
 #define BELL_CURRENT 2
 #define BELL_OTHER 3
 
+/* Visual option values. */
+#define VISUAL_OFF 0
+#define VISUAL_ON 1
+#define VISUAL_BOTH 2
+
 /* Special key codes. */
 #define KEYC_NONE 0xffff00000000ULL
 #define KEYC_UNKNOWN 0xfffe00000000ULL
