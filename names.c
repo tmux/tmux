@@ -151,7 +151,9 @@ parse_window_name(const char *in)
 
 	if (*name != '\0') {
 		ptr = name + strlen(name) - 1;
-		while (ptr > name && !isalnum((u_char)*ptr))
+		while (ptr > name &&
+		    !isalnum((u_char)*ptr) &&
+		    !ispunct((u_char)*ptr))
 			*ptr-- = '\0';
 	}
 
