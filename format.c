@@ -1421,6 +1421,10 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 		format_add(ft, "pane_top", "%u", wp->yoff);
 		format_add(ft, "pane_right", "%u", wp->xoff + wp->sx - 1);
 		format_add(ft, "pane_bottom", "%u", wp->yoff + wp->sy - 1);
+		format_add(ft, "pane_at_left", "%d", wp->xoff == 0);
+		format_add(ft, "pane_at_top", "%d", wp->yoff == 1);
+		format_add(ft, "pane_at_right", "%d", wp->xoff + wp->sx == wp->window->sx);
+		format_add(ft, "pane_at_bottom", "%d", wp->yoff + wp->sy == wp->window->sy);
 	}
 
 	format_add(ft, "pane_in_mode", "%d", wp->screen != &wp->base);
