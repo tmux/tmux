@@ -1,7 +1,19 @@
 CHANGES FROM 2.5 to master
 
+* Add a pane_pipe format to show if pipe-pane is active.
+
+* Block signals between forking and resetting signal handlers so that the
+  libevent signal handler doesn't get called in the child and incorrectly write
+  into the signal pipe that it still shares with the parent. GitHub issue 1001.
+
+* Allow punctuation in pane_current_command.
+
+* Add -c for respawn-pane and respawn-window.
+
 * Wait for any remaining data to flush when a pane is closed while pipe-pane is
   in use.
+
+* Fix working out current client with no target. GitHub issue 995.
 
 * Try to fallback to C.UTF-8 as well as en_US.UTF-8 when looking for a UTF-8
   locale.
