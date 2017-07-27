@@ -26,8 +26,6 @@ CHANGES FROM 2.5 to master
 * Try to fallback to C.UTF-8 as well as en_US.UTF-8 when looking for a UTF-8
   locale.
 
-* Fix visual-silence option.
-
 * Add user-keys option for user-defined key escape sequences (mapped to User0
   to User999 keys).
 
