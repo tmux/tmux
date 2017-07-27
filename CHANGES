@@ -1,5 +1,13 @@
 CHANGES FROM 2.5 to master
 
+* Add pane_at_left, pane_at_right, pane_at_top and pane_at_bottom formats.
+
+* Make bell, activity and silence alerting more consistent by: removing the
+  bell-on-alert option; adding activity-action and silence-action options with
+  the same possible values as the existing bell-action; adding a "both" value
+  for the visual-bell, visual-activity and visual-silence options to trigger
+  both a bell and a message.
+
 * Add a pane_pipe format to show if pipe-pane is active.
 
 * Block signals between forking and resetting signal handlers so that the
