@@ -244,7 +244,8 @@ window_tree_build_window(struct session *s, struct winlink *wl, void* modedata,
 	item->pane = -1;
 
 	text = format_single(NULL,
-	    "#{window_name}#{window_flags} (#{window_panes} panes)",
+	    "#{window_name}#{window_flags} (#{window_panes} panes)"
+	    "#{?#{==:#{window_panes},1}, \"#{pane_title}\",}",
 	    NULL, s, wl, NULL);
 	xasprintf(&name, "%u", wl->idx);
 
