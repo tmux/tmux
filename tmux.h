@@ -2261,7 +2261,8 @@ void printflike(2, 3) window_copy_add(struct window_pane *, const char *, ...);
 void		 window_copy_vadd(struct window_pane *, const char *, va_list);
 void		 window_copy_pageup(struct window_pane *, int);
 void		 window_copy_start_drag(struct client *, struct mouse_event *);
-int		 window_copy_scroll_position(struct window_pane *);
+void		 window_copy_add_formats(struct window_pane *,
+		     struct format_tree *);
 
 /* names.c */
 void	 check_window_name(struct window *);
