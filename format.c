@@ -1373,7 +1373,7 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 {
 	struct grid	*gd = wp->base.grid;
 	u_int		 idx;
-	int  		 status, scroll_position;
+	int  		 status;
 
 	if (ft->w == NULL)
 		ft->w = wp->window;
@@ -1430,9 +1430,7 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 	format_add(ft, "scroll_region_upper", "%u", wp->base.rupper);
 	format_add(ft, "scroll_region_lower", "%u", wp->base.rlower);
 
-	scroll_position = window_copy_scroll_position(wp);
-	if (scroll_position != -1)
-		format_add(ft, "scroll_position", "%d", scroll_position);
+	window_copy_add_formats(wp, ft);
 
 	format_add(ft, "alternate_on", "%d", wp->saved_grid ? 1 : 0);
 	format_add(ft, "alternate_saved_x", "%u", wp->saved_cx);
