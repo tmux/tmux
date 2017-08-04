@@ -45,6 +45,10 @@ static const struct input_key_ent input_keys[] = {
 	/* Backspace key. */
 	{ KEYC_BSPACE,		"\177",		0 },
 
+	/* Paste keys. */
+	{ KEYC_PASTE_START,	"\033[200~",	0 },
+	{ KEYC_PASTE_END,	"\033[201~",	0 },
+
 	/* Function keys. */
 	{ KEYC_F1,		"\033OP",	0 },
 	{ KEYC_F2,		"\033OQ",	0 },
@@ -172,7 +176,7 @@ input_key(struct window_pane *wp, key_code key, struct mouse_event *m)
 	 * If this is a normal 7-bit key, just send it, with a leading escape
 	 * if necessary. If it is a UTF-8 key, split it and send it.
 	 */
-	justkey = (key & ~KEYC_ESCAPE);
+	justkey = (key & ~(KEYC_XTERM|KEYC_ESCAPE));
 	if (justkey <= 0x7f) {
 		if (key & KEYC_ESCAPE)
 			bufferevent_write(wp->event, "\033", 1);

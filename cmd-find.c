@@ -95,6 +95,22 @@ cmd_find_try_TMUX(struct client *c)
 	return (session_find_by_id(session));
 }
 
+/* Find pane containing client if any. */
+static struct window_pane *
+cmd_find_inside_pane(struct client *c)
+{
+	struct window_pane	*wp;
+
+	if (c == NULL)
+		return (NULL);
+
+	RB_FOREACH(wp, window_pane_tree, &all_window_panes) {
+		if (strcmp(wp->tty, c->ttyname) == 0)
+			break;
+	}
+	return (wp);
+}
+
 /* Is this client better? */
 static int
 cmd_find_client_better(struct client *c, struct client *than)
@@ -874,10 +890,7 @@ cmd_find_from_client(struct cmd_find_state *fs, struct client *c)
 	 * If this is an unattached client running in a pane, we can use that
 	 * to limit the list of sessions to those containing that pane.
 	 */
-	RB_FOREACH(wp, window_pane_tree, &all_window_panes) {
-		if (strcmp(wp->tty, c->ttyname) == 0)
-			break;
-	}
+	wp = cmd_find_inside_pane(c);
 	if (wp == NULL)
 		goto unknown_pane;
 
@@ -949,7 +962,7 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 	struct mouse_event	*m;
 	struct cmd_find_state	 current;
 	char			*colon, *period, *copy = NULL;
-	const char		*session, *window, *pane;
+	const char		*session, *window, *pane, *s;
 	int			 window_only = 0, pane_only = 0;
 
 	/* Can fail flag implies quiet. */
@@ -957,10 +970,18 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 		flags |= CMD_FIND_QUIET;
 
 	/* Log the arguments. */
-	if (target == NULL)
-		log_debug("%s: target none, type %d", __func__, type);
+	if (type == CMD_FIND_PANE)
+		s = "pane";
+	else if (type == CMD_FIND_WINDOW)
+		s = "window";
+	else if (type == CMD_FIND_SESSION)
+		s = "session";
 	else
-		log_debug("%s: target %s, type %d", __func__, target, type);
+		s = "unknown";
+	if (target == NULL)
+		log_debug("%s: target none, type %s", __func__, s);
+	else
+		log_debug("%s: target %s, type %s", __func__, target, s);
 	log_debug("%s: item %p, flags %#x", __func__, item, flags);
 
 	/* Clear new state. */
@@ -976,8 +997,11 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 	} else if (cmd_find_from_client(&current, item->client) == 0) {
 		fs->current = &current;
 		log_debug("%s: current is from client", __func__);
-	} else
+	} else {
+		if (~flags & CMD_FIND_QUIET)
+			cmdq_error(item, "no current target");
 		goto error;
+	}
 	if (!cmd_find_valid_state(fs->current))
 		fatalx("invalid current find state");
 
@@ -1220,30 +1244,46 @@ no_pane:
 	goto error;
 }
 
+/* Find the current client. */
+static struct client *
+cmd_find_current_client(struct cmdq_item *item, int quiet)
+{
+	struct client		*c;
+	struct session		*s;
+	struct window_pane	*wp;
+	struct cmd_find_state	 fs;
+
+	if (item->client != NULL && item->client->session != NULL)
+		return (item->client);
+
+	c = NULL;
+	if ((wp = cmd_find_inside_pane(item->client)) != NULL) {
+		cmd_find_clear_state(&fs, CMD_FIND_QUIET);
+		fs.w = wp->window;
+		if (cmd_find_best_session_with_window(&fs) == 0)
+			c = cmd_find_best_client(fs.s);
+	} else {
+		s = cmd_find_best_session(NULL, 0, CMD_FIND_QUIET);
+		if (s != NULL)
+			c = cmd_find_best_client(s);
+	}
+	if (c == NULL && !quiet)
+		cmdq_error(item, "no current client");
+	log_debug("%s: no target, return %p", __func__, c);
+	return (c);
+}
+
 /* Find the target client or report an error and return NULL. */
 struct client *
 cmd_find_client(struct cmdq_item *item, const char *target, int quiet)
 {
 	struct client	*c;
-	struct session	*s;
 	char		*copy;
 	size_t		 size;
 
 	/* A NULL argument means the current client. */
-	if (target == NULL) {
-		c = NULL;
-		if (item->client != NULL && item->client->session != NULL)
-			c = item->client;
-		else {
-			s = cmd_find_best_session(NULL, 0, CMD_FIND_QUIET);
-			if (s != NULL)
-				c = cmd_find_best_client(s);
-		}
-		if (c == NULL && !quiet)
-			cmdq_error(item, "no current client");
-		log_debug("%s: no target, return %p", __func__, c);
-		return (c);
-	}
+	if (target == NULL)
+		return (cmd_find_current_client(item, quiet));
 	copy = xstrdup(target);
 
 	/* Trim a single trailing colon if any. */

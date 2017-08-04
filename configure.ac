@@ -107,6 +107,7 @@ AC_REPLACE_FUNCS([ \
 	freezero \
 	getdtablecount \
 	getprogname \
+	memmem \
 	recallocarray \
 	reallocarray \
 	setenv \
@@ -175,7 +176,8 @@ if test "x$found_ncurses" = xno; then
 	)
 fi
 if test "x$found_ncurses" = xyes; then
-	CPPFLAGS="$LIBNCURSES_CFLAGS $LIBTINFO_CFLAGS $CPPFLAGS"
+	AM_CFLAGS="$LIBNCURSES_CFLAGS $LIBTINFO_CFLAGS $AM_CFLAGS"
+	CFLAGS="$LIBNCURSES_CFLAGS $LIBTINFO_CFLAGS $CFLAGS"
 	LIBS="$LIBNCURSES_LIBS $LIBTINFO_LIBS $LIBS"
 else
 	# pkg-config didn't work, try ncurses.

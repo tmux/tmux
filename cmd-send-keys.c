@@ -64,6 +64,8 @@ cmd_send_keys_inject(struct client *c, struct cmdq_item *item, key_code key)
 	struct key_binding	*bd, bd_find;
 
 	if (wp->mode == NULL || wp->mode->key_table == NULL) {
+		if (options_get_number(wp->window->options, "xterm-keys"))
+			key |= KEYC_XTERM;
 		window_pane_key(wp, NULL, s, key, NULL);
 		return;
 	}

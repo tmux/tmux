@@ -387,6 +387,23 @@ window_destroy(struct window *w)
 	free(w);
 }
 
+int
+window_pane_destroy_ready(struct window_pane *wp)
+{
+	int	n;
+
+	if (wp->pipe_fd != -1) {
+		if (EVBUFFER_LENGTH(wp->pipe_event->output) != 0)
+			return (0);
+		if (ioctl(wp->fd, FIONREAD, &n) != -1 && n > 0)
+			return (0);
+	}
+
+	if (~wp->flags & PANE_EXITED)
+		return (0);
+	return (1);
+}
+
 void
 window_add_ref(struct window *w, const char *from)
 {
@@ -874,6 +891,7 @@ window_pane_spawn(struct window_pane *wp, int argc, char **argv,
 	char		 s[32];
 #endif
 	int		 i;
+	sigset_t	 set, oldset;
 
 	if (wp->fd != -1) {
 		bufferevent_free(wp->event);
@@ -903,14 +921,21 @@ window_pane_spawn(struct window_pane *wp, int argc, char **argv,
 	ws.ws_col = screen_size_x(&wp->base);
 	ws.ws_row = screen_size_y(&wp->base);
 
-	wp->pid = fdforkpty(ptm_fd, &wp->fd, wp->tty, NULL, &ws);
-	switch (wp->pid) {
+	sigfillset(&set);
+	sigprocmask(SIG_BLOCK, &set, &oldset);
+	switch (wp->pid = fdforkpty(ptm_fd, &wp->fd, wp->tty, NULL, &ws)) {
 	case -1:
 		wp->fd = -1;
+
 		xasprintf(cause, "%s: %s", cmd, strerror(errno));
 		free(cmd);
+
+		sigprocmask(SIG_SETMASK, &oldset, NULL);
 		return (-1);
 	case 0:
+		proc_clear_signals(server_proc, 1);
+		sigprocmask(SIG_SETMASK, &oldset, NULL);
+
 		if (chdir(wp->cwd) != 0) {
 			if ((home = find_home()) == NULL || chdir(home) != 0)
 				chdir("/");
@@ -927,15 +952,13 @@ window_pane_spawn(struct window_pane *wp, int argc, char **argv,
 		if (tcsetattr(STDIN_FILENO, TCSANOW, &tio2) != 0)
 			fatal("tcgetattr failed");
 
+		log_close();
 		closefrom(STDERR_FILENO + 1);
 
 		if (path != NULL)
 			environ_set(env, "PATH", "%s", path);
 		environ_set(env, "TMUX_PANE", "%%%u", wp->id);
 		environ_push(env);
-
-		clear_signals(1);
-		log_close();
 
 		setenv("SHELL", wp->shell, 1);
 		ptr = strrchr(wp->shell, '/');
@@ -975,6 +998,7 @@ window_pane_spawn(struct window_pane *wp, int argc, char **argv,
 	kill(getpid(), SIGCHLD);
 #endif
 
+	sigprocmask(SIG_SETMASK, &oldset, NULL);
 	setblocking(wp->fd, 0);
 
 	wp->event = bufferevent_new(wp->fd, window_pane_read_callback, NULL,
@@ -1014,7 +1038,11 @@ window_pane_error_callback(__unused struct bufferevent *bufev,
 {
 	struct window_pane *wp = data;
 
-	server_destroy_pane(wp, 1);
+	log_debug("%%%u error", wp->id);
+	wp->flags |= PANE_EXITED;
+
+	if (window_pane_destroy_ready(wp))
+		server_destroy_pane(wp, 1);
 }
 
 void
@@ -1240,7 +1268,7 @@ window_pane_key(struct window_pane *wp, struct client *c, struct session *s,
 	if (wp->mode != NULL) {
 		wp->modelast = time(NULL);
 		if (wp->mode->key != NULL)
-			wp->mode->key(wp, c, s, key, m);
+			wp->mode->key(wp, c, s, (key & ~KEYC_XTERM), m);
 		return;
 	}
 

@@ -54,8 +54,8 @@ enum window_client_sort_type {
 static const char *window_client_sort_list[] = {
 	"name",
 	"size",
-	"creation time",
-	"activity time"
+	"creation",
+	"activity"
 };
 
 struct window_client_itemdata {
@@ -141,14 +141,14 @@ window_client_cmp_activity_time(const void *a0, const void *b0)
 }
 
 static void
-window_client_build(void *modedata, u_int sort_type, __unused uint64_t *tag)
+window_client_build(void *modedata, u_int sort_type, __unused uint64_t *tag,
+    const char *filter)
 {
 	struct window_client_modedata	*data = modedata;
 	struct window_client_itemdata	*item;
 	u_int				 i;
 	struct client			*c;
-	char				*tim;
-	char				*text;
+	char				*tim, *text, *cp;
 
 	for (i = 0; i < data->item_size; i++)
 		window_client_free_item(data->item_list[i]);
@@ -189,6 +189,15 @@ window_client_build(void *modedata, u_int sort_type, __unused uint64_t *tag)
 		item = data->item_list[i];
 		c = item->c;
 
+		if (filter != NULL) {
+			cp = format_single(NULL, filter, c, NULL, NULL, NULL);
+			if (!format_true(cp)) {
+				free(cp);
+				continue;
+			}
+			free(cp);
+		}
+
 		tim = ctime(&c->activity_time.tv_sec);
 		*strchr(tim, '\n') = '\0';
 
@@ -221,7 +230,7 @@ window_client_draw(__unused void *modedata, void *itemdata, u_int sx, u_int sy)
 	screen_write_preview(&ctx, &wp->base, sx, sy - 3);
 
 	screen_write_cursormove(&ctx, 0, sy - 2);
-	screen_write_line(&ctx, sx, 0, 0);
+	screen_write_hline(&ctx, sx, 0, 0);
 
 	screen_write_cursormove(&ctx, 0, sy - 1);
 	if (c->old_status != NULL)
@@ -247,7 +256,7 @@ window_client_init(struct window_pane *wp, __unused struct cmd_find_state *fs,
 	else
 		data->command = xstrdup(args->argv[0]);
 
-	data->data = mode_tree_start(wp, window_client_build,
+	data->data = mode_tree_start(wp, args, window_client_build,
 	    window_client_draw, NULL, data, window_client_sort_list,
 	    nitems(window_client_sort_list), &s);
 

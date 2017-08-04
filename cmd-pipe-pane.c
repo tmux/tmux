@@ -21,6 +21,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -34,6 +35,7 @@
 
 static enum cmd_retval	cmd_pipe_pane_exec(struct cmd *, struct cmdq_item *);
 
+static void cmd_pipe_pane_write_callback(struct bufferevent *, void *);
 static void cmd_pipe_pane_error_callback(struct bufferevent *, short, void *);
 
 const struct cmd_entry cmd_pipe_pane_entry = {
@@ -60,6 +62,7 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 	char			*cmd;
 	int			 old_fd, pipe_fd[2], null_fd;
 	struct format_tree	*ft;
+	sigset_t		 set, oldset;
 
 	/* Destroy the old pipe. */
 	old_fd = wp->pipe_fd;
@@ -67,6 +70,11 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 		bufferevent_free(wp->pipe_event);
 		close(wp->pipe_fd);
 		wp->pipe_fd = -1;
+
+		if (window_pane_destroy_ready(wp)) {
+			server_destroy_pane(wp, 1);
+			return (CMD_RETURN_NORMAL);
+		}
 	}
 
 	/* If no pipe command, that is enough. */
@@ -95,16 +103,20 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 	format_free(ft);
 
 	/* Fork the child. */
+	sigfillset(&set);
+	sigprocmask(SIG_BLOCK, &set, &oldset);
 	switch (fork()) {
 	case -1:
+		sigprocmask(SIG_SETMASK, &oldset, NULL);
 		cmdq_error(item, "fork error: %s", strerror(errno));
 
 		free(cmd);
 		return (CMD_RETURN_ERROR);
 	case 0:
 		/* Child process. */
+		proc_clear_signals(server_proc, 1);
+		sigprocmask(SIG_SETMASK, &oldset, NULL);
 		close(pipe_fd[0]);
-		clear_signals(1);
 
 		if (dup2(pipe_fd[1], STDIN_FILENO) == -1)
 			_exit(1);
@@ -125,13 +137,15 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 		_exit(1);
 	default:
 		/* Parent process. */
+		sigprocmask(SIG_SETMASK, &oldset, NULL);
 		close(pipe_fd[1]);
 
 		wp->pipe_fd = pipe_fd[0];
 		wp->pipe_off = EVBUFFER_LENGTH(wp->event->input);
 
-		wp->pipe_event = bufferevent_new(wp->pipe_fd,
-		    NULL, NULL, cmd_pipe_pane_error_callback, wp);
+		wp->pipe_event = bufferevent_new(wp->pipe_fd, NULL,
+		    cmd_pipe_pane_write_callback, cmd_pipe_pane_error_callback,
+		    wp);
 		bufferevent_enable(wp->pipe_event, EV_WRITE);
 
 		setblocking(wp->pipe_fd, 0);
@@ -142,12 +156,27 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 }
 
 static void
+cmd_pipe_pane_write_callback(__unused struct bufferevent *bufev, void *data)
+{
+	struct window_pane	*wp = data;
+
+	log_debug("%%%u pipe empty", wp->id);
+	if (window_pane_destroy_ready(wp))
+		server_destroy_pane(wp, 1);
+}
+
+static void
 cmd_pipe_pane_error_callback(__unused struct bufferevent *bufev,
     __unused short what, void *data)
 {
 	struct window_pane	*wp = data;
 
+	log_debug("%%%u pipe error", wp->id);
+
 	bufferevent_free(wp->pipe_event);
 	close(wp->pipe_fd);
 	wp->pipe_fd = -1;
+
+	if (window_pane_destroy_ready(wp))
+		server_destroy_pane(wp, 1);
 }

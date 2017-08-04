@@ -261,6 +261,11 @@ size_t		 strnlen(const char *, size_t);
 char		*strndup(const char *, size_t);
 #endif
 
+#ifndef HAVE_MEMMEM
+/* memmem.c */
+void		*memmem(const void *, size_t, const void *, size_t);
+#endif
+
 #ifndef HAVE_DAEMON
 /* daemon.c */
 int	 	 daemon(int, int);

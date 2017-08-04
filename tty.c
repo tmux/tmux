@@ -882,10 +882,10 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
     struct screen *s, u_int py, u_int ox, u_int oy)
 {
 	struct grid_cell	 gc, last;
-	u_int			 i, j, sx, nx, width;
+	u_int			 i, j, ux, sx, nx, width;
 	int			 flags, cleared = 0;
 	char			 buf[512];
-	size_t			 len;
+	size_t			 len, old_len;
 
 	flags = (tty->flags & TTY_NOCURSOR);
 	tty->flags |= TTY_NOCURSOR;
@@ -903,6 +903,7 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 		sx = s->grid->linedata[s->grid->hsize + py].cellsize;
 	if (sx > tty->sx)
 		sx = tty->sx;
+	ux = 0;
 
 	if (wp == NULL ||
 	    py == 0 ||
@@ -944,6 +945,7 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 		    (sizeof buf) - len < gc.data.size)) {
 			tty_attributes(tty, &last, wp);
 			tty_putn(tty, buf, len, width);
+			ux += width;
 
 			len = 0;
 			width = 0;
@@ -966,6 +968,7 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 				for (j = 0; j < gc.data.size; j++)
 					tty_putc(tty, gc.data.data[j]);
 			}
+			ux += gc.data.width;
 		} else {
 			memcpy(buf + len, gc.data.data, gc.data.size);
 			len += gc.data.size;
@@ -973,14 +976,26 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 		}
 	}
 	if (len != 0) {
-		tty_attributes(tty, &last, wp);
-		tty_putn(tty, buf, len, width);
+		if (grid_cells_equal(&last, &grid_default_cell)) {
+			old_len = len;
+			while (len > 0 && buf[len - 1] == ' ') {
+				len--;
+				width--;
+			}
+			log_debug("%s: trimmed %zu spaces", __func__,
+			    old_len - len);
+		}
+		if (len != 0) {
+			tty_attributes(tty, &last, wp);
+			tty_putn(tty, buf, len, width);
+			ux += width;
+		}
 	}
 
-	nx = screen_size_x(s) - sx;
-	if (!cleared && sx < tty->sx && nx != 0) {
+	nx = screen_size_x(s) - ux;
+	if (!cleared && ux < tty->sx && nx != 0) {
 		tty_default_attributes(tty, wp, 8);
-		tty_clear_line(tty, wp, oy + py, ox + sx, nx, 8);
+		tty_clear_line(tty, wp, oy + py, ox + ux, nx, 8);
 	}
 
 	tty->flags = (tty->flags & ~TTY_NOCURSOR) | flags;

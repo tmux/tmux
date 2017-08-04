@@ -165,6 +165,10 @@ static const struct tty_default_key_raw tty_default_raw_keys[] = {
 	/* Focus tracking. */
 	{ "\033[I", KEYC_FOCUS_IN },
 	{ "\033[O", KEYC_FOCUS_OUT },
+
+	/* Paste keys. */
+	{ "\033[200~", KEYC_PASTE_START },
+	{ "\033[201~", KEYC_PASTE_END },
 };
 
 /* Default terminfo(5) keys. */
@@ -385,8 +389,9 @@ tty_keys_build(struct tty *tty)
 {
 	const struct tty_default_key_raw	*tdkr;
 	const struct tty_default_key_code	*tdkc;
-	u_int		 			 i;
-	const char				*s;
+	u_int		 			 i, size;
+	const char				*s, *value;
+	struct options_entry			*o;
 
 	if (tty->key_tree != NULL)
 		tty_keys_free(tty);
@@ -406,6 +411,15 @@ tty_keys_build(struct tty *tty)
 		if (*s != '\0')
 			tty_keys_add(tty, s, tdkc->key);
 
+	}
+
+	o = options_get(global_options, "user-keys");
+	if (o != NULL && options_array_size(o, &size) != -1) {
+		for (i = 0; i < size; i++) {
+			value = options_array_get(o, i);
+			if (value != NULL)
+				tty_keys_add(tty, value, KEYC_USER + i);
+		}
 	}
 }
 

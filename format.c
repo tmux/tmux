@@ -1389,7 +1389,7 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 {
 	struct grid	*gd = wp->base.grid;
 	u_int		 idx;
-	int  		 status, scroll_position;
+	int  		 status;
 
 	if (ft->w == NULL)
 		ft->w = wp->window;
@@ -1409,6 +1409,7 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 	format_add(ft, "pane_id", "%%%u", wp->id);
 	format_add(ft, "pane_active", "%d", wp == wp->window->active);
 	format_add(ft, "pane_input_off", "%d", !!(wp->flags & PANE_INPUTOFF));
+	format_add(ft, "pane_pipe", "%d", wp->pipe_fd != -1);
 
 	status = wp->status;
 	if (wp->fd == -1 && WIFEXITED(status))
@@ -1420,6 +1421,10 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 		format_add(ft, "pane_top", "%u", wp->yoff);
 		format_add(ft, "pane_right", "%u", wp->xoff + wp->sx - 1);
 		format_add(ft, "pane_bottom", "%u", wp->yoff + wp->sy - 1);
+		format_add(ft, "pane_at_left", "%d", wp->xoff == 0);
+		format_add(ft, "pane_at_top", "%d", wp->yoff == 0);
+		format_add(ft, "pane_at_right", "%d", wp->xoff + wp->sx == wp->window->sx);
+		format_add(ft, "pane_at_bottom", "%d", wp->yoff + wp->sy == wp->window->sy);
 	}
 
 	format_add(ft, "pane_in_mode", "%d", wp->screen != &wp->base);
@@ -1442,9 +1447,7 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 	format_add(ft, "scroll_region_upper", "%u", wp->base.rupper);
 	format_add(ft, "scroll_region_lower", "%u", wp->base.rlower);
 
-	scroll_position = window_copy_scroll_position(wp);
-	if (scroll_position != -1)
-		format_add(ft, "scroll_position", "%d", scroll_position);
+	window_copy_add_formats(wp, ft);
 
 	format_add(ft, "alternate_on", "%d", wp->saved_grid ? 1 : 0);
 	format_add(ft, "alternate_saved_x", "%u", wp->saved_cx);
