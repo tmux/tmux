@@ -156,7 +156,8 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	window_redraw_active_switch(w, wp);
 	if (window_set_active_pane(w, wp)) {
-		cmd_find_from_winlink(current, wl);
+		cmd_find_from_winlink_pane(current, wl, wp);
+		hooks_insert(s->hooks, item, current, "after-select-pane");
 		server_status_window(w);
 		server_redraw_window_borders(w);
 	}
