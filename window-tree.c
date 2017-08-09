@@ -33,6 +33,22 @@ static void		 window_tree_key(struct window_pane *,
 
 #define WINDOW_TREE_DEFAULT_COMMAND "switch-client -t '%%'"
 
+#define WINDOW_TREE_DEFAULT_FORMAT \
+	"#{?pane_format," \
+		"#{pane_current_command} \"#{pane_title}\"" \
+	"," \
+		"#{?window_format," \
+			"#{window_name}#{window_flags} " \
+			"(#{window_panes} panes)" \
+			"#{?#{==:#{window_panes},1}, \"#{pane_title}\",}" \
+		"," \
+			"#{session_windows} windows" \
+			"#{?session_grouped, (group ,}" \
+	    		"#{session_group}#{?session_grouped,),}" \
+			"#{?session_attached, (attached),}" \
+		"}" \
+	"}"
+
 const struct window_mode window_tree_mode = {
 	.name = "tree-mode",
 
@@ -73,6 +89,7 @@ struct window_tree_modedata {
 	int				  references;
 
 	struct mode_tree_data		 *data;
+	char				 *format;
 	char				 *command;
 
 	struct window_tree_itemdata	**item_list;
@@ -215,9 +232,7 @@ window_tree_build_pane(struct session *s, struct winlink *wl,
 	item->winlink = wl->idx;
 	item->pane = wp->id;
 
-	text = format_single(NULL,
-	    "#{pane_current_command} \"#{pane_title}\"",
-	    NULL, s, wl, wp);
+	text = format_single(NULL, data->format, NULL, s, wl, wp);
 	xasprintf(&name, "%u", idx);
 
 	mode_tree_add(data->data, parent, item, (uint64_t)wp, name, text, -1);
@@ -243,10 +258,7 @@ window_tree_build_window(struct session *s, struct winlink *wl, void* modedata,
 	item->winlink = wl->idx;
 	item->pane = -1;
 
-	text = format_single(NULL,
-	    "#{window_name}#{window_flags} (#{window_panes} panes)"
-	    "#{?#{==:#{window_panes},1}, \"#{pane_title}\",}",
-	    NULL, s, wl, NULL);
+	text = format_single(NULL, data->format, NULL, s, wl, NULL);
 	xasprintf(&name, "%u", wl->idx);
 
 	if (data->type == WINDOW_TREE_SESSION ||
@@ -319,12 +331,7 @@ window_tree_build_session(struct session *s, void* modedata,
 	item->winlink = -1;
 	item->pane = -1;
 
-	text = format_single(NULL,
-	    "#{session_windows} windows"
-	    "#{?session_grouped, (group ,}"
-	    "#{session_group}#{?session_grouped,),}"
-	    "#{?session_attached, (attached),}",
-	    NULL, s, NULL, NULL);
+	text = format_single(NULL, data->format, NULL, s, NULL, NULL);
 
 	if (data->type == WINDOW_TREE_SESSION)
 		expanded = 0;
@@ -755,6 +762,10 @@ window_tree_init(struct window_pane *wp, struct cmd_find_state *fs,
 	data->wp = wp;
 	data->references = 1;
 
+	if (args == NULL || !args_has(args, 'F'))
+		data->format = xstrdup(WINDOW_TREE_DEFAULT_FORMAT);
+	else
+		data->format = xstrdup(args_get(args, 'F'));
 	if (args == NULL || args->argc == 0)
 		data->command = xstrdup(WINDOW_TREE_DEFAULT_COMMAND);
 	else
@@ -786,7 +797,9 @@ window_tree_destroy(struct window_tree_modedata *data)
 		window_tree_free_item(data->item_list[i]);
 	free(data->item_list);
 
+	free(data->format);
 	free(data->command);
+
 	free(data);
 }
 

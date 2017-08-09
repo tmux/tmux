@@ -36,6 +36,9 @@ static void		 window_buffer_key(struct window_pane *,
 
 #define WINDOW_BUFFER_DEFAULT_COMMAND "paste-buffer -b '%%'"
 
+#define WINDOW_BUFFER_DEFAULT_FORMAT \
+	"#{buffer_size} bytes (#{t:buffer_created})"
+
 const struct window_mode window_buffer_mode = {
 	.name = "buffer-mode",
 
@@ -58,7 +61,6 @@ static const char *window_buffer_sort_list[] = {
 
 struct window_buffer_itemdata {
 	const char	*name;
-	time_t		 created;
 	u_int		 order;
 	size_t		 size;
 };
@@ -66,6 +68,7 @@ struct window_buffer_itemdata {
 struct window_buffer_modedata {
 	struct mode_tree_data		 *data;
 	char				 *command;
+	char				 *format;
 
 	struct window_buffer_itemdata	**item_list;
 	u_int				  item_size;
@@ -132,7 +135,7 @@ window_buffer_build(void *modedata, u_int sort_type, __unused uint64_t *tag,
 	struct window_buffer_itemdata	*item;
 	u_int				 i;
 	struct paste_buffer		*pb;
-	char				*tim, *text, *cp;
+	char				*text, *cp;
 	struct format_tree		*ft;
 
 	for (i = 0; i < data->item_size; i++)
@@ -145,7 +148,6 @@ window_buffer_build(void *modedata, u_int sort_type, __unused uint64_t *tag,
 	while ((pb = paste_walk(pb)) != NULL) {
 		item = window_buffer_add_item(data);
 		item->name = xstrdup(paste_buffer_name(pb));
-		item->created = paste_buffer_created(pb);
 		paste_buffer_data(pb, &item->size);
 		item->order = paste_buffer_order(pb);
 	}
@@ -168,12 +170,13 @@ window_buffer_build(void *modedata, u_int sort_type, __unused uint64_t *tag,
 	for (i = 0; i < data->item_size; i++) {
 		item = data->item_list[i];
 
+		pb = paste_get_name(item->name);
+		if (pb == NULL)
+			continue;
+		ft = format_create(NULL, NULL, FORMAT_NONE, 0);
+		format_defaults_paste_buffer(ft, pb);
+
 		if (filter != NULL) {
-			pb = paste_get_name(item->name);
-			if (pb == NULL)
-				continue;
-			ft = format_create(NULL, NULL, FORMAT_NONE, 0);
-			format_defaults_paste_buffer(ft, pb);
 			cp = format_expand(ft, filter);
 			if (!format_true(cp)) {
 				free(cp);
@@ -181,16 +184,14 @@ window_buffer_build(void *modedata, u_int sort_type, __unused uint64_t *tag,
 				continue;
 			}
 			free(cp);
-			format_free(ft);
 		}
 
-		tim = ctime(&item->created);
-		*strchr(tim, '\n') = '\0';
-
-		xasprintf(&text, "%zu bytes (%s)", item->size, tim);
+		text = format_expand(ft, data->format);
 		mode_tree_add(data->data, NULL, item, item->order, item->name,
 		    text, -1);
 		free(text);
+
+		format_free(ft);
 	}
 
 }
@@ -269,6 +270,10 @@ window_buffer_init(struct window_pane *wp, __unused struct cmd_find_state *fs,
 
 	wp->modedata = data = xcalloc(1, sizeof *data);
 
+	if (args == NULL || !args_has(args, 'F'))
+		data->format = xstrdup(WINDOW_BUFFER_DEFAULT_FORMAT);
+	else
+		data->format = xstrdup(args_get(args, 'F'));
 	if (args == NULL || args->argc == 0)
 		data->command = xstrdup(WINDOW_BUFFER_DEFAULT_COMMAND);
 	else
@@ -299,7 +304,9 @@ window_buffer_free(struct window_pane *wp)
 		window_buffer_free_item(data->item_list[i]);
 	free(data->item_list);
 
+	free(data->format);
 	free(data->command);
+
 	free(data);
 }
 

@@ -36,6 +36,10 @@ static void		 window_client_key(struct window_pane *,
 
 #define WINDOW_CLIENT_DEFAULT_COMMAND "detach-client -t '%%'"
 
+#define WINDOW_CLIENT_DEFAULT_FORMAT \
+	"session #{session_name} " \
+	"(#{client_width}x#{client_height}, #{t:client_activity})"
+
 const struct window_mode window_client_mode = {
 	.name = "client-mode",
 
@@ -64,6 +68,7 @@ struct window_client_itemdata {
 
 struct window_client_modedata {
 	struct mode_tree_data		 *data;
+	char				 *format;
 	char				 *command;
 
 	struct window_client_itemdata	**item_list;
@@ -148,7 +153,7 @@ window_client_build(void *modedata, u_int sort_type, __unused uint64_t *tag,
 	struct window_client_itemdata	*item;
 	u_int				 i;
 	struct client			*c;
-	char				*tim, *text, *cp;
+	char				*text, *cp;
 
 	for (i = 0; i < data->item_size; i++)
 		window_client_free_item(data->item_list[i]);
@@ -198,11 +203,7 @@ window_client_build(void *modedata, u_int sort_type, __unused uint64_t *tag,
 			free(cp);
 		}
 
-		tim = ctime(&c->activity_time.tv_sec);
-		*strchr(tim, '\n') = '\0';
-
-		xasprintf(&text, "session %s (%ux%u, %s)", c->session->name,
-		    c->tty.sx, c->tty.sy, tim);
+		text = format_single(NULL, data->format, c, NULL, NULL, NULL);
 		mode_tree_add(data->data, NULL, item, (uint64_t)c, c->name,
 		    text, -1);
 		free(text);
@@ -251,6 +252,10 @@ window_client_init(struct window_pane *wp, __unused struct cmd_find_state *fs,
 
 	wp->modedata = data = xcalloc(1, sizeof *data);
 
+	if (args == NULL || !args_has(args, 'F'))
+		data->format = xstrdup(WINDOW_CLIENT_DEFAULT_FORMAT);
+	else
+		data->format = xstrdup(args_get(args, 'F'));
 	if (args == NULL || args->argc == 0)
 		data->command = xstrdup(WINDOW_CLIENT_DEFAULT_COMMAND);
 	else
@@ -281,7 +286,9 @@ window_client_free(struct window_pane *wp)
 		window_client_free_item(data->item_list[i]);
 	free(data->item_list);
 
+	free(data->format);
 	free(data->command);
+
 	free(data);
 }
 
