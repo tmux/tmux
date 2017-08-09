@@ -1358,6 +1358,7 @@ the end of the visible pane.
 The default is to capture only the visible contents of the pane.
 .It Xo
 .Ic choose-client
+.Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl O Ar sort-order
 .Op Fl t Ar target-pane
@@ -1405,10 +1406,13 @@ or
 .Ql activity .
 .Fl f
 specifies an initial filter.
+.Fl F
+specifies the format for each item in the list.
 This command works only if at least one client is attached.
 .It Xo
 .Ic choose-tree
 .Op Fl sw
+.Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl O Ar sort-order
 .Op Fl t Ar target-pane
@@ -1456,6 +1460,8 @@ or
 .Ql time .
 .Fl f
 specifies an initial filter.
+.Fl F
+specifies the format for each item in the tree.
 This command works only if at least one client is attached.
 .It Xo
 .Ic display-panes
@@ -3565,11 +3571,12 @@ The following variables are available, where appropriate:
 .It Li "alternate_on" Ta "" Ta "If pane is in alternate screen"
 .It Li "alternate_saved_x" Ta "" Ta "Saved cursor X in alternate screen"
 .It Li "alternate_saved_y" Ta "" Ta "Saved cursor Y in alternate screen"
+.It Li "buffer_created" Ta "" Ta "Time buffer created"
 .It Li "buffer_name" Ta "" Ta "Name of buffer"
 .It Li "buffer_sample" Ta "" Ta "Sample of start of buffer"
 .It Li "buffer_size" Ta "" Ta "Size of the specified buffer in bytes"
-.It Li "client_activity" Ta "" Ta "Integer time client last had activity"
-.It Li "client_created" Ta "" Ta "Integer time client created"
+.It Li "client_activity" Ta "" Ta "Time client last had activity"
+.It Li "client_created" Ta "" Ta "Time client created"
 .It Li "client_control_mode" Ta "" Ta "1 if client is in control mode"
 .It Li "client_discarded" Ta "" Ta "Bytes discarded when client behind"
 .It Li "client_height" Ta "" Ta "Height of client"
@@ -3622,6 +3629,7 @@ The following variables are available, where appropriate:
 .It Li "pane_current_path" Ta "" Ta "Current path if available"
 .It Li "pane_dead" Ta "" Ta "1 if pane is dead"
 .It Li "pane_dead_status" Ta "" Ta "Exit status of process in dead pane"
+.It Li "pane_format" Ta "" Ta "1 if format is for a pane (not assuming the current)"
 .It Li "pane_height" Ta "" Ta "Height of pane"
 .It Li "pane_id" Ta "#D" Ta "Unique pane ID"
 .It Li "pane_in_mode" Ta "" Ta "If pane is in a mode"
@@ -3647,9 +3655,10 @@ The following variables are available, where appropriate:
 .It Li "selection_present" Ta "" Ta "1 if selection started in copy mode"
 .It Li "session_alerts" Ta "" Ta "List of window indexes with alerts"
 .It Li "session_attached" Ta "" Ta "Number of clients session is attached to"
-.It Li "session_activity" Ta "" Ta "Integer time of session last activity"
-.It Li "session_created" Ta "" Ta "Integer time session created"
-.It Li "session_last_attached" Ta "" Ta "Integer time session last attached"
+.It Li "session_activity" Ta "" Ta "Time of session last activity"
+.It Li "session_created" Ta "" Ta "Time session created"
+.It Li "session_format" Ta "" Ta "1 if format is for a session (not assuming the current)"
+.It Li "session_last_attached" Ta "" Ta "Time session last attached"
 .It Li "session_group" Ta "" Ta "Name of session group"
 .It Li "session_grouped" Ta "" Ta "1 if session in a group"
 .It Li "session_height" Ta "" Ta "Height of session"
@@ -3662,12 +3671,12 @@ The following variables are available, where appropriate:
 .It Li "socket_path" Ta "" Ta "Server socket path"
 .It Li "start_time" Ta "" Ta "Server start time"
 .It Li "version" Ta "" Ta "Server version"
-.It Li "window_activity" Ta "" Ta "Integer time of window last activity"
+.It Li "window_activity" Ta "" Ta "Time of window last activity"
 .It Li "window_activity_flag" Ta "" Ta "1 if window has activity"
 .It Li "window_active" Ta "" Ta "1 if window active"
 .It Li "window_bell_flag" Ta "" Ta "1 if window has bell"
-.It Li "window_find_matches" Ta "" Ta "Matched data from the find-window"
 .It Li "window_flags" Ta "#F" Ta "Window flags"
+.It Li "window_format" Ta "" Ta "1 if format is for a window (not assuming the current)"
 .It Li "window_height" Ta "" Ta "Height of window"
 .It Li "window_id" Ta "" Ta "Unique window ID"
 .It Li "window_index" Ta "#I" Ta "Index of window"
@@ -4030,6 +4039,7 @@ The buffer commands are as follows:
 .Bl -tag -width Ds
 .It Xo
 .Ic choose-buffer
+.Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl O Ar sort-order
 .Op Fl t Ar target-pane
@@ -4072,6 +4082,8 @@ or
 .Ql size .
 .Fl f
 specifies an initial filter.
+.Fl F
+specifies the format for each item in the list.
 This command works only if at least one client is attached.
 .It Ic clear-history Op Fl t Ar target-pane
 .D1 (alias: Ic clearhist )

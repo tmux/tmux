@@ -411,7 +411,7 @@ screen_write_hline(struct screen_write_ctx *ctx, u_int nx, int left, int right)
 
 /* Draw a horizontal line on screen. */
 void
-screen_write_vline(struct screen_write_ctx *ctx, u_int ny, int top, int bottom) 
+screen_write_vline(struct screen_write_ctx *ctx, u_int ny, int top, int bottom)
 {
 	struct screen		*s = ctx->s;
 	struct grid_cell	 gc;
