@@ -478,7 +478,6 @@ options_match_get(struct options *oo, const char *s, int *idx, int only,
 	return (o);
 }
 
-
 const char *
 options_get_string(struct options *oo, const char *name)
 {

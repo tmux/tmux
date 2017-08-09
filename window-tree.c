@@ -241,13 +241,30 @@ window_tree_build_pane(struct session *s, struct winlink *wl,
 }
 
 static int
+window_tree_filter_pane(struct session *s, struct winlink *wl,
+    struct window_pane *wp, const char *filter)
+{
+	char	*cp;
+	int	 result;
+
+	if (filter == NULL)
+		return (1);
+
+	cp = format_single(NULL, filter, NULL, s, wl, wp);
+	result = format_true(cp);
+	free(cp);
+
+	return (result);
+}
+
+static int
 window_tree_build_window(struct session *s, struct winlink *wl, void* modedata,
     u_int sort_type, struct mode_tree_item *parent, const char *filter)
 {
 	struct window_tree_modedata	*data = modedata;
 	struct window_tree_itemdata	*item;
 	struct mode_tree_item		*mti;
-	char				*name, *text, *cp;
+	char				*name, *text;
 	struct window_pane		*wp, **l;
 	u_int				 n, i;
 	int				 expanded;
@@ -271,30 +288,24 @@ window_tree_build_window(struct session *s, struct winlink *wl, void* modedata,
 	free(text);
 	free(name);
 
-	if (window_count_panes(wl->window) == 1)
+	wp = TAILQ_FIRST(&wl->window->panes);
+	if (TAILQ_NEXT(wp, entry) == NULL) {
+		if (!window_tree_filter_pane(s, wl, wp, filter))
+			goto empty;
 		return (1);
+	}
 
 	l = NULL;
 	n = 0;
 
 	TAILQ_FOREACH(wp, &wl->window->panes, entry) {
-		if (filter != NULL) {
-			cp = format_single(NULL, filter, NULL, s, wl, wp);
-			if (!format_true(cp)) {
-				free(cp);
-				continue;
-			}
-			free(cp);
-		}
+		if (!window_tree_filter_pane(s, wl, wp, filter))
+			continue;
 		l = xreallocarray(l, n + 1, sizeof *l);
 		l[n++] = wp;
 	}
-	if (n == 0) {
-		window_tree_free_item(item);
-		data->item_size--;
-		mode_tree_remove(data->data, mti);
-		return (0);
-	}
+	if (n == 0)
+		goto empty;
 
 	switch (sort_type) {
 	case WINDOW_TREE_BY_INDEX:
@@ -311,6 +322,12 @@ window_tree_build_window(struct session *s, struct winlink *wl, void* modedata,
 		window_tree_build_pane(s, wl, l[i], modedata, mti);
 	free(l);
 	return (1);
+
+empty:
+	window_tree_free_item(item);
+	data->item_size--;
+	mode_tree_remove(data->data, mti);
+	return (0);
 }
 
 static void
