@@ -1,5 +1,8 @@
 CHANGES FROM 2.5 to master
 
+* Add selection_present format when in copy mode (allows key bindings that do
+  something different if there is a selection).
+
 * Add pane_at_left, pane_at_right, pane_at_top and pane_at_bottom formats.
 
 * Make bell, activity and silence alerting more consistent by: removing the
