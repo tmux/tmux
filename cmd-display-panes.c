@@ -37,8 +37,8 @@ const struct cmd_entry cmd_display_panes_entry = {
 	.name = "display-panes",
 	.alias = "displayp",
 
-	.args = { "t:", 0, 1 },
-	.usage = CMD_TARGET_CLIENT_USAGE,
+	.args = { "d:t:", 0, 1 },
+	.usage = "[-d delay] " CMD_TARGET_CLIENT_USAGE,
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_display_panes_exec
@@ -49,6 +49,8 @@ cmd_display_panes_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args	*args = self->args;
 	struct client	*c;
+	int		 delay;
+	char		*cause;
 
 	if ((c = cmd_find_client(item, args_get(args, 't'), 0)) == NULL)
 		return (CMD_RETURN_ERROR);
@@ -62,7 +64,16 @@ cmd_display_panes_exec(struct cmd *self, struct cmdq_item *item)
 	else
 		c->identify_callback_data = xstrdup("select-pane -t '%%'");
 
-	server_client_set_identify(c);
+	delay = -1;
+	if (args_has(args, 'd')) {
+		delay = args_strtonum(args, 'd', 0, INT_MAX, &cause);
+		if (cause != NULL) {
+			cmdq_error(item, "delay %s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
+		}
+	}
+	server_client_set_identify(c, delay);
 
 	return (CMD_RETURN_NORMAL);
 }

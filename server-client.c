@@ -72,19 +72,20 @@ server_client_callback_identify(__unused int fd, __unused short events,
 
 /* Set identify mode on client. */
 void
-server_client_set_identify(struct client *c)
+server_client_set_identify(struct client *c, int delay)
 {
 	struct timeval	tv;
-	int		delay;
-
-	delay = options_get_number(c->session->options, "display-panes-time");
+	if (delay < 0)
+		delay = options_get_number(c->session->options, "display-panes-time");
 	tv.tv_sec = delay / 1000;
 	tv.tv_usec = (delay % 1000) * 1000L;
 
-	if (event_initialized(&c->identify_timer))
-		evtimer_del(&c->identify_timer);
-	evtimer_set(&c->identify_timer, server_client_callback_identify, c);
-	evtimer_add(&c->identify_timer, &tv);
+	if (delay > 0) {
+		if (event_initialized(&c->identify_timer))
+			evtimer_del(&c->identify_timer);
+		evtimer_set(&c->identify_timer, server_client_callback_identify, c);
+		evtimer_add(&c->identify_timer, &tv);
+	}
 
 	c->flags |= CLIENT_IDENTIFY;
 	c->tty.flags |= (TTY_FREEZE|TTY_NOCURSOR);
