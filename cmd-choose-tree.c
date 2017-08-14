@@ -30,8 +30,9 @@ const struct cmd_entry cmd_choose_tree_entry = {
 	.name = "choose-tree",
 	.alias = NULL,
 
-	.args = { "f:O:st:w", 0, 1 },
-	.usage = "[-sw] [-f filter] [-O sort-order] " CMD_TARGET_PANE_USAGE,
+	.args = { "F:f:O:st:w", 0, 1 },
+	.usage = "[-sw] [-F format] [-f filter] [-O sort-order] "
+	         CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -43,8 +44,9 @@ const struct cmd_entry cmd_choose_client_entry = {
 	.name = "choose-client",
 	.alias = NULL,
 
-	.args = { "f:O:t:", 0, 1 },
-	.usage = "[-f filter] [-O sort-order] " CMD_TARGET_PANE_USAGE,
+	.args = { "F:f:O:t:", 0, 1 },
+	.usage = "[-F format] [-f filter] [-O sort-order] "
+	         CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -56,8 +58,9 @@ const struct cmd_entry cmd_choose_buffer_entry = {
 	.name = "choose-buffer",
 	.alias = NULL,
 
-	.args = { "f:O:t:", 0, 1 },
-	.usage = "[-f filter] [-O sort-order] " CMD_TARGET_PANE_USAGE,
+	.args = { "F:f:O:t:", 0, 1 },
+	.usage = "[-F format] [-f filter] [-O sort-order] "
+	         CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
