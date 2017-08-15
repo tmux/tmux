@@ -81,11 +81,11 @@ struct tmuxproc;
 #define nitems(_a) (sizeof((_a)) / sizeof((_a)[0]))
 #endif
 
-/* Bell option values. */
-#define BELL_NONE 0
-#define BELL_ANY 1
-#define BELL_CURRENT 2
-#define BELL_OTHER 3
+/* Alert action option values for activity, bell and silence. */
+#define ALERT_ACTION_NONE 0
+#define ALERT_ACTION_ANY 1
+#define ALERT_ACTION_CURRENT 2
+#define ALERT_ACTION_OTHER 3
 
 /* Visual option values. */
 #define VISUAL_OFF 0

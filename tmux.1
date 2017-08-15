@@ -2558,7 +2558,9 @@ The default is zero.
 .It Xo Ic bell-action
 .Op Ic any | none | current | other
 .Xc
-Set action on window bell.
+Set action on a bell in a window when
+.Ic monitor-bell
+is on.
 The values are the same as those for
 .Ic activity-action .
 .It Ic default-command Ar shell-command
@@ -2919,7 +2921,9 @@ If set to both, a bell and a message are produced.
 .It Xo Ic visual-bell
 .Op Ic on | off | both
 .Xc
-If on, a message is shown on a bell instead of it being passed through to the
+If on, a message is shown on a bell in a window for which the
+.Ic monitor-bell
+window option is enabled instead of it being passed through to the
 terminal (which normally makes a sound).
 If set to both, a bell and a message are produced.
 Also see the
@@ -3076,6 +3080,12 @@ option.
 .Xc
 Monitor for activity in the window.
 Windows with activity are highlighted in the status line.
+.Pp
+.It Xo Ic monitor-bell
+.Op Ic on | off
+.Xc
+Monitor for a bell in the window.
+Windows with a bell are highlighted in the status line.
 .Pp
 .It Xo Ic monitor-silence
 .Op Ic interval
@@ -3310,6 +3320,8 @@ See
 .Ic monitor-activity .
 .It alert-bell
 Run when a window has received a bell.
+See
+.Ic monitor-bell .
 .It alert-silence
 Run when a window has been silent.
 See
@@ -3842,8 +3854,8 @@ The flag is one of the following symbols appended to the window name:
 .It Sy "Symbol" Ta Sy "Meaning"
 .It Li "*" Ta "Denotes the current window."
 .It Li "-" Ta "Marks the last window (previously selected)."
-.It Li "#" Ta "Window is monitored and activity has been detected."
-.It Li "\&!" Ta "A bell has occurred in the window."
+.It Li "#" Ta "Window activity is monitored and activity has been detected."
+.It Li "\&!" Ta "Window bells are monitored and a bell has occurred in the window."
 .It Li "~" Ta "The window has been silent for the monitor-silence interval."
 .It Li "M" Ta "The window contains the marked pane."
 .It Li "Z" Ta "The window's active pane is zoomed."
