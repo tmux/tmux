@@ -47,10 +47,10 @@ static const char *options_table_status_justify_list[] = {
 static const char *options_table_status_position_list[] = {
 	"top", "bottom", NULL
 };
-static const char *options_table_bell_action_list[] = {
+static const char *options_table_alert_action_list[] = {
 	"none", "any", "current", "other", NULL
 };
-static const char *options_table_visual_bell_list[] = {
+static const char *options_table_visual_alert_list[] = {
 	"off", "on", "both", NULL
 };
 static const char *options_table_pane_status_list[] = {
@@ -148,8 +148,8 @@ const struct options_table_entry options_table[] = {
 	{ .name = "activity-action",
 	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .choices = options_table_bell_action_list,
-	  .default_num = BELL_OTHER
+	  .choices = options_table_alert_action_list,
+	  .default_num = ALERT_ACTION_OTHER
 	},
 
 	{ .name = "assume-paste-time",
@@ -171,8 +171,8 @@ const struct options_table_entry options_table[] = {
 	{ .name = "bell-action",
 	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .choices = options_table_bell_action_list,
-	  .default_num = BELL_ANY
+	  .choices = options_table_alert_action_list,
+	  .default_num = ALERT_ACTION_ANY
 	},
 
 	{ .name = "default-command",
@@ -356,8 +356,8 @@ const struct options_table_entry options_table[] = {
 	{ .name = "silence-action",
 	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .choices = options_table_bell_action_list,
-	  .default_num = BELL_OTHER
+	  .choices = options_table_alert_action_list,
+	  .default_num = ALERT_ACTION_OTHER
 	},
 
 	{ .name = "status",
@@ -514,21 +514,21 @@ const struct options_table_entry options_table[] = {
 	{ .name = "visual-activity",
 	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .choices = options_table_visual_bell_list,
+	  .choices = options_table_visual_alert_list,
 	  .default_num = VISUAL_OFF
 	},
 
 	{ .name = "visual-bell",
 	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .choices = options_table_visual_bell_list,
+	  .choices = options_table_visual_alert_list,
 	  .default_num = VISUAL_OFF
 	},
 
 	{ .name = "visual-silence",
 	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .choices = options_table_visual_bell_list,
+	  .choices = options_table_visual_alert_list,
 	  .default_num = VISUAL_OFF
 	},
 
@@ -652,6 +652,12 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_FLAG,
 	  .scope = OPTIONS_TABLE_WINDOW,
 	  .default_num = 0
+	},
+
+	{ .name = "monitor-bell",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_num = 1
 	},
 
 	{ .name = "monitor-silence",
