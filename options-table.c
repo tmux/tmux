@@ -150,7 +150,7 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_SESSION,
 	  .choices = options_table_bell_action_list,
-	  .default_num = BELL_OTHER
+	  .default_num = ALERT_OTHER
 	},
 
 	{ .name = "assume-paste-time",
@@ -173,7 +173,7 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_SESSION,
 	  .choices = options_table_bell_action_list,
-	  .default_num = BELL_ANY
+	  .default_num = ALERT_ANY
 	},
 
 	{ .name = "default-command",
@@ -358,7 +358,7 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_SESSION,
 	  .choices = options_table_bell_action_list,
-	  .default_num = BELL_OTHER
+	  .default_num = ALERT_OTHER
 	},
 
 	{ .name = "status",

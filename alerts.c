@@ -267,11 +267,11 @@ alerts_set_message(struct session *s, struct window *w, struct winlink *wl,
 	int		 flag;
 
 	/*
-	 * We have found an alert (bell, activity or silence), so we need
-	 * to notify the user. For each client attached to this session,
+	 * We have found an alert (bell, activity or silence), so we need to
+	 * pass it on to the user. For each client attached to this session,
 	 * decide whether a bell (or visual message) is needed.
 	 *
-	 * {bell,activity,silence}-action determines when we notify: none means
+	 * {bell,activity,silence}-action determines when we alert: none means
 	 * nothing happens, current means we only do something for the current
 	 * window and other means only for windows other than the current.
 	 *
@@ -280,17 +280,17 @@ alerts_set_message(struct session *s, struct window *w, struct winlink *wl,
 	 * mean both a bell and visual message is sent.
 	 */
 
-	if (action == BELL_NONE)
+	if (action == ALERT_NONE)
 		return;
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (c->session != s || c->flags & CLIENT_CONTROL)
 			continue;
 		flag = 0;
-		if (action == BELL_ANY)
+		if (action == ALERT_ANY)
 			flag = 1;
-		else if (action == BELL_CURRENT)
+		else if (action == ALERT_CURRENT)
 			flag = (c->session->curw->window == w);
-		else if (action == BELL_OTHER)
+		else if (action == ALERT_OTHER)
 			flag = (c->session->curw->window != w);
 		if (!flag)
 			continue;
