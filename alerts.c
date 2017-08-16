@@ -77,9 +77,9 @@ alerts_action_applies(struct winlink *wl, const char *name)
 	if (action == ALERT_ANY)
 		return (1);
 	if (action == ALERT_CURRENT)
-		return (wl == wl->session->curw ? 1 : 0);
+		return (wl == wl->session->curw);
 	if (action == ALERT_OTHER)
-		return (wl != wl->session->curw ? 1 : 0);
+		return (wl != wl->session->curw);
 	return (0);
 }
 
