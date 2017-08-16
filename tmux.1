@@ -1465,6 +1465,7 @@ specifies the format for each item in the tree.
 This command works only if at least one client is attached.
 .It Xo
 .Ic display-panes
+.Op Fl d Ar duration
 .Op Fl t Ar target-client
 .Op Ar template
 .Xc
@@ -1472,11 +1473,19 @@ This command works only if at least one client is attached.
 Display a visible indicator of each pane shown by
 .Ar target-client .
 See the
-.Ic display-panes-time ,
-.Ic display-panes-colour ,
+.Ic display-panes-colour
 and
 .Ic display-panes-active-colour
 session options.
+The indicator is closed when a key is pressed or
+.Ar duration
+milliseconds have passed.
+If
+.Fl d
+is not given,
+.Ic display-panes-time
+is used.
+A duration of zero means the indicator stays until a key is pressed.
 While the indicator is on screen, a pane may be chosen with the
 .Ql 0
 to

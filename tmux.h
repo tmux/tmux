@@ -81,11 +81,11 @@ struct tmuxproc;
 #define nitems(_a) (sizeof((_a)) / sizeof((_a)[0]))
 #endif
 
-/* Bell option values. */
-#define BELL_NONE 0
-#define BELL_ANY 1
-#define BELL_CURRENT 2
-#define BELL_OTHER 3
+/* Alert option values. */
+#define ALERT_NONE 0
+#define ALERT_ANY 1
+#define ALERT_CURRENT 2
+#define ALERT_OTHER 3
 
 /* Visual option values. */
 #define VISUAL_OFF 0
@@ -1874,7 +1874,7 @@ void	 server_add_accept(int);
 
 /* server-client.c */
 u_int	 server_client_how_many(void);
-void	 server_client_set_identify(struct client *);
+void	 server_client_set_identify(struct client *, u_int);
 void	 server_client_clear_identify(struct client *, struct window_pane *);
 void	 server_client_set_key_table(struct client *, const char *);
 const char *server_client_get_key_table(struct client *);
