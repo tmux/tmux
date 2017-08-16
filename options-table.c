@@ -654,6 +654,12 @@ const struct options_table_entry options_table[] = {
 	  .default_num = 0
 	},
 
+	{ .name = "monitor-bell",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_num = 1
+	},
+
 	{ .name = "monitor-silence",
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .scope = OPTIONS_TABLE_WINDOW,
