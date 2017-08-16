@@ -1,5 +1,7 @@
 CHANGES FROM 2.5 to master
 
+* Add -d flag to display-panes to override display-panes-time.
+
 * Add selection_present format when in copy mode (allows key bindings that do
   something different if there is a selection).
 
