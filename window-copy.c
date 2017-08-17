@@ -1001,7 +1001,7 @@ window_copy_search_lr(struct grid *gd,
 	int	matched;
 
 	for (ax = first; ax < last; ax++) {
-		if (ax + sgd->sx >= gd->sx)
+		if (ax + sgd->sx > gd->sx)
 			break;
 		for (bx = 0; bx < sgd->sx; bx++) {
 			px = ax + bx;
