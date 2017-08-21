@@ -1623,7 +1623,7 @@ tty_cursor(struct tty *tty, u_int cx, u_int cy)
 		 */
 
 		/* To left edge. */
-		if (cx == 0) {
+		if (cx == 0 && (!tty_use_margin(tty) || tty->rleft == 0)) {
 			tty_putc(tty, '\r');
 			goto out;
 		}
