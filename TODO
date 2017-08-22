@@ -109,6 +109,7 @@
 	* this doesn't work, need pane reference count probably:
 	  bind -n DoubleClick3Status confirm-before -p "kill-window #I? (y/n)" kill-window
 	* respawn -c flag same as neww etc
+	* marker lines in history (GitHub issue 1042)
 
 - hooks
 	* more hooks for various things
