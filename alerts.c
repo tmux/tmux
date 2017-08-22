@@ -173,8 +173,6 @@ alerts_check_bell(struct window *w)
 		wl->session->flags &= ~SESSION_ALERTED;
 
 	TAILQ_FOREACH(wl, &w->winlinks, wentry) {
-		if (wl->flags & WINLINK_BELL)
-			continue;
 		s = wl->session;
 		if (s->curw != wl) {
 			wl->flags |= WINLINK_BELL;
