@@ -60,6 +60,7 @@ struct mode_tree_data {
 
 	struct screen		  screen;
 
+	int			  preview;
 	char			 *search;
 	char			 *filter;
 };
@@ -295,6 +296,8 @@ mode_tree_start(struct window_pane *wp, struct args *args,
 	mtd->sort_size = sort_size;
 	mtd->sort_type = 0;
 
+	mtd->preview = !args_has(args, 'N');
+
 	sort = args_get(args, 'O');
 	if (sort != NULL) {
 		for (i = 0; i < sort_size; i++) {
@@ -348,12 +351,15 @@ mode_tree_build(struct mode_tree_data *mtd)
 	mode_tree_set_current(mtd, tag);
 
 	mtd->width = screen_size_x(s);
-	mtd->height = (screen_size_y(s) / 3) * 2;
-	if (mtd->height > mtd->line_size)
-		mtd->height = screen_size_y(s) / 2;
-	if (mtd->height < 10)
-		mtd->height = screen_size_y(s);
-	if (screen_size_y(s) - mtd->height < 2)
+	if (mtd->preview) {
+		mtd->height = (screen_size_y(s) / 3) * 2;
+		if (mtd->height > mtd->line_size)
+			mtd->height = screen_size_y(s) / 2;
+		if (mtd->height < 10)
+			mtd->height = screen_size_y(s);
+		if (screen_size_y(s) - mtd->height < 2)
+			mtd->height = screen_size_y(s);
+	} else
 		mtd->height = screen_size_y(s);
 }
 
@@ -549,7 +555,7 @@ mode_tree_draw(struct mode_tree_data *mtd)
 	}
 
 	sy = screen_size_y(s);
-	if (sy <= 4 || h <= 4 || sy - h <= 4 || w <= 4) {
+	if (!mtd->preview || sy <= 4 || h <= 4 || sy - h <= 4 || w <= 4) {
 		screen_write_stop(&ctx);
 		return;
 	}
@@ -860,6 +866,10 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 		status_prompt_set(c, "(filter) ", mtd->filter,
 		    mode_tree_filter_callback, mode_tree_filter_free, mtd,
 		    PROMPT_NOFORMAT);
+		break;
+	case 'v':
+		mtd->preview = !mtd->preview;
+		mode_tree_build(mtd);
 		break;
 	}
 	return (0);

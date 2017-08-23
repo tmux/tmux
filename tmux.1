@@ -1358,6 +1358,7 @@ the end of the visible pane.
 The default is to capture only the visible contents of the pane.
 .It Xo
 .Ic choose-client
+.Op Fl N
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl O Ar sort-order
@@ -1385,6 +1386,7 @@ The following keys may be used in client mode:
 .It Li "Z" Ta "Suspend tagged clients"
 .It Li "f" Ta "Enter a format to filter items"
 .It Li "O" Ta "Change sort order"
+.It Li "v" Ta "Toggle preview"
 .It Li "q" Ta "Exit mode"
 .El
 .Pp
@@ -1408,10 +1410,12 @@ or
 specifies an initial filter.
 .Fl F
 specifies the format for each item in the list.
+.Fl N
+starts without the preview.
 This command works only if at least one client is attached.
 .It Xo
 .Ic choose-tree
-.Op Fl sw
+.Op Fl Nsw
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl O Ar sort-order
@@ -1440,6 +1444,7 @@ The following keys may be used in tree mode:
 .It Li "\&:" Ta "Run a command for each tagged item"
 .It Li "f" Ta "Enter a format to filter items"
 .It Li "O" Ta "Change sort order"
+.It Li "v" Ta "Toggle preview"
 .It Li "q" Ta "Exit mode"
 .El
 .Pp
@@ -1462,6 +1467,8 @@ or
 specifies an initial filter.
 .Fl F
 specifies the format for each item in the tree.
+.Fl N
+starts without the preview.
 This command works only if at least one client is attached.
 .It Xo
 .Ic display-panes
@@ -4060,6 +4067,7 @@ The buffer commands are as follows:
 .Bl -tag -width Ds
 .It Xo
 .Ic choose-buffer
+.Op Fl N
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl O Ar sort-order
@@ -4083,6 +4091,7 @@ The following keys may be used in buffer mode:
 .It Li "D" Ta "Delete tagged buffers"
 .It Li "f" Ta "Enter a format to filter items"
 .It Li "O" Ta "Change sort order"
+.It Li "v" Ta "Toggle preview"
 .It Li "q" Ta "Exit mode"
 .El
 .Pp
@@ -4105,6 +4114,8 @@ or
 specifies an initial filter.
 .Fl F
 specifies the format for each item in the list.
+.Fl N
+starts without the preview.
 This command works only if at least one client is attached.
 .It Ic clear-history Op Fl t Ar target-pane
 .D1 (alias: Ic clearhist )
