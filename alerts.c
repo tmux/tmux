@@ -30,12 +30,13 @@ static int	alerts_enabled(struct window *, int);
 static void	alerts_callback(int, short, void *);
 static void	alerts_reset(struct window *);
 
+static int	alerts_action_applies(struct winlink *, const char *);
 static int	alerts_check_all(struct window *);
 static int	alerts_check_bell(struct window *);
 static int	alerts_check_activity(struct window *);
 static int	alerts_check_silence(struct window *);
-static void	alerts_set_message(struct session *, struct window *,
-		    struct winlink *, const char *, int, int);
+static void	alerts_set_message(struct winlink *, const char *,
+		    const char *);
 
 static TAILQ_HEAD(, window) alerts_list = TAILQ_HEAD_INITIALIZER(alerts_list);
 
@@ -68,11 +69,32 @@ alerts_callback(__unused int fd, __unused short events, __unused void *arg)
 }
 
 static int
+alerts_action_applies(struct winlink *wl, const char *name)
+{
+	int	action;
+
+	/*
+	 * {bell,activity,silence}-action determines when to alert: none means
+	 * nothing happens, current means only do something for the current
+	 * window and other means only for windows other than the current.
+	 */
+
+	action = options_get_number(wl->session->options, name);
+	if (action == ALERT_ANY)
+		return (1);
+	if (action == ALERT_CURRENT)
+		return (wl == wl->session->curw);
+	if (action == ALERT_OTHER)
+		return (wl != wl->session->curw);
+	return (0);
+}
+
+static int
 alerts_check_all(struct window *w)
 {
 	int	alerts;
 
-	alerts  = alerts_check_bell(w);
+	alerts	= alerts_check_bell(w);
 	alerts |= alerts_check_activity(w);
 	alerts |= alerts_check_silence(w);
 	return (alerts);
@@ -176,18 +198,17 @@ alerts_check_bell(struct window *w)
 		if (wl->flags & WINLINK_BELL)
 			continue;
 		s = wl->session;
-		if (s->curw != wl) {
+		if (s->curw != wl)
 			wl->flags |= WINLINK_BELL;
-			notify_winlink("alert-bell", wl);
-		}
+		if (!alerts_action_applies(wl, "bell-action"))
+			continue;
+		notify_winlink("alert-bell", wl);
 
 		if (s->flags & SESSION_ALERTED)
 			continue;
 		s->flags |= SESSION_ALERTED;
 
-		alerts_set_message(s, w, wl, "Bell",
-		    options_get_number(s->options, "bell-action"),
-		    options_get_number(s->options, "visual-bell"));
+		alerts_set_message(wl, "Bell", "visual-bell");
 	}
 
 	return (WINDOW_BELL);
@@ -211,18 +232,17 @@ alerts_check_activity(struct window *w)
 		if (wl->flags & WINLINK_ACTIVITY)
 			continue;
 		s = wl->session;
-		if (s->curw != wl) {
+		if (s->curw != wl)
 			wl->flags |= WINLINK_ACTIVITY;
-			notify_winlink("alert-activity", wl);
-		}
+		if (!alerts_action_applies(wl, "activity-action"))
+			continue;
+		notify_winlink("alert-activity", wl);
 
 		if (s->flags & SESSION_ALERTED)
 			continue;
 		s->flags |= SESSION_ALERTED;
 
-		alerts_set_message(s, w, wl, "Activity",
-		    options_get_number(s->options, "activity-action"),
-		    options_get_number(s->options, "visual-activity"));
+		alerts_set_message(wl, "Activity", "visual-activity");
 	}
 
 	return (WINDOW_ACTIVITY);
@@ -246,64 +266,48 @@ alerts_check_silence(struct window *w)
 		if (wl->flags & WINLINK_SILENCE)
 			continue;
 		s = wl->session;
-		if (s->curw != wl) {
+		if (s->curw != wl)
 			wl->flags |= WINLINK_SILENCE;
-			notify_winlink("alert-silence", wl);
-		}
+		if (!alerts_action_applies(wl, "silence-action"))
+			continue;
+		notify_winlink("alert-silence", wl);
 
 		if (s->flags & SESSION_ALERTED)
 			continue;
 		s->flags |= SESSION_ALERTED;
 
-		alerts_set_message(s, w, wl, "Silence",
-		    options_get_number(s->options, "silence-action"),
-		    options_get_number(s->options, "visual-silence"));
+		alerts_set_message(wl, "Silence", "visual-silence");
 	}
 
 	return (WINDOW_SILENCE);
 }
 
 static void
-alerts_set_message(struct session *s, struct window *w, struct winlink *wl,
-    const char *type, int action, int visual)
+alerts_set_message(struct winlink *wl, const char *type, const char *option)
 {
 	struct client	*c;
-	int		 flag;
+	int		 visual;
 
 	/*
 	 * We have found an alert (bell, activity or silence), so we need to
 	 * pass it on to the user. For each client attached to this session,
-	 * decide whether a bell (or visual message) is needed.
-	 *
-	 * {bell,activity,silence}-action determines when we alert: none means
-	 * nothing happens, current means we only do something for the current
-	 * window and other means only for windows other than the current.
+	 * decide whether a bell, message or both is needed.
 	 *
 	 * If visual-{bell,activity,silence} is on, then a message is
 	 * substituted for a bell; if it is off, a bell is sent as normal; both
-	 * mean both a bell and visual message is sent.
+	 * mean both a bell and message is sent.
 	 */
 
-	if (action == ALERT_NONE)
-		return;
+	visual = options_get_number(wl->session->options, option);
 	TAILQ_FOREACH(c, &clients, entry) {
-		if (c->session != s || c->flags & CLIENT_CONTROL)
-			continue;
-		flag = 0;
-		if (action == ALERT_ANY)
-			flag = 1;
-		else if (action == ALERT_CURRENT)
-			flag = (c->session->curw->window == w);
-		else if (action == ALERT_OTHER)
-			flag = (c->session->curw->window != w);
-		if (!flag)
+		if (c->session != wl->session || c->flags & CLIENT_CONTROL)
 			continue;
 
 		if (visual == VISUAL_OFF || visual == VISUAL_BOTH)
 			tty_putcode(&c->tty, TTYC_BEL);
 		if (visual == VISUAL_OFF)
 			continue;
-		if (c->session->curw->window == w)
+		if (c->session->curw == wl)
 			status_message_set(c, "%s in current window", type);
 		else
 			status_message_set(c, "%s in window %d", type, wl->idx);

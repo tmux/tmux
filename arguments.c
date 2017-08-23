@@ -191,7 +191,7 @@ args_print(struct args *args)
 int
 args_has(struct args *args, u_char ch)
 {
-	return (args_find(args, ch) == NULL ? 0 : 1);
+	return (args_find(args, ch) != NULL);
 }
 
 /* Set argument value in the arguments tree. */
