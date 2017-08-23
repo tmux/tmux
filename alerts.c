@@ -195,8 +195,10 @@ alerts_check_bell(struct window *w)
 		wl->session->flags &= ~SESSION_ALERTED;
 
 	TAILQ_FOREACH(wl, &w->winlinks, wentry) {
-		if (wl->flags & WINLINK_BELL)
-			continue;
+		/*
+		 * Bells are allowed even if there is an existing bell (so do
+		 * not check WINLINK_BELL).
+		 */
 		s = wl->session;
 		if (s->curw != wl)
 			wl->flags |= WINLINK_BELL;
