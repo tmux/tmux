@@ -870,6 +870,15 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 	case 'v':
 		mtd->preview = !mtd->preview;
 		mode_tree_build(mtd);
+
+		/*
+		 * If the current line would now be off screen now the preview
+		 * is on, reset the the offset to the last visible line.
+		 */
+		if (mtd->preview && mtd->current > mtd->height - 1) {
+			mtd->offset = mtd->current - mtd->height;
+			mtd->current--;
+		}
 		break;
 	}
 	return (0);
