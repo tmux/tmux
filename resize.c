@@ -159,6 +159,8 @@ recalculate_sizes(void)
 			if (w->active == wp)
 			       break;
 		}
+		if (w->active == w->last)
+			w->last = NULL;
 
 		server_redraw_window(w);
 		notify_window("window-layout-changed", w);
