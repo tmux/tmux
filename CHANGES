@@ -973,7 +973,7 @@ CHANGES FROM 1.0 TO 1.1, 05 November 2009
 * xterm-keys rewrite.
 * Additional code reduction, and bug fixes.
 
-CHANGES FROM 0.9 TO 1.0, 20 Sept 2009
+CHANGES FROM 0.9 TO 1.0, 20 September 2009
 
 * Option to alter the format of the window title set by tmux.
 * Backoff for a while after multiple incorrect password attempts.
