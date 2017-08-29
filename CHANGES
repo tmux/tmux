@@ -1,4 +1,4 @@
-CHANGES FROM 2.5 TO master
+CHANGES FROM 2.5 TO 2.6-rc, 29 August 2017
 
 * Reorder how keys are checked to allow keys to be specified that have a
   leading escape. GitHub issue 1048.
