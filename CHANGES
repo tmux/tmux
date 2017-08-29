@@ -1,5 +1,13 @@
 CHANGES FROM 2.5 to master
 
+* Reorder how keys are checked to allow keys to be specified that have a
+  leading escape. GitHub issue 1048.
+
+* Support REP escape sequence (\033[b).
+
+* Run alert hooks based on options rather than always, and allow further bells
+  even if there is an existing bell.
+
 * Add -d flag to display-panes to override display-panes-time.
 
 * Add selection_present format when in copy mode (allows key bindings that do
@@ -38,7 +46,8 @@ CHANGES FROM 2.5 to master
 
 * FAQ file has moved out of repository to online.
 
-* Fix problem with high CPU usage when a client dies unexpectedly. GitHub issue 941.
+* Fix problem with high CPU usage when a client dies unexpectedly. GitHub issue
+  941.
 
 * Do a dance on OS X 10.10 and above to return tmux to the user namespace,
   allowing access to the clipboard.
