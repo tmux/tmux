@@ -74,8 +74,7 @@ CHANGES FROM 2.5 TO 2.6-rc, 29 August 2017
 
 * Major rewrite of choose mode. Now includes preview, sorting, searching and
   tagging; commands that can be executed directly from the mode (for example,
-  to delete one or more buffers); and filtering in tree mode. The ability to
-  specify the format for each line (the -F flag) has been removed.
+  to delete one or more buffers); and filtering in tree mode.
 
 * choose-window and choose-session are now aliases of choose-tree (in the
   command-alias option).
