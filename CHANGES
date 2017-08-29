@@ -1,4 +1,4 @@
-CHANGES FROM 2.5 to master
+CHANGES FROM 2.5 TO master
 
 * Reorder how keys are checked to allow keys to be specified that have a
   leading escape. GitHub issue 1048.
@@ -104,7 +104,7 @@ CHANGES FROM 2.5 to master
 
 * Improvements to how terminals are cleared (entirely or partially).
 
-CHANGES FROM 2.4 to 2.5 09 May 2017
+CHANGES FROM 2.4 TO 2.5, 09 May 2017
 
 * Reset updated flag when restarting #() command so that new output is properly
   recognised. GitHub issue 922.
@@ -189,7 +189,7 @@ CHANGES FROM 2.4 to 2.5 09 May 2017
 * Do not redraw a client unless we realistically think it can accept the data -
   defer redraws until the client has nothing else waiting to write.
  
-CHANGES FROM 2.3 to 2.4 20 April 2017
+CHANGES FROM 2.3 TO 2.4, 20 April 2017
 
 Incompatible Changes
 ====================
@@ -269,7 +269,7 @@ Normal Changes
   set -ag syntax should work without change).
 * There have been substantial performance improvements.
 
-CHANGES FROM 2.2 to 2.3 29 September 2016
+CHANGES FROM 2.2 TO 2.3, 29 September 2016
 
 Incompatible Changes
 ====================
@@ -290,7 +290,7 @@ Normal Changes
 * 'display-panes' can now accept a command to run, rather than always
   selecting the pane.
 
-CHANGES FROM 2.1 to 2.2 10 April 2016
+CHANGES FROM 2.1 TO 2.2, 10 April 2016
 
 Incompatible Changes
 ====================
@@ -355,8 +355,7 @@ Normal Changes
 * RGB (24bit) colour support.  The 'Tc' flag must be set in the external TERM
   entry (using terminal-overrides or a custom terminfo entry).
 
-
-CHANGES FROM 2.0 to 2.1 18 October 2015
+CHANGES FROM 2.0 TO 2.1, 18 October 2015
 
 Incompatible Changes
 ====================
@@ -407,7 +406,7 @@ Normal Changes
 * Copy mode is exited if the history is cleared whilst in copy-mode.
 * 'copy-mode' learned '-e' to exit copy-mode when scrolling to end.
 
-CHANGES FROM 1.9a to 2.0 6 March 2015
+CHANGES FROM 1.9a TO 2.0, 6 March 2015
 
 Incompatible Changes
 ====================
@@ -466,9 +465,9 @@ Normal Changes
 * 'split-window' and 'join-window' understand -b to create the pane to the left
   or above the target pane.
 
-CHANGES FROM 1.9 to 1.9a 22 February 2014
+CHANGES FROM 1.9 TO 1.9a, 22 February 2014
 
-NOTE:  This is a bug-fix release to address some important bugs which just
+NOTE: This is a bug-fix release to address some important bugs which just
 missed the 1.9 deadline, but were found afterwards.
 
 Normal Changes
@@ -477,7 +476,7 @@ Normal Changes
 * Fix crash due to uninitialized lastwp member of layout_cell
 * Fix -fg/-bg/-style with 256 colour terminals.  
 
-CHANGES FROM 1.8 to 1.9, 20 February 2014
+CHANGES FROM 1.8 TO 1.9, 20 February 2014
 
 NOTE:  This release has bumped the tmux protocol version.  It is therefore
 advised that the prior tmux server is restarted when this version of tmux is
@@ -532,7 +531,7 @@ Normal Changes
 * tmux now supports 256 colours running under fbterm.
 * Many bug fixes!
 
-CHANGES FROM 1.7 to 1.8, 26 March 2013
+CHANGES FROM 1.7 TO 1.8, 26 March 2013
 
 Incompatible Changes
 ====================
@@ -583,7 +582,7 @@ Normal Changes
 * Lots and lots of bug fixes, fixing memory-leaks, etc.
 * Various manpage improvements.
 
-CHANGES FROM 1.6 to 1.7, 13 October 2012
+CHANGES FROM 1.6 TO 1.7, 13 October 2012
 
 * tmux configuration files now support line-continuation with a "\" at the
   end of a line.
