@@ -87,6 +87,7 @@ struct input_ctx {
 	struct utf8_data	utf8data;
 
 	int			ch;
+	int			last;
 
 	int			flags;
 #define INPUT_DISCARD 0x1
@@ -221,6 +222,7 @@ enum input_csi_type {
 	INPUT_CSI_ICH,
 	INPUT_CSI_IL,
 	INPUT_CSI_RCP,
+	INPUT_CSI_REP,
 	INPUT_CSI_RM,
 	INPUT_CSI_RM_PRIVATE,
 	INPUT_CSI_SCP,
@@ -252,6 +254,7 @@ static const struct input_table_entry input_csi_table[] = {
 	{ 'S', "",  INPUT_CSI_SU },
 	{ 'X', "",  INPUT_CSI_ECH },
 	{ 'Z', "",  INPUT_CSI_CBT },
+	{ 'b', "",  INPUT_CSI_REP },
 	{ 'c', "",  INPUT_CSI_DA },
 	{ 'c', ">", INPUT_CSI_DA_TWO },
 	{ 'd', "",  INPUT_CSI_VPA },
@@ -848,6 +851,8 @@ input_reset(struct window_pane *wp, int clear)
 
 	input_clear(ictx);
 
+	ictx->last = -1;
+
 	ictx->state = &input_state_ground;
 	ictx->flags = 0;
 }
@@ -1062,6 +1067,7 @@ input_print(struct input_ctx *ictx)
 
 	utf8_set(&ictx->cell.cell.data, ictx->ch);
 	screen_write_collect_add(&ictx->ctx, &ictx->cell.cell);
+	ictx->last = ictx->ch;
 
 	ictx->cell.cell.attr &= ~GRID_ATTR_CHARSET;
 
@@ -1168,6 +1174,7 @@ input_c0_dispatch(struct input_ctx *ictx)
 		break;
 	}
 
+	ictx->last = -1;
 	return (0);
 }
 
@@ -1245,6 +1252,7 @@ input_esc_dispatch(struct input_ctx *ictx)
 		break;
 	}
 
+	ictx->last = -1;
 	return (0);
 }
 
@@ -1255,7 +1263,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 	struct screen_write_ctx	       *sctx = &ictx->ctx;
 	struct screen		       *s = sctx->s;
 	struct input_table_entry       *entry;
-	int				n, m;
+	int				i, n, m;
 	u_int				cx;
 
 	if (ictx->flags & INPUT_DISCARD)
@@ -1421,6 +1429,15 @@ input_csi_dispatch(struct input_ctx *ictx)
 		screen_write_insertline(sctx, input_get(ictx, 0, 1, 1),
 		    ictx->cell.cell.bg);
 		break;
+	case INPUT_CSI_REP:
+		if (ictx->last == -1)
+			break;
+		ictx->ch = ictx->last;
+
+		n = input_get(ictx, 0, 1, 1);
+		for (i = 0; i < n; i++)
+			input_print(ictx);
+		break;
 	case INPUT_CSI_RCP:
 		memcpy(&ictx->cell, &ictx->old_cell, sizeof ictx->cell);
 		screen_write_cursormove(sctx, ictx->old_cx, ictx->old_cy);
@@ -1473,6 +1490,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 		break;
 	}
 
+	ictx->last = -1;
 	return (0);
 }
 
@@ -1877,6 +1895,7 @@ input_enter_dcs(struct input_ctx *ictx)
 
 	input_clear(ictx);
 	input_start_timer(ictx);
+	ictx->last = -1;
 }
 
 /* DCS terminator (ST) received. */
@@ -1909,6 +1928,7 @@ input_enter_osc(struct input_ctx *ictx)
 
 	input_clear(ictx);
 	input_start_timer(ictx);
+	ictx->last = -1;
 }
 
 /* OSC terminator (ST) received. */
@@ -1976,6 +1996,7 @@ input_enter_apc(struct input_ctx *ictx)
 
 	input_clear(ictx);
 	input_start_timer(ictx);
+	ictx->last = -1;
 }
 
 /* APC terminator (ST) received. */
@@ -2000,6 +2021,7 @@ input_enter_rename(struct input_ctx *ictx)
 
 	input_clear(ictx);
 	input_start_timer(ictx);
+	ictx->last = -1;
 }
 
 /* Rename terminator (ST) received. */
@@ -2029,6 +2051,7 @@ input_utf8_open(struct input_ctx *ictx)
 		fatalx("UTF-8 open invalid %#x", ictx->ch);
 
 	log_debug("%s %hhu", __func__, ud->size);
+	ictx->last = -1;
 
 	return (0);
 }
