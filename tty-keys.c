@@ -595,7 +595,17 @@ tty_keys_next(struct tty *tty)
 	}
 
 first_key:
-	/* Handle keys starting with escape. */
+	/* Try to lookup complete key. */
+	n = tty_keys_next1(tty, buf, len, &key, &size, expired);
+	if (n == 0)	/* found */
+		goto complete_key;
+	if (n == 1)
+		goto partial_key;
+
+	/*
+	 * If not a complete key, look for key with an escape prefix (meta
+	 * modifier).
+	 */
 	if (*buf == '\033') {
 		/* Look for a key without the escape. */
 		n = tty_keys_next1(tty, buf + 1, len - 1, &key, &size, expired);
@@ -619,13 +629,6 @@ first_key:
 		if (n == 1)	/* partial */
 			goto partial_key;
 	}
-
-	/* Try to lookup key. */
-	n = tty_keys_next1(tty, buf, len, &key, &size, expired);
-	if (n == 0)	/* found */
-		goto complete_key;
-	if (n == 1)
-		goto partial_key;
 
 	/*
 	 * At this point, we know the key is not partial (with or without

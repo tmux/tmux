@@ -164,7 +164,7 @@ server_lock_client(struct client *c)
 		return;
 
 	cmd = options_get_string(c->session->options, "lock-command");
-	if (strlen(cmd) + 1 > MAX_IMSGSIZE - IMSG_HEADER_SIZE)
+	if (*cmd == '\0' || strlen(cmd) + 1 > MAX_IMSGSIZE - IMSG_HEADER_SIZE)
 		return;
 
 	tty_stop_tty(&c->tty);
