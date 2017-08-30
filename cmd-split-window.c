@@ -157,7 +157,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (!args_has(args, 'd')) {
 		window_set_active_pane(w, new_wp);
 		session_select(s, wl->idx);
-		cmd_find_from_session(current, s);
+		cmd_find_from_session(current, s, 0);
 		server_redraw_session(s);
 	} else
 		server_status_session(s);
@@ -171,7 +171,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	notify_window("window-layout-changed", w);
 
-	cmd_find_from_winlink_pane(&fs, wl, new_wp);
+	cmd_find_from_winlink_pane(&fs, wl, new_wp, 0);
 	hooks_insert(s->hooks, item, &fs, "after-split-window");
 
 	free(to_free);

@@ -146,7 +146,7 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (!args_has(args, 'd')) {
 		window_set_active_pane(dst_w, src_wp);
 		session_select(dst_s, dst_idx);
-		cmd_find_from_session(current, dst_s);
+		cmd_find_from_session(current, dst_s, 0);
 		server_redraw_session(dst_s);
 	} else
 		server_status_session(dst_s);

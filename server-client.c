@@ -875,8 +875,8 @@ server_client_handle_key(struct client *c, key_code key)
 		m->valid = 0;
 
 	/* Find affected pane. */
-	if (!KEYC_IS_MOUSE(key) || cmd_find_from_mouse(&fs, m) != 0)
-		cmd_find_from_session(&fs, s);
+	if (!KEYC_IS_MOUSE(key) || cmd_find_from_mouse(&fs, m, 0) != 0)
+		cmd_find_from_session(&fs, s, 0);
 	wp = fs.wp;
 
 	/* Forward mouse keys if disabled. */
