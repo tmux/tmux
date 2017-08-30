@@ -1772,20 +1772,22 @@ void		 cmd_find_copy_state(struct cmd_find_state *,
 		     struct cmd_find_state *);
 void		 cmd_find_log_state(const char *, struct cmd_find_state *);
 void		 cmd_find_from_session(struct cmd_find_state *,
-		     struct session *);
+		     struct session *, int);
 void		 cmd_find_from_winlink(struct cmd_find_state *,
-		     struct winlink *);
+		     struct winlink *, int);
 int		 cmd_find_from_session_window(struct cmd_find_state *,
-		     struct session *, struct window *);
-int		 cmd_find_from_window(struct cmd_find_state *, struct window *);
+		     struct session *, struct window *, int);
+int		 cmd_find_from_window(struct cmd_find_state *, struct window *,
+		     int);
 void		 cmd_find_from_winlink_pane(struct cmd_find_state *,
-		     struct winlink *, struct window_pane *);
+		     struct winlink *, struct window_pane *, int);
 int		 cmd_find_from_pane(struct cmd_find_state *,
-		     struct window_pane *);
-int		 cmd_find_from_client(struct cmd_find_state *, struct client *);
+		     struct window_pane *, int);
+int		 cmd_find_from_client(struct cmd_find_state *, struct client *,
+		     int);
 int		 cmd_find_from_mouse(struct cmd_find_state *,
-		     struct mouse_event *);
-int		 cmd_find_from_nothing(struct cmd_find_state *);
+		     struct mouse_event *, int);
+int		 cmd_find_from_nothing(struct cmd_find_state *, int);
 
 /* cmd.c */
 int		 cmd_pack_argv(int, char **, char *, size_t);

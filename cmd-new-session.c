@@ -325,10 +325,10 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (!detached) {
 		c->flags |= CLIENT_ATTACHED;
-		cmd_find_from_session(&item->shared->current, s);
+		cmd_find_from_session(&item->shared->current, s, 0);
 	}
 
-	cmd_find_from_session(&fs, s);
+	cmd_find_from_session(&fs, s, 0);
 	hooks_insert(s->hooks, item, &fs, "after-new-session");
 
 	free(to_free);

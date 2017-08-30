@@ -45,7 +45,7 @@ notify_hook(struct cmdq_item *item, struct notify_entry *ne)
 
 	cmd_find_clear_state(&fs, 0);
 	if (cmd_find_empty_state(&ne->fs) || !cmd_find_valid_state(&ne->fs))
-		cmd_find_from_nothing(&fs);
+		cmd_find_from_nothing(&fs, 0);
 	else
 		cmd_find_copy_state(&fs, &ne->fs);
 
@@ -169,7 +169,7 @@ notify_client(const char *name, struct client *c)
 {
 	struct cmd_find_state	fs;
 
-	cmd_find_from_client(&fs, c);
+	cmd_find_from_client(&fs, c, 0);
 	notify_add(name, &fs, c, NULL, NULL, NULL);
 }
 
@@ -179,9 +179,9 @@ notify_session(const char *name, struct session *s)
 	struct cmd_find_state	fs;
 
 	if (session_alive(s))
-		cmd_find_from_session(&fs, s);
+		cmd_find_from_session(&fs, s, 0);
 	else
-		cmd_find_from_nothing(&fs);
+		cmd_find_from_nothing(&fs, 0);
 	notify_add(name, &fs, NULL, s, NULL, NULL);
 }
 
@@ -190,7 +190,7 @@ notify_winlink(const char *name, struct winlink *wl)
 {
 	struct cmd_find_state	fs;
 
-	cmd_find_from_winlink(&fs, wl);
+	cmd_find_from_winlink(&fs, wl, 0);
 	notify_add(name, &fs, NULL, wl->session, wl->window, NULL);
 }
 
@@ -199,7 +199,7 @@ notify_session_window(const char *name, struct session *s, struct window *w)
 {
 	struct cmd_find_state	fs;
 
-	cmd_find_from_session_window(&fs, s, w);
+	cmd_find_from_session_window(&fs, s, w, 0);
 	notify_add(name, &fs, NULL, s, w, NULL);
 }
 
@@ -208,7 +208,7 @@ notify_window(const char *name, struct window *w)
 {
 	struct cmd_find_state	fs;
 
-	cmd_find_from_window(&fs, w);
+	cmd_find_from_window(&fs, w, 0);
 	notify_add(name, &fs, NULL, NULL, w, NULL);
 }
 
@@ -217,6 +217,6 @@ notify_pane(const char *name, struct window_pane *wp)
 {
 	struct cmd_find_state	fs;
 
-	cmd_find_from_pane(&fs, wp);
+	cmd_find_from_pane(&fs, wp, 0);
 	notify_add(name, &fs, NULL, NULL, NULL, wp);
 }
