@@ -233,7 +233,7 @@ grid_compare(struct grid *ga, struct grid *gb)
  * and shift up.
  */
 void
-grid_collect_history(struct grid *gd, u_int bg)
+grid_collect_history(struct grid *gd)
 {
 	u_int	yy;
 
@@ -244,7 +244,7 @@ grid_collect_history(struct grid *gd, u_int bg)
 	if (yy < 1)
 		yy = 1;
 
-	grid_move_lines(gd, 0, yy, gd->hsize + gd->sy - yy, bg);
+	grid_move_lines(gd, 0, yy, gd->hsize + gd->sy - yy, 8);
 	gd->hsize -= yy;
 	if (gd->hscrolled > gd->hsize)
 		gd->hscrolled = gd->hsize;
