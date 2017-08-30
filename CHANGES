@@ -1,5 +1,9 @@
 CHANGES FROM 2.5 TO 2.6-rc, 29 August 2017
 
+* Fix memory leak when lines with BCE are removed from history.
+
+* Fix (again) the "prefer unattached" behaviour of attach-session.
+
 * Reorder how keys are checked to allow keys to be specified that have a
   leading escape. GitHub issue 1048.
 
