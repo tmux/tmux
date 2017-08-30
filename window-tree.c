@@ -874,7 +874,7 @@ window_tree_get_target(struct window_tree_itemdata *item,
 	if (target == NULL)
 		cmd_find_clear_state(fs, 0);
 	else
-		cmd_find_from_winlink_pane(fs, wl, wp);
+		cmd_find_from_winlink_pane(fs, wl, wp, 0);
 	return (target);
 }
 
