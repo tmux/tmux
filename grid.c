@@ -162,6 +162,26 @@ grid_cells_equal(const struct grid_cell *gca, const struct grid_cell *gcb)
 	return (memcmp(gca->data.data, gcb->data.data, gca->data.size) == 0);
 }
 
+/* Free one line. */
+static void
+grid_free_line(struct grid *gd, u_int py)
+{
+	free(gd->linedata[py].celldata);
+	gd->linedata[py].celldata = NULL;
+	free(gd->linedata[py].extddata);
+	gd->linedata[py].extddata = NULL;
+}
+
+/* Free several lines. */
+static void
+grid_free_lines(struct grid *gd, u_int py, u_int ny)
+{
+	u_int	yy;
+
+	for (yy = py; yy < py + ny; yy++)
+		grid_free_line(gd, yy);
+}
+
 /* Create a new grid. */
 struct grid *
 grid_create(u_int sx, u_int sy, u_int hlimit)
@@ -187,14 +207,7 @@ grid_create(u_int sx, u_int sy, u_int hlimit)
 void
 grid_destroy(struct grid *gd)
 {
-	struct grid_line	*gl;
-	u_int			 yy;
-
-	for (yy = 0; yy < gd->hsize + gd->sy; yy++) {
-		gl = &gd->linedata[yy];
-		free(gl->celldata);
-		free(gl->extddata);
-	}
+	grid_free_lines(gd, 0, gd->hsize + gd->sy);
 
 	free(gd->linedata);
 
@@ -233,19 +246,26 @@ grid_compare(struct grid *ga, struct grid *gb)
  * and shift up.
  */
 void
-grid_collect_history(struct grid *gd, u_int bg)
+grid_collect_history(struct grid *gd)
 {
-	u_int	yy;
+	u_int	ny;
 
 	if (gd->hsize < gd->hlimit)
 		return;
 
-	yy = gd->hlimit / 10;
-	if (yy < 1)
-		yy = 1;
+	ny = gd->hlimit / 10;
+	if (ny < 1)
+		ny = 1;
 
-	grid_move_lines(gd, 0, yy, gd->hsize + gd->sy - yy, bg);
-	gd->hsize -= yy;
+	/*
+	 * Free the lines from 0 to ny then move the remaining lines over
+	 * them.
+	 */
+	grid_free_lines(gd, 0, ny);
+	memmove(&gd->linedata[0], &gd->linedata[ny],
+	    (gd->hsize + gd->sy - ny) * (sizeof *gd->linedata));
+
+	gd->hsize -= ny;
 	if (gd->hscrolled > gd->hsize)
 		gd->hscrolled = gd->hsize;
 }
@@ -272,8 +292,9 @@ grid_scroll_history(struct grid *gd, u_int bg)
 void
 grid_clear_history(struct grid *gd)
 {
-	grid_clear_lines(gd, 0, gd->hsize, 8);
-	grid_move_lines(gd, 0, gd->hsize, gd->sy, 8);
+	grid_free_lines(gd, 0, gd->hsize);
+	memmove(&gd->linedata[0], &gd->linedata[gd->hsize],
+	    gd->sy * (sizeof *gd->linedata));
 
 	gd->hscrolled = 0;
 	gd->hsize = 0;
@@ -481,8 +502,7 @@ grid_clear(struct grid *gd, u_int px, u_int py, u_int nx, u_int ny, u_int bg)
 void
 grid_clear_lines(struct grid *gd, u_int py, u_int ny, u_int bg)
 {
-	struct grid_line	*gl;
-	u_int			 yy;
+	u_int	yy;
 
 	if (ny == 0)
 		return;
@@ -493,9 +513,7 @@ grid_clear_lines(struct grid *gd, u_int py, u_int ny, u_int bg)
 		return;
 
 	for (yy = py; yy < py + ny; yy++) {
-		gl = &gd->linedata[yy];
-		free(gl->celldata);
-		free(gl->extddata);
+		grid_free_line(gd, yy);
 		grid_empty_line(gd, yy, bg);
 	}
 }
@@ -522,13 +540,16 @@ grid_move_lines(struct grid *gd, u_int dy, u_int py, u_int ny, u_int bg)
 	for (yy = dy; yy < dy + ny; yy++) {
 		if (yy >= py && yy < py + ny)
 			continue;
-		grid_clear_lines(gd, yy, 1, bg);
+		grid_free_line(gd, yy);
 	}
 
 	memmove(&gd->linedata[dy], &gd->linedata[py],
 	    ny * (sizeof *gd->linedata));
 
-	/* Wipe any lines that have been moved (without freeing them). */
+	/*
+	 * Wipe any lines that have been moved (without freeing them - they are
+	 * still present).
+	 */
 	for (yy = py; yy < py + ny; yy++) {
 		if (yy < dy || yy >= dy + ny)
 			grid_empty_line(gd, yy, bg);
@@ -845,9 +866,8 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
 }
 
 /*
- * Duplicate a set of lines between two grids. If there aren't enough lines in
- * either source or destination, the number of lines is limited to the number
- * available.
+ * Duplicate a set of lines between two grids. Both source and destination
+ * should be big enough.
  */
 void
 grid_duplicate_lines(struct grid *dst, u_int dy, struct grid *src, u_int sy,
@@ -860,7 +880,7 @@ grid_duplicate_lines(struct grid *dst, u_int dy, struct grid *src, u_int sy,
 		ny = dst->hsize + dst->sy - dy;
 	if (sy + ny > src->hsize + src->sy)
 		ny = src->hsize + src->sy - sy;
-	grid_clear_lines(dst, dy, ny, 8);
+	grid_free_lines(dst, dy, ny);
 
 	for (yy = 0; yy < ny; yy++) {
 		srcl = &src->linedata[sy];
