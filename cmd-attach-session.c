@@ -90,9 +90,9 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 			window_set_active_pane(wp->window, wp);
 		session_set_current(s, wl);
 		if (wp != NULL)
-			cmd_find_from_winlink_pane(current, wl, wp);
+			cmd_find_from_winlink_pane(current, wl, wp, 0);
 		else
-			cmd_find_from_winlink(current, wl);
+			cmd_find_from_winlink(current, wl, 0);
 	}
 
 	if (cflag != NULL) {

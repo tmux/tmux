@@ -241,7 +241,7 @@ cmdq_fire_command(struct cmdq_item *item)
 			fsp = &item->target;
 		else if (cmd_find_valid_state(&item->shared->current))
 			fsp = &item->shared->current;
-		else if (cmd_find_from_client(&fs, item->client) == 0)
+		else if (cmd_find_from_client(&fs, item->client, 0) == 0)
 			fsp = &fs;
 		else
 			goto out;
