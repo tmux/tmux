@@ -1923,6 +1923,7 @@ applies the last set layout if possible (undoes the most recent layout change).
 .It Xo Ic select-pane
 .Op Fl DdegLlMmRU
 .Op Fl P Ar style
+.Op Fl T Ar title
 .Op Fl t Ar target-pane
 .Xc
 .D1 (alias: Ic selectp )
@@ -1978,6 +1979,9 @@ select-pane -t:.1 -P 'bg=red'
 .Pp
 .Fl g
 shows the current pane style.
+.Pp
+.Fl T
+sets the pane title.
 .It Xo Ic select-window
 .Op Fl lnpT
 .Op Fl t Ar target-window
@@ -2874,7 +2878,7 @@ Set the position of the status line.
 Display
 .Ar string
 to the right of the status line.
-By default, the current window title in double quotes, the date and the time
+By default, the current pane title in double quotes, the date and the time
 are shown.
 As with
 .Ic status-left ,
@@ -3722,14 +3726,11 @@ and are displayed in the status line and various lists: the name is the
 .Nm
 identifier for a window or session.
 Only panes have titles.
-A pane's title is typically set by the program running inside the pane and
-is not modified by
-.Nm .
-It is the same mechanism used to set for example the
+A pane's title is typically set by the program running inside the pane using
+an escape sequence (like it would set the
 .Xr xterm 1
-window title in an
-.Xr X 7
-window manager.
+window title in
+.Xr X 7 Ns ).
 Windows themselves do not have titles - a window's title is the title of its
 active pane.
 .Nm
@@ -3770,6 +3771,11 @@ A pane's title can be set via the OSC title setting sequence, for example:
 .Bd -literal -offset indent
 $ printf '\e033]2;My Title\e033\e\e'
 .Ed
+.Pp
+It can also be modified with the
+.Ic select-pane
+.Fl T
+command.
 .Sh ENVIRONMENT
 When the server is started,
 .Nm

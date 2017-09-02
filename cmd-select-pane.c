@@ -30,8 +30,8 @@ const struct cmd_entry cmd_select_pane_entry = {
 	.name = "select-pane",
 	.alias = "selectp",
 
-	.args = { "DdegLlMmP:Rt:U", 0, 0 },
-	.usage = "[-DdegLlMmRU] [-P style] " CMD_TARGET_PANE_USAGE,
+	.args = { "DdegLlMmP:RT:t:U", 0, 0 },
+	.usage = "[-DdegLlMmRU] [-P style] [-T title] " CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -145,6 +145,11 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(self->args, 'd')) {
 		wp->flags |= PANE_INPUTOFF;
 		return (CMD_RETURN_NORMAL);
+	}
+
+	if (args_has(self->args, 'T')) {
+	    screen_set_title(&wp->base, args_get(self->args, 'T'));
+	    server_status_window(wp->window);
 	}
 
 	if (wp == w->active)
