@@ -128,6 +128,17 @@ mode_tree_free_items(struct mode_tree_list *mtl)
 }
 
 static void
+mode_tree_check_selected(struct mode_tree_data *mtd)
+{
+	/*
+	 * If the current line would now be off screen reset the offset to the
+	 * last visible line.
+	 */
+	if (mtd->current > mtd->height - 1)
+		mtd->offset = mtd->current - mtd->height + 1;
+}
+
+static void
 mode_tree_clear_lines(struct mode_tree_data *mtd)
 {
 	free(mtd->line_list);
@@ -192,7 +203,7 @@ mode_tree_set_current(struct mode_tree_data *mtd, uint64_t tag)
 	if (i != mtd->line_size) {
 		mtd->current = i;
 		if (mtd->current > mtd->height - 1)
-			mtd->offset = 1 + mtd->current - mtd->height;
+			mtd->offset = mtd->current - mtd->height + 1;
 		else
 			mtd->offset = 0;
 	} else {
@@ -361,6 +372,7 @@ mode_tree_build(struct mode_tree_data *mtd)
 			mtd->height = screen_size_y(s);
 	} else
 		mtd->height = screen_size_y(s);
+	mode_tree_check_selected(mtd);
 }
 
 static void
@@ -792,7 +804,7 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 	case KEYC_END:
 		mtd->current = mtd->line_size - 1;
 		if (mtd->current > mtd->height - 1)
-			mtd->offset = mtd->current - mtd->height;
+			mtd->offset = mtd->current - mtd->height + 1;
 		else
 			mtd->offset = 0;
 		break;
@@ -870,15 +882,8 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 	case 'v':
 		mtd->preview = !mtd->preview;
 		mode_tree_build(mtd);
-
-		/*
-		 * If the current line would now be off screen now the preview
-		 * is on, reset the the offset to the last visible line.
-		 */
-		if (mtd->preview && mtd->current > mtd->height - 1) {
-			mtd->offset = mtd->current - mtd->height;
-			mtd->current--;
-		}
+		if (mtd->preview)
+			mode_tree_check_selected(mtd);
 		break;
 	}
 	return (0);
