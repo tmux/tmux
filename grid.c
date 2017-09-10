@@ -94,6 +94,48 @@ grid_need_extended_cell(const struct grid_cell_entry *gce,
 	return (0);
 }
 
+/* Free up unused extended cells. */
+static void
+grid_compact_line(struct grid_line *gl)
+{
+	int			 new_extdsize = 0;
+	struct grid_cell	*new_extddata;
+	struct grid_cell_entry	*gce;
+	struct grid_cell	*gc;
+	u_int			 px, idx;
+
+	if (gl->extdsize == 0)
+		return;
+
+	for (px = 0; px < gl->cellsize; px++) {
+		gce = &gl->celldata[px];
+		if (gce->flags & GRID_FLAG_EXTENDED)
+			new_extdsize++;
+	}
+
+	if (new_extdsize == 0) {
+		free(gl->extddata);
+		gl->extddata = NULL;
+		gl->extdsize = 0;
+		return;
+	}
+	new_extddata = xreallocarray(NULL, new_extdsize, sizeof *gl->extddata);
+
+	idx = 0;
+	for (px = 0; px < gl->cellsize; px++) {
+		gce = &gl->celldata[px];
+		if (gce->flags & GRID_FLAG_EXTENDED) {
+			gc = &gl->extddata[gce->offset];
+			memcpy(&new_extddata[idx], gc, sizeof *gc);
+			gce->offset = idx++;
+		}
+	}
+
+	free(gl->extddata);
+	gl->extddata = new_extddata;
+	gl->extdsize = new_extdsize;
+}
+
 /* Set cell as extended. */
 static struct grid_cell *
 grid_extended_cell(struct grid_line *gl, struct grid_cell_entry *gce,
@@ -285,6 +327,7 @@ grid_scroll_history(struct grid *gd, u_int bg)
 	grid_empty_line(gd, yy, bg);
 
 	gd->hscrolled++;
+	grid_compact_line(&gd->linedata[gd->hsize]);
 	gd->hsize++;
 }
 
