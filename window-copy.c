@@ -2454,7 +2454,7 @@ window_copy_move_mouse(struct mouse_event *m)
 	if (wp == NULL || wp->mode != &window_copy_mode)
 		return;
 
-	if (cmd_mouse_at(wp, m, &x, &y, 1) != 0)
+	if (cmd_mouse_at(wp, m, &x, &y, 0) != 0)
 		return;
 
 	window_copy_update_cursor(wp, x, y);

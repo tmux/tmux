@@ -33,7 +33,8 @@ To get and build the latest from version control:
 automake, pkg-config as well as libevent and ncurses libraries and headers.)
 
 For more information see http://git-scm.com. Patches should be sent by email to
-the mailing list at tmux-users@googlegroups.com.
+the mailing list at tmux-users@googlegroups.com or submitted through GitHub at
+https://github.com/tmux/tmux/issues.
 
 For documentation on using tmux, see the tmux.1 manpage. It can be viewed from
 the source tree with:

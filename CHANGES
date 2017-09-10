@@ -1,4 +1,6 @@
-CHANGES FROM 2.5 TO 2.6-rc, 29 August 2017
+CHANGES FROM 2.5 TO 2.6-rc2, 10 September 2017
+
+* Add select-pane -T to set pane title.
 
 * Fix memory leak when lines with BCE are removed from history.
 
