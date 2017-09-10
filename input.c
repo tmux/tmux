@@ -433,7 +433,7 @@ static const struct input_state input_state_rename_string = {
 /* consume_st state definition. */
 static const struct input_state input_state_consume_st = {
 	"consume_st",
-	NULL, NULL,
+	input_enter_rename, NULL, /* rename also waits for ST */
 	input_state_consume_st_table
 };
 
