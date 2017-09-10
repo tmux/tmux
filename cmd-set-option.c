@@ -190,7 +190,7 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 	/* Change the option. */
 	if (args_has(args, 'u')) {
 		if (o == NULL)
-			goto fail;
+			goto out;
 		if (idx == -1) {
 			if (oo == global_options ||
 			    oo == global_s_options ||
