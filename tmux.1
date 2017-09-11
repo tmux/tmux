@@ -1403,7 +1403,9 @@ specifies the initial sort order: one of
 or
 .Ql activity .
 .Fl f
-specifies an initial filter.
+specifies an initial filter: the filter is a format - if it evaluates to zero,
+the item in the list is not shown, otherwise it is shown.
+If a filter would lead to an empty list, it is ignored.
 .Fl F
 specifies the format for each item in the list.
 .Fl N
@@ -1460,7 +1462,9 @@ specifies the initial sort order: one of
 or
 .Ql time .
 .Fl f
-specifies an initial filter.
+specifies an initial filter: the filter is a format - if it evaluates to zero,
+the item in the list is not shown, otherwise it is shown.
+If a filter would lead to an empty list, it is ignored.
 .Fl F
 specifies the format for each item in the tree.
 .Fl N
@@ -4111,7 +4115,9 @@ specifies the initial sort order: one of
 or
 .Ql size .
 .Fl f
-specifies an initial filter.
+specifies an initial filter: the filter is a format - if it evaluates to zero,
+the item in the list is not shown, otherwise it is shown.
+If a filter would lead to an empty list, it is ignored.
 .Fl F
 specifies the format for each item in the list.
 .Fl N
