@@ -1,4 +1,4 @@
-CHANGES FROM 2.5 TO 2.6-rc2, 10 September 2017
+CHANGES FROM 2.5 TO 2.6-rc3, 11 September 2017
 
 * Add select-pane -T to set pane title.
 
