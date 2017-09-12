@@ -1956,8 +1956,10 @@ input_exit_osc(struct input_ctx *ictx)
 	case 2:
 		if (utf8_isvalid(p)) {
 			screen_set_title(ictx->ctx.s, p);
-			server_status_window(ictx->wp->window);
+		} else {
+			screen_set_title(ictx->ctx.s, NULL);
 		}
+		server_status_window(ictx->wp->window);
 		break;
 	case 4:
 		input_osc_4(ictx->wp, p);
@@ -2007,9 +2009,11 @@ input_exit_apc(struct input_ctx *ictx)
 		return;
 	log_debug("%s: \"%s\"", __func__, ictx->input_buf);
 
-	if (!utf8_isvalid(ictx->input_buf))
-		return;
-	screen_set_title(ictx->ctx.s, ictx->input_buf);
+	if (utf8_isvalid(ictx->input_buf)) {
+		screen_set_title(ictx->ctx.s, ictx->input_buf);
+	} else {
+		screen_set_title(ictx->ctx.s, NULL);
+	}
 	server_status_window(ictx->wp->window);
 }
 
@@ -2034,10 +2038,15 @@ input_exit_rename(struct input_ctx *ictx)
 		return;
 	log_debug("%s: \"%s\"", __func__, ictx->input_buf);
 
-	if (!utf8_isvalid(ictx->input_buf))
-		return;
-	window_set_name(ictx->wp->window, ictx->input_buf);
-	options_set_number(ictx->wp->window->options, "automatic-rename", 0);
+	if (utf8_isvalid(ictx->input_buf)) {
+		window_set_name(ictx->wp->window, ictx->input_buf);
+		options_set_number(ictx->wp->window->options,
+		    "automatic-rename", 0);
+	} else {
+		window_set_name(ictx->wp->window, NULL);
+		options_set_number(ictx->wp->window->options,
+		    "automatic-rename", 1);
+	}
 	server_status_window(ictx->wp->window);
 }
 

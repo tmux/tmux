@@ -2269,6 +2269,7 @@ void		 window_copy_add_formats(struct window_pane *,
 
 /* names.c */
 void	 check_window_name(struct window *);
+char	*default_pane_title(void);
 char	*default_window_name(struct window *);
 char	*parse_window_name(const char *);
 

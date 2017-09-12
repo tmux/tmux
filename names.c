@@ -22,6 +22,7 @@
 #include <libgen.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "tmux.h"
 
@@ -101,6 +102,16 @@ check_window_name(struct window *w)
 		log_debug("@%u name not changed (still %s)", w->id, w->name);
 
 	free(name);
+}
+
+char *
+default_pane_title()
+{
+	char	host[HOST_NAME_MAX + 1];
+
+	if (gethostname(host, sizeof host) == 0)
+		return xstrdup(host);
+        return xstrdup("");
 }
 
 char *

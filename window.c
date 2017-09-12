@@ -425,7 +425,10 @@ void
 window_set_name(struct window *w, const char *new_name)
 {
 	free(w->name);
-	utf8_stravis(&w->name, new_name, VIS_OCTAL|VIS_CSTYLE|VIS_TAB|VIS_NL);
+	if (new_name != NULL)
+		utf8_stravis(&w->name, new_name, VIS_OCTAL|VIS_CSTYLE|VIS_TAB|VIS_NL);
+	else
+		w->name = default_window_name(w);
 	notify_window("window-renamed", w);
 }
 
@@ -795,7 +798,6 @@ static struct window_pane *
 window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 {
 	struct window_pane	*wp;
-	char			 host[HOST_NAME_MAX + 1];
 
 	wp = xcalloc(1, sizeof *wp);
 	wp->window = w;
@@ -835,8 +837,7 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 
 	screen_init(&wp->status_screen, 1, 1, 0);
 
-	if (gethostname(host, sizeof host) == 0)
-		screen_set_title(&wp->base, host);
+	screen_set_title(&wp->base, NULL);
 
 	input_init(wp);
 

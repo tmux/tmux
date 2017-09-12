@@ -107,7 +107,11 @@ void
 screen_set_title(struct screen *s, const char *title)
 {
 	free(s->title);
-	utf8_stravis(&s->title, title, VIS_OCTAL|VIS_CSTYLE|VIS_TAB|VIS_NL);
+	if (title != NULL) {
+		utf8_stravis(&s->title, title, VIS_OCTAL|VIS_CSTYLE|VIS_TAB|VIS_NL);
+	} else {
+		s->title = default_pane_title();
+	}
 }
 
 /* Resize screen. */
