@@ -26,6 +26,16 @@
 
 #include "tmux.h"
 
+struct cfg_cond {
+	size_t			line;
+	int			may_meet;
+	int			met;
+	int			in_else;
+	int			meets;
+	SLIST_ENTRY(cfg_cond)	entry;
+};
+static SLIST_HEAD(, cfg_cond) conds = SLIST_HEAD_INITIALIZER(conds);
+
 static char		 *cfg_file;
 int			  cfg_finished;
 static char		**cfg_causes;
@@ -111,7 +121,8 @@ load_cfg(const char *path, struct client *c, struct cmdq_item *item, int quiet)
 	char			*buf, *cause1, *p, *q, *s;
 	struct cmd_list		*cmdlist;
 	struct cmdq_item	*new_item;
-	int			 condition = 0;
+	struct cfg_cond		*condition = NULL, *tcondition;
+	enum { NA, IF, ELIF }	 if_type;
 	struct format_tree	*ft;
 
 	log_debug("loading %s", path);
@@ -136,34 +147,84 @@ load_cfg(const char *path, struct client *c, struct cmdq_item *item, int quiet)
 		while (q != p && isspace((u_char)*q))
 			*q-- = '\0';
 
-		if (condition != 0 && strcmp(p, "%endif") == 0) {
-			condition = 0;
-			continue;
-		}
-		if (strncmp(p, "%if ", 4) == 0) {
-			if (condition != 0) {
-				cfg_add_cause("%s:%zu: nested %%if", path,
+		if (strncmp(p, "%if", 3) == 0 && isspace(p[3]))
+			if_type = IF;
+		else if (strncmp(p, "%elif", 5) == 0 && isspace(p[5]))
+			if_type = ELIF;
+		else
+			if_type = NA;
+
+		if (if_type != NA) {
+			if (if_type == IF) {
+				tcondition = condition;
+				condition = xmalloc(sizeof *condition);
+				condition->line = line;
+				if (tcondition != NULL) {
+					condition->may_meet =
+					    tcondition->may_meet &&
+					    tcondition->meets;
+				} else {
+					condition->may_meet = 1;
+				}
+				condition->met = 0;
+				SLIST_INSERT_HEAD(&conds, condition, entry);
+			} else if (condition == NULL || condition->in_else) {
+				cfg_add_cause("%s:%zu: unexpected %%elif", path,
 				    line);
 				continue;
 			}
-			ft = format_create(NULL, NULL, FORMAT_NONE,
-			    FORMAT_NOJOBS);
+			condition->in_else = 0;
+			condition->meets = 0;
 
-			s = p + 3;
+			s = p + ((if_type == IF) ? 3 : 5);
 			while (isspace((u_char)*s))
 				s++;
-			s = format_expand(ft, s);
-			if (*s != '\0' && (s[0] != '0' || s[1] != '\0'))
-				condition = 1;
-			else
-				condition = -1;
-			free(s);
-
-			format_free(ft);
+			if (condition->may_meet && !condition->met) {
+				ft = format_create(NULL, NULL, FORMAT_NONE,
+				    FORMAT_NOJOBS);
+				s = format_expand(ft, s);
+				condition->meets = (*s != '\0') &&
+				    (s[0] != '0' || s[1] != '\0');
+				condition->met = condition->meets;
+				free(s);
+				format_free(ft);
+			}
+			continue;
+		} else if (strcmp(p, "%else") == 0) {
+			if (condition == NULL || condition->in_else) {
+				cfg_add_cause("%s:%zu: unexpected %%else", path,
+				    line);
+				continue;
+			}
+			condition->in_else = 1;
+			condition->meets = condition->may_meet &&
+			    !condition->met;
+			condition->met = 1;
+			continue;
+		} else if (strcmp(p, "%endif") == 0) {
+			if (condition == NULL) {
+				cfg_add_cause("%s:%zu: unexpected %%endif",
+				    path, line);
+				continue;
+			}
+			SLIST_REMOVE_HEAD(&conds, entry);
+			free(condition);
+			condition = SLIST_FIRST(&conds);
+			continue;
+		} else if (p[0] == '%' &&
+			   strncmp(p, "%error", 6) != 0) {
+			cfg_add_cause("%s:%zu: unknown directive: %s", path,
+			    line, p);
 			continue;
 		}
-		if (condition == -1)
+		if (condition != NULL && !condition->meets) {
 			continue;
+		}
+
+		if (strncmp(p, "%error", 6) == 0) {
+			cfg_add_cause("%s:%zu: %s", path, line, p);
+			continue;
+		}
 
 		cmdlist = cmd_string_parse(p, path, line, &cause1);
 		if (cmdlist == NULL) {
@@ -188,6 +249,13 @@ load_cfg(const char *path, struct client *c, struct cmdq_item *item, int quiet)
 		found++;
 	}
 	fclose(f);
+
+	SLIST_FOREACH_SAFE(condition, &conds, entry, tcondition) {
+		cfg_add_cause("%s:%zu: unterminated %%if", path,
+		    condition->line);
+		free(condition);
+		SLIST_REMOVE_HEAD(&conds, entry);
+	}
 
 	return (found);
 }
