@@ -22,7 +22,6 @@
 	  multiple attached sessions, and is the active window in multiple
 	  attached sessions?
 	* comparison operators like < and > (for #{version}?)
-	* %else statement in config file
 
 - improve monitor-*:
 	* straighten out rules for multiple clients
