@@ -751,6 +751,13 @@ struct window_choose_data {
 	char			*command;
 };
 
+struct title_entry {
+	char				*text;
+
+	TAILQ_ENTRY(title_entry)	 entry;
+};
+TAILQ_HEAD(titles, title_entry);
+
 /* Child window structure. */
 struct window_pane {
 	u_int		 id;
@@ -823,6 +830,8 @@ struct window_pane {
 	time_t		 modelast;
 	u_int		 modeprefix;
 	char		*searchstr;
+
+	struct titles	 titles;
 
 	TAILQ_ENTRY(window_pane) entry;
 	RB_ENTRY(window_pane) tree_entry;

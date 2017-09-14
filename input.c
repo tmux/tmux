@@ -1667,6 +1667,7 @@ input_csi_dispatch_winops(struct input_ctx *ictx)
 {
 	struct window_pane	*wp = ictx->wp;
 	int			 n, m;
+	struct title_entry	*title_entry;
 
 	m = 0;
 	while ((n = input_get(ictx, m, 0, -1)) != -1) {
@@ -1693,11 +1694,41 @@ input_csi_dispatch_winops(struct input_ctx *ictx)
 			/* FALLTHROUGH */
 		case 9:
 		case 10:
-		case 22:
-		case 23:
 			m++;
 			if (input_get(ictx, m, 0, -1) == -1)
 				return;
+		case 22:
+			m++;
+			switch (input_get(ictx, m, 0, -1)) {
+			case -1:
+				return;
+			case 0:
+			case 2:
+				title_entry = xmalloc(sizeof *title_entry);
+				title_entry->text = xstrdup(ictx->ctx.s->title);
+				TAILQ_INSERT_HEAD(&ictx->wp->titles,
+				    title_entry, entry);
+				break;
+			}
+			break;
+		case 23:
+			m++;
+			switch (input_get(ictx, m, 0, -1)) {
+			case -1:
+				return;
+			case 0:
+			case 2:
+				title_entry = TAILQ_FIRST(&ictx->wp->titles);
+				if (title_entry) {
+					TAILQ_REMOVE(&ictx->wp->titles,
+					    title_entry, entry);
+					screen_set_title(ictx->ctx.s,
+					    title_entry->text);
+					server_status_window(ictx->wp->window);
+					free(title_entry);
+				}
+				break;
+			}
 			break;
 		case 18:
 			input_reply(ictx, "\033[8;%u;%ut", wp->sy, wp->sx);

@@ -828,6 +828,8 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 
 	wp->saved_grid = NULL;
 
+	TAILQ_INIT(&wp->titles);
+
 	memcpy(&wp->colgc, &grid_default_cell, sizeof wp->colgc);
 
 	screen_init(&wp->base, sx, sy, hlimit);
@@ -846,6 +848,8 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 static void
 window_pane_destroy(struct window_pane *wp)
 {
+	struct title_entry	*title_entry;
+
 	window_pane_reset_mode(wp);
 	free(wp->searchstr);
 
@@ -872,6 +876,12 @@ window_pane_destroy(struct window_pane *wp)
 		event_del(&wp->resize_timer);
 
 	RB_REMOVE(window_pane_tree, &all_window_panes, wp);
+
+	while ((title_entry = TAILQ_FIRST(&wp->titles)) != NULL) {
+		TAILQ_REMOVE(&wp->titles, title_entry, entry);
+		free(title_entry->text);
+		free(title_entry);
+	}
 
 	free((void *)wp->cwd);
 	free(wp->shell);
