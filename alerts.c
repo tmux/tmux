@@ -141,6 +141,9 @@ alerts_reset(struct window *w)
 {
 	struct timeval	tv;
 
+	if (!event_initialized(&w->alerts_timer))
+		evtimer_set(&w->alerts_timer, alerts_timer, w);
+
 	w->flags &= ~WINDOW_SILENCE;
 	event_del(&w->alerts_timer);
 
@@ -156,9 +159,6 @@ void
 alerts_queue(struct window *w, int flags)
 {
 	alerts_reset(w);
-
-	if (!event_initialized(&w->alerts_timer))
-		evtimer_set(&w->alerts_timer, alerts_timer, w);
 
 	if ((w->flags & flags) != flags) {
 		w->flags |= flags;
