@@ -279,6 +279,9 @@ server_destroy_pane(struct window_pane *wp, int notify)
 	int			 old_fd;
 	struct screen_write_ctx	 ctx;
 	struct grid_cell	 gc;
+	const char	*template;
+	struct format_tree	*ft;
+	char		*panedied;
 
 	old_fd = wp->fd;
 	if (wp->fd != -1) {
@@ -298,12 +301,25 @@ server_destroy_pane(struct window_pane *wp, int notify)
 			notify_pane("pane-died", wp);
 
 		screen_write_start(&ctx, wp, &wp->base);
-		screen_write_scrollregion(&ctx, 0, screen_size_y(ctx.s) - 1);
-		screen_write_cursormove(&ctx, 0, screen_size_y(ctx.s) - 1);
 		screen_write_linefeed(&ctx, 1, 8);
 		memcpy(&gc, &grid_default_cell, sizeof gc);
 		gc.attr |= GRID_ATTR_BRIGHT;
-		screen_write_puts(&ctx, &gc, "Pane is dead");
+		template = xstrdup("");
+		if WIFEXITED(wp->status)
+			if (WEXITSTATUS(wp->status) == 0) {
+				template = options_get_string(w->options, "status-pane-died");
+			} else {
+				template = options_get_string(w->options, "status-pane-exitcode");
+			}
+		if WIFSIGNALED(wp->status)
+			template = options_get_string(w->options, "status-pane-exitsignal");
+		if (WIFEXITED(wp->status) || WIFSIGNALED(wp->status)) {
+			ft = format_create(NULL, NULL, FORMAT_NONE, 0);
+			format_defaults(ft, NULL, NULL, NULL, wp);
+			panedied = format_expand_time(ft, template, wp->death_time.tv_sec);
+			screen_write_cnputs(&ctx, 0, &gc, "%s", panedied);
+			format_free(ft);
+		}
 		screen_write_stop(&ctx);
 		wp->flags |= PANE_REDRAW;
 

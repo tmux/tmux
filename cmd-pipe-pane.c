@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
 
 #include <errno.h>
 #include <fcntl.h>
@@ -63,6 +64,7 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 	int			 old_fd, pipe_fd[2], null_fd;
 	struct format_tree	*ft;
 	sigset_t		 set, oldset;
+	int	 status;
 
 	/* Destroy the old pipe. */
 	old_fd = wp->pipe_fd;
@@ -71,6 +73,10 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 		close(wp->pipe_fd);
 		wp->pipe_fd = -1;
 
+		if (gettimeofday(&wp->death_time, NULL) != 0)
+			fatal("gettimeofday failed");
+		if (waitpid(wp->pid, &status, WNOHANG|WUNTRACED) > 0)
+			wp->status = status;
 		if (window_pane_destroy_ready(wp)) {
 			server_destroy_pane(wp, 1);
 			return (CMD_RETURN_NORMAL);
@@ -159,8 +165,13 @@ static void
 cmd_pipe_pane_write_callback(__unused struct bufferevent *bufev, void *data)
 {
 	struct window_pane	*wp = data;
+	int	 status;
 
 	log_debug("%%%u pipe empty", wp->id);
+	if (gettimeofday(&wp->death_time, NULL) != 0)
+		fatal("gettimeofday failed");
+	if (waitpid(wp->pid, &status, WNOHANG|WUNTRACED) > 0)
+		wp->status = status;
 	if (window_pane_destroy_ready(wp))
 		server_destroy_pane(wp, 1);
 }
@@ -170,6 +181,7 @@ cmd_pipe_pane_error_callback(__unused struct bufferevent *bufev,
     __unused short what, void *data)
 {
 	struct window_pane	*wp = data;
+	int	 status;
 
 	log_debug("%%%u pipe error", wp->id);
 
@@ -177,6 +189,10 @@ cmd_pipe_pane_error_callback(__unused struct bufferevent *bufev,
 	close(wp->pipe_fd);
 	wp->pipe_fd = -1;
 
+	if (gettimeofday(&wp->death_time, NULL) != 0)
+		fatal("gettimeofday failed");
+	if (waitpid(wp->pid, &status, WNOHANG|WUNTRACED) > 0)
+		wp->status = status;
 	if (window_pane_destroy_ready(wp))
 		server_destroy_pane(wp, 1);
 }

@@ -17,6 +17,7 @@
  */
 
 #include <sys/types.h>
+#include <sys/wait.h>
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -57,6 +58,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmdq_item *item)
 	const char		*path = NULL, *cp;
 	char		 	*cause, *cwd = NULL;
 	struct environ_entry	*envent;
+	int	 status;
 
 	if (!args_has(self->args, 'k')) {
 		TAILQ_FOREACH(wp, &w->panes, entry) {
@@ -92,6 +94,10 @@ cmd_respawn_window_exec(struct cmd *self, struct cmdq_item *item)
 		free(cause);
 		environ_free(env);
 		free(cwd);
+		if (gettimeofday(&wp->death_time, NULL) != 0)
+			fatal("gettimeofday failed");
+		if (waitpid(wp->pid, &status, WNOHANG|WUNTRACED) > 0)
+			wp->status = status;
 		server_destroy_pane(wp, 0);
 		return (CMD_RETURN_ERROR);
 	}

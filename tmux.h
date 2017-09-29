@@ -789,6 +789,7 @@ struct window_pane {
 	pid_t		 pid;
 	char		 tty[TTY_NAME_MAX];
 	int		 status;
+	struct timeval	 death_time;
 
 	int		 fd;
 	struct bufferevent *event;
