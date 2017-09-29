@@ -26,15 +26,15 @@
 
 #include "tmux.h"
 
+/* Condition for %if, %elif, %else and %endif. */
 struct cfg_cond {
-	size_t			line;
-	int			may_meet;
-	int			met;
-	int			in_else;
-	int			meets;
+	size_t			line;		/* line number of %if */
+	int			met;		/* condition was met */
+	int			skip;		/* skip later %elif/%else */
+	int			saw_else;	/* saw an %else */
 	TAILQ_ENTRY(cfg_cond)	entry;
 };
-TAILQ_HEAD(conds, cfg_cond);
+TAILQ_HEAD(cfg_conds, cfg_cond);
 
 static char		 *cfg_file;
 int			  cfg_finished;
@@ -111,125 +111,135 @@ start_cfg(void)
 	cmdq_append(NULL, cmdq_get_callback(cfg_done, NULL));
 }
 
-static void
-cfg_dir_if_helper(const char *path, size_t line, struct cfg_cond *condition,
-    const char *p, const char *dirname)
+static int
+cfg_check_condition(const char *path, size_t line, const char *p, int *skip)
 {
 	struct format_tree	*ft;
+	char			*s;
+	int			 result;
 
 	while (isspace((u_char)*p))
 		p++;
 	if (p[0] == '\0') {
-		cfg_add_cause("%s:%zu: invalid %%%s", path, line, dirname);
-		condition->may_meet = 0;
-		condition->met = 0;
-		condition->in_else = 0;
-		condition->meets = 0;
-		return;
+		cfg_add_cause("%s:%zu: invalid condition", path, line);
+		*skip = 1;
+		return (0);
 	}
-	condition->in_else = 0;
-	condition->meets = 0;
-	if (p[0] != '\0' && condition->may_meet && !condition->met) {
-		ft = format_create(NULL, NULL, FORMAT_NONE, FORMAT_NOJOBS);
-		p = format_expand(ft, p);
-		condition->meets = (*p != '\0') &&
-		    (p[0] != '0' || p[1] != '\0');
-		condition->met = condition->meets;
-		free((char *)p);
-		format_free(ft);
-	}
+	ft = format_create(NULL, NULL, FORMAT_NONE, FORMAT_NOJOBS);
+	s = format_expand(ft, p);
+	result = format_true(s);
+	free(s);
+	format_free(ft);
+	*skip = result;
+	return (result);
 }
 
 static void
-cfg_dir_if(const char *path, size_t line, struct conds *conds, const char *p)
+cfg_handle_if(const char *path, size_t line, struct cfg_conds *conds,
+    const char *p)
 {
+	struct cfg_cond	*cond;
 	struct cfg_cond	*parent = TAILQ_FIRST(conds);
-	struct cfg_cond	*new_condition;
 
-	new_condition = xmalloc(sizeof *new_condition);
-	new_condition->line = line;
-	new_condition->may_meet = (parent != NULL) ?
-	    (parent->may_meet && parent->meets) : 1;
-	new_condition->met = 0;
-	new_condition->in_else = 0;
-	new_condition->meets = 0;
-	TAILQ_INSERT_HEAD(conds, new_condition, entry);
-	cfg_dir_if_helper(path, line, new_condition, p, "if");
+	/*
+	 * Add a new condition. If a previous condition exists and isn't
+	 * currently met, this new one also can't be met.
+	 */
+	cond = xcalloc(1, sizeof *cond);
+	cond->line = line;
+	if (parent == NULL || parent->met)
+		cond->met = cfg_check_condition(path, line, p, &cond->skip);
+	else
+		cond->skip = 1;
+	cond->saw_else = 0;
+	TAILQ_INSERT_HEAD(conds, cond, entry);
 }
 
 static void
-cfg_dir_elif(const char *path, size_t line, struct conds *conds, const char *p)
+cfg_handle_elif(const char *path, size_t line, struct cfg_conds *conds,
+    const char *p)
 {
-	struct cfg_cond	*condition = TAILQ_FIRST(conds);
+	struct cfg_cond	*cond = TAILQ_FIRST(conds);
 
-	if (condition == NULL || condition->in_else) {
+	/*
+	 * If a previous condition exists and wasn't met, check this
+	 * one instead and change the state.
+	 */
+	if (cond == NULL || cond->saw_else)
 		cfg_add_cause("%s:%zu: unexpected %%elif", path, line);
-		return;
-	}
-	cfg_dir_if_helper(path, line, condition, p, "elif");
+	else if (!cond->skip)
+		cond->met = cfg_check_condition(path, line, p, &cond->skip);
+	else
+		cond->met = 0;
 }
 
 static void
-cfg_dir_else(const char *path, size_t line, struct conds *conds, const char *p)
+cfg_handle_else(const char *path, size_t line, struct cfg_conds *conds)
 {
-	struct cfg_cond	*condition = TAILQ_FIRST(conds);
+	struct cfg_cond	*cond = TAILQ_FIRST(conds);
 
-	if (condition == NULL || condition->in_else) {
+	/*
+	 * If a previous condition exists and wasn't met and wasn't already
+	 * %else, use this one instead.
+	 */
+	if (cond == NULL || cond->saw_else) {
 		cfg_add_cause("%s:%zu: unexpected %%else", path, line);
 		return;
 	}
-	condition->in_else = 1;
-	while (isspace((u_char)*p))
-		p++;
-	if (p[0] != '\0' && p[0] != '#') {
-		cfg_add_cause("%s:%zu: invalid %%else", path, line);
-		condition->meets = 0;
-		return;
-	}
-	condition->meets = condition->may_meet && !condition->met;
-	condition->met = 1;
+	cond->saw_else = 1;
+	cond->met = !cond->skip;
+	cond->skip = 1;
 }
 
 static void
-cfg_dir_endif(const char *path, size_t line, struct conds *conds, const char *p)
+cfg_handle_endif(const char *path, size_t line, struct cfg_conds *conds)
 {
-	struct cfg_cond	*condition = TAILQ_FIRST(conds);
+	struct cfg_cond	*cond = TAILQ_FIRST(conds);
 
-	if (condition == NULL) {
+	/*
+	 * Remove previous condition if one exists.
+	 */
+	if (cond == NULL) {
 		cfg_add_cause("%s:%zu: unexpected %%endif", path, line);
 		return;
 	}
-	while (isspace((u_char)*p))
-		p++;
-	if (p[0] != '\0' && p[0] != '#') {
-		cfg_add_cause("%s:%zu: invalid %%endif", path, line);
-	}
-	TAILQ_REMOVE(conds, condition, entry);
-	free(condition);
+	TAILQ_REMOVE(conds, cond, entry);
+	free(cond);
 }
 
 static void
-cfg_dir_error(const char *path, size_t line, __unused struct conds *conds,
+cfg_handle_error(const char *path, size_t line, struct cfg_conds *conds,
     const char *p)
 {
-	struct cfg_cond	*condition = TAILQ_FIRST(conds);
+	struct cfg_cond	*cond = TAILQ_FIRST(conds);
 
-	if (condition == NULL || condition->meets) {
+	if (cond == NULL || cond->met) {
 		cfg_add_cause("%s:%zu: %%error%s", path, line, p);
 	}
 }
 
-static const struct cfg_dirs {
-	const char	*name;
-	void		 (*func)(const char *, size_t, struct conds *,
-			     const char *);
-} cfg_dirs[] = {
-	{ "if",		cfg_dir_if },
-	{ "elif",	cfg_dir_elif },
-	{ "else",	cfg_dir_else },
-	{ "endif",	cfg_dir_endif },
-	{ "error",	cfg_dir_error },
-};
+static void
+cfg_handle_directive(const char *p, const char *path, size_t line,
+    struct cfg_conds *conds)
+{
+	int	n = 0;
+
+	while (p[n] != '\0' && !isspace((u_char)p[n]))
+		n++;
+	if (strncmp(p, "%if", n) == 0)
+		cfg_handle_if(path, line, conds, p + n);
+	else if (strncmp(p, "%elif", n) == 0)
+		cfg_handle_elif(path, line, conds, p + n);
+	else if (strncmp(p, "%else", n) == 0)
+		cfg_handle_else(path, line, conds);
+	else if (strncmp(p, "%endif", n) == 0)
+		cfg_handle_endif(path, line, conds);
+	else if (strncmp(p, "%error", n) == 0)
+		cfg_handle_error(path, line, conds, p + n);
+	else
+		cfg_add_cause("%s:%zu: invalid directive: %.*s", path, line, n,
+		    p);
+}
 
 int
 load_cfg(const char *path, struct client *c, struct cmdq_item *item, int quiet)
@@ -237,14 +247,12 @@ load_cfg(const char *path, struct client *c, struct cmdq_item *item, int quiet)
 	FILE			*f;
 	const char		 delim[3] = { '\\', '\\', '\0' };
 	u_int			 found = 0;
-	size_t			 line = 0, i, n;
+	size_t			 line = 0;
 	char			*buf, *cause1, *p, *q;
 	struct cmd_list		*cmdlist;
 	struct cmdq_item	*new_item;
-	struct cfg_cond		*condition, *tcondition;
-	struct conds		 conds;
-	const struct cfg_dirs	*dir;
-	int			 valid;
+	struct cfg_cond		*cond, *cond1;
+	struct cfg_conds	 conds;
 
 	TAILQ_INIT(&conds);
 
@@ -270,26 +278,12 @@ load_cfg(const char *path, struct client *c, struct cmdq_item *item, int quiet)
 		while (q != p && isspace((u_char)*q))
 			*q-- = '\0';
 
-		if (p[0] == '%') {
-			p++;
-			valid = 0;
-			for (i = 0; i < nitems(cfg_dirs); i++) {
-				dir = &cfg_dirs[i];
-				n = strlen(dir->name);
-				if (strncmp(p, dir->name, n) == 0 &&
-				    (isspace((u_char)p[n]) || p[n] == '\0')) {
-					valid = 1;
-					(*dir->func)(path, line, &conds, p + n);
-					break;
-				}
-			}
-			if (!valid)
-				cfg_add_cause("%s:%zu: unknown directive: %%%s",
-				    path, line, p);
+		if (*p == '%') {
+			cfg_handle_directive(p, path, line, &conds);
 			continue;
 		}
-		condition = TAILQ_FIRST(&conds);
-		if (condition != NULL && !condition->meets) {
+		cond = TAILQ_FIRST(&conds);
+		if (cond != NULL && !cond->met) {
 			continue;
 		}
 
@@ -317,11 +311,11 @@ load_cfg(const char *path, struct client *c, struct cmdq_item *item, int quiet)
 	}
 	fclose(f);
 
-	TAILQ_FOREACH_SAFE(condition, &conds, entry, tcondition) {
+	TAILQ_FOREACH_REVERSE_SAFE(cond, &conds, cfg_conds, entry, cond1) {
 		cfg_add_cause("%s:%zu: unterminated %%if", path,
-		    condition->line);
-		free(condition);
-		TAILQ_REMOVE(&conds, condition, entry);
+		    cond->line);
+		TAILQ_REMOVE(&conds, cond, entry);
+		free(cond);
 	}
 
 	return (found);
