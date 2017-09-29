@@ -208,17 +208,6 @@ cfg_handle_endif(const char *path, size_t line, struct cfg_conds *conds)
 }
 
 static void
-cfg_handle_error(const char *path, size_t line, struct cfg_conds *conds,
-    const char *p)
-{
-	struct cfg_cond	*cond = TAILQ_FIRST(conds);
-
-	if (cond == NULL || cond->met) {
-		cfg_add_cause("%s:%zu: %%error%s", path, line, p);
-	}
-}
-
-static void
 cfg_handle_directive(const char *p, const char *path, size_t line,
     struct cfg_conds *conds)
 {
@@ -234,8 +223,6 @@ cfg_handle_directive(const char *p, const char *path, size_t line,
 		cfg_handle_else(path, line, conds);
 	else if (strncmp(p, "%endif", n) == 0)
 		cfg_handle_endif(path, line, conds);
-	else if (strncmp(p, "%error", n) == 0)
-		cfg_handle_error(path, line, conds, p + n);
 	else
 		cfg_add_cause("%s:%zu: invalid directive: %.*s", path, line, n,
 		    p);
