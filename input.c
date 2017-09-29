@@ -1667,7 +1667,6 @@ input_csi_dispatch_winops(struct input_ctx *ictx)
 {
 	struct window_pane	*wp = ictx->wp;
 	int			 n, m;
-	struct title_entry	*title_entry;
 
 	m = 0;
 	while ((n = input_get(ictx, m, 0, -1)) != -1) {
@@ -1704,10 +1703,7 @@ input_csi_dispatch_winops(struct input_ctx *ictx)
 				return;
 			case 0:
 			case 2:
-				title_entry = xmalloc(sizeof *title_entry);
-				title_entry->text = xstrdup(ictx->ctx.s->title);
-				TAILQ_INSERT_HEAD(&ictx->wp->titles,
-				    title_entry, entry);
+				screen_push_title(ictx->ctx.s);
 				break;
 			}
 			break;
@@ -1718,15 +1714,8 @@ input_csi_dispatch_winops(struct input_ctx *ictx)
 				return;
 			case 0:
 			case 2:
-				title_entry = TAILQ_FIRST(&ictx->wp->titles);
-				if (title_entry) {
-					TAILQ_REMOVE(&ictx->wp->titles,
-					    title_entry, entry);
-					screen_set_title(ictx->ctx.s,
-					    title_entry->text);
-					server_status_window(ictx->wp->window);
-					free(title_entry);
-				}
+				screen_pop_title(ictx->ctx.s);
+				server_status_window(ictx->wp->window);
 				break;
 			}
 			break;

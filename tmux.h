@@ -664,6 +664,7 @@ struct screen_sel {
 };
 
 /* Virtual screen. */
+struct screen_title_entry;
 struct screen {
 	char			*title;
 
@@ -683,6 +684,8 @@ struct screen {
 	bitstr_t		*tabs;
 
 	struct screen_sel	 sel;
+
+	struct screen_titles	*titles;
 };
 
 /* Screen write context. */
@@ -750,13 +753,6 @@ struct window_choose_data {
 
 	char			*command;
 };
-
-struct title_entry {
-	char				*text;
-
-	TAILQ_ENTRY(title_entry)	 entry;
-};
-TAILQ_HEAD(titles, title_entry);
 
 /* Child window structure. */
 struct window_pane {
@@ -830,8 +826,6 @@ struct window_pane {
 	time_t		 modelast;
 	u_int		 modeprefix;
 	char		*searchstr;
-
-	struct titles	 titles;
 
 	TAILQ_ENTRY(window_pane) entry;
 	RB_ENTRY(window_pane) tree_entry;
@@ -2095,6 +2089,8 @@ void	 screen_reset_tabs(struct screen *);
 void	 screen_set_cursor_style(struct screen *, u_int);
 void	 screen_set_cursor_colour(struct screen *, const char *);
 void	 screen_set_title(struct screen *, const char *);
+void	 screen_push_title(struct screen *);
+void	 screen_pop_title(struct screen *);
 void	 screen_resize(struct screen *, u_int, u_int, int);
 void	 screen_set_selection(struct screen *,
 	     u_int, u_int, u_int, u_int, u_int, struct grid_cell *);
