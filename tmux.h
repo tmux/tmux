@@ -664,7 +664,7 @@ struct screen_sel {
 };
 
 /* Virtual screen. */
-struct screen_title_entry;
+struct screen_titles;
 struct screen {
 	char			*title;
 
