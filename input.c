@@ -1693,11 +1693,31 @@ input_csi_dispatch_winops(struct input_ctx *ictx)
 			/* FALLTHROUGH */
 		case 9:
 		case 10:
-		case 22:
-		case 23:
 			m++;
 			if (input_get(ictx, m, 0, -1) == -1)
 				return;
+		case 22:
+			m++;
+			switch (input_get(ictx, m, 0, -1)) {
+			case -1:
+				return;
+			case 0:
+			case 2:
+				screen_push_title(ictx->ctx.s);
+				break;
+			}
+			break;
+		case 23:
+			m++;
+			switch (input_get(ictx, m, 0, -1)) {
+			case -1:
+				return;
+			case 0:
+			case 2:
+				screen_pop_title(ictx->ctx.s);
+				server_status_window(ictx->wp->window);
+				break;
+			}
 			break;
 		case 18:
 			input_reply(ictx, "\033[8;%u;%ut", wp->sy, wp->sx);
