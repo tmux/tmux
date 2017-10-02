@@ -219,13 +219,12 @@ cfg_handle_directive(const char *p, const char *path, size_t line,
 		cfg_handle_if(path, line, conds, p + n);
 	else if (strncmp(p, "%elif", n) == 0)
 		cfg_handle_elif(path, line, conds, p + n);
-	else if (strncmp(p, "%else", n) == 0)
+	else if (strcmp(p, "%else") == 0)
 		cfg_handle_else(path, line, conds);
-	else if (strncmp(p, "%endif", n) == 0)
+	else if (strcmp(p, "%endif") == 0)
 		cfg_handle_endif(path, line, conds);
 	else
-		cfg_add_cause("%s:%zu: invalid directive: %.*s", path, line, n,
-		    p);
+		cfg_add_cause("%s:%zu: invalid directive: %s", path, line, p);
 }
 
 int
