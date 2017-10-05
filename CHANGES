@@ -1,4 +1,12 @@
-CHANGES FROM 2.5 TO 2.6-rc3, 11 September 2017
+CHANGES FROM 2.6 TO master
+
+* Support for xterm(1) title stack escape sequences (GitHub issue 1075 from
+  Brad Town).
+
+* Correctly remove padding cells to fix a UTF-8 display problem (GitHub issue
+  1090).
+
+CHANGES FROM 2.5 TO 2.6, 05 October 2017
 
 * Add select-pane -T to set pane title.
 
@@ -411,7 +419,7 @@ Normal Changes
 * Copy mode is exited if the history is cleared whilst in copy-mode.
 * 'copy-mode' learned '-e' to exit copy-mode when scrolling to end.
 
-CHANGES FROM 1.9a TO 2.0, 6 March 2015
+CHANGES FROM 1.9a TO 2.0, 06 March 2015
 
 Incompatible Changes
 ====================
