@@ -424,6 +424,9 @@ server_child_exited(pid_t pid, int status)
 			if (wp->pid == pid) {
 				wp->status = status;
 
+				if (gettimeofday(&wp->dead_time, NULL) != 0)
+					fatal("gettimeofday failed");
+
 				log_debug("%%%u exited", wp->id);
 				wp->flags |= PANE_EXITED;
 
