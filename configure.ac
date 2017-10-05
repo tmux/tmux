@@ -1,6 +1,6 @@
 # configure.ac
 
-AC_INIT(tmux, 2.6-rc3)
+AC_INIT(tmux, 2.6)
 AC_PREREQ([2.60])
 
 AC_CONFIG_AUX_DIR(etc)
