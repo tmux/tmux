@@ -450,6 +450,24 @@ const struct options_table_entry options_table[] = {
 	  .default_str = "default"
 	},
 
+	{ .name = "status-pane-died",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "Pane is dead"
+	},
+
+	{ .name = "status-pane-exitcode",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "Pane is dead"
+	},
+
+	{ .name = "status-pane-exitsignal",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "Pane is dead"
+	},
+
 	{ .name = "status-position",
 	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_SESSION,

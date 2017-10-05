@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 #include <sys/ioctl.h>
+#include <sys/wait.h>
 
 #include <errno.h>
 #include <fcntl.h>
@@ -1039,10 +1040,15 @@ window_pane_error_callback(__unused struct bufferevent *bufev,
     __unused short what, void *data)
 {
 	struct window_pane *wp = data;
+	int	 status;
 
 	log_debug("%%%u error", wp->id);
 	wp->flags |= PANE_EXITED;
 
+	if (gettimeofday(&wp->death_time, NULL) != 0)
+		fatal("gettimeofday failed");
+	if (waitpid(wp->pid, &status, WNOHANG|WUNTRACED) > 0)
+		wp->status = status;
 	if (window_pane_destroy_ready(wp))
 		server_destroy_pane(wp, 1);
 }

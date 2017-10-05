@@ -1418,7 +1418,10 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 	status = wp->status;
 	if (wp->fd == -1 && WIFEXITED(status))
 		format_add(ft, "pane_dead_status", "%d", WEXITSTATUS(status));
+	if (wp->fd == -1 && WIFSIGNALED(status))
+		format_add(ft, "pane_dead_status", "%d", WTERMSIG(status));
 	format_add(ft, "pane_dead", "%d", wp->fd == -1);
+	format_add_tv(ft, "pane_death_time", &wp->death_time);
 
 	if (window_pane_visible(wp)) {
 		format_add(ft, "pane_left", "%u", wp->xoff);
