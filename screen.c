@@ -24,10 +24,36 @@
 
 #include "tmux.h"
 
+struct screen_title_entry {
+	char				*text;
+
+	TAILQ_ENTRY(screen_title_entry)	 entry;
+};
+TAILQ_HEAD(screen_titles, screen_title_entry);
+
 static void	screen_resize_x(struct screen *, u_int);
 static void	screen_resize_y(struct screen *, u_int);
 
 static void	screen_reflow(struct screen *, u_int);
+
+/* Free titles stack. */
+static void
+screen_free_titles(struct screen *s)
+{
+	struct screen_title_entry	*title_entry;
+
+	if (s->titles == NULL)
+		return;
+
+	while ((title_entry = TAILQ_FIRST(s->titles)) != NULL) {
+		TAILQ_REMOVE(s->titles, title_entry, entry);
+		free(title_entry->text);
+		free(title_entry);
+	}
+
+	free(s->titles);
+	s->titles = NULL;
+}
 
 /* Create a new screen. */
 void
@@ -35,6 +61,7 @@ screen_init(struct screen *s, u_int sx, u_int sy, u_int hlimit)
 {
 	s->grid = grid_create(sx, sy, hlimit);
 	s->title = xstrdup("");
+	s->titles = NULL;
 
 	s->cstyle = 0;
 	s->ccolour = xstrdup("");
@@ -60,6 +87,7 @@ screen_reinit(struct screen *s)
 	grid_clear_lines(s->grid, s->grid->hsize, s->grid->sy, 8);
 
 	screen_clear_selection(s);
+	screen_free_titles(s);
 }
 
 /* Destroy a screen. */
@@ -69,7 +97,10 @@ screen_free(struct screen *s)
 	free(s->tabs);
 	free(s->title);
 	free(s->ccolour);
+
 	grid_destroy(s->grid);
+
+	screen_free_titles(s);
 }
 
 /* Reset tabs to default, eight spaces apart. */
@@ -108,6 +139,43 @@ screen_set_title(struct screen *s, const char *title)
 {
 	free(s->title);
 	utf8_stravis(&s->title, title, VIS_OCTAL|VIS_CSTYLE|VIS_TAB|VIS_NL);
+}
+
+/* Push the current title onto the stack. */
+void
+screen_push_title(struct screen *s)
+{
+	struct screen_title_entry *title_entry;
+
+	if (s->titles == NULL) {
+		s->titles = xmalloc(sizeof *s->titles);
+		TAILQ_INIT(s->titles);
+	}
+	title_entry = xmalloc(sizeof *title_entry);
+	title_entry->text = xstrdup(s->title);
+	TAILQ_INSERT_HEAD(s->titles, title_entry, entry);
+}
+
+/*
+ * Pop a title from the stack and set it as the screen title. If the stack is
+ * empty, do nothing.
+ */
+void
+screen_pop_title(struct screen *s)
+{
+	struct screen_title_entry *title_entry;
+
+	if (s->titles == NULL)
+		return;
+
+	title_entry = TAILQ_FIRST(s->titles);
+	if (title_entry != NULL) {
+		screen_set_title(s, title_entry->text);
+
+		TAILQ_REMOVE(s->titles, title_entry, entry);
+		free(title_entry->text);
+		free(title_entry);
+	}
 }
 
 /* Resize screen. */
