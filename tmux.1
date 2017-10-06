@@ -2893,6 +2893,84 @@ For how to specify
 see the
 .Ic message-command-style
 option.
+.It Ic status-pane-died Ar string
+Display
+.Ar string
+(by default the text "Pane died") when the program in a pane quits normally and
+.Ic remain-on-exit
+is on.
+.Ar string
+will be passed through
+.Xr strftime 3
+and formats (see
+.Sx FORMATS )
+will be expanded.
+It may also contain the special character sequence #[] to change the colour
+or attributes, for example
+.Ql #[fg=red,bright]
+to set a bright red foreground.
+See the
+.Ic message-command-style
+option for a description of colours and attributes.
+.Pp
+.Pp
+For example:
+.Bd -literal -offset indent
+ Pane >#{pane_current_command}< died at %H:%M:S on %d.%m.%Y
+.Ed
+.Pp
+.It Ic status-pane-exitcode Ar string
+Display
+.Ar string
+(by default the text "Pane died") when the program in a pane quits abnormally (returning an exitcode) and
+.Ic remain-on-exit
+is on.
+.Ar string
+will be passed through
+.Xr strftime 3
+and formats (see
+.Sx FORMATS )
+will be expanded.
+It may also contain the special character sequence #[] to change the colour
+or attributes, for example
+.Ql #[fg=red,bright]
+to set a bright red foreground.
+See the
+.Ic message-command-style
+option for a description of colours and attributes.
+.Pp
+.Pp
+For example:
+.Bd -literal -offset indent
+ #[fg=yellow]#[bg=black]Pane >#{pane_current_command}< died with exit code #{pane_dead_status} at %H:%M:%S %d.%m.%Y#[default]
+.Ed
+.Pp
+.It Ic status-pane-exitsignal Ar string
+Display
+.Ar string
+(by default the text "Pane died") when the program in a pane is terminated with a signal and
+.Ic remain-on-exit
+is on.
+.Ar string
+will be passed through
+.Xr strftime 3
+and formats (see
+.Sx FORMATS )
+will be expanded.
+It may also contain the special character sequence #[] to change the colour
+or attributes, for example
+.Ql #[fg=red,bright]
+to set a bright red foreground.
+See the
+.Ic message-command-style
+option for a description of colours and attributes.
+.Pp
+.Pp
+For example:
+.Bd -literal -offset indent
+ #[fg=red]#[bg=black]Pane >#{pane_current_command}< terminated with signal #{pane_dead_status} at %H:%M:%S %d.%m.%Y#[default]
+.Ed
+.Pp
 .It Xo Ic status-position
 .Op Ic top | bottom
 .Xc

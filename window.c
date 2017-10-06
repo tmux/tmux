@@ -811,6 +811,9 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	wp->fd = -1;
 	wp->event = NULL;
 
+	wp->status = -1;
+	wp->flags &= ~PANE_STATUSDRAWN;
+
 	wp->mode = NULL;
 	wp->modeprefix = 1;
 
@@ -912,6 +915,9 @@ window_pane_spawn(struct window_pane *wp, int argc, char **argv,
 		free((void *)wp->cwd);
 		wp->cwd = xstrdup(cwd);
 	}
+
+	wp->status = -1;
+	wp->flags &= ~PANE_STATUSDRAWN;
 
 	cmd = cmd_stringify_argv(wp->argc, wp->argv);
 	log_debug("spawn: %s -- %s", wp->shell, cmd);
