@@ -307,7 +307,7 @@ mode_tree_start(struct window_pane *wp, struct args *args,
 	mtd->sort_size = sort_size;
 	mtd->sort_type = 0;
 
-	mtd->preview = !args_has(args, 'N');
+	mtd->preview = !args_has(args, 'N') && options_get_number(global_s_options, "preview");
 
 	sort = args_get(args, 'O');
 	if (sort != NULL) {

@@ -746,6 +746,12 @@ const struct options_table_entry options_table[] = {
 	  .default_str = "default"
 	},
 
+	{ .name = "preview",
+		.type = OPTIONS_TABLE_FLAG,
+		.scope = OPTIONS_TABLE_SESSION,
+		.default_num = 1
+	},
+
 	{ .name = "remain-on-exit",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .scope = OPTIONS_TABLE_WINDOW,
