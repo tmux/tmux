@@ -780,6 +780,7 @@ struct window_pane {
 #define PANE_INPUTOFF 0x40
 #define PANE_CHANGED 0x80
 #define PANE_EXITED 0x100
+#define PANE_STATUSDRAWN 0x200
 
 	int		 argc;
 	char	       **argv;
@@ -789,6 +790,7 @@ struct window_pane {
 	pid_t		 pid;
 	char		 tty[TTY_NAME_MAX];
 	int		 status;
+	struct timeval	 dead_time;
 
 	int		 fd;
 	struct bufferevent *event;
