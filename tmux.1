@@ -980,22 +980,37 @@ them with
 and
 .Em %endif
 lines.
+Additional
+.Em %elif
+and
+.Em %else
+lines may also be used.
 The argument to
 .Em %if
-is expanded as a format and if it evaluates to false
-(zero or empty), subsequent lines are ignored until
+and
+.Em %elif
+is expanded as a format and if it evaluates to false (zero or empty),
+subsequent lines are ignored until the next
+.Em %elif ,
+.Em %else
+or
 .Em %endif .
 For example:
 .Bd -literal -offset indent
 %if #{==:#{host},myhost}
 set -g status-style bg=red
+%elif #{==:#{host},myotherhost}
+set -g status-style bg=green
+%else
+set -g status-style bg=blue
 %endif
 .Ed
 .Pp
 Will change the status line to red if running on
-.Ql myhost .
-.Em %if
-may not be nested.
+.Ql myhost ,
+green if running on
+.Ql myotherhost ,
+or blue if running on another host.
 .It Ic start-server
 .D1 (alias: Ic start )
 Start the
@@ -3638,7 +3653,7 @@ The following variables are available, where appropriate:
 .It Li "cursor_y" Ta "" Ta "Cursor Y position in pane"
 .It Li "history_bytes" Ta "" Ta "Number of bytes in window history"
 .It Li "history_limit" Ta "" Ta "Maximum window history lines"
-.It Li "history_size" Ta "" Ta "Size of history in bytes"
+.It Li "history_size" Ta "" Ta "Size of history in lines"
 .It Li "hook" Ta "" Ta "Name of running hook, if any"
 .It Li "hook_pane" Ta "" Ta "ID of pane where hook was run, if any"
 .It Li "hook_session" Ta "" Ta "ID of session where hook was run, if any"
