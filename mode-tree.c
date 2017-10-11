@@ -774,11 +774,13 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 	case KEYC_UP:
 	case 'k':
 	case KEYC_WHEELUP_PANE:
+	case '\020': /* C-p */
 		mode_tree_up(mtd, 1);
 		break;
 	case KEYC_DOWN:
 	case 'j':
 	case KEYC_WHEELDOWN_PANE:
+	case '\016': /* C-n */
 		mode_tree_down(mtd, 1);
 		break;
 	case KEYC_PPAGE:
