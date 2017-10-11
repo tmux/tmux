@@ -434,7 +434,10 @@ window_tree_build(void *modedata, u_int sort_type, uint64_t *tag,
 		*tag = (uint64_t)data->fs.wl;
 		break;
 	case WINDOW_TREE_PANE:
-		*tag = (uint64_t)data->fs.wp;
+		if (window_count_panes(data->fs.wl->window) == 1)
+			*tag = (uint64_t)data->fs.wl;
+		else
+			*tag = (uint64_t)data->fs.wp;
 		break;
 	}
 }
