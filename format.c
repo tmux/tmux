@@ -1376,8 +1376,8 @@ void
 format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 {
 	struct grid	*gd = wp->base.grid;
+	int  		 status = wp->status;
 	u_int		 idx;
-	int  		 status;
 
 	if (ft->w == NULL)
 		ft->w = wp->window;
@@ -1399,8 +1399,7 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 	format_add(ft, "pane_input_off", "%d", !!(wp->flags & PANE_INPUTOFF));
 	format_add(ft, "pane_pipe", "%d", wp->pipe_fd != -1);
 
-	status = wp->status;
-	if (wp->fd == -1 && WIFEXITED(status))
+	if ((wp->flags & PANE_STATUSREADY) && WIFEXITED(status))
 		format_add(ft, "pane_dead_status", "%d", WEXITSTATUS(status));
 	format_add(ft, "pane_dead", "%d", wp->fd == -1);
 
@@ -1411,8 +1410,10 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 		format_add(ft, "pane_bottom", "%u", wp->yoff + wp->sy - 1);
 		format_add(ft, "pane_at_left", "%d", wp->xoff == 0);
 		format_add(ft, "pane_at_top", "%d", wp->yoff == 0);
-		format_add(ft, "pane_at_right", "%d", wp->xoff + wp->sx == wp->window->sx);
-		format_add(ft, "pane_at_bottom", "%d", wp->yoff + wp->sy == wp->window->sy);
+		format_add(ft, "pane_at_right", "%d",
+		    wp->xoff + wp->sx == wp->window->sx);
+		format_add(ft, "pane_at_bottom", "%d",
+		    wp->yoff + wp->sy == wp->window->sy);
 	}
 
 	format_add(ft, "pane_in_mode", "%d", wp->screen != &wp->base);
