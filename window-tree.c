@@ -442,6 +442,28 @@ window_tree_build(void *modedata, u_int sort_type, uint64_t *tag,
 	}
 }
 
+
+static void
+window_tree_draw_label(struct screen_write_ctx *ctx, u_int px, u_int py,
+    u_int sx, u_int sy, const struct grid_cell *gc, const char *label)
+{
+	size_t	 len;
+	u_int	 ox, oy;
+
+	len = strlen(label);
+	if (sx == 0 || sy == 1 || len > sx)
+		return;
+	ox = (sx - len + 1) / 2;
+	oy = (sy + 1) / 2;
+
+	if (ox > 1 && ox + len < sx - 1 && sy >= 3) {
+		screen_write_cursormove(ctx, px + ox - 1, py + oy - 1);
+		screen_write_box(ctx, len + 2, 3);
+	}
+	screen_write_cursormove(ctx, px + ox, py + oy);
+	screen_write_puts(ctx, gc, "%s", label);
+}
+
 static void
 window_tree_draw_session(struct window_tree_modedata *data, struct session *s,
     struct screen_write_ctx *ctx, u_int sx, u_int sy)
@@ -454,7 +476,6 @@ window_tree_draw_session(struct window_tree_modedata *data, struct session *s,
 	struct grid_cell	 gc;
 	int			 colour, active_colour, left, right;
 	char			*label;
-	size_t			 len;
 
 	total = winlink_count(&s->windows);
 
@@ -554,10 +575,7 @@ window_tree_draw_session(struct window_tree_modedata *data, struct session *s,
 		xasprintf(&label, " %u:%s ", wl->idx, w->name);
 		if (strlen(label) > width)
 			xasprintf(&label, " %u ", wl->idx);
-		len = strlen(label) / 2;
-		screen_write_cursormove(ctx, offset + (each / 2) - len, sy / 2);
-		if (len < width)
-			screen_write_puts(ctx, &gc, "%s", label);
+		window_tree_draw_label(ctx, offset, 0, width, sy, &gc, label);
 		free(label);
 
 		if (loop != end - 1) {
@@ -581,7 +599,6 @@ window_tree_draw_window(struct window_tree_modedata *data, struct session *s,
 	struct grid_cell	 gc;
 	int			 colour, active_colour, left, right;
 	char			*label;
-	size_t			 len;
 
 	total = window_count_panes(w);
 
@@ -678,10 +695,7 @@ window_tree_draw_window(struct window_tree_modedata *data, struct session *s,
 		screen_write_preview(ctx, &wp->base, width, sy);
 
 		xasprintf(&label, " %u ", loop);
-		len = strlen(label) / 2;
-		screen_write_cursormove(ctx, offset + (each / 2) - len, sy / 2);
-		if (len < width)
-			screen_write_puts(ctx, &gc, "%s", label);
+		window_tree_draw_label(ctx, offset, 0, each, sy, &gc, label);
 		free(label);
 
 		if (loop != end - 1) {
