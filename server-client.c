@@ -1067,7 +1067,7 @@ server_client_resize_force(struct window_pane *wp)
 	memset(&ws, 0, sizeof ws);
 	ws.ws_col = wp->sx;
 	ws.ws_row = wp->sy - 1;
-	if (ioctl(wp->fd, TIOCSWINSZ, &ws) == -1)
+	if (wp->fd != -1 && ioctl(wp->fd, TIOCSWINSZ, &ws) == -1)
 #ifdef __sun
 		if (errno != EINVAL && errno != ENXIO)
 #endif
@@ -1096,7 +1096,7 @@ server_client_resize_event(__unused int fd, __unused short events, void *data)
 	memset(&ws, 0, sizeof ws);
 	ws.ws_col = wp->sx;
 	ws.ws_row = wp->sy;
-	if (ioctl(wp->fd, TIOCSWINSZ, &ws) == -1)
+	if (wp->fd != -1 && ioctl(wp->fd, TIOCSWINSZ, &ws) == -1)
 #ifdef __sun
 		/*
 		 * Some versions of Solaris apparently can return an error when
