@@ -1038,7 +1038,7 @@ tty_write(void (*cmdfn)(struct tty *, const struct tty_ctx *),
 		ctx->xoff = wp->xoff;
 		ctx->yoff = wp->yoff;
 		if (status_at_line(c) == 0)
-			ctx->yoff++;
+			ctx->yoff += status_line_size(c->session);
 
 		cmdfn(&c->tty, ctx);
 	}
