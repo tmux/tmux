@@ -43,7 +43,8 @@ the source tree with:
 
 A small example configuration in example_tmux.conf.
 
-A vim(1) syntax file is available at:
+vim(1) officially supports syntax highlight in v8.0.420 or later.
+To support in former version, syntax file is available at:
 
 	https://github.com/ericpruitt/tmux.vim
 	https://raw.githubusercontent.com/ericpruitt/tmux.vim/master/vim/syntax/tmux.vim
