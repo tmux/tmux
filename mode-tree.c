@@ -847,6 +847,7 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 			mtd->sort_type = 0;
 		mode_tree_build(mtd);
 		break;
+	case 'h':
 	case KEYC_LEFT:
 	case '-':
 		if (line->flat || !current->expanded)
@@ -859,6 +860,7 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 			mode_tree_build(mtd);
 		}
 		break;
+	case 'l':
 	case KEYC_RIGHT:
 	case '+':
 		if (line->flat || current->expanded)
