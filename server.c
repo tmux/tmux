@@ -423,6 +423,7 @@ server_child_exited(pid_t pid, int status)
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (wp->pid == pid) {
 				wp->status = status;
+				wp->flags |= PANE_STATUSREADY;
 
 				log_debug("%%%u exited", wp->id);
 				wp->flags |= PANE_EXITED;

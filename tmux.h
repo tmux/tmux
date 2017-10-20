@@ -782,6 +782,8 @@ struct window_pane {
 #define PANE_INPUTOFF 0x40
 #define PANE_CHANGED 0x80
 #define PANE_EXITED 0x100
+#define PANE_STATUSREADY 0x200
+#define PANE_STATUSDRAWN 0x400
 
 	int		 argc;
 	char	       **argv;
@@ -1383,6 +1385,7 @@ struct client {
 #define CLIENT_DOUBLECLICK 0x100000
 #define CLIENT_TRIPLECLICK 0x200000
 #define CLIENT_SIZECHANGED 0x400000
+#define CLIENT_STATUSOFF 0x800000
 	int		 flags;
 	struct key_table *keytable;
 
@@ -1930,6 +1933,7 @@ void	 status_timer_start(struct client *);
 void	 status_timer_start_all(void);
 void	 status_update_saved(struct session *s);
 int	 status_at_line(struct client *);
+u_int	 status_line_size(struct session *);
 struct window *status_get_window_at(struct client *, u_int);
 int	 status_redraw(struct client *);
 void printflike(2, 3) status_message_set(struct client *, const char *, ...);

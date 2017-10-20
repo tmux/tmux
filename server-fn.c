@@ -17,6 +17,8 @@
  */
 
 #include <sys/types.h>
+#include <sys/queue.h>
+#include <sys/wait.h>
 #include <sys/uio.h>
 
 #include <stdlib.h>
@@ -276,11 +278,11 @@ void
 server_destroy_pane(struct window_pane *wp, int notify)
 {
 	struct window		*w = wp->window;
-	int			 old_fd;
 	struct screen_write_ctx	 ctx;
 	struct grid_cell	 gc;
+	time_t			 t;
+	char			 tim[26];
 
-	old_fd = wp->fd;
 	if (wp->fd != -1) {
 #ifdef HAVE_UTEMPTER
 		utempter_remove_record(wp->fd);
@@ -291,8 +293,12 @@ server_destroy_pane(struct window_pane *wp, int notify)
 	}
 
 	if (options_get_number(w->options, "remain-on-exit")) {
-		if (old_fd == -1)
+		if (~wp->flags & PANE_STATUSREADY)
 			return;
+
+		if (wp->flags & PANE_STATUSDRAWN)
+			return;
+		wp->flags |= PANE_STATUSDRAWN;
 
 		if (notify)
 			notify_pane("pane-died", wp);
@@ -302,11 +308,24 @@ server_destroy_pane(struct window_pane *wp, int notify)
 		screen_write_cursormove(&ctx, 0, screen_size_y(ctx.s) - 1);
 		screen_write_linefeed(&ctx, 1, 8);
 		memcpy(&gc, &grid_default_cell, sizeof gc);
-		gc.attr |= GRID_ATTR_BRIGHT;
-		screen_write_puts(&ctx, &gc, "Pane is dead");
+
+		time(&t);
+		ctime_r(&t, tim);
+
+		if (WIFEXITED(wp->status)) {
+			screen_write_nputs(&ctx, -1, &gc,
+			    "Pane is dead (status %d, %s)",
+			    WEXITSTATUS(wp->status),
+			    tim);
+		} else if (WIFSIGNALED(wp->status)) {
+			screen_write_nputs(&ctx, -1, &gc,
+			    "Pane is dead (signal %d, %s)",
+			    WTERMSIG(wp->status),
+			    tim);
+		}
+
 		screen_write_stop(&ctx);
 		wp->flags |= PANE_REDRAW;
-
 		return;
 	}
 

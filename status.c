@@ -210,9 +210,24 @@ status_at_line(struct client *c)
 {
 	struct session	*s = c->session;
 
+	if (c->flags & CLIENT_STATUSOFF)
+		return (-1);
 	if (s->statusat != 1)
 		return (s->statusat);
-	return (c->tty.sy - 1);
+	return (c->tty.sy - status_line_size(s));
+}
+
+/*
+ * Get size of status line for session. 0 means off. Note that status line may
+ * be forced off for an individual client if it is too small (the
+ * CLIENT_STATUSOFF flag is set for this).
+ */
+u_int
+status_line_size(struct session *s)
+{
+	if (s->statusat == -1)
+		return (0);
+	return (1);
 }
 
 /* Retrieve options for left string. */
@@ -296,7 +311,7 @@ status_redraw(struct client *c)
 	time_t			 t;
 	char			*left, *right;
 	const char		*sep;
-	u_int			 offset, needed;
+	u_int			 offset, needed, lines;
 	u_int			 wlstart, wlwidth, wlavailable, wloffset, wlsize;
 	size_t			 llen, rlen, seplen;
 	int			 larrow, rarrow;
@@ -309,7 +324,8 @@ status_redraw(struct client *c)
 	}
 
 	/* No status line? */
-	if (c->tty.sy == 0 || !options_get_number(s->options, "status"))
+	lines = status_line_size(s);
+	if (c->tty.sy == 0 || lines == 0)
 		return (1);
 	left = right = NULL;
 	larrow = rarrow = 0;
@@ -322,14 +338,13 @@ status_redraw(struct client *c)
 
 	/* Create the target screen. */
 	memcpy(&old_status, &c->status, sizeof old_status);
-	screen_init(&c->status, c->tty.sx, 1, 0);
+	screen_init(&c->status, c->tty.sx, lines, 0);
 	screen_write_start(&ctx, NULL, &c->status);
-	for (offset = 0; offset < c->tty.sx; offset++)
-		screen_write_putc(&ctx, &stdgc, ' ');
+	screen_write_clearscreen(&ctx, stdgc.bg);
 	screen_write_stop(&ctx);
 
-	/* If the height is one line, blank status line. */
-	if (c->tty.sy <= 1)
+	/* If the height is too small, blank status line. */
+	if (c->tty.sy < lines)
 		goto out;
 
 	/* Work out left and right strings. */
@@ -637,11 +652,17 @@ status_message_redraw(struct client *c)
 	struct screen		        old_status;
 	size_t			        len;
 	struct grid_cell		gc;
+	u_int				lines;
 
 	if (c->tty.sx == 0 || c->tty.sy == 0)
 		return (0);
 	memcpy(&old_status, &c->status, sizeof old_status);
-	screen_init(&c->status, c->tty.sx, 1, 0);
+
+	lines = status_line_size(c->session);
+	if (lines <= 1)
+		screen_init(&c->status, c->tty.sx, 1, 0);
+	else
+		screen_init(&c->status, c->tty.sx, lines, 0);
 
 	len = screen_write_strlen("%s", c->message_string);
 	if (len > c->tty.sx)
@@ -650,12 +671,9 @@ status_message_redraw(struct client *c)
 	style_apply(&gc, s->options, "message-style");
 
 	screen_write_start(&ctx, NULL, &c->status);
-
-	screen_write_cursormove(&ctx, 0, 0);
+	screen_write_clearscreen(&ctx, gc.bg);
+	screen_write_cursormove(&ctx, 0, lines - 1);
 	screen_write_nputs(&ctx, len, &gc, "%s", c->message_string);
-	for (; len < c->tty.sx; len++)
-		screen_write_putc(&ctx, &gc, ' ');
-
 	screen_write_stop(&ctx);
 
 	if (grid_compare(c->status.grid, old_status.grid) == 0) {
@@ -782,12 +800,24 @@ status_prompt_redraw(struct client *c)
 	struct session		*s = c->session;
 	struct screen		 old_status;
 	u_int			 i, offset, left, start, pcursor, pwidth, width;
+	u_int			 lines;
+	size_t			 len, off;
 	struct grid_cell	 gc, cursorgc;
 
 	if (c->tty.sx == 0 || c->tty.sy == 0)
 		return (0);
 	memcpy(&old_status, &c->status, sizeof old_status);
-	screen_init(&c->status, c->tty.sx, 1, 0);
+
+	lines = status_line_size(c->session);
+	if (lines <= 1)
+		screen_init(&c->status, c->tty.sx, 1, 0);
+	else
+		screen_init(&c->status, c->tty.sx, lines, 0);
+
+	len = screen_write_strlen("%s", c->prompt_string);
+	if (len > c->tty.sx)
+		len = c->tty.sx;
+	off = 0;
 
 	if (c->prompt_mode == PROMPT_COMMAND)
 		style_apply(&gc, s->options, "message-command-style");
@@ -802,11 +832,10 @@ status_prompt_redraw(struct client *c)
 		start = c->tty.sx;
 
 	screen_write_start(&ctx, NULL, &c->status);
-	screen_write_cursormove(&ctx, 0, 0);
+	screen_write_clearscreen(&ctx, gc.bg);
+	screen_write_cursormove(&ctx, 0, lines - 1);
 	screen_write_nputs(&ctx, start, &gc, "%s", c->prompt_string);
-	while (c->status.cx < screen_size_x(&c->status))
-		screen_write_putc(&ctx, &gc, ' ');
-	screen_write_cursormove(&ctx, start, 0);
+	screen_write_cursormove(&ctx, start, lines - 1);
 
 	left = c->tty.sx - start;
 	if (left == 0)

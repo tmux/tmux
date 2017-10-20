@@ -1211,7 +1211,7 @@ server_client_reset_state(struct client *c)
 	struct window_pane	*wp = w->active, *loop;
 	struct screen		*s = wp->screen;
 	struct options		*oo = c->session->options;
-	int			 status, mode, o;
+	int			 lines, mode;
 
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
 		return;
@@ -1219,13 +1219,14 @@ server_client_reset_state(struct client *c)
 	tty_region_off(&c->tty);
 	tty_margin_off(&c->tty);
 
-	status = options_get_number(oo, "status");
-	if (!window_pane_visible(wp) || wp->yoff + s->cy >= c->tty.sy - status)
+	if (status_at_line(c) != 0)
+		lines = 0;
+	else
+		lines = status_line_size(c->session);
+	if (!window_pane_visible(wp) || wp->yoff + s->cy >= c->tty.sy - lines)
 		tty_cursor(&c->tty, 0, 0);
-	else {
-		o = status && options_get_number(oo, "status-position") == 0;
-		tty_cursor(&c->tty, wp->xoff + s->cx, o + wp->yoff + s->cy);
-	}
+	else
+		tty_cursor(&c->tty, wp->xoff + s->cx, lines + wp->yoff + s->cy);
 
 	/*
 	 * Set mouse mode if requested. To support dragging, always use button

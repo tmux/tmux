@@ -49,11 +49,11 @@ recalculate_sizes(void)
 	struct client		*c;
 	struct window		*w;
 	struct window_pane	*wp;
-	u_int			 ssx, ssy, has, limit;
-	int			 flag, has_status, is_zoomed, forced;
+	u_int			 ssx, ssy, has, limit, lines;
+	int			 flag, is_zoomed, forced;
 
 	RB_FOREACH(s, sessions, &sessions) {
-		has_status = options_get_number(s->options, "status");
+		lines = status_line_size(s);
 
 		s->attached = 0;
 		ssx = ssy = UINT_MAX;
@@ -66,10 +66,14 @@ recalculate_sizes(void)
 			if (c->session == s) {
 				if (c->tty.sx < ssx)
 					ssx = c->tty.sx;
-				if (has_status &&
+				c->flags &= ~CLIENT_STATUSOFF;
+				if (lines != 0 && lines + PANE_MINIMUM > c->tty.sy)
+					c->flags |= CLIENT_STATUSOFF;
+				if ((~c->flags & CLIENT_STATUSOFF) &&
 				    !(c->flags & CLIENT_CONTROL) &&
-				    c->tty.sy > 1 && c->tty.sy - 1 < ssy)
-					ssy = c->tty.sy - 1;
+				    c->tty.sy > lines &&
+				    c->tty.sy - lines < ssy)
+					ssy = c->tty.sy - lines;
 				else if (c->tty.sy < ssy)
 					ssy = c->tty.sy;
 				s->attached++;
@@ -81,8 +85,8 @@ recalculate_sizes(void)
 		}
 		s->flags &= ~SESSION_UNATTACHED;
 
-		if (has_status && ssy == 0)
-			ssy = 1;
+		if (lines != 0 && ssy == 0)
+			ssy = lines;
 
 		if (s->sx == ssx && s->sy == ssy)
 			continue;
