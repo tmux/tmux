@@ -340,7 +340,8 @@ status_redraw(struct client *c)
 	memcpy(&old_status, &c->status, sizeof old_status);
 	screen_init(&c->status, c->tty.sx, lines, 0);
 	screen_write_start(&ctx, NULL, &c->status);
-	screen_write_clearscreen(&ctx, stdgc.bg);
+	for (offset = 0; offset < lines * c->tty.sx; offset++)
+		screen_write_putc(&ctx, &stdgc, ' ');
 	screen_write_stop(&ctx);
 
 	/* If the height is too small, blank status line. */
@@ -652,7 +653,7 @@ status_message_redraw(struct client *c)
 	struct screen		        old_status;
 	size_t			        len;
 	struct grid_cell		gc;
-	u_int				lines;
+	u_int				lines, offset;
 
 	if (c->tty.sx == 0 || c->tty.sy == 0)
 		return (0);
@@ -671,7 +672,9 @@ status_message_redraw(struct client *c)
 	style_apply(&gc, s->options, "message-style");
 
 	screen_write_start(&ctx, NULL, &c->status);
-	screen_write_clearscreen(&ctx, gc.bg);
+	screen_write_cursormove(&ctx, 0, 0);
+	for (offset = 0; offset < lines * c->tty.sx; offset++)
+		screen_write_putc(&ctx, &gc, ' ');
 	screen_write_cursormove(&ctx, 0, lines - 1);
 	screen_write_nputs(&ctx, len, &gc, "%s", c->message_string);
 	screen_write_stop(&ctx);
@@ -832,10 +835,12 @@ status_prompt_redraw(struct client *c)
 		start = c->tty.sx;
 
 	screen_write_start(&ctx, NULL, &c->status);
-	screen_write_clearscreen(&ctx, gc.bg);
-	screen_write_cursormove(&ctx, 0, lines - 1);
+	screen_write_cursormove(&ctx, 0, 0);
+	for (offset = 0; offset < lines * c->tty.sx; offset++)
+		screen_write_putc(&ctx, &gc, ' ');
+	screen_write_cursormove(&ctx, 0, 0);
 	screen_write_nputs(&ctx, start, &gc, "%s", c->prompt_string);
-	screen_write_cursormove(&ctx, start, lines - 1);
+	screen_write_cursormove(&ctx, start, 0);
 
 	left = c->tty.sx - start;
 	if (left == 0)
