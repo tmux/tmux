@@ -43,11 +43,6 @@ the source tree with:
 
 A small example configuration in example_tmux.conf.
 
-A vim(1) syntax file is available at:
-
-	https://github.com/ericpruitt/tmux.vim
-	https://raw.githubusercontent.com/ericpruitt/tmux.vim/master/vim/syntax/tmux.vim
-
 And a bash(1) completion file at:
 
 	https://github.com/imomaliev/tmux-bash-completion
