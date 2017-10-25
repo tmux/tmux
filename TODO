@@ -110,21 +110,22 @@
 	  bind -n DoubleClick3Status confirm-before -p "kill-window #I? (y/n)" kill-window
 	* respawn -c flag same as neww etc
 	* marker lines in history (GitHub issue 1042)
-	* tree mode stuff: predefined filters, tag-all key, ...
+	* tree mode stuff: make command prompt (:) common code so all modes get it,
+	  predefined filters, tag-all key, ...
 
 - hooks
 	* more hooks for various things
 	* finish after hooks for special commands. these do not have a hook at
-          the moment:
+	  the moment:
 		 attach-session detach-client kill-server respawn-window
 		 swap-window break-pane find-window kill-session rotate-window
 		 switch-client choose-tree if-shell kill-window run-shell
 		 wait-for command-prompt join-pane move-window source-file
 		 confirm-before kill-pane respawn-pane swap-pane
-          at the moment AFTERHOOK uses current only if target is not valid,
-          but target is ALWAYS valid - it should use current if no -t flag?
-          then select-* could use AFTERHOOK
+	  at the moment AFTERHOOK uses current only if target is not valid,
+	  but target is ALWAYS valid - it should use current if no -t flag?
+	  then select-* could use AFTERHOOK
 	* multiple hooks with the same name?
 	* finish hooks for notifys
 	* for session_closed, if no sessions at all, perhaps fake up a
-          temporary one
+	  temporary one
