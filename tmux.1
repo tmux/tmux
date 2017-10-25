@@ -3351,7 +3351,12 @@ layout after every
 set-hook after-split-window "selectl even-vertical"
 .Ed
 .Pp
-In addition, the following hooks are available:
+All the notifications listed in the
+.Sx CONTROL MODE
+section are hooks (without any arguments), except
+.Ic %exit .
+The following additional hooks are available:
+.Pp
 .Bl -tag -width "XXXXXXXXXXXXXXXXXXXXXX"
 .It alert-activity
 Run when a window has activity.
