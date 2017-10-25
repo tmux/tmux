@@ -597,7 +597,7 @@ window_tree_draw_window(struct window_tree_modedata *data, struct session *s,
 	u_int			 loop, total, visible, each, width, offset;
 	u_int			 current, start, end, remaining, i;
 	struct grid_cell	 gc;
-	int			 colour, active_colour, left, right;
+	int			 colour, active_colour, left, right, pane_idx;
 	char			*label;
 
 	total = window_count_panes(w);
@@ -694,7 +694,9 @@ window_tree_draw_window(struct window_tree_modedata *data, struct session *s,
 		screen_write_cursormove(ctx, offset, 0);
 		screen_write_preview(ctx, &wp->base, width, sy);
 
-		xasprintf(&label, " %u ", loop);
+		if (window_pane_index(wp, &pane_idx) != 0)
+			pane_idx = loop;
+		xasprintf(&label, " %u ", pane_idx);
 		window_tree_draw_label(ctx, offset, 0, each, sy, &gc, label);
 		free(label);
 
