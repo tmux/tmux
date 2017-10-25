@@ -319,7 +319,8 @@ window_buffer_resize(struct window_pane *wp, u_int sx, u_int sy)
 }
 
 static void
-window_buffer_do_delete(void* modedata, void *itemdata, __unused key_code key)
+window_buffer_do_delete(void* modedata, void *itemdata,
+    __unused struct client *c, __unused key_code key)
 {
 	struct window_buffer_modedata	*data = modedata;
 	struct window_buffer_itemdata	*item = itemdata;
@@ -332,52 +333,52 @@ window_buffer_do_delete(void* modedata, void *itemdata, __unused key_code key)
 }
 
 static void
+window_buffer_do_paste(void* modedata, void *itemdata, struct client *c,
+    __unused key_code key)
+{
+	struct window_buffer_modedata	*data = modedata;
+	struct window_buffer_itemdata	*item = itemdata;
+	struct paste_buffer		*pb;
+
+	if ((pb = paste_get_name(item->name)) != NULL)
+		mode_tree_run_command(c, NULL, data->command, item->name);
+}
+
+static void
 window_buffer_key(struct window_pane *wp, struct client *c,
     __unused struct session *s, key_code key, struct mouse_event *m)
 {
 	struct window_buffer_modedata	*data = wp->modedata;
+	struct mode_tree_data		*mtd = data->data;
 	struct window_buffer_itemdata	*item;
-	char				*command, *name;
 	int				 finished;
 
-	/*
-	 * t = toggle tag
-	 * T = tag none
-	 * C-t = tag all
-	 * q = exit
-	 * O = change sort order
-	 *
-	 * d = delete buffer
-	 * D = delete tagged buffers
-	 * Enter = paste buffer
-	 */
-
-	finished = mode_tree_key(data->data, c, &key, m);
+	finished = mode_tree_key(mtd, c, &key, m);
 	switch (key) {
 	case 'd':
-		item = mode_tree_get_current(data->data);
-		window_buffer_do_delete(data, item, key);
-		mode_tree_build(data->data);
+		item = mode_tree_get_current(mtd);
+		window_buffer_do_delete(data, item, c, key);
+		mode_tree_build(mtd);
 		break;
 	case 'D':
-		mode_tree_each_tagged(data->data, window_buffer_do_delete, key,
-		    0);
-		mode_tree_build(data->data);
+		mode_tree_each_tagged(mtd, window_buffer_do_delete, c, key, 0);
+		mode_tree_build(mtd);
 		break;
+	case 'P':
+		mode_tree_each_tagged(mtd, window_buffer_do_paste, c, key, 0);
+		finished = 1;
+		break;
+	case 'p':
 	case '\r':
-		item = mode_tree_get_current(data->data);
-		command = xstrdup(data->command);
-		name = xstrdup(item->name);
-		window_pane_reset_mode(wp);
-		mode_tree_run_command(c, NULL, command, name);
-		free(name);
-		free(command);
-		return;
+		item = mode_tree_get_current(mtd);
+		window_buffer_do_paste(data, item, c, key);
+		finished = 1;
+		break;
 	}
 	if (finished || paste_get_top(NULL) == NULL)
 		window_pane_reset_mode(wp);
 	else {
-		mode_tree_draw(data->data);
+		mode_tree_draw(mtd);
 		wp->flags |= PANE_REDRAW;
 	}
 }

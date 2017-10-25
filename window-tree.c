@@ -95,7 +95,6 @@ struct window_tree_modedata {
 	struct window_tree_itemdata	**item_list;
 	u_int				  item_size;
 
-	struct client			 *client;
 	const char			 *entered;
 
 	struct cmd_find_state		  fs;
@@ -898,7 +897,8 @@ window_tree_get_target(struct window_tree_itemdata *item,
 }
 
 static void
-window_tree_command_each(void* modedata, void* itemdata, __unused key_code key)
+window_tree_command_each(void* modedata, void* itemdata, struct client *c,
+    __unused key_code key)
 {
 	struct window_tree_modedata	*data = modedata;
 	struct window_tree_itemdata	*item = itemdata;
@@ -907,7 +907,7 @@ window_tree_command_each(void* modedata, void* itemdata, __unused key_code key)
 
 	name = window_tree_get_target(item, &fs);
 	if (name != NULL)
-		mode_tree_run_command(data->client, &fs, data->entered, name);
+		mode_tree_run_command(c, &fs, data->entered, name);
 	free(name);
 }
 
@@ -934,13 +934,9 @@ window_tree_command_callback(struct client *c, void *modedata, const char *s,
 	if (data->dead)
 		return (0);
 
-	data->client = c;
 	data->entered = s;
-
-	mode_tree_each_tagged(data->data, window_tree_command_each, KEYC_NONE,
-	    1);
-
-	data->client = NULL;
+	mode_tree_each_tagged(data->data, window_tree_command_each, c,
+	    KEYC_NONE, 1);
 	data->entered = NULL;
 
 	data->references++;
@@ -963,7 +959,7 @@ window_tree_key(struct window_pane *wp, struct client *c,
 {
 	struct window_tree_modedata	*data = wp->modedata;
 	struct window_tree_itemdata	*item;
-	char				*command, *name, *prompt;
+	char				*name, *prompt;
 	struct cmd_find_state		 fs;
 	int				 finished;
 	u_int				 tagged;
@@ -992,14 +988,12 @@ window_tree_key(struct window_pane *wp, struct client *c,
 		break;
 	case '\r':
 		item = mode_tree_get_current(data->data);
-		command = xstrdup(data->command);
 		name = window_tree_get_target(item, &fs);
-		window_pane_reset_mode(wp);
 		if (name != NULL)
-			mode_tree_run_command(c, NULL, command, name);
+			mode_tree_run_command(c, NULL, data->command, name);
+		finished = 1;
 		free(name);
-		free(command);
-		return;
+		break;
 	}
 	if (finished)
 		window_pane_reset_mode(wp);
