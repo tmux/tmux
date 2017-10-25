@@ -1,5 +1,19 @@
 CHANGES FROM 2.6 TO master
 
+* Support %else in config files to match %if; from Brad Town in GitHub issue
+  1071.
+
+* Fix "kind" terminfo(5) capability to be S-Down not S-Up.
+
+* Add a box around the preview label in tree mode.
+
+* Show exit status and time in the remain-on-exit pane text; from Timo
+  Boettcher in GitHub issue 1103.
+
+* Correctly use pane-base-index in tree mode.
+
+* Change the allow-rename option default to off.
+
 * Support for xterm(1) title stack escape sequences (GitHub issue 1075 from
   Brad Town).
 
