@@ -266,7 +266,7 @@ mode_tree_count_tagged(struct mode_tree_data *mtd)
 
 void
 mode_tree_each_tagged(struct mode_tree_data *mtd, void (*cb)(void *, void *,
-    key_code), key_code key, int current)
+    struct client *, key_code), struct client *c, key_code key, int current)
 {
 	struct mode_tree_item	*mti;
 	u_int			 i;
@@ -277,12 +277,12 @@ mode_tree_each_tagged(struct mode_tree_data *mtd, void (*cb)(void *, void *,
 		mti = mtd->line_list[i].item;
 		if (mti->tagged) {
 			fired = 1;
-			cb(mtd->modedata, mti->itemdata, key);
+			cb(mtd->modedata, mti->itemdata, c, key);
 		}
 	}
 	if (!fired && current) {
 		mti = mtd->line_list[mtd->current].item;
-		cb(mtd->modedata, mti->itemdata, key);
+		cb(mtd->modedata, mti->itemdata, c, key);
 	}
 }
 
@@ -848,6 +848,7 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 		mode_tree_build(mtd);
 		break;
 	case KEYC_LEFT:
+	case 'h':
 	case '-':
 		if (line->flat || !current->expanded)
 			current = current->parent;
@@ -860,6 +861,7 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 		}
 		break;
 	case KEYC_RIGHT:
+	case 'l':
 	case '+':
 		if (line->flat || current->expanded)
 			mode_tree_down(mtd, 0);

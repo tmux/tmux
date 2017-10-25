@@ -301,7 +301,8 @@ window_client_resize(struct window_pane *wp, u_int sx, u_int sy)
 }
 
 static void
-window_client_do_detach(void* modedata, void *itemdata, key_code key)
+window_client_do_detach(void* modedata, void *itemdata,
+    __unused struct client *c, key_code key)
 {
 	struct window_client_modedata	*data = modedata;
 	struct window_client_itemdata	*item = itemdata;
@@ -321,56 +322,35 @@ window_client_key(struct window_pane *wp, struct client *c,
     __unused struct session *s, key_code key, struct mouse_event *m)
 {
 	struct window_client_modedata	*data = wp->modedata;
+	struct mode_tree_data		*mtd = data->data;
 	struct window_client_itemdata	*item;
-	char				*command, *name;
 	int				 finished;
 
-	/*
-	 * t = toggle tag
-	 * T = tag none
-	 * C-t = tag all
-	 * q = exit
-	 * O = change sort order
-	 *
-	 * d = detach client
-	 * D = detach tagged clients
-	 * x = detach and kill client
-	 * X = detach and kill tagged clients
-	 * z = suspend client
-	 * Z = suspend tagged clients
-	 * Enter = detach client
-	 */
-
-	finished = mode_tree_key(data->data, c, &key, m);
+	finished = mode_tree_key(mtd, c, &key, m);
 	switch (key) {
 	case 'd':
 	case 'x':
 	case 'z':
-		item = mode_tree_get_current(data->data);
-		window_client_do_detach(data, item, key);
-		mode_tree_build(data->data);
+		item = mode_tree_get_current(mtd);
+		window_client_do_detach(data, item, c, key);
+		mode_tree_build(mtd);
 		break;
 	case 'D':
 	case 'X':
 	case 'Z':
-		mode_tree_each_tagged(data->data, window_client_do_detach, key,
-		    0);
-		mode_tree_build(data->data);
+		mode_tree_each_tagged(mtd, window_client_do_detach, c, key, 0);
+		mode_tree_build(mtd);
 		break;
 	case '\r':
-		item = mode_tree_get_current(data->data);
-		command = xstrdup(data->command);
-		name = xstrdup(item->c->ttyname);
-		window_pane_reset_mode(wp);
-		mode_tree_run_command(c, NULL, command, name);
-		free(name);
-		free(command);
-		return;
+		item = mode_tree_get_current(mtd);
+		mode_tree_run_command(c, NULL, data->command, item->c->ttyname);
+		finished = 1;
+		break;
 	}
 	if (finished || server_client_how_many() == 0)
 		window_pane_reset_mode(wp);
 	else {
-		mode_tree_draw(data->data);
+		mode_tree_draw(mtd);
 		wp->flags |= PANE_REDRAW;
 	}
 }
