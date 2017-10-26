@@ -931,7 +931,7 @@ window_tree_command_callback(struct client *c, void *modedata, const char *s,
 {
 	struct window_tree_modedata	*data = modedata;
 
-	if (data->dead)
+	if (s == NULL || data->dead)
 		return (0);
 
 	data->entered = s;
