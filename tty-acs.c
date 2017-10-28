@@ -48,7 +48,7 @@ static const struct tty_acs_entry tty_acs_table[] = {
 	{ 'n', "\342\224\274" },	/* large plus or crossover */
 	{ 'o', "\342\216\272" },	/* scan line 1 */
 	{ 'p', "\342\216\273" },	/* scan line 3 */
-	{ 'q', "\342\224\200" },	/* horizontal line */
+	{ 'q', "\357\277\232" },	/* halfwidth hangul letter eu */
 	{ 'r', "\342\216\274" },	/* scan line 7 */
 	{ 's', "\342\216\275" },	/* scan line 9 */
 	{ 't', "\342\224\234" },	/* tee pointing right */
