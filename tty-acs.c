@@ -48,14 +48,14 @@ static const struct tty_acs_entry tty_acs_table[] = {
 	{ 'n', "\342\224\274" },	/* large plus or crossover */
 	{ 'o', "\342\216\272" },	/* scan line 1 */
 	{ 'p', "\342\216\273" },	/* scan line 3 */
-	{ 'q', "\357\277\232" },	/* halfwidth hangul letter eu */
+	{ 'q', "\357\277\232" },	/* horizontal line */
 	{ 'r', "\342\216\274" },	/* scan line 7 */
 	{ 's', "\342\216\275" },	/* scan line 9 */
 	{ 't', "\342\224\234" },	/* tee pointing right */
 	{ 'u', "\342\224\244" },	/* tee pointing left */
 	{ 'v', "\342\224\264" },	/* tee pointing up */
 	{ 'w', "\342\224\254" },	/* tee pointing down */
-	{ 'x', "\342\224\202" },	/* vertical line */
+	{ 'x', "\357\277\250" },	/* vertical line */
 	{ 'y', "\342\211\244" },	/* less-than-or-equal-to */
 	{ 'z', "\342\211\245" },	/* greater-than-or-equal-to */
 	{ '{', "\317\200" },   		/* greek pi */
