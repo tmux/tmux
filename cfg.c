@@ -79,7 +79,8 @@ set_cfg_file(const char *path)
 void
 start_cfg(void)
 {
-	const char	*home;
+	const char	*home = NULL;
+	const char	*config_dir;
 	int		 quiet = 0;
 	struct client	*c;
 
@@ -106,8 +107,17 @@ start_cfg(void)
 		xasprintf(&cfg_file, "%s/.tmux.conf", home);
 		quiet = 1;
 	}
-	if (cfg_file != NULL)
+	if (cfg_file == NULL || load_cfg(cfg_file, NULL, NULL, quiet) <= 0){
+		cfg_file = NULL;
+	}
+
+	if (cfg_file == NULL && (config_dir = find_config_dir(home)) != NULL) {
+		xasprintf(&cfg_file, "%s/tmux.conf", config_dir);
+		quiet = 1;
+	}
+	if (cfg_file != NULL){
 		load_cfg(cfg_file, NULL, NULL, quiet);
+	}
 
 	cmdq_append(NULL, cmdq_get_callback(cfg_done, NULL));
 }

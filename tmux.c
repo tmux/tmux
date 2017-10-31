@@ -185,6 +185,34 @@ find_home(void)
 	return (home);
 }
 
+const char *
+find_config_dir(const char* home)
+{
+	const char default_dir_rel_to_home[] = "/.config";
+	static char	*config_dir;
+
+	if (config_dir != NULL){
+		return (config_dir);
+	}
+
+	config_dir = getenv("XDG_CONFIG_HOME");
+	if (config_dir != NULL && *config_dir != '\0') {
+		return config_dir;
+	}
+
+	// fallback to default location
+	if(home == NULL){
+		return NULL;
+	}
+
+	config_dir = malloc(strlen(home)+ strlen(default_dir_rel_to_home) + 1);
+	if(config_dir != NULL){
+		strcpy( config_dir, home ) ;
+		strcat( config_dir, default_dir_rel_to_home ) ;
+	}
+	return config_dir;
+}
+
 int
 main(int argc, char **argv)
 {

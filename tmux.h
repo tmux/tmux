@@ -1507,6 +1507,7 @@ extern const char	*shell_command;
 int		 areshell(const char *);
 void		 setblocking(int, int);
 const char	*find_home(void);
+const char	*find_config_dir(const char* home);
 
 /* proc.c */
 struct imsg;
