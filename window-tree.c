@@ -399,8 +399,10 @@ window_tree_build(void *modedata, u_int sort_type, uint64_t *tag,
 {
 	struct window_tree_modedata	*data = modedata;
 	struct session			*s, **l;
-	struct session_group		*sg;
+	struct session_group		*sg, *current;
 	u_int				 n, i;
+
+	current = session_group_contains(data->fs.s);
 
 	for (i = 0; i < data->item_size; i++)
 		window_tree_free_item(data->item_list[i]);
@@ -412,9 +414,11 @@ window_tree_build(void *modedata, u_int sort_type, uint64_t *tag,
 	n = 0;
 	RB_FOREACH(s, sessions, &sessions) {
 		if (data->squash_groups &&
-		    (sg = session_group_contains(s)) != NULL &&
-		    s != TAILQ_FIRST(&sg->sessions))
-			continue;
+		    (sg = session_group_contains(s)) != NULL) {
+			if ((sg == current && s != data->fs.s) ||
+			    (sg != current && s != TAILQ_FIRST(&sg->sessions)))
+				continue;
+		}
 		l = xreallocarray(l, n + 1, sizeof *l);
 		l[n++] = s;
 	}

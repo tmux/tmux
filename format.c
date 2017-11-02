@@ -795,8 +795,11 @@ format_find(struct format_tree *ft, const char *key, int modifiers)
 			found = s;
 			goto found;
 		}
-		if (fe->value == NULL && fe->cb != NULL)
+		if (fe->value == NULL && fe->cb != NULL) {
 			fe->cb(ft, fe);
+			if (fe->value == NULL)
+				fe->value = xstrdup("");
+		}
 		found = fe->value;
 		goto found;
 	}
