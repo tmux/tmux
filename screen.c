@@ -196,7 +196,8 @@ screen_resize(struct screen *s, u_int sx, u_int sy, int reflow)
 		 * is simpler and more reliable so let's do that.
 		 */
 		screen_reset_tabs(s);
-	}
+	} else
+		reflow = 0;
 
 	if (sy != screen_size_y(s))
 		screen_resize_y(s, sy);

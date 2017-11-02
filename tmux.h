@@ -2339,6 +2339,7 @@ struct session_group *session_group_new(const char *);
 void		 session_group_add(struct session_group *, struct session *);
 void		 session_group_synchronize_to(struct session *);
 void		 session_group_synchronize_from(struct session *);
+u_int		 session_group_count(struct session_group *);
 void		 session_renumber_windows(struct session *);
 
 /* utf8.c */
