@@ -210,37 +210,29 @@ window_client_build(void *modedata, u_int sort_type, __unused uint64_t *tag,
 	}
 }
 
-static struct screen *
-window_client_draw(__unused void *modedata, void *itemdata, u_int sx, u_int sy)
+static void
+window_client_draw(__unused void *modedata, void *itemdata,
+    struct screen_write_ctx *ctx, u_int sx, u_int sy)
 {
 	struct window_client_itemdata	*item = itemdata;
 	struct client			*c = item->c;
 	struct window_pane		*wp;
-	static struct screen		 s;
-	struct screen_write_ctx		 ctx;
+	u_int				 cx = ctx->s->cx, cy = ctx->s->cy;
 
 	if (c->session == NULL || (c->flags & (CLIENT_DEAD|CLIENT_DETACHING)))
-		return (NULL);
+		return;
 	wp = c->session->curw->window->active;
 
-	screen_init(&s, sx, sy, 0);
+	screen_write_preview(ctx, &wp->base, sx, sy - 3);
 
-	screen_write_start(&ctx, NULL, &s);
-	screen_write_clearscreen(&ctx, 8);
+	screen_write_cursormove(ctx, cx, cy + sy - 2);
+	screen_write_hline(ctx, sx, 0, 0);
 
-	screen_write_preview(&ctx, &wp->base, sx, sy - 3);
-
-	screen_write_cursormove(&ctx, 0, sy - 2);
-	screen_write_hline(&ctx, sx, 0, 0);
-
-	screen_write_cursormove(&ctx, 0, sy - 1);
+	screen_write_cursormove(ctx, cx, cy + sy - 1);
 	if (c->old_status != NULL)
-		screen_write_fast_copy(&ctx, c->old_status, 0, 0, sx, 1);
+		screen_write_fast_copy(ctx, c->old_status, 0, 0, sx, 1);
 	else
-		screen_write_fast_copy(&ctx, &c->status, 0, 0, sx, 1);
-
-	screen_write_stop(&ctx);
-	return (&s);
+		screen_write_fast_copy(ctx, &c->status, 0, 0, sx, 1);
 }
 
 static struct screen *
