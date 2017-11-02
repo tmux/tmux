@@ -577,9 +577,9 @@ format_cb_pane_tabs(struct format_tree *ft, struct format_entry *fe)
 	evbuffer_free(buffer);
 }
 
-/* Callback for session_group_others. */
+/* Callback for session_group_list. */
 static void
-format_cb_session_group_others(struct format_tree *ft, struct format_entry *fe)
+format_cb_session_group_list(struct format_tree *ft, struct format_entry *fe)
 {
 	struct session		*s = ft->s;
 	struct session_group	*sg;
@@ -595,9 +595,6 @@ format_cb_session_group_others(struct format_tree *ft, struct format_entry *fe)
 
 	buffer = evbuffer_new();
 	TAILQ_FOREACH(loop, &sg->sessions, gentry) {
-		if (loop == s)
-			continue;
-
 		if (EVBUFFER_LENGTH(buffer) > 0)
 			evbuffer_add(buffer, ",", 1);
 		evbuffer_add_printf(buffer, "%s", loop->name);
@@ -1290,8 +1287,8 @@ format_defaults_session(struct format_tree *ft, struct session *s)
 		format_add(ft, "session_group", "%s", sg->name);
 		format_add(ft, "session_group_size", "%u",
 		    session_group_count (sg));
-		format_add_cb(ft, "session_group_others",
-		    format_cb_session_group_others);
+		format_add_cb(ft, "session_group_list",
+		    format_cb_session_group_list);
 	}
 
 	format_add_tv(ft, "session_created", &s->creation_time);

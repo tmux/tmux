@@ -44,10 +44,8 @@ static void		 window_tree_key(struct window_pane *,
 		"," \
 			"#{session_windows} windows" \
 			"#{?session_grouped, " \
-				"(group #{session_group}" \
-				"#{?session_group_others," \
-					" with #{session_group_others}," \
-				"})," \
+				"(group #{session_group}: " \
+				"#{session_group_list})," \
 			"}" \
 			"#{?session_attached, (attached),}" \
 		"}" \
