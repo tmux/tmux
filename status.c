@@ -508,8 +508,7 @@ draw:
 	/* Copy the window list. */
 	c->wlmouse = -wloffset + wlstart;
 	screen_write_cursormove(&ctx, wloffset, 0);
-	screen_write_copy(&ctx, &window_list, wlstart, 0, wlwidth, 1, NULL,
-	    NULL);
+	screen_write_fast_copy(&ctx, &window_list, wlstart, 0, wlwidth, 1);
 	screen_free(&window_list);
 
 	screen_write_stop(&ctx);

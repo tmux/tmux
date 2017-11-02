@@ -235,9 +235,9 @@ window_client_draw(__unused void *modedata, void *itemdata, u_int sx, u_int sy)
 
 	screen_write_cursormove(&ctx, 0, sy - 1);
 	if (c->old_status != NULL)
-		screen_write_copy(&ctx, c->old_status, 0, 0, sx, 1, NULL, NULL);
+		screen_write_fast_copy(&ctx, c->old_status, 0, 0, sx, 1);
 	else
-		screen_write_copy(&ctx, &c->status, 0, 0, sx, 1, NULL, NULL);
+		screen_write_fast_copy(&ctx, &c->status, 0, 0, sx, 1);
 
 	screen_write_stop(&ctx);
 	return (&s);

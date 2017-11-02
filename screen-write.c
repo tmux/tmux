@@ -351,11 +351,10 @@ screen_write_cnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
 	free(msg);
 }
 
-/* Copy from another screen. */
+/* Copy from another screen. Assumes target region is big enough. */
 void
 screen_write_copy(struct screen_write_ctx *ctx, struct screen *src, u_int px,
-    u_int py, u_int nx, u_int ny, bitstr_t *markbs,
-    const struct grid_cell *markgc)
+    u_int py, u_int nx, u_int ny, bitstr_t *mbs, const struct grid_cell *mgc)
 {
 	struct screen		*s = ctx->s;
 	struct grid		*gd = src->grid;
@@ -371,19 +370,49 @@ screen_write_copy(struct screen_write_ctx *ctx, struct screen *src, u_int px,
 	for (yy = py; yy < py + ny; yy++) {
 		for (xx = px; xx < px + nx; xx++) {
 			grid_get_cell(gd, xx, yy, &gc);
-			if (markbs != NULL) {
+			if (mbs != NULL) {
 				b = (yy * screen_size_x(src)) + xx;
-				if (bit_test(markbs, b)) {
-					gc.attr = markgc->attr;
-					gc.fg = markgc->fg;
-					gc.bg = markgc->bg;
+				if (bit_test(mbs, b)) {
+					gc.attr = mgc->attr;
+					gc.fg = mgc->fg;
+					gc.bg = mgc->bg;
 				}
 			}
 			screen_write_cell(ctx, &gc);
 		}
-
 		cy++;
 		screen_write_cursormove(ctx, cx, cy);
+	}
+}
+
+/*
+ * Copy from another screen but without the selection stuff. Also assumes the
+ * target region is already big enough and already cleared.
+ */
+void
+screen_write_fast_copy(struct screen_write_ctx *ctx, struct screen *src,
+    u_int px, u_int py, u_int nx, u_int ny)
+{
+	struct screen		*s = ctx->s;
+	struct grid		*gd = src->grid;
+	struct grid_cell	 gc;
+	u_int		 	 xx, yy, cx, cy;
+
+	if (nx == 0 || ny == 0)
+		return;
+
+	cy = s->cy;
+	for (yy = py; yy < py + ny; yy++) {
+		cx = s->cx;
+		for (xx = px; xx < px + nx; xx++) {
+			if (xx >= gd->linedata[yy].cellsize)
+				break;
+			grid_get_cell(gd, xx, yy, &gc);
+			if (!grid_cells_equal(&gc, &grid_default_cell))
+				grid_view_set_cell(ctx->s->grid, cx, cy, &gc);
+			cx++;
+		}
+		cy++;
 	}
 }
 
@@ -471,7 +500,10 @@ screen_write_box(struct screen_write_ctx *ctx, u_int nx, u_int ny)
 	screen_write_cursormove(ctx, cx, cy);
 }
 
-/* Write a preview version of a window. */
+/*
+ * Write a preview version of a window. Assumes target area is big enough and
+ * already cleared.
+ */
 void
 screen_write_preview(struct screen_write_ctx *ctx, struct screen *src, u_int nx,
     u_int ny)
@@ -515,8 +547,7 @@ screen_write_preview(struct screen_write_ctx *ctx, struct screen *src, u_int nx,
 		py = 0;
 	}
 
-	screen_write_copy(ctx, src, px, src->grid->hsize + py, nx, ny, NULL,
-	    NULL);
+	screen_write_fast_copy(ctx, src, px, src->grid->hsize + py, nx, ny);
 
 	if (src->mode & MODE_CURSOR) {
 		grid_view_get_cell(src->grid, src->cx, src->cy, &gc);
