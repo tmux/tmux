@@ -52,7 +52,8 @@ static void	grid_reflow_join(struct grid *, u_int *, struct grid_line *,
 		    u_int);
 static void	grid_reflow_split(struct grid *, u_int *, struct grid_line *,
 		    u_int, u_int);
-static void	grid_reflow_move(struct grid *, u_int *, struct grid_line *);
+static void	grid_reflow_move(struct grid *, u_int *, struct grid_line *,
+				 u_int);
 
 static size_t	grid_string_cells_fg(const struct grid_cell *, int *);
 static size_t	grid_string_cells_bg(const struct grid_cell *, int *);
@@ -1055,7 +1056,8 @@ grid_reflow_split(struct grid *dst, u_int *py, struct grid_line *src_gl,
 
 /* Move line data. */
 static void
-grid_reflow_move(struct grid *dst, u_int *py, struct grid_line *src_gl)
+grid_reflow_move(struct grid *dst, u_int *py, struct grid_line *src_gl,
+		 u_int flags_to_remove)
 {
 	struct grid_line	*dst_gl;
 
@@ -1067,7 +1069,11 @@ grid_reflow_move(struct grid *dst, u_int *py, struct grid_line *src_gl)
 
 	/* Copy the old line. */
 	memcpy(dst_gl, src_gl, sizeof *dst_gl);
-	dst_gl->flags &= ~GRID_LINE_WRAPPED;
+
+	/* Handle flag removal */
+	if (flags_to_remove != 0) {
+		dst_gl->flags &= ~flags_to_remove;
+	}
 
 	/* Clear old line. */
 	src_gl->celldata = NULL;
@@ -1079,7 +1085,7 @@ grid_reflow_move(struct grid *dst, u_int *py, struct grid_line *src_gl)
  * lines fewer in the visible area. The source grid is destroyed.
  */
 u_int
-grid_reflow(struct grid *dst, struct grid *src, u_int new_x)
+grid_reflow(struct grid *dst, struct grid *src, u_int new_x, u_int old_x)
 {
 	u_int			 py, sy, line;
 	int			 previous_wrapped;
@@ -1091,10 +1097,14 @@ grid_reflow(struct grid *dst, struct grid *src, u_int new_x)
 	previous_wrapped = 0;
 	for (line = 0; line < sy + src->hsize; line++) {
 		src_gl = src->linedata + line;
-		if (!previous_wrapped) {
+		if (new_x == old_x) {
+			/* No line length changes - take split lines as they are */
+			grid_reflow_move(dst, &py, src_gl, 0);
+		} else if (!previous_wrapped) {
 			/* Wasn't wrapped. If smaller, move to destination. */
 			if (src_gl->cellused <= new_x)
-				grid_reflow_move(dst, &py, src_gl);
+				grid_reflow_move(dst, &py, src_gl,
+						 GRID_LINE_WRAPPED);
 			else
 				grid_reflow_split(dst, &py, src_gl, new_x, 0);
 		} else {
