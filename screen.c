@@ -34,7 +34,7 @@ TAILQ_HEAD(screen_titles, screen_title_entry);
 static void	screen_resize_x(struct screen *, u_int);
 static void	screen_resize_y(struct screen *, u_int);
 
-static void	screen_reflow(struct screen *, u_int);
+static void	screen_reflow(struct screen *, u_int, u_int);
 
 /* Free titles stack. */
 static void
@@ -182,6 +182,8 @@ screen_pop_title(struct screen *s)
 void
 screen_resize(struct screen *s, u_int sx, u_int sy, int reflow)
 {
+	u_int	old_sx = s->grid->sx;
+
 	if (sx < 1)
 		sx = 1;
 	if (sy < 1)
@@ -203,7 +205,7 @@ screen_resize(struct screen *s, u_int sx, u_int sy, int reflow)
 		screen_resize_y(s, sy);
 
 	if (reflow)
-		screen_reflow(s, sx);
+		screen_reflow(s, sx, old_sx);
 }
 
 static void
@@ -467,14 +469,14 @@ screen_select_cell(struct screen *s, struct grid_cell *dst,
 
 /* Reflow wrapped lines. */
 static void
-screen_reflow(struct screen *s, u_int new_x)
+screen_reflow(struct screen *s, u_int new_x, u_int old_x)
 {
 	struct grid	*old = s->grid;
 	u_int		 change;
 
 	s->grid = grid_create(old->sx, old->sy, old->hlimit);
 
-	change = grid_reflow(s->grid, old, new_x);
+	change = grid_reflow(s->grid, old, new_x, old_x);
 	if (change < s->cy)
 		s->cy -= change;
 	else
