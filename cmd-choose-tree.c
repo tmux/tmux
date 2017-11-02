@@ -30,8 +30,8 @@ const struct cmd_entry cmd_choose_tree_entry = {
 	.name = "choose-tree",
 	.alias = NULL,
 
-	.args = { "F:f:NO:st:w", 0, 1 },
-	.usage = "[-Nsw] [-F format] [-f filter] [-O sort-order] "
+	.args = { "F:Gf:NO:st:w", 0, 1 },
+	.usage = "[-GNsw] [-F format] [-f filter] [-O sort-order] "
 	         CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },

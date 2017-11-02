@@ -572,8 +572,38 @@ format_cb_pane_tabs(struct format_tree *ft, struct format_entry *fe)
 			evbuffer_add(buffer, ",", 1);
 		evbuffer_add_printf(buffer, "%u", i);
 	}
-	size = EVBUFFER_LENGTH(buffer);
-	xasprintf(&fe->value, "%.*s", size, EVBUFFER_DATA(buffer));
+	if ((size = EVBUFFER_LENGTH(buffer)) != 0)
+		xasprintf(&fe->value, "%.*s", size, EVBUFFER_DATA(buffer));
+	evbuffer_free(buffer);
+}
+
+/* Callback for session_group_others. */
+static void
+format_cb_session_group_others(struct format_tree *ft, struct format_entry *fe)
+{
+	struct session		*s = ft->s;
+	struct session_group	*sg;
+	struct session		*loop;
+	struct evbuffer		*buffer;
+	int			 size;
+
+	if (s == NULL)
+		return;
+	sg = session_group_contains(s);
+	if (sg == NULL)
+		return;
+
+	buffer = evbuffer_new();
+	TAILQ_FOREACH(loop, &sg->sessions, gentry) {
+		if (loop == s)
+			continue;
+
+		if (EVBUFFER_LENGTH(buffer) > 0)
+			evbuffer_add(buffer, ",", 1);
+		evbuffer_add_printf(buffer, "%s", loop->name);
+	}
+	if ((size = EVBUFFER_LENGTH(buffer)) != 0)
+		xasprintf(&fe->value, "%.*s", size, EVBUFFER_DATA(buffer));
 	evbuffer_free(buffer);
 }
 
@@ -1253,8 +1283,13 @@ format_defaults_session(struct format_tree *ft, struct session *s)
 
 	sg = session_group_contains(s);
 	format_add(ft, "session_grouped", "%d", sg != NULL);
-	if (sg != NULL)
+	if (sg != NULL) {
 		format_add(ft, "session_group", "%s", sg->name);
+		format_add(ft, "session_group_size", "%u",
+		    session_group_count (sg));
+		format_add_cb(ft, "session_group_others",
+		    format_cb_session_group_others);
+	}
 
 	format_add_tv(ft, "session_created", &s->creation_time);
 	format_add_tv(ft, "session_last_attached", &s->last_attached_time);

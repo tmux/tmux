@@ -43,8 +43,12 @@ static void		 window_tree_key(struct window_pane *,
 			"#{?#{==:#{window_panes},1}, \"#{pane_title}\",}" \
 		"," \
 			"#{session_windows} windows" \
-			"#{?session_grouped, (group ,}" \
-	    		"#{session_group}#{?session_grouped,),}" \
+			"#{?session_grouped, " \
+				"(group #{session_group}" \
+				"#{?session_group_others," \
+					" with #{session_group_others}," \
+				"})," \
+			"}" \
 			"#{?session_attached, (attached),}" \
 		"}" \
 	"}"
@@ -91,6 +95,7 @@ struct window_tree_modedata {
 	struct mode_tree_data		 *data;
 	char				 *format;
 	char				 *command;
+	int				  squash_groups;
 
 	struct window_tree_itemdata	**item_list;
 	u_int				  item_size;
@@ -394,6 +399,7 @@ window_tree_build(void *modedata, u_int sort_type, uint64_t *tag,
 {
 	struct window_tree_modedata	*data = modedata;
 	struct session			*s, **l;
+	struct session_group		*sg;
 	u_int				 n, i;
 
 	for (i = 0; i < data->item_size; i++)
@@ -405,6 +411,10 @@ window_tree_build(void *modedata, u_int sort_type, uint64_t *tag,
 	l = NULL;
 	n = 0;
 	RB_FOREACH(s, sessions, &sessions) {
+		if (data->squash_groups &&
+		    (sg = session_group_contains(s)) != NULL &&
+		    s != TAILQ_FIRST(&sg->sessions))
+			continue;
 		l = xreallocarray(l, n + 1, sizeof *l);
 		l[n++] = s;
 	}
@@ -805,6 +815,7 @@ window_tree_init(struct window_pane *wp, struct cmd_find_state *fs,
 		data->command = xstrdup(WINDOW_TREE_DEFAULT_COMMAND);
 	else
 		data->command = xstrdup(args->argv[0]);
+	data->squash_groups = !args_has(args, 'G');
 
 	data->data = mode_tree_start(wp, args, window_tree_build,
 	    window_tree_draw, window_tree_search, data, window_tree_sort_list,
