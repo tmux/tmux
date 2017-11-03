@@ -403,6 +403,8 @@ screen_write_fast_copy(struct screen_write_ctx *ctx, struct screen *src,
 
 	cy = s->cy;
 	for (yy = py; yy < py + ny; yy++) {
+		if (yy >= gd->hsize + gd->sy)
+			break;
 		cx = s->cx;
 		for (xx = px; xx < px + nx; xx++) {
 			if (xx >= gd->linedata[yy].cellsize)
