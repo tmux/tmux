@@ -195,26 +195,20 @@ window_buffer_build(void *modedata, u_int sort_type, __unused uint64_t *tag,
 
 }
 
-static struct screen *
-window_buffer_draw(__unused void *modedata, void *itemdata, u_int sx, u_int sy)
+static void
+window_buffer_draw(__unused void *modedata, void *itemdata,
+    struct screen_write_ctx *ctx, u_int sx, u_int sy)
 {
 	struct window_buffer_itemdata	*item = itemdata;
 	struct paste_buffer		*pb;
-	static struct screen		 s;
-	struct screen_write_ctx		 ctx;
 	char				 line[1024];
 	const char			*pdata, *end, *cp;
 	size_t				 psize, at;
-	u_int				 i;
+	u_int				 i, cx = ctx->s->cx, cy = ctx->s->cy;
 
 	pb = paste_get_name(item->name);
 	if (pb == NULL)
-		return (NULL);
-
-	screen_init(&s, sx, sy, 0);
-
-	screen_write_start(&ctx, NULL, &s);
-	screen_write_clearscreen(&ctx, 8);
+		return;
 
 	pdata = end = paste_buffer_data(pb, &psize);
 	for (i = 0; i < sy; i++) {
@@ -231,17 +225,14 @@ window_buffer_draw(__unused void *modedata, void *itemdata, u_int sx, u_int sy)
 		line[at] = '\0';
 
 		if (*line != '\0') {
-			screen_write_cursormove(&ctx, 0, i);
-			screen_write_puts(&ctx, &grid_default_cell, "%s", line);
+			screen_write_cursormove(ctx, cx, cy + i);
+			screen_write_puts(ctx, &grid_default_cell, "%s", line);
 		}
 
 		if (end == pdata + psize)
 			break;
 		end++;
 	}
-
-	screen_write_stop(&ctx);
-	return (&s);
 }
 
 static int

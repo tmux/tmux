@@ -482,6 +482,7 @@ window_tree_draw_session(struct window_tree_modedata *data, struct session *s,
 	struct options		*oo = s->options;
 	struct winlink		*wl;
 	struct window		*w;
+	u_int			 cx = ctx->s->cx, cy = ctx->s->cy;
 	u_int			 loop, total, visible, each, width, offset;
 	u_int			 current, start, end, remaining, i;
 	struct grid_cell	 gc;
@@ -544,15 +545,15 @@ window_tree_draw_session(struct window_tree_modedata *data, struct session *s,
 		return;
 
 	if (left) {
-		screen_write_cursormove(ctx, 2, 0);
+		screen_write_cursormove(ctx, cx + 2, cy);
 		screen_write_vline(ctx, sy, 0, 0);
-		screen_write_cursormove(ctx, 0, sy / 2);
+		screen_write_cursormove(ctx, cx, cy + sy / 2);
 		screen_write_puts(ctx, &grid_default_cell, "<");
 	}
 	if (right) {
-		screen_write_cursormove(ctx, sx - 3, 0);
+		screen_write_cursormove(ctx, cx + sx - 3, cy);
 		screen_write_vline(ctx, sy, 0, 0);
-		screen_write_cursormove(ctx, sx - 1, sy / 2);
+		screen_write_cursormove(ctx, cx + sx - 1, cy + sy / 2);
 		screen_write_puts(ctx, &grid_default_cell, ">");
 	}
 
@@ -580,17 +581,18 @@ window_tree_draw_session(struct window_tree_modedata *data, struct session *s,
 		else
 			width = each - 1;
 
-		screen_write_cursormove(ctx, offset, 0);
+		screen_write_cursormove(ctx, cx + offset, cy);
 		screen_write_preview(ctx, &w->active->base, width, sy);
 
 		xasprintf(&label, " %u:%s ", wl->idx, w->name);
 		if (strlen(label) > width)
 			xasprintf(&label, " %u ", wl->idx);
-		window_tree_draw_label(ctx, offset, 0, width, sy, &gc, label);
+		window_tree_draw_label(ctx, cx + offset, cy, width, sy, &gc,
+		    label);
 		free(label);
 
 		if (loop != end - 1) {
-			screen_write_cursormove(ctx, offset + width, 0);
+			screen_write_cursormove(ctx, cx + offset + width, cy);
 			screen_write_vline(ctx, sy, 0, 0);
 		}
 		loop++;
@@ -605,6 +607,7 @@ window_tree_draw_window(struct window_tree_modedata *data, struct session *s,
 {
 	struct options		*oo = s->options;
 	struct window_pane	*wp;
+	u_int			 cx = ctx->s->cx, cy = ctx->s->cy;
 	u_int			 loop, total, visible, each, width, offset;
 	u_int			 current, start, end, remaining, i;
 	struct grid_cell	 gc;
@@ -667,15 +670,15 @@ window_tree_draw_window(struct window_tree_modedata *data, struct session *s,
 		return;
 
 	if (left) {
-		screen_write_cursormove(ctx, 2, 0);
+		screen_write_cursormove(ctx, cx + 2, cy);
 		screen_write_vline(ctx, sy, 0, 0);
-		screen_write_cursormove(ctx, 0, sy / 2);
+		screen_write_cursormove(ctx, cx, cy + sy / 2);
 		screen_write_puts(ctx, &grid_default_cell, "<");
 	}
 	if (right) {
-		screen_write_cursormove(ctx, sx - 3, 0);
+		screen_write_cursormove(ctx, cx + sx - 3, cy);
 		screen_write_vline(ctx, sy, 0, 0);
-		screen_write_cursormove(ctx, sx - 1, sy / 2);
+		screen_write_cursormove(ctx, cx + sx - 1, cy + sy / 2);
 		screen_write_puts(ctx, &grid_default_cell, ">");
 	}
 
@@ -702,17 +705,18 @@ window_tree_draw_window(struct window_tree_modedata *data, struct session *s,
 		else
 			width = each - 1;
 
-		screen_write_cursormove(ctx, offset, 0);
+		screen_write_cursormove(ctx, cx + offset, cy);
 		screen_write_preview(ctx, &wp->base, width, sy);
 
 		if (window_pane_index(wp, &pane_idx) != 0)
 			pane_idx = loop;
 		xasprintf(&label, " %u ", pane_idx);
-		window_tree_draw_label(ctx, offset, 0, each, sy, &gc, label);
+		window_tree_draw_label(ctx, cx + offset, cy, each, sy, &gc,
+		    label);
 		free(label);
 
 		if (loop != end - 1) {
-			screen_write_cursormove(ctx, offset + width, 0);
+			screen_write_cursormove(ctx, cx + offset + width, cy);
 			screen_write_vline(ctx, sy, 0, 0);
 		}
 		loop++;
@@ -721,39 +725,32 @@ window_tree_draw_window(struct window_tree_modedata *data, struct session *s,
 	}
 }
 
-static struct screen *
-window_tree_draw(void *modedata, void *itemdata, u_int sx, u_int sy)
+static void
+window_tree_draw(void *modedata, void *itemdata, struct screen_write_ctx *ctx,
+    u_int sx, u_int sy)
 {
 	struct window_tree_itemdata	*item = itemdata;
 	struct session			*sp;
 	struct winlink			*wlp;
 	struct window_pane		*wp;
-	static struct screen		 s;
-	struct screen_write_ctx		 ctx;
 
 	window_tree_pull_item(item, &sp, &wlp, &wp);
 	if (wp == NULL)
-		return (NULL);
-
-	screen_init(&s, sx, sy, 0);
-	screen_write_start(&ctx, NULL, &s);
+		return;
 
 	switch (item->type) {
 	case WINDOW_TREE_NONE:
-		return (0);
+		break;
 	case WINDOW_TREE_SESSION:
-		window_tree_draw_session(modedata, sp, &ctx, sx, sy);
+		window_tree_draw_session(modedata, sp, ctx, sx, sy);
 		break;
 	case WINDOW_TREE_WINDOW:
-		window_tree_draw_window(modedata, sp, wlp->window, &ctx, sx, sy);
+		window_tree_draw_window(modedata, sp, wlp->window, ctx, sx, sy);
 		break;
 	case WINDOW_TREE_PANE:
-		screen_write_preview(&ctx, &wp->base, sx, sy);
+		screen_write_preview(ctx, &wp->base, sx, sy);
 		break;
 	}
-
-	screen_write_stop(&ctx);
-	return (&s);
 }
 
 static int

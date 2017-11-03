@@ -457,7 +457,7 @@ screen_write_vline(struct screen_write_ctx *ctx, u_int ny, int top, int bottom)
 		screen_write_cursormove(ctx, cx, cy + i);
 		screen_write_putc(ctx, &gc, 'x');
 	}
-	screen_write_cursormove(ctx, cx, cy + ny);
+	screen_write_cursormove(ctx, cx, cy + ny - 1);
 	screen_write_putc(ctx, &gc, bottom ? 'v' : 'x');
 
 	screen_write_cursormove(ctx, cx, cy);

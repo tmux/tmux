@@ -39,10 +39,9 @@ struct mode_tree_data {
 	u_int			  sort_size;
 	u_int			  sort_type;
 
-	void			 (*buildcb)(void *, u_int, uint64_t *,
-				     const char *);
-	struct screen		*(*drawcb)(void *, void *, u_int, u_int);
-	int			 (*searchcb)(void*, void *, const char *);
+	mode_tree_build_cb        buildcb;
+	mode_tree_draw_cb         drawcb;
+	mode_tree_search_cb       searchcb;
 
 	struct mode_tree_list	  children;
 	struct mode_tree_list	  saved;
@@ -265,8 +264,8 @@ mode_tree_count_tagged(struct mode_tree_data *mtd)
 }
 
 void
-mode_tree_each_tagged(struct mode_tree_data *mtd, void (*cb)(void *, void *,
-    struct client *, key_code), struct client *c, key_code key, int current)
+mode_tree_each_tagged(struct mode_tree_data *mtd, mode_tree_each_cb cb,
+    struct client *c, key_code key, int current)
 {
 	struct mode_tree_item	*mti;
 	u_int			 i;
@@ -288,10 +287,9 @@ mode_tree_each_tagged(struct mode_tree_data *mtd, void (*cb)(void *, void *,
 
 struct mode_tree_data *
 mode_tree_start(struct window_pane *wp, struct args *args,
-    void (*buildcb)(void *, u_int, uint64_t *, const char *),
-    struct screen *(*drawcb)(void *, void *, u_int, u_int),
-    int (*searchcb)(void *, void *, const char *), void *modedata,
-    const char **sort_list, u_int sort_size, struct screen **s)
+    mode_tree_build_cb buildcb, mode_tree_draw_cb drawcb,
+    mode_tree_search_cb searchcb, void *modedata, const char **sort_list,
+    u_int sort_size, struct screen **s)
 {
 	struct mode_tree_data	*mtd;
 	const char		*sort;
@@ -463,7 +461,7 @@ void
 mode_tree_draw(struct mode_tree_data *mtd)
 {
 	struct window_pane	*wp = mtd->wp;
-	struct screen		*s = &mtd->screen, *box = NULL;
+	struct screen		*s = &mtd->screen;
 	struct mode_tree_line	*line;
 	struct mode_tree_item	*mti;
 	struct options		*oo = wp->window->options;
@@ -591,13 +589,9 @@ mode_tree_draw(struct mode_tree_data *mtd)
 	box_x = w - 4;
 	box_y = sy - h - 2;
 
-	if (box_x != 0 && box_y != 0)
-		box = mtd->drawcb(mtd->modedata, mti->itemdata, box_x, box_y);
-	if (box != NULL) {
+	if (box_x != 0 && box_y != 0) {
 		screen_write_cursormove(&ctx, 2, h + 1);
-		screen_write_fast_copy(&ctx, box, 0, 0, box_x, box_y);
-
-		screen_free(box);
+		mtd->drawcb(mtd->modedata, mti->itemdata, &ctx, box_x, box_y);
 	}
 
 	screen_write_stop(&ctx);
