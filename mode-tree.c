@@ -190,27 +190,6 @@ mode_tree_clear_tagged(struct mode_tree_list *mtl)
 	}
 }
 
-static void
-mode_tree_set_current(struct mode_tree_data *mtd, uint64_t tag)
-{
-	u_int	i;
-
-	for (i = 0; i < mtd->line_size; i++) {
-		if (mtd->line_list[i].item->tag == tag)
-			break;
-	}
-	if (i != mtd->line_size) {
-		mtd->current = i;
-		if (mtd->current > mtd->height - 1)
-			mtd->offset = mtd->current - mtd->height + 1;
-		else
-			mtd->offset = 0;
-	} else {
-		mtd->current = 0;
-		mtd->offset = 0;
-	}
-}
-
 void
 mode_tree_up(struct mode_tree_data *mtd, int wrap)
 {
@@ -246,6 +225,36 @@ void *
 mode_tree_get_current(struct mode_tree_data *mtd)
 {
 	return (mtd->line_list[mtd->current].item->itemdata);
+}
+
+void
+mode_tree_expand_current(struct mode_tree_data *mtd)
+{
+	if (!mtd->line_list[mtd->current].item->expanded) {
+		mtd->line_list[mtd->current].item->expanded = 1;
+		mode_tree_build(mtd);
+	}
+}
+
+void
+mode_tree_set_current(struct mode_tree_data *mtd, uint64_t tag)
+{
+	u_int	i;
+
+	for (i = 0; i < mtd->line_size; i++) {
+		if (mtd->line_list[i].item->tag == tag)
+			break;
+	}
+	if (i != mtd->line_size) {
+		mtd->current = i;
+		if (mtd->current > mtd->height - 1)
+			mtd->offset = mtd->current - mtd->height + 1;
+		else
+			mtd->offset = 0;
+	} else {
+		mtd->current = 0;
+		mtd->offset = 0;
+	}
 }
 
 u_int
@@ -718,7 +727,7 @@ mode_tree_filter_free(void *data)
 
 int
 mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
-    struct mouse_event *m)
+    struct mouse_event *m, u_int *xp, u_int *yp)
 {
 	struct mode_tree_line	*line;
 	struct mode_tree_item	*current, *parent;
@@ -731,8 +740,13 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 			*key = KEYC_NONE;
 			return (0);
 		}
+		if (xp != NULL)
+			*xp = x;
+		if (yp != NULL)
+			*yp = y;
 		if (x > mtd->width || y > mtd->height) {
-			*key = KEYC_NONE;
+			if (!mtd->preview || y < mtd->height)
+				*key = KEYC_NONE;
 			return (0);
 		}
 		if (mtd->offset + y < mtd->line_size) {

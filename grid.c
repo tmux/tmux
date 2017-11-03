@@ -182,7 +182,7 @@ grid_clear_cell(struct grid *gd, u_int px, u_int py, u_int bg)
 static int
 grid_check_y(struct grid *gd, u_int py)
 {
-	if ((py) >= (gd)->hsize + (gd)->sy) {
+	if (py >= gd->hsize + gd->sy) {
 		log_debug("y out of range: %u", py);
 		return (-1);
 	}

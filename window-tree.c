@@ -104,6 +104,12 @@ struct window_tree_modedata {
 	enum window_tree_type		  type;
 
 	int				  offset;
+
+	int				  left;
+	int				  right;
+	u_int				  start;
+	u_int				  end;
+	u_int				  each;
 };
 
 static void
@@ -545,17 +551,25 @@ window_tree_draw_session(struct window_tree_modedata *data, struct session *s,
 		return;
 
 	if (left) {
+		data->left = cx + 2;
 		screen_write_cursormove(ctx, cx + 2, cy);
 		screen_write_vline(ctx, sy, 0, 0);
 		screen_write_cursormove(ctx, cx, cy + sy / 2);
 		screen_write_puts(ctx, &grid_default_cell, "<");
-	}
+	} else
+		data->left = -1;
 	if (right) {
+		data->right = cx + sx - 3;
 		screen_write_cursormove(ctx, cx + sx - 3, cy);
 		screen_write_vline(ctx, sy, 0, 0);
 		screen_write_cursormove(ctx, cx + sx - 1, cy + sy / 2);
 		screen_write_puts(ctx, &grid_default_cell, ">");
-	}
+	} else
+		data->right = -1;
+
+	data->start = start;
+	data->end = end;
+	data->each = each;
 
 	i = loop = 0;
 	RB_FOREACH(wl, winlinks, &s->windows) {
@@ -670,17 +684,25 @@ window_tree_draw_window(struct window_tree_modedata *data, struct session *s,
 		return;
 
 	if (left) {
+		data->left = cx + 2;
 		screen_write_cursormove(ctx, cx + 2, cy);
 		screen_write_vline(ctx, sy, 0, 0);
 		screen_write_cursormove(ctx, cx, cy + sy / 2);
 		screen_write_puts(ctx, &grid_default_cell, "<");
-	}
+	} else
+		data->left = -1;
 	if (right) {
+		data->right = cx + sx - 3;
 		screen_write_cursormove(ctx, cx + sx - 3, cy);
 		screen_write_vline(ctx, sy, 0, 0);
 		screen_write_cursormove(ctx, cx + sx - 1, cy + sy / 2);
 		screen_write_puts(ctx, &grid_default_cell, ">");
-	}
+	} else
+		data->right = -1;
+
+	data->start = start;
+	data->end = end;
+	data->each = each;
 
 	i = loop = 0;
 	TAILQ_FOREACH(wp, &w->panes, entry) {
@@ -963,21 +985,86 @@ window_tree_command_free(void *modedata)
 	window_tree_destroy(data);
 }
 
+static key_code
+window_tree_mouse(struct window_tree_modedata *data, key_code key, u_int x,
+    struct window_tree_itemdata *item)
+{
+	struct session		*s;
+	struct winlink		*wl;
+	struct window_pane	*wp;
+	u_int			 loop;
+
+	if (key != KEYC_MOUSEDOWN1_PANE)
+		return (KEYC_NONE);
+
+	if (data->left != -1 && x <= (u_int)data->left)
+		return ('<');
+	if (data->right != -1 && x >= (u_int)data->right)
+		return ('>');
+
+	if (data->left != -1)
+		x -= data->left;
+	else if (x != 0)
+		x--;
+	if (x == 0 || data->end == 0)
+		x = 0;
+	else {
+		x = x / data->each;
+		if (data->start + x >= data->end)
+			x = data->end - 1;
+	}
+
+	window_tree_pull_item(item, &s, &wl, &wp);
+	if (item->type == WINDOW_TREE_SESSION) {
+		if (s == NULL)
+			return (KEYC_NONE);
+		mode_tree_expand_current(data->data);
+		loop = 0;
+		RB_FOREACH(wl, winlinks, &s->windows) {
+			if (loop == data->start + x)
+				break;
+			loop++;
+		}
+		if (wl != NULL)
+			mode_tree_set_current(data->data, (uint64_t)wl);
+		return ('\r');
+	}
+	if (item->type == WINDOW_TREE_WINDOW) {
+		if (wl == NULL)
+			return (KEYC_NONE);
+		mode_tree_expand_current(data->data);
+		loop = 0;
+		TAILQ_FOREACH(wp, &wl->window->panes, entry) {
+			if (loop == data->start + x)
+				break;
+			loop++;
+		}
+		if (wp != NULL)
+			mode_tree_set_current(data->data, (uint64_t)wp);
+		return ('\r');
+	}
+	return (KEYC_NONE);
+}
+
 static void
 window_tree_key(struct window_pane *wp, struct client *c,
     __unused struct session *s, key_code key, struct mouse_event *m)
 {
 	struct window_tree_modedata	*data = wp->modedata;
-	struct window_tree_itemdata	*item;
+	struct window_tree_itemdata	*item, *new_item;
 	char				*name, *prompt;
 	struct cmd_find_state		 fs;
 	int				 finished;
-	u_int				 tagged;
+	u_int				 tagged, x, y;
 
 	item = mode_tree_get_current(data->data);
-	finished = mode_tree_key(data->data, c, &key, m);
-	if (item != mode_tree_get_current(data->data))
+	finished = mode_tree_key(data->data, c, &key, m, &x, &y);
+	if (item != (new_item = mode_tree_get_current(data->data))) {
+		item = new_item;
 		data->offset = 0;
+	}
+	if (KEYC_IS_MOUSE(key))
+		key = window_tree_mouse(data, key, x, item);
 	switch (key) {
 	case '<':
 		data->offset--;

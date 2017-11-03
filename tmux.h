@@ -2232,6 +2232,8 @@ typedef int (*mode_tree_search_cb)(void *, void *, const char *);
 typedef void (*mode_tree_each_cb)(void *, void *, struct client *, key_code);
 u_int	 mode_tree_count_tagged(struct mode_tree_data *);
 void	*mode_tree_get_current(struct mode_tree_data *);
+void	 mode_tree_expand_current(struct mode_tree_data *);
+void	 mode_tree_set_current(struct mode_tree_data *, uint64_t);
 void	 mode_tree_each_tagged(struct mode_tree_data *, mode_tree_each_cb,
 	     struct client *, key_code, int);
 void	 mode_tree_up(struct mode_tree_data *, int);
@@ -2248,7 +2250,7 @@ struct mode_tree_item *mode_tree_add(struct mode_tree_data *,
 void	 mode_tree_remove(struct mode_tree_data *, struct mode_tree_item *);
 void	 mode_tree_draw(struct mode_tree_data *);
 int	 mode_tree_key(struct mode_tree_data *, struct client *, key_code *,
-	     struct mouse_event *);
+	     struct mouse_event *, u_int *, u_int *);
 void	 mode_tree_run_command(struct client *, struct cmd_find_state *,
 	     const char *, const char *);
 
