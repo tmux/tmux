@@ -726,7 +726,7 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 	int			 choice;
 	key_code		 tmp;
 
-	if (*key == KEYC_MOUSEDOWN1_PANE) {
+	if (KEYC_IS_MOUSE(*key)) {
 		if (cmd_mouse_at(mtd->wp, m, &x, &y, 0) != 0) {
 			*key = KEYC_NONE;
 			return (0);
@@ -736,8 +736,11 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 			return (0);
 		}
 		if (mtd->offset + y < mtd->line_size) {
-			mtd->current = mtd->offset + y;
-			*key = '\r';
+			if (*key == KEYC_MOUSEDOWN1_PANE ||
+			    *key == KEYC_DOUBLECLICK1_PANE)
+				mtd->current = mtd->offset + y;
+			if (*key == KEYC_DOUBLECLICK1_PANE)
+				*key = '\r';
 			return (0);
 		}
 	}
