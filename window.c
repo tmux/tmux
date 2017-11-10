@@ -939,10 +939,13 @@ window_pane_spawn(struct window_pane *wp, int argc, char **argv,
 		proc_clear_signals(server_proc, 1);
 		sigprocmask(SIG_SETMASK, &oldset, NULL);
 
-		if (chdir(wp->cwd) != 0) {
-			if ((home = find_home()) == NULL || chdir(home) != 0)
-				chdir("/");
-		}
+		cwd = NULL;
+		if (chdir(wp->cwd) == 0)
+			cwd = wp->cwd;
+		else if ((home = find_home()) != NULL && chdir(home) == 0)
+			cwd = home;
+		else
+			chdir("/");
 
 		if (tcgetattr(STDIN_FILENO, &tio2) != 0)
 			fatal("tcgetattr failed");
@@ -960,6 +963,8 @@ window_pane_spawn(struct window_pane *wp, int argc, char **argv,
 
 		if (path != NULL)
 			environ_set(env, "PATH", "%s", path);
+		if (cwd != NULL)
+			environ_set(env, "PWD", "%s", cwd);
 		environ_set(env, "TMUX_PANE", "%%%u", wp->id);
 		environ_push(env);
 
