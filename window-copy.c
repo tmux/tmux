@@ -955,18 +955,22 @@ window_copy_scroll_to(struct window_pane *wp, u_int px, u_int py)
 
 	data->cx = px;
 
-	gap = gd->sy / 4;
-	if (py < gd->sy) {
-		offset = 0;
-		data->cy = py;
-	} else if (py > gd->hsize + gd->sy - gap) {
-		offset = gd->hsize;
-		data->cy = py - gd->hsize;
-	} else {
-		offset = py + gap - gd->sy;
-		data->cy = py - offset;
+	if (py >= gd->hsize - data->oy && py < gd->hsize - data->oy + gd->sy)
+		data->cy = py - (gd->hsize - data->oy);
+	else {
+		gap = gd->sy / 4;
+		if (py < gd->sy) {
+			offset = 0;
+			data->cy = py;
+		} else if (py > gd->hsize + gd->sy - gap) {
+			offset = gd->hsize;
+			data->cy = py - gd->hsize;
+		} else {
+			offset = py + gap - gd->sy;
+			data->cy = py - offset;
+		}
+		data->oy = gd->hsize - offset;
 	}
-	data->oy = gd->hsize - offset;
 
 	window_copy_update_selection(wp, 1);
 	window_copy_redraw_screen(wp);
