@@ -115,11 +115,11 @@ layout_set_previous(struct window *w)
 }
 
 static void
-layout_set_even_h(struct window *w)
+layout_set_even(struct window *w, enum layout_type type)
 {
 	struct window_pane	*wp;
 	struct layout_cell	*lc, *lcnew;
-	u_int			 i, n, width, xoff;
+	u_int			 n;
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
@@ -128,36 +128,21 @@ layout_set_even_h(struct window *w)
 	if (n <= 1)
 		return;
 
-	/* How many can we fit? */
-	width = (w->sx - (n - 1)) / n;
-	if (width < PANE_MINIMUM)
-		width = PANE_MINIMUM;
-
 	/* Free the old root and construct a new. */
 	layout_free(w);
 	lc = w->layout_root = layout_create_cell(NULL);
 	layout_set_size(lc, w->sx, w->sy, 0, 0);
-	layout_make_node(lc, LAYOUT_LEFTRIGHT);
+	layout_make_node(lc, type);
 
 	/* Build new leaf cells. */
-	i = xoff = 0;
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		/* Create child cell. */
 		lcnew = layout_create_cell(lc);
-		layout_set_size(lcnew, width, w->sy, xoff, 0);
 		layout_make_leaf(lcnew, wp);
 		TAILQ_INSERT_TAIL(&lc->cells, lcnew, entry);
-
-		i++;
-		xoff += width + 1;
 	}
 
-	/* Allocate any remaining space. */
-	if (w->sx > xoff - 1) {
-		lc = TAILQ_LAST(&lc->cells, layout_cells);
-		layout_resize_adjust(w, lc, LAYOUT_LEFTRIGHT,
-		    w->sx - (xoff - 1));
-	}
+	/* Spread out cells. */
+	layout_spread_cell(w, lc);
 
 	/* Fix cell offsets. */
 	layout_fix_offsets(lc);
@@ -170,58 +155,15 @@ layout_set_even_h(struct window *w)
 }
 
 static void
+layout_set_even_h(struct window *w)
+{
+	layout_set_even(w, LAYOUT_LEFTRIGHT);
+}
+
+static void
 layout_set_even_v(struct window *w)
 {
-	struct window_pane	*wp;
-	struct layout_cell	*lc, *lcnew;
-	u_int			 i, n, height, yoff;
-
-	layout_print_cell(w->layout_root, __func__, 1);
-
-	/* Get number of panes. */
-	n = window_count_panes(w);
-	if (n <= 1)
-		return;
-
-	/* How many can we fit? */
-	height = (w->sy - (n - 1)) / n;
-	if (height < PANE_MINIMUM)
-		height = PANE_MINIMUM;
-
-	/* Free the old root and construct a new. */
-	layout_free(w);
-	lc = w->layout_root = layout_create_cell(NULL);
-	layout_set_size(lc, w->sx, w->sy, 0, 0);
-	layout_make_node(lc, LAYOUT_TOPBOTTOM);
-
-	/* Build new leaf cells. */
-	i = yoff = 0;
-	TAILQ_FOREACH(wp, &w->panes, entry) {
-		/* Create child cell. */
-		lcnew = layout_create_cell(lc);
-		layout_set_size(lcnew, w->sx, height, 0, yoff);
-		layout_make_leaf(lcnew, wp);
-		TAILQ_INSERT_TAIL(&lc->cells, lcnew, entry);
-
-		i++;
-		yoff += height + 1;
-	}
-
-	/* Allocate any remaining space. */
-	if (w->sy > yoff - 1) {
-		lc = TAILQ_LAST(&lc->cells, layout_cells);
-		layout_resize_adjust(w, lc, LAYOUT_TOPBOTTOM,
-		    w->sy - (yoff - 1));
-	}
-
-	/* Fix cell offsets. */
-	layout_fix_offsets(lc);
-	layout_fix_panes(w, w->sx, w->sy);
-
-	layout_print_cell(w->layout_root, __func__, 1);
-
-	notify_window("window-layout-changed", w);
-	server_redraw_window(w);
+	layout_set_even(w, LAYOUT_TOPBOTTOM);
 }
 
 static void

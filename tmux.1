@@ -1927,8 +1927,8 @@ lower) with
 .Fl U
 or downward (numerically higher).
 .It Xo Ic select-layout
-.Op Fl nop
-.Op Fl t Ar target-window
+.Op Fl Enop
+.Op Fl t Ar target-pane
 .Op Ar layout-name
 .Xc
 .D1 (alias: Ic selectl )
@@ -1946,6 +1946,8 @@ and
 commands.
 .Fl o
 applies the last set layout if possible (undoes the most recent layout change).
+.Fl E
+spreads the current pane and any panes next to it out evenly.
 .It Xo Ic select-pane
 .Op Fl DdegLlMmRU
 .Op Fl P Ar style
