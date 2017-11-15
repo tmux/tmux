@@ -186,6 +186,7 @@ key_bindings_init(void)
 		"bind = choose-buffer",
 		"bind ? list-keys",
 		"bind D choose-client",
+		"bind E select-layout -E",
 		"bind L switch-client -l",
 		"bind M select-pane -M",
 		"bind [ copy-mode",

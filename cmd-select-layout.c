@@ -33,10 +33,10 @@ const struct cmd_entry cmd_select_layout_entry = {
 	.name = "select-layout",
 	.alias = "selectl",
 
-	.args = { "nopt:", 0, 1 },
-	.usage = "[-nop] " CMD_TARGET_WINDOW_USAGE " [layout-name]",
+	.args = { "Enopt:", 0, 1 },
+	.usage = "[-Enop] " CMD_TARGET_PANE_USAGE " [layout-name]",
 
-	.target = { 't', CMD_FIND_WINDOW, 0 },
+	.target = { 't', CMD_FIND_PANE, 0 },
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_select_layout_exec
@@ -71,14 +71,14 @@ const struct cmd_entry cmd_previous_layout_entry = {
 static enum cmd_retval
 cmd_select_layout_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args	*args = self->args;
-	struct winlink	*wl = item->target.wl;
-	struct window	*w;
-	const char	*layoutname;
-	char		*oldlayout;
-	int		 next, previous, layout;
+	struct args		*args = self->args;
+	struct winlink		*wl = item->target.wl;
+	struct window		*w = wl->window;
+	struct window_pane	*wp = item->target.wp;
+	const char		*layoutname;
+	char			*oldlayout;
+	int			 next, previous, layout;
 
-	w = wl->window;
 	server_unzoom_window(w);
 
 	next = self->entry == &cmd_next_layout_entry;
@@ -96,6 +96,11 @@ cmd_select_layout_exec(struct cmd *self, struct cmdq_item *item)
 			layout_set_next(w);
 		else
 			layout_set_previous(w);
+		goto changed;
+	}
+
+	if (args_has(args, 'E')) {
+		layout_spread_out(wp);
 		goto changed;
 	}
 
