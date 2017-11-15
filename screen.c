@@ -470,14 +470,5 @@ screen_select_cell(struct screen *s, struct grid_cell *dst,
 static void
 screen_reflow(struct screen *s, u_int new_x)
 {
-	struct grid	*old = s->grid;
-	u_int		 change;
-
-	s->grid = grid_create(old->sx, old->sy, old->hlimit);
-
-	change = grid_reflow(s->grid, old, new_x);
-	if (change < s->cy)
-		s->cy -= change;
-	else
-		s->cy = 0;
+	grid_reflow(s->grid, new_x, &s->cy);
 }
