@@ -882,6 +882,7 @@ void
 tty_draw_line(struct tty *tty, const struct window_pane *wp,
     struct screen *s, u_int py, u_int ox, u_int oy)
 {
+	struct grid		*gd = s->grid;
 	struct grid_cell	 gc, last;
 	u_int			 i, j, ux, sx, nx, width;
 	int			 flags, cleared = 0;
@@ -900,15 +901,15 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 	 * there may be empty background cells after it (from BCE).
 	 */
 	sx = screen_size_x(s);
-	if (sx > s->grid->linedata[s->grid->hsize + py].cellsize)
-		sx = s->grid->linedata[s->grid->hsize + py].cellsize;
+	if (sx > gd->linedata[gd->hsize + py].cellsize)
+		sx = gd->linedata[gd->hsize + py].cellsize;
 	if (sx > tty->sx)
 		sx = tty->sx;
 	ux = 0;
 
 	if (wp == NULL ||
 	    py == 0 ||
-	    (~s->grid->linedata[s->grid->hsize + py - 1].flags & GRID_LINE_WRAPPED) ||
+	    (~gd->linedata[gd->hsize + py - 1].flags & GRID_LINE_WRAPPED) ||
 	    ox != 0 ||
 	    tty->cx < tty->sx ||
 	    screen_size_x(s) < tty->sx) {
@@ -932,7 +933,7 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 	width = 0;
 
 	for (i = 0; i < sx; i++) {
-		grid_view_get_cell(s->grid, i, py, &gc);
+		grid_view_get_cell(gd, i, py, &gc);
 		if (len != 0 &&
 		    (((~tty->flags & TTY_UTF8) &&
 		    (gc.data.size != 1 ||
@@ -943,6 +944,7 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 		    gc.attr != last.attr ||
 		    gc.fg != last.fg ||
 		    gc.bg != last.bg ||
+		    ux + width + gc.data.width >= screen_size_x(s) ||
 		    (sizeof buf) - len < gc.data.size)) {
 			tty_attributes(tty, &last, wp);
 			tty_putn(tty, buf, len, width);
@@ -956,7 +958,14 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 			screen_select_cell(s, &last, &gc);
 		else
 			memcpy(&last, &gc, sizeof last);
-		if (((~tty->flags & TTY_UTF8) &&
+		if (ux + gc.data.width > screen_size_x(s))
+			for (j = 0; j < gc.data.width; j++) {
+				if (ux + j > screen_size_x(s))
+					break;
+				tty_putc(tty, ' ');
+				ux++;
+			}
+		else if (((~tty->flags & TTY_UTF8) &&
 		    (gc.data.size != 1 ||
 		    *gc.data.data >= 0x7f ||
 		    gc.data.width != 1)) ||
@@ -993,8 +1002,8 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 		}
 	}
 
-	nx = screen_size_x(s) - ux;
-	if (!cleared && ux < tty->sx && nx != 0) {
+	if (!cleared && ux < screen_size_x(s)) {
+		nx = screen_size_x(s) - ux;
 		tty_default_attributes(tty, wp, 8);
 		tty_clear_line(tty, wp, oy + py, ox + ux, nx, 8);
 	}
