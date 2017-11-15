@@ -1,5 +1,16 @@
 CHANGES FROM 2.6 TO master
 
+* Add select-layout -E to spread panes out evenly (bound to E key).
+
+* Support wide characters properly when reflowing.
+
+* Pass PWD to new panes as a hint to shells, as well as calling chdir().
+
+* Performance improvements for the various choose modes.
+
+* Only show first member of session groups in tree mode (-G flag to choose-tree
+  to show all).
+
 * Support %else in config files to match %if; from Brad Town in GitHub issue
   1071.
 
