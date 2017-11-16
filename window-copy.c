@@ -30,7 +30,7 @@ static void	window_copy_command(struct window_pane *, struct client *,
 static struct screen *window_copy_init(struct window_pane *,
 		    struct cmd_find_state *, struct args *);
 static void	window_copy_free(struct window_pane *);
-static int	window_copy_pagedown(struct window_pane *, int);
+static int	window_copy_pagedown(struct window_pane *, int, int);
 static void	window_copy_next_paragraph(struct window_pane *);
 static void	window_copy_previous_paragraph(struct window_pane *);
 static void	window_copy_resize(struct window_pane *, u_int, u_int);
@@ -392,7 +392,7 @@ window_copy_pageup(struct window_pane *wp, int half_page)
 }
 
 static int
-window_copy_pagedown(struct window_pane *wp, int half_page)
+window_copy_pagedown(struct window_pane *wp, int half_page, int scroll_exit)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
@@ -431,7 +431,7 @@ window_copy_pagedown(struct window_pane *wp, int half_page)
 			window_copy_cursor_end_of_line(wp);
 	}
 
-	if (data->scroll_exit && data->oy == 0)
+	if (scroll_exit && data->oy == 0)
 		return (1);
 	window_copy_update_selection(wp, 1);
 	window_copy_redraw_screen(wp);
@@ -524,7 +524,7 @@ window_copy_command(struct window_pane *wp, struct client *c, struct session *s,
 	struct screen			*sn = &data->screen;
 	const char			*command, *argument, *ws;
 	u_int				 np = wp->modeprefix;
-	int				 cancel = 0, redraw = 0;
+	int				 cancel = 0, redraw = 0, scroll_exit;
 	char				 prefix;
 
 	if (args->argc == 0)
@@ -629,9 +629,14 @@ window_copy_command(struct window_pane *wp, struct client *c, struct session *s,
 		}
 		if (strcmp(command, "end-of-line") == 0)
 			window_copy_cursor_end_of_line(wp);
-		if (strcmp(command, "halfpage-down") == 0) {
+		if (strcmp(command, "halfpage-down") == 0 ||
+		    strcmp(command, "halfpage-down-and-cancel") == 0) {
+			if (strcmp(command, "halfpage-down-and-cancel") == 0)
+				scroll_exit = 1;
+			else
+				scroll_exit = data->scroll_exit;
 			for (; np != 0; np--) {
-				if (window_copy_pagedown(wp, 1)) {
+				if (window_copy_pagedown(wp, 1, scroll_exit)) {
 					cancel = 1;
 					break;
 				}
@@ -727,9 +732,14 @@ window_copy_command(struct window_pane *wp, struct client *c, struct session *s,
 			if ((np % 2) != 0)
 				window_copy_other_end(wp);
 		}
-		if (strcmp(command, "page-down") == 0) {
+		if (strcmp(command, "page-down") == 0 ||
+		    strcmp(command, "page-down-and-cancel") == 0) {
+			if (strcmp(command, "page-down-and-cancel") == 0)
+				scroll_exit = 1;
+			else
+				scroll_exit = data->scroll_exit;
 			for (; np != 0; np--) {
-				if (window_copy_pagedown(wp, 0)) {
+				if (window_copy_pagedown(wp, 0, scroll_exit)) {
 					cancel = 1;
 					break;
 				}
@@ -756,10 +766,15 @@ window_copy_command(struct window_pane *wp, struct client *c, struct session *s,
 			sn->sel.lineflag = LINE_SEL_NONE;
 			window_copy_rectangle_toggle(wp);
 		}
-		if (strcmp(command, "scroll-down") == 0) {
+		if (strcmp(command, "scroll-down") == 0 ||
+		    strcmp(command, "scroll-down-and-cancel") == 0) {
+			if (strcmp(command, "scroll-down-and-cancel") == 0)
+				scroll_exit = 1;
+			else
+				scroll_exit = data->scroll_exit;
 			for (; np != 0; np--)
 				window_copy_cursor_down(wp, 1);
-			if (data->scroll_exit && data->oy == 0)
+			if (scroll_exit && data->oy == 0)
 				cancel = 1;
 		}
 		if (strcmp(command, "scroll-up") == 0) {
