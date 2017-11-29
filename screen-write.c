@@ -1242,9 +1242,10 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only)
 		ttyctx.bg = ctx->bg;
 		tty_write(tty_cmd_scrollup, &ttyctx);
 
-		s->winch_mod_y = s->winch_mod_y >= ctx->scrolled ?
-		    s->winch_mod_y - ctx->scrolled :
-		    0;
+		if (s->winch_mod_y > ctx->scrolled)
+			s->winch_mod_y -= ctx->scrolled;
+		else
+			s->winch_mod_y = 0;
 	}
 	ctx->scrolled = 0;
 	ctx->bg = 8;
@@ -1296,7 +1297,8 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 	log_debug("%s: %u %s (at %u,%u)", __func__, ci->used, ci->data, s->cx,
 	    s->cy);
 
-	s->winch_mod_y = s->winch_mod_y < s->cy ? s->winch_mod_y : s->cy;
+	if (s->cy < s->winch_mod_y)
+		s->winch_mod_y = s->cy;
 
 	if (s->cx != 0) {
 		for (xx = s->cx; xx > 0; xx--) {
