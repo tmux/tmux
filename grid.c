@@ -1028,10 +1028,9 @@ grid_reflow_join(struct grid *gd, u_int sx, u_int yy, u_int width, u_int *cy)
 		if (gd->hsize >= lines)
 			gd->hsize -= lines;
 		else {
-			lines -= gd->hsize;
+			for (i = 1; i < lines - gd->hsize + 1; i++)
+				grid_empty_line(gd, gd->sy - i, 8);
 			gd->hsize = 0;
-			for (i = 1; i < lines + 1; i++)
-				grid_empty_line(gd, gd->hsize + gd->sy - i, 8);
 		}
 	}
 
@@ -1121,7 +1120,7 @@ grid_reflow_split(struct grid *gd, u_int sx, u_int yy, u_int at, u_int *cy)
 
 /* Reflow lines on grid to new width. */
 void
-grid_reflow(struct grid *gd, u_int sx, u_int *cursor)
+grid_reflow(struct grid *gd, u_int sx, u_int *cursor, u_int winch_mod_y)
 {
 	struct grid_line	*gl;
 	struct grid_cell	 gc;
@@ -1139,7 +1138,7 @@ grid_reflow(struct grid *gd, u_int sx, u_int *cursor)
 	 * loop, but it is OK because we are always adding or removing lines
 	 * below the current one.
 	 */
-	for (yy = 0; yy < gd->hsize + gd->sy; yy++) {
+	for (yy = 0; yy < gd->hsize + winch_mod_y; yy++) {
 		gl = &gd->linedata[yy];
 
 		/* Work out the width of this line. */
@@ -1191,8 +1190,17 @@ grid_reflow(struct grid *gd, u_int sx, u_int *cursor)
 		 */
 		if (gl->flags & GRID_LINE_WRAPPED)
 			grid_reflow_join(gd, sx, yy, width, &cy);
-
 	}
+
+	// if (gd->hsize + winch_mod_y > 0) {
+	// 	/*
+	// 	 * The line above the cursor must not have the 'wrapped' flag,
+	// 	 * as joining it with the cursor line tends to produce a lot of
+	// 	 * junk.
+	// 	 */
+	// 	gd->linedata[gd->hsize + winch_mod_y - 1].flags &=
+	// 	    ~GRID_LINE_WRAPPED;
+	// }
 
 	if (gd->hscrolled > gd->hsize)
 		gd->hscrolled = gd->hsize;

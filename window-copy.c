@@ -482,6 +482,8 @@ window_copy_resize(struct window_pane *wp, u_int sx, u_int sy)
 	struct screen			*s = &data->screen;
 	struct screen_write_ctx	 	 ctx;
 
+	log_debug("window_copy_resize to %u, %u", sx, sy);
+
 	screen_resize(s, sx, sy, 1);
 	if (data->backing != &wp->base)
 		screen_resize(data->backing, sx, sy, 1);

@@ -1027,71 +1027,60 @@ server_client_loop(void)
 	focus = options_get_number(global_options, "focus-events");
 	RB_FOREACH(w, windows, &windows) {
 		TAILQ_FOREACH(wp, &w->panes, entry) {
+			wp->flags &= ~PANE_REDRAW;
+
 			if (wp->fd != -1) {
 				if (focus)
 					server_client_check_focus(wp);
 				server_client_check_resize(wp);
 			}
-			wp->flags &= ~PANE_REDRAW;
 		}
 		check_window_name(w);
 	}
 }
 
-/* Check if we need to force a resize. */
-static int
-server_client_resize_force(struct window_pane *wp)
-{
-	struct timeval	tv = { .tv_usec = 100000 };
-	struct winsize	ws;
-
-	/*
-	 * If we are resizing to the same size as when we entered the loop
-	 * (that is, to the same size the application currently thinks it is),
-	 * tmux may have gone through several resizes internally and thrown
-	 * away parts of the screen. So we need the application to actually
-	 * redraw even though its final size has not changed.
-	 */
-
-	if (wp->flags & PANE_RESIZEFORCE) {
-		wp->flags &= ~PANE_RESIZEFORCE;
-		return (0);
-	}
-
-	if (wp->sx != wp->osx ||
-	    wp->sy != wp->osy ||
-	    wp->sx <= 1 ||
-	    wp->sy <= 1)
-		return (0);
-
-	memset(&ws, 0, sizeof ws);
-	ws.ws_col = wp->sx;
-	ws.ws_row = wp->sy - 1;
-	if (wp->fd != -1 && ioctl(wp->fd, TIOCSWINSZ, &ws) == -1)
-#ifdef __sun
-		if (errno != EINVAL && errno != ENXIO)
-#endif
-		fatal("ioctl failed");
-	log_debug("%s: %%%u forcing resize", __func__, wp->id);
-
-	evtimer_add(&wp->resize_timer, &tv);
-	wp->flags |= PANE_RESIZEFORCE;
-	return (1);
-}
+void		screen_reflow(struct screen *, u_int);
 
 /* Resize timer event. */
 static void
 server_client_resize_event(__unused int fd, __unused short events, void *data)
 {
 	struct window_pane	*wp = data;
-	struct winsize		 ws;
+	struct screen		*s = &wp->base;
 
 	evtimer_del(&wp->resize_timer);
 
+	if (wp->flags & PANE_RESIZE)
+		return;
+
+	if (!(wp->flags & PANE_REFLOW))
+		return;
+
+	log_debug("%s: %%%u reflow to %u", __func__, wp->id, wp->sx);
+
+	if (wp->saved_grid == NULL) {
+		log_debug("%s: %%%u cur sp: %u, %d", __func__, wp->id, s->cy, s->cx);
+
+		screen_reflow(s, wp->sx);
+		wp->flags |= PANE_REDRAW;
+	}
+
+	wp->flags &= ~PANE_REFLOW;
+
+	if (wp->mode != NULL)
+		wp->mode->resize(wp, wp->sx, wp->sy);
+}
+
+/* Check if pane should be resized. */
+static void
+server_client_check_resize(struct window_pane *wp)
+{
+	struct timeval	 tv = {.tv_sec = 0, .tv_usec = 20000 };
+	struct winsize		 ws;
+
 	if (!(wp->flags & PANE_RESIZE))
 		return;
-	if (server_client_resize_force(wp))
-		return;
+	log_debug("%s: %%%u resize to %u,%u", __func__, wp->id, wp->sx, wp->sy);
 
 	memset(&ws, 0, sizeof ws);
 	ws.ws_col = wp->sx;
@@ -1107,40 +1096,14 @@ server_client_resize_event(__unused int fd, __unused short events, void *data)
 		if (errno != EINVAL && errno != ENXIO)
 #endif
 		fatal("ioctl failed");
-	log_debug("%s: %%%u resize to %u,%u", __func__, wp->id, wp->sx, wp->sy);
 
+	wp->flags |= PANE_REDRAW;
 	wp->flags &= ~PANE_RESIZE;
-
-	wp->osx = wp->sx;
-	wp->osy = wp->sy;
-}
-
-/* Check if pane should be resized. */
-static void
-server_client_check_resize(struct window_pane *wp)
-{
-	struct timeval	 tv = { .tv_usec = 250000 };
-
-	if (!(wp->flags & PANE_RESIZE))
-		return;
-	log_debug("%s: %%%u resize to %u,%u", __func__, wp->id, wp->sx, wp->sy);
 
 	if (!event_initialized(&wp->resize_timer))
 		evtimer_set(&wp->resize_timer, server_client_resize_event, wp);
 
-	/*
-	 * The first resize should happen immediately, so if the timer is not
-	 * running, do it now.
-	 */
-	if (!evtimer_pending(&wp->resize_timer, NULL))
-		server_client_resize_event(-1, 0, wp);
-
-	/*
-	 * If the pane is in the alternate screen, let the timer expire and
-	 * resize to give the application a chance to redraw. If not, keep
-	 * pushing the timer back.
-	 */
-	if (wp->saved_grid != NULL && evtimer_pending(&wp->resize_timer, NULL))
+	if (!(wp->flags & PANE_REFLOW))
 		return;
 	evtimer_del(&wp->resize_timer);
 	evtimer_add(&wp->resize_timer, &tv);

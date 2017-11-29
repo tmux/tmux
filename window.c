@@ -819,8 +819,8 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	wp->xoff = 0;
 	wp->yoff = 0;
 
-	wp->sx = wp->osx = sx;
-	wp->sy = wp->osx = sy;
+	wp->sx = sx;
+	wp->sy = sy;
 
 	wp->pipe_fd = -1;
 	wp->pipe_off = 0;
@@ -1061,11 +1061,12 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 	wp->sx = sx;
 	wp->sy = sy;
 
-	screen_resize(&wp->base, sx, sy, wp->saved_grid == NULL);
-	if (wp->mode != NULL)
-		wp->mode->resize(wp, sx, sy);
+	screen_resize(&wp->base, sx, sy, 0);
 
 	wp->flags |= PANE_RESIZE;
+
+	if (wp->saved_grid == NULL)
+		wp->flags |= PANE_REFLOW;
 }
 
 /*

@@ -674,6 +674,8 @@ struct screen {
 	u_int			 cx;		/* cursor x */
 	u_int			 cy;		/* cursor y */
 
+	u_int			 winch_mod_y;
+
 	u_int			 cstyle;	/* cursor style */
 	char			*ccolour;	/* cursor colour string */
 
@@ -766,9 +768,6 @@ struct window_pane {
 	u_int		 sx;
 	u_int		 sy;
 
-	u_int		 osx;
-	u_int		 osy;
-
 	u_int		 xoff;
 	u_int		 yoff;
 
@@ -777,7 +776,7 @@ struct window_pane {
 #define PANE_DROP 0x2
 #define PANE_FOCUSED 0x4
 #define PANE_RESIZE 0x8
-#define PANE_RESIZEFORCE 0x10
+#define PANE_REFLOW 0x10
 #define PANE_FOCUSPUSH 0x20
 #define PANE_INPUTOFF 0x40
 #define PANE_CHANGED 0x80
@@ -2000,7 +1999,7 @@ char	*grid_string_cells(struct grid *, u_int, u_int, u_int,
 	     struct grid_cell **, int, int, int);
 void	 grid_duplicate_lines(struct grid *, u_int, struct grid *, u_int,
 	     u_int);
-void	 grid_reflow(struct grid *, u_int, u_int *);
+void	 grid_reflow(struct grid *, u_int, u_int *, u_int);
 
 /* grid-view.c */
 void	 grid_view_get_cell(struct grid *, u_int, u_int, struct grid_cell *);
