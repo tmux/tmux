@@ -1133,6 +1133,16 @@ grid_reflow(struct grid *gd, u_int sx, u_int *cursor, u_int winch_mod_y)
 	    sx);
 	cy = gd->hsize + (*cursor);
 
+	if (gd->hsize + winch_mod_y > 0) {
+		/*
+		 * The line above the area rewritten by the subprocess on
+		 * SIGWINCH must not have the 'wrapped' flag, as joining it
+		 * with the rewritten area tends to produce a lot of junk.
+		 */
+		gd->linedata[gd->hsize + winch_mod_y - 1].flags &=
+		    ~GRID_LINE_WRAPPED;
+	}
+
 	/*
 	 * Loop over lines from top to bottom. The size may change during the
 	 * loop, but it is OK because we are always adding or removing lines
@@ -1191,16 +1201,6 @@ grid_reflow(struct grid *gd, u_int sx, u_int *cursor, u_int winch_mod_y)
 		if (gl->flags & GRID_LINE_WRAPPED)
 			grid_reflow_join(gd, sx, yy, width, &cy);
 	}
-
-	// if (gd->hsize + winch_mod_y > 0) {
-	// 	/*
-	// 	 * The line above the cursor must not have the 'wrapped' flag,
-	// 	 * as joining it with the cursor line tends to produce a lot of
-	// 	 * junk.
-	// 	 */
-	// 	gd->linedata[gd->hsize + winch_mod_y - 1].flags &=
-	// 	    ~GRID_LINE_WRAPPED;
-	// }
 
 	if (gd->hscrolled > gd->hsize)
 		gd->hscrolled = gd->hsize;
