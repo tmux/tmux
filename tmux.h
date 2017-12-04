@@ -675,6 +675,7 @@ struct screen {
 	u_int			 cy;		/* cursor y */
 
 	u_int			 winch_mod_y;
+	int			 force_wrap_disabled;
 
 	u_int			 cstyle;	/* cursor style */
 	char			*ccolour;	/* cursor colour string */
@@ -2162,6 +2163,7 @@ int		 window_pane_destroy_ready(struct window_pane *);
 int		 window_pane_spawn(struct window_pane *, int, char **,
 		     const char *, const char *, const char *, struct environ *,
 		     struct termios *, char **);
+void		 window_pane_restart_resize_timer(struct window_pane *, int);
 void		 window_pane_resize(struct window_pane *, u_int, u_int);
 void		 window_pane_alternate_on(struct window_pane *,
 		     struct grid_cell *, int);

@@ -1041,46 +1041,12 @@ server_client_loop(void)
 
 void		screen_reflow(struct screen *, u_int);
 
-/* Resize timer event. */
 static void
-server_client_resize_event(__unused int fd, __unused short events, void *data)
+server_client_actual_resize(struct window_pane *wp)
 {
-	struct window_pane	*wp = data;
-	struct screen		*s = &wp->base;
+	struct winsize ws;
 
-	evtimer_del(&wp->resize_timer);
-
-	if (wp->flags & PANE_RESIZE)
-		return;
-
-	if (!(wp->flags & PANE_REFLOW))
-		return;
-
-	log_debug("%s: %%%u reflow to %u", __func__, wp->id, wp->sx);
-
-	if (wp->saved_grid == NULL) {
-		log_debug("%s: %%%u cur sp: %u, %d", __func__, wp->id, s->cy, s->cx);
-
-		screen_reflow(s, wp->sx);
-		wp->flags |= PANE_REDRAW;
-	}
-
-	wp->flags &= ~PANE_REFLOW;
-
-	if (wp->mode != NULL)
-		wp->mode->resize(wp, wp->sx, wp->sy);
-}
-
-/* Check if pane should be resized. */
-static void
-server_client_check_resize(struct window_pane *wp)
-{
-	struct timeval	 tv = {.tv_sec = 0, .tv_usec = 20000 };
-	struct winsize		 ws;
-
-	if (!(wp->flags & PANE_RESIZE))
-		return;
-	log_debug("%s: %%%u resize to %u,%u", __func__, wp->id, wp->sx, wp->sy);
+	wp->base.force_wrap_disabled = 0;
 
 	memset(&ws, 0, sizeof ws);
 	ws.ws_col = wp->sx;
@@ -1095,18 +1061,65 @@ server_client_check_resize(struct window_pane *wp)
 		 */
 		if (errno != EINVAL && errno != ENXIO)
 #endif
-		fatal("ioctl failed");
+			fatal("ioctl failed");
+
+	wp->flags &= ~PANE_RESIZE;
 
 	wp->flags |= PANE_REDRAW;
-	wp->flags &= ~PANE_RESIZE;
+	wp->base.winch_mod_y = wp->sy;
+}
+
+/* Resize timer event. */
+static void
+server_client_resize_event(__unused int fd, __unused short events, void *data)
+{
+	struct window_pane	*wp = data;
+	struct screen		*s = &wp->base;
+
+	evtimer_del(&wp->resize_timer);
+
+	if (wp->flags & PANE_RESIZE) {
+		server_client_actual_resize(wp);
+		window_pane_restart_resize_timer(wp, 1);
+		return;
+	}
+
+	if (wp->flags & PANE_REFLOW) {
+		log_debug("%s: %%%u reflow to %u", __func__, wp->id, wp->sx);
+
+		if (wp->saved_grid == NULL) {
+			log_debug("%s: %%%u cur sp: %u, %d", __func__, wp->id,
+			    s->cy, s->cx);
+
+			screen_reflow(s, wp->sx);
+			wp->flags |= PANE_REDRAW;
+		}
+
+		wp->flags &= ~PANE_REFLOW;
+	}
+
+	if (wp->mode != NULL)
+		wp->mode->resize(wp, wp->sx, wp->sy);
+}
+
+/* Check if pane should be resized. */
+static void
+server_client_check_resize(struct window_pane *wp)
+{
+	if (!(wp->flags & PANE_RESIZE))
+		return;
+	if (evtimer_initialized(&wp->resize_timer) &&
+	    evtimer_pending(&wp->resize_timer, NULL))
+		return;
+
+	log_debug("%s: %%%u resize to %u,%u", __func__, wp->id, wp->sx, wp->sy);
+
+	server_client_actual_resize(wp);
 
 	if (!event_initialized(&wp->resize_timer))
 		evtimer_set(&wp->resize_timer, server_client_resize_event, wp);
 
-	if (!(wp->flags & PANE_REFLOW))
-		return;
-	evtimer_del(&wp->resize_timer);
-	evtimer_add(&wp->resize_timer, &tv);
+	window_pane_restart_resize_timer(wp, 1);
 }
 
 /* Check whether pane should be focused. */

@@ -204,10 +204,10 @@ screen_resize(struct screen *s, u_int sx, u_int sy, int reflow)
 	if (sy != screen_size_y(s))
 		screen_resize_y(s, sy);
 
-	s->winch_mod_y = sy;
-
-	if (reflow)
+	if (reflow) {
+		s->winch_mod_y = sy;
 		screen_reflow(s, sx);
+	}
 }
 
 static void

@@ -1054,6 +1054,17 @@ window_pane_error_callback(__unused struct bufferevent *bufev,
 }
 
 void
+window_pane_restart_resize_timer(struct window_pane *wp, int force_start)
+{
+	struct timeval tv = { .tv_sec = 0, .tv_usec = 20000 };
+
+	if (force_start || evtimer_pending(&wp->resize_timer, NULL)) {
+		evtimer_del(&wp->resize_timer);
+		evtimer_add(&wp->resize_timer, &tv);
+	}
+}
+
+void
 window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 {
 	if (sx == wp->sx && sy == wp->sy)
@@ -1064,9 +1075,12 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 	screen_resize(&wp->base, sx, sy, 0);
 
 	wp->flags |= PANE_RESIZE;
-
 	if (wp->saved_grid == NULL)
 		wp->flags |= PANE_REFLOW;
+
+	wp->base.force_wrap_disabled = 1;
+
+	window_pane_restart_resize_timer(wp, 0);
 }
 
 /*
