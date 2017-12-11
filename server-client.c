@@ -1065,6 +1065,7 @@ server_client_actual_resize(struct window_pane *wp)
 
 	wp->flags |= PANE_REDRAW;
 	wp->base.winch_mod_y = wp->sy;
+	log_debug("%s: reset winch (to %u)", __func__, wp->sy);
 }
 
 /* Resize timer event. */
