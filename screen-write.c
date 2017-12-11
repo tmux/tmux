@@ -1253,6 +1253,11 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only)
 	if (scroll_only)
 		return;
 
+	if (s->cy < s->winch_mod_y) {
+		log_debug("%s: winch (at %u)", __func__, s->cy);
+		s->winch_mod_y = s->cy;
+	}
+
 	cx = s->cx; cy = s->cy;
 	for (y = 0; y < screen_size_y(s); y++) {
 		TAILQ_FOREACH_SAFE(ci, &ctx->list[y].items, entry, tmp) {
@@ -1296,9 +1301,6 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 
 	log_debug("%s: %u %s (at %u,%u)", __func__, ci->used, ci->data, s->cx,
 	    s->cy);
-
-	if (s->cy < s->winch_mod_y)
-		s->winch_mod_y = s->cy;
 
 	if (s->cx != 0) {
 		for (xx = s->cx; xx > 0; xx--) {
