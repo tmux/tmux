@@ -1046,6 +1046,8 @@ server_client_actual_resize(struct window_pane *wp)
 {
 	struct winsize ws;
 
+	wp->base.force_wrap_disabled = 0;
+
 	memset(&ws, 0, sizeof ws);
 	ws.ws_col = wp->sx;
 	ws.ws_row = wp->sy;
@@ -1096,8 +1098,6 @@ server_client_resize_event(__unused int fd, __unused short events, void *data)
 
 		wp->flags &= ~PANE_REFLOW;
 	}
-
-	wp->base.force_wrap_disabled = 0;
 
 	if (wp->mode != NULL)
 		wp->mode->resize(wp, wp->sx, wp->sy);
