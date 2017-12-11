@@ -1325,7 +1325,7 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 	}
 }
 
-int
+static int
 screen_is_effective_wrapping(struct screen *s)
 {
 	return (s->mode & MODE_WRAP) && !s->force_wrap_disabled;
