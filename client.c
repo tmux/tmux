@@ -338,6 +338,10 @@ client_main(struct event_base *base, int argc, char **argv, int flags)
 		size = 0;
 		for (i = 0; i < argc; i++)
 			size += strlen(argv[i]) + 1;
+		if (size > MAX_IMSGSIZE - (sizeof *data)) {
+			fprintf(stderr, "command too long\n");
+			return (1);
+		}
 		data = xmalloc((sizeof *data) + size);
 
 		/* Prepare command for server. */
