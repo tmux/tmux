@@ -453,6 +453,7 @@ client_write(int fd, const char *data, size_t size)
 {
 	ssize_t	used;
 
+	log_debug("%s: %.*s", __func__, (int)size, data);
 	while (size != 0) {
 		used = write(fd, data, size);
 		if (used == -1) {
