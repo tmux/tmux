@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <stdlib.h>
 #include <string.h>
 
 #include "tmux.h"
@@ -299,6 +300,7 @@ screen_redraw_make_pane_status(struct client *c, struct window *w,
 	screen_write_cnputs(&ctx, outlen, &gc, "%s", out);
 	screen_write_stop(&ctx);
 
+	free(out);
 	format_free(ft);
 
 	wp->status_size = outlen;
