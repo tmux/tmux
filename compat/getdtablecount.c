@@ -30,19 +30,12 @@ getdtablecount(void)
 {
 	char	path[PATH_MAX];
 	glob_t	g;
-	int	n;
+	int	n = 0;
 
 	if (snprintf(path, sizeof path, "/proc/%ld/fd/*", (long)getpid()) < 0)
 		fatal("snprintf overflow");
-	switch (glob(path, 0, NULL, &g)) {
-	case GLOB_NOMATCH:
-		return (0);
-	case 0:
-		break;
-	default:
-		fatal("glob(\"%s\") failed", path);
-	}
-	n = g.gl_pathc;
+	if (glob(path, 0, NULL, &g) == 0)
+		n = g.gl_pathc;
 	globfree(&g);
 	return (n);
 }
