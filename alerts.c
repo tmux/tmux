@@ -200,8 +200,10 @@ alerts_check_bell(struct window *w)
 		 * not check WINLINK_BELL).
 		 */
 		s = wl->session;
-		if (s->curw != wl)
+		if (s->curw != wl) {
 			wl->flags |= WINLINK_BELL;
+			server_status_session(s);
+		}
 		if (!alerts_action_applies(wl, "bell-action"))
 			continue;
 		notify_winlink("alert-bell", wl);
@@ -234,8 +236,10 @@ alerts_check_activity(struct window *w)
 		if (wl->flags & WINLINK_ACTIVITY)
 			continue;
 		s = wl->session;
-		if (s->curw != wl)
+		if (s->curw != wl) {
 			wl->flags |= WINLINK_ACTIVITY;
+			server_status_session(s);
+		}
 		if (!alerts_action_applies(wl, "activity-action"))
 			continue;
 		notify_winlink("alert-activity", wl);
@@ -268,8 +272,10 @@ alerts_check_silence(struct window *w)
 		if (wl->flags & WINLINK_SILENCE)
 			continue;
 		s = wl->session;
-		if (s->curw != wl)
+		if (s->curw != wl) {
 			wl->flags |= WINLINK_SILENCE;
+			server_status_session(s);
+		}
 		if (!alerts_action_applies(wl, "silence-action"))
 			continue;
 		notify_winlink("alert-silence", wl);
