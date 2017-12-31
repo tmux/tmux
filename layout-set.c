@@ -138,6 +138,8 @@ layout_set_even(struct window *w, enum layout_type type)
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		lcnew = layout_create_cell(lc);
 		layout_make_leaf(lcnew, wp);
+		lcnew->sx = w->sx;
+		lcnew->sy = w->sy;
 		TAILQ_INSERT_TAIL(&lc->cells, lcnew, entry);
 	}
 
