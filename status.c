@@ -1339,6 +1339,7 @@ process_key:
 		break;
 	case '\033': /* Escape */
 	case '\003': /* C-c */
+	case '\007': /* C-g */
 		if (c->prompt_inputcb(c, c->prompt_data, NULL, 1) == 0)
 			status_prompt_clear(c);
 		break;
