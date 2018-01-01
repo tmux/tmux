@@ -193,7 +193,7 @@ main(int argc, char **argv)
 {
 	char					*path, *label, **var;
 	char					 tmp[PATH_MAX];
-	const char				*s, *shell;
+	const char				*s, *shell, *cwd;
 	int					 opt, flags, keys;
 	const struct options_table_entry	*oe;
 
@@ -294,8 +294,9 @@ main(int argc, char **argv)
 	global_environ = environ_create();
 	for (var = environ; *var != NULL; var++)
 		environ_put(global_environ, *var);
-	if (getcwd(tmp, sizeof tmp) != NULL)
-		environ_set(global_environ, "PWD", "%s", tmp);
+	if ((cwd = getenv("PWD")) == NULL &&
+	    (cwd = getcwd(tmp, sizeof tmp)) != NULL)
+		environ_set(global_environ, "PWD", "%s", cwd);
 
 	global_options = options_create(NULL);
 	global_s_options = options_create(NULL);
