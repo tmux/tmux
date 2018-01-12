@@ -878,12 +878,37 @@ tty_draw_pane(struct tty *tty, const struct window_pane *wp, u_int py, u_int ox,
 	tty_draw_line(tty, wp, wp->screen, py, ox, oy);
 }
 
+static const struct grid_cell *
+tty_check_codeset(struct tty *tty, const struct grid_cell *gc)
+{
+	static struct grid_cell	new;
+	u_int			n;
+
+	/* Characters less than 0x7f are always fine, no matter what. */
+	if (gc->data.size == 1 && *gc->data.data < 0x7f)
+		return (gc);
+
+	/* UTF-8 terminal and a UTF-8 character - fine. */
+	if (tty->flags & TTY_UTF8)
+		return (gc);
+
+	/* Replace by the right number of underscores. */
+	n = gc->data.width;
+	if (n > UTF8_SIZE)
+		n = UTF8_SIZE;
+	memcpy(&new, gc, sizeof new);
+	new.data.size = n;
+	memset(new.data.data, '_', n);
+	return (&new);
+}
+
 void
 tty_draw_line(struct tty *tty, const struct window_pane *wp,
     struct screen *s, u_int py, u_int ox, u_int oy)
 {
 	struct grid		*gd = s->grid;
 	struct grid_cell	 gc, last;
+	const struct grid_cell	*gcp;
 	u_int			 i, j, ux, sx, nx, width;
 	int			 flags, cleared = 0;
 	char			 buf[512];
@@ -934,18 +959,15 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 
 	for (i = 0; i < sx; i++) {
 		grid_view_get_cell(gd, i, py, &gc);
+		gcp = tty_check_codeset(tty, &gc);
 		if (len != 0 &&
-		    (((~tty->flags & TTY_UTF8) &&
-		    (gc.data.size != 1 ||
-		    *gc.data.data >= 0x7f ||
-		    gc.data.width != 1)) ||
-		    (gc.attr & GRID_ATTR_CHARSET) ||
-		    gc.flags != last.flags ||
-		    gc.attr != last.attr ||
-		    gc.fg != last.fg ||
-		    gc.bg != last.bg ||
-		    ux + width + gc.data.width >= screen_size_x(s) ||
-		    (sizeof buf) - len < gc.data.size)) {
+		    ((gcp->attr & GRID_ATTR_CHARSET) ||
+		    gcp->flags != last.flags ||
+		    gcp->attr != last.attr ||
+		    gcp->fg != last.fg ||
+		    gcp->bg != last.bg ||
+		    ux + width + gcp->data.width >= screen_size_x(s) ||
+		    (sizeof buf) - len < gcp->data.size)) {
 			tty_attributes(tty, &last, wp);
 			tty_putn(tty, buf, len, width);
 			ux += width;
@@ -954,35 +976,21 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 			width = 0;
 		}
 
-		if (gc.flags & GRID_FLAG_SELECTED)
+		if (gcp->flags & GRID_FLAG_SELECTED)
 			screen_select_cell(s, &last, &gc);
 		else
 			memcpy(&last, &gc, sizeof last);
-		if (ux + gc.data.width > screen_size_x(s))
-			for (j = 0; j < gc.data.width; j++) {
+		if (ux + gcp->data.width > screen_size_x(s))
+			for (j = 0; j < gcp->data.width; j++) {
 				if (ux + j > screen_size_x(s))
 					break;
 				tty_putc(tty, ' ');
 				ux++;
 			}
-		else if (((~tty->flags & TTY_UTF8) &&
-		    (gc.data.size != 1 ||
-		    *gc.data.data >= 0x7f ||
-		    gc.data.width != 1)) ||
-		    (gc.attr & GRID_ATTR_CHARSET)) {
-			tty_attributes(tty, &last, wp);
-			if (~tty->flags & TTY_UTF8) {
-				for (j = 0; j < gc.data.width; j++)
-					tty_putc(tty, '_');
-			} else {
-				for (j = 0; j < gc.data.size; j++)
-					tty_putc(tty, gc.data.data[j]);
-			}
-			ux += gc.data.width;
-		} else {
-			memcpy(buf + len, gc.data.data, gc.data.size);
-			len += gc.data.size;
-			width += gc.data.width;
+		else {
+			memcpy(buf + len, gcp->data.data, gcp->data.size);
+			len += gcp->data.size;
+			width += gcp->data.width;
 		}
 	}
 	if (len != 0) {
@@ -1409,7 +1417,7 @@ static void
 tty_cell(struct tty *tty, const struct grid_cell *gc,
     const struct window_pane *wp)
 {
-	u_int	i;
+	const struct grid_cell	*gcp;
 
 	/* Skip last character if terminal is stupid. */
 	if ((tty->term->flags & TERM_EARLYWRAP) &&
@@ -1425,22 +1433,16 @@ tty_cell(struct tty *tty, const struct grid_cell *gc,
 	tty_attributes(tty, gc, wp);
 
 	/* Get the cell and if ASCII write with putc to do ACS translation. */
-	if (gc->data.size == 1) {
-		if (*gc->data.data < 0x20 || *gc->data.data == 0x7f)
+	gcp = tty_check_codeset(tty, gc);
+	if (gcp->data.size == 1) {
+		if (*gcp->data.data < 0x20 || *gcp->data.data == 0x7f)
 			return;
-		tty_putc(tty, *gc->data.data);
-		return;
-	}
-
-	/* If not UTF-8, write _. */
-	if (!(tty->flags & TTY_UTF8)) {
-		for (i = 0; i < gc->data.width; i++)
-			tty_putc(tty, '_');
+		tty_putc(tty, *gcp->data.data);
 		return;
 	}
 
 	/* Write the data. */
-	tty_putn(tty, gc->data.data, gc->data.size, gc->data.width);
+	tty_putn(tty, gcp->data.data, gcp->data.size, gcp->data.width);
 }
 
 void
