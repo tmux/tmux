@@ -85,6 +85,7 @@ struct input_ctx {
 	u_int			param_list_len;
 
 	struct utf8_data	utf8data;
+	int			utf8started;
 
 	int			ch;
 	int			last;
@@ -146,9 +147,7 @@ static void	input_csi_dispatch_sgr_256(struct input_ctx *, int, u_int *);
 static void	input_csi_dispatch_sgr_rgb(struct input_ctx *, int, u_int *);
 static void	input_csi_dispatch_sgr(struct input_ctx *);
 static int	input_dcs_dispatch(struct input_ctx *);
-static int	input_utf8_open(struct input_ctx *);
-static int	input_utf8_add(struct input_ctx *);
-static int	input_utf8_close(struct input_ctx *);
+static int	input_top_bit_set(struct input_ctx *);
 
 /* Command table comparison function. */
 static int	input_table_compare(const void *, const void *);
@@ -314,9 +313,6 @@ static const struct input_transition input_state_osc_string_table[];
 static const struct input_transition input_state_apc_string_table[];
 static const struct input_transition input_state_rename_string_table[];
 static const struct input_transition input_state_consume_st_table[];
-static const struct input_transition input_state_utf8_three_table[];
-static const struct input_transition input_state_utf8_two_table[];
-static const struct input_transition input_state_utf8_one_table[];
 
 /* ground state definition. */
 static const struct input_state input_state_ground = {
@@ -437,27 +433,6 @@ static const struct input_state input_state_consume_st = {
 	input_state_consume_st_table
 };
 
-/* utf8_three state definition. */
-static const struct input_state input_state_utf8_three = {
-	"utf8_three",
-	NULL, NULL,
-	input_state_utf8_three_table
-};
-
-/* utf8_two state definition. */
-static const struct input_state input_state_utf8_two = {
-	"utf8_two",
-	NULL, NULL,
-	input_state_utf8_two_table
-};
-
-/* utf8_one state definition. */
-static const struct input_state input_state_utf8_one = {
-	"utf8_one",
-	NULL, NULL,
-	input_state_utf8_one_table
-};
-
 /* ground state table. */
 static const struct input_transition input_state_ground_table[] = {
 	INPUT_STATE_ANYWHERE,
@@ -467,11 +442,7 @@ static const struct input_transition input_state_ground_table[] = {
 	{ 0x1c, 0x1f, input_c0_dispatch, NULL },
 	{ 0x20, 0x7e, input_print,	 NULL },
 	{ 0x7f, 0x7f, NULL,		 NULL },
-	{ 0x80, 0xc1, NULL,		 NULL },
-	{ 0xc2, 0xdf, input_utf8_open,	 &input_state_utf8_one },
-	{ 0xe0, 0xef, input_utf8_open,	 &input_state_utf8_two },
-	{ 0xf0, 0xf4, input_utf8_open,	 &input_state_utf8_three },
-	{ 0xf5, 0xff, NULL,		 NULL },
+	{ 0x80, 0xff, input_top_bit_set, NULL },
 
 	{ -1, -1, NULL, NULL }
 };
@@ -713,39 +684,6 @@ static const struct input_transition input_state_consume_st_table[] = {
 	{ 0x19, 0x19, NULL,	    NULL },
 	{ 0x1c, 0x1f, NULL,	    NULL },
 	{ 0x20, 0xff, NULL,	    NULL },
-
-	{ -1, -1, NULL, NULL }
-};
-
-/* utf8_three state table. */
-static const struct input_transition input_state_utf8_three_table[] = {
-	/* No INPUT_STATE_ANYWHERE */
-
-	{ 0x00, 0x7f, NULL,		&input_state_ground },
-	{ 0x80, 0xbf, input_utf8_add,	&input_state_utf8_two },
-	{ 0xc0, 0xff, NULL,		&input_state_ground },
-
-	{ -1, -1, NULL, NULL }
-};
-
-/* utf8_two state table. */
-static const struct input_transition input_state_utf8_two_table[] = {
-	/* No INPUT_STATE_ANYWHERE */
-
-	{ 0x00, 0x7f, NULL,	      &input_state_ground },
-	{ 0x80, 0xbf, input_utf8_add, &input_state_utf8_one },
-	{ 0xc0, 0xff, NULL,	      &input_state_ground },
-
-	{ -1, -1, NULL, NULL }
-};
-
-/* utf8_one state table. */
-static const struct input_transition input_state_utf8_one_table[] = {
-	/* No INPUT_STATE_ANYWHERE */
-
-	{ 0x00, 0x7f, NULL,		&input_state_ground },
-	{ 0x80, 0xbf, input_utf8_close, &input_state_ground },
-	{ 0xc0, 0xff, NULL,		&input_state_ground },
 
 	{ -1, -1, NULL, NULL }
 };
@@ -1059,6 +997,8 @@ input_print(struct input_ctx *ictx)
 {
 	int	set;
 
+	ictx->utf8started = 0; /* can't be valid UTF-8 */
+
 	set = ictx->cell.set == 0 ? ictx->cell.g0set : ictx->cell.g1set;
 	if (set == 1)
 		ictx->cell.cell.attr |= GRID_ATTR_CHARSET;
@@ -1131,6 +1071,8 @@ input_c0_dispatch(struct input_ctx *ictx)
 	struct screen_write_ctx	*sctx = &ictx->ctx;
 	struct window_pane	*wp = ictx->wp;
 	struct screen		*s = sctx->s;
+
+	ictx->utf8started = 0; /* can't be valid UTF-8 */
 
 	log_debug("%s: '%c'", __func__, ictx->ch);
 
@@ -2064,47 +2006,29 @@ input_exit_rename(struct input_ctx *ictx)
 
 /* Open UTF-8 character. */
 static int
-input_utf8_open(struct input_ctx *ictx)
+input_top_bit_set(struct input_ctx *ictx)
 {
 	struct utf8_data	*ud = &ictx->utf8data;
 
-	if (utf8_open(ud, ictx->ch) != UTF8_MORE)
-		fatalx("UTF-8 open invalid %#x", ictx->ch);
-
-	log_debug("%s %hhu", __func__, ud->size);
 	ictx->last = -1;
 
-	return (0);
-}
-
-/* Append to UTF-8 character. */
-static int
-input_utf8_add(struct input_ctx *ictx)
-{
-	struct utf8_data	*ud = &ictx->utf8data;
-
-	if (utf8_append(ud, ictx->ch) != UTF8_MORE)
-		fatalx("UTF-8 add invalid %#x", ictx->ch);
-
-	log_debug("%s", __func__);
-
-	return (0);
-}
-
-/* Close UTF-8 string. */
-static int
-input_utf8_close(struct input_ctx *ictx)
-{
-	struct utf8_data	*ud = &ictx->utf8data;
-
-	if (utf8_append(ud, ictx->ch) != UTF8_DONE) {
-		/*
-		 * An error here could be invalid UTF-8 or it could be a
-		 * nonprintable character for which we can't get the
-		 * width. Drop it.
-		 */
+	if (!ictx->utf8started) {
+		if (utf8_open(ud, ictx->ch) != UTF8_MORE)
+			return (0);
+		ictx->utf8started = 1;
 		return (0);
 	}
+
+	switch (utf8_append(ud, ictx->ch)) {
+	case UTF8_MORE:
+		return (0);
+	case UTF8_ERROR:
+		ictx->utf8started = 0;
+		return (0);
+	case UTF8_DONE:
+		break;
+	}
+	ictx->utf8started = 0;
 
 	log_debug("%s %hhu '%*s' (width %hhu)", __func__, ud->size,
 	    (int)ud->size, ud->data, ud->width);
