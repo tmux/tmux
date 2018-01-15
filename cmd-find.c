@@ -588,8 +588,6 @@ cmd_find_get_pane_with_window(struct cmd_find_state *fs, const char *pane)
 
 	/* Try special characters. */
 	if (strcmp(pane, "!") == 0) {
-		if (fs->w->last == NULL)
-			return (-1);
 		fs->wp = fs->w->last;
 		if (fs->wp == NULL)
 			return (-1);
