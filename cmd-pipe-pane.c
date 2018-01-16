@@ -36,6 +36,7 @@
 
 static enum cmd_retval	cmd_pipe_pane_exec(struct cmd *, struct cmdq_item *);
 
+static void cmd_pipe_pane_read_callback(struct bufferevent *, void *);
 static void cmd_pipe_pane_write_callback(struct bufferevent *, void *);
 static void cmd_pipe_pane_error_callback(struct bufferevent *, short, void *);
 
@@ -43,8 +44,8 @@ const struct cmd_entry cmd_pipe_pane_entry = {
 	.name = "pipe-pane",
 	.alias = "pipep",
 
-	.args = { "ot:", 0, 1 },
-	.usage = "[-o] " CMD_TARGET_PANE_USAGE " [command]",
+	.args = { "IOot:", 0, 1 },
+	.usage = "[-IOo] " CMD_TARGET_PANE_USAGE " [command]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -61,7 +62,7 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct session		*s = item->target.s;
 	struct winlink		*wl = item->target.wl;
 	char			*cmd;
-	int			 old_fd, pipe_fd[2], null_fd;
+	int			 old_fd, pipe_fd[2], null_fd, in, out;
 	struct format_tree	*ft;
 	sigset_t		 set, oldset;
 
@@ -91,6 +92,15 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(self->args, 'o') && old_fd != -1)
 		return (CMD_RETURN_NORMAL);
 
+	/* What do we want to do? Neither -I or -O is -O. */
+	if (args_has(self->args, 'I')) {
+		in = 1;
+		out = args_has(self->args, 'O');
+	} else {
+		in = 0;
+		out = 1;
+	}
+
 	/* Open the new pipe. */
 	if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, pipe_fd) != 0) {
 		cmdq_error(item, "socketpair error: %s", strerror(errno));
@@ -119,19 +129,25 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 		sigprocmask(SIG_SETMASK, &oldset, NULL);
 		close(pipe_fd[0]);
 
-		if (dup2(pipe_fd[1], STDIN_FILENO) == -1)
-			_exit(1);
-		if (pipe_fd[1] != STDIN_FILENO)
-			close(pipe_fd[1]);
-
 		null_fd = open(_PATH_DEVNULL, O_WRONLY, 0);
-		if (dup2(null_fd, STDOUT_FILENO) == -1)
-			_exit(1);
+		if (out) {
+			if (dup2(pipe_fd[1], STDIN_FILENO) == -1)
+				_exit(1);
+		} else {
+			if (dup2(null_fd, STDIN_FILENO) == -1)
+				_exit(1);
+		}
+		if (in) {
+			if (dup2(pipe_fd[1], STDOUT_FILENO) == -1)
+				_exit(1);
+			if (pipe_fd[1] != STDOUT_FILENO)
+				close(pipe_fd[1]);
+		} else {
+			if (dup2(null_fd, STDOUT_FILENO) == -1)
+				_exit(1);
+		}
 		if (dup2(null_fd, STDERR_FILENO) == -1)
 			_exit(1);
-		if (null_fd != STDOUT_FILENO && null_fd != STDERR_FILENO)
-			close(null_fd);
-
 		closefrom(STDERR_FILENO + 1);
 
 		execl(_PATH_BSHELL, "sh", "-c", cmd, (char *) NULL);
@@ -144,16 +160,37 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 		wp->pipe_fd = pipe_fd[0];
 		wp->pipe_off = EVBUFFER_LENGTH(wp->event->input);
 
-		wp->pipe_event = bufferevent_new(wp->pipe_fd, NULL,
-		    cmd_pipe_pane_write_callback, cmd_pipe_pane_error_callback,
-		    wp);
-		bufferevent_enable(wp->pipe_event, EV_WRITE);
-
 		setblocking(wp->pipe_fd, 0);
+		wp->pipe_event = bufferevent_new(wp->pipe_fd,
+		    cmd_pipe_pane_read_callback,
+		    cmd_pipe_pane_write_callback,
+		    cmd_pipe_pane_error_callback,
+		    wp);
+		if (out)
+			bufferevent_enable(wp->pipe_event, EV_WRITE);
+		if (in)
+			bufferevent_enable(wp->pipe_event, EV_READ);
 
 		free(cmd);
 		return (CMD_RETURN_NORMAL);
 	}
+}
+
+static void
+cmd_pipe_pane_read_callback(__unused struct bufferevent *bufev, void *data)
+{
+	struct window_pane	*wp = data;
+	struct evbuffer		*evb = wp->pipe_event->input;
+	size_t			 available;
+
+	available = EVBUFFER_LENGTH(evb);
+	log_debug("%%%u pipe read %zu", wp->id, available);
+
+	bufferevent_write(wp->event, EVBUFFER_DATA(evb), available);
+	evbuffer_drain(evb, available);
+
+	if (window_pane_destroy_ready(wp))
+		server_destroy_pane(wp, 1);
 }
 
 static void
@@ -162,6 +199,7 @@ cmd_pipe_pane_write_callback(__unused struct bufferevent *bufev, void *data)
 	struct window_pane	*wp = data;
 
 	log_debug("%%%u pipe empty", wp->id);
+
 	if (window_pane_destroy_ready(wp))
 		server_destroy_pane(wp, 1);
 }
