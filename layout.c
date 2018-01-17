@@ -97,9 +97,24 @@ void
 layout_print_cell(struct layout_cell *lc, const char *hdr, u_int n)
 {
 	struct layout_cell	*lcchild;
+	const char		*type;
 
-	log_debug("%s:%*s%p type %u [parent %p] wp=%p [%u,%u %ux%u]", hdr, n,
-	    " ", lc, lc->type, lc->parent, lc->wp, lc->xoff, lc->yoff, lc->sx,
+	switch (lc->type) {
+	case LAYOUT_LEFTRIGHT:
+		type = "LEFTRIGHT";
+		break;
+	case LAYOUT_TOPBOTTOM:
+		type = "TOPBOTTOM";
+		break;
+	case LAYOUT_WINDOWPANE:
+		type = "WINDOWPANE";
+		break;
+	default:
+		type = "UNKNOWN";
+		break;
+	}
+	log_debug("%s:%*s%p type %s [parent %p] wp=%p [%u,%u %ux%u]", hdr, n,
+	    " ", lc, type, lc->parent, lc->wp, lc->xoff, lc->yoff, lc->sx,
 	    lc->sy);
 	switch (lc->type) {
 	case LAYOUT_LEFTRIGHT:
