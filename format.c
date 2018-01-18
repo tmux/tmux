@@ -191,10 +191,15 @@ static void
 format_job_update(struct job *job)
 {
 	struct format_job	*fj = job->data;
-	char			*line;
+	struct evbuffer		*evb = job->event->input;
+	char			*line = NULL, *next;
 	time_t			 t;
 
-	if ((line = evbuffer_readline(job->event->input)) == NULL)
+	while ((next = evbuffer_readline(evb)) != NULL) {
+		free(line);
+		line = next;
+	}
+	if (line == NULL)
 		return;
 	fj->updated = 1;
 
