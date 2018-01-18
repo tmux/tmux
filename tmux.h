@@ -1585,8 +1585,6 @@ void		 hooks_add(struct hooks *, const char *, struct cmd_list *);
 void		 hooks_copy(struct hooks *, struct hooks *);
 void		 hooks_remove(struct hooks *, const char *);
 struct hook	*hooks_find(struct hooks *, const char *);
-void printflike(4, 5) hooks_run(struct hooks *, struct client *,
-		    struct cmd_find_state *, const char *, ...);
 void printflike(4, 5) hooks_insert(struct hooks *, struct cmdq_item *,
 		    struct cmd_find_state *, const char *, ...);
 
