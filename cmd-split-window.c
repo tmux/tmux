@@ -94,9 +94,9 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	else
 		cwd = s->cwd;
 
-	type = LAYOUT_TOPBOTTOM;
+	type = LAYOUT_LEFTRIGHT;
 	if (args_has(args, 'h'))
-		type = LAYOUT_LEFTRIGHT;
+		type = LAYOUT_TOPBOTTOM;
 
 	size = -1;
 	if (args_has(args, 'l')) {
