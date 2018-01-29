@@ -113,6 +113,7 @@
 	* marker lines in history (GitHub issue 1042)
 	* tree mode stuff: make command prompt (:) common code so all modes get it,
 	  predefined filters, tag-all key, ...
+	* drag panes and windows around to move/swap them in choose mode
 
 - hooks
 	* more hooks for various things
