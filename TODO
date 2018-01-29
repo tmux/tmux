@@ -49,6 +49,7 @@
 	* improve word and line selection in copy mode (for example when
 	  dragging it should select by word. compare how xterm works. GitHub
 	  issue 682)
+	* key to search for word under cursor (GitHub issue 1240)
 
 - layout stuff
 	* way to tag a layout as a number/name
