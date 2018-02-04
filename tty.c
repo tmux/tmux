@@ -2051,11 +2051,15 @@ tty_try_colour(struct tty *tty, int colour, const char *type)
 
 	if (colour & COLOUR_FLAG_256) {
 		/*
-		 * If the user has specified -2 to the client, setaf and setab
-		 * may not work (or they may not want to use them), so send the
-		 * usual sequence.
+		 * If the user has specified -2 to the client (meaning
+		 * TERM_256COLOURS is set), setaf and setab may not work (or
+		 * they may not want to use them), so send the usual sequence.
+		 *
+		 * Also if RGB is set, setaf and setab do not support the 256
+		 * colour palette so use the sequences directly there too.
 		 */
-		if (tty->term_flags & TERM_256COLOURS)
+		if ((tty->term_flags & TERM_256COLOURS) ||
+		    tty_term_has(tty->term, TTYC_RGB))
 			goto fallback_256;
 
 		/*
@@ -2096,6 +2100,7 @@ tty_try_colour(struct tty *tty, int colour, const char *type)
 
 fallback_256:
 	xsnprintf(s, sizeof s, "\033[%s;5;%dm", type, colour & 0xff);
+	log_debug("%s: 256 colour fallback: %s", tty->client->name, s);
 	tty_puts(tty, s);
 	return (0);
 }
