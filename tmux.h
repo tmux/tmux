@@ -403,6 +403,7 @@ enum tty_code_code {
 	TTYC_MS,
 	TTYC_OP,
 	TTYC_REV,
+	TTYC_RGB,
 	TTYC_RI,
 	TTYC_RMACS,
 	TTYC_RMCUP,

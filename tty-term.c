@@ -240,6 +240,7 @@ static const struct tty_term_code_entry tty_term_codes[] = {
 	[TTYC_MS] = { TTYCODE_STRING, "Ms" },
 	[TTYC_OP] = { TTYCODE_STRING, "op" },
 	[TTYC_REV] = { TTYCODE_STRING, "rev" },
+	[TTYC_RGB] = { TTYCODE_FLAG, "RGB" },
 	[TTYC_RI] = { TTYCODE_STRING, "ri" },
 	[TTYC_RMACS] = { TTYCODE_STRING, "rmacs" },
 	[TTYC_RMCUP] = { TTYCODE_STRING, "rmcup" },
@@ -531,8 +532,11 @@ tty_term_find(char *name, int fd, char **cause)
 		code->type = TTYCODE_STRING;
 	}
 
-	/* On terminals with RGB colour (TC), fill in setrgbf and setrgbb. */
-	if (tty_term_flag(term, TTYC_TC) &&
+	/*
+	 * On terminals with RGB colour (Tc or RGB), fill in setrgbf and
+	 * setrgbb if they are missing.
+	 */
+	if ((tty_term_flag(term, TTYC_TC) || tty_term_flag(term, TTYC_RGB)) &&
 	    !tty_term_has(term, TTYC_SETRGBF) &&
 	    !tty_term_has(term, TTYC_SETRGBB)) {
 		code = &term->codes[TTYC_SETRGBF];
