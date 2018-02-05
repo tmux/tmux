@@ -193,7 +193,7 @@ server_client_create(int fd)
 	c->tty.sx = 80;
 	c->tty.sy = 24;
 
-	screen_init(&c->status, c->tty.sx, 1, 0);
+	screen_init(&c->status.status, c->tty.sx, 1, 0);
 
 	c->message_string = NULL;
 	TAILQ_INIT(&c->message_log);
@@ -270,12 +270,12 @@ server_client_lost(struct client *c)
 	if (c->stderr_data != c->stdout_data)
 		evbuffer_free(c->stderr_data);
 
-	if (event_initialized(&c->status_timer))
-		evtimer_del(&c->status_timer);
-	screen_free(&c->status);
-	if (c->old_status != NULL) {
-		screen_free(c->old_status);
-		free(c->old_status);
+	if (event_initialized(&c->status.timer))
+		evtimer_del(&c->status.timer);
+	screen_free(&c->status.status);
+	if (c->status.old_status != NULL) {
+		screen_free(c->status.old_status);
+		free(c->status.old_status);
 	}
 
 	free(c->title);

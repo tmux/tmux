@@ -563,7 +563,7 @@ screen_redraw_draw_status(struct client *c, u_int lines, u_int top)
 	else
 		y = tty->sy - lines;
 	for (i = 0; i < lines; i++)
-		tty_draw_line(tty, NULL, &c->status, i, 0, y);
+		tty_draw_line(tty, NULL, &c->status.status, i, 0, y);
 }
 
 /* Draw number on a pane. */
