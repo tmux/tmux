@@ -1312,6 +1312,13 @@ struct cmd_entry {
 	enum cmd_retval	 (*exec)(struct cmd *, struct cmdq_item *);
 };
 
+/* Status line. */
+struct status_line {
+	struct event	 timer;
+	struct screen	 status;
+	struct screen	*old_status;
+};
+
 /* Client connection. */
 typedef int (*prompt_input_cb)(struct client *, void *, const char *, int);
 typedef void (*prompt_free_cb)(void *);
@@ -1354,10 +1361,7 @@ struct client {
 	struct event	 click_timer;
 	u_int		 click_button;
 
-	struct event	 status_timer;
-	struct screen	 status;
-
-	struct screen	*old_status;
+	struct status_line status;
 
 #define CLIENT_TERMINAL 0x1
 #define CLIENT_LOGIN 0x2
