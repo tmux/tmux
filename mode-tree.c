@@ -62,6 +62,7 @@ struct mode_tree_data {
 	int			  preview;
 	char			 *search;
 	char			 *filter;
+	int			  no_matches;
 };
 
 struct mode_tree_item {
@@ -357,7 +358,8 @@ mode_tree_build(struct mode_tree_data *mtd)
 	TAILQ_INIT(&mtd->children);
 
 	mtd->buildcb(mtd->modedata, mtd->sort_type, &tag, mtd->filter);
-	if (TAILQ_EMPTY(&mtd->children))
+	mtd->no_matches = TAILQ_EMPTY(&mtd->children);
+	if (mtd->no_matches)
 		mtd->buildcb(mtd->modedata, mtd->sort_type, &tag, NULL);
 
 	mode_tree_free_items(&mtd->saved);
@@ -479,7 +481,7 @@ mode_tree_draw(struct mode_tree_data *mtd)
 	u_int			 w, h, i, j, sy, box_x, box_y;
 	char			*text, *start, key[7];
 	const char		*tag, *symbol;
-	size_t			 size;
+	size_t			 size, n;
 	int			 keylen;
 
 	if (mtd->line_size == 0)
@@ -587,11 +589,24 @@ mode_tree_draw(struct mode_tree_data *mtd)
 	screen_write_cursormove(&ctx, 0, h);
 	screen_write_box(&ctx, w, sy - h);
 
-	xasprintf(&text, " %s (sort: %s) ", mti->name,
+	xasprintf(&text, " %s (sort: %s)", mti->name,
 	    mtd->sort_list[mtd->sort_type]);
 	if (w - 2 >= strlen(text)) {
 		screen_write_cursormove(&ctx, 1, h);
 		screen_write_puts(&ctx, &gc0, "%s", text);
+
+		if (mtd->no_matches)
+			n = (sizeof "no matches") - 1;
+		else
+			n = (sizeof "active") - 1;
+		if (mtd->filter != NULL && w - 2 >= strlen(text) + 10 + n + 2) {
+			screen_write_puts(&ctx, &gc0, " (filter: ");
+			if (mtd->no_matches)
+				screen_write_puts(&ctx, &gc, "no matches");
+			else
+				screen_write_puts(&ctx, &gc0, "active");
+			screen_write_puts(&ctx, &gc0, ") ");
+		}
 	}
 	free(text);
 
