@@ -555,6 +555,7 @@ enum utf8_state {
 /* Grid line flags. */
 #define GRID_LINE_WRAPPED 0x1
 #define GRID_LINE_EXTENDED 0x2
+#define GRID_LINE_DEAD 0x4
 
 /* Grid cell data. */
 struct grid_cell {
