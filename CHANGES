@@ -1,5 +1,14 @@
 CHANGES FROM 2.6 TO master
 
+* Show if a filter is present in choose modes.
+
+* Add pipe-pane -I to to connect stdin of the child process.
+
+* Use RGB terminfo(5) capability to detect RGB colour terminals (the existing
+  Tc extension remains unchanged).
+
+* Support for ISO colon-separated SGR sequences.
+
 * Add select-layout -E to spread panes out evenly (bound to E key).
 
 * Support wide characters properly when reflowing.

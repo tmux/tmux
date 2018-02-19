@@ -20,7 +20,7 @@ then
 else
     SEQ=seq
 fi	
-SEPARATOR=';'
+SEPARATOR=':'
 
 setBackgroundColor()
 {
