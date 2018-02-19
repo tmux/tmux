@@ -58,6 +58,19 @@ struct input_cell {
 	int			g1set;	/* 1 if ACS */
 };
 
+/* Input parser argument. */
+struct input_param {
+	enum {
+		INPUT_MISSING,
+		INPUT_NUMBER,
+		INPUT_STRING
+	}                       type;
+	union {
+		int		num;
+		char	       *str;
+	};
+};
+
 /* Input parser context. */
 struct input_ctx {
 	struct window_pane     *wp;
@@ -81,7 +94,7 @@ struct input_ctx {
 	size_t			input_len;
 	size_t			input_space;
 
-	int			param_list[24];	/* -1 not present */
+	struct input_param	param_list[24];
 	u_int			param_list_len;
 
 	struct utf8_data	utf8data;
@@ -497,7 +510,7 @@ static const struct input_transition input_state_csi_enter_table[] = {
 	{ 0x1c, 0x1f, input_c0_dispatch,  NULL },
 	{ 0x20, 0x2f, input_intermediate, &input_state_csi_intermediate },
 	{ 0x30, 0x39, input_parameter,	  &input_state_csi_parameter },
-	{ 0x3a, 0x3a, NULL,		  &input_state_csi_ignore },
+	{ 0x3a, 0x3a, input_parameter,	  &input_state_csi_parameter },
 	{ 0x3b, 0x3b, input_parameter,	  &input_state_csi_parameter },
 	{ 0x3c, 0x3f, input_intermediate, &input_state_csi_parameter },
 	{ 0x40, 0x7e, input_csi_dispatch, &input_state_ground },
@@ -515,7 +528,7 @@ static const struct input_transition input_state_csi_parameter_table[] = {
 	{ 0x1c, 0x1f, input_c0_dispatch,  NULL },
 	{ 0x20, 0x2f, input_intermediate, &input_state_csi_intermediate },
 	{ 0x30, 0x39, input_parameter,	  NULL },
-	{ 0x3a, 0x3a, NULL,		  &input_state_csi_ignore },
+	{ 0x3a, 0x3a, input_parameter,	  NULL },
 	{ 0x3b, 0x3b, input_parameter,	  NULL },
 	{ 0x3c, 0x3f, NULL,		  &input_state_csi_ignore },
 	{ 0x40, 0x7e, input_csi_dispatch, &input_state_ground },
@@ -760,6 +773,12 @@ void
 input_free(struct window_pane *wp)
 {
 	struct input_ctx	*ictx = wp->ictx;
+	u_int			 i;
+
+	for (i = 0; i < ictx->param_list_len; i++) {
+		if (ictx->param_list[i].type == INPUT_STRING)
+			free(ictx->param_list[i].str);
+	}
 
 	event_del(&ictx->timer);
 
@@ -902,27 +921,49 @@ input_parse(struct window_pane *wp)
 static int
 input_split(struct input_ctx *ictx)
 {
-	const char	*errstr;
-	char		*ptr, *out;
-	int		 n;
+	const char		*errstr;
+	char			*ptr, *out;
+	struct input_param	*ip;
+	u_int			 i;
 
+	for (i = 0; i < ictx->param_list_len; i++) {
+		if (ictx->param_list[i].type == INPUT_STRING)
+			free(ictx->param_list[i].str);
+	}
 	ictx->param_list_len = 0;
+
 	if (ictx->param_len == 0)
 		return (0);
+	ip = &ictx->param_list[0];
 
 	ptr = ictx->param_buf;
 	while ((out = strsep(&ptr, ";")) != NULL) {
 		if (*out == '\0')
-			n = -1;
+			ip->type = INPUT_MISSING;
 		else {
-			n = strtonum(out, 0, INT_MAX, &errstr);
-			if (errstr != NULL)
-				return (-1);
+			if (strchr(out, ':') != NULL) {
+				ip->type = INPUT_STRING;
+				ip->str = xstrdup(out);
+			} else {
+				ip->type = INPUT_NUMBER;
+				ip->num = strtonum(out, 0, INT_MAX, &errstr);
+				if (errstr != NULL)
+					return (-1);
+			}
 		}
-
-		ictx->param_list[ictx->param_list_len++] = n;
+		ip = &ictx->param_list[++ictx->param_list_len];
 		if (ictx->param_list_len == nitems(ictx->param_list))
 			return (-1);
+	}
+
+	for (i = 0; i < ictx->param_list_len; i++) {
+		ip = &ictx->param_list[i];
+		if (ip->type == INPUT_MISSING)
+			log_debug("parameter %u: missing", i);
+		else if (ip->type == INPUT_STRING)
+			log_debug("parameter %u: string %s", i, ip->str);
+		else if (ip->type == INPUT_NUMBER)
+			log_debug("parameter %u: number %d", i, ip->num);
 	}
 
 	return (0);
@@ -932,14 +973,17 @@ input_split(struct input_ctx *ictx)
 static int
 input_get(struct input_ctx *ictx, u_int validx, int minval, int defval)
 {
-	int	retval;
+	struct input_param	*ip;
+	int			 retval;
 
 	if (validx >= ictx->param_list_len)
 	    return (defval);
-
-	retval = ictx->param_list[validx];
-	if (retval == -1)
+	ip = &ictx->param_list[validx];
+	if (ip->type == INPUT_MISSING)
 		return (defval);
+	if (ip->type == INPUT_STRING)
+		return (-1);
+	retval = ip->num;
 	if (retval < minval)
 		return (minval);
 	return (retval);
@@ -1206,7 +1250,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 	struct screen		       *s = sctx->s;
 	struct input_table_entry       *entry;
 	int				i, n, m;
-	u_int				cx;
+	u_int				cx, bg = ictx->cell.cell.bg;
 
 	if (ictx->flags & INPUT_DISCARD)
 		return (0);
@@ -1231,6 +1275,8 @@ input_csi_dispatch(struct input_ctx *ictx)
 		if (cx > screen_size_x(s) - 1)
 			cx = screen_size_x(s) - 1;
 		n = input_get(ictx, 0, 1, 1);
+		if (n == -1)
+			break;
 		while (cx > 0 && n-- > 0) {
 			do
 				cx--;
@@ -1239,35 +1285,52 @@ input_csi_dispatch(struct input_ctx *ictx)
 		s->cx = cx;
 		break;
 	case INPUT_CSI_CUB:
-		screen_write_cursorleft(sctx, input_get(ictx, 0, 1, 1));
+		n = input_get(ictx, 0, 1, 1);
+		if (n != -1)
+			screen_write_cursorleft(sctx, n);
 		break;
 	case INPUT_CSI_CUD:
-		screen_write_cursordown(sctx, input_get(ictx, 0, 1, 1));
+		n = input_get(ictx, 0, 1, 1);
+		if (n != -1)
+			screen_write_cursordown(sctx, n);
 		break;
 	case INPUT_CSI_CUF:
-		screen_write_cursorright(sctx, input_get(ictx, 0, 1, 1));
+		n = input_get(ictx, 0, 1, 1);
+		if (n != -1)
+			screen_write_cursorright(sctx, n);
 		break;
 	case INPUT_CSI_CUP:
 		n = input_get(ictx, 0, 1, 1);
 		m = input_get(ictx, 1, 1, 1);
-		screen_write_cursormove(sctx, m - 1, n - 1);
+		if (n != -1 && m != -1)
+			screen_write_cursormove(sctx, m - 1, n - 1);
 		break;
 	case INPUT_CSI_WINOPS:
 		input_csi_dispatch_winops(ictx);
 		break;
 	case INPUT_CSI_CUU:
-		screen_write_cursorup(sctx, input_get(ictx, 0, 1, 1));
+		n = input_get(ictx, 0, 1, 1);
+		if (n != -1)
+			screen_write_cursorup(sctx, n);
 		break;
 	case INPUT_CSI_CNL:
-		screen_write_carriagereturn(sctx);
-		screen_write_cursordown(sctx, input_get(ictx, 0, 1, 1));
+		n = input_get(ictx, 0, 1, 1);
+		if (n != -1) {
+			screen_write_carriagereturn(sctx);
+			screen_write_cursordown(sctx, n);
+		}
 		break;
 	case INPUT_CSI_CPL:
-		screen_write_carriagereturn(sctx);
-		screen_write_cursorup(sctx, input_get(ictx, 0, 1, 1));
+		n = input_get(ictx, 0, 1, 1);
+		if (n != -1) {
+			screen_write_carriagereturn(sctx);
+			screen_write_cursorup(sctx, n);
+		}
 		break;
 	case INPUT_CSI_DA:
 		switch (input_get(ictx, 0, 0, 0)) {
+		case -1:
+			break;
 		case 0:
 			input_reply(ictx, "\033[?1;2c");
 			break;
@@ -1278,6 +1341,8 @@ input_csi_dispatch(struct input_ctx *ictx)
 		break;
 	case INPUT_CSI_DA_TWO:
 		switch (input_get(ictx, 0, 0, 0)) {
+		case -1:
+			break;
 		case 0:
 			input_reply(ictx, "\033[>84;0;0c");
 			break;
@@ -1287,24 +1352,30 @@ input_csi_dispatch(struct input_ctx *ictx)
 		}
 		break;
 	case INPUT_CSI_ECH:
-		screen_write_clearcharacter(sctx, input_get(ictx, 0, 1, 1),
-		    ictx->cell.cell.bg);
+		n = input_get(ictx, 0, 1, 1);
+		if (n != -1)
+			screen_write_clearcharacter(sctx, n, bg);
 		break;
 	case INPUT_CSI_DCH:
-		screen_write_deletecharacter(sctx, input_get(ictx, 0, 1, 1),
-		    ictx->cell.cell.bg);
+		n = input_get(ictx, 0, 1, 1);
+		if (n != -1)
+			screen_write_deletecharacter(sctx, n, bg);
 		break;
 	case INPUT_CSI_DECSTBM:
 		n = input_get(ictx, 0, 1, 1);
 		m = input_get(ictx, 1, 1, screen_size_y(s));
-		screen_write_scrollregion(sctx, n - 1, m - 1);
+		if (n != -1 && m != -1)
+			screen_write_scrollregion(sctx, n - 1, m - 1);
 		break;
 	case INPUT_CSI_DL:
-		screen_write_deleteline(sctx, input_get(ictx, 0, 1, 1),
-		    ictx->cell.cell.bg);
+		n = input_get(ictx, 0, 1, 1);
+		if (n != -1)
+			screen_write_deleteline(sctx, n, bg);
 		break;
 	case INPUT_CSI_DSR:
 		switch (input_get(ictx, 0, 0, 0)) {
+		case -1:
+			break;
 		case 5:
 			input_reply(ictx, "\033[0n");
 			break;
@@ -1318,24 +1389,24 @@ input_csi_dispatch(struct input_ctx *ictx)
 		break;
 	case INPUT_CSI_ED:
 		switch (input_get(ictx, 0, 0, 0)) {
+		case -1:
+			break;
 		case 0:
-			screen_write_clearendofscreen(sctx, ictx->cell.cell.bg);
+			screen_write_clearendofscreen(sctx, bg);
 			break;
 		case 1:
-			screen_write_clearstartofscreen(sctx, ictx->cell.cell.bg);
+			screen_write_clearstartofscreen(sctx, bg);
 			break;
 		case 2:
-			screen_write_clearscreen(sctx, ictx->cell.cell.bg);
+			screen_write_clearscreen(sctx, bg);
 			break;
 		case 3:
-			switch (input_get(ictx, 1, 0, 0)) {
-			case 0:
+			if (input_get(ictx, 1, 0, 0) == 0) {
 				/*
 				 * Linux console extension to clear history
 				 * (for example before locking the screen).
 				 */
 				screen_write_clearhistory(sctx);
-				break;
 			}
 			break;
 		default:
@@ -1345,14 +1416,16 @@ input_csi_dispatch(struct input_ctx *ictx)
 		break;
 	case INPUT_CSI_EL:
 		switch (input_get(ictx, 0, 0, 0)) {
+		case -1:
+			break;
 		case 0:
-			screen_write_clearendofline(sctx, ictx->cell.cell.bg);
+			screen_write_clearendofline(sctx, bg);
 			break;
 		case 1:
-			screen_write_clearstartofline(sctx, ictx->cell.cell.bg);
+			screen_write_clearstartofline(sctx, bg);
 			break;
 		case 2:
-			screen_write_clearline(sctx, ictx->cell.cell.bg);
+			screen_write_clearline(sctx, bg);
 			break;
 		default:
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);
@@ -1361,22 +1434,28 @@ input_csi_dispatch(struct input_ctx *ictx)
 		break;
 	case INPUT_CSI_HPA:
 		n = input_get(ictx, 0, 1, 1);
-		screen_write_cursormove(sctx, n - 1, s->cy);
+		if (n != -1)
+			screen_write_cursormove(sctx, n - 1, s->cy);
 		break;
 	case INPUT_CSI_ICH:
-		screen_write_insertcharacter(sctx, input_get(ictx, 0, 1, 1),
-		    ictx->cell.cell.bg);
+		n = input_get(ictx, 0, 1, 1);
+		if (n != -1)
+			screen_write_insertcharacter(sctx, n, bg);
 		break;
 	case INPUT_CSI_IL:
-		screen_write_insertline(sctx, input_get(ictx, 0, 1, 1),
-		    ictx->cell.cell.bg);
+		n = input_get(ictx, 0, 1, 1);
+		if (n != -1)
+			screen_write_insertline(sctx, n, bg);
 		break;
 	case INPUT_CSI_REP:
+		n = input_get(ictx, 0, 1, 1);
+		if (n == -1)
+			break;
+
 		if (ictx->last == -1)
 			break;
 		ictx->ch = ictx->last;
 
-		n = input_get(ictx, 0, 1, 1);
 		for (i = 0; i < n; i++)
 			input_print(ictx);
 		break;
@@ -1405,11 +1484,14 @@ input_csi_dispatch(struct input_ctx *ictx)
 		input_csi_dispatch_sm_private(ictx);
 		break;
 	case INPUT_CSI_SU:
-		screen_write_scrollup(sctx, input_get(ictx, 0, 1, 1),
-		    ictx->cell.cell.bg);
+		n = input_get(ictx, 0, 1, 1);
+		if (n != -1)
+			screen_write_scrollup(sctx, n, bg);
 		break;
 	case INPUT_CSI_TBC:
 		switch (input_get(ictx, 0, 0, 0)) {
+		case -1:
+			break;
 		case 0:
 			if (s->cx < screen_size_x(s))
 				bit_clear(s->tabs, s->cx);
@@ -1424,11 +1506,13 @@ input_csi_dispatch(struct input_ctx *ictx)
 		break;
 	case INPUT_CSI_VPA:
 		n = input_get(ictx, 0, 1, 1);
-		screen_write_cursormove(sctx, s->cx, n - 1);
+		if (n != -1)
+			screen_write_cursormove(sctx, s->cx, n - 1);
 		break;
 	case INPUT_CSI_DECSCUSR:
 		n = input_get(ictx, 0, 0, 0);
-		screen_set_cursor_style(s, n);
+		if (n != -1)
+			screen_set_cursor_style(s, n);
 		break;
 	}
 
@@ -1444,6 +1528,8 @@ input_csi_dispatch_rm(struct input_ctx *ictx)
 
 	for (i = 0; i < ictx->param_list_len; i++) {
 		switch (input_get(ictx, i, 0, -1)) {
+		case -1:
+			break;
 		case 4:		/* IRM */
 			screen_write_mode_clear(&ictx->ctx, MODE_INSERT);
 			break;
@@ -1466,6 +1552,8 @@ input_csi_dispatch_rm_private(struct input_ctx *ictx)
 
 	for (i = 0; i < ictx->param_list_len; i++) {
 		switch (input_get(ictx, i, 0, -1)) {
+		case -1:
+			break;
 		case 1:		/* DECCKM */
 			screen_write_mode_clear(&ictx->ctx, MODE_KCURSOR);
 			break;
@@ -1523,6 +1611,8 @@ input_csi_dispatch_sm(struct input_ctx *ictx)
 
 	for (i = 0; i < ictx->param_list_len; i++) {
 		switch (input_get(ictx, i, 0, -1)) {
+		case -1:
+			break;
 		case 4:		/* IRM */
 			screen_write_mode_set(&ictx->ctx, MODE_INSERT);
 			break;
@@ -1545,6 +1635,8 @@ input_csi_dispatch_sm_private(struct input_ctx *ictx)
 
 	for (i = 0; i < ictx->param_list_len; i++) {
 		switch (input_get(ictx, i, 0, -1)) {
+		case -1:
+			break;
 		case 1:		/* DECCKM */
 			screen_write_mode_set(&ictx->ctx, MODE_KCURSOR);
 			break;
@@ -1673,16 +1765,13 @@ input_csi_dispatch_winops(struct input_ctx *ictx)
 	}
 }
 
-/* Handle CSI SGR for 256 colours. */
-static void
-input_csi_dispatch_sgr_256(struct input_ctx *ictx, int fgbg, u_int *i)
+/* Helper for 256 colour SGR. */
+static int
+input_csi_dispatch_sgr_256_do(struct input_ctx *ictx, int fgbg, int c)
 {
 	struct grid_cell	*gc = &ictx->cell.cell;
-	int			 c;
 
-	(*i)++;
-	c = input_get(ictx, *i, 0, -1);
-	if (c == -1) {
+	if (c == -1 || c > 255) {
 		if (fgbg == 38)
 			gc->fg = 8;
 		else if (fgbg == 48)
@@ -1693,32 +1782,92 @@ input_csi_dispatch_sgr_256(struct input_ctx *ictx, int fgbg, u_int *i)
 		else if (fgbg == 48)
 			gc->bg = c | COLOUR_FLAG_256;
 	}
+	return (1);
+}
+
+/* Handle CSI SGR for 256 colours. */
+static void
+input_csi_dispatch_sgr_256(struct input_ctx *ictx, int fgbg, u_int *i)
+{
+	int	c;
+
+	c = input_get(ictx, (*i) + 1, 0, -1);
+	if (input_csi_dispatch_sgr_256_do(ictx, fgbg, c))
+		(*i)++;
+}
+
+/* Helper for RGB colour SGR. */
+static int
+input_csi_dispatch_sgr_rgb_do(struct input_ctx *ictx, int fgbg, int r, int g,
+    int b)
+{
+	struct grid_cell	*gc = &ictx->cell.cell;
+
+	if (r == -1 || r > 255)
+		return (0);
+	if (g == -1 || g > 255)
+		return (0);
+	if (b == -1 || b > 255)
+		return (0);
+
+	if (fgbg == 38)
+		gc->fg = colour_join_rgb(r, g, b);
+	else if (fgbg == 48)
+		gc->bg = colour_join_rgb(r, g, b);
+	return (1);
 }
 
 /* Handle CSI SGR for RGB colours. */
 static void
 input_csi_dispatch_sgr_rgb(struct input_ctx *ictx, int fgbg, u_int *i)
 {
-	struct grid_cell	*gc = &ictx->cell.cell;
-	int			 r, g, b;
+	int	r, g, b;
 
-	(*i)++;
-	r = input_get(ictx, *i, 0, -1);
-	if (r == -1 || r > 255)
-		return;
-	(*i)++;
-	g = input_get(ictx, *i, 0, -1);
-	if (g == -1 || g > 255)
-		return;
-	(*i)++;
-	b = input_get(ictx, *i, 0, -1);
-	if (b == -1 || b > 255)
-		return;
+	r = input_get(ictx, (*i) + 1, 0, -1);
+	g = input_get(ictx, (*i) + 2, 0, -1);
+	b = input_get(ictx, (*i) + 3, 0, -1);
+	if (input_csi_dispatch_sgr_rgb_do(ictx, fgbg, r, g, b))
+		(*i) += 3;
+}
 
-	if (fgbg == 38)
-		gc->fg = colour_join_rgb(r, g, b);
-	else if (fgbg == 48)
-		gc->bg = colour_join_rgb(r, g, b);
+/* Handle CSI SGR with a ISO parameter. */
+static void
+input_csi_dispatch_sgr_colon(struct input_ctx *ictx, u_int i)
+{
+	char		*s = ictx->param_list[i].str, *copy, *ptr, *out;
+	int		 p[8];
+	u_int		 n;
+	const char	*errstr;
+
+	for (n = 0; n < nitems(p); n++)
+		p[n] = -1;
+	n = 0;
+
+	ptr = copy = xstrdup(s);
+	while ((out = strsep(&ptr, ":")) != NULL) {
+		p[n++] = strtonum(out, 0, INT_MAX, &errstr);
+		if (errstr != NULL || n == nitems(p)) {
+			free(copy);
+			return;
+		}
+		log_debug("%s: %u = %d", __func__, n - 1, p[n - 1]);
+	}
+	free(copy);
+
+	if (n == 0 || (p[0] != 38 && p[0] != 48))
+		return;
+	switch (p[1]) {
+	case 2:
+		if (n != 5)
+			break;
+		input_csi_dispatch_sgr_rgb_do(ictx, p[0], p[2], p[3], p[4]);
+		break;
+	case 5:
+		if (n != 3)
+			break;
+		input_csi_dispatch_sgr_256_do(ictx, p[0], p[2]);
+		break;
+	}
 }
 
 /* Handle CSI SGR. */
@@ -1735,7 +1884,13 @@ input_csi_dispatch_sgr(struct input_ctx *ictx)
 	}
 
 	for (i = 0; i < ictx->param_list_len; i++) {
+		if (ictx->param_list[i].type == INPUT_STRING) {
+			input_csi_dispatch_sgr_colon(ictx, i);
+			continue;
+		}
 		n = input_get(ictx, i, 0, 0);
+		if (n == -1)
+			continue;
 
 		if (n == 38 || n == 48) {
 			i++;
