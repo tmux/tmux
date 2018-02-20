@@ -1137,7 +1137,7 @@ format_expand_time(struct format_tree *ft, const char *fmt, time_t t)
 char *
 format_expand(struct format_tree *ft, const char *fmt)
 {
-	char		*buf, *out;
+	char		*buf, *out, *name;
 	const char	*ptr, *s, *saved = fmt;
 	size_t		 off, len, n, outlen;
 	int     	 ch, brackets;
@@ -1176,8 +1176,11 @@ format_expand(struct format_tree *ft, const char *fmt)
 
 			if (ft->flags & FORMAT_NOJOBS)
 				out = xstrdup("");
-			else
-				out = format_job_get(ft, xstrndup(fmt, n));
+			else {
+				name = xstrndup(fmt, n);
+				out = format_job_get(ft, name);
+				free(name);
+			}
 			outlen = strlen(out);
 
 			while (len - off < outlen + 1) {
