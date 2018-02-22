@@ -96,6 +96,12 @@ const struct options_table_entry options_table[] = {
 	  .default_num = 500
 	},
 
+	{ .name = "exit-empty",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .default_num = 1
+	},
+
 	{ .name = "exit-unattached",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .scope = OPTIONS_TABLE_SERVER,
