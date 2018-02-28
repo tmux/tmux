@@ -1377,7 +1377,7 @@ the end of the visible pane.
 The default is to capture only the visible contents of the pane.
 .It Xo
 .Ic choose-client
-.Op Fl N
+.Op Fl NZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl O Ar sort-order
@@ -1386,6 +1386,8 @@ The default is to capture only the visible contents of the pane.
 .Xc
 Put a pane into client mode, allowing a client to be selected interactively from
 a list.
+.Fl Z
+zooms the pane.
 The following keys may be used in client mode:
 .Bl -column "Key" "Function" -offset indent
 .It Sy "Key" Ta Sy "Function"
@@ -1436,7 +1438,7 @@ starts without the preview.
 This command works only if at least one client is attached.
 .It Xo
 .Ic choose-tree
-.Op Fl GNsw
+.Op Fl GNswZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl O Ar sort-order
@@ -1449,6 +1451,8 @@ interactively from a list.
 starts with sessions collapsed and
 .Fl w
 with windows collapsed.
+.Fl Z
+zooms the pane.
 The following keys may be used in tree mode:
 .Bl -column "Key" "Function" -offset indent
 .It Sy "Key" Ta Sy "Function"
@@ -4129,7 +4133,7 @@ The buffer commands are as follows:
 .Bl -tag -width Ds
 .It Xo
 .Ic choose-buffer
-.Op Fl N
+.Op Fl NZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl O Ar sort-order
@@ -4138,6 +4142,8 @@ The buffer commands are as follows:
 .Xc
 Put a pane into buffer mode, where a buffer may be chosen interactively from
 a list.
+.Fl Z
+zooms the pane.
 The following keys may be used in buffer mode:
 .Bl -column "Key" "Function" -offset indent
 .It Sy "Key" Ta Sy "Function"

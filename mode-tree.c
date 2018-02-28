@@ -31,6 +31,7 @@ TAILQ_HEAD(mode_tree_list, mode_tree_item);
 struct mode_tree_data {
 	int			  dead;
 	u_int			  references;
+	int			  zoomed;
 
 	struct window_pane	 *wp;
 	void			 *modedata;
@@ -344,6 +345,19 @@ mode_tree_start(struct window_pane *wp, struct args *args,
 }
 
 void
+mode_tree_zoom(struct mode_tree_data *mtd, struct args *args)
+{
+	struct window_pane	*wp = mtd->wp;
+
+	if (args_has(args, 'Z')) {
+		mtd->zoomed = (wp->window->flags & WINDOW_ZOOMED);
+		if (!mtd->zoomed && window_zoom(wp) == 0)
+			server_redraw_window(wp->window);
+	} else
+		mtd->zoomed = -1;
+}
+
+void
 mode_tree_build(struct mode_tree_data *mtd)
 {
 	struct screen	*s = &mtd->screen;
@@ -394,6 +408,11 @@ mode_tree_remove_ref(struct mode_tree_data *mtd)
 void
 mode_tree_free(struct mode_tree_data *mtd)
 {
+	struct window_pane	*wp = mtd->wp;
+
+	if (mtd->zoomed == 0)
+		server_unzoom_window(wp->window);
+
 	mode_tree_free_items(&mtd->children);
 	mode_tree_clear_lines(mtd);
 	screen_free(&mtd->screen);
