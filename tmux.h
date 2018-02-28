@@ -2251,6 +2251,7 @@ void	 mode_tree_down(struct mode_tree_data *, int);
 struct mode_tree_data *mode_tree_start(struct window_pane *, struct args *,
 	     mode_tree_build_cb, mode_tree_draw_cb, mode_tree_search_cb,
 	     void *, const char **, u_int, struct screen **);
+void	 mode_tree_zoom(struct mode_tree_data *, struct args *);
 void	 mode_tree_build(struct mode_tree_data *);
 void	 mode_tree_free(struct mode_tree_data *);
 void	 mode_tree_resize(struct mode_tree_data *, u_int, u_int);
