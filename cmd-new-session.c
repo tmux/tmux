@@ -73,14 +73,15 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	struct environ		*env;
 	struct termios		 tio, *tiop;
 	struct session_group	*sg;
-	const char		*newname, *errstr, *template, *group, *prefix;
-	const char		*path, *cmd, *cwd;
-	char		       **argv, *cause, *cp, *to_free = NULL;
+	const char		*errstr, *template, *group, *prefix;
+	const char		*path, *cmd, *tmp;
+	char		       **argv, *cause, *cp, *newname, *cwd = NULL;
 	int			 detached, already_attached, idx, argc;
 	int			 is_control = 0;
 	u_int			 sx, sy;
 	struct environ_entry	*envent;
 	struct cmd_find_state	 fs;
+	enum cmd_retval		 retval;
 
 	if (self->entry == &cmd_has_session_entry) {
 		/*
@@ -95,20 +96,24 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_ERROR);
 	}
 
-	newname = args_get(args, 's');
-	if (newname != NULL) {
+	newname = NULL;
+	if (args_has(args, 's')) {
+		newname = format_single(item, args_get(args, 's'), c, NULL,
+		    NULL, NULL);
 		if (!session_check_name(newname)) {
 			cmdq_error(item, "bad session name: %s", newname);
-			return (CMD_RETURN_ERROR);
+			goto error;
 		}
 		if ((as = session_find(newname)) != NULL) {
 			if (args_has(args, 'A')) {
-				return (cmd_attach_session(item,
+				retval = cmd_attach_session(item,
 				    newname, args_has(args, 'D'),
-				    0, NULL, args_has(args, 'E')));
+				    0, NULL, args_has(args, 'E'));
+				free(newname);
+				return (retval);
 			}
 			cmdq_error(item, "duplicate session: %s", newname);
-			return (CMD_RETURN_ERROR);
+			goto error;
 		}
 	}
 
@@ -149,14 +154,12 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 		already_attached = 1;
 
 	/* Get the new session working directory. */
-	if (args_has(args, 'c')) {
-		cwd = args_get(args, 'c');
-		to_free = format_single(item, cwd, c, NULL, NULL, NULL);
-		cwd = to_free;
-	} else if (c != NULL && c->session == NULL && c->cwd != NULL)
-		cwd = c->cwd;
+	if ((tmp = args_get(args, 'c')) != NULL)
+		cwd = format_single(item, tmp, c, NULL, NULL, NULL);
+	else if (c != NULL && c->session == NULL && c->cwd != NULL)
+		cwd = xstrdup(c->cwd);
 	else
-		cwd = ".";
+		cwd = xstrdup(".");
 
 	/*
 	 * If this is a new client, check for nesting and save the termios
@@ -261,10 +264,12 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	/* Set the initial window name if one given. */
-	if (argc >= 0 && args_has(args, 'n')) {
+	if (argc >= 0 && (tmp = args_get(args, 'n')) != NULL) {
+		cp = format_single(item, tmp, c, s, NULL, NULL);
 		w = s->curw->window;
-		window_set_name(w, args_get(args, 'n'));
+		window_set_name(w, cp);
 		options_set_number(w->options, "automatic-rename", 0);
+		free(cp);
 	}
 
 	/*
@@ -331,10 +336,12 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	cmd_find_from_session(&fs, s, 0);
 	hooks_insert(s->hooks, item, &fs, "after-new-session");
 
-	free(to_free);
+	free(cwd);
+	free(newname);
 	return (CMD_RETURN_NORMAL);
 
 error:
-	free(to_free);
+	free(cwd);
+	free(newname);
 	return (CMD_RETURN_ERROR);
 }
