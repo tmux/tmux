@@ -1907,7 +1907,6 @@ input_csi_dispatch_sgr(struct input_ctx *ictx)
 
 		switch (n) {
 		case 0:
-		case 10:
 			memcpy(gc, &grid_default_cell, sizeof *gc);
 			break;
 		case 1:
