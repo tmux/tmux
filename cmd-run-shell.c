@@ -111,7 +111,7 @@ cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 		cdata->item = item;
 
 	job_run(cdata->cmd, s, cwd, NULL, cmd_run_shell_callback,
-	    cmd_run_shell_free, cdata);
+	    cmd_run_shell_free, cdata, 0);
 
 	if (args_has(args, 'b'))
 		return (CMD_RETURN_NORMAL);

@@ -622,6 +622,9 @@ struct job {
 		JOB_CLOSED
 	} state;
 
+	int			 flags;
+#define JOB_NOWAIT 0x1
+
 	char			*cmd;
 	pid_t			 pid;
 	int			 status;
@@ -1649,7 +1652,7 @@ extern const struct options_table_entry options_table[];
 /* job.c */
 extern struct joblist all_jobs;
 struct job	*job_run(const char *, struct session *, const char *,
-		     job_update_cb, job_complete_cb, job_free_cb, void *);
+		     job_update_cb, job_complete_cb, job_free_cb, void *, int);
 void		 job_free(struct job *);
 void		 job_died(struct job *, int);
 

@@ -1279,6 +1279,8 @@ server_client_check_exit(struct client *c)
 	if (EVBUFFER_LENGTH(c->stderr_data) != 0)
 		return;
 
+	if (c->flags & CLIENT_ATTACHED)
+		notify_client("client-detached", c);
 	proc_send(c->peer, MSG_EXIT, -1, &c->retval, sizeof c->retval);
 	c->flags &= ~CLIENT_EXIT;
 }

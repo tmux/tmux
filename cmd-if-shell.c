@@ -129,7 +129,7 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 	memcpy(&cdata->mouse, &shared->mouse, sizeof cdata->mouse);
 
 	job_run(shellcmd, s, cwd, NULL, cmd_if_shell_callback,
-	    cmd_if_shell_free, cdata);
+	    cmd_if_shell_free, cdata, 0);
 	free(shellcmd);
 
 	if (args_has(args, 'b'))
