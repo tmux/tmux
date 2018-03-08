@@ -243,6 +243,7 @@ server_loop(void)
 {
 	struct client	*c;
 	u_int		 items;
+	struct job	*job;
 
 	do {
 		items = cmdq_next(NULL);
@@ -275,6 +276,11 @@ server_loop(void)
 	if (!TAILQ_EMPTY(&clients))
 		return (0);
 
+	LIST_FOREACH(job, &all_jobs, entry) {
+		if ((~job->flags & JOB_NOWAIT) && job->state == JOB_RUNNING)
+			return (0);
+	}
+
 	return (1);
 }
 
@@ -290,8 +296,11 @@ server_send_exit(void)
 	TAILQ_FOREACH_SAFE(c, &clients, entry, c1) {
 		if (c->flags & CLIENT_SUSPENDED)
 			server_client_lost(c);
-		else
+		else {
+			if (c->flags & CLIENT_ATTACHED)
+				notify_client("client-detached", c);
 			proc_send(c->peer, MSG_SHUTDOWN, -1, NULL, 0);
+		}
 		c->session = NULL;
 	}
 
