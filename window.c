@@ -339,7 +339,7 @@ window_create_spawn(const char *name, int argc, char **argv, const char *path,
 	struct window_pane	*wp;
 
 	w = window_create(sx, sy);
-	wp = window_add_pane(w, NULL, 0, hlimit);
+	wp = window_add_pane(w, NULL, 0, hlimit, 0);
 	layout_init(w, wp);
 
 	if (window_pane_spawn(wp, argc, argv, path, shell, cwd,
@@ -608,7 +608,7 @@ window_unzoom(struct window *w)
 
 struct window_pane *
 window_add_pane(struct window *w, struct window_pane *other, int before,
-    u_int hlimit)
+    u_int hlimit, int full_size)
 {
 	struct window_pane	*wp;
 
@@ -619,6 +619,14 @@ window_add_pane(struct window *w, struct window_pane *other, int before,
 	if (TAILQ_EMPTY(&w->panes)) {
 		log_debug("%s: @%u at start", __func__, w->id);
 		TAILQ_INSERT_HEAD(&w->panes, wp, entry);
+	} else if (full_size) {
+		if (before) {
+			log_debug("%s: @%u full before %%%u", __func__, w->id, wp->id);
+			TAILQ_INSERT_HEAD(&w->panes, wp, entry);
+		} else {
+			log_debug("%s: @%u full after %%%u", __func__, w->id, wp->id);
+			TAILQ_INSERT_TAIL(&w->panes, wp, entry);
+		}
 	} else if (before) {
 		log_debug("%s: @%u before %%%u", __func__, w->id, wp->id);
 		TAILQ_INSERT_BEFORE(other, wp, entry);
