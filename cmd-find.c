@@ -389,7 +389,7 @@ cmd_find_get_window_with_session(struct cmd_find_state *fs, const char *window)
 					return (-1);
 				fs->idx = s->curw->idx + n;
 			} else {
-				if (n < s->curw->idx)
+				if (n > s->curw->idx)
 					return (-1);
 				fs->idx = s->curw->idx - n;
 			}
