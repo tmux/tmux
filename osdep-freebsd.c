@@ -197,6 +197,9 @@ osdep_event_init(void)
 	 * On some versions of FreeBSD, kqueue doesn't work properly on tty
 	 * file descriptors. This is fixed in recent FreeBSD versions.
 	 */
+	struct event_base *base;
 	setenv("EVENT_NOKQUEUE", "1", 1);
-	return (event_init());
+	base = event_init();
+	unsetenv("EVENT_NOKQUEUE");
+	return base;
 }
