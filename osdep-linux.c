@@ -92,7 +92,12 @@ osdep_get_cwd(int fd)
 struct event_base *
 osdep_event_init(void)
 {
+	struct event_base	*base;
+
 	/* On Linux, epoll doesn't work on /dev/null (yes, really). */
 	setenv("EVENT_NOEPOLL", "1", 1);
-	return (event_init());
+
+	base = event_init();
+	unsetenv("EVENT_NOEPOLL");
+	return (base);
 }

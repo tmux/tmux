@@ -88,11 +88,17 @@ osdep_get_cwd(int fd)
 struct event_base *
 osdep_event_init(void)
 {
+	struct event_base	*base;
+
 	/*
 	 * On OS X, kqueue and poll are both completely broken and don't
 	 * work on anything except socket file descriptors (yes, really).
 	 */
 	setenv("EVENT_NOKQUEUE", "1", 1);
 	setenv("EVENT_NOPOLL", "1", 1);
-	return (event_init());
+
+	base = event_init();
+	unsetenv("EVENT_NOKQUEUE");
+	unsetenv("EVENT_NOPOLL");
+	return (base);
 }
