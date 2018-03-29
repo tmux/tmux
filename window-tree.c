@@ -296,7 +296,8 @@ window_tree_build_window(struct session *s, struct winlink *wl, void* modedata,
 	free(text);
 	free(name);
 
-	wp = TAILQ_FIRST(&wl->window->panes);
+	if ((wp = TAILQ_FIRST(&wl->window->panes)) == NULL)
+		goto empty;
 	if (TAILQ_NEXT(wp, entry) == NULL) {
 		if (!window_tree_filter_pane(s, wl, wp, filter))
 			goto empty;
