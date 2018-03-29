@@ -224,6 +224,29 @@ else
 	fi
 fi
 
+# jemalloc
+AC_ARG_ENABLE(jemalloc,
+        [AS_HELP_STRING([--enable-jemalloc],[Enable jemalloc support @<:@default=no@:>@])],
+        [case "${enableval}" in
+         yes) enable_jemalloc="yes" ;;
+          no) enable_jemalloc="no" ;;
+           *) AC_MSG_ERROR(bad value ${enableval} for --enable-jemalloc) ;;
+         esac],
+        [enable_jemalloc="no"]
+)
+AM_CONDITIONAL(ENABLE_JEMALLOC, test x$enable_jemalloc = xyes)
+if test "$enable_jemalloc" = "yes"; then
+  AC_CHECK_LIB(
+    [jemalloc],
+    [malloc_stats_print],
+    [LIBS="$LIBS -ljemalloc"
+     AC_DEFINE(HAVE_JEMALLOC, 1, [jemalloc support is integrated.])
+    ],
+    [AC_MSG_FAILURE([jemalloc library is missing])],
+    []
+    )
+fi
+
 # Look for utempter.
 AC_ARG_ENABLE(
 	utempter,
