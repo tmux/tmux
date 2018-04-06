@@ -30,7 +30,7 @@
 /*
  * Based on the description by Paul Williams at:
  *
- * http://vt100.net/emu/dec_ansi_parser
+ * https://vt100.net/emu/dec_ansi_parser
  *
  * With the following changes:
  *
