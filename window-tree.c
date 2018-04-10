@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -860,8 +861,6 @@ window_tree_destroy(struct window_tree_modedata *data)
 	if (--data->references != 0)
 		return;
 
-	mode_tree_free(data->data);
-
 	for (i = 0; i < data->item_size; i++)
 		window_tree_free_item(data->item_list[i]);
 	free(data->item_list);
@@ -881,6 +880,7 @@ window_tree_free(struct window_pane *wp)
 		return;
 
 	data->dead = 1;
+	mode_tree_free(data->data);
 	window_tree_destroy(data);
 }
 
@@ -965,7 +965,7 @@ window_tree_command_callback(struct client *c, void *modedata, const char *s,
 {
 	struct window_tree_modedata	*data = modedata;
 
-	if (s == NULL || data->dead)
+	if (s == NULL || *s == '\0' || data->dead)
 		return (0);
 
 	data->entered = s;
@@ -985,6 +985,77 @@ window_tree_command_free(void *modedata)
 	struct window_tree_modedata	*data = modedata;
 
 	window_tree_destroy(data);
+}
+
+static void
+window_tree_kill_each(__unused void* modedata, void* itemdata,
+    __unused struct client *c, __unused key_code key)
+{
+	struct window_tree_itemdata	*item = itemdata;
+	struct session			*s;
+	struct winlink			*wl;
+	struct window_pane		*wp;
+
+	window_tree_pull_item(item, &s, &wl, &wp);
+
+	switch (item->type) {
+	case WINDOW_TREE_NONE:
+		break;
+	case WINDOW_TREE_SESSION:
+		if (s != NULL) {
+			server_destroy_session(s);
+			session_destroy(s, __func__);
+		}
+		break;
+	case WINDOW_TREE_WINDOW:
+		if (wl != NULL)
+			server_kill_window(wl->window);
+		break;
+	case WINDOW_TREE_PANE:
+		if (wp != NULL)
+			server_kill_pane(wp);
+		break;
+	}
+}
+
+static int
+window_tree_kill_current_callback(struct client *c, void *modedata,
+    const char *s, __unused int done)
+{
+	struct window_tree_modedata	*data = modedata;
+	struct mode_tree_data		*mtd = data->data;
+
+	if (s == NULL || *s == '\0' || data->dead)
+		return (0);
+	if (tolower((u_char) s[0]) != 'y' || s[1] != '\0')
+		return (0);
+
+	window_tree_kill_each(data, mode_tree_get_current(mtd), c, KEYC_NONE);
+
+	data->references++;
+	cmdq_append(c, cmdq_get_callback(window_tree_command_done, data));
+
+	return (0);
+}
+
+static int
+window_tree_kill_tagged_callback(struct client *c, void *modedata,
+    const char *s, __unused int done)
+{
+	struct window_tree_modedata	*data = modedata;
+	struct mode_tree_data		*mtd = data->data;
+
+	if (s == NULL || *s == '\0' || data->dead)
+		return (0);
+	if (tolower((u_char) s[0]) != 'y' || s[1] != '\0')
+		return (0);
+
+	mode_tree_each_tagged(mtd, window_tree_kill_each, c, KEYC_NONE, 1);
+
+	data->references++;
+	cmdq_append(c, cmdq_get_callback(window_tree_command_done, data));
+
+	return (0);
 }
 
 static key_code
@@ -1054,10 +1125,13 @@ window_tree_key(struct window_pane *wp, struct client *c,
 {
 	struct window_tree_modedata	*data = wp->modedata;
 	struct window_tree_itemdata	*item, *new_item;
-	char				*name, *prompt;
+	char				*name, *prompt = NULL;
 	struct cmd_find_state		 fs;
 	int				 finished;
-	u_int				 tagged, x, y;
+	u_int				 tagged, x, y, idx;
+	struct session			*ns;
+	struct winlink			*nwl;
+	struct window_pane		*nwp;
 
 	item = mode_tree_get_current(data->data);
 	finished = mode_tree_key(data->data, c, &key, m, &x, &y);
@@ -1073,6 +1147,46 @@ window_tree_key(struct window_pane *wp, struct client *c,
 		break;
 	case '>':
 		data->offset++;
+		break;
+	case 'x':
+		window_tree_pull_item(item, &ns, &nwl, &nwp);
+		switch (item->type) {
+		case WINDOW_TREE_NONE:
+			break;
+		case WINDOW_TREE_SESSION:
+			if (ns == NULL)
+				break;
+			xasprintf(&prompt, "Kill session %s? ", ns->name);
+			break;
+		case WINDOW_TREE_WINDOW:
+			if (nwl == NULL)
+				break;
+			xasprintf(&prompt, "Kill window %u? ", nwl->idx);
+			break;
+		case WINDOW_TREE_PANE:
+			if (nwp == NULL || window_pane_index(nwp, &idx) != 0)
+				break;
+			xasprintf(&prompt, "Kill pane %u? ", idx);
+			break;
+		}
+		if (prompt == NULL)
+			break;
+		data->references++;
+		status_prompt_set(c, prompt, "",
+		    window_tree_kill_current_callback, window_tree_command_free,
+		    data, PROMPT_SINGLE|PROMPT_NOFORMAT);
+		free(prompt);
+		break;
+	case 'X':
+		tagged = mode_tree_count_tagged(data->data);
+		if (tagged == 0)
+			break;
+		xasprintf(&prompt, "Kill %u tagged? ", tagged);
+		data->references++;
+		status_prompt_set(c, prompt, "",
+		    window_tree_kill_tagged_callback, window_tree_command_free,
+		    data, PROMPT_SINGLE|PROMPT_NOFORMAT);
+		free(prompt);
 		break;
 	case ':':
 		tagged = mode_tree_count_tagged(data->data);
