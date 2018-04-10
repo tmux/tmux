@@ -47,9 +47,8 @@ cmd_kill_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct winlink		*wl = item->target.wl;
 	struct window_pane	*loopwp, *tmpwp, *wp = item->target.wp;
 
-	server_unzoom_window(wl->window);
-
 	if (args_has(self->args, 'a')) {
+		server_unzoom_window(wl->window);
 		TAILQ_FOREACH_SAFE(loopwp, &wl->window->panes, entry, tmpwp) {
 			if (loopwp == wp)
 				continue;
@@ -60,13 +59,6 @@ cmd_kill_pane_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 	}
 
-	if (window_count_panes(wl->window) == 1) {
-		server_kill_window(wl->window);
-		recalculate_sizes();
-	} else {
-		layout_close_pane(wp);
-		window_remove_pane(wl->window, wp);
-		server_redraw_window(wl->window);
-	}
+	server_kill_pane(wp);
 	return (CMD_RETURN_NORMAL);
 }
