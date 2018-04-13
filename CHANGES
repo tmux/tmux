@@ -1,13 +1,15 @@
 CHANGES FROM 2.7 to master
 
-*
+* Fixes to : form of SGR.
+
+* Add x and X to choose-tree to kill sessions, windows or panes.
 
 CHANGES FROM 2.6 TO 2.7
 
 * Remove EVENT_* variables from environment on platforms where tmux uses them
   so they do not pass on to panes.
 
-* Fixed for hooks at server exit.
+* Fixes for hooks at server exit.
 
 * Remove SGR 10 (was equivalent to SGR 0 but no other terminal seems to do
   this).
