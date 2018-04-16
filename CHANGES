@@ -1,8 +1,34 @@
-CHANGES FROM 2.6 TO master
+CHANGES FROM 2.7 to master
+
+* Fixes to : form of SGR.
+
+* Add x and X to choose-tree to kill sessions, windows or panes.
+
+CHANGES FROM 2.6 TO 2.7
+
+* Remove EVENT_* variables from environment on platforms where tmux uses them
+  so they do not pass on to panes.
+
+* Fixes for hooks at server exit.
+
+* Remove SGR 10 (was equivalent to SGR 0 but no other terminal seems to do
+  this).
+
+* Expand formats in window and session names.
+
+* Add -Z flag to choose-tree, choose-client, choose-buffer to automatically
+  zoom the pane when the mode is entered and unzoom when it exits, assuming the
+  pane is not already zoomed. This is now part of the default key bindings.
+
+* Add C-g to exit modes with emacs keys.
+
+* Add exit-empty option to exit server if no sessions (defaults to on).
 
 * Show if a filter is present in choose modes.
 
 * Add pipe-pane -I to to connect stdin of the child process.
+
+* Performance improvements for reflow.
 
 * Use RGB terminfo(5) capability to detect RGB colour terminals (the existing
   Tc extension remains unchanged).

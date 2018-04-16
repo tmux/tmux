@@ -1023,7 +1023,7 @@ layout_spread_cell(struct window *w, struct layout_cell *parent)
 	changed = 0;
 	TAILQ_FOREACH (lc, &parent->cells, entry) {
 		if (TAILQ_NEXT(lc, entry) == NULL)
-			each = size - (each * (number - 1));
+			each = size - ((each + 1) * (number - 1));
 		change = 0;
 		if (parent->type == LAYOUT_LEFTRIGHT) {
 			change = each - (int)lc->sx;
