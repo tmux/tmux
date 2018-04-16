@@ -1,19 +1,71 @@
--- $XTermId: README,v 1.3 2007/05/24 19:49:19 tom Exp $
--- Below is the original README for xterm from 1991, for your amusement.
--- For a better overview, see http://invisible-island.net/xterm/ 
--------------------------------------------------------------------------------
-			Abandon All Hope, Ye Who Enter Here
+Welcome to tmux!
 
+tmux is a "terminal multiplexer", it enables a number of terminals (or windows)
+to be accessed and controlled from a single terminal. tmux is intended to be a
+simple, modern, BSD-licensed alternative to programs such as GNU screen.
 
-This is undoubtedly the most ugly program in the distribution.  It was one of
-the first "serious" programs ported, and still has a lot of historical baggage.
-Ideally, there would be a general tty widget and then vt102 and tek4014 
-subwidgets so that they could be used in other programs.  We are trying to 
-clean things up as we go, but there is still a lot of work to do.
+This release runs on OpenBSD, FreeBSD, NetBSD, Linux, OS X and Solaris.
 
-If you are porting this to a machine that has problems with overlapping
-bcopy's, watch out!
+tmux depends on libevent 2.x. Download it from:
 
-There are two documents on xterm: the man page, xterm.man, which describes
-how to use it, and ctlseqs.ms, which describes the control sequences it
-understands.
+	http://libevent.org
+
+It also depends on ncurses, available from:
+
+	http://invisible-island.net/ncurses/
+
+To build and install tmux from a release tarball, use:
+
+	$ ./configure && make
+	$ sudo make install
+
+tmux can use the utempter library to update utmp(5), if it is installed - run
+configure with --enable-utempter to enable this.
+
+To get and build the latest from version control:
+
+	$ git clone https://github.com/tmux/tmux.git
+	$ cd tmux
+	$ sh autogen.sh
+	$ ./configure && make
+
+(Note that this requires at least a working C compiler, make, autoconf,
+automake, pkg-config as well as libevent and ncurses libraries and headers.)
+
+For more information see http://git-scm.com. Patches should be sent by email to
+the mailing list at tmux-users@googlegroups.com or submitted through GitHub at
+https://github.com/tmux/tmux/issues.
+
+For documentation on using tmux, see the tmux.1 manpage. It can be viewed from
+the source tree with:
+
+	$ nroff -mdoc tmux.1|less
+
+A small example configuration in example_tmux.conf.
+
+And a bash(1) completion file at:
+
+	https://github.com/imomaliev/tmux-bash-completion
+
+For debugging, running tmux with -v or -vv will generate server and client log
+files in the current directory.
+
+tmux mailing lists are available. For general discussion and bug reports:
+
+	https://groups.google.com/forum/#!forum/tmux-users
+
+And for Git commit emails:
+
+	https://groups.google.com/forum/#!forum/tmux-git
+
+Subscribe by sending an email to <tmux-users+subscribe@googlegroups.com>.
+
+Bug reports, feature suggestions and especially code contributions are most
+welcome. Please send by email to:
+
+	tmux-users@googlegroups.com
+
+This file and the CHANGES, FAQ, SYNCING and TODO files are licensed under the
+ISC license. All other files have a license and copyright notice at their start.
+
+-- Nicholas Marriott <nicholas.marriott@gmail.com>
