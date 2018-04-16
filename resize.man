@@ -1,0 +1,220 @@
+.\" $XTermId: resize.man,v 1.33 2017/11/13 00:58:17 tom Exp $
+.\"
+.\" Copyright 1998-2016,2017 by Thomas E. Dickey
+.\"
+.\"                         All Rights Reserved
+.\"
+.\" Permission is hereby granted, free of charge, to any person obtaining a
+.\" copy of this software and associated documentation files (the
+.\" "Software"), to deal in the Software without restriction, including
+.\" without limitation the rights to use, copy, modify, merge, publish,
+.\" distribute, sublicense, and/or sell copies of the Software, and to
+.\" permit persons to whom the Software is furnished to do so, subject to
+.\" the following conditions:
+.\"
+.\" The above copyright notice and this permission notice shall be included
+.\" in all copies or substantial portions of the Software.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+.\" OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+.\" MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+.\" IN NO EVENT SHALL THE ABOVE LISTED COPYRIGHT HOLDER(S) BE LIABLE FOR ANY
+.\" CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+.\" TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+.\" SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+.\"
+.\" Except as contained in this notice, the name(s) of the above copyright
+.\" holders shall not be used in advertising or otherwise to promote the
+.\" sale, use or other dealings in this Software without prior written
+.\" authorization.
+.\"
+.\" updated by Thomas E. Dickey for XFree86, 1998-2006.
+.\"
+.ds N Resize
+.ds n resize
+.\"
+.\" Bulleted paragraph
+.de bP
+.ie n  .IP \(bu 4
+.el    .IP \(bu 2
+..
+.\" Escape single quotes in literal strings from groff's Unicode transform.
+.ie \n(.g .ds AQ \(aq
+.el       .ds AQ '
+.ie \n(.g .ds `` \(lq
+.el       .ds `` ``
+.ie \n(.g .ds '' \(rq
+.el       .ds '' ''
+.TH RESIZE 1 "__app_date__" "__app_version__" "X Window System"
+.SH NAME
+resize \- set environment and terminal settings to current xterm window size
+.SH SYNOPSIS
+.B \*n
+[ \fB\-v\fP | \fB\-u\fP | \fB\-c\fP ] [ \fB\-s\fP [ \fIrow col\fP ] ]
+.SH DESCRIPTION
+.I \*N
+prints a shell command for setting the appropriate environment variables
+to indicate the current size of \fIxterm\fP window from which the command
+is run.
+.PP
+.I \*N
+determines the command through several steps:
+.bP
+first, it finds the name of the user's shell program.
+It uses the \fBSHELL\fP variable if set,
+otherwise it uses the user's data from /etc/passwd.
+.bP
+then it decides whether to use Bourne shell syntax or C-Shell syntax.
+It uses a built-in table of known shells,
+which can be overridden by the \fB\-u\fP and \fB\-c\fP options.
+.bP
+then \fI\*n\fP asks the operating system for the terminal settings.
+This is the same information which can be manipulated using \fIstty\fP.
+.bP
+then \fI\*n\fP asks the terminal for its size in characters.
+Depending on whether the "\fB\-s\fP option is given,
+\fI\*n\fP uses a different escape sequence to ask for this information.
+.bP
+at this point, \fI\*n\fP attempts to update the terminal settings
+to reflect the terminal window's size in pixels:
+.RS
+.bP
+if the \fB\-s\fP option is used,
+\fI\*n\fP then asks the terminal for its size in pixels.
+.bP
+otherwise,
+\fI\*n\fP asks the operating system for the information
+and updates that after ensuring that the window's dimensions are
+a multiple of the character height and width.
+.bP
+in either case, the updated terminal settings are done
+using a different system call than used for \fIstty\fP.
+.RE
+.bP
+then \fI\*n\fP updates the terminal settings to reflect any altered
+values such as its size in rows or columns.
+This affects the values shown by \fIstty\fP.
+.bP
+finally, \fI\*n\fP writes the shell command for setting the
+environment variables to the standard output.
+.SH EXAMPLES
+For \*n's output to take effect,
+\fI\*n\fP must either be evaluated
+as part of the command line (usually done with a shell alias or function) or
+else redirected to a file which can then be read in.
+From the C shell (usually
+known as \fI/bin/csh\fP), the following alias could be defined in the
+user's \fI.cshrc\fP:
+.sp
+.nf
+        %  alias rs \*(AQset noglob; eval \fC\`\fP\*n\fC\`\fP\*(AQ
+.fi
+.sp
+After resizing the window, the user would type:
+.sp
+.nf
+        %  rs
+.fi
+.sp
+Users of versions of the Bourne shell (usually known as \fI/bin/sh\fP) that
+don't have command
+functions will need to send the output to a temporary file and then read it back
+in with the \*(``.\*('' command:
+.sp
+.nf
+        $  \*n > /tmp/out
+        $  .\0/tmp/out
+.fi
+.SH OPTIONS
+The following options may be used with \fI\*n\fP:
+.TP 8
+.B \-c
+This option indicates that C shell commands should be generated even if the
+user's current shell is not \fI/bin/csh\fP.
+.TP 8
+.B \-s \fR[\fIrows columns\fP]
+This option indicates that Sun console escape sequences will be used
+instead of the VT100-style \fIxterm\fP escape codes.
+If \fIrows\fP and
+\fIcolumns\fP are given,
+\fI\*n\fP will ask the \fIxterm\fP to resize itself using those values.
+.IP
+Both of the escape sequences used for this option
+(first to obtain the window size and
+second to modify it)
+are subject to \fIxterm\fP's \fBallowWindowOps\fP resource setting.
+The window manager may also choose to disallow the change.
+.IP
+The VT100-style escape sequence used to determine the
+screen size always works for VT100-compatible terminals.
+VT100s have no corresponding way to modify the screensize.
+.TP 8
+.B \-u
+This option indicates that Bourne shell commands should be generated even if
+the user's current shell is not \fI/bin/sh\fP.
+.TP 8
+.B \-v
+This causes \fI\*n\fP to print a version number to the standard output,
+and then exit.
+.PP
+Note that the Sun console escape sequences are recognized
+by XFree86 \fIxterm\fP and
+by \fIdtterm\fP.
+The \fI\*n\fP program may be installed as \fIsunsize\fP,
+which causes makes it assume the \fB\-s\fP option.
+.PP
+The \fIrows\fP and
+\fIcolumns\fP arguments must appear last; though they are normally
+associated with the \fB\-s\fP option, they are parsed separately.
+.SH FILES
+.TP 15
+/etc/termcap
+for the base termcap entry to modify.
+.TP 15
+~/.cshrc
+user's alias for the command.
+.SH ENVIRONMENT
+.TP 15
+SHELL
+.I \*N
+determines the user's current shell by first checking if \fB$SHELL\fP
+is set, and using that.
+Otherwise it determines the user's shell by looking in the password file
+(/etc/passwd).
+Generally Bourne-shell variants (including \fIksh\fP)
+do not modify \fB$SHELL\fP,
+so it is possible for \fI\*n\fP to be confused if one runs
+\fI\*n\fP from a Bourne shell spawned from a C shell.
+.TP 15
+TERM
+.I \*N
+sets this to "__default_termname__" if not already set.
+.TP 15
+TERMCAP
+.I \*N
+sets this variable on systems using termcap,
+e.g., when \*n is linked with the \fItermcap\fP library
+rather than a \fIterminfo\fP library.
+The latter does not provide the complete text for a termcap entry.
+.TP 15
+COLUMNS, LINES
+.I \*N
+sets these variables on systems using terminfo.
+Many applications (including the curses library) 
+use those variables when set to override their screensize.
+.SH "SEE ALSO"
+use_env(3x)
+.br
+csh(1), stty(1), tset(1)
+.br
+xterm(__mansuffix__)
+.SH AUTHORS
+Mark Vandevoorde (MIT-Athena), Edward Moy (Berkeley)
+.br
+Thomas Dickey (invisible-island.net).
+.br
+Copyright (c) 1984, 1985 by X Consortium
+.br
+See
+.IR X (__miscmansuffix__)
+for a complete copyright notice.

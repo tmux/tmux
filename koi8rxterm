@@ -1,0 +1,115 @@
+#!/bin/sh
+# $XTermId: koi8rxterm,v 1.5 2007/12/30 16:33:06 tom Exp $
+# -----------------------------------------------------------------------------
+# this file is part of xterm
+#
+# Copyright 2007 by Thomas E. Dickey
+# 
+#                         All Rights Reserved
+# 
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+# 
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+# IN NO EVENT SHALL THE ABOVE LISTED COPYRIGHT HOLDER(S) BE LIABLE FOR ANY
+# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+# 
+# Except as contained in this notice, the name(s) of the above copyright
+# holders shall not be used in advertising or otherwise to promote the
+# sale, use or other dealings in this Software without prior written
+# authorization.
+# -----------------------------------------------------------------------------
+# This is a wrapper script to set up xterm with a KOI8-R locale; based on
+# uxterm by Branden Robinson.
+
+whoami=koi8rxterm
+
+: ${XTERM_PROGRAM=xterm}
+
+# Check if there is a workable locale program.  If there is not, we will read
+# something via the standard error.  Ignore whatever is written to the
+# standard output.
+locale=`sh -c "LC_ALL=C LC_CTYPE=C LANG=C locale >/dev/null" 2>&1`
+found=no
+
+# Check for -version and -help options, to provide a simple return without
+# requiring the program to create a window:
+if test $# = 1
+then
+	case $1 in
+	-v|-ver*|-h|-he*)
+		$XTERM_PROGRAM "$@"
+		exit $?
+		;;
+	esac
+fi
+
+# Check environment variables that xterm does, in the same order:
+for name in LC_ALL LC_CTYPE LANG
+do
+	eval 'value=$'$name
+	if test -n "$value" ; then
+		case $value in
+		*.koi8r|*.KOI8R|*.koi8-r|*.KOI8-R)
+			found=yes
+			;;
+		*.koi8r@*|*.KOI8R@*|*.koi8-r@*|*.KOI8-R*)
+			found=yes
+			;;
+		*)
+			# The user may not have configured his or her
+			# locale; try to muddle through anyway.
+			value=ru_RU.KOI8-R
+			;;
+		esac
+		break
+	fi
+done
+
+# If we didn't find one that uses KOI8-R, modify the safest one.  Not everyone
+# has a KOI8-R locale installed (and there appears to be no trivial/portable
+# way to determine whether it is, from a shell script).  We could check if the
+# user's shell does not reset unknown locale specifiers, but not all shells do.
+if test $found != yes ; then
+	if test -n "$value" ; then
+		value=`echo ${value} |sed -e 's/[.@].*//'`.KOI8-R
+	else
+		name="LC_CTYPE"
+		value="ru_RU.KOI8-R"
+	fi
+	eval save=\$${name}
+	eval ${name}=${value}
+	eval export ${name}
+	if test -z "$locale" ; then
+		# The 'locale' program tries to do a sanity check.
+		check=`sh -c "locale >/dev/null" 2>&1`
+		if test -n "$check" ; then
+			eval ${name}=${save}
+			eval export ${name}
+
+			echo "$whoami tried to use locale $value by setting \$$name" >&2
+			xmessage -file - <<EOF
+$whoami tried unsuccessfully to use locale $value
+by setting \$$name to "${value}".
+EOF
+			exit 1
+		fi
+	fi
+fi
+
+# for testing:
+#test -f ./xterm && XTERM_PROGRAM=./xterm
+
+exec $XTERM_PROGRAM -class KOI8RXTerm -title $whoami -k8 "$@"

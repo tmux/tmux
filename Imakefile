@@ -1,0 +1,336 @@
+XCOMM $XTermId: Imakefile,v 1.113 2016/10/06 00:56:32 tom Exp $
+XCOMM
+XCOMM                         Attention xterm porters
+XCOMM
+XCOMM
+XCOMM Xterm assumes that bcopy can handle overlapping arguments.  If your
+XCOMM bcopy (or memcpy) cannot, write a routine called bcopy and link it in
+XCOMM or add -Dbcopy=mybcopy to the DEFINES list below.
+XCOMM
+
+/* Uncomment SCROLLBAR_RIGHT if you want the scroll bar to be on the right */
+SCROLLBAR_RIGHT = -DSCROLLBAR_RIGHT
+
+/* Define UTF8support to compile-in support for UTF-8 */
+#define UTF8support
+
+/*
+ * setgid mode works for systems that do not require setuid to open pty.
+ *
+ * This feature could also be applied to FreeBSD, but requires the installer
+ * to define a "utmp" group as well as chgrp the utmp file to match.
+ *
+ * Note: InstallXtermSetUID is always defined; InstallXtermSetGID is defined
+ * in newer imake configurations.
+ */
+#if !defined(InstallXtermSetGID) && !InstallXtermSetUID
+#if defined(OpenBSDArchitecture) || \
+    (defined(LinuxArchitecture) && \
+     (LinuxCLibMajorVersion == 6))
+#define InstallXtermSetGID YES
+#endif
+#endif
+
+/*
+ * Override the set uid/gid flags to use the utempter library.
+ */
+#if defined(UseUtempter)
+#undef InstallXtermSetUID /* imake sets this */
+#undef InstallXtermSetGID /* we set this */
+#define InstallXtermSetUID NO
+#define InstallXtermSetGID NO
+        UTMPLIB = -lutempter
+#endif
+
+/*
+ * Fixes to allow compile with X11R5, etc.
+ */
+#ifndef InstGidFlags
+#define InstGidFlags -m 2755 -g utmp
+#endif
+
+#ifndef InstUidFlags
+#define InstUidFlags -m 4711
+#endif
+
+#ifndef XkbClientDefines
+#define XkbClientDefines /**/
+#endif
+
+#ifndef InstallXtermSetUID
+#define InstallXtermSetUID NO
+#endif
+
+#ifndef InstallXtermSetGID
+#define InstallXtermSetGID NO
+#endif
+
+#ifndef XkbClientDepLibs
+#define XkbClientDepLibs /**/
+#endif
+
+#ifndef XkbClientLibs
+#define XkbClientLibs /**/
+#endif
+
+/* This must come before setting DEFINES */
+#if InstallXtermSetGID
+CSGIDFLAGS = -DUSE_UTMP_SETGID
+INSTSETIDFLAGS = InstGidFlags
+#elif InstallXtermSetUID
+INSTSETIDFLAGS = InstUidFlags
+#else
+INSTSETIDFLAGS = NullParameter
+#endif
+
+/*
+ * Compensate for broken imake configuration.
+ */
+#ifdef LinuxGnuSourceDefines
+# ifdef UseInstalled
+   IMAKEDEFINES = -D_GNU_SOURCE
+# endif
+#endif
+
+#ifndef SpecialCObjectRule
+#define SpecialCObjectRule(module,ignore,defines) \
+module.o: ; $(CC) -c defines $(CFLAGS) module.c
+#endif
+
+#ifndef ProgramTargetName
+#define ProgramTargetName(program) program
+#endif
+
+/*
+ * add -DWTMP and -DLASTLOG if you want them; make sure that bcopy can
+ * handle overlapping copies before using it.
+ */
+#if SetTtyGroup			/* turn on in config/machine.cf */
+    TTYGROUPDEF = -DUSE_TTY_GROUP
+#endif
+#ifdef UsePUCCPtyd		/* turn on in config/site.def */
+    PUCCPTYDDEF = -DPUCC_PTYD	/* does not need to be setuid */
+         PTYLIB = -lpucc
+#endif
+
+#if defined(NetBSDArchitecture) || \
+    defined(OpenBSDArchitecture) || \
+    defined(FreeBSDArchitecture) || \
+    (defined(LinuxArchitecture) && \
+     (LinuxCLibMajorVersion == 6) && (LinuxCLibMinorVersion < 1))
+         PTYLIB = -lutil
+#endif
+
+#ifdef DarwinArchitecture
+/* dyld can deadlock if a signal comes in when it is looking up a symbol */
+  LOCAL_LDFLAGS = -Wl,-bind_at_load
+#endif
+
+ OSMAJORVERSION = OSMajorVersion
+ OSMINORVERSION = OSMinorVersion
+
+#if	defined(NTOArchitecture)	|| \
+	defined(OpenBSDArchitecture)	|| \
+	defined(SGIArchitecture)	|| \
+	defined(SunArchitecture)
+TERMCAPDEFINES=-DUSE_TERMINFO -DHAVE_TIGETSTR
+#elif   defined(LinuxArchitecture)
+# if LinuxUsesNcurses
+TERMCAPDEFINES=-DUSE_TERMINFO -DHAVE_TIGETSTR
+# endif
+#endif
+
+#if !defined(OS2Architecture) && !defined(__GNU__) && !defined(Minix3Architecture)
+#if defined(UseUtempter)
+        UTMPDEF = -DUSE_UTEMPTER
+#else
+        UTMPDEF = -DUTMP
+#endif
+#endif
+
+#ifdef UTF8support
+    UTF8_OPTION = -DOPT_WIDE_CHARS -DOPT_LUIT_PROG
+        UTF8SRC = charclass.c precompose.c wcwidth.c xutf8.c
+        UTF8OBJ = charclass.o precompose.o wcwidth.o xutf8.o
+#endif
+#if BuildXftLibrary
+#define XRenderSupport
+#endif
+#ifdef XRenderSupport
+         XRFDEF = -DXRENDERFONT -DXFREE86_FT2
+        XRFLIBS = XftClientLibs
+     XRFDEPLIBS = XftClientDepLibs
+    XRFINCLUDES = $(XFTINCLUDES)
+#endif
+#if !HasPutenv
+      PUTENVDEF = -DNOPUTENV
+#endif
+#ifdef DumpsXTerm
+       DUMPSDEF = -DOPT_SCREEN_DUMPS=1
+#endif
+#ifdef RegisXTerm
+       SIXELDEF = -DOPT_REGIS_GRAPHICS=1
+#endif
+#ifdef SixelXTerm
+       SIXELDEF = -DOPT_SIXEL_GRAPHICS=1
+#endif
+#ifdef TraceXTerm
+       TRACEDEF = -DOPT_TRACE=1
+#endif
+   MAIN_DEFINES = $(UTMPDEF) $(TTYGROUPDEF) $(PUCCPTYDDEF) $(CSGIDFLAGS) \
+		  -DOSMAJORVERSION=$(OSMAJORVERSION) \
+		  -DOSMINORVERSION=$(OSMINORVERSION)
+   MISC_DEFINES = /* -DALLOWLOGGING -DALLOWLOGFILEEXEC */
+    XKB_DEFINES = XkbClientDefines
+   PATH_DEFINES = -DPROJECTROOT=$(PROJECTROOT)
+        DEFINES = $(XKB_DEFINES) $(TERMCAPDEFINES) $(FEATURE_DEFINES) $(SCROLLBAR_RIGHT) $(UTF8_OPTION) $(XRFDEF) $(PATH_DEFINES) $(PUTENVDEF) $(IMAKEDEFINES) $(SIXELDEF) $(TRACEDEF) $(DUMPSDEF)
+       INCLUDES = -I. $(XRFINCLUDES)
+
+        MAINSRC = main.c
+        MAINOBJ = main.o
+#ifdef DumpsXTerm
+       DUMPSSRC = html.c svg.c
+       DUMPSOBJ = html.o svg.o
+#endif
+#ifdef RegisXTerm
+       SIXELSRC = graphics_regis.c
+       SIXELOBJ = graphics_regis.o
+#endif
+#ifdef SixelXTerm
+       SIXELSRC = graphics_sixel.c
+       SIXELOBJ = graphics_sixel.o
+#endif
+#ifdef TraceXTerm
+       TRACESRC = trace.c
+       TRACEOBJ = trace.o
+#endif
+          SRCS1 = button.c cachedGCs.c charproc.c charsets.c cursor.c \
+		  data.c doublechr.c fontutils.c input.c \
+		  linedata.c menu.c misc.c print.c ptydata.c scrollback.c \
+		  screen.c scrollbar.c tabs.c util.c version.c xstrings.c \
+		  xtermcap.c TekPrsTbl.c Tekproc.c VTPrsTbl.c \
+		  $(MAINSRC) $(EXTRASRC) $(UTF8SRC) $(SIXELSRC) $(TRACESRC) $(DUMPSSRC)
+          OBJS1 = button.o cachedGCs.o charproc.o charsets.o cursor.o \
+		  data.o doublechr.o fontutils.o input.o \
+		  linedata.o menu.o misc.o print.o ptydata.o scrollback.o \
+		  screen.o scrollbar.o tabs.o util.o version.o xstrings.o \
+		  xtermcap.o TekPrsTbl.o Tekproc.o VTPrsTbl.o \
+		  $(MAINOBJ) $(EXTRAOBJ) $(UTF8OBJ) $(SIXELOBJ) $(TRACEOBJ) $(DUMPSOBJ)
+          SRCS2 = resize.c version.c xstrings.c
+          OBJS2 = resize.o version.o xstrings.o
+           SRCS = $(SRCS1) $(SRCS2)
+           OBJS = $(OBJS1) $(OBJS2)
+       PROGRAMS = ProgramTargetName(resize) ProgramTargetName(xterm)
+       DEPLIBS1 = XkbClientDepLibs XawClientDepLibs $(XRFDEPLIBS)
+       DEPLIBS2 =
+
+#ifndef TermcapLibrary
+#if SystemV && !defined(MacIIArchitecture)
+#if	defined(CrayArchitecture) || \
+	(defined(HPArchitecture) && (OSMajorVersion < 10)) || \
+	defined(RsArchitecture) || \
+	defined(SCOArchitecture) || \
+	defined(USLArchitecture)
+#define TermcapLibrary -lcurses		/* special cases of System V */
+#else
+#define TermcapLibrary -ltermlib	/* usually in here */
+#endif
+#else
+#define TermcapLibrary -ltermcap	/* bsd puts it here */
+#endif
+#endif
+
+     TERMCAPLIB = TermcapLibrary
+
+AllTarget($(PROGRAMS))
+
+VTPARSE_H = VTparse.h VTparse.hin
+TEKPARSE_H = Tekparse.h Tekparse.hin
+
+.SUFFIXES : .def .hin
+.def.hin :
+	awk '/^CASE_/{printf "#define %s %d\n", $$1, n++}' < $< >$@
+
+SpecialCObjectRule(main,$(_NOOP_),$(MAIN_DEFINES))
+SpecialCObjectRule(menu,$(_NOOP_),$(MISC_DEFINES))
+SpecialCObjectRule(misc,$(VTPARSE_H),$(MISC_DEFINES))
+SpecialCObjectRule(VTPrsTbl,$(VTPARSE_H),$(MISC_DEFINES))
+SpecialCObjectRule(charproc,$(VTPARSE_H),$(MISC_DEFINES))
+SpecialCObjectRule(data,$(_NOOP_),$(MISC_DEFINES))
+SpecialCObjectRule(TekPrsTbl,$(TEKPARSE_H),$(MISC_DEFINES))
+SpecialCObjectRule(TekProc,$(TEKPARSE_H),$(MISC_DEFINES))
+
+#if InstallXtermSetUID
+SetUIDProgramTarget(xterm,$(OBJS1),$(DEPLIBS1),$(XRFLIBS) XkbClientLibs XawClientLibs,$(TERMCAPLIB) $(PTYLIB))
+#else
+NormalProgramTarget(xterm,$(OBJS1),$(DEPLIBS1),$(XRFLIBS) XkbClientLibs XawClientLibs,$(TERMCAPLIB) $(UTMPLIB) $(PTYLIB))
+#endif
+
+#if defined(OpenBSDArchitecture) || defined(MirBSDArchitecture)
+/* On OpenBSD xterm is now setgid utmp */
+INSTUIDFLAGS= -m 2555 -g utmp
+#endif
+
+#if InstallXtermSetUID && defined(SunArchitecture) && HasSharedLibraries && (OSMajorVersion < 5)
+#if AlternateUsrLibDir
+#if ((OSMajorVersion == 4) && (OSMinorVersion >= 1))
+LDOVERRIDE = -L$(DESTDIR)$(USRLIBDIR)
+#else
+#if HasGcc
+LDOVERRIDE = -static -L$(DESTDIR)$(USRLIBDIR)
+#else
+LDOVERRIDE = -Bstatic -L$(DESTDIR)$(USRLIBDIR)
+LDRESUME = -Bdynamic
+#endif
+#endif
+#endif
+install::
+	MakeDir($(DESTDIR)$(BINDIR))
+	RemoveFile(ProgramTargetName(xterm.inst))
+	LinkRule(ProgramTargetName(xterm.inst),$(CDEBUGFLAGS) $(CCOPTIONS)
+	$(EXTRA_LDOPTIONS) $(LOCAL_LDFLAGS),$(OBJS1),$(LDOVERRIDE)
+	$(XRFLIBS) XawClientLibs $(LDRESUME) $(LDLIBS) $(TERMCAPLIB)
+	$(PTYLIB))
+	$(INSTALL) -c $(INSTPGMFLAGS) $(INSTSETIDFLAGS) ProgramTargetName(xterm.inst) $(DESTDIR)$(BINDIR)/ProgramTargetName(xterm)
+	RemoveFile(ProgramTargetName(xterm.inst))
+#else
+InstallProgramWithFlags(xterm,$(BINDIR),$(INSTSETIDFLAGS))
+#endif
+
+InstallNamedProg(uxterm,uxterm,$(BINDIR))
+
+/*
+ * Link with the termcap library if USE_TERMCAP is defined in resize.c
+ */
+#if	defined(NTOArchitecture)	|| \
+	defined(LinuxArchitecture)	|| \
+	defined(OpenBSDArchitecture)	|| \
+	defined(SGIArchitecture)	|| \
+	defined(SunArchitecture)
+NormalProgramTarget(resize,$(OBJS2),$(DEPLIBS2),NullParameter,NullParameter)
+#else
+NormalProgramTarget(resize,$(OBJS2),$(DEPLIBS2),NullParameter,$(TERMCAPLIB))
+#endif
+
+InstallProgramWithFlags(resize,$(BINDIR),NullParameter)
+
+/*
+ * termcap is a special name that does not install correctly with
+ * InstallNamedNonExec()
+ */
+install::
+	MakeDir($(DESTDIR)$(LIBDIR)/etc)
+	$(INSTALL) $(INSTALLFLAGS) $(INSTDATFLAGS) termcap \
+		$(DESTDIR)$(LIBDIR)/etc/xterm.termcap
+InstallNamedNonExec(terminfo,xterm.terminfo,$(LIBDIR)/etc)
+
+InstallAppDefaults(XTerm)
+InstallAppDefaults(UXTerm)
+InstallAppDefaultsLong(XTerm-col,XTerm-color)
+InstallManPage(xterm,$(MANDIR))
+InstallManPage(resize,$(MANDIR))
+
+cleandir::
+	$(RM) *parse.hin
+
+DependTarget()

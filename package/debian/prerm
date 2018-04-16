@@ -1,0 +1,12 @@
+#! /bin/sh
+echo "** prerm script for xterm: $*"
+
+set -e
+
+if [ "x$1" != "xupgrade" ]; then
+	update-alternatives --remove x-terminal-emulator /usr/bin/xterm-dev
+fi
+
+#DEBHELPER#
+
+exit 0

@@ -1,0 +1,163 @@
+! $XTermId: XTerm-col.ad,v 1.22 2009/08/15 15:56:29 tom Exp $
+! -----------------------------------------------------------------------------
+! this file is part of xterm
+!
+! Copyright 2002-2006,2009 by Thomas E. Dickey
+! 
+!                         All Rights Reserved
+! 
+! Permission is hereby granted, free of charge, to any person obtaining a
+! copy of this software and associated documentation files (the
+! "Software"), to deal in the Software without restriction, including
+! without limitation the rights to use, copy, modify, merge, publish,
+! distribute, sublicense, and/or sell copies of the Software, and to
+! permit persons to whom the Software is furnished to do so, subject to
+! the following conditions:
+! 
+! The above copyright notice and this permission notice shall be included
+! in all copies or substantial portions of the Software.
+! 
+! THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+! OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+! MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+! IN NO EVENT SHALL THE ABOVE LISTED COPYRIGHT HOLDER(S) BE LIABLE FOR ANY
+! CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+! TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+! SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+! 
+! Except as contained in this notice, the name(s) of the above copyright
+! holders shall not be used in advertising or otherwise to promote the
+! sale, use or other dealings in this Software without prior written
+! authorization.
+! -----------------------------------------------------------------------------
+
+#include "XTerm"
+
+*VT100*colorMode: on
+*VT100*boldColors: on
+*VT100*dynamicColors: on
+
+! Uncomment this for "white" text on a dark background.
+!*VT100*foreground: gray90
+!*VT100*background: black
+
+! - OR -
+! Uncomment this for black text on a "white" background.
+!*VT100*foreground: black
+!*VT100*background: gray90
+
+! - OR -
+! leave the foreground/background colors alone (at the mercy of your desktop
+! designer).
+
+! Color the popup/pulldown menu border to match the text widget foreground.
+!*SimpleMenu*borderColor: gray15
+
+! Uncomment this to use color for underline attribute
+!*VT100*colorULMode: on
+*VT100*colorUL: yellow
+
+!*VT100*italicULMode: on
+
+! Uncomment this to disable underlining, e.g., if colorULMode is set.
+!*VT100*underLine: off
+
+! Uncomment this to use color for the bold attribute
+!*VT100*colorBDMode: on
+*VT100*colorBD: white
+
+! Uncomment this to use the bold/underline colors in preference to other colors
+!*VT100*colorAttrMode: on
+
+! These are the 8 ANSI colors and their bright equivalents.  Depending on
+! other resource settings, xterm may use the bright colors when displaying
+! bold text (see the boldColors resource).
+*VT100*color0: black
+*VT100*color1: red3
+*VT100*color2: green3
+*VT100*color3: yellow3
+*VT100*color4: blue2
+*VT100*color5: magenta3
+*VT100*color6: cyan3
+*VT100*color7: gray90
+*VT100*color8: gray50
+*VT100*color9: red
+*VT100*color10: green
+*VT100*color11: yellow
+*VT100*color12: rgb:5c/5c/ff
+*VT100*color13: magenta
+*VT100*color14: cyan
+*VT100*color15: white
+
+! Disclaimer: there are no standard colors used in terminal emulation.
+!
+! The choice for color4 and color12 is a tradeoff between contrast, depending
+! on whether they are used for text or backgrounds.  Note that either color4 or
+! color12 would be used for text, while only color4 would be used for a
+! background.  These are treated specially, since the luminosity of blue is
+! only about half that of red/green, and is typically not accounted for in the
+! RGB scheme.
+!
+! Blue text on a black background should be readable.
+! Blue backgrounds should not be "too" bright.
+!
+! Originally color4/color12 were set to the names blue3/blue
+!*VT100*color4: blue3
+!*VT100*color12: blue
+!
+! They are from rgb.txt respectively:
+!  0   0 205		blue3
+!  0   0 255		blue
+! However, blue3 is not readable on a black background.
+!
+! Another choice was from the Debian settings:
+!*VT100*color4: DodgerBlue1
+!*VT100*color12: SteelBlue1
+!
+! From rgb.txt:
+! 30 144 255		DodgerBlue1
+! 99 184 255		SteelBlue1
+!
+! Some users object to this choice because the background (color4) is brighter
+! than they are accustomed.  Others point out that the different weights for
+! the red/green components make it appear to be not really blue.  Finally, it
+! provides poor contrast against color13 and color14.
+!
+! The current choice uses equal weights for red/green (effectively adding a
+! gray to the result).  It is brighter than the original choice, and provides
+! more contrast between color12 and color13, color14 than SteelBlue1 did.
+! Contrast of color4 against black is slightly improved over the original.
+!
+! Some refinement is certainly possible (you are welcome to try) -TD
+
+
+#if PLANES > 8
+! Color the popup menus and the menubar to match:
+*SimpleMenu*background: AntiqueWhite
+*SimpleMenu*foreground: gray15
+
+! Color the menubar to match:
+*Form.menubar.background: AntiqueWhite
+*Form.menubar*background: AntiqueWhite
+*Form.menubar.foreground: gray15
+*Form.menubar*foreground: gray15
+*Form.background: AntiqueWhite
+*form.background: AntiqueWhite
+
+! The following two sections take advantage of new features in version 7
+! of the Athena widget library.  Comment them out if you have a shallow
+! color depth.
+!*SimpleMenu*backgroundPixmap:   gradient:vertical?dimension=350&start=gray90&end=gray60
+!*SimpleMenu*foreground:         gray15
+
+!*VT100.scrollbar.thumb:         vlines2
+!*VT100.scrollbar.width:         14
+!*VT100.scrollbar.background:    gray60
+!*VT100.scrollbar.foreground:    rgb:a/5/5
+!*VT100.scrollbar.borderWidth:   0
+!*VT100.scrollbar.displayList:\
+!foreground      gray90;\
+!lines           1,-1,-1,-1,-1,1;\
+!foreground      gray60;\
+!lines           -1,0,0,0,0,-1
+#endif

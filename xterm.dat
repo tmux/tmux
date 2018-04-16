@@ -1,0 +1,162 @@
+! $XFree86: xc/programs/xterm/xterm.dat,v 1.5 2005/07/07 00:46:14 dickey Exp $
+!
+*title: Xterm
+*iconName: Xterm
+*c132: TRUE
+*scrollBar: on
+*saveLines:	1000
+
+! This is nonsense: if the xterm has no session management capabilities,
+! it is useless, and if it does, it is harmful.
+!XTerm.JoinSession:False
+
+! turn off NumLock support - there is some conflict or problem on VMS
+*numLock: false
+
+*SimpleMenu*BackingStore: NotUseful
+*SimpleMenu*menuLabel.font: -adobe-helvetica-bold-r-normal--*-120-*-*-*-*-iso*-*
+*SimpleMenu*menuLabel.vertSpace:   100
+*SimpleMenu*HorizontalMargins: 16
+*SimpleMenu*Sme.height:    16
+*SimpleMenu*Cursor: left_ptr
+
+*mainMenu.Label:  Main Options
+*mainMenu*securekbd*Label:  Secure Keyboard
+*mainMenu*allowsends*Label:  Allow SendEvents
+*mainMenu*logging*Label:  Log to File
+*mainMenu*print*Label:  Print Window
+*mainMenu*redraw*Label:  Redraw Window
+*mainMenu*dump-html*Label:  XHTML Screen Dump
+*mainMenu*dump-svg*Label:  SVG Screen Dump
+*mainMenu*8-bit control*Label: 8-Bit Controls
+*mainMenu*backarrow key*Label: Backarrow Key
+*mainMenu*num-lock*Label: Alt/NumLock Modifiers
+*mainMenu*meta-esc*Label: Meta Sends Escape
+*mainMenu*sunFunction-keys*Label: Sun Function-Keys
+*mainMenu*sunKeyboard*Label: VT220 Keyboard
+*mainMenu*hp function-keys*Label: HP Function-Keys
+*mainMenu*suspend*Label:  Send STOP Signal
+*mainMenu*suspend*Sensitive: FALSE
+*mainMenu*continue*Label:  Send CONT Signal
+*mainMenu*continue*Sensitive: FALSE
+*mainMenu*interrupt*Label:  Send INT Signal
+*mainMenu*interrupt*Sensitive: FALSE
+*mainMenu*hangup*Label:  Send HUP Signal
+*mainMenu*hangup*Sensitive: FALSE
+*mainMenu*terminate*Label:  Send TERM Signal
+*mainMenu*terminate*Sensitive:  FALSE
+*mainMenu*kill*Label:  Send KILL Signal
+*mainMenu*kill*Sensitive:  FALSE
+*mainMenu*quit*Label:  Quit
+
+*vtMenu.Label:  VT Options
+*vtMenu*scrollbar*Label:  Enable Scrollbar
+*vtMenu*jumpscroll*Label:  Enable Jump Scroll
+*vtMenu*reversevideo*Label:  Enable Reverse Video
+*vtMenu*autowrap*Label:  Enable Auto Wraparound
+*vtMenu*reversewrap*Label:  Enable Reverse Wraparound
+*vtMenu*autolinefeed*Label:  Enable Auto Linefeed
+*vtMenu*appcursor*Label:  Enable Application Cursor Keys
+*vtMenu*appkeypad*Label:  Enable Application Keypad
+*vtMenu*scrollkey*Label:  Scroll to Bottom on Key Press
+*vtMenu*scrollttyoutput*Label:  Scroll to Bottom on Tty Output
+*vtMenu*allow132*Label: Allow 80/132 Column Switching
+*vtMenu*cursesemul*Label:  Enable Curses Emulation
+*vtMenu*visualbell*Label:  Enable Visual Bell
+*vtMenu*poponbell*Label:  Enable Pop on Bell
+*vtMenu*marginbell*Label:  Enable Margin Bell
+*vtMenu*cursorblink*Label: Enable Blinking Cursor
+*vtMenu*titeInhibit*Label:  Enable Alternate Screen Switching
+*vtMenu*activeicon*Label: Enable Active Icon
+*vtMenu*softreset*Label:  Do Soft Reset
+*vtMenu*hardreset*Label:  Do Full Reset
+*vtMenu*clearsavedlines*Label:  Reset and Clear Saved Lines
+*vtMenu*tekshow*Label:  Show Tek Window
+*vtMenu*tekmode*Label:  Switch to Tek Mode
+*vtMenu*vthide*Label:  Hide VT Window
+*vtMenu*altscreen*Label:  Show Alternate Screen
+
+*fontMenu.Label:  VT Fonts
+*fontMenu*fontdefault*Label:       Default
+*VT100*font:               -bitstream-terminal-medium-r-normal-gs-18-180-75-75-c-110-iso8859-1
+*fontMenu*font1*Label:     Tiny
+*VT100*font1:              -misc-fixed-medium-r-normal--8-60-*-*-c-50-iso8859-1
+*fontMenu*font2*Label:     Small
+*VT100*font2:              -misc-fixed-medium-r-normal--10-70-*-*-c-60-iso8859-1
+*fontMenu*font3*Label:     Medium
+*VT100*font3:              -misc-fixed-medium-r-normal--13-120-*-*-c-70-iso8859-1
+*fontMenu*font4*Label:     Large
+*VT100*font4:              -bitstream-terminal-medium-r-normal-gs-18-180-75-75-c-110-iso8859-1
+*fontMenu*font5*Label:     Huge
+*VT100*font5:              -bitstream-terminal-medium-r-normal-gs-36-280-100-100-c-220-iso8859-1
+*fontMenu*font6*Label:     Large-Narrow
+*VT100*font6:              -bitstream-terminal-medium-r-narrow--18-180-75-75-c-70-iso8859-1
+*fontMenu*fontescape*Label:        Escape Sequence
+*fontMenu*fontsel*Label:           Selection
+!fontescape and fontsel overridden by application
+*fontMenu*font-doublesize*Label: Doublesized Characters
+*fontMenu*font-loadable*Label:	VT220 Soft Fonts
+
+*tekMenu.Label:  Tek Options
+*tekMenu*tektextlarge*Label:  Large Characters
+*tekMenu*tektext2*Label:  #2 Size Characters
+*tekMenu*tektext3*Label:  #3 Size Characters
+*tekMenu*tektextsmall*Label:  Small Characters
+*tekMenu*tekpage*Label:  PAGE
+*tekMenu*tekreset*Label:  RESET
+*tekMenu*tekcopy*Label:  COPY
+*tekMenu*vtshow*Label:  Show VT Window
+*tekMenu*vtmode*Label:  Switch to VT Mode
+*tekMenu*tekhide*Label:  Hide Tek Window
+
+*tek4014*fontLarge: -misc-fixed-medium-r-normal--15-140-*-*-c-90-iso8859-1
+*tek4014*font2: -misc-fixed-medium-r-normal--13-120-*-*-c-70-iso8859-1
+*tek4014*font3: -misc-fixed-medium-r-normal--10-100-*-*-c-60-iso8859-1
+*tek4014*fontSmall: -misc-fixed-medium-r-normal--8-80-*-*-c-50-iso8859-1
+
+! Enable Colour by default.
+
+*VT100*colorMode: on
+*VT100*boldColors: on
+*VT100*dynamicColors: on
+
+*VT100*highlightColor: red
+*VT100*cursorColor: white
+!bold text color
+*VT100*colorBDMode: on
+*VT100*colorBD: green
+!blinking text color
+*VT100*colorBLMode: on
+*VT100*colorBL: red
+
+
+! Uncomment this use color for underline attribute
+!*VT100*colorULMode: on
+!*VT100*italicULMode: on
+!*VT100*underLine: off
+
+! Uncomment this to use color for the bold attribute
+*VT100*colorBDMode: on
+
+! Uncomment this to use the bold/underline colors in preference to other colors
+*VT100*colorAttrMode: on
+
+*VT100*color0: black
+*VT100*color1: red3
+*VT100*color2: green3
+*VT100*color3: yellow3
+*VT100*color4: blue3
+*VT100*color5: magenta3
+*VT100*color6: cyan3
+*VT100*color7: gray90
+*VT100*color8: gray30
+*VT100*color9: red
+*VT100*color10: green
+*VT100*color11: yellow
+*VT100*color12: blue
+*VT100*color13: magenta
+*VT100*color14: cyan
+*VT100*color15: white
+*VT100*colorUL: yellow
+*VT100*colorBD: white
+

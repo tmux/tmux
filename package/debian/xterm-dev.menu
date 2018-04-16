@@ -1,0 +1,14 @@
+?package(xterm-dev):\
+ needs="x11"\
+ section="Applications/Terminal Emulators"\
+ longtitle="XTerm: terminal emulator for X (development)"\
+ title="XTermDev"\
+ icon="/usr/share/pixmaps/xterm-dev-color_32x32.xpm"\
+ command="xterm-dev"
+?package(xterm-dev):\
+ needs="x11"\
+ section="Applications/Terminal Emulators"\
+ longtitle="XTerm: terminal emulator for X with Unicode support (development)"\
+ title="XTermDev (Unicode)"\
+ icon="/usr/share/pixmaps/xterm-dev-color_32x32.xpm"\
+ command="uxterm-dev"

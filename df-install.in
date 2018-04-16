@@ -1,0 +1,108 @@
+#!/bin/sh
+# $XTermId: df-install.in,v 1.14 2012/08/27 01:07:19 tom Exp $
+# -----------------------------------------------------------------------------
+# this file is part of xterm
+#
+# Copyright 2011,2012 by Thomas E. Dickey
+#
+#                         All Rights Reserved
+#
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+# IN NO EVENT SHALL THE ABOVE LISTED COPYRIGHT HOLDER(S) BE LIABLE FOR ANY
+# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+#
+# Except as contained in this notice, the name(s) of the above copyright
+# holders shall not be used in advertising or otherwise to promote the
+# sale, use or other dealings in this Software without prior written
+# authorization.
+# -----------------------------------------------------------------------------
+#
+# Install desktop-files, substituting the category to customize the file
+# to the current system's conventions.
+#
+# Parameters are passed to the desktop-file-install program.  The last
+# parameter is the name of the ".desktop" file to install.
+OPTS=
+
+if test $# != 0
+then
+	APP_NAME=$1
+	shift 1
+fi
+
+CDPATH=:
+export CDPATH
+
+while test $# != 0
+do
+	case .$1 in #(vi
+	*.desktop) #(vi
+		if test $# = 1
+		then
+			OLD_FILE=$1
+		else
+			OPTS="$OPTS $1"
+		fi
+		;;
+	*)
+		OPTS="$OPTS $1"
+		;;
+	esac
+	shift 1
+done
+
+MY_TEMP=tempdir$$
+rm -rf $MY_TEMP
+
+if test -z "$OLD_FILE"
+then
+	echo "? not found: $OLD_FILE"
+	exit 1
+elif ! mkdir $MY_TEMP
+then
+	echo "? cannot mkdir: $MY_TEMP"
+	exit 1
+fi
+
+# The newer dfi whines about deprecation of encoding, but no release provides
+# --version or equivalent.  really.
+if desktop-file-install --help-all >/dev/null 2>&1
+then
+	NO_ENCODING="#Encoding"
+else
+	NO_ENCODING="Encoding"
+fi
+
+NEW_FILE=`basename $OLD_FILE`
+sed \
+	-e '/^Encoding=/s%Encoding%'$NO_ENCODING'%' \
+	-e '/^[^#]*Icon=/s%=.*%=xterm-color%' \
+	-e '/^[^#]*Category=/s%=.*%=@DESKTOP_CATEGORY@%' \
+	-e '/^[^#]*Categories=/s%=.*%=@DESKTOP_CATEGORY@%' \
+	-e '/^[^#]/s%xterm%'$APP_NAME'%g' \
+	-e '/^[^#]/s%XTerm%@APP_CLASS@%g' \
+	$OLD_FILE >$MY_TEMP/$NEW_FILE
+diff -u $OLD_FILE $MY_TEMP/$NEW_FILE
+cd $MY_TEMP
+
+desktop-file-install $OPTS $NEW_FILE
+
+cd ..
+rm -rf $MY_TEMP
+
+# vi:ts=4 sw=4

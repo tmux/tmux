@@ -1,0 +1,25 @@
+#! /bin/sh
+echo "** postinst script for xterm: $*"
+
+set -e
+
+PRI=60
+ALT=x-terminal-emulator
+PKG=xterm-dev
+
+BINDIR=/usr/bin
+MANDIR=/usr/share/man/man1
+
+if [ $1 != "upgrade" ]
+then
+	update-alternatives \
+		--install \
+			$BINDIR/$ALT $ALT \
+			$BINDIR/$PKG $PRI \
+		--slave $MANDIR/$ALT.1.gz $ALT.1.gz \
+			$MANDIR/$PKG.1.gz
+fi
+
+#DEBHELPER#
+
+exit 0

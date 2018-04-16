@@ -1,0 +1,201 @@
+-- $XTermId: THANKS,v 1.16 2017/05/27 16:55:42 tom Exp $
+-- vile:txtmode fk=8bit
+There's no AUTHORS file in this distribution; it would be redundant since
+I (Thomas E. Dickey) have done more than 80% of the work on xterm since 1996.
+
+There's no reliable history before that point.
+For some insight, see
+
+	http://invisible-island.net/xterm/xterm.faq.html#who_did_it
+
+Here's a list from xterm.log.html of people who have contributed changes.
+
+Adam M Costello
+Adam Sulmicki
+Ailin Nemui
+Al Poole
+Alan Coopersmith
+Alex Hornung
+Alexander Pohoyda
+Alexander V Lukyanov
+Andrea Odetti
+Andreas Jaeger
+Andreas Schwab
+Andres Perera
+Andrew Sumner
+Andrew Tipton
+Andrey Panov
+Andries E Brouwer
+Anton Kovalenko
+Balazs Kezes
+Ben Wiley Sittler
+Ben Yoshino
+Bernhard R Link
+Bernhard Rosenkraenzer
+Bertram Felgenhauer
+Bill Nottingham
+Bob Maynard
+Bradd W Szonye
+Bram Moolenaar
+Branden Robinson
+Bruno Haible
+Caetano Jimenez Carezzato
+Chris Adams
+Chris Clayton
+Christian Biere
+Christian Weisgerber
+Chuck Blake
+D Roland Walker
+Dan Church
+Daniel Colascione
+Daniel Drake
+Daniel Jacobowitz
+Dave Simmons
+David Dawes
+David Krause
+David Madore
+David Martínez Moreno
+David Mathog
+David Wolfskill
+David Wood
+David Yeo
+Denis Zaitsev
+Dennis Preiser
+Dennis Schneider
+Dimitrios Christidis
+Ed Schouten
+Eddy De Greef
+Edward S Arthur
+Egbert Eich
+Egmont Koblinger
+Emanuele Giaquinta
+Eugene Konev
+Fabrice Bellard
+Frank Giessler
+Frank Guangxin Liu
+Frank Liu
+Gael Roualland
+George Nachman
+George Peter Staplin
+Gertjan Halkes
+Greg Badros
+Greg Klanderman
+Greg Smith
+H Merijn Brand
+Hasso Tepper
+Holger Veit
+Ilya Zakharevich
+Iwamoto Kouichi
+James Armstrong
+Jason Bacon
+Jason Vas Dias
+Jeff Chua
+Jeff Uphoff
+Jens Schweikhardt
+Jeremy Buhler
+Jeremy Huddleston
+Jeroen Ruigrok
+Jess Thrysoee
+Jim Paris
+Jochen Voss
+Joe Allen
+Joe Peterson
+Johnny Billquist
+Julien Cristau
+Juliusz Chroboczek
+Jungshik Shin
+Jürgen Keil
+Kean Johnston
+Keith Packard
+Ken Martin
+Kevin Buhr
+Kevin Ryde
+Kevin Schoedel
+Kiyokazu Suto
+Larry Hynes
+Larry Riedel
+Lee Olsen
+Loïc Minier
+Marc Bevand
+Marc La France
+Marco Peereboom
+Marius Tolzmann
+Mark Waggoner
+Markus Kuhn
+Martin Pirker
+Martin Tournoij
+Matthew Green
+Matthias Baake
+Matthias Scheler
+Matthieu Herrb
+Matthieu Lagouge
+Mattias Engdegård
+Max Mikhanosha
+Michael Riepe
+Michael Rohleder
+Michael Schroeder
+Mike Castle
+Mike Fabian
+Mike Hopkirk
+Milan Mehner
+Min Sik Kim
+Miroslav Lichvar
+Nam SungHyun
+Nelson Beebe
+Németh Márton
+Nicolas George
+Ovidiu Gheorghioiu
+Paul Bolle
+Paul Gilmartin
+Paul Giordano
+Paul Lampert
+Paul Maier
+Paul Vojta
+Paul Williams
+Pavel Roskin
+Peder Stray
+Per Hedeland
+Peter Berg Larsen
+Pierre Lombard
+Richard Braakman
+Richard Griswold
+Richard Tollerton
+Rob Braun
+Robert Brady
+Robert Earl
+Robin Cutshaw
+Romain Francoise
+Ross Combs
+Ross Paterson
+Ryan Johnson
+Scott Sewall
+Semen A Ustimenko
+Sergei Laskavy
+Sergey Vlasov
+Slava Semushin
+Stefan Dirsch
+Stephen P Wall
+Stuart Lissaman
+Sven Verdoolaege
+Taketo Kabe
+Taneli Huuskonen
+Ted Phelps
+Thierry Reding
+Thomas Wolff
+Tim Adye
+Tim Pope
+Tobias Stoeckmann
+Todd Eigenschink
+Todd Larason
+Todd Miller
+Tomas Vanhala
+Tomasz Cholewo
+Tomohiro Kubota
+Tor Lillqvist
+Torrey Lyons
+Victor Stinner
+Vincent Lefèvre
+Werner Fink
+Werner Lemberg
+Will Day
+Zdenek Sekera

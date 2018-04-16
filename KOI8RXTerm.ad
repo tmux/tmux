@@ -1,0 +1,50 @@
+! $XTermId: KOI8RXTerm.ad,v 1.4 2010/03/04 01:17:49 tom Exp $
+! -----------------------------------------------------------------------------
+! this file is part of xterm
+!
+! Copyright 2007,2010 by Thomas E. Dickey
+! 
+!                         All Rights Reserved
+! 
+! Permission is hereby granted, free of charge, to any person obtaining a
+! copy of this software and associated documentation files (the
+! "Software"), to deal in the Software without restriction, including
+! without limitation the rights to use, copy, modify, merge, publish,
+! distribute, sublicense, and/or sell copies of the Software, and to
+! permit persons to whom the Software is furnished to do so, subject to
+! the following conditions:
+! 
+! The above copyright notice and this permission notice shall be included
+! in all copies or substantial portions of the Software.
+! 
+! THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+! OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+! MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+! IN NO EVENT SHALL THE ABOVE LISTED COPYRIGHT HOLDER(S) BE LIABLE FOR ANY
+! CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+! TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+! SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+! 
+! Except as contained in this notice, the name(s) of the above copyright
+! holders shall not be used in advertising or otherwise to promote the
+! sale, use or other dealings in this Software without prior written
+! authorization.
+! -----------------------------------------------------------------------------
+! This is based on the UXTerm app-defaults file.
+! -----------------------------------------------------------------------------
+! Use
+!	xterm -class KOI8RXTerm
+! to set resources for KOI8-R mode with corresponding fonts.
+
+#include "XTerm"
+
+*fontMenu.Label:  KOI8-R Fonts
+*VT100*allowC1Printable:	true
+
+! Use Cyrillic instead of Latin fonts.
+*VT100.font:	-misc-fixed-medium-r-semicondensed--13-120-75-75-c-60-koi8-r
+*VT100.font2:	-misc-fixed-medium-r-normal--8-80-75-75-c-50-koi8-r
+*VT100.font3:	-misc-fixed-medium-r-normal--14-130-75-75-c-70-koi8-r
+*VT100.font4:	-misc-fixed-medium-r-normal--13-120-75-75-c-80-koi8-r
+*VT100.font5:	-misc-fixed-medium-r-normal--18-120-100-100-c-90-koi8-r
+*VT100.font6:	-misc-fixed-medium-r-normal--20-200-75-75-c-100-koi8-r

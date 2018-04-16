@@ -1,0 +1,23 @@
+-- $XTermId: README,v 1.11 2016/05/22 20:01:53 tom Exp $
+-- $XFree86: xc/programs/xterm/unicode/README,v 1.5 2004/12/01 01:27:49 dickey Exp $
+-- Thomas E. Dickey
+
+These scripts and datafiles are used for generating tables used in the
+UTF-8 implementation in xterm.
+
+To run the convmap.pl script, you will need a copy of UnicodeData.txt
+which is currently available as
+
+         ftp://ftp.unicode.org/Public/UNIDATA/UnicodeData.txt
+
+It is a large file (>1Mb), so it is not included in this distribution.
+
+convmap.pl is used to generate ../keysym2ucs.c, e.g.,
+
+	./convmap.pl >../keysym2ucs.c
+
+keysym.map is input data for convmap.pl
+
+The make-precompose.sh script makes the precompose.c file, which is used to
+handle canonical composition. This also needs UnicodeData.txt. It uses
+precompose.c.head and precompose.c.tail as templates.

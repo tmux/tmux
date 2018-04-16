@@ -1,0 +1,2447 @@
+# $XTermId: terminfo,v 1.177 2017/12/25 21:08:55 tom Exp $
+#
+# Updates/notes/new entries (e.g., xterm-8bit, xterm-16color, xterm-256color)
+# - Thomas E. Dickey
+#
+#------------------------------------------------------------------------------
+# Copyright 1996-2016,2017 by Thomas E. Dickey
+#
+#                         All Rights Reserved
+#
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+# IN NO EVENT SHALL THE ABOVE LISTED COPYRIGHT HOLDER(S) BE LIABLE FOR ANY
+# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+#
+# Except as contained in this notice, the name(s) of the above copyright
+# holders shall not be used in advertising or otherwise to promote the
+# sale, use or other dealings in this Software without prior written
+# authorization.
+#------------------------------------------------------------------------------
+# format (ncurses 6.1): tic -W -1 -f -x terminfo
+#------------------------------------------------------------------------------
+#
+# Special Capabilities:
+# --------------------
+# ich has a corresponding capability that inserts a single blank.  We could
+#	have used ich1=\E[@, which works with ncurses, but that is not standard
+#	behavior.  If it is set, then SVr4 vi (e.g., Solaris 2.6) emits both
+#	smir/rmir and ich1.
+# meml locks memory above the cursor; memu unlocks (ala HP terminals).  This
+#	is not recognized by some older (e.g., SVr3) tic programs, but none
+#	do more than warn about it.  Ignore the warning.
+# smcup clears memory before switching to the alternate screen.  The older
+#	(deprecated) \E[?47h did not do this, requiring applications to
+#	embed a \E[2J in the rmcup string.  However, that behavior cannot
+#	be disabled via titeInhibit, making that resource not function as
+#	intended on systems with terminfo.
+# rs2/is2 are shorter with XFree86 xterm because it supports DECSTR.  We
+#	use the shorter sequence for compatibility with the termcap, which
+#	is trimmed to keep it shorter than 1023 characters.  It (escape \E[!p)
+#	replaces these in the conventional vt100 reset-string:
+#		\E7	- save cursor (fixes origin-mode side-effect)
+#		\E[r	- reset scrolling margins
+#		\E[m	- reset SGR (including color)
+#		\E[?7h	- reset wraparound mode (DECAWM)
+#		\E[?1l	- reset application cursor keys (DECCKM)
+#		\E[?6l	- reset origin mode (DECOM)
+#		\E8	- restore cursor
+#	DECSTR is recognized by XFree86 xterm even in vt52 mode.
+#
+# Editing Keypad:
+# --------------
+# XFree86 xterm emulates vt220 if the decTerminalID resource is set to 200 or
+# higher.  Otherwise it emulates a vt100 or vt52 depending on the value of the
+# resource.  When emulating a vt220, we support the editing keypad.  Sun and PC
+# keyboards have an editing keypad which is similar to the vt220:
+#
+#	VT220 editing keypad
+#	----------------------------
+#	Find      Insert      Remove
+#	Select    Prev        Next
+#	----------------------------
+#
+#	Sun/PC editing keypad
+#	----------------------------
+#	Insert    Home        PageUp
+#	Delete    End         PageDn
+#	----------------------------
+#
+# If the sunKeyboard resource is true, we map it this way (adjusting the values
+# of Home, End and Delete):
+#	VT220		      Sun/PC
+#	----------------------------
+#	Find		      Home
+#	Select		      End
+#	Insert		      Insert
+#	Remove		      Delete
+#	Prev		      PageUp
+#	Next		      PageDn
+#	----------------------------
+#
+# Note that all of the keys on the editing keypad transmit escape sequences.  A
+# vt220 does this only when in vt220 mode; when emulating a vt100 the editing
+# keypad is inactive.
+#
+# Alternative keycodes:
+# --------------------
+# Several of the function keys have alternative names, depending on the type of
+# host which your xterm is connected to.  DEC (i.e., the VMS system) uses F15
+# as the HELP key, F16 as the DO key.  Unix applications generally do not do
+# this.  Curses applications in particular, assign a unique keycode to each
+# capability string.  These terminal descriptions do not have conflicting
+# definitions, to ensure that Unix curses applications use a consistent set of
+# keycodes.  To get a VMS-bias, make these substitutions:
+#	1. change khome to kfnd
+#	2. change kend to kslt
+# The original xterm-r6 entry does in fact have a VMS bias.
+#
+# Some legacy applications using the termcap emulation may expect kll where
+# we have specified kend.
+#
+# Function keys with modifiers (Sun/PC):
+# -------------------------------------
+#	Shift-Fx          - kf{12+x}
+#	Control-Fx        - kf{24+x}
+#	Shift-Control-Fx  - kf{36+x}
+#
+# The terminfo defines some special keys which are documented as "shifted",
+# e.g., kDC is shifted-delete-character.
+#
+# Note however, that even though the terminfo says a key might be sent, there
+# may be conflicts which prevent this.  For example, it is common to use
+# shifted pageup and pagedown for window manager functions.  The default
+# translation for xterm since X11R4 has overridden shifted Insert, Select,
+# PageUp and PageDown, which correspond to terminfo kIC, kEND, kPRV and kNXT
+# respectively.
+#
+xterm-new|modern xterm terminal emulator,
+	npc,
+	indn=\E[%p1%dS,
+	kb2=\EOE,
+	kcbt=\E[Z,
+	kent=\EOM,
+	rin=\E[%p1%dT,
+	use=ansi+rep,
+	use=ecma+strikeout,
+	use=xterm+pcfkeys,
+	use=xterm+tmux,
+	use=xterm-basic,
+
+# These "ansi+XXX" blocks were added in ncurses 5.0:
+ansi+rep,
+	rep=%p1%c\E[%p2%{1}%-%db,
+
+ansi+enq|ncurses extension for ANSI ENQ,
+	u6=\E[%i%d;%dR,
+	u7=\E[6n,
+	u8=\E[?%[;0123456789]c,
+	u9=\E[c,
+
+# Encode modifiers using parameters (see "Xterm Control Sequences" ctlseqs.ms).
+# Note that this is unrelated to PCTERM.
+#
+# Some names are extensions allowed by ncurses, e.g.,
+#	kDN, kDN5, kDN6, kLFT5, kLFT6, kRIT5, kRIT6, kUP, kUP5, kUP6
+#
+# The uppercase names are made up, since there are no standards that apply.
+# If they were limited to two characters, they could in principle be translated
+# to termcap.  However, termcap sizes are limited to 1023 bytes, so there is
+# little point in ensuring that extended key names can be translated to
+# termcap.  A terminfo file can be up to 4096 bytes; using all extended keys
+# that xterm can generate would in fact exceed that limit.
+#
+# The numbers correspond to the modifier parameters documented in Xterm
+# Control Sequences:
+#
+#	2	Shift
+#	3	Alt
+#	4	Shift + Alt
+#	5	Control
+#	6	Shift + Control
+#	7	Alt + Control
+#	8	Shift + Alt + Control
+#
+# X/Open Curses defines some shift combinations, which are also used here
+# where applicable.  Since it does define some shift combinations, no number
+# (2) is used for suffixing the made-up names.  Some combinations are not
+# useful, e.g., they may reboot your computer, or they may require too many
+# fingers.  I stopped at modifier 7, just to keep things simple -TD
+#
+# XTerm resources:
+# ---------------
+# The xterm+pcfn, xterm+pcf0, xterm+pcf1, xterm+pcf2 and xterm+pcf3 fragments
+# correspond to default resource settings for xterm on a 104-key PC keyboard
+# with 12 function-keys:
+#
+#	*sunKeyboard:false
+#	*oldXtermFKeys:false
+#	*modifyCursorKeys:2
+#	*modifyFunctionKeys:2
+#	*ctrlFKeys:10
+#
+# The key numbers are computed based on the modifiers:
+#
+#	kf1-kf12 are F1-F12
+#	kf13-kf24 are shift F1-F12
+#	kf25-kf36 are control F1-F12
+#	kf37-kf48 are control+shift F1-F12
+#	kf49-kf60 are alt F1-F12
+#	kf61-kf63 are shift-alt F1-F3
+#
+# Note that ncurses would allow definition of kf64 and beyond, if there were
+# an application that required it.
+#
+xterm+pcfkeys|fragment for PC-style keys,
+	use=xterm+app,
+	use=xterm+pcf2,
+	use=xterm+pce2,
+	use=xterm+pcc2,
+
+# This chunk is based on suggestions by Ailin Nemui and Nicholas Marriott, who
+# asked for some of xterm's advanced features to be added to its terminfo
+# entry.  It defines extended capabilities not found in standard terminfo or
+# termcap.  These are useful in tmux, for instance, hence the name.
+#
+# One caveat in adding extended capabilities in ncurses is that if the names
+# are longer than two characters, then they will not be visible through the
+# termcap interface.
+#
+# Ms modifies the selection/clipboard.  Its parameters are
+#	p1 = the storage unit (clipboard, selection or cut buffer)
+#	p2 = the base64-encoded clipboard content.
+#
+# Ss is used to set the cursor style as described by the DECSCUSR
+#	function to a block or underline.
+# Se resets the cursor style to the terminal power-on default.
+#
+# Cs and Ce set and reset the cursor colour.
+xterm+tmux|advanced xterm features used in tmux,
+	Cr=\E]112\007,
+	Cs=\E]12;%p1%s\007,
+	Ms=\E]52;%p1%s;%p2%s
+	   \007,
+	Se=\E[2\sq,
+	Ss=\E[%p1%d\sq,
+#
+# The ctrlFKeys resource is only relevant to the xterm+pcfn and xterm+pcfN
+# entries, since the modifyFunctionKeys resource overrides ctrlFKeys when it is
+# positive.  A different choice of ctrlFKeys would give a different set of
+# function-key strings.
+xterm+pcfn|fragment with modifyFunctionKeys:-1 and ctrlFKeys:10,
+	kf1=\EOP,
+	kf10=\E[21~,
+	kf11=\E[23~,
+	kf12=\E[24~,
+	kf13=\E[25~,
+	kf14=\E[26~,
+	kf15=\E[28~,
+	kf16=\E[29~,
+	kf17=\E[31~,
+	kf18=\E[32~,
+	kf19=\E[33~,
+	kf2=\EOQ,
+	kf20=\E[34~,
+	kf21=\E[42~,
+	kf22=\E[43~,
+	kf23=\E[44~,
+	kf24=\E[45~,
+	kf25=\E[46~,
+	kf26=\E[47~,
+	kf27=\E[48~,
+	kf28=\E[49~,
+	kf29=\E[50~,
+	kf3=\EOR,
+	kf30=\E[51~,
+	kf31=\E[52~,
+	kf32=\E[53~,
+	kf33=\E[54~,
+	kf34=\E[55~,
+	kf35=\E[56~,
+	kf36=\E[57~,
+	kf37=\E[58~,
+	kf38=\E[59~,
+	kf39=\E[60~,
+	kf4=\EOS,
+	kf40=\E[61~,
+	kf41=\E[62~,
+	kf42=\E[63~,
+	kf43=\E[64~,
+	kf44=\E[65~,
+	kf45=\E[66~,
+	kf46=\E[67~,
+	kf47=\E[68~,
+	kf48=\E[69~,
+	kf5=\E[15~,
+	kf6=\E[17~,
+	kf7=\E[18~,
+	kf8=\E[19~,
+	kf9=\E[20~,
+
+# Changing ctrlFKeys to 12 would let us number the keys using just shift- and
+# control- modifiers:
+#	kf1-kf12 are F1-F12
+#	kf13-kf24 are shift F1-F12
+#	kf25-kf36 are control F1-F12
+#	kf37-kf48 are control+shift F1-F12
+xterm+pcfN|fragment with modifyFunctionKeys:-1 and ctrlFKeys:12,
+	kf1=\EOP,
+	kf10=\E[21~,
+	kf11=\E[23~,
+	kf12=\E[24~,
+	kf13=\E[25~,
+	kf14=\E[26~,
+	kf15=\E[28~,
+	kf16=\E[29~,
+	kf17=\E[31~,
+	kf18=\E[32~,
+	kf19=\E[33~,
+	kf2=\EOQ,
+	kf20=\E[34~,
+	kf21=\E[42~,
+	kf22=\E[43~,
+	kf23=\E[44~,
+	kf24=\E[45~,
+	kf25=\E[46~,
+	kf26=\E[47~,
+	kf27=\E[48~,
+	kf28=\E[49~,
+	kf29=\E[50~,
+	kf3=\EOR,
+	kf30=\E[51~,
+	kf31=\E[52~,
+	kf32=\E[53~,
+	kf33=\E[54~,
+	kf34=\E[55~,
+	kf35=\E[56~,
+	kf36=\E[57~,
+	kf37=\E[58~,
+	kf38=\E[59~,
+	kf39=\E[60~,
+	kf4=\EOS,
+	kf40=\E[61~,
+	kf41=\E[62~,
+	kf42=\E[63~,
+	kf43=\E[64~,
+	kf44=\E[65~,
+	kf45=\E[66~,
+	kf46=\E[67~,
+	kf47=\E[68~,
+	kf48=\E[69~,
+	kf5=\E[15~,
+	kf6=\E[17~,
+	kf7=\E[18~,
+	kf8=\E[19~,
+	kf9=\E[20~,
+
+xterm+pcf0|fragment with modifyFunctionKeys:0,
+	kf1=\EOP,
+	kf10=\E[21~,
+	kf11=\E[23~,
+	kf12=\E[24~,
+	kf13=\EO2P,
+	kf14=\EO2Q,
+	kf15=\EO2R,
+	kf16=\EO2S,
+	kf17=\E[15;2~,
+	kf18=\E[17;2~,
+	kf19=\E[18;2~,
+	kf2=\EOQ,
+	kf20=\E[19;2~,
+	kf21=\E[20;2~,
+	kf22=\E[21;2~,
+	kf23=\E[23;2~,
+	kf24=\E[24;2~,
+	kf25=\EO5P,
+	kf26=\EO5Q,
+	kf27=\EO5R,
+	kf28=\EO5S,
+	kf29=\E[15;5~,
+	kf3=\EOR,
+	kf30=\E[17;5~,
+	kf31=\E[18;5~,
+	kf32=\E[19;5~,
+	kf33=\E[20;5~,
+	kf34=\E[21;5~,
+	kf35=\E[23;5~,
+	kf36=\E[24;5~,
+	kf37=\EO6P,
+	kf38=\EO6Q,
+	kf39=\EO6R,
+	kf4=\EOS,
+	kf40=\EO6S,
+	kf41=\E[15;6~,
+	kf42=\E[17;6~,
+	kf43=\E[18;6~,
+	kf44=\E[19;6~,
+	kf45=\E[20;6~,
+	kf46=\E[21;6~,
+	kf47=\E[23;6~,
+	kf48=\E[24;6~,
+	kf49=\EO3P,
+	kf5=\E[15~,
+	kf50=\EO3Q,
+	kf51=\EO3R,
+	kf52=\EO3S,
+	kf53=\E[15;3~,
+	kf54=\E[17;3~,
+	kf55=\E[18;3~,
+	kf56=\E[19;3~,
+	kf57=\E[20;3~,
+	kf58=\E[21;3~,
+	kf59=\E[23;3~,
+	kf6=\E[17~,
+	kf60=\E[24;3~,
+	kf61=\EO4P,
+	kf62=\EO4Q,
+	kf63=\EO4R,
+	kf7=\E[18~,
+	kf8=\E[19~,
+	kf9=\E[20~,
+
+# This is almost the same as xterm+pcf2 because the unmodified keys all happen
+# to have a pattern that forces the modifier to the same position.
+xterm+pcf1|fragment with modifyFunctionKeys:1,
+	kf1=\EOP,
+	kf10=\E[21~,
+	kf11=\E[23~,
+	kf12=\E[24~,
+	kf13=\E[2P,
+	kf14=\E[2Q,
+	kf15=\E[2R,
+	kf16=\E[2S,
+	kf17=\E[15;2~,
+	kf18=\E[17;2~,
+	kf19=\E[18;2~,
+	kf2=\EOQ,
+	kf20=\E[19;2~,
+	kf21=\E[20;2~,
+	kf22=\E[21;2~,
+	kf23=\E[23;2~,
+	kf24=\E[24;2~,
+	kf25=\E[5P,
+	kf26=\E[5Q,
+	kf27=\E[5R,
+	kf28=\E[5S,
+	kf29=\E[15;5~,
+	kf3=\EOR,
+	kf30=\E[17;5~,
+	kf31=\E[18;5~,
+	kf32=\E[19;5~,
+	kf33=\E[20;5~,
+	kf34=\E[21;5~,
+	kf35=\E[23;5~,
+	kf36=\E[24;5~,
+	kf37=\E[6P,
+	kf38=\E[6Q,
+	kf39=\E[6R,
+	kf4=\EOS,
+	kf40=\E[6S,
+	kf41=\E[15;6~,
+	kf42=\E[17;6~,
+	kf43=\E[18;6~,
+	kf44=\E[19;6~,
+	kf45=\E[20;6~,
+	kf46=\E[21;6~,
+	kf47=\E[23;6~,
+	kf48=\E[24;6~,
+	kf49=\E[3P,
+	kf5=\E[15~,
+	kf50=\E[3Q,
+	kf51=\E[3R,
+	kf52=\E[3S,
+	kf53=\E[15;3~,
+	kf54=\E[17;3~,
+	kf55=\E[18;3~,
+	kf56=\E[19;3~,
+	kf57=\E[20;3~,
+	kf58=\E[21;3~,
+	kf59=\E[23;3~,
+	kf6=\E[17~,
+	kf60=\E[24;3~,
+	kf61=\E[4P,
+	kf62=\E[4Q,
+	kf63=\E[4R,
+	kf7=\E[18~,
+	kf8=\E[19~,
+	kf9=\E[20~,
+
+xterm+pcf2|fragment with modifyFunctionKeys:2,
+	kf1=\EOP,
+	kf10=\E[21~,
+	kf11=\E[23~,
+	kf12=\E[24~,
+	kf13=\E[1;2P,
+	kf14=\E[1;2Q,
+	kf15=\E[1;2R,
+	kf16=\E[1;2S,
+	kf17=\E[15;2~,
+	kf18=\E[17;2~,
+	kf19=\E[18;2~,
+	kf2=\EOQ,
+	kf20=\E[19;2~,
+	kf21=\E[20;2~,
+	kf22=\E[21;2~,
+	kf23=\E[23;2~,
+	kf24=\E[24;2~,
+	kf25=\E[1;5P,
+	kf26=\E[1;5Q,
+	kf27=\E[1;5R,
+	kf28=\E[1;5S,
+	kf29=\E[15;5~,
+	kf3=\EOR,
+	kf30=\E[17;5~,
+	kf31=\E[18;5~,
+	kf32=\E[19;5~,
+	kf33=\E[20;5~,
+	kf34=\E[21;5~,
+	kf35=\E[23;5~,
+	kf36=\E[24;5~,
+	kf37=\E[1;6P,
+	kf38=\E[1;6Q,
+	kf39=\E[1;6R,
+	kf4=\EOS,
+	kf40=\E[1;6S,
+	kf41=\E[15;6~,
+	kf42=\E[17;6~,
+	kf43=\E[18;6~,
+	kf44=\E[19;6~,
+	kf45=\E[20;6~,
+	kf46=\E[21;6~,
+	kf47=\E[23;6~,
+	kf48=\E[24;6~,
+	kf49=\E[1;3P,
+	kf5=\E[15~,
+	kf50=\E[1;3Q,
+	kf51=\E[1;3R,
+	kf52=\E[1;3S,
+	kf53=\E[15;3~,
+	kf54=\E[17;3~,
+	kf55=\E[18;3~,
+	kf56=\E[19;3~,
+	kf57=\E[20;3~,
+	kf58=\E[21;3~,
+	kf59=\E[23;3~,
+	kf6=\E[17~,
+	kf60=\E[24;3~,
+	kf61=\E[1;4P,
+	kf62=\E[1;4Q,
+	kf63=\E[1;4R,
+	kf7=\E[18~,
+	kf8=\E[19~,
+	kf9=\E[20~,
+
+xterm+pcf3|fragment with modifyFunctionKeys:3,
+	kf1=\EOP,
+	kf10=\E[21~,
+	kf11=\E[23~,
+	kf12=\E[24~,
+	kf13=\E[>1;2P,
+	kf14=\E[>1;2Q,
+	kf15=\E[>1;2R,
+	kf16=\E[>1;2S,
+	kf17=\E[>15;2~,
+	kf18=\E[>17;2~,
+	kf19=\E[>18;2~,
+	kf2=\EOQ,
+	kf20=\E[>19;2~,
+	kf21=\E[>20;2~,
+	kf22=\E[>21;2~,
+	kf23=\E[>23;2~,
+	kf24=\E[>24;2~,
+	kf25=\E[>1;5P,
+	kf26=\E[>1;5Q,
+	kf27=\E[>1;5R,
+	kf28=\E[>1;5S,
+	kf29=\E[>15;5~,
+	kf3=\EOR,
+	kf30=\E[>17;5~,
+	kf31=\E[>18;5~,
+	kf32=\E[>19;5~,
+	kf33=\E[>20;5~,
+	kf34=\E[>21;5~,
+	kf35=\E[>23;5~,
+	kf36=\E[>24;5~,
+	kf37=\E[>1;6P,
+	kf38=\E[>1;6Q,
+	kf39=\E[>1;6R,
+	kf4=\EOS,
+	kf40=\E[>1;6S,
+	kf41=\E[>15;6~,
+	kf42=\E[>17;6~,
+	kf43=\E[>18;6~,
+	kf44=\E[>19;6~,
+	kf45=\E[>20;6~,
+	kf46=\E[>21;6~,
+	kf47=\E[>23;6~,
+	kf48=\E[>24;6~,
+	kf49=\E[>1;3P,
+	kf5=\E[15~,
+	kf50=\E[>1;3Q,
+	kf51=\E[>1;3R,
+	kf52=\E[>1;3S,
+	kf53=\E[>15;3~,
+	kf54=\E[>17;3~,
+	kf55=\E[>18;3~,
+	kf56=\E[>19;3~,
+	kf57=\E[>20;3~,
+	kf58=\E[>21;3~,
+	kf59=\E[>23;3~,
+	kf6=\E[17~,
+	kf60=\E[>24;3~,
+	kf61=\E[>1;4P,
+	kf62=\E[>1;4Q,
+	kf63=\E[>1;4R,
+	kf7=\E[18~,
+	kf8=\E[19~,
+	kf9=\E[20~,
+#
+# The "PC-style" modifier scheme was introduced in xterm patch #94 (1999/3/27)
+# and revised in patch #167 (2002/8/24).
+#
+# The original assignments from patch #94 for cursor-keys had some technical
+# issues:
+#
+#	A parameter for a function-key to represent a modifier is just more
+#	bits.  But for a cursor-key it may change the behavior of the
+#	application.  For instance, emacs decodes the first parameter of a
+#	cursor-key as a repeat count.
+#
+#	A parameterized string should (really) not begin with SS3 (\EO).
+#	Rather, CSI (\E[) should be used.
+#
+# For these reasons, the original assignments were deprecated.  For
+# compatibility reasons, they are still available as a setting of xterm's
+# modifyCursorKeys resource.  These fragments list the modified cursor-keys
+# that might apply to xterm+pcfkeys with different values of that resource.
+xterm+pcc3|fragment with modifyCursorKeys:3,
+	kLFT=\E[>1;2D,
+	kRIT=\E[>1;2C,
+	kind=\E[>1;2B,
+	kri=\E[>1;2A,
+	kDN=\E[>1;2B,
+	kDN3=\E[>1;3B,
+	kDN4=\E[>1;4B,
+	kDN5=\E[>1;5B,
+	kDN6=\E[>1;6B,
+	kDN7=\E[>1;7B,
+	kLFT3=\E[>1;3D,
+	kLFT4=\E[>1;4D,
+	kLFT5=\E[>1;5D,
+	kLFT6=\E[>1;6D,
+	kLFT7=\E[>1;7D,
+	kRIT3=\E[>1;3C,
+	kRIT4=\E[>1;4C,
+	kRIT5=\E[>1;5C,
+	kRIT6=\E[>1;6C,
+	kRIT7=\E[>1;7C,
+	kUP=\E[>1;2A,
+	kUP3=\E[>1;3A,
+	kUP4=\E[>1;4A,
+	kUP5=\E[>1;5A,
+	kUP6=\E[>1;6A,
+	kUP7=\E[>1;7A,
+
+xterm+pcc2|fragment with modifyCursorKeys:2,
+	kLFT=\E[1;2D,
+	kRIT=\E[1;2C,
+	kind=\E[1;2B,
+	kri=\E[1;2A,
+	kDN=\E[1;2B,
+	kDN3=\E[1;3B,
+	kDN4=\E[1;4B,
+	kDN5=\E[1;5B,
+	kDN6=\E[1;6B,
+	kDN7=\E[1;7B,
+	kLFT3=\E[1;3D,
+	kLFT4=\E[1;4D,
+	kLFT5=\E[1;5D,
+	kLFT6=\E[1;6D,
+	kLFT7=\E[1;7D,
+	kRIT3=\E[1;3C,
+	kRIT4=\E[1;4C,
+	kRIT5=\E[1;5C,
+	kRIT6=\E[1;6C,
+	kRIT7=\E[1;7C,
+	kUP=\E[1;2A,
+	kUP3=\E[1;3A,
+	kUP4=\E[1;4A,
+	kUP5=\E[1;5A,
+	kUP6=\E[1;6A,
+	kUP7=\E[1;7A,
+
+xterm+pcc1|fragment with modifyCursorKeys:1,
+	kLFT=\E[2D,
+	kRIT=\E[2C,
+	kind=\E[2B,
+	kri=\E[2A,
+	kDN=\E[2B,
+	kDN3=\E[3B,
+	kDN4=\E[4B,
+	kDN5=\E[5B,
+	kDN6=\E[6B,
+	kDN7=\E[7B,
+	kLFT3=\E[3D,
+	kLFT4=\E[4D,
+	kLFT5=\E[5D,
+	kLFT6=\E[6D,
+	kLFT7=\E[7D,
+	kRIT3=\E[3C,
+	kRIT4=\E[4C,
+	kRIT5=\E[5C,
+	kRIT6=\E[6C,
+	kRIT7=\E[7C,
+	kUP=\E[2A,
+	kUP3=\E[3A,
+	kUP4=\E[4A,
+	kUP5=\E[5A,
+	kUP6=\E[6A,
+	kUP7=\E[7A,
+
+xterm+pcc0|fragment with modifyCursorKeys:0,
+	kLFT=\EO2D,
+	kRIT=\EO2C,
+	kind=\EO2B,
+	kri=\EO2A,
+	kDN=\EO2B,
+	kDN3=\EO3B,
+	kDN4=\EO4B,
+	kDN5=\EO5B,
+	kDN6=\EO6B,
+	kDN7=\EO7B,
+	kLFT3=\EO3D,
+	kLFT4=\EO4D,
+	kLFT5=\EO5D,
+	kLFT6=\EO6D,
+	kLFT7=\EO7D,
+	kRIT3=\EO3C,
+	kRIT4=\EO4C,
+	kRIT5=\EO5C,
+	kRIT6=\EO6C,
+	kRIT7=\EO7C,
+	kUP=\EO2A,
+	kUP3=\EO3A,
+	kUP4=\EO4A,
+	kUP5=\EO5A,
+	kUP6=\EO6A,
+	kUP7=\EO7A,
+
+# The home/end keys on the editing keypad are also treated as cursor keys.
+xterm+pce3|fragment with modifyCursorKeys:3,
+	kDC=\E[>3;2~,
+	kEND=\E[>1;2F,
+	kHOM=\E[>1;2H,
+	kIC=\E[>2;2~,
+	kNXT=\E[>6;2~,
+	kPRV=\E[>5;2~,
+	kDC3=\E[>3;3~,
+	kDC4=\E[>3;4~,
+	kDC5=\E[>3;5~,
+	kDC6=\E[>3;6~,
+	kDC7=\E[>3;7~,
+	kEND3=\E[>1;3F,
+	kEND4=\E[>1;4F,
+	kEND5=\E[>1;5F,
+	kEND6=\E[>1;6F,
+	kEND7=\E[>1;7F,
+	kHOM3=\E[>1;3H,
+	kHOM4=\E[>1;4H,
+	kHOM5=\E[>1;5H,
+	kHOM6=\E[>1;6H,
+	kHOM7=\E[>1;7H,
+	kIC3=\E[>2;3~,
+	kIC4=\E[>2;4~,
+	kIC5=\E[>2;5~,
+	kIC6=\E[>2;6~,
+	kIC7=\E[>2;7~,
+	kNXT3=\E[>6;3~,
+	kNXT4=\E[>6;4~,
+	kNXT5=\E[>6;5~,
+	kNXT6=\E[>6;6~,
+	kNXT7=\E[>6;7~,
+	kPRV3=\E[>5;3~,
+	kPRV4=\E[>5;4~,
+	kPRV5=\E[>5;5~,
+	kPRV6=\E[>5;6~,
+	kPRV7=\E[>5;7~,
+	use=xterm+pce0,
+
+xterm+pce2|fragment with modifyCursorKeys:2,
+	kDC=\E[3;2~,
+	kEND=\E[1;2F,
+	kHOM=\E[1;2H,
+	kIC=\E[2;2~,
+	kNXT=\E[6;2~,
+	kPRV=\E[5;2~,
+	kDC3=\E[3;3~,
+	kDC4=\E[3;4~,
+	kDC5=\E[3;5~,
+	kDC6=\E[3;6~,
+	kDC7=\E[3;7~,
+	kEND3=\E[1;3F,
+	kEND4=\E[1;4F,
+	kEND5=\E[1;5F,
+	kEND6=\E[1;6F,
+	kEND7=\E[1;7F,
+	kHOM3=\E[1;3H,
+	kHOM4=\E[1;4H,
+	kHOM5=\E[1;5H,
+	kHOM6=\E[1;6H,
+	kHOM7=\E[1;7H,
+	kIC3=\E[2;3~,
+	kIC4=\E[2;4~,
+	kIC5=\E[2;5~,
+	kIC6=\E[2;6~,
+	kIC7=\E[2;7~,
+	kNXT3=\E[6;3~,
+	kNXT4=\E[6;4~,
+	kNXT5=\E[6;5~,
+	kNXT6=\E[6;6~,
+	kNXT7=\E[6;7~,
+	kPRV3=\E[5;3~,
+	kPRV4=\E[5;4~,
+	kPRV5=\E[5;5~,
+	kPRV6=\E[5;6~,
+	kPRV7=\E[5;7~,
+	use=xterm+pce0,
+
+xterm+pce1|fragment with modifyCursorKeys:1,
+	kDC=\E[3;2~,
+	kEND=\E[2F,
+	kHOM=\E[2H,
+	kIC=\E[2;2~,
+	kNXT=\E[6;2~,
+	kPRV=\E[5;2~,
+	kDC3=\E[3;3~,
+	kDC4=\E[3;4~,
+	kDC5=\E[3;5~,
+	kDC6=\E[3;6~,
+	kDC7=\E[3;7~,
+	kEND3=\E[3F,
+	kEND4=\E[4F,
+	kEND5=\E[5F,
+	kEND6=\E[6F,
+	kEND7=\E[7F,
+	kHOM3=\E[3H,
+	kHOM4=\E[4H,
+	kHOM5=\E[5H,
+	kHOM6=\E[6H,
+	kHOM7=\E[7H,
+	kIC3=\E[2;3~,
+	kIC4=\E[2;4~,
+	kIC5=\E[2;5~,
+	kIC6=\E[2;6~,
+	kIC7=\E[2;7~,
+	kNXT3=\E[6;3~,
+	kNXT4=\E[6;4~,
+	kNXT5=\E[6;5~,
+	kNXT6=\E[6;6~,
+	kNXT7=\E[6;7~,
+	kPRV3=\E[5;3~,
+	kPRV4=\E[5;4~,
+	kPRV5=\E[5;5~,
+	kPRV6=\E[5;6~,
+	kPRV7=\E[5;7~,
+	use=xterm+pce0,
+
+xterm+pce0|fragment with modifyCursorKeys:0,
+	kDC=\E[3;2~,
+	kEND=\EO2F,
+	kHOM=\EO2H,
+	kIC=\E[2;2~,
+	kNXT=\E[6;2~,
+	kPRV=\E[5;2~,
+	kDC3=\E[3;3~,
+	kDC4=\E[3;4~,
+	kDC5=\E[3;5~,
+	kDC6=\E[3;6~,
+	kDC7=\E[3;7~,
+	kEND3=\EO3F,
+	kEND4=\EO4F,
+	kEND5=\EO5F,
+	kEND6=\EO6F,
+	kEND7=\EO7F,
+	kHOM3=\EO3H,
+	kHOM4=\EO4H,
+	kHOM5=\EO5H,
+	kHOM6=\EO6H,
+	kHOM7=\EO7H,
+	kIC3=\E[2;3~,
+	kIC4=\E[2;4~,
+	kIC5=\E[2;5~,
+	kIC6=\E[2;6~,
+	kIC7=\E[2;7~,
+	kNXT3=\E[6;3~,
+	kNXT4=\E[6;4~,
+	kNXT5=\E[6;5~,
+	kNXT6=\E[6;6~,
+	kNXT7=\E[6;7~,
+	kPRV3=\E[5;3~,
+	kPRV4=\E[5;4~,
+	kPRV5=\E[5;5~,
+	kPRV6=\E[5;6~,
+	kPRV7=\E[5;7~,
+	use=xterm+edit,
+
+# This is an ncurses extension
+ecma+strikeout|ECMA-48 strikeout/crossed-out,
+	rmxx=\E[29m,
+	smxx=\E[9m,
+#
+# This chunk is used for building the VT220/Sun/PC keyboard variants.
+xterm-basic|modern xterm terminal emulator - common,
+	OTbs,
+	am,
+	bce,
+	km,
+	mc5i,
+	mir,
+	msgr,
+	xenl,
+	AX,
+	XT,
+	colors#8,
+	cols#80,
+	it#8,
+	lines#24,
+	pairs#64,
+	acsc=``aaffggiijjkkllmmnnooppqqr
+	     rssttuuvvwwxxyyzz{{||}}~~,
+	bel=^G,
+	blink=\E[5m,
+	bold=\E[1m,
+	cbt=\E[Z,
+	civis=\E[?25l,
+	clear=\E[H\E[2J,
+	cnorm=\E[?12l\E[?25h,
+	cr=\r,
+	csr=\E[%i%p1%d;%p2%dr,
+	cub=\E[%p1%dD,
+	cub1=^H,
+	cud=\E[%p1%dB,
+	cud1=\n,
+	cuf=\E[%p1%dC,
+	cuf1=\E[C,
+	cup=\E[%i%p1%d;%p2%dH,
+	cuu=\E[%p1%dA,
+	cuu1=\E[A,
+	cvvis=\E[?12;25h,
+	dch=\E[%p1%dP,
+	dch1=\E[P,
+	dim=\E[2m,
+	dl=\E[%p1%dM,
+	dl1=\E[M,
+	ech=\E[%p1%dX,
+	ed=\E[J,
+	el=\E[K,
+	el1=\E[1K,
+	flash=\E[?5h$<100/>\E[?5l,
+	home=\E[H,
+	hpa=\E[%i%p1%dG,
+	ht=^I,
+	hts=\EH,
+	ich=\E[%p1%d@,
+	il=\E[%p1%dL,
+	il1=\E[L,
+	ind=\n,
+	invis=\E[8m,
+	is2=\E[!p\E[?3;4l\E[4l\E>,
+	kmous=\E[M,
+	mc0=\E[i,
+	mc4=\E[4i,
+	mc5=\E[5i,
+	meml=\El,
+	memu=\Em,
+	op=\E[39;49m,
+	rc=\E8,
+	rev=\E[7m,
+	ri=\EM,
+	ritm=\E[23m,
+	rmacs=\E(B,
+	rmam=\E[?7l,
+	rmir=\E[4l,
+	rmkx=\E[?1l\E>,
+	rmm=\E[?1034l,
+	rmso=\E[27m,
+	rmul=\E[24m,
+	rs1=\Ec,
+	rs2=\E[!p\E[?3;4l\E[4l\E>,
+	sc=\E7,
+	setab=\E[4%p1%dm,
+	setaf=\E[3%p1%dm,
+	setb=\E[4
+		%?
+			%p1%{1}%=
+			%t4
+		%e
+			%p1%{3}%=
+			%t6
+		%e
+			%p1%{4}%=
+			%t1
+		%e
+			%p1%{6}%=
+			%t3
+		%e
+			%p1%d
+		%;
+		m,
+	setf=\E[3
+		%?
+			%p1%{1}%=
+			%t4
+		%e
+			%p1%{3}%=
+			%t6
+		%e
+			%p1%{4}%=
+			%t1
+		%e
+			%p1%{6}%=
+			%t3
+		%e
+			%p1%d
+		%;
+		m,
+	sgr=
+		%?
+			%p9
+			%t\E(0
+		%e
+			\E(B
+		%;
+		\E[0
+		%?
+			%p6
+			%t;1
+		%;
+		%?
+			%p5
+			%t;2
+		%;
+		%?
+			%p2
+			%t;4
+		%;
+		%?
+			%p1%p3%|
+			%t;7
+		%;
+		%?
+			%p4
+			%t;5
+		%;
+		%?
+			%p7
+			%t;8
+		%;
+		m,
+	sgr0=\E(B\E[m,
+	sitm=\E[3m,
+	smacs=\E(0,
+	smam=\E[?7h,
+	smir=\E[4h,
+	smkx=\E[?1h\E=,
+	smm=\E[?1034h,
+	smso=\E[7m,
+	smul=\E[4m,
+	tbc=\E[3g,
+	vpa=\E[%i%p1%dd,
+	E3=\E[3J,
+	use=ansi+enq,
+	use=xterm+alt+title,
+	use=xterm+kbs,
+#
+# The xterm-new description has all of the features, but is not completely
+# compatible with vt220.  If you are using a Sun or PC keyboard, set the
+# sunKeyboard resource to true:
+#	+ maps the editing keypad
+#	+ interprets control-function-key as a second array of keys, so a
+#	  12-fkey keyboard can support vt220's 20-fkeys.
+#	+ maps numeric keypad "+" to ",".
+#	+ uses DEC-style control sequences for the application keypad.
+#
+# Some packagers modify xterm's resource definitions to provide extra function
+# keys by using the shift-modifier in the translations resource.  However, that
+# interferes with the DECUDK functionality.
+#
+xterm-vt220|xterm emulating vt220,
+	ka1=\EOw,
+	ka3=\EOy,
+	kb2=\EOu,
+	kc1=\EOq,
+	kc3=\EOs,
+	kcbt=\E[Z,
+	kend=\E[4~,
+	kent=\EOM,
+	kf1=\EOP,
+	kf10=\E[21~,
+	kf11=\E[23~,
+	kf12=\E[24~,
+	kf13=\E[25~,
+	kf14=\E[26~,
+	kf15=\E[28~,
+	kf16=\E[29~,
+	kf17=\E[31~,
+	kf18=\E[32~,
+	kf19=\E[33~,
+	kf2=\EOQ,
+	kf20=\E[34~,
+	kf3=\EOR,
+	kf4=\EOS,
+	kf5=\E[15~,
+	kf6=\E[17~,
+	kf7=\E[18~,
+	kf8=\E[19~,
+	kf9=\E[20~,
+	khome=\E[1~,
+	kich1=\E[2~,
+	knp=\E[6~,
+	kpp=\E[5~,
+	ka2=\EOx,
+	kb1=\EOt,
+	kb3=\EOv,
+	kc2=\EOr,
+	use=xterm+app,
+	use=xterm+edit,
+	use=xterm-basic,
+#
+xterm-vt52|xterm emulating dec vt52,
+	cols#80,
+	it#8,
+	lines#24,
+	acsc=``aaffggjjkkllmmnnooppqqrrs
+	     sttuuvvwwxxyyzz{{||}}~~,
+	bel=^G,
+	clear=\EH\EJ,
+	cr=\r,
+	cub1=\ED,
+	cud1=\EB,
+	cuf1=\EC,
+	cup=\EY%p1%'\s'%+%c%p2%'\s'%+%c,
+	cuu1=\EA,
+	ed=\EJ,
+	el=\EK,
+	home=\EH,
+	ht=^I,
+	ind=\n,
+	kcub1=\ED,
+	kcud1=\EB,
+	kcuf1=\EC,
+	kcuu1=\EA,
+	nel=\r\n,
+	ri=\EI,
+	rmacs=\EG,
+	smacs=\EF,
+	use=xterm+kbs,
+#
+# Sun does not number the function keys this way in their sparse termcap; their
+# terminal descriptions ignore the keypads.  kb(7M) states that there are codes
+# reserved for 64 function keys, 16 each in left, right, top and bottom.  Each
+# keyboard type has a different number of function keys in different
+# arrangements.  Using xkeycaps for reference:
+#
+# Type 3:  left 10, top 9, right 15
+# ------
+# kf1-kf9 are XK_F1-XK_F9
+# There is no kf10 on this keyboard type.
+# kf11-kf20 are keysyms XK_L1 through XK_L10.
+# kf31-kf45 are keysyms XK_R1 through XK_R15.
+#
+# However, X's keysymdef.h is hard-coded to make
+#	XK_L1==XK_F11 and
+#	XK_R1==XK_F21,
+# by someone who was unfamiliar with terminal types other than Sun's.  So
+# xterm uses the internal X keysymbols, but the terminfo entry uses the Sun
+# numbering scheme.
+#
+# Type 4:  left 11, top 12, right 15
+# ------
+# The left-keypad contains an unnumbered Help-key.
+# The right-keypad also contains NumLock, Ins, Del, Enter, + and - keys which
+# do not appear to be part of the R-sequence.
+#
+# Type 5:  left 9, top 12, right (more than one keypad)
+# ------
+# These keyboards do not use the same naming convention, look like a hybrid of
+# the type 4 and IBM keyboards.
+#
+# XTerm resources:
+# ---------------
+# Set the modifyFunctionKeys resource to negative (-1) to make it simple to
+# enter the higher function-key values using shift- and control-modifiers.
+#
+xterm-sun|xterm with sun function keys,
+	kb2=\E[218z,
+	kcpy=\E[197z,
+	kcub1=\EOD,
+	kcud1=\EOB,
+	kcuf1=\EOC,
+	kcuu1=\EOA,
+	kdch1=\E[3z,
+	kend=\E[220z,
+	kent=\EOM,
+	kf1=\E[224z,
+	kf10=\E[233z,
+	kf11=\E[192z,
+	kf12=\E[193z,
+	kf13=\E[194z,
+	kf14=\E[195z,
+	kf15=\E[196z,
+	kf17=\E[198z,
+	kf18=\E[199z,
+	kf19=\E[200z,
+	kf2=\E[225z,
+	kf20=\E[201z,
+	kf3=\E[226z,
+	kf31=\E[208z,
+	kf32=\E[209z,
+	kf33=\E[210z,
+	kf34=\E[211z,
+	kf35=\E[212z,
+	kf36=\E[213z,
+	kf38=\E[215z,
+	kf4=\E[227z,
+	kf40=\E[217z,
+	kf42=\E[219z,
+	kf44=\E[221z,
+	kf45=\E[222z,
+	kf46=\E[234z,
+	kf47=\E[235z,
+	kf5=\E[228z,
+	kf6=\E[229z,
+	kf7=\E[230z,
+	kf8=\E[231z,
+	kf9=\E[232z,
+	kfnd=\E[200z,
+	khlp=\E[196z,
+	khome=\E[214z,
+	kich1=\E[2z,
+	knp=\E[222z,
+	kpp=\E[216z,
+	kund=\E[195z,
+	use=xterm-basic,
+#
+xterm-hp|xterm with hpterm function keys,
+	kclr=\EJ,
+	kcub1=\ED,
+	kcud1=\EB,
+	kcuf1=\EC,
+	kcuu1=\EA,
+	kdch1=\EP,
+	kend=\EF,
+	kf1=\Ep,
+	kf2=\Eq,
+	kf3=\Er,
+	kf4=\Es,
+	kf5=\Et,
+	kf6=\Eu,
+	kf7=\Ev,
+	kf8=\Ew,
+	khome=\Eh,
+	kich1=\EQ,
+	knp=\ES,
+	kpp=\ET,
+	use=xterm-basic,
+#
+# scoterm implements 48 function-keys using shift- and control-modifiers to
+# multiple 12 function-keys.  X has a hard-coded limit of 35 function-keys,
+# but xterm can represent larger values.
+#
+# XTerm resources:
+# ---------------
+# Set the modifyFunctionKeys resource to negative (-1) to make it simple to
+# enter the higher function-key values using shift- and control-modifiers.
+#
+# Also, set ctrlFKeys resource to 12 (the default is 10) to make xterm see 48
+# function-keys on a keyboard with 12 function-keys and 4 control/shift
+# modifier combinations.
+#
+xterm-sco|xterm with SCO function keys,
+	kbeg=\E[E,
+	kdch1=^?,
+	kf1=\E[M,
+	kf10=\E[V,
+	kf11=\E[W,
+	kf12=\E[X,
+	kf13=\E[Y,
+	kf14=\E[Z,
+	kf15=\E[a,
+	kf16=\E[b,
+	kf17=\E[c,
+	kf18=\E[d,
+	kf19=\E[e,
+	kf2=\E[N,
+	kf20=\E[f,
+	kf21=\E[g,
+	kf22=\E[h,
+	kf23=\E[i,
+	kf24=\E[j,
+	kf25=\E[k,
+	kf26=\E[l,
+	kf27=\E[m,
+	kf28=\E[n,
+	kf29=\E[o,
+	kf3=\E[O,
+	kf30=\E[p,
+	kf31=\E[q,
+	kf32=\E[r,
+	kf33=\E[s,
+	kf34=\E[t,
+	kf35=\E[u,
+	kf36=\E[v,
+	kf37=\E[w,
+	kf38=\E[x,
+	kf39=\E[y,
+	kf4=\E[P,
+	kf40=\E[z,
+	kf41=\E[@,
+	kf42=\E[[,
+	kf43=\E[\\,
+	kf44=\E[],
+	kf45=\E[\^,
+	kf46=\E[_,
+	kf47=\E[`,
+	kf48=\E[{,
+	kf5=\E[Q,
+	kf6=\E[R,
+	kf7=\E[S,
+	kf8=\E[T,
+	kf9=\E[U,
+	kich1=\E[L,
+	kmous=\E[>M,
+	knp=\E[G,
+	kpp=\E[I,
+	use=xterm+noapp,
+	use=xterm-basic,
+#
+# Other variants (these are all very old entries, from X11R5):
+xterm-24|xterms|vs100|xterm terminal emulator (X Window System),
+	lines#24,
+	use=xterm-old,
+xterm-65|xterm with tall window 65x80 (X Window System),
+	lines#65,
+	use=xterm-old,
+xterm-bold|xterm with bold instead of underline (X Window System),
+	sgr=
+		%?
+			%p9
+			%t\016
+		%e
+			\017
+		%;
+		B\E[0
+		%?
+			%p6
+			%t;1
+		%;
+		%?
+			%p2
+			%t;1
+		%;
+		%?
+			%p1%p3%|
+			%t;7
+		%;
+		m,
+	smso=\E[7m,
+	smul=\E[1m,
+	use=xterm-old,
+xterm-boldso|xterm with bold for standout (X Window System),
+	rmso=\E[m,
+	smso=\E[1m,
+	use=xterm-old,
+xterm-mono|monochrome xterm,
+	bce@,
+	colors@,
+	ncv@,
+	pairs@,
+	op@,
+	setab@,
+	setaf@,
+	setb@,
+	setf@,
+	sgr@,
+	use=xterm-old,
+#
+# VTxxx terminals are usually set up so that full-screen applications will use
+# the cursor application mode strings.  This is good for full-screen
+# applications, including legacy applications which may have hard-coded
+# behavior, but bad for interactive shells (e.g., tcsh, bash) which use arrow
+# keys to scroll through a history of command strings.
+#
+# To see the difference between normal/application modes, consider this example:
+#	+ In normal (non-application) mode, the terminal transmits a down-arrow
+#	  as \E[C, which happens to echo as a down-arrow.
+#	+ In application mode the terminal transmits \EOC, which echoes as C.
+#	  That is because the \EO is the SS3 control, which says to use the
+#	  character from the G3 character set for the next cell.
+#
+# One example of hard-coded behavior would be for applications written to work
+# with VT52 and VT100 terminals.  If the application's parser ignores 'O' and
+# '?' characters after the escape, then the cursor and keypad strings for the
+# two terminals are the same.  (Indeed, one of the first curses applications
+# which I used did something like this to cover "ANSI" terminals -TD).
+#
+# To make this work (leaving the cursor keys in normal mode), we have to adjust
+# the terminal initialization sequences:
+#
+#	smkx/rmkx set/reset the cursor and keypad application modes.  We retain
+#		the latter (otherwise many applications fail).
+#
+#	smcup/rmcup set/restore cursor-addressing mode for full-screen
+#		applications.  For xterm, this normally means the alternate
+#		screen, which is not compatible with interactive shells.  Some
+#		programs are "smart" and disable these.
+#
+xterm-noapp|xterm with cursor keys in normal mode,
+	rmcup@,
+	rmkx=\E>,
+	smcup@,
+	smkx=\E=,
+	use=xterm+noapp,
+	use=xterm,
+
+xterm+noapp|fragment with cursor keys in normal mode,
+	kcub1=\E[D,
+	kcud1=\E[B,
+	kcuf1=\E[C,
+	kcuu1=\E[A,
+	use=xterm+noapp+pc,
+
+xterm+app|fragment with cursor keys in application mode,
+	kcub1=\EOD,
+	kcud1=\EOB,
+	kcuf1=\EOC,
+	kcuu1=\EOA,
+	use=xterm+app+pc,
+
+xterm+noapp+pc|fragment for noapp pc-style home/end,
+	kend=\E[F,
+	khome=\E[H,
+
+xterm+app+pc|fragment for app pc-style home/end,
+	kend=\EOF,
+	khome=\EOH,
+
+xterm+edit|fragment for 6-key editing-keypad,
+	kdch1=\E[3~,
+	kich1=\E[2~,
+	knp=\E[6~,
+	kpp=\E[5~,
+	use=xterm+pc+edit,
+
+xterm+decedit|fragment for vt220 6-key editing-keypad,
+	kdch1=\E[3~,
+	kich1=\E[2~,
+	knp=\E[6~,
+	kpp=\E[5~,
+	use=xterm+vt+edit,
+
+xterm+pc+edit|fragment for pc-style editing keypad,
+	kend=\E[4~,
+	khome=\E[1~,
+
+xterm+vt+edit|fragment for vt220-style editing keypad,
+	kfnd=\E[1~,
+	kslt=\E[4~,
+
+xterm+noalt|xterm without altscreen,
+	rmcup@,
+	smcup@,
+
+xterm+alt1049|xterm 90 feature,
+	rmcup=\E[?1049l,
+	smcup=\E[?1049h,
+
+xterm+titlestack|xterm 251 feature,
+	rmcup=\E[23;0;0t,
+	smcup=\E[22;0;0t,
+
+xterm+alt+title|xterm 90 and 251 features combined,
+	rmcup=\E[?1049l\E[23;0;0t,
+	smcup=\E[?1049h\E[22;0;0t,
+#
+# This should work for the commonly used "color xterm" variations (XFree86
+# xterm, color_xterm, nxterm, rxvt).  Note that it does not set 'bce', so for
+# XFree86 and and rxvt, some applications that use colors will be less
+# efficient, and in a few special cases (with "smart" optimization) the wrong
+# color will be painted in spots.
+xterm-color|generic "ANSI" color xterm (X Window System),
+	colors#8,
+	ncv@,
+	pairs#64,
+	op=\E[m,
+	setab=\E[4%p1%dm,
+	setaf=\E[3%p1%dm,
+	use=xterm-r6,
+#
+# vi may work better with this entry, because vi
+# doesn't use insert mode much
+xterm-ic|xterm-vi|xterm with insert character instead of insert mode,
+	mir@,
+	ich=\E[%p1%d@,
+	ich1=\E[@,
+	rmir@,
+	smir@,
+	use=xterm,
+#
+# This is used only for testing (it's not relevant to DEC VTxxx terminals, but
+# to ncurses).
+xterm-xmc|xterm with magic-cookie glitch,
+	xmc#1,
+	use=xterm-new,
+#
+# This one also is primarily for testing ncurses; while the ISO 6429 defines
+# the REP control, none of the DEC VTxxx terminals (VT52 through VT420) support
+# it.
+xterm-rep|xterm with repeat-character control,
+	rep=%p1%c\E[%p2%{1}%-%db,
+	use=xterm-new,
+#
+# This is mainly for testing xterm; the real VT220 will not let you switch
+# character sets without first altering the keyboard language in the setup
+# screen.  Some emulators allow this anyway.  (Note that these strings are
+# normally used only for printers).  The parameter to csnm and scs is the same
+# in both cases:  the keyboard language parameter returned by CSI ? 2 6 n.
+xterm-nrc|xterm with VT220 national replacement character sets,
+	csnm=
+		%?
+			%p1%{1}%=
+			%tNorth\sAmerican
+		%e
+			%p1%{2}%=
+			%tBritish
+		%e
+			%p1%{3}%=
+			%tFlemish
+		%e
+			%p1%{4}%=
+			%tFrench\sCanadian
+		%e
+			%p1%{5}%=
+			%tDanish
+		%e
+			%p1%{6}%=
+			%tFinnish
+		%e
+			%p1%{7}%=
+			%tGerman
+		%e
+			%p1%{8}%=
+			%tDutch
+		%e
+			%p1%{9}%=
+			%tItalian
+		%e
+			%p1%{10}%=
+			%tSwiss\s(French)
+		%e
+			%p1%{11}%=
+			%tSwiss\s(German)
+		%e
+			%p1%{12}%=
+			%tSwedish
+		%e
+			%p1%{13}%=
+			%tNorwegian
+		%e
+			%p1%{14}%=
+			%tFrench/Belgian
+		%e
+			%p1%{15}%=
+			%tSpanish
+		%;,
+	scs=
+		%?
+			%p1%{1}%=
+			%t\E(B
+		%e
+			%p1%{2}%=
+			%t\E(A
+		%e
+			%p1%{3}%=
+			%t\E(R
+		%e
+			%p1%{4}%=
+			%t\E(9
+		%e
+			%p1%{5}%=
+			%t\E(E
+		%e
+			%p1%{6}%=
+			%t\E(5
+		%e
+			%p1%{7}%=
+			%t\E(K
+		%e
+			%p1%{8}%=
+			%t\E(4
+		%e
+			%p1%{9}%=
+			%t\E(Y
+		%e
+			%p1%{10}%=
+			%t\E(=
+		%e
+			%p1%{11}%=
+			%t\E(=
+		%e
+			%p1%{12}%=
+			%t\E(7
+		%e
+			%p1%{13}%=
+			%t\E(E
+		%e
+			%p1%{14}%=
+			%t\E(R
+		%e
+			%p1%{15}%=
+			%t\E(Z
+		%;,
+	use=xterm-new,
+#
+# Foreground 0-15 maps (with toggles) into 30-37 & 90-97
+# Background 0-15 maps (with toggles) into 40-47 & 100-107
+#
+# Originally I suppressed setaf/setab, since ANSI specifies only 8 colors, but
+# Stephen Marley persuaded me to allow the "ANSI" color controls to extend to
+# 16 colors.  (Note that ncurses 4.2 uses setf/setb from this description;
+# however 5.0 selects either according to their availability).  - T.Dickey
+#
+# SVr4 curses does not use more than 8 colors anyway, so using 16 colors is
+# either for terminfo-level applications or via ncurses.
+xterm-16color|xterm with 16 colors,
+	colors#16,
+	pairs#0x100,
+	setab=\E[
+		%?
+			%p1%{8}%<
+			%t%p1%{40}%+
+		%e
+			%p1%{92}%+
+		%;
+		%dm,
+	setaf=\E[
+		%?
+			%p1%{8}%<
+			%t%p1%{30}%+
+		%e
+			%p1%{82}%+
+		%;
+		%dm,
+	setb=
+		%p1%{8}%/%{6}%*%{4}%+\E[%d%p1%{8}%m%Pa
+		%?%ga%{1}%=
+			%t4
+		%e%ga%{3}%=
+			%t6
+		%e%ga%{4}%=
+			%t1
+		%e%ga%{6}%=
+			%t3
+		%e%ga%d
+		%;
+		m,
+	setf=
+		%p1%{8}%/%{6}%*%{3}%+\E[%d%p1%{8}%m%Pa
+		%?%ga%{1}%=
+			%t4
+		%e%ga%{3}%=
+			%t6
+		%e%ga%{4}%=
+			%t1
+		%e%ga%{6}%=
+			%t3
+		%e%ga%d
+		%;
+		m,
+	use=xterm+256color,
+	use=xterm-new,
+
+# "indexed color" is mentioned without definition in ISO 8613-6 (ITU T.416).
+#
+# This implementation uses a 256-element color map where the first 16 entries
+# are shared with the aixterm-compatible colors (and in turn the first 8 are
+# shared with the ANSI colors).  The three levels (256, 16, 8) account for the
+# use of a conditional expression in setaf/setab which reduces the number of
+# characters sent to the screen for typical applications.
+#
+# 256 colors should give 65536 pairs, but SVr4 (legacy) terminfo stores numbers
+# in a signed short.  Most people will not notice problems with only 32767
+# pairs.  With ncurses 6.1, numbers are stored in a signed integer (at least
+# 32-bits), and the inconsistency regarding pairs is eliminated.
+xterm+256color|xterm 256-color feature,
+	ccc,
+	colors#0x100,
+	pairs#0x10000,
+	initc=\E]4;
+		%p1%d;rgb\:%p2%{255}%*%{1000}%/%2.2X/%p3%{255}%*%{1000}%/%2.2X/%p4%{255}%*%{1000}%/%2.2X\E\\,
+	oc=\E]104\007,
+	rs1=\Ec\E]104\007,
+	setab=\E[
+		%?
+			%p1%{8}%<
+			%t4%p1%d
+		%e
+			%p1%{16}%<
+			%t10%p1%{8}%-%d
+		%e48;5;
+			%p1%d
+		%;
+		m,
+	setaf=\E[
+		%?
+			%p1%{8}%<
+			%t3%p1%d
+		%e
+			%p1%{16}%<
+			%t9%p1%{8}%-%d
+		%e38;5;
+			%p1%d
+		%;
+		m,
+	setb@,
+	setf@,
+xterm-256color|xterm with 256 colors,
+	use=xterm+256color,
+	use=xterm-new,
+xterm-88color|xterm with 88 colors,
+	colors#88,
+	pairs#7744,
+	use=xterm-256color,
+
+# "direct color" is mentioned without definition in ISO 8613-6 (ITU T.416).
+#
+# This is a particular implementation which assume 8-bit values for red, green,
+# and blue.  Other encodings are possible; none are addressed by that standard.
+#
+# The "RGB" flag is an ncurses 6.1 extension which tells the library how to
+# quickly compute the color-content for a given color value.
+#
+# Like xterm+256color, this uses a conditional expression.  But it does that
+# for a different reason: to make it readily usable for applications which
+# print text but also use RGB colors, it uses a color map for the usual ANSI
+# colors (0-7) and RGB colors for the remaining range of the color value.
+xterm+direct|xterm with direct-color indexing,
+	RGB,
+	colors#0x1000000,
+	pairs#0x10000,
+	initc@,
+	op=\E[39;49m,
+	setab=\E[
+		%?
+			%p1%{8}%<
+			%t4%p1%d
+		%e48\:2\:\:
+			%p1%{65536}%/%d\:%p1%{256}%/%{255}%&%d\:%p1%{255}%&%d
+		%;
+		m,
+	setaf=\E[
+		%?
+			%p1%{8}%<
+			%t3%p1%d
+		%e38\:2\:\:
+			%p1%{65536}%/%d\:%p1%{256}%/%{255}%&%d\:%p1%{255}%&%d
+		%;
+		m,
+	setb@,
+	setf@,
+xterm-direct|xterm with direct-color indexing,
+	use=xterm+direct,
+	use=xterm,
+#
+# This is an 8-bit version of xterm, which emulates DEC vt220 with ANSI color.
+# To use it, your decTerminalID resource must be set to 200 or above, and the
+# sunKeyboard resource set to true.
+#
+#	HTS	\E H	\210
+#	RI	\E M	\215
+#	SS3	\E O	\217
+#	CSI	\E [	\233
+#
+xterm-8bit|xterm terminal emulator with 8-bit controls (X Window System),
+	OTbs,
+	am,
+	bce,
+	km,
+	mc5i,
+	mir,
+	msgr,
+	npc,
+	xenl,
+	AX,
+	colors#8,
+	cols#80,
+	it#8,
+	lines#24,
+	pairs#64,
+	acsc=``aaffggiijjkkllmmnnooppqqr
+	     rssttuuvvwwxxyyzz{{||}}~~,
+	bel=^G,
+	blink=\2335m,
+	bold=\2331m,
+	cbt=\233Z,
+	civis=\233?25l,
+	clear=\233H\2332J,
+	cnorm=\233?25l\233?25h,
+	cr=\r,
+	csr=\233%i%p1%d;%p2%dr,
+	cub=\233%p1%dD,
+	cub1=^H,
+	cud=\233%p1%dB,
+	cud1=\n,
+	cuf=\233%p1%dC,
+	cuf1=\233C,
+	cup=\233%i%p1%d;%p2%dH,
+	cuu=\233%p1%dA,
+	cuu1=\233A,
+	cvvis=\233?12;25h,
+	dch=\233%p1%dP,
+	dch1=\233P,
+	dl=\233%p1%dM,
+	dl1=\233M,
+	ech=\233%p1%dX,
+	ed=\233J,
+	el=\233K,
+	el1=\2331K,
+	flash=\233?5h$<100/>\233?5l,
+	home=\233H,
+	hpa=\233%i%p1%dG,
+	ht=^I,
+	hts=\210,
+	ich=\233%p1%d@,
+	il=\233%p1%dL,
+	il1=\233L,
+	ind=\n,
+	invis=\2338m,
+	is2=\E[62"p\E\sG\233m\233?7h\E>
+	    \E7\233?1;3;4;6l\2334l\233r
+	    \E8,
+	ka1=\217w,
+	ka3=\217u,
+	kb2=\217y,
+	kbeg=\217E,
+	kc1=\217q,
+	kc3=\217s,
+	kcbt=\233Z,
+	kcub1=\217D,
+	kcud1=\217B,
+	kcuf1=\217C,
+	kcuu1=\217A,
+	kdch1=\2333~,
+	kend=\2334~,
+	kent=\217M,
+	kf1=\23311~,
+	kf10=\23321~,
+	kf11=\23323~,
+	kf12=\23324~,
+	kf13=\23325~,
+	kf14=\23326~,
+	kf15=\23328~,
+	kf16=\23329~,
+	kf17=\23331~,
+	kf18=\23332~,
+	kf19=\23333~,
+	kf2=\23312~,
+	kf20=\23334~,
+	kf3=\23313~,
+	kf4=\23314~,
+	kf5=\23315~,
+	kf6=\23317~,
+	kf7=\23318~,
+	kf8=\23319~,
+	kf9=\23320~,
+	khome=\2331~,
+	kich1=\2332~,
+	kmous=\233M,
+	knp=\2336~,
+	kpp=\2335~,
+	mc0=\233i,
+	mc4=\2334i,
+	mc5=\2335i,
+	meml=\El,
+	memu=\Em,
+	op=\23339;49m,
+	rc=\E8,
+	rev=\2337m,
+	ri=\215,
+	rmacs=\E(B,
+	rmam=\233?7l,
+	rmcup=\233?1049l,
+	rmir=\2334l,
+	rmkx=\233?1l\E>,
+	rmso=\23327m,
+	rmul=\23324m,
+	rs1=\Ec,
+	rs2=\E[62"p\E\sG\233m\233?7h\E>
+	    \E7\233?1;3;4;6l\2334l\233r
+	    \E8,
+	sc=\E7,
+	setab=\2334%p1%dm,
+	setaf=\2333%p1%dm,
+	setb=\2334
+		%?
+			%p1%{1}%=
+			%t4
+		%e
+			%p1%{3}%=
+			%t6
+		%e
+			%p1%{4}%=
+			%t1
+		%e
+			%p1%{6}%=
+			%t3
+		%e
+			%p1%d
+		%;
+		m,
+	setf=\2333
+		%?
+			%p1%{1}%=
+			%t4
+		%e
+			%p1%{3}%=
+			%t6
+		%e
+			%p1%{4}%=
+			%t1
+		%e
+			%p1%{6}%=
+			%t3
+		%e
+			%p1%d
+		%;
+		m,
+	sgr=\2330
+		%?
+			%p6
+			%t;1
+		%;
+		%?
+			%p2
+			%t;4
+		%;
+		%?
+			%p1%p3%|
+			%t;7
+		%;
+		%?
+			%p4
+			%t;5
+		%;
+		%?
+			%p7
+			%t;8
+		%;
+		m
+		%?
+			%p9
+			%t\E(0
+		%e
+			\E(B
+		%;,
+	sgr0=\2330m\E(B,
+	smacs=\E(0,
+	smam=\233?7h,
+	smcup=\233?1049h,
+	smir=\2334h,
+	smkx=\233?1h\E=,
+	smso=\2337m,
+	smul=\2334m,
+	tbc=\2333g,
+	u6=\233[%i%d;%dR,
+	u7=\E[6n,
+	u8=\233[?%[;0123456789]c,
+	u9=\E[c,
+	vpa=\233%i%p1%dd,
+	use=xterm+kbs,
+#
+xterm-xf86-v44|xterm terminal emulator (XFree86 4.4 Window System),
+	OTbs,
+	am,
+	bce,
+	km,
+	mc5i,
+	mir,
+	msgr,
+	npc,
+	xenl,
+	AX,
+	XT,
+	colors#8,
+	cols#80,
+	it#8,
+	lines#24,
+	pairs#64,
+	acsc=``aaffggiijjkkllmmnnooppqqr
+	     rssttuuvvwwxxyyzz{{||}}~~,
+	bel=^G,
+	blink=\E[5m,
+	bold=\E[1m,
+	cbt=\E[Z,
+	civis=\E[?25l,
+	clear=\E[H\E[2J,
+	cnorm=\E[?12l\E[?25h,
+	cr=\r,
+	csr=\E[%i%p1%d;%p2%dr,
+	cub=\E[%p1%dD,
+	cub1=^H,
+	cud=\E[%p1%dB,
+	cud1=\n,
+	cuf=\E[%p1%dC,
+	cuf1=\E[C,
+	cup=\E[%i%p1%d;%p2%dH,
+	cuu=\E[%p1%dA,
+	cuu1=\E[A,
+	cvvis=\E[?12;25h,
+	dch=\E[%p1%dP,
+	dch1=\E[P,
+	dl=\E[%p1%dM,
+	dl1=\E[M,
+	ech=\E[%p1%dX,
+	ed=\E[J,
+	el=\E[K,
+	el1=\E[1K,
+	enacs=\E(B\E)0,
+	flash=\E[?5h$<100/>\E[?5l,
+	home=\E[H,
+	hpa=\E[%i%p1%dG,
+	ht=^I,
+	hts=\EH,
+	ich=\E[%p1%d@,
+	il=\E[%p1%dL,
+	il1=\E[L,
+	ind=\n,
+	indn=\E[%p1%dS,
+	invis=\E[8m,
+	is2=\E[!p\E[?3;4l\E[4l\E>,
+	kDC=\E[3;2~,
+	kEND=\E[1;2F,
+	kHOM=\E[1;2H,
+	kIC=\E[2;2~,
+	kLFT=\E[1;2D,
+	kNXT=\E[6;2~,
+	kPRV=\E[5;2~,
+	kRIT=\E[1;2C,
+	kb2=\EOE,
+	kcbt=\E[Z,
+	kcub1=\EOD,
+	kcud1=\EOB,
+	kcuf1=\EOC,
+	kcuu1=\EOA,
+	kdch1=\E[3~,
+	kend=\EOF,
+	kent=\EOM,
+	kf1=\EOP,
+	kf10=\E[21~,
+	kf11=\E[23~,
+	kf12=\E[24~,
+	kf13=\EO2P,
+	kf14=\EO2Q,
+	kf15=\EO2R,
+	kf16=\EO2S,
+	kf17=\E[15;2~,
+	kf18=\E[17;2~,
+	kf19=\E[18;2~,
+	kf2=\EOQ,
+	kf20=\E[19;2~,
+	kf21=\E[20;2~,
+	kf22=\E[21;2~,
+	kf23=\E[23;2~,
+	kf24=\E[24;2~,
+	kf25=\EO5P,
+	kf26=\EO5Q,
+	kf27=\EO5R,
+	kf28=\EO5S,
+	kf29=\E[15;5~,
+	kf3=\EOR,
+	kf30=\E[17;5~,
+	kf31=\E[18;5~,
+	kf32=\E[19;5~,
+	kf33=\E[20;5~,
+	kf34=\E[21;5~,
+	kf35=\E[23;5~,
+	kf36=\E[24;5~,
+	kf37=\EO6P,
+	kf38=\EO6Q,
+	kf39=\EO6R,
+	kf4=\EOS,
+	kf40=\EO6S,
+	kf41=\E[15;6~,
+	kf42=\E[17;6~,
+	kf43=\E[18;6~,
+	kf44=\E[19;6~,
+	kf45=\E[20;6~,
+	kf46=\E[21;6~,
+	kf47=\E[23;6~,
+	kf48=\E[24;6~,
+	kf5=\E[15~,
+	kf6=\E[17~,
+	kf7=\E[18~,
+	kf8=\E[19~,
+	kf9=\E[20~,
+	khome=\EOH,
+	kich1=\E[2~,
+	kmous=\E[M,
+	knp=\E[6~,
+	kpp=\E[5~,
+	mc0=\E[i,
+	mc4=\E[4i,
+	mc5=\E[5i,
+	meml=\El,
+	memu=\Em,
+	op=\E[39;49m,
+	rc=\E8,
+	rev=\E[7m,
+	ri=\EM,
+	rin=\E[%p1%dT,
+	rmacs=^O,
+	rmam=\E[?7l,
+	rmir=\E[4l,
+	rmkx=\E[?1l\E>,
+	rmso=\E[27m,
+	rmul=\E[24m,
+	rs1=\Ec,
+	rs2=\E[!p\E[?3;4l\E[4l\E>,
+	sc=\E7,
+	setab=\E[4%p1%dm,
+	setaf=\E[3%p1%dm,
+	setb=\E[4
+		%?
+			%p1%{1}%=
+			%t4
+		%e
+			%p1%{3}%=
+			%t6
+		%e
+			%p1%{4}%=
+			%t1
+		%e
+			%p1%{6}%=
+			%t3
+		%e
+			%p1%d
+		%;
+		m,
+	setf=\E[3
+		%?
+			%p1%{1}%=
+			%t4
+		%e
+			%p1%{3}%=
+			%t6
+		%e
+			%p1%{4}%=
+			%t1
+		%e
+			%p1%{6}%=
+			%t3
+		%e
+			%p1%d
+		%;
+		m,
+	sgr=\E[0
+		%?
+			%p6
+			%t;1
+		%;
+		%?
+			%p2
+			%t;4
+		%;
+		%?
+			%p1%p3%|
+			%t;7
+		%;
+		%?
+			%p4
+			%t;5
+		%;
+		%?
+			%p7
+			%t;8
+		%;
+		m
+		%?
+			%p9
+			%t\016
+		%e
+			\017
+		%;,
+	sgr0=\E[m\017,
+	smacs=^N,
+	smam=\E[?7h,
+	smir=\E[4h,
+	smkx=\E[?1h\E=,
+	smso=\E[7m,
+	smul=\E[4m,
+	tbc=\E[3g,
+	u6=\E[%i%d;%dR,
+	u7=\E[6n,
+	u8=\E[?1;2c,
+	u9=\E[c,
+	vpa=\E[%i%p1%dd,
+	ka2=\EOx,
+	kb1=\EOt,
+	kb3=\EOv,
+	kc2=\EOr,
+	use=xterm+alt1049,
+	use=xterm+kbs,
+xterm-xfree86|xterm terminal emulator (XFree86 4.4 Window System),
+	use=xterm-xf86-v44,
+#
+# Compatible with the R6 xterm, with the following changes:
+#	+ added acsc (perhaps some versions of tic assume the standard vt100
+#	  alternate character set)
+#	+ added u6, u7, u8, u9 strings for Daniel Weaver's tack program.
+#	+ added kmous string for ncurses.
+#	+ added khome/kend strings (which conflict with kfnd/kslt, see note).
+xterm-r6|xterm X11R6 version,
+	OTbs,
+	am,
+	km,
+	mir,
+	msgr,
+	xenl,
+	cols#80,
+	it#8,
+	lines#24,
+	acsc=``aaffggiijjkkllmmnnooppqqr
+	     rssttuuvvwwxxyyzz{{||}}~~,
+	bel=^G,
+	bold=\E[1m,
+	clear=\E[H\E[2J,
+	cr=\r,
+	csr=\E[%i%p1%d;%p2%dr,
+	cub=\E[%p1%dD,
+	cub1=^H,
+	cud=\E[%p1%dB,
+	cud1=\n,
+	cuf=\E[%p1%dC,
+	cuf1=\E[C,
+	cup=\E[%i%p1%d;%p2%dH,
+	cuu=\E[%p1%dA,
+	cuu1=\E[A,
+	dch=\E[%p1%dP,
+	dch1=\E[P,
+	dl=\E[%p1%dM,
+	dl1=\E[M,
+	ed=\E[J,
+	el=\E[K,
+	enacs=\E)0,
+	home=\E[H,
+	ht=^I,
+	hts=\EH,
+	il=\E[%p1%dL,
+	il1=\E[L,
+	ind=\n,
+	is2=\E[m\E[?7h\E[4l\E>\E7\E[r\E[
+	    ?1;3;4;6l\E8,
+	kcub1=\EOD,
+	kcud1=\EOB,
+	kcuf1=\EOC,
+	kcuu1=\EOA,
+	kdch1=\E[3~,
+	kf1=\E[11~,
+	kf10=\E[21~,
+	kf11=\E[23~,
+	kf12=\E[24~,
+	kf13=\E[25~,
+	kf14=\E[26~,
+	kf15=\E[28~,
+	kf16=\E[29~,
+	kf17=\E[31~,
+	kf18=\E[32~,
+	kf19=\E[33~,
+	kf2=\E[12~,
+	kf20=\E[34~,
+	kf3=\E[13~,
+	kf4=\E[14~,
+	kf5=\E[15~,
+	kf6=\E[17~,
+	kf7=\E[18~,
+	kf8=\E[19~,
+	kf9=\E[20~,
+	kmous=\E[M,
+	meml=\El,
+	memu=\Em,
+	rc=\E8,
+	rev=\E[7m,
+	ri=\EM,
+	rmacs=^O,
+	rmcup=\E[2J\E[?47l\E8,
+	rmir=\E[4l,
+	rmkx=\E[?1l\E>,
+	rmso=\E[m,
+	rmul=\E[m,
+	rs2=\E[m\E[?7h\E[4l\E>\E7\E[r\E[
+	    ?1;3;4;6l\E8,
+	sc=\E7,
+	sgr0=\E[m,
+	smacs=^N,
+	smcup=\E7\E[?47h,
+	smir=\E[4h,
+	smkx=\E[?1h\E=,
+	smso=\E[7m,
+	smul=\E[4m,
+	tbc=\E[3g,
+	u6=\E[%i%d;%dR,
+	u7=\E[6n,
+	u8=\E[?1;2c,
+	u9=\E[c,
+	use=xterm+kbs,
+	use=xterm+decedit,
+xterm-old|antique xterm version,
+	use=xterm-r6,
+#
+# Compatible with the R5 xterm, with the following changes:
+#	+ changed 'blink=@', to 'blink@' (the former meant that "@" would start
+#	  a blink, the latter that it is not supported).
+#	+ changed kf1 through kf4 to correspond with actual usage.  Though X
+#	  supports keypad symbols for PF1 to PF4, and xterm interprets these
+#	  correctly, the F1 to F4 codes are commonly (but incorrectly) used.
+#	+ moved reset string from rs1 to rs2, to correlate better with termcap.
+#	+ make khome consistent with other entries.
+#	+ use rmul/smul, rmir/smir from termcap, but not rmcup/smcup because
+#	  not everyone wants the alternate screen.
+#	+ added u6, u7, u8, u9 strings for Daniel Weaver's tack program.
+#	+ added kmous string for ncurses.
+xterm-r5|xterm R5 version,
+	OTbs,
+	am,
+	km,
+	msgr,
+	xenl,
+	cols#80,
+	it#8,
+	lines#24,
+	bel=^G,
+	bold=\E[1m,
+	clear=\E[H\E[2J,
+	cr=\r,
+	csr=\E[%i%p1%d;%p2%dr,
+	cub=\E[%p1%dD,
+	cub1=^H,
+	cud=\E[%p1%dB,
+	cud1=\n,
+	cuf=\E[%p1%dC,
+	cuf1=\E[C,
+	cup=\E[%i%p1%d;%p2%dH,
+	cuu=\E[%p1%dA,
+	cuu1=\E[A,
+	dch=\E[%p1%dP,
+	dch1=\E[P,
+	dl=\E[%p1%dM,
+	dl1=\E[M,
+	ed=\E[J,
+	el=\E[K,
+	home=\E[H,
+	ht=^I,
+	hts=\EH,
+	ich=\E[%p1%d@,
+	ich1=\E[@,
+	il=\E[%p1%dL,
+	il1=\E[L,
+	ind=\n,
+	kcub1=\EOD,
+	kcud1=\EOB,
+	kcuf1=\EOC,
+	kcuu1=\EOA,
+	kdch1=\E[3~,
+	kdl1=\E[31~,
+	kel=\E[8~,
+	kend=\E[4~,
+	kf0=\EOq,
+	kf1=\E[11~,
+	kf10=\E[21~,
+	kf11=\E[23~,
+	kf12=\E[24~,
+	kf2=\E[12~,
+	kf3=\E[13~,
+	kf4=\E[14~,
+	kf5=\E[15~,
+	kf6=\E[17~,
+	kf7=\E[18~,
+	kf8=\E[19~,
+	kf9=\E[20~,
+	khome=\E[1~,
+	kich1=\E[2~,
+	kil1=\E[30~,
+	kmous=\E[M,
+	knp=\E[6~,
+	kpp=\E[5~,
+	rc=\E8,
+	rev=\E[7m,
+	ri=\EM,
+	rmir=\E[4l,
+	rmkx=\E[?1l\E>,
+	rmso=\E[m,
+	rmul=\E[m,
+	rs2=\E>\E[?1;3;4;5;6l\E[4l\E[?7h
+	    \E[m\E[r\E[2J\E[H,
+	sc=\E7,
+	sgr=\E[
+		%?
+			%p1
+			%t;7
+		%;
+		%?
+			%p2
+			%t;4
+		%;
+		%?
+			%p3
+			%t;7
+		%;
+		%?
+			%p4
+			%t;5
+		%;
+		%?
+			%p6
+			%t;1
+		%;
+		m,
+	sgr0=\E[m,
+	smir=\E[4h,
+	smkx=\E[?1h\E=,
+	smso=\E[7m,
+	smul=\E[4m,
+	tbc=\E[3g,
+	u6=\E[%i%d;%dR,
+	u7=\E[6n,
+	u8=\E[?1;2c,
+	u9=\E[c,
+	use=xterm+kbs,
+#
+#
+# Customization begins here.
+#
+# This is the only entry which you should have to customize, since "xterm"
+# is widely used for a variety of incompatible terminal emulations including
+# color_xterm and rxvt.
+xterm|X11 terminal emulator,
+	use=xterm-new,
+#	use=xterm-r6,
+
+# This fragment is for people who cannot agree on what the backspace key
+# should send.
+xterm+kbs|fragment for backspace key,
+	kbs=^H,
+#	kbs=^?,

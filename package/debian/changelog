@@ -1,0 +1,401 @@
+xterm-dev (331) unstable; urgency=low
+
+  * maintenance updates
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Tue, 08 Aug 2017 19:08:43 -0400
+
+xterm-dev (330) unstable; urgency=low
+
+  * maintenance updates
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Mon, 12 Jun 2017 17:34:51 -0400
+
+xterm-dev (329) unstable; urgency=low
+
+  * maintenance updates
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Sun, 04 Jun 2017 09:40:17 -0400
+
+xterm-dev (328) unstable; urgency=low
+
+  * maintenance updates
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Mon, 24 Oct 2016 18:07:15 -0400
+
+xterm-dev (327) unstable; urgency=low
+
+  * maintenance updates
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Sun, 02 Oct 2016 19:18:09 -0400
+
+xterm-dev (326) unstable; urgency=low
+
+  * maintenance updates
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Wed, 07 Sep 2016 21:12:23 -0400
+
+xterm-dev (325) unstable; urgency=low
+
+  * maintenance updates
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Thu, 12 May 2016 19:25:56 -0400
+
+xterm-dev (324) unstable; urgency=low
+
+  * maintenance updates
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Thu, 10 Mar 2016 19:19:50 -0500
+
+xterm-dev (323) unstable; urgency=low
+
+  * maintenance updates
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Wed, 27 Jan 2016 04:48:15 -0500
+
+xterm-dev (322) unstable; urgency=low
+
+  * maintenance updates
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 02 Jan 2016 08:42:56 -0500
+
+xterm-dev (321) unstable; urgency=low
+
+  * maintenance updates
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Sun, 27 Sep 2015 19:17:50 -0400
+
+xterm-dev (320) unstable; urgency=low
+
+  * maintenance updates
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Wed, 26 Aug 2015 17:52:20 -0400
+
+xterm-dev (319) unstable; urgency=low
+
+  * maintenance updates
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Wed, 22 Apr 2015 20:44:42 -0400
+
+xterm-dev (318) unstable; urgency=low
+
+  * maintenance updates
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Mon, 06 Apr 2015 06:31:31 -0400
+
+xterm-dev (317) unstable; urgency=low
+
+  * maintenance updates
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Fri, 20 Mar 2015 19:54:44 -0400
+
+xterm-dev (316) unstable; urgency=low
+
+  * maintenance updates
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Thu, 05 Mar 2015 15:52:55 -0500
+
+xterm-dev (315) unstable; urgency=low
+
+  * maintenance updates
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Fri, 02 Jan 2015 07:49:44 -0500
+
+xterm-dev (314) unstable; urgency=low
+
+  * maintenance updates
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Mon, 01 Dec 2014 04:54:46 -0500
+
+xterm-dev (313) unstable; urgency=low
+
+  * maintenance updates
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Mon, 06 Oct 2014 05:26:37 -0400
+
+xterm-dev (312) unstable; urgency=low
+
+  * maintenance updates
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Fri, 26 Sep 2014 18:42:15 -0400
+
+xterm-dev (311) unstable; urgency=low
+
+  * maintenance updates
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Mon, 28 Jul 2014 17:36:30 -0400
+
+xterm-dev (310) unstable; urgency=low
+
+  * maintenance updates
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Mon, 14 Jul 2014 19:36:58 -0400
+
+xterm-dev (309) unstable; urgency=low
+
+  * maintenance updates
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 28 Jun 2014 10:34:28 -0400
+
+xterm-dev (308) unstable; urgency=low
+
+  * maintenance updates
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Thu, 19 Jun 2014 15:58:13 -0400
+
+xterm-dev (307) unstable; urgency=low
+
+  * maintenance updates
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Wed, 04 Jun 2014 18:58:36 -0400
+
+xterm-dev (306) unstable; urgency=low
+
+  * fix incomplete implementation of new SGRs
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Tue, 03 Jun 2014 16:25:02 -0400
+
+xterm-dev (305) unstable; urgency=low
+
+  * maintenance updates
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Mon, 05 May 2014 14:51:42 -0400
+
+xterm-dev (304) unstable; urgency=low
+
+  * maintenance updates
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Wed, 09 Apr 2014 20:27:40 -0400
+
+xterm-dev (303) unstable; urgency=low
+
+  * maintenance updates
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Tue, 04 Mar 2014 17:46:25 -0500
+
+xterm-dev (302) unstable; urgency=low
+
+  * maintenance updates
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 15 Feb 2014 16:19:35 -0500
+
+xterm-dev (301) unstable; urgency=high
+
+  * miscellaneous fixes
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Mon, 09 Dec 2013 07:59:24 -0500
+
+xterm-dev (300) unstable; urgency=high
+
+  * fix a regression from #298 changes
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Tue, 03 Dec 2013 18:59:58 -0500
+
+xterm-dev (299) unstable; urgency=low
+
+  * fix remaining regression from #297 changes
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Sun, 01 Dec 2013 11:48:42 -0500
+
+xterm-dev (298) unstable; urgency=low
+
+  * miscellaneous fixes
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Wed, 11 Sep 2013 17:16:37 -0400
+
+xterm-dev (297) unstable; urgency=low
+
+  * miscellaneous fixes for old issues
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Sun, 04 Aug 2013 08:58:31 -0400
+
+xterm-dev (296) unstable; urgency=low
+
+  * Build-fix for #295 changes
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Tue, 09 Jul 2013 21:20:04 -0400
+
+xterm-dev (295) unstable; urgency=low
+
+  * Workaround for problem with ld --as-needed option
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 06 Jul 2013 21:20:33 -0400
+
+xterm-dev (294) unstable; urgency=low
+
+  * Add experimental support for sixel graphics
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Sun, 23 Jun 2013 10:36:52 -0400
+
+xterm-dev (293) unstable; urgency=low
+
+  * Miscellaneous fixes.
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Wed, 08 May 2013 18:29:21 -0400
+
+xterm-dev (292) unstable; urgency=low
+
+  * Miscellaneous fixes.
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Tue, 26 Mar 2013 19:11:17 -0400
+
+xterm-dev (291) unstable; urgency=low
+
+  * Fix a different #282 change (Redhat #874327).
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Tue, 26 Feb 2013 19:09:32 -0500
+
+xterm-dev (290) unstable; urgency=low
+
+  * Fix incomplete revert of #282 change.
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Tue, 12 Feb 2013 19:48:21 -0500
+
+xterm-dev (289) unstable; urgency=low
+
+  * Miscellaneous fixes.
+  * Fix regression with XTERM_SHELL feature.
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Sun, 03 Feb 2013 13:59:20 -0500
+
+xterm-dev (288) unstable; urgency=low
+
+  * Miscellaneous fixes.
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Mon, 26 Nov 2012 20:53:23 -0500
+
+xterm-dev (287) unstable; urgency=low
+
+  * Miscellaneous fixes.
+  * Redhat #874327, #875305.
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Mon, 19 Nov 2012 04:53:39 -0500
+
+xterm-dev (286) unstable; urgency=low
+
+  * Redhat #869959
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Thu, 25 Oct 2012 06:56:35 -0400
+
+xterm-dev (285) unstable; urgency=low
+
+  * Miscellaneous fixes.
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Mon, 15 Oct 2012 06:57:38 -0400
+
+xterm-dev (284) unstable; urgency=low
+
+  * fix documentation errata
+  * fix regression in --enable-regex
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Wed, 10 Oct 2012 18:17:35 -0400
+
+xterm-dev (283) unstable; urgency=low
+
+  * Miscellaneous fixes.
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Mon, 01 Oct 2012 20:45:50 -0400
+
+xterm-dev (282) unstable; urgency=low
+
+  * Miscellaneous fixes.
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Mon, 20 Aug 2012 17:55:32 -0400
+
+xterm-dev (281) unstable; urgency=low
+
+  * fix regression in keyboard configuration.
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Tue, 26 Jun 2012 04:36:36 -0400
+
+xterm-dev (280) unstable; urgency=low
+
+  * Add Debian menu-file.
+  * modify to support icon-theme
+  * Miscellaneous fixes.
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Fri, 25 May 2012 05:36:50 -0400
+
+xterm-dev (279) unstable; urgency=low
+
+  * Miscellaneous fixes.
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Wed, 14 Mar 2012 20:33:27 -0400
+
+xterm-dev (278) unstable; urgency=low
+
+  * Fix regression in eightBitInput logic.
+  * Fix regression in Darwin 9.x
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Thu, 12 Jan 2012 08:10:50 -0500
+
+xterm-dev (277) unstable; urgency=low
+
+  * Minor keyboard fix.
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Tue, 11 Oct 2011 20:12:14 -0400
+
+xterm-dev (276) unstable; urgency=low
+
+  * Regressions in #272, #274.
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Wed, 28 Sep 2011 17:34:20 -0400
+
+xterm-dev (275) unstable; urgency=low
+
+  * Regressions in #272, #274.
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Sun, 11 Sep 2011 09:46:57 -0400
+
+xterm-dev (274) unstable; urgency=low
+
+  * Various build-fixes.
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Sun, 28 Aug 2011 20:07:29 -0400
+
+xterm-dev (273) unstable; urgency=low
+
+  * Build-fixes/regressions from #272.
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Thu, 25 Aug 2011 05:42:58 -0400
+
+xterm-dev (272) unstable; urgency=low
+
+  * Build-fix for termcap systems.
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Fri, 15 Jul 2011 20:41:30 -0400
+
+xterm-dev (271) unstable; urgency=low
+
+  * Ubuntu #756273 (accommodate function keys as popup-menu triggers)
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Fri, 29 Apr 2011 20:30:29 -0400
+
+xterm-dev (270) unstable; urgency=low
+
+  * more fixes for fullscreen toggle.
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Sun, 20 Mar 2011 14:53:54 -0400
+
+xterm-dev (269) unstable; urgency=low
+
+  * amend translations for fullscreen toggle.
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Sun, 13 Feb 2011 19:20:48 -0500
+
+xterm-dev (268) unstable; urgency=low
+
+  * build-fixes, etc.
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Wed, 24 Nov 2010 06:17:16 -0500
+
+xterm-dev (267) unstable; urgency=low
+
+  * build-fixes, etc.
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Wed, 10 Nov 2010 18:46:41 -0500
+
+xterm-dev (266) unstable; urgency=low
+
+  * add build-script for testing, adapted from Debian xterm package.
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Fri, 22 Oct 2010 17:15:59 -0400

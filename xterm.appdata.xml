@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2014,2016 Thomas Dickey <dickey@invisible-island.net> -->
+<component type="desktop">
+  <id>xterm.desktop</id>
+  <metadata_license>CC-BY-3.0</metadata_license>
+  <project_license>X11</project_license>
+  <name>XTerm</name>
+  <summary>Terminal emulator for the X Window System</summary>
+  <description>
+    <p>
+   XTerm is the standard terminal emulator for the X Window System.
+   It provides DEC VT102/VT220 and selected features from higher-level
+   terminals such as VT320/VT420/VT520 (VTxxx).  It also provides Tektronix
+   4014 emulation for programs that cannot use the window system directly.
+  </p>
+    <p>
+   You would use xterm to get a shell prompt, to run command-line programs.
+  </p>
+  </description>
+  <screenshots>
+    <screenshot type="default" height="539" width="813">
+      <image>http://invisible-island.net/xterm/images/merged-xterm-menus.png</image>
+      <caption>xterm with its popup menus superimposed</caption>
+    </screenshot>
+  </screenshots>
+  <keywords>
+    <keyword>shell</keyword>
+    <keyword>prompt</keyword>
+    <keyword>command</keyword>
+    <keyword>commandline</keyword>
+    <keyword>cmd</keyword>
+    <keyword>terminal</keyword>
+  </keywords>
+  <url type="homepage">http://invisible-island.net/xterm/</url>
+  <update_contact>dickey@invisible-island.net</update_contact>
+  <developer_name>Thomas E. Dickey</developer_name>
+  <url type="bugtracker">mailto:dickey@invisible-island.net</url>
+  <url type="donation"/>
+  <url type="help">http://invisible-island.net/xterm/xterm.faq.html</url>
+  <url type="translate"/>
+</component>

@@ -1,0 +1,199 @@
+-- $XFree86: xc/programs/xterm/README.i18n,v 1.1 2003/11/13 01:16:37 dickey Exp $
+
+Using xterm in your language
+============================
+
+Since XFree86 version 4.0, the internationalization (i18n) feature of
+xterm is gradually improved.  Xterm is being improved even now.  You
+need only set the standard locale environment variables such as
+LC_CTYPE, LC_ALL, LC_CTYPE, or LANG.  Once the locale is set up you can
+use xterm in your favorite character encoding.
+
+This document explains how the i18n feature is realized and how to
+configure xterm for your character encoding.
+
+Refer to locale(7) for details of the locale mechanism.
+
+
+Basic i18n-related settings and resources
+=========================================
+
+These settings apply to XFree86 xterm patch #181, and the program luit
+which is distributed with XFree86 4.4
+
+1.  Usage of "locale mode"
+
+    On startup, xterm must be in "locale mode" to make it follow the
+    current locale.  You can invoke xterm in locale mode in these ways:
+
+    a.  Set "vt100.locale" resource "true".  This resource was
+        introduced since XFree86 4.3.  The default value of the "locale"
+        resource is "medium", which means xterm follows the locale only
+        in Chinese, Japanese, Korean, or Thai locales.  For example,
+
+          XTerm*locale: true
+
+        in your ~/.Xresources file.
+
+    or
+
+    b.  Invoke xterm with the "-lc" option.
+
+2.  Converter program "luit"
+
+    The "luit" must be available in the standard XFree86 binary
+    directory.  It is usually available because it is part of the
+    XFree86 distribution.  The standard binary directory may differ from
+    system to system.  /usr/X11R6/bin/luit is an example.
+
+    "luit" is used to convert between Unicode and the character encoding
+    for your locale.  When built for XFree86, xterm includes logic for
+    invoking luit.
+
+3.  Locale setting
+
+    Finally, you will need to configure your locale.  We expect that you
+    have already configured your locale for other software.  For example,
+
+      LANG=de_DE@euro
+      export LANG
+
+    in your ~/.xsession file.  There are many ways to configure locale. 
+    For example, your display manager may have a mechanism to invoke a
+    window manager in your favorite locale, or you may have system-wide
+    locale setting in /etc/environment.  You may also have set the
+    LC_ALL variable instead of the LANG variable.
+
+
+How to use xterm in different locale temporarily
+================================================
+
+You may sometimes need to invoke xterm in a different character encoding
+than your current locale.  For example, use xterm to login remote systems
+in different locale.
+
+Do this by invoking xterm in the target locale.  For example,
+
+  $ LANG=ru_RU.KOI8-R xterm &
+
+Previously, font setting has been used in such cases.
+
+  $ xterm -fn -misc-fixed-medium-r-normal--10-*-*-*-*-*-koi8-r &
+
+This does not work well in conjunction with the "locale" resource,
+because luit and xterm combined rely upon Unicode fonts.
+
+
+How to set fonts for UTF-8/locale modes
+=======================================
+
+Since xterm patch #181, xterm can automatically use Unicode fonts in
+UTF-8 mode and locale mode.  Few of you will need to modify the default
+setting to display your language.  In particular, Unicode fonts in
+combination with locale mode will satisfy the needs of not only
+ISO-8859-1 users but also East Asian and other non-ISO-8859-1 users.
+
+If you want to set your favorite Unicode font for UTF-8 and locale
+modes, you should add a line such as the following in your ~/.Xresources
+file:
+
+    XTerm*VT100.utf8Fonts.font: \
+         -misc-fixed-medium-r-semicondensed--13-120-75-75-c-60-iso10646-1
+
+The leading "XTerm*" pattern is more specific than the system's
+app-defaults file, therefore it overrides the corresponding line
+beginning with
+
+    *VT100.utf8Fonts.font:
+
+Here is an additional note.  If you want to display East Asian
+doublewidth characters (CJK Ideogram, Hiragana, Katakana, Hangul,
+and so on), we recommend using
+
+    -misc-fixed-medium-r-semicondensed--13-*-*-*-*-*-iso10646-1
+
+or
+
+    -misc-fixed-medium-r-normal--18-*-*-*-*-*-iso10646-1
+
+because these two fonts have corresponding doublewidth fonts.  These
+fonts are used as default font and default "Large" font, respectively.
+
+
+The internals of xterm i18n
+===========================
+
+You do not need to read this section if you only want to configure your
+xterm.  Here we describe how xterm is implemented to support i18n.
+
+The original version of xterm does not support locale or character
+encoding.  Its I/O stream is interpreted as a mere 8-bit index for a
+font.
+
+Beginning with XFree86 4.0, xterm supported UTF-8.  It was implemented
+as a separate UTF-8 mode from the conventional 8-bit mode.  Character
+encodings had no effect on the 8-bit mode.  The UTF-8 mode has been
+extended to support doublewidth characters (for East Asian characters)
+and combining characters (such as accents for Latin alphabets and Thai
+vowels/tone marks).
+
+Doublewidth characters are characters that occupy two continuing
+columns on the terminal.  Xterm uses separate fonts for normal
+(singlewidth) characters and doublewidth characters.  Though xterm has
+configuration items for specifying doublewidth fonts, it will
+automatically search for a font with exactly twice as wide and the same
+name as the specified normal font.
+
+The default behavior of xterm was modified to use this UTF-8 mode in
+UTF-8 locales.  A command line option of "-u8" and a resource of "utf8"
+were introduced to choose UTF-8 mode.
+
+"luit" was introduced to XFree86 at version 4.2.  It converts between
+UTF-8 and other encodings.  When luit is invoked in a UTF-8 terminal,
+the terminal acts as if it is really running in the other encoding.
+
+Since XFree86 version 4.3, xterm provides a new mode to invoke luit
+automatically to support various encodings.  The mode where xterm
+invokes luit is called "locale mode".  It is the third mode following
+conventional 8-bit mode and UTF-8 mode.  In the locale mode, xterm is
+aware of the current locale and character encoding.  Since locale mode
+uses luit, it is based on the UTF-8 mode.  That is, xterm works in UTF-8
+mode and luit works as a converter between UTF-8 and the character
+encoding for your locale.  This is why the locale mode always needs
+Unicode fonts.  The default behavior of xterm is modified so that the
+"locale mode" will be adopted in Chinese (Big5 and GB2312), Japanese
+(EUC-JP), Korean (EUC-KR), and Thai (ISO-8859-11, as known as TIS-620)
+locales.  Locale mode is chosen for these character encodings because
+these encodings are not supported by conventional 8-bit mode even by
+changing fonts (ISO-8859-11 needs combining characters and others need
+doublewidth characters).
+
+To control the locale mode, command line options of "-lc" and "-en" and
+a resource of "locale" were introduced.  The command line option of
+"-u8" and a resource of "utf8" were made obsolete by them, though
+retained for compatibility.
+
+Since XFree86 version 4.4, xterm can have two sets of default fonts,
+one for conventional 8-bit mode and another for UTF-8 and locale modes,
+by introducing the "utf8Fonts" subresource.
+
+
+Future TODO Items
+=================
+
+We anticipate that xterm's locale mode will be used increasingly in the
+future.  Since the UTF-8 and locale modes use more resources than
+conventional 8-bit mode (because it needs larger fonts and another
+process "luit"), faster hardware may be needed to gain complete
+acceptance by users.  However, the locale mechanism allows users
+to manipulate data in a standard form.  Its usefulness compensates
+in part for reduced performance.
+
+Xterm supports antialiased fonts ("-fa" and "-fs" command line options). 
+Currently UTF-8 nor locale modes do not work with antialiased fonts.
+
+Xterm does not support bi-directional or RTL languages such as Hebrew
+and Arab.  A simple standard how terminal should behave for these
+languages is needed.
+
+Xterm does not support Unicode characters above U+10000.

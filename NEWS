@@ -1,0 +1,121 @@
+The NEWS file was generated from xterm.log.html, which serves as the changelog
+for xterm.
+--------------------------------------------------------------------------------
+                            Patch #331 - 2017/12/30
+
+     * add  workaround for improper grayscale adjustments made in FreeType
+       library, exposed by changes to rounding in 2.8.1, which shows up as
+       a gap in line-drawing characters (Debian #880407).
+     * improve  a  special  case  where  a non-Unicode font's line-drawing
+       characters  were  not  used,  when  specifying it via the utf8Fonts
+       resource, e.g.,
+
+        -fs 15 \
+        -xrm '*VT100.font:12x24' \
+        -xrm '*VT100.boldFont:12x24' \
+        -xrm '*VT100.utf8Fonts.font: 12x24' \
+        -xrm '*VT100.utf8Fonts.boldFont: 12x24' \
+
+     * replace  constant  10msec  delay for next X event with new resource
+       nextEventDelay,  and  reduce  that  to  1msec to accommodate faster
+       machines  than  used  when  -hold  was  implemented in 1999 (Debian
+       #877628).
+     * add  scroll-to  action, which simplifies binding a key to scroll to
+       the beginning or end of the saved-lines (Debian #880120).
+     * add   building  blocks  for  alternate  screen  and/or  title-stack
+       features in the terminfo file.
+     * improve calculations for cell-data size.
+     * change  configure  script  to  enable  XHTML/SVG  screen  dumps  by
+       default.
+     * change configure script to enable 256-colors by default.
+     * update config.guess, config.sub
+     * change  configure script option for --with-man2html to use improved
+       script by default.
+     * add   case   for  private  mode  1044  in  DECRQM,  to  report  the
+       keepClipboard resource setting and corresponding menu entry.
+     * fix  an  inconsistency between private mode 12 (the AT&T 610 cursor
+       blink)  and  DECSCUSR:  the former relied on having the cursorBlink
+       resource  set  initially  to  enable the escape sequence, while the
+       latter does not.
+     * add  private modes 13 and 14, as well as resource cursorBlinkXOR to
+       allow  better  control  over  the cursor-blinking state (discussion
+       with Bram Moolenaar).
+     * modify the html and svg screen dumps to support direct color
+     * modify  media  copy (screen-printing) to support the same SGR codes
+       as DECRQSS, including 88/256 indexed color as well as direct color.
+     * improve options-parsing for query-status.pl script.
+     * modify  parsing  of  SGR  direct-color  control  making color space
+       identitier optional. The corresponding DECRQSS reply always returns
+       an empty (default) field for the identifier.
+     * add wide-attributes to DECRQSS reply for SGR.
+     * add private mode 1046 to help with scripting applications.
+     * correct  expression  used for readline-flags in DECRQM; to test the
+       current  flag  rather  than  information  stacked  within  the same
+       variable.
+     * correct  typo  in ctlseqs.ms reference to ISO-8613-6 (patch by Mike
+       Frysinger).
+     * fix lintian warning for test-package.
+     * fix  typo in DECRQSS for SGR 48, which printed the foreground value
+       for  colors  past  15.  Also use colon delimiter for codes 38/48 in
+       response (report by Paul LeoNerd Evans).
+     * improve  workaround  for Debian #542434 by using the font's maximum
+       width when no ISO-8859-1 glyphs are provided (Debian #879936).
+     * work  around  a  special  case of Xft's mismanagement of its cached
+       data  by  adding  a check before the -report-fonts option to ensure
+       that it does not use an XftPattern which may have been freed during
+       a call to XftFontOpenPattern.
+     * improve  manual  page  description  of  regex  option for onXClicks
+       resources (report by Lukas Mai).
+     * add directColor resource.
+     * additional   manpage   macro   cleanup  (Brandon  Robinson,  Debian
+       #880551).
+     * add  optional  support  for  direct-colors  (adapted  from patch by
+       anonymous “Nibby Nebbulous”).
+     * improve legacy/NRC character set mapping (patch by Thomas Wolff):
+          + enable  alternate  NRC  set  designators for French and French
+            Canadian, ‘9’ and ‘f’ respectively, as documented in ctlseqs.
+            (‘9’ is documented for VT510, ‘f’ is a Kermit feature).
+          + correct  the  Unicode value in the DEC Technical table to show
+            capital delta.
+          + referring to
+
+     http://vt100.net/docs/vt220-rm/table2-3b.html
+     http://vt100.net/docs/vt320-uu/appendixe.html
+            add entries for the DEC Supplemental Graphics table to display
+            0x28/0xa8 as ¤ and 0x5d/0xdd as Ÿ.
+          + referring to
+
+     http://www.vt100.net/charsets/technical.html
+            alter  the  Unicode  values  used for 0x2b through 0x2c to use
+            curly braces to work with the “middle” parts displayed with
+            0x2f and 0x30.
+          + modify the VT220 “Supplemental” table, giving a hint that it
+            was probably meant to be “Supplemental Graphics” and is the
+            same as VT320's table.
+     * quiet a few font-warnings when a derived fontname cannot be opened,
+       overlooked   in   refactoring  of  font  resources  in  patch  #328
+       (initially reported on Cygwin mailing list, with followup).
+     * correct  error  response  for DECRQSS broken in cleanup of Coverity
+       reports  in  patch  #288  (reports  by  Bram  Moolenaar and IWAMOTO
+       Kouichi).
+     * improve DECRPM responses by returning mode not recognized for modes
+       which  may  not  be  settable  due  to  the  selected decTerminalID
+       resource (report by IWAMOTO Kouichi).
+     * correct  logic for print-immediate action, and enable corresponding
+       menu entry (patch by Lauri Tirkkonen).
+     * add configure option --with-pcre2 (patch by David Michael).
+     * fix  a  misspelled  subsection  title  in ctlseqs.ms and add a note
+       regarding  blink which was rendered as bold in X11R6. Blinking text
+       was implemented in Patch #60.
+     * fix typos in xterm.man (patches by Sven Joachim, Larry Hynes).
+     * fix  typography in xterm.man (patch by Bjarni Ingi Gislason, Debian
+       #869248).
+     * fix typo in INSTALL (Larry Hynes).
+     * add  xterm-direct  terminal description based on changes introduced
+       in patch #277, and relying upon ncurses RGB extension.
+     * modify   xterm-new   terminal   description  to  use  ECMA-48  REP,
+       reflecting its use in xterm since patch #32 (1996).
+     * clarify  comment in ctlseqs.ms regarding blink: it has been part of
+       xterm since patch #60 (1998).
+     * update ftp URLs in documentation.
+

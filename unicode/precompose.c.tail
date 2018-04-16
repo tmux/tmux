@@ -1,0 +1,24 @@
+};
+
+#define UNICODE_SHIFT 21
+
+int do_precomposition(int base, int comb) {
+  int min = 0;
+  int max = sizeof(precompositions) / sizeof(precompositions[0]) - 1;
+  unsigned long sought = ((unsigned) base << UNICODE_SHIFT) | (unsigned) comb;
+
+  /* binary search */
+  while (max >= min) {
+    int mid = (min + max) / 2;
+    unsigned long that = ((unsigned long) precompositions[mid].base << UNICODE_SHIFT) | ((unsigned) precompositions[mid].comb);
+    if (that < sought) {
+      min = mid + 1;
+    } else if (that > sought) {
+      max = mid - 1;
+    } else {
+      return precompositions[mid].replacement;
+    }
+  }
+  /* no match */
+  return -1;
+}

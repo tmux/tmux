@@ -1,0 +1,76 @@
+! $XTermId: UXTerm.ad,v 1.13 2010/03/04 01:17:07 tom Exp $
+! -----------------------------------------------------------------------------
+! this file is part of xterm
+!
+! Copyright 2000-2006,2010 by Thomas E. Dickey
+! 
+!                         All Rights Reserved
+! 
+! Permission is hereby granted, free of charge, to any person obtaining a
+! copy of this software and associated documentation files (the
+! "Software"), to deal in the Software without restriction, including
+! without limitation the rights to use, copy, modify, merge, publish,
+! distribute, sublicense, and/or sell copies of the Software, and to
+! permit persons to whom the Software is furnished to do so, subject to
+! the following conditions:
+! 
+! The above copyright notice and this permission notice shall be included
+! in all copies or substantial portions of the Software.
+! 
+! THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+! OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+! MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+! IN NO EVENT SHALL THE ABOVE LISTED COPYRIGHT HOLDER(S) BE LIABLE FOR ANY
+! CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+! TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+! SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+! 
+! Except as contained in this notice, the name(s) of the above copyright
+! holders shall not be used in advertising or otherwise to promote the
+! sale, use or other dealings in this Software without prior written
+! authorization.
+! -----------------------------------------------------------------------------
+! Use
+!	xterm -class UXTerm
+! to set resources for UTF-8 mode with corresponding fonts.
+! See the uxterm script for an example.
+
+#include "XTerm"
+
+*fontMenu.Label:  Unicode Fonts
+*VT100.utf8:	1
+
+! This includes "XTerm-color" which includes "XTerm", which defines fonts.
+! Why set them here?
+!
+! Here is a simple description.  A technically precise one would be very long.
+! When xterm starts up, it uses the
+!
+!	*VT100.font
+!
+! resource, and if it is told to switch to wide-character (UTF-8) mode, it
+! checks if the given font is "wide", and if not looks for the
+!
+!	*VT100.utf8Fonts.font
+!
+! to obtain a wide font.  A "wide" font has more than 256 glyphs.  Typical
+! wide fonts have 10,000 glyphs.  If the original "*VT100.font" is not wide,
+! and xterm can load the *VT100.utf8Fonts.font, it will use that.
+!
+! Making the wide fonts associated with *VT100.font in this file allows uxterm
+! to skip that step.  It will use the fonts that the XTerm file gives for the
+! *VT100.uft8Fonts.font pattern.
+*VT100.font2:	-misc-fixed-medium-r-normal--8-80-75-75-c-50-iso10646-1
+*VT100.font:	-misc-fixed-medium-r-semicondensed--13-120-75-75-c-60-iso10646-1
+*VT100.font3:	-misc-fixed-medium-r-normal--14-130-75-75-c-70-iso10646-1
+*VT100.font4:	-misc-fixed-medium-r-normal--13-120-75-75-c-80-iso10646-1
+*VT100.font5:	-misc-fixed-medium-r-normal--18-120-100-100-c-90-iso10646-1
+*VT100.font6:	-misc-fixed-medium-r-normal--20-200-75-75-c-100-iso10646-1
+
+! Here is an alternate set of fonts with better support for bold:
+!*VT100.font2:	-efont-biwidth-medium-r-normal--10-100-75-75-p-50-iso10646-1
+!*VT100.font:	-efont-biwidth-medium-r-normal--10-100-75-75-p-50-iso10646-1
+!*VT100.font3:	-efont-biwidth-medium-r-normal--12-120-75-75-p-60-iso10646-1
+!*VT100.font4:	-efont-biwidth-medium-r-normal--14-140-75-75-p-70-iso10646-1
+!*VT100.font5:	-efont-biwidth-medium-r-normal--16-160-75-75-p-80-iso10646-1
+!*VT100.font6:	-efont-biwidth-medium-r-normal--24-240-75-75-p-120-iso10646-1

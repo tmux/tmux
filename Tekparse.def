@@ -1,0 +1,74 @@
+# $XTermId: Tekparse.def,v 1.4 2006/02/12 22:43:56 tom Exp $
+#
+# vile:confmode rs=lf
+# -----------------------------------------------------------------------------
+# this file is part of xterm
+#
+# Copyright 2002,2006 by Thomas E. Dickey
+# 
+#                         All Rights Reserved
+# 
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+# 
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+# IN NO EVENT SHALL THE ABOVE LISTED COPYRIGHT HOLDER(S) BE LIABLE FOR ANY
+# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+# 
+# Except as contained in this notice, the name(s) of the above copyright
+# holders shall not be used in advertising or otherwise to promote the
+# sale, use or other dealings in this Software without prior written
+# authorization.
+# -----------------------------------------------------------------------------
+#
+# List of symbols that need to be defined for Tekparse.h.  If you need to 
+# change any of the CASE_ macros, make the change here and rerun the command
+# shown in Tekparse.h.
+#
+
+CASE_REPORT
+CASE_VT_MODE
+CASE_SPT_STATE
+CASE_GIN
+CASE_BEL
+CASE_BS
+CASE_PT_STATE
+CASE_PLT_STATE
+CASE_TAB
+CASE_IPL_STATE
+CASE_ALP_STATE
+CASE_UP
+CASE_COPY
+CASE_PAGE
+CASE_BES_STATE
+CASE_BYP_STATE
+CASE_IGNORE
+CASE_ASCII
+CASE_APL
+CASE_CHAR_SIZE
+CASE_BEAM_VEC
+CASE_CURSTATE
+CASE_PENUP
+CASE_PENDOWN
+CASE_IPL_POINT
+CASE_PLT_VEC
+CASE_PT_POINT
+CASE_SPT_POINT
+CASE_CR
+CASE_ESC_STATE
+CASE_LF
+CASE_SP
+CASE_PRINT
+CASE_OSC

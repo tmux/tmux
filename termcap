@@ -1,0 +1,248 @@
+# $XTermId: termcap,v 1.88 2017/12/25 21:24:41 tom Exp $
+#
+# These are termcap entries that correspond to xterm's terminfo file.
+# The file is formatted using ncurses' "tic -CNx", but is not mechanically
+# derived from the terminfo.
+#
+#------------------------------------------------------------------------------
+# Copyright 1996-2016,2017 by Thomas E. Dickey
+#
+#                         All Rights Reserved
+#
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+# IN NO EVENT SHALL THE ABOVE LISTED COPYRIGHT HOLDER(S) BE LIABLE FOR ANY
+# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+#
+# Except as contained in this notice, the name(s) of the above copyright
+# holders shall not be used in advertising or otherwise to promote the
+# sale, use or other dealings in this Software without prior written
+# authorization.
+#------------------------------------------------------------------------------
+#
+# Note:
+#	termcap format is limited to 1023 characters.  This set of descriptions
+#	is a subset of the terminfo, since not all features can be fit into
+#	that limit.  The 'xterm' description supports color.  The monochrome
+#	'xterm-mono' drops color in favor of additional function keys.  If you
+#	need both, use terminfo.
+#
+#	The 1023-character limit applies to each entry after resolving the
+#	"tc=" strings.  Some implementations may discount all or part of the
+#	formatting characters in the entry (i.e., the backslash newline tab
+#	colon).  GNU termcap does not have this limit.
+#
+#	I checked the limits using ncurses "captoinfo -CrTUvx", which prints
+#	the resolved length of each entry in a comment at the end - T.Dickey
+#
+xf|xterm-new|modern xterm:\
+	:XT:*6=\EOF:@7=\EOF:F1=\E[23~:F2=\E[24~:K2=\EOE:Km=\E[M:\
+	:k1=\EOP:k2=\EOQ:k3=\EOR:k4=\EOS:k5=\E[15~:k6=\E[17~:\
+	:k7=\E[18~:k8=\E[19~:k9=\E[20~:k;=\E[21~:kB=\E[Z:kH=\EOF:\
+	:kI=\E[2~:kN=\E[6~:kP=\E[5~:kd=\EOB:kh=\EOH:kl=\EOD:\
+	:kr=\EOC:ku=\EOA:tc=xterm-basic:
+#
+# This chunk is used for building the VT220/Sun/PC keyboard variants.
+xb|xterm-basic|modern xterm common:\
+	:am:bs:km:mi:ms:ut:xn:AX:\
+	:Co#8:co#80:kn#12:li#24:pa#64:\
+	:AB=\E[4%dm:AF=\E[3%dm:AL=\E[%dL:DC=\E[%dP:DL=\E[%dM:\
+	:DO=\E[%dB:LE=\E[%dD:RI=\E[%dC:UP=\E[%dA:ae=\E(B:al=\E[L:\
+	:as=\E(0:bl=^G:cd=\E[J:ce=\E[K:cl=\E[H\E[2J:\
+	:cm=\E[%i%d;%dH:cs=\E[%i%d;%dr:ct=\E[3g:dc=\E[P:dl=\E[M:\
+	:ei=\E[4l:ho=\E[H:im=\E[4h:is=\E[!p\E[?3;4l\E[4l\E>\E]104^G:\
+	:kD=\E[3~:ke=\E[?1l\E>:ks=\E[?1h\E=:le=^H:md=\E[1m:\
+	:me=\E[m:ml=\El:mr=\E[7m:mu=\Em:nd=\E[C:op=\E[39;49m:\
+	:rc=\E8:rs=\E[!p\E[?3;4l\E[4l\E>\E]104^G:sc=\E7:se=\E[27m:sf=^J:\
+	:so=\E[7m:sr=\EM:st=\EH:te=\E[?1049l:ti=\E[?1049h:\
+	:ue=\E[24m:up=\E[A:us=\E[4m:ve=\E[?12l\E[?25h:vi=\E[?25l:\
+	:vs=\E[?12;25h:tc=xterm+kbs:
+
+# The xterm-new description has all of the features, but is not completely
+# compatible with vt220.  If you are using a Sun or PC keyboard, set the
+# sunKeyboard resource to true:
+#	+ maps the editing keypad
+#	+ interprets control-function-key as a second array of keys, so a
+#	  12-fkey keyboard can support vt220's 20-fkeys.
+#	+ maps numeric keypad "+" to ",".
+#	+ uses DEC-style control sequences for the application keypad.
+#
+vt|xterm-vt220|xterm emulating vt220:\
+	:XT:*6=\E[4~:@7=\E[4~:K2=\EOu:Km=\E[M:kB=\E[Z:kH=\E[4~:\
+	:kh=\E[1~:tc=xterm-basic:
+
+v1|xterm-24|xterms|vs100|24x80 xterm:\
+	:li#24:tc=xterm-old:
+v2|xterm-65|65x80 xterm:\
+	:li#65:tc=xterm-old:
+vb|xterm-bold|xterm with bold for underline:\
+	:so=\E[7m:us=\E[1m:tc=xterm-old:
+vB|xterm-boldso|xterm with bold for standout:\
+	:se=\E[m:so=\E[1m:tc=xterm-old:
+vm|xterm-mono|monochrome xterm:\
+	:ut@:\
+	:Co@:NC@:kn#20:pa@:\
+	:AB@:AF@:Sb@:Sf@:op@:st@:tc=xterm-old:
+#
+# Alternate terminal description that "works" for interactive shells such as
+# tcsh and bash.
+xn|xterm-noapp|xterm with cursor keys in normal mode:\
+	:kd=\E[B:ke=\E>:kl=\E[D:kr=\E[C:ks=\E=:ku=\E[A:te@:ti@:\
+	:tc=xterm:
+#
+# This should work for the commonly used "color xterm" variations (XFree86
+# xterm, color_xterm, nxterm, rxvt).  Note that it does not set 'bce', so for
+# XFree86 and rxvt, some applications that use colors will be less efficient,
+# and in a few special cases (with "smart" optimization) the wrong color will
+# be painted in spots.
+vc|xterm-color|generic "ANSI" color xterm:\
+	:Co#8:NC@:pa#64:\
+	:AB=\E[4%dm:AF=\E[3%dm:ac=:op=\E[m:tc=xterm-r6:
+#
+# These aliases are for compatibility with the terminfo; termcap cannot provide
+# the extra features such as color initialization, but termcap applications
+# still want the names.
+x1|xterm-16color|xterm alias:\
+	:tc=xterm-new:
+
+x2|xterm-88color|xterm alias:\
+	:Co#88:pa#7744:tc=xterm-256color:
+
+x3|xterm-256color|xterm alias:\
+	:Co#256:pa#65536:\
+	:AB=\E[48;5;%dm:AF=\E[38;5;%dm:tc=xterm-new:
+
+# Termcap cannot do direct-colors, but users may expect this name.
+x4|xterm-direct|xterm alias:\
+	:tc=xterm-256color:
+
+xi|xterm-nrc|xterm alias:\
+	:tc=xterm:
+xr|xterm-rep|xterm alias:\
+	:tc=xterm:
+xx|xterm-xmc|xterm alias:\
+	:sg#1:tc=xterm:
+#
+# An 8-bit description is doable with termcap, but there are probably no
+# termcap (or BSD curses) applications that are able to use it.
+x8|xterm-8bit|xterm terminal emulator 8-bit controls (X Window System):\
+	:am:km:mi:ms:xn:XT:\
+	:co#80:it#8:li#24:\
+	:AL=\233%dL:DC=\233%dP:DL=\233%dM:DO=\233%dB:IC=\233%d@:\
+	:K2=\217y:Km=\233M:LE=\233%dD:RI=\233%dC:UP=\233%dA:\
+	:ae=\E(B:al=\233L:as=\E(0:bl=^G:bt=\233Z:cd=\233J:ce=\233K:\
+	:cl=\233H\2332J:cm=\233%i%d;%dH:cr=^M:cs=\233%i%d;%dr:\
+	:ct=\2333g:dc=\233P:dl=\233M:do=^J:ei=\2334l:ho=\233H:\
+	:im=\2334h:\
+	:is=\E[62"p\E G\233m\233?7h\E>\E7\233?1;3;4;6l\2334l\233r\E8:\
+	:k1=\23311~:k2=\23312~:k3=\23313~:k4=\23314~:k5=\23315~:\
+	:k6=\23317~:k7=\23318~:k8=\23319~:k9=\23320~:kD=\2333~:\
+	:kI=\2332~:kN=\2336~:kP=\2335~:kd=\217B:ke=\233?1l\E>:\
+	:kh=\2331~:kl=\217D:kr=\217C:ks=\233?1h\E=:ku=\217A:le=^H:\
+	:mb=\2335m:md=\2331m:me=\233m:mr=\2337m:nd=\233C:rc=\E8:\
+	:sc=\E7:se=\23327m:sf=^J:so=\2337m:sr=\215:st=\210:ta=^I:\
+	:te=\233?1049l:ti=\233?1049h:ue=\23324m:up=\233A:\
+	:us=\2334m:vb=\233?5h\233?5l:ve=\233?25l\233?25h:\
+	:vi=\233?25l:vs=\233?12;25h:tc=xterm+kbs:
+#
+hp|xterm-hp|xterm with hpterm function keys:\
+	:@7=\EF:k1=\Ep:k2=\Eq:k3=\Er:k4=\Es:k5=\Et:k6=\Eu:k7=\Ev:\
+	:k8=\Ew:kC=\EJ:kD=\EP:kI=\EQ:kN=\ES:kP=\ET:kd=\EB:kh=\Eh:\
+	:kl=\ED:kr=\EC:ku=\EA:tc=xterm-basic:
+#
+xS|xterm-sco|xterm with SCO function keys:\
+	:@7=\E[F:F1=\E[W:F2=\E[X:F3=\E[Y:F5=\E[a:F6=\E[b:F7=\E[c:\
+	:F8=\E[d:F9=\E[e:FA=\E[f:FB=\E[g:FC=\E[h:FD=\E[i:FE=\E[j:\
+	:FF=\E[k:ac=:k1=\E[M:k2=\E[N:k3=\E[O:k4=\E[P:k5=\E[Q:\
+	:k6=\E[R:k7=\E[S:k8=\E[T:k9=\E[U:k;=\E[V:kD=\177:kI=\E[L:\
+	:kN=\E[G:kP=\E[I:kd=\E[B:kh=\E[H:kl=\E[D:kr=\E[C:ku=\E[A:\
+	:tc=xterm-basic:
+#
+v5|xterm-vt52|xterm emulating vt52:\
+	:bs:\
+	:co#80:it#8:li#24:\
+	:ae=\EG:as=\EF:bl=^G:cd=\EJ:ce=\EK:cl=\EH\EJ:cm=\EY%+ %+ :\
+	:cr=^M:do=\EB:ho=\EH:kd=\EB:kl=\ED:kr=\EC:ku=\EA:le=\ED:\
+	:nd=\EC:nw=^M^J:sf=^J:sr=\EI:ta=^I:up=\EA:tc=xterm+kbs:
+#
+xs|xterm-sun|xterm with Sun functionkeys:\
+	:%1=\E[196z:&8=\E[195z:@0=\E[200z:@5=\E[197z:@7=\E[220z:\
+	:F1=\E[192z:F2=\E[193z:K2=\E[218z:Km=\E[M:k1=\E[224z:\
+	:k2=\E[225z:k3=\E[226z:k4=\E[227z:k5=\E[228z:k6=\E[229z:\
+	:k7=\E[230z:k8=\E[231z:k9=\E[232z:k;=\E[233z:kD=\E[3z:\
+	:kI=\E[2z:kN=\E[222z:kP=\E[216z:kh=\E[214z:\
+	:tc=xterm-basic:
+#
+# vi may work better with this entry, because vi doesn't use insert mode much.
+# |xterm-ic|xterm-vi|xterm with insert character instead of insert mode:\
+vi|xterm-ic|xterm-vi|xterm with insert char:\
+	:mi@:\
+	:IC=\E[%d@:ei@:ic=\E[@:im@:tc=xterm:
+#
+# Compatible with the X11R6.3 xterm
+r6|xterm-r6|xterm-old|X11R6 xterm:\
+	:am:bs:km:mi:ms:pt:xn:\
+	:co#80:kn#20:li#24:\
+	:*6=\E[4~:@0=\E[1~:@7=\E[4~:AL=\E[%dL:DC=\E[%dP:DL=\E[%dM:\
+	:DO=\E[%dB:F1=\E[23~:F2=\E[24~:F3=\E[25~:F4=\E[26~:\
+	:F5=\E[28~:F6=\E[29~:F7=\E[31~:F8=\E[32~:F9=\E[33~:\
+	:FA=\E[34~:LE=\E[%dD:RI=\E[%dC:UP=\E[%dA:ae=^O:al=\E[L:\
+	:as=^N:bl=^G:cd=\E[J:ce=\E[K:cl=\E[H\E[2J:cm=\E[%i%d;%dH:\
+	:cs=\E[%i%d;%dr:ct=\E[3g:dc=\E[P:dl=\E[M:eA=\E)0:ei=\E[4l:\
+	:ho=\E[H:im=\E[4h:\
+	:is=\E[m\E[?7h\E[4l\E>\E7\E[r\E[?1;3;4;6l\E8:\
+	:k1=\E[11~:k2=\E[12~:k3=\E[13~:k4=\E[14~:k5=\E[15~:\
+	:k6=\E[17~:k7=\E[18~:k8=\E[19~:k9=\E[20~:k;=\E[21~:\
+	:kD=\E[3~:kI=\E[2~:kN=\E[6~:kP=\E[5~:kd=\EOB:ke=\E[?1l\E>:\
+	:kh=\E[1~:kl=\EOD:kr=\EOC:ks=\E[?1h\E=:ku=\EOA:md=\E[1m:\
+	:me=\E[m:ml=\El:mr=\E[7m:mu=\Em:nd=\E[C:rc=\E8:\
+	:rs=\E[m\E[?7h\E[4l\E>\E7\E[r\E[?1;3;4;6l\E8:sc=\E7:\
+	:se=\E[m:sf=^J:so=\E[7m:sr=\EM:te=\E[2J\E[?47l\E8:\
+	:ti=\E7\E[?47h:ue=\E[m:up=\E[A:us=\E[4m:tc=xterm+kbs:
+#
+# Compatible with the R5 xterm
+r5|xterm-r5|X11R5 xterm X11R5:\
+	:am:bs:km:mi:ms:pt:xn:\
+	:co#80:kn#4:li#24:\
+	:@7=\E[4~:AL=\E[%dL:DC=\E[%dP:DL=\E[%dM:DO=\E[%dB:\
+	:IC=\E[%d@:UP=\E[%dA:al=\E[L:cd=\E[J:ce=\E[K:cl=\E[H\E[2J:\
+	:cm=\E[%i%d;%dH:cs=\E[%i%d;%dr:ct=\E[3g:dc=\E[P:dl=\E[M:\
+	:ei=\E[4l:ho=\E[H:im=\E[4h:\
+	:is=\E[r\E[m\E[2J\E[H\E[?7h\E[?1;3;4;6l\E[4l:\
+	:k1=\E[11~:k2=\E[12~:k3=\E[13~:k4=\E[14~:kd=\EOB:\
+	:ke=\E[?1l\E>:kh=\E[1~:kl=\EOD:kr=\EOC:ks=\E[?1h\E=:\
+	:ku=\EOA:md=\E[1m:me=\E[m:mr=\E[7m:nd=\E[C:rc=\E8:\
+	:rs=\E>\E[?1;3;4;5;6l\E[4l\E[?7h\E[m\E[r\E[2J\E[H:\
+	:sc=\E7:se=\E[m:sf=^J:so=\E[7m:sr=\EM:te=\E[2J\E[?47l\E8:\
+	:ti=\E7\E[?47h:ue=\E[m:up=\E[A:us=\E[4m:tc=xterm+kbs:
+#
+# Customization begins here.
+x0|xterm-xfree86|xterm terminal emulator (XFree86):\
+	:tc=xterm-new:
+#
+# This is the only entry which you should have to customize, since "xterm"
+# is widely used for a variety of incompatible terminal emulations including
+# color_xterm and rxvt.
+v0|xterm|X11 terminal emulator:\
+	:tc=xterm-new:
+#	:tc=xterm-r6:
+
+# This fragment is for people who cannot agree on what the backspace key
+# should send.
+xterm+kbs|fragment for backspace key:\
+	:kb=^H:
+#	:kb=\177:

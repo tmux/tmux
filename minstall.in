@@ -1,0 +1,172 @@
+#!/bin/sh
+# $XTermId: minstall.in,v 1.24 2016/10/24 22:29:20 tom Exp $
+# -----------------------------------------------------------------------------
+# this file is part of xterm
+#
+# Copyright 2001-2015,2016 by Thomas E. Dickey
+#
+#                         All Rights Reserved
+#
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+# IN NO EVENT SHALL THE ABOVE LISTED COPYRIGHT HOLDER(S) BE LIABLE FOR ANY
+# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+#
+# Except as contained in this notice, the name(s) of the above copyright
+# holders shall not be used in advertising or otherwise to promote the
+# sale, use or other dealings in this Software without prior written
+# authorization.
+# -----------------------------------------------------------------------------
+#
+# Install manpages, substituting a reasonable section value since XFree86 4.x
+# and derived imakes do not use constants...
+#
+# Parameters:
+#	$1 = program to invoke as "install"
+#	$2 = manpage to install
+#	$3 = final installed-path
+#	$4 = app-defaults directory
+#	$5 = app-defaults class
+#	$6 = application name, normally "xterm"
+#	$7 = application name transformed
+#	$8 = pixmap directory
+#
+# Other values correspond to definitions in xtermcfg.h, and cannot be directly
+# modified using "make".  They are substituted directly into this script.
+#
+
+# override locale...
+LANG=C;		export LANG
+LANGUAGE=C;	export LANGUAGE
+LC_ALL=C;	export LC_ALL
+LC_CTYPE=C;	export LC_CTYPE
+XTERM_LOCALE=C	export XTERM_LOCALE
+
+# avoid interference by the "man" command.
+for p in /bin /usr/bin
+do
+if test -f $p/cat ; then
+MANPAGER=cat;   export MANPAGER
+PAGER=cat;      export PAGER
+break
+fi
+done
+
+# get parameters
+MINSTALL="$1"
+OLD_FILE="$2"
+END_FILE="$3"
+APPS_DIR="$4"
+APP_TYPE="$5"
+APP_name="$6"
+USE_name="$7"
+XPMS_DIR="$8"
+
+suffix=`echo "$END_FILE" | sed -e 's%^.*\.%%'`
+NEW_FILE=temp$$
+
+MY_MANSECT=$suffix
+
+# utmp and wtmp have different pathnames on different systems, but there
+# are only a few common choices.  Note that they may not necessarily appear
+# in the same directories.  Prefer utmpx/wtmpx to utmp/wtmp, since that's
+# the way the configure script is designed.
+UTMP_NAME=utmp
+UTMP_PATH=/etc
+for name in /etc /var/adm /var/run /var/log
+do
+	if test -f $name/utmpx ; then
+		UTMP_NAME=utmpx
+		UTMP_PATH=$name
+		break
+	elif test -f $name/utmp ; then
+		UTMP_PATH=$name
+		break
+	fi
+done
+UTMP_PATH=$UTMP_PATH/$UTMP_NAME
+
+WTMP_NAME=wtmp
+WTMP_PATH=/etc
+for name in /etc /var/adm /var/run /var/log
+do
+	if test -f $name/wtmpx ; then
+		WTMP_NAME=wtmpx
+		WTMP_PATH=$name
+		break
+	elif test -f $name/wtmp ; then
+		WTMP_PATH=$name
+		break
+	fi
+done
+WTMP_PATH=$WTMP_PATH/$WTMP_NAME
+
+# "X" is usually in the miscellaneous section, along with "undocumented".
+# Use that to guess an appropriate section.  This relies on having the manpage
+# installed.
+X_MANPAGE=X
+X_MANSECT=`man $X_MANPAGE 2>&1 | grep $X_MANPAGE'([^)]*)' | head -n 1 | tr '\012' '\040' | sed -e 's/^[^0123456789]*\([^) ][^) ]*\).*/\1/'`
+test -z "$X_MANSECT" && X_MANSECT=$suffix
+
+VERSION_H=`echo "$OLD_FILE" | sed -e 's,/[^/]*$,/version.h,' -e s',^[^/]*$,version.h,'`
+PATCH_NUM=`fgrep XTERM_PATCH $VERSION_H|sed -e 's/[^0-9]*//g'`
+PATCH_YMD=`fgrep XTERM_DATE  $VERSION_H|sed -e 's,[^0-9/.-]*,,g'`
+
+# Make capitalization variants
+APP_chr0=`echo "$APP_name" | sed -e 's/^\(.\).*/\1/' | tr '[a-z]' '[A-Z]'`
+APP_chr1=`echo "$APP_name" | sed -e 's/^.//'`
+APP_Name=${APP_chr0}${APP_chr1}
+APP_NAME=`echo "$APP_name" | tr '[a-z]' '[A-Z]'`
+
+# Provide for renaming in test-builds:
+USE_chr0=`echo "$USE_name" | sed -e 's/^\(.\).*/\1/' | tr '[a-z]' '[A-Z]'`
+USE_chr1=`echo "$USE_name" | sed -e 's/^.//'`
+USE_Name=${USE_chr0}${USE_chr1}
+USE_NAME=`echo "$USE_name" | tr '[a-z]' '[A-Z]'`
+
+sed	-e 's%__vendorversion__%"X Window System"%' \
+	-e 's%__app_version__%Patch\ \#'$PATCH_NUM% \
+	-e 's%__app_date__%'$PATCH_YMD% \
+	-e "s%^\.TH [^ ][^ ]*%.TH $USE_NAME%" \
+	-e "s%^\.ds N $APP_Name%.ds N $USE_Name%" \
+	-e "s%^\.ds n $APP_name%.ds n $USE_name%" \
+	-e 's%^'"$APP_name"' \\- %'"$USE_name"' \- %' \
+	-e s%__default_termname__%@default_TERM@% \
+	-e s%__default_termid__%@default_termid@% \
+	-e s%__alt_sends_esc__%@alt_sends_esc@% \
+	-e s%__meta_sends_esc__%@meta_sends_esc@% \
+	-e s%__backarrow_is_bs__%@backarrow_is_bs@% \
+	-e s%__backarrow_is_erase__%@backarrow_is_erase@% \
+	-e s%__delete_is_del__%@delete_is_del@% \
+	-e s%__initial_erase__%@initial_erase@% \
+	-e s%__default_class__%$APP_TYPE% \
+	-e s%__apploaddir__%$APPS_DIR% \
+	-e s%__mansuffix__%$MY_MANSECT%g \
+	-e s%__miscmansuffix__%$X_MANSECT%g \
+	-e s%__pixmapsdir__%$XPMS_DIR% \
+	-e s%fIutmp'\\%fI'$UTMP_NAME'\\%g' \
+	-e s%/etc/utmp%$UTMP_PATH%g \
+	-e s%fIwtmp'\\%fI'$WTMP_NAME'\\%g' \
+	-e s%/etc/wtmp%$WTMP_PATH%g \
+	-e 's%/\\(\*\*%/*%g' \
+	$OLD_FILE >$NEW_FILE
+# diff -u $OLD_FILE $NEW_FILE
+
+echo "$MINSTALL $OLD_FILE $END_FILE"
+eval "$MINSTALL $NEW_FILE $END_FILE"
+
+rm -f $NEW_FILE

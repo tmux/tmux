@@ -1,0 +1,261 @@
+! $XTermId: XTerm.ad,v 1.102 2016/12/22 02:07:39 tom Exp $
+! -----------------------------------------------------------------------------
+! this file is part of xterm
+!
+! Copyright 1996-2011,2016 by Thomas E. Dickey
+! 
+!                         All Rights Reserved
+! 
+! Permission is hereby granted, free of charge, to any person obtaining a
+! copy of this software and associated documentation files (the
+! "Software"), to deal in the Software without restriction, including
+! without limitation the rights to use, copy, modify, merge, publish,
+! distribute, sublicense, and/or sell copies of the Software, and to
+! permit persons to whom the Software is furnished to do so, subject to
+! the following conditions:
+! 
+! The above copyright notice and this permission notice shall be included
+! in all copies or substantial portions of the Software.
+! 
+! THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+! OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+! MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+! IN NO EVENT SHALL THE ABOVE LISTED COPYRIGHT HOLDER(S) BE LIABLE FOR ANY
+! CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+! TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+! SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+! 
+! Except as contained in this notice, the name(s) of the above copyright
+! holders shall not be used in advertising or otherwise to promote the
+! sale, use or other dealings in this Software without prior written
+! authorization.
+! -----------------------------------------------------------------------------
+
+*saveLines: 1024
+
+*SimpleMenu*BackingStore: NotUseful
+*SimpleMenu*menuLabel.font: -adobe-helvetica-bold-r-normal--*-120-*-*-*-*-iso8859-*
+*SimpleMenu*menuLabel.vertSpace: 	100
+*SimpleMenu*HorizontalMargins: 16
+*SimpleMenu*Sme.height:	16
+
+*SimpleMenu*Cursor: left_ptr
+
+*mainMenu.Label:  Main Options
+*mainMenu*toolbar*Label:  Toolbar
+*mainMenu*fullscreen*Label: Full Screen
+*mainMenu*securekbd*Label:  Secure Keyboard
+*mainMenu*allowsends*Label:  Allow SendEvents
+*mainMenu*redraw*Label:  Redraw Window
+*mainMenu*logging*Label:  Log to File
+*mainMenu*print-immediate*Label:  Print-All Immediately
+*mainMenu*print-on-error*Label:  Print-All on Error
+*mainMenu*print*Label:  Print Window
+*mainMenu*print-redir*Label:  Redirect to Printer
+*mainMenu*dump-html*Label:  XHTML Screen Dump
+*mainMenu*dump-svg*Label:  SVG Screen Dump
+*mainMenu*8-bit control*Label: 8-Bit Controls
+*mainMenu*backarrow key*Label: Backarrow Key (BS/DEL)
+*mainMenu*num-lock*Label: Alt/NumLock Modifiers
+*mainMenu*alt-esc*Label: Alt Sends Escape
+*mainMenu*meta-esc*Label: Meta Sends Escape
+*mainMenu*delete-is-del*Label: Delete is DEL
+*mainMenu*oldFunctionKeys*Label: Old Function-Keys
+*mainMenu*sunFunctionKeys*Label: Sun Function-Keys
+*mainMenu*sunKeyboard*Label: VT220 Keyboard
+*mainMenu*hpFunctionKeys*Label: HP Function-Keys
+*mainMenu*scoFunctionKeys*Label: SCO Function-Keys
+*mainMenu*tcapFunctionKeys*Label: Termcap Function-Keys
+*mainMenu*suspend*Label:  Send STOP Signal
+*mainMenu*continue*Label:  Send CONT Signal
+*mainMenu*interrupt*Label:  Send INT Signal
+*mainMenu*hangup*Label:  Send HUP Signal
+*mainMenu*terminate*Label:  Send TERM Signal
+*mainMenu*kill*Label:  Send KILL Signal
+*mainMenu*quit*Label:  Quit
+
+*vtMenu.Label:  VT Options
+*vtMenu*scrollbar*Label:  Enable Scrollbar
+*vtMenu*jumpscroll*Label:  Enable Jump Scroll
+*vtMenu*reversevideo*Label:  Enable Reverse Video
+*vtMenu*autowrap*Label:  Enable Auto Wraparound
+*vtMenu*reversewrap*Label:  Enable Reverse Wraparound
+*vtMenu*autolinefeed*Label:  Enable Auto Linefeed
+*vtMenu*appcursor*Label:  Enable Application Cursor Keys
+*vtMenu*appkeypad*Label:  Enable Application Keypad
+*vtMenu*scrollkey*Label:  Scroll to Bottom on Key Press
+*vtMenu*scrollttyoutput*Label:  Scroll to Bottom on Tty Output
+*vtMenu*allow132*Label: Allow 80/132 Column Switching
+*vtMenu*keepSelection*Label: Keep Selection
+*vtMenu*selectToClipboard*Label: Select to Clipboard
+*vtMenu*cursesemul*Label:  Enable Curses Emulation
+*vtMenu*visualbell*Label:  Enable Visual Bell
+*vtMenu*bellIsUrgent*Label:  Enable Bell Urgency
+*vtMenu*poponbell*Label:  Enable Pop on Bell
+*vtMenu*cursorblink*Label: Enable Blinking Cursor
+*vtMenu*titeInhibit*Label:  Enable Alternate Screen Switching
+*vtMenu*activeicon*Label: Enable Active Icon
+*vtMenu*softreset*Label:  Do Soft Reset
+*vtMenu*hardreset*Label:  Do Full Reset
+*vtMenu*clearsavedlines*Label:  Reset and Clear Saved Lines
+*vtMenu*tekshow*Label:  Show Tek Window
+*vtMenu*tekmode*Label:  Switch to Tek Mode
+*vtMenu*vthide*Label:  Hide VT Window
+*vtMenu*altscreen*Label:  Show Alternate Screen
+*vtMenu*sixelScrolling*Label:  Sixel Scrolling
+*vtMenu*privateColorRegisters*Label:  Private Color Registers
+
+*fontMenu.Label:  VT Fonts
+*fontMenu*fontdefault*Label:	Default
+*fontMenu*font1*Label:	Unreadable
+*VT100.font1:		nil2
+*IconFont:		nil2
+*fontMenu*font2*Label:	Tiny
+*VT100.font2:		5x7
+*fontMenu*font3*Label:	Small
+*VT100.font3:		6x10
+*fontMenu*font4*Label:	Medium
+*VT100.font4:		7x13
+*fontMenu*font5*Label:	Large
+*VT100.font5:		9x15
+*fontMenu*font6*Label:	Huge
+*VT100.font6:		10x20
+*fontMenu*fontescape*Label:	Escape Sequence
+*fontMenu*fontsel*Label:	Selection
+!fontescape and fontsel overridden by application
+*fontMenu*allow-bold-fonts*Label:  Bold Fonts
+*fontMenu*font-linedrawing*Label:  Line-Drawing Characters
+*fontMenu*font-doublesize*Label: Doublesized Characters
+*fontMenu*font-loadable*Label:	VT220 Soft Fonts
+*fontMenu*font-packed*Label:	Packed Font
+*fontMenu*render-font*Label:	TrueType Fonts
+*fontMenu*utf8-mode*Label:	UTF-8 Encoding
+*fontMenu*utf8-fonts*Label:	UTF-8 Fonts
+*fontMenu*utf8-title*Label:	UTF-8 Titles
+
+*fontMenu*allow-color-ops*Label:	Allow Color Ops
+*fontMenu*allow-font-ops*Label:	Allow Font Ops
+*fontMenu*allow-mouse-ops*Label:	Allow Mouse Ops
+*fontMenu*allow-tcap-ops*Label:	Allow Termcap Ops
+*fontMenu*allow-title-ops*Label:	Allow Title Ops
+*fontMenu*allow-window-ops*Label:	Allow Window Ops
+
+*VT100.utf8Fonts.font2:	-misc-fixed-medium-r-normal--8-80-75-75-c-50-iso10646-1
+*VT100.utf8Fonts.font:	-misc-fixed-medium-r-semicondensed--13-120-75-75-c-60-iso10646-1
+*VT100.utf8Fonts.font3:	-misc-fixed-medium-r-normal--14-130-75-75-c-70-iso10646-1
+*VT100.utf8Fonts.font4:	-misc-fixed-medium-r-normal--13-120-75-75-c-80-iso10646-1
+*VT100.utf8Fonts.font5:	-misc-fixed-medium-r-normal--18-120-100-100-c-90-iso10646-1
+*VT100.utf8Fonts.font6:	-misc-fixed-medium-r-normal--20-200-75-75-c-100-iso10646-1
+
+*tekMenu.Label:  Tek Options
+*tekMenu*tektextlarge*Label:  Large Characters
+*tekMenu*tektext2*Label:  #2 Size Characters
+*tekMenu*tektext3*Label:  #3 Size Characters
+*tekMenu*tektextsmall*Label:  Small Characters
+*tekMenu*tekpage*Label:  PAGE
+*tekMenu*tekreset*Label:  RESET
+*tekMenu*tekcopy*Label:  COPY
+*tekMenu*vtshow*Label:  Show VT Window
+*tekMenu*vtmode*Label:  Switch to VT Mode
+*tekMenu*tekhide*Label:  Hide Tek Window
+
+*tek4014*fontLarge: 9x15
+*tek4014*font2: 8x13
+*tek4014*font3: 6x13
+*tek4014*fontSmall: 6x10
+
+! If xterm is built with a toolbar, the widget hierarchy looks like this,
+! showing widget name / class names.  The complete menu hierarchy is built
+! at startup because it is needed to make the layout work for the menubar:
+!
+!	xterm/XTerm
+!		form/Form
+!			menubar/Box
+!				mainMenuButton/MenuButton
+!					mainMenu/SimpleMenu
+!						menuLabel/SmeBSB
+!						toolbar/SmeBSB
+!						...
+!					vtMenu/SimpleMenu
+!						menuLabel/SmeBSB
+!						scrollbar/SmeBSB
+!						...
+!					fontMenu/SimpleMenu
+!						menuLabel/SmeBSB
+!						fontdefault/SmeBSB
+!						...
+!					tekMenu/SimpleMenu
+!						menuLabel/SmeBSB
+!						fontdefault/SmeBSB
+!						...
+!			vt100/VT100
+!			tektronix/TopLevelShell
+!				shellext/VendorShellExt
+!					tek4014/Tek4014
+!
+! If built without a toolbar, the widget hierarchy is simpler, because there
+! is no form, and the popup menu widgets are created only when they are first
+! used.
+!
+!	xterm/XTerm
+!		shellext/VendorShellExt
+!			mainMenu/SimpleMenu
+!				menuLabel/SmeBSB
+!				...
+!			...
+!		vt100/VT100
+!		tektronix/TopLevelShell
+!			shellext/VendorShellExt
+!				tek4014/Tek4014
+!
+! A more complete list of the widget/class names can be obtained using editres
+! to dump a file.  Some widget names are not available until the corresponding
+! menu has been created.
+
+! These resources reduce space around the menubar, by eliminating padding in
+! the enclosing form (Thickness) and the border of the Box which represents
+! the menubar widget.
+*form.Thickness: 0
+*menubar.borderWidth: 0
+
+! If we wanted to eliminate the border of the popup menus, we could do this
+! instead, since they are children of the menubar:
+!*menubar*borderWidth: 0
+
+! Eliminate the border of the buttons in the menubar, so the only line around
+! the text is for the highlighted button:
+*MenuButton*borderWidth: 0
+
+! Set a border for the menus to make them simpler to distinguish against the
+! vt100 widget:
+*SimpleMenu*borderWidth: 2
+
+! xterm can switch at runtime between bitmap (default) and TrueType fonts.
+! The "faceSize" resource controls the size of the latter.  However, it was
+! originally given with a size that makes the two types of fonts different
+! sizes.  Uncomment this line to use the same size as "fixed".
+!*faceSize: 8
+
+! Here is a pattern that is useful for double-clicking on a URL:
+!*charClass: 33:48,35:48,37-38:48,43-47:48,58:48,61:48,63-64:48,95:48,126:48
+!
+! Alternatively,
+!*on2Clicks: regex [[:alpha:]]+://([[:alnum:]!#+,./=?@_~-]|(%[[:xdigit:]][[:xdigit:]]))+
+
+! VT100s and similar terminals recognize escape sequences and control
+! characters to which they reply to the host with other escape sequences,
+! to provide information.  The "resize" program uses this feature.
+!
+! In addition, xterm recognizes several escape sequences which can be used to
+! set fonts, window properties, return settings via escape sequences.  Some
+! find these useful; others are concerned with the possibility of unexpected
+! inputs.
+!
+! All of these features can be enabled or disabled via menus.
+!
+! Depending on your environment, you may wish to disable those by default by
+! uncommenting one or more of the resource settings below:
+!*allowFontOps: false
+!*allowTcapOps: false
+!*allowTitleOps: false
+!*allowWindowOps: false

@@ -1,0 +1,877 @@
+-- $XTermId: INSTALL,v 1.176 2017/12/25 12:48:26 tom Exp $
+-------------------------------------------------------------------------------
+-- Copyright 1997-2016,2017 by Thomas E. Dickey
+--
+--                         All Rights Reserved
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a
+-- copy of this software and associated documentation files (the
+-- "Software"), to deal in the Software without restriction, including
+-- without limitation the rights to use, copy, modify, merge, publish,
+-- distribute, sublicense, and/or sell copies of the Software, and to
+-- permit persons to whom the Software is furnished to do so, subject to
+-- the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included
+-- in all copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+-- OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+-- MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+-- IN NO EVENT SHALL THE ABOVE LISTED COPYRIGHT HOLDER(S) BE LIABLE FOR ANY
+-- CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+-- TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+-- SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+--
+-- Except as contained in this notice, the name(s) of the above copyright
+-- holders shall not be used in advertising or otherwise to promote the
+-- sale, use or other dealings in this Software without prior written
+-- authorization.
+-------------------------------------------------------------------------------
+
+Xterm was originally built as part of the X Window System source tree, using
+imake to generate a Makefile from Imakefile.
+
+An example Imakefile is provided for legacy use.
+
+The preferred method uses the configure script to generate a Makefile from
+Makefile.in
+
+Options:
+-------
+
+Autoconf configure scripts recognize two types of application-defined
+options, enable/disable and with/without.  The latter, by convention, are
+used for denoting inclusion of external packages, while the former denote
+enabling/disabling of internal features.  The configure --help option lists
+the available options.  This script uses "enable" and "disable" to indicate
+the sense of the default behavior.
+
+The options (in alphabetic order):
+
+  --disable-256-color     disable 256-color support
+
+  	Do not compile-in code that interprets SGR 38 and 48 for 256-colors.
+	If this feature is disabled, the 88-color feature will be used.
+
+  --disable-88-color      disable 88-color support
+
+	Do not compile-in code that interprets SGR 38 and 48 for 88-colors.
+	The 256-color option overrides this.
+
+  --disable-16-color      disable 16-color support
+
+	Do not compile-in code to recognize aixterm-style control sequences
+	that support color values 8-15.
+
+	Most color applications know only about 8 ANSI colors, but some
+	(e.g., ones built with ncurses) do.
+
+  --disable-active-icon   disable X11R6.3 active-icon feature
+
+	Do not compile-in code to support the active-icon feature.  This is
+	not configured on systems (e.g., X11R5) which lack the library
+	support needed.
+
+	Xterms with an active icon continue to respond to input and update
+	their display when iconified.  Not all window managers support
+	active icons.  Those that do include fvwm, olvwm and mwm.
+
+  --disable-ansi-color    disable ANSI color
+
+  	Do not compile-in code for ANSI colors.
+
+  --disable-blink-cursor  disable support for blinking cursor
+
+	Do not compile-in code that implements a blinking cursor.  The blinking
+	cursor is enabled either by resource setting or by popup menu entry.
+
+  --disable-bold-color    disable PC-style mapping of bold colors
+
+	Do not compile-in code that maps colors 8-15 to bold versions of
+	colors 0-7.
+
+	Some applications have hardcoded logic that assumes this.  It does
+	not interfere with the 16-color support.
+
+  --disable-boxchars      disable fallback-support for box chars
+
+  	Do not compile-in code to generate approximations for box/graphic
+	characters.
+
+	Most fonts do not contain the vt100-style graphic characters in
+	positions 0-31.  Many applications use the line-drawing characters,
+	e.g., to make boxes.  When xterm loads a font, it checks if those
+	characters are present, and draws its own if they are missing.
+
+  --disable-broken-st     disallow broken string-terminators],
+
+	Do not compile-in code that works around a bug in some ISDN routers
+	(and possibly other applications written by the same people):  they
+	send an unterminated control string in their banner text, making xterm
+	freeze.
+
+	The workaround tells xterm to stop processing the control string when
+	it receives one of the whitespace control characters such as newline.
+	That was the behavior before patch #171.
+
+	See also --enable-broken-osc
+
+  --disable-c1-print      disallow -k8 option for printable 128-159],
+
+	Use this option to suppress support for nonstandard use of codes
+	128-159, which normally are considered control characters.  Some users
+	have fonts which use those positions.  The default value for the
+	allowC1Printable resource is false, so this feature does not impact
+	normal users.
+
+  --disable-color-class   disable color class resources
+
+	Use this option to change most of the color resources to use Foreground
+	as the color class.  This is the older (before patch #157) behavior
+	which has the drawback that setting the Foreground resource on most
+	platforms prevents use of color since the class is evaluated before
+	the instance.
+
+  --disable-color-mode    disable default colorMode resource
+
+  	Do not compile-in code that sets the default value of the colorMode
+	resource to ``true''.
+
+  --disable-desktop       disable install of xterm desktop files
+
+	Do not install the xterm desktop files, used in menus.
+	These use the icons installed in the --with-icondir option.
+	Use the environment variable $DESKTOP_FLAGS to supply options
+	required by desktop-file-install.
+
+	Note: If desktop-utils is not found they will not be installed anyway.
+
+  --disable-direct-color  disable direct color support
+
+  	Do not compile-in code that interprets SGR 38 and 48 for direct colors.
+	This feature extends the 256-color feature.
+
+  --disable-doublechars   disable support for double-size chars
+
+  	Do not compile-in code that supports font-manipulation needed to
+	implement vt100-style double-sized characters.
+
+  --disable-echo          test: display "compiling" commands
+
+  	Modify the generated Makefile so that most compiler options are
+	not shown.  This makes it simpler to read a build log and see the
+	actual warning messages.
+
+  --disable-fifo-lines    enable FIFO-storage for saved-lines
+
+	With patch #244, xterm by default stores saved-lines in a FIFO
+	(circular buffer), which improves performance when the number of saved
+	lines is large.  Disable this option to revert to the pre-244 layout.
+
+  --disable-freetype      disable freetype library-support
+
+	Do not use freetype libraries if they are found.  Normally they will
+	be used automatically.
+
+  --disable-full-tgetent  disable check for termcap library
+
+  	Do not look for the tgetent() function specifically in the termcap
+	library, accept the first library (from termlib, ncurses and curses)
+	which contains this function rather than continuing to search for
+	a termcap implementation rather than terminfo.  The former would
+	supply the complete $TERMCAP data needed for some legacy programs.
+
+  --disable-highlighting  disable support for color highlighting
+
+  	Do not compile-in code that allows the selected region to be a
+	different color than the reverse of foreground/background colors.
+
+	See the discussion of highlightColor in the manual.
+
+  --disable-i18n          disable internationalization
+
+  	Do not compile-in code to handle multi-byte characters.  This is
+	related to, but not identical with the input method logic.
+
+  --disable-imake         disable use of imake for definitions
+
+  	Do not attempt to use imake to determine compiler options.
+
+	The main.c file has many ifdef's which rely on obscure combinations
+	known only to imake.  The configure script implements only a
+	portion of the tests needed to supplant imake.
+
+  --disable-initial-erase disable setup for stty erase
+
+	Do not compile-in code which aligns the stty erase and the backarrow
+	key.  When compiled-in, xterm will optionally use the pty's sense
+	of stty erase and apply that to the backarrow mode (sending 8 or 127),
+	or go the other way, setting stty erase to match xterm's configuration.
+
+  --disable-input-method  disable input-method
+
+	Do not compile-in code for "input method".  This is an X11R6
+	feature which deals with translation of composite characters.
+
+	Some users report problems with their configuration, e.g., messages
+	stating that there is no input method defined for the given preedit
+	type.  If you do not need input method (and are troubled by the
+	warning messages), it is safe to disable this option.
+
+  --disable-leaks         test: free permanent memory, analyze leaks
+
+  	Compile-in code which frees memory which might confuse a leak-testing
+	tool.  Normally these chunks of memory are retained as long as xterm
+	is running.
+
+  --disable-luit          disable support for luit filter (Unicode translation)
+
+	Luit is a filter that can be run between an arbitrary application and a
+	UTF-8 terminal emulator.  It will convert application output from the
+	locale's encoding into UTF-8, and convert terminal input from UTF-8
+	into the locale's encoding.
+
+	This is normally enabled, relying upon "--enable-wide-chars".
+
+  --disable-maximize      disable actions for iconify/deiconify/maximize/restore
+
+	Do not compile-in code that implements runtime 'actions' for
+	iconifying, maximizing, etc.
+
+	Most users will find that the window manager is more suitable for
+	this sort of manipulation than putting the capabilities into xterm.
+
+  --disable-num-lock      disable NumLock keypad support
+
+	Do not compile-in code that looks for the actual NumLock key to
+	support vt100/vt220 keypad translation.
+
+	This is used in xterm to simplify logic, and to workaround some
+	quirks of the keyboard tables.  Use the ``numLock'' resource to
+	disable this feature if you must customize xterm in some other way.
+
+	(The same ifdef controls the metaSendsEscape support).
+
+  --disable-openpty       disable openpty, prefer other interfaces
+
+	Do not check for, or use openpty().  Instead, use other interfaces such
+	as posix_openpt().  Modern (sic) BSD systems should have a workable
+	openpty() interface.  Older systems may not.
+
+  --disable-paste64       disable support for bracketed paste mode
+
+	Do not compile-in code to support experimental bracketed paste mode,
+	i.e., provide functions for setting/getting the selection data.
+
+	(see ctlseqs.ms description of OSC 52).
+
+  --disable-pty-handshake disable support for pty handshakes
+
+	This feature is used to ensure that the child process's terminal modes
+	match the parent's.  In particular, it addresses a problem where the
+	terminal size is not defined in the stty settings.
+
+  --disable-rectangles    disable VT420 rectangle support
+
+	Do not compile-in code to support VT420 rectangle control-sequences.
+
+  --disable-regex         disable regular-expression selections
+
+	Do not compile-in code to support the "regex" option for multiple
+	mouse clicks.
+
+  --disable-rightbar      disable right-scrollbar support
+
+  	Do not compile-in code that supports a scrollbar on the right.
+
+	Left/right scrollbars are a matter of taste.  Some older libraries
+	(e.g., X11R5) do not perform the geometry computation correctly,
+	leaving the right scrollbar incorrectly positioned after changing
+	the font size.
+
+  --disable-rpath-hack    don't add rpath options for additional libraries
+
+	By default, the configure script looks for libraries in unusual places
+	and adds an rpath linker option to help.
+
+  --disable-samename      disable check for redundant name-change
+
+	Do not compile-in code that suppresses redundant updates to the
+	titlebar when the text has not changed.
+
+  --disable-screen-dumps  disable XHTML and SVG screen dumps
+
+	Do not compile-in code that provides XHTML and SVG screen dumps.
+
+  --disable-selection-ops disable selection operations
+
+	Do not compile-in code to support the actions which allow users
+	to bind keys that use the selection or extract data from the screen.
+
+  --disable-session-mgt   enable support for session management
+
+	Do not compile-in code which adds simple session management hooks
+	which are used when closing an xterm.  Normally the code is
+	compiled-in, except for systems which do not support it.
+
+  --disable-setgid        disable setgid
+
+	Do not install xterm using setuid/setgid permissions.  Drop setgid
+	permissions on startup.
+
+  --disable-setuid        disable setuid
+
+	Do not install xterm using setuid/setgid permissions.  Drop setuid
+	permissions on startup.
+
+  --disable-sun-fkeys
+
+  	Do not compile-in code to support Sun-style function keys.
+
+  --disable-tcap-fkeys    disable termcap function-keys
+
+	Do not compile-in code to support feature which allows xterm to use the
+	function-key definitions from the termcap/terminfo entry which it used
+	to set the $TERM variable on startup.
+
+  --disable-tcap-query    disable termcap query/report
+
+	Do not compile-in code to support DCS '+' control sequence, which
+	allows an application to ask xterm what control sequences it would
+	transmit for specified function keys, given the termcap or terminfo
+	names.
+
+  --disable-tek4014       disable tek4014 emulation
+
+  	Do not compile-in code to support Tektronix 4014 emulation.
+
+	This reduces the executable size by 17% (checked 1999/3/13).
+
+	Some people use the Tektronix emulation (which has been in xterm
+	for many years) as an example of code bloat, though this is not an
+	accurate impression.
+
+  --disable-vt52          disable VT52 emulation
+
+  	Do not compile-in code to support vt52 emulation.
+
+	A genuine vt100 emulates a vt52.
+
+  --disable-wide-attrs    disable wide-attribute support
+
+	Xterm's base attributes include all of those used in DEC terminals.
+	ISO 6429 defines a few more which historically have found little use.
+	Some people find these amusing.
+
+	This is normally enabled.  The direct-colors feature relies upon it.
+
+  --disable-wide-chars    disable wide-character support
+
+  	The wide-character code supports Unicode and UTF-8.
+
+	This is normally enabled.
+
+  --disable-ziconbeep     disable -ziconbeep option
+
+	Do not compile-in code that modifies the icon's title and sounds a
+	beep when they receive output.
+
+  --enable-16bit-chars    enable 16-bit characters support
+
+	Enable wide-character support, but store only 16-bits for each wide
+	character.  Unicode values can be larger than 16-bits, up to 21-bits.
+	This uses less memory, but is less complete.  However, most languages
+	are covered by the 16-bit encoding.
+
+  --enable-alt-sends-esc  set default altSendsEscape resource (default: no)
+
+	This sets the default resource value, which is shown in the manpage.
+
+  --enable-backarrow-key  set default backarrowKey resource (default: true)
+
+	This sets the default resource value, which is shown in the manpage.
+
+  --enable-backarrow-is-erase set default backarrowKeyIsErase resource (default: false)
+
+	This sets the default resource value, which is shown in the manpage.
+
+  --enable-broken-osc     allow broken Linux OSC-strings
+
+	Compile-in code to accommodate scripts that write Linux's malformed
+	palette control strings without checking.  The result makes xterm
+	appear to freeze.  This workaround makes xterm ignore the strings,
+	and is compiled-in by default for Linux.
+
+  --enable-builtin-xpms   compile-in icon data
+
+	Compile-in X pixmap data for these icons:
+		filled-xterm
+		mini.xterm
+		xterm-color
+		xterm
+	at these sizes
+		16x16
+		32x32
+		48x48
+
+  --enable-dabbrev        enable dynamic-abbreviation support
+
+	Compile-in support for "dabbrev-expand()" action and related key
+	translation.
+
+  --enable-dec-locator    enable DECterm Locator support
+	Add support for DEC Locator control sequences for xterm:
+
+		DECEFR - Enable Filter Rectangle
+	        DECELR - Enable Locator Reports
+		DECSLE - Select Locator Events
+		DECRQLP - Request Locator Position
+
+	This allows the xterm mouse to be used with applications that use the
+	DEC Locator sequences, such as VAX Tpu, or SMG$ based applications.
+
+  --enable-delete-is-del  set default deleteIsDEL resource (default: maybe)
+
+	This sets the default resource value, which is shown in the manpage.
+
+  --enable-double-buffer  enable double-buffering
+
+	Use experimental double-buffering for display to reduce flicker.
+
+	This option was introduced in patch #282; at that point it needs
+	further work because colors used for clearing the screen do not
+	match the expected behavior (see vttest for instance).
+
+  --enable-env-terminfo   setenv $TERMINFO if --with-own-terminfo gives value
+
+	Use the custom terminfo directory specified in "--with-own-terminfo"
+	as the $TERMINFO variable for the shells spawned by xterm.  Setting
+	this variable makes most curses (and termcap) applications look in
+	that directory for terminal descriptions.
+
+  --enable-exec-xterm     enable "spawn-new-terminal" action
+
+  	If your platform supports the process filesystem "cwd" link,
+	compile-in support for the "spawn-new-terminal" action, which
+	allows you to define a key translation that runs a new xterm
+	using the same working directory as the current process within
+	xterm.
+
+  --enable-hp-fkeys       enable support for HP-style function keys
+
+  	Compile-in code to support HP-style function keys.
+
+  --enable-load-vt-fonts  enable load-vt-fonts() action
+
+  	Compile-in code that allows user to define load different VT-font
+	definitions at runtime.
+
+  --enable-logfile-exec   enable exec'd logfile filter
+
+  	Compile-in code that allows logging piped via an external filter.
+
+  --enable-logging        enable logging
+
+  	Compile-in code that allows logging.
+
+	Logging was disabled in X11R5 xterm because of security problems.
+	They were addressed in X11R6, but the feature was not reinstated
+	because of concerns (long past) about xterm running as root-setuid.
+
+  --enable-meta-sends-esc set default metaSendsEscape resource (default: no)
+
+	This sets the default resource value, which is shown in the manpage.
+
+  --enable-mini-luit      enable support for poor man's luit filter (Latin-9)
+
+	Provide built-in support for Latin-9, relying on having specified
+	Unicode (ISO10646) fonts and setting the locale resource to "checkfont".
+
+	This sets "--enable-luit" as a side-effect.
+
+  --enable-narrowproto    enable narrow prototypes for X libraries
+
+	Originally xterm was built using imake rather than a configure script.
+	One feature of imake that is not possible to guess within the
+	configure script is the wide-prototype compile-time definition
+	NARROWPROTO.  When this is not set properly, the Athena widget
+	scrollbars do not work properly.  xterm's configure script has a
+	fallback case which allows disabling imake.  However, this is moot
+	with the X.org "modular" build, whose compiler options are unrelated to
+	imake or older versions of any libraries that it may distribute.  In
+	this case, the configure script needs some help.  Use this option to
+	enable or disable NARROW proto (and disable imake with the
+	--disable-imake option) to match the whims of X.org hackers.
+
+	For instance
+
+		configure --disable-imake --disable-narrowproto
+
+  --enable-pty-erase      set default ptyInitialErase resource (default: false)
+
+	This sets the default resource value, which is shown in the manpage.
+
+  --enable-readline-mouse enable support for mouse in readline applications
+
+	Compile-in code to support experimental bracketed paste mode, i.e.,
+	provide functions for setting/getting the selection data.  Essentially
+	this puts xterm into a mode that sends special function-key strings to
+	bracket the data.
+
+	(See --enable-paste64, which fits xterm's protocol better).
+
+  --enable-sco-fkeys      enable support for SCO-style function keys
+
+  	Compile-in code to support SCO-style function keys.
+
+  --enable-regis-graphics enable support for ReGIS graphics
+
+  	Compile-in code to support experimental ReGIS graphics
+
+  --enable-sixel-graphics enable support for sixel-graphics
+
+  	Compile-in code to support experimental sixel-graphics
+
+  --enable-toolbar        enable pulldown menus on toolbar
+
+  	Compile-in code that builds a toolbar with pulldown menus.  The
+	normal popup menus are still available.
+
+	This is an experimental option.  As of patch #206, it is known to
+	work well with fvwm, but not as well with some other window managers,
+	e.g., KDE's Kwin and IceWM.
+
+	In addition to isolated layout problems, it is reported that some
+	flavors of the Athena widget library perform badly with ISO-10646
+	fonts.  You can work around those by setting the menu fonts to
+	an ISO-8859 variant in your X resources.
+
+  --enable-trace          test: set to enable debugging traces
+
+  	Compile-in code to trace xterm's internal states.
+
+	This is a debugging feature.  It causes xterm to produce two files
+	(Trace-parent.out and Trace-child.out).
+
+  --enable-warnings       test: turn on GCC compiler warnings
+
+	Modify the generate Makefile to turn on gcc compiler warnings.
+
+	I use this option regularly, and correct all but a few (difficult)
+	problems.
+
+  --enable-xmc-glitch     test: enable xmc magic-cookie emulation
+
+  	Compile-in code that simulates the terminfo "magic cookie" glitch.
+
+	This is for testing ncurses.
+
+  --with-Xaw3d            link with Xaw 3d library
+
+  	Look for, compile and link with the Xaw 3d widget library.
+
+  --with-Xaw3dxft         link with Xaw 3d xft library
+
+	Look for, compile and link with the Xaw 3d xft widget library.
+
+  --with-XawPlus          link with Athena-Plus library
+
+  	Look for, compile and link with the Xaw Plus widget library.
+
+  --with-app-class=XXX    X resource class (default: XTerm)
+
+	Rename the X resource class, e.g., for packaging a development version
+	of xterm with different result names.
+
+  --with-app-defaults=DIR directory in which to install resource files (default: EPREFIX/lib/X11/app-defaults)
+
+	autoconf scripts assume that all of the files should be installed
+	under the same top-level directory.  But X applications defaults
+	must be installed into a special directory, e.g.,
+
+		/usr/X11/lib/app-defaults
+
+	However, there is no standard for this pathname.  The manual page
+	for X notes that the environment variable $XUSERFILESEARCHPATH can
+	specify a list of places where X searches for applications defaults.
+	Also, it may look in $XAPPLRESDIR, but that usually is not related
+	to where xterm might be installed.  To keep it simple, the configure
+	script uses
+
+		EPREFIX/lib/X11/app-defaults
+
+	as the default (EPREFIX is --prefix).  That makes it work normally
+	for most systems if --prefix is /usr.  For other installs, e.g., to
+	/usr/local, you should use this option to customize the location to
+	match your system configuration.
+
+	Use --with-app-defaults=auto to ask the configure script to look in
+	a list of well-known locations for an existing directory.
+
+	Use --without-app-defaults or --with-app-defaults=no to disable the
+	feature.
+
+  --with-dmalloc          test: use Gray Watson's dmalloc library
+
+	Check for and link with dmalloc.
+
+  --with-dbmalloc         test: use Conor Cahill's dbmalloc library
+
+	Check for and link with dbmalloc.
+
+  --with-desktop-category=XXX  one or more desktop categories or auto
+	This is a list of names.  The configure script maps blanks and commas
+	to semicolons (";") which are used by the desktop utilities as a
+	separator.
+
+	The default value "auto" tells the configure script to look
+	at existing ".desktop" files for xterm and common terminal
+	emulators, to use those.  If none are found, the script uses this
+	default:
+		System;TerminalEmulator;
+
+  --with-freetype-config  configure script to use for FreeType
+
+	Use a specific option value to tell the configure script to try
+	just one of the variations:
+
+	"pkg*", e.g., pkg-config or pkgconfig uses whatever pkg-config
+		script was found.
+
+	otherwise, the parameter value is used as the name of the script
+	to try, using --cflags and --libs options.
+
+	Use --without-freetype-config to enable the --with-freetype-cflags
+	and --with-freetype-libs options.
+
+	The default value "auto" tells the configure script to try the
+	pkg-config script first, then freetype-config and finally xft-config.
+
+  --with-freetype-cflags  -D/-I options for compiling with FreeType library
+
+	Override options provided by xft-config or freetype-config.
+
+  --with-freetype-libs    -L/-l options for linking with FreeType library
+
+	Override options provided by xft-config or freetype-config.
+
+  --with-icon-name=NAME override icon name (default: xterm-color)
+
+	xterm comes with a choice of icons:
+
+	xterm-color: depicts a conventional terminal image, and is the default
+		icon used for icon-themes.
+
+	mini.xterm: a more iconic choice which is readily identifiable at
+		small sizes.  This is used for window decoration, e.g., the
+		icon at the upper left corner in many window managers.
+
+  --with-icon-symlink=NAME create symbolic links to icon name (default: NONE)
+
+	This is a workaround for certain systems which translate icon names
+	containing "xterm", e.g., "xterm-color" into the single icon "xterm".
+	The option should also be harmless on a properly configured system.
+
+	If the option is used, its default value is "xterm".  For each icon,
+	the makefile will strip the suffix (e.g., ".png"), as well as the part
+	of the filename which denotes the size (e.g., "_32x32" in an xpm file),
+	and constructs a link with that name to the icon.
+
+	If the option is unused, its default value is "NONE" (no link is made).
+
+  --with-icondir=DIR directory in which to install icon files (default: no)
+
+	The X libraries may automatically search these locations:
+
+	$HOME/.icons
+	$XDG_DATA_DIRS/icons
+	/usr/share/pixmaps
+
+	Alternatively, the last may be actually
+	/usr/X11R6/share/pixmaps
+
+	Use --with-icondir=auto to tell the configure script to search for
+	an existing directory from its list of well-known system locations.
+
+	See also
+	http://standards.freedesktop.org/icon-theme-spec/icon-theme-spec-latest.html
+	http://www.freedesktop.org/software/icon-theme/
+
+	By default, the option is disabled; it is useful only for the
+	--with-icon-theme option.
+
+  --with-icon-theme=XXX   install icons into desktop theme (hicolor)
+
+	Install png and svg icons into the given desktop theme and customize
+	the .desktop files to use that theme.  If no theme name is given,
+	the default is "hicolor".  If this option is not given, the desktop
+	file will use the pixmap files.
+
+  --with-man2html[=XXX]   use XXX rather than groff
+
+	Specify an alternative program to use for converting manpages and
+	control sequences document to html.  The default value for the option
+	is "man2html".  If the "man2html" script is not found, then "groff" is
+	used with groff's special options.
+	
+	The "man2html" script reads formatted nroff output from its standard
+	input, and writes html to its standard output.  Other input/output
+	conventions are not currently supported.
+
+	See
+		http://invisible-island.net/scripts
+		http://invisible-island.net/scripts/man2html.html
+
+	for an up-to-date version of "man2html".
+
+  --with-neXtaw           link with neXT Athena library
+
+  	Look for, compile and link with the neXT Athena widget library.
+
+  --with-own-terminfo=P   set default $TERMINFO (default: from environment)
+
+  	Modify the generated Makefile to set the target for the 'install-ti'
+	rule to point to the given directory.
+
+	If you have the $TERMINFO variable defined in your environment, the
+	configure script will use that value.  If no option and no variable
+	are are given, the configure script uses /usr/lib/terminfo, if it
+	exists.
+
+	You do not have to run "make install-ti", if there is already a
+	workable terminfo description.  Be advised, however, that the
+	common variety of "xterm-color" is not suited for xterm, but is
+	directed to other variations (such as nxterm) which do not
+	support the background-color erase capability.
+
+  --with-pixmapdir=DIR    directory in which to install pixmaps (DATADIR/pixmaps)
+
+	Specify directory in which to install ".xpm" files.
+
+  --with-pcre             use PCRE for regular-expressions
+
+	If regular expressions are not disabled (--disable-regex), use PCRE
+	rather than the POSIX regular expressions.
+
+  --with-pcre2            use PCRE2 for regular-expressions
+
+	If regular expressions are not disabled (--disable-regex), use PCRE2
+	rather than the POSIX regular expressions.
+
+  --with-pkg-config{=path} enable/disable use of pkg-config
+
+	The configure script looks for certain libraries which have well
+	established pkg-config scripts, and will use those settings if
+	available.  Not all pkg-config scripts work; this option suppresses
+	the check and relies on normal library search paths.
+
+  --with-reference=XXX    program to use as permissions-reference
+
+	To install xterm with setuid permissions, the scripts usually compare
+	it with a previous install.  That works well for individual
+	maintainers, but can be a problem for packagers who may be
+	cross-compiling, etc.  This option lets the package builder specify
+	the file used for permissions reference.
+
+  --with-setuid=XXX       use the given setuid user
+
+	Install xterm setuid'd to the given user.  If no parameter value
+	is given, assume it is root.
+
+	See also --with-utmp-setgid and --with-utempter, which manipulate
+	the setgid group.
+
+  --with-tty-group=XXX    use XXX for the tty-group
+
+	If xterm is installed setuid'd to root, change the group of the tty
+	device to the given value on startup.  Three cases are possible:
+
+	a) If this option is not given, the configure script will attempt to
+	   find a suitable value (usually "tty"), and verify that it exists in
+	   the group database.
+
+	b) If the option value is given, it will use the value even if it does
+	   not exist in the group database (allowing packagers to work about
+	   deficient environments).
+
+	c) If the option is disabled, e.g., --without-tty-group, the
+	   permissions change will use the group-id of the process.
+
+	If xterm is not installed setuid'd to root, this option is not needed,
+	since it cannot change the tty device's ownership.
+
+  --with-valgrind         test: use valgrind
+
+	Activate the --disable-leaks option, and ensure that "-g" is added to
+	CFLAGS.
+
+  --without-xinerama      do not use Xinerama extension for multiple screens
+
+	Xinerama is an X server extension that allows multiple physical
+	screens to behave as a single screen.  If you do not need the feature
+	(or do not want the extra library dependency), use this option to
+	suppress it.
+
+  --with-xpm=DIR          use Xpm library for colored icon, may specify path
+
+	Use Xpm library to show colored icon in window decoration, e.g.,
+	title area.
+
+	Use --without-xpm to suppress this feature.
+
+  --with-xterm-symlink=XXX  make symbolic link to installed xterm
+
+	If any of the configure options to modify the program name i.e.,
+	--program-prefix, --program-suffix or --program-transform-name
+	are given, this option allows the makefile to create a symbolic link,
+	e.g., to "xterm" on install.  The option value gives the name for
+	the link, which defaults to "xterm".
+
+	Use --without-xterm-symlink to disable a link to "xterm" if none
+	is wanted.
+
+	Corresponding links are also made for "resize", "uxterm" and
+	"koi8rxterm", as well as the xterm manpage.
+
+  --with-terminal-id[=V]  set default decTerminalID (default: vt100)
+
+  	Set the default emulation level.
+
+	DEC terminals vt52/vt100/vt220/etc form a series where succeeding
+	models emulate features of the older terminals.  While most
+	features of these terminals are recognized by xterm at all levels,
+	a few behave differently according to the emulation level.
+
+	You can always override this with the command-line option "-ti".
+
+  --with-terminal-type=T  set default $TERM (default: xterm)
+
+	Set the default value for $TERM.  Xterm supports legacy termcap
+	applications by constructing a modified version of the $TERMCAP
+	variable at initialization, which supplies the resulting screen
+	size.  It also sets $TERM, if not already set, for use by programs
+	running within xterm.
+
+	The default value "xterm", can be overridden to avoid conflict
+	with older versions of xterm, e.g., those that do not implement
+	vt220 emulation.
+
+	You can always override this with the command-line option "-tn".
+
+  --with-utempter         use utempter library for access to utmp
+
+	The utempter library is a set-uid wrapper for the utmp facility.
+	On systems with Unix98 pty's, xterm can use this library when
+	available so it need not be installed set-uid.
+
+  --with-utmp-setgid=XXX  use setgid for access to utmp
+
+	The option value specifies a group to use when installing.
+	xterm will be installed with setgid privilege to this group.
+	At runtime, xterm will drop the setuid privilege immediately
+	after opening the pseudo-terminal, and will have only the
+	group privilege needed to access the utmp file.  This relies
+	on having POSIX setuid behavior.
+
+-- vile:txtmode
