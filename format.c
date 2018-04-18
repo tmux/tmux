@@ -191,10 +191,15 @@ static void
 format_job_update(struct job *job)
 {
 	struct format_job	*fj = job->data;
-	char			*line;
+	struct evbuffer		*evb = job->event->input;
+	char			*line = NULL, *next;
 	time_t			 t;
 
-	if ((line = evbuffer_readline(job->event->input)) == NULL)
+	while ((next = evbuffer_readline(evb)) != NULL) {
+		free(line);
+		line = next;
+	}
+	if (line == NULL)
 		return;
 	fj->updated = 1;
 
@@ -290,7 +295,7 @@ format_job_get(struct format_tree *ft, const char *cmd)
 	t = time(NULL);
 	if (fj->job == NULL && (force || fj->last != t)) {
 		fj->job = job_run(expanded, NULL, NULL, format_job_update,
-		    format_job_complete, NULL, fj);
+		    format_job_complete, NULL, fj, JOB_NOWAIT);
 		if (fj->job == NULL) {
 			free(fj->out);
 			xasprintf(&fj->out, "<'%s' didn't start>", fj->cmd);
@@ -1132,7 +1137,7 @@ format_expand_time(struct format_tree *ft, const char *fmt, time_t t)
 char *
 format_expand(struct format_tree *ft, const char *fmt)
 {
-	char		*buf, *out;
+	char		*buf, *out, *name;
 	const char	*ptr, *s, *saved = fmt;
 	size_t		 off, len, n, outlen;
 	int     	 ch, brackets;
@@ -1171,8 +1176,11 @@ format_expand(struct format_tree *ft, const char *fmt)
 
 			if (ft->flags & FORMAT_NOJOBS)
 				out = xstrdup("");
-			else
-				out = format_job_get(ft, xstrndup(fmt, n));
+			else {
+				name = xstrndup(fmt, n);
+				out = format_job_get(ft, name);
+				free(name);
+			}
 			outlen = strlen(out);
 
 			while (len - off < outlen + 1) {
@@ -1262,6 +1270,9 @@ void
 format_defaults(struct format_tree *ft, struct client *c, struct session *s,
     struct winlink *wl, struct window_pane *wp)
 {
+	if (c != NULL && s != NULL && c->session != s)
+		log_debug("%s: session does not match", __func__);
+
 	format_add(ft, "session_format", "%d", s != NULL);
 	format_add(ft, "window_format", "%d", wl != NULL);
 	format_add(ft, "pane_format", "%d", wp != NULL);

@@ -176,6 +176,22 @@ server_lock_client(struct client *c)
 }
 
 void
+server_kill_pane(struct window_pane *wp)
+{
+	struct window	*w = wp->window;
+
+	if (window_count_panes(w) == 1) {
+		server_kill_window(w);
+		recalculate_sizes();
+	} else {
+		server_unzoom_window(w);
+		layout_close_pane(wp);
+		window_remove_pane(w, wp);
+		server_redraw_window(w);
+	}
+}
+
+void
 server_kill_window(struct window *w)
 {
 	struct session		*s, *next_s, *target_s;
@@ -456,8 +472,6 @@ server_set_stdin_callback(struct client *c, void (*cb)(struct client *, int,
 void
 server_unzoom_window(struct window *w)
 {
-	if (window_unzoom(w) == 0) {
+	if (window_unzoom(w) == 0)
 		server_redraw_window(w);
-		server_status_window(w);
-	}
 }

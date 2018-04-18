@@ -403,6 +403,7 @@ enum tty_code_code {
 	TTYC_MS,
 	TTYC_OP,
 	TTYC_REV,
+	TTYC_RGB,
 	TTYC_RI,
 	TTYC_RMACS,
 	TTYC_RMCUP,
@@ -554,6 +555,7 @@ enum utf8_state {
 /* Grid line flags. */
 #define GRID_LINE_WRAPPED 0x1
 #define GRID_LINE_EXTENDED 0x2
+#define GRID_LINE_DEAD 0x4
 
 /* Grid cell data. */
 struct grid_cell {
@@ -623,6 +625,9 @@ struct job {
 		JOB_DEAD,
 		JOB_CLOSED
 	} state;
+
+	int			 flags;
+#define JOB_NOWAIT 0x1
 
 	char			*cmd;
 	pid_t			 pid;
@@ -1315,6 +1320,13 @@ struct cmd_entry {
 	enum cmd_retval	 (*exec)(struct cmd *, struct cmdq_item *);
 };
 
+/* Status line. */
+struct status_line {
+	struct event	 timer;
+	struct screen	 status;
+	struct screen	*old_status;
+};
+
 /* Client connection. */
 typedef int (*prompt_input_cb)(struct client *, void *, const char *, int);
 typedef void (*prompt_free_cb)(void *);
@@ -1357,10 +1369,7 @@ struct client {
 	struct event	 click_timer;
 	u_int		 click_button;
 
-	struct event	 status_timer;
-	struct screen	 status;
-
-	struct screen	*old_status;
+	struct status_line status;
 
 #define CLIENT_TERMINAL 0x1
 #define CLIENT_LOGIN 0x2
@@ -1585,8 +1594,6 @@ void		 hooks_add(struct hooks *, const char *, struct cmd_list *);
 void		 hooks_copy(struct hooks *, struct hooks *);
 void		 hooks_remove(struct hooks *, const char *);
 struct hook	*hooks_find(struct hooks *, const char *);
-void printflike(4, 5) hooks_run(struct hooks *, struct client *,
-		    struct cmd_find_state *, const char *, ...);
 void printflike(4, 5) hooks_insert(struct hooks *, struct cmdq_item *,
 		    struct cmd_find_state *, const char *, ...);
 
@@ -1649,7 +1656,7 @@ extern const struct options_table_entry options_table[];
 /* job.c */
 extern struct joblist all_jobs;
 struct job	*job_run(const char *, struct session *, const char *,
-		     job_update_cb, job_complete_cb, job_free_cb, void *);
+		     job_update_cb, job_complete_cb, job_free_cb, void *, int);
 void		 job_free(struct job *);
 void		 job_died(struct job *, int);
 
@@ -1769,6 +1776,7 @@ long long	 args_strtonum(struct args *, u_char, long long, long long,
 /* cmd-find.c */
 int		 cmd_find_target(struct cmd_find_state *, struct cmdq_item *,
 		     const char *, enum cmd_find_type, int);
+struct client	*cmd_find_best_client(struct session *);
 struct client	*cmd_find_client(struct cmdq_item *, const char *, int);
 void		 cmd_find_clear_state(struct cmd_find_state *, int);
 int		 cmd_find_empty_state(struct cmd_find_state *);
@@ -1889,7 +1897,7 @@ void	 server_client_set_key_table(struct client *, const char *);
 const char *server_client_get_key_table(struct client *);
 int	 server_client_check_nested(struct client *);
 void	 server_client_handle_key(struct client *, key_code);
-void	 server_client_create(int);
+struct client *server_client_create(int);
 int	 server_client_open(struct client *, char **);
 void	 server_client_unref(struct client *);
 void	 server_client_lost(struct client *);
@@ -1917,6 +1925,7 @@ void	 server_status_window(struct window *);
 void	 server_lock(void);
 void	 server_lock_session(struct session *);
 void	 server_lock_client(struct client *);
+void	 server_kill_pane(struct window_pane *);
 void	 server_kill_window(struct window *);
 int	 server_link_window(struct session *,
 	     struct winlink *, struct session *, int, int, int, char **);
@@ -2142,7 +2151,7 @@ int		 window_has_pane(struct window *, struct window_pane *);
 int		 window_set_active_pane(struct window *, struct window_pane *);
 void		 window_redraw_active_switch(struct window *,
 		     struct window_pane *);
-struct window_pane *window_add_pane(struct window *, struct window_pane *,
+struct window_pane *window_add_pane(struct window *, struct window_pane *, int,
 		     int, u_int);
 void		 window_resize(struct window *, u_int, u_int);
 int		 window_zoom(struct window_pane *);
@@ -2248,6 +2257,7 @@ void	 mode_tree_down(struct mode_tree_data *, int);
 struct mode_tree_data *mode_tree_start(struct window_pane *, struct args *,
 	     mode_tree_build_cb, mode_tree_draw_cb, mode_tree_search_cb,
 	     void *, const char **, u_int, struct screen **);
+void	 mode_tree_zoom(struct mode_tree_data *, struct args *);
 void	 mode_tree_build(struct mode_tree_data *);
 void	 mode_tree_free(struct mode_tree_data *);
 void	 mode_tree_resize(struct mode_tree_data *, u_int, u_int);

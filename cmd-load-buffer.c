@@ -59,7 +59,8 @@ cmd_load_buffer_exec(struct cmd *self, struct cmdq_item *item)
 	struct client			*c = item->client;
 	FILE				*f;
 	const char			*path, *bufname;
-	char				*pdata, *new_pdata, *cause, *file;
+	char				*pdata = NULL, *new_pdata, *cause;
+	char				*file;
 	size_t				 psize;
 	int				 ch, error;
 
@@ -89,8 +90,7 @@ cmd_load_buffer_exec(struct cmd *self, struct cmdq_item *item)
 	f = fopen(file, "rb");
 	if (f == NULL) {
 		cmdq_error(item, "%s: %s", file, strerror(errno));
-		free(file);
-		return (CMD_RETURN_ERROR);
+		goto error;
 	}
 
 	pdata = NULL;

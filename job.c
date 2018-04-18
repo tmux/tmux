@@ -43,7 +43,7 @@ struct joblist	all_jobs = LIST_HEAD_INITIALIZER(all_jobs);
 struct job *
 job_run(const char *cmd, struct session *s, const char *cwd,
     job_update_cb updatecb, job_complete_cb completecb, job_free_cb freecb,
-    void *data)
+    void *data, int flags)
 {
 	struct job	*job;
 	struct environ	*env;
@@ -110,6 +110,7 @@ job_run(const char *cmd, struct session *s, const char *cwd,
 
 	job = xmalloc(sizeof *job);
 	job->state = JOB_RUNNING;
+	job->flags = flags;
 
 	job->cmd = xstrdup(cmd);
 	job->pid = pid;

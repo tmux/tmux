@@ -13,7 +13,7 @@ $TMUX kill-server 2>/dev/null
 
 TMP=$(mktemp)
 OUT=$(mktemp)
-trap "rm -f $TMP $OUT" 0 1 15
+#trap "rm -f $TMP $OUT" 0 1 15
 
 $TMUX -f/dev/null new -d || exit 1
 sleep 1
@@ -23,7 +23,7 @@ refresh -C 100,50
 ls -F':#{session_width} #{session_height}'
 EOF
 grep ^: $TMP >$OUT
-printf ":80 24\n:100 50\n"|cmp -s $OUT || exit 1
+printf ":80 24\n:100 50\n"|cmp -s $OUT - || exit 1
 $TMUX kill-server 2>/dev/null
 
 $TMUX -f/dev/null new -d || exit 1
@@ -34,7 +34,7 @@ refresh -C 80,24
 ls -F':#{session_width} #{session_height}'
 EOF
 grep ^: $TMP >$OUT
-printf ":80 24\n:80 24\n"|cmp -s $OUT || exit 1
+printf ":80 24\n:80 24\n"|cmp -s $OUT - || exit 1
 $TMUX kill-server 2>/dev/null
 
 cat <<EOF|$TMUX -C new -x 100 -y 50 >$TMP
@@ -43,7 +43,7 @@ refresh -C 80,24
 ls -F':#{session_width} #{session_height}'
 EOF
 grep ^: $TMP >$OUT
-printf ":100 50\n:80 24\n"|cmp -s $OUT || exit 1
+printf ":100 50\n:80 24\n"|cmp -s $OUT - || exit 1
 $TMUX kill-server 2>/dev/null
 
 exit 0

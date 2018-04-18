@@ -60,10 +60,10 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct window		*w = wl->window;
 	struct window_pane	*wp = item->target.wp, *new_wp = NULL;
 	struct environ		*env;
-	const char		*cmd, *path, *shell, *template, *cwd;
-	char		       **argv, *cause, *new_cause, *cp, *to_free = NULL;
+	const char		*cmd, *path, *shell, *template, *tmp;
+	char		       **argv, *cause, *new_cause, *cp, *cwd;
 	u_int			 hlimit;
-	int			 argc, size, percentage;
+	int			 argc, size, percentage, before;
 	enum layout_type	 type;
 	struct layout_cell	*lc;
 	struct environ_entry	*envent;
@@ -85,18 +85,17 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		argv = args->argv;
 	}
 
-	if (args_has(args, 'c')) {
-		cwd = args_get(args, 'c');
-		to_free = format_single(item, cwd, c, s, NULL, NULL);
-		cwd = to_free;
-	} else if (item->client != NULL && item->client->session == NULL)
-		cwd = item->client->cwd;
+	if ((tmp = args_get(args, 'c')) != NULL)
+		cwd = format_single(item, tmp, c, s, NULL, NULL);
+	else if (item->client != NULL && item->client->session == NULL)
+		cwd = xstrdup(item->client->cwd);
 	else
-		cwd = s->cwd;
+		cwd = xstrdup(s->cwd);
 
 	type = LAYOUT_TOPBOTTOM;
 	if (args_has(args, 'h'))
 		type = LAYOUT_LEFTRIGHT;
+	before = args_has(args, 'b');
 
 	size = -1;
 	if (args_has(args, 'l')) {
@@ -126,13 +125,12 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (*shell == '\0' || areshell(shell))
 		shell = _PATH_BSHELL;
 
-	lc = layout_split_pane(wp, type, size, args_has(args, 'b'),
-	    args_has(args, 'f'));
+	lc = layout_split_pane(wp, type, size, before, args_has(args, 'f'));
 	if (lc == NULL) {
 		cause = xstrdup("pane too small");
 		goto error;
 	}
-	new_wp = window_add_pane(w, wp, args_has(args, 'b'), hlimit);
+	new_wp = window_add_pane(w, wp, before, args_has(args, 'f'), hlimit);
 	layout_make_leaf(lc, new_wp);
 
 	path = NULL;
@@ -174,7 +172,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	cmd_find_from_winlink_pane(&fs, wl, new_wp, 0);
 	hooks_insert(s->hooks, item, &fs, "after-split-window");
 
-	free(to_free);
+	free(cwd);
 	return (CMD_RETURN_NORMAL);
 
 error:
@@ -185,6 +183,6 @@ error:
 	cmdq_error(item, "create pane failed: %s", cause);
 	free(cause);
 
-	free(to_free);
+	free(cwd);
 	return (CMD_RETURN_ERROR);
 }

@@ -140,33 +140,6 @@ hooks_find(struct hooks *hooks, const char *name)
 }
 
 void
-hooks_run(struct hooks *hooks, struct client *c, struct cmd_find_state *fs,
-    const char *fmt, ...)
-{
-	struct hook		*hook;
-	va_list			 ap;
-	char			*name;
-	struct cmdq_item	*new_item;
-
-	va_start(ap, fmt);
-	xvasprintf(&name, fmt, ap);
-	va_end(ap);
-
-	hook = hooks_find(hooks, name);
-	if (hook == NULL) {
-		free(name);
-		return;
-	}
-	log_debug("running hook %s", name);
-
-	new_item = cmdq_get_command(hook->cmdlist, fs, NULL, CMDQ_NOHOOKS);
-	cmdq_format(new_item, "hook", "%s", name);
-	cmdq_append(c, new_item);
-
-	free(name);
-}
-
-void
 hooks_insert(struct hooks *hooks, struct cmdq_item *item,
     struct cmd_find_state *fs, const char *fmt, ...)
 {

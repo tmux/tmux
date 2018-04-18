@@ -286,8 +286,6 @@ load_cfg(const char *path, struct client *c, struct cmdq_item *item, int quiet)
 		}
 		free(buf);
 
-		if (cmdlist == NULL)
-			continue;
 		new_item = cmdq_get_command(cmdlist, NULL, NULL, 0);
 		if (item != NULL)
 			cmdq_insert_after(item, new_item);

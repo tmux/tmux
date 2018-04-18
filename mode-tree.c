@@ -31,6 +31,7 @@ TAILQ_HEAD(mode_tree_list, mode_tree_item);
 struct mode_tree_data {
 	int			  dead;
 	u_int			  references;
+	int			  zoomed;
 
 	struct window_pane	 *wp;
 	void			 *modedata;
@@ -62,6 +63,7 @@ struct mode_tree_data {
 	int			  preview;
 	char			 *search;
 	char			 *filter;
+	int			  no_matches;
 };
 
 struct mode_tree_item {
@@ -343,6 +345,19 @@ mode_tree_start(struct window_pane *wp, struct args *args,
 }
 
 void
+mode_tree_zoom(struct mode_tree_data *mtd, struct args *args)
+{
+	struct window_pane	*wp = mtd->wp;
+
+	if (args_has(args, 'Z')) {
+		mtd->zoomed = (wp->window->flags & WINDOW_ZOOMED);
+		if (!mtd->zoomed && window_zoom(wp) == 0)
+			server_redraw_window(wp->window);
+	} else
+		mtd->zoomed = -1;
+}
+
+void
 mode_tree_build(struct mode_tree_data *mtd)
 {
 	struct screen	*s = &mtd->screen;
@@ -357,7 +372,8 @@ mode_tree_build(struct mode_tree_data *mtd)
 	TAILQ_INIT(&mtd->children);
 
 	mtd->buildcb(mtd->modedata, mtd->sort_type, &tag, mtd->filter);
-	if (TAILQ_EMPTY(&mtd->children))
+	mtd->no_matches = TAILQ_EMPTY(&mtd->children);
+	if (mtd->no_matches)
 		mtd->buildcb(mtd->modedata, mtd->sort_type, &tag, NULL);
 
 	mode_tree_free_items(&mtd->saved);
@@ -392,6 +408,11 @@ mode_tree_remove_ref(struct mode_tree_data *mtd)
 void
 mode_tree_free(struct mode_tree_data *mtd)
 {
+	struct window_pane	*wp = mtd->wp;
+
+	if (mtd->zoomed == 0)
+		server_unzoom_window(wp->window);
+
 	mode_tree_free_items(&mtd->children);
 	mode_tree_clear_lines(mtd);
 	screen_free(&mtd->screen);
@@ -479,7 +500,7 @@ mode_tree_draw(struct mode_tree_data *mtd)
 	u_int			 w, h, i, j, sy, box_x, box_y;
 	char			*text, *start, key[7];
 	const char		*tag, *symbol;
-	size_t			 size;
+	size_t			 size, n;
 	int			 keylen;
 
 	if (mtd->line_size == 0)
@@ -587,11 +608,24 @@ mode_tree_draw(struct mode_tree_data *mtd)
 	screen_write_cursormove(&ctx, 0, h);
 	screen_write_box(&ctx, w, sy - h);
 
-	xasprintf(&text, " %s (sort: %s) ", mti->name,
+	xasprintf(&text, " %s (sort: %s)", mti->name,
 	    mtd->sort_list[mtd->sort_type]);
 	if (w - 2 >= strlen(text)) {
 		screen_write_cursormove(&ctx, 1, h);
 		screen_write_puts(&ctx, &gc0, "%s", text);
+
+		if (mtd->no_matches)
+			n = (sizeof "no matches") - 1;
+		else
+			n = (sizeof "active") - 1;
+		if (mtd->filter != NULL && w - 2 >= strlen(text) + 10 + n + 2) {
+			screen_write_puts(&ctx, &gc0, " (filter: ");
+			if (mtd->no_matches)
+				screen_write_puts(&ctx, &gc, "no matches");
+			else
+				screen_write_puts(&ctx, &gc0, "active");
+			screen_write_puts(&ctx, &gc0, ") ");
+		}
 	}
 	free(text);
 
@@ -786,6 +820,7 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 	switch (*key) {
 	case 'q':
 	case '\033': /* Escape */
+	case '\007': /* C-g */
 		return (1);
 	case KEYC_UP:
 	case 'k':

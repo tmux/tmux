@@ -159,7 +159,7 @@ server_client_is_default_key_table(struct client *c, struct key_table *table)
 }
 
 /* Create a new client. */
-void
+struct client *
 server_client_create(int fd)
 {
 	struct client	*c;
@@ -193,7 +193,7 @@ server_client_create(int fd)
 	c->tty.sx = 80;
 	c->tty.sy = 24;
 
-	screen_init(&c->status, c->tty.sx, 1, 0);
+	screen_init(&c->status.status, c->tty.sx, 1, 0);
 
 	c->message_string = NULL;
 	TAILQ_INIT(&c->message_log);
@@ -212,6 +212,7 @@ server_client_create(int fd)
 
 	TAILQ_INSERT_TAIL(&clients, c, entry);
 	log_debug("new client %p", c);
+	return (c);
 }
 
 /* Open client terminal if needed. */
@@ -269,12 +270,12 @@ server_client_lost(struct client *c)
 	if (c->stderr_data != c->stdout_data)
 		evbuffer_free(c->stderr_data);
 
-	if (event_initialized(&c->status_timer))
-		evtimer_del(&c->status_timer);
-	screen_free(&c->status);
-	if (c->old_status != NULL) {
-		screen_free(c->old_status);
-		free(c->old_status);
+	if (event_initialized(&c->status.timer))
+		evtimer_del(&c->status.timer);
+	screen_free(&c->status.status);
+	if (c->status.old_status != NULL) {
+		screen_free(c->status.old_status);
+		free(c->status.old_status);
 	}
 
 	free(c->title);
@@ -904,6 +905,7 @@ server_client_handle_key(struct client *c, key_code key)
 	 * The prefix always takes precedence and forces a switch to the prefix
 	 * table, unless we are already there.
 	 */
+retry:
 	key0 = (key & ~KEYC_XTERM);
 	if ((key0 == (key_code)options_get_number(s->options, "prefix") ||
 	    key0 == (key_code)options_get_number(s->options, "prefix2")) &&
@@ -914,7 +916,6 @@ server_client_handle_key(struct client *c, key_code key)
 	}
 	flags = c->flags;
 
-retry:
 	/* Log key table. */
 	if (wp == NULL)
 		log_debug("key table %s (no pane)", table->name);
@@ -1265,6 +1266,8 @@ server_client_check_exit(struct client *c)
 	if (EVBUFFER_LENGTH(c->stderr_data) != 0)
 		return;
 
+	if (c->flags & CLIENT_ATTACHED)
+		notify_client("client-detached", c);
 	proc_send(c->peer, MSG_EXIT, -1, &c->retval, sizeof c->retval);
 	c->flags &= ~CLIENT_EXIT;
 }
@@ -1536,6 +1539,9 @@ server_client_dispatch_command(struct client *c, struct imsg *imsg)
 	struct cmd_list		 *cmdlist = NULL;
 	int			  argc;
 	char			**argv, *cause;
+
+	if (c->flags & CLIENT_EXIT)
+		return;
 
 	if (imsg->hdr.len - IMSG_HEADER_SIZE < sizeof data)
 		fatalx("bad MSG_COMMAND size");

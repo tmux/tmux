@@ -53,7 +53,7 @@ static enum cmd_retval
 cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
-	struct client		*c;
+	struct client		*c, *target_c;
 	struct session		*s = item->target.s;
 	struct winlink		*wl = item->target.wl;
 	struct window_pane	*wp = item->target.wp;
@@ -65,7 +65,6 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 		cmdq_error(item, "only one of -F or argument must be given");
 		return (CMD_RETURN_ERROR);
 	}
-	c = cmd_find_client(item, args_get(args, 'c'), 1);
 
 	template = args_get(args, 'F');
 	if (args->argc != 0)
@@ -73,14 +72,27 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 	if (template == NULL)
 		template = DISPLAY_MESSAGE_TEMPLATE;
 
+	/*
+	 * -c is intended to be the client where the message should be
+	 * displayed if -p is not given. But it makes sense to use it for the
+	 * formats too, assuming it matches the session. If it doesn't, use the
+	 * best client for the session.
+	 */
+	c = cmd_find_client(item, args_get(args, 'c'), 1);
+	if (c != NULL && c->session == s)
+		target_c = c;
+	else
+		target_c = cmd_find_best_client(s);
 	ft = format_create(item->client, item, FORMAT_NONE, 0);
-	format_defaults(ft, c, s, wl, wp);
+	format_defaults(ft, target_c, s, wl, wp);
 
 	msg = format_expand_time(ft, template, time(NULL));
 	if (args_has(self->args, 'p'))
 		cmdq_print(item, "%s", msg);
-	else if (c != NULL)
-		status_message_set(c, "%s", msg);
+	else {
+		if (c != NULL)
+			status_message_set(c, "%s", msg);
+	}
 	free(msg);
 
 	format_free(ft);
