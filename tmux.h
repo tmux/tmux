@@ -1772,6 +1772,7 @@ long long	 args_strtonum(struct args *, u_char, long long, long long,
 /* cmd-find.c */
 int		 cmd_find_target(struct cmd_find_state *, struct cmdq_item *,
 		     const char *, enum cmd_find_type, int);
+struct client	*cmd_find_best_client(struct session *);
 struct client	*cmd_find_client(struct cmdq_item *, const char *, int);
 void		 cmd_find_clear_state(struct cmd_find_state *, int);
 int		 cmd_find_empty_state(struct cmd_find_state *);

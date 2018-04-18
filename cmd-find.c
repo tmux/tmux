@@ -122,7 +122,7 @@ cmd_find_client_better(struct client *c, struct client *than)
 }
 
 /* Find best client for session. */
-static struct client *
+struct client *
 cmd_find_best_client(struct session *s)
 {
 	struct client	*c_loop, *c;
