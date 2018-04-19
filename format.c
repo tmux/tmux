@@ -1270,6 +1270,9 @@ void
 format_defaults(struct format_tree *ft, struct client *c, struct session *s,
     struct winlink *wl, struct window_pane *wp)
 {
+	if (c != NULL && s != NULL && c->session != s)
+		log_debug("%s: session does not match", __func__);
+
 	format_add(ft, "session_format", "%d", s != NULL);
 	format_add(ft, "window_format", "%d", wl != NULL);
 	format_add(ft, "pane_format", "%d", wp != NULL);
