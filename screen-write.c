@@ -1241,22 +1241,12 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only)
 		ttyctx.num = ctx->scrolled;
 		ttyctx.bg = ctx->bg;
 		tty_write(tty_cmd_scrollup, &ttyctx);
-
-		if (s->winch_mod_y > ctx->scrolled)
-			s->winch_mod_y -= ctx->scrolled;
-		else
-			s->winch_mod_y = 0;
 	}
 	ctx->scrolled = 0;
 	ctx->bg = 8;
 
 	if (scroll_only)
 		return;
-
-	if (s->cy < s->winch_mod_y) {
-		log_debug("%s: winch (at %u)", __func__, s->cy);
-		s->winch_mod_y = s->cy;
-	}
 
 	cx = s->cx; cy = s->cy;
 	for (y = 0; y < screen_size_y(s); y++) {

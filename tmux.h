@@ -679,7 +679,6 @@ struct screen {
 	u_int			 cx;		/* cursor x */
 	u_int			 cy;		/* cursor y */
 
-	u_int			 winch_mod_y;
 	int			 force_wrap_disabled;
 
 	u_int			 cstyle;	/* cursor style */
@@ -2009,7 +2008,7 @@ char	*grid_string_cells(struct grid *, u_int, u_int, u_int,
 	     struct grid_cell **, int, int, int);
 void	 grid_duplicate_lines(struct grid *, u_int, struct grid *, u_int,
 	     u_int);
-void	 grid_reflow(struct grid *, u_int, u_int *, u_int);
+void	 grid_reflow(struct grid *, u_int, u_int *);
 
 /* grid-view.c */
 void	 grid_view_get_cell(struct grid *, u_int, u_int, struct grid_cell *);

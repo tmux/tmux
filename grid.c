@@ -1162,7 +1162,7 @@ grid_reflow_split(struct grid *target, struct grid *gd, u_int sx, u_int yy,
 
 /* Reflow lines on grid to new width. */
 void
-grid_reflow(struct grid *gd, u_int sx, u_int *cursor, u_int winch_mod_y)
+grid_reflow(struct grid *gd, u_int sx, u_int *cursor)
 {
 	struct grid		*target;
 	struct grid_line	*gl;
@@ -1182,16 +1182,6 @@ grid_reflow(struct grid *gd, u_int sx, u_int *cursor, u_int winch_mod_y)
 	 */
 	target = grid_create(gd->sx, 0, 0);
 
-	if (gd->hsize + winch_mod_y > 0) {
-		/*
-		 * The line above the area rewritten by the subprocess on
-		 * SIGWINCH must not have the 'wrapped' flag, as joining it
-		 * with the rewritten area tends to produce a lot of junk.
-		 */
-		gd->linedata[gd->hsize + winch_mod_y - 1].flags &=
-		    ~GRID_LINE_WRAPPED;
-	}
-
 	/*
 	 * Loop over each source line.
 	 */
@@ -1199,14 +1189,6 @@ grid_reflow(struct grid *gd, u_int sx, u_int *cursor, u_int winch_mod_y)
 		gl = &gd->linedata[yy];
 		if (gl->flags & GRID_LINE_DEAD)
 			continue;
-
-		/*
-		 * Don't touch lines that the process has redrawn on SIGWINCH.
-		 */
-		if (yy >= gd->hsize + winch_mod_y) {
-			grid_reflow_move(target, gl);
-			continue;
-		}
 
 		/*
 		 * Work out the width of this line. first is the width of the
