@@ -1318,7 +1318,7 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 }
 
 static int
-screen_is_effective_wrapping(struct screen *s)
+screen_is_effectively_wrapping(struct screen *s)
 {
 	return (s->mode & MODE_WRAP) && !s->force_wrap_disabled;
 }
@@ -1345,7 +1345,7 @@ screen_write_collect_add(struct screen_write_ctx *ctx,
 		collect = 0;
 	else if (gc->attr & GRID_ATTR_CHARSET)
 		collect = 0;
-	else if (!screen_is_effective_wrapping(s))
+	else if (!screen_is_effectively_wrapping(s))
 		collect = 0;
 	else if (s->mode & MODE_INSERT)
 		collect = 0;
@@ -1414,7 +1414,7 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	screen_write_collect_flush(ctx, 1);
 
 	/* If this character doesn't fit, ignore it. */
-	if (!screen_is_effective_wrapping(s) &&
+	if (!screen_is_effectively_wrapping(s) &&
 	    width > 1 &&
 	    (width > sx || (s->cx != sx && s->cx > sx - width)))
 		return;
@@ -1426,7 +1426,7 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	}
 
 	/* Check this will fit on the current line and wrap if not. */
-	if (screen_is_effective_wrapping(s) && s->cx > sx - width) {
+	if (screen_is_effectively_wrapping(s) && s->cx > sx - width) {
 		log_debug("%s: wrapped at %u,%u", __func__, s->cx, s->cy);
 		screen_write_linefeed(ctx, 1, 8);
 		s->cx = 0;
@@ -1500,7 +1500,7 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	 * Move the cursor. If not wrapping, stick at the last character and
 	 * replace it.
 	 */
-	last = !screen_is_effective_wrapping(s);
+	last = !screen_is_effectively_wrapping(s);
 	if (s->cx <= sx - last - width)
 		s->cx += width;
 	else
