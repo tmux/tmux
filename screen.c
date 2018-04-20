@@ -34,8 +34,6 @@ TAILQ_HEAD(screen_titles, screen_title_entry);
 static void	screen_resize_x(struct screen *, u_int);
 static void	screen_resize_y(struct screen *, u_int);
 
-void		screen_reflow(struct screen *, u_int);
-
 /* Free titles stack. */
 static void
 screen_free_titles(struct screen *s)

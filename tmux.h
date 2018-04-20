@@ -2112,6 +2112,7 @@ void	 screen_hide_selection(struct screen *);
 int	 screen_check_selection(struct screen *, u_int, u_int);
 void	 screen_select_cell(struct screen *, struct grid_cell *,
 	     const struct grid_cell *);
+void	 screen_reflow(struct screen *, u_int);
 
 /* window.c */
 extern struct windows windows;
