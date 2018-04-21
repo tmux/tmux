@@ -226,3 +226,30 @@ grid_view_string_cells(struct grid *gd, u_int px, u_int py, u_int nx)
 
 	return (grid_string_cells(gd, px, py, nx, NULL, 0, 0, 0));
 }
+
+/* Prevent line from being joined with the previous line. */
+void
+grid_view_exclude_line_from_wrapping_previous(struct grid *gd, u_int py)
+{
+	py = grid_view_y(gd, py);
+
+	if (py != 0)
+		gd->linedata[py - 1].flags &= ~GRID_LINE_WRAPPED;
+}
+
+/* Prevent line from joining the next line. */
+void
+grid_view_exclude_line_from_wrapping_next(struct grid *gd, u_int py)
+{
+	py = grid_view_y(gd, py);
+
+	gd->linedata[py].flags &= ~GRID_LINE_WRAPPED;
+}
+
+/* Prevent line from either being wrapped or wrapping the next line itself. */
+void
+grid_view_exclude_line_from_wrapping(struct grid *gd, u_int py)
+{
+	grid_view_exclude_line_from_wrapping_previous(gd, py);
+	grid_view_exclude_line_from_wrapping_next(gd, py);
+}

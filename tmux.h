@@ -2029,6 +2029,9 @@ void	 grid_view_delete_lines_region(struct grid *, u_int, u_int, u_int,
 void	 grid_view_insert_cells(struct grid *, u_int, u_int, u_int, u_int);
 void	 grid_view_delete_cells(struct grid *, u_int, u_int, u_int, u_int);
 char	*grid_view_string_cells(struct grid *, u_int, u_int, u_int);
+void	 grid_view_exclude_line_from_wrapping_previous(struct grid *, u_int);
+void	 grid_view_exclude_line_from_wrapping_next(struct grid *, u_int);
+void	 grid_view_exclude_line_from_wrapping(struct grid *, u_int);
 
 /* screen-write.c */
 void	 screen_write_start(struct screen_write_ctx *, struct window_pane *,

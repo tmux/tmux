@@ -924,6 +924,7 @@ screen_write_clearline(struct screen_write_ctx *ctx, u_int bg)
 	screen_write_initctx(ctx, &ttyctx);
 	ttyctx.bg = bg;
 
+	grid_view_exclude_line_from_wrapping(s->grid, s->cy);
 	grid_view_clear(s->grid, 0, s->cy, sx, 1, bg);
 
 	screen_write_collect_clear(ctx, s->cy, 1);
@@ -947,6 +948,10 @@ screen_write_clearendofline(struct screen_write_ctx *ctx, u_int bg)
 	screen_write_initctx(ctx, &ttyctx);
 	ttyctx.bg = bg;
 
+	if (s->cx == 0)
+		grid_view_exclude_line_from_wrapping(s->grid, s->cy);
+	else
+		grid_view_exclude_line_from_wrapping_next(s->grid, s->cy);
 	grid_view_clear(s->grid, s->cx, s->cy, sx - s->cx, 1, bg);
 
 	if (s->cx == 0)
@@ -966,10 +971,13 @@ screen_write_clearstartofline(struct screen_write_ctx *ctx, u_int bg)
 	screen_write_initctx(ctx, &ttyctx);
 	ttyctx.bg = bg;
 
-	if (s->cx > sx - 1)
+	if (s->cx > sx - 1) {
+		grid_view_exclude_line_from_wrapping(s->grid, s->cy);
 		grid_view_clear(s->grid, 0, s->cy, sx, 1, bg);
-	else
+	} else {
+		grid_view_exclude_line_from_wrapping_previous(s->grid, s->cy);
 		grid_view_clear(s->grid, 0, s->cy, s->cx + 1, 1, bg);
+	}
 
 	if (s->cx > sx - 1)
 		screen_write_collect_clear(ctx, s->cy, 1);
@@ -1006,6 +1014,8 @@ screen_write_reverseindex(struct screen_write_ctx *ctx, u_int bg)
 		grid_view_scroll_region_down(s->grid, s->rupper, s->rlower, bg);
 	else if (s->cy > 0)
 		s->cy--;
+
+	grid_view_exclude_line_from_wrapping(s->grid, s->cy);
 
 	screen_write_collect_flush(ctx, 0);
 	tty_write(tty_cmd_reverseindex, &ttyctx);
@@ -1120,6 +1130,11 @@ screen_write_clearendofscreen(struct screen_write_ctx *ctx, u_int bg)
 		grid_view_clear(gd, 0, s->cy + 1, sx, sy - (s->cy + 1), bg);
 	}
 
+	if (s->cx == 0)
+		grid_view_exclude_line_from_wrapping(gd, s->cy);
+	else
+		grid_view_exclude_line_from_wrapping_next(gd, s->cy);
+
 	screen_write_collect_clear(ctx, s->cy + 1, sy - (s->cy + 1));
 	screen_write_collect_flush(ctx, 0);
 	tty_write(tty_cmd_clearendofscreen, &ttyctx);
@@ -1142,6 +1157,11 @@ screen_write_clearstartofscreen(struct screen_write_ctx *ctx, u_int bg)
 		grid_view_clear(s->grid, 0, s->cy, sx, 1, bg);
 	else
 		grid_view_clear(s->grid, 0, s->cy, s->cx + 1, 1, bg);
+
+	if (s->cx > sx - 1)
+		grid_view_exclude_line_from_wrapping(s->grid, s->cy);
+	else
+		grid_view_exclude_line_from_wrapping_previous(s->grid, s->cy);
 
 	screen_write_collect_clear(ctx, 0, s->cy);
 	screen_write_collect_flush(ctx, 0);
@@ -1365,6 +1385,13 @@ screen_write_collect_add(struct screen_write_ctx *ctx,
 
 	if (s->cx > sx - 1) {
 		log_debug("%s: wrapped at %u,%u", __func__, s->cx, s->cy);
+
+		/*
+		 * This is supposed to truncate the current line to the size of
+		 * the screen. XXX: Is this correct?
+		 */
+		grid_view_clear(s->grid, s->cx, s->cy, 1, 1, 8);
+
 		ci->wrapped = 1;
 		screen_write_linefeed(ctx, 1, 8);
 		s->cx = 0;
@@ -1428,6 +1455,13 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	/* Check this will fit on the current line and wrap if not. */
 	if (screen_is_effectively_wrapping(s) && s->cx > sx - width) {
 		log_debug("%s: wrapped at %u,%u", __func__, s->cx, s->cy);
+
+		/*
+		 * This is supposed to truncate the current line to the size of
+		 * the screen. XXX: Is this correct?
+		 */
+		grid_view_clear(s->grid, s->cx, s->cy, 1, 1, 8);
+
 		screen_write_linefeed(ctx, 1, 8);
 		s->cx = 0;
 		screen_write_collect_flush(ctx, 1);
