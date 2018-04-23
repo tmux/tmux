@@ -1548,7 +1548,7 @@ window_copy_get_selection(struct window_pane *wp, size_t *len)
 	char				*buf;
 	size_t				 off;
 	u_int				 i, xx, yy, sx, sy, ex, ey, ey_last;
-	u_int				 firstsx, lastex, restex, restsx;
+	u_int				 firstsx, lastex, restex, restsx, selx;
 	int				 keys;
 
 	if (!s->sel.flag && s->sel.lineflag == LINE_SEL_NONE)
@@ -1599,7 +1599,11 @@ window_copy_get_selection(struct window_pane *wp, size_t *len)
 		 * Need to ignore the column with the cursor in it, which for
 		 * rectangular copy means knowing which side the cursor is on.
 		 */
-		if (data->selx < data->cx) {
+		if (data->cursordrag == CURSORDRAG_ENDSEL)
+			selx = data->selx;
+		else
+			selx = data->endselx;
+		if (selx < data->cx) {
 			/* Selection start is on the left. */
 			if (keys == MODEKEY_EMACS) {
 				lastex = data->cx;
@@ -1609,12 +1613,12 @@ window_copy_get_selection(struct window_pane *wp, size_t *len)
 				lastex = data->cx + 1;
 				restex = data->cx + 1;
 			}
-			firstsx = data->selx;
-			restsx = data->selx;
+			firstsx = selx;
+			restsx = selx;
 		} else {
 			/* Cursor is on the left. */
-			lastex = data->selx + 1;
-			restex = data->selx + 1;
+			lastex = selx + 1;
+			restex = selx + 1;
 			firstsx = data->cx;
 			restsx = data->cx;
 		}

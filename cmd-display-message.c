@@ -89,10 +89,8 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 	msg = format_expand_time(ft, template, time(NULL));
 	if (args_has(self->args, 'p'))
 		cmdq_print(item, "%s", msg);
-	else {
-		if (c != NULL)
-			status_message_set(c, "%s", msg);
-	}
+	else if (c != NULL)
+		status_message_set(c, "%s", msg);
 	free(msg);
 
 	format_free(ft);
