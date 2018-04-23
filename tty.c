@@ -1244,13 +1244,18 @@ tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 	tty_margin_pane(tty, ctx);
 
 	/*
-	 * If we want to wrap a pane, the cursor needs to be exactly on the
-	 * right of the region. But if the pane isn't on the right, it may be
-	 * off the edge - if so, move the cursor back to the right.
+	 * If we want to wrap a pane while using margins, the cursor needs to
+	 * be exactly on the right of the region. If the cursor is entirely off
+	 * the edge - move it back to the right. Some terminals are funny about
+	 * this and insert extra spaces, so only use the right if margins are
+	 * enabled.
 	 */
-	if (ctx->xoff + ctx->ocx > tty->rright)
-		tty_cursor(tty, tty->rright, ctx->yoff + ctx->ocy);
-	else
+	if (ctx->xoff + ctx->ocx > tty->rright) {
+		if (!tty_use_margin(tty))
+			tty_cursor(tty, 0, ctx->yoff + ctx->ocy);
+		else
+			tty_cursor(tty, tty->rright, ctx->yoff + ctx->ocy);
+	} else
 		tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
 
 	tty_putc(tty, '\n');
@@ -1275,11 +1280,16 @@ tty_cmd_scrollup(struct tty *tty, const struct tty_ctx *ctx)
 	tty_margin_pane(tty, ctx);
 
 	if (ctx->num == 1 || !tty_term_has(tty->term, TTYC_INDN)) {
-		tty_cursor(tty, tty->rright, tty->rlower);
+		if (!tty_use_margin(tty))
+			tty_cursor(tty, 0, tty->rlower);
+		else
+			tty_cursor(tty, tty->rright, tty->rlower);
 		for (i = 0; i < ctx->num; i++)
 			tty_putc(tty, '\n');
-	} else
+	} else {
+		tty_cursor(tty, 0, tty->cy);
 		tty_putcode1(tty, TTYC_INDN, ctx->num);
+	}
 }
 
 void
