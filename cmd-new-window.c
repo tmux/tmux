@@ -63,7 +63,7 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct environ_entry	*envent;
 	struct cmd_find_state	 fs;
 
-	if (args_has(args, 'a')) {
+	if (args_has(args, 'a') && wl != NULL) {
 		if ((idx = winlink_shuffle_up(s, wl)) == -1) {
 			cmdq_error(item, "no free window indexes");
 			return (CMD_RETURN_ERROR);
