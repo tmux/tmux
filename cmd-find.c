@@ -82,6 +82,7 @@ cmd_find_try_TMUX(struct client *c)
 	char			 tmp[256];
 	long long		 pid;
 	u_int			 session;
+	struct session		*s;
 
 	envent = environ_find(c->environ, "TMUX");
 	if (envent == NULL)
@@ -91,8 +92,13 @@ cmd_find_try_TMUX(struct client *c)
 		return (NULL);
 	if (pid != getpid())
 		return (NULL);
-	log_debug("client %p TMUX %s (session @%u)", c, envent->value, session);
-	return (session_find_by_id(session));
+	log_debug("%s: client %p TMUX %s (session $%u)", __func__, c,
+	    envent->value, session);
+
+	s = session_find_by_id(session);
+	if (s != NULL)
+		log_debug("%s: session $%u still exists", __func__, s->id);
+	return (s);
 }
 
 /* Find pane containing client if any. */
@@ -108,6 +114,8 @@ cmd_find_inside_pane(struct client *c)
 		if (strcmp(wp->tty, c->ttyname) == 0)
 			break;
 	}
+	if (wp != NULL)
+		log_debug("%s: got pane %%%u (%s)", __func__, wp->id, wp->tty);
 	return (wp);
 }
 
@@ -166,6 +174,8 @@ cmd_find_best_session(struct session **slist, u_int ssize, int flags)
 	struct session	 *s_loop, *s;
 	u_int		  i;
 
+	log_debug("%s: %u sessions to try", __func__, ssize);
+
 	s = NULL;
 	if (slist != NULL) {
 		for (i = 0; i < ssize; i++) {
@@ -188,6 +198,8 @@ cmd_find_best_session_with_window(struct cmd_find_state *fs)
 	struct session	**slist = NULL;
 	u_int		  ssize;
 	struct session	 *s;
+
+	log_debug("%s: window is @%u", __func__, fs->w->id);
 
 	ssize = 0;
 	RB_FOREACH(s, sessions, &sessions) {
@@ -217,6 +229,8 @@ static int
 cmd_find_best_winlink_with_window(struct cmd_find_state *fs)
 {
 	struct winlink	 *wl, *wl_loop;
+
+	log_debug("%s: window is @%u", __func__, fs->w->id);
 
 	wl = NULL;
 	if (fs->s->curw != NULL && fs->s->curw->window == fs->w)
@@ -436,13 +450,13 @@ cmd_find_get_window_with_session(struct cmd_find_state *fs, const char *window)
 	if (window[0] != '+' && window[0] != '-') {
 		idx = strtonum(window, 0, INT_MAX, &errstr);
 		if (errstr == NULL) {
-			if (fs->flags & CMD_FIND_WINDOW_INDEX) {
-				fs->idx = idx;
-				return (0);
-			}
 			fs->wl = winlink_find_by_index(&fs->s->windows, idx);
 			if (fs->wl != NULL) {
 				fs->w = fs->wl->window;
+				return (0);
+			}
+			if (fs->flags & CMD_FIND_WINDOW_INDEX) {
+				fs->idx = idx;
 				return (0);
 			}
 		}
@@ -705,7 +719,7 @@ void
 cmd_find_log_state(const char *prefix, struct cmd_find_state *fs)
 {
 	if (fs->s != NULL)
-		log_debug("%s: s=$%u", prefix, fs->s->id);
+		log_debug("%s: s=$%u %s", prefix, fs->s->id, fs->s->name);
 	else
 		log_debug("%s: s=none", prefix);
 	if (fs->wl != NULL) {
@@ -894,6 +908,9 @@ cmd_find_from_client(struct cmd_find_state *fs, struct client *c, int flags)
 				break;
 		}
 		if (wl != NULL) {
+			log_debug("%s: session $%u has pane %%%u", __func__,
+			    s->id, wp->id);
+
 			fs->s = s;
 			fs->wl = s->curw; /* use current session */
 			fs->w = fs->wl->window;
@@ -1181,7 +1198,8 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 		/* This will fill in session, winlink and window. */
 		if (cmd_find_get_window(fs, window, window_only) != 0)
 			goto no_window;
-		fs->wp = fs->wl->window->active;
+		if (fs->wl != NULL) /* can be NULL if index only */
+			fs->wp = fs->wl->window->active;
 		goto found;
 	}
 
