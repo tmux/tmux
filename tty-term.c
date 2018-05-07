@@ -488,8 +488,9 @@ tty_term_find(char *name, int fd, char **cause)
 		goto error;
 	}
 
-	/* Figure out if we have 256. */
-	if (tty_term_number(term, TTYC_COLORS) == 256)
+	/* Figure out if we have 256 colours (or more). */
+	if (tty_term_number(term, TTYC_COLORS) >= 256 ||
+	    tty_term_has(term, TTYC_RGB))
 		term->flags |= TERM_256COLOURS;
 
 	/*
