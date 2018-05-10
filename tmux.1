@@ -3827,7 +3827,9 @@ for
 or
 .Ic new-session ) .
 .It
-An escape sequence:
+An escape sequence (if the
+.Ic allow-rename
+option is turned on):
 .Bd -literal -offset indent
 $ printf '\e033kWINDOW_NAME\e033\e\e'
 .Ed
