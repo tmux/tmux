@@ -157,6 +157,7 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 		screen_set_title(&wp->base, pane_title);
 		server_status_window(wp->window);
 		free(pane_title);
+		return (CMD_RETURN_NORMAL);
 	}
 
 	if (wp == w->active)
