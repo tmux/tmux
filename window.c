@@ -921,10 +921,11 @@ window_pane_spawn(struct window_pane *wp, int argc, char **argv,
 	wp->flags &= ~(PANE_STATUSREADY|PANE_STATUSDRAWN);
 
 	cmd = cmd_stringify_argv(wp->argc, wp->argv);
-	log_debug("spawn: %s -- %s", wp->shell, cmd);
+	log_debug("%s: shell=%s", __func__, wp->shell);
+	log_debug("%s: command=%s", __func__, cmd);
 	for (i = 0; i < wp->argc; i++)
-		log_debug("spawn: argv[%d] = %s", i, wp->argv[i]);
-	environ_log(env, "spawn: ");
+		log_debug("%s: argv[%d]=%s", __func__, i, wp->argv[i]);
+	environ_log(env, "%s: environment ", __func__);
 
 	memset(&ws, 0, sizeof ws);
 	ws.ws_col = screen_size_x(&wp->base);
@@ -1005,6 +1006,8 @@ window_pane_spawn(struct window_pane *wp, int argc, char **argv,
 		execl(wp->shell, argv0, (char *)NULL);
 		fatal("execl failed");
 	}
+	log_debug("%s: master=%s", __func__, ttyname(wp->fd));
+	log_debug("%s: slave=%s", __func__, wp->tty);
 
 #ifdef HAVE_UTEMPTER
 	xsnprintf(s, sizeof s, "tmux(%lu).%%%u", (long) getpid(), wp->id);
