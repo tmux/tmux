@@ -853,18 +853,22 @@ found:
 	return (copy);
 }
 
-/* Skip until comma. */
-static char *
-format_skip(char *s)
+/* Skip until end. */
+static const char *
+format_skip(const char *s, char end)
 {
 	int	brackets = 0;
 
 	for (; *s != '\0'; s++) {
-		if (*s == '{')
+		if (*s == '#' && s[1] == '{')
 			brackets++;
+		if (*s == '#' && strchr(",#{}", s[1]) != NULL) {
+			s++;
+			continue;
+		}
 		if (*s == '}')
 			brackets--;
-		if (*s == ',' && brackets == 0)
+		if (*s == end && brackets == 0)
 			break;
 	}
 	if (*s == '\0')
@@ -878,7 +882,7 @@ format_choose(char *s, char **left, char **right)
 {
 	char	*cp;
 
-	cp = format_skip(s);
+	cp = (char *)format_skip(s, ',');
 	if (cp == NULL)
 		return (-1);
 	*cp = '\0';
@@ -908,6 +912,7 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 	size_t			 valuelen, newlen, fromlen, tolen, used;
 	long			 limit = 0;
 	int			 modifiers = 0, compare = 0, search = 0;
+	int			 literal = 0;
 
 	/* Make a copy of the key. */
 	copy0 = copy = xmalloc(keylen + 1);
@@ -916,6 +921,12 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 
 	/* Is there a length limit or whatnot? */
 	switch (copy[0]) {
+	case 'l':
+		if (copy[1] != ':')
+			break;
+		literal = 1;
+		copy += 2;
+		break;
 	case 'm':
 		if (copy[1] != ':')
 			break;
@@ -1004,6 +1015,12 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 		break;
 	}
 
+	/* Is this a literal string? */
+	if (literal) {
+		value = xstrdup(copy);
+		goto done;
+	}
+
 	/* Is this a comparison or a conditional? */
 	if (search) {
 		/* Search in pane. */
@@ -1035,7 +1052,7 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 		free(left);
 	} else if (*copy == '?') {
 		/* Conditional: check first and choose second or third. */
-		ptr = format_skip(copy);
+		ptr = (char *)format_skip(copy, ',');
 		if (ptr == NULL)
 			goto fail;
 		*ptr = '\0';
@@ -1098,6 +1115,7 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 	}
 
 	/* Expand the buffer and copy in the value. */
+done:
 	valuelen = strlen(value);
 	while (*len - *off < valuelen + 1) {
 		*buf = xreallocarray(*buf, 2, *len);
@@ -1195,14 +1213,8 @@ format_expand(struct format_tree *ft, const char *fmt)
 			fmt += n + 1;
 			continue;
 		case '{':
-			brackets = 1;
-			for (ptr = fmt; *ptr != '\0'; ptr++) {
-				if (*ptr == '{')
-					brackets++;
-				if (*ptr == '}' && --brackets == 0)
-					break;
-			}
-			if (*ptr != '}' || brackets != 0)
+			ptr = format_skip(fmt - 2, '}');
+			if (ptr == NULL)
 				break;
 			n = ptr - fmt;
 
@@ -1210,12 +1222,14 @@ format_expand(struct format_tree *ft, const char *fmt)
 				break;
 			fmt += n + 1;
 			continue;
+		case '}':
 		case '#':
+		case ',':
 			while (len - off < 2) {
 				buf = xreallocarray(buf, 2, len);
 				len *= 2;
 			}
-			buf[off++] = '#';
+			buf[off++] = ch;
 			continue;
 		default:
 			s = NULL;

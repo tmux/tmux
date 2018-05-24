@@ -156,10 +156,8 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	/* Get the new session working directory. */
 	if ((tmp = args_get(args, 'c')) != NULL)
 		cwd = format_single(item, tmp, c, NULL, NULL, NULL);
-	else if (c != NULL && c->session == NULL && c->cwd != NULL)
-		cwd = xstrdup(c->cwd);
 	else
-		cwd = xstrdup(".");
+		cwd = xstrdup(server_client_get_cwd(c, NULL));
 
 	/*
 	 * If this is a new client, check for nesting and save the termios
