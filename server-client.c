@@ -1847,15 +1847,19 @@ server_client_add_message(struct client *c, const char *fmt, ...)
 
 /* Get client working directory. */
 const char *
-server_client_get_cwd(struct client *c)
+server_client_get_cwd(struct client *c, struct session *s)
 {
-	struct session	*s;
+	const char	*home;
 
 	if (c != NULL && c->session == NULL && c->cwd != NULL)
 		return (c->cwd);
+	if (s != NULL && s->cwd != NULL)
+		return (s->cwd);
 	if (c != NULL && (s = c->session) != NULL && s->cwd != NULL)
 		return (s->cwd);
-	return (".");
+	if ((home = find_home()) != NULL)
+		return (home);
+	return ("/");
 }
 
 /* Resolve an absolute path or relative to client working directory. */
@@ -1867,7 +1871,7 @@ server_client_get_path(struct client *c, const char *file)
 	if (*file == '/')
 		path = xstrdup(file);
 	else
-		xasprintf(&path, "%s/%s", server_client_get_cwd(c), file);
+		xasprintf(&path, "%s/%s", server_client_get_cwd(c, NULL), file);
 	if (realpath(path, resolved) == NULL)
 		return (path);
 	free(path);

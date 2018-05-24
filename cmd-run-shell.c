@@ -90,14 +90,6 @@ cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 	struct session			*s = item->target.s;
 	struct winlink			*wl = item->target.wl;
 	struct window_pane		*wp = item->target.wp;
-	const char			*cwd;
-
-	if (item->client != NULL && item->client->session == NULL)
-		cwd = item->client->cwd;
-	else if (s != NULL)
-		cwd = s->cwd;
-	else
-		cwd = NULL;
 
 	cdata = xcalloc(1, sizeof *cdata);
 	cdata->cmd = format_single(item, args->argv[0], c, s, wl, wp);
@@ -110,8 +102,8 @@ cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 	if (!args_has(args, 'b'))
 		cdata->item = item;
 
-	job_run(cdata->cmd, s, cwd, NULL, cmd_run_shell_callback,
-	    cmd_run_shell_free, cdata, 0);
+	job_run(cdata->cmd, s, server_client_get_cwd(item->client, s), NULL,
+	    cmd_run_shell_callback, cmd_run_shell_free, cdata, 0);
 
 	if (args_has(args, 'b'))
 		return (CMD_RETURN_NORMAL);
