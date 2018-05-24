@@ -922,7 +922,8 @@ window_pane_spawn(struct window_pane *wp, int argc, char **argv,
 
 	cmd = cmd_stringify_argv(wp->argc, wp->argv);
 	log_debug("%s: shell=%s", __func__, wp->shell);
-	log_debug("%s: command=%s", __func__, cmd);
+	log_debug("%s: cmd=%s", __func__, cmd);
+	log_debug("%s: cwd=%s", __func__, cwd);
 	for (i = 0; i < wp->argc; i++)
 		log_debug("%s: argv[%d]=%s", __func__, i, wp->argv[i]);
 	environ_log(env, "%s: environment ", __func__);

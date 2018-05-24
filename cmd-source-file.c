@@ -60,7 +60,7 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 	if (*path == '/')
 		pattern = xstrdup(path);
 	else {
-		utf8_stravis(&tmp, server_client_get_cwd(c), VIS_GLOB);
+		utf8_stravis(&tmp, server_client_get_cwd(c, NULL), VIS_GLOB);
 		xasprintf(&pattern, "%s/%s", tmp, path);
 		free(tmp);
 	}

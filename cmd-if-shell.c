@@ -73,14 +73,6 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 	struct session			*s = item->target.s;
 	struct winlink			*wl = item->target.wl;
 	struct window_pane		*wp = item->target.wp;
-	const char			*cwd;
-
-	if (item->client != NULL && item->client->session == NULL)
-		cwd = item->client->cwd;
-	else if (s != NULL)
-		cwd = s->cwd;
-	else
-		cwd = NULL;
 
 	shellcmd = format_single(item, args->argv[0], c, s, wl, wp);
 	if (args_has(args, 'F')) {
@@ -128,8 +120,8 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 		cdata->item = NULL;
 	memcpy(&cdata->mouse, &shared->mouse, sizeof cdata->mouse);
 
-	job_run(shellcmd, s, cwd, NULL, cmd_if_shell_callback,
-	    cmd_if_shell_free, cdata, 0);
+	job_run(shellcmd, s, server_client_get_cwd(item->client, s), NULL,
+	    cmd_if_shell_callback, cmd_if_shell_free, cdata, 0);
 	free(shellcmd);
 
 	if (args_has(args, 'b'))

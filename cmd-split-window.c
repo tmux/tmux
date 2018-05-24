@@ -87,10 +87,8 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 
 	if ((tmp = args_get(args, 'c')) != NULL)
 		cwd = format_single(item, tmp, c, s, NULL, NULL);
-	else if (item->client != NULL && item->client->session == NULL)
-		cwd = xstrdup(item->client->cwd);
 	else
-		cwd = xstrdup(s->cwd);
+		cwd = xstrdup(server_client_get_cwd(item->client, s));
 
 	type = LAYOUT_TOPBOTTOM;
 	if (args_has(args, 'h'))
