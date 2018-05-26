@@ -3578,6 +3578,21 @@ if
 is enabled, or
 .Ql no
 if not.
+Conditionals can be nested arbitrarily.
+Note that inside of a conditional
+.Ql \&,
+and
+.Ql }
+must be escaped as
+.Ql #,
+and
+.Ql #} ,
+respectively, unless they are part of a
+.Ql #{...}
+replacement. For example:
+.Ql #{?pane_in_mode,#[fg=white#,bg=red],#[fg=red#,bg=white]}#W
+yields the window name in white on red if the pane is in a mode, otherwise in
+red on white.
 .Pp
 Comparisons may be expressed by prefixing two comma-separated
 alternatives by
