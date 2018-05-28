@@ -3574,6 +3574,21 @@ if
 is enabled, or
 .Ql no
 if not.
+Conditionals can be nested arbitrarily.
+Inside a conditional,
+.Ql \&,
+and
+.Ql }
+must be escaped as
+.Ql #,
+and
+.Ql #} ,
+unless they are part of a
+.Ql #{...}
+replacement. For example:
+.Bd -literal -offset indent
+#{?pane_in_mode,#[fg=white#,bg=red],#[fg=red#,bg=white]}#W .
+.Ed
 .Pp
 Comparisons may be expressed by prefixing two comma-separated
 alternatives by
