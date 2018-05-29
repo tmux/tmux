@@ -1042,8 +1042,18 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 		*ptr = '\0';
 
 		found = format_find(ft, copy + 1, modifiers);
-		if (found == NULL)
+		if (found == NULL) {
+			/*
+			 * If the conditional not found, try to expand it. If
+			 * the expansion doesn't have any effect, then assume
+			 * false.
+			 */
 			found = format_expand(ft, copy + 1);
+			if (strcmp(found, copy + 1) == 0) {
+				free(found);
+				found = xstrdup("");
+			}
+		}
 		if (format_choose(ptr + 1, &left, &right) != 0)
 			goto fail;
 
@@ -1098,8 +1108,8 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 		value = new;
 	}
 
-	/* Expand the buffer and copy in the value. */
 done:
+	/* Expand the buffer and copy in the value. */
 	valuelen = strlen(value);
 	while (*len - *off < valuelen + 1) {
 		*buf = xreallocarray(*buf, 2, *len);
