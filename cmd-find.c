@@ -111,7 +111,7 @@ cmd_find_inside_pane(struct client *c)
 		return (NULL);
 
 	RB_FOREACH(wp, window_pane_tree, &all_window_panes) {
-		if (strcmp(wp->tty, c->ttyname) == 0)
+		if (wp->fd != -1 && strcmp(wp->tty, c->ttyname) == 0)
 			break;
 	}
 	if (wp != NULL)
@@ -222,7 +222,7 @@ fail:
 }
 
 /*
- * Find the best winlink for a window (the current if it contains the pane,
+ * Find the best winlink for a window (the current if it contains the window,
  * otherwise the first).
  */
 static int
@@ -918,6 +918,10 @@ cmd_find_from_client(struct cmd_find_state *fs, struct client *c, int flags)
 
 			cmd_find_log_state(__func__, fs);
 			return (0);
+		}
+		else {
+			log_debug("%s: session $%u does not have pane %%%u",
+			    __func__, s->id, wp->id);
 		}
 	}
 
