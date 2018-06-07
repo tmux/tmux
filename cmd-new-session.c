@@ -202,17 +202,29 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 		sy = 24;
 	}
 	if ((is_control || detached) && args_has(args, 'x')) {
-		sx = strtonum(args_get(args, 'x'), 1, USHRT_MAX, &errstr);
-		if (errstr != NULL) {
-			cmdq_error(item, "width %s", errstr);
-			goto error;
+		const char *p = args_get(args, 'x');
+
+		if (strcmp(p, "-") == 0)
+			sx = c->tty.sx;
+		else {
+			sx = strtonum(p, 1, USHRT_MAX, &errstr);
+			if (errstr != NULL) {
+				cmdq_error(item, "width %s", errstr);
+				goto error;
+			}
 		}
 	}
 	if ((is_control || detached) && args_has(args, 'y')) {
-		sy = strtonum(args_get(args, 'y'), 1, USHRT_MAX, &errstr);
-		if (errstr != NULL) {
-			cmdq_error(item, "height %s", errstr);
-			goto error;
+		const char *p = args_get(args, 'y');
+
+		if (strcmp(p, "-") == 0)
+			sy = c->tty.sy;
+		else {
+			sy = strtonum(p, 1, USHRT_MAX, &errstr);
+			if (errstr != NULL) {
+				cmdq_error(item, "height %s", errstr);
+				goto error;
+			}
 		}
 	}
 	if (sx == 0)
