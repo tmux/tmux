@@ -127,6 +127,49 @@ layout_print_cell(struct layout_cell *lc, const char *hdr, u_int n)
 	}
 }
 
+struct layout_cell *layout_search_by_border(struct layout_cell *lc,
+    u_int x, u_int y)
+{
+	struct layout_cell	*lcchild;
+	struct layout_cell	*prev_lcchild = NULL;
+
+	TAILQ_FOREACH(lcchild, &lc->cells, entry) {
+		if (x >= lcchild->xoff && x < lcchild->xoff + lcchild->sx &&
+		    y >= lcchild->yoff && y < lcchild->yoff + lcchild->sy) {
+			/* Falls within the layout, recurse */
+			return layout_search_by_border(lcchild, x, y);
+		}
+
+		if (prev_lcchild == NULL) {
+			prev_lcchild = lcchild;
+			continue;
+		}
+
+		switch (lc->type) {
+		case LAYOUT_LEFTRIGHT: {
+			if (x < lcchild->xoff &&
+			    x >= prev_lcchild->xoff + prev_lcchild->sx)
+				return prev_lcchild;
+
+			break;
+		}
+		case LAYOUT_TOPBOTTOM: {
+			if (y < lcchild->yoff &&
+			    y >= prev_lcchild->yoff + prev_lcchild->sy)
+				return prev_lcchild;
+
+			break;
+		}
+		case LAYOUT_WINDOWPANE:
+			break;
+		}
+
+		prev_lcchild = lcchild;
+	}
+
+	return NULL;
+}
+
 void
 layout_set_size(struct layout_cell *lc, u_int sx, u_int sy, u_int xoff,
     u_int yoff)
@@ -550,29 +593,11 @@ layout_resize_pane_to(struct window_pane *wp, enum layout_type type,
 	layout_resize_pane(wp, type, change, 1);
 }
 
-/* Resize a single pane within the layout. */
 void
-layout_resize_pane(struct window_pane *wp, enum layout_type type, int change,
-    int opposite)
+layout_resize_layout(struct window *w, struct layout_cell *lc,
+    enum layout_type type, int change, int opposite)
 {
-	struct window		*w = wp->window;
-	struct layout_cell	*lc, *lcparent;
 	int			 needed, size;
-
-	lc = wp->layout_cell;
-
-	/* Find next parent of the same type. */
-	lcparent = lc->parent;
-	while (lcparent != NULL && lcparent->type != type) {
-		lc = lcparent;
-		lcparent = lc->parent;
-	}
-	if (lcparent == NULL)
-		return;
-
-	/* If this is the last cell, move back one. */
-	if (lc == TAILQ_LAST(&lcparent->cells, layout_cells))
-		lc = TAILQ_PREV(lc, layout_cells, entry);
 
 	/* Grow or shrink the cell. */
 	needed = change;
@@ -591,9 +616,34 @@ layout_resize_pane(struct window_pane *wp, enum layout_type type, int change,
 	}
 
 	/* Fix cell offsets. */
-	layout_fix_offsets(wp->window->layout_root);
-	layout_fix_panes(wp->window, wp->window->sx, wp->window->sy);
-	notify_window("window-layout-changed", wp->window);
+	layout_fix_offsets(w->layout_root);
+	layout_fix_panes(w, w->sx, w->sy);
+	notify_window("window-layout-changed", w);
+}
+
+/* Resize a single pane within the layout. */
+void
+layout_resize_pane(struct window_pane *wp, enum layout_type type, int change,
+    int opposite)
+{
+	struct layout_cell	*lc, *lcparent;
+
+	lc = wp->layout_cell;
+
+	/* Find next parent of the same type. */
+	lcparent = lc->parent;
+	while (lcparent != NULL && lcparent->type != type) {
+		lc = lcparent;
+		lcparent = lc->parent;
+	}
+	if (lcparent == NULL)
+		return;
+
+	/* If this is the last cell, move back one. */
+	if (lc == TAILQ_LAST(&lcparent->cells, layout_cells))
+		lc = TAILQ_PREV(lc, layout_cells, entry);
+
+	layout_resize_layout(wp->window, lc, type, change, opposite);
 }
 
 /* Helper function to grow pane. */
