@@ -2203,6 +2203,9 @@ void		 layout_free_cell(struct layout_cell *);
 void		 layout_print_cell(struct layout_cell *, const char *, u_int);
 void		 layout_destroy_cell(struct window *, struct layout_cell *,
 		     struct layout_cell **);
+void		 layout_resize_layout(struct window *, struct layout_cell *,
+		     enum layout_type, int, int);
+struct layout_cell *layout_search_by_border(struct layout_cell *, u_int, u_int);
 void		 layout_set_size(struct layout_cell *, u_int, u_int, u_int,
 		     u_int);
 void		 layout_make_leaf(struct layout_cell *, struct window_pane *);
