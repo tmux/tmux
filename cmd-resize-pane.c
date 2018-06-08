@@ -129,8 +129,8 @@ static void
 cmd_resize_pane_mouse_update(struct client *c, struct mouse_event *m)
 {
 	struct winlink		*wl;
-	struct window_pane	*loop, *wp_x, *wp_y;
-	u_int			 y, ly, x, lx, sx, sy, ex, ey;
+	u_int			 y, ly, x, lx;
+	struct layout_cell	*lc;
 
 	wl = cmd_mouse_window(m, NULL);
 	if (wl == NULL) {
@@ -149,37 +149,20 @@ cmd_resize_pane_mouse_update(struct client *c, struct mouse_event *m)
 	else if (m->statusat > 0 && ly >= (u_int)m->statusat)
 		ly = m->statusat - 1;
 
-	wp_x = wp_y = NULL;
-	TAILQ_FOREACH(loop, &wl->window->panes, entry) {
-		if (!window_pane_visible(loop))
-			continue;
-
-		sx = loop->xoff;
-		if (sx != 0)
-			sx--;
-		ex = loop->xoff + loop->sx;
-
-		sy = loop->yoff;
-		if (sy != 0)
-			sy--;
-		ey = loop->yoff + loop->sy;
-
-		if ((lx == sx || lx == ex) &&
-		    (ly >= sy && ly <= ey) &&
-		    (wp_x == NULL || loop->sy > wp_x->sy))
-			wp_x = loop;
-		if ((ly == sy || ly == ey) &&
-		    (lx >= sx && lx <= ex) &&
-		    (wp_y == NULL || loop->sx > wp_y->sx))
-			wp_y = loop;
-	}
-	if (wp_x == NULL && wp_y == NULL) {
-		c->tty.mouse_drag_update = NULL;
+	lc = layout_search_by_border(wl->window->layout_root, lx, ly);
+	if (!lc) {
 		return;
 	}
-	if (wp_x != NULL)
-		layout_resize_pane(wp_x, LAYOUT_LEFTRIGHT, x - lx, 0);
-	if (wp_y != NULL)
-		layout_resize_pane(wp_y, LAYOUT_TOPBOTTOM, y - ly, 0);
+
+	if (y != ly && lc->parent->type == LAYOUT_TOPBOTTOM)
+		layout_resize_layout(wl->window, lc, LAYOUT_TOPBOTTOM, y - ly,
+				     0);
+	else if (x != lx && lc->parent->type == LAYOUT_LEFTRIGHT)
+		layout_resize_layout(wl->window, lc, LAYOUT_LEFTRIGHT, x - lx,
+				     0);
+	else {
+		return;
+	}
+
 	server_redraw_window(wl->window);
 }
