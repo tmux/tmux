@@ -131,7 +131,12 @@ cmd_resize_pane_mouse_update(struct client *c, struct mouse_event *m)
 	struct winlink		*wl;
 	struct window		*w;
 	u_int			 y, ly, x, lx;
-	struct layout_cell	*lc;
+	struct layout_cell	*cells[5], *lc;
+	u_int			 ncells = 0, i, j, resizes = 0;
+	enum layout_type	 type;
+	static const int         offsets[nitems(cells)][2] = {
+	    { 0, 0 }, { 0, 1 }, { 1, 0 }, { 0, -1 }, { -1, 0 },
+	};
 
 	wl = cmd_mouse_window(m, NULL);
 	if (wl == NULL) {
@@ -151,16 +156,37 @@ cmd_resize_pane_mouse_update(struct client *c, struct mouse_event *m)
 	else if (m->statusat > 0 && ly >= (u_int)m->statusat)
 		ly = m->statusat - 1;
 
-	lc = layout_search_by_border(w->layout_root, lx, ly);
-	if (lc == NULL)
+	for (i = 0; i < nitems(cells); i++) {
+		lc = layout_search_by_border(w->layout_root, lx + offsets[i][0],
+		    ly + offsets[i][1]);
+		if (lc == NULL)
+			continue;
+
+		for (j = 0; j < ncells; j++) {
+			if (cells[j] == lc) {
+				lc = NULL;
+				break;
+			}
+		}
+		if (lc == NULL)
+			continue;
+
+		cells[ncells] = lc;
+		ncells++;
+	}
+	if (ncells == 0)
 		return;
 
-	if (y != ly && lc->parent->type == LAYOUT_TOPBOTTOM)
-		layout_resize_layout(w, lc, LAYOUT_TOPBOTTOM, y - ly, 0);
-	else if (x != lx && lc->parent->type == LAYOUT_LEFTRIGHT)
-		layout_resize_layout(w, lc, LAYOUT_LEFTRIGHT, x - lx, 0);
-	else
-		return;
-
-	server_redraw_window(w);
+	for (i = 0; i < ncells; i++) {
+		type = cells[i]->parent->type;
+		if (y != ly && type == LAYOUT_TOPBOTTOM) {
+			layout_resize_layout(w, cells[i], type, y - ly, 0);
+			resizes++;
+		} else if (x != lx && type == LAYOUT_LEFTRIGHT) {
+			layout_resize_layout(w, cells[i], type, x - lx, 0);
+			resizes++;
+		}
+	}
+	if (resizes != 0)
+		server_redraw_window(w);
 }
