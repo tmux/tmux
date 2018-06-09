@@ -125,13 +125,19 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 	return (CMD_RETURN_NORMAL);
 }
 
+#define MAX_CELLS_IN_RESIZE 5
+
 static void
 cmd_resize_pane_mouse_update(struct client *c, struct mouse_event *m)
 {
 	struct winlink		*wl;
 	struct window		*w;
 	u_int			 y, ly, x, lx;
-	struct layout_cell	*lc;
+	struct layout_cell	*lc_arr[MAX_CELLS_IN_RESIZE], *lc;
+	u_int			nr_cells = 0, i, j, resizes = 0;
+	static const int        offsets[MAX_CELLS_IN_RESIZE][2] = {
+	    {0, 0}, {0, 1}, {1, 0}, {0, -1}, {-1, 0},
+	};
 
 	wl = cmd_mouse_window(m, NULL);
 	if (wl == NULL) {
@@ -151,15 +157,42 @@ cmd_resize_pane_mouse_update(struct client *c, struct mouse_event *m)
 	else if (m->statusat > 0 && ly >= (u_int)m->statusat)
 		ly = m->statusat - 1;
 
-	lc = layout_search_by_border(w->layout_root, lx, ly);
-	if (lc == NULL)
+	for (i = 0; i < MAX_CELLS_IN_RESIZE; i++) {
+		lc = layout_search_by_border(w->layout_root,
+		       lx + offsets[i][0],
+		       ly + offsets[i][1]);
+		if (!lc)
+			continue;
+
+		for (j = 0; j < nr_cells; j++)
+			if (lc_arr[j] == lc) {
+				lc = NULL;
+				break;
+			}
+		if (!lc)
+			continue;
+
+		lc_arr[nr_cells] = lc;
+		nr_cells++;
+	}
+
+	if (nr_cells == 0)
 		return;
 
-	if (y != ly && lc->parent->type == LAYOUT_TOPBOTTOM)
-		layout_resize_layout(w, lc, LAYOUT_TOPBOTTOM, y - ly, 0);
-	else if (x != lx && lc->parent->type == LAYOUT_LEFTRIGHT)
-		layout_resize_layout(w, lc, LAYOUT_LEFTRIGHT, x - lx, 0);
-	else
+	for (i = 0; i < nr_cells; i++) {
+		lc = lc_arr[i];
+		if (y != ly && lc->parent->type == LAYOUT_TOPBOTTOM) {
+			layout_resize_layout(w, lc, LAYOUT_TOPBOTTOM, y - ly,
+					     0);
+			resizes++;
+		} else if (x != lx && lc->parent->type == LAYOUT_LEFTRIGHT) {
+			layout_resize_layout(w, lc, LAYOUT_LEFTRIGHT, x - lx,
+					     0);
+			resizes++;
+		}
+	}
+
+	if (resizes == 0)
 		return;
 
 	server_redraw_window(w);
