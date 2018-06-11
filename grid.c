@@ -984,9 +984,9 @@ static void
 grid_reflow_join(struct grid *target, struct grid *gd, u_int sx, u_int yy,
     u_int width, u_int *cy, int already)
 {
-	struct grid_line	*gl, *from;
+	struct grid_line	*gl, *from = NULL;
 	struct grid_cell	 gc;
-	u_int			 lines, want, left, i, to, line;
+	u_int			 lines, left, i, to, line, want = 0;
 	u_int			 at;
 	int			 wrapped = 1;
 
