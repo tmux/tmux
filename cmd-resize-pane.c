@@ -129,14 +129,21 @@ static void
 cmd_resize_pane_mouse_update(struct client *c, struct mouse_event *m)
 {
 	struct winlink		*wl;
-	struct window_pane	*loop, *wp_x, *wp_y;
-	u_int			 y, ly, x, lx, sx, sy, ex, ey;
+	struct window		*w;
+	u_int			 y, ly, x, lx;
+	struct layout_cell	*cells[5], *lc;
+	u_int			 ncells = 0, i, j, resizes = 0;
+	enum layout_type	 type;
+	static const int         offsets[nitems(cells)][2] = {
+	    { 0, 0 }, { 0, 1 }, { 1, 0 }, { 0, -1 }, { -1, 0 },
+	};
 
 	wl = cmd_mouse_window(m, NULL);
 	if (wl == NULL) {
 		c->tty.mouse_drag_update = NULL;
 		return;
 	}
+	w = wl->window;
 
 	y = m->y; x = m->x;
 	if (m->statusat == 0 && y > 0)
@@ -149,37 +156,37 @@ cmd_resize_pane_mouse_update(struct client *c, struct mouse_event *m)
 	else if (m->statusat > 0 && ly >= (u_int)m->statusat)
 		ly = m->statusat - 1;
 
-	wp_x = wp_y = NULL;
-	TAILQ_FOREACH(loop, &wl->window->panes, entry) {
-		if (!window_pane_visible(loop))
+	for (i = 0; i < nitems(cells); i++) {
+		lc = layout_search_by_border(w->layout_root, lx + offsets[i][0],
+		    ly + offsets[i][1]);
+		if (lc == NULL)
 			continue;
 
-		sx = loop->xoff;
-		if (sx != 0)
-			sx--;
-		ex = loop->xoff + loop->sx;
+		for (j = 0; j < ncells; j++) {
+			if (cells[j] == lc) {
+				lc = NULL;
+				break;
+			}
+		}
+		if (lc == NULL)
+			continue;
 
-		sy = loop->yoff;
-		if (sy != 0)
-			sy--;
-		ey = loop->yoff + loop->sy;
-
-		if ((lx == sx || lx == ex) &&
-		    (ly >= sy && ly <= ey) &&
-		    (wp_x == NULL || loop->sy > wp_x->sy))
-			wp_x = loop;
-		if ((ly == sy || ly == ey) &&
-		    (lx >= sx && lx <= ex) &&
-		    (wp_y == NULL || loop->sx > wp_y->sx))
-			wp_y = loop;
+		cells[ncells] = lc;
+		ncells++;
 	}
-	if (wp_x == NULL && wp_y == NULL) {
-		c->tty.mouse_drag_update = NULL;
+	if (ncells == 0)
 		return;
+
+	for (i = 0; i < ncells; i++) {
+		type = cells[i]->parent->type;
+		if (y != ly && type == LAYOUT_TOPBOTTOM) {
+			layout_resize_layout(w, cells[i], type, y - ly, 0);
+			resizes++;
+		} else if (x != lx && type == LAYOUT_LEFTRIGHT) {
+			layout_resize_layout(w, cells[i], type, x - lx, 0);
+			resizes++;
+		}
 	}
-	if (wp_x != NULL)
-		layout_resize_pane(wp_x, LAYOUT_LEFTRIGHT, x - lx, 0);
-	if (wp_y != NULL)
-		layout_resize_pane(wp_y, LAYOUT_TOPBOTTOM, y - ly, 0);
-	server_redraw_window(wl->window);
+	if (resizes != 0)
+		server_redraw_window(w);
 }
