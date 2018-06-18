@@ -131,12 +131,13 @@ cmd_resize_pane_mouse_update(struct client *c, struct mouse_event *m)
 	struct winlink		*wl;
 	struct window		*w;
 	u_int			 y, ly, x, lx;
-	struct layout_cell	*cells[5], *lc;
-	u_int			 ncells = 0, i, j, resizes = 0;
-	enum layout_type	 type;
-	static const int         offsets[nitems(cells)][2] = {
+	static const int         offsets[][2] = {
 	    { 0, 0 }, { 0, 1 }, { 1, 0 }, { 0, -1 }, { -1, 0 },
 	};
+	struct layout_cell	*cells[nitems(cells)], *lc;
+	u_int			 ncells = 0, i, j, resizes = 0;
+	enum layout_type	 type;
+
 
 	wl = cmd_mouse_window(m, NULL);
 	if (wl == NULL) {
