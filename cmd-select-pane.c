@@ -69,6 +69,11 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (self->entry == &cmd_last_pane_entry || args_has(args, 'l')) {
 		lastwp = w->last;
+		if (lastwp == NULL && window_count_panes(w) == 2) {
+			lastwp = TAILQ_PREV(w->active, window_panes, entry);
+			if (lastwp == NULL)
+				lastwp = TAILQ_NEXT(w->active, entry);
+		}
 		if (lastwp == NULL) {
 			cmdq_error(item, "no last pane");
 			return (CMD_RETURN_ERROR);
