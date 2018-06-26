@@ -3,6 +3,7 @@
 *.diff
 *.patch
 *.core
+*.log
 core
 tags
 .deps/
