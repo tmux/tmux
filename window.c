@@ -806,6 +806,10 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	wp = xcalloc(1, sizeof *wp);
 	wp->window = w;
 
+	if (next_window_pane_id == 0) {
+		next_window_pane_id = \
+				options_get_number(w->options, "pane-base-index");
+	}
 	wp->id = next_window_pane_id++;
 	RB_INSERT(window_pane_tree, &all_window_panes, wp);
 
