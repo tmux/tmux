@@ -919,8 +919,7 @@ cmd_find_from_client(struct cmd_find_state *fs, struct client *c, int flags)
 
 			cmd_find_log_state(__func__, fs);
 			return (0);
-		}
-		else {
+		} else {
 			log_debug("%s: session $%u does not have pane %%%u",
 			    __func__, s->id, wp->id);
 		}
