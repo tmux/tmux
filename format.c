@@ -19,6 +19,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+#include <ctype.h>
 #include <errno.h>
 #include <fnmatch.h>
 #include <libgen.h>
@@ -907,7 +908,7 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
     char **buf, size_t *len, size_t *off)
 {
 	struct window_pane	*wp = ft->wp;
-	char			*copy, *copy0, *endptr, *ptr, *found, *new;
+	char			*copy, *copy0, *endptr, *ptr, *found, *new, sep;
 	char			*value, *from = NULL, *to = NULL, *left, *right;
 	size_t			 valuelen, newlen, fromlen, tolen, used;
 	long			 limit = 0;
@@ -991,20 +992,21 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 		copy += 2;
 		break;
 	case 's':
-		if (copy[1] != '/')
+		sep = copy[1];
+		if (sep == ':' || !ispunct((u_char)sep))
 			break;
 		from = copy + 2;
-		for (copy = from; *copy != '\0' && *copy != '/'; copy++)
+		for (copy = from; *copy != '\0' && *copy != sep; copy++)
 			/* nothing */;
-		if (copy[0] != '/' || copy == from) {
+		if (copy[0] != sep || copy == from) {
 			copy = copy0;
 			break;
 		}
 		copy[0] = '\0';
 		to = copy + 1;
-		for (copy = to; *copy != '\0' && *copy != '/'; copy++)
+		for (copy = to; *copy != '\0' && *copy != sep; copy++)
 			/* nothing */;
-		if (copy[0] != '/' || copy[1] != ':') {
+		if (copy[0] != sep || copy[1] != ':') {
 			copy = copy0;
 			break;
 		}
