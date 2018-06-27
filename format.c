@@ -19,6 +19,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+#include <ctype.h>
 #include <errno.h>
 #include <fnmatch.h>
 #include <libgen.h>
@@ -993,7 +994,7 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 		break;
 	case 's':
 		sep = copy[1];
-		if (sep == ':')
+		if (sep == ':' || !ispunct((u_char)sep))
 			break;
 		from = copy + 2;
 		for (copy = from; *copy != '\0' && *copy != sep; copy++)
