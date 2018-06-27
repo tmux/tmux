@@ -909,6 +909,7 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 	struct window_pane	*wp = ft->wp;
 	char			*copy, *copy0, *endptr, *ptr, *found, *new;
 	char			*value, *from = NULL, *to = NULL, *left, *right;
+	char			 sep;
 	size_t			 valuelen, newlen, fromlen, tolen, used;
 	long			 limit = 0;
 	int			 modifiers = 0, compare = 0, search = 0;
@@ -991,20 +992,21 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 		copy += 2;
 		break;
 	case 's':
-		if (copy[1] != '/')
+		sep = copy[1];
+		if (sep == ':')
 			break;
 		from = copy + 2;
-		for (copy = from; *copy != '\0' && *copy != '/'; copy++)
+		for (copy = from; *copy != '\0' && *copy != sep; copy++)
 			/* nothing */;
-		if (copy[0] != '/' || copy == from) {
+		if (copy[0] != sep || copy == from) {
 			copy = copy0;
 			break;
 		}
 		copy[0] = '\0';
 		to = copy + 1;
-		for (copy = to; *copy != '\0' && *copy != '/'; copy++)
+		for (copy = to; *copy != '\0' && *copy != sep; copy++)
 			/* nothing */;
-		if (copy[0] != '/' || copy[1] != ':') {
+		if (copy[0] != sep || copy[1] != ':') {
 			copy = copy0;
 			break;
 		}
