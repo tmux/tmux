@@ -136,6 +136,7 @@ cmd_select_layout_exec(struct cmd *self, struct cmdq_item *item)
 changed:
 	free(oldlayout);
 	server_redraw_window(w);
+	notify_window("window-layout-changed", w);
 	return (CMD_RETURN_NORMAL);
 
 error:
