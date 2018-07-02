@@ -610,7 +610,16 @@ case "$host_os" in
 	*solaris*)
 		AC_MSG_RESULT(sunos)
 		PLATFORM=sunos
-		MANFORMAT=man
+		case `/usr/bin/nroff --version 2>&1` in
+			*GNU*)
+				# Solaris 11.4 and later use GNU groff.
+				MANFORMAT=mdoc
+				;;
+			*)
+				# Solaris 2.0 to 11.3 use AT&T nroff.
+				MANFORMAT=man
+				;;
+		esac
 		;;
 	*hpux*)
 		AC_MSG_RESULT(hpux)
