@@ -1148,10 +1148,6 @@ server_client_check_focus(struct window_pane *wp)
 	push = wp->flags & PANE_FOCUSPUSH;
 	wp->flags &= ~PANE_FOCUSPUSH;
 
-	/* If we don't care about focus, forget it. */
-	if (!(wp->base.mode & MODE_FOCUSON))
-		return;
-
 	/* If we're not the active pane in our window, we're not focused. */
 	if (wp->window->active != wp)
 		goto not_focused;
@@ -1175,14 +1171,20 @@ server_client_check_focus(struct window_pane *wp)
 	}
 
 not_focused:
-	if (push || (wp->flags & PANE_FOCUSED))
-		bufferevent_write(wp->event, "\033[O", 3);
+	if (push || (wp->flags & PANE_FOCUSED)) {
+		if (wp->base.mode & MODE_FOCUSON)
+			bufferevent_write(wp->event, "\033[O", 3);
+		notify_pane("pane-focus-out", wp);
+	}
 	wp->flags &= ~PANE_FOCUSED;
 	return;
 
 focused:
-	if (push || !(wp->flags & PANE_FOCUSED))
-		bufferevent_write(wp->event, "\033[I", 3);
+	if (push || !(wp->flags & PANE_FOCUSED)) {
+		if (wp->base.mode & MODE_FOCUSON)
+			bufferevent_write(wp->event, "\033[I", 3);
+		notify_pane("pane-focus-in", wp);
+	}
 	wp->flags |= PANE_FOCUSED;
 }
 
