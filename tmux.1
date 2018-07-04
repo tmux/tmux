@@ -3452,12 +3452,14 @@ Run when a window is unlinked from a session.
 Hooks are managed with these commands:
 .Bl -tag -width Ds
 .It Xo Ic set-hook
-.Op Fl gu
+.Op Fl gRu
 .Op Fl t Ar target-session
 .Ar hook-name
 .Ar command
 .Xc
-Sets (or with
+Without
+.Fl R,
+sets (or with
 .Fl u
 unsets) hook
 .Ar hook-name
@@ -3473,6 +3475,12 @@ hooks (for
 with
 .Fl t ) .
 Like options, session hooks inherit from the global ones.
+.Pp
+With
+.Fl R ,
+run
+.Ar hook-name
+immediately.
 .It Xo Ic show-hooks
 .Op Fl g
 .Op Fl t Ar target-session
