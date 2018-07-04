@@ -280,9 +280,8 @@ screen_resize_y(struct screen *s, u_int sy)
 		s->cy -= needed;
 	}
 
-	/* Resize line arrays. */
-	gd->linedata = xreallocarray(gd->linedata, gd->hsize + sy,
-	    sizeof *gd->linedata);
+	/* Resize line array. */
+	grid_adjust_lines(gd, gd->hsize + sy);
 
 	/* Size increasing. */
 	if (sy > oldy) {
@@ -305,7 +304,7 @@ screen_resize_y(struct screen *s, u_int sy)
 
 		/* Then fill the rest in with blanks. */
 		for (i = gd->hsize + sy - needed; i < gd->hsize + sy; i++)
-			memset(&gd->linedata[i], 0, sizeof gd->linedata[i]);
+			memset(grid_get_line(gd, i), 0, sizeof(struct grid_line));
 	}
 
 	/* Set the new size, and reset the scroll region. */

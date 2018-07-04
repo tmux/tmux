@@ -913,6 +913,7 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 	int			 flags, cleared = 0;
 	char			 buf[512];
 	size_t			 len, old_len;
+	u_int			 cellsize;
 
 	flags = (tty->flags & TTY_NOCURSOR);
 	tty->flags |= TTY_NOCURSOR;
@@ -926,15 +927,17 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 	 * there may be empty background cells after it (from BCE).
 	 */
 	sx = screen_size_x(s);
-	if (sx > gd->linedata[gd->hsize + py].cellsize)
-		sx = gd->linedata[gd->hsize + py].cellsize;
+
+	cellsize = grid_get_line(gd, gd->hsize + py)->cellsize;
+	if (sx > cellsize)
+		sx = cellsize;
 	if (sx > tty->sx)
 		sx = tty->sx;
 	ux = 0;
 
 	if (wp == NULL ||
 	    py == 0 ||
-	    (~gd->linedata[gd->hsize + py - 1].flags & GRID_LINE_WRAPPED) ||
+	    (~grid_get_line(gd, gd->hsize + py - 1)->flags & GRID_LINE_WRAPPED) ||
 	    ox != 0 ||
 	    tty->cx < tty->sx ||
 	    screen_size_x(s) < tty->sx) {
