@@ -3427,6 +3427,14 @@ Run when the program running in a pane exits, but
 is on so the pane has not closed.
 .It pane-exited
 Run when the program running in a pane exits.
+.It pane-focus-in
+Run when the focus enters a pane, if the
+.Ic focus-events
+option is on.
+.It pane-focus-out
+Run when the focus exits a pane, if the
+.Ic focus-events
+option is on.
 .It pane-set-clipboard
 Run when the terminal clipboard is set using the
 .Xr xterm 1
@@ -3448,12 +3456,14 @@ Run when a window is unlinked from a session.
 Hooks are managed with these commands:
 .Bl -tag -width Ds
 .It Xo Ic set-hook
-.Op Fl gu
+.Op Fl gRu
 .Op Fl t Ar target-session
 .Ar hook-name
 .Ar command
 .Xc
-Sets (or with
+Without
+.Fl R ,
+sets (or with
 .Fl u
 unsets) hook
 .Ar hook-name
@@ -3469,6 +3479,12 @@ hooks (for
 with
 .Fl t ) .
 Like options, session hooks inherit from the global ones.
+.Pp
+With
+.Fl R ,
+run
+.Ar hook-name
+immediately.
 .It Xo Ic show-hooks
 .Op Fl g
 .Op Fl t Ar target-session

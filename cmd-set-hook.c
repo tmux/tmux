@@ -33,8 +33,8 @@ const struct cmd_entry cmd_set_hook_entry = {
 	.name = "set-hook",
 	.alias = NULL,
 
-	.args = { "gt:u", 1, 2 },
-	.usage = "[-gu] " CMD_TARGET_SESSION_USAGE " hook-name [command]",
+	.args = { "gRt:u", 1, 2 },
+	.usage = "[-gRu] " CMD_TARGET_SESSION_USAGE " hook-name [command]",
 
 	.target = { 't', CMD_FIND_SESSION, CMD_FIND_CANFAIL },
 
@@ -101,18 +101,21 @@ cmd_set_hook_exec(struct cmd *self, struct cmdq_item *item)
 	else
 		cmd = args->argv[1];
 
+	if (cmd != NULL && (args_has(args, 'R') || args_has(args, 'u'))) {
+		cmdq_error(item, "no command allowed");
+		return (CMD_RETURN_ERROR);
+	}
+	if (args_has(args, 'R')) {
+		notify_hook(item, name);
+		return (CMD_RETURN_NORMAL);
+	}
 	if (args_has(args, 'u')) {
-		if (cmd != NULL) {
-			cmdq_error(item, "command passed to unset hook: %s",
-			    name);
-			return (CMD_RETURN_ERROR);
-		}
 		hooks_remove(hooks, name);
 		return (CMD_RETURN_NORMAL);
 	}
 
 	if (cmd == NULL) {
-		cmdq_error(item, "no command to set hook: %s", name);
+		cmdq_error(item, "no command given");
 		return (CMD_RETURN_ERROR);
 	}
 	cmdlist = cmd_string_parse(cmd, NULL, 0, &cause);
