@@ -64,7 +64,7 @@ grid_view_clear_history(struct grid *gd, u_int bg)
 	/* Find the last used line. */
 	last = 0;
 	for (yy = 0; yy < gd->sy; yy++) {
-		gl = &gd->linedata[grid_view_y(gd, yy)];
+		gl = grid_get_line(gd, grid_view_y(gd, yy));
 		if (gl->cellused != 0)
 			last = yy + 1;
 	}

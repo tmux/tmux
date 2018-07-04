@@ -2006,6 +2006,8 @@ char	*grid_string_cells(struct grid *, u_int, u_int, u_int,
 void	 grid_duplicate_lines(struct grid *, u_int, struct grid *, u_int,
 	     u_int);
 void	 grid_reflow(struct grid *, u_int, u_int *);
+struct grid_line *grid_get_line(struct grid *, u_int);
+void	 grid_adjust_lines(struct grid *, u_int);
 
 /* grid-view.c */
 void	 grid_view_get_cell(struct grid *, u_int, u_int, struct grid_cell *);

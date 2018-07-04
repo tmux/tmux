@@ -1755,7 +1755,7 @@ window_copy_copy_line(struct window_pane *wp, char **buf, size_t *off, u_int sy,
 	 * Work out if the line was wrapped at the screen edge and all of it is
 	 * on screen.
 	 */
-	gl = &gd->linedata[sy];
+	gl = grid_get_line(gd, sy);
 	if (gl->flags & GRID_LINE_WRAPPED && gl->cellsize <= gd->sx)
 		wrapped = 1;
 
@@ -1843,7 +1843,7 @@ window_copy_find_length(struct window_pane *wp, u_int py)
 	 * width of the grid, and screen_write_copy treats them as spaces, so
 	 * ignore them here too.
 	 */
-	px = s->grid->linedata[py].cellsize;
+	px = grid_get_line(s->grid, py)->cellsize;
 	if (px > screen_size_x(s))
 		px = screen_size_x(s);
 	while (px > 0) {
@@ -1867,7 +1867,7 @@ window_copy_cursor_start_of_line(struct window_pane *wp)
 	if (data->cx == 0 && s->sel.lineflag == LINE_SEL_NONE) {
 		py = screen_hsize(back_s) + data->cy - data->oy;
 		while (py > 0 &&
-		    gd->linedata[py-1].flags & GRID_LINE_WRAPPED) {
+		    grid_get_line(gd, py - 1)->flags & GRID_LINE_WRAPPED) {
 			window_copy_cursor_up(wp, 0);
 			py = screen_hsize(back_s) + data->cy - data->oy;
 		}
@@ -1907,6 +1907,7 @@ window_copy_cursor_end_of_line(struct window_pane *wp)
 	struct screen			*back_s = data->backing;
 	struct screen			*s = &data->screen;
 	struct grid			*gd = back_s->grid;
+	struct grid_line		*gl;
 	u_int				 px, py;
 
 	py = screen_hsize(back_s) + data->cy - data->oy;
@@ -1915,12 +1916,14 @@ window_copy_cursor_end_of_line(struct window_pane *wp)
 	if (data->cx == px && s->sel.lineflag == LINE_SEL_NONE) {
 		if (data->screen.sel.flag && data->rectflag)
 			px = screen_size_x(back_s);
-		if (gd->linedata[py].flags & GRID_LINE_WRAPPED) {
-			while (py < gd->sy + gd->hsize &&
-			    gd->linedata[py].flags & GRID_LINE_WRAPPED) {
+		gl = grid_get_line(gd, py);
+		if (gl->flags & GRID_LINE_WRAPPED) {
+			while (py < gd->sy + gd->hsize) {
+				gl = grid_get_line(gd, py);
+				if (~gl->flags & GRID_LINE_WRAPPED)
+					break;
 				window_copy_cursor_down(wp, 0);
-				py = screen_hsize(back_s)
-				     + data->cy - data->oy;
+				py = screen_hsize(back_s) + data->cy - data->oy;
 			}
 			px = window_copy_find_length(wp, py);
 		}
