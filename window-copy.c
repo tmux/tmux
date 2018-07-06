@@ -2447,6 +2447,7 @@ window_copy_add_formats(struct window_pane *wp, struct format_tree *ft)
 
 	format_add(ft, "selection_present", "%d", data->screen.sel.flag);
 	format_add(ft, "scroll_position", "%d", data->oy);
+	format_add(ft, "rectangle_toggle", "%d", data->rectflag);
 }
 
 static void
