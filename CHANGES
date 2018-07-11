@@ -1,5 +1,23 @@
 CHANGES FROM 2.7 to master
 
+* Add a rectangle_toggle format.
+
+* Add set-hook -R to run a hook immediately.
+
+* Add README.ja.
+
+* Allow any punctuation as separator for s/x/y not only /.
+
+* Improve resizing with the mouse (fix resizing the wrong pane in some
+  layouts, and allow resizing multiple panes at the same time).
+
+* Allow , and } to be escaped in formats as #, and #}.
+
+* Add KRB5CCNAME to update-environment.
+
+* Change meaning of -c to display-message so the client is used if it
+  matches the session given to -t.
+
 * Fixes to : form of SGR.
 
 * Add x and X to choose-tree to kill sessions, windows or panes.
