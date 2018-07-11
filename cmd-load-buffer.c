@@ -56,11 +56,14 @@ cmd_load_buffer_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = self->args;
 	struct cmd_load_buffer_data	*cdata;
-	struct client			*c = item->client;
+	struct client			*c = cmd_find_client(item, NULL, 1);
+	struct session			*s = item->target.s;
+	struct winlink			*wl = item->target.wl;
+	struct window_pane		*wp = item->target.wp;
 	FILE				*f;
-	const char			*path, *bufname;
+	const char			*bufname;
 	char				*pdata = NULL, *new_pdata, *cause;
-	char				*file;
+	char				*path, *file;
 	size_t				 psize;
 	int				 ch, error;
 
@@ -68,8 +71,11 @@ cmd_load_buffer_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'b'))
 		bufname = args_get(args, 'b');
 
-	path = args->argv[0];
+	path = format_single(item, args->argv[0], c, s, wl, wp);
 	if (strcmp(path, "-") == 0) {
+		free(path);
+		c = item->client;
+
 		cdata = xcalloc(1, sizeof *cdata);
 		cdata->item = item;
 
