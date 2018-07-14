@@ -394,6 +394,7 @@ server_destroy_session(struct session *s)
 {
 	struct client	*c;
 	struct session	*s_new;
+	const char	*default_table;
 
 	if (!options_get_number(s->options, "detach-on-destroy"))
 		s_new = server_next_session(s);
@@ -409,7 +410,8 @@ server_destroy_session(struct session *s)
 		} else {
 			c->last_session = NULL;
 			c->session = s_new;
-			server_client_set_key_table(c, NULL);
+			default_table = server_client_get_default_key_table(c);
+			server_client_set_key_table(c, default_table);
 			status_timer_start(c);
 			notify_client("client-session-changed", c);
 			session_update_activity(s_new, NULL);

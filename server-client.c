@@ -128,7 +128,7 @@ void
 server_client_set_key_table(struct client *c, const char *name)
 {
 	if (name == NULL)
-		name = server_client_get_key_table(c);
+		name = server_client_get_next_key_table(c);
 
 	key_bindings_unref_table(c->keytable);
 	c->keytable = key_bindings_get_table(name, 1);
@@ -137,7 +137,7 @@ server_client_set_key_table(struct client *c, const char *name)
 
 /* Get default key table. */
 const char *
-server_client_get_key_table(struct client *c)
+server_client_get_default_key_table(struct client *c)
 {
 	struct session	*s = c->session;
 	const char	*name;
@@ -151,11 +151,26 @@ server_client_get_key_table(struct client *c)
 	return (name);
 }
 
+/* Get next key table. */
+const char *
+server_client_get_next_key_table(struct client *c)
+{
+	struct key_table *current = c->keytable;
+	const char *default_table = server_client_get_default_key_table(c);
+
+	if (!key_bindings_has_next_table(current))
+		return default_table;
+	if (strcmp(current->name, default_table) == 0)
+		return default_table;
+	return current->next_table;
+}
+
 /* Is this table the default key table? */
 static int
 server_client_is_default_key_table(struct client *c, struct key_table *table)
 {
-	return (strcmp(table->name, server_client_get_key_table(c)) == 0);
+	const char *default_table = server_client_get_default_key_table(c);
+	return (strcmp(table->name, default_table) == 0);
 }
 
 /* Create a new client. */
@@ -972,6 +987,9 @@ retry:
 		key_bindings_unref_table(table);
 		return;
 	}
+
+	if (key_bindings_has_next_table(c->keytable))
+		return;
 
 	/*
 	 * No match in this table. If not in the root table or if repeating,

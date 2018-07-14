@@ -56,6 +56,7 @@ key_bindings_get_table(const char *name, int create)
 
 	table = xmalloc(sizeof *table);
 	table->name = xstrdup(name);
+	table->next_table = NULL;
 	RB_INIT(&table->key_bindings);
 
 	table->references = 1; /* one reference in key_tables */
@@ -81,6 +82,20 @@ key_bindings_unref_table(struct key_table *table)
 
 	free((void *)table->name);
 	free(table);
+}
+
+void
+key_bindings_set_next_table(const char *name, const char *next)
+{
+	struct key_table *table = key_bindings_get_table(name, 1);
+	table->next_table = xstrdup(next);
+}
+
+int
+key_bindings_has_next_table(struct key_table *table)
+{
+	return (table != NULL && table->next_table != NULL &&
+		*table->next_table != '\0');
 }
 
 void
@@ -139,6 +154,7 @@ key_bindings_remove_table(const char *name)
 {
 	struct key_table	*table;
 	struct client		*c;
+	const char		*default_table;
 
 	table = key_bindings_get_table(name, 0);
 	if (table != NULL) {
@@ -146,8 +162,10 @@ key_bindings_remove_table(const char *name)
 		key_bindings_unref_table(table);
 	}
 	TAILQ_FOREACH(c, &clients, entry) {
-		if (c->keytable == table)
-			server_client_set_key_table(c, NULL);
+		if (c->keytable == table) {
+			default_table = server_client_get_default_key_table(c);
+			server_client_set_key_table(c, default_table);
+		}
 	}
 }
 

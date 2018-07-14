@@ -75,6 +75,7 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	struct session_group	*sg;
 	const char		*errstr, *template, *group, *prefix;
 	const char		*path, *cmd, *tmp;
+	const char		*default_table;
 	char		       **argv, *cause, *cp, *newname, *cwd = NULL;
 	int			 detached, already_attached, idx, argc;
 	int			 is_control = 0;
@@ -311,8 +312,10 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 		} else if (c->session != NULL)
 			c->last_session = c->session;
 		c->session = s;
-		if (~item->shared->flags & CMDQ_SHARED_REPEAT)
-			server_client_set_key_table(c, NULL);
+		if (~item->shared->flags & CMDQ_SHARED_REPEAT) {
+			default_table = server_client_get_default_key_table(c);
+			server_client_set_key_table(c, default_table);
+		}
 		status_timer_start(c);
 		notify_client("client-session-changed", c);
 		session_update_activity(s, NULL);

@@ -58,6 +58,7 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 	struct winlink		*wl;
 	struct window_pane	*wp;
 	char			*cause;
+	const char		*default_table;
 
 	if (RB_EMPTY(&sessions)) {
 		cmdq_error(item, "no sessions");
@@ -113,8 +114,10 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 			environ_update(s->options, c->environ, s->environ);
 
 		c->session = s;
-		if (~item->shared->flags & CMDQ_SHARED_REPEAT)
-			server_client_set_key_table(c, NULL);
+		if (~item->shared->flags & CMDQ_SHARED_REPEAT) {
+			default_table = server_client_get_default_key_table(c);
+			server_client_set_key_table(c, default_table);
+		}
 		status_timer_start(c);
 		notify_client("client-session-changed", c);
 		session_update_activity(s, NULL);
@@ -141,7 +144,8 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 			environ_update(s->options, c->environ, s->environ);
 
 		c->session = s;
-		server_client_set_key_table(c, NULL);
+		default_table = server_client_get_default_key_table(c);
+		server_client_set_key_table(c, default_table);
 		status_timer_start(c);
 		notify_client("client-session-changed", c);
 		session_update_activity(s, NULL);
