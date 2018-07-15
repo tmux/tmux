@@ -103,7 +103,6 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	else
 		name = NULL;
 
-	wl = NULL;
 	if (idx != -1)
 		wl = winlink_find_by_index(&s->windows, idx);
 	if (wl != NULL && args_has(args, 'k')) {
