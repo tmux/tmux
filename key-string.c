@@ -166,9 +166,11 @@ key_string_lookup_string(const char *string)
 	enum utf8_state		 more;
 	wchar_t			 wc;
 
-	/* Is this no key? */
+	/* Is this no key or any key? */
 	if (strcasecmp(string, "None") == 0)
 		return (KEYC_NONE);
+	if (strcasecmp(string, "Any") == 0)
+		return (KEYC_ANY);
 
 	/* Is this a hexadecimal value? */
 	if (string[0] == '0' && string[1] == 'x') {
@@ -251,6 +253,8 @@ key_string_lookup_key(key_code key)
 	/* Handle special keys. */
 	if (key == KEYC_UNKNOWN)
 		return ("Unknown");
+	if (key == KEYC_ANY)
+		return ("Any");
 	if (key == KEYC_FOCUS_IN)
 		return ("FocusIn");
 	if (key == KEYC_FOCUS_OUT)

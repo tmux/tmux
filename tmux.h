@@ -140,6 +140,9 @@ enum {
 	KEYC_FOCUS_IN = KEYC_BASE,
 	KEYC_FOCUS_OUT,
 
+	/* "Any" key, used if not found in key table. */
+	KEYC_ANY,
+
 	/* Paste brackets. */
 	KEYC_PASTE_START,
 	KEYC_PASTE_END,

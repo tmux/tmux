@@ -905,8 +905,8 @@ server_client_handle_key(struct client *c, key_code key)
 	 * The prefix always takes precedence and forces a switch to the prefix
 	 * table, unless we are already there.
 	 */
-retry:
 	key0 = (key & ~KEYC_XTERM);
+retry:
 	if ((key0 == (key_code)options_get_number(s->options, "prefix") ||
 	    key0 == (key_code)options_get_number(s->options, "prefix2")) &&
 	    strcmp(table->name, "prefix") != 0) {
@@ -978,6 +978,10 @@ retry:
 	 * switch the client back to the root table and try again.
 	 */
 	log_debug("not found in key table %s", table->name);
+	if (key0 != KEYC_ANY) {
+		key0 = KEYC_ANY;
+		goto retry;
+	}
 	if (!server_client_is_default_key_table(c, table) ||
 	    (c->flags & CLIENT_REPEAT)) {
 		server_client_set_key_table(c, NULL);
