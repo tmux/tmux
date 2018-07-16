@@ -55,7 +55,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 	struct session		*s;
 	struct winlink		*wl;
 	struct window_pane	*wp;
-	const char		*tablename;
+	const char		*tablename, *default_table;
 	struct key_table	*table;
 
 	if ((c = cmd_find_client(item, args_get(args, 'c'), 0)) == NULL)
@@ -126,8 +126,10 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 	if (c->session != NULL && c->session != s)
 		c->last_session = c->session;
 	c->session = s;
-	if (~item->shared->flags & CMDQ_SHARED_REPEAT)
-		server_client_set_key_table(c, NULL);
+	if (~item->shared->flags & CMDQ_SHARED_REPEAT) {
+		default_table = server_client_get_default_key_table(c);
+		server_client_set_key_table(c, default_table);
+	}
 	status_timer_start(c);
 	notify_client("client-session-changed", c);
 	session_update_activity(s, NULL);

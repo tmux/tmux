@@ -1386,7 +1386,7 @@ format_defaults_client(struct format_tree *ft, struct client *c)
 	format_add(ft, "client_written", "%zu", c->written);
 	format_add(ft, "client_discarded", "%zu", c->discarded);
 
-	name = server_client_get_key_table(c);
+	name = server_client_get_default_key_table(c);
 	if (strcmp(c->keytable->name, name) == 0)
 		format_add(ft, "client_prefix", "%d", 0);
 	else

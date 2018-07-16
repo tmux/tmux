@@ -1451,6 +1451,7 @@ struct key_table {
 	struct key_bindings	 key_bindings;
 
 	u_int			 references;
+	const char		 *next_table;
 
 	RB_ENTRY(key_table)	 entry;
 };
@@ -1860,6 +1861,8 @@ int	 key_table_cmp(struct key_table *, struct key_table *);
 int	 key_bindings_cmp(struct key_binding *, struct key_binding *);
 struct key_table *key_bindings_get_table(const char *, int);
 void	 key_bindings_unref_table(struct key_table *);
+void	 key_bindings_set_next_table(const char *name, const char *next);
+int	 key_bindings_has_next_table(struct key_table *table);
 void	 key_bindings_add(const char *, key_code, int, struct cmd_list *);
 void	 key_bindings_remove(const char *, key_code);
 void	 key_bindings_remove_table(const char *);
@@ -1895,7 +1898,8 @@ u_int	 server_client_how_many(void);
 void	 server_client_set_identify(struct client *, u_int);
 void	 server_client_clear_identify(struct client *, struct window_pane *);
 void	 server_client_set_key_table(struct client *, const char *);
-const char *server_client_get_key_table(struct client *);
+const char *server_client_get_default_key_table(struct client *);
+const char * server_client_get_next_key_table(struct client *c);
 int	 server_client_check_nested(struct client *);
 void	 server_client_handle_key(struct client *, key_code);
 struct client *server_client_create(int);
