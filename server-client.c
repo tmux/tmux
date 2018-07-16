@@ -905,8 +905,8 @@ server_client_handle_key(struct client *c, key_code key)
 	 * The prefix always takes precedence and forces a switch to the prefix
 	 * table, unless we are already there.
 	 */
-retry:
 	key0 = (key & ~KEYC_XTERM);
+retry:
 	if ((key0 == (key_code)options_get_number(s->options, "prefix") ||
 	    key0 == (key_code)options_get_number(s->options, "prefix2")) &&
 	    strcmp(table->name, "prefix") != 0) {
@@ -978,6 +978,10 @@ retry:
 	 * switch the client back to the root table and try again.
 	 */
 	log_debug("not found in key table %s", table->name);
+	if (key0 != KEYC_ANY) {
+		key0 = KEYC_ANY;
+		goto retry;
+	}
 	if (!server_client_is_default_key_table(c, table) ||
 	    (c->flags & CLIENT_REPEAT)) {
 		server_client_set_key_table(c, NULL);
@@ -1158,10 +1162,6 @@ server_client_check_focus(struct window_pane *wp)
 	push = wp->flags & PANE_FOCUSPUSH;
 	wp->flags &= ~PANE_FOCUSPUSH;
 
-	/* If we don't care about focus, forget it. */
-	if (!(wp->base.mode & MODE_FOCUSON))
-		return;
-
 	/* If we're not the active pane in our window, we're not focused. */
 	if (wp->window->active != wp)
 		goto not_focused;
@@ -1185,14 +1185,20 @@ server_client_check_focus(struct window_pane *wp)
 	}
 
 not_focused:
-	if (push || (wp->flags & PANE_FOCUSED))
-		bufferevent_write(wp->event, "\033[O", 3);
+	if (push || (wp->flags & PANE_FOCUSED)) {
+		if (wp->base.mode & MODE_FOCUSON)
+			bufferevent_write(wp->event, "\033[O", 3);
+		notify_pane("pane-focus-out", wp);
+	}
 	wp->flags &= ~PANE_FOCUSED;
 	return;
 
 focused:
-	if (push || !(wp->flags & PANE_FOCUSED))
-		bufferevent_write(wp->event, "\033[I", 3);
+	if (push || !(wp->flags & PANE_FOCUSED)) {
+		if (wp->base.mode & MODE_FOCUSON)
+			bufferevent_write(wp->event, "\033[I", 3);
+		notify_pane("pane-focus-in", wp);
+	}
 	wp->flags |= PANE_FOCUSED;
 }
 

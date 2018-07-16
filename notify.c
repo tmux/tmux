@@ -35,7 +35,7 @@ struct notify_entry {
 };
 
 static void
-notify_hook(struct cmdq_item *item, struct notify_entry *ne)
+notify_hook1(struct cmdq_item *item, struct notify_entry *ne)
 {
 	struct cmd_find_state	 fs;
 	struct hook		*hook;
@@ -101,7 +101,7 @@ notify_callback(struct cmdq_item *item, void *data)
 	if (strcmp(ne->name, "session-window-changed") == 0)
 		control_notify_session_window_changed(ne->session);
 
-	notify_hook(item, ne);
+	notify_hook1(item, ne);
 
 	if (ne->client != NULL)
 		server_client_unref(ne->client);
@@ -151,6 +151,24 @@ notify_add(const char *name, struct cmd_find_state *fs, struct client *c,
 
 	new_item = cmdq_get_callback(notify_callback, ne);
 	cmdq_append(NULL, new_item);
+}
+
+void
+notify_hook(struct cmdq_item *item, const char *name)
+{
+	struct notify_entry	ne;
+
+	memset(&ne, 0, sizeof ne);
+
+	ne.name = name;
+	cmd_find_copy_state(&ne.fs, &item->target);
+
+	ne.client = item->client;
+	ne.session = item->target.s;
+	ne.window = item->target.w;
+	ne.pane = item->target.wp->id;
+
+	notify_hook1(item, &ne);
 }
 
 void

@@ -145,6 +145,20 @@ grid_extended_cell(struct grid_line *gl, struct grid_cell_entry *gce,
 	return (gcp);
 }
 
+/* Get line data. */
+struct grid_line *
+grid_get_line(struct grid *gd, u_int line)
+{
+	return (&gd->linedata[line]);
+}
+
+/* Adjust number of lines. */
+void
+grid_adjust_lines(struct grid *gd, u_int lines)
+{
+	gd->linedata = xreallocarray(gd->linedata, lines, sizeof *gd->linedata);
+}
+
 /* Copy default into a cell. */
 static void
 grid_clear_cell(struct grid *gd, u_int px, u_int py, u_int bg)
@@ -272,6 +286,15 @@ grid_compare(struct grid *ga, struct grid *gb)
 	return (0);
 }
 
+/* Trim lines from the history. */
+static void
+grid_trim_history(struct grid *gd, u_int ny)
+{
+	grid_free_lines(gd, 0, ny);
+	memmove(&gd->linedata[0], &gd->linedata[ny],
+	    (gd->hsize + gd->sy - ny) * (sizeof *gd->linedata));
+}
+
 /*
  * Collect lines from the history if at the limit. Free the top (oldest) 10%
  * and shift up.
@@ -294,9 +317,7 @@ grid_collect_history(struct grid *gd)
 	 * Free the lines from 0 to ny then move the remaining lines over
 	 * them.
 	 */
-	grid_free_lines(gd, 0, ny);
-	memmove(&gd->linedata[0], &gd->linedata[ny],
-	    (gd->hsize + gd->sy - ny) * (sizeof *gd->linedata));
+	grid_trim_history(gd, ny);
 
 	gd->hsize -= ny;
 	if (gd->hscrolled > gd->hsize)
@@ -326,9 +347,7 @@ grid_scroll_history(struct grid *gd, u_int bg)
 void
 grid_clear_history(struct grid *gd)
 {
-	grid_free_lines(gd, 0, gd->hsize);
-	memmove(&gd->linedata[0], &gd->linedata[gd->hsize],
-	    gd->sy * (sizeof *gd->linedata));
+	grid_trim_history(gd, gd->hsize);
 
 	gd->hscrolled = 0;
 	gd->hsize = 0;

@@ -140,6 +140,9 @@ enum {
 	KEYC_FOCUS_IN = KEYC_BASE,
 	KEYC_FOCUS_OUT,
 
+	/* "Any" key, used if not found in key table. */
+	KEYC_ANY,
+
 	/* Paste brackets. */
 	KEYC_PASTE_START,
 	KEYC_PASTE_END,
@@ -1598,6 +1601,7 @@ void printflike(4, 5) hooks_insert(struct hooks *, struct cmdq_item *,
 		    struct cmd_find_state *, const char *, ...);
 
 /* notify.c */
+void	notify_hook(struct cmdq_item *, const char *);
 void	notify_input(struct window_pane *, struct evbuffer *);
 void	notify_client(const char *, struct client *);
 void	notify_session(const char *, struct session *);
@@ -2010,6 +2014,8 @@ char	*grid_string_cells(struct grid *, u_int, u_int, u_int,
 void	 grid_duplicate_lines(struct grid *, u_int, struct grid *, u_int,
 	     u_int);
 void	 grid_reflow(struct grid *, u_int, u_int *);
+struct grid_line *grid_get_line(struct grid *, u_int);
+void	 grid_adjust_lines(struct grid *, u_int);
 
 /* grid-view.c */
 void	 grid_view_get_cell(struct grid *, u_int, u_int, struct grid_cell *);

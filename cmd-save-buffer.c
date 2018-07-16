@@ -59,11 +59,13 @@ static enum cmd_retval
 cmd_save_buffer_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
-	struct client		*c = item->client;
+	struct client		*c = cmd_find_client(item, NULL, 1);
+	struct session		*s = item->target.s;
+	struct winlink		*wl = item->target.wl;
+	struct window_pane	*wp = item->target.wp;
 	struct paste_buffer	*pb;
-	const char		*path, *bufname, *bufdata, *start, *end;
-	const char		*flags;
-	char			*msg, *file;
+	const char		*bufname, *bufdata, *start, *end, *flags;
+	char			*msg, *path, *file;
 	size_t			 size, used, msglen, bufsize;
 	FILE			*f;
 
@@ -83,10 +85,12 @@ cmd_save_buffer_exec(struct cmd *self, struct cmdq_item *item)
 	bufdata = paste_buffer_data(pb, &bufsize);
 
 	if (self->entry == &cmd_show_buffer_entry)
-		path = "-";
+		path = xstrdup("-");
 	else
-		path = args->argv[0];
+		path = format_single(item, args->argv[0], c, s, wl, wp);
 	if (strcmp(path, "-") == 0) {
+		free(path);
+		c = item->client;
 		if (c == NULL) {
 			cmdq_error(item, "can't write to stdout");
 			return (CMD_RETURN_ERROR);
@@ -117,6 +121,7 @@ cmd_save_buffer_exec(struct cmd *self, struct cmdq_item *item)
 
 	fclose(f);
 	free(file);
+	free(path);
 
 	return (CMD_RETURN_NORMAL);
 
