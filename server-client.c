@@ -882,11 +882,11 @@ server_client_handle_key(struct client *c, key_code key)
 
 	/* Forward mouse keys if disabled. */
 	if (KEYC_IS_MOUSE(key) && !options_get_number(s->options, "mouse"))
-		goto forward;
+		goto forward_key;
 
 	/* Treat everything as a regular key when pasting is detected. */
 	if (!KEYC_IS_MOUSE(key) && server_client_assume_paste(s))
-		goto forward;
+		goto forward_key;
 
 	/*
 	 * Work out the current key table. If the pane is in a mode, use
@@ -901,12 +901,12 @@ server_client_handle_key(struct client *c, key_code key)
 		table = c->keytable;
 	first = table;
 
+table_changed:
 	/*
 	 * The prefix always takes precedence and forces a switch to the prefix
 	 * table, unless we are already there.
 	 */
 	key0 = (key & ~KEYC_XTERM);
-retry:
 	if ((key0 == (key_code)options_get_number(s->options, "prefix") ||
 	    key0 == (key_code)options_get_number(s->options, "prefix2")) &&
 	    strcmp(table->name, "prefix") != 0) {
@@ -924,6 +924,7 @@ retry:
 	if (c->flags & CLIENT_REPEAT)
 		log_debug("currently repeating");
 
+try_again:
 	/* Try to see if there is a key binding in the current table. */
 	bd_find.key = key0;
 	bd = RB_FIND(key_bindings, &table->key_bindings, &bd_find);
@@ -939,7 +940,7 @@ retry:
 			c->flags &= ~CLIENT_REPEAT;
 			server_status_client(c);
 			table = c->keytable;
-			goto retry;
+			goto table_changed;
 		}
 		log_debug("found in key table %s", table->name);
 
@@ -974,21 +975,25 @@ retry:
 	}
 
 	/*
+	 * No match, try the ANY key.
+	 */
+	if (key0 != KEYC_ANY) {
+		key0 = KEYC_ANY;
+		goto try_again;
+	}
+
+	/*
 	 * No match in this table. If not in the root table or if repeating,
 	 * switch the client back to the root table and try again.
 	 */
 	log_debug("not found in key table %s", table->name);
-	if (key0 != KEYC_ANY) {
-		key0 = KEYC_ANY;
-		goto retry;
-	}
 	if (!server_client_is_default_key_table(c, table) ||
 	    (c->flags & CLIENT_REPEAT)) {
 		server_client_set_key_table(c, NULL);
 		c->flags &= ~CLIENT_REPEAT;
 		server_status_client(c);
 		table = c->keytable;
-		goto retry;
+		goto table_changed;
 	}
 
 	/*
@@ -1001,7 +1006,7 @@ retry:
 		return;
 	}
 
-forward:
+forward_key:
 	if (c->flags & CLIENT_READONLY)
 		return;
 	if (wp != NULL)
