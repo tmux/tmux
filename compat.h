@@ -298,7 +298,11 @@ pid_t		 fdforkpty(int, int *, char *, struct termios *,
 
 #ifndef HAVE_FORKPTY
 /* forkpty.c */
+#ifndef __CYGWIN__
 pid_t		 forkpty(int *, char *, struct termios *, struct winsize *);
+#else
+int forkpty(int *, char *, const struct termios *, const struct winsize *);
+#endif
 #endif
 
 #ifndef HAVE_ASPRINTF
