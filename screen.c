@@ -24,6 +24,22 @@
 
 #include "tmux.h"
 
+/* Selected area in screen. */
+struct screen_sel {
+	int		 hidden;
+	int		 rectangle;
+	int		 modekeys;
+
+	u_int		 sx;
+	u_int		 sy;
+
+	u_int		 ex;
+	u_int		 ey;
+
+	struct grid_cell cell;
+};
+
+/* Entry on title stack. */
 struct screen_title_entry {
 	char				*text;
 
@@ -66,6 +82,7 @@ screen_init(struct screen *s, u_int sx, u_int sy, u_int hlimit)
 	s->cstyle = 0;
 	s->ccolour = xstrdup("");
 	s->tabs = NULL;
+	s->sel = NULL;
 
 	screen_reinit(s);
 }
@@ -94,6 +111,7 @@ screen_reinit(struct screen *s)
 void
 screen_free(struct screen *s)
 {
+	free(s->sel);
 	free(s->tabs);
 	free(s->title);
 	free(s->ccolour);
@@ -316,51 +334,49 @@ screen_resize_y(struct screen *s, u_int sy)
 /* Set selection. */
 void
 screen_set_selection(struct screen *s, u_int sx, u_int sy,
-    u_int ex, u_int ey, u_int rectflag, struct grid_cell *gc)
+    u_int ex, u_int ey, u_int rectangle, int modekeys, struct grid_cell *gc)
 {
-	struct screen_sel	*sel = &s->sel;
+	if (s->sel == NULL)
+		s->sel = xcalloc(1, sizeof *s->sel);
 
-	memcpy(&sel->cell, gc, sizeof sel->cell);
-	sel->flag = 1;
-	sel->hidden = 0;
+	memcpy(&s->sel->cell, gc, sizeof s->sel->cell);
+	s->sel->hidden = 0;
+	s->sel->rectangle = rectangle;
+	s->sel->modekeys = modekeys;
 
-	sel->rectflag = rectflag;
-
-	sel->sx = sx; sel->sy = sy;
-	sel->ex = ex; sel->ey = ey;
+	s->sel->sx = sx;
+	s->sel->sy = sy;
+	s->sel->ex = ex;
+	s->sel->ey = ey;
 }
 
 /* Clear selection. */
 void
 screen_clear_selection(struct screen *s)
 {
-	struct screen_sel	*sel = &s->sel;
-
-	sel->flag = 0;
-	sel->hidden = 0;
-	sel->lineflag = LINE_SEL_NONE;
+	free(s->sel);
+	s->sel = NULL;
 }
 
 /* Hide selection. */
 void
 screen_hide_selection(struct screen *s)
 {
-	struct screen_sel	*sel = &s->sel;
-
-	sel->hidden = 1;
+	if (s->sel != NULL)
+		s->sel->hidden = 1;
 }
 
 /* Check if cell in selection. */
 int
 screen_check_selection(struct screen *s, u_int px, u_int py)
 {
-	struct screen_sel	*sel = &s->sel;
+	struct screen_sel	*sel = s->sel;
 	u_int			 xx;
 
-	if (!sel->flag || sel->hidden)
+	if (sel == NULL || sel->hidden)
 		return (0);
 
-	if (sel->rectflag) {
+	if (sel->rectangle) {
 		if (sel->sy < sel->ey) {
 			/* start line < end line -- downward selection. */
 			if (py < sel->sy || py > sel->ey)
@@ -453,10 +469,10 @@ void
 screen_select_cell(struct screen *s, struct grid_cell *dst,
     const struct grid_cell *src)
 {
-	if (!s->sel.flag || s->sel.hidden)
+	if (s->sel == NULL || s->sel->hidden)
 		return;
 
-	memcpy(dst, &s->sel.cell, sizeof *dst);
+	memcpy(dst, &s->sel->cell, sizeof *dst);
 
 	utf8_copy(&dst->data, &src->data);
 	dst->attr = dst->attr & ~GRID_ATTR_CHARSET;

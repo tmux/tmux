@@ -648,30 +648,8 @@ struct job {
 };
 LIST_HEAD(joblist, job);
 
-/* Screen selection. */
-struct screen_sel {
-	int		 flag;
-	int		 hidden;
-
-	int		 rectflag;
-	enum {
-		LINE_SEL_NONE,
-		LINE_SEL_LEFT_RIGHT,
-		LINE_SEL_RIGHT_LEFT,
-	} lineflag;
-
-	int		 modekeys;
-
-	u_int		 sx;
-	u_int		 sy;
-
-	u_int		 ex;
-	u_int		 ey;
-
-	struct grid_cell cell;
-};
-
 /* Virtual screen. */
+struct screen_sel;
 struct screen_titles;
 struct screen {
 	char			*title;
@@ -692,7 +670,7 @@ struct screen {
 
 	bitstr_t		*tabs;
 
-	struct screen_sel	 sel;
+	struct screen_sel	*sel;
 };
 
 /* Screen write context. */
@@ -2090,8 +2068,8 @@ void	 screen_set_title(struct screen *, const char *);
 void	 screen_push_title(struct screen *);
 void	 screen_pop_title(struct screen *);
 void	 screen_resize(struct screen *, u_int, u_int, int);
-void	 screen_set_selection(struct screen *,
-	     u_int, u_int, u_int, u_int, u_int, struct grid_cell *);
+void	 screen_set_selection(struct screen *, u_int, u_int, u_int, u_int,
+	     u_int, int, struct grid_cell *);
 void	 screen_clear_selection(struct screen *);
 void	 screen_hide_selection(struct screen *);
 int	 screen_check_selection(struct screen *, u_int, u_int);

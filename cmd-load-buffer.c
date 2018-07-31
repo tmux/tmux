@@ -85,7 +85,7 @@ cmd_load_buffer_exec(struct cmd *self, struct cmdq_item *item)
 		error = server_set_stdin_callback(c, cmd_load_buffer_callback,
 		    cdata, &cause);
 		if (error != 0) {
-			cmdq_error(item, "%s: %s", path, cause);
+			cmdq_error(item, "-: %s", cause);
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
@@ -93,6 +93,8 @@ cmd_load_buffer_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	file = server_client_get_path(c, path);
+	free(path);
+
 	f = fopen(file, "rb");
 	if (f == NULL) {
 		cmdq_error(item, "%s: %s", file, strerror(errno));
