@@ -214,6 +214,7 @@ window_copy_init(struct window_pane *wp, __unused struct cmd_find_state *fs,
 
 	data->backing_written = 0;
 
+	data->lineflag = LINE_SEL_NONE;
 	data->rectflag = 0;
 	data->scroll_exit = 0;
 
