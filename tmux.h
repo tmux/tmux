@@ -19,8 +19,6 @@
 #ifndef TMUX_H
 #define TMUX_H
 
-#define PROTOCOL_VERSION 8
-
 #include <sys/time.h>
 #include <sys/uio.h>
 
@@ -55,6 +53,9 @@ struct options_entry;
 struct session;
 struct tmuxpeer;
 struct tmuxproc;
+
+/* Client-server protocol version. */
+#define PROTOCOL_VERSION 8
 
 /* Default global configuration file. */
 #ifndef TMUX_CONF
@@ -825,12 +826,11 @@ struct window {
 	int		 flags;
 #define WINDOW_BELL 0x1
 #define WINDOW_ACTIVITY 0x2
-/* 0x4 unused */
-#define WINDOW_SILENCE 0x8
-#define WINDOW_ZOOMED 0x1000
-#define WINDOW_FORCEWIDTH 0x2000
-#define WINDOW_FORCEHEIGHT 0x4000
-#define WINDOW_STYLECHANGED 0x8000
+#define WINDOW_SILENCE 0x4
+#define WINDOW_ZOOMED 0x8
+#define WINDOW_FORCEWIDTH 0x10
+#define WINDOW_FORCEHEIGHT 0x20
+#define WINDOW_STYLECHANGED 0x40
 #define WINDOW_ALERTFLAGS (WINDOW_BELL|WINDOW_ACTIVITY|WINDOW_SILENCE)
 
 	int		 alerts_queued;
@@ -1407,7 +1407,7 @@ struct key_binding {
 RB_HEAD(key_bindings, key_binding);
 
 struct key_table {
-	const char		 *name;
+	const char		*name;
 	struct key_bindings	 key_bindings;
 
 	u_int			 references;
@@ -1428,6 +1428,7 @@ enum options_table_type {
 	OPTIONS_TABLE_STYLE,
 	OPTIONS_TABLE_ARRAY,
 };
+
 enum options_table_scope {
 	OPTIONS_TABLE_NONE,
 	OPTIONS_TABLE_SERVER,
