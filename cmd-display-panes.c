@@ -55,6 +55,7 @@ cmd_display_panes_exec(struct cmd *self, struct cmdq_item *item)
 
 	if ((c = cmd_find_client(item, args_get(args, 't'), 0)) == NULL)
 		return (CMD_RETURN_ERROR);
+	s = c->session;
 
 	if (c->identify_callback != NULL)
 		return (CMD_RETURN_NORMAL);
@@ -64,7 +65,7 @@ cmd_display_panes_exec(struct cmd *self, struct cmdq_item *item)
 		c->identify_callback_data = xstrdup(args->argv[0]);
 	else
 		c->identify_callback_data = xstrdup("select-pane -t '%%'");
-	s = c->session;
+	c->identify_callback_item = item;
 
 	if (args_has(args, 'd')) {
 		delay = args_strtonum(args, 'd', 0, UINT_MAX, &cause);
@@ -77,7 +78,7 @@ cmd_display_panes_exec(struct cmd *self, struct cmdq_item *item)
 		delay = options_get_number(s->options, "display-panes-time");
 	server_client_set_identify(c, delay);
 
-	return (CMD_RETURN_NORMAL);
+	return (CMD_RETURN_WAIT);
 }
 
 static enum cmd_retval
@@ -96,34 +97,36 @@ cmd_display_panes_callback(struct client *c, struct window_pane *wp)
 {
 	struct cmd_list		*cmdlist;
 	struct cmdq_item	*new_item;
-	char			*template, *cmd, *expanded, *cause;
+	char			*cmd, *expanded, *cause;
 
-	template = c->identify_callback_data;
 	if (wp == NULL)
 		goto out;
+
 	xasprintf(&expanded, "%%%u", wp->id);
-	cmd = cmd_template_replace(template, expanded, 1);
+	cmd = cmd_template_replace(c->identify_callback_data, expanded, 1);
 
 	cmdlist = cmd_string_parse(cmd, NULL, 0, &cause);
-	if (cmdlist == NULL) {
-		if (cause != NULL) {
-			new_item = cmdq_get_callback(cmd_display_panes_error,
-			    cause);
-		} else
-			new_item = NULL;
-	} else {
+	if (cmdlist == NULL && cause != NULL)
+		new_item = cmdq_get_callback(cmd_display_panes_error, cause);
+	else if (cmdlist == NULL)
+		new_item = NULL;
+	else {
 		new_item = cmdq_get_command(cmdlist, NULL, NULL, 0);
 		cmd_list_free(cmdlist);
 	}
 
 	if (new_item != NULL)
-		cmdq_append(c, new_item);
+		cmdq_insert_after(c->identify_callback_item, new_item);
 
 	free(cmd);
 	free(expanded);
 
 out:
+	c->identify_callback_item->flags &= ~CMDQ_WAITING;
+	c->identify_callback_item = NULL;
+
 	free(c->identify_callback_data);
 	c->identify_callback_data = NULL;
+
 	c->identify_callback = NULL;
 }

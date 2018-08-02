@@ -1357,6 +1357,7 @@ struct client {
 	void		(*identify_callback)(struct client *,
 			     struct window_pane *);
 	void		*identify_callback_data;
+	struct cmdq_item *identify_callback_item;
 
 	char		*message_string;
 	struct event	 message_timer;
