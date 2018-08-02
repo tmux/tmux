@@ -201,7 +201,6 @@ server_start(struct tmuxproc *client, struct event_base *base, int lockfd,
 	RB_INIT(&all_window_panes);
 	TAILQ_INIT(&clients);
 	RB_INIT(&sessions);
-	RB_INIT(&session_groups);
 	key_bindings_init();
 
 	gettimeofday(&start_time, NULL);
