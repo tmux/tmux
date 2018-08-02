@@ -24,17 +24,19 @@
 
 #include "tmux.h"
 
-RB_GENERATE(key_bindings, key_binding, entry, key_bindings_cmp);
-RB_GENERATE(key_tables, key_table, entry, key_table_cmp);
-struct key_tables key_tables = RB_INITIALIZER(&key_tables);
+static int key_bindings_cmp(struct key_binding *, struct key_binding *);
+RB_GENERATE_STATIC(key_bindings, key_binding, entry, key_bindings_cmp);
+static int key_table_cmp(struct key_table *, struct key_table *);
+RB_GENERATE_STATIC(key_tables, key_table, entry, key_table_cmp);
+static struct key_tables key_tables = RB_INITIALIZER(&key_tables);
 
-int
-key_table_cmp(struct key_table *e1, struct key_table *e2)
+static int
+key_table_cmp(struct key_table *table1, struct key_table *table2)
 {
-	return (strcmp(e1->name, e2->name));
+	return (strcmp(table1->name, table2->name));
 }
 
-int
+static int
 key_bindings_cmp(struct key_binding *bd1, struct key_binding *bd2)
 {
 	if (bd1->key < bd2->key)
@@ -64,6 +66,18 @@ key_bindings_get_table(const char *name, int create)
 	return (table);
 }
 
+struct key_table *
+key_bindings_first_table(void)
+{
+	return (RB_MIN(key_tables, &key_tables));
+}
+
+struct key_table *
+key_bindings_next_table(struct key_table *table)
+{
+	return (RB_NEXT(key_tables, &key_tables, table));
+}
+
 void
 key_bindings_unref_table(struct key_table *table)
 {
@@ -81,6 +95,27 @@ key_bindings_unref_table(struct key_table *table)
 
 	free((void *)table->name);
 	free(table);
+}
+
+struct key_binding *
+key_bindings_get(struct key_table *table, key_code key)
+{
+	struct key_binding	bd;
+
+	bd.key = key;
+	return (RB_FIND(key_bindings, &table->key_bindings, &bd));
+}
+
+struct key_binding *
+key_bindings_first(struct key_table *table)
+{
+	return (RB_MIN(key_bindings, &table->key_bindings));
+}
+
+struct key_binding *
+key_bindings_next(__unused struct key_table *table, struct key_binding *bd)
+{
+	return (RB_NEXT(key_bindings, &table->key_bindings, bd));
 }
 
 void
