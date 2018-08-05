@@ -894,7 +894,6 @@ window_pane_spawn(struct window_pane *wp, int argc, char **argv,
 	char		*argv0, *cmd, **argvp;
 	const char	*ptr, *first, *home;
 	struct termios	 tio2;
-	int		 i;
 	sigset_t	 set, oldset;
 
 	if (wp->fd != -1) {
