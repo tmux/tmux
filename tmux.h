@@ -511,10 +511,11 @@ struct msg_stderr_data {
 #define ALL_MOUSE_MODES (MODE_MOUSE_STANDARD|MODE_MOUSE_BUTTON|MODE_MOUSE_ALL)
 
 /*
- * A single UTF-8 character. UTF8_SIZE must be big enough to hold at least one
- * combining character as well.
+ * A single UTF-8 character. UTF8_SIZE must be big enough to hold
+ * combining characters as well, currently at most five (of three
+ * bytes) are supported.
 */
-#define UTF8_SIZE 9
+#define UTF8_SIZE 18
 struct utf8_data {
 	u_char	data[UTF8_SIZE];
 
