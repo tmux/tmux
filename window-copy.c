@@ -201,22 +201,10 @@ window_copy_init(struct window_pane *wp, __unused struct cmd_find_state *fs,
 	struct window_copy_mode_data	*data;
 	struct screen			*s;
 
-	wp->modedata = data = xmalloc(sizeof *data);
-
-	data->oy = 0;
-	data->cx = 0;
-	data->cy = 0;
+	wp->modedata = data = xcalloc(1, sizeof *data);
 
 	data->cursordrag = CURSORDRAG_NONE;
-
-	data->lastcx = 0;
-	data->lastsx = 0;
-
-	data->backing_written = 0;
-
 	data->lineflag = LINE_SEL_NONE;
-	data->rectflag = 0;
-	data->scroll_exit = 0;
 
 	if (wp->searchstr != NULL) {
 		data->searchtype = WINDOW_COPY_SEARCHUP;
