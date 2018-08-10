@@ -1,10 +1,22 @@
 CHANGES FROM 2.7 to master
 
+* Make display-panes block the client until a pane is chosen or it
+  times out
+
+* Clear history on RIS like most other terminals do.
+
+* Add an "Any" key to run a command if a key is pressed that is not
+  bound in the current key table.
+
+* Expand formats in load-buffer and save-buffer.
+
 * Add a rectangle_toggle format.
 
 * Add set-hook -R to run a hook immediately.
 
 * Add README.ja.
+
+* Add pane focus hooks.
 
 * Allow any punctuation as separator for s/x/y not only /.
 
