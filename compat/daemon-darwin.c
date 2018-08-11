@@ -45,34 +45,19 @@
  * POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <sys/types.h>
-
-#include <mach/mach.h>
-
-#include <Availability.h>
-#include <unistd.h>
-
 void daemon_darwin(void);
 
 #ifdef __MAC_10_10
 
-extern kern_return_t	bootstrap_look_up_per_user(mach_port_t, const char *,
-			    uid_t, mach_port_t *);
-extern kern_return_t	bootstrap_get_root(mach_port_t, mach_port_t *);
+extern void * _vprocmgr_detach_from_console(uint64_t);
 
 void
 daemon_darwin(void)
 {
-	mach_port_t	root = MACH_PORT_NULL;
-	mach_port_t	s = MACH_PORT_NULL;
-	uid_t		uid;
-
-	uid = getuid();
-	if (bootstrap_get_root(bootstrap_port, &root) == KERN_SUCCESS &&
-	    bootstrap_look_up_per_user(root, NULL, uid, &s) == KERN_SUCCESS &&
-	    task_set_bootstrap_port(mach_task_self(), s) == KERN_SUCCESS &&
-	    mach_port_deallocate(mach_task_self(), bootstrap_port) == KERN_SUCCESS)
-		bootstrap_port = s;
+	if (_vprocmgr_detach_from_console(0) != NULL) {
+		errx(1, "can't detach from console");
+		return;
+	}
 }
 
 #else
