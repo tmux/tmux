@@ -30,6 +30,9 @@ struct screen_redraw_ctx {
 	int		 top;
 
 	int		 pane_status;
+
+	u_int		 sx;
+	u_int		 sy;
 };
 
 static int	screen_redraw_cell_border1(struct window_pane *, u_int, u_int);
@@ -393,7 +396,7 @@ screen_redraw_screen(struct client *c, int draw_panes, int draw_status,
 	if (c->flags & CLIENT_SUSPENDED)
 		return;
 
-	memset (&ctx, 0, sizeof ctx);
+	memset(&ctx, 0, sizeof ctx);
 	ctx.c = c;
 
 	if (c->flags & CLIENT_STATUSOFF)
@@ -406,6 +409,9 @@ screen_redraw_screen(struct client *c, int draw_panes, int draw_status,
 	if (ctx.lines != 0 && options_get_number(oo, "status-position") == 0)
 		ctx.top = 1;
 	ctx.pane_status = options_get_number(wo, "pane-border-status");
+
+	ctx.sx = tty->sx;
+	ctx.sy = tty->sy - ctx.lines;
 
 	if (ctx.lines == 0)
 		draw_status = 0;
@@ -501,7 +507,7 @@ screen_redraw_draw_borders(struct screen_redraw_ctx *ctx)
 	const char		*tmp;
 	size_t			 msglen = 0;
 
-	small = (tty->sy - ctx->lines + ctx->top > w->sy) || (tty->sx > w->sx);
+	small = (ctx->sy + ctx->top > w->sy) || (ctx->sx > w->sx);
 	if (small) {
 		flags = w->flags & (WINDOW_FORCEWIDTH|WINDOW_FORCEHEIGHT);
 		if (flags == (WINDOW_FORCEWIDTH|WINDOW_FORCEHEIGHT))
@@ -518,13 +524,12 @@ screen_redraw_draw_borders(struct screen_redraw_ctx *ctx)
 		    w->sx, w->sy, tmp);
 		msglen = strlen(msg);
 
-		if (tty->sy - 1 - ctx->lines + ctx->top > w->sy &&
-		    tty->sx >= msglen) {
-			msgx = tty->sx - msglen;
-			msgy = tty->sy - 1 - ctx->lines + ctx->top;
-		} else if (tty->sx - w->sx > msglen) {
-			msgx = tty->sx - msglen;
-			msgy = tty->sy - 1 - ctx->lines + ctx->top;
+		if (ctx->sy - 1 + ctx->top > w->sy && ctx->sx >= msglen) {
+			msgx = ctx->sx - msglen;
+			msgy = ctx->sy - 1 + ctx->top;
+		} else if (ctx->sx - w->sx > msglen) {
+			msgx = ctx->sx - msglen;
+			msgy = ctx->sy - 1 + ctx->top;
 		} else
 			small = 0;
 	}
@@ -538,8 +543,8 @@ screen_redraw_draw_borders(struct screen_redraw_ctx *ctx)
 	memcpy(&m_active_gc, &active_gc, sizeof m_active_gc);
 	m_active_gc.attr ^= GRID_ATTR_REVERSE;
 
-	for (j = 0; j < tty->sy - ctx->lines; j++) {
-		for (i = 0; i < tty->sx; i++) {
+	for (j = 0; j < ctx->sy; j++) {
+		for (i = 0; i < ctx->sx; i++) {
 			screen_redraw_draw_borders_cell(ctx, i, j, small,
 			    msgx, msgy, &m_active_gc, &active_gc, &m_other_gc,
 			    &other_gc);
@@ -589,7 +594,7 @@ screen_redraw_draw_status(struct screen_redraw_ctx *ctx)
 	if (ctx->top)
 		y = 0;
 	else
-		y = tty->sy - ctx->lines;
+		y = ctx->sy;
 	for (i = 0; i < ctx->lines; i++)
 		tty_draw_line(tty, NULL, &c->status.status, i, 0, y);
 }
