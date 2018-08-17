@@ -1,7 +1,7 @@
 CHANGES FROM 2.7 to master
 
 * Make display-panes block the client until a pane is chosen or it
-  times out
+  times out.
 
 * Clear history on RIS like most other terminals do.
 
