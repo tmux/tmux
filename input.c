@@ -2235,7 +2235,7 @@ bad:
 	free(copy);
 }
 
-/* Handle the OSC 10 sequence for setting background colour. */
+/* Handle the OSC 10 sequence for setting foreground colour. */
 static void
 input_osc_10(struct window_pane *wp, const char *p)
 {
