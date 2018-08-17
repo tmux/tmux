@@ -1,3 +1,7 @@
+CHANGES FROM 2.8 to master
+
+* ...
+
 CHANGES FROM 2.7 to 2.8
 
 * Make display-panes block the client until a pane is chosen or it
