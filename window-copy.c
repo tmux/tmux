@@ -65,8 +65,9 @@ static void	window_copy_update_cursor(struct window_pane *, u_int, u_int);
 static void	window_copy_start_selection(struct window_pane *);
 static int	window_copy_adjust_selection(struct window_pane *, u_int *,
 		    u_int *);
+static int	window_copy_set_selection(struct window_pane *, int);
 static int	window_copy_update_selection(struct window_pane *, int);
-static void	window_copy_synchronize_cursor(struct window_pane *wp);
+static void	window_copy_synchronize_cursor(struct window_pane *);
 static void    *window_copy_get_selection(struct window_pane *, size_t *);
 static void	window_copy_copy_buffer(struct window_pane *, const char *,
 		    void *, size_t);
@@ -151,12 +152,12 @@ struct window_copy_mode_data {
 	struct screen	*backing;
 	int		 backing_written; /* backing display started */
 
-	u_int		 oy; /* number of lines scrolled up */
+	u_int		 oy;		/* number of lines scrolled up */
 
-	u_int		 selx; /* beginning of selection */
+	u_int		 selx;		/* beginning of selection */
 	u_int		 sely;
 
-	u_int		 endselx; /* end of selection */
+	u_int		 endselx;	/* end of selection */
 	u_int		 endsely;
 
 	enum {
@@ -165,14 +166,20 @@ struct window_copy_mode_data {
 		CURSORDRAG_SEL,		/* start is synchronized with cursor */
 	} cursordrag;
 
+	int		 modekeys;
+	enum {
+		LINE_SEL_NONE,
+		LINE_SEL_LEFT_RIGHT,
+		LINE_SEL_RIGHT_LEFT,
+	} lineflag;			/* line selection mode */
 	int		 rectflag;	/* in rectangle copy mode? */
 	int		 scroll_exit;	/* exit on scroll to end? */
 
 	u_int		 cx;
 	u_int		 cy;
 
-	u_int		 lastcx; /* position in last line w/ content */
-	u_int		 lastsx; /* size of last line w/ content */
+	u_int		 lastcx; 	/* position in last line w/ content */
+	u_int		 lastsx;	/* size of last line w/ content */
 
 	int		 searchtype;
 	char		*searchstr;
@@ -194,21 +201,10 @@ window_copy_init(struct window_pane *wp, __unused struct cmd_find_state *fs,
 	struct window_copy_mode_data	*data;
 	struct screen			*s;
 
-	wp->modedata = data = xmalloc(sizeof *data);
-
-	data->oy = 0;
-	data->cx = 0;
-	data->cy = 0;
+	wp->modedata = data = xcalloc(1, sizeof *data);
 
 	data->cursordrag = CURSORDRAG_NONE;
-
-	data->lastcx = 0;
-	data->lastsx = 0;
-
-	data->backing_written = 0;
-
-	data->rectflag = 0;
-	data->scroll_exit = 0;
+	data->lineflag = LINE_SEL_NONE;
 
 	if (wp->searchstr != NULL) {
 		data->searchtype = WINDOW_COPY_SEARCHUP;
@@ -228,7 +224,7 @@ window_copy_init(struct window_pane *wp, __unused struct cmd_find_state *fs,
 
 	s = &data->screen;
 	screen_init(s, screen_size_x(&wp->base), screen_size_y(&wp->base), 0);
-	s->sel.modekeys = options_get_number(wp->window->options, "mode-keys");
+	data->modekeys = options_get_number(wp->window->options, "mode-keys");
 
 	data->backing = NULL;
 
@@ -357,7 +353,7 @@ window_copy_pageup(struct window_pane *wp, int half_page)
 	oy = screen_hsize(data->backing) + data->cy - data->oy;
 	ox = window_copy_find_length(wp, oy);
 
-	if (s->sel.lineflag == LINE_SEL_LEFT_RIGHT && oy == data->sely)
+	if (data->lineflag == LINE_SEL_LEFT_RIGHT && oy == data->sely)
 		window_copy_other_end(wp);
 
 	if (data->cx != ox) {
@@ -379,7 +375,7 @@ window_copy_pageup(struct window_pane *wp, int half_page)
 	else
 		data->oy += n;
 
-	if (!data->screen.sel.flag || !data->rectflag) {
+	if (data->screen.sel == NULL || !data->rectflag) {
 		py = screen_hsize(data->backing) + data->cy - data->oy;
 		px = window_copy_find_length(wp, py);
 		if ((data->cx >= data->lastsx && data->cx != px) ||
@@ -401,7 +397,7 @@ window_copy_pagedown(struct window_pane *wp, int half_page, int scroll_exit)
 	oy = screen_hsize(data->backing) + data->cy - data->oy;
 	ox = window_copy_find_length(wp, oy);
 
-	if (s->sel.lineflag == LINE_SEL_RIGHT_LEFT && oy == data->sely)
+	if (data->lineflag == LINE_SEL_RIGHT_LEFT && oy == data->sely)
 		window_copy_other_end(wp);
 
 	if (data->cx != ox) {
@@ -423,7 +419,7 @@ window_copy_pagedown(struct window_pane *wp, int half_page, int scroll_exit)
 	else
 		data->oy -= n;
 
-	if (!data->screen.sel.flag || !data->rectflag) {
+	if (data->screen.sel == NULL || !data->rectflag) {
 		py = screen_hsize(data->backing) + data->cy - data->oy;
 		px = window_copy_find_length(wp, py);
 		if ((data->cx >= data->lastsx && data->cx != px) ||
@@ -554,7 +550,7 @@ window_copy_command(struct window_pane *wp, struct client *c, struct session *s,
 			if (m != NULL)
 				window_copy_start_drag(c, m);
 			else {
-				sn->sel.lineflag = LINE_SEL_NONE;
+				data->lineflag = LINE_SEL_NONE;
 				window_copy_start_selection(wp);
 				redraw = 1;
 			}
@@ -763,7 +759,7 @@ window_copy_command(struct window_pane *wp, struct client *c, struct session *s,
 				window_copy_cursor_previous_word(wp, ws);
 		}
 		if (strcmp(command, "rectangle-toggle") == 0) {
-			sn->sel.lineflag = LINE_SEL_NONE;
+			data->lineflag = LINE_SEL_NONE;
 			window_copy_rectangle_toggle(wp);
 		}
 		if (strcmp(command, "scroll-down") == 0 ||
@@ -800,7 +796,7 @@ window_copy_command(struct window_pane *wp, struct client *c, struct session *s,
 			}
 		}
 		if (strcmp(command, "select-line") == 0) {
-			sn->sel.lineflag = LINE_SEL_LEFT_RIGHT;
+			data->lineflag = LINE_SEL_LEFT_RIGHT;
 			data->rectflag = 0;
 			window_copy_cursor_start_of_line(wp);
 			window_copy_start_selection(wp);
@@ -810,7 +806,7 @@ window_copy_command(struct window_pane *wp, struct client *c, struct session *s,
 			redraw = 1;
 		}
 		if (strcmp(command, "select-word") == 0) {
-			sn->sel.lineflag = LINE_SEL_LEFT_RIGHT;
+			data->lineflag = LINE_SEL_LEFT_RIGHT;
 			data->rectflag = 0;
 			ws = options_get_string(s->options, "word-separators");
 			window_copy_cursor_previous_word(wp, ws);
@@ -1434,7 +1430,6 @@ static void
 window_copy_start_selection(struct window_pane *wp)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
-	struct screen			*s = &data->screen;
 
 	data->selx = data->cx;
 	data->sely = screen_hsize(data->backing) + data->cy - data->oy;
@@ -1444,8 +1439,7 @@ window_copy_start_selection(struct window_pane *wp)
 
 	data->cursordrag = CURSORDRAG_ENDSEL;
 
-	s->sel.flag = 1;
-	window_copy_update_selection(wp, 1);
+	window_copy_set_selection(wp, 1);
 }
 
 static int
@@ -1485,13 +1479,21 @@ window_copy_update_selection(struct window_pane *wp, int may_redraw)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
+
+	if (s->sel == NULL && data->lineflag == LINE_SEL_NONE)
+		return (0);
+	return (window_copy_set_selection(wp, may_redraw));
+}
+
+static int
+window_copy_set_selection(struct window_pane *wp, int may_redraw)
+{
+	struct window_copy_mode_data	*data = wp->modedata;
+	struct screen			*s = &data->screen;
 	struct options			*oo = wp->window->options;
 	struct grid_cell		 gc;
 	u_int				 sx, sy, cy, endsx, endsy;
 	int				 startrelpos, endrelpos;
-
-	if (!s->sel.flag && s->sel.lineflag == LINE_SEL_NONE)
-		return (0);
 
 	window_copy_synchronize_cursor(wp);
 
@@ -1515,7 +1517,8 @@ window_copy_update_selection(struct window_pane *wp, int may_redraw)
 	/* Set colours and selection. */
 	style_apply(&gc, oo, "mode-style");
 	gc.flags |= GRID_FLAG_NOPALETTE;
-	screen_set_selection(s, sx, sy, endsx, endsy, data->rectflag, &gc);
+	screen_set_selection(s, sx, sy, endsx, endsy, data->rectflag,
+	    data->modekeys, &gc);
 
 	if (data->rectflag && may_redraw) {
 		/*
@@ -1551,7 +1554,7 @@ window_copy_get_selection(struct window_pane *wp, size_t *len)
 	u_int				 firstsx, lastex, restex, restsx, selx;
 	int				 keys;
 
-	if (!s->sel.flag && s->sel.lineflag == LINE_SEL_NONE)
+	if (data->screen.sel == NULL && data->lineflag == LINE_SEL_NONE)
 		return (NULL);
 
 	buf = xmalloc(1);
@@ -1860,11 +1863,10 @@ window_copy_cursor_start_of_line(struct window_pane *wp)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*back_s = data->backing;
-	struct screen			*s = &data->screen;
 	struct grid			*gd = back_s->grid;
 	u_int				 py;
 
-	if (data->cx == 0 && s->sel.lineflag == LINE_SEL_NONE) {
+	if (data->cx == 0 && data->lineflag == LINE_SEL_NONE) {
 		py = screen_hsize(back_s) + data->cy - data->oy;
 		while (py > 0 &&
 		    grid_get_line(gd, py - 1)->flags & GRID_LINE_WRAPPED) {
@@ -1905,7 +1907,6 @@ window_copy_cursor_end_of_line(struct window_pane *wp)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*back_s = data->backing;
-	struct screen			*s = &data->screen;
 	struct grid			*gd = back_s->grid;
 	struct grid_line		*gl;
 	u_int				 px, py;
@@ -1913,8 +1914,8 @@ window_copy_cursor_end_of_line(struct window_pane *wp)
 	py = screen_hsize(back_s) + data->cy - data->oy;
 	px = window_copy_find_length(wp, py);
 
-	if (data->cx == px && s->sel.lineflag == LINE_SEL_NONE) {
-		if (data->screen.sel.flag && data->rectflag)
+	if (data->cx == px && data->lineflag == LINE_SEL_NONE) {
+		if (data->screen.sel != NULL && data->rectflag)
 			px = screen_size_x(back_s);
 		gl = grid_get_line(gd, py);
 		if (gl->flags & GRID_LINE_WRAPPED) {
@@ -1941,13 +1942,13 @@ window_copy_other_end(struct window_pane *wp)
 	struct screen			*s = &data->screen;
 	u_int				 selx, sely, cy, yy, hsize;
 
-	if (!s->sel.flag && s->sel.lineflag == LINE_SEL_NONE)
+	if (s->sel == NULL && data->lineflag == LINE_SEL_NONE)
 		return;
 
-	if (s->sel.lineflag == LINE_SEL_LEFT_RIGHT)
-		s->sel.lineflag = LINE_SEL_RIGHT_LEFT;
-	else if (s->sel.lineflag == LINE_SEL_RIGHT_LEFT)
-		s->sel.lineflag = LINE_SEL_LEFT_RIGHT;
+	if (data->lineflag == LINE_SEL_LEFT_RIGHT)
+		data->lineflag = LINE_SEL_RIGHT_LEFT;
+	else if (data->lineflag == LINE_SEL_RIGHT_LEFT)
+		data->lineflag = LINE_SEL_LEFT_RIGHT;
 
 	switch (data->cursordrag) {
 		case CURSORDRAG_NONE:
@@ -2019,7 +2020,7 @@ window_copy_cursor_right(struct window_pane *wp)
 
 	py = screen_hsize(data->backing) + data->cy - data->oy;
 	yy = screen_hsize(data->backing) + screen_size_y(data->backing) - 1;
-	if (data->screen.sel.flag && data->rectflag)
+	if (data->screen.sel != NULL && data->rectflag)
 		px = screen_size_x(&data->screen);
 	else
 		px = window_copy_find_length(wp, py);
@@ -2056,7 +2057,7 @@ window_copy_cursor_up(struct window_pane *wp, int scroll_only)
 		data->lastsx = ox;
 	}
 
-	if (s->sel.lineflag == LINE_SEL_LEFT_RIGHT && oy == data->sely)
+	if (data->lineflag == LINE_SEL_LEFT_RIGHT && oy == data->sely)
 		window_copy_other_end(wp);
 
 	data->cx = data->lastcx;
@@ -2078,7 +2079,7 @@ window_copy_cursor_up(struct window_pane *wp, int scroll_only)
 		}
 	}
 
-	if (!data->screen.sel.flag || !data->rectflag) {
+	if (data->screen.sel != NULL || !data->rectflag) {
 		py = screen_hsize(data->backing) + data->cy - data->oy;
 		px = window_copy_find_length(wp, py);
 		if ((data->cx >= data->lastsx && data->cx != px) ||
@@ -2086,9 +2087,9 @@ window_copy_cursor_up(struct window_pane *wp, int scroll_only)
 			window_copy_cursor_end_of_line(wp);
 	}
 
-	if (s->sel.lineflag == LINE_SEL_LEFT_RIGHT)
+	if (data->lineflag == LINE_SEL_LEFT_RIGHT)
 		window_copy_cursor_end_of_line(wp);
-	else if (s->sel.lineflag == LINE_SEL_RIGHT_LEFT)
+	else if (data->lineflag == LINE_SEL_RIGHT_LEFT)
 		window_copy_cursor_start_of_line(wp);
 }
 
@@ -2106,7 +2107,7 @@ window_copy_cursor_down(struct window_pane *wp, int scroll_only)
 		data->lastsx = ox;
 	}
 
-	if (s->sel.lineflag == LINE_SEL_RIGHT_LEFT && oy == data->endsely)
+	if (data->lineflag == LINE_SEL_RIGHT_LEFT && oy == data->endsely)
 		window_copy_other_end(wp);
 
 	data->cx = data->lastcx;
@@ -2120,7 +2121,7 @@ window_copy_cursor_down(struct window_pane *wp, int scroll_only)
 			window_copy_redraw_lines(wp, data->cy - 1, 2);
 	}
 
-	if (!data->screen.sel.flag || !data->rectflag) {
+	if (data->screen.sel == NULL || !data->rectflag) {
 		py = screen_hsize(data->backing) + data->cy - data->oy;
 		px = window_copy_find_length(wp, py);
 		if ((data->cx >= data->lastsx && data->cx != px) ||
@@ -2128,9 +2129,9 @@ window_copy_cursor_down(struct window_pane *wp, int scroll_only)
 			window_copy_cursor_end_of_line(wp);
 	}
 
-	if (s->sel.lineflag == LINE_SEL_LEFT_RIGHT)
+	if (data->lineflag == LINE_SEL_LEFT_RIGHT)
 		window_copy_cursor_end_of_line(wp);
-	else if (s->sel.lineflag == LINE_SEL_RIGHT_LEFT)
+	else if (data->lineflag == LINE_SEL_RIGHT_LEFT)
 		window_copy_cursor_start_of_line(wp);
 }
 
@@ -2401,7 +2402,7 @@ window_copy_scroll_up(struct window_pane *wp, u_int ny)
 		window_copy_write_line(wp, &ctx, 1);
 	if (screen_size_y(s) > 3)
 		window_copy_write_line(wp, &ctx, screen_size_y(s) - 2);
-	if (s->sel.flag && screen_size_y(s) > ny)
+	if (s->sel != NULL && screen_size_y(s) > ny)
 		window_copy_write_line(wp, &ctx, screen_size_y(s) - ny - 1);
 	screen_write_cursormove(&ctx, data->cx, data->cy);
 	screen_write_stop(&ctx);
@@ -2429,7 +2430,7 @@ window_copy_scroll_down(struct window_pane *wp, u_int ny)
 	screen_write_cursormove(&ctx, 0, 0);
 	screen_write_insertline(&ctx, ny, 8);
 	window_copy_write_lines(wp, &ctx, 0, ny);
-	if (s->sel.flag && screen_size_y(s) > ny)
+	if (s->sel != NULL && screen_size_y(s) > ny)
 		window_copy_write_line(wp, &ctx, ny);
 	else if (ny == 1) /* nuke position */
 		window_copy_write_line(wp, &ctx, 1);
@@ -2445,7 +2446,7 @@ window_copy_add_formats(struct window_pane *wp, struct format_tree *ft)
 	if (wp->mode != &window_copy_mode)
 		return;
 
-	format_add(ft, "selection_present", "%d", data->screen.sel.flag);
+	format_add(ft, "selection_present", "%d", data->screen.sel != NULL);
 	format_add(ft, "scroll_position", "%d", data->oy);
 	format_add(ft, "rectangle_toggle", "%d", data->rectflag);
 }

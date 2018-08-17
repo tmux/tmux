@@ -192,7 +192,7 @@ mode_tree_clear_tagged(struct mode_tree_list *mtl)
 	}
 }
 
-void
+static void
 mode_tree_up(struct mode_tree_data *mtd, int wrap)
 {
 	if (mtd->current == 0) {

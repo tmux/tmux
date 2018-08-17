@@ -1343,7 +1343,7 @@ screen_write_collect_add(struct screen_write_ctx *ctx,
 		collect = 0;
 	else if (s->mode & MODE_INSERT)
 		collect = 0;
-	else if (s->sel.flag)
+	else if (s->sel != NULL)
 		collect = 0;
 	if (!collect) {
 		screen_write_collect_end(ctx);
