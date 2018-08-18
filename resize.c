@@ -36,10 +36,6 @@
  *
  * This is quite inefficient - better/additional data structures are needed
  * to make it better.
- *
- * As a side effect, this function updates the SESSION_UNATTACHED flag. This
- * flag is necessary to make sure unattached sessions do not limit the size of
- * windows that are attached both to them and to other (attached) sessions.
  */
 
 void
@@ -79,11 +75,8 @@ recalculate_sizes(void)
 				s->attached++;
 			}
 		}
-		if (ssx == UINT_MAX || ssy == UINT_MAX) {
-			s->flags |= SESSION_UNATTACHED;
+		if (ssx == UINT_MAX || ssy == UINT_MAX)
 			continue;
-		}
-		s->flags &= ~SESSION_UNATTACHED;
 
 		if (lines != 0 && ssy == 0)
 			ssy = lines;
@@ -107,7 +100,7 @@ recalculate_sizes(void)
 
 		ssx = ssy = UINT_MAX;
 		RB_FOREACH(s, sessions, &sessions) {
-			if (s->flags & SESSION_UNATTACHED)
+			if (s->attached == 0)
 				continue;
 			if (flag)
 				has = s->curw->window == w;

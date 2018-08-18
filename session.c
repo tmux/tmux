@@ -266,7 +266,7 @@ session_lock_timer(__unused int fd, __unused short events, void *arg)
 {
 	struct session	*s = arg;
 
-	if (s->flags & SESSION_UNATTACHED)
+	if (s->attached == 0)
 		return;
 
 	log_debug("session %s locked, activity time %lld", s->name,
@@ -299,7 +299,7 @@ session_update_activity(struct session *s, struct timeval *from)
 	else
 		evtimer_set(&s->lock_timer, session_lock_timer, s);
 
-	if (~s->flags & SESSION_UNATTACHED) {
+	if (s->attached != 0) {
 		timerclear(&tv);
 		tv.tv_sec = options_get_number(s->options, "lock-after-time");
 		if (tv.tv_sec != 0)

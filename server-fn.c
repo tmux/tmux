@@ -430,7 +430,7 @@ server_check_unattached(void)
 	 * set, collect them.
 	 */
 	RB_FOREACH(s, sessions, &sessions) {
-		if (!(s->flags & SESSION_UNATTACHED))
+		if (s->attached != 0)
 			continue;
 		if (options_get_number (s->options, "destroy-unattached"))
 			session_destroy(s, __func__);
