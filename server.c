@@ -318,7 +318,7 @@ server_update_socket(void)
 
 	n = 0;
 	RB_FOREACH(s, sessions, &sessions) {
-		if (!(s->flags & SESSION_UNATTACHED)) {
+		if (s->attached != 0) {
 			n++;
 			break;
 		}
