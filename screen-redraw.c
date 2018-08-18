@@ -35,17 +35,6 @@ struct screen_redraw_ctx {
 	u_int		 sy;
 };
 
-static int	screen_redraw_cell_border1(struct window_pane *, u_int, u_int);
-static int	screen_redraw_cell_border(struct client *, u_int, u_int);
-static int	screen_redraw_check_cell(struct client *, u_int, u_int, int,
-		    struct window_pane **);
-static int	screen_redraw_check_is(u_int, u_int, int, int, struct window *,
-		    struct window_pane *, struct window_pane *);
-
-static int 	screen_redraw_make_pane_status(struct client *, struct window *,
-		    struct window_pane *);
-static void	screen_redraw_draw_pane_status(struct client *, int);
-
 static void	screen_redraw_draw_borders(struct screen_redraw_ctx *);
 static void	screen_redraw_draw_panes(struct screen_redraw_ctx *);
 static void	screen_redraw_draw_status(struct screen_redraw_ctx *);
@@ -327,8 +316,9 @@ screen_redraw_make_pane_status(struct client *c, struct window *w,
 
 /* Draw pane status. */
 static void
-screen_redraw_draw_pane_status(struct client *c, int pane_status)
+screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 {
+	struct client           *c = ctx->c;
 	struct window		*w = c->session->curw->window;
 	struct options		*oo = c->session->options;
 	struct tty		*tty = &c->tty;
@@ -340,7 +330,7 @@ screen_redraw_draw_pane_status(struct client *c, int pane_status)
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if (!window_pane_visible(wp))
 			continue;
-		if (pane_status == CELL_STATUS_TOP)
+		if (ctx->pane_status == CELL_STATUS_TOP)
 			yoff = wp->yoff - 1;
 		else
 			yoff = wp->yoff + wp->sy;
@@ -382,50 +372,51 @@ screen_redraw_update(struct client *c)
 	}
 }
 
+/* Set up redraw context. */
+static void
+screen_redraw_set_context(struct client *c, struct screen_redraw_ctx *ctx)
+{
+	struct session  *s = c->session;
+	struct options  *oo = s->options;
+	struct window   *w = s->curw->window;
+	struct options  *wo = w->options;
+
+	memset(ctx, 0, sizeof *ctx);
+	ctx->c = c;
+
+	ctx->lines = tty_status_lines(c);
+	if (ctx->lines != 0 && options_get_number(oo, "status-position") == 0)
+		ctx->top = 1;
+	ctx->pane_status = options_get_number(wo, "pane-border-status");
+
+	ctx->sx = c->tty.sx;
+	ctx->sy = c->tty.sy - ctx->lines;
+}
+
 /* Redraw entire screen. */
 void
 screen_redraw_screen(struct client *c, int draw_panes, int draw_status,
     int draw_borders)
 {
-	struct options			*oo = c->session->options;
-	struct tty			*tty = &c->tty;
-	struct window			*w = c->session->curw->window;
-	struct options			*wo = w->options;
 	struct screen_redraw_ctx	 ctx;
 
 	if (c->flags & CLIENT_SUSPENDED)
 		return;
 
-	memset(&ctx, 0, sizeof ctx);
-	ctx.c = c;
-
-	if (c->flags & CLIENT_STATUSOFF)
-		ctx.lines = 0;
-	else
-		ctx.lines = status_line_size(c->session);
-	if (c->message_string != NULL || c->prompt_string != NULL)
-		ctx.lines = (ctx.lines == 0) ? 1 : ctx.lines;
-
-	if (ctx.lines != 0 && options_get_number(oo, "status-position") == 0)
-		ctx.top = 1;
-	ctx.pane_status = options_get_number(wo, "pane-border-status");
-
-	ctx.sx = tty->sx;
-	ctx.sy = tty->sy - ctx.lines;
+	screen_redraw_set_context(c, &ctx);
 
 	if (ctx.lines == 0)
 		draw_status = 0;
 
-	if (draw_borders) {
-		if (ctx.pane_status != CELL_STATUS_OFF)
-			screen_redraw_draw_pane_status(c, ctx.pane_status);
+	if (draw_borders)
 		screen_redraw_draw_borders(&ctx);
-	}
+	if (draw_borders && ctx.pane_status != CELL_STATUS_OFF)
+		screen_redraw_draw_pane_status(&ctx);
 	if (draw_panes)
 		screen_redraw_draw_panes(&ctx);
 	if (draw_status)
 		screen_redraw_draw_status(&ctx);
-	tty_reset(tty);
+	tty_reset(&c->tty);
 }
 
 /* Draw a single pane. */

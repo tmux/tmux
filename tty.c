@@ -698,6 +698,21 @@ tty_repeat_space(struct tty *tty, u_int n)
 		tty_putn(tty, s, n, n);
 }
 
+/* How many lines are taken up by the status line on this client? */
+u_int
+tty_status_lines(struct client *c)
+{
+	u_int	lines;
+
+	if (c->flags & CLIENT_STATUSOFF)
+		lines = 0;
+	else
+		lines = status_line_size(c->session);
+	if (c->message_string != NULL || c->prompt_string != NULL)
+		lines = (lines == 0) ? 1 : lines;
+	return (lines);
+}
+
 /*
  * Is the region large enough to be worth redrawing once later rather than
  * probably several times now? Currently yes if it is more than 50% of the
