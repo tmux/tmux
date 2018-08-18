@@ -91,9 +91,8 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 		}
 	}
 
-	if (args_has(self->args, 'x')) {
-		x = args_strtonum(self->args, 'x', PANE_MINIMUM, INT_MAX,
-		    &cause);
+	if (args_has(args, 'x')) {
+		x = args_strtonum(args, 'x', PANE_MINIMUM, INT_MAX, &cause);
 		if (cause != NULL) {
 			cmdq_error(item, "width %s", cause);
 			free(cause);
@@ -101,9 +100,8 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 		}
 		layout_resize_pane_to(wp, LAYOUT_LEFTRIGHT, x);
 	}
-	if (args_has(self->args, 'y')) {
-		y = args_strtonum(self->args, 'y', PANE_MINIMUM, INT_MAX,
-		    &cause);
+	if (args_has(args, 'y')) {
+		y = args_strtonum(args, 'y', PANE_MINIMUM, INT_MAX, &cause);
 		if (cause != NULL) {
 			cmdq_error(item, "height %s", cause);
 			free(cause);
@@ -112,13 +110,13 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 		layout_resize_pane_to(wp, LAYOUT_TOPBOTTOM, y);
 	}
 
-	if (args_has(self->args, 'L'))
+	if (args_has(args, 'L'))
 		layout_resize_pane(wp, LAYOUT_LEFTRIGHT, -adjust, 1);
-	else if (args_has(self->args, 'R'))
+	else if (args_has(args, 'R'))
 		layout_resize_pane(wp, LAYOUT_LEFTRIGHT, adjust, 1);
-	else if (args_has(self->args, 'U'))
+	else if (args_has(args, 'U'))
 		layout_resize_pane(wp, LAYOUT_TOPBOTTOM, -adjust, 1);
-	else if (args_has(self->args, 'D'))
+	else if (args_has(args, 'D'))
 		layout_resize_pane(wp, LAYOUT_TOPBOTTOM, adjust, 1);
 	server_redraw_window(wl->window);
 
