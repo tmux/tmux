@@ -54,6 +54,22 @@ cmd_string_ungetc(size_t *p)
 	(*p)--;
 }
 
+static int
+cmd_string_unicode_esc(wchar_t *wc, const char *s, size_t *p, char spec)
+{
+	int	size = (spec == 'u') ? 4 : 8;
+	u_int	tmp;
+
+	if (size == 4 && sscanf(s + *p, "%4x", &tmp) != 1)
+		return (-1);
+	else if (size == 8 && sscanf(s + *p, "%8x", &tmp) != 1)
+		return (-1);
+
+	*p += size;
+	*wc = (wchar_t) tmp;
+	return (0);
+}
+
 int
 cmd_string_split(const char *s, int *rargc, char ***rargv)
 {
@@ -191,10 +207,13 @@ cmd_string_copy(char **dst, char *src, size_t *len)
 static char *
 cmd_string_string(const char *s, size_t *p, char endch, int esc)
 {
-	int	ch;
-	char   *buf, *t;
-	size_t	len;
+	int			ch;
+	wchar_t			wc;
+	struct utf8_data	ud;
+	char		       *buf, *t;
+	size_t			len;
 
+	wc = 0;
 	buf = NULL;
 	len = 0;
 
@@ -220,6 +239,11 @@ cmd_string_string(const char *s, size_t *p, char endch, int esc)
 			case 't':
 				ch = '\t';
 				break;
+			case 'u':
+			case 'U':
+				if (cmd_string_unicode_esc(&wc, s, p, ch) != 0)
+					goto error;
+				break;
 			}
 			break;
 		case '$':
@@ -233,8 +257,17 @@ cmd_string_string(const char *s, size_t *p, char endch, int esc)
 
 		if (len >= SIZE_MAX - 2)
 			goto error;
-		buf = xrealloc(buf, len + 1);
-		buf[len++] = ch;
+		if (wc != 0) {
+			if (utf8_split(wc, &ud) != UTF8_DONE)
+				goto error;
+			buf = xrealloc(buf, len + ud.size);
+			memcpy(buf + len, ud.data, ud.size);
+			len += ud.size;
+			wc = 0;
+		} else {
+			buf = xrealloc(buf, len + 1);
+			buf[len++] = ch;
+		}
 	}
 
 	buf = xrealloc(buf, len + 1);
