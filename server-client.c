@@ -1312,7 +1312,7 @@ server_client_check_redraw(struct client *c)
 	struct session		*s = c->session;
 	struct tty		*tty = &c->tty;
 	struct window_pane	*wp;
-	int			 needed, flags, masked;
+	int			 needed, flags;
 	struct timeval		 tv = { .tv_usec = 1000 };
 	static struct event	 ev;
 	size_t			 left;
@@ -1326,7 +1326,7 @@ server_client_check_redraw(struct client *c)
 	 * end up back here.
 	 */
 	needed = 0;
-	if (c->flags & CLIENT_REDRAW)
+	if (c->flags & CLIENT_ALLREDRAWFLAGS)
 		needed = 1;
 	else {
 		TAILQ_FOREACH(wp, &c->session->curw->window->panes, entry) {
@@ -1349,25 +1349,19 @@ server_client_check_redraw(struct client *c)
 		 * We may have got here for a single pane redraw, but force a
 		 * full redraw next time in case other panes have been updated.
 		 */
-		c->flags |= CLIENT_REDRAW;
+		c->flags |= CLIENT_ALLREDRAWFLAGS;
 		return;
 	} else if (needed)
 		log_debug("%s: redraw needed", c->name);
 
-	if (c->flags & (CLIENT_REDRAW|CLIENT_STATUS)) {
-		if (options_get_number(s->options, "set-titles"))
-			server_client_set_title(c);
-		screen_redraw_update(c); /* will adjust flags */
-	}
-
 	flags = tty->flags & (TTY_BLOCK|TTY_FREEZE|TTY_NOCURSOR);
 	tty->flags = (tty->flags & ~(TTY_BLOCK|TTY_FREEZE)) | TTY_NOCURSOR;
 
-	if (c->flags & CLIENT_REDRAW) {
-		tty_update_mode(tty, tty->mode, NULL);
-		screen_redraw_screen(c, 1, 1, 1);
-		c->flags &= ~(CLIENT_STATUS|CLIENT_BORDERS);
-	} else {
+	if (~c->flags & CLIENT_REDRAWWINDOW) {
+		/*
+		 * If not redrawing the entire window, check whether each pane
+		 * needs to be redrawn.
+		 */
 		TAILQ_FOREACH(wp, &c->session->curw->window->panes, entry) {
 			if (wp->flags & PANE_REDRAW) {
 				tty_update_mode(tty, tty->mode, NULL);
@@ -1376,21 +1370,16 @@ server_client_check_redraw(struct client *c)
 		}
 	}
 
-	masked = c->flags & (CLIENT_BORDERS|CLIENT_STATUS);
-	if (masked != 0)
-		tty_update_mode(tty, tty->mode, NULL);
-	if (masked == CLIENT_BORDERS)
-		screen_redraw_screen(c, 0, 0, 1);
-	else if (masked == CLIENT_STATUS)
-		screen_redraw_screen(c, 0, 1, 0);
-	else if (masked != 0)
-		screen_redraw_screen(c, 0, 1, 1);
+	if (c->flags & CLIENT_ALLREDRAWFLAGS) {
+		if (options_get_number(s->options, "set-titles"))
+			server_client_set_title(c);
+		screen_redraw_screen(c);
+	}
 
 	tty->flags = (tty->flags & ~(TTY_FREEZE|TTY_NOCURSOR)) | flags;
 	tty_update_mode(tty, tty->mode, NULL);
 
-	c->flags &= ~(CLIENT_REDRAW|CLIENT_BORDERS|CLIENT_STATUS|
-	    CLIENT_STATUSFORCE);
+	c->flags &= ~(CLIENT_ALLREDRAWFLAGS|CLIENT_STATUSFORCE);
 
 	if (needed) {
 		/*

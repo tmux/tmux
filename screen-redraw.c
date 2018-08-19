@@ -318,7 +318,7 @@ screen_redraw_make_pane_status(struct client *c, struct window *w,
 static void
 screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 {
-	struct client           *c = ctx->c;
+	struct client		*c = ctx->c;
 	struct window		*w = c->session->curw->window;
 	struct options		*oo = c->session->options;
 	struct tty		*tty = &c->tty;
@@ -344,7 +344,7 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 }
 
 /* Update status line and change flags if unchanged. */
-void
+static void
 screen_redraw_update(struct client *c)
 {
 	struct window		*w = c->session->curw->window;
@@ -359,7 +359,7 @@ screen_redraw_update(struct client *c)
 	else
 		redraw = status_redraw(c);
 	if (!redraw)
-		c->flags &= ~CLIENT_STATUS;
+		c->flags &= ~CLIENT_REDRAWSTATUS;
 
 	if (options_get_number(wo, "pane-border-status") != CELL_STATUS_OFF) {
 		redraw = 0;
@@ -368,7 +368,7 @@ screen_redraw_update(struct client *c)
 				redraw = 1;
 		}
 		if (redraw)
-			c->flags |= CLIENT_BORDERS;
+			c->flags |= CLIENT_REDRAWBORDERS;
 	}
 }
 
@@ -376,10 +376,10 @@ screen_redraw_update(struct client *c)
 static void
 screen_redraw_set_context(struct client *c, struct screen_redraw_ctx *ctx)
 {
-	struct session  *s = c->session;
-	struct options  *oo = s->options;
-	struct window   *w = s->curw->window;
-	struct options  *wo = w->options;
+	struct session	*s = c->session;
+	struct options	*oo = s->options;
+	struct window	*w = s->curw->window;
+	struct options	*wo = w->options;
 
 	memset(ctx, 0, sizeof *ctx);
 	ctx->c = c;
@@ -395,26 +395,24 @@ screen_redraw_set_context(struct client *c, struct screen_redraw_ctx *ctx)
 
 /* Redraw entire screen. */
 void
-screen_redraw_screen(struct client *c, int draw_panes, int draw_status,
-    int draw_borders)
+screen_redraw_screen(struct client *c)
 {
-	struct screen_redraw_ctx	 ctx;
+	struct screen_redraw_ctx	ctx;
 
 	if (c->flags & CLIENT_SUSPENDED)
 		return;
 
+	screen_redraw_update(c);
 	screen_redraw_set_context(c, &ctx);
 
-	if (ctx.lines == 0)
-		draw_status = 0;
-
-	if (draw_borders)
+	if (c->flags & (CLIENT_REDRAWWINDOW|CLIENT_REDRAWBORDERS)) {
+		if (ctx.pane_status != CELL_STATUS_OFF)
+			screen_redraw_draw_pane_status(&ctx);
 		screen_redraw_draw_borders(&ctx);
-	if (draw_borders && ctx.pane_status != CELL_STATUS_OFF)
-		screen_redraw_draw_pane_status(&ctx);
-	if (draw_panes)
+	}
+	if (c->flags & CLIENT_REDRAWWINDOW)
 		screen_redraw_draw_panes(&ctx);
-	if (draw_status)
+	if (ctx.lines != 0 && (c->flags & CLIENT_REDRAWSTATUS))
 		screen_redraw_draw_status(&ctx);
 	tty_reset(&c->tty);
 }
@@ -447,15 +445,15 @@ screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int x, u_int y,
     struct grid_cell *active_gc, struct grid_cell *m_other_gc,
     struct grid_cell *other_gc)
 {
-	struct client           *c = ctx->c;
-	struct session          *s = c->session;
-	struct window           *w = s->curw->window;
-	struct tty              *tty = &c->tty;
-	struct window_pane      *wp;
-	struct window_pane      *active = w->active;
-	struct window_pane      *marked = marked_pane.wp;
-	u_int                    type;
-	int                      flag, pane_status = ctx->pane_status;
+	struct client		*c = ctx->c;
+	struct session		*s = c->session;
+	struct window		*w = s->curw->window;
+	struct tty		*tty = &c->tty;
+	struct window_pane	*wp;
+	struct window_pane	*active = w->active;
+	struct window_pane	*marked = marked_pane.wp;
+	u_int			 type;
+	int			 flag, pane_status = ctx->pane_status;
 
 	type = screen_redraw_check_cell(c, x, y, pane_status, &wp);
 	if (type == CELL_INSIDE)
@@ -492,7 +490,7 @@ screen_redraw_draw_borders(struct screen_redraw_ctx *ctx)
 	struct tty		*tty = &c->tty;
 	struct grid_cell	 m_active_gc, active_gc, m_other_gc, other_gc;
 	struct grid_cell	 msg_gc;
-	u_int		 	 i, j, msgx = 0, msgy = 0;
+	u_int			 i, j, msgx = 0, msgy = 0;
 	int			 small, flags;
 	char			 msg[256];
 	const char		*tmp;
@@ -558,7 +556,7 @@ screen_redraw_draw_panes(struct screen_redraw_ctx *ctx)
 	struct window		*w = c->session->curw->window;
 	struct tty		*tty = &c->tty;
 	struct window_pane	*wp;
-	u_int		 	 i, y;
+	u_int			 i, y;
 
 	if (ctx->top)
 		y = ctx->lines;

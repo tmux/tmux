@@ -179,7 +179,7 @@ tty_timer_callback(__unused int fd, __unused short events, void *data)
 
 	log_debug("%s: %zu discarded", c->name, tty->discarded);
 
-	c->flags |= CLIENT_REDRAW;
+	c->flags |= CLIENT_ALLREDRAWFLAGS;
 	c->discarded += tty->discarded;
 
 	if (tty->discarded < TTY_BLOCK_STOP(tty)) {
@@ -1049,7 +1049,7 @@ tty_client_ready(struct client *c, struct window_pane *wp)
 {
 	if (c->session == NULL || c->tty.term == NULL)
 		return (0);
-	if (c->flags & (CLIENT_REDRAW|CLIENT_SUSPENDED))
+	if (c->flags & (CLIENT_REDRAWWINDOW|CLIENT_SUSPENDED))
 		return (0);
 	if (c->tty.flags & TTY_FREEZE)
 		return (0);
