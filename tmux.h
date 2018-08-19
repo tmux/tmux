@@ -1333,14 +1333,14 @@ struct client {
 #define CLIENT_TERMINAL 0x1
 #define CLIENT_LOGIN 0x2
 #define CLIENT_EXIT 0x4
-#define CLIENT_REDRAW 0x8
-#define CLIENT_STATUS 0x10
+#define CLIENT_REDRAWWINDOW 0x8
+#define CLIENT_REDRAWSTATUS 0x10
 #define CLIENT_REPEAT 0x20
 #define CLIENT_SUSPENDED 0x40
 #define CLIENT_ATTACHED 0x80
 #define CLIENT_IDENTIFY 0x100
 #define CLIENT_DEAD 0x200
-#define CLIENT_BORDERS 0x400
+#define CLIENT_REDRAWBORDERS 0x400
 #define CLIENT_READONLY 0x800
 #define CLIENT_DETACHING 0x1000
 #define CLIENT_CONTROL 0x2000
@@ -1354,6 +1354,8 @@ struct client {
 #define CLIENT_TRIPLECLICK 0x200000
 #define CLIENT_SIZECHANGED 0x400000
 #define CLIENT_STATUSOFF 0x800000
+#define CLIENT_ALLREDRAWFLAGS \
+	(CLIENT_REDRAWWINDOW|CLIENT_REDRAWSTATUS|CLIENT_REDRAWBORDERS)
 	int		 flags;
 	struct key_table *keytable;
 
@@ -2055,8 +2057,7 @@ void	 screen_write_setselection(struct screen_write_ctx *, u_char *, u_int);
 void	 screen_write_rawstring(struct screen_write_ctx *, u_char *, u_int);
 
 /* screen-redraw.c */
-void	 screen_redraw_update(struct client *);
-void	 screen_redraw_screen(struct client *, int, int, int);
+void	 screen_redraw_screen(struct client *);
 void	 screen_redraw_pane(struct client *, struct window_pane *);
 
 /* screen.c */
