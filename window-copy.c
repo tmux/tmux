@@ -353,9 +353,6 @@ window_copy_pageup(struct window_pane *wp, int half_page)
 	oy = screen_hsize(data->backing) + data->cy - data->oy;
 	ox = window_copy_find_length(wp, oy);
 
-	if (data->lineflag == LINE_SEL_LEFT_RIGHT && oy == data->sely)
-		window_copy_other_end(wp);
-
 	if (data->cx != ox) {
 		data->lastcx = data->cx;
 		data->lastsx = ox;
@@ -371,7 +368,13 @@ window_copy_pageup(struct window_pane *wp, int half_page)
 	}
 
 	if (data->oy + n > screen_hsize(data->backing))
+	{
 		data->oy = screen_hsize(data->backing);
+		if (data->cy < n)
+			data->cy = 0;
+		else
+			data->cy -= n;
+	}
 	else
 		data->oy += n;
 
@@ -397,9 +400,6 @@ window_copy_pagedown(struct window_pane *wp, int half_page, int scroll_exit)
 	oy = screen_hsize(data->backing) + data->cy - data->oy;
 	ox = window_copy_find_length(wp, oy);
 
-	if (data->lineflag == LINE_SEL_RIGHT_LEFT && oy == data->sely)
-		window_copy_other_end(wp);
-
 	if (data->cx != ox) {
 		data->lastcx = data->cx;
 		data->lastsx = ox;
@@ -415,7 +415,14 @@ window_copy_pagedown(struct window_pane *wp, int half_page, int scroll_exit)
 	}
 
 	if (data->oy < n)
+	{
+		u_int scroll = n - data->oy;
 		data->oy = 0;
+		if (data->cy +scroll >= screen_size_y(data->backing))
+			data->cy = screen_size_y(data->backing) - 1;
+		else
+			data->cy += scroll;
+	}
 	else
 		data->oy -= n;
 
