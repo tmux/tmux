@@ -886,15 +886,20 @@ tty_redraw_region(struct tty *tty, const struct tty_ctx *ctx)
 
 /* Is this position visible in the pane? */
 static int
-tty_is_visible(const struct tty_ctx *ctx, u_int px, u_int py, u_int nx,
-    u_int ny)
+tty_is_visible(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
+    u_int nx, u_int ny)
 {
-	u_int	xoff = ctx->xoff + px, yoff = ctx->yoff + py;
+	u_int	xoff = ctx->xoff + px, yoff = ctx->yoff + py, lines;
 
 	if (!ctx->bigger)
 		return (1);
-	if (xoff + nx <= ctx->ox || xoff > ctx->ox + ctx->sx ||
-	    yoff + ny <= ctx->oy || yoff > ctx->oy + ctx->sy) {
+
+	if (status_at_line(tty->client) == 0)
+		lines = tty_status_lines(tty);
+	else
+		lines = 0;
+	if (xoff + nx <= ctx->ox || xoff >= ctx->ox + ctx->sx ||
+	    yoff + ny <= ctx->oy || yoff >= lines + ctx->oy + ctx->sy) {
 		return (0);
 	}
 	return (1);
@@ -902,12 +907,12 @@ tty_is_visible(const struct tty_ctx *ctx, u_int px, u_int py, u_int nx,
 
 /* Clamp line position to visible part of pane. */
 static int
-tty_clamp_line(const struct tty_ctx *ctx, u_int px, u_int py, u_int nx,
-    u_int *i, u_int *x, u_int *rx, u_int *ry)
+tty_clamp_line(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
+    u_int nx, u_int *i, u_int *x, u_int *rx, u_int *ry)
 {
 	u_int	xoff = ctx->xoff + px;
 
-	if (!tty_is_visible(ctx, px, py, nx, 1))
+	if (!tty_is_visible(tty, ctx, px, py, nx, 1))
 		return (0);
 	*ry = ctx->yoff + py - ctx->oy;
 
@@ -987,18 +992,19 @@ tty_clear_pane_line(struct tty *tty, const struct tty_ctx *ctx, u_int py,
 
 	log_debug("%s: %s, %u at %u,%u", __func__, c->name, nx, px, py);
 
-	if (tty_clamp_line(ctx, px, py, nx, &i, &x, &rx, &ry))
+	if (tty_clamp_line(tty, ctx, px, py, nx, &i, &x, &rx, &ry))
 		tty_clear_line(tty, ctx->wp, ry, x, rx, bg);
 }
 
 /* Clamp area position to visible part of pane. */
 static int
-tty_clamp_area(const struct tty_ctx *ctx, u_int px, u_int py, u_int nx,
-    u_int ny, u_int *i, u_int *j, u_int *x, u_int *y, u_int *rx, u_int *ry)
+tty_clamp_area(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
+    u_int nx, u_int ny, u_int *i, u_int *j, u_int *x, u_int *y, u_int *rx,
+    u_int *ry)
 {
 	u_int	xoff = ctx->xoff + px, yoff = ctx->yoff + py;
 
-	if (!tty_is_visible(ctx, px, py, nx, ny))
+	if (!tty_is_visible(tty, ctx, px, py, nx, ny))
 		return (0);
 
 	if (xoff >= ctx->ox && xoff + nx <= ctx->ox + ctx->sx) {
@@ -1125,7 +1131,7 @@ tty_clear_pane_area(struct tty *tty, const struct tty_ctx *ctx, u_int py,
 {
 	u_int	i, j, x, y, rx, ry;
 
-	if (tty_clamp_area(ctx, px, py, nx, ny, &i, &j, &x, &y, &rx, &ry))
+	if (tty_clamp_area(tty, ctx, px, py, nx, ny, &i, &j, &x, &y, &rx, &ry))
 		tty_clear_area(tty, ctx->wp, y, ry, x, rx, bg);
 }
 
@@ -1142,7 +1148,7 @@ tty_draw_pane(struct tty *tty, const struct tty_ctx *ctx, u_int py)
 		tty_draw_line(tty, wp, s, 0, py, nx, ctx->xoff, ctx->yoff);
 		return;
 	}
-	if (tty_clamp_line(ctx, 0, py, nx, &i, &x, &rx, &ry))
+	if (tty_clamp_line(tty, ctx, 0, py, nx, &i, &x, &rx, &ry))
 		tty_draw_line(tty, wp, s, i, py, rx, x, ry);
 }
 
@@ -1687,7 +1693,7 @@ tty_cmd_alignmenttest(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 {
-	if (!tty_is_visible(ctx, ctx->ocx, ctx->ocy, 1, 1))
+	if (!tty_is_visible(tty, ctx, ctx->ocx, ctx->ocy, 1, 1))
 		return;
 
 	if (ctx->xoff + ctx->ocx - ctx->ox > tty->sx - 1 &&
@@ -1708,7 +1714,7 @@ tty_cmd_cells(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
 
-	if (!tty_is_visible(ctx, ctx->ocx, ctx->ocy, ctx->num, 1))
+	if (!tty_is_visible(tty, ctx, ctx->ocx, ctx->ocy, ctx->num, 1))
 		return;
 
 	if (ctx->bigger &&
