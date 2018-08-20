@@ -1278,8 +1278,11 @@ struct cmd_entry {
 /* Status line. */
 struct status_line {
 	struct event	 timer;
+
 	struct screen	 status;
 	struct screen	*old_status;
+
+	int		 window_list_offset;
 };
 
 /* Client connection. */

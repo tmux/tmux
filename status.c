@@ -284,7 +284,7 @@ status_get_window_at(struct client *c, u_int x)
 	const char	*sep;
 	size_t		 seplen;
 
-	x += c->wlmouse;
+	x += c->status.window_list_offset;
 	RB_FOREACH(wl, winlinks, &s->windows) {
 		oo = wl->window->options;
 
@@ -506,7 +506,7 @@ draw:
 		wloffset++;
 
 	/* Copy the window list. */
-	c->wlmouse = -wloffset + wlstart;
+	c->status.window_list_offset = -wloffset + wlstart;
 	screen_write_cursormove(&ctx, wloffset, 0);
 	screen_write_fast_copy(&ctx, &window_list, wlstart, 0, wlwidth, 1);
 	screen_free(&window_list);
