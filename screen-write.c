@@ -94,7 +94,7 @@ void
 screen_write_start(struct screen_write_ctx *ctx, struct window_pane *wp,
     struct screen *s)
 {
-	char	tmp[16];
+	char	tmp[32];
 	u_int	y;
 
 	memset(ctx, 0, sizeof *ctx);
@@ -113,8 +113,10 @@ screen_write_start(struct screen_write_ctx *ctx, struct window_pane *wp,
 	ctx->scrolled = 0;
 	ctx->bg = 8;
 
-	if (wp != NULL)
-		snprintf(tmp, sizeof tmp, "pane %%%u", wp->id);
+	if (wp != NULL) {
+		snprintf(tmp, sizeof tmp, "pane %%%u (at %u,%u)", wp->id,
+		    wp->xoff, wp->yoff);
+	}
 	log_debug("%s: size %ux%u, %s", __func__, screen_size_x(ctx->s),
 	    screen_size_y(ctx->s), wp == NULL ? "no pane" : tmp);
 }
