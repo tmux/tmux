@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <fnmatch.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -260,7 +261,7 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	if (strcmp(name, "pane-border-status") == 0) {
 		RB_FOREACH(w, windows, &windows)
-			layout_fix_panes(w, w->sx, w->sy);
+			layout_fix_panes(w);
 	}
 	RB_FOREACH(s, sessions, &sessions)
 		status_update_saved(s);
@@ -297,7 +298,8 @@ cmd_set_option_set(struct cmd *self, struct cmdq_item *item, struct options *oo,
 	int					 append = args_has(args, 'a');
 	struct options_entry			*o;
 	long long				 number;
-	const char				*errstr;
+	const char				*errstr, *new;
+	char					*old;
 	key_code				 key;
 
 	oe = options_table_entry(parent);
@@ -310,7 +312,16 @@ cmd_set_option_set(struct cmd *self, struct cmdq_item *item, struct options *oo,
 
 	switch (oe->type) {
 	case OPTIONS_TABLE_STRING:
+		old = xstrdup(options_get_string(oo, oe->name));
 		options_set_string(oo, oe->name, append, "%s", value);
+		new = options_get_string(oo, oe->name);
+		if (oe->pattern != NULL && fnmatch(oe->pattern, new, 0) != 0) {
+			options_set_string(oo, oe->name, 0, "%s", old);
+			free(old);
+			cmdq_error(item, "value is invalid: %s", value);
+			return (-1);
+		}
+		free(old);
 		return (0);
 	case OPTIONS_TABLE_NUMBER:
 		number = strtonum(value, oe->minimum, oe->maximum, &errstr);

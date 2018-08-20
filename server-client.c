@@ -192,6 +192,7 @@ server_client_create(int fd)
 
 	c->session = NULL;
 	c->last_session = NULL;
+
 	c->tty.sx = 80;
 	c->tty.sy = 24;
 
@@ -409,7 +410,7 @@ server_client_check_mouse(struct client *c)
 	struct mouse_event	*m = &c->tty.mouse;
 	struct window		*w;
 	struct window_pane	*wp;
-	u_int			 x, y, b;
+	u_int			 x, y, b, sx, sy;
 	int			 flag;
 	key_code		 key;
 	struct timeval		 tv;
@@ -419,8 +420,8 @@ server_client_check_mouse(struct client *c)
 	type = NOTYPE;
 	where = NOWHERE;
 
-	log_debug("mouse %02x at %u,%u (last %u,%u) (%d)", m->b, m->x, m->y,
-	    m->lx, m->ly, c->tty.mouse_drag_flag);
+	log_debug("%s mouse %02x at %u,%u (last %u,%u) (%d)", c->name, m->b,
+	    m->x, m->y, m->lx, m->ly, c->tty.mouse_drag_flag);
 
 	/* What type of event is this? */
 	if ((m->sgr_type != ' ' &&
@@ -439,7 +440,7 @@ server_client_check_mouse(struct client *c)
 			x = m->x, y = m->y, b = m->b;
 			log_debug("drag update at %u,%u", x, y);
 		} else {
-			x = m->lx, y = m->ly, b = m->lb;
+			x = m->lx - m->ox, y = m->ly - m->oy, b = m->lb;
 			log_debug("drag start at %u,%u", x, y);
 		}
 	} else if (MOUSE_WHEEL(m->b)) {
@@ -513,6 +514,14 @@ have_event:
 			y--;
 		else if (m->statusat > 0 && y >= (u_int)m->statusat)
 			y = m->statusat - 1;
+
+		tty_window_offset(&c->tty, &m->ox, &m->oy, &sx, &sy);
+		log_debug("mouse window @%u at %u,%u (%ux%u)",
+		    s->curw->window->id, m->ox, m->oy, sx, sy);
+		if (x > sx || y > sy)
+			return (KEYC_UNKNOWN);
+		x = m->x = x + m->ox;
+		y = m->y = y + m->oy;
 
 		TAILQ_FOREACH(wp, &s->curw->window->panes, entry) {
 			if ((wp->xoff + wp->sx == x &&
@@ -836,8 +845,6 @@ server_client_handle_key(struct client *c, key_code key)
 			return;
 		window_unzoom(w);
 		wp = window_pane_at_index(w, key - '0');
-		if (wp != NULL && !window_pane_visible(wp))
-			wp = NULL;
 		server_client_clear_identify(c, wp);
 		return;
 	}
@@ -1224,28 +1231,37 @@ server_client_reset_state(struct client *c)
 	struct window_pane	*wp = w->active, *loop;
 	struct screen		*s = wp->screen;
 	struct options		*oo = c->session->options;
-	int			 lines, mode;
+	int			 mode, cursor = 0;
+	u_int			 cx = 0, cy = 0, ox, oy, sx, sy;
 
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
 		return;
+	mode = s->mode;
 
 	tty_region_off(&c->tty);
 	tty_margin_off(&c->tty);
 
-	if (status_at_line(c) != 0)
-		lines = 0;
-	else
-		lines = status_line_size(c->session);
-	if (!window_pane_visible(wp) || wp->yoff + s->cy >= c->tty.sy - lines)
-		tty_cursor(&c->tty, 0, 0);
-	else
-		tty_cursor(&c->tty, wp->xoff + s->cx, lines + wp->yoff + s->cy);
+	/* Move cursor to pane cursor and offset. */
+	cursor = 0;
+	tty_window_offset(&c->tty, &ox, &oy, &sx, &sy);
+	if (wp->xoff + s->cx >= ox && wp->xoff + s->cx <= ox + sx &&
+	    wp->yoff + s->cy >= oy && wp->yoff + s->cy <= oy + sy) {
+		cursor = 1;
+
+		cx = wp->xoff + s->cx - ox;
+		cy = wp->yoff + s->cy - oy;
+
+		if (status_at_line(c) == 0)
+			cy += status_line_size(c->session);
+	}
+	if (!cursor)
+		mode &= ~MODE_CURSOR;
+	tty_cursor(&c->tty, cx, cy);
 
 	/*
 	 * Set mouse mode if requested. To support dragging, always use button
 	 * mode.
 	 */
-	mode = s->mode;
 	if (options_get_number(oo, "mouse")) {
 		mode &= ~ALL_MOUSE_MODES;
 		TAILQ_FOREACH(loop, &w->panes, entry) {
