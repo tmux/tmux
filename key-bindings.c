@@ -228,7 +228,7 @@ key_bindings_init(void)
 		"bind ] paste-buffer",
 		"bind c new-window",
 		"bind d detach-client",
-		"bind f command-prompt \"find-window -- '%%'\"",
+		"bind f command-prompt \"find-window -Z -- '%%'\"",
 		"bind i display-message",
 		"bind l last-window",
 		"bind m select-pane -m",

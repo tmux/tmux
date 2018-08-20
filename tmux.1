@@ -1540,7 +1540,7 @@ The default
 .Ar template
 is "select-pane -t '%%'".
 .It Xo Ic find-window
-.Op Fl CNT
+.Op Fl CNTZ
 .Op Fl t Ar target-pane
 .Ar match-string
 .Xc
@@ -1559,6 +1559,8 @@ matches only the window name and
 matches only the window title.
 The default is
 .Fl CNT .
+.Fl Z
+zooms the pane.
 .Pp
 This command works only if at least one client is attached.
 .It Xo Ic join-pane
