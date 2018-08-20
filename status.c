@@ -214,17 +214,17 @@ status_at_line(struct client *c)
 		return (-1);
 	if (s->statusat != 1)
 		return (s->statusat);
-	return (c->tty.sy - status_line_size(s));
+	return (c->tty.sy - status_line_size(c));
 }
 
-/*
- * Get size of status line for session. 0 means off. Note that status line may
- * be forced off for an individual client if it is too small (the
- * CLIENT_STATUSOFF flag is set for this).
- */
+/* Get size of status line for client's session. 0 means off. */
 u_int
-status_line_size(struct session *s)
+status_line_size(struct client *c)
 {
+	struct session	*s = c->session;
+
+	if (c->flags & CLIENT_STATUSOFF)
+		return (0);
 	if (s->statusat == -1)
 		return (0);
 	return (1);
@@ -324,7 +324,7 @@ status_redraw(struct client *c)
 	}
 
 	/* No status line? */
-	lines = status_line_size(s);
+	lines = status_line_size(c);
 	if (c->tty.sy == 0 || lines == 0)
 		return (1);
 	left = right = NULL;
@@ -659,7 +659,7 @@ status_message_redraw(struct client *c)
 		return (0);
 	memcpy(&old_status, &c->status.status, sizeof old_status);
 
-	lines = status_line_size(c->session);
+	lines = status_line_size(c);
 	if (lines <= 1) {
 		lines = 1;
 		screen_init(&c->status.status, c->tty.sx, 1, 0);
@@ -812,7 +812,7 @@ status_prompt_redraw(struct client *c)
 		return (0);
 	memcpy(&old_status, &c->status.status, sizeof old_status);
 
-	lines = status_line_size(c->session);
+	lines = status_line_size(c);
 	if (lines <= 1) {
 		lines = 1;
 		screen_init(&c->status.status, c->tty.sx, 1, 0);

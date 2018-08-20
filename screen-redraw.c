@@ -411,7 +411,9 @@ screen_redraw_set_context(struct client *c, struct screen_redraw_ctx *ctx)
 	memset(ctx, 0, sizeof *ctx);
 	ctx->c = c;
 
-	ctx->lines = tty_status_lines(&c->tty);
+	ctx->lines = status_line_size(c);
+	if (c->message_string != NULL || c->prompt_string != NULL)
+		ctx->lines = (ctx->lines == 0) ? 1 : ctx->lines;
 	if (ctx->lines != 0 && options_get_number(oo, "status-position") == 0)
 		ctx->top = 1;
 	ctx->pane_status = options_get_number(wo, "pane-border-status");

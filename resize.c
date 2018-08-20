@@ -85,7 +85,7 @@ default_window_size(struct session *s, struct window *w, u_int *sx, u_int *sy,
 				continue;
 
 			cx = c->tty.sx;
-			cy = c->tty.sy - tty_status_lines(&c->tty);
+			cy = c->tty.sy - status_line_size(c);
 
 			if (cx > *sx)
 				*sx = cx;
@@ -105,7 +105,7 @@ default_window_size(struct session *s, struct window *w, u_int *sx, u_int *sy,
 				continue;
 
 			cx = c->tty.sx;
-			cy = c->tty.sy - tty_status_lines(&c->tty);
+			cy = c->tty.sy - status_line_size(c);
 
 			if (cx < *sx)
 				*sx = cx;
@@ -167,7 +167,7 @@ recalculate_sizes(void)
 		if ((flags & CLIENT_CONTROL) && (~flags & CLIENT_SIZECHANGED))
 			continue;
 
-		if (c->tty.sy <= tty_status_lines(&c->tty))
+		if (c->tty.sy <= status_line_size(c))
 			c->flags |= CLIENT_STATUSOFF;
 		else
 			c->flags &= ~CLIENT_STATUSOFF;
@@ -200,7 +200,7 @@ recalculate_sizes(void)
 					continue;
 
 				cx = c->tty.sx;
-				cy = c->tty.sy - tty_status_lines(&c->tty);
+				cy = c->tty.sy - status_line_size(c);
 
 				if (cx > sx)
 					sx = cx;
@@ -222,7 +222,7 @@ recalculate_sizes(void)
 					continue;
 
 				cx = c->tty.sx;
-				cy = c->tty.sy - tty_status_lines(&c->tty);
+				cy = c->tty.sy - status_line_size(c);
 
 				if (cx < sx)
 					sx = cx;

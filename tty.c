@@ -703,11 +703,11 @@ tty_repeat_space(struct tty *tty, u_int n)
 int
 tty_window_bigger(struct tty *tty)
 {
-	struct window	*w = tty->client->session->curw->window;
-	u_int		 lines;
+	struct client	*c = tty->client;
+	struct session	*s = c->session;
+	struct window	*w = s->curw->window;
 
-	lines = tty_status_lines(tty);
-	return (tty->sx < w->sx || tty->sy - lines < w->sy);
+	return (tty->sx < w->sx || tty->sy - status_line_size(c) < w->sy);
 }
 
 /* What offset should this window be drawn at? */
@@ -726,11 +726,13 @@ tty_window_offset(struct tty *tty, u_int *ox, u_int *oy, u_int *sx, u_int *sy)
 static int
 tty_window_offset1(struct tty *tty, u_int *ox, u_int *oy, u_int *sx, u_int *sy)
 {
-	struct window		*w = tty->client->session->curw->window;
+	struct client		*c = tty->client;
+	struct window		*w = c->session->curw->window;
 	struct window_pane	*wp = w->active;
 	u_int			 cx, cy, lines;
 
-	lines = tty_status_lines(tty);
+	lines = status_line_size(c);
+
 	if (tty->sx >= w->sx && tty->sy - lines >= w->sy) {
 		*ox = 0;
 		*oy = 0;
@@ -802,22 +804,6 @@ tty_update_client_offset(struct client *c)
 	c->tty.osy = sy;
 
 	c->flags |= CLIENT_REDRAWWINDOW;
-}
-
-/* How many lines are taken up by the status line on this client? */
-u_int
-tty_status_lines(struct tty *tty)
-{
-	struct client	*c = tty->client;
-	u_int		 lines;
-
-	if (c->flags & CLIENT_STATUSOFF)
-		lines = 0;
-	else
-		lines = status_line_size(c->session);
-	if (c->message_string != NULL || c->prompt_string != NULL)
-		lines = (lines == 0) ? 1 : lines;
-	return (lines);
 }
 
 /*
@@ -895,9 +881,10 @@ tty_is_visible(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
 		return (1);
 
 	if (status_at_line(tty->client) == 0)
-		lines = tty_status_lines(tty);
+		lines = status_line_size(tty->client);
 	else
 		lines = 0;
+
 	if (xoff + nx <= ctx->ox || xoff >= ctx->ox + ctx->sx ||
 	    yoff + ny <= ctx->oy || yoff >= lines + ctx->oy + ctx->sy) {
 		return (0);
@@ -1354,8 +1341,9 @@ tty_write(void (*cmdfn)(struct tty *, const struct tty_ctx *),
 
 		ctx->xoff = wp->xoff;
 		ctx->yoff = wp->yoff;
+
 		if (status_at_line(c) == 0)
-			ctx->yoff += status_line_size(c->session);
+			ctx->yoff += status_line_size(c);
 
 		cmdfn(&c->tty, ctx);
 	}

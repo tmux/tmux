@@ -1674,7 +1674,6 @@ int	tty_window_bigger(struct tty *);
 int	tty_window_offset(struct tty *, u_int *, u_int *, u_int *, u_int *);
 void	tty_update_window_offset(struct window *);
 void	tty_update_client_offset(struct client *);
-u_int	tty_status_lines(struct tty *);
 void	tty_raw(struct tty *, const char *);
 void	tty_attributes(struct tty *, const struct grid_cell *,
 	    const struct window_pane *);
@@ -1933,9 +1932,9 @@ void	 server_unzoom_window(struct window *);
 /* status.c */
 void	 status_timer_start(struct client *);
 void	 status_timer_start_all(void);
-void	 status_update_saved(struct session *s);
+void	 status_update_saved(struct session *);
 int	 status_at_line(struct client *);
-u_int	 status_line_size(struct session *);
+u_int	 status_line_size(struct client *);
 struct window *status_get_window_at(struct client *, u_int);
 int	 status_redraw(struct client *);
 void printflike(2, 3) status_message_set(struct client *, const char *, ...);

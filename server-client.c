@@ -1252,7 +1252,7 @@ server_client_reset_state(struct client *c)
 		cy = wp->yoff + s->cy - oy;
 
 		if (status_at_line(c) == 0)
-			cy += status_line_size(c->session);
+			cy += status_line_size(c);
 	}
 	if (!cursor)
 		mode &= ~MODE_CURSOR;
