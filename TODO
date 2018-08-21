@@ -136,8 +136,3 @@
 	  visible as possible
 	* rather than centering cursor it might be better if only
 	  moved offset when it gets close to an edge?
-	* a way to force offset to a particular part of window, scroll
-	  around the window -- command resize-window -d -l -r -u to
-	  move offset and a flag to go back to tracking - but there
-	  is no per-client window data structure so it will have
-	  to forget when the window is changed
