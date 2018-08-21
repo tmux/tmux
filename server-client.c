@@ -410,7 +410,7 @@ server_client_check_mouse(struct client *c)
 	struct mouse_event	*m = &c->tty.mouse;
 	struct window		*w;
 	struct window_pane	*wp;
-	u_int			 x, y, b, sx, sy;
+	u_int			 x, y, b, sx, sy, px, py;
 	int			 flag;
 	key_code		 key;
 	struct timeval		 tv;
@@ -510,40 +510,46 @@ have_event:
 
 	/* Not on status line. Adjust position and check for border or pane. */
 	if (where == NOWHERE) {
+		px = x;
 		if (m->statusat == 0 && y > 0)
-			y--;
+			py = y - 1;
 		else if (m->statusat > 0 && y >= (u_int)m->statusat)
-			y = m->statusat - 1;
+			py = m->statusat - 1;
+		else
+			py = y;
 
 		tty_window_offset(&c->tty, &m->ox, &m->oy, &sx, &sy);
 		log_debug("mouse window @%u at %u,%u (%ux%u)",
 		    s->curw->window->id, m->ox, m->oy, sx, sy);
-		if (x > sx || y > sy)
+		if (px > sx || py > sy)
 			return (KEYC_UNKNOWN);
-		x = m->x = x + m->ox;
-		y = m->y = y + m->oy;
+		px = px + m->ox;
+		py = py + m->oy;
+		m->x = x + m->ox;
+		m->y = y + m->oy;
 
 		TAILQ_FOREACH(wp, &s->curw->window->panes, entry) {
-			if ((wp->xoff + wp->sx == x &&
-			    wp->yoff <= 1 + y &&
-			    wp->yoff + wp->sy >= y) ||
-			    (wp->yoff + wp->sy == y &&
-			    wp->xoff <= 1 + x &&
-			    wp->xoff + wp->sx >= x))
+			if ((wp->xoff + wp->sx == px &&
+			    wp->yoff <= 1 + py &&
+			    wp->yoff + wp->sy >= py) ||
+			    (wp->yoff + wp->sy == py &&
+			    wp->xoff <= 1 + px &&
+			    wp->xoff + wp->sx >= px))
 				break;
 		}
 		if (wp != NULL)
 			where = BORDER;
 		else {
-			wp = window_get_active_at(s->curw->window, x, y);
-			if (wp != NULL) {
+			wp = window_get_active_at(s->curw->window, px, py);
+			if (wp != NULL)
 				where = PANE;
-				log_debug("mouse at %u,%u is on pane %%%u",
-				    x, y, wp->id);
-			}
 		}
 		if (where == NOWHERE)
 			return (KEYC_UNKNOWN);
+		if (where == PANE)
+			log_debug("mouse %u,%u on pane %%%u", px, py, wp->id);
+		else if (where == BORDER)
+			log_debug("mouse on pane %%%u border", wp->id);
 		m->wp = wp->id;
 		m->w = wp->window->id;
 	} else
