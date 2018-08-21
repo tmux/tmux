@@ -18,6 +18,8 @@
 
 #include <sys/types.h>
 
+#include <stdlib.h>
+
 #include "tmux.h"
 
 /*
@@ -31,8 +33,8 @@ const struct cmd_entry cmd_refresh_client_entry = {
 	.name = "refresh-client",
 	.alias = "refresh",
 
-	.args = { "C:St:", 0, 0 },
-	.usage = "[-S] [-C size] " CMD_TARGET_CLIENT_USAGE,
+	.args = { "cC:DLRSt:U", 0, 1 },
+	.usage = "[-DLRSU] [-C size] " CMD_TARGET_CLIENT_USAGE " [adjustment]",
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_refresh_client_exec
@@ -43,23 +45,77 @@ cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args	*args = self->args;
 	struct client	*c;
-	const char	*size;
-	u_int		 w, h;
+	struct tty	*tty;
+	struct window	*w;
+	const char	*size, *errstr;
+	u_int		 x, y, adjust;
 
 	if ((c = cmd_find_client(item, args_get(args, 't'), 0)) == NULL)
 		return (CMD_RETURN_ERROR);
+	tty = &c->tty;
+
+	if (args_has(args, 'c') ||
+	    args_has(args, 'L') ||
+	    args_has(args, 'R') ||
+	    args_has(args, 'U') ||
+	    args_has(args, 'D'))
+	{
+		if (args->argc == 0)
+			adjust = 1;
+		else {
+			adjust = strtonum(args->argv[0], 1, INT_MAX, &errstr);
+			if (errstr != NULL) {
+				cmdq_error(item, "adjustment %s", errstr);
+				return (CMD_RETURN_ERROR);
+			}
+		}
+
+		if (args_has(args, 'c'))
+		    c->pan_window = NULL;
+		else {
+			w = c->session->curw->window;
+			if (c->pan_window != w) {
+				c->pan_window = w;
+				c->pan_ox = tty->oox;
+				c->pan_oy = tty->ooy;
+			}
+			if (args_has(args, 'L')) {
+				if (c->pan_ox > adjust)
+					c->pan_ox -= adjust;
+				else
+					c->pan_ox = 0;
+			} else if (args_has(args, 'R')) {
+				c->pan_ox += adjust;
+				if (c->pan_ox > w->sx - tty->osx)
+					c->pan_ox = w->sx - tty->osx;
+			} else if (args_has(args, 'U')) {
+				if (c->pan_oy > adjust)
+					c->pan_oy -= adjust;
+				else
+					c->pan_oy = 0;
+			} else if (args_has(args, 'D')) {
+				c->pan_oy += adjust;
+				if (c->pan_oy > w->sy - tty->osy)
+					c->pan_oy = w->sy - tty->osy;
+			}
+		}
+		tty_update_client_offset(c);
+		server_redraw_client(c);
+		return (CMD_RETURN_NORMAL);
+	}
 
 	if (args_has(args, 'C')) {
 		if ((size = args_get(args, 'C')) == NULL) {
 			cmdq_error(item, "missing size");
 			return (CMD_RETURN_ERROR);
 		}
-		if (sscanf(size, "%u,%u", &w, &h) != 2) {
+		if (sscanf(size, "%u,%u", &x, &y) != 2 &&
+		    sscanf(size, "%ux%u", &x, &y)) {
 			cmdq_error(item, "bad size argument");
 			return (CMD_RETURN_ERROR);
 		}
-		if (w < PANE_MINIMUM || w > 5000 ||
-		    h < PANE_MINIMUM || h > 5000) {
+		if (x < WINDOW_MINIMUM || x > WINDOW_MAXIMUM ||
+		    y < WINDOW_MINIMUM || y > WINDOW_MAXIMUM) {
 			cmdq_error(item, "size too small or too big");
 			return (CMD_RETURN_ERROR);
 		}
@@ -67,16 +123,18 @@ cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 			cmdq_error(item, "not a control client");
 			return (CMD_RETURN_ERROR);
 		}
-		tty_set_size(&c->tty, w, h);
+		tty_set_size(&c->tty, x, y);
 		c->flags |= CLIENT_SIZECHANGED;
 		recalculate_sizes();
-	} else if (args_has(args, 'S')) {
+		return (CMD_RETURN_NORMAL);
+	}
+
+	if (args_has(args, 'S')) {
 		c->flags |= CLIENT_STATUSFORCE;
 		server_status_client(c);
 	} else {
 		c->flags |= CLIENT_STATUSFORCE;
 		server_redraw_client(c);
 	}
-
 	return (CMD_RETURN_NORMAL);
 }

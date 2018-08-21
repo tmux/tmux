@@ -930,9 +930,11 @@ is used, the
 .Ic update-environment
 option will not be applied.
 .It Xo Ic refresh-client
-.Op Fl C Ar width,height
+.Op Fl cDLRU
+.Op Fl C Ar XxY
 .Op Fl S
 .Op Fl t Ar target-client
+.Op Ar adjustment
 .Xc
 .D1 (alias: Ic refresh )
 Refresh the current client if bound to a key, or a single client if one is given
@@ -941,6 +943,36 @@ with
 If
 .Fl S
 is specified, only update the client's status line.
+.Pp
+The
+.Fl U ,
+.Fl D ,
+.Fl L
+.Fl R ,
+and
+.Fl c
+flags allow the visible portion of a window which is larger than the client
+to be changed.
+.Fl U
+moves the visible part up by
+.Ar adjustment
+rows and
+.Fl D
+down,
+.Fl L
+left by
+.Ar adjustment
+columns and
+.Fl R
+right.
+.Fl c
+returns to tracking the cursor automatically.
+If
+.Ar adjustment
+is omitted, 1 is used.
+Note that the visible position is a property of the client not of the
+window, changing the current window in the attached session will reset
+it.
 .Pp
 .Fl C
 sets the width and height of a control client.

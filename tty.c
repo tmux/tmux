@@ -738,11 +738,23 @@ tty_window_offset1(struct tty *tty, u_int *ox, u_int *oy, u_int *sx, u_int *sy)
 		*oy = 0;
 		*sx = w->sx;
 		*sy = w->sy;
+
+		c->pan_window = NULL;
 		return (0);
 	}
 
 	*sx = tty->sx;
 	*sy = tty->sy - lines;
+
+	if (c->pan_window == w) {
+		if (c->pan_ox + *sx > w->sx)
+			c->pan_ox = w->sx - *sx;
+		*ox = c->pan_ox;
+		if (c->pan_oy + *sy > w->sy)
+			c->pan_oy = w->sy - *sy;
+		*oy = c->pan_oy;
+		return (1);
+	}
 
 	if (~wp->screen->mode & MODE_CURSOR) {
 		*ox = 0;
@@ -766,6 +778,7 @@ tty_window_offset1(struct tty *tty, u_int *ox, u_int *oy, u_int *sx, u_int *sy)
 			*oy = cy - *sy / 2;
 	}
 
+	c->pan_window = NULL;
 	return (1);
 }
 

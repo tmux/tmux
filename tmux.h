@@ -1421,6 +1421,10 @@ struct client {
 
 	int		 references;
 
+	void		*pan_window;
+	u_int		 pan_ox;
+	u_int		 pan_oy;
+
 	TAILQ_ENTRY(client) entry;
 };
 TAILQ_HEAD(clients, client);
