@@ -511,6 +511,10 @@ draw:
 	screen_write_fast_copy(&ctx, &window_list, wlstart, 0, wlwidth, 1);
 	screen_free(&window_list);
 
+	/* Save left and right size. */
+	c->status.left_size = llen;
+	c->status.right_size = rlen;
+
 	screen_write_stop(&ctx);
 
 out:

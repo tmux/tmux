@@ -116,13 +116,17 @@ struct tmuxproc;
 #define KEYC_CLICK_TIMEOUT 300
 
 /* Mouse key codes. */
-#define KEYC_MOUSE_KEY(name)				\
-	KEYC_ ## name ## _PANE,				\
-	KEYC_ ## name ## _STATUS,			\
+#define KEYC_MOUSE_KEY(name)					\
+	KEYC_ ## name ## _PANE,					\
+	KEYC_ ## name ## _STATUS,				\
+	KEYC_ ## name ## _STATUS_LEFT,				\
+	KEYC_ ## name ## _STATUS_RIGHT,				\
 	KEYC_ ## name ## _BORDER
-#define KEYC_MOUSE_STRING(name, s)			\
-	{ #s "Pane", KEYC_ ## name ## _PANE },		\
-	{ #s "Status", KEYC_ ## name ## _STATUS },	\
+#define KEYC_MOUSE_STRING(name, s)				\
+	{ #s "Pane", KEYC_ ## name ## _PANE },			\
+	{ #s "Status", KEYC_ ## name ## _STATUS },		\
+	{ #s "StatusLeft", KEYC_ ## name ## _STATUS_LEFT },	\
+	{ #s "StatusRight", KEYC_ ## name ## _STATUS_RIGHT },	\
 	{ #s "Border", KEYC_ ## name ## _BORDER }
 
 /*
@@ -1283,6 +1287,9 @@ struct status_line {
 	struct screen	*old_status;
 
 	int		 window_list_offset;
+
+	u_int            left_size;
+	u_int            right_size;
 };
 
 /* Client connection. */

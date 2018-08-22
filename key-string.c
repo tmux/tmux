@@ -271,6 +271,10 @@ key_string_lookup_key(key_code key)
 		return ("MouseMovePane");
 	if (key == KEYC_MOUSEMOVE_STATUS)
 		return ("MouseMoveStatus");
+	if (key == KEYC_MOUSEMOVE_STATUS_LEFT)
+		return ("MouseMoveStatusLeft");
+	if (key == KEYC_MOUSEMOVE_STATUS_RIGHT)
+		return ("MouseMoveStatusRight");
 	if (key == KEYC_MOUSEMOVE_BORDER)
 		return ("MouseMoveBorder");
 	if (key >= KEYC_USER && key < KEYC_USER + KEYC_NUSER) {
