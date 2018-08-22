@@ -415,7 +415,7 @@ server_client_check_mouse(struct client *c)
 	key_code		 key;
 	struct timeval		 tv;
 	enum { NOTYPE, MOVE, DOWN, UP, DRAG, WHEEL, DOUBLE, TRIPLE } type;
-	enum { NOWHERE, PANE, STATUS, BORDER } where;
+	enum { NOWHERE, PANE, STATUS, STATUS_LEFT, STATUS_RIGHT, BORDER } where;
 
 	type = NOTYPE;
 	where = NOWHERE;
@@ -494,19 +494,25 @@ have_event:
 	if (type == NOTYPE)
 		return (KEYC_UNKNOWN);
 
-	/* Always save the session. */
+	/* Save the session. */
 	m->s = s->id;
+	m->w = -1;
 
 	/* Is this on the status line? */
 	m->statusat = status_at_line(c);
 	if (m->statusat != -1 && y == (u_int)m->statusat) {
-		w = status_get_window_at(c, x);
-		if (w == NULL)
-			return (KEYC_UNKNOWN);
-		m->w = w->id;
-		where = STATUS;
-	} else
-		m->w = -1;
+		if (x < c->status.left_size)
+			where = STATUS_LEFT;
+		else if (x > c->tty.sx - c->status.right_size)
+			where = STATUS_RIGHT;
+		else {
+			w = status_get_window_at(c, x);
+			if (w == NULL)
+				return (KEYC_UNKNOWN);
+			m->w = w->id;
+			where = STATUS;
+		}
+	}
 
 	/* Not on status line. Adjust position and check for border or pane. */
 	if (where == NOWHERE) {
@@ -573,6 +579,10 @@ have_event:
 				key = KEYC_MOUSEDRAGEND1_PANE;
 			if (where == STATUS)
 				key = KEYC_MOUSEDRAGEND1_STATUS;
+			if (where == STATUS_LEFT)
+				key = KEYC_MOUSEDRAGEND1_STATUS_LEFT;
+			if (where == STATUS_RIGHT)
+				key = KEYC_MOUSEDRAGEND1_STATUS_RIGHT;
 			if (where == BORDER)
 				key = KEYC_MOUSEDRAGEND1_BORDER;
 			break;
@@ -581,6 +591,10 @@ have_event:
 				key = KEYC_MOUSEDRAGEND2_PANE;
 			if (where == STATUS)
 				key = KEYC_MOUSEDRAGEND2_STATUS;
+			if (where == STATUS_LEFT)
+				key = KEYC_MOUSEDRAGEND2_STATUS_LEFT;
+			if (where == STATUS_RIGHT)
+				key = KEYC_MOUSEDRAGEND2_STATUS_RIGHT;
 			if (where == BORDER)
 				key = KEYC_MOUSEDRAGEND2_BORDER;
 			break;
@@ -589,6 +603,10 @@ have_event:
 				key = KEYC_MOUSEDRAGEND3_PANE;
 			if (where == STATUS)
 				key = KEYC_MOUSEDRAGEND3_STATUS;
+			if (where == STATUS_LEFT)
+				key = KEYC_MOUSEDRAGEND3_STATUS_LEFT;
+			if (where == STATUS_RIGHT)
+				key = KEYC_MOUSEDRAGEND3_STATUS_RIGHT;
 			if (where == BORDER)
 				key = KEYC_MOUSEDRAGEND3_BORDER;
 			break;
@@ -624,6 +642,10 @@ have_event:
 					key = KEYC_MOUSEDRAG1_PANE;
 				if (where == STATUS)
 					key = KEYC_MOUSEDRAG1_STATUS;
+				if (where == STATUS_LEFT)
+					key = KEYC_MOUSEDRAG1_STATUS_LEFT;
+				if (where == STATUS_RIGHT)
+					key = KEYC_MOUSEDRAG1_STATUS_RIGHT;
 				if (where == BORDER)
 					key = KEYC_MOUSEDRAG1_BORDER;
 				break;
@@ -632,6 +654,10 @@ have_event:
 					key = KEYC_MOUSEDRAG2_PANE;
 				if (where == STATUS)
 					key = KEYC_MOUSEDRAG2_STATUS;
+				if (where == STATUS_LEFT)
+					key = KEYC_MOUSEDRAG2_STATUS_LEFT;
+				if (where == STATUS_RIGHT)
+					key = KEYC_MOUSEDRAG2_STATUS_RIGHT;
 				if (where == BORDER)
 					key = KEYC_MOUSEDRAG2_BORDER;
 				break;
@@ -640,6 +666,10 @@ have_event:
 					key = KEYC_MOUSEDRAG3_PANE;
 				if (where == STATUS)
 					key = KEYC_MOUSEDRAG3_STATUS;
+				if (where == STATUS_LEFT)
+					key = KEYC_MOUSEDRAG3_STATUS_LEFT;
+				if (where == STATUS_RIGHT)
+					key = KEYC_MOUSEDRAG3_STATUS_RIGHT;
 				if (where == BORDER)
 					key = KEYC_MOUSEDRAG3_BORDER;
 				break;
@@ -658,6 +688,10 @@ have_event:
 				key = KEYC_WHEELUP_PANE;
 			if (where == STATUS)
 				key = KEYC_WHEELUP_STATUS;
+			if (where == STATUS_LEFT)
+				key = KEYC_WHEELUP_STATUS_LEFT;
+			if (where == STATUS_RIGHT)
+				key = KEYC_WHEELUP_STATUS_RIGHT;
 			if (where == BORDER)
 				key = KEYC_WHEELUP_BORDER;
 		} else {
@@ -676,6 +710,10 @@ have_event:
 				key = KEYC_MOUSEUP1_PANE;
 			if (where == STATUS)
 				key = KEYC_MOUSEUP1_STATUS;
+			if (where == STATUS_LEFT)
+				key = KEYC_MOUSEUP1_STATUS_LEFT;
+			if (where == STATUS_RIGHT)
+				key = KEYC_MOUSEUP1_STATUS_RIGHT;
 			if (where == BORDER)
 				key = KEYC_MOUSEUP1_BORDER;
 			break;
@@ -684,6 +722,10 @@ have_event:
 				key = KEYC_MOUSEUP2_PANE;
 			if (where == STATUS)
 				key = KEYC_MOUSEUP2_STATUS;
+			if (where == STATUS_LEFT)
+				key = KEYC_MOUSEUP2_STATUS_LEFT;
+			if (where == STATUS_RIGHT)
+				key = KEYC_MOUSEUP2_STATUS_RIGHT;
 			if (where == BORDER)
 				key = KEYC_MOUSEUP2_BORDER;
 			break;
@@ -692,6 +734,10 @@ have_event:
 				key = KEYC_MOUSEUP3_PANE;
 			if (where == STATUS)
 				key = KEYC_MOUSEUP3_STATUS;
+			if (where == STATUS_LEFT)
+				key = KEYC_MOUSEUP3_STATUS_LEFT;
+			if (where == STATUS_RIGHT)
+				key = KEYC_MOUSEUP3_STATUS_RIGHT;
 			if (where == BORDER)
 				key = KEYC_MOUSEUP3_BORDER;
 			break;
@@ -704,6 +750,10 @@ have_event:
 				key = KEYC_MOUSEDOWN1_PANE;
 			if (where == STATUS)
 				key = KEYC_MOUSEDOWN1_STATUS;
+			if (where == STATUS_LEFT)
+				key = KEYC_MOUSEDOWN1_STATUS_LEFT;
+			if (where == STATUS_RIGHT)
+				key = KEYC_MOUSEDOWN1_STATUS_RIGHT;
 			if (where == BORDER)
 				key = KEYC_MOUSEDOWN1_BORDER;
 			break;
@@ -712,6 +762,10 @@ have_event:
 				key = KEYC_MOUSEDOWN2_PANE;
 			if (where == STATUS)
 				key = KEYC_MOUSEDOWN2_STATUS;
+			if (where == STATUS_LEFT)
+				key = KEYC_MOUSEDOWN2_STATUS_LEFT;
+			if (where == STATUS_RIGHT)
+				key = KEYC_MOUSEDOWN2_STATUS_RIGHT;
 			if (where == BORDER)
 				key = KEYC_MOUSEDOWN2_BORDER;
 			break;
@@ -720,6 +774,10 @@ have_event:
 				key = KEYC_MOUSEDOWN3_PANE;
 			if (where == STATUS)
 				key = KEYC_MOUSEDOWN3_STATUS;
+			if (where == STATUS_LEFT)
+				key = KEYC_MOUSEDOWN3_STATUS_LEFT;
+			if (where == STATUS_RIGHT)
+				key = KEYC_MOUSEDOWN3_STATUS_RIGHT;
 			if (where == BORDER)
 				key = KEYC_MOUSEDOWN3_BORDER;
 			break;
@@ -732,6 +790,10 @@ have_event:
 				key = KEYC_DOUBLECLICK1_PANE;
 			if (where == STATUS)
 				key = KEYC_DOUBLECLICK1_STATUS;
+			if (where == STATUS_LEFT)
+				key = KEYC_DOUBLECLICK1_STATUS_LEFT;
+			if (where == STATUS_RIGHT)
+				key = KEYC_DOUBLECLICK1_STATUS_RIGHT;
 			if (where == BORDER)
 				key = KEYC_DOUBLECLICK1_BORDER;
 			break;
@@ -740,6 +802,10 @@ have_event:
 				key = KEYC_DOUBLECLICK2_PANE;
 			if (where == STATUS)
 				key = KEYC_DOUBLECLICK2_STATUS;
+			if (where == STATUS_LEFT)
+				key = KEYC_DOUBLECLICK2_STATUS_LEFT;
+			if (where == STATUS_RIGHT)
+				key = KEYC_DOUBLECLICK2_STATUS_RIGHT;
 			if (where == BORDER)
 				key = KEYC_DOUBLECLICK2_BORDER;
 			break;
@@ -748,6 +814,10 @@ have_event:
 				key = KEYC_DOUBLECLICK3_PANE;
 			if (where == STATUS)
 				key = KEYC_DOUBLECLICK3_STATUS;
+			if (where == STATUS_LEFT)
+				key = KEYC_DOUBLECLICK3_STATUS_LEFT;
+			if (where == STATUS_RIGHT)
+				key = KEYC_DOUBLECLICK3_STATUS_RIGHT;
 			if (where == BORDER)
 				key = KEYC_DOUBLECLICK3_BORDER;
 			break;
@@ -760,6 +830,10 @@ have_event:
 				key = KEYC_TRIPLECLICK1_PANE;
 			if (where == STATUS)
 				key = KEYC_TRIPLECLICK1_STATUS;
+			if (where == STATUS_LEFT)
+				key = KEYC_TRIPLECLICK1_STATUS_LEFT;
+			if (where == STATUS_RIGHT)
+				key = KEYC_TRIPLECLICK1_STATUS_RIGHT;
 			if (where == BORDER)
 				key = KEYC_TRIPLECLICK1_BORDER;
 			break;
@@ -768,6 +842,10 @@ have_event:
 				key = KEYC_TRIPLECLICK2_PANE;
 			if (where == STATUS)
 				key = KEYC_TRIPLECLICK2_STATUS;
+			if (where == STATUS_LEFT)
+				key = KEYC_TRIPLECLICK2_STATUS_LEFT;
+			if (where == STATUS_RIGHT)
+				key = KEYC_TRIPLECLICK2_STATUS_RIGHT;
 			if (where == BORDER)
 				key = KEYC_TRIPLECLICK2_BORDER;
 			break;
@@ -776,6 +854,10 @@ have_event:
 				key = KEYC_TRIPLECLICK3_PANE;
 			if (where == STATUS)
 				key = KEYC_TRIPLECLICK3_STATUS;
+			if (where == STATUS_LEFT)
+				key = KEYC_TRIPLECLICK3_STATUS_LEFT;
+			if (where == STATUS_RIGHT)
+				key = KEYC_TRIPLECLICK3_STATUS_RIGHT;
 			if (where == BORDER)
 				key = KEYC_TRIPLECLICK3_BORDER;
 			break;
