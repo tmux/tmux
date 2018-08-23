@@ -1,5 +1,9 @@
 CHANGES FROM 2.8 to master
 
+* Add StatusLeft and StatusRight mouse locations (keys such as
+  MouseDown1StatusLeft) for the status-left and status-right areas of
+  the status line.
+
 * Add -Z to find-window.
 
 * Support for windows larger than the client. This adds two new
@@ -46,10 +50,10 @@ CHANGES FROM 2.8 to master
   minimum size is the size required for the current layout including
   borders.
 
-  This change allows some code improvements, most notably that since
-  windows can now never be cropped, that code can be removed from the
-  layout code, and since panes can now never be outside the size of
-  the window, window_pane_visible can be removed.
+  The refresh-client command can be used to pan around a window, -U -D
+  -L -R moves up, down, left or right and -c returns to automatic
+  cursor tracking. The position is reset when the current window is
+  changed.
 
 CHANGES FROM 2.7 to 2.8
 
