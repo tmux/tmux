@@ -36,8 +36,32 @@ static void	job_read_callback(struct bufferevent *, void *);
 static void	job_write_callback(struct bufferevent *, void *);
 static void	job_error_callback(struct bufferevent *, short, void *);
 
+struct job {
+	enum {
+		JOB_RUNNING,
+		JOB_DEAD,
+		JOB_CLOSED
+	} state;
+
+	int			 flags;
+
+	char			*cmd;
+	pid_t			 pid;
+	int			 status;
+
+	int			 fd;
+	struct bufferevent	*event;
+
+	job_update_cb		 updatecb;
+	job_complete_cb		 completecb;
+	job_free_cb		 freecb;
+	void			*data;
+
+	LIST_ENTRY(job)		 entry;
+};
+
 /* All jobs list. */
-struct joblist	all_jobs = LIST_HEAD_INITIALIZER(all_jobs);
+LIST_HEAD(joblist, job) all_jobs = LIST_HEAD_INITIALIZER(all_jobs);
 
 /* Start a job running, if it isn't already. */
 struct job *
@@ -207,8 +231,16 @@ job_error_callback(__unused struct bufferevent *bufev, __unused short events,
 
 /* Job died (waitpid() returned its pid). */
 void
-job_died(struct job *job, int status)
+job_check_died(pid_t pid, int status)
 {
+	struct job	*job;
+
+	LIST_FOREACH(job, &all_jobs, entry) {
+		if (pid == job->pid)
+			break;
+	}
+	if (job == NULL)
+		return;
 	log_debug("job died %p: %s, pid %ld", job, job->cmd, (long) job->pid);
 
 	job->status = status;
@@ -220,5 +252,69 @@ job_died(struct job *job, int status)
 	} else {
 		job->pid = -1;
 		job->state = JOB_DEAD;
+	}
+}
+
+/* Get job status. */
+int
+job_get_status(struct job *job)
+{
+	return (job->status);
+}
+
+/* Get job data. */
+void *
+job_get_data(struct job *job)
+{
+	return (job->data);
+}
+
+/* Get job event. */
+struct bufferevent *
+job_get_event(struct job *job)
+{
+	return (job->event);
+}
+
+/* Kill all jobs. */
+void
+job_kill_all(void)
+{
+	struct job	*job;
+
+	LIST_FOREACH(job, &all_jobs, entry) {
+		if (job->pid != -1)
+			kill(job->pid, SIGTERM);
+	}
+}
+
+/* Are any jobs still running? */
+int
+job_still_running(void)
+{
+	struct job	*job;
+
+	LIST_FOREACH(job, &all_jobs, entry) {
+		if ((~job->flags & JOB_NOWAIT) && job->state == JOB_RUNNING)
+			return (1);
+	}
+	return (0);
+}
+
+/* Print job summary. */
+void
+job_print_summary(struct cmdq_item *item, int blank)
+{
+	struct job	*job;
+	u_int		 n = 0;
+
+	LIST_FOREACH(job, &all_jobs, entry) {
+		if (blank) {
+			cmdq_print(item, "%s", "");
+			blank = 0;
+		}
+		cmdq_print(item, "Job %u: %s [fd=%d, pid=%ld, status=%d]",
+		    n, job->cmd, job->fd, (long)job->pid, job->status);
+		n++;
 	}
 }
