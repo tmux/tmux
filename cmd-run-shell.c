@@ -57,7 +57,7 @@ struct cmd_run_shell_data {
 static void
 cmd_run_shell_print(struct job *job, const char *msg)
 {
-	struct cmd_run_shell_data	*cdata = job->data;
+	struct cmd_run_shell_data	*cdata = job_get_data(job);
 	struct window_pane		*wp = NULL;
 	struct cmd_find_state		 fs;
 
@@ -113,22 +113,23 @@ cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 static void
 cmd_run_shell_callback(struct job *job)
 {
-	struct cmd_run_shell_data	*cdata = job->data;
-	char				*cmd = cdata->cmd, *msg, *line;
+	struct cmd_run_shell_data	*cdata = job_get_data(job);
+	struct bufferevent		*event = job_get_event(job);
+	char				*cmd = cdata->cmd, *msg = NULL, *line;
 	size_t				 size;
-	int				 retcode;
+	int				 retcode, status;
 
 	do {
-		if ((line = evbuffer_readline(job->event->input)) != NULL) {
+		if ((line = evbuffer_readline(event->input)) != NULL) {
 			cmd_run_shell_print(job, line);
 			free(line);
 		}
 	} while (line != NULL);
 
-	size = EVBUFFER_LENGTH(job->event->input);
+	size = EVBUFFER_LENGTH(event->input);
 	if (size != 0) {
 		line = xmalloc(size + 1);
-		memcpy(line, EVBUFFER_DATA(job->event->input), size);
+		memcpy(line, EVBUFFER_DATA(event->input), size);
 		line[size] = '\0';
 
 		cmd_run_shell_print(job, line);
@@ -136,12 +137,12 @@ cmd_run_shell_callback(struct job *job)
 		free(line);
 	}
 
-	msg = NULL;
-	if (WIFEXITED(job->status)) {
-		if ((retcode = WEXITSTATUS(job->status)) != 0)
+	status = job_get_status(job);
+	if (WIFEXITED(status)) {
+		if ((retcode = WEXITSTATUS(status)) != 0)
 			xasprintf(&msg, "'%s' returned %d", cmd, retcode);
-	} else if (WIFSIGNALED(job->status)) {
-		retcode = WTERMSIG(job->status);
+	} else if (WIFSIGNALED(status)) {
+		retcode = WTERMSIG(status);
 		xasprintf(&msg, "'%s' terminated by signal %d", cmd, retcode);
 	}
 	if (msg != NULL)

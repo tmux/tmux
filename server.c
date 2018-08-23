@@ -162,7 +162,6 @@ server_start(struct tmuxproc *client, struct event_base *base, int lockfd,
     char *lockfile)
 {
 	int		 pair[2];
-	struct job	*job;
 	sigset_t	 set, oldset;
 	struct client	*c;
 	char		*cause = NULL;
@@ -223,17 +222,13 @@ server_start(struct tmuxproc *client, struct event_base *base, int lockfd,
 	}
 
 	start_cfg();
-
 	server_add_accept(0);
 
 	proc_loop(server_proc, server_loop);
 
-	LIST_FOREACH(job, &all_jobs, entry) {
-		if (job->pid != -1)
-			kill(job->pid, SIGTERM);
-	}
-
+	job_kill_all();
 	status_prompt_save_history();
+
 	exit(0);
 }
 
@@ -243,7 +238,6 @@ server_loop(void)
 {
 	struct client	*c;
 	u_int		 items;
-	struct job	*job;
 
 	do {
 		items = cmdq_next(NULL);
@@ -276,10 +270,8 @@ server_loop(void)
 	if (!TAILQ_EMPTY(&clients))
 		return (0);
 
-	LIST_FOREACH(job, &all_jobs, entry) {
-		if ((~job->flags & JOB_NOWAIT) && job->state == JOB_RUNNING)
-			return (0);
-	}
+	if (job_still_running())
+		return (0);
 
 	return (1);
 }
@@ -457,7 +449,6 @@ server_child_exited(pid_t pid, int status)
 {
 	struct window		*w, *w1;
 	struct window_pane	*wp;
-	struct job		*job;
 
 	RB_FOREACH_SAFE(w, windows, &windows, w1) {
 		TAILQ_FOREACH(wp, &w->panes, entry) {
@@ -474,13 +465,7 @@ server_child_exited(pid_t pid, int status)
 			}
 		}
 	}
-
-	LIST_FOREACH(job, &all_jobs, entry) {
-		if (pid == job->pid) {
-			job_died(job, status);	/* might free job */
-			break;
-		}
-	}
+	job_check_died(pid, status);
 }
 
 /* Handle stopped children. */
