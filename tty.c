@@ -1330,6 +1330,8 @@ tty_client_ready(struct client *c, struct window_pane *wp)
 		return (0);
 	if (c->session->curw->window != wp->window)
 		return (0);
+	if (wp->layout_cell == NULL)
+		return (0);
 	return (1);
 }
 

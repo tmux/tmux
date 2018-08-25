@@ -456,6 +456,9 @@ screen_redraw_pane(struct client *c, struct window_pane *wp)
 {
 	struct screen_redraw_ctx	 ctx;
 
+	if (wp->layout_cell == NULL)
+		return;
+
 	screen_redraw_set_context(c, &ctx);
 
 	screen_redraw_draw_pane(&ctx, wp);
@@ -542,6 +545,8 @@ screen_redraw_draw_panes(struct screen_redraw_ctx *ctx)
 	log_debug("%s: %s @%u", __func__, c->name, w->id);
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (wp->layout_cell == NULL)
+			continue;
 		screen_redraw_draw_pane(ctx, wp);
 		if (c->flags & CLIENT_IDENTIFY)
 			screen_redraw_draw_number(ctx, wp);
