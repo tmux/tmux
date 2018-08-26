@@ -94,6 +94,7 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 #define FORMAT_BASENAME 0x2
 #define FORMAT_DIRNAME 0x4
 #define FORMAT_SUBSTITUTE 0x8
+#define FORMAT_QUOTE 0x10
 
 /* Entry in format tree. */
 struct format_entry {
@@ -754,6 +755,23 @@ format_add_cb(struct format_tree *ft, const char *key, format_cb cb)
 	fe->value = NULL;
 }
 
+/* Quote special characters in string. */
+static char *
+format_quote(const char *s)
+{
+	const char	*cp;
+	char		*out, *at;
+
+	at = out = xmalloc(strlen(s) * 2 + 1);
+	for (cp = s; *cp != '\0'; cp++) {
+		if (strchr("|&;<>()$`\\\"'*?[# =%", *cp) != NULL)
+			*at++ = '\\';
+		*at++ = *cp;
+	}
+	*at = '\0';
+	return (out);
+}
+
 /* Find a format entry. */
 static char *
 format_find(struct format_tree *ft, const char *key, int modifiers)
@@ -834,6 +852,11 @@ found:
 	if (modifiers & FORMAT_DIRNAME) {
 		saved = copy;
 		copy = xstrdup(dirname(saved));
+		free(saved);
+	}
+	if (modifiers & FORMAT_QUOTE) {
+		saved = copy;
+		copy = xstrdup(format_quote(saved));
 		free(saved);
 	}
 	return (copy);
@@ -974,6 +997,12 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 		if (copy[1] != ':')
 			break;
 		modifiers |= FORMAT_TIMESTRING;
+		copy += 2;
+		break;
+	case 'q':
+		if (copy[1] != ':')
+			break;
+		modifiers |= FORMAT_QUOTE;
 		copy += 2;
 		break;
 	case 's':
