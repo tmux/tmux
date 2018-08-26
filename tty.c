@@ -910,7 +910,8 @@ static int
 tty_clamp_line(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
     u_int nx, u_int *i, u_int *x, u_int *rx, u_int *ry)
 {
-	u_int	xoff = ctx->xoff + px;
+	struct window_pane	*wp = ctx->wp;
+	u_int			 xoff = wp->xoff + px;
 
 	if (!tty_is_visible(tty, ctx, px, py, nx, 1))
 		return (0);
@@ -919,7 +920,7 @@ tty_clamp_line(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
 	if (xoff >= ctx->ox && xoff + nx <= ctx->ox + ctx->sx) {
 		/* All visible. */
 		*i = 0;
-		*x = xoff - ctx->ox;
+		*x = ctx->xoff + px - ctx->ox;
 		*rx = nx;
 	} else if (xoff < ctx->ox && xoff + nx > ctx->ox + ctx->sx) {
 		/* Both left and right not visible. */
@@ -928,14 +929,14 @@ tty_clamp_line(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
 		*rx = ctx->sx;
 	} else if (xoff < ctx->ox) {
 		/* Left not visible. */
-		*i = ctx->ox - xoff;
+		*i = ctx->ox - (ctx->xoff + px);
 		*x = 0;
 		*rx = nx - *i;
 	} else {
 		/* Right not visible. */
 		*i = 0;
-		*x = xoff - ctx->ox;
-		*rx = nx - (xoff + nx - ctx->sx);
+		*x = (ctx->xoff + px) - ctx->ox;
+		*rx = nx - ((ctx->xoff + px) + nx - ctx->sx);
 	}
 	return (1);
 }
@@ -1002,7 +1003,8 @@ tty_clamp_area(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
     u_int nx, u_int ny, u_int *i, u_int *j, u_int *x, u_int *y, u_int *rx,
     u_int *ry)
 {
-	u_int	xoff = ctx->xoff + px, yoff = ctx->yoff + py;
+	struct window_pane	*wp = ctx->wp;
+	u_int			 xoff = wp->xoff + px, yoff = wp->yoff + py;
 
 	if (!tty_is_visible(tty, ctx, px, py, nx, ny))
 		return (0);
@@ -1010,7 +1012,7 @@ tty_clamp_area(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
 	if (xoff >= ctx->ox && xoff + nx <= ctx->ox + ctx->sx) {
 		/* All visible. */
 		*i = 0;
-		*x = xoff - ctx->ox;
+		*x = ctx->xoff + px - ctx->ox;
 		*rx = nx;
 	} else if (xoff < ctx->ox && xoff + nx > ctx->ox + ctx->sx) {
 		/* Both left and right not visible. */
@@ -1019,19 +1021,19 @@ tty_clamp_area(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
 		*rx = ctx->sx;
 	} else if (xoff < ctx->ox) {
 		/* Left not visible. */
-		*i = ctx->ox - xoff;
+		*i = ctx->ox - (ctx->xoff + px);
 		*x = 0;
 		*rx = nx - *i;
 	} else {
 		/* Right not visible. */
 		*i = 0;
-		*x = xoff - ctx->ox;
-		*rx = nx - (xoff + nx - ctx->sx);
+		*x = (ctx->xoff + px) - ctx->ox;
+		*rx = nx - ((ctx->xoff + px) + nx - ctx->sx);
 	}
 	if (yoff >= ctx->oy && yoff + ny <= ctx->oy + ctx->sy) {
 		/* All visible. */
 		*j = 0;
-		*y = yoff - ctx->oy;
+		*y = ctx->yoff + py - ctx->oy;
 		*ry = ny;
 	} else if (yoff < ctx->oy && yoff + ny > ctx->oy + ctx->sy) {
 		/* Both left and right not visible. */
@@ -1040,14 +1042,14 @@ tty_clamp_area(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
 		*ry = ctx->sy;
 	} else if (yoff < ctx->oy) {
 		/* Left not visible. */
-		*j = ctx->oy - yoff;
+		*j = ctx->oy - (ctx->yoff + py);
 		*y = 0;
 		*ry = ny - *j;
 	} else {
 		/* Right not visible. */
 		*j = 0;
-		*y = yoff - ctx->oy;
-		*ry = ny - (yoff + ny - ctx->sy);
+		*y = (ctx->yoff + py) - ctx->oy;
+		*ry = ny - ((ctx->yoff + py) + ny - ctx->sy);
 	}
 	return (1);
 }
