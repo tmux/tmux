@@ -1102,8 +1102,10 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 				found = xstrdup("");
 			}
 		}
-		if (format_choose(ptr + 1, &left, &right) != 0)
+		if (format_choose(ptr + 1, &left, &right) != 0) {
+			free(found);
 			goto fail;
+		}
 
 		if (format_true(found))
 			value = format_expand(ft, left);
