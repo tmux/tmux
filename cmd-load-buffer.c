@@ -87,6 +87,7 @@ cmd_load_buffer_exec(struct cmd *self, struct cmdq_item *item)
 		if (error != 0) {
 			cmdq_error(item, "-: %s", cause);
 			free(cause);
+			free(cdata);
 			return (CMD_RETURN_ERROR);
 		}
 		return (CMD_RETURN_WAIT);

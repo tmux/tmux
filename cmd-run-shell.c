@@ -102,8 +102,12 @@ cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 	if (!args_has(args, 'b'))
 		cdata->item = item;
 
-	job_run(cdata->cmd, s, server_client_get_cwd(item->client, s), NULL,
-	    cmd_run_shell_callback, cmd_run_shell_free, cdata, 0);
+	if (job_run(cdata->cmd, s, server_client_get_cwd(item->client, s), NULL,
+	    cmd_run_shell_callback, cmd_run_shell_free, cdata, 0) == NULL) {
+		cmdq_error(item, "failed to run command: %s", cdata->cmd);
+		free(cdata);
+		return (CMD_RETURN_ERROR);
+	}
 
 	if (args_has(args, 'b'))
 		return (CMD_RETURN_NORMAL);
