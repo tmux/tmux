@@ -301,6 +301,7 @@ server_client_lost(struct client *c)
 		free(msg);
 	}
 
+	free(c->prompt_saved);
 	free(c->prompt_string);
 	free(c->prompt_buffer);
 
