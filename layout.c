@@ -571,6 +571,647 @@ layout_resize_layout(struct window *w, struct layout_cell *lc,
 	notify_window("window-layout-changed", w);
 }
 
+struct layout_map {
+	u_int sx;
+	u_int sy;
+	struct layout_cell **screen_map; /* [sx][sy]; */
+	struct layout_cell **cells_array;
+	u_int cells_array_len;
+	u_int cells_len;
+};
+
+#define LAYOUT_MAP_CELL(_x_, _y_) map->screen_map[(_y_) * map->sx + (_x_)]
+
+/*
+ * Build a screen map of the current layout from the windowpane leafs. The
+ * borders will be NULL pointers.
+ */
+static void
+layout_map_build(struct layout_map *map, struct layout_cell *lc)
+{
+	struct layout_cell	*lcchild, *lc_copy;
+	struct layout_cell	**cell;
+	u_int			x, y;
+
+	switch (lc->type) {
+	case LAYOUT_LEFTRIGHT:
+	case LAYOUT_TOPBOTTOM:
+		TAILQ_FOREACH(lcchild, &lc->cells, entry)
+			layout_map_build(map, lcchild);
+		break;
+
+	case LAYOUT_WINDOWPANE:
+		lc_copy = layout_create_cell(NULL);
+		lc_copy->sx = lc->sx;
+		lc_copy->sy = lc->sy;
+		lc_copy->xoff = lc->xoff;
+		lc_copy->yoff = lc->yoff;
+		lc_copy->wp = lc->wp; /* One-sided, until the entire
+					 layout works out */
+
+		for (x = 0; x < lc->sx; x++)
+			for (y = 0; y < lc->sy; y++) {
+				cell = &LAYOUT_MAP_CELL(x + lc->xoff,
+							y + lc->yoff);
+				*cell = lc_copy;
+			}
+
+		map->cells_array =
+			xreallocarray(map->cells_array,
+				      sizeof(struct layout_cell *),
+				      map->cells_len + 1);
+		map->cells_array[map->cells_len] = lc_copy;
+		map->cells_len += 1;
+
+		break;
+	}
+}
+
+static void
+layout_map_init(struct window *w, struct layout_map *map)
+{
+	map->sx = w->layout_root->sx;
+	map->sy = w->layout_root->sy;
+	map->screen_map = xcalloc(map->sx * map->sy, sizeof(struct layout_cell *));
+	map->cells_len = 0;
+	map->cells_array = NULL;
+
+	layout_map_build(map, w->layout_root);
+}
+
+/*
+ * Free all non-leafs.
+ */
+static void
+layout_clear_non_leafs(struct layout_cell *lc)
+{
+	struct layout_cell	*lcchild;
+
+	switch (lc->type) {
+	case LAYOUT_LEFTRIGHT:
+	case LAYOUT_TOPBOTTOM:
+		while (!TAILQ_EMPTY(&lc->cells)) {
+			lcchild = TAILQ_FIRST(&lc->cells);
+			lcchild->parent = NULL;
+			TAILQ_REMOVE(&lc->cells, lcchild, entry);
+
+			layout_clear_non_leafs(lcchild);
+		}
+
+		layout_free_cell(lc);
+		break;
+	case LAYOUT_WINDOWPANE:
+		break;
+	}
+}
+
+/*
+ * Shift the window to the new layout given by the layout map.
+ */
+static void
+layout_map_use(struct window *w, struct layout_map *map, struct layout_cell *lc)
+{
+	u_int			i;
+	struct layout_cell	*lc_leaf;
+	struct window_pane      *wp;
+
+	/* Clear all non-leafs of the old layout */
+	layout_clear_non_leafs(w->layout_root);
+	w->layout_root = NULL;
+
+	/* Set all window panes to use the new layout, and free the old leafs */
+	for (i = 0; i < map->cells_len; i++) {
+		lc_leaf = map->cells_array[i];
+		wp = lc_leaf->wp;
+		layout_free_cell(wp->layout_cell);
+		wp->layout_cell = lc_leaf;
+	}
+
+	/* Use the new leayout */
+	w->layout_root = lc;
+
+	/* Prevent freeing the new leafs */
+	map->cells_len = 0;
+}
+
+static void
+layout_map_free(struct layout_map *map)
+{
+	u_int i;
+
+	for (i = 0; i < map->cells_len; i++) {
+		map->cells_array[i]->wp = NULL;
+		layout_free_cell(map->cells_array[i]);
+	}
+
+	free(map->screen_map);
+	free(map->cells_array);
+}
+
+static int
+layout_rect_expand(const struct layout_cell *lc, u_int *bx, u_int *by, u_int
+	*ex, u_int *ey, u_int sx, u_int sy)
+{
+	u_int			expanse = 0;
+	u_int                   b_xoff_border = lc->xoff;
+	u_int                   b_yoff_border = lc->yoff;
+	u_int                   e_xoff_border = lc->xoff + lc->sx;
+	u_int                   e_yoff_border = lc->yoff + lc->sy;
+
+	if (b_xoff_border > 0)
+		b_xoff_border--;
+	if (b_yoff_border > 0)
+		b_yoff_border--;
+	if (e_xoff_border < sx - 1)
+		e_xoff_border++;
+	if (e_yoff_border < sy - 1)
+		e_yoff_border++;
+
+	if (*ex == *bx && *ey == *by) {
+		/* First cell determines the bounding rect: */
+
+		*bx = b_xoff_border;
+		*by = b_yoff_border;
+		*ex = e_xoff_border;
+		*ey = e_yoff_border;
+		return (1);
+	}
+
+	/* An additional cell expands the bounding rect: */
+
+	if (b_xoff_border < *bx) {
+		*bx = b_xoff_border;
+		expanse++;
+	}
+
+	if (b_yoff_border < *by) {
+		*by = b_yoff_border;
+		expanse++;
+	}
+
+	if (*ex < e_xoff_border) {
+		*ex = e_xoff_border;
+		expanse++;
+	}
+
+	if (*ey < e_yoff_border) {
+		*ey = e_yoff_border;
+		expanse++;
+	}
+
+	return (expanse);
+}
+
+static struct layout_cell *
+layout_join_splits(struct layout_cell *lc1, struct layout_cell *lc2, u_int
+	layout_type, u_int bx, u_int by, u_int ex, u_int ey)
+{
+	struct layout_cell *lc = NULL, *lcchild;
+
+	if (lc1->type == layout_type) {
+		if (lc2->type == layout_type) {
+			log_debug("layout: combining %p and %p",
+				  lc1, lc2);
+			TAILQ_FOREACH(lcchild, &lc2->cells, entry) {
+				lcchild->parent = lc1;
+			}
+			TAILQ_CONCAT(&lc1->cells, &lc2->cells, entry);
+			layout_free_cell(lc2);
+		} else {
+			log_debug("layout: inserting tail %p into %p",
+				  lc2, lc1);
+			TAILQ_INSERT_TAIL(&lc1->cells, lc2, entry);
+			lc2->parent = lc1;
+		}
+		lc = lc1;
+	} else {
+		if (lc2->type == layout_type) {
+			log_debug("layout: inserting head %p into %p",
+				  lc1, lc2);
+			TAILQ_INSERT_HEAD(&lc2->cells, lc1, entry);
+			lc1->parent = lc2;
+			lc = lc2;
+		} else {
+			lc = layout_create_cell(NULL);
+			log_debug("layout: creating cell: %p", lc);
+			lc->type = layout_type;
+
+			TAILQ_INSERT_TAIL(&lc->cells, lc1, entry);
+			lc1->parent = lc;
+			TAILQ_INSERT_TAIL(&lc->cells, lc2, entry);
+			lc2->parent = lc;
+		}
+	}
+
+	lc->xoff = bx;
+	lc->yoff = by;
+	lc->sx = ex - bx;
+	lc->sy = ey - by;
+
+	return (lc);
+}
+
+static struct layout_cell *
+layout_recreate_from_map(u_int sx, uint sy, struct layout_map *map,
+	struct layout_cell *starting_cell, u_int bx, u_int by, u_int ex,
+	u_int ey, u_int nesting, u_int *failures)
+{
+	struct layout_cell	*lc, *joining_lc;
+	u_int			dbx, dby, dex, dey, x, y, is_border, save, joins = 0;
+
+	log_debug("%s[%d]: b:%d,%d e:%d,%d", __func__, nesting, bx, by, ex, ey);
+
+	if (!starting_cell) {
+		starting_cell = LAYOUT_MAP_CELL(bx, by);
+		if (!starting_cell)
+			fatal("expected some cell at (%d, %d)", by, by);
+	}
+
+	lc = starting_cell;
+	dbx = lc->xoff;
+	dby = lc->yoff;
+	dex = lc->xoff + lc->sx;
+	dey = lc->yoff + lc->sy;
+
+	log_debug("%s[%d]: db:%d,%d de:%d,%d", __func__, nesting, dbx, dby, dex, dey);
+
+	do {
+		if (dbx == bx && dby == by && dex == ex && dey == ey) {
+			log_debug("%s[%d]: bounding rect reached: "
+				  "db:%d,%d de:%d,%d", __func__, nesting, dbx, dby, dex, dey);
+			/* Reached bounding rect */
+			return (lc);
+		}
+
+		joins = 0;
+		if (dbx > bx) {
+			log_debug("%s[%d]: seeking left at dbx=%d",
+				  __func__, nesting, dbx);
+			save = dbx;
+			dbx--;
+
+			do {
+				/* Is there a new border? */
+				is_border = 1;
+				if (dbx != bx) {
+					/* Track along the continuation of the border */
+					if (dby != by && LAYOUT_MAP_CELL(dbx - 1, dby - 1))
+						break;
+
+					if (dey != ey && LAYOUT_MAP_CELL(dbx - 1, dey))
+						break;
+
+					for (y = dby; y < dey; y++)
+						if (LAYOUT_MAP_CELL(dbx - 1, y)) {
+							is_border = 0;
+							break;
+						}
+				}
+
+				if (is_border) {
+					log_debug("%s[%d]: joining at dbx=%d, save=%d",
+						  __func__, nesting, dbx, save);
+
+					joining_lc =
+						layout_recreate_from_map(sx, sy, map,
+						      NULL, dbx, dby, save - 1, dey,
+						      nesting + 1, failures);
+					lc = layout_join_splits(joining_lc, lc,
+						LAYOUT_LEFTRIGHT, dbx, dby, dex, dey);
+					if (*failures)
+						return (lc);
+					save = dbx;
+					joins++;
+				}
+
+				if (dbx == bx)
+					break;
+
+				dbx--;
+			} while (1);
+
+			dbx = save;
+
+			log_debug("%s[%d]: done seeking left at dbx=%d", __func__, nesting, dbx);
+		}
+
+		if (dex < ex) {
+			log_debug("%s[%d]: seeking right at dex=%d", __func__, nesting, dex);
+			dex++;
+			save = dex;
+
+			do {
+				/* Is there a new border? */
+				is_border = 1;
+				if (dex != ex) {
+					/* Track along the continuation of the border */
+					if (dby != by && LAYOUT_MAP_CELL(dex, dby - 1))
+						break;
+
+					if (dey != ey && LAYOUT_MAP_CELL(dex, dey))
+						break;
+
+					for (y = dby; y < dey; y++)
+						if (LAYOUT_MAP_CELL(dex, y)) {
+							is_border = 0;
+							break;
+						}
+				}
+
+				if (is_border) {
+					log_debug("%s[%d]:   joining at dex=%d, save=%d",
+						  __func__, nesting, dex, save);
+
+					joining_lc =
+						layout_recreate_from_map(sx, sy, map,
+						      NULL, save, dby, dex, dey,
+						      nesting + 1, failures);
+					lc = layout_join_splits(lc, joining_lc,
+						LAYOUT_LEFTRIGHT, dbx, dby, dex, dey);
+					if (*failures)
+						return (lc);
+					save = dex + 1;
+					joins++;
+				}
+
+				if (dex == ex)
+					break;
+
+				dex++;
+			} while (1);
+
+			dex = save - 1;
+
+			log_debug("%s[%d]: done seeking right at dex=%d",
+				  __func__, nesting, dex);
+		}
+
+		if (dby > by) {
+			log_debug("%s[%d]: seeking up at dby=%d",
+				  __func__, nesting, dby);
+			save = dby;
+			dby--;
+
+			do {
+				/* Is there a new border? */
+				is_border = 1;
+				if (dby != by) {
+					/* Track along the continuation of the border */
+					if (dbx != bx && LAYOUT_MAP_CELL(dbx - 1, dby - 1))
+						break;
+
+					if (dex != ex && LAYOUT_MAP_CELL(dex, dby - 1))
+						break;
+
+					for (x = dbx; x < dex; x++)
+						if (LAYOUT_MAP_CELL(x, dby - 1)) {
+							is_border = 0;
+							break;
+						}
+				}
+
+				if (is_border) {
+					log_debug("%s[%d]: joining at dby=%d, save=%d",
+						  __func__, nesting, dby, save);
+
+					joining_lc =
+						layout_recreate_from_map(sx, sy, map,
+						      NULL, dbx, dby, dex, save - 1,
+						      nesting + 1, failures);
+					lc = layout_join_splits(joining_lc, lc,
+						LAYOUT_TOPBOTTOM, dbx, dby, dex, dey);
+					if (*failures)
+						return (lc);
+					save = dby;
+					joins++;
+				}
+
+				if (dby == by)
+					break;
+
+				dby--;
+			} while (1);
+
+			dby = save;
+
+			log_debug("%s[%d]: done seeking up at dby=%d", __func__, nesting, dby);
+		}
+
+		if (dey < ey) {
+			log_debug("%s[%d]: seeking down at dey=%d", __func__, nesting, dey);
+			dey++;
+			save = dey;
+
+			do {
+				/* Is there a new border? */
+				is_border = 1;
+				if (dey != ey) {
+					/* Track along the continuation of the border */
+					if (dbx != bx && LAYOUT_MAP_CELL(dbx - 1, dey))
+						break;
+
+					if (dex != ex && LAYOUT_MAP_CELL(dex, dey))
+						break;
+
+					for (x = dbx; x < dex; x++)
+						if (LAYOUT_MAP_CELL(x, dey)) {
+							is_border = 0;
+							break;
+						}
+				}
+
+				if (is_border) {
+					log_debug("%s[%d]:   joining at dey=%d, save=%d",
+						  __func__, nesting, dey, save);
+
+					joining_lc =
+						layout_recreate_from_map(sx, sy, map,
+						      NULL, dbx, save, dex, dey,
+						      nesting + 1, failures);
+					lc = layout_join_splits(lc, joining_lc,
+						LAYOUT_TOPBOTTOM, dbx, dby, dex, dey);
+					if (*failures)
+						return (lc);
+					save = dey + 1;
+					joins++;
+				}
+
+				if (dey == ey)
+					break;
+
+				dey++;
+			} while (1);
+
+			dey = save - 1;
+
+			log_debug("%s[%d]: done seeking down at dey=%d",
+				  __func__, nesting, dey);
+
+		}
+
+		if (joins == 0) {
+			log_debug("no progress in %s", __func__);
+			*failures += 1;
+			return (lc);
+		}
+	} while (1);
+}
+
+static int
+layout_border_bounding_rect(struct window *w, struct layout_map
+	*map, u_int x, u_int y, u_int *vertical, u_int *horizontal,
+	uint *o_bx, uint *o_by, uint *o_ex, uint *o_ey)
+{
+	u_int			sx = w->layout_root->sx;
+	u_int			sy = w->layout_root->sy;
+	struct layout_cell	*lc;
+	u_int			bx = 0, by = 0, fx, fy;
+	u_int			ex = 0, ey = 0, ix, iy;
+	u_int			tx, ty, expanses;
+
+	/*
+	 * Determine initial bounding rect from the specified border, by
+	 * enclosing it in the cells that are adjacent to (x, y).
+	 */
+
+	*horizontal = ((x == 0 || !LAYOUT_MAP_CELL(x - 1, y)) &&
+		       (x == sx - 1 || !LAYOUT_MAP_CELL(x + 1, y)));
+	*vertical = ((y == 0 || !LAYOUT_MAP_CELL(x, y - 1)) &&
+		     (y == sy - 1 || !LAYOUT_MAP_CELL(x, y + 1)));
+
+	for (ix = 0; ix < 3; ix++) {
+		if (x == 0 && ix == 0)
+			continue;
+		if (x == sx - 1 && ix == 2)
+			continue;
+		for (iy = 0; iy < 3; iy++) {
+			if (y == 0 && iy == 0)
+				continue;
+			if (y == sy - 1 && iy == 2)
+				continue;
+			if (ix == 1 && iy == 1)
+				continue;
+
+			fx = x + ix - 1;
+			fy = y + iy - 1;
+
+			lc = LAYOUT_MAP_CELL(fx, fy);
+			if (!lc)
+				continue;
+
+			layout_rect_expand(lc, &bx, &by, &ex, &ey, sx, sy);
+		}
+	}
+
+	if (ex == bx && ey == by)
+		return (0);
+
+	/*
+	 * Expand bounding rect from cells that it contains until we no longer
+	 * need can.
+	 */
+	do {
+		expanses = 0;
+
+		for (tx = bx; tx < ex; tx++) {
+			for (ty = by; ty < ey; ty++) {
+				lc = LAYOUT_MAP_CELL(tx, ty);
+				if (!lc)
+					continue;
+
+				expanses +=
+					layout_rect_expand(lc, &bx, &by,
+							   &ex, &ey, sx, sy);
+			}
+		}
+	} while (expanses > 0);
+
+	if (bx > 0)
+		bx++;
+	if (by > 0)
+		by++;
+	if (ex < sx - 1)
+		ex--;
+	if (ey < sy - 1)
+		ey--;
+
+	log_debug("%s: bound rect: x=%d:%d, y=%d:%d",__func__,
+		  bx, ex, by, ey);
+
+	*o_ex = ex;
+	*o_ey = ey;
+	*o_bx = bx;
+	*o_by = by;
+
+	return (1);
+}
+
+/*
+ * Perform a re-organization of the layout so that at the border given by 'x'
+ * and 'y' will yield the smallest amount of panes changing their size too, on
+ * most cases.
+ */
+int
+layout_resplit(struct window *w, u_int x, u_int y)
+{
+	u_int			sx = w->layout_root->sx;
+	u_int			sy = w->layout_root->sy;
+	u_int                   failures = 0;
+	struct layout_map	map;
+	struct layout_cell	*lc1, *lc2, *lc = NULL;
+	u_int 			vertical, horizontal, bx, by, ex, ey;
+
+	layout_map_init(w, &map);
+
+	if (!layout_border_bounding_rect(w, &map, x, y, &vertical, &horizontal,
+					 &bx, &by, &ex, &ey))
+		return 0;
+
+	if (!vertical && horizontal) {
+		log_debug("%s: inner horizontal reconstruction", __func__);
+
+		lc1 = layout_recreate_from_map(sx, sy, &map, NULL,
+					       bx, by, ex, y, 0, &failures);
+		lc2 = layout_recreate_from_map(sx, sy, &map, NULL,
+					       bx, y+1, ex, ey, 0, &failures);
+
+		lc = layout_join_splits(lc1, lc2, LAYOUT_TOPBOTTOM,
+				bx, by, ex, ey);
+	} else if (vertical && !horizontal) {
+		log_debug("%s: inner vertical reconstruction", __func__);
+
+		lc1 = layout_recreate_from_map(sx, sy, &map, NULL,
+					       bx, by, x, ey, 0, &failures);
+		lc2 = layout_recreate_from_map(sx, sy, &map, NULL,
+					       x+1, by, ex, ey, 0, &failures);
+
+		lc = layout_join_splits(lc1, lc2, LAYOUT_LEFTRIGHT,
+				bx, by, ex, ey);
+	} else {
+		log_debug("%s: vertical = %d, horizontal = %d",
+			  __func__, vertical, horizontal);
+		failures = 1;
+	}
+
+	if (lc && failures == 0) {
+		log_debug("%s: outer reconstruction", __func__);
+
+		lc = layout_recreate_from_map(sx, sy, &map, lc, 0, 0, sx, sy, 0,
+					      &failures);
+		if (failures == 0) {
+			layout_print_cell(lc, "layout", 1);
+			layout_map_use(w, &map, lc);
+			lc = NULL;
+		}
+	}
+
+	if (lc)
+		layout_clear_non_leafs(lc);
+
+	layout_map_free(&map);
+	return (0);
+}
+
 /* Resize a single pane within the layout. */
 void
 layout_resize_pane(struct window_pane *wp, enum layout_type type, int change,
