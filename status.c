@@ -1059,6 +1059,7 @@ status_prompt_key(struct client *c, key_code key)
 		free(s);
 		return (1);
 	}
+	key &= ~KEYC_XTERM;
 
 	keys = options_get_number(c->session->options, "status-keys");
 	if (keys == MODEKEY_VI) {
@@ -1226,6 +1227,7 @@ process_key:
 
 		goto changed;
 	case 'f'|KEYC_ESCAPE:
+	case KEYC_RIGHT|KEYC_CTRL:
 		ws = options_get_string(oo, "word-separators");
 
 		/* Find a word. */
@@ -1249,6 +1251,7 @@ process_key:
 
 		goto changed;
 	case 'b'|KEYC_ESCAPE:
+	case KEYC_LEFT|KEYC_CTRL:
 		ws = options_get_string(oo, "word-separators");
 
 		/* Find a non-separator. */
