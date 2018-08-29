@@ -16,7 +16,6 @@
 	* way to set socket path from config file
 
 - format improvements:
-	* option to quote format (#{q:session_name})
 	* some way to pad # stuff with spaces
 	* formats to show if a window is linked into multiple sessions, into
 	  multiple attached sessions, and is the active window in multiple
@@ -130,7 +129,7 @@
 	  temporary one
 
 - pan
-	* tty_window_offset should try to keep as much as active pane
+	* tty_window_offset should try to keep as much off active pane
 	  visible as possible
 	* rather than centering cursor it might be better if only
 	  moved offset when it gets close to an edge?
