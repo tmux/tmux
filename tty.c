@@ -1147,7 +1147,7 @@ tty_draw_pane(struct tty *tty, const struct tty_ctx *ctx, u_int py)
 	log_debug("%s: %s %u %d", __func__, tty->client->name, py, ctx->bigger);
 
 	if (!ctx->bigger) {
-		tty_draw_line(tty, wp, s, 0, py, nx, ctx->xoff, ctx->yoff);
+		tty_draw_line(tty, wp, s, 0, py, nx, ctx->xoff, ctx->yoff + py);
 		return;
 	}
 	if (tty_clamp_line(tty, ctx, 0, py, nx, &i, &x, &rx, &ry))
