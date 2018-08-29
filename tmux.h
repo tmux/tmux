@@ -1358,6 +1358,7 @@ struct client {
 	void		*prompt_data;
 	u_int		 prompt_hindex;
 	enum { PROMPT_ENTRY, PROMPT_COMMAND } prompt_mode;
+	struct utf8_data *prompt_saved;
 
 #define PROMPT_SINGLE 0x1
 #define PROMPT_NUMERIC 0x2
