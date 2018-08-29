@@ -34,7 +34,7 @@ const struct cmd_entry cmd_refresh_client_entry = {
 	.alias = "refresh",
 
 	.args = { "cC:DLRSt:U", 0, 1 },
-	.usage = "[-DLRSU] [-C size] " CMD_TARGET_CLIENT_USAGE " [adjustment]",
+	.usage = "[-cDLRSU] [-C size] " CMD_TARGET_CLIENT_USAGE " [adjustment]",
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_refresh_client_exec
