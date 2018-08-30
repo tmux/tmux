@@ -247,8 +247,6 @@ input_key_mouse(struct window_pane *wp, struct mouse_event *m)
 
 	if ((mode & ALL_MOUSE_MODES) == 0)
 		return;
-	if (!window_pane_visible(wp))
-		return;
 	if (cmd_mouse_at(wp, m, &x, &y, 0) != 0)
 		return;
 

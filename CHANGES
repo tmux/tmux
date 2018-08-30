@@ -1,6 +1,59 @@
 CHANGES FROM 2.8 to master
 
-* ...
+* Add StatusLeft and StatusRight mouse locations (keys such as
+  MouseDown1StatusLeft) for the status-left and status-right areas of
+  the status line.
+
+* Add -Z to find-window.
+
+* Support for windows larger than the client. This adds two new
+  options, window-size and default-size, and a new command,
+  resize-window. The force-width and force-height options and the
+  session_width and session_height formats have been removed.
+
+  The new window-size option tells tmux how to work out the size of
+  windows: largest means it picks the size of the largest session,
+  smallest the smallest session (similar to the old behaviour) and
+  manual means that it does not automatically resize
+  windows. aggressive-resize modifies the choice of session for
+  largest and smallest as it did before.
+
+  If a window is in a session attached to a client that is too small,
+  only part of the window is shown. tmux attempts to keep the cursor
+  visible, so the part of the window displayed is changed as the
+  cursor moves (with a small delay, to try and avoid excess redrawing
+  when applications redraw status lines or similar that are not
+  currently visible).
+
+  Drawing windows which are larger than the client is not as efficient
+  as those which fit, particularly when the cursor moves, so it is
+  recommended to avoid using this on slow machines or networks (set
+  window-size to smallest or manual).
+
+  The resize-window command can be used to resize a window
+  manually. If it is used, the window-size option is automatically set
+  to manual for the window (undo this with "setw -u
+  window-size"). resize-window works in a similar way to resize-pane
+  (-U -D -L -R -x -y flags) but also has -a and -A flags. -a sets the
+  window to the size of the smallest client (what it would be if
+  window-size was smallest) and -A the largest.
+
+  For the same behaviour as force-width or force-height, use
+  resize-window -x or -y.
+
+  If the global window-size option is set to manual, the default-size
+  option is used for new windows. If -x or -y is used with
+  new-session, that sets the default-size option for the new session.
+
+  The maximum size of a window is 10000x10000. But expect applications
+  to complain and higher memory use if making a window that big. The
+  minimum size is the size required for the current layout including
+  borders.
+
+  The refresh-client command can be used to pan around a window, -U -D
+  -L -R moves up, down, left or right and -c returns to automatic
+  cursor tracking. The position is reset when the current window is
+  changed.
 
 CHANGES FROM 2.7 to 2.8
 
@@ -295,7 +348,7 @@ CHANGES FROM 2.4 TO 2.5, 09 May 2017
 
 * Do not redraw a client unless we realistically think it can accept the data -
   defer redraws until the client has nothing else waiting to write.
- 
+
 CHANGES FROM 2.3 TO 2.4, 20 April 2017
 
 Incompatible Changes
@@ -581,7 +634,7 @@ Normal Changes
 ==============
 
 * Fix crash due to uninitialized lastwp member of layout_cell
-* Fix -fg/-bg/-style with 256 colour terminals.  
+* Fix -fg/-bg/-style with 256 colour terminals.
 
 CHANGES FROM 1.8 TO 1.9, 20 February 2014
 
@@ -939,7 +992,7 @@ CHANGES FROM 1.2 TO 1.3, 18 July 2010
 * Run job commands explicitly in the global environment (which can be modified
   with setenv -g), rather than with the environment tmux started with.
 * Use the machine's hostname as the default title, instead of an empty string.
-* Prevent double free if the window option remain-on-exit is set. 
+* Prevent double free if the window option remain-on-exit is set.
 * Key string conversions rewritten.
 * Mark zombie windows as dead in the choose-window list.
 * Tiled layout added.
@@ -1041,7 +1094,7 @@ CHANGES FROM 1.0 TO 1.1, 05 November 2009
 * New lock-client (alias lockc), and lock-session (alias locks) commands to
   lock a particular client, or all clients attached to a session.
 * Support C-n/C-p/C-v/M-v with emacs keys in choice mode.
-* Use : for goto line rather than g in vi mode. 
+* Use : for goto line rather than g in vi mode.
 * Try to guess which client to use when no target client was specified. Finds
   the current session, and if only one client is present, use it. Otherwise,
   return the most recently used client.
@@ -1172,7 +1225,7 @@ The list of older changes is below.
 
 * main-horizontal layout and main-pane-height option to match vertical.
 * New window option main-pane-width to set the width of the large left pane with
-  main-vertical (was left-vertical) layout. 
+  main-vertical (was left-vertical) layout.
 * Lots of layout cleanup. manual layout is now manual-vertical.
 
 16 May 2009

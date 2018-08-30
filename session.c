@@ -112,8 +112,8 @@ session_find_by_id(u_int id)
 /* Create a new session. */
 struct session *
 session_create(const char *prefix, const char *name, int argc, char **argv,
-    const char *path, const char *cwd, struct environ *env, struct termios *tio,
-    int idx, u_int sx, u_int sy, char **cause)
+    const char *path, const char *cwd, struct environ *env, struct options *oo,
+    struct termios *tio, int idx, char **cause)
 {
 	struct session	*s;
 	struct winlink	*wl;
@@ -132,7 +132,7 @@ session_create(const char *prefix, const char *name, int argc, char **argv,
 	if (env != NULL)
 		environ_copy(env, s->environ);
 
-	s->options = options_create(global_s_options);
+	s->options = oo;
 	s->hooks = hooks_create(global_hooks);
 
 	status_update_saved(s);
@@ -142,9 +142,6 @@ session_create(const char *prefix, const char *name, int argc, char **argv,
 		s->tio = xmalloc(sizeof *s->tio);
 		memcpy(s->tio, tio, sizeof *s->tio);
 	}
-
-	s->sx = sx;
-	s->sy = sy;
 
 	if (name != NULL) {
 		s->name = xstrdup(name);
@@ -265,7 +262,7 @@ session_lock_timer(__unused int fd, __unused short events, void *arg)
 {
 	struct session	*s = arg;
 
-	if (s->flags & SESSION_UNATTACHED)
+	if (s->attached == 0)
 		return;
 
 	log_debug("session %s locked, activity time %lld", s->name,
@@ -298,7 +295,7 @@ session_update_activity(struct session *s, struct timeval *from)
 	else
 		evtimer_set(&s->lock_timer, session_lock_timer, s);
 
-	if (~s->flags & SESSION_UNATTACHED) {
+	if (s->attached != 0) {
 		timerclear(&tv);
 		tv.tv_sec = options_get_number(s->options, "lock-after-time");
 		if (tv.tv_sec != 0)
@@ -349,7 +346,7 @@ session_new(struct session *s, const char *name, int argc, char **argv,
 	struct winlink	*wl;
 	struct environ	*env;
 	const char	*shell;
-	u_int		 hlimit;
+	u_int		 hlimit, sx, sy;
 
 	if ((wl = winlink_add(&s->windows, idx)) == NULL) {
 		xasprintf(cause, "index in use: %d", idx);
@@ -361,10 +358,11 @@ session_new(struct session *s, const char *name, int argc, char **argv,
 	if (*shell == '\0' || areshell(shell))
 		shell = _PATH_BSHELL;
 
+	default_window_size(s, NULL, &sx, &sy, -1);
 	hlimit = options_get_number(s->options, "history-limit");
 	env = environ_for_session(s, 0);
 	w = window_create_spawn(name, argc, argv, path, shell, cwd, env, s->tio,
-	    s->sx, s->sy, hlimit, cause);
+	    sx, sy, hlimit, cause);
 	if (w == NULL) {
 		winlink_remove(&s->windows, wl);
 		environ_free(env);
@@ -547,6 +545,7 @@ session_set_current(struct session *s, struct winlink *wl)
 	s->curw = wl;
 	winlink_clear_flags(wl);
 	window_update_activity(wl->window);
+	tty_update_window_offset(wl->window);
 	notify_session("session-window-changed", s);
 	return (0);
 }

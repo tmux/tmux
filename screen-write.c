@@ -54,12 +54,47 @@ struct screen_write_collect_line {
 	TAILQ_HEAD(, screen_write_collect_item) items;
 };
 
+static void
+screen_write_offset_timer(__unused int fd, __unused short events, void *data)
+{
+	struct window	*w = data;
+
+	tty_update_window_offset(w);
+}
+
+/* Set cursor position. */
+static void
+screen_write_set_cursor(struct screen_write_ctx *ctx, int cx, int cy)
+{
+	struct window_pane	*wp = ctx->wp;
+	struct window		*w;
+	struct screen		*s = ctx->s;
+	struct timeval		 tv = { .tv_usec = 10000 };
+
+	if (cx != -1 && (u_int)cx == s->cx && cy != -1 && (u_int)cy == s->cy)
+		return;
+
+	if (cx != -1)
+		s->cx = cx;
+	if (cy != -1)
+		s->cy = cy;
+
+	if (wp == NULL)
+		return;
+	w = wp->window;
+
+	if (!event_initialized(&w->offset_timer))
+		evtimer_set(&w->offset_timer, screen_write_offset_timer, w);
+	if (!evtimer_pending(&w->offset_timer, NULL))
+		evtimer_add(&w->offset_timer, &tv);
+}
+
 /* Initialize writing with a window. */
 void
 screen_write_start(struct screen_write_ctx *ctx, struct window_pane *wp,
     struct screen *s)
 {
-	char	tmp[16];
+	char	tmp[32];
 	u_int	y;
 
 	memset(ctx, 0, sizeof *ctx);
@@ -78,8 +113,10 @@ screen_write_start(struct screen_write_ctx *ctx, struct window_pane *wp,
 	ctx->scrolled = 0;
 	ctx->bg = 8;
 
-	if (wp != NULL)
-		snprintf(tmp, sizeof tmp, "pane %%%u", wp->id);
+	if (wp != NULL) {
+		snprintf(tmp, sizeof tmp, "pane %%%u (at %u,%u)", wp->id,
+		    wp->xoff, wp->yoff);
+	}
 	log_debug("%s: size %ux%u, %s", __func__, screen_size_x(ctx->s),
 	    screen_size_y(ctx->s), wp == NULL ? "no pane" : tmp);
 }
@@ -603,25 +640,26 @@ void
 screen_write_cursorup(struct screen_write_ctx *ctx, u_int ny)
 {
 	struct screen	*s = ctx->s;
+	u_int		 cx = s->cx, cy = s->cy;
 
 	if (ny == 0)
 		ny = 1;
 
-	if (s->cy < s->rupper) {
+	if (cy < s->rupper) {
 		/* Above region. */
-		if (ny > s->cy)
-			ny = s->cy;
+		if (ny > cy)
+			ny = cy;
 	} else {
 		/* Below region. */
-		if (ny > s->cy - s->rupper)
-			ny = s->cy - s->rupper;
+		if (ny > cy - s->rupper)
+			ny = cy - s->rupper;
 	}
-	if (s->cx == screen_size_x(s))
-	    s->cx--;
-	if (ny == 0)
-		return;
+	if (cx == screen_size_x(s))
+		cx--;
 
-	s->cy -= ny;
+	cy -= ny;
+
+	screen_write_set_cursor(ctx, cx, cy);
 }
 
 /* Cursor down by ny. */
@@ -629,25 +667,28 @@ void
 screen_write_cursordown(struct screen_write_ctx *ctx, u_int ny)
 {
 	struct screen	*s = ctx->s;
+	u_int		 cx = s->cx, cy = s->cy;
 
 	if (ny == 0)
 		ny = 1;
 
-	if (s->cy > s->rlower) {
+	if (cy > s->rlower) {
 		/* Below region. */
-		if (ny > screen_size_y(s) - 1 - s->cy)
-			ny = screen_size_y(s) - 1 - s->cy;
+		if (ny > screen_size_y(s) - 1 - cy)
+			ny = screen_size_y(s) - 1 - cy;
 	} else {
 		/* Above region. */
-		if (ny > s->rlower - s->cy)
-			ny = s->rlower - s->cy;
+		if (ny > s->rlower - cy)
+			ny = s->rlower - cy;
 	}
-	if (s->cx == screen_size_x(s))
-	    s->cx--;
-	if (ny == 0)
+	if (cx == screen_size_x(s))
+	    cx--;
+	else if (ny == 0)
 		return;
 
-	s->cy += ny;
+	cy += ny;
+
+	screen_write_set_cursor(ctx, cx, cy);
 }
 
 /* Cursor right by nx. */
@@ -655,16 +696,19 @@ void
 screen_write_cursorright(struct screen_write_ctx *ctx, u_int nx)
 {
 	struct screen	*s = ctx->s;
+	u_int		 cx = s->cx, cy = s->cy;
 
 	if (nx == 0)
 		nx = 1;
 
-	if (nx > screen_size_x(s) - 1 - s->cx)
-		nx = screen_size_x(s) - 1 - s->cx;
+	if (nx > screen_size_x(s) - 1 - cx)
+		nx = screen_size_x(s) - 1 - cx;
 	if (nx == 0)
 		return;
 
-	s->cx += nx;
+	cx += nx;
+
+	screen_write_set_cursor(ctx, cx, cy);
 }
 
 /* Cursor left by nx. */
@@ -672,16 +716,19 @@ void
 screen_write_cursorleft(struct screen_write_ctx *ctx, u_int nx)
 {
 	struct screen	*s = ctx->s;
+	u_int		 cx = s->cx, cy = s->cy;
 
 	if (nx == 0)
 		nx = 1;
 
-	if (nx > s->cx)
-		nx = s->cx;
+	if (nx > cx)
+		nx = cx;
 	if (nx == 0)
 		return;
 
-	s->cx -= nx;
+	cx -= nx;
+
+	screen_write_set_cursor(ctx, cx, cy);
 }
 
 /* Backspace; cursor left unless at start of wrapped line when can move up. */
@@ -690,17 +737,20 @@ screen_write_backspace(struct screen_write_ctx *ctx)
 {
 	struct screen		*s = ctx->s;
 	struct grid_line	*gl;
+	u_int			 cx = s->cx, cy = s->cy;
 
-	if (s->cx == 0) {
-		if (s->cy == 0)
+	if (cx == 0) {
+		if (cy == 0)
 			return;
-		gl = grid_get_line(s->grid, s->grid->hsize + s->cy - 1);
+		gl = grid_get_line(s->grid, s->grid->hsize + cy - 1);
 		if (gl->flags & GRID_LINE_WRAPPED) {
-			s->cy--;
-			s->cx = screen_size_x(s) - 1;
+			cy--;
+			cx = screen_size_x(s) - 1;
 		}
 	} else
-		s->cx--;
+		cx--;
+
+	screen_write_set_cursor(ctx, cx, cy);
 }
 
 /* VT100 alignment test. */
@@ -712,8 +762,6 @@ screen_write_alignmenttest(struct screen_write_ctx *ctx)
 	struct grid_cell       	 gc;
 	u_int			 xx, yy;
 
-	screen_write_initctx(ctx, &ttyctx);
-
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	utf8_set(&gc.data, 'E');
 
@@ -722,8 +770,7 @@ screen_write_alignmenttest(struct screen_write_ctx *ctx)
 			grid_view_set_cell(s->grid, xx, yy, &gc);
 	}
 
-	s->cx = 0;
-	s->cy = 0;
+	screen_write_set_cursor(ctx, 0, 0);
 
 	s->rupper = 0;
 	s->rlower = screen_size_y(s) - 1;
@@ -988,8 +1035,7 @@ screen_write_cursormove(struct screen_write_ctx *ctx, u_int px, u_int py)
 	if (py > screen_size_y(s) - 1)
 		py = screen_size_y(s) - 1;
 
-	s->cx = px;
-	s->cy = py;
+	screen_write_set_cursor(ctx, px, py);
 }
 
 /* Reverse index (up with scroll). */
@@ -1005,7 +1051,7 @@ screen_write_reverseindex(struct screen_write_ctx *ctx, u_int bg)
 	if (s->cy == s->rupper)
 		grid_view_scroll_region_down(s->grid, s->rupper, s->rlower, bg);
 	else if (s->cy > 0)
-		s->cy--;
+		screen_write_set_cursor(ctx, -1, s->cy - 1);
 
 	screen_write_collect_flush(ctx, 0);
 	tty_write(tty_cmd_reverseindex, &ttyctx);
@@ -1028,8 +1074,7 @@ screen_write_scrollregion(struct screen_write_ctx *ctx, u_int rupper,
 	screen_write_collect_flush(ctx, 0);
 
 	/* Cursor moves to top-left. */
-	s->cx = 0;
-	s->cy = 0;
+	screen_write_set_cursor(ctx, 0, 0);
 
 	s->rupper = rupper;
 	s->rlower = rlower;
@@ -1062,7 +1107,7 @@ screen_write_linefeed(struct screen_write_ctx *ctx, int wrapped, u_int bg)
 		screen_write_collect_scroll(ctx);
 		ctx->scrolled++;
 	} else if (s->cy < screen_size_y(s) - 1)
-		s->cy++;
+		screen_write_set_cursor(ctx, -1, s->cy + 1);
 }
 
 /* Scroll up. */
@@ -1094,9 +1139,7 @@ screen_write_scrollup(struct screen_write_ctx *ctx, u_int lines, u_int bg)
 void
 screen_write_carriagereturn(struct screen_write_ctx *ctx)
 {
-	struct screen	*s = ctx->s;
-
-	s->cx = 0;
+	screen_write_set_cursor(ctx, 0, -1);
 }
 
 /* Clear to end of screen from cursor. */
@@ -1300,14 +1343,15 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 			grid_view_set_cell(s->grid, xx, s->cy,
 			    &grid_default_cell);
 		}
-		if (gc.data.width > 1)
+		if (gc.data.width > 1) {
 			grid_view_set_cell(s->grid, xx, s->cy,
 			    &grid_default_cell);
+		}
 	}
 
 	memcpy(&gc, &ci->gc, sizeof gc);
 	grid_view_set_cells(s->grid, s->cx, s->cy, &gc, ci->data, ci->used);
-	s->cx += ci->used;
+	screen_write_set_cursor(ctx, s->cx + ci->used, -1);
 
 	for (xx = s->cx; xx < screen_size_x(s); xx++) {
 		grid_view_get_cell(s->grid, xx, s->cy, &gc);
@@ -1361,7 +1405,7 @@ screen_write_collect_add(struct screen_write_ctx *ctx,
 		log_debug("%s: wrapped at %u,%u", __func__, s->cx, s->cy);
 		ci->wrapped = 1;
 		screen_write_linefeed(ctx, 1, 8);
-		s->cx = 0;
+		screen_write_set_cursor(ctx, 0, -1);
 	}
 
 	if (ci->used == 0)
@@ -1423,7 +1467,7 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	if ((s->mode & MODE_WRAP) && s->cx > sx - width) {
 		log_debug("%s: wrapped at %u,%u", __func__, s->cx, s->cy);
 		screen_write_linefeed(ctx, 1, 8);
-		s->cx = 0;
+		screen_write_set_cursor(ctx, 0, -1);
 		screen_write_collect_flush(ctx, 1);
 	}
 
@@ -1496,9 +1540,9 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	 */
 	last = !(s->mode & MODE_WRAP);
 	if (s->cx <= sx - last - width)
-		s->cx += width;
+		screen_write_set_cursor(ctx, s->cx + width, -1);
 	else
-		s->cx = sx - last;
+		screen_write_set_cursor(ctx,  sx - last, -1);
 
 	/* Create space for character in insert mode. */
 	if (s->mode & MODE_INSERT) {

@@ -115,6 +115,7 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 		c->session = s;
 		if (~item->shared->flags & CMDQ_SHARED_REPEAT)
 			server_client_set_key_table(c, NULL);
+		tty_update_client_offset(c);
 		status_timer_start(c);
 		notify_client("client-session-changed", c);
 		session_update_activity(s, NULL);
@@ -142,6 +143,7 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 
 		c->session = s;
 		server_client_set_key_table(c, NULL);
+		tty_update_client_offset(c);
 		status_timer_start(c);
 		notify_client("client-session-changed", c);
 		session_update_activity(s, NULL);

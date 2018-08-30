@@ -71,14 +71,15 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	struct session		*s, *as, *groupwith;
 	struct window		*w;
 	struct environ		*env;
+	struct options		*oo;
 	struct termios		 tio, *tiop;
 	struct session_group	*sg;
 	const char		*errstr, *template, *group, *prefix;
-	const char		*path, *cmd, *tmp;
+	const char		*path, *cmd, *tmp, *value;
 	char		       **argv, *cause, *cp, *newname, *cwd = NULL;
 	int			 detached, already_attached, idx, argc;
 	int			 is_control = 0;
-	u_int			 sx, sy;
+	u_int			 sx, sy, dsx = 80, dsy = 24;
 	struct environ_entry	*envent;
 	struct cmd_find_state	 fs;
 	enum cmd_retval		 retval;
@@ -189,8 +190,36 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 		}
 	}
 
+	/* Get default session size. */
+	if (args_has(args, 'x')) {
+		tmp = args_get(args, 'x');
+		if (strcmp(tmp, "-") == 0) {
+			if (c != NULL)
+				dsx = c->tty.sx;
+		} else {
+			dsx = strtonum(tmp, 1, USHRT_MAX, &errstr);
+			if (errstr != NULL) {
+				cmdq_error(item, "width %s", errstr);
+				goto error;
+			}
+		}
+	}
+	if (args_has(args, 'y')) {
+		tmp = args_get(args, 'y');
+		if (strcmp(tmp, "-") == 0) {
+			if (c != NULL)
+				dsy = c->tty.sy;
+		} else {
+			dsy = strtonum(tmp, 1, USHRT_MAX, &errstr);
+			if (errstr != NULL) {
+				cmdq_error(item, "height %s", errstr);
+				goto error;
+			}
+		}
+	}
+
 	/* Find new session size. */
-	if (!detached) {
+	if (!detached && !is_control) {
 		sx = c->tty.sx;
 		sy = c->tty.sy;
 		if (!is_control &&
@@ -198,34 +227,15 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 		    options_get_number(global_s_options, "status"))
 			sy--;
 	} else {
-		sx = 80;
-		sy = 24;
-	}
-	if ((is_control || detached) && args_has(args, 'x')) {
-		tmp = args_get(args, 'x');
-		if (strcmp(tmp, "-") == 0) {
-			if (c != NULL)
-				sx = c->tty.sx;
-		} else {
-			sx = strtonum(tmp, 1, USHRT_MAX, &errstr);
-			if (errstr != NULL) {
-				cmdq_error(item, "width %s", errstr);
-				goto error;
-			}
+		value = options_get_string(global_s_options, "default-size");
+		if (sscanf(value, "%ux%u", &sx, &sy) != 2) {
+			sx = 80;
+			sy = 24;
 		}
-	}
-	if ((is_control || detached) && args_has(args, 'y')) {
-		tmp = args_get(args, 'y');
-		if (strcmp(tmp, "-") == 0) {
-			if (c != NULL)
-				sy = c->tty.sy;
-		} else {
-			sy = strtonum(tmp, 1, USHRT_MAX, &errstr);
-			if (errstr != NULL) {
-				cmdq_error(item, "height %s", errstr);
-				goto error;
-			}
-		}
+		if (args_has(args, 'x'))
+			sx = dsx;
+		if (args_has(args, 'y'))
+			sy = dsy;
 	}
 	if (sx == 0)
 		sx = 1;
@@ -262,10 +272,15 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	if (c != NULL && !args_has(args, 'E'))
 		environ_update(global_s_options, c->environ, env);
 
+	/* Set up the options. */
+	oo = options_create(global_s_options);
+	if (args_has(args, 'x') || args_has(args, 'y'))
+		options_set_string(oo, "default-size", 0, "%ux%u", dsx, dsy);
+
 	/* Create the new session. */
 	idx = -1 - options_get_number(global_s_options, "base-index");
-	s = session_create(prefix, newname, argc, argv, path, cwd, env, tiop,
-	    idx, sx, sy, &cause);
+	s = session_create(prefix, newname, argc, argv, path, cwd, env, oo,
+	    tiop, idx, &cause);
 	environ_free(env);
 	if (s == NULL) {
 		cmdq_error(item, "create session failed: %s", cause);
@@ -313,6 +328,7 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 		c->session = s;
 		if (~item->shared->flags & CMDQ_SHARED_REPEAT)
 			server_client_set_key_table(c, NULL);
+		tty_update_client_offset(c);
 		status_timer_start(c);
 		notify_client("client-session-changed", c);
 		session_update_activity(s, NULL);

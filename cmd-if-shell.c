@@ -120,8 +120,13 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 		cdata->item = NULL;
 	memcpy(&cdata->mouse, &shared->mouse, sizeof cdata->mouse);
 
-	job_run(shellcmd, s, server_client_get_cwd(item->client, s), NULL,
-	    cmd_if_shell_callback, cmd_if_shell_free, cdata, 0);
+	if (job_run(shellcmd, s, server_client_get_cwd(item->client, s), NULL,
+	    cmd_if_shell_callback, cmd_if_shell_free, cdata, 0) == NULL) {
+		cmdq_error(item, "failed to run command: %s", shellcmd);
+		free(shellcmd);
+		free(cdata);
+		return (CMD_RETURN_ERROR);
+	}
 	free(shellcmd);
 
 	if (args_has(args, 'b'))
@@ -132,14 +137,16 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 static void
 cmd_if_shell_callback(struct job *job)
 {
-	struct cmd_if_shell_data	*cdata = job->data;
+	struct cmd_if_shell_data	*cdata = job_get_data(job);
 	struct client			*c = cdata->client;
 	struct cmd_list			*cmdlist;
 	struct cmdq_item		*new_item;
 	char				*cause, *cmd, *file = cdata->file;
 	u_int				 line = cdata->line;
+	int				 status;
 
-	if (!WIFEXITED(job->status) || WEXITSTATUS(job->status) != 0)
+	status = job_get_status(job);
+	if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
 		cmd = cdata->cmd_else;
 	else
 		cmd = cdata->cmd_if;

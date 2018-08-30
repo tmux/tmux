@@ -16,13 +16,11 @@
 	* way to set socket path from config file
 
 - format improvements:
-	* option to quote format (#{q:session_name})
 	* some way to pad # stuff with spaces
 	* formats to show if a window is linked into multiple sessions, into
 	  multiple attached sessions, and is the active window in multiple
 	  attached sessions?
 	* comparison operators like < and > (for #{version}?)
-	* %else statement in config file
 
 - improve monitor-*:
 	* straighten out rules for multiple clients
@@ -61,7 +59,6 @@
 	  not attached to a cell at all. this could be the time to introduce
 	  panelink to replace layout_cell
 	* way to set hints/limits about pane size for resizing
-	* panning over window (window larger than visible)
 	* a mode where one application can cross two panes (ie x|y, width =
 	  COLUMNS/2 but height = ROWS * 2)
 	* separate active panes for different clients
@@ -109,7 +106,6 @@
 	* marks in history, automatically add (move?) one when pane is changed
 	* this doesn't work, need pane reference count probably:
 	  bind -n DoubleClick3Status confirm-before -p "kill-window #I? (y/n)" kill-window
-	* respawn -c flag same as neww etc
 	* marker lines in history (GitHub issue 1042)
 	* tree mode stuff: make command prompt (:) common code so all modes get it,
 	  predefined filters, tag-all key, ...
@@ -131,3 +127,9 @@
 	* finish hooks for notifys
 	* for session_closed, if no sessions at all, perhaps fake up a
 	  temporary one
+
+- pan
+	* tty_window_offset should try to keep as much off active pane
+	  visible as possible
+	* rather than centering cursor it might be better if only
+	  moved offset when it gets close to an edge?

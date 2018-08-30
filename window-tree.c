@@ -461,7 +461,6 @@ window_tree_build(void *modedata, u_int sort_type, uint64_t *tag,
 	}
 }
 
-
 static void
 window_tree_draw_label(struct screen_write_ctx *ctx, u_int px, u_int py,
     u_int sx, u_int sy, const struct grid_cell *gc, const char *label)

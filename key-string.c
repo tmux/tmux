@@ -43,7 +43,9 @@ static const struct {
 	{ "F11",	KEYC_F11 },
 	{ "F12",	KEYC_F12 },
 	{ "IC",		KEYC_IC },
+	{ "Insert",     KEYC_IC },
 	{ "DC",		KEYC_DC },
+	{ "Delete",     KEYC_DC },
 	{ "Home",	KEYC_HOME },
 	{ "End",	KEYC_END },
 	{ "NPage",	KEYC_NPAGE },
@@ -271,6 +273,10 @@ key_string_lookup_key(key_code key)
 		return ("MouseMovePane");
 	if (key == KEYC_MOUSEMOVE_STATUS)
 		return ("MouseMoveStatus");
+	if (key == KEYC_MOUSEMOVE_STATUS_LEFT)
+		return ("MouseMoveStatusLeft");
+	if (key == KEYC_MOUSEMOVE_STATUS_RIGHT)
+		return ("MouseMoveStatusRight");
 	if (key == KEYC_MOUSEMOVE_BORDER)
 		return ("MouseMoveBorder");
 	if (key >= KEYC_USER && key < KEYC_USER + KEYC_NUSER) {
