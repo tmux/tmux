@@ -1273,11 +1273,16 @@ window_copy_goto_line(struct window_pane *wp, const char *linestr)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	const char			*errstr;
-	u_int				 lineno;
+	int					lineno, maxlineno;
 
-	lineno = strtonum(linestr, 0, screen_hsize(data->backing), &errstr);
+	maxlineno = screen_hsize(data->backing);
+	lineno = strtonum(linestr, -1, INT_MAX, &errstr);
 	if (errstr != NULL)
 		return;
+	if (lineno < 0)
+		lineno = maxlineno;
+	if (lineno > maxlineno)
+		lineno = maxlineno;
 
 	data->oy = lineno;
 	window_copy_update_selection(wp, 1);
