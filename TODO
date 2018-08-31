@@ -133,3 +133,4 @@
 	  visible as possible
 	* rather than centering cursor it might be better if only
 	  moved offset when it gets close to an edge?
+	* allow one line panes by redrawing rather than scrolling
