@@ -2082,7 +2082,7 @@ window_copy_cursor_up(struct window_pane *wp, int scroll_only)
 		}
 	}
 
-	if (data->screen.sel != NULL || !data->rectflag) {
+	if (data->screen.sel == NULL || !data->rectflag) {
 		py = screen_hsize(data->backing) + data->cy - data->oy;
 		px = window_copy_find_length(wp, py);
 		if ((data->cx >= data->lastsx && data->cx != px) ||
