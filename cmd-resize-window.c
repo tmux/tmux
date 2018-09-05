@@ -34,7 +34,7 @@ const struct cmd_entry cmd_resize_window_entry = {
 	.alias = "resizew",
 
 	.args = { "aADLRt:Ux:y:", 0, 1 },
-	.usage = "[-aADLRU] [-x width] [-y height] " CMD_TARGET_PANE_USAGE " "
+	.usage = "[-aADLRU] [-x width] [-y height] " CMD_TARGET_WINDOW_USAGE " "
 		 "[adjustment]",
 
 	.target = { 't', CMD_FIND_WINDOW, 0 },
