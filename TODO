@@ -48,6 +48,8 @@
 	  dragging it should select by word. compare how xterm works. GitHub
 	  issue 682)
 	* key to search for word under cursor (GitHub issue 1240)
+	* when entering copy mode, should copy grid so that input does not
+          need to be suspended
 
 - layout stuff
 	* way to tag a layout as a number/name
