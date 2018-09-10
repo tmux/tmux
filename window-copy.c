@@ -1172,7 +1172,6 @@ window_copy_search(struct window_pane *wp, int direction)
 		window_copy_move_right(s, &fx, &fy);
 	else
 		window_copy_move_left(s, &fx, &fy);
-	window_copy_clear_selection(wp);
 
 	wrapflag = options_get_number(wp->window->options, "wrap-search");
 	cis = window_copy_is_lowercase(data->searchstr);
