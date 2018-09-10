@@ -535,14 +535,20 @@ have_event:
 		m->x = x + m->ox;
 		m->y = y + m->oy;
 
-		TAILQ_FOREACH(wp, &s->curw->window->panes, entry) {
-			if ((wp->xoff + wp->sx == px &&
-			    wp->yoff <= 1 + py &&
-			    wp->yoff + wp->sy >= py) ||
-			    (wp->yoff + wp->sy == py &&
-			    wp->xoff <= 1 + px &&
-			    wp->xoff + wp->sx >= px))
-				break;
+		if (s->curw->window->flags & WINDOW_ZOOMED) {
+			/* borders are irrelevant */
+			wp = NULL;
+		} else {
+			/* maybe find a border's pane */
+			TAILQ_FOREACH(wp, &s->curw->window->panes, entry) {
+				if ((wp->xoff + wp->sx == px &&
+				    wp->yoff <= 1 + py &&
+				    wp->yoff + wp->sy >= py) ||
+				    (wp->yoff + wp->sy == py &&
+				    wp->xoff <= 1 + px &&
+				    wp->xoff + wp->sx >= px))
+					break;
+			}
 		}
 		if (wp != NULL)
 			where = BORDER;
