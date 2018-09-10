@@ -249,6 +249,8 @@ input_key_mouse(struct window_pane *wp, struct mouse_event *m)
 		return;
 	if (cmd_mouse_at(wp, m, &x, &y, 0) != 0)
 		return;
+	if (!window_pane_visible(wp))
+		return;
 
 	/* If this pane is not in button or all mode, discard motion events. */
 	if (MOUSE_DRAG(m->b) &&
