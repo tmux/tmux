@@ -104,6 +104,8 @@ screen_redraw_cell_border(struct client *c, u_int px, u_int py)
 
 	/* Check all the panes. */
 	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (!window_pane_visible(wp))
+			continue;
 		if ((retval = screen_redraw_cell_border1(wp, px, py)) != -1)
 			return (!!retval);
 	}
@@ -128,6 +130,9 @@ screen_redraw_check_cell(struct client *c, u_int px, u_int py, int pane_status,
 
 	if (pane_status != CELL_STATUS_OFF) {
 		TAILQ_FOREACH(wp, &w->panes, entry) {
+			if (!window_pane_visible(wp))
+				continue;
+
 			if (pane_status == CELL_STATUS_TOP)
 				line = wp->yoff - 1;
 			else
@@ -140,6 +145,8 @@ screen_redraw_check_cell(struct client *c, u_int px, u_int py, int pane_status,
 	}
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (!window_pane_visible(wp))
+			continue;
 		*wpp = wp;
 
 		/* If outside the pane and its border, skip it. */
@@ -325,6 +332,8 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 	log_debug("%s: %s @%u", __func__, c->name, w->id);
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (!window_pane_visible(wp))
+			continue;
 		s = &wp->status_screen;
 
 		size = wp->status_size;
@@ -456,7 +465,7 @@ screen_redraw_pane(struct client *c, struct window_pane *wp)
 {
 	struct screen_redraw_ctx	 ctx;
 
-	if (wp->layout_cell == NULL)
+	if (!window_pane_visible(wp))
 		return;
 
 	screen_redraw_set_context(c, &ctx);
@@ -545,7 +554,7 @@ screen_redraw_draw_panes(struct screen_redraw_ctx *ctx)
 	log_debug("%s: %s @%u", __func__, c->name, w->id);
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (wp->layout_cell == NULL)
+		if (!window_pane_visible(wp))
 			continue;
 		screen_redraw_draw_pane(ctx, wp);
 		if (c->flags & CLIENT_IDENTIFY)
