@@ -523,27 +523,34 @@ have_event:
 		else if (m->statusat > 0 && y >= (u_int)m->statusat)
 			y = m->statusat - 1;
 
-		TAILQ_FOREACH(wp, &s->curw->window->panes, entry) {
-			if ((wp->xoff + wp->sx == x &&
-			    wp->yoff <= 1 + y &&
-			    wp->yoff + wp->sy >= y) ||
-			    (wp->yoff + wp->sy == y &&
-			    wp->xoff <= 1 + x &&
-			    wp->xoff + wp->sx >= x))
-				break;
-		}
-		if (wp != NULL)
-			where = BORDER;
-		else {
-			wp = window_get_active_at(s->curw->window, x, y);
-			if (wp != NULL) {
-				where = PANE;
-				log_debug("mouse at %u,%u is on pane %%%u",
-				    x, y, wp->id);
+		/* Try the pane borders if not zoomed. */
+		if (~s->curw->window->flags & WINDOW_ZOOMED) {
+			TAILQ_FOREACH(wp, &s->curw->window->panes, entry) {
+				if ((wp->xoff + wp->sx == x &&
+				    wp->yoff <= 1 + y &&
+				    wp->yoff + wp->sy >= y) ||
+				    (wp->yoff + wp->sy == y &&
+				    wp->xoff <= 1 + x &&
+				    wp->xoff + wp->sx >= x))
+					break;
 			}
+			if (wp != NULL)
+				where = BORDER;
 		}
+
+		/* Otherwise try inside the pane. */
+		if (where == NOWHERE) {
+			wp = window_get_active_at(s->curw->window, x, y);
+			if (wp != NULL)
+				where = PANE;
+		}
+
 		if (where == NOWHERE)
 			return (KEYC_UNKNOWN);
+		if (where == PANE)
+			log_debug("mouse %u,%u on pane %%%u", x, y, wp->id);
+		else if (where == BORDER)
+			log_debug("mouse on pane %%%u border", wp->id);
 		m->wp = wp->id;
 		m->w = wp->window->id;
 	} else
