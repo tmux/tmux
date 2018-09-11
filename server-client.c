@@ -538,12 +538,12 @@ have_event:
 		/* Try the pane borders if not zoomed. */
 		if (~s->curw->window->flags & WINDOW_ZOOMED) {
 			TAILQ_FOREACH(wp, &s->curw->window->panes, entry) {
-				if ((wp->xoff + wp->sx == x &&
-				    wp->yoff <= 1 + y &&
-				    wp->yoff + wp->sy >= y) ||
-				    (wp->yoff + wp->sy == y &&
-				    wp->xoff <= 1 + x &&
-				    wp->xoff + wp->sx >= x))
+				if ((wp->xoff + wp->sx == px &&
+				    wp->yoff <= 1 + py &&
+				    wp->yoff + wp->sy >= py) ||
+				    (wp->yoff + wp->sy == py &&
+				    wp->xoff <= 1 + px &&
+				    wp->xoff + wp->sx >= px))
 					break;
 			}
 			if (wp != NULL)
@@ -552,7 +552,7 @@ have_event:
 
 		/* Otherwise try inside the pane. */
 		if (where == NOWHERE) {
-			wp = window_get_active_at(s->curw->window, x, y);
+			wp = window_get_active_at(s->curw->window, px, py);
 			if (wp != NULL)
 				where = PANE;
 		}
