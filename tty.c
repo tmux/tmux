@@ -1702,13 +1702,11 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 		return;
 
 	if (ctx->xoff + ctx->ocx - ctx->ox > tty->sx - 1 &&
-	    ctx->ocy == ctx->orlower) {
-		if (tty_pane_full_width(tty, ctx))
-			tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
-		else
-			tty_margin_off(tty);
-	}
+	    ctx->ocy == ctx->orlower &&
+	    tty_pane_full_width(tty, ctx))
+		tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
 
+	tty_margin_off(tty);
 	tty_cursor_pane_unless_wrap(tty, ctx, ctx->ocx, ctx->ocy);
 
 	tty_cell(tty, ctx->cell, ctx->wp);
@@ -1737,6 +1735,7 @@ tty_cmd_cells(struct tty *tty, const struct tty_ctx *ctx)
 		return;
 	}
 
+	tty_margin_off(tty);
 	tty_cursor_pane_unless_wrap(tty, ctx, ctx->ocx, ctx->ocy);
 
 	tty_attributes(tty, ctx->cell, ctx->wp);

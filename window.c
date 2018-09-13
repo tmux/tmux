@@ -501,6 +501,8 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 	struct window_pane	*wp;
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
+                if (!window_pane_visible(wp))
+                        continue;
 		if (x < wp->xoff || x > wp->xoff + wp->sx)
 			continue;
 		if (y < wp->yoff || y > wp->yoff + wp->sy)
@@ -1286,13 +1288,22 @@ window_pane_key(struct window_pane *wp, struct client *c, struct session *s,
 		return;
 	if (options_get_number(wp->window->options, "synchronize-panes")) {
 		TAILQ_FOREACH(wp2, &wp->window->panes, entry) {
-			if (wp2 == wp || wp2->mode != NULL)
-				continue;
-			if (wp2->fd == -1 || wp2->flags & PANE_INPUTOFF)
-				continue;
-			input_key(wp2, key, NULL);
+			if (wp2 != wp &&
+			    wp2->mode == NULL &&
+			    wp2->fd != -1 &&
+			    (~wp2->flags & PANE_INPUTOFF) &&
+			    window_pane_visible(wp2))
+				input_key(wp2, key, NULL);
 		}
 	}
+}
+
+int
+window_pane_visible(struct window_pane *wp)
+{
+	if (~wp->window->flags & WINDOW_ZOOMED)
+		return (1);
+	return (wp == wp->window->active);
 }
 
 u_int
