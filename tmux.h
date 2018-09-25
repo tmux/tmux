@@ -63,11 +63,8 @@ struct tmuxproc;
 #define TMUX_CONF "/etc/tmux.conf"
 #endif
 
-/*
- * Minimum layout cell size, NOT including separator line. The scroll region
- * cannot be one line in height so this must be at least two.
- */
-#define PANE_MINIMUM 2
+/* Minimum layout cell size, NOT including border lines. */
+#define PANE_MINIMUM 1
 
 /* Minimum and maximum window size. */
 #define WINDOW_MINIMUM PANE_MINIMUM
