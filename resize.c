@@ -79,6 +79,8 @@ default_window_size(struct session *s, struct window *w, u_int *sx, u_int *sy,
 		TAILQ_FOREACH(c, &clients, entry) {
 			if (c->session == NULL)
 				continue;
+			if (c->flags & CLIENT_NOSIZEFLAGS)
+				continue;
 			if (w != NULL && !session_has(c->session, w))
 				continue;
 			if (w == NULL && c->session != s)
@@ -98,6 +100,8 @@ default_window_size(struct session *s, struct window *w, u_int *sx, u_int *sy,
 		*sx = *sy = UINT_MAX;
 		TAILQ_FOREACH(c, &clients, entry) {
 			if (c->session == NULL)
+				continue;
+			if (c->flags & CLIENT_NOSIZEFLAGS)
 				continue;
 			if (w != NULL && !session_has(c->session, w))
 				continue;
@@ -209,7 +213,7 @@ recalculate_sizes(void)
 			}
 			if (sx == 0 || sy == 0)
 				changed = 0;
-		} else if (type == WINDOW_SIZE_SMALLEST) {
+		} else {
 			sx = sy = UINT_MAX;
 			TAILQ_FOREACH(c, &clients, entry) {
 				if ((s = c->session) == NULL)
