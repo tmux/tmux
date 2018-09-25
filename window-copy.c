@@ -1299,7 +1299,7 @@ window_copy_write_line(struct window_pane *wp, struct screen_write_ctx *ctx,
 	style_apply(&gc, oo, "mode-style");
 	gc.flags |= GRID_FLAG_NOPALETTE;
 
-	if (py == 0) {
+	if (py == 0 && s->rupper < s->rlower) {
 		if (data->searchmark == NULL) {
 			size = xsnprintf(hdr, sizeof hdr,
 			    "[%u/%u]", data->oy, screen_hsize(data->backing));

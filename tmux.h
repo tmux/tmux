@@ -59,11 +59,8 @@ struct tmuxproc;
 /* Default global configuration file. */
 #define TMUX_CONF "/etc/tmux.conf"
 
-/*
- * Minimum layout cell size, NOT including separator line. The scroll region
- * cannot be one line in height so this must be at least two.
- */
-#define PANE_MINIMUM 2
+/* Minimum layout cell size, NOT including border lines. */
+#define PANE_MINIMUM 1
 
 /* Automatic name refresh interval, in microseconds. Must be < 1 second. */
 #define NAME_INTERVAL 500000
