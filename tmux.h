@@ -65,9 +65,9 @@ struct tmuxproc;
 
 /*
  * Minimum layout cell size, NOT including separator line. The scroll region
- * cannot be one line in height so this must be at least two.
+ * cannot be one line in height thus it is disabled for panes of size 1.
  */
-#define PANE_MINIMUM 2
+#define PANE_MINIMUM 1
 
 /* Minimum and maximum window size. */
 #define WINDOW_MINIMUM PANE_MINIMUM
