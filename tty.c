@@ -704,7 +704,6 @@ int
 tty_window_bigger(struct tty *tty, struct window *w)
 {
 	struct client	*c = tty->client;
-	struct session	*s = c->session;
 
 	return (tty->sx < w->sx || tty->sy - status_line_size(c) < w->sy);
 }
@@ -939,8 +938,6 @@ tty_clamp_line(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
 	}
 	if (*rx > nx)
 		fatalx("%s: x too big, %u > %u", __func__, *rx, nx);
-	if (nx > *rx)
-		*rx = nx;
 
 	return (1);
 }
@@ -1036,8 +1033,6 @@ tty_clamp_area(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
 	}
 	if (*rx > nx)
 		fatalx("%s: x too big, %u > %u", __func__, *rx, nx);
-	if (nx > *rx)
-		*rx = nx;
 
 	if (yoff >= ctx->oy && yoff + ny <= ctx->oy + ctx->sy) {
 		/* All visible. */
@@ -1062,8 +1057,6 @@ tty_clamp_area(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
 	}
 	if (*ry > ny)
 		fatalx("%s: y too big, %u > %u", __func__, *ry, ny);
-	if (ny > *ry)
-		*ry = ny;
 
 	return (1);
 }
