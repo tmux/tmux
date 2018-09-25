@@ -739,7 +739,7 @@ window_destroy_panes(struct window *w)
 }
 
 const char *
-window_printable_flags(struct winlink *wl)
+window_printable_flags(struct winlink *wl, struct client *c)
 {
 	struct session	*s = wl->session;
 	static char	 flags[32];
@@ -760,6 +760,8 @@ window_printable_flags(struct winlink *wl)
 		flags[pos++] = 'M';
 	if (wl->window->flags & WINDOW_ZOOMED)
 		flags[pos++] = 'Z';
+	if (c != NULL && tty_window_bigger(&c->tty, wl->window))
+		flags[pos++] = 'B';
 	flags[pos] = '\0';
 	return (flags);
 }

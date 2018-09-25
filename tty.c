@@ -701,11 +701,10 @@ tty_repeat_space(struct tty *tty, u_int n)
 
 /* Is this window bigger than the terminal? */
 int
-tty_window_bigger(struct tty *tty)
+tty_window_bigger(struct tty *tty, struct window *w)
 {
 	struct client	*c = tty->client;
 	struct session	*s = c->session;
-	struct window	*w = s->curw->window;
 
 	return (tty->sx < w->sx || tty->sy - status_line_size(c) < w->sy);
 }

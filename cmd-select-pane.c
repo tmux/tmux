@@ -58,6 +58,7 @@ static void
 cmd_select_pane_redraw(struct window *w)
 {
 	struct client	*c;
+	struct window	*loop;
 
 	/*
 	 * Redraw entire window if it is bigger than the client (the
@@ -67,15 +68,15 @@ cmd_select_pane_redraw(struct window *w)
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (c->session == NULL)
 			continue;
-		if (c->session->curw->window == w && tty_window_bigger(&c->tty))
+		loop = c->session->curw->window;
+		if (loop == w && tty_window_bigger(&c->tty, w))
 			server_redraw_client(c);
 		else {
-			if (c->session->curw->window == w)
+			if (loop == w)
 				c->flags |= CLIENT_REDRAWBORDERS;
 			if (session_has(c->session, w))
 				c->flags |= CLIENT_REDRAWSTATUS;
 		}
-
 	}
 }
 

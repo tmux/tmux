@@ -1669,7 +1669,7 @@ struct environ *environ_for_session(struct session *, int);
 
 /* tty.c */
 void	tty_create_log(void);
-int	tty_window_bigger(struct tty *);
+int	tty_window_bigger(struct tty *, struct window *);
 int	tty_window_offset(struct tty *, u_int *, u_int *, u_int *, u_int *);
 void	tty_update_window_offset(struct window *);
 void	tty_update_client_offset(struct client *);
@@ -2184,7 +2184,7 @@ void		 window_pane_key(struct window_pane *, struct client *,
 		     struct session *, key_code, struct mouse_event *);
 int		 window_pane_visible(struct window_pane *);
 u_int		 window_pane_search(struct window_pane *, const char *);
-const char	*window_printable_flags(struct winlink *);
+const char	*window_printable_flags(struct winlink *, struct client *);
 struct window_pane *window_pane_find_up(struct window_pane *);
 struct window_pane *window_pane_find_down(struct window_pane *);
 struct window_pane *window_pane_find_left(struct window_pane *);
