@@ -761,7 +761,7 @@ window_printable_flags(struct winlink *wl, struct client *c)
 	if (wl->window->flags & WINDOW_ZOOMED)
 		flags[pos++] = 'Z';
 	if (c != NULL && tty_window_bigger(&c->tty, wl->window))
-		flags[pos++] = 'B';
+		flags[pos++] = '+';
 	flags[pos] = '\0';
 	return (flags);
 }
