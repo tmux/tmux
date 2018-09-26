@@ -96,7 +96,7 @@ default_window_size(struct session *s, struct window *w, u_int *sx, u_int *sy,
 		}
 		if (*sx == 0 || *sy == 0)
 			goto manual;
-	} else if (type == WINDOW_SIZE_SMALLEST) {
+	} else {
 		*sx = *sy = UINT_MAX;
 		TAILQ_FOREACH(c, &clients, entry) {
 			if (c->session == NULL)
