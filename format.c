@@ -106,9 +106,10 @@ struct format_entry {
 
 /* Format entry tree. */
 struct format_tree {
-	struct window		*w;
-	struct winlink		*wl;
+	struct client		*c;
 	struct session		*s;
+	struct winlink		*wl;
+	struct window		*w;
 	struct window_pane	*wp;
 
 	struct client		*client;
@@ -1395,6 +1396,7 @@ format_defaults_client(struct format_tree *ft, struct client *c)
 
 	if (ft->s == NULL)
 		ft->s = c->session;
+	ft->c = c;
 
 	format_add(ft, "client_name", "%s", c->name);
 	format_add(ft, "client_pid", "%ld", (long) c->pid);
@@ -1463,14 +1465,26 @@ format_defaults_window(struct format_tree *ft, struct window *w)
 static void
 format_defaults_winlink(struct format_tree *ft, struct winlink *wl)
 {
+	struct client	*c = ft->c;
 	struct session	*s = wl->session;
 	struct window	*w = wl->window;
+	int		 flag;
+	u_int		 ox, oy, sx, sy;
 
 	if (ft->w == NULL)
 		ft->w = wl->window;
 	ft->wl = wl;
 
 	format_defaults_window(ft, w);
+
+	if (c != NULL) {
+		flag = tty_window_offset(&c->tty, &ox, &oy, &sx, &sy);
+		format_add(ft, "window_bigger", "%d", flag);
+		if (flag) {
+			format_add(ft, "window_offset_x", "%u", ox);
+			format_add(ft, "window_offset_y", "%u", oy);
+		}
+	}
 
 	format_add(ft, "window_index", "%d", wl->idx);
 	format_add_cb(ft, "window_stack_index", format_cb_window_stack_index);

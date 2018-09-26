@@ -815,7 +815,7 @@ tty_update_client_offset(struct client *c)
 	c->tty.osx = sx;
 	c->tty.osy = sy;
 
-	c->flags |= CLIENT_REDRAWWINDOW;
+	c->flags |= (CLIENT_REDRAWWINDOW|CLIENT_REDRAWSTATUS);
 }
 
 /*
