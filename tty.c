@@ -1739,7 +1739,8 @@ tty_cmd_cells(struct tty *tty, const struct tty_ctx *ctx)
 		return;
 
 	if (ctx->bigger &&
-	    (ctx->ocx < ctx->ox || ctx->ocx + ctx->num > ctx->ox + ctx->sx)) {
+	    (ctx->xoff + ctx->ocx < ctx->ox ||
+	    ctx->xoff + ctx->ocx + ctx->num > ctx->ox + ctx->sx)) {
 		if (!ctx->wrapped ||
 		    !tty_pane_full_width(tty, ctx) ||
 		    (tty->term->flags & TERM_EARLYWRAP) ||
