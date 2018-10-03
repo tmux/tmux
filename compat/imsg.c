@@ -220,6 +220,7 @@ imsg_create(struct imsgbuf *ibuf, uint32_t type, uint32_t peerid, pid_t pid,
 	}
 
 	hdr.type = type;
+	hdr.len = datalen;
 	hdr.flags = 0;
 	hdr.peerid = peerid;
 	if ((hdr.pid = pid) == 0)
