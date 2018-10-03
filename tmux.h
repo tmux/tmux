@@ -936,7 +936,7 @@ RB_HEAD(sessions, session);
 
 /* Mouse wheel states. */
 #define MOUSE_WHEEL_UP 0
-#define MOUSE_WHEEL_DOWN 64
+#define MOUSE_WHEEL_DOWN 1
 
 /* Mouse helpers. */
 #define MOUSE_BUTTONS(b) ((b) & MOUSE_MASK_BUTTONS)
