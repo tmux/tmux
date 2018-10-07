@@ -112,7 +112,6 @@
 	* tree mode stuff: make command prompt (:) common code so all modes get it,
 	  predefined filters, tag-all key, ...
 	* drag panes and windows around to move/swap them in choose mode
-	* support panes of 1 line (redraw instead of scrolling)
 
 - hooks
 	* more hooks for various things
@@ -136,4 +135,3 @@
 	  visible as possible
 	* rather than centering cursor it might be better if only
 	  moved offset when it gets close to an edge?
-	* allow one line panes by redrawing rather than scrolling
