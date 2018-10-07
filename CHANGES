@@ -1,5 +1,19 @@
 CHANGES FROM 2.8 to master
 
+* Do not move the cursor in copy mode when the mouse wheel is used.
+
+* Use the same working directory rules for jobs as new windows rather
+  than always starting in the user's home.
+
+* Allow panes to be one line or column in size.
+
+* Go to last line when goto-line number is out of range in copy mode.
+
+* Yank previously cut text if any with C-y in the command prompt, only
+  use the buffer if no text has been cut.
+
+* Add q: format modifier to quote shell special characters.
+
 * Add StatusLeft and StatusRight mouse locations (keys such as
   MouseDown1StatusLeft) for the status-left and status-right areas of
   the status line.
