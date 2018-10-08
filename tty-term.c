@@ -312,10 +312,13 @@ tty_term_override_next(const char *s, size_t *offset)
 	if (s[at] == '\0')
 		return (NULL);
 
-	while (s[at] != '\0' && s[at] != ':') {
-		if (s[at] == '\\' && s[at + 1] == ':') {
-			value[n++] = ':';
-			at += 2;
+	while (s[at] != '\0') {
+		if (s[at] == ':') {
+			if (s[at + 1] == ':') {
+				value[n++] = ':';
+				at += 2;
+			} else
+				break;
 		} else {
 			value[n++] = s[at];
 			at++;
