@@ -930,7 +930,7 @@ is used, the
 .Ic update-environment
 option will not be applied.
 .It Xo Ic refresh-client
-.Op Fl cDLRSU
+.Op Fl cDlLRSU
 .Op Fl C Ar XxY
 .Op Fl t Ar target-client
 .Op Ar adjustment
@@ -975,6 +975,10 @@ it.
 .Pp
 .Fl C
 sets the width and height of a control client.
+.Fl l
+requests the clipboard from the client using the
+.Xr xterm 1
+escape sequence and stores it in a new paste buffer.
 .It Xo Ic rename-session
 .Op Fl t Ar target-session
 .Ar new-name
@@ -3996,7 +4000,7 @@ option.
 .El
 .Pp
 When a pane is first created, its title is the hostname.
-A pane's title can be set via the OSC title setting sequence, for example:
+A pane's title can be set via the title setting escape sequence, for example:
 .Bd -literal -offset indent
 $ printf '\e033]2;My Title\e033\e\e'
 .Ed
@@ -4550,7 +4554,7 @@ Indicate that the terminal supports the
 .Ql direct colour
 RGB escape sequence (for example, \ee[38;2;255;255;255m).
 .Pp
-If supported, this is used for the OSC initialize colour escape sequence (which
+If supported, this is used for the initialize colour escape sequence (which
 may be enabled by adding the
 .Ql initc
 and
