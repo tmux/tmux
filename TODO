@@ -112,6 +112,8 @@
 	* tree mode stuff: make command prompt (:) common code so all modes get it,
 	  predefined filters, tag-all key, ...
 	* drag panes and windows around to move/swap them in choose mode
+	* flag to specify environment to new-window, split-window,
+          new-session (issue 1498)
 
 - hooks
 	* more hooks for various things
