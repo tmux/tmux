@@ -50,6 +50,8 @@
 	* key to search for word under cursor (GitHub issue 1240)
 	* when entering copy mode, should copy grid so that input does not
 	  need to be suspended
+	* allow the prefix for automatic buffers to be specified as part of the
+	  key binding to allow session buffers or similar (GitHub issue 1501)
 
 - layout stuff
 	* way to tag a layout as a number/name
