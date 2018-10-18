@@ -1835,10 +1835,11 @@ input_csi_dispatch_sgr_rgb(struct input_ctx *ictx, int fgbg, u_int *i)
 static void
 input_csi_dispatch_sgr_colon(struct input_ctx *ictx, u_int i)
 {
-	char		*s = ictx->param_list[i].str, *copy, *ptr, *out;
-	int		 p[8];
-	u_int		 n;
-	const char	*errstr;
+	struct grid_cell	*gc = &ictx->cell.cell;
+	char			*s = ictx->param_list[i].str, *copy, *ptr, *out;
+	int			 p[8];
+	u_int			 n;
+	const char		*errstr;
 
 	for (n = 0; n < nitems(p); n++)
 		p[n] = -1;
@@ -1857,7 +1858,39 @@ input_csi_dispatch_sgr_colon(struct input_ctx *ictx, u_int i)
 	}
 	free(copy);
 
-	if (n == 0 || (p[0] != 38 && p[0] != 48))
+	if (n == 0)
+		return;
+	if (p[0] == 4) {
+		if (n != 2)
+			return;
+		switch (p[1]) {
+		case 0:
+			gc->attr &= ~GRID_ATTR_ALL_UNDERSCORE;
+			break;
+		case 1:
+			gc->attr &= ~GRID_ATTR_ALL_UNDERSCORE;
+			gc->attr |= GRID_ATTR_UNDERSCORE;
+			break;
+		case 2:
+			gc->attr &= ~GRID_ATTR_ALL_UNDERSCORE;
+			gc->attr |= GRID_ATTR_UNDERSCORE_2;
+			break;
+		case 3:
+			gc->attr &= ~GRID_ATTR_ALL_UNDERSCORE;
+			gc->attr |= GRID_ATTR_UNDERSCORE_3;
+			break;
+		case 4:
+			gc->attr &= ~GRID_ATTR_ALL_UNDERSCORE;
+			gc->attr |= GRID_ATTR_UNDERSCORE_4;
+			break;
+		case 5:
+			gc->attr &= ~GRID_ATTR_ALL_UNDERSCORE;
+			gc->attr |= GRID_ATTR_UNDERSCORE_5;
+			break;
+		}
+		return;
+	}
+	if (p[0] != 38 && p[0] != 48)
 		return;
 	if (p[1] == -1)
 		i = 2;
@@ -1927,6 +1960,7 @@ input_csi_dispatch_sgr(struct input_ctx *ictx)
 			gc->attr |= GRID_ATTR_ITALICS;
 			break;
 		case 4:
+			gc->attr &= ~GRID_ATTR_ALL_UNDERSCORE;
 			gc->attr |= GRID_ATTR_UNDERSCORE;
 			break;
 		case 5:
@@ -1948,7 +1982,7 @@ input_csi_dispatch_sgr(struct input_ctx *ictx)
 			gc->attr &= ~GRID_ATTR_ITALICS;
 			break;
 		case 24:
-			gc->attr &= ~GRID_ATTR_UNDERSCORE;
+			gc->attr &= ~GRID_ATTR_ALL_UNDERSCORE;
 			break;
 		case 25:
 			gc->attr &= ~GRID_ATTR_BLINK;

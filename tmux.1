@@ -2769,8 +2769,12 @@ or a comma-delimited list of one or more of:
 .Ic reverse ,
 .Ic hidden ,
 .Ic italics ,
+.Ic strikethrough ,
+.Ic double-underscore
+.Ic curly-underscore
+.Ic dotted-underscore
 or
-.Ic strikethrough
+.Ic dashed-underscore
 to turn an attribute on, or an attribute prefixed with
 .Ql no
 to turn one off.
@@ -4419,6 +4423,11 @@ to change the cursor colour from inside
 .Bd -literal -offset indent
 $ printf '\e033]12;red\e033\e\e'
 .Ed
+.It Em \&Smulx
+Set a styled underline.
+The single parameter is one of: 0 for no underline, 1 for normal
+underline, 2 for double underline, 3 for curly underline, 4 for dotted
+underline and 5 for dashed underline.
 .It Em \&Ss , Se
 Set or reset the cursor style.
 If set, a sequence such as this may be used
