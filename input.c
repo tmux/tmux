@@ -93,6 +93,10 @@ struct input_ctx {
 	u_char		       *input_buf;
 	size_t			input_len;
 	size_t			input_space;
+	enum {
+		INPUT_END_ST,
+		INPUT_END_BEL
+	}			input_end;
 
 	struct input_param	param_list[24];
 	u_int			param_list_len;
@@ -126,11 +130,11 @@ static void	input_set_state(struct window_pane *,
 		    const struct input_transition *);
 static void	input_reset_cell(struct input_ctx *);
 
-static void	input_osc_4(struct window_pane *, const char *);
-static void	input_osc_10(struct window_pane *, const char *);
-static void	input_osc_11(struct window_pane *, const char *);
-static void	input_osc_52(struct window_pane *, const char *);
-static void	input_osc_104(struct window_pane *, const char *);
+static void	input_osc_4(struct input_ctx *, const char *);
+static void	input_osc_10(struct input_ctx *, const char *);
+static void	input_osc_11(struct input_ctx *, const char *);
+static void	input_osc_52(struct input_ctx *, const char *);
+static void	input_osc_104(struct input_ctx *, const char *);
 
 /* Transition entry/exit handlers. */
 static void	input_clear(struct input_ctx *);
@@ -161,6 +165,7 @@ static void	input_csi_dispatch_sgr_rgb(struct input_ctx *, int, u_int *);
 static void	input_csi_dispatch_sgr(struct input_ctx *);
 static int	input_dcs_dispatch(struct input_ctx *);
 static int	input_top_bit_set(struct input_ctx *);
+static int	input_end_bel(struct input_ctx *);
 
 /* Command table comparison function. */
 static int	input_table_compare(const void *, const void *);
@@ -487,7 +492,7 @@ static const struct input_transition input_state_esc_enter_table[] = {
 	{ -1, -1, NULL, NULL }
 };
 
-/* esc_interm state table. */
+/* esc_intermediate state table. */
 static const struct input_transition input_state_esc_intermediate_table[] = {
 	INPUT_STATE_ANYWHERE,
 
@@ -602,7 +607,7 @@ static const struct input_transition input_state_dcs_parameter_table[] = {
 	{ -1, -1, NULL, NULL }
 };
 
-/* dcs_interm state table. */
+/* dcs_intermediate state table. */
 static const struct input_transition input_state_dcs_intermediate_table[] = {
 	INPUT_STATE_ANYWHERE,
 
@@ -655,12 +660,12 @@ static const struct input_transition input_state_dcs_ignore_table[] = {
 static const struct input_transition input_state_osc_string_table[] = {
 	INPUT_STATE_ANYWHERE,
 
-	{ 0x00, 0x06, NULL,	    NULL },
-	{ 0x07, 0x07, NULL,	    &input_state_ground },
-	{ 0x08, 0x17, NULL,	    NULL },
-	{ 0x19, 0x19, NULL,	    NULL },
-	{ 0x1c, 0x1f, NULL,	    NULL },
-	{ 0x20, 0xff, input_input,  NULL },
+	{ 0x00, 0x06, NULL,	     NULL },
+	{ 0x07, 0x07, input_end_bel, &input_state_ground },
+	{ 0x08, 0x17, NULL,	     NULL },
+	{ 0x19, 0x19, NULL,	     NULL },
+	{ 0x1c, 0x1f, NULL,	     NULL },
+	{ 0x20, 0xff, input_input,   NULL },
 
 	{ -1, -1, NULL, NULL }
 };
@@ -993,8 +998,8 @@ input_get(struct input_ctx *ictx, u_int validx, int minval, int defval)
 static void
 input_reply(struct input_ctx *ictx, const char *fmt, ...)
 {
-	va_list	ap;
-	char   *reply;
+	va_list	 ap;
+	char	*reply;
 
 	va_start(ap, fmt);
 	xvasprintf(&reply, fmt, ap);
@@ -1018,6 +1023,8 @@ input_clear(struct input_ctx *ictx)
 
 	*ictx->input_buf = '\0';
 	ictx->input_len = 0;
+
+	ictx->input_end = INPUT_END_ST;
 
 	ictx->flags &= ~INPUT_DISCARD;
 }
@@ -2046,6 +2053,17 @@ input_csi_dispatch_sgr(struct input_ctx *ictx)
 	}
 }
 
+/* End of input with BEL. */
+static int
+input_end_bel(struct input_ctx *ictx)
+{
+	log_debug("%s", __func__);
+
+	ictx->input_end = INPUT_END_BEL;
+
+	return (0);
+}
+
 /* DCS string started. */
 static void
 input_enter_dcs(struct input_ctx *ictx)
@@ -2102,7 +2120,8 @@ input_exit_osc(struct input_ctx *ictx)
 	if (ictx->input_len < 1 || *p < '0' || *p > '9')
 		return;
 
-	log_debug("%s: \"%s\"", __func__, p);
+	log_debug("%s: \"%s\" (end %s)", __func__, p,
+	    ictx->input_end == INPUT_END_ST ? "ST" : "BEL");
 
 	option = 0;
 	while (*p >= '0' && *p <= '9')
@@ -2119,23 +2138,23 @@ input_exit_osc(struct input_ctx *ictx)
 		}
 		break;
 	case 4:
-		input_osc_4(ictx->wp, p);
+		input_osc_4(ictx, p);
 		break;
 	case 10:
-		input_osc_10(ictx->wp, p);
+		input_osc_10(ictx, p);
 		break;
 	case 11:
-		input_osc_11(ictx->wp, p);
+		input_osc_11(ictx, p);
 		break;
 	case 12:
 		if (utf8_isvalid(p) && *p != '?') /* ? is colour request */
 			screen_set_cursor_colour(ictx->ctx.s, p);
 		break;
 	case 52:
-		input_osc_52(ictx->wp, p);
+		input_osc_52(ictx, p);
 		break;
 	case 104:
-		input_osc_104(ictx->wp, p);
+		input_osc_104(ictx, p);
 		break;
 	case 112:
 		if (*p == '\0') /* no arguments allowed */
@@ -2237,11 +2256,12 @@ input_top_bit_set(struct input_ctx *ictx)
 
 /* Handle the OSC 4 sequence for setting (multiple) palette entries. */
 static void
-input_osc_4(struct window_pane *wp, const char *p)
+input_osc_4(struct input_ctx *ictx, const char *p)
 {
-	char	*copy, *s, *next = NULL;
-	long	 idx;
-	u_int	 r, g, b;
+	struct window_pane	*wp = ictx->wp;
+	char			*copy, *s, *next = NULL;
+	long	 		idx;
+	u_int			 r, g, b;
 
 	copy = s = xstrdup(p);
 	while (s != NULL && *s != '\0') {
@@ -2271,9 +2291,10 @@ bad:
 
 /* Handle the OSC 10 sequence for setting foreground colour. */
 static void
-input_osc_10(struct window_pane *wp, const char *p)
+input_osc_10(struct input_ctx *ictx, const char *p)
 {
-	u_int	 r, g, b;
+	struct window_pane	*wp = ictx->wp;
+	u_int			 r, g, b;
 
 	if (sscanf(p, "rgb:%2x/%2x/%2x", &r, &g, &b) != 3)
 	    goto bad;
@@ -2289,9 +2310,10 @@ bad:
 
 /* Handle the OSC 11 sequence for setting background colour. */
 static void
-input_osc_11(struct window_pane *wp, const char *p)
+input_osc_11(struct input_ctx *ictx, const char *p)
 {
-	u_int	 r, g, b;
+	struct window_pane	*wp = ictx->wp;
+	u_int			 r, g, b;
 
 	if (sscanf(p, "rgb:%2x/%2x/%2x", &r, &g, &b) != 3)
 	    goto bad;
@@ -2307,13 +2329,16 @@ bad:
 
 /* Handle the OSC 52 sequence for setting the clipboard. */
 static void
-input_osc_52(struct window_pane *wp, const char *p)
+input_osc_52(struct input_ctx *ictx, const char *p)
 {
+	struct window_pane	*wp = ictx->wp;
 	char			*end;
+	const char		*buf;
 	size_t			 len;
 	u_char			*out;
 	int			 outlen, state;
 	struct screen_write_ctx	 ctx;
+	struct paste_buffer	*pb;
 
 	state = options_get_number(global_options, "set-clipboard");
 	if (state != 2)
@@ -2324,6 +2349,32 @@ input_osc_52(struct window_pane *wp, const char *p)
 	end++;
 	if (*end == '\0')
 		return;
+	log_debug("%s: %s", __func__, end);
+
+	if (strcmp(end, "?") == 0) {
+		if ((pb = paste_get_top(NULL)) != NULL) {
+			buf = paste_buffer_data(pb, &len);
+			outlen = 4 * ((len + 2) / 3) + 1;
+			out = xmalloc(outlen);
+			if ((outlen = b64_ntop(buf, len, out, outlen)) == -1) {
+				abort();
+				free(out);
+				return;
+			}
+		} else {
+			outlen = 0;
+			out = NULL;
+		}
+		bufferevent_write(wp->event, "\033]52;;", 6);
+		if (outlen != 0)
+			bufferevent_write(wp->event, out, outlen);
+		if (ictx->input_end == INPUT_END_BEL)
+			bufferevent_write(wp->event, "\007", 1);
+		else
+			bufferevent_write(wp->event, "\033\\", 2);
+		free(out);
+		return;
+	}
 
 	len = (strlen(end) / 4) * 3;
 	if (len == 0)
@@ -2345,10 +2396,11 @@ input_osc_52(struct window_pane *wp, const char *p)
 
 /* Handle the OSC 104 sequence for unsetting (multiple) palette entries. */
 static void
-input_osc_104(struct window_pane *wp, const char *p)
+input_osc_104(struct input_ctx *ictx, const char *p)
 {
-	char	*copy, *s;
-	long	idx;
+	struct window_pane	*wp = ictx->wp;
+	char			*copy, *s;
+	long			idx;
 
 	if (*p == '\0') {
 		window_pane_reset_palette(wp);

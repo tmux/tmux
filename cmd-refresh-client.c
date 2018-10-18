@@ -31,8 +31,8 @@ const struct cmd_entry cmd_refresh_client_entry = {
 	.name = "refresh-client",
 	.alias = "refresh",
 
-	.args = { "C:St:", 0, 0 },
-	.usage = "[-S] [-C size] " CMD_TARGET_CLIENT_USAGE,
+	.args = { "C:lSt:", 0, 0 },
+	.usage = "[-lS] [-C size] " CMD_TARGET_CLIENT_USAGE,
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_refresh_client_exec
@@ -49,7 +49,10 @@ cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 	if ((c = cmd_find_client(item, args_get(args, 't'), 0)) == NULL)
 		return (CMD_RETURN_ERROR);
 
-	if (args_has(args, 'C')) {
+	if (args_has(args, 'l')) {
+		if (c->session != NULL)
+			tty_putcode_ptr2(&c->tty, TTYC_MS, "", "?");
+	} else if (args_has(args, 'C')) {
 		if ((size = args_get(args, 'C')) == NULL) {
 			cmdq_error(item, "missing size");
 			return (CMD_RETURN_ERROR);
