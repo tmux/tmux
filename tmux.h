@@ -57,10 +57,16 @@ struct tmuxproc;
 #define PROTOCOL_VERSION 8
 
 /* Default global configuration file. */
+#ifndef TMUX_CONF
 #define TMUX_CONF "/etc/tmux.conf"
+#endif
 
 /* Minimum layout cell size, NOT including border lines. */
 #define PANE_MINIMUM 1
+
+/* Minimum and maximum window size. */
+#define WINDOW_MINIMUM PANE_MINIMUM
+#define WINDOW_MAXIMUM 10000
 
 /* Automatic name refresh interval, in microseconds. Must be < 1 second. */
 #define NAME_INTERVAL 500000
@@ -789,6 +795,7 @@ struct window {
 	struct timeval	 name_time;
 
 	struct event	 alerts_timer;
+	struct event	 offset_timer;
 
 	struct timeval	 activity_time;
 
@@ -809,9 +816,7 @@ struct window {
 #define WINDOW_ACTIVITY 0x2
 #define WINDOW_SILENCE 0x4
 #define WINDOW_ZOOMED 0x8
-#define WINDOW_FORCEWIDTH 0x10
-#define WINDOW_FORCEHEIGHT 0x20
-#define WINDOW_STYLECHANGED 0x40
+#define WINDOW_STYLECHANGED 0x10
 #define WINDOW_ALERTFLAGS (WINDOW_BELL|WINDOW_ACTIVITY|WINDOW_SILENCE)
 
 	int		 alerts_queued;
@@ -851,6 +856,11 @@ struct winlink {
 };
 RB_HEAD(winlinks, winlink);
 TAILQ_HEAD(winlink_stack, winlink);
+
+/* Window size option. */
+#define WINDOW_SIZE_LARGEST 0
+#define WINDOW_SIZE_SMALLEST 1
+#define WINDOW_SIZE_MANUAL 2
 
 /* Layout direction. */
 enum layout_type {
@@ -909,9 +919,6 @@ struct session {
 	struct timeval	 last_activity_time;
 
 	struct event	 lock_timer;
-
-	u_int		 sx;
-	u_int		 sy;
 
 	struct winlink	*curw;
 	struct winlink_stack lastw;
@@ -972,6 +979,9 @@ struct mouse_event {
 	u_int		ly;
 	u_int		lb;
 
+	u_int		ox;
+	u_int		oy;
+
 	int		s;
 	int		w;
 	int		wp;
@@ -1018,6 +1028,12 @@ struct tty {
 	u_int		 cy;
 	u_int		 cstyle;
 	char		*ccolour;
+
+	int		 oflag;
+	u_int		 oox;
+	u_int		 ooy;
+	u_int		 osx;
+	u_int		 osy;
 
 	int		 mode;
 
@@ -1099,11 +1115,19 @@ struct tty_ctx {
 	u_int		 orupper;
 	u_int		 orlower;
 
+	/* Pane offset. */
 	u_int		 xoff;
 	u_int		 yoff;
 
 	/* The background colour used for clearing (erasing). */
 	u_int		 bg;
+
+	/* Window offset and size. */
+	int		 bigger;
+	u_int		 ox;
+	u_int		 oy;
+	u_int		 sx;
+	u_int		 sy;
 };
 
 /* Saved message entry. */
@@ -1341,11 +1365,16 @@ struct client {
 #define CLIENT_SIZECHANGED 0x400000
 #define CLIENT_STATUSOFF 0x800000
 #define CLIENT_REDRAWSTATUSALWAYS 0x1000000
-#define CLIENT_ALLREDRAWFLAGS \
-	(CLIENT_REDRAWWINDOW| \
-	 CLIENT_REDRAWSTATUS| \
-	 CLIENT_REDRAWSTATUSALWAYS| \
+#define CLIENT_ALLREDRAWFLAGS		\
+	(CLIENT_REDRAWWINDOW|		\
+	 CLIENT_REDRAWSTATUS|		\
+	 CLIENT_REDRAWSTATUSALWAYS|	\
 	 CLIENT_REDRAWBORDERS)
+#define CLIENT_NOSIZEFLAGS	\
+	(CLIENT_EXIT|		\
+	 CLIENT_DEAD|		\
+	 CLIENT_SUSPENDED|	\
+	 CLIENT_DETACHING)
 	int		 flags;
 	struct key_table *keytable;
 
@@ -1382,6 +1411,10 @@ struct client {
 	int		 wlmouse;
 
 	int		 references;
+
+	void		*pan_window;
+	u_int		 pan_ox;
+	u_int		 pan_oy;
 
 	TAILQ_ENTRY(client) entry;
 };
@@ -1443,6 +1476,7 @@ struct options_table_entry {
 
 	const char		 *separator;
 	const char		 *style;
+	const char		 *pattern;
 };
 
 /* Common command usages. */
@@ -1643,7 +1677,10 @@ struct environ *environ_for_session(struct session *, int);
 
 /* tty.c */
 void	tty_create_log(void);
-u_int	tty_status_lines(struct client *);
+int	tty_window_bigger(struct tty *);
+int	tty_window_offset(struct tty *, u_int *, u_int *, u_int *, u_int *);
+void	tty_update_window_offset(struct window *);
+void	tty_update_client_offset(struct client *);
 void	tty_raw(struct tty *, const char *);
 void	tty_attributes(struct tty *, const struct grid_cell *,
 	    const struct window_pane *);
@@ -1668,10 +1705,8 @@ void	tty_start_tty(struct tty *);
 void	tty_stop_tty(struct tty *);
 void	tty_set_title(struct tty *, const char *);
 void	tty_update_mode(struct tty *, int, struct screen *);
-void	tty_draw_pane(struct tty *, const struct window_pane *, u_int, u_int,
-	    u_int);
 void	tty_draw_line(struct tty *, const struct window_pane *, struct screen *,
-	    u_int, u_int, u_int);
+	    u_int, u_int, u_int, u_int, u_int);
 int	tty_open(struct tty *, char **);
 void	tty_close(struct tty *);
 void	tty_free(struct tty *);
@@ -1904,9 +1939,9 @@ void	 server_unzoom_window(struct window *);
 /* status.c */
 void	 status_timer_start(struct client *);
 void	 status_timer_start_all(void);
-void	 status_update_saved(struct session *s);
+void	 status_update_saved(struct session *);
 int	 status_at_line(struct client *);
-u_int	 status_line_size(struct session *);
+u_int	 status_line_size(struct client *);
 struct window *status_get_window_at(struct client *, u_int);
 int	 status_redraw(struct client *);
 void printflike(2, 3) status_message_set(struct client *, const char *, ...);
@@ -1922,6 +1957,9 @@ void	 status_prompt_load_history(void);
 void	 status_prompt_save_history(void);
 
 /* resize.c */
+void	 resize_window(struct window *, u_int, u_int);
+void	 default_window_size(struct session *, struct window *, u_int *,
+	     u_int *, int);
 void	 recalculate_sizes(void);
 
 /* input.c */
@@ -1989,10 +2027,10 @@ void	 grid_view_scroll_region_up(struct grid *, u_int, u_int, u_int);
 void	 grid_view_scroll_region_down(struct grid *, u_int, u_int, u_int);
 void	 grid_view_insert_lines(struct grid *, u_int, u_int, u_int);
 void	 grid_view_insert_lines_region(struct grid *, u_int, u_int, u_int,
-	u_int);
+	     u_int);
 void	 grid_view_delete_lines(struct grid *, u_int, u_int, u_int);
 void	 grid_view_delete_lines_region(struct grid *, u_int, u_int, u_int,
-	u_int);
+	     u_int);
 void	 grid_view_insert_cells(struct grid *, u_int, u_int, u_int, u_int);
 void	 grid_view_delete_cells(struct grid *, u_int, u_int, u_int, u_int);
 char	*grid_view_string_cells(struct grid *, u_int, u_int, u_int);
@@ -2180,7 +2218,7 @@ void		 layout_set_size(struct layout_cell *, u_int, u_int, u_int,
 void		 layout_make_leaf(struct layout_cell *, struct window_pane *);
 void		 layout_make_node(struct layout_cell *, enum layout_type);
 void		 layout_fix_offsets(struct layout_cell *);
-void		 layout_fix_panes(struct window *, u_int, u_int);
+void		 layout_fix_panes(struct window *);
 void		 layout_resize_adjust(struct window *, struct layout_cell *,
 		     enum layout_type, int);
 void		 layout_init(struct window *, struct window_pane *);
@@ -2296,7 +2334,7 @@ struct session	*session_find_by_id_str(const char *);
 struct session	*session_find_by_id(u_int);
 struct session	*session_create(const char *, const char *, int, char **,
 		     const char *, const char *, struct environ *,
-		     struct termios *, int, u_int, u_int, char **);
+		     struct options *, struct termios *, int, char **);
 void		 session_destroy(struct session *, const char *);
 void		 session_add_ref(struct session *, const char *);
 void		 session_remove_ref(struct session *, const char *);

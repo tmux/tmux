@@ -253,71 +253,29 @@ layout_need_status(struct layout_cell *lc, int at_top)
 
 /* Update pane offsets and sizes based on their cells. */
 void
-layout_fix_panes(struct window *w, u_int wsx, u_int wsy)
+layout_fix_panes(struct window *w)
 {
 	struct window_pane	*wp;
 	struct layout_cell	*lc;
-	u_int			 sx, sy;
-	int			 shift, status, at_top;
+	int			 shift, status;
 
 	status = options_get_number(w->options, "pane-border-status");
-	at_top = (status == 1);
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if ((lc = wp->layout_cell) == NULL)
 			continue;
 
 		if (status != 0)
-			shift = layout_need_status(lc, at_top);
+			shift = layout_need_status(lc, status == 1);
 		else
 			shift = 0;
 
 		wp->xoff = lc->xoff;
 		wp->yoff = lc->yoff;
 
-		if (shift && at_top)
+		if (shift && status == 1)
 			wp->yoff += 1;
 
-		/*
-		 * Layout cells are limited by the smallest size of other cells
-		 * within the same row or column; if this isn't the case
-		 * resizing becomes difficult.
-		 *
-		 * However, panes do not have to take up their entire cell, so
-		 * they can be cropped to the window edge if the layout
-		 * overflows and they are partly visible.
-		 *
-		 * This stops cells being hidden unnecessarily.
-		 */
-
-		/*
-		 * Work out the horizontal size. If the pane is actually
-		 * outside the window or the entire pane is already visible,
-		 * don't crop.
-		 */
-		if (lc->xoff >= wsx || lc->xoff + lc->sx < wsx)
-			sx = lc->sx;
-		else {
-			sx = wsx - lc->xoff;
-			if (sx < 1)
-				sx = lc->sx;
-		}
-
-		/*
-		 * Similarly for the vertical size; the minimum vertical size
-		 * is two because scroll regions cannot be one line.
-		 */
-		if (lc->yoff >= wsy || lc->yoff + lc->sy < wsy)
-			sy = lc->sy;
-		else {
-			sy = wsy - lc->yoff;
-			if (sy < 2)
-				sy = lc->sy;
-		}
-
-		if (shift)
-			sy -= 1;
-
-		window_pane_resize(wp, sx, sy);
+		window_pane_resize(wp, lc->sx, lc->sy - shift);
 	}
 }
 
@@ -492,8 +450,7 @@ layout_init(struct window *w, struct window_pane *wp)
 	lc = w->layout_root = layout_create_cell(NULL);
 	layout_set_size(lc, w->sx, w->sy, 0, 0);
 	layout_make_leaf(lc, wp);
-
-	layout_fix_panes(w, w->sx, w->sy);
+	layout_fix_panes(w);
 }
 
 void
@@ -551,7 +508,7 @@ layout_resize(struct window *w, u_int sx, u_int sy)
 
 	/* Fix cell offsets. */
 	layout_fix_offsets(lc);
-	layout_fix_panes(w, sx, sy);
+	layout_fix_panes(w);
 }
 
 /* Resize a pane to an absolute size. */
@@ -611,7 +568,7 @@ layout_resize_layout(struct window *w, struct layout_cell *lc,
 
 	/* Fix cell offsets. */
 	layout_fix_offsets(w->layout_root);
-	layout_fix_panes(w, w->sx, w->sy);
+	layout_fix_panes(w);
 	notify_window("window-layout-changed", w);
 }
 
@@ -718,7 +675,7 @@ void
 layout_assign_pane(struct layout_cell *lc, struct window_pane *wp)
 {
 	layout_make_leaf(lc, wp);
-	layout_fix_panes(wp->window, wp->window->sx, wp->window->sy);
+	layout_fix_panes(wp->window);
 }
 
 /* Calculate the new pane size for resized parent. */
@@ -1038,7 +995,7 @@ layout_close_pane(struct window_pane *wp)
 	/* Fix pane offsets and sizes. */
 	if (w->layout_root != NULL) {
 		layout_fix_offsets(w->layout_root);
-		layout_fix_panes(w, w->sx, w->sy);
+		layout_fix_panes(w);
 	}
 	notify_window("window-layout-changed", w);
 }
@@ -1095,7 +1052,7 @@ layout_spread_out(struct window_pane *wp)
 	do {
 		if (layout_spread_cell(w, parent)) {
 			layout_fix_offsets(parent);
-			layout_fix_panes(w, w->sx, w->sy);
+			layout_fix_panes(w);
 			break;
 		}
 	} while ((parent = parent->parent) != NULL);

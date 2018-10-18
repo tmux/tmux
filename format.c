@@ -52,8 +52,7 @@ static int	 format_replace(struct format_tree *, const char *, size_t,
 static void	 format_defaults_session(struct format_tree *,
 		     struct session *);
 static void	 format_defaults_client(struct format_tree *, struct client *);
-static void	 format_defaults_winlink(struct format_tree *,
-		     struct winlink *);
+static void	 format_defaults_winlink(struct format_tree *, struct winlink *);
 
 /* Entry in format job tree. */
 struct format_job {
@@ -107,9 +106,10 @@ struct format_entry {
 
 /* Format entry tree. */
 struct format_tree {
-	struct window		*w;
-	struct winlink		*wl;
+	struct client		*c;
 	struct session		*s;
+	struct winlink		*wl;
+	struct window		*w;
 	struct window_pane	*wp;
 
 	struct client		*client;
@@ -1347,8 +1347,6 @@ format_defaults_session(struct format_tree *ft, struct session *s)
 
 	format_add(ft, "session_name", "%s", s->name);
 	format_add(ft, "session_windows", "%u", winlink_count(&s->windows));
-	format_add(ft, "session_width", "%u", s->sx);
-	format_add(ft, "session_height", "%u", s->sy);
 	format_add(ft, "session_id", "$%u", s->id);
 
 	sg = session_group_contains(s);
@@ -1383,6 +1381,7 @@ format_defaults_client(struct format_tree *ft, struct client *c)
 
 	if (ft->s == NULL)
 		ft->s = c->session;
+	ft->c = c;
 
 	format_add(ft, "client_name", "%s", c->name);
 	format_add(ft, "client_pid", "%ld", (long) c->pid);
@@ -1451,14 +1450,26 @@ format_defaults_window(struct format_tree *ft, struct window *w)
 static void
 format_defaults_winlink(struct format_tree *ft, struct winlink *wl)
 {
+	struct client	*c = ft->c;
 	struct session	*s = wl->session;
 	struct window	*w = wl->window;
+	int		 flag;
+	u_int		 ox, oy, sx, sy;
 
 	if (ft->w == NULL)
 		ft->w = wl->window;
 	ft->wl = wl;
 
 	format_defaults_window(ft, w);
+
+	if (c != NULL) {
+		flag = tty_window_offset(&c->tty, &ox, &oy, &sx, &sy);
+		format_add(ft, "window_bigger", "%d", flag);
+		if (flag) {
+			format_add(ft, "window_offset_x", "%u", ox);
+			format_add(ft, "window_offset_y", "%u", oy);
+		}
+	}
 
 	format_add(ft, "window_index", "%d", wl->idx);
 	format_add_cb(ft, "window_stack_index", format_cb_window_stack_index);
@@ -1509,18 +1520,14 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 		format_add(ft, "pane_dead_status", "%d", WEXITSTATUS(status));
 	format_add(ft, "pane_dead", "%d", wp->fd == -1);
 
-	if (window_pane_visible(wp)) {
-		format_add(ft, "pane_left", "%u", wp->xoff);
-		format_add(ft, "pane_top", "%u", wp->yoff);
-		format_add(ft, "pane_right", "%u", wp->xoff + wp->sx - 1);
-		format_add(ft, "pane_bottom", "%u", wp->yoff + wp->sy - 1);
-		format_add(ft, "pane_at_left", "%d", wp->xoff == 0);
-		format_add(ft, "pane_at_top", "%d", wp->yoff == 0);
-		format_add(ft, "pane_at_right", "%d",
-		    wp->xoff + wp->sx == w->sx);
-		format_add(ft, "pane_at_bottom", "%d",
-		    wp->yoff + wp->sy == w->sy);
-	}
+	format_add(ft, "pane_left", "%u", wp->xoff);
+	format_add(ft, "pane_top", "%u", wp->yoff);
+	format_add(ft, "pane_right", "%u", wp->xoff + wp->sx - 1);
+	format_add(ft, "pane_bottom", "%u", wp->yoff + wp->sy - 1);
+	format_add(ft, "pane_at_left", "%d", wp->xoff == 0);
+	format_add(ft, "pane_at_top", "%d", wp->yoff == 0);
+	format_add(ft, "pane_at_right", "%d", wp->xoff + wp->sx == w->sx);
+	format_add(ft, "pane_at_bottom", "%d", wp->yoff + wp->sy == w->sy);
 
 	format_add(ft, "pane_in_mode", "%d", wp->screen != &wp->base);
 	if (wp->mode != NULL)

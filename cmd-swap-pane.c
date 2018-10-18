@@ -105,8 +105,6 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 			window_set_active_pane(dst_w, src_wp);
 		} else {
 			tmp_wp = dst_wp;
-			if (!window_pane_visible(tmp_wp))
-				tmp_wp = src_wp;
 			window_set_active_pane(src_w, tmp_wp);
 		}
 	} else {

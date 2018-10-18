@@ -148,7 +148,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	environ_free(env);
 
-	layout_fix_panes(w, w->sx, w->sy);
+	layout_fix_panes(w);
 	server_redraw_window(w);
 
 	if (!args_has(args, 'd')) {

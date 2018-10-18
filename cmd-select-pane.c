@@ -54,6 +54,31 @@ const struct cmd_entry cmd_last_pane_entry = {
 	.exec = cmd_select_pane_exec
 };
 
+static void
+cmd_select_pane_redraw(struct window *w)
+{
+	struct client	*c;
+
+	/*
+	 * Redraw entire window if it is bigger than the client (the
+	 * offset may change), otherwise just draw borders.
+	 */
+
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (c->session == NULL)
+			continue;
+		if (c->session->curw->window == w && tty_window_bigger(&c->tty))
+			server_redraw_client(c);
+		else {
+			if (c->session->curw->window == w)
+				c->flags |= CLIENT_REDRAWBORDERS;
+			if (session_has(c->session, w))
+				c->flags |= CLIENT_REDRAWSTATUS;
+		}
+
+	}
+}
+
 static enum cmd_retval
 cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
@@ -87,8 +112,7 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 			window_redraw_active_switch(w, lastwp);
 			if (window_set_active_pane(w, lastwp)) {
 				cmd_find_from_winlink(current, wl, 0);
-				server_status_window(w);
-				server_redraw_window_borders(w);
+				cmd_select_pane_redraw(w);
 			}
 		}
 		return (CMD_RETURN_NORMAL);
@@ -168,16 +192,11 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (wp == w->active)
 		return (CMD_RETURN_NORMAL);
 	server_unzoom_window(wp->window);
-	if (!window_pane_visible(wp)) {
-		cmdq_error(item, "pane not visible");
-		return (CMD_RETURN_ERROR);
-	}
 	window_redraw_active_switch(w, wp);
 	if (window_set_active_pane(w, wp)) {
 		cmd_find_from_winlink_pane(current, wl, wp, 0);
 		hooks_insert(s->hooks, item, current, "after-select-pane");
-		server_status_window(w);
-		server_redraw_window_borders(w);
+		cmd_select_pane_redraw(w);
 	}
 
 	return (CMD_RETURN_NORMAL);

@@ -60,6 +60,9 @@ static const char *options_table_pane_status_list[] = {
 static const char *options_table_set_clipboard_list[] = {
 	"off", "external", "on", NULL
 };
+static const char *options_table_window_size_list[] = {
+	"largest", "smallest", "manual", NULL
+};
 
 /* Top-level options. */
 const struct options_table_entry options_table[] = {
@@ -192,6 +195,13 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SESSION,
 	  .default_str = _PATH_BSHELL
+	},
+
+	{ .name = "default-size",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .pattern = "[0-9]*x[0-9]*",
+	  .default_str = "80x24"
 	},
 
 	{ .name = "destroy-unattached",
@@ -467,7 +477,9 @@ const struct options_table_entry options_table[] = {
 	{ .name = "status-right",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_str = " \"#{=21:pane_title}\" %H:%M %d-%b-%y"
+	  .default_str = "#{?window_bigger,"
+	                 "[#{window_offset_x}#,#{window_offset_y}] ,}"
+	                 "\"#{=21:pane_title}\" %H:%M %d-%b-%y"
 	},
 
 	{ .name = "status-right-attr",
@@ -587,22 +599,6 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_WINDOW,
 	  .choices = options_table_clock_mode_style_list,
 	  .default_num = 1
-	},
-
-	{ .name = "force-height",
-	  .type = OPTIONS_TABLE_NUMBER,
-	  .scope = OPTIONS_TABLE_WINDOW,
-	  .minimum = 0,
-	  .maximum = INT_MAX,
-	  .default_num = 0
-	},
-
-	{ .name = "force-width",
-	  .type = OPTIONS_TABLE_NUMBER,
-	  .scope = OPTIONS_TABLE_WINDOW,
-	  .minimum = 0,
-	  .maximum = INT_MAX,
-	  .default_num = 0
 	},
 
 	{ .name = "main-pane-height",
@@ -769,6 +765,13 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_STYLE,
 	  .scope = OPTIONS_TABLE_WINDOW,
 	  .default_str = "default"
+	},
+
+	{ .name = "window-size",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .choices = options_table_window_size_list,
+	  .default_num = WINDOW_SIZE_LARGEST
 	},
 
 	{ .name = "window-style",
