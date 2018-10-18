@@ -930,7 +930,7 @@ is used, the
 .Ic update-environment
 option will not be applied.
 .It Xo Ic refresh-client
-.Op Fl lS
+.Op Fl cDlLRSU
 .Op Fl C Ar width,height
 .Op Fl t Ar target-client
 .Op Ar adjustment
@@ -979,6 +979,21 @@ sets the width and height of a control client.
 requests the clipboard from the client using the
 .Xr xterm 1
 escape sequence and stores it in a new paste buffer.
+.Pp
+.Fl L ,
+.Fl R ,
+.Fl U
+and
+.Fl D
+move the visible portion of the window left, right, up or down
+by
+.Ar adjustment ,
+if the window is larger than the client.
+.Fl c
+resets so that the position follows the cursor.
+See the
+.Ic window-size
+option.
 .It Xo Ic rename-session
 .Op Fl t Ar target-session
 .Ar new-name
