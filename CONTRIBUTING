@@ -18,7 +18,7 @@ This should include at least the output of:
     $ uname -sp && tmux -V && echo $TERM
 
 Please do not report bugs (crashes, incorrect behaviour) without reproducing on
-a tmux built from Git master.
+a tmux built from the latest code in Git.
 
 Note that TERM inside tmux must be a variant of screen or tmux (for example:
 screen or screen-256color, tmux or tmux-256color). Please ensure this is the
