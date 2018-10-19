@@ -1,4 +1,4 @@
-CHANGES FROM 2.8 to master
+CHANGES FROM 2.8 to X.X
 
 * Do not move the cursor in copy mode when the mouse wheel is used.
 
