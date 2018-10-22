@@ -63,11 +63,8 @@ struct tmuxproc;
 #define TMUX_CONF "/etc/tmux.conf"
 #endif
 
-/*
- * Minimum layout cell size, NOT including separator line. The scroll region
- * cannot be one line in height so this must be at least two.
- */
-#define PANE_MINIMUM 2
+/* Minimum layout cell size, NOT including border lines. */
+#define PANE_MINIMUM 1
 
 /* Minimum and maximum window size. */
 #define WINDOW_MINIMUM PANE_MINIMUM
@@ -432,6 +429,7 @@ enum tty_code_code {
 	TTYC_SMCUP,
 	TTYC_SMKX,
 	TTYC_SMSO,
+	TTYC_SMULX,
 	TTYC_SMUL,
 	TTYC_SMXX,
 	TTYC_SS,
@@ -557,6 +555,18 @@ enum utf8_state {
 #define GRID_ATTR_ITALICS 0x40
 #define GRID_ATTR_CHARSET 0x80	/* alternative character set */
 #define GRID_ATTR_STRIKETHROUGH 0x100
+#define GRID_ATTR_UNDERSCORE_2 0x200
+#define GRID_ATTR_UNDERSCORE_3 0x400
+#define GRID_ATTR_UNDERSCORE_4 0x800
+#define GRID_ATTR_UNDERSCORE_5 0x1000
+
+/* All underscore attributes. */
+#define GRID_ATTR_ALL_UNDERSCORE \
+	(GRID_ATTR_UNDERSCORE|	 \
+	 GRID_ATTR_UNDERSCORE_2| \
+	 GRID_ATTR_UNDERSCORE_3| \
+	 GRID_ATTR_UNDERSCORE_4| \
+	 GRID_ATTR_UNDERSCORE_5)
 
 /* Grid flags. */
 #define GRID_FLAG_FG256 0x1
@@ -948,7 +958,7 @@ RB_HEAD(sessions, session);
 
 /* Mouse wheel states. */
 #define MOUSE_WHEEL_UP 0
-#define MOUSE_WHEEL_DOWN 64
+#define MOUSE_WHEEL_DOWN 1
 
 /* Mouse helpers. */
 #define MOUSE_BUTTONS(b) ((b) & MOUSE_MASK_BUTTONS)
@@ -1357,11 +1367,16 @@ struct client {
 #define CLIENT_SIZECHANGED 0x400000
 #define CLIENT_STATUSOFF 0x800000
 #define CLIENT_REDRAWSTATUSALWAYS 0x1000000
-#define CLIENT_ALLREDRAWFLAGS \
-	(CLIENT_REDRAWWINDOW| \
-	 CLIENT_REDRAWSTATUS| \
-	 CLIENT_REDRAWSTATUSALWAYS| \
+#define CLIENT_ALLREDRAWFLAGS		\
+	(CLIENT_REDRAWWINDOW|		\
+	 CLIENT_REDRAWSTATUS|		\
+	 CLIENT_REDRAWSTATUSALWAYS|	\
 	 CLIENT_REDRAWBORDERS)
+#define CLIENT_NOSIZEFLAGS	\
+	(CLIENT_EXIT|		\
+	 CLIENT_DEAD|		\
+	 CLIENT_SUSPENDED|	\
+	 CLIENT_DETACHING)
 	int		 flags;
 	struct key_table *keytable;
 

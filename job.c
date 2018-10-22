@@ -79,6 +79,7 @@ job_run(const char *cmd, struct session *s, const char *cwd,
 
 	if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, out) != 0)
 		return (NULL);
+	log_debug("%s: cmd=%s, cwd=%s", __func__, cmd, cwd);
 
 	/*
 	 * Do not set TERM during .tmux.conf, it is nice to be able to use

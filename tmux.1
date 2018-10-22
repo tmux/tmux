@@ -930,8 +930,8 @@ is used, the
 .Ic update-environment
 option will not be applied.
 .It Xo Ic refresh-client
-.Op Fl cDLRSU
-.Op Fl C Ar XxY
+.Op Fl cDlLRSU
+.Op Fl C Ar width,height
 .Op Fl t Ar target-client
 .Op Ar adjustment
 .Xc
@@ -975,6 +975,25 @@ it.
 .Pp
 .Fl C
 sets the width and height of a control client.
+.Fl l
+requests the clipboard from the client using the
+.Xr xterm 1
+escape sequence and stores it in a new paste buffer.
+.Pp
+.Fl L ,
+.Fl R ,
+.Fl U
+and
+.Fl D
+move the visible portion of the window left, right, up or down
+by
+.Ar adjustment ,
+if the window is larger than the client.
+.Fl c
+resets so that the position follows the cursor.
+See the
+.Ic window-size
+option.
 .It Xo Ic rename-session
 .Op Fl t Ar target-session
 .Ar new-name
@@ -2857,8 +2876,12 @@ or a comma-delimited list of one or more of:
 .Ic reverse ,
 .Ic hidden ,
 .Ic italics ,
+.Ic strikethrough ,
+.Ic double-underscore
+.Ic curly-underscore
+.Ic dotted-underscore
 or
-.Ic strikethrough
+.Ic dashed-underscore
 to turn an attribute on, or an attribute prefixed with
 .Ql no
 to turn one off.
@@ -3921,6 +3944,7 @@ The following variables are available, where appropriate:
 .It Li "window_activity_flag" Ta "" Ta "1 if window has activity"
 .It Li "window_active" Ta "" Ta "1 if window active"
 .It Li "window_bell_flag" Ta "" Ta "1 if window has bell"
+.It Li "window_bigger" Ta "" Ta "1 if window is larger than client"
 .It Li "window_flags" Ta "#F" Ta "Window flags"
 .It Li "window_format" Ta "" Ta "1 if format is for a window (not assuming the current)"
 .It Li "window_height" Ta "" Ta "Height of window"
@@ -3930,6 +3954,8 @@ The following variables are available, where appropriate:
 .It Li "window_layout" Ta "" Ta "Window layout description, ignoring zoomed window panes"
 .It Li "window_linked" Ta "" Ta "1 if window is linked across sessions"
 .It Li "window_name" Ta "#W" Ta "Name of window"
+.It Li "window_offset_x" Ta "" Ta "X offset into window if larger than client"
+.It Li "window_offset_y" Ta "" Ta "Y offset into window if larger than client"
 .It Li "window_panes" Ta "" Ta "Number of panes in window"
 .It Li "window_silence_flag" Ta "" Ta "1 if window has silence alert"
 .It Li "window_stack_index" Ta "" Ta "Index in session most recent stack"
@@ -3989,7 +4015,7 @@ option.
 .El
 .Pp
 When a pane is first created, its title is the hostname.
-A pane's title can be set via the OSC title setting sequence, for example:
+A pane's title can be set via the title setting escape sequence, for example:
 .Bd -literal -offset indent
 $ printf '\e033]2;My Title\e033\e\e'
 .Ed
@@ -4522,6 +4548,11 @@ to change the cursor colour from inside
 .Bd -literal -offset indent
 $ printf '\e033]12;red\e033\e\e'
 .Ed
+.It Em \&Smulx
+Set a styled underline.
+The single parameter is one of: 0 for no underline, 1 for normal
+underline, 2 for double underline, 3 for curly underline, 4 for dotted
+underline and 5 for dashed underline.
 .It Em \&Ss , Se
 Set or reset the cursor style.
 If set, a sequence such as this may be used
@@ -4538,7 +4569,7 @@ Indicate that the terminal supports the
 .Ql direct colour
 RGB escape sequence (for example, \ee[38;2;255;255;255m).
 .Pp
-If supported, this is used for the OSC initialize colour escape sequence (which
+If supported, this is used for the initialize colour escape sequence (which
 may be enabled by adding the
 .Ql initc
 and

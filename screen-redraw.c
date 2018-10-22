@@ -368,7 +368,7 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 			/* Right not visible. */
 			i = 0;
 			x = xoff - ctx->ox;
-			width = size - (xoff + size - ctx->sx);
+			width = size - x;
 		}
 
 		if (ctx->top)
@@ -628,7 +628,7 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 			/* Right not visible. */
 			i = 0;
 			x = wp->xoff - ctx->ox;
-			width = wp->sx - (wp->xoff + wp->sx - ctx->sx);
+			width = ctx->sx - x;
 		}
 		log_debug("%s: %s %%%u line %u,%u at %u,%u, width %u",
 		    __func__, c->name, wp->id, i, j, x, y, width);
@@ -674,7 +674,7 @@ screen_redraw_draw_number(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 	} else {
 		/* Right not visible. */
 		xoff = wp->xoff - ctx->ox;
-		sx = wp->sx - (wp->xoff + wp->sx - ctx->sx);
+		sx = wp->sx - xoff;
 	}
 	if (wp->yoff >= ctx->oy && wp->yoff + wp->sy <= ctx->oy + ctx->sy) {
 		/* All visible. */
@@ -692,7 +692,7 @@ screen_redraw_draw_number(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 	} else {
 		/* Bottom not visible. */
 		yoff = wp->yoff - ctx->oy;
-		sy = wp->sy - (wp->yoff + wp->sy - ctx->sy);
+		sy = wp->sy - yoff;
 	}
 
 	if (ctx->top)

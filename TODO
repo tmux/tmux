@@ -49,7 +49,9 @@
 	  issue 682)
 	* key to search for word under cursor (GitHub issue 1240)
 	* when entering copy mode, should copy grid so that input does not
-          need to be suspended
+	  need to be suspended
+	* allow the prefix for automatic buffers to be specified as part of the
+	  key binding to allow session buffers or similar (GitHub issue 1501)
 
 - layout stuff
 	* way to tag a layout as a number/name
@@ -112,6 +114,9 @@
 	* tree mode stuff: make command prompt (:) common code so all modes get it,
 	  predefined filters, tag-all key, ...
 	* drag panes and windows around to move/swap them in choose mode
+	* flag to specify environment to new-window, split-window,
+          new-session (issue 1498)
+	* multiple column panes (issue 1503)
 
 - hooks
 	* more hooks for various things
@@ -135,4 +140,3 @@
 	  visible as possible
 	* rather than centering cursor it might be better if only
 	  moved offset when it gets close to an edge?
-	* allow one line panes by redrawing rather than scrolling

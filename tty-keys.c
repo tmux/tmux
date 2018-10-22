@@ -19,7 +19,10 @@
 #include <sys/types.h>
 #include <sys/time.h>
 
+#include <netinet/in.h>
+
 #include <limits.h>
+#include <resolv.h>
 #include <stdlib.h>
 #include <string.h>
 #include <termios.h>
@@ -44,6 +47,8 @@ static int	tty_keys_next1(struct tty *, const char *, size_t, key_code *,
 		    size_t *, int);
 static void	tty_keys_callback(int, short, void *);
 static int	tty_keys_mouse(struct tty *, const char *, size_t, size_t *);
+static int	tty_keys_clipboard(struct tty *, const char *, size_t,
+		    size_t *);
 static int	tty_keys_device_attributes(struct tty *, const char *, size_t,
 		    size_t *);
 
@@ -571,6 +576,17 @@ tty_keys_next(struct tty *tty)
 		return (0);
 	log_debug("%s: keys are %zu (%.*s)", c->name, len, (int)len, buf);
 
+	/* Is this a clipboard response? */
+	switch (tty_keys_clipboard(tty, buf, len, &size)) {
+	case 0:		/* yes */
+		key = KEYC_UNKNOWN;
+		goto complete_key;
+	case -1:	/* no, or not valid */
+		break;
+	case 1:		/* partial */
+		goto partial_key;
+	}
+
 	/* Is this a device attributes response? */
 	switch (tty_keys_device_attributes(tty, buf, len, &size)) {
 	case 0:		/* yes */
@@ -867,6 +883,93 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size)
 	m->b = b;
 	m->sgr_type = sgr_type;
 	m->sgr_b = sgr_b;
+
+	return (0);
+}
+
+/*
+ * Handle OSC 52 clipboard input. Returns 0 for success, -1 for failure, 1 for
+ * partial.
+ */
+static int
+tty_keys_clipboard(__unused struct tty *tty, const char *buf, size_t len,
+    size_t *size)
+{
+	size_t	 end, terminator, needed;
+	char	*copy, *out;
+	int	 outlen;
+
+	*size = 0;
+
+	/* First three bytes are always \033]52;. */
+	if (buf[0] != '\033')
+		return (-1);
+	if (len == 1)
+		return (1);
+	if (buf[1] != ']')
+		return (-1);
+	if (len == 2)
+		return (1);
+	if (buf[2] != '5')
+		return (-1);
+	if (len == 3)
+		return (1);
+	if (buf[3] != '2')
+		return (-1);
+	if (len == 4)
+		return (1);
+	if (buf[4] != ';')
+		return (-1);
+	if (len == 5)
+		return (1);
+
+	/* Find the terminator if any. */
+	for (end = 5; end < len; end++) {
+		if (buf[end] == '\007') {
+			terminator = 1;
+			break;
+		}
+		if (end > 5 && buf[end - 1] == '\033' && buf[end] == '\\') {
+			terminator = 2;
+			break;
+		}
+	}
+	if (end == len)
+		return (1);
+	*size = end + terminator;
+
+	/* Skip the initial part. */
+	buf += 5;
+	end -= 5;
+
+	/* Get the second argument. */
+	while (end != 0 && *buf != ';') {
+		buf++;
+		end--;
+	}
+	if (end == 0 || end == 1)
+		return (0);
+	buf++;
+	end--;
+
+	/* It has to be a string so copy it. */
+	copy = xmalloc(end + 1);
+	memcpy(copy, buf, end);
+	copy[end] = '\0';
+
+	/* Convert from base64. */
+	needed = (end / 4) * 3;
+	out = xmalloc(needed);
+	if ((outlen = b64_pton(copy, out, len)) == -1) {
+		free(out);
+		free(copy);
+		return (0);
+	}
+	free(copy);
+
+	/* Create a new paste buffer. */
+	log_debug("%s: %.*s", __func__, outlen, out);
+	paste_add(out, outlen);
 
 	return (0);
 }

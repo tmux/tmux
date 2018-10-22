@@ -704,8 +704,7 @@ int
 tty_window_bigger(struct tty *tty)
 {
 	struct client	*c = tty->client;
-	struct session	*s = c->session;
-	struct window	*w = s->curw->window;
+	struct window	*w = c->session->curw->window;
 
 	return (tty->sx < w->sx || tty->sy - status_line_size(c) < w->sy);
 }
@@ -747,10 +746,14 @@ tty_window_offset1(struct tty *tty, u_int *ox, u_int *oy, u_int *sx, u_int *sy)
 	*sy = tty->sy - lines;
 
 	if (c->pan_window == w) {
-		if (c->pan_ox + *sx > w->sx)
+		if (*sx >= w->sx)
+			c->pan_ox = 0;
+		else if (c->pan_ox + *sx > w->sx)
 			c->pan_ox = w->sx - *sx;
 		*ox = c->pan_ox;
-		if (c->pan_oy + *sy > w->sy)
+		if (*sy >= w->sy)
+			c->pan_oy = 0;
+		else if (c->pan_oy + *sy > w->sy)
 			c->pan_oy = w->sy - *sy;
 		*oy = c->pan_oy;
 		return (1);
@@ -816,7 +819,7 @@ tty_update_client_offset(struct client *c)
 	c->tty.osx = sx;
 	c->tty.osy = sy;
 
-	c->flags |= CLIENT_REDRAWWINDOW;
+	c->flags |= (CLIENT_REDRAWWINDOW|CLIENT_REDRAWSTATUS);
 }
 
 /*
@@ -936,8 +939,11 @@ tty_clamp_line(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
 		/* Right not visible. */
 		*i = 0;
 		*x = (ctx->xoff + px) - ctx->ox;
-		*rx = nx - ((ctx->xoff + px) + nx - ctx->sx);
+		*rx = ctx->sx - *x;
 	}
+	if (*rx > nx)
+		fatalx("%s: x too big, %u > %u", __func__, *rx, nx);
+
 	return (1);
 }
 
@@ -1028,8 +1034,11 @@ tty_clamp_area(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
 		/* Right not visible. */
 		*i = 0;
 		*x = (ctx->xoff + px) - ctx->ox;
-		*rx = nx - ((ctx->xoff + px) + nx - ctx->sx);
+		*rx = ctx->sx - *x;
 	}
+	if (*rx > nx)
+		fatalx("%s: x too big, %u > %u", __func__, *rx, nx);
+
 	if (yoff >= ctx->oy && yoff + ny <= ctx->oy + ctx->sy) {
 		/* All visible. */
 		*j = 0;
@@ -1049,8 +1058,11 @@ tty_clamp_area(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
 		/* Right not visible. */
 		*j = 0;
 		*y = (ctx->yoff + py) - ctx->oy;
-		*ry = ny - ((ctx->yoff + py) + ny - ctx->sy);
+		*ry = ctx->sy - *y;
 	}
+	if (*ry > ny)
+		fatalx("%s: y too big, %u > %u", __func__, *ry, ny);
+
 	return (1);
 }
 
@@ -1434,7 +1446,9 @@ tty_cmd_insertline(struct tty *tty, const struct tty_ctx *ctx)
 	    !tty_pane_full_width(tty, ctx) ||
 	    tty_fake_bce(tty, ctx->wp, ctx->bg) ||
 	    !tty_term_has(tty->term, TTYC_CSR) ||
-	    !tty_term_has(tty->term, TTYC_IL1)) {
+	    !tty_term_has(tty->term, TTYC_IL1) ||
+	    ctx->wp->sx == 1 ||
+	    ctx->wp->sy == 1) {
 		tty_redraw_region(tty, ctx);
 		return;
 	}
@@ -1456,7 +1470,9 @@ tty_cmd_deleteline(struct tty *tty, const struct tty_ctx *ctx)
 	    !tty_pane_full_width(tty, ctx) ||
 	    tty_fake_bce(tty, ctx->wp, ctx->bg) ||
 	    !tty_term_has(tty->term, TTYC_CSR) ||
-	    !tty_term_has(tty->term, TTYC_DL1)) {
+	    !tty_term_has(tty->term, TTYC_DL1) ||
+	    ctx->wp->sx == 1 ||
+	    ctx->wp->sy == 1) {
 		tty_redraw_region(tty, ctx);
 		return;
 	}
@@ -1517,7 +1533,9 @@ tty_cmd_reverseindex(struct tty *tty, const struct tty_ctx *ctx)
 	    !tty_pane_full_width(tty, ctx) ||
 	    tty_fake_bce(tty, wp, 8) ||
 	    !tty_term_has(tty->term, TTYC_CSR) ||
-	    !tty_term_has(tty->term, TTYC_RI)) {
+	    !tty_term_has(tty->term, TTYC_RI) ||
+	    ctx->wp->sx == 1 ||
+	    ctx->wp->sy == 1) {
 		tty_redraw_region(tty, ctx);
 		return;
 	}
@@ -1542,7 +1560,9 @@ tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 	if (ctx->bigger ||
 	    (!tty_pane_full_width(tty, ctx) && !tty_use_margin(tty)) ||
 	    tty_fake_bce(tty, wp, 8) ||
-	    !tty_term_has(tty->term, TTYC_CSR)) {
+	    !tty_term_has(tty->term, TTYC_CSR) ||
+	    wp->sx == 1 ||
+	    wp->sy == 1) {
 		tty_redraw_region(tty, ctx);
 		return;
 	}
@@ -1579,7 +1599,9 @@ tty_cmd_scrollup(struct tty *tty, const struct tty_ctx *ctx)
 	if (ctx->bigger ||
 	    (!tty_pane_full_width(tty, ctx) && !tty_use_margin(tty)) ||
 	    tty_fake_bce(tty, wp, 8) ||
-	    !tty_term_has(tty->term, TTYC_CSR)) {
+	    !tty_term_has(tty->term, TTYC_CSR) ||
+	    wp->sx == 1 ||
+	    wp->sy == 1) {
 		tty_redraw_region(tty, ctx);
 		return;
 	}
@@ -1721,7 +1743,8 @@ tty_cmd_cells(struct tty *tty, const struct tty_ctx *ctx)
 		return;
 
 	if (ctx->bigger &&
-	    (ctx->ocx < ctx->ox || ctx->ocx + ctx->num > ctx->ox + ctx->sx)) {
+	    (ctx->xoff + ctx->ocx < ctx->ox ||
+	    ctx->xoff + ctx->ocx + ctx->num > ctx->ox + ctx->sx)) {
 		if (!ctx->wrapped ||
 		    !tty_pane_full_width(tty, ctx) ||
 		    (tty->term->flags & TERM_EARLYWRAP) ||
@@ -2144,8 +2167,19 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
 		tty_putcode(tty, TTYC_DIM);
 	if (changed & GRID_ATTR_ITALICS)
 		tty_set_italics(tty);
-	if (changed & GRID_ATTR_UNDERSCORE)
-		tty_putcode(tty, TTYC_SMUL);
+	if (changed & GRID_ATTR_ALL_UNDERSCORE) {
+		if ((changed & GRID_ATTR_UNDERSCORE) ||
+		    !tty_term_has(tty->term, TTYC_SMULX))
+			tty_putcode(tty, TTYC_SMUL);
+		else if (changed & GRID_ATTR_UNDERSCORE_2)
+			tty_putcode1(tty, TTYC_SMULX, 2);
+		else if (changed & GRID_ATTR_UNDERSCORE_3)
+			tty_putcode1(tty, TTYC_SMULX, 3);
+		else if (changed & GRID_ATTR_UNDERSCORE_4)
+			tty_putcode1(tty, TTYC_SMULX, 4);
+		else if (changed & GRID_ATTR_UNDERSCORE_5)
+			tty_putcode1(tty, TTYC_SMULX, 5);
+	}
 	if (changed & GRID_ATTR_BLINK)
 		tty_putcode(tty, TTYC_BLINK);
 	if (changed & GRID_ATTR_REVERSE) {

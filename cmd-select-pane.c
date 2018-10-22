@@ -119,7 +119,7 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (args_has(args, 'm') || args_has(args, 'M')) {
-		if (args_has(args, 'm'))
+		if (args_has(args, 'm') && !window_pane_visible(wp))
 			return (CMD_RETURN_NORMAL);
 		lastwp = marked_pane.wp;
 
