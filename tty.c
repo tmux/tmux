@@ -851,7 +851,7 @@ tty_fake_bce(const struct tty *tty, const struct window_pane *wp, u_int bg)
 	if (wp != NULL)
 		tty_default_colours(&gc, wp);
 
-	if (bg != 8 || gc.bg != 8)
+	if (!COLOUR_DEFAULT(bg) || !COLOUR_DEFAULT(gc.bg))
 		return (1);
 	return (0);
 }
@@ -1098,7 +1098,7 @@ tty_clear_area(struct tty *tty, const struct window_pane *wp, u_int py,
 		 * background colour isn't default (because it doesn't work
 		 * after SGR 0).
 		 */
-		if (tty->term_type == TTY_VT420 && bg != 8) {
+		if (tty->term_type == TTY_VT420 && COLOUR_DEFAULT(bg)) {
 			xsnprintf(tmp, sizeof tmp, "\033[32;%u;%u;%u;%u$x",
 			    py + 1, px + 1, py + ny, px + nx);
 			tty_puts(tty, tmp);
@@ -2134,10 +2134,10 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
 	 */
 	if (!tty_term_has(tty->term, TTYC_SETAB)) {
 		if (gc2.attr & GRID_ATTR_REVERSE) {
-			if (gc2.fg != 7 && gc2.fg != 8)
+			if (gc2.fg != 7 && !COLOUR_DEFAULT(gc2.fg))
 				gc2.attr &= ~GRID_ATTR_REVERSE;
 		} else {
-			if (gc2.bg != 0 && gc2.bg != 8)
+			if (gc2.bg != 0 && !COLOUR_DEFAULT(gc2.bg))
 				gc2.attr |= GRID_ATTR_REVERSE;
 		}
 	}
@@ -2212,7 +2212,7 @@ tty_colours(struct tty *tty, const struct grid_cell *gc)
 	 * case if only one is default need to fall onward to set the other
 	 * colour.
 	 */
-	if (gc->fg == 8 || gc->bg == 8) {
+	if (COLOUR_DEFAULT(gc->fg) || COLOUR_DEFAULT(gc->bg)) {
 		/*
 		 * If don't have AX but do have op, send sgr0 (op can't
 		 * actually be used because it is sometimes the same as sgr0
@@ -2224,32 +2224,32 @@ tty_colours(struct tty *tty, const struct grid_cell *gc)
 		if (!have_ax && tty_term_has(tty->term, TTYC_OP))
 			tty_reset(tty);
 		else {
-			if (gc->fg == 8 && tc->fg != 8) {
+			if (COLOUR_DEFAULT(gc->fg) && !COLOUR_DEFAULT(tc->fg)) {
 				if (have_ax)
 					tty_puts(tty, "\033[39m");
 				else if (tc->fg != 7)
 					tty_putcode1(tty, TTYC_SETAF, 7);
-				tc->fg = 8;
+				tc->fg = gc->fg;
 			}
-			if (gc->bg == 8 && tc->bg != 8) {
+			if (COLOUR_DEFAULT(gc->bg) && !COLOUR_DEFAULT(tc->bg)) {
 				if (have_ax)
 					tty_puts(tty, "\033[49m");
 				else if (tc->bg != 0)
 					tty_putcode1(tty, TTYC_SETAB, 0);
-				tc->bg = 8;
+				tc->bg = gc->fg;
 			}
 		}
 	}
 
 	/* Set the foreground colour. */
-	if (gc->fg != 8 && gc->fg != tc->fg)
+	if (!COLOUR_DEFAULT(gc->fg) && gc->fg != tc->fg)
 		tty_colours_fg(tty, gc);
 
 	/*
 	 * Set the background colour. This must come after the foreground as
 	 * tty_colour_fg() can call tty_reset().
 	 */
-	if (gc->bg != 8 && gc->bg != tc->bg)
+	if (!COLOUR_DEFAULT(gc->bg) && gc->bg != tc->bg)
 		tty_colours_bg(tty, gc);
 }
 
@@ -2515,9 +2515,11 @@ tty_default_colours(struct grid_cell *gc, const struct window_pane *wp)
 		else
 			gc->fg = wgc->fg;
 
-		if (gc->fg != 8 &&
-		    (c = window_pane_get_palette(wp, gc->fg)) != -1)
-			gc->fg = c;
+		if (gc->fg != 8) {
+			c = window_pane_get_palette(wp, gc->fg);
+			if (c != -1)
+				gc->fg = c;
+		}
 	}
 
 	if (gc->bg == 8) {
@@ -2528,9 +2530,11 @@ tty_default_colours(struct grid_cell *gc, const struct window_pane *wp)
 		else
 			gc->bg = wgc->bg;
 
-		if (gc->bg != 8 &&
-		    (c = window_pane_get_palette(wp, gc->bg)) != -1)
-			gc->bg = c;
+		if (gc->bg != 8) {
+			c = window_pane_get_palette(wp, gc->bg);
+			if (c != -1)
+				gc->bg = c;
+		}
 	}
 }
 
