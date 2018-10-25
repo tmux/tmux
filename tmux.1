@@ -2750,7 +2750,7 @@ Set status line message command style, where
 .Ar style
 is a comma-separated list of characteristics to be specified.
 .Pp
-These may be
+The style format is shared by many options and may be:
 .Ql bg=colour
 to set the background colour,
 .Ql fg=colour
@@ -2773,8 +2773,13 @@ and so on),
 to
 .Ic colour255
 from the 256-colour set,
-.Ic default ,
-or a hexadecimal RGB string such as
+.Ic default
+for the default colour (inherited from another option in the case of some options, for example
+.Ic window-status-style
+inherits from
+.Ic status-style ) ,
+.Ic terminal
+for the terminal default colour, or a hexadecimal RGB string such as
 .Ql #ffffff .
 .Pp
 The attributes is either

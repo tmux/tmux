@@ -543,6 +543,9 @@ enum utf8_state {
 #define COLOUR_FLAG_256 0x01000000
 #define COLOUR_FLAG_RGB 0x02000000
 
+/* Special colours. */
+#define COLOUR_DEFAULT(c) ((c) == 8 || (c) == 9)
+
 /* Grid attributes. Anything above 0xff is stored in an extended cell. */
 #define GRID_ATTR_BRIGHT 0x1
 #define GRID_ATTR_DIM 0x2
