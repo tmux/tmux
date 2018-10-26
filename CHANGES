@@ -1,5 +1,8 @@
 CHANGES FROM 2.8 to X.X
 
+* New "terminal" colour allowing options to use the terminal default
+  colour rather than inheriting the default from a parent option.
+
 * Do not move the cursor in copy mode when the mouse wheel is used.
 
 * Use the same working directory rules for jobs as new windows rather
