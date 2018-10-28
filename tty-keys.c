@@ -624,7 +624,7 @@ first_key:
 	 * If not a complete key, look for key with an escape prefix (meta
 	 * modifier).
 	 */
-	if (*buf == '\033') {
+	if (*buf == '\033' && len > 1) {
 		/* Look for a key without the escape. */
 		n = tty_keys_next1(tty, buf + 1, len - 1, &key, &size, expired);
 		if (n == 0) {	/* found */
