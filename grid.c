@@ -418,7 +418,7 @@ static void
 grid_empty_line(struct grid *gd, u_int py, u_int bg)
 {
 	memset(&gd->linedata[py], 0, sizeof gd->linedata[py]);
-	if (bg != 8)
+	if (!COLOUR_DEFAULT(bg))
 		grid_expand_line(gd, py, gd->sx, bg);
 }
 
@@ -524,7 +524,8 @@ grid_set_cells(struct grid *gd, u_int px, u_int py, const struct grid_cell *gc,
 void
 grid_clear(struct grid *gd, u_int px, u_int py, u_int nx, u_int ny, u_int bg)
 {
-	u_int	xx, yy;
+	struct grid_line	*gl;
+	u_int			 xx, yy;
 
 	if (nx == 0 || ny == 0)
 		return;
@@ -540,12 +541,13 @@ grid_clear(struct grid *gd, u_int px, u_int py, u_int nx, u_int ny, u_int bg)
 		return;
 
 	for (yy = py; yy < py + ny; yy++) {
-		if (px + nx >= gd->sx && px < gd->linedata[yy].cellused)
-			gd->linedata[yy].cellused = px;
-		if (px > gd->linedata[yy].cellsize && bg == 8)
+		gl = &gd->linedata[yy];
+		if (px + nx >= gd->sx && px < gl->cellused)
+			gl->cellused = px;
+		if (px > gl->cellsize && COLOUR_DEFAULT(bg))
 			continue;
-		if (px + nx >= gd->linedata[yy].cellsize && bg == 8) {
-			gd->linedata[yy].cellsize = px;
+		if (px + nx >= gl->cellsize && COLOUR_DEFAULT(bg)) {
+			gl->cellsize = px;
 			continue;
 		}
 		grid_expand_line(gd, yy, px + nx, 8); /* default bg first */

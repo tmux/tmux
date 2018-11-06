@@ -144,8 +144,7 @@ screen_write_reset(struct screen_write_ctx *ctx)
 	screen_reset_tabs(s);
 	screen_write_scrollregion(ctx, 0, screen_size_y(s) - 1);
 
-	s->mode &= ~(MODE_INSERT|MODE_KCURSOR|MODE_KKEYPAD|MODE_FOCUSON);
-	s->mode &= ~(ALL_MOUSE_MODES|MODE_MOUSE_UTF8|MODE_MOUSE_SGR);
+	s->mode = MODE_CURSOR | MODE_WRAP;
 
 	screen_write_clearscreen(ctx, 8);
 	screen_write_cursormove(ctx, 0, 0);
@@ -965,7 +964,7 @@ screen_write_clearline(struct screen_write_ctx *ctx, u_int bg)
 	u_int			 sx = screen_size_x(s);
 
 	gl = grid_get_line(s->grid, s->grid->hsize + s->cy);
-	if (gl->cellsize == 0 && bg == 8)
+	if (gl->cellsize == 0 && COLOUR_DEFAULT(bg))
 		return;
 
 	screen_write_initctx(ctx, &ttyctx);
@@ -988,7 +987,7 @@ screen_write_clearendofline(struct screen_write_ctx *ctx, u_int bg)
 	u_int			 sx = screen_size_x(s);
 
 	gl = grid_get_line(s->grid, s->grid->hsize + s->cy);
-	if (s->cx > sx - 1 || (s->cx >= gl->cellsize && bg == 8))
+	if (s->cx > sx - 1 || (s->cx >= gl->cellsize && COLOUR_DEFAULT(bg)))
 		return;
 
 	screen_write_initctx(ctx, &ttyctx);
