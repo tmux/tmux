@@ -69,13 +69,11 @@ static int	window_copy_set_selection(struct window_pane *, int);
 static int	window_copy_update_selection(struct window_pane *, int);
 static void	window_copy_synchronize_cursor(struct window_pane *);
 static void    *window_copy_get_selection(struct window_pane *, size_t *);
-static void	window_copy_copy_buffer(struct window_pane *, const char *,
-		    void *, size_t);
+static void	window_copy_copy_buffer(struct window_pane *, void *, size_t);
 static void	window_copy_copy_pipe(struct window_pane *, struct session *,
-		    const char *, const char *);
-static void	window_copy_copy_selection(struct window_pane *, const char *);
-static void	window_copy_append_selection(struct window_pane *,
 		    const char *);
+static void	window_copy_copy_selection(struct window_pane *);
+static void	window_copy_append_selection(struct window_pane *);
 static void	window_copy_clear_selection(struct window_pane *);
 static void	window_copy_copy_line(struct window_pane *, char **, size_t *,
 		    u_int, u_int, u_int);
@@ -535,13 +533,13 @@ window_copy_command(struct window_pane *wp, struct client *c, struct session *s,
 	if (args->argc == 1) {
 		if (strcmp(command, "append-selection") == 0) {
 			if (s != NULL)
-				window_copy_append_selection(wp, NULL);
+				window_copy_append_selection(wp);
 			window_copy_clear_selection(wp);
 			redraw = 1;
 		}
 		if (strcmp(command, "append-selection-and-cancel") == 0) {
 			if (s != NULL)
-				window_copy_append_selection(wp, NULL);
+				window_copy_append_selection(wp);
 			window_copy_clear_selection(wp);
 			redraw = 1;
 			cancel = 1;
@@ -579,7 +577,7 @@ window_copy_command(struct window_pane *wp, struct client *c, struct session *s,
 			redraw = 1;
 
 			if (s != NULL) {
-				window_copy_copy_selection(wp, NULL);
+				window_copy_copy_selection(wp);
 				cancel = 1;
 			}
 		}
@@ -592,19 +590,19 @@ window_copy_command(struct window_pane *wp, struct client *c, struct session *s,
 			redraw = 1;
 
 			if (s != NULL) {
-				window_copy_copy_selection(wp, NULL);
+				window_copy_copy_selection(wp);
 				cancel = 1;
 			}
 		}
 		if (strcmp(command, "copy-selection") == 0) {
 			if (s != NULL)
-				window_copy_copy_selection(wp, NULL);
+				window_copy_copy_selection(wp);
 			window_copy_clear_selection(wp);
 			redraw = 1;
 		}
 		if (strcmp(command, "copy-selection-and-cancel") == 0) {
 			if (s != NULL)
-				window_copy_copy_selection(wp, NULL);
+				window_copy_copy_selection(wp);
 			window_copy_clear_selection(wp);
 			redraw = 1;
 			cancel = 1;
@@ -828,11 +826,11 @@ window_copy_command(struct window_pane *wp, struct client *c, struct session *s,
 		argument = args->argv[1];
 		if (strcmp(command, "copy-pipe") == 0) {
 			if (s != NULL)
-				window_copy_copy_pipe(wp, s, NULL, argument);
+				window_copy_copy_pipe(wp, s, argument);
 		}
 		if (strcmp(command, "copy-pipe-and-cancel") == 0) {
 			if (s != NULL) {
-				window_copy_copy_pipe(wp, s, NULL, argument);
+				window_copy_copy_pipe(wp, s, argument);
 				cancel = 1;
 			}
 		}
@@ -1657,8 +1655,7 @@ window_copy_get_selection(struct window_pane *wp, size_t *len)
 }
 
 static void
-window_copy_copy_buffer(struct window_pane *wp, const char *bufname, void *buf,
-    size_t len)
+window_copy_copy_buffer(struct window_pane *wp, void *buf, size_t len)
 {
 	struct screen_write_ctx	ctx;
 
@@ -1669,13 +1666,13 @@ window_copy_copy_buffer(struct window_pane *wp, const char *bufname, void *buf,
 		notify_pane("pane-set-clipboard", wp);
 	}
 
-	if (paste_set(buf, len, bufname, NULL) != 0)
+	if (paste_set(buf, len, NULL, NULL) != 0)
 		free(buf);
 }
 
 static void
 window_copy_copy_pipe(struct window_pane *wp, struct session *s,
-    const char *bufname, const char *arg)
+    const char *fmt)
 {
 	void		*buf;
 	size_t		 len;
@@ -1685,34 +1682,32 @@ window_copy_copy_pipe(struct window_pane *wp, struct session *s,
 	buf = window_copy_get_selection(wp, &len);
 	if (buf == NULL)
 		return;
-	expanded = format_single(NULL, arg, NULL, s, NULL, wp);
+	expanded = format_single(NULL, fmt, NULL, s, NULL, wp);
 
 	job = job_run(expanded, s, NULL, NULL, NULL, NULL, NULL, JOB_NOWAIT);
 	bufferevent_write(job_get_event(job), buf, len);
 
 	free(expanded);
-	window_copy_copy_buffer(wp, bufname, buf, len);
+	window_copy_copy_buffer(wp, buf, len);
 }
 
 static void
-window_copy_copy_selection(struct window_pane *wp, const char *bufname)
+window_copy_copy_selection(struct window_pane *wp)
 {
-	void	*buf;
+	char	*buf;
 	size_t	 len;
 
 	buf = window_copy_get_selection(wp, &len);
-	if (buf == NULL)
-		return;
-
-	window_copy_copy_buffer(wp, bufname, buf, len);
+	if (buf != NULL)
+		window_copy_copy_buffer(wp, buf, len);
 }
 
 static void
-window_copy_append_selection(struct window_pane *wp, const char *bufname)
+window_copy_append_selection(struct window_pane *wp)
 {
 	char				*buf;
 	struct paste_buffer		*pb;
-	const char			*bufdata;
+	const char			*bufdata, *bufname;
 	size_t				 len, bufsize;
 	struct screen_write_ctx		 ctx;
 
@@ -1727,10 +1722,7 @@ window_copy_append_selection(struct window_pane *wp, const char *bufname)
 		notify_pane("pane-set-clipboard", wp);
 	}
 
-	if (bufname == NULL || *bufname == '\0')
-		pb = paste_get_top(&bufname);
-	else
-		pb = paste_get_name(bufname);
+	pb = paste_get_top(&bufname);
 	if (pb != NULL) {
 		bufdata = paste_buffer_data(pb, &bufsize);
 		buf = xrealloc(buf, len + bufsize);
