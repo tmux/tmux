@@ -350,7 +350,6 @@ screen_write_cnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
 			ptr = last + 1;
 			continue;
 		}
-
 		if (*ptr > 0x7f && utf8_open(ud, *ptr) == UTF8_MORE) {
 			ptr++;
 
@@ -376,7 +375,9 @@ screen_write_cnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
 			if (maxlen > 0 && size + 1 > (size_t)maxlen)
 				break;
 
-			if (*ptr > 0x1f && *ptr < 0x7f) {
+			if (*ptr == '\001')
+				gc.attr ^= GRID_ATTR_CHARSET;
+			else if (*ptr > 0x1f && *ptr < 0x7f) {
 				size++;
 				screen_write_putc(ctx, &gc, *ptr);
 			}
