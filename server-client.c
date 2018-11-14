@@ -1020,6 +1020,7 @@ table_changed:
 	}
 	flags = c->flags;
 
+try_again:
 	/* Log key table. */
 	if (wp == NULL)
 		log_debug("key table %s (no pane)", table->name);
@@ -1028,7 +1029,6 @@ table_changed:
 	if (c->flags & CLIENT_REPEAT)
 		log_debug("currently repeating");
 
-try_again:
 	/* Try to see if there is a key binding in the current table. */
 	bd = key_bindings_get(table, key0);
 	if (bd != NULL) {
@@ -1039,10 +1039,12 @@ try_again:
 		 */
 		if ((c->flags & CLIENT_REPEAT) &&
 		    (~bd->flags & KEY_BINDING_REPEAT)) {
+			log_debug("found in key table %s (not repeating)",
+			    table->name);
 			server_client_set_key_table(c, NULL);
+			first = table = c->keytable;
 			c->flags &= ~CLIENT_REPEAT;
 			server_status_client(c);
-			table = c->keytable;
 			goto table_changed;
 		}
 		log_debug("found in key table %s", table->name);
@@ -1092,10 +1094,13 @@ try_again:
 	log_debug("not found in key table %s", table->name);
 	if (!server_client_is_default_key_table(c, table) ||
 	    (c->flags & CLIENT_REPEAT)) {
+		log_debug("trying in root table");
 		server_client_set_key_table(c, NULL);
+		table = c->keytable;
+		if (c->flags & CLIENT_REPEAT)
+			first = table;
 		c->flags &= ~CLIENT_REPEAT;
 		server_status_client(c);
-		table = c->keytable;
 		goto table_changed;
 	}
 

@@ -170,7 +170,7 @@ cmd_wait_for_wait(struct cmdq_item *item, const char *name,
 	struct client		*c = item->client;
 	struct wait_item	*wi;
 
-	if (c == NULL || c->session != NULL) {
+	if (c == NULL) {
 		cmdq_error(item, "not able to wait");
 		return (CMD_RETURN_ERROR);
 	}
@@ -198,7 +198,7 @@ cmd_wait_for_lock(struct cmdq_item *item, const char *name,
 {
 	struct wait_item	*wi;
 
-	if (item->client == NULL || item->client->session != NULL) {
+	if (item->client == NULL) {
 		cmdq_error(item, "not able to lock");
 		return (CMD_RETURN_ERROR);
 	}
