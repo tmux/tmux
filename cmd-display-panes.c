@@ -38,7 +38,7 @@ const struct cmd_entry cmd_display_panes_entry = {
 	.alias = "displayp",
 
 	.args = { "d:t:", 0, 1 },
-	.usage = "[-d duration] " CMD_TARGET_CLIENT_USAGE,
+	.usage = "[-d duration] " CMD_TARGET_CLIENT_USAGE " [template]",
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_display_panes_exec
