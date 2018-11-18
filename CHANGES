@@ -1,5 +1,9 @@
 CHANGES FROM 2.8 to X.X
 
+* New option 'full-search' to control if copy-mode will search
+  over the full history.  Defaults to on, when off number of
+  results and highlighting is not shown.
+
 * New "terminal" colour allowing options to use the terminal default
   colour rather than inheriting the default from a parent option.
 

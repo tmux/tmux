@@ -1153,7 +1153,7 @@ window_copy_search(struct window_pane *wp, int direction)
 	struct screen_write_ctx		 ctx;
 	struct grid			*gd = s->grid;
 	u_int				 fx, fy, endline;
-	int				 wrapflag, cis, found;
+	int				 wrapflag, cis, found, fullsearch;
 
 	free(wp->searchstr);
 	wp->searchstr = xstrdup(data->searchstr);
@@ -1172,6 +1172,8 @@ window_copy_search(struct window_pane *wp, int direction)
 		window_copy_move_left(s, &fx, &fy);
 
 	wrapflag = options_get_number(wp->window->options, "wrap-search");
+	fullsearch = options_get_number(wp->window->options, "full-search");
+
 	cis = window_copy_is_lowercase(data->searchstr);
 
 	if (direction)
@@ -1181,7 +1183,7 @@ window_copy_search(struct window_pane *wp, int direction)
 	found = window_copy_search_jump(wp, gd, ss.grid, fx, fy, endline, cis,
 	    wrapflag, direction);
 
-	if (window_copy_search_marks(wp, &ss))
+	if (fullsearch && window_copy_search_marks(wp, &ss))
 		window_copy_redraw_screen(wp);
 
 	screen_free(&ss);
