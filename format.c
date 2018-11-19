@@ -588,6 +588,8 @@ format_cb_pane_tabs(struct format_tree *ft, struct format_entry *fe)
 		return;
 
 	buffer = evbuffer_new();
+	if (buffer == NULL)
+		fatalx("out of memory");
 	for (i = 0; i < wp->base.grid->sx; i++) {
 		if (!bit_test(wp->base.tabs, i))
 			continue;
@@ -618,6 +620,8 @@ format_cb_session_group_list(struct format_tree *ft, struct format_entry *fe)
 		return;
 
 	buffer = evbuffer_new();
+	if (buffer == NULL)
+		fatalx("out of memory");
 	TAILQ_FOREACH(loop, &sg->sessions, gentry) {
 		if (EVBUFFER_LENGTH(buffer) > 0)
 			evbuffer_add(buffer, ",", 1);
