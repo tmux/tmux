@@ -594,6 +594,9 @@ case "$host_os" in
 	*freebsd*)
 		AC_MSG_RESULT(freebsd)
 		PLATFORM=freebsd
+		# Look for kinfo_getfile; this is in libutil on FreeBSD, but
+		# libutil-freebsd on GNU/kFreeBSD (glibc's libutil lacks it).
+		AC_SEARCH_LIBS(kinfo_getfile, [util util-freebsd])
 		;;
 	*netbsd*)
 		AC_MSG_RESULT(netbsd)
