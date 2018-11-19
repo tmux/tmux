@@ -166,6 +166,8 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 		    cmd_pipe_pane_write_callback,
 		    cmd_pipe_pane_error_callback,
 		    wp);
+		if (wp->pipe_event == NULL)
+			fatalx("out of memory");
 		if (out)
 			bufferevent_enable(wp->pipe_event, EV_WRITE);
 		if (in)

@@ -767,6 +767,8 @@ input_init(struct window_pane *wp)
 	ictx->input_buf = xmalloc(INPUT_BUF_START);
 
 	ictx->since_ground = evbuffer_new();
+	if (ictx->since_ground == NULL)
+		fatalx("out of memory");
 
 	evtimer_set(&ictx->timer, input_timer_callback, ictx);
 

@@ -258,9 +258,13 @@ tty_open(struct tty *tty, char **cause)
 	event_set(&tty->event_in, tty->fd, EV_PERSIST|EV_READ,
 	    tty_read_callback, tty);
 	tty->in = evbuffer_new();
+	if (tty->in == NULL)
+		fatal("out of memory");
 
 	event_set(&tty->event_out, tty->fd, EV_WRITE, tty_write_callback, tty);
 	tty->out = evbuffer_new();
+	if (tty->out == NULL)
+		fatal("out of memory");
 
 	evtimer_set(&tty->timer, tty_timer_callback, tty);
 

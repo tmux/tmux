@@ -155,6 +155,8 @@ job_run(const char *cmd, struct session *s, const char *cwd,
 
 	job->event = bufferevent_new(job->fd, job_read_callback,
 	    job_write_callback, job_error_callback, job);
+	if (job->event == NULL)
+		fatalx("out of memory");
 	bufferevent_enable(job->event, EV_READ|EV_WRITE);
 
 	log_debug("run job %p: %s, pid %ld", job, job->cmd, (long) job->pid);
