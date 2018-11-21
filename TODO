@@ -118,6 +118,7 @@
 	* flag to specify environment to new-window, split-window,
           new-session (issue 1498)
 	* multiple column panes (issue 1503)
+	* stack of modes rather than first one sticking (issue 1542)
 
 - hooks
 	* more hooks for various things
@@ -141,3 +142,6 @@
 	  visible as possible
 	* rather than centering cursor it might be better if only
 	  moved offset when it gets close to an edge?
+
+* issues that are not too hard to do:
+      1501, 1517, 1498, 1542
