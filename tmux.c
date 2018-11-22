@@ -167,6 +167,31 @@ setblocking(int fd, int state)
 }
 
 const char *
+find_cwd(void)
+{
+	char		 resolved1[PATH_MAX], resolved2[PATH_MAX];
+	static char	 cwd[PATH_MAX];
+	const char	*pwd;
+
+	if (getcwd(cwd, sizeof cwd) == NULL)
+		return (NULL);
+	if ((pwd = getenv("PWD")) == NULL || *pwd == '\0')
+		return (cwd);
+
+	/*
+	 * We want to use PWD so that symbolic links are maintained,
+	 * but only if it matches the actual working directory.
+	 */
+	if (realpath(pwd, resolved1) == NULL)
+		return (cwd);
+	if (realpath(cwd, resolved2) == NULL)
+		return (cwd);
+	if (strcmp(resolved1, resolved2) != 0)
+		return (cwd);
+	return (pwd);
+}
+
+const char *
 find_home(void)
 {
 	struct passwd		*pw;
@@ -191,7 +216,6 @@ int
 main(int argc, char **argv)
 {
 	char					*path, *label, *cause, **var;
-	char					 tmp[PATH_MAX];
 	const char				*s, *shell, *cwd;
 	int					 opt, flags, keys;
 	const struct options_table_entry	*oe;
@@ -293,8 +317,7 @@ main(int argc, char **argv)
 	global_environ = environ_create();
 	for (var = environ; *var != NULL; var++)
 		environ_put(global_environ, *var);
-	if ((cwd = getenv("PWD")) == NULL &&
-	    (cwd = getcwd(tmp, sizeof tmp)) != NULL)
+	if ((cwd = find_cwd()) != NULL)
 		environ_set(global_environ, "PWD", "%s", cwd);
 
 	global_options = options_create(NULL);
