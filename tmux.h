@@ -1508,6 +1508,7 @@ extern int		 ptm_fd;
 extern const char	*shell_command;
 int		 areshell(const char *);
 void		 setblocking(int, int);
+const char	*find_cwd(void);
 const char	*find_home(void);
 
 /* proc.c */
