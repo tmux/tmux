@@ -23,9 +23,12 @@
 
 #include <errno.h>
 #include <event.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+#include "tmux.h"
 
 #define is_runnable(p) \
         ((p)->p_stat == LSRUN || (p)->p_stat == SIDL)
@@ -129,6 +132,22 @@ error:
 char *
 osdep_get_cwd(int fd)
 {
+	static char	target[PATH_MAX + 1];
+	char		*path;
+	pid_t		pgrp;
+	ssize_t		n;
+
+	if ((pgrp = tcgetpgrp(fd)) == -1)
+		return (NULL);
+
+	xasprintf(&path, "/proc/%lld/cwd", (long long) pgrp);
+	n = readlink(path, target, sizeof(target) - 1);
+	free(path);
+	if (n > 0) {
+		target[n] = '\0';
+		return (target);
+	}
+
 	return (NULL);
 }
 
