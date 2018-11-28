@@ -478,6 +478,9 @@ if test "x$found_forkpty" = xyes; then
 fi
 AM_CONDITIONAL(NEED_FORKPTY, test "x$found_forkpty" = xno)
 
+# Look for kinfo_getfile in libutil.
+AC_SEARCH_LIBS(kinfo_getfile, [util util-freebsd])
+
 # Look for a suitable queue.h.
 AC_CHECK_DECL(
 	TAILQ_CONCAT,

@@ -222,7 +222,7 @@ client_main(struct event_base *base, int argc, char **argv, int flags)
 	const char		*ttynam, *cwd;
 	pid_t			 ppid;
 	enum msgtype		 msg;
-	char			*cause, path[PATH_MAX];
+	char			*cause;
 	struct termios		 tio, saved_tio;
 	size_t			 size;
 
@@ -277,9 +277,7 @@ client_main(struct event_base *base, int argc, char **argv, int flags)
 	client_peer = proc_add_peer(client_proc, fd, client_dispatch, NULL);
 
 	/* Save these before pledge(). */
-	if ((cwd = getenv("PWD")) == NULL &&
-	    (cwd = getcwd(path, sizeof path)) == NULL &&
-	    (cwd = find_home()) == NULL)
+	if ((cwd = find_cwd()) == NULL && (cwd = find_home()) == NULL)
 		cwd = "/";
 	if ((ttynam = ttyname(STDIN_FILENO)) == NULL)
 		ttynam = "";

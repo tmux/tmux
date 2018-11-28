@@ -1817,15 +1817,27 @@ window_copy_in_set(struct window_pane *wp, u_int px, u_int py, const char *set)
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct grid_cell		 gc;
 	const struct utf8_data		*ud;
+	struct utf8_data		*copy;
+	struct utf8_data		*loop;
+	int				 found = 0;
 
 	grid_get_cell(data->backing->grid, px, py, &gc);
-
+	if (gc.flags & GRID_FLAG_PADDING)
+		return (0);
 	ud = &gc.data;
-	if (ud->size != 1 || (gc.flags & GRID_FLAG_PADDING))
-		return (0);
-	if (*ud->data == 0x00 || *ud->data == 0x7f)
-		return (0);
-	return (strchr(set, *ud->data) != NULL);
+
+	copy = utf8_fromcstr(set);
+	for (loop = copy; loop->size != 0; loop++) {
+		if (loop->size != ud->size)
+			continue;
+		if (memcmp(loop->data, ud->data, loop->size) == 0) {
+			found = 1;
+			break;
+		}
+	}
+	free(copy);
+
+	return (found);
 }
 
 static u_int

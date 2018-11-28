@@ -32,7 +32,7 @@ const struct cmd_entry cmd_choose_tree_entry = {
 
 	.args = { "F:Gf:NO:st:wZ", 0, 1 },
 	.usage = "[-GNsw] [-F format] [-f filter] [-O sort-order] "
-	         CMD_TARGET_PANE_USAGE,
+	         CMD_TARGET_PANE_USAGE " [template]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -46,7 +46,7 @@ const struct cmd_entry cmd_choose_client_entry = {
 
 	.args = { "F:f:NO:t:Z", 0, 1 },
 	.usage = "[-N] [-F format] [-f filter] [-O sort-order] "
-	         CMD_TARGET_PANE_USAGE,
+	         CMD_TARGET_PANE_USAGE " [template]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -60,7 +60,7 @@ const struct cmd_entry cmd_choose_buffer_entry = {
 
 	.args = { "F:f:NO:t:Z", 0, 1 },
 	.usage = "[-N] [-F format] [-f filter] [-O sort-order] "
-	         CMD_TARGET_PANE_USAGE,
+	         CMD_TARGET_PANE_USAGE " [template]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 

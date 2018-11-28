@@ -1010,6 +1010,8 @@ window_pane_spawn(struct window_pane *wp, int argc, char **argv,
 
 	wp->event = bufferevent_new(wp->fd, window_pane_read_callback, NULL,
 	    window_pane_error_callback, wp);
+	if (wp->event == NULL)
+		fatalx("out of memory");
 
 	bufferevent_setwatermark(wp->event, EV_READ, 0, READ_SIZE);
 	bufferevent_enable(wp->event, EV_READ|EV_WRITE);
