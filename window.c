@@ -921,6 +921,7 @@ window_pane_spawn(struct window_pane *wp, int argc, char **argv,
 	sigprocmask(SIG_BLOCK, &set, &oldset);
 	switch (wp->pid = fdforkpty(ptm_fd, &wp->fd, wp->tty, NULL, &ws)) {
 	case -1:
+		wp->event = NULL;
 		wp->fd = -1;
 
 		xasprintf(cause, "%s: %s", cmd, strerror(errno));
@@ -999,6 +1000,9 @@ window_pane_spawn(struct window_pane *wp, int argc, char **argv,
 	    window_pane_error_callback, wp);
 	if (wp->event == NULL)
 		fatalx("out of memory");
+
+	wp->pipe_off = 0;
+	wp->flags &= ~PANE_EXITED;
 
 	bufferevent_setwatermark(wp->event, EV_READ, 0, READ_SIZE);
 	bufferevent_enable(wp->event, EV_READ|EV_WRITE);

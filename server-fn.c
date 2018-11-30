@@ -302,6 +302,7 @@ server_destroy_pane(struct window_pane *wp, int notify)
 
 	if (wp->fd != -1) {
 		bufferevent_free(wp->event);
+		wp->event = NULL;
 		close(wp->fd);
 		wp->fd = -1;
 	}
