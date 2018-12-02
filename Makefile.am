@@ -1,5 +1,7 @@
 # Makefile.am
 
+ACLOCAL_AMFLAGS = --install -I m4
+
 # Obvious program stuff.
 bin_PROGRAMS = tmux
 CLEANFILES = tmux.1.mdoc tmux.1.man
