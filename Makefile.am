@@ -13,12 +13,12 @@ EXTRA_DIST = \
 AM_CPPFLAGS += @XOPEN_DEFINES@ -DTMUX_CONF="\"$(sysconfdir)/tmux.conf\""
 
 # Additional object files.
-LDADD = $(LIBOBJS) @CURSES_LIBS@
+LDADD = $(LIBOBJS) $(CURSES_LIBS)
 
 # Set flags for gcc.
 if IS_GCC
 AM_CFLAGS += -std=gnu99 -O2
-AM_CFLAGS += @CURSES_CFLAGS@
+AM_CFLAGS += $(CURSES_CFLAGS)
 if IS_DEBUG
 AM_CFLAGS += -g
 AM_CFLAGS += -Wno-long-long -Wall -W -Wformat=2
