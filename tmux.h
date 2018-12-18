@@ -52,6 +52,7 @@ struct options_entry;
 struct session;
 struct tmuxpeer;
 struct tmuxproc;
+struct winlink;
 
 /* Client-server protocol version. */
 #define PROTOCOL_VERSION 8
@@ -699,11 +700,12 @@ struct window_mode {
 	void		 (*free)(struct window_pane *);
 	void		 (*resize)(struct window_pane *, u_int, u_int);
 	void		 (*key)(struct window_pane *, struct client *,
-			     struct session *, key_code, struct mouse_event *);
+			     struct session *, struct winlink *, key_code,
+			     struct mouse_event *);
 
 	const char	*(*key_table)(struct window_pane *);
 	void		 (*command)(struct window_pane *, struct client *,
-			     struct session *, struct args *,
+			     struct session *, struct winlink *, struct args *,
 			     struct mouse_event *);
 };
 #define WINDOW_MODE_TIMEOUT 180
@@ -2193,7 +2195,8 @@ int		 window_pane_set_mode(struct window_pane *,
 		     struct args *);
 void		 window_pane_reset_mode(struct window_pane *);
 void		 window_pane_key(struct window_pane *, struct client *,
-		     struct session *, key_code, struct mouse_event *);
+		     struct session *, struct winlink *, key_code,
+		     struct mouse_event *);
 int		 window_pane_visible(struct window_pane *);
 u_int		 window_pane_search(struct window_pane *, const char *);
 const char	*window_printable_flags(struct winlink *);
