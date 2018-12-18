@@ -1271,7 +1271,7 @@ window_pane_reset_mode(struct window_pane *wp)
 
 void
 window_pane_key(struct window_pane *wp, struct client *c, struct session *s,
-    key_code key, struct mouse_event *m)
+    struct winlink *wl, key_code key, struct mouse_event *m)
 {
 	struct window_pane	*wp2;
 
@@ -1281,7 +1281,7 @@ window_pane_key(struct window_pane *wp, struct client *c, struct session *s,
 	if (wp->mode != NULL) {
 		wp->modelast = time(NULL);
 		if (wp->mode->key != NULL)
-			wp->mode->key(wp, c, s, (key & ~KEYC_XTERM), m);
+			wp->mode->key(wp, c, s, wl, (key & ~KEYC_XTERM), m);
 		return;
 	}
 

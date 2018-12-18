@@ -30,8 +30,8 @@ static void		 window_buffer_free(struct window_pane *);
 static void		 window_buffer_resize(struct window_pane *, u_int,
 			     u_int);
 static void		 window_buffer_key(struct window_pane *,
-			     struct client *, struct session *, key_code,
-			     struct mouse_event *);
+			     struct client *, struct session *,
+			     struct winlink *, key_code, struct mouse_event *);
 
 #define WINDOW_BUFFER_DEFAULT_COMMAND "paste-buffer -b '%%'"
 
@@ -337,7 +337,8 @@ window_buffer_do_paste(void* modedata, void *itemdata, struct client *c,
 
 static void
 window_buffer_key(struct window_pane *wp, struct client *c,
-    __unused struct session *s, key_code key, struct mouse_event *m)
+    __unused struct session *s, __unused struct winlink *wl, key_code key,
+    struct mouse_event *m)
 {
 	struct window_buffer_modedata	*data = wp->modedata;
 	struct mode_tree_data		*mtd = data->data;
