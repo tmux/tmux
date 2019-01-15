@@ -2240,7 +2240,7 @@ tty_colours(struct tty *tty, const struct grid_cell *gc)
 					tty_puts(tty, "\033[49m");
 				else if (tc->bg != 0)
 					tty_putcode1(tty, TTYC_SETAB, 0);
-				tc->bg = gc->fg;
+				tc->bg = gc->bg;
 			}
 		}
 	}

@@ -303,6 +303,7 @@ server_destroy_pane(struct window_pane *wp, int notify)
 		utempter_remove_record(wp->fd);
 #endif
 		bufferevent_free(wp->event);
+		wp->event = NULL;
 		close(wp->fd);
 		wp->fd = -1;
 	}

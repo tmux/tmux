@@ -31,8 +31,8 @@ static void		 window_client_free(struct window_pane *);
 static void		 window_client_resize(struct window_pane *, u_int,
 			     u_int);
 static void		 window_client_key(struct window_pane *,
-			     struct client *, struct session *, key_code,
-			     struct mouse_event *);
+			     struct client *, struct session *,
+			     struct winlink *, key_code, struct mouse_event *);
 
 #define WINDOW_CLIENT_DEFAULT_COMMAND "detach-client -t '%%'"
 
@@ -312,7 +312,8 @@ window_client_do_detach(void* modedata, void *itemdata,
 
 static void
 window_client_key(struct window_pane *wp, struct client *c,
-    __unused struct session *s, key_code key, struct mouse_event *m)
+    __unused struct session *s, __unused struct winlink *wl, key_code key,
+    struct mouse_event *m)
 {
 	struct window_client_modedata	*data = wp->modedata;
 	struct mode_tree_data		*mtd = data->data;
