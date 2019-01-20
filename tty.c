@@ -1102,7 +1102,7 @@ tty_clear_area(struct tty *tty, const struct window_pane *wp, u_int py,
 		 * background colour isn't default (because it doesn't work
 		 * after SGR 0).
 		 */
-		if (tty->term_type == TTY_VT420 && COLOUR_DEFAULT(bg)) {
+		if (tty->term_type == TTY_VT420 && !COLOUR_DEFAULT(bg)) {
 			xsnprintf(tmp, sizeof tmp, "\033[32;%u;%u;%u;%u$x",
 			    py + 1, px + 1, py + ny, px + nx);
 			tty_puts(tty, tmp);
