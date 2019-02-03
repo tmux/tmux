@@ -279,6 +279,7 @@ const char	*getprogname(void);
 #ifndef HAVE_SETPROCTITLE
 /* setproctitle.c */
 void		 setproctitle(const char *, ...);
+void		 compat_init_setproctitle(int argc, char *argv[]);
 #endif
 
 #ifndef HAVE_B64_NTOP

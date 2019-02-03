@@ -93,7 +93,6 @@ AC_SEARCH_LIBS(flock, bsd)
 AC_CHECK_FUNCS([ \
 	dirfd \
 	flock \
-	prctl \
 	sysconf \
 ])
 
@@ -538,14 +537,6 @@ AC_LINK_IFELSE([AC_LANG_SOURCE(
 	AC_MSG_RESULT(no)
 )
 
-# Look for prctl(PR_SET_NAME).
-AC_CHECK_DECL(
-	PR_SET_NAME,
-	AC_DEFINE(HAVE_PR_SET_NAME),
-	,
-	[#include <sys/prctl.h>]
-)
-
 # Look for fcntl(F_CLOSEM).
 AC_CHECK_DECL(
 	F_CLOSEM,
@@ -573,6 +564,9 @@ case "$host_os" in
 	*aix*)
 		AC_MSG_RESULT(aix)
 		PLATFORM=aix
+		AC_DEFINE([SPT_TYPE], [SPT_REUSEARGV],
+			[Define to a Set Process Title type if your system is
+			supported by setproctitle.c])
 		;;
 	*darwin*)
 		AC_MSG_RESULT(darwin)
@@ -593,6 +587,7 @@ case "$host_os" in
 	*linux*)
 		AC_MSG_RESULT(linux)
 		PLATFORM=linux
+		AC_DEFINE([SPT_TYPE], [SPT_REUSEARGV])
 		;;
 	*freebsd*)
 		AC_MSG_RESULT(freebsd)
@@ -627,10 +622,12 @@ case "$host_os" in
 	*hpux*)
 		AC_MSG_RESULT(hpux)
 		PLATFORM=hpux
+		AC_DEFINE([SPT_TYPE], [SPT_PSTAT])
 		;;
 	*cygwin*|*msys*)
 		AC_MSG_RESULT(cygwin)
 		PLATFORM=cygwin
+		AC_DEFINE([SPT_TYPE], [SPT_REUSEARGV])
 		;;
 	*)
 		AC_MSG_RESULT(unknown)

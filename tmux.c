@@ -42,6 +42,7 @@ struct timeval	 start_time;
 const char	*socket_path;
 int		 ptm_fd = -1;
 const char	*shell_command;
+static char	**saved_argv;
 
 static __dead void	 usage(void);
 static char		*make_label(const char *, char **);
@@ -214,7 +215,7 @@ main(int argc, char **argv)
 {
 	char					*path, *label, *cause, **var;
 	const char				*s, *shell, *cwd;
-	int					 opt, flags, keys;
+	int					 opt, flags, keys, a;
 	const struct options_table_entry	*oe;
 
 	if (setlocale(LC_CTYPE, "en_US.UTF-8") == NULL &&
@@ -225,6 +226,17 @@ main(int argc, char **argv)
 		if (strcasecmp(s, "UTF-8") != 0 && strcasecmp(s, "UTF8") != 0)
 			errx(1, "need UTF-8 locale (LC_CTYPE) but have %s", s);
 	}
+
+#if !defined(HAVE_SETPROCTITLE) && defined(SPT_TYPE) \
+    && SPT_TYPE == SPT_REUSEARGV
+	/* Duplicate argv so setproctitle emulation doesn't clobber it */
+	saved_argv = xcalloc(argc + 1, sizeof(*saved_argv));
+	for (a = 0; a < argc; a++)
+		saved_argv[a] = xstrdup(argv[a]);
+	saved_argv[a] = NULL;
+	compat_init_setproctitle(argc, argv);
+	argv = saved_argv;
+#endif
 
 	setlocale(LC_TIME, "");
 	tzset();
