@@ -14,7 +14,7 @@
 # https://github.com/gnachman/iTerm2/blob/master/LICENSE
 #
 
-if which gseq >/dev/null
+if which gseq &>/dev/null
 then
     SEQ=gseq
 else
