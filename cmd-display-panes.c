@@ -37,8 +37,8 @@ const struct cmd_entry cmd_display_panes_entry = {
 	.name = "display-panes",
 	.alias = "displayp",
 
-	.args = { "d:t:", 0, 1 },
-	.usage = "[-d duration] " CMD_TARGET_CLIENT_USAGE " [template]",
+	.args = { "bd:t:", 0, 1 },
+	.usage = "[-b] [-d duration] " CMD_TARGET_CLIENT_USAGE " [template]",
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_display_panes_exec
@@ -65,7 +65,10 @@ cmd_display_panes_exec(struct cmd *self, struct cmdq_item *item)
 		c->identify_callback_data = xstrdup(args->argv[0]);
 	else
 		c->identify_callback_data = xstrdup("select-pane -t '%%'");
-	c->identify_callback_item = item;
+	if (args_has(args, 'b'))
+		c->identify_callback_item = NULL;
+	else
+		c->identify_callback_item = item;
 
 	if (args_has(args, 'd')) {
 		delay = args_strtonum(args, 'd', 0, UINT_MAX, &cause);
@@ -78,6 +81,8 @@ cmd_display_panes_exec(struct cmd *self, struct cmdq_item *item)
 		delay = options_get_number(s->options, "display-panes-time");
 	server_client_set_identify(c, delay);
 
+	if (args_has(args, 'b'))
+		return (CMD_RETURN_NORMAL);
 	return (CMD_RETURN_WAIT);
 }
 
@@ -115,15 +120,21 @@ cmd_display_panes_callback(struct client *c, struct window_pane *wp)
 		cmd_list_free(cmdlist);
 	}
 
-	if (new_item != NULL)
-		cmdq_insert_after(c->identify_callback_item, new_item);
+	if (new_item != NULL) {
+		if (c->identify_callback_item != NULL)
+			cmdq_insert_after(c->identify_callback_item, new_item);
+		else
+			cmdq_append(c, new_item);
+	}
 
 	free(cmd);
 	free(expanded);
 
 out:
-	c->identify_callback_item->flags &= ~CMDQ_WAITING;
-	c->identify_callback_item = NULL;
+	if (c->identify_callback_item != NULL) {
+		c->identify_callback_item->flags &= ~CMDQ_WAITING;
+		c->identify_callback_item = NULL;
+	}
 
 	free(c->identify_callback_data);
 	c->identify_callback_data = NULL;
