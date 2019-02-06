@@ -1569,6 +1569,7 @@ first.
 This command works only if at least one client is attached.
 .It Xo
 .Ic display-panes
+.Op Fl b
 .Op Fl d Ar duration
 .Op Fl t Ar target-client
 .Op Ar template
@@ -1602,6 +1603,9 @@ substituted by the pane ID.
 The default
 .Ar template
 is "select-pane -t '%%'".
+With
+.Fl b ,
+other commands are not blocked from running until the indicator is closed.
 .It Xo Ic find-window
 .Op Fl CNTZ
 .Op Fl t Ar target-pane
