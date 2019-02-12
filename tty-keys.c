@@ -464,6 +464,9 @@ tty_keys_find(struct tty *tty, const char *buf, size_t len, size_t *size)
 static struct tty_key *
 tty_keys_find1(struct tty_key *tk, const char *buf, size_t len, size_t *size)
 {
+	if (len == 0)
+		return NULL;
+
 	/* If the node is NULL, this is the end of the tree. No match. */
 	if (tk == NULL)
 		return (NULL);
