@@ -38,6 +38,7 @@ struct cfg_cond {
 };
 TAILQ_HEAD(cfg_conds, cfg_cond);
 
+struct client		 *cfg_client;
 static char		 *cfg_file;
 int			  cfg_finished;
 static char		**cfg_causes;
@@ -95,7 +96,7 @@ start_cfg(void)
 	 * command queue is currently empty and our callback will be at the
 	 * front - we need to get in before MSG_COMMAND.
 	 */
-	c = TAILQ_FIRST(&clients);
+	cfg_client = c = TAILQ_FIRST(&clients);
 	if (c != NULL) {
 		cfg_item = cmdq_get_callback(cfg_client_done, NULL);
 		cmdq_append(c, cfg_item);

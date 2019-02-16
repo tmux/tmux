@@ -1982,6 +1982,8 @@ server_client_get_cwd(struct client *c, struct session *s)
 {
 	const char	*home;
 
+	if (!cfg_finished && cfg_client != NULL)
+		return (cfg_client->cwd);
 	if (c != NULL && c->session == NULL && c->cwd != NULL)
 		return (c->cwd);
 	if (s != NULL && s->cwd != NULL)
