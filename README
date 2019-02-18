@@ -47,6 +47,10 @@ And a bash(1) completion file at:
 
 	https://github.com/imomaliev/tmux-bash-completion
 
+Plugins are available at:
+
+	https://github.com/tmux-plugins
+
 For debugging, running tmux with -v or -vv will generate server and client log
 files in the current directory.
 
