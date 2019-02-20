@@ -45,8 +45,8 @@ static const char *status_prompt_up_history(u_int *);
 static const char *status_prompt_down_history(u_int *);
 static void	 status_prompt_add_history(const char *);
 
-static const char **status_prompt_complete_list(u_int *, const char *);
-static char	*status_prompt_complete_prefix(const char **, u_int);
+static char    **status_prompt_complete_list(u_int *, const char *);
+static char	*status_prompt_complete_prefix(char **, u_int);
 static char	*status_prompt_complete(struct session *, const char *);
 
 /* Status prompt history. */
@@ -1479,12 +1479,16 @@ status_prompt_add_history(const char *line)
 }
 
 /* Build completion list. */
-static const char **
+char **
 status_prompt_complete_list(u_int *size, const char *s)
 {
-	const char				**list = NULL, **layout;
+	char					**list = NULL;
+	const char				**layout, *value, *cp;
 	const struct cmd_entry			**cmdent;
 	const struct options_table_entry	 *oe;
+	u_int					  items, idx;
+	size_t					  slen = strlen(s), valuelen;
+	struct options_entry			 *o;
 	const char				 *layouts[] = {
 		"even-horizontal", "even-vertical", "main-horizontal",
 		"main-vertical", "tiled", NULL
@@ -1492,29 +1496,44 @@ status_prompt_complete_list(u_int *size, const char *s)
 
 	*size = 0;
 	for (cmdent = cmd_table; *cmdent != NULL; cmdent++) {
-		if (strncmp((*cmdent)->name, s, strlen(s)) == 0) {
+		if (strncmp((*cmdent)->name, s, slen) == 0) {
 			list = xreallocarray(list, (*size) + 1, sizeof *list);
-			list[(*size)++] = (*cmdent)->name;
+			list[(*size)++] = xstrdup((*cmdent)->name);
 		}
 	}
 	for (oe = options_table; oe->name != NULL; oe++) {
-		if (strncmp(oe->name, s, strlen(s)) == 0) {
+		if (strncmp(oe->name, s, slen) == 0) {
 			list = xreallocarray(list, (*size) + 1, sizeof *list);
-			list[(*size)++] = oe->name;
+			list[(*size)++] = xstrdup(oe->name);
 		}
 	}
 	for (layout = layouts; *layout != NULL; layout++) {
-		if (strncmp(*layout, s, strlen(s)) == 0) {
+		if (strncmp(*layout, s, slen) == 0) {
 			list = xreallocarray(list, (*size) + 1, sizeof *list);
-			list[(*size)++] = *layout;
+			list[(*size)++] = xstrdup(*layout);
 		}
 	}
+	o = options_get_only(global_options, "command-alias");
+	if (o != NULL && options_array_size(o, &items) != -1) {
+		for (idx = 0; idx < items; idx++) {
+			value = options_array_get(o, idx);
+			if (value == NULL || (cp = strchr(value, '=')) == NULL)
+				continue;
+			valuelen = cp - value;
+			if (slen > valuelen || strncmp(value, s, slen) != 0)
+				continue;
+			list = xreallocarray(list, (*size) + 1, sizeof *list);
+			list[(*size)++] = xstrndup(value, valuelen);
+		}
+	}
+	for (idx = 0; idx < (*size); idx++)
+		log_debug("complete %u: %s", idx, list[idx]);
 	return (list);
 }
 
 /* Find longest prefix. */
 static char *
-status_prompt_complete_prefix(const char **list, u_int size)
+status_prompt_complete_prefix(char **list, u_int size)
 {
 	char	 *out;
 	u_int	  i;
@@ -1537,7 +1556,8 @@ status_prompt_complete_prefix(const char **list, u_int size)
 static char *
 status_prompt_complete(struct session *session, const char *s)
 {
-	const char	**list = NULL, *colon;
+	char		**list = NULL;
+	const char	 *colon;
 	u_int		  size = 0, i;
 	struct session	 *s_loop;
 	struct winlink	 *wl;
@@ -1556,6 +1576,8 @@ status_prompt_complete(struct session *session, const char *s)
 			xasprintf(&out, "%s ", list[0]);
 		else
 			out = status_prompt_complete_prefix(list, size);
+		for (i = 0; i < size; i++)
+			free(list[i]);
 		free(list);
 		return (out);
 	}
