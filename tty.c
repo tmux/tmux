@@ -807,6 +807,9 @@ tty_update_client_offset(struct client *c)
 {
 	u_int	ox, oy, sx, sy;
 
+	if (~c->flags & CLIENT_TERMINAL)
+		return;
+
 	c->tty.oflag = tty_window_offset1(&c->tty, &ox, &oy, &sx, &sy);
 	if (ox == c->tty.oox &&
 	    oy == c->tty.ooy &&
