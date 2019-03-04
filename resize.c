@@ -188,7 +188,7 @@ recalculate_sizes(void)
 		type = options_get_number(w->options, "window-size");
 		if (type == WINDOW_SIZE_MANUAL)
 			continue;
-		current = !options_get_number(w->options, "aggressive-resize");
+		current = options_get_number(w->options, "aggressive-resize");
 
 		changed = 1;
 		if (type == WINDOW_SIZE_LARGEST) {
