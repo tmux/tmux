@@ -31,10 +31,11 @@ static void	window_copy_command(struct window_pane *, struct client *,
 static struct screen *window_copy_init(struct window_pane *,
 		    struct cmd_find_state *, struct args *);
 static void	window_copy_free(struct window_pane *);
+static void	window_copy_resize(struct window_pane *, u_int, u_int);
+static void	window_copy_formats(struct window_pane *, struct format_tree *);
 static int	window_copy_pagedown(struct window_pane *, int, int);
 static void	window_copy_next_paragraph(struct window_pane *);
 static void	window_copy_previous_paragraph(struct window_pane *);
-static void	window_copy_resize(struct window_pane *, u_int, u_int);
 
 static void	window_copy_redraw_selection(struct window_pane *, u_int);
 static void	window_copy_redraw_lines(struct window_pane *, u_int, u_int);
@@ -113,6 +114,7 @@ const struct window_mode window_copy_mode = {
 	.resize = window_copy_resize,
 	.key_table = window_copy_key_table,
 	.command = window_copy_command,
+	.formats = window_copy_formats,
 };
 
 enum {
@@ -261,6 +263,12 @@ window_copy_init_for_output(struct window_pane *wp)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 
+	if (wp->mode == &window_copy_mode && data->backing != &wp->base)
+		return;
+	window_pane_reset_mode(wp);
+	window_pane_set_mode(wp, &window_copy_mode, NULL, NULL);
+
+	data = wp->modedata;
 	data->backing = xmalloc(sizeof *data->backing);
 	screen_init(data->backing, screen_size_x(&wp->base),
 	    screen_size_y(&wp->base), UINT_MAX);
@@ -470,6 +478,16 @@ window_copy_next_paragraph(struct window_pane *wp)
 
 	ox = window_copy_find_length(wp, oy);
 	window_copy_scroll_to(wp, ox, oy);
+}
+
+static void
+window_copy_formats(struct window_pane *wp, struct format_tree *ft)
+{
+	struct window_copy_mode_data	*data = wp->modedata;
+
+	format_add(ft, "selection_present", "%d", data->screen.sel != NULL);
+	format_add(ft, "scroll_position", "%d", data->oy);
+	format_add(ft, "rectangle_toggle", "%d", data->rectflag);
 }
 
 static void
@@ -2445,19 +2463,6 @@ window_copy_scroll_down(struct window_pane *wp, u_int ny)
 		window_copy_write_line(wp, &ctx, 1);
 	screen_write_cursormove(&ctx, data->cx, data->cy);
 	screen_write_stop(&ctx);
-}
-
-void
-window_copy_add_formats(struct window_pane *wp, struct format_tree *ft)
-{
-	struct window_copy_mode_data	*data = wp->modedata;
-
-	if (wp->mode != &window_copy_mode)
-		return;
-
-	format_add(ft, "selection_present", "%d", data->screen.sel != NULL);
-	format_add(ft, "scroll_position", "%d", data->oy);
-	format_add(ft, "rectangle_toggle", "%d", data->rectflag);
 }
 
 static void
