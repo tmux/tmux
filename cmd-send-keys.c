@@ -58,19 +58,20 @@ const struct cmd_entry cmd_send_prefix_entry = {
 static void
 cmd_send_keys_inject(struct client *c, struct cmdq_item *item, key_code key)
 {
-	struct window_pane	*wp = item->target.wp;
-	struct session		*s = item->target.s;
-	struct winlink		*wl = item->target.wl;
-	struct key_table	*table;
-	struct key_binding	*bd;
+	struct window_pane		*wp = item->target.wp;
+	struct session			*s = item->target.s;
+	struct winlink			*wl = item->target.wl;
+	struct window_mode_entry	*wme = wp->mode;
+	struct key_table		*table;
+	struct key_binding		*bd;
 
-	if (wp->mode == NULL || wp->mode->key_table == NULL) {
+	if (wme == NULL || wme->mode->key_table == NULL) {
 		if (options_get_number(wp->window->options, "xterm-keys"))
 			key |= KEYC_XTERM;
 		window_pane_key(wp, NULL, s, wl, key, NULL);
 		return;
 	}
-	table = key_bindings_get_table(wp->mode->key_table(wp), 1);
+	table = key_bindings_get_table(wme->mode->key_table(wme), 1);
 
 	bd = key_bindings_get(table, key & ~KEYC_XTERM);
 	if (bd != NULL) {
@@ -83,18 +84,19 @@ cmd_send_keys_inject(struct client *c, struct cmdq_item *item, key_code key)
 static enum cmd_retval
 cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
-	struct client		*c = cmd_find_client(item, NULL, 1);
-	struct window_pane	*wp = item->target.wp;
-	struct session		*s = item->target.s;
-	struct winlink		*wl = item->target.wl;
-	struct mouse_event	*m = &item->shared->mouse;
-	struct utf8_data	*ud, *uc;
-	wchar_t			 wc;
-	int			 i, literal;
-	key_code		 key;
-	u_int			 np = 1;
-	char			*cause = NULL;
+	struct args			*args = self->args;
+	struct client			*c = cmd_find_client(item, NULL, 1);
+	struct window_pane		*wp = item->target.wp;
+	struct session			*s = item->target.s;
+	struct winlink			*wl = item->target.wl;
+	struct mouse_event		*m = &item->shared->mouse;
+	struct window_mode_entry	*wme = wp->mode;
+	struct utf8_data		*ud, *uc;
+	wchar_t				 wc;
+	int				 i, literal;
+	key_code			 key;
+	u_int				 np = 1;
+	char				*cause = NULL;
 
 	if (args_has(args, 'N')) {
 		np = args_strtonum(args, 'N', 1, UINT_MAX, &cause);
@@ -103,19 +105,18 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
-		if (args_has(args, 'X') || args->argc == 0)
-			wp->modeprefix = np;
+		if (wme != NULL && (args_has(args, 'X') || args->argc == 0))
+			wme->prefix = np;
 	}
 
 	if (args_has(args, 'X')) {
-		if (wp->mode == NULL || wp->mode->command == NULL) {
+		if (wme == NULL || wme->mode->command == NULL) {
 			cmdq_error(item, "not in a mode");
 			return (CMD_RETURN_ERROR);
 		}
 		if (!m->valid)
-			wp->mode->command(wp, c, s, wl, args, NULL);
-		else
-			wp->mode->command(wp, c, s, wl, args, m);
+			m = NULL;
+		wme->mode->command(wme, c, s, wl, args, m);
 		return (CMD_RETURN_NORMAL);
 	}
 

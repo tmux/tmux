@@ -24,11 +24,12 @@
 
 #include "tmux.h"
 
-static struct screen	*window_tree_init(struct window_pane *,
+static struct screen	*window_tree_init(struct window_mode_entry *,
 			     struct cmd_find_state *, struct args *);
-static void		 window_tree_free(struct window_pane *);
-static void		 window_tree_resize(struct window_pane *, u_int, u_int);
-static void		 window_tree_key(struct window_pane *,
+static void		 window_tree_free(struct window_mode_entry *);
+static void		 window_tree_resize(struct window_mode_entry *, u_int,
+			     u_int);
+static void		 window_tree_key(struct window_mode_entry *,
 			     struct client *, struct session *,
 			     struct winlink *, key_code, struct mouse_event *);
 
@@ -810,13 +811,14 @@ window_tree_search(__unused void *modedata, void *itemdata, const char *ss)
 }
 
 static struct screen *
-window_tree_init(struct window_pane *wp, struct cmd_find_state *fs,
+window_tree_init(struct window_mode_entry *wme, struct cmd_find_state *fs,
     struct args *args)
 {
+	struct window_pane		*wp = wme->wp;
 	struct window_tree_modedata	*data;
 	struct screen			*s;
 
-	wp->modedata = data = xcalloc(1, sizeof *data);
+	wme->data = data = xcalloc(1, sizeof *data);
 
 	if (args_has(args, 's'))
 		data->type = WINDOW_TREE_SESSION;
@@ -871,9 +873,9 @@ window_tree_destroy(struct window_tree_modedata *data)
 }
 
 static void
-window_tree_free(struct window_pane *wp)
+window_tree_free(struct window_mode_entry *wme)
 {
-	struct window_tree_modedata *data = wp->modedata;
+	struct window_tree_modedata *data = wme->data;
 
 	if (data == NULL)
 		return;
@@ -884,9 +886,9 @@ window_tree_free(struct window_pane *wp)
 }
 
 static void
-window_tree_resize(struct window_pane *wp, u_int sx, u_int sy)
+window_tree_resize(struct window_mode_entry *wme, u_int sx, u_int sy)
 {
-	struct window_tree_modedata	*data = wp->modedata;
+	struct window_tree_modedata	*data = wme->data;
 
 	mode_tree_resize(data->data, sx, sy);
 }
@@ -1119,11 +1121,12 @@ window_tree_mouse(struct window_tree_modedata *data, key_code key, u_int x,
 }
 
 static void
-window_tree_key(struct window_pane *wp, struct client *c,
+window_tree_key(struct window_mode_entry *wme, struct client *c,
     __unused struct session *s, __unused struct winlink *wl, key_code key,
     struct mouse_event *m)
 {
-	struct window_tree_modedata	*data = wp->modedata;
+	struct window_pane		*wp = wme->wp;
+	struct window_tree_modedata	*data = wme->data;
 	struct window_tree_itemdata	*item, *new_item;
 	char				*name, *prompt = NULL;
 	struct cmd_find_state		 fs;

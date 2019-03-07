@@ -1551,7 +1551,7 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 
 	format_add(ft, "pane_in_mode", "%d", wp->screen != &wp->base);
 	if (wp->mode != NULL)
-		format_add(ft, "pane_mode", "%s", wp->mode->name);
+		format_add(ft, "pane_mode", "%s", wp->mode->mode->name);
 
 	format_add(ft, "pane_synchronized", "%d",
 	    !!options_get_number(w->options, "synchronize-panes"));
@@ -1569,8 +1569,8 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 	format_add(ft, "scroll_region_upper", "%u", wp->base.rupper);
 	format_add(ft, "scroll_region_lower", "%u", wp->base.rlower);
 
-	if (wp->mode != NULL && wp->mode->formats != NULL)
-		wp->mode->formats(wp, ft);
+	if (wp->mode != NULL && wp->mode->mode->formats != NULL)
+		wp->mode->mode->formats(wp->mode, ft);
 
 	format_add(ft, "alternate_on", "%d", wp->saved_grid ? 1 : 0);
 	format_add(ft, "alternate_saved_x", "%u", wp->saved_cx);

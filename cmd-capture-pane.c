@@ -199,7 +199,7 @@ cmd_capture_pane_exec(struct cmd *self, struct cmdq_item *item)
 	size_t			 len;
 
 	if (self->entry == &cmd_clear_history_entry) {
-		if (wp->mode == &window_copy_mode)
+		if (wp->mode != NULL && wp->mode->mode == &window_copy_mode)
 			window_pane_reset_mode(wp);
 		grid_clear_history(wp->base.grid);
 		return (CMD_RETURN_NORMAL);

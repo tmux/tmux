@@ -25,12 +25,12 @@
 
 #include "tmux.h"
 
-static struct screen	*window_client_init(struct window_pane *,
+static struct screen	*window_client_init(struct window_mode_entry *,
 			     struct cmd_find_state *, struct args *);
-static void		 window_client_free(struct window_pane *);
-static void		 window_client_resize(struct window_pane *, u_int,
+static void		 window_client_free(struct window_mode_entry *);
+static void		 window_client_resize(struct window_mode_entry *, u_int,
 			     u_int);
-static void		 window_client_key(struct window_pane *,
+static void		 window_client_key(struct window_mode_entry *,
 			     struct client *, struct session *,
 			     struct winlink *, key_code, struct mouse_event *);
 
@@ -236,13 +236,14 @@ window_client_draw(__unused void *modedata, void *itemdata,
 }
 
 static struct screen *
-window_client_init(struct window_pane *wp, __unused struct cmd_find_state *fs,
-    struct args *args)
+window_client_init(struct window_mode_entry *wme,
+    __unused struct cmd_find_state *fs, struct args *args)
 {
+	struct window_pane		*wp = wme->wp;
 	struct window_client_modedata	*data;
 	struct screen			*s;
 
-	wp->modedata = data = xcalloc(1, sizeof *data);
+	wme->data = data = xcalloc(1, sizeof *data);
 
 	if (args == NULL || !args_has(args, 'F'))
 		data->format = xstrdup(WINDOW_CLIENT_DEFAULT_FORMAT);
@@ -265,9 +266,9 @@ window_client_init(struct window_pane *wp, __unused struct cmd_find_state *fs,
 }
 
 static void
-window_client_free(struct window_pane *wp)
+window_client_free(struct window_mode_entry *wme)
 {
-	struct window_client_modedata	*data = wp->modedata;
+	struct window_client_modedata	*data = wme->data;
 	u_int				 i;
 
 	if (data == NULL)
@@ -286,9 +287,9 @@ window_client_free(struct window_pane *wp)
 }
 
 static void
-window_client_resize(struct window_pane *wp, u_int sx, u_int sy)
+window_client_resize(struct window_mode_entry *wme, u_int sx, u_int sy)
 {
-	struct window_client_modedata	*data = wp->modedata;
+	struct window_client_modedata	*data = wme->data;
 
 	mode_tree_resize(data->data, sx, sy);
 }
@@ -311,11 +312,12 @@ window_client_do_detach(void* modedata, void *itemdata,
 }
 
 static void
-window_client_key(struct window_pane *wp, struct client *c,
+window_client_key(struct window_mode_entry *wme, struct client *c,
     __unused struct session *s, __unused struct winlink *wl, key_code key,
     struct mouse_event *m)
 {
-	struct window_client_modedata	*data = wp->modedata;
+	struct window_pane		*wp = wme->wp;
+	struct window_client_modedata	*data = wme->data;
 	struct mode_tree_data		*mtd = data->data;
 	struct window_client_itemdata	*item;
 	int				 finished;

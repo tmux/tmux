@@ -926,6 +926,7 @@ server_client_handle_key(struct client *c, key_code key)
 	struct window_pane	*wp;
 	struct timeval		 tv;
 	struct key_table	*table, *first;
+	const char		*tablename;
 	struct key_binding	*bd;
 	int			 xtimeout, flags;
 	struct cmd_find_state	 fs;
@@ -1007,8 +1008,10 @@ server_client_handle_key(struct client *c, key_code key)
 	if (server_client_is_default_key_table(c, c->keytable) &&
 	    wp != NULL &&
 	    wp->mode != NULL &&
-	    wp->mode->key_table != NULL)
-		table = key_bindings_get_table(wp->mode->key_table(wp), 1);
+	    wp->mode->mode->key_table != NULL) {
+		tablename = wp->mode->mode->key_table(wp->mode);
+		table = key_bindings_get_table(tablename, 1);
+	}
 	else
 		table = c->keytable;
 	first = table;

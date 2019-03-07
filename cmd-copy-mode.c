@@ -74,18 +74,18 @@ cmd_copy_mode_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 	}
 
-	if (wp->mode != &window_copy_mode) {
+	if (wp->mode == NULL || wp->mode->mode != &window_copy_mode) {
 		flag = window_pane_set_mode(wp, &window_copy_mode, NULL, NULL);
 		if (flag != 0)
 			return (CMD_RETURN_NORMAL);
 		window_copy_init_from_pane(wp, args_has(self->args, 'e'));
 	}
 	if (args_has(args, 'M')) {
-		if (wp->mode != NULL && wp->mode != &window_copy_mode)
+		if (wp->mode != NULL && wp->mode->mode != &window_copy_mode)
 			return (CMD_RETURN_NORMAL);
 		window_copy_start_drag(c, &shared->mouse);
 	}
-	if (wp->mode == &window_copy_mode && args_has(self->args, 'u'))
+	if (args_has(self->args, 'u'))
 		window_copy_pageup(wp, 0);
 
 	return (CMD_RETURN_NORMAL);

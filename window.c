@@ -809,7 +809,6 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	wp->event = NULL;
 
 	wp->mode = NULL;
-	wp->modeprefix = 1;
 
 	wp->layout_cell = NULL;
 
@@ -1067,8 +1066,8 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 	wp->sy = sy;
 
 	screen_resize(&wp->base, sx, sy, wp->saved_grid == NULL);
-	if (wp->mode != NULL)
-		wp->mode->resize(wp, sx, sy);
+	if (wp->mode != NULL && wp->mode->mode->resize != NULL)
+		wp->mode->mode->resize(wp->mode, sx, sy);
 
 	wp->flags |= PANE_RESIZE;
 }
@@ -1235,13 +1234,17 @@ window_pane_set_mode(struct window_pane *wp, const struct window_mode *mode,
 
 	if (wp->mode != NULL)
 		return (1);
-	wp->mode = mode;
+
+	wp->mode = xcalloc(1, sizeof *wp->mode);
+	wp->mode->wp = wp;
+	wp->mode->mode = mode;
+	wp->mode->prefix = 1;
 
 	wp->modelast = time(NULL);
 	evtimer_set(&wp->modetimer, window_pane_mode_timer, wp);
 	evtimer_add(&wp->modetimer, &tv);
 
-	if ((s = wp->mode->init(wp, fs, args)) != NULL)
+	if ((s = wp->mode->mode->init(wp->mode, fs, args)) != NULL)
 		wp->screen = s;
 	wp->flags |= (PANE_REDRAW|PANE_CHANGED);
 
@@ -1258,9 +1261,9 @@ window_pane_reset_mode(struct window_pane *wp)
 
 	evtimer_del(&wp->modetimer);
 
-	wp->mode->free(wp);
+	wp->mode->mode->free(wp->mode);
+	free(wp->mode);
 	wp->mode = NULL;
-	wp->modeprefix = 1;
 
 	wp->screen = &wp->base;
 	wp->flags |= (PANE_REDRAW|PANE_CHANGED);
@@ -1273,15 +1276,16 @@ void
 window_pane_key(struct window_pane *wp, struct client *c, struct session *s,
     struct winlink *wl, key_code key, struct mouse_event *m)
 {
-	struct window_pane	*wp2;
+	struct window_mode_entry	*wme = wp->mode;
+	struct window_pane		*wp2;
 
 	if (KEYC_IS_MOUSE(key) && m == NULL)
 		return;
 
-	if (wp->mode != NULL) {
+	if (wme != NULL) {
 		wp->modelast = time(NULL);
-		if (wp->mode->key != NULL)
-			wp->mode->key(wp, c, s, wl, (key & ~KEYC_XTERM), m);
+		if (wme->mode->key != NULL)
+			wme->mode->key(wme, c, s, wl, (key & ~KEYC_XTERM), m);
 		return;
 	}
 
