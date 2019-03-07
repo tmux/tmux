@@ -263,6 +263,12 @@ window_copy_init_for_output(struct window_pane *wp)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 
+	if (wp->mode == &window_copy_mode && data->backing != &wp->base)
+		return;
+	window_pane_reset_mode(wp);
+	window_pane_set_mode(wp, &window_copy_mode, NULL, NULL);
+
+	data = wp->modedata;
 	data->backing = xmalloc(sizeof *data->backing);
 	screen_init(data->backing, screen_size_x(&wp->base),
 	    screen_size_y(&wp->base), UINT_MAX);
