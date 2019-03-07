@@ -24,16 +24,16 @@
 
 #include "tmux.h"
 
-static struct screen *window_clock_init(struct window_pane *,
+static struct screen *window_clock_init(struct window_mode_entry *,
 		    struct cmd_find_state *, struct args *);
-static void	window_clock_free(struct window_pane *);
-static void	window_clock_resize(struct window_pane *, u_int, u_int);
-static void	window_clock_key(struct window_pane *, struct client *,
+static void	window_clock_free(struct window_mode_entry *);
+static void	window_clock_resize(struct window_mode_entry *, u_int, u_int);
+static void	window_clock_key(struct window_mode_entry *, struct client *,
 		     struct session *, struct winlink *, key_code,
 		     struct mouse_event *);
 
 static void	window_clock_timer_callback(int, short, void *);
-static void	window_clock_draw_screen(struct window_pane *);
+static void	window_clock_draw_screen(struct window_mode_entry *);
 
 const struct window_mode window_clock_mode = {
 	.name = "clock-mode",
@@ -126,8 +126,9 @@ const char window_clock_table[14][5][5] = {
 static void
 window_clock_timer_callback(__unused int fd, __unused short events, void *arg)
 {
-	struct window_pane		*wp = arg;
-	struct window_clock_mode_data	*data = wp->modedata;
+	struct window_mode_entry	*wme = arg;
+	struct window_pane		*wp = wme->wp;
+	struct window_clock_mode_data	*data = wme->data;
 	struct tm			 now, then;
 	time_t				 t;
 	struct timeval			 tv = { .tv_sec = 1 };
@@ -142,37 +143,38 @@ window_clock_timer_callback(__unused int fd, __unused short events, void *arg)
 		return;
 	data->tim = t;
 
-	window_clock_draw_screen(wp);
+	window_clock_draw_screen(wme);
 	server_redraw_window(wp->window);
 }
 
 static struct screen *
-window_clock_init(struct window_pane *wp, __unused struct cmd_find_state *fs,
-    __unused struct args *args)
+window_clock_init(struct window_mode_entry *wme,
+    __unused struct cmd_find_state *fs, __unused struct args *args)
 {
+	struct window_pane		*wp = wme->wp;
 	struct window_clock_mode_data	*data;
 	struct screen			*s;
 	struct timeval			 tv = { .tv_sec = 1 };
 
-	wp->modedata = data = xmalloc(sizeof *data);
+	wme->data = data = xmalloc(sizeof *data);
 	data->tim = time(NULL);
 
-	evtimer_set(&data->timer, window_clock_timer_callback, wp);
+	evtimer_set(&data->timer, window_clock_timer_callback, wme);
 	evtimer_add(&data->timer, &tv);
 
 	s = &data->screen;
 	screen_init(s, screen_size_x(&wp->base), screen_size_y(&wp->base), 0);
 	s->mode &= ~MODE_CURSOR;
 
-	window_clock_draw_screen(wp);
+	window_clock_draw_screen(wme);
 
 	return (s);
 }
 
 static void
-window_clock_free(struct window_pane *wp)
+window_clock_free(struct window_mode_entry *wme)
 {
-	struct window_clock_mode_data	*data = wp->modedata;
+	struct window_clock_mode_data	*data = wme->data;
 
 	evtimer_del(&data->timer);
 	screen_free(&data->screen);
@@ -180,27 +182,28 @@ window_clock_free(struct window_pane *wp)
 }
 
 static void
-window_clock_resize(struct window_pane *wp, u_int sx, u_int sy)
+window_clock_resize(struct window_mode_entry *wme, u_int sx, u_int sy)
 {
-	struct window_clock_mode_data	*data = wp->modedata;
+	struct window_clock_mode_data	*data = wme->data;
 	struct screen			*s = &data->screen;
 
 	screen_resize(s, sx, sy, 0);
-	window_clock_draw_screen(wp);
+	window_clock_draw_screen(wme);
 }
 
 static void
-window_clock_key(struct window_pane *wp, __unused struct client *c,
+window_clock_key(struct window_mode_entry *wme, __unused struct client *c,
     __unused struct session *s, __unused struct winlink *wl,
     __unused key_code key, __unused struct mouse_event *m)
 {
-	window_pane_reset_mode(wp);
+	window_pane_reset_mode(wme->wp);
 }
 
 static void
-window_clock_draw_screen(struct window_pane *wp)
+window_clock_draw_screen(struct window_mode_entry *wme)
 {
-	struct window_clock_mode_data	*data = wp->modedata;
+	struct window_pane		*wp = wme->wp;
+	struct window_clock_mode_data	*data = wme->data;
 	struct screen_write_ctx	 	 ctx;
 	int				 colour, style;
 	struct screen			*s = &data->screen;
