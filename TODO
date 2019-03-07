@@ -119,6 +119,7 @@
           new-session (issue 1498)
 	* multiple column panes (issue 1503)
 	* stack of modes rather than first one sticking (issue 1542)
+	* support for ZERO WIDTH JOINER U+200D
 
 - hooks
 	* more hooks for various things
