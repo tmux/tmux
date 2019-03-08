@@ -404,10 +404,10 @@ cmdq_guard(struct cmdq_item *item, const char *guard, int flags)
 void
 cmdq_print(struct cmdq_item *item, const char *fmt, ...)
 {
-	struct client	*c = item->client;
-	struct window	*w;
-	va_list		 ap;
-	char		*tmp, *msg;
+	struct client		*c = item->client;
+	struct window_pane	*wp;
+	va_list			 ap;
+	char			*tmp, *msg;
 
 	va_start(ap, fmt);
 
@@ -425,9 +425,12 @@ cmdq_print(struct cmdq_item *item, const char *fmt, ...)
 		evbuffer_add(c->stdout_data, "\n", 1);
 		server_client_push_stdout(c);
 	} else {
-		w = c->session->curw->window;
-		window_copy_init_for_output(w->active);
-		window_copy_vadd(w->active, fmt, ap);
+		wp = c->session->curw->window->active;
+		if (wp->mode == NULL || wp->mode->mode != &window_view_mode) {
+			window_pane_reset_mode(wp);
+			window_pane_set_mode(wp, &window_view_mode, NULL, NULL);
+		}
+		window_copy_vadd(wp, fmt, ap);
 	}
 
 	va_end(ap);

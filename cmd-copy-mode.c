@@ -75,10 +75,9 @@ cmd_copy_mode_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (wp->mode == NULL || wp->mode->mode != &window_copy_mode) {
-		flag = window_pane_set_mode(wp, &window_copy_mode, NULL, NULL);
+		flag = window_pane_set_mode(wp, &window_copy_mode, NULL, args);
 		if (flag != 0)
 			return (CMD_RETURN_NORMAL);
-		window_copy_init_from_pane(wp, args_has(self->args, 'e'));
 	}
 	if (args_has(args, 'M')) {
 		if (wp->mode != NULL && wp->mode->mode != &window_copy_mode)

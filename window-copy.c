@@ -30,6 +30,8 @@ static void	window_copy_command(struct window_mode_entry *, struct client *,
 		    struct mouse_event *);
 static struct screen *window_copy_init(struct window_mode_entry *,
 		    struct cmd_find_state *, struct args *);
+static struct screen *window_copy_view_init(struct window_mode_entry *,
+		    struct cmd_find_state *, struct args *);
 static void	window_copy_free(struct window_mode_entry *);
 static void	window_copy_resize(struct window_mode_entry *, u_int, u_int);
 static void	window_copy_formats(struct window_mode_entry *,
@@ -125,6 +127,17 @@ const struct window_mode window_copy_mode = {
 	.formats = window_copy_formats,
 };
 
+const struct window_mode window_view_mode = {
+	.name = "view-mode",
+
+	.init = window_copy_view_init,
+	.free = window_copy_free,
+	.resize = window_copy_resize,
+	.key_table = window_copy_key_table,
+	.command = window_copy_command,
+	.formats = window_copy_formats,
+};
+
 enum {
 	WINDOW_COPY_OFF,
 	WINDOW_COPY_SEARCHUP,
@@ -203,13 +216,12 @@ struct window_copy_mode_data {
 	char		 jumpchar;
 };
 
-static struct screen *
-window_copy_init(struct window_mode_entry *wme,
-    __unused struct cmd_find_state *fs, __unused struct args *args)
+static struct window_copy_mode_data *
+window_copy_common_init(struct window_mode_entry *wme)
 {
 	struct window_pane		*wp = wme->wp;
 	struct window_copy_mode_data	*data;
-	struct screen			*s;
+	struct screen			*base = &wp->base;
 
 	wme->data = data = xcalloc(1, sizeof *data);
 
@@ -226,66 +238,62 @@ window_copy_init(struct window_mode_entry *wme,
 	data->searchmark = NULL;
 	data->searchx = data->searchy = data->searcho = -1;
 
-	if (wp->fd != -1)
-		bufferevent_disable(wp->event, EV_READ|EV_WRITE);
-
 	data->jumptype = WINDOW_COPY_OFF;
 	data->jumpchar = '\0';
 
-	s = &data->screen;
-	screen_init(s, screen_size_x(&wp->base), screen_size_y(&wp->base), 0);
+	screen_init(&data->screen, screen_size_x(base), screen_size_y(base), 0);
 	data->modekeys = options_get_number(wp->window->options, "mode-keys");
 
-	data->backing = NULL;
-
-	return (s);
+	return (data);
 }
 
-void
-window_copy_init_from_pane(struct window_pane *wp, int scroll_exit)
+static struct screen *
+window_copy_init(struct window_mode_entry *wme,
+    __unused struct cmd_find_state *fs, struct args *args)
 {
-	struct window_mode_entry	*wme = wp->mode;
-	struct window_copy_mode_data	*data = wme->data;
-	struct screen			*s = &data->screen;
-	struct screen_write_ctx	 	 ctx;
+	struct window_pane		*wp = wme->wp;
+	struct window_copy_mode_data	*data;
+	struct screen_write_ctx		 ctx;
 	u_int				 i;
 
-	if (wme == NULL || wme->mode != &window_copy_mode)
-		fatalx("not in copy mode");
+	data = window_copy_common_init(wme);
+
+	if (wp->fd != -1)
+		bufferevent_disable(wp->event, EV_READ|EV_WRITE);
 
 	data->backing = &wp->base;
 	data->cx = data->backing->cx;
 	data->cy = data->backing->cy;
-	data->scroll_exit = scroll_exit;
 
-	s->cx = data->cx;
-	s->cy = data->cy;
+	data->scroll_exit = args_has(args, 'e');
 
-	screen_write_start(&ctx, NULL, s);
-	for (i = 0; i < screen_size_y(s); i++)
+	data->screen.cx = data->cx;
+	data->screen.cy = data->cy;
+
+	screen_write_start(&ctx, NULL, &data->screen);
+	for (i = 0; i < screen_size_y(&data->screen); i++)
 		window_copy_write_line(wme, &ctx, i);
 	screen_write_cursormove(&ctx, data->cx, data->cy);
 	screen_write_stop(&ctx);
+
+	return (&data->screen);
 }
 
-void
-window_copy_init_for_output(struct window_pane *wp)
+static struct screen *
+window_copy_view_init(struct window_mode_entry *wme,
+    __unused struct cmd_find_state *fs, __unused struct args *args)
 {
+	struct window_pane		*wp = wme->wp;
 	struct window_copy_mode_data	*data;
+	struct screen			*base = &wp->base;
+	struct screen			*s;
 
-	if (wp->mode != NULL && wp->mode->mode == &window_copy_mode) {
-		data = wp->mode->data;
-		if (data->backing != &wp->base)
-			return;
-	}
-	window_pane_reset_mode(wp);
+	data = window_copy_common_init(wme);
 
-	window_pane_set_mode(wp, &window_copy_mode, NULL, NULL);
-	data = wp->mode->data;
+	data->backing = s = xmalloc(sizeof *data->backing);
+	screen_init(s, screen_size_x(base), screen_size_y(base), UINT_MAX);
 
-	data->backing = xmalloc(sizeof *data->backing);
-	screen_init(data->backing, screen_size_x(&wp->base),
-	    screen_size_y(&wp->base), UINT_MAX);
+	return (&data->screen);
 }
 
 static void
@@ -997,11 +1005,12 @@ window_copy_command(struct window_mode_entry *wme, struct client *c,
 		data->searchx = data->searchy = -1;
 	}
 
+	wme->prefix = 1;
+
 	if (cancel)
 		window_pane_reset_mode(wp);
 	else if (redraw)
 		window_copy_redraw_screen(wme);
-	wme->prefix = 1;
 }
 
 static void
