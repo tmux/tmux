@@ -997,11 +997,12 @@ window_copy_command(struct window_mode_entry *wme, struct client *c,
 		data->searchx = data->searchy = -1;
 	}
 
+	wme->prefix = 1;
+
 	if (cancel)
 		window_pane_reset_mode(wp);
 	else if (redraw)
 		window_copy_redraw_screen(wme);
-	wme->prefix = 1;
 }
 
 static void
