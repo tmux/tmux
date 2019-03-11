@@ -1032,6 +1032,11 @@ screen_write_cursormove(struct screen_write_ctx *ctx, u_int px, u_int py)
 {
 	struct screen	*s = ctx->s;
 
+	if (s->mode & MODE_ORIGIN) {
+		py += s->rupper;
+		py = py > s->rlower ? s->rlower : py;
+	}
+
 	if (px > screen_size_x(s) - 1)
 		px = screen_size_x(s) - 1;
 	if (py > screen_size_y(s) - 1)
