@@ -180,3 +180,10 @@ TODO soonish maybe:
 - Support buffer prefixes, issue 1501.
 - copy-pipe should be synchronous, issue 1517.
 - -E flag to pass environment to new-*, issue 1498.
+- Copy mode searching is slow when there is a big history, issue 1545.
+- Grid "block" stuff - some work done, there is an issue
+  somewhere. Can be used potentially for compression of history (bit
+  silly really though), reflow performance (can reflow blocks on
+  demand). It would possibly be good if history-limit could be global
+  and collected LRU.
+
