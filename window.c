@@ -501,8 +501,8 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 	struct window_pane	*wp;
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-                if (!window_pane_visible(wp))
-                        continue;
+		if (!window_pane_visible(wp))
+			continue;
 		if (x < wp->xoff || x > wp->xoff + wp->sx)
 			continue;
 		if (y < wp->yoff || y > wp->yoff + wp->sy)
