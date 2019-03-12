@@ -1447,7 +1447,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 	case INPUT_CSI_HPA:
 		n = input_get(ictx, 0, 1, 1);
 		if (n != -1)
-			screen_write_cursormove(sctx, n - 1, s->cy);
+			screen_write_cursormove(sctx, n - 1, -1);
 		break;
 	case INPUT_CSI_ICH:
 		n = input_get(ictx, 0, 1, 1);
@@ -1519,7 +1519,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 	case INPUT_CSI_VPA:
 		n = input_get(ictx, 0, 1, 1);
 		if (n != -1)
-			screen_write_cursormove(sctx, s->cx, n - 1);
+			screen_write_cursormove(sctx, -1, n - 1);
 		break;
 	case INPUT_CSI_DECSCUSR:
 		n = input_get(ictx, 0, 0, 0);
