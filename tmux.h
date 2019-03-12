@@ -722,7 +722,10 @@ struct window_mode_entry {
 	const struct window_mode	*mode;
 	void				*data;
 
+	struct screen			*screen;
 	u_int				 prefix;
+
+	TAILQ_ENTRY (window_mode_entry)	 entry;
 };
 
 /* Child window structure. */
@@ -768,6 +771,7 @@ struct window_pane {
 
 	int		 fd;
 	struct bufferevent *event;
+	u_int		 disabled;
 
 	struct event	 resize_timer;
 
@@ -793,7 +797,7 @@ struct window_pane {
 	struct grid	*saved_grid;
 	struct grid_cell saved_cell;
 
-	struct window_mode_entry *mode;
+	TAILQ_HEAD (, window_mode_entry) modes;
 	struct event	 modetimer;
 	time_t		 modelast;
 	char		*searchstr;
@@ -2208,6 +2212,7 @@ int		 window_pane_set_mode(struct window_pane *,
 		     const struct window_mode *, struct cmd_find_state *,
 		     struct args *);
 void		 window_pane_reset_mode(struct window_pane *);
+void		 window_pane_reset_mode_all(struct window_pane *);
 void		 window_pane_key(struct window_pane *, struct client *,
 		     struct session *, struct winlink *, key_code,
 		     struct mouse_event *);

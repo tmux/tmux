@@ -921,18 +921,18 @@ server_client_assume_paste(struct session *s)
 void
 server_client_handle_key(struct client *c, key_code key)
 {
-	struct mouse_event	*m = &c->tty.mouse;
-	struct session		*s = c->session;
-	struct winlink		*wl;
-	struct window		*w;
-	struct window_pane	*wp;
-	struct timeval		 tv;
-	struct key_table	*table, *first;
-	const char		*tablename;
-	struct key_binding	*bd;
-	int			 xtimeout, flags;
-	struct cmd_find_state	 fs;
-	key_code		 key0;
+	struct mouse_event		*m = &c->tty.mouse;
+	struct session			*s = c->session;
+	struct winlink			*wl;
+	struct window			*w;
+	struct window_pane		*wp;
+	struct window_mode_entry	*wme;
+	struct timeval			 tv;
+	struct key_table		*table, *first;
+	struct key_binding		*bd;
+	int				 xtimeout, flags;
+	struct cmd_find_state		 fs;
+	key_code			 key0;
 
 	/* Check the client is good to accept input. */
 	if (s == NULL || (c->flags & (CLIENT_DEAD|CLIENT_SUSPENDED)) != 0)
@@ -1009,11 +1009,9 @@ server_client_handle_key(struct client *c, key_code key)
 	 */
 	if (server_client_is_default_key_table(c, c->keytable) &&
 	    wp != NULL &&
-	    wp->mode != NULL &&
-	    wp->mode->mode->key_table != NULL) {
-		tablename = wp->mode->mode->key_table(wp->mode);
-		table = key_bindings_get_table(tablename, 1);
-	}
+	    (wme = TAILQ_FIRST(&wp->modes)) != NULL &&
+	    wme->mode->key_table != NULL)
+		table = key_bindings_get_table(wme->mode->key_table(wme), 1);
 	else
 		table = c->keytable;
 	first = table;

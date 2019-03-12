@@ -99,7 +99,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmdq_item *item)
 	free(cwd);
 
 	layout_init(w, wp);
-	window_pane_reset_mode(wp);
+	window_pane_reset_mode_all(wp);
 	screen_reinit(&wp->base);
 	input_init(wp);
 	window_set_active_pane(w, wp);

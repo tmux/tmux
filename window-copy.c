@@ -258,7 +258,7 @@ window_copy_init(struct window_mode_entry *wme,
 
 	data = window_copy_common_init(wme);
 
-	if (wp->fd != -1)
+	if (wp->fd != -1 && wp->disabled++ == 0)
 		bufferevent_disable(wp->event, EV_READ|EV_WRITE);
 
 	data->backing = &wp->base;
@@ -302,7 +302,7 @@ window_copy_free(struct window_mode_entry *wme)
 	struct window_pane		*wp = wme->wp;
 	struct window_copy_mode_data	*data = wme->data;
 
-	if (wp->fd != -1)
+	if (wp->fd != -1 && --wp->disabled == 0)
 		bufferevent_enable(wp->event, EV_READ|EV_WRITE);
 
 	free(data->searchmark);
@@ -330,7 +330,7 @@ window_copy_add(struct window_pane *wp, const char *fmt, ...)
 void
 window_copy_vadd(struct window_pane *wp, const char *fmt, va_list ap)
 {
-	struct window_mode_entry	*wme = wp->mode;
+	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
 	struct window_copy_mode_data	*data = wme->data;
 	struct screen			*backing = data->backing;
 	struct screen_write_ctx	 	 back_ctx, ctx;
@@ -377,7 +377,7 @@ window_copy_vadd(struct window_pane *wp, const char *fmt, va_list ap)
 void
 window_copy_pageup(struct window_pane *wp, int half_page)
 {
-	window_copy_pageup1(wp->mode, half_page);
+	window_copy_pageup1(TAILQ_FIRST(&wp->modes), half_page);
 }
 
 static void
@@ -2540,34 +2540,38 @@ window_copy_rectangle_toggle(struct window_mode_entry *wme)
 static void
 window_copy_move_mouse(struct mouse_event *m)
 {
-	struct window_pane	*wp;
-	u_int			 x, y;
+	struct window_pane		*wp;
+	struct window_mode_entry	*wme;
+	u_int				 x, y;
 
 	wp = cmd_mouse_pane(m, NULL, NULL);
-	if (wp == NULL ||
-	    wp->mode == NULL ||
-	    wp->mode->mode != &window_copy_mode)
+	if (wp == NULL)
+		return;
+	wme = TAILQ_FIRST(&wp->modes);
+	if (wme == NULL || wme->mode != &window_copy_mode)
 		return;
 
 	if (cmd_mouse_at(wp, m, &x, &y, 0) != 0)
 		return;
 
-	window_copy_update_cursor(wp->mode, x, y);
+	window_copy_update_cursor(wme, x, y);
 }
 
 void
 window_copy_start_drag(struct client *c, struct mouse_event *m)
 {
-	struct window_pane	*wp;
-	u_int			 x, y;
+	struct window_pane		*wp;
+	struct window_mode_entry	*wme;
+	u_int				 x, y;
 
 	if (c == NULL)
 		return;
 
 	wp = cmd_mouse_pane(m, NULL, NULL);
-	if (wp == NULL ||
-	    wp->mode == NULL ||
-	    wp->mode->mode != &window_copy_mode)
+	if (wp == NULL)
+		return;
+	wme = TAILQ_FIRST(&wp->modes);
+	if (wme == NULL || wme->mode != &window_copy_mode)
 		return;
 
 	if (cmd_mouse_at(wp, m, &x, &y, 1) != 0)
@@ -2576,30 +2580,35 @@ window_copy_start_drag(struct client *c, struct mouse_event *m)
 	c->tty.mouse_drag_update = window_copy_drag_update;
 	c->tty.mouse_drag_release = NULL; /* will fire MouseDragEnd key */
 
-	window_copy_update_cursor(wp->mode, x, y);
-	window_copy_start_selection(wp->mode);
-	window_copy_redraw_screen(wp->mode);
+	window_copy_update_cursor(wme, x, y);
+	window_copy_start_selection(wme);
+	window_copy_redraw_screen(wme);
 }
 
 static void
-window_copy_drag_update(__unused struct client *c, struct mouse_event *m)
+window_copy_drag_update(struct client *c, struct mouse_event *m)
 {
 	struct window_pane		*wp;
+	struct window_mode_entry	*wme;
 	struct window_copy_mode_data	*data;
 	u_int				 x, y, old_cy;
 
-	wp = cmd_mouse_pane(m, NULL, NULL);
-	if (wp == NULL ||
-	    wp->mode == NULL ||
-	    wp->mode->mode != &window_copy_mode)
+	if (c == NULL)
 		return;
-	data = wp->mode->data;
+
+	wp = cmd_mouse_pane(m, NULL, NULL);
+	if (wp == NULL)
+		return;
+	wme = TAILQ_FIRST(&wp->modes);
+	if (wme == NULL || wme->mode != &window_copy_mode)
+		return;
+	data = wme->data;
 
 	if (cmd_mouse_at(wp, m, &x, &y, 0) != 0)
 		return;
 	old_cy = data->cy;
 
-	window_copy_update_cursor(wp->mode, x, y);
-	if (window_copy_update_selection(wp->mode, 1))
-		window_copy_redraw_selection(wp->mode, old_cy);
+	window_copy_update_cursor(wme, x, y);
+	if (window_copy_update_selection(wme, 1))
+		window_copy_redraw_selection(wme, old_cy);
 }

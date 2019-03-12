@@ -61,10 +61,11 @@ cmd_send_keys_inject(struct client *c, struct cmdq_item *item, key_code key)
 	struct window_pane		*wp = item->target.wp;
 	struct session			*s = item->target.s;
 	struct winlink			*wl = item->target.wl;
-	struct window_mode_entry	*wme = wp->mode;
+	struct window_mode_entry	*wme;
 	struct key_table		*table;
 	struct key_binding		*bd;
 
+	wme = TAILQ_FIRST(&wp->modes);
 	if (wme == NULL || wme->mode->key_table == NULL) {
 		if (options_get_number(wp->window->options, "xterm-keys"))
 			key |= KEYC_XTERM;
@@ -90,7 +91,7 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 	struct session			*s = item->target.s;
 	struct winlink			*wl = item->target.wl;
 	struct mouse_event		*m = &item->shared->mouse;
-	struct window_mode_entry	*wme = wp->mode;
+	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
 	struct utf8_data		*ud, *uc;
 	wchar_t				 wc;
 	int				 i, literal;
@@ -105,8 +106,13 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
-		if (wme != NULL && (args_has(args, 'X') || args->argc == 0))
+		if (wme != NULL && (args_has(args, 'X') || args->argc == 0)) {
+			if (wme == NULL || wme->mode->command == NULL) {
+				cmdq_error(item, "not in a mode");
+				return (CMD_RETURN_ERROR);
+			}
 			wme->prefix = np;
+		}
 	}
 
 	if (args_has(args, 'X')) {

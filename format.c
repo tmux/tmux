@@ -617,6 +617,22 @@ format_cb_session_group_list(struct format_tree *ft, struct format_entry *fe)
 	evbuffer_free(buffer);
 }
 
+/* Callback for pane_in_mode. */
+static void
+format_cb_pane_in_mode(struct format_tree *ft, struct format_entry *fe)
+{
+	struct window_pane		*wp = ft->wp;
+	u_int				 n = 0;
+	struct window_mode_entry	*wme;
+
+	if (wp == NULL)
+		return;
+
+	TAILQ_FOREACH(wme, &wp->modes, entry)
+	    n++;
+	xasprintf(&fe->value, "%u", n);
+}
+
 /* Merge a format tree. */
 static void
 format_merge(struct format_tree *ft, struct format_tree *from)
@@ -1495,10 +1511,11 @@ format_defaults_winlink(struct format_tree *ft, struct winlink *wl)
 void
 format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 {
-	struct window	*w = wp->window;
-	struct grid	*gd = wp->base.grid;
-	int  		 status = wp->status;
-	u_int		 idx;
+	struct window			*w = wp->window;
+	struct grid			*gd = wp->base.grid;
+	int  				 status = wp->status;
+	u_int				 idx;
+	struct window_mode_entry	*wme;
 
 	if (ft->w == NULL)
 		ft->w = w;
@@ -1533,9 +1550,13 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 	format_add(ft, "pane_at_right", "%d", wp->xoff + wp->sx == w->sx);
 	format_add(ft, "pane_at_bottom", "%d", wp->yoff + wp->sy == w->sy);
 
-	format_add(ft, "pane_in_mode", "%d", wp->screen != &wp->base);
-	if (wp->mode != NULL)
-		format_add(ft, "pane_mode", "%s", wp->mode->mode->name);
+	wme = TAILQ_FIRST(&wp->modes);
+	if (wme != NULL) {
+		format_add(ft, "pane_mode", "%s", wme->mode->name);
+		if (wme->mode->formats != NULL)
+			wme->mode->formats(wme, ft);
+	}
+	format_add_cb(ft, "pane_in_mode", format_cb_pane_in_mode);
 
 	format_add(ft, "pane_synchronized", "%d",
 	    !!options_get_number(w->options, "synchronize-panes"));
@@ -1551,9 +1572,6 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 	format_add(ft, "cursor_y", "%u", wp->base.cy);
 	format_add(ft, "scroll_region_upper", "%u", wp->base.rupper);
 	format_add(ft, "scroll_region_lower", "%u", wp->base.rlower);
-
-	if (wp->mode != NULL && wp->mode->mode->formats != NULL)
-		wp->mode->mode->formats(wp->mode, ft);
 
 	format_add(ft, "alternate_on", "%d", wp->saved_grid ? 1 : 0);
 	format_add(ft, "alternate_saved_x", "%u", wp->saved_cx);
