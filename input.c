@@ -81,6 +81,7 @@ struct input_ctx {
 	struct input_cell	old_cell;
 	u_int 			old_cx;
 	u_int			old_cy;
+	int			old_mode;
 
 	u_char			interm_buf[4];
 	size_t			interm_len;
@@ -755,6 +756,32 @@ input_reset_cell(struct input_ctx *ictx)
 	ictx->old_cy = 0;
 }
 
+/* Save screen state. */
+static void
+input_save_state(struct input_ctx *ictx)
+{
+	struct screen_write_ctx	*sctx = &ictx->ctx;
+	struct screen		*s = sctx->s;
+
+	memcpy(&ictx->old_cell, &ictx->cell, sizeof ictx->old_cell);
+	ictx->old_cx = s->cx;
+	ictx->old_cy = s->cy;
+	ictx->old_mode = s->mode;
+}
+
+static void
+input_restore_state(struct input_ctx *ictx)
+{
+	struct screen_write_ctx	*sctx = &ictx->ctx;
+
+	memcpy(&ictx->cell, &ictx->old_cell, sizeof ictx->cell);
+	if (ictx->old_mode & MODE_ORIGIN)
+		screen_write_mode_set(sctx, MODE_ORIGIN);
+	else
+		screen_write_mode_clear(sctx, MODE_ORIGIN);
+	screen_write_cursormove(sctx, ictx->old_cx, ictx->old_cy, 0);
+}
+
 /* Initialise input parser. */
 void
 input_init(struct window_pane *wp)
@@ -1222,13 +1249,10 @@ input_esc_dispatch(struct input_ctx *ictx)
 		screen_write_mode_clear(sctx, MODE_KKEYPAD);
 		break;
 	case INPUT_ESC_DECSC:
-		memcpy(&ictx->old_cell, &ictx->cell, sizeof ictx->old_cell);
-		ictx->old_cx = s->cx;
-		ictx->old_cy = s->cy;
+		input_save_state(ictx);
 		break;
 	case INPUT_ESC_DECRC:
-		memcpy(&ictx->cell, &ictx->old_cell, sizeof ictx->cell);
-		screen_write_cursormove(sctx, ictx->old_cx, ictx->old_cy);
+		input_restore_state(ictx);
 		break;
 	case INPUT_ESC_DECALN:
 		screen_write_alignmenttest(sctx);
@@ -1315,7 +1339,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 		n = input_get(ictx, 0, 1, 1);
 		m = input_get(ictx, 1, 1, 1);
 		if (n != -1 && m != -1)
-			screen_write_cursormove(sctx, m - 1, n - 1);
+			screen_write_cursormove(sctx, m - 1, n - 1, 1);
 		break;
 	case INPUT_CSI_WINOPS:
 		input_csi_dispatch_winops(ictx);
@@ -1447,7 +1471,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 	case INPUT_CSI_HPA:
 		n = input_get(ictx, 0, 1, 1);
 		if (n != -1)
-			screen_write_cursormove(sctx, n - 1, -1);
+			screen_write_cursormove(sctx, n - 1, -1, 1);
 		break;
 	case INPUT_CSI_ICH:
 		n = input_get(ictx, 0, 1, 1);
@@ -1472,8 +1496,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 			input_print(ictx);
 		break;
 	case INPUT_CSI_RCP:
-		memcpy(&ictx->cell, &ictx->old_cell, sizeof ictx->cell);
-		screen_write_cursormove(sctx, ictx->old_cx, ictx->old_cy);
+		input_restore_state(ictx);
 		break;
 	case INPUT_CSI_RM:
 		input_csi_dispatch_rm(ictx);
@@ -1482,9 +1505,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 		input_csi_dispatch_rm_private(ictx);
 		break;
 	case INPUT_CSI_SCP:
-		memcpy(&ictx->old_cell, &ictx->cell, sizeof ictx->old_cell);
-		ictx->old_cx = s->cx;
-		ictx->old_cy = s->cy;
+		input_save_state(ictx);
 		break;
 	case INPUT_CSI_SGR:
 		input_csi_dispatch_sgr(ictx);
@@ -1519,7 +1540,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 	case INPUT_CSI_VPA:
 		n = input_get(ictx, 0, 1, 1);
 		if (n != -1)
-			screen_write_cursormove(sctx, -1, n - 1);
+			screen_write_cursormove(sctx, -1, n - 1, 1);
 		break;
 	case INPUT_CSI_DECSCUSR:
 		n = input_get(ictx, 0, 0, 0);
@@ -1572,12 +1593,12 @@ input_csi_dispatch_rm_private(struct input_ctx *ictx)
 			screen_write_mode_clear(sctx, MODE_KCURSOR);
 			break;
 		case 3:		/* DECCOLM */
-			screen_write_cursormove(sctx, 0, 0);
+			screen_write_cursormove(sctx, 0, 0, 1);
 			screen_write_clearscreen(sctx, ictx->cell.cell.bg);
 			break;
 		case 6:		/* DECOM */
 			screen_write_mode_clear(sctx, MODE_ORIGIN);
-			screen_write_cursormove(sctx, 0, 0);
+			screen_write_cursormove(sctx, 0, 0, 1);
 			break;
 		case 7:		/* DECAWM */
 			screen_write_mode_clear(sctx, MODE_WRAP);
@@ -1660,12 +1681,12 @@ input_csi_dispatch_sm_private(struct input_ctx *ictx)
 			screen_write_mode_set(sctx, MODE_KCURSOR);
 			break;
 		case 3:		/* DECCOLM */
-			screen_write_cursormove(sctx, 0, 0);
+			screen_write_cursormove(sctx, 0, 0, 1);
 			screen_write_clearscreen(sctx, ictx->cell.cell.bg);
 			break;
 		case 6:		/* DECOM */
 			screen_write_mode_set(sctx, MODE_ORIGIN);
-			screen_write_cursormove(sctx, 0, 0);
+			screen_write_cursormove(sctx, 0, 0, 1);
 			break;
 		case 7:		/* DECAWM */
 			screen_write_mode_set(sctx, MODE_WRAP);

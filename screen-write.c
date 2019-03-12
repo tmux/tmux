@@ -1034,11 +1034,12 @@ screen_write_clearstartofline(struct screen_write_ctx *ctx, u_int bg)
 
 /* Move cursor to px,py. */
 void
-screen_write_cursormove(struct screen_write_ctx *ctx, int px, int py)
+screen_write_cursormove(struct screen_write_ctx *ctx, int px, int py,
+    int origin)
 {
 	struct screen	*s = ctx->s;
 
-	if (py != -1 && (s->mode & MODE_ORIGIN)) {
+	if (origin && py != -1 && (s->mode & MODE_ORIGIN)) {
 		if ((u_int)py > s->rlower - s->rupper)
 			py = s->rlower;
 		else
