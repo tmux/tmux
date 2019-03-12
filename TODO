@@ -29,7 +29,7 @@
 	* perhaps monitor /all/ panes in the window not just one
 
 - improve mouse support:
-	* bind commands to mouse in different areas? 
+	* bind commands to mouse in different areas?
 	* commands executed when clicking on a pattern (URL)
 
 - warts on current naming:
@@ -143,5 +143,40 @@
 	* rather than centering cursor it might be better if only
 	  moved offset when it gets close to an edge?
 
-* issues that are not too hard to do:
-      1501, 1517, 1498
+----
+
+TODO soonish maybe:
+
+- Horizontal cursor position is incorrect after resize (bug), issue 1323.
+- Multiple status lines:
+
+       1) Extend formats to include some way to loop over every window
+          (or pane or session), perhaps something like
+          #{W:#{window_name} }.  It would need to be able to reach
+          into a window's options in order to allow different windows
+          to have different format, maybe an operator to evaluate an
+          option value as a format, maybe make it so ! on evaluates
+          the result as a format again something like, so end up with
+          something like #{W:#{!window-status-format} }
+
+       2) Some way to include alignment information for part of a format.
+
+       3) Then the entire status line can be drawn with one option,
+          instead of status-left/status-right. But how to stay
+          backwards compatible, even slightly? Can probably keep
+          status-left and right and the default status-format becomes
+          something like (plus some bits for current window):
+
+	  #{L:#{!status-left} #{M:#{W:{!window-status-format}}} #{R:#{!status-right}}
+
+	  Where L = left, M = middle, R = right; W = for each window;
+	  ! = get option value and evaluate as format.
+
+       4) Then status-format can be an array option specifying
+          multiple status lines. Perhaps one option for top and one
+          for bottom.
+
+- Store hooks as options, issue 1619.
+- Support buffer prefixes, issue 1501.
+- copy-pipe should be synchronous, issue 1517.
+- -E flag to pass environment to new-*, issue 1498.
