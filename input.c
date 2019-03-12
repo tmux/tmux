@@ -805,7 +805,7 @@ input_reset(struct window_pane *wp, int clear)
 	input_reset_cell(ictx);
 
 	if (clear) {
-		if (wp->mode == NULL)
+		if (TAILQ_EMPTY(&wp->modes))
 			screen_write_start(&ictx->ctx, wp, &wp->base);
 		else
 			screen_write_start(&ictx->ctx, NULL, &wp->base);
@@ -861,7 +861,7 @@ input_parse(struct window_pane *wp)
 	 * Open the screen. Use NULL wp if there is a mode set as don't want to
 	 * update the tty.
 	 */
-	if (wp->mode == NULL)
+	if (TAILQ_EMPTY(&wp->modes))
 		screen_write_start(&ictx->ctx, wp, &wp->base);
 	else
 		screen_write_start(&ictx->ctx, NULL, &wp->base);

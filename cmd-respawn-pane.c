@@ -67,7 +67,7 @@ cmd_respawn_pane_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_ERROR);
 	}
 
-	window_pane_reset_mode(wp);
+	window_pane_reset_mode_all(wp);
 	screen_reinit(&wp->base);
 	input_init(wp);
 
