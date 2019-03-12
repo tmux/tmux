@@ -238,7 +238,7 @@ window_clock_draw_screen(struct window_mode_entry *wme)
 		if (screen_size_x(s) >= strlen(tim) && screen_size_y(s) != 0) {
 			x = (screen_size_x(s) / 2) - (strlen(tim) / 2);
 			y = screen_size_y(s) / 2;
-			screen_write_cursormove(&ctx, x, y);
+			screen_write_cursormove(&ctx, x, y, 0);
 
 			memcpy(&gc, &grid_default_cell, sizeof gc);
 			gc.flags |= GRID_FLAG_NOPALETTE;
@@ -274,7 +274,7 @@ window_clock_draw_screen(struct window_mode_entry *wme)
 
 		for (j = 0; j < 5; j++) {
 			for (i = 0; i < 5; i++) {
-				screen_write_cursormove(&ctx, x + i, y + j);
+				screen_write_cursormove(&ctx, x + i, y + j, 0);
 				if (window_clock_table[idx][j][i])
 					screen_write_putc(&ctx, &gc, ' ');
 			}

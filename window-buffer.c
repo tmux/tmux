@@ -226,7 +226,7 @@ window_buffer_draw(__unused void *modedata, void *itemdata,
 		line[at] = '\0';
 
 		if (*line != '\0') {
-			screen_write_cursormove(ctx, cx, cy + i);
+			screen_write_cursormove(ctx, cx, cy + i, 0);
 			screen_write_puts(ctx, &grid_default_cell, "%s", line);
 		}
 

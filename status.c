@@ -465,7 +465,7 @@ draw:
 	screen_write_start(&ctx, NULL, &c->status.status);
 
 	/* Draw the left string and arrow. */
-	screen_write_cursormove(&ctx, 0, 0);
+	screen_write_cursormove(&ctx, 0, 0, 0);
 	if (llen != 0)
 		screen_write_cnputs(&ctx, llen, &lgc, "%s", left);
 	if (larrow != 0) {
@@ -477,13 +477,13 @@ draw:
 
 	/* Draw the right string and arrow. */
 	if (rarrow != 0) {
-		screen_write_cursormove(&ctx, c->tty.sx - rlen - 1, 0);
+		screen_write_cursormove(&ctx, c->tty.sx - rlen - 1, 0, 0);
 		memcpy(&gc, &stdgc, sizeof gc);
 		if (rarrow == -1)
 			gc.attr ^= GRID_ATTR_REVERSE;
 		screen_write_putc(&ctx, &gc, '>');
 	} else
-		screen_write_cursormove(&ctx, c->tty.sx - rlen, 0);
+		screen_write_cursormove(&ctx, c->tty.sx - rlen, 0, 0);
 	if (rlen != 0)
 		screen_write_cnputs(&ctx, rlen, &rgc, "%s", right);
 
@@ -507,7 +507,7 @@ draw:
 
 	/* Copy the window list. */
 	c->status.window_list_offset = -wloffset + wlstart;
-	screen_write_cursormove(&ctx, wloffset, 0);
+	screen_write_cursormove(&ctx, wloffset, 0, 0);
 	screen_write_fast_copy(&ctx, &window_list, wlstart, 0, wlwidth, 1);
 	screen_free(&window_list);
 
@@ -677,10 +677,10 @@ status_message_redraw(struct client *c)
 	style_apply(&gc, s->options, "message-style");
 
 	screen_write_start(&ctx, NULL, &c->status.status);
-	screen_write_cursormove(&ctx, 0, 0);
+	screen_write_cursormove(&ctx, 0, 0, 0);
 	for (offset = 0; offset < lines * c->tty.sx; offset++)
 		screen_write_putc(&ctx, &gc, ' ');
-	screen_write_cursormove(&ctx, 0, lines - 1);
+	screen_write_cursormove(&ctx, 0, lines - 1, 0);
 	screen_write_nputs(&ctx, len, &gc, "%s", c->message_string);
 	screen_write_stop(&ctx);
 
@@ -839,12 +839,12 @@ status_prompt_redraw(struct client *c)
 		start = c->tty.sx;
 
 	screen_write_start(&ctx, NULL, &c->status.status);
-	screen_write_cursormove(&ctx, 0, 0);
+	screen_write_cursormove(&ctx, 0, 0, 0);
 	for (offset = 0; offset < lines * c->tty.sx; offset++)
 		screen_write_putc(&ctx, &gc, ' ');
-	screen_write_cursormove(&ctx, 0, 0);
+	screen_write_cursormove(&ctx, 0, 0, 0);
 	screen_write_nputs(&ctx, start, &gc, "%s", c->prompt_string);
-	screen_write_cursormove(&ctx, start, 0);
+	screen_write_cursormove(&ctx, start, 0, 0);
 
 	left = c->tty.sx - start;
 	if (left == 0)
