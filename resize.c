@@ -61,6 +61,18 @@ resize_window(struct window *w, u_int sx, u_int sy)
 	notify_window("window-layout-changed", w);
 }
 
+static int
+ignore_client_size(struct client *c)
+{
+	if (c->session == NULL)
+		return (1);
+	if (c->flags & CLIENT_NOSIZEFLAGS)
+		return (1);
+	if ((c->flags & CLIENT_CONTROL) && (~c->flags & CLIENT_SIZECHANGED))
+		return (1);
+	return (0);
+}
+
 void
 default_window_size(struct session *s, struct window *w, u_int *sx, u_int *sy,
     int type)
@@ -77,9 +89,7 @@ default_window_size(struct session *s, struct window *w, u_int *sx, u_int *sy,
 	if (type == WINDOW_SIZE_LARGEST) {
 		*sx = *sy = 0;
 		TAILQ_FOREACH(c, &clients, entry) {
-			if (c->session == NULL)
-				continue;
-			if (c->flags & CLIENT_NOSIZEFLAGS)
+			if (ignore_client_size(c))
 				continue;
 			if (w != NULL && !session_has(c->session, w))
 				continue;
@@ -99,9 +109,7 @@ default_window_size(struct session *s, struct window *w, u_int *sx, u_int *sy,
 	} else {
 		*sx = *sy = UINT_MAX;
 		TAILQ_FOREACH(c, &clients, entry) {
-			if (c->session == NULL)
-				continue;
-			if (c->flags & CLIENT_NOSIZEFLAGS)
+			if (ignore_client_size(c))
 				continue;
 			if (w != NULL && !session_has(c->session, w))
 				continue;
@@ -146,7 +154,7 @@ recalculate_sizes(void)
 	struct client	*c;
 	struct window	*w;
 	u_int		 sx, sy, cx, cy;
-	int		 flags, type, current, has, changed;
+	int		 type, current, has, changed;
 
 	/*
 	 * Clear attached count and update saved status line information for
@@ -162,21 +170,13 @@ recalculate_sizes(void)
 	 * client.
 	 */
 	TAILQ_FOREACH(c, &clients, entry) {
-		if ((s = c->session) == NULL)
+		if (ignore_client_size(c))
 			continue;
-
-		flags = c->flags;
-		if (flags & CLIENT_SUSPENDED)
-			continue;
-		if ((flags & CLIENT_CONTROL) && (~flags & CLIENT_SIZECHANGED))
-			continue;
-
 		if (c->tty.sy <= status_line_size(c))
 			c->flags |= CLIENT_STATUSOFF;
 		else
 			c->flags &= ~CLIENT_STATUSOFF;
-
-		s->attached++;
+		c->session->attached++;
 	}
 
 	/* Walk each window and adjust the size. */
@@ -194,8 +194,10 @@ recalculate_sizes(void)
 		if (type == WINDOW_SIZE_LARGEST) {
 			sx = sy = 0;
 			TAILQ_FOREACH(c, &clients, entry) {
-				if ((s = c->session) == NULL)
+				if (ignore_client_size(c))
 					continue;
+				s = c->session;
+
 				if (current)
 					has = (s->curw->window == w);
 				else
@@ -216,8 +218,10 @@ recalculate_sizes(void)
 		} else {
 			sx = sy = UINT_MAX;
 			TAILQ_FOREACH(c, &clients, entry) {
-				if ((s = c->session) == NULL)
+				if (ignore_client_size(c))
 					continue;
+				s = c->session;
+
 				if (current)
 					has = (s->curw->window == w);
 				else
