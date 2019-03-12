@@ -75,7 +75,7 @@ screen_write_set_cursor(struct screen_write_ctx *ctx, int cx, int cy)
 		return;
 
 	if (cx != -1) {
-		if ((u_int)cx > screen_size_x(s) - 1)
+		if ((u_int)cx > screen_size_x(s)) /* allow last column */
 			cx = screen_size_x(s) - 1;
 		s->cx = cx;
 	}
@@ -1044,6 +1044,11 @@ screen_write_cursormove(struct screen_write_ctx *ctx, u_int px, u_int py)
 		else
 			py += s->rupper;
 	}
+
+	if (px > screen_size_x(s) - 1)
+		px = screen_size_x(s) - 1;
+	if (py > screen_size_y(s) - 1)
+		py = screen_size_y(s) - 1;
 
 	screen_write_set_cursor(ctx, px, py);
 }
