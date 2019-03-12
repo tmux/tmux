@@ -1197,7 +1197,6 @@ input_esc_dispatch(struct input_ctx *ictx)
 		window_pane_reset_palette(ictx->wp);
 		input_reset_cell(ictx);
 		screen_write_reset(sctx);
-		screen_write_clearhistory(sctx);
 		break;
 	case INPUT_ESC_IND:
 		screen_write_linefeed(sctx, 0, ictx->cell.cell.bg);
