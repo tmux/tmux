@@ -454,6 +454,7 @@ cmd_find_get_window_with_session(struct cmd_find_state *fs, const char *window)
 		if (errstr == NULL) {
 			fs->wl = winlink_find_by_index(&fs->s->windows, idx);
 			if (fs->wl != NULL) {
+				fs->idx = fs->wl->idx;
 				fs->w = fs->wl->window;
 				return (0);
 			}
