@@ -3719,6 +3719,17 @@ will expand the format twice, for example
 is the result of expanding the content of the
 .Ic status-left
 option rather than the content itself.
+.Ql S: ,
+.Ql W:
+or
+.Ql P:
+will loop over each session, window or pane and insert the format once
+for each. For windows and panes, two comma-separated formats may be
+given, the second is used for the current window or active pane. For
+example to get a list of windows formatted like the status line:
+.Bd -literal -offset indent
+#{W:#{E:window-status-format} ,#{E:window-status-current-format} }
+.Ed
 A prefix of the form
 .Ql s/foo/bar/:
 will substitute

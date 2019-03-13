@@ -95,6 +95,9 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 #define FORMAT_QUOTE 0x8
 #define FORMAT_LITERAL 0x10
 #define FORMAT_EXPAND 0x20
+#define FORMAT_SESSIONS 0x40
+#define FORMAT_WINDOWS 0x80
+#define FORMAT_PANES 0x100
 
 /* Entry in format tree. */
 struct format_entry {
@@ -113,6 +116,7 @@ struct format_tree {
 	struct window		*w;
 	struct window_pane	*wp;
 
+	struct cmdq_item	*item;
 	struct client		*client;
 	u_int			 tag;
 	int			 flags;
@@ -673,6 +677,7 @@ format_create(struct client *c, struct cmdq_item *item, int tag, int flags)
 		ft->client = c;
 		ft->client->references++;
 	}
+	ft->item = item;
 
 	ft->tag = tag;
 	ft->flags = flags;
@@ -1013,7 +1018,8 @@ format_build_modifiers(struct format_tree *ft, const char **s, u_int *count)
 			cp++;
 
 		/* Check single character modifiers with no arguments. */
-		if (strchr("lmCbdtqE", cp[0]) != NULL && format_is_end(cp[1])) {
+		if (strchr("lmCbdtqESWP", cp[0]) != NULL &&
+		    format_is_end(cp[1])) {
 			format_add_modifier(&list, count, cp, 1, NULL, 0);
 			cp++;
 			continue;
@@ -1127,6 +1133,111 @@ format_substitute(const char *source, const char *from, const char *to)
 	return (copy);
 }
 
+/* Loop over sessions. */
+static char *
+format_loop_sessions(struct format_tree *ft, const char *fmt)
+{
+	struct cmdq_item	*item = ft->item;
+	char			*expanded, *value;
+	size_t			 valuelen;
+	struct session		*s;
+
+	value = xcalloc(1, 1);
+	valuelen = 1;
+
+	RB_FOREACH(s, sessions, &sessions) {
+		expanded = format_single(item, fmt, ft->c, ft->s, NULL, NULL);
+
+		valuelen += strlen(expanded);
+		value = xrealloc(value, valuelen);
+
+		strlcat(value, expanded, valuelen);
+		free(expanded);
+	}
+
+	return (value);
+}
+
+/* Loop over windows. */
+static char *
+format_loop_windows(struct format_tree *ft, const char *fmt)
+{
+	struct cmdq_item	*item = ft->item;
+	char			*all, *active, *use, *expanded, *value;
+	size_t			 valuelen;
+	struct winlink		*wl;
+
+	if (ft->s == NULL)
+		return (NULL);
+
+	if (format_choose(ft, fmt, &all, &active, 0) != 0) {
+		all = xstrdup(fmt);
+		active = NULL;
+	}
+
+	value = xcalloc(1, 1);
+	valuelen = 1;
+
+	RB_FOREACH(wl, winlinks, &ft->s->windows) {
+		if (active != NULL && wl == ft->s->curw)
+			use = active;
+		else
+			use = all;
+		expanded = format_single(item, use, ft->c, ft->s, wl, NULL);
+
+		valuelen += strlen(expanded);
+		value = xrealloc(value, valuelen);
+
+		strlcat(value, expanded, valuelen);
+		free(expanded);
+	}
+
+	free(active);
+	free(all);
+
+	return (value);
+}
+
+/* Loop over panes. */
+static char *
+format_loop_panes(struct format_tree *ft, const char *fmt)
+{
+	struct cmdq_item	*item = ft->item;
+	char			*all, *active, *use, *expanded, *value;
+	size_t			 valuelen;
+	struct window_pane	*wp;
+
+	if (ft->w == NULL)
+		return (NULL);
+
+	if (format_choose(ft, fmt, &all, &active, 0) != 0) {
+		all = xstrdup(fmt);
+		active = NULL;
+	}
+
+	value = xcalloc(1, 1);
+	valuelen = 1;
+
+	TAILQ_FOREACH(wp, &ft->w->panes, entry) {
+		if (active != NULL && wp == ft->w->active)
+			use = active;
+		else
+			use = all;
+		expanded = format_single(item, use, ft->c, ft->s, ft->wl, wp);
+
+		valuelen += strlen(expanded);
+		value = xrealloc(value, valuelen);
+
+		strlcat(value, expanded, valuelen);
+		free(expanded);
+	}
+
+	free(active);
+	free(all);
+
+	return (value);
+}
+
 /* Replace a key. */
 static int
 format_replace(struct format_tree *ft, const char *key, size_t keylen,
@@ -1193,6 +1304,15 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 			case 'E':
 				modifiers |= FORMAT_EXPAND;
 				break;
+			case 'S':
+				modifiers |= FORMAT_SESSIONS;
+				break;
+			case 'W':
+				modifiers |= FORMAT_WINDOWS;
+				break;
+			case 'P':
+				modifiers |= FORMAT_PANES;
+				break;
 			}
 		} else if (fm->size == 2) {
 			if (strcmp(fm->modifier, "||") == 0 ||
@@ -1210,8 +1330,20 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 		goto done;
 	}
 
-	/* Is this a comparison or a conditional? */
-	if (search != NULL) {
+	/* Is this a loop, comparison or condition? */
+	if (modifiers & FORMAT_SESSIONS) {
+		value = format_loop_sessions(ft, copy);
+		if (value == NULL)
+			goto fail;
+	} else if (modifiers & FORMAT_WINDOWS) {
+		value = format_loop_windows(ft, copy);
+		if (value == NULL)
+			goto fail;
+	} else if (modifiers & FORMAT_PANES) {
+		value = format_loop_panes(ft, copy);
+		if (value == NULL)
+			goto fail;
+	} else if (search != NULL) {
 		/* Search in pane. */
 		if (wp == NULL)
 			value = xstrdup("0");
