@@ -1293,6 +1293,7 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 			value = xstrdup("");
 	}
 
+done:
 	/* Expand again if required. */
 	if (modifiers & FORMAT_EXPAND) {
 		new = format_expand(ft, value);
@@ -1318,7 +1319,6 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 		value = new;
 	}
 
-done:
 	/* Expand the buffer and copy in the value. */
 	valuelen = strlen(value);
 	while (*len - *off < valuelen + 1) {
