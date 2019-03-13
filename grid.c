@@ -39,8 +39,13 @@
 const struct grid_cell grid_default_cell = {
 	0, 0, 8, 8, { { ' ' }, 0, 1, 1 }
 };
-static const struct grid_cell_entry grid_default_entry = {
-	0, { .data = { 0, 8, 8, ' ' } }
+
+/* Cleared grid cell data. */
+const struct grid_cell grid_cleared_cell = {
+	GRID_FLAG_CLEARED, 0, 8, 8, { { ' ' }, 0, 1, 1 }
+};
+static const struct grid_cell_entry grid_cleared_entry = {
+	GRID_FLAG_CLEARED, { .data = { 0, 8, 8, ' ' } }
 };
 
 static void	grid_empty_line(struct grid *, u_int, u_int);
@@ -50,7 +55,7 @@ static void
 grid_store_cell(struct grid_cell_entry *gce, const struct grid_cell *gc,
     u_char c)
 {
-	gce->flags = gc->flags;
+	gce->flags = (gc->flags & ~GRID_FLAG_CLEARED);
 
 	gce->data.fg = gc->fg & 0xff;
 	if (gc->fg & COLOUR_FLAG_256)
@@ -64,7 +69,7 @@ grid_store_cell(struct grid_cell_entry *gce, const struct grid_cell *gc,
 	gce->data.data = c;
 }
 
-/* Check if a cell should be extended. */
+/* Check if a cell should be an extended cell. */
 static int
 grid_need_extended_cell(const struct grid_cell_entry *gce,
     const struct grid_cell *gc)
@@ -78,6 +83,40 @@ grid_need_extended_cell(const struct grid_cell_entry *gce,
 	if ((gc->fg & COLOUR_FLAG_RGB) || (gc->bg & COLOUR_FLAG_RGB))
 		return (1);
 	return (0);
+}
+
+/* Get an extended cell. */
+static void
+grid_get_extended_cell(struct grid_line *gl, struct grid_cell_entry *gce,
+    int flags)
+{
+	u_int at = gl->extdsize + 1;
+
+	gl->extddata = xreallocarray(gl->extddata, at, sizeof *gl->extddata);
+	gl->extdsize = at;
+
+	gce->offset = at - 1;
+	gce->flags = (flags | GRID_FLAG_EXTENDED);
+}
+
+/* Set cell as extended. */
+static struct grid_cell *
+grid_extended_cell(struct grid_line *gl, struct grid_cell_entry *gce,
+    const struct grid_cell *gc)
+{
+	struct grid_cell	*gcp;
+	int			 flags = (gc->flags & ~GRID_FLAG_CLEARED);
+
+	if (~gce->flags & GRID_FLAG_EXTENDED)
+		grid_get_extended_cell(gl, gce, flags);
+	else if (gce->offset >= gl->extdsize)
+		fatalx("offset too big");
+	gl->flags |= GRID_LINE_EXTENDED;
+
+	gcp = &gl->extddata[gce->offset];
+	memcpy(gcp, gc, sizeof *gcp);
+	gcp->flags = flags;
+	return (gcp);
 }
 
 /* Free up unused extended cells. */
@@ -122,29 +161,6 @@ grid_compact_line(struct grid_line *gl)
 	gl->extdsize = new_extdsize;
 }
 
-/* Set cell as extended. */
-static struct grid_cell *
-grid_extended_cell(struct grid_line *gl, struct grid_cell_entry *gce,
-    const struct grid_cell *gc)
-{
-	struct grid_cell	*gcp;
-
-	gl->flags |= GRID_LINE_EXTENDED;
-
-	if (~gce->flags & GRID_FLAG_EXTENDED) {
-		gl->extddata = xreallocarray(gl->extddata, gl->extdsize + 1,
-		    sizeof *gl->extddata);
-		gce->offset = gl->extdsize++;
-		gce->flags = gc->flags | GRID_FLAG_EXTENDED;
-	}
-	if (gce->offset >= gl->extdsize)
-		fatalx("offset too big");
-
-	gcp = &gl->extddata[gce->offset];
-	memcpy(gcp, gc, sizeof *gcp);
-	return (gcp);
-}
-
 /* Get line data. */
 struct grid_line *
 grid_get_line(struct grid *gd, u_int line)
@@ -167,9 +183,13 @@ grid_clear_cell(struct grid *gd, u_int px, u_int py, u_int bg)
 	struct grid_cell_entry	*gce = &gl->celldata[px];
 	struct grid_cell	*gc;
 
-	memcpy(gce, &grid_default_entry, sizeof *gce);
+	memcpy(gce, &grid_cleared_entry, sizeof *gce);
 	if (bg & COLOUR_FLAG_RGB) {
-		gc = grid_extended_cell(gl, gce, &grid_default_cell);
+		grid_get_extended_cell(gl, gce, gce->flags);
+		gl->flags |= GRID_LINE_EXTENDED;
+
+		gc = &gl->extddata[gce->offset];
+		memcpy(gc, &grid_cleared_cell, sizeof *gc);
 		gc->bg = bg;
 	} else {
 		if (bg & COLOUR_FLAG_256)

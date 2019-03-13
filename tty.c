@@ -1208,7 +1208,7 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 	u_int			 i, j, ux, sx, width;
 	int			 flags, cleared = 0;
 	char			 buf[512];
-	size_t			 len, old_len;
+	size_t			 len;
 	u_int			 cellsize;
 
 	log_debug("%s: px=%u py=%u nx=%u atx=%u aty=%u", __func__,
@@ -1263,8 +1263,6 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 			tty_putcode(tty, TTYC_EL1);
 			cleared = 1;
 		}
-		if (px + sx != 0)
-			tty_cursor(tty, atx, aty);
 	} else
 		log_debug("%s: wrapped line %u", __func__, aty);
 
@@ -1281,10 +1279,17 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 		    gcp->attr != last.attr ||
 		    gcp->fg != last.fg ||
 		    gcp->bg != last.bg ||
-		    ux + width + gcp->data.width >= nx ||
+		    ux + width + gcp->data.width > nx ||
 		    (sizeof buf) - len < gcp->data.size)) {
-			tty_attributes(tty, &last, wp);
-			tty_putn(tty, buf, len, width);
+			if (last.flags & GRID_FLAG_CLEARED) {
+				log_debug("%s: %zu cleared", __func__, len);
+				tty_clear_line(tty, wp, aty, atx + ux, width,
+				    last.bg);
+			} else {
+				tty_attributes(tty, &last, wp);
+				tty_cursor(tty, atx + ux, aty);
+				tty_putn(tty, buf, len, width);
+			}
 			ux += width;
 
 			len = 0;
@@ -1297,6 +1302,7 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 			memcpy(&last, gcp, sizeof last);
 		if (ux + gcp->data.width > nx) {
 			tty_attributes(tty, &last, wp);
+			tty_cursor(tty, atx + ux, aty);
 			for (j = 0; j < gcp->data.width; j++) {
 				if (ux + j > nx)
 					break;
@@ -1305,6 +1311,7 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 			}
 		} else if (gcp->attr & GRID_ATTR_CHARSET) {
 			tty_attributes(tty, &last, wp);
+			tty_cursor(tty, atx + ux, aty);
 			for (j = 0; j < gcp->data.size; j++)
 				tty_putc(tty, gcp->data.data[j]);
 			ux += gc.data.width;
@@ -1314,24 +1321,21 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 			width += gcp->data.width;
 		}
 	}
-	if (len != 0) {
-		if (grid_cells_equal(&last, &grid_default_cell)) {
-			old_len = len;
-			while (len > 0 && buf[len - 1] == ' ') {
-				len--;
-				width--;
-			}
-			log_debug("%s: trimmed %zu spaces", __func__,
-			    old_len - len);
-		}
-		if (len != 0) {
+	if (len != 0 && ((~last.flags & GRID_FLAG_CLEARED) || last.bg != 8)) {
+		if (last.flags & GRID_FLAG_CLEARED) {
+			log_debug("%s: %zu cleared (end)", __func__, len);
+			tty_clear_line(tty, wp, aty, atx + ux, width, last.bg);
+		} else {
 			tty_attributes(tty, &last, wp);
+			tty_cursor(tty, atx + ux, aty);
 			tty_putn(tty, buf, len, width);
-			ux += width;
 		}
+		ux += width;
 	}
 
 	if (!cleared && ux < nx) {
+		log_debug("%s: %u to end of line (%zu cleared)", __func__,
+		    nx - ux, len);
 		tty_default_attributes(tty, wp, 8);
 		tty_clear_line(tty, wp, aty, atx + ux, nx - ux, 8);
 	}
