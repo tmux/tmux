@@ -92,8 +92,12 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 #define FORMAT_TIMESTRING 0x1
 #define FORMAT_BASENAME 0x2
 #define FORMAT_DIRNAME 0x4
-#define FORMAT_SUBSTITUTE 0x8
-#define FORMAT_QUOTE 0x10
+#define FORMAT_QUOTE 0x8
+#define FORMAT_LITERAL 0x10
+#define FORMAT_EXPAND 0x20
+#define FORMAT_SESSIONS 0x40
+#define FORMAT_WINDOWS 0x80
+#define FORMAT_PANES 0x100
 
 /* Entry in format tree. */
 struct format_entry {
@@ -112,6 +116,7 @@ struct format_tree {
 	struct window		*w;
 	struct window_pane	*wp;
 
+	struct cmdq_item	*item;
 	struct client		*client;
 	u_int			 tag;
 	int			 flags;
@@ -120,6 +125,15 @@ struct format_tree {
 };
 static int format_entry_cmp(struct format_entry *, struct format_entry *);
 RB_GENERATE_STATIC(format_entry_tree, format_entry, entry, format_entry_cmp);
+
+/* Format modifiers. */
+struct format_modifier {
+	char	  modifier[3];
+	u_int	  size;
+
+	char	**argv;
+	int	  argc;
+};
 
 /* Format entry tree comparison function. */
 static int
@@ -678,6 +692,7 @@ format_create(struct client *c, struct cmdq_item *item, int tag, int flags)
 		ft->client = c;
 		ft->client->references++;
 	}
+	ft->item = item;
 
 	ft->tag = tag;
 	ft->flags = flags;
@@ -901,7 +916,7 @@ found:
 
 /* Skip until end. */
 static const char *
-format_skip(const char *s, char end)
+format_skip(const char *s, const char *end)
 {
 	int	brackets = 0;
 
@@ -914,7 +929,7 @@ format_skip(const char *s, char end)
 		}
 		if (*s == '}')
 			brackets--;
-		if (*s == end && brackets == 0)
+		if (strchr(end, *s) != NULL && brackets == 0)
 			break;
 	}
 	if (*s == '\0')
@@ -924,17 +939,25 @@ format_skip(const char *s, char end)
 
 /* Return left and right alternatives separated by commas. */
 static int
-format_choose(char *s, char **left, char **right)
+format_choose(struct format_tree *ft, const char *s, char **left, char **right,
+    int expand)
 {
-	char	*cp;
+	const char	*cp;
+	char		*left0, *right0;
 
-	cp = (char *)format_skip(s, ',');
+	cp = format_skip(s, ",");
 	if (cp == NULL)
 		return (-1);
-	*cp = '\0';
+	left0 = xstrndup(s, cp - s);
+	right0 = xstrdup(cp + 1);
 
-	*left = s;
-	*right = cp + 1;
+	if (expand) {
+		*left = format_expand(ft, left0);
+		*right = format_expand(ft, right0);
+	} else {
+		*left = left0;
+		*right = right0;
+	}
 	return (0);
 }
 
@@ -947,191 +970,469 @@ format_true(const char *s)
 	return (0);
 }
 
+/* Check if modifier end. */
+static int
+format_is_end(char c)
+{
+	return (c == ';' || c == ':');
+}
+
+/* Add to modifier list. */
+static void
+format_add_modifier(struct format_modifier **list, u_int *count,
+    const char *c, size_t n, char **argv, int argc)
+{
+	struct format_modifier *fm;
+
+	*list = xreallocarray(*list, (*count) + 1, sizeof **list);
+	fm = &(*list)[(*count)++];
+
+	memcpy(fm->modifier, c, n);
+	fm->modifier[n] = '\0';
+	fm->size = n;
+
+	fm->argv = argv;
+	fm->argc = argc;
+}
+
+/* Free modifier list. */
+static void
+format_free_modifiers(struct format_modifier *list, u_int count)
+{
+	u_int	i;
+
+	for (i = 0; i < count; i++)
+		cmd_free_argv(list[i].argc, list[i].argv);
+	free(list);
+}
+
+/* Build modifier list. */
+static struct format_modifier *
+format_build_modifiers(struct format_tree *ft, const char **s, u_int *count)
+{
+	const char		*cp = *s, *end;
+	struct format_modifier	*list = NULL;
+	char			 c, last[] = "X;:", **argv, *value;
+	int			 argc;
+
+	/*
+	 * Modifiers are a ; separated list of the forms:
+	 *      l,m,C,b,d,t,q
+	 *	=a
+	 *	=/a
+	 *      =/a/
+	 *	s/a/b/
+	 *	s/a/b
+	 *	||,&&,!=,==
+	 */
+
+	*count = 0;
+
+	while (*cp != '\0' && *cp != ':') {
+		/* Skip and separator character. */
+		if (*cp == ';')
+			cp++;
+
+		/* Check single character modifiers with no arguments. */
+		if (strchr("lmCbdtqESWP", cp[0]) != NULL &&
+		    format_is_end(cp[1])) {
+			format_add_modifier(&list, count, cp, 1, NULL, 0);
+			cp++;
+			continue;
+		}
+
+		/* Then try double character with no arguments. */
+		if ((memcmp("||", cp, 2) == 0 ||
+		    memcmp("&&", cp, 2) == 0 ||
+		    memcmp("!=", cp, 2) == 0 ||
+		    memcmp("==", cp, 2) == 0) &&
+		    format_is_end(cp[2])) {
+			format_add_modifier(&list, count, cp, 2, NULL, 0);
+			cp += 2;
+			continue;
+		}
+
+		/* Now try single character with arguments. */
+		if (strchr("s=", cp[0]) == NULL)
+			break;
+		c = cp[0];
+
+		/* No arguments provided. */
+		if (format_is_end(cp[1])) {
+			format_add_modifier(&list, count, cp, 1, NULL, 0);
+			cp++;
+			continue;
+		}
+		argv = NULL;
+		argc = 0;
+
+		/* Single argument with no wrapper character. */
+		if (!ispunct(cp[1]) || cp[1] == '-') {
+			end = format_skip(cp + 1, ":;");
+			if (end == NULL)
+				break;
+
+			argv = xcalloc(1, sizeof *argv);
+			value = xstrndup(cp + 1, end - (cp + 1));
+			argv[0] = format_expand(ft, value);
+			free(value);
+			argc = 1;
+
+			format_add_modifier(&list, count, &c, 1, argv, argc);
+			cp = end;
+			continue;
+		}
+
+		/* Multiple arguments with a wrapper character. */
+		last[0] = cp[1];
+		cp++;
+		do {
+			if (cp[0] == last[0] && format_is_end(cp[1])) {
+				cp++;
+				break;
+			}
+			end = format_skip(cp + 1, last);
+			if (end == NULL)
+				break;
+			cp++;
+
+			argv = xreallocarray (argv, argc + 1, sizeof *argv);
+			value = xstrndup(cp, end - cp);
+			argv[argc++] = format_expand(ft, value);
+			free(value);
+
+			cp = end;
+		} while (!format_is_end(cp[0]));
+		format_add_modifier(&list, count, &c, 1, argv, argc);
+	}
+	if (*cp != ':') {
+		format_free_modifiers(list, *count);
+		*count = 0;
+		return (NULL);
+	}
+	*s = cp + 1;
+	return list;
+}
+
+/* Perform substitution in string. */
+static char *
+format_substitute(const char *source, const char *from, const char *to)
+{
+	char		*copy, *new;
+	const char	*cp;
+	size_t		 fromlen, tolen, newlen, used;
+
+	fromlen = strlen(from);
+	tolen = strlen(to);
+
+	newlen = strlen(source) + 1;
+	copy = new = xmalloc(newlen);
+
+	for (cp = source; *cp != '\0'; /* nothing */) {
+		if (strncmp(cp, from, fromlen) != 0) {
+			*new++ = *cp++;
+			continue;
+		}
+		used = new - copy;
+
+		newlen += tolen;
+		copy = xrealloc(copy, newlen);
+
+		new = copy + used;
+		memcpy(new, to, tolen);
+
+		new += tolen;
+		cp += fromlen;
+	}
+
+	*new = '\0';
+	return (copy);
+}
+
+/* Loop over sessions. */
+static char *
+format_loop_sessions(struct format_tree *ft, const char *fmt)
+{
+	struct cmdq_item	*item = ft->item;
+	char			*expanded, *value;
+	size_t			 valuelen;
+	struct session		*s;
+
+	value = xcalloc(1, 1);
+	valuelen = 1;
+
+	RB_FOREACH(s, sessions, &sessions) {
+		expanded = format_single(item, fmt, ft->c, ft->s, NULL, NULL);
+
+		valuelen += strlen(expanded);
+		value = xrealloc(value, valuelen);
+
+		strlcat(value, expanded, valuelen);
+		free(expanded);
+	}
+
+	return (value);
+}
+
+/* Loop over windows. */
+static char *
+format_loop_windows(struct format_tree *ft, const char *fmt)
+{
+	struct cmdq_item	*item = ft->item;
+	char			*all, *active, *use, *expanded, *value;
+	size_t			 valuelen;
+	struct winlink		*wl;
+
+	if (ft->s == NULL)
+		return (NULL);
+
+	if (format_choose(ft, fmt, &all, &active, 0) != 0) {
+		all = xstrdup(fmt);
+		active = NULL;
+	}
+
+	value = xcalloc(1, 1);
+	valuelen = 1;
+
+	RB_FOREACH(wl, winlinks, &ft->s->windows) {
+		if (active != NULL && wl == ft->s->curw)
+			use = active;
+		else
+			use = all;
+		expanded = format_single(item, use, ft->c, ft->s, wl, NULL);
+
+		valuelen += strlen(expanded);
+		value = xrealloc(value, valuelen);
+
+		strlcat(value, expanded, valuelen);
+		free(expanded);
+	}
+
+	free(active);
+	free(all);
+
+	return (value);
+}
+
+/* Loop over panes. */
+static char *
+format_loop_panes(struct format_tree *ft, const char *fmt)
+{
+	struct cmdq_item	*item = ft->item;
+	char			*all, *active, *use, *expanded, *value;
+	size_t			 valuelen;
+	struct window_pane	*wp;
+
+	if (ft->w == NULL)
+		return (NULL);
+
+	if (format_choose(ft, fmt, &all, &active, 0) != 0) {
+		all = xstrdup(fmt);
+		active = NULL;
+	}
+
+	value = xcalloc(1, 1);
+	valuelen = 1;
+
+	TAILQ_FOREACH(wp, &ft->w->panes, entry) {
+		if (active != NULL && wp == ft->w->active)
+			use = active;
+		else
+			use = all;
+		expanded = format_single(item, use, ft->c, ft->s, ft->wl, wp);
+
+		valuelen += strlen(expanded);
+		value = xrealloc(value, valuelen);
+
+		strlcat(value, expanded, valuelen);
+		free(expanded);
+	}
+
+	free(active);
+	free(all);
+
+	return (value);
+}
+
 /* Replace a key. */
 static int
 format_replace(struct format_tree *ft, const char *key, size_t keylen,
     char **buf, size_t *len, size_t *off)
 {
 	struct window_pane	*wp = ft->wp;
-	char			*copy, *copy0, *endptr, *ptr, *found, *new, sep;
-	char			*value, *from = NULL, *to = NULL, *left, *right;
-	size_t			 valuelen, newlen, fromlen, tolen, used;
-	long			 limit = 0;
-	int			 modifiers = 0, compare = 0, search = 0;
-	int			 literal = 0;
+	const char		*errptr, *copy, *cp;
+	char			*copy0, *condition, *found, *new;
+	char			*value, *left, *right;
+	char			 tmp[64];
+	size_t			 valuelen;
+	int			 modifiers = 0, limit = 0;
+	struct format_modifier  *list, *fm, *cmp = NULL, *search = NULL;
+	struct format_modifier  *sub = NULL;
+	u_int			 i, count;
 
 	/* Make a copy of the key. */
-	copy0 = copy = xmalloc(keylen + 1);
-	memcpy(copy, key, keylen);
-	copy[keylen] = '\0';
+	copy = copy0 = xstrndup(key, keylen);
 
-	/* Is there a length limit or whatnot? */
-	switch (copy[0]) {
-	case 'l':
-		if (copy[1] != ':')
-			break;
-		literal = 1;
-		copy += 2;
-		break;
-	case 'm':
-		if (copy[1] != ':')
-			break;
-		compare = -2;
-		copy += 2;
-		break;
-	case 'C':
-		if (copy[1] != ':')
-			break;
-		search = 1;
-		copy += 2;
-		break;
-	case '|':
-		if (copy[1] != '|' || copy[2] != ':')
-			break;
-		compare = -3;
-		copy += 3;
-		break;
-	case '&':
-		if (copy[1] != '&' || copy[2] != ':')
-			break;
-		compare = -4;
-		copy += 3;
-		break;
-	case '!':
-		if (copy[1] == '=' && copy[2] == ':') {
-			compare = -1;
-			copy += 3;
-			break;
-		}
-		break;
-	case '=':
-		if (copy[1] == '=' && copy[2] == ':') {
-			compare = 1;
-			copy += 3;
-			break;
-		}
-		errno = 0;
-		limit = strtol(copy + 1, &endptr, 10);
-		if (errno == ERANGE && (limit == LONG_MIN || limit == LONG_MAX))
-			break;
-		if (*endptr != ':')
-			break;
-		copy = endptr + 1;
-		break;
-	case 'b':
-		if (copy[1] != ':')
-			break;
-		modifiers |= FORMAT_BASENAME;
-		copy += 2;
-		break;
-	case 'd':
-		if (copy[1] != ':')
-			break;
-		modifiers |= FORMAT_DIRNAME;
-		copy += 2;
-		break;
-	case 't':
-		if (copy[1] != ':')
-			break;
-		modifiers |= FORMAT_TIMESTRING;
-		copy += 2;
-		break;
-	case 'q':
-		if (copy[1] != ':')
-			break;
-		modifiers |= FORMAT_QUOTE;
-		copy += 2;
-		break;
-	case 's':
-		sep = copy[1];
-		if (sep == ':' || !ispunct((u_char)sep))
-			break;
-		from = copy + 2;
-		for (copy = from; *copy != '\0' && *copy != sep; copy++)
-			/* nothing */;
-		if (copy[0] != sep || copy == from) {
-			copy = copy0;
-			break;
-		}
-		copy[0] = '\0';
-		to = copy + 1;
-		for (copy = to; *copy != '\0' && *copy != sep; copy++)
-			/* nothing */;
-		if (copy[0] != sep || copy[1] != ':') {
-			copy = copy0;
-			break;
-		}
-		copy[0] = '\0';
+	/* Process modifier list. */
+	list = format_build_modifiers(ft, &copy, &count);
+	for (i = 0; i < count; i++) {
+		xsnprintf(tmp, sizeof tmp, "%s: modifier %u", __func__, i);
+		log_debug("%s = %s", tmp, list[i].modifier);
+		cmd_log_argv(list[i].argc, list[i].argv, tmp);
 
-		modifiers |= FORMAT_SUBSTITUTE;
-		copy += 2;
-		break;
+		fm = &list[i];
+		if (fm->size == 1) {
+			switch (fm->modifier[0]) {
+			case 'm':
+				cmp = fm;
+				break;
+			case 'C':
+				search = fm;
+				break;
+			case 's':
+				if (fm->argc != 2)
+					break;
+				sub = fm;
+				break;
+			case '=':
+				if (fm->argc != 1)
+					break;
+				limit = strtonum(fm->argv[0], INT_MIN, INT_MAX,
+				    &errptr);
+				if (errptr != NULL)
+					limit = 0;
+				break;
+			case 'l':
+				modifiers |= FORMAT_LITERAL;
+				break;
+			case 'b':
+				modifiers |= FORMAT_BASENAME;
+				break;
+			case 'd':
+				modifiers |= FORMAT_DIRNAME;
+				break;
+			case 't':
+				modifiers |= FORMAT_TIMESTRING;
+				break;
+			case 'q':
+				modifiers |= FORMAT_QUOTE;
+				break;
+			case 'E':
+				modifiers |= FORMAT_EXPAND;
+				break;
+			case 'S':
+				modifiers |= FORMAT_SESSIONS;
+				break;
+			case 'W':
+				modifiers |= FORMAT_WINDOWS;
+				break;
+			case 'P':
+				modifiers |= FORMAT_PANES;
+				break;
+			}
+		} else if (fm->size == 2) {
+			if (strcmp(fm->modifier, "||") == 0 ||
+			    strcmp(fm->modifier, "&&") == 0 ||
+			    strcmp(fm->modifier, "==") == 0 ||
+			    strcmp(fm->modifier, "!=") == 0)
+				cmp = fm;
+		}
 	}
+	log_debug("%s: remaining = '%s'", __func__, copy);
 
 	/* Is this a literal string? */
-	if (literal) {
+	if (modifiers & FORMAT_LITERAL) {
 		value = xstrdup(copy);
 		goto done;
 	}
 
-	/* Is this a comparison or a conditional? */
-	if (search) {
+	/* Is this a loop, comparison or condition? */
+	if (modifiers & FORMAT_SESSIONS) {
+		value = format_loop_sessions(ft, copy);
+		if (value == NULL)
+			goto fail;
+	} else if (modifiers & FORMAT_WINDOWS) {
+		value = format_loop_windows(ft, copy);
+		if (value == NULL)
+			goto fail;
+	} else if (modifiers & FORMAT_PANES) {
+		value = format_loop_panes(ft, copy);
+		if (value == NULL)
+			goto fail;
+	} else if (search != NULL) {
 		/* Search in pane. */
 		if (wp == NULL)
 			value = xstrdup("0");
 		else
 			xasprintf(&value, "%u", window_pane_search(wp, copy));
-	} else if (compare != 0) {
-		/* Comparison: compare comma-separated left and right. */
-		if (format_choose(copy, &left, &right) != 0)
+	} else if (cmp != NULL) {
+		/* Comparison of left and right. */
+		if (format_choose(ft, copy, &left, &right, 1) != 0)
 			goto fail;
-		left = format_expand(ft, left);
-		right = format_expand(ft, right);
-		if (compare == -3 &&
-		    (format_true(left) || format_true(right)))
-			value = xstrdup("1");
-		else if (compare == -4 &&
-		    (format_true(left) && format_true(right)))
-			value = xstrdup("1");
-		else if (compare == 1 && strcmp(left, right) == 0)
-			value = xstrdup("1");
-		else if (compare == -1 && strcmp(left, right) != 0)
-			value = xstrdup("1");
-		else if (compare == -2 && fnmatch(left, right, 0) == 0)
-			value = xstrdup("1");
-		else
-			value = xstrdup("0");
+
+		if (strcmp(cmp->modifier, "||") == 0) {
+			if (format_true(left) || format_true(right))
+				value = xstrdup("1");
+			else
+				value = xstrdup("0");
+		} else if (strcmp(cmp->modifier, "&&") == 0) {
+			if (format_true(left) && format_true(right))
+				value = xstrdup("1");
+			else
+				value = xstrdup("0");
+		} else if (strcmp(cmp->modifier, "==") == 0) {
+			if (strcmp(left, right) == 0)
+				value = xstrdup("1");
+			else
+				value = xstrdup("0");
+		} else if (strcmp(cmp->modifier, "!=") == 0) {
+			if (strcmp(left, right) != 0)
+				value = xstrdup("1");
+			else
+				value = xstrdup("0");
+		}
+		else if (strcmp(cmp->modifier, "m") == 0) {
+			if (fnmatch(left, right, 0) == 0)
+				value = xstrdup("1");
+			else
+				value = xstrdup("0");
+		}
+
 		free(right);
 		free(left);
 	} else if (*copy == '?') {
 		/* Conditional: check first and choose second or third. */
-		ptr = (char *)format_skip(copy, ',');
-		if (ptr == NULL)
+		cp = format_skip(copy + 1, ",");
+		if (cp == NULL)
 			goto fail;
-		*ptr = '\0';
+		condition = xstrndup(copy + 1, cp - (copy + 1));
 
-		found = format_find(ft, copy + 1, modifiers);
+		found = format_find(ft, condition, modifiers);
 		if (found == NULL) {
 			/*
-			 * If the conditional not found, try to expand it. If
+			 * If the condition not found, try to expand it. If
 			 * the expansion doesn't have any effect, then assume
 			 * false.
 			 */
-			found = format_expand(ft, copy + 1);
-			if (strcmp(found, copy + 1) == 0) {
+			found = format_expand(ft, condition);
+			if (strcmp(found, condition) == 0) {
 				free(found);
 				found = xstrdup("");
 			}
 		}
-		if (format_choose(ptr + 1, &left, &right) != 0) {
+		free(condition);
+
+		if (format_choose(ft, cp + 1, &left, &right, 0) != 0) {
 			free(found);
 			goto fail;
 		}
-
 		if (format_true(found))
 			value = format_expand(ft, left);
 		else
 			value = format_expand(ft, right);
+		free(right);
+		free(left);
+
 		free(found);
 	} else {
 		/* Neither: look up directly. */
@@ -1140,32 +1441,19 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 			value = xstrdup("");
 	}
 
-	/* Perform substitution if any. */
-	if (modifiers & FORMAT_SUBSTITUTE) {
-		fromlen = strlen(from);
-		tolen = strlen(to);
-
-		newlen = strlen(value) + 1;
-		copy = new = xmalloc(newlen);
-		for (ptr = value; *ptr != '\0'; /* nothing */) {
-			if (strncmp(ptr, from, fromlen) != 0) {
-				*new++ = *ptr++;
-				continue;
-			}
-			used = new - copy;
-
-			newlen += tolen;
-			copy = xrealloc(copy, newlen);
-
-			new = copy + used;
-			memcpy(new, to, tolen);
-
-			new += tolen;
-			ptr += fromlen;
-		}
-		*new = '\0';
+done:
+	/* Expand again if required. */
+	if (modifiers & FORMAT_EXPAND) {
+		new = format_expand(ft, value);
 		free(value);
-		value = copy;
+		value = new;
+	}
+
+	/* Perform substitution if any. */
+	if (sub != NULL) {
+		new = format_substitute(value, sub->argv[0], sub->argv[1]);
+		free(value);
+		value = new;
 	}
 
 	/* Truncate the value if needed. */
@@ -1179,7 +1467,6 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 		value = new;
 	}
 
-done:
 	/* Expand the buffer and copy in the value. */
 	valuelen = strlen(value);
 	while (*len - *off < valuelen + 1) {
@@ -1190,10 +1477,12 @@ done:
 	*off += valuelen;
 
 	free(value);
+	format_free_modifiers(list, count);
 	free(copy0);
 	return (0);
 
 fail:
+	format_free_modifiers(list, count);
 	free(copy0);
 	return (-1);
 }
@@ -1278,7 +1567,7 @@ format_expand(struct format_tree *ft, const char *fmt)
 			fmt += n + 1;
 			continue;
 		case '{':
-			ptr = format_skip(fmt - 2, '}');
+			ptr = format_skip((char *)fmt - 2, "}");
 			if (ptr == NULL)
 				break;
 			n = ptr - fmt;
@@ -1321,7 +1610,7 @@ format_expand(struct format_tree *ft, const char *fmt)
 	}
 	buf[off] = '\0';
 
-	log_debug("format '%s' -> '%s'", saved, buf);
+	log_debug("%s: '%s' -> '%s'", __func__, saved, buf);
 	return (buf);
 }
 
