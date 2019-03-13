@@ -154,7 +154,7 @@ TODO soonish maybe:
           (or pane or session), perhaps something like
           #{W:#{window_name} }.  It would need to be able to reach
           into a window's options in order to allow different windows
-          to have different format, maybe an operator to evaluate an
+          to have different format. (DONE) An operator to evaluate an
           option value as a format, maybe make it so E: on evaluates
           the result as a format again something like, so end up with
           something like #{W:#{E:window-status-format} }
@@ -185,7 +185,7 @@ TODO soonish maybe:
 
        6) status-left-length and similar will need to be taken into
           account, perhaps add an alternative form of the length limit
-          eg #{l:#{status-left-length},#{...}}.
+          eg #{L:#{status-left-length},#{...}}.
 
        7) Supporting trimming the window list and adding <> might be
           tricky, probably a second pass over the format_range list to
@@ -193,17 +193,41 @@ TODO soonish maybe:
           to trim first, so some way to mark that is needed (maybe a
           priority or something in the alignment/length limit).
 
-       8) Formats are going to get very long so perhaps standardize
+(DONE) 8) Formats are going to get very long so perhaps standardize
           them a bit so they are all something like #{F/argument:text}
           then then could be #{A/foo;B/bar:text} rather than
           #{A:foo,#{B:bar,text}} and so on. Need to keep the old style
           for compatibility, at least for the most popular formats. So
           the status-left part would be something like:
 
-	  	    #{A/left;S/#{status-left-style};M/left;l/#{status-left-length};E:status-left}
+	  	    #{A/left;S/#{status-left-style};M/left;L/#{status-left-length};E:status-left}
 
-          Where A = alignment, S = style, M = mouse, l = length limit,
+          Where A = alignment, S = style, M = mouse, L = length limit,
           E = expand again.
+
+	  Existing formats are:
+
+	  	   #{l:foo} <-- literal
+		   #{m:foo} <-- match
+		   #{C:foo} <-- search
+		   #{b:foo} <-- basename
+		   #{d:foo} <-- dirname
+		   #{t:foo} <-- time
+		   #{q:foo} <-- quote
+		   #{s/a/b/:foo} <-- sub
+	           #{=123:foo} <-- length
+
+		   #{||:foo,bar} <-- or
+		   #{&&:foo,bar} <-- and
+		   #{!=:foo,bar} <-- neq
+		   #{==:foo,bar} <-- eq
+		   #{?foo,bar,baz} <-- if
+
+           So comparisons and ? can stay as they are.
+
+           All other formats can be parsed as #{X/arg1/arg2/arg3:...}
+           with an optional leading and trailing /. Each argument can
+           be expanded.
 
        9) Then status-format can be an array option specifying
           multiple status lines. Perhaps one option for top and one
