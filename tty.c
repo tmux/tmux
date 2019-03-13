@@ -1281,12 +1281,12 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 		    gcp->bg != last.bg ||
 		    ux + width + gcp->data.width > nx ||
 		    (sizeof buf) - len < gcp->data.size)) {
+			tty_attributes(tty, &last, wp);
 			if (last.flags & GRID_FLAG_CLEARED) {
 				log_debug("%s: %zu cleared", __func__, len);
 				tty_clear_line(tty, wp, aty, atx + ux, width,
 				    last.bg);
 			} else {
-				tty_attributes(tty, &last, wp);
 				tty_cursor(tty, atx + ux, aty);
 				tty_putn(tty, buf, len, width);
 			}
@@ -1322,11 +1322,11 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 		}
 	}
 	if (len != 0 && ((~last.flags & GRID_FLAG_CLEARED) || last.bg != 8)) {
+		tty_attributes(tty, &last, wp);
 		if (last.flags & GRID_FLAG_CLEARED) {
 			log_debug("%s: %zu cleared (end)", __func__, len);
 			tty_clear_line(tty, wp, aty, atx + ux, width, last.bg);
 		} else {
-			tty_attributes(tty, &last, wp);
 			tty_cursor(tty, atx + ux, aty);
 			tty_putn(tty, buf, len, width);
 		}
