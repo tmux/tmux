@@ -41,7 +41,7 @@ const struct cmd_entry cmd_capture_pane_entry = {
 
 	.args = { "ab:CeE:JpPqS:t:", 0, 0 },
 	.usage = "[-aCeJpPq] " CMD_BUFFER_USAGE " [-E end-line] "
-		 "[-S start-line]" CMD_TARGET_PANE_USAGE,
+		 "[-S start-line] " CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
