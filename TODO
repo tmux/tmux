@@ -183,9 +183,8 @@ TODO soonish maybe:
           can use to draw the format, and can be stored to be used by
           the mouse positioning check code.
 
-       6) status-left-length and similar will need to be taken into
-          account, perhaps add an alternative form of the length limit
-          eg #{L:#{status-left-length},#{...}}.
+(DONE) 6) status-left-length and similar will need to be taken into
+          account.
 
        7) Supporting trimming the window list and adding <> might be
           tricky, probably a second pass over the format_range list to
@@ -200,9 +199,9 @@ TODO soonish maybe:
           for compatibility, at least for the most popular formats. So
           the status-left part would be something like:
 
-	  	    #{A/left;S/#{status-left-style};M/left;L/#{status-left-length};E:status-left}
+	  	    #{A/left;S/#{status-left-style};M/left;=/#{status-left-length};E:status-left}
 
-          Where A = alignment, S = style, M = mouse, L = length limit,
+          Where A = alignment, S = style, M = mouse, = = length limit,
           E = expand again.
 
 	  Existing formats are:
