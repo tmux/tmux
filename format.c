@@ -94,6 +94,7 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 #define FORMAT_DIRNAME 0x4
 #define FORMAT_QUOTE 0x8
 #define FORMAT_LITERAL 0x10
+#define FORMAT_EXPAND 0x20
 
 /* Entry in format tree. */
 struct format_entry {
@@ -1012,7 +1013,7 @@ format_build_modifiers(struct format_tree *ft, const char **s, u_int *count)
 			cp++;
 
 		/* Check single character modifiers with no arguments. */
-		if (strchr("lmCbdtq", cp[0]) != NULL && format_is_end(cp[1])) {
+		if (strchr("lmCbdtqE", cp[0]) != NULL && format_is_end(cp[1])) {
 			format_add_modifier(&list, count, cp, 1, NULL, 0);
 			cp++;
 			continue;
@@ -1189,6 +1190,9 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 			case 'q':
 				modifiers |= FORMAT_QUOTE;
 				break;
+			case 'E':
+				modifiers |= FORMAT_EXPAND;
+				break;
 			}
 		} else if (fm->size == 2) {
 			if (strcmp(fm->modifier, "||") == 0 ||
@@ -1287,6 +1291,13 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 		value = format_find(ft, copy, modifiers);
 		if (value == NULL)
 			value = xstrdup("");
+	}
+
+	/* Expand again if required. */
+	if (modifiers & FORMAT_EXPAND) {
+		new = format_expand(ft, value);
+		free(value);
+		value = new;
 	}
 
 	/* Perform substitution if any. */

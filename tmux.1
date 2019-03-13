@@ -3713,6 +3713,12 @@ of the variable respectively.
 will escape
 .Xr sh 1
 special characters.
+.Ql E:
+will expand the format twice, for example
+.Ql #{E:status-left}
+is the result of expanding the content of the
+.Ic status-left
+option rather than the content itself.
 A prefix of the form
 .Ql s/foo/bar/:
 will substitute
