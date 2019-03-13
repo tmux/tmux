@@ -160,7 +160,7 @@ colour_tostring(int c)
 	case 97:
 		return ("brightwhite");
 	}
-	return (NULL);
+	return ("invalid");
 }
 
 /* Convert colour from string. */
