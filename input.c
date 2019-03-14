@@ -272,6 +272,7 @@ static const struct input_table_entry input_csi_table[] = {
 	{ 'S', "",  INPUT_CSI_SU },
 	{ 'X', "",  INPUT_CSI_ECH },
 	{ 'Z', "",  INPUT_CSI_CBT },
+	{ '`', "",  INPUT_CSI_HPA },
 	{ 'b', "",  INPUT_CSI_REP },
 	{ 'c', "",  INPUT_CSI_DA },
 	{ 'c', ">", INPUT_CSI_DA_TWO },
@@ -1471,7 +1472,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 	case INPUT_CSI_HPA:
 		n = input_get(ictx, 0, 1, 1);
 		if (n != -1)
-			screen_write_cursormove(sctx, n - 1, -1, 0);
+			screen_write_cursormove(sctx, n - 1, -1, 1);
 		break;
 	case INPUT_CSI_ICH:
 		n = input_get(ictx, 0, 1, 1);
@@ -1540,7 +1541,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 	case INPUT_CSI_VPA:
 		n = input_get(ictx, 0, 1, 1);
 		if (n != -1)
-			screen_write_cursormove(sctx, -1, n - 1, 0);
+			screen_write_cursormove(sctx, -1, n - 1, 1);
 		break;
 	case INPUT_CSI_DECSCUSR:
 		n = input_get(ictx, 0, 0, 0);
