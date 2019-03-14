@@ -1797,6 +1797,11 @@ format_defaults_winlink(struct format_tree *ft, struct winlink *wl)
 	format_add(ft, "window_flags", "%s", window_printable_flags(wl));
 	format_add(ft, "window_active", "%d", wl == s->curw);
 
+	format_add(ft, "window_start_flag", "%d",
+	    !!(wl == RB_MIN(winlinks, &s->windows)));
+	format_add(ft, "window_end_flag", "%d",
+	    !!(wl == RB_MAX(winlinks, &s->windows)));
+
 	format_add(ft, "window_bell_flag", "%d",
 	    !!(wl->flags & WINLINK_BELL));
 	format_add(ft, "window_activity_flag", "%d",
