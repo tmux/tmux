@@ -1482,6 +1482,8 @@ format_expand_time(struct format_tree *ft, const char *fmt, time_t t)
 	if (fmt == NULL || *fmt == '\0')
 		return (xstrdup(""));
 
+	if (t == 0)
+		t = time(NULL);
 	tm = localtime(&t);
 
 	if (strftime(s, sizeof s, fmt, tm) == 0)
