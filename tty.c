@@ -1672,7 +1672,7 @@ tty_cmd_clearstartofscreen(struct tty *tty, const struct tty_ctx *ctx)
 	px = 0;
 	nx = screen_size_x(wp->screen);
 	py = 0;
-	ny = ctx->ocy - 1;
+	ny = ctx->ocy;
 
 	tty_clear_pane_area(tty, ctx, py, ny, px, nx, ctx->bg);
 
