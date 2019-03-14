@@ -95,9 +95,10 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 #define FORMAT_QUOTE 0x8
 #define FORMAT_LITERAL 0x10
 #define FORMAT_EXPAND 0x20
-#define FORMAT_SESSIONS 0x40
-#define FORMAT_WINDOWS 0x80
-#define FORMAT_PANES 0x100
+#define FORMAT_EXPANDTIME 0x40
+#define FORMAT_SESSIONS 0x80
+#define FORMAT_WINDOWS 0x100
+#define FORMAT_PANES 0x200
 
 /* Entry in format tree. */
 struct format_entry {
@@ -1017,7 +1018,7 @@ format_build_modifiers(struct format_tree *ft, const char **s, u_int *count)
 
 	/*
 	 * Modifiers are a ; separated list of the forms:
-	 *      l,m,C,b,d,t,q
+	 *      l,m,C,b,d,t,q,E,T,S,W,P
 	 *	=a
 	 *	=/a
 	 *      =/a/
@@ -1034,7 +1035,7 @@ format_build_modifiers(struct format_tree *ft, const char **s, u_int *count)
 			cp++;
 
 		/* Check single character modifiers with no arguments. */
-		if (strchr("lmCbdtqESWP", cp[0]) != NULL &&
+		if (strchr("lmCbdtqETSWP", cp[0]) != NULL &&
 		    format_is_end(cp[1])) {
 			format_add_modifier(&list, count, cp, 1, NULL, 0);
 			cp++;
@@ -1321,6 +1322,9 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 			case 'E':
 				modifiers |= FORMAT_EXPAND;
 				break;
+			case 'T':
+				modifiers |= FORMAT_EXPANDTIME;
+				break;
 			case 'S':
 				modifiers |= FORMAT_SESSIONS;
 				break;
@@ -1448,6 +1452,11 @@ done:
 		free(value);
 		value = new;
 	}
+	else if (modifiers & FORMAT_EXPANDTIME) {
+		new = format_expand_time(ft, value, 0);
+		free(value);
+		value = new;
+	}
 
 	/* Perform substitution if any. */
 	if (sub != NULL) {
@@ -1498,6 +1507,8 @@ format_expand_time(struct format_tree *ft, const char *fmt, time_t t)
 	if (fmt == NULL || *fmt == '\0')
 		return (xstrdup(""));
 
+	if (t == 0)
+		t = time(NULL);
 	tm = localtime(&t);
 
 	if (strftime(s, sizeof s, fmt, tm) == 0)
