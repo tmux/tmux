@@ -1585,7 +1585,7 @@ struct format_tree *format_create(struct client *, struct cmdq_item *, int,
 void		 format_free(struct format_tree *);
 void printflike(3, 4) format_add(struct format_tree *, const char *,
 		     const char *, ...);
-char		*format_expand_time(struct format_tree *, const char *, time_t);
+char		*format_expand_time(struct format_tree *, const char *);
 char		*format_expand(struct format_tree *, const char *);
 char		*format_single(struct cmdq_item *, const char *,
 		     struct client *, struct session *, struct winlink *,

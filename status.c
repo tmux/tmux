@@ -29,14 +29,14 @@
 
 #include "tmux.h"
 
-static char	*status_redraw_get_left(struct client *, time_t,
-		     struct grid_cell *, size_t *);
-static char	*status_redraw_get_right(struct client *, time_t,
-		     struct grid_cell *, size_t *);
-static char	*status_print(struct client *, struct winlink *, time_t,
+static char	*status_redraw_get_left(struct client *, struct grid_cell *,
+		     size_t *);
+static char	*status_redraw_get_right(struct client *, struct grid_cell *,
+		     size_t *);
+static char	*status_print(struct client *, struct winlink *,
 		     struct grid_cell *);
-static char	*status_replace(struct client *, struct winlink *, const char *,
-		     time_t);
+static char	*status_replace(struct client *, struct winlink *,
+		     const char *);
 static void	 status_message_callback(int, short, void *);
 static void	 status_timer_callback(int, short, void *);
 
@@ -232,8 +232,7 @@ status_line_size(struct client *c)
 
 /* Retrieve options for left string. */
 static char *
-status_redraw_get_left(struct client *c, time_t t, struct grid_cell *gc,
-    size_t *size)
+status_redraw_get_left(struct client *c, struct grid_cell *gc, size_t *size)
 {
 	struct session	*s = c->session;
 	const char	*template;
@@ -243,7 +242,7 @@ status_redraw_get_left(struct client *c, time_t t, struct grid_cell *gc,
 	style_apply_update(gc, s->options, "status-left-style");
 
 	template = options_get_string(s->options, "status-left");
-	left = status_replace(c, NULL, template, t);
+	left = status_replace(c, NULL, template);
 
 	*size = options_get_number(s->options, "status-left-length");
 	leftlen = screen_write_cstrlen("%s", left);
@@ -254,8 +253,7 @@ status_redraw_get_left(struct client *c, time_t t, struct grid_cell *gc,
 
 /* Retrieve options for right string. */
 static char *
-status_redraw_get_right(struct client *c, time_t t, struct grid_cell *gc,
-    size_t *size)
+status_redraw_get_right(struct client *c, struct grid_cell *gc, size_t *size)
 {
 	struct session	*s = c->session;
 	const char	*template;
@@ -265,7 +263,7 @@ status_redraw_get_right(struct client *c, time_t t, struct grid_cell *gc,
 	style_apply_update(gc, s->options, "status-right-style");
 
 	template = options_get_string(s->options, "status-right");
-	right = status_replace(c, NULL, template, t);
+	right = status_replace(c, NULL, template);
 
 	*size = options_get_number(s->options, "status-right-length");
 	rightlen = screen_write_cstrlen("%s", right);
@@ -308,7 +306,6 @@ status_redraw(struct client *c)
 	struct screen		 old_status, window_list;
 	struct grid_cell	 stdgc, lgc, rgc, gc;
 	struct options		*oo;
-	time_t			 t;
 	char			*left, *right;
 	const char		*sep;
 	u_int			 offset, needed, lines;
@@ -330,9 +327,6 @@ status_redraw(struct client *c)
 	left = right = NULL;
 	larrow = rarrow = 0;
 
-	/* Store current time. */
-	t = time(NULL);
-
 	/* Set up default colour. */
 	style_apply(&stdgc, s->options, "status-style");
 
@@ -350,9 +344,9 @@ status_redraw(struct client *c)
 
 	/* Work out left and right strings. */
 	memcpy(&lgc, &stdgc, sizeof lgc);
-	left = status_redraw_get_left(c, t, &lgc, &llen);
+	left = status_redraw_get_left(c, &lgc, &llen);
 	memcpy(&rgc, &stdgc, sizeof rgc);
-	right = status_redraw_get_right(c, t, &rgc, &rlen);
+	right = status_redraw_get_right(c, &rgc, &rlen);
 
 	/*
 	 * Figure out how much space we have for the window list. If there
@@ -372,7 +366,7 @@ status_redraw(struct client *c)
 	RB_FOREACH(wl, winlinks, &s->windows) {
 		free(wl->status_text);
 		memcpy(&wl->status_cell, &stdgc, sizeof wl->status_cell);
-		wl->status_text = status_print(c, wl, t, &wl->status_cell);
+		wl->status_text = status_print(c, wl, &wl->status_cell);
 		wl->status_width = screen_write_cstrlen("%s", wl->status_text);
 
 		if (wl == s->curw)
@@ -531,7 +525,7 @@ out:
 
 /* Replace special sequences in fmt. */
 static char *
-status_replace(struct client *c, struct winlink *wl, const char *fmt, time_t t)
+status_replace(struct client *c, struct winlink *wl, const char *fmt)
 {
 	struct format_tree	*ft;
 	char			*expanded;
@@ -550,7 +544,7 @@ status_replace(struct client *c, struct winlink *wl, const char *fmt, time_t t)
 		ft = format_create(c, NULL, tag, FORMAT_STATUS);
 	format_defaults(ft, c, NULL, wl, NULL);
 
-	expanded = format_expand_time(ft, fmt, t);
+	expanded = format_expand_time(ft, fmt);
 
 	format_free(ft);
 	return (expanded);
@@ -558,8 +552,7 @@ status_replace(struct client *c, struct winlink *wl, const char *fmt, time_t t)
 
 /* Return winlink status line entry and adjust gc as necessary. */
 static char *
-status_print(struct client *c, struct winlink *wl, time_t t,
-    struct grid_cell *gc)
+status_print(struct client *c, struct winlink *wl, struct grid_cell *gc)
 {
 	struct options	*oo = wl->window->options;
 	struct session	*s = c->session;
@@ -580,7 +573,7 @@ status_print(struct client *c, struct winlink *wl, time_t t,
 	else if (wl->flags & (WINLINK_ACTIVITY|WINLINK_SILENCE))
 		style_apply_update(gc, oo, "window-status-activity-style");
 
-	text = status_replace(c, wl, fmt, t);
+	text = status_replace(c, wl, fmt);
 	return (text);
 }
 
@@ -698,19 +691,17 @@ status_prompt_set(struct client *c, const char *msg, const char *input,
     prompt_input_cb inputcb, prompt_free_cb freecb, void *data, int flags)
 {
 	struct format_tree	*ft;
-	time_t			 t;
 	char			*tmp, *cp;
 
 	ft = format_create(c, NULL, FORMAT_NONE, 0);
 	format_defaults(ft, c, NULL, NULL, NULL);
-	t = time(NULL);
 
 	if (input == NULL)
 		input = "";
 	if (flags & PROMPT_NOFORMAT)
 		tmp = xstrdup(input);
 	else
-		tmp = format_expand_time(ft, input, t);
+		tmp = format_expand_time(ft, input);
 
 	status_message_clear(c);
 	status_prompt_clear(c);
@@ -722,7 +713,7 @@ status_prompt_set(struct client *c, const char *msg, const char *input,
 		screen_init(&c->status.status, c->tty.sx, 1, 0);
 	}
 
-	c->prompt_string = format_expand_time(ft, msg, t);
+	c->prompt_string = format_expand_time(ft, msg);
 
 	c->prompt_buffer = utf8_fromcstr(tmp);
 	c->prompt_index = utf8_strlen(c->prompt_buffer);
@@ -780,17 +771,15 @@ void
 status_prompt_update(struct client *c, const char *msg, const char *input)
 {
 	struct format_tree	*ft;
-	time_t			 t;
 	char			*tmp;
 
 	ft = format_create(c, NULL, FORMAT_NONE, 0);
 	format_defaults(ft, c, NULL, NULL, NULL);
 
-	t = time(NULL);
-	tmp = format_expand_time(ft, input, t);
+	tmp = format_expand_time(ft, input);
 
 	free(c->prompt_string);
-	c->prompt_string = format_expand_time(ft, msg, t);
+	c->prompt_string = format_expand_time(ft, msg);
 
 	free(c->prompt_buffer);
 	c->prompt_buffer = utf8_fromcstr(tmp);
