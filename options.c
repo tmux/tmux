@@ -39,7 +39,7 @@ struct options_entry {
 	union {
 		char				 *string;
 		long long			  number;
-		struct grid_cell		  style;
+		struct style			  style;
 		struct {
 			const char		**array;
 			u_int			  arraysize;
@@ -177,8 +177,8 @@ options_default(struct options *oo, const struct options_table_entry *oe)
 	else if (oe->type == OPTIONS_TABLE_STRING)
 		o->string = xstrdup(oe->default_str);
 	else if (oe->type == OPTIONS_TABLE_STYLE) {
-		memcpy(&o->style, &grid_default_cell, sizeof o->style);
-		style_parse(&grid_default_cell, &o->style, oe->default_str);
+		style_set(&o->style, &grid_default_cell);
+		style_parse(&o->style, &grid_default_cell, oe->default_str);
 	} else
 		o->number = oe->default_num;
 	return (o);
@@ -504,7 +504,7 @@ options_get_number(struct options *oo, const char *name)
 	return (o->number);
 }
 
-const struct grid_cell *
+struct style *
 options_get_style(struct options *oo, const char *name)
 {
 	struct options_entry	*o;
@@ -576,17 +576,17 @@ options_set_style(struct options *oo, const char *name, int append,
     const char *value)
 {
 	struct options_entry	*o;
-	struct grid_cell	 gc;
+	struct style		 sy;
 
 	if (*name == '@')
 		fatalx("user option %s must be a string", name);
 
 	o = options_get_only(oo, name);
 	if (o != NULL && append && OPTIONS_IS_STYLE(o))
-		memcpy(&gc, &o->style, sizeof gc);
+		style_copy(&sy, &o->style);
 	else
-		memcpy(&gc, &grid_default_cell, sizeof gc);
-	if (style_parse(&grid_default_cell, &gc, value) == -1)
+		style_set(&sy, &grid_default_cell);
+	if (style_parse(&sy, &grid_default_cell, value) == -1)
 		return (NULL);
 	if (o == NULL) {
 		o = options_default(oo, options_parent_table_entry(oo, name));
@@ -596,7 +596,7 @@ options_set_style(struct options *oo, const char *name, int append,
 
 	if (!OPTIONS_IS_STYLE(o))
 		fatalx("option %s is not a style", name);
-	memcpy(&o->style, &gc, sizeof o->style);
+	style_copy(&o->style, &sy);
 	return (o);
 }
 
@@ -657,11 +657,11 @@ options_style_update_new(struct options *oo, struct options_entry *o)
 		new = options_set_style(oo, newname, 0, "default");
 
 	if (strstr(o->name, "-bg") != NULL)
-		new->style.bg = o->number;
+		new->style.gc.bg = o->number;
 	else if (strstr(o->name, "-fg") != NULL)
-		new->style.fg = o->number;
+		new->style.gc.fg = o->number;
 	else if (strstr(o->name, "-attr") != NULL)
-		new->style.attr = o->number;
+		new->style.gc.attr = o->number;
 }
 
 void
@@ -674,13 +674,13 @@ options_style_update_old(struct options *oo, struct options_entry *o)
 
 	xsnprintf(newname, sizeof newname, "%.*s-bg", size, o->name);
 	if (options_get(oo, newname) != NULL)
-		options_set_number(oo, newname, o->style.bg);
+		options_set_number(oo, newname, o->style.gc.bg);
 
 	xsnprintf(newname, sizeof newname, "%.*s-fg", size, o->name);
 	if (options_get(oo, newname) != NULL)
-		options_set_number(oo, newname, o->style.fg);
+		options_set_number(oo, newname, o->style.gc.fg);
 
 	xsnprintf(newname, sizeof newname, "%.*s-attr", size, o->name);
 	if (options_get(oo, newname) != NULL)
-		options_set_number(oo, newname, o->style.attr);
+		options_set_number(oo, newname, o->style.gc.attr);
 }

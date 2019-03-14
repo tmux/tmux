@@ -327,15 +327,15 @@ void
 screen_write_cnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
     const struct grid_cell *gcp, const char *fmt, ...)
 {
-	struct grid_cell	 gc;
-	struct utf8_data	*ud = &gc.data;
+	struct style		 sy;
+	struct utf8_data	*ud = &sy.gc.data;
 	va_list			 ap;
 	char			*msg;
 	u_char 			*ptr, *last;
 	size_t			 left, size = 0;
 	enum utf8_state		 more;
 
-	memcpy(&gc, gcp, sizeof gc);
+	style_set(&sy, gcp);
 
 	va_start(ap, fmt);
 	xvasprintf(&msg, fmt, ap);
@@ -352,7 +352,7 @@ screen_write_cnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
 			}
 			*last = '\0';
 
-			style_parse(gcp, &gc, ptr);
+			style_parse(&sy, gcp, ptr);
 			ptr = last + 1;
 			continue;
 		}
@@ -370,22 +370,22 @@ screen_write_cnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
 				continue;
 			if (maxlen > 0 && size + ud->width > (size_t)maxlen) {
 				while (size < (size_t)maxlen) {
-					screen_write_putc(ctx, &gc, ' ');
+					screen_write_putc(ctx, &sy.gc, ' ');
 					size++;
 				}
 				break;
 			}
 			size += ud->width;
-			screen_write_cell(ctx, &gc);
+			screen_write_cell(ctx, &sy.gc);
 		} else {
 			if (maxlen > 0 && size + 1 > (size_t)maxlen)
 				break;
 
 			if (*ptr == '\001')
-				gc.attr ^= GRID_ATTR_CHARSET;
+				sy.gc.attr ^= GRID_ATTR_CHARSET;
 			else if (*ptr > 0x1f && *ptr < 0x7f) {
 				size++;
-				screen_write_putc(ctx, &gc, *ptr);
+				screen_write_putc(ctx, &sy.gc, *ptr);
 			}
 			ptr++;
 		}
