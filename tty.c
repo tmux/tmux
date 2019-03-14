@@ -45,9 +45,9 @@ static void	tty_cursor_pane_unless_wrap(struct tty *,
 		    const struct tty_ctx *, u_int, u_int);
 static void	tty_invalidate(struct tty *);
 static void	tty_colours(struct tty *, const struct grid_cell *);
-static void	tty_check_fg(struct tty *, const struct window_pane *,
+static void	tty_check_fg(struct tty *, struct window_pane *,
 		    struct grid_cell *);
-static void	tty_check_bg(struct tty *, const struct window_pane *,
+static void	tty_check_bg(struct tty *, struct window_pane *,
 		    struct grid_cell *);
 static void	tty_colours_fg(struct tty *, const struct grid_cell *);
 static void	tty_colours_bg(struct tty *, const struct grid_cell *);
@@ -58,18 +58,16 @@ static void	tty_region(struct tty *, u_int, u_int);
 static void	tty_margin_pane(struct tty *, const struct tty_ctx *);
 static void	tty_margin(struct tty *, u_int, u_int);
 static int	tty_large_region(struct tty *, const struct tty_ctx *);
-static int	tty_fake_bce(const struct tty *, const struct window_pane *,
-		    u_int);
+static int	tty_fake_bce(const struct tty *, struct window_pane *, u_int);
 static void	tty_redraw_region(struct tty *, const struct tty_ctx *);
 static void	tty_emulate_repeat(struct tty *, enum tty_code_code,
 		    enum tty_code_code, u_int);
 static void	tty_repeat_space(struct tty *, u_int);
 static void	tty_draw_pane(struct tty *, const struct tty_ctx *, u_int);
 static void	tty_cell(struct tty *, const struct grid_cell *,
-		    const struct window_pane *);
-static void	tty_default_colours(struct grid_cell *,
-		    const struct window_pane *);
-static void	tty_default_attributes(struct tty *, const struct window_pane *,
+		    struct window_pane *);
+static void	tty_default_colours(struct grid_cell *, struct window_pane *);
+static void	tty_default_attributes(struct tty *, struct window_pane *,
 		    u_int);
 
 #define tty_use_margin(tty) \
@@ -847,7 +845,7 @@ tty_large_region(__unused struct tty *tty, const struct tty_ctx *ctx)
  * emulated.
  */
 static int
-tty_fake_bce(const struct tty *tty, const struct window_pane *wp, u_int bg)
+tty_fake_bce(const struct tty *tty, struct window_pane *wp, u_int bg)
 {
 	struct grid_cell	gc;
 
@@ -956,8 +954,8 @@ tty_clamp_line(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
 
 /* Clear a line. */
 static void
-tty_clear_line(struct tty *tty, const struct window_pane *wp, u_int py,
-    u_int px, u_int nx, u_int bg)
+tty_clear_line(struct tty *tty, struct window_pane *wp, u_int py, u_int px,
+    u_int nx, u_int bg)
 {
 	struct client	*c = tty->client;
 
@@ -1075,8 +1073,8 @@ tty_clamp_area(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
 
 /* Clear an area, adjusting to visible part of pane. */
 static void
-tty_clear_area(struct tty *tty, const struct window_pane *wp, u_int py,
-    u_int ny, u_int px, u_int nx, u_int bg)
+tty_clear_area(struct tty *tty, struct window_pane *wp, u_int py, u_int ny,
+    u_int px, u_int nx, u_int bg)
 {
 	struct client	*c = tty->client;
 	u_int		 yy;
@@ -1198,8 +1196,8 @@ tty_check_codeset(struct tty *tty, const struct grid_cell *gc)
 }
 
 void
-tty_draw_line(struct tty *tty, const struct window_pane *wp,
-    struct screen *s, u_int px, u_int py, u_int nx, u_int atx, u_int aty)
+tty_draw_line(struct tty *tty, struct window_pane *wp, struct screen *s,
+    u_int px, u_int py, u_int nx, u_int atx, u_int aty)
 {
 	struct grid		*gd = s->grid;
 	struct grid_cell	 gc, last;
@@ -1802,8 +1800,7 @@ tty_cmd_rawstring(struct tty *tty, const struct tty_ctx *ctx)
 }
 
 static void
-tty_cell(struct tty *tty, const struct grid_cell *gc,
-    const struct window_pane *wp)
+tty_cell(struct tty *tty, const struct grid_cell *gc, struct window_pane *wp)
 {
 	const struct grid_cell	*gcp;
 
@@ -2117,7 +2114,7 @@ out:
 
 void
 tty_attributes(struct tty *tty, const struct grid_cell *gc,
-    const struct window_pane *wp)
+    struct window_pane *wp)
 {
 	struct grid_cell	*tc = &tty->cell, gc2;
 	int			 changed;
@@ -2265,8 +2262,7 @@ tty_colours(struct tty *tty, const struct grid_cell *gc)
 }
 
 static void
-tty_check_fg(struct tty *tty, const struct window_pane *wp,
-    struct grid_cell *gc)
+tty_check_fg(struct tty *tty, struct window_pane *wp, struct grid_cell *gc)
 {
 	u_char	r, g, b;
 	u_int	colours;
@@ -2326,8 +2322,7 @@ tty_check_fg(struct tty *tty, const struct window_pane *wp,
 }
 
 static void
-tty_check_bg(struct tty *tty, const struct window_pane *wp,
-    struct grid_cell *gc)
+tty_check_bg(struct tty *tty, struct window_pane *wp, struct grid_cell *gc)
 {
 	u_char	r, g, b;
 	u_int	colours;
@@ -2499,32 +2494,32 @@ fallback_256:
 }
 
 static void
-tty_default_colours(struct grid_cell *gc, const struct window_pane *wp)
+tty_default_colours(struct grid_cell *gc, struct window_pane *wp)
 {
 	struct window		*w = wp->window;
 	struct options		*oo = w->options;
-	const struct grid_cell	*agc, *pgc, *wgc;
+	struct style		*active, *pane, *window;
 	int			 c;
 
 	if (w->flags & WINDOW_STYLECHANGED) {
 		w->flags &= ~WINDOW_STYLECHANGED;
-		agc = options_get_style(oo, "window-active-style");
-		memcpy(&w->active_style, agc, sizeof w->active_style);
-		wgc = options_get_style(oo, "window-style");
-		memcpy(&w->style, wgc, sizeof w->style);
+		active = options_get_style(oo, "window-active-style");
+		style_copy(&w->active_style, active);
+		window = options_get_style(oo, "window-style");
+		style_copy(&w->style, window);
 	} else {
-		agc = &w->active_style;
-		wgc = &w->style;
+		active = &w->active_style;
+		window = &w->style;
 	}
-	pgc = &wp->colgc;
+	pane = &wp->style;
 
 	if (gc->fg == 8) {
-		if (pgc->fg != 8)
-			gc->fg = pgc->fg;
-		else if (wp == w->active && agc->fg != 8)
-			gc->fg = agc->fg;
+		if (pane->gc.fg != 8)
+			gc->fg = pane->gc.fg;
+		else if (wp == w->active && active->gc.fg != 8)
+			gc->fg = active->gc.fg;
 		else
-			gc->fg = wgc->fg;
+			gc->fg = window->gc.fg;
 
 		if (gc->fg != 8) {
 			c = window_pane_get_palette(wp, gc->fg);
@@ -2534,12 +2529,12 @@ tty_default_colours(struct grid_cell *gc, const struct window_pane *wp)
 	}
 
 	if (gc->bg == 8) {
-		if (pgc->bg != 8)
-			gc->bg = pgc->bg;
-		else if (wp == w->active && agc->bg != 8)
-			gc->bg = agc->bg;
+		if (pane->gc.bg != 8)
+			gc->bg = pane->gc.bg;
+		else if (wp == w->active && active->gc.bg != 8)
+			gc->bg = active->gc.bg;
 		else
-			gc->bg = wgc->bg;
+			gc->bg = window->gc.bg;
 
 		if (gc->bg != 8) {
 			c = window_pane_get_palette(wp, gc->bg);
@@ -2550,7 +2545,7 @@ tty_default_colours(struct grid_cell *gc, const struct window_pane *wp)
 }
 
 static void
-tty_default_attributes(struct tty *tty, const struct window_pane *wp, u_int bg)
+tty_default_attributes(struct tty *tty, struct window_pane *wp, u_int bg)
 {
 	static struct grid_cell gc;
 

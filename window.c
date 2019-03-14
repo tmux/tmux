@@ -468,7 +468,7 @@ window_set_active_pane(struct window *w, struct window_pane *wp)
 void
 window_redraw_active_switch(struct window *w, struct window_pane *wp)
 {
-	const struct grid_cell	*gc;
+	struct style	*sy;
 
 	if (wp == w->active)
 		return;
@@ -477,21 +477,21 @@ window_redraw_active_switch(struct window *w, struct window_pane *wp)
 	 * If window-style and window-active-style are the same, we don't need
 	 * to redraw panes when switching active panes.
 	 */
-	gc = options_get_style(w->options, "window-active-style");
-	if (style_equal(gc, options_get_style(w->options, "window-style")))
+	sy = options_get_style(w->options, "window-active-style");
+	if (style_equal(sy, options_get_style(w->options, "window-style")))
 		return;
 
 	/*
 	 * If the now active or inactive pane do not have a custom style or if
 	 * the palette is different, they need to be redrawn.
 	 */
-	if (window_pane_get_palette(w->active, w->active->colgc.fg) != -1 ||
-	    window_pane_get_palette(w->active, w->active->colgc.bg) != -1 ||
-	    style_equal(&grid_default_cell, &w->active->colgc))
+	if (window_pane_get_palette(w->active, w->active->style.gc.fg) != -1 ||
+	    window_pane_get_palette(w->active, w->active->style.gc.bg) != -1 ||
+	    style_is_default(&w->active->style))
 		w->active->flags |= PANE_REDRAW;
-	if (window_pane_get_palette(wp, wp->colgc.fg) != -1 ||
-	    window_pane_get_palette(wp, wp->colgc.bg) != -1 ||
-	    style_equal(&grid_default_cell, &wp->colgc))
+	if (window_pane_get_palette(wp, wp->style.gc.fg) != -1 ||
+	    window_pane_get_palette(wp, wp->style.gc.bg) != -1 ||
+	    style_is_default(&wp->style))
 		wp->flags |= PANE_REDRAW;
 }
 
@@ -824,7 +824,7 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 
 	wp->saved_grid = NULL;
 
-	memcpy(&wp->colgc, &grid_default_cell, sizeof wp->colgc);
+	style_set(&wp->style, &grid_default_cell);
 
 	screen_init(&wp->base, sx, sy, hlimit);
 	wp->screen = &wp->base;
@@ -1192,7 +1192,7 @@ window_pane_reset_palette(struct window_pane *wp)
 }
 
 int
-window_pane_get_palette(const struct window_pane *wp, int c)
+window_pane_get_palette(struct window_pane *wp, int c)
 {
 	int	new;
 
