@@ -132,7 +132,7 @@ struct format_tree {
 static int format_entry_cmp(struct format_entry *, struct format_entry *);
 RB_GENERATE_STATIC(format_entry_tree, format_entry, entry, format_entry_cmp);
 
-/* Format modifiers. */
+/* Format modifier. */
 struct format_modifier {
 	char	  modifier[3];
 	u_int	  size;
@@ -1174,7 +1174,9 @@ format_substitute(const char *source, const char *from, const char *to)
 static char *
 format_loop_sessions(struct format_tree *ft, const char *fmt)
 {
+	struct client		*c = ft->client;
 	struct cmdq_item	*item = ft->item;
+	struct format_tree	*nft;
 	char			*expanded, *value;
 	size_t			 valuelen;
 	struct session		*s;
@@ -1184,7 +1186,10 @@ format_loop_sessions(struct format_tree *ft, const char *fmt)
 
 	RB_FOREACH(s, sessions, &sessions) {
 		format_log(ft, "session loop: $%u", s->id);
-		expanded = format_single(item, fmt, ft->c, ft->s, NULL, NULL);
+		nft = format_create(c, item, FORMAT_NONE, ft->flags);
+		format_defaults(nft, ft->c, s, NULL, NULL);
+		expanded = format_expand(nft, fmt);
+		format_free(nft);
 
 		valuelen += strlen(expanded);
 		value = xrealloc(value, valuelen);
@@ -1200,10 +1205,13 @@ format_loop_sessions(struct format_tree *ft, const char *fmt)
 static char *
 format_loop_windows(struct format_tree *ft, const char *fmt)
 {
+	struct client		*c = ft->client;
 	struct cmdq_item	*item = ft->item;
+	struct format_tree	*nft;
 	char			*all, *active, *use, *expanded, *value;
 	size_t			 valuelen;
 	struct winlink		*wl;
+	struct window		*w;
 
 	if (ft->s == NULL) {
 		format_log(ft, "window loop but no session");
@@ -1219,12 +1227,16 @@ format_loop_windows(struct format_tree *ft, const char *fmt)
 	valuelen = 1;
 
 	RB_FOREACH(wl, winlinks, &ft->s->windows) {
-		format_log(ft, "window loop: %u @%u", wl->idx, wl->window->id);
+		w = wl->window;
+		format_log(ft, "window loop: %u @%u", wl->idx, w->id);
 		if (active != NULL && wl == ft->s->curw)
 			use = active;
 		else
 			use = all;
-		expanded = format_single(item, use, ft->c, ft->s, wl, NULL);
+		nft = format_create(c, item, FORMAT_WINDOW|w->id, ft->flags);
+		format_defaults(nft, ft->c, ft->s, wl, NULL);
+		expanded = format_expand(nft, use);
+		format_free(nft);
 
 		valuelen += strlen(expanded);
 		value = xrealloc(value, valuelen);
@@ -1243,7 +1255,9 @@ format_loop_windows(struct format_tree *ft, const char *fmt)
 static char *
 format_loop_panes(struct format_tree *ft, const char *fmt)
 {
+	struct client		*c = ft->client;
 	struct cmdq_item	*item = ft->item;
+	struct format_tree	*nft;
 	char			*all, *active, *use, *expanded, *value;
 	size_t			 valuelen;
 	struct window_pane	*wp;
@@ -1267,7 +1281,10 @@ format_loop_panes(struct format_tree *ft, const char *fmt)
 			use = active;
 		else
 			use = all;
-		expanded = format_single(item, use, ft->c, ft->s, ft->wl, wp);
+		nft = format_create(c, item, FORMAT_PANE|wp->id, ft->flags);
+		format_defaults(nft, ft->c, ft->s, ft->wl, wp);
+		expanded = format_expand(nft, use);
+		format_free(nft);
 
 		valuelen += strlen(expanded);
 		value = xrealloc(value, valuelen);
