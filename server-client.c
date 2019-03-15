@@ -281,13 +281,7 @@ server_client_lost(struct client *c)
 	if (c->stderr_data != c->stdout_data)
 		evbuffer_free(c->stderr_data);
 
-	if (event_initialized(&c->status.timer))
-		evtimer_del(&c->status.timer);
-	screen_free(&c->status.status);
-	if (c->status.old_status != NULL) {
-		screen_free(c->status.old_status);
-		free(c->status.old_status);
-	}
+	status_free(c);
 
 	free(c->title);
 	free((void *)c->cwd);

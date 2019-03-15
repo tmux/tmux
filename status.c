@@ -296,7 +296,23 @@ status_get_window_at(struct client *c, u_int x)
 	return (NULL);
 }
 
-/* Draw status for client on the last lines of given context. */
+/* Free status line. */
+void
+status_free(struct client *c)
+{
+	struct status_line	*sl = &c->status;
+
+	if (event_initialized(&sl->timer))
+		evtimer_del(&sl->timer);
+
+	screen_free(&sl->status);
+	if (sl->old_status != NULL) {
+		screen_free(sl->old_status);
+		free(sl->old_status);
+	}
+}
+
+/* Draw status line for client. */
 int
 status_redraw(struct client *c)
 {
