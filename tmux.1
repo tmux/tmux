@@ -4174,7 +4174,7 @@ option.
 This command works only from inside
 .Nm .
 .It Xo Ic display-message
-.Op Fl p
+.Op Fl pv
 .Op Fl c Ar target-client
 .Op Fl t Ar target-pane
 .Op Ar message
@@ -4196,6 +4196,10 @@ if
 .Fl t
 is given, otherwise the active pane for the session attached to
 .Ar target-client .
+.Pp
+With
+.Fl v ,
+verbose logging is printed as the format is parsed.
 .El
 .Sh BUFFERS
 .Nm
