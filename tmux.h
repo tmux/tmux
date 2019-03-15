@@ -1497,6 +1497,7 @@ struct options_table_entry {
 
 	const char		 *default_str;
 	long long		  default_num;
+	const char		**default_arr;
 
 	const char		 *separator;
 	const char		 *style;

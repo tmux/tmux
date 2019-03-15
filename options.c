@@ -169,12 +169,17 @@ options_empty(struct options *oo, const struct options_table_entry *oe)
 struct options_entry *
 options_default(struct options *oo, const struct options_table_entry *oe)
 {
-	struct options_entry	*o;
+	struct options_entry	 *o;
+	u_int			  i;
 
 	o = options_empty(oo, oe);
-	if (oe->type == OPTIONS_TABLE_ARRAY)
-		options_array_assign(o, oe->default_str);
-	else if (oe->type == OPTIONS_TABLE_STRING)
+	if (oe->type == OPTIONS_TABLE_ARRAY) {
+		if (oe->default_arr != NULL) {
+			for (i = 0; oe->default_arr[i] != NULL; i++)
+				options_array_set(o, i, oe->default_arr[i], 0);
+		} else
+			options_array_assign(o, oe->default_str);
+	} else if (oe->type == OPTIONS_TABLE_STRING)
 		o->string = xstrdup(oe->default_str);
 	else if (oe->type == OPTIONS_TABLE_STYLE) {
 		style_set(&o->style, &grid_default_cell);
