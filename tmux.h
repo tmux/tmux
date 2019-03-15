@@ -1434,8 +1434,6 @@ struct client {
 	struct session	*session;
 	struct session	*last_session;
 
-	int		 wlmouse;
-
 	int		 references;
 
 	void		*pan_window;
