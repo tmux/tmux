@@ -231,7 +231,7 @@ format_log1(struct format_tree *ft, const char *from, const char *fmt, ...)
 	va_end(ap);
 
 	log_debug("%s: %s", from, s);
-	if (ft->item != NULL)
+	if (ft->item != NULL && (ft->flags & FORMAT_VERBOSE))
 		cmdq_print(ft->item, "#%.*s%s", ft->loop, spaces, s);
 
 	free(s);
