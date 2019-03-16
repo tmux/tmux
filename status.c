@@ -296,6 +296,32 @@ status_get_window_at(struct client *c, u_int x)
 	return (NULL);
 }
 
+/* Save old status line. */
+static void
+status_push_screen(struct client *c)
+{
+	struct status_line *sl = &c->status;
+
+	if (sl->active == &sl->screen) {
+		sl->active = xmalloc(sizeof *sl->active);
+		screen_init(sl->active, c->tty.sx, status_line_size(c), 0);
+	}
+	sl->references++;
+}
+
+/* Restore old status line. */
+static void
+status_pop_screen(struct client *c)
+{
+	struct status_line *sl = &c->status;
+
+	if (--sl->references == 0) {
+		screen_free(sl->active);
+		free(sl->active);
+		sl->active = &sl->screen;
+	}
+}
+
 /* Initialize status line. */
 void
 status_init(struct client *c)
@@ -303,6 +329,7 @@ status_init(struct client *c)
 	struct status_line	*sl = &c->status;
 
 	screen_init(&sl->screen, c->tty.sx, 1, 0);
+	sl->active = &sl->screen;
 }
 
 /* Free status line. */
@@ -314,37 +341,11 @@ status_free(struct client *c)
 	if (event_initialized(&sl->timer))
 		evtimer_del(&sl->timer);
 
+	if (sl->active != &sl->screen) {
+		screen_free(sl->active);
+		free(sl->active);
+	}
 	screen_free(&sl->screen);
-	if (sl->old_screen != NULL) {
-		screen_free(sl->old_screen);
-		free(sl->old_screen);
-	}
-}
-
-/* Save as old status line. */
-static void
-status_save_old(struct client *c)
-{
-	struct status_line *sl = &c->status;
-
-	if (sl->old_screen == NULL) {
-		sl->old_screen = xmalloc(sizeof *sl->old_screen);
-		memcpy(sl->old_screen, &sl->screen, sizeof *sl->old_screen);
-		screen_init(&c->status.screen, c->tty.sx, 1, 0);
-	}
-}
-
-/* Free old status line. */
-static void
-status_free_old(struct client *c)
-{
-	struct status_line *sl = &c->status;
-
-	if (sl->old_screen != NULL) {
-		screen_free(sl->old_screen);
-		free(sl->old_screen);
-		sl->old_screen = NULL;
-	}
 }
 
 /* Draw status line for client. */
@@ -365,8 +366,9 @@ status_redraw(struct client *c)
 	size_t			 llen, rlen, seplen;
 	int			 larrow, rarrow;
 
-	/* Delete the saved status line, if any. */
-	status_free_old(c);
+	/* Shouldn't get here if not the active screen. */
+	if (sl->active != &sl->screen)
+		fatalx("not the active screen");
 
 	/* No status line? */
 	lines = status_line_size(c);
@@ -379,9 +381,9 @@ status_redraw(struct client *c)
 	style_apply(&stdgc, s->options, "status-style");
 
 	/* Create the target screen. */
-	memcpy(&old_screen, &sl->screen, sizeof old_screen);
-	screen_init(&sl->screen, c->tty.sx, lines, 0);
-	screen_write_start(&ctx, NULL, &sl->screen);
+	memcpy(&old_screen, sl->active, sizeof old_screen);
+	screen_init(sl->active, c->tty.sx, lines, 0);
+	screen_write_start(&ctx, NULL, sl->active);
 	for (offset = 0; offset < lines * c->tty.sx; offset++)
 		screen_write_putc(&ctx, &stdgc, ' ');
 	screen_write_stop(&ctx);
@@ -504,7 +506,7 @@ status_redraw(struct client *c)
 
 draw:
 	/* Begin drawing. */
-	screen_write_start(&ctx, NULL, &sl->screen);
+	screen_write_start(&ctx, NULL, sl->active);
 
 	/* Draw the left string and arrow. */
 	screen_write_cursormove(&ctx, 0, 0, 0);
@@ -563,7 +565,7 @@ out:
 	free(left);
 	free(right);
 
-	if (grid_compare(sl->screen.grid, old_screen.grid) == 0) {
+	if (grid_compare(sl->active->grid, old_screen.grid) == 0) {
 		screen_free(&old_screen);
 		return (0);
 	}
@@ -634,7 +636,7 @@ status_message_set(struct client *c, const char *fmt, ...)
 	int		delay;
 
 	status_message_clear(c);
-	status_save_old(c);
+	status_push_screen(c);
 
 	va_start(ap, fmt);
 	xvasprintf(&c->message_string, fmt, ap);
@@ -671,7 +673,7 @@ status_message_clear(struct client *c)
 		c->tty.flags &= ~(TTY_NOCURSOR|TTY_FREEZE);
 	c->flags |= CLIENT_ALLREDRAWFLAGS; /* was frozen and may have changed */
 
-	screen_reinit(&c->status.screen);
+	status_pop_screen(c);
 }
 
 /* Clear status line message after timer expires. */
@@ -687,23 +689,22 @@ status_message_callback(__unused int fd, __unused short event, void *data)
 int
 status_message_redraw(struct client *c)
 {
-	struct screen_write_ctx		ctx;
-	struct session		       *s = c->session;
-	struct screen		        old_status;
-	size_t			        len;
-	struct grid_cell		gc;
-	u_int				lines, offset;
+	struct status_line	*sl = &c->status;
+	struct screen_write_ctx	 ctx;
+	struct session		*s = c->session;
+	struct screen		 old_screen;
+	size_t			 len;
+	u_int			 lines, offset;
+	struct grid_cell	 gc;
 
 	if (c->tty.sx == 0 || c->tty.sy == 0)
 		return (0);
-	memcpy(&old_status, &c->status.screen, sizeof old_status);
+	memcpy(&old_screen, sl->active, sizeof old_screen);
 
 	lines = status_line_size(c);
-	if (lines <= 1) {
+	if (lines <= 1)
 		lines = 1;
-		screen_init(&c->status.screen, c->tty.sx, 1, 0);
-	} else
-		screen_init(&c->status.screen, c->tty.sx, lines, 0);
+	screen_init(sl->active, c->tty.sx, 1, 0);
 
 	len = screen_write_strlen("%s", c->message_string);
 	if (len > c->tty.sx)
@@ -711,7 +712,7 @@ status_message_redraw(struct client *c)
 
 	style_apply(&gc, s->options, "message-style");
 
-	screen_write_start(&ctx, NULL, &c->status.screen);
+	screen_write_start(&ctx, NULL, sl->active);
 	screen_write_cursormove(&ctx, 0, 0, 0);
 	for (offset = 0; offset < lines * c->tty.sx; offset++)
 		screen_write_putc(&ctx, &gc, ' ');
@@ -719,11 +720,11 @@ status_message_redraw(struct client *c)
 	screen_write_nputs(&ctx, len, &gc, "%s", c->message_string);
 	screen_write_stop(&ctx);
 
-	if (grid_compare(c->status.screen.grid, old_status.grid) == 0) {
-		screen_free(&old_status);
+	if (grid_compare(sl->active->grid, old_screen.grid) == 0) {
+		screen_free(&old_screen);
 		return (0);
 	}
-	screen_free(&old_status);
+	screen_free(&old_screen);
 	return (1);
 }
 
@@ -747,7 +748,7 @@ status_prompt_set(struct client *c, const char *msg, const char *input,
 
 	status_message_clear(c);
 	status_prompt_clear(c);
-	status_save_old(c);
+	status_push_screen(c);
 
 	c->prompt_string = format_expand_time(ft, msg);
 
@@ -799,7 +800,7 @@ status_prompt_clear(struct client *c)
 	c->tty.flags &= ~(TTY_NOCURSOR|TTY_FREEZE);
 	c->flags |= CLIENT_ALLREDRAWFLAGS; /* was frozen and may have changed */
 
-	screen_reinit(&c->status.screen);
+	status_pop_screen(c);
 }
 
 /* Update status line prompt with a new prompt string. */
@@ -833,23 +834,22 @@ status_prompt_update(struct client *c, const char *msg, const char *input)
 int
 status_prompt_redraw(struct client *c)
 {
+	struct status_line	*sl = &c->status;
 	struct screen_write_ctx	 ctx;
 	struct session		*s = c->session;
-	struct screen		 old_status;
-	u_int			 i, offset, left, start, pcursor, pwidth, width;
-	u_int			 lines;
+	struct screen		 old_screen;
+	u_int			 i, lines, offset, left, start, width;
+	u_int			 pcursor, pwidth;
 	struct grid_cell	 gc, cursorgc;
 
 	if (c->tty.sx == 0 || c->tty.sy == 0)
 		return (0);
-	memcpy(&old_status, &c->status.screen, sizeof old_status);
+	memcpy(&old_screen, sl->active, sizeof old_screen);
 
 	lines = status_line_size(c);
-	if (lines <= 1) {
+	if (lines <= 1)
 		lines = 1;
-		screen_init(&c->status.screen, c->tty.sx, 1, 0);
-	} else
-		screen_init(&c->status.screen, c->tty.sx, lines, 0);
+	screen_init(sl->active, c->tty.sx, lines, 0);
 
 	if (c->prompt_mode == PROMPT_COMMAND)
 		style_apply(&gc, s->options, "message-command-style");
@@ -863,7 +863,7 @@ status_prompt_redraw(struct client *c)
 	if (start > c->tty.sx)
 		start = c->tty.sx;
 
-	screen_write_start(&ctx, NULL, &c->status.screen);
+	screen_write_start(&ctx, NULL, sl->active);
 	screen_write_cursormove(&ctx, 0, 0, 0);
 	for (offset = 0; offset < lines * c->tty.sx; offset++)
 		screen_write_putc(&ctx, &gc, ' ');
@@ -909,18 +909,17 @@ status_prompt_redraw(struct client *c)
 			screen_write_cell(&ctx, &cursorgc);
 		}
 	}
-	if (c->status.screen.cx < screen_size_x(&c->status.screen) &&
-	    c->prompt_index >= i)
+	if (sl->active->cx < screen_size_x(sl->active) && c->prompt_index >= i)
 		screen_write_putc(&ctx, &cursorgc, ' ');
 
 finished:
 	screen_write_stop(&ctx);
 
-	if (grid_compare(c->status.screen.grid, old_status.grid) == 0) {
-		screen_free(&old_status);
+	if (grid_compare(sl->active->grid, old_screen.grid) == 0) {
+		screen_free(&old_screen);
 		return (0);
 	}
-	screen_free(&old_status);
+	screen_free(&old_screen);
 	return (1);
 }
 

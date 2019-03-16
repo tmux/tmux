@@ -1315,7 +1315,8 @@ struct status_line {
 	struct event	 timer;
 
 	struct screen	 screen;
-	struct screen	*old_screen;
+	struct screen	*active;
+	int		 references;
 
 	int		 window_list_offset;
 
