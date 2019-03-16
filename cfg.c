@@ -104,6 +104,10 @@ start_cfg(void)
 	load_cfg(TMUX_CONF, NULL, NULL, 1);
 
 	if (cfg_file == NULL && (home = find_home()) != NULL) {
+		xasprintf(&cfg_file, "%s/.config/tmux.conf", home);
+		quiet = 1;
+	}
+	if (cfg_file == NULL && (home = find_home()) != NULL) {
 		xasprintf(&cfg_file, "%s/.tmux.conf", home);
 		quiet = 1;
 	}
