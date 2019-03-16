@@ -323,18 +323,23 @@ status_free(struct client *c)
 
 /* Save as old status line. */
 static void
-status_save_old(struct status_line *sl)
+status_save_old(struct client *c)
 {
+	struct status_line *sl = &c->status;
+
 	if (sl->old_screen == NULL) {
 		sl->old_screen = xmalloc(sizeof *sl->old_screen);
 		memcpy(sl->old_screen, &sl->screen, sizeof *sl->old_screen);
+		screen_init(&c->status.screen, c->tty.sx, 1, 0);
 	}
 }
 
 /* Free old status line. */
 static void
-status_free_old(struct status_line *sl)
+status_free_old(struct client *c)
 {
+	struct status_line *sl = &c->status;
+
 	if (sl->old_screen != NULL) {
 		screen_free(sl->old_screen);
 		free(sl->old_screen);
@@ -361,7 +366,7 @@ status_redraw(struct client *c)
 	int			 larrow, rarrow;
 
 	/* Delete the saved status line, if any. */
-	status_free_old(sl);
+	status_free_old(c);
 
 	/* No status line? */
 	lines = status_line_size(c);
@@ -629,9 +634,7 @@ status_message_set(struct client *c, const char *fmt, ...)
 	int		delay;
 
 	status_message_clear(c);
-
-	status_save_old(&c->status);
-	screen_init(&c->status.screen, c->tty.sx, 1, 0);
+	status_save_old(c);
 
 	va_start(ap, fmt);
 	xvasprintf(&c->message_string, fmt, ap);
@@ -744,9 +747,7 @@ status_prompt_set(struct client *c, const char *msg, const char *input,
 
 	status_message_clear(c);
 	status_prompt_clear(c);
-
-	status_save_old(&c->status);
-	screen_init(&c->status.screen, c->tty.sx, 1, 0);
+	status_save_old(c);
 
 	c->prompt_string = format_expand_time(ft, msg);
 
