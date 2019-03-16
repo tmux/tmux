@@ -1314,8 +1314,8 @@ struct cmd_entry {
 struct status_line {
 	struct event	 timer;
 
-	struct screen	 status;
-	struct screen	*old_status;
+	struct screen	 screen;
+	struct screen	*old_screen;
 
 	int		 window_list_offset;
 
@@ -1967,10 +1967,11 @@ void	 server_unzoom_window(struct window *);
 /* status.c */
 void	 status_timer_start(struct client *);
 void	 status_timer_start_all(void);
-void	 status_update_saved(struct session *);
+void	 status_update_cache(struct session *);
 int	 status_at_line(struct client *);
 u_int	 status_line_size(struct client *);
 struct window *status_get_window_at(struct client *, u_int);
+void	 status_init(struct client *);
 void	 status_free(struct client *);
 int	 status_redraw(struct client *);
 void printflike(2, 3) status_message_set(struct client *, const char *, ...);

@@ -264,7 +264,7 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 			layout_fix_panes(w);
 	}
 	RB_FOREACH(s, sessions, &sessions)
-		status_update_saved(s);
+		status_update_cache(s);
 
 	/*
 	 * Update sizes and redraw. May not always be necessary but do it

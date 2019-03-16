@@ -136,7 +136,7 @@ session_create(const char *prefix, const char *name, int argc, char **argv,
 	s->options = oo;
 	s->hooks = hooks_create(global_hooks);
 
-	status_update_saved(s);
+	status_update_cache(s);
 
 	s->tio = NULL;
 	if (tio != NULL) {
