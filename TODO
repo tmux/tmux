@@ -242,4 +242,8 @@ TODO soonish maybe:
   silly really though), reflow performance (can reflow blocks on
   demand). It would possibly be good if history-limit could be global
   and collected LRU.
-
+- Array options should be a tree rather than being sparse.
+- Formats to get the default formats for various things, notably
+  choose-tree. GitHub issue 1634.
+- Command aliases should be able to override builtin commands in order to add
+  default flags (some mechanism needed to avoid recursion). GitHub issue 1630.
