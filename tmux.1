@@ -2750,82 +2750,19 @@ The default is to run
 with
 .Fl np .
 .It Ic message-command-style Ar style
-Set status line message command style, where
-.Ar style
-is a comma-separated list of characteristics to be specified.
-.Pp
-The style format is shared by many options and may be:
-.Ql bg=colour
-to set the background colour,
-.Ql fg=colour
-to set the foreground colour, and a list of attributes as specified below.
-.Pp
-The colour is one of:
-.Ic black ,
-.Ic red ,
-.Ic green ,
-.Ic yellow ,
-.Ic blue ,
-.Ic magenta ,
-.Ic cyan ,
-.Ic white ,
-aixterm bright variants (if supported:
-.Ic brightred ,
-.Ic brightgreen ,
-and so on),
-.Ic colour0
-to
-.Ic colour255
-from the 256-colour set,
-.Ic default
-for the default colour (inherited from another option in the case of some options, for example
-.Ic window-status-style
-inherits from
-.Ic status-style ) ,
-.Ic terminal
-for the terminal default colour, or a hexadecimal RGB string such as
-.Ql #ffffff .
-.Pp
-The attributes is either
-.Ic none
-or a comma-delimited list of one or more of:
-.Ic bright
-(or
-.Ic bold ) ,
-.Ic dim ,
-.Ic underscore ,
-.Ic blink ,
-.Ic reverse ,
-.Ic hidden ,
-.Ic italics ,
-.Ic strikethrough ,
-.Ic double-underscore
-.Ic curly-underscore
-.Ic dotted-underscore
-or
-.Ic dashed-underscore
-to turn an attribute on, or an attribute prefixed with
-.Ql no
-to turn one off.
-.Pp
-Examples are:
-.Bd -literal -offset indent
-fg=yellow,bold,underscore,blink
-bg=black,fg=default,noreverse
-.Ed
-.Pp
-With the
-.Fl a
-flag to the
-.Ic set-option
-command the new style is added otherwise the existing style is replaced.
+Set status line message command style.
+For how to specify
+.Ar style ,
+see the
+.Sx STYLES
+section.
 .It Ic message-style Ar style
 Set status line message style.
 For how to specify
 .Ar style ,
 see the
-.Ic message-command-style
-option.
+.Sx STYLES
+section.
 .It Xo Ic mouse
 .Op Ic on | off
 .Xc
@@ -2932,17 +2869,12 @@ Display
 (by default the session name) to the left of the status line.
 .Ar string
 will be passed through
-.Xr strftime 3
-and formats (see
-.Sx FORMATS )
-will be expanded.
-It may also contain the special character sequence #[] to change the colour
-or attributes, for example
-.Ql #[fg=red,bright]
-to set a bright red foreground.
-See the
-.Ic message-command-style
-option for a description of colours and attributes.
+.Xr strftime 3 .
+Also see the
+.Sx FORMATS
+and
+.Sx STYLES
+sections.
 .Pp
 For details on how the names and titles can be set see the
 .Sx "NAMES AND TITLES"
@@ -2966,8 +2898,8 @@ Set the style of the left part of the status line.
 For how to specify
 .Ar style ,
 see the
-.Ic message-command-style
-option.
+.Sx STYLES
+section.
 .It Xo Ic status-position
 .Op Ic top | bottom
 .Xc
@@ -2994,15 +2926,15 @@ Set the style of the right part of the status line.
 For how to specify
 .Ar style ,
 see the
-.Ic message-command-style
-option.
+.Sx STYLES
+section.
 .It Ic status-style Ar style
 Set status line style.
 For how to specify
 .Ar style ,
 see the
-.Ic message-command-style
-option.
+.Sx STYLES
+section.
 .It Ic update-environment[] Ar variable
 Set list of environment variables to be copied into the session environment
 when a new session is created or an existing session is attached.
@@ -3186,8 +3118,8 @@ Set window modes style.
 For how to specify
 .Ar style ,
 see the
-.Ic message-command-style
-option.
+.Sx STYLES
+section.
 .Pp
 .It Xo Ic monitor-activity
 .Op Ic on | off
@@ -3235,8 +3167,8 @@ Set the pane border style for the currently active pane.
 For how to specify
 .Ar style ,
 see the
-.Ic message-command-style
-option.
+.Sx STYLES
+section.
 Attributes are ignored.
 .Pp
 .It Ic pane-base-index Ar index
@@ -3257,8 +3189,8 @@ Set the pane border style for panes aside from the active pane.
 For how to specify
 .Ar style ,
 see the
-.Ic message-command-style
-option.
+.Sx STYLES
+section.
 Attributes are ignored.
 .Pp
 .It Xo Ic remain-on-exit
@@ -3281,24 +3213,24 @@ Set the style for the window's active pane.
 For how to specify
 .Ar style ,
 see the
-.Ic message-command-style
-option.
+.Sx STYLES
+section.
 .Pp
 .It Ic window-status-activity-style Ar style
 Set status line style for windows with an activity alert.
 For how to specify
 .Ar style ,
 see the
-.Ic message-command-style
-option.
+.Sx STYLES
+section.
 .Pp
 .It Ic window-status-bell-style Ar style
 Set status line style for windows with a bell alert.
 For how to specify
 .Ar style ,
 see the
-.Ic message-command-style
-option.
+.Sx STYLES
+section.
 .Pp
 .It Ic window-status-current-format Ar string
 Like
@@ -3310,24 +3242,24 @@ Set status line style for the currently active window.
 For how to specify
 .Ar style ,
 see the
-.Ic message-command-style
-option.
+.Sx STYLES
+section.
 .Pp
 .It Ic window-status-format Ar string
 Set the format in which the window is displayed in the status line window list.
 See the
-.Ar status-left
-option for details of special character sequences available.
-The default is
-.Ql #I:#W#F .
+.Sx FORMATS
+and
+.Sx STYLES
+sections.
 .Pp
 .It Ic window-status-last-style Ar style
 Set status line style for the last active window.
 For how to specify
 .Ar style ,
 see the
-.Ic message-command-style
-option.
+.Sx STYLES
+section.
 .Pp
 .It Ic window-status-separator Ar string
 Sets the separator drawn between windows in the status line.
@@ -3338,16 +3270,16 @@ Set status line style for a single window.
 For how to specify
 .Ar style ,
 see the
-.Ic message-command-style
-option.
+.Sx STYLES
+section.
 .Pp
 .It Ic window-style Ar style
 Set the default window style.
 For how to specify
 .Ar style ,
 see the
-.Ic message-command-style
-option.
+.Sx STYLES
+section.
 .Pp
 .It Xo Ic wrap-search
 .Op Ic on | off
@@ -3894,6 +3826,77 @@ The following variables are available, where appropriate:
 .It Li "window_zoomed_flag" Ta "" Ta "1 if window is zoomed"
 .It Li "wrap_flag" Ta "" Ta "Pane wrap flag"
 .El
+.Sh STYLES
+.Nm
+offers various options to specify the colour and attributes of aspects of the
+interface, for example
+.Ic status-style
+for the status line.
+In addition, embedded styles may be specified in format options, such as
+.Ic status-left-format ,
+by enclosing them in
+.Ql #[
+and
+.Ql ] .
+.Pp
+A style may be the single term
+.Ql default
+to specify the default style (which may inherit from another option) or a space
+separated list of the following:
+.Bl -tag -width Ds
+.It Ic fg=colour
+Set the foreground colour.
+The colour is one of:
+.Ic black ,
+.Ic red ,
+.Ic green ,
+.Ic yellow ,
+.Ic blue ,
+.Ic magenta ,
+.Ic cyan ,
+.Ic white ;
+if supported the bright variants
+.Ic brightred ,
+.Ic brightgreen ,
+.Ic brightyellow ;
+.Ic colour0
+to
+.Ic colour255
+from the 256-colour set;
+.Ic default
+for the default colour;
+.Ic terminal
+for the terminal default colour; or a hexadecimal RGB string such as
+.Ql #ffffff .
+.It Ic bg=colour
+Set the background colour.
+.It Ic none
+Set no attributes (turn off any active attributes).
+.It Xo Ic bright (or
+.Ic bold )
+.Ic dim ,
+.Ic underscore ,
+.Ic blink ,
+.Ic reverse ,
+.Ic hidden ,
+.Ic italics ,
+.Ic strikethrough ,
+.Ic double-underscore ,
+.Ic curly-underscore ,
+.Ic dotted-underscore ,
+.Ic dashed-underscore
+.Xc
+Set an attribute.
+Any of the attributes may be prefixed with
+.Ql no
+to unset.
+.El
+.Pp
+Examples are:
+.Bd -literal -offset indent
+fg=yellow,bold,underscore,blink
+bg=black,fg=default,noreverse
+.Ed
 .Sh NAMES AND TITLES
 .Nm
 distinguishes between names and titles.
