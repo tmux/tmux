@@ -4193,15 +4193,20 @@ is used, the output is formatted as a set of Bourne shell commands.
 .Nm
 includes an optional status line which is displayed in the bottom line of each
 terminal.
-By default, the status line is enabled (it may be disabled with the
+.Pp
+By default, the status line is enabled and one line in height (it may be
+disabled or made multiple lines with the
 .Ic status
 session option) and contains, from left-to-right: the name of the current
 session in square brackets; the window list; the title of the active pane
 in double quotes; and the time and date.
 .Pp
-The status line is made of three parts: configurable left and right sections
-(which may contain dynamic content such as the time or output from a shell
-command, see the
+Each line of the status line is configured with the
+.Ic status-format
+option.
+The default is made of three parts: configurable left and right sections (which
+may contain dynamic content such as the time or output from a shell command,
+see the
 .Ic status-left ,
 .Ic status-left-length ,
 .Ic status-right ,
