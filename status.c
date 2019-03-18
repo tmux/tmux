@@ -704,7 +704,7 @@ status_message_redraw(struct client *c)
 	lines = status_line_size(c);
 	if (lines <= 1)
 		lines = 1;
-	screen_init(sl->active, c->tty.sx, 1, 0);
+	screen_init(sl->active, c->tty.sx, lines, 0);
 
 	len = screen_write_strlen("%s", c->message_string);
 	if (len > c->tty.sx)

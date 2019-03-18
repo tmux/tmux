@@ -346,7 +346,9 @@ format_job_get(struct format_tree *ft, const char *cmd)
 		force = (ft->flags & FORMAT_FORCE);
 
 	t = time(NULL);
-	if (fj->job == NULL && (force || fj->last != t)) {
+	if (force && fj->job != NULL)
+	       job_free(fj->job);
+	if (force || (fj->job == NULL && fj->last != t)) {
 		fj->job = job_run(expanded, NULL,
 		    server_client_get_cwd(ft->client, NULL), format_job_update,
 		    format_job_complete, NULL, fj, JOB_NOWAIT);
