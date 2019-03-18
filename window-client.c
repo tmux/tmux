@@ -42,6 +42,7 @@ static void		 window_client_key(struct window_mode_entry *,
 
 const struct window_mode window_client_mode = {
 	.name = "client-mode",
+	.default_format = WINDOW_CLIENT_DEFAULT_FORMAT,
 
 	.init = window_client_init,
 	.free = window_client_free,

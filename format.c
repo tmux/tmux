@@ -716,7 +716,9 @@ format_merge(struct format_tree *ft, struct format_tree *from)
 struct format_tree *
 format_create(struct client *c, struct cmdq_item *item, int tag, int flags)
 {
-	struct format_tree	*ft;
+	struct format_tree		 *ft;
+	const struct window_mode	**wm;
+	char				  tmp[64];
 
 	if (!event_initialized(&format_job_event)) {
 		evtimer_set(&format_job_event, format_job_timer, NULL);
@@ -742,6 +744,14 @@ format_create(struct client *c, struct cmdq_item *item, int tag, int flags)
 	format_add_cb(ft, "pid", format_cb_pid);
 	format_add(ft, "socket_path", "%s", socket_path);
 	format_add_tv(ft, "start_time", &start_time);
+
+	for (wm = all_window_modes; *wm != NULL; wm++) {
+		if ((*wm)->default_format != NULL) {
+			xsnprintf(tmp, sizeof tmp, "%s_format", (*wm)->name);
+			tmp[strcspn(tmp, "-")] = '_';
+			format_add(ft, tmp, "%s", (*wm)->default_format);
+		}
+	}
 
 	if (item != NULL) {
 		if (item->cmd != NULL)
@@ -770,6 +780,30 @@ format_free(struct format_tree *ft)
 		server_client_unref(ft->client);
 	free(ft);
 }
+
+/* Walk each format. */
+void
+format_each(struct format_tree *ft, void (*cb)(const char *, const char *,
+    void *), void *arg)
+{
+	struct format_entry	*fe;
+	static char		 s[64];
+
+	RB_FOREACH(fe, format_entry_tree, &ft->tree) {
+		if (fe->t != 0) {
+			xsnprintf(s, sizeof s, "%lld", (long long)fe->t);
+			cb(fe->key, fe->value, s);
+		} else {
+			if (fe->value == NULL && fe->cb != NULL) {
+				fe->cb(ft, fe);
+				if (fe->value == NULL)
+					fe->value = xstrdup("");
+			}
+			cb(fe->key, fe->value, arg);
+		}
+	}
+}
+
 
 /* Add a key-value pair. */
 void

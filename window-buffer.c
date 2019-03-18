@@ -40,6 +40,7 @@ static void		 window_buffer_key(struct window_mode_entry *,
 
 const struct window_mode window_buffer_mode = {
 	.name = "buffer-mode",
+	.default_format = WINDOW_BUFFER_DEFAULT_FORMAT,
 
 	.init = window_buffer_init,
 	.free = window_buffer_free,

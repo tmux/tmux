@@ -706,6 +706,7 @@ struct screen_write_ctx {
 struct window_mode_entry;
 struct window_mode {
 	const char	*name;
+	const char	*default_format;
 
 	struct screen	*(*init)(struct window_mode_entry *,
 			     struct cmd_find_state *, struct args *);
@@ -1589,6 +1590,8 @@ struct format_tree *format_create(struct client *, struct cmdq_item *, int,
 void		 format_free(struct format_tree *);
 void printflike(3, 4) format_add(struct format_tree *, const char *,
 		     const char *, ...);
+void		 format_each(struct format_tree *, void (*)(const char *,
+		     const char *, void *), void *);
 char		*format_expand_time(struct format_tree *, const char *);
 char		*format_expand(struct format_tree *, const char *);
 char		*format_single(struct cmdq_item *, const char *,
@@ -2158,6 +2161,7 @@ void	 screen_select_cell(struct screen *, struct grid_cell *,
 /* window.c */
 extern struct windows windows;
 extern struct window_pane_tree all_window_panes;
+extern const struct window_mode *all_window_modes[];
 int		 window_cmp(struct window *, struct window *);
 RB_PROTOTYPE(windows, window, entry, window_cmp);
 int		 winlink_cmp(struct winlink *, struct winlink *);
