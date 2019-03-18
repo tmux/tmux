@@ -481,11 +481,10 @@ void
 grid_get_cell(struct grid *gd, u_int px, u_int py, struct grid_cell *gc)
 {
 	if (grid_check_y(gd, __func__, py) != 0 ||
-	    px >= gd->linedata[py].cellsize) {
+	    px >= gd->linedata[py].cellsize)
 		memcpy(gc, &grid_default_cell, sizeof *gc);
-		return;
-	}
-	return (grid_get_cell1(&gd->linedata[py], px, gc));
+	else
+		grid_get_cell1(&gd->linedata[py], px, gc);
 }
 
 /* Set cell at relative position. */
