@@ -637,9 +637,50 @@ struct grid {
 	struct grid_line	*linedata;
 };
 
+/* Style alignment. */
+enum style_align {
+	STYLE_ALIGN_DEFAULT,
+	STYLE_ALIGN_LEFT,
+	STYLE_ALIGN_CENTRE,
+	STYLE_ALIGN_RIGHT
+};
+
+/* Style list. */
+enum style_list {
+	STYLE_LIST_OFF,
+	STYLE_LIST_ON,
+	STYLE_LIST_FOCUS,
+	STYLE_LIST_LEFT_MARKER,
+	STYLE_LIST_RIGHT_MARKER,
+};
+
+/* Style range. */
+enum style_range_type {
+	STYLE_RANGE_NONE,
+	STYLE_RANGE_LEFT,
+	STYLE_RANGE_RIGHT,
+	STYLE_RANGE_WINDOW
+};
+struct style_range {
+	enum style_range_type	 type;
+	u_int			 argument;
+
+	u_int			 start;
+	u_int			 end; /* not included */
+
+	TAILQ_ENTRY(style_range) entry;
+};
+TAILQ_HEAD(style_ranges, style_range);
+
 /* Style option. */
 struct style {
-	struct grid_cell	 gc;
+	struct grid_cell	gc;
+
+	enum style_align	align;
+	enum style_list		list;
+
+	enum style_range_type	range_type;
+	u_int			range_argument;
 };
 
 /* Hook data structures. */
@@ -871,10 +912,6 @@ struct winlink {
 	struct session	*session;
 	struct window	*window;
 
-	size_t		 status_width;
-	struct grid_cell status_cell;
-	char		*status_text;
-
 	int		 flags;
 #define WINLINK_BELL 0x1
 #define WINLINK_ACTIVITY 0x2
@@ -956,6 +993,7 @@ struct session {
 	struct winlinks	 windows;
 
 	int		 statusat;
+	u_int		 statuslines;
 
 	struct hooks	*hooks;
 	struct options	*options;
@@ -1000,7 +1038,9 @@ struct mouse_event {
 	int		valid;
 
 	key_code	key;
+
 	int		statusat;
+	u_int		statuslines;
 
 	u_int		x;
 	u_int		y;
@@ -1315,17 +1355,20 @@ struct cmd_entry {
 };
 
 /* Status line. */
+#define STATUS_LINES_LIMIT 5
+struct status_line_entry {
+	char			*expanded;
+	struct style_ranges	 ranges;
+};
 struct status_line {
-	struct event	 timer;
+	struct event		 timer;
 
-	struct screen	 screen;
-	struct screen	*active;
-	int		 references;
+	struct screen		 screen;
+	struct screen		*active;
+	int			 references;
 
-	int		 window_list_offset;
-
-	u_int            left_size;
-	u_int            right_size;
+	struct grid_cell	 style;
+	struct status_line_entry entries[STATUS_LINES_LIMIT];
 };
 
 /* Client connection. */
@@ -1584,6 +1627,7 @@ char		*paste_make_sample(struct paste_buffer *);
 #define FORMAT_PANE 0x80000000U
 #define FORMAT_WINDOW 0x40000000U
 struct format_tree;
+const char	*format_skip(const char *s, const char *end);
 int		 format_true(const char *);
 struct format_tree *format_create(struct client *, struct cmdq_item *, int,
 		     int);
@@ -1605,6 +1649,14 @@ void		 format_defaults_pane(struct format_tree *,
 void		 format_defaults_paste_buffer(struct format_tree *,
 		     struct paste_buffer *);
 void		 format_lost_client(struct client *);
+
+/* format-draw.c */
+void		 format_draw(struct screen_write_ctx *,
+		     const struct grid_cell *, u_int, const char *,
+		     struct style_ranges *);
+u_int		 format_width(const char *);
+char		*format_trim_left(const char *, u_int);
+char		*format_trim_right(const char *, u_int);
 
 /* hooks.c */
 struct hook;
@@ -1981,7 +2033,7 @@ void	 status_timer_start_all(void);
 void	 status_update_cache(struct session *);
 int	 status_at_line(struct client *);
 u_int	 status_line_size(struct client *);
-struct window *status_get_window_at(struct client *, u_int);
+struct style_range *status_get_range(struct client *, u_int, u_int);
 void	 status_init(struct client *);
 void	 status_free(struct client *);
 int	 status_redraw(struct client *);
@@ -2081,9 +2133,6 @@ void	 screen_write_start(struct screen_write_ctx *, struct window_pane *,
 	     struct screen *);
 void	 screen_write_stop(struct screen_write_ctx *);
 void	 screen_write_reset(struct screen_write_ctx *);
-size_t printflike(1, 2) screen_write_cstrlen(const char *, ...);
-void printflike(4, 5) screen_write_cnputs(struct screen_write_ctx *,
-	     ssize_t, const struct grid_cell *, const char *, ...);
 size_t printflike(1, 2) screen_write_strlen(const char *, ...);
 void printflike(3, 4) screen_write_puts(struct screen_write_ctx *,
 	     const struct grid_cell *, const char *, ...);
@@ -2420,8 +2469,6 @@ u_int		 utf8_strwidth(const struct utf8_data *, ssize_t);
 struct utf8_data *utf8_fromcstr(const char *);
 char		*utf8_tocstr(struct utf8_data *);
 u_int		 utf8_cstrwidth(const char *);
-char		*utf8_rtrimcstr(const char *, u_int);
-char		*utf8_trimcstr(const char *, u_int);
 char		*utf8_padcstr(const char *, u_int);
 
 /* osdep-*.c */

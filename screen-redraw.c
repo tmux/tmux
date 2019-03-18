@@ -274,8 +274,8 @@ screen_redraw_make_pane_status(struct client *c, struct window *w,
 	struct grid_cell	 gc;
 	const char		*fmt;
 	struct format_tree	*ft;
-	char			*out;
-	size_t			 outlen;
+	char			*expanded;
+	u_int			 width, i;
 	struct screen_write_ctx	 ctx;
 	struct screen		 old;
 
@@ -289,26 +289,26 @@ screen_redraw_make_pane_status(struct client *c, struct window *w,
 	ft = format_create(c, NULL, FORMAT_PANE|wp->id, 0);
 	format_defaults(ft, c, NULL, NULL, wp);
 
+	expanded = format_expand_time(ft, fmt);
+	wp->status_size = width = wp->sx - 4;
+
 	memcpy(&old, &wp->status_screen, sizeof old);
-	screen_init(&wp->status_screen, wp->sx, 1, 0);
+	screen_init(&wp->status_screen, width, 1, 0);
 	wp->status_screen.mode = 0;
 
-	out = format_expand(ft, fmt);
-	outlen = screen_write_cstrlen("%s", out);
-	if (outlen > wp->sx - 4)
-		outlen = wp->sx - 4;
-	screen_resize(&wp->status_screen, outlen, 1, 0);
-
 	screen_write_start(&ctx, NULL, &wp->status_screen);
+
+	gc.attr |= GRID_ATTR_CHARSET;
+	for (i = 0; i < width; i++)
+		screen_write_putc(&ctx, &gc, 'q');
+	gc.attr &= ~GRID_ATTR_CHARSET;
+
 	screen_write_cursormove(&ctx, 0, 0, 0);
-	screen_write_clearline(&ctx, 8);
-	screen_write_cnputs(&ctx, outlen, &gc, "%s", out);
+	format_draw(&ctx, &gc, width, expanded, NULL);
 	screen_write_stop(&ctx);
 
-	free(out);
+	free(expanded);
 	format_free(ft);
-
-	wp->status_size = outlen;
 
 	if (grid_compare(wp->status_screen.grid, old.grid) == 0) {
 		screen_free(&old);

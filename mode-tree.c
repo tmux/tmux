@@ -497,7 +497,7 @@ mode_tree_draw(struct mode_tree_data *mtd)
 	struct options		*oo = wp->window->options;
 	struct screen_write_ctx	 ctx;
 	struct grid_cell	 gc0, gc;
-	u_int			 w, h, i, j, sy, box_x, box_y;
+	u_int			 w, h, i, j, sy, box_x, box_y, width;
 	char			*text, *start, key[7];
 	const char		*tag, *symbol;
 	size_t			 size, n;
@@ -572,8 +572,9 @@ mode_tree_draw(struct mode_tree_data *mtd)
 			tag = "*";
 		else
 			tag = "";
-		xasprintf(&text, "%-*s%s%s%s: %s", keylen, key, start,
-		    mti->name, tag, mti->text);
+		xasprintf(&text, "%-*s%s%s%s: ", keylen, key, start, mti->name,
+		    tag);
+		width = utf8_cstrwidth(text);
 		free(start);
 
 		if (mti->tagged) {
@@ -582,11 +583,13 @@ mode_tree_draw(struct mode_tree_data *mtd)
 		}
 
 		if (i != mtd->current) {
-			screen_write_cnputs(&ctx, w, &gc0, "%s", text);
 			screen_write_clearendofline(&ctx, 8);
+			screen_write_puts(&ctx, &gc0, "%s", text);
+			format_draw(&ctx, &gc0, w - width, mti->text, NULL);
 		} else {
-			screen_write_cnputs(&ctx, w, &gc, "%s", text);
 			screen_write_clearendofline(&ctx, gc.bg);
+			screen_write_puts(&ctx, &gc, "%s", text);
+			format_draw(&ctx, &gc, w - width, mti->text, NULL);
 		}
 		free(text);
 
