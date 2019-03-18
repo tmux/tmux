@@ -39,8 +39,8 @@ const struct cmd_entry cmd_display_message_entry = {
 	.name = "display-message",
 	.alias = "display",
 
-	.args = { "c:pt:F:v", 0, 1 },
-	.usage = "[-pv] [-c target-client] [-F format] "
+	.args = { "ac:pt:F:v", 0, 1 },
+	.usage = "[-apv] [-c target-client] [-F format] "
 		 CMD_TARGET_PANE_USAGE " [message]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -48,6 +48,14 @@ const struct cmd_entry cmd_display_message_entry = {
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_display_message_exec
 };
+
+static void
+cmd_display_message_each(const char *key, const char *value, void *arg)
+{
+	struct cmdq_item	*item = arg;
+
+	cmdq_print(item, "%s=%s", key, value);
+}
 
 static enum cmd_retval
 cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
@@ -90,6 +98,12 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 		flags = 0;
 	ft = format_create(item->client, item, FORMAT_NONE, flags);
 	format_defaults(ft, target_c, s, wl, wp);
+
+	if (args_has(args, 'a')) {
+		if (item != NULL)
+			format_each(ft, cmd_display_message_each, item);
+		return (CMD_RETURN_NORMAL);
+	}
 
 	msg = format_expand_time(ft, template);
 	if (args_has(self->args, 'p'))

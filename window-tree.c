@@ -55,6 +55,7 @@ static void		 window_tree_key(struct window_mode_entry *,
 
 const struct window_mode window_tree_mode = {
 	.name = "tree-mode",
+	.default_format = WINDOW_TREE_DEFAULT_FORMAT,
 
 	.init = window_tree_init,
 	.free = window_tree_free,
