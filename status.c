@@ -1510,9 +1510,10 @@ status_prompt_complete_list(u_int *size, const char *s)
 	const char				**layout, *value, *cp;
 	const struct cmd_entry			**cmdent;
 	const struct options_table_entry	 *oe;
-	u_int					  items, idx;
+	u_int					  idx;
 	size_t					  slen = strlen(s), valuelen;
 	struct options_entry			 *o;
+	struct options_array_item		 *a;
 	const char				 *layouts[] = {
 		"even-horizontal", "even-vertical", "main-horizontal",
 		"main-vertical", "tiled", NULL
@@ -1538,16 +1539,22 @@ status_prompt_complete_list(u_int *size, const char *s)
 		}
 	}
 	o = options_get_only(global_options, "command-alias");
-	if (o != NULL && options_array_size(o, &items) != -1) {
-		for (idx = 0; idx < items; idx++) {
-			value = options_array_get(o, idx);
+	if (o != NULL) {
+		a = options_array_first(o);
+		while (a != NULL) {
+			value = options_array_item_value(a);;
 			if (value == NULL || (cp = strchr(value, '=')) == NULL)
-				continue;
+				goto next;
+
 			valuelen = cp - value;
 			if (slen > valuelen || strncmp(value, s, slen) != 0)
-				continue;
+				goto next;
+
 			list = xreallocarray(list, (*size) + 1, sizeof *list);
 			list[(*size)++] = xstrndup(value, valuelen);
+
+		next:
+			a = options_array_next(a);
 		}
 	}
 	for (idx = 0; idx < (*size); idx++)

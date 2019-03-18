@@ -319,31 +319,31 @@ cmd_stringify_argv(int argc, char **argv)
 static int
 cmd_try_alias(int *argc, char ***argv)
 {
-	struct options_entry	 *o;
-	int			  old_argc = *argc, new_argc;
-	char			**old_argv = *argv, **new_argv;
-	u_int			  size, idx;
-	int			  i;
-	size_t			  wanted;
-	const char		 *s, *cp = NULL;
+	struct options_entry		 *o;
+	struct options_array_item	 *a;
+	int				  old_argc = *argc, new_argc, i;
+	char				**old_argv = *argv, **new_argv;
+	size_t				  wanted;
+	const char			 *s, *cp = NULL;
 
 	o = options_get_only(global_options, "command-alias");
-	if (o == NULL || options_array_size(o, &size) == -1 || size == 0)
+	if (o == NULL)
 		return (-1);
-
 	wanted = strlen(old_argv[0]);
-	for (idx = 0; idx < size; idx++) {
-		s = options_array_get(o, idx);
-		if (s == NULL)
-			continue;
 
-		cp = strchr(s, '=');
-		if (cp == NULL || (size_t)(cp - s) != wanted)
-			continue;
-		if (strncmp(old_argv[0], s, wanted) == 0)
-			break;
+	a = options_array_first(o);
+	while (a != NULL) {
+		s = options_array_item_value(a);
+		if (s != NULL) {
+			cp = strchr(s, '=');
+			if (cp != NULL &&
+			    (size_t)(cp - s) == wanted &&
+			    strncmp(old_argv[0], s, wanted) == 0)
+				break;
+		}
+		a = options_array_next(a);
 	}
-	if (idx == size)
+	if (a == NULL)
 		return (-1);
 
 	if (cmd_string_split(cp + 1, &new_argc, &new_argv) != 0)
