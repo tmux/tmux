@@ -1260,16 +1260,17 @@ window_pane_set_mode(struct window_pane *wp, const struct window_mode *mode,
 		if (wme->mode == mode)
 			break;
 	}
-	if (wme != NULL)
+	if (wme != NULL) {
 		TAILQ_REMOVE(&wp->modes, wme, entry);
-	else {
+		TAILQ_INSERT_HEAD(&wp->modes, wme, entry);
+	} else {
 		wme = xcalloc(1, sizeof *wme);
 		wme->wp = wp;
 		wme->mode = mode;
 		wme->prefix = 1;
+		TAILQ_INSERT_HEAD(&wp->modes, wme, entry);
 		wme->screen = wme->mode->init(wme, fs, args);
 	}
-	TAILQ_INSERT_HEAD(&wp->modes, wme, entry);
 
 	wp->screen = wme->screen;
 	wp->flags |= (PANE_REDRAW|PANE_CHANGED);
