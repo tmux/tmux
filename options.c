@@ -78,7 +78,6 @@ static struct options_entry	*options_add(struct options *, const char *);
 	    ((o)->tableentry->type == OPTIONS_TABLE_NUMBER ||		\
 	    (o)->tableentry->type == OPTIONS_TABLE_KEY ||		\
 	    (o)->tableentry->type == OPTIONS_TABLE_COLOUR ||		\
-	    (o)->tableentry->type == OPTIONS_TABLE_ATTRIBUTES ||	\
 	    (o)->tableentry->type == OPTIONS_TABLE_FLAG ||		\
 	    (o)->tableentry->type == OPTIONS_TABLE_CHOICE))
 #define OPTIONS_IS_STYLE(o) \
@@ -416,9 +415,6 @@ options_tostring(struct options_entry *o, int idx, int numeric)
 		case OPTIONS_TABLE_COLOUR:
 			tmp = colour_tostring(o->number);
 			break;
-		case OPTIONS_TABLE_ATTRIBUTES:
-			tmp = attributes_tostring(o->number);
-			break;
 		case OPTIONS_TABLE_FLAG:
 			if (numeric)
 				xsnprintf(s, sizeof s, "%lld", o->number);
@@ -707,45 +703,4 @@ options_scope_from_flags(struct args *args, int window,
 		*oo = s->options;
 		return (OPTIONS_TABLE_SESSION);
 	}
-}
-
-void
-options_style_update_new(struct options *oo, struct options_entry *o)
-{
-	const char		*newname = o->tableentry->style;
-	struct options_entry	*new;
-
-	if (newname == NULL)
-		return;
-	new = options_get_only(oo, newname);
-	if (new == NULL)
-		new = options_set_style(oo, newname, 0, "default");
-
-	if (strstr(o->name, "-bg") != NULL)
-		new->style.gc.bg = o->number;
-	else if (strstr(o->name, "-fg") != NULL)
-		new->style.gc.fg = o->number;
-	else if (strstr(o->name, "-attr") != NULL)
-		new->style.gc.attr = o->number;
-}
-
-void
-options_style_update_old(struct options *oo, struct options_entry *o)
-{
-	char	newname[128];
-	int	size;
-
-	size = strrchr(o->name, '-') - o->name;
-
-	xsnprintf(newname, sizeof newname, "%.*s-bg", size, o->name);
-	if (options_get(oo, newname) != NULL)
-		options_set_number(oo, newname, o->style.gc.bg);
-
-	xsnprintf(newname, sizeof newname, "%.*s-fg", size, o->name);
-	if (options_get(oo, newname) != NULL)
-		options_set_number(oo, newname, o->style.gc.fg);
-
-	xsnprintf(newname, sizeof newname, "%.*s-attr", size, o->name);
-	if (options_get(oo, newname) != NULL)
-		options_set_number(oo, newname, o->style.gc.attr);
 }

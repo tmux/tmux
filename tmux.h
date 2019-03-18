@@ -1518,7 +1518,6 @@ enum options_table_type {
 	OPTIONS_TABLE_NUMBER,
 	OPTIONS_TABLE_KEY,
 	OPTIONS_TABLE_COLOUR,
-	OPTIONS_TABLE_ATTRIBUTES,
 	OPTIONS_TABLE_FLAG,
 	OPTIONS_TABLE_CHOICE,
 	OPTIONS_TABLE_STYLE,
@@ -1546,7 +1545,6 @@ struct options_table_entry {
 	const char		**default_arr;
 
 	const char		 *separator;
-	const char		 *style;
 	const char		 *pattern;
 };
 
@@ -1723,10 +1721,6 @@ struct options_entry *options_set_style(struct options *, const char *, int,
 		     const char *);
 enum options_table_scope options_scope_from_flags(struct args *, int,
 		     struct cmd_find_state *, struct options **, char **);
-void		 options_style_update_new(struct options *,
-		     struct options_entry *);
-void		 options_style_update_old(struct options *,
-		     struct options_entry *);
 
 /* options-table.c */
 extern const struct options_table_entry options_table[];

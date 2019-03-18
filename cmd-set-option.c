@@ -81,6 +81,7 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 	char				*name, *argument, *value = NULL, *cause;
 	const char			*target;
 	int				 window, idx, already, error, ambiguous;
+	struct style			*sy;
 
 	/* Expand argument. */
 	c = cmd_find_client(item, NULL, 1);
@@ -247,6 +248,16 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 				tty_keys_build(&loop->tty);
 		}
 	}
+	if (strcmp(name, "status-fg") == 0 || strcmp(name, "status-bg") == 0) {
+		sy = options_get_style(oo, "status-style");
+		sy->gc.fg = options_get_number(oo, "status-fg");
+		sy->gc.bg = options_get_number(oo, "status-bg");
+	}
+	if (strcmp(name, "status-style") == 0) {
+		sy = options_get_style(oo, "status-style");
+		options_set_number(oo, "status-fg", sy->gc.fg);
+		options_set_number(oo, "status-bg", sy->gc.bg);
+	}
 	if (strcmp(name, "status") == 0 ||
 	    strcmp(name, "status-interval") == 0)
 		status_timer_start_all();
@@ -342,16 +353,7 @@ cmd_set_option_set(struct cmd *self, struct cmdq_item *item, struct options *oo,
 			cmdq_error(item, "bad colour: %s", value);
 			return (-1);
 		}
-		o = options_set_number(oo, oe->name, number);
-		options_style_update_new(oo, o);
-		return (0);
-	case OPTIONS_TABLE_ATTRIBUTES:
-		if ((number = attributes_fromstring(value)) == -1) {
-			cmdq_error(item, "bad attributes: %s", value);
-			return (-1);
-		}
-		o = options_set_number(oo, oe->name, number);
-		options_style_update_new(oo, o);
+		options_set_number(oo, oe->name, number);
 		return (0);
 	case OPTIONS_TABLE_FLAG:
 		return (cmd_set_option_flag(item, oe, oo, value));
@@ -363,7 +365,6 @@ cmd_set_option_set(struct cmd *self, struct cmdq_item *item, struct options *oo,
 			cmdq_error(item, "bad style: %s", value);
 			return (-1);
 		}
-		options_style_update_old(oo, o);
 		return (0);
 	case OPTIONS_TABLE_ARRAY:
 		break;

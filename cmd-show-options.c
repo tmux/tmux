@@ -173,10 +173,6 @@ cmd_show_options_all(struct cmd *self, struct cmdq_item *item,
 	o = options_first(oo);
 	while (o != NULL) {
 		oe = options_table_entry(o);
-		if (oe != NULL && oe->style != NULL) {
-			o = options_next(o);
-			continue;
-		}
 		if (!options_isarray(o))
 			cmd_show_options_print(self, item, o, -1);
 		else {
