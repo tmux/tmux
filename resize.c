@@ -162,7 +162,7 @@ recalculate_sizes(void)
 	 */
 	RB_FOREACH(s, sessions, &sessions) {
 		s->attached = 0;
-		status_update_saved(s);
+		status_update_cache(s);
 	}
 
 	/*

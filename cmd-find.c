@@ -1263,17 +1263,17 @@ found:
 
 no_session:
 	if (~flags & CMD_FIND_QUIET)
-		cmdq_error(item, "can't find session %s", session);
+		cmdq_error(item, "can't find session: %s", session);
 	goto error;
 
 no_window:
 	if (~flags & CMD_FIND_QUIET)
-		cmdq_error(item, "can't find window %s", window);
+		cmdq_error(item, "can't find window: %s", window);
 	goto error;
 
 no_pane:
 	if (~flags & CMD_FIND_QUIET)
-		cmdq_error(item, "can't find pane %s", pane);
+		cmdq_error(item, "can't find pane: %s", pane);
 	goto error;
 }
 
@@ -1343,7 +1343,7 @@ cmd_find_client(struct cmdq_item *item, const char *target, int quiet)
 
 	/* If no client found, report an error. */
 	if (c == NULL && !quiet)
-		cmdq_error(item, "can't find client %s", copy);
+		cmdq_error(item, "can't find client: %s", copy);
 
 	free(copy);
 	log_debug("%s: target %s, return %p", __func__, target, c);

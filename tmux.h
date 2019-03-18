@@ -52,6 +52,7 @@ struct mode_tree_data;
 struct mouse_event;
 struct options;
 struct options_entry;
+struct options_array_item;
 struct session;
 struct tmuxpeer;
 struct tmuxproc;
@@ -1316,8 +1317,9 @@ struct cmd_entry {
 struct status_line {
 	struct event	 timer;
 
-	struct screen	 status;
-	struct screen	*old_status;
+	struct screen	 screen;
+	struct screen	*active;
+	int		 references;
 
 	int		 window_list_offset;
 
@@ -1436,8 +1438,6 @@ struct client {
 	struct session	*session;
 	struct session	*last_session;
 
-	int		 wlmouse;
-
 	int		 references;
 
 	void		*pan_window;
@@ -1501,6 +1501,7 @@ struct options_table_entry {
 
 	const char		 *default_str;
 	long long		  default_num;
+	const char		**default_arr;
 
 	const char		 *separator;
 	const char		 *style;
@@ -1577,6 +1578,7 @@ char		*paste_make_sample(struct paste_buffer *);
 #define FORMAT_STATUS 0x1
 #define FORMAT_FORCE 0x2
 #define FORMAT_NOJOBS 0x4
+#define FORMAT_VERBOSE 0x8
 #define FORMAT_NONE 0
 #define FORMAT_PANE 0x80000000U
 #define FORMAT_WINDOW 0x40000000U
@@ -1587,7 +1589,7 @@ struct format_tree *format_create(struct client *, struct cmdq_item *, int,
 void		 format_free(struct format_tree *);
 void printflike(3, 4) format_add(struct format_tree *, const char *,
 		     const char *, ...);
-char		*format_expand_time(struct format_tree *, const char *, time_t);
+char		*format_expand_time(struct format_tree *, const char *);
 char		*format_expand(struct format_tree *, const char *);
 char		*format_single(struct cmdq_item *, const char *,
 		     struct client *, struct session *, struct winlink *,
@@ -1643,8 +1645,12 @@ void		 options_array_clear(struct options_entry *);
 const char	*options_array_get(struct options_entry *, u_int);
 int		 options_array_set(struct options_entry *, u_int, const char *,
 		     int);
-int		 options_array_size(struct options_entry *, u_int *);
 void		 options_array_assign(struct options_entry *, const char *);
+struct options_array_item *options_array_first(struct options_entry *);
+struct options_array_item *options_array_next(struct options_array_item *);
+u_int		 options_array_item_index(struct options_array_item *);
+const char	*options_array_item_value(struct options_array_item *);
+int		 options_isarray(struct options_entry *);
 int		 options_isstring(struct options_entry *);
 const char	*options_tostring(struct options_entry *, int, int);
 char		*options_parse(const char *, int *);
@@ -1969,10 +1975,12 @@ void	 server_unzoom_window(struct window *);
 /* status.c */
 void	 status_timer_start(struct client *);
 void	 status_timer_start_all(void);
-void	 status_update_saved(struct session *);
+void	 status_update_cache(struct session *);
 int	 status_at_line(struct client *);
 u_int	 status_line_size(struct client *);
 struct window *status_get_window_at(struct client *, u_int);
+void	 status_init(struct client *);
+void	 status_free(struct client *);
 int	 status_redraw(struct client *);
 void printflike(2, 3) status_message_set(struct client *, const char *, ...);
 void	 status_message_clear(struct client *);

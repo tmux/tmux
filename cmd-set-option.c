@@ -163,11 +163,9 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 	parent = options_get(oo, name);
 
 	/* Check that array options and indexes match up. */
-	if (idx != -1) {
-		if (*name == '@' || options_array_size(parent, NULL) == -1) {
-			cmdq_error(item, "not an array: %s", argument);
-			goto fail;
-		}
+	if (idx != -1 && (*name == '@' || !options_isarray(parent))) {
+		cmdq_error(item, "not an array: %s", argument);
+		goto fail;
 	}
 
 	/* With -o, check this option is not already set. */
@@ -209,7 +207,7 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 			goto fail;
 		}
 		options_set_string(oo, name, append, "%s", value);
-	} else if (idx == -1 && options_array_size(parent, NULL) == -1) {
+	} else if (idx == -1 && !options_isarray(parent)) {
 		error = cmd_set_option_set(self, item, oo, parent, value);
 		if (error != 0)
 			goto fail;
@@ -264,7 +262,7 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 			layout_fix_panes(w);
 	}
 	RB_FOREACH(s, sessions, &sessions)
-		status_update_saved(s);
+		status_update_cache(s);
 
 	/*
 	 * Update sizes and redraw. May not always be necessary but do it

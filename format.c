@@ -100,6 +100,9 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 #define FORMAT_WINDOWS 0x100
 #define FORMAT_PANES 0x200
 
+/* Limit on recursion. */
+#define FORMAT_LOOP_LIMIT 10
+
 /* Entry in format tree. */
 struct format_entry {
 	char			*key;
@@ -121,13 +124,15 @@ struct format_tree {
 	struct client		*client;
 	u_int			 tag;
 	int			 flags;
+	time_t			 time;
+	u_int			 loop;
 
 	RB_HEAD(format_entry_tree, format_entry) tree;
 };
 static int format_entry_cmp(struct format_entry *, struct format_entry *);
 RB_GENERATE_STATIC(format_entry_tree, format_entry, entry, format_entry_cmp);
 
-/* Format modifiers. */
+/* Format modifier. */
 struct format_modifier {
 	char	  modifier[3];
 	u_int	  size;
@@ -202,6 +207,36 @@ static const char *format_lower[] = {
 	NULL,		/* y */
 	NULL		/* z */
 };
+
+/* Is logging enabled? */
+static inline int
+format_logging(struct format_tree *ft)
+{
+	return (log_get_level() != 0 || (ft->flags & FORMAT_VERBOSE));
+}
+
+/* Log a message if verbose. */
+static void printflike(3, 4)
+format_log1(struct format_tree *ft, const char *from, const char *fmt, ...)
+{
+	va_list			 ap;
+	char			*s;
+	static const char	 spaces[] = "          ";
+
+	if (!format_logging(ft))
+		return;
+
+	va_start(ap, fmt);
+	vasprintf(&s, fmt, ap);
+	va_end(ap);
+
+	log_debug("%s: %s", from, s);
+	if (ft->item != NULL && (ft->flags & FORMAT_VERBOSE))
+		cmdq_print(ft->item, "#%.*s%s", ft->loop, spaces, s);
+
+	free(s);
+}
+#define format_log(ft, fmt, ...) format_log1(ft, __func__, fmt, ##__VA_ARGS__)
 
 /* Format job update callback. */
 static void
@@ -311,7 +346,9 @@ format_job_get(struct format_tree *ft, const char *cmd)
 		force = (ft->flags & FORMAT_FORCE);
 
 	t = time(NULL);
-	if (fj->job == NULL && (force || fj->last != t)) {
+	if (force && fj->job != NULL)
+	       job_free(fj->job);
+	if (force || (fj->job == NULL && fj->last != t)) {
 		fj->job = job_run(expanded, NULL,
 		    server_client_get_cwd(ft->client, NULL), format_job_update,
 		    format_job_complete, NULL, fj, JOB_NOWAIT);
@@ -697,6 +734,7 @@ format_create(struct client *c, struct cmdq_item *item, int tag, int flags)
 
 	ft->tag = tag;
 	ft->flags = flags;
+	ft->time = time(NULL);
 
 	format_add(ft, "version", "%s", VERSION);
 	format_add_cb(ft, "host", format_cb_host);
@@ -1154,7 +1192,9 @@ format_substitute(const char *source, const char *from, const char *to)
 static char *
 format_loop_sessions(struct format_tree *ft, const char *fmt)
 {
+	struct client		*c = ft->client;
 	struct cmdq_item	*item = ft->item;
+	struct format_tree	*nft;
 	char			*expanded, *value;
 	size_t			 valuelen;
 	struct session		*s;
@@ -1163,7 +1203,12 @@ format_loop_sessions(struct format_tree *ft, const char *fmt)
 	valuelen = 1;
 
 	RB_FOREACH(s, sessions, &sessions) {
-		expanded = format_single(item, fmt, ft->c, ft->s, NULL, NULL);
+		format_log(ft, "session loop: $%u", s->id);
+		nft = format_create(c, item, FORMAT_NONE, ft->flags);
+		nft->loop = ft->loop;
+		format_defaults(nft, ft->c, s, NULL, NULL);
+		expanded = format_expand(nft, fmt);
+		format_free(nft);
 
 		valuelen += strlen(expanded);
 		value = xrealloc(value, valuelen);
@@ -1179,13 +1224,18 @@ format_loop_sessions(struct format_tree *ft, const char *fmt)
 static char *
 format_loop_windows(struct format_tree *ft, const char *fmt)
 {
+	struct client		*c = ft->client;
 	struct cmdq_item	*item = ft->item;
+	struct format_tree	*nft;
 	char			*all, *active, *use, *expanded, *value;
 	size_t			 valuelen;
 	struct winlink		*wl;
+	struct window		*w;
 
-	if (ft->s == NULL)
+	if (ft->s == NULL) {
+		format_log(ft, "window loop but no session");
 		return (NULL);
+	}
 
 	if (format_choose(ft, fmt, &all, &active, 0) != 0) {
 		all = xstrdup(fmt);
@@ -1196,11 +1246,17 @@ format_loop_windows(struct format_tree *ft, const char *fmt)
 	valuelen = 1;
 
 	RB_FOREACH(wl, winlinks, &ft->s->windows) {
+		w = wl->window;
+		format_log(ft, "window loop: %u @%u", wl->idx, w->id);
 		if (active != NULL && wl == ft->s->curw)
 			use = active;
 		else
 			use = all;
-		expanded = format_single(item, use, ft->c, ft->s, wl, NULL);
+		nft = format_create(c, item, FORMAT_WINDOW|w->id, ft->flags);
+		nft->loop = ft->loop;
+		format_defaults(nft, ft->c, ft->s, wl, NULL);
+		expanded = format_expand(nft, use);
+		format_free(nft);
 
 		valuelen += strlen(expanded);
 		value = xrealloc(value, valuelen);
@@ -1219,13 +1275,17 @@ format_loop_windows(struct format_tree *ft, const char *fmt)
 static char *
 format_loop_panes(struct format_tree *ft, const char *fmt)
 {
+	struct client		*c = ft->client;
 	struct cmdq_item	*item = ft->item;
+	struct format_tree	*nft;
 	char			*all, *active, *use, *expanded, *value;
 	size_t			 valuelen;
 	struct window_pane	*wp;
 
-	if (ft->w == NULL)
+	if (ft->w == NULL) {
+		format_log(ft, "pane loop but no window");
 		return (NULL);
+	}
 
 	if (format_choose(ft, fmt, &all, &active, 0) != 0) {
 		all = xstrdup(fmt);
@@ -1236,11 +1296,16 @@ format_loop_panes(struct format_tree *ft, const char *fmt)
 	valuelen = 1;
 
 	TAILQ_FOREACH(wp, &ft->w->panes, entry) {
+		format_log(ft, "pane loop: %%%u", wp->id);
 		if (active != NULL && wp == ft->w->active)
 			use = active;
 		else
 			use = all;
-		expanded = format_single(item, use, ft->c, ft->s, ft->wl, wp);
+		nft = format_create(c, item, FORMAT_PANE|wp->id, ft->flags);
+		nft->loop = ft->loop;
+		format_defaults(nft, ft->c, ft->s, ft->wl, wp);
+		expanded = format_expand(nft, use);
+		format_free(nft);
 
 		valuelen += strlen(expanded);
 		value = xrealloc(value, valuelen);
@@ -1264,25 +1329,27 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 	const char		*errptr, *copy, *cp;
 	char			*copy0, *condition, *found, *new;
 	char			*value, *left, *right;
-	char			 tmp[64];
 	size_t			 valuelen;
 	int			 modifiers = 0, limit = 0;
 	struct format_modifier  *list, *fm, *cmp = NULL, *search = NULL;
 	struct format_modifier  *sub = NULL;
 	u_int			 i, count;
+	int			 j;
 
 	/* Make a copy of the key. */
 	copy = copy0 = xstrndup(key, keylen);
-	log_debug("%s: format = '%s'", __func__, copy);
 
 	/* Process modifier list. */
 	list = format_build_modifiers(ft, &copy, &count);
 	for (i = 0; i < count; i++) {
-		xsnprintf(tmp, sizeof tmp, "%s: modifier %u", __func__, i);
-		log_debug("%s = %s", tmp, list[i].modifier);
-		cmd_log_argv(list[i].argc, list[i].argv, tmp);
-
 		fm = &list[i];
+		if (format_logging(ft)) {
+			format_log(ft, "modifier %u is %s", i, fm->modifier);
+			for (j = 0; j < fm->argc; j++) {
+				format_log(ft, "modifier %u argument %d: %s", i,
+				    j, fm->argv[j]);
+			}
+		}
 		if (fm->size == 1) {
 			switch (fm->modifier[0]) {
 			case 'm':
@@ -1365,14 +1432,22 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 			goto fail;
 	} else if (search != NULL) {
 		/* Search in pane. */
-		if (wp == NULL)
+		if (wp == NULL) {
+			format_log(ft, "search '%s' but no pane", copy);
 			value = xstrdup("0");
-		else
+		} else {
+			format_log(ft, "search '%s' pane %%%u", copy,  wp->id);
 			xasprintf(&value, "%u", window_pane_search(wp, copy));
+		}
 	} else if (cmp != NULL) {
 		/* Comparison of left and right. */
-		if (format_choose(ft, copy, &left, &right, 1) != 0)
+		if (format_choose(ft, copy, &left, &right, 1) != 0) {
+			format_log(ft, "compare %s syntax error: %s",
+			    cmp->modifier, copy);
 			goto fail;
+		}
+		format_log(ft, "compare %s left is: %s", cmp->modifier, left);
+		format_log(ft, "compare %s right is: %s", cmp->modifier, right);
 
 		if (strcmp(cmp->modifier, "||") == 0) {
 			if (format_true(left) || format_true(right))
@@ -1407,9 +1482,12 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 	} else if (*copy == '?') {
 		/* Conditional: check first and choose second or third. */
 		cp = format_skip(copy + 1, ",");
-		if (cp == NULL)
+		if (cp == NULL) {
+			format_log(ft, "condition syntax error: %s", copy + 1);
 			goto fail;
+		}
 		condition = xstrndup(copy + 1, cp - (copy + 1));
+		format_log(ft, "condition is: %s", condition);
 
 		found = format_find(ft, condition, modifiers);
 		if (found == NULL) {
@@ -1422,27 +1500,42 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 			if (strcmp(found, condition) == 0) {
 				free(found);
 				found = xstrdup("");
+				format_log(ft, "condition '%s' found: %s",
+				    condition, found);
+			} else {
+				format_log(ft,
+				    "condition '%s' not found; assuming false",
+				    condition);
 			}
-		}
-		free(condition);
+		} else
+			format_log(ft, "condition '%s' found", condition);
 
 		if (format_choose(ft, cp + 1, &left, &right, 0) != 0) {
+			format_log(ft, "condition '%s' syntax error: %s",
+			    condition, cp + 1);
 			free(found);
 			goto fail;
 		}
-		if (format_true(found))
+		if (format_true(found)) {
+			format_log(ft, "condition '%s' is true", condition);
 			value = format_expand(ft, left);
-		else
+		} else {
+			format_log(ft, "condition '%s' is false", condition);
 			value = format_expand(ft, right);
+		}
 		free(right);
 		free(left);
 
+		free(condition);
 		free(found);
 	} else {
 		/* Neither: look up directly. */
 		value = format_find(ft, copy, modifiers);
-		if (value == NULL)
+		if (value == NULL) {
+			format_log(ft, "format '%s' not found", copy);
 			value = xstrdup("");
+		} else
+			format_log(ft, "format '%s' found: %s", copy, value);
 	}
 
 done:
@@ -1453,7 +1546,7 @@ done:
 		value = new;
 	}
 	else if (modifiers & FORMAT_EXPANDTIME) {
-		new = format_expand_time(ft, value, 0);
+		new = format_expand_time(ft, value);
 		free(value);
 		value = new;
 	}
@@ -1461,6 +1554,8 @@ done:
 	/* Perform substitution if any. */
 	if (sub != NULL) {
 		new = format_substitute(value, sub->argv[0], sub->argv[1]);
+		format_log(ft, "substituted '%s' to '%s: %s", sub->argv[0],
+		    sub->argv[1], new);
 		free(value);
 		value = new;
 	}
@@ -1468,16 +1563,17 @@ done:
 	/* Truncate the value if needed. */
 	if (limit > 0) {
 		new = utf8_trimcstr(value, limit);
+		format_log(ft, "applied length limit %d: %s", limit, new);
 		free(value);
 		value = new;
 	} else if (limit < 0) {
 		new = utf8_rtrimcstr(value, -limit);
+		format_log(ft, "applied length limit %d: %s", limit, new);
 		free(value);
 		value = new;
 	}
 
 	/* Expand the buffer and copy in the value. */
-	log_debug("%s: '%s' -> '%s'", __func__, copy0, value);
 	valuelen = strlen(value);
 	while (*len - *off < valuelen + 1) {
 		*buf = xreallocarray(*buf, 2, *len);
@@ -1486,48 +1582,50 @@ done:
 	memcpy(*buf + *off, value, valuelen);
 	*off += valuelen;
 
+	format_log(ft, "replaced '%s' with '%s'", copy0, value);
 	free(value);
+
 	format_free_modifiers(list, count);
 	free(copy0);
 	return (0);
 
 fail:
+	format_log(ft, "failed %s", copy0);
 	format_free_modifiers(list, count);
 	free(copy0);
 	return (-1);
 }
 
-/* Expand keys in a template, passing through strftime first. */
-char *
-format_expand_time(struct format_tree *ft, const char *fmt, time_t t)
+/* Expand keys in a template. */
+static char *
+format_expand1(struct format_tree *ft, const char *fmt, int time)
 {
+	char		*buf, *out, *name;
+	const char	*ptr, *s;
+	size_t		 off, len, n, outlen;
+	int     	 ch, brackets;
 	struct tm	*tm;
-	char		 s[2048];
+	char		 expanded[8192];
 
 	if (fmt == NULL || *fmt == '\0')
 		return (xstrdup(""));
 
-	if (t == 0)
-		t = time(NULL);
-	tm = localtime(&t);
-
-	if (strftime(s, sizeof s, fmt, tm) == 0)
+	if (ft->loop == FORMAT_LOOP_LIMIT)
 		return (xstrdup(""));
+	ft->loop++;
 
-	return (format_expand(ft, s));
-}
+	format_log(ft, "expanding format: %s", fmt);
 
-/* Expand keys in a template. */
-char *
-format_expand(struct format_tree *ft, const char *fmt)
-{
-	char		*buf, *out, *name;
-	const char	*ptr, *s, *saved = fmt;
-	size_t		 off, len, n, outlen;
-	int     	 ch, brackets;
-
-	if (fmt == NULL)
-		return (xstrdup(""));
+	if (time) {
+		tm = localtime(&ft->time);
+		if (strftime(expanded, sizeof expanded, fmt, tm) == 0) {
+			format_log(ft, "format is too long");
+			return (xstrdup(""));
+		}
+		if (format_logging(ft) && strcmp(expanded, fmt) != 0)
+			format_log(ft, "after time expanded: %s", expanded);
+		fmt = expanded;
+	}
 
 	len = 64;
 	buf = xmalloc(len);
@@ -1544,7 +1642,7 @@ format_expand(struct format_tree *ft, const char *fmt)
 		}
 		fmt++;
 
-		ch = (u_char) *fmt++;
+		ch = (u_char)*fmt++;
 		switch (ch) {
 		case '(':
 			brackets = 1;
@@ -1558,15 +1656,19 @@ format_expand(struct format_tree *ft, const char *fmt)
 				break;
 			n = ptr - fmt;
 
-			if (ft->flags & FORMAT_NOJOBS)
-				out = xstrdup("");
-			else {
-				name = xstrndup(fmt, n);
-				out = format_job_get(ft, name);
-				free(name);
-			}
-			outlen = strlen(out);
+			name = xstrndup(fmt, n);
+			format_log(ft, "found #(): %s", name);
 
+			if (ft->flags & FORMAT_NOJOBS) {
+				out = xstrdup("");
+				format_log(ft, "#() is disabled");
+			} else {
+				out = format_job_get(ft, name);
+				format_log(ft, "#() result: %s", out);
+			}
+			free(name);
+
+			outlen = strlen(out);
 			while (len - off < outlen + 1) {
 				buf = xreallocarray(buf, 2, len);
 				len *= 2;
@@ -1584,6 +1686,7 @@ format_expand(struct format_tree *ft, const char *fmt)
 				break;
 			n = ptr - fmt;
 
+			format_log(ft, "found #{}: %.*s", (int)n, fmt);
 			if (format_replace(ft, fmt, n, &buf, &len, &off) != 0)
 				break;
 			fmt += n + 1;
@@ -1591,6 +1694,7 @@ format_expand(struct format_tree *ft, const char *fmt)
 		case '}':
 		case '#':
 		case ',':
+			format_log(ft, "found #%c", ch);
 			while (len - off < 2) {
 				buf = xreallocarray(buf, 2, len);
 				len *= 2;
@@ -1613,6 +1717,7 @@ format_expand(struct format_tree *ft, const char *fmt)
 				continue;
 			}
 			n = strlen(s);
+			format_log(ft, "found #%c: %s", ch, s);
 			if (format_replace(ft, s, n, &buf, &len, &off) != 0)
 				break;
 			continue;
@@ -1622,8 +1727,24 @@ format_expand(struct format_tree *ft, const char *fmt)
 	}
 	buf[off] = '\0';
 
-	log_debug("%s: '%s' -> '%s'", __func__, saved, buf);
+	format_log(ft, "result is: %s", buf);
+	ft->loop--;
+
 	return (buf);
+}
+
+/* Expand keys in a template, passing through strftime first. */
+char *
+format_expand_time(struct format_tree *ft, const char *fmt)
+{
+	return (format_expand1(ft, fmt, 1));
+}
+
+/* Expand keys in a template. */
+char *
+format_expand(struct format_tree *ft, const char *fmt)
+{
+	return (format_expand1(ft, fmt, 0));
 }
 
 /* Expand a single string. */
@@ -1812,6 +1933,11 @@ format_defaults_winlink(struct format_tree *ft, struct winlink *wl)
 	format_add_cb(ft, "window_stack_index", format_cb_window_stack_index);
 	format_add(ft, "window_flags", "%s", window_printable_flags(wl));
 	format_add(ft, "window_active", "%d", wl == s->curw);
+
+	format_add(ft, "window_start_flag", "%d",
+	    !!(wl == RB_MIN(winlinks, &s->windows)));
+	format_add(ft, "window_end_flag", "%d",
+	    !!(wl == RB_MAX(winlinks, &s->windows)));
 
 	format_add(ft, "window_bell_flag", "%d",
 	    !!(wl->flags & WINLINK_BELL));

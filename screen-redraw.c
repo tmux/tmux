@@ -569,7 +569,7 @@ screen_redraw_draw_status(struct screen_redraw_ctx *ctx)
 	struct client	*c = ctx->c;
 	struct window	*w = c->session->curw->window;
 	struct tty	*tty = &c->tty;
-	struct screen	*s = &c->status.status;
+	struct screen	*s = c->status.active;
 	u_int		 i, y;
 
 	log_debug("%s: %s @%u", __func__, c->name, w->id);

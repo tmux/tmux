@@ -39,8 +39,8 @@ const struct cmd_entry cmd_display_message_entry = {
 	.name = "display-message",
 	.alias = "display",
 
-	.args = { "c:pt:F:", 0, 1 },
-	.usage = "[-p] [-c target-client] [-F format] "
+	.args = { "c:pt:F:v", 0, 1 },
+	.usage = "[-pv] [-c target-client] [-F format] "
 		 CMD_TARGET_PANE_USAGE " [message]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -60,6 +60,7 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 	const char		*template;
 	char			*msg;
 	struct format_tree	*ft;
+	int			 flags;
 
 	if (args_has(args, 'F') && args->argc != 0) {
 		cmdq_error(item, "only one of -F or argument must be given");
@@ -83,10 +84,14 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 		target_c = c;
 	else
 		target_c = cmd_find_best_client(s);
-	ft = format_create(item->client, item, FORMAT_NONE, 0);
+	if (args_has(self->args, 'v'))
+		flags = FORMAT_VERBOSE;
+	else
+		flags = 0;
+	ft = format_create(item->client, item, FORMAT_NONE, flags);
 	format_defaults(ft, target_c, s, wl, wp);
 
-	msg = format_expand_time(ft, template, 0);
+	msg = format_expand_time(ft, template);
 	if (args_has(self->args, 'p'))
 		cmdq_print(item, "%s", msg);
 	else if (c != NULL)
