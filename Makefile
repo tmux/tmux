@@ -75,6 +75,7 @@ SRCS=	alerts.c \
 	control.c \
 	environ.c \
 	format.c \
+	format-draw.c \
 	grid-view.c \
 	grid.c \
 	hooks.c \

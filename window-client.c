@@ -217,20 +217,36 @@ window_client_draw(__unused void *modedata, void *itemdata,
 {
 	struct window_client_itemdata	*item = itemdata;
 	struct client			*c = item->c;
+	struct screen			*s = ctx->s;
 	struct window_pane		*wp;
-	u_int				 cx = ctx->s->cx, cy = ctx->s->cy;
+	u_int				 cx = s->cx, cy = s->cy, lines, at;
 
 	if (c->session == NULL || (c->flags & (CLIENT_DEAD|CLIENT_DETACHING)))
 		return;
 	wp = c->session->curw->window->active;
 
-	screen_write_preview(ctx, &wp->base, sx, sy - 3);
+	lines = status_line_size(c);
+	if (lines >= sy)
+		lines = 0;
+	if (status_at_line(c) == 0)
+		at = lines;
+	else
+		at = 0;
 
-	screen_write_cursormove(ctx, cx, cy + sy - 2, 0);
+	screen_write_cursormove(ctx, cx, cy + at, 0);
+	screen_write_preview(ctx, &wp->base, sx, sy - 2 - lines);
+
+	if (at != 0)
+		screen_write_cursormove(ctx, cx, cy + 2, 0);
+	else
+		screen_write_cursormove(ctx, cx, cy + sy - 1 - lines, 0);
 	screen_write_hline(ctx, sx, 0, 0);
 
-	screen_write_cursormove(ctx, cx, cy + sy - 1, 0);
-	screen_write_fast_copy(ctx, &c->status.screen, 0, 0, sx, 1);
+	if (at != 0)
+		screen_write_cursormove(ctx, cx, cy, 0);
+	else
+		screen_write_cursormove(ctx, cx, cy + sy - lines, 0);
+	screen_write_fast_copy(ctx, &c->status.screen, 0, 0, sx, lines);
 }
 
 static struct screen *

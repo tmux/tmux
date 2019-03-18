@@ -19,6 +19,8 @@
 
 #include <sys/types.h>
 
+#include <ctype.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "tmux.h"
@@ -28,7 +30,12 @@
 
 /* Default style. */
 static struct style style_default = {
-	{ 0, 0, 8, 8, { { ' ' }, 0, 1, 1 } }
+	{ 0, 0, 8, 8, { { ' ' }, 0, 1, 1 } },
+
+	STYLE_ALIGN_DEFAULT,
+	STYLE_LIST_OFF,
+
+	STYLE_RANGE_NONE, 0
 };
 
 /*
@@ -40,8 +47,8 @@ int
 style_parse(struct style *sy, const struct grid_cell *base, const char *in)
 {
 	struct style	saved;
-	const char	delimiters[] = " ,";
-	char		tmp[32];
+	const char	delimiters[] = " ,", *cp;
+	char		tmp[256], *found;
 	int		value;
 	size_t		end;
 
@@ -68,6 +75,60 @@ style_parse(struct style *sy, const struct grid_cell *base, const char *in)
 			sy->gc.bg = base->bg;
 			sy->gc.attr = base->attr;
 			sy->gc.flags = base->flags;
+		} else if (strcasecmp(tmp, "nolist") == 0)
+			sy->list = STYLE_LIST_OFF;
+		else if (strncasecmp(tmp, "list=", 5) == 0) {
+			if (strcasecmp(tmp + 5, "on") == 0)
+				sy->list = STYLE_LIST_ON;
+			else if (strcasecmp(tmp + 5, "focus") == 0)
+				sy->list = STYLE_LIST_FOCUS;
+			else if (strcasecmp(tmp + 5, "left-marker") == 0)
+				sy->list = STYLE_LIST_LEFT_MARKER;
+			else if (strcasecmp(tmp + 5, "right-marker") == 0)
+				sy->list = STYLE_LIST_RIGHT_MARKER;
+			else
+				goto error;
+		} else if (strcasecmp(tmp, "norange") == 0) {
+			sy->range_type = style_default.range_type;
+			sy->range_argument = style_default.range_type;
+		} else if (end > 6 && strncasecmp(tmp, "range=", 6) == 0) {
+			found = strchr(tmp + 6, '|');
+			if (found != NULL) {
+				*found++ = '\0';
+				if (*found == '\0')
+					goto error;
+				for (cp = found; *cp != '\0'; cp++) {
+					if (!isdigit((u_char)*cp))
+						goto error;
+				}
+			}
+			if (strcasecmp(tmp + 6, "left") == 0) {
+				if (found != NULL)
+					goto error;
+				sy->range_type = STYLE_RANGE_LEFT;
+				sy->range_argument = 0;
+			} else if (strcasecmp(tmp + 6, "right") == 0) {
+				if (found != NULL)
+					goto error;
+				sy->range_type = STYLE_RANGE_RIGHT;
+				sy->range_argument = 0;
+			} else if (strcasecmp(tmp + 6, "window") == 0) {
+				if (found == NULL)
+					goto error;
+				sy->range_type = STYLE_RANGE_WINDOW;
+				sy->range_argument = atoi(found);
+			}
+		} else if (strcasecmp(tmp, "noalign") == 0)
+			sy->align = style_default.align;
+		else if (end > 6 && strncasecmp(tmp, "align=", 6) == 0) {
+			if (strcasecmp(tmp + 6, "left") == 0)
+				sy->align = STYLE_ALIGN_LEFT;
+			else if (strcasecmp(tmp + 6, "centre") == 0)
+				sy->align = STYLE_ALIGN_CENTRE;
+			else if (strcasecmp(tmp + 6, "right") == 0)
+				sy->align = STYLE_ALIGN_RIGHT;
+			else
+				goto error;
 		} else if (end > 3 && strncasecmp(tmp + 1, "g=", 2) == 0) {
 			if ((value = colour_fromstring(tmp + 3)) == -1)
 				goto error;
@@ -111,11 +172,49 @@ style_tostring(struct style *sy)
 {
 	struct grid_cell	*gc = &sy->gc;
 	int			 off = 0;
-	const char		*comma = "";
+	const char		*comma = "", *tmp;
 	static char		 s[256];
+	char			 b[16];
 
 	*s = '\0';
 
+	if (sy->list != STYLE_LIST_OFF) {
+		if (sy->list == STYLE_LIST_ON)
+			tmp = "on";
+		else if (sy->list == STYLE_LIST_FOCUS)
+			tmp = "focus";
+		else if (sy->list == STYLE_LIST_LEFT_MARKER)
+			tmp = "left-marker";
+		else if (sy->list == STYLE_LIST_RIGHT_MARKER)
+			tmp = "right-marker";
+		off += xsnprintf(s + off, sizeof s - off, "%slist=%s", comma,
+		    tmp);
+		comma = ",";
+	}
+	if (sy->range_type != STYLE_RANGE_NONE) {
+		if (sy->range_type == STYLE_RANGE_LEFT)
+			tmp = "left";
+		else if (sy->range_type == STYLE_RANGE_RIGHT)
+			tmp = "right";
+		else if (sy->range_type == STYLE_RANGE_WINDOW) {
+			snprintf(b, sizeof b, "window|%u", sy->range_argument);
+			tmp = b;
+		}
+		off += xsnprintf(s + off, sizeof s - off, "%srange=%s", comma,
+		    tmp);
+		comma = ",";
+	}
+	if (sy->align != STYLE_ALIGN_DEFAULT) {
+		if (sy->align == STYLE_ALIGN_LEFT)
+			tmp = "left";
+		else if (sy->align == STYLE_ALIGN_CENTRE)
+			tmp = "centre";
+		else if (sy->align == STYLE_ALIGN_RIGHT)
+			tmp = "right";
+		off += xsnprintf(s + off, sizeof s - off, "%salign=%s", comma,
+		    tmp);
+		comma = ",";
+	}
 	if (gc->fg != 8) {
 		off += xsnprintf(s + off, sizeof s - off, "%sfg=%s", comma,
 		    colour_tostring(gc->fg));
@@ -180,7 +279,7 @@ style_copy(struct style *dst, struct style *src)
 	memcpy(dst, src, sizeof *dst);
 }
 
-/* Check if two styles are the same. */
+/* Check if two styles are (visibly) the same. */
 int
 style_equal(struct style *sy1, struct style *sy2)
 {
@@ -192,6 +291,8 @@ style_equal(struct style *sy1, struct style *sy2)
 	if (gc1->bg != gc2->bg)
 		return (0);
 	if ((gc1->attr & STYLE_ATTR_MASK) != (gc2->attr & STYLE_ATTR_MASK))
+		return (0);
+	if (sy1->align != sy2->align)
 		return (0);
 	return (1);
 }

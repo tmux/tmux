@@ -169,41 +169,6 @@ screen_write_putc(struct screen_write_ctx *ctx, const struct grid_cell *gcp,
 	screen_write_cell(ctx, &gc);
 }
 
-/* Calculate string length, with embedded formatting. */
-size_t
-screen_write_cstrlen(const char *fmt, ...)
-{
-	va_list	ap;
-	char   *msg, *msg2, *ptr, *ptr2;
-	size_t	size;
-
-	va_start(ap, fmt);
-	xvasprintf(&msg, fmt, ap);
-	va_end(ap);
-	msg2 = xmalloc(strlen(msg) + 1);
-
-	ptr = msg;
-	ptr2 = msg2;
-	while (*ptr != '\0') {
-		if (ptr[0] == '#' && ptr[1] == '[') {
-			while (*ptr != ']' && *ptr != '\0')
-				ptr++;
-			if (*ptr == ']')
-				ptr++;
-			continue;
-		}
-		*ptr2++ = *ptr++;
-	}
-	*ptr2 = '\0';
-
-	size = screen_write_strlen("%s", msg2);
-
-	free(msg);
-	free(msg2);
-
-	return (size);
-}
-
 /* Calculate string length. */
 size_t
 screen_write_strlen(const char *fmt, ...)
@@ -314,78 +279,6 @@ screen_write_vnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
 			else if (*ptr > 0x1f && *ptr < 0x7f) {
 				size++;
 				screen_write_putc(ctx, &gc, *ptr);
-			}
-			ptr++;
-		}
-	}
-
-	free(msg);
-}
-
-/* Write string, similar to nputs, but with embedded formatting (#[]). */
-void
-screen_write_cnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
-    const struct grid_cell *gcp, const char *fmt, ...)
-{
-	struct style		 sy;
-	struct utf8_data	*ud = &sy.gc.data;
-	va_list			 ap;
-	char			*msg;
-	u_char 			*ptr, *last;
-	size_t			 left, size = 0;
-	enum utf8_state		 more;
-
-	style_set(&sy, gcp);
-
-	va_start(ap, fmt);
-	xvasprintf(&msg, fmt, ap);
-	va_end(ap);
-
-	ptr = msg;
-	while (*ptr != '\0') {
-		if (ptr[0] == '#' && ptr[1] == '[') {
-			ptr += 2;
-			last = ptr + strcspn(ptr, "]");
-			if (*last == '\0') {
-				/* No ]. Not much point in doing anything. */
-				break;
-			}
-			*last = '\0';
-
-			style_parse(&sy, gcp, ptr);
-			ptr = last + 1;
-			continue;
-		}
-		if (*ptr > 0x7f && utf8_open(ud, *ptr) == UTF8_MORE) {
-			ptr++;
-
-			left = strlen(ptr);
-			if (left < (size_t)ud->size - 1)
-				break;
-			while ((more = utf8_append(ud, *ptr)) == UTF8_MORE)
-				ptr++;
-			ptr++;
-
-			if (more != UTF8_DONE)
-				continue;
-			if (maxlen > 0 && size + ud->width > (size_t)maxlen) {
-				while (size < (size_t)maxlen) {
-					screen_write_putc(ctx, &sy.gc, ' ');
-					size++;
-				}
-				break;
-			}
-			size += ud->width;
-			screen_write_cell(ctx, &sy.gc);
-		} else {
-			if (maxlen > 0 && size + 1 > (size_t)maxlen)
-				break;
-
-			if (*ptr == '\001')
-				sy.gc.attr ^= GRID_ATTR_CHARSET;
-			else if (*ptr > 0x1f && *ptr < 0x7f) {
-				size++;
-				screen_write_putc(ctx, &sy.gc, *ptr);
 			}
 			ptr++;
 		}

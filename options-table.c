@@ -39,6 +39,9 @@ static const char *options_table_mode_keys_list[] = {
 static const char *options_table_clock_mode_style_list[] = {
 	"12", "24", NULL
 };
+static const char *options_table_status_list[] = {
+	"off", "on", "2", "3", "4", "5", NULL
+};
 static const char *options_table_status_keys_list[] = {
 	"emacs", "vi", NULL
 };
@@ -62,6 +65,46 @@ static const char *options_table_set_clipboard_list[] = {
 };
 static const char *options_table_window_size_list[] = {
 	"largest", "smallest", "manual", NULL
+};
+
+/* Status line format. */
+#define OPTIONS_TABLE_STATUS_FORMAT1 \
+	"#[align=left range=left #{status-left-style}]" \
+	"#{T;=/#{status-left-length}:status-left}#[norange default]" \
+	"#[list=on align=#{status-justify}]" \
+	"#[list=left-marker]<#[list=right-marker]>#[list=on]" \
+	"#{W:" \
+		"#[range=window|#{window_index}" \
+			"#{?window_last_flag, #{window-status-last-style},}" \
+			"#{?window_bell_flag," \
+				" #{window-status-bell-style}," \
+				"#{?window_activity_flag," \
+					" #{window-status-activity-style},}" \
+				"}" \
+		"]" \
+		"#{T:window-status-format}" \
+		"#[norange default]" \
+		"#{?window_end_flag,,#{window-status-separator}}" \
+	"," \
+		"#[range=window|#{window_index} list=focus" \
+			"#{?window_last_flag, #{window-status-last-style},}" \
+			"#{?window_bell_flag," \
+				" #{window-status-bell-style}," \
+				"#{?window_activity_flag," \
+					" #{window-status-activity-style},}" \
+				"}" \
+		"]" \
+		"#{T:window-status-current-format}" \
+		"#[norange list=on default]" \
+		"#{?window_end_flag,,#{window-status-separator}}" \
+	"}" \
+	"#[nolist align=right range=right #{status-right-style}]" \
+	"#{T;=/#{status-right-length}:status-right}#[norange default]"
+#define OPTIONS_TABLE_STATUS_FORMAT2 \
+	"#[align=centre]#{P:#{?pane_active,#[reverse],}" \
+	"#{pane_index}[#{pane_width}x#{pane_height}]#[default] }"
+static const char *options_table_status_format_default[] = {
+	OPTIONS_TABLE_STATUS_FORMAT1, OPTIONS_TABLE_STATUS_FORMAT2, NULL
 };
 
 /* Top-level options. */
@@ -378,8 +421,9 @@ const struct options_table_entry options_table[] = {
 	},
 
 	{ .name = "status",
-	  .type = OPTIONS_TABLE_FLAG,
+	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_SESSION,
+	  .choices = options_table_status_list,
 	  .default_num = 1
 	},
 
@@ -402,6 +446,12 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_SESSION,
 	  .default_num = 0,
 	  .style = "status-style"
+	},
+
+	{ .name = "status-format",
+	  .type = OPTIONS_TABLE_ARRAY,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_arr = options_table_status_format_default,
 	},
 
 	{ .name = "status-interval",

@@ -251,6 +251,7 @@ client.
 .It !
 Break the current pane out of the window.
 .It \&"
+.\" "
 Split the current pane into two, top and bottom.
 .It #
 List all paste buffers.
@@ -2838,9 +2839,22 @@ is on.
 The values are the same as those for
 .Ic activity-action .
 .It Xo Ic status
-.Op Ic on | off
+.Op Ic off | on | 2 | 3 | 4 | 5
 .Xc
-Show or hide the status line.
+Show or hide the status line or specify its size.
+Using
+.Ic on
+gives a status line one row in height;
+.Ic 2 ,
+.Ic 3 ,
+.Ic 4
+or
+.Ic 5
+more rows.
+.It Ic status-format[] Ar format
+Specify the format to be used for each line of the status line.
+The default builds the top status line from the various individual status
+options below.
 .It Ic status-interval Ar interval
 Update the status line every
 .Ar interval
@@ -3669,6 +3683,7 @@ For example, to get a list of windows formatted like the status line:
 .Bd -literal -offset indent
 #{W:#{E:window-status-format} ,#{E:window-status-current-format} }
 .Ed
+.Pp
 A prefix of the form
 .Ql s/foo/bar/:
 will substitute
@@ -3872,8 +3887,9 @@ for the terminal default colour; or a hexadecimal RGB string such as
 Set the background colour.
 .It Ic none
 Set no attributes (turn off any active attributes).
-.It Xo Ic bright (or
-.Ic bold )
+.It Xo Ic bright
+(or
+.Ic bold ) ,
 .Ic dim ,
 .Ic underscore ,
 .Ic blink ,
@@ -3890,6 +3906,54 @@ Set an attribute.
 Any of the attributes may be prefixed with
 .Ql no
 to unset.
+.It Xo Ic align=left
+(or
+.Ic noalign ) ,
+.Ic align=centre ,
+.Ic align=right
+.Xc
+Align text to the left, centre or right of the available space if appropriate.
+.It Xo Ic list=on ,
+.Ic list=focus ,
+.Ic list=left-marker ,
+.Ic list=right=marker ,
+.Ic nolist
+.Xc
+Mark the position of the various window list components in the
+.Ic status-format
+option:
+.Ic list=on
+marks the start of the list;
+.Ic list=focus
+is the part of the list that should be kept in focus if the entire list won't fit
+in the available space (typically the current window);
+.Ic list=left-marker
+and
+.Ic list=right-marker
+mark the text to be used to mark that text has been trimmed from the left or
+right of the list if there is not enough space.
+.It Xo Ic range=left ,
+.Ic range=right ,
+.Ic range=window|X ,
+.Ic norange
+.Xc
+Mark a range in the
+. Ic status-format
+option.
+.Ic range=left
+and
+.Ic range=right
+are the text used for the
+.Ql StatusLeft
+and
+.Ql StatusRight
+mouse keys.
+.Ic range=window|X
+is the range for a window passed to the
+.Ql Status
+mouse key, where
+.Ql X
+is a window index.
 .El
 .Pp
 Examples are:

@@ -29,14 +29,6 @@
 
 #include "tmux.h"
 
-static char	*status_redraw_get_left(struct client *, struct grid_cell *,
-		     size_t *);
-static char	*status_redraw_get_right(struct client *, struct grid_cell *,
-		     size_t *);
-static char	*status_print(struct client *, struct winlink *,
-		     struct grid_cell *);
-static char	*status_replace(struct client *, struct winlink *,
-		     const char *);
 static void	 status_message_callback(int, short, void *);
 static void	 status_timer_callback(int, short, void *);
 
@@ -196,7 +188,8 @@ status_timer_start_all(void)
 void
 status_update_cache(struct session *s)
 {
-	if (!options_get_number(s->options, "status"))
+	s->statuslines = options_get_number(s->options, "status");
+	if (s->statuslines == 0)
 		s->statusat = -1;
 	else if (options_get_number(s->options, "status-position") == 0)
 		s->statusat = 0;
@@ -225,75 +218,35 @@ status_line_size(struct client *c)
 
 	if (c->flags & CLIENT_STATUSOFF)
 		return (0);
-	if (s->statusat == -1)
-		return (0);
-	return (1);
-}
-
-/* Retrieve options for left string. */
-static char *
-status_redraw_get_left(struct client *c, struct grid_cell *gc, size_t *size)
-{
-	struct session	*s = c->session;
-	const char	*template;
-	char		*left;
-	size_t		 leftlen;
-
-	style_apply_update(gc, s->options, "status-left-style");
-
-	template = options_get_string(s->options, "status-left");
-	left = status_replace(c, NULL, template);
-
-	*size = options_get_number(s->options, "status-left-length");
-	leftlen = screen_write_cstrlen("%s", left);
-	if (leftlen < *size)
-		*size = leftlen;
-	return (left);
-}
-
-/* Retrieve options for right string. */
-static char *
-status_redraw_get_right(struct client *c, struct grid_cell *gc, size_t *size)
-{
-	struct session	*s = c->session;
-	const char	*template;
-	char		*right;
-	size_t		 rightlen;
-
-	style_apply_update(gc, s->options, "status-right-style");
-
-	template = options_get_string(s->options, "status-right");
-	right = status_replace(c, NULL, template);
-
-	*size = options_get_number(s->options, "status-right-length");
-	rightlen = screen_write_cstrlen("%s", right);
-	if (rightlen < *size)
-		*size = rightlen;
-	return (right);
+	return (s->statuslines);
 }
 
 /* Get window at window list position. */
-struct window *
-status_get_window_at(struct client *c, u_int x)
+struct style_range *
+status_get_range(struct client *c, u_int x, u_int y)
 {
-	struct session	*s = c->session;
-	struct winlink	*wl;
-	struct options	*oo;
-	const char	*sep;
-	size_t		 seplen;
+	struct status_line	*sl = &c->status;
+	struct style_range	*sr;
 
-	x += c->status.window_list_offset;
-	RB_FOREACH(wl, winlinks, &s->windows) {
-		oo = wl->window->options;
-
-		sep = options_get_string(oo, "window-status-separator");
-		seplen = screen_write_cstrlen("%s", sep);
-
-		if (x < wl->status_width)
-			return (wl->window);
-		x -= wl->status_width + seplen;
+	if (y >= nitems(sl->entries))
+		return (NULL);
+	TAILQ_FOREACH(sr, &sl->entries[y].ranges, entry) {
+		if (x >= sr->start && x < sr->end)
+			return (sr);
 	}
 	return (NULL);
+}
+
+/* Free all ranges. */
+static void
+status_free_ranges(struct style_ranges *srs)
+{
+	struct style_range	*sr, *sr1;
+
+	TAILQ_FOREACH_SAFE(sr, srs, entry, sr1) {
+		TAILQ_REMOVE(srs, sr, entry);
+		free(sr);
+	}
 }
 
 /* Save old status line. */
@@ -327,6 +280,10 @@ void
 status_init(struct client *c)
 {
 	struct status_line	*sl = &c->status;
+	u_int			 i;
+
+	for (i = 0; i < nitems(sl->entries); i++)
+		TAILQ_INIT(&sl->entries[i].ranges);
 
 	screen_init(&sl->screen, c->tty.sx, 1, 0);
 	sl->active = &sl->screen;
@@ -337,6 +294,12 @@ void
 status_free(struct client *c)
 {
 	struct status_line	*sl = &c->status;
+	u_int			 i;
+
+	for (i = 0; i < nitems(sl->entries); i++) {
+		status_free_ranges(&sl->entries[i].ranges);
+		free((void *)sl->entries[i].expanded);
+	}
 
 	if (event_initialized(&sl->timer))
 		evtimer_del(&sl->timer);
@@ -352,19 +315,19 @@ status_free(struct client *c)
 int
 status_redraw(struct client *c)
 {
-	struct status_line	*sl = &c->status;
-	struct screen_write_ctx	 ctx;
-	struct session		*s = c->session;
-	struct winlink		*wl;
-	struct screen		 old_screen, window_list;
-	struct grid_cell	 stdgc, lgc, rgc, gc;
-	struct options		*oo;
-	char			*left, *right;
-	const char		*sep;
-	u_int			 offset, needed, lines;
-	u_int			 wlstart, wlwidth, wlavailable, wloffset, wlsize;
-	size_t			 llen, rlen, seplen;
-	int			 larrow, rarrow;
+	struct status_line		*sl = &c->status;
+	struct status_line_entry	*sle;
+	struct session			*s = c->session;
+	struct screen_write_ctx		 ctx;
+	struct grid_cell		 gc;
+	u_int				 lines, i, width = c->tty.sx;
+	int				 flags, force = 0, changed = 0;
+	struct options_entry		*o;
+	struct format_tree		*ft;
+	const char			*fmt;
+	char				*expanded;
+
+	log_debug("%s enter", __func__);
 
 	/* Shouldn't get here if not the active screen. */
 	if (sl->active != &sl->screen)
@@ -374,257 +337,71 @@ status_redraw(struct client *c)
 	lines = status_line_size(c);
 	if (c->tty.sy == 0 || lines == 0)
 		return (1);
-	left = right = NULL;
-	larrow = rarrow = 0;
 
 	/* Set up default colour. */
-	style_apply(&stdgc, s->options, "status-style");
-
-	/* Create the target screen. */
-	memcpy(&old_screen, sl->active, sizeof old_screen);
-	screen_init(sl->active, c->tty.sx, lines, 0);
-	screen_write_start(&ctx, NULL, sl->active);
-	for (offset = 0; offset < lines * c->tty.sx; offset++)
-		screen_write_putc(&ctx, &stdgc, ' ');
-	screen_write_stop(&ctx);
-
-	/* If the height is too small, blank status line. */
-	if (c->tty.sy < lines)
-		goto out;
-
-	/* Work out left and right strings. */
-	memcpy(&lgc, &stdgc, sizeof lgc);
-	left = status_redraw_get_left(c, &lgc, &llen);
-	memcpy(&rgc, &stdgc, sizeof rgc);
-	right = status_redraw_get_right(c, &rgc, &rlen);
-
-	/*
-	 * Figure out how much space we have for the window list. If there
-	 * isn't enough space, just show a blank status line.
-	 */
-	needed = 0;
-	if (llen != 0)
-		needed += llen;
-	if (rlen != 0)
-		needed += rlen;
-	if (c->tty.sx == 0 || c->tty.sx <= needed)
-		goto out;
-	wlavailable = c->tty.sx - needed;
-
-	/* Calculate the total size needed for the window list. */
-	wlstart = wloffset = wlwidth = 0;
-	RB_FOREACH(wl, winlinks, &s->windows) {
-		free(wl->status_text);
-		memcpy(&wl->status_cell, &stdgc, sizeof wl->status_cell);
-		wl->status_text = status_print(c, wl, &wl->status_cell);
-		wl->status_width = screen_write_cstrlen("%s", wl->status_text);
-
-		if (wl == s->curw)
-			wloffset = wlwidth;
-
-		oo = wl->window->options;
-		sep = options_get_string(oo, "window-status-separator");
-		seplen = screen_write_cstrlen("%s", sep);
-		wlwidth += wl->status_width + seplen;
+	style_apply(&gc, s->options, "status-style");
+	if (!grid_cells_equal(&gc, &sl->style)) {
+		force = 1;
+		memcpy(&sl->style, &gc, sizeof sl->style);
 	}
 
-	/* Create a new screen for the window list. */
-	screen_init(&window_list, wlwidth, 1, 0);
-
-	/* And draw the window list into it. */
-	screen_write_start(&ctx, NULL, &window_list);
-	RB_FOREACH(wl, winlinks, &s->windows) {
-		screen_write_cnputs(&ctx, -1, &wl->status_cell, "%s",
-		    wl->status_text);
-
-		oo = wl->window->options;
-		sep = options_get_string(oo, "window-status-separator");
-		screen_write_cnputs(&ctx, -1, &stdgc, "%s", sep);
+	/* Resize the target screen. */
+	if (screen_size_x(&sl->screen) != width ||
+	    screen_size_y(&sl->screen) != lines) {
+		if (screen_size_x(&sl->screen) != width)
+			force = 1;
+		screen_resize(&sl->screen, width, lines, 0);
+		changed = 1;
 	}
-	screen_write_stop(&ctx);
+	screen_write_start(&ctx, NULL, &sl->screen);
 
-	/* If there is enough space for the total width, skip to draw now. */
-	if (wlwidth <= wlavailable)
-		goto draw;
-
-	/* Find size of current window text. */
-	wlsize = s->curw->status_width;
-
-	/*
-	 * If the current window is already on screen, good to draw from the
-	 * start and just leave off the end.
-	 */
-	if (wloffset + wlsize < wlavailable) {
-		if (wlavailable > 0) {
-			rarrow = 1;
-			wlavailable--;
-		}
-		wlwidth = wlavailable;
-	} else {
-		/*
-		 * Work out how many characters we need to omit from the
-		 * start. There are wlavailable characters to fill, and
-		 * wloffset + wlsize must be the last. So, the start character
-		 * is wloffset + wlsize - wlavailable.
-		 */
-		if (wlavailable > 0) {
-			larrow = 1;
-			wlavailable--;
-		}
-
-		wlstart = wloffset + wlsize - wlavailable;
-		if (wlavailable > 0 && wlwidth > wlstart + wlavailable + 1) {
-			rarrow = 1;
-			wlstart++;
-			wlavailable--;
-		}
-		wlwidth = wlavailable;
-	}
-
-	/* Bail if anything is now too small too. */
-	if (wlwidth == 0 || wlavailable == 0) {
-		screen_free(&window_list);
-		goto out;
-	}
-
-	/*
-	 * Now the start position is known, work out the state of the left and
-	 * right arrows.
-	 */
-	offset = 0;
-	RB_FOREACH(wl, winlinks, &s->windows) {
-		if (wl->flags & WINLINK_ALERTFLAGS &&
-		    larrow == 1 && offset < wlstart)
-			larrow = -1;
-
-		offset += wl->status_width;
-
-		if (wl->flags & WINLINK_ALERTFLAGS &&
-		    rarrow == 1 && offset > wlstart + wlwidth)
-			rarrow = -1;
-	}
-
-draw:
-	/* Begin drawing. */
-	screen_write_start(&ctx, NULL, sl->active);
-
-	/* Draw the left string and arrow. */
-	screen_write_cursormove(&ctx, 0, 0, 0);
-	if (llen != 0)
-		screen_write_cnputs(&ctx, llen, &lgc, "%s", left);
-	if (larrow != 0) {
-		memcpy(&gc, &stdgc, sizeof gc);
-		if (larrow == -1)
-			gc.attr ^= GRID_ATTR_REVERSE;
-		screen_write_putc(&ctx, &gc, '<');
-	}
-
-	/* Draw the right string and arrow. */
-	if (rarrow != 0) {
-		screen_write_cursormove(&ctx, c->tty.sx - rlen - 1, 0, 0);
-		memcpy(&gc, &stdgc, sizeof gc);
-		if (rarrow == -1)
-			gc.attr ^= GRID_ATTR_REVERSE;
-		screen_write_putc(&ctx, &gc, '>');
-	} else
-		screen_write_cursormove(&ctx, c->tty.sx - rlen, 0, 0);
-	if (rlen != 0)
-		screen_write_cnputs(&ctx, rlen, &rgc, "%s", right);
-
-	/* Figure out the offset for the window list. */
-	if (llen != 0)
-		wloffset = llen;
-	else
-		wloffset = 0;
-	if (wlwidth < wlavailable) {
-		switch (options_get_number(s->options, "status-justify")) {
-		case 1:	/* centred */
-			wloffset += (wlavailable - wlwidth) / 2;
-			break;
-		case 2:	/* right */
-			wloffset += (wlavailable - wlwidth);
-			break;
-		}
-	}
-	if (larrow != 0)
-		wloffset++;
-
-	/* Copy the window list. */
-	sl->window_list_offset = -wloffset + wlstart;
-	screen_write_cursormove(&ctx, wloffset, 0, 0);
-	screen_write_fast_copy(&ctx, &window_list, wlstart, 0, wlwidth, 1);
-	screen_free(&window_list);
-
-	/* Save left and right size. */
-	sl->left_size = llen;
-	sl->right_size = rlen;
-
-	screen_write_stop(&ctx);
-
-out:
-	free(left);
-	free(right);
-
-	if (grid_compare(sl->active->grid, old_screen.grid) == 0) {
-		screen_free(&old_screen);
-		return (0);
-	}
-	screen_free(&old_screen);
-	return (1);
-}
-
-/* Replace special sequences in fmt. */
-static char *
-status_replace(struct client *c, struct winlink *wl, const char *fmt)
-{
-	struct format_tree	*ft;
-	char			*expanded;
-	u_int			 tag;
-
-	if (fmt == NULL)
-		return (xstrdup(""));
-
-	if (wl != NULL)
-		tag = FORMAT_WINDOW|wl->window->id;
-	else
-		tag = FORMAT_NONE;
+	/* Create format tree. */
+	flags = FORMAT_STATUS;
 	if (c->flags & CLIENT_STATUSFORCE)
-		ft = format_create(c, NULL, tag, FORMAT_STATUS|FORMAT_FORCE);
-	else
-		ft = format_create(c, NULL, tag, FORMAT_STATUS);
-	format_defaults(ft, c, NULL, wl, NULL);
+		flags |= FORMAT_FORCE;
+	ft = format_create(c, NULL, FORMAT_NONE, flags);
+	format_defaults(ft, c, NULL, NULL, NULL);
 
-	expanded = format_expand_time(ft, fmt);
+	/* Write the status lines. */
+	o = options_get(s->options, "status-format");
+	if (o == NULL)
+		screen_write_clearscreen(&ctx, gc.bg);
+	else {
+		for (i = 0; i < lines; i++) {
+			screen_write_cursormove(&ctx, 0, i, 0);
 
-	format_free(ft);
-	return (expanded);
-}
+			fmt = options_array_get(o, i);
+			if (fmt == NULL) {
+				screen_write_clearline(&ctx, gc.bg);
+				continue;
+			}
+			sle = &sl->entries[i];
 
-/* Return winlink status line entry and adjust gc as necessary. */
-static char *
-status_print(struct client *c, struct winlink *wl, struct grid_cell *gc)
-{
-	struct options	*oo = wl->window->options;
-	struct session	*s = c->session;
-	const char	*fmt;
-	char   		*text;
+			expanded = format_expand_time(ft, fmt);
+			if (!force &&
+			    sle->expanded != NULL &&
+			    strcmp(expanded, sle->expanded) == 0) {
+				free(expanded);
+				continue;
+			}
+			changed = 1;
 
-	style_apply_update(gc, oo, "window-status-style");
-	fmt = options_get_string(oo, "window-status-format");
-	if (wl == s->curw) {
-		style_apply_update(gc, oo, "window-status-current-style");
-		fmt = options_get_string(oo, "window-status-current-format");
+			screen_write_clearline(&ctx, gc.bg);
+			status_free_ranges(&sle->ranges);
+			format_draw(&ctx, &gc, width, expanded, &sle->ranges);
+
+			free(sle->expanded);
+			sle->expanded = expanded;
+		}
 	}
-	if (wl == TAILQ_FIRST(&s->lastw))
-		style_apply_update(gc, oo, "window-status-last-style");
+	screen_write_stop(&ctx);
 
-	if (wl->flags & WINLINK_BELL)
-		style_apply_update(gc, oo, "window-status-bell-style");
-	else if (wl->flags & (WINLINK_ACTIVITY|WINLINK_SILENCE))
-		style_apply_update(gc, oo, "window-status-activity-style");
+	/* Free the format tree. */
+	format_free(ft);
 
-	text = status_replace(c, wl, fmt);
-	return (text);
+	/* Return if the status line has changed. */
+	log_debug("%s exit: force=%d, changed=%d", __func__, force, changed);
+	return (force || changed);
 }
 
 /* Set a status line message. */
@@ -713,8 +490,9 @@ status_message_redraw(struct client *c)
 	style_apply(&gc, s->options, "message-style");
 
 	screen_write_start(&ctx, NULL, sl->active);
-	screen_write_cursormove(&ctx, 0, 0, 0);
-	for (offset = 0; offset < lines * c->tty.sx; offset++)
+	screen_write_fast_copy(&ctx, &sl->screen, 0, 0, c->tty.sx, lines - 1);
+	screen_write_cursormove(&ctx, 0, lines - 1, 0);
+	for (offset = 0; offset < c->tty.sx; offset++)
 		screen_write_putc(&ctx, &gc, ' ');
 	screen_write_cursormove(&ctx, 0, lines - 1, 0);
 	screen_write_nputs(&ctx, len, &gc, "%s", c->message_string);
@@ -864,12 +642,13 @@ status_prompt_redraw(struct client *c)
 		start = c->tty.sx;
 
 	screen_write_start(&ctx, NULL, sl->active);
-	screen_write_cursormove(&ctx, 0, 0, 0);
-	for (offset = 0; offset < lines * c->tty.sx; offset++)
+	screen_write_fast_copy(&ctx, &sl->screen, 0, 0, c->tty.sx, lines - 1);
+	screen_write_cursormove(&ctx, 0, lines - 1, 0);
+	for (offset = 0; offset < c->tty.sx; offset++)
 		screen_write_putc(&ctx, &gc, ' ');
-	screen_write_cursormove(&ctx, 0, 0, 0);
+	screen_write_cursormove(&ctx, 0, lines - 1, 0);
 	screen_write_nputs(&ctx, start, &gc, "%s", c->prompt_string);
-	screen_write_cursormove(&ctx, start, 0, 0);
+	screen_write_cursormove(&ctx, start, lines - 1, 0);
 
 	left = c->tty.sx - start;
 	if (left == 0)

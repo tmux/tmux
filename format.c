@@ -972,7 +972,7 @@ found:
 }
 
 /* Skip until end. */
-static const char *
+const char *
 format_skip(const char *s, const char *end)
 {
 	int	brackets = 0;
@@ -1580,12 +1580,12 @@ done:
 
 	/* Truncate the value if needed. */
 	if (limit > 0) {
-		new = utf8_trimcstr(value, limit);
+		new = format_trim_left(value, limit);
 		format_log(ft, "applied length limit %d: %s", limit, new);
 		free(value);
 		value = new;
 	} else if (limit < 0) {
-		new = utf8_rtrimcstr(value, -limit);
+		new = format_trim_right(value, -limit);
 		format_log(ft, "applied length limit %d: %s", limit, new);
 		free(value);
 		value = new;
