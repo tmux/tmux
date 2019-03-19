@@ -119,6 +119,7 @@
           new-session (issue 1498)
 	* multiple column panes (issue 1503)
 	* support for ZERO WIDTH JOINER U+200D
+	* individual pane synchronize-panes (with pane options?); issue 1638
 
 - hooks
 	* more hooks for various things
@@ -159,7 +160,5 @@ TODO soonish maybe:
   silly really though), reflow performance (can reflow blocks on
   demand). It would possibly be good if history-limit could be global
   and collected LRU.
-- Formats to get the default formats for various things, notably
-  choose-tree. GitHub issue 1634.
 - Command aliases should be able to override builtin commands in order to add
   default flags (some mechanism needed to avoid recursion). GitHub issue 1630.
