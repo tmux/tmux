@@ -73,25 +73,43 @@ static const char *options_table_window_size_list[] = {
 	"#[list=on align=#{status-justify}]" \
 	"#[list=left-marker]<#[list=right-marker]>#[list=on]" \
 	"#{W:" \
-		"#[range=window|#{window_index}" \
-			"#{?window_last_flag, #{window-status-last-style},}" \
-			"#{?window_bell_flag," \
-				" #{window-status-bell-style}," \
-				"#{?window_activity_flag," \
-					" #{window-status-activity-style},}" \
+		"#[range=window|#{window_index} " \
+			"#{window-status-style}" \
+			"#{?#{&&:#{window_last_flag}," \
+				"#{!=:#{window-status-last-style},default}}, " \
+				"#{window-status-last-style}," \
+			"}" \
+			"#{?#{&&:#{window_bell_flag}," \
+				"#{!=:#{window-status-bell-style},default}}, " \
+				"#{window-status-bell-style}," \
+				"#{?#{&&:#{window_activity_flag}," \
+					"#{!=:" \
+					"#{window-status-activity-style}," \
+					"default}}, " \
+					"#{window-status-activity-style}," \
 				"}" \
+			"}" \
 		"]" \
 		"#{T:window-status-format}" \
 		"#[norange default]" \
 		"#{?window_end_flag,,#{window-status-separator}}" \
 	"," \
-		"#[range=window|#{window_index} list=focus" \
-			"#{?window_last_flag, #{window-status-last-style},}" \
-			"#{?window_bell_flag," \
-				" #{window-status-bell-style}," \
-				"#{?window_activity_flag," \
-					" #{window-status-activity-style},}" \
+		"#[range=window|#{window_index} list=focus " \
+			"#{window-status-current-style}" \
+			"#{?#{&&:#{window_last_flag}," \
+				"#{!=:#{window-status-last-style},default}}, " \
+				"#{window-status-last-style}," \
+			"}" \
+			"#{?#{&&:#{window_bell_flag}," \
+				"#{!=:#{window-status-bell-style},default}}, " \
+				"#{window-status-bell-style}," \
+				"#{?#{&&:#{window_activity_flag}," \
+					"#{!=:" \
+					"#{window-status-activity-style}," \
+					"default}}, " \
+					"#{window-status-activity-style}," \
 				"}" \
+			"}" \
 		"]" \
 		"#{T:window-status-current-format}" \
 		"#[norange list=on default]" \
