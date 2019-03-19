@@ -314,52 +314,10 @@ const struct options_table_entry options_table[] = {
 	  .default_str = "lock -np"
 	},
 
-	{ .name = "message-attr",
-	  .type = OPTIONS_TABLE_ATTRIBUTES,
-	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_num = 0,
-	  .style = "message-style"
-	},
-
-	{ .name = "message-bg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_num = 3,
-	  .style = "message-style"
-	},
-
-	{ .name = "message-command-attr",
-	  .type = OPTIONS_TABLE_ATTRIBUTES,
-	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_num = 0,
-	  .style = "message-command-style"
-	},
-
-	{ .name = "message-command-bg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_num = 0,
-	  .style = "message-command-style"
-	},
-
-	{ .name = "message-command-fg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_num = 3,
-	  .style = "message-command-style"
-	},
-
 	{ .name = "message-command-style",
 	  .type = OPTIONS_TABLE_STYLE,
 	  .scope = OPTIONS_TABLE_SESSION,
 	  .default_str = "bg=black,fg=yellow"
-	},
-
-	{ .name = "message-fg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_num = 0,
-	  .style = "message-style"
 	},
 
 	{ .name = "message-style",
@@ -426,25 +384,16 @@ const struct options_table_entry options_table[] = {
 	  .default_num = 1
 	},
 
-	{ .name = "status-attr",
-	  .type = OPTIONS_TABLE_ATTRIBUTES,
-	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_num = 0,
-	  .style = "status-style"
-	},
-
 	{ .name = "status-bg",
 	  .type = OPTIONS_TABLE_COLOUR,
 	  .scope = OPTIONS_TABLE_SESSION,
 	  .default_num = 2,
-	  .style = "status-style"
 	},
 
 	{ .name = "status-fg",
 	  .type = OPTIONS_TABLE_COLOUR,
 	  .scope = OPTIONS_TABLE_SESSION,
 	  .default_num = 0,
-	  .style = "status-style"
 	},
 
 	{ .name = "status-format",
@@ -481,27 +430,6 @@ const struct options_table_entry options_table[] = {
 	  .default_str = "[#S] "
 	},
 
-	{ .name = "status-left-attr",
-	  .type = OPTIONS_TABLE_ATTRIBUTES,
-	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_num = 0,
-	  .style = "status-left-style"
-	},
-
-	{ .name = "status-left-bg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_num = 8,
-	  .style = "status-left-style"
-	},
-
-	{ .name = "status-left-fg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_num = 8,
-	  .style = "status-left-style"
-	},
-
 	{ .name = "status-left-length",
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .scope = OPTIONS_TABLE_SESSION,
@@ -529,27 +457,6 @@ const struct options_table_entry options_table[] = {
 	  .default_str = "#{?window_bigger,"
 	                 "[#{window_offset_x}#,#{window_offset_y}] ,}"
 	                 "\"#{=21:pane_title}\" %H:%M %d-%b-%y"
-	},
-
-	{ .name = "status-right-attr",
-	  .type = OPTIONS_TABLE_ATTRIBUTES,
-	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_num = 0,
-	  .style = "status-right-style"
-	},
-
-	{ .name = "status-right-bg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_num = 8,
-	  .style = "status-right-style"
-	},
-
-	{ .name = "status-right-fg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_num = 8,
-	  .style = "status-right-style"
 	},
 
 	{ .name = "status-right-length",
@@ -666,27 +573,6 @@ const struct options_table_entry options_table[] = {
 	  .default_num = 80
 	},
 
-	{ .name = "mode-attr",
-	  .type = OPTIONS_TABLE_ATTRIBUTES,
-	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_num = 0,
-	  .style = "mode-style"
-	},
-
-	{ .name = "mode-bg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_num = 3,
-	  .style = "mode-style"
-	},
-
-	{ .name = "mode-fg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_num = 0,
-	  .style = "mode-style"
-	},
-
 	{ .name = "mode-keys",
 	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_WINDOW,
@@ -736,20 +622,6 @@ const struct options_table_entry options_table[] = {
 	  .default_num = 0
 	},
 
-	{ .name = "pane-active-border-bg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_num = 8,
-	  .style = "pane-active-border-style"
-	},
-
-	{ .name = "pane-active-border-fg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_num = 2,
-	  .style = "pane-active-border-style"
-	},
-
 	{ .name = "pane-active-border-style",
 	  .type = OPTIONS_TABLE_STYLE,
 	  .scope = OPTIONS_TABLE_WINDOW,
@@ -762,20 +634,6 @@ const struct options_table_entry options_table[] = {
 	  .minimum = 0,
 	  .maximum = USHRT_MAX,
 	  .default_num = 0
-	},
-
-	{ .name = "pane-border-bg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_num = 8,
-	  .style = "pane-border-style"
-	},
-
-	{ .name = "pane-border-fg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_num = 8,
-	  .style = "pane-border-style"
 	},
 
 	{ .name = "pane-border-format",
@@ -829,93 +687,16 @@ const struct options_table_entry options_table[] = {
 	  .default_str = "default"
 	},
 
-	{ .name = "window-status-activity-attr",
-	  .type = OPTIONS_TABLE_ATTRIBUTES,
-	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_num = GRID_ATTR_REVERSE,
-	  .style = "window-status-activity-style"
-	},
-
-	{ .name = "window-status-activity-bg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_num = 8,
-	  .style = "window-status-activity-style"
-	},
-
-	{ .name = "window-status-activity-fg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_num = 8,
-	  .style = "window-status-activity-style"
-	},
-
 	{ .name = "window-status-activity-style",
 	  .type = OPTIONS_TABLE_STYLE,
 	  .scope = OPTIONS_TABLE_WINDOW,
 	  .default_str = "reverse"
 	},
 
-	{ .name = "window-status-attr",
-	  .type = OPTIONS_TABLE_ATTRIBUTES,
-	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_num = 0,
-	  .style = "window-status-style"
-	},
-
-	{ .name = "window-status-bell-attr",
-	  .type = OPTIONS_TABLE_ATTRIBUTES,
-	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_num = GRID_ATTR_REVERSE,
-	  .style = "window-status-bell-style"
-	},
-
-	{ .name = "window-status-bell-bg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_num = 8,
-	  .style = "window-status-bell-style"
-	},
-
-	{ .name = "window-status-bell-fg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_num = 8,
-	  .style = "window-status-bell-style"
-	},
-
 	{ .name = "window-status-bell-style",
 	  .type = OPTIONS_TABLE_STYLE,
 	  .scope = OPTIONS_TABLE_WINDOW,
 	  .default_str = "reverse"
-	},
-
-	{ .name = "window-status-bg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_num = 8,
-	  .style = "window-status-style"
-	},
-
-	{ .name = "window-status-current-attr",
-	  .type = OPTIONS_TABLE_ATTRIBUTES,
-	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_num = 0,
-	  .style = "window-status-current-style"
-	},
-
-	{ .name = "window-status-current-bg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_num = 8,
-	  .style = "window-status-current-style"
-	},
-
-	{ .name = "window-status-current-fg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_num = 8,
-	  .style = "window-status-current-style"
 	},
 
 	{ .name = "window-status-current-format",
@@ -930,38 +711,10 @@ const struct options_table_entry options_table[] = {
 	  .default_str = "default"
 	},
 
-	{ .name = "window-status-fg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_num = 8,
-	  .style = "window-status-style"
-	},
-
 	{ .name = "window-status-format",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,
 	  .default_str = "#I:#W#{?window_flags,#{window_flags}, }"
-	},
-
-	{ .name = "window-status-last-attr",
-	  .type = OPTIONS_TABLE_ATTRIBUTES,
-	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_num = 0,
-	  .style = "window-status-last-style"
-	},
-
-	{ .name = "window-status-last-bg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_num = 8,
-	  .style = "window-status-last-style"
-	},
-
-	{ .name = "window-status-last-fg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_num = 8,
-	  .style = "window-status-last-style"
 	},
 
 	{ .name = "window-status-last-style",

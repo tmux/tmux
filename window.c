@@ -865,6 +865,8 @@ window_pane_destroy(struct window_pane *wp)
 
 	input_free(wp);
 
+	screen_free(&wp->status_screen);
+
 	screen_free(&wp->base);
 	if (wp->saved_grid != NULL)
 		grid_destroy(wp->saved_grid);
