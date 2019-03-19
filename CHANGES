@@ -1,5 +1,18 @@
 CHANGES FROM 2.8 to X.X
 
+* Allow more than one mode to be opened in a pane. Modes are kept on a
+  stack and retrieved if the same mode is entered again. Exiting the
+  active mode goes back to the previous one.
+
+* Add support for origin mode.
+
+* When showing command output in copy mode, call it view mode instead
+  (affects pane_mode format).
+
+* Add -b to display-panes like run-shell.
+
+* Handle UTF-8 in word-separators option.
+
 * New "terminal" colour allowing options to use the terminal default
   colour rather than inheriting the default from a parent option.
 

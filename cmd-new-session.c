@@ -222,9 +222,7 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	if (!detached && !is_control) {
 		sx = c->tty.sx;
 		sy = c->tty.sy;
-		if (!is_control &&
-		    sy > 0 &&
-		    options_get_number(global_s_options, "status"))
+		if (sy > 0 && options_get_number(global_s_options, "status"))
 			sy--;
 	} else {
 		value = options_get_string(global_s_options, "default-size");

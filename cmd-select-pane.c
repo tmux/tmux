@@ -19,6 +19,7 @@
 #include <sys/types.h>
 
 #include <stdlib.h>
+#include <string.h>
 
 #include "tmux.h"
 
@@ -89,6 +90,7 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct window		*w = wl->window;
 	struct session		*s = item->target.s;
 	struct window_pane	*wp = item->target.wp, *lastwp, *markedwp;
+	struct style		*sy = &wp->style;
 	char			*pane_title;
 	const char		*style;
 
@@ -141,17 +143,16 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (args_has(self->args, 'P') || args_has(self->args, 'g')) {
-		if (args_has(args, 'P')) {
-			style = args_get(args, 'P');
-			if (style_parse(&grid_default_cell, &wp->colgc,
-			    style) == -1) {
+		if ((style = args_get(args, 'P')) != NULL) {
+			style_set(sy, &grid_default_cell);
+			if (style_parse(sy, &grid_default_cell, style) == -1) {
 				cmdq_error(item, "bad style: %s", style);
 				return (CMD_RETURN_ERROR);
 			}
 			wp->flags |= PANE_REDRAW;
 		}
 		if (args_has(self->args, 'g'))
-			cmdq_print(item, "%s", style_tostring(&wp->colgc));
+			cmdq_print(item, "%s", style_tostring(sy));
 		return (CMD_RETURN_NORMAL);
 	}
 

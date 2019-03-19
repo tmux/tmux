@@ -340,15 +340,17 @@ cfg_print_causes(struct cmdq_item *item)
 void
 cfg_show_causes(struct session *s)
 {
-	struct window_pane	*wp;
-	u_int			 i;
+	struct window_pane		*wp;
+	struct window_mode_entry	*wme;
+	u_int				 i;
 
 	if (s == NULL || cfg_ncauses == 0)
 		return;
 	wp = s->curw->window->active;
 
-	window_pane_set_mode(wp, &window_copy_mode, NULL, NULL);
-	window_copy_init_for_output(wp);
+	wme = TAILQ_FIRST(&wp->modes);
+	if (wme == NULL || wme->mode != &window_view_mode)
+		window_pane_set_mode(wp, &window_view_mode, NULL, NULL);
 	for (i = 0; i < cfg_ncauses; i++) {
 		window_copy_add(wp, "%s", cfg_causes[i]);
 		free(cfg_causes[i]);

@@ -453,6 +453,7 @@ cmd_find_get_window_with_session(struct cmd_find_state *fs, const char *window)
 		if (errstr == NULL) {
 			fs->wl = winlink_find_by_index(&fs->s->windows, idx);
 			if (fs->wl != NULL) {
+				fs->idx = fs->wl->idx;
 				fs->w = fs->wl->window;
 				return (0);
 			}
@@ -970,7 +971,7 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 {
 	struct mouse_event	*m;
 	struct cmd_find_state	 current;
-	char			*colon, *period, *copy = NULL;
+	char			*colon, *period, *copy = NULL, tmp[256];
 	const char		*session, *window, *pane, *s;
 	int			 window_only = 0, pane_only = 0;
 
@@ -987,11 +988,25 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 		s = "session";
 	else
 		s = "unknown";
-	if (target == NULL)
-		log_debug("%s: target none, type %s", __func__, s);
-	else
-		log_debug("%s: target %s, type %s", __func__, target, s);
-	log_debug("%s: item %p, flags %#x", __func__, item, flags);
+	*tmp = '\0';
+	if (flags & CMD_FIND_PREFER_UNATTACHED)
+		strlcat(tmp, "PREFER_UNATTACHED,", sizeof tmp);
+	if (flags & CMD_FIND_QUIET)
+		strlcat(tmp, "QUIET,", sizeof tmp);
+	if (flags & CMD_FIND_WINDOW_INDEX)
+		strlcat(tmp, "WINDOW_INDEX,", sizeof tmp);
+	if (flags & CMD_FIND_DEFAULT_MARKED)
+		strlcat(tmp, "DEFAULT_MARKED,", sizeof tmp);
+	if (flags & CMD_FIND_EXACT_SESSION)
+		strlcat(tmp, "EXACT_SESSION,", sizeof tmp);
+	if (flags & CMD_FIND_EXACT_WINDOW)
+		strlcat(tmp, "EXACT_WINDOW,", sizeof tmp);
+	if (flags & CMD_FIND_CANFAIL)
+		strlcat(tmp, "CANFAIL,", sizeof tmp);
+	if (*tmp != '\0')
+		tmp[strlen(tmp) - 1] = '\0';
+	log_debug("%s: target %s, type %s, item %p, flags %s", __func__,
+	    target == NULL ? "none" : target, s, item, tmp);
 
 	/* Clear new state. */
 	cmd_find_clear_state(fs, flags);
@@ -1131,9 +1146,16 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 	if (pane != NULL)
 		pane = cmd_find_map_table(cmd_find_pane_table, pane);
 
-	log_debug("%s: target %s (flags %#x): session=%s, window=%s, pane=%s",
-	    __func__, target, flags, session == NULL ? "none" : session,
-	    window == NULL ? "none" : window, pane == NULL ? "none" : pane);
+	if (session != NULL || window != NULL || pane != NULL) {
+		log_debug("%s: target %s is %s%s%s%s%s%s",
+		    __func__, target,
+		    session == NULL ? "" : "session ",
+		    session == NULL ? "" : session,
+		    window == NULL ? "" : "window ",
+		    window == NULL ? "" : window,
+		    pane == NULL ? "" : "pane ",
+		    pane == NULL ? "" : pane);
+	}
 
 	/* No pane is allowed if want an index. */
 	if (pane != NULL && (flags & CMD_FIND_WINDOW_INDEX)) {
@@ -1241,17 +1263,17 @@ found:
 
 no_session:
 	if (~flags & CMD_FIND_QUIET)
-		cmdq_error(item, "can't find session %s", session);
+		cmdq_error(item, "can't find session: %s", session);
 	goto error;
 
 no_window:
 	if (~flags & CMD_FIND_QUIET)
-		cmdq_error(item, "can't find window %s", window);
+		cmdq_error(item, "can't find window: %s", window);
 	goto error;
 
 no_pane:
 	if (~flags & CMD_FIND_QUIET)
-		cmdq_error(item, "can't find pane %s", pane);
+		cmdq_error(item, "can't find pane: %s", pane);
 	goto error;
 }
 
@@ -1321,7 +1343,7 @@ cmd_find_client(struct cmdq_item *item, const char *target, int quiet)
 
 	/* If no client found, report an error. */
 	if (c == NULL && !quiet)
-		cmdq_error(item, "can't find client %s", copy);
+		cmdq_error(item, "can't find client: %s", copy);
 
 	free(copy);
 	log_debug("%s: target %s, return %p", __func__, target, c);

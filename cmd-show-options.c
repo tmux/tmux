@@ -88,20 +88,20 @@ static void
 cmd_show_options_print(struct cmd *self, struct cmdq_item *item,
     struct options_entry *o, int idx)
 {
-	const char	*name;
-	const char	*value;
-	char		*tmp, *escaped;
-	u_int		 size, i;
+	struct options_array_item	*a;
+	const char			*name, *value;
+	char				*tmp, *escaped;
 
 	if (idx != -1) {
 		xasprintf(&tmp, "%s[%d]", options_name(o), idx);
 		name = tmp;
 	} else {
-		if (options_array_size(o, &size) != -1) {
-			for (i = 0; i < size; i++) {
-				if (options_array_get(o, i) == NULL)
-					continue;
-				cmd_show_options_print(self, item, o, i);
+		if (options_isarray(o)) {
+			a = options_array_first(o);
+			while (a != NULL) {
+				idx = options_array_item_index(a);
+				cmd_show_options_print(self, item, o, idx);
+				a = options_array_next(a);
 			}
 			return;
 		}
@@ -164,24 +164,22 @@ static enum cmd_retval
 cmd_show_options_all(struct cmd *self, struct cmdq_item *item,
     struct options *oo)
 {
-	struct options_entry			 *o;
+	struct options_entry			*o;
 	const struct options_table_entry	*oe;
-	u_int					 size, idx;
+	struct options_array_item		*a;
+	u_int					 idx;
 
 	o = options_first(oo);
 	while (o != NULL) {
 		oe = options_table_entry(o);
-		if (oe != NULL && oe->style != NULL) {
-			o = options_next(o);
-			continue;
-		}
-		if (options_array_size(o, &size) == -1)
+		if (!options_isarray(o))
 			cmd_show_options_print(self, item, o, -1);
 		else {
-			for (idx = 0; idx < size; idx++) {
-				if (options_array_get(o, idx) == NULL)
-					continue;
+			a = options_array_first(o);
+			while (a != NULL) {
+				idx = options_array_item_index(a);
 				cmd_show_options_print(self, item, o, idx);
+				a = options_array_next(a);
 			}
 		}
 		o = options_next(o);

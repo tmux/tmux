@@ -30,6 +30,23 @@
  * a red-black tree.
  */
 
+struct options_array_item {
+	u_int				 index;
+	char				*value;
+	RB_ENTRY(options_array_item)	 entry;
+};
+RB_HEAD(options_array, options_array_item);
+static int
+options_array_cmp(struct options_array_item *a1, struct options_array_item *a2)
+{
+	if (a1->index < a2->index)
+		return (-1);
+	if (a1->index > a2->index)
+		return (1);
+	return (0);
+}
+RB_GENERATE_STATIC(options_array, options_array_item, entry, options_array_cmp);
+
 struct options_entry {
 	struct options				 *owner;
 
@@ -39,11 +56,8 @@ struct options_entry {
 	union {
 		char				 *string;
 		long long			  number;
-		struct grid_cell		  style;
-		struct {
-			const char		**array;
-			u_int			  arraysize;
-		};
+		struct style			  style;
+		struct options_array		  array;
 	};
 
 	RB_ENTRY(options_entry)			  entry;
@@ -56,8 +70,6 @@ struct options {
 
 static struct options_entry	*options_add(struct options *, const char *);
 
-#define OPTIONS_ARRAY_LIMIT 1000
-
 #define OPTIONS_IS_STRING(o)						\
 	((o)->tableentry == NULL ||					\
 	    (o)->tableentry->type == OPTIONS_TABLE_STRING)
@@ -66,7 +78,6 @@ static struct options_entry	*options_add(struct options *, const char *);
 	    ((o)->tableentry->type == OPTIONS_TABLE_NUMBER ||		\
 	    (o)->tableentry->type == OPTIONS_TABLE_KEY ||		\
 	    (o)->tableentry->type == OPTIONS_TABLE_COLOUR ||		\
-	    (o)->tableentry->type == OPTIONS_TABLE_ATTRIBUTES ||	\
 	    (o)->tableentry->type == OPTIONS_TABLE_FLAG ||		\
 	    (o)->tableentry->type == OPTIONS_TABLE_CHOICE))
 #define OPTIONS_IS_STYLE(o) \
@@ -163,22 +174,30 @@ options_empty(struct options *oo, const struct options_table_entry *oe)
 	o = options_add(oo, oe->name);
 	o->tableentry = oe;
 
+	if (oe->type == OPTIONS_TABLE_ARRAY)
+		RB_INIT(&o->array);
+
 	return (o);
 }
 
 struct options_entry *
 options_default(struct options *oo, const struct options_table_entry *oe)
 {
-	struct options_entry	*o;
+	struct options_entry	 *o;
+	u_int			  i;
 
 	o = options_empty(oo, oe);
-	if (oe->type == OPTIONS_TABLE_ARRAY)
-		options_array_assign(o, oe->default_str);
-	else if (oe->type == OPTIONS_TABLE_STRING)
+	if (oe->type == OPTIONS_TABLE_ARRAY) {
+		if (oe->default_arr != NULL) {
+			for (i = 0; oe->default_arr[i] != NULL; i++)
+				options_array_set(o, i, oe->default_arr[i], 0);
+		} else
+			options_array_assign(o, oe->default_str);
+	} else if (oe->type == OPTIONS_TABLE_STRING)
 		o->string = xstrdup(oe->default_str);
 	else if (oe->type == OPTIONS_TABLE_STYLE) {
-		memcpy(&o->style, &grid_default_cell, sizeof o->style);
-		style_parse(&grid_default_cell, &o->style, oe->default_str);
+		style_set(&o->style, &grid_default_cell);
+		style_parse(&o->style, &grid_default_cell, oe->default_str);
 	} else
 		o->number = oe->default_num;
 	return (o);
@@ -205,15 +224,11 @@ void
 options_remove(struct options_entry *o)
 {
 	struct options	*oo = o->owner;
-	u_int		 i;
 
 	if (OPTIONS_IS_STRING(o))
-		free((void *)o->string);
-	else if (OPTIONS_IS_ARRAY(o)) {
-		for (i = 0; i < o->arraysize; i++)
-			free((void *)o->array[i]);
-		free(o->array);
-	}
+		free(o->string);
+	else if (OPTIONS_IS_ARRAY(o))
+		options_array_clear(o);
 
 	RB_REMOVE(options_tree, &oo->tree, o);
 	free(o);
@@ -231,62 +246,79 @@ options_table_entry(struct options_entry *o)
 	return (o->tableentry);
 }
 
+static struct options_array_item *
+options_array_item(struct options_entry *o, u_int idx)
+{
+	struct options_array_item	a;
+
+	a.index = idx;
+	return (RB_FIND(options_array, &o->array, &a));
+}
+
+static void
+options_array_free(struct options_entry *o, struct options_array_item *a)
+{
+	free(a->value);
+	RB_REMOVE(options_array, &o->array, a);
+	free(a);
+}
+
 void
 options_array_clear(struct options_entry *o)
 {
-	if (OPTIONS_IS_ARRAY(o))
-		o->arraysize = 0;
+	struct options_array_item	*a, *a1;
+
+	if (!OPTIONS_IS_ARRAY(o))
+		return;
+
+	RB_FOREACH_SAFE(a, options_array, &o->array, a1)
+	    options_array_free(o, a);
 }
 
 const char *
 options_array_get(struct options_entry *o, u_int idx)
 {
+	struct options_array_item	*a;
+
 	if (!OPTIONS_IS_ARRAY(o))
 		return (NULL);
-	if (idx >= o->arraysize)
+	a = options_array_item(o, idx);
+	if (a == NULL)
 		return (NULL);
-	return (o->array[idx]);
+	return (a->value);
 }
 
 int
 options_array_set(struct options_entry *o, u_int idx, const char *value,
     int append)
 {
-	char	*new;
-	u_int	 i;
+	struct options_array_item	*a;
+	char				*new;
 
 	if (!OPTIONS_IS_ARRAY(o))
 		return (-1);
 
-	if (idx >= OPTIONS_ARRAY_LIMIT)
-		return (-1);
-	if (idx >= o->arraysize) {
-		o->array = xreallocarray(o->array, idx + 1, sizeof *o->array);
-		for (i = o->arraysize; i < idx + 1; i++)
-			o->array[i] = NULL;
-		o->arraysize = idx + 1;
+	a = options_array_item(o, idx);
+	if (value == NULL) {
+		if (a != NULL)
+			options_array_free(o, a);
+		return (0);
 	}
 
-	new = NULL;
-	if (value != NULL) {
-		if (o->array[idx] != NULL && append)
-			xasprintf(&new, "%s%s", o->array[idx], value);
+	if (a == NULL) {
+		a = xcalloc(1, sizeof *a);
+		a->index = idx;
+		a->value = xstrdup(value);
+		RB_INSERT(options_array, &o->array, a);
+	} else {
+		free(a->value);
+		if (a != NULL && append)
+			xasprintf(&new, "%s%s", a->value, value);
 		else
 			new = xstrdup(value);
+		a->value = new;
 	}
 
-	free((void *)o->array[idx]);
-	o->array[idx] = new;
-	return (0);
-}
-
-int
-options_array_size(struct options_entry *o, u_int *size)
-{
-	if (!OPTIONS_IS_ARRAY(o))
-		return (-1);
-	if (size != NULL)
-		*size = o->arraysize;
 	return (0);
 }
 
@@ -305,37 +337,69 @@ options_array_assign(struct options_entry *o, const char *s)
 	while ((next = strsep(&string, separator)) != NULL) {
 		if (*next == '\0')
 			continue;
-		for (i = 0; i < OPTIONS_ARRAY_LIMIT; i++) {
-			if (i >= o->arraysize || o->array[i] == NULL)
+		for (i = 0; i < UINT_MAX; i++) {
+			if (options_array_item(o, i) == NULL)
 				break;
 		}
-		if (i == OPTIONS_ARRAY_LIMIT)
+		if (i == UINT_MAX)
 			break;
 		options_array_set(o, i, next, 0);
 	}
 	free(copy);
 }
 
+struct options_array_item *
+options_array_first(struct options_entry *o)
+{
+	if (!OPTIONS_IS_ARRAY(o))
+		return (NULL);
+	return (RB_MIN(options_array, &o->array));
+}
+
+struct options_array_item *
+options_array_next(struct options_array_item *a)
+{
+	return (RB_NEXT(options_array, &o->array, a));
+}
+
+u_int
+options_array_item_index(struct options_array_item *a)
+{
+	return (a->index);
+}
+
+const char *
+options_array_item_value(struct options_array_item *a)
+{
+	return (a->value);
+}
+
+int
+options_isarray(struct options_entry *o)
+{
+	return (OPTIONS_IS_ARRAY(o));
+}
+
 int
 options_isstring(struct options_entry *o)
 {
-	if (o->tableentry == NULL)
-		return (1);
 	return (OPTIONS_IS_STRING(o) || OPTIONS_IS_ARRAY(o));
 }
 
 const char *
 options_tostring(struct options_entry *o, int idx, int numeric)
 {
-	static char	 s[1024];
-	const char	*tmp;
+	static char			 s[1024];
+	const char			*tmp;
+	struct options_array_item	*a;
 
 	if (OPTIONS_IS_ARRAY(o)) {
 		if (idx == -1)
 			return (NULL);
-		if ((u_int)idx >= o->arraysize || o->array[idx] == NULL)
+		a = options_array_item(o, idx);
+		if (a == NULL)
 			return ("");
-		return (o->array[idx]);
+		return (a->value);
 	}
 	if (OPTIONS_IS_STYLE(o))
 		return (style_tostring(&o->style));
@@ -350,9 +414,6 @@ options_tostring(struct options_entry *o, int idx, int numeric)
 			break;
 		case OPTIONS_TABLE_COLOUR:
 			tmp = colour_tostring(o->number);
-			break;
-		case OPTIONS_TABLE_ATTRIBUTES:
-			tmp = attributes_tostring(o->number);
 			break;
 		case OPTIONS_TABLE_FLAG:
 			if (numeric)
@@ -504,7 +565,7 @@ options_get_number(struct options *oo, const char *name)
 	return (o->number);
 }
 
-const struct grid_cell *
+struct style *
 options_get_style(struct options *oo, const char *name)
 {
 	struct options_entry	*o;
@@ -576,17 +637,17 @@ options_set_style(struct options *oo, const char *name, int append,
     const char *value)
 {
 	struct options_entry	*o;
-	struct grid_cell	 gc;
+	struct style		 sy;
 
 	if (*name == '@')
 		fatalx("user option %s must be a string", name);
 
 	o = options_get_only(oo, name);
 	if (o != NULL && append && OPTIONS_IS_STYLE(o))
-		memcpy(&gc, &o->style, sizeof gc);
+		style_copy(&sy, &o->style);
 	else
-		memcpy(&gc, &grid_default_cell, sizeof gc);
-	if (style_parse(&grid_default_cell, &gc, value) == -1)
+		style_set(&sy, &grid_default_cell);
+	if (style_parse(&sy, &grid_default_cell, value) == -1)
 		return (NULL);
 	if (o == NULL) {
 		o = options_default(oo, options_parent_table_entry(oo, name));
@@ -596,7 +657,7 @@ options_set_style(struct options *oo, const char *name, int append,
 
 	if (!OPTIONS_IS_STYLE(o))
 		fatalx("option %s is not a style", name);
-	memcpy(&o->style, &gc, sizeof o->style);
+	style_copy(&o->style, &sy);
 	return (o);
 }
 
@@ -642,45 +703,4 @@ options_scope_from_flags(struct args *args, int window,
 		*oo = s->options;
 		return (OPTIONS_TABLE_SESSION);
 	}
-}
-
-void
-options_style_update_new(struct options *oo, struct options_entry *o)
-{
-	const char		*newname = o->tableentry->style;
-	struct options_entry	*new;
-
-	if (newname == NULL)
-		return;
-	new = options_get_only(oo, newname);
-	if (new == NULL)
-		new = options_set_style(oo, newname, 0, "default");
-
-	if (strstr(o->name, "-bg") != NULL)
-		new->style.bg = o->number;
-	else if (strstr(o->name, "-fg") != NULL)
-		new->style.fg = o->number;
-	else if (strstr(o->name, "-attr") != NULL)
-		new->style.attr = o->number;
-}
-
-void
-options_style_update_old(struct options *oo, struct options_entry *o)
-{
-	char	newname[128];
-	int	size;
-
-	size = strrchr(o->name, '-') - o->name;
-
-	xsnprintf(newname, sizeof newname, "%.*s-bg", size, o->name);
-	if (options_get(oo, newname) != NULL)
-		options_set_number(oo, newname, o->style.bg);
-
-	xsnprintf(newname, sizeof newname, "%.*s-fg", size, o->name);
-	if (options_get(oo, newname) != NULL)
-		options_set_number(oo, newname, o->style.fg);
-
-	xsnprintf(newname, sizeof newname, "%.*s-attr", size, o->name);
-	if (options_get(oo, newname) != NULL)
-		options_set_number(oo, newname, o->style.attr);
 }

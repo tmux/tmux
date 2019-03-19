@@ -41,7 +41,7 @@ const struct cmd_entry cmd_capture_pane_entry = {
 
 	.args = { "ab:CeE:JpPqS:t:", 0, 0 },
 	.usage = "[-aCeJpPq] " CMD_BUFFER_USAGE " [-E end-line] "
-		 "[-S start-line]" CMD_TARGET_PANE_USAGE,
+		 "[-S start-line] " CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -199,8 +199,7 @@ cmd_capture_pane_exec(struct cmd *self, struct cmdq_item *item)
 	size_t			 len;
 
 	if (self->entry == &cmd_clear_history_entry) {
-		if (wp->mode == &window_copy_mode)
-			window_pane_reset_mode(wp);
+		window_pane_reset_mode_all(wp);
 		grid_clear_history(wp->base.grid);
 		return (CMD_RETURN_NORMAL);
 	}

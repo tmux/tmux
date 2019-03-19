@@ -25,12 +25,12 @@
 
 #include "tmux.h"
 
-static struct screen	*window_client_init(struct window_pane *,
+static struct screen	*window_client_init(struct window_mode_entry *,
 			     struct cmd_find_state *, struct args *);
-static void		 window_client_free(struct window_pane *);
-static void		 window_client_resize(struct window_pane *, u_int,
+static void		 window_client_free(struct window_mode_entry *);
+static void		 window_client_resize(struct window_mode_entry *, u_int,
 			     u_int);
-static void		 window_client_key(struct window_pane *,
+static void		 window_client_key(struct window_mode_entry *,
 			     struct client *, struct session *,
 			     struct winlink *, key_code, struct mouse_event *);
 
@@ -42,6 +42,7 @@ static void		 window_client_key(struct window_pane *,
 
 const struct window_mode window_client_mode = {
 	.name = "client-mode",
+	.default_format = WINDOW_CLIENT_DEFAULT_FORMAT,
 
 	.init = window_client_init,
 	.free = window_client_free,
@@ -216,33 +217,47 @@ window_client_draw(__unused void *modedata, void *itemdata,
 {
 	struct window_client_itemdata	*item = itemdata;
 	struct client			*c = item->c;
+	struct screen			*s = ctx->s;
 	struct window_pane		*wp;
-	u_int				 cx = ctx->s->cx, cy = ctx->s->cy;
+	u_int				 cx = s->cx, cy = s->cy, lines, at;
 
 	if (c->session == NULL || (c->flags & (CLIENT_DEAD|CLIENT_DETACHING)))
 		return;
 	wp = c->session->curw->window->active;
 
-	screen_write_preview(ctx, &wp->base, sx, sy - 3);
+	lines = status_line_size(c);
+	if (lines >= sy)
+		lines = 0;
+	if (status_at_line(c) == 0)
+		at = lines;
+	else
+		at = 0;
 
-	screen_write_cursormove(ctx, cx, cy + sy - 2);
+	screen_write_cursormove(ctx, cx, cy + at, 0);
+	screen_write_preview(ctx, &wp->base, sx, sy - 2 - lines);
+
+	if (at != 0)
+		screen_write_cursormove(ctx, cx, cy + 2, 0);
+	else
+		screen_write_cursormove(ctx, cx, cy + sy - 1 - lines, 0);
 	screen_write_hline(ctx, sx, 0, 0);
 
-	screen_write_cursormove(ctx, cx, cy + sy - 1);
-	if (c->status.old_status != NULL)
-		screen_write_fast_copy(ctx, c->status.old_status, 0, 0, sx, 1);
+	if (at != 0)
+		screen_write_cursormove(ctx, cx, cy, 0);
 	else
-		screen_write_fast_copy(ctx, &c->status.status, 0, 0, sx, 1);
+		screen_write_cursormove(ctx, cx, cy + sy - lines, 0);
+	screen_write_fast_copy(ctx, &c->status.screen, 0, 0, sx, lines);
 }
 
 static struct screen *
-window_client_init(struct window_pane *wp, __unused struct cmd_find_state *fs,
-    struct args *args)
+window_client_init(struct window_mode_entry *wme,
+    __unused struct cmd_find_state *fs, struct args *args)
 {
+	struct window_pane		*wp = wme->wp;
 	struct window_client_modedata	*data;
 	struct screen			*s;
 
-	wp->modedata = data = xcalloc(1, sizeof *data);
+	wme->data = data = xcalloc(1, sizeof *data);
 
 	if (args == NULL || !args_has(args, 'F'))
 		data->format = xstrdup(WINDOW_CLIENT_DEFAULT_FORMAT);
@@ -265,9 +280,9 @@ window_client_init(struct window_pane *wp, __unused struct cmd_find_state *fs,
 }
 
 static void
-window_client_free(struct window_pane *wp)
+window_client_free(struct window_mode_entry *wme)
 {
-	struct window_client_modedata	*data = wp->modedata;
+	struct window_client_modedata	*data = wme->data;
 	u_int				 i;
 
 	if (data == NULL)
@@ -286,9 +301,9 @@ window_client_free(struct window_pane *wp)
 }
 
 static void
-window_client_resize(struct window_pane *wp, u_int sx, u_int sy)
+window_client_resize(struct window_mode_entry *wme, u_int sx, u_int sy)
 {
-	struct window_client_modedata	*data = wp->modedata;
+	struct window_client_modedata	*data = wme->data;
 
 	mode_tree_resize(data->data, sx, sy);
 }
@@ -311,11 +326,12 @@ window_client_do_detach(void* modedata, void *itemdata,
 }
 
 static void
-window_client_key(struct window_pane *wp, struct client *c,
+window_client_key(struct window_mode_entry *wme, struct client *c,
     __unused struct session *s, __unused struct winlink *wl, key_code key,
     struct mouse_event *m)
 {
-	struct window_client_modedata	*data = wp->modedata;
+	struct window_pane		*wp = wme->wp;
+	struct window_client_modedata	*data = wme->data;
 	struct mode_tree_data		*mtd = data->data;
 	struct window_client_itemdata	*item;
 	int				 finished;

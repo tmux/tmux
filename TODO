@@ -29,7 +29,7 @@
 	* perhaps monitor /all/ panes in the window not just one
 
 - improve mouse support:
-	* bind commands to mouse in different areas? 
+	* bind commands to mouse in different areas?
 	* commands executed when clicking on a pattern (URL)
 
 - warts on current naming:
@@ -118,7 +118,8 @@
 	* flag to specify environment to new-window, split-window,
           new-session (issue 1498)
 	* multiple column panes (issue 1503)
-	* stack of modes rather than first one sticking (issue 1542)
+	* support for ZERO WIDTH JOINER U+200D
+	* individual pane synchronize-panes (with pane options?); issue 1638
 
 - hooks
 	* more hooks for various things
@@ -143,5 +144,21 @@
 	* rather than centering cursor it might be better if only
 	  moved offset when it gets close to an edge?
 
-* issues that are not too hard to do:
-      1501, 1517, 1498, 1542
+----
+
+TODO soonish maybe:
+
+- Horizontal cursor position is incorrect after resize (bug), issue 1323.
+- Multiple status lines (DONE but not committed yet).
+- Store hooks as options, issue 1619.
+- Support buffer prefixes, issue 1501.
+- copy-pipe should be synchronous, issue 1517.
+- -E flag to pass environment to new-*, issue 1498.
+- Copy mode searching is slow when there is a big history, issue 1545.
+- Grid "block" stuff - some work done, there is an issue
+  somewhere. Can be used potentially for compression of history (bit
+  silly really though), reflow performance (can reflow blocks on
+  demand). It would possibly be good if history-limit could be global
+  and collected LRU.
+- Command aliases should be able to override builtin commands in order to add
+  default flags (some mechanism needed to avoid recursion). GitHub issue 1630.

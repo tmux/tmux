@@ -74,10 +74,16 @@ screen_write_set_cursor(struct screen_write_ctx *ctx, int cx, int cy)
 	if (cx != -1 && (u_int)cx == s->cx && cy != -1 && (u_int)cy == s->cy)
 		return;
 
-	if (cx != -1)
+	if (cx != -1) {
+		if ((u_int)cx > screen_size_x(s)) /* allow last column */
+			cx = screen_size_x(s) - 1;
 		s->cx = cx;
-	if (cy != -1)
+	}
+	if (cy != -1) {
+		if ((u_int)cy > screen_size_y(s) - 1)
+			cy = screen_size_y(s) - 1;
 		s->cy = cy;
+	}
 
 	if (wp == NULL)
 		return;
@@ -147,7 +153,7 @@ screen_write_reset(struct screen_write_ctx *ctx)
 	s->mode = MODE_CURSOR | MODE_WRAP;
 
 	screen_write_clearscreen(ctx, 8);
-	screen_write_cursormove(ctx, 0, 0);
+	screen_write_set_cursor(ctx, 0, 0);
 }
 
 /* Write character. */
@@ -161,41 +167,6 @@ screen_write_putc(struct screen_write_ctx *ctx, const struct grid_cell *gcp,
 
 	utf8_set(&gc.data, ch);
 	screen_write_cell(ctx, &gc);
-}
-
-/* Calculate string length, with embedded formatting. */
-size_t
-screen_write_cstrlen(const char *fmt, ...)
-{
-	va_list	ap;
-	char   *msg, *msg2, *ptr, *ptr2;
-	size_t	size;
-
-	va_start(ap, fmt);
-	xvasprintf(&msg, fmt, ap);
-	va_end(ap);
-	msg2 = xmalloc(strlen(msg) + 1);
-
-	ptr = msg;
-	ptr2 = msg2;
-	while (*ptr != '\0') {
-		if (ptr[0] == '#' && ptr[1] == '[') {
-			while (*ptr != ']' && *ptr != '\0')
-				ptr++;
-			if (*ptr == ']')
-				ptr++;
-			continue;
-		}
-		*ptr2++ = *ptr++;
-	}
-	*ptr2 = '\0';
-
-	size = screen_write_strlen("%s", msg2);
-
-	free(msg);
-	free(msg2);
-
-	return (size);
 }
 
 /* Calculate string length. */
@@ -316,78 +287,6 @@ screen_write_vnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
 	free(msg);
 }
 
-/* Write string, similar to nputs, but with embedded formatting (#[]). */
-void
-screen_write_cnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
-    const struct grid_cell *gcp, const char *fmt, ...)
-{
-	struct grid_cell	 gc;
-	struct utf8_data	*ud = &gc.data;
-	va_list			 ap;
-	char			*msg;
-	u_char 			*ptr, *last;
-	size_t			 left, size = 0;
-	enum utf8_state		 more;
-
-	memcpy(&gc, gcp, sizeof gc);
-
-	va_start(ap, fmt);
-	xvasprintf(&msg, fmt, ap);
-	va_end(ap);
-
-	ptr = msg;
-	while (*ptr != '\0') {
-		if (ptr[0] == '#' && ptr[1] == '[') {
-			ptr += 2;
-			last = ptr + strcspn(ptr, "]");
-			if (*last == '\0') {
-				/* No ]. Not much point in doing anything. */
-				break;
-			}
-			*last = '\0';
-
-			style_parse(gcp, &gc, ptr);
-			ptr = last + 1;
-			continue;
-		}
-		if (*ptr > 0x7f && utf8_open(ud, *ptr) == UTF8_MORE) {
-			ptr++;
-
-			left = strlen(ptr);
-			if (left < (size_t)ud->size - 1)
-				break;
-			while ((more = utf8_append(ud, *ptr)) == UTF8_MORE)
-				ptr++;
-			ptr++;
-
-			if (more != UTF8_DONE)
-				continue;
-			if (maxlen > 0 && size + ud->width > (size_t)maxlen) {
-				while (size < (size_t)maxlen) {
-					screen_write_putc(ctx, &gc, ' ');
-					size++;
-				}
-				break;
-			}
-			size += ud->width;
-			screen_write_cell(ctx, &gc);
-		} else {
-			if (maxlen > 0 && size + 1 > (size_t)maxlen)
-				break;
-
-			if (*ptr == '\001')
-				gc.attr ^= GRID_ATTR_CHARSET;
-			else if (*ptr > 0x1f && *ptr < 0x7f) {
-				size++;
-				screen_write_putc(ctx, &gc, *ptr);
-			}
-			ptr++;
-		}
-	}
-
-	free(msg);
-}
-
 /* Copy from another screen. Assumes target region is big enough. */
 void
 screen_write_copy(struct screen_write_ctx *ctx, struct screen *src, u_int px,
@@ -419,7 +318,7 @@ screen_write_copy(struct screen_write_ctx *ctx, struct screen *src, u_int px,
 				screen_write_cell(ctx, &gc);
 		}
 		cy++;
-		screen_write_cursormove(ctx, cx, cy);
+		screen_write_set_cursor(ctx, cx, cy);
 	}
 }
 
@@ -477,7 +376,7 @@ screen_write_hline(struct screen_write_ctx *ctx, u_int nx, int left, int right)
 		screen_write_putc(ctx, &gc, 'q');
 	screen_write_putc(ctx, &gc, right ? 'u' : 'q');
 
-	screen_write_cursormove(ctx, cx, cy);
+	screen_write_set_cursor(ctx, cx, cy);
 }
 
 /* Draw a horizontal line on screen. */
@@ -496,13 +395,13 @@ screen_write_vline(struct screen_write_ctx *ctx, u_int ny, int top, int bottom)
 
 	screen_write_putc(ctx, &gc, top ? 'w' : 'x');
 	for (i = 1; i < ny - 1; i++) {
-		screen_write_cursormove(ctx, cx, cy + i);
+		screen_write_set_cursor(ctx, cx, cy + i);
 		screen_write_putc(ctx, &gc, 'x');
 	}
-	screen_write_cursormove(ctx, cx, cy + ny - 1);
+	screen_write_set_cursor(ctx, cx, cy + ny - 1);
 	screen_write_putc(ctx, &gc, bottom ? 'v' : 'x');
 
-	screen_write_cursormove(ctx, cx, cy);
+	screen_write_set_cursor(ctx, cx, cy);
 }
 
 /* Draw a box on screen. */
@@ -524,22 +423,22 @@ screen_write_box(struct screen_write_ctx *ctx, u_int nx, u_int ny)
 		screen_write_putc(ctx, &gc, 'q');
 	screen_write_putc(ctx, &gc, 'k');
 
-	screen_write_cursormove(ctx, cx, cy + ny - 1);
+	screen_write_set_cursor(ctx, cx, cy + ny - 1);
 	screen_write_putc(ctx, &gc, 'm');
 	for (i = 1; i < nx - 1; i++)
 		screen_write_putc(ctx, &gc, 'q');
 	screen_write_putc(ctx, &gc, 'j');
 
 	for (i = 1; i < ny - 1; i++) {
-		screen_write_cursormove(ctx, cx, cy + i);
+		screen_write_set_cursor(ctx, cx, cy + i);
 		screen_write_putc(ctx, &gc, 'x');
 	}
 	for (i = 1; i < ny - 1; i++) {
-		screen_write_cursormove(ctx, cx + nx - 1, cy + i);
+		screen_write_set_cursor(ctx, cx + nx - 1, cy + i);
 		screen_write_putc(ctx, &gc, 'x');
 	}
 
-	screen_write_cursormove(ctx, cx, cy);
+	screen_write_set_cursor(ctx, cx, cy);
 }
 
 /*
@@ -594,7 +493,7 @@ screen_write_preview(struct screen_write_ctx *ctx, struct screen *src, u_int nx,
 	if (src->mode & MODE_CURSOR) {
 		grid_view_get_cell(src->grid, src->cx, src->cy, &gc);
 		gc.attr |= GRID_ATTR_REVERSE;
-		screen_write_cursormove(ctx, cx + (src->cx - px),
+		screen_write_set_cursor(ctx, cx + (src->cx - px),
 		    cy + (src->cy - py));
 		screen_write_cell(ctx, &gc);
 	}
@@ -1028,13 +927,21 @@ screen_write_clearstartofline(struct screen_write_ctx *ctx, u_int bg)
 
 /* Move cursor to px,py. */
 void
-screen_write_cursormove(struct screen_write_ctx *ctx, u_int px, u_int py)
+screen_write_cursormove(struct screen_write_ctx *ctx, int px, int py,
+    int origin)
 {
 	struct screen	*s = ctx->s;
 
-	if (px > screen_size_x(s) - 1)
+	if (origin && py != -1 && (s->mode & MODE_ORIGIN)) {
+		if ((u_int)py > s->rlower - s->rupper)
+			py = s->rlower;
+		else
+			py += s->rupper;
+	}
+
+	if (px != -1 && (u_int)px > screen_size_x(s) - 1)
 		px = screen_size_x(s) - 1;
-	if (py > screen_size_y(s) - 1)
+	if (py != -1 && (u_int)py > screen_size_y(s) - 1)
 		py = screen_size_y(s) - 1;
 
 	screen_write_set_cursor(ctx, px, py);
@@ -1296,7 +1203,7 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only)
 	cx = s->cx; cy = s->cy;
 	for (y = 0; y < screen_size_y(s); y++) {
 		TAILQ_FOREACH_SAFE(ci, &ctx->list[y].items, entry, tmp) {
-			screen_write_cursormove(ctx, ci->x, y);
+			screen_write_set_cursor(ctx, ci->x, y);
 			screen_write_initctx(ctx, &ttyctx);
 			ttyctx.cell = &ci->gc;
 			ttyctx.wrapped = ci->wrapped;
@@ -1441,7 +1348,7 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 		screen_write_collect_flush(ctx, 0);
 		if ((gc = screen_write_combine(ctx, &gc->data, &xx)) != 0) {
 			cx = s->cx; cy = s->cy;
-			screen_write_cursormove(ctx, xx, s->cy);
+			screen_write_set_cursor(ctx, xx, s->cy);
 			screen_write_initctx(ctx, &ttyctx);
 			ttyctx.cell = gc;
 			tty_write(tty_cmd_cell, &ttyctx);
