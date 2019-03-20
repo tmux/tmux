@@ -153,10 +153,9 @@ TODO soonish maybe:
 - copy-pipe should be synchronous, issue 1517.
 - -E flag to pass environment to new-*, issue 1498.
 - Copy mode searching is slow when there is a big history, issue 1545.
-- Grid "block" stuff - some work done, there is an issue
-  somewhere. Can be used potentially for compression of history (bit
-  silly really though), reflow performance (can reflow blocks on
-  demand). It would possibly be good if history-limit could be global
-  and collected LRU.
+- Grid "block" stuff, issue 1269. Can be used potentially for compression of
+  history (bit silly really though), reflow performance (can reflow blocks on
+  demand). It would possibly be good if history-limit could be global and
+  collected LRU.
 - Command aliases should be able to override builtin commands in order to add
   default flags (some mechanism needed to avoid recursion). GitHub issue 1630.
