@@ -1030,7 +1030,7 @@ grid_reflow_move(struct grid *gd, struct grid_line *from)
 /* Join line below onto this one. */
 static void
 grid_reflow_join(struct grid *target, struct grid *gd, u_int sx, u_int yy,
-    u_int width, u_int *cy, int already)
+    u_int width, int already)
 {
 	struct grid_line	*gl, *from = NULL;
 	struct grid_cell	 gc;
@@ -1128,11 +1128,7 @@ grid_reflow_join(struct grid *target, struct grid *gd, u_int sx, u_int yy,
 		grid_reflow_dead(&gd->linedata[i]);
 	}
 
-	/* Adjust cursor and scroll positions. */
-	if (*cy > to + lines)
-		*cy -= lines;
-	else if (*cy > to)
-		*cy = to;
+	/* Adjust scroll position. */
 	if (gd->hscrolled > to + lines)
 		gd->hscrolled -= lines;
 	else if (gd->hscrolled > to)
@@ -1142,7 +1138,7 @@ grid_reflow_join(struct grid *target, struct grid *gd, u_int sx, u_int yy,
 /* Split this line into several new ones */
 static void
 grid_reflow_split(struct grid *target, struct grid *gd, u_int sx, u_int yy,
-    u_int at, u_int *cy)
+    u_int at)
 {
 	struct grid_line	*gl = &gd->linedata[yy], *first;
 	struct grid_cell	 gc;
@@ -1195,9 +1191,7 @@ grid_reflow_split(struct grid *target, struct grid *gd, u_int sx, u_int yy,
 	memcpy(first, gl, sizeof *first);
 	grid_reflow_dead(gl);
 
-	/* Adjust the cursor and scroll positions. */
-	if (yy <= *cy)
-		(*cy) += lines - 1;
+	/* Adjust the scroll position. */
 	if (yy <= gd->hscrolled)
 		gd->hscrolled += lines - 1;
 
@@ -1206,24 +1200,17 @@ grid_reflow_split(struct grid *target, struct grid *gd, u_int sx, u_int yy,
 	 * in the last new line, try to join with the next lines.
 	 */
 	if (width < sx && (flags & GRID_LINE_WRAPPED))
-		grid_reflow_join(target, gd, sx, yy, width, cy, 1);
+		grid_reflow_join(target, gd, sx, yy, width, 1);
 }
 
 /* Reflow lines on grid to new width. */
 void
-grid_reflow(struct grid *gd, u_int sx, u_int *cursor)
+grid_reflow(struct grid *gd, u_int sx)
 {
 	struct grid		*target;
 	struct grid_line	*gl;
 	struct grid_cell	 gc;
-	u_int			 yy, cy, width, i, at, first;
-	struct timeval		 start, tv;
-
-	gettimeofday(&start, NULL);
-
-	log_debug("%s: %u lines, new width %u", __func__, gd->hsize + gd->sy,
-	    sx);
-	cy = gd->hsize + (*cursor);
+	u_int			 yy, width, i, at, first;
 
 	/*
 	 * Create a destination grid. This is just used as a container for the
@@ -1277,7 +1264,7 @@ grid_reflow(struct grid *gd, u_int sx, u_int *cursor)
 		 * it was previously wrapped.
 		 */
 		if (width > sx) {
-			grid_reflow_split(target, gd, sx, yy, at, &cy);
+			grid_reflow_split(target, gd, sx, yy, at);
 			continue;
 		}
 
@@ -1286,7 +1273,7 @@ grid_reflow(struct grid *gd, u_int sx, u_int *cursor)
 		 * of the next line.
 		 */
 		if (gl->flags & GRID_LINE_WRAPPED)
-			grid_reflow_join(target, gd, sx, yy, width, &cy, 0);
+			grid_reflow_join(target, gd, sx, yy, width, 0);
 		else
 			grid_reflow_move(target, gl);
 	}
@@ -1300,20 +1287,42 @@ grid_reflow(struct grid *gd, u_int sx, u_int *cursor)
 	free(gd->linedata);
 	gd->linedata = target->linedata;
 	free(target);
+}
 
-	/*
-	 * Update scrolled and cursor positions.
-	 */
-	if (gd->hscrolled > gd->hsize)
-		gd->hscrolled = gd->hsize;
-	if (cy < gd->hsize)
-		*cursor = 0;
+/* Convert point position to offset from the start of the grid. */
+u_int
+grid_to_offset(struct grid *gd, u_int px, u_int py)
+{
+	u_int	yy, offset = 0;
+
+	if (py > gd->hsize + gd->sy - 1) {
+		px = UINT_MAX;
+		py = gd->hsize + gd->sy - 1;
+	}
+
+	for (yy = 0; yy < py; yy++)
+		offset += gd->linedata[yy].cellused;
+	if (px > gd->linedata[yy].cellused)
+		px = gd->linedata[yy].cellused;
+	return (offset + px);
+}
+
+/* Convert offset from the start of the grid to point position. */
+void
+grid_from_offset(struct grid *gd, u_int offset, u_int *px, u_int *py)
+{
+	u_int	yy;
+
+	*px = *py = 0;
+
+	for (yy = 0; yy < gd->hsize + gd->sy - 1; yy++) {
+		if (offset <= gd->linedata[yy].cellused)
+			break;
+		offset -= gd->linedata[yy].cellused;
+	}
+	if (offset < gd->linedata[yy].cellused)
+		*px = offset;
 	else
-		*cursor = cy - gd->hsize;
-
-	gettimeofday(&tv, NULL);
-	timersub(&tv, &start, &tv);
-	log_debug("%s: now %u lines (in %llu.%06u seconds)", __func__,
-	    gd->hsize + gd->sy, (unsigned long long)tv.tv_sec,
-	    (u_int)tv.tv_usec);
+		*px = gd->linedata[yy].cellused;
+	*py = yy;
 }
