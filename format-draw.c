@@ -583,7 +583,8 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 		if (style_parse(&sy, base, tmp) != 0) {
 			log_debug("invalid style '%s'", tmp);
 			free(tmp);
-			return;
+			cp = end + 1;
+			continue;
 		}
 		log_debug("style '%s' -> '%s'", tmp, style_tostring(&sy));
 		free(tmp);
