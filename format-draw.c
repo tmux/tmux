@@ -577,7 +577,9 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 		end = format_skip(cp + 2, "]");
 		if (end == NULL) {
 			log_debug("no terminating ] at '%s'", cp + 2);
-			return;
+			TAILQ_FOREACH_SAFE(fr, &frs, entry, fr1)
+			    format_free_range(&frs, fr);
+			goto out;
 		}
 		tmp = xstrndup(cp + 2, end - (cp + 2));
 		if (style_parse(&sy, base, tmp) != 0) {
@@ -755,6 +757,7 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 		format_free_range(&frs, fr);
 	}
 
+out:
 	/* Free the screens. */
 	for (i = 0; i < TOTAL; i++)
 		screen_free(&s[i]);
