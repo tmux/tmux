@@ -576,19 +576,21 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 		/* This is a style. Work out where the end is and parse it. */
 		end = format_skip(cp + 2, "]");
 		if (end == NULL) {
-			log_debug("no terminating ] at '%s'", cp + 2);
+			log_debug("%s: no terminating ] at '%s'", __func__,
+			    cp + 2);
 			TAILQ_FOREACH_SAFE(fr, &frs, entry, fr1)
 			    format_free_range(&frs, fr);
 			goto out;
 		}
 		tmp = xstrndup(cp + 2, end - (cp + 2));
 		if (style_parse(&sy, base, tmp) != 0) {
-			log_debug("invalid style '%s'", tmp);
+			log_debug("%s: invalid style '%s'", __func__, tmp);
 			free(tmp);
 			cp = end + 1;
 			continue;
 		}
-		log_debug("style '%s' -> '%s'", tmp, style_tostring(&sy));
+		log_debug("%s: style '%s' -> '%s'", __func__, tmp,
+		    style_tostring(&sy));
 		free(tmp);
 
 		/* Check the list state. */
@@ -706,7 +708,7 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 		log_debug("%s: width %s is %u", __func__, names[i], width[i]);
 	}
 	if (focus_start != -1 && focus_end != -1)
-		log_debug("focus is %d-%d", focus_start, focus_end);
+		log_debug("%s: focus %d-%d", __func__, focus_start, focus_end);
 	TAILQ_FOREACH(fr, &frs, entry) {
 		log_debug("%s: range %d|%u is %s %u-%u", __func__, fr->type,
 		    fr->argument, names[fr->index], fr->start, fr->end);
