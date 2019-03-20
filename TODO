@@ -148,8 +148,6 @@
 
 TODO soonish maybe:
 
-- Horizontal cursor position is incorrect after resize (bug), issue 1323.
-- Multiple status lines (DONE but not committed yet).
 - Store hooks as options, issue 1619.
 - Support buffer prefixes, issue 1501.
 - copy-pipe should be synchronous, issue 1517.
