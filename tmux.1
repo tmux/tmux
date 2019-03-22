@@ -625,13 +625,13 @@ refers to a
 .Nm
 command, passed with the command and arguments separately, for example:
 .Bd -literal -offset indent
-bind-key F1 set-window-option force-width 81
+bind-key F1 set-option status off
 .Ed
 .Pp
 Or if using
 .Xr sh 1 :
 .Bd -literal -offset indent
-$ tmux bind-key F1 set-window-option force-width 81
+$ tmux bind-key F1 set-option status off
 .Ed
 .Pp
 Multiple commands may be specified together as part of a
@@ -1939,6 +1939,38 @@ and unzoomed (its normal position in the layout).
 .Fl M
 begins mouse resizing (only valid if bound to a mouse key binding, see
 .Sx MOUSE SUPPORT ) .
+.It Xo Ic resize-window
+.Op Fl aADLRU
+.Op Fl t Ar target-window
+.Op Fl x Ar width
+.Op Fl y Ar height
+.Op Ar adjustment
+.Xc
+.D1 (alias: Ic resizew )
+Resize a window, up, down, left or right by
+.Ar adjustment
+with
+.Fl U ,
+.Fl D ,
+.Fl L
+or
+.Fl R ,
+or
+to an absolute size
+with
+.Fl x
+or
+.Fl y .
+The
+.Ar adjustment
+is given in lines or cells (the default is 1).
+.Fl A
+sets the size of the largest session containing the window;
+.Fl a
+the size of the smallest.
+This command will automatically set
+.Ic window-size
+to manual in the window options.
 .It Xo Ic respawn-pane
 .Op Fl c Ar start-directory
 .Op Fl k
@@ -2698,6 +2730,10 @@ or
 This option should be configured when
 .Nm
 is used as a login shell.
+.It Ic default-size Ar XxY
+Set the default size of windows when the size is not set or the
+.Ic window-size
+option is manual.
 .It Xo Ic destroy-unattached
 .Op Ic on | off
 .Xc
@@ -3098,16 +3134,6 @@ Set clock colour.
 .Xc
 Set clock hour format.
 .Pp
-.It Ic force-height Ar height
-.It Ic force-width Ar width
-Prevent
-.Nm
-from resizing a window to greater than
-.Ar width
-or
-.Ar height .
-A value of zero restores the default unlimited setting.
-.Pp
 .It Ic main-pane-height Ar height
 .It Ic main-pane-width Ar width
 Set the width or height of the main (left or top) pane in the
@@ -3294,6 +3320,21 @@ For how to specify
 see the
 .Sx STYLES
 section.
+.Pp
+.It Xo Ic window-size
+.Op Ic smallest | largest | manual
+.Xc
+Tell
+.Nm
+how to automatically size windows either the size of the smallest session
+containing the window, the size of the largest, or manual size.
+See also the
+.Ic resize-window
+command and the
+.Ic default-size
+and
+.Ic aggressive-resize
+options.
 .Pp
 .It Xo Ic wrap-search
 .Op Ic on | off
