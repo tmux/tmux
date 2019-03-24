@@ -1,0 +1,16 @@
+#! /bin/sh
+# Display the SHA1 of the commit in which configure.ac was last modified.
+# If it's not checked in yet, use the SHA1 of HEAD plus -dirty.
+
+if [ ! -d .git ] ; then
+  # if no .git directory, assume they're not using Git
+  printf ''
+elif [ ! type git > /dev/null 2>&1 ] ; then
+  # if don't have git command
+  printf ''
+elif git diff --quiet HEAD -- configure.ac ; then
+  # configure.ac is not modified
+  printf '%s' `git rev-list --short --max-count=1 HEAD -- configure.ac`
+else # configure.ac is modified
+  printf '%s-dirty' `git rev-parse --short HEAD`
+fi
