@@ -649,6 +649,10 @@ have_event:
 			key = KEYC_MOUSEMOVE_PANE;
 		if (where == STATUS)
 			key = KEYC_MOUSEMOVE_STATUS;
+		if (where == STATUS_LEFT)
+			key = KEYC_MOUSEMOVE_STATUS_LEFT;
+		if (where == STATUS_RIGHT)
+			key = KEYC_MOUSEMOVE_STATUS_RIGHT;
 		if (where == BORDER)
 			key = KEYC_MOUSEMOVE_BORDER;
 		break;
@@ -719,6 +723,10 @@ have_event:
 				key = KEYC_WHEELDOWN_PANE;
 			if (where == STATUS)
 				key = KEYC_WHEELDOWN_STATUS;
+			if (where == STATUS_LEFT)
+				key = KEYC_WHEELDOWN_STATUS_LEFT;
+			if (where == STATUS_RIGHT)
+				key = KEYC_WHEELDOWN_STATUS_RIGHT;
 			if (where == BORDER)
 				key = KEYC_WHEELDOWN_BORDER;
 		}
