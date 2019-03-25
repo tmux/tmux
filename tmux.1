@@ -3597,16 +3597,16 @@ option is on (the default is off),
 allows mouse events to be bound as keys.
 The name of each key is made up of a mouse event (such as
 .Ql MouseUp1 )
-and a location suffix (one of
-.Ql Pane
-for the contents of a pane,
-.Ql Border
-for a pane border or
-.Ql Status ,
-.Ql StatusLeft ,
-or
-.Ql StatusRight
-for the status line).
+and a location suffix, one of the following:
+.Bl -column "XXXXXXXXXXXXX" -offset indent
+.It Li "Pane" Ta "the contents of a pane"
+.It Li "Border" Ta "a pane border"
+.It Li "Status" Ta "the status line window list"
+.It Li "StatusLeft" Ta "the left part of the status line"
+.It Li "StatusRight" Ta "the right part of the status line"
+.It Li "StatusDefault" Ta "any other part of the status line"
+.El
+.Pp
 The following mouse events are available:
 .Bl -column "MouseDown1" "MouseDrag1" "WheelDown" -offset indent
 .It Li "WheelUp" Ta "WheelDown" Ta ""
