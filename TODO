@@ -159,5 +159,3 @@ TODO soonish maybe:
   collected LRU.
 - Command aliases should be able to override builtin commands in order to add
   default flags (some mechanism needed to avoid recursion). GitHub issue 1630.
-- Way to bind mouse keys on empty gap between status left and right and window
-  list, GitHub issue 1649.
