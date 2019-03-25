@@ -504,14 +504,13 @@ have_event:
 	m->statusat = status_at_line(c);
 	if (m->statusat != -1 &&
 	    y >= (u_int)m->statusat &&
-	    y < m->statusat + status_line_size(c))
+	    y < m->statusat + status_line_size(c)) {
 		sr = status_get_range(c, x, y - m->statusat);
-	else
-		sr = NULL;
-	if (sr != NULL) {
+		if (sr == NULL)
+			return (KEYC_UNKNOWN);
 		switch (sr->type) {
 		case STYLE_RANGE_NONE:
-			break;
+			return (KEYC_UNKNOWN);
 		case STYLE_RANGE_LEFT:
 			where = STATUS_LEFT;
 			break;
@@ -520,10 +519,11 @@ have_event:
 			break;
 		case STYLE_RANGE_WINDOW:
 			wl = winlink_find_by_index(&s->windows, sr->argument);
-			if (wl != NULL) {
-				m->w = wl->window->id;
-				where = STATUS;
-			}
+			if (wl == NULL)
+				return (KEYC_UNKNOWN);
+			m->w = wl->window->id;
+
+			where = STATUS;
 			break;
 		}
 	}
