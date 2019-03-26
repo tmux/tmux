@@ -13,7 +13,7 @@ CHANGES FROM 2.8 to 2.9
 
 * No longer clear history on RIS.
 
-* Extend the #[] style syntax and use that together with previous for mat
+* Extend the #[] style syntax and use that together with previous format
   changes to allow the status line to be entirely configured with a single
   option.
 
