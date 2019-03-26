@@ -159,3 +159,4 @@ TODO soonish maybe:
   collected LRU.
 - Command aliases should be able to override builtin commands in order to add
   default flags (some mechanism needed to avoid recursion). GitHub issue 1630.
+- window-size latest, GitHub issue 1637.
