@@ -23,7 +23,7 @@ CHANGES FROM 2.8 to 2.9
 
   Now that it is possible to configure their content, enable the existing code
   that lets the status line be multiple lines in height. The status option can
-  now take a value of 2, 3, 4 or 5 (as well as the previou s on or off) to
+  now take a value of 2, 3, 4 or 5 (as well as the previous on or off) to
   configure more than one line. The new status-format array option configures
   the format of each line, the default just references the existing status-*
   options, although some of the more obscure status options may be eliminated
