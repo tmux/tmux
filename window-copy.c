@@ -637,6 +637,7 @@ window_copy_cmd_stop_selection(struct window_copy_cmd_state *cs)
 	struct window_copy_mode_data	*data = wme->data;
 
 	data->cursordrag = CURSORDRAG_NONE;
+	data->lineflag = LINE_SEL_NONE;
 	return (WINDOW_COPY_CMD_NOTHING);
 }
 
