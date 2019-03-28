@@ -1804,6 +1804,23 @@ void
 format_defaults(struct format_tree *ft, struct client *c, struct session *s,
     struct winlink *wl, struct window_pane *wp)
 {
+	if (c != NULL)
+		log_debug("%s: c=%s", __func__, c->name);
+	else
+		log_debug("%s: s=none", __func__);
+	if (s != NULL)
+		log_debug("%s: s=$%u", __func__, s->id);
+	else
+		log_debug("%s: s=none", __func__);
+	if (wl != NULL)
+		log_debug("%s: wl=%u w=@%u", __func__, wl->idx, wl->window->id);
+	else
+		log_debug("%s: wl=none", __func__);
+	if (wp != NULL)
+		log_debug("%s: wp=%%%u", __func__, wp->id);
+	else
+		log_debug("%s: wp=none", __func__);
+
 	if (c != NULL && s != NULL && c->session != s)
 		log_debug("%s: session does not match", __func__);
 
