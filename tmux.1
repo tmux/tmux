@@ -629,13 +629,13 @@ refers to a
 .Nm
 command, passed with the command and arguments separately, for example:
 .Bd -literal -offset indent
-bind-key F1 set-window-option synchronize-panes on
+bind-key F1 set-option status off
 .Ed
 .Pp
 Or if using
 .Xr sh 1 :
 .Bd -literal -offset indent
-$ tmux bind-key F1 set-window-option synchronize-panes on
+$ tmux bind-key F1 set-option status off
 .Ed
 .Pp
 Multiple commands may be specified together as part of a
@@ -1983,7 +1983,7 @@ and unzoomed (its normal position in the layout).
 begins mouse resizing (only valid if bound to a mouse key binding, see
 .Sx MOUSE SUPPORT ) .
 .It Xo Ic resize-window
-.Op Fl aADLUR
+.Op Fl aADLRU
 .Op Fl t Ar target-window
 .Op Fl x Ar width
 .Op Fl y Ar height
@@ -1998,24 +1998,22 @@ with
 .Fl L
 or
 .Fl R ,
+or
 to an absolute size
 with
 .Fl x
 or
-.Fl y ,
-or to the size of the smallest or largest session (with
-.Fl a
-or
-.Fl A ) .
+.Fl y .
 The
 .Ar adjustment
 is given in lines or cells (the default is 1).
-.Pp
-This command automatically sets the
+.Fl A
+sets the size of the largest session containing the window;
+.Fl a
+the size of the smallest.
+This command will automatically set
 .Ic window-size
-option to
-.Ar manual
-for the window.
+to manual in the window options.
 .It Xo Ic respawn-pane
 .Op Fl c Ar start-directory
 .Op Fl k
@@ -2785,6 +2783,10 @@ or
 This option should be configured when
 .Nm
 is used as a login shell.
+.It Ic default-size Ar XxY
+Set the default size of windows when the size is not set or the
+.Ic window-size
+option is manual.
 .It Xo Ic destroy-unattached
 .Op Ic on | off
 .Xc
@@ -3397,6 +3399,21 @@ see the
 .Sx STYLES
 section.
 .Pp
+.It Xo Ic window-size
+.Op Ic smallest | largest | manual
+.Xc
+Tell
+.Nm
+how to automatically size windows either the size of the smallest session
+containing the window, the size of the largest, or manual size.
+See also the
+.Ic resize-window
+command and the
+.Ic default-size
+and
+.Ic aggressive-resize
+options.
+.Pp
 .It Xo Ic wrap-search
 .Op Ic on | off
 .Xc
@@ -3580,16 +3597,16 @@ option is on (the default is off),
 allows mouse events to be bound as keys.
 The name of each key is made up of a mouse event (such as
 .Ql MouseUp1 )
-and a location suffix (one of
-.Ql Pane
-for the contents of a pane,
-.Ql Border
-for a pane border or
-.Ql Status ,
-.Ql StatusLeft ,
-or
-.Ql StatusRight
-for the status line).
+and a location suffix, one of the following:
+.Bl -column "XXXXXXXXXXXXX" -offset indent
+.It Li "Pane" Ta "the contents of a pane"
+.It Li "Border" Ta "a pane border"
+.It Li "Status" Ta "the status line window list"
+.It Li "StatusLeft" Ta "the left part of the status line"
+.It Li "StatusRight" Ta "the right part of the status line"
+.It Li "StatusDefault" Ta "any other part of the status line"
+.El
+.Pp
 The following mouse events are available:
 .Bl -column "MouseDown1" "MouseDrag1" "WheelDown" -offset indent
 .It Li "WheelUp" Ta "WheelDown" Ta ""
@@ -3846,6 +3863,7 @@ The following variables are available, where appropriate:
 .It Li "command_list_alias" Ta "" Ta "Command alias if listing commands"
 .It Li "command_list_usage" Ta "" Ta "Command usage if listing commands"
 .It Li "cursor_flag" Ta "" Ta "Pane cursor flag"
+.It Li "cursor_character" Ta "" Ta "Character at cursor in pane"
 .It Li "cursor_x" Ta "" Ta "Cursor X position in pane"
 .It Li "cursor_y" Ta "" Ta "Cursor Y position in pane"
 .It Li "history_bytes" Ta "" Ta "Number of bytes in window history"
@@ -3962,7 +3980,7 @@ and
 A style may be the single term
 .Ql default
 to specify the default style (which may inherit from another option) or a space
-separated list of the following:
+or comma separated list of the following:
 .Bl -tag -width Ds
 .It Ic fg=colour
 Set the foreground colour.
@@ -4063,7 +4081,7 @@ is a window index.
 .Pp
 Examples are:
 .Bd -literal -offset indent
-fg=yellow,bold,underscore,blink
+fg=yellow bold underscore blink
 bg=black,fg=default,noreverse
 .Ed
 .Sh NAMES AND TITLES

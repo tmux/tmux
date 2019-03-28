@@ -700,6 +700,21 @@ format_cb_pane_in_mode(struct format_tree *ft, struct format_entry *fe)
 	xasprintf(&fe->value, "%u", n);
 }
 
+/* Callback for cursor_character. */
+static void
+format_cb_cursor_character(struct format_tree *ft, struct format_entry *fe)
+{
+	struct window_pane	*wp = ft->wp;
+	struct grid_cell	 gc;
+
+	if (wp == NULL)
+		return;
+
+	grid_view_get_cell(wp->base.grid, wp->base.cx, wp->base.cy, &gc);
+	if (~gc.flags & GRID_FLAG_PADDING)
+		xasprintf(&fe->value, "%.*s", (int)gc.data.size, gc.data.data);
+}
+
 /* Merge a format tree. */
 static void
 format_merge(struct format_tree *ft, struct format_tree *from)
@@ -2048,6 +2063,8 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 
 	format_add(ft, "cursor_x", "%u", wp->base.cx);
 	format_add(ft, "cursor_y", "%u", wp->base.cy);
+	format_add_cb(ft, "cursor_character", format_cb_cursor_character);
+
 	format_add(ft, "scroll_region_upper", "%u", wp->base.rupper);
 	format_add(ft, "scroll_region_lower", "%u", wp->base.rlower);
 
