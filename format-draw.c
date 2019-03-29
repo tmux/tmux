@@ -86,6 +86,9 @@ format_update_ranges(struct format_ranges *frs, struct screen *s, u_int offset,
 			continue;
 		}
 
+		fr->start -= start;
+		fr->end -= start;
+
 		fr->start += offset;
 		fr->end += offset;
 	}
