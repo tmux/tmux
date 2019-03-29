@@ -1041,7 +1041,9 @@ format_choose(struct format_tree *ft, const char *s, char **left, char **right,
 
 	if (expand) {
 		*left = format_expand(ft, left0);
+		free(left0);
 		*right = format_expand(ft, right0);
+		free(right0);
 	} else {
 		*left = left0;
 		*right = right0;
