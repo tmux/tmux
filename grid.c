@@ -1284,6 +1284,8 @@ grid_reflow(struct grid *gd, u_int sx)
 	if (target->sy < gd->sy)
 		grid_reflow_add(target, gd->sy - target->sy);
 	gd->hsize = target->sy - gd->sy;
+	if (gd->hscrolled > gd->hsize)
+		gd->hscrolled = gd->hsize;
 	free(gd->linedata);
 	gd->linedata = target->linedata;
 	free(target);
