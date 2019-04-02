@@ -463,17 +463,17 @@ screen_select_cell(struct screen *s, struct grid_cell *dst,
 static void
 screen_reflow(struct screen *s, u_int new_x)
 {
-	u_int		offset, cx = s->cx, cy = s->grid->hsize + s->cy;
+	u_int		cx = s->cx, cy = s->grid->hsize + s->cy, wx, wy;
 	struct timeval	start, tv;
 
 	gettimeofday(&start, NULL);
 
-	offset = grid_to_offset(s->grid, cx, cy);
-	log_debug("%s: cursor %u,%u offset is %u", __func__, cx, cy, offset);
+	grid_wrap_position(s->grid, cx, cy, &wx, &wy);
+	log_debug("%s: cursor %u,%u is %u,%u", __func__, cx, cy, wx, wy);
 
 	grid_reflow(s->grid, new_x);
 
-	grid_from_offset(s->grid, offset, &cx, &cy);
+	grid_unwrap_position(s->grid, &cx, &cy, wx, wy);
 	log_debug("%s: new cursor is %u,%u", __func__, cx, cy);
 
 	if (cy >= s->grid->hsize) {

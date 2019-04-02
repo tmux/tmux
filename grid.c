@@ -1291,40 +1291,61 @@ grid_reflow(struct grid *gd, u_int sx)
 	free(target);
 }
 
-/* Convert point position to offset from the start of the grid. */
-u_int
-grid_to_offset(struct grid *gd, u_int px, u_int py)
+/* Convert to position based on wrapped lines. */
+void
+grid_wrap_position(struct grid *gd, u_int px, u_int py, u_int *wx, u_int *wy)
 {
-	u_int	yy, offset = 0;
+	u_int	ax = 0, ay = 0, yy;
 
-	if (py > gd->hsize + gd->sy - 1) {
-		px = UINT_MAX;
-		py = gd->hsize + gd->sy - 1;
+	for (yy = 0; yy < py; yy++) {
+		if (gd->linedata[yy].flags & GRID_LINE_WRAPPED)
+			ax += gd->linedata[yy].cellused;
+		else {
+			ax = 0;
+			ay++;
+		}
 	}
-
-	for (yy = 0; yy < py; yy++)
-		offset += gd->linedata[yy].cellused;
-	if (px > gd->linedata[yy].cellused)
-		px = gd->linedata[yy].cellused;
-	return (offset + px);
+	if (px >= gd->linedata[yy].cellused)
+		ax = UINT_MAX;
+	else
+		ax += px;
+	*wx = ax;
+	*wy = ay;
 }
 
-/* Convert offset from the start of the grid to point position. */
+/* Convert position based on wrapped lines back. */
 void
-grid_from_offset(struct grid *gd, u_int offset, u_int *px, u_int *py)
+grid_unwrap_position(struct grid *gd, u_int *px, u_int *py, u_int wx, u_int wy)
 {
-	u_int	yy;
-
-	*px = *py = 0;
+	u_int	yy, ax = 0, ay = 0;
 
 	for (yy = 0; yy < gd->hsize + gd->sy - 1; yy++) {
-		if (offset <= gd->linedata[yy].cellused)
+		if (ay == wy)
 			break;
-		offset -= gd->linedata[yy].cellused;
+		if (gd->linedata[yy].flags & GRID_LINE_WRAPPED)
+			ax += gd->linedata[yy].cellused;
+		else {
+			ax = 0;
+			ay++;
+		}
 	}
-	if (offset < gd->linedata[yy].cellused)
-		*px = offset;
-	else
-		*px = gd->linedata[yy].cellused;
+
+	/*
+	 * yy is now 0 on the unwrapped line which contains wx. Walk forwards
+	 * until we find the end or the line now containing wx.
+	 */
+	if (wx == UINT_MAX) {
+		while (gd->linedata[yy].flags & GRID_LINE_WRAPPED)
+			yy++;
+		wx = gd->linedata[yy].cellused;
+	} else {
+		while (gd->linedata[yy].flags & GRID_LINE_WRAPPED) {
+			if (wx < gd->linedata[yy].cellused)
+				break;
+			wx -= gd->linedata[yy].cellused;
+			yy++;
+		}
+	}
+	*px = wx;
 	*py = yy;
 }
