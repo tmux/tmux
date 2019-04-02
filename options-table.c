@@ -82,7 +82,8 @@ static const char *options_table_window_size_list[] = {
 			"#{?#{&&:#{window_bell_flag}," \
 				"#{!=:#{window-status-bell-style},default}}, " \
 				"#{window-status-bell-style}," \
-				"#{?#{&&:#{window_activity_flag}," \
+				"#{?#{&&:#{||:#{window_activity_flag}," \
+					     "#{window_silence_flag}}," \
 					"#{!=:" \
 					"#{window-status-activity-style}," \
 					"default}}, " \
@@ -103,7 +104,8 @@ static const char *options_table_window_size_list[] = {
 			"#{?#{&&:#{window_bell_flag}," \
 				"#{!=:#{window-status-bell-style},default}}, " \
 				"#{window-status-bell-style}," \
-				"#{?#{&&:#{window_activity_flag}," \
+				"#{?#{&&:#{||:#{window_activity_flag}," \
+					     "#{window_silence_flag}}," \
 					"#{!=:" \
 					"#{window-status-activity-style}," \
 					"default}}, " \
