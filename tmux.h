@@ -1611,7 +1611,7 @@ struct paste_buffer *paste_walk(struct paste_buffer *);
 struct paste_buffer *paste_get_top(const char **);
 struct paste_buffer *paste_get_name(const char *);
 void		 paste_free(struct paste_buffer *);
-void		 paste_add(char *, size_t);
+void		 paste_add(const char *, char *, size_t);
 int		 paste_rename(const char *, const char *, char **);
 int		 paste_set(char *, size_t, const char *, char **);
 char		*paste_make_sample(struct paste_buffer *);
