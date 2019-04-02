@@ -28,7 +28,7 @@ $TMUX kill-server 2>/dev/null
 
 $TMUX -f/dev/null new -d || exit 1
 sleep 1
-cat <<EOF|$TMUX -C a >$TMP
+cat <<EOF|$TMUX -f/dev/null -C a >$TMP
 ls -F':#{window_width} #{window_height}'
 refresh -C 80,24
 ls -F':#{window_width} #{window_height}'
@@ -37,7 +37,7 @@ grep ^: $TMP >$OUT
 printf ":80 24\n:80 23\n"|cmp -s $OUT - || exit 1
 $TMUX kill-server 2>/dev/null
 
-cat <<EOF|$TMUX -C new -x 100 -y 50 >$TMP
+cat <<EOF|$TMUX -f/dev/null -C new -x 100 -y 50 >$TMP
 ls -F':#{window_width} #{window_height}'
 refresh -C 80,24
 ls -F':#{window_width} #{window_height}'

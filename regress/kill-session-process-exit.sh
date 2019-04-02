@@ -9,9 +9,9 @@ TERM=screen
 TMUX="$TEST_TMUX -Ltest"
 $TMUX kill-server 2>/dev/null
 
-$TMUX new -d 'sleep 1000' || exit 1
+$TMUX -f/dev/null new -d 'sleep 1000' || exit 1
 P=$($TMUX display -pt0:0.0 '#{pane_pid}')
-$TMUX new -d || exit 1
+$TMUX -f/dev/null new -d || exit 1
 sleep 1
 $TMUX kill-session -t0:
 sleep 1
