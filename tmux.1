@@ -1175,12 +1175,12 @@ The following commands are supported in copy mode:
 .It Li "bottom-line" Ta "L" Ta ""
 .It Li "cancel" Ta "q" Ta "Escape"
 .It Li "clear-selection" Ta "Escape" Ta "C-g"
-.It Li "copy-end-of-line" Ta "D" Ta "C-k"
-.It Li "copy-line" Ta "" Ta ""
-.It Li "copy-pipe <command>" Ta "" Ta ""
-.It Li "copy-pipe-and-cancel <command>" Ta "" Ta ""
-.It Li "copy-selection" Ta "" Ta ""
-.It Li "copy-selection-and-cancel" Ta "Enter" Ta "M-w"
+.It Li "copy-end-of-line [<prefix>]" Ta "D" Ta "C-k"
+.It Li "copy-line [<prefix>]" Ta "" Ta ""
+.It Li "copy-pipe <command> [<prefix>]" Ta "" Ta ""
+.It Li "copy-pipe-and-cancel <command> [<prefix>]" Ta "" Ta ""
+.It Li "copy-selection [<prefix>]" Ta "" Ta ""
+.It Li "copy-selection-and-cancel [<prefix>]" Ta "Enter" Ta "M-w"
 .It Li "cursor-down" Ta "j" Ta "Down"
 .It Li "cursor-left" Ta "h" Ta "Left"
 .It Li "cursor-right" Ta "l" Ta "Right"
@@ -1227,6 +1227,15 @@ The following commands are supported in copy mode:
 .It Li "top-line" Ta "H" Ta "M-R"
 .El
 .Pp
+Copy commands may take an optional buffer prefix argument which is used
+to generate the buffer name (the default is
+.Ql buffer
+so buffers are named
+.Ql buffer0 ,
+.Ql buffer1
+and so on).
+Pipe commands take a command argument which is the command to which the
+copied text is piped.
 The
 .Ql -and-cancel
 variants of some commands exit copy mode after they have completed (for copy
