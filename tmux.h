@@ -2101,8 +2101,8 @@ char	*grid_string_cells(struct grid *, u_int, u_int, u_int,
 void	 grid_duplicate_lines(struct grid *, u_int, struct grid *, u_int,
 	     u_int);
 void	 grid_reflow(struct grid *, u_int);
-u_int	 grid_to_offset(struct grid *, u_int, u_int);
-void	 grid_from_offset(struct grid *, u_int, u_int *, u_int *);
+void	 grid_wrap_position(struct grid *, u_int, u_int, u_int *, u_int *);
+void	 grid_unwrap_position(struct grid *, u_int *, u_int *, u_int, u_int);
 
 /* grid-view.c */
 void	 grid_view_get_cell(struct grid *, u_int, u_int, struct grid_cell *);
