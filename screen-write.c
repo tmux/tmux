@@ -324,7 +324,7 @@ screen_write_copy(struct screen_write_ctx *ctx, struct screen *src, u_int px,
 
 /*
  * Copy from another screen but without the selection stuff. Also assumes the
- * target region is already big enough and already cleared.
+ * target region is already big enough.
  */
 void
 screen_write_fast_copy(struct screen_write_ctx *ctx, struct screen *src,
@@ -349,8 +349,7 @@ screen_write_fast_copy(struct screen_write_ctx *ctx, struct screen *src,
 			grid_get_cell(gd, xx, yy, &gc);
 			if (xx + gc.data.width > px + nx)
 				break;
-			if (!grid_cells_equal(&gc, &grid_default_cell))
-				grid_view_set_cell(ctx->s->grid, cx, cy, &gc);
+			grid_view_set_cell(ctx->s->grid, cx, cy, &gc);
 			cx++;
 		}
 		cy++;
