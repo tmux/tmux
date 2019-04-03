@@ -2432,7 +2432,7 @@ input_osc_52(struct input_ctx *ictx, const char *p)
 	screen_write_stop(&ctx);
 	notify_pane("pane-set-clipboard", wp);
 
-	paste_add(out, outlen);
+	paste_add(NULL, out, outlen);
 }
 
 /* Handle the OSC 104 sequence for unsetting (multiple) palette entries. */
