@@ -102,7 +102,8 @@ start_cfg(void)
 		cmdq_append(c, cfg_item);
 	}
 
-	load_cfg(TMUX_CONF, NULL, NULL, 1);
+	if (cfg_file == NULL)
+		load_cfg(TMUX_CONF, NULL, NULL, 1);
 
 	if (cfg_file == NULL && (home = find_home()) != NULL) {
 		xasprintf(&cfg_file, "%s/.tmux.conf", home);
