@@ -722,7 +722,7 @@ layout_set_size_check(struct window *w, struct layout_cell *lc,
     enum layout_type type, int size)
 {
 	struct layout_cell	*lcchild;
-	u_int			new_size, available, previous, count, idx;
+	u_int			 new_size, available, previous, count, idx;
 
 	/* Cells with no children must just be bigger than minimum. */
 	if (lc->type == LAYOUT_WINDOWPANE)
@@ -736,6 +736,9 @@ layout_set_size_check(struct window *w, struct layout_cell *lc,
 
 	/* Check new size will work for each child. */
 	if (lc->type == type) {
+		if (available < (count * 2) - 1)
+			return (0);
+
 		if (type == LAYOUT_LEFTRIGHT)
 			previous = lc->sx;
 		else
@@ -745,13 +748,17 @@ layout_set_size_check(struct window *w, struct layout_cell *lc,
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
 			new_size = layout_new_pane_size(w, previous, lcchild,
 			    type, size, count - idx, available);
-			if (new_size > available)
-				return (0);
-
-			available -= (new_size + 1);
+			if (idx == count - 1) {
+				if (new_size > available)
+					return (0);
+				available -= new_size;
+			} else {
+				if (new_size + 1 > available)
+					return (0);
+				available -= new_size + 1;
+			}
 			if (!layout_set_size_check(w, lcchild, type, new_size))
 				return (0);
-
 			idx++;
 		}
 	} else {
