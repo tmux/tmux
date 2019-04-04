@@ -450,8 +450,7 @@ layout_set_tiled(struct window *w)
 	/* Free old tree and create a new root. */
 	layout_free(w);
 	lc = w->layout_root = layout_create_cell(NULL);
-	layout_set_size(lc, (width + 1) * columns - 1,
-	    (height + 1) * rows - 1, 0, 0);
+	layout_set_size(lc, w->sx, w->sy, 0, 0);
 	layout_make_node(lc, LAYOUT_TOPBOTTOM);
 
 	/* Create a grid of the cells. */
