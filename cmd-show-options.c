@@ -165,13 +165,11 @@ cmd_show_options_all(struct cmd *self, struct cmdq_item *item,
     struct options *oo)
 {
 	struct options_entry			*o;
-	const struct options_table_entry	*oe;
 	struct options_array_item		*a;
 	u_int					 idx;
 
 	o = options_first(oo);
 	while (o != NULL) {
-		oe = options_table_entry(o);
 		if (!options_isarray(o))
 			cmd_show_options_print(self, item, o, -1);
 		else {
