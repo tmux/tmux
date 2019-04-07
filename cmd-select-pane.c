@@ -112,7 +112,7 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 		else {
 			server_unzoom_window(w);
 			window_redraw_active_switch(w, lastwp);
-			if (window_set_active_pane(w, lastwp)) {
+			if (window_set_active_pane(w, lastwp, 1)) {
 				cmd_find_from_winlink(current, wl, 0);
 				cmd_select_pane_redraw(w);
 			}
@@ -194,7 +194,7 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 	server_unzoom_window(wp->window);
 	window_redraw_active_switch(w, wp);
-	if (window_set_active_pane(w, wp)) {
+	if (window_set_active_pane(w, wp, 1)) {
 		cmd_find_from_winlink_pane(current, wl, wp, 0);
 		hooks_insert(s->hooks, item, current, "after-select-pane");
 		cmd_select_pane_redraw(w);

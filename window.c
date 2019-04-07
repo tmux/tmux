@@ -26,7 +26,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <termios.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -71,19 +70,9 @@ const struct window_mode *all_window_modes[] = {
 	NULL
 };
 
-static void	window_destroy(struct window *);
-
 static struct window_pane *window_pane_create(struct window *, u_int, u_int,
 		    u_int);
 static void	window_pane_destroy(struct window_pane *);
-
-static void	window_pane_read_callback(struct bufferevent *, void *);
-static void	window_pane_error_callback(struct bufferevent *, short, void *);
-
-static int	winlink_next_index(struct winlinks *, int);
-
-static struct window_pane *window_pane_choose_best(struct window_pane **,
-		    u_int);
 
 RB_GENERATE(windows, window, entry, window_cmp);
 RB_GENERATE(winlinks, winlink, entry, winlink_cmp);
@@ -340,37 +329,7 @@ window_create(u_int sx, u_int sy)
 	return (w);
 }
 
-struct window *
-window_create_spawn(const char *name, int argc, char **argv, const char *path,
-    const char *shell, const char *cwd, struct environ *env,
-    struct termios *tio, u_int sx, u_int sy, u_int hlimit, char **cause)
-{
-	struct window		*w;
-	struct window_pane	*wp;
-
-	w = window_create(sx, sy);
-	wp = window_add_pane(w, NULL, 0, 0, hlimit);
-	layout_init(w, wp);
-
-	if (window_pane_spawn(wp, argc, argv, path, shell, cwd,
-	    env, tio, cause) != 0) {
-		window_destroy(w);
-		return (NULL);
-	}
-
-	w->active = TAILQ_FIRST(&w->panes);
-	if (name != NULL) {
-		w->name = xstrdup(name);
-		options_set_number(w->options, "automatic-rename", 0);
-	} else
-		w->name = default_window_name(w);
-
-	notify_window("window-pane-changed", w);
-
-	return (w);
-}
-
-static void
+void
 window_destroy(struct window *w)
 {
 	log_debug("window @%u destroyed (%d references)", w->id, w->references);
@@ -461,17 +420,22 @@ window_has_pane(struct window *w, struct window_pane *wp)
 }
 
 int
-window_set_active_pane(struct window *w, struct window_pane *wp)
+window_set_active_pane(struct window *w, struct window_pane *wp, int notify)
 {
-	log_debug("%s: pane %%%u (was %%%u)", __func__, wp->id, w->active->id);
+	log_debug("%s: pane %%%u", __func__, wp->id);
+
 	if (wp == w->active)
 		return (0);
 	w->last = w->active;
+
 	w->active = wp;
 	w->active->active_point = next_active_point++;
 	w->active->flags |= PANE_CHANGED;
+
 	tty_update_window_offset(w);
-	notify_window("window-pane-changed", w);
+
+	if (notify)
+		notify_window("window-pane-changed", w);
 	return (1);
 }
 
@@ -569,7 +533,7 @@ window_zoom(struct window_pane *wp)
 		return (-1);
 
 	if (w->active != wp)
-		window_set_active_pane(w, wp);
+		window_set_active_pane(w, wp, 1);
 
 	TAILQ_FOREACH(wp1, &w->panes, entry) {
 		wp1->saved_layout_cell = wp1->layout_cell;
@@ -608,8 +572,8 @@ window_unzoom(struct window *w)
 }
 
 struct window_pane *
-window_add_pane(struct window *w, struct window_pane *other, int before,
-    int full_size, u_int hlimit)
+window_add_pane(struct window *w, struct window_pane *other, u_int hlimit,
+    int flags)
 {
 	struct window_pane	*wp;
 
@@ -620,15 +584,15 @@ window_add_pane(struct window *w, struct window_pane *other, int before,
 	if (TAILQ_EMPTY(&w->panes)) {
 		log_debug("%s: @%u at start", __func__, w->id);
 		TAILQ_INSERT_HEAD(&w->panes, wp, entry);
-	} else if (before) {
+	} else if (flags & SPAWN_BEFORE) {
 		log_debug("%s: @%u before %%%u", __func__, w->id, wp->id);
-		if (full_size)
+		if (flags & SPAWN_FULLSIZE)
 			TAILQ_INSERT_HEAD(&w->panes, wp, entry);
 		else
 			TAILQ_INSERT_BEFORE(other, wp, entry);
 	} else {
 		log_debug("%s: @%u after %%%u", __func__, w->id, wp->id);
-		if (full_size)
+		if (flags & SPAWN_FULLSIZE)
 			TAILQ_INSERT_TAIL(&w->panes, wp, entry);
 		else
 			TAILQ_INSERT_AFTER(&w->panes, other, wp, entry);
@@ -888,153 +852,6 @@ window_pane_destroy(struct window_pane *wp)
 	free(wp);
 }
 
-int
-window_pane_spawn(struct window_pane *wp, int argc, char **argv,
-    const char *path, const char *shell, const char *cwd, struct environ *env,
-    struct termios *tio, char **cause)
-{
-	struct winsize	 ws;
-	char		*argv0, *cmd, **argvp;
-	const char	*ptr, *first, *home;
-	struct termios	 tio2;
-#ifdef HAVE_UTEMPTER
-	char		 s[32];
-#endif
-	sigset_t	 set, oldset;
-
-	if (wp->fd != -1) {
-		bufferevent_free(wp->event);
-		close(wp->fd);
-	}
-	if (argc > 0) {
-		cmd_free_argv(wp->argc, wp->argv);
-		wp->argc = argc;
-		wp->argv = cmd_copy_argv(argc, argv);
-	}
-	if (shell != NULL) {
-		free(wp->shell);
-		wp->shell = xstrdup(shell);
-	}
-	if (cwd != NULL) {
-		free((void *)wp->cwd);
-		wp->cwd = xstrdup(cwd);
-	}
-	wp->flags &= ~(PANE_STATUSREADY|PANE_STATUSDRAWN);
-
-	cmd = cmd_stringify_argv(wp->argc, wp->argv);
-	log_debug("%s: shell=%s", __func__, wp->shell);
-	log_debug("%s: cmd=%s", __func__, cmd);
-	log_debug("%s: cwd=%s", __func__, cwd);
-	cmd_log_argv(wp->argc, wp->argv, __func__);
-	environ_log(env, "%s: environment ", __func__);
-
-	memset(&ws, 0, sizeof ws);
-	ws.ws_col = screen_size_x(&wp->base);
-	ws.ws_row = screen_size_y(&wp->base);
-
-	sigfillset(&set);
-	sigprocmask(SIG_BLOCK, &set, &oldset);
-	switch (wp->pid = fdforkpty(ptm_fd, &wp->fd, wp->tty, NULL, &ws)) {
-	case -1:
-		wp->event = NULL;
-		wp->fd = -1;
-
-		xasprintf(cause, "%s: %s", cmd, strerror(errno));
-		free(cmd);
-
-		sigprocmask(SIG_SETMASK, &oldset, NULL);
-		return (-1);
-	case 0:
-		proc_clear_signals(server_proc, 1);
-		sigprocmask(SIG_SETMASK, &oldset, NULL);
-
-		cwd = NULL;
-		if (chdir(wp->cwd) == 0)
-			cwd = wp->cwd;
-		else if ((home = find_home()) != NULL && chdir(home) == 0)
-			cwd = home;
-		else
-			chdir("/");
-
-		if (tcgetattr(STDIN_FILENO, &tio2) != 0)
-			fatal("tcgetattr failed");
-		if (tio != NULL)
-			memcpy(tio2.c_cc, tio->c_cc, sizeof tio2.c_cc);
-		tio2.c_cc[VERASE] = '\177';
-#ifdef IUTF8
-		tio2.c_iflag |= IUTF8;
-#endif
-		if (tcsetattr(STDIN_FILENO, TCSANOW, &tio2) != 0)
-			fatal("tcgetattr failed");
-
-		log_close();
-		closefrom(STDERR_FILENO + 1);
-
-		if (path != NULL)
-			environ_set(env, "PATH", "%s", path);
-		if (cwd != NULL)
-			environ_set(env, "PWD", "%s", cwd);
-		environ_set(env, "TMUX_PANE", "%%%u", wp->id);
-		environ_push(env);
-
-		setenv("SHELL", wp->shell, 1);
-		ptr = strrchr(wp->shell, '/');
-
-		/*
-		 * If given one argument, assume it should be passed to sh -c;
-		 * with more than one argument, use execvp(). If there is no
-		 * arguments, create a login shell.
-		 */
-		if (wp->argc > 0) {
-			if (wp->argc != 1) {
-				/* Copy to ensure argv ends in NULL. */
-				argvp = cmd_copy_argv(wp->argc, wp->argv);
-				execvp(argvp[0], argvp);
-				fatal("execvp failed");
-			}
-			first = wp->argv[0];
-
-			if (ptr != NULL && *(ptr + 1) != '\0')
-				xasprintf(&argv0, "%s", ptr + 1);
-			else
-				xasprintf(&argv0, "%s", wp->shell);
-			execl(wp->shell, argv0, "-c", first, (char *)NULL);
-			fatal("execl failed");
-		}
-		if (ptr != NULL && *(ptr + 1) != '\0')
-			xasprintf(&argv0, "-%s", ptr + 1);
-		else
-			xasprintf(&argv0, "-%s", wp->shell);
-		execl(wp->shell, argv0, (char *)NULL);
-		fatal("execl failed");
-	}
-	log_debug("%s: master=%s", __func__, ttyname(wp->fd));
-	log_debug("%s: slave=%s", __func__, wp->tty);
-
-#ifdef HAVE_UTEMPTER
-	xsnprintf(s, sizeof s, "tmux(%lu).%%%u", (long) getpid(), wp->id);
-	utempter_add_record(wp->fd, s);
-	kill(getpid(), SIGCHLD);
-#endif
-
-	sigprocmask(SIG_SETMASK, &oldset, NULL);
-	setblocking(wp->fd, 0);
-
-	wp->event = bufferevent_new(wp->fd, window_pane_read_callback, NULL,
-	    window_pane_error_callback, wp);
-	if (wp->event == NULL)
-		fatalx("out of memory");
-
-	wp->pipe_off = 0;
-	wp->flags &= ~PANE_EXITED;
-
-	bufferevent_setwatermark(wp->event, EV_READ, 0, READ_SIZE);
-	bufferevent_enable(wp->event, EV_READ|EV_WRITE);
-
-	free(cmd);
-	return (0);
-}
-
 static void
 window_pane_read_callback(__unused struct bufferevent *bufev, void *data)
 {
@@ -1067,6 +884,18 @@ window_pane_error_callback(__unused struct bufferevent *bufev,
 
 	if (window_pane_destroy_ready(wp))
 		server_destroy_pane(wp, 1);
+}
+
+void
+window_pane_set_event(struct window_pane *wp)
+{
+	setblocking(wp->fd, 0);
+
+	wp->event = bufferevent_new(wp->fd, window_pane_read_callback,
+	    NULL, window_pane_error_callback, wp);
+
+	bufferevent_setwatermark(wp->event, EV_READ, 0, READ_SIZE);
+	bufferevent_enable(wp->event, EV_READ|EV_WRITE);
 }
 
 void
@@ -1617,6 +1446,8 @@ winlink_shuffle_up(struct session *s, struct winlink *wl)
 {
 	int	 idx, last;
 
+	if (wl == NULL)
+		return (-1);
 	idx = wl->idx + 1;
 
 	/* Find the next free index. */

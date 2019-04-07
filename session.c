@@ -111,12 +111,10 @@ session_find_by_id(u_int id)
 
 /* Create a new session. */
 struct session *
-session_create(const char *prefix, const char *name, int argc, char **argv,
-    const char *path, const char *cwd, struct environ *env, struct options *oo,
-    struct termios *tio, int idx, char **cause)
+session_create(const char *prefix, const char *name, const char *cwd,
+    struct environ *env, struct options *oo, struct termios *tio)
 {
 	struct session	*s;
-	struct winlink	*wl;
 
 	s = xcalloc(1, sizeof *s);
 	s->references = 1;
@@ -128,10 +126,7 @@ session_create(const char *prefix, const char *name, int argc, char **argv,
 	TAILQ_INIT(&s->lastw);
 	RB_INIT(&s->windows);
 
-	s->environ = environ_create();
-	if (env != NULL)
-		environ_copy(env, s->environ);
-
+	s->environ = env;
 	s->options = oo;
 	s->hooks = hooks_create(global_hooks);
 
@@ -164,17 +159,6 @@ session_create(const char *prefix, const char *name, int argc, char **argv,
 	if (gettimeofday(&s->creation_time, NULL) != 0)
 		fatal("gettimeofday failed");
 	session_update_activity(s, &s->creation_time);
-
-	if (argc >= 0) {
-		wl = session_new(s, NULL, argc, argv, path, cwd, idx, cause);
-		if (wl == NULL) {
-			session_destroy(s, __func__);
-			return (NULL);
-		}
-		session_select(s, RB_ROOT(&s->windows)->idx);
-	}
-
-	log_debug("session %s created", s->name);
 
 	return (s);
 }
@@ -219,7 +203,7 @@ session_free(__unused int fd, __unused short events, void *arg)
 
 /* Destroy a session. */
 void
-session_destroy(struct session *s, const char *from)
+session_destroy(struct session *s, int notify, const char *from)
 {
 	struct winlink	*wl;
 
@@ -227,7 +211,8 @@ session_destroy(struct session *s, const char *from)
 	s->curw = NULL;
 
 	RB_REMOVE(sessions, &sessions, s);
-	notify_session("session-closed", s);
+	if (notify)
+		notify_session("session-closed", s);
 
 	free(s->tio);
 
@@ -337,45 +322,6 @@ session_previous_session(struct session *s)
 	return (s2);
 }
 
-/* Create a new window on a session. */
-struct winlink *
-session_new(struct session *s, const char *name, int argc, char **argv,
-    const char *path, const char *cwd, int idx, char **cause)
-{
-	struct window	*w;
-	struct winlink	*wl;
-	struct environ	*env;
-	const char	*shell;
-	u_int		 hlimit, sx, sy;
-
-	if ((wl = winlink_add(&s->windows, idx)) == NULL) {
-		xasprintf(cause, "index in use: %d", idx);
-		return (NULL);
-	}
-	wl->session = s;
-
-	shell = options_get_string(s->options, "default-shell");
-	if (*shell == '\0' || areshell(shell))
-		shell = _PATH_BSHELL;
-
-	default_window_size(s, NULL, &sx, &sy, -1);
-	hlimit = options_get_number(s->options, "history-limit");
-	env = environ_for_session(s, 0);
-	w = window_create_spawn(name, argc, argv, path, shell, cwd, env, s->tio,
-	    sx, sy, hlimit, cause);
-	if (w == NULL) {
-		winlink_remove(&s->windows, wl);
-		environ_free(env);
-		return (NULL);
-	}
-	winlink_set_window(wl, w);
-	environ_free(env);
-	notify_session_window("window-linked", s, w);
-
-	session_group_synchronize_from(s);
-	return (wl);
-}
-
 /* Attach a window to a session. */
 struct winlink *
 session_attach(struct session *s, struct window *w, int idx, char **cause)
@@ -411,7 +357,7 @@ session_detach(struct session *s, struct winlink *wl)
 	session_group_synchronize_from(s);
 
 	if (RB_EMPTY(&s->windows)) {
-		session_destroy(s, __func__);
+		session_destroy(s, 1, __func__);
 		return (1);
 	}
 	return (0);

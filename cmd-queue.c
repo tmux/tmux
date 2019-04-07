@@ -111,7 +111,7 @@ cmdq_remove(struct cmdq_item *item)
 	if (item->client != NULL)
 		server_client_unref(item->client);
 
-	if (item->type == CMDQ_COMMAND)
+	if (item->cmdlist != NULL)
 		cmd_list_free(item->cmdlist);
 
 	TAILQ_REMOVE(item->queue, item, entry);

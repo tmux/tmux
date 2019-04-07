@@ -53,87 +53,45 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
 	struct cmd_find_state	*current = &item->shared->current;
+	struct spawn_context	 sc;
+	struct client		*c = cmd_find_client(item, NULL, 1);
 	struct session		*s = item->target.s;
 	struct winlink		*wl = item->target.wl;
-	struct client		*c = cmd_find_client(item, NULL, 1);
 	int			 idx = item->target.idx;
-	const char		*cmd, *path, *template, *tmp;
-	char		       **argv, *cause, *cp, *cwd, *name;
-	int			 argc, detached;
-	struct environ_entry	*envent;
+	struct winlink		*new_wl;
+	char			*cause = NULL, *cp;
+	const char		*template;
 	struct cmd_find_state	 fs;
 
-	if (args_has(args, 'a') && wl != NULL) {
-		if ((idx = winlink_shuffle_up(s, wl)) == -1) {
-			cmdq_error(item, "no free window indexes");
-			return (CMD_RETURN_ERROR);
-		}
-	}
-	detached = args_has(args, 'd');
-
-	if (args->argc == 0) {
-		cmd = options_get_string(s->options, "default-command");
-		if (cmd != NULL && *cmd != '\0') {
-			argc = 1;
-			argv = (char **)&cmd;
-		} else {
-			argc = 0;
-			argv = NULL;
-		}
-	} else {
-		argc = args->argc;
-		argv = args->argv;
+	if (args_has(args, 'a') && (idx = winlink_shuffle_up(s, wl)) == -1) {
+		cmdq_error(item, "couldn't get a window index");
+		return (CMD_RETURN_ERROR);
 	}
 
-	path = NULL;
-	if (item->client != NULL && item->client->session == NULL)
-		envent = environ_find(item->client->environ, "PATH");
-	else
-		envent = environ_find(s->environ, "PATH");
-	if (envent != NULL)
-		path = envent->value;
+	memset(&sc, 0, sizeof sc);
+	sc.item = item;
+	sc.s = s;
 
-	if ((tmp = args_get(args, 'c')) != NULL)
-		cwd = format_single(item, tmp, c, s, NULL, NULL);
-	else
-		cwd = xstrdup(server_client_get_cwd(item->client, s));
+	sc.name = args_get(args, 'n');
+	sc.argc = args->argc;
+	sc.argv = args->argv;
 
-	if ((tmp = args_get(args, 'n')) != NULL)
-		name = format_single(item, tmp, c, s, NULL, NULL);
-	else
-		name = NULL;
+	sc.idx = idx;
+	sc.cwd = args_get(args, 'c');
 
-	if (idx != -1)
-		wl = winlink_find_by_index(&s->windows, idx);
-	if (wl != NULL && args_has(args, 'k')) {
-		/*
-		 * Can't use session_detach as it will destroy session if this
-		 * makes it empty.
-		 */
-		notify_session_window("window-unlinked", s, wl->window);
-		wl->flags &= ~WINLINK_ALERTFLAGS;
-		winlink_stack_remove(&s->lastw, wl);
-		winlink_remove(&s->windows, wl);
+	sc.flags = 0;
+	if (args_has(args, 'd'))
+		sc.flags |= SPAWN_DETACHED;
+	if (args_has(args, 'k'))
+		sc.flags |= SPAWN_KILL;
 
-		/* Force select/redraw if current. */
-		if (wl == s->curw) {
-			detached = 0;
-			s->curw = NULL;
-		}
-	}
-
-	if (idx == -1)
-		idx = -1 - options_get_number(s->options, "base-index");
-	wl = session_new(s, name, argc, argv, path, cwd, idx,
-		&cause);
-	if (wl == NULL) {
+	if ((new_wl = spawn_window(&sc, &cause)) == NULL) {
 		cmdq_error(item, "create window failed: %s", cause);
 		free(cause);
-		goto error;
+		return (CMD_RETURN_ERROR);
 	}
-	if (!detached) {
-		session_select(s, wl->idx);
-		cmd_find_from_winlink(current, wl, 0);
+	if (!args_has(args, 'd') || new_wl == s->curw) {
+		cmd_find_from_winlink(current, new_wl, 0);
 		server_redraw_session_group(s);
 	} else
 		server_status_session_group(s);
@@ -141,7 +99,7 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'P')) {
 		if ((template = args_get(args, 'F')) == NULL)
 			template = NEW_WINDOW_TEMPLATE;
-		cp = format_single(item, template, c, s, wl, NULL);
+		cp = format_single(item, template, c, s, new_wl, NULL);
 		cmdq_print(item, "%s", cp);
 		free(cp);
 	}
@@ -149,12 +107,5 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	cmd_find_from_winlink(&fs, wl, 0);
 	hooks_insert(s->hooks, item, &fs, "after-new-window");
 
-	free(name);
-	free(cwd);
 	return (CMD_RETURN_NORMAL);
-
-error:
-	free(name);
-	free(cwd);
-	return (CMD_RETURN_ERROR);
 }

@@ -61,12 +61,12 @@ cmd_kill_session_exec(struct cmd *self, struct cmdq_item *item)
 		RB_FOREACH_SAFE(sloop, sessions, &sessions, stmp) {
 			if (sloop != s) {
 				server_destroy_session(sloop);
-				session_destroy(sloop, __func__);
+				session_destroy(sloop, 1, __func__);
 			}
 		}
 	} else {
 		server_destroy_session(s);
-		session_destroy(s, __func__);
+		session_destroy(s, 1, __func__);
 	}
 	return (CMD_RETURN_NORMAL);
 }
