@@ -210,7 +210,7 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	struct environ_entry	 *ee;
 	char			**argv, *cp, **argvp, *argv0, *cwd;
 	const char		 *cmd, *tmp;
-	int			  argc, before, full_size;
+	int			  argc, full_size;
 	u_int			  idx;
 	struct termios		  now;
 	u_int			  hlimit;
@@ -325,13 +325,16 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	environ_set(child, "SHELL", "%s", new_wp->shell);
 
 	/* Log the arguments we are going to use. */
-	cp = cmd_stringify_argv(new_wp->argc, new_wp->argv);
 	log_debug("%s: shell=%s", __func__, new_wp->shell);
-	log_debug("%s: cmd=%s", __func__, cp);
-	log_debug("%s: cwd=%s", __func__, cwd);
+	if (new_wp->argc != 0) {
+		cp = cmd_stringify_argv(new_wp->argc, new_wp->argv);
+		log_debug("%s: cmd=%s", __func__, cp);
+		free(cp);
+	}
+	if (cwd != NULL)
+		log_debug("%s: cwd=%s", __func__, cwd);
 	cmd_log_argv(new_wp->argc, new_wp->argv, __func__);
 	environ_log(child, "%s: environment ", __func__);
-	free(cp);
 
 	/* Initialize the window size. */
 	memset(&ws, 0, sizeof ws);
