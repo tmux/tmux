@@ -97,7 +97,10 @@ static const char *options_table_window_size_list[] = {
 		"#{?window_end_flag,,#{window-status-separator}}" \
 	"," \
 		"#[range=window|#{window_index} list=focus " \
-			"#{window-status-current-style}" \
+			"#{?#{!=:#{window-status-current-style},default}," \
+	                        "#{window-status-current-style}," \
+	                        "#{window-status-style}" \
+	                "}" \
 			"#{?#{&&:#{window_last_flag}," \
 				"#{!=:#{window-status-last-style},default}}, " \
 				"#{window-status-last-style}," \
