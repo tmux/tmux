@@ -52,7 +52,6 @@
 	  need to be suspended
 	* allow the prefix for automatic buffers to be specified as part of the
 	  key binding to allow session buffers or similar (GitHub issue 1501)
-	* copy-pipe should be synchronous (GitHub issue 1517)
 
 - layout stuff
 	* way to tag a layout as a number/name
@@ -149,8 +148,6 @@
 TODO soonish maybe:
 
 - Store hooks as options, issue 1619.
-- Support buffer prefixes, issue 1501.
-- copy-pipe should be synchronous, issue 1517.
 - -E flag to pass environment to new-*, issue 1498.
 - Copy mode searching is slow when there is a big history, issue 1545.
 - Grid "block" stuff, issue 1269. Can be used potentially for compression of
