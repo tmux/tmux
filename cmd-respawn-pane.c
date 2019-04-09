@@ -52,7 +52,6 @@ cmd_respawn_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct session		*s = item->target.s;
 	struct winlink		*wl = item->target.wl;
 	struct window_pane	*wp = item->target.wp;
-	struct client		*c = cmd_find_client(item, NULL, 1);
 	char			*cause = NULL;
 
 	memset(&sc, 0, sizeof sc);
