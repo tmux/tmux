@@ -208,7 +208,7 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	struct environ_entry	 *ee;
 	char			**argv, *cp, **argvp, *argv0, *cwd;
 	const char		 *cmd, *tmp;
-	int			  argc, full_size;
+	int			  argc;
 	u_int			  idx;
 	struct termios		  now;
 	u_int			  hlimit;
@@ -216,12 +216,6 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	sigset_t		  set, oldset;
 
 	spawn_log(__func__, sc);
-
-	/* Check full size flag. */
-	if (sc->flags & SPAWN_FULLSIZE)
-		full_size = 1;
-	else
-		full_size = 0;
 
 	/*
 	 * If we are respawning then get rid of the old process. Otherwise
