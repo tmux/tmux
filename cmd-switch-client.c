@@ -61,7 +61,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 	if ((c = cmd_find_client(item, args_get(args, 'c'), 0)) == NULL)
 		return (CMD_RETURN_ERROR);
 
-	if (tflag != NULL && tflag[strcspn(tflag, ":.")] != '\0') {
+	if (tflag != NULL && tflag[strcspn(tflag, ":.%")] != '\0') {
 		type = CMD_FIND_PANE;
 		flags = 0;
 	} else {
@@ -116,7 +116,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 			server_unzoom_window(wl->window);
 			if (wp != NULL) {
 				window_redraw_active_switch(wp->window, wp);
-				window_set_active_pane(wp->window, wp);
+				window_set_active_pane(wp->window, wp, 1);
 			}
 			session_set_current(s, wl);
 			cmd_find_from_session(&item->shared->current, s, 0);

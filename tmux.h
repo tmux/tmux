@@ -235,8 +235,8 @@ enum {
 
 /* Termcap codes. */
 enum tty_code_code {
-	TTYC_AX = 0,
 	TTYC_ACSC,
+	TTYC_AX,
 	TTYC_BCE,
 	TTYC_BEL,
 	TTYC_BLINK,
@@ -816,7 +816,7 @@ struct window_pane {
 	int		 argc;
 	char	       **argv;
 	char		*shell;
-	const char	*cwd;
+	char		*cwd;
 
 	pid_t		 pid;
 	char		 tty[TTY_NAME_MAX];
@@ -1563,6 +1563,32 @@ struct options_table_entry {
 #define CMD_SRCDST_CLIENT_USAGE "[-s src-client] [-t dst-client]"
 #define CMD_BUFFER_USAGE "[-b buffer-name]"
 
+/* Spawn common context. */
+struct spawn_context {
+	struct cmdq_item	 *item;
+
+	struct session		 *s;
+	struct winlink		 *wl;
+
+	struct window_pane	 *wp0;
+	struct layout_cell	 *lc;
+
+	const char		 *name;
+	char			**argv;
+	int			  argc;
+
+	int			  idx;
+	const char		 *cwd;
+
+	int			  flags;
+#define SPAWN_KILL 0x1
+#define SPAWN_DETACHED 0x2
+#define SPAWN_RESPAWN 0x4
+#define SPAWN_BEFORE 0x8
+#define SPAWN_NONOTIFY 0x10
+#define SPAWN_FULLSIZE 0x20
+};
+
 /* tmux.c */
 extern struct hooks	*global_hooks;
 extern struct options	*global_options;
@@ -2234,17 +2260,17 @@ struct window	*window_find_by_id_str(const char *);
 struct window	*window_find_by_id(u_int);
 void		 window_update_activity(struct window *);
 struct window	*window_create(u_int, u_int);
-struct window	*window_create_spawn(const char *, int, char **, const char *,
-		     const char *, const char *, struct environ *,
-		     struct termios *, u_int, u_int, u_int, char **);
+void		 window_destroy(struct window *);
+void		 window_pane_set_event(struct window_pane *);
 struct window_pane *window_get_active_at(struct window *, u_int, u_int);
 struct window_pane *window_find_string(struct window *, const char *);
 int		 window_has_pane(struct window *, struct window_pane *);
-int		 window_set_active_pane(struct window *, struct window_pane *);
+int		 window_set_active_pane(struct window *, struct window_pane *,
+		     int);
 void		 window_redraw_active_switch(struct window *,
 		     struct window_pane *);
-struct window_pane *window_add_pane(struct window *, struct window_pane *, int,
-		     int, u_int);
+struct window_pane *window_add_pane(struct window *, struct window_pane *,
+		     u_int, int);
 void		 window_resize(struct window *, u_int, u_int);
 int		 window_zoom(struct window_pane *);
 int		 window_unzoom(struct window *);
@@ -2261,9 +2287,6 @@ void		 window_destroy_panes(struct window *);
 struct window_pane *window_pane_find_by_id_str(const char *);
 struct window_pane *window_pane_find_by_id(u_int);
 int		 window_pane_destroy_ready(struct window_pane *);
-int		 window_pane_spawn(struct window_pane *, int, char **,
-		     const char *, const char *, const char *, struct environ *,
-		     struct termios *, char **);
 void		 window_pane_resize(struct window_pane *, u_int, u_int);
 void		 window_pane_alternate_on(struct window_pane *,
 		     struct grid_cell *, int);
@@ -2321,7 +2344,7 @@ void		 layout_resize_pane_to(struct window_pane *, enum layout_type,
 		     u_int);
 void		 layout_assign_pane(struct layout_cell *, struct window_pane *);
 struct layout_cell *layout_split_pane(struct window_pane *, enum layout_type,
-		     int, int, int);
+		     int, int);
 void		 layout_close_pane(struct window_pane *);
 int		 layout_spread_cell(struct window *, struct layout_cell *);
 void		 layout_spread_out(struct window_pane *);
@@ -2420,10 +2443,9 @@ int		 session_alive(struct session *);
 struct session	*session_find(const char *);
 struct session	*session_find_by_id_str(const char *);
 struct session	*session_find_by_id(u_int);
-struct session	*session_create(const char *, const char *, int, char **,
-		     const char *, const char *, struct environ *,
-		     struct options *, struct termios *, int, char **);
-void		 session_destroy(struct session *, const char *);
+struct session	*session_create(const char *, const char *, const char *,
+		     struct environ *, struct options *, struct termios *);
+void		 session_destroy(struct session *, int,  const char *);
 void		 session_add_ref(struct session *, const char *);
 void		 session_remove_ref(struct session *, const char *);
 int		 session_check_name(const char *);
@@ -2496,5 +2518,9 @@ int		 style_equal(struct style *, struct style *);
 void		 style_set(struct style *, const struct grid_cell *);
 void		 style_copy(struct style *, struct style *);
 int		 style_is_default(struct style *);
+
+/* spawn.c */
+struct winlink	*spawn_window(struct spawn_context *, char **);
+struct window_pane *spawn_pane(struct spawn_context *, char **);
 
 #endif /* TMUX_H */

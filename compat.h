@@ -67,6 +67,7 @@ void	warnx(const char *, ...);
 #define _PATH_DEVNULL	"/dev/null"
 #define _PATH_TTY	"/dev/tty"
 #define _PATH_DEV	"/dev/"
+#define _PATH_DEFPATH	"/usr/bin:/bin"
 #endif
 
 #ifndef __OpenBSD__

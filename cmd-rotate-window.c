@@ -77,7 +77,7 @@ cmd_rotate_window_exec(struct cmd *self, struct cmdq_item *item)
 
 		if ((wp = TAILQ_PREV(w->active, window_panes, entry)) == NULL)
 			wp = TAILQ_LAST(&w->panes, window_panes);
-		window_set_active_pane(w, wp);
+		window_set_active_pane(w, wp, 1);
 		cmd_find_from_winlink_pane(current, wl, wp, 0);
 		server_redraw_window(w);
 	} else {
@@ -105,7 +105,7 @@ cmd_rotate_window_exec(struct cmd *self, struct cmdq_item *item)
 
 		if ((wp = TAILQ_NEXT(w->active, entry)) == NULL)
 			wp = TAILQ_FIRST(&w->panes);
-		window_set_active_pane(w, wp);
+		window_set_active_pane(w, wp, 1);
 		cmd_find_from_winlink_pane(current, wl, wp, 0);
 		server_redraw_window(w);
 	}

@@ -47,8 +47,6 @@ CHANGES FROM 2.8 to 2.9
   and retrieved if the same mode is entered again. Exiting the active mode goes
   back to the previous one.
 
-* Add support for origin mode.
-
 * When showing command output in copy mode, call it view mode instead (affects
   pane_mode format).
 

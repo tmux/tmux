@@ -1096,6 +1096,14 @@ Switch the current session for client
 .Ar target-client
 to
 .Ar target-session .
+As a special case,
+.Fl t
+may refer to a pane (a target that contains
+.Ql : ,
+.Ql .
+or
+.Ql % )
+in which case the session, window and pane are all changed.
 If
 .Fl l ,
 .Fl n
@@ -1222,6 +1230,7 @@ The following commands are supported in copy mode:
 .It Li "search-forward-incremental <for>" Ta "" Ta "C-s"
 .It Li "search-reverse" Ta "N" Ta "N"
 .It Li "select-line" Ta "V" Ta ""
+.It Li "select-word" Ta "" Ta ""
 .It Li "start-of-line" Ta "0" Ta "C-a"
 .It Li "stop-selection" Ta "" Ta ""
 .It Li "top-line" Ta "H" Ta "M-R"
