@@ -907,9 +907,8 @@ tty_is_visible(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
 		lines = 0;
 
 	if (xoff + nx <= ctx->ox || xoff >= ctx->ox + ctx->sx ||
-	    yoff + ny <= ctx->oy || yoff >= lines + ctx->oy + ctx->sy) {
+	    yoff + ny <= ctx->oy || yoff >= lines + ctx->oy + ctx->sy)
 		return (0);
-	}
 	return (1);
 }
 

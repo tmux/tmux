@@ -290,7 +290,10 @@ screen_redraw_make_pane_status(struct client *c, struct window *w,
 	format_defaults(ft, c, NULL, NULL, wp);
 
 	expanded = format_expand_time(ft, fmt);
-	wp->status_size = width = wp->sx - 4;
+	if (wp->sx < 4)
+		wp->status_size = width = 0;
+	else
+		wp->status_size = width = wp->sx - 4;
 
 	memcpy(&old, &wp->status_screen, sizeof old);
 	screen_init(&wp->status_screen, width, 1, 0);
