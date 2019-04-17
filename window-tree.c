@@ -1006,7 +1006,7 @@ window_tree_kill_each(__unused void* modedata, void* itemdata,
 	case WINDOW_TREE_SESSION:
 		if (s != NULL) {
 			server_destroy_session(s);
-			session_destroy(s, __func__);
+			session_destroy(s, 1, __func__);
 		}
 		break;
 	case WINDOW_TREE_WINDOW:

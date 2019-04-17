@@ -297,7 +297,7 @@ server_send_exit(void)
 	}
 
 	RB_FOREACH_SAFE(s, sessions, &sessions, s1)
-		session_destroy(s, __func__);
+		session_destroy(s, 1, __func__);
 }
 
 /* Update socket execute permissions based on whether sessions are attached. */
