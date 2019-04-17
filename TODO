@@ -156,3 +156,4 @@ TODO soonish maybe:
   collected LRU.
 - Command aliases should be able to override builtin commands in order to add
   default flags (some mechanism needed to avoid recursion). GitHub issue 1630.
+- Merge alternate and normal screen modes: https://gitlab.freedesktop.org/terminal-wg/specifications/issues/5#note_112220
