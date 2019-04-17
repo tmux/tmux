@@ -61,7 +61,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 	if ((c = cmd_find_client(item, args_get(args, 'c'), 0)) == NULL)
 		return (CMD_RETURN_ERROR);
 
-	if (tflag != NULL && tflag[strcspn(tflag, ":.")] != '\0') {
+	if (tflag != NULL && tflag[strcspn(tflag, ":.%")] != '\0') {
 		type = CMD_FIND_PANE;
 		flags = 0;
 	} else {
