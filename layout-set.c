@@ -119,7 +119,7 @@ layout_set_even(struct window *w, enum layout_type type)
 {
 	struct window_pane	*wp;
 	struct layout_cell	*lc, *lcnew;
-	u_int			 n;
+	u_int			 n, sx, sy;
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
@@ -131,7 +131,18 @@ layout_set_even(struct window *w, enum layout_type type)
 	/* Free the old root and construct a new. */
 	layout_free(w);
 	lc = w->layout_root = layout_create_cell(NULL);
-	layout_set_size(lc, w->sx, w->sy, 0, 0);
+	if (type == LAYOUT_LEFTRIGHT) {
+		sx = (n * (PANE_MINIMUM + 1)) - 1;
+		if (sx < w->sx)
+			sx = w->sx;
+		sy = w->sy;
+	} else {
+		sy = (n * (PANE_MINIMUM + 1)) - 1;
+		if (sy < w->sy)
+			sy = w->sy;
+		sx = w->sx;
+	}
+	layout_set_size(lc, sx, sy, 0, 0);
 	layout_make_node(lc, type);
 
 	/* Build new leaf cells. */
@@ -152,6 +163,7 @@ layout_set_even(struct window *w, enum layout_type type)
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
+	window_resize(w, lc->sx, lc->sy);
 	notify_window("window-layout-changed", w);
 	server_redraw_window(w);
 }
@@ -288,6 +300,7 @@ layout_set_main_h(struct window *w)
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
+	window_resize(w, lc->sx, lc->sy);
 	notify_window("window-layout-changed", w);
 	server_redraw_window(w);
 }
@@ -412,6 +425,7 @@ layout_set_main_v(struct window *w)
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
+	window_resize(w, lc->sx, lc->sy);
 	notify_window("window-layout-changed", w);
 	server_redraw_window(w);
 }
@@ -421,7 +435,7 @@ layout_set_tiled(struct window *w)
 {
 	struct window_pane	*wp;
 	struct layout_cell	*lc, *lcrow, *lcchild;
-	u_int			 n, width, height, used;
+	u_int			 n, width, height, used, sx, sy;
 	u_int			 i, j, columns, rows;
 
 	layout_print_cell(w->layout_root, __func__, 1);
@@ -450,7 +464,13 @@ layout_set_tiled(struct window *w)
 	/* Free old tree and create a new root. */
 	layout_free(w);
 	lc = w->layout_root = layout_create_cell(NULL);
-	layout_set_size(lc, w->sx, w->sy, 0, 0);
+	sx = ((width + 1) * columns) - 1;
+	if (sx < w->sx)
+		sx = w->sx;
+	sy = ((height + 1) * rows) - 1;
+	if (sy < w->sy)
+		sy = w->sy;
+	layout_set_size(lc, sx, sy, 0, 0);
 	layout_make_node(lc, LAYOUT_TOPBOTTOM);
 
 	/* Create a grid of the cells. */
@@ -514,6 +534,7 @@ layout_set_tiled(struct window *w)
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
+	window_resize(w, lc->sx, lc->sy);
 	notify_window("window-layout-changed", w);
 	server_redraw_window(w);
 }
