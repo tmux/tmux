@@ -163,7 +163,6 @@ dist_tmux_SOURCES = \
 	spawn.c \
 	status.c \
 	style.c \
-	spawn.c \
 	tmux.c \
 	tmux.h \
 	tty-acs.c \
