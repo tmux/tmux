@@ -1139,7 +1139,7 @@ screen_write_collect_clear(struct screen_write_ctx *ctx, u_int y, u_int n)
 	u_int					 i;
 	size_t					 size;
 
-	for (i = y ; i < y + n; i++) {
+	for (i = y; i < y + n; i++) {
 		if (TAILQ_EMPTY(&ctx->list[i].items))
 			continue;
 		size = 0;
