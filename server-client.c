@@ -1369,6 +1369,7 @@ focused:
 		if (wp->base.mode & MODE_FOCUSON)
 			bufferevent_write(wp->event, "\033[I", 3);
 		notify_pane("pane-focus-in", wp);
+		session_update_activity(c->session, NULL);
 	}
 	wp->flags |= PANE_FOCUSED;
 }
