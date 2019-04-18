@@ -160,9 +160,9 @@ dist_tmux_SOURCES = \
 	server-fn.c \
 	server.c \
 	session.c \
+	spawn.c \
 	status.c \
 	style.c \
-	spawn.c \
 	tmux.c \
 	tmux.h \
 	tty-acs.c \

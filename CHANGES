@@ -1,9 +1,27 @@
 CHANGES FROM 2.9 to X.X
 
+* Add an argument to copy commands to set the prefix for the buffer name, this
+  (for example) allows buffers for different sessions to be named separately.
+
+* Update session activity on focus event.
+
+* Pass target from source-file into the config file parser so formats in %if
+  and %endif have access to more useful variables.
+
+* Add the ability to infer an option type (server, session, window) from its
+  name to show-options (it was already present in set-option).
+
 * Allow the prefix used for new buffer names to be given as an argument to the
   copy commands in copy mode.
 
 CHANGES FROM 2.8 to 2.9
+
+* Attempt to preserve horizontal cursor position as well as vertical with
+  reflow.
+
+* Rewrite main-vertical and horizontal and change layouts to better handle the
+  case where all panes won't fit into the window size, reduce problems with
+  pane border status lines and fix other bugs mostly found by Thomas Sattler.
 
 * Add format variables for the default formats in the various modes
   (tree_mode_format and so on) and add a -a flag to display-message to list
