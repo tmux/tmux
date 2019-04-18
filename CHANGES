@@ -1,5 +1,12 @@
 CHANGES FROM 2.8 to 2.9
 
+* Attempt to preserve horizontal cursor position as well as vertical with
+  reflow.
+
+* Rewrite main-vertical and horizontal and change layouts to better handle the
+  case where all panes won't fit into the window size, reduce problems with
+  pane border status lines and fix other bugs mostly found by Thomas Sattler.
+
 * Add format variables for the default formats in the various modes
   (tree_mode_format and so on) and add a -a flag to display-message to list
   variables with values.
@@ -19,7 +26,7 @@ CHANGES FROM 2.8 to 2.9
 
   Now that it is possible to configure their content, enable the existing code
   that lets the status line be multiple lines in height. The status option can
-  now take a value of 2, 3, 4 or 5 (as well as the previou s on or off) to
+  now take a value of 2, 3, 4 or 5 (as well as the previous on or off) to
   configure more than one line. The new status-format array option configures
   the format of each line, the default just references the existing status-*
   options, although some of the more obscure status options may be eliminated
@@ -41,8 +48,6 @@ CHANGES FROM 2.8 to 2.9
 * Allow more than one mode to be opened in a pane. Modes are kept on a stack
   and retrieved if the same mode is entered again. Exiting the active mode goes
   back to the previous one.
-
-* Add support for origin mode.
 
 * When showing command output in copy mode, call it view mode instead (affects
   pane_mode format).
