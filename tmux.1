@@ -2531,9 +2531,17 @@ command),
 a server option with
 .Fl s ,
 otherwise a session option.
+If the option is not a user option,
+.Fl w
+and
+.Fl s
+are unnecessary -
+.Nm
+will infer the type from the option name.
 If
 .Fl g
 is given, the global session or window option is set.
+.Pp
 .Fl F
 expands formats in the option value.
 The
@@ -3462,6 +3470,15 @@ the server options with
 .Fl s ,
 otherwise the session options for
 .Ar target session .
+If
+.Ar option
+is given and is not a user option,
+.Fl w
+and
+.Fl s
+are unnecessary -
+.Nm
+will infer the type from the option name.
 Global session or window options are listed if
 .Fl g
 is used.

@@ -29,8 +29,8 @@
 
 static enum cmd_retval	cmd_show_options_exec(struct cmd *, struct cmdq_item *);
 
-static enum cmd_retval	cmd_show_options_one(struct cmd *, struct cmdq_item *,
-			    struct options *);
+static void		cmd_show_options_print(struct cmd *, struct cmdq_item *,
+			    struct options_entry *, int);
 static enum cmd_retval	cmd_show_options_all(struct cmd *, struct cmdq_item *,
 		    	    struct options *);
 
@@ -65,23 +65,95 @@ cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = self->args;
 	struct cmd_find_state		*fs = &item->target;
+	struct client			*c = cmd_find_client(item, NULL, 1);
+	struct session			*s = item->target.s;
+	struct winlink			*wl = item->target.wl;
 	struct options			*oo;
 	enum options_table_scope	 scope;
-	char				*cause;
-	int				 window;
+	char				*argument, *name = NULL, *cause;
+	const char			*target;
+	int				 window, idx, ambiguous;
+	struct options_entry		*o;
 
 	window = (self->entry == &cmd_show_window_options_entry);
-	scope = options_scope_from_flags(args, window, fs, &oo, &cause);
+	if (args->argc == 0) {
+		scope = options_scope_from_flags(args, window, fs, &oo, &cause);
+		return (cmd_show_options_all(self, item, oo));
+	}
+	argument = format_single(item, args->argv[0], c, s, wl, NULL);
+
+	name = options_match(argument, &idx, &ambiguous);
+	if (name == NULL) {
+		if (args_has(args, 'q'))
+			goto fail;
+		if (ambiguous)
+			cmdq_error(item, "ambiguous option: %s", argument);
+		else
+			cmdq_error(item, "invalid option: %s", argument);
+		goto fail;
+	}
+	if (*name == '@')
+		scope = options_scope_from_flags(args, window, fs, &oo, &cause);
+	else {
+		if (options_get_only(global_options, name) != NULL)
+			scope = OPTIONS_TABLE_SERVER;
+		else if (options_get_only(global_s_options, name) != NULL)
+			scope = OPTIONS_TABLE_SESSION;
+		else if (options_get_only(global_w_options, name) != NULL)
+			scope = OPTIONS_TABLE_WINDOW;
+		else {
+			scope = OPTIONS_TABLE_NONE;
+			xasprintf(&cause, "unknown option: %s", argument);
+		}
+		if (scope == OPTIONS_TABLE_SERVER)
+			oo = global_options;
+		else if (scope == OPTIONS_TABLE_SESSION) {
+			if (args_has(self->args, 'g'))
+				oo = global_s_options;
+			else if (s == NULL) {
+				target = args_get(args, 't');
+				if (target != NULL) {
+					cmdq_error(item, "no such session: %s",
+					    target);
+				} else
+					cmdq_error(item, "no current session");
+				goto fail;
+			} else
+				oo = s->options;
+		} else if (scope == OPTIONS_TABLE_WINDOW) {
+			if (args_has(self->args, 'g'))
+				oo = global_w_options;
+			else if (wl == NULL) {
+				target = args_get(args, 't');
+				if (target != NULL) {
+					cmdq_error(item, "no such window: %s",
+					    target);
+				} else
+					cmdq_error(item, "no current window");
+				goto fail;
+			} else
+				oo = wl->window->options;
+		}
+	}
 	if (scope == OPTIONS_TABLE_NONE) {
+		if (args_has(args, 'q'))
+			goto fail;
 		cmdq_error(item, "%s", cause);
 		free(cause);
-		return (CMD_RETURN_ERROR);
+		goto fail;
 	}
+	o = options_get_only(oo, name);
+	if (o != NULL)
+		cmd_show_options_print(self, item, o, idx);
 
-	if (args->argc == 0)
-		return (cmd_show_options_all(self, item, oo));
-	else
-		return (cmd_show_options_one(self, item, oo));
+	free(name);
+	free(argument);
+	return (CMD_RETURN_NORMAL);
+
+fail:
+	free(name);
+	free(argument);
+	return (CMD_RETURN_ERROR);
 }
 
 static void
@@ -120,44 +192,6 @@ cmd_show_options_print(struct cmd *self, struct cmdq_item *item,
 		cmdq_print(item, "%s %s", name, value);
 
 	free(tmp);
-}
-
-static enum cmd_retval
-cmd_show_options_one(struct cmd *self, struct cmdq_item *item,
-    struct options *oo)
-{
-	struct args		*args = self->args;
-	struct client		*c = cmd_find_client(item, NULL, 1);
-	struct session		*s = item->target.s;
-	struct winlink		*wl = item->target.wl;
-	struct options_entry	*o;
-	int			 idx, ambiguous;
-	char			*name;
-
-	name = format_single(item, args->argv[0], c, s, wl, NULL);
-	o = options_match_get(oo, name, &idx, 1, &ambiguous);
-	if (o == NULL) {
-		if (args_has(args, 'q')) {
-			free(name);
-			return (CMD_RETURN_NORMAL);
-		}
-		if (ambiguous) {
-			cmdq_error(item, "ambiguous option: %s", name);
-			free(name);
-			return (CMD_RETURN_ERROR);
-		}
-		if (*name != '@' &&
-		    options_match_get(oo, name, &idx, 0, &ambiguous) != NULL) {
-			free(name);
-			return (CMD_RETURN_NORMAL);
-		}
-		cmdq_error(item, "unknown option: %s", name);
-		free(name);
-		return (CMD_RETURN_ERROR);
-	}
-	cmd_show_options_print(self, item, o, idx);
-	free(name);
-	return (CMD_RETURN_NORMAL);
 }
 
 static enum cmd_retval
