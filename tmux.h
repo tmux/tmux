@@ -1514,6 +1514,15 @@ struct key_table {
 };
 RB_HEAD(key_tables, key_table);
 
+/* Option data. */
+RB_HEAD(options_array, options_array_item);
+union options_value {
+	char				 *string;
+	long long			  number;
+	struct style			  style;
+	struct options_array		  array;
+};
+
 /* Option table entries. */
 enum options_table_type {
 	OPTIONS_TABLE_STRING,
@@ -1522,8 +1531,7 @@ enum options_table_type {
 	OPTIONS_TABLE_COLOUR,
 	OPTIONS_TABLE_FLAG,
 	OPTIONS_TABLE_CHOICE,
-	OPTIONS_TABLE_STYLE,
-	OPTIONS_TABLE_ARRAY,
+	OPTIONS_TABLE_STYLE
 };
 
 enum options_table_scope {
@@ -1533,10 +1541,13 @@ enum options_table_scope {
 	OPTIONS_TABLE_WINDOW,
 };
 
+#define OPTIONS_TABLE_IS_ARRAY 0x1
+
 struct options_table_entry {
 	const char		 *name;
 	enum options_table_type	  type;
 	enum options_table_scope  scope;
+	int                       flags;
 
 	u_int			  minimum;
 	u_int			  maximum;
@@ -1721,14 +1732,14 @@ struct options_entry *options_get_only(struct options *, const char *);
 struct options_entry *options_get(struct options *, const char *);
 void		 options_remove(struct options_entry *);
 void		 options_array_clear(struct options_entry *);
-const char	*options_array_get(struct options_entry *, u_int);
+union options_value *options_array_get(struct options_entry *, u_int);
 int		 options_array_set(struct options_entry *, u_int, const char *,
 		     int);
 void		 options_array_assign(struct options_entry *, const char *);
 struct options_array_item *options_array_first(struct options_entry *);
 struct options_array_item *options_array_next(struct options_array_item *);
 u_int		 options_array_item_index(struct options_array_item *);
-const char	*options_array_item_value(struct options_array_item *);
+union options_value *options_array_item_value(struct options_array_item *);
 int		 options_isarray(struct options_entry *);
 int		 options_isstring(struct options_entry *);
 const char	*options_tostring(struct options_entry *, int, int);

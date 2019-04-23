@@ -323,8 +323,8 @@ status_redraw(struct client *c)
 	u_int				 lines, i, width = c->tty.sx;
 	int				 flags, force = 0, changed = 0;
 	struct options_entry		*o;
+	union options_value		*ov;
 	struct format_tree		*ft;
-	const char			*fmt;
 	char				*expanded;
 
 	log_debug("%s enter", __func__);
@@ -370,14 +370,14 @@ status_redraw(struct client *c)
 		for (i = 0; i < lines; i++) {
 			screen_write_cursormove(&ctx, 0, i, 0);
 
-			fmt = options_array_get(o, i);
-			if (fmt == NULL) {
+			ov = options_array_get(o, i);
+			if (ov == NULL) {
 				screen_write_clearline(&ctx, gc.bg);
 				continue;
 			}
 			sle = &sl->entries[i];
 
-			expanded = format_expand_time(ft, fmt);
+			expanded = format_expand_time(ft, ov->string);
 			if (!force &&
 			    sle->expanded != NULL &&
 			    strcmp(expanded, sle->expanded) == 0) {

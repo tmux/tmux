@@ -141,8 +141,9 @@ const struct options_table_entry options_table[] = {
 	},
 
 	{ .name = "command-alias",
-	  .type = OPTIONS_TABLE_ARRAY,
+	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SERVER,
+	  .flags = OPTIONS_TABLE_IS_ARRAY,
 	  .default_str = "split-pane=split-window,"
 			 "splitp=split-window,"
 			 "server-info=show-messages -JT,"
@@ -206,8 +207,9 @@ const struct options_table_entry options_table[] = {
 	},
 
 	{ .name = "terminal-overrides",
-	  .type = OPTIONS_TABLE_ARRAY,
+	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SERVER,
+	  .flags = OPTIONS_TABLE_IS_ARRAY,
 	  .default_str = "xterm*:XT:Ms=\\E]52;%p1%s;%p2%s\\007"
 			 ":Cs=\\E]12;%p1%s\\007:Cr=\\E]112\\007"
 			 ":Ss=\\E[%p1%d q:Se=\\E[2 q,screen*:XT",
@@ -215,8 +217,9 @@ const struct options_table_entry options_table[] = {
 	},
 
 	{ .name = "user-keys",
-	  .type = OPTIONS_TABLE_ARRAY,
+	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SERVER,
+	  .flags = OPTIONS_TABLE_IS_ARRAY,
 	  .default_str = "",
 	  .separator = ","
 	},
@@ -421,8 +424,9 @@ const struct options_table_entry options_table[] = {
 	},
 
 	{ .name = "status-format",
-	  .type = OPTIONS_TABLE_ARRAY,
+	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SESSION,
+	  .flags = OPTIONS_TABLE_IS_ARRAY,
 	  .default_arr = options_table_status_format_default,
 	},
 
@@ -504,8 +508,9 @@ const struct options_table_entry options_table[] = {
 	},
 
 	{ .name = "update-environment",
-	  .type = OPTIONS_TABLE_ARRAY,
+	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SESSION,
+	  .flags = OPTIONS_TABLE_IS_ARRAY,
 	  .default_str = "DISPLAY KRB5CCNAME SSH_ASKPASS SSH_AUTH_SOCK "
 	  		 "SSH_AGENT_PID SSH_CONNECTION WINDOWID XAUTHORITY"
 	},

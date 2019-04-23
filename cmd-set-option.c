@@ -366,8 +366,6 @@ cmd_set_option_set(struct cmd *self, struct cmdq_item *item, struct options *oo,
 			return (-1);
 		}
 		return (0);
-	case OPTIONS_TABLE_ARRAY:
-		break;
 	}
 	return (-1);
 }
