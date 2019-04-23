@@ -399,9 +399,10 @@ tty_keys_build(struct tty *tty)
 	const struct tty_default_key_raw	*tdkr;
 	const struct tty_default_key_code	*tdkc;
 	u_int		 			 i;
-	const char				*s, *value;
+	const char				*s;
 	struct options_entry			*o;
 	struct options_array_item		*a;
+	union options_value			*ov;
 
 	if (tty->key_tree != NULL)
 		tty_keys_free(tty);
@@ -427,9 +428,9 @@ tty_keys_build(struct tty *tty)
 	if (o != NULL) {
 		a = options_array_first(o);
 		while (a != NULL) {
-			value = options_array_item_value(a);
-			if (value != NULL)
-				tty_keys_add(tty, value, KEYC_USER + i);
+			ov = options_array_item_value(a);
+			if (ov != NULL)
+				tty_keys_add(tty, ov->string, KEYC_USER + i);
 			a = options_array_next(a);
 		}
 	}
