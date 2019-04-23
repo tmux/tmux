@@ -177,20 +177,20 @@ environ_update(struct options *oo, struct environ *src, struct environ *dst)
 	struct environ_entry		*envent;
 	struct options_entry		*o;
 	struct options_array_item	*a;
-	const char			*value;
+	union options_value		*ov;
 
 	o = options_get(oo, "update-environment");
 	if (o == NULL)
 		return;
 	a = options_array_first(o);
 	while (a != NULL) {
-		value = options_array_item_value(a);
-		if (value == NULL) {
+		ov = options_array_item_value(a);
+		if (ov == NULL) {
 			a = options_array_next(a);
 			continue;
 		}
-		if ((envent = environ_find(src, value)) == NULL)
-			environ_clear(dst, value);
+		if ((envent = environ_find(src, ov->string)) == NULL)
+			environ_clear(dst, ov->string);
 		else
 			environ_set(dst, envent->name, "%s", envent->value);
 		a = options_array_next(a);
