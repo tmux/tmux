@@ -734,6 +734,26 @@ window_copy_cmd_copy_line(struct window_copy_cmd_state *cs)
 }
 
 static enum window_copy_cmd_action
+window_copy_cmd_copy_selection_no_clear(struct window_copy_cmd_state *cs)
+{
+	struct window_mode_entry	*wme = cs->wme;
+	struct client			*c = cs->c;
+	struct session			*s = cs->s;
+	struct winlink			*wl = cs->wl;
+	struct window_pane		*wp = wme->wp;
+	char				*prefix = NULL;
+
+	if (cs->args->argc == 2)
+		prefix = format_single(NULL, cs->args->argv[1], c, s, wl, wp);
+
+	if (s != NULL)
+		window_copy_copy_selection(wme, prefix);
+
+	free(prefix);
+	return (WINDOW_COPY_CMD_NOTHING);
+}
+
+static enum window_copy_cmd_action
 window_copy_cmd_copy_selection(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
@@ -1256,7 +1276,7 @@ window_copy_cmd_top_line(struct window_copy_cmd_state *cs)
 }
 
 static enum window_copy_cmd_action
-window_copy_cmd_copy_pipe(struct window_copy_cmd_state *cs)
+window_copy_cmd_copy_pipe_no_clear(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
 	struct client			*c = cs->c;
@@ -1277,6 +1297,31 @@ window_copy_cmd_copy_pipe(struct window_copy_cmd_state *cs)
 
 	free(prefix);
 	return (WINDOW_COPY_CMD_NOTHING);
+}
+
+static enum window_copy_cmd_action
+window_copy_cmd_copy_pipe(struct window_copy_cmd_state *cs)
+{
+	struct window_mode_entry	*wme = cs->wme;
+	struct client			*c = cs->c;
+	struct session			*s = cs->s;
+	struct winlink			*wl = cs->wl;
+	struct window_pane		*wp = wme->wp;
+	char				*command = NULL;
+	char				*prefix = NULL;
+
+	if (cs->args->argc == 3)
+		prefix = format_single(NULL, cs->args->argv[2], c, s, wl, wp);
+
+	if (s != NULL && *cs->args->argv[1] != '\0') {
+		command = format_single(NULL, cs->args->argv[1], c, s, wl, wp);
+		window_copy_copy_pipe(wme, s, prefix, command);
+		free(command);
+	}
+	window_copy_clear_selection(wme);
+
+	free(prefix);
+	return (WINDOW_COPY_CMD_REDRAW);
 }
 
 static enum window_copy_cmd_action
@@ -1542,10 +1587,14 @@ static const struct {
 	  window_copy_cmd_copy_end_of_line },
 	{ "copy-line", 0, 1,
 	  window_copy_cmd_copy_line },
+	{ "copy-pipe-no-clear", 1, 2,
+	  window_copy_cmd_copy_pipe_no_clear },
 	{ "copy-pipe", 1, 2,
 	  window_copy_cmd_copy_pipe },
 	{ "copy-pipe-and-cancel", 1, 2,
 	  window_copy_cmd_copy_pipe_and_cancel },
+	{ "copy-selection-no-clear", 0, 1,
+	  window_copy_cmd_copy_selection_no_clear },
 	{ "copy-selection", 0, 1,
 	  window_copy_cmd_copy_selection },
 	{ "copy-selection-and-cancel", 0, 1,
