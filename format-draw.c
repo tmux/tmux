@@ -837,7 +837,8 @@ format_trim_left(const char *expanded, u_int limit)
 				*out++ = *cp;
 			width++;
 			cp++;
-		}
+		} else
+			cp++;
 	}
 	*out = '\0';
 	return (copy);
@@ -883,7 +884,8 @@ format_trim_right(const char *expanded, u_int limit)
 				*out++ = *cp;
 			width++;
 			cp++;
-		}
+		} else
+			cp++;
 	}
 	*out = '\0';
 	return (copy);
