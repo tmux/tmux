@@ -496,8 +496,7 @@ tty_term_find(char *name, int fd, char **cause)
 	a = options_array_first(o);
 	while (a != NULL) {
 		ov = options_array_item_value(a);
-		if (ov != NULL)
-			tty_term_override(term, ov->string);
+		tty_term_override(term, ov->string);
 		a = options_array_next(a);
 	}
 

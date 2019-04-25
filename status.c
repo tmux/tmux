@@ -1293,7 +1293,6 @@ status_prompt_complete_list(u_int *size, const char *s)
 	size_t					  slen = strlen(s), valuelen;
 	struct options_entry			 *o;
 	struct options_array_item		 *a;
-	union options_value			 *ov;
 	const char				 *layouts[] = {
 		"even-horizontal", "even-vertical", "main-horizontal",
 		"main-vertical", "tiled", NULL
@@ -1322,11 +1321,7 @@ status_prompt_complete_list(u_int *size, const char *s)
 	if (o != NULL) {
 		a = options_array_first(o);
 		while (a != NULL) {
-			ov = options_array_item_value(a);
-			if (ov == NULL)
-				goto next;
-
-			value = ov->string;
+			value = options_array_item_value(a)->string;
 			if ((cp = strchr(value, '=')) == NULL)
 			    goto next;
 			valuelen = cp - value;
