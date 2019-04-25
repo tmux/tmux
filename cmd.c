@@ -334,10 +334,6 @@ cmd_try_alias(int *argc, char ***argv)
 	a = options_array_first(o);
 	while (a != NULL) {
 		ov = options_array_item_value(a);
-		if (ov == NULL) {
-			a = options_array_next(a);
-			continue;
-		}
 		cp = strchr(ov->string, '=');
 		if (cp != NULL &&
 		    (size_t)(cp - ov->string) == wanted &&

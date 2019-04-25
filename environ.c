@@ -185,10 +185,6 @@ environ_update(struct options *oo, struct environ *src, struct environ *dst)
 	a = options_array_first(o);
 	while (a != NULL) {
 		ov = options_array_item_value(a);
-		if (ov == NULL) {
-			a = options_array_next(a);
-			continue;
-		}
 		if ((envent = environ_find(src, ov->string)) == NULL)
 			environ_clear(dst, ov->string);
 		else

@@ -1744,7 +1744,7 @@ u_int		 options_array_item_index(struct options_array_item *);
 union options_value *options_array_item_value(struct options_array_item *);
 int		 options_isarray(struct options_entry *);
 int		 options_isstring(struct options_entry *);
-const char	*options_tostring(struct options_entry *, int, int);
+char		*options_tostring(struct options_entry *, int, int);
 char		*options_parse(const char *, int *);
 struct options_entry *options_parse_get(struct options *, const char *, int *,
 		     int);

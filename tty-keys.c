@@ -429,8 +429,7 @@ tty_keys_build(struct tty *tty)
 		a = options_array_first(o);
 		while (a != NULL) {
 			ov = options_array_item_value(a);
-			if (ov != NULL)
-				tty_keys_add(tty, ov->string, KEYC_USER + i);
+			tty_keys_add(tty, ov->string, KEYC_USER + i);
 			a = options_array_next(a);
 		}
 	}
