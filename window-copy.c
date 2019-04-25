@@ -116,6 +116,7 @@ static void	window_copy_scroll_down(struct window_mode_entry *, u_int);
 static void	window_copy_rectangle_toggle(struct window_mode_entry *);
 static void	window_copy_move_mouse(struct mouse_event *);
 static void	window_copy_drag_update(struct client *, struct mouse_event *);
+static void	window_copy_drag_release(struct client *, struct mouse_event *);
 
 const struct window_mode window_copy_mode = {
 	.name = "copy-mode",
@@ -231,7 +232,34 @@ struct window_copy_mode_data {
 
 	int		 jumptype;
 	char		 jumpchar;
+
+	struct event	 dragtimer;
+#define WINDOW_COPY_DRAG_REPEAT_TIME 50000
 };
+
+static void
+window_copy_scroll_timer(__unused int fd, __unused short events, void *arg)
+{
+	struct window_mode_entry	*wme = arg;
+	struct window_pane		*wp = wme->wp;
+	struct window_copy_mode_data	*data = wme->data;
+	struct timeval			 tv = {
+		.tv_usec = WINDOW_COPY_DRAG_REPEAT_TIME
+	};
+
+	evtimer_del(&data->dragtimer);
+
+	if (TAILQ_FIRST(&wp->modes) != wme)
+		return;
+
+	if (data->cy == 0) {
+		evtimer_add(&data->dragtimer, &tv);
+		window_copy_cursor_up(wme, 1);
+	} else if (data->cy == screen_size_y(&data->screen) - 1) {
+		evtimer_add(&data->dragtimer, &tv);
+		window_copy_cursor_down(wme, 1);
+	}
+}
 
 static struct window_copy_mode_data *
 window_copy_common_init(struct window_mode_entry *wme)
@@ -260,6 +288,8 @@ window_copy_common_init(struct window_mode_entry *wme)
 
 	screen_init(&data->screen, screen_size_x(base), screen_size_y(base), 0);
 	data->modekeys = options_get_number(wp->window->options, "mode-keys");
+
+	evtimer_set(&data->dragtimer, window_copy_scroll_timer, wme);
 
 	return (data);
 }
@@ -318,6 +348,8 @@ window_copy_free(struct window_mode_entry *wme)
 {
 	struct window_pane		*wp = wme->wp;
 	struct window_copy_mode_data	*data = wme->data;
+
+	evtimer_del(&data->dragtimer);
 
 	if (wp->fd != -1 && --wp->disabled == 0)
 		bufferevent_enable(wp->event, EV_READ|EV_WRITE);
@@ -3248,7 +3280,7 @@ window_copy_start_drag(struct client *c, struct mouse_event *m)
 		return;
 
 	c->tty.mouse_drag_update = window_copy_drag_update;
-	c->tty.mouse_drag_release = NULL; /* will fire MouseDragEnd key */
+	c->tty.mouse_drag_release = window_copy_drag_release;
 
 	window_copy_update_cursor(wme, x, y);
 	window_copy_start_selection(wme);
@@ -3261,7 +3293,10 @@ window_copy_drag_update(struct client *c, struct mouse_event *m)
 	struct window_pane		*wp;
 	struct window_mode_entry	*wme;
 	struct window_copy_mode_data	*data;
-	u_int				 x, y, old_cy;
+	u_int				 x, y, old_cx, old_cy;
+	struct timeval			 tv = {
+		.tv_usec = WINDOW_COPY_DRAG_REPEAT_TIME
+	};
 
 	if (c == NULL)
 		return;
@@ -3272,13 +3307,46 @@ window_copy_drag_update(struct client *c, struct mouse_event *m)
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme == NULL || wme->mode != &window_copy_mode)
 		return;
+
 	data = wme->data;
+	evtimer_del(&data->dragtimer);
 
 	if (cmd_mouse_at(wp, m, &x, &y, 0) != 0)
 		return;
+	old_cx = data->cx;
 	old_cy = data->cy;
 
 	window_copy_update_cursor(wme, x, y);
 	if (window_copy_update_selection(wme, 1))
 		window_copy_redraw_selection(wme, old_cy);
+	if (old_cy != data->cy || old_cx == data->cx) {
+		if (y == 0) {
+			evtimer_add(&data->dragtimer, &tv);
+			window_copy_cursor_up(wme, 1);
+		} else if (y == screen_size_y(&data->screen) - 1) {
+			evtimer_add(&data->dragtimer, &tv);
+			window_copy_cursor_down(wme, 1);
+		}
+	}
+}
+
+static void
+window_copy_drag_release(struct client *c, struct mouse_event *m)
+{
+	struct window_pane		*wp;
+	struct window_mode_entry	*wme;
+	struct window_copy_mode_data	*data;
+
+	if (c == NULL)
+		return;
+
+	wp = cmd_mouse_pane(m, NULL, NULL);
+	if (wp == NULL)
+		return;
+	wme = TAILQ_FIRST(&wp->modes);
+	if (wme == NULL || wme->mode != &window_copy_mode)
+		return;
+
+	data = wme->data;
+	evtimer_del(&data->dragtimer);
 }
