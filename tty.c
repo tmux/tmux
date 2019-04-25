@@ -2388,7 +2388,11 @@ tty_colours_fg(struct tty *tty, const struct grid_cell *gc)
 
 	/* Is this an aixterm bright colour? */
 	if (gc->fg >= 90 && gc->fg <= 97) {
-		tty_putcode1(tty, TTYC_SETAF, gc->fg - 90 + 8);
+		if (tty->term_flags & TERM_256COLOURS) {
+			xsnprintf(s, sizeof s, "\033[%dm", gc->fg);
+			tty_puts(tty, s);
+		} else
+			tty_putcode1(tty, TTYC_SETAF, gc->fg - 90 + 8);
 		goto save_fg;
 	}
 
@@ -2416,7 +2420,11 @@ tty_colours_bg(struct tty *tty, const struct grid_cell *gc)
 
 	/* Is this an aixterm bright colour? */
 	if (gc->bg >= 90 && gc->bg <= 97) {
-		tty_putcode1(tty, TTYC_SETAB, gc->bg - 90 + 8);
+		if (tty->term_flags & TERM_256COLOURS) {
+			xsnprintf(s, sizeof s, "\033[%dm", gc->bg + 10);
+			tty_puts(tty, s);
+		} else
+			tty_putcode1(tty, TTYC_SETAB, gc->bg - 90 + 8);
 		goto save_bg;
 	}
 
