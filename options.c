@@ -110,47 +110,43 @@ options_value_free(struct options_entry *o, union options_value *ov)
 		free(ov->string);
 }
 
-static const char *
+static char *
 options_value_tostring(struct options_entry *o, union options_value *ov,
     int numeric)
 {
-	static char	 s[1024];
-	const char	*tmp;
+	char	*s;
 
 	if (OPTIONS_IS_STYLE(o))
-		return (style_tostring(&ov->style));
+		return (xstrdup(style_tostring(&ov->style)));
 	if (OPTIONS_IS_NUMBER(o)) {
-		tmp = NULL;
 		switch (o->tableentry->type) {
 		case OPTIONS_TABLE_NUMBER:
-			xsnprintf(s, sizeof s, "%lld", ov->number);
+			xasprintf(&s, "%lld", ov->number);
 			break;
 		case OPTIONS_TABLE_KEY:
-			tmp = key_string_lookup_key(ov->number);
+			s = xstrdup(key_string_lookup_key(ov->number));
 			break;
 		case OPTIONS_TABLE_COLOUR:
-			tmp = colour_tostring(ov->number);
+			s = xstrdup(colour_tostring(ov->number));
 			break;
 		case OPTIONS_TABLE_FLAG:
 			if (numeric)
-				xsnprintf(s, sizeof s, "%lld", ov->number);
+				xasprintf(&s, "%lld", ov->number);
 			else
-				tmp = (ov->number ? "on" : "off");
+				s = xstrdup(ov->number ? "on" : "off");
 			break;
 		case OPTIONS_TABLE_CHOICE:
-			tmp = o->tableentry->choices[ov->number];
+			s = xstrdup(o->tableentry->choices[ov->number]);
 			break;
 		case OPTIONS_TABLE_STRING:
 		case OPTIONS_TABLE_STYLE:
-			break;
+			fatalx("not a number option type");
 		}
-		if (tmp != NULL)
-			xsnprintf(s, sizeof s, "%s", tmp);
 		return (s);
 	}
 	if (OPTIONS_IS_STRING(o))
-		return (ov->string);
-	return ("");
+		return (xstrdup(ov->string));
+	return (xstrdup(""));
 }
 
 struct options *
@@ -218,11 +214,8 @@ options_empty(struct options *oo, const struct options_table_entry *oe)
 	o = options_add(oo, oe->name);
 	o->tableentry = oe;
 
-	if (oe->flags & OPTIONS_TABLE_IS_ARRAY) {
-		if (oe->type != OPTIONS_TABLE_STRING)
-			fatalx("arrays can only be strings");
+	if (oe->flags & OPTIONS_TABLE_IS_ARRAY)
 		RB_INIT(&o->value.array);
-	}
 
 	return (o);
 }
@@ -443,17 +436,17 @@ options_isstring(struct options_entry *o)
 	return (OPTIONS_IS_STRING(o));
 }
 
-const char *
+char *
 options_tostring(struct options_entry *o, int idx, int numeric)
 {
 	struct options_array_item	*a;
 
 	if (OPTIONS_IS_ARRAY(o)) {
 		if (idx == -1)
-			return (NULL);
+			return (xstrdup(""));
 		a = options_array_item(o, idx);
 		if (a == NULL)
-			return ("");
+			return (xstrdup(""));
 		return (options_value_tostring(o, &a->value, numeric));
 	}
 	return (options_value_tostring(o, &o->value, numeric));
