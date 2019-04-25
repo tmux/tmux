@@ -1,5 +1,12 @@
 CHANGES FROM 2.9 to X.X
 
+* Automatically scroll if dragging to create a selection with the mouse and the
+  cursor reaches the top or bottom line.
+
+* Add -no-clear variants of copy-selection and copy-pipe which do not clear the
+  selection after copying. Make copy-pipe clear the selection by default to be
+  consistent with copy-selection.
+
 * Add an argument to copy commands to set the prefix for the buffer name, this
   (for example) allows buffers for different sessions to be named separately.
 
@@ -10,9 +17,6 @@ CHANGES FROM 2.9 to X.X
 
 * Add the ability to infer an option type (server, session, window) from its
   name to show-options (it was already present in set-option).
-
-* Allow the prefix used for new buffer names to be given as an argument to the
-  copy commands in copy mode.
 
 CHANGES FROM 2.8 to 2.9
 
