@@ -344,6 +344,8 @@ window_destroy(struct window *w)
 		layout_free_cell(w->saved_layout_root);
 	free(w->old_layout);
 
+	window_destroy_panes(w);
+
 	if (event_initialized(&w->name_event))
 		evtimer_del(&w->name_event);
 
@@ -353,8 +355,6 @@ window_destroy(struct window *w)
 		event_del(&w->offset_timer);
 
 	options_free(w->options);
-
-	window_destroy_panes(w);
 
 	free(w->name);
 	free(w);
