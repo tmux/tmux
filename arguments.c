@@ -28,10 +28,15 @@
  * Manipulate command arguments.
  */
 
+struct arg_value {
+	char			*value;
+	TAILQ_ENTRY(arg_value)	 entry;
+};
+TAILQ_HEAD(arg_values, arg_value);
+
 struct args_entry {
 	u_char			 flag;
-	char			*value;
-	int                      unique;
+	struct arg_values	 values;
 	RB_ENTRY(args_entry)	 entry;
 };
 
@@ -44,29 +49,22 @@ RB_GENERATE_STATIC(args_tree, args_entry, entry, args_cmp);
 static int
 args_cmp(struct args_entry *a1, struct args_entry *a2)
 {
-	int retval = (a1->flag - a2->flag);
-
-	/* same flag, but multiple instances */
-	if (retval == 0)
-		retval = (a1->unique - a2->unique);
-
-	return retval;
+	return (a1->flag - a2->flag);
 }
 
-/* Find a flag in the arguments tree. Ignores duplicated flags. */
+/* Find a flag in the arguments tree. */
 static struct args_entry *
 args_find(struct args *args, u_char ch)
 {
 	struct args_entry	entry;
 
 	entry.flag = ch;
-	entry.unique = 0;
 	return (RB_FIND(args_tree, &args->tree, &entry));
 }
 
 /* Parse an argv and argc into a new argument set. */
 struct args *
-args_parse(const char *template, int argc, char **argv, const char *multi_opts)
+args_parse(const char *template, int argc, char **argv)
 {
 	struct args	*args;
 	int		 opt;
@@ -84,10 +82,7 @@ args_parse(const char *template, int argc, char **argv, const char *multi_opts)
 			return (NULL);
 		}
 
-		if (multi_opts == NULL || strchr(multi_opts, opt) == NULL)
-			args_set(args, opt, optarg);
-		else
-			args_add(args, opt, optarg);
+		args_set(args, opt, optarg);
 	}
 	argc -= optind;
 	argv += optind;
@@ -104,12 +99,18 @@ args_free(struct args *args)
 {
 	struct args_entry	*entry;
 	struct args_entry	*entry1;
+	struct arg_value	*head;
 
 	cmd_free_argv(args->argc, args->argv);
 
 	RB_FOREACH_SAFE(entry, args_tree, &args->tree, entry1) {
 		RB_REMOVE(args_tree, &args->tree, entry);
-		free(entry->value);
+		while (!TAILQ_EMPTY(&entry->values)) {
+			head = TAILQ_FIRST(&entry->values);
+			TAILQ_REMOVE(&entry->values, head, entry);
+			free(head->value);
+			free(head);
+		}
 		free(entry);
 	}
 
@@ -144,13 +145,14 @@ args_print(struct args *args)
 	int			 i, flags;
 	struct args_entry	*entry;
 	static const char	 quoted[] = " #\"';$";
+	char			*value;
 
 	len = 1;
 	buf = xcalloc(1, len);
 
 	/* Process the flags first. */
 	RB_FOREACH(entry, args_tree, &args->tree) {
-		if (entry->value != NULL)
+		if (TAILQ_EMPTY(&entry->values))
 			continue;
 
 		if (*buf == '\0')
@@ -160,7 +162,7 @@ args_print(struct args *args)
 
 	/* Then the flags with arguments. */
 	RB_FOREACH(entry, args_tree, &args->tree) {
-		if (entry->value == NULL)
+		if (!TAILQ_EMPTY(&entry->values))
 			continue;
 
 		if (*buf != '\0')
@@ -168,10 +170,11 @@ args_print(struct args *args)
 		else
 			args_print_add(&buf, &len, "-%c ", entry->flag);
 
+		value = TAILQ_LAST(&entry->values, arg_values)->value;
 		flags = VIS_OCTAL|VIS_TAB|VIS_NL;
-		if (entry->value[strcspn(entry->value, quoted)] != '\0')
+		if (value[strcspn(value, quoted)] != '\0')
 			flags |= VIS_DQ;
-		utf8_stravis(&escaped, entry->value, flags);
+		utf8_stravis(&escaped, value, flags);
 		if (flags & VIS_DQ)
 			args_print_add(&buf, &len, "\"%s\"", escaped);
 		else
@@ -210,33 +213,21 @@ void
 args_set(struct args *args, u_char ch, const char *value)
 {
 	struct args_entry	*entry;
+	struct arg_value	*value_entry;
 
-	/* Replace existing argument. */
-	if ((entry = args_find(args, ch)) != NULL) {
-		free(entry->value);
-		entry->value = NULL;
-	} else {
+	entry = args_find(args, ch);
+	if (entry == NULL) {
 		entry = xcalloc(1, sizeof *entry);
 		entry->flag = ch;
+		TAILQ_INIT(&entry->values);
 		RB_INSERT(args_tree, &args->tree, entry);
 	}
 
-	if (value != NULL)
-		entry->value = xstrdup(value);
-}
-
-/* Add an argument to the arguments tree, allows multiple instances. */
-void
-args_add(struct args *args, u_char ch, const char *value)
-{
-	static int               unique;
-	struct args_entry	*entry;
-
-	entry = xcalloc(1, sizeof *entry);
-	entry->flag = ch;
-	entry->unique = unique++;
-	entry->value = xstrdup(value);
-	RB_INSERT(args_tree, &args->tree, entry);
+	if (value != NULL) {
+		value_entry = xcalloc(1, sizeof *value_entry);
+		value_entry->value = xstrdup(value);
+		TAILQ_INSERT_TAIL(&entry->values, value_entry, entry);
+	}
 }
 
 /* Get argument value. Will be NULL if it isn't present. */
@@ -247,36 +238,47 @@ args_get(struct args *args, u_char ch)
 
 	if ((entry = args_find(args, ch)) == NULL)
 		return (NULL);
-	return (entry->value);
+	return (TAILQ_LAST(&entry->values, arg_values)->value);
 }
 
-/* Return an NULL-terminated array of the values of the given flag. */
-const char **
-args_getall(struct args *args, u_char ch)
+/* get opaque pointer to the first value of a flag, or NULL if flag not present */
+void *
+args_find_first_value(struct args *args, u_char ch, char **value)
 {
-	struct args_entry	*arg;
-	struct args_entry	*arg1;
-	const char             **retval;
-	size_t                   count = 0;
-	size_t                   capacity = 1;
+	struct args_entry	*entry;
+	struct arg_value	*value_entry;
 
-	retval = xcalloc(capacity, sizeof *retval);
-
-	RB_FOREACH_SAFE(arg, args_tree, &args->tree, arg1) {
-		if (arg->flag == ch) {
-			if (count == capacity - 1) {
-				capacity = capacity * 2;
-				retval = xrealloc(retval, sizeof *retval * capacity);
-			}
-
-			retval[count++] = arg->value;
-		}
+	if ((entry = args_find(args, ch)) == NULL) {
+		*value = NULL;
+		return (NULL);
 	}
 
-	retval[count] = NULL;
+	value_entry = TAILQ_FIRST(&entry->values);
+	*value = value_entry->value;
 
-	return retval;
+	return (value_entry);
 }
+
+/* get next value from a previous find_first/next call */
+void *
+args_find_next_value(void *current, char **value)
+{
+	struct arg_value	*item;
+
+	if (current == NULL) {
+		*value = NULL;
+		return NULL;
+	}
+
+	if ((item = TAILQ_NEXT((struct arg_value*) current, entry)) == NULL) {
+		*value = NULL;
+		return NULL;
+	}
+
+	*value = item->value;
+	return (item);
+}
+
 
 /* Convert an argument value to a number. */
 long long
@@ -292,7 +294,7 @@ args_strtonum(struct args *args, u_char ch, long long minval, long long maxval,
 		return (0);
 	}
 
-	ll = strtonum(entry->value, minval, maxval, &errstr);
+	ll = strtonum(TAILQ_LAST(&entry->values, arg_values)->value, minval, maxval, &errstr);
 	if (errstr != NULL) {
 		*cause = xstrdup(errstr);
 		return (0);

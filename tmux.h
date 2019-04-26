@@ -1342,8 +1342,6 @@ struct cmd_entry {
 		const char	*template;
 		int		 lower;
 		int		 upper;
-		/* specify which options from template can occur multiple times */
-		const char      *multi_opts;
 	} args;
 	const char		*usage;
 
@@ -1893,12 +1891,13 @@ key_code	tty_keys_next(struct tty *);
 /* arguments.c */
 void		 args_set(struct args *, u_char, const char *);
 void		 args_add(struct args *, u_char, const char *);
-struct args	*args_parse(const char *, int, char **, const char*);
+struct args	*args_parse(const char *, int, char **);
 void		 args_free(struct args *);
 char		*args_print(struct args *);
 int		 args_has(struct args *, u_char);
 const char	*args_get(struct args *, u_char);
-const char     **args_getall(struct args *, u_char);
+void		*args_find_first_value(struct args *, u_char ch, char **);
+void		*args_find_next_value(void *, char **);
 long long	 args_strtonum(struct args *, u_char, long long, long long,
 		     char **);
 

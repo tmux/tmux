@@ -82,7 +82,7 @@ cmd_find_window_exec(struct cmd *self, struct cmdq_item *item)
 	else
 		xasprintf(&filter, "#{m:*%s*,#{pane_title}}", s);
 
-	new_args = args_parse("", 1, &argv, NULL);
+	new_args = args_parse("", 1, &argv);
 	if (args_has(args, 'Z'))
 		args_set(new_args, 'Z', NULL);
 	args_set(new_args, 'f', filter);

@@ -39,7 +39,7 @@ const struct cmd_entry cmd_split_window_entry = {
 	.name = "split-window",
 	.alias = "splitw",
 
-	.args = { "bc:de:fF:l:hp:Pt:v", 0, -1, "e" },
+	.args = { "bc:de:fF:l:hp:Pt:v", 0, -1 },
 	.usage = "[-bdefhvP] [-c start-directory] [-e env-setting] [-F format] "
 		 "[-p percentage|-l size] " CMD_TARGET_PANE_USAGE " [command]",
 
@@ -65,7 +65,8 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	int			 size, percentage, flags;
 	const char		*template;
 	char			*cause, *cp;
-	const char             **env_defs, **env_def;
+	char			*env_def;
+	void			*e_value;
 
 	if (args_has(args, 'h'))
 		type = LAYOUT_LEFTRIGHT;
@@ -119,11 +120,10 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	sc.argv = args->argv;
 	sc.env = environ_create();
 
-	env_defs = args_getall(args, 'e');
-	for (env_def = env_defs; *env_def != NULL; env_def++) {
-		environ_put(sc.env, *env_def);
+	for (e_value = args_find_first_value(args, 'e', &env_def); e_value != NULL;
+		e_value = args_find_next_value(e_value, &env_def)) {
+		environ_put(sc.env, env_def);
 	}
-	free(env_defs);
 
 	sc.idx = -1;
 	sc.cwd = args_get(args, 'c');
