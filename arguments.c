@@ -31,6 +31,7 @@
 struct args_entry {
 	u_char			 flag;
 	char			*value;
+	int                      unique;
 	RB_ENTRY(args_entry)	 entry;
 };
 
@@ -43,22 +44,29 @@ RB_GENERATE_STATIC(args_tree, args_entry, entry, args_cmp);
 static int
 args_cmp(struct args_entry *a1, struct args_entry *a2)
 {
-	return (a1->flag - a2->flag);
+	int retval = (a1->flag - a2->flag);
+
+	/* same flag, but multiple instances */
+	if (retval == 0)
+		retval = (a1->unique - a2->unique);
+
+	return retval;
 }
 
-/* Find a flag in the arguments tree. */
+/* Find a flag in the arguments tree. Ignores duplicated flags. */
 static struct args_entry *
 args_find(struct args *args, u_char ch)
 {
 	struct args_entry	entry;
 
 	entry.flag = ch;
+	entry.unique = 0;
 	return (RB_FIND(args_tree, &args->tree, &entry));
 }
 
 /* Parse an argv and argc into a new argument set. */
 struct args *
-args_parse(const char *template, int argc, char **argv)
+args_parse(const char *template, int argc, char **argv, const char *multi_opts)
 {
 	struct args	*args;
 	int		 opt;
@@ -75,7 +83,11 @@ args_parse(const char *template, int argc, char **argv)
 			args_free(args);
 			return (NULL);
 		}
-		args_set(args, opt, optarg);
+
+		if (multi_opts == NULL || strchr(multi_opts, opt) == NULL)
+			args_set(args, opt, optarg);
+		else
+			args_add(args, opt, optarg);
 	}
 	argc -= optind;
 	argv += optind;
@@ -213,6 +225,20 @@ args_set(struct args *args, u_char ch, const char *value)
 		entry->value = xstrdup(value);
 }
 
+/* Add an argument to the arguments tree, allows multiple instances. */
+void
+args_add(struct args *args, u_char ch, const char *value)
+{
+	static int               unique;
+	struct args_entry	*entry;
+
+	entry = xcalloc(1, sizeof *entry);
+	entry->flag = ch;
+	entry->unique = unique++;
+	entry->value = xstrdup(value);
+	RB_INSERT(args_tree, &args->tree, entry);
+}
+
 /* Get argument value. Will be NULL if it isn't present. */
 const char *
 args_get(struct args *args, u_char ch)
@@ -222,6 +248,34 @@ args_get(struct args *args, u_char ch)
 	if ((entry = args_find(args, ch)) == NULL)
 		return (NULL);
 	return (entry->value);
+}
+
+/* Return an NULL-terminated array of the values of the given flag. */
+const char **
+args_getall(struct args *args, u_char ch)
+{
+	struct args_entry	*arg;
+	struct args_entry	*arg1;
+	const char             **retval;
+	size_t                   count = 0;
+	size_t                   capacity = 1;
+
+	retval = xcalloc(capacity, sizeof *retval);
+
+	RB_FOREACH_SAFE(arg, args_tree, &args->tree, arg1) {
+		if (arg->flag == ch) {
+			if (count == capacity - 1) {
+				capacity = capacity * 2;
+				retval = xrealloc(retval, sizeof *retval * capacity);
+			}
+
+			retval[count++] = arg->value;
+		}
+	}
+
+	retval[count] = NULL;
+
+	return retval;
 }
 
 /* Convert an argument value to a number. */

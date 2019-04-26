@@ -416,7 +416,7 @@ retry:
 	}
 	cmd_log_argv(argc, argv, entry->name);
 
-	args = args_parse(entry->args.template, argc, argv);
+	args = args_parse(entry->args.template, argc, argv, entry->args.multi_opts);
 	if (args == NULL)
 		goto usage;
 	if (entry->args.lower != -1 && args->argc < entry->args.lower)
