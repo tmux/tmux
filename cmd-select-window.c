@@ -119,7 +119,7 @@ cmd_select_window_exec(struct cmd *self, struct cmdq_item *item)
 		}
 		cmd_find_from_session(current, s, 0);
 		server_redraw_session(s);
-		hooks_insert(s->hooks, item, current, "after-select-window");
+		cmdq_insert_hook(s, item, current, "after-select-window");
 	} else {
 		/*
 		 * If -T and select-window is invoked on same window as
@@ -137,7 +137,7 @@ cmd_select_window_exec(struct cmd *self, struct cmdq_item *item)
 			cmd_find_from_session(current, s, 0);
 			server_redraw_session(s);
 		}
-		hooks_insert(s->hooks, item, current, "after-select-window");
+		cmdq_insert_hook(s, item, current, "after-select-window");
 	}
 	recalculate_sizes();
 

@@ -174,7 +174,10 @@ cmd_string_parse(const char *s, const char *file, u_int line, char **cause)
 	int		  argc;
 	char		**argv;
 
-	*cause = NULL;
+	if (cause != NULL)
+		*cause = NULL;
+	log_debug ("%s: %s", __func__, s);
+
 	if (cmd_string_split(s, &argc, &argv) != 0) {
 		xasprintf(cause, "invalid or unknown command: %s", s);
 		return (NULL);

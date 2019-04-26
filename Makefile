@@ -56,7 +56,6 @@ SRCS=	alerts.c \
 	cmd-send-keys.c \
 	cmd-set-buffer.c \
 	cmd-set-environment.c \
-	cmd-set-hook.c \
 	cmd-set-option.c \
 	cmd-show-environment.c \
 	cmd-show-messages.c \
@@ -78,7 +77,6 @@ SRCS=	alerts.c \
 	format-draw.c \
 	grid-view.c \
 	grid.c \
-	hooks.c \
 	input-keys.c \
 	input.c \
 	job.c \

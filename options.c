@@ -76,6 +76,9 @@ static struct options_entry	*options_add(struct options *, const char *);
 #define OPTIONS_IS_STYLE(o) \
 	((o)->tableentry != NULL &&					\
 	    (o)->tableentry->type == OPTIONS_TABLE_STYLE)
+#define OPTIONS_IS_COMMAND(o) \
+	((o)->tableentry != NULL &&					\
+	    (o)->tableentry->type == OPTIONS_TABLE_COMMAND)
 
 #define OPTIONS_IS_ARRAY(o)						\
 	((o)->tableentry != NULL &&					\
@@ -108,6 +111,8 @@ options_value_free(struct options_entry *o, union options_value *ov)
 {
 	if (OPTIONS_IS_STRING(o))
 		free(ov->string);
+	if (OPTIONS_IS_COMMAND(o) && ov->cmdlist != NULL)
+		cmd_list_free(ov->cmdlist);
 }
 
 static char *
@@ -116,6 +121,8 @@ options_value_tostring(struct options_entry *o, union options_value *ov,
 {
 	char	*s;
 
+	if (OPTIONS_IS_COMMAND(o))
+		return (cmd_list_print(ov->cmdlist));
 	if (OPTIONS_IS_STYLE(o))
 		return (xstrdup(style_tostring(&ov->style)));
 	if (OPTIONS_IS_NUMBER(o)) {
@@ -140,6 +147,7 @@ options_value_tostring(struct options_entry *o, union options_value *ov,
 			break;
 		case OPTIONS_TABLE_STRING:
 		case OPTIONS_TABLE_STYLE:
+		case OPTIONS_TABLE_COMMAND:
 			fatalx("not a number option type");
 		}
 		return (s);
@@ -231,11 +239,12 @@ options_default(struct options *oo, const struct options_table_entry *oe)
 	ov = &o->value;
 
 	if (oe->flags & OPTIONS_TABLE_IS_ARRAY) {
-		if (oe->default_arr != NULL) {
-			for (i = 0; oe->default_arr[i] != NULL; i++)
-				options_array_set(o, i, oe->default_arr[i], 0);
-		} else
-			options_array_assign(o, oe->default_str);
+		if (oe->default_arr == NULL) {
+			options_array_assign(o, oe->default_str, NULL);
+			return (o);
+		}
+		for (i = 0; oe->default_arr[i] != NULL; i++)
+			options_array_set(o, i, oe->default_arr[i], 0, NULL);
 		return (o);
 	}
 
@@ -340,13 +349,22 @@ options_array_get(struct options_entry *o, u_int idx)
 
 int
 options_array_set(struct options_entry *o, u_int idx, const char *value,
-    int append)
+    int append, char **cause)
 {
 	struct options_array_item	*a;
 	char				*new;
+	struct cmd_list			*cmdlist;
 
-	if (!OPTIONS_IS_ARRAY(o))
+	if (!OPTIONS_IS_ARRAY(o)) {
+		*cause = xstrdup("not an array");
 		return (-1);
+	}
+
+	if (OPTIONS_IS_COMMAND(o)) {
+		cmdlist = cmd_string_parse(value, NULL, 0, cause);
+		if (cmdlist == NULL && *cause != NULL)
+			return (-1);
+	}
 
 	a = options_array_item(o, idx);
 	if (value == NULL) {
@@ -355,25 +373,29 @@ options_array_set(struct options_entry *o, u_int idx, const char *value,
 		return (0);
 	}
 
-	if (a == NULL) {
-		a = xcalloc(1, sizeof *a);
-		a->index = idx;
-		a->value.string = xstrdup(value);
-		RB_INSERT(options_array, &o->value.array, a);
-	} else {
-		options_value_free(o, &a->value);
+	if (OPTIONS_IS_STRING(o)) {
 		if (a != NULL && append)
 			xasprintf(&new, "%s%s", a->value.string, value);
 		else
 			new = xstrdup(value);
-		a->value.string = new;
 	}
 
+	if (a == NULL) {
+		a = xcalloc(1, sizeof *a);
+		a->index = idx;
+		RB_INSERT(options_array, &o->value.array, a);
+	} else
+		options_value_free(o, &a->value);
+
+	if (OPTIONS_IS_STRING(o))
+		a->value.string = new;
+	else if (OPTIONS_IS_COMMAND(o))
+		a->value.cmdlist = cmdlist;
 	return (0);
 }
 
-void
-options_array_assign(struct options_entry *o, const char *s)
+int
+options_array_assign(struct options_entry *o, const char *s, char **cause)
 {
 	const char	*separator;
 	char		*copy, *next, *string;
@@ -382,7 +404,18 @@ options_array_assign(struct options_entry *o, const char *s)
 	separator = o->tableentry->separator;
 	if (separator == NULL)
 		separator = " ,";
+	if (*separator == '\0') {
+		if (*s == '\0')
+			return (0);
+		for (i = 0; i < UINT_MAX; i++) {
+			if (options_array_item(o, i) == NULL)
+				break;
+		}
+		return (options_array_set(o, i, s, 0, cause));
+	}
 
+	if (*s == '\0')
+		return (0);
 	copy = string = xstrdup(s);
 	while ((next = strsep(&string, separator)) != NULL) {
 		if (*next == '\0')
@@ -393,9 +426,13 @@ options_array_assign(struct options_entry *o, const char *s)
 		}
 		if (i == UINT_MAX)
 			break;
-		options_array_set(o, i, next, 0);
+		if (options_array_set(o, i, next, 0, cause) != 0) {
+			free(copy);
+			return (-1);
+		}
 	}
 	free(copy);
+	return (0);
 }
 
 struct options_array_item *

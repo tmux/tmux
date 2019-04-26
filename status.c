@@ -1323,7 +1323,7 @@ status_prompt_complete_list(u_int *size, const char *s)
 		while (a != NULL) {
 			value = options_array_item_value(a)->string;
 			if ((cp = strchr(value, '=')) == NULL)
-			    goto next;
+				goto next;
 			valuelen = cp - value;
 			if (slen > valuelen || strncmp(value, s, slen) != 0)
 				goto next;

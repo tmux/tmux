@@ -39,7 +39,6 @@ struct options	*global_options;	/* server options */
 struct options	*global_s_options;	/* session options */
 struct options	*global_w_options;	/* window options */
 struct environ	*global_environ;
-struct hooks	*global_hooks;
 
 struct timeval	 start_time;
 const char	*socket_path;
@@ -311,8 +310,6 @@ main(int argc, char **argv)
 		    strcasestr(s, "UTF8") != NULL)
 			flags |= CLIENT_UTF8;
 	}
-
-	global_hooks = hooks_create(NULL);
 
 	global_environ = environ_create();
 	for (var = environ; *var != NULL; var++)
