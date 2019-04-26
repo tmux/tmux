@@ -1,5 +1,11 @@
 CHANGES FROM 2.9 to X.X
 
+* Hooks are now stored in the options tree as array options, allowing them to
+  have multiple separate commands. set-hook and show-hooks remain but
+  set-option and show-options can now also be used (show-options will only show
+  hooks if given the -H flag). Hooks with multiple commands are run in index
+  order.
+
 * Automatically scroll if dragging to create a selection with the mouse and the
   cursor reaches the top or bottom line.
 
