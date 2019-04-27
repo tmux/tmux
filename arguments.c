@@ -145,7 +145,7 @@ args_print_add_value(char **buf, size_t *len, struct args_entry *entry,
 	char			*escaped;
 	int			 flags;
 
-	if (*buf != '\0')
+	if (**buf != '\0')
 		args_print_add(buf, len, " -%c ", entry->flag);
 	else
 		args_print_add(buf, len, "-%c ", entry->flag);
@@ -169,7 +169,7 @@ args_print_add_argument(char **buf, size_t *len, const char *argument)
 	char			*escaped;
 	int			 flags;
 
-	if (*buf != '\0')
+	if (**buf != '\0')
 		args_print_add(buf, len, " ");
 
 	flags = VIS_OCTAL|VIS_TAB|VIS_NL;
