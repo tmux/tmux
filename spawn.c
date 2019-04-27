@@ -289,12 +289,10 @@ spawn_pane(struct spawn_context *sc, char **cause)
 		new_wp->cwd = cwd;
 	}
 
-	/* Create an environment for this pane, merge provided environment into session
-	 * if an additional environment has been provided for spawning. */
-	if (sc->env != NULL)
-		environ_copy(sc->env, s->environ);
-
+	/* Create an environment for this pane. */
 	child = environ_for_session(s, 0);
+	if (sc->environ != NULL)
+		environ_copy(sc->environ, child);
 	environ_set(child, "TMUX_PANE", "%%%u", new_wp->id);
 
 	/*

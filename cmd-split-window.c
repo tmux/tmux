@@ -40,7 +40,7 @@ const struct cmd_entry cmd_split_window_entry = {
 	.alias = "splitw",
 
 	.args = { "bc:de:fF:l:hp:Pt:v", 0, -1 },
-	.usage = "[-bdefhvP] [-c start-directory] [-e env-setting] [-F format] "
+	.usage = "[-bdefhvP] [-c start-directory] [-e environ] [-F format] "
 		 "[-p percentage|-l size] " CMD_TARGET_PANE_USAGE " [command]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -63,10 +63,9 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct layout_cell	*lc;
 	struct cmd_find_state	 fs;
 	int			 size, percentage, flags;
-	const char		*template;
+	const char		*template, *add;
 	char			*cause, *cp;
-	char			*env_def;
-	void			*e_value;
+	struct args_value	*value;
 
 	if (args_has(args, 'h'))
 		type = LAYOUT_LEFTRIGHT;
@@ -118,11 +117,12 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	sc.name = NULL;
 	sc.argc = args->argc;
 	sc.argv = args->argv;
-	sc.env = environ_create();
+	sc.environ = environ_create();
 
-	for (e_value = args_find_first_value(args, 'e', &env_def); e_value != NULL;
-		e_value = args_find_next_value(e_value, &env_def)) {
-		environ_put(sc.env, env_def);
+	add = args_first_value(args, 'e', &value);
+	while (add != NULL) {
+		environ_put(sc.environ, add);
+		add = args_next_value(&value);
 	}
 
 	sc.idx = -1;
@@ -153,7 +153,6 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	cmd_find_from_winlink_pane(&fs, wl, new_wp, 0);
 	hooks_insert(s->hooks, item, &fs, "after-split-window");
 
-	environ_free(sc.env);
-
+	environ_free(sc.environ);
 	return (CMD_RETURN_NORMAL);
 }
