@@ -38,8 +38,8 @@ const struct cmd_entry cmd_new_window_entry = {
 	.name = "new-window",
 	.alias = "neww",
 
-	.args = { "ac:dF:kn:Pt:", 0, -1 },
-	.usage = "[-adkP] [-c start-directory] [-F format] [-n window-name] "
+	.args = { "ac:de:F:kn:Pt:", 0, -1 },
+	.usage = "[-adkP] [-c start-directory] [-e environ] [-F format] [-n window-name] "
 		 CMD_TARGET_WINDOW_USAGE " [command]",
 
 	.target = { 't', CMD_FIND_WINDOW, CMD_FIND_WINDOW_INDEX },
@@ -60,8 +60,9 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	int			 idx = item->target.idx;
 	struct winlink		*new_wl;
 	char			*cause = NULL, *cp;
-	const char		*template;
+	const char		*template, *add;
 	struct cmd_find_state	 fs;
+	struct args_value	*value;
 
 	if (args_has(args, 'a') && (idx = winlink_shuffle_up(s, wl)) == -1) {
 		cmdq_error(item, "couldn't get a window index");
@@ -75,6 +76,13 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	sc.name = args_get(args, 'n');
 	sc.argc = args->argc;
 	sc.argv = args->argv;
+	sc.environ = environ_create();
+
+	add = args_first_value(args, 'e', &value);
+	while (add != NULL) {
+		environ_put(sc.environ, add);
+		add = args_next_value(&value);
+	}
 
 	sc.idx = idx;
 	sc.cwd = args_get(args, 'c');
@@ -107,5 +115,6 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	cmd_find_from_winlink(&fs, new_wl, 0);
 	hooks_insert(s->hooks, item, &fs, "after-new-window");
 
+	environ_free(sc.environ);
 	return (CMD_RETURN_NORMAL);
 }
