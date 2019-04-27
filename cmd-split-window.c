@@ -143,7 +143,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	cmd_find_from_winlink_pane(&fs, wl, new_wp, 0);
-	hooks_insert(s->hooks, item, &fs, "after-split-window");
+	cmdq_insert_hook(s, item, &fs, "after-split-window");
 
 	return (CMD_RETURN_NORMAL);
 }

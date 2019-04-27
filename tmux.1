@@ -3461,7 +3461,7 @@ function key sequences; these have a number included to indicate modifiers such
 as Shift, Alt or Ctrl.
 .El
 .It Xo Ic show-options
-.Op Fl gqsvw
+.Op Fl gHqsvw
 .Op Fl t Ar target-session | Ar target-window
 .Op Ar option
 .Xc
@@ -3493,6 +3493,8 @@ If
 is set, no error will be returned if
 .Ar option
 is unset.
+.Fl H
+includes hooks (omitted by default).
 .It Xo Ic show-window-options
 .Op Fl gv
 .Op Fl t Ar target-window
@@ -3517,6 +3519,26 @@ commands have an
 .Em after
 hook and there are a number of hooks not associated with commands.
 .Pp
+Hooks are stored as array options, members of the array are executed in
+order when the hook is triggered.
+Hooks may be configured with the
+.Ic set-hook
+or
+.Ic set-option
+commands and displayed with
+.Ic show-hooks
+or
+.Ic show-options
+.Fl H .
+The following two commands are equivalent:
+.Bd -literal -offset indent.
+set-hook -g pane-mode-changed[42] 'set -g status-left-style bg=red'
+set-option -g pane-mode-changed[42] 'set -g status-left-style bg=red'
+.Ed
+.Pp
+Setting a hook without specifying an array index clears the hook and sets the
+first member of the array.
+.Pp
 A command's after
 hook is run after it completes, except when the command is run as part of a hook
 itself.
@@ -3527,7 +3549,7 @@ For example, the following command adds a hook to select the even-vertical
 layout after every
 .Ic split-window :
 .Bd -literal -offset indent
-set-hook after-split-window "selectl even-vertical"
+set-hook -g after-split-window "selectl even-vertical"
 .Ed
 .Pp
 All the notifications listed in the
@@ -3591,7 +3613,7 @@ Run when a window is unlinked from a session.
 Hooks are managed with these commands:
 .Bl -tag -width Ds
 .It Xo Ic set-hook
-.Op Fl gRu
+.Op Fl agRu
 .Op Fl t Ar target-session
 .Ar hook-name
 .Ar command
@@ -3613,6 +3635,8 @@ hooks (for
 .Ar target-session
 with
 .Fl t ) .
+.Fl a
+appends to a hook.
 Like options, session hooks inherit from the global ones.
 .Pp
 With

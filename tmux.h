@@ -685,15 +685,6 @@ struct style {
 	u_int			range_argument;
 };
 
-/* Hook data structures. */
-struct hook {
-	const char	*name;
-
-	struct cmd_list	*cmdlist;
-
-	RB_ENTRY(hook)	 entry;
-};
-
 /* Virtual screen. */
 struct screen_sel;
 struct screen_titles;
@@ -997,7 +988,6 @@ struct session {
 	int		 statusat;
 	u_int		 statuslines;
 
-	struct hooks	*hooks;
 	struct options	*options;
 
 #define SESSION_PASTING 0x1
@@ -1523,6 +1513,7 @@ union options_value {
 	long long			  number;
 	struct style			  style;
 	struct options_array		  array;
+	struct cmd_list			 *cmdlist;
 };
 
 /* Option table entries. */
@@ -1533,17 +1524,19 @@ enum options_table_type {
 	OPTIONS_TABLE_COLOUR,
 	OPTIONS_TABLE_FLAG,
 	OPTIONS_TABLE_CHOICE,
-	OPTIONS_TABLE_STYLE
+	OPTIONS_TABLE_STYLE,
+	OPTIONS_TABLE_COMMAND
 };
 
 enum options_table_scope {
 	OPTIONS_TABLE_NONE,
 	OPTIONS_TABLE_SERVER,
 	OPTIONS_TABLE_SESSION,
-	OPTIONS_TABLE_WINDOW,
+	OPTIONS_TABLE_WINDOW
 };
 
 #define OPTIONS_TABLE_IS_ARRAY 0x1
+#define OPTIONS_TABLE_IS_HOOK 0x2
 
 struct options_table_entry {
 	const char		 *name;
@@ -1601,7 +1594,6 @@ struct spawn_context {
 };
 
 /* tmux.c */
-extern struct hooks	*global_hooks;
 extern struct options	*global_options;
 extern struct options	*global_s_options;
 extern struct options	*global_w_options;
@@ -1695,20 +1687,6 @@ u_int		 format_width(const char *);
 char		*format_trim_left(const char *, u_int);
 char		*format_trim_right(const char *, u_int);
 
-/* hooks.c */
-struct hook;
-struct hooks	*hooks_get(struct session *);
-struct hooks	*hooks_create(struct hooks *);
-void		 hooks_free(struct hooks *);
-struct hook	*hooks_first(struct hooks *);
-struct hook	*hooks_next(struct hook *);
-void		 hooks_add(struct hooks *, const char *, struct cmd_list *);
-void		 hooks_copy(struct hooks *, struct hooks *);
-void		 hooks_remove(struct hooks *, const char *);
-struct hook	*hooks_find(struct hooks *, const char *);
-void printflike(4, 5) hooks_insert(struct hooks *, struct cmdq_item *,
-		    struct cmd_find_state *, const char *, ...);
-
 /* notify.c */
 void	notify_hook(struct cmdq_item *, const char *);
 void	notify_input(struct window_pane *, struct evbuffer *);
@@ -1736,8 +1714,9 @@ void		 options_remove(struct options_entry *);
 void		 options_array_clear(struct options_entry *);
 union options_value *options_array_get(struct options_entry *, u_int);
 int		 options_array_set(struct options_entry *, u_int, const char *,
-		     int);
-void		 options_array_assign(struct options_entry *, const char *);
+		     int, char **);
+int		 options_array_assign(struct options_entry *, const char *,
+		     char **);
 struct options_array_item *options_array_first(struct options_entry *);
 struct options_array_item *options_array_next(struct options_array_item *);
 u_int		 options_array_item_index(struct options_array_item *);
@@ -1958,6 +1937,8 @@ struct cmdq_item *cmdq_get_command(struct cmd_list *, struct cmd_find_state *,
 struct cmdq_item *cmdq_get_callback1(const char *, cmdq_cb, void *);
 void		 cmdq_insert_after(struct cmdq_item *, struct cmdq_item *);
 void		 cmdq_append(struct client *, struct cmdq_item *);
+void		 cmdq_insert_hook(struct session *, struct cmdq_item *,
+		     struct cmd_find_state *, const char *, ...);
 void printflike(3, 4) cmdq_format(struct cmdq_item *, const char *,
 		     const char *, ...);
 u_int		 cmdq_next(struct client *);

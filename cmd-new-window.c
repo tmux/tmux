@@ -105,7 +105,7 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	cmd_find_from_winlink(&fs, new_wl, 0);
-	hooks_insert(s->hooks, item, &fs, "after-new-window");
+	cmdq_insert_hook(s, item, &fs, "after-new-window");
 
 	return (CMD_RETURN_NORMAL);
 }

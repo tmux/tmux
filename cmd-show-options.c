@@ -38,8 +38,8 @@ const struct cmd_entry cmd_show_options_entry = {
 	.name = "show-options",
 	.alias = "show",
 
-	.args = { "gqst:vw", 0, 1 },
-	.usage = "[-gqsvw] [-t target-session|target-window] [option]",
+	.args = { "gHqst:vw", 0, 1 },
+	.usage = "[-gHqsvw] [-t target-session|target-window] [option]",
 
 	.target = { 't', CMD_FIND_WINDOW, CMD_FIND_CANFAIL },
 
@@ -55,6 +55,19 @@ const struct cmd_entry cmd_show_window_options_entry = {
 	.usage = "[-gv] " CMD_TARGET_WINDOW_USAGE " [option]",
 
 	.target = { 't', CMD_FIND_WINDOW, CMD_FIND_CANFAIL },
+
+	.flags = CMD_AFTERHOOK,
+	.exec = cmd_show_options_exec
+};
+
+const struct cmd_entry cmd_show_hooks_entry = {
+	.name = "show-hooks",
+	.alias = NULL,
+
+	.args = { "gt:", 0, 1 },
+	.usage = "[-g] " CMD_TARGET_SESSION_USAGE,
+
+	.target = { 't', CMD_FIND_SESSION, 0 },
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_show_options_exec
@@ -161,15 +174,20 @@ cmd_show_options_print(struct cmd *self, struct cmdq_item *item,
     struct options_entry *o, int idx)
 {
 	struct options_array_item	*a;
-	const char			*name;
-	char				*value, *tmp, *escaped;
+	const char			*name = options_name(o);
+	char				*value, *tmp = NULL, *escaped;
 
 	if (idx != -1) {
-		xasprintf(&tmp, "%s[%d]", options_name(o), idx);
+		xasprintf(&tmp, "%s[%d]", name, idx);
 		name = tmp;
 	} else {
 		if (options_isarray(o)) {
 			a = options_array_first(o);
+			if (a == NULL) {
+				if (!args_has(self->args, 'v'))
+					cmdq_print(item, "%s", name);
+				return;
+			}
 			while (a != NULL) {
 				idx = options_array_item_index(a);
 				cmd_show_options_print(self, item, o, idx);
@@ -177,8 +195,6 @@ cmd_show_options_print(struct cmd *self, struct cmdq_item *item,
 			}
 			return;
 		}
-		tmp = NULL;
-		name = options_name(o);
 	}
 
 	value = options_tostring(o, idx, 0);
@@ -199,16 +215,28 @@ static enum cmd_retval
 cmd_show_options_all(struct cmd *self, struct cmdq_item *item,
     struct options *oo)
 {
-	struct options_entry			*o;
-	struct options_array_item		*a;
-	u_int					 idx;
+	struct options_entry		*o;
+	struct options_array_item	*a;
+	u_int				 idx;
+	int				 flags;
 
 	o = options_first(oo);
 	while (o != NULL) {
+		flags = options_table_entry(o)->flags;
+		if ((self->entry != &cmd_show_hooks_entry &&
+		    !args_has(self->args, 'H') &&
+		    (flags & OPTIONS_TABLE_IS_HOOK)) ||
+		    (self->entry == &cmd_show_hooks_entry &&
+		    (~flags & OPTIONS_TABLE_IS_HOOK))) {
+			o = options_next(o);
+			continue;
+		}
 		if (!options_isarray(o))
 			cmd_show_options_print(self, item, o, -1);
-		else {
-			a = options_array_first(o);
+		else if ((a = options_array_first(o)) == NULL) {
+			if (!args_has(self->args, 'v'))
+				cmdq_print(item, "%s", options_name(o));
+		} else {
 			while (a != NULL) {
 				idx = options_array_item_index(a);
 				cmd_show_options_print(self, item, o, idx);
