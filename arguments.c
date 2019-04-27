@@ -146,13 +146,14 @@ args_print(struct args *args)
 	struct args_entry	*entry;
 	static const char	 quoted[] = " #\"';$";
 	char			*value;
+	struct arg_value	*value_entry;
 
 	len = 1;
 	buf = xcalloc(1, len);
 
 	/* Process the flags first. */
 	RB_FOREACH(entry, args_tree, &args->tree) {
-		if (TAILQ_EMPTY(&entry->values))
+		if (!TAILQ_EMPTY(&entry->values))
 			continue;
 
 		if (*buf == '\0')
@@ -162,24 +163,26 @@ args_print(struct args *args)
 
 	/* Then the flags with arguments. */
 	RB_FOREACH(entry, args_tree, &args->tree) {
-		if (!TAILQ_EMPTY(&entry->values))
+		if (TAILQ_EMPTY(&entry->values))
 			continue;
 
-		if (*buf != '\0')
-			args_print_add(&buf, &len, " -%c ", entry->flag);
-		else
-			args_print_add(&buf, &len, "-%c ", entry->flag);
+		TAILQ_FOREACH(value_entry, &entry->values, entry) {
+			if (*buf != '\0')
+				args_print_add(&buf, &len, " -%c ", entry->flag);
+			else
+				args_print_add(&buf, &len, "-%c ", entry->flag);
 
-		value = TAILQ_LAST(&entry->values, arg_values)->value;
-		flags = VIS_OCTAL|VIS_TAB|VIS_NL;
-		if (value[strcspn(value, quoted)] != '\0')
-			flags |= VIS_DQ;
-		utf8_stravis(&escaped, value, flags);
-		if (flags & VIS_DQ)
-			args_print_add(&buf, &len, "\"%s\"", escaped);
-		else
-			args_print_add(&buf, &len, "%s", escaped);
-		free(escaped);
+			value = value_entry->value;
+			flags = VIS_OCTAL|VIS_TAB|VIS_NL;
+			if (value[strcspn(value, quoted)] != '\0')
+				flags |= VIS_DQ;
+			utf8_stravis(&escaped, value, flags);
+			if (flags & VIS_DQ)
+				args_print_add(&buf, &len, "\"%s\"", escaped);
+			else
+				args_print_add(&buf, &len, "%s", escaped);
+			free(escaped);
+		}
 	}
 
 	/* And finally the argument vector. */
