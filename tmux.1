@@ -1784,6 +1784,7 @@ option.
 .It Xo Ic new-window
 .Op Fl adkP
 .Op Fl c Ar start-directory
+.Op Fl e Ar environment
 .Op Fl F Ar format
 .Op Fl n Ar window-name
 .Op Fl t Ar target-window
@@ -1823,6 +1824,12 @@ See the
 .Ic remain-on-exit
 option to change this behaviour.
 .Pp
+.Fl e
+takes the form
+.Ql VARIABLE=value
+and sets an environment variable for the newly created window; it may be
+specified multiple times.
+.Pp
 The
 .Ev TERM
 environment variable must be set to
@@ -1835,7 +1842,9 @@ for all programs running
 New windows will automatically have
 .Ql TERM=screen
 added to their environment, but care must be taken not to reset this in shell
-start-up files.
+start-up files or by the
+.Fl e
+option.
 .Pp
 The
 .Fl P
@@ -1994,8 +2003,9 @@ This command will automatically set
 .Ic window-size
 to manual in the window options.
 .It Xo Ic respawn-pane
-.Op Fl c Ar start-directory
 .Op Fl k
+.Op Fl c Ar start-directory
+.Op Fl e Ar environment
 .Op Fl t Ar target-pane
 .Op Ar shell-command
 .Xc
@@ -2011,9 +2021,15 @@ The pane must be already inactive, unless
 is given, in which case any existing command is killed.
 .Fl c
 specifies a new working directory for the pane.
+The
+.Fl e
+option has the same meaning as for the
+.Ic new-window
+command.
 .It Xo Ic respawn-window
-.Op Fl c Ar start-directory
 .Op Fl k
+.Op Fl c Ar start-directory
+.Op Fl e Ar environment
 .Op Fl t Ar target-window
 .Op Ar shell-command
 .Xc
@@ -2029,6 +2045,11 @@ The window must be already inactive, unless
 is given, in which case any existing command is killed.
 .Fl c
 specifies a new working directory for the window.
+The
+.Fl e
+option has the same meaning as for the
+.Ic new-window
+command.
 .It Xo Ic rotate-window
 .Op Fl DU
 .Op Fl t Ar target-window
@@ -2147,6 +2168,7 @@ the command behaves like
 .It Xo Ic split-window
 .Op Fl bdfhvP
 .Op Fl c Ar start-directory
+.Op Fl e Ar environment
 .Oo Fl l
 .Ar size |
 .Fl p Ar percentage Oc
