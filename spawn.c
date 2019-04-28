@@ -291,6 +291,8 @@ spawn_pane(struct spawn_context *sc, char **cause)
 
 	/* Create an environment for this pane. */
 	child = environ_for_session(s, 0);
+	if (sc->environ != NULL)
+		environ_copy(sc->environ, child);
 	environ_set(child, "TMUX_PANE", "%%%u", new_wp->id);
 
 	/*

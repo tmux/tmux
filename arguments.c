@@ -28,9 +28,15 @@
  * Manipulate command arguments.
  */
 
+struct args_value {
+	char			*value;
+	TAILQ_ENTRY(args_value)	 entry;
+};
+TAILQ_HEAD(args_values, args_value);
+
 struct args_entry {
 	u_char			 flag;
-	char			*value;
+	struct args_values	 values;
 	RB_ENTRY(args_entry)	 entry;
 };
 
@@ -92,12 +98,18 @@ args_free(struct args *args)
 {
 	struct args_entry	*entry;
 	struct args_entry	*entry1;
+	struct args_value	*value;
+	struct args_value	*value1;
 
 	cmd_free_argv(args->argc, args->argv);
 
 	RB_FOREACH_SAFE(entry, args_tree, &args->tree, entry1) {
 		RB_REMOVE(args_tree, &args->tree, entry);
-		free(entry->value);
+		TAILQ_FOREACH_SAFE(value, &entry->values, entry, value1) {
+			TAILQ_REMOVE(&entry->values, value, entry);
+			free(value->value);
+			free(value);
+		}
 		free(entry);
 	}
 
@@ -123,22 +135,69 @@ args_print_add(char **buf, size_t *len, const char *fmt, ...)
 	free(s);
 }
 
+/* Add value to string. */
+static void
+args_print_add_value(char **buf, size_t *len, struct args_entry *entry,
+    struct args_value *value)
+{
+	static const char	 quoted[] = " #\"';$";
+	char			*escaped;
+	int			 flags;
+
+	if (**buf != '\0')
+		args_print_add(buf, len, " -%c ", entry->flag);
+	else
+		args_print_add(buf, len, "-%c ", entry->flag);
+
+	flags = VIS_OCTAL|VIS_TAB|VIS_NL;
+	if (value->value[strcspn(value->value, quoted)] != '\0')
+		flags |= VIS_DQ;
+	utf8_stravis(&escaped, value->value, flags);
+	if (flags & VIS_DQ)
+		args_print_add(buf, len, "\"%s\"", escaped);
+	else
+		args_print_add(buf, len, "%s", escaped);
+	free(escaped);
+}
+
+/* Add argument to string. */
+static void
+args_print_add_argument(char **buf, size_t *len, const char *argument)
+{
+	static const char	 quoted[] = " #\"';$";
+	char			*escaped;
+	int			 flags;
+
+	if (**buf != '\0')
+		args_print_add(buf, len, " ");
+
+	flags = VIS_OCTAL|VIS_TAB|VIS_NL;
+	if (argument[strcspn(argument, quoted)] != '\0')
+		flags |= VIS_DQ;
+	utf8_stravis(&escaped, argument, flags);
+	if (flags & VIS_DQ)
+		args_print_add(buf, len, "\"%s\"", escaped);
+	else
+		args_print_add(buf, len, "%s", escaped);
+	free(escaped);
+}
+
 /* Print a set of arguments. */
 char *
 args_print(struct args *args)
 {
 	size_t		 	 len;
-	char			*buf, *escaped;
-	int			 i, flags;
+	char			*buf;
+	int			 i;
 	struct args_entry	*entry;
-	static const char	 quoted[] = " #\"';$";
+	struct args_value	*value;
 
 	len = 1;
 	buf = xcalloc(1, len);
 
 	/* Process the flags first. */
 	RB_FOREACH(entry, args_tree, &args->tree) {
-		if (entry->value != NULL)
+		if (!TAILQ_EMPTY(&entry->values))
 			continue;
 
 		if (*buf == '\0')
@@ -148,40 +207,13 @@ args_print(struct args *args)
 
 	/* Then the flags with arguments. */
 	RB_FOREACH(entry, args_tree, &args->tree) {
-		if (entry->value == NULL)
-			continue;
-
-		if (*buf != '\0')
-			args_print_add(&buf, &len, " -%c ", entry->flag);
-		else
-			args_print_add(&buf, &len, "-%c ", entry->flag);
-
-		flags = VIS_OCTAL|VIS_TAB|VIS_NL;
-		if (entry->value[strcspn(entry->value, quoted)] != '\0')
-			flags |= VIS_DQ;
-		utf8_stravis(&escaped, entry->value, flags);
-		if (flags & VIS_DQ)
-			args_print_add(&buf, &len, "\"%s\"", escaped);
-		else
-			args_print_add(&buf, &len, "%s", escaped);
-		free(escaped);
+		TAILQ_FOREACH(value, &entry->values, entry)
+			args_print_add_value(&buf, &len, entry, value);
 	}
 
 	/* And finally the argument vector. */
-	for (i = 0; i < args->argc; i++) {
-		if (*buf != '\0')
-			args_print_add(&buf, &len, " ");
-
-		flags = VIS_OCTAL|VIS_TAB|VIS_NL;
-		if (args->argv[i][strcspn(args->argv[i], quoted)] != '\0')
-			flags |= VIS_DQ;
-		utf8_stravis(&escaped, args->argv[i], flags);
-		if (flags & VIS_DQ)
-			args_print_add(&buf, &len, "\"%s\"", escaped);
-		else
-			args_print_add(&buf, &len, "%s", escaped);
-		free(escaped);
-	}
+	for (i = 0; i < args->argc; i++)
+		args_print_add_argument(&buf, &len, args->argv[i]);
 
 	return (buf);
 }
@@ -195,22 +227,24 @@ args_has(struct args *args, u_char ch)
 
 /* Set argument value in the arguments tree. */
 void
-args_set(struct args *args, u_char ch, const char *value)
+args_set(struct args *args, u_char ch, const char *s)
 {
 	struct args_entry	*entry;
+	struct args_value	*value;
 
-	/* Replace existing argument. */
-	if ((entry = args_find(args, ch)) != NULL) {
-		free(entry->value);
-		entry->value = NULL;
-	} else {
+	entry = args_find(args, ch);
+	if (entry == NULL) {
 		entry = xcalloc(1, sizeof *entry);
 		entry->flag = ch;
+		TAILQ_INIT(&entry->values);
 		RB_INSERT(args_tree, &args->tree, entry);
 	}
 
-	if (value != NULL)
-		entry->value = xstrdup(value);
+	if (s != NULL) {
+		value = xcalloc(1, sizeof *value);
+		value->value = xstrdup(s);
+		TAILQ_INSERT_TAIL(&entry->values, value, entry);
+	}
 }
 
 /* Get argument value. Will be NULL if it isn't present. */
@@ -221,7 +255,34 @@ args_get(struct args *args, u_char ch)
 
 	if ((entry = args_find(args, ch)) == NULL)
 		return (NULL);
-	return (entry->value);
+	return (TAILQ_LAST(&entry->values, args_values)->value);
+}
+
+/* Get first value in argument. */
+const char *
+args_first_value(struct args *args, u_char ch, struct args_value **value)
+{
+	struct args_entry	*entry;
+
+	if ((entry = args_find(args, ch)) == NULL)
+		return (NULL);
+
+	*value = TAILQ_FIRST(&entry->values);
+	if (*value == NULL)
+		return (NULL);
+	return ((*value)->value);
+}
+
+/* Get next value in argument. */
+const char *
+args_next_value(struct args_value **value)
+{
+	if (*value == NULL)
+		return (NULL);
+	*value = TAILQ_NEXT(*value, entry);
+	if (*value == NULL)
+		return (NULL);
+	return ((*value)->value);
 }
 
 /* Convert an argument value to a number. */
@@ -232,13 +293,15 @@ args_strtonum(struct args *args, u_char ch, long long minval, long long maxval,
 	const char		*errstr;
 	long long 	 	 ll;
 	struct args_entry	*entry;
+	struct args_value	*value;
 
 	if ((entry = args_find(args, ch)) == NULL) {
 		*cause = xstrdup("missing");
 		return (0);
 	}
+	value = TAILQ_LAST(&entry->values, args_values);
 
-	ll = strtonum(entry->value, minval, maxval, &errstr);
+	ll = strtonum(value->value, minval, maxval, &errstr);
 	if (errstr != NULL) {
 		*cause = xstrdup(errstr);
 		return (0);
