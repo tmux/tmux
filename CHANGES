@@ -1,5 +1,10 @@
 CHANGES FROM 2.9 to X.X
 
+* Add keys to jump between matching brackets (emacs C-M-f and C-M-b, vi %).
+
+* Add a -e flag to new-window, split-window, respawn-window, respawn-pane to
+  pass environment variables into the newly created process.
+
 * Hooks are now stored in the options tree as array options, allowing them to
   have multiple separate commands. set-hook and show-hooks remain but
   set-option and show-options can now also be used (show-options will only show
