@@ -152,4 +152,3 @@ TODO soonish maybe:
   history (bit silly really though), reflow performance (can reflow blocks on
   demand). It would possibly be good if history-limit could be global and
   collected LRU.
-- Merge alternate and normal screen modes: https://gitlab.freedesktop.org/terminal-wg/specifications/issues/5#note_112220
