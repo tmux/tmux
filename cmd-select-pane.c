@@ -66,7 +66,7 @@ cmd_select_pane_redraw(struct window *w)
 	 */
 
 	TAILQ_FOREACH(c, &clients, entry) {
-		if (c->session == NULL)
+		if (c->session == NULL || (c->flags & CLIENT_CONTROL))
 			continue;
 		if (c->session->curw->window == w && tty_window_bigger(&c->tty))
 			server_redraw_client(c);
