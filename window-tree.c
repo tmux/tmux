@@ -785,7 +785,8 @@ window_tree_search(__unused void *modedata, void *itemdata, const char *ss)
 	struct session			*s;
 	struct winlink			*wl;
 	struct window_pane		*wp;
-	const char			*cmd;
+	char				*cmd;
+	int				 retval;
 
 	window_tree_pull_item(item, &s, &wl, &wp);
 
@@ -806,7 +807,9 @@ window_tree_search(__unused void *modedata, void *itemdata, const char *ss)
 		cmd = get_proc_name(wp->fd, wp->tty);
 		if (cmd == NULL || *cmd == '\0')
 			return (0);
-		return (strstr(cmd, ss) != NULL);
+		retval = (strstr(cmd, ss) != NULL);
+		free(cmd);
+		return retval;
 	}
 	return (0);
 }
