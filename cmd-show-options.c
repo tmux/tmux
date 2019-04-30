@@ -216,19 +216,21 @@ static enum cmd_retval
 cmd_show_options_all(struct cmd *self, struct cmdq_item *item,
     struct options *oo)
 {
-	struct options_entry		*o;
-	struct options_array_item	*a;
-	u_int				 idx;
-	int				 flags;
+	struct options_entry			*o;
+	struct options_array_item		*a;
+	u_int					 idx;
+	const struct options_table_entry	*oe;
 
 	o = options_first(oo);
 	while (o != NULL) {
-		flags = options_table_entry(o)->flags;
+		oe = options_table_entry(o);
 		if ((self->entry != &cmd_show_hooks_entry &&
 		    !args_has(self->args, 'H') &&
-		    (flags & OPTIONS_TABLE_IS_HOOK)) ||
+		    oe != NULL &&
+		    (oe->flags & OPTIONS_TABLE_IS_HOOK)) ||
 		    (self->entry == &cmd_show_hooks_entry &&
-		    (~flags & OPTIONS_TABLE_IS_HOOK))) {
+		    (oe == NULL ||
+		    (~oe->flags & OPTIONS_TABLE_IS_HOOK)))) {
 			o = options_next(o);
 			continue;
 		}
