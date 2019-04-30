@@ -786,6 +786,7 @@ window_tree_search(__unused void *modedata, void *itemdata, const char *ss)
 	struct winlink			*wl;
 	struct window_pane		*wp;
 	const char			*cmd;
+	int					ret;
 
 	window_tree_pull_item(item, &s, &wl, &wp);
 
@@ -806,7 +807,9 @@ window_tree_search(__unused void *modedata, void *itemdata, const char *ss)
 		cmd = osdep_get_name(wp->fd, wp->tty);
 		if (cmd == NULL || *cmd == '\0')
 			return (0);
-		return (strstr(cmd, ss) != NULL);
+		ret = (strstr(cmd, ss) != NULL);
+		free(cmd);
+		return ret;
 	}
 	return (0);
 }
