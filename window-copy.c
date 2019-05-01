@@ -1003,7 +1003,7 @@ window_copy_cmd_previous_matching_bracket(struct window_copy_cmd_state *cs)
 	struct screen			*s = data->backing;
 	char				 open[] = "{[(", close[] = "}])";
 	char				 tried, found, start, *cp;
-	u_int				 px, py, xx, yy, n;
+	u_int				 px, py, xx, n;
 	struct grid_cell		 gc;
 	int				 failed;
 
@@ -1012,7 +1012,6 @@ window_copy_cmd_previous_matching_bracket(struct window_copy_cmd_state *cs)
 		px = data->cx;
 		py = screen_hsize(s) + data->cy - data->oy;
 		xx = window_copy_find_length(wme, py);
-		yy = screen_hsize(s) + screen_size_y(s) - 1;
 		if (xx == 0)
 			break;
 
