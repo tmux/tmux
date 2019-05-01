@@ -1,3 +1,7 @@
+CHANGES FROM 2.9 to 2.9a
+
+* Fix bugs in select-pane and the main-horizontal and main-vertical layouts.
+
 CHANGES FROM 2.8 to 2.9
 
 * Attempt to preserve horizontal cursor position as well as vertical with
