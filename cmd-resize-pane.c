@@ -148,7 +148,7 @@ cmd_resize_pane_mouse_update(struct client *c, struct mouse_event *m)
 		y--;
 	else if (m->statusat > 0 && y >= (u_int)m->statusat)
 		y = m->statusat - 1;
-	ly = m->ly; lx = m->lx;
+	ly = m->ly + m->oy; lx = m->lx + m->ox;
 	if (m->statusat == 0 && ly > 0)
 		ly--;
 	else if (m->statusat > 0 && ly >= (u_int)m->statusat)
