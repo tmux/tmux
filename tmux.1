@@ -852,7 +852,7 @@ are the name of and shell command to execute in the initial window.
 With
 .Fl d ,
 the initial size comes from the global
-.Ar default-size
+.Ic default-size
 option;
 .Fl x
 and
@@ -865,7 +865,7 @@ If
 or
 .Fl y
 is given, the
-.Ar default-size
+.Ic default-size
 option is set for the session.
 .Pp
 If run from a terminal, any
@@ -2836,9 +2836,15 @@ This option should be configured when
 .Nm
 is used as a login shell.
 .It Ic default-size Ar XxY
-Set the default size of windows when the size is not set or the
-.Ic window-size
-option is manual.
+Set the default size of new windows when the
+.Ar window-size
+option is set to manual or when a session is created with
+.Ic new-session
+.Fl d .
+The value is the width and height separated by an
+.Ql x
+character.
+The default is 80x24.
 .It Xo Ic destroy-unattached
 .Op Ic on | off
 .Xc
@@ -3421,7 +3427,7 @@ see the
 .Sx STYLES
 section.
 .Pp
-.It Xo Ic Ic window-size
+.It Xo Ic window-size
 .Ar largest | Ar smallest | Ar manual
 .Xc
 Configure how
@@ -3450,21 +3456,6 @@ For how to specify
 see the
 .Sx STYLES
 section.
-.Pp
-.It Xo Ic window-size
-.Op Ic smallest | largest | manual
-.Xc
-Tell
-.Nm
-how to automatically size windows either the size of the smallest session
-containing the window, the size of the largest, or manual size.
-See also the
-.Ic resize-window
-command and the
-.Ic default-size
-and
-.Ic aggressive-resize
-options.
 .Pp
 .It Xo Ic wrap-search
 .Op Ic on | off
