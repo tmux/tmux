@@ -1052,6 +1052,12 @@ struct mouse_event {
 	u_int		sgr_b;
 };
 
+/* Key event. */
+struct key_event {
+	key_code		key;
+	struct mouse_event	m;
+};
+
 /* TTY information. */
 struct tty_key {
 	char		 ch;
@@ -1143,7 +1149,8 @@ struct tty {
 		TTY_UNKNOWN
 	} term_type;
 
-	struct mouse_event mouse;
+	u_int		 mouse_last_x;
+	u_int		 mouse_last_y;
 	int		 mouse_drag_flag;
 	void		(*mouse_drag_update)(struct client *,
 			    struct mouse_event *);
@@ -1864,7 +1871,7 @@ const char	*tty_acs_get(struct tty *, u_char);
 /* tty-keys.c */
 void		tty_keys_build(struct tty *);
 void		tty_keys_free(struct tty *);
-key_code	tty_keys_next(struct tty *);
+int		tty_keys_next(struct tty *);
 
 /* arguments.c */
 void		 args_set(struct args *, u_char, const char *);
@@ -2002,7 +2009,7 @@ void	 server_client_set_identify(struct client *, u_int);
 void	 server_client_set_key_table(struct client *, const char *);
 const char *server_client_get_key_table(struct client *);
 int	 server_client_check_nested(struct client *);
-void	 server_client_handle_key(struct client *, key_code);
+enum cmd_retval server_client_key_callback(struct cmdq_item *, void *);
 struct client *server_client_create(int);
 int	 server_client_open(struct client *, char **);
 void	 server_client_unref(struct client *);
