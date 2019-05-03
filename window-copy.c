@@ -3505,6 +3505,8 @@ window_copy_start_drag(struct client *c, struct mouse_event *m)
 	window_copy_update_cursor(wme, x, y);
 	window_copy_start_selection(wme);
 	window_copy_redraw_screen(wme);
+
+	window_copy_drag_update(c, m);
 }
 
 static void

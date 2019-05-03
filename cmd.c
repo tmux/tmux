@@ -483,8 +483,8 @@ cmd_mouse_at(struct window_pane *wp, struct mouse_event *m, u_int *xp,
 		x = m->lx + m->ox;
 		y = m->ly + m->oy;
 	} else {
-		x = m->x;
-		y = m->y;
+		x = m->x + m->ox;
+		y = m->y + m->oy;
 	}
 	log_debug("%s: x=%u, y=%u%s", __func__, x, y, last ? " (last)" : "");
 

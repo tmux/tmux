@@ -94,6 +94,7 @@ cmdq_insert_after(struct cmdq_item *after, struct cmdq_item *item)
 		log_debug("%s %s: %s after %s", __func__, cmdq_name(c),
 		    item->name, after->name);
 
+		after = item;
 		item = next;
 	} while (item != NULL);
 }

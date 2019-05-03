@@ -143,7 +143,7 @@ cmd_resize_pane_mouse_update(struct client *c, struct mouse_event *m)
 	}
 	w = wl->window;
 
-	y = m->y; x = m->x;
+	y = m->y + m->oy; x = m->x + m->ox;
 	if (m->statusat == 0 && y > 0)
 		y--;
 	else if (m->statusat > 0 && y >= (u_int)m->statusat)
