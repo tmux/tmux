@@ -448,6 +448,8 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 		type = DRAG;
 		if (c->tty.mouse_drag_flag) {
 			x = m->x, y = m->y, b = m->b;
+			if (x == m->lx && y == m->ly)
+				return (KEYC_UNKNOWN);
 			log_debug("drag update at %u,%u", x, y);
 		} else {
 			x = m->lx, y = m->ly, b = m->lb;
@@ -555,8 +557,6 @@ have_event:
 			return (KEYC_UNKNOWN);
 		px = px + m->ox;
 		py = py + m->oy;
-		m->x = x + m->ox;
-		m->y = y + m->oy;
 
 		/* Try the pane borders if not zoomed. */
 		if (~s->curw->window->flags & WINDOW_ZOOMED) {
