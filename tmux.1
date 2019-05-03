@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: March 25 2013 $
+.Dd $Mdocdate$
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -1099,10 +1099,10 @@ to
 As a special case,
 .Fl t
 may refer to a pane (a target that contains
-.Ql : ,
-.Ql .
+.Ql \&: ,
+.Ql \&.
 or
-.Ql % )
+.Ql % ) ,
 in which case the session, window and pane are all changed.
 If
 .Fl l ,
@@ -2809,16 +2809,6 @@ The default is an empty string, which instructs
 to create a login shell using the value of the
 .Ic default-shell
 option.
-.It Ic default-size Ar XxY
-Set the default size of new windows when the
-.Ar window-size
-option is set to manual or when a session is created with
-.Ic new-session
-.Fl d .
-The value is the width and height separated by an
-.Ql x
-character.
-The default is 80x24.
 .It Ic default-shell Ar path
 Specify the default shell.
 This is used as the login shell for new windows when the
@@ -2837,7 +2827,7 @@ This option should be configured when
 is used as a login shell.
 .It Ic default-size Ar XxY
 Set the default size of new windows when the
-.Ar window-size
+.Ic window-size
 option is set to manual or when a session is created with
 .Ic new-session
 .Fl d .
