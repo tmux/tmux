@@ -524,6 +524,7 @@ struct msg_stderr_data {
 #define MODE_FOCUSON 0x800
 #define MODE_MOUSE_ALL 0x1000
 #define MODE_ORIGIN 0x2000
+#define MODE_CRLF 0x4000
 
 #define ALL_MODES 0xffffff
 #define ALL_MOUSE_MODES (MODE_MOUSE_STANDARD|MODE_MOUSE_BUTTON|MODE_MOUSE_ALL)
@@ -804,6 +805,7 @@ struct window_pane {
 #define PANE_EXITED 0x100
 #define PANE_STATUSREADY 0x200
 #define PANE_STATUSDRAWN 0x400
+#define PANE_EMPTY 0x800
 
 	int		 argc;
 	char	       **argv;
@@ -1600,6 +1602,7 @@ struct spawn_context {
 #define SPAWN_BEFORE 0x8
 #define SPAWN_NONOTIFY 0x10
 #define SPAWN_FULLSIZE 0x20
+#define SPAWN_EMPTY 0x40
 };
 
 /* tmux.c */
@@ -2319,6 +2322,8 @@ void		 window_add_ref(struct window *, const char *);
 void		 window_remove_ref(struct window *, const char *);
 void		 winlink_clear_flags(struct winlink *);
 int		 winlink_shuffle_up(struct session *, struct winlink *);
+int		 window_pane_start_input(struct window_pane *,
+		     struct cmdq_item *, char **);
 
 /* layout.c */
 u_int		 layout_count_cells(struct layout_cell *);

@@ -1681,8 +1681,7 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 			evbuffer_add(c->stdin_data, stdindata.data,
 			    stdindata.size);
 		}
-		c->stdin_callback(c, c->stdin_closed,
-		    c->stdin_callback_data);
+		c->stdin_callback(c, c->stdin_closed, c->stdin_callback_data);
 		break;
 	case MSG_RESIZE:
 		if (datalen != 0)

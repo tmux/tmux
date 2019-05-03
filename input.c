@@ -1185,6 +1185,8 @@ input_c0_dispatch(struct input_ctx *ictx)
 	case '\013':	/* VT */
 	case '\014':	/* FF */
 		screen_write_linefeed(sctx, 0, ictx->cell.cell.bg);
+		if (s->mode & MODE_CRLF)
+			screen_write_carriagereturn(sctx);
 		break;
 	case '\015':	/* CR */
 		screen_write_carriagereturn(sctx);

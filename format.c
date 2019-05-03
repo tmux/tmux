@@ -2047,7 +2047,10 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 
 	if ((wp->flags & PANE_STATUSREADY) && WIFEXITED(status))
 		format_add(ft, "pane_dead_status", "%d", WEXITSTATUS(status));
-	format_add(ft, "pane_dead", "%d", wp->fd == -1);
+	if (~wp->flags & PANE_EMPTY)
+		format_add(ft, "pane_dead", "%d", wp->fd == -1);
+	else
+		format_add(ft, "pane_dead", "0");
 
 	format_add(ft, "pane_left", "%u", wp->xoff);
 	format_add(ft, "pane_top", "%u", wp->yoff);

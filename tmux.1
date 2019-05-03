@@ -2209,7 +2209,7 @@ is given and the selected window is already the current window,
 the command behaves like
 .Ic last-window .
 .It Xo Ic split-window
-.Op Fl bdfhvP
+.Op Fl bdfhIvP
 .Op Fl c Ar start-directory
 .Op Fl e Ar environment
 .Oo Fl l
@@ -2245,6 +2245,24 @@ option creates a new pane spanning the full window height (with
 or full window width (with
 .Fl v ) ,
 instead of splitting the active pane.
+.Pp
+An empty
+.Ar shell-command
+('') will create a pane with no command running in it.
+Output can be sent to such a pane with the
+.Ic display-message
+command.
+The
+.Fl I
+flag (if
+.Ar shell-command
+is not specified or empty)
+will create an empty pane and forward any output from stdin to it.
+For example:
+.Bd -literal -offset indent
+$ make 2>&1|tmux splitw -dI &
+.Ed
+.Pp
 All other options have the same meaning as for the
 .Ic new-window
 command.
@@ -4435,7 +4453,7 @@ option.
 This command works only from inside
 .Nm .
 .It Xo Ic display-message
-.Op Fl apv
+.Op Fl aIpv
 .Op Fl c Ar target-client
 .Op Fl t Ar target-pane
 .Op Ar message
@@ -4462,6 +4480,10 @@ is given, otherwise the active pane for the session attached to
 prints verbose logging as the format is parsed and
 .Fl a
 lists the format variables and their values.
+.Pp
+.Fl I
+forwards any input read from stdin to the empty pane given by
+.Ar target-pane .
 .El
 .Sh BUFFERS
 .Nm

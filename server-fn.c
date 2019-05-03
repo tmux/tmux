@@ -440,7 +440,6 @@ server_check_unattached(void)
 	}
 }
 
-/* Set stdin callback. */
 int
 server_set_stdin_callback(struct client *c, void (*cb)(struct client *, int,
     void *), void *cb_data, char **cause)
@@ -454,7 +453,7 @@ server_set_stdin_callback(struct client *c, void (*cb)(struct client *, int,
 		return (-1);
 	}
 	if (c->stdin_callback != NULL) {
-		*cause = xstrdup("stdin in use");
+		*cause = xstrdup("stdin is in use");
 		return (-1);
 	}
 
