@@ -1291,7 +1291,7 @@ struct cmdq_shared {
 /* Command queue item. */
 typedef enum cmd_retval (*cmdq_cb) (struct cmdq_item *, void *);
 struct cmdq_item {
-	const char		*name;
+	char			*name;
 	struct cmdq_list	*queue;
 	struct cmdq_item	*next;
 
