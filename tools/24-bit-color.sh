@@ -14,9 +14,23 @@
 # https://github.com/gnachman/iTerm2/blob/master/LICENSE
 #
 
-if which gseq >/dev/null 2>&1
-then
-    SEQ=gseq
+SEQ1=
+if which gseq >/dev/null 2>&1; then
+    SEQ1=gseq
+elif seq --version|grep -q GNU; then
+    SEQ1=seq
+fi
+if [ -n "$SEQ1" ]; then
+    # GNU seq requires a -ve increment if going backwards
+    seq1()
+    {
+        if [ $1 -gt $2 ]; then
+	    $SEQ1 $1 -1 $2
+	else
+	    $SEQ1 $1 $2
+	fi
+    }
+    SEQ=seq1
 else
     SEQ=seq
 fi	

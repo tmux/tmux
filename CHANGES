@@ -1,5 +1,23 @@
 CHANGES FROM 2.9 to X.X
 
+* Add keys to jump between matching brackets (emacs C-M-f and C-M-b, vi %).
+
+* Add a -e flag to new-window, split-window, respawn-window, respawn-pane to
+  pass environment variables into the newly created process.
+
+* Hooks are now stored in the options tree as array options, allowing them to
+  have multiple separate commands. set-hook and show-hooks remain but
+  set-option and show-options can now also be used (show-options will only show
+  hooks if given the -H flag). Hooks with multiple commands are run in index
+  order.
+
+* Automatically scroll if dragging to create a selection with the mouse and the
+  cursor reaches the top or bottom line.
+
+* Add -no-clear variants of copy-selection and copy-pipe which do not clear the
+  selection after copying. Make copy-pipe clear the selection by default to be
+  consistent with copy-selection.
+
 * Add an argument to copy commands to set the prefix for the buffer name, this
   (for example) allows buffers for different sessions to be named separately.
 
@@ -11,8 +29,9 @@ CHANGES FROM 2.9 to X.X
 * Add the ability to infer an option type (server, session, window) from its
   name to show-options (it was already present in set-option).
 
-* Allow the prefix used for new buffer names to be given as an argument to the
-  copy commands in copy mode.
+CHANGES FROM 2.9 to 2.9a
+
+* Fix bugs in select-pane and the main-horizontal and main-vertical layouts.
 
 CHANGES FROM 2.8 to 2.9
 

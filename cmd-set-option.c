@@ -65,6 +65,19 @@ const struct cmd_entry cmd_set_window_option_entry = {
 	.exec = cmd_set_option_exec
 };
 
+const struct cmd_entry cmd_set_hook_entry = {
+	.name = "set-hook",
+	.alias = NULL,
+
+	.args = { "agRt:u", 1, 2 },
+	.usage = "[-agRu] " CMD_TARGET_SESSION_USAGE " hook [command]",
+
+	.target = { 't', CMD_FIND_SESSION, CMD_FIND_CANFAIL },
+
+	.flags = CMD_AFTERHOOK,
+	.exec = cmd_set_option_exec
+};
+
 static enum cmd_retval
 cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 {
@@ -86,6 +99,11 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 	/* Expand argument. */
 	c = cmd_find_client(item, NULL, 1);
 	argument = format_single(item, args->argv[0], c, s, wl, NULL);
+
+	if (self->entry == &cmd_set_hook_entry && args_has(args, 'R')) {
+		notify_hook(item, argument);
+		return (CMD_RETURN_NORMAL);
+	}
 
 	/* Parse option name and index. */
 	name = options_match(argument, &idx, &ambiguous);
@@ -200,8 +218,11 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 				options_default(oo, options_table_entry(o));
 			else
 				options_remove(o);
-		} else
-			options_array_set(o, idx, NULL, 0);
+		} else if (options_array_set(o, idx, NULL, 0, &cause) != 0) {
+			cmdq_error(item, "%s", cause);
+			free(cause);
+			goto fail;
+		}
 	} else if (*name == '@') {
 		if (value == NULL) {
 			cmdq_error(item, "empty value");
@@ -222,9 +243,15 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 		if (idx == -1) {
 			if (!append)
 				options_array_clear(o);
-			options_array_assign(o, value);
-		} else if (options_array_set(o, idx, value, append) != 0) {
-			cmdq_error(item, "invalid index: %s", argument);
+			if (options_array_assign(o, value, &cause) != 0) {
+				cmdq_error(item, "%s", cause);
+				free(cause);
+				goto fail;
+			}
+		} else if (options_array_set(o, idx, value, append,
+		    &cause) != 0) {
+			cmdq_error(item, "%s", cause);
+			free(cause);
 			goto fail;
 		}
 	}
@@ -366,7 +393,7 @@ cmd_set_option_set(struct cmd *self, struct cmdq_item *item, struct options *oo,
 			return (-1);
 		}
 		return (0);
-	case OPTIONS_TABLE_ARRAY:
+	case OPTIONS_TABLE_COMMAND:
 		break;
 	}
 	return (-1);

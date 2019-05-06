@@ -291,6 +291,8 @@ spawn_pane(struct spawn_context *sc, char **cause)
 
 	/* Create an environment for this pane. */
 	child = environ_for_session(s, 0);
+	if (sc->environ != NULL)
+		environ_copy(sc->environ, child);
 	environ_set(child, "TMUX_PANE", "%%%u", new_wp->id);
 
 	/*
@@ -328,6 +330,14 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	cmd_log_argv(new_wp->argc, new_wp->argv, __func__);
 	environ_log(child, "%s: environment ", __func__);
 
+	/* If the command is empty, don't fork a child process. */
+	if (sc->flags & SPAWN_EMPTY) {
+		new_wp->flags |= PANE_EMPTY;
+		new_wp->base.mode &= ~MODE_CURSOR;
+		new_wp->base.mode |= MODE_CRLF;
+		goto complete;
+	}
+
 	/* Initialize the window size. */
 	memset(&ws, 0, sizeof ws);
 	ws.ws_col = screen_size_x(&new_wp->base);
@@ -351,25 +361,8 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	}
 
 	/* In the parent process, everything is done now. */
-	if (new_wp->pid != 0) {
-		new_wp->pipe_off = 0;
-		new_wp->flags &= ~PANE_EXITED;
-
-		sigprocmask(SIG_SETMASK, &oldset, NULL);
-		window_pane_set_event(new_wp);
-
-		if (sc->flags & SPAWN_RESPAWN)
-			return (new_wp);
-		if ((~sc->flags & SPAWN_DETACHED) || w->active == NULL) {
-			if (sc->flags & SPAWN_NONOTIFY)
-				window_set_active_pane(w, new_wp, 0);
-			else
-				window_set_active_pane(w, new_wp, 1);
-		}
-		if (~sc->flags & SPAWN_NONOTIFY)
-			notify_window("window-layout-changed", w);
-		return (new_wp);
-	}
+	if (new_wp->pid != 0)
+		goto complete;
 
 	/*
 	 * Child process. Change to the working directory or home if that
@@ -429,4 +422,23 @@ spawn_pane(struct spawn_context *sc, char **cause)
 		xasprintf(&argv0, "-%s", new_wp->shell);
 	execl(new_wp->shell, argv0, (char *)NULL);
 	_exit(1);
+
+complete:
+	new_wp->pipe_off = 0;
+	new_wp->flags &= ~PANE_EXITED;
+
+	sigprocmask(SIG_SETMASK, &oldset, NULL);
+	window_pane_set_event(new_wp);
+
+	if (sc->flags & SPAWN_RESPAWN)
+		return (new_wp);
+	if ((~sc->flags & SPAWN_DETACHED) || w->active == NULL) {
+		if (sc->flags & SPAWN_NONOTIFY)
+			window_set_active_pane(w, new_wp, 0);
+		else
+			window_set_active_pane(w, new_wp, 1);
+	}
+	if (~sc->flags & SPAWN_NONOTIFY)
+		notify_window("window-layout-changed", w);
+	return (new_wp);
 }

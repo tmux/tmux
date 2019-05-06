@@ -46,7 +46,8 @@ static struct tty_key *tty_keys_find(struct tty *, const char *, size_t,
 static int	tty_keys_next1(struct tty *, const char *, size_t, key_code *,
 		    size_t *, int);
 static void	tty_keys_callback(int, short, void *);
-static int	tty_keys_mouse(struct tty *, const char *, size_t, size_t *);
+static int	tty_keys_mouse(struct tty *, const char *, size_t, size_t *,
+		    struct mouse_event *);
 static int	tty_keys_clipboard(struct tty *, const char *, size_t,
 		    size_t *);
 static int	tty_keys_device_attributes(struct tty *, const char *, size_t,
@@ -399,9 +400,10 @@ tty_keys_build(struct tty *tty)
 	const struct tty_default_key_raw	*tdkr;
 	const struct tty_default_key_code	*tdkc;
 	u_int		 			 i;
-	const char				*s, *value;
+	const char				*s;
 	struct options_entry			*o;
 	struct options_array_item		*a;
+	union options_value			*ov;
 
 	if (tty->key_tree != NULL)
 		tty_keys_free(tty);
@@ -427,9 +429,9 @@ tty_keys_build(struct tty *tty)
 	if (o != NULL) {
 		a = options_array_first(o);
 		while (a != NULL) {
-			value = options_array_item_value(a);
-			if (value != NULL)
-				tty_keys_add(tty, value, KEYC_USER + i);
+			i = options_array_item_index(a);
+			ov = options_array_item_value(a);
+			tty_keys_add(tty, ov->string, KEYC_USER + i);
 			a = options_array_next(a);
 		}
 	}
@@ -560,25 +562,26 @@ tty_keys_next1(struct tty *tty, const char *buf, size_t len, key_code *key,
 	return (-1);
 }
 
-/*
- * Process at least one key in the buffer and invoke tty->key_callback. Return
- * 0 if there are no further keys, or 1 if there could be more in the buffer.
- */
-key_code
+/* Process at least one key in the buffer. Return 0 if no keys present. */
+int
 tty_keys_next(struct tty *tty)
 {
-	struct client	*c = tty->client;
-	struct timeval	 tv;
-	const char	*buf;
-	size_t		 len, size;
-	cc_t		 bspace;
-	int		 delay, expired = 0, n;
-	key_code	 key;
+	struct client		*c = tty->client;
+	struct timeval		 tv;
+	const char		*buf;
+	size_t			 len, size;
+	cc_t			 bspace;
+	int			 delay, expired = 0, n;
+	key_code		 key;
+	struct cmdq_item	*item;
+	struct mouse_event	 m = { 0 };
+	struct key_event	*event;
+
+	gettimeofday(&tv, NULL);
 
 	/* Get key buffer. */
 	buf = EVBUFFER_DATA(tty->in);
 	len = EVBUFFER_LENGTH(tty->in);
-
 	if (len == 0)
 		return (0);
 	log_debug("%s: keys are %zu (%.*s)", c->name, len, (int)len, buf);
@@ -606,7 +609,7 @@ tty_keys_next(struct tty *tty)
 	}
 
 	/* Is this a mouse key press? */
-	switch (tty_keys_mouse(tty, buf, len, &size)) {
+	switch (tty_keys_mouse(tty, buf, len, &size, &m)) {
 	case 0:		/* yes */
 		key = KEYC_MOUSE;
 		goto complete_key;
@@ -725,8 +728,14 @@ complete_key:
 	}
 
 	/* Fire the key. */
-	if (key != KEYC_UNKNOWN)
-		server_client_handle_key(tty->client, key);
+	if (key != KEYC_UNKNOWN) {
+		event = xmalloc(sizeof *event);
+		event->key = key;
+		memcpy(&event->m, &m, sizeof event->m);
+
+		item = cmdq_get_callback(server_client_key_callback, event);
+		cmdq_append(c, item);
+	}
 
 	return (1);
 
@@ -756,12 +765,12 @@ tty_keys_callback(__unused int fd, __unused short events, void *data)
  * (probably a mouse sequence but need more data).
  */
 static int
-tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size)
+tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size,
+    struct mouse_event *m)
 {
-	struct client		*c = tty->client;
-	struct mouse_event	*m = &tty->mouse;
-	u_int			 i, x, y, b, sgr_b;
-	u_char			 sgr_type, ch;
+	struct client	*c = tty->client;
+	u_int		 i, x, y, b, sgr_b;
+	u_char		 sgr_type, ch;
 
 	/*
 	 * Standard mouse sequences are \033[M followed by three characters
@@ -882,14 +891,18 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size)
 		return (-1);
 
 	/* Fill mouse event. */
-	m->lx = m->x;
+	m->lx = tty->mouse_last_x;
 	m->x = x;
-	m->ly = m->y;
+	m->ly = tty->mouse_last_y;
 	m->y = y;
 	m->lb = m->b;
 	m->b = b;
 	m->sgr_type = sgr_type;
 	m->sgr_b = sgr_b;
+
+	/* Update last mouse state. */
+	tty->mouse_last_x = x;
+	tty->mouse_last_y = y;
 
 	return (0);
 }

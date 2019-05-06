@@ -39,8 +39,8 @@ const struct cmd_entry cmd_display_message_entry = {
 	.name = "display-message",
 	.alias = "display",
 
-	.args = { "ac:pt:F:v", 0, 1 },
-	.usage = "[-apv] [-c target-client] [-F format] "
+	.args = { "ac:Ipt:F:v", 0, 1 },
+	.usage = "[-aIpv] [-c target-client] [-F format] "
 		 CMD_TARGET_PANE_USAGE " [message]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -66,9 +66,18 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 	struct winlink		*wl = item->target.wl;
 	struct window_pane	*wp = item->target.wp;
 	const char		*template;
-	char			*msg;
+	char			*msg, *cause;
 	struct format_tree	*ft;
 	int			 flags;
+
+	if (args_has(args, 'I')) {
+		if (window_pane_start_input(wp, item, &cause) != 0) {
+			cmdq_error(item, "%s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
+		}
+		return (CMD_RETURN_WAIT);
+	}
 
 	if (args_has(args, 'F') && args->argc != 0) {
 		cmdq_error(item, "only one of -F or argument must be given");

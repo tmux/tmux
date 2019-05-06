@@ -66,7 +66,7 @@ cmd_select_pane_redraw(struct window *w)
 	 */
 
 	TAILQ_FOREACH(c, &clients, entry) {
-		if (c->session == NULL)
+		if (c->session == NULL || (c->flags & CLIENT_CONTROL))
 			continue;
 		if (c->session->curw->window == w && tty_window_bigger(&c->tty))
 			server_redraw_client(c);
@@ -196,7 +196,7 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 	window_redraw_active_switch(w, wp);
 	if (window_set_active_pane(w, wp, 1)) {
 		cmd_find_from_winlink_pane(current, wl, wp, 0);
-		hooks_insert(s->hooks, item, current, "after-select-pane");
+		cmdq_insert_hook(s, item, current, "after-select-pane");
 		cmd_select_pane_redraw(w);
 	}
 

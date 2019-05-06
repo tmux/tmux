@@ -329,7 +329,7 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	cmd_find_from_session(&fs, s, 0);
-	hooks_insert(s->hooks, item, &fs, "after-new-session");
+	cmdq_insert_hook(s, item, &fs, "after-new-session");
 
 	free(cwd);
 	free(newname);

@@ -33,7 +33,7 @@
 static void	server_client_free(int, short, void *);
 static void	server_client_check_focus(struct window_pane *);
 static void	server_client_check_resize(struct window_pane *);
-static key_code	server_client_check_mouse(struct client *);
+static key_code	server_client_check_mouse(struct client *, struct key_event *);
 static void	server_client_repeat_timer(int, short, void *);
 static void	server_client_click_timer(int, short, void *);
 static void	server_client_check_exit(struct client *);
@@ -405,10 +405,10 @@ server_client_exec(struct client *c, const char *cmd)
 
 /* Check for mouse keys. */
 static key_code
-server_client_check_mouse(struct client *c)
+server_client_check_mouse(struct client *c, struct key_event *event)
 {
+	struct mouse_event	*m = &event->m;
 	struct session		*s = c->session;
-	struct mouse_event	*m = &c->tty.mouse;
 	struct winlink		*wl;
 	struct window_pane	*wp;
 	u_int			 x, y, b, sx, sy, px, py;
@@ -417,7 +417,13 @@ server_client_check_mouse(struct client *c)
 	struct timeval		 tv;
 	struct style_range	*sr;
 	enum { NOTYPE, MOVE, DOWN, UP, DRAG, WHEEL, DOUBLE, TRIPLE } type;
-	enum { NOWHERE, PANE, STATUS, STATUS_LEFT, STATUS_RIGHT, STATUS_DEFAULT, BORDER } where;
+	enum { NOWHERE,
+	       PANE,
+	       STATUS,
+	       STATUS_LEFT,
+	       STATUS_RIGHT,
+	       STATUS_DEFAULT,
+	       BORDER } where;
 
 	type = NOTYPE;
 	where = NOWHERE;
@@ -440,9 +446,11 @@ server_client_check_mouse(struct client *c)
 		type = DRAG;
 		if (c->tty.mouse_drag_flag) {
 			x = m->x, y = m->y, b = m->b;
+			if (x == m->lx && y == m->ly)
+				return (KEYC_UNKNOWN);
 			log_debug("drag update at %u,%u", x, y);
 		} else {
-			x = m->lx - m->ox, y = m->ly - m->oy, b = m->lb;
+			x = m->lx, y = m->ly, b = m->lb;
 			log_debug("drag start at %u,%u", x, y);
 		}
 	} else if (MOUSE_WHEEL(m->b)) {
@@ -547,8 +555,6 @@ have_event:
 			return (KEYC_UNKNOWN);
 		px = px + m->ox;
 		py = py + m->oy;
-		m->x = x + m->ox;
-		m->y = y + m->oy;
 
 		/* Try the pane borders if not zoomed. */
 		if (~s->curw->window->flags & WINDOW_ZOOMED) {
@@ -974,11 +980,17 @@ server_client_assume_paste(struct session *s)
 	return (0);
 }
 
-/* Handle data key input from client. */
-void
-server_client_handle_key(struct client *c, key_code key)
+/*
+ * Handle data key input from client. This owns and can modify the key event it
+ * is given and is responsible for freeing it.
+ */
+enum cmd_retval
+server_client_key_callback(struct cmdq_item *item, void *data)
 {
-	struct mouse_event		*m = &c->tty.mouse;
+	struct client			*c = item->client;
+	struct key_event		*event = data;
+	key_code			 key = event->key;
+	struct mouse_event		*m = &event->m;
 	struct session			*s = c->session;
 	struct winlink			*wl;
 	struct window			*w;
@@ -993,7 +1005,7 @@ server_client_handle_key(struct client *c, key_code key)
 
 	/* Check the client is good to accept input. */
 	if (s == NULL || (c->flags & (CLIENT_DEAD|CLIENT_SUSPENDED)) != 0)
-		return;
+		goto out;
 	wl = s->curw;
 	w = wl->window;
 
@@ -1005,11 +1017,11 @@ server_client_handle_key(struct client *c, key_code key)
 	/* Number keys jump to pane in identify mode. */
 	if (c->flags & CLIENT_IDENTIFY && key >= '0' && key <= '9') {
 		if (c->flags & CLIENT_READONLY)
-			return;
+			goto out;
 		window_unzoom(w);
 		wp = window_pane_at_index(w, key - '0');
 		server_client_clear_identify(c, wp);
-		return;
+		goto out;
 	}
 
 	/* Handle status line. */
@@ -1019,19 +1031,19 @@ server_client_handle_key(struct client *c, key_code key)
 	}
 	if (c->prompt_string != NULL) {
 		if (c->flags & CLIENT_READONLY)
-			return;
+			goto out;
 		if (status_prompt_key(c, key) == 0)
-			return;
+			goto out;
 	}
 
 	/* Check for mouse keys. */
 	m->valid = 0;
 	if (key == KEYC_MOUSE) {
 		if (c->flags & CLIENT_READONLY)
-			return;
-		key = server_client_check_mouse(c);
+			goto out;
+		key = server_client_check_mouse(c, event);
 		if (key == KEYC_UNKNOWN)
-			return;
+			goto out;
 
 		m->valid = 1;
 		m->key = key;
@@ -1042,10 +1054,9 @@ server_client_handle_key(struct client *c, key_code key)
 		 */
 		if (key == KEYC_DRAGGING) {
 			c->tty.mouse_drag_update(c, m);
-			return;
+			goto out;
 		}
-	} else
-		m->valid = 0;
+	}
 
 	/* Find affected pane. */
 	if (!KEYC_IS_MOUSE(key) || cmd_find_from_mouse(&fs, m, 0) != 0)
@@ -1084,7 +1095,7 @@ table_changed:
 	    strcmp(table->name, "prefix") != 0) {
 		server_client_set_key_table(c, "prefix");
 		server_status_client(c);
-		return;
+		goto out;
 	}
 	flags = c->flags;
 
@@ -1142,9 +1153,9 @@ try_again:
 		server_status_client(c);
 
 		/* Execute the key binding. */
-		key_bindings_dispatch(bd, NULL, c, m, &fs);
+		key_bindings_dispatch(bd, item, c, m, &fs);
 		key_bindings_unref_table(table);
-		return;
+		goto out;
 	}
 
 	/*
@@ -1179,14 +1190,18 @@ try_again:
 	if (first != table && (~flags & CLIENT_REPEAT)) {
 		server_client_set_key_table(c, NULL);
 		server_status_client(c);
-		return;
+		goto out;
 	}
 
 forward_key:
 	if (c->flags & CLIENT_READONLY)
-		return;
+		goto out;
 	if (wp != NULL)
 		window_pane_key(wp, c, s, wl, key, m);
+
+out:
+	free(event);
+	return (CMD_RETURN_NORMAL);
 }
 
 /* Client functions that need to happen every loop. */
@@ -1666,8 +1681,7 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 			evbuffer_add(c->stdin_data, stdindata.data,
 			    stdindata.size);
 		}
-		c->stdin_callback(c, c->stdin_closed,
-		    c->stdin_callback_data);
+		c->stdin_callback(c, c->stdin_closed, c->stdin_callback_data);
 		break;
 	case MSG_RESIZE:
 		if (datalen != 0)

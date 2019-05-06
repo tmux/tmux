@@ -920,9 +920,8 @@ format_find(struct format_tree *ft, const char *key, int modifiers)
 	struct environ_entry	*envent;
 	static char		 s[64];
 	struct options_entry	*o;
-	const char		*found;
 	int			 idx;
-	char			*copy, *saved;
+	char			*found, *saved;
 
 	if (~modifiers & FORMAT_TIMESTRING) {
 		o = options_parse_get(global_options, key, &idx, 0);
@@ -949,12 +948,11 @@ format_find(struct format_tree *ft, const char *key, int modifiers)
 				return (NULL);
 			ctime_r(&fe->t, s);
 			s[strcspn(s, "\n")] = '\0';
-			found = s;
+			found = xstrdup(s);
 			goto found;
 		}
 		if (fe->t != 0) {
-			xsnprintf(s, sizeof s, "%lld", (long long)fe->t);
-			found = s;
+			xasprintf(&found, "%lld", (long long)fe->t);
 			goto found;
 		}
 		if (fe->value == NULL && fe->cb != NULL) {
@@ -962,7 +960,7 @@ format_find(struct format_tree *ft, const char *key, int modifiers)
 			if (fe->value == NULL)
 				fe->value = xstrdup("");
 		}
-		found = fe->value;
+		found = xstrdup(fe->value);
 		goto found;
 	}
 
@@ -973,7 +971,7 @@ format_find(struct format_tree *ft, const char *key, int modifiers)
 		if (envent == NULL)
 			envent = environ_find(global_environ, key);
 		if (envent != NULL) {
-			found = envent->value;
+			found = xstrdup(envent->value);
 			goto found;
 		}
 	}
@@ -983,23 +981,22 @@ format_find(struct format_tree *ft, const char *key, int modifiers)
 found:
 	if (found == NULL)
 		return (NULL);
-	copy = xstrdup(found);
 	if (modifiers & FORMAT_BASENAME) {
-		saved = copy;
-		copy = xstrdup(basename(saved));
+		saved = found;
+		found = xstrdup(basename(saved));
 		free(saved);
 	}
 	if (modifiers & FORMAT_DIRNAME) {
-		saved = copy;
-		copy = xstrdup(dirname(saved));
+		saved = found;
+		found = xstrdup(dirname(saved));
 		free(saved);
 	}
 	if (modifiers & FORMAT_QUOTE) {
-		saved = copy;
-		copy = xstrdup(format_quote(saved));
+		saved = found;
+		found = xstrdup(format_quote(saved));
 		free(saved);
 	}
-	return (copy);
+	return (found);
 }
 
 /* Skip until end. */
@@ -2050,7 +2047,10 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 
 	if ((wp->flags & PANE_STATUSREADY) && WIFEXITED(status))
 		format_add(ft, "pane_dead_status", "%d", WEXITSTATUS(status));
-	format_add(ft, "pane_dead", "%d", wp->fd == -1);
+	if (~wp->flags & PANE_EMPTY)
+		format_add(ft, "pane_dead", "%d", wp->fd == -1);
+	else
+		format_add(ft, "pane_dead", "0");
 
 	format_add(ft, "pane_left", "%u", wp->xoff);
 	format_add(ft, "pane_top", "%u", wp->yoff);

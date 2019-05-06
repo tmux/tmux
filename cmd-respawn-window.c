@@ -34,9 +34,9 @@ const struct cmd_entry cmd_respawn_window_entry = {
 	.name = "respawn-window",
 	.alias = "respawnw",
 
-	.args = { "c:kt:", 0, -1 },
-	.usage = "[-c start-directory] [-k] " CMD_TARGET_WINDOW_USAGE
-	         " [command]",
+	.args = { "c:e:kt:", 0, -1 },
+	.usage = "[-k] [-c start-directory] [-e environment] "
+		 CMD_TARGET_WINDOW_USAGE " [command]",
 
 	.target = { 't', CMD_FIND_WINDOW, 0 },
 
@@ -52,6 +52,8 @@ cmd_respawn_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct session		*s = item->target.s;
 	struct winlink		*wl = item->target.wl;
 	char			*cause = NULL;
+	const char		*add;
+	struct args_value	*value;
 
 	memset(&sc, 0, sizeof sc);
 	sc.item = item;
@@ -61,6 +63,13 @@ cmd_respawn_window_exec(struct cmd *self, struct cmdq_item *item)
 	sc.name = NULL;
 	sc.argc = args->argc;
 	sc.argv = args->argv;
+	sc.environ = environ_create();
+
+	add = args_first_value(args, 'e', &value);
+	while (add != NULL) {
+		environ_put(sc.environ, add);
+		add = args_next_value(&value);
+	}
 
 	sc.idx = -1;
 	sc.cwd = args_get(args, 'c');
@@ -77,5 +86,6 @@ cmd_respawn_window_exec(struct cmd *self, struct cmdq_item *item)
 
 	server_redraw_window(wl->window);
 
+	environ_free(sc.environ);
 	return (CMD_RETURN_NORMAL);
 }

@@ -70,6 +70,11 @@ const struct window_mode *all_window_modes[] = {
 	NULL
 };
 
+struct window_pane_input_data {
+	struct cmdq_item	*item;
+	u_int			 wp;
+};
+
 static struct window_pane *window_pane_create(struct window *, u_int, u_int,
 		    u_int);
 static void	window_pane_destroy(struct window_pane *);
@@ -342,6 +347,8 @@ window_destroy(struct window *w)
 		layout_free_cell(w->saved_layout_root);
 	free(w->old_layout);
 
+	window_destroy_panes(w);
+
 	if (event_initialized(&w->name_event))
 		evtimer_del(&w->name_event);
 
@@ -351,8 +358,6 @@ window_destroy(struct window *w)
 		event_del(&w->offset_timer);
 
 	options_free(w->options);
-
-	window_destroy_panes(w);
 
 	free(w->name);
 	free(w);
@@ -1466,4 +1471,46 @@ winlink_shuffle_up(struct session *s, struct winlink *wl)
 	}
 
 	return (idx);
+}
+
+static void
+window_pane_input_callback(struct client *c, int closed, void *data)
+{
+	struct window_pane_input_data	*cdata = data;
+	struct window_pane		*wp;
+
+	wp = window_pane_find_by_id(cdata->wp);
+	if (wp == NULL || closed || c->flags & CLIENT_DEAD) {
+		c->stdin_callback = NULL;
+		server_client_unref(c);
+
+		cdata->item->flags &= ~CMDQ_WAITING;
+		free(cdata);
+
+		return;
+	}
+
+	if (evbuffer_add_buffer(wp->event->input, c->stdin_data) != 0)
+		evbuffer_drain(c->stdin_data, EVBUFFER_LENGTH(c->stdin_data));
+	input_parse(wp);
+}
+
+int
+window_pane_start_input(struct window_pane *wp, struct cmdq_item *item,
+    char **cause)
+{
+	struct client			*c = item->client;
+	struct window_pane_input_data	*cdata;
+
+	if (~wp->flags & PANE_EMPTY) {
+		*cause = xstrdup("pane is not empty");
+		return (-1);
+	}
+
+	cdata = xmalloc(sizeof *cdata);
+	cdata->item = item;
+	cdata->wp = wp->id;
+
+	return (server_set_stdin_callback(c, window_pane_input_callback, cdata,
+	    cause));
 }
