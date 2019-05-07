@@ -43,8 +43,7 @@ static void	server_client_check_redraw(struct client *);
 static void	server_client_set_title(struct client *);
 static void	server_client_reset_state(struct client *);
 static int	server_client_assume_paste(struct session *);
-static void	server_client_clear_identify(struct client *,
-		    struct window_pane *);
+static void	server_client_clear_overlay(struct client *);
 
 static void	server_client_dispatch(struct imsg *, void *);
 static void	server_client_dispatch_command(struct client *, struct imsg *);
@@ -66,44 +65,53 @@ server_client_how_many(void)
 	return (n);
 }
 
-/* Identify mode callback. */
+/* Overlay timer callback. */
 static void
-server_client_callback_identify(__unused int fd, __unused short events,
-    void *data)
+server_client_overlay_timer(__unused int fd, __unused short events, void *data)
 {
-	server_client_clear_identify(data, NULL);
+	server_client_clear_overlay(data);
 }
 
-/* Set identify mode on client. */
+/* Set an overlay on client. */
 void
-server_client_set_identify(struct client *c, u_int delay)
+server_client_set_overlay(struct client *c, u_int delay, overlay_draw_cb drawcb,
+    overlay_key_cb keycb, overlay_free_cb freecb, void *data)
 {
 	struct timeval	tv;
 
 	tv.tv_sec = delay / 1000;
 	tv.tv_usec = (delay % 1000) * 1000L;
 
-	if (event_initialized(&c->identify_timer))
-		evtimer_del(&c->identify_timer);
-	evtimer_set(&c->identify_timer, server_client_callback_identify, c);
+	if (event_initialized(&c->overlay_timer))
+		evtimer_del(&c->overlay_timer);
+	evtimer_set(&c->overlay_timer, server_client_overlay_timer, c);
 	if (delay != 0)
-		evtimer_add(&c->identify_timer, &tv);
+		evtimer_add(&c->overlay_timer, &tv);
 
-	c->flags |= CLIENT_IDENTIFY;
+	c->overlay_draw = drawcb;
+	c->overlay_key = keycb;
+	c->overlay_free = freecb;
+	c->overlay_data = data;
+
 	c->tty.flags |= (TTY_FREEZE|TTY_NOCURSOR);
 	server_redraw_client(c);
 }
 
-/* Clear identify mode on client. */
+/* Clear overlay mode on client. */
 static void
-server_client_clear_identify(struct client *c, struct window_pane *wp)
+server_client_clear_overlay(struct client *c)
 {
-	if (~c->flags & CLIENT_IDENTIFY)
+	if (c->overlay_draw == NULL)
 		return;
-	c->flags &= ~CLIENT_IDENTIFY;
 
-	if (c->identify_callback != NULL)
-		c->identify_callback(c, wp);
+	if (event_initialized(&c->overlay_timer))
+		evtimer_del(&c->overlay_timer);
+
+	if (c->overlay_free != NULL)
+		c->overlay_free(c);
+
+	c->overlay_draw = NULL;
+	c->overlay_key = NULL;
 
 	c->tty.flags &= ~(TTY_FREEZE|TTY_NOCURSOR);
 	server_redraw_client(c);
@@ -257,7 +265,7 @@ server_client_lost(struct client *c)
 
 	c->flags |= CLIENT_DEAD;
 
-	server_client_clear_identify(c, NULL);
+	server_client_clear_overlay(c);
 	status_prompt_clear(c);
 	status_message_clear(c);
 
@@ -290,9 +298,6 @@ server_client_lost(struct client *c)
 	evtimer_del(&c->click_timer);
 
 	key_bindings_unref_table(c->keytable);
-
-	if (event_initialized(&c->identify_timer))
-		evtimer_del(&c->identify_timer);
 
 	free(c->message_string);
 	if (event_initialized(&c->message_timer))
@@ -1016,21 +1021,9 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 		fatal("gettimeofday failed");
 	session_update_activity(s, &c->activity_time);
 
-	/* Number keys jump to pane in identify mode. */
-	if (c->flags & CLIENT_IDENTIFY && key >= '0' && key <= '9') {
-		if (c->flags & CLIENT_READONLY)
-			goto out;
-		window_unzoom(w);
-		wp = window_pane_at_index(w, key - '0');
-		server_client_clear_identify(c, wp);
-		goto out;
-	}
-
 	/* Handle status line. */
-	if (!(c->flags & CLIENT_READONLY)) {
+	if (~c->flags & CLIENT_READONLY)
 		status_message_clear(c);
-		server_client_clear_identify(c, NULL);
-	}
 	if (c->prompt_string != NULL) {
 		if (c->flags & CLIENT_READONLY)
 			goto out;
@@ -1211,27 +1204,19 @@ int
 server_client_handle_key(struct client *c, struct key_event *event)
 {
 	struct session		*s = c->session;
-	struct window		*w;
-	struct window_pane	*wp = NULL;
 	struct cmdq_item	*item;
 
 	/* Check the client is good to accept input. */
 	if (s == NULL || (c->flags & (CLIENT_DEAD|CLIENT_SUSPENDED)) != 0)
 		return (0);
-	w = s->curw->window;
 
 	/*
-	 * Key presses in identify mode are a special case. The queue might be
+	 * Key presses in overlay mode are a special case. The queue might be
 	 * blocked so they need to be processed immediately rather than queued.
 	 */
-	if (c->flags & CLIENT_IDENTIFY) {
-		if (c->flags & CLIENT_READONLY)
-			return (0);
-		if (event->key >= '0' && event->key <= '9') {
-			window_unzoom(w);
-			wp = window_pane_at_index(w, event->key - '0');
-		}
-		server_client_clear_identify(c, wp);
+	if ((~c->flags & CLIENT_READONLY) && c->overlay_key != NULL) {
+		if (c->overlay_key(c, event) != 0)
+			server_client_clear_overlay(c);
 		return (0);
 	}
 
