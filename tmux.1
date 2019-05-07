@@ -176,27 +176,16 @@ is specified, the default socket directory is not used and any
 .Fl L
 flag is ignored.
 .It Fl u
-When starting,
-.Nm
-looks for the
+Write UTF-8 output to the terminal even if the first environment
+variable of
 .Ev LC_ALL ,
-.Ev LC_CTYPE
-and
+.Ev LC_CTYPE ,
+or
 .Ev LANG
-environment variables: if the first found contains
-.Ql UTF-8 ,
-then the terminal is assumed to support UTF-8.
-This is not always correct: the
-.Fl u
-flag explicitly informs
-.Nm
-that UTF-8 is supported.
-.Pp
-Note that
-.Nm
-itself always accepts UTF-8; this controls whether it will send UTF-8
-characters to the terminal it is running (if not, they are replaced by
-.Ql _ ) .
+that is set does not contain
+.Qq UTF-8
+or
+.Qq UTF8 .
 .It Fl v
 Request verbose logging.
 Log messages will be saved into
@@ -3911,7 +3900,7 @@ line will not be updated more than once a second.
 Commands are executed with the
 .Nm
 global environment set (see the
-.Sx ENVIRONMENT
+.Sx GLOBAL AND SESSION ENVIRONMENT
 section).
 .Pp
 The following variables are available, where appropriate:
@@ -4228,7 +4217,7 @@ It can also be modified with the
 .Ic select-pane
 .Fl T
 command.
-.Sh ENVIRONMENT
+.Sh GLOBAL AND SESSION ENVIRONMENT
 When the server is started,
 .Nm
 copies the environment into the
@@ -4914,6 +4903,91 @@ The window with ID
 .Ar window-id
 was renamed to
 .Ar name .
+.El
+.Sh ENVIRONMENT
+When
+.Nm
+is started, it inspects the following environment variables:
+.Bl -tag -width LC_CTYPE
+.It Ev EDITOR
+If the command specified in this variable contains the string
+.Ql vi
+and
+.Ev VISUAL
+is unset, use vi-style key bindings.
+Overridden by the
+.Ic mode-keys
+and
+.Ic status-keys
+options.
+.It Ev HOME
+The user's login directory.
+If unset, the
+.Xr passwd 5
+database is consulted.
+.It Ev LC_CTYPE
+The character encoding
+.Xr locale 1 .
+It is used for two separate purposes.
+For output to the terminal, UTF-8 is used if the
+.Fl u
+option is given or if
+.Ev LC_CTYPE
+contains
+.Qq UTF-8
+or
+.Qq UTF8 .
+Otherwise, only ASCII characters are written and non-ASCII characters
+are replaced with underscores
+.Pq Ql _ .
+For input,
+.Nm
+always runs with a UTF-8 locale.
+If en_US.UTF-8 is provided by the operating system it is used and
+.Ev LC_CTYPE
+is ignored for input.
+Otherwise,
+.Ev LC_CTYPE
+tells
+.Nm
+what the UTF-8 locale is called on the current system.
+If the locale specified by
+.Ev LC_CTYPE
+is not available or is not a UTF-8 locale,
+.Nm
+exits with an error message.
+.It Ev LC_TIME
+The date and time format
+.Xr locale 1 .
+It is used for locale-dependent
+.Xr strftime 3
+format specifiers.
+.It Ev PWD
+The current working directory to be set in the global environment.
+This may be useful if it contains symbolic links.
+If the value of the variable does not match the current working
+directory, the variable is ignored and the result of
+.Xr getcwd 3
+is used instead.
+.It Ev SHELL
+The absolute path to the default shell for new windows.
+See the
+.Ic default-shell
+option for details.
+.It Ev TMUX_TMPDIR
+The parent directory of the directory containing the server sockets.
+See the
+.Fl L
+option for details.
+.It Ev VISUAL
+If the command specified in this variable contains the string
+.Ql vi ,
+use vi-style key bindings.
+Overridden by the
+.Ic mode-keys
+and
+.Ic status-keys
+options.
 .El
 .Sh FILES
 .Bl -tag -width "@SYSCONFDIR@/tmux.confXXX" -compact
