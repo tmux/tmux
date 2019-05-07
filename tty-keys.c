@@ -573,7 +573,6 @@ tty_keys_next(struct tty *tty)
 	cc_t			 bspace;
 	int			 delay, expired = 0, n;
 	key_code		 key;
-	struct cmdq_item	*item;
 	struct mouse_event	 m = { 0 };
 	struct key_event	*event;
 
@@ -732,9 +731,8 @@ complete_key:
 		event = xmalloc(sizeof *event);
 		event->key = key;
 		memcpy(&event->m, &m, sizeof event->m);
-
-		item = cmdq_get_callback(server_client_key_callback, event);
-		cmdq_append(c, item);
+		if (!server_client_handle_key(c, event))
+			free(event);
 	}
 
 	return (1);

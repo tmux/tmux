@@ -986,7 +986,7 @@ server_client_assume_paste(struct session *s)
  * Handle data key input from client. This owns and can modify the key event it
  * is given and is responsible for freeing it.
  */
-enum cmd_retval
+static enum cmd_retval
 server_client_key_callback(struct cmdq_item *item, void *data)
 {
 	struct client			*c = item->client;
@@ -1204,6 +1204,44 @@ forward_key:
 out:
 	free(event);
 	return (CMD_RETURN_NORMAL);
+}
+
+/* Handle a key event. */
+int
+server_client_handle_key(struct client *c, struct key_event *event)
+{
+	struct session		*s = c->session;
+	struct window		*w;
+	struct window_pane	*wp = NULL;
+	struct cmdq_item	*item;
+
+	/* Check the client is good to accept input. */
+	if (s == NULL || (c->flags & (CLIENT_DEAD|CLIENT_SUSPENDED)) != 0)
+		return (0);
+	w = s->curw->window;
+
+	/*
+	 * Key presses in identify mode are a special case. The queue might be
+	 * blocked so they need to be processed immediately rather than queued.
+	 */
+	if (c->flags & CLIENT_IDENTIFY) {
+		if (c->flags & CLIENT_READONLY)
+			return (0);
+		if (event->key >= '0' && event->key <= '9') {
+			window_unzoom(w);
+			wp = window_pane_at_index(w, event->key - '0');
+		}
+		server_client_clear_identify(c, wp);
+		return (0);
+	}
+
+	/*
+	 * Add the key to the queue so it happens after any commands queued by
+	 * previous keys.
+	 */
+	item = cmdq_get_callback(server_client_key_callback, event);
+	cmdq_append(c, item);
+	return (1);
 }
 
 /* Client functions that need to happen every loop. */
