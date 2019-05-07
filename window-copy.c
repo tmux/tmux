@@ -902,9 +902,14 @@ window_copy_cmd_history_bottom(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
 	struct window_copy_mode_data	*data = wme->data;
+	u_int				 oy;
 
-	data->cx = 0;
+	oy = screen_hsize(data->backing) + data->cy - data->oy;
+	if (data->lineflag == LINE_SEL_RIGHT_LEFT && oy == data->endsely)
+		window_copy_other_end(wme);
+
 	data->cy = screen_size_y(&data->screen) - 1;
+	data->cx = window_copy_find_length(wme, data->cy);
 	data->oy = 0;
 
 	window_copy_update_selection(wme, 1);
@@ -916,9 +921,14 @@ window_copy_cmd_history_top(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
 	struct window_copy_mode_data	*data = wme->data;
+	u_int				 oy;
 
-	data->cx = 0;
+	oy = screen_hsize(data->backing) + data->cy - data->oy;
+	if (data->lineflag == LINE_SEL_LEFT_RIGHT && oy == data->sely)
+		window_copy_other_end(wme);
+
 	data->cy = 0;
+	data->cx = 0;
 	data->oy = screen_hsize(data->backing);
 
 	window_copy_update_selection(wme, 1);
