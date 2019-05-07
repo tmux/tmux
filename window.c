@@ -1477,6 +1477,9 @@ window_pane_input_callback(struct client *c, int closed, void *data)
 {
 	struct window_pane_input_data	*cdata = data;
 	struct window_pane		*wp;
+	struct evbuffer			*evb = c->stdin_data;
+	u_char				*buf = EVBUFFER_DATA(evb);
+	size_t				 len = EVBUFFER_LENGTH(evb);
 
 	wp = window_pane_find_by_id(cdata->wp);
 	if (wp == NULL || closed || c->flags & CLIENT_DEAD) {
@@ -1489,9 +1492,8 @@ window_pane_input_callback(struct client *c, int closed, void *data)
 		return;
 	}
 
-	if (evbuffer_add_buffer(wp->event->input, c->stdin_data) != 0)
-		evbuffer_drain(c->stdin_data, EVBUFFER_LENGTH(c->stdin_data));
-	input_parse(wp);
+	input_parse_buffer(wp, buf, len);
+	evbuffer_drain(evb, len);
 }
 
 int

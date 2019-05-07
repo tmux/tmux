@@ -1699,7 +1699,7 @@ char		*format_trim_right(const char *, u_int);
 
 /* notify.c */
 void	notify_hook(struct cmdq_item *, const char *);
-void	notify_input(struct window_pane *, struct evbuffer *);
+void	notify_input(struct window_pane *, const u_char *, size_t);
 void	notify_client(const char *, struct client *);
 void	notify_session(const char *, struct session *);
 void	notify_winlink(const char *, struct winlink *);
@@ -2087,6 +2087,7 @@ void	 input_free(struct window_pane *);
 void	 input_reset(struct window_pane *, int);
 struct evbuffer *input_pending(struct window_pane *);
 void	 input_parse(struct window_pane *);
+void	 input_parse_buffer(struct window_pane *, u_char *, size_t);
 
 /* input-key.c */
 void	 input_key(struct window_pane *, key_code, struct mouse_event *);
@@ -2428,7 +2429,7 @@ void	control_write_buffer(struct client *, struct evbuffer *);
 
 /* control-notify.c */
 void	control_notify_input(struct client *, struct window_pane *,
-	    struct evbuffer *);
+	    const u_char *, size_t);
 void	control_notify_pane_mode_changed(int);
 void	control_notify_window_layout_changed(struct window *);
 void	control_notify_window_pane_changed(struct window *);
