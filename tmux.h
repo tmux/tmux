@@ -729,6 +729,21 @@ struct screen_write_ctx {
 	u_int			 skipped;
 };
 
+/* Screen redraw context. */
+struct screen_redraw_ctx {
+	struct client	*c;
+
+	u_int		 statuslines;
+	int		 statustop;
+
+	int		 pane_status;
+
+	u_int		 sx;
+	u_int		 sy;
+	u_int		 ox;
+	u_int		 oy;
+};
+
 /* Screen size. */
 #define screen_size_x(s) ((s)->grid->sx)
 #define screen_size_y(s) ((s)->grid->sy)
@@ -1376,6 +1391,9 @@ struct status_line {
 /* Client connection. */
 typedef int (*prompt_input_cb)(struct client *, void *, const char *, int);
 typedef void (*prompt_free_cb)(void *);
+typedef void (*overlay_draw_cb)(struct client *, struct screen_redraw_ctx *);
+typedef int (*overlay_key_cb)(struct client *, struct key_event *);
+typedef void (*overlay_free_cb)(struct client *);
 struct client {
 	const char	*name;
 	struct tmuxpeer	*peer;
@@ -1425,7 +1443,7 @@ struct client {
 #define CLIENT_REPEAT 0x20
 #define CLIENT_SUSPENDED 0x40
 #define CLIENT_ATTACHED 0x80
-#define CLIENT_IDENTIFY 0x100
+/* 0x100 unused */
 #define CLIENT_DEAD 0x200
 #define CLIENT_REDRAWBORDERS 0x400
 #define CLIENT_READONLY 0x800
@@ -1453,12 +1471,6 @@ struct client {
 	 CLIENT_DETACHING)
 	int		 flags;
 	struct key_table *keytable;
-
-	struct event	 identify_timer;
-	void		(*identify_callback)(struct client *,
-			     struct window_pane *);
-	void		*identify_callback_data;
-	struct cmdq_item *identify_callback_item;
 
 	char		*message_string;
 	struct event	 message_timer;
@@ -1489,6 +1501,12 @@ struct client {
 	void		*pan_window;
 	u_int		 pan_ox;
 	u_int		 pan_oy;
+
+	overlay_draw_cb	 overlay_draw;
+	overlay_key_cb	 overlay_key;
+	overlay_free_cb	 overlay_free;
+	void		*overlay_data;
+	struct event	 overlay_timer;
 
 	TAILQ_ENTRY(client) entry;
 };
@@ -2010,7 +2028,8 @@ void	 server_add_accept(int);
 
 /* server-client.c */
 u_int	 server_client_how_many(void);
-void	 server_client_set_identify(struct client *, u_int);
+void	 server_client_set_overlay(struct client *, u_int, overlay_draw_cb,
+    overlay_key_cb, overlay_free_cb, void *);
 void	 server_client_set_key_table(struct client *, const char *);
 const char *server_client_get_key_table(struct client *);
 int	 server_client_check_nested(struct client *);
