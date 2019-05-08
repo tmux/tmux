@@ -77,6 +77,9 @@ server_client_set_overlay(struct client *c, u_int delay, overlay_draw_cb drawcb,
 {
 	struct timeval	tv;
 
+	if (c->overlay_draw != NULL)
+		server_client_clear_overlay(c);
+
 	tv.tv_sec = delay / 1000;
 	tv.tv_usec = (delay % 1000) * 1000L;
 
@@ -1443,6 +1446,8 @@ server_client_reset_state(struct client *c)
 
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
 		return;
+	if (c->overlay_draw != NULL)
+		return;
 	mode = s->mode;
 
 	tty_region_off(&c->tty);
@@ -1553,10 +1558,11 @@ server_client_check_redraw(struct client *c)
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
 		return;
 	if (c->flags & CLIENT_ALLREDRAWFLAGS) {
-		log_debug("%s: redraw%s%s%s", c->name,
+		log_debug("%s: redraw%s%s%s%s", c->name,
 		    (c->flags & CLIENT_REDRAWWINDOW) ? " window" : "",
 		    (c->flags & CLIENT_REDRAWSTATUS) ? " status" : "",
-		    (c->flags & CLIENT_REDRAWBORDERS) ? " borders" : "");
+		    (c->flags & CLIENT_REDRAWBORDERS) ? " borders" : "",
+		    (c->flags & CLIENT_REDRAWOVERLAY) ? " overlay" : "");
 	}
 
 	/*
@@ -1712,6 +1718,7 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 
 		if (c->flags & CLIENT_CONTROL)
 			break;
+		server_client_clear_overlay(c);
 		tty_resize(&c->tty);
 		recalculate_sizes();
 		server_redraw_client(c);
