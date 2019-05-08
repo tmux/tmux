@@ -1814,26 +1814,36 @@ input_csi_dispatch_winops(struct input_ctx *ictx)
 }
 
 /* Helper for 256 colour SGR. */
+// This handles 8-bit color index values
+//
+// fgbg		foreground (38) or background (48) color parameter
+// c		color index parameter
 static int
 input_csi_dispatch_sgr_256_do(struct input_ctx *ictx, int fgbg, int c)
 {
 	struct grid_cell	*gc = &ictx->cell.cell;
 
 	if (c == -1 || c > 255) {
+		// if color index is outside the range reset?
 		if (fgbg == 38)
 			gc->fg = 8;
 		else if (fgbg == 48)
 			gc->bg = 8;
 	} else {
+		// if color index is in range, set color on grid cell
 		if (fgbg == 38)
 			gc->fg = c | COLOUR_FLAG_256;
 		else if (fgbg == 48)
 			gc->bg = c | COLOUR_FLAG_256;
+		// TODO: kmo add undercurl color as 58
 	}
 	return (1);
 }
 
 /* Handle CSI SGR for 256 colours. */
+// This is a wrapper around input_csi_dispatch_sgr_256_do, for when the
+// parameters of a color change SGR sequence are incorrectly separated by
+// semicolons
 static void
 input_csi_dispatch_sgr_256(struct input_ctx *ictx, int fgbg, u_int *i)
 {
@@ -1845,12 +1855,20 @@ input_csi_dispatch_sgr_256(struct input_ctx *ictx, int fgbg, u_int *i)
 }
 
 /* Helper for RGB colour SGR. */
+// This handles 24-bit color values, specified by red, green and blue channel
+// parameters
+//
+// fgbg		foreground (38) or background (48) color parameter
+// r		red channel parameter
+// g		green channel parameter
+// b		blue channel parameter
 static int
 input_csi_dispatch_sgr_rgb_do(struct input_ctx *ictx, int fgbg, int r, int g,
     int b)
 {
 	struct grid_cell	*gc = &ictx->cell.cell;
 
+	// abort if any of the values is outside of the range
 	if (r == -1 || r > 255)
 		return (0);
 	if (g == -1 || g > 255)
@@ -1858,14 +1876,19 @@ input_csi_dispatch_sgr_rgb_do(struct input_ctx *ictx, int fgbg, int r, int g,
 	if (b == -1 || b > 255)
 		return (0);
 
+	// if the color parameters are valid, set the color
 	if (fgbg == 38)
 		gc->fg = colour_join_rgb(r, g, b);
 	else if (fgbg == 48)
 		gc->bg = colour_join_rgb(r, g, b);
+	// TODO: kmo add undercurl color as 58
 	return (1);
 }
 
 /* Handle CSI SGR for RGB colours. */
+// This is a wrapper around input_csi_dispatch_sgr_rgb_do, for when the
+// parameters of a color change SGR sequence are incorrectly separated by
+// semicolons
 static void
 input_csi_dispatch_sgr_rgb(struct input_ctx *ictx, int fgbg, u_int *i)
 {
@@ -1879,6 +1902,10 @@ input_csi_dispatch_sgr_rgb(struct input_ctx *ictx, int fgbg, u_int *i)
 }
 
 /* Handle CSI SGR with a ISO parameter. */
+// That means, handle parameters of an attribute
+//
+// ictx		The input context
+// i		index of the attribute, whose parameters to handle
 static void
 input_csi_dispatch_sgr_colon(struct input_ctx *ictx, u_int i)
 {
@@ -1892,6 +1919,8 @@ input_csi_dispatch_sgr_colon(struct input_ctx *ictx, u_int i)
 		p[n] = -1;
 	n = 0;
 
+	// parse all parameter strings of the attribute to integers and put them
+	// in p
 	ptr = copy = xstrdup(s);
 	while ((out = strsep(&ptr, ":")) != NULL) {
 		if (*out != '\0') {
@@ -1907,31 +1936,41 @@ input_csi_dispatch_sgr_colon(struct input_ctx *ictx, u_int i)
 	free(copy);
 
 	if (n == 0)
+		// no parameters: done
 		return;
 	if (p[0] == 4) {
+		// 4 -> underscore attribute: handle parameters
 		if (n != 2)
+			// no parameters: done
 			return;
 		switch (p[1]) {
 		case 0:
+			// reset to no underscore
 			gc->attr &= ~GRID_ATTR_ALL_UNDERSCORE;
 			break;
+		// all of the following: reset and set to underscore n
 		case 1:
+			// straight
 			gc->attr &= ~GRID_ATTR_ALL_UNDERSCORE;
 			gc->attr |= GRID_ATTR_UNDERSCORE;
 			break;
 		case 2:
+			// double
 			gc->attr &= ~GRID_ATTR_ALL_UNDERSCORE;
 			gc->attr |= GRID_ATTR_UNDERSCORE_2;
 			break;
 		case 3:
+			// curly
 			gc->attr &= ~GRID_ATTR_ALL_UNDERSCORE;
 			gc->attr |= GRID_ATTR_UNDERSCORE_3;
 			break;
 		case 4:
+			// dotted
 			gc->attr &= ~GRID_ATTR_ALL_UNDERSCORE;
 			gc->attr |= GRID_ATTR_UNDERSCORE_4;
 			break;
 		case 5:
+			// dashed
 			gc->attr &= ~GRID_ATTR_ALL_UNDERSCORE;
 			gc->attr |= GRID_ATTR_UNDERSCORE_5;
 			break;
@@ -1939,6 +1978,9 @@ input_csi_dispatch_sgr_colon(struct input_ctx *ictx, u_int i)
 		return;
 	}
 	if (p[0] != 38 && p[0] != 48)
+		// TODO: kmo add undercurl color as 58
+		// return, if it's not the foreground or background color
+		// attribute
 		return;
 	if (p[1] == -1)
 		i = 2;
@@ -1946,12 +1988,14 @@ input_csi_dispatch_sgr_colon(struct input_ctx *ictx, u_int i)
 		i = 1;
 	switch (p[i]) {
 	case 2:
+		// handle 24-bit (truecolor) parameters
 		if (n < i + 4)
 			break;
 		input_csi_dispatch_sgr_rgb_do(ictx, p[0], p[i + 1], p[i + 2],
 		    p[i + 3]);
 		break;
 	case 5:
+		// handle 8-bit color index
 		if (n < i + 2)
 			break;
 		input_csi_dispatch_sgr_256_do(ictx, p[0], p[i + 1]);
@@ -1960,6 +2004,7 @@ input_csi_dispatch_sgr_colon(struct input_ctx *ictx, u_int i)
 }
 
 /* Handle CSI SGR. */
+// Handle an SGR (Select Graphic Rendition) escape sequence
 static void
 input_csi_dispatch_sgr(struct input_ctx *ictx)
 {
@@ -1967,27 +2012,39 @@ input_csi_dispatch_sgr(struct input_ctx *ictx)
 	u_int			 i;
 	int			 n;
 
+	// if the SGR does not have any parameters, reset to default
 	if (ictx->param_list_len == 0) {
 		memcpy(gc, &grid_default_cell, sizeof *gc);
 		return;
 	}
 
+	// go over each parameter of the SGR sequence (semicolon-separated)
 	for (i = 0; i < ictx->param_list_len; i++) {
 		if (ictx->param_list[i].type == INPUT_STRING) {
+			// handle parameter, that was parsed as a string
+			// (most likely because it had parameters itself)
 			input_csi_dispatch_sgr_colon(ictx, i);
 			continue;
 		}
+		// handle direct number parameters
 		n = input_get(ictx, i, 0, 0);
 		if (n == -1)
+			// not set: skip
 			continue;
 
 		if (n == 38 || n == 48) {
+			// TODO: kmo handle underscore color as 58
+			// foreground or background color
+			// when it's parameters are (incorrectly) separated with
+			// a semicolon
 			i++;
 			switch (input_get(ictx, i, 0, -1)) {
 			case 2:
+				// handle 24-bit color
 				input_csi_dispatch_sgr_rgb(ictx, n, &i);
 				break;
 			case 5:
+				// handle 8-bit color
 				input_csi_dispatch_sgr_256(ictx, n, &i);
 				break;
 			}
@@ -2030,6 +2087,7 @@ input_csi_dispatch_sgr(struct input_ctx *ictx)
 			gc->attr &= ~GRID_ATTR_ITALICS;
 			break;
 		case 24:
+			// reset to no underline
 			gc->attr &= ~GRID_ATTR_ALL_UNDERSCORE;
 			break;
 		case 25:
@@ -2070,6 +2128,7 @@ input_csi_dispatch_sgr(struct input_ctx *ictx)
 		case 49:
 			gc->bg = 8;
 			break;
+		// TODO: kmo add underscore color reset as 59
 		case 90:
 		case 91:
 		case 92:
