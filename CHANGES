@@ -1,5 +1,9 @@
 CHANGES FROM 2.9 to X.X
 
+* Allow panes to be empty (no command). They can be created either by piping to
+  split-window -I, or by passing an empty command ('') to split-window. Output
+  can be sent to an existing empty window with display-message -I.
+
 * Add keys to jump between matching brackets (emacs C-M-f and C-M-b, vi %).
 
 * Add a -e flag to new-window, split-window, respawn-window, respawn-pane to
