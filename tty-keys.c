@@ -893,7 +893,7 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size,
 	m->x = x;
 	m->ly = tty->mouse_last_y;
 	m->y = y;
-	m->lb = m->b;
+	m->lb = tty->mouse_last_b;
 	m->b = b;
 	m->sgr_type = sgr_type;
 	m->sgr_b = sgr_b;
@@ -901,6 +901,7 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size,
 	/* Update last mouse state. */
 	tty->mouse_last_x = x;
 	tty->mouse_last_y = y;
+	tty->mouse_last_b = b;
 
 	return (0);
 }

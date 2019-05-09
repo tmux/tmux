@@ -1170,6 +1170,7 @@ struct tty {
 
 	u_int		 mouse_last_x;
 	u_int		 mouse_last_y;
+	u_int		 mouse_last_b;
 	int		 mouse_drag_flag;
 	void		(*mouse_drag_update)(struct client *,
 			    struct mouse_event *);
