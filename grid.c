@@ -790,6 +790,7 @@ grid_string_cells_code(const struct grid_cell *lastgc,
 		{ GRID_ATTR_UNDERSCORE_3, 43 },
 		{ GRID_ATTR_UNDERSCORE_4, 44 },
 		{ GRID_ATTR_UNDERSCORE_5, 45 },
+		{ GRID_ATTR_OVERSCORE, 82 },
 	};
 	n = 0;
 
