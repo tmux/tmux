@@ -448,7 +448,7 @@ key_bindings_read_only(struct cmdq_item *item, __unused void *data)
 	return (CMD_RETURN_ERROR);
 }
 
-void
+struct cmdq_item *
 key_bindings_dispatch(struct key_binding *bd, struct cmdq_item *item,
     struct client *c, struct mouse_event *m, struct cmd_find_state *fs)
 {
@@ -472,4 +472,5 @@ key_bindings_dispatch(struct key_binding *bd, struct cmdq_item *item,
 		cmdq_insert_after(item, new_item);
 	else
 		cmdq_append(c, new_item);
+	return (new_item);
 }

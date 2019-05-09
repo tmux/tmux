@@ -55,31 +55,30 @@ const struct cmd_entry cmd_send_prefix_entry = {
 	.exec = cmd_send_keys_exec
 };
 
-static void
-cmd_send_keys_inject(struct client *c, struct cmdq_item *item, key_code key)
+static struct cmdq_item *
+cmd_send_keys_inject(struct client *c, struct cmd_find_state *fs,
+    struct cmdq_item *item, key_code key)
 {
-	struct window_pane		*wp = item->target.wp;
-	struct session			*s = item->target.s;
-	struct winlink			*wl = item->target.wl;
 	struct window_mode_entry	*wme;
 	struct key_table		*table;
 	struct key_binding		*bd;
 
-	wme = TAILQ_FIRST(&wp->modes);
+	wme = TAILQ_FIRST(&fs->wp->modes);
 	if (wme == NULL || wme->mode->key_table == NULL) {
-		if (options_get_number(wp->window->options, "xterm-keys"))
+		if (options_get_number(fs->wp->window->options, "xterm-keys"))
 			key |= KEYC_XTERM;
-		window_pane_key(wp, NULL, s, wl, key, NULL);
-		return;
+		window_pane_key(fs->wp, NULL, fs->s, fs->wl, key, NULL);
+		return (item);
 	}
 	table = key_bindings_get_table(wme->mode->key_table(wme), 1);
 
 	bd = key_bindings_get(table, key & ~KEYC_XTERM);
 	if (bd != NULL) {
 		table->references++;
-		key_bindings_dispatch(bd, item, c, NULL, &item->target);
+		item = key_bindings_dispatch(bd, item, c, NULL, &item->target);
 		key_bindings_unref_table(table);
 	}
+	return (item);
 }
 
 static enum cmd_retval
@@ -91,6 +90,7 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 	struct session			*s = item->target.s;
 	struct winlink			*wl = item->target.wl;
 	struct mouse_event		*m = &item->shared->mouse;
+	struct cmd_find_state		*fs = &item->target;
 	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
 	struct utf8_data		*ud, *uc;
 	wchar_t				 wc;
@@ -141,7 +141,7 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 			key = options_get_number(s->options, "prefix2");
 		else
 			key = options_get_number(s->options, "prefix");
-		cmd_send_keys_inject(c, item, key);
+		cmd_send_keys_inject(c, fs, item, key);
 		return (CMD_RETURN_NORMAL);
 	}
 
@@ -155,9 +155,10 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 			literal = args_has(args, 'l');
 			if (!literal) {
 				key = key_string_lookup_string(args->argv[i]);
-				if (key != KEYC_NONE && key != KEYC_UNKNOWN)
-					cmd_send_keys_inject(c, item, key);
-				else
+				if (key != KEYC_NONE && key != KEYC_UNKNOWN) {
+					item = cmd_send_keys_inject(c, fs, item,
+					    key);
+				} else
 					literal = 1;
 			}
 			if (literal) {
@@ -165,7 +166,8 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 				for (uc = ud; uc->size != 0; uc++) {
 					if (utf8_combine(uc, &wc) != UTF8_DONE)
 						continue;
-					cmd_send_keys_inject(c, item, wc);
+					item = cmd_send_keys_inject(c, fs, item,
+					    wc);
 				}
 				free(ud);
 			}
