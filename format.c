@@ -2036,6 +2036,12 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 	else
 		format_add(ft, "pane_dead", "0");
 
+	if (server_check_marked() && marked_pane.wp == wp)
+		format_add(ft, "pane_marked", "1");
+	else
+		format_add(ft, "pane_marked", "0");
+	format_add(ft, "pane_marked_set", "%d", server_check_marked());
+
 	format_add(ft, "pane_left", "%u", wp->xoff);
 	format_add(ft, "pane_top", "%u", wp->yoff);
 	format_add(ft, "pane_right", "%u", wp->xoff + wp->sx - 1);
