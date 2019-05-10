@@ -6,14 +6,6 @@ Add a minimal tmux config if necessary. Screenshots can be very helpful too.
 Please do not report bugs (crashes, incorrect behaviour) without reproducing on
 a tmux built from the latest code in Git.
 
-To run tmux without a config and get logs, run:
-
-    tmux -Ltest kill-server
-    tmux -vv -Ltest -f/dev/null new
-
-Then reproduce the problem, exit tmux, and attach the `tmux-server-*.log` file
-from the current directory to the issue.
-
 # Information
 
 Please fill the following information. It is very important that at least the
