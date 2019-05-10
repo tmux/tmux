@@ -748,6 +748,21 @@ struct screen_redraw_ctx {
 #define screen_hsize(s) ((s)->grid->hsize)
 #define screen_hlimit(s) ((s)->grid->hlimit)
 
+/* Menu item. */
+struct menu_item {
+	char			*name;
+	char			*command;
+	key_code		 key;
+};
+
+/* Menu. */
+struct menu {
+	char			*title;
+	struct menu_item	*items;
+	u_int			 count;
+	u_int			 width;
+};
+
 /*
  * Window mode. Windows can be in several modes and this is used to call the
  * right function to handle input and output.
@@ -1687,7 +1702,7 @@ char		*paste_make_sample(struct paste_buffer *);
 #define FORMAT_PANE 0x80000000U
 #define FORMAT_WINDOW 0x40000000U
 struct format_tree;
-const char	*format_skip(const char *s, const char *end);
+const char	*format_skip(const char *, const char *);
 int		 format_true(const char *);
 struct format_tree *format_create(struct client *, struct cmdq_item *, int,
 		     int);
@@ -2200,6 +2215,7 @@ void	 screen_write_fast_copy(struct screen_write_ctx *, struct screen *,
 	     u_int, u_int, u_int, u_int);
 void	 screen_write_hline(struct screen_write_ctx *, u_int, int, int);
 void	 screen_write_vline(struct screen_write_ctx *, u_int, int, int);
+void	 screen_write_menu(struct screen_write_ctx *, struct menu *, int);
 void	 screen_write_box(struct screen_write_ctx *, u_int, u_int);
 void	 screen_write_preview(struct screen_write_ctx *, struct screen *, u_int,
 	     u_int);
