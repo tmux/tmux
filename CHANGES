@@ -29,6 +29,10 @@ CHANGES FROM 2.9 to X.X
 * Add the ability to infer an option type (server, session, window) from its
   name to show-options (it was already present in set-option).
 
+* Add the ability to create simple menus using mouse or keyboard.  Introduces
+  new command 'display-menu', and a few new formats:  client_menu,
+  session_menu, window_menu, pane_menu.
+
 CHANGES FROM 2.9 to 2.9a
 
 * Fix bugs in select-pane and the main-horizontal and main-vertical layouts.
