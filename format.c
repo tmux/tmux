@@ -71,8 +71,8 @@ static void	 format_defaults_winlink(struct format_tree *, struct winlink *);
 	"New Session,s,new-session|" \
 	"New Window,w,new-window"
 #define DEFAULT_WINDOW_MENU \
-	"Swap Left,l,swap-window -t,-1|" \
-	"Swap Right,r,swap-window -t,+1|" \
+	"Swap Left,l,swap-window -t:-1|" \
+	"Swap Right,r,swap-window -t:+1|" \
 	"#{?pane_marked_set,,#[dim]}Swap Marked,s,swap-window|" \
 	"|" \
 	"Kill,X,kill-window|" \
