@@ -3914,12 +3914,13 @@ The following variables are available, where appropriate:
 .It Li "buffer_sample" Ta "" Ta "Sample of start of buffer"
 .It Li "buffer_size" Ta "" Ta "Size of the specified buffer in bytes"
 .It Li "client_activity" Ta "" Ta "Time client last had activity"
-.It Li "client_created" Ta "" Ta "Time client created"
 .It Li "client_control_mode" Ta "" Ta "1 if client is in control mode"
+.It Li "client_created" Ta "" Ta "Time client created"
 .It Li "client_discarded" Ta "" Ta "Bytes discarded when client behind"
 .It Li "client_height" Ta "" Ta "Height of client"
 .It Li "client_key_table" Ta "" Ta "Current key table"
 .It Li "client_last_session" Ta "" Ta "Name of the client's last session"
+.It Li "client_menu" Ta "" Ta "The default client menu"
 .It Li "client_name" Ta "" Ta "Name of client"
 .It Li "client_pid" Ta "" Ta "PID of client process"
 .It Li "client_prefix" Ta "" Ta "1 if prefix key has been pressed"
@@ -3932,11 +3933,11 @@ The following variables are available, where appropriate:
 .It Li "client_width" Ta "" Ta "Width of client"
 .It Li "client_written" Ta "" Ta "Bytes written to client"
 .It Li "command" Ta "" Ta "Name of command in use, if any"
-.It Li "command_list_name" Ta "" Ta "Command name if listing commands"
 .It Li "command_list_alias" Ta "" Ta "Command alias if listing commands"
+.It Li "command_list_name" Ta "" Ta "Command name if listing commands"
 .It Li "command_list_usage" Ta "" Ta "Command usage if listing commands"
-.It Li "cursor_flag" Ta "" Ta "Pane cursor flag"
 .It Li "cursor_character" Ta "" Ta "Character at cursor in pane"
+.It Li "cursor_flag" Ta "" Ta "Pane cursor flag"
 .It Li "cursor_x" Ta "" Ta "Cursor X position in pane"
 .It Li "cursor_y" Ta "" Ta "Cursor Y position in pane"
 .It Li "history_bytes" Ta "" Ta "Number of bytes in window history"
@@ -3954,10 +3955,10 @@ The following variables are available, where appropriate:
 .It Li "keypad_cursor_flag" Ta "" Ta "Pane keypad cursor flag"
 .It Li "keypad_flag" Ta "" Ta "Pane keypad flag"
 .It Li "line" Ta "" Ta "Line number in the list"
+.It Li "mouse_all_flag" Ta "" Ta "Pane mouse all flag"
 .It Li "mouse_any_flag" Ta "" Ta "Pane mouse any flag"
 .It Li "mouse_button_flag" Ta "" Ta "Pane mouse button flag"
 .It Li "mouse_standard_flag" Ta "" Ta "Pane mouse standard flag"
-.It Li "mouse_all_flag" Ta "" Ta "Pane mouse all flag"
 .It Li "pane_active" Ta "" Ta "1 if active pane"
 .It Li "pane_at_bottom" Ta "" Ta "1 if pane is at the bottom of window"
 .It Li "pane_at_left" Ta "" Ta "1 if pane is at the left of window"
@@ -3972,11 +3973,12 @@ The following variables are available, where appropriate:
 .It Li "pane_height" Ta "" Ta "Height of pane"
 .It Li "pane_id" Ta "#D" Ta "Unique pane ID"
 .It Li "pane_in_mode" Ta "" Ta "If pane is in a mode"
-.It Li "pane_input_off" Ta "" Ta "If input to pane is disabled"
 .It Li "pane_index" Ta "#P" Ta "Index of pane"
+.It Li "pane_input_off" Ta "" Ta "If input to pane is disabled"
 .It Li "pane_left" Ta "" Ta "Left of pane"
 .It Li "pane_marked" Ta " Ta "1 if this is the marked pane"
 .It Li "pane_marked_set" Ta " Ta "1 if a market pane is set"
+.It Li "pane_menu" Ta "" Ta "The default pane menu"
 .It Li "pane_mode" Ta "" Ta "Name of pane mode, if any."
 .It Li "pane_pid" Ta "" Ta "PID of first process in pane"
 .It Li "pane_pipe" Ta "" Ta "1 if pane is being piped"
@@ -3991,31 +3993,32 @@ The following variables are available, where appropriate:
 .It Li "pane_width" Ta "" Ta "Width of pane"
 .It Li "pid" Ta ""  Ta "Server PID"
 .It Li "rectangle_toggle" Ta "" Ta "1 if rectangle selection is activated"
+.It Li "scroll_position" Ta "" Ta "Scroll position in copy mode"
 .It Li "scroll_region_lower" Ta "" Ta "Bottom of scroll region in pane"
 .It Li "scroll_region_upper" Ta "" Ta "Top of scroll region in pane"
-.It Li "scroll_position" Ta "" Ta "Scroll position in copy mode"
 .It Li "selection_present" Ta "" Ta "1 if selection started in copy mode"
+.It Li "session_activity" Ta "" Ta "Time of session last activity"
 .It Li "session_alerts" Ta "" Ta "List of window indexes with alerts"
 .It Li "session_attached" Ta "" Ta "Number of clients session is attached to"
-.It Li "session_activity" Ta "" Ta "Time of session last activity"
 .It Li "session_created" Ta "" Ta "Time session created"
 .It Li "session_format" Ta "" Ta "1 if format is for a session (not assuming the current)"
-.It Li "session_last_attached" Ta "" Ta "Time session last attached"
 .It Li "session_group" Ta "" Ta "Name of session group"
-.It Li "session_group_size" Ta "" Ta "Size of session group"
 .It Li "session_group_list" Ta "" Ta "List of sessions in group"
+.It Li "session_group_size" Ta "" Ta "Size of session group"
 .It Li "session_grouped" Ta "" Ta "1 if session in a group"
 .It Li "session_id" Ta "" Ta "Unique session ID"
+.It Li "session_last_attached" Ta "" Ta "Time session last attached"
 .It Li "session_many_attached" Ta "" Ta "1 if multiple clients attached"
+.It Li "session_menu" Ta "" Ta "The default session menu"
 .It Li "session_name" Ta "#S" Ta "Name of session"
 .It Li "session_stack" Ta "" Ta "Window indexes in most recent order"
 .It Li "session_windows" Ta "" Ta "Number of windows in session"
 .It Li "socket_path" Ta "" Ta "Server socket path"
 .It Li "start_time" Ta "" Ta "Server start time"
 .It Li "version" Ta "" Ta "Server version"
+.It Li "window_active" Ta "" Ta "1 if window active"
 .It Li "window_activity" Ta "" Ta "Time of window last activity"
 .It Li "window_activity_flag" Ta "" Ta "1 if window has activity"
-.It Li "window_active" Ta "" Ta "1 if window active"
 .It Li "window_bell_flag" Ta "" Ta "1 if window has bell"
 .It Li "window_bigger" Ta "" Ta "1 if window is larger than client"
 .It Li "window_end_flag" Ta "" Ta "1 if window has the highest index"
@@ -4027,6 +4030,7 @@ The following variables are available, where appropriate:
 .It Li "window_last_flag" Ta "" Ta "1 if window is the last used"
 .It Li "window_layout" Ta "" Ta "Window layout description, ignoring zoomed window panes"
 .It Li "window_linked" Ta "" Ta "1 if window is linked across sessions"
+.It Li "window_menu" Ta "" Ta "The default window menu"
 .It Li "window_name" Ta "#W" Ta "Name of window"
 .It Li "window_offset_x" Ta "" Ta "X offset into window if larger than client"
 .It Li "window_offset_y" Ta "" Ta "Y offset into window if larger than client"
@@ -4443,6 +4447,74 @@ option.
 .Pp
 This command works only from inside
 .Nm .
+.It Xo Ic display-menu
+.Op Fl F
+.Op Fl c Ar target-client
+.Op Fl M Ar menu
+.Op Fl t Ar target-pane
+.Op Fl T Ar title
+.Op Fl x Ar position
+.Op Fl y Ar position
+.Xc
+.D1 (alias: Ic menu)
+Display a menu on
+.Ar target-client .
+.Ar target-pane
+gives the target for any commands run from the menu.
+.Pp
+A menu is passed to
+.Fl M
+as a list of menu items separated by
+.Ql | .
+Each menu item consists of three comma-separated parts:
+.Bl -enum -width Ds
+.It name
+The menu item name.
+This is a format and may include embedded styles, see the
+.Sx FORMATS
+and
+.Sx STYLES
+sections.
+.It key
+The menu item shortcut key.
+If this is empty the menu item has no key shortcut.
+.It command
+The command run when the menu item is chosen.
+.El
+.Pp
+An empty menu item is a separator line.
+.Pp
+.Fl T
+is a format for the menu title (see
+.Sx FORMATS ) .
+.Pp
+.Fl x
+and
+.Fl y
+give the position of the menu.
+Both may be a row or column number, or one of the following special values:
+.Bl -column "XXXXX" "XXXX" -offset indent
+.It Sy "Value" Ta Sy "Flag" Ta Sy "Meaning"
+.It Li "R" Ta Fl x Ta "The right side of the terminal"
+.It Li "P" Ta "Both" Ta "The bottom left of the pane"
+.It Li "M" Ta "Both" Ta "The mouse position"
+.It Li "W" Ta Fl x Ta "The window position on the status line"
+.It Li "S" Ta Fl y Ta "The line above or below the status line"
+.El
+.Pp
+Each menu consists of items followed by a key shortcut shown in brackets.
+If the menu is too large to fit on the terminal, it is not displayed.
+Pressing the key shortcut chooses the corresponding item.
+If the mouse is enabled and the menu is opened from a mouse key binding, releasing
+the mouse button with an item selected will choose that item.
+The following keys are also available:
+.Bl -column "Key" "Function" -offset indent
+.It Sy "Key" Ta Sy "Function"
+.It Li "Enter" Ta "Choose selected item"
+.It Li "Up" Ta "Select previous item"
+.It Li "Down" Ta "Select next item"
+.It Li "q" Ta "Exit menu"
+.El
 .It Xo Ic display-message
 .Op Fl aIpv
 .Op Fl c Ar target-client
