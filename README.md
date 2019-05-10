@@ -58,7 +58,7 @@ Please read the CONTRIBUTING file.
 For documentation on using tmux, see the tmux.1 manpage. It can be viewed from
 the source tree with:
 
-~~~
+~~~bash
 nroff -mdoc tmux.1|less
 ~~~
 
