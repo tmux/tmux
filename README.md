@@ -32,7 +32,7 @@ configure with `--enable-utempter` to enable this.
 
 To get and build the latest from version control:
 
-~~~
+~~~bash
 git clone https://github.com/tmux/tmux.git
 cd tmux
 sh autogen.sh
