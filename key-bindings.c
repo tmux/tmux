@@ -271,6 +271,7 @@ key_bindings_init(void)
 		"bind -r C-Down resize-pane -D",
 		"bind -r C-Left resize-pane -L",
 		"bind -r C-Right resize-pane -R",
+
 		"bind -n MouseDown1Pane select-pane -t=\\; send-keys -M",
 		"bind -n MouseDrag1Border resize-pane -M",
 		"bind -n MouseDown1Status select-window -t=",
@@ -279,6 +280,10 @@ key_bindings_init(void)
 		"bind -n MouseDrag1Pane if -Ft= '#{mouse_any_flag}' 'if -Ft= \"#{pane_in_mode}\" \"copy-mode -M\" \"send-keys -M\"' 'copy-mode -M'",
 		"bind -n MouseDown3Pane if-shell -Ft= '#{mouse_any_flag}' 'select-pane -t=; send-keys -M' 'select-pane -mt='",
 		"bind -n WheelUpPane if-shell -Ft= '#{mouse_any_flag}' 'send-keys -M' 'if -Ft= \"#{pane_in_mode}\" \"send-keys -M\" \"copy-mode -et=\"'",
+		"bind -n MouseDown3StatusRight display-menu -t= -xM -yS -F -M \"#{client_menu}\" -T \"#[align=centre]#{client_name}\"",
+		"bind -n MouseDown3StatusLeft display-menu -t= -xM -yS -F -M \"#{session_menu}\" -T \"#[align=centre]#{session_name}\"",
+		"bind -n MouseDown3Status display-menu -t= -xW -yS -F -M \"#{window_menu}\" -T \"#[align=centre]#{window_index}:#{window_name}\"",
+		"bind -n M-MouseDown3Pane display-menu -t= -xM -yM -F -M \"#{pane_menu}\" -T \"#[align=centre]#{pane_index} (#{pane_id})\"",
 
 		"bind -Tcopy-mode C-Space send -X begin-selection",
 		"bind -Tcopy-mode C-a send -X start-of-line",

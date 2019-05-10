@@ -748,20 +748,20 @@ struct screen_redraw_ctx {
 #define screen_hsize(s) ((s)->grid->hsize)
 #define screen_hlimit(s) ((s)->grid->hlimit)
 
-/* Menu item. */
-struct menu_item {
-	char			*name;
-	char			*command;
-	key_code		 key;
-};
-
 /* Menu. */
+struct menu_item {
+	char		*name;
+	char		*command;
+	key_code	 key;
+};
 struct menu {
 	char			*title;
 	struct menu_item	*items;
 	u_int			 count;
 	u_int			 width;
 };
+typedef void (*menu_choice_cb)(struct menu *, u_int, key_code, void *);
+#define MENU_NOMOUSE 0x1
 
 /*
  * Window mode. Windows can be in several modes and this is used to call the
@@ -2549,6 +2549,16 @@ void	log_close(void);
 void printflike(1, 2) log_debug(const char *, ...);
 __dead void printflike(1, 2) fatal(const char *, ...);
 __dead void printflike(1, 2) fatalx(const char *, ...);
+
+/* menu.c */
+struct menu	*menu_create_from_items(struct menu_item *, u_int,
+		    struct client *, struct cmd_find_state *, const char *);
+struct menu	*menu_create_from_string(const char *, struct client *,
+		    struct cmd_find_state *, const char *);
+void		 menu_free(struct menu *);
+int		 menu_display(struct menu *, int, struct cmdq_item *, u_int,
+		    u_int, struct client *, struct cmd_find_state *,
+		    menu_choice_cb, void *);
 
 /* style.c */
 int		 style_parse(struct style *,const struct grid_cell *,
