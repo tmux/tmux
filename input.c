@@ -2071,10 +2071,10 @@ input_csi_dispatch_sgr(struct input_ctx *ictx)
 			gc->bg = 8;
 			break;
 		case 53:
-			gc->attr &= GRID_ATTR_OVERSCORE;
+			gc->attr &= GRID_ATTR_OVERLINE;
 			break;
 		case 55:
-			gc->attr &= ~GRID_ATTR_OVERSCORE;
+			gc->attr &= ~GRID_ATTR_OVERLINE;
 			break;
 		case 90:
 		case 91:

@@ -44,7 +44,7 @@ attributes_tostring(int attr)
 	    (attr & GRID_ATTR_UNDERSCORE_3) ? "curly-underscore," : "",
 	    (attr & GRID_ATTR_UNDERSCORE_4) ? "dotted-underscore," : "",
 	    (attr & GRID_ATTR_UNDERSCORE_5) ? "dashed-underscore," : "",
-	    (attr & GRID_ATTR_OVERSCORE) ? "overscore," : "");
+	    (attr & GRID_ATTR_OVERLINE) ? "overline," : "");
 	if (len > 0)
 		buf[len - 1] = '\0';
 
@@ -75,7 +75,7 @@ attributes_fromstring(const char *str)
 		{ "curly-underscore", GRID_ATTR_UNDERSCORE_3 },
 		{ "dotted-underscore", GRID_ATTR_UNDERSCORE_4 },
 		{ "dashed-underscore", GRID_ATTR_UNDERSCORE_5 },
-		{ "overscore", GRID_ATTR_OVERSCORE }
+		{ "overline", GRID_ATTR_OVERLINE }
 	};
 
 	if (*str == '\0' || strcspn(str, delimiters) == 0)
