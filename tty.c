@@ -2200,7 +2200,7 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
 	if (changed & GRID_ATTR_STRIKETHROUGH)
 		tty_putcode(tty, TTYC_SMXX);
 	if (changed & GRID_ATTR_OVERLINE)
-		tty_puts(tty, "\033[53m");
+		tty_putcode(tty, TTYC_SMOL);
 	if ((changed & GRID_ATTR_CHARSET) && tty_acs_needed(tty))
 		tty_putcode(tty, TTYC_SMACS);
 }

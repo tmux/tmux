@@ -433,6 +433,7 @@ enum tty_code_code {
 	TTYC_SITM,
 	TTYC_SMACS,
 	TTYC_SMCUP,
+	TTYC_SMOL,
 	TTYC_SMKX,
 	TTYC_SMSO,
 	TTYC_SMULX,
@@ -445,7 +446,6 @@ enum tty_code_code {
 	TTYC_VPA,
 	TTYC_XENL,
 	TTYC_XT,
-	TTYC_OVERLINE,
 };
 
 /* Message codes. */
