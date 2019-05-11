@@ -1,4 +1,4 @@
-# What should I do before opening an issue?
+## What should I do before opening an issue?
 
 Before opening an issue, please ensure that:
 
@@ -12,7 +12,7 @@ Before opening an issue, please ensure that:
 
 - Nobody else has opened the same issue recently.
 
-# What should I include in an isue?
+## What should I include in an isue?
 
 Please include the output of:
 
@@ -34,7 +34,7 @@ Also include:
 
 - At most one or two screenshots, if helpful.
 
-# How do I test without a .tmux.conf?
+## How do I test without a .tmux.conf?
 
 Run a separate tmux server with -f/dev/null to skip loading .tmux.conf:
 
@@ -43,7 +43,7 @@ tmux -Ltest kill-server
 tmux -Ltest -f/dev/null new
 ~~~
 
-# How do I get logs from tmux?
+## How do I get logs from tmux?
 
 Add -vv to tmux to create three log files in the current directory. If you can
 reproduce without a configuration file:
@@ -68,12 +68,4 @@ The log files are:
 
 - tmux-out*.log: output log file.
 
-To run tmux without a config and get logs, run:
-
-~~~bash
-tmux -Ltest kill-server
-tmux -vv -Ltest -f/dev/null new
-~~~
-
-Then reproduce the problem, exit tmux, and attach the `tmux-server-*.log` file
-from the current directory to the issue.
+Please attach the log files to your issue.
