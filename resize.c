@@ -174,11 +174,12 @@ recalculate_sizes(void)
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (ignore_client_size(c))
 			continue;
-		if (c->tty.sy <= status_line_size(c))
+		s = c->session;
+		if (c->tty.sy <= s->statuslines || (c->flags & CLIENT_CONTROL))
 			c->flags |= CLIENT_STATUSOFF;
 		else
 			c->flags &= ~CLIENT_STATUSOFF;
-		c->session->attached++;
+		s->attached++;
 	}
 
 	/* Walk each window and adjust the size. */

@@ -203,7 +203,7 @@ status_at_line(struct client *c)
 {
 	struct session	*s = c->session;
 
-	if (c->flags & CLIENT_STATUSOFF)
+	if (c->flags & (CLIENT_STATUSOFF|CLIENT_CONTROL))
 		return (-1);
 	if (s->statusat != 1)
 		return (s->statusat);
@@ -216,7 +216,7 @@ status_line_size(struct client *c)
 {
 	struct session	*s = c->session;
 
-	if (c->flags & CLIENT_STATUSOFF)
+	if (c->flags & (CLIENT_STATUSOFF|CLIENT_CONTROL))
 		return (0);
 	return (s->statuslines);
 }
