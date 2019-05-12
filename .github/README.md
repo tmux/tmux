@@ -8,7 +8,7 @@ This release runs on OpenBSD, FreeBSD, NetBSD, Linux, OS X and Solaris.
 
 ## Dependencies
 
-tmux depends on [libevent](https://libevent.org) 2.x, avaailable from [this
+tmux depends on [libevent](https://libevent.org) 2.x, available from [this
 page](https://github.com/libevent/libevent/releases/latest).
 
 It also depends on [ncurses](https://www.gnu.org/software/ncurses/), available
