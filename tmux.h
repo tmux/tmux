@@ -2410,8 +2410,9 @@ u_int		 layout_set_previous(struct window *);
 /* mode-tree.c */
 typedef void (*mode_tree_build_cb)(void *, u_int, uint64_t *, const char *);
 typedef void (*mode_tree_draw_cb)(void *, void *, struct screen_write_ctx *,
-    u_int, u_int);
+	     u_int, u_int);
 typedef int (*mode_tree_search_cb)(void *, void *, const char *);
+typedef void (*mode_tree_menu_cb)(void *, struct client *, key_code);
 typedef void (*mode_tree_each_cb)(void *, void *, struct client *, key_code);
 u_int	 mode_tree_count_tagged(struct mode_tree_data *);
 void	*mode_tree_get_current(struct mode_tree_data *);
@@ -2422,7 +2423,8 @@ void	 mode_tree_each_tagged(struct mode_tree_data *, mode_tree_each_cb,
 void	 mode_tree_down(struct mode_tree_data *, int);
 struct mode_tree_data *mode_tree_start(struct window_pane *, struct args *,
 	     mode_tree_build_cb, mode_tree_draw_cb, mode_tree_search_cb,
-	     void *, const char **, u_int, struct screen **);
+	     mode_tree_menu_cb, void *, const char *, const char **, u_int,
+	     struct screen **);
 void	 mode_tree_zoom(struct mode_tree_data *, struct args *);
 void	 mode_tree_build(struct mode_tree_data *);
 void	 mode_tree_free(struct mode_tree_data *);
