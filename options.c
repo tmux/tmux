@@ -354,16 +354,23 @@ options_array_set(struct options_entry *o, u_int idx, const char *value,
 	struct options_array_item	*a;
 	char				*new;
 	struct cmd_list			*cmdlist;
+	char				*error;
 
 	if (!OPTIONS_IS_ARRAY(o)) {
-		*cause = xstrdup("not an array");
+		if (cause != NULL)
+			*cause = xstrdup("not an array");
 		return (-1);
 	}
 
 	if (OPTIONS_IS_COMMAND(o)) {
-		cmdlist = cmd_string_parse(value, NULL, 0, cause);
-		if (cmdlist == NULL && *cause != NULL)
+		cmdlist = cmd_string_parse(value, NULL, 0, &error);
+		if (cmdlist == NULL && error != NULL) {
+			if (cause != NULL)
+				*cause = error;
+			else
+				free(error);
 			return (-1);
+		}
 	}
 
 	a = options_array_item(o, idx);

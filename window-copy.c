@@ -1046,8 +1046,6 @@ window_copy_cmd_previous_matching_bracket(struct window_copy_cmd_state *cs)
 					goto retry;
 				}
 				window_copy_cursor_previous_word(wme, "}]) ");
-				px = data->cx;
-				continue;
 			}
 			continue;
 		}
@@ -1161,7 +1159,6 @@ window_copy_cmd_next_matching_bracket(struct window_copy_cmd_state *cs)
 					goto retry;
 				}
 				window_copy_cursor_next_word_end(wme, "{[( ");
-				px = data->cx;
 				continue;
 			}
 			/* For vi, continue searching for bracket until EOL. */

@@ -819,7 +819,7 @@ mode_tree_display_menu(struct mode_tree_data *mtd, struct client *c, u_int x,
 		line = mtd->current;
 	else
 		line = mtd->offset + y;
-		mti = mtd->line_list[line].item;
+	mti = mtd->line_list[line].item;
 
 	if (!outside) {
 		s = mtd->menu;

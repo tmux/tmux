@@ -57,10 +57,8 @@ style_parse(struct style *sy, const struct grid_cell *base, const char *in)
 	style_copy(&saved, sy);
 
 	do {
-		while (*in != '\0' && strchr(delimiters, *in) != NULL) {
+		while (*in != '\0' && strchr(delimiters, *in) != NULL)
 			in++;
-			end--;
-		}
 		if (*in == '\0')
 			break;
 
