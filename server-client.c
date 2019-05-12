@@ -426,17 +426,21 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 	key_code		 key;
 	struct timeval		 tv;
 	struct style_range	*sr;
-	enum { NOTYPE, MOVE, DOWN, UP, DRAG, WHEEL, DOUBLE, TRIPLE } type;
+	enum { NOTYPE,
+	       MOVE,
+	       DOWN,
+	       UP,
+	       DRAG,
+	       WHEEL,
+	       DOUBLE,
+	       TRIPLE } type = NOTYPE;
 	enum { NOWHERE,
 	       PANE,
 	       STATUS,
 	       STATUS_LEFT,
 	       STATUS_RIGHT,
 	       STATUS_DEFAULT,
-	       BORDER } where;
-
-	type = NOTYPE;
-	where = NOWHERE;
+	       BORDER } where = NOWHERE;
 
 	log_debug("%s mouse %02x at %u,%u (last %u,%u) (%d)", c->name, m->b,
 	    m->x, m->y, m->lx, m->ly, c->tty.mouse_drag_flag);
@@ -1003,7 +1007,6 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 	struct mouse_event		*m = &event->m;
 	struct session			*s = c->session;
 	struct winlink			*wl;
-	struct window			*w;
 	struct window_pane		*wp;
 	struct window_mode_entry	*wme;
 	struct timeval			 tv;
@@ -1017,7 +1020,6 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 	if (s == NULL || (c->flags & (CLIENT_DEAD|CLIENT_SUSPENDED)) != 0)
 		goto out;
 	wl = s->curw;
-	w = wl->window;
 
 	/* Update the activity timer. */
 	if (gettimeofday(&c->activity_time, NULL) != 0)

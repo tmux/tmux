@@ -90,10 +90,8 @@ cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 	struct options_entry		*o;
 
 	window = (self->entry == &cmd_show_window_options_entry);
-	if (args->argc == 0) {
-		scope = options_scope_from_flags(args, window, fs, &oo, &cause);
+	if (args->argc == 0)
 		return (cmd_show_options_all(self, item, oo));
-	}
 	argument = format_single(item, args->argv[0], c, s, wl, NULL);
 
 	name = options_match(argument, &idx, &ambiguous);
