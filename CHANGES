@@ -1,5 +1,10 @@
 CHANGES FROM 2.9 to X.X
 
+* Add the ability to create simple menus. Introduces new command display-menu
+  and a few new formats (client_menu, session_menu, window_menu,
+  pane_menu). Default menus are bound to MouseDown3 on the status line,
+  M-MouseDown3 on panes and in tree, client and buffer modes.
+
 * Allow panes to be empty (no command). They can be created either by piping to
   split-window -I, or by passing an empty command ('') to split-window. Output
   can be sent to an existing empty window with display-message -I.
@@ -32,10 +37,6 @@ CHANGES FROM 2.9 to X.X
 
 * Add the ability to infer an option type (server, session, window) from its
   name to show-options (it was already present in set-option).
-
-* Add the ability to create simple menus using mouse or keyboard.  Introduces
-  new command 'display-menu', and a few new formats:  client_menu,
-  session_menu, window_menu, pane_menu.
 
 CHANGES FROM 2.9 to 2.9a
 
