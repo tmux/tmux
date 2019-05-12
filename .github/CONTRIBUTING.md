@@ -12,7 +12,7 @@ Before opening an issue, please ensure that:
 
 - Nobody else has opened the same issue recently.
 
-## What should I include in an isue?
+## What should I include in an issue?
 
 Please include the output of:
 
