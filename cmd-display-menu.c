@@ -79,7 +79,7 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 		title = format_single(NULL, args_get(args, 'T'), c, s, wl, wp);
 	else
 		title = xstrdup("");
-	menu = menu_create_from_string(string, c, fs, title);
+	menu = menu_create(string, c, fs, title);
 	free(title);
 	if (menu == NULL) {
 		cmdq_error(item, "invalid menu %s", string);

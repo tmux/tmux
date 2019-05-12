@@ -2555,9 +2555,7 @@ __dead void printflike(1, 2) fatal(const char *, ...);
 __dead void printflike(1, 2) fatalx(const char *, ...);
 
 /* menu.c */
-struct menu	*menu_create_from_items(struct menu_item *, u_int,
-		    struct client *, struct cmd_find_state *, const char *);
-struct menu	*menu_create_from_string(const char *, struct client *,
+struct menu	*menu_create(const char *, struct client *,
 		    struct cmd_find_state *, const char *);
 void		 menu_free(struct menu *);
 int		 menu_display(struct menu *, int, struct cmdq_item *, u_int,
