@@ -11,7 +11,8 @@ This release runs on OpenBSD, FreeBSD, NetBSD, Linux, OS X and Solaris.
 tmux depends on [libevent](https://libevent.org) 2.x, avaailable from [this
 page](https://github.com/libevent/libevent/releases/latest).
 
-It also depends on [ncurses](https://www.gnu.org/software/ncurses/), available from [this page](https://invisible-mirror.net/archives/ncurses/).
+It also depends on [ncurses](https://www.gnu.org/software/ncurses/), available
+from [this page](https://invisible-mirror.net/archives/ncurses/).
 
 ## Installation
 

@@ -2,8 +2,8 @@
 
 Before opening an issue, please ensure that:
 
-- TERM inside tmux is screen, screen-256color, tmux or tmux-256color. Check
-  by running echo $TERM inside tmux.
+- `$TERM` inside tmux is screen, screen-256color, tmux or tmux-256color. Check
+  by running `echo $TERM` inside tmux.
 
 - You can reproduce the problem with the latest tmux release, or a build from
   Git master.
@@ -28,7 +28,7 @@ Also include:
 
 - A minimal tmux config, if you can't reproduce without a config.
 
-- Your terminal, and $TERM inside and outside of tmux.
+- Your terminal, and `$TERM` inside and outside of tmux.
 
 - Logs from tmux (see below).
 
@@ -36,7 +36,7 @@ Also include:
 
 ## How do I test without a .tmux.conf?
 
-Run a separate tmux server with -f/dev/null to skip loading .tmux.conf:
+Run a separate tmux server with `-f/dev/null` to skip loading `.tmux.conf`:
 
 ~~~bash
 tmux -Ltest kill-server
@@ -45,7 +45,7 @@ tmux -Ltest -f/dev/null new
 
 ## How do I get logs from tmux?
 
-Add -vv to tmux to create three log files in the current directory. If you can
+Add `-vv` to tmux to create three log files in the current directory. If you can
 reproduce without a configuration file:
 
 ~~~bash
@@ -62,10 +62,10 @@ tmux -vv new
 
 The log files are:
 
-- tmux-server*.log: server log file.
+- `tmux-server*.log`: server log file.
 
-- tmux-client*.log: client log file.
+- `tmux-client*.log`: client log file.
 
-- tmux-out*.log: output log file.
+- `tmux-out*.log`: output log file.
 
 Please attach the log files to your issue.
