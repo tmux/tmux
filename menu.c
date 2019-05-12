@@ -103,24 +103,8 @@ menu_parse_item(struct menu *menu, const char *s, struct client *c,
 }
 
 struct menu *
-menu_create_from_items(struct menu_item *items, u_int count, struct client *c,
-    struct cmd_find_state *fs, const char *title)
-{
-	struct menu	*menu;
-	u_int		 i;
-
-	menu = xcalloc(1, sizeof *menu);
-	menu->title = xstrdup(title);
-
-	for (i = 0; i < count; i++)
-		menu_add_item(menu, &items[i], c, fs);
-
-	return (menu);
-}
-
-struct menu *
-menu_create_from_string(const char *s, struct client *c,
-    struct cmd_find_state *fs, const char *title)
+menu_create(const char *s, struct client *c, struct cmd_find_state *fs,
+    const char *title)
 {
 	struct menu	*menu;
 	char		*copy, *string, *next;
