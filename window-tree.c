@@ -53,6 +53,19 @@ static void		 window_tree_key(struct window_mode_entry *,
 		"}" \
 	"}"
 
+#define WINDOW_TREE_MENU \
+	"Select,Enter,|" \
+	"Expand,Right,|" \
+	"|" \
+	"Tag,t,|" \
+	"Tag All,C-t,|" \
+	"Tag None,T,|" \
+	"|" \
+	"Kill,x,|" \
+	"Kill Tagged,X,|" \
+	"|" \
+	"Cancel,q,"
+
 const struct window_mode window_tree_mode = {
 	.name = "tree-mode",
 	.default_format = WINDOW_TREE_DEFAULT_FORMAT,
@@ -814,6 +827,19 @@ window_tree_search(__unused void *modedata, void *itemdata, const char *ss)
 	return (0);
 }
 
+static void
+window_tree_menu(void *modedata, struct client *c, key_code key)
+{
+	struct window_tree_modedata	*data = modedata;
+	struct window_pane		*wp = data->wp;
+	struct window_mode_entry	*wme;
+
+	wme = TAILQ_FIRST(&wp->modes);
+	if (wme == NULL || wme->data != modedata)
+		return;
+	window_tree_key(wme, c, NULL, NULL, key, NULL);
+}
+
 static struct screen *
 window_tree_init(struct window_mode_entry *wme, struct cmd_find_state *fs,
     struct args *args)
@@ -823,6 +849,8 @@ window_tree_init(struct window_mode_entry *wme, struct cmd_find_state *fs,
 	struct screen			*s;
 
 	wme->data = data = xcalloc(1, sizeof *data);
+	data->wp = wp;
+	data->references = 1;
 
 	if (args_has(args, 's'))
 		data->type = WINDOW_TREE_SESSION;
@@ -831,9 +859,6 @@ window_tree_init(struct window_mode_entry *wme, struct cmd_find_state *fs,
 	else
 		data->type = WINDOW_TREE_PANE;
 	memcpy(&data->fs, fs, sizeof data->fs);
-
-	data->wp = wp;
-	data->references = 1;
 
 	if (args == NULL || !args_has(args, 'F'))
 		data->format = xstrdup(WINDOW_TREE_DEFAULT_FORMAT);
@@ -846,7 +871,8 @@ window_tree_init(struct window_mode_entry *wme, struct cmd_find_state *fs,
 	data->squash_groups = !args_has(args, 'G');
 
 	data->data = mode_tree_start(wp, args, window_tree_build,
-	    window_tree_draw, window_tree_search, data, window_tree_sort_list,
+	    window_tree_draw, window_tree_search, window_tree_menu, data,
+	    WINDOW_TREE_MENU, window_tree_sort_list,
 	    nitems(window_tree_sort_list), &s);
 	mode_tree_zoom(data->data, args);
 
@@ -1146,7 +1172,7 @@ window_tree_key(struct window_mode_entry *wme, struct client *c,
 		item = new_item;
 		data->offset = 0;
 	}
-	if (KEYC_IS_MOUSE(key))
+	if (KEYC_IS_MOUSE(key) && m != NULL)
 		key = window_tree_mouse(data, key, x, item);
 	switch (key) {
 	case '<':
@@ -1207,7 +1233,6 @@ window_tree_key(struct window_mode_entry *wme, struct client *c,
 		free(prompt);
 		break;
 	case '\r':
-		item = mode_tree_get_current(data->data);
 		name = window_tree_get_target(item, &fs);
 		if (name != NULL)
 			mode_tree_run_command(c, NULL, data->command, name);

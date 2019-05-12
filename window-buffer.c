@@ -39,6 +39,19 @@ static void		 window_buffer_key(struct window_mode_entry *,
 #define WINDOW_BUFFER_DEFAULT_FORMAT \
 	"#{buffer_size} bytes (#{t:buffer_created})"
 
+#define WINDOW_BUFFER_MENU \
+	"Paste,p,|" \
+	"Paste Tagged,P,|" \
+	"|" \
+	"Tag,t,|" \
+	"Tag All,C-t,|" \
+	"Tag None,T,|" \
+	"|" \
+	"Delete,d,|" \
+	"Delete Tagged,D,|" \
+	"|" \
+	"Cancel,q,"
+
 const struct window_mode window_buffer_mode = {
 	.name = "buffer-mode",
 	.default_format = WINDOW_BUFFER_DEFAULT_FORMAT,
@@ -67,7 +80,9 @@ struct window_buffer_itemdata {
 };
 
 struct window_buffer_modedata {
+	struct window_pane		 *wp;
 	struct cmd_find_state		  fs;
+
 	struct mode_tree_data		 *data;
 	char				 *command;
 	char				 *format;
@@ -264,6 +279,19 @@ window_buffer_search(__unused void *modedata, void *itemdata, const char *ss)
 	return (memmem(bufdata, bufsize, ss, strlen(ss)) != NULL);
 }
 
+static void
+window_buffer_menu(void *modedata, struct client *c, key_code key)
+{
+	struct window_buffer_modedata	*data = modedata;
+	struct window_pane		*wp = data->wp;
+	struct window_mode_entry	*wme;
+
+	wme = TAILQ_FIRST(&wp->modes);
+	if (wme == NULL || wme->data != modedata)
+		return;
+	window_buffer_key(wme, c, NULL, NULL, key, NULL);
+}
+
 static struct screen *
 window_buffer_init(struct window_mode_entry *wme, struct cmd_find_state *fs,
     struct args *args)
@@ -273,6 +301,7 @@ window_buffer_init(struct window_mode_entry *wme, struct cmd_find_state *fs,
 	struct screen			*s;
 
 	wme->data = data = xcalloc(1, sizeof *data);
+	data->wp = wp;
 	cmd_find_copy_state(&data->fs, fs);
 
 	if (args == NULL || !args_has(args, 'F'))
@@ -285,8 +314,9 @@ window_buffer_init(struct window_mode_entry *wme, struct cmd_find_state *fs,
 		data->command = xstrdup(args->argv[0]);
 
 	data->data = mode_tree_start(wp, args, window_buffer_build,
-	    window_buffer_draw, window_buffer_search, data,
-	    window_buffer_sort_list, nitems(window_buffer_sort_list), &s);
+	    window_buffer_draw, window_buffer_search, window_buffer_menu, data,
+	    WINDOW_BUFFER_MENU, window_buffer_sort_list,
+	    nitems(window_buffer_sort_list), &s);
 	mode_tree_zoom(data->data, args);
 
 	mode_tree_build(data->data);

@@ -56,7 +56,11 @@ menu_add_item(struct menu *menu, struct menu_item *item, struct client *c,
 
 	if (item == NULL || *item->name == '\0') /* horizontal line */
 		return;
-	name = format_single(NULL, item->name, c, fs->s, fs->wl, fs->wp);
+	if (fs != NULL) {
+		name = format_single(NULL, item->name, c, fs->s, fs->wl,
+		    fs->wp);
+	} else
+		name = xstrdup(item->name);
 	if (*name == '\0') { /* no item if empty after format expanded */
 		menu->count--;
 		return;
@@ -118,7 +122,6 @@ menu_create(const char *s, struct client *c, struct cmd_find_state *fs,
 	copy = string = xstrdup(s);
 	do {
 		next = (char *)format_skip(string, "|");
-		log_debug("XXX %s -- %s", next, string);
 		if (next != NULL)
 			*next++ = '\0';
 		if (*string == '\0')
@@ -179,6 +182,9 @@ menu_free_cb(struct client *c)
 
 	if (md->item != NULL)
 		md->item->flags &= ~CMDQ_WAITING;
+
+	if (md->cb != NULL)
+		md->cb(md->menu, UINT_MAX, KEYC_NONE, md->data);
 
 	screen_free(&md->s);
 	menu_free(md->menu);
@@ -274,6 +280,7 @@ chosen:
 		return (1);
 	if (md->cb != NULL) {
 	    md->cb(md->menu, md->choice, item->key, md->data);
+	    md->cb = NULL;
 	    return (1);
 	}
 	cmdlist = cmd_string_parse(item->command, NULL, 0, &cause);
@@ -308,7 +315,8 @@ menu_display(struct menu *menu, int flags, struct cmdq_item *item, u_int px,
 	md->item = item;
 	md->flags = flags;
 
-	cmd_find_copy_state(&md->fs, fs);
+	if (fs != NULL)
+		cmd_find_copy_state(&md->fs, fs);
 	screen_init(&md->s, menu->width + 4, menu->count + 2, 0);
 
 	md->px = px;

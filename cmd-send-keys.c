@@ -67,7 +67,7 @@ cmd_send_keys_inject(struct client *c, struct cmd_find_state *fs,
 	if (wme == NULL || wme->mode->key_table == NULL) {
 		if (options_get_number(fs->wp->window->options, "xterm-keys"))
 			key |= KEYC_XTERM;
-		window_pane_key(fs->wp, NULL, fs->s, fs->wl, key, NULL);
+		window_pane_key(fs->wp, item->client, fs->s, fs->wl, key, NULL);
 		return (item);
 	}
 	table = key_bindings_get_table(wme->mode->key_table(wme), 1);
@@ -132,7 +132,7 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 			cmdq_error(item, "no mouse target");
 			return (CMD_RETURN_ERROR);
 		}
-		window_pane_key(wp, NULL, s, wl, m->key, m);
+		window_pane_key(wp, item->client, s, wl, m->key, m);
 		return (CMD_RETURN_NORMAL);
 	}
 
