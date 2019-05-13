@@ -431,6 +431,7 @@ enum tty_code_code {
 	TTYC_SITM,
 	TTYC_SMACS,
 	TTYC_SMCUP,
+	TTYC_SMOL,
 	TTYC_SMKX,
 	TTYC_SMSO,
 	TTYC_SMULX,
@@ -568,6 +569,7 @@ enum utf8_state {
 #define GRID_ATTR_UNDERSCORE_3 0x400
 #define GRID_ATTR_UNDERSCORE_4 0x800
 #define GRID_ATTR_UNDERSCORE_5 0x1000
+#define GRID_ATTR_OVERLINE 0x2000
 
 /* All underscore attributes. */
 #define GRID_ATTR_ALL_UNDERSCORE \
