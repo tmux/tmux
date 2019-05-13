@@ -73,10 +73,10 @@ cmd_copy_mode_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 	}
 
-	if (window_pane_set_mode(wp, &window_copy_mode, NULL, args) != 0)
-		return (CMD_RETURN_NORMAL);
-	if (args_has(args, 'M'))
-		window_copy_start_drag(c, &shared->mouse);
+	if (!window_pane_set_mode(wp, &window_copy_mode, NULL, args)) {
+		if (args_has(args, 'M'))
+			window_copy_start_drag(c, &shared->mouse);
+	}
 	if (args_has(self->args, 'u'))
 		window_copy_pageup(wp, 0);
 

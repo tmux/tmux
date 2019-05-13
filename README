@@ -6,13 +6,17 @@ screen and continue running in the background, then later reattached.
 
 This release runs on OpenBSD, FreeBSD, NetBSD, Linux, OS X and Solaris.
 
-tmux depends on libevent 2.x. Download it from:
+* Dependencies
 
-	http://libevent.org
+tmux depends on libevent 2.x, available from:
+
+	https://github.com/libevent/libevent/releases/latest
 
 It also depends on ncurses, available from:
 
-	http://invisible-island.net/ncurses/
+	https://invisible-mirror.net/archives/ncurses/
+
+* Installation
 
 To build and install tmux from a release tarball, use:
 
@@ -32,40 +36,42 @@ To get and build the latest from version control:
 (Note that this requires at least a working C compiler, make, autoconf,
 automake, pkg-config as well as libevent and ncurses libraries and headers.)
 
-For more information see http://git-scm.com. Patches should be sent by email to
-the mailing list at tmux-users@googlegroups.com or submitted through GitHub at
-https://github.com/tmux/tmux/issues.
-
-For documentation on using tmux, see the tmux.1 manpage. It can be viewed from
-the source tree with:
-
-	$ nroff -mdoc tmux.1|less
-
-A small example configuration in example_tmux.conf.
-
-And a bash(1) completion file at:
-
-	https://github.com/imomaliev/tmux-bash-completion
-
-For debugging, running tmux with -v or -vv will generate server and client log
-files in the current directory.
-
-tmux mailing lists are available. For general discussion and bug reports:
-
-	https://groups.google.com/forum/#!forum/tmux-users
-
-And for Git commit emails:
-
-	https://groups.google.com/forum/#!forum/tmux-git
-
-Subscribe by sending an email to <tmux-users+subscribe@googlegroups.com>.
+* Contributing
 
 Bug reports, feature suggestions and especially code contributions are most
 welcome. Please send by email to:
 
 	tmux-users@googlegroups.com
 
+Or open a GitHub issue or pull request.
+
+* Documentation
+
+For documentation on using tmux, see the tmux.1 manpage. View it from the
+source tree with:
+
+	$ nroff -mdoc tmux.1|less
+
+A small example configuration is in example_tmux.conf.
+
+A bash(1) completion file is at:
+
+	https://github.com/imomaliev/tmux-bash-completion
+
+For debugging, run tmux with -v and -vv to generate server and client log files
+in the current directory.
+
+* Support
+
+The tmux mailing list for general discussion and bug reports is:
+
+	https://groups.google.com/forum/#!forum/tmux-users
+
+Subscribe by sending an email to:
+
+	tmux-users+subscribe@googlegroups.com
+
+* License
+
 This file and the CHANGES, FAQ, SYNCING and TODO files are licensed under the
 ISC license. All other files have a license and copyright notice at their start.
-
--- Nicholas Marriott <nicholas.marriott@gmail.com>

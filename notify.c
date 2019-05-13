@@ -198,13 +198,13 @@ notify_hook(struct cmdq_item *item, const char *name)
 }
 
 void
-notify_input(struct window_pane *wp, struct evbuffer *input)
+notify_input(struct window_pane *wp, const u_char *buf, size_t len)
 {
 	struct client	*c;
 
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (c->flags & CLIENT_CONTROL)
-			control_notify_input(c, wp, input);
+			control_notify_input(c, wp, buf, len);
 	}
 }
 

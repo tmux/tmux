@@ -28,18 +28,13 @@
 
 void
 control_notify_input(struct client *c, struct window_pane *wp,
-    struct evbuffer *input)
+    const u_char *buf, size_t len)
 {
-	u_char		*buf;
-	size_t		 len;
 	struct evbuffer *message;
 	u_int		 i;
 
 	if (c->session == NULL)
 	    return;
-
-	buf = EVBUFFER_DATA(input);
-	len = EVBUFFER_LENGTH(input);
 
 	/*
 	 * Only write input if the window pane is linked to a window belonging

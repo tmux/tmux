@@ -573,7 +573,6 @@ tty_keys_next(struct tty *tty)
 	cc_t			 bspace;
 	int			 delay, expired = 0, n;
 	key_code		 key;
-	struct cmdq_item	*item;
 	struct mouse_event	 m = { 0 };
 	struct key_event	*event;
 
@@ -732,9 +731,8 @@ complete_key:
 		event = xmalloc(sizeof *event);
 		event->key = key;
 		memcpy(&event->m, &m, sizeof event->m);
-
-		item = cmdq_get_callback(server_client_key_callback, event);
-		cmdq_append(c, item);
+		if (!server_client_handle_key(c, event))
+			free(event);
 	}
 
 	return (1);
@@ -895,7 +893,7 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size,
 	m->x = x;
 	m->ly = tty->mouse_last_y;
 	m->y = y;
-	m->lb = m->b;
+	m->lb = tty->mouse_last_b;
 	m->b = b;
 	m->sgr_type = sgr_type;
 	m->sgr_b = sgr_b;
@@ -903,6 +901,7 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size,
 	/* Update last mouse state. */
 	tty->mouse_last_x = x;
 	tty->mouse_last_y = y;
+	tty->mouse_last_b = b;
 
 	return (0);
 }

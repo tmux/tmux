@@ -729,11 +729,41 @@ struct screen_write_ctx {
 	u_int			 skipped;
 };
 
+/* Screen redraw context. */
+struct screen_redraw_ctx {
+	struct client	*c;
+
+	u_int		 statuslines;
+	int		 statustop;
+
+	int		 pane_status;
+
+	u_int		 sx;
+	u_int		 sy;
+	u_int		 ox;
+	u_int		 oy;
+};
+
 /* Screen size. */
 #define screen_size_x(s) ((s)->grid->sx)
 #define screen_size_y(s) ((s)->grid->sy)
 #define screen_hsize(s) ((s)->grid->hsize)
 #define screen_hlimit(s) ((s)->grid->hlimit)
+
+/* Menu. */
+struct menu_item {
+	char		*name;
+	char		*command;
+	key_code	 key;
+};
+struct menu {
+	char			*title;
+	struct menu_item	*items;
+	u_int			 count;
+	u_int			 width;
+};
+typedef void (*menu_choice_cb)(struct menu *, u_int, key_code, void *);
+#define MENU_NOMOUSE 0x1
 
 /*
  * Window mode. Windows can be in several modes and this is used to call the
@@ -1155,6 +1185,7 @@ struct tty {
 
 	u_int		 mouse_last_x;
 	u_int		 mouse_last_y;
+	u_int		 mouse_last_b;
 	int		 mouse_drag_flag;
 	void		(*mouse_drag_update)(struct client *,
 			    struct mouse_event *);
@@ -1376,6 +1407,9 @@ struct status_line {
 /* Client connection. */
 typedef int (*prompt_input_cb)(struct client *, void *, const char *, int);
 typedef void (*prompt_free_cb)(void *);
+typedef void (*overlay_draw_cb)(struct client *, struct screen_redraw_ctx *);
+typedef int (*overlay_key_cb)(struct client *, struct key_event *);
+typedef void (*overlay_free_cb)(struct client *);
 struct client {
 	const char	*name;
 	struct tmuxpeer	*peer;
@@ -1425,7 +1459,7 @@ struct client {
 #define CLIENT_REPEAT 0x20
 #define CLIENT_SUSPENDED 0x40
 #define CLIENT_ATTACHED 0x80
-#define CLIENT_IDENTIFY 0x100
+/* 0x100 unused */
 #define CLIENT_DEAD 0x200
 #define CLIENT_REDRAWBORDERS 0x400
 #define CLIENT_READONLY 0x800
@@ -1442,23 +1476,19 @@ struct client {
 #define CLIENT_SIZECHANGED 0x400000
 #define CLIENT_STATUSOFF 0x800000
 #define CLIENT_REDRAWSTATUSALWAYS 0x1000000
+#define CLIENT_REDRAWOVERLAY 0x2000000
 #define CLIENT_ALLREDRAWFLAGS		\
 	(CLIENT_REDRAWWINDOW|		\
 	 CLIENT_REDRAWSTATUS|		\
 	 CLIENT_REDRAWSTATUSALWAYS|	\
-	 CLIENT_REDRAWBORDERS)
+	 CLIENT_REDRAWBORDERS|		\
+	 CLIENT_REDRAWOVERLAY)
 #define CLIENT_NOSIZEFLAGS	\
 	(CLIENT_DEAD|		\
 	 CLIENT_SUSPENDED|	\
 	 CLIENT_DETACHING)
 	int		 flags;
 	struct key_table *keytable;
-
-	struct event	 identify_timer;
-	void		(*identify_callback)(struct client *,
-			     struct window_pane *);
-	void		*identify_callback_data;
-	struct cmdq_item *identify_callback_item;
 
 	char		*message_string;
 	struct event	 message_timer;
@@ -1489,6 +1519,12 @@ struct client {
 	void		*pan_window;
 	u_int		 pan_ox;
 	u_int		 pan_oy;
+
+	overlay_draw_cb	 overlay_draw;
+	overlay_key_cb	 overlay_key;
+	overlay_free_cb	 overlay_free;
+	void		*overlay_data;
+	struct event	 overlay_timer;
 
 	TAILQ_ENTRY(client) entry;
 };
@@ -1668,7 +1704,7 @@ char		*paste_make_sample(struct paste_buffer *);
 #define FORMAT_PANE 0x80000000U
 #define FORMAT_WINDOW 0x40000000U
 struct format_tree;
-const char	*format_skip(const char *s, const char *end);
+const char	*format_skip(const char *, const char *);
 int		 format_true(const char *);
 struct format_tree *format_create(struct client *, struct cmdq_item *, int,
 		     int);
@@ -1701,7 +1737,7 @@ char		*format_trim_right(const char *, u_int);
 
 /* notify.c */
 void	notify_hook(struct cmdq_item *, const char *);
-void	notify_input(struct window_pane *, struct evbuffer *);
+void	notify_input(struct window_pane *, const u_char *, size_t);
 void	notify_client(const char *, struct client *);
 void	notify_session(const char *, struct session *);
 void	notify_winlink(const char *, struct winlink *);
@@ -1982,8 +2018,9 @@ void	 key_bindings_add(const char *, key_code, int, struct cmd_list *);
 void	 key_bindings_remove(const char *, key_code);
 void	 key_bindings_remove_table(const char *);
 void	 key_bindings_init(void);
-void	 key_bindings_dispatch(struct key_binding *, struct cmdq_item *,
-	     struct client *, struct mouse_event *, struct cmd_find_state *);
+struct cmdq_item *key_bindings_dispatch(struct key_binding *,
+	     struct cmdq_item *, struct client *, struct mouse_event *,
+	     struct cmd_find_state *);
 
 /* key-string.c */
 key_code	 key_string_lookup_string(const char *);
@@ -2010,11 +2047,12 @@ void	 server_add_accept(int);
 
 /* server-client.c */
 u_int	 server_client_how_many(void);
-void	 server_client_set_identify(struct client *, u_int);
+void	 server_client_set_overlay(struct client *, u_int, overlay_draw_cb,
+    overlay_key_cb, overlay_free_cb, void *);
 void	 server_client_set_key_table(struct client *, const char *);
 const char *server_client_get_key_table(struct client *);
 int	 server_client_check_nested(struct client *);
-enum cmd_retval server_client_key_callback(struct cmdq_item *, void *);
+int	 server_client_handle_key(struct client *, struct key_event *);
 struct client *server_client_create(int);
 int	 server_client_open(struct client *, char **);
 void	 server_client_unref(struct client *);
@@ -2089,6 +2127,7 @@ void	 input_free(struct window_pane *);
 void	 input_reset(struct window_pane *, int);
 struct evbuffer *input_pending(struct window_pane *);
 void	 input_parse(struct window_pane *);
+void	 input_parse_buffer(struct window_pane *, u_char *, size_t);
 
 /* input-key.c */
 void	 input_key(struct window_pane *, key_code, struct mouse_event *);
@@ -2178,6 +2217,7 @@ void	 screen_write_fast_copy(struct screen_write_ctx *, struct screen *,
 	     u_int, u_int, u_int, u_int);
 void	 screen_write_hline(struct screen_write_ctx *, u_int, int, int);
 void	 screen_write_vline(struct screen_write_ctx *, u_int, int, int);
+void	 screen_write_menu(struct screen_write_ctx *, struct menu *, int);
 void	 screen_write_box(struct screen_write_ctx *, u_int, u_int);
 void	 screen_write_preview(struct screen_write_ctx *, struct screen *, u_int,
 	     u_int);
@@ -2370,8 +2410,9 @@ u_int		 layout_set_previous(struct window *);
 /* mode-tree.c */
 typedef void (*mode_tree_build_cb)(void *, u_int, uint64_t *, const char *);
 typedef void (*mode_tree_draw_cb)(void *, void *, struct screen_write_ctx *,
-    u_int, u_int);
+	     u_int, u_int);
 typedef int (*mode_tree_search_cb)(void *, void *, const char *);
+typedef void (*mode_tree_menu_cb)(void *, struct client *, key_code);
 typedef void (*mode_tree_each_cb)(void *, void *, struct client *, key_code);
 u_int	 mode_tree_count_tagged(struct mode_tree_data *);
 void	*mode_tree_get_current(struct mode_tree_data *);
@@ -2382,7 +2423,8 @@ void	 mode_tree_each_tagged(struct mode_tree_data *, mode_tree_each_cb,
 void	 mode_tree_down(struct mode_tree_data *, int);
 struct mode_tree_data *mode_tree_start(struct window_pane *, struct args *,
 	     mode_tree_build_cb, mode_tree_draw_cb, mode_tree_search_cb,
-	     void *, const char **, u_int, struct screen **);
+	     mode_tree_menu_cb, void *, const char *, const char **, u_int,
+	     struct screen **);
 void	 mode_tree_zoom(struct mode_tree_data *, struct args *);
 void	 mode_tree_build(struct mode_tree_data *);
 void	 mode_tree_free(struct mode_tree_data *);
@@ -2430,7 +2472,7 @@ void	control_write_buffer(struct client *, struct evbuffer *);
 
 /* control-notify.c */
 void	control_notify_input(struct client *, struct window_pane *,
-	    struct evbuffer *);
+	    const u_char *, size_t);
 void	control_notify_pane_mode_changed(int);
 void	control_notify_window_layout_changed(struct window *);
 void	control_notify_window_pane_changed(struct window *);
@@ -2513,6 +2555,14 @@ void	log_close(void);
 void printflike(1, 2) log_debug(const char *, ...);
 __dead void printflike(1, 2) fatal(const char *, ...);
 __dead void printflike(1, 2) fatalx(const char *, ...);
+
+/* menu.c */
+struct menu	*menu_create(const char *, struct client *,
+		    struct cmd_find_state *, const char *);
+void		 menu_free(struct menu *);
+int		 menu_display(struct menu *, int, struct cmdq_item *, u_int,
+		    u_int, struct client *, struct cmd_find_state *,
+		    menu_choice_cb, void *);
 
 /* style.c */
 int		 style_parse(struct style *,const struct grid_cell *,

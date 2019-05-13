@@ -71,6 +71,7 @@ dist_tmux_SOURCES = \
 	cmd-confirm-before.c \
 	cmd-copy-mode.c \
 	cmd-detach-client.c \
+	cmd-display-menu.c \
 	cmd-display-message.c \
 	cmd-display-panes.c \
 	cmd-find-window.c \
@@ -143,6 +144,7 @@ dist_tmux_SOURCES = \
 	layout-set.c \
 	layout.c \
 	log.c \
+	menu.c \
 	mode-tree.c \
 	names.c \
 	notify.c \

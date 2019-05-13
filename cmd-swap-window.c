@@ -78,9 +78,9 @@ cmd_swap_window_exec(struct cmd *self, struct cmdq_item *item)
 	TAILQ_INSERT_TAIL(&w_dst->winlinks, wl_src, wentry);
 
 	if (!args_has(self->args, 'd')) {
-		session_select(dst, wl_dst->idx);
+		session_select(src, wl_src->idx);
 		if (src != dst)
-			session_select(src, wl_src->idx);
+			session_select(dst, wl_dst->idx);
 	}
 	session_group_synchronize_from(src);
 	server_redraw_session_group(src);
