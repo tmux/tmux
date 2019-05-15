@@ -13,4 +13,4 @@ Please provide the following information:
 * tmux version (`tmux -V`).
 * Platform (`uname -sp`).
 * $TERM inside and outside of tmux (`echo $TERM`).
-* Logs from tmux (`tmux -vv new`).
+* Logs from tmux (`tmux kill-server; tmux -vv new`).
