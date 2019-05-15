@@ -1,4 +1,4 @@
-# Issue description
+### Issue description
 
 Please describe the problem and the steps to reproduce. Add a minimal tmux
 config if necessary. Screenshots can be helpful, but no more than one or two.
@@ -6,7 +6,7 @@ config if necessary. Screenshots can be helpful, but no more than one or two.
 Please do not report bugs (crashes, incorrect behaviour) without reproducing on
 a tmux built from the latest code in Git.
 
-# Information
+### Information
 
 Please provide the following information:
 
