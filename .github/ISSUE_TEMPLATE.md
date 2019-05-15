@@ -1,12 +1,15 @@
 ### Issue description
 
-Please describe the problem and the steps to reproduce. Add a minimal tmux
-config if necessary. Screenshots can be helpful, but no more than one or two.
+Please read https://github.com/tmux/tmux/blob/master/.github/CONTRIBUTING.md
+before opening an issue.
 
-Please do not report bugs (crashes, incorrect behaviour) without reproducing on
-a tmux built from the latest code in Git.
+Describe the problem and the steps to reproduce. Add a minimal tmux config if
+necessary. Screenshots can be helpful, but no more than one or two.
 
-### Information
+Do not report bugs (crashes, incorrect behaviour) without reproducing on a tmux
+built from the latest code in Git.
+
+### Required information
 
 Please provide the following information:
 
