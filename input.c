@@ -1940,12 +1940,11 @@ input_csi_dispatch_sgr_colon(struct input_ctx *ictx, u_int i)
 	}
 	if (p[0] != 38 && p[0] != 48)
 		return;
-	if (p[1] == -1)
-		i = 2;
-	else
-		i = 1;
+	i = 1;
 	switch (p[i]) {
 	case 2:
+		if (p[i + 1] == -1)
+			i++;
 		if (n < i + 4)
 			break;
 		input_csi_dispatch_sgr_rgb_do(ictx, p[0], p[i + 1], p[i + 2],
