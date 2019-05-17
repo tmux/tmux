@@ -2354,13 +2354,30 @@ to
 and
 .Em Tab .
 Note that to bind the
-.Ql \&"
+.Ql \&;
 or
 .Ql '
-keys, quotation marks are necessary, for example:
+or
+.Ql \&"
+or
+.Ql \&\e
+or
+.Ql #
+or
+.Ql $
+or
+.Ql ~
+keys, quoting is necessary: semicolon is quoted with backslash, single-quote
+is quoted with double-quotes, and the rest are quoted with single-quotes, for
+example:
 .Bd -literal -offset indent
-bind-key '"' split-window
-bind-key "'" new-window
+bind-key \\;    display-message semicolon-pressed
+bind-key M-\\;  display-message ALT-semicolon-pressed
+bind-key "'"   display-message single-quote-pressed
+bind-key '"'   display-message double-quote-pressed
+bind-key '#'   display-message hash-key-pressed
+bind-key '\\'   display-message backslash-pressed
+bind-key M-'\\' display-message ALT-backslash-pressed
 .Ed
 .Pp
 Commands related to key bindings are as follows:

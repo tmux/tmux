@@ -32,6 +32,8 @@ static enum cmd_retval	cmd_list_keys_exec(struct cmd *, struct cmdq_item *);
 static enum cmd_retval	cmd_list_keys_commands(struct cmd *,
 			    struct cmdq_item *);
 
+static const char * escape_key(const char *);
+
 const struct cmd_entry cmd_list_keys_entry = {
 	.name = "list-keys",
 	.alias = "lsk",
@@ -53,6 +55,42 @@ const struct cmd_entry cmd_list_commands_entry = {
 	.flags = CMD_STARTSERVER|CMD_AFTERHOOK,
 	.exec = cmd_list_keys_exec
 };
+
+/* escape <key> such that it's suitable for re-input from list-keys */
+static const char *
+escape_key(const char* key)
+{
+	static char out[34];  /* key_string_lookup_key output (32) + 2 quotes */
+	char last;
+	int len;
+
+	len = strlen(key);
+	if (len == 0 || len > 31)
+		return key;
+	strcpy(out, key);
+	last = out[len - 1];
+
+	/* The following work both for <last> alone and for M-<last> */
+	/* Use single-quotes, except " for single-quote, \ for semicolon */
+	switch(last) {
+	case ';':
+		strcpy(out + len - 1, "\\;");
+		break;
+	case '\'':
+		strcpy(out + len - 1, "\"'\"");
+		break;
+	case '"':  /* FALLTHROUGH */
+	case '\\': /* FALLTHROUGH */
+	case '#':  /* FALLTHROUGH */
+	case '~':  /* FALLTHROUGH */
+	case '$':
+		strcpy(out + len - 1, "' '");
+		out[len] = last;
+		break;
+	}
+
+	return out;
+}
 
 static enum cmd_retval
 cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
@@ -83,7 +121,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 		}
 		bd = key_bindings_first(table);
 		while (bd != NULL) {
-			key = key_string_lookup_key(bd->key);
+			key = escape_key(key_string_lookup_key(bd->key));
 
 			if (bd->flags & KEY_BINDING_REPEAT)
 				repeat = 1;
@@ -108,7 +146,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 		}
 		bd = key_bindings_first(table);
 		while (bd != NULL) {
-			key = key_string_lookup_key(bd->key);
+			key = escape_key(key_string_lookup_key(bd->key));
 
 			if (!repeat)
 				r = "";

@@ -112,12 +112,12 @@ cmd_list_print(struct cmd_list *cmdlist)
 	TAILQ_FOREACH(cmd, &cmdlist->list, qentry) {
 		this = cmd_print(cmd);
 
-		len += strlen(this) + 3;
+		len += strlen(this) + 4;
 		buf = xrealloc(buf, len);
 
 		strlcat(buf, this, len);
 		if (TAILQ_NEXT(cmd, qentry) != NULL)
-			strlcat(buf, " ; ", len);
+			strlcat(buf, " \\; ", len);
 
 		free(this);
 	}
