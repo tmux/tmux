@@ -37,10 +37,14 @@ static const struct tty_acs_entry tty_acs_table[] = {
 	{ '0', "\342\226\256" },	/* solid square block */
 	{ '`', "\342\227\206" },	/* diamond */
 	{ 'a', "\342\226\222" },	/* checker board (stipple) */
+	{ 'b', "\342\220\211" },
+	{ 'c', "\342\220\214" },
+	{ 'd', "\342\220\215" },
+	{ 'e', "\342\220\212" },
 	{ 'f', "\302\260" },		/* degree symbol */
 	{ 'g', "\302\261" },		/* plus/minus */
-	{ 'h', "\342\226\222" },	/* board of squares */
-	{ 'i', "\342\230\203" },	/* lantern symbol */
+	{ 'h', "\342\220\244" },
+	{ 'i', "\342\220\213" },
 	{ 'j', "\342\224\230" },	/* lower right corner */
 	{ 'k', "\342\224\220" },	/* upper right corner */
 	{ 'l', "\342\224\214" },	/* upper left corner */

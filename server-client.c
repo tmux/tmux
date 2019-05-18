@@ -77,6 +77,9 @@ server_client_set_overlay(struct client *c, u_int delay, overlay_draw_cb drawcb,
 {
 	struct timeval	tv;
 
+	if (c->overlay_draw != NULL)
+		server_client_clear_overlay(c);
+
 	tv.tv_sec = delay / 1000;
 	tv.tv_usec = (delay % 1000) * 1000L;
 
@@ -421,17 +424,21 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 	key_code		 key;
 	struct timeval		 tv;
 	struct style_range	*sr;
-	enum { NOTYPE, MOVE, DOWN, UP, DRAG, WHEEL, DOUBLE, TRIPLE } type;
+	enum { NOTYPE,
+	       MOVE,
+	       DOWN,
+	       UP,
+	       DRAG,
+	       WHEEL,
+	       DOUBLE,
+	       TRIPLE } type = NOTYPE;
 	enum { NOWHERE,
 	       PANE,
 	       STATUS,
 	       STATUS_LEFT,
 	       STATUS_RIGHT,
 	       STATUS_DEFAULT,
-	       BORDER } where;
-
-	type = NOTYPE;
-	where = NOWHERE;
+	       BORDER } where = NOWHERE;
 
 	log_debug("%s mouse %02x at %u,%u (last %u,%u) (%d)", c->name, m->b,
 	    m->x, m->y, m->lx, m->ly, c->tty.mouse_drag_flag);
@@ -998,7 +1005,6 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 	struct mouse_event		*m = &event->m;
 	struct session			*s = c->session;
 	struct winlink			*wl;
-	struct window			*w;
 	struct window_pane		*wp;
 	struct window_mode_entry	*wme;
 	struct timeval			 tv;
@@ -1012,7 +1018,6 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 	if (s == NULL || (c->flags & (CLIENT_DEAD|CLIENT_SUSPENDED)) != 0)
 		goto out;
 	wl = s->curw;
-	w = wl->window;
 
 	/* Update the activity timer. */
 	if (gettimeofday(&c->activity_time, NULL) != 0)
@@ -1443,6 +1448,8 @@ server_client_reset_state(struct client *c)
 
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
 		return;
+	if (c->overlay_draw != NULL)
+		return;
 	mode = s->mode;
 
 	tty_region_off(&c->tty);
@@ -1553,10 +1560,11 @@ server_client_check_redraw(struct client *c)
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
 		return;
 	if (c->flags & CLIENT_ALLREDRAWFLAGS) {
-		log_debug("%s: redraw%s%s%s", c->name,
+		log_debug("%s: redraw%s%s%s%s", c->name,
 		    (c->flags & CLIENT_REDRAWWINDOW) ? " window" : "",
 		    (c->flags & CLIENT_REDRAWSTATUS) ? " status" : "",
-		    (c->flags & CLIENT_REDRAWBORDERS) ? " borders" : "");
+		    (c->flags & CLIENT_REDRAWBORDERS) ? " borders" : "",
+		    (c->flags & CLIENT_REDRAWOVERLAY) ? " overlay" : "");
 	}
 
 	/*
@@ -1712,6 +1720,7 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 
 		if (c->flags & CLIENT_CONTROL)
 			break;
+		server_client_clear_overlay(c);
 		tty_resize(&c->tty);
 		recalculate_sizes();
 		server_redraw_client(c);

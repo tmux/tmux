@@ -185,7 +185,7 @@ layout_set_main_h(struct window *w)
 {
 	struct window_pane	*wp;
 	struct layout_cell	*lc, *lcmain, *lcother, *lcchild;
-	u_int			 n, mainh, otherh, sx;
+	u_int			 n, mainh, otherh, sx, sy;
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
@@ -195,22 +195,25 @@ layout_set_main_h(struct window *w)
 		return;
 	n--;	/* take off main pane */
 
+	/* Find available height - take off one line for the border. */
+	sy = w->sy - 1;
+
 	/* Get the main pane height and work out the other pane height. */
 	mainh = options_get_number(w->options, "main-pane-height");
-	if (mainh + PANE_MINIMUM + 1 >= w->sy) {
-		if (w->sy <= PANE_MINIMUM + 1 + PANE_MINIMUM)
+	if (mainh + PANE_MINIMUM >= sy) {
+		if (sy <= PANE_MINIMUM + PANE_MINIMUM)
 			mainh = PANE_MINIMUM;
 		else
-			mainh = w->sy - (PANE_MINIMUM + 1);
+			mainh = sy - PANE_MINIMUM;
 		otherh = PANE_MINIMUM;
 	} else {
 		otherh = options_get_number(w->options, "other-pane-height");
 		if (otherh == 0)
-			otherh = w->sy - mainh;
-		else if (otherh > w->sy || w->sy - otherh < mainh)
-			otherh = w->sy - mainh;
+			otherh = sy - mainh;
+		else if (otherh > sy || sy - otherh < mainh)
+			otherh = sy - mainh;
 		else
-			mainh = w->sy - otherh;
+			mainh = sy - otherh;
 	}
 
 	/* Work out what width is needed. */
@@ -221,7 +224,7 @@ layout_set_main_h(struct window *w)
 	/* Free old tree and create a new root. */
 	layout_free(w);
 	lc = w->layout_root = layout_create_cell(NULL);
-	layout_set_size(lc, sx, mainh + otherh, 0, 0);
+	layout_set_size(lc, sx, mainh + otherh + 1, 0, 0);
 	layout_make_node(lc, LAYOUT_TOPBOTTOM);
 
 	/* Create the main pane. */
@@ -269,7 +272,7 @@ layout_set_main_v(struct window *w)
 {
 	struct window_pane	*wp;
 	struct layout_cell	*lc, *lcmain, *lcother, *lcchild;
-	u_int			 n, mainw, otherw, sy;
+	u_int			 n, mainw, otherw, sx, sy;
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
@@ -279,22 +282,25 @@ layout_set_main_v(struct window *w)
 		return;
 	n--;	/* take off main pane */
 
+	/* Find available width - take off one line for the border. */
+	sx = w->sx - 1;
+
 	/* Get the main pane width and work out the other pane width. */
 	mainw = options_get_number(w->options, "main-pane-width");
-	if (mainw + PANE_MINIMUM + 1 >= w->sx) {
-		if (w->sx <= PANE_MINIMUM + 1 + PANE_MINIMUM)
+	if (mainw + PANE_MINIMUM >= sx) {
+		if (sx <= PANE_MINIMUM + PANE_MINIMUM)
 			mainw = PANE_MINIMUM;
 		else
-			mainw = w->sx - (PANE_MINIMUM + 1);
+			mainw = sx - PANE_MINIMUM;
 		otherw = PANE_MINIMUM;
 	} else {
 		otherw = options_get_number(w->options, "other-pane-width");
 		if (otherw == 0)
-			otherw = w->sx - mainw;
-		else if (otherw > w->sx || w->sx - otherw < mainw)
-			otherw = w->sx - mainw;
+			otherw = sx - mainw;
+		else if (otherw > sx || sx - otherw < mainw)
+			otherw = sx - mainw;
 		else
-			mainw = w->sx - otherw;
+			mainw = sx - otherw;
 	}
 
 	/* Work out what height is needed. */
@@ -305,7 +311,7 @@ layout_set_main_v(struct window *w)
 	/* Free old tree and create a new root. */
 	layout_free(w);
 	lc = w->layout_root = layout_create_cell(NULL);
-	layout_set_size(lc, mainw + otherw, sy, 0, 0);
+	layout_set_size(lc, mainw + otherw + 1, sy, 0, 0);
 	layout_make_node(lc, LAYOUT_LEFTRIGHT);
 
 	/* Create the main pane. */

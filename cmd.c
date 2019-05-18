@@ -41,6 +41,7 @@ extern const struct cmd_entry cmd_confirm_before_entry;
 extern const struct cmd_entry cmd_copy_mode_entry;
 extern const struct cmd_entry cmd_delete_buffer_entry;
 extern const struct cmd_entry cmd_detach_client_entry;
+extern const struct cmd_entry cmd_display_menu_entry;
 extern const struct cmd_entry cmd_display_message_entry;
 extern const struct cmd_entry cmd_display_panes_entry;
 extern const struct cmd_entry cmd_down_pane_entry;
@@ -129,6 +130,7 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_copy_mode_entry,
 	&cmd_delete_buffer_entry,
 	&cmd_detach_client_entry,
+	&cmd_display_menu_entry,
 	&cmd_display_message_entry,
 	&cmd_display_panes_entry,
 	&cmd_find_window_entry,
@@ -509,17 +511,22 @@ cmd_mouse_window(struct mouse_event *m, struct session **sp)
 {
 	struct session	*s;
 	struct window	*w;
+	struct winlink	*wl;
 
-	if (!m->valid || m->s == -1 || m->w == -1)
+	if (!m->valid)
 		return (NULL);
-	if ((s = session_find_by_id(m->s)) == NULL)
+	if (m->s == -1 || (s = session_find_by_id(m->s)) == NULL)
 		return (NULL);
-	if ((w = window_find_by_id(m->w)) == NULL)
-		return (NULL);
-
+	if (m->w == -1)
+		wl = s->curw;
+	else {
+		if ((w = window_find_by_id(m->w)) == NULL)
+			return (NULL);
+		wl = winlink_find_by_window(&s->windows, w);
+	}
 	if (sp != NULL)
 		*sp = s;
-	return (winlink_find_by_window(&s->windows, w));
+	return (wl);
 }
 
 /* Get current mouse pane if any. */

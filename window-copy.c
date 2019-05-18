@@ -1046,8 +1046,6 @@ window_copy_cmd_previous_matching_bracket(struct window_copy_cmd_state *cs)
 					goto retry;
 				}
 				window_copy_cursor_previous_word(wme, "}]) ");
-				px = data->cx;
-				continue;
 			}
 			continue;
 		}
@@ -1161,7 +1159,6 @@ window_copy_cmd_next_matching_bracket(struct window_copy_cmd_state *cs)
 					goto retry;
 				}
 				window_copy_cursor_next_word_end(wme, "{[( ");
-				px = data->cx;
 				continue;
 			}
 			/* For vi, continue searching for bracket until EOL. */
@@ -3480,7 +3477,9 @@ window_copy_move_mouse(struct mouse_event *m)
 	if (wp == NULL)
 		return;
 	wme = TAILQ_FIRST(&wp->modes);
-	if (wme == NULL || wme->mode != &window_copy_mode)
+	if (wme == NULL)
+		return;
+	if (wme->mode != &window_copy_mode && wme->mode != &window_view_mode)
 		return;
 
 	if (cmd_mouse_at(wp, m, &x, &y, 0) != 0)
@@ -3503,7 +3502,9 @@ window_copy_start_drag(struct client *c, struct mouse_event *m)
 	if (wp == NULL)
 		return;
 	wme = TAILQ_FIRST(&wp->modes);
-	if (wme == NULL || wme->mode != &window_copy_mode)
+	if (wme == NULL)
+		return;
+	if (wme->mode != &window_copy_mode && wme->mode != &window_view_mode)
 		return;
 
 	if (cmd_mouse_at(wp, m, &x, &y, 1) != 0)
@@ -3537,7 +3538,9 @@ window_copy_drag_update(struct client *c, struct mouse_event *m)
 	if (wp == NULL)
 		return;
 	wme = TAILQ_FIRST(&wp->modes);
-	if (wme == NULL || wme->mode != &window_copy_mode)
+	if (wme == NULL)
+		return;
+	if (wme->mode != &window_copy_mode && wme->mode != &window_view_mode)
 		return;
 
 	data = wme->data;
@@ -3576,7 +3579,9 @@ window_copy_drag_release(struct client *c, struct mouse_event *m)
 	if (wp == NULL)
 		return;
 	wme = TAILQ_FIRST(&wp->modes);
-	if (wme == NULL || wme->mode != &window_copy_mode)
+	if (wme == NULL)
+		return;
+	if (wme->mode != &window_copy_mode && wme->mode != &window_view_mode)
 		return;
 
 	data = wme->data;

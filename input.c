@@ -2128,6 +2128,12 @@ input_csi_dispatch_sgr(struct input_ctx *ictx)
 		case 49:
 			gc->bg = 8;
 			break;
+		case 53:
+			gc->attr |= GRID_ATTR_OVERLINE;
+			break;
+		case 55:
+			gc->attr &= ~GRID_ATTR_OVERLINE;
+			break;
 		// TODO: kmo add underscore color reset as 59
 		case 90:
 		case 91:

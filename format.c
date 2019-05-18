@@ -54,6 +54,49 @@ static void	 format_defaults_session(struct format_tree *,
 static void	 format_defaults_client(struct format_tree *, struct client *);
 static void	 format_defaults_winlink(struct format_tree *, struct winlink *);
 
+/* Default menus. */
+#define DEFAULT_CLIENT_MENU \
+	"Detach,d,detach-client|" \
+	"Detach & Kill,X,detach-client -P|" \
+	"Detach Others,o,detach-client -a|" \
+	"|" \
+	"Lock,l,lock-client"
+#define DEFAULT_SESSION_MENU \
+	"Next,n,switch-client -n|" \
+	"Previous,p,switch-client -p|" \
+	"|" \
+	"Renumber,N,move-window -r|" \
+	"Rename,n,command-prompt -I \"#S\" \"rename-session -- '%%'\"|" \
+	"|" \
+	"New Session,s,new-session|" \
+	"New Window,w,new-window"
+#define DEFAULT_WINDOW_MENU \
+	"Swap Left,l,swap-window -t:-1|" \
+	"Swap Right,r,swap-window -t:+1|" \
+	"#{?pane_marked_set,,#[dim]}Swap Marked,s,swap-window|" \
+	"|" \
+	"Kill,X,kill-window|" \
+	"Respawn,R,respawn-window -k|" \
+	"|" \
+	"#{?pane_marked,Unmark,Mark},m,select-pane -m|" \
+	"Rename,n,command-prompt -I \"#W\" \"rename-window -- '%%'\"|" \
+	"|" \
+	"New After,w,new-window -a|" \
+	"New At End,W,new-window"
+#define DEFAULT_PANE_MENU \
+	"Horizontal Split,h,split-window -h|" \
+	"Vertical Split,v,split-window -v|" \
+	"|" \
+	"Swap Up,u,swap-pane -U|" \
+	"Swap Down,d,swap-pane -D|" \
+	"#{?pane_marked_set,,#[dim]}Swap Marked,s,swap-pane|" \
+	"|" \
+	"Kill,X,kill-pane|" \
+	"Respawn,R,respawn-pane -k|" \
+	"|" \
+	"#{?pane_marked,Unmark,Mark},m,select-pane -m|" \
+	"#{?window_zoomed_flag,Unzoom,Zoom},z,resize-pane -Z"
+
 /* Entry in format job tree. */
 struct format_job {
 	struct client		*client;
@@ -767,6 +810,11 @@ format_create(struct client *c, struct cmdq_item *item, int tag, int flags)
 			format_add(ft, tmp, "%s", (*wm)->default_format);
 		}
 	}
+
+	format_add(ft, "client_menu", "%s", DEFAULT_CLIENT_MENU);
+	format_add(ft, "session_menu", "%s", DEFAULT_SESSION_MENU);
+	format_add(ft, "window_menu", "%s", DEFAULT_WINDOW_MENU);
+	format_add(ft, "pane_menu", "%s", DEFAULT_PANE_MENU);
 
 	if (item != NULL) {
 		if (item->cmd != NULL)
@@ -2051,6 +2099,12 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 		format_add(ft, "pane_dead", "%d", wp->fd == -1);
 	else
 		format_add(ft, "pane_dead", "0");
+
+	if (server_check_marked() && marked_pane.wp == wp)
+		format_add(ft, "pane_marked", "1");
+	else
+		format_add(ft, "pane_marked", "0");
+	format_add(ft, "pane_marked_set", "%d", server_check_marked());
 
 	format_add(ft, "pane_left", "%u", wp->xoff);
 	format_add(ft, "pane_top", "%u", wp->yoff);

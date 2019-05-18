@@ -271,14 +271,19 @@ key_bindings_init(void)
 		"bind -r C-Down resize-pane -D",
 		"bind -r C-Left resize-pane -L",
 		"bind -r C-Right resize-pane -R",
+
 		"bind -n MouseDown1Pane select-pane -t=\\; send-keys -M",
 		"bind -n MouseDrag1Border resize-pane -M",
 		"bind -n MouseDown1Status select-window -t=",
 		"bind -n WheelDownStatus next-window",
 		"bind -n WheelUpStatus previous-window",
 		"bind -n MouseDrag1Pane if -Ft= '#{mouse_any_flag}' 'if -Ft= \"#{pane_in_mode}\" \"copy-mode -M\" \"send-keys -M\"' 'copy-mode -M'",
-		"bind -n MouseDown3Pane if-shell -Ft= '#{mouse_any_flag}' 'select-pane -t=; send-keys -M' 'select-pane -mt='",
-		"bind -n WheelUpPane if-shell -Ft= '#{mouse_any_flag}' 'send-keys -M' 'if -Ft= \"#{pane_in_mode}\" \"send-keys -M\" \"copy-mode -et=\"'",
+		"bind -n MouseDown3Pane if -Ft= '#{||:mouse_any_flag,pane_in_mode}' 'select-pane -t=; send-keys -M' 'select-pane -mt='",
+		"bind -n WheelUpPane if -Ft= '#{mouse_any_flag}' 'send-keys -M' 'if -Ft= \"#{pane_in_mode}\" \"send-keys -M\" \"copy-mode -et=\"'",
+		"bind -n MouseDown3StatusRight display-menu -t= -xM -yS -F -M \"#{client_menu}\" -T \"#[align=centre]#{client_name}\"",
+		"bind -n MouseDown3StatusLeft display-menu -t= -xM -yS -F -M \"#{session_menu}\" -T \"#[align=centre]#{session_name}\"",
+		"bind -n MouseDown3Status display-menu -t= -xW -yS -F -M \"#{window_menu}\" -T \"#[align=centre]#{window_index}:#{window_name}\"",
+		"bind -n M-MouseDown3Pane display-menu -t= -xM -yM -F -M \"#{pane_menu}\" -T \"#[align=centre]#{pane_index} (#{pane_id})\"",
 
 		"bind -Tcopy-mode C-Space send -X begin-selection",
 		"bind -Tcopy-mode C-a send -X start-of-line",
@@ -448,7 +453,7 @@ key_bindings_read_only(struct cmdq_item *item, __unused void *data)
 	return (CMD_RETURN_ERROR);
 }
 
-void
+struct cmdq_item *
 key_bindings_dispatch(struct key_binding *bd, struct cmdq_item *item,
     struct client *c, struct mouse_event *m, struct cmd_find_state *fs)
 {
@@ -472,4 +477,5 @@ key_bindings_dispatch(struct key_binding *bd, struct cmdq_item *item,
 		cmdq_insert_after(item, new_item);
 	else
 		cmdq_append(c, new_item);
+	return (new_item);
 }

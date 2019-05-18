@@ -433,6 +433,7 @@ enum tty_code_code {
 	TTYC_SITM,
 	TTYC_SMACS,
 	TTYC_SMCUP,
+	TTYC_SMOL,
 	TTYC_SMKX,
 	TTYC_SMSO,
 	TTYC_SMULX,
@@ -570,6 +571,7 @@ enum utf8_state {
 #define GRID_ATTR_UNDERSCORE_3 0x400
 #define GRID_ATTR_UNDERSCORE_4 0x800
 #define GRID_ATTR_UNDERSCORE_5 0x1000
+#define GRID_ATTR_OVERLINE 0x2000
 
 /* All underscore attributes. */
 #define GRID_ATTR_ALL_UNDERSCORE \
@@ -750,6 +752,21 @@ struct screen_redraw_ctx {
 #define screen_size_y(s) ((s)->grid->sy)
 #define screen_hsize(s) ((s)->grid->hsize)
 #define screen_hlimit(s) ((s)->grid->hlimit)
+
+/* Menu. */
+struct menu_item {
+	char		*name;
+	char		*command;
+	key_code	 key;
+};
+struct menu {
+	char			*title;
+	struct menu_item	*items;
+	u_int			 count;
+	u_int			 width;
+};
+typedef void (*menu_choice_cb)(struct menu *, u_int, key_code, void *);
+#define MENU_NOMOUSE 0x1
 
 /*
  * Window mode. Windows can be in several modes and this is used to call the
@@ -1171,6 +1188,7 @@ struct tty {
 
 	u_int		 mouse_last_x;
 	u_int		 mouse_last_y;
+	u_int		 mouse_last_b;
 	int		 mouse_drag_flag;
 	void		(*mouse_drag_update)(struct client *,
 			    struct mouse_event *);
@@ -1461,11 +1479,13 @@ struct client {
 #define CLIENT_SIZECHANGED 0x400000
 #define CLIENT_STATUSOFF 0x800000
 #define CLIENT_REDRAWSTATUSALWAYS 0x1000000
+#define CLIENT_REDRAWOVERLAY 0x2000000
 #define CLIENT_ALLREDRAWFLAGS		\
 	(CLIENT_REDRAWWINDOW|		\
 	 CLIENT_REDRAWSTATUS|		\
 	 CLIENT_REDRAWSTATUSALWAYS|	\
-	 CLIENT_REDRAWBORDERS)
+	 CLIENT_REDRAWBORDERS|		\
+	 CLIENT_REDRAWOVERLAY)
 #define CLIENT_NOSIZEFLAGS	\
 	(CLIENT_DEAD|		\
 	 CLIENT_SUSPENDED|	\
@@ -1687,7 +1707,7 @@ char		*paste_make_sample(struct paste_buffer *);
 #define FORMAT_PANE 0x80000000U
 #define FORMAT_WINDOW 0x40000000U
 struct format_tree;
-const char	*format_skip(const char *s, const char *end);
+const char	*format_skip(const char *, const char *);
 int		 format_true(const char *);
 struct format_tree *format_create(struct client *, struct cmdq_item *, int,
 		     int);
@@ -2001,8 +2021,9 @@ void	 key_bindings_add(const char *, key_code, int, struct cmd_list *);
 void	 key_bindings_remove(const char *, key_code);
 void	 key_bindings_remove_table(const char *);
 void	 key_bindings_init(void);
-void	 key_bindings_dispatch(struct key_binding *, struct cmdq_item *,
-	     struct client *, struct mouse_event *, struct cmd_find_state *);
+struct cmdq_item *key_bindings_dispatch(struct key_binding *,
+	     struct cmdq_item *, struct client *, struct mouse_event *,
+	     struct cmd_find_state *);
 
 /* key-string.c */
 key_code	 key_string_lookup_string(const char *);
@@ -2199,6 +2220,7 @@ void	 screen_write_fast_copy(struct screen_write_ctx *, struct screen *,
 	     u_int, u_int, u_int, u_int);
 void	 screen_write_hline(struct screen_write_ctx *, u_int, int, int);
 void	 screen_write_vline(struct screen_write_ctx *, u_int, int, int);
+void	 screen_write_menu(struct screen_write_ctx *, struct menu *, int);
 void	 screen_write_box(struct screen_write_ctx *, u_int, u_int);
 void	 screen_write_preview(struct screen_write_ctx *, struct screen *, u_int,
 	     u_int);
@@ -2391,8 +2413,9 @@ u_int		 layout_set_previous(struct window *);
 /* mode-tree.c */
 typedef void (*mode_tree_build_cb)(void *, u_int, uint64_t *, const char *);
 typedef void (*mode_tree_draw_cb)(void *, void *, struct screen_write_ctx *,
-    u_int, u_int);
+	     u_int, u_int);
 typedef int (*mode_tree_search_cb)(void *, void *, const char *);
+typedef void (*mode_tree_menu_cb)(void *, struct client *, key_code);
 typedef void (*mode_tree_each_cb)(void *, void *, struct client *, key_code);
 u_int	 mode_tree_count_tagged(struct mode_tree_data *);
 void	*mode_tree_get_current(struct mode_tree_data *);
@@ -2403,7 +2426,8 @@ void	 mode_tree_each_tagged(struct mode_tree_data *, mode_tree_each_cb,
 void	 mode_tree_down(struct mode_tree_data *, int);
 struct mode_tree_data *mode_tree_start(struct window_pane *, struct args *,
 	     mode_tree_build_cb, mode_tree_draw_cb, mode_tree_search_cb,
-	     void *, const char **, u_int, struct screen **);
+	     mode_tree_menu_cb, void *, const char *, const char **, u_int,
+	     struct screen **);
 void	 mode_tree_zoom(struct mode_tree_data *, struct args *);
 void	 mode_tree_build(struct mode_tree_data *);
 void	 mode_tree_free(struct mode_tree_data *);
@@ -2534,6 +2558,14 @@ void	log_close(void);
 void printflike(1, 2) log_debug(const char *, ...);
 __dead void printflike(1, 2) fatal(const char *, ...);
 __dead void printflike(1, 2) fatalx(const char *, ...);
+
+/* menu.c */
+struct menu	*menu_create(const char *, struct client *,
+		    struct cmd_find_state *, const char *);
+void		 menu_free(struct menu *);
+int		 menu_display(struct menu *, int, struct cmdq_item *, u_int,
+		    u_int, struct client *, struct cmd_find_state *,
+		    menu_choice_cb, void *);
 
 /* style.c */
 int		 style_parse(struct style *,const struct grid_cell *,
