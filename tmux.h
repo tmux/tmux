@@ -1287,9 +1287,6 @@ struct cmd {
 	char			*file;
 	u_int			 line;
 
-#define CMD_CONTROL 0x1
-	int			 flags;
-
 	TAILQ_ENTRY(cmd)	 qentry;
 };
 
@@ -1318,6 +1315,7 @@ struct cmdq_shared {
 
 	int			 flags;
 #define CMDQ_SHARED_REPEAT 0x1
+#define CMDQ_SHARED_CONTROL 0x2
 
 	struct format_tree	*formats;
 
