@@ -70,7 +70,6 @@ control_callback(struct client *c, int closed, __unused void *data)
 {
 	char			*line, *cause;
 	struct cmd_list		*cmdlist;
-	struct cmd		*cmd;
 	struct cmdq_item	*item;
 
 	if (closed)
@@ -90,9 +89,8 @@ control_callback(struct client *c, int closed, __unused void *data)
 			item = cmdq_get_callback(control_error, cause);
 			cmdq_append(c, item);
 		} else {
-			TAILQ_FOREACH(cmd, &cmdlist->list, qentry)
-				cmd->flags |= CMD_CONTROL;
 			item = cmdq_get_command(cmdlist, NULL, NULL, 0);
+			item->shared->flags |= CMDQ_SHARED_CONTROL;
 			cmdq_append(c, item);
 			cmd_list_free(cmdlist);
 		}
