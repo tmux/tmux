@@ -39,8 +39,9 @@ sh autogen.sh
 ./configure && make
 ~~~
 
-(Note that this requires at least a working C compiler, make, autoconf,
-automake, pkg-config as well as libevent and ncurses libraries and headers.)
+(Note that this requires at least a working C compiler, `make`, `autoconf`,
+`automake`, `pkg-config` as well as `libevent` and `ncurses` libraries and
+headers.)
 
 ## Contributing
 
@@ -50,6 +51,11 @@ welcome. Please send by email to:
 tmux-users@googlegroups.com
 
 Or open a GitHub issue or pull request.
+
+There is [a TODO list](https://github.com/tmux/tmux/wiki/Contributing) which
+explains some ideas for tmux not yet developed.  Please feel free to ask for
+clarifications on the mailing list if you're thinking of working on these or
+need further information.
 
 Please read the CONTRIBUTING file before opening an issue.
 
@@ -68,8 +74,8 @@ And a bash(1) completion file at:
 
 https://github.com/imomaliev/tmux-bash-completion
 
-For debugging, run tmux with -v or -vv to generate server and client log files
-in the current directory.
+For debugging, run tmux with `-v` or `-vv` to generate server and client log 
+files in the current directory.
 
 ## Support
 
