@@ -601,7 +601,7 @@ struct grid_cell {
 	u_short			attr;
 	int			fg;
 	int			bg;
-	int			sp;
+	int			us;
 	struct utf8_data	data;
 };
 struct grid_cell_entry {

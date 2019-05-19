@@ -81,7 +81,7 @@ grid_need_extended_cell(const struct grid_cell_entry *gce,
 	if (gc->data.size != 1 || gc->data.width != 1)
 		return (1);
 	if ((gc->fg & COLOUR_FLAG_RGB) || (gc->bg & COLOUR_FLAG_RGB) ||
-	    (gc->sp & COLOUR_FLAG_RGB))
+	    (gc->us & COLOUR_FLAG_RGB))
 		return (1);
 	return (0);
 }

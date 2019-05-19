@@ -1824,7 +1824,7 @@ input_csi_dispatch_sgr_256_do(struct input_ctx *ictx, int fgbg, int c)
 	struct grid_cell	*gc = &ictx->cell.cell;
 
 	if (c == -1 || c > 255) {
-		// if color index is outside the range reset?
+		// if color index is outside the range reset
 		if (fgbg == 38)
 			gc->fg = 8;
 		else if (fgbg == 48)
@@ -1835,7 +1835,8 @@ input_csi_dispatch_sgr_256_do(struct input_ctx *ictx, int fgbg, int c)
 			gc->fg = c | COLOUR_FLAG_256;
 		else if (fgbg == 48)
 			gc->bg = c | COLOUR_FLAG_256;
-		// TODO: kmo add undercurl color as 58
+		else if (fgbg == 58)
+			gc->us = c | COLOUR_FLAG_256;
 	}
 	return (1);
 }
@@ -1868,7 +1869,7 @@ input_csi_dispatch_sgr_rgb_do(struct input_ctx *ictx, int fgbg, int r, int g,
 {
 	struct grid_cell	*gc = &ictx->cell.cell;
 
-	// abort if any of the values is outside of the range
+	// abort if any of the values is outside of the valid range
 	if (r == -1 || r > 255)
 		return (0);
 	if (g == -1 || g > 255)
@@ -1881,7 +1882,8 @@ input_csi_dispatch_sgr_rgb_do(struct input_ctx *ictx, int fgbg, int r, int g,
 		gc->fg = colour_join_rgb(r, g, b);
 	else if (fgbg == 48)
 		gc->bg = colour_join_rgb(r, g, b);
-	// TODO: kmo add undercurl color as 58
+	else if (fgbg == 58)
+		gc->us = colour_join_rgb(r, g, b);
 	return (1);
 }
 
@@ -1977,10 +1979,9 @@ input_csi_dispatch_sgr_colon(struct input_ctx *ictx, u_int i)
 		}
 		return;
 	}
-	if (p[0] != 38 && p[0] != 48)
-		// TODO: kmo add undercurl color as 58
-		// return, if it's not the foreground or background color
-		// attribute
+	if (p[0] != 38 && p[0] != 48 && p[0] != 58)
+		// return, if it's not the foreground, background or underscore
+		// color attribute
 		return;
 	if (p[1] == -1)
 		i = 2;
@@ -2005,6 +2006,7 @@ input_csi_dispatch_sgr_colon(struct input_ctx *ictx, u_int i)
 
 /* Handle CSI SGR. */
 // Handle an SGR (Select Graphic Rendition) escape sequence
+// ictx		The input context
 static void
 input_csi_dispatch_sgr(struct input_ctx *ictx)
 {
@@ -2032,9 +2034,8 @@ input_csi_dispatch_sgr(struct input_ctx *ictx)
 			// not set: skip
 			continue;
 
-		if (n == 38 || n == 48) {
-			// TODO: kmo handle underscore color as 58
-			// foreground or background color
+		if (n == 38 || n == 48 || n == 58) {
+			// foreground, background or underscore color
 			// when it's parameters are (incorrectly) separated with
 			// a semicolon
 			i++;
@@ -2134,7 +2135,9 @@ input_csi_dispatch_sgr(struct input_ctx *ictx)
 		case 55:
 			gc->attr &= ~GRID_ATTR_OVERLINE;
 			break;
-		// TODO: kmo add underscore color reset as 59
+		case 59:
+			gc->us = 8;
+			break;
 		case 90:
 		case 91:
 		case 92:
