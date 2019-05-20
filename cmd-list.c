@@ -23,6 +23,17 @@
 
 #include "tmux.h"
 
+static struct cmd_list *
+cmd_list_new(void)
+{
+	struct cmd_list	*cmdlist;
+
+	cmdlist = xcalloc(1, sizeof *cmdlist);
+	cmdlist->references = 1;
+	TAILQ_INIT(&cmdlist->list);
+	return (cmdlist);
+}
+
 struct cmd_list *
 cmd_list_parse(int argc, char **argv, const char *file, u_int line,
     char **cause)
@@ -35,9 +46,7 @@ cmd_list_parse(int argc, char **argv, const char *file, u_int line,
 
 	copy_argv = cmd_copy_argv(argc, argv);
 
-	cmdlist = xcalloc(1, sizeof *cmdlist);
-	cmdlist->references = 1;
-	TAILQ_INIT(&cmdlist->list);
+	cmdlist = cmd_list_new();
 
 	lastsplit = 0;
 	for (i = 0; i < argc; i++) {
