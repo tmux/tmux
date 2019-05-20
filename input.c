@@ -1938,23 +1938,25 @@ input_csi_dispatch_sgr_colon(struct input_ctx *ictx, u_int i)
 		}
 		return;
 	}
-	if (p[0] != 38 && p[0] != 48)
+	if (n < 2 || (p[0] != 38 && p[0] != 48))
 		return;
-	if (p[1] == -1)
-		i = 2;
-	else
-		i = 1;
-	switch (p[i]) {
+	switch (p[1]) {
 	case 2:
-		if (n < i + 4)
+		if (n < 3)
 			break;
-		input_csi_dispatch_sgr_rgb_do(ictx, p[0], p[i + 1], p[i + 2],
-		    p[i + 3]);
+		if (n == 5)
+			i = 2;
+		else
+			i = 3;
+		if (n < i + 3)
+			break;
+		input_csi_dispatch_sgr_rgb_do(ictx, p[0], p[i], p[i + 1],
+		    p[i + 2]);
 		break;
 	case 5:
-		if (n < i + 2)
+		if (n < 3)
 			break;
-		input_csi_dispatch_sgr_256_do(ictx, p[0], p[i + 1]);
+		input_csi_dispatch_sgr_256_do(ictx, p[0], p[2]);
 		break;
 	}
 }
