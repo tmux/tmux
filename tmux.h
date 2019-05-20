@@ -1671,8 +1671,10 @@ void	proc_toggle_log(struct tmuxproc *);
 /* cfg.c */
 extern int cfg_finished;
 extern struct client *cfg_client;
+#define CFG_QUIET 0x1
 void	start_cfg(void);
-int	load_cfg(const char *, struct client *, struct cmdq_item *, int);
+int	load_cfg(const char *, struct client *, struct cmdq_item *, int,
+	    struct cmdq_item **);
 void	set_cfg_file(const char *);
 void printflike(1, 2) cfg_add_cause(const char *, ...);
 void	cfg_print_causes(struct cmdq_item *);
