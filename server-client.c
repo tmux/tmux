@@ -1778,18 +1778,6 @@ server_client_command_done(struct cmdq_item *item, __unused void *data)
 	return (CMD_RETURN_NORMAL);
 }
 
-/* Show an error message. */
-static enum cmd_retval
-server_client_command_error(struct cmdq_item *item, void *data)
-{
-	char	*error = data;
-
-	cmdq_error(item, "%s", error);
-	free(error);
-
-	return (CMD_RETURN_NORMAL);
-}
-
 /* Handle command message. */
 static void
 server_client_dispatch_command(struct client *c, struct imsg *imsg)
@@ -1837,7 +1825,8 @@ server_client_dispatch_command(struct client *c, struct imsg *imsg)
 	return;
 
 error:
-	cmdq_append(c, cmdq_get_callback(server_client_command_error, cause));
+	cmdq_append(c, cmdq_get_error(cause));
+	free(cause);
 
 	if (cmdlist != NULL)
 		cmd_list_free(cmdlist);

@@ -48,14 +48,17 @@ static enum cmd_retval
 cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
-	int			 quiet = args_has(args, 'q');
+	int			 flags = 0;
 	struct client		*c = item->client;
-	struct cmdq_item	*new_item;
+	struct cmdq_item	*new_item, *after;
 	enum cmd_retval		 retval;
 	char			*pattern, *tmp;
 	const char		*path = args->argv[0];
 	glob_t			 g;
 	u_int			 i;
+
+	if (args_has(args, 'q'))
+		flags |= CFG_QUIET;
 
 	if (*path == '/')
 		pattern = xstrdup(path);
@@ -68,7 +71,7 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 
 	retval = CMD_RETURN_NORMAL;
 	if (glob(pattern, 0, NULL, &g) != 0) {
-		if (!quiet || errno != ENOENT) {
+		if (errno != ENOENT || (~flags & CFG_QUIET)) {
 			cmdq_error(item, "%s: %s", path, strerror(errno));
 			retval = CMD_RETURN_ERROR;
 		}
@@ -77,9 +80,12 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	free(pattern);
 
+	after = item;
 	for (i = 0; i < (u_int)g.gl_pathc; i++) {
-		if (load_cfg(g.gl_pathv[i], c, item, quiet) < 0)
+		if (load_cfg(g.gl_pathv[i], c, after, flags, &new_item) < 0)
 			retval = CMD_RETURN_ERROR;
+		else if (new_item != NULL)
+			after = new_item;
 	}
 	if (cfg_finished) {
 		new_item = cmdq_get_callback(cmd_source_file_done, NULL);

@@ -81,7 +81,7 @@ void
 start_cfg(void)
 {
 	const char	*home;
-	int		 quiet = 0;
+	int		 flags = 0;
 	struct client	*c;
 
 	/*
@@ -102,14 +102,14 @@ start_cfg(void)
 	}
 
 	if (cfg_file == NULL)
-		load_cfg(TMUX_CONF, NULL, NULL, 1);
+		load_cfg(TMUX_CONF, NULL, NULL, CFG_QUIET, NULL);
 
 	if (cfg_file == NULL && (home = find_home()) != NULL) {
 		xasprintf(&cfg_file, "%s/.tmux.conf", home);
-		quiet = 1;
+		flags = CFG_QUIET;
 	}
 	if (cfg_file != NULL)
-		load_cfg(cfg_file, NULL, NULL, quiet);
+		load_cfg(cfg_file, NULL, NULL, flags, NULL);
 
 	cmdq_append(NULL, cmdq_get_callback(cfg_done, NULL));
 }
@@ -238,7 +238,8 @@ cfg_handle_directive(const char *p, const char *path, size_t line,
 }
 
 int
-load_cfg(const char *path, struct client *c, struct cmdq_item *item, int quiet)
+load_cfg(const char *path, struct client *c, struct cmdq_item *item, int flags,
+    struct cmdq_item **new_item)
 {
 	FILE			*f;
 	const char		 delim[3] = { '\\', '\\', '\0' };
@@ -246,7 +247,7 @@ load_cfg(const char *path, struct client *c, struct cmdq_item *item, int quiet)
 	size_t			 line = 0;
 	char			*buf, *cause1, *p, *q;
 	struct cmd_list		*cmdlist;
-	struct cmdq_item	*new_item;
+	struct cmdq_item	*new_item0;
 	struct cfg_cond		*cond, *cond1;
 	struct cfg_conds	 conds;
 	struct cmd_find_state	*fs = NULL;
@@ -261,7 +262,7 @@ load_cfg(const char *path, struct client *c, struct cmdq_item *item, int quiet)
 
 	log_debug("loading %s", path);
 	if ((f = fopen(path, "rb")) == NULL) {
-		if (errno == ENOENT && quiet)
+		if (errno == ENOENT && (flags & CFG_QUIET))
 			return (0);
 		cfg_add_cause("%s: %s", path, strerror(errno));
 		return (-1);
@@ -300,12 +301,12 @@ load_cfg(const char *path, struct client *c, struct cmdq_item *item, int quiet)
 		}
 		free(buf);
 
-		new_item = cmdq_get_command(cmdlist, NULL, NULL, 0);
+		new_item0 = cmdq_get_command(cmdlist, NULL, NULL, 0);
 		if (item != NULL) {
-			cmdq_insert_after(item, new_item);
-			item = new_item;
+			cmdq_insert_after(item, new_item0);
+			item = new_item0;
 		} else
-			cmdq_append(c, new_item);
+			cmdq_append(c, new_item0);
 		cmd_list_free(cmdlist);
 
 		found++;
@@ -318,6 +319,8 @@ load_cfg(const char *path, struct client *c, struct cmdq_item *item, int quiet)
 		free(cond);
 	}
 
+	if (new_item != NULL)
+		*new_item = item;
 	return (found);
 }
 

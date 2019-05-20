@@ -1673,8 +1673,10 @@ void	proc_toggle_log(struct tmuxproc *);
 /* cfg.c */
 extern int cfg_finished;
 extern struct client *cfg_client;
+#define CFG_QUIET 0x1
 void	start_cfg(void);
-int	load_cfg(const char *, struct client *, struct cmdq_item *, int);
+int	load_cfg(const char *, struct client *, struct cmdq_item *, int,
+	    struct cmdq_item **);
 void	set_cfg_file(const char *);
 void printflike(1, 2) cfg_add_cause(const char *, ...);
 void	cfg_print_causes(struct cmdq_item *);
@@ -1985,6 +1987,7 @@ struct cmdq_item *cmdq_get_command(struct cmd_list *, struct cmd_find_state *,
 		     struct mouse_event *, int);
 #define cmdq_get_callback(cb, data) cmdq_get_callback1(#cb, cb, data)
 struct cmdq_item *cmdq_get_callback1(const char *, cmdq_cb, void *);
+struct cmdq_item *cmdq_get_error(const char *);
 void		 cmdq_insert_after(struct cmdq_item *, struct cmdq_item *);
 void		 cmdq_append(struct client *, struct cmdq_item *);
 void		 cmdq_insert_hook(struct session *, struct cmdq_item *,
