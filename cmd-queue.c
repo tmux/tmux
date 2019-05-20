@@ -329,6 +329,25 @@ cmdq_get_callback1(const char *name, cmdq_cb cb, void *data)
 	return (item);
 }
 
+/* Generic error callback. */
+static enum cmd_retval
+cmdq_error_callback(struct cmdq_item *item, void *data)
+{
+	char	*error = data;
+
+	cmdq_error(item, "%s", error);
+	free(error);
+
+	return (CMD_RETURN_NORMAL);
+}
+
+/* Get an error callback for the command queue. */
+struct cmdq_item *
+cmdq_get_error(const char *error)
+{
+	return (cmdq_get_callback(cmdq_error_callback, xstrdup(error)));
+}
+
 /* Fire callback on callback queue. */
 static enum cmd_retval
 cmdq_fire_callback(struct cmdq_item *item)

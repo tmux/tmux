@@ -191,17 +191,6 @@ menu_free_cb(struct client *c)
 	free(md);
 }
 
-static enum cmd_retval
-menu_error_cb(struct cmdq_item *item, void *data)
-{
-	char	*error = data;
-
-	cmdq_error(item, "%s", error);
-	free(error);
-
-	return (CMD_RETURN_NORMAL);
-}
-
 static int
 menu_key_cb(struct client *c, struct key_event *event)
 {
@@ -284,12 +273,14 @@ chosen:
 	    return (1);
 	}
 	cmdlist = cmd_string_parse(item->command, NULL, 0, &cause);
-	if (cmdlist == NULL && cause != NULL)
-		new_item = cmdq_get_callback(menu_error_cb, cause);
-	else if (cmdlist == NULL)
-		new_item = NULL;
-	else {
-		new_item = cmdq_get_command(cmdlist, &md->fs, NULL, 0);
+	if (cmdlist == NULL) {
+		if (cause != NULL)
+			new_item = cmdq_get_error(cause);
+		else
+			new_item = NULL;
+		free(cause);
+	} else {
+		new_item = cmdq_get_command(cmdlist, NULL, NULL, 0);
 		cmd_list_free(cmdlist);
 	}
 	if (new_item != NULL) {

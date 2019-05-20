@@ -182,17 +182,6 @@ cmd_display_panes_draw(struct client *c, struct screen_redraw_ctx *ctx)
 	}
 }
 
-static enum cmd_retval
-cmd_display_panes_error(struct cmdq_item *item, void *data)
-{
-	char	*error = data;
-
-	cmdq_error(item, "%s", error);
-	free(error);
-
-	return (CMD_RETURN_NORMAL);
-}
-
 static void
 cmd_display_panes_free(struct client *c)
 {
@@ -226,11 +215,13 @@ cmd_display_panes_key(struct client *c, struct key_event *event)
 	cmd = cmd_template_replace(cdata->command, expanded, 1);
 
 	cmdlist = cmd_string_parse(cmd, NULL, 0, &cause);
-	if (cmdlist == NULL && cause != NULL)
-		new_item = cmdq_get_callback(cmd_display_panes_error, cause);
-	else if (cmdlist == NULL)
-		new_item = NULL;
-	else {
+	if (cmdlist == NULL) {
+		if (cause != NULL)
+			new_item = cmdq_get_error(cause);
+		else
+			new_item = NULL;
+		free(cause);
+	} else {
 		new_item = cmdq_get_command(cmdlist, NULL, NULL, 0);
 		cmd_list_free(cmdlist);
 	}
