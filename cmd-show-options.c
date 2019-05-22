@@ -90,7 +90,14 @@ cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 
 	window = (self->entry == &cmd_show_window_options_entry);
 	if (args->argc == 0) {
-		options_scope_from_flags(args, window, fs, &oo, &cause);
+		scope = options_scope_from_flags(args, window, fs, &oo, &cause);
+		if (scope == OPTIONS_TABLE_NONE) {
+			if (args_has(args, 'q'))
+				return (CMD_RETURN_NORMAL);
+			cmdq_error(item, "%s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
+		}
 		return (cmd_show_options_all(self, item, oo));
 	}
 	argument = format_single(item, args->argv[0], c, s, wl, NULL);
