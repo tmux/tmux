@@ -2,7 +2,7 @@
 
 # Obvious program stuff.
 bin_PROGRAMS = tmux
-CLEANFILES = tmux.1.mdoc tmux.1.man
+CLEANFILES = tmux.1.mdoc tmux.1.man cmd-parse.c
 
 # Distribution tarball options.
 EXTRA_DIST = \
