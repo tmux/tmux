@@ -496,10 +496,13 @@ This is called line continuation and applies both inside and outside quoted
 strings and in comments.
 .Pp
 Command arguments may be specified as strings surrounded by either single (')
-or double quotes (").
+or double quotes (") or braces ({...} - see the
+.Sx BRACE STRINGS
+section).
 .\" "
 This is required when the argument contains any special character.
-Strings cannot span multiple lines except with line continuation.
+Single and double quoted strings cannot span multiple lines except with line
+continuation.
 .Pp
 Outside of quotes and inside double quotes, these replacements are performed:
 .Bl -dash -offset indent
@@ -569,6 +572,44 @@ Conditionals may be given on one line, for example:
 .Bd -literal -offset indent
 %if #{==:#{host},myhost} set -g status-style bg=red %endif
 .Ed
+.Sh BRACE STRINGS
+Braces can enclose any group of
+.Nm
+commands as a string, without the usual concerns of escaping and nesting. This
+is useful with arguments which are parsed and executed as commands - like the
+arguments of
+.Ic if-shell .
+
+For instance, the following commands are identical:
+.Bd -literal -offset indent
+if-shell true {
+    display -p 'brace-dollar-foo: }$foo'
+}
+
+if-shell true "\en    display -p 'brace-dollar-foo: }\e$foo'\en"
+.Ed
+
+Like single quoted strings, brace strings don't expand during parsing. The only
+differences from single quotes are the fact that brace strings may span
+multiple lines, and the way in which the parser determines where the string
+ends.
+
+After the opening brace, the parser examines the rest as if it was a
+.Nm
+config file, and looks for braces. Unquoted opening braces increase the nesting
+depth, and unquoted closing braces decrease it. The string ends where the
+nesting depth becomes 0, that is, at the closing brace which matches the initial
+opening brace.
+
+The string's value is verbatim copy of everything between the initial and final
+braces - including quotes, braces, newlines, comments, etc.
+
+This means that quotes and brace strings can be used normally inside a brace
+string at any nesting depth. In general, the entire content of any valid
+.Nm
+config file could be placed unmodified between braces to form a valid brace
+string, which would behave as expected if parsed and executed.
+
 .Sh COMMANDS
 This section describes the commands supported by
 .Nm .
