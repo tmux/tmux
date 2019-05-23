@@ -345,12 +345,6 @@ format_draw_centre(struct screen_write_ctx *octx, u_int available, u_int ocx,
 	/* Write left at 0. */
 	format_draw_put(octx, ocx, ocy, left, frs, 0, 0, width_left);
 
-	/* Write after at available - width_after. */
-	format_draw_put(octx, ocx, ocy, after, frs,
-	    available - width_after,
-	    after->cx - width_after,
-	    width_after);
-
 	/* Write right at available - width_right. */
 	format_draw_put(octx, ocx, ocy, right, frs,
 	    available - width_right,
@@ -374,10 +368,10 @@ format_draw_centre(struct screen_write_ctx *octx, u_int available, u_int ocx,
 
 	/*
 	 * Write after at
-	 *     middle + width_list / 2 - width_centre.
+	 *     middle - width_list / 2 + width_list
 	 */
 	format_draw_put(octx, ocx, ocy, after, frs,
-	    middle + width_list / 2,
+	    middle - width_list / 2 + width_list,
 	    0,
 	    width_after);
 
