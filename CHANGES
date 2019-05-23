@@ -1,5 +1,22 @@
 CHANGES FROM 2.9 to X.X
 
+* INCOMPATIBLE:  tmux's configuration parsing has changed to use yacc(1)
+  instead.  Most configuration files shouldn't need changing, however, the
+  following will need quoting:
+
+      #{}
+
+  That is, formats, since it would otherwise be consisdered a comment.
+
+  Entirely the same parser is now used for parsing the configuration file
+  and for string commands. This means that constructs previously only
+  available in .tmux.conf, such as %if, can now be used in string commands
+  (for example, those given to if-shell - not commands invoked from the
+  shell, they are still parsed by the shell itself).
+
+  DOWNSTREAM PACKAGERS:  please make your tmux builds depend on yacc/bison or
+  similar.
+
 * Add support for the overline attribute (SGR 53). The Smol capability is
   needed in terminal-overrides.
 
