@@ -658,5 +658,7 @@ CFLAGS="$SAVED_CFLAGS"
 AC_SUBST(AM_LDFLAGS)
 LDFLAGS="$SAVED_LDFLAGS"
 
+AC_PROG_YACC
+
 # autoconf should create a Makefile.
 AC_OUTPUT(Makefile)
