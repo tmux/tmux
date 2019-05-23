@@ -1,12 +1,9 @@
 CHANGES FROM 2.9 to X.X
 
-* INCOMPATIBLE:  tmux's configuration parsing has changed to use yacc(1)
-  instead.  Most configuration files shouldn't need changing, however, the
-  following will need quoting:
-
-      #{}
-
-  That is, formats, since it would otherwise be consisdered a comment.
+* INCOMPATIBLE: tmux's configuration parsing has changed to use yacc(1). Most
+  configuration files shouldn't need to be changed but formats now need to be
+  quoted, so a bare #{...} becomes "#{...}". This includes #{ which may
+  previously have looked like a comment (for example at the start of a line).
 
   Entirely the same parser is now used for parsing the configuration file
   and for string commands. This means that constructs previously only
