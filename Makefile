@@ -127,6 +127,8 @@ CDIAGFLAGS+= -Wmissing-prototypes -Wstrict-prototypes -Wmissing-declarations
 CDIAGFLAGS+= -Wwrite-strings -Wshadow -Wpointer-arith -Wsign-compare
 CDIAGFLAGS+= -Wundef -Wbad-function-cast -Winline -Wcast-align
 
+CFLAGS += -I${.CURDIR}
+
 LDADD=  -lutil -lcurses -levent
 DPADD=  ${LIBUTIL} ${LIBCURSES} ${LIBEVENT}
 
