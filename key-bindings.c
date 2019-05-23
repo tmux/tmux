@@ -433,16 +433,15 @@ key_bindings_init(void)
 		"bind -Tcopy-mode-vi C-Up send -X scroll-up",
 		"bind -Tcopy-mode-vi C-Down send -X scroll-down",
 	};
-	u_int		 i;
-	struct cmd_list	*cmdlist;
-	char		*cause;
+	u_int			 i;
+	struct cmd_parse_result	*pr;
 
 	for (i = 0; i < nitems(defaults); i++) {
-		cmdlist = cmd_string_parse(defaults[i], "<default>", i, &cause);
-		if (cmdlist == NULL)
+		pr = cmd_parse_from_string(defaults[i], NULL);
+		if (pr->status != CMD_PARSE_SUCCESS)
 			fatalx("bad default key: %s", defaults[i]);
-		cmdq_append(NULL, cmdq_get_command(cmdlist, NULL, NULL, 0));
-		cmd_list_free(cmdlist);
+		cmdq_append(NULL, cmdq_get_command(pr->cmdlist, NULL, NULL, 0));
+		cmd_list_free(pr->cmdlist);
 	}
 }
 

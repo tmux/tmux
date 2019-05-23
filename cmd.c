@@ -214,6 +214,29 @@ cmd_log_argv(int argc, char **argv, const char *prefix)
 		log_debug("%s: argv[%d]=%s", prefix, i, argv[i]);
 }
 
+void
+cmd_prepend_argv(int *argc, char ***argv, char *arg)
+{
+	char	**new_argv;
+	int	  i;
+
+	new_argv = xreallocarray(NULL, (*argc) + 1, sizeof *new_argv);
+	new_argv[0] = xstrdup(arg);
+	for (i = 0; i < *argc; i++)
+		new_argv[1 + i] = (*argv)[i];
+
+	free(*argv);
+	*argv = new_argv;
+	(*argc)++;
+}
+
+void
+cmd_append_argv(int *argc, char ***argv, char *arg)
+{
+	*argv = xreallocarray(*argv, (*argc) + 1, sizeof **argv);
+	(*argv)[(*argc)++] = xstrdup(arg);
+}
+
 int
 cmd_pack_argv(int argc, char **argv, char *buf, size_t len)
 {
@@ -318,105 +341,102 @@ cmd_stringify_argv(int argc, char **argv)
 	return (buf);
 }
 
-static int
-cmd_try_alias(int *argc, char ***argv)
+char *
+cmd_get_alias(const char *name)
 {
-	struct options_entry		 *o;
-	struct options_array_item	 *a;
-	union options_value		 *ov;
-	int				  old_argc = *argc, new_argc, i;
-	char				**old_argv = *argv, **new_argv;
-	size_t				  wanted;
-	const char			 *cp = NULL;
+	struct options_entry		*o;
+	struct options_array_item	*a;
+	union options_value		*ov;
+	size_t				 wanted, n;
+	const char			*equals;
 
 	o = options_get_only(global_options, "command-alias");
 	if (o == NULL)
-		return (-1);
-	wanted = strlen(old_argv[0]);
+		return (NULL);
+	wanted = strlen(name);
 
 	a = options_array_first(o);
 	while (a != NULL) {
 		ov = options_array_item_value(a);
-		cp = strchr(ov->string, '=');
-		if (cp != NULL &&
-		    (size_t)(cp - ov->string) == wanted &&
-		    strncmp(old_argv[0], ov->string, wanted) == 0)
-			break;
+
+		equals = strchr(ov->string, '=');
+		if (equals != NULL) {
+			n = equals - ov->string;
+			if (n == wanted && strncmp(name, ov->string, n) == 0)
+				return (xstrdup(equals + 1));
+		}
+
 		a = options_array_next(a);
 	}
-	if (a == NULL)
-		return (-1);
+	return (NULL);
+}
 
-	if (cmd_string_split(cp + 1, &new_argc, &new_argv) != 0)
-		return (-1);
+static const struct cmd_entry *
+cmd_find(const char *name, char **cause)
+{
+	const struct cmd_entry **loop, *entry, *found = NULL;
+	int			 ambiguous;
+	char			 s[BUFSIZ];
 
-	*argc = new_argc + old_argc - 1;
-	*argv = xcalloc((*argc) + 1, sizeof **argv);
+	ambiguous = 0;
+	for (loop = cmd_table; *loop != NULL; loop++) {
+		entry = *loop;
+		if (entry->alias != NULL && strcmp(entry->alias, name) == 0) {
+			ambiguous = 0;
+			found = entry;
+			break;
+		}
 
-	for (i = 0; i < new_argc; i++)
-		(*argv)[i] = xstrdup(new_argv[i]);
-	for (i = 1; i < old_argc; i++)
-		(*argv)[new_argc + i - 1] = xstrdup(old_argv[i]);
+		if (strncmp(entry->name, name, strlen(name)) != 0)
+			continue;
+		if (found != NULL)
+			ambiguous = 1;
+		found = entry;
 
-	log_debug("alias: %s=%s", old_argv[0], cp + 1);
-	for (i = 0; i < *argc; i++)
-		log_debug("alias: argv[%d] = %s", i, (*argv)[i]);
+		if (strcmp(entry->name, name) == 0)
+			break;
+	}
+	if (ambiguous)
+		goto ambiguous;
+	if (found == NULL) {
+		xasprintf(cause, "unknown command: %s", name);
+		return (NULL);
+	}
+	return (found);
 
-	cmd_free_argv(new_argc, new_argv);
-	return (0);
+ambiguous:
+	*s = '\0';
+	for (loop = cmd_table; *loop != NULL; loop++) {
+		entry = *loop;
+		if (strncmp(entry->name, name, strlen(name)) != 0)
+			continue;
+		if (strlcat(s, entry->name, sizeof s) >= sizeof s)
+			break;
+		if (strlcat(s, ", ", sizeof s) >= sizeof s)
+			break;
+	}
+	s[strlen(s) - 2] = '\0';
+	xasprintf(cause, "ambiguous command: %s, could be: %s", name, s);
+	return (NULL);
 }
 
 struct cmd *
 cmd_parse(int argc, char **argv, const char *file, u_int line, char **cause)
 {
+	const struct cmd_entry	*entry;
 	const char		*name;
-	const struct cmd_entry **entryp, *entry;
 	struct cmd		*cmd;
 	struct args		*args;
-	char			 s[BUFSIZ];
-	int			 ambiguous, allocated = 0;
 
-	*cause = NULL;
 	if (argc == 0) {
 		xasprintf(cause, "no command");
 		return (NULL);
 	}
 	name = argv[0];
 
-retry:
-	ambiguous = 0;
-	entry = NULL;
-	for (entryp = cmd_table; *entryp != NULL; entryp++) {
-		if ((*entryp)->alias != NULL &&
-		    strcmp((*entryp)->alias, argv[0]) == 0) {
-			ambiguous = 0;
-			entry = *entryp;
-			break;
-		}
-
-		if (strncmp((*entryp)->name, argv[0], strlen(argv[0])) != 0)
-			continue;
-		if (entry != NULL)
-			ambiguous = 1;
-		entry = *entryp;
-
-		/* Bail now if an exact match. */
-		if (strcmp(entry->name, argv[0]) == 0)
-			break;
-	}
-	if ((ambiguous || entry == NULL) &&
-	    server_proc != NULL &&
-	    !allocated &&
-	    cmd_try_alias(&argc, &argv) == 0) {
-		allocated = 1;
-		goto retry;
-	}
-	if (ambiguous)
-		goto ambiguous;
-	if (entry == NULL) {
-		xasprintf(cause, "unknown command: %s", name);
+	entry = cmd_find(name, cause);
+	if (entry == NULL)
 		return (NULL);
-	}
 	cmd_log_argv(argc, argv, entry->name);
 
 	args = args_parse(entry->args.template, argc, argv);
@@ -435,29 +455,29 @@ retry:
 		cmd->file = xstrdup(file);
 	cmd->line = line;
 
-	if (allocated)
-		cmd_free_argv(argc, argv);
-	return (cmd);
+	cmd->alias = NULL;
+	cmd->argc = argc;
+	cmd->argv = cmd_copy_argv(argc, argv);
 
-ambiguous:
-	*s = '\0';
-	for (entryp = cmd_table; *entryp != NULL; entryp++) {
-		if (strncmp((*entryp)->name, argv[0], strlen(argv[0])) != 0)
-			continue;
-		if (strlcat(s, (*entryp)->name, sizeof s) >= sizeof s)
-			break;
-		if (strlcat(s, ", ", sizeof s) >= sizeof s)
-			break;
-	}
-	s[strlen(s) - 2] = '\0';
-	xasprintf(cause, "ambiguous command: %s, could be: %s", name, s);
-	return (NULL);
+	return (cmd);
 
 usage:
 	if (args != NULL)
 		args_free(args);
 	xasprintf(cause, "usage: %s %s", entry->name, entry->usage);
 	return (NULL);
+}
+
+void
+cmd_free(struct cmd *cmd)
+{
+	free(cmd->alias);
+	cmd_free_argv(cmd->argc, cmd->argv);
+
+	free(cmd->file);
+
+	args_free(cmd->args);
+	free(cmd);
 }
 
 char *

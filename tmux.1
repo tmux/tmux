@@ -355,8 +355,217 @@ Key bindings may be changed with the
 and
 .Ic unbind-key
 commands.
+.Sh COMMAND PARSING AND EXECUTION
+.Nm
+supports a large number of commands which can be used to control its
+behaviour.
+Each command is named and can accept zero or more flags and arguments.
+They may be bound to a key with the
+.Ic bind-key
+command or run from the shell prompt, a shell script, a configuration file or
+the command prompt.
+For example, the same
+.Ic set-option
+command run from the shell prompt, from
+.Pa ~/.tmux.conf
+and bound to a key may look like:
+.Bd -literal -offset indent
+$ tmux set-option -g status-style bg=cyan
+
+set-option -g status-style bg=cyan
+
+bind-key C set-option -g status-style bg=cyan
+.Ed
+.Pp
+Here, the command name is
+.Ql set-option ,
+.Ql Fl g
+is a flag and
+.Ql status-style
+and
+.Ql bg=cyan
+are arguments.
+.Pp
+.Nm
+distinguishes between command parsing and execution.
+In order to execute a command,
+.Nm
+needs it to be split up into its name and arguments.
+This is command parsing.
+If a command is run from the shell, the shell parses it; from inside
+.Nm
+or from a configuration file,
+.Nm
+does.
+Examples of when
+.Nm
+parses commands are:
+.Bl -dash -offset indent
+.It
+in a configuration file;
+.It
+typed at the command prompt (see
+.Ic command-prompt ) ;
+.It
+given to
+.Ic bind-key ;
+.It
+passed as arguments to
+.Ic if-shell
+or
+.Ic confirm-before .
+.El
+.Pp
+To execute commands, each client has a
+.Ql command queue .
+A global command queue not attached to any client is used on startup
+for configuration files like
+.Pa ~/.tmux.conf .
+Parsed commands added to the queue are executed in order.
+Some commands, like
+.Ic if-shell
+and
+.Ic confirm-before ,
+parse their argument to create a new command which is inserted immediately
+after themselves.
+This means that arguments can be parsed twice or more - once when the parent command (such as
+.Ic if-shell )
+is parsed and again when it parses and executes its command.
+Commands like
+.Ic if-shell ,
+.Ic run-shell
+and
+.Ic display-panes
+stop execution of subsequent commands on the queue until something happens -
+.Ic if-shell
+and
+.Ic run-shell
+until a shell command finishes and
+.Ic display-panes
+until a key is pressed.
+For example, the following commands:
+.Bd -literal -offset indent
+new-session; new-window
+if-shell "true" "split-window"
+kill-session
+.Ed
+.Pp
+Will execute
+.Ic new-session ,
+.Ic new-window ,
+.Ic if-shell ,
+the shell command
+.Xr true 1 ,
+.Ic new-window
+and
+.Ic kill-session
+in that order.
+.Pp
+The
+.Sx COMMANDS
+section lists the
+.Nm
+commands and their arguments.
+.Sh PARSING SYNTAX
+This section describes the syntax of commands parsed by
+.Nm ,
+for example in a configuration file or at the command prompt.
+Note the when commands are entered into the shell, they are parsed by the shell
+- see for example
+.Xr ksh 1
+or
+.Xr csh 1 .
+.Pp
+Each command is terminated by a newline or a semicolon (;).
+Commands separated by semicolons together form a
+.Ql command sequence
+- if a command in the sequence encounters an error, no subsequent commands are
+executed.
+.Pp
+Comments are marked by the unquoted # character - any remaining text after a
+comment is ignored until the end of the line.
+.Pp
+If the last character of a line is \e, the line is joined with the following
+line (the \e and the newline are completely removed).
+This is called line continuation and applies both inside and outside quoted
+strings and in comments.
+.Pp
+Command arguments may be specified as strings surrounded by either single (')
+or double quotes (").
+.\" "
+This is required when the argument contains any special character.
+Strings cannot span multiple lines except with line continuation.
+.Pp
+Outside of quotes and inside double quotes, these replacements are performed:
+.Bl -dash -offset indent
+.It
+Environment variables preceded by $ are replaced with their value from the
+global environment (see the
+.Sx GLOBAL AND SESSION ENVIRONMENT
+section).
+.It
+A leading ~ or ~user is expanded to the home directory of the current or
+specified user.
+.It
+\euXXXX or \euXXXXXXXX is replaced by the Unicode codepoint corresponding to
+the given four or eight digit hexadecimal number.
+.It
+When preceded (escaped) by a \e, the following characters are replaced: \ee by
+the escape character; \er by a carriage return; \en by a newline; and \et by a
+tab.
+.Pp
+Any other characters preceded by \e are replaced by themselves (that is, the \e
+is removed) and are not treated as having any special meaning - so for example
+\e; will not mark a command sequence and \e$ will not expand an environment
+variable.
+.El
+.Pp
+Environment variables may be set by using the syntax
+.Ql name=value ,
+for example
+.Ql HOME=/home/user .
+Variables set during parsing are added to the global environment.
+.Pp
+Commands may be parsed conditionally by surrounding them with
+.Ql %if ,
+.Ql %elif ,
+.Ql %else
+and
+.Ql %endif .
+The argument to
+.Ql %if
+and
+.Ql %elif
+is expanded as a format (see
+.Sx FORMATS )
+and if it evaluates to false (zero or empty), subsequent text is ignored until
+the closing
+.Ql %elif ,
+.Ql %else
+or
+.Ql %endif .
+For example:
+.Bd -literal -offset indent
+%if #{==:#{host},myhost}
+set -g status-style bg=red
+%elif #{==:#{host},myotherhost}
+set -g status-style bg=green
+%else
+set -g status-style bg=blue
+%endif
+.Ed
+.Pp
+Will change the status line to red if running on
+.Ql myhost ,
+green if running on
+.Ql myotherhost ,
+or blue if running on another host.
+Conditionals may be given on one line, for example:
+.Bd -literal -offset indent
+%if #{==:#{host},myhost} set -g status-style bg=red %endif
+.Ed
 .Sh COMMANDS
-This section contains a list of the commands supported by
+This section describes the commands supported by
 .Nm .
 Most commands accept the optional
 .Fl t
@@ -621,16 +830,6 @@ Or if using
 .Bd -literal -offset indent
 $ tmux bind-key F1 set-option status off
 .Ed
-.Pp
-Multiple commands may be specified together as part of a
-.Em command sequence .
-Each command should be separated by spaces and a semicolon;
-commands are executed sequentially from left to right and
-lines ending with a backslash continue on to the next line,
-except when escaped by another backslash.
-A literal semicolon may be included by escaping it with a backslash (for
-example, when specifying a command sequence to
-.Ic bind-key ) .
 .Pp
 Example
 .Nm
@@ -1005,7 +1204,7 @@ and
 .Fl T
 show debugging information about jobs and terminals.
 .It Xo Ic source-file
-.Op Fl q
+.Op Fl nq
 .Ar path
 .Xc
 .D1 (alias: Ic source )
@@ -1019,44 +1218,9 @@ If
 is given, no error will be returned if
 .Ar path
 does not exist.
-.Pp
-Within a configuration file, commands may be made conditional by surrounding
-them with
-.Em %if
-and
-.Em %endif
-lines.
-Additional
-.Em %elif
-and
-.Em %else
-lines may also be used.
-The argument to
-.Em %if
-and
-.Em %elif
-is expanded as a format and if it evaluates to false (zero or empty),
-subsequent lines are ignored until the next
-.Em %elif ,
-.Em %else
-or
-.Em %endif .
-For example:
-.Bd -literal -offset indent
-%if #{==:#{host},myhost}
-set -g status-style bg=red
-%elif #{==:#{host},myotherhost}
-set -g status-style bg=green
-%else
-set -g status-style bg=blue
-%endif
-.Ed
-.Pp
-Will change the status line to red if running on
-.Ql myhost ,
-green if running on
-.Ql myotherhost ,
-or blue if running on another host.
+With
+.Fl n ,
+the file is parsed but no commands are executed.
 .It Ic start-server
 .D1 (alias: Ic start )
 Start the
@@ -4134,7 +4298,7 @@ right of the list if there is not enough space.
 .Ic norange
 .Xc
 Mark a range in the
-. Ic status-format
+.Ic status-format
 option.
 .Ic range=left
 and
@@ -4450,7 +4614,7 @@ This command works only from inside
 .Op Fl x Ar position
 .Op Fl y Ar position
 .Xc
-.D1 (alias: Ic menu)
+.D1 (alias: Ic menu )
 Display a menu on
 .Ar target-client .
 .Ar target-pane

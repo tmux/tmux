@@ -353,8 +353,7 @@ options_array_set(struct options_entry *o, u_int idx, const char *value,
 {
 	struct options_array_item	*a;
 	char				*new;
-	struct cmd_list			*cmdlist;
-	char				*error;
+	struct cmd_parse_result		*pr;
 
 	if (!OPTIONS_IS_ARRAY(o)) {
 		if (cause != NULL)
@@ -363,13 +362,19 @@ options_array_set(struct options_entry *o, u_int idx, const char *value,
 	}
 
 	if (OPTIONS_IS_COMMAND(o)) {
-		cmdlist = cmd_string_parse(value, NULL, 0, &error);
-		if (cmdlist == NULL && error != NULL) {
-			if (cause != NULL)
-				*cause = error;
-			else
-				free(error);
+		pr = cmd_parse_from_string(value, NULL);
+		switch (pr->status) {
+		case CMD_PARSE_EMPTY:
+			*cause = xstrdup("empty command");
 			return (-1);
+		case CMD_PARSE_ERROR:
+			if (cause != NULL)
+				*cause = pr->error;
+			else
+				free(pr->error);
+			return (-1);
+		case CMD_PARSE_SUCCESS:
+			break;
 		}
 	}
 
@@ -397,7 +402,7 @@ options_array_set(struct options_entry *o, u_int idx, const char *value,
 	if (OPTIONS_IS_STRING(o))
 		a->value.string = new;
 	else if (OPTIONS_IS_COMMAND(o))
-		a->value.cmdlist = cmdlist;
+		a->value.cmdlist = pr->cmdlist;
 	return (0);
 }
 

@@ -175,15 +175,6 @@ cmdq_remove(struct cmdq_item *item)
 	free(item);
 }
 
-/* Set command group. */
-static u_int
-cmdq_next_group(void)
-{
-	static u_int	group;
-
-	return (++group);
-}
-
 /* Remove all subsequent items that match this item's group. */
 static void
 cmdq_remove_group(struct cmdq_item *item)
@@ -206,7 +197,6 @@ cmdq_get_command(struct cmd_list *cmdlist, struct cmd_find_state *current,
 {
 	struct cmdq_item	*item, *first = NULL, *last = NULL;
 	struct cmd		*cmd;
-	u_int			 group = cmdq_next_group();
 	struct cmdq_shared	*shared;
 
 	shared = xcalloc(1, sizeof *shared);
@@ -222,12 +212,14 @@ cmdq_get_command(struct cmd_list *cmdlist, struct cmd_find_state *current,
 		xasprintf(&item->name, "[%s/%p]", cmd->entry->name, item);
 		item->type = CMDQ_COMMAND;
 
-		item->group = group;
+		item->group = cmd->group;
 		item->flags = flags;
 
 		item->shared = shared;
 		item->cmdlist = cmdlist;
 		item->cmd = cmd;
+
+		log_debug("%s: %s group %u", __func__, item->name, item->group);
 
 		shared->references++;
 		cmdlist->references++;

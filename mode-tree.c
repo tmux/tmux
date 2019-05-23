@@ -1045,8 +1045,8 @@ mode_tree_run_command(struct client *c, struct cmd_find_state *fs,
     const char *template, const char *name)
 {
 	struct cmdq_item	*new_item;
-	struct cmd_list		*cmdlist;
-	char			*command, *cause;
+	char			*command;
+	struct cmd_parse_result	*pr;
 
 	command = cmd_template_replace(template, name, 1);
 	if (command == NULL || *command == '\0') {
@@ -1054,17 +1054,22 @@ mode_tree_run_command(struct client *c, struct cmd_find_state *fs,
 		return;
 	}
 
-	cmdlist = cmd_string_parse(command, NULL, 0, &cause);
-	if (cmdlist == NULL) {
-		if (cause != NULL && c != NULL) {
-			*cause = toupper((u_char)*cause);
-			status_message_set(c, "%s", cause);
+	pr = cmd_parse_from_string(command, NULL);
+	switch (pr->status) {
+	case CMD_PARSE_EMPTY:
+		break;
+	case CMD_PARSE_ERROR:
+		if (c != NULL) {
+			*pr->error = toupper((u_char)*pr->error);
+			status_message_set(c, "%s", pr->error);
 		}
-		free(cause);
-	} else {
-		new_item = cmdq_get_command(cmdlist, fs, NULL, 0);
+		free(pr->error);
+		break;
+	case CMD_PARSE_SUCCESS:
+		new_item = cmdq_get_command(pr->cmdlist, fs, NULL, 0);
 		cmdq_append(c, new_item);
-		cmd_list_free(cmdlist);
+		cmd_list_free(pr->cmdlist);
+		break;
 	}
 
 	free(command);
