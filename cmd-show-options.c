@@ -208,8 +208,8 @@ cmd_show_options_print(struct cmd *self, struct cmdq_item *item,
 	if (args_has(self->args, 'v'))
 		cmdq_print(item, "%s", value);
 	else if (options_isstring(o)) {
-		utf8_stravis(&escaped, value, VIS_OCTAL|VIS_TAB|VIS_NL|VIS_DQ);
-		cmdq_print(item, "%s \"%s\"", name, escaped);
+		escaped = args_escape(value);
+		cmdq_print(item, "%s %s", name, escaped);
 		free(escaped);
 	} else
 		cmdq_print(item, "%s %s", name, value);
