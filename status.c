@@ -846,16 +846,79 @@ status_prompt_translate_key(struct client *c, key_code key, key_code *new_key)
 	return (0);
 }
 
+/* Paste into prompt. */
+static int
+status_prompt_paste(struct client *c)
+{
+	struct paste_buffer	*pb;
+	const char		*bufdata;
+	size_t			 size, n, bufsize;
+	u_int			 i;
+	struct utf8_data	*ud, *udp;
+	enum utf8_state		 more;
+
+	size = utf8_strlen(c->prompt_buffer);
+	if (c->prompt_saved != NULL) {
+		ud = c->prompt_saved;
+		n = utf8_strlen(c->prompt_saved);
+	} else {
+		if ((pb = paste_get_top(NULL)) == NULL)
+			return (0);
+		bufdata = paste_buffer_data(pb, &bufsize);
+		ud = xreallocarray(NULL, bufsize, sizeof *ud);
+		udp = ud;
+		for (i = 0; i != bufsize; /* nothing */) {
+			more = utf8_open(udp, bufdata[i]);
+			if (more == UTF8_MORE) {
+				while (++i != bufsize && more == UTF8_MORE)
+					more = utf8_append(udp, bufdata[i]);
+				if (more == UTF8_DONE) {
+					udp++;
+					continue;
+				}
+				i -= udp->have;
+			}
+			if (bufdata[i] <= 31 || bufdata[i] >= 127)
+				break;
+			utf8_set(udp, bufdata[i]);
+			udp++;
+			i++;
+		}
+		udp->size = 0;
+		n = udp - ud;
+	}
+	if (n == 0)
+		return (0);
+
+	c->prompt_buffer = xreallocarray(c->prompt_buffer, size + n + 1,
+	    sizeof *c->prompt_buffer);
+	if (c->prompt_index == size) {
+		memcpy(c->prompt_buffer + c->prompt_index, ud,
+		    n * sizeof *c->prompt_buffer);
+		c->prompt_index += n;
+		c->prompt_buffer[c->prompt_index].size = 0;
+	} else {
+		memmove(c->prompt_buffer + c->prompt_index + n,
+		    c->prompt_buffer + c->prompt_index,
+		    (size + 1 - c->prompt_index) * sizeof *c->prompt_buffer);
+		memcpy(c->prompt_buffer + c->prompt_index, ud,
+		    n * sizeof *c->prompt_buffer);
+		c->prompt_index += n;
+	}
+
+	if (ud != c->prompt_saved)
+		free(ud);
+	return (1);
+}
+
 /* Handle keys in prompt. */
 int
 status_prompt_key(struct client *c, key_code key)
 {
 	struct options		*oo = c->session->options;
-	struct paste_buffer	*pb;
 	char			*s, *cp, word[64], prefix = '=';
-	const char		*histstr, *bufdata, *ws = NULL;
-	u_char			 ch;
-	size_t			 size, n, off, idx, bufsize, used;
+	const char		*histstr, *ws = NULL;
+	size_t			 size, n, off, idx, used;
 	struct utf8_data	 tmp, *first, *last, *ud;
 	int			 keys;
 
@@ -1107,43 +1170,9 @@ process_key:
 		c->prompt_index = utf8_strlen(c->prompt_buffer);
 		goto changed;
 	case '\031': /* C-y */
-		if (c->prompt_saved != NULL) {
-			ud = c->prompt_saved;
-			n = utf8_strlen(c->prompt_saved);
-		} else {
-			if ((pb = paste_get_top(NULL)) == NULL)
-				break;
-			bufdata = paste_buffer_data(pb, &bufsize);
-			for (n = 0; n < bufsize; n++) {
-				ch = (u_char)bufdata[n];
-				if (ch < 32 || ch >= 127)
-					break;
-			}
-			ud = xreallocarray(NULL, n, sizeof *ud);
-			for (idx = 0; idx < n; idx++)
-				utf8_set(&ud[idx], bufdata[idx]);
-		}
-
-		c->prompt_buffer = xreallocarray(c->prompt_buffer, size + n + 1,
-		    sizeof *c->prompt_buffer);
-		if (c->prompt_index == size) {
-			memcpy(c->prompt_buffer + c->prompt_index, ud,
-			    n * sizeof *c->prompt_buffer);
-			c->prompt_index += n;
-			c->prompt_buffer[c->prompt_index].size = 0;
-		} else {
-			memmove(c->prompt_buffer + c->prompt_index + n,
-			    c->prompt_buffer + c->prompt_index,
-			    (size + 1 - c->prompt_index) *
-			    sizeof *c->prompt_buffer);
-			memcpy(c->prompt_buffer + c->prompt_index, ud,
-			    n * sizeof *c->prompt_buffer);
-			c->prompt_index += n;
-		}
-
-		if (ud != c->prompt_saved)
-			free(ud);
-		goto changed;
+		if (status_prompt_paste(c))
+			goto changed;
+		break;
 	case '\024': /* C-t */
 		idx = c->prompt_index;
 		if (idx < size)
