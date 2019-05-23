@@ -14,9 +14,6 @@ CHANGES FROM 2.9 to X.X
   (for example, those given to if-shell - not commands invoked from the
   shell, they are still parsed by the shell itself).
 
-  DOWNSTREAM PACKAGERS:  please make your tmux builds depend on yacc/bison or
-  similar.
-
 * Add support for the overline attribute (SGR 53). The Smol capability is
   needed in terminal-overrides.
 
