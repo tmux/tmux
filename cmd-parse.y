@@ -356,7 +356,7 @@ command		: assignment TOKEN
 
 			$$ = xcalloc(1, sizeof *$$);
 			$$->name = $2;
-			$$->line = ps->input->line;
+			$$->line = ps->input->line - 1;
 
 		}
 		| assignment TOKEN arguments
@@ -365,7 +365,7 @@ command		: assignment TOKEN
 
 			$$ = xcalloc(1, sizeof *$$);
 			$$->name = $2;
-			$$->line = ps->input->line;
+			$$->line = ps->input->line - 1;
 
 			$$->argc = $3.argc;
 			$$->argv = $3.argv;
