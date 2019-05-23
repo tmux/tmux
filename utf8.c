@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <ctype.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -182,7 +183,11 @@ utf8_strvis(char *dst, const char *src, size_t len, int flag)
 			/* Not a complete, valid UTF-8 character. */
 			src -= ud.have;
 		}
-		if (src < end - 1)
+		if (src[0] == '$' && src < end - 1) {
+			if (isalpha((u_char)src[1]) || src[1] == '_')
+				*dst++ = '\\';
+			*dst++ = '$';
+		} else if (src < end - 1)
 			dst = vis(dst, src[0], flag, src[1]);
 		else if (src < end)
 			dst = vis(dst, src[0], flag, '\0');

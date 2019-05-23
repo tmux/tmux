@@ -141,23 +141,15 @@ static void
 args_print_add_value(char **buf, size_t *len, struct args_entry *entry,
     struct args_value *value)
 {
-	static const char	 quoted[] = " #\"';$";
-	char			*escaped;
-	int			 flags;
+	char	*escaped;
 
 	if (**buf != '\0')
 		args_print_add(buf, len, " -%c ", entry->flag);
 	else
 		args_print_add(buf, len, "-%c ", entry->flag);
 
-	flags = VIS_OCTAL|VIS_TAB|VIS_NL;
-	if (value->value[strcspn(value->value, quoted)] != '\0')
-		flags |= VIS_DQ;
-	utf8_stravis(&escaped, value->value, flags);
-	if (flags & VIS_DQ)
-		args_print_add(buf, len, "\"%s\"", escaped);
-	else
-		args_print_add(buf, len, "%s", escaped);
+	escaped = args_escape(value->value);
+	args_print_add(buf, len, "%s", escaped);
 	free(escaped);
 }
 
@@ -165,21 +157,13 @@ args_print_add_value(char **buf, size_t *len, struct args_entry *entry,
 static void
 args_print_add_argument(char **buf, size_t *len, const char *argument)
 {
-	static const char	 quoted[] = " #\"';$";
-	char			*escaped;
-	int			 flags;
+	char	*escaped;
 
 	if (**buf != '\0')
 		args_print_add(buf, len, " ");
 
-	flags = VIS_OCTAL|VIS_TAB|VIS_NL;
-	if (argument[strcspn(argument, quoted)] != '\0')
-		flags |= VIS_DQ;
-	utf8_stravis(&escaped, argument, flags);
-	if (flags & VIS_DQ)
-		args_print_add(buf, len, "\"%s\"", escaped);
-	else
-		args_print_add(buf, len, "%s", escaped);
+	escaped = args_escape(argument);
+	args_print_add(buf, len, "%s", escaped);
 	free(escaped);
 }
 
@@ -217,6 +201,39 @@ args_print(struct args *args)
 		args_print_add_argument(&buf, &len, args->argv[i]);
 
 	return (buf);
+}
+
+/* Escape an argument. */
+char *
+args_escape(const char *s)
+{
+	static const char	 quoted[] = " #\"';$";
+	char			*escaped, *result;
+	int			 flags;
+
+	if ((strchr(quoted, s[0]) != NULL || s[0] == '~') && s[1] == '\0') {
+		xasprintf(&escaped, "\\%c", s[0]);
+		return (escaped);
+	}
+
+	flags = VIS_OCTAL|VIS_TAB|VIS_NL;
+	if (s[strcspn(s, quoted)] != '\0')
+		flags |= VIS_DQ;
+	utf8_stravis(&escaped, s, flags);
+
+	if (flags & VIS_DQ) {
+		if (*escaped == '~')
+			xasprintf(&result, "\"\\%s\"", escaped);
+		else
+			xasprintf(&result, "\"%s\"", escaped);
+	} else {
+		if (*escaped == '~')
+			xasprintf(&result, "\\%s", escaped);
+		else
+			result = xstrdup(escaped);
+	}
+	free(escaped);
+	return (result);
 }
 
 /* Return if an argument is present. */

@@ -60,8 +60,8 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 	struct args		*args = self->args;
 	struct key_table	*table;
 	struct key_binding	*bd;
-	const char		*key, *tablename, *r;
-	char			*cp, tmp[BUFSIZ];
+	const char		*tablename, *r;
+	char			*key, *cp, tmp[BUFSIZ];
 	int			 repeat, width, tablewidth, keywidth;
 
 	if (self->entry == &cmd_list_commands_entry)
@@ -83,7 +83,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 		}
 		bd = key_bindings_first(table);
 		while (bd != NULL) {
-			key = key_string_lookup_key(bd->key);
+			key = args_escape(key_string_lookup_key(bd->key));
 
 			if (bd->flags & KEY_BINDING_REPEAT)
 				repeat = 1;
@@ -95,6 +95,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 			if (width > keywidth)
 				keywidth = width;
 
+			free(key);
 			bd = key_bindings_next(table, bd);
 		}
 		table = key_bindings_next_table(table);
@@ -108,7 +109,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 		}
 		bd = key_bindings_first(table);
 		while (bd != NULL) {
-			key = key_string_lookup_key(bd->key);
+			key = args_escape(key_string_lookup_key(bd->key));
 
 			if (!repeat)
 				r = "";
@@ -128,11 +129,13 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 			strlcat(tmp, " ", sizeof tmp);
 			free(cp);
 
-			cp = cmd_list_print(bd->cmdlist);
+			cp = cmd_list_print(bd->cmdlist, 1);
 			strlcat(tmp, cp, sizeof tmp);
 			free(cp);
 
 			cmdq_print(item, "bind-key %s", tmp);
+
+			free(key);
 			bd = key_bindings_next(table, bd);
 		}
 		table = key_bindings_next_table(table);

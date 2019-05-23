@@ -663,7 +663,7 @@ cmd_parse_from_file(FILE *f, struct cmd_parse_input *pi)
 		cmd_list_free(cmdlist);
 	}
 
-	s = cmd_list_print(result);
+	s = cmd_list_print(result, 0);
 	log_debug("%s: %s", __func__, s);
 	free(s);
 
