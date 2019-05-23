@@ -6,5 +6,5 @@ matrix:
           env: CFLAGS="-g -O2"
 before_install:
     - sudo apt-get update -qq
-    - sudo apt-get -y install debhelper autotools-dev dh-autoreconf file libncurses5-dev libevent-dev pkg-config libutempter-dev build-essential
+    - sudo apt-get -y install bison debhelper autotools-dev dh-autoreconf file libncurses5-dev libevent-dev pkg-config libutempter-dev build-essential
 script: (CFLAGS= ./autogen.sh) && ./configure --enable-debug && make
