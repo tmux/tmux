@@ -122,7 +122,7 @@ options_value_tostring(struct options_entry *o, union options_value *ov,
 	char	*s;
 
 	if (OPTIONS_IS_COMMAND(o))
-		return (cmd_list_print(ov->cmdlist));
+		return (cmd_list_print(ov->cmdlist, 0));
 	if (OPTIONS_IS_STYLE(o))
 		return (xstrdup(style_tostring(&ov->style)));
 	if (OPTIONS_IS_NUMBER(o)) {

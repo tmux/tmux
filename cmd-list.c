@@ -129,7 +129,7 @@ cmd_list_free(struct cmd_list *cmdlist)
 }
 
 char *
-cmd_list_print(struct cmd_list *cmdlist)
+cmd_list_print(struct cmd_list *cmdlist, int escaped)
 {
 	struct cmd	*cmd;
 	char		*buf, *this;
@@ -141,12 +141,16 @@ cmd_list_print(struct cmd_list *cmdlist)
 	TAILQ_FOREACH(cmd, &cmdlist->list, qentry) {
 		this = cmd_print(cmd);
 
-		len += strlen(this) + 3;
+		len += strlen(this) + 4;
 		buf = xrealloc(buf, len);
 
 		strlcat(buf, this, len);
-		if (TAILQ_NEXT(cmd, qentry) != NULL)
-			strlcat(buf, " ; ", len);
+		if (TAILQ_NEXT(cmd, qentry) != NULL) {
+			if (escaped)
+				strlcat(buf, " \\; ", len);
+			else
+				strlcat(buf, " ; ", len);
+		}
 
 		free(this);
 	}
