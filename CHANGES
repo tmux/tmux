@@ -1,9 +1,15 @@
 CHANGES FROM 2.9 to X.X
 
 * INCOMPATIBLE: tmux's configuration parsing has changed to use yacc(1). Most
-  configuration files shouldn't need to be changed but formats now need to be
-  quoted, so a bare #{...} becomes "#{...}". This includes #{ which may
-  previously have looked like a comment (for example at the start of a line).
+  configuration files shouldn't need to be changed but there are the following
+  differences:
+
+  1) Formats now need to be quoted, so a bare #{...} becomes "#{...}". This
+     includes #{ which may previously have looked like a comment (for example at
+     the start of a line).
+
+  2) A \ on its own must be escaped or quoted as either \\ or '\' (the latter
+     works on older tmux versions).
 
   Entirely the same parser is now used for parsing the configuration file
   and for string commands. This means that constructs previously only
