@@ -37,8 +37,8 @@ const struct cmd_entry cmd_source_file_entry = {
 	.name = "source-file",
 	.alias = "source",
 
-	.args = { "q", 1, 1 },
-	.usage = "[-q] path",
+	.args = { "nq", 1, 1 },
+	.usage = "[-nq] path",
 
 	.flags = 0,
 	.exec = cmd_source_file_exec
@@ -58,7 +58,9 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 	u_int			 i;
 
 	if (args_has(args, 'q'))
-		flags |= CFG_QUIET;
+		flags |= CMD_PARSE_QUIET;
+	if (args_has(args, 'n'))
+		flags |= CMD_PARSE_PARSEONLY;
 
 	if (*path == '/')
 		pattern = xstrdup(path);
@@ -71,7 +73,7 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 
 	retval = CMD_RETURN_NORMAL;
 	if (glob(pattern, 0, NULL, &g) != 0) {
-		if (errno != ENOENT || (~flags & CFG_QUIET)) {
+		if (errno != ENOENT || (~flags & CMD_PARSE_QUIET)) {
 			cmdq_error(item, "%s: %s", path, strerror(errno));
 			retval = CMD_RETURN_ERROR;
 		}

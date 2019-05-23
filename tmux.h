@@ -1281,18 +1281,25 @@ struct cmd_find_state {
 
 /* Command and list of commands. */
 struct cmd {
-	const struct cmd_entry	*entry;
-	struct args		*args;
+	const struct cmd_entry	 *entry;
+	struct args		 *args;
+	u_int			  group;
 
-	char			*file;
-	u_int			 line;
+	char			 *file;
+	u_int			  line;
 
-	TAILQ_ENTRY(cmd)	 qentry;
+	char			 *alias;
+	int			  argc;
+	char			**argv;
+
+	TAILQ_ENTRY(cmd)	  qentry;
 };
+TAILQ_HEAD(cmds, cmd);
 
 struct cmd_list {
-	int			 references;
-	TAILQ_HEAD(, cmd)	 list;
+	int		references;
+	u_int		group;
+	struct cmds	list;
 };
 
 /* Command return values. */
@@ -1301,6 +1308,31 @@ enum cmd_retval {
 	CMD_RETURN_NORMAL = 0,
 	CMD_RETURN_WAIT,
 	CMD_RETURN_STOP
+};
+
+/* Command parse result. */
+enum cmd_parse_status {
+	CMD_PARSE_EMPTY,
+	CMD_PARSE_ERROR,
+	CMD_PARSE_SUCCESS
+};
+struct cmd_parse_result {
+	enum cmd_parse_status	 status;
+	struct cmd_list		*cmdlist;
+	char			*error;
+};
+struct cmd_parse_input {
+	int			 flags;
+#define CMD_PARSE_QUIET 0x1
+#define CMD_PARSE_PARSEONLY 0x2
+#define CMD_PARSE_NOALIAS 0x4
+
+	const char		*file;
+	u_int			 line;
+
+	struct cmdq_item	*item;
+	struct client		*c;
+	struct cmd_find_state	 fs;
 };
 
 /* Command queue item type. */
@@ -1673,7 +1705,6 @@ void	proc_toggle_log(struct tmuxproc *);
 /* cfg.c */
 extern int cfg_finished;
 extern struct client *cfg_client;
-#define CFG_QUIET 0x1
 void	start_cfg(void);
 int	load_cfg(const char *, struct client *, struct cmdq_item *, int,
 	    struct cmdq_item **);
@@ -1958,12 +1989,16 @@ int		 cmd_find_from_nothing(struct cmd_find_state *, int);
 
 /* cmd.c */
 void		 cmd_log_argv(int, char **, const char *);
+void		 cmd_prepend_argv(int *, char ***, char *);
+void		 cmd_append_argv(int *, char ***, char *);
 int		 cmd_pack_argv(int, char **, char *, size_t);
 int		 cmd_unpack_argv(char *, size_t, int, char ***);
 char	       **cmd_copy_argv(int, char **);
 void		 cmd_free_argv(int, char **);
 char		*cmd_stringify_argv(int, char **);
+char		*cmd_get_alias(const char *);
 struct cmd	*cmd_parse(int, char **, const char *, u_int, char **);
+void		 cmd_free(struct cmd *);
 char		*cmd_print(struct cmd *);
 int		 cmd_mouse_at(struct window_pane *, struct mouse_event *,
 		     u_int *, u_int *, int);
@@ -1977,7 +2012,16 @@ extern const struct cmd_entry *cmd_table[];
 enum cmd_retval	 cmd_attach_session(struct cmdq_item *, const char *, int, int,
 		     const char *, int);
 
+/* cmd-parse.c */
+void	    	 cmd_parse_empty(struct cmd_parse_input *);
+struct cmd_parse_result *cmd_parse_from_file(FILE *, struct cmd_parse_input *);
+struct cmd_parse_result *cmd_parse_from_string(const char *,
+		     struct cmd_parse_input *);
+
 /* cmd-list.c */
+struct cmd_list	*cmd_list_new(void);
+void		 cmd_list_append(struct cmd_list *, struct cmd *);
+void		 cmd_list_move(struct cmd_list *, struct cmd_list *);
 struct cmd_list	*cmd_list_parse(int, char **, const char *, u_int, char **);
 void		 cmd_list_free(struct cmd_list *);
 char		*cmd_list_print(struct cmd_list *);
@@ -1998,10 +2042,6 @@ u_int		 cmdq_next(struct client *);
 void		 cmdq_guard(struct cmdq_item *, const char *, int);
 void printflike(2, 3) cmdq_print(struct cmdq_item *, const char *, ...);
 void printflike(2, 3) cmdq_error(struct cmdq_item *, const char *, ...);
-
-/* cmd-string.c */
-int		 cmd_string_split(const char *, int *, char ***);
-struct cmd_list	*cmd_string_parse(const char *, const char *, u_int, char **);
 
 /* cmd-wait-for.c */
 void	cmd_wait_for_flush(void);

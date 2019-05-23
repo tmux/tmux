@@ -68,9 +68,9 @@ control_error(struct cmdq_item *item, void *data)
 void
 control_callback(struct client *c, int closed, __unused void *data)
 {
-	char			*line, *cause;
-	struct cmd_list		*cmdlist;
+	char			*line;
 	struct cmdq_item	*item;
+	struct cmd_parse_result	*pr;
 
 	if (closed)
 		c->flags |= CLIENT_EXIT;
@@ -84,15 +84,21 @@ control_callback(struct client *c, int closed, __unused void *data)
 			break;
 		}
 
-		cmdlist = cmd_string_parse(line, NULL, 0, &cause);
-		if (cmdlist == NULL) {
-			item = cmdq_get_callback(control_error, cause);
+		pr = cmd_parse_from_string(line, NULL);
+		switch (pr->status) {
+		case CMD_PARSE_EMPTY:
+			break;
+		case CMD_PARSE_ERROR:
+			item = cmdq_get_callback(control_error, pr->error);
 			cmdq_append(c, item);
-		} else {
-			item = cmdq_get_command(cmdlist, NULL, NULL, 0);
+			free(pr->error);
+			break;
+		case CMD_PARSE_SUCCESS:
+			item = cmdq_get_command(pr->cmdlist, NULL, NULL, 0);
 			item->shared->flags |= CMDQ_SHARED_CONTROL;
 			cmdq_append(c, item);
-			cmd_list_free(cmdlist);
+			cmd_list_free(pr->cmdlist);
+			break;
 		}
 
 		free(line);

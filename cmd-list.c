@@ -23,15 +23,37 @@
 
 #include "tmux.h"
 
-static struct cmd_list *
+static u_int cmd_list_next_group = 1;
+
+struct cmd_list *
 cmd_list_new(void)
 {
 	struct cmd_list	*cmdlist;
 
 	cmdlist = xcalloc(1, sizeof *cmdlist);
 	cmdlist->references = 1;
+	cmdlist->group = cmd_list_next_group++;
 	TAILQ_INIT(&cmdlist->list);
 	return (cmdlist);
+}
+
+void
+cmd_list_append(struct cmd_list *cmdlist, struct cmd *cmd)
+{
+	cmd->group = cmdlist->group;
+	TAILQ_INSERT_TAIL(&cmdlist->list, cmd, qentry);
+}
+
+void
+cmd_list_move(struct cmd_list *cmdlist, struct cmd_list *from)
+{
+	struct cmd	*cmd, *cmd1;
+
+	TAILQ_FOREACH_SAFE(cmd, &from->list, qentry, cmd1) {
+		TAILQ_REMOVE(&from->list, cmd, qentry);
+		TAILQ_INSERT_TAIL(&cmdlist->list, cmd, qentry);
+	}
+	cmdlist->group = cmd_list_next_group++;
 }
 
 struct cmd_list *
@@ -100,9 +122,7 @@ cmd_list_free(struct cmd_list *cmdlist)
 
 	TAILQ_FOREACH_SAFE(cmd, &cmdlist->list, qentry, cmd1) {
 		TAILQ_REMOVE(&cmdlist->list, cmd, qentry);
-		args_free(cmd->args);
-		free(cmd->file);
-		free(cmd);
+		cmd_free(cmd);
 	}
 
 	free(cmdlist);
