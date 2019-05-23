@@ -184,7 +184,9 @@ utf8_strvis(char *dst, const char *src, size_t len, int flag)
 			src -= ud.have;
 		}
 		if (src[0] == '$' && src < end - 1) {
-			if (isalpha((u_char)src[1]) || src[1] == '_')
+			if (isalpha((u_char)src[1]) ||
+			    src[1] == '_' ||
+			    src[1] == '{')
 				*dst++ = '\\';
 			*dst++ = '$';
 		} else if (src < end - 1)
