@@ -541,34 +541,21 @@ cmd_parse_run_parser(FILE *f, struct cmd_parse_input *pi, char **cause)
 	return (cmds);
 }
 
-struct cmd_parse_result *
-cmd_parse_from_file(FILE *f, struct cmd_parse_input *pi)
+static struct cmd_parse_result *
+cmd_parse_build_commands(struct cmd_parse_commands *cmds,
+    struct cmd_parse_input *pi)
 {
 	static struct cmd_parse_result	 pr;
-	struct cmd_parse_input		 input;
-	struct cmd_parse_commands	*cmds, *cmds2;
+	struct cmd_parse_commands	*cmds2;
 	struct cmd_parse_command	*cmd, *cmd2, *next, *next2, *after;
+	FILE				*f;
 	u_int				 line = UINT_MAX;
 	int				 i;
 	struct cmd_list			*cmdlist = NULL, *result;
 	struct cmd			*add;
 	char				*alias, *cause, *s;
 
-	if (pi == NULL) {
-		memset(&input, 0, sizeof input);
-		pi = &input;
-	}
-	memset(&pr, 0, sizeof pr);
-
-	/*
-	 * Parse the file into a list of commands.
-	 */
-	cmds = cmd_parse_run_parser(f, pi, &cause);
-	if (cmds == NULL) {
-		pr.status = CMD_PARSE_ERROR;
-		pr.error = cause;
-		return (&pr);
-	}
+	/* Check for an empty list. */
 	if (TAILQ_EMPTY(cmds)) {
 		free(cmds);
 		pr.status = CMD_PARSE_EMPTY;
@@ -678,11 +665,44 @@ out:
 }
 
 struct cmd_parse_result *
+cmd_parse_from_file(FILE *f, struct cmd_parse_input *pi)
+{
+	static struct cmd_parse_result	 pr;
+	struct cmd_parse_input		 input;
+	struct cmd_parse_commands	*cmds;
+	char				*cause;
+
+	if (pi == NULL) {
+		memset(&input, 0, sizeof input);
+		pi = &input;
+	}
+	memset(&pr, 0, sizeof pr);
+
+	/*
+	 * Parse the file into a list of commands.
+	 */
+	cmds = cmd_parse_run_parser(f, pi, &cause);
+	if (cmds == NULL) {
+		pr.status = CMD_PARSE_ERROR;
+		pr.error = cause;
+		return (&pr);
+	}
+	return (cmd_parse_build_commands(cmds, pi));
+}
+
+struct cmd_parse_result *
 cmd_parse_from_string(const char *s, struct cmd_parse_input *pi)
 {
 	static struct cmd_parse_result	 pr;
 	struct cmd_parse_result		*prp;
+	struct cmd_parse_input		 input;
 	FILE				*f;
+
+	if (pi == NULL) {
+		memset(&input, 0, sizeof input);
+		pi = &input;
+	}
+	memset(&pr, 0, sizeof pr);
 
 	if (*s == '\0') {
 		pr.status = CMD_PARSE_EMPTY;
@@ -701,6 +721,84 @@ cmd_parse_from_string(const char *s, struct cmd_parse_input *pi)
 	prp = cmd_parse_from_file(f, pi);
 	fclose(f);
 	return (prp);
+}
+
+struct cmd_parse_result *
+cmd_parse_from_arguments(int argc, char **argv, struct cmd_parse_input *pi)
+{
+	struct cmd_parse_input		  input;
+	struct cmd_parse_commands	 *cmds;
+	struct cmd_parse_command	 *cmd;
+	char				**copy, **new_argv;
+	size_t				  size;
+	int				  i, last, new_argc;
+
+	/*
+	 * The commands are already split up into arguments, so just separate
+	 * into a set of commands by ';'.
+	 */
+
+	if (pi == NULL) {
+		memset(&input, 0, sizeof input);
+		pi = &input;
+	}
+	cmd_log_argv(argc, argv, "%s", __func__);
+
+	cmds = xmalloc(sizeof *cmds);
+	TAILQ_INIT(cmds);
+	copy = cmd_copy_argv(argc, argv);
+
+	last = 0;
+	for (i = 0; i < argc; i++) {
+		size = strlen(copy[i]);
+		if (size == 0 || copy[i][size - 1] != ';')
+			continue;
+		copy[i][--size] = '\0';
+		if (size > 0 && copy[i][size - 1] == '\\') {
+			copy[i][size - 1] = ';';
+			continue;
+		}
+
+		new_argc = i - last;
+		new_argv = copy + last;
+		if (size != 0)
+			new_argc++;
+
+		if (new_argc != 0) {
+			cmd_log_argv(new_argc, new_argv, "%s: at %u", __func__,
+			    i);
+
+			cmd = xcalloc(1, sizeof *cmd);
+			cmd->name = xstrdup(new_argv[0]);
+			cmd->line = pi->line;
+
+			cmd->argc = new_argc - 1;
+			cmd->argv = cmd_copy_argv(new_argc - 1, new_argv + 1);
+
+			TAILQ_INSERT_TAIL(cmds, cmd, entry);
+		}
+
+		last = i + 1;
+	}
+	if (last != argc) {
+		new_argv = copy + last;
+		new_argc = argc - last;
+
+		if (new_argc != 0) {
+			cmd_log_argv(new_argc, new_argv, "%s: at %u", __func__,
+			    last);
+
+			cmd = xcalloc(1, sizeof *cmd);
+			cmd->name = xstrdup(new_argv[0]);
+			cmd->line = pi->line;
+
+			cmd->argc = new_argc - 1;
+			cmd->argv = cmd_copy_argv(new_argc - 1, new_argv + 1);
+
+			TAILQ_INSERT_TAIL(cmds, cmd, entry);
+		}
+	}
+	return (cmd_parse_build_commands(cmds, pi));
 }
 
 static int printflike(1, 2)

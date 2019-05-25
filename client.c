@@ -215,14 +215,13 @@ client_exit_message(void)
 int
 client_main(struct event_base *base, int argc, char **argv, int flags)
 {
+	struct cmd_parse_result	*pr;
 	struct cmd		*cmd;
-	struct cmd_list		*cmdlist;
 	struct msg_command_data	*data;
 	int			 cmdflags, fd, i;
 	const char		*ttynam, *cwd;
 	pid_t			 ppid;
 	enum msgtype		 msg;
-	char			*cause;
 	struct termios		 tio, saved_tio;
 	size_t			 size;
 
@@ -248,14 +247,15 @@ client_main(struct event_base *base, int argc, char **argv, int flags)
 		 * later in server) but it is necessary to get the start server
 		 * flag.
 		 */
-		cmdlist = cmd_list_parse(argc, argv, NULL, 0, &cause);
-		if (cmdlist != NULL) {
-			TAILQ_FOREACH(cmd, &cmdlist->list, qentry) {
+		pr = cmd_parse_from_arguments(argc, argv, NULL);
+		if (pr->status == CMD_PARSE_SUCCESS) {
+			TAILQ_FOREACH(cmd, &pr->cmdlist->list, qentry) {
 				if (cmd->entry->flags & CMD_STARTSERVER)
 					cmdflags |= CMD_STARTSERVER;
 			}
-			cmd_list_free(cmdlist);
-		}
+			cmd_list_free(pr->cmdlist);
+		} else
+			free(pr->error);
 	}
 
 	/* Create client process structure (starts logging). */
