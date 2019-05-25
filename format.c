@@ -1152,13 +1152,13 @@ format_build_modifiers(struct format_tree *ft, const char **s, u_int *count)
 
 	/*
 	 * Modifiers are a ; separated list of the forms:
-	 *      l,m,C,b,d,t,q,E,T,S,W,P
+	 *      l,m,C,b,d,t,q,E,T,S,W,P,<,>
 	 *	=a
 	 *	=/a
 	 *      =/a/
 	 *	s/a/b/
 	 *	s/a/b
-	 *	||,&&,!=,==
+	 *	||,&&,!=,==,<=,>=
 	 */
 
 	*count = 0;
@@ -1169,7 +1169,7 @@ format_build_modifiers(struct format_tree *ft, const char **s, u_int *count)
 			cp++;
 
 		/* Check single character modifiers with no arguments. */
-		if (strchr("lmCbdtqETSWP", cp[0]) != NULL &&
+		if (strchr("lmCbdtqETSWP<>", cp[0]) != NULL &&
 		    format_is_end(cp[1])) {
 			format_add_modifier(&list, count, cp, 1, NULL, 0);
 			cp++;
@@ -1180,7 +1180,9 @@ format_build_modifiers(struct format_tree *ft, const char **s, u_int *count)
 		if ((memcmp("||", cp, 2) == 0 ||
 		    memcmp("&&", cp, 2) == 0 ||
 		    memcmp("!=", cp, 2) == 0 ||
-		    memcmp("==", cp, 2) == 0) &&
+		    memcmp("==", cp, 2) == 0 ||
+		    memcmp("<=", cp, 2) == 0 ||
+		    memcmp(">=", cp, 2) == 0) &&
 		    format_is_end(cp[2])) {
 			format_add_modifier(&list, count, cp, 2, NULL, 0);
 			cp += 2;
@@ -1449,6 +1451,8 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 		if (fm->size == 1) {
 			switch (fm->modifier[0]) {
 			case 'm':
+			case '<':
+			case '>':
 				cmp = fm;
 				break;
 			case 'C':
@@ -1502,7 +1506,9 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 			if (strcmp(fm->modifier, "||") == 0 ||
 			    strcmp(fm->modifier, "&&") == 0 ||
 			    strcmp(fm->modifier, "==") == 0 ||
-			    strcmp(fm->modifier, "!=") == 0)
+			    strcmp(fm->modifier, "!=") == 0 ||
+			    strcmp(fm->modifier, ">=") == 0 ||
+			    strcmp(fm->modifier, "<=") == 0)
 				cmp = fm;
 		}
 	}
@@ -1565,8 +1571,27 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 				value = xstrdup("1");
 			else
 				value = xstrdup("0");
-		}
-		else if (strcmp(cmp->modifier, "m") == 0) {
+		} else if (strcmp(cmp->modifier, "<") == 0) {
+			if (strcmp(left, right) < 0)
+				value = xstrdup("1");
+			else
+				value = xstrdup("0");
+		} else if (strcmp(cmp->modifier, ">") == 0) {
+			if (strcmp(left, right) > 0)
+				value = xstrdup("1");
+			else
+				value = xstrdup("0");
+		} else if (strcmp(cmp->modifier, "<=") == 0) {
+			if (strcmp(left, right) <= 0)
+				value = xstrdup("1");
+			else
+				value = xstrdup("0");
+		} else if (strcmp(cmp->modifier, ">=") == 0) {
+			if (strcmp(left, right) >= 0)
+				value = xstrdup("1");
+			else
+				value = xstrdup("0");
+		} else if (strcmp(cmp->modifier, "m") == 0) {
 			if (fnmatch(left, right, 0) == 0)
 				value = xstrdup("1");
 			else

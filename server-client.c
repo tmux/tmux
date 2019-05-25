@@ -1785,9 +1785,9 @@ server_client_dispatch_command(struct client *c, struct imsg *imsg)
 	struct msg_command_data	  data;
 	char			 *buf;
 	size_t			  len;
-	struct cmd_list		 *cmdlist = NULL;
 	int			  argc;
 	char			**argv, *cause;
+	struct cmd_parse_result	 *pr;
 
 	if (c->flags & CLIENT_EXIT)
 		return;
@@ -1813,23 +1813,30 @@ server_client_dispatch_command(struct client *c, struct imsg *imsg)
 		*argv = xstrdup("new-session");
 	}
 
-	if ((cmdlist = cmd_list_parse(argc, argv, NULL, 0, &cause)) == NULL) {
-		cmd_free_argv(argc, argv);
+	pr = cmd_parse_from_arguments(argc, argv, NULL);
+	switch (pr->status) {
+	case CMD_PARSE_EMPTY:
+		cause = xstrdup("empty command");
 		goto error;
+	case CMD_PARSE_ERROR:
+		cause = pr->error;
+		goto error;
+	case CMD_PARSE_SUCCESS:
+		break;
 	}
 	cmd_free_argv(argc, argv);
 
-	cmdq_append(c, cmdq_get_command(cmdlist, NULL, NULL, 0));
+	cmdq_append(c, cmdq_get_command(pr->cmdlist, NULL, NULL, 0));
 	cmdq_append(c, cmdq_get_callback(server_client_command_done, NULL));
-	cmd_list_free(cmdlist);
+
+	cmd_list_free(pr->cmdlist);
 	return;
 
 error:
+	cmd_free_argv(argc, argv);
+
 	cmdq_append(c, cmdq_get_error(cause));
 	free(cause);
-
-	if (cmdlist != NULL)
-		cmd_list_free(cmdlist);
 
 	c->flags |= CLIENT_EXIT;
 }

@@ -159,7 +159,7 @@ cmd_if_shell_callback(struct job *job)
 	struct cmd_if_shell_data	*cdata = job_get_data(job);
 	struct client			*c = cdata->client;
 	struct mouse_event		*m = &cdata->mouse;
-	struct cmdq_item		*new_item;
+	struct cmdq_item		*new_item = NULL;
 	char				*cmd;
 	int				 status;
 	struct cmd_parse_result		*pr;
@@ -175,10 +175,10 @@ cmd_if_shell_callback(struct job *job)
 	pr = cmd_parse_from_string(cmd, &cdata->input);
 	switch (pr->status) {
 	case CMD_PARSE_EMPTY:
-		new_item = NULL;
 		break;
 	case CMD_PARSE_ERROR:
-		new_item = cmdq_get_error(pr->error);
+		if (cdata->item != NULL)
+		       cmdq_error(cdata->item, "%s", pr->error);
 		free(pr->error);
 		break;
 	case CMD_PARSE_SUCCESS:

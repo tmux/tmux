@@ -32,11 +32,14 @@ static struct cmdq_list global_queue = TAILQ_HEAD_INITIALIZER(global_queue);
 static const char *
 cmdq_name(struct client *c)
 {
-	static char	s[32];
+	static char	s[256];
 
 	if (c == NULL)
 		return ("<global>");
-	xsnprintf(s, sizeof s, "<%p>", c);
+	if (c->name != NULL)
+		xsnprintf(s, sizeof s, "<%s>", c->name);
+	else
+		xsnprintf(s, sizeof s, "<%p>", c);
 	return (s);
 }
 
