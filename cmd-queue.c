@@ -36,7 +36,10 @@ cmdq_name(struct client *c)
 
 	if (c == NULL)
 		return ("<global>");
-	xsnprintf(s, sizeof s, "<%s>", c->name);
+	if (c->name != NULL)
+		xsnprintf(s, sizeof s, "<%s>", c->name);
+	else
+		xsnprintf(s, sizeof s, "<%p>", c);
 	return (s);
 }
 
