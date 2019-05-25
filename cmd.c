@@ -205,13 +205,20 @@ const struct cmd_entry *cmd_table[] = {
 	NULL
 };
 
-void
-cmd_log_argv(int argc, char **argv, const char *prefix)
+void printflike(3, 4)
+cmd_log_argv(int argc, char **argv, const char *fmt, ...)
 {
-	int	i;
+	char	*prefix;
+	va_list	 ap;
+	int	 i;
+
+	va_start(ap, fmt);
+	xvasprintf(&prefix, fmt, ap);
+	va_end(ap);
 
 	for (i = 0; i < argc; i++)
 		log_debug("%s: argv[%d]=%s", prefix, i, argv[i]);
+	free(prefix);
 }
 
 void
@@ -245,7 +252,7 @@ cmd_pack_argv(int argc, char **argv, char *buf, size_t len)
 
 	if (argc == 0)
 		return (0);
-	cmd_log_argv(argc, argv, __func__);
+	cmd_log_argv(argc, argv, "%s", __func__);
 
 	*buf = '\0';
 	for (i = 0; i < argc; i++) {
@@ -282,7 +289,7 @@ cmd_unpack_argv(char *buf, size_t len, int argc, char ***argv)
 		buf += arglen;
 		len -= arglen;
 	}
-	cmd_log_argv(argc, *argv, __func__);
+	cmd_log_argv(argc, *argv, "%s", __func__);
 
 	return (0);
 }
@@ -437,7 +444,7 @@ cmd_parse(int argc, char **argv, const char *file, u_int line, char **cause)
 	entry = cmd_find(name, cause);
 	if (entry == NULL)
 		return (NULL);
-	cmd_log_argv(argc, argv, entry->name);
+	cmd_log_argv(argc, argv, "%s: %s", __func__, entry->name);
 
 	args = args_parse(entry->args.template, argc, argv);
 	if (args == NULL)
