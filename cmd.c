@@ -205,6 +205,8 @@ const struct cmd_entry *cmd_table[] = {
 	NULL
 };
 
+static u_int cmd_list_next_group = 1;
+
 void printflike(3, 4)
 cmd_log_argv(int argc, char **argv, const char *fmt, ...)
 {
@@ -381,9 +383,9 @@ cmd_get_alias(const char *name)
 static const struct cmd_entry *
 cmd_find(const char *name, char **cause)
 {
-	const struct cmd_entry **loop, *entry, *found = NULL;
-	int			 ambiguous;
-	char			 s[BUFSIZ];
+	const struct cmd_entry	**loop, *entry, *found = NULL;
+	int			  ambiguous;
+	char			  s[BUFSIZ];
 
 	ambiguous = 0;
 	for (loop = cmd_table; *loop != NULL; loop++) {
@@ -500,6 +502,83 @@ cmd_print(struct cmd *cmd)
 	free(s);
 
 	return (out);
+}
+
+struct cmd_list *
+cmd_list_new(void)
+{
+	struct cmd_list	*cmdlist;
+
+	cmdlist = xcalloc(1, sizeof *cmdlist);
+	cmdlist->references = 1;
+	cmdlist->group = cmd_list_next_group++;
+	TAILQ_INIT(&cmdlist->list);
+	return (cmdlist);
+}
+
+void
+cmd_list_append(struct cmd_list *cmdlist, struct cmd *cmd)
+{
+	cmd->group = cmdlist->group;
+	TAILQ_INSERT_TAIL(&cmdlist->list, cmd, qentry);
+}
+
+void
+cmd_list_move(struct cmd_list *cmdlist, struct cmd_list *from)
+{
+	struct cmd	*cmd, *cmd1;
+
+	TAILQ_FOREACH_SAFE(cmd, &from->list, qentry, cmd1) {
+		TAILQ_REMOVE(&from->list, cmd, qentry);
+		TAILQ_INSERT_TAIL(&cmdlist->list, cmd, qentry);
+	}
+	cmdlist->group = cmd_list_next_group++;
+}
+
+void
+cmd_list_free(struct cmd_list *cmdlist)
+{
+	struct cmd	*cmd, *cmd1;
+
+	if (--cmdlist->references != 0)
+		return;
+
+	TAILQ_FOREACH_SAFE(cmd, &cmdlist->list, qentry, cmd1) {
+		TAILQ_REMOVE(&cmdlist->list, cmd, qentry);
+		cmd_free(cmd);
+	}
+
+	free(cmdlist);
+}
+
+char *
+cmd_list_print(struct cmd_list *cmdlist, int escaped)
+{
+	struct cmd	*cmd;
+	char		*buf, *this;
+	size_t		 len;
+
+	len = 1;
+	buf = xcalloc(1, len);
+
+	TAILQ_FOREACH(cmd, &cmdlist->list, qentry) {
+		this = cmd_print(cmd);
+
+		len += strlen(this) + 4;
+		buf = xrealloc(buf, len);
+
+		strlcat(buf, this, len);
+		if (TAILQ_NEXT(cmd, qentry) != NULL) {
+			if (escaped)
+				strlcat(buf, " \\; ", len);
+			else
+				strlcat(buf, " ; ", len);
+		}
+
+		free(this);
+	}
+
+	return (buf);
 }
 
 /* Adjust current mouse position for a pane. */
