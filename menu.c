@@ -226,9 +226,9 @@ menu_key_cb(struct client *c, struct key_event *event)
 			}
 			return (0);
 		}
-		md->choice = m->y - (md->py + 1);
 		if (MOUSE_RELEASE(m->b))
 			goto chosen;
+		md->choice = m->y - (md->py + 1);
 		if (md->choice != old)
 			c->flags |= CLIENT_REDRAWOVERLAY;
 		return (0);
