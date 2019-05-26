@@ -53,6 +53,11 @@ TAILQ_HEAD(cmd_parse_commands, cmd_parse_command);
 
 struct cmd_parse_state {
 	FILE				*f;
+
+	const char			*buf;
+	size_t				 len;
+	size_t				 off;
+
 	int				 eof;
 	struct cmd_parse_input		*input;
 	u_int				 escapes;
@@ -66,7 +71,6 @@ struct cmd_parse_state {
 static struct cmd_parse_state parse_state;
 
 static char	*cmd_parse_get_error(const char *, u_int, const char *);
-static char	*cmd_parse_get_strerror(const char *, u_int);
 static void	 cmd_parse_free_command(struct cmd_parse_command *);
 static void	 cmd_parse_free_commands(struct cmd_parse_commands *);
 
@@ -483,12 +487,6 @@ cmd_parse_get_error(const char *file, u_int line, const char *error)
 	return (s);
 }
 
-static char *
-cmd_parse_get_strerror(const char *file, u_int line)
-{
-	return (cmd_parse_get_error(file, line, strerror(errno)));
-}
-
 static void
 cmd_parse_free_command(struct cmd_parse_command *cmd)
 {
@@ -509,18 +507,12 @@ cmd_parse_free_commands(struct cmd_parse_commands *cmds)
 }
 
 static struct cmd_parse_commands *
-cmd_parse_run_parser(FILE *f, struct cmd_parse_input *pi, char **cause)
+cmd_parse_run_parser(char **cause)
 {
 	struct cmd_parse_state		*ps = &parse_state;
 	struct cmd_parse_commands	*cmds;
 	struct cmd_parse_scope		*scope, *scope1;
 	int				 retval;
-
-	memset(ps, 0, sizeof *ps);
-
-	ps->f = f;
-	ps->eof = 0;
-	ps->input = pi;
 
 	TAILQ_INIT(&ps->commands);
 	TAILQ_INIT(&ps->stack);
@@ -541,6 +533,30 @@ cmd_parse_run_parser(FILE *f, struct cmd_parse_input *pi, char **cause)
 	return (cmds);
 }
 
+static struct cmd_parse_commands *
+cmd_parse_do_file(FILE *f, struct cmd_parse_input *pi, char **cause)
+{
+	struct cmd_parse_state	*ps = &parse_state;
+
+	memset(ps, 0, sizeof *ps);
+	ps->input = pi;
+	ps->f = f;
+	return (cmd_parse_run_parser(cause));
+}
+
+static struct cmd_parse_commands *
+cmd_parse_do_buffer(const char *buf, size_t len, struct cmd_parse_input *pi,
+    char **cause)
+{
+	struct cmd_parse_state	*ps = &parse_state;
+
+	memset(ps, 0, sizeof *ps);
+	ps->input = pi;
+	ps->buf = buf;
+	ps->len = len;
+	return (cmd_parse_run_parser(cause));
+}
+
 static struct cmd_parse_result *
 cmd_parse_build_commands(struct cmd_parse_commands *cmds,
     struct cmd_parse_input *pi)
@@ -548,7 +564,6 @@ cmd_parse_build_commands(struct cmd_parse_commands *cmds,
 	static struct cmd_parse_result	 pr;
 	struct cmd_parse_commands	*cmds2;
 	struct cmd_parse_command	*cmd, *cmd2, *next, *next2, *after;
-	FILE				*f;
 	u_int				 line = UINT_MAX;
 	int				 i;
 	struct cmd_list			*cmdlist = NULL, *result;
@@ -576,16 +591,8 @@ cmd_parse_build_commands(struct cmd_parse_commands *cmds,
 		line = cmd->line;
 		log_debug("%s: %u %s = %s", __func__, line, cmd->name, alias);
 
-		f = fmemopen(alias, strlen(alias), "r");
-		if (f == NULL) {
-			free(alias);
-			pr.status = CMD_PARSE_ERROR;
-			pr.error = cmd_parse_get_strerror(pi->file, line);
-			goto out;
-		}
 		pi->line = line;
-		cmds2 = cmd_parse_run_parser(f, pi, &cause);
-		fclose(f);
+		cmds2 = cmd_parse_do_buffer(alias, strlen(alias), pi, &cause);
 		free(alias);
 		if (cmds2 == NULL) {
 			pr.status = CMD_PARSE_ERROR;
@@ -678,10 +685,7 @@ cmd_parse_from_file(FILE *f, struct cmd_parse_input *pi)
 	}
 	memset(&pr, 0, sizeof pr);
 
-	/*
-	 * Parse the file into a list of commands.
-	 */
-	cmds = cmd_parse_run_parser(f, pi, &cause);
+	cmds = cmd_parse_do_file(f, pi, &cause);
 	if (cmds == NULL) {
 		pr.status = CMD_PARSE_ERROR;
 		pr.error = cause;
@@ -694,9 +698,9 @@ struct cmd_parse_result *
 cmd_parse_from_string(const char *s, struct cmd_parse_input *pi)
 {
 	static struct cmd_parse_result	 pr;
-	struct cmd_parse_result		*prp;
 	struct cmd_parse_input		 input;
-	FILE				*f;
+	struct cmd_parse_commands	*cmds;
+	char				*cause;
 
 	if (pi == NULL) {
 		memset(&input, 0, sizeof input);
@@ -711,16 +715,13 @@ cmd_parse_from_string(const char *s, struct cmd_parse_input *pi)
 		return (&pr);
 	}
 
-	f = fmemopen((void *)s, strlen(s), "r");
-	if (f == NULL) {
+	cmds = cmd_parse_do_buffer(s, strlen(s), pi, &cause);
+	if (cmds == NULL) {
 		pr.status = CMD_PARSE_ERROR;
-		pr.cmdlist = NULL;
-		pr.error = cmd_parse_get_strerror(pi->file, pi->line);
-		return (NULL);
+		pr.error = cause;
+		return (&pr);
 	}
-	prp = cmd_parse_from_file(f, pi);
-	fclose(f);
-	return (prp);
+	return (cmd_parse_build_commands(cmds, pi));
 }
 
 struct cmd_parse_result *
@@ -848,6 +849,34 @@ yylex_append1(char **buf, size_t *len, char add)
 }
 
 static int
+yylex_getc1(void)
+{
+	struct cmd_parse_state	*ps = &parse_state;
+	int			 ch;
+
+	if (ps->f != NULL)
+		ch = getc(ps->f);
+	else {
+		if (ps->off == ps->len)
+			ch = EOF;
+		else
+			ch = ps->buf[ps->off++];
+	}
+	return (ch);
+}
+
+static void
+yylex_ungetc(int ch)
+{
+	struct cmd_parse_state	*ps = &parse_state;
+
+	if (ps->f != NULL)
+		ungetc(ch, ps->f);
+	else if (ps->off > 0 && ch != EOF)
+		ps->off--;
+}
+
+static int
 yylex_getc(void)
 {
 	struct cmd_parse_state	*ps = &parse_state;
@@ -858,7 +887,7 @@ yylex_getc(void)
 		return ('\\');
 	}
 	for (;;) {
-		ch = getc(ps->f);
+		ch = yylex_getc1();
 		if (ch == '\\') {
 			ps->escapes++;
 			continue;
@@ -870,7 +899,7 @@ yylex_getc(void)
 		}
 
 		if (ps->escapes != 0) {
-			ungetc(ch, ps->f);
+			yylex_ungetc(ch);
 			ps->escapes--;
 			return ('\\');
 		}
@@ -881,9 +910,8 @@ yylex_getc(void)
 static char *
 yylex_get_word(int ch)
 {
-	struct cmd_parse_state	*ps = &parse_state;
-	char			*buf;
-	size_t			 len;
+	char	*buf;
+	size_t	 len;
 
 	len = 0;
 	buf = xmalloc(1);
@@ -891,7 +919,7 @@ yylex_get_word(int ch)
 	do
 		yylex_append1(&buf, &len, ch);
 	while ((ch = yylex_getc()) != EOF && strchr(" \t\n", ch) == NULL);
-	ungetc(ch, ps->f);
+	yylex_ungetc(ch);
 
 	buf[len] = '\0';
 	log_debug("%s: %s", __func__, buf);
@@ -1117,7 +1145,6 @@ unicode:
 static int
 yylex_token_variable(char **buf, size_t *len)
 {
-	struct cmd_parse_state	*ps = &parse_state;
 	struct environ_entry	*envent;
 	int			 ch, brackets = 0;
 	char			 name[BUFSIZ];
@@ -1132,7 +1159,7 @@ yylex_token_variable(char **buf, size_t *len)
 	else {
 		if (!yylex_is_var(ch, 1)) {
 			yylex_append1(buf, len, '$');
-			ungetc(ch, ps->f);
+			yylex_ungetc(ch);
 			return (1);
 		}
 		name[namelen++] = ch;
@@ -1144,7 +1171,7 @@ yylex_token_variable(char **buf, size_t *len)
 			break;
 		if (ch == EOF || !yylex_is_var(ch, 0)) {
 			if (!brackets) {
-				ungetc(ch, ps->f);
+				yylex_ungetc(ch);
 				break;
 			}
 			yyerror("invalid environment variable");
@@ -1170,7 +1197,6 @@ yylex_token_variable(char **buf, size_t *len)
 static int
 yylex_token_tilde(char **buf, size_t *len)
 {
-	struct cmd_parse_state	*ps = &parse_state;
 	struct environ_entry	*envent;
 	int			 ch;
 	char			 name[BUFSIZ];
@@ -1181,7 +1207,7 @@ yylex_token_tilde(char **buf, size_t *len)
 	for (;;) {
 		ch = yylex_getc();
 		if (ch == EOF || strchr("/ \t\n\"'", ch) != NULL) {
-			ungetc(ch, ps->f);
+			yylex_ungetc(ch);
 			break;
 		}
 		if (namelen == (sizeof name) - 2) {
@@ -1213,7 +1239,6 @@ yylex_token_tilde(char **buf, size_t *len)
 static char *
 yylex_token(int ch)
 {
-	struct cmd_parse_state	*ps = &parse_state;
 	char			*buf;
 	size_t			 len;
 	enum { START,
@@ -1293,7 +1318,7 @@ yylex_token(int ch)
 	next:
 		ch = yylex_getc();
 	}
-	ungetc(ch, ps->f);
+	yylex_ungetc(ch);
 
 	buf[len] = '\0';
 	log_debug("%s: %s", __func__, buf);
