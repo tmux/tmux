@@ -84,8 +84,8 @@ static void	 format_defaults_winlink(struct format_tree *, struct winlink *);
 	"New After,w,new-window -a|" \
 	"New At End,W,new-window"
 #define DEFAULT_PANE_MENU \
-	"#{?mouse_word,Search For #[underscore]#{=/9/...:mouse_word},},,copy-mode -t=; send -Xt= search-backward \"#{q:mouse_word}\"|" \
-	"#{?mouse_word,Type #[underscore]#{=/9/...:mouse_word},},,send-keys -l \"#{q:mouse_word}\"|" \
+	"#{?mouse_word,Search For #[underscore]#{=/9/...:mouse_word},},C-r,copy-mode -t=; send -Xt= search-backward \"#{q:mouse_word}\"|" \
+	"#{?mouse_word,Type #[underscore]#{=/9/...:mouse_word},},C-y,send-keys -l \"#{q:mouse_word}\"|" \
 	"|" \
 	"#{?mouse_word,Copy #[underscore]#{=/9/...:mouse_word},},c,set-buffer \"#{q:mouse_word}\"|" \
 	"#{?mouse_line,Copy Line,},l,set-buffer \"#{q:mouse_line}\"|" \
