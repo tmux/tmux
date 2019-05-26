@@ -383,6 +383,9 @@ screen_redraw_update(struct client *c, int flags)
 	if (!redraw && (~flags & CLIENT_REDRAWSTATUSALWAYS))
 		flags &= ~CLIENT_REDRAWSTATUS;
 
+	if (c->overlay_draw != NULL)
+		flags |= CLIENT_REDRAWOVERLAY;
+
 	if (options_get_number(wo, "pane-border-status") != CELL_STATUS_OFF) {
 		redraw = 0;
 		TAILQ_FOREACH(wp, &w->panes, entry) {
@@ -458,7 +461,7 @@ screen_redraw_pane(struct client *c, struct window_pane *wp)
 {
 	struct screen_redraw_ctx	 ctx;
 
-	if (!window_pane_visible(wp))
+	if (c->overlay_draw != NULL || !window_pane_visible(wp))
 		return;
 
 	screen_redraw_set_context(c, &ctx);

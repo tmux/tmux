@@ -550,7 +550,7 @@ const struct options_table_entry options_table[] = {
 	{ .name = "word-separators",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_str = " -_@"
+	  .default_str = " "
 	},
 
 	/* Window options. */

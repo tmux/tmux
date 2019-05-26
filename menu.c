@@ -41,8 +41,8 @@ struct menu_data {
 };
 
 static void
-menu_add_item(struct menu *menu, struct menu_item *item, struct client *c,
-    struct cmd_find_state *fs)
+menu_add_item(struct menu *menu, struct menu_item *item,
+    struct cmdq_item *qitem, struct client *c, struct cmd_find_state *fs)
 {
 	struct menu_item	*new_item;
 	const char		*key;
@@ -57,24 +57,31 @@ menu_add_item(struct menu *menu, struct menu_item *item, struct client *c,
 	if (item == NULL || *item->name == '\0') /* horizontal line */
 		return;
 	if (fs != NULL) {
-		name = format_single(NULL, item->name, c, fs->s, fs->wl,
+		name = format_single(qitem, item->name, c, fs->s, fs->wl,
 		    fs->wp);
 	} else
-		name = xstrdup(item->name);
+		name = format_single(qitem, item->name, c, NULL, NULL, NULL);
 	if (*name == '\0') { /* no item if empty after format expanded */
 		menu->count--;
 		return;
 	}
 	if (item->key != KEYC_UNKNOWN) {
 		key = key_string_lookup_key(item->key);
-		xasprintf(&new_item->name, "%s #[align=right](%s)", name, key);
+		xasprintf(&new_item->name, "%s#[default] #[align=right](%s)",
+		    name, key);
 	} else
 		xasprintf(&new_item->name, "%s", name);
 	free(name);
 
-	if (item->command != NULL)
-		new_item->command = xstrdup(item->command);
-	else
+	if (item->command != NULL) {
+		if (fs != NULL) {
+			new_item->command = format_single(qitem, item->command,
+			    c, fs->s, fs->wl, fs->wp);
+		} else {
+			new_item->command = format_single(qitem, item->command,
+			    c, NULL, NULL, NULL);
+		}
+	} else
 		new_item->command = NULL;
 	new_item->key = item->key;
 
@@ -84,8 +91,8 @@ menu_add_item(struct menu *menu, struct menu_item *item, struct client *c,
 }
 
 static void
-menu_parse_item(struct menu *menu, const char *s, struct client *c,
-    struct cmd_find_state *fs)
+menu_parse_item(struct menu *menu, const char *s, struct cmdq_item *qitem,
+    struct client *c, struct cmd_find_state *fs)
 {
 	char			*copy, *first;
 	const char		*second, *third;
@@ -100,15 +107,15 @@ menu_parse_item(struct menu *menu, const char *s, struct client *c,
 			item.name = first;
 			item.command = (char *)third;
 			item.key = key_string_lookup_string(second);
-			menu_add_item(menu, &item, c, fs);
+			menu_add_item(menu, &item, qitem, c, fs);
 		}
 	}
 	free(copy);
 }
 
 struct menu *
-menu_create(const char *s, struct client *c, struct cmd_find_state *fs,
-    const char *title)
+menu_create(const char *s, struct cmdq_item *qitem, struct client *c,
+    struct cmd_find_state *fs, const char *title)
 {
 	struct menu	*menu;
 	char		*copy, *string, *next;
@@ -124,10 +131,11 @@ menu_create(const char *s, struct client *c, struct cmd_find_state *fs,
 		next = (char *)format_skip(string, "|");
 		if (next != NULL)
 			*next++ = '\0';
-		if (*string == '\0')
-			menu_add_item(menu, NULL, c, fs);
-		else
-			menu_parse_item(menu, string, c, fs);
+		if (*string == '\0') {
+			if (menu->count != 0)
+				menu_add_item(menu, NULL, qitem, c, fs);
+		} else
+			menu_parse_item(menu, string, qitem, c, fs);
 		string = next;
 	} while (next != NULL);
 	free(copy);
@@ -218,9 +226,9 @@ menu_key_cb(struct client *c, struct key_event *event)
 			}
 			return (0);
 		}
-		md->choice = m->y - (md->py + 1);
 		if (MOUSE_RELEASE(m->b))
 			goto chosen;
+		md->choice = m->y - (md->py + 1);
 		if (md->choice != old)
 			c->flags |= CLIENT_REDRAWOVERLAY;
 		return (0);
@@ -283,7 +291,11 @@ chosen:
 		cmdq_append(c, new_item);
 		break;
 	case CMD_PARSE_SUCCESS:
-		new_item = cmdq_get_command(pr->cmdlist, NULL, NULL, 0);
+		if (md->item != NULL)
+			m = &md->item->shared->mouse;
+		else
+			m = NULL;
+		new_item = cmdq_get_command(pr->cmdlist, &md->fs, m, 0);
 		cmd_list_free(pr->cmdlist);
 		cmdq_append(c, new_item);
 		break;
