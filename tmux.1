@@ -3994,9 +3994,16 @@ a number and a colon.
 Positive numbers count from the start of the string and negative from the end,
 so
 .Ql #{=5:pane_title}
-will include at most the first 5 characters of the pane title, or
+will include at most the first five characters of the pane title, or
 .Ql #{=-5:pane_title}
-the last 5 characters.
+the last five characters.
+A suffix or prefix may be given as a second argument - if provided then it is
+appended or prepended to the string if the length has been trimmed, for example
+.Ql #{=/5/...:pane_title}
+will append
+.Ql ...
+if the pane title is more than five characters.
+.Pp
 Prefixing a time variable with
 .Ql t:
 will convert it to a string, so if

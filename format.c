@@ -770,6 +770,16 @@ format_merge(struct format_tree *ft, struct format_tree *from)
 	}
 }
 
+/* Add item bits to tree. */
+static void
+format_create_add_item(struct format_tree *ft, struct cmdq_item *item)
+{
+	if (item->cmd != NULL)
+		format_add(ft, "command", "%s", item->cmd->entry->name);
+	if (item->shared != NULL && item->shared->formats != NULL)
+		format_merge(ft, item->shared->formats);
+}
+
 /* Create a new tree. */
 struct format_tree *
 format_create(struct client *c, struct cmdq_item *item, int tag, int flags)
@@ -816,12 +826,8 @@ format_create(struct client *c, struct cmdq_item *item, int tag, int flags)
 	format_add(ft, "window_menu", "%s", DEFAULT_WINDOW_MENU);
 	format_add(ft, "pane_menu", "%s", DEFAULT_PANE_MENU);
 
-	if (item != NULL) {
-		if (item->cmd != NULL)
-			format_add(ft, "command", "%s", item->cmd->entry->name);
-		if (item->shared != NULL && item->shared->formats != NULL)
-			format_merge(ft, item->shared->formats);
-	}
+	if (item != NULL)
+		format_create_add_item(ft, item);
 
 	return (ft);
 }
@@ -1424,7 +1430,7 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
     char **buf, size_t *len, size_t *off)
 {
 	struct window_pane	*wp = ft->wp;
-	const char		*errptr, *copy, *cp;
+	const char		*errptr, *copy, *cp, *marker;
 	char			*copy0, *condition, *found, *new;
 	char			*value, *left, *right;
 	size_t			 valuelen;
@@ -1464,12 +1470,16 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 				sub = fm;
 				break;
 			case '=':
-				if (fm->argc != 1)
+				if (fm->argc != 1 && fm->argc != 2)
 					break;
 				limit = strtonum(fm->argv[0], INT_MIN, INT_MAX,
 				    &errptr);
 				if (errptr != NULL)
 					limit = 0;
+				if (fm->argc == 2 && fm->argv[1] != NULL)
+					marker = fm->argv[1];
+				else
+					marker = NULL;
 				break;
 			case 'l':
 				modifiers |= FORMAT_LITERAL;
@@ -1684,14 +1694,24 @@ done:
 	/* Truncate the value if needed. */
 	if (limit > 0) {
 		new = format_trim_left(value, limit);
-		format_log(ft, "applied length limit %d: %s", limit, new);
-		free(value);
-		value = new;
+		if (marker != NULL && strcmp(new, value) != 0) {
+			free(value);
+			xasprintf(&value, "%s%s", new, marker);
+		} else {
+			free(value);
+			value = new;
+		}
+		format_log(ft, "applied length limit %d: %s", limit, value);
 	} else if (limit < 0) {
 		new = format_trim_right(value, -limit);
-		format_log(ft, "applied length limit %d: %s", limit, new);
-		free(value);
-		value = new;
+		if (marker != NULL && strcmp(new, value) != 0) {
+			free(value);
+			xasprintf(&value, "%s%s", marker, new);
+		} else {
+			free(value);
+			value = new;
+		}
+		format_log(ft, "applied length limit %d: %s", limit, value);
 	}
 
 	/* Expand the buffer and copy in the value. */
