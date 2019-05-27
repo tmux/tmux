@@ -495,11 +495,13 @@ line (the \e and the newline are completely removed).
 This is called line continuation and applies both inside and outside quoted
 strings and in comments.
 .Pp
-Command arguments may be specified as strings surrounded by either single (')
-or double quotes (").
+Command arguments may be specified as strings surrounded by single (') quotes,
+double quotes (") or braces ({}).
 .\" "
 This is required when the argument contains any special character.
-Strings cannot span multiple lines except with line continuation.
+Single and double quoted strings cannot span multiple lines except with line
+continuation.
+Braces can span multiple lines.
 .Pp
 Outside of quotes and inside double quotes, these replacements are performed:
 .Bl -dash -offset indent
@@ -524,6 +526,34 @@ is removed) and are not treated as having any special meaning - so for example
 \e; will not mark a command sequence and \e$ will not expand an environment
 variable.
 .El
+.Pp
+Braces are similar to single quotes in that the text inside is taken literally
+without replacements, but they can span multiple lines.
+They are designed to avoid the need for additional escaping when passing a group
+of
+.Nm
+or shell commands as an argument (for example to
+.Ic if-shell
+or
+.Ic pipe-pane ) .
+These two examples produce an identical command - note that no escaping is
+needed when using {}:
+.Bd -literal -offset indent
+if-shell true {
+    display -p 'brace-dollar-foo: }$foo'
+}
+
+if-shell true "\en    display -p 'brace-dollar-foo: }\e$foo'\en"
+.Ed
+.Pp
+Braces may be enclosed inside braces, for example:
+.Bd -literal -offset indent
+bind x if-shell "true" {
+    if-shell "true" {
+         display "true!"
+    }
+}
+.Ed
 .Pp
 Environment variables may be set by using the syntax
 .Ql name=value ,
@@ -825,15 +855,16 @@ directly without invoking the shell.
 .Op Ar arguments
 refers to a
 .Nm
-command, passed with the command and arguments separately, for example:
+command, either passed with the command and arguments separately, for example:
 .Bd -literal -offset indent
 bind-key F1 set-option status off
 .Ed
 .Pp
-Or if using
-.Xr sh 1 :
+Or passed as a single string argument in
+.Pa .tmux.conf ,
+for example:
 .Bd -literal -offset indent
-$ tmux bind-key F1 set-option status off
+bind-key F1 { set-option status off }
 .Ed
 .Pp
 Example

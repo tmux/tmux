@@ -1236,6 +1236,99 @@ yylex_token_tilde(char **buf, size_t *len)
 	return (1);
 }
 
+static int
+yylex_token_brace(char **buf, size_t *len)
+{
+	struct cmd_parse_state	*ps = &parse_state;
+	int 			 ch, nesting = 1, escape = 0, quote = '\0';
+	int			 lines = 0;
+
+	/*
+	 * Extract a string up to the matching unquoted '}', including newlines
+	 * and handling nested braces.
+	 *
+	 * To detect the final and intermediate braces which affect the nesting
+	 * depth, we scan the input as if it was a tmux config file, and ignore
+	 * braces which would be considered quoted, escaped, or in a comment.
+	 *
+	 * The result is verbatim copy of the input excluding the final brace.
+	 */
+
+	for (ch = yylex_getc1(); ch != EOF; ch = yylex_getc1()) {
+		yylex_append1(buf, len, ch);
+		if (ch == '\n')
+			lines++;
+
+		/*
+		 * If the previous character was a backslash (escape is set),
+		 * escape anything if unquoted or in double quotes, otherwise
+		 * escape only '\n' and '\\'.
+		 */
+		if (escape &&
+		    (quote == '\0' ||
+		    quote == '"' ||
+		    ch == '\n' ||
+		    ch == '\\')) {
+			escape = 0;
+			continue;
+		}
+
+		/*
+		 * The character is not escaped. If it is a backslash, set the
+		 * escape flag.
+		 */
+		if (ch == '\\') {
+			escape = 1;
+			continue;
+		}
+		escape = 0;
+
+		/* A newline always resets to unquoted. */
+		if (ch == '\n') {
+			quote = 0;
+			continue;
+		}
+
+		if (quote) {
+			/*
+			 * Inside quotes or comment. Check if this is the
+			 * closing quote.
+			 */
+			if (ch == quote && quote != '#')
+				quote = 0;
+		} else  {
+			/* Not inside quotes or comment. */
+			switch (ch) {
+			case '"':
+			case '\'':
+			case '#':
+				/* Beginning of quote or comment. */
+				quote = ch;
+				break;
+			case '{':
+				nesting++;
+				break;
+			case '}':
+				nesting--;
+				if (nesting == 0) {
+					(*len)--; /* remove closing } */
+					ps->input->line += lines;
+					return (1);
+				}
+				break;
+			}
+		}
+	}
+
+	/*
+	 * Update line count after error as reporting the opening line
+	 * is more useful than EOF.
+	 */
+	yyerror("unterminated brace string");
+	ps->input->line += lines;
+	return (0);
+}
+
 static char *
 yylex_token(int ch)
 {
@@ -1282,6 +1375,13 @@ yylex_token(int ch)
 				goto error;
 			goto skip;
 		}
+		if (ch == '{' && state == NONE) {
+			if (!yylex_token_brace(&buf, &len))
+				goto error;
+			goto skip;
+		}
+		if (ch == '}' && state == NONE)
+			goto error;  /* unmatched (matched ones were handled) */
 
 		/*
 		 * ' and " starts or end quotes (and is consumed).
