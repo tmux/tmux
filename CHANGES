@@ -1,5 +1,10 @@
 CHANGES FROM 2.9 to X.X
 
+* Add an addition form of string syntax in the configuration file - {}. This
+  means commands that take other commands as string arguments can be expressed
+  more clearly and without additional escaping. This means that a literal { and
+  } must now be escaped or quoted.
+
 * INCOMPATIBLE: tmux's configuration parsing has changed to use yacc(1). Most
   configuration files shouldn't need to be changed but there are the following
   differences:
