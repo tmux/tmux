@@ -458,14 +458,6 @@ else
 	AC_LIBOBJ(getopt)
 fi
 
-# Look for fparseln in libutil.
-AC_SEARCH_LIBS(fparseln, util, found_fparseln=yes, found_fparseln=no)
-if test "x$found_fparseln" = xyes; then
-	AC_DEFINE(HAVE_FPARSELN)
-else
-	AC_LIBOBJ(fparseln)
-fi
-
 # Look for fdforkpty and forkpty in libutil.
 AC_SEARCH_LIBS(fdforkpty, util, found_fdforkpty=yes, found_fdforkpty=no)
 if test "x$found_fdforkpty" = xyes; then
