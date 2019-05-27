@@ -1,5 +1,8 @@
 CHANGES FROM 2.9 to X.X
 
+* Add support for XDG_RUNTIME_DIR. When TMUX_TMPDIR is not set,
+  try to use XDG_RUNTIME_DIR before falling back to _PATH_TMP (/tmp).
+
 * Add an addition form of string syntax in the configuration file - {}. This
   means commands that take other commands as string arguments can be expressed
   more clearly and without additional escaping. This means that a literal { and

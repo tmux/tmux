@@ -119,6 +119,8 @@ make_label(const char *label, char **cause)
 
 	if ((s = getenv("TMUX_TMPDIR")) != NULL && *s != '\0')
 		xasprintf(&base, "%s/tmux-%ld", s, (long)uid);
+	else if((s = getenv("XDG_RUNTIME_DIR")) != NULL && *s != '\0')
+		xasprintf(&base, "%s/tmux-%ld", s, (long)uid);
 	else
 		xasprintf(&base, "%s/tmux-%ld", _PATH_TMP, (long)uid);
 	if (realpath(base, resolved) == NULL &&
