@@ -77,7 +77,6 @@ static void	 format_defaults_winlink(struct format_tree *, struct winlink *);
 	"|" \
 	"Kill,X,kill-window|" \
 	"Respawn,R,respawn-window -k|" \
-	"|" \
 	"#{?pane_marked,Unmark,Mark},m,select-pane -m|" \
 	"Rename,n,command-prompt -I \"#W\" \"rename-window -- '%%'\"|" \
 	"|" \
@@ -86,7 +85,6 @@ static void	 format_defaults_winlink(struct format_tree *, struct winlink *);
 #define DEFAULT_PANE_MENU \
 	"#{?mouse_word,Search For #[underscore]#{=/9/...:mouse_word},},C-r,copy-mode -t=; send -Xt= search-backward \"#{q:mouse_word}\"|" \
 	"#{?mouse_word,Type #[underscore]#{=/9/...:mouse_word},},C-y,send-keys -l \"#{q:mouse_word}\"|" \
-	"|" \
 	"#{?mouse_word,Copy #[underscore]#{=/9/...:mouse_word},},c,set-buffer \"#{q:mouse_word}\"|" \
 	"#{?mouse_line,Copy Line,},l,set-buffer \"#{q:mouse_line}\"|" \
 	"|" \
@@ -99,7 +97,6 @@ static void	 format_defaults_winlink(struct format_tree *, struct winlink *);
 	"|" \
 	"Kill,X,kill-pane|" \
 	"Respawn,R,respawn-pane -k|" \
-	"|" \
 	"#{?pane_marked,Unmark,Mark},m,select-pane -m|" \
 	"#{?window_zoomed_flag,Unzoom,Zoom},z,resize-pane -Z"
 
