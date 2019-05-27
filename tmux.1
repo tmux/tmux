@@ -488,7 +488,7 @@ comment is ignored until the end of the line.
 If the last character of a line is \e, the line is joined with the following
 line (the \e and the newline are completely removed).
 This is called line continuation and applies both inside and outside quoted
-strings and in comments.
+strings and in comments, but not inside braces.
 .Pp
 Command arguments may be specified as strings surrounded by single (') quotes,
 double quotes (") or braces ({}).
@@ -523,7 +523,9 @@ variable.
 .El
 .Pp
 Braces are similar to single quotes in that the text inside is taken literally
-without replacements, but they can span multiple lines.
+without any replacements but this also includes line continuation.
+Braces can span multiple lines in which case a literal newline is included in the
+string.
 They are designed to avoid the need for additional escaping when passing a group
 of
 .Nm
