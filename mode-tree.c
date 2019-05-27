@@ -384,7 +384,7 @@ mode_tree_build(struct mode_tree_data *mtd)
 	if (mtd->line_list != NULL)
 		tag = mtd->line_list[mtd->current].item->tag;
 	else
-		tag = 0;
+		tag = UINT64_MAX;
 
 	TAILQ_CONCAT(&mtd->saved, &mtd->children, entry);
 	TAILQ_INIT(&mtd->children);
@@ -400,6 +400,8 @@ mode_tree_build(struct mode_tree_data *mtd)
 	mode_tree_clear_lines(mtd);
 	mode_tree_build_lines(mtd, &mtd->children, 0);
 
+	if (tag == UINT64_MAX)
+		tag = mtd->line_list[mtd->current].item->tag;
 	mode_tree_set_current(mtd, tag);
 
 	mtd->width = screen_size_x(s);
