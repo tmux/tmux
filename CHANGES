@@ -7,6 +7,8 @@ CHANGES FROM 2.9 to X.X
 
 * New <, >, <= and >= comparison operators for formats.
 
+* Improve escaping of special characters in list-keys output.
+
 * INCOMPATIBLE: tmux's configuration parsing has changed to use yacc(1). Most
   configuration files shouldn't need to be changed but there are the following
   differences:
