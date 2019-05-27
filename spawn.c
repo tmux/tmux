@@ -161,6 +161,8 @@ spawn_window(struct spawn_context *sc, char **cause)
 			xasprintf(cause, "couldn't create window %d", idx);
 			return (NULL);
 		}
+		if (s->curw == NULL)
+			s->curw = sc->wl;
 		sc->wl->session = s;
 		winlink_set_window(sc->wl, w);
 	} else
