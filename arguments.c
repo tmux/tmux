@@ -207,7 +207,7 @@ args_print(struct args *args)
 char *
 args_escape(const char *s)
 {
-	static const char	 quoted[] = " #\"';$";
+	static const char	 quoted[] = " #\"';${}";
 	char			*escaped, *result;
 	int			 flags;
 
