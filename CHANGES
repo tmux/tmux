@@ -5,6 +5,8 @@ CHANGES FROM 2.9 to X.X
   more clearly and without additional escaping. This means that a literal { and
   } must now be escaped or quoted.
 
+* New <, >, <= and >= comparison operators for formats.
+
 * INCOMPATIBLE: tmux's configuration parsing has changed to use yacc(1). Most
   configuration files shouldn't need to be changed but there are the following
   differences:
