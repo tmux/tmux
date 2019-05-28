@@ -80,7 +80,7 @@ menu_add_item(struct menu *menu, const struct menu_item *item,
 		menu->count--;
 		return;
 	}
-	if (item->key != KEYC_UNKNOWN && item->key != KEYC_NONE) {
+	if (*s != '-' && item->key != KEYC_UNKNOWN && item->key != KEYC_NONE) {
 		key = key_string_lookup_key(item->key);
 		xasprintf(&name, "%s#[default] #[align=right](%s)", s, key);
 	} else
@@ -182,6 +182,7 @@ menu_key_cb(struct client *c, struct key_event *event)
 	const struct menu_item		*item;
 	struct cmdq_item		*new_item;
 	struct cmd_parse_result		*pr;
+	const char			*name;
 
 	if (KEYC_IS_MOUSE(event->key)) {
 		if (md->flags & MENU_NOMOUSE)
@@ -207,21 +208,27 @@ menu_key_cb(struct client *c, struct key_event *event)
 	}
 	switch (event->key) {
 	case KEYC_UP:
+		if (old == -1)
+			old = 0;
 		do {
 			if (md->choice == -1 || md->choice == 0)
 				md->choice = count - 1;
 			else
 				md->choice--;
-		} while (menu->items[md->choice].name == NULL);
+			name = menu->items[md->choice].name;
+		} while ((name == NULL || *name == '-') && md->choice != old);
 		c->flags |= CLIENT_REDRAWOVERLAY;
 		return (0);
 	case KEYC_DOWN:
+		if (old == -1)
+			old = 0;
 		do {
 			if (md->choice == -1 || md->choice == count - 1)
 				md->choice = 0;
-		else
-			md->choice++;
-		} while (menu->items[md->choice].name == NULL);
+			else
+				md->choice++;
+			name = menu->items[md->choice].name;
+		} while ((name == NULL || *name == '-') && md->choice != old);
 		c->flags |= CLIENT_REDRAWOVERLAY;
 		return (0);
 	case '\r':
@@ -233,6 +240,9 @@ menu_key_cb(struct client *c, struct key_event *event)
 		return (1);
 	}
 	for (i = 0; i < (u_int)count; i++) {
+		name = menu->items[i].name;
+		if (name == NULL || *name == '-')
+			continue;
 		if (event->key == menu->items[i].key) {
 			md->choice = i;
 			goto chosen;
@@ -244,7 +254,7 @@ chosen:
 	if (md->choice == -1)
 		return (1);
 	item = &menu->items[md->choice];
-	if (item->name == NULL)
+	if (item->name == NULL || *item->name == '-')
 		return (1);
 	if (md->cb != NULL) {
 	    md->cb(md->menu, md->choice, item->key, md->data);
