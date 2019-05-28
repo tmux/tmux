@@ -38,18 +38,21 @@ static void		 window_buffer_key(struct window_mode_entry *,
 #define WINDOW_BUFFER_DEFAULT_FORMAT \
 	"#{buffer_size} bytes (#{t:buffer_created})"
 
-#define WINDOW_BUFFER_MENU \
-	"Paste,p,|" \
-	"Paste Tagged,P,|" \
-	"|" \
-	"Tag,t,|" \
-	"Tag All,C-t,|" \
-	"Tag None,T,|" \
-	"|" \
-	"Delete,d,|" \
-	"Delete Tagged,D,|" \
-	"|" \
-	"Cancel,q,"
+static const struct menu_item window_buffer_menu_items[] = {
+	{ "Paste", 'p', NULL },
+	{ "Paste Tagged", 'P', NULL },
+	{ "", KEYC_NONE, NULL },
+	{ "Tag", 't', NULL },
+	{ "Tag All", '\024', NULL },
+	{ "Tag None", 'T', NULL },
+	{ "", KEYC_NONE, NULL },
+	{ "Delete", 'd', NULL },
+	{ "Delete Tagged", 'D', NULL },
+	{ "", KEYC_NONE, NULL },
+	{ "Cancel", 'q', NULL },
+
+	{ NULL, KEYC_NONE, NULL }
+};
 
 const struct window_mode window_buffer_mode = {
 	.name = "buffer-mode",
@@ -314,7 +317,7 @@ window_buffer_init(struct window_mode_entry *wme, struct cmd_find_state *fs,
 
 	data->data = mode_tree_start(wp, args, window_buffer_build,
 	    window_buffer_draw, window_buffer_search, window_buffer_menu, data,
-	    WINDOW_BUFFER_MENU, window_buffer_sort_list,
+	    window_buffer_menu_items, window_buffer_sort_list,
 	    nitems(window_buffer_sort_list), &s);
 	mode_tree_zoom(data->data, args);
 

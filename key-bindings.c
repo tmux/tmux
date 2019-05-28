@@ -280,10 +280,51 @@ key_bindings_init(void)
 		"bind -n MouseDrag1Pane if -Ft= '#{mouse_any_flag}' 'if -Ft= \"#{pane_in_mode}\" \"copy-mode -M\" \"send-keys -M\"' 'copy-mode -M'",
 		"bind -n MouseDown3Pane if -Ft= '#{||:mouse_any_flag,pane_in_mode}' 'select-pane -t=; send-keys -M' 'select-pane -mt='",
 		"bind -n WheelUpPane if -Ft= '#{mouse_any_flag}' 'send-keys -M' 'if -Ft= \"#{pane_in_mode}\" \"send-keys -M\" \"copy-mode -et=\"'",
-		"bind -n MouseDown3StatusRight display-menu -t= -xM -yS -F -M \"#{client_menu}\" -T \"#[align=centre]#{client_name}\"",
-		"bind -n MouseDown3StatusLeft display-menu -t= -xM -yS -F -M \"#{session_menu}\" -T \"#[align=centre]#{session_name}\"",
-		"bind -n MouseDown3Status display-menu -t= -xW -yS -F -M \"#{window_menu}\" -T \"#[align=centre]#{window_index}:#{window_name}\"",
-		"bind -n M-MouseDown3Pane display-menu -t= -xM -yM -F -M \"#{pane_menu}\" -T \"#[align=centre]#{pane_index} (#{pane_id})\"",
+
+		"bind -n MouseDown3StatusRight display-menu -t= -xM -yS -T \"#[align=centre]#{client_name}\""
+			" 'Detach' 'd' {detach-client}"
+			" 'Detach & Kill' 'X' {detach-client -P}"
+			" 'Detach Others' 'o' {detach-client -a}"
+			" ''"
+			" 'Lock' 'l' {lock-client}",
+		"bind -n MouseDown3StatusLeft display-menu -t= -xM -yS -T \"#[align=centre]#{session_name}\""
+			" 'Next' 'n' {switch-client -n}"
+			" 'Previous' 'p' {switch-client -p}"
+			" ''"
+			" 'Renumber' 'N' {move-window -r}"
+			" 'Rename' 'n' {command-prompt -I \"#S\" \"rename-session -- '%%'\"}"
+			" ''"
+			" 'New Session' 's' {new-session}"
+			" 'New Window' 'w' {new-window}",
+		"bind -n MouseDown3Status display-menu -t= -xW -yS -T \"#[align=centre]#{window_index}:#{window_name}\""
+			" 'Swap Left' 'l' {swap-window -t:-1}"
+			" 'Swap Right' 'r' {swap-window -t:+1}"
+			" '#{?pane_marked_set,,#[dim]}Swap Marked' 's' {swap-window}"
+			" ''"
+			" 'Kill' 'X' {kill-window}"
+			" 'Respawn' 'R' {respawn-window -k}"
+			" '#{?pane_marked,Unmark,Mark}' 'm' {select-pane -m}"
+			" 'Rename' 'n' {command-prompt -I \"#W\" \"rename-window -- '%%'\"}"
+			" ''"
+			" 'New After' 'w' {new-window -a}"
+			" 'New At End' 'W' {new-window}",
+		"bind -n M-MouseDown3Pane display-menu -t= -xM -yM -T \"#[align=centre]#{pane_index} (#{pane_id})\""
+			" '#{?mouse_word,Search For #[underscore]#{=/9/...:mouse_word},}' 'C-r' {copy-mode -t=; send -Xt= search-backward \"#{q:mouse_word}\"}"
+			" '#{?mouse_word,Type #[underscore]#{=/9/...:mouse_word},}' 'C-y' {send-keys -l -- \"#{q:mouse_word}\"}"
+			" '#{?mouse_word,Copy #[underscore]#{=/9/...:mouse_word},}' 'c' {set-buffer -- \"#{q:mouse_word}\"}"
+			" '#{?mouse_line,Copy Line,}' 'l' {set-buffer -- \"#{q:mouse_line}\"}"
+			" ''"
+			" 'Horizontal Split' 'h' {split-window -h}"
+			" 'Vertical Split' 'v' {split-window -v}"
+			" ''"
+			" 'Swap Up' 'u' {swap-pane -U}"
+			" 'Swap Down' 'd' {swap-pane -D}"
+			" '#{?pane_marked_set,,#[dim]}Swap Marked' 's' {swap-pane}"
+			" ''"
+			" 'Kill' 'X' {kill-pane}"
+			" 'Respawn' 'R' {respawn-pane -k}"
+			" '#{?pane_marked,Unmark,Mark}' 'm' {select-pane -m}"
+			" '#{?window_zoomed_flag,Unzoom,Zoom}' 'z' {resize-pane -Z}",
 
 		"bind -Tcopy-mode C-Space send -X begin-selection",
 		"bind -Tcopy-mode C-a send -X start-of-line",

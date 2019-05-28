@@ -754,12 +754,12 @@ struct screen_redraw_ctx {
 
 /* Menu. */
 struct menu_item {
-	char		*name;
-	char		*command;
+	const char	*name;
 	key_code	 key;
+	const char	*command;
 };
 struct menu {
-	char			*title;
+	const char		*title;
 	struct menu_item	*items;
 	u_int			 count;
 	u_int			 width;
@@ -2469,8 +2469,8 @@ void	 mode_tree_each_tagged(struct mode_tree_data *, mode_tree_each_cb,
 void	 mode_tree_down(struct mode_tree_data *, int);
 struct mode_tree_data *mode_tree_start(struct window_pane *, struct args *,
 	     mode_tree_build_cb, mode_tree_draw_cb, mode_tree_search_cb,
-	     mode_tree_menu_cb, void *, const char *, const char **, u_int,
-	     struct screen **);
+	     mode_tree_menu_cb, void *, const struct menu_item *, const char **,
+	     u_int, struct screen **);
 void	 mode_tree_zoom(struct mode_tree_data *, struct args *);
 void	 mode_tree_build(struct mode_tree_data *);
 void	 mode_tree_free(struct mode_tree_data *);
@@ -2604,8 +2604,14 @@ __dead void printflike(1, 2) fatal(const char *, ...);
 __dead void printflike(1, 2) fatalx(const char *, ...);
 
 /* menu.c */
-struct menu	*menu_create(const char *, struct cmdq_item *, struct client *,
-		    struct cmd_find_state *, const char *);
+struct menu	*menu_create(const char *);
+void		 menu_add_items(struct menu *, const struct menu_item *,
+		    struct cmdq_item *, struct client *,
+		    struct cmd_find_state *);
+void 		 menu_add_item(struct menu *, const struct menu_item *,
+		    struct cmdq_item *, struct client *,
+		    struct cmd_find_state *);
+
 void		 menu_free(struct menu *);
 int		 menu_display(struct menu *, int, struct cmdq_item *, u_int,
 		    u_int, struct client *, struct cmd_find_state *,
