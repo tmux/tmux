@@ -40,15 +40,18 @@ static void		 window_client_key(struct window_mode_entry *,
 	"session #{session_name} " \
 	"(#{client_width}x#{client_height}, #{t:client_activity})"
 
-#define WINDOW_CLIENT_MENU \
-	"Detach,d,|" \
-	"Detach Tagged,D,|" \
-	"|" \
-	"Tag,t,|" \
-	"Tag All,C-t,|" \
-	"Tag None,T,|" \
-	"|" \
-	"Cancel,q,"
+static const struct menu_item window_client_menu_items[] = {
+	{ "Detach", 'd', NULL },
+	{ "Detach Tagged", 'D', NULL },
+	{ "", KEYC_NONE, NULL },
+	{ "Tag", 't', NULL },
+	{ "Tag All", '\024', NULL },
+	{ "Tag None", 'T', NULL },
+	{ "", KEYC_NONE, NULL },
+	{ "Cancel", 'q', NULL },
+
+	{ NULL, KEYC_NONE, NULL }
+};
 
 const struct window_mode window_client_mode = {
 	.name = "client-mode",
@@ -296,7 +299,7 @@ window_client_init(struct window_mode_entry *wme,
 
 	data->data = mode_tree_start(wp, args, window_client_build,
 	    window_client_draw, NULL, window_client_menu, data,
-	    WINDOW_CLIENT_MENU, window_client_sort_list,
+	    window_client_menu_items, window_client_sort_list,
 	    nitems(window_client_sort_list), &s);
 	mode_tree_zoom(data->data, args);
 

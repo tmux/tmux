@@ -4123,7 +4123,6 @@ The following variables are available, where appropriate:
 .It Li "client_height" Ta "" Ta "Height of client"
 .It Li "client_key_table" Ta "" Ta "Current key table"
 .It Li "client_last_session" Ta "" Ta "Name of the client's last session"
-.It Li "client_menu" Ta "" Ta "The default client menu"
 .It Li "client_name" Ta "" Ta "Name of client"
 .It Li "client_pid" Ta "" Ta "PID of client process"
 .It Li "client_prefix" Ta "" Ta "1 if prefix key has been pressed"
@@ -4184,7 +4183,6 @@ The following variables are available, where appropriate:
 .It Li "pane_left" Ta "" Ta "Left of pane"
 .It Li "pane_marked" Ta "" Ta "1 if this is the marked pane"
 .It Li "pane_marked_set" Ta "" Ta "1 if a marked pane is set"
-.It Li "pane_menu" Ta "" Ta "The default pane menu"
 .It Li "pane_mode" Ta "" Ta "Name of pane mode, if any."
 .It Li "pane_pid" Ta "" Ta "PID of first process in pane"
 .It Li "pane_pipe" Ta "" Ta "1 if pane is being piped"
@@ -4215,7 +4213,6 @@ The following variables are available, where appropriate:
 .It Li "session_id" Ta "" Ta "Unique session ID"
 .It Li "session_last_attached" Ta "" Ta "Time session last attached"
 .It Li "session_many_attached" Ta "" Ta "1 if multiple clients attached"
-.It Li "session_menu" Ta "" Ta "The default session menu"
 .It Li "session_name" Ta "#S" Ta "Name of session"
 .It Li "session_stack" Ta "" Ta "Window indexes in most recent order"
 .It Li "session_windows" Ta "" Ta "Number of windows in session"
@@ -4235,7 +4232,6 @@ The following variables are available, where appropriate:
 .It Li "window_last_flag" Ta "" Ta "1 if window is the last used"
 .It Li "window_layout" Ta "" Ta "Window layout description, ignoring zoomed window panes"
 .It Li "window_linked" Ta "" Ta "1 if window is linked across sessions"
-.It Li "window_menu" Ta "" Ta "The default window menu"
 .It Li "window_name" Ta "#W" Ta "Name of window"
 .It Li "window_offset_x" Ta "" Ta "X offset into window if larger than client"
 .It Li "window_offset_y" Ta "" Ta "Y offset into window if larger than client"
@@ -4654,13 +4650,15 @@ option.
 This command works only from inside
 .Nm .
 .It Xo Ic display-menu
-.Op Fl F
 .Op Fl c Ar target-client
-.Op Fl M Ar menu
 .Op Fl t Ar target-pane
 .Op Fl T Ar title
 .Op Fl x Ar position
 .Op Fl y Ar position
+.Ar name
+.Ar key
+.Ar command
+.Ar ...
 .Xc
 .D1 (alias: Ic menu )
 Display a menu on
@@ -4668,27 +4666,16 @@ Display a menu on
 .Ar target-pane
 gives the target for any commands run from the menu.
 .Pp
-A menu is passed to
-.Fl M
-as a list of menu items separated by
-.Ql | .
-Each menu item consists of three comma-separated parts:
-.Bl -enum -width Ds
-.It
-The menu item name.
-This is a format and may include embedded styles, see the
+A menu is passed as a series of arguments: first the menu item name,
+second the key shortcut (or empty for none) and third the command
+to run when the menu item is chosen.
+The name and command are formats, see the
 .Sx FORMATS
 and
 .Sx STYLES
 sections.
-.It
-The menu item shortcut key.
-If this is empty the menu item has no key shortcut.
-.It
-The command run when the menu item is chosen.
-.El
-.Pp
-An empty menu item is a separator line.
+The name may be empty for a separator line, in which case both the key and
+command should be omitted.
 .Pp
 .Fl T
 is a format for the menu title (see

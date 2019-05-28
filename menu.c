@@ -40,49 +40,63 @@ struct menu_data {
 	void			*data;
 };
 
-static void
-menu_add_item(struct menu *menu, struct menu_item *item,
+void
+menu_add_items(struct menu *menu, const struct menu_item *items,
+    struct cmdq_item *qitem, struct client *c, struct cmd_find_state *fs)
+{
+	const struct menu_item	*loop;
+
+	for (loop = items; loop->name != NULL; loop++)
+		menu_add_item(menu, loop, qitem, c, fs);
+}
+
+void
+menu_add_item(struct menu *menu, const struct menu_item *item,
     struct cmdq_item *qitem, struct client *c, struct cmd_find_state *fs)
 {
 	struct menu_item	*new_item;
-	const char		*key;
-	char			*name;
+	const char		*key, *cmd;
+	char			*s, *name;
 	u_int			 width;
+	int			 line;
+
+	line = (item == NULL || item->name == NULL || *item->name == '\0');
+	if (line && menu->count == 0)
+		return;
 
 	menu->items = xreallocarray(menu->items, menu->count + 1,
 	    sizeof *menu->items);
 	new_item = &menu->items[menu->count++];
 	memset(new_item, 0, sizeof *new_item);
 
-	if (item == NULL || *item->name == '\0') /* horizontal line */
+	if (line)
 		return;
-	if (fs != NULL) {
-		name = format_single(qitem, item->name, c, fs->s, fs->wl,
-		    fs->wp);
-	} else
-		name = format_single(qitem, item->name, c, NULL, NULL, NULL);
-	if (*name == '\0') { /* no item if empty after format expanded */
+
+	if (fs != NULL)
+		s = format_single(qitem, item->name, c, fs->s, fs->wl, fs->wp);
+	else
+		s = format_single(qitem, item->name, c, NULL, NULL, NULL);
+	if (*s == '\0') { /* no item if empty after format expanded */
 		menu->count--;
 		return;
 	}
-	if (item->key != KEYC_UNKNOWN) {
+	if (item->key != KEYC_UNKNOWN && item->key != KEYC_NONE) {
 		key = key_string_lookup_key(item->key);
-		xasprintf(&new_item->name, "%s#[default] #[align=right](%s)",
-		    name, key);
+		xasprintf(&name, "%s#[default] #[align=right](%s)", s, key);
 	} else
-		xasprintf(&new_item->name, "%s", name);
-	free(name);
+		xasprintf(&name, "%s", s);
+	new_item->name = name;
+	free(s);
 
-	if (item->command != NULL) {
-		if (fs != NULL) {
-			new_item->command = format_single(qitem, item->command,
-			    c, fs->s, fs->wl, fs->wp);
-		} else {
-			new_item->command = format_single(qitem, item->command,
-			    c, NULL, NULL, NULL);
-		}
+	cmd = item->command;
+	if (cmd != NULL) {
+		if (fs != NULL)
+			s = format_single(qitem, cmd, c, fs->s, fs->wl, fs->wp);
+		else
+			s = format_single(qitem, cmd, c, NULL, NULL, NULL);
 	} else
-		new_item->command = NULL;
+		s = NULL;
+	new_item->command = s;
 	new_item->key = item->key;
 
 	width = format_width(new_item->name);
@@ -90,55 +104,13 @@ menu_add_item(struct menu *menu, struct menu_item *item,
 		menu->width = width;
 }
 
-static void
-menu_parse_item(struct menu *menu, const char *s, struct cmdq_item *qitem,
-    struct client *c, struct cmd_find_state *fs)
-{
-	char			*copy, *first;
-	const char		*second, *third;
-	struct menu_item	 item;
-
-	first = copy = xstrdup(s);
-	if ((second = format_skip(first, ",")) != NULL) {
-		*(char *)second++ = '\0';
-		if ((third = format_skip(second, ",")) != NULL) {
-			*(char *)third++ = '\0';
-
-			item.name = first;
-			item.command = (char *)third;
-			item.key = key_string_lookup_string(second);
-			menu_add_item(menu, &item, qitem, c, fs);
-		}
-	}
-	free(copy);
-}
-
 struct menu *
-menu_create(const char *s, struct cmdq_item *qitem, struct client *c,
-    struct cmd_find_state *fs, const char *title)
+menu_create(const char *title)
 {
 	struct menu	*menu;
-	char		*copy, *string, *next;
-
-	if (*s == '\0')
-		return (NULL);
 
 	menu = xcalloc(1, sizeof *menu);
 	menu->title = xstrdup(title);
-
-	copy = string = xstrdup(s);
-	do {
-		next = (char *)format_skip(string, "|");
-		if (next != NULL)
-			*next++ = '\0';
-		if (*string == '\0') {
-			if (menu->count != 0)
-				menu_add_item(menu, NULL, qitem, c, fs);
-		} else
-			menu_parse_item(menu, string, qitem, c, fs);
-		string = next;
-	} while (next != NULL);
-	free(copy);
 
 	return (menu);
 }
@@ -149,12 +121,12 @@ menu_free(struct menu *menu)
 	u_int	i;
 
 	for (i = 0; i < menu->count; i++) {
-		free(menu->items[i].name);
-		free(menu->items[i].command);
+		free((void *)menu->items[i].name);
+		free((void *)menu->items[i].command);
 	}
 	free(menu->items);
 
-	free(menu->title);
+	free((void *)menu->title);
 	free(menu);
 }
 

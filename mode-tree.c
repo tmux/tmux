@@ -35,7 +35,7 @@ struct mode_tree_data {
 
 	struct window_pane	 *wp;
 	void			 *modedata;
-	const char		 *menu;
+	const struct menu_item	 *menu;
 
 	const char		**sort_list;
 	u_int			  sort_size;
@@ -100,11 +100,14 @@ struct mode_tree_menu {
 
 static void mode_tree_free_items(struct mode_tree_list *);
 
-#define MODE_TREE_MENU \
-	"Scroll Left,<,|" \
-	"Scroll Right,>,|" \
-	"|" \
-	"Cancel,q,"
+static const struct menu_item mode_tree_menu_items[] = {
+	{ "Scroll Left", '<', NULL },
+	{ "Scroll Right", '>', NULL },
+	{ "", KEYC_NONE, NULL },
+	{ "Cancel", 'q', NULL },
+
+	{ NULL, KEYC_NONE, NULL }
+};
 
 static struct mode_tree_item *
 mode_tree_find_item(struct mode_tree_list *mtl, uint64_t tag)
@@ -315,7 +318,7 @@ struct mode_tree_data *
 mode_tree_start(struct window_pane *wp, struct args *args,
     mode_tree_build_cb buildcb, mode_tree_draw_cb drawcb,
     mode_tree_search_cb searchcb, mode_tree_menu_cb menucb, void *modedata,
-    const char *menu, const char **sort_list, u_int sort_size,
+    const struct menu_item *menu, const char **sort_list, u_int sort_size,
     struct screen **s)
 {
 	struct mode_tree_data	*mtd;
@@ -812,8 +815,8 @@ mode_tree_display_menu(struct mode_tree_data *mtd, struct client *c, u_int x,
 {
 	struct mode_tree_item	*mti;
 	struct menu		*menu;
+	const struct menu_item	*items;
 	struct mode_tree_menu	*mtm;
-	const char		*s;
 	char			*title;
 	u_int			 line;
 
@@ -824,16 +827,15 @@ mode_tree_display_menu(struct mode_tree_data *mtd, struct client *c, u_int x,
 	mti = mtd->line_list[line].item;
 
 	if (!outside) {
-		s = mtd->menu;
+		items = mtd->menu;
 		xasprintf(&title, "#[align=centre]%s", mti->name);
 	} else {
-		s = MODE_TREE_MENU;
+		items = mode_tree_menu_items;
 		title = xstrdup("");
 	}
-	menu = menu_create(s, NULL, c, NULL, title);
+	menu = menu_create(title);
+	menu_add_items(menu, items, NULL, NULL, NULL);
 	free(title);
-	if (menu == NULL)
-		return;
 
 	mtm = xmalloc(sizeof *mtm);
 	mtm->data = mtd;
