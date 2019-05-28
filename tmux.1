@@ -1244,13 +1244,14 @@ show debugging information about jobs and terminals.
 .It Xo Ic source-file
 .Op Fl nq
 .Ar path
+.Ar ...
 .Xc
 .D1 (alias: Ic source )
-Execute commands from
+Execute commands from one or more files specified by
 .Ar path
-(which may be a
+(which may be
 .Xr glob 7
-pattern).
+patterns).
 If
 .Fl q
 is given, no error will be returned if
