@@ -1,4 +1,4 @@
-CHANGES FROM 2.9 to X.X
+CHANGES FROM 2.9 to 3.0
 
 * Add an addition form of string syntax in the configuration file - {}. This
   means commands that take other commands as string arguments can be expressed
