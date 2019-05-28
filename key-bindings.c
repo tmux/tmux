@@ -324,13 +324,13 @@ key_bindings_init(void)
 		"bind -n WheelDownStatus next-window",
 		"bind -n WheelUpStatus previous-window",
 		"bind -n MouseDrag1Pane if -Ft= '#{mouse_any_flag}' 'if -Ft= \"#{pane_in_mode}\" \"copy-mode -M\" \"send-keys -M\"' 'copy-mode -M'",
-		"bind -n MouseDown3Pane if -Ft= '#{||:mouse_any_flag,pane_in_mode}' 'select-pane -t=; send-keys -M' 'select-pane -mt='",
 		"bind -n WheelUpPane if -Ft= '#{mouse_any_flag}' 'send-keys -M' 'if -Ft= \"#{pane_in_mode}\" \"send-keys -M\" \"copy-mode -et=\"'",
 
 		"bind -n MouseDown3StatusRight display-menu -t= -xM -yS -T \"#[align=centre]#{client_name}\" " DEFAULT_CLIENT_MENU,
 		"bind -n MouseDown3StatusLeft display-menu -t= -xM -yS -T \"#[align=centre]#{session_name}\" " DEFAULT_SESSION_MENU,
 		"bind -n MouseDown3Status display-menu -t= -xW -yS -T \"#[align=centre]#{window_index}:#{window_name}\" " DEFAULT_WINDOW_MENU,
 		"bind C-m display-menu -xW -yS -T \"#[align=centre]#{window_index}:#{window_name}\" " DEFAULT_WINDOW_MENU,
+		"bind -n MouseDown3Pane if -Ft= '#{||:#{mouse_any_flag},#{pane_in_mode}}' 'select-pane -t=; send-keys -M' {display-menu -t= -xM -yM -T \"#[align=centre]#{pane_index} (#{pane_id})\" " DEFAULT_PANE_MENU "}",
 		"bind -n M-MouseDown3Pane display-menu -t= -xM -yM -T \"#[align=centre]#{pane_index} (#{pane_id})\" " DEFAULT_PANE_MENU,
 		"bind M-m display-menu -xP -yP -T \"#[align=centre]#{pane_index} (#{pane_id})\" " DEFAULT_PANE_MENU,
 
