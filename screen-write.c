@@ -410,6 +410,7 @@ screen_write_menu(struct screen_write_ctx *ctx, struct menu *menu, int choice)
 	struct screen		*s = ctx->s;
 	struct grid_cell	 gc;
 	u_int			 cx, cy, i, j;
+	const char		*name;
 
 	cx = s->cx;
 	cy = s->cy;
@@ -421,18 +422,24 @@ screen_write_menu(struct screen_write_ctx *ctx, struct menu *menu, int choice)
 	format_draw(ctx, &gc, menu->width, menu->title, NULL);
 
 	for (i = 0; i < menu->count; i++) {
-		if (menu->items[i].name == NULL) {
+		name = menu->items[i].name;
+		if (name == NULL) {
 			screen_write_cursormove(ctx, cx, cy + 1 + i, 0);
 			screen_write_hline(ctx, menu->width + 4, 1, 1);
 		} else {
-			if (choice >= 0 && i == (u_int)choice)
+			if (choice >= 0 && i == (u_int)choice && *name != '-')
 				gc.attr |= GRID_ATTR_REVERSE;
 			screen_write_cursormove(ctx, cx + 2, cy + 1 + i, 0);
 			for (j = 0; j < menu->width; j++)
 				screen_write_putc(ctx, &gc, ' ');
 			screen_write_cursormove(ctx, cx + 2, cy + 1 + i, 0);
-			format_draw(ctx, &gc, menu->width, menu->items[i].name,
-			    NULL);
+			if (*name == '-') {
+				name++;
+				gc.attr |= GRID_ATTR_DIM;
+				format_draw(ctx, &gc, menu->width, name, NULL);
+				gc.attr &= ~GRID_ATTR_DIM;
+			} else
+				format_draw(ctx, &gc, menu->width, name, NULL);
 			if (choice >= 0 && i == (u_int)choice)
 				gc.attr &= ~GRID_ATTR_REVERSE;
 		}
