@@ -38,8 +38,8 @@ const struct cmd_entry cmd_source_file_entry = {
 	.name = "source-file",
 	.alias = "source",
 
-	.args = { "nq", 1, 1 },
-	.usage = "[-nq] path",
+	.args = { "nq", 1, -1 },
+	.usage = "[-nq] path ...",
 
 	.flags = 0,
 	.exec = cmd_source_file_exec
@@ -53,49 +53,54 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 	struct client		*c = item->client;
 	struct cmdq_item	*new_item, *after;
 	enum cmd_retval		 retval;
-	char			*pattern, *tmp;
-	const char		*path = args->argv[0];
+	char			*pattern, *cwd;
+	const char		*path, *error;
 	glob_t			 g;
-	u_int			 i;
+	int			 i;
+	u_int			 j;
 
 	if (args_has(args, 'q'))
 		flags |= CMD_PARSE_QUIET;
 	if (args_has(args, 'n'))
 		flags |= CMD_PARSE_PARSEONLY;
-
-	if (*path == '/')
-		pattern = xstrdup(path);
-	else {
-		utf8_stravis(&tmp, server_client_get_cwd(c, NULL), VIS_GLOB);
-		xasprintf(&pattern, "%s/%s", tmp, path);
-		free(tmp);
-	}
-	log_debug("%s: %s", __func__, pattern);
+	utf8_stravis(&cwd, server_client_get_cwd(c, NULL), VIS_GLOB);
 
 	retval = CMD_RETURN_NORMAL;
-	if (glob(pattern, 0, NULL, &g) != 0) {
-		if (errno != ENOENT || (~flags & CMD_PARSE_QUIET)) {
-			cmdq_error(item, "%s: %s", path, strerror(errno));
-			retval = CMD_RETURN_ERROR;
+	for (i = 0; i < args->argc; i++) {
+		path = args->argv[i];
+		if (*path == '/')
+			pattern = xstrdup(path);
+		else
+			xasprintf(&pattern, "%s/%s", cwd, path);
+		log_debug("%s: %s", __func__, pattern);
+
+		if (glob(pattern, 0, NULL, &g) != 0) {
+			error = strerror(errno);
+			if (errno != ENOENT || (~flags & CMD_PARSE_QUIET)) {
+				cmdq_error(item, "%s: %s", path, error);
+				retval = CMD_RETURN_ERROR;
+			}
+			free(pattern);
+			continue;
 		}
 		free(pattern);
-		return (retval);
-	}
-	free(pattern);
 
-	after = item;
-	for (i = 0; i < (u_int)g.gl_pathc; i++) {
-		if (load_cfg(g.gl_pathv[i], c, after, flags, &new_item) < 0)
-			retval = CMD_RETURN_ERROR;
-		else if (new_item != NULL)
-			after = new_item;
+		after = item;
+		for (j = 0; j < g.gl_pathc; j++) {
+			path = g.gl_pathv[j];
+			if (load_cfg(path, c, after, flags, &new_item) < 0)
+				retval = CMD_RETURN_ERROR;
+			else if (new_item != NULL)
+				after = new_item;
+		}
+		globfree(&g);
 	}
 	if (cfg_finished) {
 		new_item = cmdq_get_callback(cmd_source_file_done, NULL);
 		cmdq_insert_after(item, new_item);
 	}
 
-	globfree(&g);
+	free(cwd);
 	return (retval);
 }
 
