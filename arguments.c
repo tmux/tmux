@@ -210,6 +210,8 @@ args_escape(const char *s)
 	char			*escaped, *result;
 	int			 flags;
 
+	if (*s == '\0')
+		return (xstrdup(s));
 	if ((strchr(quoted, s[0]) != NULL || s[0] == '~') && s[1] == '\0') {
 		xasprintf(&escaped, "\\%c", s[0]);
 		return (escaped);
