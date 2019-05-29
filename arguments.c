@@ -218,7 +218,7 @@ args_escape(const char *s)
 		return (escaped);
 	}
 
-	flags = VIS_OCTAL|VIS_TAB|VIS_NL;
+	flags = VIS_OCTAL|VIS_CSTYLE|VIS_TAB|VIS_NL;
 	if (s[strcspn(s, quoted)] != '\0')
 		flags |= VIS_DQ;
 	utf8_stravis(&escaped, s, flags);

@@ -246,7 +246,7 @@ window_buffer_draw(__unused void *modedata, void *itemdata,
 		at = 0;
 		while (end != pdata + psize && *end != '\n') {
 			if ((sizeof line) - at > 5) {
-				cp = vis(line + at, *end, VIS_TAB|VIS_OCTAL, 0);
+				cp = vis(line + at, *end, VIS_OCTAL|VIS_TAB, 0);
 				at = cp - line;
 			}
 			end++;
