@@ -1083,12 +1083,34 @@ error:
 static int
 yylex_token_escape(char **buf, size_t *len)
 {
-	int			 ch, type;
+	int			 ch, type, o2, o3;
 	u_int			 size, i, tmp;
 	char			 s[9];
 	struct utf8_data	 ud;
 
-	switch (ch = yylex_getc()) {
+	ch = yylex_getc();
+
+	if (ch >= '4' && ch <= '7') {
+		yyerror("invalid octal escape");
+		return (0);
+	}
+	if (ch >= '0' && ch <= '3') {
+		o2 = yylex_getc();
+		if (o2 >= '0' && o2 <= '7') {
+			o3 = yylex_getc();
+			if (o3 >= '0' && o3 <= '7') {
+				ch = 64 * (ch - '0') +
+				      8 * (o2 - '0') +
+				          (o3 - '0');
+				yylex_append1(buf, len, ch);
+				return (1);
+			}
+		}
+		yyerror("invalid octal escape");
+		return (0);
+	}
+
+	switch (ch) {
 	case EOF:
 		return (0);
 	case 'e':
