@@ -58,6 +58,7 @@ struct cmd_parse_state {
 	size_t				 len;
 	size_t				 off;
 
+	int				 eol;
 	int				 eof;
 	struct cmd_parse_input		*input;
 	u_int				 escapes;
@@ -933,6 +934,10 @@ yylex(void)
 	char			*token, *cp;
 	int			 ch, next;
 
+	if (ps->eol)
+		ps->input->line++;
+	ps->eol = 0;
+
 	for (;;) {
 		ch = yylex_getc();
 
@@ -959,7 +964,7 @@ yylex(void)
 			/*
 			 * End of line. Update the line number.
 			 */
-			ps->input->line++;
+			ps->eol = 1;
 			return ('\n');
 		}
 
