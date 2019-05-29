@@ -5,7 +5,7 @@ CHANGES FROM 2.9 to 3.0
   take other commands as string arguments to be expressed more clearly and
   without additional escaping.
 
-  A literal { and } must now be escaped or quoted, for example '{' as '}'.
+  A literal { and } must now be escaped or quoted, for example '{' and '}'.
 
 * New <, >, <= and >= comparison operators for formats.
 
