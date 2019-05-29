@@ -515,7 +515,11 @@ the given four or eight digit hexadecimal number.
 When preceded (escaped) by a \e, the following characters are replaced: \ee by
 the escape character; \er by a carriage return; \en by a newline; and \et by a
 tab.
-.Pp
+.It
+\eooo is replaced by a character of the octal value ooo.
+Three octal digits are required, for example \e001.
+The largest valid character is \e377.
+.It
 Any other characters preceded by \e are replaced by themselves (that is, the \e
 is removed) and are not treated as having any special meaning - so for example
 \e; will not mark a command sequence and \e$ will not expand an environment
