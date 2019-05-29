@@ -203,16 +203,20 @@ cmdq_get_command(struct cmd_list *cmdlist, struct cmd_find_state *current,
 	struct cmdq_item	*item, *first = NULL, *last = NULL;
 	struct cmd		*cmd;
 	struct cmdq_shared	*shared;
-
-	shared = xcalloc(1, sizeof *shared);
-	if (current != NULL)
-		cmd_find_copy_state(&shared->current, current);
-	else
-		cmd_find_clear_state(&shared->current, 0);
-	if (m != NULL)
-		memcpy(&shared->mouse, m, sizeof shared->mouse);
+	u_int			 group = 0;
 
 	TAILQ_FOREACH(cmd, &cmdlist->list, qentry) {
+		if (cmd->group != group) {
+			shared = xcalloc(1, sizeof *shared);
+			if (current != NULL)
+				cmd_find_copy_state(&shared->current, current);
+			else
+				cmd_find_clear_state(&shared->current, 0);
+			if (m != NULL)
+				memcpy(&shared->mouse, m, sizeof shared->mouse);
+			group = cmd->group;
+		}
+
 		item = xcalloc(1, sizeof *item);
 		xasprintf(&item->name, "[%s/%p]", cmd->entry->name, item);
 		item->type = CMDQ_COMMAND;
@@ -263,12 +267,20 @@ static enum cmd_retval
 cmdq_fire_command(struct cmdq_item *item)
 {
 	struct client		*c = item->client;
+	const char		*name = cmdq_name(c);
 	struct cmdq_shared	*shared = item->shared;
 	struct cmd		*cmd = item->cmd;
 	const struct cmd_entry	*entry = cmd->entry;
 	enum cmd_retval		 retval;
 	struct cmd_find_state	*fsp, fs;
 	int			 flags;
+	char			*tmp;
+
+	if (log_get_level() > 1) {
+		tmp = cmd_print(cmd);
+		log_debug("%s %s: (%u) %s", __func__, name, item->group, tmp);
+		free(tmp);
+	}
 
 	flags = !!(shared->flags & CMDQ_SHARED_CONTROL);
 	cmdq_guard(item, "begin", flags);
