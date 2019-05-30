@@ -1,7 +1,5 @@
 #!/bin/sh
 
-# new-session without clients should be the right size
-
 PATH=/bin:/usr/bin
 TERM=screen
 
@@ -19,6 +17,7 @@ EOF
 $TMUX -f$TMP start </dev/null || exit 1
 sleep 1
 $TMUX lsw -aF '#{session_name},#{window_name}'|sort >$TMP || exit 1
+$TMUX kill-server 2>/dev/null
 cat <<EOF|cmp -s $TMP - || exit 1
 bar,bar0
 bar,bar1
@@ -27,7 +26,6 @@ foo,foo0
 foo,foo1
 foo,foo2
 EOF
-$TMUX kill-server 2>/dev/null
 
 cat <<EOF >$TMP
 new -sfoo -nfoo0
@@ -40,6 +38,7 @@ EOF
 $TMUX -f$TMP start </dev/null || exit 1
 sleep 1
 $TMUX lsw -aF '#{session_name},#{window_name}'|sort >$TMP || exit 1
+$TMUX kill-server 2>/dev/null
 cat <<EOF|cmp -s $TMP - || exit 1
 bar,bar0
 bar,bar1
@@ -48,6 +47,5 @@ foo,foo0
 foo,foo1
 foo,foo2
 EOF
-$TMUX kill-server 2>/dev/null
 
 exit 0
