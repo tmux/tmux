@@ -365,7 +365,8 @@ options_array_set(struct options_entry *o, u_int idx, const char *value,
 		pr = cmd_parse_from_string(value, NULL);
 		switch (pr->status) {
 		case CMD_PARSE_EMPTY:
-			*cause = xstrdup("empty command");
+			if (cause != NULL)
+				*cause = xstrdup("empty command");
 			return (-1);
 		case CMD_PARSE_ERROR:
 			if (cause != NULL)

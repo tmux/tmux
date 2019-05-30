@@ -1136,7 +1136,7 @@ window_pane_reset_mode(struct window_pane *wp)
 	} else {
 		log_debug("%s: next mode is %s", __func__, next->mode->name);
 		wp->screen = next->screen;
-		if (next != NULL && next->mode->resize != NULL)
+		if (next->mode->resize != NULL)
 			next->mode->resize(next, wp->sx, wp->sy);
 	}
 	wp->flags |= (PANE_REDRAW|PANE_CHANGED);

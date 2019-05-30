@@ -480,7 +480,7 @@ mode_tree_add(struct mode_tree_data *mtd, struct mode_tree_item *parent,
 
 	saved = mode_tree_find_item(&mtd->saved, tag);
 	if (saved != NULL) {
-		if (parent == NULL || (parent != NULL && parent->expanded))
+		if (parent == NULL || parent->expanded)
 			mti->tagged = saved->tagged;
 		mti->expanded = saved->expanded;
 	} else if (expanded == -1)
