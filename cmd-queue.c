@@ -202,7 +202,7 @@ cmdq_get_command(struct cmd_list *cmdlist, struct cmd_find_state *current,
 {
 	struct cmdq_item	*item, *first = NULL, *last = NULL;
 	struct cmd		*cmd;
-	struct cmdq_shared	*shared;
+	struct cmdq_shared	*shared = NULL;
 	u_int			 group = 0;
 
 	TAILQ_FOREACH(cmd, &cmdlist->list, qentry) {
