@@ -201,7 +201,8 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 				goto fail;
 			}
 		}
-	}
+	} else
+		dsx = 80;
 	if (args_has(args, 'y')) {
 		tmp = args_get(args, 'y');
 		if (strcmp(tmp, "-") == 0) {
@@ -216,7 +217,8 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 				goto fail;
 			}
 		}
-	}
+	} else
+		dsy = 24;
 
 	/* Find new session size. */
 	if (!detached && !is_control) {
