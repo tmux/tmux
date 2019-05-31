@@ -998,11 +998,15 @@ yylex(void)
 
 		if (ch == '%') {
 			/*
-			 * % is a condition unless it is alone, then it is a
-			 * token.
+			 * % is a condition unless it is all % or all numbers,
+			 * then it is a token.
 			 */
 			yylval.token = yylex_get_word('%');
-			if (strcmp(yylval.token, "%") == 0)
+			for (cp = yylval.token; *cp != '\0'; cp++) {
+				if (*cp != '%' && !isdigit((u_char)*cp))
+					break;
+			}
+			if (*cp == '\0')
 				return (TOKEN);
 			if (strcmp(yylval.token, "%if") == 0) {
 				free(yylval.token);
