@@ -206,6 +206,7 @@ cmdq_get_command(struct cmd_list *cmdlist, struct cmd_find_state *current,
 	u_int			 group = 0;
 
 	TAILQ_FOREACH(cmd, &cmdlist->list, qentry) {
+		shared = NULL;
 		if (cmd->group != group) {
 			shared = xcalloc(1, sizeof *shared);
 			if (current != NULL)
@@ -230,7 +231,8 @@ cmdq_get_command(struct cmd_list *cmdlist, struct cmd_find_state *current,
 
 		log_debug("%s: %s group %u", __func__, item->name, item->group);
 
-		shared->references++;
+		if (shared)
+			shared->references++;
 		cmdlist->references++;
 
 		if (first == NULL)
