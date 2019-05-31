@@ -1518,7 +1518,7 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
     char **buf, size_t *len, size_t *off)
 {
 	struct window_pane	*wp = ft->wp;
-	const char		*errptr, *copy, *cp, *marker;
+	const char		*errptr, *copy, *cp, *marker = NULL;
 	char			*copy0, *condition, *found, *new;
 	char			*value, *left, *right;
 	size_t			 valuelen;
