@@ -353,7 +353,7 @@ options_array_set(struct options_entry *o, u_int idx, const char *value,
 {
 	struct options_array_item	*a;
 	char				*new;
-	struct cmd_parse_result		*pr;
+	struct cmd_parse_result		*pr = NULL;
 
 	if (!OPTIONS_IS_ARRAY(o)) {
 		if (cause != NULL)
@@ -402,8 +402,11 @@ options_array_set(struct options_entry *o, u_int idx, const char *value,
 
 	if (OPTIONS_IS_STRING(o))
 		a->value.string = new;
-	else if (OPTIONS_IS_COMMAND(o))
+	else if (OPTIONS_IS_COMMAND(o)) {
+		if (!pr)
+			fatalx("internal error: no command parse result set");
 		a->value.cmdlist = pr->cmdlist;
+	}
 	return (0);
 }
 
