@@ -57,7 +57,7 @@ explains some ideas for tmux not yet developed.  Please feel free to ask for
 clarifications on the mailing list if you're thinking of working on these or
 need further information.
 
-Please read the CONTRIBUTING file before opening an issue.
+Please read [this document](Contributing.md) before opening an issue.
 
 ## Documentation
 
