@@ -2,13 +2,20 @@
 
 Before opening an issue, please ensure that:
 
+- Your problem is a specific problem or question or suggestion, not a general
+  complaint.
+
 - `$TERM` inside tmux is screen, screen-256color, tmux or tmux-256color. Check
   by running `echo $TERM` inside tmux.
 
 - You can reproduce the problem with the latest tmux release, or a build from
   Git master.
 
-- Your question or issue is not covered in the manual (run man tmux).
+- Your question or issue is not covered [in the
+  manual](https://man.openbsd.org/tmux.1) (run `man tmux`).
+
+- Your problem is not mentioned in the [CHANGES
+  file](https://raw.githubusercontent.com/tmux/tmux/master/CHANGES) file.
 
 - Nobody else has opened the same issue recently.
 

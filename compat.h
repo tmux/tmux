@@ -313,10 +313,6 @@ int		 vasprintf(char **, const char *, va_list);
 char		*fgetln(FILE *, size_t *);
 #endif
 
-#ifndef HAVE_FPARSELN
-char		*fparseln(FILE *, size_t *, size_t *, const char *, int);
-#endif
-
 #ifndef HAVE_SETENV
 /* setenv.c */
 int		 setenv(const char *, const char *, int);

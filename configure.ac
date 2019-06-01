@@ -1,6 +1,6 @@
 # configure.ac
 
-AC_INIT([tmux], next-3.0)
+AC_INIT([tmux], next-3.1)
 AC_PREREQ([2.60])
 
 AC_CONFIG_AUX_DIR(etc)
@@ -28,6 +28,7 @@ AC_PROG_CC_C99
 AC_PROG_CPP
 AC_PROG_EGREP
 AC_PROG_INSTALL
+AC_PROG_YACC
 PKG_PROG_PKG_CONFIG
 AC_USE_SYSTEM_EXTENSIONS
 
@@ -455,14 +456,6 @@ if test "x$found_getopt" != xno; then
 	AC_DEFINE(HAVE_GETOPT)
 else
 	AC_LIBOBJ(getopt)
-fi
-
-# Look for fparseln in libutil.
-AC_SEARCH_LIBS(fparseln, util, found_fparseln=yes, found_fparseln=no)
-if test "x$found_fparseln" = xyes; then
-	AC_DEFINE(HAVE_FPARSELN)
-else
-	AC_LIBOBJ(fparseln)
 fi
 
 # Look for fdforkpty and forkpty in libutil.

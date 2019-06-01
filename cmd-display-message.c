@@ -109,8 +109,7 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 	format_defaults(ft, target_c, s, wl, wp);
 
 	if (args_has(args, 'a')) {
-		if (item != NULL)
-			format_each(ft, cmd_display_message_each, item);
+		format_each(ft, cmd_display_message_each, item);
 		return (CMD_RETURN_NORMAL);
 	}
 

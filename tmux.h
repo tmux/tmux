@@ -756,12 +756,12 @@ struct screen_redraw_ctx {
 
 /* Menu. */
 struct menu_item {
-	char		*name;
-	char		*command;
+	const char	*name;
 	key_code	 key;
+	const char	*command;
 };
 struct menu {
-	char			*title;
+	const char		*title;
 	struct menu_item	*items;
 	u_int			 count;
 	u_int			 width;
@@ -1283,21 +1283,25 @@ struct cmd_find_state {
 
 /* Command and list of commands. */
 struct cmd {
-	const struct cmd_entry	*entry;
-	struct args		*args;
+	const struct cmd_entry	 *entry;
+	struct args		 *args;
+	u_int			  group;
 
-	char			*file;
-	u_int			 line;
+	char			 *file;
+	u_int			  line;
 
-#define CMD_CONTROL 0x1
-	int			 flags;
+	char			 *alias;
+	int			  argc;
+	char			**argv;
 
-	TAILQ_ENTRY(cmd)	 qentry;
+	TAILQ_ENTRY(cmd)	  qentry;
 };
+TAILQ_HEAD(cmds, cmd);
 
 struct cmd_list {
-	int			 references;
-	TAILQ_HEAD(, cmd)	 list;
+	int		references;
+	u_int		group;
+	struct cmds	list;
 };
 
 /* Command return values. */
@@ -1306,6 +1310,31 @@ enum cmd_retval {
 	CMD_RETURN_NORMAL = 0,
 	CMD_RETURN_WAIT,
 	CMD_RETURN_STOP
+};
+
+/* Command parse result. */
+enum cmd_parse_status {
+	CMD_PARSE_EMPTY,
+	CMD_PARSE_ERROR,
+	CMD_PARSE_SUCCESS
+};
+struct cmd_parse_result {
+	enum cmd_parse_status	 status;
+	struct cmd_list		*cmdlist;
+	char			*error;
+};
+struct cmd_parse_input {
+	int			 flags;
+#define CMD_PARSE_QUIET 0x1
+#define CMD_PARSE_PARSEONLY 0x2
+#define CMD_PARSE_NOALIAS 0x4
+
+	const char		*file;
+	u_int			 line;
+
+	struct cmdq_item	*item;
+	struct client		*c;
+	struct cmd_find_state	 fs;
 };
 
 /* Command queue item type. */
@@ -1320,6 +1349,7 @@ struct cmdq_shared {
 
 	int			 flags;
 #define CMDQ_SHARED_REPEAT 0x1
+#define CMDQ_SHARED_CONTROL 0x2
 
 	struct format_tree	*formats;
 
@@ -1678,7 +1708,8 @@ void	proc_toggle_log(struct tmuxproc *);
 extern int cfg_finished;
 extern struct client *cfg_client;
 void	start_cfg(void);
-int	load_cfg(const char *, struct client *, struct cmdq_item *, int);
+int	load_cfg(const char *, struct client *, struct cmdq_item *, int,
+	    struct cmdq_item **);
 void	set_cfg_file(const char *);
 void printflike(1, 2) cfg_add_cause(const char *, ...);
 void	cfg_print_causes(struct cmdq_item *);
@@ -1923,6 +1954,7 @@ void		 args_set(struct args *, u_char, const char *);
 struct args	*args_parse(const char *, int, char **);
 void		 args_free(struct args *);
 char		*args_print(struct args *);
+char		*args_escape(const char *);
 int		 args_has(struct args *, u_char);
 const char	*args_get(struct args *, u_char);
 const char	*args_first_value(struct args *, u_char, struct args_value **);
@@ -1959,13 +1991,17 @@ int		 cmd_find_from_mouse(struct cmd_find_state *,
 int		 cmd_find_from_nothing(struct cmd_find_state *, int);
 
 /* cmd.c */
-void		 cmd_log_argv(int, char **, const char *);
+void printflike(3, 4) cmd_log_argv(int, char **, const char *, ...);
+void		 cmd_prepend_argv(int *, char ***, char *);
+void		 cmd_append_argv(int *, char ***, char *);
 int		 cmd_pack_argv(int, char **, char *, size_t);
 int		 cmd_unpack_argv(char *, size_t, int, char ***);
 char	       **cmd_copy_argv(int, char **);
 void		 cmd_free_argv(int, char **);
 char		*cmd_stringify_argv(int, char **);
+char		*cmd_get_alias(const char *);
 struct cmd	*cmd_parse(int, char **, const char *, u_int, char **);
+void		 cmd_free(struct cmd *);
 char		*cmd_print(struct cmd *);
 int		 cmd_mouse_at(struct window_pane *, struct mouse_event *,
 		     u_int *, u_int *, int);
@@ -1979,16 +2015,27 @@ extern const struct cmd_entry *cmd_table[];
 enum cmd_retval	 cmd_attach_session(struct cmdq_item *, const char *, int, int,
 		     const char *, int);
 
+/* cmd-parse.c */
+void	    	 cmd_parse_empty(struct cmd_parse_input *);
+struct cmd_parse_result *cmd_parse_from_file(FILE *, struct cmd_parse_input *);
+struct cmd_parse_result *cmd_parse_from_string(const char *,
+		     struct cmd_parse_input *);
+struct cmd_parse_result *cmd_parse_from_arguments(int, char **,
+		     struct cmd_parse_input *);
+
 /* cmd-list.c */
-struct cmd_list	*cmd_list_parse(int, char **, const char *, u_int, char **);
+struct cmd_list	*cmd_list_new(void);
+void		 cmd_list_append(struct cmd_list *, struct cmd *);
+void		 cmd_list_move(struct cmd_list *, struct cmd_list *);
 void		 cmd_list_free(struct cmd_list *);
-char		*cmd_list_print(struct cmd_list *);
+char		*cmd_list_print(struct cmd_list *, int);
 
 /* cmd-queue.c */
 struct cmdq_item *cmdq_get_command(struct cmd_list *, struct cmd_find_state *,
 		     struct mouse_event *, int);
 #define cmdq_get_callback(cb, data) cmdq_get_callback1(#cb, cb, data)
 struct cmdq_item *cmdq_get_callback1(const char *, cmdq_cb, void *);
+struct cmdq_item *cmdq_get_error(const char *);
 void		 cmdq_insert_after(struct cmdq_item *, struct cmdq_item *);
 void		 cmdq_append(struct client *, struct cmdq_item *);
 void		 cmdq_insert_hook(struct session *, struct cmdq_item *,
@@ -1999,10 +2046,6 @@ u_int		 cmdq_next(struct client *);
 void		 cmdq_guard(struct cmdq_item *, const char *, int);
 void printflike(2, 3) cmdq_print(struct cmdq_item *, const char *, ...);
 void printflike(2, 3) cmdq_error(struct cmdq_item *, const char *, ...);
-
-/* cmd-string.c */
-int		 cmd_string_split(const char *, int *, char ***);
-struct cmd_list	*cmd_string_parse(const char *, const char *, u_int, char **);
 
 /* cmd-wait-for.c */
 void	cmd_wait_for_flush(void);
@@ -2180,6 +2223,7 @@ void	 grid_duplicate_lines(struct grid *, u_int, struct grid *, u_int,
 void	 grid_reflow(struct grid *, u_int);
 void	 grid_wrap_position(struct grid *, u_int, u_int, u_int *, u_int *);
 void	 grid_unwrap_position(struct grid *, u_int *, u_int *, u_int, u_int);
+u_int	 grid_line_length(struct grid *, u_int);
 
 /* grid-view.c */
 void	 grid_view_get_cell(struct grid *, u_int, u_int, struct grid_cell *);
@@ -2427,8 +2471,8 @@ void	 mode_tree_each_tagged(struct mode_tree_data *, mode_tree_each_cb,
 void	 mode_tree_down(struct mode_tree_data *, int);
 struct mode_tree_data *mode_tree_start(struct window_pane *, struct args *,
 	     mode_tree_build_cb, mode_tree_draw_cb, mode_tree_search_cb,
-	     mode_tree_menu_cb, void *, const char *, const char **, u_int,
-	     struct screen **);
+	     mode_tree_menu_cb, void *, const struct menu_item *, const char **,
+	     u_int, struct screen **);
 void	 mode_tree_zoom(struct mode_tree_data *, struct args *);
 void	 mode_tree_build(struct mode_tree_data *);
 void	 mode_tree_free(struct mode_tree_data *);
@@ -2544,6 +2588,7 @@ struct utf8_data *utf8_fromcstr(const char *);
 char		*utf8_tocstr(struct utf8_data *);
 u_int		 utf8_cstrwidth(const char *);
 char		*utf8_padcstr(const char *, u_int);
+int		 utf8_cstrhas(const char *, const struct utf8_data *);
 
 /* osdep-*.c */
 char		*osdep_get_name(int, char *);
@@ -2561,8 +2606,14 @@ __dead void printflike(1, 2) fatal(const char *, ...);
 __dead void printflike(1, 2) fatalx(const char *, ...);
 
 /* menu.c */
-struct menu	*menu_create(const char *, struct client *,
-		    struct cmd_find_state *, const char *);
+struct menu	*menu_create(const char *);
+void		 menu_add_items(struct menu *, const struct menu_item *,
+		    struct cmdq_item *, struct client *,
+		    struct cmd_find_state *);
+void 		 menu_add_item(struct menu *, const struct menu_item *,
+		    struct cmdq_item *, struct client *,
+		    struct cmd_find_state *);
+
 void		 menu_free(struct menu *);
 int		 menu_display(struct menu *, int, struct cmdq_item *, u_int,
 		    u_int, struct client *, struct cmd_find_state *,

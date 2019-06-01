@@ -44,15 +44,16 @@ const struct cmd_entry cmd_bind_key_entry = {
 static enum cmd_retval
 cmd_bind_key_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args	*args = self->args;
-	char		*cause;
-	struct cmd_list	*cmdlist;
-	key_code	 key;
-	const char	*tablename;
+	struct args		 *args = self->args;
+	key_code		  key;
+	const char		 *tablename;
+	struct cmd_parse_result	 *pr;
+	char			**argv = args->argv;
+	int			  argc = args->argc;
 
-	key = key_string_lookup_string(args->argv[0]);
+	key = key_string_lookup_string(argv[0]);
 	if (key == KEYC_NONE || key == KEYC_UNKNOWN) {
-		cmdq_error(item, "unknown key: %s", args->argv[0]);
+		cmdq_error(item, "unknown key: %s", argv[0]);
 		return (CMD_RETURN_ERROR);
 	}
 
@@ -63,14 +64,21 @@ cmd_bind_key_exec(struct cmd *self, struct cmdq_item *item)
 	else
 		tablename = "prefix";
 
-	cmdlist = cmd_list_parse(args->argc - 1, args->argv + 1, NULL, 0,
-	    &cause);
-	if (cmdlist == NULL) {
-		cmdq_error(item, "%s", cause);
-		free(cause);
+	if (argc == 2)
+		pr = cmd_parse_from_string(argv[1], NULL);
+	else
+		pr = cmd_parse_from_arguments(argc - 1, argv + 1, NULL);
+	switch (pr->status) {
+	case CMD_PARSE_EMPTY:
+		cmdq_error(item, "empty command");
 		return (CMD_RETURN_ERROR);
+	case CMD_PARSE_ERROR:
+		cmdq_error(item, "%s", pr->error);
+		free(pr->error);
+		return (CMD_RETURN_ERROR);
+	case CMD_PARSE_SUCCESS:
+		break;
 	}
-
-	key_bindings_add(tablename, key, args_has(args, 'r'), cmdlist);
+	key_bindings_add(tablename, key, args_has(args, 'r'), pr->cmdlist);
 	return (CMD_RETURN_NORMAL);
 }

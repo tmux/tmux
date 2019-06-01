@@ -1351,3 +1351,22 @@ grid_unwrap_position(struct grid *gd, u_int *px, u_int *py, u_int wx, u_int wy)
 	*px = wx;
 	*py = yy;
 }
+
+/* Get length of line. */
+u_int
+grid_line_length(struct grid *gd, u_int py)
+{
+	struct grid_cell	gc;
+	u_int			px;
+
+	px = grid_get_line(gd, py)->cellsize;
+	if (px > gd->sx)
+		px = gd->sx;
+	while (px > 0) {
+		grid_get_cell(gd, px - 1, py, &gc);
+		if (gc.data.size != 1 || *gc.data.data != ' ')
+			break;
+		px--;
+	}
+	return (px);
+}

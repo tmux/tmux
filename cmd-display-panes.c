@@ -182,17 +182,6 @@ cmd_display_panes_draw(struct client *c, struct screen_redraw_ctx *ctx)
 	}
 }
 
-static enum cmd_retval
-cmd_display_panes_error(struct cmdq_item *item, void *data)
-{
-	char	*error = data;
-
-	cmdq_error(item, "%s", error);
-	free(error);
-
-	return (CMD_RETURN_NORMAL);
-}
-
 static void
 cmd_display_panes_free(struct client *c)
 {
@@ -208,11 +197,11 @@ static int
 cmd_display_panes_key(struct client *c, struct key_event *event)
 {
 	struct cmd_display_panes_data	*cdata = c->overlay_data;
-	struct cmd_list			*cmdlist;
 	struct cmdq_item		*new_item;
-	char				*cmd, *expanded, *cause;
+	char				*cmd, *expanded;
 	struct window			*w = c->session->curw->window;
 	struct window_pane		*wp;
+	struct cmd_parse_result		*pr;
 
 	if (event->key < '0' || event->key > '9')
 		return (1);
@@ -225,20 +214,21 @@ cmd_display_panes_key(struct client *c, struct key_event *event)
 	xasprintf(&expanded, "%%%u", wp->id);
 	cmd = cmd_template_replace(cdata->command, expanded, 1);
 
-	cmdlist = cmd_string_parse(cmd, NULL, 0, &cause);
-	if (cmdlist == NULL && cause != NULL)
-		new_item = cmdq_get_callback(cmd_display_panes_error, cause);
-	else if (cmdlist == NULL)
+	pr = cmd_parse_from_string(cmd, NULL);
+	switch (pr->status) {
+	case CMD_PARSE_EMPTY:
 		new_item = NULL;
-	else {
-		new_item = cmdq_get_command(cmdlist, NULL, NULL, 0);
-		cmd_list_free(cmdlist);
-	}
-	if (new_item != NULL) {
-		if (cdata->item != NULL)
-			cmdq_insert_after(cdata->item, new_item);
-		else
-			cmdq_append(c, new_item);
+		break;
+	case CMD_PARSE_ERROR:
+		new_item = cmdq_get_error(pr->error);
+		free(pr->error);
+		cmdq_append(c, new_item);
+		break;
+	case CMD_PARSE_SUCCESS:
+		new_item = cmdq_get_command(pr->cmdlist, NULL, NULL, 0);
+		cmd_list_free(pr->cmdlist);
+		cmdq_append(c, new_item);
+		break;
 	}
 
 	free(cmd);

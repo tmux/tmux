@@ -34,9 +34,9 @@ const struct cmd_entry cmd_display_menu_entry = {
 	.name = "display-menu",
 	.alias = "menu",
 
-	.args = { "c:FM:t:T:x:y:", 0, 0 },
-	.usage = "[-F] [-c target-client] [-M menu] " CMD_TARGET_PANE_USAGE " "
-	         "[-T title] [-x position] [-y position]",
+	.args = { "c:t:T:x:y:", 1, -1 },
+	.usage = "[-c target-client] " CMD_TARGET_PANE_USAGE " [-T title] "
+		 "[-x position] [-y position] name key command ...",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -55,10 +55,11 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_find_state	*fs = &item->target;
 	struct menu		*menu = NULL;
 	struct style_range	*sr;
-	const char		*string, *xp, *yp;
-	int			 at, flags;
+	struct menu_item	 menu_item;
+	const char		*xp, *yp, *key;
+	char			*title, *name;
+	int			 at, flags, i;
 	u_int			 px, py, ox, oy, sx, sy;
-	char			*title;
 
 	if ((c = cmd_find_client(item, args_get(args, 'c'), 0)) == NULL)
 		return (CMD_RETURN_ERROR);
@@ -66,23 +67,37 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 	at = status_at_line(c);
 
-	string = args_get(args, 'M');
-	if (string == NULL) {
-		cmdq_error(item, "no menu specified");
-		return (CMD_RETURN_ERROR);
-	}
-	if (args_has(args, 'F'))
-		string = format_single(NULL, string, c, s, wl, wp);
-	else
-		string = xstrdup(string);
 	if (args_has(args, 'T'))
 		title = format_single(NULL, args_get(args, 'T'), c, s, wl, wp);
 	else
 		title = xstrdup("");
-	menu = menu_create(string, c, fs, title);
+
+	menu = menu_create(title);
+
+	for (i = 0; i != args->argc; /* nothing */) {
+		name = args->argv[i++];
+		if (*name == '\0') {
+			menu_add_item(menu, NULL, item, c, fs);
+			continue;
+		}
+
+		if (args->argc - i < 2) {
+			cmdq_error(item, "not enough arguments");
+			free(title);
+			menu_free(menu);
+			return (CMD_RETURN_ERROR);
+		}
+		key = args->argv[i++];
+
+		menu_item.name = name;
+		menu_item.key = key_string_lookup_string(key);
+		menu_item.command = args->argv[i++];
+
+		menu_add_item(menu, &menu_item, item, c, fs);
+	}
 	free(title);
 	if (menu == NULL) {
-		cmdq_error(item, "invalid menu %s", string);
+		cmdq_error(item, "invalid menu arguments");
 		return (CMD_RETURN_ERROR);
 	}
 	if (menu->count == 0) {

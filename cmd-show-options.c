@@ -90,7 +90,14 @@ cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 
 	window = (self->entry == &cmd_show_window_options_entry);
 	if (args->argc == 0) {
-		options_scope_from_flags(args, window, fs, &oo, &cause);
+		scope = options_scope_from_flags(args, window, fs, &oo, &cause);
+		if (scope == OPTIONS_TABLE_NONE) {
+			if (args_has(args, 'q'))
+				return (CMD_RETURN_NORMAL);
+			cmdq_error(item, "%s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
+		}
 		return (cmd_show_options_all(self, item, oo));
 	}
 	argument = format_single(item, args->argv[0], c, s, wl, NULL);
@@ -201,8 +208,8 @@ cmd_show_options_print(struct cmd *self, struct cmdq_item *item,
 	if (args_has(self->args, 'v'))
 		cmdq_print(item, "%s", value);
 	else if (options_isstring(o)) {
-		utf8_stravis(&escaped, value, VIS_OCTAL|VIS_TAB|VIS_NL|VIS_DQ);
-		cmdq_print(item, "%s \"%s\"", name, escaped);
+		escaped = args_escape(value);
+		cmdq_print(item, "%s %s", name, escaped);
 		free(escaped);
 	} else
 		cmdq_print(item, "%s %s", name, value);

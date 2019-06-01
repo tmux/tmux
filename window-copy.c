@@ -2810,54 +2810,19 @@ window_copy_in_set(struct window_mode_entry *wme, u_int px, u_int py,
 {
 	struct window_copy_mode_data	*data = wme->data;
 	struct grid_cell		 gc;
-	const struct utf8_data		*ud;
-	struct utf8_data		*copy;
-	struct utf8_data		*loop;
-	int				 found = 0;
 
 	grid_get_cell(data->backing->grid, px, py, &gc);
 	if (gc.flags & GRID_FLAG_PADDING)
 		return (0);
-	ud = &gc.data;
-
-	copy = utf8_fromcstr(set);
-	for (loop = copy; loop->size != 0; loop++) {
-		if (loop->size != ud->size)
-			continue;
-		if (memcmp(loop->data, ud->data, loop->size) == 0) {
-			found = 1;
-			break;
-		}
-	}
-	free(copy);
-
-	return (found);
+	return (utf8_cstrhas(set, &gc.data));
 }
 
 static u_int
 window_copy_find_length(struct window_mode_entry *wme, u_int py)
 {
 	struct window_copy_mode_data	*data = wme->data;
-	struct screen			*s = data->backing;
-	struct grid_cell		 gc;
-	u_int				 px;
 
-	/*
-	 * If the pane has been resized, its grid can contain old overlong
-	 * lines. grid_peek_cell does not allow accessing cells beyond the
-	 * width of the grid, and screen_write_copy treats them as spaces, so
-	 * ignore them here too.
-	 */
-	px = grid_get_line(s->grid, py)->cellsize;
-	if (px > screen_size_x(s))
-		px = screen_size_x(s);
-	while (px > 0) {
-		grid_get_cell(s->grid, px - 1, py, &gc);
-		if (gc.data.size != 1 || *gc.data.data != ' ')
-			break;
-		px--;
-	}
-	return (px);
+	return (grid_line_length(data->backing->grid, py));
 }
 
 static void

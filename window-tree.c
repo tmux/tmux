@@ -53,18 +53,21 @@ static void		 window_tree_key(struct window_mode_entry *,
 		"}" \
 	"}"
 
-#define WINDOW_TREE_MENU \
-	"Select,Enter,|" \
-	"Expand,Right,|" \
-	"|" \
-	"Tag,t,|" \
-	"Tag All,C-t,|" \
-	"Tag None,T,|" \
-	"|" \
-	"Kill,x,|" \
-	"Kill Tagged,X,|" \
-	"|" \
-	"Cancel,q,"
+static const struct menu_item window_tree_menu_items[] = {
+	{ "Select", 'E', NULL },
+	{ "Expand", 'R', NULL },
+	{ "", KEYC_NONE, NULL },
+	{ "Tag", 't', NULL },
+	{ "Tag All", '\024', NULL },
+	{ "Tag None", 'T', NULL },
+	{ "", KEYC_NONE, NULL },
+	{ "Kill", 'x', NULL },
+	{ "Kill Tagged", 'X', NULL },
+	{ "", KEYC_NONE, NULL },
+	{ "Cancel", 'q', NULL },
+
+	{ NULL, KEYC_NONE, NULL }
+};
 
 const struct window_mode window_tree_mode = {
 	.name = "tree-mode",
@@ -872,7 +875,7 @@ window_tree_init(struct window_mode_entry *wme, struct cmd_find_state *fs,
 
 	data->data = mode_tree_start(wp, args, window_tree_build,
 	    window_tree_draw, window_tree_search, window_tree_menu, data,
-	    WINDOW_TREE_MENU, window_tree_sort_list,
+	    window_tree_menu_items, window_tree_sort_list,
 	    nitems(window_tree_sort_list), &s);
 	mode_tree_zoom(data->data, args);
 

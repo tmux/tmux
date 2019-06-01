@@ -2,7 +2,7 @@
 
 # Obvious program stuff.
 bin_PROGRAMS = tmux
-CLEANFILES = tmux.1.mdoc tmux.1.man
+CLEANFILES = tmux.1.mdoc tmux.1.man cmd-parse.c
 
 # Distribution tarball options.
 EXTRA_DIST = \
@@ -94,6 +94,7 @@ dist_tmux_SOURCES = \
 	cmd-move-window.c \
 	cmd-new-session.c \
 	cmd-new-window.c \
+	cmd-parse.y \
 	cmd-paste-buffer.c \
 	cmd-pipe-pane.c \
 	cmd-queue.c \
@@ -119,7 +120,6 @@ dist_tmux_SOURCES = \
 	cmd-show-options.c \
 	cmd-source-file.c \
 	cmd-split-window.c \
-	cmd-string.c \
 	cmd-swap-pane.c \
 	cmd-swap-window.c \
 	cmd-switch-client.c \
