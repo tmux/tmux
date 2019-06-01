@@ -50,14 +50,13 @@ welcome. Please send by email to:
 
 tmux-users@googlegroups.com
 
-Or open a GitHub issue or pull request.
+Or open a GitHub issue or pull request. **Please read [this
+document](CONTRIBUTING.md) before opening an issue.**
 
 There is [a TODO list](https://github.com/tmux/tmux/wiki/Contributing) which
 explains some ideas for tmux not yet developed.  Please feel free to ask for
 clarifications on the mailing list if you're thinking of working on these or
 need further information.
-
-Please read [this document](CONTRIBUTING.md) before opening an issue.
 
 ## Documentation
 
