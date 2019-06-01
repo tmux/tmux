@@ -49,8 +49,11 @@ static void	tty_check_fg(struct tty *, struct window_pane *,
 		    struct grid_cell *);
 static void	tty_check_bg(struct tty *, struct window_pane *,
 		    struct grid_cell *);
+static void	tty_check_us(struct tty *, struct window_pane *,
+		    struct grid_cell *);
 static void	tty_colours_fg(struct tty *, const struct grid_cell *);
 static void	tty_colours_bg(struct tty *, const struct grid_cell *);
+static void	tty_colours_us(struct tty *, const struct grid_cell *);
 
 static void	tty_region_pane(struct tty *, const struct tty_ctx *, u_int,
 		    u_int);
@@ -1287,6 +1290,7 @@ tty_draw_line(struct tty *tty, struct window_pane *wp, struct screen *s,
 		    gcp->attr != last.attr ||
 		    gcp->fg != last.fg ||
 		    gcp->bg != last.bg ||
+		    gcp->us != last.us ||
 		    ux + width + gcp->data.width > nx ||
 		    (sizeof buf) - len < gcp->data.size)) {
 			tty_attributes(tty, &last, wp);
@@ -2135,7 +2139,8 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
 	    ~(wp->window->flags & WINDOW_STYLECHANGED) &&
 	    gc->attr == tty->last_cell.attr &&
 	    gc->fg == tty->last_cell.fg &&
-	    gc->bg == tty->last_cell.bg)
+	    gc->bg == tty->last_cell.bg &&
+	    gc->us == tty->last_cell.us)
 		return;
 	tty->last_wp = (wp != NULL ? (int)wp->id : -1);
 	memcpy(&tty->last_cell, gc, sizeof tty->last_cell);
@@ -2163,6 +2168,7 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
 	/* Fix up the colours if necessary. */
 	tty_check_fg(tty, wp, &gc2);
 	tty_check_bg(tty, wp, &gc2);
+	tty_check_us(tty, wp, &gc2);
 
 	/* If any bits are being cleared, reset everything. */
 	if (tc->attr & ~gc2.attr)
@@ -2223,20 +2229,22 @@ tty_colours(struct tty *tty, const struct grid_cell *gc)
 	int			 have_ax;
 
 	/* No changes? Nothing is necessary. */
-	if (gc->fg == tc->fg && gc->bg == tc->bg)
+	if (gc->fg == tc->fg && gc->bg == tc->bg && gc->us == tc->us)
 		return;
 
 	/*
-	 * Is either the default colour? This is handled specially because the
-	 * best solution might be to reset both colours to default, in which
+	 * Is any the default colour? This is handled specially because the best
+	 * solution might be to reset all three colours to default, in which
 	 * case if only one is default need to fall onward to set the other
 	 * colour.
 	 */
-	if (COLOUR_DEFAULT(gc->fg) || COLOUR_DEFAULT(gc->bg)) {
+	if (COLOUR_DEFAULT(gc->fg) || COLOUR_DEFAULT(gc->bg) ||
+	    COLOUR_DEFAULT(gc->us)) {
 		/*
 		 * If don't have AX but do have op, send sgr0 (op can't
 		 * actually be used because it is sometimes the same as sgr0
-		 * and sometimes isn't). This resets both colours to default.
+		 * and sometimes isn't). This resets all three colours to
+		 * default.
 		 *
 		 * Otherwise, try to set the default colour only as needed.
 		 */
@@ -2258,6 +2266,13 @@ tty_colours(struct tty *tty, const struct grid_cell *gc)
 					tty_putcode1(tty, TTYC_SETAB, 0);
 				tc->bg = gc->bg;
 			}
+			if (COLOUR_DEFAULT(gc->us) && !COLOUR_DEFAULT(tc->us)) {
+				if (have_ax)
+					tty_puts(tty, "\033[59m");
+				else if (tc->us != 0) // TODO: kmo I have no idea what to use here.
+					tty_putcode1(tty, TTYC_SETULC, 0);
+				tc->us = gc->us;
+			}
 		}
 	}
 
@@ -2271,6 +2286,10 @@ tty_colours(struct tty *tty, const struct grid_cell *gc)
 	 */
 	if (!COLOUR_DEFAULT(gc->bg) && gc->bg != tc->bg)
 		tty_colours_bg(tty, gc);
+
+	// Set the underscore color
+	if (!COLOUR_DEFAULT(gc->us) && gc->us != tc->us)
+		tty_colours_us(tty, gc);
 }
 
 static void
@@ -2386,6 +2405,54 @@ tty_check_bg(struct tty *tty, struct window_pane *wp, struct grid_cell *gc)
 }
 
 static void
+tty_check_us(struct tty *tty, struct window_pane *wp, struct grid_cell *gc)
+{
+	u_char	r, g, b;
+	u_int	colours;
+	int	c;
+
+	// Perform substitution if this pane has a palette.
+	if (~gc->flags & GRID_FLAG_NOPALETTE) {
+		if ((c = window_pane_get_palette(wp, gc->us)) != -1)
+			gc->us = c;
+	}
+
+	// Check if this is a 24-bit colour.
+	if (gc->us & COLOUR_FLAG_RGB) {
+		// Not a 24-bit terminal? Translate to 256-colour palette.
+		if (!tty_term_has(tty->term, TTYC_SETRGBU)) { // TODO: kmo
+			colour_split_rgb(gc->us, &r, &g, &b);
+			gc->us = colour_find_rgb(r, g, b);
+		} else
+			return;
+	}
+
+	// How many colours does this terminal have?
+	if ((tty->term->flags|tty->term_flags) & TERM_256COLOURS)
+		colours = 256;
+	else
+		colours = tty_term_number(tty->term, TTYC_COLORS);
+
+	// Is this a 256-colour colour?
+	if (gc->us & COLOUR_FLAG_256) {
+		// And not a 256 colour mode?
+		if (colours != 256) {
+			gc->us = colour_256to16(gc->us);
+			if (gc->us & 8) {
+				gc->us &= 7;
+				if (colours >= 16)
+					gc->us += 90;
+			}
+		}
+		return;
+	}
+
+	// Is this an aixterm colour?
+	if (gc->us >= 90 && gc->us <= 97 && colours < 16)
+		gc->us -= 90;
+}
+
+static void
 tty_colours_fg(struct tty *tty, const struct grid_cell *gc)
 {
 	struct grid_cell	*tc = &tty->cell;
@@ -2447,6 +2514,38 @@ tty_colours_bg(struct tty *tty, const struct grid_cell *gc)
 save_bg:
 	/* Save the new values in the terminal current cell. */
 	tc->bg = gc->bg;
+}
+
+static void
+tty_colours_us(struct tty *tty, const struct grid_cell *gc)
+{
+	struct grid_cell	*tc = &tty->cell;
+	char			s[32];
+
+	// Check if this is a 24-bit or 256-colour colour.
+	if (gc->us & COLOUR_FLAG_RGB || gc->us & COLOUR_FLAG_256) {
+		if (tty_try_colour(tty, gc->us, "58") == 0)
+			goto save_us;
+		// Should not get here, already converted in tty_check_us
+		return;
+	}
+
+	// Is thi an aixterm bright colour?
+	if (gc->us >= 90 && gc->us <= 97) {
+		if (tty->term_flags & TERM_256COLOURS) {
+			xsnprintf(s, sizeof s, "\033[%dm", gc->us + 10); // TODO: kmo No idea what to do different here.
+			tty_puts(tty, s);
+		} else
+			tty_putcode1(tty, TTYC_SETULC, gc->us - 90 + 8);
+		goto save_us;
+	}
+
+	// Otherwise set the underscode color.
+	tty_putcode1(tty, TTYC_SETULC, gc->us);
+
+save_us:
+	// Save the new values in the terminal current cell.
+	tc->us = gc->us;
 }
 
 static int
@@ -2558,6 +2657,21 @@ tty_default_colours(struct grid_cell *gc, struct window_pane *wp)
 			c = window_pane_get_palette(wp, gc->bg);
 			if (c != -1)
 				gc->bg = c;
+		}
+	}
+
+	if (gc->us == 8) {
+		if (pane->gc.us != 8)
+			gc->us = pane->gc.us;
+		else if (wp == w->active && active->gc.us != 8)
+			gc->us = active->gc.us;
+		else
+			gc->us = window->gc.us;
+
+		if (gc->us != 8) {
+			c = window_pane_get_palette(wp, gc->us);
+			if (c != -1)
+				gc->us = c;
 		}
 	}
 }
