@@ -3,6 +3,9 @@
 *.diff
 *.patch
 *.core
+*Session.vim
+.ccls-cache/
+.lvimrc
 core
 tags
 .deps/
