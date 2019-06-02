@@ -1983,10 +1983,8 @@ input_csi_dispatch_sgr(struct input_ctx *ictx)
 			input_csi_dispatch_sgr_colon(ictx, i);
 			continue;
 		}
-		// handle direct number parameters
 		n = input_get(ictx, i, 0, 0);
 		if (n == -1)
-			// not set: skip
 			continue;
 
 		if (n == 38 || n == 48 || n == 58) {
@@ -2038,7 +2036,6 @@ input_csi_dispatch_sgr(struct input_ctx *ictx)
 			gc->attr &= ~GRID_ATTR_ITALICS;
 			break;
 		case 24:
-			// reset to no underline
 			gc->attr &= ~GRID_ATTR_ALL_UNDERSCORE;
 			break;
 		case 25:
