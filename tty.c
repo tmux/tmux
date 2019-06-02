@@ -2287,7 +2287,7 @@ tty_colours(struct tty *tty, const struct grid_cell *gc)
 	if (!COLOUR_DEFAULT(gc->bg) && gc->bg != tc->bg)
 		tty_colours_bg(tty, gc);
 
-	// Set the underscore color
+	/* Set the underscore color */
 	if (!COLOUR_DEFAULT(gc->us) && gc->us != tc->us)
 		tty_colours_us(tty, gc);
 }
@@ -2411,15 +2411,15 @@ tty_check_us(struct tty *tty, struct window_pane *wp, struct grid_cell *gc)
 	u_int	colours;
 	int	c;
 
-	// Perform substitution if this pane has a palette.
+	/* Perform substitution if this pane has a palette. */
 	if (~gc->flags & GRID_FLAG_NOPALETTE) {
 		if ((c = window_pane_get_palette(wp, gc->us)) != -1)
 			gc->us = c;
 	}
 
-	// Check if this is a 24-bit colour.
+	/* Check if this is a 24-bit colour. */
 	if (gc->us & COLOUR_FLAG_RGB) {
-		// Not a 24-bit terminal? Translate to 256-colour palette.
+		/* Not a 24-bit terminal? Translate to 256-colour palette. */
 		if (!tty_term_has(tty->term, TTYC_SETRGBU)) { // TODO: kmo
 			colour_split_rgb(gc->us, &r, &g, &b);
 			gc->us = colour_find_rgb(r, g, b);
@@ -2427,15 +2427,15 @@ tty_check_us(struct tty *tty, struct window_pane *wp, struct grid_cell *gc)
 			return;
 	}
 
-	// How many colours does this terminal have?
+	/* How many colours does this terminal have? */
 	if ((tty->term->flags|tty->term_flags) & TERM_256COLOURS)
 		colours = 256;
 	else
 		colours = tty_term_number(tty->term, TTYC_COLORS);
 
-	// Is this a 256-colour colour?
+	/* Is this a 256-colour colour? */
 	if (gc->us & COLOUR_FLAG_256) {
-		// And not a 256 colour mode?
+		/* And not a 256 colour mode? */
 		if (colours != 256) {
 			gc->us = colour_256to16(gc->us);
 			if (gc->us & 8) {
@@ -2447,7 +2447,7 @@ tty_check_us(struct tty *tty, struct window_pane *wp, struct grid_cell *gc)
 		return;
 	}
 
-	// Is this an aixterm colour?
+	/* Is this an aixterm colour? */
 	if (gc->us >= 90 && gc->us <= 97 && colours < 16)
 		gc->us -= 90;
 }
@@ -2522,15 +2522,15 @@ tty_colours_us(struct tty *tty, const struct grid_cell *gc)
 	struct grid_cell	*tc = &tty->cell;
 	char			s[32];
 
-	// Check if this is a 24-bit or 256-colour colour.
+	/* Check if this is a 24-bit or 256-colour colour. */
 	if (gc->us & COLOUR_FLAG_RGB || gc->us & COLOUR_FLAG_256) {
 		if (tty_try_colour(tty, gc->us, "58") == 0)
 			goto save_us;
-		// Should not get here, already converted in tty_check_us
+		/* Should not get here, already converted in tty_check_us */
 		return;
 	}
 
-	// Is thi an aixterm bright colour?
+	/* Is thi an aixterm bright colour? */
 	if (gc->us >= 90 && gc->us <= 97) {
 		if (tty->term_flags & TERM_256COLOURS) {
 			xsnprintf(s, sizeof s, "\033[%dm", gc->us + 10); // TODO: kmo No idea what to do different here.
@@ -2540,11 +2540,11 @@ tty_colours_us(struct tty *tty, const struct grid_cell *gc)
 		goto save_us;
 	}
 
-	// Otherwise set the underscode color.
+	/* Otherwise set the underscode color. */
 	tty_putcode1(tty, TTYC_SETULC, gc->us);
 
 save_us:
-	// Save the new values in the terminal current cell.
+	/* Save the new values in the terminal current cell. */
 	tc->us = gc->us;
 }
 
