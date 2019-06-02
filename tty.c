@@ -2287,7 +2287,7 @@ tty_colours(struct tty *tty, const struct grid_cell *gc)
 	if (!COLOUR_DEFAULT(gc->bg) && gc->bg != tc->bg)
 		tty_colours_bg(tty, gc);
 
-	/* Set the underscore color */
+	/* Set the underscore color. */
 	if (!COLOUR_DEFAULT(gc->us) && gc->us != tc->us)
 		tty_colours_us(tty, gc);
 }
@@ -2530,7 +2530,7 @@ tty_colours_us(struct tty *tty, const struct grid_cell *gc)
 		return;
 	}
 
-	/* Is thi an aixterm bright colour? */
+	/* Is this an aixterm bright colour? */
 	if (gc->us >= 90 && gc->us <= 97) {
 		if (tty->term_flags & TERM_256COLOURS) {
 			xsnprintf(s, sizeof s, "\033[%dm", gc->us + 10); // TODO: kmo No idea what to do different here.
