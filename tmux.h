@@ -2009,7 +2009,7 @@ extern const struct cmd_entry *cmd_table[];
 
 /* cmd-attach-session.c */
 enum cmd_retval	 cmd_attach_session(struct cmdq_item *, const char *, int, int,
-		     const char *, int);
+		     int, const char *, int);
 
 /* cmd-parse.c */
 void	    	 cmd_parse_empty(struct cmd_parse_input *);
