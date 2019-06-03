@@ -923,7 +923,7 @@ section.
 The following commands are available to manage clients and sessions:
 .Bl -tag -width Ds
 .It Xo Ic attach-session
-.Op Fl dEr
+.Op Fl dErx
 .Op Fl c Ar working-directory
 .Op Fl t Ar target-session
 .Xc
@@ -936,6 +936,10 @@ If used from inside, switch the current client.
 If
 .Fl d
 is specified, any other clients attached to the session are detached.
+If
+.Fl x
+is given, send SIGHUP to the parent process of the client as well as
+detaching the client, typically causing it to exit.
 .Fl r
 signifies the client is read-only (only keys bound to the
 .Ic detach-client
@@ -1053,7 +1057,7 @@ command.
 Lock all clients attached to
 .Ar target-session .
 .It Xo Ic new-session
-.Op Fl AdDEP
+.Op Fl AdDEPX
 .Op Fl c Ar start-directory
 .Op Fl F Ar format
 .Op Fl n Ar window-name
@@ -1109,6 +1113,12 @@ already exists; in this case,
 .Fl D
 behaves like
 .Fl d
+to
+.Ic attach-session ,
+and
+.Fl X
+behaves like
+.Fl x
 to
 .Ic attach-session .
 .Pp
