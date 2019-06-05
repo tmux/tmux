@@ -76,6 +76,8 @@ static char	*cmd_parse_get_error(const char *, u_int, const char *);
 static void	 cmd_parse_free_command(struct cmd_parse_command *);
 static struct cmd_parse_commands *cmd_parse_new_commands(void);
 static void	 cmd_parse_free_commands(struct cmd_parse_commands *);
+static void	 cmd_parse_print_commands(struct cmd_parse_input *, u_int,
+		     struct cmd_list *);
 
 %}
 
@@ -498,6 +500,19 @@ cmd_parse_get_error(const char *file, u_int line, const char *error)
 }
 
 static void
+cmd_parse_print_commands(struct cmd_parse_input *pi, u_int line,
+    struct cmd_list *cmdlist)
+{
+	char	*s;
+
+	if (pi->item != NULL && (pi->flags & CMD_PARSE_VERBOSE)) {
+		s = cmd_list_print(cmdlist, 0);
+		cmdq_print(pi->item, "%u: %s", line, s);
+		free(s);
+	}
+}
+
+static void
 cmd_parse_free_command(struct cmd_parse_command *cmd)
 {
 	free(cmd->name);
@@ -653,6 +668,7 @@ cmd_parse_build_commands(struct cmd_parse_commands *cmds,
 
 		if (cmdlist == NULL || cmd->line != line) {
 			if (cmdlist != NULL) {
+				cmd_parse_print_commands(pi, line, cmdlist);
 				cmd_list_move(result, cmdlist);
 				cmd_list_free(cmdlist);
 			}
@@ -672,6 +688,7 @@ cmd_parse_build_commands(struct cmd_parse_commands *cmds,
 		cmd_list_append(cmdlist, add);
 	}
 	if (cmdlist != NULL) {
+		cmd_parse_print_commands(pi, line, cmdlist);
 		cmd_list_move(result, cmdlist);
 		cmd_list_free(cmdlist);
 	}
