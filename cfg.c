@@ -126,6 +126,7 @@ load_cfg(const char *path, struct client *c, struct cmdq_item *item, int flags,
 	pi.flags = flags;
 	pi.file = path;
 	pi.line = 1;
+	pi.item = item;
 
 	pr = cmd_parse_from_file(f, &pi);
 	fclose(f);

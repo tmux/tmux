@@ -1256,7 +1256,7 @@ and
 .Fl T
 show debugging information about jobs and terminals.
 .It Xo Ic source-file
-.Op Fl nq
+.Op Fl nqv
 .Ar path
 .Ar ...
 .Xc
@@ -1274,6 +1274,8 @@ does not exist.
 With
 .Fl n ,
 the file is parsed but no commands are executed.
+.Fl v
+shows the parsed commands and line numbers if possible.
 .It Ic start-server
 .D1 (alias: Ic start )
 Start the
