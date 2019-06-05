@@ -1518,7 +1518,7 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
     char **buf, size_t *len, size_t *off)
 {
 	struct window_pane	*wp = ft->wp;
-	const char		*errptr, *copy, *cp, *marker;
+	const char		*errptr, *copy, *cp, *marker = NULL;
 	char			*copy0, *condition, *found, *new;
 	char			*value, *left, *right;
 	size_t			 valuelen;
@@ -1566,8 +1566,6 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 					limit = 0;
 				if (fm->argc == 2 && fm->argv[1] != NULL)
 					marker = fm->argv[1];
-				else
-					marker = NULL;
 				break;
 			case 'l':
 				modifiers |= FORMAT_LITERAL;
