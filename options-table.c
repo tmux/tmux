@@ -242,6 +242,12 @@ const struct options_table_entry options_table[] = {
 	  .default_num = ALERT_OTHER
 	},
 
+	{ .name = "alternate-border",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_num = 0
+	},
+
 	{ .name = "assume-paste-time",
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .scope = OPTIONS_TABLE_SESSION,
