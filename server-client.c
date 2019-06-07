@@ -1511,7 +1511,9 @@ server_client_click_timer(__unused int fd, __unused short events, void *data)
 static void
 server_client_check_exit(struct client *c)
 {
-	if (!(c->flags & CLIENT_EXIT))
+	if (~c->flags & CLIENT_EXIT)
+		return;
+	if (c->flags & CLIENT_EXITED)
 		return;
 
 	if (EVBUFFER_LENGTH(c->stdin_data) != 0)
@@ -1524,7 +1526,7 @@ server_client_check_exit(struct client *c)
 	if (c->flags & CLIENT_ATTACHED)
 		notify_client("client-detached", c);
 	proc_send(c->peer, MSG_EXIT, -1, &c->retval, sizeof c->retval);
-	c->flags &= ~CLIENT_EXIT;
+	c->flags |= CLIENT_EXITED;
 }
 
 /* Redraw timer callback. */
