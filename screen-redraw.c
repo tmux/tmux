@@ -541,7 +541,7 @@ screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j,
                 tty_putn(tty, "\xe2\x95\xa3", 3, 1); /* ---|    */
                 break;                               /*    |    */
 
-            case CELL_JOIN:		                     /*    |    */
+            case CELL_JOIN:                          /*    |    */
                 tty_putn(tty, "\xe2\x95\xac", 3, 1); /*  --+--  */
                 break;                               /*    |    */
 
