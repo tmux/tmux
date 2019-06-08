@@ -523,6 +523,10 @@ screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j,
                 tty_putn(tty, "\xe2\x95\x91", 3, 1); /*    |    */
                 break;                               /*    |    */
 
+            case CELL_TOPBOTTOM:                     /*         */
+                tty_putn(tty, "\xe2\x95\x90", 3, 1); /* ------- */
+                break;                               /*         */
+
             case CELL_TOPLEFT:                       /*    +--  */
                 tty_putn(tty, "\xe2\x95\x97", 3, 1); /*    |    */
                 break;                               /*         */
@@ -531,16 +535,12 @@ screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j,
                 tty_putn(tty, "\xe2\x95\x94", 3, 1); /*    |    */
                 break;                               /*         */
 
-            case CELL_BOTTOMRIGHT:	                 /*    |    */
+            case CELL_BOTTOMRIGHT:                   /*    |    */
                 tty_putn(tty, "\xe2\x95\x9d", 3, 1); /*  --+    */
                 break;                               /*         */
 
-            case CELL_BOTTOMLEFT:	                 /*    |    */
+            case CELL_BOTTOMLEFT:                    /*    |    */
                 tty_putn(tty, "\xe2\x95\x9a", 3, 1); /*    +--  */
-                break;                               /*         */
-
-            case CELL_TOPBOTTOM:                     /*         */
-                tty_putn(tty, "\xe2\x95\x90", 3, 1); /* ------- */
                 break;                               /*         */
 
             case CELL_TOPJOIN:                       /*    |    */
