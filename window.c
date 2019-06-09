@@ -802,6 +802,8 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	wp->pipe_event = NULL;
 
 	wp->saved_grid = NULL;
+	wp->saved_cx = UINT_MAX;
+	wp->saved_cy = UINT_MAX;
 
 	style_set(&wp->style, &grid_default_cell);
 
@@ -963,9 +965,24 @@ window_pane_alternate_off(struct window_pane *wp, struct grid_cell *gc,
 	struct screen	*s = &wp->base;
 	u_int		 sx, sy;
 
-	if (wp->saved_grid == NULL)
-		return;
 	if (!options_get_number(wp->window->options, "alternate-screen"))
+		return;
+
+	/*
+	 * Restore the cursor position and cell. This happens even if not
+	 * currently in the alternate screen.
+	 */
+	if (cursor && wp->saved_cx != UINT_MAX && wp->saved_cy != UINT_MAX) {
+		s->cx = wp->saved_cx;
+		if (s->cx > screen_size_x(s) - 1)
+			s->cx = screen_size_x(s) - 1;
+		s->cy = wp->saved_cy;
+		if (s->cy > screen_size_y(s) - 1)
+			s->cy = screen_size_y(s) - 1;
+		memcpy(gc, &wp->saved_cell, sizeof *gc);
+	}
+
+	if (wp->saved_grid == NULL)
 		return;
 	sx = screen_size_x(s);
 	sy = screen_size_y(s);
@@ -977,17 +994,8 @@ window_pane_alternate_off(struct window_pane *wp, struct grid_cell *gc,
 	if (sy > wp->saved_grid->sy)
 		screen_resize(s, sx, wp->saved_grid->sy, 1);
 
-	/* Restore the grid, cursor position and cell. */
+	/* Restore the saved grid. */
 	grid_duplicate_lines(s->grid, screen_hsize(s), wp->saved_grid, 0, sy);
-	if (cursor)
-		s->cx = wp->saved_cx;
-	if (s->cx > screen_size_x(s) - 1)
-		s->cx = screen_size_x(s) - 1;
-	if (cursor)
-		s->cy = wp->saved_cy;
-	if (s->cy > screen_size_y(s) - 1)
-		s->cy = screen_size_y(s) - 1;
-	memcpy(gc, &wp->saved_cell, sizeof *gc);
 
 	/*
 	 * Turn history back on (so resize can use it) and then resize back to
