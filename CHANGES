@@ -1,6 +1,9 @@
 CHANGES FROM 3.0 to X.X
 
-XXX
+* Add new-session -X and attach-session -x to send SIGHUP to parent when
+  detaching (like detach-client -P).
+
+* Support for octal escapes in strings (such as \007).
 
 CHANGES FROM 2.9 to 3.0
 
