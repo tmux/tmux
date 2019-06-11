@@ -1241,6 +1241,8 @@ server_client_loop(void)
 	struct client		*c;
 	struct window		*w;
 	struct window_pane	*wp;
+	struct winlink		*wl;
+	struct session		*s;
 	int			 focus;
 
 	TAILQ_FOREACH(c, &clients, entry) {
@@ -1257,8 +1259,13 @@ server_client_loop(void)
 	 */
 	focus = options_get_number(global_options, "focus-events");
 	RB_FOREACH(w, windows, &windows) {
+		TAILQ_FOREACH(wl, &w->winlinks, wentry) {
+			s = wl->session;
+			if (s->attached != 0 && s->curw == wl)
+				break;
+		}
 		TAILQ_FOREACH(wp, &w->panes, entry) {
-			if (wp->fd != -1) {
+			if (wl != NULL && wp->fd != -1) {
 				if (focus)
 					server_client_check_focus(wp);
 				server_client_check_resize(wp);
