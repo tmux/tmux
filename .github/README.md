@@ -53,10 +53,9 @@ tmux-users@googlegroups.com
 Or open a GitHub issue or pull request. **Please read [this
 document](CONTRIBUTING.md) before opening an issue.**
 
-There is [a TODO list](https://github.com/tmux/tmux/wiki/Contributing) which
-explains some ideas for tmux not yet developed.  Please feel free to ask for
-clarifications on the mailing list if you're thinking of working on these or
-need further information.
+There is [a list of suggestions for contributions](https://github.com/tmux/tmux/wiki/Contributing).
+Please feel free to ask on the mailing list if you're thinking of working on something or need
+further information.
 
 ## Documentation
 
