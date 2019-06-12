@@ -76,38 +76,12 @@ static const char *cmd_find_pane_table[][2] = {
 	{ NULL, NULL }
 };
 
-/* Get session from TMUX if present. */
-static struct session *
-cmd_find_try_TMUX(struct client *c)
-{
-	struct environ_entry	*envent;
-	char			 tmp[256];
-	long long		 pid;
-	u_int			 session;
-	struct session		*s;
-
-	envent = environ_find(c->environ, "TMUX");
-	if (envent == NULL)
-		return (NULL);
-
-	if (sscanf(envent->value, "%255[^,],%lld,%d", tmp, &pid, &session) != 3)
-		return (NULL);
-	if (pid != getpid())
-		return (NULL);
-	log_debug("%s: client %p TMUX %s (session $%u)", __func__, c,
-	    envent->value, session);
-
-	s = session_find_by_id(session);
-	if (s != NULL)
-		log_debug("%s: session $%u still exists", __func__, s->id);
-	return (s);
-}
-
 /* Find pane containing client if any. */
 static struct window_pane *
 cmd_find_inside_pane(struct client *c)
 {
 	struct window_pane	*wp;
+	struct environ_entry	*envent;
 
 	if (c == NULL)
 		return (NULL);
@@ -115,6 +89,11 @@ cmd_find_inside_pane(struct client *c)
 	RB_FOREACH(wp, window_pane_tree, &all_window_panes) {
 		if (wp->fd != -1 && strcmp(wp->tty, c->ttyname) == 0)
 			break;
+	}
+	if (wp == NULL) {
+		envent = environ_find(c->environ, "TMUX_PANE");
+		if (envent != NULL)
+			wp = window_pane_find_by_id_str(envent->value);
 	}
 	if (wp != NULL)
 		log_debug("%s: got pane %%%u (%s)", __func__, wp->id, wp->tty);
@@ -880,8 +859,6 @@ cmd_find_from_mouse(struct cmd_find_state *fs, struct mouse_event *m, int flags)
 int
 cmd_find_from_client(struct cmd_find_state *fs, struct client *c, int flags)
 {
-	struct session		*s;
-	struct winlink		*wl;
 	struct window_pane	*wp;
 
 	/* If no client, treat as from nothing. */
@@ -902,30 +879,6 @@ cmd_find_from_client(struct cmd_find_state *fs, struct client *c, int flags)
 	wp = cmd_find_inside_pane(c);
 	if (wp == NULL)
 		goto unknown_pane;
-
-	/* If we have a session in TMUX, see if it has this pane. */
-	s = cmd_find_try_TMUX(c);
-	if (s != NULL) {
-		RB_FOREACH(wl, winlinks, &s->windows) {
-			if (window_has_pane(wl->window, wp))
-				break;
-		}
-		if (wl != NULL) {
-			log_debug("%s: session $%u has pane %%%u", __func__,
-			    s->id, wp->id);
-
-			fs->s = s;
-			fs->wl = s->curw; /* use current session */
-			fs->w = fs->wl->window;
-			fs->wp = fs->w->active; /* use active pane */
-
-			cmd_find_log_state(__func__, fs);
-			return (0);
-		} else {
-			log_debug("%s: session $%u does not have pane %%%u",
-			    __func__, s->id, wp->id);
-		}
-	}
 
 	/*
 	 * Don't have a session, or it doesn't have this pane. Try all
@@ -948,17 +901,7 @@ cmd_find_from_client(struct cmd_find_state *fs, struct client *c, int flags)
 	return (0);
 
 unknown_pane:
-	/*
-	 * We're not running in a known pane, but maybe this client has TMUX
-	 * in the environment. That'd give us a session.
-	 */
-	s = cmd_find_try_TMUX(c);
-	if (s != NULL) {
-		cmd_find_from_session(fs, s, flags);
-		return (0);
-	}
-
-	/* Otherwise we need to guess. */
+	/* We can't find the pane so need to guess. */
 	return (cmd_find_from_nothing(fs, flags));
 }
 
@@ -1006,6 +949,8 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 		strlcat(tmp, "CANFAIL,", sizeof tmp);
 	if (*tmp != '\0')
 		tmp[strlen(tmp) - 1] = '\0';
+	else
+		strlcat(tmp, "NONE", sizeof tmp);
 	log_debug("%s: target %s, type %s, item %p, flags %s", __func__,
 	    target == NULL ? "none" : target, s, item, tmp);
 
