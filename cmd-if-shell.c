@@ -67,10 +67,11 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_if_shell_data	*cdata;
 	char				*shellcmd, *cmd;
 	struct cmdq_item		*new_item;
+	struct cmd_find_state		*fs = &item->target;
 	struct client			*c = cmd_find_client(item, NULL, 1);
-	struct session			*s = item->target.s;
-	struct winlink			*wl = item->target.wl;
-	struct window_pane		*wp = item->target.wp;
+	struct session			*s = fs->s;
+	struct winlink			*wl = fs->wl;
+	struct window_pane		*wp = fs->wp;
 	struct cmd_parse_input		 pi;
 	struct cmd_parse_result		*pr;
 
@@ -92,7 +93,7 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 		pi.line = self->line;
 		pi.item = item;
 		pi.c = c;
-		cmd_find_copy_state(&pi.fs, &item->target);
+		cmd_find_copy_state(&pi.fs, fs);
 
 		pr = cmd_parse_from_string(cmd, &pi);
 		switch (pr->status) {
@@ -103,7 +104,7 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 			free(pr->error);
 			return (CMD_RETURN_ERROR);
 		case CMD_PARSE_SUCCESS:
-			new_item = cmdq_get_command(pr->cmdlist, NULL, m, 0);
+			new_item = cmdq_get_command(pr->cmdlist, fs, m, 0);
 			cmdq_insert_after(item, new_item);
 			cmd_list_free(pr->cmdlist);
 			break;
@@ -137,7 +138,7 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 	cdata->input.c = c;
 	if (cdata->input.c != NULL)
 		cdata->input.c->references++;
-	cmd_find_copy_state(&cdata->input.fs, &item->target);
+	cmd_find_copy_state(&cdata->input.fs, fs);
 
 	if (job_run(shellcmd, s, server_client_get_cwd(item->client, s), NULL,
 	    cmd_if_shell_callback, cmd_if_shell_free, cdata, 0) == NULL) {
