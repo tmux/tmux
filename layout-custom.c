@@ -168,10 +168,7 @@ layout_parse(struct window *w, const char *layout)
 	/* Update pane offsets and sizes. */
 	layout_fix_offsets(lc);
 	layout_fix_panes(w);
-
-	/* Then resize the layout back to the original window size. */
-	layout_resize(w, sx, sy);
-	window_resize(w, sx, sy);
+	recalculate_sizes();
 
 	layout_print_cell(lc, __func__, 0);
 
