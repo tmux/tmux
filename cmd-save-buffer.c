@@ -104,7 +104,7 @@ cmd_save_buffer_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(self->args, 'a'))
 		flags = "ab";
 
-	file = server_client_get_path(c, path);
+	file = server_client_get_path(item->client, path);
 	free(path);
 
 	f = fopen(file, flags);
