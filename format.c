@@ -1112,7 +1112,7 @@ format_find(struct format_tree *ft, const char *key, int modifiers)
 			envent = environ_find(ft->s->environ, key);
 		if (envent == NULL)
 			envent = environ_find(global_environ, key);
-		if (envent != NULL) {
+		if (envent != NULL && envent->value != NULL) {
 			found = xstrdup(envent->value);
 			goto found;
 		}
