@@ -4044,7 +4044,7 @@ pattern or regular expression in the pane content and evaluates to zero if not
 found, or a line number if found.
 Like
 .Ql m ,
-a
+an
 .Ql r
 flag means search for a regular expression and
 .Ql i
@@ -4126,7 +4126,7 @@ throughout.
 The first argument may be an extended regular expression and a final argument may be
 .Ql i
 to ignore case, for example
-.Ql s/a(.)/\1x/i:
+.Ql s/a(.)/\e1x/i:
 would change
 .Ql abABab
 into
