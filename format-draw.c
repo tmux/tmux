@@ -791,7 +791,8 @@ format_width(const char *expanded)
 		} else if (*cp > 0x1f && *cp < 0x7f) {
 			width++;
 			cp++;
-		}
+		} else
+			cp++;
 	}
 	return (width);
 }
