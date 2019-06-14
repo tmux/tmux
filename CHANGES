@@ -13,16 +13,9 @@ CHANGES FROM 2.9 to 3.0
 
 * Improve escaping of special characters in list-keys output.
 
-* INCOMPATIBLE: tmux's configuration parsing has changed to use yacc(1). Most
-  configuration files shouldn't need to be changed but there are the following
-  differences:
-
-  1) #{ is now parsed as a format and is only valid after directives (%if,
-     %elif, %else), so comments starting with #{ are now syntax errors (adding
-     an extra # or a space after the # is an easy way to fix this).
-
-  2) A \ on its own must be escaped or quoted as either \\ or '\' (the latter
-     works on older tmux versions).
+* INCOMPATIBLE: tmux's configuration parsing has changed to use yacc(1). There
+  is one incompatible change: a \ on its own must be escaped or quoted as
+  either \\ or '\' (the latter works on older tmux versions).
 
   Entirely the same parser is now used for parsing the configuration file
   and for string commands. This means that constructs previously only
