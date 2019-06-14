@@ -582,9 +582,9 @@ or
 .Ql %endif .
 For example:
 .Bd -literal -offset indent
-%if #{==:#{host},myhost}
+%if "#{==:#{host},myhost}"
 set -g status-style bg=red
-%elif #{==:#{host},myotherhost}
+%elif "#{==:#{host},myotherhost}"
 set -g status-style bg=green
 %else
 set -g status-style bg=blue

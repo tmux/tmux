@@ -59,6 +59,7 @@ struct cmd_parse_state {
 	size_t				 len;
 	size_t				 off;
 
+	int				 condition;
 	int				 eol;
 	int				 eof;
 	struct cmd_parse_input		*input;
@@ -104,7 +105,7 @@ static void	 cmd_parse_print_commands(struct cmd_parse_input *, u_int,
 %token ENDIF
 %token <token> FORMAT TOKEN EQUALS
 
-%type <token> argument expanded
+%type <token> argument expanded format
 %type <arguments> arguments
 %type <flag> if_open if_elif
 %type <elif> elif elif1
@@ -160,7 +161,16 @@ statement	: condition
 			}
 		}
 
-expanded	: FORMAT
+format		: FORMAT
+		{
+			$$ = $1;
+		}
+		| TOKEN
+		{
+			$$ = $1;
+		}
+
+expanded	: format
 		{
 			struct cmd_parse_state	*ps = &parse_state;
 			struct cmd_parse_input	*pi = ps->input;
@@ -967,11 +977,14 @@ yylex(void)
 {
 	struct cmd_parse_state	*ps = &parse_state;
 	char			*token, *cp;
-	int			 ch, next;
+	int			 ch, next, condition;
 
 	if (ps->eol)
 		ps->input->line++;
 	ps->eol = 0;
+
+	condition = ps->condition;
+	ps->condition = 0;
 
 	for (;;) {
 		ch = yylex_getc();
@@ -1012,11 +1025,11 @@ yylex(void)
 
 		if (ch == '#') {
 			/*
-			 * #{ opens a format; anything else is a comment,
-			 * ignore up to the end of the line.
+			 * #{ after a condition opens a format; anything else
+			 * is a comment, ignore up to the end of the line.
 			 */
 			next = yylex_getc();
-			if (next == '{') {
+			if (condition && next == '{') {
 				yylval.token = yylex_format();
 				if (yylval.token == NULL)
 					return (ERROR);
@@ -1043,6 +1056,7 @@ yylex(void)
 			}
 			if (*cp == '\0')
 				return (TOKEN);
+			ps->condition = 1;
 			if (strcmp(yylval.token, "%if") == 0) {
 				free(yylval.token);
 				return (IF);
