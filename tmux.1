@@ -587,9 +587,9 @@ or
 .Ql %endif .
 For example:
 .Bd -literal -offset indent
-%if #{==:#{host},myhost}
+%if "#{==:#{host},myhost}"
 set -g status-style bg=red
-%elif #{==:#{host},myotherhost}
+%elif "#{==:#{host},myotherhost}"
 set -g status-style bg=green
 %else
 set -g status-style bg=blue
@@ -4017,25 +4017,45 @@ if running on
 .Ql myhost ,
 otherwise by
 .Ql 0 .
-An
-.Ql m
-specifies an
-.Xr fnmatch 3
-comparison where the first argument is the pattern and the second the string to
-compare, for example
-.Ql #{m:*foo*,#{host}} .
 .Ql ||
 and
 .Ql &&
 evaluate to true if either or both of two comma-separated alternatives are
 true, for example
 .Ql #{||:#{pane_in_mode},#{alternate_on}} .
+.Pp
+An
+.Ql m
+specifies an
+.Xr fnmatch 3
+or regular expression comparison.
+The first argument is the pattern and the second the string to compare.
+An optional third argument specifies flags:
+.Ql r
+means the pattern is a regular expression instead of the default
+.Xr fnmatch 3
+pattern, and
+.Ql i
+means to ignore case.
+For example:
+.Ql #{m:*foo*,#{host}}
+or
+.Ql #{m/ri:^A,MYVAR} .
 A
 .Ql C
 performs a search for an
 .Xr fnmatch 3
-pattern in the pane content and evaluates to zero if not found, or a line
-number if found.
+pattern or regular expression in the pane content and evaluates to zero if not
+found, or a line number if found.
+Like
+.Ql m ,
+an
+.Ql r
+flag means search for a regular expression and
+.Ql i
+ignores case.
+For example:
+.Ql #{C/r:^Start}
 .Pp
 A limit may be placed on the length of the resultant string by prefixing it
 by an
@@ -4108,6 +4128,14 @@ will substitute
 with
 .Ql bar
 throughout.
+The first argument may be an extended regular expression and a final argument may be
+.Ql i
+to ignore case, for example
+.Ql s/a(.)/\e1x/i:
+would change
+.Ql abABab
+into
+.Ql bxBxbx .
 .Pp
 In addition, the first line of a shell command's output may be inserted using
 .Ql #() .

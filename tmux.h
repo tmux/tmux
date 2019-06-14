@@ -2398,7 +2398,8 @@ void		 window_pane_key(struct window_pane *, struct client *,
 		     struct session *, struct winlink *, key_code,
 		     struct mouse_event *);
 int		 window_pane_visible(struct window_pane *);
-u_int		 window_pane_search(struct window_pane *, const char *);
+u_int		 window_pane_search(struct window_pane *, const char *, int,
+		     int);
 const char	*window_printable_flags(struct winlink *);
 struct window_pane *window_pane_find_up(struct window_pane *);
 struct window_pane *window_pane_find_down(struct window_pane *);
@@ -2634,5 +2635,8 @@ int		 style_is_default(struct style *);
 /* spawn.c */
 struct winlink	*spawn_window(struct spawn_context *, char **);
 struct window_pane *spawn_pane(struct spawn_context *, char **);
+
+/* regsub.c */
+char		*regsub(const char *, const char *, const char *, int);
 
 #endif /* TMUX_H */
