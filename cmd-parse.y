@@ -517,7 +517,10 @@ cmd_parse_print_commands(struct cmd_parse_input *pi, u_int line,
 
 	if (pi->item != NULL && (pi->flags & CMD_PARSE_VERBOSE)) {
 		s = cmd_list_print(cmdlist, 0);
-		cmdq_print(pi->item, "%u: %s", line, s);
+		if (pi->file != NULL)
+			cmdq_print(pi->item, "%s:%u: %s", pi->file, line, s);
+		else
+			cmdq_print(pi->item, "%u: %s", line, s);
 		free(s);
 	}
 }
