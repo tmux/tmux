@@ -15,9 +15,9 @@ CHANGES FROM 2.9 to 3.0
   configuration files shouldn't need to be changed but there are the following
   differences:
 
-  1) Formats now need to be quoted, so a bare #{...} becomes "#{...}". This
-     includes #{ which may previously have looked like a comment (for example at
-     the start of a line).
+  1) #{ is now parsed as a format and is only valid after directives (%if,
+     %elif, %else), so comments starting with #{ are now syntax errors (adding
+     an extra # or a space after the # is an easy way to fix this).
 
   2) A \ on its own must be escaped or quoted as either \\ or '\' (the latter
      works on older tmux versions).
