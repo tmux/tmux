@@ -1,9 +1,24 @@
 CHANGES FROM 3.0 to X.X
 
+* Resize panes lazily - do not resize unless they are in an attached, active
+  window.
+
+* Add regular expression support for the format search, match and substitute
+  modifiers and make them able to ignore case.
+
+* Do not use $TMUX to find the session because for windows in multiple sessions
+  it is wrong as often as it is right, and for windows in one session it is
+  pointless. Instead use TMUX_PANE if it is present.
+
+* Do not always resize the window back to its original size after applying a
+  layout, keep it at the layout size until it must be resized (for example when
+  attached and window-size is not manual).
+
 * Add new-session -X and attach-session -x to send SIGHUP to parent when
   detaching (like detach-client -P).
 
-* Support for octal escapes in strings (such as \007).
+* Support for octal escapes in strings (such as \007) and improve list-keys
+  output so it parses correctly if copied into a configuration file.
 
 CHANGES FROM 2.9 to 3.0
 
