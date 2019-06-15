@@ -2409,7 +2409,6 @@ input_osc_52(struct input_ctx *ictx, const char *p)
 			outlen = 4 * ((len + 2) / 3) + 1;
 			out = xmalloc(outlen);
 			if ((outlen = b64_ntop(buf, len, out, outlen)) == -1) {
-				abort();
 				free(out);
 				return;
 			}
