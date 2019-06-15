@@ -1700,7 +1700,7 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 			else
 				value = xstrdup("0");
 		} else if (strcmp(cmp->modifier, "m") == 0)
-			value = format_match(fm, left, right);
+			value = format_match(cmp, left, right);
 
 		free(right);
 		free(left);

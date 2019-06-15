@@ -122,7 +122,7 @@ layout_parse(struct window *w, const char *layout)
 {
 	struct layout_cell	*lc, *lcchild;
 	struct window_pane	*wp;
-	u_int			 npanes, ncells, sx, sy;
+	u_int			 npanes, ncells;
 	u_short			 csum;
 
 	/* Check validity. */
@@ -153,8 +153,7 @@ layout_parse(struct window *w, const char *layout)
 		layout_destroy_cell(w, lcchild, &lc);
 	}
 
-	/* Save the old window size and resize to the layout size. */
-	sx = w->sx; sy = w->sy;
+	/* Resize to the layout size. */
 	window_resize(w, lc->sx, lc->sy);
 
 	/* Destroy the old layout and swap to the new. */
