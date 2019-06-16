@@ -19,3 +19,7 @@ configure
 tmux.1.*
 *.dSYM
 cmd-parse.c
+
+# vim
+*.swp
+*.swo
