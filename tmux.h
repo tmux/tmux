@@ -2317,7 +2317,7 @@ void	 screen_push_title(struct screen *);
 void	 screen_pop_title(struct screen *);
 void	 screen_resize(struct screen *, u_int, u_int, int);
 void	 screen_set_selection(struct screen *, u_int, u_int, u_int, u_int,
-	     u_int, int, struct grid_cell *);
+	     u_int, int, int, int, struct grid_cell *);
 void	 screen_clear_selection(struct screen *);
 void	 screen_hide_selection(struct screen *);
 int	 screen_check_selection(struct screen *, u_int, u_int);

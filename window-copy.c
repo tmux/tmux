@@ -73,6 +73,8 @@ static void	window_copy_goto_line(struct window_mode_entry *, const char *);
 static void	window_copy_update_cursor(struct window_mode_entry *, u_int,
 		    u_int);
 static void	window_copy_start_selection(struct window_mode_entry *);
+static void	window_copy_clip_left(struct window_mode_entry *);
+static void	window_copy_clip_right(struct window_mode_entry *);
 static int	window_copy_adjust_selection(struct window_mode_entry *,
 		    u_int *, u_int *);
 static int	window_copy_set_selection(struct window_mode_entry *, int);
@@ -199,6 +201,9 @@ struct window_copy_mode_data {
 
 	u_int		 endselx;	/* end of selection */
 	u_int		 endsely;
+
+	int		 clip_left;	/* if clipping selection */
+	int		 clip_right;
 
 	enum {
 		CURSORDRAG_NONE,	/* selection is independent of cursor */
@@ -1482,6 +1487,20 @@ window_copy_cmd_select_word(struct window_copy_cmd_state *cs)
 }
 
 static enum window_copy_cmd_action
+window_copy_cmd_clip_left(struct window_copy_cmd_state *cs)
+{
+	window_copy_clip_left(cs->wme);
+	return (WINDOW_COPY_CMD_REDRAW);
+}
+
+static enum window_copy_cmd_action
+window_copy_cmd_clip_right(struct window_copy_cmd_state *cs)
+{
+	window_copy_clip_right(cs->wme);
+	return (WINDOW_COPY_CMD_REDRAW);
+}
+
+static enum window_copy_cmd_action
 window_copy_cmd_start_of_line(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
@@ -1883,6 +1902,10 @@ static const struct {
 	  window_copy_cmd_select_line },
 	{ "select-word", 0, 0,
 	  window_copy_cmd_select_word },
+	{ "selection-clip-left", 0, 0,
+	  window_copy_cmd_clip_left },
+	{ "selection-clip-right", 0, 0,
+	  window_copy_cmd_clip_right},
 	{ "start-of-line", 0, 0,
 	  window_copy_cmd_start_of_line },
 	{ "stop-selection", 0, 0,
@@ -2429,6 +2452,24 @@ window_copy_start_selection(struct window_mode_entry *wme)
 
 	data->cursordrag = CURSORDRAG_ENDSEL;
 
+	data->clip_left = -1;
+	data->clip_right = -1;
+	window_copy_set_selection(wme, 1);
+}
+
+static void
+window_copy_clip_left(struct window_mode_entry *wme) {
+	struct window_copy_mode_data	*data = wme->data;
+
+	data->clip_left = data->cx;
+	window_copy_set_selection(wme, 1);
+}
+
+static void
+window_copy_clip_right(struct window_mode_entry *wme) {
+	struct window_copy_mode_data	*data = wme->data;
+
+	data->clip_right = data->cx;
 	window_copy_set_selection(wme, 1);
 }
 
@@ -2485,6 +2526,7 @@ window_copy_set_selection(struct window_mode_entry *wme, int may_redraw)
 	struct options			*oo = wp->window->options;
 	struct grid_cell		 gc;
 	u_int				 sx, sy, cy, endsx, endsy;
+	int				 clip_left, clip_right;
 	int				 startrelpos, endrelpos;
 
 	window_copy_synchronize_cursor(wme);
@@ -2499,6 +2541,9 @@ window_copy_set_selection(struct window_mode_entry *wme, int may_redraw)
 	endsy = data->endsely;
 	endrelpos = window_copy_adjust_selection(wme, &endsx, &endsy);
 
+	clip_left = data->clip_left;
+	clip_right = data->clip_right;
+
 	/* Selection is outside of the current screen */
 	if (startrelpos == endrelpos &&
 	    startrelpos != WINDOW_COPY_REL_POS_ON_SCREEN) {
@@ -2510,7 +2555,7 @@ window_copy_set_selection(struct window_mode_entry *wme, int may_redraw)
 	style_apply(&gc, oo, "mode-style");
 	gc.flags |= GRID_FLAG_NOPALETTE;
 	screen_set_selection(s, sx, sy, endsx, endsy, data->rectflag,
-	    data->modekeys, &gc);
+	    clip_left, clip_right, data->modekeys, &gc);
 
 	if (data->rectflag && may_redraw) {
 		/*
@@ -2629,6 +2674,14 @@ window_copy_get_selection(struct window_mode_entry *wme, size_t *len)
 		restex = xx;
 		firstsx = sx;
 		restsx = 0;
+		if (data->clip_left != -1) {
+			firstsx = data->clip_left;
+			restsx = data->clip_left;
+		}
+		if (data->clip_right != -1) {
+			lastex = data->clip_right;
+			restex = data->clip_right;
+		}
 	}
 
 	/* Copy the lines. */

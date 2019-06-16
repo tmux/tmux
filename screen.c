@@ -36,6 +36,9 @@ struct screen_sel {
 	u_int		 ex;
 	u_int		 ey;
 
+	u_int		 lx;
+	u_int		 rx;
+
 	struct grid_cell cell;
 };
 
@@ -305,7 +308,8 @@ screen_resize_y(struct screen *s, u_int sy)
 /* Set selection. */
 void
 screen_set_selection(struct screen *s, u_int sx, u_int sy,
-    u_int ex, u_int ey, u_int rectangle, int modekeys, struct grid_cell *gc)
+    u_int ex, u_int ey, u_int rectangle, int lx, int rx,
+    int modekeys, struct grid_cell *gc)
 {
 	if (s->sel == NULL)
 		s->sel = xcalloc(1, sizeof *s->sel);
@@ -319,6 +323,9 @@ screen_set_selection(struct screen *s, u_int sx, u_int sy,
 	s->sel->sy = sy;
 	s->sel->ex = ex;
 	s->sel->ey = ey;
+
+	s->sel->lx = lx;
+	s->sel->rx = rx;
 }
 
 /* Clear selection. */
@@ -342,7 +349,7 @@ int
 screen_check_selection(struct screen *s, u_int px, u_int py)
 {
 	struct screen_sel	*sel = s->sel;
-	u_int			 xx;
+	u_int			 xx, lx, rx;
 
 	if (sel == NULL || sel->hidden)
 		return (0);
@@ -383,6 +390,12 @@ screen_check_selection(struct screen *s, u_int px, u_int py)
 				return (0);
 		}
 	} else {
+        /* clipping */
+        if (sel->lx != -1 && px < sel->lx)
+            return (0);
+        if (sel->rx != -1 && px > sel->rx)
+            return (0);
+
 		/*
 		 * Like emacs, keep the top-left-most character, and drop the
 		 * bottom-right-most, regardless of copy direction.
