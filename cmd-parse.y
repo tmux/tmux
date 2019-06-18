@@ -1338,8 +1338,8 @@ static int
 yylex_token_brace(char **buf, size_t *len)
 {
 	struct cmd_parse_state	*ps = &parse_state;
-	int 			 ch, nesting = 1, escape = 0, quote = '\0';
-	int			 lines = 0;
+	int 			 ch, lines = 0, nesting = 1, escape = 0;
+	int			 quote = '\0', token = 0;
 
 	/*
 	 * Extract a string up to the matching unquoted '}', including newlines
@@ -1348,6 +1348,10 @@ yylex_token_brace(char **buf, size_t *len)
 	 * To detect the final and intermediate braces which affect the nesting
 	 * depth, we scan the input as if it was a tmux config file, and ignore
 	 * braces which would be considered quoted, escaped, or in a comment.
+	 *
+	 * We update the token state after every character because '#' begins a
+	 * comment only when it begins a token. For simplicity, we treat an
+	 * unquoted directive format as comment.
 	 *
 	 * The result is verbatim copy of the input excluding the final brace.
 	 */
@@ -1368,6 +1372,8 @@ yylex_token_brace(char **buf, size_t *len)
 		    ch == '\n' ||
 		    ch == '\\')) {
 			escape = 0;
+			if (ch != '\n')
+				token = 1;
 			continue;
 		}
 
@@ -1383,7 +1389,7 @@ yylex_token_brace(char **buf, size_t *len)
 
 		/* A newline always resets to unquoted. */
 		if (ch == '\n') {
-			quote = 0;
+			quote = token = 0;
 			continue;
 		}
 
@@ -1394,33 +1400,47 @@ yylex_token_brace(char **buf, size_t *len)
 			 */
 			if (ch == quote && quote != '#')
 				quote = 0;
-		} else  {
+			token = 1;  /* token continues regardless */
+		} else {
 			/* Not inside quotes or comment. */
 			switch (ch) {
 			case '"':
 			case '\'':
 			case '#':
-				/* Beginning of quote or comment. */
-				quote = ch;
+				/* Beginning of quote or maybe comment. */
+				if (ch != '#' || !token)
+					quote = ch;
+				token = 1;
+				break;
+			case ' ':
+			case '\t':
+			case ';':
+				/* Delimiter - token resets. */
+				token = 0;
 				break;
 			case '{':
 				nesting++;
+				token = 0; /* new commands set - token resets */
 				break;
 			case '}':
 				nesting--;
+				token = 1;  /* same as after quotes */
 				if (nesting == 0) {
 					(*len)--; /* remove closing } */
 					ps->input->line += lines;
 					return (1);
 				}
 				break;
+			default:
+				token = 1;
+				break;
 			}
 		}
 	}
 
 	/*
-	 * Update line count after error as reporting the opening line
-	 * is more useful than EOF.
+	 * Update line count after error as reporting the opening line is more
+	 * useful than EOF.
 	 */
 	yyerror("unterminated brace string");
 	ps->input->line += lines;
