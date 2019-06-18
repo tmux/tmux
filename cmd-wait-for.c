@@ -153,7 +153,7 @@ cmd_wait_for_signal(__unused struct cmdq_item *item, const char *name,
 	log_debug("signal wait channel %s, with waiters", wc->name);
 
 	TAILQ_FOREACH_SAFE(wi, &wc->waiters, entry, wi1) {
-		wi->item->flags &= ~CMDQ_WAITING;
+		cmdq_continue(wi->item);
 
 		TAILQ_REMOVE(&wc->waiters, wi, entry);
 		free(wi);
@@ -229,7 +229,7 @@ cmd_wait_for_unlock(struct cmdq_item *item, const char *name,
 	}
 
 	if ((wi = TAILQ_FIRST(&wc->lockers)) != NULL) {
-		wi->item->flags &= ~CMDQ_WAITING;
+		cmdq_continue(wi->item);
 		TAILQ_REMOVE(&wc->lockers, wi, entry);
 		free(wi);
 	} else {
@@ -248,13 +248,13 @@ cmd_wait_for_flush(void)
 
 	RB_FOREACH_SAFE(wc, wait_channels, &wait_channels, wc1) {
 		TAILQ_FOREACH_SAFE(wi, &wc->waiters, entry, wi1) {
-			wi->item->flags &= ~CMDQ_WAITING;
+			cmdq_continue(wi->item);
 			TAILQ_REMOVE(&wc->waiters, wi, entry);
 			free(wi);
 		}
 		wc->woken = 1;
 		TAILQ_FOREACH_SAFE(wi, &wc->lockers, entry, wi1) {
-			wi->item->flags &= ~CMDQ_WAITING;
+			cmdq_continue(wi->item);
 			TAILQ_REMOVE(&wc->lockers, wi, entry);
 			free(wi);
 		}

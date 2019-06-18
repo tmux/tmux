@@ -52,7 +52,7 @@ cfg_done(__unused struct cmdq_item *item, __unused void *data)
 		cfg_show_causes(RB_MIN(sessions, &sessions));
 
 	if (cfg_item != NULL)
-		cfg_item->flags &= ~CMDQ_WAITING;
+		cmdq_continue(cfg_item);
 
 	status_prompt_load_history();
 

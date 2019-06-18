@@ -176,7 +176,7 @@ cmd_load_buffer_callback(struct client *c, int closed, void *data)
 		free(cause);
 	}
 out:
-	cdata->item->flags &= ~CMDQ_WAITING;
+	cmdq_continue(cdata->item);
 
 	free(cdata->bufname);
 	free(cdata);

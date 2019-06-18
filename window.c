@@ -1513,7 +1513,7 @@ window_pane_input_callback(struct client *c, int closed, void *data)
 		c->stdin_callback = NULL;
 		server_client_unref(c);
 
-		cdata->item->flags &= ~CMDQ_WAITING;
+		cmdq_continue(cdata->item);
 		free(cdata);
 
 		return;
