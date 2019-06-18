@@ -196,7 +196,7 @@ cmd_if_shell_callback(struct job *job)
 
 out:
 	if (cdata->item != NULL)
-		cdata->item->flags &= ~CMDQ_WAITING;
+		cmdq_continue(cdata->item);
 }
 
 static void

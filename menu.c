@@ -161,7 +161,7 @@ menu_free_cb(struct client *c)
 	struct menu_data	*md = c->overlay_data;
 
 	if (md->item != NULL)
-		md->item->flags &= ~CMDQ_WAITING;
+		cmdq_continue(md->item);
 
 	if (md->cb != NULL)
 		md->cb(md->menu, UINT_MAX, KEYC_NONE, md->data);

@@ -188,7 +188,7 @@ cmd_display_panes_free(struct client *c)
 	struct cmd_display_panes_data	*cdata = c->overlay_data;
 
 	if (cdata->item != NULL)
-		cdata->item->flags &= ~CMDQ_WAITING;
+		cmdq_continue(cdata->item);
 	free(cdata->command);
 	free(cdata);
 }
