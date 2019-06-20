@@ -2132,7 +2132,7 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
 	/* Ignore cell if it is the same as the last one. */
 	if (wp != NULL &&
 	    (int)wp->id == tty->last_wp &&
-	    ~(wp->window->flags & WINDOW_STYLECHANGED) &&
+	    ~(wp->flags & PANE_STYLECHANGED) &&
 	    gc->attr == tty->last_cell.attr &&
 	    gc->fg == tty->last_cell.fg &&
 	    gc->bg == tty->last_cell.bg)
@@ -2514,30 +2514,28 @@ fallback_256:
 static void
 tty_default_colours(struct grid_cell *gc, struct window_pane *wp)
 {
-	struct window		*w = wp->window;
-	struct options		*oo = w->options;
-	struct style		*active, *pane, *window;
-	int			 c;
+	struct options	*oo = wp->options;
+	struct style	*style, *active_style;
+	int		 c;
 
-	if (w->flags & WINDOW_STYLECHANGED) {
-		w->flags &= ~WINDOW_STYLECHANGED;
-		active = options_get_style(oo, "window-active-style");
-		style_copy(&w->active_style, active);
-		window = options_get_style(oo, "window-style");
-		style_copy(&w->style, window);
+	if (wp->flags & PANE_STYLECHANGED) {
+		wp->flags &= ~PANE_STYLECHANGED;
+
+		active_style = options_get_style(oo, "window-active-style");
+		style = options_get_style(oo, "window-style");
+
+		style_copy(&wp->cached_active_style, active_style);
+		style_copy(&wp->cached_style, style);
 	} else {
-		active = &w->active_style;
-		window = &w->style;
+		active_style = &wp->cached_active_style;
+		style = &wp->cached_style;
 	}
-	pane = &wp->style;
 
 	if (gc->fg == 8) {
-		if (pane->gc.fg != 8)
-			gc->fg = pane->gc.fg;
-		else if (wp == w->active && active->gc.fg != 8)
-			gc->fg = active->gc.fg;
+		if (wp == wp->window->active && active_style->gc.fg != 8)
+			gc->fg = active_style->gc.fg;
 		else
-			gc->fg = window->gc.fg;
+			gc->fg = style->gc.fg;
 
 		if (gc->fg != 8) {
 			c = window_pane_get_palette(wp, gc->fg);
@@ -2547,12 +2545,10 @@ tty_default_colours(struct grid_cell *gc, struct window_pane *wp)
 	}
 
 	if (gc->bg == 8) {
-		if (pane->gc.bg != 8)
-			gc->bg = pane->gc.bg;
-		else if (wp == w->active && active->gc.bg != 8)
-			gc->bg = active->gc.bg;
+		if (wp == wp->window->active && active_style->gc.bg != 8)
+			gc->bg = active_style->gc.bg;
 		else
-			gc->bg = window->gc.bg;
+			gc->bg = style->gc.bg;
 
 		if (gc->bg != 8) {
 			c = window_pane_get_palette(wp, gc->bg);

@@ -311,7 +311,7 @@ window_create(u_int sx, u_int sy)
 
 	w = xcalloc(1, sizeof *w);
 	w->name = NULL;
-	w->flags = WINDOW_STYLECHANGED;
+	w->flags = 0;
 
 	TAILQ_INIT(&w->panes);
 	w->active = NULL;
@@ -448,31 +448,37 @@ window_set_active_pane(struct window *w, struct window_pane *wp, int notify)
 void
 window_redraw_active_switch(struct window *w, struct window_pane *wp)
 {
-	struct style	*sy;
+	struct style	*sy1, *sy2;
+	int		 c1, c2;
 
 	if (wp == w->active)
 		return;
 
-	/*
-	 * If window-style and window-active-style are the same, we don't need
-	 * to redraw panes when switching active panes.
-	 */
-	sy = options_get_style(w->options, "window-active-style");
-	if (style_equal(sy, options_get_style(w->options, "window-style")))
-		return;
-
-	/*
-	 * If the now active or inactive pane do not have a custom style or if
-	 * the palette is different, they need to be redrawn.
-	 */
-	if (window_pane_get_palette(w->active, w->active->style.gc.fg) != -1 ||
-	    window_pane_get_palette(w->active, w->active->style.gc.bg) != -1 ||
-	    style_is_default(&w->active->style))
-		w->active->flags |= PANE_REDRAW;
-	if (window_pane_get_palette(wp, wp->style.gc.fg) != -1 ||
-	    window_pane_get_palette(wp, wp->style.gc.bg) != -1 ||
-	    style_is_default(&wp->style))
-		wp->flags |= PANE_REDRAW;
+	for (;;) {
+		/*
+		 * If the active and inactive styles or palettes are different,
+		 * need to redraw the panes.
+		 */
+		sy1 = &wp->cached_style;
+		sy2 = &wp->cached_active_style;
+		if (!style_equal(sy1, sy2))
+			wp->flags |= PANE_REDRAW;
+		else {
+			c1 = window_pane_get_palette(wp, sy1->gc.fg);
+			c2 = window_pane_get_palette(wp, sy2->gc.fg);
+			if (c1 != c2)
+				wp->flags |= PANE_REDRAW;
+			else {
+				c1 = window_pane_get_palette(wp, sy1->gc.bg);
+				c2 = window_pane_get_palette(wp, sy2->gc.bg);
+				if (c1 != c2)
+					wp->flags |= PANE_REDRAW;
+			}
+		}
+		if (wp == w->active)
+			break;
+		wp = w->active;
+	}
 }
 
 struct window_pane *
@@ -776,6 +782,8 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 
 	wp = xcalloc(1, sizeof *wp);
 	wp->window = w;
+	wp->options = options_create(w->options);
+	wp->flags = PANE_STYLECHANGED;
 
 	wp->id = next_window_pane_id++;
 	RB_INSERT(window_pane_tree, &all_window_panes, wp);
@@ -805,8 +813,6 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	wp->saved_grid = NULL;
 	wp->saved_cx = UINT_MAX;
 	wp->saved_cy = UINT_MAX;
-
-	style_set(&wp->style, &grid_default_cell);
 
 	screen_init(&wp->base, sx, sy, hlimit);
 	wp->screen = &wp->base;
@@ -853,6 +859,7 @@ window_pane_destroy(struct window_pane *wp)
 
 	RB_REMOVE(window_pane_tree, &all_window_panes, wp);
 
+	options_free(wp->options);
 	free((void *)wp->cwd);
 	free(wp->shell);
 	cmd_free_argv(wp->argc, wp->argv);

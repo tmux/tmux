@@ -100,7 +100,7 @@ options_parent_table_entry(struct options *oo, const char *s)
 
 	if (oo->parent == NULL)
 		fatalx("no parent options for %s", s);
-	o = options_get_only(oo->parent, s);
+	o = options_get(oo->parent, s);
 	if (o == NULL)
 		fatalx("%s not in parent options", s);
 	return (o->tableentry);
@@ -176,6 +176,12 @@ options_free(struct options *oo)
 	RB_FOREACH_SAFE(o, options_tree, &oo->tree, tmp)
 		options_remove(o);
 	free(oo);
+}
+
+void
+options_set_parent(struct options *oo, struct options *parent)
+{
+	oo->parent = parent;
 }
 
 struct options_entry *
@@ -545,7 +551,7 @@ options_parse_get(struct options *oo, const char *s, int *idx, int only)
 }
 
 char *
-options_match(const char *s, int *idx, int* ambiguous)
+options_match(const char *s, int *idx, int *ambiguous)
 {
 	const struct options_table_entry	*oe, *found;
 	char					*name;
@@ -725,70 +731,96 @@ options_set_style(struct options *oo, const char *name, int append,
 	return (o);
 }
 
-enum options_table_scope
+int
 options_scope_from_name(struct args *args, int window,
     const char *name, struct cmd_find_state *fs, struct options **oo,
     char **cause)
 {
-	struct session			*s = fs->s;
-	struct winlink			*wl = fs->wl;
-	const char			*target = args_get(args, 't');
-	enum options_table_scope	 scope;
+	struct session				*s = fs->s;
+	struct winlink				*wl = fs->wl;
+	struct window_pane			*wp = fs->wp;
+	const char				*target = args_get(args, 't');
+	const struct options_table_entry	*oe;
+	int					 scope;
 
 	if (*name == '@')
 		return (options_scope_from_flags(args, window, fs, oo, cause));
 
-	if (options_get_only(global_options, name) != NULL)
-		scope = OPTIONS_TABLE_SERVER;
-	else if (options_get_only(global_s_options, name) != NULL)
-		scope = OPTIONS_TABLE_SESSION;
-	else if (options_get_only(global_w_options, name) != NULL)
-		scope = OPTIONS_TABLE_WINDOW;
-	else {
+	for (oe = options_table; oe->name != NULL; oe++) {
+		if (strcmp(oe->name, name) == 0)
+			break;
+	}
+	if (oe->name == NULL) {
 		xasprintf(cause, "unknown option: %s", name);
 		return (OPTIONS_TABLE_NONE);
 	}
+	scope = oe->scope;
 
-	if (scope == OPTIONS_TABLE_SERVER)
+	switch (scope) {
+	case OPTIONS_TABLE_SERVER:
 		*oo = global_options;
-	else if (scope == OPTIONS_TABLE_SESSION) {
+		break;
+	case OPTIONS_TABLE_SESSION:
 		if (args_has(args, 'g'))
 			*oo = global_s_options;
-		else if (s == NULL) {
-			if (target != NULL)
-				xasprintf(cause, "no such session: %s", target);
-			else
-				xasprintf(cause, "no current session");
-		} else
+		else if (s == NULL && target != NULL)
+			xasprintf(cause, "no such session: %s", target);
+		else if (s == NULL)
+			xasprintf(cause, "no current session");
+		else
 			*oo = s->options;
-	} else if (scope == OPTIONS_TABLE_WINDOW) {
+		break;
+	case OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE:
+		if (args_has(args, 'p')) {
+			if (wp == NULL && target != NULL)
+				xasprintf(cause, "no such pane: %s", target);
+			else if (wp == NULL)
+				xasprintf(cause, "no current pane");
+			else
+				*oo = wp->options;
+			break;
+		}
+		scope = OPTIONS_TABLE_WINDOW;
+		/* FALLTHROUGH */
+	case OPTIONS_TABLE_WINDOW:
 		if (args_has(args, 'g'))
 			*oo = global_w_options;
-		else if (wl == NULL) {
-			if (target != NULL)
-				xasprintf(cause, "no such window: %s", target);
-			else
-				xasprintf(cause, "no current window");
-		} else
+		else if (wl == NULL && target != NULL)
+			xasprintf(cause, "no such window: %s", target);
+		else if (wl == NULL)
+			xasprintf(cause, "no current window");
+		else
 			*oo = wl->window->options;
+		break;
 	}
 	return (scope);
 }
 
-enum options_table_scope
+int
 options_scope_from_flags(struct args *args, int window,
     struct cmd_find_state *fs, struct options **oo, char **cause)
 {
-	struct session	*s = fs->s;
-	struct winlink	*wl = fs->wl;
-	const char	*target = args_get(args, 't');
+	struct session		*s = fs->s;
+	struct winlink		*wl = fs->wl;
+	struct window_pane	*wp = fs->wp;
+	const char		*target = args_get(args, 't');
 
 	if (args_has(args, 's')) {
 		*oo = global_options;
 		return (OPTIONS_TABLE_SERVER);
 	}
 
-	if (window || args_has(args, 'w')) {
+	if (args_has(args, 'p')) {
+		if (wp == NULL) {
+			if (target != NULL)
+				xasprintf(cause, "no such pane: %s", target);
+			else
+				xasprintf(cause, "no current pane");
+			return (OPTIONS_TABLE_NONE);
+		}
+		*oo = wp->options;
+		return (OPTIONS_TABLE_PANE);
+	} else if (window || args_has(args, 'w')) {
 		if (args_has(args, 'g')) {
 			*oo = global_w_options;
 			return (OPTIONS_TABLE_WINDOW);
