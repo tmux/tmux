@@ -1,5 +1,17 @@
 CHANGES FROM 3.0 to X.X
 
+* Add pane options, set with set-option -p and displayed with show-options -p.
+  Pane options inherit from window options (so every pane option is also
+  a window option). The pane style is now configured by setting window-style
+  and window-active-style in the pane options; select-pane -P and -g now change
+  the option but are no longer documented.
+
+* Do not document set-window-option and show-window-options. set-option -w and
+  show-options -w should be used instead.
+
+* Add a -A flag to show-options to show parent options as well (they are marked
+  with a *).
+
 * Resize panes lazily - do not resize unless they are in an attached, active
   window.
 
