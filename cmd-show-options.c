@@ -84,11 +84,11 @@ cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 	struct options			*oo;
 	enum options_table_scope	 scope;
 	char				*argument, *name = NULL, *cause;
-	const char			*target;
 	int				 window, idx, ambiguous, parent;
 	struct options_entry		*o;
 
 	window = (self->entry == &cmd_show_window_options_entry);
+
 	if (args->argc == 0) {
 		scope = options_scope_from_flags(args, window, fs, &oo, &cause);
 		if (scope == OPTIONS_TABLE_NONE) {
@@ -112,49 +112,7 @@ cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 			cmdq_error(item, "invalid option: %s", argument);
 		goto fail;
 	}
-	if (*name == '@')
-		scope = options_scope_from_flags(args, window, fs, &oo, &cause);
-	else {
-		if (options_get_only(global_options, name) != NULL)
-			scope = OPTIONS_TABLE_SERVER;
-		else if (options_get_only(global_s_options, name) != NULL)
-			scope = OPTIONS_TABLE_SESSION;
-		else if (options_get_only(global_w_options, name) != NULL)
-			scope = OPTIONS_TABLE_WINDOW;
-		else {
-			scope = OPTIONS_TABLE_NONE;
-			xasprintf(&cause, "unknown option: %s", argument);
-		}
-		if (scope == OPTIONS_TABLE_SERVER)
-			oo = global_options;
-		else if (scope == OPTIONS_TABLE_SESSION) {
-			if (args_has(self->args, 'g'))
-				oo = global_s_options;
-			else if (s == NULL) {
-				target = args_get(args, 't');
-				if (target != NULL) {
-					cmdq_error(item, "no such session: %s",
-					    target);
-				} else
-					cmdq_error(item, "no current session");
-				goto fail;
-			} else
-				oo = s->options;
-		} else if (scope == OPTIONS_TABLE_WINDOW) {
-			if (args_has(self->args, 'g'))
-				oo = global_w_options;
-			else if (wl == NULL) {
-				target = args_get(args, 't');
-				if (target != NULL) {
-					cmdq_error(item, "no such window: %s",
-					    target);
-				} else
-					cmdq_error(item, "no current window");
-				goto fail;
-			} else
-				oo = wl->window->options;
-		}
-	}
+	scope = options_scope_from_name(args, window, name, fs, &oo, &cause);
 	if (scope == OPTIONS_TABLE_NONE) {
 		if (args_has(args, 'q'))
 			goto fail;
