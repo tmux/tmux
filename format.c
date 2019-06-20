@@ -2006,10 +2006,10 @@ void
 format_defaults(struct format_tree *ft, struct client *c, struct session *s,
     struct winlink *wl, struct window_pane *wp)
 {
-	if (c != NULL)
+	if (c != NULL && c->name != NULL)
 		log_debug("%s: c=%s", __func__, c->name);
 	else
-		log_debug("%s: s=none", __func__);
+		log_debug("%s: c=none", __func__);
 	if (s != NULL)
 		log_debug("%s: s=$%u", __func__, s->id);
 	else

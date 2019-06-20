@@ -91,14 +91,14 @@ start_cfg(void)
 	}
 
 	if (cfg_file == NULL)
-		load_cfg(TMUX_CONF, NULL, NULL, CMD_PARSE_QUIET, NULL);
+		load_cfg(TMUX_CONF, c, NULL, CMD_PARSE_QUIET, NULL);
 
 	if (cfg_file == NULL && (home = find_home()) != NULL) {
 		xasprintf(&cfg_file, "%s/.tmux.conf", home);
 		flags = CMD_PARSE_QUIET;
 	}
 	if (cfg_file != NULL)
-		load_cfg(cfg_file, NULL, NULL, flags, NULL);
+		load_cfg(cfg_file, c, NULL, flags, NULL);
 
 	cmdq_append(NULL, cmdq_get_callback(cfg_done, NULL));
 }
@@ -128,6 +128,7 @@ load_cfg(const char *path, struct client *c, struct cmdq_item *item, int flags,
 	pi.file = path;
 	pi.line = 1;
 	pi.item = item;
+	pi.c = c;
 
 	pr = cmd_parse_from_file(f, &pi);
 	fclose(f);
@@ -147,7 +148,7 @@ load_cfg(const char *path, struct client *c, struct cmdq_item *item, int flags,
 	if (item != NULL)
 		cmdq_insert_after(item, new_item0);
 	else
-		cmdq_append(c, new_item0);
+		cmdq_append(NULL, new_item0);
 	cmd_list_free(pr->cmdlist);
 
 	if (new_item != NULL)

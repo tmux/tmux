@@ -1934,26 +1934,29 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 
 		close(c->fd);
 		c->fd = -1;
-
-		return;
+	} else if (c->fd != -1) {
+		if (tty_init(&c->tty, c, c->fd, c->term) != 0) {
+			close(c->fd);
+			c->fd = -1;
+		} else {
+			if (c->flags & CLIENT_UTF8)
+				c->tty.flags |= TTY_UTF8;
+			if (c->flags & CLIENT_256COLOURS)
+				c->tty.term_flags |= TERM_256COLOURS;
+			tty_resize(&c->tty);
+			c->flags |= CLIENT_TERMINAL;
+		}
 	}
 
-	if (c->fd == -1)
-		return;
-	if (tty_init(&c->tty, c, c->fd, c->term) != 0) {
-		close(c->fd);
-		c->fd = -1;
-		return;
-	}
-	if (c->flags & CLIENT_UTF8)
-		c->tty.flags |= TTY_UTF8;
-	if (c->flags & CLIENT_256COLOURS)
-		c->tty.term_flags |= TERM_256COLOURS;
-
-	tty_resize(&c->tty);
-
-	if (!(c->flags & CLIENT_CONTROL))
-		c->flags |= CLIENT_TERMINAL;
+	/*
+	 * If this is the first client that has finished identifying, load
+	 * configuration files.
+	 */
+	if ((~c->flags & CLIENT_EXIT) &&
+	    !cfg_finished &&
+	    c == TAILQ_FIRST(&clients) &&
+	    TAILQ_NEXT(c, entry) == NULL)
+		start_cfg();
 }
 
 /* Handle shell message. */

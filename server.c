@@ -208,8 +208,7 @@ server_start(struct tmuxproc *client, struct event_base *base, int lockfd,
 		cmdq_append(c, cmdq_get_error(cause));
 		free(cause);
 		c->flags |= CLIENT_EXIT;
-	} else
-		start_cfg();
+	}
 
 	server_add_accept(0);
 	proc_loop(server_proc, server_loop);
