@@ -2259,7 +2259,7 @@ input_exit_rename(struct input_ctx *ictx)
 {
 	if (ictx->flags & INPUT_DISCARD)
 		return;
-	if (!options_get_number(ictx->wp->window->options, "allow-rename"))
+	if (!options_get_number(ictx->wp->options, "allow-rename"))
 		return;
 	log_debug("%s: \"%s\"", __func__, ictx->input_buf);
 

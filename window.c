@@ -945,7 +945,7 @@ window_pane_alternate_on(struct window_pane *wp, struct grid_cell *gc,
 
 	if (wp->saved_grid != NULL)
 		return;
-	if (!options_get_number(wp->window->options, "alternate-screen"))
+	if (!options_get_number(wp->options, "alternate-screen"))
 		return;
 	sx = screen_size_x(s);
 	sy = screen_size_y(s);
@@ -973,7 +973,7 @@ window_pane_alternate_off(struct window_pane *wp, struct grid_cell *gc,
 	struct screen	*s = &wp->base;
 	u_int		 sx, sy;
 
-	if (!options_get_number(wp->window->options, "alternate-screen"))
+	if (!options_get_number(wp->options, "alternate-screen"))
 		return;
 
 	/*

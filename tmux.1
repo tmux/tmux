@@ -3415,29 +3415,6 @@ session; this option is good for full-screen programs which support
 .Dv SIGWINCH
 and poor for interactive programs such as shells.
 .Pp
-.It Xo Ic allow-rename
-.Op Ic on | off
-.Xc
-Allow programs to change the window name using a terminal escape
-sequence (\eek...\ee\e\e).
-The default is off.
-.Pp
-.It Xo Ic alternate-screen
-.Op Ic on | off
-.Xc
-This option configures whether programs running inside
-.Nm
-may use the terminal alternate screen feature, which allows the
-.Em smcup
-and
-.Em rmcup
-.Xr terminfo 5
-capabilities.
-The alternate screen feature preserves the contents of the window when an
-interactive application starts and restores it on exit, so that any output
-visible before the application starts reappears unchanged after it exits.
-The default is on.
-.Pp
 .It Xo Ic automatic-rename
 .Op Ic on | off
 .Xc
@@ -3678,6 +3655,26 @@ as Shift, Alt or Ctrl.
 Available pane options are:
 .Pp
 .Bl -tag -width Ds -compact
+.It Xo Ic allow-rename
+.Op Ic on | off
+.Xc
+Allow programs in the pane to change the window name using a terminal escape
+sequence (\eek...\ee\e\e).
+.Pp
+.It Xo Ic alternate-screen
+.Op Ic on | off
+.Xc
+This option configures whether programs running inside the pane may use the
+terminal alternate screen feature, which allows the
+.Em smcup
+and
+.Em rmcup
+.Xr terminfo 5
+capabilities.
+The alternate screen feature preserves the contents of the window when an
+interactive application starts and restores it on exit, so that any output
+visible before the application starts reappears unchanged after it exits.
+.Pp
 .It Xo Ic remain-on-exit
 .Op Ic on | off
 .Xc
