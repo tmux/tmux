@@ -461,7 +461,7 @@ Will execute
 .Ic if-shell ,
 the shell command
 .Xr true 1 ,
-.Ic new-window
+.Ic split-window
 and
 .Ic kill-session
 in that order.
@@ -475,7 +475,7 @@ commands and their arguments.
 This section describes the syntax of commands parsed by
 .Nm ,
 for example in a configuration file or at the command prompt.
-Note the when commands are entered into the shell, they are parsed by the shell
+Note that when commands are entered into the shell, they are parsed by the shell
 - see for example
 .Xr ksh 1
 or
@@ -1833,14 +1833,16 @@ With
 .Fl b ,
 other commands are not blocked from running until the indicator is closed.
 .It Xo Ic find-window
-.Op Fl CNTZ
+.Op Fl rCNTZ
 .Op Fl t Ar target-pane
 .Ar match-string
 .Xc
 .D1 (alias: Ic findw )
-Search for the
+Search for a
 .Xr fnmatch 3
-pattern
+pattern or, with
+.Fl r ,
+regular expression
 .Ar match-string
 in window names, titles, and visible content (but not history).
 The flags control matching behavior:
@@ -4068,7 +4070,7 @@ will expand the format twice, for example
 .Ql #{E:status-left}
 is the result of expanding the content of the
 .Ic status-left
-option rather than the content itself.
+option rather than the option itself.
 .Ql T:
 is like
 .Ql E:
@@ -4104,7 +4106,7 @@ would change
 into
 .Ql bxBxbx .
 .Pp
-In addition, the first line of a shell command's output may be inserted using
+In addition, the last line of a shell command's output may be inserted using
 .Ql #() .
 For example,
 .Ql #(uptime)
@@ -4122,6 +4124,14 @@ Commands are executed with the
 global environment set (see the
 .Sx GLOBAL AND SESSION ENVIRONMENT
 section).
+.Pp
+An
+.Ql l
+specifies that any character in a string should be interpreted literally.
+For example:
+.Ql #{l:#{?pane_in_mode,#{?#{==:#{session_name},Summer},ABC,XYZ},xyz}}
+will be replaced by
+.Ql #{?pane_in_mode,#{?#{==:#{session_name},Summer},ABC,XYZ},xyz} .
 .Pp
 The following variables are available, where appropriate:
 .Bl -column "XXXXXXXXXXXXXXXXXXX" "XXXXX"

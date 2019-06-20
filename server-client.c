@@ -1263,10 +1263,11 @@ server_client_loop(void)
 				break;
 		}
 		TAILQ_FOREACH(wp, &w->panes, entry) {
-			if (wl != NULL && wp->fd != -1) {
+			if (wp->fd != -1) {
 				if (focus)
 					server_client_check_focus(wp);
-				server_client_check_resize(wp);
+				if (wl != NULL)
+					server_client_check_resize(wp);
 			}
 			wp->flags &= ~PANE_REDRAW;
 		}
