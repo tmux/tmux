@@ -3680,7 +3680,7 @@ function key sequences; these have a number included to indicate modifiers such
 as Shift, Alt or Ctrl.
 .El
 .It Xo Ic show-options
-.Op Fl gHqsvw
+.Op Fl AgHqsvw
 .Op Fl t Ar target-session | Ar target-window
 .Op Ar option
 .Xc
@@ -3714,6 +3714,9 @@ is set, no error will be returned if
 is unset.
 .Fl H
 includes hooks (omitted by default).
+.Fl A
+includes options inherited from a parent set of options, such options are
+marked with an asterisk.
 .It Xo Ic show-window-options
 .Op Fl gv
 .Op Fl t Ar target-window
