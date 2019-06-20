@@ -200,6 +200,12 @@ cmd_show_options_all(struct cmd *self, struct cmdq_item *item, int scope,
 	u_int					 idx;
 	int					 parent;
 
+	o = options_first(oo);
+	while (o != NULL) {
+		if (options_table_entry(o) == NULL)
+			cmd_show_options_print(self, item, o, -1, 0);
+		o = options_next(o);
+	}
 	for (oe = options_table; oe->name != NULL; oe++) {
 		if (~oe->scope & scope)
 			continue;
