@@ -63,7 +63,8 @@ regsub(const char *pattern, const char *with, const char *text, int flags)
 {
 	regex_t		 r;
 	regmatch_t	 m[10];
-	size_t		 start, end, len = 0;
+	ssize_t		 start, end, last, len = 0;
+	int		 empty = 0;
 	char		*buf = NULL;
 
 	if (*text == '\0')
@@ -72,9 +73,10 @@ regsub(const char *pattern, const char *with, const char *text, int flags)
 		return (NULL);
 
 	start = 0;
+	last = 0;
 	end = strlen(text);
 
-	while (start != end) {
+	while (start <= end) {
 		m[0].rm_so = start;
 		m[0].rm_eo = end;
 
@@ -82,14 +84,29 @@ regsub(const char *pattern, const char *with, const char *text, int flags)
 			regsub_copy(&buf, &len, text, start, end);
 			break;
 		}
-		if (m[0].rm_so == m[0].rm_eo) {
-			regsub_copy(&buf, &len, text, start, end);
-			break;
-		}
 
-		regsub_copy(&buf, &len, text, start, m[0].rm_so);
-		regsub_expand(&buf, &len, with, text, m, nitems(m));
-		start = m[0].rm_eo;
+		/*
+		 * Append any text not part of this match (from the end of the
+		 * last match).
+		 */
+		regsub_copy(&buf, &len, text, last, m[0].rm_so);
+
+		/*
+		 * If the last match was empty and this one isn't (it is either
+		 * later or has matched text), expand this match. If it is
+		 * empty, move on one character and try again from there.
+		 */
+		if (empty || m[0].rm_so != last || m[0].rm_so != m[0].rm_eo) {
+			regsub_expand(&buf, &len, with, text, m, nitems(m));
+
+			last = m[0].rm_eo;
+			start = m[0].rm_eo;
+			empty = 0;
+		} else {
+			last = m[0].rm_eo;
+			start = m[0].rm_eo + 1;
+			empty = 1;
+		}
 	}
 	buf[len] = '\0';
 
