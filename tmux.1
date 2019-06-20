@@ -1833,14 +1833,16 @@ With
 .Fl b ,
 other commands are not blocked from running until the indicator is closed.
 .It Xo Ic find-window
-.Op Fl CNTZ
+.Op Fl rCNTZ
 .Op Fl t Ar target-pane
 .Ar match-string
 .Xc
 .D1 (alias: Ic findw )
-Search for the
+Search for a
 .Xr fnmatch 3
-pattern
+pattern or, with
+.Fl r ,
+regular expression
 .Ar match-string
 in window names, titles, and visible content (but not history).
 The flags control matching behavior:
