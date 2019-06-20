@@ -741,7 +741,7 @@ options_scope_from_name(struct args *args, int window,
 	struct window_pane			*wp = fs->wp;
 	const char				*target = args_get(args, 't');
 	const struct options_table_entry	*oe;
-	int					 scope;
+	int					 scope = OPTIONS_TABLE_NONE;
 
 	if (*name == '@')
 		return (options_scope_from_flags(args, window, fs, oo, cause));
@@ -754,21 +754,23 @@ options_scope_from_name(struct args *args, int window,
 		xasprintf(cause, "unknown option: %s", name);
 		return (OPTIONS_TABLE_NONE);
 	}
-	scope = oe->scope;
-
-	switch (scope) {
+	switch (oe->scope) {
 	case OPTIONS_TABLE_SERVER:
 		*oo = global_options;
+		scope = OPTIONS_TABLE_SERVER;
 		break;
 	case OPTIONS_TABLE_SESSION:
-		if (args_has(args, 'g'))
+		if (args_has(args, 'g')) {
 			*oo = global_s_options;
-		else if (s == NULL && target != NULL)
+			scope = OPTIONS_TABLE_SESSION;
+		} else if (s == NULL && target != NULL)
 			xasprintf(cause, "no such session: %s", target);
 		else if (s == NULL)
 			xasprintf(cause, "no current session");
-		else
+		else {
 			*oo = s->options;
+			scope = OPTIONS_TABLE_SESSION;
+		}
 		break;
 	case OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE:
 		if (args_has(args, 'p')) {
@@ -776,21 +778,26 @@ options_scope_from_name(struct args *args, int window,
 				xasprintf(cause, "no such pane: %s", target);
 			else if (wp == NULL)
 				xasprintf(cause, "no current pane");
-			else
+			else {
 				*oo = wp->options;
+				scope = OPTIONS_TABLE_PANE;
+			}
 			break;
 		}
 		scope = OPTIONS_TABLE_WINDOW;
 		/* FALLTHROUGH */
 	case OPTIONS_TABLE_WINDOW:
-		if (args_has(args, 'g'))
+		if (args_has(args, 'g')) {
 			*oo = global_w_options;
-		else if (wl == NULL && target != NULL)
+			scope = OPTIONS_TABLE_WINDOW;
+		} else if (wl == NULL && target != NULL)
 			xasprintf(cause, "no such window: %s", target);
 		else if (wl == NULL)
 			xasprintf(cause, "no current window");
-		else
+		else {
 			*oo = wl->window->options;
+			scope = OPTIONS_TABLE_WINDOW;
+		}
 		break;
 	}
 	return (scope);
