@@ -140,6 +140,8 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	TAILQ_REMOVE(&src_w->panes, src_wp, entry);
 
 	src_wp->window = dst_w;
+	options_set_parent(src_wp->options, dst_w->options);
+	src_wp->flags |= PANE_STYLECHANGED;
 	TAILQ_INSERT_AFTER(&dst_w->panes, dst_wp, src_wp, entry);
 	layout_assign_pane(lc, src_wp);
 

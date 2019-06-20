@@ -700,7 +700,7 @@ const struct options_table_entry options_table[] = {
 
 	{ .name = "remain-on-exit",
 	  .type = OPTIONS_TABLE_FLAG,
-	  .scope = OPTIONS_TABLE_WINDOW,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
 	  .default_num = 0
 	},
 
@@ -712,7 +712,7 @@ const struct options_table_entry options_table[] = {
 
 	{ .name = "window-active-style",
 	  .type = OPTIONS_TABLE_STYLE,
-	  .scope = OPTIONS_TABLE_WINDOW,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
 	  .default_str = "default"
 	},
 
@@ -725,7 +725,7 @@ const struct options_table_entry options_table[] = {
 
 	{ .name = "window-style",
 	  .type = OPTIONS_TABLE_STYLE,
-	  .scope = OPTIONS_TABLE_WINDOW,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
 	  .default_str = "default"
 	},
 

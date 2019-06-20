@@ -43,10 +43,10 @@ const struct cmd_entry cmd_set_option_entry = {
 	.name = "set-option",
 	.alias = "set",
 
-	.args = { "aFgoqst:uw", 1, 2 },
-	.usage = "[-aFgosquw] [-t target-window] option [value]",
+	.args = { "aFgopqst:uw", 1, 2 },
+	.usage = "[-aFgopqsuw] " CMD_TARGET_PANE_USAGE " option [value]",
 
-	.target = { 't', CMD_FIND_WINDOW, CMD_FIND_CANFAIL },
+	.target = { 't', CMD_FIND_PANE, CMD_FIND_CANFAIL },
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_set_option_exec
@@ -88,11 +88,12 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 	struct session			*s = fs->s;
 	struct winlink			*wl = fs->wl;
 	struct window			*w;
-	enum options_table_scope	 scope;
+	struct window_pane		*wp;
 	struct options			*oo;
 	struct options_entry		*parent, *o;
 	char				*name, *argument, *value = NULL, *cause;
 	int				 window, idx, already, error, ambiguous;
+	int				 scope;
 	struct style			*sy;
 
 	window = (self->entry == &cmd_set_window_option_entry);
@@ -249,8 +250,8 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 		alerts_reset_all();
 	if (strcmp(name, "window-style") == 0 ||
 	    strcmp(name, "window-active-style") == 0) {
-		RB_FOREACH(w, windows, &windows)
-			w->flags |= WINDOW_STYLECHANGED;
+		RB_FOREACH(wp, window_pane_tree, &all_window_panes)
+			wp->flags |= PANE_STYLECHANGED;
 	}
 	if (strcmp(name, "pane-border-status") == 0) {
 		RB_FOREACH(w, windows, &windows)

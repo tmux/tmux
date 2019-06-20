@@ -810,6 +810,7 @@ struct window_pane {
 	u_int		 active_point;
 
 	struct window	*window;
+	struct options	*options;
 
 	struct layout_cell *layout_cell;
 	struct layout_cell *saved_layout_cell;
@@ -836,6 +837,7 @@ struct window_pane {
 #define PANE_STATUSREADY 0x200
 #define PANE_STATUSDRAWN 0x400
 #define PANE_EMPTY 0x800
+#define PANE_STYLECHANGED 0x1000
 
 	int		 argc;
 	char	       **argv;
@@ -854,7 +856,8 @@ struct window_pane {
 
 	struct input_ctx *ictx;
 
-	struct style	 style;
+	struct style	 cached_style;
+	struct style	 cached_active_style;
 	int		*palette;
 
 	int		 pipe_fd;
@@ -914,16 +917,12 @@ struct window {
 #define WINDOW_ACTIVITY 0x2
 #define WINDOW_SILENCE 0x4
 #define WINDOW_ZOOMED 0x8
-#define WINDOW_STYLECHANGED 0x10
 #define WINDOW_ALERTFLAGS (WINDOW_BELL|WINDOW_ACTIVITY|WINDOW_SILENCE)
 
 	int		 alerts_queued;
 	TAILQ_ENTRY(window) alerts_entry;
 
 	struct options	*options;
-
-	struct style	 style;
-	struct style	 active_style;
 
 	u_int		 references;
 	TAILQ_HEAD(, winlink) winlinks;
@@ -1605,12 +1604,11 @@ enum options_table_type {
 	OPTIONS_TABLE_COMMAND
 };
 
-enum options_table_scope {
-	OPTIONS_TABLE_NONE,
-	OPTIONS_TABLE_SERVER,
-	OPTIONS_TABLE_SESSION,
-	OPTIONS_TABLE_WINDOW
-};
+#define OPTIONS_TABLE_NONE 0
+#define OPTIONS_TABLE_SERVER 0x1
+#define OPTIONS_TABLE_SESSION 0x2
+#define OPTIONS_TABLE_WINDOW 0x4
+#define OPTIONS_TABLE_PANE 0x8
 
 #define OPTIONS_TABLE_IS_ARRAY 0x1
 #define OPTIONS_TABLE_IS_HOOK 0x2
@@ -1618,7 +1616,7 @@ enum options_table_scope {
 struct options_table_entry {
 	const char		 *name;
 	enum options_table_type	  type;
-	enum options_table_scope  scope;
+	int			  scope;
 	int                       flags;
 
 	u_int			  minimum;
@@ -1780,6 +1778,7 @@ void	notify_pane(const char *, struct window_pane *);
 /* options.c */
 struct options	*options_create(struct options *);
 void		 options_free(struct options *);
+void		 options_set_parent(struct options *, struct options *);
 struct options_entry *options_first(struct options *);
 struct options_entry *options_next(struct options_entry *);
 struct options_entry *options_empty(struct options *,
@@ -1819,10 +1818,10 @@ struct options_entry *options_set_number(struct options *, const char *,
 		     long long);
 struct options_entry *options_set_style(struct options *, const char *, int,
 		     const char *);
-enum options_table_scope options_scope_from_name(struct args *, int,
+int		 options_scope_from_name(struct args *, int,
 		     const char *, struct cmd_find_state *, struct options **,
 		     char **);
-enum options_table_scope options_scope_from_flags(struct args *, int,
+int		 options_scope_from_flags(struct args *, int,
 		     struct cmd_find_state *, struct options **, char **);
 
 /* options-table.c */

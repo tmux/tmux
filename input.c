@@ -2347,12 +2347,14 @@ input_osc_10(struct input_ctx *ictx, const char *p)
 {
 	struct window_pane	*wp = ictx->wp;
 	u_int			 r, g, b;
+	char			 tmp[16];
 
 	if (sscanf(p, "rgb:%2x/%2x/%2x", &r, &g, &b) != 3)
 	    goto bad;
-
-	wp->style.gc.fg = colour_join_rgb(r, g, b);
-	wp->flags |= PANE_REDRAW;
+	xsnprintf(tmp, sizeof tmp, "fg=#%02x%02x%02x", r, g, b);
+	options_set_style(wp->options, "window-style", 1, tmp);
+	options_set_style(wp->options, "window-active-style", 1, tmp);
+	wp->flags |= (PANE_REDRAW|PANE_STYLECHANGED);
 
 	return;
 
@@ -2366,12 +2368,14 @@ input_osc_11(struct input_ctx *ictx, const char *p)
 {
 	struct window_pane	*wp = ictx->wp;
 	u_int			 r, g, b;
+	char			 tmp[16];
 
 	if (sscanf(p, "rgb:%2x/%2x/%2x", &r, &g, &b) != 3)
 	    goto bad;
-
-	wp->style.gc.bg = colour_join_rgb(r, g, b);
-	wp->flags |= PANE_REDRAW;
+	xsnprintf(tmp, sizeof tmp, "bg=#%02x%02x%02x", r, g, b);
+	options_set_style(wp->options, "window-style", 1, tmp);
+	options_set_style(wp->options, "window-active-style", 1, tmp);
+	wp->flags |= (PANE_REDRAW|PANE_STYLECHANGED);
 
 	return;
 
