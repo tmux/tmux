@@ -726,12 +726,62 @@ options_set_style(struct options *oo, const char *name, int append,
 }
 
 enum options_table_scope
+options_scope_from_name(struct args *args, int window,
+    const char *name, struct cmd_find_state *fs, struct options **oo,
+    char **cause)
+{
+	struct session			*s = fs->s;
+	struct winlink			*wl = fs->wl;
+	const char			*target = args_get(args, 't');
+	enum options_table_scope	 scope;
+
+	if (*name == '@')
+		return (options_scope_from_flags(args, window, fs, oo, cause));
+
+	if (options_get_only(global_options, name) != NULL)
+		scope = OPTIONS_TABLE_SERVER;
+	else if (options_get_only(global_s_options, name) != NULL)
+		scope = OPTIONS_TABLE_SESSION;
+	else if (options_get_only(global_w_options, name) != NULL)
+		scope = OPTIONS_TABLE_WINDOW;
+	else {
+		xasprintf(cause, "unknown option: %s", name);
+		return (OPTIONS_TABLE_NONE);
+	}
+
+	if (scope == OPTIONS_TABLE_SERVER)
+		*oo = global_options;
+	else if (scope == OPTIONS_TABLE_SESSION) {
+		if (args_has(args, 'g'))
+			*oo = global_s_options;
+		else if (s == NULL) {
+			if (target != NULL)
+				xasprintf(cause, "no such session: %s", target);
+			else
+				xasprintf(cause, "no current session");
+		} else
+			*oo = s->options;
+	} else if (scope == OPTIONS_TABLE_WINDOW) {
+		if (args_has(args, 'g'))
+			*oo = global_w_options;
+		else if (wl == NULL) {
+			if (target != NULL)
+				xasprintf(cause, "no such window: %s", target);
+			else
+				xasprintf(cause, "no current window");
+		} else
+			*oo = wl->window->options;
+	}
+	return (scope);
+}
+
+enum options_table_scope
 options_scope_from_flags(struct args *args, int window,
     struct cmd_find_state *fs, struct options **oo, char **cause)
 {
 	struct session	*s = fs->s;
 	struct winlink	*wl = fs->wl;
-	const char	*target= args_get(args, 't');
+	const char	*target = args_get(args, 't');
 
 	if (args_has(args, 's')) {
 		*oo = global_options;

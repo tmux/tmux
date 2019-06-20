@@ -92,16 +92,19 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 	struct options			*oo;
 	struct options_entry		*parent, *o;
 	char				*name, *argument, *value = NULL, *cause;
-	const char			*target;
 	int				 window, idx, already, error, ambiguous;
 	struct style			*sy;
+
+	window = (self->entry == &cmd_set_window_option_entry);
 
 	/* Expand argument. */
 	c = cmd_find_client(item, NULL, 1);
 	argument = format_single(item, args->argv[0], c, s, wl, NULL);
 
+	/* If set-hook -R, fire the hook straight away. */
 	if (self->entry == &cmd_set_hook_entry && args_has(args, 'R')) {
 		notify_hook(item, argument);
+		free(argument);
 		return (CMD_RETURN_NORMAL);
 	}
 
@@ -123,60 +126,14 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 	else
 		value = xstrdup(args->argv[1]);
 
-	/*
-	 * Figure out the scope: for user options it comes from the arguments,
-	 * otherwise from the option name.
-	 */
-	if (*name == '@') {
-		window = (self->entry == &cmd_set_window_option_entry);
-		scope = options_scope_from_flags(args, window, fs, &oo, &cause);
-	} else {
-		if (options_get_only(global_options, name) != NULL)
-			scope = OPTIONS_TABLE_SERVER;
-		else if (options_get_only(global_s_options, name) != NULL)
-			scope = OPTIONS_TABLE_SESSION;
-		else if (options_get_only(global_w_options, name) != NULL)
-			scope = OPTIONS_TABLE_WINDOW;
-		else {
-			scope = OPTIONS_TABLE_NONE;
-			xasprintf(&cause, "unknown option: %s", argument);
-		}
-	}
+	/* Get the scope and table for the option .*/
+	scope = options_scope_from_name(args, window, name, fs, &oo, &cause);
 	if (scope == OPTIONS_TABLE_NONE) {
 		if (args_has(args, 'q'))
 			goto out;
 		cmdq_error(item, "%s", cause);
 		free(cause);
 		goto fail;
-	}
-
-	/* Which table should this option go into? */
-	if (scope == OPTIONS_TABLE_SERVER)
-		oo = global_options;
-	else if (scope == OPTIONS_TABLE_SESSION) {
-		if (args_has(self->args, 'g'))
-			oo = global_s_options;
-		else if (s == NULL) {
-			target = args_get(args, 't');
-			if (target != NULL)
-				cmdq_error(item, "no such session: %s", target);
-			else
-				cmdq_error(item, "no current session");
-			goto fail;
-		} else
-			oo = s->options;
-	} else if (scope == OPTIONS_TABLE_WINDOW) {
-		if (args_has(self->args, 'g'))
-			oo = global_w_options;
-		else if (wl == NULL) {
-			target = args_get(args, 't');
-			if (target != NULL)
-				cmdq_error(item, "no such window: %s", target);
-			else
-				cmdq_error(item, "no current window");
-			goto fail;
-		} else
-			oo = wl->window->options;
 	}
 	o = options_get_only(oo, name);
 	parent = options_get(oo, name);

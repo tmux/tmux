@@ -1819,6 +1819,9 @@ struct options_entry *options_set_number(struct options *, const char *,
 		     long long);
 struct options_entry *options_set_style(struct options *, const char *, int,
 		     const char *);
+enum options_table_scope options_scope_from_name(struct args *, int,
+		     const char *, struct cmd_find_state *, struct options **,
+		     char **);
 enum options_table_scope options_scope_from_flags(struct args *, int,
 		     struct cmd_find_state *, struct options **, char **);
 
