@@ -461,7 +461,7 @@ Will execute
 .Ic if-shell ,
 the shell command
 .Xr true 1 ,
-.Ic new-window
+.Ic split-window
 and
 .Ic kill-session
 in that order.
@@ -475,7 +475,7 @@ commands and their arguments.
 This section describes the syntax of commands parsed by
 .Nm ,
 for example in a configuration file or at the command prompt.
-Note the when commands are entered into the shell, they are parsed by the shell
+Note that when commands are entered into the shell, they are parsed by the shell
 - see for example
 .Xr ksh 1
 or
@@ -2338,9 +2338,7 @@ spreads the current pane and any panes next to it out evenly.
 Make pane
 .Ar target-pane
 the active pane in window
-.Ar target-window ,
-or set its style (with
-.Fl P ) .
+.Ar target-window.
 If one of
 .Fl D ,
 .Fl L ,
@@ -4070,7 +4068,7 @@ will expand the format twice, for example
 .Ql #{E:status-left}
 is the result of expanding the content of the
 .Ic status-left
-option rather than the content itself.
+option rather than the option itself.
 .Ql T:
 is like
 .Ql E:
@@ -4106,7 +4104,7 @@ would change
 into
 .Ql bxBxbx .
 .Pp
-In addition, the first line of a shell command's output may be inserted using
+In addition, the last line of a shell command's output may be inserted using
 .Ql #() .
 For example,
 .Ql #(uptime)
@@ -4124,6 +4122,14 @@ Commands are executed with the
 global environment set (see the
 .Sx GLOBAL AND SESSION ENVIRONMENT
 section).
+.Pp
+An
+.Ql l
+specifies that a string should be interpreted literally and not expanded.
+For example
+.Ql #{l:#{?pane_in_mode,yes,no}}
+will be replaced by
+.Ql #{?pane_in_mode,yes,no} .
 .Pp
 The following variables are available, where appropriate:
 .Bl -column "XXXXXXXXXXXXXXXXXXX" "XXXXX"
