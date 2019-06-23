@@ -784,7 +784,6 @@ options_scope_from_name(struct args *args, int window,
 			}
 			break;
 		}
-		scope = OPTIONS_TABLE_WINDOW;
 		/* FALLTHROUGH */
 	case OPTIONS_TABLE_WINDOW:
 		if (args_has(args, 'g')) {
