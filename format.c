@@ -1644,13 +1644,15 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 			goto fail;
 	} else if (search != NULL) {
 		/* Search in pane. */
+		new = format_expand(ft, copy);
 		if (wp == NULL) {
-			format_log(ft, "search '%s' but no pane", copy);
+			format_log(ft, "search '%s' but no pane", new);
 			value = xstrdup("0");
 		} else {
-			format_log(ft, "search '%s' pane %%%u", copy,  wp->id);
-			value = format_search(fm, wp, copy);
+			format_log(ft, "search '%s' pane %%%u", new,  wp->id);
+			value = format_search(fm, wp, new);
 		}
+		free(new);
 	} else if (cmp != NULL) {
 		/* Comparison of left and right. */
 		if (format_choose(ft, copy, &left, &right, 1) != 0) {
@@ -1780,11 +1782,14 @@ done:
 
 	/* Perform substitution if any. */
 	if (sub != NULL) {
-		new = format_sub(sub, value, sub->argv[0], sub->argv[1]);
-		format_log(ft, "substituted '%s' to '%s': %s", sub->argv[0],
-		    sub->argv[1], new);
+		left = format_expand(ft, sub->argv[0]);
+		right = format_expand(ft, sub->argv[1]);
+		new = format_sub(sub, value, left, right);
+		format_log(ft, "substitute '%s' to '%s': %s", left, right, new);
 		free(value);
 		value = new;
+		free(right);
+		free(left);
 	}
 
 	/* Truncate the value if needed. */
