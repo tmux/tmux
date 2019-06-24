@@ -19,6 +19,7 @@
 #include <sys/types.h>
 #include <sys/ioctl.h>
 
+#include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <fnmatch.h>
@@ -1222,6 +1223,7 @@ window_pane_search(struct window_pane *wp, const char *term, int regex,
 	char		*new = NULL, *line;
 	u_int		 i;
 	int		 flags = 0, found;
+	size_t		 n;
 
 	if (!regex) {
 		if (ignore)
@@ -1236,6 +1238,12 @@ window_pane_search(struct window_pane *wp, const char *term, int regex,
 
 	for (i = 0; i < screen_size_y(s); i++) {
 		line = grid_view_string_cells(s->grid, 0, i, screen_size_x(s));
+		for (n = strlen(line); n > 0; n--) {
+			if (!isspace((u_char)line[n - 1]))
+				break;
+			line[n - 1] = '\0';
+		}
+		log_debug("%s: %s", __func__, line);
 		if (!regex)
 			found = (fnmatch(new, line, 0) == 0);
 		else
