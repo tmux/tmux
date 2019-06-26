@@ -272,7 +272,7 @@ layout_fix_panes(struct window *w)
 		wp->xoff = lc->xoff;
 		wp->yoff = lc->yoff;
 
-		if (shift && status == 1)
+		if (shift && status == PANE_STATUS_TOP)
 			wp->yoff += 1;
 
 		window_pane_resize(wp, lc->sx, lc->sy - shift);
@@ -1021,7 +1021,7 @@ layout_spread_cell(struct window *w, struct layout_cell *parent)
 
 	number = 0;
 	TAILQ_FOREACH (lc, &parent->cells, entry)
-	    number++;
+		number++;
 	if (number <= 1)
 		return (0);
 	status = options_get_number(w->options, "pane-border-status");
