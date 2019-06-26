@@ -1220,9 +1220,13 @@ server_client_handle_key(struct client *c, struct key_event *event)
 	 * blocked so they need to be processed immediately rather than queued.
 	 */
 	if ((~c->flags & CLIENT_READONLY) && c->overlay_key != NULL) {
-		if (c->overlay_key(c, event) != 0)
+		switch (c->overlay_key(c, event)) {
+		case 0:
+			return (0);
+		case 1:
 			server_client_clear_overlay(c);
-		return (0);
+			return (0);
+		}
 	}
 
 	/*
