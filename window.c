@@ -1369,7 +1369,7 @@ window_pane_find_down(struct window_pane *wp)
 		if (edge >= w->sy - 1)
 			edge = 0;
 	} else {
-		if (edge >= wp->sy)
+		if (edge >= w->sy)
 			edge = 0;
 	}
 
