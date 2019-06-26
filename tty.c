@@ -1060,17 +1060,17 @@ tty_clamp_area(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
 		*y = ctx->yoff + py - ctx->oy;
 		*ry = ny;
 	} else if (yoff < ctx->oy && yoff + ny > ctx->oy + ctx->sy) {
-		/* Both left and right not visible. */
+		/* Both top and bottom not visible. */
 		*j = ctx->oy;
 		*y = 0;
 		*ry = ctx->sy;
 	} else if (yoff < ctx->oy) {
-		/* Left not visible. */
+		/* Top not visible. */
 		*j = ctx->oy - (ctx->yoff + py);
 		*y = 0;
 		*ry = ny - *j;
 	} else {
-		/* Right not visible. */
+		/* Bottom not visible. */
 		*j = 0;
 		*y = (ctx->yoff + py) - ctx->oy;
 		*ry = ctx->sy - *y;

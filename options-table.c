@@ -688,7 +688,7 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_WINDOW,
 	  .choices = options_table_pane_status_list,
-	  .default_num = 0
+	  .default_num = PANE_STATUS_OFF
 	},
 
 	{ .name = "pane-border-style",

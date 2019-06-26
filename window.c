@@ -410,6 +410,7 @@ window_set_name(struct window *w, const char *new_name)
 void
 window_resize(struct window *w, u_int sx, u_int sy)
 {
+	log_debug("%s: @%u resize %ux%u", __func__, w->id, sx, sy);
 	w->sx = sx;
 	w->sy = sy;
 }
@@ -924,6 +925,7 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 	wp->sx = sx;
 	wp->sy = sy;
 
+	log_debug("%s: %%%u resize %ux%u", __func__, wp->id, sx, sy);
 	screen_resize(&wp->base, sx, sy, wp->saved_grid == NULL);
 
 	wme = TAILQ_FIRST(&wp->modes);
@@ -1289,25 +1291,35 @@ window_pane_choose_best(struct window_pane **list, u_int size)
 struct window_pane *
 window_pane_find_up(struct window_pane *wp)
 {
+	struct window		*w;
 	struct window_pane	*next, *best, **list;
 	u_int			 edge, left, right, end, size;
 	int			 status, found;
 
 	if (wp == NULL)
 		return (NULL);
-	status = options_get_number(wp->window->options, "pane-border-status");
+	w = wp->window;
+	status = options_get_number(w->options, "pane-border-status");
 
 	list = NULL;
 	size = 0;
 
 	edge = wp->yoff;
-	if (edge == (status == 1 ? 1 : 0))
-		edge = wp->window->sy + 1 - (status == 2 ? 1 : 0);
+	if (status == PANE_STATUS_TOP) {
+		if (edge == 1)
+			edge = w->sy + 1;
+	} else if (status == PANE_STATUS_BOTTOM) {
+		if (edge == 0)
+			edge = w->sy;
+	} else {
+		if (edge == 0)
+			edge = w->sy + 1;
+	}
 
 	left = wp->xoff;
 	right = wp->xoff + wp->sx;
 
-	TAILQ_FOREACH(next, &wp->window->panes, entry) {
+	TAILQ_FOREACH(next, &w->panes, entry) {
 		if (next == wp)
 			continue;
 		if (next->yoff + next->sy + 1 != edge)
@@ -1336,25 +1348,35 @@ window_pane_find_up(struct window_pane *wp)
 struct window_pane *
 window_pane_find_down(struct window_pane *wp)
 {
+	struct window		*w;
 	struct window_pane	*next, *best, **list;
 	u_int			 edge, left, right, end, size;
 	int			 status, found;
 
 	if (wp == NULL)
 		return (NULL);
-	status = options_get_number(wp->window->options, "pane-border-status");
+	w = wp->window;
+	status = options_get_number(w->options, "pane-border-status");
 
 	list = NULL;
 	size = 0;
 
 	edge = wp->yoff + wp->sy + 1;
-	if (edge >= wp->window->sy - (status == 2 ? 1 : 0))
-		edge = (status == 1 ? 1 : 0);
+	if (status == PANE_STATUS_TOP) {
+		if (edge >= w->sy)
+			edge = 1;
+	} else if (status == PANE_STATUS_BOTTOM) {
+		if (edge >= w->sy - 1)
+			edge = 0;
+	} else {
+		if (edge >= wp->sy)
+			edge = 0;
+	}
 
 	left = wp->xoff;
 	right = wp->xoff + wp->sx;
 
-	TAILQ_FOREACH(next, &wp->window->panes, entry) {
+	TAILQ_FOREACH(next, &w->panes, entry) {
 		if (next == wp)
 			continue;
 		if (next->yoff != edge)
@@ -1383,24 +1405,26 @@ window_pane_find_down(struct window_pane *wp)
 struct window_pane *
 window_pane_find_left(struct window_pane *wp)
 {
+	struct window		*w;
 	struct window_pane	*next, *best, **list;
 	u_int			 edge, top, bottom, end, size;
 	int			 found;
 
 	if (wp == NULL)
 		return (NULL);
+	w = wp->window;
 
 	list = NULL;
 	size = 0;
 
 	edge = wp->xoff;
 	if (edge == 0)
-		edge = wp->window->sx + 1;
+		edge = w->sx + 1;
 
 	top = wp->yoff;
 	bottom = wp->yoff + wp->sy;
 
-	TAILQ_FOREACH(next, &wp->window->panes, entry) {
+	TAILQ_FOREACH(next, &w->panes, entry) {
 		if (next == wp)
 			continue;
 		if (next->xoff + next->sx + 1 != edge)
@@ -1429,24 +1453,26 @@ window_pane_find_left(struct window_pane *wp)
 struct window_pane *
 window_pane_find_right(struct window_pane *wp)
 {
+	struct window		*w;
 	struct window_pane	*next, *best, **list;
 	u_int			 edge, top, bottom, end, size;
 	int			 found;
 
 	if (wp == NULL)
 		return (NULL);
+	w = wp->window;
 
 	list = NULL;
 	size = 0;
 
 	edge = wp->xoff + wp->sx + 1;
-	if (edge >= wp->window->sx)
+	if (edge >= w->sx)
 		edge = 0;
 
 	top = wp->yoff;
 	bottom = wp->yoff + wp->sy;
 
-	TAILQ_FOREACH(next, &wp->window->panes, entry) {
+	TAILQ_FOREACH(next, &w->panes, entry) {
 		if (next == wp)
 			continue;
 		if (next->xoff != edge)
