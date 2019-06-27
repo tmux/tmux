@@ -427,6 +427,7 @@ enum tty_code_code {
 	TTYC_SETAF,
 	TTYC_SETRGBB,
 	TTYC_SETRGBF,
+	TTYC_SETULC,
 	TTYC_SGR0,
 	TTYC_SITM,
 	TTYC_SMACS,
@@ -599,6 +600,7 @@ struct grid_cell {
 	u_short			attr;
 	int			fg;
 	int			bg;
+	int			us;
 	struct utf8_data	data;
 };
 struct grid_cell_entry {
@@ -2194,7 +2196,8 @@ int	 colour_join_rgb(u_char, u_char, u_char);
 void	 colour_split_rgb(int, u_char *, u_char *, u_char *);
 const char *colour_tostring(int);
 int	 colour_fromstring(const char *s);
-u_char	 colour_256to16(u_char);
+int	 colour_256toRGB(int);
+int	 colour_256to16(int);
 
 /* attributes.c */
 const char *attributes_tostring(int);

@@ -5044,11 +5044,33 @@ $ printf '\e033]12;red\e033\e\e'
 .Ed
 .It Em \&Smol
 Enable the overline attribute.
+The capability is usually SGR 53 and can be added to
+.Ic terminal-overrides
+as:
+.Bd -literal -offset indent
+Smol=\eE[53m
+.Ed
 .It Em \&Smulx
-Set a styled underline.
-The single parameter is one of: 0 for no underline, 1 for normal
-underline, 2 for double underline, 3 for curly underline, 4 for dotted
-underline and 5 for dashed underline.
+Set a styled underscore.
+The single parameter is one of: 0 for no underscore, 1 for normal
+underscore, 2 for double underscore, 3 for curly underscore, 4 for dotted
+underscore and 5 for dashed underscore.
+The capability can typically be added to
+.Ic terminal-overrides
+as:
+.Bd -literal -offset indent
+Smulx=\eE[4::%p1%dm
+.Ed
+.It Em \&Setulc
+Set the underscore colour.
+The argument is (red * 65536) + (green * 256) + blue where each is between 0
+and 255.
+The capability can typically be added to
+.Ic terminal-overrides
+as:
+.Bd -literal -offset indent
+Setulc=\eE[58::2::%p1%{65536}%/%d::%p1%{256}%/%{255}%&%d::%p1%{255}%&%d%;m
+.Ed
 .It Em \&Ss , Se
 Set or reset the cursor style.
 If set, a sequence such as this may be used
