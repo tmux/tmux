@@ -1829,6 +1829,8 @@ input_csi_dispatch_sgr_256_do(struct input_ctx *ictx, int fgbg, int c)
 			gc->fg = c | COLOUR_FLAG_256;
 		else if (fgbg == 48)
 			gc->bg = c | COLOUR_FLAG_256;
+		else if (fgbg == 58)
+			gc->us = c | COLOUR_FLAG_256;
 	}
 	return (1);
 }
@@ -1862,6 +1864,8 @@ input_csi_dispatch_sgr_rgb_do(struct input_ctx *ictx, int fgbg, int r, int g,
 		gc->fg = colour_join_rgb(r, g, b);
 	else if (fgbg == 48)
 		gc->bg = colour_join_rgb(r, g, b);
+	else if (fgbg == 58)
+		gc->us = colour_join_rgb(r, g, b);
 	return (1);
 }
 
@@ -1938,7 +1942,7 @@ input_csi_dispatch_sgr_colon(struct input_ctx *ictx, u_int i)
 		}
 		return;
 	}
-	if (n < 2 || (p[0] != 38 && p[0] != 48))
+	if (n < 2 || (p[0] != 38 && p[0] != 48 && p[0] != 58))
 		return;
 	switch (p[1]) {
 	case 2:
@@ -1983,7 +1987,7 @@ input_csi_dispatch_sgr(struct input_ctx *ictx)
 		if (n == -1)
 			continue;
 
-		if (n == 38 || n == 48) {
+		if (n == 38 || n == 48 || n == 58) {
 			i++;
 			switch (input_get(ictx, i, 0, -1)) {
 			case 2:
@@ -2077,6 +2081,9 @@ input_csi_dispatch_sgr(struct input_ctx *ictx)
 			break;
 		case 55:
 			gc->attr &= ~GRID_ATTR_OVERLINE;
+			break;
+		case 59:
+			gc->us = 0;
 			break;
 		case 90:
 		case 91:

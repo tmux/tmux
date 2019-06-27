@@ -37,12 +37,12 @@
 
 /* Default grid cell data. */
 const struct grid_cell grid_default_cell = {
-	0, 0, 8, 8, { { ' ' }, 0, 1, 1 }
+	0, 0, 8, 8, 0, { { ' ' }, 0, 1, 1 }
 };
 
 /* Cleared grid cell data. */
 const struct grid_cell grid_cleared_cell = {
-	GRID_FLAG_CLEARED, 0, 8, 8, { { ' ' }, 0, 1, 1 }
+	GRID_FLAG_CLEARED, 0, 8, 8, 0, { { ' ' }, 0, 1, 1 }
 };
 static const struct grid_cell_entry grid_cleared_entry = {
 	GRID_FLAG_CLEARED, { .data = { 0, 8, 8, ' ' } }
@@ -81,6 +81,8 @@ grid_need_extended_cell(const struct grid_cell_entry *gce,
 	if (gc->data.size != 1 || gc->data.width != 1)
 		return (1);
 	if ((gc->fg & COLOUR_FLAG_RGB) || (gc->bg & COLOUR_FLAG_RGB))
+		return (1);
+	if (gc->us != 0) /* only supports 256 or RGB */
 		return (1);
 	return (0);
 }

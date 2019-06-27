@@ -49,8 +49,11 @@ static void	tty_check_fg(struct tty *, struct window_pane *,
 		    struct grid_cell *);
 static void	tty_check_bg(struct tty *, struct window_pane *,
 		    struct grid_cell *);
+static void	tty_check_us(struct tty *, struct window_pane *,
+		    struct grid_cell *);
 static void	tty_colours_fg(struct tty *, const struct grid_cell *);
 static void	tty_colours_bg(struct tty *, const struct grid_cell *);
+static void	tty_colours_us(struct tty *, const struct grid_cell *);
 
 static void	tty_region_pane(struct tty *, const struct tty_ctx *, u_int,
 		    u_int);
@@ -1287,6 +1290,7 @@ tty_draw_line(struct tty *tty, struct window_pane *wp, struct screen *s,
 		    gcp->attr != last.attr ||
 		    gcp->fg != last.fg ||
 		    gcp->bg != last.bg ||
+		    gcp->us != last.us ||
 		    ux + width + gcp->data.width > nx ||
 		    (sizeof buf) - len < gcp->data.size)) {
 			tty_attributes(tty, &last, wp);
@@ -2135,7 +2139,8 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
 	    ~(wp->flags & PANE_STYLECHANGED) &&
 	    gc->attr == tty->last_cell.attr &&
 	    gc->fg == tty->last_cell.fg &&
-	    gc->bg == tty->last_cell.bg)
+	    gc->bg == tty->last_cell.bg &&
+	    gc->us == tty->last_cell.us)
 		return;
 	tty->last_wp = (wp != NULL ? (int)wp->id : -1);
 	memcpy(&tty->last_cell, gc, sizeof tty->last_cell);
@@ -2163,14 +2168,18 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
 	/* Fix up the colours if necessary. */
 	tty_check_fg(tty, wp, &gc2);
 	tty_check_bg(tty, wp, &gc2);
+	tty_check_us(tty, wp, &gc2);
 
-	/* If any bits are being cleared, reset everything. */
-	if (tc->attr & ~gc2.attr)
+	/*
+	 * If any bits are being cleared or the underline colour is now default,
+	 * reset everything.
+	 */
+	if ((tc->attr & ~gc2.attr) || (tc->us != gc2.us && gc2.us == 0))
 		tty_reset(tty);
 
 	/*
 	 * Set the colours. This may call tty_reset() (so it comes next) and
-	 * may add to (NOT remove) the desired attributes by changing new_attr.
+	 * may add to (NOT remove) the desired attributes.
 	 */
 	tty_colours(tty, &gc2);
 
@@ -2223,7 +2232,7 @@ tty_colours(struct tty *tty, const struct grid_cell *gc)
 	int			 have_ax;
 
 	/* No changes? Nothing is necessary. */
-	if (gc->fg == tc->fg && gc->bg == tc->bg)
+	if (gc->fg == tc->fg && gc->bg == tc->bg && gc->us == tc->us)
 		return;
 
 	/*
@@ -2271,6 +2280,10 @@ tty_colours(struct tty *tty, const struct grid_cell *gc)
 	 */
 	if (!COLOUR_DEFAULT(gc->bg) && gc->bg != tc->bg)
 		tty_colours_bg(tty, gc);
+
+	/* Set the underscore color. */
+	if (gc->us != tc->us)
+		tty_colours_us(tty, gc);
 }
 
 static void
@@ -2386,6 +2399,22 @@ tty_check_bg(struct tty *tty, struct window_pane *wp, struct grid_cell *gc)
 }
 
 static void
+tty_check_us(__unused struct tty *tty, struct window_pane *wp, struct grid_cell *gc)
+{
+	int	c;
+
+	/* Perform substitution if this pane has a palette. */
+	if (~gc->flags & GRID_FLAG_NOPALETTE) {
+		if ((c = window_pane_get_palette(wp, gc->us)) != -1)
+			gc->us = c;
+	}
+
+	/* Underscore colour is set as RGB so convert a 256 colour to RGB. */
+	if (gc->us & COLOUR_FLAG_256)
+		gc->us = colour_256toRGB (gc->us);
+}
+
+static void
 tty_colours_fg(struct tty *tty, const struct grid_cell *gc)
 {
 	struct grid_cell	*tc = &tty->cell;
@@ -2447,6 +2476,31 @@ tty_colours_bg(struct tty *tty, const struct grid_cell *gc)
 save_bg:
 	/* Save the new values in the terminal current cell. */
 	tc->bg = gc->bg;
+}
+
+static void
+tty_colours_us(struct tty *tty, const struct grid_cell *gc)
+{
+	struct grid_cell	*tc = &tty->cell;
+	u_int			 c;
+	u_char			 r, g, b;
+
+	/* Must be an RGB colour - this should never happen. */
+	if (~gc->us & COLOUR_FLAG_RGB)
+		return;
+
+	/*
+	 * Setulc follows the ncurses(3) one argument "direct colour"
+	 * capability format. Calculate the colour value.
+	 */
+	colour_split_rgb(gc->us, &r, &g, &b);
+	c = (65536 * r) + (256 * g) + b;
+
+	/* Write the colour. */
+	tty_putcode1(tty, TTYC_SETULC, c);
+
+	/* Save the new values in the terminal current cell. */
+	tc->us = gc->us;
 }
 
 static int
