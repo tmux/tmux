@@ -118,7 +118,7 @@ job_run(const char *cmd, struct session *s, const char *cwd,
 		close(out[0]);
 
 		nullfd = open(_PATH_DEVNULL, O_RDWR, 0);
-		if (nullfd < 0)
+		if (nullfd == -1)
 			fatal("open failed");
 		if (dup2(nullfd, STDERR_FILENO) == -1)
 			fatal("dup2 failed");
