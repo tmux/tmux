@@ -436,7 +436,7 @@ client_stdin_callback(__unused int fd, __unused short events,
 	struct msg_stdin_data	data;
 
 	data.size = read(STDIN_FILENO, data.data, sizeof data.data);
-	if (data.size < 0 && (errno == EINTR || errno == EAGAIN))
+	if (data.size == -1 && (errno == EINTR || errno == EAGAIN))
 		return;
 
 	proc_send(client_peer, MSG_STDIN, -1, &data, sizeof data);
