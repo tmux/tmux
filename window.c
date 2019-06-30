@@ -338,7 +338,7 @@ window_create(u_int sx, u_int sy)
 	return (w);
 }
 
-void
+static void
 window_destroy(struct window *w)
 {
 	log_debug("window @%u destroyed (%d references)", w->id, w->references);

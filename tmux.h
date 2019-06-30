@@ -2362,7 +2362,6 @@ struct window	*window_find_by_id_str(const char *);
 struct window	*window_find_by_id(u_int);
 void		 window_update_activity(struct window *);
 struct window	*window_create(u_int, u_int);
-void		 window_destroy(struct window *);
 void		 window_pane_set_event(struct window_pane *);
 struct window_pane *window_get_active_at(struct window *, u_int, u_int);
 struct window_pane *window_find_string(struct window *, const char *);
