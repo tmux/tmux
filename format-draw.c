@@ -511,8 +511,9 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 	u_int			 ocx = os->cx, ocy = os->cy, i, width[TOTAL];
 	u_int			 map[] = { LEFT, LEFT, CENTRE, RIGHT };
 	int			 focus_start = -1, focus_end = -1;
-	int			 list_state = -1;
+	int			 list_state = -1, fill = -1;
 	enum style_align	 list_align = STYLE_ALIGN_DEFAULT;
+	struct grid_cell	 gc;
 	struct style		 sy;
 	struct utf8_data	*ud = &sy.gc.data;
 	const char		*cp, *end;
@@ -589,6 +590,10 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 		log_debug("%s: style '%s' -> '%s'", __func__, tmp,
 		    style_tostring(&sy));
 		free(tmp);
+
+		/* If this style has a fill colour, store it for later. */
+		if (sy.fill != 8)
+			fill = sy.fill;
 
 		/* Check the list state. */
 		switch (sy.list) {
@@ -709,6 +714,14 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 	TAILQ_FOREACH(fr, &frs, entry) {
 		log_debug("%s: range %d|%u is %s %u-%u", __func__, fr->type,
 		    fr->argument, names[fr->index], fr->start, fr->end);
+	}
+
+	/* Clear the available area. */
+	if (fill != -1) {
+		memcpy(&gc, &grid_default_cell, sizeof gc);
+		gc.bg = fill;
+		for (i = 0; i < available; i++)
+			screen_write_putc(octx, &gc, ' ');
 	}
 
 	/*
