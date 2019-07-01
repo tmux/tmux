@@ -32,6 +32,7 @@
 static struct style style_default = {
 	{ 0, 0, 8, 8, 0, { { ' ' }, 0, 1, 1 } },
 
+	8,
 	STYLE_ALIGN_DEFAULT,
 	STYLE_LIST_OFF,
 
@@ -127,6 +128,10 @@ style_parse(struct style *sy, const struct grid_cell *base, const char *in)
 				sy->align = STYLE_ALIGN_RIGHT;
 			else
 				goto error;
+		} else if (end > 5 && strncasecmp(tmp, "fill=", 5) == 0) {
+			if ((value = colour_fromstring(tmp + 5)) == -1)
+				goto error;
+			sy->fill = value;
 		} else if (end > 3 && strncasecmp(tmp + 1, "g=", 2) == 0) {
 			if ((value = colour_fromstring(tmp + 3)) == -1)
 				goto error;
@@ -213,6 +218,11 @@ style_tostring(struct style *sy)
 		    tmp);
 		comma = ",";
 	}
+	if (sy->fill != 8) {
+		off += xsnprintf(s + off, sizeof s - off, "%sfill=%s", comma,
+		    colour_tostring(sy->fill));
+		comma = ",";
+	}
 	if (gc->fg != 8) {
 		off += xsnprintf(s + off, sizeof s - off, "%sfg=%s", comma,
 		    colour_tostring(gc->fg));
@@ -289,6 +299,8 @@ style_equal(struct style *sy1, struct style *sy2)
 	if (gc1->bg != gc2->bg)
 		return (0);
 	if ((gc1->attr & STYLE_ATTR_MASK) != (gc2->attr & STYLE_ATTR_MASK))
+		return (0);
+	if (sy1->fill != sy2->fill)
 		return (0);
 	if (sy1->align != sy2->align)
 		return (0);

@@ -682,6 +682,7 @@ TAILQ_HEAD(style_ranges, style_range);
 struct style {
 	struct grid_cell	gc;
 
+	int			fill;
 	enum style_align	align;
 	enum style_list		list;
 
