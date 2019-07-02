@@ -1026,16 +1026,6 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 		fatal("gettimeofday failed");
 	session_update_activity(s, &c->activity_time);
 
-	/* Handle status line. */
-	if (~c->flags & CLIENT_READONLY)
-		status_message_clear(c);
-	if (c->prompt_string != NULL) {
-		if (c->flags & CLIENT_READONLY)
-			goto out;
-		if (status_prompt_key(c, key) == 0)
-			goto out;
-	}
-
 	/* Check for mouse keys. */
 	m->valid = 0;
 	if (key == KEYC_MOUSE) {
@@ -1216,16 +1206,24 @@ server_client_handle_key(struct client *c, struct key_event *event)
 		return (0);
 
 	/*
-	 * Key presses in overlay mode are a special case. The queue might be
-	 * blocked so they need to be processed immediately rather than queued.
+	 * Key presses in overlay mode and the command prompt are a special
+	 * case. The queue might be blocked so they need to be processed
+	 * immediately rather than queued.
 	 */
-	if ((~c->flags & CLIENT_READONLY) && c->overlay_key != NULL) {
-		switch (c->overlay_key(c, event)) {
-		case 0:
-			return (0);
-		case 1:
-			server_client_clear_overlay(c);
-			return (0);
+	if (~c->flags & CLIENT_READONLY) {
+		status_message_clear(c);
+		if (c->prompt_string != NULL) {
+			if (status_prompt_key(c, event->key) == 0)
+				return (0);
+		}
+		if (c->overlay_key != NULL) {
+			switch (c->overlay_key(c, event)) {
+			case 0:
+				return (0);
+			case 1:
+				server_client_clear_overlay(c);
+				return (0);
+			}
 		}
 	}
 
