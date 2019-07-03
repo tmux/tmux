@@ -33,15 +33,16 @@ configure with `--enable-utempter` to enable this.
 To get and build the latest from version control:
 
 ~~~bash
+# Note that this requires at least a working C compiler, `make`, `autoconf`,
+# `automake`, `pkg-config` as well as `libevent` and `ncurses` libraries and
+# headers.
 git clone https://github.com/tmux/tmux.git
 cd tmux
 sh autogen.sh
 ./configure && make
 ~~~
 
-(Note that this requires at least a working C compiler, `make`, `autoconf`,
-`automake`, `pkg-config` as well as `libevent` and `ncurses` libraries and
-headers.)
+
 
 ## Contributing
 
