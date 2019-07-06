@@ -30,7 +30,7 @@
 
 /* Default style. */
 static struct style style_default = {
-	{ 0, 0, 8, 8, 0, { { ' ' }, 0, 1, 1 } },
+	{ { { ' ' }, 0, 1, 1 }, 0, 0, 8, 8, 0  },
 
 	8,
 	STYLE_ALIGN_DEFAULT,
