@@ -598,13 +598,13 @@ enum utf8_state {
 
 /* Grid cell data. */
 struct grid_cell {
-	u_char			flags;
+	struct utf8_data	data; /* 21 bytes */
 	u_short			attr;
+	u_char			flags;
 	int			fg;
 	int			bg;
 	int			us;
-	struct utf8_data	data;
-};
+} __packed;
 struct grid_cell_entry {
 	u_char			flags;
 	union {

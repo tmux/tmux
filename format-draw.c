@@ -565,7 +565,7 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 				cp++;
 			}
 
-			/* Draw the cell to th current screen. */
+			/* Draw the cell to the current screen. */
 			screen_write_cell(&ctx[current], &sy.gc);
 			width[current] += ud->width;
 			continue;

@@ -522,9 +522,10 @@ have_event:
 
 	/* Is this on the status line? */
 	m->statusat = status_at_line(c);
+	m->statuslines = status_line_size(c);
 	if (m->statusat != -1 &&
 	    y >= (u_int)m->statusat &&
-	    y < m->statusat + status_line_size(c)) {
+	    y < m->statusat + m->statuslines) {
 		sr = status_get_range(c, x, y - m->statusat);
 		if (sr == NULL) {
 			where = STATUS_DEFAULT;
@@ -553,8 +554,8 @@ have_event:
 	/* Not on status line. Adjust position and check for border or pane. */
 	if (where == NOWHERE) {
 		px = x;
-		if (m->statusat == 0 && y > 0)
-			py = y - 1;
+		if (m->statusat == 0 && y >= m->statuslines)
+			py = y - m->statuslines;
 		else if (m->statusat > 0 && y >= (u_int)m->statusat)
 			py = m->statusat - 1;
 		else
