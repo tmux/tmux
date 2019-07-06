@@ -597,8 +597,8 @@ cmd_mouse_at(struct window_pane *wp, struct mouse_event *m, u_int *xp,
 	}
 	log_debug("%s: x=%u, y=%u%s", __func__, x, y, last ? " (last)" : "");
 
-	if (m->statusat == 0 && y > 0)
-		y--;
+	if (m->statusat == 0 && y >= m->statuslines)
+		y -= m->statuslines;
 
 	if (x < wp->xoff || x >= wp->xoff + wp->sx)
 		return (-1);
