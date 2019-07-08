@@ -577,6 +577,7 @@ window_copy_resize(struct window_mode_entry *wme, u_int sx, u_int sy)
 	struct window_copy_mode_data	*data = wme->data;
 	struct screen			*s = &data->screen;
 	struct screen_write_ctx	 	 ctx;
+	int				 search;
 
 	screen_resize(s, sx, sy, 1);
 	if (data->backing != &wp->base)
@@ -589,13 +590,15 @@ window_copy_resize(struct window_mode_entry *wme, u_int sx, u_int sy)
 	if (data->oy > screen_hsize(data->backing))
 		data->oy = screen_hsize(data->backing);
 
+	search = (data->searchmark != NULL);
 	window_copy_clear_selection(wme);
+	window_copy_clear_marks(wme);
 
 	screen_write_start(&ctx, NULL, s);
 	window_copy_write_lines(wme, &ctx, 0, screen_size_y(s) - 1);
 	screen_write_stop(&ctx);
 
-	if (data->searchmark != NULL)
+	if (search)
 		window_copy_search_marks(wme, NULL);
 	data->searchx = data->cx;
 	data->searchy = data->cy;
