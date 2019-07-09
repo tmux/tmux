@@ -284,6 +284,12 @@ key_string_lookup_key(key_code key)
 		return (out);
 	}
 
+	/* Literal keys are themselves. */
+	if (key & KEYC_LITERAL) {
+		snprintf(out, sizeof out, "%c", (int)(key & 0xff));
+		return (out);
+	}
+
 	/*
 	 * Special case: display C-@ as C-Space. Could do this below in
 	 * the (key >= 0 && key <= 32), but this way we let it be found
