@@ -2300,6 +2300,8 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 	    !!(wp->base.mode & MODE_KKEYPAD));
 	format_add(ft, "wrap_flag", "%d",
 	    !!(wp->base.mode & MODE_WRAP));
+	format_add(ft, "origin_flag", "%d",
+	    !!(wp->base.mode & MODE_ORIGIN));
 
 	format_add(ft, "mouse_any_flag", "%d",
 	    !!(wp->base.mode & ALL_MOUSE_MODES));
@@ -2309,6 +2311,10 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 	    !!(wp->base.mode & MODE_MOUSE_BUTTON));
 	format_add(ft, "mouse_all_flag", "%d",
 	    !!(wp->base.mode & MODE_MOUSE_ALL));
+	format_add(ft, "mouse_utf8_flag", "%d",
+	    !!(wp->base.mode & MODE_MOUSE_UTF8));
+	format_add(ft, "mouse_sgr_flag", "%d",
+	    !!(wp->base.mode & MODE_MOUSE_SGR));
 
 	format_add_cb(ft, "pane_tabs", format_cb_pane_tabs);
 }

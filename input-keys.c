@@ -173,6 +173,13 @@ input_key(struct window_pane *wp, key_code key, struct mouse_event *m)
 		return;
 	}
 
+	/* Literal keys go as themselves (can't be more than eight bits). */
+	if (key & KEYC_LITERAL) {
+		ud.data[0] = (u_char)key;
+		bufferevent_write(wp->event, &ud.data[0], 1);
+		return;
+	}
+
 	/*
 	 * If this is a normal 7-bit key, just send it, with a leading escape
 	 * if necessary. If it is a UTF-8 key, split it and send it.

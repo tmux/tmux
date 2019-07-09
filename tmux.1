@@ -2622,7 +2622,7 @@ With
 only
 .Ar key-table .
 .It Xo Ic send-keys
-.Op Fl lMRX
+.Op Fl HlMRX
 .Op Fl N Ar repeat-count
 .Op Fl t Ar target-pane
 .Ar key Ar ...
@@ -2637,10 +2637,16 @@ or
 .Ql NPage )
 to send; if the string is not recognised as a key, it is sent as a series of
 characters.
+All arguments are sent sequentially from first to last.
+.Pp
 The
 .Fl l
-flag disables key name lookup and sends the keys literally.
-All arguments are sent sequentially from first to last.
+flag disables key name lookup and processes the keys as literal UTF-8
+characters.
+The
+.Fl H
+flag expects each key to be a hexadecimal number for an ASCII character.
+.Pp
 The
 .Fl R
 flag causes the terminal state to be reset.
@@ -4180,11 +4186,14 @@ The following variables are available, where appropriate:
 .It Li "mouse_all_flag" Ta "" Ta "Pane mouse all flag"
 .It Li "mouse_any_flag" Ta "" Ta "Pane mouse any flag"
 .It Li "mouse_button_flag" Ta "" Ta "Pane mouse button flag"
+.It Li "mouse_line" Ta "" Ta "Line under mouse, if any"
+.It Li "mouse_sgr_flag" Ta "" Ta "Pane mouse SGR flag"
 .It Li "mouse_standard_flag" Ta "" Ta "Pane mouse standard flag"
+.It Li "mouse_utf8_flag" Ta "" Ta "Pane mouse UTF-8 flag"
+.It Li "mouse_word" Ta "" Ta "Word under mouse, if any"
 .It Li "mouse_x" Ta "" Ta "Mouse X position, if any"
 .It Li "mouse_y" Ta "" Ta "Mouse Y position, if any"
-.It Li "mouse_word" Ta "" Ta "Word under mouse, if any"
-.It Li "mouse_line" Ta "" Ta "Line under mouse, if any"
+.It Li "origin_flag" Ta "" Ta "Pane origin flag"
 .It Li "pane_active" Ta "" Ta "1 if active pane"
 .It Li "pane_at_bottom" Ta "" Ta "1 if pane is at the bottom of window"
 .It Li "pane_at_left" Ta "" Ta "1 if pane is at the left of window"
