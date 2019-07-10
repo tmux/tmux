@@ -1167,7 +1167,8 @@ is used, the
 option will not be applied.
 .It Xo Ic refresh-client
 .Op Fl cDlLRSU
-.Op Fl C Ar width,height
+.Op Fl C Ar XxY
+.Op Fl F Ar flags
 .Op Fl t Ar target-client
 .Op Ar adjustment
 .Xc
@@ -1210,7 +1211,13 @@ window, changing the current window in the attached session will reset
 it.
 .Pp
 .Fl C
-sets the width and height of a control client.
+sets the width and height of a control client and
+.Fl F
+sets a comma-separated list of flags.
+Currently the only flag available is
+.Ql no-output
+to disable receiving pane output.
+.Pp
 .Fl l
 requests the clipboard from the client using the
 .Xr xterm 1
