@@ -56,9 +56,9 @@ const struct cmd_entry cmd_send_prefix_entry = {
 };
 
 static struct cmdq_item *
-cmd_send_keys_inject_key(struct client *c, struct cmdq_item *item, key_code key)
+cmd_send_keys_inject_key(struct client *c, struct cmd_find_state *fs,
+    struct cmdq_item *item, key_code key)
 {
-	struct cmd_find_state		*fs = &item->target;
 	struct window_mode_entry	*wme;
 	struct key_table		*table;
 	struct key_binding		*bd;
@@ -82,8 +82,8 @@ cmd_send_keys_inject_key(struct client *c, struct cmdq_item *item, key_code key)
 }
 
 static struct cmdq_item *
-cmd_send_keys_inject_string(struct client *c, struct cmdq_item *item,
-    struct args *args, int i)
+cmd_send_keys_inject_string(struct client *c, struct cmd_find_state *fs,
+    struct cmdq_item *item, struct args *args, int i)
 {
 	const char		*s = args->argv[i];
 	struct utf8_data	*ud, *uc;
@@ -97,14 +97,14 @@ cmd_send_keys_inject_string(struct client *c, struct cmdq_item *item,
 		n = strtol(s, &endptr, 16);
 		if (*s =='\0' || n < 0 || n > 0xff || *endptr != '\0')
 			return (item);
-		return (cmd_send_keys_inject_key(c, item, KEYC_LITERAL|n));
+		return (cmd_send_keys_inject_key(c, fs, item, KEYC_LITERAL|n));
 	}
 
 	literal = args_has(args, 'l');
 	if (!literal) {
 		key = key_string_lookup_string(s);
 		if (key != KEYC_NONE && key != KEYC_UNKNOWN)
-			return (cmd_send_keys_inject_key(c, item, key));
+			return (cmd_send_keys_inject_key(c, fs, item, key));
 		literal = 1;
 	}
 	if (literal) {
@@ -112,8 +112,8 @@ cmd_send_keys_inject_string(struct client *c, struct cmdq_item *item,
 		for (uc = ud; uc->size != 0; uc++) {
 			if (utf8_combine(uc, &wc) != UTF8_DONE)
 				continue;
-			item = cmd_send_keys_inject_key(c, item, wc);
-			}
+			item = cmd_send_keys_inject_key(c, fs, item, wc);
+		}
 		free(ud);
 	}
 	return (item);
@@ -124,6 +124,7 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = self->args;
 	struct client			*c = cmd_find_client(item, NULL, 1);
+	struct cmd_find_state		*fs = &item->target;
 	struct window_pane		*wp = item->target.wp;
 	struct session			*s = item->target.s;
 	struct winlink			*wl = item->target.wl;
@@ -176,7 +177,7 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 			key = options_get_number(s->options, "prefix2");
 		else
 			key = options_get_number(s->options, "prefix");
-		cmd_send_keys_inject_key(c, item, key);
+		cmd_send_keys_inject_key(c, fs, item, key);
 		return (CMD_RETURN_NORMAL);
 	}
 
@@ -187,7 +188,7 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 
 	for (; np != 0; np--) {
 		for (i = 0; i < args->argc; i++)
-			item = cmd_send_keys_inject_string(c, item, args, i);
+			item = cmd_send_keys_inject_string(c, fs, item, args, i);
 	}
 
 	return (CMD_RETURN_NORMAL);
