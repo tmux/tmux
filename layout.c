@@ -200,8 +200,8 @@ layout_make_node(struct layout_cell *lc, enum layout_type type)
 }
 
 /* Fix cell offsets based on their sizes. */
-void
-layout_fix_offsets(struct layout_cell *lc)
+static void
+layout_fix_offsets1(struct layout_cell *lc)
 {
 	struct layout_cell	*lcchild;
 	u_int			 xoff, yoff;
@@ -212,7 +212,7 @@ layout_fix_offsets(struct layout_cell *lc)
 			lcchild->xoff = xoff;
 			lcchild->yoff = lc->yoff;
 			if (lcchild->type != LAYOUT_WINDOWPANE)
-				layout_fix_offsets(lcchild);
+				layout_fix_offsets1(lcchild);
 			xoff += lcchild->sx + 1;
 		}
 	} else {
@@ -221,10 +221,22 @@ layout_fix_offsets(struct layout_cell *lc)
 			lcchild->xoff = lc->xoff;
 			lcchild->yoff = yoff;
 			if (lcchild->type != LAYOUT_WINDOWPANE)
-				layout_fix_offsets(lcchild);
+				layout_fix_offsets1(lcchild);
 			yoff += lcchild->sy + 1;
 		}
 	}
+}
+
+/* Update cell offsets based on their sizes. */
+void
+layout_fix_offsets(struct window *w)
+{
+	struct layout_cell      *lc = w->layout_root;
+
+	lc->xoff = 0;
+	lc->yoff = 0;
+
+	layout_fix_offsets1(lc);
 }
 
 /*
@@ -507,7 +519,7 @@ layout_resize(struct window *w, u_int sx, u_int sy)
 		layout_resize_adjust(w, lc, LAYOUT_TOPBOTTOM, ychange);
 
 	/* Fix cell offsets. */
-	layout_fix_offsets(lc);
+	layout_fix_offsets(w);
 	layout_fix_panes(w);
 }
 
@@ -567,7 +579,7 @@ layout_resize_layout(struct window *w, struct layout_cell *lc,
 	}
 
 	/* Fix cell offsets. */
-	layout_fix_offsets(w->layout_root);
+	layout_fix_offsets(w);
 	layout_fix_panes(w);
 	notify_window("window-layout-changed", w);
 }
@@ -988,7 +1000,7 @@ layout_split_pane(struct window_pane *wp, enum layout_type type, int size,
 	if (full_size) {
 		if (!resize_first)
 			layout_resize_child_cells(wp->window, lc);
-		layout_fix_offsets(wp->window->layout_root);
+		layout_fix_offsets(wp->window);
 	} else
 		layout_make_leaf(lc, wp);
 
@@ -1006,7 +1018,7 @@ layout_close_pane(struct window_pane *wp)
 
 	/* Fix pane offsets and sizes. */
 	if (w->layout_root != NULL) {
-		layout_fix_offsets(w->layout_root);
+		layout_fix_offsets(w);
 		layout_fix_panes(w);
 	}
 	notify_window("window-layout-changed", w);
@@ -1073,7 +1085,7 @@ layout_spread_out(struct window_pane *wp)
 
 	do {
 		if (layout_spread_cell(w, parent)) {
-			layout_fix_offsets(parent);
+			layout_fix_offsets(w);
 			layout_fix_panes(w);
 			break;
 		}
