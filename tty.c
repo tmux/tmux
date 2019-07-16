@@ -1217,7 +1217,7 @@ tty_draw_line(struct tty *tty, struct window_pane *wp, struct screen *s,
 	const struct grid_cell	*gcp;
 	struct grid_line	*gl;
 	u_int			 i, j, ux, sx, width;
-	int			 flags, cleared = 0;
+	int			 flags, cleared = 0, wrapped = 0;
 	char			 buf[512];
 	size_t			 len;
 	u_int			 cellsize;
@@ -1274,8 +1274,10 @@ tty_draw_line(struct tty *tty, struct window_pane *wp, struct screen *s,
 			tty_putcode(tty, TTYC_EL1);
 			cleared = 1;
 		}
-	} else
+	} else {
 		log_debug("%s: wrapped line %u", __func__, aty);
+		wrapped = 1;
+	}
 
 	memcpy(&last, &grid_default_cell, sizeof last);
 	len = 0;
@@ -1299,13 +1301,15 @@ tty_draw_line(struct tty *tty, struct window_pane *wp, struct screen *s,
 				tty_clear_line(tty, wp, aty, atx + ux, width,
 				    last.bg);
 			} else {
-				tty_cursor(tty, atx + ux, aty);
+				if (!wrapped || atx != 0 || ux != 0)
+					tty_cursor(tty, atx + ux, aty);
 				tty_putn(tty, buf, len, width);
 			}
 			ux += width;
 
 			len = 0;
 			width = 0;
+			wrapped = 0;
 		}
 
 		if (gcp->flags & GRID_FLAG_SELECTED)
@@ -1339,7 +1343,8 @@ tty_draw_line(struct tty *tty, struct window_pane *wp, struct screen *s,
 			log_debug("%s: %zu cleared (end)", __func__, len);
 			tty_clear_line(tty, wp, aty, atx + ux, width, last.bg);
 		} else {
-			tty_cursor(tty, atx + ux, aty);
+			if (!wrapped || atx != 0 || ux != 0)
+				tty_cursor(tty, atx + ux, aty);
 			tty_putn(tty, buf, len, width);
 		}
 		ux += width;
