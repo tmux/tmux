@@ -214,7 +214,6 @@ grid_view_delete_cells(struct grid *gd, u_int px, u_int py, u_int nx, u_int bg)
 	sx = grid_view_x(gd, gd->sx);
 
 	grid_move_cells(gd, px, px + nx, py, sx - px - nx, bg);
-	grid_clear(gd, sx - nx, py, px + nx - (sx - nx), 1, bg);
 }
 
 /* Convert cells into a string. */
