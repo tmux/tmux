@@ -547,7 +547,7 @@ void
 grid_clear(struct grid *gd, u_int px, u_int py, u_int nx, u_int ny, u_int bg)
 {
 	struct grid_line	*gl;
-	u_int			 xx, yy;
+	u_int			 xx, yy, ox, sx;
 
 	if (nx == 0 || ny == 0)
 		return;
@@ -564,16 +564,20 @@ grid_clear(struct grid *gd, u_int px, u_int py, u_int nx, u_int ny, u_int bg)
 
 	for (yy = py; yy < py + ny; yy++) {
 		gl = &gd->linedata[yy];
-		if (px + nx >= gd->sx && px < gl->cellused)
-			gl->cellused = px;
-		if (px > gl->cellsize && COLOUR_DEFAULT(bg))
-			continue;
-		if (px + nx >= gl->cellsize && COLOUR_DEFAULT(bg)) {
-			gl->cellsize = px;
-			continue;
+
+		sx = gd->sx;
+		if (sx > gl->cellsize)
+			sx = gl->cellsize;
+		ox = nx;
+		if (COLOUR_DEFAULT(bg)) {
+			if (px > sx)
+				continue;
+			if (px + nx > sx)
+				ox = sx - px;
 		}
-		grid_expand_line(gd, yy, px + nx, 8); /* default bg first */
-		for (xx = px; xx < px + nx; xx++)
+
+		grid_expand_line(gd, yy, px + ox, 8); /* default bg first */
+		for (xx = px; xx < px + ox; xx++)
 			grid_clear_cell(gd, xx, yy, bg);
 	}
 }
@@ -1215,6 +1219,10 @@ grid_reflow(struct grid *gd, u_int sx)
 	struct grid_line	*gl;
 	struct grid_cell	 gc;
 	u_int			 yy, width, i, at, first;
+
+	/* Do not reflow to the same size. */
+	if (sx == gd->sx)
+		return;
 
 	/*
 	 * Create a destination grid. This is just used as a container for the
