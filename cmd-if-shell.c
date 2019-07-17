@@ -121,7 +121,10 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 		cdata->cmd_else = NULL;
 	memcpy(&cdata->mouse, m, sizeof cdata->mouse);
 
-	cdata->client = item->client;
+	if (!args_has(args, 'b'))
+		cdata->client = item->client;
+	else
+		cdata->client = c;
 	if (cdata->client != NULL)
 		cdata->client->references++;
 
