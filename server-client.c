@@ -1226,6 +1226,7 @@ server_client_handle_key(struct client *c, struct key_event *event)
 				return (0);
 			}
 		}
+		server_client_clear_overlay(c);
 	}
 
 	/*
