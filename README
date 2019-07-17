@@ -26,15 +26,14 @@ To build and install tmux from a release tarball, use:
 tmux can use the utempter library to update utmp(5), if it is installed - run
 configure with --enable-utempter to enable this.
 
-To get and build the latest from version control:
+To get and build the latest from version control - note that this requires at
+least a working C compiler, make, autoconf, automake, pkg-config as well as
+libevent and ncurses libraries and headers:
 
 	$ git clone https://github.com/tmux/tmux.git
 	$ cd tmux
 	$ sh autogen.sh
 	$ ./configure && make
-
-(Note that this requires at least a working C compiler, make, autoconf,
-automake, pkg-config as well as libevent and ncurses libraries and headers.)
 
 * Contributing
 
