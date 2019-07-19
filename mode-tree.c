@@ -1019,6 +1019,8 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 			mode_tree_build(mtd);
 		}
 		break;
+	case '?':
+	case '/':
 	case '\023': /* C-s */
 		mtd->references++;
 		status_prompt_set(c, "(search) ", "",
