@@ -614,7 +614,7 @@ Most commands accept the optional
 .Fl s )
 argument with one of
 .Ar target-client ,
-.Ar target-session
+.Ar target-session ,
 .Ar target-window ,
 or
 .Ar target-pane .
@@ -781,7 +781,7 @@ may consist entirely of the token
 .Ql {mouse}
 (alternative form
 .Ql = )
-to specify the most recent mouse event
+to specify the session, window or pane where the most recent mouse event occurred
 (see the
 .Sx MOUSE SUPPORT
 section)
@@ -1366,6 +1366,9 @@ It is also entered when a command that produces output, such as
 .Ic list-keys ,
 is executed from a key binding.
 .Pp
+In copy mode an indicator is displayed in the top-right corner of the pane with
+the current position and the number of lines in the history.
+.Pp
 Commands are sent to copy mode using the
 .Fl X
 flag to the
@@ -1419,6 +1422,7 @@ The following commands are supported in copy mode:
 .It Li "jump-to-backward <to>" Ta "T" Ta ""
 .It Li "jump-to-forward <to>" Ta "t" Ta ""
 .It Li "middle-line" Ta "M" Ta "M-r"
+.It Li "next-matching-bracket" Ta "%" Ta "M-C-f"
 .It Li "next-paragraph" Ta "}" Ta "M-}"
 .It Li "next-space" Ta "W" Ta ""
 .It Li "next-space-end" Ta "E" Ta ""
@@ -1428,6 +1432,7 @@ The following commands are supported in copy mode:
 .It Li "page-down" Ta "C-f" Ta "PageDown"
 .It Li "page-down-and-cancel" Ta "" Ta ""
 .It Li "page-up" Ta "C-b" Ta "PageUp"
+.It Li "previous-matching-bracket" Ta "" Ta "M-C-b"
 .It Li "previous-paragraph" Ta "{" Ta "M-{"
 .It Li "previous-space" Ta "B" Ta ""
 .It Li "previous-word" Ta "b" Ta "M-b"
@@ -3022,6 +3027,18 @@ for all terminal types matching
 The terminal entry value is passed through
 .Xr strunvis 3
 before interpretation.
+.It Ic user-keys[] Ar key
+Set list of user-defined key escape sequences.
+Each item is associated with a key named
+.Ql User0 ,
+.Ql User1 ,
+and so on.
+.Pp
+For example:
+.Bd -literal -offset indent
+set -s user-keys[0] "\ee[5;30012~"
+bind User0 resize-pane -L 3
+.Ed
 .El
 .Pp
 Available session options are:
@@ -3228,7 +3245,7 @@ the terminal appears to be
 .Xr xterm 1 .
 This option is off by default.
 .It Ic set-titles-string Ar string
-String used to set the window title if
+String used to set the client terminal title if
 .Ic set-titles
 is on.
 Formats are expanded, see the
@@ -3362,18 +3379,6 @@ removed from the session environment (as if
 was given to the
 .Ic set-environment
 command).
-.It Ic user-keys[] Ar key
-Set list of user-defined key escape sequences.
-Each item is associated with a key named
-.Ql User0 ,
-.Ql User1 ,
-and so on.
-.Pp
-For example:
-.Bd -literal -offset indent
-set -s user-keys[0] "\ee[5;30012~"
-bind User0 resize-pane -L 3
-.Ed
 .It Xo Ic visual-activity
 .Op Ic on | off | both
 .Xc
@@ -3920,7 +3925,7 @@ flag with a
 .Ar format
 argument.
 This is a string which controls the output format of the command.
-Replacement variables are enclosed in
+Format variables are enclosed in
 .Ql #{
 and
 .Ql } ,
@@ -3979,7 +3984,7 @@ For example:
 #{?pane_in_mode,#[fg=white#,bg=red],#[fg=red#,bg=white]}#W .
 .Ed
 .Pp
-Comparisons may be expressed by prefixing two comma-separated
+String comparisons may be expressed by prefixing two comma-separated
 alternatives by
 .Ql == ,
 .Ql != ,
@@ -4147,7 +4152,7 @@ will be replaced by
 The following variables are available, where appropriate:
 .Bl -column "XXXXXXXXXXXXXXXXXXX" "XXXXX"
 .It Sy "Variable name" Ta Sy "Alias" Ta Sy "Replaced with"
-.It Li "alternate_on" Ta "" Ta "If pane is in alternate screen"
+.It Li "alternate_on" Ta "" Ta "1 if pane is in alternate screen"
 .It Li "alternate_saved_x" Ta "" Ta "Saved cursor X in alternate screen"
 .It Li "alternate_saved_y" Ta "" Ta "Saved cursor Y in alternate screen"
 .It Li "buffer_created" Ta "" Ta "Time buffer created"
@@ -4219,19 +4224,19 @@ The following variables are available, where appropriate:
 .It Li "pane_format" Ta "" Ta "1 if format is for a pane (not assuming the current)"
 .It Li "pane_height" Ta "" Ta "Height of pane"
 .It Li "pane_id" Ta "#D" Ta "Unique pane ID"
-.It Li "pane_in_mode" Ta "" Ta "If pane is in a mode"
+.It Li "pane_in_mode" Ta "" Ta "1 if pane is in a mode"
 .It Li "pane_index" Ta "#P" Ta "Index of pane"
-.It Li "pane_input_off" Ta "" Ta "If input to pane is disabled"
+.It Li "pane_input_off" Ta "" Ta "1 if input to pane is disabled"
 .It Li "pane_left" Ta "" Ta "Left of pane"
 .It Li "pane_marked" Ta "" Ta "1 if this is the marked pane"
 .It Li "pane_marked_set" Ta "" Ta "1 if a marked pane is set"
-.It Li "pane_mode" Ta "" Ta "Name of pane mode, if any."
+.It Li "pane_mode" Ta "" Ta "Name of pane mode, if any"
 .It Li "pane_pid" Ta "" Ta "PID of first process in pane"
 .It Li "pane_pipe" Ta "" Ta "1 if pane is being piped"
 .It Li "pane_right" Ta "" Ta "Right of pane"
 .It Li "pane_search_string" Ta "" Ta "Last search string in copy mode"
 .It Li "pane_start_command" Ta "" Ta "Command pane started with"
-.It Li "pane_synchronized" Ta "" Ta "If pane is synchronized"
+.It Li "pane_synchronized" Ta "" Ta "1 if pane is synchronized"
 .It Li "pane_tabs" Ta "" Ta "Pane tab positions"
 .It Li "pane_title" Ta "#T" Ta "Title of pane"
 .It Li "pane_top" Ta "" Ta "Top of pane"
@@ -4597,7 +4602,7 @@ session option.
 Commands related to the status line are as follows:
 .Bl -tag -width Ds
 .It Xo Ic command-prompt
-.Op Fl 1i
+.Op Fl 1Ni
 .Op Fl I Ar inputs
 .Op Fl p Ar prompts
 .Op Fl t Ar target-client
@@ -4647,6 +4652,8 @@ but any quotation marks are escaped.
 .Fl 1
 makes the prompt only accept one key press, in this case the resulting input
 is a single character.
+.Fl N
+makes the prompt only accept numeric key presses.
 .Fl i
 executes the command every time the prompt input changes instead of when the
 user exits the command prompt.
@@ -4658,7 +4665,7 @@ option:
 .Bl -column "FunctionXXXXXXXXXXXXXXXXXXXXXXXXX" "viXXXX" "emacsX" -offset indent
 .It Sy "Function" Ta Sy "vi" Ta Sy "emacs"
 .It Li "Cancel command prompt" Ta "Escape" Ta "Escape"
-.It Li "Delete current word" Ta "" Ta "C-w"
+.It Li "Delete from cursor to start of word" Ta "" Ta "C-w"
 .It Li "Delete entire command" Ta "d" Ta "C-u"
 .It Li "Delete from cursor to end" Ta "D" Ta "C-k"
 .It Li "Execute command" Ta "Enter" Ta "Enter"
@@ -4776,8 +4783,7 @@ section; information is taken from
 .Ar target-pane
 if
 .Fl t
-is given, otherwise the active pane for the session attached to
-.Ar target-client .
+is given, otherwise the active pane.
 .Pp
 .Fl v
 prints verbose logging as the format is parsed and
