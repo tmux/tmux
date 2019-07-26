@@ -202,7 +202,7 @@ client_exit_message(void)
 	case CLIENT_EXIT_TERMINATED:
 		return ("terminated");
 	case CLIENT_EXIT_LOST_SERVER:
-		return ("Client lost connection to tmux server. Try tmux -vv");
+		return ("server exited unexpectedly");
 	case CLIENT_EXIT_EXITED:
 		return ("exited");
 	case CLIENT_EXIT_SERVER_EXITED:
