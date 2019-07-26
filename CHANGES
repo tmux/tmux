@@ -1,5 +1,23 @@
 CHANGES FROM 3.0 to X.X
 
+* Expand arguments to C and s format modifiers to match the m modifier.
+
+* Add support for underscore colours (Setulc capability must be added with
+  terminal-overrides as described in tmux(1)).
+
+* Add a "fill" style attribute for the fill colour of the drawing area (where
+  appropriate).
+
+* New -H flag to send-keys to send literal keys.
+
+* Format variables for pane mouse modes (mouse_utf8_flag and mouse_sgr_flag)
+  and for origin mode (origin_flag).
+
+* Add -F to refresh-client for flags for control mode clients, only one flag
+  (no-output) supported at the moment.
+
+* Add a few vi(1) keys for menus.
+
 * Add pane options, set with set-option -p and displayed with show-options -p.
   Pane options inherit from window options (so every pane option is also
   a window option). The pane style is now configured by setting window-style
@@ -16,7 +34,8 @@ CHANGES FROM 3.0 to X.X
   window.
 
 * Add regular expression support for the format search, match and substitute
-  modifiers and make them able to ignore case.
+  modifiers and make them able to ignore case. find-window now accepts -r to
+  use regular expressions.
 
 * Do not use $TMUX to find the session because for windows in multiple sessions
   it is wrong as often as it is right, and for windows in one session it is
