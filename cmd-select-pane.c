@@ -33,8 +33,8 @@ const struct cmd_entry cmd_select_pane_entry = {
 	.name = "select-pane",
 	.alias = "selectp",
 
-	.args = { "DdegLlMmP:RT:t:U", 0, 0 },
-	.usage = "[-DdegLlMmRU] [-P style] [-T title] " CMD_TARGET_PANE_USAGE,
+	.args = { "DdegLlMmP:RT:t:U", 0, 0 }, /* -P and -g deprecated */
+	.usage = "[-DdeLlMmRU] [-T title] " CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -90,9 +90,10 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct window		*w = wl->window;
 	struct session		*s = item->target.s;
 	struct window_pane	*wp = item->target.wp, *lastwp, *markedwp;
-	struct style		*sy = &wp->style;
 	char			*pane_title;
 	const char		*style;
+	struct style		*sy;
+	struct options_entry	*o;
 
 	if (self->entry == &cmd_last_pane_entry || args_has(args, 'l')) {
 		lastwp = w->last;
@@ -144,15 +145,18 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (args_has(self->args, 'P') || args_has(self->args, 'g')) {
 		if ((style = args_get(args, 'P')) != NULL) {
-			style_set(sy, &grid_default_cell);
-			if (style_parse(sy, &grid_default_cell, style) == -1) {
+			o = options_set_style(wp->options, "window-style", 0,
+			    style);
+			if (o == NULL) {
 				cmdq_error(item, "bad style: %s", style);
 				return (CMD_RETURN_ERROR);
 			}
-			wp->flags |= PANE_REDRAW;
+			wp->flags |= (PANE_REDRAW|PANE_STYLECHANGED);
 		}
-		if (args_has(self->args, 'g'))
+		if (args_has(self->args, 'g')) {
+			sy = options_get_style(wp->options, "window-style");
 			cmdq_print(item, "%s", style_tostring(sy));
+		}
 		return (CMD_RETURN_NORMAL);
 	}
 

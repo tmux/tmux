@@ -1,3 +1,56 @@
+CHANGES FROM 3.0 to X.X
+
+* Expand arguments to C and s format modifiers to match the m modifier.
+
+* Add support for underscore colours (Setulc capability must be added with
+  terminal-overrides as described in tmux(1)).
+
+* Add a "fill" style attribute for the fill colour of the drawing area (where
+  appropriate).
+
+* New -H flag to send-keys to send literal keys.
+
+* Format variables for pane mouse modes (mouse_utf8_flag and mouse_sgr_flag)
+  and for origin mode (origin_flag).
+
+* Add -F to refresh-client for flags for control mode clients, only one flag
+  (no-output) supported at the moment.
+
+* Add a few vi(1) keys for menus.
+
+* Add pane options, set with set-option -p and displayed with show-options -p.
+  Pane options inherit from window options (so every pane option is also
+  a window option). The pane style is now configured by setting window-style
+  and window-active-style in the pane options; select-pane -P and -g now change
+  the option but are no longer documented.
+
+* Do not document set-window-option and show-window-options. set-option -w and
+  show-options -w should be used instead.
+
+* Add a -A flag to show-options to show parent options as well (they are marked
+  with a *).
+
+* Resize panes lazily - do not resize unless they are in an attached, active
+  window.
+
+* Add regular expression support for the format search, match and substitute
+  modifiers and make them able to ignore case. find-window now accepts -r to
+  use regular expressions.
+
+* Do not use $TMUX to find the session because for windows in multiple sessions
+  it is wrong as often as it is right, and for windows in one session it is
+  pointless. Instead use TMUX_PANE if it is present.
+
+* Do not always resize the window back to its original size after applying a
+  layout, keep it at the layout size until it must be resized (for example when
+  attached and window-size is not manual).
+
+* Add new-session -X and attach-session -x to send SIGHUP to parent when
+  detaching (like detach-client -P).
+
+* Support for octal escapes in strings (such as \007) and improve list-keys
+  output so it parses correctly if copied into a configuration file.
+
 CHANGES FROM 2.9 to 3.0
 
 * INCOMPATIBLE: Add a new {} syntax to the configuration file. This is a string

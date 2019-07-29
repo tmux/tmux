@@ -80,6 +80,7 @@ control_callback(struct client *c, int closed, __unused void *data)
 		if (line == NULL)
 			break;
 		if (*line == '\0') { /* empty line exit */
+			free(line);
 			c->flags |= CLIENT_EXIT;
 			break;
 		}

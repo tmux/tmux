@@ -480,7 +480,7 @@ mode_tree_add(struct mode_tree_data *mtd, struct mode_tree_item *parent,
 
 	saved = mode_tree_find_item(&mtd->saved, tag);
 	if (saved != NULL) {
-		if (parent == NULL || (parent != NULL && parent->expanded))
+		if (parent == NULL || parent->expanded)
 			mti->tagged = saved->tagged;
 		mti->expanded = saved->expanded;
 	} else if (expanded == -1)
@@ -933,6 +933,7 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 	case '\016': /* C-n */
 		mode_tree_down(mtd, 1);
 		break;
+	case 'g':
 	case KEYC_PPAGE:
 	case '\002': /* C-b */
 		for (i = 0; i < mtd->height; i++) {
@@ -941,6 +942,7 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 			mode_tree_up(mtd, 1);
 		}
 		break;
+	case 'G':
 	case KEYC_NPAGE:
 	case '\006': /* C-f */
 		for (i = 0; i < mtd->height; i++) {
@@ -1019,6 +1021,8 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 			mode_tree_build(mtd);
 		}
 		break;
+	case '?':
+	case '/':
 	case '\023': /* C-s */
 		mtd->references++;
 		status_prompt_set(c, "(search) ", "",

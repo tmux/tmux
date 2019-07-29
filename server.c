@@ -43,7 +43,7 @@
 struct clients		 clients;
 
 struct tmuxproc		*server_proc;
-static int		 server_fd;
+static int		 server_fd = -1;
 static int		 server_exit;
 static struct event	 server_ev_accept;
 
@@ -209,9 +209,7 @@ server_start(struct tmuxproc *client, struct event_base *base, int lockfd,
 		c->flags |= CLIENT_EXIT;
 	}
 
-	start_cfg();
 	server_add_accept(0);
-
 	proc_loop(server_proc, server_loop);
 
 	job_kill_all();
@@ -362,6 +360,9 @@ void
 server_add_accept(int timeout)
 {
 	struct timeval tv = { timeout, 0 };
+
+	if (server_fd == -1)
+		return;
 
 	if (event_initialized(&server_ev_accept))
 		event_del(&server_ev_accept);

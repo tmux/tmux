@@ -36,6 +36,9 @@ control_notify_input(struct client *c, struct window_pane *wp,
 	if (c->session == NULL)
 	    return;
 
+	if (c->flags & CLIENT_CONTROL_NOOUTPUT)
+		return;
+
 	/*
 	 * Only write input if the window pane is linked to a window belonging
 	 * to the client's session.

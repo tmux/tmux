@@ -522,9 +522,10 @@ have_event:
 
 	/* Is this on the status line? */
 	m->statusat = status_at_line(c);
+	m->statuslines = status_line_size(c);
 	if (m->statusat != -1 &&
 	    y >= (u_int)m->statusat &&
-	    y < m->statusat + status_line_size(c)) {
+	    y < m->statusat + m->statuslines) {
 		sr = status_get_range(c, x, y - m->statusat);
 		if (sr == NULL) {
 			where = STATUS_DEFAULT;
@@ -553,8 +554,8 @@ have_event:
 	/* Not on status line. Adjust position and check for border or pane. */
 	if (where == NOWHERE) {
 		px = x;
-		if (m->statusat == 0 && y > 0)
-			py = y - 1;
+		if (m->statusat == 0 && y >= m->statuslines)
+			py = y - m->statuslines;
 		else if (m->statusat > 0 && y >= (u_int)m->statusat)
 			py = m->statusat - 1;
 		else
@@ -1024,16 +1025,6 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 		fatal("gettimeofday failed");
 	session_update_activity(s, &c->activity_time);
 
-	/* Handle status line. */
-	if (~c->flags & CLIENT_READONLY)
-		status_message_clear(c);
-	if (c->prompt_string != NULL) {
-		if (c->flags & CLIENT_READONLY)
-			goto out;
-		if (status_prompt_key(c, key) == 0)
-			goto out;
-	}
-
 	/* Check for mouse keys. */
 	m->valid = 0;
 	if (key == KEYC_MOUSE) {
@@ -1214,17 +1205,26 @@ server_client_handle_key(struct client *c, struct key_event *event)
 		return (0);
 
 	/*
-	 * Key presses in overlay mode are a special case. The queue might be
-	 * blocked so they need to be processed immediately rather than queued.
+	 * Key presses in overlay mode and the command prompt are a special
+	 * case. The queue might be blocked so they need to be processed
+	 * immediately rather than queued.
 	 */
-	if ((~c->flags & CLIENT_READONLY) && c->overlay_key != NULL) {
-		switch (c->overlay_key(c, event)) {
-		case 0:
-			return (0);
-		case 1:
-			server_client_clear_overlay(c);
-			return (0);
+	if (~c->flags & CLIENT_READONLY) {
+		status_message_clear(c);
+		if (c->prompt_string != NULL) {
+			if (status_prompt_key(c, event->key) == 0)
+				return (0);
 		}
+		if (c->overlay_key != NULL) {
+			switch (c->overlay_key(c, event)) {
+			case 0:
+				return (0);
+			case 1:
+				server_client_clear_overlay(c);
+				return (0);
+			}
+		}
+		server_client_clear_overlay(c);
 	}
 
 	/*
@@ -1243,6 +1243,8 @@ server_client_loop(void)
 	struct client		*c;
 	struct window		*w;
 	struct window_pane	*wp;
+	struct winlink		*wl;
+	struct session		*s;
 	int			 focus;
 
 	TAILQ_FOREACH(c, &clients, entry) {
@@ -1259,11 +1261,17 @@ server_client_loop(void)
 	 */
 	focus = options_get_number(global_options, "focus-events");
 	RB_FOREACH(w, windows, &windows) {
+		TAILQ_FOREACH(wl, &w->winlinks, wentry) {
+			s = wl->session;
+			if (s->attached != 0 && s->curw == wl)
+				break;
+		}
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (wp->fd != -1) {
 				if (focus)
 					server_client_check_focus(wp);
-				server_client_check_resize(wp);
+				if (wl != NULL)
+					server_client_check_resize(wp);
 			}
 			wp->flags &= ~PANE_REDRAW;
 		}
@@ -1525,7 +1533,9 @@ server_client_click_timer(__unused int fd, __unused short events, void *data)
 static void
 server_client_check_exit(struct client *c)
 {
-	if (!(c->flags & CLIENT_EXIT))
+	if (~c->flags & CLIENT_EXIT)
+		return;
+	if (c->flags & CLIENT_EXITED)
 		return;
 
 	if (EVBUFFER_LENGTH(c->stdin_data) != 0)
@@ -1538,7 +1548,7 @@ server_client_check_exit(struct client *c)
 	if (c->flags & CLIENT_ATTACHED)
 		notify_client("client-detached", c);
 	proc_send(c->peer, MSG_EXIT, -1, &c->retval, sizeof c->retval);
-	c->flags &= ~CLIENT_EXIT;
+	c->flags |= CLIENT_EXITED;
 }
 
 /* Redraw timer callback. */
@@ -1943,26 +1953,29 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 
 		close(c->fd);
 		c->fd = -1;
-
-		return;
+	} else if (c->fd != -1) {
+		if (tty_init(&c->tty, c, c->fd, c->term) != 0) {
+			close(c->fd);
+			c->fd = -1;
+		} else {
+			if (c->flags & CLIENT_UTF8)
+				c->tty.flags |= TTY_UTF8;
+			if (c->flags & CLIENT_256COLOURS)
+				c->tty.term_flags |= TERM_256COLOURS;
+			tty_resize(&c->tty);
+			c->flags |= CLIENT_TERMINAL;
+		}
 	}
 
-	if (c->fd == -1)
-		return;
-	if (tty_init(&c->tty, c, c->fd, c->term) != 0) {
-		close(c->fd);
-		c->fd = -1;
-		return;
-	}
-	if (c->flags & CLIENT_UTF8)
-		c->tty.flags |= TTY_UTF8;
-	if (c->flags & CLIENT_256COLOURS)
-		c->tty.term_flags |= TERM_256COLOURS;
-
-	tty_resize(&c->tty);
-
-	if (!(c->flags & CLIENT_CONTROL))
-		c->flags |= CLIENT_TERMINAL;
+	/*
+	 * If this is the first client that has finished identifying, load
+	 * configuration files.
+	 */
+	if ((~c->flags & CLIENT_EXIT) &&
+	    !cfg_finished &&
+	    c == TAILQ_FIRST(&clients) &&
+	    TAILQ_NEXT(c, entry) == NULL)
+		start_cfg();
 }
 
 /* Handle shell message. */

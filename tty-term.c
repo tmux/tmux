@@ -249,6 +249,7 @@ static const struct tty_term_code_entry tty_term_codes[] = {
 	[TTYC_SETAF] = { TTYCODE_STRING, "setaf" },
 	[TTYC_SETRGBB] = { TTYCODE_STRING, "setrgbb" },
 	[TTYC_SETRGBF] = { TTYCODE_STRING, "setrgbf" },
+	[TTYC_SETULC] = { TTYCODE_STRING, "Setulc" },
 	[TTYC_SE] = { TTYCODE_STRING, "Se" },
 	[TTYC_SGR0] = { TTYCODE_STRING, "sgr0" },
 	[TTYC_SITM] = { TTYCODE_STRING, "sitm" },
@@ -691,7 +692,7 @@ tty_term_describe(struct tty_term *term, enum tty_code_code code)
 		break;
 	case TTYCODE_STRING:
 		strnvis(out, term->codes[code].value.string, sizeof out,
-		    VIS_OCTAL|VIS_TAB|VIS_NL);
+		    VIS_OCTAL|VIS_CSTYLE|VIS_TAB|VIS_NL);
 		xsnprintf(s, sizeof s, "%4u: %s: (string) %s",
 		    code, tty_term_codes[code].name,
 		    out);

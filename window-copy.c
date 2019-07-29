@@ -577,6 +577,7 @@ window_copy_resize(struct window_mode_entry *wme, u_int sx, u_int sy)
 	struct window_copy_mode_data	*data = wme->data;
 	struct screen			*s = &data->screen;
 	struct screen_write_ctx	 	 ctx;
+	int				 search;
 
 	screen_resize(s, sx, sy, 1);
 	if (data->backing != &wp->base)
@@ -589,13 +590,15 @@ window_copy_resize(struct window_mode_entry *wme, u_int sx, u_int sy)
 	if (data->oy > screen_hsize(data->backing))
 		data->oy = screen_hsize(data->backing);
 
+	search = (data->searchmark != NULL);
 	window_copy_clear_selection(wme);
+	window_copy_clear_marks(wme);
 
 	screen_write_start(&ctx, NULL, s);
 	window_copy_write_lines(wme, &ctx, 0, screen_size_y(s) - 1);
 	screen_write_stop(&ctx);
 
-	if (data->searchmark != NULL)
+	if (search)
 		window_copy_search_marks(wme, NULL);
 	data->searchx = data->cx;
 	data->searchy = data->cy;
@@ -2700,7 +2703,7 @@ window_copy_append_selection(struct window_mode_entry *wme)
 	struct window_pane		*wp = wme->wp;
 	char				*buf;
 	struct paste_buffer		*pb;
-	const char			*bufdata, *bufname;
+	const char			*bufdata, *bufname = NULL;
 	size_t				 len, bufsize;
 	struct screen_write_ctx		 ctx;
 
@@ -3027,8 +3030,8 @@ window_copy_cursor_up(struct window_mode_entry *wme, int scroll_only)
 	if (data->lineflag == LINE_SEL_LEFT_RIGHT && oy == data->sely)
 		window_copy_other_end(wme);
 
-	data->cx = data->lastcx;
 	if (scroll_only || data->cy == 0) {
+		data->cx = data->lastcx;
 		window_copy_scroll_down(wme, 1);
 		if (scroll_only) {
 			if (data->cy == screen_size_y(s) - 1)
@@ -3037,7 +3040,7 @@ window_copy_cursor_up(struct window_mode_entry *wme, int scroll_only)
 				window_copy_redraw_lines(wme, data->cy, 2);
 		}
 	} else {
-		window_copy_update_cursor(wme, data->cx, data->cy - 1);
+		window_copy_update_cursor(wme, data->lastcx, data->cy - 1);
 		if (window_copy_update_selection(wme, 1)) {
 			if (data->cy == screen_size_y(s) - 1)
 				window_copy_redraw_lines(wme, data->cy, 1);
@@ -3077,13 +3080,13 @@ window_copy_cursor_down(struct window_mode_entry *wme, int scroll_only)
 	if (data->lineflag == LINE_SEL_RIGHT_LEFT && oy == data->endsely)
 		window_copy_other_end(wme);
 
-	data->cx = data->lastcx;
 	if (scroll_only || data->cy == screen_size_y(s) - 1) {
+		data->cx = data->lastcx;
 		window_copy_scroll_up(wme, 1);
 		if (scroll_only && data->cy > 0)
 			window_copy_redraw_lines(wme, data->cy - 1, 2);
 	} else {
-		window_copy_update_cursor(wme, data->cx, data->cy + 1);
+		window_copy_update_cursor(wme, data->lastcx, data->cy + 1);
 		if (window_copy_update_selection(wme, 1))
 			window_copy_redraw_lines(wme, data->cy - 1, 2);
 	}

@@ -133,13 +133,27 @@ char *
 osdep_get_cwd(int fd)
 {
 	static char	target[PATH_MAX + 1];
-	char		*path;
 	pid_t		pgrp;
+#ifdef KERN_PROC_CWD
+	int		mib[4];
+	size_t		len;
+#else
+	char		*path;
 	ssize_t		n;
+#endif
 
 	if ((pgrp = tcgetpgrp(fd)) == -1)
 		return (NULL);
 
+#ifdef KERN_PROC_CWD
+	mib[0] = CTL_KERN;
+	mib[1] = KERN_PROC_ARGS;
+	mib[2] = pgrp;
+	mib[3] = KERN_PROC_CWD;
+	len = sizeof(target);
+	if (sysctl(mib, __arraycount(mib), target, &len, NULL, 0) == 0)
+		return (target);
+#else
 	xasprintf(&path, "/proc/%lld/cwd", (long long) pgrp);
 	n = readlink(path, target, sizeof(target) - 1);
 	free(path);
@@ -147,6 +161,7 @@ osdep_get_cwd(int fd)
 		target[n] = '\0';
 		return (target);
 	}
+#endif
 
 	return (NULL);
 }

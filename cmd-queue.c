@@ -156,6 +156,13 @@ cmdq_insert_hook(struct session *s, struct cmdq_item *item,
 	free(name);
 }
 
+/* Continue processing command queue. */
+void
+cmdq_continue(struct cmdq_item *item)
+{
+	item->flags &= ~CMDQ_WAITING;
+}
+
 /* Remove an item. */
 static void
 cmdq_remove(struct cmdq_item *item)

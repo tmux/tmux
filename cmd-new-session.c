@@ -39,8 +39,8 @@ const struct cmd_entry cmd_new_session_entry = {
 	.name = "new-session",
 	.alias = "new",
 
-	.args = { "Ac:dDEF:n:Ps:t:x:y:", 0, -1 },
-	.usage = "[-AdDEP] [-c start-directory] [-F format] [-n window-name] "
+	.args = { "Ac:dDEF:n:Ps:t:x:Xy:", 0, -1 },
+	.usage = "[-AdDEPX] [-c start-directory] [-F format] [-n window-name] "
 		 "[-s session-name] " CMD_TARGET_SESSION_USAGE " [-x width] "
 		 "[-y height] [command]",
 
@@ -105,7 +105,8 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 			if (args_has(args, 'A')) {
 				retval = cmd_attach_session(item,
 				    newname, args_has(args, 'D'),
-				    0, NULL, args_has(args, 'E'));
+				    args_has(args, 'X'), 0, NULL,
+				    args_has(args, 'E'));
 				free(newname);
 				return (retval);
 			}

@@ -37,8 +37,8 @@ const struct cmd_entry cmd_source_file_entry = {
 	.name = "source-file",
 	.alias = "source",
 
-	.args = { "nq", 1, -1 },
-	.usage = "[-nq] path ...",
+	.args = { "nqv", 1, -1 },
+	.usage = "[-nqv] path ...",
 
 	.flags = 0,
 	.exec = cmd_source_file_exec
@@ -62,6 +62,8 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 		flags |= CMD_PARSE_QUIET;
 	if (args_has(args, 'n'))
 		flags |= CMD_PARSE_PARSEONLY;
+	if (args_has(args, 'v'))
+		flags |= CMD_PARSE_VERBOSE;
 	utf8_stravis(&cwd, server_client_get_cwd(c, NULL), VIS_GLOB);
 
 	retval = CMD_RETURN_NORMAL;

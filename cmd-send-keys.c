@@ -33,8 +33,8 @@ const struct cmd_entry cmd_send_keys_entry = {
 	.name = "send-keys",
 	.alias = "send",
 
-	.args = { "lXRMN:t:", 0, -1 },
-	.usage = "[-lXRM] [-N repeat-count] " CMD_TARGET_PANE_USAGE " key ...",
+	.args = { "HlXRMN:t:", 0, -1 },
+	.usage = "[-HlXRM] [-N repeat-count] " CMD_TARGET_PANE_USAGE " key ...",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -56,7 +56,7 @@ const struct cmd_entry cmd_send_prefix_entry = {
 };
 
 static struct cmdq_item *
-cmd_send_keys_inject(struct client *c, struct cmd_find_state *fs,
+cmd_send_keys_inject_key(struct client *c, struct cmd_find_state *fs,
     struct cmdq_item *item, key_code key)
 {
 	struct window_mode_entry	*wme;
@@ -81,20 +81,56 @@ cmd_send_keys_inject(struct client *c, struct cmd_find_state *fs,
 	return (item);
 }
 
+static struct cmdq_item *
+cmd_send_keys_inject_string(struct client *c, struct cmd_find_state *fs,
+    struct cmdq_item *item, struct args *args, int i)
+{
+	const char		*s = args->argv[i];
+	struct utf8_data	*ud, *uc;
+	wchar_t			 wc;
+	key_code		 key;
+	char			*endptr;
+	long			 n;
+	int			 literal;
+
+	if (args_has(args, 'H')) {
+		n = strtol(s, &endptr, 16);
+		if (*s =='\0' || n < 0 || n > 0xff || *endptr != '\0')
+			return (item);
+		return (cmd_send_keys_inject_key(c, fs, item, KEYC_LITERAL|n));
+	}
+
+	literal = args_has(args, 'l');
+	if (!literal) {
+		key = key_string_lookup_string(s);
+		if (key != KEYC_NONE && key != KEYC_UNKNOWN)
+			return (cmd_send_keys_inject_key(c, fs, item, key));
+		literal = 1;
+	}
+	if (literal) {
+		ud = utf8_fromcstr(s);
+		for (uc = ud; uc->size != 0; uc++) {
+			if (utf8_combine(uc, &wc) != UTF8_DONE)
+				continue;
+			item = cmd_send_keys_inject_key(c, fs, item, wc);
+		}
+		free(ud);
+	}
+	return (item);
+}
+
 static enum cmd_retval
 cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = self->args;
 	struct client			*c = cmd_find_client(item, NULL, 1);
+	struct cmd_find_state		*fs = &item->target;
 	struct window_pane		*wp = item->target.wp;
 	struct session			*s = item->target.s;
 	struct winlink			*wl = item->target.wl;
 	struct mouse_event		*m = &item->shared->mouse;
-	struct cmd_find_state		*fs = &item->target;
 	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
-	struct utf8_data		*ud, *uc;
-	wchar_t				 wc;
-	int				 i, literal;
+	int				 i;
 	key_code			 key;
 	u_int				 np = 1;
 	char				*cause = NULL;
@@ -141,7 +177,7 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 			key = options_get_number(s->options, "prefix2");
 		else
 			key = options_get_number(s->options, "prefix");
-		cmd_send_keys_inject(c, fs, item, key);
+		cmd_send_keys_inject_key(c, fs, item, key);
 		return (CMD_RETURN_NORMAL);
 	}
 
@@ -151,28 +187,8 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	for (; np != 0; np--) {
-		for (i = 0; i < args->argc; i++) {
-			literal = args_has(args, 'l');
-			if (!literal) {
-				key = key_string_lookup_string(args->argv[i]);
-				if (key != KEYC_NONE && key != KEYC_UNKNOWN) {
-					item = cmd_send_keys_inject(c, fs, item,
-					    key);
-				} else
-					literal = 1;
-			}
-			if (literal) {
-				ud = utf8_fromcstr(args->argv[i]);
-				for (uc = ud; uc->size != 0; uc++) {
-					if (utf8_combine(uc, &wc) != UTF8_DONE)
-						continue;
-					item = cmd_send_keys_inject(c, fs, item,
-					    wc);
-				}
-				free(ud);
-			}
-		}
-
+		for (i = 0; i < args->argc; i++)
+			item = cmd_send_keys_inject_string(c, fs, item, args, i);
 	}
 
 	return (CMD_RETURN_NORMAL);

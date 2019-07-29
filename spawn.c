@@ -170,10 +170,8 @@ spawn_window(struct spawn_context *sc, char **cause)
 	/* Spawn the pane. */
 	wp = spawn_pane(sc, cause);
 	if (wp == NULL) {
-		if (~sc->flags & SPAWN_RESPAWN) {
-			window_destroy(w);
+		if (~sc->flags & SPAWN_RESPAWN)
 			winlink_remove(&s->windows, sc->wl);
-		}
 		return (NULL);
 	}
 

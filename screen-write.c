@@ -36,7 +36,7 @@ static const struct grid_cell *screen_write_combine(struct screen_write_ctx *,
 		    const struct utf8_data *, u_int *);
 
 static const struct grid_cell screen_write_pad_cell = {
-	GRID_FLAG_PADDING, 0, 8, 8, { { 0 }, 0, 0, 0 }
+	{ { 0 }, 0, 0, 0 }, 0, GRID_FLAG_PADDING, 0, 8, 8
 };
 
 struct screen_write_collect_item {
@@ -1169,11 +1169,7 @@ screen_write_clearscreen(struct screen_write_ctx *ctx, u_int bg)
 void
 screen_write_clearhistory(struct screen_write_ctx *ctx)
 {
-	struct screen	*s = ctx->s;
-	struct grid	*gd = s->grid;
-
-	grid_move_lines(gd, 0, gd->hsize, gd->sy, 8);
-	gd->hscrolled = gd->hsize = 0;
+	grid_clear_history(ctx->s->grid);
 }
 
 /* Clear a collected line. */

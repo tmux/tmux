@@ -77,6 +77,8 @@ static char	*cmd_parse_get_error(const char *, u_int, const char *);
 static void	 cmd_parse_free_command(struct cmd_parse_command *);
 static struct cmd_parse_commands *cmd_parse_new_commands(void);
 static void	 cmd_parse_free_commands(struct cmd_parse_commands *);
+static void	 cmd_parse_print_commands(struct cmd_parse_input *, u_int,
+		     struct cmd_list *);
 
 %}
 
@@ -508,6 +510,22 @@ cmd_parse_get_error(const char *file, u_int line, const char *error)
 }
 
 static void
+cmd_parse_print_commands(struct cmd_parse_input *pi, u_int line,
+    struct cmd_list *cmdlist)
+{
+	char	*s;
+
+	if (pi->item != NULL && (pi->flags & CMD_PARSE_VERBOSE)) {
+		s = cmd_list_print(cmdlist, 0);
+		if (pi->file != NULL)
+			cmdq_print(pi->item, "%s:%u: %s", pi->file, line, s);
+		else
+			cmdq_print(pi->item, "%u: %s", line, s);
+		free(s);
+	}
+}
+
+static void
 cmd_parse_free_command(struct cmd_parse_command *cmd)
 {
 	free(cmd->name);
@@ -663,6 +681,7 @@ cmd_parse_build_commands(struct cmd_parse_commands *cmds,
 
 		if (cmdlist == NULL || cmd->line != line) {
 			if (cmdlist != NULL) {
+				cmd_parse_print_commands(pi, line, cmdlist);
 				cmd_list_move(result, cmdlist);
 				cmd_list_free(cmdlist);
 			}
@@ -682,6 +701,7 @@ cmd_parse_build_commands(struct cmd_parse_commands *cmds,
 		cmd_list_append(cmdlist, add);
 	}
 	if (cmdlist != NULL) {
+		cmd_parse_print_commands(pi, line, cmdlist);
 		cmd_list_move(result, cmdlist);
 		cmd_list_free(cmdlist);
 	}
@@ -1124,16 +1144,53 @@ error:
 static int
 yylex_token_escape(char **buf, size_t *len)
 {
-	int			 ch, type;
+	int			 ch, type, o2, o3;
 	u_int			 size, i, tmp;
 	char			 s[9];
 	struct utf8_data	 ud;
 
-	switch (ch = yylex_getc()) {
+	ch = yylex_getc();
+
+	if (ch >= '4' && ch <= '7') {
+		yyerror("invalid octal escape");
+		return (0);
+	}
+	if (ch >= '0' && ch <= '3') {
+		o2 = yylex_getc();
+		if (o2 >= '0' && o2 <= '7') {
+			o3 = yylex_getc();
+			if (o3 >= '0' && o3 <= '7') {
+				ch = 64 * (ch - '0') +
+				      8 * (o2 - '0') +
+				          (o3 - '0');
+				yylex_append1(buf, len, ch);
+				return (1);
+			}
+		}
+		yyerror("invalid octal escape");
+		return (0);
+	}
+
+	switch (ch) {
 	case EOF:
 		return (0);
+	case 'a':
+		ch = '\a';
+		break;
+	case 'b':
+		ch = '\b';
+		break;
 	case 'e':
 		ch = '\033';
+		break;
+	case 'f':
+		ch = '\f';
+		break;
+	case 's':
+		ch = ' ';
+		break;
+	case 'v':
+		ch = '\v';
 		break;
 	case 'r':
 		ch = '\r';

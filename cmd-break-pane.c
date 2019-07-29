@@ -77,6 +77,8 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	layout_close_pane(wp);
 
 	w = wp->window = window_create(w->sx, w->sy);
+	options_set_parent(wp->options, w->options);
+	wp->flags |= PANE_STYLECHANGED;
 	TAILQ_INSERT_HEAD(&w->panes, wp, entry);
 	w->active = wp;
 

@@ -202,7 +202,7 @@ client_exit_message(void)
 	case CLIENT_EXIT_TERMINATED:
 		return ("terminated");
 	case CLIENT_EXIT_LOST_SERVER:
-		return ("lost server");
+		return ("server exited unexpectedly");
 	case CLIENT_EXIT_EXITED:
 		return ("exited");
 	case CLIENT_EXIT_SERVER_EXITED:
@@ -436,7 +436,7 @@ client_stdin_callback(__unused int fd, __unused short events,
 	struct msg_stdin_data	data;
 
 	data.size = read(STDIN_FILENO, data.data, sizeof data.data);
-	if (data.size < 0 && (errno == EINTR || errno == EAGAIN))
+	if (data.size == -1 && (errno == EINTR || errno == EAGAIN))
 		return;
 
 	proc_send(client_peer, MSG_STDIN, -1, &data, sizeof data);

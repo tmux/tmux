@@ -23,6 +23,7 @@
 #include <errno.h>
 #include <fnmatch.h>
 #include <libgen.h>
+#include <regex.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1067,6 +1068,8 @@ format_find(struct format_tree *ft, const char *key, int modifiers)
 
 	if (~modifiers & FORMAT_TIMESTRING) {
 		o = options_parse_get(global_options, key, &idx, 0);
+		if (o == NULL && ft->wp != NULL)
+			o = options_parse_get(ft->wp->options, key, &idx, 0);
 		if (o == NULL && ft->w != NULL)
 			o = options_parse_get(ft->w->options, key, &idx, 0);
 		if (o == NULL)
@@ -1263,7 +1266,7 @@ format_build_modifiers(struct format_tree *ft, const char **s, u_int *count)
 			cp++;
 
 		/* Check single character modifiers with no arguments. */
-		if (strchr("lmCbdtqETSWP<>", cp[0]) != NULL &&
+		if (strchr("lbdtqETSWP<>", cp[0]) != NULL &&
 		    format_is_end(cp[1])) {
 			format_add_modifier(&list, count, cp, 1, NULL, 0);
 			cp++;
@@ -1284,7 +1287,7 @@ format_build_modifiers(struct format_tree *ft, const char **s, u_int *count)
 		}
 
 		/* Now try single character with arguments. */
-		if (strchr("s=", cp[0]) == NULL)
+		if (strchr("mCs=", cp[0]) == NULL)
 			break;
 		c = cp[0];
 
@@ -1345,39 +1348,67 @@ format_build_modifiers(struct format_tree *ft, const char **s, u_int *count)
 	return list;
 }
 
+/* Match against an fnmatch(3) pattern or regular expression. */
+static char *
+format_match(struct format_modifier *fm, const char *pattern, const char *text)
+{
+	const char	*s = "";
+	regex_t		 r;
+	int		 flags = 0;
+
+	if (fm->argc >= 1)
+		s = fm->argv[0];
+	if (strchr(s, 'r') == NULL) {
+		if (strchr(s, 'i') != NULL)
+			flags |= FNM_CASEFOLD;
+		if (fnmatch(pattern, text, flags) != 0)
+			return (xstrdup("0"));
+	} else {
+		flags = REG_EXTENDED|REG_NOSUB;
+		if (strchr(s, 'i') != NULL)
+			flags |= REG_ICASE;
+		if (regcomp(&r, pattern, flags) != 0)
+			return (xstrdup("0"));
+		if (regexec(&r, text, 0, NULL, 0) != 0) {
+			regfree(&r);
+			return (xstrdup("0"));
+		}
+		regfree(&r);
+	}
+	return (xstrdup("1"));
+}
+
 /* Perform substitution in string. */
 static char *
-format_substitute(const char *source, const char *from, const char *to)
+format_sub(struct format_modifier *fm, const char *text, const char *pattern,
+    const char *with)
 {
-	char		*copy, *new;
-	const char	*cp;
-	size_t		 fromlen, tolen, newlen, used;
+	char	*value;
+	int	 flags = REG_EXTENDED;
 
-	fromlen = strlen(from);
-	tolen = strlen(to);
+	if (fm->argc >= 3 && strchr(fm->argv[2], 'i') != NULL)
+		flags |= REG_ICASE;
+	value = regsub(pattern, with, text, flags);
+	if (value == NULL)
+		return (xstrdup(text));
+	return (value);
+}
 
-	newlen = strlen(source) + 1;
-	copy = new = xmalloc(newlen);
+/* Search inside pane. */
+static char *
+format_search(struct format_modifier *fm, struct window_pane *wp, const char *s)
+{
+	int	 ignore = 0, regex = 0;
+	char	*value;
 
-	for (cp = source; *cp != '\0'; /* nothing */) {
-		if (strncmp(cp, from, fromlen) != 0) {
-			*new++ = *cp++;
-			continue;
-		}
-		used = new - copy;
-
-		newlen += tolen;
-		copy = xrealloc(copy, newlen);
-
-		new = copy + used;
-		memcpy(new, to, tolen);
-
-		new += tolen;
-		cp += fromlen;
+	if (fm->argc >= 1) {
+		if (strchr(fm->argv[0], 'i') != NULL)
+			ignore = 1;
+		if (strchr(fm->argv[0], 'r') != NULL)
+			regex = 1;
 	}
-
-	*new = '\0';
-	return (copy);
+	xasprintf(&value, "%u", window_pane_search(wp, s, regex, ignore));
+	return (value);
 }
 
 /* Loop over sessions. */
@@ -1522,11 +1553,10 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 	char			*copy0, *condition, *found, *new;
 	char			*value, *left, *right;
 	size_t			 valuelen;
-	int			 modifiers = 0, limit = 0;
+	int			 modifiers = 0, limit = 0, j;
 	struct format_modifier  *list, *fm, *cmp = NULL, *search = NULL;
 	struct format_modifier  *sub = NULL;
 	u_int			 i, count;
-	int			 j;
 
 	/* Make a copy of the key. */
 	copy = copy0 = xstrndup(key, keylen);
@@ -1553,18 +1583,18 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 				search = fm;
 				break;
 			case 's':
-				if (fm->argc != 2)
+				if (fm->argc < 2)
 					break;
 				sub = fm;
 				break;
 			case '=':
-				if (fm->argc != 1 && fm->argc != 2)
+				if (fm->argc < 1)
 					break;
 				limit = strtonum(fm->argv[0], INT_MIN, INT_MAX,
 				    &errptr);
 				if (errptr != NULL)
 					limit = 0;
-				if (fm->argc == 2 && fm->argv[1] != NULL)
+				if (fm->argc >= 2 && fm->argv[1] != NULL)
 					marker = fm->argv[1];
 				break;
 			case 'l':
@@ -1630,13 +1660,15 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 			goto fail;
 	} else if (search != NULL) {
 		/* Search in pane. */
+		new = format_expand(ft, copy);
 		if (wp == NULL) {
-			format_log(ft, "search '%s' but no pane", copy);
+			format_log(ft, "search '%s' but no pane", new);
 			value = xstrdup("0");
 		} else {
-			format_log(ft, "search '%s' pane %%%u", copy,  wp->id);
-			xasprintf(&value, "%u", window_pane_search(wp, copy));
+			format_log(ft, "search '%s' pane %%%u", new,  wp->id);
+			value = format_search(fm, wp, new);
 		}
+		free(new);
 	} else if (cmp != NULL) {
 		/* Comparison of left and right. */
 		if (format_choose(ft, copy, &left, &right, 1) != 0) {
@@ -1687,12 +1719,8 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 				value = xstrdup("1");
 			else
 				value = xstrdup("0");
-		} else if (strcmp(cmp->modifier, "m") == 0) {
-			if (fnmatch(left, right, 0) == 0)
-				value = xstrdup("1");
-			else
-				value = xstrdup("0");
-		}
+		} else if (strcmp(cmp->modifier, "m") == 0)
+			value = format_match(cmp, left, right);
 
 		free(right);
 		free(left);
@@ -1770,11 +1798,14 @@ done:
 
 	/* Perform substitution if any. */
 	if (sub != NULL) {
-		new = format_substitute(value, sub->argv[0], sub->argv[1]);
-		format_log(ft, "substituted '%s' to '%s: %s", sub->argv[0],
-		    sub->argv[1], new);
+		left = format_expand(ft, sub->argv[0]);
+		right = format_expand(ft, sub->argv[1]);
+		new = format_sub(sub, value, left, right);
+		format_log(ft, "substitute '%s' to '%s': %s", left, right, new);
 		free(value);
 		value = new;
+		free(right);
+		free(left);
 	}
 
 	/* Truncate the value if needed. */
@@ -1998,10 +2029,10 @@ void
 format_defaults(struct format_tree *ft, struct client *c, struct session *s,
     struct winlink *wl, struct window_pane *wp)
 {
-	if (c != NULL)
+	if (c != NULL && c->name != NULL)
 		log_debug("%s: c=%s", __func__, c->name);
 	else
-		log_debug("%s: s=none", __func__);
+		log_debug("%s: c=none", __func__);
 	if (s != NULL)
 		log_debug("%s: s=$%u", __func__, s->id);
 	else
@@ -2286,6 +2317,8 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 	    !!(wp->base.mode & MODE_KKEYPAD));
 	format_add(ft, "wrap_flag", "%d",
 	    !!(wp->base.mode & MODE_WRAP));
+	format_add(ft, "origin_flag", "%d",
+	    !!(wp->base.mode & MODE_ORIGIN));
 
 	format_add(ft, "mouse_any_flag", "%d",
 	    !!(wp->base.mode & ALL_MOUSE_MODES));
@@ -2295,6 +2328,10 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 	    !!(wp->base.mode & MODE_MOUSE_BUTTON));
 	format_add(ft, "mouse_all_flag", "%d",
 	    !!(wp->base.mode & MODE_MOUSE_ALL));
+	format_add(ft, "mouse_utf8_flag", "%d",
+	    !!(wp->base.mode & MODE_MOUSE_UTF8));
+	format_add(ft, "mouse_sgr_flag", "%d",
+	    !!(wp->base.mode & MODE_MOUSE_SGR));
 
 	format_add_cb(ft, "pane_tabs", format_cb_pane_tabs);
 }

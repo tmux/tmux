@@ -562,13 +562,13 @@ const struct options_table_entry options_table[] = {
 
 	{ .name = "allow-rename",
 	  .type = OPTIONS_TABLE_FLAG,
-	  .scope = OPTIONS_TABLE_WINDOW,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
 	  .default_num = 0
 	},
 
 	{ .name = "alternate-screen",
 	  .type = OPTIONS_TABLE_FLAG,
-	  .scope = OPTIONS_TABLE_WINDOW,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
 	  .default_num = 1
 	},
 
@@ -688,7 +688,7 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_WINDOW,
 	  .choices = options_table_pane_status_list,
-	  .default_num = 0
+	  .default_num = PANE_STATUS_OFF
 	},
 
 	{ .name = "pane-border-style",
@@ -699,7 +699,7 @@ const struct options_table_entry options_table[] = {
 
 	{ .name = "remain-on-exit",
 	  .type = OPTIONS_TABLE_FLAG,
-	  .scope = OPTIONS_TABLE_WINDOW,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
 	  .default_num = 0
 	},
 
@@ -711,7 +711,7 @@ const struct options_table_entry options_table[] = {
 
 	{ .name = "window-active-style",
 	  .type = OPTIONS_TABLE_STYLE,
-	  .scope = OPTIONS_TABLE_WINDOW,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
 	  .default_str = "default"
 	},
 
@@ -724,7 +724,7 @@ const struct options_table_entry options_table[] = {
 
 	{ .name = "window-style",
 	  .type = OPTIONS_TABLE_STYLE,
-	  .scope = OPTIONS_TABLE_WINDOW,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
 	  .default_str = "default"
 	},
 
