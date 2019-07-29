@@ -1,4 +1,4 @@
-CHANGES FROM 3.0 to X.X
+CHANGES FROM 2.9 to 3.0
 
 * Expand arguments to C and s format modifiers to match the m modifier.
 
@@ -50,8 +50,6 @@ CHANGES FROM 3.0 to X.X
 
 * Support for octal escapes in strings (such as \007) and improve list-keys
   output so it parses correctly if copied into a configuration file.
-
-CHANGES FROM 2.9 to 3.0
 
 * INCOMPATIBLE: Add a new {} syntax to the configuration file. This is a string
   similar to single quotes but also includes newlines and allows commands that
