@@ -1349,11 +1349,41 @@ bind-key -Troot   a switch-client -Ttable1
 .Ed
 .El
 .Sh WINDOWS AND PANES
-A
+Each window displayed by
 .Nm
-window may be in one of two modes.
-The default permits direct access to the terminal attached to the window.
-The other is copy mode, which permits a section of a window or its
+may be split into one or more
+.Em panes ;
+each pane takes up a certain area of the display and is a separate terminal.
+A window may be split into panes using the
+.Ic split-window
+command.
+Windows may be split horizontally (with the
+.Fl h
+flag) or vertically.
+Panes may be resized with the
+.Ic resize-pane
+command (bound to
+.Ql C-Up ,
+.Ql C-Down
+.Ql C-Left
+and
+.Ql C-Right
+by default), the current pane may be changed with the
+.Ic select-pane
+command and the
+.Ic rotate-window
+and
+.Ic swap-pane
+commands may be used to swap panes without changing their position.
+Panes are numbered beginning from zero in the order they are created.
+.Pp
+By default, a
+.Nm
+pane permits direct access to the terminal contained in the pane.
+A pane may also be put into one of several modes:
+.Bl -dash -offset indent
+.It
+Copy mode, which permits a section of a window or its
 history to be copied to a
 .Em paste buffer
 for later insertion into another window.
@@ -1362,9 +1392,21 @@ This mode is entered with the
 command, bound to
 .Ql \&[
 by default.
-It is also entered when a command that produces output, such as
+.It
+View mode, which is like copy mode but is entered when a command that produces
+output, such as
 .Ic list-keys ,
 is executed from a key binding.
+.It
+Choose mode, which allows an item to be chosen from a list.
+This may be a client, a session or window or pane, or a buffer.
+This mode is entered with the
+.Ic choose-buffer ,
+.Ic choose-client
+and
+.Ic choose-tree
+commands.
+.El
 .Pp
 In copy mode an indicator is displayed in the top-right corner of the pane with
 the current position and the number of lines in the history.
@@ -1526,37 +1568,7 @@ bind PageUp copy-mode -eu
 .Ed
 .El
 .Pp
-Each window displayed by
-.Nm
-may be split into one or more
-.Em panes ;
-each pane takes up a certain area of the display and is a separate terminal.
-A window may be split into panes using the
-.Ic split-window
-command.
-Windows may be split horizontally (with the
-.Fl h
-flag) or vertically.
-Panes may be resized with the
-.Ic resize-pane
-command (bound to
-.Ql C-Up ,
-.Ql C-Down
-.Ql C-Left
-and
-.Ql C-Right
-by default), the current pane may be changed with the
-.Ic select-pane
-command and the
-.Ic rotate-window
-and
-.Ic swap-pane
-commands may be used to swap panes without changing their position.
-Panes are numbered beginning from zero in the order they are created.
-.Pp
-A number of preset
-.Em layouts
-are available.
+A number of preset arrangements of panes are available, these are called layouts.
 These may be selected with the
 .Ic select-layout
 command or cycled with
