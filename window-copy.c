@@ -110,7 +110,7 @@ static void	window_copy_cursor_next_word(struct window_mode_entry *,
 static void	window_copy_cursor_next_word_end(struct window_mode_entry *,
 		    const char *);
 static void	window_copy_cursor_previous_word(struct window_mode_entry *,
-		    const char *);
+		    const char *, int);
 static void	window_copy_scroll_up(struct window_mode_entry *, u_int);
 static void	window_copy_scroll_down(struct window_mode_entry *, u_int);
 static void	window_copy_rectangle_toggle(struct window_mode_entry *);
@@ -1048,7 +1048,7 @@ window_copy_cmd_previous_matching_bracket(struct window_copy_cmd_state *cs)
 					tried = 1;
 					goto retry;
 				}
-				window_copy_cursor_previous_word(wme, "}]) ");
+				window_copy_cursor_previous_word(wme, "}]) ", 1);
 			}
 			continue;
 		}
@@ -1343,7 +1343,7 @@ window_copy_cmd_previous_space(struct window_copy_cmd_state *cs)
 	u_int				 np = wme->prefix;
 
 	for (; np != 0; np--)
-		window_copy_cursor_previous_word(wme, " ");
+		window_copy_cursor_previous_word(wme, " ", 1);
 	return (WINDOW_COPY_CMD_NOTHING);
 }
 
@@ -1357,7 +1357,7 @@ window_copy_cmd_previous_word(struct window_copy_cmd_state *cs)
 
 	ws = options_get_string(s->options, "word-separators");
 	for (; np != 0; np--)
-		window_copy_cursor_previous_word(wme, ws);
+		window_copy_cursor_previous_word(wme, ws, 1);
 	return (WINDOW_COPY_CMD_NOTHING);
 }
 
@@ -1477,7 +1477,7 @@ window_copy_cmd_select_word(struct window_copy_cmd_state *cs)
 	data->rectflag = 0;
 
 	ws = options_get_string(s->options, "word-separators");
-	window_copy_cursor_previous_word(wme, ws);
+	window_copy_cursor_previous_word(wme, ws, 0);
 	window_copy_start_selection(wme);
 	window_copy_cursor_next_word_end(wme, ws);
 
@@ -3314,7 +3314,7 @@ window_copy_cursor_next_word_end(struct window_mode_entry *wme,
 /* Move to the previous place where a word begins. */
 static void
 window_copy_cursor_previous_word(struct window_mode_entry *wme,
-    const char *separators)
+    const char *separators, int already)
 {
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 px, py;
@@ -3323,25 +3323,27 @@ window_copy_cursor_previous_word(struct window_mode_entry *wme,
 	py = screen_hsize(data->backing) + data->cy - data->oy;
 
 	/* Move back to the previous word character. */
-	for (;;) {
-		if (px > 0) {
-			px--;
-			if (!window_copy_in_set(wme, px, py, separators))
-				break;
-		} else {
-			if (data->cy == 0 &&
-			    (screen_hsize(data->backing) == 0 ||
-			    data->oy >= screen_hsize(data->backing) - 1))
-				goto out;
-			window_copy_cursor_up(wme, 0);
+	if (already || window_copy_in_set(wme, px, py, separators)) {
+		for (;;) {
+			if (px > 0) {
+				px--;
+				if (!window_copy_in_set(wme, px, py, separators))
+					break;
+			} else {
+				if (data->cy == 0 &&
+				    (screen_hsize(data->backing) == 0 ||
+				    data->oy >= screen_hsize(data->backing) - 1))
+					goto out;
+				window_copy_cursor_up(wme, 0);
 
-			py = screen_hsize(data->backing) + data->cy - data->oy;
-			px = window_copy_find_length(wme, py);
+				py = screen_hsize(data->backing) + data->cy - data->oy;
+				px = window_copy_find_length(wme, py);
 
-			/* Stop if separator at EOL. */
-			if (px > 0 &&
-			    window_copy_in_set(wme, px - 1, py, separators))
-				break;
+				/* Stop if separator at EOL. */
+				if (px > 0 &&
+				    window_copy_in_set(wme, px - 1, py, separators))
+					break;
+			}
 		}
 	}
 
