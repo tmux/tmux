@@ -60,8 +60,8 @@ static int	window_copy_search_rl(struct grid *, struct grid *, u_int *,
 static int	window_copy_search_marks(struct window_mode_entry *,
 		    struct screen *);
 static void	window_copy_clear_marks(struct window_mode_entry *);
-static void	window_copy_move_left(struct screen *, u_int *, u_int *);
-static void	window_copy_move_right(struct screen *, u_int *, u_int *);
+static void	window_copy_move_left(struct screen *, u_int *, u_int *, int);
+static void	window_copy_move_right(struct screen *, u_int *, u_int *, int);
 static int	window_copy_is_lowercase(const char *);
 static int	window_copy_search_jump(struct window_mode_entry *,
 		    struct grid *, struct grid *, u_int, u_int, u_int, int, int,
@@ -110,7 +110,7 @@ static void	window_copy_cursor_next_word(struct window_mode_entry *,
 static void	window_copy_cursor_next_word_end(struct window_mode_entry *,
 		    const char *);
 static void	window_copy_cursor_previous_word(struct window_mode_entry *,
-		    const char *);
+		    const char *, int);
 static void	window_copy_scroll_up(struct window_mode_entry *, u_int);
 static void	window_copy_scroll_down(struct window_mode_entry *, u_int);
 static void	window_copy_rectangle_toggle(struct window_mode_entry *);
@@ -1048,7 +1048,7 @@ window_copy_cmd_previous_matching_bracket(struct window_copy_cmd_state *cs)
 					tried = 1;
 					goto retry;
 				}
-				window_copy_cursor_previous_word(wme, "}]) ");
+				window_copy_cursor_previous_word(wme, "}]) ", 1);
 			}
 			continue;
 		}
@@ -1343,7 +1343,7 @@ window_copy_cmd_previous_space(struct window_copy_cmd_state *cs)
 	u_int				 np = wme->prefix;
 
 	for (; np != 0; np--)
-		window_copy_cursor_previous_word(wme, " ");
+		window_copy_cursor_previous_word(wme, " ", 1);
 	return (WINDOW_COPY_CMD_NOTHING);
 }
 
@@ -1357,7 +1357,7 @@ window_copy_cmd_previous_word(struct window_copy_cmd_state *cs)
 
 	ws = options_get_string(s->options, "word-separators");
 	for (; np != 0; np--)
-		window_copy_cursor_previous_word(wme, ws);
+		window_copy_cursor_previous_word(wme, ws, 1);
 	return (WINDOW_COPY_CMD_NOTHING);
 }
 
@@ -1477,7 +1477,7 @@ window_copy_cmd_select_word(struct window_copy_cmd_state *cs)
 	data->rectflag = 0;
 
 	ws = options_get_string(s->options, "word-separators");
-	window_copy_cursor_previous_word(wme, ws);
+	window_copy_cursor_previous_word(wme, ws, 0);
 	window_copy_start_selection(wme);
 	window_copy_cursor_next_word_end(wme, ws);
 
@@ -2047,11 +2047,16 @@ window_copy_search_rl(struct grid *gd,
 }
 
 static void
-window_copy_move_left(struct screen *s, u_int *fx, u_int *fy)
+window_copy_move_left(struct screen *s, u_int *fx, u_int *fy, int wrapflag)
 {
 	if (*fx == 0) {	/* left */
-		if (*fy == 0) /* top */
+		if (*fy == 0) { /* top */
+			if (wrapflag) {
+				*fx = screen_size_x(s) - 1;
+				*fy = screen_hsize(s) + screen_size_y(s);
+			}
 			return;
+		}
 		*fx = screen_size_x(s) - 1;
 		*fy = *fy - 1;
 	} else
@@ -2059,11 +2064,16 @@ window_copy_move_left(struct screen *s, u_int *fx, u_int *fy)
 }
 
 static void
-window_copy_move_right(struct screen *s, u_int *fx, u_int *fy)
+window_copy_move_right(struct screen *s, u_int *fx, u_int *fy, int wrapflag)
 {
 	if (*fx == screen_size_x(s) - 1) { /* right */
-		if (*fy == screen_hsize(s) + screen_size_y(s)) /* bottom */
+		if (*fy == screen_hsize(s) + screen_size_y(s)) { /* bottom */
+			if (wrapflag) {
+				*fx = 0;
+				*fy = 0;
+			}
 			return;
+		}
 		*fx = 0;
 		*fy = *fy + 1;
 	} else
@@ -2155,18 +2165,16 @@ window_copy_search(struct window_mode_entry *wme, int direction)
 	screen_write_nputs(&ctx, -1, &grid_default_cell, "%s", data->searchstr);
 	screen_write_stop(&ctx);
 
-	if (direction)
-		window_copy_move_right(s, &fx, &fy);
-	else
-		window_copy_move_left(s, &fx, &fy);
-
 	wrapflag = options_get_number(wp->window->options, "wrap-search");
 	cis = window_copy_is_lowercase(data->searchstr);
 
-	if (direction)
+	if (direction) {
+		window_copy_move_right(s, &fx, &fy, wrapflag);
 		endline = gd->hsize + gd->sy - 1;
-	else
+	} else {
+		window_copy_move_left(s, &fx, &fy, wrapflag);
 		endline = 0;
+	}
 	found = window_copy_search_jump(wme, gd, ss.grid, fx, fy, endline, cis,
 	    wrapflag, direction);
 
@@ -3314,7 +3322,7 @@ window_copy_cursor_next_word_end(struct window_mode_entry *wme,
 /* Move to the previous place where a word begins. */
 static void
 window_copy_cursor_previous_word(struct window_mode_entry *wme,
-    const char *separators)
+    const char *separators, int already)
 {
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 px, py;
@@ -3323,25 +3331,27 @@ window_copy_cursor_previous_word(struct window_mode_entry *wme,
 	py = screen_hsize(data->backing) + data->cy - data->oy;
 
 	/* Move back to the previous word character. */
-	for (;;) {
-		if (px > 0) {
-			px--;
-			if (!window_copy_in_set(wme, px, py, separators))
-				break;
-		} else {
-			if (data->cy == 0 &&
-			    (screen_hsize(data->backing) == 0 ||
-			    data->oy >= screen_hsize(data->backing) - 1))
-				goto out;
-			window_copy_cursor_up(wme, 0);
+	if (already || window_copy_in_set(wme, px, py, separators)) {
+		for (;;) {
+			if (px > 0) {
+				px--;
+				if (!window_copy_in_set(wme, px, py, separators))
+					break;
+			} else {
+				if (data->cy == 0 &&
+				    (screen_hsize(data->backing) == 0 ||
+				    data->oy >= screen_hsize(data->backing) - 1))
+					goto out;
+				window_copy_cursor_up(wme, 0);
 
-			py = screen_hsize(data->backing) + data->cy - data->oy;
-			px = window_copy_find_length(wme, py);
+				py = screen_hsize(data->backing) + data->cy - data->oy;
+				px = window_copy_find_length(wme, py);
 
-			/* Stop if separator at EOL. */
-			if (px > 0 &&
-			    window_copy_in_set(wme, px - 1, py, separators))
-				break;
+				/* Stop if separator at EOL. */
+				if (px > 0 &&
+				    window_copy_in_set(wme, px - 1, py, separators))
+					break;
+			}
 		}
 	}
 
