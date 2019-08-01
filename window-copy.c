@@ -60,8 +60,8 @@ static int	window_copy_search_rl(struct grid *, struct grid *, u_int *,
 static int	window_copy_search_marks(struct window_mode_entry *,
 		    struct screen *);
 static void	window_copy_clear_marks(struct window_mode_entry *);
-static void	window_copy_move_left(struct screen *, u_int *, u_int *);
-static void	window_copy_move_right(struct screen *, u_int *, u_int *);
+static void	window_copy_move_left(struct screen *, u_int *, u_int *, int);
+static void	window_copy_move_right(struct screen *, u_int *, u_int *, int);
 static int	window_copy_is_lowercase(const char *);
 static int	window_copy_search_jump(struct window_mode_entry *,
 		    struct grid *, struct grid *, u_int, u_int, u_int, int, int,
@@ -2047,11 +2047,16 @@ window_copy_search_rl(struct grid *gd,
 }
 
 static void
-window_copy_move_left(struct screen *s, u_int *fx, u_int *fy)
+window_copy_move_left(struct screen *s, u_int *fx, u_int *fy, int wrapflag)
 {
 	if (*fx == 0) {	/* left */
-		if (*fy == 0) /* top */
+		if (*fy == 0) { /* top */
+			if (wrapflag) {
+				*fx = screen_size_x(s) - 1;
+				*fy = screen_hsize(s) + screen_size_y(s);
+			}
 			return;
+		}
 		*fx = screen_size_x(s) - 1;
 		*fy = *fy - 1;
 	} else
@@ -2059,11 +2064,16 @@ window_copy_move_left(struct screen *s, u_int *fx, u_int *fy)
 }
 
 static void
-window_copy_move_right(struct screen *s, u_int *fx, u_int *fy)
+window_copy_move_right(struct screen *s, u_int *fx, u_int *fy, int wrapflag)
 {
 	if (*fx == screen_size_x(s) - 1) { /* right */
-		if (*fy == screen_hsize(s) + screen_size_y(s)) /* bottom */
+		if (*fy == screen_hsize(s) + screen_size_y(s)) { /* bottom */
+			if (wrapflag) {
+				*fx = 0;
+				*fy = 0;
+			}
 			return;
+		}
 		*fx = 0;
 		*fy = *fy + 1;
 	} else
@@ -2155,18 +2165,16 @@ window_copy_search(struct window_mode_entry *wme, int direction)
 	screen_write_nputs(&ctx, -1, &grid_default_cell, "%s", data->searchstr);
 	screen_write_stop(&ctx);
 
-	if (direction)
-		window_copy_move_right(s, &fx, &fy);
-	else
-		window_copy_move_left(s, &fx, &fy);
-
 	wrapflag = options_get_number(wp->window->options, "wrap-search");
 	cis = window_copy_is_lowercase(data->searchstr);
 
-	if (direction)
+	if (direction) {
+		window_copy_move_right(s, &fx, &fy, wrapflag);
 		endline = gd->hsize + gd->sy - 1;
-	else
+	} else {
+		window_copy_move_left(s, &fx, &fy, wrapflag);
 		endline = 0;
+	}
 	found = window_copy_search_jump(wme, gd, ss.grid, fx, fy, endline, cis,
 	    wrapflag, direction);
 
