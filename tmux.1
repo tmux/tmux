@@ -1647,7 +1647,7 @@ By default, it uses the format
 but a different format may be specified with
 .Fl F .
 .It Xo Ic capture-pane
-.Op Fl aepPqCJ
+.Op Fl aepPqCJN
 .Op Fl b Ar buffer-name
 .Op Fl E Ar end-line
 .Op Fl S Ar start-line
@@ -1672,8 +1672,10 @@ is given, the output includes escape sequences for text and background
 attributes.
 .Fl C
 also escapes non-printable characters as octal \exxx.
+.Fl N
+preserves trailing spaces at each line's end and
 .Fl J
-joins wrapped lines and preserves trailing spaces at each line's end.
+preserves trailing spaces and joins any wrapped lines.
 .Fl P
 captures only any output that the pane has received that is the beginning of an
 as-yet incomplete escape sequence.

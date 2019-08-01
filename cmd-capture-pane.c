@@ -39,8 +39,8 @@ const struct cmd_entry cmd_capture_pane_entry = {
 	.name = "capture-pane",
 	.alias = "capturep",
 
-	.args = { "ab:CeE:JpPqS:t:", 0, 0 },
-	.usage = "[-aCeJpPq] " CMD_BUFFER_USAGE " [-E end-line] "
+	.args = { "ab:CeE:JNpPqS:t:", 0, 0 },
+	.usage = "[-aCeJNpPq] " CMD_BUFFER_USAGE " [-E end-line] "
 		 "[-S start-line] " CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -110,7 +110,7 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 	struct grid		*gd;
 	const struct grid_line	*gl;
 	struct grid_cell	*gc = NULL;
-	int			 n, with_codes, escape_c0, join_lines;
+	int			 n, with_codes, escape_c0, join_lines, no_trim;
 	u_int			 i, sx, top, bottom, tmp;
 	char			*cause, *buf, *line;
 	const char		*Sflag, *Eflag;
@@ -170,11 +170,12 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 	with_codes = args_has(args, 'e');
 	escape_c0 = args_has(args, 'C');
 	join_lines = args_has(args, 'J');
+	no_trim = args_has(args, 'N');
 
 	buf = NULL;
 	for (i = top; i <= bottom; i++) {
 		line = grid_string_cells(gd, 0, i, sx, &gc, with_codes,
-		    escape_c0, !join_lines);
+		    escape_c0, !join_lines && !no_trim);
 		linelen = strlen(line);
 
 		buf = cmd_capture_pane_append(buf, len, line, linelen);
