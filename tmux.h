@@ -420,6 +420,7 @@ enum tty_code_code {
 	TTYC_REV,
 	TTYC_RGB,
 	TTYC_RI,
+	TTYC_RIN,
 	TTYC_RMACS,
 	TTYC_RMCUP,
 	TTYC_RMKX,
@@ -1925,6 +1926,7 @@ void	tty_cmd_insertcharacter(struct tty *, const struct tty_ctx *);
 void	tty_cmd_insertline(struct tty *, const struct tty_ctx *);
 void	tty_cmd_linefeed(struct tty *, const struct tty_ctx *);
 void	tty_cmd_scrollup(struct tty *, const struct tty_ctx *);
+void	tty_cmd_scrolldown(struct tty *, const struct tty_ctx *);
 void	tty_cmd_reverseindex(struct tty *, const struct tty_ctx *);
 void	tty_cmd_setselection(struct tty *, const struct tty_ctx *);
 void	tty_cmd_rawstring(struct tty *, const struct tty_ctx *);
@@ -2301,6 +2303,7 @@ void	 screen_write_reverseindex(struct screen_write_ctx *, u_int);
 void	 screen_write_scrollregion(struct screen_write_ctx *, u_int, u_int);
 void	 screen_write_linefeed(struct screen_write_ctx *, int, u_int);
 void	 screen_write_scrollup(struct screen_write_ctx *, u_int, u_int);
+void	 screen_write_scrolldown(struct screen_write_ctx *, u_int, u_int);
 void	 screen_write_carriagereturn(struct screen_write_ctx *);
 void	 screen_write_clearendofscreen(struct screen_write_ctx *, u_int);
 void	 screen_write_clearstartofscreen(struct screen_write_ctx *, u_int);
