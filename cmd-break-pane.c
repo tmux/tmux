@@ -81,6 +81,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	wp->flags |= PANE_STYLECHANGED;
 	TAILQ_INSERT_HEAD(&w->panes, wp, entry);
 	w->active = wp;
+	w->latest = c;
 
 	if (!args_has(args, 'n')) {
 		name = default_window_name(w);

@@ -150,13 +150,119 @@ done:
 }
 
 void
+recalculate_size(struct window *w)
+{
+	struct session	*s;
+	struct client	*c;
+	u_int		 sx, sy, cx, cy;
+	int		 type, current, has, changed;
+
+	if (w->active == NULL)
+		return;
+	log_debug("%s: @%u is %u,%u", __func__, w->id, w->sx, w->sy);
+
+	type = options_get_number(w->options, "window-size");
+	current = options_get_number(w->options, "aggressive-resize");
+
+	changed = 1;
+	switch (type) {
+	case WINDOW_SIZE_LARGEST:
+		sx = sy = 0;
+		TAILQ_FOREACH(c, &clients, entry) {
+			if (ignore_client_size(c))
+				continue;
+			s = c->session;
+
+			if (current)
+				has = (s->curw->window == w);
+			else
+				has = session_has(s, w);
+			if (!has)
+				continue;
+
+			cx = c->tty.sx;
+			cy = c->tty.sy - status_line_size(c);
+
+			if (cx > sx)
+				sx = cx;
+			if (cy > sy)
+				sy = cy;
+		}
+		if (sx == 0 || sy == 0)
+			changed = 0;
+		break;
+	case WINDOW_SIZE_SMALLEST:
+		sx = sy = UINT_MAX;
+		TAILQ_FOREACH(c, &clients, entry) {
+			if (ignore_client_size(c))
+				continue;
+			s = c->session;
+
+			if (current)
+				has = (s->curw->window == w);
+			else
+				has = session_has(s, w);
+			if (!has)
+				continue;
+
+			cx = c->tty.sx;
+			cy = c->tty.sy - status_line_size(c);
+
+			if (cx < sx)
+				sx = cx;
+			if (cy < sy)
+				sy = cy;
+		}
+		if (sx == UINT_MAX || sy == UINT_MAX)
+			changed = 0;
+		break;
+	case WINDOW_SIZE_LATEST:
+		sx = sy = UINT_MAX;
+		TAILQ_FOREACH(c, &clients, entry) {
+			if (ignore_client_size(c))
+				continue;
+			if (c != w->latest)
+				continue;
+			s = c->session;
+
+			if (current)
+				has = (s->curw->window == w);
+			else
+				has = session_has(s, w);
+			if (!has)
+				continue;
+
+			cx = c->tty.sx;
+			cy = c->tty.sy - status_line_size(c);
+
+			if (cx < sx)
+				sx = cx;
+			if (cy < sy)
+				sy = cy;
+		}
+		if (sx == UINT_MAX || sy == UINT_MAX)
+			changed = 0;
+		break;
+	case WINDOW_SIZE_MANUAL:
+		break;
+	}
+	if (w->sx == sx && w->sy == sy)
+		changed = 0;
+
+	if (!changed) {
+		tty_update_window_offset(w);
+		return;
+	}
+	log_debug("%s: @%u changed to %u,%u", __func__, w->id, sx, sy);
+	resize_window(w, sx, sy);
+}
+
+void
 recalculate_sizes(void)
 {
 	struct session	*s;
 	struct client	*c;
 	struct window	*w;
-	u_int		 sx, sy, cx, cy;
-	int		 type, current, has, changed;
 
 	/*
 	 * Clear attached count and update saved status line information for
@@ -183,74 +289,6 @@ recalculate_sizes(void)
 	}
 
 	/* Walk each window and adjust the size. */
-	RB_FOREACH(w, windows, &windows) {
-		if (w->active == NULL)
-			continue;
-		log_debug("%s: @%u is %u,%u", __func__, w->id, w->sx, w->sy);
-
-		type = options_get_number(w->options, "window-size");
-		if (type == WINDOW_SIZE_MANUAL)
-			continue;
-		current = options_get_number(w->options, "aggressive-resize");
-
-		changed = 1;
-		if (type == WINDOW_SIZE_LARGEST) {
-			sx = sy = 0;
-			TAILQ_FOREACH(c, &clients, entry) {
-				if (ignore_client_size(c))
-					continue;
-				s = c->session;
-
-				if (current)
-					has = (s->curw->window == w);
-				else
-					has = session_has(s, w);
-				if (!has)
-					continue;
-
-				cx = c->tty.sx;
-				cy = c->tty.sy - status_line_size(c);
-
-				if (cx > sx)
-					sx = cx;
-				if (cy > sy)
-					sy = cy;
-			}
-			if (sx == 0 || sy == 0)
-				changed = 0;
-		} else {
-			sx = sy = UINT_MAX;
-			TAILQ_FOREACH(c, &clients, entry) {
-				if (ignore_client_size(c))
-					continue;
-				s = c->session;
-
-				if (current)
-					has = (s->curw->window == w);
-				else
-					has = session_has(s, w);
-				if (!has)
-					continue;
-
-				cx = c->tty.sx;
-				cy = c->tty.sy - status_line_size(c);
-
-				if (cx < sx)
-					sx = cx;
-				if (cy < sy)
-					sy = cy;
-			}
-			if (sx == UINT_MAX || sy == UINT_MAX)
-				changed = 0;
-		}
-		if (w->sx == sx && w->sy == sy)
-			changed = 0;
-
-		if (!changed) {
-			tty_update_window_offset(w);
-			continue;
-		}
-		log_debug("%s: @%u changed to %u,%u", __func__, w->id, sx, sy);
-		resize_window(w, sx, sy);
-	}
+	RB_FOREACH(w, windows, &windows)
+		recalculate_size(w);
 }

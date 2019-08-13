@@ -3646,7 +3646,7 @@ see the
 section.
 .Pp
 .It Xo Ic window-size
-.Ar largest | Ar smallest | Ar manual
+.Ar largest | Ar smallest | Ar manual | Ar latest
 .Xc
 Configure how
 .Nm
@@ -3661,6 +3661,10 @@ If
 the size of a new window is set from the
 .Ic default-size
 option and windows are resized automatically.
+With
+.Ar latest ,
+.Nm
+uses the size of the client that had the most recent activity.
 See also the
 .Ic resize-window
 command and the

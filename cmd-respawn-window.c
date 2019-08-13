@@ -59,6 +59,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmdq_item *item)
 	sc.item = item;
 	sc.s = s;
 	sc.wl = wl;
+	sc.c = cmd_find_client(item, NULL, 1);
 
 	sc.name = NULL;
 	sc.argc = args->argc;
