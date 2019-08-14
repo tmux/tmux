@@ -1635,12 +1635,17 @@ window_copy_cmd_search_backward(struct window_copy_cmd_state *cs)
 	struct window_mode_entry	*wme = cs->wme;
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 np = wme->prefix;
-	const char			*argument = cs->args->argv[1];
+	const char			*argument;
 
-	if (*argument != '\0') {
+	if (cs->args->argc == 2) {
+		argument = cs->args->argv[1];
+		if (*argument != '\0') {
+			free(data->searchstr);
+			data->searchstr = xstrdup(argument);
+		}
+	}
+	if (data->searchstr != NULL) {
 		data->searchtype = WINDOW_COPY_SEARCHUP;
-		free(data->searchstr);
-		data->searchstr = xstrdup(argument);
 		for (; np != 0; np--)
 			window_copy_search_up(wme);
 	}
@@ -1653,12 +1658,17 @@ window_copy_cmd_search_forward(struct window_copy_cmd_state *cs)
 	struct window_mode_entry	*wme = cs->wme;
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 np = wme->prefix;
-	const char			*argument = cs->args->argv[1];
+	const char			*argument;
 
-	if (*argument != '\0') {
+	if (cs->args->argc == 2) {
+		argument = cs->args->argv[1];
+		if (*argument != '\0') {
+			free(data->searchstr);
+			data->searchstr = xstrdup(argument);
+		}
+	}
+	if (data->searchstr != NULL) {
 		data->searchtype = WINDOW_COPY_SEARCHDOWN;
-		free(data->searchstr);
-		data->searchstr = xstrdup(argument);
 		for (; np != 0; np--)
 			window_copy_search_down(wme);
 	}
@@ -1872,11 +1882,11 @@ static const struct {
 	  window_copy_cmd_scroll_up },
 	{ "search-again", 0, 0,
 	  window_copy_cmd_search_again },
-	{ "search-backward", 1, 1,
+	{ "search-backward", 0, 1,
 	  window_copy_cmd_search_backward },
 	{ "search-backward-incremental", 1, 1,
 	  window_copy_cmd_search_backward_incremental },
-	{ "search-forward", 1, 1,
+	{ "search-forward", 0, 1,
 	  window_copy_cmd_search_forward },
 	{ "search-forward-incremental", 1, 1,
 	  window_copy_cmd_search_forward_incremental },
