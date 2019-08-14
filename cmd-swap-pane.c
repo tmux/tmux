@@ -32,8 +32,8 @@ const struct cmd_entry cmd_swap_pane_entry = {
 	.name = "swap-pane",
 	.alias = "swapp",
 
-	.args = { "dDs:t:U", 0, 0 },
-	.usage = "[-dDU] " CMD_SRCDST_PANE_USAGE,
+	.args = { "dDs:t:UZ", 0, 0 },
+	.usage = "[-dDUZ] " CMD_SRCDST_PANE_USAGE,
 
 	.source = { 's', CMD_FIND_PANE, CMD_FIND_DEFAULT_MARKED },
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -45,6 +45,7 @@ const struct cmd_entry cmd_swap_pane_entry = {
 static enum cmd_retval
 cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
+	struct args		*args = self->args;
 	struct window		*src_w, *dst_w;
 	struct window_pane	*tmp_wp, *src_wp, *dst_wp;
 	struct layout_cell	*src_lc, *dst_lc;
@@ -54,23 +55,27 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 	dst_wp = item->target.wp;
 	src_w = item->source.wl->window;
 	src_wp = item->source.wp;
-	server_unzoom_window(dst_w);
 
-	if (args_has(self->args, 'D')) {
+	if (window_push_zoom(dst_w, args_has(args, 'Z')))
+		server_redraw_window(dst_w);
+
+	if (args_has(args, 'D')) {
 		src_w = dst_w;
 		src_wp = TAILQ_NEXT(dst_wp, entry);
 		if (src_wp == NULL)
 			src_wp = TAILQ_FIRST(&dst_w->panes);
-	} else if (args_has(self->args, 'U')) {
+	} else if (args_has(args, 'U')) {
 		src_w = dst_w;
 		src_wp = TAILQ_PREV(dst_wp, window_panes, entry);
 		if (src_wp == NULL)
 			src_wp = TAILQ_LAST(&dst_w->panes, window_panes);
 	}
-	server_unzoom_window(src_w);
+
+	if (src_w != dst_w && window_push_zoom(src_w, args_has(args, 'Z')))
+		server_redraw_window(src_w);
 
 	if (src_wp == dst_wp)
-		return (CMD_RETURN_NORMAL);
+		goto out;
 
 	tmp_wp = TAILQ_PREV(dst_wp, window_panes, entry);
 	TAILQ_REMOVE(&dst_w->panes, dst_wp, entry);
@@ -103,7 +108,7 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 	dst_wp->xoff = xoff; dst_wp->yoff = yoff;
 	window_pane_resize(dst_wp, sx, sy);
 
-	if (!args_has(self->args, 'd')) {
+	if (!args_has(args, 'd')) {
 		if (src_w != dst_w) {
 			window_set_active_pane(src_w, dst_wp, 1);
 			window_set_active_pane(dst_w, src_wp, 1);
@@ -126,5 +131,10 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 	server_redraw_window(src_w);
 	server_redraw_window(dst_w);
 
+out:
+	if (window_pop_zoom(src_w))
+		server_redraw_window(src_w);
+	if (src_w != dst_w && window_pop_zoom(dst_w))
+		server_redraw_window(dst_w);
 	return (CMD_RETURN_NORMAL);
 }

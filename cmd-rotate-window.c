@@ -31,8 +31,8 @@ const struct cmd_entry cmd_rotate_window_entry = {
 	.name = "rotate-window",
 	.alias = "rotatew",
 
-	.args = { "Dt:U", 0, 0 },
-	.usage = "[-DU] " CMD_TARGET_WINDOW_USAGE,
+	.args = { "Dt:UZ", 0, 0 },
+	.usage = "[-DUZ] " CMD_TARGET_WINDOW_USAGE,
 
 	.target = { 't', CMD_FIND_WINDOW, 0 },
 
@@ -50,7 +50,7 @@ cmd_rotate_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct layout_cell	*lc;
 	u_int			 sx, sy, xoff, yoff;
 
-	server_unzoom_window(w);
+	window_push_zoom(w, args_has(self->args, 'Z'));
 
 	if (args_has(self->args, 'D')) {
 		wp = TAILQ_LAST(&w->panes, window_panes);
@@ -77,9 +77,6 @@ cmd_rotate_window_exec(struct cmd *self, struct cmdq_item *item)
 
 		if ((wp = TAILQ_PREV(w->active, window_panes, entry)) == NULL)
 			wp = TAILQ_LAST(&w->panes, window_panes);
-		window_set_active_pane(w, wp, 1);
-		cmd_find_from_winlink_pane(current, wl, wp, 0);
-		server_redraw_window(w);
 	} else {
 		wp = TAILQ_FIRST(&w->panes);
 		TAILQ_REMOVE(&w->panes, wp, entry);
@@ -105,10 +102,12 @@ cmd_rotate_window_exec(struct cmd *self, struct cmdq_item *item)
 
 		if ((wp = TAILQ_NEXT(w->active, entry)) == NULL)
 			wp = TAILQ_FIRST(&w->panes);
-		window_set_active_pane(w, wp, 1);
-		cmd_find_from_winlink_pane(current, wl, wp, 0);
-		server_redraw_window(w);
 	}
+
+	window_set_active_pane(w, wp, 1);
+	cmd_find_from_winlink_pane(current, wl, wp, 0);
+	window_pop_zoom(w);
+	server_redraw_window(w);
 
 	return (CMD_RETURN_NORMAL);
 }

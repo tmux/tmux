@@ -34,8 +34,8 @@ const struct cmd_entry cmd_switch_client_entry = {
 	.name = "switch-client",
 	.alias = "switchc",
 
-	.args = { "lc:Enpt:rT:", 0, 0 },
-	.usage = "[-Elnpr] [-c target-client] [-t target-session] "
+	.args = { "lc:Enpt:rT:Z", 0, 0 },
+	.usage = "[-ElnprZ] [-c target-client] [-t target-session] "
 		 "[-T key-table]",
 
 	/* -t is special */
@@ -54,6 +54,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 	struct client		*c;
 	struct session		*s;
 	struct winlink		*wl;
+	struct window		*w;
 	struct window_pane	*wp;
 	const char		*tablename;
 	struct key_table	*table;
@@ -72,6 +73,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_ERROR);
 	s = item->target.s;
 	wl = item->target.wl;
+	w = wl->window;
 	wp = item->target.wp;
 
 	if (args_has(args, 'r'))
@@ -112,12 +114,15 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 	} else {
 		if (item->client == NULL)
 			return (CMD_RETURN_NORMAL);
+		if (wl != NULL && wp != NULL) {
+			if (window_push_zoom(w, args_has(self->args, 'Z')))
+				server_redraw_window(w);
+			window_redraw_active_switch(w, wp);
+			window_set_active_pane(w, wp, 1);
+			if (window_pop_zoom(w))
+				server_redraw_window(w);
+		}
 		if (wl != NULL) {
-			server_unzoom_window(wl->window);
-			if (wp != NULL) {
-				window_redraw_active_switch(wp->window, wp);
-				window_set_active_pane(wp->window, wp, 1);
-			}
 			session_set_current(s, wl);
 			cmd_find_from_session(&item->shared->current, s, 0);
 		}

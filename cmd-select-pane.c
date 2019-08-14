@@ -33,8 +33,8 @@ const struct cmd_entry cmd_select_pane_entry = {
 	.name = "select-pane",
 	.alias = "selectp",
 
-	.args = { "DdegLlMmP:RT:t:U", 0, 0 }, /* -P and -g deprecated */
-	.usage = "[-DdeLlMmRU] [-T title] " CMD_TARGET_PANE_USAGE,
+	.args = { "DdegLlMmP:RT:t:UZ", 0, 0 }, /* -P and -g deprecated */
+	.usage = "[-DdeLlMmRUZ] [-T title] " CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -46,8 +46,8 @@ const struct cmd_entry cmd_last_pane_entry = {
 	.name = "last-pane",
 	.alias = "lastp",
 
-	.args = { "det:", 0, 0 },
-	.usage = "[-de] " CMD_TARGET_WINDOW_USAGE,
+	.args = { "det:Z", 0, 0 },
+	.usage = "[-deZ] " CMD_TARGET_WINDOW_USAGE,
 
 	.target = { 't', CMD_FIND_WINDOW, 0 },
 
@@ -111,12 +111,15 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 		else if (args_has(self->args, 'd'))
 			lastwp->flags |= PANE_INPUTOFF;
 		else {
-			server_unzoom_window(w);
+			if (window_push_zoom(w, args_has(self->args, 'Z')))
+				server_redraw_window(w);
 			window_redraw_active_switch(w, lastwp);
 			if (window_set_active_pane(w, lastwp, 1)) {
 				cmd_find_from_winlink(current, wl, 0);
 				cmd_select_pane_redraw(w);
 			}
+			if (window_pop_zoom(w))
+				server_redraw_window(w);
 		}
 		return (CMD_RETURN_NORMAL);
 	}
@@ -161,17 +164,21 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (args_has(self->args, 'L')) {
-		server_unzoom_window(wp->window);
+		window_push_zoom(w, 1);
 		wp = window_pane_find_left(wp);
+		window_pop_zoom(w);
 	} else if (args_has(self->args, 'R')) {
-		server_unzoom_window(wp->window);
+		window_push_zoom(w, 1);
 		wp = window_pane_find_right(wp);
+		window_pop_zoom(w);
 	} else if (args_has(self->args, 'U')) {
-		server_unzoom_window(wp->window);
+		window_push_zoom(w, 1);
 		wp = window_pane_find_up(wp);
+		window_pop_zoom(w);
 	} else if (args_has(self->args, 'D')) {
-		server_unzoom_window(wp->window);
+		window_push_zoom(w, 1);
 		wp = window_pane_find_down(wp);
+		window_pop_zoom(w);
 	}
 	if (wp == NULL)
 		return (CMD_RETURN_NORMAL);
@@ -196,13 +203,16 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (wp == w->active)
 		return (CMD_RETURN_NORMAL);
-	server_unzoom_window(wp->window);
+	if (window_push_zoom(w, args_has(self->args, 'Z')))
+		server_redraw_window(w);
 	window_redraw_active_switch(w, wp);
 	if (window_set_active_pane(w, wp, 1)) {
 		cmd_find_from_winlink_pane(current, wl, wp, 0);
 		cmdq_insert_hook(s, item, current, "after-select-pane");
 		cmd_select_pane_redraw(w);
 	}
+	if (window_pop_zoom(w))
+		server_redraw_window(w);
 
 	return (CMD_RETURN_NORMAL);
 }
