@@ -1296,7 +1296,7 @@ Suspend a client by sending
 .Dv SIGTSTP
 (tty stop).
 .It Xo Ic switch-client
-.Op Fl Elnpr
+.Op Fl ElnprZ
 .Op Fl c Ar target-client
 .Op Fl t Ar target-session
 .Op Fl T Ar key-table
@@ -1313,7 +1313,10 @@ may refer to a pane (a target that contains
 .Ql \&.
 or
 .Ql % ) ,
-in which case the session, window and pane are all changed.
+to change session, window and pane.
+In that case,
+.Fl Z
+keeps the window zoomed if it was zoomed.
 If
 .Fl l ,
 .Fl n
@@ -1939,11 +1942,13 @@ The
 option kills all but the window given with
 .Fl t .
 .It Xo Ic last-pane
-.Op Fl de
+.Op Fl deZ
 .Op Fl t Ar target-window
 .Xc
 .D1 (alias: Ic lastp )
 Select the last (previously selected) pane.
+.Fl Z
+keeps the window zoomed if it was zoomed.
 .Fl e
 enables or
 .Fl d
@@ -2325,7 +2330,7 @@ option has the same meaning as for the
 .Ic new-window
 command.
 .It Xo Ic rotate-window
-.Op Fl DU
+.Op Fl DUZ
 .Op Fl t Ar target-window
 .Xc
 .D1 (alias: Ic rotatew )
@@ -2333,6 +2338,8 @@ Rotate the positions of the panes within a window, either upward (numerically
 lower) with
 .Fl U
 or downward (numerically higher).
+.Fl Z
+keeps the window zoomed if it was zoomed.
 .It Xo Ic select-layout
 .Op Fl Enop
 .Op Fl t Ar target-pane
@@ -2356,7 +2363,7 @@ applies the last set layout if possible (undoes the most recent layout change).
 .Fl E
 spreads the current pane and any panes next to it out evenly.
 .It Xo Ic select-pane
-.Op Fl DdeLlMmRU
+.Op Fl DdeLlMmRUZ
 .Op Fl T Ar title
 .Op Fl t Ar target-pane
 .Xc
@@ -2373,6 +2380,8 @@ or
 .Fl U
 is used, respectively the pane below, to the left, to the right, or above the
 target pane is used.
+.Fl Z
+keeps the window zoomed if it was zoomed.
 .Fl l
 is the same as using the
 .Ic last-pane
@@ -2478,7 +2487,7 @@ All other options have the same meaning as for the
 .Ic new-window
 command.
 .It Xo Ic swap-pane
-.Op Fl dDU
+.Op Fl dDUZ
 .Op Fl s Ar src-pane
 .Op Fl t Ar dst-pane
 .Xc
@@ -2495,7 +2504,9 @@ swaps with the next pane (after it numerically).
 .Fl d
 instructs
 .Nm
-not to change the active pane.
+not to change the active pane and
+.Fl Z
+keeps the window zoomed if it was zoomed.
 .Pp
 If
 .Fl s
