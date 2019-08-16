@@ -112,38 +112,23 @@ window_buffer_free_item(struct window_buffer_itemdata *item)
 }
 
 static int
-window_buffer_cmp_name(const void *a0, const void *b0)
+window_buffer_cmp(const void *a0, const void *b0, void *arg)
 {
 	const struct window_buffer_itemdata *const *a = a0;
 	const struct window_buffer_itemdata *const *b = b0;
+	u_int *sort_type = arg;
+	int result = 0;
 
-	return (strcmp((*a)->name, (*b)->name));
-}
+	if (*sort_type == WINDOW_BUFFER_BY_TIME)
+		result = (*b)->order - (*a)->order;
+	else if (*sort_type == WINDOW_BUFFER_BY_SIZE)
+		result = (*b)->size - (*a)->size;
 
-static int
-window_buffer_cmp_time(const void *a0, const void *b0)
-{
-	const struct window_buffer_itemdata *const *a = a0;
-	const struct window_buffer_itemdata *const *b = b0;
+	/* use WINDOW_BUFFER_BY_NAME as default order and tie breaker */
+	if (!result)
+		result = strcmp((*a)->name, (*b)->name);
 
-	if ((*a)->order > (*b)->order)
-		return (-1);
-	if ((*a)->order < (*b)->order)
-		return (1);
-	return (strcmp((*a)->name, (*b)->name));
-}
-
-static int
-window_buffer_cmp_size(const void *a0, const void *b0)
-{
-	const struct window_buffer_itemdata *const *a = a0;
-	const struct window_buffer_itemdata *const *b = b0;
-
-	if ((*a)->size > (*b)->size)
-		return (-1);
-	if ((*a)->size < (*b)->size)
-		return (1);
-	return (strcmp((*a)->name, (*b)->name));
+	return (result);
 }
 
 static void
@@ -174,20 +159,8 @@ window_buffer_build(void *modedata, u_int sort_type, __unused uint64_t *tag,
 		item->order = paste_buffer_order(pb);
 	}
 
-	switch (sort_type) {
-	case WINDOW_BUFFER_BY_NAME:
-		qsort(data->item_list, data->item_size, sizeof *data->item_list,
-		    window_buffer_cmp_name);
-		break;
-	case WINDOW_BUFFER_BY_TIME:
-		qsort(data->item_list, data->item_size, sizeof *data->item_list,
-		    window_buffer_cmp_time);
-		break;
-	case WINDOW_BUFFER_BY_SIZE:
-		qsort(data->item_list, data->item_size, sizeof *data->item_list,
-		    window_buffer_cmp_size);
-		break;
-	}
+	qsort_r(data->item_list, data->item_size, sizeof *data->item_list,
+		window_buffer_cmp, &sort_type);
 
 	if (cmd_find_valid_state(&data->fs)) {
 		s = data->fs.s;

@@ -110,55 +110,42 @@ window_client_free_item(struct window_client_itemdata *item)
 }
 
 static int
-window_client_cmp_name(const void *a0, const void *b0)
+window_client_cmp(const void *a0, const void *b0, void *arg)
 {
 	const struct window_client_itemdata *const *a = a0;
 	const struct window_client_itemdata *const *b = b0;
+	u_int *sort_type = arg;
+	int result = 0;
 
-	return (strcmp((*a)->c->name, (*b)->c->name));
-}
+	switch (*sort_type) {
+	case WINDOW_CLIENT_BY_SIZE:
+		result = (*a)->c->tty.sx - (*b)->c->tty.sx;
+		if (!result)
+			result = (*a)->c->tty.sy - (*b)->c->tty.sy;
+		break;
+	case WINDOW_CLIENT_BY_CREATION_TIME:
+		if (timercmp(&(*a)->c->creation_time, &(*b)->c->creation_time,
+			     >))
+			result = -1;
+		else if (timercmp(&(*a)->c->creation_time,
+				  &(*b)->c->creation_time, <))
+			result = 1;
+		break;
+	case WINDOW_CLIENT_BY_ACTIVITY_TIME:
+		if (timercmp(&(*a)->c->activity_time, &(*b)->c->activity_time,
+			     >))
+			result = -1;
+		else if (timercmp(&(*a)->c->activity_time,
+				  &(*b)->c->activity_time, <))
+			result = 1;
+		break;
+	}
 
-static int
-window_client_cmp_size(const void *a0, const void *b0)
-{
-	const struct window_client_itemdata *const *a = a0;
-	const struct window_client_itemdata *const *b = b0;
+	/* use WINDOW_CLIENT_BY_NAME as default order and tie breaker */
+	if (!result)
+		result = strcmp((*a)->c->name, (*b)->c->name);
 
-	if ((*a)->c->tty.sx < (*b)->c->tty.sx)
-		return (-1);
-	if ((*a)->c->tty.sx > (*b)->c->tty.sx)
-		return (1);
-	if ((*a)->c->tty.sy < (*b)->c->tty.sy)
-		return (-1);
-	if ((*a)->c->tty.sy > (*b)->c->tty.sy)
-		return (1);
-	return (strcmp((*a)->c->name, (*b)->c->name));
-}
-
-static int
-window_client_cmp_creation_time(const void *a0, const void *b0)
-{
-	const struct window_client_itemdata *const *a = a0;
-	const struct window_client_itemdata *const *b = b0;
-
-	if (timercmp(&(*a)->c->creation_time, &(*b)->c->creation_time, >))
-		return (-1);
-	if (timercmp(&(*a)->c->creation_time, &(*b)->c->creation_time, <))
-		return (1);
-	return (strcmp((*a)->c->name, (*b)->c->name));
-}
-
-static int
-window_client_cmp_activity_time(const void *a0, const void *b0)
-{
-	const struct window_client_itemdata *const *a = a0;
-	const struct window_client_itemdata *const *b = b0;
-
-	if (timercmp(&(*a)->c->activity_time, &(*b)->c->activity_time, >))
-		return (-1);
-	if (timercmp(&(*a)->c->activity_time, &(*b)->c->activity_time, <))
-		return (1);
-	return (strcmp((*a)->c->name, (*b)->c->name));
+	return (result);
 }
 
 static void
@@ -187,24 +174,8 @@ window_client_build(void *modedata, u_int sort_type, __unused uint64_t *tag,
 		c->references++;
 	}
 
-	switch (sort_type) {
-	case WINDOW_CLIENT_BY_NAME:
-		qsort(data->item_list, data->item_size, sizeof *data->item_list,
-		    window_client_cmp_name);
-		break;
-	case WINDOW_CLIENT_BY_SIZE:
-		qsort(data->item_list, data->item_size, sizeof *data->item_list,
-		    window_client_cmp_size);
-		break;
-	case WINDOW_CLIENT_BY_CREATION_TIME:
-		qsort(data->item_list, data->item_size, sizeof *data->item_list,
-		    window_client_cmp_creation_time);
-		break;
-	case WINDOW_CLIENT_BY_ACTIVITY_TIME:
-		qsort(data->item_list, data->item_size, sizeof *data->item_list,
-		    window_client_cmp_activity_time);
-		break;
-	}
+	qsort_r(data->item_list, data->item_size, sizeof *data->item_list,
+		window_client_cmp, &sort_type);
 
 	for (i = 0; i < data->item_size; i++) {
 		item = data->item_list[i];

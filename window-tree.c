@@ -184,63 +184,78 @@ window_tree_free_item(struct window_tree_itemdata *item)
 }
 
 static int
-window_tree_cmp_session_name(const void *a0, const void *b0)
+window_tree_cmp_session(const void *a0, const void *b0, void *arg)
 {
 	const struct session *const *a = a0;
 	const struct session *const *b = b0;
+	u_int *sort_type = arg;
+	int result = 0;
 
-	return (strcmp((*a)->name, (*b)->name));
+	switch (*sort_type) {
+	case WINDOW_TREE_BY_INDEX:
+		result = (*a)->id - (*b)->id;
+		break;
+	case WINDOW_TREE_BY_TIME:
+		if (timercmp(&(*a)->activity_time, &(*b)->activity_time, >))
+			result = -1;
+		else if (timercmp(&(*a)->activity_time, &(*b)->activity_time, <))
+			result = 1;
+		/* fallthrough */
+	case WINDOW_TREE_BY_NAME:
+		result = strcmp((*a)->name, (*b)->name);
+	}
+
+	return (result);
 }
 
 static int
-window_tree_cmp_session_time(const void *a0, const void *b0)
-{
-	const struct session *const *a = a0;
-	const struct session *const *b = b0;
-
-	if (timercmp(&(*a)->activity_time, &(*b)->activity_time, >))
-		return (-1);
-	if (timercmp(&(*a)->activity_time, &(*b)->activity_time, <))
-		return (1);
-	return (strcmp((*a)->name, (*b)->name));
-}
-
-static int
-window_tree_cmp_window_name(const void *a0, const void *b0)
-{
-	const struct winlink *const *a = a0;
-	const struct winlink *const *b = b0;
-
-	return (strcmp((*a)->window->name, (*b)->window->name));
-}
-
-static int
-window_tree_cmp_window_time(const void *a0, const void *b0)
+window_tree_cmp_window(const void *a0, const void *b0, void *arg)
 {
 	const struct winlink *const *a = a0;
 	const struct winlink *const *b = b0;
+	u_int *sort_type = arg;
+	int result = 0;
 
-	if (timercmp(&(*a)->window->activity_time,
-	    &(*b)->window->activity_time, >))
-		return (-1);
-	if (timercmp(&(*a)->window->activity_time,
-	    &(*b)->window->activity_time, <))
-		return (1);
-	return (strcmp((*a)->window->name, (*b)->window->name));
+	switch (*sort_type) {
+	case WINDOW_TREE_BY_INDEX:
+		result = (*a)->idx - (*b)->idx;
+		break;
+	case WINDOW_TREE_BY_TIME:
+		if (timercmp(&(*a)->window->activity_time,
+			     &(*b)->window->activity_time, >)) {
+			result = -1;
+			break;
+		} else if (timercmp(&(*a)->window->activity_time,
+				  &(*b)->window->activity_time, <)) {
+			result = 1;
+			break;
+		}
+		/* fallthrough */
+	case WINDOW_TREE_BY_NAME:
+		result = strcmp((*a)->window->name, (*b)->window->name);
+	}
+
+	return (result);
 }
 
 static int
-window_tree_cmp_pane_time(const void *a0, const void *b0)
+window_tree_cmp_pane(const void *a0, const void *b0, void *arg)
 {
 	const struct window_pane *const *a = a0;
 	const struct window_pane *const *b = b0;
+	u_int *sort_type = arg;
+	int result = 0;
 
-	if ((*a)->active_point < (*b)->active_point)
-		return (-1);
-	if ((*a)->active_point > (*b)->active_point)
-		return (1);
-	return (0);
+	if (*sort_type == WINDOW_TREE_BY_TIME)
+		result = (*a)->active_point - (*b)->active_point;
+	else
+		/* Because panes don't have names, use number order for any
+		 * other sort field. */
+		result = (*a)->id - (*b)->id;
+
+	return (result);
 }
+
 
 static void
 window_tree_build_pane(struct session *s, struct winlink *wl,
@@ -335,16 +350,7 @@ window_tree_build_window(struct session *s, struct winlink *wl, void* modedata,
 	if (n == 0)
 		goto empty;
 
-	switch (sort_type) {
-	case WINDOW_TREE_BY_INDEX:
-		break;
-	case WINDOW_TREE_BY_NAME:
-		/* Panes don't have names, so leave in number order. */
-		break;
-	case WINDOW_TREE_BY_TIME:
-		qsort(l, n, sizeof *l, window_tree_cmp_pane_time);
-		break;
-	}
+	qsort_r(l, n, sizeof *l, window_tree_cmp_pane, &sort_type);
 
 	for (i = 0; i < n; i++)
 		window_tree_build_pane(s, wl, l[i], modedata, mti);
@@ -392,21 +398,12 @@ window_tree_build_session(struct session *s, void* modedata,
 		l = xreallocarray(l, n + 1, sizeof *l);
 		l[n++] = wl;
 	}
-	switch (sort_type) {
-	case WINDOW_TREE_BY_INDEX:
-		break;
-	case WINDOW_TREE_BY_NAME:
-		qsort(l, n, sizeof *l, window_tree_cmp_window_name);
-		break;
-	case WINDOW_TREE_BY_TIME:
-		qsort(l, n, sizeof *l, window_tree_cmp_window_time);
-		break;
-	}
+	qsort_r(l, n, sizeof *l, window_tree_cmp_window, &sort_type);
 
 	empty = 0;
 	for (i = 0; i < n; i++) {
-		if (!window_tree_build_window(s, l[i], modedata, sort_type, mti,
-		    filter))
+		if (!window_tree_build_window(s, l[i], modedata, sort_type,
+					      mti, filter))
 			empty++;
 	}
 	if (empty == n) {
@@ -446,16 +443,7 @@ window_tree_build(void *modedata, u_int sort_type, uint64_t *tag,
 		l = xreallocarray(l, n + 1, sizeof *l);
 		l[n++] = s;
 	}
-	switch (sort_type) {
-	case WINDOW_TREE_BY_INDEX:
-		break;
-	case WINDOW_TREE_BY_NAME:
-		qsort(l, n, sizeof *l, window_tree_cmp_session_name);
-		break;
-	case WINDOW_TREE_BY_TIME:
-		qsort(l, n, sizeof *l, window_tree_cmp_session_time);
-		break;
-	}
+	qsort_r(l, n, sizeof *l, window_tree_cmp_session, &sort_type);
 
 	for (i = 0; i < n; i++)
 		window_tree_build_session(l[i], modedata, sort_type, filter);
