@@ -188,10 +188,10 @@ window_tree_cmp_session(const void *a0, const void *b0, void *arg)
 {
 	const struct session *const *a = a0;
 	const struct session *const *b = b0;
-	u_int *sort_type = arg;
+	struct mode_tree_sort_criteria *sort_crit = arg;
 	int result = 0;
 
-	switch (*sort_type) {
+	switch (sort_crit->field) {
 	case WINDOW_TREE_BY_INDEX:
 		result = (*a)->id - (*b)->id;
 		break;
@@ -205,6 +205,9 @@ window_tree_cmp_session(const void *a0, const void *b0, void *arg)
 		result = strcmp((*a)->name, (*b)->name);
 	}
 
+	if (sort_crit->reversed)
+		result *= -1;
+
 	return (result);
 }
 
@@ -213,10 +216,10 @@ window_tree_cmp_window(const void *a0, const void *b0, void *arg)
 {
 	const struct winlink *const *a = a0;
 	const struct winlink *const *b = b0;
-	u_int *sort_type = arg;
+	struct mode_tree_sort_criteria *sort_crit = arg;
 	int result = 0;
 
-	switch (*sort_type) {
+	switch (sort_crit->field) {
 	case WINDOW_TREE_BY_INDEX:
 		result = (*a)->idx - (*b)->idx;
 		break;
@@ -235,6 +238,9 @@ window_tree_cmp_window(const void *a0, const void *b0, void *arg)
 		result = strcmp((*a)->window->name, (*b)->window->name);
 	}
 
+	if (sort_crit->reversed)
+		result *= -1;
+
 	return (result);
 }
 
@@ -243,15 +249,18 @@ window_tree_cmp_pane(const void *a0, const void *b0, void *arg)
 {
 	const struct window_pane *const *a = a0;
 	const struct window_pane *const *b = b0;
-	u_int *sort_type = arg;
+	struct mode_tree_sort_criteria *sort_crit = arg;
 	int result = 0;
 
-	if (*sort_type == WINDOW_TREE_BY_TIME)
+	if (sort_crit->field == WINDOW_TREE_BY_TIME)
 		result = (*a)->active_point - (*b)->active_point;
 	else
 		/* Because panes don't have names, use number order for any
 		 * other sort field. */
 		result = (*a)->id - (*b)->id;
+
+	if (sort_crit->reversed)
+		result *= -1;
 
 	return (result);
 }
@@ -300,8 +309,9 @@ window_tree_filter_pane(struct session *s, struct winlink *wl,
 }
 
 static int
-window_tree_build_window(struct session *s, struct winlink *wl, void* modedata,
-    u_int sort_type, struct mode_tree_item *parent, const char *filter)
+window_tree_build_window(struct session *s, struct winlink *wl,
+    void* modedata, struct mode_tree_sort_criteria *sort_crit,
+    struct mode_tree_item *parent, const char *filter)
 {
 	struct window_tree_modedata	*data = modedata;
 	struct window_tree_itemdata	*item;
@@ -350,7 +360,7 @@ window_tree_build_window(struct session *s, struct winlink *wl, void* modedata,
 	if (n == 0)
 		goto empty;
 
-	qsort_r(l, n, sizeof *l, window_tree_cmp_pane, &sort_type);
+	qsort_r(l, n, sizeof *l, window_tree_cmp_pane, sort_crit);
 
 	for (i = 0; i < n; i++)
 		window_tree_build_pane(s, wl, l[i], modedata, mti);
@@ -366,7 +376,7 @@ empty:
 
 static void
 window_tree_build_session(struct session *s, void* modedata,
-    u_int sort_type, const char *filter)
+    struct mode_tree_sort_criteria *sort_crit, const char *filter)
 {
 	struct window_tree_modedata	*data = modedata;
 	struct window_tree_itemdata	*item;
@@ -398,11 +408,11 @@ window_tree_build_session(struct session *s, void* modedata,
 		l = xreallocarray(l, n + 1, sizeof *l);
 		l[n++] = wl;
 	}
-	qsort_r(l, n, sizeof *l, window_tree_cmp_window, &sort_type);
+	qsort_r(l, n, sizeof *l, window_tree_cmp_window, sort_crit);
 
 	empty = 0;
 	for (i = 0; i < n; i++) {
-		if (!window_tree_build_window(s, l[i], modedata, sort_type,
+		if (!window_tree_build_window(s, l[i], modedata, sort_crit,
 					      mti, filter))
 			empty++;
 	}
@@ -415,8 +425,8 @@ window_tree_build_session(struct session *s, void* modedata,
 }
 
 static void
-window_tree_build(void *modedata, u_int sort_type, uint64_t *tag,
-    const char *filter)
+window_tree_build(void *modedata, struct mode_tree_sort_criteria *sort_crit,
+    uint64_t *tag, const char *filter)
 {
 	struct window_tree_modedata	*data = modedata;
 	struct session			*s, **l;
@@ -443,10 +453,10 @@ window_tree_build(void *modedata, u_int sort_type, uint64_t *tag,
 		l = xreallocarray(l, n + 1, sizeof *l);
 		l[n++] = s;
 	}
-	qsort_r(l, n, sizeof *l, window_tree_cmp_session, &sort_type);
+	qsort_r(l, n, sizeof *l, window_tree_cmp_session, sort_crit);
 
 	for (i = 0; i < n; i++)
-		window_tree_build_session(l[i], modedata, sort_type, filter);
+		window_tree_build_session(l[i], modedata, sort_crit, filter);
 	free(l);
 
 	switch (data->type) {

@@ -116,24 +116,27 @@ window_buffer_cmp(const void *a0, const void *b0, void *arg)
 {
 	const struct window_buffer_itemdata *const *a = a0;
 	const struct window_buffer_itemdata *const *b = b0;
-	u_int *sort_type = arg;
+	struct mode_tree_sort_criteria *sort_crit = arg;
 	int result = 0;
 
-	if (*sort_type == WINDOW_BUFFER_BY_TIME)
+	if (sort_crit->field == WINDOW_BUFFER_BY_TIME)
 		result = (*b)->order - (*a)->order;
-	else if (*sort_type == WINDOW_BUFFER_BY_SIZE)
+	else if (sort_crit->field == WINDOW_BUFFER_BY_SIZE)
 		result = (*b)->size - (*a)->size;
 
 	/* use WINDOW_BUFFER_BY_NAME as default order and tie breaker */
 	if (!result)
 		result = strcmp((*a)->name, (*b)->name);
 
+	if (sort_crit->reversed)
+		result *= -1;
+
 	return (result);
 }
 
 static void
-window_buffer_build(void *modedata, u_int sort_type, __unused uint64_t *tag,
-    const char *filter)
+window_buffer_build(void *modedata, struct mode_tree_sort_criteria *sort_crit,
+    __unused uint64_t *tag, const char *filter)
 {
 	struct window_buffer_modedata	*data = modedata;
 	struct window_buffer_itemdata	*item;
@@ -160,7 +163,7 @@ window_buffer_build(void *modedata, u_int sort_type, __unused uint64_t *tag,
 	}
 
 	qsort_r(data->item_list, data->item_size, sizeof *data->item_list,
-		window_buffer_cmp, &sort_type);
+		window_buffer_cmp, sort_crit);
 
 	if (cmd_find_valid_state(&data->fs)) {
 		s = data->fs.s;

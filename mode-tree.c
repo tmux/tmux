@@ -39,7 +39,7 @@ struct mode_tree_data {
 
 	const char		**sort_list;
 	u_int			  sort_size;
-	u_int			  sort_type;
+	struct mode_tree_sort_criteria sort_crit;
 
 	mode_tree_build_cb        buildcb;
 	mode_tree_draw_cb         drawcb;
@@ -334,7 +334,7 @@ mode_tree_start(struct window_pane *wp, struct args *args,
 
 	mtd->sort_list = sort_list;
 	mtd->sort_size = sort_size;
-	mtd->sort_type = 0;
+	mtd->sort_crit.field = 0;
 
 	mtd->preview = !args_has(args, 'N');
 
@@ -342,9 +342,11 @@ mode_tree_start(struct window_pane *wp, struct args *args,
 	if (sort != NULL) {
 		for (i = 0; i < sort_size; i++) {
 			if (strcasecmp(sort, sort_list[i]) == 0)
-				mtd->sort_type = i;
+				mtd->sort_crit.field = i;
 		}
 	}
+
+	mtd->sort_crit.reversed = args_has(args, 'r');
 
 	if (args_has(args, 'f'))
 		mtd->filter = xstrdup(args_get(args, 'f'));
@@ -392,10 +394,10 @@ mode_tree_build(struct mode_tree_data *mtd)
 	TAILQ_CONCAT(&mtd->saved, &mtd->children, entry);
 	TAILQ_INIT(&mtd->children);
 
-	mtd->buildcb(mtd->modedata, mtd->sort_type, &tag, mtd->filter);
+	mtd->buildcb(mtd->modedata, &mtd->sort_crit, &tag, mtd->filter);
 	mtd->no_matches = TAILQ_EMPTY(&mtd->children);
 	if (mtd->no_matches)
-		mtd->buildcb(mtd->modedata, mtd->sort_type, &tag, NULL);
+		mtd->buildcb(mtd->modedata, &mtd->sort_crit, &tag, NULL);
 
 	mode_tree_free_items(&mtd->saved);
 	TAILQ_INIT(&mtd->saved);
@@ -634,8 +636,9 @@ mode_tree_draw(struct mode_tree_data *mtd)
 	screen_write_cursormove(&ctx, 0, h, 0);
 	screen_write_box(&ctx, w, sy - h);
 
-	xasprintf(&text, " %s (sort: %s)", mti->name,
-	    mtd->sort_list[mtd->sort_type]);
+	xasprintf(&text, " %s (sort: %s%s)", mti->name,
+	    mtd->sort_list[mtd->sort_crit.field],
+	    mtd->sort_crit.reversed ? ", reversed" : "");
 	if (w - 2 >= strlen(text)) {
 		screen_write_cursormove(&ctx, 1, h, 0);
 		screen_write_puts(&ctx, &gc0, "%s", text);
@@ -993,9 +996,13 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 		}
 		break;
 	case 'O':
-		mtd->sort_type++;
-		if (mtd->sort_type == mtd->sort_size)
-			mtd->sort_type = 0;
+		mtd->sort_crit.field++;
+		if (mtd->sort_crit.field == mtd->sort_size)
+			mtd->sort_crit.field = 0;
+		mode_tree_build(mtd);
+		break;
+	case 'r':
+		mtd->sort_crit.reversed = !mtd->sort_crit.reversed;
 		mode_tree_build(mtd);
 		break;
 	case KEYC_LEFT:

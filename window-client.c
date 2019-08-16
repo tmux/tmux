@@ -114,10 +114,10 @@ window_client_cmp(const void *a0, const void *b0, void *arg)
 {
 	const struct window_client_itemdata *const *a = a0;
 	const struct window_client_itemdata *const *b = b0;
-	u_int *sort_type = arg;
+	struct mode_tree_sort_criteria *sort_crit = arg;
 	int result = 0;
 
-	switch (*sort_type) {
+	switch (sort_crit->field) {
 	case WINDOW_CLIENT_BY_SIZE:
 		result = (*a)->c->tty.sx - (*b)->c->tty.sx;
 		if (!result)
@@ -145,12 +145,15 @@ window_client_cmp(const void *a0, const void *b0, void *arg)
 	if (!result)
 		result = strcmp((*a)->c->name, (*b)->c->name);
 
+	if (sort_crit->reversed)
+		result *= -1;
+
 	return (result);
 }
 
 static void
-window_client_build(void *modedata, u_int sort_type, __unused uint64_t *tag,
-    const char *filter)
+window_client_build(void *modedata, struct mode_tree_sort_criteria *sort_crit,
+    __unused uint64_t *tag, const char *filter)
 {
 	struct window_client_modedata	*data = modedata;
 	struct window_client_itemdata	*item;
@@ -175,7 +178,7 @@ window_client_build(void *modedata, u_int sort_type, __unused uint64_t *tag,
 	}
 
 	qsort_r(data->item_list, data->item_size, sizeof *data->item_list,
-		window_client_cmp, &sort_type);
+		window_client_cmp, sort_crit);
 
 	for (i = 0; i < data->item_size; i++) {
 		item = data->item_list[i];

@@ -1697,7 +1697,7 @@ the end of the visible pane.
 The default is to capture only the visible contents of the pane.
 .It Xo
 .Ic choose-client
-.Op Fl NZ
+.Op Fl NrZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl O Ar sort-order
@@ -1726,7 +1726,8 @@ The following keys may be used in client mode:
 .It Li "z" Ta "Suspend selected client"
 .It Li "Z" Ta "Suspend tagged clients"
 .It Li "f" Ta "Enter a format to filter items"
-.It Li "O" Ta "Change sort order"
+.It Li "O" Ta "Change sort field"
+.It Li "r" Ta "Reverse sort order"
 .It Li "v" Ta "Toggle preview"
 .It Li "q" Ta "Exit mode"
 .El
@@ -1741,12 +1742,14 @@ If
 is not given, "detach-client -t '%%'" is used.
 .Pp
 .Fl O
-specifies the initial sort order: one of
+specifies the initial sort field: one of
 .Ql name ,
 .Ql size ,
 .Ql creation ,
 or
 .Ql activity .
+.Fl r
+reverses the sort order.
 .Fl f
 specifies an initial filter: the filter is a format - if it evaluates to zero,
 the item in the list is not shown, otherwise it is shown.
@@ -1758,7 +1761,7 @@ starts without the preview.
 This command works only if at least one client is attached.
 .It Xo
 .Ic choose-tree
-.Op Fl GNswZ
+.Op Fl GNrswZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl O Ar sort-order
@@ -1790,7 +1793,8 @@ The following keys may be used in tree mode:
 .It Li "C-t" Ta "Tag all items"
 .It Li "\&:" Ta "Run a command for each tagged item"
 .It Li "f" Ta "Enter a format to filter items"
-.It Li "O" Ta "Change sort order"
+.It Li "O" Ta "Change sort field"
+.It Li "r" Ta "Reverse sort order"
 .It Li "v" Ta "Toggle preview"
 .It Li "q" Ta "Exit mode"
 .El
@@ -1805,11 +1809,13 @@ If
 is not given, "switch-client -t '%%'" is used.
 .Pp
 .Fl O
-specifies the initial sort order: one of
+specifies the initial sort field: one of
 .Ql index ,
 .Ql name ,
 or
 .Ql time .
+.Fl r
+reverses the sort order.
 .Fl f
 specifies an initial filter: the filter is a format - if it evaluates to zero,
 the item in the list is not shown, otherwise it is shown.
@@ -4867,7 +4873,7 @@ The buffer commands are as follows:
 .Bl -tag -width Ds
 .It Xo
 .Ic choose-buffer
-.Op Fl NZ
+.Op Fl NZr
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl O Ar sort-order
@@ -4894,7 +4900,8 @@ The following keys may be used in buffer mode:
 .It Li "d" Ta "Delete selected buffer"
 .It Li "D" Ta "Delete tagged buffers"
 .It Li "f" Ta "Enter a format to filter items"
-.It Li "O" Ta "Change sort order"
+.It Li "O" Ta "Change sort field"
+.It Li "r" Ta "Reverse sort order"
 .It Li "v" Ta "Toggle preview"
 .It Li "q" Ta "Exit mode"
 .El
@@ -4909,11 +4916,13 @@ If
 is not given, "paste-buffer -b '%%'" is used.
 .Pp
 .Fl O
-specifies the initial sort order: one of
+specifies the initial sort field: one of
 .Ql time ,
 .Ql name
 or
 .Ql size .
+.Fl r
+reverses the sort order.
 .Fl f
 specifies an initial filter: the filter is a format - if it evaluates to zero,
 the item in the list is not shown, otherwise it is shown.
