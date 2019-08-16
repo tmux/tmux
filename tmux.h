@@ -1682,6 +1682,12 @@ struct spawn_context {
 #define SPAWN_EMPTY 0x40
 };
 
+/* Mode tree sort order. */
+struct mode_tree_sort_criteria {
+	u_int	field;
+	int	reversed;
+};
+
 /* tmux.c */
 extern struct options	*global_options;
 extern struct options	*global_s_options;
@@ -2473,7 +2479,8 @@ u_int		 layout_set_next(struct window *);
 u_int		 layout_set_previous(struct window *);
 
 /* mode-tree.c */
-typedef void (*mode_tree_build_cb)(void *, u_int, uint64_t *, const char *);
+typedef void (*mode_tree_build_cb)(void *, struct mode_tree_sort_criteria *,
+				   uint64_t *, const char *);
 typedef void (*mode_tree_draw_cb)(void *, void *, struct screen_write_ctx *,
 	     u_int, u_int);
 typedef int (*mode_tree_search_cb)(void *, void *, const char *);
