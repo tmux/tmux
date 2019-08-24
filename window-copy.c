@@ -820,6 +820,23 @@ window_copy_cmd_cursor_down(struct window_copy_cmd_state *cs)
 }
 
 static enum window_copy_cmd_action
+window_copy_cmd_cursor_down_and_cancel(struct window_copy_cmd_state *cs)
+{
+	struct window_mode_entry	*wme = cs->wme;
+	struct window_copy_mode_data	*data = wme->data;
+	u_int				 np = wme->prefix;
+	int				 c1, c2;
+
+	c1 = data->cy;
+	for (; np != 0; np--)
+		window_copy_cursor_down(wme, 0);
+	c2 = data->cy;
+	if ( (c1 == c2) && (data->oy == 0) )
+		return (WINDOW_COPY_CMD_CANCEL);
+	return (WINDOW_COPY_CMD_NOTHING);
+}
+
+static enum window_copy_cmd_action
 window_copy_cmd_cursor_left(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
@@ -1810,6 +1827,8 @@ static const struct {
 	  window_copy_cmd_copy_selection_and_cancel },
 	{ "cursor-down", 0, 0,
 	  window_copy_cmd_cursor_down },
+	{ "cursor-down-and-cancel", 0, 0,
+	  window_copy_cmd_cursor_down_and_cancel },
 	{ "cursor-left", 0, 0,
 	  window_copy_cmd_cursor_left },
 	{ "cursor-right", 0, 0,
