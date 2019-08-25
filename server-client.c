@@ -1025,14 +1025,6 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 		fatal("gettimeofday failed");
 	session_update_activity(s, &c->activity_time);
 
-	/* Make this the latest client. */
-	RB_FOREACH(wl, winlinks, &s->windows) {
-		if (wl->window->latest == c)
-			continue;
-		wl->window->latest = c;
-		recalculate_size(wl->window);
-	}
-
 	/* Check for mouse keys. */
 	m->valid = 0;
 	if (key == KEYC_MOUSE) {
@@ -1197,6 +1189,13 @@ forward_key:
 		window_pane_key(wp, c, s, wl, key, m);
 
 out:
+	wl = s->curw;
+	/* Adapt the window to this client, if requested. */
+	if (wl->window->latest != c &&
+	    options_get_number(wl->window->options, "window-size") == WINDOW_SIZE_LATEST) {
+		wl->window->latest = c;
+		recalculate_size(wl->window);
+	}
 	free(event);
 	return (CMD_RETURN_NORMAL);
 }
