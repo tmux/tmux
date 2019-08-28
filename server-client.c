@@ -42,6 +42,7 @@ static void	server_client_set_title(struct client *);
 static void	server_client_reset_state(struct client *);
 static int	server_client_assume_paste(struct session *);
 static void	server_client_clear_overlay(struct client *);
+static void	server_client_resize_event(int, short, void *);
 
 static void	server_client_dispatch(struct imsg *, void *);
 static void	server_client_dispatch_command(struct client *, struct imsg *);
@@ -1320,19 +1321,11 @@ server_client_resize_force(struct window_pane *wp)
 	return (1);
 }
 
-/* Resize timer event. */
+/* Resize a pane. */
 static void
-server_client_resize_event(__unused int fd, __unused short events, void *data)
+server_client_resize_pane(struct window_pane *wp)
 {
-	struct window_pane	*wp = data;
-	struct winsize		 ws;
-
-	evtimer_del(&wp->resize_timer);
-
-	if (!(wp->flags & PANE_RESIZE))
-		return;
-	if (server_client_resize_force(wp))
-		return;
+	struct winsize	ws;
 
 	memset(&ws, 0, sizeof ws);
 	ws.ws_col = wp->sx;
@@ -1356,35 +1349,55 @@ server_client_resize_event(__unused int fd, __unused short events, void *data)
 	wp->osy = wp->sy;
 }
 
+/* Start the resize timer. */
+static void
+server_client_start_resize_timer(struct window_pane *wp)
+{
+	struct timeval	tv = { .tv_usec = 250000 };
+
+	if (!evtimer_pending(&wp->resize_timer, NULL))
+		evtimer_add(&wp->resize_timer, &tv);
+}
+
+/* Resize timer event. */
+static void
+server_client_resize_event(__unused int fd, __unused short events, void *data)
+{
+	struct window_pane	*wp = data;
+
+	evtimer_del(&wp->resize_timer);
+
+	if (~wp->flags & PANE_RESIZE)
+		return;
+	log_debug("%s: %%%u timer fired (was%s resized)", __func__, wp->id,
+	    (wp->flags & PANE_RESIZED) ? "" : " not");
+
+	if (wp->saved_grid == NULL && (wp->flags & PANE_RESIZED)) {
+		log_debug("%s: %%%u deferring timer", __func__, wp->id);
+		server_client_start_resize_timer(wp);
+	} else if (!server_client_resize_force(wp)) {
+		log_debug("%s: %%%u resizing pane", __func__, wp->id);
+		server_client_resize_pane(wp);
+	}
+	wp->flags &= ~PANE_RESIZED;
+}
+
 /* Check if pane should be resized. */
 static void
 server_client_check_resize(struct window_pane *wp)
 {
-	struct timeval	 tv = { .tv_usec = 250000 };
-
-	if (!(wp->flags & PANE_RESIZE))
+	if (~wp->flags & PANE_RESIZE)
 		return;
-	log_debug("%s: %%%u resize to %u,%u", __func__, wp->id, wp->sx, wp->sy);
 
 	if (!event_initialized(&wp->resize_timer))
 		evtimer_set(&wp->resize_timer, server_client_resize_event, wp);
 
-	/*
-	 * The first resize should happen immediately, so if the timer is not
-	 * running, do it now.
-	 */
-	if (!evtimer_pending(&wp->resize_timer, NULL))
-		server_client_resize_event(-1, 0, wp);
-
-	/*
-	 * If the pane is in the alternate screen, let the timer expire and
-	 * resize to give the application a chance to redraw. If not, keep
-	 * pushing the timer back.
-	 */
-	if (wp->saved_grid != NULL && evtimer_pending(&wp->resize_timer, NULL))
-		return;
-	evtimer_del(&wp->resize_timer);
-	evtimer_add(&wp->resize_timer, &tv);
+	if (!evtimer_pending(&wp->resize_timer, NULL)) {
+		log_debug("%s: %%%u starting timer", __func__, wp->id);
+		server_client_resize_pane(wp);
+		server_client_start_resize_timer(wp);
+	} else
+		log_debug("%s: %%%u timer running", __func__, wp->id);
 }
 
 /* Check whether pane should be focused. */
