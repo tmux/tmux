@@ -953,7 +953,7 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 	if (wme != NULL && wme->mode->resize != NULL)
 		wme->mode->resize(wme, sx, sy);
 
-	wp->flags |= PANE_RESIZE;
+	wp->flags |= (PANE_RESIZE|PANE_RESIZED);
 }
 
 /*
