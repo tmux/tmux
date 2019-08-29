@@ -661,7 +661,7 @@ char *
 cmd_template_replace(const char *template, const char *s, int idx)
 {
 	char		 ch, *buf;
-	const char	*ptr, *cp, quote[] = "\"\\$";
+	const char	*ptr, *cp, quote[] = "\"\\$;";
 	int		 replaced, quoted;
 	size_t		 len;
 
@@ -692,10 +692,6 @@ cmd_template_replace(const char *template, const char *s, int idx)
 			for (cp = s; *cp != '\0'; cp++) {
 				if (quoted && strchr(quote, *cp) != NULL)
 					buf[len++] = '\\';
-				if (quoted && *cp == ';') {
-					buf[len++] = '\\';
-					buf[len++] = '\\';
-				}
 				buf[len++] = *cp;
 			}
 			buf[len] = '\0';
