@@ -214,7 +214,6 @@ was given) and off.
 Report the
 .Nm
 version.
-.Pp
 .It Ar command Op Ar flags
 This specifies one of a set of commands used to control
 .Nm ,
@@ -1156,7 +1155,7 @@ The
 .Fl P
 option prints information about the new session after it has been created.
 By default, it uses the format
-.Ql #{session_name}:
+.Ql #{session_name}:\&
 but a different format may be specified with
 .Fl F .
 .Pp
@@ -4091,7 +4090,7 @@ will append
 if the pane title is more than five characters.
 .Pp
 Prefixing a time variable with
-.Ql t:
+.Ql t:\&
 will convert it to a string, so if
 .Ql #{window_activity}
 gives
@@ -4100,34 +4099,34 @@ gives
 gives
 .Ql Sun Oct 25 09:25:02 2015 .
 The
-.Ql b:
+.Ql b:\&
 and
-.Ql d:
+.Ql d:\&
 prefixes are
 .Xr basename 3
 and
 .Xr dirname 3
 of the variable respectively.
-.Ql q:
+.Ql q:\&
 will escape
 .Xr sh 1
 special characters.
-.Ql E:
+.Ql E:\&
 will expand the format twice, for example
 .Ql #{E:status-left}
 is the result of expanding the content of the
 .Ic status-left
 option rather than the option itself.
-.Ql T:
+.Ql T:\&
 is like
-.Ql E:
+.Ql E:\&
 but also expands
 .Xr strftime 3
 specifiers.
-.Ql S: ,
-.Ql W:
+.Ql S:\& ,
+.Ql W:\&
 or
-.Ql P:
+.Ql P:\&
 will loop over each session, window or pane and insert the format once
 for each.
 For windows and panes, two comma-separated formats may be given:
@@ -4138,7 +4137,7 @@ For example, to get a list of windows formatted like the status line:
 .Ed
 .Pp
 A prefix of the form
-.Ql s/foo/bar/:
+.Ql s/foo/bar/:\&
 will substitute
 .Ql foo
 with
@@ -4147,7 +4146,7 @@ throughout.
 The first argument may be an extended regular expression and a final argument may be
 .Ql i
 to ignore case, for example
-.Ql s/a(.)/\e1x/i:
+.Ql s/a(.)/\e1x/i:\&
 would change
 .Ql abABab
 into
