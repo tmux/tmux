@@ -61,7 +61,7 @@ A window occupies the entire screen
 and may be split into rectangular panes,
 each of which is a separate pseudo terminal
 (the
-.Xr pty 4
+.Xr pty 7
 manual page documents the technical details of pseudo terminals).
 Any number of
 .Nm
@@ -623,7 +623,7 @@ These specify the client, session, window or pane which a command should affect.
 .Ar target-client
 should be the name of the client,
 typically the
-.Xr pty 4
+.Xr pts 4
 file to which the client is connected, for example either of
 .Pa /dev/ttyp1
 or
@@ -5466,6 +5466,7 @@ bind-key / command-prompt "split-window 'exec man %%'"
 bind-key S command-prompt "new-window -n %1 'ssh %1'"
 .Ed
 .Sh SEE ALSO
-.Xr pty 4
+.Xr pts 4 ,
+.Xr pty 7
 .Sh AUTHORS
 .An Nicholas Marriott Aq Mt nicholas.marriott@gmail.com
