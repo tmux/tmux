@@ -291,6 +291,12 @@ Prompt to search for text in open windows.
 Display some information about the current window.
 .It l
 Move to the previously selected window.
+.It m
+Mark the current pane (see
+.Ic select-pane
+.Fl m ) .
+.It M
+Clear the marked pane.
 .It n
 Change to the next window.
 .It o
@@ -301,12 +307,6 @@ Change to the previous window.
 Briefly display pane indexes.
 .It r
 Force redraw of the attached client.
-.It m
-Mark the current pane (see
-.Ic select-pane
-.Fl m ) .
-.It M
-Clear the marked pane.
 .It s
 Select a new session for the attached client interactively.
 .It t
@@ -1151,7 +1151,7 @@ The
 .Fl P
 option prints information about the new session after it has been created.
 By default, it uses the format
-.Ql #{session_name}:
+.Ql #{session_name}:\&
 but a different format may be specified with
 .Fl F .
 .Pp
@@ -1445,6 +1445,7 @@ The following commands are supported in copy mode:
 .It Li "copy-selection-no-clear [<prefix>]" Ta "" Ta ""
 .It Li "copy-selection-and-cancel [<prefix>]" Ta "Enter" Ta "M-w"
 .It Li "cursor-down" Ta "j" Ta "Down"
+.It Li "cursor-down-and-cancel" Ta "" Ta ""
 .It Li "cursor-left" Ta "h" Ta "Left"
 .It Li "cursor-right" Ta "l" Ta "Right"
 .It Li "cursor-up" Ta "k" Ta "Up"
@@ -4086,7 +4087,7 @@ will append
 if the pane title is more than five characters.
 .Pp
 Prefixing a time variable with
-.Ql t:
+.Ql t:\&
 will convert it to a string, so if
 .Ql #{window_activity}
 gives
@@ -4095,34 +4096,34 @@ gives
 gives
 .Ql Sun Oct 25 09:25:02 2015 .
 The
-.Ql b:
+.Ql b:\&
 and
-.Ql d:
+.Ql d:\&
 prefixes are
 .Xr basename 3
 and
 .Xr dirname 3
 of the variable respectively.
-.Ql q:
+.Ql q:\&
 will escape
 .Xr sh 1
 special characters.
-.Ql E:
+.Ql E:\&
 will expand the format twice, for example
 .Ql #{E:status-left}
 is the result of expanding the content of the
 .Ic status-left
 option rather than the option itself.
-.Ql T:
+.Ql T:\&
 is like
-.Ql E:
+.Ql E:\&
 but also expands
 .Xr strftime 3
 specifiers.
-.Ql S: ,
-.Ql W:
+.Ql S:\& ,
+.Ql W:\&
 or
-.Ql P:
+.Ql P:\&
 will loop over each session, window or pane and insert the format once
 for each.
 For windows and panes, two comma-separated formats may be given:
@@ -4133,7 +4134,7 @@ For example, to get a list of windows formatted like the status line:
 .Ed
 .Pp
 A prefix of the form
-.Ql s/foo/bar/:
+.Ql s/foo/bar/:\&
 will substitute
 .Ql foo
 with
@@ -4142,7 +4143,7 @@ throughout.
 The first argument may be an extended regular expression and a final argument may be
 .Ql i
 to ignore case, for example
-.Ql s/a(.)/\e1x/i:
+.Ql s/a(.)/\e1x/i:\&
 would change
 .Ql abABab
 into
