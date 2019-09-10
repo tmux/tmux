@@ -69,7 +69,6 @@
 	" '#{?pane_marked,Unmark,Mark}' 'm' {select-pane -m}" \
 	" '#{?window_zoomed_flag,Unzoom,Zoom}' 'z' {resize-pane -Z}"
 
-
 static int key_bindings_cmp(struct key_binding *, struct key_binding *);
 RB_GENERATE_STATIC(key_bindings, key_binding, entry, key_bindings_cmp);
 static int key_table_cmp(struct key_table *, struct key_table *);

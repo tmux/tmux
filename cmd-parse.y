@@ -176,18 +176,18 @@ expanded	: format
 			struct cmd_parse_input	*pi = ps->input;
 			struct format_tree	*ft;
 			struct client		*c = pi->c;
-			struct cmd_find_state	*fs;
+			struct cmd_find_state	*fsp;
+			struct cmd_find_state	 fs;
 			int			 flags = FORMAT_NOJOBS;
 
 			if (cmd_find_valid_state(&pi->fs))
-				fs = &pi->fs;
-			else
-				fs = NULL;
+				fsp = &pi->fs;
+			else {
+				cmd_find_from_client(&fs, c, 0);
+				fsp = &fs;
+			}
 			ft = format_create(NULL, pi->item, FORMAT_NONE, flags);
-			if (fs != NULL)
-				format_defaults(ft, c, fs->s, fs->wl, fs->wp);
-			else
-				format_defaults(ft, c, NULL, NULL, NULL);
+			format_defaults(ft, c, fsp->s, fsp->wl, fsp->wp);
 
 			$$ = format_expand(ft, $1);
 			format_free(ft);

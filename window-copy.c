@@ -1108,7 +1108,6 @@ window_copy_cmd_previous_matching_bracket(struct window_copy_cmd_state *cs)
 	return (WINDOW_COPY_CMD_NOTHING);
 }
 
-
 static enum window_copy_cmd_action
 window_copy_cmd_next_matching_bracket(struct window_copy_cmd_state *cs)
 {
