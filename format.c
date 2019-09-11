@@ -962,7 +962,6 @@ format_each(struct format_tree *ft, void (*cb)(const char *, const char *,
 	}
 }
 
-
 /* Add a key-value pair. */
 void
 format_add(struct format_tree *ft, const char *key, const char *fmt, ...)

@@ -102,7 +102,6 @@ cmdq_insert_after(struct cmdq_item *after, struct cmdq_item *item)
 	} while (item != NULL);
 }
 
-
 /* Insert a hook. */
 void
 cmdq_insert_hook(struct session *s, struct cmdq_item *item,

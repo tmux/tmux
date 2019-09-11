@@ -1573,6 +1573,10 @@ window_pane_input_callback(struct client *c, int closed, void *data)
 
 	wp = window_pane_find_by_id(cdata->wp);
 	if (wp == NULL || closed || c->flags & CLIENT_DEAD) {
+		if (wp == NULL)
+			c->flags |= CLIENT_EXIT;
+		evbuffer_drain(evb, len);
+
 		c->stdin_callback = NULL;
 		server_client_unref(c);
 
