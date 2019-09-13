@@ -2213,6 +2213,11 @@ format_defaults_winlink(struct format_tree *ft, struct winlink *wl)
 	format_add(ft, "window_end_flag", "%d",
 	    !!(wl == RB_MAX(winlinks, &s->windows)));
 
+	if (server_check_marked() && marked_pane.wl == wl)
+	    format_add(ft, "window_marked_flag", "1");
+	else
+	    format_add(ft, "window_marked_flag", "0");
+
 	format_add(ft, "window_bell_flag", "%d",
 	    !!(wl->flags & WINLINK_BELL));
 	format_add(ft, "window_activity_flag", "%d",
