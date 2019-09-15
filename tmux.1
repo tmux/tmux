@@ -4338,10 +4338,19 @@ by enclosing them in
 and
 .Ql \&] .
 .Pp
-A style may be the single term
-.Ql default
-to specify the default style (which may inherit from another option) or a space
-or comma separated list of the following:
+A style may be one of the following single terms:
+.Bl -tag -width Ds
+.It Ic default
+Use the default style (which may inherit from another option).
+.It Ic push-default
+Remember the current style as the default style for later uses of
+.Ql default .
+.It Ic pop-default
+Go back to the base style for later uses of
+.Ql default .
+.El
+.Pp
+A style can also be a space or comma separated list of the following:
 .Bl -tag -width Ds
 .It Ic fg=colour
 Set the foreground colour.
