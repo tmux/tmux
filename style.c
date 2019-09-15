@@ -36,7 +36,9 @@ static struct style style_default = {
 	STYLE_ALIGN_DEFAULT,
 	STYLE_LIST_OFF,
 
-	STYLE_RANGE_NONE, 0
+	STYLE_RANGE_NONE, 0,
+	
+	STYLE_DEFAULT_BASE
 };
 
 /*
@@ -74,7 +76,11 @@ style_parse(struct style *sy, const struct grid_cell *base, const char *in)
 			sy->gc.bg = base->bg;
 			sy->gc.attr = base->attr;
 			sy->gc.flags = base->flags;
-		} else if (strcasecmp(tmp, "nolist") == 0)
+		} else if (strcasecmp(tmp, "push-default") == 0)
+			sy->default_type = STYLE_DEFAULT_PUSH;
+		else if (strcasecmp(tmp, "pop-default") == 0)
+			sy->default_type = STYLE_DEFAULT_POP;
+		else if (strcasecmp(tmp, "nolist") == 0)
 			sy->list = STYLE_LIST_OFF;
 		else if (strncasecmp(tmp, "list=", 5) == 0) {
 			if (strcasecmp(tmp + 5, "on") == 0)
@@ -218,6 +224,14 @@ style_tostring(struct style *sy)
 		    tmp);
 		comma = ",";
 	}
+	if (sy->default_type != STYLE_DEFAULT_BASE) {
+		if (sy->default_type == STYLE_DEFAULT_PUSH)
+			tmp = "push-default";
+		else if (sy->default_type == STYLE_DEFAULT_POP)
+			tmp = "pop-default";
+		off += xsnprintf(s + off, sizeof s - off, "%s%s", comma, tmp);
+		comma = ",";
+	}
 	if (sy->fill != 8) {
 		off += xsnprintf(s + off, sizeof s - off, "%sfill=%s", comma,
 		    colour_tostring(sy->fill));
@@ -255,21 +269,6 @@ style_apply(struct grid_cell *gc, struct options *oo, const char *name)
 	gc->fg = sy->gc.fg;
 	gc->bg = sy->gc.bg;
 	gc->attr |= sy->gc.attr;
-}
-
-/* Apply a style, updating if default. */
-void
-style_apply_update(struct grid_cell *gc, struct options *oo, const char *name)
-{
-	struct style	*sy;
-
-	sy = options_get_style(oo, name);
-	if (sy->gc.fg != 8)
-		gc->fg = sy->gc.fg;
-	if (sy->gc.bg != 8)
-		gc->bg = sy->gc.bg;
-	if (sy->gc.attr != 0)
-		gc->attr |= sy->gc.attr;
 }
 
 /* Initialize style from cell. */
