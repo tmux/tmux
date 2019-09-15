@@ -682,6 +682,13 @@ struct style_range {
 };
 TAILQ_HEAD(style_ranges, style_range);
 
+/* Style default. */
+enum style_default_type {
+	STYLE_DEFAULT_BASE,
+	STYLE_DEFAULT_PUSH,
+	STYLE_DEFAULT_POP
+};
+
 /* Style option. */
 struct style {
 	struct grid_cell	gc;
@@ -692,6 +699,8 @@ struct style {
 
 	enum style_range_type	range_type;
 	u_int			range_argument;
+
+	enum style_default_type	default_type;
 };
 
 /* Virtual screen. */
@@ -2651,8 +2660,6 @@ int		 style_parse(struct style *,const struct grid_cell *,
 		     const char *);
 const char	*style_tostring(struct style *);
 void		 style_apply(struct grid_cell *, struct options *,
-		     const char *);
-void		 style_apply_update(struct grid_cell *, struct options *,
 		     const char *);
 int		 style_equal(struct style *, struct style *);
 void		 style_set(struct style *, const struct grid_cell *);

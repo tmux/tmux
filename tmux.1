@@ -4340,7 +4340,9 @@ and
 .Pp
 A style may be the single term
 .Ql default
-to specify the default style (which may inherit from another option) or a space
+to specify the default style (which may come from an option, for example
+.Ic status-style
+in the status line) or a space
 or comma separated list of the following:
 .Bl -tag -width Ds
 .It Ic fg=colour
@@ -4419,6 +4421,20 @@ and
 .Ic list=right-marker
 mark the text to be used to mark that text has been trimmed from the left or
 right of the list if there is not enough space.
+.It Xo Ic push-default ,
+.Ic pop-default
+.Xc
+Store the current colours and attributes as the default or reset to the previous
+default.
+A
+.Ic push-default
+affects any subsequent use of the
+.Ic default
+term until a
+.Ic pop-default .
+Only one default may be pushed (each
+.Ic push-default
+replaces the previous saved default).
 .It Xo Ic range=left ,
 .Ic range=right ,
 .Ic range=window|X ,
