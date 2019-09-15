@@ -92,7 +92,9 @@ static const char *options_table_window_size_list[] = {
 				"}" \
 			"}" \
 		"]" \
+		"#[push-default]" \
 		"#{T:window-status-format}" \
+		"#[pop-default]" \
 		"#[norange default]" \
 		"#{?window_end_flag,,#{window-status-separator}}" \
 	"," \
@@ -117,7 +119,9 @@ static const char *options_table_window_size_list[] = {
 				"}" \
 			"}" \
 		"]" \
+		"#[push-default]" \
 		"#{T:window-status-current-format}" \
+		"#[pop-default]" \
 		"#[norange list=on default]" \
 		"#{?window_end_flag,,#{window-status-separator}}" \
 	"}" \

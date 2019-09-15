@@ -513,8 +513,8 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 	int			 focus_start = -1, focus_end = -1;
 	int			 list_state = -1, fill = -1;
 	enum style_align	 list_align = STYLE_ALIGN_DEFAULT;
-	struct grid_cell	 gc;
-	struct style		 sy;
+	struct grid_cell	 gc, current_default;
+	struct style		 sy, saved_sy;
 	struct utf8_data	*ud = &sy.gc.data;
 	const char		*cp, *end;
 	enum utf8_state		 more;
@@ -523,7 +523,8 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 	struct format_ranges	 frs;
 	struct style_range	*sr;
 
-	style_set(&sy, base);
+	memcpy(&current_default, base, sizeof current_default);
+	style_set(&sy, &current_default);
 	TAILQ_INIT(&frs);
 	log_debug("%s: %s", __func__, expanded);
 
@@ -535,7 +536,7 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 	for (i = 0; i < TOTAL; i++) {
 		screen_init(&s[i], size, 1, 0);
 		screen_write_start(&ctx[i], NULL, &s[i]);
-		screen_write_clearendofline(&ctx[i], base->bg);
+		screen_write_clearendofline(&ctx[i], current_default.bg);
 		width[i] = 0;
 	}
 
@@ -581,7 +582,8 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 			goto out;
 		}
 		tmp = xstrndup(cp + 2, end - (cp + 2));
-		if (style_parse(&sy, base, tmp) != 0) {
+		style_copy(&saved_sy, &sy);
+		if (style_parse(&sy, &current_default, tmp) != 0) {
 			log_debug("%s: invalid style '%s'", __func__, tmp);
 			free(tmp);
 			cp = end + 1;
@@ -594,6 +596,15 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 		/* If this style has a fill colour, store it for later. */
 		if (sy.fill != 8)
 			fill = sy.fill;
+
+		/* If this style pushed or popped the default, update it. */
+		if (sy.default_type == STYLE_DEFAULT_PUSH) {
+			memcpy(&current_default, &saved_sy.gc, sizeof current_default);
+			sy.default_type = STYLE_DEFAULT_BASE;
+		} else if (sy.default_type == STYLE_DEFAULT_POP) {
+			memcpy(&current_default, base, sizeof current_default);
+			sy.default_type = STYLE_DEFAULT_BASE;
+		}
 
 		/* Check the list state. */
 		switch (sy.list) {
