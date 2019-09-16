@@ -185,8 +185,11 @@ menu_key_cb(struct client *c, struct key_event *event)
 	const char			*name;
 
 	if (KEYC_IS_MOUSE(event->key)) {
-		if (md->flags & MENU_NOMOUSE)
+		if (md->flags & MENU_NOMOUSE) {
+			if (MOUSE_BUTTONS(m->b) != 0)
+				return (1);
 			return (0);
+		}
 		if (m->x < md->px ||
 		    m->x > md->px + 4 + menu->width ||
 		    m->y < md->py + 1 ||
