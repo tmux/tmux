@@ -1,9 +1,5 @@
 CHANGES FROM 3.0 to X.X
 
-XXX
-
-CHANGES FROM 2.9 to 3.0
-
 * Add push-default and pop-default for styles which change the colours and
   attributes used for #[default]. These are used in status-format to restore
   the behaviour of window-status-style being the default for
@@ -26,6 +22,8 @@ CHANGES FROM 2.9 to 3.0
 * Add -N to capture-pane to preserve trailing spaces.
 
 * Add reverse sorting in tree, client and buffer modes.
+
+CHANGES FROM 2.9 to 3.0
 
 * Expand arguments to C and s format modifiers to match the m modifier.
 
