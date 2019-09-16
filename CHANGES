@@ -14,11 +14,6 @@ CHANGES FROM 3.0 to X.X
 * Add -Z flag to rotate-window, select-pane, swap-pane, switch-client to
   preserve zoomed state.
 
-* Add support for the SD (scroll down) escape sequence.
-
-* xterm 348 now disables margins when resized, so send DECLRMM again after
-  resize.
-
 * Add -N to capture-pane to preserve trailing spaces.
 
 * Add reverse sorting in tree, client and buffer modes.
