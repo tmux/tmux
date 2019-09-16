@@ -4,6 +4,29 @@ XXX
 
 CHANGES FROM 2.9 to 3.0
 
+* Add push-default and pop-default for styles which change the colours and
+  attributes used for #[default]. These are used in status-format to restore
+  the behaviour of window-status-style being the default for
+  window-status-format.
+
+* Add window_marked_flag.
+
+* Add cursor-down-and-cancel in copy mode.
+
+* Default to previous search string for search-forward and search-backward.
+
+* Add -Z flag to rotate-window, select-pane, swap-pane, switch-client to
+  preserve zoomed state.
+
+* Add support for the SD (scroll down) escape sequence.
+
+* xterm 348 now disables margins when resized, so send DECLRMM again after
+  resize.
+
+* Add -N to capture-pane to preserve trailing spaces.
+
+* Add reverse sorting in tree, client and buffer modes.
+
 * Expand arguments to C and s format modifiers to match the m modifier.
 
 * Add support for underscore colours (Setulc capability must be added with
