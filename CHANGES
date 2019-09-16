@@ -25,6 +25,11 @@ CHANGES FROM 3.0 to X.X
 
 CHANGES FROM 2.9 to 3.0
 
+* xterm 348 now disables margins when resized, so send DECLRMM again after
+  resize.
+
+* Add support for the SD (scroll down) escape sequence.
+
 * Expand arguments to C and s format modifiers to match the m modifier.
 
 * Add support for underscore colours (Setulc capability must be added with
