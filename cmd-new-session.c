@@ -259,6 +259,7 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	memset(&sc, 0, sizeof sc);
 	sc.item = item;
 	sc.s = s;
+	sc.c = c;
 
 	sc.name = args_get(args, 'n');
 	sc.argc = args->argc;

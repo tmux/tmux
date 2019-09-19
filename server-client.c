@@ -994,6 +994,24 @@ server_client_assume_paste(struct session *s)
 	return (0);
 }
 
+/* Has the latest client changed? */
+static void
+server_client_update_latest(struct client *c)
+{
+	struct window	*w;
+
+	if (c->session == NULL)
+		return;
+	w = c->session->curw->window;
+
+	if (w->latest == c)
+		return;
+	w->latest = c;
+
+	if (options_get_number(w->options, "window-size") == WINDOW_SIZE_LATEST)
+		recalculate_size(w);
+}
+
 /*
  * Handle data key input from client. This owns and can modify the key event it
  * is given and is responsible for freeing it.
@@ -1190,6 +1208,8 @@ forward_key:
 		window_pane_key(wp, c, s, wl, key, m);
 
 out:
+	if (s != NULL)
+		server_client_update_latest(c);
 	free(event);
 	return (CMD_RETURN_NORMAL);
 }
@@ -1747,6 +1767,7 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 
 		if (c->flags & CLIENT_CONTROL)
 			break;
+		server_client_update_latest(c);
 		server_client_clear_overlay(c);
 		tty_resize(&c->tty);
 		recalculate_sizes();
