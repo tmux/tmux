@@ -2374,10 +2374,7 @@ tty_check_fg(struct tty *tty, struct window_pane *wp, struct grid_cell *gc)
 				gc->fg &= 7;
 				if (colours >= 16)
 					gc->fg += 90;
-				else
-					gc->attr |= GRID_ATTR_BRIGHT;
-			} else
-				gc->attr &= ~GRID_ATTR_BRIGHT;
+			}
 		}
 		return;
 	}
