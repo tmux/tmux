@@ -164,6 +164,7 @@ spawn_window(struct spawn_context *sc, char **cause)
 		if (s->curw == NULL)
 			s->curw = sc->wl;
 		sc->wl->session = s;
+		w->latest = sc->c;
 		winlink_set_window(sc->wl, w);
 	} else
 		w = NULL;

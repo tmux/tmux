@@ -64,7 +64,7 @@ static const char *options_table_set_clipboard_list[] = {
 	"off", "external", "on", NULL
 };
 static const char *options_table_window_size_list[] = {
-	"largest", "smallest", "manual", NULL
+	"largest", "smallest", "manual", "latest", NULL
 };
 
 /* Status line format. */
