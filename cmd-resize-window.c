@@ -98,9 +98,9 @@ cmd_resize_window_exec(struct cmd *self, struct cmdq_item *item)
 		sy += adjust;
 
 	if (args_has(args, 'A'))
-		default_window_size(s, w, &sx, &sy, WINDOW_SIZE_LARGEST);
+		default_window_size(NULL, s, w, &sx, &sy, WINDOW_SIZE_LARGEST);
 	else if (args_has(args, 'a'))
-		default_window_size(s, w, &sx, &sy, WINDOW_SIZE_SMALLEST);
+		default_window_size(NULL, s, w, &sx, &sy, WINDOW_SIZE_SMALLEST);
 
 	options_set_number(w->options, "window-size", WINDOW_SIZE_MANUAL);
 	resize_window(w, sx, sy);
