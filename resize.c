@@ -76,30 +76,28 @@ ignore_client_size(struct client *c)
 }
 
 void
-default_window_size(struct session *s, struct window *w, u_int *sx, u_int *sy,
-    int type)
+default_window_size(struct client *c, struct session *s, struct window *w,
+    u_int *sx, u_int *sy, int type)
 {
-	struct client	*c;
+	struct client	*loop;
 	u_int		 cx, cy;
 	const char	*value;
 
 	if (type == -1)
 		type = options_get_number(global_w_options, "window-size");
-	if (type == WINDOW_SIZE_MANUAL)
-		goto manual;
-
-	if (type == WINDOW_SIZE_LARGEST) {
+	switch (type) {
+	case WINDOW_SIZE_LARGEST:
 		*sx = *sy = 0;
-		TAILQ_FOREACH(c, &clients, entry) {
-			if (ignore_client_size(c))
+		TAILQ_FOREACH(loop, &clients, entry) {
+			if (ignore_client_size(loop))
 				continue;
-			if (w != NULL && !session_has(c->session, w))
+			if (w != NULL && !session_has(loop->session, w))
 				continue;
-			if (w == NULL && c->session != s)
+			if (w == NULL && loop->session != s)
 				continue;
 
-			cx = c->tty.sx;
-			cy = c->tty.sy - status_line_size(c);
+			cx = loop->tty.sx;
+			cy = loop->tty.sy - status_line_size(loop);
 
 			if (cx > *sx)
 				*sx = cx;
@@ -108,18 +106,19 @@ default_window_size(struct session *s, struct window *w, u_int *sx, u_int *sy,
 		}
 		if (*sx == 0 || *sy == 0)
 			goto manual;
-	} else {
+		break;
+	case WINDOW_SIZE_SMALLEST:
 		*sx = *sy = UINT_MAX;
-		TAILQ_FOREACH(c, &clients, entry) {
-			if (ignore_client_size(c))
+		TAILQ_FOREACH(loop, &clients, entry) {
+			if (ignore_client_size(loop))
 				continue;
-			if (w != NULL && !session_has(c->session, w))
+			if (w != NULL && !session_has(loop->session, w))
 				continue;
-			if (w == NULL && c->session != s)
+			if (w == NULL && loop->session != s)
 				continue;
 
-			cx = c->tty.sx;
-			cy = c->tty.sy - status_line_size(c);
+			cx = loop->tty.sx;
+			cy = loop->tty.sy - status_line_size(loop);
 
 			if (cx < *sx)
 				*sx = cx;
@@ -128,6 +127,34 @@ default_window_size(struct session *s, struct window *w, u_int *sx, u_int *sy,
 		}
 		if (*sx == UINT_MAX || *sy == UINT_MAX)
 			goto manual;
+		break;
+	case WINDOW_SIZE_LATEST:
+		if (c != NULL && !ignore_client_size(c)) {
+			*sx = c->tty.sx;
+			*sy = c->tty.sy - status_line_size(c);
+		} else {
+			*sx = *sy = UINT_MAX;
+			TAILQ_FOREACH(loop, &clients, entry) {
+				if (ignore_client_size(loop))
+					continue;
+				if (w != NULL && loop != w->latest)
+					continue;
+				s = loop->session;
+
+				cx = loop->tty.sx;
+				cy = loop->tty.sy - status_line_size(loop);
+
+				if (cx < *sx)
+					*sx = cx;
+				if (cy < *sy)
+					*sy = cy;
+			}
+			if (*sx == UINT_MAX || *sy == UINT_MAX)
+				goto manual;
+		}
+		break;
+	case WINDOW_SIZE_MANUAL:
+		goto manual;
 	}
 	goto done;
 

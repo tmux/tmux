@@ -153,7 +153,7 @@ spawn_window(struct spawn_context *sc, char **cause)
 			xasprintf(cause, "couldn't add window %d", idx);
 			return (NULL);
 		}
-		default_window_size(s, NULL, &sx, &sy, -1);
+		default_window_size(sc->c, s, NULL, &sx, &sy, -1);
 		if ((w = window_create(sx, sy)) == NULL) {
 			winlink_remove(&s->windows, sc->wl);
 			xasprintf(cause, "couldn't create window %d", idx);
