@@ -1326,8 +1326,7 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 		}
 	}
 
-	memcpy(&gc, &ci->gc, sizeof gc);
-	grid_view_set_cells(s->grid, s->cx, s->cy, &gc, ci->data, ci->used);
+	grid_view_set_cells(s->grid, s->cx, s->cy, &ci->gc, ci->data, ci->used);
 	screen_write_set_cursor(ctx, s->cx + ci->used, -1);
 
 	for (xx = s->cx; xx < screen_size_x(s); xx++) {
@@ -1351,8 +1350,7 @@ screen_write_collect_add(struct screen_write_ctx *ctx,
 	/*
 	 * Don't need to check that the attributes and whatnot are still the
 	 * same - input_parse will end the collection when anything that isn't
-	 * a plain character is encountered. Also nothing should make it here
-	 * that isn't a single ASCII character.
+	 * a plain character is encountered.
 	 */
 
 	collect = 1;

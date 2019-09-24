@@ -888,7 +888,8 @@ input_parse_buffer(struct window_pane *wp, u_char *buf, size_t len)
 {
 	struct input_ctx		*ictx = wp->ictx;
 	struct screen_write_ctx		*sctx = &ictx->ctx;
-	const struct input_transition	*itr;
+	const struct input_state	*state = NULL;
+	const struct input_transition	*itr = NULL;
 	size_t				 off = 0;
 
 	if (len == 0)
@@ -916,16 +917,22 @@ input_parse_buffer(struct window_pane *wp, u_char *buf, size_t len)
 		ictx->ch = buf[off++];
 
 		/* Find the transition. */
-		itr = ictx->state->transitions;
-		while (itr->first != -1 && itr->last != -1) {
-			if (ictx->ch >= itr->first && ictx->ch <= itr->last)
-				break;
-			itr++;
+		if (ictx->state != state ||
+		    itr == NULL ||
+		    ictx->ch < itr->first ||
+		    ictx->ch > itr->last) {
+			itr = ictx->state->transitions;
+			while (itr->first != -1 && itr->last != -1) {
+				if (ictx->ch >= itr->first && ictx->ch <= itr->last)
+					break;
+				itr++;
+			}
+			if (itr->first == -1 || itr->last == -1) {
+				/* No transition? Eh? */
+				fatalx("no transition from state");
+			}
 		}
-		if (itr->first == -1 || itr->last == -1) {
-			/* No transition? Eh? */
-			fatalx("no transition from state");
-		}
+		state = ictx->state;
 
 		/*
 		 * Any state except print stops the current collection. This is
