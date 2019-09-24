@@ -151,6 +151,8 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 				cmdq_error(item, "bad style: %s", style);
 				return (CMD_RETURN_ERROR);
 			}
+			options_set_style(wp->options, "window-active-style", 0,
+			    style);
 			wp->flags |= (PANE_REDRAW|PANE_STYLECHANGED);
 		}
 		if (args_has(self->args, 'g')) {
