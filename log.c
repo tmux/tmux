@@ -130,6 +130,9 @@ log_debug(const char *msg, ...)
 {
 	va_list	ap;
 
+	if (log_file == NULL)
+		return;
+
 	va_start(ap, msg);
 	log_vwrite(msg, ap);
 	va_end(ap);
