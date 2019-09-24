@@ -100,7 +100,6 @@ void
 screen_write_start(struct screen_write_ctx *ctx, struct window_pane *wp,
     struct screen *s)
 {
-	char	tmp[32];
 	u_int	y;
 
 	memset(ctx, 0, sizeof *ctx);
@@ -119,12 +118,17 @@ screen_write_start(struct screen_write_ctx *ctx, struct window_pane *wp,
 	ctx->scrolled = 0;
 	ctx->bg = 8;
 
-	if (wp != NULL) {
-		snprintf(tmp, sizeof tmp, "pane %%%u (at %u,%u)", wp->id,
-		    wp->xoff, wp->yoff);
+	if (log_get_level() != 0) {
+		if (wp != NULL) {
+			log_debug("%s: size %ux%u, pane %%%u (at %u,%u)",
+			    __func__, screen_size_x(ctx->s),
+			    screen_size_y(ctx->s), wp->id, wp->xoff, wp->yoff);
+		} else {
+			log_debug("%s: size %ux%u, no pane",
+			    __func__, screen_size_x(ctx->s),
+			    screen_size_y(ctx->s));
+		}
 	}
-	log_debug("%s: size %ux%u, %s", __func__, screen_size_x(ctx->s),
-	    screen_size_y(ctx->s), wp == NULL ? "no pane" : tmp);
 }
 
 /* Finish writing. */
@@ -1234,7 +1238,6 @@ screen_write_collect_scroll(struct screen_write_ctx *ctx)
 	for (y = s->rupper; y < s->rlower; y++) {
 		cl = &ctx->list[y + 1];
 		TAILQ_CONCAT(&ctx->list[y].items, &cl->items, entry);
-		TAILQ_INIT(&cl->items);
 	}
 }
 
