@@ -923,7 +923,8 @@ input_parse_buffer(struct window_pane *wp, u_char *buf, size_t len)
 		    ictx->ch > itr->last) {
 			itr = ictx->state->transitions;
 			while (itr->first != -1 && itr->last != -1) {
-				if (ictx->ch >= itr->first && ictx->ch <= itr->last)
+				if (ictx->ch >= itr->first &&
+				    ictx->ch <= itr->last)
 					break;
 				itr++;
 			}
