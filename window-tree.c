@@ -269,7 +269,7 @@ window_tree_cmp_pane(const void *a0, const void *b0)
 		result = (*a)->id - (*b)->id;
 	}
 	if (window_tree_sort->reversed)
-		result *= -1;
+		result = -result;
 	return (result);
 }
 
