@@ -226,7 +226,8 @@ const struct options_table_entry options_table[] = {
 	  .flags = OPTIONS_TABLE_IS_ARRAY,
 	  .default_str = "xterm*:XT:Ms=\\E]52;%p1%s;%p2%s\\007"
 			 ":Cs=\\E]12;%p1%s\\007:Cr=\\E]112\\007"
-			 ":Ss=\\E[%p1%d q:Se=\\E[2 q,screen*:XT",
+			 ":Ss=\\E[%p1%d q:Se=\\E[2 q:Smol=\\E[53m,"
+	                 "screen*:XT:Smol=\\E[53m",
 	  .separator = ","
 	},
 
