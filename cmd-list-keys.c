@@ -61,8 +61,9 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 	struct key_table	*table;
 	struct key_binding	*bd;
 	const char		*tablename, *r;
-	char			*key, *cp, tmp[BUFSIZ];
-	int			 repeat, width, tablewidth, keywidth;
+	char			*key, *cp, *tmp;
+	size_t			cmdlen, tmplen, tmpsize;
+	int			repeat, width, tablewidth, keywidth;
 
 	if (self->entry == &cmd_list_commands_entry)
 		return (cmd_list_keys_commands(self, item));
@@ -101,6 +102,9 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 		table = key_bindings_next_table(table);
 	}
 
+	tmp = xmalloc(BUFSIZ);
+	tmpsize = BUFSIZ;
+
 	table = key_bindings_first_table ();
 	while (table != NULL) {
 		if (tablename != NULL && strcmp(table->name, tablename) != 0) {
@@ -117,20 +121,25 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 				r = "-r ";
 			else
 				r = "   ";
-			xsnprintf(tmp, sizeof tmp, "%s-T ", r);
+			tmplen = xsnprintf(tmp, tmpsize, "%s-T ", r);
 
 			cp = utf8_padcstr(table->name, tablewidth);
-			strlcat(tmp, cp, sizeof tmp);
-			strlcat(tmp, " ", sizeof tmp);
+			tmplen = strlcat(tmp, cp, tmpsize);
+			tmplen = strlcat(tmp, " ", tmpsize);
 			free(cp);
 
 			cp = utf8_padcstr(key, keywidth);
-			strlcat(tmp, cp, sizeof tmp);
-			strlcat(tmp, " ", sizeof tmp);
+			tmplen = strlcat(tmp, cp, tmpsize);
+			tmplen = strlcat(tmp, " ", tmpsize);
 			free(cp);
 
 			cp = cmd_list_print(bd->cmdlist, 1);
-			strlcat(tmp, cp, sizeof tmp);
+			cmdlen = strlen(cp);
+			if (tmplen + cmdlen >= tmpsize) {
+				tmpsize += cmdlen - tmplen;
+				tmp = xrealloc(tmp, tmpsize);
+			}
+			strlcat(tmp, cp, tmpsize);
 			free(cp);
 
 			cmdq_print(item, "bind-key %s", tmp);
@@ -140,6 +149,8 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 		}
 		table = key_bindings_next_table(table);
 	}
+
+	free(tmp);
 
 	return (CMD_RETURN_NORMAL);
 }
