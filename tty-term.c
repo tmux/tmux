@@ -281,7 +281,7 @@ static char *
 tty_term_strip(const char *s)
 {
 	const char     *ptr;
-	static char	buf[BUFSIZ];
+	static char	buf[8192];
 	size_t		len;
 
 	/* Ignore strings with no padding. */
@@ -309,7 +309,7 @@ tty_term_strip(const char *s)
 static char *
 tty_term_override_next(const char *s, size_t *offset)
 {
-	static char	value[BUFSIZ];
+	static char	value[8192];
 	size_t		n = 0, at = *offset;
 
 	if (s[at] == '\0')
