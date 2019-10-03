@@ -1245,7 +1245,7 @@ yylex_token_variable(char **buf, size_t *len)
 {
 	struct environ_entry	*envent;
 	int			 ch, brackets = 0;
-	char			 name[BUFSIZ];
+	char			 name[1024];
 	size_t			 namelen = 0;
 	const char		*value;
 
@@ -1297,7 +1297,7 @@ yylex_token_tilde(char **buf, size_t *len)
 {
 	struct environ_entry	*envent;
 	int			 ch;
-	char			 name[BUFSIZ];
+	char			 name[1024];
 	size_t			 namelen = 0;
 	struct passwd		*pw;
 	const char		*home = NULL;

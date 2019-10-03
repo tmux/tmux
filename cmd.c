@@ -384,7 +384,7 @@ cmd_find(const char *name, char **cause)
 {
 	const struct cmd_entry	**loop, *entry, *found = NULL;
 	int			  ambiguous;
-	char			  s[BUFSIZ];
+	char			  s[8192];
 
 	ambiguous = 0;
 	for (loop = cmd_table; *loop != NULL; loop++) {
