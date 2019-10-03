@@ -61,8 +61,9 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 	struct key_table	*table;
 	struct key_binding	*bd;
 	const char		*tablename, *r;
-	char			*key, *cp, tmp[8192];
+	char			*key, *cp, *tmp;
 	int			 repeat, width, tablewidth, keywidth;
+	size_t			 tmpsize, tmpused, cplen;
 
 	if (self->entry == &cmd_list_commands_entry)
 		return (cmd_list_keys_commands(self, item));
@@ -101,6 +102,9 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 		table = key_bindings_next_table(table);
 	}
 
+	tmpsize = 256;
+	tmp = xmalloc(tmpsize);
+
 	table = key_bindings_first_table ();
 	while (table != NULL) {
 		if (tablename != NULL && strcmp(table->name, tablename) != 0) {
@@ -117,20 +121,35 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 				r = "-r ";
 			else
 				r = "   ";
-			xsnprintf(tmp, sizeof tmp, "%s-T ", r);
+			tmpused = xsnprintf(tmp, tmpsize, "%s-T ", r);
 
 			cp = utf8_padcstr(table->name, tablewidth);
-			strlcat(tmp, cp, sizeof tmp);
-			strlcat(tmp, " ", sizeof tmp);
+			cplen = strlen(cp) + 1;
+			while (tmpused + cplen + 1>= tmpsize) {
+				tmpsize *= 2;
+				tmp = xrealloc(tmp, tmpsize);
+			}
+			tmpused = strlcat(tmp, cp, tmpsize);
+			tmpused = strlcat(tmp, " ", tmpsize);
 			free(cp);
 
 			cp = utf8_padcstr(key, keywidth);
-			strlcat(tmp, cp, sizeof tmp);
-			strlcat(tmp, " ", sizeof tmp);
+			cplen = strlen(cp) + 1;
+			while (tmpused + cplen + 1 >= tmpsize) {
+				tmpsize *= 2;
+				tmp = xrealloc(tmp, tmpsize);
+			}
+			tmpused = strlcat(tmp, cp, tmpsize);
+			tmpused = strlcat(tmp, " ", tmpsize);
 			free(cp);
 
 			cp = cmd_list_print(bd->cmdlist, 1);
-			strlcat(tmp, cp, sizeof tmp);
+			cplen = strlen(cp);
+			while (tmpused + cplen + 1 >= tmpsize) {
+				tmpsize *= 2;
+				tmp = xrealloc(tmp, tmpsize);
+			}
+			strlcat(tmp, cp, tmpsize);
 			free(cp);
 
 			cmdq_print(item, "bind-key %s", tmp);
@@ -140,6 +159,8 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 		}
 		table = key_bindings_next_table(table);
 	}
+
+	free(tmp);
 
 	return (CMD_RETURN_NORMAL);
 }
