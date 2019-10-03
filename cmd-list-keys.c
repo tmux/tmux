@@ -61,7 +61,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 	struct key_table	*table;
 	struct key_binding	*bd;
 	const char		*tablename, *r;
-	char			*key, *cp, tmp[BUFSIZ];
+	char			*key, *cp, tmp[8192];
 	int			 repeat, width, tablewidth, keywidth;
 
 	if (self->entry == &cmd_list_commands_entry)
