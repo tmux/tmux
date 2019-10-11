@@ -127,6 +127,7 @@ make_label(const char *label, char **cause)
 		free(base);
 		goto fail;
 	}
+    free(base);
 
 	if (mkdir(resolved, S_IRWXU) != 0 && errno != EEXIST)
 		goto fail;
