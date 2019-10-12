@@ -1454,7 +1454,9 @@ The following commands are supported in copy mode:
 .It Li "cursor-left" Ta "h" Ta "Left"
 .It Li "cursor-right" Ta "l" Ta "Right"
 .It Li "cursor-up" Ta "k" Ta "Up"
+.It Li "backward-search-cword" Ta "#" Ta ""
 .It Li "end-of-line" Ta "$" Ta "C-e"
+.It Li "forward-search-cword" Ta "*" Ta ""
 .It Li "goto-line <line>" Ta ":" Ta "g"
 .It Li "halfpage-down" Ta "C-d" Ta "M-Down"
 .It Li "halfpage-down-and-cancel" Ta "" Ta ""
@@ -1896,7 +1898,9 @@ zooms the pane.
 This command works only if at least one client is attached.
 .It Xo Ic join-pane
 .Op Fl bdhv
-.Op Fl l Ar size
+.Oo Fl l
+.Ar size |
+.Fl p Ar percentage Oc
 .Op Fl s Ar src-pane
 .Op Fl t Ar dst-pane
 .Xc
@@ -2033,7 +2037,9 @@ flag, see the
 section.
 .It Xo Ic move-pane
 .Op Fl bdhv
-.Op Fl l Ar size
+.Oo Fl l
+.Ar size |
+.Fl p Ar percentage Oc
 .Op Fl s Ar src-pane
 .Op Fl t Ar dst-pane
 .Xc
@@ -2221,8 +2227,8 @@ if specified, to
 .It Xo Ic resize-pane
 .Op Fl DLMRUZ
 .Op Fl t Ar target-pane
-.Op Fl x Ar width
-.Op Fl y Ar height
+.Op Fl x Ar width | percentage%
+.Op Fl y Ar height | percentage%
 .Op Ar adjustment
 .Xc
 .D1 (alias: Ic resizep )
@@ -2242,14 +2248,9 @@ or
 .Fl y .
 The
 .Ar adjustment
-is given in lines or columns (the default is 1);
-.Fl x
-and
-.Fl y
-may be a given as a number of lines or columns or followed by
-.Ql %
-for a percentage of the window size (for example
-.Ql -x 10% ) .
+is given in lines or columns (the default is 1).
+The percentages are based on the root window dimensions.
+.Pp
 With
 .Fl Z ,
 the active pane is toggled between zoomed (occupying the whole of the window)
@@ -2441,7 +2442,9 @@ the command behaves like
 .Op Fl bdfhIvP
 .Op Fl c Ar start-directory
 .Op Fl e Ar environment
-.Op Fl l Ar size
+.Oo Fl l
+.Ar size | percentage% |
+.Fl p Ar percentage Oc
 .Op Fl t Ar target-pane
 .Op Ar shell-command
 .Op Fl F Ar format
@@ -2457,12 +2460,11 @@ a vertical split; if neither is specified,
 is assumed.
 The
 .Fl l
-option specifies the size of the new pane in lines (for vertical split) or in
-columns (for horizontal split);
-.Ar size
-may be followed by
-.Ql %
-to specify a percentage of the available space.
+and
+.Fl p
+options specify the size of the new pane in lines (for vertical split) or in
+columns (for horizontal split), or as a percentage, respectively.
+The percentages are based on the target pane dimensions.
 The
 .Fl b
 option causes the new pane to be created to the left of or above
