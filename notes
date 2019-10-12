@@ -1,0 +1,15 @@
+In key_bindings.c add new bindings for * and # which executes:
+send -X select-word; send -X copy-selection; send -X search-forward-selection
+send -X select-word; send -X copy-selection; send -X search-backward-selection
+
+In search-forward-selection (use window_copy_cmd_search_again as template):
+
+get the word under the cursor:
+call window_copy_cmd_select_word
+next call window_copy_get_selection
+set searchstr
+next clean up by calling window_copy_clear_selection as in window_copy_cmd_copy_selection
+might need to return a redraw enum value
+
+use it to set wme->data->searchstr (free existing)
+then run the regular search function window_copy_search
