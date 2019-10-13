@@ -1786,6 +1786,49 @@ window_copy_cmd_search_forward_incremental(struct window_copy_cmd_state *cs)
 	return (action);
 }
 
+static enum window_copy_cmd_action
+window_copy_cmd_search_cword(struct window_copy_cmd_state *cs, int direction)
+{
+	struct window_mode_entry	*wme = cs->wme;
+	struct window_copy_mode_data	*data = wme->data;
+	char				*buf;
+	size_t				 len;
+	u_int				 np = wme->prefix;
+
+	window_copy_cmd_select_word(cs);
+	buf = window_copy_get_selection(wme, &len);
+	window_copy_clear_selection(wme);
+	if (buf != NULL) {
+		if (data->searchstr != NULL)
+			free(data->searchstr);
+		data->searchstr = xstrdup(buf);
+		if (direction) {
+			data->searchtype = WINDOW_COPY_SEARCHDOWN;
+			for (; np != 0; np--)
+				window_copy_search_down(wme);
+		}
+		else {
+			data->searchtype = WINDOW_COPY_SEARCHUP;
+			for (; np != 0; np--)
+				window_copy_search_up(wme);
+		}
+	}
+
+	return (WINDOW_COPY_CMD_NOTHING);
+}
+
+static enum window_copy_cmd_action
+window_copy_cmd_search_backward_cword(struct window_copy_cmd_state *cs)
+{
+	return window_copy_cmd_search_cword(cs, 0);
+}
+
+static enum window_copy_cmd_action
+window_copy_cmd_search_forward_cword(struct window_copy_cmd_state *cs)
+{
+	return window_copy_cmd_search_cword(cs, 1);
+}
+
 static const struct {
 	const char			 *command;
 	int				  minargs;
@@ -1902,10 +1945,14 @@ static const struct {
 	  window_copy_cmd_search_backward },
 	{ "search-backward-incremental", 1, 1,
 	  window_copy_cmd_search_backward_incremental },
+	{ "search-backward-cword", 0, 0,
+	  window_copy_cmd_search_backward_cword },
 	{ "search-forward", 0, 1,
 	  window_copy_cmd_search_forward },
 	{ "search-forward-incremental", 1, 1,
 	  window_copy_cmd_search_forward_incremental },
+	{ "search-forward-cword", 0, 0,
+	  window_copy_cmd_search_forward_cword },
 	{ "search-reverse", 0, 0,
 	  window_copy_cmd_search_reverse },
 	{ "select-line", 0, 0,

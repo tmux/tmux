@@ -1021,7 +1021,7 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 {
 	struct client			*c = item->client;
 	struct key_event		*event = data;
-	key_code			 key = event->key;
+	key_code			 key = event->key, key0;
 	struct mouse_event		*m = &event->m;
 	struct session			*s = c->session;
 	struct winlink			*wl;
@@ -1032,7 +1032,6 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 	struct key_binding		*bd;
 	int				 xtimeout, flags;
 	struct cmd_find_state		 fs;
-	key_code			 key0;
 
 	/* Check the client is good to accept input. */
 	if (s == NULL || (c->flags & (CLIENT_DEAD|CLIENT_SUSPENDED)) != 0)

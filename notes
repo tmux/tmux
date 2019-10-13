@@ -1,6 +1,10 @@
+TODO AM Remove this before merging to master!
+
+Plan of action for the vistar issue.
+
 In key_bindings.c add new bindings for * and # which executes:
-send -X select-word; send -X copy-selection; send -X search-forward-selection
-send -X select-word; send -X copy-selection; send -X search-backward-selection
+send -X send -X search-forward-selection
+send -X send -X search-backward-selection
 
 In search-forward-selection (use window_copy_cmd_search_again as template):
 
