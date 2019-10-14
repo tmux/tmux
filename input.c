@@ -2279,6 +2279,9 @@ input_enter_rename(struct input_ctx *ictx)
 static void
 input_exit_rename(struct input_ctx *ictx)
 {
+	struct window_pane	*wp = ictx->wp;
+	struct options_entry	*oe;
+
 	if (ictx->flags & INPUT_DISCARD)
 		return;
 	if (!options_get_number(ictx->wp->options, "allow-rename"))
@@ -2287,6 +2290,13 @@ input_exit_rename(struct input_ctx *ictx)
 
 	if (!utf8_isvalid(ictx->input_buf))
 		return;
+
+	if (ictx->input_len == 0) {
+		oe = options_get(wp->window->options, "automatic-rename");
+		if (oe != NULL)
+			options_remove(oe);
+		return;
+	}
 	window_set_name(ictx->wp->window, ictx->input_buf);
 	options_set_number(ictx->wp->window->options, "automatic-rename", 0);
 	server_status_window(ictx->wp->window);
