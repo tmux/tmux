@@ -696,6 +696,7 @@ cmd_parse_build_commands(struct cmd_parse_commands *cmds,
 			pr.status = CMD_PARSE_ERROR;
 			pr.error = cmd_parse_get_error(pi->file, line, cause);
 			free(cause);
+			cmd_list_free(cmdlist);
 			goto out;
 		}
 		cmd_list_append(cmdlist, add);
