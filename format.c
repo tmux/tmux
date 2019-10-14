@@ -574,7 +574,7 @@ format_cb_current_command(struct format_tree *ft, struct format_entry *fe)
 	struct window_pane	*wp = ft->wp;
 	char			*cmd;
 
-	if (wp == NULL)
+	if (wp == NULL || wp->shell == NULL)
 		return;
 
 	cmd = get_proc_name(wp->fd, wp->tty);
