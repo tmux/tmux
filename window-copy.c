@@ -1809,6 +1809,9 @@ window_copy_cmd_search_cword(struct window_copy_cmd_state *cs, int direction)
 		}
 		else {
 			data->searchtype = WINDOW_COPY_SEARCHUP;
+			/* The first search up finds the current word so do it
+			 * once more. This is more like vi. */
+			np++;
 			for (; np != 0; np--)
 				window_copy_search_up(wme);
 		}
