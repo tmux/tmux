@@ -125,7 +125,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 
 			cp = utf8_padcstr(table->name, tablewidth);
 			cplen = strlen(cp) + 1;
-			while (tmpused + cplen + 1>= tmpsize) {
+			while (tmpused + cplen + 1 >= tmpsize) {
 				tmpsize *= 2;
 				tmp = xrealloc(tmp, tmpsize);
 			}
