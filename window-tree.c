@@ -191,7 +191,7 @@ window_tree_cmp_session(const void *a0, const void *b0)
 	const struct session *const	*b = b0;
 	const struct session		*sa = *a;
 	const struct session		*sb = *b;
-	int				 result;
+	int				 result = 0;
 
 	switch (window_tree_sort->field) {
 	case WINDOW_TREE_BY_INDEX:
@@ -226,7 +226,7 @@ window_tree_cmp_window(const void *a0, const void *b0)
 	const struct winlink		*wlb = *b;
 	struct window			*wa = wla->window;
 	struct window			*wb = wlb->window;
-	int				 result;
+	int				 result = 0;
 
 	switch (window_tree_sort->field) {
 	case WINDOW_TREE_BY_INDEX:

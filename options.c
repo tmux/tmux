@@ -321,6 +321,17 @@ options_array_item(struct options_entry *o, u_int idx)
 	return (RB_FIND(options_array, &o->value.array, &a));
 }
 
+static struct options_array_item *
+options_array_new(struct options_entry *o, u_int idx)
+{
+	struct options_array_item	*a;
+
+	a = xcalloc(1, sizeof *a);
+	a->index = idx;
+	RB_INSERT(options_array, &o->value.array, a);
+	return (a);
+}
+
 static void
 options_array_free(struct options_entry *o, struct options_array_item *a)
 {
@@ -368,7 +379,14 @@ options_array_set(struct options_entry *o, u_int idx, const char *value,
 		return (-1);
 	}
 
-	if (OPTIONS_IS_COMMAND(o) && value != NULL) {
+	if (value == NULL) {
+		a = options_array_item(o, idx);
+		if (a != NULL)
+			options_array_free(o, a);
+		return (0);
+	}
+
+	if (OPTIONS_IS_COMMAND(o)) {
 		pr = cmd_parse_from_string(value, NULL);
 		switch (pr->status) {
 		case CMD_PARSE_EMPTY:
@@ -384,34 +402,33 @@ options_array_set(struct options_entry *o, u_int idx, const char *value,
 		case CMD_PARSE_SUCCESS:
 			break;
 		}
-	}
 
-	a = options_array_item(o, idx);
-	if (value == NULL) {
-		if (a != NULL)
-			options_array_free(o, a);
+		a = options_array_item(o, idx);
+		if (a == NULL)
+			a = options_array_new(o, idx);
+		else
+			options_value_free(o, &a->value);
+		a->value.cmdlist = pr->cmdlist;
 		return (0);
 	}
 
 	if (OPTIONS_IS_STRING(o)) {
+		a = options_array_item(o, idx);
 		if (a != NULL && append)
 			xasprintf(&new, "%s%s", a->value.string, value);
 		else
 			new = xstrdup(value);
+		if (a == NULL)
+			a = options_array_new(o, idx);
+		else
+			options_value_free(o, &a->value);
+		a->value.string = new;
+		return (0);
 	}
 
-	if (a == NULL) {
-		a = xcalloc(1, sizeof *a);
-		a->index = idx;
-		RB_INSERT(options_array, &o->value.array, a);
-	} else
-		options_value_free(o, &a->value);
-
-	if (OPTIONS_IS_STRING(o))
-		a->value.string = new;
-	else if (OPTIONS_IS_COMMAND(o))
-		a->value.cmdlist = pr->cmdlist;
-	return (0);
+	if (cause != NULL)
+		*cause = xstrdup("wrong array type");
+	return (-1);
 }
 
 int
