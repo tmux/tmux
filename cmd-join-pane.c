@@ -21,6 +21,7 @@
 
 #include <paths.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "tmux.h"
@@ -36,7 +37,7 @@ const struct cmd_entry cmd_join_pane_entry = {
 	.alias = "joinp",
 
 	.args = { "bdhvp:l:s:t:", 0, 0 },
-	.usage = "[-bdhv] [-p percentage|-l size] " CMD_SRCDST_PANE_USAGE,
+	.usage = "[-bdhv] [-l size] " CMD_SRCDST_PANE_USAGE,
 
 	.source = { 's', CMD_FIND_PANE, CMD_FIND_DEFAULT_MARKED },
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -68,11 +69,13 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct winlink		*src_wl, *dst_wl;
 	struct window		*src_w, *dst_w;
 	struct window_pane	*src_wp, *dst_wp;
-	char			*cause;
-	int			 size, percentage, dst_idx;
+	char			*cause, *copy;
+	const char		*errstr, *p;
+	size_t			 plen;
+	int			 size, percentage, dst_idx, not_same_window;
+	int			 flags;
 	enum layout_type	 type;
 	struct layout_cell	*lc;
-	int			 not_same_window, flags;
 
 	if (self->entry == &cmd_join_pane_entry)
 		not_same_window = 1;
@@ -105,12 +108,28 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 		type = LAYOUT_LEFTRIGHT;
 
 	size = -1;
-	if (args_has(args, 'l')) {
-		size = args_strtonum(args, 'l', 0, INT_MAX, &cause);
-		if (cause != NULL) {
-			cmdq_error(item, "size %s", cause);
-			free(cause);
-			return (CMD_RETURN_ERROR);
+	if ((p = args_get(args, 'l')) != NULL) {
+		plen = strlen(p);
+		if (p[plen - 1] == '%') {
+			copy = xstrdup(p);
+			copy[plen - 1] = '\0';
+			percentage = strtonum(copy, 0, INT_MAX, &errstr);
+			free(copy);
+			if (errstr != NULL) {
+				cmdq_error(item, "percentage %s", errstr);
+				return (CMD_RETURN_ERROR);
+			}
+			if (type == LAYOUT_TOPBOTTOM)
+				size = (dst_wp->sy * percentage) / 100;
+			else
+				size = (dst_wp->sx * percentage) / 100;
+		} else {
+			size = args_strtonum(args, 'l', 0, INT_MAX, &cause);
+			if (cause != NULL) {
+				cmdq_error(item, "size %s", cause);
+				free(cause);
+				return (CMD_RETURN_ERROR);
+			}
 		}
 	} else if (args_has(args, 'p')) {
 		percentage = args_strtonum(args, 'p', 0, 100, &cause);

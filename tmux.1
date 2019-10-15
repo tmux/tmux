@@ -1891,9 +1891,7 @@ zooms the pane.
 This command works only if at least one client is attached.
 .It Xo Ic join-pane
 .Op Fl bdhv
-.Oo Fl l
-.Ar size |
-.Fl p Ar percentage Oc
+.Op Fl l Ar size
 .Op Fl s Ar src-pane
 .Op Fl t Ar dst-pane
 .Xc
@@ -2030,9 +2028,7 @@ flag, see the
 section.
 .It Xo Ic move-pane
 .Op Fl bdhv
-.Oo Fl l
-.Ar size |
-.Fl p Ar percentage Oc
+.Op Fl l Ar size
 .Op Fl s Ar src-pane
 .Op Fl t Ar dst-pane
 .Xc
@@ -2241,8 +2237,14 @@ or
 .Fl y .
 The
 .Ar adjustment
-is given in lines or cells (the default is 1).
-.Pp
+is given in lines or columns (the default is 1);
+.Fl x
+and
+.Fl y
+may be a given as a number of lines or columns or followed by
+.Ql %
+for a percentage of the window size (for example
+.Ql -x 10% ) .
 With
 .Fl Z ,
 the active pane is toggled between zoomed (occupying the whole of the window)
@@ -2434,9 +2436,7 @@ the command behaves like
 .Op Fl bdfhIvP
 .Op Fl c Ar start-directory
 .Op Fl e Ar environment
-.Oo Fl l
-.Ar size |
-.Fl p Ar percentage Oc
+.Op Fl l Ar size
 .Op Fl t Ar target-pane
 .Op Ar shell-command
 .Op Fl F Ar format
@@ -2452,10 +2452,12 @@ a vertical split; if neither is specified,
 is assumed.
 The
 .Fl l
-and
-.Fl p
-options specify the size of the new pane in lines (for vertical split) or in
-cells (for horizontal split), or as a percentage, respectively.
+option specifies the size of the new pane in lines (for vertical split) or in
+columns (for horizontal split);
+.Ar size
+may be followed by
+.Ql %
+to specify a percentage of the available space.
 The
 .Fl b
 option causes the new pane to be created to the left of or above
