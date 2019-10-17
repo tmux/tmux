@@ -1789,6 +1789,10 @@ void		 format_defaults_pane(struct format_tree *,
 void		 format_defaults_paste_buffer(struct format_tree *,
 		     struct paste_buffer *);
 void		 format_lost_client(struct client *);
+struct
+utf8_data	*format_current_word(struct grid *, u_int, u_int);
+struct
+utf8_data	*format_current_line(struct grid *, u_int, u_int);
 
 /* format-draw.c */
 void		 format_draw(struct screen_write_ctx *,

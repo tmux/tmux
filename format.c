@@ -718,13 +718,11 @@ format_cb_cursor_character(struct format_tree *ft, struct format_entry *fe)
 		xasprintf(&fe->value, "%.*s", (int)gc.data.size, gc.data.data);
 }
 
-/* Callback for mouse_word. */
-static void
-format_cb_mouse_word(struct format_tree *ft, struct format_entry *fe)
+/* Return word at given coordinates. Caller frees. */
+struct utf8_data *
+format_current_word(struct grid *gd, u_int xin, u_int yin)
 {
-	struct window_pane	*wp;
-	u_int			 x, y, end;
-	struct grid		*gd;
+	u_int			 x = xin, y = yin, end;
 	struct grid_line	*gl;
 	struct grid_cell	 gc;
 	const char		*ws;
@@ -732,16 +730,6 @@ format_cb_mouse_word(struct format_tree *ft, struct format_entry *fe)
 	size_t			 size = 0;
 	int			 found = 0;
 
-	if (!ft->m.valid)
-		return;
-	wp = cmd_mouse_pane(&ft->m, NULL, NULL);
-	if (wp == NULL)
-		return;
-	if (!TAILQ_EMPTY (&wp->modes))
-		return;
-	if (cmd_mouse_at(wp, &ft->m, &x, &y, 0) != 0)
-		return;
-	gd = wp->base.grid;
 	ws = options_get_string(global_s_options, "word-separators");
 
 	y = gd->hsize + y;
@@ -792,23 +780,19 @@ format_cb_mouse_word(struct format_tree *ft, struct format_entry *fe)
 		ud = xreallocarray(ud, size + 2, sizeof *ud);
 		memcpy(&ud[size++], &gc.data, sizeof *ud);
 	}
-	if (size != 0) {
+	if (size != 0)
 		ud[size].size = 0;
-		fe->value = utf8_tocstr(ud);
-		free(ud);
-	}
+
+	return ud;
 }
 
-/* Callback for mouse_line. */
+/* Callback for mouse_word. */
 static void
-format_cb_mouse_line(struct format_tree *ft, struct format_entry *fe)
+format_cb_mouse_word(struct format_tree *ft, struct format_entry *fe)
 {
 	struct window_pane	*wp;
 	u_int			 x, y;
-	struct grid		*gd;
-	struct grid_cell	 gc;
 	struct utf8_data	*ud = NULL;
-	size_t			 size = 0;
 
 	if (!ft->m.valid)
 		return;
@@ -819,7 +803,20 @@ format_cb_mouse_line(struct format_tree *ft, struct format_entry *fe)
 		return;
 	if (cmd_mouse_at(wp, &ft->m, &x, &y, 0) != 0)
 		return;
-	gd = wp->base.grid;
+
+	ud = format_current_word(wp->base.grid, x, y);
+	fe->value = utf8_tocstr(ud);
+	free(ud);
+}
+
+/* Return line at given coordinates. Caller frees. */
+struct utf8_data *
+format_current_line(struct grid *gd, u_int xin, u_int yin)
+{
+	u_int			 x = xin, y = yin;
+	struct grid_cell	 gc;
+	struct utf8_data	*ud = NULL;
+	size_t			 size = 0;
 
 	y = gd->hsize + y;
 	for (x = 0; x < grid_line_length(gd, y); x++) {
@@ -830,11 +827,33 @@ format_cb_mouse_line(struct format_tree *ft, struct format_entry *fe)
 		ud = xreallocarray(ud, size + 2, sizeof *ud);
 		memcpy(&ud[size++], &gc.data, sizeof *ud);
 	}
-	if (size != 0) {
+	if (size != 0)
 		ud[size].size = 0;
-		fe->value = utf8_tocstr(ud);
-		free(ud);
-	}
+
+	return ud;
+}
+
+/* Callback for mouse_line. */
+static void
+format_cb_mouse_line(struct format_tree *ft, struct format_entry *fe)
+{
+	struct window_pane	*wp;
+	u_int			 x, y;
+	struct utf8_data	*ud = NULL;
+
+	if (!ft->m.valid)
+		return;
+	wp = cmd_mouse_pane(&ft->m, NULL, NULL);
+	if (wp == NULL)
+		return;
+	if (!TAILQ_EMPTY (&wp->modes))
+		return;
+	if (cmd_mouse_at(wp, &ft->m, &x, &y, 0) != 0)
+		return;
+
+	ud = format_current_line(wp->base.grid, x, y);
+	fe->value = utf8_tocstr(ud);
+	free(ud);
 }
 
 /* Merge a format tree. */
