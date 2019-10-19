@@ -1,6 +1,8 @@
 CHANGES FROM 3.0 to X.X
 
-* Add copy_cursor_* formats to retrieve the copy-mode cursor position.
+* Add copy_cursor_{x,y} formats to retrieve the copy-mode cursor position
+  and selection_{start,end}_{x,y} formats to retrieve the copy-mode
+  selection coordinates.
 
 * Add push-default and pop-default for styles which change the colours and
   attributes used for #[default]. These are used in status-format to restore
