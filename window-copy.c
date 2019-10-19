@@ -565,9 +565,19 @@ window_copy_formats(struct window_mode_entry *wme, struct format_tree *ft)
 {
 	struct window_copy_mode_data	*data = wme->data;
 
-	format_add(ft, "selection_present", "%d", data->screen.sel != NULL);
 	format_add(ft, "scroll_position", "%d", data->oy);
 	format_add(ft, "rectangle_toggle", "%d", data->rectflag);
+
+	format_add(ft, "copy_cursor_x", "%d", data->cx);
+	format_add(ft, "copy_cursor_y", "%d", data->cy);
+
+	format_add(ft, "selection_present", "%d", data->screen.sel != NULL);
+	if (data->screen.sel != NULL) {
+		format_add(ft, "selection_start_x", "%d", data->selx);
+		format_add(ft, "selection_start_y", "%d", data->sely);
+		format_add(ft, "selection_end_x", "%d", data->endselx);
+		format_add(ft, "selection_end_y", "%d", data->endsely);
+	}
 }
 
 static void
