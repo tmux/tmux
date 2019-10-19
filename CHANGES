@@ -1,5 +1,7 @@
 CHANGES FROM 3.0 to X.X
 
+* Add copy_cursor_* formats to retrieve the copy-mode cursor position.
+
 * Add push-default and pop-default for styles which change the colours and
   attributes used for #[default]. These are used in status-format to restore
   the behaviour of window-status-style being the default for
