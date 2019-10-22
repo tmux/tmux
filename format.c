@@ -719,7 +719,7 @@ format_cb_cursor_character(struct format_tree *ft, struct format_entry *fe)
 }
 
 /* Return word at given coordinates. Caller frees. */
-struct utf8_data *
+char *
 format_current_word(struct grid *gd, u_int xin, u_int yin)
 {
 	u_int			 x = xin, y = yin, end;
@@ -729,6 +729,7 @@ format_current_word(struct grid *gd, u_int xin, u_int yin)
 	struct utf8_data	*ud = NULL;
 	size_t			 size = 0;
 	int			 found = 0;
+	char			*s = NULL;
 
 	ws = options_get_string(global_s_options, "word-separators");
 
@@ -780,10 +781,13 @@ format_current_word(struct grid *gd, u_int xin, u_int yin)
 		ud = xreallocarray(ud, size + 2, sizeof *ud);
 		memcpy(&ud[size++], &gc.data, sizeof *ud);
 	}
-	if (size != 0)
+	if (size != 0) {
 		ud[size].size = 0;
+		s = utf8_tocstr(ud);
+		free(ud);
+	}
 
-	return ud;
+	return s;
 }
 
 /* Callback for mouse_word. */
@@ -792,7 +796,7 @@ format_cb_mouse_word(struct format_tree *ft, struct format_entry *fe)
 {
 	struct window_pane	*wp;
 	u_int			 x, y;
-	struct utf8_data	*ud = NULL;
+	char			*s;
 
 	if (!ft->m.valid)
 		return;
@@ -804,19 +808,20 @@ format_cb_mouse_word(struct format_tree *ft, struct format_entry *fe)
 	if (cmd_mouse_at(wp, &ft->m, &x, &y, 0) != 0)
 		return;
 
-	ud = format_current_word(wp->base.grid, x, y);
-	fe->value = utf8_tocstr(ud);
-	free(ud);
+	s = format_current_word(wp->base.grid, x, y);
+	if (s != NULL)
+		fe->value = s;
 }
 
 /* Return line at given coordinates. Caller frees. */
-struct utf8_data *
+char *
 format_current_line(struct grid *gd, u_int xin, u_int yin)
 {
 	u_int			 x = xin, y = yin;
 	struct grid_cell	 gc;
 	struct utf8_data	*ud = NULL;
 	size_t			 size = 0;
+	char			*s = NULL;
 
 	y = gd->hsize + y;
 	for (x = 0; x < grid_line_length(gd, y); x++) {
@@ -827,10 +832,13 @@ format_current_line(struct grid *gd, u_int xin, u_int yin)
 		ud = xreallocarray(ud, size + 2, sizeof *ud);
 		memcpy(&ud[size++], &gc.data, sizeof *ud);
 	}
-	if (size != 0)
+	if (size != 0) {
 		ud[size].size = 0;
+		s = utf8_tocstr(ud);
+		free(ud);
+	}
 
-	return ud;
+	return s;
 }
 
 /* Callback for mouse_line. */
@@ -839,7 +847,7 @@ format_cb_mouse_line(struct format_tree *ft, struct format_entry *fe)
 {
 	struct window_pane	*wp;
 	u_int			 x, y;
-	struct utf8_data	*ud = NULL;
+	char			*s;
 
 	if (!ft->m.valid)
 		return;
@@ -851,9 +859,9 @@ format_cb_mouse_line(struct format_tree *ft, struct format_entry *fe)
 	if (cmd_mouse_at(wp, &ft->m, &x, &y, 0) != 0)
 		return;
 
-	ud = format_current_line(wp->base.grid, x, y);
-	fe->value = utf8_tocstr(ud);
-	free(ud);
+	s = format_current_line(wp->base.grid, x, y);
+	if (s != NULL)
+		fe->value = s;
 }
 
 /* Merge a format tree. */

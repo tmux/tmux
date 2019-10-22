@@ -564,7 +564,6 @@ static void
 window_copy_formats(struct window_mode_entry *wme, struct format_tree *ft)
 {
 	struct window_copy_mode_data	*data = wme->data;
-	struct utf8_data		*ud = NULL;
 	char				*s;
 
 	format_add(ft, "scroll_position", "%d", data->oy);
@@ -581,20 +580,16 @@ window_copy_formats(struct window_mode_entry *wme, struct format_tree *ft)
 		format_add(ft, "selection_end_y", "%d", data->endsely);
 	}
 
-	ud = format_current_word(data->screen.grid, data->cx, data->cy);
-	if (ud != NULL)
+	s = format_current_word(data->screen.grid, data->cx, data->cy);
+	if (s != NULL)
 	{
-		s = utf8_tocstr(ud);
-		free(ud);
 		format_add(ft, "copy_cursor_word", "%s", s);
 		free(s);
 	}
 
-	ud = format_current_line(data->screen.grid, data->cx, data->cy);
-	if (ud != NULL)
+	s = format_current_line(data->screen.grid, data->cx, data->cy);
+	if (s != NULL)
 	{
-		s = utf8_tocstr(ud);
-		free(ud);
 		format_add(ft, "copy_cursor_line", "%s", s);
 		free(s);
 	}
