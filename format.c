@@ -718,30 +718,19 @@ format_cb_cursor_character(struct format_tree *ft, struct format_entry *fe)
 		xasprintf(&fe->value, "%.*s", (int)gc.data.size, gc.data.data);
 }
 
-/* Callback for mouse_word. */
-static void
-format_cb_mouse_word(struct format_tree *ft, struct format_entry *fe)
+/* Return word at given coordinates. Caller frees. */
+char *
+format_grid_word(struct grid *gd, u_int x, u_int y)
 {
-	struct window_pane	*wp;
-	u_int			 x, y, end;
-	struct grid		*gd;
 	struct grid_line	*gl;
 	struct grid_cell	 gc;
 	const char		*ws;
 	struct utf8_data	*ud = NULL;
+	u_int			 end;
 	size_t			 size = 0;
 	int			 found = 0;
+	char			*s = NULL;
 
-	if (!ft->m.valid)
-		return;
-	wp = cmd_mouse_pane(&ft->m, NULL, NULL);
-	if (wp == NULL)
-		return;
-	if (!TAILQ_EMPTY (&wp->modes))
-		return;
-	if (cmd_mouse_at(wp, &ft->m, &x, &y, 0) != 0)
-		return;
-	gd = wp->base.grid;
 	ws = options_get_string(global_s_options, "word-separators");
 
 	y = gd->hsize + y;
@@ -794,21 +783,19 @@ format_cb_mouse_word(struct format_tree *ft, struct format_entry *fe)
 	}
 	if (size != 0) {
 		ud[size].size = 0;
-		fe->value = utf8_tocstr(ud);
+		s = utf8_tocstr(ud);
 		free(ud);
 	}
+	return (s);
 }
 
-/* Callback for mouse_line. */
+/* Callback for mouse_word. */
 static void
-format_cb_mouse_line(struct format_tree *ft, struct format_entry *fe)
+format_cb_mouse_word(struct format_tree *ft, struct format_entry *fe)
 {
 	struct window_pane	*wp;
 	u_int			 x, y;
-	struct grid		*gd;
-	struct grid_cell	 gc;
-	struct utf8_data	*ud = NULL;
-	size_t			 size = 0;
+	char			*s;
 
 	if (!ft->m.valid)
 		return;
@@ -819,7 +806,21 @@ format_cb_mouse_line(struct format_tree *ft, struct format_entry *fe)
 		return;
 	if (cmd_mouse_at(wp, &ft->m, &x, &y, 0) != 0)
 		return;
-	gd = wp->base.grid;
+
+	s = format_grid_word(wp->base.grid, x, y);
+	if (s != NULL)
+		fe->value = s;
+}
+
+/* Return line at given coordinates. Caller frees. */
+char *
+format_grid_line(struct grid *gd, u_int y)
+{
+	struct grid_cell	 gc;
+	struct utf8_data	*ud = NULL;
+	u_int			 x;
+	size_t			 size = 0;
+	char			*s = NULL;
 
 	y = gd->hsize + y;
 	for (x = 0; x < grid_line_length(gd, y); x++) {
@@ -832,9 +833,33 @@ format_cb_mouse_line(struct format_tree *ft, struct format_entry *fe)
 	}
 	if (size != 0) {
 		ud[size].size = 0;
-		fe->value = utf8_tocstr(ud);
+		s = utf8_tocstr(ud);
 		free(ud);
 	}
+	return (s);
+}
+
+/* Callback for mouse_line. */
+static void
+format_cb_mouse_line(struct format_tree *ft, struct format_entry *fe)
+{
+	struct window_pane	*wp;
+	u_int			 x, y;
+	char			*s;
+
+	if (!ft->m.valid)
+		return;
+	wp = cmd_mouse_pane(&ft->m, NULL, NULL);
+	if (wp == NULL)
+		return;
+	if (!TAILQ_EMPTY (&wp->modes))
+		return;
+	if (cmd_mouse_at(wp, &ft->m, &x, &y, 0) != 0)
+		return;
+
+	s = format_grid_line(wp->base.grid, y);
+	if (s != NULL)
+		fe->value = s;
 }
 
 /* Merge a format tree. */
