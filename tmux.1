@@ -2605,6 +2605,10 @@ bind-key '"' split-window
 bind-key "'" new-window
 .Ed
 .Pp
+A command bound to the pseudo key
+.Em Any
+will execute for any key which does not have a more specific binding.
+.Pp
 Commands related to key bindings are as follows:
 .Bl -tag -width Ds
 .It Xo Ic bind-key
