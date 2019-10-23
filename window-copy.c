@@ -564,6 +564,7 @@ static void
 window_copy_formats(struct window_mode_entry *wme, struct format_tree *ft)
 {
 	struct window_copy_mode_data	*data = wme->data;
+	char				*s;
 
 	format_add(ft, "scroll_position", "%d", data->oy);
 	format_add(ft, "rectangle_toggle", "%d", data->rectflag);
@@ -577,6 +578,18 @@ window_copy_formats(struct window_mode_entry *wme, struct format_tree *ft)
 		format_add(ft, "selection_start_y", "%d", data->sely);
 		format_add(ft, "selection_end_x", "%d", data->endselx);
 		format_add(ft, "selection_end_y", "%d", data->endsely);
+	}
+
+	s = format_grid_word(data->screen.grid, data->cx, data->cy);
+	if (s != NULL) {
+		format_add(ft, "copy_cursor_word", "%s", s);
+		free(s);
+	}
+
+	s = format_grid_line(data->screen.grid, data->cy);
+	if (s != NULL) {
+		format_add(ft, "copy_cursor_line", "%s", s);
+		free(s);
 	}
 }
 
