@@ -311,7 +311,7 @@ window_create(u_int sx, u_int sy)
 	struct window	*w;
 
 	w = xcalloc(1, sizeof *w);
-	w->name = NULL;
+	w->name = xstrdup("");
 	w->flags = 0;
 
 	TAILQ_INIT(&w->panes);
