@@ -77,7 +77,9 @@ attributes_fromstring(const char *str)
 		{ "curly-underscore", GRID_ATTR_UNDERSCORE_3 },
 		{ "dotted-underscore", GRID_ATTR_UNDERSCORE_4 },
 		{ "dashed-underscore", GRID_ATTR_UNDERSCORE_5 },
-		{ "overline", GRID_ATTR_OVERLINE }
+		{ "overline", GRID_ATTR_OVERLINE },
+		{ "double-height-top", GRID_ATTR_DOUBLE_HEIGHT_TOP },
+		{ "double-height-bottom", GRID_ATTR_DOUBLE_HEIGHT_BOTTOM }
 	};
 
 	if (*str == '\0' || strcspn(str, delimiters) == 0)
