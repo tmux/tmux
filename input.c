@@ -1204,14 +1204,14 @@ input_c0_dispatch(struct input_ctx *ictx)
 		if (s->mode & MODE_CRLF)
 			screen_write_carriagereturn(sctx);
 		/* Reset DECDHL, if set */
-		gc->attr &= GRID_ATTR_DOUBLE_HEIGHT_TOP;
-		gc->attr &= GRID_ATTR_DOUBLE_HEIGHT_BOTTOM;
+		gc->attr &= ~GRID_ATTR_DOUBLE_HEIGHT_TOP;
+		gc->attr &= ~GRID_ATTR_DOUBLE_HEIGHT_BOTTOM;
 		break;
 	case '\015':	/* CR */
 		screen_write_carriagereturn(sctx);
 		/* Reset DECDHL, if set */
-		gc->attr &= GRID_ATTR_DOUBLE_HEIGHT_TOP;
-		gc->attr &= GRID_ATTR_DOUBLE_HEIGHT_BOTTOM;
+		gc->attr &= ~GRID_ATTR_DOUBLE_HEIGHT_TOP;
+		gc->attr &= ~GRID_ATTR_DOUBLE_HEIGHT_BOTTOM;
 		break;
 	case '\016':	/* SO */
 		ictx->cell.set = 1;
