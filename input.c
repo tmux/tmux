@@ -1209,9 +1209,6 @@ input_c0_dispatch(struct input_ctx *ictx)
 		break;
 	case '\015':	/* CR */
 		screen_write_carriagereturn(sctx);
-		/* Reset DECDHL, if set */
-		gc->attr &= ~GRID_ATTR_DOUBLE_HEIGHT_TOP;
-		gc->attr &= ~GRID_ATTR_DOUBLE_HEIGHT_BOTTOM;
 		break;
 	case '\016':	/* SO */
 		ictx->cell.set = 1;
@@ -2005,6 +2002,7 @@ input_csi_dispatch_sgr(struct input_ctx *ictx)
 	struct grid_cell	*gc = &ictx->cell.cell;
 	u_int			 i;
 	int			 n;
+	u_int decdhl_state;
 
 	if (ictx->param_list_len == 0) {
 		memcpy(gc, &grid_default_cell, sizeof *gc);
@@ -2035,7 +2033,13 @@ input_csi_dispatch_sgr(struct input_ctx *ictx)
 
 		switch (n) {
 		case 0:
+			/* Save DECDHL state */
+			decdhl_state = gc->attr & (GRID_ATTR_DOUBLE_HEIGHT_TOP|GRID_ATTR_DOUBLE_HEIGHT_BOTTOM);
+
 			memcpy(gc, &grid_default_cell, sizeof *gc);
+
+			/* Restore DECDHL state */
+			gc->attr |= decdhl_state;
 			break;
 		case 1:
 			gc->attr |= GRID_ATTR_BRIGHT;
