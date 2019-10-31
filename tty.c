@@ -2266,7 +2266,19 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
 		tty_putcode(tty, TTYC_SMOL);
 	if ((changed & GRID_ATTR_CHARSET) && tty_acs_needed(tty))
 		tty_putcode(tty, TTYC_SMACS);
-}
+
+	/* Double-height lines, if available */
+	if ((changed & GRID_ATTR_DOUBLE_HEIGHT_TOP))
+	{
+		if (tty_term_has(tty->term, TTYC_DHTOP))
+			tty_putcode(tty, TTYC_DHTOP);
+	}
+	if ((changed & GRID_ATTR_DOUBLE_HEIGHT_BOTTOM))
+	{
+		if (tty_term_has(tty->term, TTYC_DHBOT))
+			tty_putcode(tty, TTYC_DHBOT);
+		}
+	}
 
 static void
 tty_colours(struct tty *tty, const struct grid_cell *gc)

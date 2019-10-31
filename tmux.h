@@ -262,6 +262,8 @@ enum tty_code_code {
 	TTYC_CVVIS,
 	TTYC_DCH,
 	TTYC_DCH1,
+	TTYC_DHTOP,
+	TTYC_DHBOT,
 	TTYC_DIM,
 	TTYC_DL,
 	TTYC_DL1,
@@ -575,6 +577,8 @@ enum utf8_state {
 #define GRID_ATTR_UNDERSCORE_4 0x800
 #define GRID_ATTR_UNDERSCORE_5 0x1000
 #define GRID_ATTR_OVERLINE 0x2000
+#define GRID_ATTR_DOUBLE_HEIGHT_TOP 0x4000
+#define GRID_ATTR_DOUBLE_HEIGHT_BOTTOM 0x8000
 
 /* All underscore attributes. */
 #define GRID_ATTR_ALL_UNDERSCORE \

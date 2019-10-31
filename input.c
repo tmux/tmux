@@ -183,6 +183,8 @@ enum input_esc_type {
 	INPUT_ESC_DECALN,
 	INPUT_ESC_DECKPAM,
 	INPUT_ESC_DECKPNM,
+	INPUT_ESC_DECDHLT,
+	INPUT_ESC_DECDHLB,
 	INPUT_ESC_DECRC,
 	INPUT_ESC_DECSC,
 	INPUT_ESC_HTS,
@@ -203,6 +205,8 @@ static const struct input_table_entry input_esc_table[] = {
 	{ '0', ")", INPUT_ESC_SCSG1_ON },
 	{ '7', "",  INPUT_ESC_DECSC },
 	{ '8', "",  INPUT_ESC_DECRC },
+	{ '3', "#", INPUT_ESC_DECDHLT },
+	{ '4', "#", INPUT_ESC_DECDHLB },
 	{ '8', "#", INPUT_ESC_DECALN },
 	{ '=', "",  INPUT_ESC_DECKPAM },
 	{ '>', "",  INPUT_ESC_DECKPNM },
@@ -1224,6 +1228,7 @@ input_esc_dispatch(struct input_ctx *ictx)
 	struct screen_write_ctx		*sctx = &ictx->ctx;
 	struct screen			*s = sctx->s;
 	struct input_table_entry	*entry;
+	struct grid_cell	*gc = &ictx->cell.cell;
 
 	if (ictx->flags & INPUT_DISCARD)
 		return (0);
@@ -1262,6 +1267,12 @@ input_esc_dispatch(struct input_ctx *ictx)
 	case INPUT_ESC_DECKPNM:
 		screen_write_mode_clear(sctx, MODE_KKEYPAD);
 		break;
+    case INPUT_ESC_DECDHLT:
+        gc->attr |= GRID_ATTR_DOUBLE_HEIGHT_TOP;
+        break;
+    case INPUT_ESC_DECDHLB:
+        gc->attr |= GRID_ATTR_DOUBLE_HEIGHT_BOTTOM;
+        break;
 	case INPUT_ESC_DECSC:
 		input_save_state(ictx);
 		break;
