@@ -1266,7 +1266,7 @@ server_client_loop(void)
 	struct window_pane	*wp;
 	struct winlink		*wl;
 	struct session		*s;
-	int			 focus;
+	int			 focus, attached, resize;
 
 	TAILQ_FOREACH(c, &clients, entry) {
 		server_client_check_exit(c);
@@ -1279,19 +1279,33 @@ server_client_loop(void)
 	/*
 	 * Any windows will have been redrawn as part of clients, so clear
 	 * their flags now. Also check pane focus and resize.
+	 *
+	 * As an optimization, panes in windows that are in an attached session
+	 * but not the current window are not resized (this reduces the amount
+	 * of work needed when, for example, resizing an X terminal a
+	 * lot). Windows in no attached session are resized immediately since
+	 * that is likely to have come from a command like split-window and be
+	 * what the user wanted.
 	 */
 	focus = options_get_number(global_options, "focus-events");
 	RB_FOREACH(w, windows, &windows) {
+		attached = resize = 0;
 		TAILQ_FOREACH(wl, &w->winlinks, wentry) {
 			s = wl->session;
-			if (s->attached != 0 && s->curw == wl)
+			if (s->attached != 0)
+				attached = 1;
+			if (s->attached != 0 && s->curw == wl) {
+				resize = 1;
 				break;
+			}
 		}
+		if (!attached)
+			resize = 1;
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (wp->fd != -1) {
 				if (focus)
 					server_client_check_focus(wp);
-				if (wl != NULL)
+				if (resize)
 					server_client_check_resize(wp);
 			}
 			wp->flags &= ~PANE_REDRAW;
