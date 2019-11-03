@@ -1673,12 +1673,19 @@ window_copy_cmd_search_backward(struct window_copy_cmd_state *cs)
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 np = wme->prefix;
 	const char			*argument;
+	struct format_tree		*ft;
+	char				*expanded;
 
 	if (cs->args->argc == 2) {
 		argument = cs->args->argv[1];
 		if (*argument != '\0') {
+			ft = format_create(NULL, NULL, FORMAT_NONE, 0);
+			window_copy_formats(wme, ft);
+			expanded = format_expand(ft, argument);
+			free(ft);
 			free(data->searchstr);
-			data->searchstr = xstrdup(argument);
+			data->searchstr = xstrdup(expanded);
+			free(expanded);
 		}
 	}
 	if (data->searchstr != NULL) {
@@ -1696,12 +1703,19 @@ window_copy_cmd_search_forward(struct window_copy_cmd_state *cs)
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 np = wme->prefix;
 	const char			*argument;
+	struct format_tree		*ft;
+	char				*expanded;
 
 	if (cs->args->argc == 2) {
 		argument = cs->args->argv[1];
 		if (*argument != '\0') {
+			ft = format_create(NULL, NULL, FORMAT_NONE, 0);
+			window_copy_formats(wme, ft);
+			expanded = format_expand(ft, argument);
+			free(ft);
 			free(data->searchstr);
-			data->searchstr = xstrdup(argument);
+			data->searchstr = xstrdup(expanded);
+			free(expanded);
 		}
 	}
 	if (data->searchstr != NULL) {
