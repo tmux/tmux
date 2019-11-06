@@ -33,8 +33,8 @@ const struct cmd_entry cmd_send_keys_entry = {
 	.name = "send-keys",
 	.alias = "send",
 
-	.args = { "HlXRMN:t:", 0, -1 },
-	.usage = "[-HlXRM] [-N repeat-count] " CMD_TARGET_PANE_USAGE " key ...",
+	.args = { "HlXRMFN:t:", 0, -1 },
+	.usage = "[-HlXRMF] [-N repeat-count] " CMD_TARGET_PANE_USAGE " key ...",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 

@@ -1678,11 +1678,18 @@ window_copy_cmd_search_backward(struct window_copy_cmd_state *cs)
 	if (cs->args->argc == 2) {
 		argument = cs->args->argv[1];
 		if (*argument != '\0') {
-			expanded = format_single(NULL, argument, NULL, NULL,
-						 NULL, wme->wp);
 			free(data->searchstr);
-			data->searchstr = xstrdup(expanded);
-			free(expanded);
+			if (args_has(cs->args, 'F')) {
+				expanded = format_single(NULL, argument, NULL,
+							 NULL, NULL, wme->wp);
+				if (*expanded != '\0')
+					data->searchstr = expanded;
+				else {
+					free(expanded);
+					data->searchstr = xstrdup(argument);
+				}
+			} else
+				data->searchstr = xstrdup(argument);
 		}
 	}
 	if (data->searchstr != NULL) {
@@ -1705,11 +1712,18 @@ window_copy_cmd_search_forward(struct window_copy_cmd_state *cs)
 	if (cs->args->argc == 2) {
 		argument = cs->args->argv[1];
 		if (*argument != '\0') {
-			expanded = format_single(NULL, argument, NULL, NULL,
-						 NULL, wme->wp);
 			free(data->searchstr);
-			data->searchstr = xstrdup(expanded);
-			free(expanded);
+			if (args_has(cs->args, 'F')) {
+				expanded = format_single(NULL, argument, NULL,
+							 NULL, NULL, wme->wp);
+				if (*expanded != '\0')
+					data->searchstr = expanded;
+				else {
+					free(expanded);
+					data->searchstr = xstrdup(argument);
+				}
+			} else
+				data->searchstr = xstrdup(argument);
 		}
 	}
 	if (data->searchstr != NULL) {

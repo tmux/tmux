@@ -2677,7 +2677,7 @@ With
 only
 .Ar key-table .
 .It Xo Ic send-keys
-.Op Fl HlMRX
+.Op Fl FHlMRX
 .Op Fl N Ar repeat-count
 .Op Fl t Ar target-pane
 .Ar key Ar ...
@@ -2694,6 +2694,9 @@ to send; if the string is not recognised as a key, it is sent as a series of
 characters.
 All arguments are sent sequentially from first to last.
 .Pp
+The
+.Fl F
+flag enables format expansion in the supplied string.
 The
 .Fl l
 flag disables key name lookup and processes the keys as literal UTF-8
