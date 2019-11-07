@@ -2672,7 +2672,7 @@ With
 only
 .Ar key-table .
 .It Xo Ic send-keys
-.Op Fl HlMRX
+.Op Fl FHlMRX
 .Op Fl N Ar repeat-count
 .Op Fl t Ar target-pane
 .Ar key Ar ...
@@ -2711,7 +2711,9 @@ the
 .Sx WINDOWS AND PANES
 section.
 .Fl N
-specifies a repeat count.
+specifies a repeat count and
+.Fl F
+expands formats in arguments where appropriate.
 .It Xo Ic send-prefix
 .Op Fl 2
 .Op Fl t Ar target-pane

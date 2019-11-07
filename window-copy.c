@@ -1673,12 +1673,24 @@ window_copy_cmd_search_backward(struct window_copy_cmd_state *cs)
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 np = wme->prefix;
 	const char			*argument;
+	char				*expanded;
 
 	if (cs->args->argc == 2) {
 		argument = cs->args->argv[1];
 		if (*argument != '\0') {
-			free(data->searchstr);
-			data->searchstr = xstrdup(argument);
+			if (args_has(cs->args, 'F')) {
+				expanded = format_single(NULL, argument, NULL,
+				    NULL, NULL, wme->wp);
+				if (*expanded == '\0') {
+					free(expanded);
+					return (WINDOW_COPY_CMD_NOTHING);
+				}
+				free(data->searchstr);
+				data->searchstr = expanded;
+			} else {
+				free(data->searchstr);
+				data->searchstr = xstrdup(argument);
+			}
 		}
 	}
 	if (data->searchstr != NULL) {
@@ -1696,12 +1708,24 @@ window_copy_cmd_search_forward(struct window_copy_cmd_state *cs)
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 np = wme->prefix;
 	const char			*argument;
+	char				*expanded;
 
 	if (cs->args->argc == 2) {
 		argument = cs->args->argv[1];
 		if (*argument != '\0') {
-			free(data->searchstr);
-			data->searchstr = xstrdup(argument);
+			if (args_has(cs->args, 'F')) {
+				expanded = format_single(NULL, argument, NULL,
+				    NULL, NULL, wme->wp);
+				if (*expanded == '\0') {
+					free(expanded);
+					return (WINDOW_COPY_CMD_NOTHING);
+				}
+				free(data->searchstr);
+				data->searchstr = expanded;
+			} else {
+				free(data->searchstr);
+				data->searchstr = xstrdup(argument);
+			}
 		}
 	}
 	if (data->searchstr != NULL) {
