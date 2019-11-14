@@ -876,7 +876,7 @@ input_set_state(struct window_pane *wp, const struct input_transition *itr)
 void
 input_parse(struct window_pane *wp)
 {
-	struct evbuffer		*evb = wp->event->input;
+	struct evbuffer	*evb = wp->event->input;
 
 	input_parse_buffer(wp, EVBUFFER_DATA(evb), EVBUFFER_LENGTH(evb));
 	evbuffer_drain(evb, EVBUFFER_LENGTH(evb));
