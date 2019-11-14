@@ -730,7 +730,7 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_WINDOW,
 	  .choices = options_table_window_size_list,
-	  .default_num = WINDOW_SIZE_SMALLEST
+	  .default_num = WINDOW_SIZE_LATEST
 	},
 
 	{ .name = "window-style",
