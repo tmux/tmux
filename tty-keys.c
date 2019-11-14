@@ -1040,7 +1040,9 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 		b = strtoul(endptr + 1, &endptr, 10);
 		if (*endptr != '\0' && *endptr != ';')
 			b = 0;
-	} else
+	} else if (*endptr == '\0')
+		b = 0;
+	else
 		a = b = 0;
 
 	/* Store terminal type. */
@@ -1063,6 +1065,9 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 		break;
 	case 64:
 		type = TTY_VT420;
+		break;
+	case 65:
+		type = TTY_VT520;
 		break;
 	}
 	tty_set_type(tty, type);

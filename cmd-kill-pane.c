@@ -37,7 +37,7 @@ const struct cmd_entry cmd_kill_pane_entry = {
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
-	.flags = 0,
+	.flags = CMD_AFTERHOOK,
 	.exec = cmd_kill_pane_exec
 };
 
