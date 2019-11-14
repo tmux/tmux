@@ -159,7 +159,7 @@ key_string_get_modifiers(const char **string)
 key_code
 key_string_lookup_string(const char *string)
 {
-	static const char	*other = "!#()+,-.0123456789:;<=>?'\r\t";
+	static const char	*other = "!#()+,-.0123456789:;<=>'\r\t";
 	key_code		 key;
 	u_int			 u;
 	key_code		 modifiers;
@@ -196,7 +196,7 @@ key_string_lookup_string(const char *string)
 	/* Is this a standard ASCII key? */
 	if (string[1] == '\0' && (u_char)string[0] <= 127) {
 		key = (u_char)string[0];
-		if (key < 32 || key == 127)
+		if (key < 32)
 			return (KEYC_UNKNOWN);
 	} else {
 		/* Try as a UTF-8 key. */
@@ -226,6 +226,8 @@ key_string_lookup_string(const char *string)
 			key -= 64;
 		else if (key == 32)
 			key = 0;
+		else if (key == '?')
+			key = 127;
 		else if (key == 63)
 			key = KEYC_BSPACE;
 		else
@@ -329,7 +331,7 @@ key_string_lookup_key(key_code key)
 	}
 
 	/* Invalid keys are errors. */
-	if (key == 127 || key > 255) {
+	if (key > 255) {
 		snprintf(out, sizeof out, "Invalid#%llx", key);
 		return (out);
 	}
@@ -343,7 +345,9 @@ key_string_lookup_key(key_code key)
 	} else if (key >= 32 && key <= 126) {
 		tmp[0] = key;
 		tmp[1] = '\0';
-	} else if (key >= 128)
+	} else if (key == 127)
+		xsnprintf(tmp, sizeof tmp, "C-?");
+	else if (key >= 128)
 		xsnprintf(tmp, sizeof tmp, "\\%llo", key);
 
 	strlcat(out, tmp, sizeof out);

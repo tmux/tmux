@@ -217,6 +217,7 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	u_int			  hlimit;
 	struct winsize		  ws;
 	sigset_t		  set, oldset;
+	key_code		  key;
 
 	spawn_log(__func__, sc);
 
@@ -378,13 +379,17 @@ spawn_pane(struct spawn_context *sc, char **cause)
 
 	/*
 	 * Update terminal escape characters from the session if available and
-	 * force VERASE to tmux's \177.
+	 * force VERASE to tmux's backspace.
 	 */
 	if (tcgetattr(STDIN_FILENO, &now) != 0)
 		_exit(1);
 	if (s->tio != NULL)
 		memcpy(now.c_cc, s->tio->c_cc, sizeof now.c_cc);
-	now.c_cc[VERASE] = '\177';
+	key = options_get_number(global_options, "backspace");
+	if (key >= 0x7f)
+		now.c_cc[VERASE] = '\177';
+	else
+		now.c_cc[VERASE] = key;
 	if (tcsetattr(STDIN_FILENO, TCSANOW, &now) != 0)
 		_exit(1);
 
