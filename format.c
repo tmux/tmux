@@ -2267,7 +2267,8 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 	format_add(ft, "pane_width", "%u", wp->sx);
 	format_add(ft, "pane_height", "%u", wp->sy);
 	format_add(ft, "pane_title", "%s", wp->base.title);
-	format_add(ft, "pane_path", "%s", wp->base.path);
+	if (wp->base.path != NULL)
+	    format_add(ft, "pane_path", "%s", wp->base.path);
 	format_add(ft, "pane_id", "%%%u", wp->id);
 	format_add(ft, "pane_active", "%d", wp == w->active);
 	format_add(ft, "pane_input_off", "%d", !!(wp->flags & PANE_INPUTOFF));
