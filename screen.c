@@ -158,6 +158,14 @@ screen_set_title(struct screen *s, const char *title)
 	utf8_stravis(&s->title, title, VIS_OCTAL|VIS_CSTYLE|VIS_TAB|VIS_NL);
 }
 
+/* Set screen path. */
+void
+screen_set_path(struct screen *s, const char *path)
+{
+	free(s->path);
+	utf8_stravis(&s->path, path, VIS_OCTAL|VIS_CSTYLE|VIS_TAB|VIS_NL);
+}
+
 /* Push the current title onto the stack. */
 void
 screen_push_title(struct screen *s)
