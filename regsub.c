@@ -107,6 +107,12 @@ regsub(const char *pattern, const char *with, const char *text, int flags)
 			start = m[0].rm_eo + 1;
 			empty = 1;
 		}
+
+		/* Stop now if anchored to start. */
+		if (*pattern == '^') {
+			regsub_copy(&buf, &len, text, start, end);
+			break;
+		}
 	}
 	buf[len] = '\0';
 
