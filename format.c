@@ -1299,7 +1299,7 @@ format_build_modifiers(struct format_tree *ft, const char **s, u_int *count)
 		}
 
 		/* Now try single character with arguments. */
-		if (strchr("mCs=", cp[0]) == NULL)
+		if (strchr("mCs=p", cp[0]) == NULL)
 			break;
 		c = cp[0];
 
@@ -1565,7 +1565,7 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 	char			 *copy0, *condition, *found, *new;
 	char			 *value, *left, *right;
 	size_t			  valuelen;
-	int			  modifiers = 0, limit = 0, j;
+	int			  modifiers = 0, limit = 0, width = 0, j;
 	struct format_modifier   *list, *fm, *cmp = NULL, *search = NULL;
 	struct format_modifier	**sub = NULL;
 	u_int			  i, count, nsub = 0;
@@ -1610,6 +1610,14 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 					limit = 0;
 				if (fm->argc >= 2 && fm->argv[1] != NULL)
 					marker = fm->argv[1];
+				break;
+			case 'p':
+				if (fm->argc < 1)
+					break;
+				width = strtonum(fm->argv[0], INT_MIN, INT_MAX,
+				    &errptr);
+				if (errptr != NULL)
+					width = 0;
 				break;
 			case 'l':
 				modifiers |= FORMAT_LITERAL;
@@ -1843,6 +1851,19 @@ done:
 			value = new;
 		}
 		format_log(ft, "applied length limit %d: %s", limit, value);
+	}
+
+	/* Pad the value if needed. */
+	if (width > 0) {
+		new = utf8_padcstr(value, width);
+		free(value);
+		value = new;
+		format_log(ft, "applied padding width %d: %s", width, value);
+	} else if (width < 0) {
+		new = utf8_rpadcstr(value, -width);
+		free(value);
+		value = new;
+		format_log(ft, "applied padding width %d: %s", width, value);
 	}
 
 	/* Expand the buffer and copy in the value. */

@@ -4101,6 +4101,12 @@ appended or prepended to the string if the length has been trimmed, for example
 will append
 .Ql ...
 if the pane title is more than five characters.
+Similarly,
+.Ql p
+pads the string to a given width, for example
+.Ql #{p10:pane_title}
+will result in a width of at least 10 characters.
+A positive width pads on the left, a negative on the right.
 .Pp
 Prefixing a time variable with
 .Ql t:\&
