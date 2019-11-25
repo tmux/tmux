@@ -1964,7 +1964,7 @@ static const struct {
 	  window_copy_cmd_start_of_line },
 	{ "stop-selection", 0, 0, 0,
 	  window_copy_cmd_stop_selection },
-	{ "top-line", 0, 0, 1, 1,
+	{ "top-line", 0, 0, 1,
 	  window_copy_cmd_top_line },
 };
 
