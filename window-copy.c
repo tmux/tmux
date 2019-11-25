@@ -1978,7 +1978,7 @@ window_copy_command(struct window_mode_entry *wme, struct client *c,
 	enum window_copy_cmd_action	 action;
 	const char			*command;
 	u_int				 i;
-	int				 ismotion, keys;
+	int				 ismotion = 0, keys;
 
 	if (args->argc == 0)
 		return;
