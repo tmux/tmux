@@ -1978,7 +1978,7 @@ window_copy_command(struct window_mode_entry *wme, struct client *c,
 	enum window_copy_cmd_action	 action;
 	const char			*command;
 	u_int				 i;
-	int				 ismotion, keys;
+	int				 ismotion = 0, keys;
 
 	if (args->argc == 0)
 		return;
@@ -1998,10 +1998,10 @@ window_copy_command(struct window_mode_entry *wme, struct client *c,
 	action = WINDOW_COPY_CMD_NOTHING;
 	for (i = 0; i < nitems(window_copy_cmd_table); i++) {
 		if (strcmp(window_copy_cmd_table[i].command, command) == 0) {
+			ismotion = window_copy_cmd_table[i].ismotion;
 			if (args->argc - 1 < window_copy_cmd_table[i].minargs ||
 			    args->argc - 1 > window_copy_cmd_table[i].maxargs)
 				break;
-			ismotion = window_copy_cmd_table[i].ismotion;
 			action = window_copy_cmd_table[i].f (&cs);
 			break;
 		}
