@@ -211,9 +211,10 @@ layout_parse(struct window *w, const char *layout)
 		break;
 	}
 	if (lc->type != LAYOUT_WINDOWPANE && (lc->sx != sx || lc->sy != sy)) {
-		log_debug("fix layout %u,%u to %u,%u", lc->sx, lc->sy, sx,sy);
+		log_debug("fix layout %u,%u to %u,%u", lc->sx, lc->sy, sx, sy);
 		layout_print_cell(lc, __func__, 0);
-		lc->sx = sx - 1; lc->sy = sy - 1;
+		lc->sx = (sx > 0) ? sx - 1 : 0;
+		lc->sy = (sy > 0) ? sy - 1 : 0;
 	}
 
 	/* Check the new layout. */
