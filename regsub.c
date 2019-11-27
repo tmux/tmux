@@ -17,8 +17,11 @@
  */
 
 #include <sys/types.h>
-
+#if defined(__GLIBC__)
 #include <regex.h>
+#else
+#include <pcreposix.h>
+#endif
 #include <string.h>
 
 #include "tmux.h"
