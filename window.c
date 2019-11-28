@@ -448,6 +448,15 @@ window_pane_send_resize(struct window_pane *wp, int yadjust)
 	ws.ws_xpixel = w->xpixel * ws.ws_col;
 	ws.ws_ypixel = w->ypixel * ws.ws_row;
 	if (ioctl(wp->fd, TIOCSWINSZ, &ws) == -1)
+#ifdef __sun
+		/*
+		 * Some versions of Solaris apparently can return an error when
+		 * resizing; don't know why this happens, can't reproduce on
+		 * other platforms and ignoring it doesn't seem to cause any
+		 * issues.
+		 */
+		if (errno != EINVAL && errno != ENXIO)
+#endif
 		fatal("ioctl failed");
 }
 

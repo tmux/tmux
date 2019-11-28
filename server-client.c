@@ -1340,14 +1340,6 @@ server_client_resize_force(struct window_pane *wp)
 	    wp->sy <= 1)
 		return (0);
 
-	memset(&ws, 0, sizeof ws);
-	ws.ws_col = wp->sx;
-	ws.ws_row = wp->sy - 1;
-	if (wp->fd != -1 && ioctl(wp->fd, TIOCSWINSZ, &ws) == -1)
-#ifdef __sun
-		if (errno != EINVAL && errno != ENXIO)
-#endif
-		fatal("ioctl failed");
 	log_debug("%s: %%%u forcing resize", __func__, wp->id);
 	window_pane_send_resize(wp, -1);
 
@@ -1360,22 +1352,6 @@ server_client_resize_force(struct window_pane *wp)
 static void
 server_client_resize_pane(struct window_pane *wp)
 {
-	struct winsize	ws;
-
-	memset(&ws, 0, sizeof ws);
-	ws.ws_col = wp->sx;
-	ws.ws_row = wp->sy;
-	if (wp->fd != -1 && ioctl(wp->fd, TIOCSWINSZ, &ws) == -1)
-#ifdef __sun
-		/*
-		 * Some versions of Solaris apparently can return an error when
-		 * resizing; don't know why this happens, can't reproduce on
-		 * other platforms and ignoring it doesn't seem to cause any
-		 * issues.
-		 */
-		if (errno != EINVAL && errno != ENXIO)
-#endif
-		fatal("ioctl failed");
 	log_debug("%s: %%%u resize to %u,%u", __func__, wp->id, wp->sx, wp->sy);
 	window_pane_send_resize(wp, 0);
 
