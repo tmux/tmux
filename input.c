@@ -1305,8 +1305,8 @@ input_csi_dispatch(struct input_ctx *ictx)
 	if (ictx->flags & INPUT_DISCARD)
 		return (0);
 
-	log_debug("%s: '%c' \"%s\" \"%s\"",
-	    __func__, ictx->ch, ictx->interm_buf, ictx->param_buf);
+	log_debug("%s: '%c' \"%s\" \"%s\"", __func__, ictx->ch,
+	    ictx->interm_buf, ictx->param_buf);
 
 	if (input_split(ictx) != 0)
 		return (0);
@@ -2151,18 +2151,26 @@ static int
 input_dcs_dispatch(struct input_ctx *ictx)
 {
 	struct screen_write_ctx	*sctx = &ictx->ctx;
-	u_char			*buf = ictx->input_buf;
-	size_t			 len = ictx->input_len;
+	u_char			*buf = ictx->input_buf, *pbuf = ictx->param_buf;
+	size_t			 len = ictx->input_len, plen = ictx->param_len;
 	const char		 prefix[] = "tmux;";
 	const u_int		 prefixlen = (sizeof prefix) - 1;
 
 	if (ictx->flags & INPUT_DISCARD)
 		return (0);
 
-	log_debug("%s: \"%s\"", __func__, buf);
+	log_debug("%s: \"%s\" \"%s\" \"%s\"", __func__, buf, ictx->interm_buf,
+	    ictx->param_buf);
 
 	if (len >= prefixlen && strncmp(buf, prefix, prefixlen) == 0)
 		screen_write_rawstring(sctx, buf + prefixlen, len - prefixlen);
+
+	if (buf[0] == 'q') {
+		screen_write_rawsixel(sctx, (char *)"\033P", 2, 1);
+		screen_write_rawsixel(sctx, pbuf, plen, 1);
+		screen_write_rawsixel(sctx, buf, len, 1);
+		screen_write_rawsixel(sctx, (char *)"\033\\", 2, 0);
+	}
 
 	return (0);
 }
