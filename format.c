@@ -1112,11 +1112,10 @@ format_find(struct format_tree *ft, const char *key, int modifiers)
 			xasprintf(&found, "%lld", (long long)fe->t);
 			goto found;
 		}
-		if (fe->value == NULL && fe->cb != NULL) {
+		if (fe->value == NULL && fe->cb != NULL)
 			fe->cb(ft, fe);
-			if (fe->value == NULL)
-				fe->value = xstrdup("");
-		}
+		if (fe->value == NULL)
+			fe->value = xstrdup("");
 		found = xstrdup(fe->value);
 		goto found;
 	}
