@@ -1636,7 +1636,8 @@ screen_write_overwrite(struct screen_write_ctx *ctx, struct grid_cell *gc,
 			grid_view_get_cell(gd, xx, s->cy, &tmp_gc);
 			if (~tmp_gc.flags & GRID_FLAG_PADDING)
 				break;
-			log_debug("%s: overwrite at %u,%u", __func__, xx, s->cy);
+			log_debug("%s: overwrite at %u,%u", __func__, xx,
+			    s->cy);
 			grid_view_set_cell(gd, xx, s->cy, &grid_default_cell);
 			done = 1;
 		}
