@@ -53,6 +53,7 @@ cmd_resize_window_exec(struct cmd *self, struct cmdq_item *item)
 	const char	       	*errstr;
 	char			*cause;
 	u_int			 adjust, sx, sy;
+	int			 xpixel = -1, ypixel = -1;
 
 	if (args->argc == 0)
 		adjust = 1;
@@ -97,13 +98,16 @@ cmd_resize_window_exec(struct cmd *self, struct cmdq_item *item)
 	} else if (args_has(args, 'D'))
 		sy += adjust;
 
-	if (args_has(args, 'A'))
-		default_window_size(NULL, s, w, &sx, &sy, WINDOW_SIZE_LARGEST);
-	else if (args_has(args, 'a'))
-		default_window_size(NULL, s, w, &sx, &sy, WINDOW_SIZE_SMALLEST);
+	if (args_has(args, 'A')) {
+		default_window_size(NULL, s, w, &sx, &sy, &xpixel, &ypixel,
+		    WINDOW_SIZE_LARGEST);
+	} else if (args_has(args, 'a')) {
+		default_window_size(NULL, s, w, &sx, &sy, &xpixel, &ypixel,
+		    WINDOW_SIZE_SMALLEST);
+	}
 
 	options_set_number(w->options, "window-size", WINDOW_SIZE_MANUAL);
-	resize_window(w, sx, sy);
+	resize_window(w, sx, sy, xpixel, ypixel);
 
 	return (CMD_RETURN_NORMAL);
 }

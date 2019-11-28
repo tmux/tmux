@@ -308,9 +308,14 @@ window_update_activity(struct window *w)
 }
 
 struct window *
-window_create(u_int sx, u_int sy)
+window_create(u_int sx, u_int sy, u_int xpixel, u_int ypixel)
 {
 	struct window	*w;
+
+	if (xpixel == 0)
+		xpixel = DEFAULT_XPIXEL;
+	if (ypixel == 0)
+		ypixel = DEFAULT_YPIXEL;
 
 	w = xcalloc(1, sizeof *w);
 	w->name = xstrdup("");
@@ -324,6 +329,8 @@ window_create(u_int sx, u_int sy)
 
 	w->sx = sx;
 	w->sy = sy;
+	w->xpixel = xpixel;
+	w->ypixel = ypixel;
 
 	w->options = options_create(global_w_options);
 
@@ -410,11 +417,40 @@ window_set_name(struct window *w, const char *new_name)
 }
 
 void
-window_resize(struct window *w, u_int sx, u_int sy)
+window_resize(struct window *w, u_int sx, u_int sy, int xpixel, int ypixel)
 {
-	log_debug("%s: @%u resize %ux%u", __func__, w->id, sx, sy);
+	if (xpixel == 0)
+		xpixel = DEFAULT_XPIXEL;
+	if (ypixel == 0)
+		ypixel = DEFAULT_YPIXEL;
+
+	log_debug("%s: @%u resize %ux%u (%ux%u)", __func__, w->id, sx, sy,
+	    xpixel == -1 ? w->xpixel : xpixel,
+	    ypixel == -1 ? w->ypixel : ypixel);
 	w->sx = sx;
 	w->sy = sy;
+	if (xpixel != -1)
+		w->xpixel = xpixel;
+	if (ypixel != -1)
+		w->ypixel = ypixel;
+}
+
+void
+window_pane_send_resize(struct window_pane *wp, int yadjust)
+{
+	struct window	*w = wp->window;
+	struct winsize	 ws;
+
+	if (wp->fd == -1)
+		return;
+
+	memset(&ws, 0, sizeof ws);
+	ws.ws_col = wp->sx;
+	ws.ws_row = wp->sy + yadjust;
+	ws.ws_xpixel = w->xpixel * ws.ws_col;
+	ws.ws_ypixel = w->ypixel * ws.ws_row;
+	if (ioctl(wp->fd, TIOCSWINSZ, &ws) == -1)
+		fatal("ioctl failed");
 }
 
 int

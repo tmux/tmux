@@ -1321,7 +1321,6 @@ static int
 server_client_resize_force(struct window_pane *wp)
 {
 	struct timeval	tv = { .tv_usec = 100000 };
-	struct winsize	ws;
 
 	/*
 	 * If we are resizing to the same size as when we entered the loop
@@ -1342,12 +1341,8 @@ server_client_resize_force(struct window_pane *wp)
 	    wp->sy <= 1)
 		return (0);
 
-	memset(&ws, 0, sizeof ws);
-	ws.ws_col = wp->sx;
-	ws.ws_row = wp->sy - 1;
-	if (wp->fd != -1 && ioctl(wp->fd, TIOCSWINSZ, &ws) == -1)
-		fatal("ioctl failed");
 	log_debug("%s: %%%u forcing resize", __func__, wp->id);
+	window_pane_send_resize(wp, -1);
 
 	evtimer_add(&wp->resize_timer, &tv);
 	wp->flags |= PANE_RESIZEFORCE;
@@ -1358,14 +1353,8 @@ server_client_resize_force(struct window_pane *wp)
 static void
 server_client_resize_pane(struct window_pane *wp)
 {
-	struct winsize	ws;
-
-	memset(&ws, 0, sizeof ws);
-	ws.ws_col = wp->sx;
-	ws.ws_row = wp->sy;
-	if (wp->fd != -1 && ioctl(wp->fd, TIOCSWINSZ, &ws) == -1)
-		fatal("ioctl failed");
 	log_debug("%s: %%%u resize to %u,%u", __func__, wp->id, wp->sx, wp->sy);
+	window_pane_send_resize(wp, 0);
 
 	wp->flags &= ~PANE_RESIZE;
 
