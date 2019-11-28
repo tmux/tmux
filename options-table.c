@@ -70,7 +70,10 @@ static const char *options_table_window_size_list[] = {
 /* Status line format. */
 #define OPTIONS_TABLE_STATUS_FORMAT1 \
 	"#[align=left range=left #{status-left-style}]" \
-	"#{T;=/#{status-left-length}:status-left}#[norange default]" \
+	"#[push-default]" \
+	"#{T;=/#{status-left-length}:status-left}" \
+	"#[pop-default]" \
+	"#[norange default]" \
 	"#[list=on align=#{status-justify}]" \
 	"#[list=left-marker]<#[list=right-marker]>#[list=on]" \
 	"#{W:" \
@@ -126,7 +129,10 @@ static const char *options_table_window_size_list[] = {
 		"#{?window_end_flag,,#{window-status-separator}}" \
 	"}" \
 	"#[nolist align=right range=right #{status-right-style}]" \
-	"#{T;=/#{status-right-length}:status-right}#[norange default]"
+	"#[push-default]" \
+	"#{T;=/#{status-right-length}:status-right}" \
+	"#[pop-default]" \
+	"#[norange default]"
 #define OPTIONS_TABLE_STATUS_FORMAT2 \
 	"#[align=centre]#{P:#{?pane_active,#[reverse],}" \
 	"#{pane_index}[#{pane_width}x#{pane_height}]#[default] }"
