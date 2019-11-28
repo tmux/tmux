@@ -1005,7 +1005,7 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 	u_int			 i, n = 0;
 	char			 tmp[64], *endptr, p[32] = { 0 }, *cp, *next;
 	static const char	*types[] = TTY_TYPES;
-	int			 type;
+	int			 type, flags = 0;
 
 	*size = 0;
 
@@ -1068,9 +1068,12 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 		type = TTY_VT520;
 		break;
 	}
-	for (i = 2; i < n; i++)
+	for (i = 2; i < n; i++) {
 		log_debug("%s: DA feature: %d", c->name, p[i]);
-	tty_set_type(tty, type);
+		if (p[i] == 4)
+			flags |= TERM_SIXEL;
+	}
+	tty_set_type(tty, type, flags);
 
 	log_debug("%s: received DA %.*s (%s)", c->name, (int)*size, buf,
 	    types[type]);

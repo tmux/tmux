@@ -436,9 +436,10 @@ tty_free(struct tty *tty)
 }
 
 void
-tty_set_type(struct tty *tty, int type)
+tty_set_type(struct tty *tty, int type, int flags)
 {
 	tty->term_type = type;
+	tty->term_flags |= flags;
 
 	if (tty_use_margin(tty))
 		tty_puts(tty, "\033[?69h"); /* DECLRMM */
@@ -1863,6 +1864,18 @@ tty_cmd_rawstring(struct tty *tty, const struct tty_ctx *ctx)
 {
 	tty_add(tty, ctx->ptr, ctx->num);
 	tty_invalidate(tty);
+}
+
+void
+tty_cmd_rawsixel(struct tty *tty, const struct tty_ctx *ctx)
+{
+	int	flags = (tty->term->flags|tty->term_flags);
+
+	if ((flags & TERM_SIXEL) || tty_term_has(tty->term, TTYC_SXL)) {
+		tty_add(tty, ctx->ptr, ctx->num);
+		if (!ctx->more)
+			tty_invalidate(tty);
+	}
 }
 
 static void
