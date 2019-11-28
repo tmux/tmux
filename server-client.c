@@ -543,7 +543,8 @@ have_event:
 				where = STATUS_RIGHT;
 				break;
 			case STYLE_RANGE_WINDOW:
-				wl = winlink_find_by_index(&s->windows, sr->argument);
+				wl = winlink_find_by_index(&s->windows,
+				    sr->argument);
 				if (wl == NULL)
 					return (KEYC_UNKNOWN);
 				m->w = wl->window->id;

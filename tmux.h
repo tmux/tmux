@@ -1244,8 +1244,8 @@ struct tty_ctx {
 	const struct grid_cell	*cell;
 	int			 wrapped;
 
-	u_int		 num;
-	void		*ptr;
+	u_int			 num;
+	void			*ptr;
 
 	/*
 	 * Cursor and region position before the screen was updated - this is

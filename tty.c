@@ -2454,7 +2454,8 @@ tty_check_bg(struct tty *tty, struct window_pane *wp, struct grid_cell *gc)
 }
 
 static void
-tty_check_us(__unused struct tty *tty, struct window_pane *wp, struct grid_cell *gc)
+tty_check_us(__unused struct tty *tty, struct window_pane *wp,
+    struct grid_cell *gc)
 {
 	int	c;
 
