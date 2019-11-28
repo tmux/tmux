@@ -2151,10 +2151,13 @@ static int
 input_dcs_dispatch(struct input_ctx *ictx)
 {
 	struct screen_write_ctx	*sctx = &ictx->ctx;
-	u_char			*buf = ictx->input_buf, *pbuf = ictx->param_buf;
-	size_t			 len = ictx->input_len, plen = ictx->param_len;
+	struct window_pane	*wp = ictx->wp;
+	struct window		*w = wp->window;
+	u_char			*buf = ictx->input_buf;
+	size_t			 len = ictx->input_len;
 	const char		 prefix[] = "tmux;";
 	const u_int		 prefixlen = (sizeof prefix) - 1;
+	struct sixel_image	*si;
 
 	if (ictx->flags & INPUT_DISCARD)
 		return (0);
@@ -2166,10 +2169,12 @@ input_dcs_dispatch(struct input_ctx *ictx)
 		screen_write_rawstring(sctx, buf + prefixlen, len - prefixlen);
 
 	if (buf[0] == 'q') {
-		screen_write_rawsixel(sctx, (char *)"\033P", 2, 1);
-		screen_write_rawsixel(sctx, pbuf, plen, 1);
-		screen_write_rawsixel(sctx, buf, len, 1);
-		screen_write_rawsixel(sctx, (char *)"\033\\", 2, 0);
+		si = sixel_parse(buf, len, w->xpixel, w->ypixel);
+		if (si != NULL) {
+			sixel_log(si);
+			screen_write_sixelimage(sctx, si);
+			sixel_free(si);
+		}
 	}
 
 	return (0);

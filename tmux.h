@@ -55,6 +55,7 @@ struct options;
 struct options_entry;
 struct options_array_item;
 struct session;
+struct sixel_image;
 struct tmuxpeer;
 struct tmuxproc;
 struct winlink;
@@ -1250,7 +1251,6 @@ struct tty_ctx {
 
 	u_int			 num;
 	void			*ptr;
-	int			 more;
 
 	/*
 	 * Cursor and region position before the screen was updated - this is
@@ -1974,7 +1974,7 @@ void	tty_cmd_scrolldown(struct tty *, const struct tty_ctx *);
 void	tty_cmd_reverseindex(struct tty *, const struct tty_ctx *);
 void	tty_cmd_setselection(struct tty *, const struct tty_ctx *);
 void	tty_cmd_rawstring(struct tty *, const struct tty_ctx *);
-void	tty_cmd_rawsixel(struct tty *, const struct tty_ctx *);
+void	tty_cmd_sixelimage(struct tty *, const struct tty_ctx *);
 
 /* tty-term.c */
 extern struct tty_terms tty_terms;
@@ -2361,7 +2361,7 @@ void	 screen_write_collect_add(struct screen_write_ctx *,
 void	 screen_write_cell(struct screen_write_ctx *, const struct grid_cell *);
 void	 screen_write_setselection(struct screen_write_ctx *, u_char *, u_int);
 void	 screen_write_rawstring(struct screen_write_ctx *, u_char *, u_int);
-void	 screen_write_rawsixel(struct screen_write_ctx *, u_char *, u_int, int);
+void	 screen_write_sixelimage(struct screen_write_ctx *, struct sixel_image *);
 
 /* screen-redraw.c */
 void	 screen_redraw_screen(struct client *);
@@ -2711,6 +2711,7 @@ void		 sixel_log(struct sixel_image *);
 void		 sixel_size_in_cells(struct sixel_image *, u_int *, u_int *);
 struct sixel_image *sixel_scale(struct sixel_image *, u_int, u_int, u_int,
 		     u_int, u_int, u_int);
-char		*sixel_print(struct sixel_image *, struct sixel_image *);
+char		*sixel_print(struct sixel_image *, struct sixel_image *,
+		     size_t *);
 
 #endif /* TMUX_H */

@@ -1867,15 +1867,45 @@ tty_cmd_rawstring(struct tty *tty, const struct tty_ctx *ctx)
 }
 
 void
-tty_cmd_rawsixel(struct tty *tty, const struct tty_ctx *ctx)
+tty_cmd_sixelimage(struct tty *tty, const struct tty_ctx *ctx)
 {
-	int	flags = (tty->term->flags|tty->term_flags);
+	struct window_pane	*wp = ctx->wp;
+	struct screen		*s = wp->screen;
+	struct sixel_image	*si = ctx->ptr;
+	struct sixel_image	*new;
+	int			 flags = (tty->term->flags|tty->term_flags);
+	char			*data;
+	size_t			 size;
+	u_int			 cx = s->cx, cy = s->cy, sx, sy;
+	u_int			 i, j, x, y, rx, ry;
 
-	if ((flags & TERM_SIXEL) || tty_term_has(tty->term, TTYC_SXL)) {
-		tty_add(tty, ctx->ptr, ctx->num);
-		if (!ctx->more)
-			tty_invalidate(tty);
+	if ((~flags & TERM_SIXEL) && tty_term_has(tty->term, TTYC_SXL))
+		return;
+	if (tty->xpixel == 0 || tty->ypixel == 0)
+		return;
+
+	sixel_size_in_cells(si, &sx, &sy);
+	if (sx > wp->sx - cx)
+		sx = wp->sx - cx;
+	if (sy > wp->sy - cy)
+		sy = wp->sy - cy;
+	if (!tty_clamp_area(tty, ctx, cx, cy, sx, sy, &i, &j, &x, &y, &rx, &ry))
+		return;
+
+	new = sixel_scale(si, tty->xpixel, tty->ypixel, i, j, rx, ry);
+	if (new == NULL)
+		return;
+
+	data = sixel_print(new, si, &size);
+	if (data != NULL) {
+		log_debug("%s: %zu bytes: %s", __func__, size, data);
+		tty_cursor(tty, x, y);
+
+		tty_add(tty, data, size);
+		tty_invalidate(tty);
+		free(data);
 	}
+	sixel_free(new);
 }
 
 static void

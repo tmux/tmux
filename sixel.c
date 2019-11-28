@@ -428,7 +428,7 @@ sixel_print_repeat(char **buf, size_t *len, size_t *used, u_int count, char ch)
 }
 
 char *
-sixel_print(struct sixel_image *si, struct sixel_image *map)
+sixel_print(struct sixel_image *si, struct sixel_image *map, size_t *size)
 {
 	char			*buf, tmp[64], *contains, data, last;
 	size_t			 len, used = 0, tmplen;
@@ -509,7 +509,10 @@ sixel_print(struct sixel_image *si, struct sixel_image *map)
 		used--;
 
 	sixel_print_add(&buf, &len, &used, "\033\\", 2);
+
 	buf[used] = '\0';
+	if (size != NULL)
+		*size = used;
 
 	free(contains);
 	return (buf);

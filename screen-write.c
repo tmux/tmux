@@ -1672,17 +1672,14 @@ screen_write_rawstring(struct screen_write_ctx *ctx, u_char *str, u_int len)
 	tty_write(tty_cmd_rawstring, &ttyctx);
 }
 
-/* Write unmodified SIXEL data. */
+/* Write a SIXEL image. */
 void
-screen_write_rawsixel(struct screen_write_ctx *ctx, u_char *str, u_int len,
-    int more)
+screen_write_sixelimage(struct screen_write_ctx *ctx, struct sixel_image *si)
 {
 	struct tty_ctx	ttyctx;
 
 	screen_write_initctx(ctx, &ttyctx);
-	ttyctx.ptr = str;
-	ttyctx.num = len;
-	ttyctx.more = more;
+	ttyctx.ptr = si;
 
-	tty_write(tty_cmd_rawsixel, &ttyctx);
+	tty_write(tty_cmd_sixelimage, &ttyctx);
 }
