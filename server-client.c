@@ -541,7 +541,8 @@ have_event:
 				where = STATUS_RIGHT;
 				break;
 			case STYLE_RANGE_WINDOW:
-				wl = winlink_find_by_index(&s->windows, sr->argument);
+				wl = winlink_find_by_index(&s->windows,
+				    sr->argument);
 				if (wl == NULL)
 					return (KEYC_UNKNOWN);
 				m->w = wl->window->id;
@@ -1319,7 +1320,6 @@ static int
 server_client_resize_force(struct window_pane *wp)
 {
 	struct timeval	tv = { .tv_usec = 100000 };
-	struct winsize	ws;
 
 	/*
 	 * If we are resizing to the same size as when we entered the loop
@@ -1349,6 +1349,7 @@ server_client_resize_force(struct window_pane *wp)
 #endif
 		fatal("ioctl failed");
 	log_debug("%s: %%%u forcing resize", __func__, wp->id);
+	window_pane_send_resize(wp, -1);
 
 	evtimer_add(&wp->resize_timer, &tv);
 	wp->flags |= PANE_RESIZEFORCE;
@@ -1376,6 +1377,7 @@ server_client_resize_pane(struct window_pane *wp)
 #endif
 		fatal("ioctl failed");
 	log_debug("%s: %%%u resize to %u,%u", __func__, wp->id, wp->sx, wp->sy);
+	window_pane_send_resize(wp, 0);
 
 	wp->flags &= ~PANE_RESIZE;
 

@@ -1002,8 +1002,8 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
     size_t *size)
 {
 	struct client		*c = tty->client;
-	u_int			 i, a, b;
-	char			 tmp[64], *endptr;
+	u_int			 i, n = 0;
+	char			 tmp[64], *endptr, p[32] = { 0 }, *cp, *next;
 	static const char	*types[] = TTY_TYPES;
 	int			 type;
 
@@ -1035,23 +1035,21 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 	*size = 4 + i;
 
 	/* Convert version numbers. */
-	a = strtoul(tmp, &endptr, 10);
-	if (*endptr == ';') {
-		b = strtoul(endptr + 1, &endptr, 10);
+	cp = tmp;
+	while ((next = strsep(&cp, ";")) != NULL) {
+		p[n] = strtoul(next, &endptr, 10);
 		if (*endptr != '\0' && *endptr != ';')
-			b = 0;
-	} else if (*endptr == '\0')
-		b = 0;
-	else
-		a = b = 0;
+			p[n] = 0;
+		n++;
+	}
 
 	/* Store terminal type. */
 	type = TTY_UNKNOWN;
-	switch (a) {
+	switch (p[0]) {
 	case 1:
-		if (b == 2)
+		if (p[1] == 2)
 			type = TTY_VT100;
-		else if (b == 0)
+		else if (p[1] == 0)
 			type = TTY_VT101;
 		break;
 	case 6:
@@ -1070,6 +1068,8 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 		type = TTY_VT520;
 		break;
 	}
+	for (i = 2; i < n; i++)
+		log_debug("%s: DA feature: %d", c->name, p[i]);
 	tty_set_type(tty, type);
 
 	log_debug("%s: received DA %.*s (%s)", c->name, (int)*size, buf,

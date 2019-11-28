@@ -23,7 +23,7 @@
 #include "tmux.h"
 
 void
-resize_window(struct window *w, u_int sx, u_int sy)
+resize_window(struct window *w, u_int sx, u_int sy, int xpixel, int ypixel)
 {
 	int	zoomed;
 
@@ -50,7 +50,7 @@ resize_window(struct window *w, u_int sx, u_int sy)
 		sx = w->layout_root->sx;
 	if (sy < w->layout_root->sy)
 		sy = w->layout_root->sy;
-	window_resize(w, sx, sy);
+	window_resize(w, sx, sy, xpixel, ypixel);
 	log_debug("%s: @%u resized to %u,%u; layout %u,%u", __func__, w->id,
 	    sx, sy, w->layout_root->sx, w->layout_root->sy);
 
@@ -77,7 +77,7 @@ ignore_client_size(struct client *c)
 
 void
 default_window_size(struct client *c, struct session *s, struct window *w,
-    u_int *sx, u_int *sy, int type)
+    u_int *sx, u_int *sy, u_int *xpixel, u_int *ypixel, int type)
 {
 	struct client	*loop;
 	u_int		 cx, cy;
@@ -88,6 +88,7 @@ default_window_size(struct client *c, struct session *s, struct window *w,
 	switch (type) {
 	case WINDOW_SIZE_LARGEST:
 		*sx = *sy = 0;
+		*xpixel = *ypixel = 0;
 		TAILQ_FOREACH(loop, &clients, entry) {
 			if (ignore_client_size(loop))
 				continue;
@@ -103,12 +104,19 @@ default_window_size(struct client *c, struct session *s, struct window *w,
 				*sx = cx;
 			if (cy > *sy)
 				*sy = cy;
+
+			if (loop->tty.xpixel > *xpixel &&
+			    loop->tty.ypixel > *ypixel) {
+				*xpixel = loop->tty.xpixel;
+				*ypixel = loop->tty.ypixel;
+			}
 		}
 		if (*sx == 0 || *sy == 0)
 			goto manual;
 		break;
 	case WINDOW_SIZE_SMALLEST:
 		*sx = *sy = UINT_MAX;
+		*xpixel = *ypixel = 0;
 		TAILQ_FOREACH(loop, &clients, entry) {
 			if (ignore_client_size(loop))
 				continue;
@@ -124,6 +132,12 @@ default_window_size(struct client *c, struct session *s, struct window *w,
 				*sx = cx;
 			if (cy < *sy)
 				*sy = cy;
+
+			if (loop->tty.xpixel > *xpixel &&
+			    loop->tty.ypixel > *ypixel) {
+				*xpixel = loop->tty.xpixel;
+				*ypixel = loop->tty.ypixel;
+			}
 		}
 		if (*sx == UINT_MAX || *sy == UINT_MAX)
 			goto manual;
@@ -132,8 +146,11 @@ default_window_size(struct client *c, struct session *s, struct window *w,
 		if (c != NULL && !ignore_client_size(c)) {
 			*sx = c->tty.sx;
 			*sy = c->tty.sy - status_line_size(c);
+			*xpixel = c->tty.xpixel;
+		        *ypixel = c->tty.ypixel;
 		} else {
 			*sx = *sy = UINT_MAX;
+			*xpixel = *ypixel = 0;
 			TAILQ_FOREACH(loop, &clients, entry) {
 				if (ignore_client_size(loop))
 					continue;
@@ -148,6 +165,12 @@ default_window_size(struct client *c, struct session *s, struct window *w,
 					*sx = cx;
 				if (cy < *sy)
 					*sy = cy;
+
+				if (loop->tty.xpixel > *xpixel &&
+				    loop->tty.ypixel > *ypixel) {
+					*xpixel = loop->tty.xpixel;
+					*ypixel = loop->tty.ypixel;
+				}
 			}
 			if (*sx == UINT_MAX || *sy == UINT_MAX)
 				goto manual;
@@ -181,7 +204,7 @@ recalculate_size(struct window *w)
 {
 	struct session	*s;
 	struct client	*c;
-	u_int		 sx, sy, cx, cy;
+	u_int		 sx, sy, cx, cy, xpixel = 0, ypixel = 0;
 	int		 type, current, has, changed;
 
 	if (w->active == NULL)
@@ -214,6 +237,11 @@ recalculate_size(struct window *w)
 				sx = cx;
 			if (cy > sy)
 				sy = cy;
+
+			if (c->tty.xpixel > xpixel && c->tty.ypixel > ypixel) {
+				xpixel = c->tty.xpixel;
+				ypixel = c->tty.ypixel;
+			}
 		}
 		if (sx == 0 || sy == 0)
 			changed = 0;
@@ -239,6 +267,11 @@ recalculate_size(struct window *w)
 				sx = cx;
 			if (cy < sy)
 				sy = cy;
+
+			if (c->tty.xpixel > xpixel && c->tty.ypixel > ypixel) {
+				xpixel = c->tty.xpixel;
+				ypixel = c->tty.ypixel;
+			}
 		}
 		if (sx == UINT_MAX || sy == UINT_MAX)
 			changed = 0;
@@ -266,6 +299,11 @@ recalculate_size(struct window *w)
 				sx = cx;
 			if (cy < sy)
 				sy = cy;
+
+			if (c->tty.xpixel > xpixel && c->tty.ypixel > ypixel) {
+				xpixel = c->tty.xpixel;
+				ypixel = c->tty.ypixel;
+			}
 		}
 		if (sx == UINT_MAX || sy == UINT_MAX)
 			changed = 0;
@@ -281,8 +319,9 @@ recalculate_size(struct window *w)
 		tty_update_window_offset(w);
 		return;
 	}
-	log_debug("%s: @%u changed to %u,%u", __func__, w->id, sx, sy);
-	resize_window(w, sx, sy);
+	log_debug("%s: @%u changed to %u,%u (%ux%u)", __func__, w->id, sx, sy,
+	    xpixel, ypixel);
+	resize_window(w, sx, sy, xpixel, ypixel);
 }
 
 void

@@ -80,6 +80,10 @@ struct winlink;
 /* Maximum size of data to hold from a pane. */
 #define READ_SIZE 4096
 
+/* Default pixel cell sizes. */
+#define DEFAULT_XPIXEL 16
+#define DEFAULT_YPIXEL 32
+
 /* Attribute to make GCC check printf-like arguments. */
 #define printflike(a, b) __attribute__ ((format (printf, a, b)))
 
@@ -930,6 +934,8 @@ struct window {
 
 	u_int		 sx;
 	u_int		 sy;
+	u_int		 xpixel;
+	u_int		 ypixel;
 
 	int		 flags;
 #define WINDOW_BELL 0x1
@@ -1150,6 +1156,8 @@ struct tty {
 
 	u_int		 sx;
 	u_int		 sy;
+	u_int		 xpixel;
+	u_int		 ypixel;
 
 	u_int		 cx;
 	u_int		 cy;
@@ -1238,8 +1246,8 @@ struct tty_ctx {
 	const struct grid_cell	*cell;
 	int			 wrapped;
 
-	u_int		 num;
-	void		*ptr;
+	u_int			 num;
+	void			*ptr;
 
 	/*
 	 * Cursor and region position before the screen was updated - this is
@@ -1929,7 +1937,7 @@ void	tty_putc(struct tty *, u_char);
 void	tty_putn(struct tty *, const void *, size_t, u_int);
 int	tty_init(struct tty *, struct client *, int, char *);
 void	tty_resize(struct tty *);
-void	tty_set_size(struct tty *, u_int, u_int);
+void	tty_set_size(struct tty *, u_int, u_int, u_int, u_int);
 void	tty_start_tty(struct tty *);
 void	tty_stop_tty(struct tty *);
 void	tty_set_title(struct tty *, const char *);
@@ -2208,9 +2216,9 @@ void	 status_prompt_load_history(void);
 void	 status_prompt_save_history(void);
 
 /* resize.c */
-void	 resize_window(struct window *, u_int, u_int);
+void	 resize_window(struct window *, u_int, u_int, int, int);
 void	 default_window_size(struct client *, struct session *, struct window *,
-	     u_int *, u_int *, int);
+	     u_int *, u_int *, u_int *, u_int *, int);
 void	 recalculate_size(struct window *);
 void	 recalculate_sizes(void);
 
@@ -2402,7 +2410,7 @@ void		 winlink_stack_remove(struct winlink_stack *, struct winlink *);
 struct window	*window_find_by_id_str(const char *);
 struct window	*window_find_by_id(u_int);
 void		 window_update_activity(struct window *);
-struct window	*window_create(u_int, u_int);
+struct window	*window_create(u_int, u_int, u_int, u_int);
 void		 window_pane_set_event(struct window_pane *);
 struct window_pane *window_get_active_at(struct window *, u_int, u_int);
 struct window_pane *window_find_string(struct window *, const char *);
@@ -2413,7 +2421,8 @@ void		 window_redraw_active_switch(struct window *,
 		     struct window_pane *);
 struct window_pane *window_add_pane(struct window *, struct window_pane *,
 		     u_int, int);
-void		 window_resize(struct window *, u_int, u_int);
+void		 window_resize(struct window *, u_int, u_int, int, int);
+void		 window_pane_send_resize(struct window_pane *, int);
 int		 window_zoom(struct window_pane *);
 int		 window_unzoom(struct window *);
 int		 window_push_zoom(struct window *, int);

@@ -130,7 +130,7 @@ cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 				cmdq_error(item, "size too small or too big");
 				return (CMD_RETURN_ERROR);
 			}
-			tty_set_size(&c->tty, x, y);
+			tty_set_size(&c->tty, x, y, 0, 0);
 			c->flags |= CLIENT_SIZECHANGED;
 			recalculate_sizes();
 		}

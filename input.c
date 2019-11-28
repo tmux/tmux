@@ -740,7 +740,7 @@ input_timer_callback(__unused int fd, __unused short events, void *arg)
 static void
 input_start_timer(struct input_ctx *ictx)
 {
-	struct timeval	tv = { .tv_usec = 100000 };
+	struct timeval	tv = { .tv_sec = 5, .tv_usec = 0 };
 
 	event_del(&ictx->timer);
 	event_add(&ictx->timer, &tv);
