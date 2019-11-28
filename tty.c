@@ -211,6 +211,11 @@ tty_block_maybe(struct tty *tty)
 	size_t		 size = EVBUFFER_LENGTH(tty->out);
 	struct timeval	 tv = { .tv_usec = TTY_BLOCK_INTERVAL };
 
+	if (size == 0)
+		tty->flags &= ~TTY_NOBLOCK;
+	else if (tty->flags & TTY_NOBLOCK)
+		return (0);
+
 	if (size < TTY_BLOCK_START(tty))
 		return (0);
 
@@ -1889,8 +1894,10 @@ tty_cmd_sixelimage(struct tty *tty, const struct tty_ctx *ctx)
 		sx = wp->sx - cx;
 	if (sy > wp->sy - cy)
 		sy = wp->sy - cy;
+	log_debug("%s: image is %ux%u", __func__, sx, sy);
 	if (!tty_clamp_area(tty, ctx, cx, cy, sx, sy, &i, &j, &x, &y, &rx, &ry))
 		return;
+	log_debug("%s: clamping to section %u,%u-%u,%u", __func__, i, j, rx, ry);
 
 	new = sixel_scale(si, tty->xpixel, tty->ypixel, i, j, rx, ry);
 	if (new == NULL)
@@ -1901,6 +1908,7 @@ tty_cmd_sixelimage(struct tty *tty, const struct tty_ctx *ctx)
 		log_debug("%s: %zu bytes: %s", __func__, size, data);
 		tty_cursor(tty, x, y);
 
+		tty->flags |= TTY_NOBLOCK;
 		tty_add(tty, data, size);
 		tty_invalidate(tty);
 		free(data);
