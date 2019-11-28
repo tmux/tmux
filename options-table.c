@@ -794,6 +794,7 @@ const struct options_table_entry options_table[] = {
 	OPTIONS_TABLE_HOOK("after-copy-mode", ""),
 	OPTIONS_TABLE_HOOK("after-display-message", ""),
 	OPTIONS_TABLE_HOOK("after-display-panes", ""),
+	OPTIONS_TABLE_HOOK("after-kill-pane", ""),
 	OPTIONS_TABLE_HOOK("after-list-buffers", ""),
 	OPTIONS_TABLE_HOOK("after-list-clients", ""),
 	OPTIONS_TABLE_HOOK("after-list-keys", ""),
