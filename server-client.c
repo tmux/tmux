@@ -1320,7 +1320,6 @@ static int
 server_client_resize_force(struct window_pane *wp)
 {
 	struct timeval	tv = { .tv_usec = 100000 };
-	struct winsize	ws;
 
 	/*
 	 * If we are resizing to the same size as when we entered the loop
