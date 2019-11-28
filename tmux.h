@@ -2704,4 +2704,13 @@ struct window_pane *spawn_pane(struct spawn_context *, char **);
 /* regsub.c */
 char		*regsub(const char *, const char *, const char *, int);
 
+/* sixel.c */
+struct sixel_image *sixel_parse(const char *, size_t, u_int, u_int);
+void		 sixel_free(struct sixel_image *);
+void		 sixel_log(struct sixel_image *);
+void		 sixel_size_in_cells(struct sixel_image *, u_int *, u_int *);
+struct sixel_image *sixel_scale(struct sixel_image *, u_int, u_int, u_int,
+		     u_int, u_int, u_int);
+char		*sixel_print(struct sixel_image *, struct sixel_image *);
+
 #endif /* TMUX_H */
