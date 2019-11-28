@@ -2158,6 +2158,8 @@ format_defaults_client(struct format_tree *ft, struct client *c)
 	format_add(ft, "client_pid", "%ld", (long) c->pid);
 	format_add(ft, "client_height", "%u", tty->sy);
 	format_add(ft, "client_width", "%u", tty->sx);
+	format_add(ft, "client_cell_width", "%u", tty->xpixel);
+	format_add(ft, "client_cell_height", "%u", tty->ypixel);
 	format_add(ft, "client_tty", "%s", c->ttyname);
 	format_add(ft, "client_control_mode", "%d",
 		!!(c->flags & CLIENT_CONTROL));
