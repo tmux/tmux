@@ -211,6 +211,11 @@ tty_block_maybe(struct tty *tty)
 	size_t		 size = EVBUFFER_LENGTH(tty->out);
 	struct timeval	 tv = { .tv_usec = TTY_BLOCK_INTERVAL };
 
+	if (size == 0)
+		tty->flags &= ~TTY_NOBLOCK;
+	else if (tty->flags & TTY_NOBLOCK)
+		return (0);
+
 	if (size < TTY_BLOCK_START(tty))
 		return (0);
 
@@ -1872,6 +1877,7 @@ tty_cmd_rawsixel(struct tty *tty, const struct tty_ctx *ctx)
 	int	flags = (tty->term->flags|tty->term_flags);
 
 	if ((flags & TERM_SIXEL) || tty_term_has(tty->term, TTYC_SXL)) {
+		tty->flags |= TTY_NOBLOCK;
 		tty_add(tty, ctx->ptr, ctx->num);
 		if (!ctx->more)
 			tty_invalidate(tty);

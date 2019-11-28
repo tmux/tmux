@@ -1203,6 +1203,7 @@ struct tty {
 #define TTY_OPENED 0x20
 #define TTY_FOCUS 0x40
 #define TTY_BLOCK 0x80
+#define TTY_NOBLOCK 0x100
 	int		 flags;
 
 	struct tty_term	*term;
