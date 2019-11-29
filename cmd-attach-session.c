@@ -127,6 +127,7 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 		gettimeofday(&s->last_attached_time, NULL);
 		server_redraw_client(c);
 		s->curw->flags &= ~WINLINK_ALERTFLAGS;
+		s->curw->window->latest = c;
 	} else {
 		if (server_client_open(c, &cause) != 0) {
 			cmdq_error(item, "open terminal failed: %s", cause);
@@ -159,6 +160,7 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 		gettimeofday(&s->last_attached_time, NULL);
 		server_redraw_client(c);
 		s->curw->flags &= ~WINLINK_ALERTFLAGS;
+		s->curw->window->latest = c;
 
 		if (~c->flags & CLIENT_CONTROL)
 			proc_send(c->peer, MSG_READY, -1, NULL, 0);
