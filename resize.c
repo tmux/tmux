@@ -80,7 +80,7 @@ default_window_size(struct client *c, struct session *s, struct window *w,
     u_int *sx, u_int *sy, u_int *xpixel, u_int *ypixel, int type)
 {
 	struct client	*loop;
-	u_int		 cx, cy;
+	u_int		 cx, cy, n;
 	const char	*value;
 
 	if (type == -1)
@@ -149,12 +149,22 @@ default_window_size(struct client *c, struct session *s, struct window *w,
 			*xpixel = c->tty.xpixel;
 		        *ypixel = c->tty.ypixel;
 		} else {
+			if (w == NULL)
+				goto manual;
+			n = 0;
+			TAILQ_FOREACH(loop, &clients, entry) {
+				if (!ignore_client_size(loop) &&
+				    session_has(loop->session, w)) {
+					if (++n > 1)
+						break;
+				}
+			}
 			*sx = *sy = UINT_MAX;
 			*xpixel = *ypixel = 0;
 			TAILQ_FOREACH(loop, &clients, entry) {
 				if (ignore_client_size(loop))
 					continue;
-				if (w != NULL && loop != w->latest)
+				if (n > 1 && loop != w->latest)
 					continue;
 				s = loop->session;
 
@@ -204,7 +214,7 @@ recalculate_size(struct window *w)
 {
 	struct session	*s;
 	struct client	*c;
-	u_int		 sx, sy, cx, cy, xpixel = 0, ypixel = 0;
+	u_int		 sx, sy, cx, cy, xpixel = 0, ypixel = 0, n;
 	int		 type, current, has, changed;
 
 	if (w->active == NULL)
@@ -277,11 +287,19 @@ recalculate_size(struct window *w)
 			changed = 0;
 		break;
 	case WINDOW_SIZE_LATEST:
+		n = 0;
+		TAILQ_FOREACH(c, &clients, entry) {
+			if (!ignore_client_size(c) &&
+			    session_has(c->session, w)) {
+				if (++n > 1)
+					break;
+			}
+		}
 		sx = sy = UINT_MAX;
 		TAILQ_FOREACH(c, &clients, entry) {
 			if (ignore_client_size(c))
 				continue;
-			if (c != w->latest)
+			if (n > 1 && c != w->latest)
 				continue;
 			s = c->session;
 
