@@ -1884,8 +1884,10 @@ tty_cmd_sixelimage(struct tty *tty, const struct tty_ctx *ctx)
 	u_int			 cx = s->cx, cy = s->cy, sx, sy;
 	u_int			 i, j, x, y, rx, ry;
 
-	if ((~flags & TERM_SIXEL) && tty_term_has(tty->term, TTYC_SXL))
+	if ((~flags & TERM_SIXEL) && !tty_term_has(tty->term, TTYC_SXL)) {
+		wp->flags |= PANE_REDRAW;
 		return;
+	}
 	if (tty->xpixel == 0 || tty->ypixel == 0)
 		return;
 
@@ -1906,6 +1908,8 @@ tty_cmd_sixelimage(struct tty *tty, const struct tty_ctx *ctx)
 	data = sixel_print(new, si, &size);
 	if (data != NULL) {
 		log_debug("%s: %zu bytes: %s", __func__, size, data);
+		tty_region_off(tty);
+		tty_margin_off(tty);
 		tty_cursor(tty, x, y);
 
 		tty->flags |= TTY_NOBLOCK;

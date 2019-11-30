@@ -2714,5 +2714,6 @@ struct sixel_image *sixel_scale(struct sixel_image *, u_int, u_int, u_int,
 		     u_int, u_int, u_int);
 char		*sixel_print(struct sixel_image *, struct sixel_image *,
 		     size_t *);
+struct screen	*sixel_to_screen(struct sixel_image *);
 
 #endif /* TMUX_H */

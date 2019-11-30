@@ -517,3 +517,37 @@ sixel_print(struct sixel_image *si, struct sixel_image *map, size_t *size)
 	free(contains);
 	return (buf);
 }
+
+struct screen *
+sixel_to_screen(struct sixel_image *si)
+{
+	struct screen		*s;
+	struct screen_write_ctx	 ctx;
+	struct grid_cell	 gc;
+	u_int			 x, y, sx, sy;
+
+	sixel_size_in_cells(si, &sx, &sy);
+
+	s = xmalloc(sizeof *s);
+	screen_init(s, sx, sy, 0);
+
+	memcpy(&gc, &grid_default_cell, sizeof gc);
+	gc.attr |= (GRID_ATTR_CHARSET|GRID_ATTR_DIM);
+	utf8_set(&gc.data, '~');
+
+	screen_write_start(&ctx, NULL, s);
+	if (sx == 1 || sy == 1) {
+		for (y = 0; y < sy; y++) {
+			for (x = 0; x < sx; x++)
+				grid_view_set_cell(s->grid, x, y, &gc);
+		}
+	} else {
+		screen_write_box(&ctx, sx, sy);
+		for (y = 1; y < sy - 1; y++) {
+			for (x = 1; x < sx - 1; x++)
+				grid_view_set_cell(s->grid, x, y, &gc);
+		}
+	}
+	screen_write_stop(&ctx);
+	return (s);
+}
