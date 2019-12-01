@@ -163,7 +163,7 @@ CHANGES FROM 2.9 to 3.0
 * Add the ability to create simple menus. Introduces new command
   display-menu. Default menus are bound to MouseDown3 on the status line;
   MouseDown3 or M-MouseDown3 on panes; MouseDown3 in tree, client and
-  buffer modes; and C-b C-m and C-b M-m.
+  buffer modes; and C-b < and >.
 
 * Allow panes to be empty (no command). They can be created either by piping to
   split-window -I, or by passing an empty command ('') to split-window. Output
