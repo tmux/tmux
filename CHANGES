@@ -1,5 +1,7 @@
 CHANGES FROM 3.0 to 3.0a
 
+* Do not require REG_STARTEND.
+
 * Respawn panes or windows correctly if default-command is set.
 
 * Add missing option for after-kill-pane hook.
