@@ -1579,7 +1579,7 @@ server_client_check_exit(struct client *c)
 /* Redraw timer callback. */
 static void
 server_client_redraw_timer(__unused int fd, __unused short events,
-    __unused void* data)
+    __unused void *data)
 {
 	log_debug("redraw timer fired");
 }

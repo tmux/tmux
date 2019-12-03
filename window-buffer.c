@@ -333,7 +333,7 @@ window_buffer_resize(struct window_mode_entry *wme, u_int sx, u_int sy)
 }
 
 static void
-window_buffer_do_delete(void* modedata, void *itemdata,
+window_buffer_do_delete(void *modedata, void *itemdata,
     __unused struct client *c, __unused key_code key)
 {
 	struct window_buffer_modedata	*data = modedata;
@@ -347,7 +347,7 @@ window_buffer_do_delete(void* modedata, void *itemdata,
 }
 
 static void
-window_buffer_do_paste(void* modedata, void *itemdata, struct client *c,
+window_buffer_do_paste(void *modedata, void *itemdata, struct client *c,
     __unused key_code key)
 {
 	struct window_buffer_modedata	*data = modedata;
