@@ -610,7 +610,7 @@ options_match(const char *s, int *idx, int *ambiguous)
 
 struct options_entry *
 options_match_get(struct options *oo, const char *s, int *idx, int only,
-    int* ambiguous)
+    int *ambiguous)
 {
 	char			*name;
 	struct options_entry	*o;

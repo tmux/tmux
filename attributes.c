@@ -59,8 +59,8 @@ attributes_fromstring(const char *str)
 	size_t		end;
 	u_int		i;
 	struct {
-		const char*	name;
-		int		attr;
+		const char	*name;
+		int		 attr;
 	} table[] = {
 		{ "bright", GRID_ATTR_BRIGHT },
 		{ "bold", GRID_ATTR_BRIGHT },
