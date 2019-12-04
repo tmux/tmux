@@ -24,12 +24,6 @@
 
 #include "tmux.h"
 
-#define DEFAULT_CLIENT_MENU \
-	" 'Detach' 'd' {detach-client}" \
-	" 'Detach & Kill' 'X' {detach-client -P}" \
-	" 'Detach Others' 'o' {detach-client -a}" \
-	" ''" \
-	" 'Lock' 'l' {lock-client}"
 #define DEFAULT_SESSION_MENU \
 	" 'Next' 'n' {switch-client -n}" \
 	" 'Previous' 'p' {switch-client -p}" \
@@ -325,7 +319,6 @@ key_bindings_init(void)
 		"bind -n MouseDrag1Pane if -Ft= '#{mouse_any_flag}' 'if -Ft= \"#{pane_in_mode}\" \"copy-mode -M\" \"send-keys -M\"' 'copy-mode -M'",
 		"bind -n WheelUpPane if -Ft= '#{mouse_any_flag}' 'send-keys -M' 'if -Ft= \"#{pane_in_mode}\" \"send-keys -M\" \"copy-mode -et=\"'",
 
-		"bind -n MouseDown3StatusRight display-menu -t= -xM -yS -T \"#[align=centre]#{client_name}\" " DEFAULT_CLIENT_MENU,
 		"bind -n MouseDown3StatusLeft display-menu -t= -xM -yS -T \"#[align=centre]#{session_name}\" " DEFAULT_SESSION_MENU,
 		"bind -n MouseDown3Status display-menu -t= -xW -yS -T \"#[align=centre]#{window_index}:#{window_name}\" " DEFAULT_WINDOW_MENU,
 		"bind < display-menu -xW -yS -T \"#[align=centre]#{window_index}:#{window_name}\" " DEFAULT_WINDOW_MENU,
