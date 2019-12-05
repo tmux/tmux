@@ -712,6 +712,9 @@ screen_write_alignmenttest(struct screen_write_ctx *ctx)
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	utf8_set(&gc.data, 'E');
 
+	if (image_free_all(s) && ctx->wp != NULL)
+		ctx->wp->flags |= PANE_REDRAW;
+
 	for (yy = 0; yy < screen_size_y(s); yy++) {
 		for (xx = 0; xx < screen_size_x(s); xx++)
 			grid_view_set_cell(s->grid, xx, yy, &gc);
@@ -746,6 +749,9 @@ screen_write_insertcharacter(struct screen_write_ctx *ctx, u_int nx, u_int bg)
 	if (s->cx > screen_size_x(s) - 1)
 		return;
 
+	if (image_check_line(s, s->cy, 1) && ctx->wp != NULL)
+		ctx->wp->flags |= PANE_REDRAW;
+
 	screen_write_initctx(ctx, &ttyctx);
 	ttyctx.bg = bg;
 
@@ -773,6 +779,9 @@ screen_write_deletecharacter(struct screen_write_ctx *ctx, u_int nx, u_int bg)
 
 	if (s->cx > screen_size_x(s) - 1)
 		return;
+
+	if (image_check_line(s, s->cy, 1) && ctx->wp != NULL)
+		ctx->wp->flags |= PANE_REDRAW;
 
 	screen_write_initctx(ctx, &ttyctx);
 	ttyctx.bg = bg;
@@ -802,6 +811,9 @@ screen_write_clearcharacter(struct screen_write_ctx *ctx, u_int nx, u_int bg)
 	if (s->cx > screen_size_x(s) - 1)
 		return;
 
+	if (image_check_line(s, s->cy, 1) && ctx->wp != NULL)
+		ctx->wp->flags |= PANE_REDRAW;
+
 	screen_write_initctx(ctx, &ttyctx);
 	ttyctx.bg = bg;
 
@@ -819,9 +831,13 @@ screen_write_insertline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 	struct screen	*s = ctx->s;
 	struct grid	*gd = s->grid;
 	struct tty_ctx	 ttyctx;
+	u_int		 sy = screen_size_y(s);
 
 	if (ny == 0)
 		ny = 1;
+
+	if (image_check_line(s, s->cy, sy - s->cy) && ctx->wp != NULL)
+		ctx->wp->flags |= PANE_REDRAW;
 
 	if (s->cy < s->rupper || s->cy > s->rlower) {
 		if (ny > screen_size_y(s) - s->cy)
@@ -865,13 +881,17 @@ screen_write_deleteline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 	struct screen	*s = ctx->s;
 	struct grid	*gd = s->grid;
 	struct tty_ctx	 ttyctx;
+	u_int		 sy = screen_size_y(s);
 
 	if (ny == 0)
 		ny = 1;
 
+	if (image_check_line(s, s->cy, sy - s->cy) && ctx->wp != NULL)
+		ctx->wp->flags |= PANE_REDRAW;
+
 	if (s->cy < s->rupper || s->cy > s->rlower) {
-		if (ny > screen_size_y(s) - s->cy)
-			ny = screen_size_y(s) - s->cy;
+		if (ny > sy - s->cy)
+			ny = sy - s->cy;
 		if (ny == 0)
 			return;
 
@@ -917,6 +937,9 @@ screen_write_clearline(struct screen_write_ctx *ctx, u_int bg)
 	if (gl->cellsize == 0 && COLOUR_DEFAULT(bg))
 		return;
 
+	if (image_check_line(s, s->cy, 1) && ctx->wp != NULL)
+		ctx->wp->flags |= PANE_REDRAW;
+
 	screen_write_initctx(ctx, &ttyctx);
 	ttyctx.bg = bg;
 
@@ -940,6 +963,9 @@ screen_write_clearendofline(struct screen_write_ctx *ctx, u_int bg)
 	if (s->cx > sx - 1 || (s->cx >= gl->cellsize && COLOUR_DEFAULT(bg)))
 		return;
 
+	if (image_check_line(s, s->cy, 1) && ctx->wp != NULL)
+		ctx->wp->flags |= PANE_REDRAW;
+
 	screen_write_initctx(ctx, &ttyctx);
 	ttyctx.bg = bg;
 
@@ -961,6 +987,9 @@ screen_write_clearstartofline(struct screen_write_ctx *ctx, u_int bg)
 
 	screen_write_initctx(ctx, &ttyctx);
 	ttyctx.bg = bg;
+
+	if (image_check_line(s, s->cy, 1) && ctx->wp != NULL)
+		ctx->wp->flags |= PANE_REDRAW;
 
 	if (s->cx > sx - 1)
 		grid_view_clear(s->grid, 0, s->cy, sx, 1, bg);
@@ -1001,6 +1030,9 @@ screen_write_reverseindex(struct screen_write_ctx *ctx, u_int bg)
 {
 	struct screen	*s = ctx->s;
 	struct tty_ctx	 ttyctx;
+
+	if (image_free_all(s) && ctx->wp != NULL)
+		ctx->wp->flags |= PANE_REDRAW;
 
 	screen_write_initctx(ctx, &ttyctx);
 	ttyctx.bg = bg;
@@ -1147,6 +1179,9 @@ screen_write_clearendofscreen(struct screen_write_ctx *ctx, u_int bg)
 	struct tty_ctx	 ttyctx;
 	u_int		 sx = screen_size_x(s), sy = screen_size_y(s);
 
+	if (image_check_line(s, s->cy, sy - s->cy) && ctx->wp != NULL)
+		ctx->wp->flags |= PANE_REDRAW;
+
 	screen_write_initctx(ctx, &ttyctx);
 	ttyctx.bg = bg;
 
@@ -1172,6 +1207,9 @@ screen_write_clearstartofscreen(struct screen_write_ctx *ctx, u_int bg)
 	struct tty_ctx	 ttyctx;
 	u_int		 sx = screen_size_x(s);
 
+	if (image_check_line(s, 0, s->cy - 1) && ctx->wp != NULL)
+		ctx->wp->flags |= PANE_REDRAW;
+
 	screen_write_initctx(ctx, &ttyctx);
 	ttyctx.bg = bg;
 
@@ -1194,6 +1232,9 @@ screen_write_clearscreen(struct screen_write_ctx *ctx, u_int bg)
 	struct screen	*s = ctx->s;
 	struct tty_ctx	 ttyctx;
 	u_int		 sx = screen_size_x(s), sy = screen_size_y(s);
+
+	if (image_free_all(s) && ctx->wp != NULL)
+		ctx->wp->flags |= PANE_REDRAW;
 
 	screen_write_initctx(ctx, &ttyctx);
 	ttyctx.bg = bg;
