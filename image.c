@@ -114,7 +114,7 @@ image_scroll_up(struct screen *s, u_int lines)
 			redraw = 1;
 			continue;
 		}
-		if (im->py + im->sy < lines) {
+		if (im->py + im->sy <= lines) {
 			image_free(im);
 			redraw = 1;
 			continue;
@@ -127,6 +127,7 @@ image_scroll_up(struct screen *s, u_int lines)
 		im->data = new;
 
 		im->py = 0;
+		sixel_size_in_cells(im->data, &im->sx, &im->sy);
 		redraw = 1;
 	}
 	return (redraw);
