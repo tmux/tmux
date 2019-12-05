@@ -2172,7 +2172,7 @@ input_dcs_dispatch(struct input_ctx *ictx)
 		si = sixel_parse(buf, len, w->xpixel, w->ypixel);
 		if (si != NULL) {
 			sixel_log(si);
-			screen_write_sixelimage(sctx, si);
+			screen_write_sixelimage(sctx, si, ictx->cell.cell.bg);
 		}
 	}
 

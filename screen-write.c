@@ -1044,6 +1044,8 @@ screen_write_linefeed(struct screen_write_ctx *ctx, int wrapped, u_int bg)
 	struct screen		*s = ctx->s;
 	struct grid		*gd = s->grid;
 	struct grid_line	*gl;
+	int			 redraw;
+	u_int			 rupper = s->rupper, rlower = s->rlower;
 
 	gl = grid_get_line(gd, gd->hsize + s->cy);
 	if (wrapped)
@@ -1052,15 +1054,21 @@ screen_write_linefeed(struct screen_write_ctx *ctx, int wrapped, u_int bg)
 		gl->flags &= ~GRID_LINE_WRAPPED;
 
 	log_debug("%s: at %u,%u (region %u-%u)", __func__, s->cx, s->cy,
-	    s->rupper, s->rlower);
+	    rupper, rlower);
 
 	if (bg != ctx->bg) {
 		screen_write_collect_flush(ctx, 1);
 		ctx->bg = bg;
 	}
 
-	if (s->cy == s->rlower) {
-		grid_view_scroll_region_up(gd, s->rupper, s->rlower, bg);
+	if (s->cy == rlower) {
+		if (rlower == screen_size_y(s) - 1)
+			redraw = image_scroll_up(s, 1);
+		else
+			redraw = image_check_line(s, rupper, rlower - rupper);
+		if (redraw && ctx->wp != NULL)
+			ctx->wp->flags |= PANE_REDRAW;
+		grid_view_scroll_region_up(gd, rupper, rlower, bg);
 		screen_write_collect_scroll(ctx);
 		ctx->scrolled++;
 	} else if (s->cy < screen_size_y(s) - 1)
@@ -1085,6 +1093,9 @@ screen_write_scrollup(struct screen_write_ctx *ctx, u_int lines, u_int bg)
 		ctx->bg = bg;
 	}
 
+	if (image_scroll_up(s, lines) && ctx->wp != NULL)
+		ctx->wp->flags |= PANE_REDRAW;
+
 	for (i = 0; i < lines; i++) {
 		grid_view_scroll_region_up(gd, s->rupper, s->rlower, bg);
 		screen_write_collect_scroll(ctx);
@@ -1108,6 +1119,9 @@ screen_write_scrolldown(struct screen_write_ctx *ctx, u_int lines, u_int bg)
 		lines = 1;
 	else if (lines > s->rlower - s->rupper + 1)
 		lines = s->rlower - s->rupper + 1;
+
+	if (image_free_all(s) && ctx->wp != NULL)
+		ctx->wp->flags |= PANE_REDRAW;
 
 	for (i = 0; i < lines; i++)
 		grid_view_scroll_region_down(gd, s->rupper, s->rlower, bg);
@@ -1325,6 +1339,9 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 			    &grid_default_cell);
 		}
 	}
+
+	if (image_check_area(s, s->cx, s->cy, ci->used, 1) && ctx->wp != NULL)
+		ctx->wp->flags |= PANE_REDRAW;
 
 	grid_view_set_cells(s->grid, s->cx, s->cy, &ci->gc, ci->data, ci->used);
 	screen_write_set_cursor(ctx, s->cx + ci->used, -1);
@@ -1674,16 +1691,55 @@ screen_write_rawstring(struct screen_write_ctx *ctx, u_char *str, u_int len)
 
 /* Write a SIXEL image. */
 void
-screen_write_sixelimage(struct screen_write_ctx *ctx, struct sixel_image *si)
+screen_write_sixelimage(struct screen_write_ctx *ctx, struct sixel_image *si,
+    u_int bg)
 {
-	struct screen	*s = ctx->s;
-	struct tty_ctx	 ttyctx;
+	struct screen		*s = ctx->s;
+	struct grid		*gd = s->grid;
+	struct tty_ctx		 ttyctx;
+	u_int			 x, y, sx, sy, cx = s->cx, cy = s->cy, i, lines;
+	struct sixel_image	*new;
+
+	sixel_size_in_cells(si, &x, &y);
+	if (x > screen_size_x(s) || y > screen_size_y(s)) {
+		if (x > screen_size_x(s) - cx)
+			sx = screen_size_x(s) - cx;
+		else
+			sx = x;
+		if (y > screen_size_y(s) - 1)
+			sy = screen_size_y(s) - 1;
+		else
+			sy = y;
+		new = sixel_scale(si, 0, 0, 0, y - sy, sx, sy, 1);
+		sixel_free(si);
+		si = new;
+		sixel_size_in_cells(si, &x, &y);
+	}
+
+	sy = screen_size_y(s) - cy;
+	if (sy < y) {
+		lines = y - sy + 1;
+		if (image_scroll_up(s, lines) && ctx->wp != NULL)
+			ctx->wp->flags |= PANE_REDRAW;
+		for (i = 0; i < lines; i++) {
+			grid_view_scroll_region_up(gd, 0, screen_size_y(s) - 1,
+			    bg);
+			screen_write_collect_scroll(ctx);
+		}
+		ctx->scrolled += lines;
+		if (lines > cy)
+			screen_write_cursormove(ctx, -1, 0, 0);
+		else
+			screen_write_cursormove(ctx, -1, cy - lines, 0);
+	}
+	screen_write_collect_flush(ctx, 0);
 
 	image_store(s, si);
 
 	screen_write_initctx(ctx, &ttyctx);
 	ttyctx.ptr = si;
 
-	screen_write_collect_flush(ctx, 0);
 	tty_write(tty_cmd_sixelimage, &ttyctx);
+
+	screen_write_cursormove(ctx, 0, cy + y, 0);
 }

@@ -578,7 +578,7 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 	struct client	*c = ctx->c;
 	struct window	*w = c->session->curw->window;
 	struct tty	*tty = &c->tty;
-	struct screen	*s;
+	struct screen	*s = wp->screen;
 	u_int		 i, j, top, x, y, width;
 
 	log_debug("%s: %s @%u %%%u", __func__, c->name, w->id, wp->id);
@@ -590,7 +590,6 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 	else
 		top = 0;
 
-	s = wp->screen;
 	for (j = 0; j < wp->sy; j++) {
 		if (wp->yoff + j < ctx->oy || wp->yoff + j >= ctx->oy + ctx->sy)
 			continue;
@@ -624,4 +623,6 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 
 		tty_draw_line(tty, wp, s, i, j, width, x, y);
 	}
+
+	tty_draw_images(tty, wp, s);
 }

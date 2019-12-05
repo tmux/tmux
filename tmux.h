@@ -1963,6 +1963,7 @@ void	tty_set_title(struct tty *, const char *);
 void	tty_update_mode(struct tty *, int, struct screen *);
 void	tty_draw_line(struct tty *, struct window_pane *, struct screen *,
 	    u_int, u_int, u_int, u_int, u_int);
+void	tty_draw_images(struct tty *, struct window_pane *, struct screen *);
 int	tty_open(struct tty *, char **);
 void	tty_close(struct tty *);
 void	tty_free(struct tty *);
@@ -2377,7 +2378,8 @@ void	 screen_write_collect_add(struct screen_write_ctx *,
 void	 screen_write_cell(struct screen_write_ctx *, const struct grid_cell *);
 void	 screen_write_setselection(struct screen_write_ctx *, u_char *, u_int);
 void	 screen_write_rawstring(struct screen_write_ctx *, u_char *, u_int);
-void	 screen_write_sixelimage(struct screen_write_ctx *, struct sixel_image *);
+void	 screen_write_sixelimage(struct screen_write_ctx *,
+	     struct sixel_image *, u_int);
 
 /* screen-redraw.c */
 void	 screen_redraw_screen(struct client *);
