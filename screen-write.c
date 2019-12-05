@@ -1676,10 +1676,14 @@ screen_write_rawstring(struct screen_write_ctx *ctx, u_char *str, u_int len)
 void
 screen_write_sixelimage(struct screen_write_ctx *ctx, struct sixel_image *si)
 {
+	struct screen	*s = ctx->s;
 	struct tty_ctx	 ttyctx;
+
+	image_store(s, si);
 
 	screen_write_initctx(ctx, &ttyctx);
 	ttyctx.ptr = si;
 
+	screen_write_collect_flush(ctx, 0);
 	tty_write(tty_cmd_sixelimage, &ttyctx);
 }

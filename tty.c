@@ -1875,19 +1875,16 @@ void
 tty_cmd_sixelimage(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
-	struct screen		*s = wp->screen;
 	struct sixel_image	*si = ctx->ptr;
 	struct sixel_image	*new;
 	int			 flags = (tty->term->flags|tty->term_flags);
 	char			*data;
 	size_t			 size;
-	u_int			 cx = s->cx, cy = s->cy, sx, sy;
+	u_int			 cx = ctx->ocx, cy = ctx->ocy, sx, sy;
 	u_int			 i, j, x, y, rx, ry;
 
-	if ((~flags & TERM_SIXEL) && !tty_term_has(tty->term, TTYC_SXL)) {
-		wp->flags |= PANE_REDRAW;
+	if ((~flags & TERM_SIXEL) && !tty_term_has(tty->term, TTYC_SXL))
 		return;
-	}
 	if (tty->xpixel == 0 || tty->ypixel == 0)
 		return;
 

@@ -2173,7 +2173,6 @@ input_dcs_dispatch(struct input_ctx *ictx)
 		if (si != NULL) {
 			sixel_log(si);
 			screen_write_sixelimage(sctx, si);
-			sixel_free(si);
 		}
 	}
 

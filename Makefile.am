@@ -137,6 +137,7 @@ dist_tmux_SOURCES = \
 	grid.c \
 	input-keys.c \
 	input.c \
+	image.c \
 	job.c \
 	key-bindings.c \
 	key-string.c \

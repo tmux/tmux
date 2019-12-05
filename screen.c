@@ -83,6 +83,8 @@ screen_init(struct screen *s, u_int sx, u_int sy, u_int hlimit)
 	s->tabs = NULL;
 	s->sel = NULL;
 
+	TAILQ_INIT(&s->images);
+
 	screen_reinit(s);
 }
 
@@ -104,6 +106,7 @@ screen_reinit(struct screen *s)
 
 	screen_clear_selection(s);
 	screen_free_titles(s);
+	image_free_all(s);
 }
 
 /* Destroy a screen. */
@@ -118,6 +121,7 @@ screen_free(struct screen *s)
 	grid_destroy(s->grid);
 
 	screen_free_titles(s);
+	image_free_all(s);
 }
 
 /* Reset tabs to default, eight spaces apart. */

@@ -709,6 +709,21 @@ struct style {
 	enum style_default_type	default_type;
 };
 
+/* Image. */
+struct image {
+	struct screen		*s;
+	struct sixel_image	*data;
+
+	u_int			 px;
+	u_int			 py;
+	u_int			 sx;
+	u_int			 sy;
+
+	TAILQ_ENTRY (image)	 all_entry;
+	TAILQ_ENTRY (image)	 entry;
+};
+TAILQ_HEAD(images, image);
+
 /* Virtual screen. */
 struct screen_sel;
 struct screen_titles;
@@ -729,10 +744,10 @@ struct screen {
 	u_int			 rlower;	/* scroll region bottom */
 
 	int			 mode;
-
 	bitstr_t		*tabs;
-
 	struct screen_sel	*sel;
+
+	struct images		 images;
 };
 
 /* Screen write context. */
@@ -2704,6 +2719,12 @@ struct window_pane *spawn_pane(struct spawn_context *, char **);
 
 /* regsub.c */
 char		*regsub(const char *, const char *, const char *, int);
+
+/* image.c */
+void		 image_free_all(struct screen *);
+void		 image_store(struct screen *, struct sixel_image *);
+int		 image_check_line(struct screen *, u_int, u_int);
+int		 image_check_area(struct screen *, u_int, u_int, u_int, u_int);
 
 /* sixel.c */
 struct sixel_image *sixel_parse(const char *, size_t, u_int, u_int);
