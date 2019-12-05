@@ -2721,10 +2721,11 @@ struct window_pane *spawn_pane(struct spawn_context *, char **);
 char		*regsub(const char *, const char *, const char *, int);
 
 /* image.c */
-void		 image_free_all(struct screen *);
+int		 image_free_all(struct screen *);
 void		 image_store(struct screen *, struct sixel_image *);
 int		 image_check_line(struct screen *, u_int, u_int);
 int		 image_check_area(struct screen *, u_int, u_int, u_int, u_int);
+int		 image_scroll_up(struct screen *, u_int);
 
 /* sixel.c */
 struct sixel_image *sixel_parse(const char *, size_t, u_int, u_int);
@@ -2732,7 +2733,7 @@ void		 sixel_free(struct sixel_image *);
 void		 sixel_log(struct sixel_image *);
 void		 sixel_size_in_cells(struct sixel_image *, u_int *, u_int *);
 struct sixel_image *sixel_scale(struct sixel_image *, u_int, u_int, u_int,
-		     u_int, u_int, u_int);
+		     u_int, u_int, u_int, int);
 char		*sixel_print(struct sixel_image *, struct sixel_image *,
 		     size_t *);
 struct screen	*sixel_to_screen(struct sixel_image *);

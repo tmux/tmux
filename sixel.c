@@ -350,11 +350,11 @@ sixel_size_in_cells(struct sixel_image *si, u_int *x, u_int *y)
 
 struct sixel_image *
 sixel_scale(struct sixel_image *si, u_int xpixel, u_int ypixel, u_int ox,
-    u_int oy, u_int sx, u_int sy)
+    u_int oy, u_int sx, u_int sy, int colours)
 {
 	struct sixel_image	*new;
 	u_int			 cx, cy, pox, poy, psx, psy, tsx, tsy, px, py;
-	u_int			 x, y;
+	u_int			 x, y, i;
 
 	/*
 	 * We want to get the section of the image at ox,oy in image cells and
@@ -371,6 +371,11 @@ sixel_scale(struct sixel_image *si, u_int xpixel, u_int ypixel, u_int ox,
 		sx = cx - ox;
 	if (oy + sy >= cy)
 		sy = cy - oy;
+
+	if (xpixel == 0)
+		xpixel = si->xpixel;
+	if (ypixel == 0)
+		ypixel = si->ypixel;
 
 	pox = ox * si->xpixel;
 	poy = oy * si->ypixel;
@@ -390,6 +395,13 @@ sixel_scale(struct sixel_image *si, u_int xpixel, u_int ypixel, u_int ox,
 			px = pox + ((double)x * psx / tsx);
 			sixel_set_pixel(new, x, y, sixel_get_pixel(si, px, py));
 		}
+	}
+
+	if (colours) {
+		new->colours = xmalloc(si->ncolours * sizeof *new->colours);
+		for (i = 0; i < si->ncolours; i++)
+			new->colours[i] = si->colours[i];
+		new->ncolours = si->ncolours;
 	}
 	return (new);
 }

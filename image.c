@@ -37,13 +37,15 @@ image_free(struct image *im)
 	free(im);
 }
 
-void
+int
 image_free_all(struct screen *s)
 {
 	struct image	*im, *im1;
+	int		 redraw = !TAILQ_EMPTY(&s->images);
 
 	TAILQ_FOREACH_SAFE(im, &s->images, entry, im1)
 		image_free(im);
+	return (redraw);
 }
 
 void
@@ -93,6 +95,38 @@ image_check_area(struct screen *s, u_int px, u_int py, u_int nx, u_int ny)
 		if (px + nx <= im->px || px >= im->px + im->sx)
 			continue;
 		image_free(im);
+		redraw = 1;
+	}
+	return (redraw);
+}
+
+int
+image_scroll_up(struct screen *s, u_int lines)
+{
+	struct image		*im, *im1;
+	int			 redraw = 0;
+	u_int			 sx, sy;
+	struct sixel_image	*new;
+
+	TAILQ_FOREACH_SAFE(im, &s->images, entry, im1) {
+		if (im->py >= lines) {
+			im->py -= lines;
+			redraw = 1;
+			continue;
+		}
+		if (im->py + im->sy < lines) {
+			image_free(im);
+			redraw = 1;
+			continue;
+		}
+		sx = im->sx;
+		sy = (im->py + im->sy) - lines;
+
+		new = sixel_scale(im->data, 0, 0, 0, im->sy - sy, sx, sy, 1);
+		sixel_free(im->data);
+		im->data = new;
+
+		im->py = 0;
 		redraw = 1;
 	}
 	return (redraw);
