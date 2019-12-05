@@ -1896,9 +1896,9 @@ tty_cmd_sixelimage(struct tty *tty, const struct tty_ctx *ctx)
 	log_debug("%s: image is %ux%u", __func__, sx, sy);
 	if (!tty_clamp_area(tty, ctx, cx, cy, sx, sy, &i, &j, &x, &y, &rx, &ry))
 		return;
-	log_debug("%s: clamping to section %u,%u-%u,%u", __func__, i, j, rx, ry);
+	log_debug("%s: clamping to %u,%u-%u,%u", __func__, i, j, rx, ry);
 
-	new = sixel_scale(si, tty->xpixel, tty->ypixel, i, j, rx, ry);
+	new = sixel_scale(si, tty->xpixel, tty->ypixel, i, j, rx, ry, 0);
 	if (new == NULL)
 		return;
 
