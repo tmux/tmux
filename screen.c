@@ -225,8 +225,10 @@ screen_resize(struct screen *s, u_int sx, u_int sy, int reflow)
 	if (sy != screen_size_y(s))
 		screen_resize_y(s, sy);
 
-	if (reflow)
+	if (reflow) {
+		image_free_all(s);
 		screen_reflow(s, sx);
+	}
 }
 
 static void
