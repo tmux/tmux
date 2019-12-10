@@ -1,5 +1,48 @@
 CHANGES FROM 3.0 to X.X
 
+* Add ~/.config/tmux/tmux.conf to the default search path for configuration
+  files.
+
+* Bump the escape sequence timeout to five seconds to allow for longer
+  legitimate sequences.
+
+* Make a best effort to set xpixel and ypixel for each pane and add formats for
+  them.
+
+* Add push-default to status-left and status-right in status-format[0].
+
+* Add -F flag to send-keys to expand formats in search-backward and forward
+  copy mode commands and copy_cursor_word and copy_cursor_line formats for word
+  and line at cursor in copy mode. Use for default # and * binding with vi(1)
+  keys.
+
+* Do not clear search marks on cursor movement with vi(1) keys.
+
+* Add p format modifier for padding to width and allow multiple substitutions
+  in a single format.
+
+* Add -f for full size to join-pane (like split-window).
+
+* Handle OSC 7 (a VTE extension) and put the result in a new format (pane_path).
+
+* Change new-session -A without a session name (that is, no -s option also) to
+  attach to the best existing session like attach-session rather than creating
+  a new one.
+
+* Add an option to set the key sent by backspace for those whose system uses ^H
+  rather than ^?.
+
+* Add formats for cursor and selection position in copy mode.
+
+* Add support for percentage sizes for resize-pane ("-x 10%"). Also change
+  split-window and join-pane -l to accept similar percentages and no longer
+  document -p.
+
+* Turn automatic-rename back on if the rename escape sequence is used with an
+  empty name.
+
+* Make select-pane -P set window-active-style also to match previous behaviour.
+
 * Do not use bright when emulating 256 colours on an 8 colour terminal because
   it is also bold on some terminals.
 
