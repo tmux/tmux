@@ -63,9 +63,9 @@ struct winlink;
 /* Client-server protocol version. */
 #define PROTOCOL_VERSION 8
 
-/* Default global configuration file. */
+/* Default configuration files. */
 #ifndef TMUX_CONF
-#define TMUX_CONF "/etc/tmux.conf"
+#define TMUX_CONF "/etc/tmux.conf:~/.tmux.conf"
 #endif
 
 /* Minimum layout cell size, NOT including border lines. */
