@@ -2082,8 +2082,9 @@ static int
 window_copy_search_lr(struct grid *gd,
     struct grid *sgd, u_int *ppx, u_int py, u_int first, u_int last, int cis)
 {
-	u_int	ax, bx, px, pywrap, endline;
-	int	matched;
+	u_int			 ax, bx, px, pywrap, endline;
+	int			 matched;
+	struct grid_line	*gl;
 
 	endline = gd->hsize + gd->sy - 1;
 	for (ax = first; ax < last; ax++) {
@@ -2092,6 +2093,9 @@ window_copy_search_lr(struct grid *gd,
 			pywrap = py;
 			/* Wrap line. */
 			while (px >= gd->sx && pywrap < endline) {
+				gl = grid_get_line(gd, pywrap);
+				if (~gl->flags & GRID_LINE_WRAPPED)
+					break;
 				px -= gd->sx;
 				pywrap++;
 			}
@@ -2115,8 +2119,9 @@ static int
 window_copy_search_rl(struct grid *gd,
     struct grid *sgd, u_int *ppx, u_int py, u_int first, u_int last, int cis)
 {
-	u_int	ax, bx, px, pywrap, endline;
-	int	matched;
+	u_int			 ax, bx, px, pywrap, endline;
+	int			 matched;
+	struct grid_line	*gl;
 
 	endline = gd->hsize + gd->sy - 1;
 	for (ax = last; ax > first; ax--) {
@@ -2125,6 +2130,9 @@ window_copy_search_rl(struct grid *gd,
 			pywrap = py;
 			/* Wrap line. */
 			while (px >= gd->sx && pywrap < endline) {
+				gl = grid_get_line(gd, pywrap);
+				if (~gl->flags & GRID_LINE_WRAPPED)
+					break;
 				px -= gd->sx;
 				pywrap++;
 			}
