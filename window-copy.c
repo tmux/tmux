@@ -2082,16 +2082,28 @@ static int
 window_copy_search_lr(struct grid *gd,
     struct grid *sgd, u_int *ppx, u_int py, u_int first, u_int last, int cis)
 {
-	u_int	ax, bx, px;
-	int	matched;
+	u_int			 ax, bx, px, pywrap, endline;
+	int			 matched;
+	struct grid_line	*gl;
 
+	endline = gd->hsize + gd->sy - 1;
 	for (ax = first; ax < last; ax++) {
-		if (ax + sgd->sx > gd->sx)
-			break;
 		for (bx = 0; bx < sgd->sx; bx++) {
 			px = ax + bx;
-			matched = window_copy_search_compare(gd, px, py, sgd,
-			    bx, cis);
+			pywrap = py;
+			/* Wrap line. */
+			while (px >= gd->sx && pywrap < endline) {
+				gl = grid_get_line(gd, pywrap);
+				if (~gl->flags & GRID_LINE_WRAPPED)
+					break;
+				px -= gd->sx;
+				pywrap++;
+			}
+			/* We have run off the end of the grid. */
+			if (px >= gd->sx)
+				break;
+			matched = window_copy_search_compare(gd, px, pywrap,
+			    sgd, bx, cis);
 			if (!matched)
 				break;
 		}
@@ -2107,16 +2119,28 @@ static int
 window_copy_search_rl(struct grid *gd,
     struct grid *sgd, u_int *ppx, u_int py, u_int first, u_int last, int cis)
 {
-	u_int	ax, bx, px;
-	int	matched;
+	u_int			 ax, bx, px, pywrap, endline;
+	int			 matched;
+	struct grid_line	*gl;
 
-	for (ax = last + 1; ax > first; ax--) {
-		if (gd->sx - (ax - 1) < sgd->sx)
-			continue;
+	endline = gd->hsize + gd->sy - 1;
+	for (ax = last; ax > first; ax--) {
 		for (bx = 0; bx < sgd->sx; bx++) {
 			px = ax - 1 + bx;
-			matched = window_copy_search_compare(gd, px, py, sgd,
-			    bx, cis);
+			pywrap = py;
+			/* Wrap line. */
+			while (px >= gd->sx && pywrap < endline) {
+				gl = grid_get_line(gd, pywrap);
+				if (~gl->flags & GRID_LINE_WRAPPED)
+					break;
+				px -= gd->sx;
+				pywrap++;
+			}
+			/* We have run off the end of the grid. */
+			if (px >= gd->sx)
+				break;
+			matched = window_copy_search_compare(gd, px, pywrap,
+			    sgd, bx, cis);
 			if (!matched)
 				break;
 		}
@@ -2135,7 +2159,7 @@ window_copy_move_left(struct screen *s, u_int *fx, u_int *fy, int wrapflag)
 		if (*fy == 0) { /* top */
 			if (wrapflag) {
 				*fx = screen_size_x(s) - 1;
-				*fy = screen_hsize(s) + screen_size_y(s);
+				*fy = screen_hsize(s) + screen_size_y(s) - 1;
 			}
 			return;
 		}
@@ -2149,7 +2173,7 @@ static void
 window_copy_move_right(struct screen *s, u_int *fx, u_int *fy, int wrapflag)
 {
 	if (*fx == screen_size_x(s) - 1) { /* right */
-		if (*fy == screen_hsize(s) + screen_size_y(s)) { /* bottom */
+		if (*fy == screen_hsize(s) + screen_size_y(s) - 1) { /* bottom */
 			if (wrapflag) {
 				*fx = 0;
 				*fy = 0;
@@ -2199,12 +2223,12 @@ window_copy_search_jump(struct window_mode_entry *wme, struct grid *gd,
 	} else {
 		for (i = fy + 1; endline < i; i--) {
 			found = window_copy_search_rl(gd, sgd, &px, i - 1, 0,
-			    fx, cis);
+			    fx + 1, cis);
 			if (found) {
 				i--;
 				break;
 			}
-			fx = gd->sx;
+			fx = gd->sx - 1;
 		}
 	}
 
