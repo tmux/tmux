@@ -33,8 +33,6 @@
 
 static enum cmd_retval	cmd_load_buffer_exec(struct cmd *, struct cmdq_item *);
 
-static void		cmd_load_buffer_callback(struct client *, int, void *);
-
 const struct cmd_entry cmd_load_buffer_entry = {
 	.name = "load-buffer",
 	.alias = "loadb",
@@ -48,8 +46,39 @@ const struct cmd_entry cmd_load_buffer_entry = {
 
 struct cmd_load_buffer_data {
 	struct cmdq_item	*item;
-	char			*bufname;
+	char			*name;
 };
+
+static void
+cmd_load_buffer_done(__unused struct client *c, const char *path, int error,
+    int closed, struct evbuffer *buffer, void *data)
+{
+	struct cmd_load_buffer_data	*cdata = data;
+	struct cmdq_item		*item = cdata->item;
+	void				*bdata = EVBUFFER_DATA(buffer);
+	size_t				 bsize = EVBUFFER_LENGTH(buffer);
+	void				*copy;
+	char				*cause;
+
+	if (!closed)
+		return;
+
+	if (error != 0)
+		cmdq_error(item, "%s: %s", path, strerror(error));
+	else if (bsize != 0) {
+		copy = xmalloc(bsize);
+		memcpy(copy, bdata, bsize);
+		if (paste_set(copy, bsize, cdata->name, &cause) != 0) {
+			cmdq_error(item, "%s", cause);
+			free(cause);
+			free(copy);
+		}
+	}
+	cmdq_continue(item);
+
+	free(cdata->name);
+	free(cdata);
+}
 
 static enum cmd_retval
 cmd_load_buffer_exec(struct cmd *self, struct cmdq_item *item)
@@ -60,124 +89,19 @@ cmd_load_buffer_exec(struct cmd *self, struct cmdq_item *item)
 	struct session			*s = item->target.s;
 	struct winlink			*wl = item->target.wl;
 	struct window_pane		*wp = item->target.wp;
-	FILE				*f;
-	const char			*bufname;
-	char				*pdata = NULL, *new_pdata, *cause;
-	char				*path, *file;
-	size_t				 psize;
-	int				 ch, error;
+	const char			*bufname = args_get(args, 'b');
+	char				*path;
 
-	bufname = NULL;
-	if (args_has(args, 'b'))
-		bufname = args_get(args, 'b');
+	cdata = xmalloc(sizeof *cdata);
+	cdata->item = item;
+	if (bufname != NULL)
+		cdata->name = xstrdup(bufname);
+	else
+		cdata->name = NULL;
 
 	path = format_single(item, args->argv[0], c, s, wl, wp);
-	if (strcmp(path, "-") == 0) {
-		free(path);
-		c = item->client;
-
-		cdata = xcalloc(1, sizeof *cdata);
-		cdata->item = item;
-
-		if (bufname != NULL)
-			cdata->bufname = xstrdup(bufname);
-
-		error = server_set_stdin_callback(c, cmd_load_buffer_callback,
-		    cdata, &cause);
-		if (error != 0) {
-			cmdq_error(item, "-: %s", cause);
-			free(cause);
-			free(cdata);
-			return (CMD_RETURN_ERROR);
-		}
-		return (CMD_RETURN_WAIT);
-	}
-
-	file = server_client_get_path(item->client, path);
+	file_read(item->client, path, cmd_load_buffer_done, cdata);
 	free(path);
 
-	f = fopen(file, "rb");
-	if (f == NULL) {
-		cmdq_error(item, "%s: %s", file, strerror(errno));
-		goto error;
-	}
-
-	pdata = NULL;
-	psize = 0;
-	while ((ch = getc(f)) != EOF) {
-		/* Do not let the server die due to memory exhaustion. */
-		if ((new_pdata = realloc(pdata, psize + 2)) == NULL) {
-			cmdq_error(item, "realloc error: %s", strerror(errno));
-			goto error;
-		}
-		pdata = new_pdata;
-		pdata[psize++] = ch;
-	}
-	if (ferror(f)) {
-		cmdq_error(item, "%s: read error", file);
-		goto error;
-	}
-	if (pdata != NULL)
-		pdata[psize] = '\0';
-
-	fclose(f);
-	free(file);
-
-	if (paste_set(pdata, psize, bufname, &cause) != 0) {
-		cmdq_error(item, "%s", cause);
-		free(pdata);
-		free(cause);
-		return (CMD_RETURN_ERROR);
-	}
-
-	return (CMD_RETURN_NORMAL);
-
-error:
-	free(pdata);
-	if (f != NULL)
-		fclose(f);
-	free(file);
-	return (CMD_RETURN_ERROR);
-}
-
-static void
-cmd_load_buffer_callback(struct client *c, int closed, void *data)
-{
-	struct cmd_load_buffer_data	*cdata = data;
-	char				*pdata, *cause, *saved;
-	size_t				 psize;
-
-	if (!closed)
-		return;
-	c->stdin_callback = NULL;
-
-	server_client_unref(c);
-	if (c->flags & CLIENT_DEAD)
-		goto out;
-
-	psize = EVBUFFER_LENGTH(c->stdin_data);
-	if (psize == 0 || (pdata = malloc(psize + 1)) == NULL)
-		goto out;
-
-	memcpy(pdata, EVBUFFER_DATA(c->stdin_data), psize);
-	pdata[psize] = '\0';
-	evbuffer_drain(c->stdin_data, psize);
-
-	if (paste_set(pdata, psize, cdata->bufname, &cause) != 0) {
-		/* No context so can't use server_client_msg_error. */
-		if (~c->flags & CLIENT_UTF8) {
-			saved = cause;
-			cause = utf8_sanitize(saved);
-			free(saved);
-		}
-		evbuffer_add_printf(c->stderr_data, "%s", cause);
-		server_client_push_stderr(c);
-		free(pdata);
-		free(cause);
-	}
-out:
-	cmdq_continue(cdata->item);
-
-	free(cdata->bufname);
-	free(cdata);
+	return (CMD_RETURN_WAIT);
 }

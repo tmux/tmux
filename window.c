@@ -1608,31 +1608,28 @@ winlink_shuffle_up(struct session *s, struct winlink *wl)
 }
 
 static void
-window_pane_input_callback(struct client *c, int closed, void *data)
+window_pane_input_callback(struct client *c, __unused const char *path,
+    int error, int closed, struct evbuffer *buffer, void *data)
 {
 	struct window_pane_input_data	*cdata = data;
 	struct window_pane		*wp;
-	struct evbuffer			*evb = c->stdin_data;
-	u_char				*buf = EVBUFFER_DATA(evb);
-	size_t				 len = EVBUFFER_LENGTH(evb);
+	u_char				*buf = EVBUFFER_DATA(buffer);
+	size_t				 len = EVBUFFER_LENGTH(buffer);
 
 	wp = window_pane_find_by_id(cdata->wp);
-	if (wp == NULL || closed || c->flags & CLIENT_DEAD) {
+	if (wp == NULL || closed || error != 0 || c->flags & CLIENT_DEAD) {
 		if (wp == NULL)
 			c->flags |= CLIENT_EXIT;
-		evbuffer_drain(evb, len);
 
-		c->stdin_callback = NULL;
-		server_client_unref(c);
-
+		evbuffer_drain(buffer, len);
 		cmdq_continue(cdata->item);
-		free(cdata);
 
+		server_client_unref(c);
+		free(cdata);
 		return;
 	}
-
 	input_parse_buffer(wp, buf, len);
-	evbuffer_drain(evb, len);
+	evbuffer_drain(buffer, len);
 }
 
 int
@@ -1651,6 +1648,8 @@ window_pane_start_input(struct window_pane *wp, struct cmdq_item *item,
 	cdata->item = item;
 	cdata->wp = wp->id;
 
-	return (server_set_stdin_callback(c, window_pane_input_callback, cdata,
-	    cause));
+	c->references++;
+	file_read(c, "-", window_pane_input_callback, cdata);
+
+	return (0);
 }

@@ -31,8 +31,6 @@
 
 static enum cmd_retval	cmd_source_file_exec(struct cmd *, struct cmdq_item *);
 
-static enum cmd_retval	cmd_source_file_done(struct cmdq_item *, void *);
-
 const struct cmd_entry cmd_source_file_entry = {
 	.name = "source-file",
 	.alias = "source",
@@ -44,31 +42,115 @@ const struct cmd_entry cmd_source_file_entry = {
 	.exec = cmd_source_file_exec
 };
 
+struct cmd_source_file_data {
+	struct cmdq_item	 *item;
+	int			  flags;
+
+	struct cmdq_item	 *after;
+	enum cmd_retval		  retval;
+
+	u_int			  current;
+	char			**files;
+	u_int			  nfiles;
+};
+
+static enum cmd_retval
+cmd_source_file_complete_cb(struct cmdq_item *item, __unused void *data)
+{
+	cfg_print_causes(item);
+	return (CMD_RETURN_NORMAL);
+}
+
+static void
+cmd_source_file_complete(struct client *c, struct cmd_source_file_data *cdata)
+{
+	struct cmdq_item	*new_item;
+
+	if (cfg_finished) {
+		if (cdata->retval == CMD_RETURN_ERROR && c->session == NULL)
+			c->retval = 1;
+		new_item = cmdq_get_callback(cmd_source_file_complete_cb, NULL);
+		cmdq_insert_after(cdata->after, new_item);
+	}
+
+	free(cdata->files);
+	free(cdata);
+}
+
+static void
+cmd_source_file_done(struct client *c, const char *path, int error,
+    int closed, struct evbuffer *buffer, void *data)
+{
+	struct cmd_source_file_data	*cdata = data;
+	struct cmdq_item		*item = cdata->item;
+	void				*bdata = EVBUFFER_DATA(buffer);
+	size_t				 bsize = EVBUFFER_LENGTH(buffer);
+	u_int				 n;
+	struct cmdq_item		*new_item;
+
+	if (!closed)
+		return;
+
+	if (error != 0)
+		cmdq_error(item, "%s: %s", path, strerror(error));
+	else if (bsize != 0) {
+		if (load_cfg_from_buffer(bdata, bsize, path, c, cdata->after,
+		    cdata->flags, &new_item) < 0)
+			cdata->retval = CMD_RETURN_ERROR;
+		else if (new_item != NULL)
+			cdata->after = new_item;
+	}
+
+	n = ++cdata->current;
+	if (n < cdata->nfiles)
+		file_read(c, cdata->files[n], cmd_source_file_done, cdata);
+	else {
+		cmd_source_file_complete(c, cdata);
+		cmdq_continue(item);
+	}
+}
+
+static void
+cmd_source_file_add(struct cmd_source_file_data *cdata, const char *path)
+{
+	cdata->files = xreallocarray(cdata->files, cdata->nfiles + 1,
+	    sizeof *cdata->files);
+	cdata->files[cdata->nfiles++] = xstrdup(path);
+}
+
 static enum cmd_retval
 cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
-	int			 flags = 0;
-	struct client		*c = item->client;
-	struct cmdq_item	*new_item, *after;
-	enum cmd_retval		 retval;
-	char			*pattern, *cwd;
-	const char		*path, *error;
-	glob_t			 g;
-	int			 i;
-	u_int			 j;
+	struct args			*args = self->args;
+	struct cmd_source_file_data	*cdata;
+	int				 flags = 0;
+	struct client			*c = item->client;
+	enum cmd_retval			 retval = CMD_RETURN_NORMAL;
+	char				*pattern, *cwd;
+	const char			*path, *error;
+	glob_t				 g;
+	int				 i;
+	u_int				 j;
+
+	cdata = xcalloc(1, sizeof *cdata);
+	cdata->item = item;
 
 	if (args_has(args, 'q'))
-		flags |= CMD_PARSE_QUIET;
+		cdata->flags |= CMD_PARSE_QUIET;
 	if (args_has(args, 'n'))
-		flags |= CMD_PARSE_PARSEONLY;
+		cdata->flags |= CMD_PARSE_PARSEONLY;
 	if (args_has(args, 'v'))
-		flags |= CMD_PARSE_VERBOSE;
+		cdata->flags |= CMD_PARSE_VERBOSE;
+
 	utf8_stravis(&cwd, server_client_get_cwd(c, NULL), VIS_GLOB);
 
-	retval = CMD_RETURN_NORMAL;
 	for (i = 0; i < args->argc; i++) {
 		path = args->argv[i];
+		if (strcmp(path, "-") == 0) {
+			cmd_source_file_add(cdata, "-");
+			continue;
+		}
+
 		if (*path == '/')
 			pattern = xstrdup(path);
 		else
@@ -86,30 +168,19 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 		}
 		free(pattern);
 
-		after = item;
-		for (j = 0; j < g.gl_pathc; j++) {
-			path = g.gl_pathv[j];
-			if (load_cfg(path, c, after, flags, &new_item) < 0)
-				retval = CMD_RETURN_ERROR;
-			else if (new_item != NULL)
-				after = new_item;
-		}
-		globfree(&g);
+		for (j = 0; j < g.gl_pathc; j++)
+			cmd_source_file_add(cdata, g.gl_pathv[j]);
 	}
-	if (cfg_finished) {
-		if (retval == CMD_RETURN_ERROR && c->session == NULL)
-			c->retval = 1;
-		new_item = cmdq_get_callback(cmd_source_file_done, NULL);
-		cmdq_insert_after(item, new_item);
-	}
+
+	cdata->after = item;
+	cdata->retval = retval;
+
+	if (cdata->nfiles != 0) {
+		file_read(c, cdata->files[0], cmd_source_file_done, cdata);
+		retval = CMD_RETURN_WAIT;
+	} else
+		cmd_source_file_complete(c, cdata);
 
 	free(cwd);
 	return (retval);
-}
-
-static enum cmd_retval
-cmd_source_file_done(struct cmdq_item *item, __unused void *data)
-{
-	cfg_print_causes(item);
-	return (CMD_RETURN_NORMAL);
 }

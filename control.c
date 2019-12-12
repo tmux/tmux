@@ -30,23 +30,12 @@
 void
 control_write(struct client *c, const char *fmt, ...)
 {
-	va_list		 ap;
+	va_list	ap;
 
 	va_start(ap, fmt);
-	evbuffer_add_vprintf(c->stdout_data, fmt, ap);
+	file_vprint(c, fmt, ap);
+	file_print(c, "\n");
 	va_end(ap);
-
-	evbuffer_add(c->stdout_data, "\n", 1);
-	server_client_push_stdout(c);
-}
-
-/* Write a buffer, adding a terminal newline. Empties buffer. */
-void
-control_write_buffer(struct client *c, struct evbuffer *buffer)
-{
-	evbuffer_add_buffer(c->stdout_data, buffer);
-	evbuffer_add(c->stdout_data, "\n", 1);
-	server_client_push_stdout(c);
 }
 
 /* Control error callback. */
@@ -65,20 +54,22 @@ control_error(struct cmdq_item *item, void *data)
 }
 
 /* Control input callback. Read lines and fire commands. */
-void
-control_callback(struct client *c, int closed, __unused void *data)
+static void
+control_callback(__unused struct client *c, __unused const char *path,
+    int error, int closed, struct evbuffer *buffer, __unused void *data)
 {
 	char			*line;
 	struct cmdq_item	*item;
 	struct cmd_parse_result	*pr;
 
-	if (closed)
+	if (closed || error != 0)
 		c->flags |= CLIENT_EXIT;
 
 	for (;;) {
-		line = evbuffer_readln(c->stdin_data, NULL, EVBUFFER_EOL_LF);
+		line = evbuffer_readln(buffer, NULL, EVBUFFER_EOL_LF);
 		if (line == NULL)
 			break;
+		log_debug("%s: %s", __func__, line);
 		if (*line == '\0') { /* empty line exit */
 			free(line);
 			c->flags |= CLIENT_EXIT;
@@ -103,4 +94,13 @@ control_callback(struct client *c, int closed, __unused void *data)
 
 		free(line);
 	}
+}
+
+void
+control_start(struct client *c)
+{
+	file_read(c, "-", control_callback, c);
+
+	if (c->flags & CLIENT_CONTROLCONTROL)
+		file_print(c, "\033P1000p");
 }

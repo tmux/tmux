@@ -193,7 +193,7 @@ static enum cmd_retval
 cmd_capture_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = self->args;
-	struct client		*c;
+	struct client		*c = item->client;
 	struct window_pane	*wp = item->target.wp;
 	char			*buf, *cause;
 	const char		*bufname;
@@ -214,18 +214,15 @@ cmd_capture_pane_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_ERROR);
 
 	if (args_has(args, 'p')) {
-		c = item->client;
-		if (c == NULL ||
-		    (c->session != NULL && !(c->flags & CLIENT_CONTROL))) {
-			cmdq_error(item, "can't write to stdout");
+		if (!file_can_print(c)) {
+			cmdq_error(item, "can't write output to client");
 			free(buf);
 			return (CMD_RETURN_ERROR);
 		}
-		evbuffer_add(c->stdout_data, buf, len);
-		free(buf);
+		file_print_buffer(c, buf, len);
 		if (args_has(args, 'P') && len > 0)
-		    evbuffer_add(c->stdout_data, "\n", 1);
-		server_client_push_stdout(c);
+			file_print(c, "\n");
+		free(buf);
 	} else {
 		bufname = NULL;
 		if (args_has(args, 'b'))
