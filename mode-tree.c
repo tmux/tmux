@@ -598,6 +598,8 @@ mode_tree_draw(struct mode_tree_data *mtd)
 		xasprintf(&text, "%-*s%s%s%s: ", keylen, key, start, mti->name,
 		    tag);
 		width = utf8_cstrwidth(text);
+		if (width > w)
+			width = w;
 		free(start);
 
 		if (mti->tagged) {
@@ -607,11 +609,11 @@ mode_tree_draw(struct mode_tree_data *mtd)
 
 		if (i != mtd->current) {
 			screen_write_clearendofline(&ctx, 8);
-			screen_write_puts(&ctx, &gc0, "%s", text);
+			screen_write_nputs(&ctx, w, &gc0, "%s", text);
 			format_draw(&ctx, &gc0, w - width, mti->text, NULL);
 		} else {
 			screen_write_clearendofline(&ctx, gc.bg);
-			screen_write_puts(&ctx, &gc, "%s", text);
+			screen_write_nputs(&ctx, w, &gc, "%s", text);
 			format_draw(&ctx, &gc, w - width, mti->text, NULL);
 		}
 		free(text);
