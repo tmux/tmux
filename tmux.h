@@ -478,13 +478,21 @@ enum msgtype {
 	MSG_RESIZE,
 	MSG_SHELL,
 	MSG_SHUTDOWN,
-	MSG_STDERR,
-	MSG_STDIN,
-	MSG_STDOUT,
+	MSG_OLDSTDERR, /* unused */
+	MSG_OLDSTDIN, /* unused */
+	MSG_OLDSTDOUT, /* unused */
 	MSG_SUSPEND,
 	MSG_UNLOCK,
 	MSG_WAKEUP,
 	MSG_EXEC,
+
+	MSG_READ_OPEN = 300,
+	MSG_READ,
+	MSG_READ_DONE,
+	MSG_WRITE_OPEN,
+	MSG_WRITE,
+	MSG_WRITE_READY,
+	MSG_WRITE_CLOSE
 };
 
 /*
@@ -492,23 +500,47 @@ enum msgtype {
  *
  * Don't forget to bump PROTOCOL_VERSION if any of these change!
  */
-struct msg_command_data {
+struct msg_command {
 	int	argc;
 }; /* followed by packed argv */
 
-struct msg_stdin_data {
-	ssize_t	size;
+struct msg_read_open {
+	int	stream;
+	int	fd;
+	char	path[PATH_MAX];
+};
+
+struct msg_read_data {
+	int	stream;
+	size_t	size;
 	char	data[BUFSIZ];
 };
 
-struct msg_stdout_data {
-	ssize_t	size;
+struct msg_read_done {
+	int	stream;
+	int	error;
+};
+
+struct msg_write_open {
+	int	stream;
+	int	fd;
+	char	path[PATH_MAX];
+	int	flags;
+};
+
+struct msg_write_data {
+	int	stream;
+	size_t	size;
 	char	data[BUFSIZ];
 };
 
-struct msg_stderr_data {
-	ssize_t	size;
-	char	data[BUFSIZ];
+struct msg_write_ready {
+	int	stream;
+	int	error;
+};
+
+struct msg_write_close {
+	int	stream;
 };
 
 /* Mode keys. */
@@ -1474,6 +1506,29 @@ struct status_line {
 	struct status_line_entry entries[STATUS_LINES_LIMIT];
 };
 
+/* File in client. */
+typedef void (*client_file_cb) (struct client *, const char *, int, int,
+    struct evbuffer *, void *);
+struct client_file {
+	struct client			*c;
+	int				 references;
+	int				 stream;
+
+	char				*path;
+	struct evbuffer			*buffer;
+	struct bufferevent		*event;
+
+	int				 fd;
+	int				 error;
+	int				 closed;
+
+	client_file_cb			 cb;
+	void				*data;
+
+	RB_ENTRY (client_file)		 entry;
+};
+RB_HEAD(client_files, client_file);
+
 /* Client connection. */
 typedef int (*prompt_input_cb)(struct client *, void *, const char *, int);
 typedef void (*prompt_free_cb)(void *);
@@ -1506,13 +1561,6 @@ struct client {
 	size_t		 written;
 	size_t		 discarded;
 	size_t		 redraw;
-
-	void		(*stdin_callback)(struct client *, int, void *);
-	void		*stdin_callback_data;
-	struct evbuffer	*stdin_data;
-	int		 stdin_closed;
-	struct evbuffer	*stdout_data;
-	struct evbuffer	*stderr_data;
 
 	struct event	 repeat_timer;
 
@@ -1596,6 +1644,8 @@ struct client {
 	overlay_free_cb	 overlay_free;
 	void		*overlay_data;
 	struct event	 overlay_timer;
+
+	struct client_files files;
 
 	TAILQ_ENTRY(client) entry;
 };
@@ -2129,6 +2179,23 @@ void	alerts_reset_all(void);
 void	alerts_queue(struct window *, int);
 void	alerts_check_session(struct session *);
 
+/* file.c */
+int	 file_cmp(struct client_file *, struct client_file *);
+RB_PROTOTYPE(client_files, client_file, entry, file_cmp);
+struct client_file *file_create(struct client *, int, client_file_cb, void *);
+void	 file_free(struct client_file *);
+void	 file_fire_done(struct client_file *);
+void	 file_fire_read(struct client_file *);
+int	 file_can_print(struct client *);
+void printflike(2, 3) file_print(struct client *, const char *, ...);
+void 	 file_vprint(struct client *, const char *, va_list);
+void 	 file_print_buffer(struct client *, void *, size_t);
+void printflike(2, 3) file_error(struct client *, const char *, ...);
+void	 file_write(struct client *, const char *, int, const void *, size_t,
+	     client_file_cb, void *);
+void	 file_read(struct client *, const char *, client_file_cb, void *);
+void	 file_push(struct client_file *);
+
 /* server.c */
 extern struct tmuxproc *server_proc;
 extern struct clients clients;
@@ -2187,8 +2254,6 @@ void	 server_unlink_window(struct session *, struct winlink *);
 void	 server_destroy_pane(struct window_pane *, int);
 void	 server_destroy_session(struct session *);
 void	 server_check_unattached(void);
-int	 server_set_stdin_callback(struct client *, void (*)(struct client *,
-	     int, void *), void *, char **);
 void	 server_unzoom_window(struct window *);
 
 /* status.c */
@@ -2573,9 +2638,8 @@ char	*default_window_name(struct window *);
 char	*parse_window_name(const char *);
 
 /* control.c */
-void	control_callback(struct client *, int, void *);
+void	control_start(struct client *);
 void printflike(2, 3) control_write(struct client *, const char *, ...);
-void	control_write_buffer(struct client *, struct evbuffer *);
 
 /* control-notify.c */
 void	control_notify_input(struct client *, struct window_pane *,
