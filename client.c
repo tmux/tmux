@@ -45,6 +45,7 @@ static enum {
 	CLIENT_EXIT_EXITED,
 	CLIENT_EXIT_SERVER_EXITED,
 } client_exitreason = CLIENT_EXIT_NONE;
+static int		 client_exitflag;
 static int		 client_exitval;
 static enum msgtype	 client_exittype;
 static const char	*client_exitsession;
@@ -207,6 +208,27 @@ client_exit_message(void)
 		return ("server exited");
 	}
 	return ("unknown reason");
+}
+
+/* Exit if all streams flushed. */
+static void
+client_exit(void)
+{
+	struct client_file	*cf;
+	size_t 			 left;
+	int			 waiting = 0;
+
+	RB_FOREACH (cf, client_files, &client_files) {
+		if (cf->event == NULL)
+			continue;
+		left = EVBUFFER_LENGTH(cf->event->output);
+		if (left != 0) {
+			waiting++;
+			log_debug("file %u %zu bytes left", cf->stream, left);
+		}
+	}
+	if (waiting == 0)
+		proc_exit(client_proc);
 }
 
 /* Client main loop. */
@@ -451,6 +473,9 @@ client_write_callback(__unused struct bufferevent *bev, void *arg)
 		RB_REMOVE(client_files, &client_files, cf);
 		file_free(cf);
 	}
+
+	if (client_exitflag)
+		client_exit();
 }
 
 /* Open write file. */
@@ -724,29 +749,6 @@ client_signal(int sig)
 	}
 }
 
-/* Exit if all streams flushed. */
-static void
-client_exit(__unused int fd, __unused short events, __unused void *arg)
-{
-	struct client_file	*cf;
-	size_t 			 left;
-	int			 waiting = 0;
-
-	RB_FOREACH (cf, client_files, &client_files) {
-		if (cf->event == NULL)
-			continue;
-		left = EVBUFFER_LENGTH(cf->event->output);
-		if (left != 0) {
-			waiting++;
-			log_debug("file %u %zu bytes left", cf->stream, left);
-		}
-	}
-	if (waiting == 0)
-		proc_exit(client_proc);
-	else
-		event_once(-1, EV_TIMEOUT, client_exit, NULL, NULL);
-}
-
 /* Callback for client read events. */
 static void
 client_dispatch(struct imsg *imsg, __unused void *arg)
@@ -799,7 +801,8 @@ client_dispatch_wait(struct imsg *imsg)
 			memcpy(&retval, data, sizeof retval);
 			client_exitval = retval;
 		}
-		event_once(-1, EV_TIMEOUT, client_exit, NULL, NULL);
+		client_exitflag = 1;
+		client_exit();
 		break;
 	case MSG_READY:
 		if (datalen != 0)
