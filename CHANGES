@@ -1,5 +1,9 @@
 CHANGES FROM 3.0 to X.X
 
+* Change file reading and writing to go through the client if necessary. This
+  fixes commands like "tmux loadb /dev/fd/X". Also modify source-file to
+  support "-" for standard input, like load-buffer and save-buffer.
+
 * Add ~/.config/tmux/tmux.conf to the default search path for configuration
   files.
 
