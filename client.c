@@ -459,6 +459,9 @@ client_write_error_callback(__unused struct bufferevent *bev,
 
 	close(cf->fd);
 	cf->fd = -1;
+
+	if (client_exitflag)
+		client_exit();
 }
 
 /* File write callback. */
