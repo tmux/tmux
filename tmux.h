@@ -507,13 +507,10 @@ struct msg_command {
 struct msg_read_open {
 	int	stream;
 	int	fd;
-	char	path[PATH_MAX];
-};
+}; /* followed by path */
 
 struct msg_read_data {
 	int	stream;
-	size_t	size;
-	char	data[BUFSIZ];
 };
 
 struct msg_read_done {
@@ -524,15 +521,12 @@ struct msg_read_done {
 struct msg_write_open {
 	int	stream;
 	int	fd;
-	char	path[PATH_MAX];
 	int	flags;
-};
+}; /* followed by path */
 
 struct msg_write_data {
 	int	stream;
-	size_t	size;
-	char	data[BUFSIZ];
-};
+}; /* followed by data */
 
 struct msg_write_ready {
 	int	stream;

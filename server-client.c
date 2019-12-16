@@ -2024,10 +2024,10 @@ server_client_dispatch_read_data(struct client *c, struct imsg *imsg)
 	struct msg_read_data	*msg = imsg->data;
 	size_t			 msglen = imsg->hdr.len - IMSG_HEADER_SIZE;
 	struct client_file	 find, *cf;
-	void			*bdata = msg->data;
-	size_t			 bsize = msg->size;
+	void			*bdata = msg + 1;
+	size_t			 bsize = msglen - sizeof *msg;
 
-	if (msglen != sizeof *msg)
+	if (msglen < sizeof *msg)
 		fatalx("bad MSG_READ_DATA size");
 	find.stream = msg->stream;
 	if ((cf = RB_FIND(client_files, &c->files, &find)) == NULL)
