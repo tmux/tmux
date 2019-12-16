@@ -17,9 +17,11 @@
  */
 
 #include <sys/types.h>
+#include <sys/queue.h>
 
 #include <errno.h>
 #include <fcntl.h>
+#include <imsg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -30,6 +32,18 @@
 static int	file_next_stream = 3;
 
 RB_GENERATE(client_files, client_file, entry, file_cmp);
+
+static char *
+file_get_path(struct client *c, const char *file)
+{
+	char	*path;
+
+	if (*file == '/')
+		path = xstrdup(file);
+	else
+		xasprintf(&path, "%s/%s", server_client_get_cwd(c, NULL), file);
+	return (path);
+}
 
 int
 file_cmp(struct client_file *cf1, struct client_file *cf2)
@@ -147,7 +161,6 @@ file_vprint(struct client *c, const char *fmt, va_list ap)
 		msg.stream = 1;
 		msg.fd = STDOUT_FILENO;
 		msg.flags = 0;
-		strlcpy(msg.path, "-", sizeof msg.path);
 		proc_send(c->peer, MSG_WRITE_OPEN, -1, &msg, sizeof msg);
 	} else {
 		evbuffer_add_vprintf(cf->buffer, fmt, ap);
@@ -174,7 +187,6 @@ file_print_buffer(struct client *c, void *data, size_t size)
 		msg.stream = 1;
 		msg.fd = STDOUT_FILENO;
 		msg.flags = 0;
-		strlcpy(msg.path, "-", sizeof msg.path);
 		proc_send(c->peer, MSG_WRITE_OPEN, -1, &msg, sizeof msg);
 	} else {
 		evbuffer_add(cf->buffer, data, size);
@@ -204,7 +216,6 @@ file_error(struct client *c, const char *fmt, ...)
 		msg.stream = 2;
 		msg.fd = STDERR_FILENO;
 		msg.flags = 0;
-		strlcpy(msg.path, "-", sizeof msg.path);
 		proc_send(c->peer, MSG_WRITE_OPEN, -1, &msg, sizeof msg);
 	} else {
 		evbuffer_add_vprintf(cf->buffer, fmt, ap);
@@ -220,7 +231,8 @@ file_write(struct client *c, const char *path, int flags, const void *bdata,
 {
 	struct client_file	*cf;
 	FILE			*f;
-	struct msg_write_open	 msg;
+	struct msg_write_open	*msg;
+	size_t			 msglen;
 	int			 fd = -1;
 	const char		*mode;
 
@@ -237,7 +249,7 @@ file_write(struct client *c, const char *path, int flags, const void *bdata,
 	}
 
 	cf = file_create(c, file_next_stream++, cb, cbdata);
-	cf->path = server_client_get_path(c, path);
+	cf->path = file_get_path(c, path);
 
 	if (c == NULL || c->flags & CLIENT_ATTACHED) {
 		if (flags & O_APPEND)
@@ -261,17 +273,22 @@ file_write(struct client *c, const char *path, int flags, const void *bdata,
 skip:
 	evbuffer_add(cf->buffer, bdata, bsize);
 
-	msg.stream = cf->stream;
-	msg.fd = fd;
-	msg.flags = flags;
-	if (strlcpy(msg.path, cf->path, sizeof msg.path) >= sizeof msg.path) {
+	msglen = strlen(cf->path) + 1 + sizeof *msg;
+	if (msglen > MAX_IMSGSIZE - IMSG_HEADER_SIZE) {
 		cf->error = E2BIG;
 		goto done;
 	}
-	if (proc_send(c->peer, MSG_WRITE_OPEN, -1, &msg, sizeof msg) != 0) {
+	msg = xmalloc(msglen);
+	msg->stream = cf->stream;
+	msg->fd = fd;
+	msg->flags = flags;
+	memcpy(msg + 1, cf->path, msglen - sizeof *msg);
+	if (proc_send(c->peer, MSG_WRITE_OPEN, -1, msg, msglen) != 0) {
+		free(msg);
 		cf->error = EINVAL;
 		goto done;
 	}
+	free(msg);
 	return;
 
 done:
@@ -283,10 +300,10 @@ file_read(struct client *c, const char *path, client_file_cb cb, void *cbdata)
 {
 	struct client_file	*cf;
 	FILE			*f;
-	struct msg_read_open	 msg;
+	struct msg_read_open	*msg;
+	size_t			 msglen, size;
 	int			 fd = -1;
 	char			 buffer[BUFSIZ];
-	size_t			 size;
 
 	if (strcmp(path, "-") == 0) {
 		cf = file_create(c, file_next_stream++, cb, cbdata);
@@ -301,7 +318,7 @@ file_read(struct client *c, const char *path, client_file_cb cb, void *cbdata)
 	}
 
 	cf = file_create(c, file_next_stream++, cb, cbdata);
-	cf->path = server_client_get_path(c, path);
+	cf->path = file_get_path(c, path);
 
 	if (c == NULL || c->flags & CLIENT_ATTACHED) {
 		f = fopen(cf->path, "rb");
@@ -327,16 +344,21 @@ file_read(struct client *c, const char *path, client_file_cb cb, void *cbdata)
 	}
 
 skip:
-	msg.stream = cf->stream;
-	msg.fd = fd;
-	if (strlcpy(msg.path, cf->path, sizeof msg.path) >= sizeof msg.path) {
+	msglen = strlen(cf->path) + 1 + sizeof *msg;
+	if (msglen > MAX_IMSGSIZE - IMSG_HEADER_SIZE) {
 		cf->error = E2BIG;
 		goto done;
 	}
-	if (proc_send(c->peer, MSG_READ_OPEN, -1, &msg, sizeof msg) != 0) {
+	msg = xmalloc(msglen);
+	msg->stream = cf->stream;
+	msg->fd = fd;
+	memcpy(msg + 1, cf->path, msglen - sizeof *msg);
+	if (proc_send(c->peer, MSG_READ_OPEN, -1, msg, msglen) != 0) {
+		free(msg);
 		cf->error = EINVAL;
 		goto done;
 	}
+	free(msg);
 	return;
 
 done:
@@ -358,20 +380,22 @@ void
 file_push(struct client_file *cf)
 {
 	struct client		*c = cf->c;
-	struct msg_write_data	 msg;
+	struct msg_write_data	*msg;
+	size_t			 msglen, sent, left;
 	struct msg_write_close	 close;
-	size_t			 sent, left;
 
+	msg = xmalloc(sizeof *msg);
 	left = EVBUFFER_LENGTH(cf->buffer);
 	while (left != 0) {
 		sent = left;
-		if (sent > sizeof msg.data)
-			sent = sizeof msg.data;
-		memcpy(msg.data, EVBUFFER_DATA(cf->buffer), sent);
-		msg.size = sent;
+		if (sent > MAX_IMSGSIZE - IMSG_HEADER_SIZE - sizeof *msg)
+			sent = MAX_IMSGSIZE - IMSG_HEADER_SIZE - sizeof *msg;
 
-		msg.stream = cf->stream;
-		if (proc_send(c->peer, MSG_WRITE, -1, &msg, sizeof msg) != 0)
+		msglen = (sizeof *msg) + sent;
+		msg = xrealloc(msg, msglen);
+		msg->stream = cf->stream;
+		memcpy(msg + 1, EVBUFFER_DATA(cf->buffer), sent);
+		if (proc_send(c->peer, MSG_WRITE, -1, msg, msglen) != 0)
 			break;
 		evbuffer_drain(cf->buffer, sent);
 
@@ -387,4 +411,5 @@ file_push(struct client_file *cf)
 		proc_send(c->peer, MSG_WRITE_CLOSE, -1, &close, sizeof close);
 		file_fire_done(cf);
 	}
+	free(msg);
 }

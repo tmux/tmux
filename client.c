@@ -488,14 +488,19 @@ static void
 client_write_open(void *data, size_t datalen)
 {
 	struct msg_write_open	*msg = data;
+	const char		*path;
 	struct msg_write_ready	 reply;
 	struct client_file	 find, *cf;
 	const int		 flags = O_NONBLOCK|O_WRONLY|O_CREAT;
 	int			 error = 0;
 
-	if (datalen != sizeof *msg)
+	if (datalen < sizeof *msg)
 		fatalx("bad MSG_WRITE_OPEN size");
-	log_debug("open write file %d %s", msg->stream, msg->path);
+	if (datalen == sizeof *msg)
+		path = "-";
+	else
+		path = (const char *)(msg + 1);
+	log_debug("open write file %d %s", msg->stream, path);
 
 	find.stream = msg->stream;
 	if ((cf = RB_FIND(client_files, &client_files, &find)) == NULL) {
@@ -512,7 +517,7 @@ client_write_open(void *data, size_t datalen)
 
 	cf->fd = -1;
 	if (msg->fd == -1)
-		cf->fd = open(msg->path, msg->flags|flags, 0644);
+		cf->fd = open(path, msg->flags|flags, 0644);
 	else {
 		if (msg->fd != STDOUT_FILENO && msg->fd != STDERR_FILENO)
 			errno = EBADF;
@@ -544,16 +549,17 @@ client_write_data(void *data, size_t datalen)
 {
 	struct msg_write_data	*msg = data;
 	struct client_file	 find, *cf;
+	size_t			 size = datalen - sizeof *msg;
 
-	if (datalen != sizeof *msg)
+	if (datalen < sizeof *msg)
 		fatalx("bad MSG_WRITE size");
 	find.stream = msg->stream;
 	if ((cf = RB_FIND(client_files, &client_files, &find)) == NULL)
 		fatalx("unknown stream number");
-	log_debug("write %zu to file %d", msg->size, cf->stream);
+	log_debug("write %zu to file %d", size, cf->stream);
 
 	if (cf->event != NULL)
-		bufferevent_write(cf->event, msg->data, msg->size);
+		bufferevent_write(cf->event, msg + 1, size);
 }
 
 /* Close client file. */
@@ -587,26 +593,29 @@ client_read_callback(__unused struct bufferevent *bev, void *arg)
 	struct client_file	*cf = arg;
 	void			*bdata;
 	size_t			 bsize;
-	struct msg_read_data	 msg;
+	struct msg_read_data	*msg;
+	size_t			 msglen;
 
+	msg = xmalloc(sizeof *msg);
 	for (;;) {
 		bdata = EVBUFFER_DATA(cf->event->input);
 		bsize = EVBUFFER_LENGTH(cf->event->input);
 
 		if (bsize == 0)
 			break;
-		if (bsize > sizeof msg.data)
-			bsize = sizeof msg.data;
+		if (bsize > MAX_IMSGSIZE - IMSG_HEADER_SIZE - sizeof *msg)
+			bsize = MAX_IMSGSIZE - IMSG_HEADER_SIZE - sizeof *msg;
 		log_debug("read %zu from file %d", bsize, cf->stream);
 
-		memcpy(msg.data, bdata, bsize);
-		msg.size = bsize;
-
-		msg.stream = cf->stream;
-		proc_send(client_peer, MSG_READ, -1, &msg, sizeof msg);
+		msglen = (sizeof *msg) + bsize;
+		msg = xrealloc(msg, msglen);
+		msg->stream = cf->stream;
+		memcpy(msg + 1, bdata, bsize);
+		proc_send(client_peer, MSG_READ, -1, msg, msglen);
 
 		evbuffer_drain(cf->event->input, bsize);
 	}
+	free(msg);
 }
 
 /* File read error callback. */
@@ -634,14 +643,19 @@ static void
 client_read_open(void *data, size_t datalen)
 {
 	struct msg_read_open	*msg = data;
+	const char		*path;
 	struct msg_read_done	 reply;
 	struct client_file	 find, *cf;
 	const int		 flags = O_NONBLOCK|O_RDONLY;
 	int			 error = 0;
 
-	if (datalen != sizeof *msg)
+	if (datalen < sizeof *msg)
 		fatalx("bad MSG_READ_OPEN size");
-	log_debug("open read file %d %s", msg->stream, msg->path);
+	if (datalen == sizeof *msg)
+		path = "-";
+	else
+		path = (const char *)(msg + 1);
+	log_debug("open read file %d %s", msg->stream, path);
 
 	find.stream = msg->stream;
 	if ((cf = RB_FIND(client_files, &client_files, &find)) == NULL) {
@@ -658,7 +672,7 @@ client_read_open(void *data, size_t datalen)
 
 	cf->fd = -1;
 	if (msg->fd == -1)
-		cf->fd = open(msg->path, flags);
+		cf->fd = open(path, flags);
 	else {
 		if (msg->fd != STDIN_FILENO)
 			errno = EBADF;
