@@ -21,6 +21,7 @@
 #include <sys/ioctl.h>
 #include <sys/uio.h>
 
+#include <fnmatch.h>
 #include <limits.h>
 #include <stdio.h>
 #include <termios.h>
@@ -167,6 +168,10 @@ void	warnx(const char *, ...);
 
 #ifndef O_DIRECTORY
 #define O_DIRECTORY 0
+#endif
+
+#ifndef FNM_CASEFOLD
+#define FNM_CASEFOLD 0
 #endif
 
 #ifndef INFTIM
