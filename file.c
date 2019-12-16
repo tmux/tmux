@@ -376,8 +376,8 @@ file_push(struct client_file *cf)
 	left = EVBUFFER_LENGTH(cf->buffer);
 	while (left != 0) {
 		sent = left;
-		if (sent > MAX_IMSGSIZE - IMSG_HEADER_SIZE)
-			sent = MAX_IMSGSIZE - IMSG_HEADER_SIZE;
+		if (sent > MAX_IMSGSIZE - IMSG_HEADER_SIZE - sizeof *msg)
+			sent = MAX_IMSGSIZE - IMSG_HEADER_SIZE - sizeof *msg;
 
 		msglen = (sizeof *msg) + sent;
 		msg = xrealloc(msg, msglen);

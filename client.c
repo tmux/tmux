@@ -601,8 +601,8 @@ client_read_callback(__unused struct bufferevent *bev, void *arg)
 
 		if (bsize == 0)
 			break;
-		if (bsize > MAX_IMSGSIZE - IMSG_HEADER_SIZE)
-			bsize = MAX_IMSGSIZE - IMSG_HEADER_SIZE;
+		if (bsize > MAX_IMSGSIZE - IMSG_HEADER_SIZE - sizeof *msg)
+			bsize = MAX_IMSGSIZE - IMSG_HEADER_SIZE - sizeof *msg;
 		log_debug("read %zu from file %d", bsize, cf->stream);
 
 		msglen = (sizeof *msg) + bsize;
