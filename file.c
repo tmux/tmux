@@ -33,6 +33,18 @@ static int	file_next_stream = 3;
 
 RB_GENERATE(client_files, client_file, entry, file_cmp);
 
+static char *
+file_get_path(struct client *c, const char *file)
+{
+	char	*path;
+
+	if (*file == '/')
+		path = xstrdup(file);
+	else
+		xasprintf(&path, "%s/%s", server_client_get_cwd(c, NULL), file);
+	return (path);
+}
+
 int
 file_cmp(struct client_file *cf1, struct client_file *cf2)
 {
@@ -237,7 +249,7 @@ file_write(struct client *c, const char *path, int flags, const void *bdata,
 	}
 
 	cf = file_create(c, file_next_stream++, cb, cbdata);
-	cf->path = server_client_get_path(c, path);
+	cf->path = file_get_path(c, path);
 
 	if (c == NULL || c->flags & CLIENT_ATTACHED) {
 		if (flags & O_APPEND)
@@ -306,7 +318,7 @@ file_read(struct client *c, const char *path, client_file_cb cb, void *cbdata)
 	}
 
 	cf = file_create(c, file_next_stream++, cb, cbdata);
-	cf->path = server_client_get_path(c, path);
+	cf->path = file_get_path(c, path);
 
 	if (c == NULL || c->flags & CLIENT_ATTACHED) {
 		f = fopen(cf->path, "rb");

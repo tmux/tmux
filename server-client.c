@@ -2111,19 +2111,3 @@ server_client_get_cwd(struct client *c, struct session *s)
 		return (home);
 	return ("/");
 }
-
-/* Resolve an absolute path or relative to client working directory. */
-char *
-server_client_get_path(struct client *c, const char *file)
-{
-	char	*path, resolved[PATH_MAX];
-
-	if (*file == '/')
-		path = xstrdup(file);
-	else
-		xasprintf(&path, "%s/%s", server_client_get_cwd(c, NULL), file);
-	if (realpath(path, resolved) == NULL)
-		return (path);
-	free(path);
-	return (xstrdup(resolved));
-}
