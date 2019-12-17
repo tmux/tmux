@@ -512,7 +512,7 @@ cmdq_print(struct cmdq_item *item, const char *fmt, ...)
 		wme = TAILQ_FIRST(&wp->modes);
 		if (wme == NULL || wme->mode != &window_view_mode)
 			window_pane_set_mode(wp, &window_view_mode, NULL, NULL);
-		window_copy_vadd(wp, fmt, ap);
+		window_copy_add(wp, "%s", msg);
 	}
 
 	free(msg);
