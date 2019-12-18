@@ -66,12 +66,45 @@ set_cfg_file(const char *path)
 	cfg_file = xstrdup(path);
 }
 
+static char *
+expand_cfg_file(const char *path, const char *home)
+{
+	char			*expanded, *name;
+	const char		*end;
+	struct environ_entry	*value;
+
+	if (strncmp(path, "~/", 2) == 0) {
+		if (home == NULL)
+			return (NULL);
+		xasprintf(&expanded, "%s%s", home, path + 1);
+		return (expanded);
+	}
+
+	if (*path == '$') {
+		end = strchr(path, '/');
+		if (end == NULL)
+			name = xstrdup(path + 1);
+		else
+			name = xstrndup(path + 1, end - path - 1);
+		value = environ_find(global_environ, name);
+		free(name);
+		if (value == NULL)
+			return (NULL);
+		if (end == NULL)
+			end = "";
+		xasprintf(&expanded, "%s%s", value->value, end);
+		return (expanded);
+	}
+
+	return (xstrdup(path));
+}
+
 void
 start_cfg(void)
 {
-	const char	*home;
-	int		 flags = 0;
+	const char	*home = find_home();
 	struct client	*c;
+	char		*path, *copy, *next, *expanded;
 
 	/*
 	 * Configuration files are loaded without a client, so commands are run
@@ -89,15 +122,21 @@ start_cfg(void)
 		cmdq_append(c, cfg_item);
 	}
 
-	if (cfg_file == NULL)
-		load_cfg(TMUX_CONF, c, NULL, CMD_PARSE_QUIET, NULL);
-
-	if (cfg_file == NULL && (home = find_home()) != NULL) {
-		xasprintf(&cfg_file, "%s/.tmux.conf", home);
-		flags = CMD_PARSE_QUIET;
-	}
-	if (cfg_file != NULL)
-		load_cfg(cfg_file, c, NULL, flags, NULL);
+	if (cfg_file == NULL) {
+		path = copy = xstrdup(TMUX_CONF);
+		while ((next = strsep(&path, ":")) != NULL) {
+			expanded = expand_cfg_file(next, home);
+			if (expanded == NULL) {
+				log_debug("couldn't expand %s", next);
+				continue;
+			}
+			log_debug("expanded %s to %s", next, expanded);
+			load_cfg(expanded, c, NULL, CMD_PARSE_QUIET, NULL);
+			free(expanded);
+		}
+		free(copy);
+	} else
+		load_cfg(cfg_file, c, NULL, 0, NULL);
 
 	cmdq_append(NULL, cmdq_get_callback(cfg_done, NULL));
 }
@@ -131,6 +170,52 @@ load_cfg(const char *path, struct client *c, struct cmdq_item *item, int flags,
 
 	pr = cmd_parse_from_file(f, &pi);
 	fclose(f);
+	if (pr->status == CMD_PARSE_EMPTY)
+		return (0);
+	if (pr->status == CMD_PARSE_ERROR) {
+		cfg_add_cause("%s", pr->error);
+		free(pr->error);
+		return (-1);
+	}
+	if (flags & CMD_PARSE_PARSEONLY) {
+		cmd_list_free(pr->cmdlist);
+		return (0);
+	}
+
+	new_item0 = cmdq_get_command(pr->cmdlist, NULL, NULL, 0);
+	if (item != NULL)
+		cmdq_insert_after(item, new_item0);
+	else
+		cmdq_append(NULL, new_item0);
+	cmd_list_free(pr->cmdlist);
+
+	if (new_item != NULL)
+		*new_item = new_item0;
+	return (0);
+}
+
+int
+load_cfg_from_buffer(const void *buf, size_t len, const char *path,
+    struct client *c, struct cmdq_item *item, int flags,
+    struct cmdq_item **new_item)
+{
+	struct cmd_parse_input	 pi;
+	struct cmd_parse_result	*pr;
+	struct cmdq_item	*new_item0;
+
+	if (new_item != NULL)
+		*new_item = NULL;
+
+	log_debug("loading %s", path);
+
+	memset(&pi, 0, sizeof pi);
+	pi.flags = flags;
+	pi.file = path;
+	pi.line = 1;
+	pi.item = item;
+	pi.c = c;
+
+	pr = cmd_parse_from_buffer(buf, len, &pi);
 	if (pr->status == CMD_PARSE_EMPTY)
 		return (0);
 	if (pr->status == CMD_PARSE_ERROR) {
