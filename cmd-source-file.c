@@ -130,7 +130,7 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 	char				*pattern, *cwd;
 	const char			*path, *error;
 	glob_t				 g;
-	int				 i;
+	int				 i, result;
 	u_int				 j;
 
 	cdata = xcalloc(1, sizeof *cdata);
@@ -158,9 +158,15 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 			xasprintf(&pattern, "%s/%s", cwd, path);
 		log_debug("%s: %s", __func__, pattern);
 
-		if (glob(pattern, 0, NULL, &g) != 0) {
-			error = strerror(errno);
-			if (errno != ENOENT || (~flags & CMD_PARSE_QUIET)) {
+		if ((result = glob(pattern, 0, NULL, &g)) != 0) {
+			if (result != GLOB_NOMATCH ||
+			    (~flags & CMD_PARSE_QUIET)) {
+				if (result == GLOB_NOMATCH)
+					error = strerror(ENOENT);
+				else if (result == GLOB_NOSPACE)
+					error = strerror(ENOMEM);
+				else
+					error = strerror(EINVAL);
 				cmdq_error(item, "%s: %s", path, error);
 				retval = CMD_RETURN_ERROR;
 			}
