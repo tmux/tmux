@@ -433,6 +433,15 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	_exit(1);
 
 complete:
+#ifdef HAVE_UTEMPTER
+	if (~new_wp->flags & PANE_EMPTY) {
+		xasprintf(&cp, "tmux(%lu).%%%u", (long)getpid(), new_wp->id);
+		utempter_add_record(new_wp->fd, cp);
+		kill(getpid(), SIGCHLD);
+		free(cp);
+	}
+#endif
+
 	new_wp->pipe_off = 0;
 	new_wp->flags &= ~PANE_EXITED;
 
