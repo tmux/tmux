@@ -746,6 +746,12 @@ cmd_parse_from_file(FILE *f, struct cmd_parse_input *pi)
 struct cmd_parse_result *
 cmd_parse_from_string(const char *s, struct cmd_parse_input *pi)
 {
+	return (cmd_parse_from_buffer(s, strlen(s), pi));
+}
+
+struct cmd_parse_result *
+cmd_parse_from_buffer(const void *buf, size_t len, struct cmd_parse_input *pi)
+{
 	static struct cmd_parse_result	 pr;
 	struct cmd_parse_input		 input;
 	struct cmd_parse_commands	*cmds;
@@ -757,14 +763,14 @@ cmd_parse_from_string(const char *s, struct cmd_parse_input *pi)
 	}
 	memset(&pr, 0, sizeof pr);
 
-	if (*s == '\0') {
+	if (len == 0) {
 		pr.status = CMD_PARSE_EMPTY;
 		pr.cmdlist = NULL;
 		pr.error = NULL;
 		return (&pr);
 	}
 
-	cmds = cmd_parse_do_buffer(s, strlen(s), pi, &cause);
+	cmds = cmd_parse_do_buffer(buf, len, pi, &cause);
 	if (cmds == NULL) {
 		pr.status = CMD_PARSE_ERROR;
 		pr.error = cause;
