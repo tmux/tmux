@@ -520,8 +520,8 @@ key_bindings_dispatch(struct key_binding *bd, struct cmdq_item *item,
 			new_item->shared->flags |= CMDQ_SHARED_REPEAT;
 	}
 	if (item != NULL)
-		cmdq_insert_after(item, new_item);
+		new_item = cmdq_insert_after(item, new_item);
 	else
-		cmdq_append(c, new_item);
+		new_item = cmdq_append(c, new_item);
 	return (new_item);
 }

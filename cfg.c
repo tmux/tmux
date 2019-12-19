@@ -185,9 +185,9 @@ load_cfg(const char *path, struct client *c, struct cmdq_item *item, int flags,
 
 	new_item0 = cmdq_get_command(pr->cmdlist, NULL, NULL, 0);
 	if (item != NULL)
-		cmdq_insert_after(item, new_item0);
+		new_item0 = cmdq_insert_after(item, new_item0);
 	else
-		cmdq_append(NULL, new_item0);
+		new_item0 = cmdq_append(NULL, new_item0);
 	cmd_list_free(pr->cmdlist);
 
 	if (new_item != NULL)
@@ -231,9 +231,9 @@ load_cfg_from_buffer(const void *buf, size_t len, const char *path,
 
 	new_item0 = cmdq_get_command(pr->cmdlist, NULL, NULL, 0);
 	if (item != NULL)
-		cmdq_insert_after(item, new_item0);
+		new_item0 = cmdq_insert_after(item, new_item0);
 	else
-		cmdq_append(NULL, new_item0);
+		new_item0 = cmdq_append(NULL, new_item0);
 	cmd_list_free(pr->cmdlist);
 
 	if (new_item != NULL)
