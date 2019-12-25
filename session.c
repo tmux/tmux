@@ -572,6 +572,19 @@ session_group_count(struct session_group *sg)
 	return (n);
 }
 
+/* Count number of clients attached to sessions in session group. */
+u_int
+session_group_attached_count(struct session_group *sg)
+{
+	struct session	*s;
+	u_int		 n;
+
+	n = 0;
+	TAILQ_FOREACH(s, &sg->sessions, gentry)
+	    n += s->attached;
+	return (n);
+}
+
 /* Synchronize a session to its session group. */
 void
 session_group_synchronize_to(struct session *s)
