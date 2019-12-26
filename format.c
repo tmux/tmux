@@ -456,6 +456,35 @@ format_cb_pid(__unused struct format_tree *ft, struct format_entry *fe)
 	xasprintf(&fe->value, "%ld", (long)getpid());
 }
 
+/* Callback for session_attached_list. */
+static void
+format_cb_session_attached_list(struct format_tree *ft, struct format_entry *fe)
+{
+	struct session	*s = ft->s;
+	struct client	*loop;
+	struct evbuffer	*buffer;
+	int		 size;
+
+	if (s == NULL)
+		return;
+
+	buffer = evbuffer_new();
+	if (buffer == NULL)
+		fatalx("out of memory");
+
+	TAILQ_FOREACH(loop, &clients, entry) {
+		if (loop->session == s) {
+			if (EVBUFFER_LENGTH(buffer) > 0)
+				evbuffer_add(buffer, ",", 1);
+			evbuffer_add_printf(buffer, "%s", loop->name);
+		}
+	}
+
+	if ((size = EVBUFFER_LENGTH(buffer)) != 0)
+		xasprintf(&fe->value, "%.*s", size, EVBUFFER_DATA(buffer));
+	evbuffer_free(buffer);
+}
+
 /* Callback for session_alerts. */
 static void
 format_cb_session_alerts(struct format_tree *ft, struct format_entry *fe)
@@ -526,6 +555,128 @@ format_cb_window_stack_index(struct format_tree *ft, struct format_entry *fe)
 		xasprintf(&fe->value, "%u", idx);
 	else
 		fe->value = xstrdup("0");
+}
+
+/* Callback for window_linked_sessions_list. */
+static void
+format_cb_window_linked_sessions_list(struct format_tree *ft,
+    struct format_entry *fe)
+{
+	struct window	*w = ft->wl->window;
+	struct winlink	*wl;
+	struct evbuffer	*buffer;
+	int		 size;
+
+	buffer = evbuffer_new();
+	if (buffer == NULL)
+		fatalx("out of memory");
+
+	TAILQ_FOREACH(wl, &w->winlinks, wentry) {
+		if (EVBUFFER_LENGTH(buffer) > 0)
+			evbuffer_add(buffer, ",", 1);
+		evbuffer_add_printf(buffer, "%s", wl->session->name);
+	}
+
+	if ((size = EVBUFFER_LENGTH(buffer)) != 0)
+		xasprintf(&fe->value, "%.*s", size, EVBUFFER_DATA(buffer));
+	evbuffer_free(buffer);
+}
+
+/* Callback for window_active_sessions. */
+static void
+format_cb_window_active_sessions(struct format_tree *ft,
+    struct format_entry *fe)
+{
+	struct window	*w = ft->wl->window;
+	struct winlink	*wl;
+	u_int		 n = 0;
+
+	TAILQ_FOREACH(wl, &w->winlinks, wentry) {
+		if (wl->session->curw == wl)
+			n++;
+	}
+
+	xasprintf(&fe->value, "%u", n);
+}
+
+/* Callback for window_active_sessions_list. */
+static void
+format_cb_window_active_sessions_list(struct format_tree *ft,
+    struct format_entry *fe)
+{
+	struct window	*w = ft->wl->window;
+	struct winlink	*wl;
+	struct evbuffer	*buffer;
+	int		 size;
+
+	buffer = evbuffer_new();
+	if (buffer == NULL)
+		fatalx("out of memory");
+
+	TAILQ_FOREACH(wl, &w->winlinks, wentry) {
+		if (wl->session->curw == wl) {
+			if (EVBUFFER_LENGTH(buffer) > 0)
+				evbuffer_add(buffer, ",", 1);
+			evbuffer_add_printf(buffer, "%s", wl->session->name);
+		}
+	}
+
+	if ((size = EVBUFFER_LENGTH(buffer)) != 0)
+		xasprintf(&fe->value, "%.*s", size, EVBUFFER_DATA(buffer));
+	evbuffer_free(buffer);
+}
+
+/* Callback for window_active_clients. */
+static void
+format_cb_window_active_clients(struct format_tree *ft, struct format_entry *fe)
+{
+	struct window	*w = ft->wl->window;
+	struct client	*loop;
+	struct session	*client_session;
+	u_int		 n = 0;
+
+	TAILQ_FOREACH(loop, &clients, entry) {
+		client_session = loop->session;
+		if (client_session == NULL)
+			continue;
+
+		if (w == client_session->curw->window)
+			n++;
+	}
+
+	xasprintf(&fe->value, "%u", n);
+}
+
+/* Callback for window_active_clients_list. */
+static void
+format_cb_window_active_clients_list(struct format_tree *ft,
+    struct format_entry *fe)
+{
+	struct window	*w = ft->wl->window;
+	struct client	*loop;
+	struct session	*client_session;
+	struct evbuffer	*buffer;
+	int		 size;
+
+	buffer = evbuffer_new();
+	if (buffer == NULL)
+		fatalx("out of memory");
+
+	TAILQ_FOREACH(loop, &clients, entry) {
+		client_session = loop->session;
+		if (client_session == NULL)
+			continue;
+
+		if (w == client_session->curw->window) {
+			if (EVBUFFER_LENGTH(buffer) > 0)
+				evbuffer_add(buffer, ",", 1);
+			evbuffer_add_printf(buffer, "%s", loop->name);
+		}
+	}
+
+	if ((size = EVBUFFER_LENGTH(buffer)) != 0)
+		xasprintf(&fe->value, "%.*s", size, EVBUFFER_DATA(buffer));
+	evbuffer_free(buffer);
 }
 
 /* Callback for window_layout. */
@@ -662,11 +813,52 @@ format_cb_session_group_list(struct format_tree *ft, struct format_entry *fe)
 	buffer = evbuffer_new();
 	if (buffer == NULL)
 		fatalx("out of memory");
+
 	TAILQ_FOREACH(loop, &sg->sessions, gentry) {
 		if (EVBUFFER_LENGTH(buffer) > 0)
 			evbuffer_add(buffer, ",", 1);
 		evbuffer_add_printf(buffer, "%s", loop->name);
 	}
+
+	if ((size = EVBUFFER_LENGTH(buffer)) != 0)
+		xasprintf(&fe->value, "%.*s", size, EVBUFFER_DATA(buffer));
+	evbuffer_free(buffer);
+}
+
+/* Callback for session_group_attached_list. */
+static void
+format_cb_session_group_attached_list(struct format_tree *ft,
+    struct format_entry *fe)
+{
+	struct session		*s = ft->s, *client_session, *session_loop;
+	struct session_group	*sg;
+	struct client		*loop;
+	struct evbuffer		*buffer;
+	int			 size;
+
+	if (s == NULL)
+		return;
+	sg = session_group_contains(s);
+	if (sg == NULL)
+		return;
+
+	buffer = evbuffer_new();
+	if (buffer == NULL)
+		fatalx("out of memory");
+
+	TAILQ_FOREACH(loop, &clients, entry) {
+		client_session = loop->session;
+		if (client_session == NULL)
+			continue;
+		TAILQ_FOREACH(session_loop, &sg->sessions, gentry) {
+			if (session_loop == client_session){
+				if (EVBUFFER_LENGTH(buffer) > 0)
+					evbuffer_add(buffer, ",", 1);
+				evbuffer_add_printf(buffer, "%s", loop->name);
+			}
+		}
+	}
+
 	if ((size = EVBUFFER_LENGTH(buffer)) != 0)
 		xasprintf(&fe->value, "%.*s", size, EVBUFFER_DATA(buffer));
 	evbuffer_free(buffer);
@@ -2125,8 +2317,14 @@ format_defaults_session(struct format_tree *ft, struct session *s)
 		format_add(ft, "session_group", "%s", sg->name);
 		format_add(ft, "session_group_size", "%u",
 		    session_group_count (sg));
+		format_add(ft, "session_group_attached", "%u",
+		    session_group_attached_count (sg));
+		format_add(ft, "session_group_many_attached", "%u",
+		    session_group_attached_count (sg) > 1);
 		format_add_cb(ft, "session_group_list",
 		    format_cb_session_group_list);
+		format_add_cb(ft, "session_group_attached_list",
+		    format_cb_session_group_attached_list);
 	}
 
 	format_add_tv(ft, "session_created", &s->creation_time);
@@ -2135,6 +2333,8 @@ format_defaults_session(struct format_tree *ft, struct session *s)
 
 	format_add(ft, "session_attached", "%u", s->attached);
 	format_add(ft, "session_many_attached", "%d", s->attached > 1);
+	format_add_cb(ft, "session_attached_list",
+	    format_cb_session_attached_list);
 
 	format_add_cb(ft, "session_alerts", format_cb_session_alerts);
 	format_add_cb(ft, "session_stack", format_cb_session_stack);
@@ -2249,6 +2449,14 @@ format_defaults_winlink(struct format_tree *ft, struct winlink *wl)
 	format_add_cb(ft, "window_stack_index", format_cb_window_stack_index);
 	format_add(ft, "window_flags", "%s", window_printable_flags(wl));
 	format_add(ft, "window_active", "%d", wl == s->curw);
+	format_add_cb(ft, "window_active_sessions",
+	    format_cb_window_active_sessions);
+	format_add_cb(ft, "window_active_sessions_list",
+	    format_cb_window_active_sessions_list);
+	format_add_cb(ft, "window_active_clients",
+	    format_cb_window_active_clients);
+	format_add_cb(ft, "window_active_clients_list",
+	    format_cb_window_active_clients_list);
 
 	format_add(ft, "window_start_flag", "%d",
 	    !!(wl == RB_MIN(winlinks, &s->windows)));
@@ -2269,6 +2477,11 @@ format_defaults_winlink(struct format_tree *ft, struct winlink *wl)
 	format_add(ft, "window_last_flag", "%d",
 	    !!(wl == TAILQ_FIRST(&s->lastw)));
 	format_add(ft, "window_linked", "%d", session_is_linked(s, wl->window));
+
+	format_add_cb(ft, "window_linked_sessions_list",
+	    format_cb_window_linked_sessions_list);
+	format_add(ft, "window_linked_sessions", "%u",
+	    wl->window->references);
 }
 
 /* Set default format keys for a window pane. */
