@@ -1166,12 +1166,12 @@ format_each(struct format_tree *ft, void (*cb)(const char *, const char *,
     void *), void *arg)
 {
 	struct format_entry	*fe;
-	static char		 s[64];
+	char			 s[64];
 
 	RB_FOREACH(fe, format_entry_tree, &ft->tree) {
 		if (fe->t != 0) {
 			xsnprintf(s, sizeof s, "%lld", (long long)fe->t);
-			cb(fe->key, fe->value, s);
+			cb(fe->key, s, arg);
 		} else {
 			if (fe->value == NULL && fe->cb != NULL) {
 				fe->cb(ft, fe);
@@ -1214,8 +1214,7 @@ format_add(struct format_tree *ft, const char *key, const char *fmt, ...)
 static void
 format_add_tv(struct format_tree *ft, const char *key, struct timeval *tv)
 {
-	struct format_entry	*fe;
-	struct format_entry	*fe_now;
+	struct format_entry	*fe, *fe_now;
 
 	fe = xmalloc(sizeof *fe);
 	fe->key = xstrdup(key);
