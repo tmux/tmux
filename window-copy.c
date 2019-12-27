@@ -2359,24 +2359,17 @@ static char *
 window_copy_stringify(struct grid *gd,
     u_int py, u_int first, u_int last, char *buf, u_int *size)
 {
-	u_int			ax, bx, fraglen, newsize;
-	char		       *frag;
-	struct utf8_data	ud[2];
+	u_int			ax, bx, newsize;
 	struct grid_cell	gc;
 
-	memset(&ud[1], 0, sizeof ud[1]);
 	bx = *size - 1;
 	newsize = *size;
 	for (ax = first; ax < last; ax++) {
 		grid_get_cell(gd, ax, py, &gc);
-		memcpy(&ud[0], &gc.data, sizeof ud[0]);
-		frag = utf8_tocstr(ud);
-		fraglen = strlen(frag);
-		newsize += fraglen;
+		newsize += gc.data.size;
 		buf = xrealloc(buf, newsize);
-		memcpy(buf + bx, frag, fraglen);
-		free(frag);
-		bx += fraglen;
+		memcpy(buf + bx, gc.data.data, gc.data.size);
+		bx += gc.data.size;
 	}
 
 	buf[newsize - 1] = '\0';
@@ -2391,12 +2384,10 @@ window_copy_cstrtocellpos(struct grid *gd, u_int ncells, u_int *ppx, u_int *ppy,
 {
 	u_int			cell, ccell, px, pywrap;
 	int			match;
-	const char	       *cstr, *celldata;
+	const char	       *cstr;
+	char		       *celldata;
 	char		      **cells;
-	struct utf8_data	ud[2];
 	struct grid_cell	gc;
-
-	memset(&ud[1], 0, sizeof ud[1]);
 
 	/* Set up staggered array of cell contents. This speeds up search. */
 	cells = xmalloc(ncells * sizeof cells[0]);
@@ -2407,8 +2398,10 @@ window_copy_cstrtocellpos(struct grid *gd, u_int ncells, u_int *ppx, u_int *ppy,
 	pywrap = *ppy;
 	while (cell < ncells) {
 		grid_get_cell(gd, px, pywrap, &gc);
-		memcpy(&ud[0], &gc.data, sizeof ud[0]);
-		cells[cell] = utf8_tocstr(ud);
+		celldata = xmalloc(gc.data.size + 1);
+		memcpy(celldata, gc.data.data, gc.data.size);
+		celldata[gc.data.size] = '\0';
+		cells[cell] = celldata;
 		cell++;
 		px = (px + 1) % gd->sx;
 		if (px == 0)
