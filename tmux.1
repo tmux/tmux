@@ -933,7 +933,9 @@ If
 is specified, any other clients attached to the session are detached.
 If
 .Fl x
-is given, send SIGHUP to the parent process of the client as well as
+is given, send
+.Dv SIGHUP
+to the parent process of the client as well as
 detaching the client, typically causing it to exit.
 .Fl r
 signifies the client is read-only (only keys bound to the
@@ -984,7 +986,9 @@ option kills all but the client given with
 .Fl t .
 If
 .Fl P
-is given, send SIGHUP to the parent process of the client, typically causing it
+is given, send
+.Dv SIGHUP
+to the parent process of the client, typically causing it
 to exit.
 With
 .Fl E ,
@@ -5147,6 +5151,37 @@ is used, the channel is locked and any clients that try to lock the same
 channel are made to wait until the channel is unlocked with
 .Ic wait-for
 .Fl U .
+.El
+.Sh EXIT MESSAGES
+When a
+.Nm
+client detaches, it prints a message.
+This may be one of:
+.Bl -tag -width Ds
+.It [detached (from session ...)]
+The client was detached normally.
+.It [detached and SIGHUP]
+The client was detached and its parent sent the
+.Dv SIGHUP
+signal (for example with
+.Ic detach-client
+.Fl P ) .
+.It [lost tty]
+The client's
+.Xr tty 4
+or
+.Xr pty 4
+was unexpectedly destroyed.
+.It [terminated]
+The client was killed with
+.Dv SIGTERM .
+.It [exited]
+The server exited when it had no sessions.
+.It [server exited]
+The server exited when it received
+.Dv SIGTERM .
+.It [server exited unexpectedly]
+The server crashed or otherwise exited without telling the client the reason.
 .El
 .Sh TERMINFO EXTENSIONS
 .Nm
