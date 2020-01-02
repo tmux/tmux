@@ -78,6 +78,8 @@ spawn_log(const char *from, struct spawn_context *sc)
 struct winlink *
 spawn_window(struct spawn_context *sc, char **cause)
 {
+	struct cmdq_item	*item = sc->item;
+	struct client		*c = item->client;
 	struct session		*s = sc->s;
 	struct window		*w;
 	struct window_pane	*wp;
@@ -180,7 +182,8 @@ spawn_window(struct spawn_context *sc, char **cause)
 	/* Set the name of the new window. */
 	if (~sc->flags & SPAWN_RESPAWN) {
 		if (sc->name != NULL) {
-			w->name = xstrdup(sc->name);
+			w->name = format_single(item, sc->name, c, s, NULL,
+			    NULL);
 			options_set_number(w->options, "automatic-rename", 0);
 		} else
 			w->name = xstrdup(default_window_name(w));
