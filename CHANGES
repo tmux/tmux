@@ -1,5 +1,8 @@
 CHANGES FROM 3.0 to X.X
 
+* Change move-pane to automatically source a marked pane, if any, like 
+  join-pane does.
+
 * Change file reading and writing to go through the client if necessary. This
   fixes commands like "tmux loadb /dev/fd/X". Also modify source-file to
   support "-" for standard input, like load-buffer and save-buffer.
