@@ -551,7 +551,10 @@ cmdq_error(struct cmdq_item *item, const char *fmt, ...)
 			msg = utf8_sanitize(tmp);
 			free(tmp);
 		}
-		file_error(c, "%s\n", msg);
+		if (c->flags & CLIENT_CONTROL)
+			file_print(c, "%s\n", msg);
+		else
+			file_error(c, "%s\n", msg);
 		c->retval = 1;
 	} else {
 		*msg = toupper((u_char) *msg);
