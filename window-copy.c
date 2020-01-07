@@ -2595,8 +2595,10 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 	found = window_copy_search_jump(wme, gd, ss.grid, fx, fy, endline, cis,
 	    wrapflag, direction, regex);
 
-	if (window_copy_search_marks(wme, &ss, regex))
+	if (options_get_number(wp->window->options, "highlight-search") &&
+	    window_copy_search_marks(wme, &ss, regex)) {
 		window_copy_redraw_screen(wme);
+	}
 
 	screen_free(&ss);
 	return (found);

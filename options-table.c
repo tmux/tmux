@@ -614,6 +614,12 @@ const struct options_table_entry options_table[] = {
 	  .default_num = 1
 	},
 
+	{ .name = "highlight-search",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_num = 1
+	},
+
 	{ .name = "main-pane-height",
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .scope = OPTIONS_TABLE_WINDOW,
