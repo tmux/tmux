@@ -849,8 +849,10 @@ format_trim_left(const char *expanded, u_int limit)
 					out += ud.size;
 				}
 				width += ud.width;
-			} else
+			} else {
 				cp -= ud.have;
+				cp++;
+			}
 		} else if (*cp > 0x1f && *cp < 0x7f) {
 			if (width + 1 <= limit)
 				*out++ = *cp;
@@ -896,8 +898,10 @@ format_trim_right(const char *expanded, u_int limit)
 					out += ud.size;
 				}
 				width += ud.width;
-			} else
+			} else {
 				cp -= ud.have;
+				cp++;
+			}
 		} else if (*cp > 0x1f && *cp < 0x7f) {
 			if (width >= skip)
 				*out++ = *cp;
