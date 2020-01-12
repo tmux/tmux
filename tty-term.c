@@ -544,7 +544,7 @@ tty_term_find(char *name, int fd, char **cause)
 	 * do the best possible.
 	 */
 	if (!tty_term_flag(term, TTYC_XENL))
-		term->flags |= TERM_EARLYWRAP;
+		term->flags |= TERM_NOXENL;
 
 	/* Generate ACS table. If none is present, use nearest ASCII. */
 	memset(term->acs, 0, sizeof term->acs);

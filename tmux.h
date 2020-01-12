@@ -1170,7 +1170,9 @@ struct tty_term {
 	struct tty_code	*codes;
 
 #define TERM_256COLOURS 0x1
-#define TERM_EARLYWRAP 0x2
+#define TERM_NOXENL 0x2
+#define TERM_DECSLRM 0x4
+#define TERM_DECFRA 0x8
 	int		 flags;
 
 	LIST_ENTRY(tty_term) entry;
@@ -1232,16 +1234,6 @@ struct tty {
 	struct tty_term	*term;
 	char		*term_name;
 	int		 term_flags;
-	enum {
-		TTY_VT100,
-		TTY_VT101,
-		TTY_VT102,
-		TTY_VT220,
-		TTY_VT320,
-		TTY_VT420,
-		TTY_VT520,
-		TTY_UNKNOWN
-	} term_type;
 
 	u_int		 mouse_last_x;
 	u_int		 mouse_last_y;
@@ -1255,15 +1247,6 @@ struct tty {
 	struct event	 key_timer;
 	struct tty_key	*key_tree;
 };
-#define TTY_TYPES \
-	{ "VT100", \
-	  "VT101", \
-	  "VT102", \
-	  "VT220", \
-	  "VT320", \
-	  "VT420", \
-	  "VT520", \
-	  "Unknown" }
 
 /* TTY command context. */
 struct tty_ctx {
@@ -1994,7 +1977,7 @@ void	tty_draw_line(struct tty *, struct window_pane *, struct screen *,
 int	tty_open(struct tty *, char **);
 void	tty_close(struct tty *);
 void	tty_free(struct tty *);
-void	tty_set_type(struct tty *, int);
+void	tty_set_flags(struct tty *, int);
 void	tty_write(void (*)(struct tty *, const struct tty_ctx *),
 	    struct tty_ctx *);
 void	tty_cmd_alignmenttest(struct tty *, const struct tty_ctx *);
