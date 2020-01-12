@@ -327,7 +327,7 @@ tty_start_tty(struct tty *tty)
 			tty->flags |= TTY_FOCUS;
 			tty_puts(tty, "\033[?1004h");
 		}
-		tty_puts(tty, "\033[c");
+		tty_puts(tty, "\033[c\033[1337n");
 	}
 
 	tty->flags |= TTY_STARTED;
