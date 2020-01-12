@@ -1038,7 +1038,7 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 	cp = tmp;
 	while ((next = strsep(&cp, ";")) != NULL) {
 		p[n] = strtoul(next, &endptr, 10);
-		if (*endptr != '\0' && *endptr != ';')
+		if (*endptr != '\0')
 			p[n] = 0;
 		n++;
 	}
@@ -1068,7 +1068,7 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 		type = TTY_VT520;
 		break;
 	}
-	for (i = 2; i < n; i++)
+	for (i = 1; i < n; i++)
 		log_debug("%s: DA feature: %d", c->name, p[i]);
 	tty_set_type(tty, type);
 
