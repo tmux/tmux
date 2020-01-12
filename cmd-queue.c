@@ -53,12 +53,16 @@ cmdq_get(struct client *c)
 }
 
 /* Append an item. */
-void
+struct cmdq_item *
 cmdq_append(struct client *c, struct cmdq_item *item)
 {
 	struct cmdq_list	*queue = cmdq_get(c);
 	struct cmdq_item	*next;
 
+	TAILQ_FOREACH(next, queue, entry) {
+		log_debug("%s %s: queue %s (%u)", __func__, cmdq_name(c),
+		    next->name, next->group);
+	}
 	do {
 		next = item->next;
 		item->next = NULL;
@@ -73,16 +77,21 @@ cmdq_append(struct client *c, struct cmdq_item *item)
 
 		item = next;
 	} while (item != NULL);
+	return (TAILQ_LAST(queue, cmdq_list));
 }
 
 /* Insert an item. */
-void
+struct cmdq_item *
 cmdq_insert_after(struct cmdq_item *after, struct cmdq_item *item)
 {
 	struct client		*c = after->client;
 	struct cmdq_list	*queue = after->queue;
 	struct cmdq_item	*next;
 
+	TAILQ_FOREACH(next, queue, entry) {
+		log_debug("%s %s: queue %s (%u)", __func__, cmdq_name(c),
+		    next->name, next->group);
+	}
 	do {
 		next = item->next;
 		item->next = after->next;
@@ -100,6 +109,7 @@ cmdq_insert_after(struct cmdq_item *after, struct cmdq_item *item)
 		after = item;
 		item = next;
 	} while (item != NULL);
+	return (after);
 }
 
 /* Insert a hook. */
@@ -143,11 +153,10 @@ cmdq_insert_hook(struct session *s, struct cmdq_item *item,
 
 		new_item = cmdq_get_command(cmdlist, fs, NULL, CMDQ_NOHOOKS);
 		cmdq_format(new_item, "hook", "%s", name);
-		if (item != NULL) {
-			cmdq_insert_after(item, new_item);
-			item = new_item;
-		} else
-			cmdq_append(NULL, new_item);
+		if (item != NULL)
+			item = cmdq_insert_after(item, new_item);
+		else
+			item = cmdq_append(NULL, new_item);
 
 		a = options_array_next(a);
 	}
@@ -542,7 +551,10 @@ cmdq_error(struct cmdq_item *item, const char *fmt, ...)
 			msg = utf8_sanitize(tmp);
 			free(tmp);
 		}
-		file_error(c, "%s\n", msg);
+		if (c->flags & CLIENT_CONTROL)
+			file_print(c, "%s\n", msg);
+		else
+			file_error(c, "%s\n", msg);
 		c->retval = 1;
 	} else {
 		*msg = toupper((u_char) *msg);

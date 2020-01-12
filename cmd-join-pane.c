@@ -52,7 +52,7 @@ const struct cmd_entry cmd_move_pane_entry = {
 	.args = { "bdhvp:l:s:t:", 0, 0 },
 	.usage = "[-bdhv] [-p percentage|-l size] " CMD_SRCDST_PANE_USAGE,
 
-	.source = { 's', CMD_FIND_PANE, 0 },
+	.source = { 's', CMD_FIND_PANE, CMD_FIND_DEFAULT_MARKED },
 	.target = { 't', CMD_FIND_PANE, 0 },
 
 	.flags = 0,
