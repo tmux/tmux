@@ -74,7 +74,7 @@ static void	tty_default_attributes(struct tty *, struct window_pane *,
 		    u_int);
 
 #define tty_use_margin(tty) \
-	((tty)->term_type == TTY_VT420)
+	((tty->term->flags|tty->term_flags) & TERM_DECSLRM)
 
 #define tty_pane_full_width(tty, ctx) \
 	((ctx)->xoff == 0 && screen_size_x((ctx)->wp->screen) >= (tty)->sx)
@@ -115,9 +115,7 @@ tty_init(struct tty *tty, struct client *c, int fd, char *term)
 	tty->ccolour = xstrdup("");
 
 	tty->flags = 0;
-
 	tty->term_flags = 0;
-	tty->term_type = TTY_UNKNOWN;
 
 	return (0);
 }
@@ -438,9 +436,9 @@ tty_free(struct tty *tty)
 }
 
 void
-tty_set_type(struct tty *tty, int type)
+tty_set_flags(struct tty *tty, int flags)
 {
-	tty->term_type = type;
+	tty->term_flags |= flags;
 
 	if (tty_use_margin(tty))
 		tty_puts(tty, "\033[?69h"); /* DECLRMM */
@@ -543,7 +541,7 @@ tty_putc(struct tty *tty, u_char ch)
 {
 	const char	*acs;
 
-	if ((tty->term->flags & TERM_EARLYWRAP) &&
+	if ((tty->term->flags & TERM_NOXENL) &&
 	    ch >= 0x20 && ch != 0x7f &&
 	    tty->cy == tty->sy - 1 &&
 	    tty->cx + 1 >= tty->sx)
@@ -569,7 +567,7 @@ tty_putc(struct tty *tty, u_char ch)
 			 * where we think it should be after a line wrap - this
 			 * means it works on sensible terminals as well.
 			 */
-			if (tty->term->flags & TERM_EARLYWRAP)
+			if (tty->term->flags & TERM_NOXENL)
 				tty_putcode2(tty, TTYC_CUP, tty->cy, tty->cx);
 		} else
 			tty->cx++;
@@ -579,7 +577,7 @@ tty_putc(struct tty *tty, u_char ch)
 void
 tty_putn(struct tty *tty, const void *buf, size_t len, u_int width)
 {
-	if ((tty->term->flags & TERM_EARLYWRAP) &&
+	if ((tty->term->flags & TERM_NOXENL) &&
 	    tty->cy == tty->sy - 1 &&
 	    tty->cx + len >= tty->sx)
 		len = tty->sx - tty->cx - 1;
@@ -1129,7 +1127,8 @@ tty_clear_area(struct tty *tty, struct window_pane *wp, u_int py, u_int ny,
 		 * background colour isn't default (because it doesn't work
 		 * after SGR 0).
 		 */
-		if (tty->term_type == TTY_VT420 && !COLOUR_DEFAULT(bg)) {
+		if (((tty->term->flags|tty->term_flags) & TERM_DECFRA) &&
+		    !COLOUR_DEFAULT(bg)) {
 			xsnprintf(tmp, sizeof tmp, "\033[32;%u;%u;%u;%u$x",
 			    py + 1, px + 1, py + ny, px + nx);
 			tty_puts(tty, tmp);
@@ -1824,7 +1823,7 @@ tty_cmd_cells(struct tty *tty, const struct tty_ctx *ctx)
 	    ctx->xoff + ctx->ocx + ctx->num > ctx->ox + ctx->sx)) {
 		if (!ctx->wrapped ||
 		    !tty_pane_full_width(tty, ctx) ||
-		    (tty->term->flags & TERM_EARLYWRAP) ||
+		    (tty->term->flags & TERM_NOXENL) ||
 		    ctx->xoff + ctx->ocx != 0 ||
 		    ctx->yoff + ctx->ocy != tty->cy + 1 ||
 		    tty->cx < tty->sx ||
@@ -1873,7 +1872,7 @@ tty_cell(struct tty *tty, const struct grid_cell *gc, struct window_pane *wp)
 	const struct grid_cell	*gcp;
 
 	/* Skip last character if terminal is stupid. */
-	if ((tty->term->flags & TERM_EARLYWRAP) &&
+	if ((tty->term->flags & TERM_NOXENL) &&
 	    tty->cy == tty->sy - 1 &&
 	    tty->cx == tty->sx - 1)
 		return;
@@ -2032,7 +2031,7 @@ tty_cursor_pane_unless_wrap(struct tty *tty, const struct tty_ctx *ctx,
 {
 	if (!ctx->wrapped ||
 	    !tty_pane_full_width(tty, ctx) ||
-	    (tty->term->flags & TERM_EARLYWRAP) ||
+	    (tty->term->flags & TERM_NOXENL) ||
 	    ctx->xoff + cx != 0 ||
 	    ctx->yoff + cy != tty->cy + 1 ||
 	    tty->cx < tty->sx ||

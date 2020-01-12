@@ -1001,11 +1001,10 @@ static int
 tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
     size_t *size)
 {
-	struct client		*c = tty->client;
-	u_int			 i, n = 0;
-	char			 tmp[64], *endptr, p[32] = { 0 }, *cp, *next;
-	static const char	*types[] = TTY_TYPES;
-	int			 type;
+	struct client	*c = tty->client;
+	u_int		 i, n = 0;
+	char		 tmp[64], *endptr, p[32] = { 0 }, *cp, *next;
+	int		 flags = 0;
 
 	*size = 0;
 
@@ -1043,36 +1042,15 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 		n++;
 	}
 
-	/* Store terminal type. */
-	type = TTY_UNKNOWN;
+	/* Set terminal flags. */
 	switch (p[0]) {
-	case 1:
-		if (p[1] == 2)
-			type = TTY_VT100;
-		else if (p[1] == 0)
-			type = TTY_VT101;
-		break;
-	case 6:
-		type = TTY_VT102;
-		break;
-	case 62:
-		type = TTY_VT220;
-		break;
-	case 63:
-		type = TTY_VT320;
-		break;
-	case 64:
-		type = TTY_VT420;
-		break;
-	case 65:
-		type = TTY_VT520;
+	case 64: /* VT420 */
+		flags |= (TERM_DECFRA|TERM_DECSLRM);
 		break;
 	}
 	for (i = 1; i < n; i++)
 		log_debug("%s: DA feature: %d", c->name, p[i]);
-	tty_set_type(tty, type);
-
-	log_debug("%s: received DA %.*s (%s)", c->name, (int)*size, buf,
-	    types[type]);
+	log_debug("%s: received DA %.*s", c->name, (int)*size, buf);
+	tty_set_flags(tty, flags);
 	return (0);
 }

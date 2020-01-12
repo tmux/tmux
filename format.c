@@ -2346,7 +2346,6 @@ format_defaults_client(struct format_tree *ft, struct client *c)
 	struct session	*s;
 	const char	*name;
 	struct tty	*tty = &c->tty;
-	const char	*types[] = TTY_TYPES;
 
 	if (ft->s == NULL)
 		ft->s = c->session;
@@ -2364,8 +2363,6 @@ format_defaults_client(struct format_tree *ft, struct client *c)
 
 	if (tty->term_name != NULL)
 		format_add(ft, "client_termname", "%s", tty->term_name);
-	if (tty->term_name != NULL)
-		format_add(ft, "client_termtype", "%s", types[tty->term_type]);
 
 	format_add_tv(ft, "client_created", &c->creation_time);
 	format_add_tv(ft, "client_activity", &c->activity_time);
