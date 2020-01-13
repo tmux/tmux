@@ -1179,6 +1179,7 @@ LIST_HEAD(tty_terms, tty_term);
 
 struct tty {
 	struct client	*client;
+	struct event	 start_timer;
 
 	u_int		 sx;
 	u_int		 sy;
