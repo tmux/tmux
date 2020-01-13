@@ -1020,6 +1020,8 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 	int		 flags = 0;
 
 	*size = 0;
+	if (tty->flags & TTY_HAVEDA)
+		return (-1);
 
 	/* First three bytes are always \033[?. */
 	if (buf[0] != '\033')
@@ -1064,7 +1066,10 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 	for (i = 1; i < n; i++)
 		log_debug("%s: DA feature: %d", c->name, p[i]);
 	log_debug("%s: received DA %.*s", c->name, (int)*size, buf);
+
 	tty_set_flags(tty, flags);
+	tty->flags |= TTY_HAVEDA;
+
 	return (0);
 }
 
@@ -1082,6 +1087,8 @@ tty_keys_device_status_report(struct tty *tty, const char *buf, size_t len,
 	int		 flags = 0;
 
 	*size = 0;
+	if (tty->flags & TTY_HAVEDSR)
+		return (-1);
 
 	/* First three bytes are always \033[. */
 	if (buf[0] != '\033')
@@ -1091,6 +1098,10 @@ tty_keys_device_status_report(struct tty *tty, const char *buf, size_t len,
 	if (buf[1] != '[')
 		return (-1);
 	if (len == 2)
+		return (1);
+	if (buf[2] != 'I')
+		return (-1);
+	if (len == 3)
 		return (1);
 
 	/* Copy the rest up to a 'n'. */
@@ -1108,6 +1119,9 @@ tty_keys_device_status_report(struct tty *tty, const char *buf, size_t len,
 	if (strncmp(tmp, "ITERM2 ", 7) == 0)
 		flags |= TERM_DECSLRM;
 	log_debug("%s: received DSR %.*s", c->name, (int)*size, buf);
+
 	tty_set_flags(tty, flags);
+	tty->flags |= TTY_HAVEDSR;
+
 	return (0);
 }
