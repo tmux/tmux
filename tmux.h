@@ -1229,6 +1229,8 @@ struct tty {
 #define TTY_OPENED 0x20
 #define TTY_FOCUS 0x40
 #define TTY_BLOCK 0x80
+#define TTY_HAVEDA 0x100
+#define TTY_HAVEDSR 0x200
 	int		 flags;
 
 	struct tty_term	*term;
@@ -2277,7 +2279,7 @@ void	 input_parse(struct window_pane *);
 void	 input_parse_buffer(struct window_pane *, u_char *, size_t);
 
 /* input-key.c */
-void	 input_key(struct window_pane *, key_code, struct mouse_event *);
+int	 input_key(struct window_pane *, key_code, struct mouse_event *);
 
 /* xterm-keys.c */
 char	*xterm_keys_lookup(key_code);
@@ -2500,7 +2502,7 @@ int		 window_pane_set_mode(struct window_pane *,
 		     struct args *);
 void		 window_pane_reset_mode(struct window_pane *);
 void		 window_pane_reset_mode_all(struct window_pane *);
-void		 window_pane_key(struct window_pane *, struct client *,
+int		 window_pane_key(struct window_pane *, struct client *,
 		     struct session *, struct winlink *, key_code,
 		     struct mouse_event *);
 int		 window_pane_visible(struct window_pane *);

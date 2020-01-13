@@ -1239,7 +1239,7 @@ window_pane_reset_mode_all(struct window_pane *wp)
 		window_pane_reset_mode(wp);
 }
 
-void
+int
 window_pane_key(struct window_pane *wp, struct client *c, struct session *s,
     struct winlink *wl, key_code key, struct mouse_event *m)
 {
@@ -1247,23 +1247,24 @@ window_pane_key(struct window_pane *wp, struct client *c, struct session *s,
 	struct window_pane		*wp2;
 
 	if (KEYC_IS_MOUSE(key) && m == NULL)
-		return;
+		return (-1);
 
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme != NULL) {
 		wp->modelast = time(NULL);
 		if (wme->mode->key != NULL)
 			wme->mode->key(wme, c, s, wl, (key & ~KEYC_XTERM), m);
-		return;
+		return (0);
 	}
 
 	if (wp->fd == -1 || wp->flags & PANE_INPUTOFF)
-		return;
+		return (0);
 
-	input_key(wp, key, m);
+	if (input_key(wp, key, m) != 0)
+		return (-1);
 
 	if (KEYC_IS_MOUSE(key))
-		return;
+		return (0);
 	if (options_get_number(wp->window->options, "synchronize-panes")) {
 		TAILQ_FOREACH(wp2, &wp->window->panes, entry) {
 			if (wp2 != wp &&
@@ -1274,6 +1275,7 @@ window_pane_key(struct window_pane *wp, struct client *c, struct session *s,
 				input_key(wp2, key, NULL);
 		}
 	}
+	return (0);
 }
 
 int
