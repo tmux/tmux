@@ -1,5 +1,22 @@
 CHANGES FROM 3.0 to X.X
 
+* Treat plausible but invalid keys (like C-BSpace) as literal like any other
+  unrecognised string passed to send-keys
+
+* Detect iTerm2 and enable use of DECSLRM (much faster with horizontally split
+  windows).
+
+* Add -Z to default switch-client command in tree mode.
+
+* Add ~ to quoted characters for %%%.
+
+* Document client exit messages in the manual page.
+
+* Do not let read-only clients limit the size.
+
+* Add a number of new formats to inspect what sessions and clients a window is
+  present or active in.
+
 * Change file reading and writing to go through the client if necessary. This
   fixes commands like "tmux loadb /dev/fd/X". Also modify source-file to
   support "-" for standard input, like load-buffer and save-buffer.
