@@ -2533,10 +2533,11 @@ This is similar to
 except the source and destination windows are swapped.
 It is an error if no window exists at
 .Ar src-window .
+If
+.Fl d
+is given, the new window does not become the current window.
 .Pp
-Like
-.Ic swap-pane ,
-if
+If
 .Fl s
 is omitted and a marked pane is present (see
 .Ic select-pane
