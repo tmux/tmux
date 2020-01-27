@@ -33,8 +33,8 @@ const struct cmd_entry cmd_bind_key_entry = {
 	.name = "bind-key",
 	.alias = "bind",
 
-	.args = { "cnrT:", 2, -1 },
-	.usage = "[-cnr] [-T key-table] key "
+	.args = { "cnrN:T:", 2, -1 },
+	.usage = "[-cnr] [-T key-table] [-N note] key "
 	         "command [arguments]",
 
 	.flags = CMD_AFTERHOOK,
@@ -46,10 +46,10 @@ cmd_bind_key_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		 *args = self->args;
 	key_code		  key;
-	const char		 *tablename;
+	const char		 *tablename, *note;
 	struct cmd_parse_result	 *pr;
 	char			**argv = args->argv;
-	int			  argc = args->argc;
+	int			  argc = args->argc, repeat;
 
 	key = key_string_lookup_string(argv[0]);
 	if (key == KEYC_NONE || key == KEYC_UNKNOWN) {
@@ -63,6 +63,7 @@ cmd_bind_key_exec(struct cmd *self, struct cmdq_item *item)
 		tablename = "root";
 	else
 		tablename = "prefix";
+	repeat = args_has(args, 'r');
 
 	if (argc == 2)
 		pr = cmd_parse_from_string(argv[1], NULL);
@@ -79,6 +80,7 @@ cmd_bind_key_exec(struct cmd *self, struct cmdq_item *item)
 	case CMD_PARSE_SUCCESS:
 		break;
 	}
-	key_bindings_add(tablename, key, args_has(args, 'r'), pr->cmdlist);
+	note = args_get(args, 'N');
+	key_bindings_add(tablename, key, note, repeat, pr->cmdlist);
 	return (CMD_RETURN_NORMAL);
 }

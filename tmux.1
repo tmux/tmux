@@ -551,7 +551,7 @@ Braces may be enclosed inside braces, for example:
 .Bd -literal -offset indent
 bind x if-shell "true" {
     if-shell "true" {
-         display "true!"
+        display "true!"
     }
 }
 .Ed
@@ -1335,7 +1335,8 @@ is used,
 option will not be applied.
 .Pp
 .Fl T
-sets the client's key table; the next key from the client will be interpreted from
+sets the client's key table; the next key from the client will be interpreted
+from
 .Ar key-table .
 This may be used to configure multiple prefix keys, or to bind commands to
 sequences of keys.
@@ -2613,6 +2614,7 @@ Commands related to key bindings are as follows:
 .Bl -tag -width Ds
 .It Xo Ic bind-key
 .Op Fl nr
+.Op Fl N Ar note
 .Op Fl T Ar key-table
 .Ar key Ar command Op Ar arguments
 .Xc
@@ -2660,22 +2662,46 @@ The
 flag indicates this key may repeat, see the
 .Ic repeat-time
 option.
+.Fl N
+attaches a note to the key (shown with
+.Ic list-keys
+.Fl N ) .
 .Pp
 To view the default bindings and possible commands, see the
 .Ic list-keys
 command.
 .It Xo Ic list-keys
-.Op Fl T Ar key-table
+.Op Fl 1N
+.Op Fl P Ar prefix-string Fl T Ar key-table
+.Op key
 .Xc
 .D1 (alias: Ic lsk )
 List all key bindings.
-Without
-.Fl T
-all key tables are printed.
+By default this shows all keys or any bindings for
+.Ar key
+in the syntax of the
+.Ic bind-key
+command.
+.Fl N
+instead show keys and attached notes, i
+.Ar key-table
+if given or in the
+.Em root
+and
+.Em prefix
+key tables by default.
+.Fl P
+specifies a prefix to print before each key.
 With
+.Fl 1
+only the first matching key and note is shown.
+.Pp
+Without
+.Fl N ,
 .Fl T
-only
-.Ar key-table .
+prints only keys in
+.Ar key-table ,
+otherwise all key tables are printed.
 .It Xo Ic send-keys
 .Op Fl FHlMRX
 .Op Fl N Ar repeat-count
@@ -4693,7 +4719,7 @@ session option.
 Commands related to the status line are as follows:
 .Bl -tag -width Ds
 .It Xo Ic command-prompt
-.Op Fl 1Ni
+.Op Fl 1ikN
 .Op Fl I Ar inputs
 .Op Fl p Ar prompts
 .Op Fl t Ar target-client
@@ -4743,6 +4769,10 @@ but any quotation marks are escaped.
 .Fl 1
 makes the prompt only accept one key press, in this case the resulting input
 is a single character.
+.Fl k
+is like
+.Fl 1
+but the key press is translated to a key name.
 .Fl N
 makes the prompt only accept numeric key presses.
 .Fl i
