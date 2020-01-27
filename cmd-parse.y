@@ -133,7 +133,12 @@ statements	: statement '\n'
 			free($2);
 		}
 
-statement	: condition
+statement	: /* empty */
+		{
+			$$ = xmalloc (sizeof *$$);
+			TAILQ_INIT($$);
+		}
+		| condition
 		{
 			struct cmd_parse_state	*ps = &parse_state;
 
@@ -143,11 +148,6 @@ statement	: condition
 				$$ = cmd_parse_new_commands();
 				cmd_parse_free_commands($1);
 			}
-		}
-		| assignment
-		{
-			$$ = xmalloc (sizeof *$$);
-			TAILQ_INIT($$);
 		}
 		| commands
 		{
@@ -194,8 +194,10 @@ expanded	: format
 			free($1);
 		}
 
-assignment	: /* empty */
-		| EQUALS
+optional_assignment	: /* empty */
+			| assignment
+
+assignment	: EQUALS
 		{
 			struct cmd_parse_state	*ps = &parse_state;
 			int			 flags = ps->input->flags;
@@ -372,7 +374,15 @@ commands	: command
 			$$ = $1;
 		}
 
-command		: assignment TOKEN
+command		: assignment
+		{
+			struct cmd_parse_state	*ps = &parse_state;
+
+			$$ = xcalloc(1, sizeof *$$);
+			$$->name = NULL;
+			$$->line = ps->input->line;
+		}
+		| optional_assignment TOKEN
 		{
 			struct cmd_parse_state	*ps = &parse_state;
 
@@ -381,7 +391,7 @@ command		: assignment TOKEN
 			$$->line = ps->input->line;
 
 		}
-		| assignment TOKEN arguments
+		| optional_assignment TOKEN arguments
 		{
 			struct cmd_parse_state	*ps = &parse_state;
 
@@ -631,6 +641,8 @@ cmd_parse_build_commands(struct cmd_parse_commands *cmds,
 	 * command list.
 	 */
 	TAILQ_FOREACH_SAFE(cmd, cmds, entry, next) {
+		if (cmd->name == NULL)
+			continue;
 		alias = cmd_get_alias(cmd->name);
 		if (alias == NULL)
 			continue;
@@ -676,6 +688,8 @@ cmd_parse_build_commands(struct cmd_parse_commands *cmds,
 	 */
 	result = cmd_list_new();
 	TAILQ_FOREACH(cmd, cmds, entry) {
+		if (cmd->name == NULL)
+			continue;
 		log_debug("%s: %u %s", __func__, cmd->line, cmd->name);
 		cmd_log_argv(cmd->argc, cmd->argv, __func__);
 
