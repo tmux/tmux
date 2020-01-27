@@ -915,11 +915,17 @@ status_prompt_key(struct client *c, key_code key)
 {
 	struct options		*oo = c->session->options;
 	char			*s, *cp, word[64], prefix = '=';
-	const char		*histstr, *ws = NULL;
+	const char		*histstr, *ws = NULL, *keystring;
 	size_t			 size, n, off, idx, used;
 	struct utf8_data	 tmp, *first, *last, *ud;
 	int			 keys;
 
+	if (c->prompt_flags & PROMPT_KEY) {
+		keystring = key_string_lookup_key(key);
+		c->prompt_inputcb(c, c->prompt_data, keystring, 1);
+		status_prompt_clear(c);
+		return (0);
+	}
 	size = utf8_strlen(c->prompt_buffer);
 
 	if (c->prompt_flags & PROMPT_NUMERIC) {
