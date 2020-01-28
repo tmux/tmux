@@ -1590,8 +1590,7 @@ struct client {
 #define CLIENT_NOSIZEFLAGS	\
 	(CLIENT_DEAD|		\
 	 CLIENT_SUSPENDED|	\
-	 CLIENT_DETACHING|	\
-	 CLIENT_READONLY)
+	 CLIENT_DETACHING)
 	int		 flags;
 	struct key_table *keytable;
 
