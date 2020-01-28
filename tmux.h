@@ -1771,6 +1771,7 @@ int		 areshell(const char *);
 void		 setblocking(int, int);
 const char	*find_cwd(void);
 const char	*find_home(void);
+const char	*getversion(void);
 
 /* proc.c */
 struct imsg;

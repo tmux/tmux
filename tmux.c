@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/utsname.h>
 
 #include <errno.h>
 #include <event.h>
@@ -209,6 +210,20 @@ find_home(void)
 	return (home);
 }
 
+const char *
+getversion(void)
+{
+	static char	*version;
+	struct utsname	 u;
+
+	if (version == NULL) {
+		if (uname(&u) < 0)
+			fatalx("uname failed");
+		xasprintf(&version, "openbsd-%s", u.release);
+	}
+	return version;
+}
+
 int
 main(int argc, char **argv)
 {
@@ -235,7 +250,7 @@ main(int argc, char **argv)
 		flags = 0;
 
 	label = path = NULL;
-	while ((opt = getopt(argc, argv, "2c:Cdf:lL:qS:uUVv")) != -1) {
+	while ((opt = getopt(argc, argv, "2c:Cdf:lL:qS:uUvV")) != -1) {
 		switch (opt) {
 		case '2':
 			flags |= CLIENT_256COLOURS;
@@ -255,6 +270,9 @@ main(int argc, char **argv)
 		case 'f':
 			set_cfg_file(optarg);
 			break;
+ 		case 'V':
+			printf("%s %s\n", getprogname(), getversion());
+ 			exit(0);
 		case 'l':
 			flags |= CLIENT_LOGIN;
 			break;
