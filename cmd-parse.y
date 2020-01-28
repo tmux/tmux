@@ -341,7 +341,8 @@ commands	: command
 			struct cmd_parse_state	*ps = &parse_state;
 
 			$$ = cmd_parse_new_commands();
-			if (ps->scope == NULL || ps->scope->flag)
+			if ($1->name != NULL &&
+			    (ps->scope == NULL || ps->scope->flag))
 				TAILQ_INSERT_TAIL($$, $1, entry);
 			else
 				cmd_parse_free_command($1);
@@ -360,7 +361,8 @@ commands	: command
 		{
 			struct cmd_parse_state	*ps = &parse_state;
 
-			if (ps->scope == NULL || ps->scope->flag) {
+			if ($3->name != NULL &&
+			    (ps->scope == NULL || ps->scope->flag)) {
 				$$ = $1;
 				TAILQ_INSERT_TAIL($$, $3, entry);
 			} else {
@@ -641,8 +643,6 @@ cmd_parse_build_commands(struct cmd_parse_commands *cmds,
 	 * command list.
 	 */
 	TAILQ_FOREACH_SAFE(cmd, cmds, entry, next) {
-		if (cmd->name == NULL)
-			continue;
 		alias = cmd_get_alias(cmd->name);
 		if (alias == NULL)
 			continue;
@@ -688,8 +688,6 @@ cmd_parse_build_commands(struct cmd_parse_commands *cmds,
 	 */
 	result = cmd_list_new();
 	TAILQ_FOREACH(cmd, cmds, entry) {
-		if (cmd->name == NULL)
-			continue;
 		log_debug("%s: %u %s", __func__, cmd->line, cmd->name);
 		cmd_log_argv(cmd->argc, cmd->argv, __func__);
 
