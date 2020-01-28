@@ -2386,11 +2386,10 @@ tty_check_fg(struct tty *tty, struct window_pane *wp, struct grid_cell *gc)
 	/* Is this a 24-bit colour? */
 	if (gc->fg & COLOUR_FLAG_RGB) {
 		/* Not a 24-bit terminal? Translate to 256-colour palette. */
-		if (!tty_term_has(tty->term, TTYC_SETRGBF)) {
-			colour_split_rgb(gc->fg, &r, &g, &b);
-			gc->fg = colour_find_rgb(r, g, b);
-		} else
+		if ((tty->term->flags|tty->term_flags) & TERM_RGBCOLOURS)
 			return;
+		colour_split_rgb(gc->fg, &r, &g, &b);
+		gc->fg = colour_find_rgb(r, g, b);
 	}
 
 	/* How many colours does this terminal have? */
@@ -2436,11 +2435,10 @@ tty_check_bg(struct tty *tty, struct window_pane *wp, struct grid_cell *gc)
 	/* Is this a 24-bit colour? */
 	if (gc->bg & COLOUR_FLAG_RGB) {
 		/* Not a 24-bit terminal? Translate to 256-colour palette. */
-		if (!tty_term_has(tty->term, TTYC_SETRGBB)) {
-			colour_split_rgb(gc->bg, &r, &g, &b);
-			gc->bg = colour_find_rgb(r, g, b);
-		} else
+		if ((tty->term->flags|tty->term_flags) & TERM_RGBCOLOURS)
 			return;
+		colour_split_rgb(gc->bg, &r, &g, &b);
+		gc->bg = colour_find_rgb(r, g, b);
 	}
 
 	/* How many colours does this terminal have? */
@@ -2617,15 +2615,14 @@ tty_try_colour(struct tty *tty, int colour, const char *type)
 	}
 
 	if (colour & COLOUR_FLAG_RGB) {
+		colour_split_rgb(colour & 0xffffff, &r, &g, &b);
 		if (*type == '3') {
 			if (!tty_term_has(tty->term, TTYC_SETRGBF))
-				return (-1);
-			colour_split_rgb(colour & 0xffffff, &r, &g, &b);
+				goto fallback_rgb;
 			tty_putcode3(tty, TTYC_SETRGBF, r, g, b);
 		} else {
 			if (!tty_term_has(tty->term, TTYC_SETRGBB))
-				return (-1);
-			colour_split_rgb(colour & 0xffffff, &r, &g, &b);
+				goto fallback_rgb;
 			tty_putcode3(tty, TTYC_SETRGBB, r, g, b);
 		}
 		return (0);
@@ -2636,6 +2633,12 @@ tty_try_colour(struct tty *tty, int colour, const char *type)
 fallback_256:
 	xsnprintf(s, sizeof s, "\033[%s;5;%dm", type, colour & 0xff);
 	log_debug("%s: 256 colour fallback: %s", tty->client->name, s);
+	tty_puts(tty, s);
+	return (0);
+
+fallback_rgb:
+	xsnprintf(s, sizeof s, "\033[%s;2;%d;%d;%dm", type, r, g, b);
+	log_debug("%s: RGB colour fallback: %s", tty->client->name, s);
 	tty_puts(tty, s);
 	return (0);
 }
