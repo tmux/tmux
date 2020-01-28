@@ -363,14 +363,15 @@ recalculate_sizes(void)
 	 * client.
 	 */
 	TAILQ_FOREACH(c, &clients, entry) {
+		s = c->session;
+		if (s != NULL && !(c->flags & CLIENT_UNATTACHEDFLAGS))
+			s->attached++;
 		if (ignore_client_size(c))
 			continue;
-		s = c->session;
 		if (c->tty.sy <= s->statuslines || (c->flags & CLIENT_CONTROL))
 			c->flags |= CLIENT_STATUSOFF;
 		else
 			c->flags &= ~CLIENT_STATUSOFF;
-		s->attached++;
 	}
 
 	/* Walk each window and adjust the size. */
