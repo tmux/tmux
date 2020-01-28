@@ -20,6 +20,7 @@
 
 #include <netinet/in.h>
 
+#include <ctype.h>
 #include <resolv.h>
 #include <stdlib.h>
 #include <string.h>

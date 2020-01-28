@@ -213,15 +213,7 @@ find_home(void)
 const char *
 getversion(void)
 {
-	static char	*version;
-	struct utsname	 u;
-
-	if (version == NULL) {
-		if (uname(&u) < 0)
-			fatalx("uname failed");
-		xasprintf(&version, "openbsd-%s", u.release);
-	}
-	return version;
+	return TMUX_VERSION;
 }
 
 int
@@ -264,9 +256,6 @@ main(int argc, char **argv)
 			else
 				flags |= CLIENT_CONTROL;
 			break;
-		case 'V':
-			printf("%s %s\n", getprogname(), VERSION);
-			exit(0);
 		case 'f':
 			set_cfg_file(optarg);
 			break;
