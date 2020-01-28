@@ -210,7 +210,7 @@ window_client_draw(__unused void *modedata, void *itemdata,
 	struct window_pane		*wp;
 	u_int				 cx = s->cx, cy = s->cy, lines, at;
 
-	if (c->session == NULL || (c->flags & (CLIENT_DEAD|CLIENT_DETACHING)))
+	if (c->session == NULL || (c->flags & CLIENT_UNATTACHEDFLAGS))
 		return;
 	wp = c->session->curw->window->active;
 
