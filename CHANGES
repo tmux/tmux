@@ -1,5 +1,14 @@
 CHANGES FROM 3.0 to X.X
 
+* Add support for adding a note to a key binding (with bind-key -N) and use
+  this to add descriptions to the default key bindings. A new -N flag to
+  list-keys shows key bindings with notes. Change the default ? binding to use
+  this to show a readable summary of keys. Also extend command-prompt to return
+  the name of the key pressed and add a default binding (/) to show the note
+  for the next key pressed.
+
+* Add support for the iTerm2 DSR 1337 sequence to get the terminal version.
+
 * Treat plausible but invalid keys (like C-BSpace) as literal like any other
   unrecognised string passed to send-keys
 
@@ -12,7 +21,8 @@ CHANGES FROM 3.0 to X.X
 
 * Document client exit messages in the manual page.
 
-* Do not let read-only clients limit the size.
+* Do not let read-only clients limit the size, unless all clients are
+  read-only.
 
 * Add a number of new formats to inspect what sessions and clients a window is
   present or active in.
