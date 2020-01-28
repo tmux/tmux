@@ -226,6 +226,17 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	spawn_log(__func__, sc);
 
 	/*
+	 * Work out the current working directory. If respawning, use
+	 * the pane's stored one unless specified.
+	 */
+	if (sc->cwd != NULL)
+		cwd = format_single(item, sc->cwd, c, s, NULL, NULL);
+	else if (~sc->flags & SPAWN_RESPAWN)
+		cwd = xstrdup(server_client_get_cwd(c, s));
+	else
+		cwd = NULL;
+
+	/*
 	 * If we are respawning then get rid of the old process. Otherwise
 	 * either create a new cell or assign to the one we are given.
 	 */
@@ -235,6 +246,7 @@ spawn_pane(struct spawn_context *sc, char **cause)
 			window_pane_index(sc->wp0, &idx);
 			xasprintf(cause, "pane %s:%d.%u still active",
 			    s->name, sc->wl->idx, idx);
+			free(cwd);
 			return (NULL);
 		}
 		if (sc->wp0->fd != -1) {
@@ -255,8 +267,8 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	}
 
 	/*
-	 * Now we have a pane with nothing running in it ready for the new
-	 * process. Work out the command and arguments.
+	 * Now we have a pane with nothing running in it ready for the new process.
+	 * Work out the command and arguments and store the working directory.
 	 */
 	if (sc->argc == 0 && (~sc->flags & SPAWN_RESPAWN)) {
 		cmd = options_get_string(s->options, "default-command");
@@ -271,6 +283,10 @@ spawn_pane(struct spawn_context *sc, char **cause)
 		argc = sc->argc;
 		argv = sc->argv;
 	}
+	if (cwd != NULL) {
+		free(new_wp->cwd);
+		new_wp->cwd = cwd;
+	}
 
 	/*
 	 * Replace the stored arguments if there are new ones. If not, the
@@ -280,21 +296,6 @@ spawn_pane(struct spawn_context *sc, char **cause)
 		cmd_free_argv(new_wp->argc, new_wp->argv);
 		new_wp->argc = argc;
 		new_wp->argv = cmd_copy_argv(argc, argv);
-	}
-
-	/*
-	 * Work out the current working directory. If respawning, use
-	 * the pane's stored one unless specified.
-	 */
-	if (sc->cwd != NULL)
-		cwd = format_single(item, sc->cwd, c, s, NULL, NULL);
-	else if (~sc->flags & SPAWN_RESPAWN)
-		cwd = xstrdup(server_client_get_cwd(c, s));
-	else
-		cwd = NULL;
-	if (cwd != NULL) {
-		free(new_wp->cwd);
-		new_wp->cwd = cwd;
 	}
 
 	/* Create an environment for this pane. */
