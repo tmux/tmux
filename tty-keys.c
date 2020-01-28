@@ -1099,7 +1099,7 @@ tty_keys_device_status_report(struct tty *tty, const char *buf, size_t len,
 		return (-1);
 	if (len == 2)
 		return (1);
-	if (buf[2] != 'I')
+	if (buf[2] != 'I' && buf[2] != 'T')
 		return (-1);
 	if (len == 3)
 		return (1);
