@@ -56,7 +56,7 @@ static __dead void
 usage(void)
 {
 	fprintf(stderr,
-	    "usage: %s [-2Cluv] [-c shell-command] [-f file] [-L socket-name]\n"
+	    "usage: %s [-2CluvV] [-c shell-command] [-f file] [-L socket-name]\n"
 	    "            [-S socket-path] [command [flags]]\n",
 	    getprogname());
 	exit(1);
