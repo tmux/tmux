@@ -23,7 +23,7 @@
 .Sh SYNOPSIS
 .Nm tmux
 .Bk -words
-.Op Fl 2Cluv
+.Op Fl 2CluvV
 .Op Fl c Ar shell-command
 .Op Fl f Ar file
 .Op Fl L Ar socket-name
@@ -210,6 +210,11 @@ signal may be sent to the
 server process to toggle logging between on (as if
 .Fl v
 was given) and off.
+.It Fl V
+Report the
+.Nm
+version.
+.Pp
 .It Ar command Op Ar flags
 This specifies one of a set of commands used to control
 .Nm ,
@@ -4369,6 +4374,7 @@ The following variables are available, where appropriate:
 .It Li "session_windows" Ta "" Ta "Number of windows in session"
 .It Li "socket_path" Ta "" Ta "Server socket path"
 .It Li "start_time" Ta "" Ta "Server start time"
+.It Li "version" Ta "" Ta "Server version"
 .It Li "window_active" Ta "" Ta "1 if window active"
 .It Li "window_active_clients" Ta "" Ta "Number of clients viewing this window"
 .It Li "window_active_clients_list" Ta "" Ta "List of clients viewing this window"

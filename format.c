@@ -1106,6 +1106,7 @@ format_create(struct client *c, struct cmdq_item *item, int tag, int flags)
 	ft->flags = flags;
 	ft->time = time(NULL);
 
+	format_add(ft, "version", "%s", getversion());
 	format_add_cb(ft, "host", format_cb_host);
 	format_add_cb(ft, "host_short", format_cb_host_short);
 	format_add_cb(ft, "pid", format_cb_pid);
