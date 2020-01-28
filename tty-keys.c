@@ -1099,7 +1099,7 @@ tty_keys_device_status_report(struct tty *tty, const char *buf, size_t len,
 		return (-1);
 	if (len == 2)
 		return (1);
-	if (buf[2] != 'I')
+	if (buf[2] != 'I' && buf[2] != 'T')
 		return (-1);
 	if (len == 3)
 		return (1);
@@ -1117,7 +1117,9 @@ tty_keys_device_status_report(struct tty *tty, const char *buf, size_t len,
 
 	/* Set terminal flags. */
 	if (strncmp(tmp, "ITERM2 ", 7) == 0)
-		flags |= TERM_DECSLRM;
+		flags |= (TERM_DECSLRM|TERM_256COLOURS|TERM_RGBCOLOURS);
+	if (strncmp(tmp, "TMUX ", 5) == 0)
+		flags |= (TERM_256COLOURS|TERM_RGBCOLOURS);
 	log_debug("%s: received DSR %.*s", c->name, (int)*size, buf);
 
 	tty_set_flags(tty, flags);

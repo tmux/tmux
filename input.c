@@ -1302,6 +1302,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 	struct input_table_entry       *entry;
 	int				i, n, m;
 	u_int				cx, bg = ictx->cell.cell.bg;
+	char			       *copy, *cp;
 
 	if (ictx->flags & INPUT_DISCARD)
 		return (0);
@@ -1432,6 +1433,13 @@ input_csi_dispatch(struct input_ctx *ictx)
 			break;
 		case 6:
 			input_reply(ictx, "\033[%u;%uR", s->cy + 1, s->cx + 1);
+			break;
+		case 1337: /* Terminal version, from iTerm2. */
+			copy = xstrdup(getversion());
+			for (cp = copy; *cp != '\0'; cp++)
+				*cp = toupper((u_char)*cp);
+			input_reply(ictx, "\033[TMUX %sn", copy);
+			free(copy);
 			break;
 		default:
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);

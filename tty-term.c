@@ -528,10 +528,15 @@ tty_term_find(char *name, int fd, char **cause)
 		goto error;
 	}
 
-	/* Figure out if we have 256 colours (or more). */
-	if (tty_term_number(term, TTYC_COLORS) >= 256 ||
-	    tty_term_has(term, TTYC_RGB))
+	/* Set flag if terminal has 256 colours. */
+	if (tty_term_number(term, TTYC_COLORS) >= 256)
 		term->flags |= TERM_256COLOURS;
+
+	/* Set flag if terminal has RGB colours. */
+	if ((tty_term_flag(term, TTYC_TC) || tty_term_has(term, TTYC_RGB)) ||
+	    (tty_term_has(term, TTYC_SETRGBF) &&
+	    tty_term_has(term, TTYC_SETRGBB)))
+		term->flags |= TERM_RGBCOLOURS;
 
 	/*
 	 * Terminals without xenl (eat newline glitch) wrap at at $COLUMNS - 1
@@ -567,22 +572,7 @@ tty_term_find(char *name, int fd, char **cause)
 		code->type = TTYCODE_STRING;
 	}
 
-	/*
-	 * On terminals with RGB colour (Tc or RGB), fill in setrgbf and
-	 * setrgbb if they are missing.
-	 */
-	if ((tty_term_flag(term, TTYC_TC) || tty_term_flag(term, TTYC_RGB)) &&
-	    !tty_term_has(term, TTYC_SETRGBF) &&
-	    !tty_term_has(term, TTYC_SETRGBB)) {
-		code = &term->codes[TTYC_SETRGBF];
-		code->value.string = xstrdup("\033[38;2;%p1%d;%p2%d;%p3%dm");
-		code->type = TTYCODE_STRING;
-		code = &term->codes[TTYC_SETRGBB];
-		code->value.string = xstrdup("\033[48;2;%p1%d;%p2%d;%p3%dm");
-		code->type = TTYCODE_STRING;
-	}
-
-	/* Log it. */
+	/* Log the capabilities. */
 	for (i = 0; i < tty_term_ncodes(); i++)
 		log_debug("%s%s", name, tty_term_describe(term, i));
 
