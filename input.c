@@ -773,6 +773,7 @@ input_save_state(struct input_ctx *ictx)
 	ictx->old_mode = s->mode;
 }
 
+/* Restore screen state. */
 static void
 input_restore_state(struct input_ctx *ictx)
 {
