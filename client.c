@@ -865,6 +865,12 @@ client_dispatch_wait(struct imsg *imsg)
 	case MSG_WRITE_CLOSE:
 		client_write_close(data, datalen);
 		break;
+	case MSG_OLDSTDERR:
+	case MSG_OLDSTDIN:
+	case MSG_OLDSTDOUT:
+		fprintf(stderr, "server version is too old for client\n");
+		proc_exit(client_proc);
+		break;
 	}
 }
 
