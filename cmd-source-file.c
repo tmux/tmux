@@ -113,6 +113,7 @@ cmd_source_file_done(struct client *c, const char *path, int error,
 static void
 cmd_source_file_add(struct cmd_source_file_data *cdata, const char *path)
 {
+	log_debug("%s: %s", __func__, path);
 	cdata->files = xreallocarray(cdata->files, cdata->nfiles + 1,
 	    sizeof *cdata->files);
 	cdata->files[cdata->nfiles++] = xstrdup(path);
@@ -123,7 +124,6 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = self->args;
 	struct cmd_source_file_data	*cdata;
-	int				 flags = 0;
 	struct client			*c = item->client;
 	enum cmd_retval			 retval = CMD_RETURN_NORMAL;
 	char				*pattern, *cwd;
@@ -159,7 +159,7 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 
 		if ((result = glob(pattern, 0, NULL, &g)) != 0) {
 			if (result != GLOB_NOMATCH ||
-			    (~flags & CMD_PARSE_QUIET)) {
+			    (~cdata->flags & CMD_PARSE_QUIET)) {
 				if (result == GLOB_NOMATCH)
 					error = strerror(ENOENT);
 				else if (result == GLOB_NOSPACE)

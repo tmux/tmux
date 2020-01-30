@@ -214,7 +214,6 @@ was given) and off.
 Report the
 .Nm
 version.
-.Pp
 .It Ar command Op Ar flags
 This specifies one of a set of commands used to control
 .Nm ,
@@ -556,7 +555,7 @@ Braces may be enclosed inside braces, for example:
 .Bd -literal -offset indent
 bind x if-shell "true" {
     if-shell "true" {
-         display "true!"
+        display "true!"
     }
 }
 .Ed
@@ -938,7 +937,9 @@ If
 is specified, any other clients attached to the session are detached.
 If
 .Fl x
-is given, send SIGHUP to the parent process of the client as well as
+is given, send
+.Dv SIGHUP
+to the parent process of the client as well as
 detaching the client, typically causing it to exit.
 .Fl r
 signifies the client is read-only (only keys bound to the
@@ -989,7 +990,9 @@ option kills all but the client given with
 .Fl t .
 If
 .Fl P
-is given, send SIGHUP to the parent process of the client, typically causing it
+is given, send
+.Dv SIGHUP
+to the parent process of the client, typically causing it
 to exit.
 With
 .Fl E ,
@@ -1288,6 +1291,17 @@ shows the parsed commands and line numbers if possible.
 Start the
 .Nm
 server, if not already running, without creating any sessions.
+.Pp
+Note that as by default the
+.Nm
+server will exit with no sessions, this is only useful if a session is created in
+.Pa ~/.tmux.conf ,
+.Ic exit-empty
+is turned off, or another command is run as part of the same command sequence.
+For example:
+.Bd -literal -offset indent
+$ tmux start \\; show -g
+.Ed
 .It Xo Ic suspend-client
 .Op Fl t Ar target-client
 .Xc
@@ -1336,7 +1350,8 @@ is used,
 option will not be applied.
 .Pp
 .Fl T
-sets the client's key table; the next key from the client will be interpreted from
+sets the client's key table; the next key from the client will be interpreted
+from
 .Ar key-table .
 This may be used to configure multiple prefix keys, or to bind commands to
 sequences of keys.
@@ -2534,10 +2549,11 @@ This is similar to
 except the source and destination windows are swapped.
 It is an error if no window exists at
 .Ar src-window .
+If
+.Fl d
+is given, the new window does not become the current window.
 .Pp
-Like
-.Ic swap-pane ,
-if
+If
 .Fl s
 is omitted and a marked pane is present (see
 .Ic select-pane
@@ -2613,6 +2629,7 @@ Commands related to key bindings are as follows:
 .Bl -tag -width Ds
 .It Xo Ic bind-key
 .Op Fl nr
+.Op Fl N Ar note
 .Op Fl T Ar key-table
 .Ar key Ar command Op Ar arguments
 .Xc
@@ -2660,22 +2677,46 @@ The
 flag indicates this key may repeat, see the
 .Ic repeat-time
 option.
+.Fl N
+attaches a note to the key (shown with
+.Ic list-keys
+.Fl N ) .
 .Pp
 To view the default bindings and possible commands, see the
 .Ic list-keys
 command.
 .It Xo Ic list-keys
-.Op Fl T Ar key-table
+.Op Fl 1N
+.Op Fl P Ar prefix-string Fl T Ar key-table
+.Op key
 .Xc
 .D1 (alias: Ic lsk )
 List all key bindings.
-Without
-.Fl T
-all key tables are printed.
+By default this shows all keys or any bindings for
+.Ar key
+in the syntax of the
+.Ic bind-key
+command.
+.Fl N
+instead show keys and attached notes, i
+.Ar key-table
+if given or in the
+.Em root
+and
+.Em prefix
+key tables by default.
+.Fl P
+specifies a prefix to print before each key.
 With
+.Fl 1
+only the first matching key and note is shown.
+.Pp
+Without
+.Fl N ,
 .Fl T
-only
-.Ar key-table .
+prints only keys in
+.Ar key-table ,
+otherwise all key tables are printed.
 .It Xo Ic send-keys
 .Op Fl FHlMRX
 .Op Fl N Ar repeat-count
@@ -4228,7 +4269,6 @@ The following variables are available, where appropriate:
 .It Li "client_readonly" Ta "" Ta "1 if client is readonly"
 .It Li "client_session" Ta "" Ta "Name of the client's session"
 .It Li "client_termname" Ta "" Ta "Terminal name of client"
-.It Li "client_termtype" Ta "" Ta "Terminal type of client"
 .It Li "client_tty" Ta "" Ta "Pseudo terminal of client"
 .It Li "client_utf8" Ta "" Ta "1 if client supports UTF-8"
 .It Li "client_width" Ta "" Ta "Width of client"
@@ -4316,10 +4356,14 @@ The following variables are available, where appropriate:
 .It Li "session_activity" Ta "" Ta "Time of session last activity"
 .It Li "session_alerts" Ta "" Ta "List of window indexes with alerts"
 .It Li "session_attached" Ta "" Ta "Number of clients session is attached to"
+.It Li "session_attached_list" Ta "" Ta "List of clients session is attached to"
 .It Li "session_created" Ta "" Ta "Time session created"
 .It Li "session_format" Ta "" Ta "1 if format is for a session"
 .It Li "session_group" Ta "" Ta "Name of session group"
+.It Li "session_group_attached" Ta "" Ta "Number of clients sessions in group are attached to"
+.It Li "session_group_attached_list" Ta "" Ta "List of clients sessions in group are attached to"
 .It Li "session_group_list" Ta "" Ta "List of sessions in group"
+.It Li "session_group_many_attached" Ta "" Ta "1 if multiple clients attached to sessions in group"
 .It Li "session_group_size" Ta "" Ta "Size of session group"
 .It Li "session_grouped" Ta "" Ta "1 if session in a group"
 .It Li "session_id" Ta "" Ta "Unique session ID"
@@ -4332,6 +4376,10 @@ The following variables are available, where appropriate:
 .It Li "start_time" Ta "" Ta "Server start time"
 .It Li "version" Ta "" Ta "Server version"
 .It Li "window_active" Ta "" Ta "1 if window active"
+.It Li "window_active_clients" Ta "" Ta "Number of clients viewing this window"
+.It Li "window_active_clients_list" Ta "" Ta "List of clients viewing this window"
+.It Li "window_active_sessions" Ta "" Ta "Number of sessions on which this window is active"
+.It Li "window_active_sessions_list" Ta "" Ta "List of sessions on which this window is active"
 .It Li "window_activity" Ta "" Ta "Time of window last activity"
 .It Li "window_activity_flag" Ta "" Ta "1 if window has activity"
 .It Li "window_bell_flag" Ta "" Ta "1 if window has bell"
@@ -4347,6 +4395,8 @@ The following variables are available, where appropriate:
 .It Li "window_last_flag" Ta "" Ta "1 if window is the last used"
 .It Li "window_layout" Ta "" Ta "Window layout description, ignoring zoomed window panes"
 .It Li "window_linked" Ta "" Ta "1 if window is linked across sessions"
+.It Li "window_linked_sessions" Ta "" Ta "Number of sessions this window is linked to"
+.It Li "window_linked_sessions_list" Ta "" Ta "List of sessions this window is linked to"
 .It Li "window_marked_flag" Ta "" Ta "1 if window contains the marked pane"
 .It Li "window_name" Ta "#W" Ta "Name of window"
 .It Li "window_offset_x" Ta "" Ta "X offset into window if larger than client"
@@ -4367,7 +4417,7 @@ interface, for example
 .Ic status-style
 for the status line.
 In addition, embedded styles may be specified in format options, such as
-.Ic status-left-format ,
+.Ic status-left ,
 by enclosing them in
 .Ql #[
 and
@@ -4686,7 +4736,7 @@ session option.
 Commands related to the status line are as follows:
 .Bl -tag -width Ds
 .It Xo Ic command-prompt
-.Op Fl 1Ni
+.Op Fl 1ikN
 .Op Fl I Ar inputs
 .Op Fl p Ar prompts
 .Op Fl t Ar target-client
@@ -4736,6 +4786,10 @@ but any quotation marks are escaped.
 .Fl 1
 makes the prompt only accept one key press, in this case the resulting input
 is a single character.
+.Fl k
+is like
+.Fl 1
+but the key press is translated to a key name.
 .Fl N
 makes the prompt only accept numeric key presses.
 .Fl i
@@ -4899,7 +4953,7 @@ When the
 option is reached, the oldest automatically named buffer is deleted.
 Explicitly named buffers are not subject to
 .Ic buffer-limit
-and may be deleted with
+and may be deleted with the
 .Ic delete-buffer
 command.
 .Pp
@@ -5144,6 +5198,37 @@ is used, the channel is locked and any clients that try to lock the same
 channel are made to wait until the channel is unlocked with
 .Ic wait-for
 .Fl U .
+.El
+.Sh EXIT MESSAGES
+When a
+.Nm
+client detaches, it prints a message.
+This may be one of:
+.Bl -tag -width Ds
+.It [detached (from session ...)]
+The client was detached normally.
+.It [detached and SIGHUP]
+The client was detached and its parent sent the
+.Dv SIGHUP
+signal (for example with
+.Ic detach-client
+.Fl P ) .
+.It [lost tty]
+The client's
+.Xr tty 4
+or
+.Xr pty 4
+was unexpectedly destroyed.
+.It [terminated]
+The client was killed with
+.Dv SIGTERM .
+.It [exited]
+The server exited when it had no sessions.
+.It [server exited]
+The server exited when it received
+.Dv SIGTERM .
+.It [server exited unexpectedly]
+The server crashed or otherwise exited without telling the client the reason.
 .El
 .Sh TERMINFO EXTENSIONS
 .Nm

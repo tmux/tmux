@@ -60,6 +60,9 @@ static struct cmdq_item *
 cmd_send_keys_inject_key(struct client *c, struct cmd_find_state *fs,
     struct cmdq_item *item, key_code key)
 {
+	struct session			*s = fs->s;
+	struct winlink			*wl = fs->wl;
+	struct window_pane		*wp = fs->wp;
 	struct window_mode_entry	*wme;
 	struct key_table		*table;
 	struct key_binding		*bd;
@@ -68,7 +71,8 @@ cmd_send_keys_inject_key(struct client *c, struct cmd_find_state *fs,
 	if (wme == NULL || wme->mode->key_table == NULL) {
 		if (options_get_number(fs->wp->window->options, "xterm-keys"))
 			key |= KEYC_XTERM;
-		window_pane_key(fs->wp, item->client, fs->s, fs->wl, key, NULL);
+		if (window_pane_key(wp, item->client, s, wl, key, NULL) != 0)
+			return (NULL);
 		return (item);
 	}
 	table = key_bindings_get_table(wme->mode->key_table(wme), 1);
@@ -87,6 +91,7 @@ cmd_send_keys_inject_string(struct client *c, struct cmd_find_state *fs,
     struct cmdq_item *item, struct args *args, int i)
 {
 	const char		*s = args->argv[i];
+	struct cmdq_item	*new_item;
 	struct utf8_data	*ud, *uc;
 	wchar_t			 wc;
 	key_code		 key;
@@ -104,8 +109,11 @@ cmd_send_keys_inject_string(struct client *c, struct cmd_find_state *fs,
 	literal = args_has(args, 'l');
 	if (!literal) {
 		key = key_string_lookup_string(s);
-		if (key != KEYC_NONE && key != KEYC_UNKNOWN)
-			return (cmd_send_keys_inject_key(c, fs, item, key));
+		if (key != KEYC_NONE && key != KEYC_UNKNOWN) {
+			new_item = cmd_send_keys_inject_key(c, fs, item, key);
+			if (new_item != NULL)
+				return (new_item);
+		}
 		literal = 1;
 	}
 	if (literal) {
