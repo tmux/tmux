@@ -1187,8 +1187,11 @@ struct tty_term {
 	struct tty_code	*codes;
 
 #define TERM_256COLOURS 0x1
-#define TERM_EARLYWRAP 0x2
-#define TERM_SIXEL 0x4
+#define TERM_NOXENL 0x2
+#define TERM_DECSLRM 0x4
+#define TERM_DECFRA 0x8
+#define TERM_RGBCOLOURS 0x10
+#define TERM_SIXEL 0x20
 	int		 flags;
 
 	LIST_ENTRY(tty_term) entry;
@@ -1197,6 +1200,7 @@ LIST_HEAD(tty_terms, tty_term);
 
 struct tty {
 	struct client	*client;
+	struct event	 start_timer;
 
 	u_int		 sx;
 	u_int		 sy;
@@ -1245,22 +1249,14 @@ struct tty {
 #define TTY_OPENED 0x20
 #define TTY_FOCUS 0x40
 #define TTY_BLOCK 0x80
-#define TTY_NOBLOCK 0x100
+#define TTY_HAVEDA 0x100
+#define TTY_HAVEDSR 0x200
+#define TTY_NOBLOCK 0x400
 	int		 flags;
 
 	struct tty_term	*term;
 	char		*term_name;
 	int		 term_flags;
-	enum {
-		TTY_VT100,
-		TTY_VT101,
-		TTY_VT102,
-		TTY_VT220,
-		TTY_VT320,
-		TTY_VT420,
-		TTY_VT520,
-		TTY_UNKNOWN
-	} term_type;
 
 	u_int		 mouse_last_x;
 	u_int		 mouse_last_y;
@@ -1274,15 +1270,6 @@ struct tty {
 	struct event	 key_timer;
 	struct tty_key	*key_tree;
 };
-#define TTY_TYPES \
-	{ "VT100", \
-	  "VT101", \
-	  "VT102", \
-	  "VT220", \
-	  "VT320", \
-	  "VT420", \
-	  "VT520", \
-	  "Unknown" }
 
 /* TTY command context. */
 struct tty_ctx {
@@ -1293,6 +1280,7 @@ struct tty_ctx {
 
 	u_int			 num;
 	void			*ptr;
+	int			 more;
 
 	/*
 	 * Cursor and region position before the screen was updated - this is
@@ -1617,11 +1605,14 @@ struct client {
 	 CLIENT_REDRAWSTATUSALWAYS|	\
 	 CLIENT_REDRAWBORDERS|		\
 	 CLIENT_REDRAWOVERLAY)
+#define CLIENT_UNATTACHEDFLAGS	\
+	(CLIENT_DEAD|		\
+	 CLIENT_SUSPENDED|	\
+	 CLIENT_DETACHING)
 #define CLIENT_NOSIZEFLAGS	\
 	(CLIENT_DEAD|		\
 	 CLIENT_SUSPENDED|	\
-	 CLIENT_DETACHING|	\
-	 CLIENT_READONLY)
+	 CLIENT_DETACHING)
 	int		 flags;
 	struct key_table *keytable;
 
@@ -1644,6 +1635,7 @@ struct client {
 #define PROMPT_NUMERIC 0x2
 #define PROMPT_INCREMENTAL 0x4
 #define PROMPT_NOFORMAT 0x8
+#define PROMPT_KEY 0x10
 	int		 prompt_flags;
 
 	struct session	*session;
@@ -1671,6 +1663,7 @@ TAILQ_HEAD(clients, client);
 struct key_binding {
 	key_code		 key;
 	struct cmd_list		*cmdlist;
+	const char		*note;
 
 	int			 flags;
 #define KEY_BINDING_REPEAT 0x1
@@ -1798,6 +1791,7 @@ int		 areshell(const char *);
 void		 setblocking(int, int);
 const char	*find_cwd(void);
 const char	*find_home(void);
+const char	*getversion(void);
 
 /* proc.c */
 struct imsg;
@@ -2014,7 +2008,7 @@ void	tty_draw_images(struct tty *, struct window_pane *, struct screen *);
 int	tty_open(struct tty *, char **);
 void	tty_close(struct tty *);
 void	tty_free(struct tty *);
-void	tty_set_type(struct tty *, int, int);
+void	tty_set_flags(struct tty *, int);
 void	tty_write(void (*)(struct tty *, const struct tty_ctx *),
 	    struct tty_ctx *);
 void	tty_cmd_alignmenttest(struct tty *, const struct tty_ctx *);
@@ -2184,7 +2178,8 @@ void	 key_bindings_unref_table(struct key_table *);
 struct key_binding *key_bindings_get(struct key_table *, key_code);
 struct key_binding *key_bindings_first(struct key_table *);
 struct key_binding *key_bindings_next(struct key_table *, struct key_binding *);
-void	 key_bindings_add(const char *, key_code, int, struct cmd_list *);
+void	 key_bindings_add(const char *, key_code, const char *, int,
+	     struct cmd_list *);
 void	 key_bindings_remove(const char *, key_code);
 void	 key_bindings_remove_table(const char *);
 void	 key_bindings_init(void);
@@ -2315,7 +2310,7 @@ void	 input_parse(struct window_pane *);
 void	 input_parse_buffer(struct window_pane *, u_char *, size_t);
 
 /* input-key.c */
-void	 input_key(struct window_pane *, key_code, struct mouse_event *);
+int	 input_key(struct window_pane *, key_code, struct mouse_event *);
 
 /* xterm-keys.c */
 char	*xterm_keys_lookup(key_code);
@@ -2540,7 +2535,7 @@ int		 window_pane_set_mode(struct window_pane *,
 		     struct args *);
 void		 window_pane_reset_mode(struct window_pane *);
 void		 window_pane_reset_mode_all(struct window_pane *);
-void		 window_pane_key(struct window_pane *, struct client *,
+int		 window_pane_key(struct window_pane *, struct client *,
 		     struct session *, struct winlink *, key_code,
 		     struct mouse_event *);
 int		 window_pane_visible(struct window_pane *);

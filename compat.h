@@ -171,7 +171,11 @@ void	warnx(const char *, ...);
 #endif
 
 #ifndef FNM_CASEFOLD
+#ifdef FNM_IGNORECASE
+#define FNM_CASEFOLD FNM_IGNORECASE
+#else
 #define FNM_CASEFOLD 0
+#endif
 #endif
 
 #ifndef INFTIM

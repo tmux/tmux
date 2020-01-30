@@ -133,7 +133,12 @@ statements	: statement '\n'
 			free($2);
 		}
 
-statement	: condition
+statement	: /* empty */
+		{
+			$$ = xmalloc (sizeof *$$);
+			TAILQ_INIT($$);
+		}
+		| condition
 		{
 			struct cmd_parse_state	*ps = &parse_state;
 
@@ -143,11 +148,6 @@ statement	: condition
 				$$ = cmd_parse_new_commands();
 				cmd_parse_free_commands($1);
 			}
-		}
-		| assignment
-		{
-			$$ = xmalloc (sizeof *$$);
-			TAILQ_INIT($$);
 		}
 		| commands
 		{
@@ -194,8 +194,10 @@ expanded	: format
 			free($1);
 		}
 
-assignment	: /* empty */
-		| EQUALS
+optional_assignment	: /* empty */
+			| assignment
+
+assignment	: EQUALS
 		{
 			struct cmd_parse_state	*ps = &parse_state;
 			int			 flags = ps->input->flags;
@@ -339,7 +341,8 @@ commands	: command
 			struct cmd_parse_state	*ps = &parse_state;
 
 			$$ = cmd_parse_new_commands();
-			if (ps->scope == NULL || ps->scope->flag)
+			if ($1->name != NULL &&
+			    (ps->scope == NULL || ps->scope->flag))
 				TAILQ_INSERT_TAIL($$, $1, entry);
 			else
 				cmd_parse_free_command($1);
@@ -358,7 +361,8 @@ commands	: command
 		{
 			struct cmd_parse_state	*ps = &parse_state;
 
-			if (ps->scope == NULL || ps->scope->flag) {
+			if ($3->name != NULL &&
+			    (ps->scope == NULL || ps->scope->flag)) {
 				$$ = $1;
 				TAILQ_INSERT_TAIL($$, $3, entry);
 			} else {
@@ -372,7 +376,15 @@ commands	: command
 			$$ = $1;
 		}
 
-command		: assignment TOKEN
+command		: assignment
+		{
+			struct cmd_parse_state	*ps = &parse_state;
+
+			$$ = xcalloc(1, sizeof *$$);
+			$$->name = NULL;
+			$$->line = ps->input->line;
+		}
+		| optional_assignment TOKEN
 		{
 			struct cmd_parse_state	*ps = &parse_state;
 
@@ -381,7 +393,7 @@ command		: assignment TOKEN
 			$$->line = ps->input->line;
 
 		}
-		| assignment TOKEN arguments
+		| optional_assignment TOKEN arguments
 		{
 			struct cmd_parse_state	*ps = &parse_state;
 
