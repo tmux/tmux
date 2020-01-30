@@ -2161,6 +2161,8 @@ static int
 input_dcs_dispatch(struct input_ctx *ictx)
 {
 	struct screen_write_ctx	*sctx = &ictx->ctx;
+	struct window_pane	*wp = ictx->wp;
+	struct window		*w = wp->window;
 	u_char			*buf = ictx->input_buf;
 	size_t			 len = ictx->input_len;
 	const char		 prefix[] = "tmux;";
