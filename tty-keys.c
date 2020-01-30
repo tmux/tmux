@@ -1068,7 +1068,6 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 		if (p[i] == 4)
 			flags |= TERM_SIXEL;
 	}
-	tty_set_type(tty, type, flags);
 
 	tty_set_flags(tty, flags);
 	tty->flags |= TTY_HAVEDA;
