@@ -69,9 +69,6 @@ CHANGES FROM 3.0 to X.X
   split-window and join-pane -l to accept similar percentages and no longer
   document -p.
 
-* Turn automatic-rename back on if the rename escape sequence is used with an
-  empty name.
-
 * Make select-pane -P set window-active-style also to match previous behaviour.
 
 * Do not use bright when emulating 256 colours on an 8 colour terminal because
