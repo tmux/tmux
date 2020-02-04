@@ -1,4 +1,4 @@
-CHANGES FROM 3.0 to X.X
+CHANGES FROM 3.0 to 3.1
 
 * Add support for adding a note to a key binding (with bind-key -N) and use
   this to add descriptions to the default key bindings. A new -N flag to
