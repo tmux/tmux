@@ -120,7 +120,7 @@ static void	window_copy_cursor_jump_to_back(struct window_mode_entry *);
 static void	window_copy_cursor_next_word(struct window_mode_entry *,
 		    const char *);
 static void	window_copy_cursor_next_word_end(struct window_mode_entry *,
-		    const char *);
+		    const char *, int);
 static void	window_copy_cursor_previous_word(struct window_mode_entry *,
 		    const char *, int);
 static void	window_copy_scroll_up(struct window_mode_entry *, u_int);
@@ -1210,7 +1210,7 @@ window_copy_cmd_next_matching_bracket(struct window_copy_cmd_state *cs)
 					tried = 1;
 					goto retry;
 				}
-				window_copy_cursor_next_word_end(wme, "{[( ");
+				window_copy_cursor_next_word_end(wme, "{[( ", 0);
 				continue;
 			}
 			/* For vi, continue searching for bracket until EOL. */
@@ -1293,7 +1293,7 @@ window_copy_cmd_next_space_end(struct window_copy_cmd_state *cs)
 	u_int				 np = wme->prefix;
 
 	for (; np != 0; np--)
-		window_copy_cursor_next_word_end(wme, " ");
+		window_copy_cursor_next_word_end(wme, " ", 0);
 	return (WINDOW_COPY_CMD_NOTHING);
 }
 
@@ -1321,7 +1321,7 @@ window_copy_cmd_next_word_end(struct window_copy_cmd_state *cs)
 
 	ws = options_get_string(s->options, "word-separators");
 	for (; np != 0; np--)
-		window_copy_cursor_next_word_end(wme, ws);
+		window_copy_cursor_next_word_end(wme, ws, 0);
 	return (WINDOW_COPY_CMD_NOTHING);
 }
 
@@ -1528,7 +1528,7 @@ window_copy_cmd_select_word(struct window_copy_cmd_state *cs)
 	ws = options_get_string(s->options, "word-separators");
 	window_copy_cursor_previous_word(wme, ws, 0);
 	window_copy_start_selection(wme);
-	window_copy_cursor_next_word_end(wme, ws);
+	window_copy_cursor_next_word_end(wme, ws, 1);
 
 	return (WINDOW_COPY_CMD_REDRAW);
 }
@@ -3696,7 +3696,7 @@ window_copy_cursor_next_word(struct window_mode_entry *wme,
 
 static void
 window_copy_cursor_next_word_end(struct window_mode_entry *wme,
-    const char *separators)
+    const char *separators, int from_sel_word)
 {
 	struct window_pane		*wp = wme->wp;
 	struct window_copy_mode_data	*data = wme->data;
@@ -3711,7 +3711,7 @@ window_copy_cursor_next_word_end(struct window_mode_entry *wme,
 	yy = screen_hsize(back_s) + screen_size_y(back_s) - 1;
 
 	keys = options_get_number(oo, "mode-keys");
-	if (keys == MODEKEY_VI && !window_copy_in_set(wme, px, py, separators))
+	if (keys == MODEKEY_VI && !window_copy_in_set(wme, px, py, separators) && !from_sel_word)
 		px++;
 
 	/*
