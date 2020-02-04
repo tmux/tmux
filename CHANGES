@@ -1,3 +1,7 @@
+CHANGES FROM 3.1 TO 3.2
+
+XXX
+
 CHANGES FROM 3.0 to 3.1
 
 * Add support for adding a note to a key binding (with bind-key -N) and use
