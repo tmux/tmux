@@ -154,8 +154,6 @@ screen_set_cursor_colour(struct screen *s, const char *colour)
 int
 screen_set_title(struct screen *s, const char *title)
 {
-	char	*cp;
-
 	if (!utf8_isvalid(title))
 		return (0);
 	free(s->title);
