@@ -2691,32 +2691,34 @@ command.
 .Op key
 .Xc
 .D1 (alias: Ic lsk )
-List all key bindings.
-By default this shows all keys or any bindings for
-.Ar key
-in the syntax of the
+List key bindings.
+There are two forms: the default lists keys as
 .Ic bind-key
-command.
+commands;
 .Fl N
-instead show keys and attached notes, i
-.Ar key-table
-if given or in the
+lists only keys with attached notes and shows only the key and note for each
+key.
+.Pp
+With the default form, all key tables are listed by default.
+.Fl T
+lists only keys in
+.Ar key-table .
+.Pp
+With the
+.Fl N
+form, only keys in the
 .Em root
 and
 .Em prefix
-key tables by default.
-.Fl P
-specifies a prefix to print before each key.
-With
-.Fl 1
-only the first matching key and note is shown.
-.Pp
-Without
-.Fl N ,
+key tables are listed by default;
 .Fl T
-prints only keys in
-.Ar key-table ,
-otherwise all key tables are printed.
+also lists only keys in
+.Ar key-table .
+.Fl P
+specifies a prefix to print before each key and
+.Fl 1
+lists only the first matching key.
+.Pp
 .It Xo Ic send-keys
 .Op Fl FHlMRX
 .Op Fl N Ar repeat-count
