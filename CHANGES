@@ -1,4 +1,4 @@
-CHANGES FROM 3.0 TO 3.1
+CHANGES FROM 3.0a to 3.1
 
 * Add support for adding a note to a key binding (with bind-key -N) and use
   this to add descriptions to the default key bindings. A new -N flag to
@@ -10,7 +10,7 @@ CHANGES FROM 3.0 TO 3.1
 * Add support for the iTerm2 DSR 1337 sequence to get the terminal version.
 
 * Treat plausible but invalid keys (like C-BSpace) as literal like any other
-  unrecognised string passed to send-keys
+  unrecognised string passed to send-keys.
 
 * Detect iTerm2 and enable use of DECSLRM (much faster with horizontally split
   windows).
@@ -42,11 +42,6 @@ CHANGES FROM 3.0 TO 3.1
 
 * Add push-default to status-left and status-right in status-format[0].
 
-* Add -F flag to send-keys to expand formats in search-backward and forward
-  copy mode commands and copy_cursor_word and copy_cursor_line formats for word
-  and line at cursor in copy mode. Use for default # and * binding with vi(1)
-  keys.
-
 * Do not clear search marks on cursor movement with vi(1) keys.
 
 * Add p format modifier for padding to width and allow multiple substitutions
@@ -54,28 +49,8 @@ CHANGES FROM 3.0 TO 3.1
 
 * Add -f for full size to join-pane (like split-window).
 
-* Handle OSC 7 (a VTE extension) and put the result in a new format (pane_path).
-
-* Change new-session -A without a session name (that is, no -s option also) to
-  attach to the best existing session like attach-session rather than creating
-  a new one.
-
-* Add an option to set the key sent by backspace for those whose system uses ^H
-  rather than ^?.
-
-* Add formats for cursor and selection position in copy mode.
-
-* Add support for percentage sizes for resize-pane ("-x 10%"). Also change
-  split-window and join-pane -l to accept similar percentages and no longer
-  document -p.
-
-* Make select-pane -P set window-active-style also to match previous behaviour.
-
 * Do not use bright when emulating 256 colours on an 8 colour terminal because
   it is also bold on some terminals.
-
-* Add a "latest" window-size option which tries to size windows based on the
-  most recently used client. This is now the default.
 
 * Make select-pane -P set window-active-style also to match previous behaviour.
 
@@ -89,17 +64,18 @@ CHANGES FROM 3.0 TO 3.1
   -p flag.
 
 * Add -F flag to send-keys to expand formats in search-backward and forward
-  copy mode commands, this makes it easier to use the cursor_word and
-  cursor_line formats.
+  copy mode commands and copy_cursor_word and copy_cursor_line formats for word
+  and line at cursor in copy mode. Use for default # and * binding with vi(1)
+  keys.
 
 * Add formats for word and line at cursor position in copy mode.
 
-* Add formats for cursor and selection position in copy mode
+* Add formats for cursor and selection position in copy mode.
 
 * Support all the forms of RGB colour strings in OSC sequences rather than
   requiring two digits.
 
-* Limit lazy resize to panes in attached sessions only
+* Limit lazy resize to panes in attached sessions only.
 
 * Add an option to set the key sent by backspace for those whose system uses ^H
   rather than ^?.
@@ -108,7 +84,8 @@ CHANGES FROM 3.0 TO 3.1
   attach to the best existing session like attach-session rather than a new
   one.
 
-* Change window-size default from smallest to latest.
+* Add a "latest" window-size option which tries to size windows based on the
+  most recently used client. This is now the default.
 
 * Add simple support for OSC 7 (result is available in the pane_path format).
 
