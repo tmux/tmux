@@ -1706,7 +1706,6 @@ static void
 server_client_dispatch(struct imsg *imsg, void *arg)
 {
 	struct client	*c = arg;
-	const char	*data;
 	ssize_t		 datalen;
 	struct session	*s;
 
@@ -1718,7 +1717,6 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 		return;
 	}
 
-	data = imsg->data;
 	datalen = imsg->hdr.len - IMSG_HEADER_SIZE;
 
 	switch (imsg->hdr.type) {
