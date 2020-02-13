@@ -1521,14 +1521,26 @@ window_copy_cmd_select_word(struct window_copy_cmd_state *cs)
 	struct session			*s = cs->s;
 	struct window_copy_mode_data	*data = wme->data;
 	const char			*ws;
+	u_int				 px, py, xx;
 
 	data->lineflag = LINE_SEL_LEFT_RIGHT;
 	data->rectflag = 0;
 
+	px = data->cx;
+	py = screen_hsize(data->backing) + data->cy - data->oy;
+	xx = window_copy_find_length(wme, py);
+
 	ws = options_get_string(s->options, "word-separators");
 	window_copy_cursor_previous_word(wme, ws, 0);
 	window_copy_start_selection(wme);
-	window_copy_cursor_next_word_end(wme, ws);
+
+	if (px >= xx || !window_copy_in_set(wme, px + 1, py, ws))
+		window_copy_cursor_next_word_end(wme, ws);
+	else {
+		window_copy_update_cursor(wme, px, data->cy);
+		if (window_copy_update_selection(wme, 1))
+			window_copy_redraw_lines(wme, data->cy, 1);
+	}
 
 	return (WINDOW_COPY_CMD_REDRAW);
 }
