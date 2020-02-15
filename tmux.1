@@ -2686,7 +2686,7 @@ To view the default bindings and possible commands, see the
 .Ic list-keys
 command.
 .It Xo Ic list-keys
-.Op Fl 1N
+.Op Fl 1aN
 .Op Fl P Ar prefix-string Fl T Ar key-table
 .Op key
 .Xc
@@ -2718,6 +2718,8 @@ also lists only keys in
 specifies a prefix to print before each key and
 .Fl 1
 lists only the first matching key.
+.Fl a
+lists the command for keys that do have a note rather than skipping them.
 .It Xo Ic send-keys
 .Op Fl FHlMRX
 .Op Fl N Ar repeat-count
