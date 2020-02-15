@@ -36,8 +36,8 @@ const struct cmd_entry cmd_list_keys_entry = {
 	.name = "list-keys",
 	.alias = "lsk",
 
-	.args = { "1NP:T:", 0, 1 },
-	.usage = "[-1N] [-P prefix-string] [-T key-table] [key]",
+	.args = { "1aNP:T:", 0, 1 },
+	.usage = "[-1aN] [-P prefix-string] [-T key-table] [key]",
 
 	.flags = CMD_STARTSERVER|CMD_AFTERHOOK,
 	.exec = cmd_list_keys_exec
@@ -89,7 +89,7 @@ cmd_list_keys_print_notes(struct cmdq_item *item, struct args *args,
 	struct key_table	*table;
 	struct key_binding	*bd;
 	const char		*key;
-	char			*tmp;
+	char			*tmp, *note;
 	int	                 found = 0;
 
 	table = key_bindings_get_table(tablename, 0);
@@ -99,19 +99,24 @@ cmd_list_keys_print_notes(struct cmdq_item *item, struct args *args,
 	while (bd != NULL) {
 		if ((only != KEYC_UNKNOWN && bd->key != only) ||
 		    KEYC_IS_MOUSE(bd->key) ||
-		    bd->note == NULL) {
+		    (bd->note == NULL && !args_has(args, 'a'))) {
 			bd = key_bindings_next(table, bd);
 			continue;
 		}
 		found = 1;
 		key = key_string_lookup_key(bd->key);
 
+		if (bd->note == NULL)
+			note = cmd_list_print(bd->cmdlist, 1);
+		else
+			note = xstrdup(bd->note);
 		tmp = utf8_padcstr(key, keywidth + 1);
 		if (args_has(args, '1') && c != NULL)
-			status_message_set(c, "%s%s%s", prefix, tmp, bd->note);
+			status_message_set(c, "%s%s%s", prefix, tmp, note);
 		else
-			cmdq_print(item, "%s%s%s", prefix, tmp, bd->note);
+			cmdq_print(item, "%s%s%s", prefix, tmp, note);
 		free(tmp);
+		free(note);
 
 		if (args_has(args, '1'))
 			break;
