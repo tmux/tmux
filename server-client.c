@@ -662,8 +662,7 @@ have_event:
 			break;
 		}
 		c->tty.mouse_drag_flag = 0;
-
-		return (key);
+		goto out;
 	}
 
 	/* Convert to a key binding. */
@@ -958,6 +957,7 @@ have_event:
 	if (key == KEYC_UNKNOWN)
 		return (KEYC_UNKNOWN);
 
+out:
 	/* Apply modifiers if any. */
 	if (b & MOUSE_MASK_META)
 		key |= KEYC_ESCAPE;
@@ -966,6 +966,8 @@ have_event:
 	if (b & MOUSE_MASK_SHIFT)
 		key |= KEYC_SHIFT;
 
+	if (log_get_level() != 0)
+		log_debug("mouse key is %s", key_string_lookup_key (key));
 	return (key);
 }
 
@@ -1059,7 +1061,7 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 		 * Mouse drag is in progress, so fire the callback (now that
 		 * the mouse event is valid).
 		 */
-		if (key == KEYC_DRAGGING) {
+		if ((key & KEYC_MASK_KEY) == KEYC_DRAGGING) {
 			c->tty.mouse_drag_update(c, m);
 			goto out;
 		}
