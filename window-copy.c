@@ -590,7 +590,10 @@ window_copy_formats(struct window_mode_entry *wme, struct format_tree *ft)
 		format_add(ft, "selection_start_y", "%d", data->sely);
 		format_add(ft, "selection_end_x", "%d", data->endselx);
 		format_add(ft, "selection_end_y", "%d", data->endsely);
-	}
+		format_add(ft, "selection_active", "%d",
+		    data->cursordrag != CURSORDRAG_NONE);
+	} else
+		format_add(ft, "selection_active", "%d", 0);
 
 	s = format_grid_word(data->screen.grid, data->cx, data->cy);
 	if (s != NULL) {
