@@ -2686,37 +2686,40 @@ To view the default bindings and possible commands, see the
 .Ic list-keys
 command.
 .It Xo Ic list-keys
-.Op Fl 1N
+.Op Fl 1aN
 .Op Fl P Ar prefix-string Fl T Ar key-table
 .Op key
 .Xc
 .D1 (alias: Ic lsk )
-List all key bindings.
-By default this shows all keys or any bindings for
-.Ar key
-in the syntax of the
+List key bindings.
+There are two forms: the default lists keys as
 .Ic bind-key
-command.
+commands;
 .Fl N
-instead show keys and attached notes, i
-.Ar key-table
-if given or in the
+lists only keys with attached notes and shows only the key and note for each
+key.
+.Pp
+With the default form, all key tables are listed by default.
+.Fl T
+lists only keys in
+.Ar key-table .
+.Pp
+With the
+.Fl N
+form, only keys in the
 .Em root
 and
 .Em prefix
-key tables by default.
-.Fl P
-specifies a prefix to print before each key.
-With
-.Fl 1
-only the first matching key and note is shown.
-.Pp
-Without
-.Fl N ,
+key tables are listed by default;
 .Fl T
-prints only keys in
-.Ar key-table ,
-otherwise all key tables are printed.
+also lists only keys in
+.Ar key-table .
+.Fl P
+specifies a prefix to print before each key and
+.Fl 1
+lists only the first matching key.
+.Fl a
+lists the command for keys that do have a note rather than skipping them.
 .It Xo Ic send-keys
 .Op Fl FHlMRX
 .Op Fl N Ar repeat-count
@@ -4348,6 +4351,7 @@ The following variables are available, where appropriate:
 .It Li "scroll_position" Ta "" Ta "Scroll position in copy mode"
 .It Li "scroll_region_lower" Ta "" Ta "Bottom of scroll region in pane"
 .It Li "scroll_region_upper" Ta "" Ta "Top of scroll region in pane"
+.It Li "selection_active" Ta "" Ta "1 if selection started and changes with the cursor in copy mode"
 .It Li "selection_end_x" Ta "" Ta "X position of the end of the selection"
 .It Li "selection_end_y" Ta "" Ta "Y position of the end of the selection"
 .It Li "selection_present" Ta "" Ta "1 if selection started in copy mode"

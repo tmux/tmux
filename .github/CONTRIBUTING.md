@@ -14,8 +14,8 @@ Before opening an issue, please ensure that:
 - Your question or issue is not covered [in the
   manual](https://man.openbsd.org/tmux.1) (run `man tmux`).
 
-- Your problem is not mentioned in the [CHANGES
-  file](https://raw.githubusercontent.com/tmux/tmux/master/CHANGES) file.
+- Your problem is not mentioned in [the CHANGES
+  file](https://raw.githubusercontent.com/tmux/tmux/master/CHANGES).
 
 - Nobody else has opened the same issue recently.
 

@@ -155,11 +155,14 @@ screen_set_cursor_colour(struct screen *s, const char *colour)
 }
 
 /* Set screen title. */
-void
+int
 screen_set_title(struct screen *s, const char *title)
 {
+	if (!utf8_isvalid(title))
+		return (0);
 	free(s->title);
-	utf8_stravis(&s->title, title, VIS_OCTAL|VIS_CSTYLE|VIS_TAB|VIS_NL);
+	s->title = xstrdup(title);
+	return (1);
 }
 
 /* Set screen path. */

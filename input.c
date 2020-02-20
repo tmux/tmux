@@ -2225,10 +2225,8 @@ input_exit_osc(struct input_ctx *ictx)
 	switch (option) {
 	case 0:
 	case 2:
-		if (utf8_isvalid(p)) {
-			screen_set_title(sctx->s, p);
+		if (screen_set_title(sctx->s, p))
 			server_status_window(ictx->wp->window);
-		}
 		break;
 	case 4:
 		input_osc_4(ictx, p);
@@ -2286,10 +2284,8 @@ input_exit_apc(struct input_ctx *ictx)
 		return;
 	log_debug("%s: \"%s\"", __func__, ictx->input_buf);
 
-	if (!utf8_isvalid(ictx->input_buf))
-		return;
-	screen_set_title(sctx->s, ictx->input_buf);
-	server_status_window(ictx->wp->window);
+	if (screen_set_title(sctx->s, ictx->input_buf))
+		server_status_window(ictx->wp->window);
 }
 
 /* Rename string started. */
