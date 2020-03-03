@@ -92,7 +92,6 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct window_pane	*wp = item->target.wp, *lastwp, *markedwp;
 	char			*pane_title;
 	const char		*style;
-	struct style		*sy;
 	struct options_entry	*o;
 
 	if (self->entry == &cmd_last_pane_entry || args_has(args, 'l')) {
@@ -147,6 +146,7 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (args_has(self->args, 'P') || args_has(self->args, 'g')) {
+
 		if ((style = args_get(args, 'P')) != NULL) {
 			o = options_set_style(wp->options, "window-style", 0,
 			    style);
@@ -159,8 +159,8 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 			wp->flags |= (PANE_REDRAW|PANE_STYLECHANGED);
 		}
 		if (args_has(self->args, 'g')) {
-			sy = options_get_style(wp->options, "window-style");
-			cmdq_print(item, "%s", style_tostring(sy));
+			style = options_get_style(wp->options, "window-style");
+			cmdq_print(item, "%s", style);
 		}
 		return (CMD_RETURN_NORMAL);
 	}

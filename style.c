@@ -260,23 +260,37 @@ style_tostring(struct style *sy)
 
 /* Apply a style. */
 void
-style_apply(struct grid_cell *gc, struct options *oo, const char *name)
+style_apply(struct options *oo, const char *name, struct format_tree *ft, struct grid_cell *gc)
 {
-	struct style	*sy;
+	struct style	*sy = xcalloc(1, sizeof *sy);
 
+	log_debug("tculp s 14");
+
+	style_set(sy, gc);
+	log_debug("tculp e 14");
+
+	log_debug("tculp s 12");
 	memcpy(gc, &grid_default_cell, sizeof *gc);
-	sy = options_get_style(oo, name);
+	log_debug("tculp 12.5");
+	options_get_parsed_style(sy, oo, name, ft, gc);
+	log_debug("tculp e 12");
 	gc->fg = sy->gc.fg;
 	gc->bg = sy->gc.bg;
 	gc->attr |= sy->gc.attr;
+	log_debug("tculp e 12.1");
+	free(sy);
+	log_debug("tculp e 12.2");
 }
 
 /* Initialize style from cell. */
 void
-style_set(struct style *sy, const struct grid_cell *gc)
+ style_set(struct style *sy, const struct grid_cell *gc)
 {
+	log_debug("tculp 15, %lu, %lu, %p, %p", sizeof *sy, sizeof style_default, sy, &style_default);
 	memcpy(sy, &style_default, sizeof *sy);
+	log_debug("tculp 15.1");
 	memcpy(&sy->gc, gc, sizeof sy->gc);
+	log_debug("tculp 15.2");
 }
 
 /* Copy style. */

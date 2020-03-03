@@ -124,7 +124,7 @@ options_value_tostring(struct options_entry *o, union options_value *ov,
 	if (OPTIONS_IS_COMMAND(o))
 		return (cmd_list_print(ov->cmdlist, 0));
 	if (OPTIONS_IS_STYLE(o))
-		return (xstrdup(style_tostring(&ov->style)));
+		return (xstrdup(ov->string));
 	if (OPTIONS_IS_NUMBER(o)) {
 		switch (o->tableentry->type) {
 		case OPTIONS_TABLE_NUMBER:
@@ -149,6 +149,7 @@ options_value_tostring(struct options_entry *o, union options_value *ov,
 		case OPTIONS_TABLE_STYLE:
 		case OPTIONS_TABLE_COMMAND:
 			fatalx("not a number option type");
+			s = NULL;
 		}
 		return (s);
 	}
@@ -256,11 +257,8 @@ options_default(struct options *oo, const struct options_table_entry *oe)
 
 	switch (oe->type) {
 	case OPTIONS_TABLE_STRING:
-		ov->string = xstrdup(oe->default_str);
-		break;
 	case OPTIONS_TABLE_STYLE:
-		style_set(&ov->style, &grid_default_cell);
-		style_parse(&ov->style, &grid_default_cell, oe->default_str);
+		ov->string = xstrdup(oe->default_str);
 		break;
 	default:
 		ov->number = oe->default_num;
@@ -653,7 +651,7 @@ options_get_number(struct options *oo, const char *name)
 	return (o->value.number);
 }
 
-struct style *
+const char *
 options_get_style(struct options *oo, const char *name)
 {
 	struct options_entry	*o;
@@ -663,7 +661,21 @@ options_get_style(struct options *oo, const char *name)
 		fatalx("missing option %s", name);
 	if (!OPTIONS_IS_STYLE(o))
 		fatalx("option %s is not a style", name);
-	return (&o->value.style);
+	return (o->value.string);
+}
+
+void
+options_get_parsed_style(struct style *sy, struct options *oo, const char *name, struct format_tree *ft, struct grid_cell *gc)
+{
+	const char	*value, *expanded;
+
+	value = options_get_style(oo, name);
+	expanded = format_expand(ft, value);
+	log_debug("tculp 17, %p, %p", sy, gc);
+	style_set(sy, gc);
+	log_debug("tculp s 13");
+	style_parse(sy, gc, expanded);
+	log_debug("tculp e 13");
 }
 
 struct options_entry *
@@ -722,21 +734,27 @@ options_set_number(struct options *oo, const char *name, long long value)
 
 struct options_entry *
 options_set_style(struct options *oo, const char *name, int append,
-    const char *value)
+    const char *fmt, ...)
 {
 	struct options_entry	*o;
+	va_list			 ap;
+	char			*s, *value, *expanded;
 	struct style		 sy;
+	struct format_tree	*ft;
 
 	if (*name == '@')
 		fatalx("user option %s must be a string", name);
 
+	va_start(ap, fmt);
+	xvasprintf(&s, fmt, ap);
+	va_end(ap);
+
 	o = options_get_only(oo, name);
-	if (o != NULL && append && OPTIONS_IS_STYLE(o))
-		style_copy(&sy, &o->value.style);
-	else
-		style_set(&sy, &grid_default_cell);
-	if (style_parse(&sy, &grid_default_cell, value) == -1)
-		return (NULL);
+	if (o != NULL && append && OPTIONS_IS_STYLE(o)) {
+		xasprintf(&value, "%s%s", o->value.string, s);
+		free(s);
+	} else
+		value = s;
 	if (o == NULL) {
 		o = options_default(oo, options_parent_table_entry(oo, name));
 		if (o == NULL)
@@ -745,8 +763,33 @@ options_set_style(struct options *oo, const char *name, int append,
 
 	if (!OPTIONS_IS_STYLE(o))
 		fatalx("option %s is not a style", name);
-	style_copy(&o->value.style, &sy);
+
+	// expand the format with a plain format tree
+	ft = format_create(NULL, NULL, FORMAT_NONE, 0);
+	expanded = format_expand(ft, value);
+	format_free(ft);
+
+	// Check that the format-expanded string can be parsed as a style
+	if (style_parse(&sy, &grid_default_cell, expanded) == -1)
+		return (NULL);
+
+	free(o->value.string);
+	o->value.string = value;
 	return (o);
+
+	// old style
+	// o = options_get_only(oo, name);
+	// if (o != NULL && append && OPTIONS_IS_STYLE(o))
+	// 	style_copy(&sy, &o->value.style);
+	// else
+	// 	style_set(&sy, &grid_default_cell);
+	// if (style_parse(&sy, &grid_default_cell, value) == -1)
+	// 	return (NULL);
+	// if (o == NULL) {
+	// 	o = options_default(oo, options_parent_table_entry(oo, name));
+	// 	if (o == NULL)
+	// 		return (NULL);
+	// }
 }
 
 int

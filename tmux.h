@@ -1675,7 +1675,6 @@ RB_HEAD(options_array, options_array_item);
 union options_value {
 	char				 *string;
 	long long			  number;
-	struct style			  style;
 	struct options_array		  array;
 	struct cmd_list			 *cmdlist;
 };
@@ -1910,13 +1909,14 @@ struct options_entry *options_match_get(struct options *, const char *, int *,
 		     int, int *);
 const char	*options_get_string(struct options *, const char *);
 long long	 options_get_number(struct options *, const char *);
-struct style	*options_get_style(struct options *, const char *);
+const char	*options_get_style(struct options *, const char *);
+void		options_get_parsed_style(struct style *, struct options *, const char *, struct format_tree *, struct grid_cell *);
 struct options_entry * printflike(4, 5) options_set_string(struct options *,
 		     const char *, int, const char *, ...);
 struct options_entry *options_set_number(struct options *, const char *,
 		     long long);
-struct options_entry *options_set_style(struct options *, const char *, int,
-		     const char *);
+struct options_entry * printflike(4, 5) options_set_style(struct options *, const char *, int,
+		     const char *, ...);
 int		 options_scope_from_name(struct args *, int,
 		     const char *, struct cmd_find_state *, struct options **,
 		     char **);
@@ -2748,8 +2748,8 @@ int		 menu_display(struct menu *, int, struct cmdq_item *, u_int,
 int		 style_parse(struct style *,const struct grid_cell *,
 		     const char *);
 const char	*style_tostring(struct style *);
-void		 style_apply(struct grid_cell *, struct options *,
-		     const char *);
+void		 style_apply(struct options *,
+		     const char *, struct format_tree *, struct grid_cell *);
 int		 style_equal(struct style *, struct style *);
 void		 style_set(struct style *, const struct grid_cell *);
 void		 style_copy(struct style *, struct style *);

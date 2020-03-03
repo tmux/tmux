@@ -94,7 +94,6 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 	char				*name, *argument, *value = NULL, *cause;
 	int				 window, idx, already, error, ambiguous;
 	int				 scope;
-	struct style			*sy;
 
 	window = (self->entry == &cmd_set_window_option_entry);
 
@@ -233,16 +232,16 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 				tty_keys_build(&loop->tty);
 		}
 	}
-	if (strcmp(name, "status-fg") == 0 || strcmp(name, "status-bg") == 0) {
-		sy = options_get_style(oo, "status-style");
-		sy->gc.fg = options_get_number(oo, "status-fg");
-		sy->gc.bg = options_get_number(oo, "status-bg");
-	}
-	if (strcmp(name, "status-style") == 0) {
-		sy = options_get_style(oo, "status-style");
-		options_set_number(oo, "status-fg", sy->gc.fg);
-		options_set_number(oo, "status-bg", sy->gc.bg);
-	}
+	// if (strcmp(name, "status-fg") == 0 || strcmp(name, "status-bg") == 0) {
+	// 	sy = options_get_style(oo, "status-style");
+	// 	sy->gc.fg = options_get_number(oo, "status-fg");
+	// 	sy->gc.bg = options_get_number(oo, "status-bg");
+	// }
+	// if (strcmp(name, "status-style") == 0) {
+	// 	sy = options_get_style(oo, "status-style");
+	// 	options_set_number(oo, "status-fg", sy->gc.fg);
+	// 	options_set_number(oo, "status-bg", sy->gc.bg);
+	// }
 	if (strcmp(name, "status") == 0 ||
 	    strcmp(name, "status-interval") == 0)
 		status_timer_start_all();

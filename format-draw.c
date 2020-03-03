@@ -524,7 +524,9 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 	struct style_range	*sr;
 
 	memcpy(&current_default, base, sizeof current_default);
+	log_debug("tculp s 16");
 	style_set(&sy, &current_default);
+	log_debug("tculp e 16");
 	TAILQ_INIT(&frs);
 	log_debug("%s: %s", __func__, expanded);
 

@@ -1292,9 +1292,11 @@ tty_draw_line(struct tty *tty, struct window_pane *wp, struct screen *s,
 		wrapped = 1;
 	}
 
+	log_debug("tculp 19");
 	memcpy(&last, &grid_default_cell, sizeof last);
 	len = 0;
 	width = 0;
+	log_debug("tculp 20");
 
 	for (i = 0; i < sx; i++) {
 		grid_view_get_cell(gd, px + i, py, &gc);
@@ -1350,6 +1352,7 @@ tty_draw_line(struct tty *tty, struct window_pane *wp, struct screen *s,
 			width += gcp->data.width;
 		}
 	}
+	log_debug("tculp 21");
 	if (len != 0 && ((~last.flags & GRID_FLAG_CLEARED) || last.bg != 8)) {
 		tty_attributes(tty, &last, wp);
 		if (last.flags & GRID_FLAG_CLEARED) {
@@ -1362,16 +1365,23 @@ tty_draw_line(struct tty *tty, struct window_pane *wp, struct screen *s,
 		}
 		ux += width;
 	}
+	log_debug("tculp 22");
 
 	if (!cleared && ux < nx) {
 		log_debug("%s: %u to end of line (%zu cleared)", __func__,
 		    nx - ux, len);
+		log_debug("tculp 25");
 		tty_default_attributes(tty, wp, 8);
+		log_debug("tculp 25.1");
 		tty_clear_line(tty, wp, aty, atx + ux, nx - ux, 8);
+		log_debug("tculp 25.2");
 	}
+	log_debug("tculp 23");
 
 	tty->flags = (tty->flags & ~TTY_NOCURSOR) | flags;
+	log_debug("tculp 24");
 	tty_update_mode(tty, tty->mode, s);
+	log_debug("tculp 18 e");
 }
 
 static int
@@ -2193,6 +2203,7 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
 	struct grid_cell	*tc = &tty->cell, gc2;
 	int			 changed;
 
+	log_debug("tculp s 28");
 	/* Ignore cell if it is the same as the last one. */
 	if (wp != NULL &&
 	    (int)wp->id == tty->last_wp &&
@@ -2207,8 +2218,10 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
 
 	/* Copy cell and update default colours. */
 	memcpy(&gc2, gc, sizeof gc2);
+	log_debug("tculp s 29");
 	if (wp != NULL)
 		tty_default_colours(&gc2, wp);
+	log_debug("tculp e 29");
 
 	/*
 	 * If no setab, try to use the reverse attribute as a best-effort for a
@@ -2283,6 +2296,8 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
 		tty_putcode(tty, TTYC_SMOL);
 	if ((changed & GRID_ATTR_CHARSET) && tty_acs_needed(tty))
 		tty_putcode(tty, TTYC_SMACS);
+
+	log_debug("tculp e 28");
 }
 
 static void
@@ -2629,12 +2644,23 @@ tty_default_colours(struct grid_cell *gc, struct window_pane *wp)
 	struct options	*oo = wp->options;
 	struct style	*style, *active_style;
 	int		 c;
+	struct format_tree *ft;
 
-	if (wp->flags & PANE_STYLECHANGED) {
+	log_debug("tculp 30");
+	style = xcalloc(1, sizeof *style);
+	active_style = xcalloc(1, sizeof *active_style);
+	log_debug("tculp 31");
+
+	if (true || wp->flags & PANE_STYLECHANGED) {
 		wp->flags &= ~PANE_STYLECHANGED;
 
-		active_style = options_get_style(oo, "window-active-style");
-		style = options_get_style(oo, "window-style");
+		ft = format_create(NULL, NULL, FORMAT_NONE, 0);
+		format_defaults(ft, NULL, NULL, NULL, wp);
+
+		options_get_parsed_style(active_style, oo, "window-active-style", ft, gc);
+		options_get_parsed_style(style, oo, "window-style", ft, gc);
+
+		format_free(ft);
 
 		style_copy(&wp->cached_active_style, active_style);
 		style_copy(&wp->cached_style, style);
@@ -2642,6 +2668,7 @@ tty_default_colours(struct grid_cell *gc, struct window_pane *wp)
 		active_style = &wp->cached_active_style;
 		style = &wp->cached_style;
 	}
+	log_debug("tculp 32");
 
 	if (gc->fg == 8) {
 		if (wp == wp->window->active && active_style->gc.fg != 8)
@@ -2655,6 +2682,7 @@ tty_default_colours(struct grid_cell *gc, struct window_pane *wp)
 				gc->fg = c;
 		}
 	}
+	log_debug("tculp 33");
 
 	if (gc->bg == 8) {
 		if (wp == wp->window->active && active_style->gc.bg != 8)
@@ -2668,6 +2696,11 @@ tty_default_colours(struct grid_cell *gc, struct window_pane *wp)
 				gc->bg = c;
 		}
 	}
+	log_debug("tculp 34");
+
+	free(&style);
+	free(&active_style);
+	log_debug("tculp 35");
 }
 
 static void
@@ -2675,6 +2708,7 @@ tty_default_attributes(struct tty *tty, struct window_pane *wp, u_int bg)
 {
 	static struct grid_cell gc;
 
+	log_debug("tculp 26 %p, %p, %lu, %lu", &gc, &grid_default_cell, sizeof gc, sizeof grid_default_cell);
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	gc.bg = bg;
 	tty_attributes(tty, &gc, wp);

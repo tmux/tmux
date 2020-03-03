@@ -320,11 +320,11 @@ status_redraw(struct client *c)
 	struct session			*s = c->session;
 	struct screen_write_ctx		 ctx;
 	struct grid_cell		 gc;
-	u_int				 lines, i, n, width = c->tty.sx;
-	int				 flags, force = 0, changed = 0;
 	struct options_entry		*o;
 	union options_value		*ov;
 	struct format_tree		*ft;
+	u_int				 lines, i, n, width = c->tty.sx;
+	int				 flags, force = 0, changed = 0;
 	char				*expanded;
 
 	log_debug("%s enter", __func__);
@@ -338,13 +338,6 @@ status_redraw(struct client *c)
 	if (c->tty.sy == 0 || lines == 0)
 		return (1);
 
-	/* Set up default colour. */
-	style_apply(&gc, s->options, "status-style");
-	if (!grid_cells_equal(&gc, &sl->style)) {
-		force = 1;
-		memcpy(&sl->style, &gc, sizeof sl->style);
-	}
-
 	/* Resize the target screen. */
 	if (screen_size_x(&sl->screen) != width ||
 	    screen_size_y(&sl->screen) != lines) {
@@ -357,8 +350,17 @@ status_redraw(struct client *c)
 	flags = FORMAT_STATUS;
 	if (c->flags & CLIENT_STATUSFORCE)
 		flags |= FORMAT_FORCE;
-	ft = format_create(c, NULL, FORMAT_NONE, flags);
-	format_defaults(ft, c, NULL, NULL, NULL);
+	ft = format_create(c, NULL, FORMAT_NONE, 0);
+	format_defaults(ft, c, s, NULL, NULL);
+
+	/* Set up default colour. */
+	log_debug("tculp s 6, %p", &gc);
+	style_apply(s->options, "status-style", ft, &gc);
+	log_debug("tculp e 6");
+	if (!grid_cells_equal(&gc, &sl->style)) {
+		force = 1;
+		memcpy(&sl->style, &gc, sizeof sl->style);
+	}
 
 	/* Write the status lines. */
 	o = options_get(s->options, "status-format");
@@ -473,9 +475,10 @@ status_message_redraw(struct client *c)
 	struct screen_write_ctx	 ctx;
 	struct session		*s = c->session;
 	struct screen		 old_screen;
+	struct grid_cell	 gc;
+	struct format_tree	*ft;
 	size_t			 len;
 	u_int			 lines, offset;
-	struct grid_cell	 gc;
 
 	if (c->tty.sx == 0 || c->tty.sy == 0)
 		return (0);
@@ -490,7 +493,12 @@ status_message_redraw(struct client *c)
 	if (len > c->tty.sx)
 		len = c->tty.sx;
 
-	style_apply(&gc, s->options, "message-style");
+	ft = format_create(NULL, NULL, FORMAT_NONE, 0);
+	format_defaults(ft, c, s, NULL, NULL);
+	log_debug("tculp s 9");
+	style_apply(s->options, "message-style", ft, &gc);
+	log_debug("tculp e 9");
+	format_free(ft);
 
 	screen_write_start(&ctx, NULL, sl->active);
 	screen_write_fast_copy(&ctx, &sl->screen, 0, 0, c->tty.sx, lines - 1);
@@ -619,9 +627,10 @@ status_prompt_redraw(struct client *c)
 	struct screen_write_ctx	 ctx;
 	struct session		*s = c->session;
 	struct screen		 old_screen;
+	struct grid_cell	 gc, cursorgc;
+	struct format_tree	*ft;
 	u_int			 i, lines, offset, left, start, width;
 	u_int			 pcursor, pwidth;
-	struct grid_cell	 gc, cursorgc;
 
 	if (c->tty.sx == 0 || c->tty.sy == 0)
 		return (0);
@@ -632,10 +641,21 @@ status_prompt_redraw(struct client *c)
 		lines = 1;
 	screen_init(sl->active, c->tty.sx, lines, 0);
 
-	if (c->prompt_mode == PROMPT_COMMAND)
-		style_apply(&gc, s->options, "message-command-style");
-	else
-		style_apply(&gc, s->options, "message-style");
+	ft = format_create(NULL, NULL, FORMAT_NONE, 0);
+	format_defaults(ft, c, s, NULL, NULL);
+
+	if (c->prompt_mode == PROMPT_COMMAND){
+	log_debug("tculp s 7");
+		style_apply(s->options, "message-command-style", ft, &gc);
+	log_debug("tculp e 7");
+}
+	else {
+	log_debug("tculp s 8");
+		style_apply(s->options, "message-style", ft, &gc);
+	log_debug("tculp e 8");
+	}
+
+	format_free(ft);
 
 	memcpy(&cursorgc, &gc, sizeof cursorgc);
 	cursorgc.attr ^= GRID_ATTR_REVERSE;

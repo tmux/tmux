@@ -2716,10 +2716,18 @@ window_copy_write_line(struct window_mode_entry *wme,
 	struct screen			*s = &data->screen;
 	struct options			*oo = wp->window->options;
 	struct grid_cell		 gc;
+	struct format_tree		*ft;
 	char				 hdr[512];
 	size_t				 size = 0;
 
-	style_apply(&gc, oo, "mode-style");
+
+	ft = format_create(NULL, NULL, FORMAT_NONE, 0);
+	format_defaults(ft, NULL, NULL, NULL, wp);
+	log_debug("tculp s 10");
+	style_apply(oo, "mode-style", ft, &gc);
+	log_debug("tculp e 10");
+	format_free(ft);
+
 	gc.flags |= GRID_FLAG_NOPALETTE;
 
 	if (py == 0 && s->rupper < s->rlower) {
@@ -2922,6 +2930,7 @@ window_copy_set_selection(struct window_mode_entry *wme, int may_redraw)
 	struct screen			*s = &data->screen;
 	struct options			*oo = wp->window->options;
 	struct grid_cell		 gc;
+	struct format_tree		*ft;
 	u_int				 sx, sy, cy, endsx, endsy;
 	int				 startrelpos, endrelpos;
 
@@ -2945,7 +2954,13 @@ window_copy_set_selection(struct window_mode_entry *wme, int may_redraw)
 	}
 
 	/* Set colours and selection. */
-	style_apply(&gc, oo, "mode-style");
+	ft = format_create(NULL, NULL, FORMAT_NONE, 0);
+	format_defaults(ft, NULL, NULL, NULL, wp);
+	log_debug("tculp s 11");
+	style_apply(oo, "mode-style", ft, &gc);
+	log_debug("tculp e 11");
+	format_free(ft);
+
 	gc.flags |= GRID_FLAG_NOPALETTE;
 	screen_set_selection(s, sx, sy, endsx, endsy, data->rectflag,
 	    data->modekeys, &gc);

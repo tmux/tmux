@@ -259,15 +259,21 @@ screen_redraw_make_pane_status(struct client *c, struct window *w,
 	struct screen_write_ctx	 ctx;
 	struct screen		 old;
 
-	if (wp == w->active)
-		style_apply(&gc, w->options, "pane-active-border-style");
-	else
-		style_apply(&gc, w->options, "pane-border-style");
+	ft = format_create(c, NULL, FORMAT_PANE|wp->id, FORMAT_STATUS);
+	format_defaults(ft, c, c->session, c->session->curw, wp);
+
+	if (wp == w->active) {
+		log_debug("tculp s 2");
+		style_apply(w->options, "pane-active-border-style", ft, &gc);
+		log_debug("tculp e 2");
+	}
+	else {
+	log_debug("tculp s 3");
+		style_apply(w->options, "pane-border-style", ft, &gc);
+	log_debug("tculp e 3");
+	}
 
 	fmt = options_get_string(w->options, "pane-border-format");
-
-	ft = format_create(c, NULL, FORMAT_PANE|wp->id, FORMAT_STATUS);
-	format_defaults(ft, c, NULL, NULL, wp);
 
 	expanded = format_expand_time(ft, fmt);
 	if (wp->sx < 4)
@@ -468,17 +474,19 @@ screen_redraw_pane(struct client *c, struct window_pane *wp)
 
 /* Draw a border cell. */
 static void
-screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j,
-    struct grid_cell *m_active_gc, struct grid_cell *active_gc,
-    struct grid_cell *m_other_gc, struct grid_cell *other_gc)
+screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j)
 {
 	struct client		*c = ctx->c;
 	struct session		*s = c->session;
 	struct window		*w = s->curw->window;
-	struct tty		*tty = &c->tty;
+	struct tty			*tty = &c->tty;
 	struct window_pane	*wp;
 	struct window_pane	*active = w->active;
 	struct window_pane	*marked = marked_pane.wp;
+	struct grid_cell	gc;
+	struct options		*oo = w->options;
+	struct format_tree	*ft;
+
 	u_int			 type, x = ctx->ox + i, y = ctx->oy + j;
 	int			 flag, pane_status = ctx->pane_status;
 
@@ -487,21 +495,32 @@ screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j,
 		return;
 	flag = screen_redraw_check_is(x, y, type, pane_status, w, active, wp);
 
+	ft = format_create(c, NULL, FORMAT_NONE, 0);
+	log_debug("tculp 40 %p %u", wp, wp->id);
+	format_defaults(ft, c, s, s->curw, wp);
+
+	if (flag) {
+		style_apply(oo, "pane-active-border-style", ft, &gc);
+	} else {
+		style_apply(oo, "pane-border-style", ft, &gc);
+	}
+	gc.attr = GRID_ATTR_CHARSET;
+
 	if (server_is_marked(s, s->curw, marked_pane.wp) &&
 	    screen_redraw_check_is(x, y, type, pane_status, w, marked, wp)) {
-		if (flag)
-			tty_attributes(tty, m_active_gc, NULL);
-		else
-			tty_attributes(tty, m_other_gc, NULL);
-	} else if (flag)
-		tty_attributes(tty, active_gc, NULL);
-	else
-		tty_attributes(tty, other_gc, NULL);
+		gc.attr ^= GRID_ATTR_REVERSE;
+	}	
+	
+	tty_attributes(tty, &gc, NULL);
+
+	format_free(ft);
+
 	if (ctx->statustop)
 		tty_cursor(tty, i, ctx->statuslines + j);
 	else
 		tty_cursor(tty, i, j);
 	tty_putc(tty, CELL_BORDERS[type]);
+	log_debug("tculp 41 %p", wp);
 }
 
 /* Draw the borders. */
@@ -509,28 +528,15 @@ static void
 screen_redraw_draw_borders(struct screen_redraw_ctx *ctx)
 {
 	struct client		*c = ctx->c;
-	struct session		*s = c->session;
-	struct window		*w = s->curw->window;
+	struct window		*w = c->session->curw->window;
 	struct tty		*tty = &c->tty;
-	struct options		*oo = w->options;
-	struct grid_cell	 m_active_gc, active_gc, m_other_gc, other_gc;
 	u_int		 	 i, j;
 
 	log_debug("%s: %s @%u", __func__, c->name, w->id);
 
-	style_apply(&other_gc, oo, "pane-border-style");
-	style_apply(&active_gc, oo, "pane-active-border-style");
-	active_gc.attr = other_gc.attr = GRID_ATTR_CHARSET;
-
-	memcpy(&m_other_gc, &other_gc, sizeof m_other_gc);
-	m_other_gc.attr ^= GRID_ATTR_REVERSE;
-	memcpy(&m_active_gc, &active_gc, sizeof m_active_gc);
-	m_active_gc.attr ^= GRID_ATTR_REVERSE;
-
 	for (j = 0; j < tty->sy - ctx->statuslines; j++) {
 		for (i = 0; i < tty->sx; i++) {
-			screen_redraw_draw_borders_cell(ctx, i, j,
-			    &m_active_gc, &active_gc, &m_other_gc, &other_gc);
+			screen_redraw_draw_borders_cell(ctx, i, j);
 		}
 	}
 }

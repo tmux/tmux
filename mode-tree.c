@@ -520,6 +520,7 @@ mode_tree_draw(struct mode_tree_data *mtd)
 	struct options		*oo = wp->window->options;
 	struct screen_write_ctx	 ctx;
 	struct grid_cell	 gc0, gc;
+	struct format_tree	*ft;
 	u_int			 w, h, i, j, sy, box_x, box_y, width;
 	char			*text, *start, key[7];
 	const char		*tag, *symbol;
@@ -531,7 +532,13 @@ mode_tree_draw(struct mode_tree_data *mtd)
 
 	memcpy(&gc0, &grid_default_cell, sizeof gc0);
 	memcpy(&gc, &grid_default_cell, sizeof gc);
-	style_apply(&gc, oo, "mode-style");
+
+	ft = format_create(NULL, NULL, FORMAT_NONE, 0);
+	format_defaults(ft, NULL, NULL, NULL, wp);
+	log_debug("tculp s 1");
+	style_apply(oo, "mode-style", ft, &gc);
+	log_debug("tculp e 1");
+	format_free(ft);
 
 	w = mtd->width;
 	h = mtd->height;
