@@ -895,6 +895,44 @@ format_cb_pane_in_mode(struct format_tree *ft, struct format_entry *fe)
 	xasprintf(&fe->value, "%u", n);
 }
 
+/* Callback for pane_at_top. */
+static void
+format_cb_pane_at_top(struct format_tree *ft, struct format_entry *fe)
+{
+	struct window_pane	*wp = ft->wp;
+	struct window		*w = wp->window;
+	int			 status, flag;
+
+	if (wp == NULL)
+		return;
+
+	status = options_get_number(w->options, "pane-border-status");
+	if (status == PANE_STATUS_TOP)
+		flag = (wp->yoff == 1);
+	else
+		flag = (wp->yoff == 0);
+	xasprintf(&fe->value, "%d", flag);
+}
+
+/* Callback for pane_at_bottom. */
+static void
+format_cb_pane_at_bottom(struct format_tree *ft, struct format_entry *fe)
+{
+	struct window_pane	*wp = ft->wp;
+	struct window		*w = wp->window;
+	int			 status, flag;
+
+	if (wp == NULL)
+		return;
+
+	status = options_get_number(w->options, "pane-border-status");
+	if (status == PANE_STATUS_BOTTOM)
+		flag = (wp->yoff + wp->sy == w->sy - 1);
+	else
+		flag = (wp->yoff + wp->sy == w->sy);
+	xasprintf(&fe->value, "%d", flag);
+}
+
 /* Callback for cursor_character. */
 static void
 format_cb_cursor_character(struct format_tree *ft, struct format_entry *fe)
@@ -1121,7 +1159,7 @@ format_create(struct client *c, struct cmdq_item *item, int tag, int flags)
 	ft->flags = flags;
 	ft->time = time(NULL);
 
-	format_add(ft, "version", "%s", VERSION);
+	format_add(ft, "version", "%s", getversion());
 	format_add_cb(ft, "host", format_cb_host);
 	format_add_cb(ft, "host_short", format_cb_host_short);
 	format_add_cb(ft, "pid", format_cb_pid);
@@ -2362,7 +2400,6 @@ format_defaults_client(struct format_tree *ft, struct client *c)
 	struct session	*s;
 	const char	*name;
 	struct tty	*tty = &c->tty;
-	const char	*types[] = TTY_TYPES;
 
 	if (ft->s == NULL)
 		ft->s = c->session;
@@ -2380,8 +2417,6 @@ format_defaults_client(struct format_tree *ft, struct client *c)
 
 	if (tty->term_name != NULL)
 		format_add(ft, "client_termname", "%s", tty->term_name);
-	if (tty->term_name != NULL)
-		format_add(ft, "client_termtype", "%s", types[tty->term_type]);
 
 	format_add_tv(ft, "client_created", &c->creation_time);
 	format_add_tv(ft, "client_activity", &c->activity_time);
@@ -2549,9 +2584,9 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 	format_add(ft, "pane_right", "%u", wp->xoff + wp->sx - 1);
 	format_add(ft, "pane_bottom", "%u", wp->yoff + wp->sy - 1);
 	format_add(ft, "pane_at_left", "%d", wp->xoff == 0);
-	format_add(ft, "pane_at_top", "%d", wp->yoff == 0);
+	format_add_cb(ft, "pane_at_top", format_cb_pane_at_top);
 	format_add(ft, "pane_at_right", "%d", wp->xoff + wp->sx == w->sx);
-	format_add(ft, "pane_at_bottom", "%d", wp->yoff + wp->sy == w->sy);
+	format_add_cb(ft, "pane_at_bottom", format_cb_pane_at_bottom);
 
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme != NULL) {

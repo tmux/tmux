@@ -548,31 +548,38 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 struct window_pane *
 window_find_string(struct window *w, const char *s)
 {
-	u_int	x, y;
+	u_int	x, y, top = 0, bottom = w->sy - 1;
+	int	status;
 
 	x = w->sx / 2;
 	y = w->sy / 2;
 
+	status = options_get_number(w->options, "pane-border-status");
+	if (status == PANE_STATUS_TOP)
+		top++;
+	else if (status == PANE_STATUS_BOTTOM)
+		bottom--;
+
 	if (strcasecmp(s, "top") == 0)
-		y = 0;
+		y = top;
 	else if (strcasecmp(s, "bottom") == 0)
-		y = w->sy - 1;
+		y = bottom;
 	else if (strcasecmp(s, "left") == 0)
 		x = 0;
 	else if (strcasecmp(s, "right") == 0)
 		x = w->sx - 1;
 	else if (strcasecmp(s, "top-left") == 0) {
 		x = 0;
-		y = 0;
+		y = top;
 	} else if (strcasecmp(s, "top-right") == 0) {
 		x = w->sx - 1;
-		y = 0;
+		y = top;
 	} else if (strcasecmp(s, "bottom-left") == 0) {
 		x = 0;
-		y = w->sy - 1;
+		y = bottom;
 	} else if (strcasecmp(s, "bottom-right") == 0) {
 		x = w->sx - 1;
-		y = w->sy - 1;
+		y = bottom;
 	} else
 		return (NULL);
 
@@ -1239,7 +1246,7 @@ window_pane_reset_mode_all(struct window_pane *wp)
 		window_pane_reset_mode(wp);
 }
 
-void
+int
 window_pane_key(struct window_pane *wp, struct client *c, struct session *s,
     struct winlink *wl, key_code key, struct mouse_event *m)
 {
@@ -1247,23 +1254,24 @@ window_pane_key(struct window_pane *wp, struct client *c, struct session *s,
 	struct window_pane		*wp2;
 
 	if (KEYC_IS_MOUSE(key) && m == NULL)
-		return;
+		return (-1);
 
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme != NULL) {
 		wp->modelast = time(NULL);
 		if (wme->mode->key != NULL)
 			wme->mode->key(wme, c, s, wl, (key & ~KEYC_XTERM), m);
-		return;
+		return (0);
 	}
 
 	if (wp->fd == -1 || wp->flags & PANE_INPUTOFF)
-		return;
+		return (0);
 
-	input_key(wp, key, m);
+	if (input_key(wp, key, m) != 0)
+		return (-1);
 
 	if (KEYC_IS_MOUSE(key))
-		return;
+		return (0);
 	if (options_get_number(wp->window->options, "synchronize-panes")) {
 		TAILQ_FOREACH(wp2, &wp->window->panes, entry) {
 			if (wp2 != wp &&
@@ -1274,6 +1282,7 @@ window_pane_key(struct window_pane *wp, struct client *c, struct session *s,
 				input_key(wp2, key, NULL);
 		}
 	}
+	return (0);
 }
 
 int

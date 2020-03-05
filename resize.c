@@ -66,10 +66,26 @@ resize_window(struct window *w, u_int sx, u_int sy, int xpixel, int ypixel)
 static int
 ignore_client_size(struct client *c)
 {
+	struct client	*loop;
+
 	if (c->session == NULL)
 		return (1);
 	if (c->flags & CLIENT_NOSIZEFLAGS)
 		return (1);
+	if (c->flags & CLIENT_READONLY) {
+		/*
+		 * Ignore readonly clients if there are any attached clients
+		 * that aren't readonly.
+		 */
+		TAILQ_FOREACH (loop, &clients, entry) {
+			if (loop->session == NULL)
+				continue;
+			if (loop->flags & CLIENT_NOSIZEFLAGS)
+				continue;
+			if (~loop->flags & CLIENT_READONLY)
+				return (1);
+		}
+	}
 	if ((c->flags & CLIENT_CONTROL) && (~c->flags & CLIENT_SIZECHANGED))
 		return (1);
 	return (0);
@@ -363,14 +379,15 @@ recalculate_sizes(void)
 	 * client.
 	 */
 	TAILQ_FOREACH(c, &clients, entry) {
+		s = c->session;
+		if (s != NULL && !(c->flags & CLIENT_UNATTACHEDFLAGS))
+			s->attached++;
 		if (ignore_client_size(c))
 			continue;
-		s = c->session;
 		if (c->tty.sy <= s->statuslines || (c->flags & CLIENT_CONTROL))
 			c->flags |= CLIENT_STATUSOFF;
 		else
 			c->flags &= ~CLIENT_STATUSOFF;
-		s->attached++;
 	}
 
 	/* Walk each window and adjust the size. */

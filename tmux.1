@@ -214,7 +214,6 @@ was given) and off.
 Report the
 .Nm
 version.
-.Pp
 .It Ar command Op Ar flags
 This specifies one of a set of commands used to control
 .Nm ,
@@ -556,7 +555,7 @@ Braces may be enclosed inside braces, for example:
 .Bd -literal -offset indent
 bind x if-shell "true" {
     if-shell "true" {
-         display "true!"
+        display "true!"
     }
 }
 .Ed
@@ -1292,6 +1291,17 @@ shows the parsed commands and line numbers if possible.
 Start the
 .Nm
 server, if not already running, without creating any sessions.
+.Pp
+Note that as by default the
+.Nm
+server will exit with no sessions, this is only useful if a session is created in
+.Pa ~/.tmux.conf ,
+.Ic exit-empty
+is turned off, or another command is run as part of the same command sequence.
+For example:
+.Bd -literal -offset indent
+$ tmux start \\; show -g
+.Ed
 .It Xo Ic suspend-client
 .Op Fl t Ar target-client
 .Xc
@@ -1340,7 +1350,8 @@ is used,
 option will not be applied.
 .Pp
 .Fl T
-sets the client's key table; the next key from the client will be interpreted from
+sets the client's key table; the next key from the client will be interpreted
+from
 .Ar key-table .
 This may be used to configure multiple prefix keys, or to bind commands to
 sequences of keys.
@@ -2538,10 +2549,11 @@ This is similar to
 except the source and destination windows are swapped.
 It is an error if no window exists at
 .Ar src-window .
+If
+.Fl d
+is given, the new window does not become the current window.
 .Pp
-Like
-.Ic swap-pane ,
-if
+If
 .Fl s
 is omitted and a marked pane is present (see
 .Ic select-pane
@@ -2617,6 +2629,7 @@ Commands related to key bindings are as follows:
 .Bl -tag -width Ds
 .It Xo Ic bind-key
 .Op Fl nr
+.Op Fl N Ar note
 .Op Fl T Ar key-table
 .Ar key Ar command Op Ar arguments
 .Xc
@@ -2664,22 +2677,49 @@ The
 flag indicates this key may repeat, see the
 .Ic repeat-time
 option.
+.Fl N
+attaches a note to the key (shown with
+.Ic list-keys
+.Fl N ) .
 .Pp
 To view the default bindings and possible commands, see the
 .Ic list-keys
 command.
 .It Xo Ic list-keys
-.Op Fl T Ar key-table
+.Op Fl 1aN
+.Op Fl P Ar prefix-string Fl T Ar key-table
+.Op key
 .Xc
 .D1 (alias: Ic lsk )
-List all key bindings.
-Without
+List key bindings.
+There are two forms: the default lists keys as
+.Ic bind-key
+commands;
+.Fl N
+lists only keys with attached notes and shows only the key and note for each
+key.
+.Pp
+With the default form, all key tables are listed by default.
 .Fl T
-all key tables are printed.
-With
-.Fl T
-only
+lists only keys in
 .Ar key-table .
+.Pp
+With the
+.Fl N
+form, only keys in the
+.Em root
+and
+.Em prefix
+key tables are listed by default;
+.Fl T
+also lists only keys in
+.Ar key-table .
+.Fl P
+specifies a prefix to print before each key and
+.Fl 1
+lists only the first matching key.
+.Fl a
+lists the command for keys that do have a note rather than skipping them.
 .It Xo Ic send-keys
 .Op Fl FHlMRX
 .Op Fl N Ar repeat-count
@@ -4232,7 +4272,6 @@ The following variables are available, where appropriate:
 .It Li "client_readonly" Ta "" Ta "1 if client is readonly"
 .It Li "client_session" Ta "" Ta "Name of the client's session"
 .It Li "client_termname" Ta "" Ta "Terminal name of client"
-.It Li "client_termtype" Ta "" Ta "Terminal type of client"
 .It Li "client_tty" Ta "" Ta "Pseudo terminal of client"
 .It Li "client_utf8" Ta "" Ta "1 if client supports UTF-8"
 .It Li "client_width" Ta "" Ta "Width of client"
@@ -4312,6 +4351,7 @@ The following variables are available, where appropriate:
 .It Li "scroll_position" Ta "" Ta "Scroll position in copy mode"
 .It Li "scroll_region_lower" Ta "" Ta "Bottom of scroll region in pane"
 .It Li "scroll_region_upper" Ta "" Ta "Top of scroll region in pane"
+.It Li "selection_active" Ta "" Ta "1 if selection started and changes with the cursor in copy mode"
 .It Li "selection_end_x" Ta "" Ta "X position of the end of the selection"
 .It Li "selection_end_y" Ta "" Ta "Y position of the end of the selection"
 .It Li "selection_present" Ta "" Ta "1 if selection started in copy mode"
@@ -4700,7 +4740,7 @@ session option.
 Commands related to the status line are as follows:
 .Bl -tag -width Ds
 .It Xo Ic command-prompt
-.Op Fl 1Ni
+.Op Fl 1ikN
 .Op Fl I Ar inputs
 .Op Fl p Ar prompts
 .Op Fl t Ar target-client
@@ -4750,6 +4790,10 @@ but any quotation marks are escaped.
 .Fl 1
 makes the prompt only accept one key press, in this case the resulting input
 is a single character.
+.Fl k
+is like
+.Fl 1
+but the key press is translated to a key name.
 .Fl N
 makes the prompt only accept numeric key presses.
 .Fl i
@@ -4913,7 +4957,7 @@ When the
 option is reached, the oldest automatically named buffer is deleted.
 Explicitly named buffers are not subject to
 .Ic buffer-limit
-and may be deleted with
+and may be deleted with the
 .Ic delete-buffer
 command.
 .Pp
