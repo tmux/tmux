@@ -142,10 +142,11 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 	session_update_activity(s, NULL);
 	gettimeofday(&s->last_attached_time, NULL);
 
-	recalculate_sizes();
 	server_check_unattached();
 	server_redraw_client(c);
 	s->curw->flags &= ~WINLINK_ALERTFLAGS;
+	s->curw->window->latest = c;
+	recalculate_sizes();
 	alerts_check_session(s);
 
 	return (CMD_RETURN_NORMAL);
