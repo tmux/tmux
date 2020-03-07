@@ -142,7 +142,8 @@ format_draw_put_list(struct screen_write_ctx *octx,
 		width -= list_left->cx;
 	}
 	if (start + width < list->cx && width > list_right->cx) {
-		screen_write_cursormove(octx, ocx + offset + width - 1, ocy, 0);
+		screen_write_cursormove(octx, ocx + offset + width -
+		    list_right->cx, ocy, 0);
 		screen_write_fast_copy(octx, list_right, 0, 0, list_right->cx,
 		    1);
 		width -= list_right->cx;
