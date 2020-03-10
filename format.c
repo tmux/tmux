@@ -73,9 +73,17 @@ struct format_job {
 	RB_ENTRY(format_job)	 entry;
 };
 
-union math_number {
+union format_math_number {
 	long long	l;
-	float		f;
+	double		d;
+};
+
+enum format_math_operator {
+	ADD,
+	SUBTRACT,
+	MULTIPLY,
+	DIVIDE,
+	MODULUS,
 };
 
 /* Format job tree. */
@@ -109,14 +117,6 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 
 /* Limit on recursion. */
 #define FORMAT_LOOP_LIMIT 10
-
-enum math_operator {
-	ADD,
-	SUBTRACT,
-	MULTIPLY,
-	DIVIDE,
-	MODULUS,
-};
 
 /* Entry in format tree. */
 struct format_entry {
@@ -1819,16 +1819,17 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
     char **buf, size_t *len, size_t *off)
 {
 	struct window_pane	 *wp = ft->wp;
-	const char		 *errptr, *copy, *cp, *marker = NULL;
-	char			 *copy0, *condition, *found, *new, *end_character;
-	char			 *value, *left, *right;
-	size_t			  valuelen;
-	int			  modifiers = 0, limit = 0, width = 0, j, buffer_size;
-	struct format_modifier   *list, *fm, *cmp = NULL, *search = NULL, *math_expression = NULL;
+	const char		*errptr, *copy, *cp, *marker = NULL;
+	char			*copy0, *condition, *found, *new, *endch;
+	char			*value, *left, *right;
+	size_t			valuelen;
+	int				modifiers = 0, limit = 0, width = 0, j;
+	struct format_modifier	*list, *fm, *cmp = NULL, *search = NULL, 
+							*mathexp = NULL;
 	struct format_modifier	**sub = NULL;
-	u_int			  i, count, use_floating_point_numbers = 0, nsub = 0, math_precision = 2;
-	enum math_operator operator;
-	union math_number math_left_num, math_right_num, math_result;
+	u_int			  		i, count, use_fp = 0, nsub = 0, mathprec = 2;
+	enum format_math_operator 		operator;
+	union format_math_number 		mathleft, mathright, mathresult;
 
 	/* Make a copy of the key. */
 	copy = copy0 = xstrndup(key, keylen);
@@ -1882,7 +1883,7 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 			case 'e':
 				if (fm->argc < 1)
 					break;
-			    math_expression = fm;
+			    mathexp = fm;
 				break;
 			case 'l':
 				modifiers |= FORMAT_LITERAL;
@@ -2060,100 +2061,94 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 
 		free(condition);
 		free(found);
-	} else if (math_expression != NULL) {
+	} else if (mathexp != NULL) {
 		for (j = 0; j < fm->argc; j++) {
-			if (strcmp(fm->argv[j], "+") == 0) {
+			if (strcmp(fm->argv[j], "+") == 0)
 				operator = ADD;
-			} else if (strcmp(fm->argv[j], "-") == 0) {
+			else if (strcmp(fm->argv[j], "-") == 0)
 				operator = SUBTRACT;
-			} else if (strcmp(fm->argv[j], "*") == 0) {
+			else if (strcmp(fm->argv[j], "*") == 0)
 				operator = MULTIPLY;
-			} else if (strcmp(fm->argv[j], "/") == 0) {
+			else if (strcmp(fm->argv[j], "/") == 0)
 				operator = DIVIDE;
-			} else if (strcmp(fm->argv[j], "%") == 0) {
+			else if (strcmp(fm->argv[j], "%") == 0)
 				operator = MODULUS;
-			} else if (strcmp(fm->argv[j], "f") == 0) {
-				use_floating_point_numbers = 1;
-			} else {
-				// See if it is a number, and if so, use it as the precision
-				math_precision = strtonum(fm->argv[j], INT_MIN, INT_MAX, &errptr);
-				if (errptr != NULL) {
+			else if (strcmp(fm->argv[j], "f") == 0)
+				use_fp = 1;
+			else {
+				/* See if it is a number, and if so, use it as the precision */ 
+				mathprec = strtonum(fm->argv[j], INT_MIN, INT_MAX, &errptr);
+				if (errptr != NULL)
 					goto fail;
-				}
 			}
 		}
 
 		if (format_choose(ft, copy, &left, &right, 1) != 0) {
-			format_log(ft, "compare %s syntax error: %s",
-			    cmp->modifier, copy);
+			format_log(ft, "math expression syntax error: %s", copy);
 			goto fail;
 		}
 
 		format_log(ft, "math expression left side is: %s", left);
 		format_log(ft, "math expression right side is: %s", right);
 
-		switch(use_floating_point_numbers){
-			case 0:
+		if (use_fp == 0) {
 				format_log(ft, "math expression is using integers");
-				math_left_num.l = strtonum(left, INT_MIN, INT_MAX, &errptr);
-				format_log(ft, "math expression left side parsed to: %lld", math_left_num.l);
-				math_right_num.l = strtonum(right, INT_MIN, INT_MAX, &errptr);
-				format_log(ft, "math expression right side parsed to: %lld", math_right_num.l);
+				mathleft.l = strtonum(left, LONG_MIN, LONG_MAX, &errptr);
+				format_log(ft, "math expression left side parsed to: %lld",
+							mathleft.l);
+				mathright.l = strtonum(right, LONG_MIN, LONG_MAX, &errptr);
+				format_log(ft, "math expression right side parsed to: %lld",
+							mathright.l);
 
-				if (errptr != NULL) {
+				if (errptr != NULL)
 					goto fail;
-				}
 
-				switch(operator) {
+				switch (operator) {
 					case ADD:
-						math_result.l = math_left_num.l + math_right_num.l;
+						mathresult.l = mathleft.l + mathright.l;
 						break;
 					case SUBTRACT:
-						math_result.l = math_left_num.l - math_right_num.l;
+						mathresult.l = mathleft.l - mathright.l;
 						break;
 					case MULTIPLY:
-						math_result.l = math_left_num.l * math_right_num.l;
+						mathresult.l = mathleft.l * mathright.l;
 						break;
 					case DIVIDE:
-						math_result.l = math_left_num.l / math_right_num.l;
+						mathresult.l = mathleft.l / mathright.l;
 						break;
 					case MODULUS:
-						math_result.l = math_left_num.l % math_right_num.l;
+						mathresult.l = mathleft.l % mathright.l;
 						break;
 				}
-				buffer_size = snprintf(NULL, 0, "%lld", math_result.l) + 1;
-				value = malloc(buffer_size);
-				snprintf(value, buffer_size, "%lld", math_result.l);
-				break;
+				xasprintf(&value, "%lld", mathresult.l);
+			} else {
+				format_log(ft, "math expression is using floating-point \
+							numbers with precision %d", mathprec);
+				mathleft.d = strtof(left, &endch);
+				format_log(ft, "math expression left side parsed to float of: \
+							%.*f", mathprec, mathleft.d);
+				mathright.d = strtof(right, &endch);
+				format_log(ft, "math expression right side parsed to float of: \
+							%.*f", mathprec, mathright.d);
 
-			case 1:
-				format_log(ft, "math expression is using floating-point numbers with precision %d", math_precision);
-				math_left_num.f = strtof(left, &end_character);
-				format_log(ft, "math expression left side parsed to float of: %.*f", math_precision, math_left_num.f);
-				math_right_num.f = strtof(right, &end_character);
-				format_log(ft, "math expression right side parsed to float of: %.*f", math_precision, math_right_num.f);
-
-				switch(operator) {
+				switch (operator) {
 					case ADD:
-						math_result.f = math_left_num.f + math_right_num.f;
+						mathresult.d = mathleft.d + mathright.d;
 						break;
 					case SUBTRACT:
-						math_result.f = math_left_num.f - math_right_num.f;
+						mathresult.d = mathleft.d - mathright.d;
 						break;
 					case MULTIPLY:
-						math_result.f = math_left_num.f * math_right_num.f;
+						mathresult.d = mathleft.d * mathright.d;
 						break;
 					case DIVIDE:
-						math_result.f = math_left_num.f / math_right_num.f;
+						mathresult.d = mathleft.d / mathright.d;
 						break;
 					case MODULUS:
-						math_result.f = fmod(math_left_num.f, math_right_num.f);
+						mathresult.d = fmod(mathleft.d, mathright.d);
 						break;
 				}
-				buffer_size = snprintf(NULL, 0, "%.*f", math_precision, math_result.f) + 1;
-				value = malloc(buffer_size);
-				snprintf(value, buffer_size, "%.*f", math_precision, math_result.f);
-				break;
+				xasprintf(&value, "%.*f", mathprec, mathresult.d);
 		}
 		free(right);
 		free(left);
