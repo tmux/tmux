@@ -4134,9 +4134,10 @@ ignores case.
 For example:
 .Ql #{C/r:^Start}
 .Pp
-Math expressions may be performed by prefixing two comma-separated alternatives with an
+Math equations may be performed by prefixing two comma-separated alternatives with an
 .Ql e
-a math operator, and a colon. The available operators are
+a math operator, and a colon.
+The available operators are
 .Ql + ,
 .Ql - ,
 .Ql * ,
@@ -4146,9 +4147,12 @@ Note that the renderer treats the modulus symbol specially, so the
 .Ql %
 operator needs to be escaped as
 .Ql %% .
-In addition to the math operator, you can also provide an
+As an optional second argument, you can also provide an
 .Ql f
-in order to use floating point numbers in the equation, as well as an optional number to specify the precision of the operation, which defaults to 2 decimal places. For example,
+in order to use floating point numbers in the equation.
+As an optional third argument, you may provide number to specify the precision of the operation,
+which defaults to 2 decimal places.
+For example,
 .Ql #{e|*|f|3:5.5,3}
 would multiply 5.5 by 3 with 3 decimal places of precision, while
 .Ql #{e|%%:7,3}
