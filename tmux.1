@@ -4107,7 +4107,7 @@ specifies an
 .Xr fnmatch 3
 or regular expression comparison.
 The first argument is the pattern and the second the string to compare.
-An optional third argument specifies flags:
+An optional argument specifies flags:
 .Ql r
 means the pattern is a regular expression instead of the default
 .Xr fnmatch 3
@@ -4133,6 +4133,38 @@ flag means search for a regular expression and
 ignores case.
 For example:
 .Ql #{C/r:^Start}
+.Pp
+Numeric operators may be performed by prefixing two comma-separated alternatives with an
+.Ql e
+and an operator.
+An optional
+.Ql f
+flag may be given after the operator to use floating point numbers, otherwise integers are used.
+This may be followed by a number giving the number of decimal places to use for the result.
+The available operators are:
+addition
+.Ql + ,
+subtraction
+.Ql - ,
+multiplication
+.Ql * ,
+division
+.Ql / ,
+and modulus
+.Ql m
+or
+.Ql %
+(note that
+.Ql %
+must be escaped as
+.Ql %%
+in formats which are also expanded by
+.Xr strftime 3 ) .
+For example,
+.Ql #{e|*|f|4:5.5,3}
+multiplies 5.5 by 3 for a result with four decimal places and
+.Ql #{e|%%:7,3}
+returns the modulus of 7 and 3.
 .Pp
 A limit may be placed on the length of the resultant string by prefixing it
 by an

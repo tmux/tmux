@@ -130,7 +130,7 @@ CDIAGFLAGS+= -Wundef -Wbad-function-cast -Winline -Wcast-align
 
 CFLAGS += -I${.CURDIR}
 
-LDADD=  -lutil -lcurses -levent
-DPADD=  ${LIBUTIL} ${LIBCURSES} ${LIBEVENT}
+LDADD=  -lutil -lcurses -levent -lm
+DPADD=  ${LIBUTIL} ${LIBCURSES} ${LIBEVENT} ${LIBM}
 
 .include <bsd.prog.mk>
