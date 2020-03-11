@@ -122,6 +122,9 @@ AC_REPLACE_FUNCS([ \
 ])
 AC_FUNC_STRNLEN
 
+# Look for libm
+AC_SEARCH_LIBS(sqrt, m)
+
 # Look for clock_gettime. Must come before event_init.
 AC_SEARCH_LIBS(clock_gettime, rt)
 
