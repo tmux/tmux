@@ -1505,13 +1505,13 @@ format_build_modifiers(struct format_tree *ft, const char **s, u_int *count)
 
 	/*
 	 * Modifiers are a ; separated list of the forms:
-	 *      l,m,C,b,d,t,q,e,E,T,S,W,P,<,>
-	 *	=a
-	 *	=/a
-	 *      =/a/
-	 *	s/a/b/
-	 *	s/a/b
-	 *	||,&&,!=,==,<=,>=
+	 *  l,m,C,b,d,t,q,e,E,T,S,W,P,<,>
+	 *  =a
+	 *  =/a
+	 *  =/a/
+	 *  s/a/b/
+	 *  s/a/b
+	 *  ||,&&,!=,==,<=,>=
 	 */
 
 	*count = 0;
@@ -1522,7 +1522,7 @@ format_build_modifiers(struct format_tree *ft, const char **s, u_int *count)
 			cp++;
 
 		/* Check single character modifiers with no arguments. */
-		if (strchr("lbdtqeETSWP<>", cp[0]) != NULL &&
+		if (strchr("lbdtqETSWP<>", cp[0]) != NULL &&
 		    format_is_end(cp[1])) {
 			format_add_modifier(&list, count, cp, 1, NULL, 0);
 			cp++;
@@ -1800,61 +1800,52 @@ format_loop_panes(struct format_tree *ft, const char *fmt)
 }
 
 static char *
-format_replace_math_expression(struct format_modifier *mathexp,
+format_replace_math_expression(struct format_modifier *mexp,
 								struct format_tree *ft,
 								const char *copy)
 {
-	int 		argc = mathexp->argc;
-	const char	*errptr;
-	char		*endch, *ret, *value, *left, *right;
-	u_int		use_fp = 0, precision = 2;
-	double 		leftnum, rightnum, result;
-
-	enum math_operator {
-		ADD,
-		SUBTRACT,
-		MULTIPLY,
-		DIVIDE,
-		MODULUS,
-	} operator = ADD;
-
-	format_log(ft, "math expression");
+	int 		argc = mexp->argc;
+	const char	*errstr;
+	char		*endch, *value, *left = NULL, *right = NULL;
+	u_int		use_fp = 0, prec = 0;
+	double 		mleft, mright, result;
+	enum { ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULUS } operator;
 
 	if (argc >= 1){
-		if (strcmp(mathexp->argv[0], "+") == 0)
+		if (strcmp(mexp->argv[0], "+") == 0)
 			operator = ADD;
-		else if (strcmp(mathexp->argv[0], "-") == 0)
+		else if (strcmp(mexp->argv[0], "-") == 0)
 			operator = SUBTRACT;
-		else if (strcmp(mathexp->argv[0], "*") == 0)
+		else if (strcmp(mexp->argv[0], "*") == 0)
 			operator = MULTIPLY;
-		else if (strcmp(mathexp->argv[0], "/") == 0)
+		else if (strcmp(mexp->argv[0], "/") == 0)
 			operator = DIVIDE;
-		else if (strcmp(mathexp->argv[0], "%") == 0)
+		else if (strcmp(mexp->argv[0], "%") == 0 || 
+					strcmp(mexp->argv[0], "m") == 0)
 			operator = MODULUS;
 		else {
 			format_log(ft, "no supported operator provided, got '%s'",
-			mathexp->argv[0]);
+			mexp->argv[0]);
 			goto fail;
 		}
 	}
 
-	/* Check flags */
-	if (argc >= 2){
-		ret = strchr(mathexp->argv[1], 'f');
-		if (ret != 0) {
-			use_fp = 1;
-			format_log(ft, "using floating point numbers");
-		}
+	/* The second argument may be flags */
+	if (argc >= 2 && strchr(mexp->argv[1], 'f') != NULL) {
+		use_fp = 1;
+		prec = 2;
 	}
 
 	/* 
-	 * The third argument should be a a number representing the precision,
-	 * which only makes sense when using floating-point numbers
+	 * The third argument may be precision
 	 */
-	if (use_fp != 0 && argc >= 3){
-		precision = strtonum(mathexp->argv[2], INT_MIN, INT_MAX, &errptr);
-		if (errptr != NULL)
+	if (argc >= 3) {
+		prec = strtonum(mexp->argv[2], INT_MIN, INT_MAX, &errstr);
+		if (errstr != NULL) {
+			format_log (ft, "expression precision %s: %s", errstr,
+				mexp->argv[2]);
 			goto fail;
+		}
 	}
 
 	if (format_choose(ft, copy, &left, &right, 1) != 0) {
@@ -1864,66 +1855,64 @@ format_replace_math_expression(struct format_modifier *mathexp,
 	format_log(ft, "left side is %s", left);
 	format_log(ft, "right side is %s", right);
 
-	if (use_fp == 0) {
-		precision = 0;
-		leftnum = strtod(left, &endch);
-		if (*endch != '\0')
-			goto freefail;
-		if (leftnum >= 0)
-			leftnum = floor(leftnum);
-		else
-			leftnum = ceil(leftnum);
-
-		rightnum = strtod(right, &endch);
-		if (*endch != '\0')
-			goto freefail;
-		
-		if (rightnum >= 0)
-			rightnum = floor(rightnum);
-		else
-			rightnum = ceil(rightnum);
-	} else {
-		leftnum = strtod(left, &endch);
-		if (*endch != '\0')
-			goto freefail;
-		rightnum = strtod(right, &endch);
-		if (*endch != '\0')
-			goto freefail;
+	mleft = strtod(left, &endch);
+	if (*endch != '\0') {
+		format_log(ft, "expression left side is invalid: %s", left);
+		goto fail;
 	}
-	format_log(ft, "left side parsed to %.*f", precision, leftnum);
-	format_log(ft, "right side parsed to %.*f", precision, rightnum);
+
+	mright = strtod(right, &endch);
+	if (*endch != '\0') {
+		format_log(ft, "expression right side is invalid: %s", right);
+		goto fail;
+	}
+
+	if (!use_fp) {
+		prec = 0;
+		
+		if (mleft >= 0)
+			mleft = floor(mleft);
+		else
+			mleft = ceil(mleft);
+
+		if (mright >= 0)
+			mright = floor(mright);
+		else
+			mright = ceil(mright);
+	}
+	
+	format_log(ft, "left side parsed to %.*f", prec, mleft);
+	format_log(ft, "right side parsed to %.*f", prec, mright);
 
 	switch (operator) {
 		case ADD:
-			result = leftnum + rightnum;
+			result = mleft + mright;
 			break;
 		case SUBTRACT:
-			result = leftnum - rightnum;
+			result = mleft - mright;
 			break;
 		case MULTIPLY:
-			result = leftnum * rightnum;
+			result = mleft * mright;
 			break;
 		case DIVIDE:
-			result = leftnum / rightnum;
+			result = mleft / mright;
 			break;
 		case MODULUS:
-			result = fmod(leftnum, rightnum);
+			result = fmod(mleft, mright);
 			break;
 	}
 
 	format_log(ft, "mathematical result is %f", result);
 
-	xasprintf(&value, "%.*f", precision, result);
+	xasprintf(&value, "%.*f", prec, result);
 
 	free(right);
 	free(left);
 	return value;
 
-	freefail:
+	fail:
 	free(right);
 	free(left);
-
-	fail:
 	return (NULL);
 }
 
@@ -1939,7 +1928,7 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 	size_t			valuelen;
 	int				modifiers = 0, limit = 0, width = 0, j;
 	struct format_modifier	*list, *fm, *cmp = NULL, *search = NULL, 
-							*mathexp = NULL;
+							*mexp = NULL;
 	struct format_modifier	**sub = NULL;
 	u_int			  		i, count, nsub = 0;
 
@@ -1995,7 +1984,7 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 			case 'e':
 				if (fm->argc < 1 || fm->argc > 3)
 					break;
-			    mathexp = fm;
+			    mexp = fm;
 				break;
 			case 'l':
 				modifiers |= FORMAT_LITERAL;
@@ -2173,8 +2162,8 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 
 		free(condition);
 		free(found);
-	} else if (mathexp != NULL) {
-		value = format_replace_math_expression(mathexp, ft, copy);
+	} else if (mexp != NULL) {
+		value = format_replace_math_expression(mexp, ft, copy);
 		if (value == NULL) {
 			format_log(ft, "math expression error: %s", copy);
 			value = xstrdup("");

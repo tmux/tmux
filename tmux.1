@@ -4134,36 +4134,36 @@ ignores case.
 For example:
 .Ql #{C/r:^Start}
 .Pp
-Math expressions may be performed by prefixing two comma-separated alternatives with an
+Numeric operations may be performed by prefixing two comma-separated alternatives with an
 .Ql e ,
-a math operator, and a colon.
-The available operators are
+an operator, and a colon.
+An optional
++.Ql f
+lag may be given after the operator to use floating point numbers, otherwise integers are used.
+This may be followed by a number giving the number of decimal places to use for the result.
+By default, 
+The available operators are:
+addition
 .Ql + ,
+subtraction
 .Ql - ,
+multiplication
 .Ql * ,
+division
 .Ql / ,
-.Ql % .
+and modulus
+.Ql %
+or
+.Ql m .
 Note that the string formatter treats the modulus symbol specially, so the
 .Ql %
 operator needs to be escaped as
 .Ql %% .
-As an optional second argument, you can provide an
-.Ql f
-in order to use floating point numbers in the expression.
-As an optional third argument, you may provide number to specify the precision of the operation,
-which defaults to 2 decimal places. This has no effect if not using floating-point numbers.
-In addition, if you do not specify to use floating-point numbers,
-any numbers provided will have their fractional parts removed.
 For example,
 .Ql #{e|*|f|3:5.5,3}
 would multiply 5.5 by 3 with 3 decimal places of precision, while
 .Ql #{e|%%:7,3}
 would return 7 mod 3.
-However, 
-.Ql #{e|+||5:7.5,3.2}
-would display
-.Ql 10 ,
-as the floating-point number flag was not provided.
 .Pp
 A limit may be placed on the length of the resultant string by prefixing it
 by an
