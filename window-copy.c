@@ -4122,7 +4122,7 @@ window_copy_start_drag(struct client *c, struct mouse_event *m)
 	struct window_pane		*wp;
 	struct window_mode_entry	*wme;
 	struct window_copy_mode_data	*data;
-	u_int				 x, y;
+	u_int				 x, y, yg;
 
 	if (c == NULL)
 		return;
@@ -4143,6 +4143,9 @@ window_copy_start_drag(struct client *c, struct mouse_event *m)
 	c->tty.mouse_drag_release = window_copy_drag_release;
 
 	data = wme->data;
+	yg = screen_hsize(data->backing) + y - data->oy;
+	if (x < data->selrx || x > data->endselrx || yg != data->selry)
+		data->selflag = SEL_CHAR;
 	switch (data->selflag) {
 		case SEL_WORD:
 			if (data->ws) {
