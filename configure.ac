@@ -87,6 +87,9 @@ AC_CHECK_HEADERS([ \
 	util.h \
 ])
 
+# Look for fmod.
+AC_CHECK_LIB(m, fmod)
+
 # Look for library needed for flock.
 AC_SEARCH_LIBS(flock, bsd)
 
