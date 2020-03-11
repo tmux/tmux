@@ -1835,8 +1835,6 @@ void printflike(3, 4) format_add(struct format_tree *, const char *,
 void		 format_each(struct format_tree *, void (*)(const char *,
 		     const char *, void *), void *);
 char		*format_expand_time(struct format_tree *, const char *);
-char		*format_replace_math_equation(struct format_modifier *,
-             struct format_tree *, const char *);
 char		*format_expand(struct format_tree *, const char *);
 char		*format_single(struct cmdq_item *, const char *,
 		     struct client *, struct session *, struct winlink *,

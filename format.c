@@ -72,14 +72,6 @@ struct format_job {
 	RB_ENTRY(format_job)	 entry;
 };
 
-enum format_math_operator {
-	ADD,
-	SUBTRACT,
-	MULTIPLY,
-	DIVIDE,
-	MODULUS,
-};
-
 /* Format job tree. */
 static struct event format_job_event;
 static int format_job_cmp(struct format_job *, struct format_job *);
@@ -1807,6 +1799,134 @@ format_loop_panes(struct format_tree *ft, const char *fmt)
 	return (value);
 }
 
+static char *
+format_replace_math_expression(struct format_modifier *mathexp,
+								struct format_tree *ft,
+								const char *copy)
+{
+	int 		argc = mathexp->argc;
+	const char	*errptr;
+	char		*endch, *ret, *value, *left, *right;
+	u_int		use_fp = 0, precision = 2;
+	double 		leftnum, rightnum, result;
+
+	enum math_operator {
+		ADD,
+		SUBTRACT,
+		MULTIPLY,
+		DIVIDE,
+		MODULUS,
+	} operator = ADD;
+
+	format_log(ft, "math expression");
+
+	if (argc >= 1){
+		if (strcmp(mathexp->argv[0], "+") == 0)
+			operator = ADD;
+		else if (strcmp(mathexp->argv[0], "-") == 0)
+			operator = SUBTRACT;
+		else if (strcmp(mathexp->argv[0], "*") == 0)
+			operator = MULTIPLY;
+		else if (strcmp(mathexp->argv[0], "/") == 0)
+			operator = DIVIDE;
+		else if (strcmp(mathexp->argv[0], "%") == 0)
+			operator = MODULUS;
+		else {
+			format_log(ft, "no supported operator provided, got '%s'",
+			mathexp->argv[0]);
+			goto fail;
+		}
+	}
+
+	/* Check flags */
+	if (argc >= 2){
+		ret = strchr(mathexp->argv[1], 'f');
+		if (ret != 0) {
+			use_fp = 1;
+			format_log(ft, "using floating point numbers");
+		}
+	}
+
+	/* 
+	 * The third argument should be a a number representing the precision,
+	 * which only makes sense when using floating-point numbers
+	 */
+	if (use_fp != 0 && argc >= 3){
+		precision = strtonum(mathexp->argv[2], INT_MIN, INT_MAX, &errptr);
+		if (errptr != NULL)
+			goto fail;
+	}
+
+	if (format_choose(ft, copy, &left, &right, 1) != 0) {
+		goto fail;
+	}
+
+	format_log(ft, "left side is %s", left);
+	format_log(ft, "right side is %s", right);
+
+	if (use_fp == 0) {
+		precision = 0;
+		leftnum = strtod(left, &endch);
+		if (*endch != '\0')
+			goto freefail;
+		if (leftnum >= 0)
+			leftnum = floor(leftnum);
+		else
+			leftnum = ceil(leftnum);
+
+		rightnum = strtod(right, &endch);
+		if (*endch != '\0')
+			goto freefail;
+		
+		if (rightnum >= 0)
+			rightnum = floor(rightnum);
+		else
+			rightnum = ceil(rightnum);
+	} else {
+		leftnum = strtod(left, &endch);
+		if (*endch != '\0')
+			goto freefail;
+		rightnum = strtod(right, &endch);
+		if (*endch != '\0')
+			goto freefail;
+	}
+	format_log(ft, "left side parsed to %.*f", precision, leftnum);
+	format_log(ft, "right side parsed to %.*f", precision, rightnum);
+
+	switch (operator) {
+		case ADD:
+			result = leftnum + rightnum;
+			break;
+		case SUBTRACT:
+			result = leftnum - rightnum;
+			break;
+		case MULTIPLY:
+			result = leftnum * rightnum;
+			break;
+		case DIVIDE:
+			result = leftnum / rightnum;
+			break;
+		case MODULUS:
+			result = fmod(leftnum, rightnum);
+			break;
+	}
+
+	format_log(ft, "mathematical result is %f", result);
+
+	xasprintf(&value, "%.*f", precision, result);
+
+	free(right);
+	free(left);
+	return value;
+
+	freefail:
+	free(right);
+	free(left);
+
+	fail:
+	return (NULL);
+}
+
 /* Replace a key. */
 static int
 format_replace(struct format_tree *ft, const char *key, size_t keylen,
@@ -2054,9 +2174,9 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 		free(condition);
 		free(found);
 	} else if (mathexp != NULL) {
-		value = format_replace_math_equation(mathexp, ft, copy);
+		value = format_replace_math_expression(mathexp, ft, copy);
 		if (value == NULL) {
-			format_log(ft, "math equation '%s' not parsed successfully", copy);
+			format_log(ft, "math expression error: %s", copy);
 			value = xstrdup("");
 		}
 	} else {
@@ -2298,107 +2418,6 @@ char *
 format_expand_time(struct format_tree *ft, const char *fmt)
 {
 	return (format_expand1(ft, fmt, 1));
-}
-
-char *
-format_replace_math_equation(struct format_modifier *mathexp,
-								struct format_tree *ft,
-								const char *copy)
-{
-	int 					argc = mathexp->argc;
-	const char				*errptr;
-	char					*endch, *ret, *value, *left, *right;
-	u_int			  		use_fp = 0, mathprec = 2;
-	enum format_math_operator 		operator = ADD;
-	double 		mathleft, mathright, mathresult;
-
-	if (argc >= 1){
-		if (strcmp(mathexp->argv[0], "+") == 0)
-			operator = ADD;
-		else if (strcmp(mathexp->argv[0], "-") == 0)
-			operator = SUBTRACT;
-		else if (strcmp(mathexp->argv[0], "*") == 0)
-			operator = MULTIPLY;
-		else if (strcmp(mathexp->argv[0], "/") == 0)
-			operator = DIVIDE;
-		else if (strcmp(mathexp->argv[0], "%") == 0)
-			operator = MODULUS;
-		else {
-			format_log(ft, "math equation has no valid operator: '%s'",
-			mathexp->argv[0]);
-			goto fail;
-		}
-	}
-
-	/* Check flags */
-	if (argc >= 2){
-		ret = strchr(mathexp->argv[1], 'f');
-		if (ret != 0)
-			use_fp = 1;
-	}
-
-	/* The third argument should be a a number representing the precision */
-	if (argc >= 3){
-		mathprec = strtonum(mathexp->argv[2], INT_MIN, INT_MAX, &errptr);
-		if (errptr != NULL)
-			goto fail;
-	}
-
-	if (format_choose(ft, copy, &left, &right, 1) != 0) {
-		format_log(ft, "math equation syntax error: %s", copy);
-		goto fail;
-	}
-
-	format_log(ft, "math equation left side: %s", left);
-	format_log(ft, "math equation right side: %s", right);
-
-	if (use_fp == 0) {
-			format_log(ft, "equation is using integers");
-			mathleft = floor(strtof(left, &endch));
-			format_log(ft, "left parsed to %.0f", mathleft);
-			mathright = floor(strtof(right, &endch));
-			format_log(ft, "right parsed to %.0f", mathright);
-	} else {
-			format_log(ft,
-			"equation is using floating-point numbers with precision %d",
-			mathprec);
-			mathleft = strtof(left, &endch);
-			format_log(ft, "left parsed to %f", mathleft);
-			mathright = strtof(right, &endch);
-			format_log(ft, "right parsed to %f", mathright);
-	}
-
-	switch (operator) {
-		case ADD:
-			mathresult = mathleft + mathright;
-			break;
-		case SUBTRACT:
-			mathresult = mathleft - mathright;
-			break;
-		case MULTIPLY:
-			mathresult = mathleft * mathright;
-			break;
-		case DIVIDE:
-			mathresult = mathleft / mathright;
-			break;
-		case MODULUS:
-			mathresult = fmod(mathleft, mathright);
-			break;
-	}
-
-	format_log(ft, "math result is: %f", mathresult);
-
-	if (use_fp == 0)
-		xasprintf(&value, "%.0f", mathresult);
-	else
-		xasprintf(&value, "%.*f", mathprec, mathresult);
-
-	free(right);
-	free(left);
-	return value;
-
-	fail:
-	return (NULL);
 }
 
 /* Expand keys in a template. */
