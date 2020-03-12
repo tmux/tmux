@@ -97,7 +97,7 @@ client_get_lock(char *lockfile)
 
 /* Connect client to server. */
 static int
-client_connect(struct event_base *base, const char *path, int start_server)
+client_connect(struct event_base *base, const char *path, int flags)
 {
 	struct sockaddr_un	sa;
 	size_t			size;
@@ -122,7 +122,7 @@ retry:
 		log_debug("connect failed: %s", strerror(errno));
 		if (errno != ECONNREFUSED && errno != ENOENT)
 			goto failed;
-		if (!start_server)
+		if (~flags & CLIENT_STARTSERVER)
 			goto failed;
 		close(fd);
 
@@ -154,7 +154,7 @@ retry:
 			close(lockfd);
 			return (-1);
 		}
-		fd = server_start(client_proc, base, lockfd, lockfile);
+		fd = server_start(client_proc, flags, base, lockfd, lockfile);
 	}
 
 	if (locked && lockfd >= 0) {
@@ -238,7 +238,7 @@ client_main(struct event_base *base, int argc, char **argv, int flags)
 	struct cmd_parse_result	*pr;
 	struct cmd		*cmd;
 	struct msg_command	*data;
-	int			 cmdflags, fd, i;
+	int			 fd, i;
 	const char		*ttynam, *cwd;
 	pid_t			 ppid;
 	enum msgtype		 msg;
@@ -248,17 +248,13 @@ client_main(struct event_base *base, int argc, char **argv, int flags)
 	/* Ignore SIGCHLD now or daemon() in the server will leave a zombie. */
 	signal(SIGCHLD, SIG_IGN);
 
-	/* Save the flags. */
-	client_flags = flags;
-
 	/* Set up the initial command. */
-	cmdflags = 0;
 	if (shell_command != NULL) {
 		msg = MSG_SHELL;
-		cmdflags = CMD_STARTSERVER;
+		flags = CLIENT_STARTSERVER;
 	} else if (argc == 0) {
 		msg = MSG_COMMAND;
-		cmdflags = CMD_STARTSERVER;
+		flags |= CLIENT_STARTSERVER;
 	} else {
 		msg = MSG_COMMAND;
 
@@ -271,19 +267,22 @@ client_main(struct event_base *base, int argc, char **argv, int flags)
 		if (pr->status == CMD_PARSE_SUCCESS) {
 			TAILQ_FOREACH(cmd, &pr->cmdlist->list, qentry) {
 				if (cmd->entry->flags & CMD_STARTSERVER)
-					cmdflags |= CMD_STARTSERVER;
+					flags |= CLIENT_STARTSERVER;
 			}
 			cmd_list_free(pr->cmdlist);
 		} else
 			free(pr->error);
 	}
 
+	/* Save the flags. */
+	client_flags = flags;
+
 	/* Create client process structure (starts logging). */
 	client_proc = proc_start("client");
 	proc_set_signals(client_proc, client_signal);
 
 	/* Initialize the client socket and start the server. */
-	fd = client_connect(base, socket_path, cmdflags & CMD_STARTSERVER);
+	fd = client_connect(base, socket_path, client_flags);
 	if (fd == -1) {
 		if (errno == ECONNREFUSED) {
 			fprintf(stderr, "no server running on %s\n",

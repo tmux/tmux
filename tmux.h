@@ -1577,6 +1577,8 @@ struct client {
 #define CLIENT_REDRAWSTATUSALWAYS 0x1000000
 #define CLIENT_REDRAWOVERLAY 0x2000000
 #define CLIENT_CONTROL_NOOUTPUT 0x4000000
+#define CLIENT_DEFAULTSOCKET 0x8000000
+#define CLIENT_STARTSERVER 0x10000000
 #define CLIENT_ALLREDRAWFLAGS		\
 	(CLIENT_REDRAWWINDOW|		\
 	 CLIENT_REDRAWSTATUS|		\
@@ -2200,7 +2202,7 @@ void	 server_clear_marked(void);
 int	 server_is_marked(struct session *, struct winlink *,
 	     struct window_pane *);
 int	 server_check_marked(void);
-int	 server_start(struct tmuxproc *, struct event_base *, int, char *);
+int	 server_start(struct tmuxproc *, int, struct event_base *, int, char *);
 void	 server_update_socket(void);
 void	 server_add_accept(int);
 
