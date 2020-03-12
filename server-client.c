@@ -417,7 +417,6 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 	struct winlink		*wl;
 	struct window_pane	*wp;
 	u_int			 x, y, b, sx, sy, px, py;
-	int			 flag;
 	key_code		 key;
 	struct timeval		 tv;
 	struct style_range	*sr;
@@ -441,7 +440,11 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 	    m->x, m->y, m->lx, m->ly, c->tty.mouse_drag_flag);
 
 	/* What type of event is this? */
-	if ((m->sgr_type != ' ' &&
+	if (event->key == KEYC_DOUBLECLICK) {
+		type = DOUBLE;
+		x = m->x, y = m->y, b = m->b;
+		log_debug("double-click at %u,%u", x, y);
+	} else if ((m->sgr_type != ' ' &&
 	    MOUSE_DRAG(m->sgr_b) &&
 	    MOUSE_BUTTONS(m->sgr_b) == 3) ||
 	    (m->sgr_type == ' ' &&
@@ -475,10 +478,8 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 			evtimer_del(&c->click_timer);
 			c->flags &= ~CLIENT_DOUBLECLICK;
 			if (m->b == c->click_button) {
-				type = DOUBLE;
-				x = m->x, y = m->y, b = m->b;
-				log_debug("double-click at %u,%u", x, y);
-				flag = CLIENT_TRIPLECLICK;
+				type = NOTYPE;
+				c->flags |= CLIENT_TRIPLECLICK;
 				goto add_timer;
 			}
 		} else if (c->flags & CLIENT_TRIPLECLICK) {
@@ -495,11 +496,11 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 		type = DOWN;
 		x = m->x, y = m->y, b = m->b;
 		log_debug("down at %u,%u", x, y);
-		flag = CLIENT_DOUBLECLICK;
+		c->flags |= CLIENT_DOUBLECLICK;
 
 	add_timer:
 		if (KEYC_CLICK_TIMEOUT != 0) {
-			c->flags |= flag;
+			memcpy(&c->click_event, m, sizeof c->click_event);
 			c->click_button = m->b;
 
 			tv.tv_sec = KEYC_CLICK_TIMEOUT / 1000;
@@ -1045,7 +1046,7 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 
 	/* Check for mouse keys. */
 	m->valid = 0;
-	if (key == KEYC_MOUSE) {
+	if (key == KEYC_MOUSE || key == KEYC_DOUBLECLICK) {
 		if (c->flags & CLIENT_READONLY)
 			goto out;
 		key = server_client_check_mouse(c, event);
@@ -1547,8 +1548,22 @@ server_client_repeat_timer(__unused int fd, __unused short events, void *data)
 static void
 server_client_click_timer(__unused int fd, __unused short events, void *data)
 {
-	struct client	*c = data;
+	struct client		*c = data;
+	struct key_event	*event;
 
+	log_debug("click timer expired");
+
+	if (c->flags & CLIENT_TRIPLECLICK) {
+		/*
+		 * Waiting for a third click that hasn't happened, so this must
+		 * have been a double click.
+		 */
+		event = xmalloc(sizeof *event);
+		event->key = KEYC_DOUBLECLICK;
+		memcpy(&event->m, &c->click_event, sizeof event->m);
+		if (!server_client_handle_key(c, event))
+			free(event);
+	}
 	c->flags &= ~(CLIENT_DOUBLECLICK|CLIENT_TRIPLECLICK);
 }
 

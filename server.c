@@ -44,6 +44,7 @@ struct clients		 clients;
 
 struct tmuxproc		*server_proc;
 static int		 server_fd = -1;
+static int		 server_client_flags;
 static int		 server_exit;
 static struct event	 server_ev_accept;
 
@@ -97,7 +98,7 @@ server_check_marked(void)
 
 /* Create server socket. */
 static int
-server_create_socket(char **cause)
+server_create_socket(int flags, char **cause)
 {
 	struct sockaddr_un	sa;
 	size_t			size;
@@ -116,7 +117,10 @@ server_create_socket(char **cause)
 	if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
 		goto fail;
 
-	mask = umask(S_IXUSR|S_IXGRP|S_IRWXO);
+	if (flags & CLIENT_DEFAULTSOCKET)
+		mask = umask(S_IXUSR|S_IXGRP|S_IRWXO);
+	else
+		mask = umask(S_IXUSR|S_IRWXG|S_IRWXO);
 	if (bind(fd, (struct sockaddr *)&sa, sizeof sa) == -1) {
 		saved_errno = errno;
 		close(fd);
@@ -145,8 +149,8 @@ fail:
 
 /* Fork new server. */
 int
-server_start(struct tmuxproc *client, struct event_base *base, int lockfd,
-    char *lockfile)
+server_start(struct tmuxproc *client, int flags, struct event_base *base,
+    int lockfd, char *lockfile)
 {
 	int		 pair[2];
 	sigset_t	 set, oldset;
@@ -155,6 +159,7 @@ server_start(struct tmuxproc *client, struct event_base *base, int lockfd,
 
 	if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, pair) != 0)
 		fatal("socketpair failed");
+	server_client_flags = flags;
 
 	sigfillset(&set);
 	sigprocmask(SIG_BLOCK, &set, &oldset);
@@ -192,7 +197,7 @@ server_start(struct tmuxproc *client, struct event_base *base, int lockfd,
 
 	gettimeofday(&start_time, NULL);
 
-	server_fd = server_create_socket(&cause);
+	server_fd = server_create_socket(flags, &cause);
 	if (server_fd != -1)
 		server_update_socket();
 	c = server_client_create(pair[1]);
@@ -395,7 +400,7 @@ server_signal(int sig)
 		break;
 	case SIGUSR1:
 		event_del(&server_ev_accept);
-		fd = server_create_socket(NULL);
+		fd = server_create_socket(server_client_flags, NULL);
 		if (fd != -1) {
 			close(server_fd);
 			server_fd = fd;

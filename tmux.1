@@ -1565,7 +1565,7 @@ The synopsis for the
 command is:
 .Bl -tag -width Ds
 .It Xo Ic copy-mode
-.Op Fl Meu
+.Op Fl eHMu
 .Op Fl t Ar target-pane
 .Xc
 Enter copy mode.
@@ -1575,6 +1575,9 @@ option scrolls one page up.
 .Fl M
 begins a mouse drag (only valid if bound to a mouse key binding, see
 .Sx MOUSE SUPPORT ) .
+.Fl H
+hides the position indicator in the top right.
+.Pp
 .Fl e
 specifies that scrolling to the bottom of the history (to the visible screen)
 should exit copy mode.
@@ -4107,7 +4110,7 @@ specifies an
 .Xr fnmatch 3
 or regular expression comparison.
 The first argument is the pattern and the second the string to compare.
-An optional third argument specifies flags:
+An optional argument specifies flags:
 .Ql r
 means the pattern is a regular expression instead of the default
 .Xr fnmatch 3
@@ -4133,6 +4136,38 @@ flag means search for a regular expression and
 ignores case.
 For example:
 .Ql #{C/r:^Start}
+.Pp
+Numeric operators may be performed by prefixing two comma-separated alternatives with an
+.Ql e
+and an operator.
+An optional
+.Ql f
+flag may be given after the operator to use floating point numbers, otherwise integers are used.
+This may be followed by a number giving the number of decimal places to use for the result.
+The available operators are:
+addition
+.Ql + ,
+subtraction
+.Ql - ,
+multiplication
+.Ql * ,
+division
+.Ql / ,
+and modulus
+.Ql m
+or
+.Ql %
+(note that
+.Ql %
+must be escaped as
+.Ql %%
+in formats which are also expanded by
+.Xr strftime 3 ) .
+For example,
+.Ql #{e|*|f|4:5.5,3}
+multiplies 5.5 by 3 for a result with four decimal places and
+.Ql #{e|%%:7,3}
+returns the modulus of 7 and 3.
 .Pp
 A limit may be placed on the length of the resultant string by prefixing it
 by an
@@ -4806,7 +4841,7 @@ on the value of the
 option:
 .Bl -column "FunctionXXXXXXXXXXXXXXXXXXXXXXXXX" "viXXXX" "emacsX" -offset indent
 .It Sy "Function" Ta Sy "vi" Ta Sy "emacs"
-.It Li "Cancel command prompt" Ta "Escape" Ta "Escape"
+.It Li "Cancel command prompt" Ta "q" Ta "Escape"
 .It Li "Delete from cursor to start of word" Ta "" Ta "C-w"
 .It Li "Delete entire command" Ta "d" Ta "C-u"
 .It Li "Delete from cursor to end" Ta "D" Ta "C-k"
@@ -5168,8 +5203,9 @@ Lock each client individually by running the command specified by the
 option.
 .It Xo Ic run-shell
 .Op Fl b
+.Op Fl d Ar delay
 .Op Fl t Ar target-pane
-.Ar shell-command
+.Op Ar shell-command
 .Xc
 .D1 (alias: Ic run )
 Execute
@@ -5182,8 +5218,12 @@ section.
 With
 .Fl b ,
 the command is run in the background.
-After it finishes, any output to stdout is displayed in copy mode (in the pane
-specified by
+.Fl d
+waits for
+.Ar delay
+seconds before starting the command.
+After the command finishes, any output to stdout is displayed in view mode (in
+the pane specified by
 .Fl t
 or the current pane if omitted).
 If the command doesn't return success, the exit status is also displayed.

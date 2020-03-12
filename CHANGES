@@ -1,5 +1,9 @@
 CHANGES FROM 3.1 TO 3.2
 
+XXX
+
+CHANGES FROM 3.0a TO 3.1
+
 * Add selection_active format for when the selection is present but not moving
   with the cursor.
 
@@ -12,8 +16,6 @@ CHANGES FROM 3.1 TO 3.2
   fixes select-word with single character words and vi(1) keys.
 
 * Fix top and bottom pane calculation with pane border status enabled.
-
-CHANGES FROM 3.0a to 3.1
 
 * Add support for adding a note to a key binding (with bind-key -N) and use
   this to add descriptions to the default key bindings. A new -N flag to

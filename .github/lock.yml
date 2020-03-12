@@ -1,4 +1,4 @@
-daysUntilLock: 180
+daysUntilLock: 30
 skipCreatedBefore: false
 exemptLabels: []
 lockLabel: false

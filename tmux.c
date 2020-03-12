@@ -368,12 +368,15 @@ main(int argc, char **argv)
 			path[strcspn(path, ",")] = '\0';
 		}
 	}
-	if (path == NULL && (path = make_label(label, &cause)) == NULL) {
-		if (cause != NULL) {
-			fprintf(stderr, "%s\n", cause);
-			free(cause);
+	if (path == NULL) {
+		if ((path = make_label(label, &cause)) == NULL) {
+			if (cause != NULL) {
+				fprintf(stderr, "%s\n", cause);
+				free(cause);
+			}
+			exit(1);
 		}
-		exit(1);
+		flags |= CLIENT_DEFAULTSOCKET;
 	}
 	socket_path = path;
 	free(label);
