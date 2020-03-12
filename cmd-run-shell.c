@@ -31,6 +31,7 @@
 
 static enum cmd_retval	cmd_run_shell_exec(struct cmd *, struct cmdq_item *);
 
+static void	cmd_run_shell_timer(int, short, void *);
 static void	cmd_run_shell_callback(struct job *);
 static void	cmd_run_shell_free(void *);
 static void	cmd_run_shell_print(struct job *, const char *);
@@ -39,8 +40,8 @@ const struct cmd_entry cmd_run_shell_entry = {
 	.name = "run-shell",
 	.alias = "run",
 
-	.args = { "bt:", 1, 1 },
-	.usage = "[-b] " CMD_TARGET_PANE_USAGE " shell-command",
+	.args = { "bd:t:", 0, 1 },
+	.usage = "[-b] [-d delay] " CMD_TARGET_PANE_USAGE " [shell-command]",
 
 	.target = { 't', CMD_FIND_PANE, CMD_FIND_CANFAIL },
 
@@ -50,8 +51,11 @@ const struct cmd_entry cmd_run_shell_entry = {
 
 struct cmd_run_shell_data {
 	char			*cmd;
+	char			*cwd;
 	struct cmdq_item	*item;
+	struct session		*s;
 	int			 wp_id;
+	struct event		 timer;
 };
 
 static void
@@ -91,9 +95,14 @@ cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 	struct session			*s = item->target.s;
 	struct winlink			*wl = item->target.wl;
 	struct window_pane		*wp = item->target.wp;
+	const char			*delay;
+	double				 d;
+	struct timeval			 tv;
+	char				*end;
 
 	cdata = xcalloc(1, sizeof *cdata);
-	cdata->cmd = format_single(item, args->argv[0], c, s, wl, wp);
+	if (args->argc != 0)
+		cdata->cmd = format_single(item, args->argv[0], c, s, wl, wp);
 
 	if (args_has(args, 't') && wp != NULL)
 		cdata->wp_id = wp->id;
@@ -103,16 +112,46 @@ cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 	if (!args_has(args, 'b'))
 		cdata->item = item;
 
-	if (job_run(cdata->cmd, s, server_client_get_cwd(item->client, s), NULL,
-	    cmd_run_shell_callback, cmd_run_shell_free, cdata, 0) == NULL) {
-		cmdq_error(item, "failed to run command: %s", cdata->cmd);
-		free(cdata);
-		return (CMD_RETURN_ERROR);
-	}
+	cdata->cwd = xstrdup(server_client_get_cwd(item->client, s));
+	cdata->s = s;
+	session_add_ref(s, __func__);
+
+	evtimer_set(&cdata->timer, cmd_run_shell_timer, cdata);
+
+	if ((delay = args_get(args, 'd')) != NULL) {
+		d = strtod(delay, &end);
+		if (*end != '\0') {
+			cmdq_error(item, "invalid delay time: %s", delay);
+			cmd_run_shell_free(cdata);
+			return (CMD_RETURN_ERROR);
+		}
+		timerclear(&tv);
+		tv.tv_sec = (time_t)d;
+		tv.tv_usec = (d - (double)tv.tv_sec) * 1000000U;
+		evtimer_add(&cdata->timer, &tv);
+	} else
+		cmd_run_shell_timer(-1, 0, cdata);
 
 	if (args_has(args, 'b'))
 		return (CMD_RETURN_NORMAL);
 	return (CMD_RETURN_WAIT);
+}
+
+static void
+cmd_run_shell_timer(__unused int fd, __unused short events, void* arg)
+{
+	struct cmd_run_shell_data	*cdata = arg;
+
+	if (cdata->cmd != NULL) {
+		if (job_run(cdata->cmd, cdata->s, cdata->cwd, NULL,
+		    cmd_run_shell_callback, cmd_run_shell_free, cdata,
+		    0) == NULL)
+			cmd_run_shell_free(cdata);
+	} else {
+		if (cdata->item != NULL)
+			cmdq_continue(cdata->item);
+		cmd_run_shell_free(cdata);
+	}
 }
 
 static void
@@ -163,6 +202,9 @@ cmd_run_shell_free(void *data)
 {
 	struct cmd_run_shell_data	*cdata = data;
 
+	evtimer_del(&cdata->timer);
+	session_remove_ref(cdata->s, __func__);
+	free(cdata->cwd);
 	free(cdata->cmd);
 	free(cdata);
 }
