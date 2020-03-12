@@ -30,8 +30,8 @@ const struct cmd_entry cmd_copy_mode_entry = {
 	.name = "copy-mode",
 	.alias = NULL,
 
-	.args = { "Met:u", 0, 0 },
-	.usage = "[-Mu] " CMD_TARGET_PANE_USAGE,
+	.args = { "eHMt:u", 0, 0 },
+	.usage = "[-eHMu] " CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 

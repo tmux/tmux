@@ -1565,7 +1565,7 @@ The synopsis for the
 command is:
 .Bl -tag -width Ds
 .It Xo Ic copy-mode
-.Op Fl Meu
+.Op Fl eHMu
 .Op Fl t Ar target-pane
 .Xc
 Enter copy mode.
@@ -1575,6 +1575,9 @@ option scrolls one page up.
 .Fl M
 begins a mouse drag (only valid if bound to a mouse key binding, see
 .Sx MOUSE SUPPORT ) .
+.Fl H
+hides the position indicator in the top right.
+.Pp
 .Fl e
 specifies that scrolling to the bottom of the history (to the visible screen)
 should exit copy mode.
@@ -5200,8 +5203,9 @@ Lock each client individually by running the command specified by the
 option.
 .It Xo Ic run-shell
 .Op Fl b
+.Op Fl d Ar delay
 .Op Fl t Ar target-pane
-.Ar shell-command
+.Ar [shell-command]
 .Xc
 .D1 (alias: Ic run )
 Execute
@@ -5214,8 +5218,12 @@ section.
 With
 .Fl b ,
 the command is run in the background.
-After it finishes, any output to stdout is displayed in copy mode (in the pane
-specified by
+.Fl d
+waits for
+.Ar delay
+seconds before starting the command.
+After the command finishes, any output to stdout is displayed in view mode (in
+the pane specified by
 .Fl t
 or the current pane if omitted).
 If the command doesn't return success, the exit status is also displayed.

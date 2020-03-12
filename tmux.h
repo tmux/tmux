@@ -168,6 +168,7 @@ enum {
 	/* Mouse keys. */
 	KEYC_MOUSE, /* unclassified mouse event */
 	KEYC_DRAGGING, /* dragging in progress */
+	KEYC_DOUBLECLICK, /* double click complete */
 	KEYC_MOUSE_KEY(MOUSEMOVE),
 	KEYC_MOUSE_KEY(MOUSEDOWN1),
 	KEYC_MOUSE_KEY(MOUSEDOWN2),
@@ -1549,6 +1550,7 @@ struct client {
 
 	struct event	 click_timer;
 	u_int		 click_button;
+	struct mouse_event click_event;
 
 	struct status_line status;
 
