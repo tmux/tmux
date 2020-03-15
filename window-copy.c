@@ -2946,11 +2946,8 @@ window_copy_synchronize_cursor(struct window_mode_entry *wme)
 
 	switch (data->cursordrag) {
 	case CURSORDRAG_ENDSEL:
-		window_copy_synchronize_cursor_end(wme);
-		break;
 	case CURSORDRAG_SEL:
-		data->selx = data->cx;
-		data->sely = screen_hsize(data->backing) + data->cy - data->oy;
+		window_copy_synchronize_cursor_end(wme);
 		break;
 	case CURSORDRAG_NONE:
 		break;
