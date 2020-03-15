@@ -2875,15 +2875,15 @@ window_copy_redraw_screen(struct window_mode_entry *wme)
 }
 
 static void
-window_copy_synchronize_cursor_end(struct window_mode_entry *wme)
+window_copy_synchronize_cursor_end(struct window_mode_entry *wme, int begin)
 {
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 xx, yy;
-	int				 begin = 0;
 
 	yy = screen_hsize(data->backing) + data->cy - data->oy;
 	switch (data->selflag) {
 	case SEL_WORD:
+		begin = 0;
 		xx = data->cx;
 		if (data->ws == NULL)
 			break;
@@ -2909,6 +2909,7 @@ window_copy_synchronize_cursor_end(struct window_mode_entry *wme)
 		}
 		break;
 	case SEL_LINE:
+		begin = 0;
 		if (data->dy > yy) {
 			/* Right to left selection. */
 			xx = 0;
@@ -2946,8 +2947,10 @@ window_copy_synchronize_cursor(struct window_mode_entry *wme)
 
 	switch (data->cursordrag) {
 	case CURSORDRAG_ENDSEL:
+		window_copy_synchronize_cursor_end(wme, 0);
+		break;
 	case CURSORDRAG_SEL:
-		window_copy_synchronize_cursor_end(wme);
+		window_copy_synchronize_cursor_end(wme, 1);
 		break;
 	case CURSORDRAG_NONE:
 		break;
