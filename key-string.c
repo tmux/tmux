@@ -257,6 +257,10 @@ key_string_lookup_key(key_code key)
 		return (out);
 	}
 
+	/* Display C-@ as C-Space. */
+	if ((key & KEYC_MASK_KEY) == 0)
+		key = ' ' | KEYC_CTRL | (key & KEYC_MASK_MOD);
+
 	/* Fill in the modifiers. */
 	if (key & KEYC_CTRL)
 		strlcat(out, "C-", sizeof out);
@@ -328,15 +332,6 @@ key_string_lookup_key(key_code key)
 		strlcat(out, tmp, sizeof out);
 		return (out);
 	}
-
-	/*
-	 * Special case: display C-@ as C-Space. Could do this below in
-	 * the (key >= 0 && key <= 32), but this way we let it be found
-	 * in key_string_table, for the unlikely chance that we might
-	 * change its name.
-	 */
-	if ((key & KEYC_MASK_KEY) == 0)
-	    key = ' ' | KEYC_CTRL | (key & KEYC_MASK_MOD);
 
 	/* Try the key against the string table. */
 	for (i = 0; i < nitems(key_string_table); i++) {
