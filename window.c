@@ -425,8 +425,8 @@ window_resize(struct window *w, u_int sx, u_int sy, int xpixel, int ypixel)
 		ypixel = DEFAULT_YPIXEL;
 
 	log_debug("%s: @%u resize %ux%u (%ux%u)", __func__, w->id, sx, sy,
-	    xpixel == -1 ? w->xpixel : xpixel,
-	    ypixel == -1 ? w->ypixel : ypixel);
+	    xpixel == -1 ? w->xpixel : (u_int)xpixel,
+	    ypixel == -1 ? w->ypixel : (u_int)ypixel);
 	w->sx = sx;
 	w->sy = sy;
 	if (xpixel != -1)
