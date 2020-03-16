@@ -330,8 +330,10 @@ tty_start_tty(struct tty *tty)
 		log_debug("%s: using UTF-8 for ACS", c->name);
 
 	tty_putcode(tty, TTYC_CNORM);
-	if (tty_term_has(tty->term, TTYC_KMOUS))
-		tty_puts(tty, "\033[?1000l\033[?1002l\033[?1006l\033[?1005l");
+	if (tty_term_has(tty->term, TTYC_KMOUS)) {
+		tty_puts(tty, "\033[?1000l\033[?1002l\033[?1003l");
+		tty_puts(tty, "\033[?1006l\033[?1005l");
+	}
 
 	if (tty_term_flag(tty->term, TTYC_XT)) {
 		if (options_get_number(global_options, "focus-events")) {
@@ -404,8 +406,10 @@ tty_stop_tty(struct tty *tty)
 		tty_raw(tty, tty_term_string(tty->term, TTYC_CR));
 
 	tty_raw(tty, tty_term_string(tty->term, TTYC_CNORM));
-	if (tty_term_has(tty->term, TTYC_KMOUS))
-		tty_raw(tty, "\033[?1000l\033[?1002l\033[?1006l\033[?1005l");
+	if (tty_term_has(tty->term, TTYC_KMOUS)) {
+		tty_raw(tty, "\033[?1000l\033[?1002l\033[?1003l");
+		tty_raw(tty, "\033[?1006l\033[?1005l");
+	}
 
 	if (tty_term_flag(tty->term, TTYC_XT)) {
 		if (tty->flags & TTY_FOCUS) {
