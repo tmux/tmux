@@ -658,7 +658,8 @@ tty_force_cursor_colour(struct tty *tty, const char *ccolour)
 void
 tty_update_mode(struct tty *tty, int mode, struct screen *s)
 {
-	int	changed;
+	struct client	*c = tty->client;
+	int		 changed;
 
 	if (s != NULL && strcmp(s->ccolour, tty->ccolour) != 0)
 		tty_force_cursor_colour(tty, s->ccolour);
@@ -667,6 +668,10 @@ tty_update_mode(struct tty *tty, int mode, struct screen *s)
 		mode &= ~MODE_CURSOR;
 
 	changed = mode ^ tty->mode;
+	if (changed == 0)
+		return;
+	log_debug("%s: update mode %x to %x", c->name, tty->mode, mode);
+
 	if (changed & MODE_BLINKING) {
 		if (tty_term_has(tty->term, TTYC_CVVIS))
 			tty_putcode(tty, TTYC_CVVIS);
@@ -690,28 +695,31 @@ tty_update_mode(struct tty *tty, int mode, struct screen *s)
 		}
 		tty->cstyle = s->cstyle;
 	}
-	if (changed & ALL_MOUSE_MODES) {
-		if (mode & ALL_MOUSE_MODES) {
-			/*
-			 * Enable the SGR (1006) extension unconditionally, as
-			 * it is safe from misinterpretation.
-			 */
-			tty_puts(tty, "\033[?1006h");
-			if (mode & MODE_MOUSE_ALL)
-				tty_puts(tty, "\033[?1003h");
-			else if (mode & MODE_MOUSE_BUTTON)
-				tty_puts(tty, "\033[?1002h");
-			else if (mode & MODE_MOUSE_STANDARD)
-				tty_puts(tty, "\033[?1000h");
-		} else {
-			if (tty->mode & MODE_MOUSE_ALL)
-				tty_puts(tty, "\033[?1003l");
-			else if (tty->mode & MODE_MOUSE_BUTTON)
-				tty_puts(tty, "\033[?1002l");
-			else if (tty->mode & MODE_MOUSE_STANDARD)
-				tty_puts(tty, "\033[?1000l");
+	if ((changed & ALL_MOUSE_MODES) &&
+	    tty_term_has(tty->term, TTYC_KMOUS)) {
+		if ((mode & ALL_MOUSE_MODES) == 0)
 			tty_puts(tty, "\033[?1006l");
-		}
+		if ((changed & MODE_MOUSE_STANDARD) &&
+		    (~mode & MODE_MOUSE_STANDARD))
+			tty_puts(tty, "\033[?1000l");
+		if ((changed & MODE_MOUSE_BUTTON) &&
+		    (~mode & MODE_MOUSE_BUTTON))
+			tty_puts(tty, "\033[?1002l");
+		if ((changed & MODE_MOUSE_ALL) &&
+		    (~mode & MODE_MOUSE_ALL))
+			tty_puts(tty, "\033[?1003l");
+
+		if (mode & ALL_MOUSE_MODES)
+			tty_puts(tty, "\033[?1006h");
+		if ((changed & MODE_MOUSE_STANDARD) &&
+		    (mode & MODE_MOUSE_STANDARD))
+			tty_puts(tty, "\033[?1000h");
+		if ((changed & MODE_MOUSE_BUTTON) &&
+		    (mode & MODE_MOUSE_BUTTON))
+			tty_puts(tty, "\033[?1002h");
+		if ((changed & MODE_MOUSE_ALL) &&
+		    (mode & MODE_MOUSE_ALL))
+			tty_puts(tty, "\033[?1003h");
 	}
 	if (changed & MODE_BRACKETPASTE) {
 		if (mode & MODE_BRACKETPASTE)
