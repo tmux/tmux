@@ -561,6 +561,7 @@ struct msg_write_close {
 
 #define ALL_MODES 0xffffff
 #define ALL_MOUSE_MODES (MODE_MOUSE_STANDARD|MODE_MOUSE_BUTTON|MODE_MOUSE_ALL)
+#define MOTION_MOUSE_MODES (MODE_MOUSE_BUTTON|MODE_MOUSE_ALL)
 
 /*
  * A single UTF-8 character. UTF8_SIZE must be big enough to hold
@@ -1117,6 +1118,7 @@ RB_HEAD(sessions, session);
 /* Mouse input. */
 struct mouse_event {
 	int		valid;
+	int		ignore;
 
 	key_code	key;
 
