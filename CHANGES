@@ -5,6 +5,8 @@ CHANGES FROM 3.1 TO 3.2
   and triple click binding to copy the word or line under the cursor and change
   the existing bindings in copy mode to do the same.
 
+* Add a default binding for button 2 to paste.
+
 * Add -d flag to run-shell to delay before running the command and allow it to
   run without a command so it just delays.
 
