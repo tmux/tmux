@@ -54,6 +54,7 @@ control_notify_input(struct client *c, struct window_pane *wp,
 			else
 			    evbuffer_add_printf(message, "%c", buf[i]);
 		}
+		evbuffer_add(message, "", 1);
 		control_write(c, "%s", EVBUFFER_DATA(message));
 		evbuffer_free(message);
 	}
