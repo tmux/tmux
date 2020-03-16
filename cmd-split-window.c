@@ -153,7 +153,6 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		sc.flags |= SPAWN_DETACHED;
 
 	if ((new_wp = spawn_pane(&sc, &cause)) == NULL) {
-		layout_close_pane(new_wp);
 		cmdq_error(item, "create pane failed: %s", cause);
 		free(cause);
 		return (CMD_RETURN_ERROR);
