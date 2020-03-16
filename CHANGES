@@ -1,6 +1,23 @@
 CHANGES FROM 3.1 TO 3.2
 
-XXX
+* Change double and triple click bindings so that only one is fired (previously
+  double click was fired on the way to triple click). Also add default double
+  and triple click binding to copy the word or line under the cursor and change
+  the existing bindings in copy mode to do the same.
+
+* Add -d flag to run-shell to delay before running the command and allow it to
+  run without a command so it just delays.
+
+* Add C-g to cancel command prompt with vi(1) keys as well as emacs, and q in
+  command mode.
+
+* When the server socket is given with -S, create it with umask 177 instead of
+  117 (because it may not be in a safe directory like the default directory in
+  /tmp).
+
+* Add a copy-mode -H flag to hide the position marker in the top right.
+
+* Add number operators for formats (+, -, *, / and m),
 
 CHANGES FROM 3.0a TO 3.1
 
