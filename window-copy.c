@@ -2886,7 +2886,7 @@ window_copy_synchronize_cursor_end(struct window_mode_entry *wme, int begin)
 	switch (data->selflag) {
 	case SEL_WORD:
 		xx = data->cx;
-		if (data->ws == NULL)
+		if (data->screen.sel == NULL || data->ws == NULL)
 			break;
 		begin = 0;
 		if (data->dy > yy || (data->dy == yy && data->dx > xx)) {
@@ -2911,7 +2911,7 @@ window_copy_synchronize_cursor_end(struct window_mode_entry *wme, int begin)
 		}
 		break;
 	case SEL_LINE:
-		if (data->ws == NULL) {
+		if (data->screen.sel == NULL || data->ws == NULL) {
 			xx = data->cx;
 			break;
 		}
