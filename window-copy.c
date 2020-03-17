@@ -2885,10 +2885,10 @@ window_copy_synchronize_cursor_end(struct window_mode_entry *wme, int begin)
 	yy = screen_hsize(data->backing) + data->cy - data->oy;
 	switch (data->selflag) {
 	case SEL_WORD:
-		begin = 0;
 		xx = data->cx;
 		if (data->ws == NULL)
 			break;
+		begin = 0;
 		if (data->dy > yy || (data->dy == yy && data->dx > xx)) {
 			/* Right to left selection. */
 			window_copy_cursor_previous_word_pos(wme, data->ws, 0,
@@ -2911,6 +2911,10 @@ window_copy_synchronize_cursor_end(struct window_mode_entry *wme, int begin)
 		}
 		break;
 	case SEL_LINE:
+		if (data->ws == NULL) {
+			xx = data->cx;
+			break;
+		}
 		begin = 0;
 		if (data->dy > yy) {
 			/* Right to left selection. */
