@@ -720,9 +720,8 @@ window_copy_cmd_begin_selection(struct window_copy_cmd_state *cs)
 	struct window_copy_mode_data	*data = wme->data;
 	struct options			*oo = cs->s->options;
 
-	data->ws = options_get_string(oo, "word-separators");
-
 	if (m != NULL) {
+		data->ws = options_get_string(oo, "word-separators");
 		window_copy_start_drag(c, m);
 		return (WINDOW_COPY_CMD_NOTHING);
 	}
