@@ -740,6 +740,7 @@ window_copy_cmd_stop_selection(struct window_copy_cmd_state *cs)
 	data->cursordrag = CURSORDRAG_NONE;
 	data->lineflag = LINE_SEL_NONE;
 	data->selflag = SEL_CHAR;
+	data->ws = NULL;
 	return (WINDOW_COPY_CMD_NOTHING);
 }
 
@@ -3366,6 +3367,7 @@ window_copy_clear_selection(struct window_mode_entry *wme)
 	data->cursordrag = CURSORDRAG_NONE;
 	data->lineflag = LINE_SEL_NONE;
 	data->selflag = SEL_CHAR;
+	data->ws = NULL;
 
 	py = screen_hsize(data->backing) + data->cy - data->oy;
 	px = window_copy_find_length(wme, py);
