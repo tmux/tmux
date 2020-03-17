@@ -75,6 +75,7 @@ args_parse(const char *template, int argc, char **argv)
 
 	optreset = 1;
 	optind = 1;
+	optarg = NULL;
 
 	while ((opt = getopt(argc, argv, template)) != -1) {
 		if (opt < 0)
@@ -84,6 +85,7 @@ args_parse(const char *template, int argc, char **argv)
 			return (NULL);
 		}
 		args_set(args, opt, optarg);
+		optarg = NULL;
 	}
 	argc -= optind;
 	argv += optind;
