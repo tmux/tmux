@@ -46,8 +46,8 @@ const char	*shell_command;
 static __dead void	 usage(void);
 static char		*make_label(const char *, char **);
 
+static int		 areshell(const char *);
 static const char	*getshell(void);
-static int		 checkshell(const char *);
 
 static __dead void
 usage(void)
@@ -76,7 +76,7 @@ getshell(void)
 	return (_PATH_BSHELL);
 }
 
-static int
+int
 checkshell(const char *shell)
 {
 	if (shell == NULL || *shell != '/')
@@ -88,7 +88,7 @@ checkshell(const char *shell)
 	return (1);
 }
 
-int
+static int
 areshell(const char *shell)
 {
 	const char	*progname, *ptr;
