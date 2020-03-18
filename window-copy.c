@@ -809,12 +809,14 @@ window_copy_cmd_copy_line(struct window_copy_cmd_state *cs)
 	struct session			*s = cs->s;
 	struct winlink			*wl = cs->wl;
 	struct window_pane		*wp = wme->wp;
+	struct window_copy_mode_data	*data = wme->data;
 	u_int				 np = wme->prefix;
 	char				*prefix = NULL;
 
 	if (cs->args->argc == 2)
 		prefix = format_single(NULL, cs->args->argv[1], c, s, wl, wp);
 
+	data->selflag = SEL_CHAR;
 	window_copy_cursor_start_of_line(wme);
 	window_copy_start_selection(wme);
 	for (; np > 1; np--)
