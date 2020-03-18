@@ -726,6 +726,7 @@ window_copy_cmd_begin_selection(struct window_copy_cmd_state *cs)
 	}
 
 	data->lineflag = LINE_SEL_NONE;
+	data->selflag = SEL_CHAR;
 	window_copy_start_selection(wme);
 	return (WINDOW_COPY_CMD_REDRAW);
 }
