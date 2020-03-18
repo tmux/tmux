@@ -1,5 +1,7 @@
 CHANGES FROM 3.0a TO 3.1
 
+* Turn off mouse mode 1003 as well as the rest when exiting.
+
 * Add selection_active format for when the selection is present but not moving
   with the cursor.
 
