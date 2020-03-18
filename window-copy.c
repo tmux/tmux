@@ -239,6 +239,7 @@ struct window_copy_mode_data {
 	} selflag;
 
 	const char	*ws;		/* word separators */
+	int		 oe;		/* other_end command is running */
 
 	u_int		 dx;		/* drag start position */
 	u_int		 dy;
@@ -306,7 +307,6 @@ window_copy_common_init(struct window_mode_entry *wme)
 	data->cursordrag = CURSORDRAG_NONE;
 	data->lineflag = LINE_SEL_NONE;
 	data->selflag = SEL_CHAR;
-	data->ws = NULL;
 
 	if (wp->searchstr != NULL) {
 		data->searchtype = WINDOW_COPY_SEARCHUP;
@@ -719,10 +719,8 @@ window_copy_cmd_begin_selection(struct window_copy_cmd_state *cs)
 	struct client			*c = cs->c;
 	struct mouse_event		*m = cs->m;
 	struct window_copy_mode_data	*data = wme->data;
-	struct options			*oo = cs->s->options;
 
 	if (m != NULL) {
-		data->ws = options_get_string(oo, "word-separators");
 		window_copy_start_drag(c, m);
 		return (WINDOW_COPY_CMD_NOTHING);
 	}
@@ -741,7 +739,6 @@ window_copy_cmd_stop_selection(struct window_copy_cmd_state *cs)
 	data->cursordrag = CURSORDRAG_NONE;
 	data->lineflag = LINE_SEL_NONE;
 	data->selflag = SEL_CHAR;
-	data->ws = NULL;
 	return (WINDOW_COPY_CMD_NOTHING);
 }
 
@@ -1571,6 +1568,7 @@ window_copy_cmd_select_word(struct window_copy_cmd_state *cs)
 	py = screen_hsize(data->backing) + data->cy - data->oy;
 
 	ws = options_get_string(s->options, "word-separators");
+	data->ws = ws;
 	window_copy_cursor_previous_word(wme, ws, 0);
 	data->selrx = data->cx;
 	data->selry = screen_hsize(data->backing) + data->cy - data->oy;
@@ -2887,7 +2885,7 @@ window_copy_synchronize_cursor_end(struct window_mode_entry *wme, int begin)
 	switch (data->selflag) {
 	case SEL_WORD:
 		xx = data->cx;
-		if (data->screen.sel == NULL || data->ws == NULL)
+		if (data->oe)
 			break;
 		begin = 0;
 		if (data->dy > yy || (data->dy == yy && data->dx > xx)) {
@@ -2912,7 +2910,7 @@ window_copy_synchronize_cursor_end(struct window_mode_entry *wme, int begin)
 		}
 		break;
 	case SEL_LINE:
-		if (data->screen.sel == NULL || data->ws == NULL) {
+		if (data->oe) {
 			xx = data->cx;
 			break;
 		}
@@ -3368,7 +3366,6 @@ window_copy_clear_selection(struct window_mode_entry *wme)
 	data->cursordrag = CURSORDRAG_NONE;
 	data->lineflag = LINE_SEL_NONE;
 	data->selflag = SEL_CHAR;
-	data->ws = NULL;
 
 	py = screen_hsize(data->backing) + data->cy - data->oy;
 	px = window_copy_find_length(wme, py);
@@ -3521,8 +3518,10 @@ window_copy_other_end(struct window_mode_entry *wme)
 	} else
 		data->cy = cy + sely - yy;
 
+	data->oe = 1;
 	window_copy_update_selection(wme, 1);
 	window_copy_redraw_screen(wme);
+	data->oe = 0;
 }
 
 static void
