@@ -44,6 +44,81 @@ const struct cmd_entry cmd_display_menu_entry = {
 	.exec = cmd_display_menu_exec
 };
 
+static void
+cmd_display_menu_get_position(struct client *c, struct cmdq_item *item,
+    struct args *args, u_int *px, u_int *py, u_int w, u_int h)
+{
+	struct winlink		*wl = item->target.wl;
+	struct window_pane	*wp = item->target.wp;
+	struct style_range	*sr;
+	const char		*xp, *yp;
+	int			 at = status_at_line(c);
+	u_int			 ox, oy, sx, sy;
+
+	xp = args_get(args, 'x');
+	if (xp == NULL)
+		*px = 0;
+	else if (strcmp(xp, "R") == 0)
+		*px = c->tty.sx - 1;
+	else if (strcmp(xp, "P") == 0) {
+		tty_window_offset(&c->tty, &ox, &oy, &sx, &sy);
+		if (wp->xoff >= ox)
+			*px = wp->xoff - ox;
+		else
+			*px = 0;
+	} else if (strcmp(xp, "M") == 0 && item->shared->mouse.valid) {
+		if (item->shared->mouse.x > w / 2)
+			*px = item->shared->mouse.x - w / 2;
+		else
+			*px = 0;
+	} else if (strcmp(xp, "W") == 0) {
+		if (at == -1)
+			*px = 0;
+		else {
+			TAILQ_FOREACH(sr, &c->status.entries[0].ranges, entry) {
+				if (sr->type != STYLE_RANGE_WINDOW)
+					continue;
+				if (sr->argument == (u_int)wl->idx)
+					break;
+			}
+			if (sr != NULL)
+				*px = sr->start;
+			else
+				*px = 0;
+		}
+	} else
+		*px = strtoul(xp, NULL, 10);
+	if ((*px) + w >= c->tty.sx)
+		*px = c->tty.sx - w;
+
+	yp = args_get(args, 'y');
+	if (yp == NULL)
+		*py = 0;
+	else if (strcmp(yp, "P") == 0) {
+		tty_window_offset(&c->tty, &ox, &oy, &sx, &sy);
+		if (wp->yoff + wp->sy >= oy)
+			*py = wp->yoff + wp->sy - oy;
+		else
+			*py = 0;
+	} else if (strcmp(yp, "M") == 0 && item->shared->mouse.valid)
+		*py = item->shared->mouse.y + h;
+	else if (strcmp(yp, "S") == 0) {
+		if (at == -1)
+			*py = c->tty.sy;
+		else if (at == 0)
+			*py = status_line_size(c) + h;
+		else
+			*py = at;
+	} else
+		*py = strtoul(yp, NULL, 10);
+	if (*py < h)
+		*py = 0;
+	else
+		*py -= h;
+	if ((*py) + h >= c->tty.sy)
+		*py = c->tty.sy - h;
+}
+
 static enum cmd_retval
 cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 {
@@ -54,18 +129,16 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	struct window_pane	*wp = item->target.wp;
 	struct cmd_find_state	*fs = &item->target;
 	struct menu		*menu = NULL;
-	struct style_range	*sr;
 	struct menu_item	 menu_item;
-	const char		*xp, *yp, *key;
+	const char		*key;
 	char			*title, *name;
-	int			 at, flags, i;
-	u_int			 px, py, ox, oy, sx, sy;
+	int			 flags, i;
+	u_int			 px, py;
 
 	if ((c = cmd_find_client(item, args_get(args, 'c'), 0)) == NULL)
 		return (CMD_RETURN_ERROR);
 	if (c->overlay_draw != NULL)
 		return (CMD_RETURN_NORMAL);
-	at = status_at_line(c);
 
 	if (args_has(args, 'T'))
 		title = format_single(NULL, args_get(args, 'T'), c, s, wl, wp);
@@ -104,70 +177,8 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 		menu_free(menu);
 		return (CMD_RETURN_NORMAL);
 	}
-
-	xp = args_get(args, 'x');
-	if (xp == NULL)
-		px = 0;
-	else if (strcmp(xp, "R") == 0)
-		px = c->tty.sx - 1;
-	else if (strcmp(xp, "P") == 0) {
-		tty_window_offset(&c->tty, &ox, &oy, &sx, &sy);
-		if (wp->xoff >= ox)
-			px = wp->xoff - ox;
-		else
-			px = 0;
-	} else if (strcmp(xp, "M") == 0 && item->shared->mouse.valid) {
-		if (item->shared->mouse.x > (menu->width + 4) / 2)
-			px = item->shared->mouse.x - (menu->width + 4) / 2;
-		else
-			px = 0;
-	}
-	else if (strcmp(xp, "W") == 0) {
-		if (at == -1)
-			px = 0;
-		else {
-			TAILQ_FOREACH(sr, &c->status.entries[0].ranges, entry) {
-				if (sr->type != STYLE_RANGE_WINDOW)
-					continue;
-				if (sr->argument == (u_int)wl->idx)
-					break;
-			}
-			if (sr != NULL)
-				px = sr->start;
-			else
-				px = 0;
-		}
-	} else
-		px = strtoul(xp, NULL, 10);
-	if (px + menu->width + 4 >= c->tty.sx)
-		px = c->tty.sx - menu->width - 4;
-
-	yp = args_get(args, 'y');
-	if (yp == NULL)
-		py = 0;
-	else if (strcmp(yp, "P") == 0) {
-		tty_window_offset(&c->tty, &ox, &oy, &sx, &sy);
-		if (wp->yoff + wp->sy >= oy)
-			py = wp->yoff + wp->sy - oy;
-		else
-			py = 0;
-	} else if (strcmp(yp, "M") == 0 && item->shared->mouse.valid)
-		py = item->shared->mouse.y + menu->count + 2;
-	else if (strcmp(yp, "S") == 0) {
-		if (at == -1)
-			py = c->tty.sy;
-		else if (at == 0)
-			py = status_line_size(c) + menu->count + 2;
-		else
-			py = at;
-	} else
-		py = strtoul(yp, NULL, 10);
-	if (py < menu->count + 2)
-		py = 0;
-	else
-		py -= menu->count + 2;
-	if (py + menu->count + 2 >= c->tty.sy)
-		py = c->tty.sy - menu->count - 2;
+	cmd_display_menu_get_position(c, item, args, &px, &py, menu->width + 4,
+	    menu->count + 2);
 
 	flags = 0;
 	if (!item->shared->mouse.valid)
