@@ -2626,6 +2626,8 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 	u_int				 fx, fy, endline;
 	int				 wrapflag, cis, found;
 
+	window_copy_clear_selection(wme);
+
 	free(wp->searchstr);
 	wp->searchstr = xstrdup(data->searchstr);
 
