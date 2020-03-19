@@ -258,7 +258,10 @@ grid_create(u_int sx, u_int sy, u_int hlimit)
 	gd->sx = sx;
 	gd->sy = sy;
 
-	gd->flags = GRID_HISTORY;
+	if (hlimit != 0)
+		gd->flags = GRID_HISTORY;
+	else
+		gd->flags = 0;
 
 	gd->hscrolled = 0;
 	gd->hsize = 0;
