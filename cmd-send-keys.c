@@ -192,7 +192,7 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (args_has(args, 'R')) {
 		window_pane_reset_palette(wp);
-		input_reset(wp, 1);
+		input_reset(wp->ictx, 1);
 	}
 
 	for (; np != 0; np--) {
