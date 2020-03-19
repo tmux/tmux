@@ -149,9 +149,25 @@ input_split2(u_int c, u_char *dst)
 	return (1);
 }
 
+/* Translate a key code into an output key sequence for a pane. */
+int
+input_key_pane(struct window_pane *wp, key_code key, struct mouse_event *m)
+{
+	log_debug("writing key 0x%llx (%s) to %%%u", key,
+	    key_string_lookup_key(key), wp->id);
+
+	if (KEYC_IS_MOUSE(key)) {
+		if (m != NULL && m->wp != -1 && (u_int)m->wp == wp->id)
+			input_key_mouse(wp, m);
+		return (0);
+	}
+	return (input_key(wp, wp->screen, wp->event, key));
+}
+
 /* Translate a key code into an output key sequence. */
 int
-input_key(struct window_pane *wp, key_code key, struct mouse_event *m)
+input_key(struct window_pane *wp, struct screen *s, struct bufferevent *bev,
+    key_code key)
 {
 	const struct input_key_ent	*ike;
 	u_int				 i;
@@ -160,20 +176,14 @@ input_key(struct window_pane *wp, key_code key, struct mouse_event *m)
 	key_code			 justkey, newkey;
 	struct utf8_data		 ud;
 
-	log_debug("writing key 0x%llx (%s) to %%%u", key,
-	    key_string_lookup_key(key), wp->id);
-
-	/* If this is a mouse key, pass off to mouse function. */
-	if (KEYC_IS_MOUSE(key)) {
-		if (m != NULL && m->wp != -1 && (u_int)m->wp == wp->id)
-			input_key_mouse(wp, m);
+	/* Mouse keys need a pane. */
+	if (KEYC_IS_MOUSE(key))
 		return (0);
-	}
 
 	/* Literal keys go as themselves (can't be more than eight bits). */
 	if (key & KEYC_LITERAL) {
 		ud.data[0] = (u_char)key;
-		bufferevent_write(wp->event, &ud.data[0], 1);
+		bufferevent_write(bev, &ud.data[0], 1);
 		return (0);
 	}
 
@@ -192,17 +202,17 @@ input_key(struct window_pane *wp, key_code key, struct mouse_event *m)
 	justkey = (key & ~(KEYC_XTERM|KEYC_ESCAPE));
 	if (justkey <= 0x7f) {
 		if (key & KEYC_ESCAPE)
-			bufferevent_write(wp->event, "\033", 1);
+			bufferevent_write(bev, "\033", 1);
 		ud.data[0] = justkey;
-		bufferevent_write(wp->event, &ud.data[0], 1);
+		bufferevent_write(bev, &ud.data[0], 1);
 		return (0);
 	}
 	if (justkey > 0x7f && justkey < KEYC_BASE) {
 		if (utf8_split(justkey, &ud) != UTF8_DONE)
 			return (-1);
 		if (key & KEYC_ESCAPE)
-			bufferevent_write(wp->event, "\033", 1);
-		bufferevent_write(wp->event, ud.data, ud.size);
+			bufferevent_write(bev, "\033", 1);
+		bufferevent_write(bev, ud.data, ud.size);
 		return (0);
 	}
 
@@ -210,9 +220,9 @@ input_key(struct window_pane *wp, key_code key, struct mouse_event *m)
 	 * Then try to look this up as an xterm key, if the flag to output them
 	 * is set.
 	 */
-	if (options_get_number(wp->window->options, "xterm-keys")) {
+	if (wp == NULL || options_get_number(wp->window->options, "xterm-keys")) {
 		if ((out = xterm_keys_lookup(key)) != NULL) {
-			bufferevent_write(wp->event, out, strlen(out));
+			bufferevent_write(bev, out, strlen(out));
 			free(out);
 			return (0);
 		}
@@ -223,11 +233,9 @@ input_key(struct window_pane *wp, key_code key, struct mouse_event *m)
 	for (i = 0; i < nitems(input_keys); i++) {
 		ike = &input_keys[i];
 
-		if ((ike->flags & INPUTKEY_KEYPAD) &&
-		    !(wp->screen->mode & MODE_KKEYPAD))
+		if ((ike->flags & INPUTKEY_KEYPAD) && (~s->mode & MODE_KKEYPAD))
 			continue;
-		if ((ike->flags & INPUTKEY_CURSOR) &&
-		    !(wp->screen->mode & MODE_KCURSOR))
+		if ((ike->flags & INPUTKEY_CURSOR) && (~s->mode & MODE_KCURSOR))
 			continue;
 
 		if ((key & KEYC_ESCAPE) && (ike->key | KEYC_ESCAPE) == key)
@@ -244,8 +252,8 @@ input_key(struct window_pane *wp, key_code key, struct mouse_event *m)
 
 	/* Prefix a \033 for escape. */
 	if (key & KEYC_ESCAPE)
-		bufferevent_write(wp->event, "\033", 1);
-	bufferevent_write(wp->event, ike->data, dlen);
+		bufferevent_write(bev, "\033", 1);
+	bufferevent_write(bev, ike->data, dlen);
 	return (0);
 }
 

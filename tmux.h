@@ -810,7 +810,6 @@ struct menu {
 	u_int			 width;
 };
 typedef void (*menu_choice_cb)(struct menu *, u_int, key_code, void *);
-#define MENU_NOMOUSE 0x1
 
 /*
  * Window mode. Windows can be in several modes and this is used to call the
@@ -2288,15 +2287,19 @@ void	 recalculate_size(struct window *);
 void	 recalculate_sizes(void);
 
 /* input.c */
-void	 input_init(struct window_pane *);
-void	 input_free(struct window_pane *);
-void	 input_reset(struct window_pane *, int);
-struct evbuffer *input_pending(struct window_pane *);
-void	 input_parse(struct window_pane *);
+struct input_ctx *input_init(struct window_pane *);
+void	 input_free(struct input_ctx *);
+void	 input_reset(struct input_ctx *, int);
+struct evbuffer *input_pending(struct input_ctx *);
+void	 input_parse_pane(struct window_pane *);
 void	 input_parse_buffer(struct window_pane *, u_char *, size_t);
+void	 input_parse_screen(struct input_ctx *, struct screen *, u_char *,
+	     size_t);
 
 /* input-key.c */
-int	 input_key(struct window_pane *, key_code, struct mouse_event *);
+int	 input_key_pane(struct window_pane *, key_code, struct mouse_event *);
+int	 input_key(struct window_pane *, struct screen *, struct bufferevent *,
+	     key_code);
 
 /* xterm-keys.c */
 char	*xterm_keys_lookup(key_code);
@@ -2731,6 +2734,7 @@ __dead void printflike(1, 2) fatal(const char *, ...);
 __dead void printflike(1, 2) fatalx(const char *, ...);
 
 /* menu.c */
+#define MENU_NOMOUSE 0x1
 struct menu	*menu_create(const char *);
 void		 menu_add_items(struct menu *, const struct menu_item *,
 		    struct cmdq_item *, struct client *,
@@ -2738,7 +2742,6 @@ void		 menu_add_items(struct menu *, const struct menu_item *,
 void 		 menu_add_item(struct menu *, const struct menu_item *,
 		    struct cmdq_item *, struct client *,
 		    struct cmd_find_state *);
-
 void		 menu_free(struct menu *);
 int		 menu_display(struct menu *, int, struct cmdq_item *, u_int,
 		    u_int, struct client *, struct cmd_find_state *,

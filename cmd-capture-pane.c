@@ -80,7 +80,7 @@ cmd_capture_pane_pending(struct args *args, struct window_pane *wp,
 	size_t		 linelen;
 	u_int		 i;
 
-	pending = input_pending(wp);
+	pending = input_pending(wp->ictx);
 	if (pending == NULL)
 		return (xstrdup(""));
 

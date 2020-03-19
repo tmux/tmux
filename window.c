@@ -891,7 +891,7 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	if (gethostname(host, sizeof host) == 0)
 		screen_set_title(&wp->base, host);
 
-	input_init(wp);
+	wp->ictx = input_init(wp);
 
 	return (wp);
 }
@@ -907,7 +907,7 @@ window_pane_destroy(struct window_pane *wp)
 		close(wp->fd);
 	}
 
-	input_free(wp);
+	input_free(wp->ictx);
 
 	screen_free(&wp->status_screen);
 
@@ -949,7 +949,7 @@ window_pane_read_callback(__unused struct bufferevent *bufev, void *data)
 	}
 
 	log_debug("%%%u has %zu bytes", wp->id, size);
-	input_parse(wp);
+	input_parse_pane(wp);
 
 	wp->pipe_off = EVBUFFER_LENGTH(evb);
 }
@@ -1257,7 +1257,7 @@ window_pane_key(struct window_pane *wp, struct client *c, struct session *s,
 	if (wp->fd == -1 || wp->flags & PANE_INPUTOFF)
 		return (0);
 
-	if (input_key(wp, key, m) != 0)
+	if (input_key_pane(wp, key, m) != 0)
 		return (-1);
 
 	if (KEYC_IS_MOUSE(key))
@@ -1269,7 +1269,7 @@ window_pane_key(struct window_pane *wp, struct client *c, struct session *s,
 			    wp2->fd != -1 &&
 			    (~wp2->flags & PANE_INPUTOFF) &&
 			    window_pane_visible(wp2))
-				input_key(wp2, key, NULL);
+				input_key_pane(wp2, key, NULL);
 		}
 	}
 	return (0);
