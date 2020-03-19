@@ -60,6 +60,8 @@ cmd_display_menu_get_position(struct client *c, struct cmdq_item *item,
 		*px = 0;
 	else if (strcmp(xp, "R") == 0)
 		*px = c->tty.sx - 1;
+	else if (strcmp(xp, "C") == 0)
+		*px = (c->tty.sx - 1) / 2 - w / 2;
 	else if (strcmp(xp, "P") == 0) {
 		tty_window_offset(&c->tty, &ox, &oy, &sx, &sy);
 		if (wp->xoff >= ox)
@@ -94,6 +96,8 @@ cmd_display_menu_get_position(struct client *c, struct cmdq_item *item,
 	yp = args_get(args, 'y');
 	if (yp == NULL)
 		*py = 0;
+	else if (strcmp(yp, "C") == 0)
+		*py = (c->tty.sy - 1) / 2 + h / 2;
 	else if (strcmp(yp, "P") == 0) {
 		tty_window_offset(&c->tty, &ox, &oy, &sx, &sy);
 		if (wp->yoff + wp->sy >= oy)
@@ -132,7 +136,7 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	struct menu_item	 menu_item;
 	const char		*key;
 	char			*title, *name;
-	int			 flags, i;
+	int			 flags = 0, i;
 	u_int			 px, py;
 
 	if ((c = cmd_find_client(item, args_get(args, 'c'), 0)) == NULL)
@@ -180,7 +184,6 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	cmd_display_menu_get_position(c, item, args, &px, &py, menu->width + 4,
 	    menu->count + 2);
 
-	flags = 0;
 	if (!item->shared->mouse.valid)
 		flags |= MENU_NOMOUSE;
 	if (menu_display(menu, flags, item, px, py, c, fs, NULL, NULL) != 0)
