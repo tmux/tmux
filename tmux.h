@@ -1929,8 +1929,11 @@ typedef void (*job_update_cb) (struct job *);
 typedef void (*job_complete_cb) (struct job *);
 typedef void (*job_free_cb) (void *);
 #define JOB_NOWAIT 0x1
+#define JOB_KEEPWRITE 0x2
+#define JOB_PTY 0x4
 struct job	*job_run(const char *, struct session *, const char *,
-		     job_update_cb, job_complete_cb, job_free_cb, void *, int);
+		     job_update_cb, job_complete_cb, job_free_cb, void *, int,
+		     int, int);
 void		 job_free(struct job *);
 void		 job_check_died(pid_t, int);
 int		 job_get_status(struct job *);
