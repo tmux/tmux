@@ -145,8 +145,8 @@ cmd_run_shell_timer(__unused int fd, __unused short events, void* arg)
 
 	if (cdata->cmd != NULL) {
 		if (job_run(cdata->cmd, cdata->s, cdata->cwd, NULL,
-		    cmd_run_shell_callback, cmd_run_shell_free, cdata,
-		    0) == NULL)
+		    cmd_run_shell_callback, cmd_run_shell_free, cdata, 0, -1,
+		    -1) == NULL)
 			cmd_run_shell_free(cdata);
 	} else {
 		if (cdata->item != NULL)

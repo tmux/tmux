@@ -354,7 +354,7 @@ format_job_get(struct format_tree *ft, const char *cmd)
 	if (force || (fj->job == NULL && fj->last != t)) {
 		fj->job = job_run(expanded, NULL,
 		    server_client_get_cwd(ft->client, NULL), format_job_update,
-		    format_job_complete, NULL, fj, JOB_NOWAIT);
+		    format_job_complete, NULL, fj, JOB_NOWAIT, -1, -1);
 		if (fj->job == NULL) {
 			free(fj->out);
 			xasprintf(&fj->out, "<'%s' didn't start>", fj->cmd);

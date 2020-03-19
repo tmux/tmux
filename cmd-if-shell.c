@@ -144,7 +144,8 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 	cmd_find_copy_state(&cdata->input.fs, fs);
 
 	if (job_run(shellcmd, s, server_client_get_cwd(item->client, s), NULL,
-	    cmd_if_shell_callback, cmd_if_shell_free, cdata, 0) == NULL) {
+	    cmd_if_shell_callback, cmd_if_shell_free, cdata, 0, -1,
+	    -1) == NULL) {
 		cmdq_error(item, "failed to run command: %s", shellcmd);
 		free(shellcmd);
 		free(cdata);
