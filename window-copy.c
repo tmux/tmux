@@ -1590,13 +1590,12 @@ window_copy_cmd_select_word(struct window_copy_cmd_state *cs)
 	data->dx = data->cx;
 	data->dy = screen_hsize(data->backing) + data->cy - data->oy;
 
-	px = data->cx;
-	py = screen_hsize(data->backing) + data->cy - data->oy;
-
 	data->ws = options_get_string(s->options, "word-separators");
 	window_copy_cursor_previous_word(wme, data->ws, 0);
-	data->selrx = data->cx;
-	data->selry = screen_hsize(data->backing) + data->cy - data->oy;
+	px = data->cx;
+	py = screen_hsize(data->backing) + data->cy - data->oy;
+	data->selrx = px;
+	data->selry = py;
 	window_copy_start_selection(wme);
 
 	if (px >= window_copy_find_length(wme, py) ||
@@ -1609,6 +1608,8 @@ window_copy_cmd_select_word(struct window_copy_cmd_state *cs)
 	}
 	data->endselrx = data->cx;
 	data->endselry = screen_hsize(data->backing) + data->cy - data->oy;
+	if (data->dx > data->endselrx)
+		data->dx = data->endselrx;
 
 	return (WINDOW_COPY_CMD_REDRAW);
 }
