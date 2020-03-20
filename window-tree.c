@@ -54,8 +54,8 @@ static void		 window_tree_key(struct window_mode_entry *,
 	"}"
 
 static const struct menu_item window_tree_menu_items[] = {
-	{ "Select", 'E', NULL },
-	{ "Expand", 'R', NULL },
+	{ "Select", '\r', NULL },
+	{ "Expand", KEYC_RIGHT, NULL },
 	{ "", KEYC_NONE, NULL },
 	{ "Tag", 't', NULL },
 	{ "Tag All", '\024', NULL },
