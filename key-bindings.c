@@ -58,7 +58,7 @@
 	" 'Vertical Split' 'v' {split-window -v}" \
 	" ''" \
 	" '#{?#{>:#{window_panes},1},,-}Swap Up' 'u' {swap-pane -U}" \
-	" '#{?#|>:#{window_panes},1},,-}Swap Down' 'd' {swap-pane -D}" \
+	" '#{?#{>:#{window_panes},1},,-}Swap Down' 'd' {swap-pane -D}" \
 	" '#{?pane_marked_set,,-}Swap Marked' 's' {swap-pane}" \
 	" ''" \
 	" 'Kill' 'X' {kill-pane}" \
