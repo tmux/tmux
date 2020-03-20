@@ -1021,7 +1021,8 @@ format_cb_mouse_word(struct format_tree *ft, struct format_entry *fe)
 		return;
 
 	if (!TAILQ_EMPTY(&wp->modes)) {
-		if (TAILQ_FIRST(&wp->modes)->mode == &window_copy_mode)
+		if (TAILQ_FIRST(&wp->modes)->mode == &window_copy_mode ||
+		    TAILQ_FIRST(&wp->modes)->mode == &window_view_mode)
 			s = window_copy_get_word(wp, x, y);
 		else
 			s = NULL;
@@ -1077,7 +1078,8 @@ format_cb_mouse_line(struct format_tree *ft, struct format_entry *fe)
 		return;
 
 	if (!TAILQ_EMPTY(&wp->modes)) {
-		if (TAILQ_FIRST(&wp->modes)->mode == &window_copy_mode)
+		if (TAILQ_FIRST(&wp->modes)->mode == &window_copy_mode ||
+		    TAILQ_FIRST(&wp->modes)->mode == &window_view_mode)
 			s = window_copy_get_line(wp, y);
 		else
 			s = NULL;
