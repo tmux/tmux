@@ -596,10 +596,31 @@ window_copy_next_paragraph(struct window_mode_entry *wme)
 	window_copy_scroll_to(wme, ox, oy);
 }
 
+char *
+window_copy_get_word(struct window_pane *wp, u_int x, u_int y)
+{
+	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
+	struct window_copy_mode_data	*data = wme->data;
+	struct grid			*gd = data->screen.grid;
+
+	return (format_grid_word(gd, x, gd->hsize + y));
+}
+
+char *
+window_copy_get_line(struct window_pane *wp, u_int y)
+{
+	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
+	struct window_copy_mode_data	*data = wme->data;
+	struct grid			*gd = data->screen.grid;
+
+	return (format_grid_line(gd, gd->hsize + y));
+}
+
 static void
 window_copy_formats(struct window_mode_entry *wme, struct format_tree *ft)
 {
 	struct window_copy_mode_data	*data = wme->data;
+	struct grid			*gd = data->screen.grid;
 	char				*s;
 
 	format_add(ft, "scroll_position", "%d", data->oy);
@@ -619,13 +640,13 @@ window_copy_formats(struct window_mode_entry *wme, struct format_tree *ft)
 	} else
 		format_add(ft, "selection_active", "%d", 0);
 
-	s = format_grid_word(data->screen.grid, data->cx, data->cy);
+	s = format_grid_word(gd, data->cx, gd->hsize + data->cy);
 	if (s != NULL) {
 		format_add(ft, "copy_cursor_word", "%s", s);
 		free(s);
 	}
 
-	s = format_grid_line(data->screen.grid, data->cy);
+	s = format_grid_line(gd, gd->hsize + data->cy);
 	if (s != NULL) {
 		format_add(ft, "copy_cursor_line", "%s", s);
 		free(s);
