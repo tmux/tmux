@@ -1,0 +1,3 @@
+
+option('utempter', type: 'boolean', value: true, description: 'use utempter if it is installed')
+option('utf8proc', type: 'boolean', value: true, description: 'use utf8proc if it is installed')
