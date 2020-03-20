@@ -1361,7 +1361,9 @@ window_copy_cmd_other_end(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
 	u_int				 np = wme->prefix;
+	struct window_copy_mode_data	*data = wme->data;
 
+	data->selflag = SEL_CHAR;
 	if ((np % 2) != 0)
 		window_copy_other_end(wme);
 	return (WINDOW_COPY_CMD_NOTHING);
