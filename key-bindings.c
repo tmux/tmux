@@ -47,7 +47,7 @@
 	" 'New At End' 'W' {new-window}"
 #define DEFAULT_PANE_MENU \
 	" '#{?#{==:#{pane_mode},copy-mode},Go To Top,}' '<' {send -X history-top}" \
-	" '#{?#{==:#{pane_mode},copy-mode},Go To Bottom,}' '<' {send -X history-bottom}" \
+	" '#{?#{==:#{pane_mode},copy-mode},Go To Bottom,}' '>' {send -X history-bottom}" \
 	" ''" \
 	" '#{?mouse_word,Search For #[underscore]#{=/9/...:mouse_word},}' 'C-r' {copy-mode -t=; send -Xt= search-backward \"#{q:mouse_word}\"}" \
 	" '#{?mouse_word,Type #[underscore]#{=/9/...:mouse_word},}' 'C-y' {copy-mode -q; send-keys -l -- \"#{q:mouse_word}\"}" \
