@@ -123,7 +123,7 @@ static void	window_copy_cursor_next_word(struct window_mode_entry *,
 static void	window_copy_cursor_next_word_end_pos(struct window_mode_entry *,
 		    const char *, u_int *, u_int *);
 static void	window_copy_cursor_next_word_end(struct window_mode_entry *,
-		    const char *);
+		    const char *, int);
 static void	window_copy_cursor_previous_word_pos(struct window_mode_entry *,
 		    const char *, int, u_int *, u_int *);
 static void	window_copy_cursor_previous_word(struct window_mode_entry *,
@@ -1241,7 +1241,8 @@ window_copy_cmd_next_matching_bracket(struct window_copy_cmd_state *cs)
 					tried = 1;
 					goto retry;
 				}
-				window_copy_cursor_next_word_end(wme, "{[( ");
+				window_copy_cursor_next_word_end(wme, "{[( ",
+				    0);
 				continue;
 			}
 			/* For vi, continue searching for bracket until EOL. */
@@ -1324,7 +1325,7 @@ window_copy_cmd_next_space_end(struct window_copy_cmd_state *cs)
 	u_int				 np = wme->prefix;
 
 	for (; np != 0; np--)
-		window_copy_cursor_next_word_end(wme, " ");
+		window_copy_cursor_next_word_end(wme, " ", 0);
 	return (WINDOW_COPY_CMD_NOTHING);
 }
 
@@ -1352,7 +1353,7 @@ window_copy_cmd_next_word_end(struct window_copy_cmd_state *cs)
 
 	ws = options_get_string(s->options, "word-separators");
 	for (; np != 0; np--)
-		window_copy_cursor_next_word_end(wme, ws);
+		window_copy_cursor_next_word_end(wme, ws, 0);
 	return (WINDOW_COPY_CMD_NOTHING);
 }
 
@@ -1579,10 +1580,10 @@ window_copy_cmd_select_word(struct window_copy_cmd_state *cs)
 
 	if (px >= window_copy_find_length(wme, py) ||
 	    !window_copy_in_set(wme, px + 1, py, data->ws))
-		window_copy_cursor_next_word_end(wme, data->ws);
+		window_copy_cursor_next_word_end(wme, data->ws, 1);
 	else {
 		window_copy_update_cursor(wme, px, data->cy);
-		if (window_copy_update_selection(wme, 1, 0))
+		if (window_copy_update_selection(wme, 1, 1))
 			window_copy_redraw_lines(wme, data->cy, 1);
 	}
 	data->endselrx = data->cx;
@@ -3882,7 +3883,7 @@ window_copy_cursor_next_word_end_pos(struct window_mode_entry *wme,
 
 static void
 window_copy_cursor_next_word_end(struct window_mode_entry *wme,
-    const char *separators)
+    const char *separators, int no_reset)
 {
 	struct window_pane		*wp = wme->wp;
 	struct window_copy_mode_data	*data = wme->data;
@@ -3928,7 +3929,7 @@ window_copy_cursor_next_word_end(struct window_mode_entry *wme,
 		px--;
 
 	window_copy_update_cursor(wme, px, data->cy);
-	if (window_copy_update_selection(wme, 1, 0))
+	if (window_copy_update_selection(wme, 1, no_reset))
 		window_copy_redraw_lines(wme, data->cy, 1);
 }
 
