@@ -34,8 +34,8 @@
 	" 'New Session' 's' {new-session}" \
 	" 'New Window' 'w' {new-window}"
 #define DEFAULT_WINDOW_MENU \
-	" 'Swap Left' 'l' {swap-window -t:-1}" \
-	" 'Swap Right' 'r' {swap-window -t:+1}" \
+	" '#{?#{>:#{session_windows},1},,-}Swap Left' 'l' {swap-window -t:-1}" \
+	" '#{?#{>:#{session_windows},1},,-}Swap Right' 'r' {swap-window -t:+1}" \
 	" '#{?pane_marked_set,,-}Swap Marked' 's' {swap-window}" \
 	" ''" \
 	" 'Kill' 'X' {kill-window}" \
@@ -57,8 +57,8 @@
 	" 'Horizontal Split' 'h' {split-window -h}" \
 	" 'Vertical Split' 'v' {split-window -v}" \
 	" ''" \
-	" 'Swap Up' 'u' {swap-pane -U}" \
-	" 'Swap Down' 'd' {swap-pane -D}" \
+	" '#{?#{>:#{window_panes},1},,-}Swap Up' 'u' {swap-pane -U}" \
+	" '#{?#|>:#{window_panes},1},,-}Swap Down' 'd' {swap-pane -D}" \
 	" '#{?pane_marked_set,,-}Swap Marked' 's' {swap-pane}" \
 	" ''" \
 	" 'Kill' 'X' {kill-pane}" \
