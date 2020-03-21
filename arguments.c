@@ -344,3 +344,53 @@ args_strtonum(struct args *args, u_char ch, long long minval, long long maxval,
 	*cause = NULL;
 	return (ll);
 }
+
+/* Convert an argument to a number which may be a percentage. */
+long long
+args_percentage(struct args *args, u_char ch, long long minval,
+    long long maxval, long long curval, char **cause)
+{
+	const char		*errstr;
+	long long 	 	 ll;
+	struct args_entry	*entry;
+	struct args_value	*value;
+	size_t			 valuelen;
+	char			*copy;
+
+	if ((entry = args_find(args, ch)) == NULL) {
+		*cause = xstrdup("missing");
+		return (0);
+	}
+	value = TAILQ_LAST(&entry->values, args_values);
+	valuelen = strlen(value->value);
+
+	if (value->value[valuelen - 1] == '%') {
+		copy = xstrdup(value->value);
+		copy[valuelen - 1] = '\0';
+
+		ll = strtonum(copy, 0, 100, &errstr);
+		free(copy);
+		if (errstr != NULL) {
+			*cause = xstrdup(errstr);
+			return (0);
+		}
+		ll = (curval * ll) / 100;
+		if (ll < minval) {
+			*cause = xstrdup("too large");
+			return (0);
+		}
+		if (ll > maxval) {
+			*cause = xstrdup("too small");
+			return (0);
+		}
+	} else {
+		ll = strtonum(value->value, minval, maxval, &errstr);
+		if (errstr != NULL) {
+			*cause = xstrdup(errstr);
+			return (0);
+		}
+	}
+
+	*cause = NULL;
+	return (ll);
+}
