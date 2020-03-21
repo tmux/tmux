@@ -758,15 +758,15 @@ grid_string_cells_bg(const struct grid_cell *gc, int *values)
 		case 8:
 			values[n++] = 49;
 			break;
-		case 100:
-		case 101:
-		case 102:
-		case 103:
-		case 104:
-		case 105:
-		case 106:
-		case 107:
-			values[n++] = gc->bg - 10;
+		case 90:
+		case 91:
+		case 92:
+		case 93:
+		case 94:
+		case 95:
+		case 96:
+		case 97:
+			values[n++] = gc->bg + 10;
 			break;
 		}
 	}
