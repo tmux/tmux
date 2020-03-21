@@ -50,7 +50,7 @@ const struct cmd_entry cmd_move_pane_entry = {
 	.alias = "movep",
 
 	.args = { "bdhvp:l:s:t:", 0, 0 },
-	.usage = "[-bdhv] [-p percentage|-l size] " CMD_SRCDST_PANE_USAGE,
+	.usage = "[-bdhv] [-l size] " CMD_SRCDST_PANE_USAGE,
 
 	.source = { 's', CMD_FIND_PANE, CMD_FIND_DEFAULT_MARKED },
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -68,9 +68,7 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct winlink		*src_wl, *dst_wl;
 	struct window		*src_w, *dst_w;
 	struct window_pane	*src_wp, *dst_wp;
-	char			*cause, *copy;
-	const char		*errstr, *p;
-	size_t			 plen;
+	char			*cause = NULL;
 	int			 size, percentage, dst_idx, not_same_window;
 	int			 flags;
 	enum layout_type	 type;
@@ -107,40 +105,27 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 		type = LAYOUT_LEFTRIGHT;
 
 	size = -1;
-	if ((p = args_get(args, 'l')) != NULL) {
-		plen = strlen(p);
-		if (p[plen - 1] == '%') {
-			copy = xstrdup(p);
-			copy[plen - 1] = '\0';
-			percentage = strtonum(copy, 0, INT_MAX, &errstr);
-			free(copy);
-			if (errstr != NULL) {
-				cmdq_error(item, "percentage %s", errstr);
-				return (CMD_RETURN_ERROR);
-			}
+	if (args_has(args, 'l')) {
+		if (type == LAYOUT_TOPBOTTOM) {
+			size = args_percentage(args, 'l', 0, INT_MAX,
+			    dst_wp->sy, &cause);
+		} else {
+			size = args_percentage(args, 'l', 0, INT_MAX,
+			    dst_wp->sx, &cause);
+		}
+	} else if (args_has(args, 'p')) {
+		percentage = args_strtonum(args, 'p', 0, 100, &cause);
+		if (cause == NULL) {
 			if (type == LAYOUT_TOPBOTTOM)
 				size = (dst_wp->sy * percentage) / 100;
 			else
 				size = (dst_wp->sx * percentage) / 100;
-		} else {
-			size = args_strtonum(args, 'l', 0, INT_MAX, &cause);
-			if (cause != NULL) {
-				cmdq_error(item, "size %s", cause);
-				free(cause);
-				return (CMD_RETURN_ERROR);
-			}
 		}
-	} else if (args_has(args, 'p')) {
-		percentage = args_strtonum(args, 'p', 0, 100, &cause);
-		if (cause != NULL) {
-			cmdq_error(item, "percentage %s", cause);
-			free(cause);
-			return (CMD_RETURN_ERROR);
-		}
-		if (type == LAYOUT_TOPBOTTOM)
-			size = (dst_wp->sy * percentage) / 100;
-		else
-			size = (dst_wp->sx * percentage) / 100;
+	}
+	if (cause != NULL) {
+		cmdq_error(item, "size %s", cause);
+		free(cause);
+		return (CMD_RETURN_ERROR);
 	}
 
 	flags = 0;
