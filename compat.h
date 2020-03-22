@@ -106,7 +106,7 @@ void	warnx(const char *, ...);
 #include "compat/queue.h"
 #endif
 
-#ifdef HAVE_TREE_H
+#if (defined HAVE_TREE_H) || (defined HAVE_SYS_TREE_H)
 #include <sys/tree.h>
 #else
 #include "compat/tree.h"
