@@ -159,7 +159,7 @@ key_string_get_modifiers(const char **string)
 key_code
 key_string_lookup_string(const char *string)
 {
-	static const char	*other = "!#()+,-.0123456789:;<=>'\r\t";
+	static const char	*other = "!#%(){}+,-.0123456789:;<=>'\"\r\t";
 	key_code		 key;
 	u_int			 u;
 	key_code		 modifiers;
