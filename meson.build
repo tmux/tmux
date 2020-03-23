@@ -2,7 +2,7 @@
 project('tmux',
     'c',
 
-    version: '3.1',
+    version: 'next-3.2',
     meson_version: '>=0.50.0',
     default_options: [
         'c_std=gnu99',
@@ -180,6 +180,11 @@ libevent_header = cc.has_header('event.h', required: true)
 libutil = cc.find_library('util')
 
 nsl = cc.find_library('nsl')
+
+m = cc.find_library('m')
+if not cc.has_function('fmod', dependencies: m, required: true)
+    error('Math library found, but does not provide fmod.')
+endif
 
 ncurses = dependency('tinfo', required: false)
 if not ncurses.found()
@@ -497,11 +502,12 @@ tmux = executable('tmux',
 
     dependencies: [
         libevent,
+        libutil,
+        m,
         ncurses,
+        resolv,
         utempter,
         utf8proc,
-        libutil,
-        resolv,
     ],
     link_with: [
         libcompat,
