@@ -482,6 +482,8 @@ screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j,
 	u_int			 type, x = ctx->ox + i, y = ctx->oy + j;
 	int			 flag, pane_status = ctx->pane_status;
 
+	if (c->overlay_check != NULL && !c->overlay_check(c, x, y))
+		return;
 	type = screen_redraw_check_cell(c, x, y, pane_status, &wp);
 	if (type == CELL_INSIDE)
 		return;

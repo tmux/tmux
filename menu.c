@@ -130,6 +130,16 @@ menu_free(struct menu *menu)
 	free(menu);
 }
 
+static int
+menu_mode_cb(struct client *c, __unused u_int *cx, __unused u_int *cy)
+{
+	struct menu_data	*md = c->overlay_data;
+
+	if (~md->flags & MENU_NOMOUSE)
+		return (MODE_MOUSE_ALL);
+	return (0);
+}
+
 static void
 menu_draw_cb(struct client *c, __unused struct screen_redraw_ctx *ctx0)
 {
@@ -147,9 +157,6 @@ menu_draw_cb(struct client *c, __unused struct screen_redraw_ctx *ctx0)
 
 	for (i = 0; i < screen_size_y(&md->s); i++)
 		tty_draw_line(tty, NULL, s, 0, i, menu->width + 4, px, py + i);
-
-	if (~md->flags & MENU_NOMOUSE)
-		tty_update_mode(tty, MODE_MOUSE_ALL, NULL);
 }
 
 static void
@@ -317,7 +324,7 @@ menu_display(struct menu *menu, int flags, struct cmdq_item *item, u_int px,
 	md->cb = cb;
 	md->data = data;
 
-	server_client_set_overlay(c, 0, menu_draw_cb, menu_key_cb, menu_free_cb,
-	    md);
+	server_client_set_overlay(c, 0, NULL, menu_mode_cb, menu_draw_cb,
+	    menu_key_cb, menu_free_cb, md);
 	return (0);
 }

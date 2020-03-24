@@ -17,6 +17,7 @@
  */
 
 #include <sys/types.h>
+#include <sys/ioctl.h>
 #include <sys/socket.h>
 
 #include <fcntl.h>
@@ -203,6 +204,24 @@ job_free(struct job *job)
 		close(job->fd);
 
 	free(job);
+}
+
+/* Resize job. */
+void
+job_resize(struct job *job, u_int sx, u_int sy)
+{
+	struct winsize	 ws;
+
+	if (job->fd == -1 || (~job->flags & JOB_PTY))
+		return;
+
+	log_debug("resize job %p: %ux%u", job, sx, sy);
+
+	memset(&ws, 0, sizeof ws);
+	ws.ws_col = sx;
+	ws.ws_row = sy;
+	if (ioctl(job->fd, TIOCSWINSZ, &ws) == -1)
+		fatal("ioctl failed");
 }
 
 /* Job buffer read callback. */

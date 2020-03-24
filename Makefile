@@ -94,6 +94,7 @@ SRCS=	alerts.c \
 	options-table.c \
 	options.c \
 	paste.c \
+	popup.c \
 	proc.c \
 	procname.c \
 	regsub.c \

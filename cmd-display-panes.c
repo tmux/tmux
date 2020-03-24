@@ -273,7 +273,7 @@ cmd_display_panes_exec(struct cmd *self, struct cmdq_item *item)
 	else
 		cdata->item = item;
 
-	server_client_set_overlay(c, delay, cmd_display_panes_draw,
+	server_client_set_overlay(c, delay, NULL, NULL, cmd_display_panes_draw,
 	    cmd_display_panes_key, cmd_display_panes_free, cdata);
 
 	if (args_has(args, 'b'))

@@ -43,7 +43,6 @@ static void	server_client_check_redraw(struct client *);
 static void	server_client_set_title(struct client *);
 static void	server_client_reset_state(struct client *);
 static int	server_client_assume_paste(struct session *);
-static void	server_client_clear_overlay(struct client *);
 static void	server_client_resize_event(int, short, void *);
 
 static void	server_client_dispatch(struct imsg *, void *);
@@ -81,8 +80,10 @@ server_client_overlay_timer(__unused int fd, __unused short events, void *data)
 
 /* Set an overlay on client. */
 void
-server_client_set_overlay(struct client *c, u_int delay, overlay_draw_cb drawcb,
-    overlay_key_cb keycb, overlay_free_cb freecb, void *data)
+server_client_set_overlay(struct client *c, u_int delay,
+    overlay_check_cb checkcb, overlay_mode_cb modecb,
+    overlay_draw_cb drawcb, overlay_key_cb keycb, overlay_free_cb freecb,
+    void *data)
 {
 	struct timeval	tv;
 
@@ -98,17 +99,21 @@ server_client_set_overlay(struct client *c, u_int delay, overlay_draw_cb drawcb,
 	if (delay != 0)
 		evtimer_add(&c->overlay_timer, &tv);
 
+	c->overlay_check = checkcb;
+	c->overlay_mode = modecb;
 	c->overlay_draw = drawcb;
 	c->overlay_key = keycb;
 	c->overlay_free = freecb;
 	c->overlay_data = data;
 
-	c->tty.flags |= (TTY_FREEZE|TTY_NOCURSOR);
+	c->tty.flags |= TTY_FREEZE;
+	if (c->overlay_mode == NULL)
+		c->tty.flags |= TTY_NOCURSOR;
 	server_redraw_client(c);
 }
 
 /* Clear overlay mode on client. */
-static void
+void
 server_client_clear_overlay(struct client *c)
 {
 	if (c->overlay_draw == NULL)
@@ -120,8 +125,12 @@ server_client_clear_overlay(struct client *c)
 	if (c->overlay_free != NULL)
 		c->overlay_free(c);
 
+	c->overlay_check = NULL;
+	c->overlay_mode = NULL;
 	c->overlay_draw = NULL;
 	c->overlay_key = NULL;
+	c->overlay_free = NULL;
+	c->overlay_data = NULL;
 
 	c->tty.flags &= ~(TTY_FREEZE|TTY_NOCURSOR);
 	server_redraw_client(c);
@@ -1485,35 +1494,48 @@ server_client_reset_state(struct client *c)
 {
 	struct window		*w = c->session->curw->window;
 	struct window_pane	*wp = w->active, *loop;
-	struct screen		*s = wp->screen;
+	struct screen		*s;
 	struct options		*oo = c->session->options;
 	int			 mode, cursor = 0;
 	u_int			 cx = 0, cy = 0, ox, oy, sx, sy;
 
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
 		return;
-	if (c->overlay_draw != NULL)
-		return;
-	mode = s->mode;
 
+	/* Get mode from overlay if any, else from screen. */
+	if (c->overlay_draw != NULL) {
+		s = NULL;
+		if (c->overlay_mode == NULL)
+			mode = 0;
+		else
+			mode = c->overlay_mode(c, &cx, &cy);
+	} else {
+		s = wp->screen;
+		mode = s->mode;
+	}
+	log_debug("%s: client %s mode %x", __func__, c->name, mode);
+
+	/* Reset region and margin. */
 	tty_region_off(&c->tty);
 	tty_margin_off(&c->tty);
 
 	/* Move cursor to pane cursor and offset. */
-	cursor = 0;
-	tty_window_offset(&c->tty, &ox, &oy, &sx, &sy);
-	if (wp->xoff + s->cx >= ox && wp->xoff + s->cx <= ox + sx &&
-	    wp->yoff + s->cy >= oy && wp->yoff + s->cy <= oy + sy) {
-		cursor = 1;
+	if (c->overlay_draw == NULL) {
+		cursor = 0;
+		tty_window_offset(&c->tty, &ox, &oy, &sx, &sy);
+		if (wp->xoff + s->cx >= ox && wp->xoff + s->cx <= ox + sx &&
+		    wp->yoff + s->cy >= oy && wp->yoff + s->cy <= oy + sy) {
+			cursor = 1;
 
-		cx = wp->xoff + s->cx - ox;
-		cy = wp->yoff + s->cy - oy;
+			cx = wp->xoff + s->cx - ox;
+			cy = wp->yoff + s->cy - oy;
 
-		if (status_at_line(c) == 0)
-			cy += status_line_size(c);
+			if (status_at_line(c) == 0)
+				cy += status_line_size(c);
+		}
+		if (!cursor)
+			mode &= ~MODE_CURSOR;
 	}
-	if (!cursor)
-		mode &= ~MODE_CURSOR;
 	tty_cursor(&c->tty, cx, cy);
 
 	/*
@@ -1522,16 +1544,18 @@ server_client_reset_state(struct client *c)
 	 */
 	if (options_get_number(oo, "mouse")) {
 		mode &= ~ALL_MOUSE_MODES;
-		TAILQ_FOREACH(loop, &w->panes, entry) {
-			if (loop->screen->mode & MODE_MOUSE_ALL)
-				mode |= MODE_MOUSE_ALL;
+		if (c->overlay_draw == NULL) {
+			TAILQ_FOREACH(loop, &w->panes, entry) {
+				if (loop->screen->mode & MODE_MOUSE_ALL)
+					mode |= MODE_MOUSE_ALL;
+			}
 		}
 		if (~mode & MODE_MOUSE_ALL)
 			mode |= MODE_MOUSE_BUTTON;
 	}
 
 	/* Clear bracketed paste mode if at the prompt. */
-	if (c->prompt_string != NULL)
+	if (c->overlay_draw == NULL && c->prompt_string != NULL)
 		mode &= ~MODE_BRACKETPASTE;
 
 	/* Set the terminal mode and reset attributes. */
