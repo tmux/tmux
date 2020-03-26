@@ -29,6 +29,8 @@
 
 static enum cmd_retval	cmd_display_menu_exec(struct cmd *,
 			    struct cmdq_item *);
+static enum cmd_retval	cmd_display_popup_exec(struct cmd *,
+			    struct cmdq_item *);
 
 const struct cmd_entry cmd_display_menu_entry = {
 	.name = "display-menu",
@@ -42,6 +44,21 @@ const struct cmd_entry cmd_display_menu_entry = {
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_display_menu_exec
+};
+
+const struct cmd_entry cmd_display_popup_entry = {
+	.name = "display-popup",
+	.alias = "popup",
+
+	.args = { "CEKc:d:h:R:t:w:x:y:", 0, -1 },
+	.usage = "[-CEK] [-c target-client] [-d start-directory] [-h height] "
+	         "[-R shell-command] " CMD_TARGET_PANE_USAGE " [-w width] "
+	         "[-x position] [-y position] [command line ...]",
+
+	.target = { 't', CMD_FIND_PANE, 0 },
+
+	.flags = CMD_AFTERHOOK,
+	.exec = cmd_display_popup_exec
 };
 
 static void
@@ -187,6 +204,82 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	if (!item->shared->mouse.valid)
 		flags |= MENU_NOMOUSE;
 	if (menu_display(menu, flags, item, px, py, c, fs, NULL, NULL) != 0)
+		return (CMD_RETURN_NORMAL);
+	return (CMD_RETURN_WAIT);
+}
+
+static enum cmd_retval
+cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
+{
+	struct args		*args = self->args;
+	struct client		*c;
+	struct cmd_find_state	*fs = &item->target;
+	const char		*value, *cmd = NULL, **lines = NULL;
+	const char		*shellcmd = NULL;
+	char			*cwd, *cause;
+	int			 flags = 0;
+	u_int			 px, py, w, h, nlines = 0;
+
+	if ((c = cmd_find_client(item, args_get(args, 'c'), 0)) == NULL)
+		return (CMD_RETURN_ERROR);
+	if (args_has(args, 'C')) {
+		server_client_clear_overlay(c);
+		return (CMD_RETURN_NORMAL);
+	}
+	if (c->overlay_draw != NULL)
+		return (CMD_RETURN_NORMAL);
+
+	if (args->argc >= 1)
+		cmd = args->argv[0];
+	if (args->argc >= 2) {
+		lines = (const char **)args->argv + 1;
+		nlines = args->argc - 1;
+	}
+
+	if (nlines != 0)
+		h = nlines + 2;
+	else
+		h = c->tty.sy / 2;
+	if (args_has(args, 'h')) {
+		h = args_percentage(args, 'h', 1, c->tty.sy, c->tty.sy, &cause);
+		if (cause != NULL) {
+			cmdq_error(item, "height %s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
+		}
+	}
+
+	if (nlines != 0)
+		w = popup_width(item, nlines, lines, c, fs) + 2;
+	else
+		w = c->tty.sx / 2;
+	if (args_has(args, 'w')) {
+		w = args_percentage(args, 'w', 1, c->tty.sx, c->tty.sx, &cause);
+		if (cause != NULL) {
+			cmdq_error(item, "width %s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
+		}
+	}
+
+	cmd_display_menu_get_position(c, item, args, &px, &py, w, h);
+
+	value = args_get(args, 'd');
+	if (value != NULL)
+		cwd = format_single(NULL, value, c, fs->s, fs->wl, fs->wp);
+	else
+		cwd = xstrdup(server_client_get_cwd(c, fs->s));
+
+	value = args_get(args, 'R');
+	if (value != NULL)
+		shellcmd = format_single(NULL, value, c, fs->s, fs->wl, fs->wp);
+
+	if (args_has(args, 'K'))
+		flags |= POPUP_WRITEKEYS;
+	if (args_has(args, 'E'))
+		flags |= POPUP_CLOSEEXIT;
+	if (popup_display(flags, item, px, py, w, h, nlines, lines, shellcmd,
+	    cmd, cwd, c, fs) != 0)
 		return (CMD_RETURN_NORMAL);
 	return (CMD_RETURN_WAIT);
 }

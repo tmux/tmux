@@ -1250,6 +1250,16 @@ tty_check_codeset(struct tty *tty, const struct grid_cell *gc)
 	return (&new);
 }
 
+static int
+tty_check_overlay(struct tty *tty, u_int px, u_int py)
+{
+	struct client	*c = tty->client;
+
+	if (c->overlay_check == NULL)
+		return (1);
+	return (c->overlay_check(c, px, py));
+}
+
 void
 tty_draw_line(struct tty *tty, struct window_pane *wp, struct screen *s,
     u_int px, u_int py, u_int nx, u_int atx, u_int aty)
@@ -1329,7 +1339,8 @@ tty_draw_line(struct tty *tty, struct window_pane *wp, struct screen *s,
 		grid_view_get_cell(gd, px + i, py, &gc);
 		gcp = tty_check_codeset(tty, &gc);
 		if (len != 0 &&
-		    ((gcp->attr & GRID_ATTR_CHARSET) ||
+		    (!tty_check_overlay(tty, atx + ux + width, aty) ||
+		    (gcp->attr & GRID_ATTR_CHARSET) ||
 		    gcp->flags != last.flags ||
 		    gcp->attr != last.attr ||
 		    gcp->fg != last.fg ||
@@ -1358,7 +1369,9 @@ tty_draw_line(struct tty *tty, struct window_pane *wp, struct screen *s,
 			screen_select_cell(s, &last, gcp);
 		else
 			memcpy(&last, gcp, sizeof last);
-		if (ux + gcp->data.width > nx) {
+		if (!tty_check_overlay(tty, atx + ux, aty))
+			ux += gcp->data.width;
+		else if (ux + gcp->data.width > nx) {
 			tty_attributes(tty, &last, wp);
 			tty_cursor(tty, atx + ux, aty);
 			for (j = 0; j < gcp->data.width; j++) {
@@ -1372,7 +1385,7 @@ tty_draw_line(struct tty *tty, struct window_pane *wp, struct screen *s,
 			tty_cursor(tty, atx + ux, aty);
 			for (j = 0; j < gcp->data.size; j++)
 				tty_putc(tty, gcp->data.data[j]);
-			ux += gc.data.width;
+			ux += gcp->data.width;
 		} else {
 			memcpy(buf + len, gcp->data.data, gcp->data.size);
 			len += gcp->data.size;

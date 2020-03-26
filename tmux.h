@@ -1517,6 +1517,8 @@ RB_HEAD(client_files, client_file);
 /* Client connection. */
 typedef int (*prompt_input_cb)(struct client *, void *, const char *, int);
 typedef void (*prompt_free_cb)(void *);
+typedef int (*overlay_check_cb)(struct client *, u_int, u_int);
+typedef int (*overlay_mode_cb)(struct client *, u_int *, u_int *);
 typedef void (*overlay_draw_cb)(struct client *, struct screen_redraw_ctx *);
 typedef int (*overlay_key_cb)(struct client *, struct key_event *);
 typedef void (*overlay_free_cb)(struct client *);
@@ -1632,6 +1634,8 @@ struct client {
 	u_int		 pan_ox;
 	u_int		 pan_oy;
 
+	overlay_check_cb overlay_check;
+	overlay_mode_cb	 overlay_mode;
 	overlay_draw_cb	 overlay_draw;
 	overlay_key_cb	 overlay_key;
 	overlay_free_cb	 overlay_free;
@@ -1936,6 +1940,7 @@ struct job	*job_run(const char *, struct session *, const char *,
 		     job_update_cb, job_complete_cb, job_free_cb, void *, int,
 		     int, int);
 void		 job_free(struct job *);
+void		 job_resize(struct job *, u_int, u_int);
 void		 job_check_died(pid_t, int);
 int		 job_get_status(struct job *);
 void		*job_get_data(struct job *);
@@ -2218,8 +2223,10 @@ void	 server_add_accept(int);
 
 /* server-client.c */
 u_int	 server_client_how_many(void);
-void	 server_client_set_overlay(struct client *, u_int, overlay_draw_cb,
-    overlay_key_cb, overlay_free_cb, void *);
+void	 server_client_set_overlay(struct client *, u_int, overlay_check_cb,
+	     overlay_mode_cb, overlay_draw_cb, overlay_key_cb,
+	     overlay_free_cb, void *);
+void	 server_client_clear_overlay(struct client *);
 void	 server_client_set_key_table(struct client *, const char *);
 const char *server_client_get_key_table(struct client *);
 int	 server_client_check_nested(struct client *);
@@ -2754,6 +2761,15 @@ void		 menu_free(struct menu *);
 int		 menu_display(struct menu *, int, struct cmdq_item *, u_int,
 		    u_int, struct client *, struct cmd_find_state *,
 		    menu_choice_cb, void *);
+
+/* popup.c */
+#define POPUP_WRITEKEYS 0x1
+#define POPUP_CLOSEEXIT 0x2
+u_int		 popup_width(struct cmdq_item *, u_int, const char **,
+		    struct client *, struct cmd_find_state *);
+int		 popup_display(int, struct cmdq_item *, u_int, u_int, u_int,
+		    u_int, u_int, const char **, const char *, const char *,
+		    const char *, struct client *, struct cmd_find_state *);
 
 /* style.c */
 int		 style_parse(struct style *,const struct grid_cell *,

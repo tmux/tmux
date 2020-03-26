@@ -154,6 +154,7 @@ dist_tmux_SOURCES = \
 	options-table.c \
 	options.c \
 	paste.c \
+	popup.c \
 	proc.c \
 	regsub.c \
 	resize.c \
