@@ -260,7 +260,8 @@ popup_key_cb(struct client *c, struct key_event *event)
 	if (pd->ictx != NULL && (pd->flags & POPUP_WRITEKEYS)) {
 		if (KEYC_IS_MOUSE(event->key))
 			return (0);
-		if ((~pd->flags & POPUP_CLOSEEXIT) &&
+		if (((pd->flags & (POPUP_CLOSEEXIT|POPUP_CLOSEEXITZERO)) == 0 ||
+		    pd->job == NULL) &&
 		    (event->key == '\033' || event->key == '\003'))
 			return (1);
 		if (pd->job == NULL)
@@ -346,6 +347,8 @@ popup_job_complete_cb(struct job *job)
 	pd->job = NULL;
 
 	if (pd->flags & POPUP_CLOSEEXIT)
+		server_client_clear_overlay(pd->c);
+	if ((pd->flags & POPUP_CLOSEEXITZERO) && pd->status == 0)
 		server_client_clear_overlay(pd->c);
 }
 

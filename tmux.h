@@ -2765,6 +2765,7 @@ int		 menu_display(struct menu *, int, struct cmdq_item *, u_int,
 /* popup.c */
 #define POPUP_WRITEKEYS 0x1
 #define POPUP_CLOSEEXIT 0x2
+#define POPUP_CLOSEEXITZERO 0x4
 u_int		 popup_width(struct cmdq_item *, u_int, const char **,
 		    struct client *, struct cmd_find_state *);
 u_int		 popup_height(u_int, const char **);
