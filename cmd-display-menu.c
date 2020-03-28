@@ -73,12 +73,10 @@ cmd_display_menu_get_position(struct client *c, struct cmdq_item *item,
 	u_int			 ox, oy, sx, sy;
 
 	xp = args_get(args, 'x');
-	if (xp == NULL)
-		*px = 0;
+	if (xp == NULL || strcmp(xp, "C") == 0)
+		*px = (c->tty.sx - 1) / 2 - w / 2;
 	else if (strcmp(xp, "R") == 0)
 		*px = c->tty.sx - 1;
-	else if (strcmp(xp, "C") == 0)
-		*px = (c->tty.sx - 1) / 2 - w / 2;
 	else if (strcmp(xp, "P") == 0) {
 		tty_window_offset(&c->tty, &ox, &oy, &sx, &sy);
 		if (wp->xoff >= ox)
@@ -111,9 +109,7 @@ cmd_display_menu_get_position(struct client *c, struct cmdq_item *item,
 		*px = c->tty.sx - w;
 
 	yp = args_get(args, 'y');
-	if (yp == NULL)
-		*py = 0;
-	else if (strcmp(yp, "C") == 0)
+	if (yp == NULL || strcmp(yp, "C") == 0)
 		*py = (c->tty.sy - 1) / 2 + h / 2;
 	else if (strcmp(yp, "P") == 0) {
 		tty_window_offset(&c->tty, &ox, &oy, &sx, &sy);
@@ -280,7 +276,9 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (args_has(args, 'K'))
 		flags |= POPUP_WRITEKEYS;
-	if (args_has(args, 'E'))
+	if (args_has(args, 'E') > 1)
+		flags |= POPUP_CLOSEEXITZERO;
+	else if (args_has(args, 'E'))
 		flags |= POPUP_CLOSEEXIT;
 	if (popup_display(flags, item, px, py, w, h, nlines, lines, shellcmd,
 	    cmd, cwd, c, fs) != 0)
