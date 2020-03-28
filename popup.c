@@ -350,6 +350,22 @@ popup_job_complete_cb(struct job *job)
 }
 
 u_int
+popup_height(u_int nlines, const char **lines)
+{
+	char	*copy, *next, *loop;
+	u_int	 i, height = 0;
+
+	for (i = 0; i < nlines; i++) {
+		copy = next = xstrdup(lines[i]);
+		while ((loop = strsep(&next, "\n")) != NULL)
+			height++;
+		free(copy);
+	}
+
+	return (height);
+}
+
+u_int
 popup_width(struct cmdq_item *item, u_int nlines, const char **lines,
     struct client *c, struct cmd_find_state *fs)
 {
@@ -372,8 +388,8 @@ popup_width(struct cmdq_item *item, u_int nlines, const char **lines,
 				width = tmpwidth;
 			free(tmp);
 		}
+		free(copy);
 	}
-	free(copy);
 
 	format_free(ft);
 	return (width);
@@ -394,8 +410,6 @@ popup_display(int flags, struct cmdq_item *item, u_int px, u_int py, u_int sx,
 		return (-1);
 	if (c->tty.sx < sx || c->tty.sy < sy)
 		return (-1);
-	if (nlines > sy - 2)
-		nlines = sy - 2;
 
 	pd = xcalloc(1, sizeof *pd);
 	pd->item = item;
