@@ -346,9 +346,8 @@ popup_job_complete_cb(struct job *job)
 		pd->status = 0;
 	pd->job = NULL;
 
-	if (pd->flags & POPUP_CLOSEEXIT)
-		server_client_clear_overlay(pd->c);
-	if ((pd->flags & POPUP_CLOSEEXITZERO) && pd->status == 0)
+	if ((pd->flags & POPUP_CLOSEEXIT) ||
+	    ((pd->flags & POPUP_CLOSEEXITZERO) && pd->status == 0))
 		server_client_clear_overlay(pd->c);
 }
 
