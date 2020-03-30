@@ -251,7 +251,7 @@ client_main(struct event_base *base, int argc, char **argv, int flags)
 	/* Set up the initial command. */
 	if (shell_command != NULL) {
 		msg = MSG_SHELL;
-		flags = CLIENT_STARTSERVER;
+		flags |= CLIENT_STARTSERVER;
 	} else if (argc == 0) {
 		msg = MSG_COMMAND;
 		flags |= CLIENT_STARTSERVER;
