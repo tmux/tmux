@@ -3,9 +3,9 @@ CHANGES FROM 3.1 TO 3.2
 * Change default position for display-menu -x and -y to centre rather than top
   left.
 
-* Add support for per-client popup windows, similar to menus. These are created
-  with new command display-popup. Popups may either show fixed text and trigger
-  a tmux command when a key is pressed, or run a program (-R flag).
+* Add support for per-client transient popups, similar to menus. These are
+  created with new command display-popup. Popups may either show fixed text and
+  trigger a tmux command when a key is pressed, or run a program (-R flag).
 
 * Change double and triple click bindings so that only one is fired (previously
   double click was fired on the way to triple click). Also add default double
