@@ -440,6 +440,7 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 	       UP,
 	       DRAG,
 	       WHEEL,
+	       SECOND,
 	       DOUBLE,
 	       TRIPLE } type = NOTYPE;
 	enum { NOWHERE,
@@ -493,9 +494,10 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 			evtimer_del(&c->click_timer);
 			c->flags &= ~CLIENT_DOUBLECLICK;
 			if (m->b == c->click_button) {
-				type = NOTYPE;
+				type = SECOND;
+				x = m->x, y = m->y, b = m->b;
+				log_debug("second-click at %u,%u", x, y);
 				c->flags |= CLIENT_TRIPLECLICK;
-				goto add_timer;
 			}
 		} else if (c->flags & CLIENT_TRIPLECLICK) {
 			evtimer_del(&c->click_timer);
@@ -507,13 +509,12 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 				ignore = 1;
 				goto have_event;
 			}
-		} else
+		} else {
+			type = DOWN;
+			x = m->x, y = m->y, b = m->b;
+			log_debug("down at %u,%u", x, y);
 			c->flags |= CLIENT_DOUBLECLICK;
-
-	add_timer:
-		type = DOWN;
-		x = m->x, y = m->y, b = m->b;
-		log_debug("down at %u,%u", x, y);
+		}
 
 		if (KEYC_CLICK_TIMEOUT != 0) {
 			memcpy(&c->click_event, m, sizeof c->click_event);
@@ -874,6 +875,52 @@ have_event:
 				key = KEYC_MOUSEDOWN3_STATUS_DEFAULT;
 			if (where == BORDER)
 				key = KEYC_MOUSEDOWN3_BORDER;
+			break;
+		}
+		break;
+	case SECOND:
+		switch (MOUSE_BUTTONS(b)) {
+		case 0:
+			if (where == PANE)
+				key = KEYC_SECONDCLICK1_PANE;
+			if (where == STATUS)
+				key = KEYC_SECONDCLICK1_STATUS;
+			if (where == STATUS_LEFT)
+				key = KEYC_SECONDCLICK1_STATUS_LEFT;
+			if (where == STATUS_RIGHT)
+				key = KEYC_SECONDCLICK1_STATUS_RIGHT;
+			if (where == STATUS_DEFAULT)
+				key = KEYC_SECONDCLICK1_STATUS_DEFAULT;
+			if (where == BORDER)
+				key = KEYC_SECONDCLICK1_BORDER;
+			break;
+		case 1:
+			if (where == PANE)
+				key = KEYC_SECONDCLICK2_PANE;
+			if (where == STATUS)
+				key = KEYC_SECONDCLICK2_STATUS;
+			if (where == STATUS_LEFT)
+				key = KEYC_SECONDCLICK2_STATUS_LEFT;
+			if (where == STATUS_RIGHT)
+				key = KEYC_SECONDCLICK2_STATUS_RIGHT;
+			if (where == STATUS_DEFAULT)
+				key = KEYC_SECONDCLICK2_STATUS_DEFAULT;
+			if (where == BORDER)
+				key = KEYC_SECONDCLICK2_BORDER;
+			break;
+		case 2:
+			if (where == PANE)
+				key = KEYC_SECONDCLICK3_PANE;
+			if (where == STATUS)
+				key = KEYC_SECONDCLICK3_STATUS;
+			if (where == STATUS_LEFT)
+				key = KEYC_SECONDCLICK3_STATUS_LEFT;
+			if (where == STATUS_RIGHT)
+				key = KEYC_SECONDCLICK3_STATUS_RIGHT;
+			if (where == STATUS_DEFAULT)
+				key = KEYC_SECONDCLICK3_STATUS_DEFAULT;
+			if (where == BORDER)
+				key = KEYC_SECONDCLICK3_BORDER;
 			break;
 		}
 		break;
