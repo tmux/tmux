@@ -76,6 +76,8 @@ void
 screen_init(struct screen *s, u_int sx, u_int sy, u_int hlimit)
 {
 	s->grid = grid_create(sx, sy, hlimit);
+	s->saved_grid = NULL;
+
 	s->title = xstrdup("");
 	s->titles = NULL;
 
@@ -99,6 +101,11 @@ screen_reinit(struct screen *s)
 
 	s->mode = MODE_CURSOR | MODE_WRAP;
 
+	if (s->saved_grid != NULL)
+		screen_alternate_off(s, NULL, 0);
+	s->saved_cx = UINT_MAX;
+	s->saved_cy = UINT_MAX;
+
 	screen_reset_tabs(s);
 
 	grid_clear_lines(s->grid, s->grid->hsize, s->grid->sy, 8);
@@ -116,6 +123,8 @@ screen_free(struct screen *s)
 	free(s->title);
 	free(s->ccolour);
 
+	if (s->saved_grid != NULL)
+		grid_destroy(s->saved_grid);
 	grid_destroy(s->grid);
 
 	screen_free_titles(s);
@@ -501,4 +510,79 @@ screen_reflow(struct screen *s, u_int new_x)
 
 	log_debug("%s: reflow took %llu.%06u seconds", __func__,
 	    (unsigned long long)tv.tv_sec, (u_int)tv.tv_usec);
+}
+
+/*
+ * Enter alternative screen mode. A copy of the visible screen is saved and the
+ * history is not updated.
+ */
+void
+screen_alternate_on(struct screen *s, struct grid_cell *gc, int cursor)
+{
+	u_int	sx, sy;
+
+	if (s->saved_grid != NULL)
+		return;
+	sx = screen_size_x(s);
+	sy = screen_size_y(s);
+
+	s->saved_grid = grid_create(sx, sy, 0);
+	grid_duplicate_lines(s->saved_grid, 0, s->grid, screen_hsize(s), sy);
+	if (cursor) {
+		s->saved_cx = s->cx;
+		s->saved_cy = s->cy;
+	}
+	memcpy(&s->saved_cell, gc, sizeof s->saved_cell);
+
+	grid_view_clear(s->grid, 0, 0, sx, sy, 8);
+
+	s->grid->flags &= ~GRID_HISTORY;
+}
+
+/* Exit alternate screen mode and restore the copied grid. */
+void
+screen_alternate_off(struct screen *s, struct grid_cell *gc, int cursor)
+{
+	u_int	sx, sy;
+
+	/*
+	 * Restore the cursor position and cell. This happens even if not
+	 * currently in the alternate screen.
+	 */
+	if (cursor && s->saved_cx != UINT_MAX && s->saved_cy != UINT_MAX) {
+		s->cx = s->saved_cx;
+		if (s->cx > screen_size_x(s) - 1)
+			s->cx = screen_size_x(s) - 1;
+		s->cy = s->saved_cy;
+		if (s->cy > screen_size_y(s) - 1)
+			s->cy = screen_size_y(s) - 1;
+		if (gc != NULL)
+			memcpy(gc, &s->saved_cell, sizeof *gc);
+	}
+
+	if (s->saved_grid == NULL)
+		return;
+	sx = screen_size_x(s);
+	sy = screen_size_y(s);
+
+	/*
+	 * If the current size is bigger, temporarily resize to the old size
+	 * before copying back.
+	 */
+	if (sy > s->saved_grid->sy)
+		screen_resize(s, sx, s->saved_grid->sy, 1);
+
+	/* Restore the saved grid. */
+	grid_duplicate_lines(s->grid, screen_hsize(s), s->saved_grid, 0, sy);
+
+	/*
+	 * Turn history back on (so resize can use it) and then resize back to
+	 * the current size.
+	 */
+	s->grid->flags |= GRID_HISTORY;
+	if (sy > s->saved_grid->sy || sx != s->saved_grid->sx)
+		screen_resize(s, sx, sy, 1);
+
+	grid_destroy(s->saved_grid);
+	s->saved_grid = NULL;
 }

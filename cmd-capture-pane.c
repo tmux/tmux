@@ -118,7 +118,7 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 
 	sx = screen_size_x(&wp->base);
 	if (args_has(args, 'a')) {
-		gd = wp->saved_grid;
+		gd = wp->base.saved_grid;
 		if (gd == NULL) {
 			if (!args_has(args, 'q')) {
 				cmdq_error(item, "no alternate screen");

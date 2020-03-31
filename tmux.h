@@ -754,8 +754,12 @@ struct screen {
 
 	int			 mode;
 
-	bitstr_t		*tabs;
+	u_int			 saved_cx;
+	u_int			 saved_cy;
+	struct grid		*saved_grid;
+	struct grid_cell	 saved_cell;
 
+	bitstr_t		*tabs;
 	struct screen_sel	*sel;
 };
 
@@ -916,12 +920,6 @@ struct window_pane {
 
 	struct screen	 status_screen;
 	size_t		 status_size;
-
-	/* Saved in alternative screen mode. */
-	u_int		 saved_cx;
-	u_int		 saved_cy;
-	struct grid	*saved_grid;
-	struct grid_cell saved_cell;
 
 	TAILQ_HEAD (, window_mode_entry) modes;
 	struct event	 modetimer;
@@ -2296,7 +2294,7 @@ void	 recalculate_size(struct window *);
 void	 recalculate_sizes(void);
 
 /* input.c */
-struct input_ctx *input_init(struct window_pane *);
+struct input_ctx *input_init(struct window_pane *, struct bufferevent *);
 void	 input_free(struct input_ctx *);
 void	 input_reset(struct input_ctx *, int);
 struct evbuffer *input_pending(struct input_ctx *);
@@ -2334,6 +2332,7 @@ struct grid *grid_create(u_int, u_int, u_int);
 void	 grid_destroy(struct grid *);
 int	 grid_compare(struct grid *, struct grid *);
 void	 grid_collect_history(struct grid *);
+void	 grid_remove_history(struct grid *, u_int );
 void	 grid_scroll_history(struct grid *, u_int);
 void	 grid_scroll_history_region(struct grid *, u_int, u_int, u_int);
 void	 grid_clear_history(struct grid *);
@@ -2458,6 +2457,9 @@ void	 screen_hide_selection(struct screen *);
 int	 screen_check_selection(struct screen *, u_int, u_int);
 void	 screen_select_cell(struct screen *, struct grid_cell *,
 	     const struct grid_cell *);
+void	 screen_alternate_on(struct screen *, struct grid_cell *, int);
+void	 screen_alternate_off(struct screen *, struct grid_cell *, int);
+
 
 /* window.c */
 extern struct windows windows;

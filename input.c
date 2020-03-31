@@ -75,6 +75,7 @@ struct input_param {
 /* Input parser context. */
 struct input_ctx {
 	struct window_pane     *wp;
+	struct bufferevent     *event;
 	struct screen_write_ctx ctx;
 
 	struct input_cell	cell;
@@ -788,12 +789,13 @@ input_restore_state(struct input_ctx *ictx)
 
 /* Initialise input parser. */
 struct input_ctx *
-input_init(struct window_pane *wp)
+input_init(struct window_pane *wp, struct bufferevent *bev)
 {
 	struct input_ctx	*ictx;
 
 	ictx = xcalloc(1, sizeof *ictx);
 	ictx->wp = wp;
+	ictx->event = bev;
 
 	ictx->input_space = INPUT_BUF_START;
 	ictx->input_buf = xmalloc(INPUT_BUF_START);
@@ -1058,18 +1060,15 @@ input_get(struct input_ctx *ictx, u_int validx, int minval, int defval)
 static void
 input_reply(struct input_ctx *ictx, const char *fmt, ...)
 {
-	struct window_pane	*wp = ictx->wp;
+	struct bufferevent	*bev = ictx->event;
 	va_list			 ap;
 	char			*reply;
-
-	if (wp == NULL)
-		return;
 
 	va_start(ap, fmt);
 	xvasprintf(&reply, fmt, ap);
 	va_end(ap);
 
-	bufferevent_write(wp->event, reply, strlen(reply));
+	bufferevent_write(bev, reply, strlen(reply));
 	free(reply);
 }
 
@@ -1680,10 +1679,14 @@ input_csi_dispatch_rm_private(struct input_ctx *ictx)
 		case 1047:
 			if (wp != NULL)
 				window_pane_alternate_off(wp, gc, 0);
+			else
+				screen_alternate_off(sctx->s, gc, 0);
 			break;
 		case 1049:
 			if (wp != NULL)
 				window_pane_alternate_off(wp, gc, 1);
+			else
+				screen_alternate_off(sctx->s, gc, 1);
 			break;
 		case 2004:
 			screen_write_mode_clear(sctx, MODE_BRACKETPASTE);
@@ -1781,10 +1784,14 @@ input_csi_dispatch_sm_private(struct input_ctx *ictx)
 		case 1047:
 			if (wp != NULL)
 				window_pane_alternate_on(wp, gc, 0);
+			else
+				screen_alternate_on(sctx->s, gc, 0);
 			break;
 		case 1049:
 			if (wp != NULL)
 				window_pane_alternate_on(wp, gc, 1);
+			else
+				screen_alternate_on(sctx->s, gc, 1);
 			break;
 		case 2004:
 			screen_write_mode_set(sctx, MODE_BRACKETPASTE);
@@ -1801,7 +1808,9 @@ static void
 input_csi_dispatch_winops(struct input_ctx *ictx)
 {
 	struct screen_write_ctx	*sctx = &ictx->ctx;
+	struct screen		*s = sctx->s;
 	struct window_pane	*wp = ictx->wp;
+	u_int			 x = screen_size_x(s), y = screen_size_y(s);
 	int			 n, m;
 
 	m = 0;
@@ -1858,10 +1867,7 @@ input_csi_dispatch_winops(struct input_ctx *ictx)
 			}
 			break;
 		case 18:
-			if (wp != NULL) {
-				input_reply(ictx, "\033[8;%u;%ut", wp->sy,
-				    wp->sx);
-			}
+			input_reply(ictx, "\033[8;%u;%ut", x, y);
 			break;
 		default:
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);
@@ -2565,13 +2571,13 @@ input_osc_52(struct input_ctx *ictx, const char *p)
 			outlen = 0;
 			out = NULL;
 		}
-		bufferevent_write(wp->event, "\033]52;;", 6);
+		bufferevent_write(ictx->event, "\033]52;;", 6);
 		if (outlen != 0)
-			bufferevent_write(wp->event, out, outlen);
+			bufferevent_write(ictx->event, out, outlen);
 		if (ictx->input_end == INPUT_END_BEL)
-			bufferevent_write(wp->event, "\007", 1);
+			bufferevent_write(ictx->event, "\007", 1);
 		else
-			bufferevent_write(wp->event, "\033\\", 2);
+			bufferevent_write(ictx->event, "\033\\", 2);
 		free(out);
 		return;
 	}

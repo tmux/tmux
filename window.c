@@ -879,10 +879,6 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	wp->pipe_off = 0;
 	wp->pipe_event = NULL;
 
-	wp->saved_grid = NULL;
-	wp->saved_cx = UINT_MAX;
-	wp->saved_cy = UINT_MAX;
-
 	screen_init(&wp->base, sx, sy, hlimit);
 	wp->screen = &wp->base;
 
@@ -890,8 +886,6 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 
 	if (gethostname(host, sizeof host) == 0)
 		screen_set_title(&wp->base, host);
-
-	wp->ictx = input_init(wp);
 
 	return (wp);
 }
@@ -906,14 +900,12 @@ window_pane_destroy(struct window_pane *wp)
 		bufferevent_free(wp->event);
 		close(wp->fd);
 	}
-
-	input_free(wp->ictx);
+	if (wp->ictx != NULL)
+		input_free(wp->ictx);
 
 	screen_free(&wp->status_screen);
 
 	screen_free(&wp->base);
-	if (wp->saved_grid != NULL)
-		grid_destroy(wp->saved_grid);
 
 	if (wp->pipe_fd != -1) {
 		bufferevent_free(wp->pipe_event);
@@ -974,6 +966,7 @@ window_pane_set_event(struct window_pane *wp)
 
 	wp->event = bufferevent_new(wp->fd, window_pane_read_callback,
 	    NULL, window_pane_error_callback, wp);
+	wp->ictx = input_init(wp, wp->event);
 
 	bufferevent_setwatermark(wp->event, EV_READ, 0, READ_SIZE);
 	bufferevent_enable(wp->event, EV_READ|EV_WRITE);
@@ -990,7 +983,7 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 	wp->sy = sy;
 
 	log_debug("%s: %%%u resize %ux%u", __func__, wp->id, sx, sy);
-	screen_resize(&wp->base, sx, sy, wp->saved_grid == NULL);
+	screen_resize(&wp->base, sx, sy, wp->base.saved_grid == NULL);
 
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme != NULL && wme->mode->resize != NULL)
@@ -999,90 +992,23 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 	wp->flags |= (PANE_RESIZE|PANE_RESIZED);
 }
 
-/*
- * Enter alternative screen mode. A copy of the visible screen is saved and the
- * history is not updated
- */
 void
 window_pane_alternate_on(struct window_pane *wp, struct grid_cell *gc,
     int cursor)
 {
-	struct screen	*s = &wp->base;
-	u_int		 sx, sy;
-
-	if (wp->saved_grid != NULL)
-		return;
 	if (!options_get_number(wp->options, "alternate-screen"))
 		return;
-	sx = screen_size_x(s);
-	sy = screen_size_y(s);
-
-	wp->saved_grid = grid_create(sx, sy, 0);
-	grid_duplicate_lines(wp->saved_grid, 0, s->grid, screen_hsize(s), sy);
-	if (cursor) {
-		wp->saved_cx = s->cx;
-		wp->saved_cy = s->cy;
-	}
-	memcpy(&wp->saved_cell, gc, sizeof wp->saved_cell);
-
-	grid_view_clear(s->grid, 0, 0, sx, sy, 8);
-
-	wp->base.grid->flags &= ~GRID_HISTORY;
-
+	screen_alternate_on(&wp->base, gc, cursor);
 	wp->flags |= PANE_REDRAW;
 }
 
-/* Exit alternate screen mode and restore the copied grid. */
 void
 window_pane_alternate_off(struct window_pane *wp, struct grid_cell *gc,
     int cursor)
 {
-	struct screen	*s = &wp->base;
-	u_int		 sx, sy;
-
 	if (!options_get_number(wp->options, "alternate-screen"))
 		return;
-
-	/*
-	 * Restore the cursor position and cell. This happens even if not
-	 * currently in the alternate screen.
-	 */
-	if (cursor && wp->saved_cx != UINT_MAX && wp->saved_cy != UINT_MAX) {
-		s->cx = wp->saved_cx;
-		if (s->cx > screen_size_x(s) - 1)
-			s->cx = screen_size_x(s) - 1;
-		s->cy = wp->saved_cy;
-		if (s->cy > screen_size_y(s) - 1)
-			s->cy = screen_size_y(s) - 1;
-		memcpy(gc, &wp->saved_cell, sizeof *gc);
-	}
-
-	if (wp->saved_grid == NULL)
-		return;
-	sx = screen_size_x(s);
-	sy = screen_size_y(s);
-
-	/*
-	 * If the current size is bigger, temporarily resize to the old size
-	 * before copying back.
-	 */
-	if (sy > wp->saved_grid->sy)
-		screen_resize(s, sx, wp->saved_grid->sy, 1);
-
-	/* Restore the saved grid. */
-	grid_duplicate_lines(s->grid, screen_hsize(s), wp->saved_grid, 0, sy);
-
-	/*
-	 * Turn history back on (so resize can use it) and then resize back to
-	 * the current size.
-	 */
-	wp->base.grid->flags |= GRID_HISTORY;
-	if (sy > wp->saved_grid->sy || sx != wp->saved_grid->sx)
-		screen_resize(s, sx, sy, 1);
-
-	grid_destroy(wp->saved_grid);
-	wp->saved_grid = NULL;
-
+	screen_alternate_off(&wp->base, gc, cursor);
 	wp->flags |= PANE_REDRAW;
 }
 
