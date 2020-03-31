@@ -254,6 +254,7 @@ struct window_copy_mode_data {
 	u_int		 lastsx;	/* size of last line w/ content */
 
 	int		 searchtype;
+	int		 searchregex;
 	char		*searchstr;
 	bitstr_t	*searchmark;
 	u_int		 searchcount;
@@ -307,9 +308,11 @@ window_copy_common_init(struct window_mode_entry *wme)
 
 	if (wp->searchstr != NULL) {
 		data->searchtype = WINDOW_COPY_SEARCHUP;
+		data->searchregex = wp->searchregex;
 		data->searchstr = xstrdup(wp->searchstr);
 	} else {
 		data->searchtype = WINDOW_COPY_OFF;
+		data->searchregex = 0;
 		data->searchstr = NULL;
 	}
 	data->searchmark = NULL;
@@ -673,6 +676,35 @@ window_copy_key_table(struct window_mode_entry *wme)
 	if (options_get_number(wp->window->options, "mode-keys") == MODEKEY_VI)
 		return ("copy-mode-vi");
 	return ("copy-mode");
+}
+
+static int
+window_copy_expand_search_string(struct window_copy_cmd_state *cs)
+{
+	struct window_mode_entry	*wme = cs->wme;
+	struct window_copy_mode_data	*data = wme->data;
+	const char			*argument;
+	char				*expanded;
+
+	if (cs->args->argc == 2) {
+		argument = cs->args->argv[1];
+		if (*argument != '\0') {
+			if (args_has(cs->args, 'F')) {
+				expanded = format_single(NULL, argument, NULL,
+				    NULL, NULL, wme->wp);
+				if (*expanded == '\0') {
+					free(expanded);
+					return (0);
+				}
+				free(data->searchstr);
+				data->searchstr = expanded;
+			} else {
+				free(data->searchstr);
+				data->searchstr = xstrdup(argument);
+			}
+		}
+	}
+	return (1);
 }
 
 static enum window_copy_cmd_action
@@ -1496,10 +1528,10 @@ window_copy_cmd_search_again(struct window_copy_cmd_state *cs)
 
 	if (data->searchtype == WINDOW_COPY_SEARCHUP) {
 		for (; np != 0; np--)
-			window_copy_search_up(wme, 1);
+			window_copy_search_up(wme, data->searchregex);
 	} else if (data->searchtype == WINDOW_COPY_SEARCHDOWN) {
 		for (; np != 0; np--)
-			window_copy_search_down(wme, 1);
+			window_copy_search_down(wme, data->searchregex);
 	}
 	return (WINDOW_COPY_CMD_NOTHING);
 }
@@ -1513,10 +1545,10 @@ window_copy_cmd_search_reverse(struct window_copy_cmd_state *cs)
 
 	if (data->searchtype == WINDOW_COPY_SEARCHUP) {
 		for (; np != 0; np--)
-			window_copy_search_down(wme, 1);
+			window_copy_search_down(wme, data->searchregex);
 	} else if (data->searchtype == WINDOW_COPY_SEARCHDOWN) {
 		for (; np != 0; np--)
-			window_copy_search_up(wme, 1);
+			window_copy_search_up(wme, data->searchregex);
 	}
 	return (WINDOW_COPY_CMD_NOTHING);
 }
@@ -1736,31 +1768,34 @@ window_copy_cmd_search_backward(struct window_copy_cmd_state *cs)
 	struct window_mode_entry	*wme = cs->wme;
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 np = wme->prefix;
-	const char			*argument;
-	char				*expanded;
 
-	if (cs->args->argc == 2) {
-		argument = cs->args->argv[1];
-		if (*argument != '\0') {
-			if (args_has(cs->args, 'F')) {
-				expanded = format_single(NULL, argument, NULL,
-				    NULL, NULL, wme->wp);
-				if (*expanded == '\0') {
-					free(expanded);
-					return (WINDOW_COPY_CMD_NOTHING);
-				}
-				free(data->searchstr);
-				data->searchstr = expanded;
-			} else {
-				free(data->searchstr);
-				data->searchstr = xstrdup(argument);
-			}
-		}
-	}
+	if (!window_copy_expand_search_string(cs))
+		return (WINDOW_COPY_CMD_NOTHING);
+
 	if (data->searchstr != NULL) {
 		data->searchtype = WINDOW_COPY_SEARCHUP;
+		data->searchregex = 1;
 		for (; np != 0; np--)
 			window_copy_search_up(wme, 1);
+	}
+	return (WINDOW_COPY_CMD_NOTHING);
+}
+
+static enum window_copy_cmd_action
+window_copy_cmd_search_backward_text(struct window_copy_cmd_state *cs)
+{
+	struct window_mode_entry	*wme = cs->wme;
+	struct window_copy_mode_data	*data = wme->data;
+	u_int				 np = wme->prefix;
+
+	if (!window_copy_expand_search_string(cs))
+		return (WINDOW_COPY_CMD_NOTHING);
+
+	if (data->searchstr != NULL) {
+		data->searchtype = WINDOW_COPY_SEARCHUP;
+		data->searchregex = 0;
+		for (; np != 0; np--)
+			window_copy_search_up(wme, 0);
 	}
 	return (WINDOW_COPY_CMD_NOTHING);
 }
@@ -1771,31 +1806,34 @@ window_copy_cmd_search_forward(struct window_copy_cmd_state *cs)
 	struct window_mode_entry	*wme = cs->wme;
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 np = wme->prefix;
-	const char			*argument;
-	char				*expanded;
 
-	if (cs->args->argc == 2) {
-		argument = cs->args->argv[1];
-		if (*argument != '\0') {
-			if (args_has(cs->args, 'F')) {
-				expanded = format_single(NULL, argument, NULL,
-				    NULL, NULL, wme->wp);
-				if (*expanded == '\0') {
-					free(expanded);
-					return (WINDOW_COPY_CMD_NOTHING);
-				}
-				free(data->searchstr);
-				data->searchstr = expanded;
-			} else {
-				free(data->searchstr);
-				data->searchstr = xstrdup(argument);
-			}
-		}
-	}
+	if (!window_copy_expand_search_string(cs))
+		return (WINDOW_COPY_CMD_NOTHING);
+
 	if (data->searchstr != NULL) {
 		data->searchtype = WINDOW_COPY_SEARCHDOWN;
+		data->searchregex = 1;
 		for (; np != 0; np--)
 			window_copy_search_down(wme, 1);
+	}
+	return (WINDOW_COPY_CMD_NOTHING);
+}
+
+static enum window_copy_cmd_action
+window_copy_cmd_search_forward_text(struct window_copy_cmd_state *cs)
+{
+	struct window_mode_entry	*wme = cs->wme;
+	struct window_copy_mode_data	*data = wme->data;
+	u_int				 np = wme->prefix;
+
+	if (!window_copy_expand_search_string(cs))
+		return (WINDOW_COPY_CMD_NOTHING);
+
+	if (data->searchstr != NULL) {
+		data->searchtype = WINDOW_COPY_SEARCHDOWN;
+		data->searchregex = 0;
+		for (; np != 0; np--)
+			window_copy_search_down(wme, 0);
 	}
 	return (WINDOW_COPY_CMD_NOTHING);
 }
@@ -1829,6 +1867,7 @@ window_copy_cmd_search_backward_incremental(struct window_copy_cmd_state *cs)
 	case '=':
 	case '-':
 		data->searchtype = WINDOW_COPY_SEARCHUP;
+		data->searchregex = 0;
 		free(data->searchstr);
 		data->searchstr = xstrdup(argument);
 		if (!window_copy_search_up(wme, 0)) {
@@ -1838,6 +1877,7 @@ window_copy_cmd_search_backward_incremental(struct window_copy_cmd_state *cs)
 		break;
 	case '+':
 		data->searchtype = WINDOW_COPY_SEARCHDOWN;
+		data->searchregex = 0;
 		free(data->searchstr);
 		data->searchstr = xstrdup(argument);
 		if (!window_copy_search_down(wme, 0)) {
@@ -1878,6 +1918,7 @@ window_copy_cmd_search_forward_incremental(struct window_copy_cmd_state *cs)
 	case '=':
 	case '+':
 		data->searchtype = WINDOW_COPY_SEARCHDOWN;
+		data->searchregex = 0;
 		free(data->searchstr);
 		data->searchstr = xstrdup(argument);
 		if (!window_copy_search_down(wme, 0)) {
@@ -1887,6 +1928,7 @@ window_copy_cmd_search_forward_incremental(struct window_copy_cmd_state *cs)
 		break;
 	case '-':
 		data->searchtype = WINDOW_COPY_SEARCHUP;
+		data->searchregex = 0;
 		free(data->searchstr);
 		data->searchstr = xstrdup(argument);
 		if (!window_copy_search_up(wme, 0)) {
@@ -2012,10 +2054,14 @@ static const struct {
 	  window_copy_cmd_search_again },
 	{ "search-backward", 0, 1, 0,
 	  window_copy_cmd_search_backward },
+	{ "search-backward-text", 0, 1, 0,
+	  window_copy_cmd_search_backward_text },
 	{ "search-backward-incremental", 1, 1, 0,
 	  window_copy_cmd_search_backward_incremental },
 	{ "search-forward", 0, 1, 0,
 	  window_copy_cmd_search_forward },
+	{ "search-forward-text", 0, 1, 0,
+	  window_copy_cmd_search_forward_text },
 	{ "search-forward-incremental", 1, 1, 0,
 	  window_copy_cmd_search_forward_incremental },
 	{ "search-reverse", 0, 0, 0,
@@ -2624,6 +2670,7 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 
 	free(wp->searchstr);
 	wp->searchstr = xstrdup(data->searchstr);
+	wp->searchregex = regex;
 
 	fx = data->cx;
 	fy = screen_hsize(data->backing) - data->oy + data->cy;

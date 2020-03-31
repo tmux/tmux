@@ -1503,9 +1503,11 @@ The following commands are supported in copy mode:
 .It Li "scroll-up" Ta "C-y" Ta "C-Up"
 .It Li "search-again" Ta "n" Ta "n"
 .It Li "search-backward <for>" Ta "?" Ta ""
-.It Li "search-forward <for>" Ta "/" Ta ""
 .It Li "search-backward-incremental <for>" Ta "" Ta "C-r"
+.It Li "search-backward-text <for>" Ta "" Ta ""
+.It Li "search-forward <for>" Ta "/" Ta ""
 .It Li "search-forward-incremental <for>" Ta "" Ta "C-s"
+.It Li "search-forward-text <for>" Ta "" Ta ""
 .It Li "search-reverse" Ta "N" Ta "N"
 .It Li "select-line" Ta "V" Ta ""
 .It Li "select-word" Ta "" Ta ""
@@ -1513,6 +1515,26 @@ The following commands are supported in copy mode:
 .It Li "stop-selection" Ta "" Ta ""
 .It Li "top-line" Ta "H" Ta "M-R"
 .El
+.Pp
+The search commands come in several varieties:
+.Ql search-forward
+and
+.Ql search-backward
+search for a regular expression;
+the
+.Ql -text
+variants search for a plain text string rather than a regular expression;
+.Ql -incremental
+perform an incremental search and expect to be used with the
+.Fl i
+flag to the
+.Ic command-prompt
+command.
+.Ql search-again
+repeats the last search and
+.Ql search-reverse
+does the same but reverses the direction (forward becomes backward and backward
+becomes forward).
 .Pp
 Copy commands may take an optional buffer prefix argument which is used
 to generate the buffer name (the default is
