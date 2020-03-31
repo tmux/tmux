@@ -301,7 +301,7 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	child = environ_for_session(s, 0);
 	if (sc->environ != NULL)
 		environ_copy(sc->environ, child);
-	environ_set(child, "TMUX_PANE", "%%%u", new_wp->id);
+	environ_set(child, "TMUX_PANE", 0, "%%%u", new_wp->id);
 
 	/*
 	 * Then the PATH environment variable. The session one is replaced from
@@ -311,10 +311,10 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	if (c != NULL && c->session == NULL) { /* only unattached clients */
 		ee = environ_find(c->environ, "PATH");
 		if (ee != NULL)
-			environ_set(child, "PATH", "%s", ee->value);
+			environ_set(child, "PATH", 0, "%s", ee->value);
 	}
 	if (environ_find(child, "PATH") == NULL)
-		environ_set(child, "%s", _PATH_DEFPATH);
+		environ_set(child, "PATH", 0, "%s", _PATH_DEFPATH);
 
 	/* Then the shell. If respawning, use the old one. */
 	if (~sc->flags & SPAWN_RESPAWN) {
@@ -324,7 +324,7 @@ spawn_pane(struct spawn_context *sc, char **cause)
 		free(new_wp->shell);
 		new_wp->shell = xstrdup(tmp);
 	}
-	environ_set(child, "SHELL", "%s", new_wp->shell);
+	environ_set(child, "SHELL", 0, "%s", new_wp->shell);
 
 	/* Log the arguments we are going to use. */
 	log_debug("%s: shell=%s", __func__, new_wp->shell);
