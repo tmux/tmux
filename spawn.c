@@ -256,7 +256,7 @@ spawn_pane(struct spawn_context *sc, char **cause)
 		window_pane_reset_mode_all(sc->wp0);
 		screen_reinit(&sc->wp0->base);
 		input_free(sc->wp0->ictx);
-		sc->wp0->ictx = input_init(sc->wp0);
+		sc->wp0->ictx = NULL;
 		new_wp = sc->wp0;
 		new_wp->flags &= ~(PANE_STATUSREADY|PANE_STATUSDRAWN);
 	} else if (sc->lc == NULL) {
