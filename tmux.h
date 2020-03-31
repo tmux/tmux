@@ -1048,9 +1048,6 @@ struct environ_entry {
 	char		*name;
 	char		*value;
 
-	int		 flags;
-#define ENVIRON_HIDDEN 0x1
-
 	RB_ENTRY(environ_entry) entry;
 };
 
@@ -1960,10 +1957,10 @@ struct environ_entry *environ_first(struct environ *);
 struct environ_entry *environ_next(struct environ_entry *);
 void	environ_copy(struct environ *, struct environ *);
 struct environ_entry *environ_find(struct environ *, const char *);
-void printflike(4, 5) environ_set(struct environ *, const char *, int,
-	    const char *, ...);
+void printflike(3, 4) environ_set(struct environ *, const char *, const char *,
+	    ...);
 void	environ_clear(struct environ *, const char *);
-void	environ_put(struct environ *, const char *, int);
+void	environ_put(struct environ *, const char *);
 void	environ_unset(struct environ *, const char *);
 void	environ_update(struct options *, struct environ *, struct environ *);
 void	environ_push(struct environ *);

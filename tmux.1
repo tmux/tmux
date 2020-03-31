@@ -565,18 +565,6 @@ Environment variables may be set by using the syntax
 for example
 .Ql HOME=/home/user .
 Variables set during parsing are added to the global environment.
-A hidden variable may be set with
-.Ql %hidden ,
-for example:
-.Bd -literal -offset indent
-%hidden MYVAR=42
-.Ed
-.Pp
-Hidden variables are not passed to the environment of processes created
-by tmux.
-See the
-.Sx GLOBAL AND SESSION ENVIRONMENT
-section.
 .Pp
 Commands may be parsed conditionally by surrounding them with
 .Ql %if ,
@@ -2273,7 +2261,7 @@ Rename the current window, or the window at
 if specified, to
 .Ar new-name .
 .It Xo Ic resize-pane
-.Op Fl DLMRTUZ
+.Op Fl DLMRUZ
 .Op Fl t Ar target-pane
 .Op Fl x Ar width
 .Op Fl y Ar height
@@ -2312,9 +2300,6 @@ and unzoomed (its normal position in the layout).
 .Fl M
 begins mouse resizing (only valid if bound to a mouse key binding, see
 .Sx MOUSE SUPPORT ) .
-.Pp T
-trims all lines below the current cursor position and moves lines out of the
-history to replace them.
 .It Xo Ic resize-window
 .Op Fl aADLRU
 .Op Fl t Ar target-window
@@ -4723,16 +4708,10 @@ from inside, and the
 variable with the correct terminal setting of
 .Ql screen .
 .Pp
-Variables in both session and global environments may be marked as hidden.
-Hidden variables are not passed into the environment of new processes and
-instead can only be used by tmux itself (for example in formats, see the
-.Sx FORMATS
-section).
-.Pp
 Commands to alter and view the environment are:
 .Bl -tag -width Ds
 .It Xo Ic set-environment
-.Op Fl hgru
+.Op Fl gru
 .Op Fl t Ar target-session
 .Ar name Op Ar value
 .Xc
@@ -4749,10 +4728,8 @@ flag unsets a variable.
 .Fl r
 indicates the variable is to be removed from the environment before starting a
 new process.
-.Fl h
-marks the variable as hidden.
 .It Xo Ic show-environment
-.Op Fl hgs
+.Op Fl gs
 .Op Fl t Ar target-session
 .Op Ar variable
 .Xc
@@ -4769,8 +4746,6 @@ Variables removed from the environment are prefixed with
 If
 .Fl s
 is used, the output is formatted as a set of Bourne shell commands.
-.Fl h
-shows hidden variables (omitted by default).
 .El
 .Sh STATUS LINE
 .Nm
