@@ -36,8 +36,8 @@ const struct cmd_entry cmd_resize_pane_entry = {
 	.name = "resize-pane",
 	.alias = "resizep",
 
-	.args = { "DLMRt:Ux:y:Z", 0, 1 },
-	.usage = "[-DLMRUZ] [-x width] [-y height] " CMD_TARGET_PANE_USAGE " "
+	.args = { "DLMRTt:Ux:y:Z", 0, 1 },
+	.usage = "[-DLMRTUZ] [-x width] [-y height] " CMD_TARGET_PANE_USAGE " "
 		 "[adjustment]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -60,6 +60,19 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 	char			*cause;
 	u_int			 adjust;
 	int			 x, y;
+	struct grid		*gd = wp->base.grid;
+
+	if (args_has(args, 'T')) {
+		if (!TAILQ_EMPTY(&wp->modes))
+			return (CMD_RETURN_NORMAL);
+		adjust = screen_size_y(&wp->base) - 1 - wp->base.cy;
+		if (adjust > gd->hsize)
+			adjust = gd->hsize;
+		grid_remove_history(gd, adjust);
+		wp->base.cy += adjust;
+		wp->flags |= PANE_REDRAW;
+		return (CMD_RETURN_NORMAL);
+	}
 
 	if (args_has(args, 'M')) {
 		if (cmd_mouse_window(&shared->mouse, &s) == NULL)

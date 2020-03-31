@@ -351,6 +351,19 @@ grid_collect_history(struct grid *gd)
 		gd->hscrolled = gd->hsize;
 }
 
+/* Remove lines from the bottom of the history. */
+void
+grid_remove_history(struct grid *gd, u_int ny)
+{
+	u_int	yy;
+
+	if (ny > gd->hsize)
+		return;
+	for (yy = 0; yy < ny; yy++)
+		grid_free_line(gd, gd->hsize + gd->sy - 1 - yy);
+	gd->hsize -= ny;
+}
+
 /*
  * Scroll the entire visible screen, moving one line into the history. Just
  * allocate a new line at the bottom and move the history size indicator.
