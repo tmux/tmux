@@ -2261,7 +2261,7 @@ Rename the current window, or the window at
 if specified, to
 .Ar new-name .
 .It Xo Ic resize-pane
-.Op Fl DLMRUZ
+.Op Fl DLMRTUZ
 .Op Fl t Ar target-pane
 .Op Fl x Ar width
 .Op Fl y Ar height
@@ -2300,6 +2300,9 @@ and unzoomed (its normal position in the layout).
 .Fl M
 begins mouse resizing (only valid if bound to a mouse key binding, see
 .Sx MOUSE SUPPORT ) .
+.Pp T
+trims all lines below the current cursor position and moves lines out of the
+history to replace them.
 .It Xo Ic resize-window
 .Op Fl aADLRU
 .Op Fl t Ar target-window
