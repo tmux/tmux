@@ -2492,6 +2492,7 @@ format_defaults_session(struct format_tree *ft, struct session *s)
 	ft->s = s;
 
 	format_add(ft, "session_name", "%s", s->name);
+	format_add(ft, "session_path", "%s", s->cwd);
 	format_add(ft, "session_windows", "%u", winlink_count(&s->windows));
 	format_add(ft, "session_id", "$%u", s->id);
 

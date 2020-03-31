@@ -3982,9 +3982,18 @@ The following mouse events are available:
 .It Li "MouseDown1" Ta "MouseUp1" Ta "MouseDrag1" Ta "MouseDragEnd1"
 .It Li "MouseDown2" Ta "MouseUp2" Ta "MouseDrag2" Ta "MouseDragEnd2"
 .It Li "MouseDown3" Ta "MouseUp3" Ta "MouseDrag3" Ta "MouseDragEnd3"
+.It Li "SecondClick1" Ta "SecondClick2" Ta "SecondClick3"
 .It Li "DoubleClick1" Ta "DoubleClick2" Ta "DoubleClick3"
 .It Li "TripleClick1" Ta "TripleClick2" Ta "TripleClick3"
 .El
+.Pp
+The
+.Ql SecondClick
+events are fired for the second click of a double click, even if there may be a
+third click which will fire
+.Ql TripleClick
+instead of
+.Ql DoubleClick .
 .Pp
 Each should be suffixed with a location, for example
 .Ql MouseDown1Status .
@@ -4414,6 +4423,7 @@ The following variables are available, where appropriate:
 .It Li "session_last_attached" Ta "" Ta "Time session last attached"
 .It Li "session_many_attached" Ta "" Ta "1 if multiple clients attached"
 .It Li "session_name" Ta "#S" Ta "Name of session"
+.It Li "session_path" Ta "" Ta "Working directory of session"
 .It Li "session_stack" Ta "" Ta "Window indexes in most recent order"
 .It Li "session_windows" Ta "" Ta "Number of windows in session"
 .It Li "socket_path" Ta "" Ta "Server socket path"
