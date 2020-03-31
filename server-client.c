@@ -520,6 +520,7 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 			memcpy(&c->click_event, m, sizeof c->click_event);
 			c->click_button = m->b;
 
+			log_debug("click timer started");
 			tv.tv_sec = KEYC_CLICK_TIMEOUT / 1000;
 			tv.tv_usec = (KEYC_CLICK_TIMEOUT % 1000) * 1000L;
 			evtimer_del(&c->click_timer);
@@ -2020,7 +2021,7 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 		if (datalen == 0 || data[datalen - 1] != '\0')
 			fatalx("bad MSG_IDENTIFY_ENVIRON string");
 		if (strchr(data, '=') != NULL)
-			environ_put(c->environ, data);
+			environ_put(c->environ, data, 0);
 		log_debug("client %p IDENTIFY_ENVIRON %s", c, data);
 		break;
 	case MSG_IDENTIFY_CLIENTPID:

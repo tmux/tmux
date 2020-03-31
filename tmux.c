@@ -332,9 +332,9 @@ main(int argc, char **argv)
 
 	global_environ = environ_create();
 	for (var = environ; *var != NULL; var++)
-		environ_put(global_environ, *var);
+		environ_put(global_environ, *var, 0);
 	if ((cwd = find_cwd()) != NULL)
-		environ_set(global_environ, "PWD", "%s", cwd);
+		environ_set(global_environ, "PWD", 0, "%s", cwd);
 
 	global_options = options_create(NULL);
 	global_s_options = options_create(NULL);
