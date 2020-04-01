@@ -1,5 +1,16 @@
 CHANGES FROM 3.1 TO 3.2
 
+* Make the mouse_word and mouse_line formats work in copy mode and enable the
+  default pane menu in copy mode.
+
+* Add a -T flag to resize-pane to trim lines below the cursor, moving lines out
+  of the history.
+
+* Add a way to mark environment variables as "hidden" so they can be used by
+  tmux (for example in formats) but are not set in the environment for new
+  panes. set-environment and show-environment have a new -h flag and there is a
+  new %hidden statement for the configuration file.
+
 * Change default position for display-menu -x and -y to centre rather than top
   left.
 
@@ -29,6 +40,10 @@ CHANGES FROM 3.1 TO 3.2
 * Add number operators for formats (+, -, *, / and m),
 
 CHANGES FROM 3.0a TO 3.1
+
+* Search using regular expressions in copy mode. search-forward and
+  search-backward use regular expressions by default; the incremental versions
+  do not.
 
 * Add selection_active format for when the selection is present but not moving
   with the cursor.
