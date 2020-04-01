@@ -259,6 +259,9 @@ struct window_copy_mode_data {
 	int		 searchy;
 	int		 searcho;
 
+	int		 timeout;	/* search has timed out */
+#define WINDOW_COPY_SEARCH_TIMEOUT 10
+
 	int		 jumptype;
 	char		 jumpchar;
 
@@ -313,6 +316,7 @@ window_copy_common_init(struct window_mode_entry *wme)
 	}
 	data->searchmark = NULL;
 	data->searchx = data->searchy = data->searcho = -1;
+	data->timeout = 0;
 
 	data->jumptype = WINDOW_COPY_OFF;
 	data->jumpchar = '\0';
@@ -655,8 +659,8 @@ window_copy_resize(struct window_mode_entry *wme, u_int sx, u_int sy)
 	window_copy_write_lines(wme, &ctx, 0, screen_size_y(s) - 1);
 	screen_write_stop(&ctx);
 
-	if (search)
-		window_copy_search_marks(wme, NULL, 1);
+	if (search && !data->timeout)
+		window_copy_search_marks(wme, NULL, data->searchregex);
 	data->searchx = data->cx;
 	data->searchy = data->cy;
 	data->searcho = data->oy;
@@ -1771,6 +1775,7 @@ window_copy_cmd_search_backward(struct window_copy_cmd_state *cs)
 	if (data->searchstr != NULL) {
 		data->searchtype = WINDOW_COPY_SEARCHUP;
 		data->searchregex = 1;
+		data->timeout = 0;
 		for (; np != 0; np--)
 			window_copy_search_up(wme, 1);
 	}
@@ -1790,6 +1795,7 @@ window_copy_cmd_search_backward_text(struct window_copy_cmd_state *cs)
 	if (data->searchstr != NULL) {
 		data->searchtype = WINDOW_COPY_SEARCHUP;
 		data->searchregex = 0;
+		data->timeout = 0;
 		for (; np != 0; np--)
 			window_copy_search_up(wme, 0);
 	}
@@ -1809,6 +1815,7 @@ window_copy_cmd_search_forward(struct window_copy_cmd_state *cs)
 	if (data->searchstr != NULL) {
 		data->searchtype = WINDOW_COPY_SEARCHDOWN;
 		data->searchregex = 1;
+		data->timeout = 0;
 		for (; np != 0; np--)
 			window_copy_search_down(wme, 1);
 	}
@@ -1828,6 +1835,7 @@ window_copy_cmd_search_forward_text(struct window_copy_cmd_state *cs)
 	if (data->searchstr != NULL) {
 		data->searchtype = WINDOW_COPY_SEARCHDOWN;
 		data->searchregex = 0;
+		data->timeout = 0;
 		for (; np != 0; np--)
 			window_copy_search_down(wme, 0);
 	}
@@ -1843,6 +1851,8 @@ window_copy_cmd_search_backward_incremental(struct window_copy_cmd_state *cs)
 	const char			*ss = data->searchstr;
 	char				 prefix;
 	enum window_copy_cmd_action	 action = WINDOW_COPY_CMD_NOTHING;
+
+	data->timeout = 0;
 
 	prefix = *argument++;
 	if (data->searchx == -1 || data->searchy == -1) {
@@ -1894,6 +1904,8 @@ window_copy_cmd_search_forward_incremental(struct window_copy_cmd_state *cs)
 	const char			*ss = data->searchstr;
 	char				 prefix;
 	enum window_copy_cmd_action	 action = WINDOW_COPY_CMD_NOTHING;
+
+	data->timeout = 0;
 
 	prefix = *argument++;
 	if (data->searchx == -1 || data->searchy == -1) {
@@ -2692,6 +2704,9 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 	if (regex && str[strcspn(str, "^$*+()?[].\\")] == '\0')
 		regex = 0;
 
+	if (data->timeout)
+		return (0);
+
 	free(wp->searchstr);
 	wp->searchstr = xstrdup(str);
 	wp->searchregex = regex;
@@ -2739,6 +2754,7 @@ window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
 	u_int				 ssize = 1;
 	char				*sbuf;
 	regex_t				 reg;
+	time_t				 tstart, t;
 
 	if (ssp == NULL) {
 		width = screen_write_strlen("%s", data->searchstr);
@@ -2768,6 +2784,7 @@ window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
 			return (0);
 		}
 	}
+	time(&tstart);
 	for (py = 0; py < gd->hsize + gd->sy; py++) {
 		px = 0;
 		for (;;) {
@@ -2793,10 +2810,20 @@ window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
 
 			px++;
 		}
+
+		time(&t);
+		if (t - tstart > WINDOW_COPY_SEARCH_TIMEOUT) {
+			data->timeout = 1;
+			break;
+		}
 	}
 	if (regex) {
 		free(sbuf);
 		regfree(&reg);
+	}
+	if (data->timeout) {
+		window_copy_clear_marks(wme);
+		return (1);
 	}
 
 	if (which != -1)
@@ -2807,7 +2834,7 @@ window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
 
 	if (ssp == &ss)
 		screen_free(&ss);
-	return (nfound);
+	return (1);
 }
 
 static void
@@ -2866,8 +2893,15 @@ window_copy_write_line(struct window_mode_entry *wme,
 
 	if (py == 0 && s->rupper < s->rlower) {
 		if (data->searchmark == NULL) {
-			size = xsnprintf(hdr, sizeof hdr,
-			    "[%u/%u]", data->oy, screen_hsize(data->backing));
+			if (data->timeout) {
+				size = xsnprintf(hdr, sizeof hdr,
+			    		"(timed out) [%u/%u]", data->oy,
+					screen_hsize(data->backing));
+			} else {
+				size = xsnprintf(hdr, sizeof hdr,
+					"[%u/%u]", data->oy,
+					screen_hsize(data->backing));
+			}
 		} else {
 			if (data->searchthis == -1) {
 				size = xsnprintf(hdr, sizeof hdr,
