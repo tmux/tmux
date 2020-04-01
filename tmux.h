@@ -2317,6 +2317,8 @@ void	 input_parse_screen(struct input_ctx *, struct screen *, u_char *,
 int	 input_key_pane(struct window_pane *, key_code, struct mouse_event *);
 int	 input_key(struct window_pane *, struct screen *, struct bufferevent *,
 	     key_code);
+int	 input_key_get_mouse(struct screen *, struct mouse_event *, u_int,
+	     u_int, const char **, size_t *);
 
 /* xterm-keys.c */
 char	*xterm_keys_lookup(key_code);

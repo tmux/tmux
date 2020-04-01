@@ -256,26 +256,20 @@ input_key(struct window_pane *wp, struct screen *s, struct bufferevent *bev,
 	return (0);
 }
 
-/* Translate mouse and output. */
-static void
-input_key_mouse(struct window_pane *wp, struct mouse_event *m)
+/* Get mouse event string. */
+int
+input_key_get_mouse(struct screen *s, struct mouse_event *m, u_int x, u_int y,
+    const char **rbuf, size_t *rlen)
 {
-	struct screen	*s = wp->screen;
-	char		 buf[40];
+	static char	 buf[40];
 	size_t		 len;
-	u_int		 x, y;
 
-	/* Ignore events if no mouse mode or the pane is not visible. */
-	if (m->ignore || (s->mode & ALL_MOUSE_MODES) == 0)
-		return;
-	if (cmd_mouse_at(wp, m, &x, &y, 0) != 0)
-		return;
-	if (!window_pane_visible(wp))
-		return;
+	*rbuf = NULL;
+	*rlen = 0;
 
 	/* If this pane is not in button or all mode, discard motion events. */
 	if (MOUSE_DRAG(m->b) && (s->mode & MOTION_MOUSE_MODES) == 0)
-	    return;
+		return (0);
 
 	/*
 	 * If this event is a release event and not in all mode, discard it.
@@ -287,13 +281,13 @@ input_key_mouse(struct window_pane *wp, struct mouse_event *m)
 		if (MOUSE_DRAG(m->sgr_b) &&
 		    MOUSE_BUTTONS(m->sgr_b) == 3 &&
 		    (~s->mode & MODE_MOUSE_ALL))
-			return;
+			return (0);
 	} else {
 		if (MOUSE_DRAG(m->b) &&
 		    MOUSE_BUTTONS(m->b) == 3 &&
 		    MOUSE_BUTTONS(m->lb) == 3 &&
 		    (~s->mode & MODE_MOUSE_ALL))
-			return;
+			return (0);
 	}
 
 	/*
@@ -310,19 +304,43 @@ input_key_mouse(struct window_pane *wp, struct mouse_event *m)
 		    m->sgr_b, x + 1, y + 1, m->sgr_type);
 	} else if (s->mode & MODE_MOUSE_UTF8) {
 		if (m->b > 0x7ff - 32 || x > 0x7ff - 33 || y > 0x7ff - 33)
-			return;
+			return (0);
 		len = xsnprintf(buf, sizeof buf, "\033[M");
 		len += input_split2(m->b + 32, &buf[len]);
 		len += input_split2(x + 33, &buf[len]);
 		len += input_split2(y + 33, &buf[len]);
 	} else {
 		if (m->b > 223)
-			return;
+			return (0);
 		len = xsnprintf(buf, sizeof buf, "\033[M");
 		buf[len++] = m->b + 32;
 		buf[len++] = x + 33;
 		buf[len++] = y + 33;
 	}
+
+	*rbuf = buf;
+	*rlen = len;
+	return (1);
+}
+
+/* Translate mouse and output. */
+static void
+input_key_mouse(struct window_pane *wp, struct mouse_event *m)
+{
+	struct screen	*s = wp->screen;
+	u_int		 x, y;
+	const char	*buf;
+	size_t		 len;
+
+	/* Ignore events if no mouse mode or the pane is not visible. */
+	if (m->ignore || (s->mode & ALL_MOUSE_MODES) == 0)
+		return;
+	if (cmd_mouse_at(wp, m, &x, &y, 0) != 0)
+		return;
+	if (!window_pane_visible(wp))
+		return;
+	if (!input_key_get_mouse(s, m, x, y, &buf, &len))
+		return;
 	log_debug("writing mouse %.*s to %%%u", (int)len, buf, wp->id);
 	bufferevent_write(wp->event, buf, len);
 }
