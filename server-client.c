@@ -506,7 +506,6 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 				type = TRIPLE;
 				x = m->x, y = m->y, b = m->b;
 				log_debug("triple-click at %u,%u", x, y);
-				ignore = 1;
 				goto have_event;
 			}
 		} else {
