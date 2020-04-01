@@ -225,7 +225,8 @@ popup_key_cb(struct client *c, struct key_event *event)
 	struct cmdq_item	*new_item;
 	struct cmd_parse_result	*pr;
 	struct format_tree	*ft;
-	const char		*cmd;
+	const char		*cmd, *buf;
+	size_t			 len;
 
 	if (KEYC_IS_MOUSE(event->key)) {
 		if (pd->dragging != OFF) {
@@ -258,14 +259,20 @@ popup_key_cb(struct client *c, struct key_event *event)
 	}
 
 	if (pd->ictx != NULL && (pd->flags & POPUP_WRITEKEYS)) {
-		if (KEYC_IS_MOUSE(event->key))
-			return (0);
 		if (((pd->flags & (POPUP_CLOSEEXIT|POPUP_CLOSEEXITZERO)) == 0 ||
 		    pd->job == NULL) &&
 		    (event->key == '\033' || event->key == '\003'))
 			return (1);
 		if (pd->job == NULL)
 			return (0);
+		if (KEYC_IS_MOUSE(event->key)) {
+			/* Must be inside, checked already. */
+			if (!input_key_get_mouse(&pd->s, m, m->x - pd->px,
+			    m->y - pd->py, &buf, &len))
+				return (0);
+			bufferevent_write(job_get_event(pd->job), buf, len);
+			return (0);
+		}
 		input_key(NULL, &pd->s, job_get_event(pd->job), event->key);
 		return (0);
 	}
