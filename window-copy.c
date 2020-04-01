@@ -2523,8 +2523,9 @@ window_copy_cstrtocellpos(struct grid *gd, u_int ncells, u_int *ppx, u_int *ppy,
 		cells[cell].d = window_copy_cellstring(gl, px,
 		    &cells[cell].dlen);
 		cell++;
-		px = (px + 1) % gd->sx;
-		if (px == 0) {
+		px++;
+		if (px == gd->sx) {
+			px = 0;
 			pywrap++;
 			gl = grid_peek_line(gd, pywrap);
 		}
