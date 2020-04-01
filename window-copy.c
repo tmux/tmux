@@ -2714,23 +2714,27 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 	struct screen			*s = data->backing, ss;
 	struct screen_write_ctx		 ctx;
 	struct grid			*gd = s->grid;
+	const char			*str = data->searchstr;
 	u_int				 fx, fy, endline;
 	int				 wrapflag, cis, found;
 
+	if (regex && str[strcspn(str, "^$*+()?[].\\")] == '\0')
+		regex = 0;
+
 	free(wp->searchstr);
-	wp->searchstr = xstrdup(data->searchstr);
+	wp->searchstr = xstrdup(str);
 	wp->searchregex = regex;
 
 	fx = data->cx;
 	fy = screen_hsize(data->backing) - data->oy + data->cy;
 
-	screen_init(&ss, screen_write_strlen("%s", data->searchstr), 1, 0);
+	screen_init(&ss, screen_write_strlen("%s", str), 1, 0);
 	screen_write_start(&ctx, NULL, &ss);
-	screen_write_nputs(&ctx, -1, &grid_default_cell, "%s", data->searchstr);
+	screen_write_nputs(&ctx, -1, &grid_default_cell, "%s", str);
 	screen_write_stop(&ctx);
 
 	wrapflag = options_get_number(wp->window->options, "wrap-search");
-	cis = window_copy_is_lowercase(data->searchstr);
+	cis = window_copy_is_lowercase(str);
 
 	if (direction) {
 		window_copy_move_right(s, &fx, &fy, wrapflag);
