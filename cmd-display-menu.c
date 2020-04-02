@@ -65,12 +65,26 @@ static void
 cmd_display_menu_get_position(struct client *c, struct cmdq_item *item,
     struct args *args, u_int *px, u_int *py, u_int w, u_int h)
 {
+	struct session		*s = c->session;
 	struct winlink		*wl = item->target.wl;
 	struct window_pane	*wp = item->target.wp;
+	struct style_ranges	*ranges;
 	struct style_range	*sr;
 	const char		*xp, *yp;
-	int			 at = status_at_line(c);
-	u_int			 ox, oy, sx, sy;
+	u_int			 line, ox, oy, sx, sy, lines;
+
+	lines = status_line_size(c);
+	for (line = 0; line < lines; line++) {
+		ranges = &c->status.entries[line].ranges;
+		TAILQ_FOREACH(sr, ranges, entry) {
+			if (sr->type == STYLE_RANGE_WINDOW)
+				break;
+		}
+		if (sr != NULL)
+			break;
+	}
+	if (line == lines)
+		ranges = &c->status.entries[0].ranges;
 
 	xp = args_get(args, 'x');
 	if (xp == NULL || strcmp(xp, "C") == 0)
@@ -89,10 +103,10 @@ cmd_display_menu_get_position(struct client *c, struct cmdq_item *item,
 		else
 			*px = 0;
 	} else if (strcmp(xp, "W") == 0) {
-		if (at == -1)
+		if (status_at_line(c) == -1)
 			*px = 0;
 		else {
-			TAILQ_FOREACH(sr, &c->status.entries[0].ranges, entry) {
+			TAILQ_FOREACH(sr, ranges, entry) {
 				if (sr->type != STYLE_RANGE_WINDOW)
 					continue;
 				if (sr->argument == (u_int)wl->idx)
@@ -120,12 +134,30 @@ cmd_display_menu_get_position(struct client *c, struct cmdq_item *item,
 	} else if (strcmp(yp, "M") == 0 && item->shared->mouse.valid)
 		*py = item->shared->mouse.y + h;
 	else if (strcmp(yp, "S") == 0) {
-		if (at == -1)
-			*py = c->tty.sy;
-		else if (at == 0)
-			*py = status_line_size(c) + h;
-		else
-			*py = at;
+		if (options_get_number(s->options, "status-position") == 0) {
+			if (lines != 0)
+				*py = lines + h;
+			else
+				*py = 0;
+		} else {
+			if (lines != 0)
+				*py = c->tty.sy - lines;
+			else
+				*py = c->tty.sy;
+		}
+	}
+	else if (strcmp(yp, "W") == 0) {
+		if (options_get_number(s->options, "status-position") == 0) {
+			if (lines != 0)
+				*py = line + 1 + h;
+			else
+				*py = 0;
+		} else {
+			if (lines != 0)
+				*py = c->tty.sy - lines + line;
+			else
+				*py = c->tty.sy;
+		}
 	} else
 		*py = strtoul(yp, NULL, 10);
 	if (*py < h)

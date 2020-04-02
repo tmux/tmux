@@ -317,7 +317,7 @@ key_bindings_init(void)
 		"bind -N 'Resize the pane right' -r C-Right resize-pane -R",
 
 		/* Menu keys */
-		"bind < display-menu -xW -yS -T '#[align=centre]#{window_index}:#{window_name}' " DEFAULT_WINDOW_MENU,
+		"bind < display-menu -xW -yW -T '#[align=centre]#{window_index}:#{window_name}' " DEFAULT_WINDOW_MENU,
 		"bind > display-menu -xP -yP -T '#[align=centre]#{pane_index} (#{pane_id})' " DEFAULT_PANE_MENU,
 
 		/* Mouse button 1 down on pane. */
@@ -351,10 +351,10 @@ key_bindings_init(void)
 		"bind -n WheelUpStatus previous-window",
 
 		/* Mouse button 3 down on status left. */
-		"bind -n MouseDown3StatusLeft display-menu -t= -xM -yS -T '#[align=centre]#{session_name}' " DEFAULT_SESSION_MENU,
+		"bind -n MouseDown3StatusLeft display-menu -t= -xM -yW -T '#[align=centre]#{session_name}' " DEFAULT_SESSION_MENU,
 
 		/* Mouse button 3 down on status line. */
-		"bind -n MouseDown3Status display-menu -t= -xW -yS -T '#[align=centre]#{window_index}:#{window_name}' " DEFAULT_WINDOW_MENU,
+		"bind -n MouseDown3Status display-menu -t= -xW -yW -T '#[align=centre]#{window_index}:#{window_name}' " DEFAULT_WINDOW_MENU,
 
 		/* Mouse button 3 down on pane. */
 		"bind -n MouseDown3Pane if -Ft= '#{||:#{mouse_any_flag},#{&&:#{pane_in_mode},#{?#{m/r:(copy|view)-mode,#{pane_mode}},0,1}}}' { select-pane -t=; send -M } { display-menu -t= -xM -yM -T '#[align=centre]#{pane_index} (#{pane_id})' " DEFAULT_PANE_MENU " }",
