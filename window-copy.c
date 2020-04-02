@@ -505,7 +505,9 @@ window_copy_pageup1(struct window_mode_entry *wme, int half_page)
 			window_copy_cursor_end_of_line(wme);
 	}
 
-	window_copy_update_selection(wme, 1);
+	if (data->searchmark != NULL && !data->timeout)
+		window_copy_search_marks(wme, NULL, data->searchregex);
+	window_copy_update_selection(wme, 1, 0);
 	window_copy_redraw_screen(wme);
 }
 
@@ -553,7 +555,9 @@ window_copy_pagedown(struct window_mode_entry *wme, int half_page,
 
 	if (scroll_exit && data->oy == 0)
 		return (1);
-	window_copy_update_selection(wme, 1);
+	if (data->searchmark != NULL && !data->timeout)
+		window_copy_search_marks(wme, NULL, data->searchregex);
+	window_copy_update_selection(wme, 1, 0);
 	window_copy_redraw_screen(wme);
 	return (0);
 }
@@ -1023,7 +1027,9 @@ window_copy_cmd_history_bottom(struct window_copy_cmd_state *cs)
 	data->cx = window_copy_find_length(wme, data->cy);
 	data->oy = 0;
 
-	window_copy_update_selection(wme, 1);
+	if (data->searchmark != NULL && !data->timeout)
+		window_copy_search_marks(wme, NULL, data->searchregex);
+	window_copy_update_selection(wme, 1, 0);
 	return (WINDOW_COPY_CMD_REDRAW);
 }
 
@@ -1042,7 +1048,9 @@ window_copy_cmd_history_top(struct window_copy_cmd_state *cs)
 	data->cx = 0;
 	data->oy = screen_hsize(data->backing);
 
-	window_copy_update_selection(wme, 1);
+	if (data->searchmark != NULL && !data->timeout)
+		window_copy_search_marks(wme, NULL, data->searchregex);
+	window_copy_update_selection(wme, 1, 0);
 	return (WINDOW_COPY_CMD_REDRAW);
 }
 
@@ -2171,7 +2179,9 @@ window_copy_scroll_to(struct window_mode_entry *wme, u_int px, u_int py)
 		data->oy = gd->hsize - offset;
 	}
 
-	window_copy_update_selection(wme, 1);
+	if (data->searchmark != NULL && !data->timeout)
+		window_copy_search_marks(wme, NULL, data->searchregex);
+	window_copy_update_selection(wme, 1, 0);
 	window_copy_redraw_screen(wme);
 }
 
@@ -2748,6 +2758,7 @@ window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
 	struct screen			*s = data->backing, ss;
 	struct screen_write_ctx		 ctx;
 	struct grid			*gd = s->grid;
+	const struct grid_line		*gl;
 	int				 found, cis, which = -1;
 	int				 cflags = REG_EXTENDED;
 	u_int				 px, py, b, nfound = 0, width;
@@ -2785,7 +2796,15 @@ window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
 		}
 	}
 	time(&tstart);
-	for (py = 0; py < gd->hsize + gd->sy; py++) {
+	py = gd->hsize - data->oy;
+	if (py > 0)
+		py--;
+	for (; py > 0; py--) {
+		gl = grid_peek_line(gd, py);
+		if (~gl->flags & GRID_LINE_WRAPPED)
+			break;
+	}
+	for (; py < gd->hsize - data->oy + gd->sy; py++) {
 		px = 0;
 		for (;;) {
 			if (regex) {
@@ -4153,7 +4172,9 @@ window_copy_scroll_up(struct window_mode_entry *wme, u_int ny)
 		return;
 	data->oy -= ny;
 
-	window_copy_update_selection(wme, 0);
+	if (data->searchmark != NULL && !data->timeout)
+		window_copy_search_marks(wme, NULL, data->searchregex);
+	window_copy_update_selection(wme, 0, 0);
 
 	screen_write_start(&ctx, wp, NULL);
 	screen_write_cursormove(&ctx, 0, 0, 0);
@@ -4187,7 +4208,9 @@ window_copy_scroll_down(struct window_mode_entry *wme, u_int ny)
 		return;
 	data->oy += ny;
 
-	window_copy_update_selection(wme, 0);
+	if (data->searchmark != NULL && !data->timeout)
+		window_copy_search_marks(wme, NULL, data->searchregex);
+	window_copy_update_selection(wme, 0, 0);
 
 	screen_write_start(&ctx, wp, NULL);
 	screen_write_cursormove(&ctx, 0, 0, 0);
