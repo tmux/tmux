@@ -108,7 +108,8 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'P')) {
 		if ((template = args_get(args, 'F')) == NULL)
 			template = NEW_WINDOW_TEMPLATE;
-		cp = format_single(item, template, c, s, new_wl, NULL);
+		cp = format_single(item, template, c, s, new_wl,
+		    new_wl->window->active);
 		cmdq_print(item, "%s", cp);
 		free(cp);
 	}
