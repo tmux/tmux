@@ -334,7 +334,7 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'P')) {
 		if ((template = args_get(args, 'F')) == NULL)
 			template = NEW_SESSION_TEMPLATE;
-		cp = format_single(item, template, c, s, NULL, NULL);
+		cp = format_single(item, template, c, s, s->curw, NULL);
 		cmdq_print(item, "%s", cp);
 		free(cp);
 	}
