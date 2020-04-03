@@ -2796,11 +2796,8 @@ window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
 		}
 	}
 	time(&tstart);
-	py = gd->hsize - data->oy;
-	if (py > 0)
-		py--;
-	for (; py > 0; py--) {
-		gl = grid_peek_line(gd, py);
+	for (py = gd->hsize - data->oy; py > 0; py--) {
+		gl = grid_peek_line(gd, py - 1);
 		if (~gl->flags & GRID_LINE_WRAPPED)
 			break;
 	}
