@@ -59,10 +59,6 @@ cmdq_append(struct client *c, struct cmdq_item *item)
 	struct cmdq_list	*queue = cmdq_get(c);
 	struct cmdq_item	*next;
 
-	TAILQ_FOREACH(next, queue, entry) {
-		log_debug("%s %s: queue %s (%u)", __func__, cmdq_name(c),
-		    next->name, next->group);
-	}
 	do {
 		next = item->next;
 		item->next = NULL;
@@ -88,10 +84,6 @@ cmdq_insert_after(struct cmdq_item *after, struct cmdq_item *item)
 	struct cmdq_list	*queue = after->queue;
 	struct cmdq_item	*next;
 
-	TAILQ_FOREACH(next, queue, entry) {
-		log_debug("%s %s: queue %s (%u)", __func__, cmdq_name(c),
-		    next->name, next->group);
-	}
 	do {
 		next = item->next;
 		item->next = after->next;
