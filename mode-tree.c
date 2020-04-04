@@ -928,6 +928,9 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 	case '\033': /* Escape */
 	case '\007': /* C-g */
 		return (1);
+  case '\012': /* C-j */
+    *key = '\r';
+    return (0);
 	case KEYC_UP:
 	case 'k':
 	case KEYC_WHEELUP_PANE:
