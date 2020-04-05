@@ -299,23 +299,21 @@ window_copy_scroll_timer(__unused int fd, __unused short events, void *arg)
 static struct screen*
 window_copy_clone_screen(struct screen *src)
 {
-	struct screen			*dest;
+	struct screen			*dst;
 	struct screen_write_ctx		 ctx;
-	struct grid_cell		 gc;
 
-	dest = xcalloc(1, sizeof *dest);
-	screen_init(dest, screen_size_x(src), screen_hsize(src)
+	dst = xcalloc(1, sizeof *dst);
+	screen_init(dst, screen_size_x(src), screen_hsize(src)
 	    + screen_size_y(src), src->grid->hlimit);
-	screen_write_start(&ctx, NULL, dest);
-	screen_write_copy(&ctx, src, 0, 0, screen_size_x(src), screen_hsize(src)
-	    + screen_size_y(src), NULL, &gc);
-	screen_size_y(dest) = screen_size_y(src);
-	screen_hsize(dest) = screen_hsize(src);
-	dest->grid->hscrolled = src->grid->hscrolled;
+	screen_write_start(&ctx, NULL, dst);
+	screen_write_copy_lines(&ctx, src, 0, screen_hsize(src)
+	    + screen_size_y(src));
+	dst->grid->sy = screen_size_y(src);
+	dst->grid->hsize = screen_hsize(src);
 	screen_write_cursormove(&ctx, src->cx, src->cy, 0);
 	screen_write_stop(&ctx);
 
-	return dest;
+	return dst;
 }
 
 static struct window_copy_mode_data *
