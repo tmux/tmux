@@ -47,8 +47,8 @@ const struct cmd_entry cmd_list_commands_entry = {
 	.name = "list-commands",
 	.alias = "lscm",
 
-	.args = { "F:", 0, 0 },
-	.usage = "[-F format]",
+	.args = { "F:", 0, 1 },
+	.usage = "[-F format] [command]",
 
 	.flags = CMD_STARTSERVER|CMD_AFTERHOOK,
 	.exec = cmd_list_keys_exec
@@ -317,8 +317,11 @@ cmd_list_keys_commands(struct cmd *self, struct cmdq_item *item)
 	const struct cmd_entry	**entryp;
 	const struct cmd_entry	 *entry;
 	struct format_tree	 *ft;
-	const char		 *template, *s;
+	const char		 *template, *s, *command = NULL;
 	char			 *line;
+
+	if (args->argc != 0)
+		command = args->argv[0];
 
 	if ((template = args_get(args, 'F')) == NULL) {
 		template = "#{command_list_name}"
@@ -331,6 +334,11 @@ cmd_list_keys_commands(struct cmd *self, struct cmdq_item *item)
 
 	for (entryp = cmd_table; *entryp != NULL; entryp++) {
 		entry = *entryp;
+		if (command != NULL &&
+		    (strcmp(entry->name, command) != 0 &&
+		    (entry->alias == NULL ||
+		    strcmp(entry->alias, command) != 0)))
+		    continue;
 
 		format_add(ft, "command_list_name", "%s", entry->name);
 		if (entry->alias != NULL)
