@@ -130,6 +130,7 @@ static void	window_copy_rectangle_toggle(struct window_mode_entry *);
 static void	window_copy_move_mouse(struct mouse_event *);
 static void	window_copy_drag_update(struct client *, struct mouse_event *);
 static void	window_copy_drag_release(struct client *, struct mouse_event *);
+static struct screen* window_copy_clone_screen(struct screen *src);
 
 const struct window_mode window_copy_mode = {
 	.name = "copy-mode",
@@ -295,6 +296,28 @@ window_copy_scroll_timer(__unused int fd, __unused short events, void *arg)
 	}
 }
 
+static struct screen*
+window_copy_clone_screen(struct screen *src)
+{
+	struct screen			*dest;
+	struct screen_write_ctx		 ctx;
+	struct grid_cell		 gc;
+
+	dest = xcalloc(1, sizeof *dest);
+	screen_init(dest, screen_size_x(src), screen_hsize(src)
+	    + screen_size_y(src), src->grid->hlimit);
+	screen_write_start(&ctx, NULL, dest);
+	screen_write_copy(&ctx, src, 0, 0, screen_size_x(src), screen_hsize(src)
+	    + screen_size_y(src), NULL, &gc);
+	screen_size_y(dest) = screen_size_y(src);
+	screen_hsize(dest) = screen_hsize(src);
+	dest->grid->hscrolled = src->grid->hscrolled;
+	screen_write_cursormove(&ctx, src->cx, src->cy, 0);
+	screen_write_stop(&ctx);
+
+	return dest;
+}
+
 static struct window_copy_mode_data *
 window_copy_common_init(struct window_mode_entry *wme)
 {
@@ -343,10 +366,7 @@ window_copy_init(struct window_mode_entry *wme,
 
 	data = window_copy_common_init(wme);
 
-	if (wp->fd != -1 && wp->disabled++ == 0)
-		bufferevent_disable(wp->event, EV_READ|EV_WRITE);
-
-	data->backing = &wp->base;
+	data->backing = window_copy_clone_screen(&wp->base);
 	data->cx = data->backing->cx;
 	data->cy = data->backing->cy;
 
@@ -389,9 +409,6 @@ window_copy_free(struct window_mode_entry *wme)
 	struct window_copy_mode_data	*data = wme->data;
 
 	evtimer_del(&data->dragtimer);
-
-	if (wp->fd != -1 && --wp->disabled == 0)
-		bufferevent_enable(wp->event, EV_READ|EV_WRITE);
 
 	free(data->searchmark);
 	free(data->searchstr);
@@ -1984,6 +2001,33 @@ window_copy_cmd_search_forward_incremental(struct window_copy_cmd_state *cs)
 	return (action);
 }
 
+static enum window_copy_cmd_action
+window_copy_cmd_update_screen(struct window_copy_cmd_state *cs)
+{
+	struct window_mode_entry	*wme = cs->wme;
+	struct window_pane		*wp = wme->wp;
+	struct window_copy_mode_data	*data = wme->data;
+	struct screen_write_ctx		 ctx;
+	u_int				 i;
+
+	screen_free(data->backing);
+	free(data->backing);
+
+	data->backing = window_copy_clone_screen(&wp->base);
+	data->cx = data->backing->cx;
+	data->cy = data->backing->cy;
+	data->screen.cx = data->cx;
+	data->screen.cy = data->cy;
+
+	screen_write_start(&ctx, NULL, &data->screen);
+	for (i = 0; i < screen_size_y(&data->screen); i++)
+		window_copy_write_line(wme, &ctx, i);
+	screen_write_cursormove(&ctx, data->cx, data->cy, 0);
+	screen_write_stop(&ctx);
+
+	return (WINDOW_COPY_CMD_REDRAW);
+}
+
 static const struct {
 	const char			 *command;
 	int				  minargs;
@@ -2121,6 +2165,8 @@ static const struct {
 	  window_copy_cmd_stop_selection },
 	{ "top-line", 0, 0, 1,
 	  window_copy_cmd_top_line },
+	{ "update-screen", 0, 0, 0,
+	  window_copy_cmd_update_screen },
 };
 
 static void

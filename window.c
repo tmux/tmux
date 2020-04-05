@@ -1081,17 +1081,11 @@ window_pane_mode_timer(__unused int fd, __unused short events, void *arg)
 {
 	struct window_pane	*wp = arg;
 	struct timeval		 tv = { .tv_sec = 10 };
-	int			 n = 0;
 
 	evtimer_del(&wp->modetimer);
 	evtimer_add(&wp->modetimer, &tv);
 
 	log_debug("%%%u in mode: last=%ld", wp->id, (long)wp->modelast);
-
-	if (wp->modelast < time(NULL) - WINDOW_MODE_TIMEOUT) {
-		if (ioctl(wp->fd, FIONREAD, &n) == -1 || n > 0)
-			window_pane_reset_mode_all(wp);
-	}
 }
 
 int
