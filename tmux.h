@@ -2406,8 +2406,6 @@ void	 screen_write_copy(struct screen_write_ctx *, struct screen *, u_int,
 	     u_int, u_int, u_int, bitstr_t *, const struct grid_cell *);
 void	 screen_write_fast_copy(struct screen_write_ctx *, struct screen *,
 	     u_int, u_int, u_int, u_int);
-void	 screen_write_copy_lines(struct screen_write_ctx *, struct screen *,
-	     u_int, u_int);
 void	 screen_write_hline(struct screen_write_ctx *, u_int, int, int);
 void	 screen_write_vline(struct screen_write_ctx *, u_int, int, int);
 void	 screen_write_menu(struct screen_write_ctx *, struct menu *, int);

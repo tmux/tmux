@@ -305,11 +305,11 @@ window_copy_clone_screen(struct screen *src)
 	dst = xcalloc(1, sizeof *dst);
 	screen_init(dst, screen_size_x(src), screen_hsize(src)
 	    + screen_size_y(src), src->grid->hlimit);
-	screen_write_start(&ctx, NULL, dst);
-	screen_write_copy_lines(&ctx, src, 0, screen_hsize(src)
+	grid_duplicate_lines(dst->grid, 0, src->grid, 0, screen_hsize(src)
 	    + screen_size_y(src));
 	dst->grid->sy = screen_size_y(src);
 	dst->grid->hsize = screen_hsize(src);
+	screen_write_start(&ctx, NULL, dst);
 	screen_write_cursormove(&ctx, src->cx, src->cy, 0);
 	screen_write_stop(&ctx);
 
@@ -403,20 +403,14 @@ window_copy_view_init(struct window_mode_entry *wme,
 static void
 window_copy_free(struct window_mode_entry *wme)
 {
-	struct window_pane		*wp = wme->wp;
 	struct window_copy_mode_data	*data = wme->data;
 
 	evtimer_del(&data->dragtimer);
-
 	free(data->searchmark);
 	free(data->searchstr);
-
-	if (data->backing != &wp->base) {
-		screen_free(data->backing);
-		free(data->backing);
-	}
+	screen_free(data->backing);
+	free(data->backing);
 	screen_free(&data->screen);
-
 	free(data);
 }
 
@@ -439,9 +433,6 @@ window_copy_vadd(struct window_pane *wp, const char *fmt, va_list ap)
 	struct screen_write_ctx	 	 back_ctx, ctx;
 	struct grid_cell		 gc;
 	u_int				 old_hsize, old_cy;
-
-	if (backing == &wp->base)
-		return;
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 
@@ -678,15 +669,13 @@ window_copy_formats(struct window_mode_entry *wme, struct format_tree *ft)
 static void
 window_copy_resize(struct window_mode_entry *wme, u_int sx, u_int sy)
 {
-	struct window_pane		*wp = wme->wp;
 	struct window_copy_mode_data	*data = wme->data;
 	struct screen			*s = &data->screen;
 	struct screen_write_ctx	 	 ctx;
 	int				 search;
 
 	screen_resize(s, sx, sy, 1);
-	if (data->backing != &wp->base)
-		screen_resize(data->backing, sx, sy, 1);
+	screen_resize(data->backing, sx, sy, 1);
 
 	if (data->cy > sy - 1)
 		data->cy = sy - 1;

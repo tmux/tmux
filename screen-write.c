@@ -360,22 +360,6 @@ screen_write_fast_copy(struct screen_write_ctx *ctx, struct screen *src,
 	}
 }
 
-/*
- * Copy from another screen, line by line. Also assumes the
- * target region is already big enough.
- */
-void
-screen_write_copy_lines(struct screen_write_ctx *ctx, struct screen *src,
-    u_int py, u_int ny)
-{
-	struct screen		*s = ctx->s;
-
-	if (ny == 0)
-		return;
-
-	grid_duplicate_lines(s->grid, py, src->grid, py, ny);
-}
-
 /* Draw a horizontal line on screen. */
 void
 screen_write_hline(struct screen_write_ctx *ctx, u_int nx, int left, int right)
