@@ -2000,7 +2000,7 @@ window_copy_cmd_search_forward_incremental(struct window_copy_cmd_state *cs)
 }
 
 static enum window_copy_cmd_action
-window_copy_cmd_update_screen(struct window_copy_cmd_state *cs)
+window_copy_cmd_refresh_from_pane(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
 	struct window_pane		*wp = wme->wp;
@@ -2131,6 +2131,8 @@ static const struct {
 	  window_copy_cmd_previous_word },
 	{ "rectangle-toggle", 0, 0, 0,
 	  window_copy_cmd_rectangle_toggle },
+	{ "refresh-from-pane", 0, 0, 0,
+	  window_copy_cmd_refresh_from_pane },
 	{ "scroll-down", 0, 0, 1,
 	  window_copy_cmd_scroll_down },
 	{ "scroll-down-and-cancel", 0, 0, 0,
@@ -2163,8 +2165,6 @@ static const struct {
 	  window_copy_cmd_stop_selection },
 	{ "top-line", 0, 0, 1,
 	  window_copy_cmd_top_line },
-	{ "update-screen", 0, 0, 0,
-	  window_copy_cmd_update_screen },
 };
 
 static void
