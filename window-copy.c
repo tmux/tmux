@@ -206,6 +206,8 @@ struct window_copy_mode_data {
 	struct screen	*backing;
 	int		 backing_written; /* backing display started */
 
+	int		 viewmode;	/* view mode entered */
+
 	u_int		 oy;		/* number of lines scrolled up */
 
 	u_int		 selx;		/* beginning of selection */
@@ -341,6 +343,7 @@ window_copy_common_init(struct window_mode_entry *wme)
 	data->searchmark = NULL;
 	data->searchx = data->searchy = data->searcho = -1;
 	data->timeout = 0;
+	data->viewmode = 0;
 
 	data->jumptype = WINDOW_COPY_OFF;
 	data->jumpchar = '\0';
@@ -393,6 +396,7 @@ window_copy_view_init(struct window_mode_entry *wme,
 	struct screen			*s;
 
 	data = window_copy_common_init(wme);
+	data->viewmode = 1;
 
 	data->backing = s = xmalloc(sizeof *data->backing);
 	screen_init(s, screen_size_x(base), screen_size_y(base), UINT_MAX);
@@ -1994,23 +1998,13 @@ window_copy_cmd_refresh_from_pane(struct window_copy_cmd_state *cs)
 	struct window_mode_entry	*wme = cs->wme;
 	struct window_pane		*wp = wme->wp;
 	struct window_copy_mode_data	*data = wme->data;
-	struct screen_write_ctx		 ctx;
-	u_int				 i;
+
+	if (data->viewmode)
+		return (WINDOW_COPY_CMD_NOTHING);
 
 	screen_free(data->backing);
 	free(data->backing);
-
 	data->backing = window_copy_clone_screen(&wp->base);
-	data->cx = data->backing->cx;
-	data->cy = data->backing->cy;
-	data->screen.cx = data->cx;
-	data->screen.cy = data->cy;
-
-	screen_write_start(&ctx, NULL, &data->screen);
-	for (i = 0; i < screen_size_y(&data->screen); i++)
-		window_copy_write_line(wme, &ctx, i);
-	screen_write_cursormove(&ctx, data->cx, data->cy, 0);
-	screen_write_stop(&ctx);
 
 	return (WINDOW_COPY_CMD_REDRAW);
 }
