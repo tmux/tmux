@@ -927,8 +927,6 @@ struct window_pane {
 	size_t		 status_size;
 
 	TAILQ_HEAD (, window_mode_entry) modes;
-	struct event	 modetimer;
-	time_t		 modelast;
 
 	char		*searchstr;
 	int		 searchregex;
