@@ -1048,9 +1048,12 @@ If
 is specified, list only clients connected to that session.
 .It Xo Ic list-commands
 .Op Fl F Ar format
+.Op Ar command
 .Xc
 .D1 (alias: Ic lscm )
-List the syntax of all commands supported by
+List the syntax of
+.Ar command
+or - if omitted - of all commands supported by
 .Nm .
 .It Ic list-sessions Op Fl F Ar format
 .D1 (alias: Ic ls )
@@ -2731,7 +2734,7 @@ command.
 .It Xo Ic list-keys
 .Op Fl 1aN
 .Op Fl P Ar prefix-string Fl T Ar key-table
-.Op key
+.Op Ar key
 .Xc
 .D1 (alias: Ic lsk )
 List key bindings.
