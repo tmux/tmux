@@ -3415,7 +3415,7 @@ window_copy_copy_pipe(struct window_mode_entry *wme, struct session *s,
 	if (buf == NULL)
 		return;
 
-	job = job_run(cmd, s, NULL, NULL, NULL, NULL, NULL, JOB_NOWAIT, -1, -1);
+	job = job_run(cmd, s, NULL, NULL, NULL, NULL, NULL, JOB_NOWAIT);
 	bufferevent_write(job_get_event(job), buf, len);
 	window_copy_copy_buffer(wme, prefix, buf, len);
 }
