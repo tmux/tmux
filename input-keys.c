@@ -271,6 +271,8 @@ input_key_get_mouse(struct screen *s, struct mouse_event *m, u_int x, u_int y,
 	/* If this pane is not in button or all mode, discard motion events. */
 	if (MOUSE_DRAG(m->b) && (s->mode & MOTION_MOUSE_MODES) == 0)
 		return (0);
+	if ((s->mode & ALL_MOUSE_MODES) == 0)
+		return (0);
 
 	/*
 	 * If this event is a release event and not in all mode, discard it.
