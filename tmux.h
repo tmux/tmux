@@ -761,6 +761,7 @@ struct screen {
 	u_int			 saved_cy;
 	struct grid		*saved_grid;
 	struct grid_cell	 saved_cell;
+	int			 saved_flags;
 
 	bitstr_t		*tabs;
 	struct screen_sel	*sel;
