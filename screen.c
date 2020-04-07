@@ -535,6 +535,7 @@ screen_alternate_on(struct screen *s, struct grid_cell *gc, int cursor)
 
 	grid_view_clear(s->grid, 0, 0, sx, sy, 8);
 
+	s->saved_flags = s->grid->flags;
 	s->grid->flags &= ~GRID_HISTORY;
 }
 
@@ -578,7 +579,8 @@ screen_alternate_off(struct screen *s, struct grid_cell *gc, int cursor)
 	 * Turn history back on (so resize can use it) and then resize back to
 	 * the current size.
 	 */
-	s->grid->flags |= GRID_HISTORY;
+	if (s->saved_flags & GRID_HISTORY)
+		s->grid->flags |= GRID_HISTORY;
 	if (sy > s->saved_grid->sy || sx != s->saved_grid->sx)
 		screen_resize(s, sx, sy, 1);
 
