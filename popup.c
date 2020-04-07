@@ -200,9 +200,9 @@ popup_handle_drag(struct client *c, struct popup_data *pd,
 		pd->dy = m->y - pd->py;
 		server_redraw_client(c);
 	} else if (pd->dragging == SIZE) {
-		if (m->x < pd->px + 2)
+		if (m->x < pd->px + 3)
 			return;
-		if (m->y < pd->py + 2)
+		if (m->y < pd->py + 3)
 			return;
 		pd->sx = m->x - pd->px;
 		pd->sy = m->y - pd->py;
