@@ -1380,10 +1380,13 @@ grid_unwrap_position(struct grid *gd, u_int *px, u_int *py, u_int wx, u_int wy)
 u_int
 grid_line_length(struct grid *gd, u_int py)
 {
-	struct grid_cell	gc;
-	u_int			px;
+	struct grid_cell	 gc;
+	const struct grid_line	*gl;
+	u_int			 px = 0;
 
-	px = grid_get_line(gd, py)->cellsize;
+	gl = grid_peek_line(gd, py);
+	if (gl)
+		px = gl->cellsize;
 	if (px > gd->sx)
 		px = gd->sx;
 	while (px > 0) {
