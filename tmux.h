@@ -849,7 +849,7 @@ struct window_mode {
 
 /* Active window mode. */
 struct window_mode_entry {
-	struct window_pane		*wp;
+	struct window_pane		*wp, *swp;
 
 	const struct window_mode	*mode;
 	void				*data;
@@ -2539,8 +2539,8 @@ void		 window_pane_unset_palette(struct window_pane *, u_int);
 void		 window_pane_reset_palette(struct window_pane *);
 int		 window_pane_get_palette(struct window_pane *, int);
 int		 window_pane_set_mode(struct window_pane *,
-		     const struct window_mode *, struct cmd_find_state *,
-		     struct args *);
+		     struct window_pane *, const struct window_mode *,
+		     struct cmd_find_state *, struct args *);
 void		 window_pane_reset_mode(struct window_pane *);
 void		 window_pane_reset_mode_all(struct window_pane *);
 int		 window_pane_key(struct window_pane *, struct client *,

@@ -52,6 +52,20 @@ const struct cmd_entry cmd_clock_mode_entry = {
 	.exec = cmd_copy_mode_exec
 };
 
+const struct cmd_entry cmd_copy_pane_mode_entry = {
+	.name = "copy-pane-mode",
+	.alias = NULL,
+
+	.args = {"s:t:", 0, 0},
+	.usage = CMD_SRCDST_PANE_USAGE,
+
+	.source =  { 's', CMD_FIND_PANE, CMD_FIND_DEFAULT_MARKED },
+	.target = { 't', CMD_FIND_PANE, 0 },
+
+	.flags = CMD_AFTERHOOK,
+	.exec = cmd_copy_mode_exec
+};
+
 static enum cmd_retval
 cmd_copy_mode_exec(struct cmd *self, struct cmdq_item *item)
 {
@@ -59,7 +73,7 @@ cmd_copy_mode_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmdq_shared	*shared = item->shared;
 	struct client		*c = item->client;
 	struct session		*s;
-	struct window_pane	*wp = item->target.wp;
+	struct window_pane	*wp = item->target.wp, *swp = NULL;
 
 	if (args_has(args, 'q')) {
 		window_pane_reset_mode_all(wp);
@@ -74,11 +88,14 @@ cmd_copy_mode_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (self->entry == &cmd_clock_mode_entry) {
-		window_pane_set_mode(wp, &window_clock_mode, NULL, NULL);
+		window_pane_set_mode(wp, swp, &window_clock_mode, NULL, NULL);
 		return (CMD_RETURN_NORMAL);
 	}
 
-	if (!window_pane_set_mode(wp, &window_copy_mode, NULL, args)) {
+	if (self->entry == &cmd_copy_pane_mode_entry)
+		swp = item->source.wp;
+
+	if (!window_pane_set_mode(wp, swp, &window_copy_mode, NULL, args)) {
 		if (args_has(args, 'M'))
 			window_copy_start_drag(c, &shared->mouse);
 	}

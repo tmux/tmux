@@ -361,12 +361,16 @@ static struct screen *
 window_copy_init(struct window_mode_entry *wme,
     __unused struct cmd_find_state *fs, struct args *args)
 {
-	struct window_pane		*wp = wme->wp;
+	struct window_pane		*wp;
 	struct window_copy_mode_data	*data;
 	struct screen_write_ctx		 ctx;
 	u_int				 i;
 
 	data = window_copy_common_init(wme);
+	if (wme->swp)
+		wp = wme->swp;
+	else
+		wp = wme->wp;
 
 	data->backing = window_copy_clone_screen(&wp->base);
 	data->cx = data->backing->cx;
@@ -2000,11 +2004,16 @@ static enum window_copy_cmd_action
 window_copy_cmd_refresh_from_pane(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
-	struct window_pane		*wp = wme->wp;
+	struct window_pane		*wp;
 	struct window_copy_mode_data	*data = wme->data;
 
 	if (data->viewmode)
 		return (WINDOW_COPY_CMD_NOTHING);
+
+	if (wme->swp)
+		wp = wme->swp;
+	else
+		wp = wme->wp;
 
 	screen_free(data->backing);
 	free(data->backing);

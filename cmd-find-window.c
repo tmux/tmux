@@ -116,7 +116,8 @@ cmd_find_window_exec(struct cmd *self, struct cmdq_item *item)
 		args_set(new_args, 'Z', NULL);
 	args_set(new_args, 'f', filter);
 
-	window_pane_set_mode(wp, &window_tree_mode, &item->target, new_args);
+	window_pane_set_mode(wp, NULL, &window_tree_mode, &item->target,
+	    new_args);
 
 	args_free(new_args);
 	free(filter);
