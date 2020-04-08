@@ -38,6 +38,7 @@
 
 static struct kinfo_proc *cmp_procs(struct kinfo_proc *, struct kinfo_proc *);
 char	*get_proc_name(int, char *);
+char	*get_proc_cwd(int);
 
 static struct kinfo_proc *
 cmp_procs(struct kinfo_proc *p1, struct kinfo_proc *p2)
@@ -131,4 +132,18 @@ retry:
 error:
 	free(buf);
 	return (NULL);
+}
+
+char *
+get_proc_cwd(int fd)
+{
+        int             name[] = { CTL_KERN, KERN_PROC_CWD, 0 };
+        static char     path[MAXPATHLEN];
+        size_t          pathlen = sizeof path;
+
+        if ((name[2] = tcgetpgrp(fd)) == -1)
+                return (NULL);
+        if (sysctl(name, 3, path, &pathlen, NULL, 0) != 0)
+                return (NULL);
+        return (path);
 }

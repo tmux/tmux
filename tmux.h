@@ -2743,6 +2743,7 @@ int		 utf8_cstrhas(const char *, const struct utf8_data *);
 
 /* procname.c */
 char   *get_proc_name(int, char *);
+char   *get_proc_cwd(int);
 
 /* log.c */
 void	log_add_level(void);
