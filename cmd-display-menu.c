@@ -190,7 +190,7 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 
 	if (args_has(args, 'T'))
-		title = format_single(NULL, args_get(args, 'T'), c, s, wl, wp);
+		title = format_single(item, args_get(args, 'T'), c, s, wl, wp);
 	else
 		title = xstrdup("");
 
@@ -298,13 +298,13 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 
 	value = args_get(args, 'd');
 	if (value != NULL)
-		cwd = format_single(NULL, value, c, fs->s, fs->wl, fs->wp);
+		cwd = format_single(item, value, c, fs->s, fs->wl, fs->wp);
 	else
 		cwd = xstrdup(server_client_get_cwd(c, fs->s));
 
 	value = args_get(args, 'R');
 	if (value != NULL)
-		shellcmd = format_single(NULL, value, c, fs->s, fs->wl, fs->wp);
+		shellcmd = format_single(item, value, c, fs->s, fs->wl, fs->wp);
 
 	if (args_has(args, 'K'))
 		flags |= POPUP_WRITEKEYS;
