@@ -30,9 +30,10 @@ const struct cmd_entry cmd_copy_mode_entry = {
 	.name = "copy-mode",
 	.alias = NULL,
 
-	.args = { "eHMt:uq", 0, 0 },
-	.usage = "[-eHMuq] " CMD_TARGET_PANE_USAGE,
+	.args = { "eHMs:t:uq", 0, 0 },
+	.usage = "[-eHMuq] " CMD_SRCDST_PANE_USAGE,
 
+	.source =  { 's', CMD_FIND_PANE, 0 },
 	.target = { 't', CMD_FIND_PANE, 0 },
 
 	.flags = CMD_AFTERHOOK,
@@ -46,20 +47,6 @@ const struct cmd_entry cmd_clock_mode_entry = {
 	.args = { "t:", 0, 0 },
 	.usage = CMD_TARGET_PANE_USAGE,
 
-	.target = { 't', CMD_FIND_PANE, 0 },
-
-	.flags = CMD_AFTERHOOK,
-	.exec = cmd_copy_mode_exec
-};
-
-const struct cmd_entry cmd_copy_pane_mode_entry = {
-	.name = "copy-pane-mode",
-	.alias = NULL,
-
-	.args = {"s:t:", 0, 0},
-	.usage = CMD_SRCDST_PANE_USAGE,
-
-	.source =  { 's', CMD_FIND_PANE, CMD_FIND_DEFAULT_MARKED },
 	.target = { 't', CMD_FIND_PANE, 0 },
 
 	.flags = CMD_AFTERHOOK,
@@ -92,9 +79,7 @@ cmd_copy_mode_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 	}
 
-	if (self->entry == &cmd_copy_pane_mode_entry)
-		swp = item->source.wp;
-
+	swp = item->source.wp;
 	if (!window_pane_set_mode(wp, swp, &window_copy_mode, NULL, args)) {
 		if (args_has(args, 'M'))
 			window_copy_start_drag(c, &shared->mouse);
