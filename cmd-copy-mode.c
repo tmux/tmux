@@ -31,7 +31,7 @@ const struct cmd_entry cmd_copy_mode_entry = {
 	.alias = NULL,
 
 	.args = { "eHMs:t:uq", 0, 0 },
-	.usage = "[-eHMuq] " CMD_SRCDST_PANE_USAGE,
+	.usage = "[-eHMuq] [-s src-pane] " CMD_TARGET_PANE_USAGE,
 
 	.source =  { 's', CMD_FIND_PANE, 0 },
 	.target = { 't', CMD_FIND_PANE, 0 },
