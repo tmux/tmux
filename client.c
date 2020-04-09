@@ -644,7 +644,7 @@ client_read_open(void *data, size_t datalen)
 	struct msg_read_done	 reply;
 	struct client_file	 find, *cf;
 	const int		 flags = O_NONBLOCK|O_RDONLY;
-	int			 error = 0;
+	int			 error;
 
 	if (datalen < sizeof *msg)
 		fatalx("bad MSG_READ_OPEN size");

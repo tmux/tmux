@@ -4151,7 +4151,6 @@ window_copy_cursor_previous_word_pos(struct window_mode_entry *wme,
 				    data->oy >=
 				    screen_hsize(data->backing) - 1))
 					goto out;
-				py--;
 
 				py = screen_hsize(data->backing) + data->cy -
 				    data->oy;

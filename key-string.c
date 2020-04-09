@@ -229,10 +229,8 @@ key_string_lookup_string(const char *string)
 			key -= 64;
 		else if (key == 32)
 			key = 0;
-		else if (key == '?')
-			key = 127;
 		else if (key == 63)
-			key = KEYC_BSPACE;
+			key = 127;
 		else
 			return (KEYC_UNKNOWN);
 		modifiers &= ~KEYC_CTRL;
