@@ -130,7 +130,7 @@ static void	window_copy_rectangle_toggle(struct window_mode_entry *);
 static void	window_copy_move_mouse(struct mouse_event *);
 static void	window_copy_drag_update(struct client *, struct mouse_event *);
 static void	window_copy_drag_release(struct client *, struct mouse_event *);
-static struct screen* window_copy_clone_screen(struct screen *src);
+static struct screen* window_copy_clone_screen(struct screen *, struct screen*);
 
 const struct window_mode window_copy_mode = {
 	.name = "copy-mode",
@@ -299,18 +299,24 @@ window_copy_scroll_timer(__unused int fd, __unused short events, void *arg)
 }
 
 static struct screen *
-window_copy_clone_screen(struct screen *src)
+window_copy_clone_screen(struct screen *src, struct screen* hint)
 {
 	struct screen			*dst;
 	struct screen_write_ctx		 ctx;
+	uint				 dy, sy;
 
+	sy = screen_hsize(src) + screen_size_y(src);
 	dst = xcalloc(1, sizeof *dst);
-	screen_init(dst, screen_size_x(src),
-	    screen_hsize(src) + screen_size_y(src), src->grid->hlimit);
-	grid_duplicate_lines(dst->grid, 0, src->grid, 0,
-	    screen_hsize(src) + screen_size_y(src));
-	dst->grid->sy = screen_size_y(src);
-	dst->grid->hsize = screen_hsize(src);
+	if (screen_size_y(hint) > sy)
+		dy = screen_size_y(hint);
+	else
+		dy = sy;
+	screen_init(dst, screen_size_x(src), dy, src->grid->hlimit);
+	grid_duplicate_lines(dst->grid, 0, src->grid, 0, sy);
+	if (screen_size_y(hint) < sy) {
+		dst->grid->sy = screen_size_y(hint);
+		dst->grid->hsize = sy - screen_size_y(hint);
+	}
 
 	screen_write_start(&ctx, NULL, dst);
 	screen_write_cursormove(&ctx, src->cx, src->cy, 0);
@@ -368,7 +374,7 @@ window_copy_init(struct window_mode_entry *wme,
 
 	data = window_copy_common_init(wme);
 
-	data->backing = window_copy_clone_screen(&wp->base);
+	data->backing = window_copy_clone_screen(&wp->base, &data->screen);
 	data->cx = data->backing->cx;
 	data->cy = data->backing->cy;
 
@@ -2010,7 +2016,7 @@ window_copy_cmd_refresh_from_pane(struct window_copy_cmd_state *cs)
 
 	screen_free(data->backing);
 	free(data->backing);
-	data->backing = window_copy_clone_screen(&wp->base);
+	data->backing = window_copy_clone_screen(&wp->base, &data->screen);
 
 	return (WINDOW_COPY_CMD_REDRAW);
 }
