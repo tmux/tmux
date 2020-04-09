@@ -1382,11 +1382,12 @@ grid_line_length(struct grid *gd, u_int py)
 {
 	struct grid_cell	 gc;
 	const struct grid_line	*gl;
-	u_int			 px = 0;
+	u_int			 px;
 
 	gl = grid_peek_line(gd, py);
-	if (gl)
-		px = gl->cellsize;
+	if (gl == NULL)
+		return (0);
+	px = gl->cellsize;
 	if (px > gd->sx)
 		px = gd->sx;
 	while (px > 0) {

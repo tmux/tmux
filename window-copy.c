@@ -3590,8 +3590,11 @@ static u_int
 window_copy_find_length(struct window_mode_entry *wme, u_int py)
 {
 	struct window_copy_mode_data	*data = wme->data;
+	struct grid			*gd = data->backing->grid;
 
-	return (grid_line_length(data->backing->grid, py));
+	if (py >= gd->hsize + gd->sy)
+		return (0);
+	return (grid_line_length(gd, py));
 }
 
 static void

@@ -849,7 +849,8 @@ struct window_mode {
 
 /* Active window mode. */
 struct window_mode_entry {
-	struct window_pane		*wp, *swp;
+	struct window_pane		*wp;
+	struct window_pane		*swp;
 
 	const struct window_mode	*mode;
 	void				*data;

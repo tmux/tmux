@@ -511,9 +511,10 @@ cmdq_print(struct cmdq_item *item, const char *fmt, ...)
 	} else {
 		wp = c->session->curw->window->active;
 		wme = TAILQ_FIRST(&wp->modes);
-		if (wme == NULL || wme->mode != &window_view_mode)
+		if (wme == NULL || wme->mode != &window_view_mode) {
 			window_pane_set_mode(wp, NULL, &window_view_mode, NULL,
 			    NULL);
+		}
 		window_copy_add(wp, "%s", msg);
 	}
 
