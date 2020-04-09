@@ -269,7 +269,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 				tmpsize *= 2;
 				tmp = xrealloc(tmp, tmpsize);
 			}
-			tmpused = strlcat(tmp, cp, tmpsize);
+			strlcat(tmp, cp, tmpsize);
 			tmpused = strlcat(tmp, " ", tmpsize);
 			free(cp);
 
@@ -279,7 +279,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 				tmpsize *= 2;
 				tmp = xrealloc(tmp, tmpsize);
 			}
-			tmpused = strlcat(tmp, cp, tmpsize);
+			strlcat(tmp, cp, tmpsize);
 			tmpused = strlcat(tmp, " ", tmpsize);
 			free(cp);
 

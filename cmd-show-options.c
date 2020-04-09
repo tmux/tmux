@@ -212,11 +212,9 @@ cmd_show_options_all(struct cmd *self, struct cmdq_item *item, int scope,
 
 		if ((self->entry != &cmd_show_hooks_entry &&
 		    !args_has(self->args, 'H') &&
-		    oe != NULL &&
 		    (oe->flags & OPTIONS_TABLE_IS_HOOK)) ||
 		    (self->entry == &cmd_show_hooks_entry &&
-		    (oe == NULL ||
-		    (~oe->flags & OPTIONS_TABLE_IS_HOOK))))
+		    (~oe->flags & OPTIONS_TABLE_IS_HOOK)))
 			continue;
 
 		o = options_get_only(oo, oe->name);
