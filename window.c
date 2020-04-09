@@ -1213,7 +1213,7 @@ window_pane_search(struct window_pane *wp, const char *term, int regex,
 		}
 		log_debug("%s: %s", __func__, line);
 		if (!regex)
-			found = (fnmatch(new, line, 0) == 0);
+			found = (fnmatch(new, line, flags) == 0);
 		else
 			found = (regexec(&r, line, 0, NULL, 0) == 0);
 		free(line);
