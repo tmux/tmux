@@ -2965,6 +2965,8 @@ window_copy_write_line(struct window_mode_entry *wme,
 	struct grid_cell		 gc;
 	char				 hdr[512];
 	size_t				 size = 0;
+	u_int				 oy;
+	u_int				 hsize = screen_hsize(data->backing);
 
 	style_apply(&gc, oo, "mode-style");
 	gc.flags |= GRID_FLAG_NOPALETTE;
@@ -2973,23 +2975,20 @@ window_copy_write_line(struct window_mode_entry *wme,
 		if (data->searchmark == NULL) {
 			if (data->timeout) {
 				size = xsnprintf(hdr, sizeof hdr,
-			    		"(timed out) [%u/%u]", data->oy,
-					screen_hsize(data->backing));
+				    "(timed out) [%u/%u]", data->oy, hsize);
 			} else {
 				size = xsnprintf(hdr, sizeof hdr,
-					"[%u/%u]", data->oy,
-					screen_hsize(data->backing));
+				    "[%u/%u]", data->oy, hsize);
 			}
 		} else {
 			if (data->searchthis == -1) {
 				size = xsnprintf(hdr, sizeof hdr,
 				    "(%u results) [%d/%u]", data->searchcount,
-				    data->oy, screen_hsize(data->backing));
+				    data->oy, hsize);
 			} else {
 				size = xsnprintf(hdr, sizeof hdr,
 				    "(%u/%u results) [%d/%u]", data->searchthis,
-				    data->searchcount, data->oy,
-				    screen_hsize(data->backing));
+				    data->searchcount, data->oy, hsize);
 			}
 		}
 		if (size > screen_size_x(s))
@@ -2999,11 +2998,15 @@ window_copy_write_line(struct window_mode_entry *wme,
 	} else
 		size = 0;
 
-	if (size < screen_size_x(s) && py < screen_size_y(data->backing)) {
+	oy = hsize - data->oy;
+	if (size < screen_size_x(s) &&
+	    oy + py < hsize + screen_size_y(data->backing)) {
 		screen_write_cursormove(ctx, 0, py, 0);
-		screen_write_copy(ctx, data->backing, 0,
-		    (screen_hsize(data->backing) - data->oy) + py,
+		screen_write_copy(ctx, data->backing, 0, oy + py,
 		    screen_size_x(s) - size, 1, data->searchmark, &gc);
+	} else {
+		screen_write_cursormove(ctx, 0, py, 0);
+		screen_write_clearline(ctx, 8);
 	}
 
 	if (py == data->cy && data->cx == screen_size_x(s)) {
