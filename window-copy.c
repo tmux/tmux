@@ -4359,7 +4359,7 @@ window_copy_start_drag(struct client *c, struct mouse_event *m)
 		data->selflag = SEL_CHAR;
 	switch (data->selflag) {
 		case SEL_WORD:
-			if (data->ws) {
+			if (data->ws != NULL) {
 				window_copy_update_cursor(wme, x, y);
 				window_copy_cursor_previous_word_pos(wme,
 				    data->ws, 0, &x, &y);
