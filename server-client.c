@@ -1896,6 +1896,8 @@ server_client_command_done(struct cmdq_item *item, __unused void *data)
 
 	if (~c->flags & CLIENT_ATTACHED)
 		c->flags |= CLIENT_EXIT;
+	else if (~c->flags & CLIENT_DETACHING)
+		tty_send_requests(&c->tty);
 	return (CMD_RETURN_NORMAL);
 }
 

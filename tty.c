@@ -340,12 +340,7 @@ tty_start_tty(struct tty *tty)
 			tty->flags |= TTY_FOCUS;
 			tty_puts(tty, "\033[?1004h");
 		}
-		if (~tty->flags & TTY_HAVEDA)
-			tty_puts(tty, "\033[c");
-		if (~tty->flags & TTY_HAVEDSR)
-			tty_puts(tty, "\033[1337n");
-	} else
-		tty->flags |= (TTY_HAVEDA|TTY_HAVEDSR);
+	}
 
 	evtimer_set(&tty->start_timer, tty_start_timer_callback, tty);
 	evtimer_add(&tty->start_timer, &tv);
@@ -359,6 +354,21 @@ tty_start_tty(struct tty *tty)
 	tty->mouse_drag_flag = 0;
 	tty->mouse_drag_update = NULL;
 	tty->mouse_drag_release = NULL;
+}
+
+void
+tty_send_requests(struct tty *tty)
+{
+	if (~tty->flags & TTY_STARTED)
+		return;
+
+	if (tty_term_flag(tty->term, TTYC_XT)) {
+		if (~tty->flags & TTY_HAVEDA)
+			tty_puts(tty, "\033[c");
+		if (~tty->flags & TTY_HAVEDSR)
+			tty_puts(tty, "\033[1337n");
+	} else
+		tty->flags |= (TTY_HAVEDA|TTY_HAVEDSR);
 }
 
 void
