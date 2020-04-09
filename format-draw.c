@@ -804,7 +804,7 @@ format_width(const char *expanded)
 		if (cp[0] == '#' && cp[1] == '[') {
 			end = format_skip(cp + 2, "]");
 			if (end == NULL)
-				return 0;
+				return (0);
 			cp = end + 1;
 		} else if ((more = utf8_open(&ud, *cp)) == UTF8_MORE) {
 			while (*++cp != '\0' && more == UTF8_MORE)

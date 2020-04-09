@@ -224,7 +224,7 @@ getversion(void)
 			fatalx("uname failed");
 		xasprintf(&version, "openbsd-%s", u.release);
 	}
-	return version;
+	return (version);
 }
 
 int
