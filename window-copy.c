@@ -661,16 +661,18 @@ window_copy_formats(struct window_mode_entry *wme, struct format_tree *ft)
 	} else
 		format_add(ft, "selection_active", "%d", 0);
 
-	s = format_grid_word(gd, data->cx, gd->hsize + data->cy);
-	if (s != NULL) {
-		format_add(ft, "copy_cursor_word", "%s", s);
-		free(s);
-	}
+	if (data->cy < gd->sy) {
+		s = format_grid_word(gd, data->cx, gd->hsize + data->cy);
+		if (s != NULL) {
+			format_add(ft, "copy_cursor_word", "%s", s);
+			free(s);
+		}
 
-	s = format_grid_line(gd, gd->hsize + data->cy);
-	if (s != NULL) {
-		format_add(ft, "copy_cursor_line", "%s", s);
-		free(s);
+		s = format_grid_line(gd, gd->hsize + data->cy);
+		if (s != NULL) {
+			format_add(ft, "copy_cursor_line", "%s", s);
+			free(s);
+		}
 	}
 }
 
@@ -2997,7 +2999,7 @@ window_copy_write_line(struct window_mode_entry *wme,
 	} else
 		size = 0;
 
-	if (size < screen_size_x(s)) {
+	if (size < screen_size_x(s) && py < screen_size_y(data->backing)) {
 		screen_write_cursormove(ctx, 0, py, 0);
 		screen_write_copy(ctx, data->backing, 0,
 		    (screen_hsize(data->backing) - data->oy) + py,
