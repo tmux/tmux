@@ -73,7 +73,6 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_ERROR);
 	s = item->target.s;
 	wl = item->target.wl;
-	w = wl->window;
 	wp = item->target.wp;
 
 	if (args_has(args, 'r'))
@@ -115,6 +114,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 		if (item->client == NULL)
 			return (CMD_RETURN_NORMAL);
 		if (wl != NULL && wp != NULL) {
+			w = wl->window;
 			if (window_push_zoom(w, args_has(self->args, 'Z')))
 				server_redraw_window(w);
 			window_redraw_active_switch(w, wp);
