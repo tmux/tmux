@@ -319,7 +319,7 @@ window_copy_clone_screen(struct screen *src, struct screen* hint)
 	}
 
 	screen_write_start(&ctx, NULL, dst);
-	screen_write_cursormove(&ctx, src->cx, src->cy, 0);
+	screen_write_cursormove(&ctx, 0, dst->grid->sy - 1, 0);
 	screen_write_stop(&ctx);
 
 	return (dst);
@@ -667,18 +667,16 @@ window_copy_formats(struct window_mode_entry *wme, struct format_tree *ft)
 	} else
 		format_add(ft, "selection_active", "%d", 0);
 
-	if (data->cy < gd->sy) {
-		s = format_grid_word(gd, data->cx, gd->hsize + data->cy);
-		if (s != NULL) {
-			format_add(ft, "copy_cursor_word", "%s", s);
-			free(s);
-		}
+	s = format_grid_word(gd, data->cx, gd->hsize + data->cy);
+	if (s != NULL) {
+		format_add(ft, "copy_cursor_word", "%s", s);
+		free(s);
+	}
 
-		s = format_grid_line(gd, gd->hsize + data->cy);
-		if (s != NULL) {
-			format_add(ft, "copy_cursor_line", "%s", s);
-			free(s);
-		}
+	s = format_grid_line(gd, gd->hsize + data->cy);
+	if (s != NULL) {
+		format_add(ft, "copy_cursor_line", "%s", s);
+		free(s);
 	}
 }
 
@@ -2971,7 +2969,6 @@ window_copy_write_line(struct window_mode_entry *wme,
 	struct grid_cell		 gc;
 	char				 hdr[512];
 	size_t				 size = 0;
-	u_int				 oy;
 	u_int				 hsize = screen_hsize(data->backing);
 
 	style_apply(&gc, oo, "mode-style");
@@ -3004,15 +3001,10 @@ window_copy_write_line(struct window_mode_entry *wme,
 	} else
 		size = 0;
 
-	oy = hsize - data->oy;
-	if (size < screen_size_x(s) &&
-	    oy + py < hsize + screen_size_y(data->backing)) {
+	if (size < screen_size_x(s)) {
 		screen_write_cursormove(ctx, 0, py, 0);
-		screen_write_copy(ctx, data->backing, 0, oy + py,
+		screen_write_copy(ctx, data->backing, 0, hsize - data->oy + py,
 		    screen_size_x(s) - size, 1, data->searchmark, &gc);
-	} else {
-		screen_write_cursormove(ctx, 0, py, 0);
-		screen_write_clearline(ctx, 8);
 	}
 
 	if (py == data->cy && data->cx == screen_size_x(s)) {
@@ -3601,11 +3593,8 @@ static u_int
 window_copy_find_length(struct window_mode_entry *wme, u_int py)
 {
 	struct window_copy_mode_data	*data = wme->data;
-	struct grid			*gd = data->backing->grid;
 
-	if (py >= gd->hsize + gd->sy)
-		return (0);
-	return (grid_line_length(gd, py));
+	return (grid_line_length(data->backing->grid, py));
 }
 
 static void
