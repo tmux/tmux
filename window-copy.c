@@ -1055,14 +1055,15 @@ window_copy_cmd_history_bottom(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
 	struct window_copy_mode_data	*data = wme->data;
+	struct screen			*s = data->backing;
 	u_int				 oy;
 
-	oy = screen_hsize(data->backing) + data->cy - data->oy;
+	oy = screen_hsize(s) + data->cy - data->oy;
 	if (data->lineflag == LINE_SEL_RIGHT_LEFT && oy == data->endsely)
 		window_copy_other_end(wme);
 
 	data->cy = screen_size_y(&data->screen) - 1;
-	data->cx = window_copy_find_length(wme, data->cy);
+	data->cx = window_copy_find_length(wme, screen_hsize(s) + data->cy);
 	data->oy = 0;
 
 	if (data->searchmark != NULL && !data->timeout)
@@ -4151,7 +4152,6 @@ window_copy_cursor_previous_word_pos(struct window_mode_entry *wme,
 				    data->oy >=
 				    screen_hsize(data->backing) - 1))
 					goto out;
-				py--;
 
 				py = screen_hsize(data->backing) + data->cy -
 				    data->oy;
@@ -4360,7 +4360,7 @@ window_copy_start_drag(struct client *c, struct mouse_event *m)
 		data->selflag = SEL_CHAR;
 	switch (data->selflag) {
 		case SEL_WORD:
-			if (data->ws) {
+			if (data->ws != NULL) {
 				window_copy_update_cursor(wme, x, y);
 				window_copy_cursor_previous_word_pos(wme,
 				    data->ws, 0, &x, &y);

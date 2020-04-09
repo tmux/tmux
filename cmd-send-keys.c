@@ -152,7 +152,7 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 			return (CMD_RETURN_ERROR);
 		}
 		if (wme != NULL && (args_has(args, 'X') || args->argc == 0)) {
-			if (wme == NULL || wme->mode->command == NULL) {
+			if (wme->mode->command == NULL) {
 				cmdq_error(item, "not in a mode");
 				return (CMD_RETURN_ERROR);
 			}

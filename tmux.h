@@ -2471,7 +2471,6 @@ void	 screen_select_cell(struct screen *, struct grid_cell *,
 void	 screen_alternate_on(struct screen *, struct grid_cell *, int);
 void	 screen_alternate_off(struct screen *, struct grid_cell *, int);
 
-
 /* window.c */
 extern struct windows windows;
 extern struct window_pane_tree all_window_panes;
