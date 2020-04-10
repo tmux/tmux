@@ -1608,6 +1608,7 @@ command is:
 .Bl -tag -width Ds
 .It Xo Ic copy-mode
 .Op Fl eHMqu
+.Op Fl s Ar src-pane
 .Op Fl t Ar target-pane
 .Xc
 Enter copy mode.
@@ -1621,6 +1622,11 @@ begins a mouse drag (only valid if bound to a mouse key binding, see
 hides the position indicator in the top right.
 .Fl q
 cancels copy mode and any other modes.
+.Fl s
+copies from
+.Ar src-pane
+instead of
+.Ar target-pane.
 .Pp
 .Fl e
 specifies that scrolling to the bottom of the history (to the visible screen)
