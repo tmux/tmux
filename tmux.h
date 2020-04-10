@@ -843,7 +843,6 @@ struct window_mode {
 	void		 (*formats)(struct window_mode_entry *,
 			     struct format_tree *);
 };
-#define WINDOW_MODE_TIMEOUT 180
 
 /* Active window mode. */
 struct window_mode_entry {
