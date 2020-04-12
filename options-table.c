@@ -139,11 +139,29 @@ static const char *options_table_status_format_default[] = {
 	OPTIONS_TABLE_STATUS_FORMAT1, OPTIONS_TABLE_STATUS_FORMAT2, NULL
 };
 
-/* Helper for hook options. */
-#define OPTIONS_TABLE_HOOK(hook_name, default_value, scope_value) \
+/* Helpers for hook options. */
+#define OPTIONS_TABLE_HOOK(hook_name, default_value) \
 	{ .name = hook_name, \
 	  .type = OPTIONS_TABLE_COMMAND, \
-	  .scope = scope_value, \
+	  .scope = OPTIONS_TABLE_SESSION, \
+	  .flags = OPTIONS_TABLE_IS_ARRAY|OPTIONS_TABLE_IS_HOOK, \
+	  .default_str = default_value,	\
+	  .separator = "" \
+	}
+
+#define OPTIONS_TABLE_PANE_HOOK(hook_name, default_value) \
+	{ .name = hook_name, \
+	  .type = OPTIONS_TABLE_COMMAND, \
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE, \
+	  .flags = OPTIONS_TABLE_IS_ARRAY|OPTIONS_TABLE_IS_HOOK, \
+	  .default_str = default_value,	\
+	  .separator = "" \
+	}
+
+#define OPTIONS_TABLE_WINDOW_HOOK(hook_name, default_value) \
+	{ .name = hook_name, \
+	  .type = OPTIONS_TABLE_COMMAND, \
+	  .scope = OPTIONS_TABLE_WINDOW, \
 	  .flags = OPTIONS_TABLE_IS_ARRAY|OPTIONS_TABLE_IS_HOOK, \
 	  .default_str = default_value,	\
 	  .separator = "" \
@@ -805,79 +823,66 @@ const struct options_table_entry options_table[] = {
 	},
 
 	/* Hook options. */
-	OPTIONS_TABLE_HOOK("after-bind-key", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("after-capture-pane", "",
-			OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE),
-	OPTIONS_TABLE_HOOK("after-copy-mode", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("after-display-message", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("after-display-panes", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("after-kill-pane", "",
-			OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE),
-	OPTIONS_TABLE_HOOK("after-list-buffers", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("after-list-clients", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("after-list-keys", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("after-list-panes", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("after-list-sessions", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("after-list-windows", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("after-load-buffer", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("after-lock-server", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("after-new-session", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("after-new-window", "", OPTIONS_TABLE_WINDOW),
-	OPTIONS_TABLE_HOOK("after-paste-buffer", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("after-pipe-pane", "",
-			OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE),
-	OPTIONS_TABLE_HOOK("after-queue", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("after-refresh-client", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("after-rename-session", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("after-rename-window", "", OPTIONS_TABLE_WINDOW),
-	OPTIONS_TABLE_HOOK("after-resize-pane", "",
-			OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE),
-	OPTIONS_TABLE_HOOK("after-resize-window", "", OPTIONS_TABLE_WINDOW),
-	OPTIONS_TABLE_HOOK("after-save-buffer", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("after-select-layout", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("after-select-pane", "",
-			OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE),
-	OPTIONS_TABLE_HOOK("after-select-window", "", OPTIONS_TABLE_WINDOW),
-	OPTIONS_TABLE_HOOK("after-send-keys", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("after-set-buffer", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("after-set-environment", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("after-set-hook", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("after-set-option", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("after-show-environment", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("after-show-messages", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("after-show-options", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("after-split-window", "",
-			OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE),
-	OPTIONS_TABLE_HOOK("after-unbind-key", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("alert-activity", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("alert-bell", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("alert-silence", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("client-attached", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("client-detached", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("client-resized", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("client-session-changed", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("pane-died", "",
-			OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE),
-	OPTIONS_TABLE_HOOK("pane-exited", "",
-			OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE),
-	OPTIONS_TABLE_HOOK("pane-focus-in", "",
-			OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE),
-	OPTIONS_TABLE_HOOK("pane-focus-out", "",
-			OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE),
-	OPTIONS_TABLE_HOOK("pane-mode-changed", "",
-			OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE),
-	OPTIONS_TABLE_HOOK("pane-set-clipboard", "",
-			OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE),
-	OPTIONS_TABLE_HOOK("session-closed", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("session-created", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("session-renamed", "", OPTIONS_TABLE_SESSION),
-	OPTIONS_TABLE_HOOK("session-window-changed", "", OPTIONS_TABLE_WINDOW),
-	OPTIONS_TABLE_HOOK("window-layout-changed", "", OPTIONS_TABLE_WINDOW),
-	OPTIONS_TABLE_HOOK("window-linked", "", OPTIONS_TABLE_WINDOW),
-	OPTIONS_TABLE_HOOK("window-pane-changed", "",
-			OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE),
-	OPTIONS_TABLE_HOOK("window-renamed", "", OPTIONS_TABLE_WINDOW),
-	OPTIONS_TABLE_HOOK("window-unlinked", "", OPTIONS_TABLE_WINDOW),
+	OPTIONS_TABLE_HOOK("after-bind-key", ""),
+	OPTIONS_TABLE_PANE_HOOK("after-capture-pane", ""),
+	OPTIONS_TABLE_HOOK("after-copy-mode", ""),
+	OPTIONS_TABLE_HOOK("after-display-message", ""),
+	OPTIONS_TABLE_HOOK("after-display-panes", ""),
+	OPTIONS_TABLE_PANE_HOOK("after-kill-pane", ""),
+	OPTIONS_TABLE_HOOK("after-list-buffers", ""),
+	OPTIONS_TABLE_HOOK("after-list-clients", ""),
+	OPTIONS_TABLE_HOOK("after-list-keys", ""),
+	OPTIONS_TABLE_HOOK("after-list-panes", ""),
+	OPTIONS_TABLE_HOOK("after-list-sessions", ""),
+	OPTIONS_TABLE_HOOK("after-list-windows", ""),
+	OPTIONS_TABLE_HOOK("after-load-buffer", ""),
+	OPTIONS_TABLE_HOOK("after-lock-server", ""),
+	OPTIONS_TABLE_HOOK("after-new-session", ""),
+	OPTIONS_TABLE_WINDOW_HOOK("after-new-window", ""),
+	OPTIONS_TABLE_HOOK("after-paste-buffer", ""),
+	OPTIONS_TABLE_PANE_HOOK("after-pipe-pane", ""),
+	OPTIONS_TABLE_HOOK("after-queue", ""),
+	OPTIONS_TABLE_HOOK("after-refresh-client", ""),
+	OPTIONS_TABLE_HOOK("after-rename-session", ""),
+	OPTIONS_TABLE_WINDOW_HOOK("after-rename-window", ""),
+	OPTIONS_TABLE_PANE_HOOK("after-resize-pane", ""),
+	OPTIONS_TABLE_WINDOW_HOOK("after-resize-window", ""),
+	OPTIONS_TABLE_HOOK("after-save-buffer", ""),
+	OPTIONS_TABLE_HOOK("after-select-layout", ""),
+	OPTIONS_TABLE_PANE_HOOK("after-select-pane", ""),
+	OPTIONS_TABLE_WINDOW_HOOK("after-select-window", ""),
+	OPTIONS_TABLE_HOOK("after-send-keys", ""),
+	OPTIONS_TABLE_HOOK("after-set-buffer", ""),
+	OPTIONS_TABLE_HOOK("after-set-environment", ""),
+	OPTIONS_TABLE_HOOK("after-set-hook", ""),
+	OPTIONS_TABLE_HOOK("after-set-option", ""),
+	OPTIONS_TABLE_HOOK("after-show-environment", ""),
+	OPTIONS_TABLE_HOOK("after-show-messages", ""),
+	OPTIONS_TABLE_HOOK("after-show-options", ""),
+	OPTIONS_TABLE_PANE_HOOK("after-split-window", ""),
+	OPTIONS_TABLE_HOOK("after-unbind-key", ""),
+	OPTIONS_TABLE_HOOK("alert-activity", ""),
+	OPTIONS_TABLE_HOOK("alert-bell", ""),
+	OPTIONS_TABLE_HOOK("alert-silence", ""),
+	OPTIONS_TABLE_HOOK("client-attached", ""),
+	OPTIONS_TABLE_HOOK("client-detached", ""),
+	OPTIONS_TABLE_HOOK("client-resized", ""),
+	OPTIONS_TABLE_HOOK("client-session-changed", ""),
+	OPTIONS_TABLE_PANE_HOOK("pane-died", ""),
+	OPTIONS_TABLE_PANE_HOOK("pane-exited", ""),
+	OPTIONS_TABLE_PANE_HOOK("pane-focus-in", ""),
+	OPTIONS_TABLE_PANE_HOOK("pane-focus-out", ""),
+	OPTIONS_TABLE_PANE_HOOK("pane-mode-changed", ""),
+	OPTIONS_TABLE_PANE_HOOK("pane-set-clipboard", ""),
+	OPTIONS_TABLE_HOOK("session-closed", ""),
+	OPTIONS_TABLE_HOOK("session-created", ""),
+	OPTIONS_TABLE_HOOK("session-renamed", ""),
+	OPTIONS_TABLE_HOOK("session-window-changed", ""),
+	OPTIONS_TABLE_WINDOW_HOOK("window-layout-changed", ""),
+	OPTIONS_TABLE_WINDOW_HOOK("window-linked", ""),
+	OPTIONS_TABLE_PANE_HOOK("window-pane-changed", ""),
+	OPTIONS_TABLE_WINDOW_HOOK("window-renamed", ""),
+	OPTIONS_TABLE_WINDOW_HOOK("window-unlinked", ""),
 
 	{ .name = NULL }
 };
