@@ -3982,14 +3982,18 @@ If
 .Fl g
 is given,
 .Em hook-name
-is added to the global list of hooks, otherwise it is added to the session
-hooks (for
-.Ar target-session
+is added to the global list of hooks, otherwise it is added to the pane hooks
+with
+.Fl p ,
+window hooks with
+.Fl w ,
+or the session hooks (corresponding to the
+.Ar target-pane
 with
 .Fl t ) .
 .Fl a
 appends to a hook.
-Like options, session hooks inherit from the global ones.
+Like options, pane, window, and session hooks inherit from the global ones.
 .Pp
 With
 .Fl R ,
@@ -3997,12 +4001,19 @@ run
 .Ar hook-name
 immediately.
 .It Xo Ic show-hooks
-.Op Fl g
-.Op Fl t Ar target-session
+.Op Fl gpw
+.Op Fl t Ar target-pane
 .Xc
 Shows the global list of hooks with
 .Fl g ,
-otherwise the session hooks.
+the pane list with
+.Fl p ,
+the window list with
+.Fl w ,
+otherwise the session hooks (corresponding to the
+.Ar target-pane
+with
+.Fl t ) .
 .El
 .Sh MOUSE SUPPORT
 If the
