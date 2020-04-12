@@ -5441,7 +5441,7 @@ The server crashed or otherwise exited without telling the client the reason.
 .Nm
 understands some unofficial extensions to
 .Xr terminfo 5 :
-.Bl -tag -width Ds
+.Bl -tag -width "RGB , Tc"
 .It Em Cs , Cr
 Set the cursor colour.
 The first takes a single string argument and is used to set the colour;
@@ -5492,7 +5492,7 @@ $ printf '\e033[4 q'
 If
 .Em Se
 is not set, \&Ss with argument 0 will be used to reset the cursor style instead.
-.It Em \&Tc
+.It Em \&RGB , Tc
 Indicate that the terminal supports the
 .Ql direct colour
 RGB escape sequence (for example, \ee[38;2;255;255;255m).
