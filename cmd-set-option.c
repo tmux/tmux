@@ -69,10 +69,10 @@ const struct cmd_entry cmd_set_hook_entry = {
 	.name = "set-hook",
 	.alias = NULL,
 
-	.args = { "agRt:u", 1, 2 },
-	.usage = "[-agRu] " CMD_TARGET_SESSION_USAGE " hook [command]",
+	.args = { "agpRt:uw", 1, 2 },
+	.usage = "[-agpRuw] " CMD_TARGET_PANE_USAGE " hook [command]",
 
-	.target = { 't', CMD_FIND_SESSION, CMD_FIND_CANFAIL },
+	.target = { 't', CMD_FIND_PANE, CMD_FIND_CANFAIL },
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_set_option_exec
