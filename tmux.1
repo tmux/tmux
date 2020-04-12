@@ -5470,7 +5470,7 @@ The server crashed or otherwise exited without telling the client the reason.
 understands some unofficial extensions to
 .Xr terminfo 5 :
 .Bl -tag -width Ds
-.It Em Cs , Cr
+.It Em \&Cs , Cr
 Set the cursor colour.
 The first takes a single string argument and is used to set the colour;
 the second takes no arguments and restores the default cursor colour.
@@ -5534,6 +5534,11 @@ capabilities to the
 .Nm
 .Xr terminfo 5
 entry).
+.Pp
+This is equivalent to the
+.Em RGB
+.Xr terminfo 5
+capability.
 .It Em \&Ms
 Store the current buffer in the host terminal's selection (clipboard).
 See the
