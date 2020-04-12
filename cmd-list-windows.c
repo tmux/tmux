@@ -49,8 +49,8 @@ const struct cmd_entry cmd_list_windows_entry = {
 	.name = "list-windows",
 	.alias = "lsw",
 
-	.args = { "F:at:", 0, 0 },
-	.usage = "[-a] [-F format] " CMD_TARGET_SESSION_USAGE,
+	.args = { "F:f:at:", 0, 0 },
+	.usage = "[-a] [-F format] [-f filter] " CMD_TARGET_SESSION_USAGE,
 
 	.target = { 't', CMD_FIND_SESSION, 0 },
 
@@ -88,8 +88,9 @@ cmd_list_windows_session(struct cmd *self, struct session *s,
 	struct winlink		*wl;
 	u_int			 n;
 	struct format_tree	*ft;
-	const char		*template;
-	char			*line;
+	const char		*template, *filter;
+	char			*line, *expanded;
+	int			 flag;
 
 	template = args_get(args, 'F');
 	if (template == NULL) {
@@ -102,6 +103,7 @@ cmd_list_windows_session(struct cmd *self, struct session *s,
 			break;
 		}
 	}
+	filter = args_get(args, 'f');
 
 	n = 0;
 	RB_FOREACH(wl, winlinks, &s->windows) {
@@ -109,9 +111,17 @@ cmd_list_windows_session(struct cmd *self, struct session *s,
 		format_add(ft, "line", "%u", n);
 		format_defaults(ft, NULL, s, wl, NULL);
 
-		line = format_expand(ft, template);
-		cmdq_print(item, "%s", line);
-		free(line);
+		if (filter != NULL) {
+			expanded = format_expand(ft, filter);
+			flag = format_true(expanded);
+			free(expanded);
+		} else
+			flag = 1;
+		if (flag) {
+			line = format_expand(ft, template);
+			cmdq_print(item, "%s", line);
+			free(line);
+		}
 
 		format_free(ft);
 		n++;

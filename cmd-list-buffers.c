@@ -36,8 +36,8 @@ const struct cmd_entry cmd_list_buffers_entry = {
 	.name = "list-buffers",
 	.alias = "lsb",
 
-	.args = { "F:", 0, 0 },
-	.usage = "[-F format]",
+	.args = { "F:f:", 0, 0 },
+	.usage = "[-F format] [-f filter]",
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_list_buffers_exec
@@ -49,20 +49,30 @@ cmd_list_buffers_exec(struct cmd *self, struct cmdq_item *item)
 	struct args		*args = self->args;
 	struct paste_buffer	*pb;
 	struct format_tree	*ft;
-	char			*line;
-	const char		*template;
+	const char		*template, *filter;
+	char			*line, *expanded;
+	int			 flag;
 
 	if ((template = args_get(args, 'F')) == NULL)
 		template = LIST_BUFFERS_TEMPLATE;
+	filter = args_get(args, 'f');
 
 	pb = NULL;
 	while ((pb = paste_walk(pb)) != NULL) {
 		ft = format_create(item->client, item, FORMAT_NONE, 0);
 		format_defaults_paste_buffer(ft, pb);
 
-		line = format_expand(ft, template);
-		cmdq_print(item, "%s", line);
-		free(line);
+		if (filter != NULL) {
+			expanded = format_expand(ft, filter);
+			flag = format_true(expanded);
+			free(expanded);
+		} else
+			flag = 1;
+		if (flag) {
+			line = format_expand(ft, template);
+			cmdq_print(item, "%s", line);
+			free(line);
+		}
 
 		format_free(ft);
 	}

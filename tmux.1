@@ -1055,12 +1055,18 @@ List the syntax of
 .Ar command
 or - if omitted - of all commands supported by
 .Nm .
-.It Ic list-sessions Op Fl F Ar format
+.It Xo Ic list-sessions
+.Op Fl F Ar format
+.Op Fl f Ar filter
+.Xc
 .D1 (alias: Ic ls )
 List all sessions managed by the server.
-For the meaning of the
 .Fl F
-flag, see the
+specifies the format of each line and
+.Fl f
+a filter.
+Only sessions for which the filter is true are shown.
+See the
 .Sx FORMATS
 section.
 .It Ic lock-client Op Fl t Ar target-client
@@ -2062,6 +2068,7 @@ is given, the newly linked window is not selected.
 .It Xo Ic list-panes
 .Op Fl as
 .Op Fl F Ar format
+.Op Fl f Ar filter
 .Op Fl t Ar target
 .Xc
 .D1 (alias: Ic lsp )
@@ -2078,14 +2085,18 @@ is a session (or the current session).
 If neither is given,
 .Ar target
 is a window (or the current window).
-For the meaning of the
 .Fl F
-flag, see the
+specifies the format of each line and
+.Fl f
+a filter.
+Only panes for which the filter is true are shown.
+See the
 .Sx FORMATS
 section.
 .It Xo Ic list-windows
 .Op Fl a
 .Op Fl F Ar format
+.Op Fl f Ar filter
 .Op Fl t Ar target-session
 .Xc
 .D1 (alias: Ic lsw )
@@ -2094,9 +2105,12 @@ If
 is given, list all windows on the server.
 Otherwise, list windows in the current session or in
 .Ar target-session .
-For the meaning of the
 .Fl F
-flag, see the
+specifies the format of each line and
+.Fl f
+a filter.
+Only windows for which the filter is true are shown.
+See the
 .Sx FORMATS
 section.
 .It Xo Ic move-pane
@@ -5261,12 +5275,16 @@ Delete the buffer named
 or the most recently added automatically named buffer if not specified.
 .It Xo Ic list-buffers
 .Op Fl F Ar format
+.Op Fl f Ar filter
 .Xc
 .D1 (alias: Ic lsb )
 List the global buffers.
-For the meaning of the
 .Fl F
-flag, see the
+specifies the format of each line and
+.Fl f
+a filter.
+Only buffers for which the filter is true are shown.
+See the
 .Sx FORMATS
 section.
 .It Xo Ic load-buffer
