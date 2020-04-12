@@ -3873,6 +3873,7 @@ hook and there are a number of hooks not associated with commands.
 .Pp
 Hooks are stored as array options, members of the array are executed in
 order when the hook is triggered.
+Like options different hooks may be global or belong to a session, window or pane.
 Hooks may be configured with the
 .Ic set-hook
 or
@@ -3978,22 +3979,8 @@ unsets) hook
 .Ar hook-name
 to
 .Ar command .
-If
-.Fl g
-is given,
-.Em hook-name
-is added to the global list of hooks, otherwise it is added to the pane hooks
-with
-.Fl p ,
-window hooks with
-.Fl w ,
-or the session hooks (corresponding to the
-.Ar target-pane
-with
-.Fl t ) .
-.Fl a
-appends to a hook.
-Like options, pane, window, and session hooks inherit from the global ones.
+The flags are the same as for
+.Ic set-option .
 .Pp
 With
 .Fl R ,
@@ -4004,16 +3991,9 @@ immediately.
 .Op Fl gpw
 .Op Fl t Ar target-pane
 .Xc
-Shows the global list of hooks with
-.Fl g ,
-the pane list with
-.Fl p ,
-the window list with
-.Fl w ,
-otherwise the session hooks (corresponding to the
-.Ar target-pane
-with
-.Fl t ) .
+Shows hooks.
+The flags are the same as for
+.Ic show-options .
 .El
 .Sh MOUSE SUPPORT
 If the

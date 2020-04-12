@@ -75,17 +75,13 @@ notify_insert_hook(struct cmdq_item *item, struct notify_entry *ne)
 	else
 		oo = fs.s->options;
 	o = options_get(oo, ne->name);
-	if (o == NULL) {
-		if (fs.wp != NULL) {
-			oo = fs.wp->options;
-			o = options_get(oo, ne->name);
-		}
+	if (o == NULL && fs.wp != NULL) {
+		oo = fs.wp->options;
+		o = options_get(oo, ne->name);
 	}
-	if (o == NULL) {
-		if (fs.wl != NULL) {
-			oo = fs.wl->window->options;
-			o = options_get(oo, ne->name);
-		}
+	if (o == NULL && fs.wl != NULL) {
+		oo = fs.wl->window->options;
+		o = options_get(oo, ne->name);
 	}
 	if (o == NULL)
 		return;
