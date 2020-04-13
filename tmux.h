@@ -2091,6 +2091,12 @@ void	    	 cmd_parse_empty(struct cmd_parse_input *);
 struct cmd_parse_result *cmd_parse_from_file(FILE *, struct cmd_parse_input *);
 struct cmd_parse_result *cmd_parse_from_string(const char *,
 		     struct cmd_parse_input *);
+enum cmd_parse_status cmd_parse_and_insert(const char *,
+		     struct cmd_parse_input *, struct cmdq_item *,
+		     struct cmdq_state *, char **);
+enum cmd_parse_status cmd_parse_and_append(const char *,
+		     struct cmd_parse_input *, struct client *,
+		     struct cmdq_state *, char **);
 struct cmd_parse_result *cmd_parse_from_buffer(const void *, size_t,
 		     struct cmd_parse_input *);
 struct cmd_parse_result *cmd_parse_from_arguments(int, char **,

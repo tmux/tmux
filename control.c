@@ -56,14 +56,13 @@ control_error(struct cmdq_item *item, void *data)
 /* Control input callback. Read lines and fire commands. */
 static void
 control_callback(__unused struct client *c, __unused const char *path,
-    int error, int closed, struct evbuffer *buffer, __unused void *data)
+    int read_error, int closed, struct evbuffer *buffer, __unused void *data)
 {
-	char			*line;
-	struct cmdq_item	*item;
+	char			*line, *error;
 	struct cmdq_state	*state;
-	struct cmd_parse_result	*pr;
+	enum cmd_parse_status	 status;
 
-	if (closed || error != 0)
+	if (closed || read_error != 0)
 		c->flags |= CLIENT_EXIT;
 
 	for (;;) {
@@ -77,22 +76,11 @@ control_callback(__unused struct client *c, __unused const char *path,
 			break;
 		}
 
-		pr = cmd_parse_from_string(line, NULL);
-		switch (pr->status) {
-		case CMD_PARSE_EMPTY:
-			break;
-		case CMD_PARSE_ERROR:
-			item = cmdq_get_callback(control_error, pr->error);
-			cmdq_append(c, item);
-			break;
-		case CMD_PARSE_SUCCESS:
-			state = cmdq_new_state(NULL, NULL, CMDQ_STATE_CONTROL);
-			item = cmdq_get_command(pr->cmdlist, state);
-			cmdq_append(c, item);
-			cmdq_free_state(state);
-			cmd_list_free(pr->cmdlist);
-			break;
-		}
+		state = cmdq_new_state(NULL, NULL, CMDQ_STATE_CONTROL);
+		status = cmd_parse_and_append(line, NULL, c, state, &error);
+		if (status == CMD_PARSE_ERROR)
+			cmdq_append(c, cmdq_get_callback(control_error, error));
+		cmdq_free_state(state);
 
 		free(line);
 	}
