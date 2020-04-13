@@ -65,8 +65,8 @@ static void
 cmd_display_menu_get_position(struct client *c, struct cmdq_item *item,
     struct args *args, u_int *px, u_int *py, u_int w, u_int h)
 {
-	struct cmdq_state	*state = cmdq_get_state(item);
 	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct key_event	*event = cmdq_get_event(item);
 	struct session		*s = c->session;
 	struct winlink		*wl = target->wl;
 	struct window_pane	*wp = target->wp;
@@ -100,8 +100,8 @@ cmd_display_menu_get_position(struct client *c, struct cmdq_item *item,
 		else
 			*px = 0;
 	} else if (strcmp(xp, "M") == 0) {
-		if (state->event.m.valid && state->event.m.x > w / 2)
-			*px = state->event.m.x - w / 2;
+		if (event->m.valid && event->m.x > w / 2)
+			*px = event->m.x - w / 2;
 		else
 			*px = 0;
 	} else if (strcmp(xp, "W") == 0) {
@@ -134,8 +134,8 @@ cmd_display_menu_get_position(struct client *c, struct cmdq_item *item,
 		else
 			*py = 0;
 	} else if (strcmp(yp, "M") == 0) {
-		if (state->event.m.valid)
-			*py = state->event.m.y + h;
+		if (event->m.valid)
+			*py = event->m.y + h;
 		else
 			*py = 0;
 	} else if (strcmp(yp, "S") == 0) {
@@ -176,8 +176,8 @@ static enum cmd_retval
 cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
-	struct cmdq_state	*state = cmdq_get_state(item);
 	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct key_event	*event = cmdq_get_event(item);
 	struct client		*c;
 	struct menu		*menu = NULL;
 	struct menu_item	 menu_item;
@@ -230,7 +230,7 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	cmd_display_menu_get_position(c, item, args, &px, &py, menu->width + 4,
 	    menu->count + 2);
 
-	if (!state->event.m.valid)
+	if (!event->m.valid)
 		flags |= MENU_NOMOUSE;
 	if (menu_display(menu, flags, item, px, py, c, target, NULL, NULL) != 0)
 		return (CMD_RETURN_NORMAL);

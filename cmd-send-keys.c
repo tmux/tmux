@@ -134,13 +134,13 @@ static enum cmd_retval
 cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = cmd_get_args(self);
-	struct cmdq_state		*state = cmdq_get_state(item);
 	struct cmd_find_state		*target = cmdq_get_target(item);
 	struct client			*c = cmd_find_client(item, NULL, 1);
 	struct window_pane		*wp = target->wp;
 	struct session			*s = target->s;
 	struct winlink			*wl = target->wl;
-	struct mouse_event		*m = &state->event.m;
+	struct key_event		*event = cmdq_get_event(item);
+	struct mouse_event		*m = &event->m;
 	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
 	int				 i;
 	key_code			 key;

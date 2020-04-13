@@ -49,8 +49,7 @@ static enum cmd_retval
 cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
-	struct cmdq_state	*state = cmdq_get_state(item);
-	struct cmd_find_state	*current = &state->current;
+	struct cmd_find_state	*current = cmdq_get_current(item);
 	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct cmd_find_state	*source = cmdq_get_source(item);
 	struct client		*c = cmd_find_client(item, NULL, 1);

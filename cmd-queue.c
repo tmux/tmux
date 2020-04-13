@@ -65,6 +65,23 @@ struct cmdq_item {
 };
 TAILQ_HEAD(cmdq_list, cmdq_item);
 
+/*
+ * Command queue state. This is the context for commands on the command queue.
+ * It holds information about how the commands were fired (the key and flags),
+ * any additional formats for the commands, and the current default target.
+ * Multiple commands can share the same state and a command may update the
+ * default target.
+ */
+struct cmdq_state {
+	int			 references;
+	int			 flags;
+
+	struct format_tree	*formats;
+
+	struct key_event	 event;
+	struct cmd_find_state	 current;
+};
+
 /* Get command queue name. */
 static const char *
 cmdq_name(struct client *c)
@@ -142,11 +159,25 @@ cmdq_get_source(struct cmdq_item *item)
 	return (&item->source);
 }
 
-/* Get item state. */
-struct cmdq_state *
-cmdq_get_state(struct cmdq_item *item)
+/* Get state event. */
+struct key_event *
+cmdq_get_event(struct cmdq_item *item)
 {
-	return (item->state);
+	return (&item->state->event);
+}
+
+/* Get state current target. */
+struct cmd_find_state *
+cmdq_get_current(struct cmdq_item *item)
+{
+	return (&item->state->current);
+}
+
+/* Get state flags. */
+int
+cmdq_get_flags(struct cmdq_item *item)
+{
+	return (item->state->flags);
 }
 
 /* Merge formats from item. */
@@ -317,7 +348,7 @@ cmdq_remove_group(struct cmdq_item *item)
 /* Get a command for the command queue. */
 struct cmdq_item *
 cmdq_get_command(struct cmd_list *cmdlist, struct cmd_find_state *current,
-    struct mouse_event *m, int flags)
+    struct key_event *event, int flags)
 {
 	struct cmdq_item	*item, *first = NULL, *last = NULL;
 	struct cmd		*cmd;
@@ -333,10 +364,9 @@ cmdq_get_command(struct cmd_list *cmdlist, struct cmd_find_state *current,
 				cmd_find_copy_state(&state->current, current);
 			else
 				cmd_find_clear_state(&state->current, 0);
-			if (m != NULL) {
-				state->event.key = KEYC_NONE;
-				memcpy(&state->event.m, m,
-				    sizeof state->event.m);
+			if (event != NULL) {
+				memcpy(&state->event, event,
+				    sizeof state->event);
 			}
 			state->flags = flags;
 			last_group = group;

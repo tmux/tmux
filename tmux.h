@@ -43,6 +43,7 @@ struct cmd;
 struct cmd_find_state;
 struct cmdq_item;
 struct cmdq_list;
+struct cmdq_state;
 struct cmds;
 struct environ;
 struct format_job_tree;
@@ -1378,20 +1379,10 @@ struct cmd_parse_input {
 	struct cmd_find_state	 fs;
 };
 
-/* Command queue item state. */
-struct cmdq_state {
-	int			 references;
-
-	int			 flags;
+/* Command queue flags. */
 #define CMDQ_STATE_REPEAT 0x1
 #define CMDQ_STATE_CONTROL 0x2
 #define CMDQ_STATE_NOHOOKS 0x4
-
-	struct format_tree	*formats;
-
-	struct key_event	 event;
-	struct cmd_find_state	 current;
-};
 
 /* Command queue callback. */
 typedef enum cmd_retval (*cmdq_cb) (struct cmdq_item *, void *);
@@ -2108,10 +2099,12 @@ const char	 *cmdq_get_name(struct cmdq_item *);
 struct client	 *cmdq_get_client(struct cmdq_item *);
 struct cmd_find_state *cmdq_get_target(struct cmdq_item *);
 struct cmd_find_state *cmdq_get_source(struct cmdq_item *);
-struct cmdq_state *cmdq_get_state(struct cmdq_item *);
+struct key_event *cmdq_get_event(struct cmdq_item *);
+struct cmd_find_state *cmdq_get_current(struct cmdq_item *);
+int		  cmdq_get_flags(struct cmdq_item *);
 void		  cmdq_merge_formats(struct cmdq_item *, struct format_tree *);
 struct cmdq_item *cmdq_get_command(struct cmd_list *, struct cmd_find_state *,
-		     struct mouse_event *, int);
+		     struct key_event *, int);
 #define cmdq_get_callback(cb, data) cmdq_get_callback1(#cb, cb, data)
 struct cmdq_item *cmdq_get_callback1(const char *, cmdq_cb, void *);
 struct cmdq_item *cmdq_get_error(const char *);
@@ -2147,7 +2140,7 @@ void	 key_bindings_remove(const char *, key_code);
 void	 key_bindings_remove_table(const char *);
 void	 key_bindings_init(void);
 struct cmdq_item *key_bindings_dispatch(struct key_binding *,
-	     struct cmdq_item *, struct client *, struct mouse_event *,
+	     struct cmdq_item *, struct client *, struct key_event *,
 	     struct cmd_find_state *);
 
 /* key-string.c */

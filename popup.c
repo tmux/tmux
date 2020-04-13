@@ -305,10 +305,10 @@ popup_key_cb(struct client *c, struct key_event *event)
 		break;
 	case CMD_PARSE_SUCCESS:
 		if (pd->item != NULL)
-			m = &cmdq_get_state(pd->item)->event.m;
+			event = cmdq_get_event(pd->item);
 		else
-			m = NULL;
-		new_item = cmdq_get_command(pr->cmdlist, fs, m, 0);
+			event = NULL;
+		new_item = cmdq_get_command(pr->cmdlist, fs, event, 0);
 		cmd_list_free(pr->cmdlist);
 		cmdq_append(c, new_item);
 		break;

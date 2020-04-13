@@ -1223,7 +1223,7 @@ try_again:
 		server_status_client(c);
 
 		/* Execute the key binding. */
-		key_bindings_dispatch(bd, item, c, m, &fs);
+		key_bindings_dispatch(bd, item, c, event, &fs);
 		key_bindings_unref_table(table);
 		goto out;
 	}
