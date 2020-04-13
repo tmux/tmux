@@ -64,12 +64,12 @@ const struct cmd_entry cmd_lock_client_entry = {
 static enum cmd_retval
 cmd_lock_server_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args	*args = self->args;
+	struct args	*args = cmd_get_args(self);
 	struct client	*c;
 
-	if (self->entry == &cmd_lock_server_entry)
+	if (cmd_get_entry(self) == &cmd_lock_server_entry)
 		server_lock();
-	else if (self->entry == &cmd_lock_session_entry)
+	else if (cmd_get_entry(self) == &cmd_lock_session_entry)
 		server_lock_session(item->target.s);
 	else {
 		if ((c = cmd_find_client(item, args_get(args, 't'), 0)) == NULL)

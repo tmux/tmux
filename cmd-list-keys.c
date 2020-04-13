@@ -144,7 +144,7 @@ cmd_list_keys_get_prefix(struct args *args, key_code *prefix)
 static enum cmd_retval
 cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
+	struct args		*args = cmd_get_args(self);
 	struct key_table	*table;
 	struct key_binding	*bd;
 	const char		*tablename, *r;
@@ -153,7 +153,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 	int			 repeat, width, tablewidth, keywidth, found = 0;
 	size_t			 tmpsize, tmpused, cplen;
 
-	if (self->entry == &cmd_list_commands_entry)
+	if (cmd_get_entry(self) == &cmd_list_commands_entry)
 		return (cmd_list_keys_commands(self, item));
 
 	if (args->argc != 0) {
@@ -313,7 +313,7 @@ out:
 static enum cmd_retval
 cmd_list_keys_commands(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		 *args = self->args;
+	struct args		 *args = cmd_get_args(self);
 	const struct cmd_entry	**entryp;
 	const struct cmd_entry	 *entry;
 	struct format_tree	 *ft;

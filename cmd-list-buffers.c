@@ -46,7 +46,7 @@ const struct cmd_entry cmd_list_buffers_entry = {
 static enum cmd_retval
 cmd_list_buffers_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
+	struct args		*args = cmd_get_args(self);
 	struct paste_buffer	*pb;
 	struct format_tree	*ft;
 	const char		*template, *filter;

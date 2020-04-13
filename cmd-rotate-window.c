@@ -43,6 +43,7 @@ const struct cmd_entry cmd_rotate_window_entry = {
 static enum cmd_retval
 cmd_rotate_window_exec(struct cmd *self, struct cmdq_item *item)
 {
+	struct args		*args = cmd_get_args(self);
 	struct cmd_find_state	*current = &item->shared->current;
 	struct winlink		*wl = item->target.wl;
 	struct window		*w = wl->window;
@@ -50,9 +51,9 @@ cmd_rotate_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct layout_cell	*lc;
 	u_int			 sx, sy, xoff, yoff;
 
-	window_push_zoom(w, args_has(self->args, 'Z'));
+	window_push_zoom(w, args_has(args, 'Z'));
 
-	if (args_has(self->args, 'D')) {
+	if (args_has(args, 'D')) {
 		wp = TAILQ_LAST(&w->panes, window_panes);
 		TAILQ_REMOVE(&w->panes, wp, entry);
 		TAILQ_INSERT_HEAD(&w->panes, wp, entry);

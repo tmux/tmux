@@ -44,7 +44,7 @@ const struct cmd_entry cmd_find_window_entry = {
 static enum cmd_retval
 cmd_find_window_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args, *new_args;
+	struct args		*args = cmd_get_args(self), *new_args;
 	struct window_pane	*wp = item->target.wp;
 	const char		*s = args->argv[0];
 	char			*filter, *argv = { NULL };

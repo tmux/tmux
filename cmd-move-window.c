@@ -59,7 +59,7 @@ const struct cmd_entry cmd_link_window_entry = {
 static enum cmd_retval
 cmd_move_window_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args	*args = self->args;
+	struct args	*args = cmd_get_args(self);
 	const char	*tflag = args_get(args, 't');
 	struct session	*src;
 	struct session	*dst;
@@ -86,11 +86,11 @@ cmd_move_window_exec(struct cmd *self, struct cmdq_item *item)
 	wl = item->source.wl;
 	idx = item->target.idx;
 
-	kflag = args_has(self->args, 'k');
-	dflag = args_has(self->args, 'd');
-	sflag = args_has(self->args, 's');
+	kflag = args_has(args, 'k');
+	dflag = args_has(args, 'd');
+	sflag = args_has(args, 's');
 
-	if (args_has(self->args, 'a')) {
+	if (args_has(args, 'a')) {
 		if ((idx = winlink_shuffle_up(dst, dst->curw)) == -1)
 			return (CMD_RETURN_ERROR);
 	}
@@ -101,7 +101,7 @@ cmd_move_window_exec(struct cmd *self, struct cmdq_item *item)
 		free(cause);
 		return (CMD_RETURN_ERROR);
 	}
-	if (self->entry == &cmd_move_window_entry)
+	if (cmd_get_entry(self) == &cmd_move_window_entry)
 		server_unlink_window(src, wl);
 
 	/*

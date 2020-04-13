@@ -89,7 +89,7 @@ cmd_run_shell_print(struct job *job, const char *msg)
 static enum cmd_retval
 cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args			*args = self->args;
+	struct args			*args = cmd_get_args(self);
 	struct cmd_run_shell_data	*cdata;
 	struct client			*c = cmd_find_client(item, NULL, 1);
 	struct session			*s = item->target.s;

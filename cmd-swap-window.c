@@ -45,6 +45,7 @@ const struct cmd_entry cmd_swap_window_entry = {
 static enum cmd_retval
 cmd_swap_window_exec(struct cmd *self, struct cmdq_item *item)
 {
+	struct args		*args = cmd_get_args(self);
 	struct session		*src, *dst;
 	struct session_group	*sg_src, *sg_dst;
 	struct winlink		*wl_src, *wl_dst;
@@ -77,7 +78,7 @@ cmd_swap_window_exec(struct cmd *self, struct cmdq_item *item)
 	wl_src->window = w_dst;
 	TAILQ_INSERT_TAIL(&w_dst->winlinks, wl_src, wentry);
 
-	if (args_has(self->args, 'd')) {
+	if (args_has(args, 'd')) {
 		session_select(dst, wl_dst->idx);
 		if (src != dst)
 			session_select(src, wl_src->idx);

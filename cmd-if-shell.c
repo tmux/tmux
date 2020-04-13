@@ -62,10 +62,11 @@ struct cmd_if_shell_data {
 static enum cmd_retval
 cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args			*args = self->args;
+	struct args			*args = cmd_get_args(self);
 	struct mouse_event		*m = &item->shared->mouse;
 	struct cmd_if_shell_data	*cdata;
 	char				*shellcmd, *cmd;
+	const char			*file;
 	struct cmdq_item		*new_item;
 	struct cmd_find_state		*fs = &item->target;
 	struct client			*c = cmd_find_client(item, NULL, 1);
@@ -88,9 +89,7 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 			return (CMD_RETURN_NORMAL);
 
 		memset(&pi, 0, sizeof pi);
-		if (self->file != NULL)
-			pi.file = self->file;
-		pi.line = self->line;
+		cmd_get_source(self, &pi.file, &pi.line);
 		pi.item = item;
 		pi.c = c;
 		cmd_find_copy_state(&pi.fs, fs);
@@ -134,10 +133,9 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 		cdata->item = NULL;
 
 	memset(&cdata->input, 0, sizeof cdata->input);
-	if (self->file != NULL)
-		cdata->input.file = xstrdup(self->file);
-	cdata->input.line = self->line;
-	cdata->input.item = cdata->item;
+	cmd_get_source(self, &file, &cdata->input.line);
+	if (file != NULL)
+		cdata->input.file = xstrdup(file);
 	cdata->input.c = c;
 	if (cdata->input.c != NULL)
 		cdata->input.c->references++;

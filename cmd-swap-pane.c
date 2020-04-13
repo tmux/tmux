@@ -45,7 +45,7 @@ const struct cmd_entry cmd_swap_pane_entry = {
 static enum cmd_retval
 cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
+	struct args		*args = cmd_get_args(self);
 	struct window		*src_w, *dst_w;
 	struct window_pane	*tmp_wp, *src_wp, *dst_wp;
 	struct layout_cell	*src_lc, *dst_lc;

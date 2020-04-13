@@ -1128,8 +1128,10 @@ format_create_add_item(struct format_tree *ft, struct cmdq_item *item)
 	struct window_pane	*wp;
 	u_int			 x, y;
 
-	if (item->cmd != NULL)
-		format_add(ft, "command", "%s", item->cmd->entry->name);
+	if (item->cmd != NULL) {
+		format_add(ft, "command", "%s",
+		    cmd_get_entry (item->cmd)->name);
+	}
 
 	if (item->shared == NULL)
 		return;

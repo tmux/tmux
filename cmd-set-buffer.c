@@ -54,7 +54,7 @@ const struct cmd_entry cmd_delete_buffer_entry = {
 static enum cmd_retval
 cmd_set_buffer_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
+	struct args		*args = cmd_get_args(self);
 	struct paste_buffer	*pb;
 	char			*bufdata, *cause;
 	const char		*bufname, *olddata;
@@ -66,7 +66,7 @@ cmd_set_buffer_exec(struct cmd *self, struct cmdq_item *item)
 	else
 		pb = paste_get_name(bufname);
 
-	if (self->entry == &cmd_delete_buffer_entry) {
+	if (cmd_get_entry(self) == &cmd_delete_buffer_entry) {
 		if (pb == NULL)
 			pb = paste_get_top(&bufname);
 		if (pb == NULL) {

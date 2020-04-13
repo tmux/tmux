@@ -177,7 +177,7 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 static enum cmd_retval
 cmd_attach_session_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args	*args = self->args;
+	struct args	*args = cmd_get_args(self);
 
 	return (cmd_attach_session(item, args_get(args, 't'),
 	    args_has(args, 'd'), args_has(args, 'x'), args_has(args, 'r'),

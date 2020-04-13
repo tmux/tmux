@@ -48,7 +48,7 @@ const struct cmd_entry cmd_break_pane_entry = {
 static enum cmd_retval
 cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
+	struct args		*args = cmd_get_args(self);
 	struct cmd_find_state	*current = &item->shared->current;
 	struct client		*c = cmd_find_client(item, NULL, 1);
 	struct winlink		*wl = item->source.wl;
@@ -98,7 +98,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (idx == -1)
 		idx = -1 - options_get_number(dst_s->options, "base-index");
 	wl = session_attach(dst_s, w, idx, &cause); /* can't fail */
-	if (!args_has(self->args, 'd')) {
+	if (!args_has(args, 'd')) {
 		session_select(dst_s, wl->idx);
 		cmd_find_from_session(current, dst_s, 0);
 	}

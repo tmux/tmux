@@ -66,7 +66,7 @@ const struct cmd_entry cmd_has_session_entry = {
 static enum cmd_retval
 cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
+	struct args		*args = cmd_get_args(self);
 	struct client		*c = item->client;
 	struct session		*s, *as, *groupwith;
 	struct environ		*env;
@@ -81,7 +81,7 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	enum cmd_retval		 retval;
 	struct cmd_find_state    fs;
 
-	if (self->entry == &cmd_has_session_entry) {
+	if (cmd_get_entry(self) == &cmd_has_session_entry) {
 		/*
 		 * cmd_find_target() will fail if the session cannot be found,
 		 * so always return success here.

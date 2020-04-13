@@ -209,11 +209,13 @@ cmdq_get_command(struct cmd_list *cmdlist, struct cmd_find_state *current,
 {
 	struct cmdq_item	*item, *first = NULL, *last = NULL;
 	struct cmd		*cmd;
+	const struct cmd_entry	*entry;
 	struct cmdq_shared	*shared = NULL;
-	u_int			 group = 0;
+	u_int			 group, last_group = 0;
 
-	TAILQ_FOREACH(cmd, &cmdlist->list, qentry) {
-		if (cmd->group != group) {
+	cmd = cmd_list_first(cmdlist, &group);
+	while (cmd != NULL) {
+		if (group != last_group) {
 			shared = xcalloc(1, sizeof *shared);
 			if (current != NULL)
 				cmd_find_copy_state(&shared->current, current);
@@ -221,14 +223,15 @@ cmdq_get_command(struct cmd_list *cmdlist, struct cmd_find_state *current,
 				cmd_find_clear_state(&shared->current, 0);
 			if (m != NULL)
 				memcpy(&shared->mouse, m, sizeof shared->mouse);
-			group = cmd->group;
+			last_group = group;
 		}
+		entry = cmd_get_entry(cmd);
 
 		item = xcalloc(1, sizeof *item);
-		xasprintf(&item->name, "[%s/%p]", cmd->entry->name, item);
+		xasprintf(&item->name, "[%s/%p]", entry->name, item);
 		item->type = CMDQ_COMMAND;
 
-		item->group = cmd->group;
+		item->group = group;
 		item->flags = flags;
 
 		item->shared = shared;
@@ -245,6 +248,8 @@ cmdq_get_command(struct cmd_list *cmdlist, struct cmd_find_state *current,
 		if (last != NULL)
 			last->next = item;
 		last = item;
+
+		cmd = cmd_list_next(cmd, &group);
 	}
 	return (first);
 }
@@ -261,7 +266,7 @@ cmdq_find_flag(struct cmdq_item *item, struct cmd_find_state *fs,
 		return (CMD_RETURN_NORMAL);
 	}
 
-	value = args_get(item->cmd->args, flag->flag);
+	value = args_get(cmd_get_args(item->cmd), flag->flag);
 	if (cmd_find_target(fs, item, value, flag->type, flag->flags) != 0) {
 		cmd_find_clear_state(fs, 0);
 		return (CMD_RETURN_ERROR);
@@ -277,7 +282,7 @@ cmdq_fire_command(struct cmdq_item *item)
 	const char		*name = cmdq_name(c);
 	struct cmdq_shared	*shared = item->shared;
 	struct cmd		*cmd = item->cmd;
-	const struct cmd_entry	*entry = cmd->entry;
+	const struct cmd_entry	*entry = cmd_get_entry(cmd);
 	enum cmd_retval		 retval;
 	struct cmd_find_state	*fsp, fs;
 	int			 flags;
@@ -528,8 +533,9 @@ cmdq_error(struct cmdq_item *item, const char *fmt, ...)
 	struct client	*c = item->client;
 	struct cmd	*cmd = item->cmd;
 	va_list		 ap;
-	char		*msg;
-	char		*tmp;
+	char		*msg, *tmp;
+	const char	*file;
+	u_int		 line;
 
 	va_start(ap, fmt);
 	xvasprintf(&msg, fmt, ap);
@@ -537,9 +543,10 @@ cmdq_error(struct cmdq_item *item, const char *fmt, ...)
 
 	log_debug("%s: %s", __func__, msg);
 
-	if (c == NULL)
-		cfg_add_cause("%s:%u: %s", cmd->file, cmd->line, msg);
-	else if (c->session == NULL || (c->flags & CLIENT_CONTROL)) {
+	if (c == NULL) {
+		cmd_get_source(cmd, &file, &line);
+		cfg_add_cause("%s:%u: %s", file, line, msg);
+	} else if (c->session == NULL || (c->flags & CLIENT_CONTROL)) {
 		if (~c->flags & CLIENT_UTF8) {
 			tmp = msg;
 			msg = utf8_sanitize(tmp);

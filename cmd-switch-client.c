@@ -47,7 +47,7 @@ const struct cmd_entry cmd_switch_client_entry = {
 static enum cmd_retval
 cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
+	struct args		*args = cmd_get_args(self);
 	const char		*tflag = args_get(args, 't');
 	enum cmd_find_type	 type;
 	int			 flags;
@@ -115,7 +115,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 			return (CMD_RETURN_NORMAL);
 		if (wl != NULL && wp != NULL) {
 			w = wl->window;
-			if (window_push_zoom(w, args_has(self->args, 'Z')))
+			if (window_push_zoom(w, args_has(args, 'Z')))
 				server_redraw_window(w);
 			window_redraw_active_switch(w, wp);
 			window_set_active_pane(w, wp, 1);

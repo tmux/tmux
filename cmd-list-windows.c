@@ -61,7 +61,7 @@ const struct cmd_entry cmd_list_windows_entry = {
 static enum cmd_retval
 cmd_list_windows_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args	*args = self->args;
+	struct args	*args = cmd_get_args(self);
 
 	if (args_has(args, 'a'))
 		cmd_list_windows_server(self, item);
@@ -84,7 +84,7 @@ static void
 cmd_list_windows_session(struct cmd *self, struct session *s,
     struct cmdq_item *item, int type)
 {
-	struct args		*args = self->args;
+	struct args		*args = cmd_get_args(self);
 	struct winlink		*wl;
 	u_int			 n;
 	struct format_tree	*ft;
