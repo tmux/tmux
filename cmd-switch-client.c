@@ -40,7 +40,7 @@ const struct cmd_entry cmd_switch_client_entry = {
 
 	/* -t is special */
 
-	.flags = CMD_READONLY,
+	.flags = CMD_READONLY|CMD_CLIENT_CFLAG,
 	.exec = cmd_switch_client_exec
 };
 
@@ -53,16 +53,13 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 	const char		*tflag = args_get(args, 't');
 	enum cmd_find_type	 type;
 	int			 flags;
-	struct client		*c;
+	struct client		*tc = cmdq_get_target_client(item);
 	struct session		*s;
 	struct winlink		*wl;
 	struct window		*w;
 	struct window_pane	*wp;
 	const char		*tablename;
 	struct key_table	*table;
-
-	if ((c = cmd_find_client(item, args_get(args, 'c'), 0)) == NULL)
-		return (CMD_RETURN_ERROR);
 
 	if (tflag != NULL && tflag[strcspn(tflag, ":.%")] != '\0') {
 		type = CMD_FIND_PANE;
@@ -78,7 +75,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 	wp = target.wp;
 
 	if (args_has(args, 'r'))
-		c->flags ^= CLIENT_READONLY;
+		tc->flags ^= CLIENT_READONLY;
 
 	tablename = args_get(args, 'T');
 	if (tablename != NULL) {
@@ -88,24 +85,24 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 			return (CMD_RETURN_ERROR);
 		}
 		table->references++;
-		key_bindings_unref_table(c->keytable);
-		c->keytable = table;
+		key_bindings_unref_table(tc->keytable);
+		tc->keytable = table;
 		return (CMD_RETURN_NORMAL);
 	}
 
 	if (args_has(args, 'n')) {
-		if ((s = session_next_session(c->session)) == NULL) {
+		if ((s = session_next_session(tc->session)) == NULL) {
 			cmdq_error(item, "can't find next session");
 			return (CMD_RETURN_ERROR);
 		}
 	} else if (args_has(args, 'p')) {
-		if ((s = session_previous_session(c->session)) == NULL) {
+		if ((s = session_previous_session(tc->session)) == NULL) {
 			cmdq_error(item, "can't find previous session");
 			return (CMD_RETURN_ERROR);
 		}
 	} else if (args_has(args, 'l')) {
-		if (c->last_session != NULL && session_alive(c->last_session))
-			s = c->last_session;
+		if (tc->last_session != NULL && session_alive(tc->last_session))
+			s = tc->last_session;
 		else
 			s = NULL;
 		if (s == NULL) {
@@ -131,23 +128,23 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (!args_has(args, 'E'))
-		environ_update(s->options, c->environ, s->environ);
+		environ_update(s->options, tc->environ, s->environ);
 
-	if (c->session != NULL && c->session != s)
-		c->last_session = c->session;
-	c->session = s;
+	if (tc->session != NULL && tc->session != s)
+		tc->last_session = tc->session;
+	tc->session = s;
 	if (~cmdq_get_flags(item) & CMDQ_STATE_REPEAT)
-		server_client_set_key_table(c, NULL);
-	tty_update_client_offset(c);
-	status_timer_start(c);
-	notify_client("client-session-changed", c);
+		server_client_set_key_table(tc, NULL);
+	tty_update_client_offset(tc);
+	status_timer_start(tc);
+	notify_client("client-session-changed", tc);
 	session_update_activity(s, NULL);
 	gettimeofday(&s->last_attached_time, NULL);
 
 	server_check_unattached();
-	server_redraw_client(c);
+	server_redraw_client(tc);
 	s->curw->flags &= ~WINLINK_ALERTFLAGS;
-	s->curw->window->latest = c;
+	s->curw->window->latest = tc;
 	recalculate_sizes();
 	alerts_check_session(s);
 

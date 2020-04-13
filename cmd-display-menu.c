@@ -42,7 +42,7 @@ const struct cmd_entry cmd_display_menu_entry = {
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
-	.flags = CMD_AFTERHOOK,
+	.flags = CMD_AFTERHOOK|CMD_CLIENT_CFLAG,
 	.exec = cmd_display_menu_exec
 };
 
@@ -57,17 +57,18 @@ const struct cmd_entry cmd_display_popup_entry = {
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
-	.flags = CMD_AFTERHOOK,
+	.flags = CMD_AFTERHOOK|CMD_CLIENT_CFLAG,
 	.exec = cmd_display_popup_exec
 };
 
 static void
-cmd_display_menu_get_position(struct client *c, struct cmdq_item *item,
+cmd_display_menu_get_position(struct client *tc, struct cmdq_item *item,
     struct args *args, u_int *px, u_int *py, u_int w, u_int h)
 {
+	struct tty		*tty = &tc->tty;
 	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct key_event	*event = cmdq_get_event(item);
-	struct session		*s = c->session;
+	struct session		*s = tc->session;
 	struct winlink		*wl = target->wl;
 	struct window_pane	*wp = target->wp;
 	struct style_ranges	*ranges;
@@ -75,9 +76,9 @@ cmd_display_menu_get_position(struct client *c, struct cmdq_item *item,
 	const char		*xp, *yp;
 	u_int			 line, ox, oy, sx, sy, lines;
 
-	lines = status_line_size(c);
+	lines = status_line_size(tc);
 	for (line = 0; line < lines; line++) {
-		ranges = &c->status.entries[line].ranges;
+		ranges = &tc->status.entries[line].ranges;
 		TAILQ_FOREACH(sr, ranges, entry) {
 			if (sr->type == STYLE_RANGE_WINDOW)
 				break;
@@ -86,15 +87,15 @@ cmd_display_menu_get_position(struct client *c, struct cmdq_item *item,
 			break;
 	}
 	if (line == lines)
-		ranges = &c->status.entries[0].ranges;
+		ranges = &tc->status.entries[0].ranges;
 
 	xp = args_get(args, 'x');
 	if (xp == NULL || strcmp(xp, "C") == 0)
-		*px = (c->tty.sx - 1) / 2 - w / 2;
+		*px = (tty->sx - 1) / 2 - w / 2;
 	else if (strcmp(xp, "R") == 0)
-		*px = c->tty.sx - 1;
+		*px = tty->sx - 1;
 	else if (strcmp(xp, "P") == 0) {
-		tty_window_offset(&c->tty, &ox, &oy, &sx, &sy);
+		tty_window_offset(&tc->tty, &ox, &oy, &sx, &sy);
 		if (wp->xoff >= ox)
 			*px = wp->xoff - ox;
 		else
@@ -105,7 +106,7 @@ cmd_display_menu_get_position(struct client *c, struct cmdq_item *item,
 		else
 			*px = 0;
 	} else if (strcmp(xp, "W") == 0) {
-		if (status_at_line(c) == -1)
+		if (status_at_line(tc) == -1)
 			*px = 0;
 		else {
 			TAILQ_FOREACH(sr, ranges, entry) {
@@ -121,14 +122,14 @@ cmd_display_menu_get_position(struct client *c, struct cmdq_item *item,
 		}
 	} else
 		*px = strtoul(xp, NULL, 10);
-	if ((*px) + w >= c->tty.sx)
-		*px = c->tty.sx - w;
+	if ((*px) + w >= tty->sx)
+		*px = tty->sx - w;
 
 	yp = args_get(args, 'y');
 	if (yp == NULL || strcmp(yp, "C") == 0)
-		*py = (c->tty.sy - 1) / 2 + h / 2;
+		*py = (tty->sy - 1) / 2 + h / 2;
 	else if (strcmp(yp, "P") == 0) {
-		tty_window_offset(&c->tty, &ox, &oy, &sx, &sy);
+		tty_window_offset(&tc->tty, &ox, &oy, &sx, &sy);
 		if (wp->yoff + wp->sy >= oy)
 			*py = wp->yoff + wp->sy - oy;
 		else
@@ -146,9 +147,9 @@ cmd_display_menu_get_position(struct client *c, struct cmdq_item *item,
 				*py = 0;
 		} else {
 			if (lines != 0)
-				*py = c->tty.sy - lines;
+				*py = tty->sy - lines;
 			else
-				*py = c->tty.sy;
+				*py = tty->sy;
 		}
 	} else if (strcmp(yp, "W") == 0) {
 		if (options_get_number(s->options, "status-position") == 0) {
@@ -158,9 +159,9 @@ cmd_display_menu_get_position(struct client *c, struct cmdq_item *item,
 				*py = 0;
 		} else {
 			if (lines != 0)
-				*py = c->tty.sy - lines + line;
+				*py = tty->sy - lines + line;
 			else
-				*py = c->tty.sy;
+				*py = tty->sy;
 		}
 	} else
 		*py = strtoul(yp, NULL, 10);
@@ -168,8 +169,8 @@ cmd_display_menu_get_position(struct client *c, struct cmdq_item *item,
 		*py = 0;
 	else
 		*py -= h;
-	if ((*py) + h >= c->tty.sy)
-		*py = c->tty.sy - h;
+	if ((*py) + h >= tty->sy)
+		*py = tty->sy - h;
 }
 
 static enum cmd_retval
@@ -178,7 +179,7 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	struct args		*args = cmd_get_args(self);
 	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct key_event	*event = cmdq_get_event(item);
-	struct client		*c;
+	struct client		*tc = cmdq_get_target_client(item);
 	struct menu		*menu = NULL;
 	struct menu_item	 menu_item;
 	const char		*key;
@@ -186,13 +187,11 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	int			 flags = 0, i;
 	u_int			 px, py;
 
-	if ((c = cmd_find_client(item, args_get(args, 'c'), 0)) == NULL)
-		return (CMD_RETURN_ERROR);
-	if (c->overlay_draw != NULL)
+	if (tc->overlay_draw != NULL)
 		return (CMD_RETURN_NORMAL);
 
 	if (args_has(args, 'T'))
-		title = format_single_from_target(item, args_get(args, 'T'), c);
+		title = format_single_from_target(item, args_get(args, 'T'));
 	else
 		title = xstrdup("");
 	menu = menu_create(title);
@@ -200,7 +199,7 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	for (i = 0; i != args->argc; /* nothing */) {
 		name = args->argv[i++];
 		if (*name == '\0') {
-			menu_add_item(menu, NULL, item, c, target);
+			menu_add_item(menu, NULL, item, tc, target);
 			continue;
 		}
 
@@ -216,7 +215,7 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 		menu_item.key = key_string_lookup_string(key);
 		menu_item.command = args->argv[i++];
 
-		menu_add_item(menu, &menu_item, item, c, target);
+		menu_add_item(menu, &menu_item, item, tc, target);
 	}
 	free(title);
 	if (menu == NULL) {
@@ -227,12 +226,13 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 		menu_free(menu);
 		return (CMD_RETURN_NORMAL);
 	}
-	cmd_display_menu_get_position(c, item, args, &px, &py, menu->width + 4,
+	cmd_display_menu_get_position(tc, item, args, &px, &py, menu->width + 4,
 	    menu->count + 2);
 
 	if (!event->m.valid)
 		flags |= MENU_NOMOUSE;
-	if (menu_display(menu, flags, item, px, py, c, target, NULL, NULL) != 0)
+	if (menu_display(menu, flags, item, px, py, tc, target, NULL,
+	    NULL) != 0)
 		return (CMD_RETURN_NORMAL);
 	return (CMD_RETURN_WAIT);
 }
@@ -242,20 +242,19 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
 	struct cmd_find_state	*target = cmdq_get_target(item);
-	struct client		*c;
+	struct client		*tc = cmdq_get_target_client(item);
+	struct tty		*tty = &tc->tty;
 	const char		*value, *cmd = NULL, **lines = NULL;
 	const char		*shellcmd = NULL;
 	char			*cwd, *cause;
 	int			 flags = 0;
 	u_int			 px, py, w, h, nlines = 0;
 
-	if ((c = cmd_find_client(item, args_get(args, 'c'), 0)) == NULL)
-		return (CMD_RETURN_ERROR);
 	if (args_has(args, 'C')) {
-		server_client_clear_overlay(c);
+		server_client_clear_overlay(tc);
 		return (CMD_RETURN_NORMAL);
 	}
-	if (c->overlay_draw != NULL)
+	if (tc->overlay_draw != NULL)
 		return (CMD_RETURN_NORMAL);
 
 	if (args->argc >= 1)
@@ -268,9 +267,9 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	if (nlines != 0)
 		h = popup_height(nlines, lines) + 2;
 	else
-		h = c->tty.sy / 2;
+		h = tty->sy / 2;
 	if (args_has(args, 'h')) {
-		h = args_percentage(args, 'h', 1, c->tty.sy, c->tty.sy, &cause);
+		h = args_percentage(args, 'h', 1, tty->sy, tty->sy, &cause);
 		if (cause != NULL) {
 			cmdq_error(item, "height %s", cause);
 			free(cause);
@@ -279,11 +278,11 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (nlines != 0)
-		w = popup_width(item, nlines, lines, c, target) + 2;
+		w = popup_width(item, nlines, lines, tc, target) + 2;
 	else
-		w = c->tty.sx / 2;
+		w = tty->sx / 2;
 	if (args_has(args, 'w')) {
-		w = args_percentage(args, 'w', 1, c->tty.sx, c->tty.sx, &cause);
+		w = args_percentage(args, 'w', 1, tty->sx, tty->sx, &cause);
 		if (cause != NULL) {
 			cmdq_error(item, "width %s", cause);
 			free(cause);
@@ -291,21 +290,21 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 		}
 	}
 
-	if (w > c->tty.sx - 1)
-		w = c->tty.sx - 1;
-	if (h > c->tty.sy - 1)
-		h = c->tty.sy - 1;
-	cmd_display_menu_get_position(c, item, args, &px, &py, w, h);
+	if (w > tty->sx - 1)
+		w = tty->sx - 1;
+	if (h > tty->sy - 1)
+		h = tty->sy - 1;
+	cmd_display_menu_get_position(tc, item, args, &px, &py, w, h);
 
 	value = args_get(args, 'd');
 	if (value != NULL)
-		cwd = format_single_from_target(item, value, c);
+		cwd = format_single_from_target(item, value);
 	else
-		cwd = xstrdup(server_client_get_cwd(c, target->s));
+		cwd = xstrdup(server_client_get_cwd(tc, target->s));
 
 	value = args_get(args, 'R');
 	if (value != NULL)
-		shellcmd = format_single_from_target(item, value, c);
+		shellcmd = format_single_from_target(item, value);
 
 	if (args_has(args, 'K'))
 		flags |= POPUP_WRITEKEYS;
@@ -314,7 +313,7 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	else if (args_has(args, 'E'))
 		flags |= POPUP_CLOSEEXIT;
 	if (popup_display(flags, item, px, py, w, h, nlines, lines, shellcmd,
-	    cmd, cwd, c, target) != 0)
+	    cmd, cwd, tc, target) != 0)
 		return (CMD_RETURN_NORMAL);
 	return (CMD_RETURN_WAIT);
 }

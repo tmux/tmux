@@ -37,7 +37,7 @@ const struct cmd_entry cmd_display_panes_entry = {
 	.args = { "bd:t:", 0, 1 },
 	.usage = "[-b] [-d duration] " CMD_TARGET_CLIENT_USAGE " [template]",
 
-	.flags = CMD_AFTERHOOK,
+	.flags = CMD_AFTERHOOK|CMD_CLIENT_TFLAG,
 	.exec = cmd_display_panes_exec
 };
 
@@ -228,17 +228,13 @@ static enum cmd_retval
 cmd_display_panes_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = cmd_get_args(self);
-	struct client			*c;
-	struct session			*s;
+	struct client			*tc = cmdq_get_target_client(item);
+	struct session			*s = tc->session;
 	u_int		 		 delay;
 	char				*cause;
 	struct cmd_display_panes_data	*cdata;
 
-	if ((c = cmd_find_client(item, args_get(args, 't'), 0)) == NULL)
-		return (CMD_RETURN_ERROR);
-	s = c->session;
-
-	if (c->overlay_draw != NULL)
+	if (tc->overlay_draw != NULL)
 		return (CMD_RETURN_NORMAL);
 
 	if (args_has(args, 'd')) {
@@ -261,7 +257,7 @@ cmd_display_panes_exec(struct cmd *self, struct cmdq_item *item)
 	else
 		cdata->item = item;
 
-	server_client_set_overlay(c, delay, NULL, NULL, cmd_display_panes_draw,
+	server_client_set_overlay(tc, delay, NULL, NULL, cmd_display_panes_draw,
 	    cmd_display_panes_key, cmd_display_panes_free, cdata);
 
 	if (args_has(args, 'b'))

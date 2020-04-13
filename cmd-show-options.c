@@ -78,7 +78,6 @@ cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = cmd_get_args(self);
 	struct cmd_find_state		*target = cmdq_get_target(item);
-	struct client			*c = cmd_find_client(item, NULL, 1);
 	struct options			*oo;
 	char				*argument, *name = NULL, *cause;
 	int				 window, idx, ambiguous, parent, scope;
@@ -98,7 +97,7 @@ cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 		}
 		return (cmd_show_options_all(self, item, scope, oo));
 	}
-	argument = format_single_from_target(item, args->argv[0], c);
+	argument = format_single_from_target(item, args->argv[0]);
 
 	name = options_match(argument, &idx, &ambiguous);
 	if (name == NULL) {

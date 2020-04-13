@@ -92,7 +92,6 @@ cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 	struct args			*args = cmd_get_args(self);
 	struct cmd_find_state		*target = cmdq_get_target(item);
 	struct cmd_run_shell_data	*cdata;
-	struct client			*c = cmd_find_client(item, NULL, 1);
 	struct session			*s = target->s;
 	struct window_pane		*wp = target->wp;
 	const char			*delay;
@@ -102,7 +101,7 @@ cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 
 	cdata = xcalloc(1, sizeof *cdata);
 	if (args->argc != 0)
-		cdata->cmd = format_single_from_target(item, args->argv[0], c);
+		cdata->cmd = format_single_from_target(item, args->argv[0]);
 
 	if (args_has(args, 't') && wp != NULL)
 		cdata->wp_id = wp->id;

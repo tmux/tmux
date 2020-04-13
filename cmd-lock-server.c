@@ -57,26 +57,22 @@ const struct cmd_entry cmd_lock_client_entry = {
 	.args = { "t:", 0, 0 },
 	.usage = CMD_TARGET_CLIENT_USAGE,
 
-	.flags = CMD_AFTERHOOK,
+	.flags = CMD_AFTERHOOK|CMD_CLIENT_TFLAG,
 	.exec = cmd_lock_server_exec
 };
 
 static enum cmd_retval
 cmd_lock_server_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = cmd_get_args(self);
 	struct cmd_find_state	*target = cmdq_get_target(item);
-	struct client		*c;
+	struct client		*tc = cmdq_get_target_client(item);
 
 	if (cmd_get_entry(self) == &cmd_lock_server_entry)
 		server_lock();
 	else if (cmd_get_entry(self) == &cmd_lock_session_entry)
 		server_lock_session(target->s);
-	else {
-		if ((c = cmd_find_client(item, args_get(args, 't'), 0)) == NULL)
-			return (CMD_RETURN_ERROR);
-		server_lock_client(c);
-	}
+	else
+		server_lock_client(tc);
 	recalculate_sizes();
 
 	return (CMD_RETURN_NORMAL);

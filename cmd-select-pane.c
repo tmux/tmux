@@ -87,12 +87,11 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 	const struct cmd_entry	*entry = cmd_get_entry(self);
 	struct cmd_find_state	*current = cmdq_get_current(item);
 	struct cmd_find_state	*target = cmdq_get_target(item);
-	struct client		*c = cmd_find_client(item, NULL, 1);
 	struct winlink		*wl = target->wl;
 	struct window		*w = wl->window;
 	struct session		*s = target->s;
 	struct window_pane	*wp = target->wp, *lastwp, *markedwp;
-	char			*pane_title;
+	char			*title;
 	const char		*style;
 	struct style		*sy;
 	struct options_entry	*o;
@@ -197,11 +196,10 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (args_has(args, 'T')) {
-		pane_title = format_single(item, args_get(args, 'T'),
-		    c, s, wl, wp);
-		if (screen_set_title(&wp->base, pane_title))
+		title = format_single_from_target(item, args_get(args, 'T'));
+		if (screen_set_title(&wp->base, title))
 			server_status_window(wp->window);
-		free(pane_title);
+		free(title);
 		return (CMD_RETURN_NORMAL);
 	}
 

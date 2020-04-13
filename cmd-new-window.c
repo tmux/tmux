@@ -55,7 +55,7 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_find_state	*current = cmdq_get_current(item);
 	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct spawn_context	 sc;
-	struct client		*c = cmd_find_client(item, NULL, 1);
+	struct client		*tc = cmdq_get_target_client(item);
 	struct session		*s = target->s;
 	struct winlink		*wl = target->wl;
 	int			 idx = target->idx;
@@ -73,7 +73,7 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	memset(&sc, 0, sizeof sc);
 	sc.item = item;
 	sc.s = s;
-	sc.c = c;
+	sc.tc = tc;
 
 	sc.name = args_get(args, 'n');
 	sc.argc = args->argc;
@@ -109,7 +109,7 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'P')) {
 		if ((template = args_get(args, 'F')) == NULL)
 			template = NEW_WINDOW_TEMPLATE;
-		cp = format_single(item, template, c, s, new_wl,
+		cp = format_single(item, template, tc, s, new_wl,
 		    new_wl->window->active);
 		cmdq_print(item, "%s", cp);
 		free(cp);

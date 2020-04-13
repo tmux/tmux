@@ -50,6 +50,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct args		*args = cmd_get_args(self);
 	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct spawn_context	 sc;
+	struct client		*tc = cmdq_get_target_client(item);
 	struct session		*s = target->s;
 	struct winlink		*wl = target->wl;
 	char			*cause = NULL;
@@ -60,7 +61,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmdq_item *item)
 	sc.item = item;
 	sc.s = s;
 	sc.wl = wl;
-	sc.c = cmd_find_client(item, NULL, 1);
+	sc.tc = tc;
 
 	sc.name = NULL;
 	sc.argc = args->argc;

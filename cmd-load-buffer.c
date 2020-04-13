@@ -85,7 +85,6 @@ cmd_load_buffer_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = cmd_get_args(self);
 	struct cmd_load_buffer_data	*cdata;
-	struct client			*c = cmd_find_client(item, NULL, 1);
 	const char			*bufname = args_get(args, 'b');
 	char				*path;
 
@@ -96,7 +95,7 @@ cmd_load_buffer_exec(struct cmd *self, struct cmdq_item *item)
 	else
 		cdata->name = NULL;
 
-	path = format_single_from_target(item, args->argv[0], c);
+	path = format_single_from_target(item, args->argv[0]);
 	file_read(cmdq_get_client(item), path, cmd_load_buffer_done, cdata);
 	free(path);
 
