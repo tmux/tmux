@@ -44,7 +44,7 @@ const struct cmd_entry cmd_command_prompt_entry = {
 	.usage = "[-1kiN] [-I inputs] [-p prompts] " CMD_TARGET_CLIENT_USAGE " "
 		 "[template]",
 
-	.flags = 0,
+	.flags = CMD_CLIENT_TFLAG,
 	.exec = cmd_command_prompt_exec
 };
 
@@ -65,16 +65,13 @@ static enum cmd_retval
 cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = cmd_get_args(self);
+	struct client			*tc = cmdq_get_target_client(item);
 	const char			*inputs, *prompts;
 	struct cmd_command_prompt_cdata	*cdata;
-	struct client			*c;
 	char				*prompt, *ptr, *input = NULL;
 	size_t				 n;
 
-	if ((c = cmd_find_client(item, args_get(args, 't'), 0)) == NULL)
-		return (CMD_RETURN_ERROR);
-
-	if (c->prompt_string != NULL)
+	if (tc->prompt_string != NULL)
 		return (CMD_RETURN_NORMAL);
 
 	cdata = xcalloc(1, sizeof *cdata);
@@ -124,7 +121,7 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 		cdata->flags |= PROMPT_INCREMENTAL;
 	else if (args_has(args, 'k'))
 		cdata->flags |= PROMPT_KEY;
-	status_prompt_set(c, prompt, input, cmd_command_prompt_callback,
+	status_prompt_set(tc, prompt, input, cmd_command_prompt_callback,
 	    cmd_command_prompt_free, cdata, cdata->flags);
 	free(prompt);
 

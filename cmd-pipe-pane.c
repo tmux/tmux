@@ -58,7 +58,7 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
 	struct cmd_find_state	*target = cmdq_get_target(item);
-	struct client		*c = cmd_find_client(item, NULL, 1);
+	struct client		*tc = cmdq_get_target_client(item);
 	struct window_pane	*wp = target->wp;
 	struct session		*s = target->s;
 	struct winlink		*wl = target->wl;
@@ -110,7 +110,7 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 
 	/* Expand the command. */
 	ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
-	format_defaults(ft, c, s, wl, wp);
+	format_defaults(ft, tc, s, wl, wp);
 	cmd = format_expand_time(ft, args->argv[0]);
 	format_free(ft);
 

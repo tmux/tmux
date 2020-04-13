@@ -52,7 +52,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_find_state	*current = cmdq_get_current(item);
 	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct cmd_find_state	*source = cmdq_get_source(item);
-	struct client		*c = cmd_find_client(item, NULL, 1);
+	struct client		*tc = cmdq_get_target_client(item);
 	struct winlink		*wl = source->wl;
 	struct session		*src_s = source->s;
 	struct session		*dst_s = target->s;
@@ -83,7 +83,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	wp->flags |= PANE_STYLECHANGED;
 	TAILQ_INSERT_HEAD(&w->panes, wp, entry);
 	w->active = wp;
-	w->latest = c;
+	w->latest = tc;
 
 	if (!args_has(args, 'n')) {
 		name = default_window_name(w);
@@ -115,7 +115,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'P')) {
 		if ((template = args_get(args, 'F')) == NULL)
 			template = BREAK_PANE_TEMPLATE;
-		cp = format_single(item, template, c, dst_s, wl, wp);
+		cp = format_single(item, template, tc, dst_s, wl, wp);
 		cmdq_print(item, "%s", cp);
 		free(cp);
 	}

@@ -39,7 +39,7 @@ const struct cmd_entry cmd_detach_client_entry = {
 
 	.source = { 's', CMD_FIND_SESSION, CMD_FIND_CANFAIL },
 
-	.flags = CMD_READONLY,
+	.flags = CMD_READONLY|CMD_CLIENT_TFLAG,
 	.exec = cmd_detach_client_exec
 };
 
@@ -50,7 +50,7 @@ const struct cmd_entry cmd_suspend_client_entry = {
 	.args = { "t:", 0, 0 },
 	.usage = CMD_TARGET_CLIENT_USAGE,
 
-	.flags = 0,
+	.flags = CMD_CLIENT_TFLAG,
 	.exec = cmd_detach_client_exec
 };
 
@@ -59,16 +59,13 @@ cmd_detach_client_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
 	struct cmd_find_state	*source = cmdq_get_source(item);
-	struct client		*c, *cloop;
+	struct client		*tc = cmdq_get_target_client(item), *loop;
 	struct session		*s;
 	enum msgtype		 msgtype;
 	const char		*cmd = args_get(args, 'E');
 
-	if ((c = cmd_find_client(item, args_get(args, 't'), 0)) == NULL)
-		return (CMD_RETURN_ERROR);
-
 	if (cmd_get_entry(self) == &cmd_suspend_client_entry) {
-		server_client_suspend(c);
+		server_client_suspend(tc);
 		return (CMD_RETURN_NORMAL);
 	}
 
@@ -81,32 +78,32 @@ cmd_detach_client_exec(struct cmd *self, struct cmdq_item *item)
 		s = source->s;
 		if (s == NULL)
 			return (CMD_RETURN_NORMAL);
-		TAILQ_FOREACH(cloop, &clients, entry) {
-			if (cloop->session == s) {
+		TAILQ_FOREACH(loop, &clients, entry) {
+			if (loop->session == s) {
 				if (cmd != NULL)
-					server_client_exec(cloop, cmd);
+					server_client_exec(loop, cmd);
 				else
-					server_client_detach(cloop, msgtype);
+					server_client_detach(loop, msgtype);
 			}
 		}
 		return (CMD_RETURN_STOP);
 	}
 
 	if (args_has(args, 'a')) {
-		TAILQ_FOREACH(cloop, &clients, entry) {
-			if (cloop->session != NULL && cloop != c) {
+		TAILQ_FOREACH(loop, &clients, entry) {
+			if (loop->session != NULL && loop != tc) {
 				if (cmd != NULL)
-					server_client_exec(cloop, cmd);
+					server_client_exec(loop, cmd);
 				else
-					server_client_detach(cloop, msgtype);
+					server_client_detach(loop, msgtype);
 			}
 		}
 		return (CMD_RETURN_NORMAL);
 	}
 
 	if (cmd != NULL)
-		server_client_exec(c, cmd);
+		server_client_exec(tc, cmd);
 	else
-		server_client_detach(c, msgtype);
+		server_client_detach(tc, msgtype);
 	return (CMD_RETURN_STOP);
 }

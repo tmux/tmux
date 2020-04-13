@@ -42,6 +42,7 @@ struct cmdq_item {
 	struct cmdq_item	*next;
 
 	struct client		*client;
+	struct client		*target_client;
 
 	enum cmdq_type		 type;
 	u_int			 group;
@@ -143,6 +144,13 @@ struct client *
 cmdq_get_client(struct cmdq_item *item)
 {
 	return (item->client);
+}
+
+/* Get item target client. */
+struct client *
+cmdq_get_target_client(struct cmdq_item *item)
+{
+	return (item->target_client);
 }
 
 /* Get item state. */
@@ -483,14 +491,15 @@ cmdq_find_flag(struct cmdq_item *item, struct cmd_find_state *fs,
 static enum cmd_retval
 cmdq_fire_command(struct cmdq_item *item)
 {
-	struct client		*c = item->client;
-	const char		*name = cmdq_name(c);
+	const char		*name = cmdq_name(item->client);
 	struct cmdq_state	*state = item->state;
 	struct cmd		*cmd = item->cmd;
+	struct args		*args = cmd_get_args(cmd);
 	const struct cmd_entry	*entry = cmd_get_entry(cmd);
+	struct client		*tc, *saved = item->client;
 	enum cmd_retval		 retval;
 	struct cmd_find_state	*fsp, fs;
-	int			 flags;
+	int			 flags, quiet = 0;
 	char			*tmp;
 
 	if (log_get_level() > 1) {
@@ -504,12 +513,32 @@ cmdq_fire_command(struct cmdq_item *item)
 
 	if (item->client == NULL)
 		item->client = cmd_find_client(item, NULL, 1);
+
+	if (entry->flags & CMD_CLIENT_CANFAIL)
+		quiet = 1;
+	if (entry->flags & CMD_CLIENT_CFLAG) {
+		tc = cmd_find_client(item, args_get(args, 'c'), quiet);
+		if (tc == NULL && !quiet) {
+			retval = CMD_RETURN_ERROR;
+			goto out;
+		}
+	} else if (entry->flags & CMD_CLIENT_TFLAG) {
+		tc = cmd_find_client(item, args_get(args, 't'), quiet);
+		if (tc == NULL && !quiet) {
+			retval = CMD_RETURN_ERROR;
+			goto out;
+		}
+	} else
+		tc = cmd_find_client(item, NULL, 1);
+	item->target_client = tc;
+
 	retval = cmdq_find_flag(item, &item->source, &entry->source);
 	if (retval == CMD_RETURN_ERROR)
 		goto out;
 	retval = cmdq_find_flag(item, &item->target, &entry->target);
 	if (retval == CMD_RETURN_ERROR)
 		goto out;
+
 
 	retval = entry->exec(cmd, item);
 	if (retval == CMD_RETURN_ERROR)
@@ -528,7 +557,7 @@ cmdq_fire_command(struct cmdq_item *item)
 	}
 
 out:
-	item->client = c;
+	item->client = saved;
 	if (retval == CMD_RETURN_ERROR)
 		cmdq_guard(item, "error", flags);
 	else
