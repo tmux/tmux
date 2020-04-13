@@ -25,6 +25,10 @@
 
 #include "tmux.h"
 
+/* Command queue flags. */
+#define CMDQ_FIRED 0x1
+#define CMDQ_WAITING 0x2
+
 /* Command queue item type. */
 enum cmdq_type {
 	CMDQ_COMMAND,
@@ -224,7 +228,7 @@ cmdq_insert_hook(struct session *s, struct cmdq_item *item,
 	struct options_array_item	*a;
 	struct cmd_list			*cmdlist;
 
-	if (item->flags & CMDQ_NOHOOKS)
+	if (item->shared->flags & CMDQ_SHARED_NOHOOKS)
 		return;
 	if (s == NULL)
 		oo = global_s_options;
@@ -250,7 +254,8 @@ cmdq_insert_hook(struct session *s, struct cmdq_item *item,
 			continue;
 		}
 
-		new_item = cmdq_get_command(cmdlist, fs, NULL, CMDQ_NOHOOKS);
+		new_item = cmdq_get_command(cmdlist, fs, NULL,
+		    CMDQ_SHARED_NOHOOKS);
 		cmdq_format(new_item, "hook", "%s", name);
 		if (item != NULL)
 			item = cmdq_insert_after(item, new_item);
@@ -330,6 +335,7 @@ cmdq_get_command(struct cmd_list *cmdlist, struct cmd_find_state *current,
 				cmd_find_clear_state(&shared->current, 0);
 			if (m != NULL)
 				memcpy(&shared->mouse, m, sizeof shared->mouse);
+			shared->flags = flags;
 			last_group = group;
 		}
 		entry = cmd_get_entry(cmd);
@@ -337,9 +343,7 @@ cmdq_get_command(struct cmd_list *cmdlist, struct cmd_find_state *current,
 		item = xcalloc(1, sizeof *item);
 		xasprintf(&item->name, "[%s/%p]", entry->name, item);
 		item->type = CMDQ_COMMAND;
-
 		item->group = group;
-		item->flags = flags;
 
 		item->shared = shared;
 		item->cmdlist = cmdlist;
@@ -447,9 +451,7 @@ cmdq_get_callback1(const char *name, cmdq_cb cb, void *data)
 	item = xcalloc(1, sizeof *item);
 	xasprintf(&item->name, "[%s/%p]", name, item);
 	item->type = CMDQ_CALLBACK;
-
 	item->group = 0;
-	item->flags = 0;
 
 	item->cb = cb;
 	item->data = data;

@@ -1385,17 +1385,13 @@ struct cmdq_shared {
 	int			 flags;
 #define CMDQ_SHARED_REPEAT 0x1
 #define CMDQ_SHARED_CONTROL 0x2
+#define CMDQ_SHARED_NOHOOKS 0x4
 
 	struct format_tree	*formats;
 
 	struct mouse_event	 mouse;
 	struct cmd_find_state	 current;
 };
-
-/* Command queue flags. */
-#define CMDQ_FIRED 0x1
-#define CMDQ_WAITING 0x2
-#define CMDQ_NOHOOKS 0x4
 
 /* Command queue callback. */
 typedef enum cmd_retval (*cmdq_cb) (struct cmdq_item *, void *);
