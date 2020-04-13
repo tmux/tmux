@@ -84,7 +84,7 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 	struct args			*args = cmd_get_args(self);
 	int				 append = args_has(args, 'a');
 	struct cmd_find_state		*target = cmdq_get_target(item);
-	struct client			*c, *loop;
+	struct client			*loop;
 	struct session			*s = target->s;
 	struct window			*w;
 	struct window_pane		*wp;
@@ -98,8 +98,7 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 	window = (cmd_get_entry(self) == &cmd_set_window_option_entry);
 
 	/* Expand argument. */
-	c = cmd_find_client(item, NULL, 1);
-	argument = format_single_from_target(item, args->argv[0], c);
+	argument = format_single_from_target(item, args->argv[0]);
 
 	/* If set-hook -R, fire the hook straight away. */
 	if (cmd_get_entry(self) == &cmd_set_hook_entry && args_has(args, 'R')) {
@@ -122,7 +121,7 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 	if (args->argc < 2)
 		value = NULL;
 	else if (args_has(args, 'F'))
-		value = format_single_from_target(item, args->argv[1], c);
+		value = format_single_from_target(item, args->argv[1]);
 	else
 		value = xstrdup(args->argv[1]);
 
