@@ -1389,7 +1389,7 @@ struct cmdq_shared {
 
 	struct format_tree	*formats;
 
-	struct mouse_event	 mouse;
+	struct key_event	 event;
 	struct cmd_find_state	 current;
 };
 

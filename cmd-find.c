@@ -982,7 +982,7 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 
 	/* Mouse target is a plain = or {mouse}. */
 	if (strcmp(target, "=") == 0 || strcmp(target, "{mouse}") == 0) {
-		m = &cmdq_get_shared(item)->mouse;
+		m = &cmdq_get_shared(item)->event.m;
 		switch (type) {
 		case CMD_FIND_PANE:
 			fs->wp = cmd_mouse_pane(m, &fs->s, &fs->wl);

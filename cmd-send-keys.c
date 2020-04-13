@@ -140,7 +140,7 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 	struct window_pane		*wp = target->wp;
 	struct session			*s = target->s;
 	struct winlink			*wl = target->wl;
-	struct mouse_event		*m = &shared->mouse;
+	struct mouse_event		*m = &shared->event.m;
 	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
 	int				 i;
 	key_code			 key;

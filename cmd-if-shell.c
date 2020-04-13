@@ -65,7 +65,7 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 	struct args			*args = cmd_get_args(self);
 	struct cmdq_shared		*shared = cmdq_get_shared(item);
 	struct cmd_find_state		*target = cmdq_get_target(item);
-	struct mouse_event		*m = &shared->mouse;
+	struct mouse_event		*m = &shared->event.m;
 	struct cmd_if_shell_data	*cdata;
 	char				*shellcmd, *cmd;
 	const char			*file;

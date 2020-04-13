@@ -1133,7 +1133,7 @@ format_create_add_item(struct format_tree *ft, struct cmdq_item *item)
 
 	if (shared == NULL)
 		return;
-	m = &shared->mouse;
+	m = &shared->event.m;
 	if (m->valid && ((wp = cmd_mouse_pane(m, NULL, NULL)) != NULL)) {
 		format_add(ft, "mouse_pane", "%%%u", wp->id);
 		if (cmd_mouse_at(wp, m, &x, &y, 0) == 0) {

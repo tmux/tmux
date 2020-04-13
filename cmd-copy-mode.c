@@ -70,7 +70,7 @@ cmd_copy_mode_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (args_has(args, 'M')) {
-		if ((wp = cmd_mouse_pane(&shared->mouse, &s, NULL)) == NULL)
+		if ((wp = cmd_mouse_pane(&shared->event.m, &s, NULL)) == NULL)
 			return (CMD_RETURN_NORMAL);
 		if (c == NULL || c->session != s)
 			return (CMD_RETURN_NORMAL);
@@ -87,7 +87,7 @@ cmd_copy_mode_exec(struct cmd *self, struct cmdq_item *item)
 		swp = wp;
 	if (!window_pane_set_mode(wp, swp, &window_copy_mode, NULL, args)) {
 		if (args_has(args, 'M'))
-			window_copy_start_drag(c, &shared->mouse);
+			window_copy_start_drag(c, &shared->event.m);
 	}
 	if (args_has(args, 'u'))
 		window_copy_pageup(wp, 0);

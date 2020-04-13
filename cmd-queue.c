@@ -333,8 +333,11 @@ cmdq_get_command(struct cmd_list *cmdlist, struct cmd_find_state *current,
 				cmd_find_copy_state(&shared->current, current);
 			else
 				cmd_find_clear_state(&shared->current, 0);
-			if (m != NULL)
-				memcpy(&shared->mouse, m, sizeof shared->mouse);
+			if (m != NULL) {
+				shared->event.key = KEYC_NONE;
+				memcpy(&shared->event.m, m,
+				    sizeof shared->event.m);
+			}
 			shared->flags = flags;
 			last_group = group;
 		}

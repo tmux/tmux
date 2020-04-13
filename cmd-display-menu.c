@@ -99,9 +99,9 @@ cmd_display_menu_get_position(struct client *c, struct cmdq_item *item,
 			*px = wp->xoff - ox;
 		else
 			*px = 0;
-	} else if (strcmp(xp, "M") == 0 && shared->mouse.valid) {
-		if (shared->mouse.x > w / 2)
-			*px = shared->mouse.x - w / 2;
+	} else if (strcmp(xp, "M") == 0) {
+		if (shared->event.m.valid && shared->event.m.x > w / 2)
+			*px = shared->event.m.x - w / 2;
 		else
 			*px = 0;
 	} else if (strcmp(xp, "W") == 0) {
@@ -133,9 +133,12 @@ cmd_display_menu_get_position(struct client *c, struct cmdq_item *item,
 			*py = wp->yoff + wp->sy - oy;
 		else
 			*py = 0;
-	} else if (strcmp(yp, "M") == 0 && shared->mouse.valid)
-		*py = shared->mouse.y + h;
-	else if (strcmp(yp, "S") == 0) {
+	} else if (strcmp(yp, "M") == 0) {
+		if (shared->event.m.valid)
+			*py = shared->event.m.y + h;
+		else
+			*py = 0;
+	} else if (strcmp(yp, "S") == 0) {
 		if (options_get_number(s->options, "status-position") == 0) {
 			if (lines != 0)
 				*py = lines + h;
@@ -147,8 +150,7 @@ cmd_display_menu_get_position(struct client *c, struct cmdq_item *item,
 			else
 				*py = c->tty.sy;
 		}
-	}
-	else if (strcmp(yp, "W") == 0) {
+	} else if (strcmp(yp, "W") == 0) {
 		if (options_get_number(s->options, "status-position") == 0) {
 			if (lines != 0)
 				*py = line + 1 + h;
@@ -228,7 +230,7 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	cmd_display_menu_get_position(c, item, args, &px, &py, menu->width + 4,
 	    menu->count + 2);
 
-	if (!shared->mouse.valid)
+	if (!shared->event.m.valid)
 		flags |= MENU_NOMOUSE;
 	if (menu_display(menu, flags, item, px, py, c, target, NULL, NULL) != 0)
 		return (CMD_RETURN_NORMAL);
