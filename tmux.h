@@ -1378,14 +1378,14 @@ struct cmd_parse_input {
 	struct cmd_find_state	 fs;
 };
 
-/* Command queue item shared state. */
-struct cmdq_shared {
+/* Command queue item state. */
+struct cmdq_state {
 	int			 references;
 
 	int			 flags;
-#define CMDQ_SHARED_REPEAT 0x1
-#define CMDQ_SHARED_CONTROL 0x2
-#define CMDQ_SHARED_NOHOOKS 0x4
+#define CMDQ_STATE_REPEAT 0x1
+#define CMDQ_STATE_CONTROL 0x2
+#define CMDQ_STATE_NOHOOKS 0x4
 
 	struct format_tree	*formats;
 
@@ -2108,7 +2108,7 @@ const char	 *cmdq_get_name(struct cmdq_item *);
 struct client	 *cmdq_get_client(struct cmdq_item *);
 struct cmd_find_state *cmdq_get_target(struct cmdq_item *);
 struct cmd_find_state *cmdq_get_source(struct cmdq_item *);
-struct cmdq_shared *cmdq_get_shared(struct cmdq_item *);
+struct cmdq_state *cmdq_get_state(struct cmdq_item *);
 void		  cmdq_merge_formats(struct cmdq_item *, struct format_tree *);
 struct cmdq_item *cmdq_get_command(struct cmd_list *, struct cmd_find_state *,
 		     struct mouse_event *, int);

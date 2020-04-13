@@ -282,7 +282,7 @@ chosen:
 		break;
 	case CMD_PARSE_SUCCESS:
 		if (md->item != NULL)
-			m = &cmdq_get_shared(md->item)->event.m;
+			m = &cmdq_get_state(md->item)->event.m;
 		else
 			m = NULL;
 		new_item = cmdq_get_command(pr->cmdlist, &md->fs, m, 0);

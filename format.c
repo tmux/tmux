@@ -1124,16 +1124,16 @@ format_merge(struct format_tree *ft, struct format_tree *from)
 static void
 format_create_add_item(struct format_tree *ft, struct cmdq_item *item)
 {
-	struct cmdq_shared	*shared = cmdq_get_shared(item);
+	struct cmdq_state	*state = cmdq_get_state(item);
 	struct mouse_event	*m;
 	struct window_pane	*wp;
 	u_int			 x, y;
 
 	cmdq_merge_formats(item, ft);
 
-	if (shared == NULL)
+	if (state == NULL)
 		return;
-	m = &shared->event.m;
+	m = &state->event.m;
 	if (m->valid && ((wp = cmd_mouse_pane(m, NULL, NULL)) != NULL)) {
 		format_add(ft, "mouse_pane", "%%%u", wp->id);
 		if (cmd_mouse_at(wp, m, &x, &y, 0) == 0) {

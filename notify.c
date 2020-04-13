@@ -96,7 +96,7 @@ notify_insert_hook(struct cmdq_item *item, struct notify_entry *ne)
 		}
 
 		new_item = cmdq_get_command(cmdlist, &fs, NULL,
-		    CMDQ_SHARED_NOHOOKS);
+		    CMDQ_STATE_NOHOOKS);
 		cmdq_format(new_item, "hook", "%s", ne->name);
 		notify_hook_formats(new_item, s, w, ne->pane);
 		item = cmdq_insert_after(item, new_item);

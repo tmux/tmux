@@ -63,9 +63,9 @@ static enum cmd_retval
 cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = cmd_get_args(self);
-	struct cmdq_shared		*shared = cmdq_get_shared(item);
+	struct cmdq_state		*state = cmdq_get_state(item);
 	struct cmd_find_state		*target = cmdq_get_target(item);
-	struct mouse_event		*m = &shared->event.m;
+	struct mouse_event		*m = &state->event.m;
 	struct cmd_if_shell_data	*cdata;
 	char				*shellcmd, *cmd;
 	const char			*file;

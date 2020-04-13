@@ -57,7 +57,7 @@ static enum cmd_retval
 cmd_copy_mode_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
-	struct cmdq_shared	*shared = cmdq_get_shared(item);
+	struct cmdq_state	*state = cmdq_get_state(item);
 	struct cmd_find_state	*source = cmdq_get_source(item);
 	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct client		*c = cmdq_get_client(item);
@@ -70,7 +70,7 @@ cmd_copy_mode_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (args_has(args, 'M')) {
-		if ((wp = cmd_mouse_pane(&shared->event.m, &s, NULL)) == NULL)
+		if ((wp = cmd_mouse_pane(&state->event.m, &s, NULL)) == NULL)
 			return (CMD_RETURN_NORMAL);
 		if (c == NULL || c->session != s)
 			return (CMD_RETURN_NORMAL);
@@ -87,7 +87,7 @@ cmd_copy_mode_exec(struct cmd *self, struct cmdq_item *item)
 		swp = wp;
 	if (!window_pane_set_mode(wp, swp, &window_copy_mode, NULL, args)) {
 		if (args_has(args, 'M'))
-			window_copy_start_drag(c, &shared->event.m);
+			window_copy_start_drag(c, &state->event.m);
 	}
 	if (args_has(args, 'u'))
 		window_copy_pageup(wp, 0);

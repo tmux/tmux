@@ -305,7 +305,7 @@ popup_key_cb(struct client *c, struct key_event *event)
 		break;
 	case CMD_PARSE_SUCCESS:
 		if (pd->item != NULL)
-			m = &cmdq_get_shared(pd->item)->event.m;
+			m = &cmdq_get_state(pd->item)->event.m;
 		else
 			m = NULL;
 		new_item = cmdq_get_command(pr->cmdlist, fs, m, 0);
