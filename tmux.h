@@ -1370,6 +1370,7 @@ struct cmd_parse_input {
 #define CMD_PARSE_PARSEONLY 0x2
 #define CMD_PARSE_NOALIAS 0x4
 #define CMD_PARSE_VERBOSE 0x8
+#define CMD_PARSE_ONEGROUP 0x10
 
 	const char		*file;
 	u_int			 line;
