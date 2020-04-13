@@ -1063,36 +1063,22 @@ void
 mode_tree_run_command(struct client *c, struct cmd_find_state *fs,
     const char *template, const char *name)
 {
-	struct cmdq_item	*new_item;
-	struct cmdq_state	*new_state;
-	char			*command;
-	struct cmd_parse_result	*pr;
+	struct cmdq_state	*state;
+	char			*command, *error;
+	enum cmd_parse_status	 status;
 
 	command = cmd_template_replace(template, name, 1);
-	if (command == NULL || *command == '\0') {
-		free(command);
-		return;
-	}
-
-	pr = cmd_parse_from_string(command, NULL);
-	switch (pr->status) {
-	case CMD_PARSE_EMPTY:
-		break;
-	case CMD_PARSE_ERROR:
-		if (c != NULL) {
-			*pr->error = toupper((u_char)*pr->error);
-			status_message_set(c, "%s", pr->error);
+	if (command != NULL && *command != '\0') {
+		state = cmdq_new_state(fs, NULL, 0);
+		status = cmd_parse_and_append(command, NULL, c, state, &error);
+		if (status == CMD_PARSE_ERROR) {
+			if (c != NULL) {
+				*error = toupper((u_char)*error);
+				status_message_set(c, "%s", error);
+			}
+			free(error);
 		}
-		free(pr->error);
-		break;
-	case CMD_PARSE_SUCCESS:
-		new_state = cmdq_new_state(fs, NULL, 0);
-		new_item = cmdq_get_command(pr->cmdlist, new_state);
-		cmdq_free_state(new_state);
-		cmdq_append(c, new_item);
-		cmd_list_free(pr->cmdlist);
-		break;
+		cmdq_free_state(state);
 	}
-
 	free(command);
 }

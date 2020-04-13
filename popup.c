@@ -222,12 +222,12 @@ popup_key_cb(struct client *c, struct key_event *event)
 	struct popup_data	*pd = c->overlay_data;
 	struct mouse_event	*m = &event->m;
 	struct cmd_find_state	*fs = &pd->fs;
-	struct cmdq_item	*new_item;
-	struct cmdq_state	*new_state;
-	struct cmd_parse_result	*pr;
 	struct format_tree	*ft;
 	const char		*cmd, *buf;
 	size_t			 len;
+	struct cmdq_state	*state;
+	enum cmd_parse_status	 status;
+	char			*error;
 
 	if (KEYC_IS_MOUSE(event->key)) {
 		if (pd->dragging != OFF) {
@@ -295,27 +295,19 @@ popup_key_cb(struct client *c, struct key_event *event)
 	cmd = format_expand(ft, pd->cmd);
 	format_free(ft);
 
-	pr = cmd_parse_from_string(cmd, NULL);
-	switch (pr->status) {
-	case CMD_PARSE_EMPTY:
-		break;
-	case CMD_PARSE_ERROR:
-		new_item = cmdq_get_error(pr->error);
-		free(pr->error);
-		cmdq_append(c, new_item);
-		break;
-	case CMD_PARSE_SUCCESS:
-		if (pd->item != NULL)
-			event = cmdq_get_event(pd->item);
-		else
-			event = NULL;
-		new_state = cmdq_new_state(&pd->fs, event, 0);
-		new_item = cmdq_get_command(pr->cmdlist, new_state);
-		cmdq_free_state(new_state);
-		cmd_list_free(pr->cmdlist);
-		cmdq_append(c, new_item);
-		break;
+	if (pd->item != NULL)
+		event = cmdq_get_event(pd->item);
+	else
+		event = NULL;
+	state = cmdq_new_state(&pd->fs, event, 0);
+
+	status = cmd_parse_and_append(cmd, NULL, c, state, &error);
+	if (status == CMD_PARSE_ERROR) {
+		cmdq_append(c, cmdq_get_error(error));
+		free(error);
 	}
+	cmdq_free_state(state);
+
 	return (1);
 
 out:

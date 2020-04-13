@@ -183,11 +183,11 @@ menu_key_cb(struct client *c, struct key_event *event)
 	struct mouse_event		*m = &event->m;
 	u_int				 i;
 	int				 count = menu->count, old = md->choice;
-	const struct menu_item		*item;
-	struct cmdq_item		*new_item;
-	struct cmdq_state		*new_state;
-	struct cmd_parse_result		*pr;
 	const char			*name;
+	const struct menu_item		*item;
+	struct cmdq_state		*state;
+	enum cmd_parse_status		 status;
+	char				*error;
 
 	if (KEYC_IS_MOUSE(event->key)) {
 		if (md->flags & MENU_NOMOUSE) {
@@ -272,27 +272,19 @@ chosen:
 	    return (1);
 	}
 
-	pr = cmd_parse_from_string(item->command, NULL);
-	switch (pr->status) {
-	case CMD_PARSE_EMPTY:
-		break;
-	case CMD_PARSE_ERROR:
-		new_item = cmdq_get_error(pr->error);
-		free(pr->error);
-		cmdq_append(c, new_item);
-		break;
-	case CMD_PARSE_SUCCESS:
-		if (md->item != NULL)
-			event = cmdq_get_event(md->item);
-		else
-			event = NULL;
-		new_state = cmdq_new_state(&md->fs, event, 0);
-		new_item = cmdq_get_command(pr->cmdlist, new_state);
-		cmdq_free_state(new_state);
-		cmd_list_free(pr->cmdlist);
-		cmdq_append(c, new_item);
-		break;
+	if (md->item != NULL)
+		event = cmdq_get_event(md->item);
+	else
+		event = NULL;
+	state = cmdq_new_state(&md->fs, event, 0);
+
+	status = cmd_parse_and_append(item->command, NULL, c, state, &error);
+	if (status == CMD_PARSE_ERROR) {
+		cmdq_append(c, cmdq_get_error(error));
+		free(error);
 	}
+	cmdq_free_state(state);
+
 	return (1);
 }
 

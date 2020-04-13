@@ -87,8 +87,8 @@ cmd_confirm_before_callback(struct client *c, void *data, const char *s,
     __unused int done)
 {
 	struct cmd_confirm_before_data	*cdata = data;
-	struct cmdq_item		*new_item;
-	struct cmd_parse_result		*pr;
+	char				*error;
+	enum cmd_parse_status		 status;
 
 	if (c->flags & CLIENT_DEAD)
 		return (0);
@@ -98,21 +98,10 @@ cmd_confirm_before_callback(struct client *c, void *data, const char *s,
 	if (tolower((u_char)s[0]) != 'y' || s[1] != '\0')
 		return (0);
 
-	pr = cmd_parse_from_string(cdata->cmd, NULL);
-	switch (pr->status) {
-	case CMD_PARSE_EMPTY:
-		new_item = NULL;
-		break;
-	case CMD_PARSE_ERROR:
-		new_item = cmdq_get_error(pr->error);
-		free(pr->error);
-		cmdq_append(c, new_item);
-		break;
-	case CMD_PARSE_SUCCESS:
-		new_item = cmdq_get_command(pr->cmdlist, NULL);
-		cmd_list_free(pr->cmdlist);
-		cmdq_append(c, new_item);
-		break;
+	status = cmd_parse_and_append(cdata->cmd, NULL, c, NULL, &error);
+	if (status == CMD_PARSE_ERROR) {
+		cmdq_append(c, cmdq_get_error(error));
+		free(error);
 	}
 
 	return (0);

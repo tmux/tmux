@@ -793,6 +793,58 @@ cmd_parse_from_string(const char *s, struct cmd_parse_input *pi)
 	return (cmd_parse_from_buffer(s, strlen(s), pi));
 }
 
+enum cmd_parse_status
+cmd_parse_and_insert(const char *s, struct cmd_parse_input *pi,
+    struct cmdq_item *after, struct cmdq_state *state, char **error)
+{
+	struct cmd_parse_result	*pr;
+	struct cmdq_item	*item;
+
+	pr = cmd_parse_from_string(s, pi);
+	switch (pr->status) {
+	case CMD_PARSE_EMPTY:
+		break;
+	case CMD_PARSE_ERROR:
+		if (error != NULL)
+			*error = pr->error;
+		else
+			free(pr->error);
+		break;
+	case CMD_PARSE_SUCCESS:
+		item = cmdq_get_command(pr->cmdlist, state);
+		cmdq_insert_after(after, item);
+		cmd_list_free(pr->cmdlist);
+		break;
+	}
+	return (pr->status);
+}
+
+enum cmd_parse_status
+cmd_parse_and_append(const char *s, struct cmd_parse_input *pi,
+    struct client *c, struct cmdq_state *state, char **error)
+{
+	struct cmd_parse_result	*pr;
+	struct cmdq_item	*item;
+
+	pr = cmd_parse_from_string(s, pi);
+	switch (pr->status) {
+	case CMD_PARSE_EMPTY:
+		break;
+	case CMD_PARSE_ERROR:
+		if (error != NULL)
+			*error = pr->error;
+		else
+			free(pr->error);
+		break;
+	case CMD_PARSE_SUCCESS:
+		item = cmdq_get_command(pr->cmdlist, state);
+		cmdq_append(c, item);
+		cmd_list_free(pr->cmdlist);
+		break;
+	}
+	return (pr->status);
+}
+
 struct cmd_parse_result *
 cmd_parse_from_buffer(const void *buf, size_t len, struct cmd_parse_input *pi)
 {

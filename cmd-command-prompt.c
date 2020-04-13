@@ -136,10 +136,9 @@ cmd_command_prompt_callback(struct client *c, void *data, const char *s,
     int done)
 {
 	struct cmd_command_prompt_cdata	*cdata = data;
-	struct cmdq_item		*new_item;
-	char				*new_template, *prompt, *ptr;
+	char				*new_template, *prompt, *ptr, *error;
 	char				*input = NULL;
-	struct cmd_parse_result		*pr;
+	enum cmd_parse_status		 status;
 
 	if (s == NULL)
 		return (0);
@@ -166,21 +165,10 @@ cmd_command_prompt_callback(struct client *c, void *data, const char *s,
 		return (1);
 	}
 
-	pr = cmd_parse_from_string(new_template, NULL);
-	switch (pr->status) {
-	case CMD_PARSE_EMPTY:
-		new_item = NULL;
-		break;
-	case CMD_PARSE_ERROR:
-		new_item = cmdq_get_error(pr->error);
-		free(pr->error);
-		cmdq_append(c, new_item);
-		break;
-	case CMD_PARSE_SUCCESS:
-		new_item = cmdq_get_command(pr->cmdlist, NULL);
-		cmd_list_free(pr->cmdlist);
-		cmdq_append(c, new_item);
-		break;
+	status = cmd_parse_and_append(new_template, NULL, c, NULL, &error);
+	if (status == CMD_PARSE_ERROR) {
+		cmdq_append(c, cmdq_get_error(error));
+		free(error);
 	}
 
 	if (!done)
