@@ -109,7 +109,7 @@ cmd_confirm_before_callback(struct client *c, void *data, const char *s,
 		cmdq_append(c, new_item);
 		break;
 	case CMD_PARSE_SUCCESS:
-		new_item = cmdq_get_command(pr->cmdlist, NULL, NULL, 0);
+		new_item = cmdq_get_command(pr->cmdlist, NULL);
 		cmd_list_free(pr->cmdlist);
 		cmdq_append(c, new_item);
 		break;

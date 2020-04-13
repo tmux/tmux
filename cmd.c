@@ -391,6 +391,13 @@ cmd_get_args(struct cmd *cmd)
 	return (cmd->args);
 }
 
+/* Get group for command. */
+u_int
+cmd_get_group(struct cmd *cmd)
+{
+	return (cmd->group);
+}
+
 /* Get file and line for command. */
 void
 cmd_get_source(struct cmd *cmd, const char **file, u_int *line)
@@ -616,7 +623,7 @@ cmd_list_free(struct cmd_list *cmdlist)
 char *
 cmd_list_print(struct cmd_list *cmdlist, int escaped)
 {
-	struct cmd	*cmd;
+	struct cmd	*cmd, *next;
 	char		*buf, *this;
 	size_t		 len;
 
@@ -626,15 +633,24 @@ cmd_list_print(struct cmd_list *cmdlist, int escaped)
 	TAILQ_FOREACH(cmd, cmdlist->list, qentry) {
 		this = cmd_print(cmd);
 
-		len += strlen(this) + 4;
+		len += strlen(this) + 6;
 		buf = xrealloc(buf, len);
 
 		strlcat(buf, this, len);
-		if (TAILQ_NEXT(cmd, qentry) != NULL) {
-			if (escaped)
-				strlcat(buf, " \\; ", len);
-			else
-				strlcat(buf, " ; ", len);
+
+		next = TAILQ_NEXT(cmd, qentry);
+		if (next != NULL) {
+			if (cmd->group != next->group) {
+				if (escaped)
+					strlcat(buf, " \\;\\; ", len);
+				else
+					strlcat(buf, " ;; ", len);
+			} else {
+				if (escaped)
+					strlcat(buf, " \\; ", len);
+				else
+					strlcat(buf, " ; ", len);
+			}
 		}
 
 		free(this);
@@ -645,24 +661,16 @@ cmd_list_print(struct cmd_list *cmdlist, int escaped)
 
 /* Get first command in list. */
 struct cmd *
-cmd_list_first(struct cmd_list *cmdlist, u_int *group)
+cmd_list_first(struct cmd_list *cmdlist)
 {
-	struct cmd	*cmd;
-
-	cmd = TAILQ_FIRST(cmdlist->list);
-	if (cmd != NULL && group != NULL)
-		*group = cmd->group;
-	return (cmd);
+	return (TAILQ_FIRST(cmdlist->list));
 }
 
 /* Get next command in list. */
 struct cmd *
-cmd_list_next(struct cmd *cmd, u_int *group)
+cmd_list_next(struct cmd *cmd)
 {
-	cmd = TAILQ_NEXT(cmd, qentry);
-	if (cmd != NULL && group != NULL)
-		*group = cmd->group;
-	return (cmd);
+	return (TAILQ_NEXT(cmd, qentry));
 }
 
 /* Do all of the commands in this command list have this flag? */

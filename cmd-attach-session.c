@@ -50,8 +50,7 @@ enum cmd_retval
 cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
     int xflag, int rflag, const char *cflag, int Eflag)
 {
-	struct cmdq_state	*state = cmdq_get_state(item);
-	struct cmd_find_state	*current = &state->current;
+	struct cmd_find_state	*current = cmdq_get_current(item);
 	struct cmd_find_state	 target;
 	enum cmd_find_type	 type;
 	int			 flags;
@@ -120,7 +119,7 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 			environ_update(s->options, c->environ, s->environ);
 
 		c->session = s;
-		if (~state->flags & CMDQ_STATE_REPEAT)
+		if (~cmdq_get_flags(item) & CMDQ_STATE_REPEAT)
 			server_client_set_key_table(c, NULL);
 		tty_update_client_offset(c);
 		status_timer_start(c);

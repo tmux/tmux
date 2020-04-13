@@ -225,7 +225,7 @@ cmd_display_panes_key(struct client *c, struct key_event *event)
 		cmdq_append(c, new_item);
 		break;
 	case CMD_PARSE_SUCCESS:
-		new_item = cmdq_get_command(pr->cmdlist, NULL, NULL, 0);
+		new_item = cmdq_get_command(pr->cmdlist, NULL);
 		cmd_list_free(pr->cmdlist);
 		cmdq_append(c, new_item);
 		break;

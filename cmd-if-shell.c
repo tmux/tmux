@@ -56,16 +56,14 @@ struct cmd_if_shell_data {
 
 	struct client		*client;
 	struct cmdq_item	*item;
-	struct mouse_event	 mouse;
 };
 
 static enum cmd_retval
 cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = cmd_get_args(self);
-	struct cmdq_state		*state = cmdq_get_state(item);
 	struct cmd_find_state		*target = cmdq_get_target(item);
-	struct mouse_event		*m = &state->event.m;
+	struct cmdq_state		*state = cmdq_get_state(item);
 	struct cmd_if_shell_data	*cdata;
 	char				*shellcmd, *cmd;
 	const char			*file;
@@ -102,7 +100,7 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 			free(pr->error);
 			return (CMD_RETURN_ERROR);
 		case CMD_PARSE_SUCCESS:
-			new_item = cmdq_get_command(pr->cmdlist, target, m, 0);
+			new_item = cmdq_get_command(pr->cmdlist, state);
 			cmdq_insert_after(item, new_item);
 			cmd_list_free(pr->cmdlist);
 			break;
@@ -117,7 +115,6 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 		cdata->cmd_else = xstrdup(args->argv[2]);
 	else
 		cdata->cmd_else = NULL;
-	memcpy(&cdata->mouse, m, sizeof cdata->mouse);
 
 	if (!args_has(args, 'b'))
 		cdata->client = cmdq_get_client(item);
@@ -161,8 +158,8 @@ cmd_if_shell_callback(struct job *job)
 {
 	struct cmd_if_shell_data	*cdata = job_get_data(job);
 	struct client			*c = cdata->client;
-	struct mouse_event		*m = &cdata->mouse;
 	struct cmdq_item		*new_item = NULL;
+	struct cmdq_state		*new_state = NULL;
 	char				*cmd;
 	int				 status;
 	struct cmd_parse_result		*pr;
@@ -185,7 +182,13 @@ cmd_if_shell_callback(struct job *job)
 		free(pr->error);
 		break;
 	case CMD_PARSE_SUCCESS:
-		new_item = cmdq_get_command(pr->cmdlist, NULL, m, 0);
+		if (cdata->item == NULL)
+			new_state = cmdq_new_state(NULL, NULL, 0);
+		else
+			new_state = cmdq_get_state(cdata->item);
+		new_item = cmdq_get_command(pr->cmdlist, new_state);
+		if (cdata->item == NULL)
+			cmdq_free_state(new_state);
 		cmd_list_free(pr->cmdlist);
 		break;
 	}

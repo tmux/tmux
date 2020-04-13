@@ -65,6 +65,23 @@ struct cmdq_item {
 };
 TAILQ_HEAD(cmdq_list, cmdq_item);
 
+/*
+ * Command queue state. This is the context for commands on the command queue.
+ * It holds information about how the commands were fired (the key and flags),
+ * any additional formats for the commands, and the current default target.
+ * Multiple commands can share the same state and a command may update the
+ * default target.
+ */
+struct cmdq_state {
+	int			 references;
+	int			 flags;
+
+	struct format_tree	*formats;
+
+	struct key_event	 event;
+	struct cmd_find_state	 current;
+};
+
 /* Get command queue name. */
 static const char *
 cmdq_name(struct client *c)
@@ -128,6 +145,13 @@ cmdq_get_client(struct cmdq_item *item)
 	return (item->client);
 }
 
+/* Get item state. */
+struct cmdq_state *
+cmdq_get_state(struct cmdq_item *item)
+{
+	return (item->state);
+}
+
 /* Get item target. */
 struct cmd_find_state *
 cmdq_get_target(struct cmdq_item *item)
@@ -142,11 +166,89 @@ cmdq_get_source(struct cmdq_item *item)
 	return (&item->source);
 }
 
-/* Get item state. */
-struct cmdq_state *
-cmdq_get_state(struct cmdq_item *item)
+/* Get state event. */
+struct key_event *
+cmdq_get_event(struct cmdq_item *item)
 {
-	return (item->state);
+	return (&item->state->event);
+}
+
+/* Get state current target. */
+struct cmd_find_state *
+cmdq_get_current(struct cmdq_item *item)
+{
+	return (&item->state->current);
+}
+
+/* Get state flags. */
+int
+cmdq_get_flags(struct cmdq_item *item)
+{
+	return (item->state->flags);
+}
+
+/* Create a new state. */
+struct cmdq_state *
+cmdq_new_state(struct cmd_find_state *current, struct key_event *event,
+    int flags)
+{
+	struct cmdq_state	*state;
+
+	state = xcalloc(1, sizeof *state);
+	state->references = 1;
+	state->flags = flags;
+
+	if (event != NULL)
+		memcpy(&state->event, event, sizeof state->event);
+	else
+		state->event.key = KEYC_NONE;
+	if (current != NULL && cmd_find_valid_state(current))
+		cmd_find_copy_state(&state->current, current);
+	else
+		cmd_find_clear_state(&state->current, 0);
+
+	return (state);
+}
+
+/* Add a reference to a state. */
+struct cmdq_state *
+cmdq_link_state(struct cmdq_state *state)
+{
+	state->references++;
+	return (state);
+}
+
+/* Make a copy of a state. */
+struct cmdq_state *
+cmdq_copy_state(struct cmdq_state *state)
+{
+	return (cmdq_new_state(&state->current, &state->event, state->flags));
+}
+
+/* Free a state. */
+void
+cmdq_free_state(struct cmdq_state *state)
+{
+	if (--state->references == 0)
+		free(state);
+}
+
+/* Add a format to command queue. */
+void
+cmdq_add_format(struct cmdq_state *state, const char *key, const char *fmt, ...)
+{
+	va_list	 ap;
+	char	*value;
+
+	va_start(ap, fmt);
+	xvasprintf(&value, fmt, ap);
+	va_end(ap);
+
+	if (state->formats == NULL)
+		state->formats = format_create(NULL, NULL, FORMAT_NONE, 0);
+	format_add(state->formats, key, "%s", value);
+
+	free(value);
 }
 
 /* Merge formats from item. */
@@ -218,12 +320,14 @@ cmdq_insert_after(struct cmdq_item *after, struct cmdq_item *item)
 /* Insert a hook. */
 void
 cmdq_insert_hook(struct session *s, struct cmdq_item *item,
-    struct cmd_find_state *fs, const char *fmt, ...)
+    struct cmd_find_state *current, const char *fmt, ...)
 {
+	struct cmdq_state		*state = item->state;
 	struct options			*oo;
 	va_list				 ap;
 	char				*name;
 	struct cmdq_item		*new_item;
+	struct cmdq_state		*new_state;
 	struct options_entry		*o;
 	struct options_array_item	*a;
 	struct cmd_list			*cmdlist;
@@ -246,25 +350,27 @@ cmdq_insert_hook(struct session *s, struct cmdq_item *item,
 	}
 	log_debug("running hook %s (parent %p)", name, item);
 
+	/*
+	 * The hooks get a new state because they should not update the current
+	 * target or formats for any subsequent commands.
+	 */
+	new_state = cmdq_new_state(current, &state->event, CMDQ_STATE_NOHOOKS);
+	cmdq_add_format(new_state, "hook", "%s", name);
+
 	a = options_array_first(o);
 	while (a != NULL) {
 		cmdlist = options_array_item_value(a)->cmdlist;
-		if (cmdlist == NULL) {
-			a = options_array_next(a);
-			continue;
+		if (cmdlist != NULL) {
+			new_item = cmdq_get_command(cmdlist, new_state);
+			if (item != NULL)
+				item = cmdq_insert_after(item, new_item);
+			else
+				item = cmdq_append(NULL, new_item);
 		}
-
-		new_item = cmdq_get_command(cmdlist, fs, NULL,
-		    CMDQ_STATE_NOHOOKS);
-		cmdq_format(new_item, "hook", "%s", name);
-		if (item != NULL)
-			item = cmdq_insert_after(item, new_item);
-		else
-			item = cmdq_append(NULL, new_item);
-
 		a = options_array_next(a);
 	}
 
+	cmdq_free_state(new_state);
 	free(name);
 }
 
@@ -279,17 +385,11 @@ cmdq_continue(struct cmdq_item *item)
 static void
 cmdq_remove(struct cmdq_item *item)
 {
-	if (item->state != NULL && --item->state->references == 0) {
-		if (item->state->formats != NULL)
-			format_free(item->state->formats);
-		free(item->state);
-	}
-
 	if (item->client != NULL)
 		server_client_unref(item->client);
-
 	if (item->cmdlist != NULL)
 		cmd_list_free(item->cmdlist);
+	cmdq_free_state(item->state);
 
 	TAILQ_REMOVE(item->queue, item, entry);
 
@@ -316,46 +416,34 @@ cmdq_remove_group(struct cmdq_item *item)
 
 /* Get a command for the command queue. */
 struct cmdq_item *
-cmdq_get_command(struct cmd_list *cmdlist, struct cmd_find_state *current,
-    struct mouse_event *m, int flags)
+cmdq_get_command(struct cmd_list *cmdlist, struct cmdq_state *state)
 {
 	struct cmdq_item	*item, *first = NULL, *last = NULL;
 	struct cmd		*cmd;
 	const struct cmd_entry	*entry;
-	struct cmdq_state	*state = NULL;
-	u_int			 group, last_group = 0;
+	int			 created = 0;
 
-	cmd = cmd_list_first(cmdlist, &group);
+	if (state == NULL) {
+		state = cmdq_new_state(NULL, NULL, 0);
+		created = 1;
+	}
+
+	cmd = cmd_list_first(cmdlist);
 	while (cmd != NULL) {
-		if (group != last_group) {
-			state = xcalloc(1, sizeof *state);
-			if (current != NULL)
-				cmd_find_copy_state(&state->current, current);
-			else
-				cmd_find_clear_state(&state->current, 0);
-			if (m != NULL) {
-				state->event.key = KEYC_NONE;
-				memcpy(&state->event.m, m,
-				    sizeof state->event.m);
-			}
-			state->flags = flags;
-			last_group = group;
-		}
 		entry = cmd_get_entry(cmd);
 
 		item = xcalloc(1, sizeof *item);
 		xasprintf(&item->name, "[%s/%p]", entry->name, item);
 		item->type = CMDQ_COMMAND;
-		item->group = group;
 
-		item->state = state;
+		item->group = cmd_get_group(cmd);
+		item->state = cmdq_link_state(state);
+
 		item->cmdlist = cmdlist;
 		item->cmd = cmd;
 
-		log_debug("%s: %s group %u", __func__, item->name, item->group);
-
-		state->references++;
 		cmdlist->references++;
+		log_debug("%s: %s group %u", __func__, item->name, item->group);
 
 		if (first == NULL)
 			first = item;
@@ -363,8 +451,11 @@ cmdq_get_command(struct cmd_list *cmdlist, struct cmd_find_state *current,
 			last->next = item;
 		last = item;
 
-		cmd = cmd_list_next(cmd, &group);
+		cmd = cmd_list_next(cmd);
 	}
+
+	if (created)
+		cmdq_free_state(state);
 	return (first);
 }
 
@@ -454,7 +545,9 @@ cmdq_get_callback1(const char *name, cmdq_cb cb, void *data)
 	item = xcalloc(1, sizeof *item);
 	xasprintf(&item->name, "[%s/%p]", name, item);
 	item->type = CMDQ_CALLBACK;
+
 	item->group = 0;
+	item->state = cmdq_new_state(NULL, NULL, 0);
 
 	item->cb = cb;
 	item->data = data;
@@ -486,25 +579,6 @@ static enum cmd_retval
 cmdq_fire_callback(struct cmdq_item *item)
 {
 	return (item->cb(item, item->data));
-}
-
-/* Add a format to command queue. */
-void
-cmdq_format(struct cmdq_item *item, const char *key, const char *fmt, ...)
-{
-	struct cmdq_state	*state = item->state;
-	va_list			 ap;
-	char			*value;
-
-	va_start(ap, fmt);
-	xvasprintf(&value, fmt, ap);
-	va_end(ap);
-
-	if (state->formats == NULL)
-		state->formats = format_create(NULL, NULL, FORMAT_NONE, 0);
-	format_add(state->formats, key, "%s", value);
-
-	free(value);
 }
 
 /* Process next item on command queue. */

@@ -223,6 +223,7 @@ popup_key_cb(struct client *c, struct key_event *event)
 	struct mouse_event	*m = &event->m;
 	struct cmd_find_state	*fs = &pd->fs;
 	struct cmdq_item	*new_item;
+	struct cmdq_state	*new_state;
 	struct cmd_parse_result	*pr;
 	struct format_tree	*ft;
 	const char		*cmd, *buf;
@@ -305,10 +306,12 @@ popup_key_cb(struct client *c, struct key_event *event)
 		break;
 	case CMD_PARSE_SUCCESS:
 		if (pd->item != NULL)
-			m = &cmdq_get_state(pd->item)->event.m;
+			event = cmdq_get_event(pd->item);
 		else
-			m = NULL;
-		new_item = cmdq_get_command(pr->cmdlist, fs, m, 0);
+			event = NULL;
+		new_state = cmdq_new_state(&pd->fs, event, 0);
+		new_item = cmdq_get_command(pr->cmdlist, new_state);
+		cmdq_free_state(new_state);
 		cmd_list_free(pr->cmdlist);
 		cmdq_append(c, new_item);
 		break;

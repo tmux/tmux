@@ -35,19 +35,19 @@ struct notify_entry {
 };
 
 static void
-notify_hook_formats(struct cmdq_item *item, struct session *s, struct window *w,
-    int pane)
+notify_hook_formats(struct cmdq_state *state, struct session *s,
+    struct window *w, int pane)
 {
 	if (s != NULL) {
-		cmdq_format(item, "hook_session", "$%u", s->id);
-		cmdq_format(item, "hook_session_name", "%s", s->name);
+		cmdq_add_format(state, "hook_session", "$%u", s->id);
+		cmdq_add_format(state, "hook_session_name", "%s", s->name);
 	}
 	if (w != NULL) {
-		cmdq_format(item, "hook_window", "@%u", w->id);
-		cmdq_format(item, "hook_window_name", "%s", w->name);
+		cmdq_add_format(state, "hook_window", "@%u", w->id);
+		cmdq_add_format(state, "hook_window_name", "%s", w->name);
 	}
 	if (pane != -1)
-		cmdq_format(item, "hook_pane", "%%%d", pane);
+		cmdq_add_format(state, "hook_pane", "%%%d", pane);
 }
 
 static void
@@ -56,6 +56,7 @@ notify_insert_hook(struct cmdq_item *item, struct notify_entry *ne)
 	struct cmd_find_state		 fs;
 	struct options			*oo;
 	struct cmdq_item		*new_item;
+	struct cmdq_state		*new_state;
 	struct session			*s = ne->session;
 	struct window			*w = ne->window;
 	struct options_entry		*o;
@@ -86,22 +87,21 @@ notify_insert_hook(struct cmdq_item *item, struct notify_entry *ne)
 	if (o == NULL)
 		return;
 
+	new_state = cmdq_new_state(&fs, NULL, CMDQ_STATE_NOHOOKS);
+	cmdq_add_format(new_state, "hook", "%s", ne->name);
+	notify_hook_formats(new_state, s, w, ne->pane);
+
 	a = options_array_first(o);
 	while (a != NULL) {
 		cmdlist = options_array_item_value(a)->cmdlist;
-		if (cmdlist == NULL) {
-			a = options_array_next(a);
-			continue;
+		if (cmdlist != NULL) {
+			new_item = cmdq_get_command(cmdlist, new_state);
+			item = cmdq_insert_after(item, new_item);
 		}
-
-		new_item = cmdq_get_command(cmdlist, &fs, NULL,
-		    CMDQ_STATE_NOHOOKS);
-		cmdq_format(new_item, "hook", "%s", ne->name);
-		notify_hook_formats(new_item, s, w, ne->pane);
-		item = cmdq_insert_after(item, new_item);
-
 		a = options_array_next(a);
 	}
+
+	cmdq_free_state(new_state);
 }
 
 static enum cmd_retval

@@ -1221,7 +1221,7 @@ try_again:
 		server_status_client(c);
 
 		/* Execute the key binding. */
-		key_bindings_dispatch(bd, item, c, m, &fs);
+		key_bindings_dispatch(bd, item, c, event, &fs);
 		key_bindings_unref_table(table);
 		goto out;
 	}
@@ -1947,7 +1947,7 @@ server_client_dispatch_command(struct client *c, struct imsg *imsg)
 	}
 	cmd_free_argv(argc, argv);
 
-	cmdq_append(c, cmdq_get_command(pr->cmdlist, NULL, NULL, 0));
+	cmdq_append(c, cmdq_get_command(pr->cmdlist, NULL));
 	cmdq_append(c, cmdq_get_callback(server_client_command_done, NULL));
 
 	cmd_list_free(pr->cmdlist);

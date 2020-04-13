@@ -185,6 +185,7 @@ menu_key_cb(struct client *c, struct key_event *event)
 	int				 count = menu->count, old = md->choice;
 	const struct menu_item		*item;
 	struct cmdq_item		*new_item;
+	struct cmdq_state		*new_state;
 	struct cmd_parse_result		*pr;
 	const char			*name;
 
@@ -282,10 +283,12 @@ chosen:
 		break;
 	case CMD_PARSE_SUCCESS:
 		if (md->item != NULL)
-			m = &cmdq_get_state(md->item)->event.m;
+			event = cmdq_get_event(md->item);
 		else
-			m = NULL;
-		new_item = cmdq_get_command(pr->cmdlist, &md->fs, m, 0);
+			event = NULL;
+		new_state = cmdq_new_state(&md->fs, event, 0);
+		new_item = cmdq_get_command(pr->cmdlist, new_state);
+		cmdq_free_state(new_state);
 		cmd_list_free(pr->cmdlist);
 		cmdq_append(c, new_item);
 		break;

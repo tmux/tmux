@@ -700,15 +700,17 @@ cmd_parse_build_commands(struct cmd_parse_commands *cmds,
 
 	/*
 	 * Parse each command into a command list. Create a new command list
-	 * for each line so they get a new group (so the queue knows which ones
-	 * to remove if a command fails when executed).
+	 * for each line (unless the flag is set) so they get a new group (so
+	 * the queue knows which ones to remove if a command fails when
+	 * executed).
 	 */
 	result = cmd_list_new();
 	TAILQ_FOREACH(cmd, cmds, entry) {
 		log_debug("%s: %u %s", __func__, cmd->line, cmd->name);
 		cmd_log_argv(cmd->argc, cmd->argv, __func__);
 
-		if (cmdlist == NULL || cmd->line != line) {
+		if (cmdlist == NULL ||
+		    ((~pi->flags & CMD_PARSE_ONEGROUP) && cmd->line != line)) {
 			if (cmdlist != NULL) {
 				cmd_parse_print_commands(pi, line, cmdlist);
 				cmd_list_move(result, cmdlist);
@@ -775,6 +777,19 @@ cmd_parse_from_file(FILE *f, struct cmd_parse_input *pi)
 struct cmd_parse_result *
 cmd_parse_from_string(const char *s, struct cmd_parse_input *pi)
 {
+	struct cmd_parse_input	input;
+
+	if (pi == NULL) {
+		memset(&input, 0, sizeof input);
+		pi = &input;
+	}
+
+	/*
+	 * When parsing a string, put commands in one group even if there are
+	 * multiple lines. This means { a \n b } is identical to "a ; b" when
+	 * given as an argument to another command.
+	 */
+	pi->flags |= CMD_PARSE_ONEGROUP;
 	return (cmd_parse_from_buffer(s, strlen(s), pi));
 }
 
