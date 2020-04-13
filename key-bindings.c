@@ -549,7 +549,7 @@ key_bindings_dispatch(struct key_binding *bd, struct cmdq_item *item,
 	else {
 		new_item = cmdq_get_command(bd->cmdlist, fs, m, 0);
 		if (bd->flags & KEY_BINDING_REPEAT)
-			new_item->shared->flags |= CMDQ_SHARED_REPEAT;
+			cmdq_get_shared(new_item)->flags |= CMDQ_SHARED_REPEAT;
 	}
 	if (item != NULL)
 		new_item = cmdq_insert_after(item, new_item);

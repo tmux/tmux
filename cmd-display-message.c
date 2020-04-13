@@ -61,10 +61,11 @@ static enum cmd_retval
 cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
+	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct client		*c, *target_c;
-	struct session		*s = item->target.s;
-	struct winlink		*wl = item->target.wl;
-	struct window_pane	*wp = item->target.wp;
+	struct session		*s = target->s;
+	struct winlink		*wl = target->wl;
+	struct window_pane	*wp = target->wp;
 	const char		*template;
 	char			*msg, *cause;
 	struct format_tree	*ft;
@@ -105,7 +106,7 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 		flags = FORMAT_VERBOSE;
 	else
 		flags = 0;
-	ft = format_create(item->client, item, FORMAT_NONE, flags);
+	ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, flags);
 	format_defaults(ft, target_c, s, wl, wp);
 
 	if (args_has(args, 'a')) {

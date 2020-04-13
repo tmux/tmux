@@ -56,9 +56,10 @@ static enum cmd_retval
 cmd_kill_window_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
-	struct winlink		*wl = item->target.wl, *wl2, *wl3;
+	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct winlink		*wl = target->wl, *wl2, *wl3;
 	struct window		*w = wl->window;
-	struct session		*s = item->target.s;
+	struct session		*s = target->s;
 
 	if (cmd_get_entry(self) == &cmd_unlink_window_entry) {
 		if (!args_has(args, 'k') && !session_is_linked(s, w)) {

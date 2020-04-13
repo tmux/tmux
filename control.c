@@ -42,7 +42,7 @@ control_write(struct client *c, const char *fmt, ...)
 static enum cmd_retval
 control_error(struct cmdq_item *item, void *data)
 {
-	struct client	*c = item->client;
+	struct client	*c = cmdq_get_client(item);
 	char		*error = data;
 
 	cmdq_guard(item, "begin", 1);
@@ -86,7 +86,7 @@ control_callback(__unused struct client *c, __unused const char *path,
 			break;
 		case CMD_PARSE_SUCCESS:
 			item = cmdq_get_command(pr->cmdlist, NULL, NULL, 0);
-			item->shared->flags |= CMDQ_SHARED_CONTROL;
+			cmdq_get_shared(item)->flags |= CMDQ_SHARED_CONTROL;
 			cmdq_append(c, item);
 			cmd_list_free(pr->cmdlist);
 			break;

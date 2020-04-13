@@ -67,7 +67,10 @@ static enum cmd_retval
 cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
-	struct client		*c = item->client;
+	struct cmdq_shared	*shared = cmdq_get_shared(item);
+	struct cmd_find_state	*current = &shared->current;
+	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct client		*c = cmdq_get_client(item);
 	struct session		*s, *as, *groupwith;
 	struct environ		*env;
 	struct options		*oo;
@@ -106,7 +109,7 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 		if (newname != NULL)
 			as = session_find(newname);
 		else
-			as = item->target.s;
+			as = target->s;
 		if (as != NULL) {
 			retval = cmd_attach_session(item, as->name,
 			    args_has(args, 'D'), args_has(args, 'X'), 0, NULL,
@@ -123,7 +126,7 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	/* Is this going to be part of a session group? */
 	group = args_get(args, 't');
 	if (group != NULL) {
-		groupwith = item->target.s;
+		groupwith = target->s;
 		if (groupwith == NULL) {
 			if (!session_check_name(group)) {
 				cmdq_error(item, "bad group name: %s", group);
@@ -172,7 +175,7 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	 * over.
 	 */
 	if (!detached && !already_attached && c->tty.fd != -1) {
-		if (server_client_check_nested(item->client)) {
+		if (server_client_check_nested(cmdq_get_client(item))) {
 			cmdq_error(item, "sessions should be nested with care, "
 			    "unset $TMUX to force");
 			goto fail;
@@ -314,7 +317,7 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 		} else if (c->session != NULL)
 			c->last_session = c->session;
 		c->session = s;
-		if (~item->shared->flags & CMDQ_SHARED_REPEAT)
+		if (~shared->flags & CMDQ_SHARED_REPEAT)
 			server_client_set_key_table(c, NULL);
 		tty_update_client_offset(c);
 		status_timer_start(c);
@@ -344,7 +347,7 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (!detached) {
 		c->flags |= CLIENT_ATTACHED;
-		cmd_find_from_session(&item->shared->current, s, 0);
+		cmd_find_from_session(current, s, 0);
 	}
 
 	cmd_find_from_session(&fs, s, 0);

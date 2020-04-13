@@ -46,20 +46,19 @@ static enum cmd_retval
 cmd_swap_window_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
-	struct session		*src, *dst;
+	struct cmd_find_state	*source = cmdq_get_source(item);
+	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct session		*src = source->s, *dst = target->s;
 	struct session_group	*sg_src, *sg_dst;
-	struct winlink		*wl_src, *wl_dst;
+	struct winlink		*wl_src = source->wl, *wl_dst = target->wl;
 	struct window		*w_src, *w_dst;
 
-	wl_src = item->source.wl;
-	src = item->source.s;
 	sg_src = session_group_contains(src);
-
-	wl_dst = item->target.wl;
-	dst = item->target.s;
 	sg_dst = session_group_contains(dst);
 
-	if (src != dst && sg_src != NULL && sg_dst != NULL &&
+	if (src != dst &&
+	    sg_src != NULL &&
+	    sg_dst != NULL &&
 	    sg_src == sg_dst) {
 		cmdq_error(item, "can't move window, sessions are grouped");
 		return (CMD_RETURN_ERROR);

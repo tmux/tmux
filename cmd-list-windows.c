@@ -61,12 +61,13 @@ const struct cmd_entry cmd_list_windows_entry = {
 static enum cmd_retval
 cmd_list_windows_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args	*args = cmd_get_args(self);
+	struct args		*args = cmd_get_args(self);
+	struct cmd_find_state	*target = cmdq_get_target(item);
 
 	if (args_has(args, 'a'))
 		cmd_list_windows_server(self, item);
 	else
-		cmd_list_windows_session(self, item->target.s, item, 0);
+		cmd_list_windows_session(self, target->s, item, 0);
 
 	return (CMD_RETURN_NORMAL);
 }
@@ -107,7 +108,7 @@ cmd_list_windows_session(struct cmd *self, struct session *s,
 
 	n = 0;
 	RB_FOREACH(wl, winlinks, &s->windows) {
-		ft = format_create(item->client, item, FORMAT_NONE, 0);
+		ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
 		format_add(ft, "line", "%u", n);
 		format_defaults(ft, NULL, s, wl, NULL);
 

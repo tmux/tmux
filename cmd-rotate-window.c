@@ -44,8 +44,10 @@ static enum cmd_retval
 cmd_rotate_window_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
-	struct cmd_find_state	*current = &item->shared->current;
-	struct winlink		*wl = item->target.wl;
+	struct cmdq_shared	*shared = cmdq_get_shared(item);
+	struct cmd_find_state	*current = &shared->current;
+	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct winlink		*wl = target->wl;
 	struct window		*w = wl->window;
 	struct window_pane	*wp, *wp2;
 	struct layout_cell	*lc;

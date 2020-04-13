@@ -50,12 +50,13 @@ static enum cmd_retval
 cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
-	struct cmdq_shared	*shared = item->shared;
-	struct window_pane	*wp = item->target.wp;
-	struct winlink		*wl = item->target.wl;
+	struct cmdq_shared	*shared = cmdq_get_shared(item);
+	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct window_pane	*wp = target->wp;
+	struct winlink		*wl = target->wl;
 	struct window		*w = wl->window;
-	struct client		*c = item->client;
-	struct session		*s = item->target.s;
+	struct client		*c = cmdq_get_client(item);
+	struct session		*s = target->s;
 	const char	       	*errstr;
 	char			*cause;
 	u_int			 adjust;

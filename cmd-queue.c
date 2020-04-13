@@ -25,8 +25,41 @@
 
 #include "tmux.h"
 
-/* Global command queue. */
-static struct cmdq_list global_queue = TAILQ_HEAD_INITIALIZER(global_queue);
+/* Command queue item type. */
+enum cmdq_type {
+	CMDQ_COMMAND,
+	CMDQ_CALLBACK,
+};
+
+/* Command queue item. */
+struct cmdq_item {
+	char			*name;
+	struct cmdq_list	*queue;
+	struct cmdq_item	*next;
+
+	struct client		*client;
+
+	enum cmdq_type		 type;
+	u_int			 group;
+
+	u_int			 number;
+	time_t			 time;
+
+	int			 flags;
+
+	struct cmdq_shared	*shared;
+	struct cmd_find_state	 source;
+	struct cmd_find_state	 target;
+
+	struct cmd_list		*cmdlist;
+	struct cmd		*cmd;
+
+	cmdq_cb			 cb;
+	void			*data;
+
+	TAILQ_ENTRY(cmdq_item)	 entry;
+};
+TAILQ_HEAD(cmdq_list, cmdq_item);
 
 /* Get command queue name. */
 static const char *
@@ -47,9 +80,83 @@ cmdq_name(struct client *c)
 static struct cmdq_list *
 cmdq_get(struct client *c)
 {
-	if (c == NULL)
-		return (&global_queue);
-	return (&c->queue);
+	static struct cmdq_list *global_queue;
+
+	if (c == NULL) {
+		if (global_queue == NULL)
+			global_queue = cmdq_new();
+		return (global_queue);
+	}
+	return (c->queue);
+}
+
+/* Create a queue. */
+struct cmdq_list *
+cmdq_new(void)
+{
+	struct cmdq_list	*queue;
+
+	queue = xcalloc (1, sizeof *queue);
+	TAILQ_INIT (queue);
+	return (queue);
+}
+
+/* Free a queue. */
+void
+cmdq_free(struct cmdq_list *queue)
+{
+	if (!TAILQ_EMPTY(queue))
+		fatalx("queue not empty");
+	free(queue);
+}
+
+/* Get item name. */
+const char *
+cmdq_get_name(struct cmdq_item *item)
+{
+	return (item->name);
+}
+
+/* Get item client. */
+struct client *
+cmdq_get_client(struct cmdq_item *item)
+{
+	return (item->client);
+}
+
+/* Get item target. */
+struct cmd_find_state *
+cmdq_get_target(struct cmdq_item *item)
+{
+	return (&item->target);
+}
+
+/* Get item source. */
+struct cmd_find_state *
+cmdq_get_source(struct cmdq_item *item)
+{
+	return (&item->source);
+}
+
+/* Get item shared. */
+struct cmdq_shared *
+cmdq_get_shared(struct cmdq_item *item)
+{
+	return (item->shared);
+}
+
+/* Merge formats from item. */
+void
+cmdq_merge_formats(struct cmdq_item *item, struct format_tree *ft)
+{
+	const struct cmd_entry	*entry;
+
+	if (item->cmd != NULL) {
+		entry = cmd_get_entry (item->cmd);
+		format_add(ft, "command", "%s", entry->name);
+	}
+	if (item->shared->formats != NULL)
+		format_merge(ft, item->shared->formats);
 }
 
 /* Append an item. */

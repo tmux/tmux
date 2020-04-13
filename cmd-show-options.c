@@ -78,10 +78,8 @@ static enum cmd_retval
 cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = cmd_get_args(self);
-	struct cmd_find_state		*fs = &item->target;
+	struct cmd_find_state		*target = cmdq_get_target(item);
 	struct client			*c = cmd_find_client(item, NULL, 1);
-	struct session			*s = item->target.s;
-	struct winlink			*wl = item->target.wl;
 	struct options			*oo;
 	char				*argument, *name = NULL, *cause;
 	int				 window, idx, ambiguous, parent, scope;
@@ -90,7 +88,8 @@ cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 	window = (cmd_get_entry(self) == &cmd_show_window_options_entry);
 
 	if (args->argc == 0) {
-		scope = options_scope_from_flags(args, window, fs, &oo, &cause);
+		scope = options_scope_from_flags(args, window, target, &oo,
+		    &cause);
 		if (scope == OPTIONS_TABLE_NONE) {
 			if (args_has(args, 'q'))
 				return (CMD_RETURN_NORMAL);
@@ -100,7 +99,7 @@ cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 		}
 		return (cmd_show_options_all(self, item, scope, oo));
 	}
-	argument = format_single(item, args->argv[0], c, s, wl, NULL);
+	argument = format_single_from_target(item, args->argv[0], c);
 
 	name = options_match(argument, &idx, &ambiguous);
 	if (name == NULL) {
@@ -112,7 +111,8 @@ cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 			cmdq_error(item, "invalid option: %s", argument);
 		goto fail;
 	}
-	scope = options_scope_from_name(args, window, name, fs, &oo, &cause);
+	scope = options_scope_from_name(args, window, name, target, &oo,
+	    &cause);
 	if (scope == OPTIONS_TABLE_NONE) {
 		if (args_has(args, 'q'))
 			goto fail;

@@ -54,12 +54,14 @@ static enum cmd_retval
 cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
-	struct cmd_find_state	*current = &item->shared->current;
+	struct cmdq_shared	*shared = cmdq_get_shared(item);
+	struct cmd_find_state	*current = &shared->current;
+	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct spawn_context	 sc;
 	struct client		*c = cmd_find_client(item, NULL, 1);
-	struct session		*s = item->target.s;
-	struct winlink		*wl = item->target.wl;
-	struct window_pane	*wp = item->target.wp, *new_wp;
+	struct session		*s = target->s;
+	struct winlink		*wl = target->wl;
+	struct window_pane	*wp = target->wp, *new_wp;
 	enum layout_type	 type;
 	struct layout_cell	*lc;
 	struct cmd_find_state	 fs;

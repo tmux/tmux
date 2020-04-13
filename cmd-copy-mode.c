@@ -57,10 +57,12 @@ static enum cmd_retval
 cmd_copy_mode_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
-	struct cmdq_shared	*shared = item->shared;
-	struct client		*c = item->client;
+	struct cmdq_shared	*shared = cmdq_get_shared(item);
+	struct cmd_find_state	*source = cmdq_get_source(item);
+	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct client		*c = cmdq_get_client(item);
 	struct session		*s;
-	struct window_pane	*wp = item->target.wp, *swp;
+	struct window_pane	*wp = target->wp, *swp;
 
 	if (args_has(args, 'q')) {
 		window_pane_reset_mode_all(wp);
@@ -80,7 +82,7 @@ cmd_copy_mode_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (args_has(args, 's'))
-		swp = item->source.wp;
+		swp = source->wp;
 	else
 		swp = wp;
 	if (!window_pane_set_mode(wp, swp, &window_copy_mode, NULL, args)) {

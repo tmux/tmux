@@ -1378,12 +1378,6 @@ struct cmd_parse_input {
 	struct cmd_find_state	 fs;
 };
 
-/* Command queue item type. */
-enum cmdq_type {
-	CMDQ_COMMAND,
-	CMDQ_CALLBACK,
-};
-
 /* Command queue item shared state. */
 struct cmdq_shared {
 	int			 references;
@@ -1398,39 +1392,13 @@ struct cmdq_shared {
 	struct cmd_find_state	 current;
 };
 
-/* Command queue item. */
-typedef enum cmd_retval (*cmdq_cb) (struct cmdq_item *, void *);
-struct cmdq_item {
-	char			*name;
-	struct cmdq_list	*queue;
-	struct cmdq_item	*next;
-
-	struct client		*client;
-
-	enum cmdq_type		 type;
-	u_int			 group;
-
-	u_int			 number;
-	time_t			 time;
-
-	int			 flags;
+/* Command queue flags. */
 #define CMDQ_FIRED 0x1
 #define CMDQ_WAITING 0x2
 #define CMDQ_NOHOOKS 0x4
 
-	struct cmdq_shared	*shared;
-	struct cmd_find_state	 source;
-	struct cmd_find_state	 target;
-
-	struct cmd_list		*cmdlist;
-	struct cmd		*cmd;
-
-	cmdq_cb			 cb;
-	void			*data;
-
-	TAILQ_ENTRY(cmdq_item)	 entry;
-};
-TAILQ_HEAD(cmdq_list, cmdq_item);
+/* Command queue callback. */
+typedef enum cmd_retval (*cmdq_cb) (struct cmdq_item *, void *);
 
 /* Command definition flag. */
 struct cmd_entry_flag {
@@ -1513,7 +1481,7 @@ typedef void (*overlay_free_cb)(struct client *);
 struct client {
 	const char	*name;
 	struct tmuxpeer	*peer;
-	struct cmdq_list queue;
+	struct cmdq_list *queue;
 
 	pid_t		 pid;
 	int		 fd;
@@ -1827,6 +1795,7 @@ int		 format_true(const char *);
 struct format_tree *format_create(struct client *, struct cmdq_item *, int,
 		     int);
 void		 format_free(struct format_tree *);
+void		 format_merge(struct format_tree *, struct format_tree *);
 void printflike(3, 4) format_add(struct format_tree *, const char *,
 		     const char *, ...);
 void		 format_each(struct format_tree *, void (*)(const char *,
@@ -1836,6 +1805,8 @@ char		*format_expand(struct format_tree *, const char *);
 char		*format_single(struct cmdq_item *, const char *,
 		     struct client *, struct session *, struct winlink *,
 		     struct window_pane *);
+char		*format_single_from_target(struct cmdq_item *, const char *,
+		     struct client *);
 void		 format_defaults(struct format_tree *, struct client *,
 		     struct session *, struct winlink *, struct window_pane *);
 void		 format_defaults_window(struct format_tree *, struct window *);
@@ -2135,6 +2106,14 @@ struct cmd_parse_result *cmd_parse_from_arguments(int, char **,
 		     struct cmd_parse_input *);
 
 /* cmd-queue.c */
+struct cmdq_list *cmdq_new(void);
+void cmdq_free(struct cmdq_list *);
+const char	 *cmdq_get_name(struct cmdq_item *);
+struct client	 *cmdq_get_client(struct cmdq_item *);
+struct cmd_find_state *cmdq_get_target(struct cmdq_item *);
+struct cmd_find_state *cmdq_get_source(struct cmdq_item *);
+struct cmdq_shared *cmdq_get_shared(struct cmdq_item *);
+void		  cmdq_merge_formats(struct cmdq_item *, struct format_tree *);
 struct cmdq_item *cmdq_get_command(struct cmd_list *, struct cmd_find_state *,
 		     struct mouse_event *, int);
 #define cmdq_get_callback(cb, data) cmdq_get_callback1(#cb, cb, data)

@@ -46,9 +46,10 @@ const struct cmd_entry cmd_set_environment_entry = {
 static enum cmd_retval
 cmd_set_environment_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args	*args = cmd_get_args(self);
-	struct environ	*env;
-	const char	*name, *value, *target;
+	struct args		*args = cmd_get_args(self);
+	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct environ		*env;
+	const char		*name, *value, *tflag;
 
 	name = args->argv[0];
 	if (*name == '\0') {
@@ -68,15 +69,15 @@ cmd_set_environment_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'g'))
 		env = global_environ;
 	else {
-		if (item->target.s == NULL) {
-			target = args_get(args, 't');
-			if (target != NULL)
-				cmdq_error(item, "no such session: %s", target);
+		if (target->s == NULL) {
+			tflag = args_get(args, 't');
+			if (tflag != NULL)
+				cmdq_error(item, "no such session: %s", tflag);
 			else
 				cmdq_error(item, "no current session");
 			return (CMD_RETURN_ERROR);
 		}
-		env = item->target.s->environ;
+		env = target->s->environ;
 	}
 
 	if (args_has(args, 'u')) {

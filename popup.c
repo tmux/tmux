@@ -64,7 +64,7 @@ popup_write_screen(struct client *c, struct popup_data *pd)
 	struct format_tree	*ft;
 	u_int			 i, y;
 
-	ft = format_create(item->client, item, FORMAT_NONE, 0);
+	ft = format_create(c, item, FORMAT_NONE, 0);
 	if (cmd_find_valid_state(&pd->fs))
 		format_defaults(ft, c, pd->fs.s, pd->fs.wl, pd->fs.wp);
 	else
@@ -152,9 +152,9 @@ popup_free_cb(struct client *c)
 
 	if (item != NULL) {
 		if (pd->ictx != NULL &&
-		    item->client != NULL &&
-		    item->client->session == NULL)
-			item->client->retval = pd->status;
+		    cmdq_get_client(item) != NULL &&
+		    cmdq_get_client(item)->session == NULL)
+			cmdq_get_client(item)->retval = pd->status;
 		cmdq_continue(item);
 	}
 	server_client_unref(pd->c);
@@ -305,7 +305,7 @@ popup_key_cb(struct client *c, struct key_event *event)
 		break;
 	case CMD_PARSE_SUCCESS:
 		if (pd->item != NULL)
-			m = &pd->item->shared->mouse;
+			m = &cmdq_get_shared(pd->item)->mouse;
 		else
 			m = NULL;
 		new_item = cmdq_get_command(pr->cmdlist, fs, m, 0);
@@ -382,7 +382,7 @@ popup_width(struct cmdq_item *item, u_int nlines, const char **lines,
 	struct format_tree	*ft;
 	u_int			 i, width = 0, tmpwidth;
 
-	ft = format_create(item->client, item, FORMAT_NONE, 0);
+	ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
 	if (fs != NULL && cmd_find_valid_state(fs))
 		format_defaults(ft, c, fs->s, fs->wl, fs->wp);
 	else

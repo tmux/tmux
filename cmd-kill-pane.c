@@ -45,8 +45,9 @@ static enum cmd_retval
 cmd_kill_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
-	struct winlink		*wl = item->target.wl;
-	struct window_pane	*loopwp, *tmpwp, *wp = item->target.wp;
+	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct winlink		*wl = target->wl;
+	struct window_pane	*loopwp, *tmpwp, *wp = target->wp;
 
 	if (args_has(args, 'a')) {
 		server_unzoom_window(wl->window);

@@ -65,9 +65,11 @@ static void
 cmd_display_menu_get_position(struct client *c, struct cmdq_item *item,
     struct args *args, u_int *px, u_int *py, u_int w, u_int h)
 {
+	struct cmdq_shared	*shared = cmdq_get_shared(item);
+	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct session		*s = c->session;
-	struct winlink		*wl = item->target.wl;
-	struct window_pane	*wp = item->target.wp;
+	struct winlink		*wl = target->wl;
+	struct window_pane	*wp = target->wp;
 	struct style_ranges	*ranges;
 	struct style_range	*sr;
 	const char		*xp, *yp;
@@ -97,9 +99,9 @@ cmd_display_menu_get_position(struct client *c, struct cmdq_item *item,
 			*px = wp->xoff - ox;
 		else
 			*px = 0;
-	} else if (strcmp(xp, "M") == 0 && item->shared->mouse.valid) {
-		if (item->shared->mouse.x > w / 2)
-			*px = item->shared->mouse.x - w / 2;
+	} else if (strcmp(xp, "M") == 0 && shared->mouse.valid) {
+		if (shared->mouse.x > w / 2)
+			*px = shared->mouse.x - w / 2;
 		else
 			*px = 0;
 	} else if (strcmp(xp, "W") == 0) {
@@ -131,8 +133,8 @@ cmd_display_menu_get_position(struct client *c, struct cmdq_item *item,
 			*py = wp->yoff + wp->sy - oy;
 		else
 			*py = 0;
-	} else if (strcmp(yp, "M") == 0 && item->shared->mouse.valid)
-		*py = item->shared->mouse.y + h;
+	} else if (strcmp(yp, "M") == 0 && shared->mouse.valid)
+		*py = shared->mouse.y + h;
 	else if (strcmp(yp, "S") == 0) {
 		if (options_get_number(s->options, "status-position") == 0) {
 			if (lines != 0)
@@ -172,11 +174,9 @@ static enum cmd_retval
 cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
+	struct cmdq_shared	*shared = cmdq_get_shared(item);
+	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct client		*c;
-	struct session		*s = item->target.s;
-	struct winlink		*wl = item->target.wl;
-	struct window_pane	*wp = item->target.wp;
-	struct cmd_find_state	*fs = &item->target;
 	struct menu		*menu = NULL;
 	struct menu_item	 menu_item;
 	const char		*key;
@@ -190,16 +190,15 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 
 	if (args_has(args, 'T'))
-		title = format_single(item, args_get(args, 'T'), c, s, wl, wp);
+		title = format_single_from_target(item, args_get(args, 'T'), c);
 	else
 		title = xstrdup("");
-
 	menu = menu_create(title);
 
 	for (i = 0; i != args->argc; /* nothing */) {
 		name = args->argv[i++];
 		if (*name == '\0') {
-			menu_add_item(menu, NULL, item, c, fs);
+			menu_add_item(menu, NULL, item, c, target);
 			continue;
 		}
 
@@ -215,7 +214,7 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 		menu_item.key = key_string_lookup_string(key);
 		menu_item.command = args->argv[i++];
 
-		menu_add_item(menu, &menu_item, item, c, fs);
+		menu_add_item(menu, &menu_item, item, c, target);
 	}
 	free(title);
 	if (menu == NULL) {
@@ -229,9 +228,9 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	cmd_display_menu_get_position(c, item, args, &px, &py, menu->width + 4,
 	    menu->count + 2);
 
-	if (!item->shared->mouse.valid)
+	if (!shared->mouse.valid)
 		flags |= MENU_NOMOUSE;
-	if (menu_display(menu, flags, item, px, py, c, fs, NULL, NULL) != 0)
+	if (menu_display(menu, flags, item, px, py, c, target, NULL, NULL) != 0)
 		return (CMD_RETURN_NORMAL);
 	return (CMD_RETURN_WAIT);
 }
@@ -240,8 +239,8 @@ static enum cmd_retval
 cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
+	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct client		*c;
-	struct cmd_find_state	*fs = &item->target;
 	const char		*value, *cmd = NULL, **lines = NULL;
 	const char		*shellcmd = NULL;
 	char			*cwd, *cause;
@@ -278,7 +277,7 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (nlines != 0)
-		w = popup_width(item, nlines, lines, c, fs) + 2;
+		w = popup_width(item, nlines, lines, c, target) + 2;
 	else
 		w = c->tty.sx / 2;
 	if (args_has(args, 'w')) {
@@ -298,13 +297,13 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 
 	value = args_get(args, 'd');
 	if (value != NULL)
-		cwd = format_single(item, value, c, fs->s, fs->wl, fs->wp);
+		cwd = format_single_from_target(item, value, c);
 	else
-		cwd = xstrdup(server_client_get_cwd(c, fs->s));
+		cwd = xstrdup(server_client_get_cwd(c, target->s));
 
 	value = args_get(args, 'R');
 	if (value != NULL)
-		shellcmd = format_single(item, value, c, fs->s, fs->wl, fs->wp);
+		shellcmd = format_single_from_target(item, value, c);
 
 	if (args_has(args, 'K'))
 		flags |= POPUP_WRITEKEYS;
@@ -313,7 +312,7 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	else if (args_has(args, 'E'))
 		flags |= POPUP_CLOSEEXIT;
 	if (popup_display(flags, item, px, py, w, h, nlines, lines, shellcmd,
-	    cmd, cwd, c, fs) != 0)
+	    cmd, cwd, c, target) != 0)
 		return (CMD_RETURN_NORMAL);
 	return (CMD_RETURN_WAIT);
 }
