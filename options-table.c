@@ -140,11 +140,29 @@ static const char *options_table_status_format_default[] = {
 	OPTIONS_TABLE_STATUS_FORMAT1, OPTIONS_TABLE_STATUS_FORMAT2, NULL
 };
 
-/* Helper for hook options. */
+/* Helpers for hook options. */
 #define OPTIONS_TABLE_HOOK(hook_name, default_value) \
 	{ .name = hook_name, \
 	  .type = OPTIONS_TABLE_COMMAND, \
 	  .scope = OPTIONS_TABLE_SESSION, \
+	  .flags = OPTIONS_TABLE_IS_ARRAY|OPTIONS_TABLE_IS_HOOK, \
+	  .default_str = default_value,	\
+	  .separator = "" \
+	}
+
+#define OPTIONS_TABLE_PANE_HOOK(hook_name, default_value) \
+	{ .name = hook_name, \
+	  .type = OPTIONS_TABLE_COMMAND, \
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE, \
+	  .flags = OPTIONS_TABLE_IS_ARRAY|OPTIONS_TABLE_IS_HOOK, \
+	  .default_str = default_value,	\
+	  .separator = "" \
+	}
+
+#define OPTIONS_TABLE_WINDOW_HOOK(hook_name, default_value) \
+	{ .name = hook_name, \
+	  .type = OPTIONS_TABLE_COMMAND, \
+	  .scope = OPTIONS_TABLE_WINDOW, \
 	  .flags = OPTIONS_TABLE_IS_ARRAY|OPTIONS_TABLE_IS_HOOK, \
 	  .default_str = default_value,	\
 	  .separator = "" \
@@ -851,21 +869,21 @@ const struct options_table_entry options_table[] = {
 	OPTIONS_TABLE_HOOK("client-detached", ""),
 	OPTIONS_TABLE_HOOK("client-resized", ""),
 	OPTIONS_TABLE_HOOK("client-session-changed", ""),
-	OPTIONS_TABLE_HOOK("pane-died", ""),
-	OPTIONS_TABLE_HOOK("pane-exited", ""),
-	OPTIONS_TABLE_HOOK("pane-focus-in", ""),
-	OPTIONS_TABLE_HOOK("pane-focus-out", ""),
-	OPTIONS_TABLE_HOOK("pane-mode-changed", ""),
-	OPTIONS_TABLE_HOOK("pane-set-clipboard", ""),
+	OPTIONS_TABLE_PANE_HOOK("pane-died", ""),
+	OPTIONS_TABLE_PANE_HOOK("pane-exited", ""),
+	OPTIONS_TABLE_PANE_HOOK("pane-focus-in", ""),
+	OPTIONS_TABLE_PANE_HOOK("pane-focus-out", ""),
+	OPTIONS_TABLE_PANE_HOOK("pane-mode-changed", ""),
+	OPTIONS_TABLE_PANE_HOOK("pane-set-clipboard", ""),
 	OPTIONS_TABLE_HOOK("session-closed", ""),
 	OPTIONS_TABLE_HOOK("session-created", ""),
 	OPTIONS_TABLE_HOOK("session-renamed", ""),
 	OPTIONS_TABLE_HOOK("session-window-changed", ""),
-	OPTIONS_TABLE_HOOK("window-layout-changed", ""),
-	OPTIONS_TABLE_HOOK("window-linked", ""),
-	OPTIONS_TABLE_HOOK("window-pane-changed", ""),
-	OPTIONS_TABLE_HOOK("window-renamed", ""),
-	OPTIONS_TABLE_HOOK("window-unlinked", ""),
+	OPTIONS_TABLE_WINDOW_HOOK("window-layout-changed", ""),
+	OPTIONS_TABLE_WINDOW_HOOK("window-linked", ""),
+	OPTIONS_TABLE_WINDOW_HOOK("window-pane-changed", ""),
+	OPTIONS_TABLE_WINDOW_HOOK("window-renamed", ""),
+	OPTIONS_TABLE_WINDOW_HOOK("window-unlinked", ""),
 
 	{ .name = NULL }
 };
