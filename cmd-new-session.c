@@ -344,10 +344,10 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 		free(cp);
 	}
 
-	if (!detached) {
+	if (!detached)
 		c->flags |= CLIENT_ATTACHED;
+	if (!args_has(args, 'd'))
 		cmd_find_from_session(current, s, 0);
-	}
 
 	cmd_find_from_session(&fs, s, 0);
 	cmdq_insert_hook(s, item, &fs, "after-new-session");

@@ -521,7 +521,7 @@ key_bindings_init(void)
 		pr = cmd_parse_from_string(defaults[i], NULL);
 		if (pr->status != CMD_PARSE_SUCCESS)
 			fatalx("bad default key: %s", defaults[i]);
-		cmdq_append(NULL, cmdq_get_command(pr->cmdlist, NULL, NULL, 0));
+		cmdq_append(NULL, cmdq_get_command(pr->cmdlist, NULL));
 		cmd_list_free(pr->cmdlist);
 	}
 }
@@ -538,6 +538,7 @@ key_bindings_dispatch(struct key_binding *bd, struct cmdq_item *item,
     struct client *c, struct key_event *event, struct cmd_find_state *fs)
 {
 	struct cmdq_item	*new_item;
+	struct cmdq_state	*new_state;
 	int			 readonly, flags = 0;
 
 	if (c == NULL || (~c->flags & CLIENT_READONLY))
@@ -549,7 +550,9 @@ key_bindings_dispatch(struct key_binding *bd, struct cmdq_item *item,
 	else {
 		if (bd->flags & KEY_BINDING_REPEAT)
 			flags |= CMDQ_STATE_REPEAT;
-		new_item = cmdq_get_command(bd->cmdlist, fs, event, flags);
+		new_state = cmdq_new_state(fs, event, flags);
+		new_item = cmdq_get_command(bd->cmdlist, new_state);
+		cmdq_free_state(new_state);
 	}
 	if (item != NULL)
 		new_item = cmdq_insert_after(item, new_item);

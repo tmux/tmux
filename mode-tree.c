@@ -1064,6 +1064,7 @@ mode_tree_run_command(struct client *c, struct cmd_find_state *fs,
     const char *template, const char *name)
 {
 	struct cmdq_item	*new_item;
+	struct cmdq_state	*new_state;
 	char			*command;
 	struct cmd_parse_result	*pr;
 
@@ -1085,7 +1086,9 @@ mode_tree_run_command(struct client *c, struct cmd_find_state *fs,
 		free(pr->error);
 		break;
 	case CMD_PARSE_SUCCESS:
-		new_item = cmdq_get_command(pr->cmdlist, fs, NULL, 0);
+		new_state = cmdq_new_state(fs, NULL, 0);
+		new_item = cmdq_get_command(pr->cmdlist, new_state);
+		cmdq_free_state(new_state);
 		cmdq_append(c, new_item);
 		cmd_list_free(pr->cmdlist);
 		break;
