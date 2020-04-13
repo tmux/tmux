@@ -67,8 +67,8 @@ static enum cmd_retval
 cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
-	struct cmdq_shared	*shared = cmdq_get_shared(item);
-	struct cmd_find_state	*current = &shared->current;
+	struct cmdq_state	*state = cmdq_get_state(item);
+	struct cmd_find_state	*current = &state->current;
 	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct client		*c = cmdq_get_client(item);
 	struct session		*s, *as, *groupwith;
@@ -317,7 +317,7 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 		} else if (c->session != NULL)
 			c->last_session = c->session;
 		c->session = s;
-		if (~shared->flags & CMDQ_SHARED_REPEAT)
+		if (~state->flags & CMDQ_STATE_REPEAT)
 			server_client_set_key_table(c, NULL);
 		tty_update_client_offset(c);
 		status_timer_start(c);

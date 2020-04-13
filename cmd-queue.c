@@ -25,6 +25,10 @@
 
 #include "tmux.h"
 
+/* Command queue flags. */
+#define CMDQ_FIRED 0x1
+#define CMDQ_WAITING 0x2
+
 /* Command queue item type. */
 enum cmdq_type {
 	CMDQ_COMMAND,
@@ -47,7 +51,7 @@ struct cmdq_item {
 
 	int			 flags;
 
-	struct cmdq_shared	*shared;
+	struct cmdq_state	*state;
 	struct cmd_find_state	 source;
 	struct cmd_find_state	 target;
 
@@ -138,11 +142,11 @@ cmdq_get_source(struct cmdq_item *item)
 	return (&item->source);
 }
 
-/* Get item shared. */
-struct cmdq_shared *
-cmdq_get_shared(struct cmdq_item *item)
+/* Get item state. */
+struct cmdq_state *
+cmdq_get_state(struct cmdq_item *item)
 {
-	return (item->shared);
+	return (item->state);
 }
 
 /* Merge formats from item. */
@@ -155,8 +159,8 @@ cmdq_merge_formats(struct cmdq_item *item, struct format_tree *ft)
 		entry = cmd_get_entry (item->cmd);
 		format_add(ft, "command", "%s", entry->name);
 	}
-	if (item->shared->formats != NULL)
-		format_merge(ft, item->shared->formats);
+	if (item->state->formats != NULL)
+		format_merge(ft, item->state->formats);
 }
 
 /* Append an item. */
@@ -224,7 +228,7 @@ cmdq_insert_hook(struct session *s, struct cmdq_item *item,
 	struct options_array_item	*a;
 	struct cmd_list			*cmdlist;
 
-	if (item->flags & CMDQ_NOHOOKS)
+	if (item->state->flags & CMDQ_STATE_NOHOOKS)
 		return;
 	if (s == NULL)
 		oo = global_s_options;
@@ -250,7 +254,8 @@ cmdq_insert_hook(struct session *s, struct cmdq_item *item,
 			continue;
 		}
 
-		new_item = cmdq_get_command(cmdlist, fs, NULL, CMDQ_NOHOOKS);
+		new_item = cmdq_get_command(cmdlist, fs, NULL,
+		    CMDQ_STATE_NOHOOKS);
 		cmdq_format(new_item, "hook", "%s", name);
 		if (item != NULL)
 			item = cmdq_insert_after(item, new_item);
@@ -274,10 +279,10 @@ cmdq_continue(struct cmdq_item *item)
 static void
 cmdq_remove(struct cmdq_item *item)
 {
-	if (item->shared != NULL && --item->shared->references == 0) {
-		if (item->shared->formats != NULL)
-			format_free(item->shared->formats);
-		free(item->shared);
+	if (item->state != NULL && --item->state->references == 0) {
+		if (item->state->formats != NULL)
+			format_free(item->state->formats);
+		free(item->state);
 	}
 
 	if (item->client != NULL)
@@ -317,19 +322,23 @@ cmdq_get_command(struct cmd_list *cmdlist, struct cmd_find_state *current,
 	struct cmdq_item	*item, *first = NULL, *last = NULL;
 	struct cmd		*cmd;
 	const struct cmd_entry	*entry;
-	struct cmdq_shared	*shared = NULL;
+	struct cmdq_state	*state = NULL;
 	u_int			 group, last_group = 0;
 
 	cmd = cmd_list_first(cmdlist, &group);
 	while (cmd != NULL) {
 		if (group != last_group) {
-			shared = xcalloc(1, sizeof *shared);
+			state = xcalloc(1, sizeof *state);
 			if (current != NULL)
-				cmd_find_copy_state(&shared->current, current);
+				cmd_find_copy_state(&state->current, current);
 			else
-				cmd_find_clear_state(&shared->current, 0);
-			if (m != NULL)
-				memcpy(&shared->mouse, m, sizeof shared->mouse);
+				cmd_find_clear_state(&state->current, 0);
+			if (m != NULL) {
+				state->event.key = KEYC_NONE;
+				memcpy(&state->event.m, m,
+				    sizeof state->event.m);
+			}
+			state->flags = flags;
 			last_group = group;
 		}
 		entry = cmd_get_entry(cmd);
@@ -337,17 +346,15 @@ cmdq_get_command(struct cmd_list *cmdlist, struct cmd_find_state *current,
 		item = xcalloc(1, sizeof *item);
 		xasprintf(&item->name, "[%s/%p]", entry->name, item);
 		item->type = CMDQ_COMMAND;
-
 		item->group = group;
-		item->flags = flags;
 
-		item->shared = shared;
+		item->state = state;
 		item->cmdlist = cmdlist;
 		item->cmd = cmd;
 
 		log_debug("%s: %s group %u", __func__, item->name, item->group);
 
-		shared->references++;
+		state->references++;
 		cmdlist->references++;
 
 		if (first == NULL)
@@ -387,7 +394,7 @@ cmdq_fire_command(struct cmdq_item *item)
 {
 	struct client		*c = item->client;
 	const char		*name = cmdq_name(c);
-	struct cmdq_shared	*shared = item->shared;
+	struct cmdq_state	*state = item->state;
 	struct cmd		*cmd = item->cmd;
 	const struct cmd_entry	*entry = cmd_get_entry(cmd);
 	enum cmd_retval		 retval;
@@ -401,7 +408,7 @@ cmdq_fire_command(struct cmdq_item *item)
 		free(tmp);
 	}
 
-	flags = !!(shared->flags & CMDQ_SHARED_CONTROL);
+	flags = !!(state->flags & CMDQ_STATE_CONTROL);
 	cmdq_guard(item, "begin", flags);
 
 	if (item->client == NULL)
@@ -420,8 +427,8 @@ cmdq_fire_command(struct cmdq_item *item)
 	if (entry->flags & CMD_AFTERHOOK) {
 		if (cmd_find_valid_state(&item->target))
 			fsp = &item->target;
-		else if (cmd_find_valid_state(&item->shared->current))
-			fsp = &item->shared->current;
+		else if (cmd_find_valid_state(&item->state->current))
+			fsp = &item->state->current;
 		else if (cmd_find_from_client(&fs, item->client, 0) == 0)
 			fsp = &fs;
 		else
@@ -447,9 +454,7 @@ cmdq_get_callback1(const char *name, cmdq_cb cb, void *data)
 	item = xcalloc(1, sizeof *item);
 	xasprintf(&item->name, "[%s/%p]", name, item);
 	item->type = CMDQ_CALLBACK;
-
 	item->group = 0;
-	item->flags = 0;
 
 	item->cb = cb;
 	item->data = data;
@@ -487,7 +492,7 @@ cmdq_fire_callback(struct cmdq_item *item)
 void
 cmdq_format(struct cmdq_item *item, const char *key, const char *fmt, ...)
 {
-	struct cmdq_shared	*shared = item->shared;
+	struct cmdq_state	*state = item->state;
 	va_list			 ap;
 	char			*value;
 
@@ -495,9 +500,9 @@ cmdq_format(struct cmdq_item *item, const char *key, const char *fmt, ...)
 	xvasprintf(&value, fmt, ap);
 	va_end(ap);
 
-	if (shared->formats == NULL)
-		shared->formats = format_create(NULL, NULL, FORMAT_NONE, 0);
-	format_add(shared->formats, key, "%s", value);
+	if (state->formats == NULL)
+		state->formats = format_create(NULL, NULL, FORMAT_NONE, 0);
+	format_add(state->formats, key, "%s", value);
 
 	free(value);
 }

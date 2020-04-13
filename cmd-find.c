@@ -960,8 +960,8 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 	if (server_check_marked() && (flags & CMD_FIND_DEFAULT_MARKED)) {
 		fs->current = &marked_pane;
 		log_debug("%s: current is marked pane", __func__);
-	} else if (cmd_find_valid_state(&cmdq_get_shared(item)->current)) {
-		fs->current = &cmdq_get_shared(item)->current;
+	} else if (cmd_find_valid_state(&cmdq_get_state(item)->current)) {
+		fs->current = &cmdq_get_state(item)->current;
 		log_debug("%s: current is from queue", __func__);
 	} else if (cmd_find_from_client(&current, cmdq_get_client(item),
 	    flags) == 0) {
@@ -981,7 +981,7 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 
 	/* Mouse target is a plain = or {mouse}. */
 	if (strcmp(target, "=") == 0 || strcmp(target, "{mouse}") == 0) {
-		m = &cmdq_get_shared(item)->mouse;
+		m = &cmdq_get_state(item)->event.m;
 		switch (type) {
 		case CMD_FIND_PANE:
 			fs->wp = cmd_mouse_pane(m, &fs->s, &fs->wl);

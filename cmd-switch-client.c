@@ -48,8 +48,8 @@ static enum cmd_retval
 cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
-	struct cmdq_shared	*shared = cmdq_get_shared(item);
-	struct cmd_find_state	*current = &shared->current;
+	struct cmdq_state	*state = cmdq_get_state(item);
+	struct cmd_find_state	*current = &state->current;
 	struct cmd_find_state	 target;
 	const char		*tflag = args_get(args, 't');
 	enum cmd_find_type	 type;
@@ -137,7 +137,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 	if (c->session != NULL && c->session != s)
 		c->last_session = c->session;
 	c->session = s;
-	if (~shared->flags & CMDQ_SHARED_REPEAT)
+	if (~state->flags & CMDQ_STATE_REPEAT)
 		server_client_set_key_table(c, NULL);
 	tty_update_client_offset(c);
 	status_timer_start(c);
