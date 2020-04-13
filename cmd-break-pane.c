@@ -49,15 +49,18 @@ static enum cmd_retval
 cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
-	struct cmd_find_state	*current = &item->shared->current;
+	struct cmdq_shared	*shared = cmdq_get_shared(item);
+	struct cmd_find_state	*current = &shared->current;
+	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct cmd_find_state	*source = cmdq_get_source(item);
 	struct client		*c = cmd_find_client(item, NULL, 1);
-	struct winlink		*wl = item->source.wl;
-	struct session		*src_s = item->source.s;
-	struct session		*dst_s = item->target.s;
-	struct window_pane	*wp = item->source.wp;
+	struct winlink		*wl = source->wl;
+	struct session		*src_s = source->s;
+	struct session		*dst_s = target->s;
+	struct window_pane	*wp = source->wp;
 	struct window		*w = wl->window;
 	char			*name, *cause;
-	int			 idx = item->target.idx;
+	int			 idx = target->idx;
 	const char		*template;
 	char			*cp;
 

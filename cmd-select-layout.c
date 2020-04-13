@@ -72,9 +72,10 @@ static enum cmd_retval
 cmd_select_layout_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
-	struct winlink		*wl = item->target.wl;
+	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct winlink		*wl = target->wl;
 	struct window		*w = wl->window;
-	struct window_pane	*wp = item->target.wp;
+	struct window_pane	*wp = target->wp;
 	const char		*layoutname;
 	char			*oldlayout;
 	int			 next, previous, layout;

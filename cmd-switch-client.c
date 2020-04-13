@@ -48,6 +48,9 @@ static enum cmd_retval
 cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
+	struct cmdq_shared	*shared = cmdq_get_shared(item);
+	struct cmd_find_state	*current = &shared->current;
+	struct cmd_find_state	 target;
 	const char		*tflag = args_get(args, 't');
 	enum cmd_find_type	 type;
 	int			 flags;
@@ -69,11 +72,11 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 		type = CMD_FIND_SESSION;
 		flags = CMD_FIND_PREFER_UNATTACHED;
 	}
-	if (cmd_find_target(&item->target, item, tflag, type, flags) != 0)
+	if (cmd_find_target(&target, item, tflag, type, flags) != 0)
 		return (CMD_RETURN_ERROR);
-	s = item->target.s;
-	wl = item->target.wl;
-	wp = item->target.wp;
+	s = target.s;
+	wl = target.wl;
+	wp = target.wp;
 
 	if (args_has(args, 'r'))
 		c->flags ^= CLIENT_READONLY;
@@ -111,7 +114,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 			return (CMD_RETURN_ERROR);
 		}
 	} else {
-		if (item->client == NULL)
+		if (cmdq_get_client(item) == NULL)
 			return (CMD_RETURN_NORMAL);
 		if (wl != NULL && wp != NULL) {
 			w = wl->window;
@@ -124,7 +127,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 		}
 		if (wl != NULL) {
 			session_set_current(s, wl);
-			cmd_find_from_session(&item->shared->current, s, 0);
+			cmd_find_from_session(current, s, 0);
 		}
 	}
 
@@ -134,7 +137,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 	if (c->session != NULL && c->session != s)
 		c->last_session = c->session;
 	c->session = s;
-	if (~item->shared->flags & CMDQ_SHARED_REPEAT)
+	if (~shared->flags & CMDQ_SHARED_REPEAT)
 		server_client_set_key_table(c, NULL);
 	tty_update_client_offset(c);
 	status_timer_start(c);

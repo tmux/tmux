@@ -59,7 +59,7 @@ cmd_list_buffers_exec(struct cmd *self, struct cmdq_item *item)
 
 	pb = NULL;
 	while ((pb = paste_walk(pb)) != NULL) {
-		ft = format_create(item->client, item, FORMAT_NONE, 0);
+		ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
 		format_defaults_paste_buffer(ft, pb);
 
 		if (filter != NULL) {

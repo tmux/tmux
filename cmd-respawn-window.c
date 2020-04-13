@@ -48,9 +48,10 @@ static enum cmd_retval
 cmd_respawn_window_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
+	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct spawn_context	 sc;
-	struct session		*s = item->target.s;
-	struct winlink		*wl = item->target.wl;
+	struct session		*s = target->s;
+	struct winlink		*wl = target->wl;
 	char			*cause = NULL;
 	const char		*add;
 	struct args_value	*value;

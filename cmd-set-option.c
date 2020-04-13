@@ -83,10 +83,9 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = cmd_get_args(self);
 	int				 append = args_has(args, 'a');
-	struct cmd_find_state		*fs = &item->target;
+	struct cmd_find_state		*target = cmdq_get_target(item);
 	struct client			*c, *loop;
-	struct session			*s = fs->s;
-	struct winlink			*wl = fs->wl;
+	struct session			*s = target->s;
 	struct window			*w;
 	struct window_pane		*wp;
 	struct options			*oo;
@@ -100,7 +99,7 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 
 	/* Expand argument. */
 	c = cmd_find_client(item, NULL, 1);
-	argument = format_single(item, args->argv[0], c, s, wl, NULL);
+	argument = format_single_from_target(item, args->argv[0], c);
 
 	/* If set-hook -R, fire the hook straight away. */
 	if (cmd_get_entry(self) == &cmd_set_hook_entry && args_has(args, 'R')) {
@@ -123,12 +122,13 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 	if (args->argc < 2)
 		value = NULL;
 	else if (args_has(args, 'F'))
-		value = format_single(item, args->argv[1], c, s, wl, NULL);
+		value = format_single_from_target(item, args->argv[1], c);
 	else
 		value = xstrdup(args->argv[1]);
 
 	/* Get the scope and table for the option .*/
-	scope = options_scope_from_name(args, window, name, fs, &oo, &cause);
+	scope = options_scope_from_name(args, window, name, target, &oo,
+	    &cause);
 	if (scope == OPTIONS_TABLE_NONE) {
 		if (args_has(args, 'q'))
 			goto out;

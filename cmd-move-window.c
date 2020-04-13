@@ -59,32 +59,34 @@ const struct cmd_entry cmd_link_window_entry = {
 static enum cmd_retval
 cmd_move_window_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args	*args = cmd_get_args(self);
-	const char	*tflag = args_get(args, 't');
-	struct session	*src;
-	struct session	*dst;
-	struct winlink	*wl;
-	char		*cause;
-	int		 idx, kflag, dflag, sflag;
+	struct args		*args = cmd_get_args(self);
+	struct cmd_find_state	*source = cmdq_get_source(item);
+	struct cmd_find_state	 target;
+	const char		*tflag = args_get(args, 't');
+	struct session		*src;
+	struct session		*dst;
+	struct winlink		*wl;
+	char			*cause;
+	int			 idx, kflag, dflag, sflag;
 
 	if (args_has(args, 'r')) {
-		if (cmd_find_target(&item->target, item, tflag,
-		    CMD_FIND_SESSION, CMD_FIND_QUIET) != 0)
+		if (cmd_find_target(&target, item, tflag, CMD_FIND_SESSION,
+		    CMD_FIND_QUIET) != 0)
 			return (CMD_RETURN_ERROR);
 
-		session_renumber_windows(item->target.s);
+		session_renumber_windows(target.s);
 		recalculate_sizes();
-		server_status_session(item->target.s);
+		server_status_session(target.s);
 
 		return (CMD_RETURN_NORMAL);
 	}
-	if (cmd_find_target(&item->target, item, tflag, CMD_FIND_WINDOW,
+	if (cmd_find_target(&target, item, tflag, CMD_FIND_WINDOW,
 	    CMD_FIND_WINDOW_INDEX) != 0)
 		return (CMD_RETURN_ERROR);
-	src = item->source.s;
-	dst = item->target.s;
-	wl = item->source.wl;
-	idx = item->target.idx;
+	src = source->s;
+	dst = target.s;
+	wl = source->wl;
+	idx = target.idx;
 
 	kflag = args_has(args, 'k');
 	dflag = args_has(args, 'd');
@@ -95,8 +97,7 @@ cmd_move_window_exec(struct cmd *self, struct cmdq_item *item)
 			return (CMD_RETURN_ERROR);
 	}
 
-	if (server_link_window(src, wl, dst, idx, kflag, !dflag,
-	    &cause) != 0) {
+	if (server_link_window(src, wl, dst, idx, kflag, !dflag, &cause) != 0) {
 		cmdq_error(item, "can't link window: %s", cause);
 		free(cause);
 		return (CMD_RETURN_ERROR);

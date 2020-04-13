@@ -282,7 +282,7 @@ chosen:
 		break;
 	case CMD_PARSE_SUCCESS:
 		if (md->item != NULL)
-			m = &md->item->shared->mouse;
+			m = &cmdq_get_shared(md->item)->mouse;
 		else
 			m = NULL;
 		new_item = cmdq_get_command(pr->cmdlist, &md->fs, m, 0);

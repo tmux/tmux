@@ -54,10 +54,10 @@ spawn_log(const char *from, struct spawn_context *sc)
 	struct session		*s = sc->s;
 	struct winlink		*wl = sc->wl;
 	struct window_pane	*wp0 = sc->wp0;
+	const char		*name = cmdq_get_name(sc->item);
 	char			 tmp[128];
-	const char		*name;
 
-	log_debug("%s: %s, flags=%#x", from, sc->item->name, sc->flags);
+	log_debug("%s: %s, flags=%#x", from, name, sc->flags);
 
 	if (wl != NULL && wp0 != NULL)
 		xsnprintf(tmp, sizeof tmp, "wl=%d wp0=%%%u", wl->idx, wp0->id);
@@ -68,18 +68,14 @@ spawn_log(const char *from, struct spawn_context *sc)
 	else
 		xsnprintf(tmp, sizeof tmp, "wl=none wp0=none");
 	log_debug("%s: s=$%u %s idx=%d", from, s->id, tmp, sc->idx);
-
-	name = sc->name;
-	if (name == NULL)
-		name = "none";
-	log_debug("%s: name=%s", from, name);
+	log_debug("%s: name=%s", from, sc->name == NULL ? "none" : sc->name);
 }
 
 struct winlink *
 spawn_window(struct spawn_context *sc, char **cause)
 {
 	struct cmdq_item	*item = sc->item;
-	struct client		*c = item->client;
+	struct client		*c = cmdq_get_client(item);
 	struct session		*s = sc->s;
 	struct window		*w;
 	struct window_pane	*wp;
@@ -205,7 +201,8 @@ struct window_pane *
 spawn_pane(struct spawn_context *sc, char **cause)
 {
 	struct cmdq_item	 *item = sc->item;
-	struct client		 *c = item->client;
+	struct cmd_find_state	 *target = cmdq_get_target(item);
+	struct client		 *c = cmdq_get_client(item);
 	struct session		 *s = sc->s;
 	struct window		 *w = sc->wl->window;
 	struct window_pane	 *new_wp;
@@ -228,9 +225,9 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	 * the pane's stored one unless specified.
 	 */
 	if (sc->cwd != NULL)
-		cwd = format_single(item, sc->cwd, c, item->target.s, NULL, NULL);
+		cwd = format_single(item, sc->cwd, c, target->s, NULL, NULL);
 	else if (~sc->flags & SPAWN_RESPAWN)
-		cwd = xstrdup(server_client_get_cwd(c, item->target.s));
+		cwd = xstrdup(server_client_get_cwd(c, target->s));
 	else
 		cwd = NULL;
 

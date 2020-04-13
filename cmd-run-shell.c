@@ -90,11 +90,11 @@ static enum cmd_retval
 cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = cmd_get_args(self);
+	struct cmd_find_state		*target = cmdq_get_target(item);
 	struct cmd_run_shell_data	*cdata;
 	struct client			*c = cmd_find_client(item, NULL, 1);
-	struct session			*s = item->target.s;
-	struct winlink			*wl = item->target.wl;
-	struct window_pane		*wp = item->target.wp;
+	struct session			*s = target->s;
+	struct window_pane		*wp = target->wp;
 	const char			*delay;
 	double				 d;
 	struct timeval			 tv;
@@ -102,7 +102,7 @@ cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 
 	cdata = xcalloc(1, sizeof *cdata);
 	if (args->argc != 0)
-		cdata->cmd = format_single(item, args->argv[0], c, s, wl, wp);
+		cdata->cmd = format_single_from_target(item, args->argv[0], c);
 
 	if (args_has(args, 't') && wp != NULL)
 		cdata->wp_id = wp->id;
@@ -112,7 +112,7 @@ cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 	if (!args_has(args, 'b'))
 		cdata->item = item;
 
-	cdata->cwd = xstrdup(server_client_get_cwd(item->client, s));
+	cdata->cwd = xstrdup(server_client_get_cwd(cmdq_get_client(item), s));
 	cdata->s = s;
 	if (s != NULL)
 		session_add_ref(s, __func__);
@@ -197,8 +197,9 @@ cmd_run_shell_callback(struct job *job)
 	free(msg);
 
 	if (item != NULL) {
-		if (item->client != NULL && item->client->session == NULL)
-			item->client->retval = retcode;
+		if (cmdq_get_client(item) != NULL &&
+		    cmdq_get_client(item)->session == NULL)
+			cmdq_get_client(item)->retval = retcode;
 		cmdq_continue(item);
 	}
 }

@@ -63,20 +63,19 @@ static enum cmd_retval
 cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = cmd_get_args(self);
-	struct mouse_event		*m = &item->shared->mouse;
+	struct cmdq_shared		*shared = cmdq_get_shared(item);
+	struct cmd_find_state		*target = cmdq_get_target(item);
+	struct mouse_event		*m = &shared->mouse;
 	struct cmd_if_shell_data	*cdata;
 	char				*shellcmd, *cmd;
 	const char			*file;
 	struct cmdq_item		*new_item;
-	struct cmd_find_state		*fs = &item->target;
 	struct client			*c = cmd_find_client(item, NULL, 1);
-	struct session			*s = fs->s;
-	struct winlink			*wl = fs->wl;
-	struct window_pane		*wp = fs->wp;
+	struct session			*s = target->s;
 	struct cmd_parse_input		 pi;
 	struct cmd_parse_result		*pr;
 
-	shellcmd = format_single(item, args->argv[0], c, s, wl, wp);
+	shellcmd = format_single_from_target(item, args->argv[0], c);
 	if (args_has(args, 'F')) {
 		if (*shellcmd != '0' && *shellcmd != '\0')
 			cmd = args->argv[1];
@@ -92,7 +91,7 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 		cmd_get_source(self, &pi.file, &pi.line);
 		pi.item = item;
 		pi.c = c;
-		cmd_find_copy_state(&pi.fs, fs);
+		cmd_find_copy_state(&pi.fs, target);
 
 		pr = cmd_parse_from_string(cmd, &pi);
 		switch (pr->status) {
@@ -103,7 +102,7 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 			free(pr->error);
 			return (CMD_RETURN_ERROR);
 		case CMD_PARSE_SUCCESS:
-			new_item = cmdq_get_command(pr->cmdlist, fs, m, 0);
+			new_item = cmdq_get_command(pr->cmdlist, target, m, 0);
 			cmdq_insert_after(item, new_item);
 			cmd_list_free(pr->cmdlist);
 			break;
@@ -121,7 +120,7 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 	memcpy(&cdata->mouse, m, sizeof cdata->mouse);
 
 	if (!args_has(args, 'b'))
-		cdata->client = item->client;
+		cdata->client = cmdq_get_client(item);
 	else
 		cdata->client = c;
 	if (cdata->client != NULL)
@@ -139,9 +138,10 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 	cdata->input.c = c;
 	if (cdata->input.c != NULL)
 		cdata->input.c->references++;
-	cmd_find_copy_state(&cdata->input.fs, fs);
+	cmd_find_copy_state(&cdata->input.fs, target);
 
-	if (job_run(shellcmd, s, server_client_get_cwd(item->client, s), NULL,
+	if (job_run(shellcmd, s,
+	    server_client_get_cwd(cmdq_get_client(item), s), NULL,
 	    cmd_if_shell_callback, cmd_if_shell_free, cdata, 0, -1,
 	    -1) == NULL) {
 		cmdq_error(item, "failed to run command: %s", shellcmd);

@@ -56,10 +56,11 @@ static enum cmd_retval
 cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
+	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct client		*c = cmd_find_client(item, NULL, 1);
-	struct window_pane	*wp = item->target.wp;
-	struct session		*s = item->target.s;
-	struct winlink		*wl = item->target.wl;
+	struct window_pane	*wp = target->wp;
+	struct session		*s = target->s;
+	struct winlink		*wl = target->wl;
 	char			*cmd;
 	int			 old_fd, pipe_fd[2], null_fd, in, out;
 	struct format_tree	*ft;
@@ -107,7 +108,7 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	/* Expand the command. */
-	ft = format_create(item->client, item, FORMAT_NONE, 0);
+	ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
 	format_defaults(ft, c, s, wl, wp);
 	cmd = format_expand_time(ft, args->argv[0]);
 	format_free(ft);

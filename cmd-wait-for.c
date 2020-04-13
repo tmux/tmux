@@ -167,7 +167,7 @@ static enum cmd_retval
 cmd_wait_for_wait(struct cmdq_item *item, const char *name,
     struct wait_channel *wc)
 {
-	struct client		*c = item->client;
+	struct client		*c = cmdq_get_client(item);
 	struct wait_item	*wi;
 
 	if (c == NULL) {
@@ -198,7 +198,7 @@ cmd_wait_for_lock(struct cmdq_item *item, const char *name,
 {
 	struct wait_item	*wi;
 
-	if (item->client == NULL) {
+	if (cmdq_get_client(item) == NULL) {
 		cmdq_error(item, "not able to lock");
 		return (CMD_RETURN_ERROR);
 	}

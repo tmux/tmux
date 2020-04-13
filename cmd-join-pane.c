@@ -63,7 +63,10 @@ static enum cmd_retval
 cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
-	struct cmd_find_state	*current = &item->shared->current;
+	struct cmdq_shared	*shared = cmdq_get_shared(item);
+	struct cmd_find_state	*current = &shared->current;
+	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct cmd_find_state	*source = cmdq_get_source(item);
 	struct session		*dst_s;
 	struct winlink		*src_wl, *dst_wl;
 	struct window		*src_w, *dst_w;
@@ -79,15 +82,15 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	else
 		not_same_window = 0;
 
-	dst_s = item->target.s;
-	dst_wl = item->target.wl;
-	dst_wp = item->target.wp;
+	dst_s = target->s;
+	dst_wl = target->wl;
+	dst_wp = target->wp;
 	dst_w = dst_wl->window;
 	dst_idx = dst_wl->idx;
 	server_unzoom_window(dst_w);
 
-	src_wl = item->source.wl;
-	src_wp = item->source.wp;
+	src_wl = source->wl;
+	src_wp = source->wp;
 	src_w = src_wl->window;
 	server_unzoom_window(src_w);
 

@@ -124,7 +124,7 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = cmd_get_args(self);
 	struct cmd_source_file_data	*cdata;
-	struct client			*c = item->client;
+	struct client			*c = cmdq_get_client(item);
 	enum cmd_retval			 retval = CMD_RETURN_NORMAL;
 	char				*pattern, *cwd;
 	const char			*path, *error;

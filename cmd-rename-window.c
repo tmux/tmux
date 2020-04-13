@@ -45,13 +45,13 @@ const struct cmd_entry cmd_rename_window_entry = {
 static enum cmd_retval
 cmd_rename_window_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args	*args = cmd_get_args(self);
-	struct client	*c = cmd_find_client(item, NULL, 1);
-	struct session	*s = item->target.s;
-	struct winlink	*wl = item->target.wl;
-	char		*newname;
+	struct args		*args = cmd_get_args(self);
+	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct client		*c = cmd_find_client(item, NULL, 1);
+	struct winlink		*wl = target->wl;
+	char			*newname;
 
-	newname = format_single(item, args->argv[0], c, s, wl, NULL);
+	newname = format_single_from_target(item, args->argv[0], c);
 	window_set_name(wl->window, newname);
 	options_set_number(wl->window->options, "automatic-rename", 0);
 

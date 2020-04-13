@@ -85,9 +85,11 @@ static enum cmd_retval
 cmd_select_window_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
-	struct cmd_find_state	*current = &item->shared->current;
-	struct winlink		*wl = item->target.wl;
-	struct session		*s = item->target.s;
+	struct cmdq_shared	*shared = cmdq_get_shared(item);
+	struct cmd_find_state	*current = &shared->current;
+	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct winlink		*wl = target->wl;
+	struct session		*s = target->s;
 	int			 next, previous, last, activity;
 
 	next = (cmd_get_entry(self) == &cmd_next_window_entry);
