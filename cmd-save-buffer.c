@@ -72,7 +72,7 @@ cmd_save_buffer_done(__unused struct client *c, const char *path, int error,
 static enum cmd_retval
 cmd_save_buffer_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
+	struct args		*args = cmd_get_args(self);
 	struct client		*c = cmd_find_client(item, NULL, 1);
 	struct session		*s = item->target.s;
 	struct winlink		*wl = item->target.wl;
@@ -97,11 +97,11 @@ cmd_save_buffer_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	bufdata = paste_buffer_data(pb, &bufsize);
 
-	if (self->entry == &cmd_show_buffer_entry)
+	if (cmd_get_entry(self) == &cmd_show_buffer_entry)
 		path = xstrdup("-");
 	else
 		path = format_single(item, args->argv[0], c, s, wl, wp);
-	if (args_has(self->args, 'a'))
+	if (args_has(args, 'a'))
 		flags = O_APPEND;
 	else
 		flags = 0;

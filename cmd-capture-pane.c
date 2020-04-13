@@ -192,14 +192,14 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 static enum cmd_retval
 cmd_capture_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
+	struct args		*args = cmd_get_args(self);
 	struct client		*c = item->client;
 	struct window_pane	*wp = item->target.wp;
 	char			*buf, *cause;
 	const char		*bufname;
 	size_t			 len;
 
-	if (self->entry == &cmd_clear_history_entry) {
+	if (cmd_get_entry(self) == &cmd_clear_history_entry) {
 		window_pane_reset_mode_all(wp);
 		grid_clear_history(wp->base.grid);
 		return (CMD_RETURN_NORMAL);

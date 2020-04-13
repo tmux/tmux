@@ -120,7 +120,7 @@ cmd_wait_for_remove(struct wait_channel *wc)
 static enum cmd_retval
 cmd_wait_for_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args     	*args = self->args;
+	struct args     	*args = cmd_get_args(self);
 	const char		*name = args->argv[0];
 	struct wait_channel	*wc, wc0;
 

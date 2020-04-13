@@ -46,7 +46,7 @@ const struct cmd_entry cmd_paste_buffer_entry = {
 static enum cmd_retval
 cmd_paste_buffer_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
+	struct args		*args = cmd_get_args(self);
 	struct window_pane	*wp = item->target.wp;
 	struct paste_buffer	*pb;
 	const char		*sepstr, *bufname, *bufdata, *bufend, *line;

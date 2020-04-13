@@ -52,7 +52,7 @@ const struct cmd_entry cmd_split_window_entry = {
 static enum cmd_retval
 cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
+	struct args		*args = cmd_get_args(self);
 	struct cmd_find_state	*current = &item->shared->current;
 	struct spawn_context	 sc;
 	struct client		*c = cmd_find_client(item, NULL, 1);

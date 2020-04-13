@@ -62,7 +62,7 @@ const struct cmd_entry cmd_move_pane_entry = {
 static enum cmd_retval
 cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
+	struct args		*args = cmd_get_args(self);
 	struct cmd_find_state	*current = &item->shared->current;
 	struct session		*dst_s;
 	struct winlink		*src_wl, *dst_wl;
@@ -74,7 +74,7 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	enum layout_type	 type;
 	struct layout_cell	*lc;
 
-	if (self->entry == &cmd_join_pane_entry)
+	if (cmd_get_entry(self) == &cmd_join_pane_entry)
 		not_same_window = 1;
 	else
 		not_same_window = 0;

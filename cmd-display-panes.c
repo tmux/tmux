@@ -239,7 +239,7 @@ cmd_display_panes_key(struct client *c, struct key_event *event)
 static enum cmd_retval
 cmd_display_panes_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args			*args = self->args;
+	struct args			*args = cmd_get_args(self);
 	struct client			*c;
 	struct session			*s;
 	u_int		 		 delay;

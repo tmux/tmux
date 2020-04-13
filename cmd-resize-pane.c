@@ -49,7 +49,7 @@ const struct cmd_entry cmd_resize_pane_entry = {
 static enum cmd_retval
 cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
+	struct args		*args = cmd_get_args(self);
 	struct cmdq_shared	*shared = item->shared;
 	struct window_pane	*wp = item->target.wp;
 	struct winlink		*wl = item->target.wl;

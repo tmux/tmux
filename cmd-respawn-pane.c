@@ -47,7 +47,7 @@ const struct cmd_entry cmd_respawn_pane_entry = {
 static enum cmd_retval
 cmd_respawn_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
+	struct args		*args = cmd_get_args(self);
 	struct spawn_context	 sc;
 	struct session		*s = item->target.s;
 	struct winlink		*wl = item->target.wl;

@@ -69,10 +69,10 @@ const struct cmd_entry cmd_set_hook_entry = {
 	.name = "set-hook",
 	.alias = NULL,
 
-	.args = { "agRt:u", 1, 2 },
-	.usage = "[-agRu] " CMD_TARGET_SESSION_USAGE " hook [command]",
+	.args = { "agpRt:uw", 1, 2 },
+	.usage = "[-agpRuw] " CMD_TARGET_PANE_USAGE " hook [command]",
 
-	.target = { 't', CMD_FIND_SESSION, CMD_FIND_CANFAIL },
+	.target = { 't', CMD_FIND_PANE, CMD_FIND_CANFAIL },
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_set_option_exec
@@ -81,7 +81,7 @@ const struct cmd_entry cmd_set_hook_entry = {
 static enum cmd_retval
 cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args			*args = self->args;
+	struct args			*args = cmd_get_args(self);
 	int				 append = args_has(args, 'a');
 	struct cmd_find_state		*fs = &item->target;
 	struct client			*c, *loop;
@@ -96,14 +96,14 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 	int				 scope;
 	struct style			*sy;
 
-	window = (self->entry == &cmd_set_window_option_entry);
+	window = (cmd_get_entry(self) == &cmd_set_window_option_entry);
 
 	/* Expand argument. */
 	c = cmd_find_client(item, NULL, 1);
 	argument = format_single(item, args->argv[0], c, s, wl, NULL);
 
 	/* If set-hook -R, fire the hook straight away. */
-	if (self->entry == &cmd_set_hook_entry && args_has(args, 'R')) {
+	if (cmd_get_entry(self) == &cmd_set_hook_entry && args_has(args, 'R')) {
 		notify_hook(item, argument);
 		free(argument);
 		return (CMD_RETURN_NORMAL);
@@ -288,7 +288,7 @@ cmd_set_option_set(struct cmd *self, struct cmdq_item *item, struct options *oo,
     struct options_entry *parent, const char *value)
 {
 	const struct options_table_entry	*oe;
-	struct args				*args = self->args;
+	struct args				*args = cmd_get_args(self);
 	int					 append = args_has(args, 'a');
 	struct options_entry			*o;
 	long long				 number;

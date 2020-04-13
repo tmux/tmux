@@ -41,9 +41,11 @@ extern char   **environ;
 struct args;
 struct args_value;
 struct client;
+struct cmd;
 struct cmd_find_state;
 struct cmdq_item;
 struct cmdq_list;
+struct cmds;
 struct environ;
 struct format_job_tree;
 struct format_tree;
@@ -52,8 +54,8 @@ struct job;
 struct mode_tree_data;
 struct mouse_event;
 struct options;
-struct options_entry;
 struct options_array_item;
+struct options_entry;
 struct session;
 struct tmuxpeer;
 struct tmuxproc;
@@ -845,11 +847,11 @@ struct window_mode {
 	void		 (*formats)(struct window_mode_entry *,
 			     struct format_tree *);
 };
-#define WINDOW_MODE_TIMEOUT 180
 
 /* Active window mode. */
 struct window_mode_entry {
 	struct window_pane		*wp;
+	struct window_pane		*swp;
 
 	const struct window_mode	*mode;
 	void				*data;
@@ -1337,27 +1339,11 @@ struct cmd_find_state {
 #define CMD_FIND_EXACT_WINDOW 0x20
 #define CMD_FIND_CANFAIL 0x40
 
-/* Command and list of commands. */
-struct cmd {
-	const struct cmd_entry	 *entry;
-	struct args		 *args;
-	u_int			  group;
-
-	char			 *file;
-	u_int			  line;
-
-	char			 *alias;
-	int			  argc;
-	char			**argv;
-
-	TAILQ_ENTRY(cmd)	  qentry;
-};
-TAILQ_HEAD(cmds, cmd);
-
+/* List of commands. */
 struct cmd_list {
-	int		references;
-	u_int		group;
-	struct cmds	list;
+	int		 references;
+	u_int		 group;
+	struct cmds	*list;
 };
 
 /* Command return values. */
@@ -2104,6 +2090,7 @@ int		 cmd_find_from_mouse(struct cmd_find_state *,
 int		 cmd_find_from_nothing(struct cmd_find_state *, int);
 
 /* cmd.c */
+extern const struct cmd_entry *cmd_table[];
 void printflike(3, 4) cmd_log_argv(int, char **, const char *, ...);
 void		 cmd_prepend_argv(int *, char ***, char *);
 void		 cmd_append_argv(int *, char ***, char *);
@@ -2113,16 +2100,27 @@ char	       **cmd_copy_argv(int, char **);
 void		 cmd_free_argv(int, char **);
 char		*cmd_stringify_argv(int, char **);
 char		*cmd_get_alias(const char *);
+const struct cmd_entry *cmd_get_entry(struct cmd *);
+struct args	*cmd_get_args(struct cmd *);
+void		 cmd_get_source(struct cmd *, const char **, u_int *);
 struct cmd	*cmd_parse(int, char **, const char *, u_int, char **);
 void		 cmd_free(struct cmd *);
 char		*cmd_print(struct cmd *);
+struct cmd_list	*cmd_list_new(void);
+void		 cmd_list_append(struct cmd_list *, struct cmd *);
+void		 cmd_list_move(struct cmd_list *, struct cmd_list *);
+void		 cmd_list_free(struct cmd_list *);
+char		*cmd_list_print(struct cmd_list *, int);
+struct cmd	*cmd_list_first(struct cmd_list *, u_int *);
+struct cmd	*cmd_list_next(struct cmd *, u_int *);
+int		 cmd_list_all_have(struct cmd_list *, int);
+int		 cmd_list_any_have(struct cmd_list *, int);
 int		 cmd_mouse_at(struct window_pane *, struct mouse_event *,
 		     u_int *, u_int *, int);
 struct winlink	*cmd_mouse_window(struct mouse_event *, struct session **);
 struct window_pane *cmd_mouse_pane(struct mouse_event *, struct session **,
 		     struct winlink **);
 char		*cmd_template_replace(const char *, const char *, int);
-extern const struct cmd_entry *cmd_table[];
 
 /* cmd-attach-session.c */
 enum cmd_retval	 cmd_attach_session(struct cmdq_item *, const char *, int, int,
@@ -2137,13 +2135,6 @@ struct cmd_parse_result *cmd_parse_from_buffer(const void *, size_t,
 		     struct cmd_parse_input *);
 struct cmd_parse_result *cmd_parse_from_arguments(int, char **,
 		     struct cmd_parse_input *);
-
-/* cmd-list.c */
-struct cmd_list	*cmd_list_new(void);
-void		 cmd_list_append(struct cmd_list *, struct cmd *);
-void		 cmd_list_move(struct cmd_list *, struct cmd_list *);
-void		 cmd_list_free(struct cmd_list *);
-char		*cmd_list_print(struct cmd_list *, int);
 
 /* cmd-queue.c */
 struct cmdq_item *cmdq_get_command(struct cmd_list *, struct cmd_find_state *,
@@ -2539,8 +2530,8 @@ void		 window_pane_unset_palette(struct window_pane *, u_int);
 void		 window_pane_reset_palette(struct window_pane *);
 int		 window_pane_get_palette(struct window_pane *, int);
 int		 window_pane_set_mode(struct window_pane *,
-		     const struct window_mode *, struct cmd_find_state *,
-		     struct args *);
+		     struct window_pane *, const struct window_mode *,
+		     struct cmd_find_state *, struct args *);
 void		 window_pane_reset_mode(struct window_pane *);
 void		 window_pane_reset_mode_all(struct window_pane *);
 int		 window_pane_key(struct window_pane *, struct client *,

@@ -60,7 +60,7 @@ cmd_display_message_each(const char *key, const char *value, void *arg)
 static enum cmd_retval
 cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
+	struct args		*args = cmd_get_args(self);
 	struct client		*c, *target_c;
 	struct session		*s = item->target.s;
 	struct winlink		*wl = item->target.wl;
@@ -101,7 +101,7 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 		target_c = c;
 	else
 		target_c = cmd_find_best_client(s);
-	if (args_has(self->args, 'v'))
+	if (args_has(args, 'v'))
 		flags = FORMAT_VERBOSE;
 	else
 		flags = 0;
@@ -114,7 +114,7 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	msg = format_expand_time(ft, template);
-	if (args_has(self->args, 'p'))
+	if (args_has(args, 'p'))
 		cmdq_print(item, "%s", msg);
 	else if (c != NULL)
 		status_message_set(c, "%s", msg);

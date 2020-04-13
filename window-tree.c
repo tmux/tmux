@@ -833,7 +833,7 @@ window_tree_search(__unused void *modedata, void *itemdata, const char *ss)
 			return (0);
 		retval = (strstr(cmd, ss) != NULL);
 		free(cmd);
-		return retval;
+		return (retval);
 	}
 	return (0);
 }

@@ -68,7 +68,7 @@ cmd_show_messages_terminals(struct cmdq_item *item, int blank)
 static enum cmd_retval
 cmd_show_messages_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
+	struct args		*args = cmd_get_args(self);
 	struct client		*c;
 	struct message_entry	*msg;
 	char			*tim;

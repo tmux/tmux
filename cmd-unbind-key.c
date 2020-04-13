@@ -42,7 +42,7 @@ const struct cmd_entry cmd_unbind_key_entry = {
 static enum cmd_retval
 cmd_unbind_key_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args	*args = self->args;
+	struct args	*args = cmd_get_args(self);
 	key_code	 key;
 	const char	*tablename;
 

@@ -64,7 +64,7 @@ struct cmd_command_prompt_cdata {
 static enum cmd_retval
 cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args			*args = self->args;
+	struct args			*args = cmd_get_args(self);
 	const char			*inputs, *prompts;
 	struct cmd_command_prompt_cdata	*cdata;
 	struct client			*c;

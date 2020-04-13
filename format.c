@@ -1128,8 +1128,10 @@ format_create_add_item(struct format_tree *ft, struct cmdq_item *item)
 	struct window_pane	*wp;
 	u_int			 x, y;
 
-	if (item->cmd != NULL)
-		format_add(ft, "command", "%s", item->cmd->entry->name);
+	if (item->cmd != NULL) {
+		format_add(ft, "command", "%s",
+		    cmd_get_entry (item->cmd)->name);
+	}
 
 	if (item->shared == NULL)
 		return;
@@ -1617,7 +1619,7 @@ format_build_modifiers(struct format_tree *ft, const char **s, u_int *count)
 		return (NULL);
 	}
 	*s = cp + 1;
-	return list;
+	return (list);
 }
 
 /* Match against an fnmatch(3) pattern or regular expression. */
@@ -1909,7 +1911,7 @@ format_replace_expression(struct format_modifier *mexp, struct format_tree *ft,
 
 	free(right);
 	free(left);
-	return value;
+	return (value);
 
 fail:
 	free(right);

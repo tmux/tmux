@@ -131,7 +131,7 @@ cmd_send_keys_inject_string(struct client *c, struct cmd_find_state *fs,
 static enum cmd_retval
 cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args			*args = self->args;
+	struct args			*args = cmd_get_args(self);
 	struct client			*c = cmd_find_client(item, NULL, 1);
 	struct cmd_find_state		*fs = &item->target;
 	struct window_pane		*wp = item->target.wp;
@@ -181,7 +181,7 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 	}
 
-	if (self->entry == &cmd_send_prefix_entry) {
+	if (cmd_get_entry(self) == &cmd_send_prefix_entry) {
 		if (args_has(args, '2'))
 			key = options_get_number(s->options, "prefix2");
 		else

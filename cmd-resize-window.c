@@ -46,7 +46,7 @@ const struct cmd_entry cmd_resize_window_entry = {
 static enum cmd_retval
 cmd_resize_window_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
+	struct args		*args = cmd_get_args(self);
 	struct winlink		*wl = item->target.wl;
 	struct window		*w = wl->window;
 	struct session		*s = item->target.s;

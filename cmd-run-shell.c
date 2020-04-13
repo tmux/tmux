@@ -82,14 +82,14 @@ cmd_run_shell_print(struct job *job, const char *msg)
 
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme == NULL || wme->mode != &window_view_mode)
-		window_pane_set_mode(wp, &window_view_mode, NULL, NULL);
+		window_pane_set_mode(wp, NULL, &window_view_mode, NULL, NULL);
 	window_copy_add(wp, "%s", msg);
 }
 
 static enum cmd_retval
 cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args			*args = self->args;
+	struct args			*args = cmd_get_args(self);
 	struct cmd_run_shell_data	*cdata;
 	struct client			*c = cmd_find_client(item, NULL, 1);
 	struct session			*s = item->target.s;

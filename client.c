@@ -236,7 +236,6 @@ int
 client_main(struct event_base *base, int argc, char **argv, int flags)
 {
 	struct cmd_parse_result	*pr;
-	struct cmd		*cmd;
 	struct msg_command	*data;
 	int			 fd, i;
 	const char		*ttynam, *cwd;
@@ -265,10 +264,8 @@ client_main(struct event_base *base, int argc, char **argv, int flags)
 		 */
 		pr = cmd_parse_from_arguments(argc, argv, NULL);
 		if (pr->status == CMD_PARSE_SUCCESS) {
-			TAILQ_FOREACH(cmd, &pr->cmdlist->list, qentry) {
-				if (cmd->entry->flags & CMD_STARTSERVER)
-					flags |= CLIENT_STARTSERVER;
-			}
+			if (cmd_list_any_have(pr->cmdlist, CMD_STARTSERVER))
+				flags |= CLIENT_STARTSERVER;
 			cmd_list_free(pr->cmdlist);
 		} else
 			free(pr->error);

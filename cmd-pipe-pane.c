@@ -55,7 +55,7 @@ const struct cmd_entry cmd_pipe_pane_entry = {
 static enum cmd_retval
 cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
+	struct args		*args = cmd_get_args(self);
 	struct client		*c = cmd_find_client(item, NULL, 1);
 	struct window_pane	*wp = item->target.wp;
 	struct session		*s = item->target.s;
@@ -88,13 +88,13 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 	 *
 	 *	bind ^p pipep -o 'cat >>~/output'
 	 */
-	if (args_has(self->args, 'o') && old_fd != -1)
+	if (args_has(args, 'o') && old_fd != -1)
 		return (CMD_RETURN_NORMAL);
 
 	/* What do we want to do? Neither -I or -O is -O. */
-	if (args_has(self->args, 'I')) {
+	if (args_has(args, 'I')) {
 		in = 1;
-		out = args_has(self->args, 'O');
+		out = args_has(args, 'O');
 	} else {
 		in = 0;
 		out = 1;

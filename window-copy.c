@@ -130,7 +130,7 @@ static void	window_copy_rectangle_toggle(struct window_mode_entry *);
 static void	window_copy_move_mouse(struct mouse_event *);
 static void	window_copy_drag_update(struct client *, struct mouse_event *);
 static void	window_copy_drag_release(struct client *, struct mouse_event *);
-static struct screen* window_copy_clone_screen(struct screen *src);
+static struct screen* window_copy_clone_screen(struct screen *, struct screen*);
 
 const struct window_mode window_copy_mode = {
 	.name = "copy-mode",
@@ -299,21 +299,29 @@ window_copy_scroll_timer(__unused int fd, __unused short events, void *arg)
 }
 
 static struct screen *
-window_copy_clone_screen(struct screen *src)
+window_copy_clone_screen(struct screen *src, struct screen *hint)
 {
 	struct screen			*dst;
 	struct screen_write_ctx		 ctx;
+	u_int				 dy, sy;
 
 	dst = xcalloc(1, sizeof *dst);
-	screen_init(dst, screen_size_x(src),
-	    screen_hsize(src) + screen_size_y(src), src->grid->hlimit);
-	grid_duplicate_lines(dst->grid, 0, src->grid, 0,
-	    screen_hsize(src) + screen_size_y(src));
-	dst->grid->sy = screen_size_y(src);
-	dst->grid->hsize = screen_hsize(src);
+
+	sy = screen_hsize(src) + screen_size_y(src);
+	if (screen_size_y(hint) > sy)
+		dy = screen_size_y(hint);
+	else
+		dy = sy;
+	screen_init(dst, screen_size_x(src), dy, src->grid->hlimit);
+
+	grid_duplicate_lines(dst->grid, 0, src->grid, 0, sy);
+	if (screen_size_y(hint) < sy) {
+		dst->grid->sy = screen_size_y(hint);
+		dst->grid->hsize = sy - screen_size_y(hint);
+	}
 
 	screen_write_start(&ctx, NULL, dst);
-	screen_write_cursormove(&ctx, src->cx, src->cy, 0);
+	screen_write_cursormove(&ctx, 0, dst->grid->sy - 1, 0);
 	screen_write_stop(&ctx);
 
 	return (dst);
@@ -361,14 +369,14 @@ static struct screen *
 window_copy_init(struct window_mode_entry *wme,
     __unused struct cmd_find_state *fs, struct args *args)
 {
-	struct window_pane		*wp = wme->wp;
+	struct window_pane		*wp = wme->swp;
 	struct window_copy_mode_data	*data;
 	struct screen_write_ctx		 ctx;
 	u_int				 i;
 
 	data = window_copy_common_init(wme);
 
-	data->backing = window_copy_clone_screen(&wp->base);
+	data->backing = window_copy_clone_screen(&wp->base, &data->screen);
 	data->cx = data->backing->cx;
 	data->cy = data->backing->cy;
 
@@ -2001,7 +2009,7 @@ static enum window_copy_cmd_action
 window_copy_cmd_refresh_from_pane(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
-	struct window_pane		*wp = wme->wp;
+	struct window_pane		*wp = wme->swp;
 	struct window_copy_mode_data	*data = wme->data;
 
 	if (data->viewmode)
@@ -2009,7 +2017,7 @@ window_copy_cmd_refresh_from_pane(struct window_copy_cmd_state *cs)
 
 	screen_free(data->backing);
 	free(data->backing);
-	data->backing = window_copy_clone_screen(&wp->base);
+	data->backing = window_copy_clone_screen(&wp->base, &data->screen);
 
 	return (WINDOW_COPY_CMD_REDRAW);
 }
@@ -2964,6 +2972,7 @@ window_copy_write_line(struct window_mode_entry *wme,
 	struct grid_cell		 gc;
 	char				 hdr[512];
 	size_t				 size = 0;
+	u_int				 hsize = screen_hsize(data->backing);
 
 	style_apply(&gc, oo, "mode-style");
 	gc.flags |= GRID_FLAG_NOPALETTE;
@@ -2972,23 +2981,20 @@ window_copy_write_line(struct window_mode_entry *wme,
 		if (data->searchmark == NULL) {
 			if (data->timeout) {
 				size = xsnprintf(hdr, sizeof hdr,
-			    		"(timed out) [%u/%u]", data->oy,
-					screen_hsize(data->backing));
+				    "(timed out) [%u/%u]", data->oy, hsize);
 			} else {
 				size = xsnprintf(hdr, sizeof hdr,
-					"[%u/%u]", data->oy,
-					screen_hsize(data->backing));
+				    "[%u/%u]", data->oy, hsize);
 			}
 		} else {
 			if (data->searchthis == -1) {
 				size = xsnprintf(hdr, sizeof hdr,
 				    "(%u results) [%d/%u]", data->searchcount,
-				    data->oy, screen_hsize(data->backing));
+				    data->oy, hsize);
 			} else {
 				size = xsnprintf(hdr, sizeof hdr,
 				    "(%u/%u results) [%d/%u]", data->searchthis,
-				    data->searchcount, data->oy,
-				    screen_hsize(data->backing));
+				    data->searchcount, data->oy, hsize);
 			}
 		}
 		if (size > screen_size_x(s))
@@ -3000,8 +3006,7 @@ window_copy_write_line(struct window_mode_entry *wme,
 
 	if (size < screen_size_x(s)) {
 		screen_write_cursormove(ctx, 0, py, 0);
-		screen_write_copy(ctx, data->backing, 0,
-		    (screen_hsize(data->backing) - data->oy) + py,
+		screen_write_copy(ctx, data->backing, 0, hsize - data->oy + py,
 		    screen_size_x(s) - size, 1, data->searchmark, &gc);
 	}
 

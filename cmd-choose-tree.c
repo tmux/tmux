@@ -71,21 +71,21 @@ const struct cmd_entry cmd_choose_buffer_entry = {
 static enum cmd_retval
 cmd_choose_tree_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args			*args = self->args;
+	struct args			*args = cmd_get_args(self);
 	struct window_pane		*wp = item->target.wp;
 	const struct window_mode	*mode;
 
-	if (self->entry == &cmd_choose_buffer_entry) {
+	if (cmd_get_entry(self) == &cmd_choose_buffer_entry) {
 		if (paste_get_top(NULL) == NULL)
 			return (CMD_RETURN_NORMAL);
 		mode = &window_buffer_mode;
-	} else if (self->entry == &cmd_choose_client_entry) {
+	} else if (cmd_get_entry(self) == &cmd_choose_client_entry) {
 		if (server_client_how_many() == 0)
 			return (CMD_RETURN_NORMAL);
 		mode = &window_client_mode;
 	} else
 		mode = &window_tree_mode;
 
-	window_pane_set_mode(wp, mode, &item->target, args);
+	window_pane_set_mode(wp, NULL, mode, &item->target, args);
 	return (CMD_RETURN_NORMAL);
 }
