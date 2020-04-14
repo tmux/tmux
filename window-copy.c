@@ -376,10 +376,18 @@ window_copy_init(struct window_mode_entry *wme,
 	u_int				 i;
 
 	data = window_copy_common_init(wme);
-
 	data->backing = window_copy_clone_screen(&wp->base, &data->screen);
-	data->cx = data->backing->cx;
-	data->cy = data->backing->cy;
+
+	data->cx = wp->base.cx;
+	if (data->cx > screen_size_x(&data->screen) - 1)
+		data->cx = screen_size_x(&data->screen) - 1;
+
+	data->cy = screen_hsize(&wp->base) + wp->base.cy;
+	if (data->cy < screen_hsize(data->backing)) {
+		data->oy = screen_hsize(data->backing) - data->cy;
+		data->cy = 0;
+	} else
+		data->cy -= screen_hsize(data->backing);
 
 	data->scroll_exit = args_has(args, 'e');
 	data->hide_position = args_has(args, 'H');
