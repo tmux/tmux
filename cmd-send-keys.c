@@ -120,7 +120,7 @@ cmd_send_keys_inject_string(struct cmdq_item *item, struct cmdq_item *after,
 	if (literal) {
 		ud = utf8_fromcstr(s);
 		for (uc = ud; uc->size != 0; uc++) {
-			if (utf8_combine(uc, &wc) == UTF8_DONE)
+			if (utf8_combine(uc, &wc) != UTF8_DONE)
 				continue;
 			after = cmd_send_keys_inject_key(item, after, wc);
 		}
