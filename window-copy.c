@@ -130,8 +130,6 @@ static void	window_copy_rectangle_toggle(struct window_mode_entry *);
 static void	window_copy_move_mouse(struct mouse_event *);
 static void	window_copy_drag_update(struct client *, struct mouse_event *);
 static void	window_copy_drag_release(struct client *, struct mouse_event *);
-static struct screen *window_copy_clone_screen(struct screen *,
-		    struct screen *);
 
 const struct window_mode window_copy_mode = {
 	.name = "copy-mode",
@@ -322,7 +320,7 @@ window_copy_clone_screen(struct screen *src, struct screen *hint)
 	}
 
 	screen_write_start(&ctx, NULL, dst);
-	screen_write_cursormove(&ctx, 0, dst->grid->sy - 1, 0);
+	screen_write_cursormove(&ctx, 0, dst->grid->sy + sy - dy - 1, 0);
 	screen_write_stop(&ctx);
 
 	return (dst);
@@ -376,10 +374,18 @@ window_copy_init(struct window_mode_entry *wme,
 	u_int				 i;
 
 	data = window_copy_common_init(wme);
-
 	data->backing = window_copy_clone_screen(&wp->base, &data->screen);
-	data->cx = data->backing->cx;
-	data->cy = data->backing->cy;
+
+	data->cx = wp->base.cx;
+	if (data->cx > screen_size_x(&data->screen) - 1)
+		data->cx = screen_size_x(&data->screen) - 1;
+
+	data->cy = screen_hsize(&wp->base) + wp->base.cy;
+	if (data->cy < screen_hsize(data->backing)) {
+		data->oy = screen_hsize(data->backing) - data->cy;
+		data->cy = 0;
+	} else
+		data->cy -= screen_hsize(data->backing);
 
 	data->scroll_exit = args_has(args, 'e');
 	data->hide_position = args_has(args, 'H');
