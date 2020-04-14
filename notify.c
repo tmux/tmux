@@ -157,7 +157,11 @@ notify_add(const char *name, struct cmd_find_state *fs, struct client *c,
     struct session *s, struct window *w, struct window_pane *wp)
 {
 	struct notify_entry	*ne;
-	struct cmdq_item	*new_item;
+	struct cmdq_item	*item;
+
+	item = cmdq_running(NULL);
+	if (item != NULL && (cmdq_get_flags(item) & CMDQ_STATE_NOHOOKS))
+		return;
 
 	ne = xcalloc(1, sizeof *ne);
 	ne->name = xstrdup(name);
@@ -182,8 +186,7 @@ notify_add(const char *name, struct cmd_find_state *fs, struct client *c,
 	if (ne->fs.s != NULL) /* cmd_find_valid_state needs session */
 		session_add_ref(ne->fs.s, __func__);
 
-	new_item = cmdq_get_callback(notify_callback, ne);
-	cmdq_append(NULL, new_item);
+	cmdq_append(NULL, cmdq_get_callback(notify_callback, ne));
 }
 
 void

@@ -2134,6 +2134,7 @@ void		 cmdq_insert_hook(struct session *, struct cmdq_item *,
 		     struct cmd_find_state *, const char *, ...);
 void		 cmdq_continue(struct cmdq_item *);
 u_int		 cmdq_next(struct client *);
+struct cmdq_item *cmdq_running(struct client *);
 void		 cmdq_guard(struct cmdq_item *, const char *, int);
 void printflike(2, 3) cmdq_print(struct cmdq_item *, const char *, ...);
 void printflike(2, 3) cmdq_error(struct cmdq_item *, const char *, ...);
