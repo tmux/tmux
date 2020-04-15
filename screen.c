@@ -314,7 +314,7 @@ screen_resize_y(struct screen *s, u_int sy)
 
 		/* Then fill the rest in with blanks. */
 		for (i = gd->hsize + sy - needed; i < gd->hsize + sy; i++)
-			memset(grid_get_line(gd, i), 0, sizeof(struct grid_line));
+			grid_empty_line(gd, i, 8);
 	}
 
 	/* Set the new size, and reset the scroll region. */
@@ -484,10 +484,7 @@ screen_select_cell(struct screen *s, struct grid_cell *dst,
 static void
 screen_reflow(struct screen *s, u_int new_x)
 {
-	u_int		cx = s->cx, cy = s->grid->hsize + s->cy, wx, wy;
-	struct timeval	start, tv;
-
-	gettimeofday(&start, NULL);
+	u_int	cx = s->cx, cy = s->grid->hsize + s->cy, wx, wy;
 
 	grid_wrap_position(s->grid, cx, cy, &wx, &wy);
 	log_debug("%s: cursor %u,%u is %u,%u", __func__, cx, cy, wx, wy);
@@ -504,12 +501,6 @@ screen_reflow(struct screen *s, u_int new_x)
 		s->cx = 0;
 		s->cy = 0;
 	}
-
-	gettimeofday(&tv, NULL);
-	timersub(&tv, &start, &tv);
-
-	log_debug("%s: reflow took %llu.%06u seconds", __func__,
-	    (unsigned long long)tv.tv_sec, (u_int)tv.tv_usec);
 }
 
 /*

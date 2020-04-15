@@ -48,8 +48,6 @@ static const struct grid_cell_entry grid_cleared_entry = {
 	GRID_FLAG_CLEARED, { .data = { 0, 8, 8, ' ' } }
 };
 
-static void	grid_empty_line(struct grid *, u_int, u_int);
-
 /* Store cell in entry. */
 static void
 grid_store_cell(struct grid_cell_entry *gce, const struct grid_cell *gc,
@@ -454,7 +452,7 @@ grid_expand_line(struct grid *gd, u_int py, u_int sx, u_int bg)
 }
 
 /* Empty a line and set background colour if needed. */
-static void
+void
 grid_empty_line(struct grid *gd, u_int py, u_int bg)
 {
 	memset(&gd->linedata[py], 0, sizeof gd->linedata[py]);
