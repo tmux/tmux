@@ -693,24 +693,13 @@ window_copy_formats(struct window_mode_entry *wme, struct format_tree *ft)
 }
 
 static void
-window_copy_resize(struct window_mode_entry *wme, u_int sx, u_int sy)
+window_copy_size_changed(struct window_mode_entry *wme)
 {
 	struct window_copy_mode_data	*data = wme->data;
 	struct screen			*s = &data->screen;
-	struct screen_write_ctx	 	 ctx;
-	int				 search;
+	struct screen_write_ctx		 ctx;
+	int				 search = (data->searchmark != NULL);
 
-	screen_resize(s, sx, sy, 0);
-	screen_resize_cursor(data->backing, sx, sy, 1, 0, NULL, NULL);
-
-	if (data->cy > sy - 1)
-		data->cy = sy - 1;
-	if (data->cx > sx)
-		data->cx = sx;
-	if (data->oy > screen_hsize(data->backing))
-		data->oy = screen_hsize(data->backing);
-
-	search = (data->searchmark != NULL);
 	window_copy_clear_selection(wme);
 	window_copy_clear_marks(wme);
 
@@ -723,7 +712,25 @@ window_copy_resize(struct window_mode_entry *wme, u_int sx, u_int sy)
 	data->searchx = data->cx;
 	data->searchy = data->cy;
 	data->searcho = data->oy;
+}
 
+static void
+window_copy_resize(struct window_mode_entry *wme, u_int sx, u_int sy)
+{
+	struct window_copy_mode_data	*data = wme->data;
+	struct screen			*s = &data->screen;
+
+	screen_resize(s, sx, sy, 0);
+	screen_resize_cursor(data->backing, sx, sy, 1, 0, NULL, NULL);
+
+	if (data->cy > sy - 1)
+		data->cy = sy - 1;
+	if (data->cx > sx)
+		data->cx = sx;
+	if (data->oy > screen_hsize(data->backing))
+		data->oy = screen_hsize(data->backing);
+
+	window_copy_size_changed(wme);
 	window_copy_redraw_screen(wme);
 }
 
@@ -2030,6 +2037,7 @@ window_copy_cmd_refresh_from_pane(struct window_copy_cmd_state *cs)
 	data->backing = window_copy_clone_screen(&wp->base, &data->screen, NULL,
 	    NULL);
 
+	window_copy_size_changed(wme);
 	return (WINDOW_COPY_CMD_REDRAW);
 }
 
