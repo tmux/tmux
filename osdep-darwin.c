@@ -61,7 +61,7 @@ osdep_get_name(int fd, __unused char *tty)
 	size = sizeof kp;
 	if (sysctl(mib, 4, &kp, &size, NULL, 0) == -1)
 		return (NULL);
-	if (*kp.kp_proc.p_comm == '\0')
+	if (size != (sizeof kp) || *kp.kp_proc.p_comm == '\0')
 		return (NULL);
 
 	return (strdup(kp.kp_proc.p_comm));
