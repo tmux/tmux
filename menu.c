@@ -149,10 +149,14 @@ menu_draw_cb(struct client *c, __unused struct screen_redraw_ctx *ctx0)
 	struct menu		*menu = md->menu;
 	struct screen_write_ctx	 ctx;
 	u_int			 i, px = md->px, py = md->py;
+	struct grid_cell	 gc;
+
+	memcpy(&gc, &grid_default_cell, sizeof gc);
+	style_apply(&gc, c->session->curw->window->options, "mode-style");
 
 	screen_write_start(&ctx, NULL, s);
 	screen_write_clearscreen(&ctx, 8);
-	screen_write_menu(&ctx, menu, md->choice);
+	screen_write_menu(&ctx, menu, md->choice, &gc);
 	screen_write_stop(&ctx);
 
 	for (i = 0; i < screen_size_y(&md->s); i++)
