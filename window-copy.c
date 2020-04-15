@@ -298,30 +298,33 @@ window_copy_scroll_timer(__unused int fd, __unused short events, void *arg)
 }
 
 static struct screen *
-window_copy_clone_screen(struct screen *src, struct screen *hint)
+window_copy_clone_screen(struct screen *src, struct screen *hint, u_int *cx,
+    u_int *cy)
 {
-	struct screen			*dst;
-	struct screen_write_ctx		 ctx;
-	u_int				 dy, sy;
+	struct screen		*dst;
+	u_int			 sy;
+	const struct grid_line	*gl;
 
 	dst = xcalloc(1, sizeof *dst);
 
 	sy = screen_hsize(src) + screen_size_y(src);
-	if (screen_size_y(hint) > sy)
-		dy = screen_size_y(hint);
-	else
-		dy = sy;
-	screen_init(dst, screen_size_x(src), dy, src->grid->hlimit);
-
-	grid_duplicate_lines(dst->grid, 0, src->grid, 0, sy);
-	if (screen_size_y(hint) < sy) {
-		dst->grid->sy = screen_size_y(hint);
-		dst->grid->hsize = sy - screen_size_y(hint);
+	while (sy > screen_hsize(src)) {
+		gl = grid_peek_line(src->grid, sy - 1);
+		if (gl->cellused != 0)
+			break;
+		sy--;
 	}
+	screen_init(dst, screen_size_x(src), sy, screen_hlimit(src));
+	grid_duplicate_lines(dst->grid, 0, src->grid, 0, sy);
 
-	screen_write_start(&ctx, NULL, dst);
-	screen_write_cursormove(&ctx, 0, dst->grid->sy + sy - dy - 1, 0);
-	screen_write_stop(&ctx);
+	dst->grid->sy = sy - screen_hsize(src);
+	dst->grid->hsize = screen_hsize(src);
+	dst->grid->hscrolled = src->grid->hscrolled;
+	dst->cx = src->cx;
+	dst->cy = src->cy;
+
+	screen_resize_cursor(dst, screen_size_x(hint), screen_size_y(hint), 1,
+	    0, cx, cy);
 
 	return (dst);
 }
@@ -370,22 +373,22 @@ window_copy_init(struct window_mode_entry *wme,
 {
 	struct window_pane		*wp = wme->swp;
 	struct window_copy_mode_data	*data;
+	struct screen			*base = &wp->base;
 	struct screen_write_ctx		 ctx;
-	u_int				 i;
+	u_int				 i, cx, cy;
 
 	data = window_copy_common_init(wme);
-	data->backing = window_copy_clone_screen(&wp->base, &data->screen);
+	data->backing = window_copy_clone_screen(base, &data->screen, &cx, &cy);
 
-	data->cx = wp->base.cx;
-	if (data->cx > screen_size_x(&data->screen) - 1)
-		data->cx = screen_size_x(&data->screen) - 1;
-
-	data->cy = screen_hsize(&wp->base) + wp->base.cy;
-	if (data->cy < screen_hsize(data->backing)) {
-		data->oy = screen_hsize(data->backing) - data->cy;
+	if (cy < screen_hsize(data->backing)) {
+		data->cx = cx;
 		data->cy = 0;
-	} else
-		data->cy -= screen_hsize(data->backing);
+		data->oy = screen_hsize(data->backing) - cy;
+	} else {
+		data->cx = data->backing->cx;
+		data->cy = data->backing->cy;
+		data->oy = 0;
+	}
 
 	data->scroll_exit = args_has(args, 'e');
 	data->hide_position = args_has(args, 'H');
@@ -697,8 +700,8 @@ window_copy_resize(struct window_mode_entry *wme, u_int sx, u_int sy)
 	struct screen_write_ctx	 	 ctx;
 	int				 search;
 
-	screen_resize(s, sx, sy, 1);
-	screen_resize(data->backing, sx, sy, 1);
+	screen_resize(s, sx, sy, 0);
+	screen_resize_cursor(data->backing, sx, sy, 1, 0, NULL, NULL);
 
 	if (data->cy > sy - 1)
 		data->cy = sy - 1;
@@ -2024,7 +2027,8 @@ window_copy_cmd_refresh_from_pane(struct window_copy_cmd_state *cs)
 
 	screen_free(data->backing);
 	free(data->backing);
-	data->backing = window_copy_clone_screen(&wp->base, &data->screen);
+	data->backing = window_copy_clone_screen(&wp->base, &data->screen, NULL,
+	    NULL);
 
 	return (WINDOW_COPY_CMD_REDRAW);
 }

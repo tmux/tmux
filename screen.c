@@ -48,9 +48,8 @@ struct screen_title_entry {
 };
 TAILQ_HEAD(screen_titles, screen_title_entry);
 
-static void	screen_resize_y(struct screen *, u_int);
-
-static void	screen_reflow(struct screen *, u_int);
+static void	screen_resize_y(struct screen *, u_int, int);
+static void	screen_reflow(struct screen *, u_int, u_int *, u_int *);
 
 /* Free titles stack. */
 static void
@@ -216,10 +215,23 @@ screen_pop_title(struct screen *s)
 	}
 }
 
-/* Resize screen. */
+/* Resize screen and return cursor position. */
 void
-screen_resize(struct screen *s, u_int sx, u_int sy, int reflow)
+screen_resize_cursor(struct screen *s, u_int sx, u_int sy, int reflow,
+    int eat_empty, u_int *cx, u_int *cy)
 {
+	u_int	tcx, tcy;
+
+	if (cx == NULL)
+		cx = &tcx;
+	*cx = s->cx;
+
+	if (cy == NULL)
+		cy = &tcy;
+	*cy = s->grid->hsize + s->cy;
+
+	log_debug("%s: start %u,%u (%u,%u)", __func__, s->cx, s->cy, *cx, *cy);
+
 	if (sx < 1)
 		sx = 1;
 	if (sy < 1)
@@ -232,14 +244,30 @@ screen_resize(struct screen *s, u_int sx, u_int sy, int reflow)
 		reflow = 0;
 
 	if (sy != screen_size_y(s))
-		screen_resize_y(s, sy);
+		screen_resize_y(s, sy, eat_empty);
 
 	if (reflow)
-		screen_reflow(s, sx);
+		screen_reflow(s, sx, cx, cy);
+
+	if (*cy >= s->grid->hsize) {
+		s->cx = *cx;
+		s->cy = (*cy) - s->grid->hsize;
+	} else {
+		s->cx = 0;
+		s->cy = 0;
+	}
+	log_debug("%s: finish %u,%u (%u,%u)", __func__, s->cx, s->cy, *cx, *cy);
+}
+
+/* Resize screen. */
+void
+screen_resize(struct screen *s, u_int sx, u_int sy, int reflow)
+{
+	screen_resize_cursor(s, sx, sy, reflow, 1, NULL, NULL);
 }
 
 static void
-screen_resize_y(struct screen *s, u_int sy)
+screen_resize_y(struct screen *s, u_int sy, int eat_empty)
 {
 	struct grid	*gd = s->grid;
 	u_int		 needed, available, oldy, i;
@@ -264,14 +292,16 @@ screen_resize_y(struct screen *s, u_int sy)
 		needed = oldy - sy;
 
 		/* Delete as many lines as possible from the bottom. */
-		available = oldy - 1 - s->cy;
-		if (available > 0) {
-			if (available > needed)
-				available = needed;
-			grid_view_delete_lines(gd, oldy - available, available,
-			    8);
+		if (eat_empty) {
+			available = oldy - 1 - s->cy;
+			if (available > 0) {
+				if (available > needed)
+					available = needed;
+				grid_view_delete_lines(gd, oldy - available,
+				    available, 8);
+			}
+			needed -= available;
 		}
-		needed -= available;
 
 		/*
 		 * Now just increase the history size, if possible, to take
@@ -287,7 +317,6 @@ screen_resize_y(struct screen *s, u_int sy)
 				available = needed;
 			grid_view_delete_lines(gd, 0, available, 8);
 		}
-		s->cy -= needed;
 	}
 
 	/* Resize line array. */
@@ -307,7 +336,6 @@ screen_resize_y(struct screen *s, u_int sy)
 				available = needed;
 			gd->hscrolled -= available;
 			gd->hsize -= available;
-			s->cy += available;
 		} else
 			available = 0;
 		needed -= available;
@@ -482,25 +510,17 @@ screen_select_cell(struct screen *s, struct grid_cell *dst,
 
 /* Reflow wrapped lines. */
 static void
-screen_reflow(struct screen *s, u_int new_x)
+screen_reflow(struct screen *s, u_int new_x, u_int *cx, u_int *cy)
 {
-	u_int	cx = s->cx, cy = s->grid->hsize + s->cy, wx, wy;
+	u_int	wx, wy;
 
-	grid_wrap_position(s->grid, cx, cy, &wx, &wy);
-	log_debug("%s: cursor %u,%u is %u,%u", __func__, cx, cy, wx, wy);
+	grid_wrap_position(s->grid, *cx, *cy, &wx, &wy);
+	log_debug("%s: cursor %u,%u is %u,%u", __func__, *cx, *cy, wx, wy);
 
 	grid_reflow(s->grid, new_x);
 
-	grid_unwrap_position(s->grid, &cx, &cy, wx, wy);
-	log_debug("%s: new cursor is %u,%u", __func__, cx, cy);
-
-	if (cy >= s->grid->hsize) {
-		s->cx = cx;
-		s->cy = cy - s->grid->hsize;
-	} else {
-		s->cx = 0;
-		s->cy = 0;
-	}
+	grid_unwrap_position(s->grid, cx, cy, wx, wy);
+	log_debug("%s: new cursor is %u,%u", __func__, *cx,* cy);
 }
 
 /*
