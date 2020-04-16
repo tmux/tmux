@@ -334,8 +334,8 @@ server_destroy_pane(struct window_pane *wp, int notify)
 			    tim);
 		} else if (WIFSIGNALED(wp->status)) {
 			screen_write_nputs(&ctx, -1, &gc,
-			    "Pane is dead (signal %d, %s)",
-			    WTERMSIG(wp->status),
+			    "Pane is dead (signal %s, %s)",
+			    sig2name(WTERMSIG(wp->status)),
 			    tim);
 		}
 

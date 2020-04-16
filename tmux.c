@@ -28,6 +28,7 @@
 #include <locale.h>
 #include <paths.h>
 #include <pwd.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -165,6 +166,17 @@ setblocking(int fd, int state)
 			mode &= ~O_NONBLOCK;
 		fcntl(fd, F_SETFL, mode);
 	}
+}
+
+const char *
+sig2name(int signo)
+{
+     static char	s[11];
+
+     if (signo > 0 && signo < NSIG)
+	     return (sys_signame[signo]);
+     xsnprintf(s, sizeof s, "%d", signo);
+     return (s);
 }
 
 const char *

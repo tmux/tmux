@@ -1725,6 +1725,7 @@ extern int		 ptm_fd;
 extern const char	*shell_command;
 int		 checkshell(const char *);
 void		 setblocking(int, int);
+const char	*sig2name(int);
 const char	*find_cwd(void);
 const char	*find_home(void);
 const char	*getversion(void);
