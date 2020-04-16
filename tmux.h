@@ -452,6 +452,7 @@ enum tty_code_code {
 	TTYC_SMUL,
 	TTYC_SMXX,
 	TTYC_SS,
+	TTYC_SYNC,
 	TTYC_TC,
 	TTYC_TSL,
 	TTYC_U8,
@@ -1181,6 +1182,7 @@ struct tty_term {
 #define TERM_DECSLRM 0x4
 #define TERM_DECFRA 0x8
 #define TERM_RGBCOLOURS 0x10
+#define TERM_SYNC 0x20
 	int		 flags;
 
 	LIST_ENTRY(tty_term) entry;
@@ -1949,6 +1951,8 @@ void	tty_set_title(struct tty *, const char *);
 void	tty_update_mode(struct tty *, int, struct screen *);
 void	tty_draw_line(struct tty *, struct window_pane *, struct screen *,
 	    u_int, u_int, u_int, u_int, u_int);
+void	tty_sync_start(struct tty *);
+void	tty_sync_end(struct tty *);
 int	tty_open(struct tty *, char **);
 void	tty_close(struct tty *);
 void	tty_free(struct tty *);
@@ -1976,6 +1980,8 @@ void	tty_cmd_scrolldown(struct tty *, const struct tty_ctx *);
 void	tty_cmd_reverseindex(struct tty *, const struct tty_ctx *);
 void	tty_cmd_setselection(struct tty *, const struct tty_ctx *);
 void	tty_cmd_rawstring(struct tty *, const struct tty_ctx *);
+void	tty_cmd_syncstart(struct tty *, const struct tty_ctx *);
+void	tty_cmd_syncend(struct tty *, const struct tty_ctx *);
 
 /* tty-term.c */
 extern struct tty_terms tty_terms;
