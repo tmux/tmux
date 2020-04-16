@@ -1397,17 +1397,20 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 	for (y = 0; y < screen_size_y(s); y++) {
 		TAILQ_FOREACH_SAFE(ci, &ctx->list[y].items, entry, tmp) {
 			screen_write_set_cursor(ctx, ci->x, y);
-			screen_write_initctx(ctx, &ttyctx, 0);
 			if (ci->type == CLEAR) {
+				screen_write_initctx(ctx, &ttyctx, 1);
 				ttyctx.bg = ci->bg;
 				tty_write(tty_cmd_clearline, &ttyctx);
 			} else if (ci->type == CLEAR_END) {
+				screen_write_initctx(ctx, &ttyctx, 1);
 				ttyctx.bg = ci->bg;
 				tty_write(tty_cmd_clearendofline, &ttyctx);
 			} else if (ci->type == CLEAR_START) {
+				screen_write_initctx(ctx, &ttyctx, 1);
 				ttyctx.bg = ci->bg;
 				tty_write(tty_cmd_clearstartofline, &ttyctx);
 			} else {
+				screen_write_initctx(ctx, &ttyctx, 0);
 				ttyctx.cell = &ci->gc;
 				ttyctx.wrapped = ci->wrapped;
 				ttyctx.ptr = ci->data;
