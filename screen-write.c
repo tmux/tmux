@@ -100,7 +100,8 @@ void
 screen_write_start(struct screen_write_ctx *ctx, struct window_pane *wp,
     struct screen *s)
 {
-	u_int	y;
+	struct tty_ctx	ttyctx;
+	u_int		y;
 
 	memset(ctx, 0, sizeof *ctx);
 
@@ -129,17 +130,25 @@ screen_write_start(struct screen_write_ctx *ctx, struct window_pane *wp,
 			    screen_size_y(ctx->s));
 		}
 	}
+
+	screen_write_initctx(ctx, &ttyctx);
+	tty_write(tty_cmd_syncstart, &ttyctx);
 }
 
 /* Finish writing. */
 void
 screen_write_stop(struct screen_write_ctx *ctx)
 {
+	struct tty_ctx	ttyctx;
+
 	screen_write_collect_end(ctx);
 	screen_write_collect_flush(ctx, 0);
 
 	log_debug("%s: %u cells (%u written, %u skipped)", __func__,
 	    ctx->cells, ctx->written, ctx->skipped);
+
+	screen_write_initctx(ctx, &ttyctx);
+	tty_write(tty_cmd_syncend, &ttyctx);
 
 	free(ctx->item);
 	free(ctx->list); /* flush will have emptied */

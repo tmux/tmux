@@ -435,6 +435,7 @@ screen_redraw_screen(struct client *c)
 
 	flags = screen_redraw_update(c, c->flags);
 	screen_redraw_set_context(c, &ctx);
+	tty_sync_start(&c->tty);
 
 	if (flags & (CLIENT_REDRAWWINDOW|CLIENT_REDRAWBORDERS)) {
 		if (ctx.pane_status != PANE_STATUS_OFF)
@@ -448,7 +449,9 @@ screen_redraw_screen(struct client *c)
 		screen_redraw_draw_status(&ctx);
 	if (c->overlay_draw != NULL && (flags & CLIENT_REDRAWOVERLAY))
 		c->overlay_draw(c, &ctx);
+
 	tty_reset(&c->tty);
+	tty_sync_end(&c->tty);
 }
 
 /* Redraw a single pane. */
@@ -461,9 +464,12 @@ screen_redraw_pane(struct client *c, struct window_pane *wp)
 		return;
 
 	screen_redraw_set_context(c, &ctx);
+	tty_sync_start(&c->tty);
 
 	screen_redraw_draw_pane(&ctx, wp);
+
 	tty_reset(&c->tty);
+	tty_sync_end(&c->tty);
 }
 
 /* Draw a border cell. */

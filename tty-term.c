@@ -263,6 +263,7 @@ static const struct tty_term_code_entry tty_term_codes[] = {
 	[TTYC_SMUL] = { TTYCODE_STRING, "smul" },
 	[TTYC_SMXX] =  { TTYCODE_STRING, "smxx" },
 	[TTYC_SS] = { TTYCODE_STRING, "Ss" },
+	[TTYC_SYNC] = { TTYCODE_FLAG, "Sync" },
 	[TTYC_TC] = { TTYCODE_FLAG, "Tc" },
 	[TTYC_TSL] = { TTYCODE_STRING, "tsl" },
 	[TTYC_U8] = { TTYCODE_NUMBER, "U8" },
@@ -537,6 +538,10 @@ tty_term_find(char *name, int fd, char **cause)
 	    (tty_term_has(term, TTYC_SETRGBF) &&
 	    tty_term_has(term, TTYC_SETRGBB)))
 		term->flags |= TERM_RGBCOLOURS;
+
+	/* Set flag if terminal has synchronized updates. */
+	if (tty_term_flag(term, TTYC_SYNC))
+		term->flags |= TERM_SYNC;
 
 	/*
 	 * Terminals without xenl (eat newline glitch) wrap at at $COLUMNS - 1

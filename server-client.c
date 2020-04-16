@@ -2058,7 +2058,7 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 			c->fd = -1;
 		} else {
 			if (c->flags & CLIENT_UTF8)
-				c->tty.flags |= TTY_UTF8;
+				c->tty.term_flags |= TERM_UTF8;
 			if (c->flags & CLIENT_256COLOURS)
 				c->tty.term_flags |= TERM_256COLOURS;
 			tty_resize(&c->tty);
