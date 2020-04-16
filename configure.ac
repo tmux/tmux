@@ -87,6 +87,9 @@ AC_CHECK_HEADERS([ \
 	util.h \
 ])
 
+# Look for sys_signame.
+AC_SEARCH_LIBS(sys_signame, )
+
 # Look for fmod.
 AC_CHECK_LIB(m, fmod)
 

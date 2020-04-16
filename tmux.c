@@ -170,8 +170,10 @@ sig2name(int signo)
 {
      static char	s[11];
 
+#ifdef HAVE_SYS_SIGNAME
      if (signo > 0 && signo < NSIG)
 	     return (sys_signame[signo]);
+#endif
      xsnprintf(s, sizeof s, "%d", signo);
      return (s);
 }
