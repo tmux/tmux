@@ -298,6 +298,8 @@ menu_display(struct menu *menu, int flags, struct cmdq_item *item, u_int px,
     void *data)
 {
 	struct menu_data	*md;
+	u_int			 i;
+	const char		*name;
 
 	if (c->tty.sx < menu->width + 4 || c->tty.sy < menu->count + 2)
 		return (-1);
@@ -318,7 +320,18 @@ menu_display(struct menu *menu, int flags, struct cmdq_item *item, u_int px,
 	md->py = py;
 
 	md->menu = menu;
-	md->choice = -1;
+	if (md->flags & MENU_NOMOUSE) {
+		for (i = 0; i < menu->count; i++) {
+			name = menu->items[i].name;
+			if (name != NULL && *name != '-')
+				break;
+		}
+		if (i != menu->count)
+			md->choice = i;
+		else
+			md->choice = -1;
+	} else
+		md->choice = -1;
 
 	md->cb = cb;
 	md->data = data;
