@@ -704,7 +704,7 @@ window_copy_size_changed(struct window_mode_entry *wme)
 	window_copy_clear_marks(wme);
 
 	screen_write_start(&ctx, NULL, s);
-	window_copy_write_lines(wme, &ctx, 0, screen_size_y(s) - 1);
+	window_copy_write_lines(wme, &ctx, 0, screen_size_y(s));
 	screen_write_stop(&ctx);
 
 	if (search && !data->timeout)
