@@ -88,7 +88,7 @@ AC_CHECK_HEADERS([ \
 ])
 
 # Look for sys_signame.
-AC_SEARCH_LIBS(sys_signame, )
+AC_SEARCH_LIBS(sys_signame, , AC_DEFINE(HAVE_SYS_SIGNAME))
 
 # Look for fmod.
 AC_CHECK_LIB(m, fmod)
