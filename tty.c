@@ -364,7 +364,7 @@ tty_send_requests(struct tty *tty)
 
 	if (tty_term_flag(tty->term, TTYC_XT)) {
 		if (~tty->flags & TTY_HAVEDA)
-			tty_puts(tty, "\033[c");
+			tty_puts(tty, "\033[>c");
 		if (~tty->flags & TTY_HAVEDSR)
 			tty_puts(tty, "\033[1337n");
 	} else
@@ -1175,8 +1175,7 @@ tty_clear_area(struct tty *tty, struct window_pane *wp, u_int py, u_int ny,
 		 * background colour isn't default (because it doesn't work
 		 * after SGR 0).
 		 */
-		if ((tty_get_flags(tty) & TERM_DECFRA) &&
-		    !COLOUR_DEFAULT(bg)) {
+		if ((tty_get_flags(tty) & TERM_DECFRA) && !COLOUR_DEFAULT(bg)) {
 			xsnprintf(tmp, sizeof tmp, "\033[32;%u;%u;%u;%u$x",
 			    py + 1, px + 1, py + ny, px + nx);
 			tty_puts(tty, tmp);

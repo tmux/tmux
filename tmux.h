@@ -1261,6 +1261,7 @@ struct tty {
 	struct event	 key_timer;
 	struct tty_key	*key_tree;
 };
+#define tty_term_flags(tty) (tty->term->flags|tty->term_flags)
 
 /* TTY command context. */
 struct tty_ctx {
