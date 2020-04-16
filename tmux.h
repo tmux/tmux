@@ -779,6 +779,7 @@ struct screen_write_collect_line;
 struct screen_write_ctx {
 	struct window_pane	*wp;
 	struct screen		*s;
+	int			 sync;
 
 	struct screen_write_collect_item *item;
 	struct screen_write_collect_line *list;
@@ -1263,6 +1264,7 @@ struct tty {
 	struct event	 key_timer;
 	struct tty_key	*key_tree;
 };
+#define tty_term_flags(tty) (tty->term->flags|tty->term_flags)
 
 /* TTY command context. */
 struct tty_ctx {

@@ -1007,8 +1007,8 @@ tty_keys_clipboard(__unused struct tty *tty, const char *buf, size_t len,
 }
 
 /*
- * Handle device attributes input. Returns 0 for success, -1 for failure, 1 for
- * partial.
+ * Handle secondary device attributes input. Returns 0 for success, -1 for
+ * failure, 1 for partial.
  */
 static int
 tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
@@ -1032,7 +1032,7 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 		return (-1);
 	if (len == 2)
 		return (1);
-	if (buf[2] != '?')
+	if (buf[2] != '>')
 		return (-1);
 	if (len == 3)
 		return (1);
@@ -1048,7 +1048,7 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 	tmp[i] = '\0';
 	*size = 4 + i;
 
-	/* Convert version numbers. */
+	/* Convert all arguments to numbers. */
 	cp = tmp;
 	while ((next = strsep(&cp, ";")) != NULL) {
 		p[n] = strtoul(next, &endptr, 10);
@@ -1059,13 +1059,20 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 
 	/* Set terminal flags. */
 	switch (p[0]) {
-	case 64: /* VT420 */
+	case 41: /* VT420 */
 		flags |= (TERM_DECFRA|TERM_DECSLRM);
 		break;
+	case 'M': /* mintty */
+		flags |= (TERM_256COLOURS|TERM_RGBCOLOURS);
+		break;
+	case 'T': /* tmux - if newer will have the DSR as well */
+		flags |= (TERM_UTF8|TERM_256COLOURS);
+		break;
+	case 'U': /* rxvt-unicode */
+		flags |= (TERM_UTF8);
+		break;
 	}
-	for (i = 1; i < n; i++)
-		log_debug("%s: DA feature: %d", c->name, p[i]);
-	log_debug("%s: received DA %.*s", c->name, (int)*size, buf);
+	log_debug("%s: received secondary DA %.*s", c->name, (int)*size, buf);
 
 	tty_set_flags(tty, flags);
 	tty->flags |= TTY_HAVEDA;
@@ -1116,10 +1123,11 @@ tty_keys_device_status_report(struct tty *tty, const char *buf, size_t len,
 	*size = 3 + i;
 
 	/* Set terminal flags. */
-	if (strncmp(tmp, "ITERM2 ", 7) == 0)
-		flags |= (TERM_DECSLRM|TERM_256COLOURS|TERM_RGBCOLOURS|TERM_SYNC);
-	if (strncmp(tmp, "TMUX ", 5) == 0)
-		flags |= (TERM_256COLOURS|TERM_RGBCOLOURS);
+	if (strncmp(tmp, "ITERM2 ", 7) == 0) {
+		flags |= (TERM_UTF8|TERM_DECSLRM|TERM_SYNC|TERM_256COLOURS|
+		    TERM_RGBCOLOURS);
+	} else if (strncmp(tmp, "TMUX ", 5) == 0)
+		flags |= (TERM_UTF8|TERM_256COLOURS|TERM_RGBCOLOURS);
 	log_debug("%s: received DSR %.*s", c->name, (int)*size, buf);
 
 	tty_set_flags(tty, flags);
