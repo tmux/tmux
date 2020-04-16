@@ -777,6 +777,7 @@ struct screen_write_collect_line;
 struct screen_write_ctx {
 	struct window_pane	*wp;
 	struct screen		*s;
+	int			 sync;
 
 	struct screen_write_collect_item *item;
 	struct screen_write_collect_line *list;
