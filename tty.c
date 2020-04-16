@@ -1255,7 +1255,7 @@ tty_check_codeset(struct tty *tty, const struct grid_cell *gc)
 		return (gc);
 
 	/* UTF-8 terminal and a UTF-8 character - fine. */
-	if (tty->flags & TTY_UTF8)
+	if (tty_get_flags(tty) & TERM_UTF8)
 		return (gc);
 
 	/* Replace by the right number of underscores. */

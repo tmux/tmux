@@ -99,7 +99,7 @@ tty_acs_needed(struct tty *tty)
 	    tty_term_number(tty->term, TTYC_U8) == 0)
 		return (1);
 
-	if (tty->flags & TTY_UTF8)
+	if (tty_get_flags(tty) & TERM_UTF8)
 		return (0);
 	return (1);
 }
