@@ -2151,6 +2151,9 @@ tty_cursor(struct tty *tty, u_int cx, u_int cy)
 	u_int		 thisx, thisy;
 	int		 change;
 
+	if (tty->flags & TTY_BLOCK)
+		return;
+
 	if (cx > tty->sx - 1)
 		cx = tty->sx - 1;
 
