@@ -81,7 +81,7 @@ struct winlink;
 #define NAME_INTERVAL 500000
 
 /* Maximum size of data to hold from a pane. */
-#define READ_SIZE 4096
+#define READ_SIZE 8192
 
 /* Default pixel cell sizes. */
 #define DEFAULT_XPIXEL 16
