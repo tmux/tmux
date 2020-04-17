@@ -1483,9 +1483,9 @@ The following commands are supported in copy mode:
 .It Li "clear-selection" Ta "Escape" Ta "C-g"
 .It Li "copy-end-of-line [<prefix>]" Ta "D" Ta "C-k"
 .It Li "copy-line [<prefix>]" Ta "" Ta ""
-.It Li "copy-pipe <command> [<prefix>]" Ta "" Ta ""
-.It Li "copy-pipe-no-clear <command> [<prefix>]" Ta "" Ta ""
-.It Li "copy-pipe-and-cancel <command> [<prefix>]" Ta "" Ta ""
+.It Li "copy-pipe [<command>] [<prefix>]" Ta "" Ta ""
+.It Li "copy-pipe-no-clear [<command>] [<prefix>]" Ta "" Ta ""
+.It Li "copy-pipe-and-cancel [<command>] [<prefix>]" Ta "" Ta ""
 .It Li "copy-selection [<prefix>]" Ta "" Ta ""
 .It Li "copy-selection-no-clear [<prefix>]" Ta "" Ta ""
 .It Li "copy-selection-and-cancel [<prefix>]" Ta "Enter" Ta "M-w"
@@ -3090,6 +3090,10 @@ be set to
 .Ql screen ,
 .Ql tmux
 or a derivative of them.
+.It Ic copy-command Ar shell-command
+Give the command to pipe to if the
+.Ic copy-pipe
+copy mode command is used without arguments.
 .It Ic escape-time Ar time
 Set the time in milliseconds for which
 .Nm
