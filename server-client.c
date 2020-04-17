@@ -1679,7 +1679,7 @@ server_client_check_redraw(struct client *c)
 	struct session		*s = c->session;
 	struct tty		*tty = &c->tty;
 	struct window_pane	*wp;
-	int			 needed, flags;
+	int			 needed, flags, mode = tty->mode;
 	struct timeval		 tv = { .tv_usec = 1000 };
 	static struct event	 ev;
 	size_t			 left;
@@ -1730,6 +1730,7 @@ server_client_check_redraw(struct client *c)
 
 	flags = tty->flags & (TTY_BLOCK|TTY_FREEZE|TTY_NOCURSOR);
 	tty->flags = (tty->flags & ~(TTY_BLOCK|TTY_FREEZE)) | TTY_NOCURSOR;
+	tty_update_mode(tty, mode, NULL);
 
 	if (~c->flags & CLIENT_REDRAWWINDOW) {
 		/*
@@ -1750,8 +1751,9 @@ server_client_check_redraw(struct client *c)
 		screen_redraw_screen(c);
 	}
 
-	tty->flags = (tty->flags & ~(TTY_FREEZE|TTY_NOCURSOR)) | flags;
-	tty_update_mode(tty, tty->mode, NULL);
+	tty->flags = (tty->flags & ~TTY_NOCURSOR) | (flags & TTY_NOCURSOR);
+	tty_update_mode(tty, mode, NULL);
+	tty->flags = (tty->flags & ~(TTY_BLOCK|TTY_FREEZE|TTY_NOCURSOR)) | flags;
 
 	c->flags &= ~(CLIENT_ALLREDRAWFLAGS|CLIENT_STATUSFORCE);
 
