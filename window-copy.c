@@ -314,14 +314,22 @@ window_copy_clone_screen(struct screen *src, struct screen *hint, u_int *cx,
 			break;
 		sy--;
 	}
+	log_debug("%s: target screen is %ux%u, source %ux%u", __func__,
+	    screen_size_x(src), sy, screen_size_x(hint),
+	    screen_hsize(src) + screen_size_y(src));
 	screen_init(dst, screen_size_x(src), sy, screen_hlimit(src));
 	grid_duplicate_lines(dst->grid, 0, src->grid, 0, sy);
 
 	dst->grid->sy = sy - screen_hsize(src);
 	dst->grid->hsize = screen_hsize(src);
 	dst->grid->hscrolled = src->grid->hscrolled;
-	dst->cx = src->cx;
-	dst->cy = src->cy;
+	if (src->cy > dst->grid->sy - 1) {
+		dst->cx = 0;
+		dst->cy = dst->grid->sy - 1;
+	} else {
+		dst->cx = src->cx;
+		dst->cy = src->cy;
+	}
 
 	screen_resize_cursor(dst, screen_size_x(hint), screen_size_y(hint), 1,
 	    0, cx, cy);
