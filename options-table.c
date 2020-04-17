@@ -198,6 +198,12 @@ const struct options_table_entry options_table[] = {
 	  .separator = ","
 	},
 
+	{ .name = "copy-command",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .default_str = ""
+	},
+
 	{ .name = "default-terminal",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SERVER,

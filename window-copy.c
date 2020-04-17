@@ -1728,11 +1728,10 @@ window_copy_cmd_copy_pipe_no_clear(struct window_copy_cmd_state *cs)
 	if (cs->args->argc == 3)
 		prefix = format_single(NULL, cs->args->argv[2], c, s, wl, wp);
 
-	if (s != NULL && *cs->args->argv[1] != '\0') {
+	if (s != NULL && cs->args->argc > 1 && *cs->args->argv[1] != '\0')
 		command = format_single(NULL, cs->args->argv[1], c, s, wl, wp);
-		window_copy_copy_pipe(wme, s, prefix, command);
-		free(command);
-	}
+	window_copy_copy_pipe(wme, s, prefix, command);
+	free(command);
 
 	free(prefix);
 	return (WINDOW_COPY_CMD_NOTHING);
@@ -2066,11 +2065,11 @@ static const struct {
 	  window_copy_cmd_copy_end_of_line },
 	{ "copy-line", 0, 1, 0,
 	  window_copy_cmd_copy_line },
-	{ "copy-pipe-no-clear", 1, 2, 0,
+	{ "copy-pipe-no-clear", 0, 2, 0,
 	  window_copy_cmd_copy_pipe_no_clear },
-	{ "copy-pipe", 1, 2, 0,
+	{ "copy-pipe", 0, 2, 0,
 	  window_copy_cmd_copy_pipe },
-	{ "copy-pipe-and-cancel", 1, 2, 0,
+	{ "copy-pipe-and-cancel", 0, 2, 0,
 	  window_copy_cmd_copy_pipe_and_cancel },
 	{ "copy-selection-no-clear", 0, 1, 0,
 	  window_copy_cmd_copy_selection_no_clear },
@@ -3471,8 +3470,13 @@ window_copy_copy_pipe(struct window_mode_entry *wme, struct session *s,
 	if (buf == NULL)
 		return;
 
-	job = job_run(cmd, s, NULL, NULL, NULL, NULL, NULL, JOB_NOWAIT, -1, -1);
-	bufferevent_write(job_get_event(job), buf, len);
+	if (cmd == NULL || *cmd == '\0')
+		cmd = options_get_string(global_options, "copy-command");
+	if (cmd != NULL && *cmd != '\0') {
+		job = job_run(cmd, s, NULL, NULL, NULL, NULL, NULL, JOB_NOWAIT,
+		    -1, -1);
+		bufferevent_write(job_get_event(job), buf, len);
+	}
 	window_copy_copy_buffer(wme, prefix, buf, len);
 }
 
