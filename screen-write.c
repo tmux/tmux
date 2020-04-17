@@ -46,7 +46,7 @@ struct screen_write_collect_item {
 	u_int			 x;
 	int			 wrapped;
 
-	enum { TEXT, CLEAR, CLEAR_END, CLEAR_START } type;
+	enum { TEXT, CLEAR_END, CLEAR_START } type;
 	u_int			 used;
 	union {
 		u_int		 bg;
@@ -58,6 +58,7 @@ struct screen_write_collect_item {
 	TAILQ_ENTRY(screen_write_collect_item) entry;
 };
 struct screen_write_collect_line {
+	u_int					bg;
 	TAILQ_HEAD(, screen_write_collect_item) items;
 };
 
@@ -932,10 +933,9 @@ screen_write_deleteline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 void
 screen_write_clearline(struct screen_write_ctx *ctx, u_int bg)
 {
-	struct screen			 *s = ctx->s;
-	struct grid_line		 *gl;
-	u_int				  sx = screen_size_x(s);
-	struct screen_write_collect_item *ci = ctx->item;
+	struct screen		 *s = ctx->s;
+	struct grid_line	 *gl;
+	u_int			  sx = screen_size_x(s);
 
 	gl = grid_get_line(s->grid, s->grid->hsize + s->cy);
 	if (gl->cellsize == 0 && COLOUR_DEFAULT(bg))
@@ -944,11 +944,8 @@ screen_write_clearline(struct screen_write_ctx *ctx, u_int bg)
 	grid_view_clear(s->grid, 0, s->cy, sx, 1, bg);
 
 	screen_write_collect_clear(ctx, s->cy, 1);
-	ci->x = 0;
-	ci->type = CLEAR;
-	ci->bg = bg;
-	TAILQ_INSERT_TAIL(&ctx->list[s->cy].items, ci, entry);
-	ctx->item = xcalloc(1, sizeof *ctx->item);
+	ctx->list[s->cy].bg = 1 + bg;
+	ctx->item->used = 0;
 }
 
 /* Clear to end of line from cursor. */
@@ -1250,8 +1247,6 @@ screen_write_collect_clear_start(struct screen_write_ctx *ctx, u_int y, u_int x,
 		return (0);
 	TAILQ_FOREACH_SAFE(ci, &ctx->list[y].items, entry, tmp) {
 		switch (ci->type) {
-		case CLEAR:
-			continue;
 		case CLEAR_START:
 			if (ci->x >= x) {
 				if (ci->bg == bg)
@@ -1293,8 +1288,6 @@ screen_write_collect_clear_end(struct screen_write_ctx *ctx, u_int y, u_int x,
 		return (0);
 	TAILQ_FOREACH_SAFE(ci, &ctx->list[y].items, entry, tmp) {
 		switch (ci->type) {
-		case CLEAR:
-			continue;
 		case CLEAR_START:
 			if (ci->x >= x)
 				ci->x = x;
@@ -1395,13 +1388,15 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 
 	cx = s->cx; cy = s->cy;
 	for (y = 0; y < screen_size_y(s); y++) {
+		if (ctx->list[y].bg != 0) {
+			screen_write_set_cursor(ctx, 0, y);
+			screen_write_initctx(ctx, &ttyctx, 1);
+			ttyctx.bg = ctx->list[y].bg - 1;
+			tty_write(tty_cmd_clearline, &ttyctx);
+		}
 		TAILQ_FOREACH_SAFE(ci, &ctx->list[y].items, entry, tmp) {
 			screen_write_set_cursor(ctx, ci->x, y);
-			if (ci->type == CLEAR) {
-				screen_write_initctx(ctx, &ttyctx, 1);
-				ttyctx.bg = ci->bg;
-				tty_write(tty_cmd_clearline, &ttyctx);
-			} else if (ci->type == CLEAR_END) {
+			if (ci->type == CLEAR_END) {
 				screen_write_initctx(ctx, &ttyctx, 1);
 				ttyctx.bg = ci->bg;
 				tty_write(tty_cmd_clearendofline, &ttyctx);
