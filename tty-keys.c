@@ -61,6 +61,9 @@ struct tty_default_key_raw {
 	key_code	 	key;
 };
 static const struct tty_default_key_raw tty_default_raw_keys[] = {
+	/* Application escape. */
+	{ "\033O[", '\033' },
+
 	/*
 	 * Numeric keypad. Just use the vt100 escape sequences here and always
 	 * put the terminal into keypad_xmit mode. Translation of numbers
@@ -1065,7 +1068,7 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 	case 'M': /* mintty */
 		flags |= (TERM_256COLOURS|TERM_RGBCOLOURS);
 		break;
-	case 'T': /* tmux - if newer will have the DSR as well */
+	case 'T': /* tmux - new versons reply to DSR which will set RGB */
 		flags |= (TERM_UTF8|TERM_256COLOURS);
 		break;
 	case 'U': /* rxvt-unicode */
