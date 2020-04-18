@@ -1381,6 +1381,7 @@ screen_write_collect_scroll(struct screen_write_ctx *ctx)
 		ctx->list[y].data = cl->data;
 	}
 	ctx->list[s->rlower].data = saved;
+	ctx->list[s->rlower].bg = 1 + 8;
 }
 
 /* Flush collected lines. */
