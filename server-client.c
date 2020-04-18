@@ -1370,6 +1370,7 @@ server_client_loop(void)
 				if (resize)
 					server_client_check_resize(wp);
 			}
+			wp->flags &= ~PANE_REDRAW;
 		}
 		check_window_name(w);
 	}
@@ -1679,8 +1680,11 @@ server_client_check_redraw(struct client *c)
 {
 	struct session		*s = c->session;
 	struct tty		*tty = &c->tty;
+	struct window		*w = c->session->curw->window;
 	struct window_pane	*wp;
 	int			 needed, flags, mode = tty->mode, new_flags = 0;
+	int			 redraw;
+	u_int			 bit = 0;
 	struct timeval		 tv = { .tv_usec = 1000 };
 	static struct event	 ev;
 	size_t			 left;
@@ -1705,7 +1709,7 @@ server_client_check_redraw(struct client *c)
 	if (c->flags & CLIENT_ALLREDRAWFLAGS)
 		needed = 1;
 	else {
-		TAILQ_FOREACH(wp, &c->session->curw->window->panes, entry) {
+		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (wp->flags & PANE_REDRAW) {
 				needed = 1;
 				break;
@@ -1722,25 +1726,46 @@ server_client_check_redraw(struct client *c)
 			log_debug("redraw timer started");
 			evtimer_add(&ev, &tv);
 		}
+		if (new_flags & CLIENT_REDRAWPANES) {
+			c->redraw_panes = 0;
+			TAILQ_FOREACH(wp, &w->panes, entry) {
+				if (wp->flags & PANE_REDRAW)
+					c->redraw_panes |= (1 << bit);
+				if (++bit == 64) {
+					/*
+					 * If more that 64 panes, give up and
+					 * just redraw the window.
+					 */
+					new_flags &= CLIENT_REDRAWPANES;
+					new_flags |= CLIENT_REDRAWWINDOW;
+					break;
+				}
+			}
+		}
 		c->flags |= new_flags;
 		return;
 	} else if (needed)
 		log_debug("%s: redraw needed", c->name);
 
 	flags = tty->flags & (TTY_BLOCK|TTY_FREEZE|TTY_NOCURSOR);
-	tty->flags = (tty->flags & ~(TTY_BLOCK|TTY_FREEZE)) | TTY_NOCURSOR;
+	tty->flags = (tty->flags & ~(TTY_BLOCK|TTY_FREEZE))|TTY_NOCURSOR;
 
 	if (~c->flags & CLIENT_REDRAWWINDOW) {
 		/*
 		 * If not redrawing the entire window, check whether each pane
 		 * needs to be redrawn.
 		 */
-		TAILQ_FOREACH(wp, &c->session->curw->window->panes, entry) {
-			if (wp->flags & PANE_REDRAW) {
-				log_debug("%s: redrawing pane %%%u", __func__, wp->id);
-				tty_update_mode(tty, mode, NULL);
-				screen_redraw_pane(c, wp);
-			}
+		TAILQ_FOREACH(wp, &w->panes, entry) {
+			redraw = 0;
+			if (wp->flags & PANE_REDRAW)
+				redraw = 1;
+			else if (c->flags & CLIENT_REDRAWPANES)
+				redraw = !!(c->redraw_panes & (1 << bit));
+			if (!redraw)
+				continue;
+			log_debug("%s: redrawing pane %%%u", __func__, wp->id);
+			tty_update_mode(tty, mode, NULL);
+			screen_redraw_pane(c, wp);
 		}
 		c->flags &= ~CLIENT_REDRAWPANES;
 	}
@@ -1752,9 +1777,9 @@ server_client_check_redraw(struct client *c)
 		screen_redraw_screen(c);
 	}
 
-	tty->flags = (tty->flags & ~TTY_NOCURSOR) | (flags & TTY_NOCURSOR);
+	tty->flags = (tty->flags & ~TTY_NOCURSOR)|(flags & TTY_NOCURSOR);
 	tty_update_mode(tty, mode, NULL);
-	tty->flags = (tty->flags & ~(TTY_BLOCK|TTY_FREEZE|TTY_NOCURSOR)) | flags;
+	tty->flags = (tty->flags & ~(TTY_BLOCK|TTY_FREEZE|TTY_NOCURSOR))|flags;
 
 	c->flags &= ~(CLIENT_ALLREDRAWFLAGS|CLIENT_STATUSFORCE);
 
