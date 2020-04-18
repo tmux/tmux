@@ -438,17 +438,24 @@ screen_redraw_screen(struct client *c)
 	tty_sync_start(&c->tty);
 
 	if (flags & (CLIENT_REDRAWWINDOW|CLIENT_REDRAWBORDERS)) {
+		log_debug("%s: redrawing borders", c->name);
 		if (ctx.pane_status != PANE_STATUS_OFF)
 			screen_redraw_draw_pane_status(&ctx);
 		screen_redraw_draw_borders(&ctx);
 	}
-	if (flags & CLIENT_REDRAWWINDOW)
+	if (flags & CLIENT_REDRAWWINDOW) {
+		log_debug("%s: redrawing panes", c->name);
 		screen_redraw_draw_panes(&ctx);
+	}
 	if (ctx.statuslines != 0 &&
-	    (flags & (CLIENT_REDRAWSTATUS|CLIENT_REDRAWSTATUSALWAYS)))
+	    (flags & (CLIENT_REDRAWSTATUS|CLIENT_REDRAWSTATUSALWAYS))) {
+		log_debug("%s: redrawing status", c->name);
 		screen_redraw_draw_status(&ctx);
-	if (c->overlay_draw != NULL && (flags & CLIENT_REDRAWOVERLAY))
+	}
+	if (c->overlay_draw != NULL && (flags & CLIENT_REDRAWOVERLAY)) {
+		log_debug("%s: redrawing overlay", c->name);
 		c->overlay_draw(c, &ctx);
+	}
 
 	tty_reset(&c->tty);
 	tty_sync_end(&c->tty);

@@ -1438,15 +1438,19 @@ tty_draw_line(struct tty *tty, struct window_pane *wp, struct screen *s,
 void
 tty_sync_start(struct tty *tty)
 {
-	if (tty_get_flags(tty) & TERM_SYNC)
+	if ((~tty->flags & TTY_SYNCING) && (tty_get_flags(tty) & TERM_SYNC)) {
 		tty_puts(tty, "\033P=1s\033\\");
+		tty->flags |= TTY_SYNCING;
+	}
 }
 
 void
 tty_sync_end(struct tty *tty)
 {
-	if (tty_get_flags(tty) & TERM_SYNC)
+	if (tty_get_flags(tty) & TERM_SYNC) {
 		tty_puts(tty, "\033P=2s\033\\");
+		tty->flags &= ~TTY_SYNCING;
+	}
 }
 
 static int
@@ -1480,6 +1484,14 @@ tty_write(void (*cmdfn)(struct tty *, const struct tty_ctx *),
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (!tty_client_ready(c, wp))
 			continue;
+		if (c->flags & CLIENT_REDRAWPANES) {
+			/*
+			 * Redraw is already deferred to redraw another pane -
+			 * redraw this one also when that happens.
+			 */
+			wp->flags |= PANE_REDRAW;
+			break;
+		}
 
 		ctx->bigger = tty_window_offset(&c->tty, &ctx->ox, &ctx->oy,
 		    &ctx->sx, &ctx->sy);
