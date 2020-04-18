@@ -2690,6 +2690,9 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 	format_add(ft, "history_limit", "%u", gd->hlimit);
 	format_add_cb(ft, "history_bytes", format_cb_history_bytes);
 
+	format_add(ft, "pane_written", "%zu", wp->written);
+	format_add(ft, "pane_skipped", "%zu", wp->skipped);
+
 	if (window_pane_index(wp, &idx) != 0)
 		fatalx("index not found");
 	format_add(ft, "pane_index", "%u", idx);

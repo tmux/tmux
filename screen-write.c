@@ -174,6 +174,10 @@ screen_write_stop(struct screen_write_ctx *ctx)
 
 	log_debug("%s: %u cells (%u written, %u skipped)", __func__,
 	    ctx->cells, ctx->written, ctx->skipped);
+	if (ctx->wp != NULL) {
+		ctx->wp->written += ctx->written;
+		ctx->wp->skipped += ctx->skipped;
+	}
 
 	if (ctx->sync) {
 		screen_write_initctx(ctx, &ttyctx, 0);
