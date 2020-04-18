@@ -954,7 +954,7 @@ format_cb_cursor_character(struct format_tree *ft, struct format_entry *fe)
 char *
 format_grid_word(struct grid *gd, u_int x, u_int y)
 {
-	struct grid_line	*gl;
+	const struct grid_line	*gl;
 	struct grid_cell	 gc;
 	const char		*ws;
 	struct utf8_data	*ud = NULL;
