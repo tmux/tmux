@@ -1564,6 +1564,8 @@ struct client {
 	int		 flags;
 	struct key_table *keytable;
 
+	uint64_t	 redraw_panes;
+
 	char		*message_string;
 	struct event	 message_timer;
 	u_int		 message_next;

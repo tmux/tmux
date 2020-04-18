@@ -474,7 +474,6 @@ screen_redraw_pane(struct client *c, struct window_pane *wp)
 	tty_sync_start(&c->tty);
 
 	screen_redraw_draw_pane(&ctx, wp);
-	wp->flags &= ~PANE_REDRAW;
 
 	tty_reset(&c->tty);
 	tty_sync_end(&c->tty);
@@ -564,7 +563,6 @@ screen_redraw_draw_panes(struct screen_redraw_ctx *ctx)
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if (window_pane_visible(wp))
 			screen_redraw_draw_pane(ctx, wp);
-		wp->flags &= ~PANE_REDRAW;
 	}
 }
 
