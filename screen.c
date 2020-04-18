@@ -226,10 +226,8 @@ screen_resize_cursor(struct screen *s, u_int sx, u_int sy, int reflow,
 {
 	u_int	tcx, tcy;
 
-	if (s->write_list != NULL) {
+	if (s->write_list != NULL)
 		screen_write_free_list(s);
-		s->write_list = NULL;
-	}
 
 	if (cx == NULL)
 		cx = &tcx;
@@ -269,6 +267,9 @@ screen_resize_cursor(struct screen *s, u_int sx, u_int sy, int reflow,
 	}
 	log_debug("%s: cursor finished at %u,%u = %u,%u", __func__, s->cx,
 	    s->cy, *cx, *cy);
+
+	if (s->write_list != NULL)
+		screen_write_make_list(s);
 }
 
 /* Resize screen. */

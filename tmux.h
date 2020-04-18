@@ -784,7 +784,6 @@ struct screen_write_ctx {
 	int			 sync;
 
 	struct screen_write_collect_item *item;
-	struct screen_write_collect_line *list;
 	u_int			 scrolled;
 	u_int			 bg;
 
