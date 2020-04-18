@@ -936,6 +936,9 @@ struct window_pane {
 	char		*searchstr;
 	int		 searchregex;
 
+	u_int		 written;
+	u_int		 skipped;
+
 	TAILQ_ENTRY(window_pane) entry;
 	RB_ENTRY(window_pane) tree_entry;
 };
@@ -1541,12 +1544,14 @@ struct client {
 #define CLIENT_CONTROL_NOOUTPUT 0x4000000
 #define CLIENT_DEFAULTSOCKET 0x8000000
 #define CLIENT_STARTSERVER 0x10000000
+#define CLIENT_REDRAWPANES 0x20000000
 #define CLIENT_ALLREDRAWFLAGS		\
 	(CLIENT_REDRAWWINDOW|		\
 	 CLIENT_REDRAWSTATUS|		\
 	 CLIENT_REDRAWSTATUSALWAYS|	\
 	 CLIENT_REDRAWBORDERS|		\
-	 CLIENT_REDRAWOVERLAY)
+	 CLIENT_REDRAWOVERLAY|		\
+	 CLIENT_REDRAWPANES)
 #define CLIENT_UNATTACHEDFLAGS	\
 	(CLIENT_DEAD|		\
 	 CLIENT_SUSPENDED|	\
