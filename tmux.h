@@ -936,8 +936,8 @@ struct window_pane {
 	char		*searchstr;
 	int		 searchregex;
 
-	u_int		 written;
-	u_int		 skipped;
+	size_t		 written;
+	size_t		 skipped;
 
 	TAILQ_ENTRY(window_pane) entry;
 	RB_ENTRY(window_pane) tree_entry;
