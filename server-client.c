@@ -1741,6 +1741,7 @@ server_client_check_redraw(struct client *c)
 		 */
 		TAILQ_FOREACH(wp, &c->session->curw->window->panes, entry) {
 			if (wp->flags & PANE_REDRAW) {
+				log_debug("%s: redrawing pane %%%u", __func__, wp->id);
 				tty_update_mode(tty, tty->mode, NULL);
 				screen_redraw_pane(c, wp);
 			}
