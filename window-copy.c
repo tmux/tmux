@@ -299,7 +299,7 @@ window_copy_scroll_timer(__unused int fd, __unused short events, void *arg)
 
 static struct screen *
 window_copy_clone_screen(struct screen *src, struct screen *hint, u_int *cx,
-    u_int *cy)
+    u_int *cy, int trim)
 {
 	struct screen		*dst;
 	u_int			 sy;
@@ -308,11 +308,13 @@ window_copy_clone_screen(struct screen *src, struct screen *hint, u_int *cx,
 	dst = xcalloc(1, sizeof *dst);
 
 	sy = screen_hsize(src) + screen_size_y(src);
-	while (sy > screen_hsize(src)) {
-		gl = grid_peek_line(src->grid, sy - 1);
-		if (gl->cellused != 0)
-			break;
-		sy--;
+	if (trim) {
+		while (sy > screen_hsize(src)) {
+			gl = grid_peek_line(src->grid, sy - 1);
+			if (gl->cellused != 0)
+				break;
+			sy--;
+		}
 	}
 	log_debug("%s: target screen is %ux%u, source %ux%u", __func__,
 	    screen_size_x(src), sy, screen_size_x(hint),
@@ -386,7 +388,8 @@ window_copy_init(struct window_mode_entry *wme,
 	u_int				 i, cx, cy;
 
 	data = window_copy_common_init(wme);
-	data->backing = window_copy_clone_screen(base, &data->screen, &cx, &cy);
+	data->backing = window_copy_clone_screen(base, &data->screen, &cx, &cy,
+	    wme->swp != wme->wp);
 
 	if (cy < screen_hsize(data->backing)) {
 		data->cx = cx;
@@ -2042,7 +2045,7 @@ window_copy_cmd_refresh_from_pane(struct window_copy_cmd_state *cs)
 	screen_free(data->backing);
 	free(data->backing);
 	data->backing = window_copy_clone_screen(&wp->base, &data->screen, NULL,
-	    NULL);
+	    NULL, wme->swp != wme->wp);
 
 	window_copy_size_changed(wme);
 	return (WINDOW_COPY_CMD_REDRAW);
