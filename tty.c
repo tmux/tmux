@@ -469,7 +469,8 @@ tty_update_features(struct tty *tty)
 {
 	struct client	*c = tty->client;
 
-	tty_apply_features(tty->term, c->term_features);
+	if (tty_apply_features(tty->term, c->term_features))
+		tty_term_apply_overrides(tty->term);
 
 	if (tty_use_margin(tty))
 		tty_puts(tty, "\033[?69h"); /* DECLRMM */

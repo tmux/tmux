@@ -1997,6 +1997,7 @@ void	tty_cmd_syncstart(struct tty *, const struct tty_ctx *);
 extern struct tty_terms tty_terms;
 u_int		 tty_term_ncodes(void);
 void		 tty_term_apply(struct tty_term *, const char *, int);
+void		 tty_term_apply_overrides(struct tty_term *);
 struct tty_term *tty_term_create(struct tty *, char *, int *, int, char **);
 void		 tty_term_free(struct tty_term *);
 int		 tty_term_has(struct tty_term *, enum tty_code_code);
@@ -2017,7 +2018,7 @@ const char	*tty_term_describe(struct tty_term *, enum tty_code_code);
 /* tty-features.c */
 void		 tty_add_features(int *, const char *, const char *);
 const char	*tty_get_features(int);
-void		 tty_apply_features(struct tty_term *, int);
+int		 tty_apply_features(struct tty_term *, int);
 
 /* tty-acs.c */
 int		 tty_acs_needed(struct tty *);
