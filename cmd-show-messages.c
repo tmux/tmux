@@ -43,22 +43,24 @@ const struct cmd_entry cmd_show_messages_entry = {
 	.exec = cmd_show_messages_exec
 };
 
-static int	cmd_show_messages_terminals(struct cmdq_item *, int);
-
 static int
-cmd_show_messages_terminals(struct cmdq_item *item, int blank)
+cmd_show_messages_terminals(struct cmd *self, struct cmdq_item *item, int blank)
 {
+	struct args	*args = cmd_get_args(self);
+	struct client	*tc = cmdq_get_target_client(item);
 	struct tty_term	*term;
 	u_int		 i, n;
 
 	n = 0;
 	LIST_FOREACH(term, &tty_terms, entry) {
+		if (args_has(args, 't') && term != tc->tty.term)
+			continue;
 		if (blank) {
 			cmdq_print(item, "%s", "");
 			blank = 0;
 		}
-		cmdq_print(item, "Terminal %u: %s [references=%u, flags=0x%x]:",
-		    n, term->name, term->references, term->flags);
+		cmdq_print(item, "Terminal %u: %s for %s, flags=0x%x:", n,
+		    term->name, term->tty->client->name, term->flags);
 		n++;
 		for (i = 0; i < tty_term_ncodes(); i++)
 			cmdq_print(item, "%s", tty_term_describe(term, i));
@@ -77,7 +79,7 @@ cmd_show_messages_exec(struct cmd *self, struct cmdq_item *item)
 
 	done = blank = 0;
 	if (args_has(args, 'T')) {
-		blank = cmd_show_messages_terminals(item, blank);
+		blank = cmd_show_messages_terminals(self, item, blank);
 		done = 1;
 	}
 	if (args_has(args, 'J')) {

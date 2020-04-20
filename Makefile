@@ -111,6 +111,7 @@ SRCS=	alerts.c \
 	style.c \
 	tmux.c \
 	tty-acs.c \
+	tty-features.c \
 	tty-keys.c \
 	tty-term.c \
 	tty.c \

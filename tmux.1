@@ -28,6 +28,7 @@
 .Op Fl f Ar file
 .Op Fl L Ar socket-name
 .Op Fl S Ar socket-path
+.Op Fl T Ar features
 .Op Ar command Op Ar flags
 .Ek
 .Sh DESCRIPTION
@@ -98,6 +99,8 @@ The options are as follows:
 Force
 .Nm
 to assume the terminal supports 256 colours.
+This is equivalent to
+.Fl T Ar 256 .
 .It Fl C
 Start in control mode (see the
 .Sx CONTROL MODE
@@ -186,6 +189,14 @@ that is set does not contain
 .Qq UTF-8
 or
 .Qq UTF8 .
+This is equivalent to
+.Fl T Ar UTF-8 .
+.It Fl T Ar features
+Set terminal features for the client.
+This is a comma-separated list of features.
+See the
+.Ic terminal-features
+option.
 .It Fl v
 Request verbose logging.
 Log messages will be saved into
@@ -3166,6 +3177,63 @@ disallowedWindowOps: 20,21,SetXprop
 Or changing this property from the
 .Xr xterm 1
 interactive menu when required.
+.It Ic terminal-features[] Ar string
+Set terminal features for terminal types read from
+.Xr terminfo 5 .
+.Nm
+has a set of named terminal features.
+Each will apply appropriate changes to the
+.Xr terminfo 5
+entry in use.
+.Pp
+.Nm
+can detect features for a few common terminals; this option can be used to
+easily tell tmux about features supported by terminals it cannot detect.
+The
+.Ic terminal-overrides
+option allows individual
+.Xr terminfo 5
+capabilities to be set instead,
+.Ic terminal-features
+is intended for classes of functionality supported in a standard way but not
+reported by
+.Xr terminfo 5 .
+Care must be taken only to configure this with features the terminal actually
+support.
+.Pp
+This is an array option where each entry is a colon-separated string made up
+of a terminal type pattern (matched using
+.Xr fnmatch 3 )
+followed by a list of terminal features.
+The available features are:
+.Bl -tag -width Ds
+.It 256
+Supports 256 colours with the SGR escape sequences.
+.It clipboard
+Allows setting the system clipboard.
+.It ccolour
+Allows setting the cursor colour.
+.It cstyle
+Allows setting the cursor style.
+.It margins
+Supports DECSLRM margins.
+.It overline
+Supports the overline SGR attribute.
+.It rectfill
+Supports the DECFRA rectangle fill escape sequence.
+.It RGB
+Supports RGB colour with the SGR escape sequences.
+.It sync
+Supports synchronized updates.
+.It title
+Supports
+.Xr xterm 1
+title setting.
+.It usstyle
+Allows underscore style and colour to be set.
+.It UTF-8
+Is able to handle UTF-8 output.
+.El
 .It Ic terminal-overrides[] Ar string
 Allow terminal descriptions read using
 .Xr terminfo 5
@@ -4383,6 +4451,7 @@ The following variables are available, where appropriate:
 .It Li "client_readonly" Ta "" Ta "1 if client is readonly"
 .It Li "client_session" Ta "" Ta "Name of the client's session"
 .It Li "client_termname" Ta "" Ta "Terminal name of client"
+.It Li "client_termfeatures" Ta "" Ta "Terminal features of client"
 .It Li "client_tty" Ta "" Ta "Pseudo terminal of client"
 .It Li "client_utf8" Ta "" Ta "1 if client supports UTF-8"
 .It Li "client_width" Ta "" Ta "Width of client"
@@ -5465,7 +5534,10 @@ The server crashed or otherwise exited without telling the client the reason.
 .Sh TERMINFO EXTENSIONS
 .Nm
 understands some unofficial extensions to
-.Xr terminfo 5 :
+.Xr terminfo 5.
+It is not normally necessary to set these manually, instead the
+.Ic terminal-features
+option should be used.
 .Bl -tag -width Ds
 .It Em \&Cs , Cr
 Set the cursor colour.
@@ -5479,33 +5551,15 @@ $ printf '\e033]12;red\e033\e\e'
 .Ed
 .It Em \&Smol
 Enable the overline attribute.
-The capability is usually SGR 53 and can be added to
-.Ic terminal-overrides
-as:
-.Bd -literal -offset indent
-Smol=\eE[53m
-.Ed
 .It Em \&Smulx
 Set a styled underscore.
 The single parameter is one of: 0 for no underscore, 1 for normal
 underscore, 2 for double underscore, 3 for curly underscore, 4 for dotted
 underscore and 5 for dashed underscore.
-The capability can typically be added to
-.Ic terminal-overrides
-as:
-.Bd -literal -offset indent
-Smulx=\eE[4::%p1%dm
-.Ed
 .It Em \&Setulc
 Set the underscore colour.
 The argument is (red * 65536) + (green * 256) + blue where each is between 0
 and 255.
-The capability can typically be added to
-.Ic terminal-overrides
-as:
-.Bd -literal -offset indent
-Setulc=\eE[58::2::%p1%{65536}%/%d::%p1%{256}%/%{255}%&%d::%p1%{255}%&%d%;m
-.Ed
 .It Em \&Ss , Se
 Set or reset the cursor style.
 If set, a sequence such as this may be used
