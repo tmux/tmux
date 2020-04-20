@@ -118,7 +118,9 @@ screen_write_initctx(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx,
 	ttyctx->orlower = s->rlower;
 	ttyctx->orupper = s->rupper;
 
-	if (sync && !ctx->sync && ttyctx->wp != NULL) {
+	if (ctx->wp != NULL &&
+	    !ctx->sync &&
+	    (sync || ctx->wp != ctx->wp->window->active)) {
 		tty_write(tty_cmd_syncstart, ttyctx);
 		ctx->sync = 1;
 	}
