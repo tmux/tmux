@@ -171,6 +171,7 @@ dist_tmux_SOURCES = \
 	tmux.c \
 	tmux.h \
 	tty-acs.c \
+	tty-features.c \
 	tty-keys.c \
 	tty-term.c \
 	tty.c \

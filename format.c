@@ -2553,8 +2553,9 @@ format_defaults_client(struct format_tree *ft, struct client *c)
 	format_add(ft, "client_control_mode", "%d",
 		!!(c->flags & CLIENT_CONTROL));
 
-	if (tty->term_name != NULL)
-		format_add(ft, "client_termname", "%s", tty->term_name);
+	format_add(ft, "client_termname", "%s", c->term_name);
+	format_add(ft, "client_termfeatures", "%s",
+	    tty_get_features(c->term_features));
 
 	format_add_tv(ft, "client_created", &c->creation_time);
 	format_add_tv(ft, "client_activity", &c->activity_time);
@@ -2569,7 +2570,7 @@ format_defaults_client(struct format_tree *ft, struct client *c)
 		format_add(ft, "client_prefix", "%d", 1);
 	format_add(ft, "client_key_table", "%s", c->keytable->name);
 
-	if (tty_get_flags(tty) & TERM_UTF8)
+	if (c->flags & CLIENT_UTF8)
 		format_add(ft, "client_utf8", "%d", 1);
 	else
 		format_add(ft, "client_utf8", "%d", 0);

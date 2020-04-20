@@ -476,6 +476,7 @@ enum msgtype {
 	MSG_IDENTIFY_DONE,
 	MSG_IDENTIFY_CLIENTPID,
 	MSG_IDENTIFY_CWD,
+	MSG_IDENTIFY_FEATURES,
 
 	MSG_COMMAND = 200,
 	MSG_DETACH,
@@ -1178,7 +1179,8 @@ struct tty_key {
 struct tty_code;
 struct tty_term {
 	char		*name;
-	u_int		 references;
+	struct tty	*tty;
+	int		 features;
 
 	char		 acs[UCHAR_MAX + 1][2];
 
@@ -1189,8 +1191,6 @@ struct tty_term {
 #define TERM_DECSLRM 0x4
 #define TERM_DECFRA 0x8
 #define TERM_RGBCOLOURS 0x10
-#define TERM_SYNC 0x20
-#define TERM_UTF8 0x40
 	int		 flags;
 
 	LIST_ENTRY(tty_term) entry;
@@ -1254,8 +1254,6 @@ struct tty {
 	int		 flags;
 
 	struct tty_term	*term;
-	char		*term_name;
-	int		 term_flags;
 
 	u_int		 mouse_last_x;
 	u_int		 mouse_last_y;
@@ -1269,7 +1267,6 @@ struct tty {
 	struct event	 key_timer;
 	struct tty_key	*key_tree;
 };
-#define tty_term_flags(tty) (tty->term->flags|tty->term_flags)
 
 /* TTY command context. */
 struct tty_ctx {
@@ -1500,7 +1497,9 @@ struct client {
 	char		*title;
 	const char	*cwd;
 
-	char		*term;
+	char		*term_name;
+	int		 term_features;
+
 	char		*ttyname;
 	struct tty	 tty;
 
@@ -1533,7 +1532,7 @@ struct client {
 #define CLIENT_CONTROLCONTROL 0x4000
 #define CLIENT_FOCUSED 0x8000
 #define CLIENT_UTF8 0x10000
-#define CLIENT_256COLOURS 0x20000
+/* 0x20000 unused */
 #define CLIENT_IDENTIFIED 0x40000
 #define CLIENT_STATUSFORCE 0x80000
 #define CLIENT_DOUBLECLICK 0x100000
@@ -1955,7 +1954,7 @@ void	tty_putcode_ptr2(struct tty *, enum tty_code_code, const void *,
 void	tty_puts(struct tty *, const char *);
 void	tty_putc(struct tty *, u_char);
 void	tty_putn(struct tty *, const void *, size_t, u_int);
-int	tty_init(struct tty *, struct client *, int, char *);
+int	tty_init(struct tty *, struct client *, int);
 void	tty_resize(struct tty *);
 void	tty_set_size(struct tty *, u_int, u_int, u_int, u_int);
 void	tty_start_tty(struct tty *);
@@ -1970,8 +1969,7 @@ void	tty_sync_end(struct tty *);
 int	tty_open(struct tty *, char **);
 void	tty_close(struct tty *);
 void	tty_free(struct tty *);
-void	tty_set_flags(struct tty *, int);
-int	tty_get_flags(struct tty *);
+void	tty_update_features(struct tty *);
 void	tty_write(void (*)(struct tty *, const struct tty_ctx *),
 	    struct tty_ctx *);
 void	tty_cmd_alignmenttest(struct tty *, const struct tty_ctx *);
@@ -2001,7 +1999,8 @@ void	tty_cmd_syncend(struct tty *, const struct tty_ctx *);
 /* tty-term.c */
 extern struct tty_terms tty_terms;
 u_int		 tty_term_ncodes(void);
-struct tty_term *tty_term_find(char *, int, char **);
+void		 tty_term_apply(struct tty_term *, const char *, int);
+struct tty_term *tty_term_create(struct tty *, char *, int *, int, char **);
 void		 tty_term_free(struct tty_term *);
 int		 tty_term_has(struct tty_term *, enum tty_code_code);
 const char	*tty_term_string(struct tty_term *, enum tty_code_code);
@@ -2017,6 +2016,11 @@ const char	*tty_term_ptr2(struct tty_term *, enum tty_code_code,
 int		 tty_term_number(struct tty_term *, enum tty_code_code);
 int		 tty_term_flag(struct tty_term *, enum tty_code_code);
 const char	*tty_term_describe(struct tty_term *, enum tty_code_code);
+
+/* tty-features.c */
+void		 tty_add_features(int *, const char *, const char *);
+const char	*tty_get_features(int);
+void		 tty_apply_features(struct tty_term *, int);
 
 /* tty-acs.c */
 int		 tty_acs_needed(struct tty *);
@@ -2163,7 +2167,7 @@ void printflike(2, 3) cmdq_error(struct cmdq_item *, const char *, ...);
 void	cmd_wait_for_flush(void);
 
 /* client.c */
-int	client_main(struct event_base *, int, char **, int);
+int	client_main(struct event_base *, int, char **, int, int);
 
 /* key-bindings.c */
 struct key_table *key_bindings_get_table(const char *, int);

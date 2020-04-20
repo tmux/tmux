@@ -1020,7 +1020,6 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 	struct client	*c = tty->client;
 	u_int		 i, n = 0;
 	char		 tmp[64], *endptr, p[32] = { 0 }, *cp, *next;
-	int		 flags = 0;
 
 	*size = 0;
 	if (tty->flags & TTY_HAVEDA)
@@ -1060,24 +1059,42 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 		n++;
 	}
 
-	/* Set terminal flags. */
+	/* Add terminal features. */
 	switch (p[0]) {
 	case 41: /* VT420 */
-		flags |= (TERM_DECFRA|TERM_DECSLRM);
+		tty_add_features(&c->term_features,
+		    "margins,"
+		    "rectfill",
+		    ",");
 		break;
 	case 'M': /* mintty */
-		flags |= (TERM_256COLOURS|TERM_RGBCOLOURS);
+		tty_add_features(&c->term_features,
+		    "256,"
+		    "RGB,"
+		    "title",
+		    ",");
 		break;
-	case 'T': /* tmux - new versons reply to DSR which will set RGB */
-		flags |= (TERM_UTF8|TERM_256COLOURS);
+	case 'T': /* tmux */
+		tty_add_features(&c->term_features,
+		    "256,"
+		    "RGB,"
+		    "ccolour,"
+		    "cstyle,"
+		    "overline,"
+		    "title,"
+		    "usstyle",
+		    ",");
 		break;
 	case 'U': /* rxvt-unicode */
-		flags |= (TERM_UTF8);
+		tty_add_features(&c->term_features,
+		    "256,"
+		    "title",
+		    ",");
 		break;
 	}
 	log_debug("%s: received secondary DA %.*s", c->name, (int)*size, buf);
 
-	tty_set_flags(tty, flags);
+	tty_update_features(tty);
 	tty->flags |= TTY_HAVEDA;
 
 	return (0);
@@ -1094,7 +1111,6 @@ tty_keys_device_status_report(struct tty *tty, const char *buf, size_t len,
 	struct client	*c = tty->client;
 	u_int		 i;
 	char		 tmp[64];
-	int		 flags = 0;
 
 	*size = 0;
 	if (tty->flags & TTY_HAVEDSR)
@@ -1125,15 +1141,31 @@ tty_keys_device_status_report(struct tty *tty, const char *buf, size_t len,
 	tmp[i] = '\0';
 	*size = 3 + i;
 
-	/* Set terminal flags. */
+	/* Add terminal features. */
 	if (strncmp(tmp, "ITERM2 ", 7) == 0) {
-		flags |= (TERM_UTF8|TERM_DECSLRM|TERM_SYNC|TERM_256COLOURS|
-		    TERM_RGBCOLOURS);
-	} else if (strncmp(tmp, "TMUX ", 5) == 0)
-		flags |= (TERM_UTF8|TERM_256COLOURS|TERM_RGBCOLOURS);
+		tty_add_features(&c->term_features,
+		    "256,"
+		    "RGB,"
+		    "clipboard,"
+		    "cstyle,"
+		    "margins,"
+		    "sync,"
+		    "title,",
+		    ",");
+	} else if (strncmp(tmp, "TMUX ", 5) == 0) {
+		tty_add_features(&c->term_features,
+		    "256,"
+		    "RGB,"
+		    "ccolour,"
+		    "cstyle,"
+		    "overline,"
+		    "title,"
+		    "usstyle",
+		    ",");
+	}
 	log_debug("%s: received DSR %.*s", c->name, (int)*size, buf);
 
-	tty_set_flags(tty, flags);
+	tty_update_features(tty);
 	tty->flags |= TTY_HAVEDSR;
 
 	return (0);
