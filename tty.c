@@ -469,7 +469,8 @@ tty_update_features(struct tty *tty)
 {
 	struct client	*c = tty->client;
 
-	tty_apply_features(tty->term, c->term_features);
+	if (tty_apply_features(tty->term, c->term_features))
+		tty_term_apply_overrides(tty->term);
 
 	if (tty_use_margin(tty))
 		tty_puts(tty, "\033[?69h"); /* DECLRMM */
@@ -1427,18 +1428,30 @@ tty_draw_line(struct tty *tty, struct window_pane *wp, struct screen *s,
 void
 tty_sync_start(struct tty *tty)
 {
-	if ((~tty->flags & TTY_SYNCING) && tty_term_has(tty->term, TTYC_SYNC)) {
+	if (tty->flags & TTY_BLOCK)
+		return;
+	if (tty->flags & TTY_SYNCING)
+		return;
+	tty->flags |= TTY_SYNCING;
+
+	if (tty_term_has(tty->term, TTYC_SYNC)) {
+		log_debug("%s sync start", tty->client->name);
 		tty_putcode1(tty, TTYC_SYNC, 1);
-		tty->flags |= TTY_SYNCING;
 	}
 }
 
 void
 tty_sync_end(struct tty *tty)
 {
-	if ((tty->flags & TTY_SYNCING) && tty_term_has(tty->term, TTYC_SYNC)) {
+	if (tty->flags & TTY_BLOCK)
+		return;
+	if (~tty->flags & TTY_SYNCING)
+		return;
+	tty->flags &= ~TTY_SYNCING;
+
+	if (tty_term_has(tty->term, TTYC_SYNC)) {
+ 		log_debug("%s sync end", tty->client->name);
 		tty_putcode1(tty, TTYC_SYNC, 2);
-		tty->flags &= ~TTY_SYNCING;
 	}
 }
 
@@ -1950,12 +1963,6 @@ void
 tty_cmd_syncstart(struct tty *tty, __unused const struct tty_ctx *ctx)
 {
 	tty_sync_start(tty);
-}
-
-void
-tty_cmd_syncend(struct tty *tty, __unused const struct tty_ctx *ctx)
-{
-	tty_sync_end(tty);
 }
 
 static void

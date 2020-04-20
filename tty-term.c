@@ -413,6 +413,30 @@ tty_term_apply(struct tty_term *term, const char *capabilities, int quiet)
 	}
 }
 
+void
+tty_term_apply_overrides(struct tty_term *term)
+{
+	struct options_entry		*o;
+	struct options_array_item	*a;
+	union options_value		*ov;
+	const char			*s;
+	size_t				 offset;
+	char				*first;
+
+	o = options_get_only(global_options, "terminal-overrides");
+	a = options_array_first(o);
+	while (a != NULL) {
+		ov = options_array_item_value(a);
+		s = ov->string;
+
+		offset = 0;
+		first = tty_term_override_next(s, &offset);
+		if (first != NULL && fnmatch(first, term->name, 0) == 0)
+			tty_term_apply(term, s + offset, 0);
+		a = options_array_next(a);
+	}
+}
+
 struct tty_term *
 tty_term_create(struct tty *tty, char *name, int *feat, int fd, char **cause)
 {
@@ -504,20 +528,6 @@ tty_term_create(struct tty *tty, char *name, int *feat, int fd, char **cause)
 		a = options_array_next(a);
 	}
 
-	/* Apply terminal overrides. */
-	o = options_get_only(global_options, "terminal-overrides");
-	a = options_array_first(o);
-	while (a != NULL) {
-		ov = options_array_item_value(a);
-		s = ov->string;
-
-		offset = 0;
-		first = tty_term_override_next(s, &offset);
-		if (first != NULL && fnmatch(first, term->name, 0) == 0)
-			tty_term_apply(term, s + offset, 0);
-		a = options_array_next(a);
-	}
-
 	/* Delete curses data. */
 #if !defined(NCURSES_VERSION_MAJOR) || NCURSES_VERSION_MAJOR > 5 || \
     (NCURSES_VERSION_MAJOR == 5 && NCURSES_VERSION_MINOR > 6)
@@ -550,8 +560,9 @@ tty_term_create(struct tty *tty, char *name, int *feat, int fd, char **cause)
 	if (tty_term_flag(term, TTYC_XT))
 		tty_add_features(feat, "title", ":,");
 
-	/* Apply the features. */
+	/* Apply the features and overrides. */
 	tty_apply_features(term, *feat);
+	tty_term_apply_overrides(term);
 
 	/*
 	 * Terminals without xenl (eat newline glitch) wrap at at $COLUMNS - 1

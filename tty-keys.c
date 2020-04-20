@@ -1150,7 +1150,7 @@ tty_keys_device_status_report(struct tty *tty, const char *buf, size_t len,
 		    "cstyle,"
 		    "margins,"
 		    "sync,"
-		    "title,",
+		    "title",
 		    ",");
 	} else if (strncmp(tmp, "TMUX ", 5) == 0) {
 		tty_add_features(&c->term_features,

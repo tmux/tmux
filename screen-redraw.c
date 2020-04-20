@@ -458,7 +458,6 @@ screen_redraw_screen(struct client *c)
 	}
 
 	tty_reset(&c->tty);
-	tty_sync_end(&c->tty);
 }
 
 /* Redraw a single pane. */
@@ -476,7 +475,6 @@ screen_redraw_pane(struct client *c, struct window_pane *wp)
 	screen_redraw_draw_pane(&ctx, wp);
 
 	tty_reset(&c->tty);
-	tty_sync_end(&c->tty);
 }
 
 /* Draw a border cell. */

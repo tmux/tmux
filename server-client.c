@@ -1539,7 +1539,7 @@ server_client_reset_state(struct client *c)
 	struct window_pane	*wp = w->active, *loop;
 	struct screen		*s;
 	struct options		*oo = c->session->options;
-	int			 mode, cursor;
+	int			 mode, cursor, flags;
 	u_int			 cx = 0, cy = 0, ox, oy, sx, sy;
 
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
@@ -1604,6 +1604,16 @@ server_client_reset_state(struct client *c)
 	/* Set the terminal mode and reset attributes. */
 	tty_update_mode(&c->tty, mode, s);
 	tty_reset(&c->tty);
+
+	/*
+	 * All writing must be done, send a sync end (if it was started). It
+	 * may have been started by redrawing so needs to go out even if the
+	 * block flag is set.
+	 */
+	flags = (c->tty.flags & TTY_BLOCK);
+	c->tty.flags &= ~TTY_BLOCK;
+	tty_sync_end(&c->tty);
+	c->tty.flags |= flags;
 }
 
 /* Repeat time callback. */

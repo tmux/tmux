@@ -232,7 +232,7 @@ tty_get_features(int feat)
 	return (s);
 }
 
-void
+int
 tty_apply_features(struct tty_term *term, int feat)
 {
 	const struct tty_feature	 *tf;
@@ -240,7 +240,7 @@ tty_apply_features(struct tty_term *term, int feat)
 	u_int				  i;
 
 	if (feat == 0)
-		return;
+		return (0);
 	log_debug("applying terminal features: %s", tty_get_features(feat));
 
 	for (i = 0; i < nitems(tty_features); i++) {
@@ -259,5 +259,8 @@ tty_apply_features(struct tty_term *term, int feat)
 		}
 		term->flags |= tf->flags;
 	}
+	if ((term->features | feat) == term->features)
+		return (0);
 	term->features |= feat;
+	return (1);
 }
