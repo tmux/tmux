@@ -1428,7 +1428,7 @@ void
 tty_sync_start(struct tty *tty)
 {
 	if ((~tty->flags & TTY_SYNCING) && tty_term_has(tty->term, TTYC_SYNC)) {
-		tty_puts(tty, "\033P=1s\033\\");
+		tty_putcode1(tty, TTYC_SYNC, 1);
 		tty->flags |= TTY_SYNCING;
 	}
 }
@@ -1437,7 +1437,7 @@ void
 tty_sync_end(struct tty *tty)
 {
 	if ((tty->flags & TTY_SYNCING) && tty_term_has(tty->term, TTYC_SYNC)) {
-		tty_puts(tty, "\033P=2s\033\\");
+		tty_putcode1(tty, TTYC_SYNC, 2);
 		tty->flags &= ~TTY_SYNCING;
 	}
 }

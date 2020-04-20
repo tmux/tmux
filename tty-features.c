@@ -35,7 +35,6 @@
  * Also:
  * - XT is used to decide whether to send DA and DSR,
  * - DECSLRM and DECFRA use a flag instead of capabilities.
- * - Sync is a flag rather than a string capability.
  * - UTF-8 is a separate flag on the client; needed for unattached clients.
  */
 
@@ -148,7 +147,7 @@ static struct tty_feature tty_feature_ccolour = {
 
 /* Terminal supports synchronized updates. */
 static const char *tty_feature_sync_capabilities[] = {
-	"Sync",
+	"Sync=\\EP=%p1%ds\\E\\\\",
 	NULL
 };
 static struct tty_feature tty_feature_sync = {
