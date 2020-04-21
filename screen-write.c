@@ -1372,10 +1372,11 @@ screen_write_collect_scroll(struct screen_write_ctx *ctx)
 	for (y = s->rupper; y < s->rlower; y++) {
 		cl = &ctx->s->write_list[y + 1];
 		TAILQ_CONCAT(&ctx->s->write_list[y].items, &cl->items, entry);
+		ctx->s->write_list[y].bg = cl->bg;
 		ctx->s->write_list[y].data = cl->data;
 	}
-	ctx->s->write_list[s->rlower].data = saved;
 	ctx->s->write_list[s->rlower].bg = 1 + 8;
+	ctx->s->write_list[s->rlower].data = saved;
 }
 
 /* Flush collected lines. */
