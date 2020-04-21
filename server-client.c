@@ -1537,6 +1537,7 @@ focused:
 static void
 server_client_reset_state(struct client *c)
 {
+	struct tty		*tty = &c->tty;
 	struct window		*w = c->session->curw->window;
 	struct window_pane	*wp = w->active, *loop;
 	struct screen		*s;
@@ -1546,6 +1547,10 @@ server_client_reset_state(struct client *c)
 
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
 		return;
+
+	/* Disable the block flag. */
+	flags = (tty->flags & TTY_BLOCK);
+	tty->flags &= ~TTY_BLOCK;
 
 	/* Get mode from overlay if any, else from screen. */
 	if (c->overlay_draw != NULL) {
@@ -1561,13 +1566,13 @@ server_client_reset_state(struct client *c)
 	log_debug("%s: client %s mode %x", __func__, c->name, mode);
 
 	/* Reset region and margin. */
-	tty_region_off(&c->tty);
-	tty_margin_off(&c->tty);
+	tty_region_off(tty);
+	tty_margin_off(tty);
 
 	/* Move cursor to pane cursor and offset. */
 	if (c->overlay_draw == NULL) {
 		cursor = 0;
-		tty_window_offset(&c->tty, &ox, &oy, &sx, &sy);
+		tty_window_offset(tty, &ox, &oy, &sx, &sy);
 		if (wp->xoff + s->cx >= ox && wp->xoff + s->cx <= ox + sx &&
 		    wp->yoff + s->cy >= oy && wp->yoff + s->cy <= oy + sy) {
 			cursor = 1;
@@ -1581,7 +1586,8 @@ server_client_reset_state(struct client *c)
 		if (!cursor)
 			mode &= ~MODE_CURSOR;
 	}
-	tty_cursor(&c->tty, cx, cy);
+	log_debug("%s: cursor to %u,%u", __func__, cx, cy);
+	tty_cursor(tty, cx, cy);
 
 	/*
 	 * Set mouse mode if requested. To support dragging, always use button
@@ -1604,18 +1610,12 @@ server_client_reset_state(struct client *c)
 		mode &= ~MODE_BRACKETPASTE;
 
 	/* Set the terminal mode and reset attributes. */
-	tty_update_mode(&c->tty, mode, s);
-	tty_reset(&c->tty);
+	tty_update_mode(tty, mode, s);
+	tty_reset(tty);
 
-	/*
-	 * All writing must be done, send a sync end (if it was started). It
-	 * may have been started by redrawing so needs to go out even if the
-	 * block flag is set.
-	 */
-	flags = (c->tty.flags & TTY_BLOCK);
-	c->tty.flags &= ~TTY_BLOCK;
-	tty_sync_end(&c->tty);
-	c->tty.flags |= flags;
+	/* All writing must be done, send a sync end (if it was started). */
+	tty_sync_end(tty);
+	tty->flags |= flags;
 }
 
 /* Repeat time callback. */
@@ -1738,7 +1738,6 @@ server_client_check_redraw(struct client *c)
 		}
 
 		if (~c->flags & CLIENT_REDRAWWINDOW) {
-			c->redraw_panes = 0;
 			TAILQ_FOREACH(wp, &w->panes, entry) {
 				if (wp->flags & PANE_REDRAW) {
 					log_debug("%s: pane %%%u needs redraw",
@@ -1784,6 +1783,7 @@ server_client_check_redraw(struct client *c)
 			tty_update_mode(tty, mode, NULL);
 			screen_redraw_pane(c, wp);
 		}
+		c->redraw_panes = 0;
 		c->flags &= ~CLIENT_REDRAWPANES;
 	}
 
