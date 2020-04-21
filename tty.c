@@ -1491,6 +1491,7 @@ tty_write(void (*cmdfn)(struct tty *, const struct tty_ctx *),
 			 * Redraw is already deferred to redraw another pane -
 			 * redraw this one also when that happens.
 			 */
+			log_debug("adding %%%u to deferred redraw", wp->id);
 			wp->flags |= PANE_REDRAW;
 			break;
 		}
