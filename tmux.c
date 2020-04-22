@@ -398,5 +398,5 @@ main(int argc, char **argv)
 	free(label);
 
 	/* Pass control to the client. */
-	exit(client_main(event_init(), argc, argv, flags, feat));
+	exit(client_main(osdep_event_init(), argc, argv, flags, feat));
 }
