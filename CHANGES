@@ -1,5 +1,83 @@
 CHANGES FROM 3.1 TO 3.2
 
+* Add a -s flag to copy-mode to specify a different pane for the source
+  content. This means it is possible to view two places in a pane's history at
+  the same time in different panes, or view the history while still using the
+  pane. Pressing r refreshes the content from the source pane.
+
+* Add an argument to list-commands to show only a single command.
+
+* Change copy mode to make copy of the pane history so it does not need to
+  freeze the pane.
+
+* Restore pane_current_path format from portable tmux on OpenBSD.
+
+* Wait until the initial command sequence is done before sending a device
+  attributes request and other bits that prompt a reply from the terminal. This
+  means that stray relies are not left on the terminal if the command has
+  attached and then immediately detached and tmux will not be around to receive
+  them.
+
+* Add a -f filter argument to the list commands like choose-tree.
+
+* Move specific hooks for panes to pane options and windows for window options
+  rather than all hooks being session options. These hooks are now window options:
+
+  window-layout-changed
+  window-linked
+  window-pane-changed
+  window-renamed
+  window-unlinked
+
+  And these now pane options:
+
+  pane-died
+  pane-exited
+  pane-focus-in
+  pane-focus-out
+  pane-mode-changed
+  pane-set-clipboard
+
+  Any existing configurations using these hooks on a session rather than
+  globally (that is, set-hook or set-option without -g) may need to be changed.
+
+* Show signal names when a process exits with remain-on-exit on platforms which
+  have a way to get them.
+
+* Start menu with top item selected if no mouse and use mode-style for the
+  selected item.
+
+* Add a copy-command option and change copy-pipe and friends to pipe to it if
+  used without arguments, allows all the default copy key bindings to be
+  changed to pipe with one option rather than needing to change each key
+  binding individually.
+
+* Tidy up the terminal detection and feature code and add named sets of
+  terminal features, each of which are defined in one place and map to a
+  builtin set of terminfo(5) capabilities. Features can be specified based on
+  TERM with a new terminal-features option or with the -T flag when running
+  tmux. tmux will also detect a few common terminals from the DA and DSR
+  responses.
+
+  This is intended to make it easier to configure tmux's use of terminfo(5)
+  even in the presence of outdated ncurses(3) or terminfo(5) databases or for
+  features which do not yet have a terminfo(5) entry. Instead of having to grok
+  terminfo(5) capability names and what they should be set to in the
+  terminal-overrides option, the user can hopefully just give tmux a feature
+  name and let it do the right thing.
+
+  The terminal-overrides option remains both for backwards compatibility and to
+  allow tweaks of individual capabilities.
+
+* Support mintty's application escape sequence (means tmux doesn't have to
+  delay to wait for Escape, so no need to reduce escape-time when using
+  mintty).
+
+* Change so main-pane-width and height can be given as a percentage.
+
+* Support for the iTerm2 synchronized updates feature (allows the terminal to
+  avoid unnecessary drawing while output is still in progress).
+
 * Make the mouse_word and mouse_line formats work in copy mode and enable the
   default pane menu in copy mode.
 
@@ -40,6 +118,11 @@ CHANGES FROM 3.1 TO 3.2
 * Add number operators for formats (+, -, *, / and m),
 
 CHANGES FROM 3.0a TO 3.1
+
+* Only search the visible part of the history when marking (highlighting)
+  search terms. This is much faster than searching the whole history and solves
+  problems with large histories. The count of matches shown is now the visible
+  matches rather than all matches.
 
 * Search using regular expressions in copy mode. search-forward and
   search-backward use regular expressions by default; the incremental versions
