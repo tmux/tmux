@@ -48,7 +48,7 @@ struct screen_title_entry {
 };
 TAILQ_HEAD(screen_titles, screen_title_entry);
 
-static void	screen_resize_y(struct screen *, u_int, int);
+static void	screen_resize_y(struct screen *, u_int, int, u_int *);
 static void	screen_reflow(struct screen *, u_int, u_int *, u_int *);
 
 /* Free titles stack. */
@@ -254,7 +254,7 @@ screen_resize_cursor(struct screen *s, u_int sx, u_int sy, int reflow,
 		reflow = 0;
 
 	if (sy != screen_size_y(s))
-		screen_resize_y(s, sy, eat_empty);
+		screen_resize_y(s, sy, eat_empty, cy);
 
 	if (reflow)
 		screen_reflow(s, sx, cx, cy);
@@ -281,7 +281,7 @@ screen_resize(struct screen *s, u_int sx, u_int sy, int reflow)
 }
 
 static void
-screen_resize_y(struct screen *s, u_int sy, int eat_empty)
+screen_resize_y(struct screen *s, u_int sy, int eat_empty, u_int *cy)
 {
 	struct grid	*gd = s->grid;
 	u_int		 needed, available, oldy, i;
@@ -330,6 +330,7 @@ screen_resize_y(struct screen *s, u_int sy, int eat_empty)
 			if (available > needed)
 				available = needed;
 			grid_view_delete_lines(gd, 0, available, 8);
+			(*cy) -= available;
 		}
 	}
 
