@@ -256,8 +256,8 @@ mode_tree_expand_current(struct mode_tree_data *mtd)
 	}
 }
 
-void
-mode_tree_set_current(struct mode_tree_data *mtd, uint64_t tag)
+static int
+mode_tree_get_tag(struct mode_tree_data *mtd, uint64_t tag, u_int *found)
 {
 	u_int	i;
 
@@ -266,15 +266,41 @@ mode_tree_set_current(struct mode_tree_data *mtd, uint64_t tag)
 			break;
 	}
 	if (i != mtd->line_size) {
-		mtd->current = i;
+		*found = i;
+		return (1);
+	}
+	return (0);
+}
+
+void
+mode_tree_expand(struct mode_tree_data *mtd, uint64_t tag)
+{
+	u_int	found;
+
+	if (!mode_tree_get_tag(mtd, tag, &found))
+	    return;
+	if (!mtd->line_list[found].item->expanded) {
+		mtd->line_list[found].item->expanded = 1;
+		mode_tree_build(mtd);
+	}
+}
+
+int
+mode_tree_set_current(struct mode_tree_data *mtd, uint64_t tag)
+{
+	u_int	found;
+
+	if (mode_tree_get_tag(mtd, tag, &found)) {
+		mtd->current = found;
 		if (mtd->current > mtd->height - 1)
 			mtd->offset = mtd->current - mtd->height + 1;
 		else
 			mtd->offset = 0;
-	} else {
-		mtd->current = 0;
-		mtd->offset = 0;
+		return (1);
 	}
+	mtd->current = 0;
+	mtd->offset = 0;
+	return (0);
 }
 
 u_int
