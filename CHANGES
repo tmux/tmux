@@ -1,5 +1,10 @@
 CHANGES FROM 3.0a TO 3.1
 
+* Only search the visible part of the history when marking (highlighting)
+  search terms. This is much faster than searching the whole history and solves
+  problems with large histories. The count of matches shown is now the visible
+  matches rather than all matches.
+
 * Search using regular expressions in copy mode. search-forward and
   search-backward use regular expressions by default; the incremental versions
   do not.
