@@ -352,22 +352,29 @@ long long
 args_percentage(struct args *args, u_char ch, long long minval,
     long long maxval, long long curval, char **cause)
 {
-	const char		*errstr;
-	long long 	 	 ll;
+	const char		*value;
 	struct args_entry	*entry;
-	struct args_value	*value;
-	size_t			 valuelen;
-	char			*copy;
 
 	if ((entry = args_find(args, ch)) == NULL) {
 		*cause = xstrdup("missing");
 		return (0);
 	}
-	value = TAILQ_LAST(&entry->values, args_values);
-	valuelen = strlen(value->value);
+	value = TAILQ_LAST(&entry->values, args_values)->value;
+	return (args_string_percentage(value, minval, maxval, curval, cause));
+}
 
-	if (value->value[valuelen - 1] == '%') {
-		copy = xstrdup(value->value);
+/* Convert a string to a number which may be a percentage. */
+long long
+args_string_percentage(const char *value, long long minval, long long maxval,
+    long long curval, char **cause)
+{
+	const char	*errstr;
+	long long 	 ll;
+	size_t		 valuelen = strlen(value);
+	char		*copy;
+
+	if (value[valuelen - 1] == '%') {
+		copy = xstrdup(value);
 		copy[valuelen - 1] = '\0';
 
 		ll = strtonum(copy, 0, 100, &errstr);
@@ -386,7 +393,7 @@ args_percentage(struct args *args, u_char ch, long long minval,
 			return (0);
 		}
 	} else {
-		ll = strtonum(value->value, minval, maxval, &errstr);
+		ll = strtonum(value, minval, maxval, &errstr);
 		if (errstr != NULL) {
 			*cause = xstrdup(errstr);
 			return (0);
