@@ -50,8 +50,8 @@ const struct cmd_entry cmd_move_pane_entry = {
 	.name = "move-pane",
 	.alias = "movep",
 
-	.args = { "bdhvp:l:s:t:", 0, 0 },
-	.usage = "[-bdhv] [-l size] " CMD_SRCDST_PANE_USAGE,
+	.args = { "bdfhvp:l:s:t:", 0, 0 },
+	.usage = "[-bdfhv] [-l size] " CMD_SRCDST_PANE_USAGE,
 
 	.source = { 's', CMD_FIND_PANE, CMD_FIND_DEFAULT_MARKED },
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -72,15 +72,10 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct window		*src_w, *dst_w;
 	struct window_pane	*src_wp, *dst_wp;
 	char			*cause = NULL;
-	int			 size, percentage, dst_idx, not_same_window;
+	int			 size, percentage, dst_idx;
 	int			 flags;
 	enum layout_type	 type;
 	struct layout_cell	*lc;
-
-	if (cmd_get_entry(self) == &cmd_join_pane_entry)
-		not_same_window = 1;
-	else
-		not_same_window = 0;
 
 	dst_s = target->s;
 	dst_wl = target->wl;
@@ -94,11 +89,7 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	src_w = src_wl->window;
 	server_unzoom_window(src_w);
 
-	if (not_same_window && src_w == dst_w) {
-		cmdq_error(item, "can't join a pane to its own window");
-		return (CMD_RETURN_ERROR);
-	}
-	if (!not_same_window && src_wp == dst_wp) {
+	if (src_wp == dst_wp) {
 		cmdq_error(item, "source and target panes must be different");
 		return (CMD_RETURN_ERROR);
 	}
