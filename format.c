@@ -2529,6 +2529,11 @@ format_defaults_session(struct format_tree *ft, struct session *s)
 
 	format_add_cb(ft, "session_alerts", format_cb_session_alerts);
 	format_add_cb(ft, "session_stack", format_cb_session_stack);
+
+	if (server_check_marked() && marked_pane.s == s)
+	    format_add(ft, "session_marked", "1");
+	else
+	    format_add(ft, "session_marked", "0");
 }
 
 /* Set default format keys for a client. */
