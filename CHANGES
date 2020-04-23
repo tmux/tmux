@@ -1,5 +1,10 @@
 CHANGES FROM 3.1 TO 3.2
 
+* Add extension terminfo(5) capabilities for margins.
+
+* Try $XDG_CONFIG_HOME/tmux/tmux.conf as well as ~/.config/tmux/tmux.conf for
+  configuration file (the search paths are in TMUX_CONF in Makefile.am).
+
 * Remove the DSR 1337 iTerm2 extension and replace by the extended device
   attributes sequence (CSI > q) supported by more terminals.
 
