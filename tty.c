@@ -426,7 +426,7 @@ tty_stop_tty(struct tty *tty)
 	}
 
 	if (tty_use_margin(tty))
-		tty_raw(tty, "\033[?69l"); /* DECLRMM */
+		tty_raw(tty, tty_term_string(tty->term, TTYC_DSMG));
 	tty_raw(tty, tty_term_string(tty->term, TTYC_RMCUP));
 
 	setblocking(tty->fd, 1);
@@ -473,7 +473,7 @@ tty_update_features(struct tty *tty)
 		tty_term_apply_overrides(tty->term);
 
 	if (tty_use_margin(tty))
-		tty_puts(tty, "\033[?69h"); /* DECLRMM */
+		tty_putcode(tty, TTYC_ENMG);
 }
 
 void
@@ -2028,7 +2028,7 @@ tty_invalidate(struct tty *tty)
 
 	if (tty->flags & TTY_STARTED) {
 		if (tty_use_margin(tty))
-			tty_puts(tty, "\033[?69h"); /* DECLRMM */
+			tty_putcode(tty, TTYC_ENMG);
 		tty_putcode(tty, TTYC_SGR0);
 
 		tty->mode = ALL_MODES;
@@ -2105,8 +2105,6 @@ tty_margin_pane(struct tty *tty, const struct tty_ctx *ctx)
 static void
 tty_margin(struct tty *tty, u_int rleft, u_int rright)
 {
-	char s[64];
-
 	if (!tty_use_margin(tty))
 		return;
 	if (tty->rleft == rleft && tty->rright == rright)
@@ -2118,10 +2116,9 @@ tty_margin(struct tty *tty, u_int rleft, u_int rright)
 	tty->rright = rright;
 
 	if (rleft == 0 && rright == tty->sx - 1)
-		snprintf(s, sizeof s, "\033[s");
+		tty_putcode(tty, TTYC_CLMG);
 	else
-		snprintf(s, sizeof s, "\033[%u;%us", rleft + 1, rright + 1);
-	tty_puts(tty, s);
+		tty_putcode2(tty, TTYC_CMG, rleft, rright);
 	tty->cx = tty->cy = UINT_MAX;
 }
 

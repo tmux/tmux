@@ -34,7 +34,7 @@
  *
  * Also:
  * - XT is used to decide whether to send DA and XDA;
- * - DECSLRM and DECFRA use a flag instead of capabilities;
+ * - DECFRA uses a flag instead of capabilities;
  * - UTF-8 is a separate flag on the client; needed for unattached clients.
  */
 
@@ -84,7 +84,7 @@ static const char *tty_feature_rgb_capabilities[] = {
 static struct tty_feature tty_feature_rgb = {
 	"RGB",
 	tty_feature_rgb_capabilities,
-	(TERM_256COLOURS|TERM_RGBCOLOURS)
+	TERM_256COLOURS|TERM_RGBCOLOURS
 };
 
 /* Terminal supports 256 colours. */
@@ -159,9 +159,16 @@ static struct tty_feature tty_feature_sync = {
 };
 
 /* Terminal supports DECSLRM margins. */
+static const char *tty_feature_margins_capabilities[] = {
+	"Enmg=\\E[?69h",
+	"Dsmg=\\E[?69l",
+	"Clmg=\\E[s",
+	"Cmg=\\E[%i%p1%d;%p2%ds",
+	NULL
+};
 static struct tty_feature tty_feature_margins = {
 	"margins",
-	NULL,
+	tty_feature_margins_capabilities,
 	TERM_DECSLRM
 };
 
@@ -193,6 +200,8 @@ tty_add_features(int *feat, const char *s, const char *separators)
 	const struct tty_feature	 *tf;
 	char				 *next, *loop, *copy;
 	u_int				  i;
+
+	log_debug("%s: %s", __func__, s);
 
 	loop = copy = xstrdup(s);
 	while ((next = strsep(&loop, separators)) != NULL) {
