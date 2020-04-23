@@ -243,8 +243,12 @@ cmdq_copy_state(struct cmdq_state *state)
 void
 cmdq_free_state(struct cmdq_state *state)
 {
-	if (--state->references == 0)
-		free(state);
+	if (--state->references != 0)
+		return;
+
+	if (state->formats != NULL)
+		format_free(state->formats);
+	free(state);
 }
 
 /* Add a format to command queue. */

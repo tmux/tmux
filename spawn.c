@@ -366,6 +366,7 @@ spawn_pane(struct spawn_context *sc, char **cause)
 			window_remove_pane(w, new_wp);
 		}
 		sigprocmask(SIG_SETMASK, &oldset, NULL);
+		environ_free(child);
 		return (NULL);
 	}
 
@@ -442,6 +443,8 @@ complete:
 
 	sigprocmask(SIG_SETMASK, &oldset, NULL);
 	window_pane_set_event(new_wp);
+
+	environ_free(child);
 
 	if (sc->flags & SPAWN_RESPAWN)
 		return (new_wp);
