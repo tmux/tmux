@@ -254,6 +254,7 @@ enum input_csi_type {
 	INPUT_CSI_TBC,
 	INPUT_CSI_VPA,
 	INPUT_CSI_WINOPS,
+	INPUT_CSI_XDA,
 };
 
 /* Control (CSI) command table. */
@@ -290,6 +291,7 @@ static const struct input_table_entry input_csi_table[] = {
 	{ 'm', "",  INPUT_CSI_SGR },
 	{ 'n', "",  INPUT_CSI_DSR },
 	{ 'q', " ", INPUT_CSI_DECSCUSR },
+	{ 'q', ">", INPUT_CSI_XDA },
 	{ 'r', "",  INPUT_CSI_DECSTBM },
 	{ 's', "",  INPUT_CSI_SCP },
 	{ 't', "",  INPUT_CSI_WINOPS },
@@ -1456,13 +1458,6 @@ input_csi_dispatch(struct input_ctx *ictx)
 		case 6:
 			input_reply(ictx, "\033[%u;%uR", s->cy + 1, s->cx + 1);
 			break;
-		case 1337: /* Terminal version, from iTerm2. */
-			copy = xstrdup(getversion());
-			for (cp = copy; *cp != '\0'; cp++)
-				*cp = toupper((u_char)*cp);
-			input_reply(ictx, "\033[TMUX %sn", copy);
-			free(copy);
-			break;
 		default:
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);
 			break;
@@ -1597,6 +1592,10 @@ input_csi_dispatch(struct input_ctx *ictx)
 		if (n != -1)
 			screen_set_cursor_style(s, n);
 		break;
+	case INPUT_CSI_XDA:
+		input_reply(ictx, "\033P>|tmux %s\033\\", getversion());
+		break;
+
 	}
 
 	ictx->last = -1;

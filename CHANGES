@@ -1,5 +1,8 @@
 CHANGES FROM 3.1 TO 3.2
 
+* Remove the DSR 1337 iTerm2 extension and replace by the extended device
+  attributes sequence (CSI > q) supported by more terminals.
+
 * Add a -s flag to copy-mode to specify a different pane for the source
   content. This means it is possible to view two places in a pane's history at
   the same time in different panes, or view the history while still using the
