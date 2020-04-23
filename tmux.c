@@ -180,31 +180,30 @@ expand_paths(const char *s, char ***paths, u_int *n)
 static char *
 make_label(const char *label, char **cause)
 {
-	char		*base, resolved[PATH_MAX], *path, *s;
-	struct stat	 sb;
-	uid_t		 uid;
+	char		**paths, *path, *base;
+	u_int		  i, n;
+	struct stat	  sb;
+	uid_t		  uid;
 
 	*cause = NULL;
-
 	if (label == NULL)
 		label = "default";
 	uid = getuid();
 
-	if ((s = getenv("TMUX_TMPDIR")) != NULL && *s != '\0')
-		xasprintf(&base, "%s/tmux-%ld", s, (long)uid);
-	else
-		xasprintf(&base, "%s/tmux-%ld", _PATH_TMP, (long)uid);
-	if (realpath(base, resolved) == NULL &&
-	    strlcpy(resolved, base, sizeof resolved) >= sizeof resolved) {
-		errno = ERANGE;
-		free(base);
-		goto fail;
+	expand_paths(TMUX_SOCK, &paths, &n);
+	if (n == 0) {
+		xasprintf(cause, "no suitable socket path");
+		return (NULL);
 	}
-	free(base);
+	path = paths[0]; /* can only have one socket! */
+	for (i = 1; i < n; i++)
+		free(paths[i]);
+	free(paths);
 
-	if (mkdir(resolved, S_IRWXU) != 0 && errno != EEXIST)
+	xasprintf(&base, "%s/tmux-%ld", path, (long)uid);
+	if (mkdir(base, S_IRWXU) != 0 && errno != EEXIST)
 		goto fail;
-	if (lstat(resolved, &sb) != 0)
+	if (lstat(base, &sb) != 0)
 		goto fail;
 	if (!S_ISDIR(sb.st_mode)) {
 		errno = ENOTDIR;
@@ -214,11 +213,13 @@ make_label(const char *label, char **cause)
 		errno = EACCES;
 		goto fail;
 	}
-	xasprintf(&path, "%s/%s", resolved, label);
+	xasprintf(&path, "%s/%s", base, label);
+	free(base);
 	return (path);
 
 fail:
-	xasprintf(cause, "error creating %s (%s)", resolved, strerror(errno));
+	xasprintf(cause, "error creating %s (%s)", base, strerror(errno));
+	free(base);
 	return (NULL);
 }
 
