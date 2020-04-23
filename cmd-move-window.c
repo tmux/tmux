@@ -63,9 +63,9 @@ cmd_move_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_find_state	*source = cmdq_get_source(item);
 	struct cmd_find_state	 target;
 	const char		*tflag = args_get(args, 't');
-	struct session		*src;
+	struct session		*src = source->s;
 	struct session		*dst;
-	struct winlink		*wl;
+	struct winlink		*wl = source->wl;
 	char			*cause;
 	int			 idx, kflag, dflag, sflag;
 
@@ -83,9 +83,7 @@ cmd_move_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (cmd_find_target(&target, item, tflag, CMD_FIND_WINDOW,
 	    CMD_FIND_WINDOW_INDEX) != 0)
 		return (CMD_RETURN_ERROR);
-	src = source->s;
 	dst = target.s;
-	wl = source->wl;
 	idx = target.idx;
 
 	kflag = args_has(args, 'k');
@@ -93,12 +91,16 @@ cmd_move_window_exec(struct cmd *self, struct cmdq_item *item)
 	sflag = args_has(args, 's');
 
 	if (args_has(args, 'a')) {
-		if ((idx = winlink_shuffle_up(dst, dst->curw)) == -1)
+		if (target.wl != NULL)
+			idx = winlink_shuffle_up(dst, target.wl);
+		else
+			idx = winlink_shuffle_up(dst, dst->curw);
+		if (idx == -1)
 			return (CMD_RETURN_ERROR);
 	}
 
 	if (server_link_window(src, wl, dst, idx, kflag, !dflag, &cause) != 0) {
-		cmdq_error(item, "can't link window: %s", cause);
+		cmdq_error(item, "%s", cause);
 		free(cause);
 		return (CMD_RETURN_ERROR);
 	}

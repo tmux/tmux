@@ -34,8 +34,8 @@ const struct cmd_entry cmd_break_pane_entry = {
 	.name = "break-pane",
 	.alias = "breakp",
 
-	.args = { "dPF:n:s:t:", 0, 0 },
-	.usage = "[-dP] [-F format] [-n window-name] [-s src-pane] "
+	.args = { "adPF:n:s:t:", 0, 0 },
+	.usage = "[-adP] [-F format] [-n window-name] [-s src-pane] "
 		 "[-t dst-window]",
 
 	.source = { 's', CMD_FIND_PANE, 0 },
@@ -63,16 +63,30 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	const char		*template;
 	char			*cp;
 
-	if (idx != -1 && winlink_find_by_index(&dst_s->windows, idx) != NULL) {
-		cmdq_error(item, "index %d already in use", idx);
-		return (CMD_RETURN_ERROR);
-	}
-
-	if (window_count_panes(w) == 1) {
-		cmdq_error(item, "can't break with only one pane");
-		return (CMD_RETURN_ERROR);
+	if (args_has(args, 'a')) {
+		if (target->wl != NULL)
+			idx = winlink_shuffle_up(dst_s, target->wl);
+		else
+			idx = winlink_shuffle_up(dst_s, dst_s->curw);
+		if (idx == -1)
+			return (CMD_RETURN_ERROR);
 	}
 	server_unzoom_window(w);
+
+	if (window_count_panes(w) == 1) {
+		if (server_link_window(src_s, wl, dst_s, idx, 0,
+		    !args_has(args, 'd'), &cause) != 0) {
+			cmdq_error(item, "%s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
+		}
+		server_unlink_window(src_s, wl);
+		return (CMD_RETURN_NORMAL);
+	}
+	if (idx != -1 && winlink_find_by_index(&dst_s->windows, idx) != NULL) {
+		cmdq_error(item, "index in use: %d", idx);
+		return (CMD_RETURN_ERROR);
+	}
 
 	TAILQ_REMOVE(&w->panes, wp, entry);
 	window_lost_pane(w, wp);
