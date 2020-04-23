@@ -36,7 +36,7 @@ static void		 window_buffer_key(struct window_mode_entry *,
 #define WINDOW_BUFFER_DEFAULT_COMMAND "paste-buffer -b '%%'"
 
 #define WINDOW_BUFFER_DEFAULT_FORMAT \
-	"#{buffer_size} bytes (#{t:buffer_created})"
+	"#{t/p:buffer_created}: #{buffer_sample}"
 
 static const struct menu_item window_buffer_menu_items[] = {
 	{ "Paste", 'p', NULL },

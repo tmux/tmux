@@ -100,6 +100,7 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 #define FORMAT_SESSIONS 0x80
 #define FORMAT_WINDOWS 0x100
 #define FORMAT_PANES 0x200
+#define FORMAT_PRETTY 0x400
 
 /* Limit on recursion. */
 #define FORMAT_LOOP_LIMIT 10
@@ -1322,6 +1323,53 @@ format_quote(const char *s)
 	return (out);
 }
 
+/* Make a prettier time. */
+static char *
+format_pretty_time(time_t t)
+{
+	struct tm       now_tm, tm;
+	time_t		now;
+	char		s[6];
+	int		y, m, d;
+
+	time(&now);
+	if (now < t)
+		now = t;
+	localtime_r(&now, &now_tm);
+	localtime_r(&t, &tm);
+
+	y = now_tm.tm_year - 1;
+	if (tm.tm_year < y ||
+	    (tm.tm_year == y &&
+	    (tm.tm_mon <= now_tm.tm_mon || tm.tm_mday <= now_tm.tm_mday))) {
+		/* Last year. */
+		strftime(s, sizeof s, "%h%y", &tm);
+		return (xstrdup(s));
+	}
+	if (now_tm.tm_mon == 0)
+		m = 11;
+	else
+		m = now_tm.tm_mon - 1;
+	if (tm.tm_mon < m || (tm.tm_mon == m && tm.tm_mday < now_tm.tm_mday)) {
+		/* Last month. */
+		strftime(s, sizeof s, "%d%b", &tm);
+		return (xstrdup(s));
+	}
+	if (now_tm.tm_mday == 0)
+		d = 31;
+	else
+		d = now_tm.tm_mday - 1;
+	if (tm.tm_mday < d ||
+	    (tm.tm_mday == d && tm.tm_mday < now_tm.tm_mday)) {
+		/* This day. */
+		strftime(s, sizeof s, "%a%d", &tm);
+		return (xstrdup(s));
+	}
+	/* Today. */
+	strftime(s, sizeof s, "%H:%M", &tm);
+	return (xstrdup(s));
+}
+
 /* Find a format entry. */
 static char *
 format_find(struct format_tree *ft, const char *key, int modifiers)
@@ -1358,9 +1406,13 @@ format_find(struct format_tree *ft, const char *key, int modifiers)
 		if (modifiers & FORMAT_TIMESTRING) {
 			if (fe->t == 0)
 				return (NULL);
-			ctime_r(&fe->t, s);
-			s[strcspn(s, "\n")] = '\0';
-			found = xstrdup(s);
+			if (modifiers & FORMAT_PRETTY)
+				found = format_pretty_time(fe->t);
+			else {
+				ctime_r(&fe->t, s);
+				s[strcspn(s, "\n")] = '\0';
+				found = xstrdup(s);
+			}
 			goto found;
 		}
 		if (fe->t != 0) {
@@ -1532,7 +1584,7 @@ format_build_modifiers(struct format_tree *ft, const char **s, u_int *count)
 			cp++;
 
 		/* Check single character modifiers with no arguments. */
-		if (strchr("lbdtqETSWP<>", cp[0]) != NULL &&
+		if (strchr("lbdqETSWP<>", cp[0]) != NULL &&
 		    format_is_end(cp[1])) {
 			format_add_modifier(&list, count, cp, 1, NULL, 0);
 			cp++;
@@ -1553,7 +1605,7 @@ format_build_modifiers(struct format_tree *ft, const char **s, u_int *count)
 		}
 
 		/* Now try single character with arguments. */
-		if (strchr("mCs=pe", cp[0]) == NULL)
+		if (strchr("mCst=pe", cp[0]) == NULL)
 			break;
 		c = cp[0];
 
@@ -1978,7 +2030,7 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 			case 'e':
 				if (fm->argc < 1 || fm->argc > 3)
 					break;
-			    mexp = fm;
+				mexp = fm;
 				break;
 			case 'l':
 				modifiers |= FORMAT_LITERAL;
@@ -1991,6 +2043,10 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 				break;
 			case 't':
 				modifiers |= FORMAT_TIMESTRING;
+				if (fm->argc < 1)
+					break;
+				if (strchr(fm->argv[0], 'p') != NULL)
+					modifiers |= FORMAT_PRETTY;
 				break;
 			case 'q':
 				modifiers |= FORMAT_QUOTE;
