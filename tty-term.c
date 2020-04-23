@@ -534,6 +534,9 @@ tty_term_create(struct tty *tty, char *name, int *feat, int fd, char **cause)
 	del_curterm(cur_term);
 #endif
 
+	/* Apply overrides so any capabilities used for features are changed. */
+	tty_term_apply_overrides(term);
+
 	/* These are always required. */
 	if (!tty_term_has(term, TTYC_CLEAR)) {
 		xasprintf(cause, "terminal does not support clear");
@@ -560,7 +563,7 @@ tty_term_create(struct tty *tty, char *name, int *feat, int fd, char **cause)
 	if (tty_term_flag(term, TTYC_XT))
 		tty_add_features(feat, "title", ":,");
 
-	/* Apply the features and overrides. */
+	/* Apply the features and overrides again. */
 	tty_apply_features(term, *feat);
 	tty_term_apply_overrides(term);
 
