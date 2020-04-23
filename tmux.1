@@ -2715,7 +2715,7 @@ Commands related to key bindings are as follows:
 .Op Fl nr
 .Op Fl N Ar note
 .Op Fl T Ar key-table
-.Ar key Ar command Op Ar arguments
+.Ar key command Op Ar arguments
 .Xc
 .D1 (alias: Ic bind )
 Bind key
@@ -5662,7 +5662,7 @@ A notification will never occur inside an output block.
 .Pp
 The following notifications are defined:
 .Bl -tag -width Ds
-.It Ic %client-session-changed Ar client Ar session-id Ar name
+.It Ic %client-session-changed Ar client session-id name
 The client is now attached to the session with ID
 .Ar session-id ,
 which is named
