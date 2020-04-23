@@ -4661,7 +4661,8 @@ for the terminal default colour; or a hexadecimal RGB string such as
 Set the background colour.
 .It Ic none
 Set no attributes (turn off any active attributes).
-.It Xo Ic bright
+.It Xo Ic acs ,
+.Ic bright
 (or
 .Ic bold ) ,
 .Ic dim ,
@@ -4681,6 +4682,8 @@ Set an attribute.
 Any of the attributes may be prefixed with
 .Ql no
 to unset.
+.Ic acs
+is the terminal alternate character set.
 .It Xo Ic align=left
 (or
 .Ic noalign ) ,

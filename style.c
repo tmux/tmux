@@ -26,7 +26,7 @@
 #include "tmux.h"
 
 /* Mask for bits not included in style. */
-#define STYLE_ATTR_MASK (~GRID_ATTR_CHARSET)
+#define STYLE_ATTR_MASK (~0)
 
 /* Default style. */
 static struct style style_default = {
@@ -247,7 +247,7 @@ style_tostring(struct style *sy)
 		    colour_tostring(gc->bg));
 		comma = ",";
 	}
-	if (gc->attr != 0 && gc->attr != GRID_ATTR_CHARSET) {
+	if (gc->attr != 0) {
 		xsnprintf(s + off, sizeof s - off, "%s%s", comma,
 		    attributes_tostring(gc->attr));
 		comma = ",";
