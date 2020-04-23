@@ -1326,7 +1326,6 @@ input_csi_dispatch(struct input_ctx *ictx)
 	struct input_table_entry       *entry;
 	int				i, n, m;
 	u_int				cx, bg = ictx->cell.cell.bg;
-	char			       *copy, *cp;
 
 	if (ictx->flags & INPUT_DISCARD)
 		return (0);

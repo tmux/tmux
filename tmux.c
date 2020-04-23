@@ -107,6 +107,77 @@ areshell(const char *shell)
 }
 
 static char *
+expand_path(const char *path, const char *home)
+{
+	char			*expanded, *name;
+	const char		*end;
+	struct environ_entry	*value;
+
+	if (strncmp(path, "~/", 2) == 0) {
+		if (home == NULL)
+			return (NULL);
+		xasprintf(&expanded, "%s%s", home, path + 1);
+		return (expanded);
+	}
+
+	if (*path == '$') {
+		end = strchr(path, '/');
+		if (end == NULL)
+			name = xstrdup(path + 1);
+		else
+			name = xstrndup(path + 1, end - path - 1);
+		value = environ_find(global_environ, name);
+		free(name);
+		if (value == NULL)
+			return (NULL);
+		if (end == NULL)
+			end = "";
+		xasprintf(&expanded, "%s%s", value->value, end);
+		return (expanded);
+	}
+
+	return (xstrdup(path));
+}
+
+void
+expand_paths(const char *s, char ***paths, u_int *n)
+{
+	const char	*home = find_home();
+	char		*copy, *next, *tmp, resolved[PATH_MAX], *expanded;
+	u_int		 i;
+
+	*paths = NULL;
+	*n = 0;
+
+	copy = tmp = xstrdup(s);
+	while ((next = strsep(&tmp, ":")) != NULL) {
+		expanded = expand_path(next, home);
+		if (expanded == NULL) {
+			log_debug("%s: invalid path: %s", __func__, next);
+			continue;
+		}
+		if (realpath(expanded, resolved) == NULL) {
+			log_debug("%s: realpath(\"%s\") failed: %s", __func__,
+			    expanded, strerror(errno));
+			free(expanded);
+			continue;
+		}
+		free(expanded);
+		for (i = 0; i < *n; i++) {
+			if (strcmp(resolved, (*paths)[i]) == 0)
+				break;
+		}
+		if (i != *n) {
+			log_debug("%s: duplicate path: %s", __func__, resolved);
+			continue;
+		}
+		*paths = xreallocarray(*paths, (*n) + 1, sizeof *paths);
+		(*paths)[(*n)++] = xstrdup(resolved);
+	}
+	free(copy);
+}
+
+static char *
 make_label(const char *label, char **cause)
 {
 	char		*base, resolved[PATH_MAX], *path, *s;

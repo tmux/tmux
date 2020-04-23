@@ -27,7 +27,7 @@
  * Still hardcoded:
  * - bracket paste (sent if application asks for it);
  * - mouse (under kmous capability);
- * - focus events (under focus-events option);
+ * - focus events (under XT and focus-events option);
  * - default colours (under AX or op capabilities);
  * - AIX colours (under colors >= 16);
  * - alternate escape (under XT).

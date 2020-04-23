@@ -66,45 +66,12 @@ set_cfg_file(const char *path)
 	cfg_file = xstrdup(path);
 }
 
-static char *
-expand_cfg_file(const char *path, const char *home)
-{
-	char			*expanded, *name;
-	const char		*end;
-	struct environ_entry	*value;
-
-	if (strncmp(path, "~/", 2) == 0) {
-		if (home == NULL)
-			return (NULL);
-		xasprintf(&expanded, "%s%s", home, path + 1);
-		return (expanded);
-	}
-
-	if (*path == '$') {
-		end = strchr(path, '/');
-		if (end == NULL)
-			name = xstrdup(path + 1);
-		else
-			name = xstrndup(path + 1, end - path - 1);
-		value = environ_find(global_environ, name);
-		free(name);
-		if (value == NULL)
-			return (NULL);
-		if (end == NULL)
-			end = "";
-		xasprintf(&expanded, "%s%s", value->value, end);
-		return (expanded);
-	}
-
-	return (xstrdup(path));
-}
-
 void
 start_cfg(void)
 {
-	const char	*home = find_home();
-	struct client	*c;
-	char		*path, *copy, *next, *expanded;
+	struct client	 *c;
+	char		**paths;
+	u_int		  i, n;
 
 	/*
 	 * Configuration files are loaded without a client, so commands are run
@@ -123,18 +90,12 @@ start_cfg(void)
 	}
 
 	if (cfg_file == NULL) {
-		path = copy = xstrdup(TMUX_CONF);
-		while ((next = strsep(&path, ":")) != NULL) {
-			expanded = expand_cfg_file(next, home);
-			if (expanded == NULL) {
-				log_debug("couldn't expand %s", next);
-				continue;
-			}
-			log_debug("expanded %s to %s", next, expanded);
-			load_cfg(expanded, c, NULL, CMD_PARSE_QUIET, NULL);
-			free(expanded);
+		expand_paths(TMUX_CONF, &paths, &n);
+		for (i = 0; i < n; i++) {
+			load_cfg(paths[i], c, NULL, CMD_PARSE_QUIET, NULL);
+			free(paths[i]);
 		}
-		free(copy);
+		free(paths);
 	} else
 		load_cfg(cfg_file, c, NULL, 0, NULL);
 

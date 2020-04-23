@@ -65,7 +65,7 @@ struct winlink;
 /* Client-server protocol version. */
 #define PROTOCOL_VERSION 8
 
-/* Default configuration files. */
+/* Default configuration file. */
 #ifndef TMUX_CONF
 #define TMUX_CONF "/etc/tmux.conf:~/.tmux.conf"
 #endif
@@ -1748,6 +1748,8 @@ const char	*sig2name(int);
 const char	*find_cwd(void);
 const char	*find_home(void);
 const char	*getversion(void);
+void		 expand_paths(const char *, char ***, u_int *);
+
 
 /* proc.c */
 struct imsg;
