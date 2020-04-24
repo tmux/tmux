@@ -1780,7 +1780,6 @@ server_client_check_redraw(struct client *c)
 			if (!redraw)
 				continue;
 			log_debug("%s: redrawing pane %%%u", __func__, wp->id);
-			tty_update_mode(tty, mode, NULL);
 			screen_redraw_pane(c, wp);
 		}
 		c->redraw_panes = 0;
@@ -1788,7 +1787,6 @@ server_client_check_redraw(struct client *c)
 	}
 
 	if (c->flags & CLIENT_ALLREDRAWFLAGS) {
-		tty_update_mode(tty, mode, NULL);
 		if (options_get_number(s->options, "set-titles"))
 			server_client_set_title(c);
 		screen_redraw_screen(c);

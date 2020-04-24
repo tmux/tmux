@@ -676,7 +676,8 @@ tty_update_mode(struct tty *tty, int mode, struct screen *s)
 		mode &= ~MODE_CURSOR;
 
 	changed = mode ^ tty->mode;
-	log_debug("%s: update mode %x to %x", c->name, tty->mode, mode);
+	if (changed != 0)
+		log_debug("%s: update mode %x to %x", c->name, tty->mode, mode);
 
 	if (changed & MODE_BLINKING) {
 		if (tty_term_has(tty->term, TTYC_CVVIS))

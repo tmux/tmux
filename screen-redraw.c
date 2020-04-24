@@ -438,6 +438,7 @@ screen_redraw_screen(struct client *c)
 		return;
 
 	screen_redraw_set_context(c, &ctx);
+	tty_update_mode(&c->tty, c->tty.mode, NULL);
 	tty_sync_start(&c->tty);
 
 	if (flags & (CLIENT_REDRAWWINDOW|CLIENT_REDRAWBORDERS)) {
@@ -473,6 +474,7 @@ screen_redraw_pane(struct client *c, struct window_pane *wp)
 		return;
 
 	screen_redraw_set_context(c, &ctx);
+	tty_update_mode(&c->tty, c->tty.mode, NULL);
 	tty_sync_start(&c->tty);
 
 	screen_redraw_draw_pane(&ctx, wp);
