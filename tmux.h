@@ -1202,6 +1202,7 @@ struct tty_term {
 #define TERM_DECSLRM 0x4
 #define TERM_DECFRA 0x8
 #define TERM_RGBCOLOURS 0x10
+#define TERM_VT100LIKE 0x20
 	int		 flags;
 
 	LIST_ENTRY(tty_term) entry;

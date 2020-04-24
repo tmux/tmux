@@ -334,7 +334,7 @@ tty_start_tty(struct tty *tty)
 		tty->flags |= TTY_FOCUS;
 		tty_raw(tty, tty_term_string(tty->term, TTYC_ENFCS));
 	}
-	if (tty_term_flag(tty->term, TTYC_XT))
+	if (tty->term->flags & TERM_VT100LIKE)
 		tty_puts(tty, "\033[?7727h");
 
 	evtimer_set(&tty->start_timer, tty_start_timer_callback, tty);
@@ -357,7 +357,7 @@ tty_send_requests(struct tty *tty)
 	if (~tty->flags & TTY_STARTED)
 		return;
 
-	if (tty_term_flag(tty->term, TTYC_XT)) {
+	if (tty->term->flags & TERM_VT100LIKE) {
 		if (~tty->flags & TTY_HAVEDA)
 			tty_puts(tty, "\033[>c");
 		if (~tty->flags & TTY_HAVEXDA)
@@ -420,7 +420,7 @@ tty_stop_tty(struct tty *tty)
 		tty->flags &= ~TTY_FOCUS;
 		tty_raw(tty, tty_term_string(tty->term, TTYC_DSFCS));
 	}
-	if (tty_term_flag(tty->term, TTYC_XT))
+	if (tty->term->flags & TERM_VT100LIKE)
 		tty_raw(tty, "\033[?7727l");
 
 	if (tty_use_margin(tty))
