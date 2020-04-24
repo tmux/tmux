@@ -434,6 +434,9 @@ screen_redraw_screen(struct client *c)
 		return;
 
 	flags = screen_redraw_update(c, c->flags);
+	if ((flags & CLIENT_ALLREDRAWFLAGS) == 0)
+		return;
+
 	screen_redraw_set_context(c, &ctx);
 	tty_sync_start(&c->tty);
 
