@@ -2722,7 +2722,7 @@ struct session	*session_create(const char *, const char *, const char *,
 void		 session_destroy(struct session *, int,  const char *);
 void		 session_add_ref(struct session *, const char *);
 void		 session_remove_ref(struct session *, const char *);
-int		 session_check_name(const char *);
+char		*session_check_name(const char *);
 void		 session_update_activity(struct session *, struct timeval *);
 struct session	*session_next_session(struct session *);
 struct session	*session_previous_session(struct session *);
