@@ -1506,6 +1506,7 @@ struct client {
 
 	char		*term_name;
 	int		 term_features;
+	char		*term_type;
 
 	char		*ttyname;
 	struct tty	 tty;
@@ -2030,6 +2031,7 @@ const char	*tty_term_describe(struct tty_term *, enum tty_code_code);
 void		 tty_add_features(int *, const char *, const char *);
 const char	*tty_get_features(int);
 int		 tty_apply_features(struct tty_term *, int);
+void		 tty_default_features(int *, const char *, u_int);
 
 /* tty-acs.c */
 int		 tty_acs_needed(struct tty *);

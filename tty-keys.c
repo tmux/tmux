@@ -1070,28 +1070,13 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 		    ",");
 		break;
 	case 'M': /* mintty */
-		tty_add_features(&c->term_features,
-		    "256,"
-		    "RGB,"
-		    "title",
-		    ",");
+		tty_default_features(&c->term_features, "mintty", 0);
 		break;
 	case 'T': /* tmux */
-		tty_add_features(&c->term_features,
-		    "256,"
-		    "RGB,"
-		    "ccolour,"
-		    "cstyle,"
-		    "overline,"
-		    "title,"
-		    "usstyle",
-		    ",");
+		tty_default_features(&c->term_features, "tmux", 0);
 		break;
 	case 'U': /* rxvt-unicode */
-		tty_add_features(&c->term_features,
-		    "256,"
-		    "title",
-		    ",");
+		tty_default_features(&c->term_features, "rxvt-unicode", 0);
 		break;
 	}
 	log_debug("%s: received secondary DA %.*s", c->name, (int)*size, buf);
@@ -1112,7 +1097,7 @@ tty_keys_extended_device_attributes(struct tty *tty, const char *buf,
 {
 	struct client	*c = tty->client;
 	u_int		 i;
-	char		 tmp[64];
+	char		 tmp[128];
 
 	*size = 0;
 	if (tty->flags & TTY_HAVEXDA)
@@ -1150,28 +1135,18 @@ tty_keys_extended_device_attributes(struct tty *tty, const char *buf,
 	*size = 5 + i;
 
 	/* Add terminal features. */
-	if (strncmp(tmp, "iTerm2 ", 7) == 0) {
-		tty_add_features(&c->term_features,
-		    "256,"
-		    "RGB,"
-		    "clipboard,"
-		    "cstyle,"
-		    "margins,"
-		    "sync,"
-		    "title",
-		    ",");
-	} else if (strncmp(tmp, "tmux ", 5) == 0) {
-		tty_add_features(&c->term_features,
-		    "256,"
-		    "RGB,"
-		    "ccolour,"
-		    "cstyle,"
-		    "overline,"
-		    "title,"
-		    "usstyle",
-		    ",");
-	}
+	if (strncmp(tmp, "iTerm2 ", 7) == 0)
+		tty_default_features(&c->term_features, "iTerm2", 0);
+	else if (strncmp(tmp, "tmux ", 5) == 0)
+		tty_default_features(&c->term_features, "tmux", 0);
+	else if (strncmp(tmp, "XTerm(", 6) == 0)
+		tty_default_features(&c->term_features, "xterm", 0);
+	else if (strncmp(tmp, "mintty ", 7) == 0)
+		tty_default_features(&c->term_features, "mintty", 0);
 	log_debug("%s: received extended DA %.*s", c->name, (int)*size, buf);
+
+	free(c->term_type);
+	c->term_type = xstrdup(tmp);
 
 	tty_update_features(tty);
 	tty->flags |= TTY_HAVEXDA;
