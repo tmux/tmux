@@ -86,6 +86,7 @@ static const struct tty_term_code_entry tty_term_codes[] = {
 	[TTYC_DIM] = { TTYCODE_STRING, "dim" },
 	[TTYC_DL1] = { TTYCODE_STRING, "dl1" },
 	[TTYC_DL] = { TTYCODE_STRING, "dl" },
+	[TTYC_DSFCS] = { TTYCODE_STRING, "Dsfcs" },
 	[TTYC_DSBP] = { TTYCODE_STRING, "Dsbp" },
 	[TTYC_DSMG] = { TTYCODE_STRING, "Dsmg" },
 	[TTYC_E3] = { TTYCODE_STRING, "E3" },
@@ -95,6 +96,7 @@ static const struct tty_term_code_entry tty_term_codes[] = {
 	[TTYC_EL] = { TTYCODE_STRING, "el" },
 	[TTYC_ENACS] = { TTYCODE_STRING, "enacs" },
 	[TTYC_ENBP] = { TTYCODE_STRING, "Enbp" },
+	[TTYC_ENFCS] = { TTYCODE_STRING, "Enfcs" },
 	[TTYC_ENMG] = { TTYCODE_STRING, "Enmg" },
 	[TTYC_FSL] = { TTYCODE_STRING, "fsl" },
 	[TTYC_HOME] = { TTYCODE_STRING, "home" },
@@ -567,7 +569,7 @@ tty_term_create(struct tty *tty, char *name, int *feat, int fd, char **cause)
 
 	/* Add some features if terminal has XT. */
 	if (tty_term_flag(term, TTYC_XT))
-		tty_add_features(feat, "bpaste,title", ",");
+		tty_add_features(feat, "bpaste,focus,title", ",");
 
 	/* Apply the features and overrides again. */
 	tty_apply_features(term, *feat);

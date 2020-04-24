@@ -333,7 +333,7 @@ tty_start_tty(struct tty *tty)
 	if (tty_term_flag(tty->term, TTYC_XT)) {
 		if (options_get_number(global_options, "focus-events")) {
 			tty->flags |= TTY_FOCUS;
-			tty_puts(tty, "\033[?1004h");
+			tty_raw(tty, tty_term_string(tty->term, TTYC_ENFCS));
 		}
 		tty_puts(tty, "\033[?7727h");
 	}
@@ -420,7 +420,7 @@ tty_stop_tty(struct tty *tty)
 	if (tty_term_flag(tty->term, TTYC_XT)) {
 		if (tty->flags & TTY_FOCUS) {
 			tty->flags &= ~TTY_FOCUS;
-			tty_raw(tty, "\033[?1004l");
+			tty_raw(tty, tty_term_string(tty->term, TTYC_DSFCS));
 		}
 		tty_raw(tty, "\033[?7727l");
 	}

@@ -26,7 +26,6 @@
 /*
  * Still hardcoded:
  * - mouse (under kmous capability);
- * - focus events (under XT and focus-events option);
  * - default colours (under AX or op capabilities);
  * - AIX colours (under colors >= 16);
  * - alternate escape (under XT).
@@ -122,15 +121,27 @@ static struct tty_feature tty_feature_usstyle = {
 	0
 };
 
-/* Terminal supports cursor bracketed paste. */
+/* Terminal supports bracketed paste. */
 static const char *tty_feature_bpaste_capabilities[] = {
-	"Enbp=\E[?2004h",
+	"Enbp=\\E[?2004h",
 	"Dsbp=\\E[?2004l",
 	NULL
 };
 static struct tty_feature tty_feature_bpaste = {
 	"bpaste",
 	tty_feature_bpaste_capabilities,
+	0
+};
+
+/* Terminal supports focus reporting. */
+static const char *tty_feature_focus_capabilities[] = {
+	"Enfcs=\\E[?1004h",
+	"Dsfcs=\\E[?1004l",
+	NULL
+};
+static struct tty_feature tty_feature_focus = {
+	"focus",
+	tty_feature_focus_capabilities,
 	0
 };
 
@@ -205,9 +216,10 @@ static struct tty_feature tty_feature_rectfill = {
 static const struct tty_feature *tty_features[] = {
 	&tty_feature_256,
 	&tty_feature_bpaste,
-	&tty_feature_clipboard,
 	&tty_feature_ccolour,
+	&tty_feature_clipboard,
 	&tty_feature_cstyle,
+	&tty_feature_focus,
 	&tty_feature_margins,
 	&tty_feature_overline,
 	&tty_feature_rectfill,
@@ -308,20 +320,21 @@ tty_default_features(int *feat, const char *name, u_int version)
 		u_int		 version;
 		const char	*features;
 	} table[] = {
+#define TTY_FEATURES_BASE_MODERN_XTERM "256,RGB,bpaste,clipboard,strikethrough,title"
 		{ .name = "mintty",
-		  .features = "256,RGB,bpaste,ccolour,clipboard,cstyle,margins,overline,strikethrough,title"
+		  .features = TTY_FEATURES_BASE_MODERN_XTERM ",ccolour,cstyle,margins,overline"
 		},
 		{ .name = "tmux",
-		  .features = "256,RGB,bpaste,ccolour,clipboard,cstyle,overline,strikethough,title,usstyle"
+		  .features = TTY_FEATURES_BASE_MODERN_XTERM ",ccolour,cstyle,focus,overline,usstyle"
 		},
 		{ .name = "rxvt-unicode",
 		  .features = "256,title"
 		},
 		{ .name = "iTerm2",
-		  .features = "256,RGB,bpaste,clipboard,cstyle,margins,strikethrough,sync,title"
+		  .features = TTY_FEATURES_BASE_MODERN_XTERM ",cstyle,margins,sync"
 		},
 		{ .name = "XTerm",
-		  .features = "256,RGB,bpaste,ccolour,clipboard,cstyle,margins,rectfill,strikethrough,title"
+		  .features = TTY_FEATURES_BASE_MODERN_XTERM ",ccolour,cstyle,focus,margins,rectfill"
 		}
 	};
 	u_int	i;
