@@ -328,7 +328,7 @@ tty_default_features(int *feat, const char *name, u_int version)
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ",ccolour,cstyle,focus,overline,usstyle"
 		},
 		{ .name = "rxvt-unicode",
-		  .features = "256,ccolour,cstyle,title"
+		  .features = "256,bpaste,ccolour,cstyle,title"
 		},
 		{ .name = "iTerm2",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ",cstyle,margins,sync"
