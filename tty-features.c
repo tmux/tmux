@@ -28,10 +28,9 @@
  * - mouse (under kmous capability);
  * - default colours (under AX or op capabilities);
  * - AIX colours (under colors >= 16);
- * - alternate escape (under XT).
+ * - alternate escape (if terminal is VT100-like).
  *
  * Also:
- * - XT is used to decide whether to send DA and XDA;
  * - DECFRA uses a flag instead of capabilities;
  * - UTF-8 is a separate flag on the client; needed for unattached clients.
  */

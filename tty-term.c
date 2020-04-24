@@ -555,15 +555,9 @@ tty_term_create(struct tty *tty, char *name, int *feat, int fd, char **cause)
 		goto error;
 	}
 
-	/* These can be emulated so one of the two is required. */
-	if (!tty_term_has(term, TTYC_CUD1) && !tty_term_has(term, TTYC_CUD)) {
-		xasprintf(cause, "terminal does not support cud1 or cud");
-		goto error;
-	}
-
 	/*
 	 * If TERM has XT or clear starts with CSI then it is safe to assume
-	 * the terminal is derived from a VT100. This controls whether device
+	 * the terminal is derived from the VT100. This controls whether device
 	 * attributes requests are sent to get more information.
 	 *
 	 * This is a bit of a hack but there aren't that many alternatives.
