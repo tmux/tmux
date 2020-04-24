@@ -49,7 +49,7 @@ static const char *tty_feature_title_capabilities[] = {
 	"fsl=\\a",
 	NULL
 };
-static struct tty_feature tty_feature_title = {
+static const struct tty_feature tty_feature_title = {
 	"title",
 	tty_feature_title_capabilities,
 	0
@@ -60,7 +60,7 @@ static const char *tty_feature_clipboard_capabilities[] = {
 	"Ms=\\E]52;%p1%s;%p2%s\\a",
 	NULL
 };
-static struct tty_feature tty_feature_clipboard = {
+static const struct tty_feature tty_feature_clipboard = {
 	"clipboard",
 	tty_feature_clipboard_capabilities,
 	0
@@ -79,7 +79,7 @@ static const char *tty_feature_rgb_capabilities[] = {
 	"setaf=\\E[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m",
 	NULL
 };
-static struct tty_feature tty_feature_rgb = {
+static const struct tty_feature tty_feature_rgb = {
 	"RGB",
 	tty_feature_rgb_capabilities,
 	TERM_256COLOURS|TERM_RGBCOLOURS
@@ -92,7 +92,7 @@ static const char *tty_feature_256_capabilities[] = {
 	"setaf=\\E[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m",
 	NULL
 };
-static struct tty_feature tty_feature_256 = {
+static const struct tty_feature tty_feature_256 = {
 	"256",
 	tty_feature_256_capabilities,
 	TERM_256COLOURS
@@ -103,7 +103,7 @@ static const char *tty_feature_overline_capabilities[] = {
 	"Smol=\\E[53m",
 	NULL
 };
-static struct tty_feature tty_feature_overline = {
+static const struct tty_feature tty_feature_overline = {
 	"overline",
 	tty_feature_overline_capabilities,
 	0
@@ -115,7 +115,7 @@ static const char *tty_feature_usstyle_capabilities[] = {
 	"Setulc=\E[58::2::%p1%{65536}%/%d::%p1%{256}%/%{255}%&%d::%p1%{255}%&%d%;m",
 	NULL
 };
-static struct tty_feature tty_feature_usstyle = {
+static const struct tty_feature tty_feature_usstyle = {
 	"usstyle",
 	tty_feature_usstyle_capabilities,
 	0
@@ -127,7 +127,7 @@ static const char *tty_feature_bpaste_capabilities[] = {
 	"Dsbp=\\E[?2004l",
 	NULL
 };
-static struct tty_feature tty_feature_bpaste = {
+static const struct tty_feature tty_feature_bpaste = {
 	"bpaste",
 	tty_feature_bpaste_capabilities,
 	0
@@ -139,7 +139,7 @@ static const char *tty_feature_focus_capabilities[] = {
 	"Dsfcs=\\E[?1004l",
 	NULL
 };
-static struct tty_feature tty_feature_focus = {
+static const struct tty_feature tty_feature_focus = {
 	"focus",
 	tty_feature_focus_capabilities,
 	0
@@ -151,7 +151,7 @@ static const char *tty_feature_cstyle_capabilities[] = {
 	"Se=\\E[2 q",
 	NULL
 };
-static struct tty_feature tty_feature_cstyle = {
+static const struct tty_feature tty_feature_cstyle = {
 	"cstyle",
 	tty_feature_cstyle_capabilities,
 	0
@@ -163,7 +163,7 @@ static const char *tty_feature_ccolour_capabilities[] = {
 	"Cr=\\E]112\\a",
 	NULL
 };
-static struct tty_feature tty_feature_ccolour = {
+static const struct tty_feature tty_feature_ccolour = {
 	"ccolour",
 	tty_feature_ccolour_capabilities,
 	0
@@ -174,7 +174,7 @@ static const char *tty_feature_strikethrough_capabilities[] = {
 	"smxx=\\E[9m",
 	NULL
 };
-static struct tty_feature tty_feature_strikethrough = {
+static const struct tty_feature tty_feature_strikethrough = {
 	"strikethrough",
 	tty_feature_strikethrough_capabilities,
 	0
@@ -185,7 +185,7 @@ static const char *tty_feature_sync_capabilities[] = {
 	"Sync=\\EP=%p1%ds\\E\\\\",
 	NULL
 };
-static struct tty_feature tty_feature_sync = {
+static const struct tty_feature tty_feature_sync = {
 	"sync",
 	tty_feature_sync_capabilities,
 	0
@@ -199,14 +199,14 @@ static const char *tty_feature_margins_capabilities[] = {
 	"Cmg=\\E[%i%p1%d;%p2%ds",
 	NULL
 };
-static struct tty_feature tty_feature_margins = {
+static const struct tty_feature tty_feature_margins = {
 	"margins",
 	tty_feature_margins_capabilities,
 	TERM_DECSLRM
 };
 
 /* Terminal supports DECFRA rectangle fill. */
-static struct tty_feature tty_feature_rectfill = {
+static const struct tty_feature tty_feature_rectfill = {
 	"rectfill",
 	NULL,
 	TERM_DECFRA
@@ -346,5 +346,4 @@ tty_default_features(int *feat, const char *name, u_int version)
 			continue;
 		tty_add_features(feat, table[i].features, ",");
 	}
-
 }
