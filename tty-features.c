@@ -147,6 +147,17 @@ static struct tty_feature tty_feature_ccolour = {
 	0
 };
 
+/* Terminal supports strikethrough. */
+static const char *tty_feature_strikethrough_capabilities[] = {
+	"smxx=\\E[9m",
+	NULL
+};
+static struct tty_feature tty_feature_strikethrough = {
+	"strikethrough",
+	tty_feature_strikethrough_capabilities,
+	0
+};
+
 /* Terminal supports synchronized updates. */
 static const char *tty_feature_sync_capabilities[] = {
 	"Sync=\\EP=%p1%ds\\E\\\\",
@@ -189,6 +200,7 @@ static const struct tty_feature *tty_features[] = {
 	&tty_feature_overline,
 	&tty_feature_rectfill,
 	&tty_feature_rgb,
+	&tty_feature_strikethrough,
 	&tty_feature_sync,
 	&tty_feature_title,
 	&tty_feature_usstyle
@@ -285,19 +297,19 @@ tty_default_features(int *feat, const char *name, u_int version)
 		const char	*features;
 	} table[] = {
 		{ .name = "mintty",
-		  .features = "256,RGB,ccolour,clipboard,cstyle,margins,overline,title"
+		  .features = "256,RGB,ccolour,clipboard,cstyle,margins,strikethrough,overline,title"
 		},
 		{ .name = "tmux",
-		  .features = "256,RGB,ccolour,clipboard,cstyle,overline,title,usstyle"
+		  .features = "256,RGB,ccolour,clipboard,cstyle,overline,strikethough,title,usstyle"
 		},
 		{ .name = "rxvt-unicode",
 		  .features = "256,title"
 		},
 		{ .name = "iTerm2",
-		  .features = "256,RGB,clipboard,cstyle,margins,sync,title"
+		  .features = "256,RGB,clipboard,cstyle,margins,strikethrough,sync,title"
 		},
 		{ .name = "XTerm",
-		  .features = "256,RGB,ccolour,clipboard,cstyle,margins,rectfill,title"
+		  .features = "256,RGB,ccolour,clipboard,cstyle,margins,rectfill,strikethrough,title"
 		}
 	};
 	u_int	i;
