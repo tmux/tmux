@@ -59,6 +59,7 @@ style_parse(struct style *sy, const struct grid_cell *base, const char *in)
 		return (0);
 	style_copy(&saved, sy);
 
+	log_debug("%s: %s", __func__, in);
 	do {
 		while (*in != '\0' && strchr(delimiters, *in) != NULL)
 			in++;
@@ -71,6 +72,7 @@ style_parse(struct style *sy, const struct grid_cell *base, const char *in)
 		memcpy(tmp, in, end);
 		tmp[end] = '\0';
 
+		log_debug("%s: %s", __func__, tmp);
 		if (strcasecmp(tmp, "default") == 0) {
 			sy->gc.fg = base->fg;
 			sy->gc.bg = base->bg;
@@ -284,31 +286,4 @@ void
 style_copy(struct style *dst, struct style *src)
 {
 	memcpy(dst, src, sizeof *dst);
-}
-
-/* Check if two styles are (visibly) the same. */
-int
-style_equal(struct style *sy1, struct style *sy2)
-{
-	struct grid_cell	*gc1 = &sy1->gc;
-	struct grid_cell	*gc2 = &sy2->gc;
-
-	if (gc1->fg != gc2->fg)
-		return (0);
-	if (gc1->bg != gc2->bg)
-		return (0);
-	if ((gc1->attr & STYLE_ATTR_MASK) != (gc2->attr & STYLE_ATTR_MASK))
-		return (0);
-	if (sy1->fill != sy2->fill)
-		return (0);
-	if (sy1->align != sy2->align)
-		return (0);
-	return (1);
-}
-
-/* Is this style default? */
-int
-style_is_default(struct style *sy)
-{
-	return (style_equal(sy, &style_default));
 }
