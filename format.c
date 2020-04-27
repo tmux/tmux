@@ -2472,25 +2472,59 @@ format_single(struct cmdq_item *item, const char *fmt, struct client *c,
 	struct format_tree	*ft;
 	char			*expanded;
 
-	if (item != NULL)
-		ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
-	else
-		ft = format_create(NULL, item, FORMAT_NONE, 0);
-	format_defaults(ft, c, s, wl, wp);
-
+	ft = format_create_defaults(item, c, s, wl, wp);
 	expanded = format_expand(ft, fmt);
 	format_free(ft);
 	return (expanded);
+}
+
+/* Expand a single string using state. */
+char *
+format_single_from_state(struct cmdq_item *item, const char *fmt,
+    struct client *c, struct cmd_find_state *fs)
+{
+	return (format_single(item, fmt, c, fs->s, fs->wl, fs->wp));
 }
 
 /* Expand a single string using target. */
 char *
 format_single_from_target(struct cmdq_item *item, const char *fmt)
 {
-	struct cmd_find_state	*target = cmdq_get_target(item);
-	struct client		*tc = cmdq_get_target_client(item);
+	struct client	*tc = cmdq_get_target_client(item);
 
-	return (format_single(item, fmt, tc, target->s, target->wl, target->wp));
+	return (format_single_from_state(item, fmt, tc, cmdq_get_target(item)));
+}
+
+/* Create and add defaults. */
+struct format_tree *
+format_create_defaults(struct cmdq_item *item, struct client *c,
+    struct session *s, struct winlink *wl, struct window_pane *wp)
+{
+	struct format_tree	*ft;
+
+	if (item != NULL)
+		ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
+	else
+		ft = format_create(NULL, item, FORMAT_NONE, 0);
+	format_defaults(ft, c, s, wl, wp);
+	return (ft);
+}
+
+/* Create and add defaults using state. */
+struct format_tree *
+format_create_from_state(struct cmdq_item *item, struct client *c,
+    struct cmd_find_state *fs)
+{
+	return (format_create_defaults(item, c, fs->s, fs->wl, fs->wp));
+}
+
+/* Create and add defaults using target. */
+struct format_tree *
+format_create_from_target(struct cmdq_item *item)
+{
+	struct client	*tc = cmdq_get_target_client(item);
+
+	return (format_create_from_state(item, tc, cmdq_get_target(item)));
 }
 
 /* Set defaults for any of arguments that are not NULL. */

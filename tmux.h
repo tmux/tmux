@@ -1827,7 +1827,14 @@ char		*format_expand(struct format_tree *, const char *);
 char		*format_single(struct cmdq_item *, const char *,
 		     struct client *, struct session *, struct winlink *,
 		     struct window_pane *);
+char		*format_single_from_state(struct cmdq_item *, const char *,
+		    struct client *, struct cmd_find_state *);
 char		*format_single_from_target(struct cmdq_item *, const char *);
+struct format_tree *format_create_defaults(struct cmdq_item *, struct client *,
+		     struct session *, struct winlink *, struct window_pane *);
+struct format_tree *format_create_from_state(struct cmdq_item *,
+		     struct client *, struct cmd_find_state *);
+struct format_tree *format_create_from_target(struct cmdq_item *);
 void		 format_defaults(struct format_tree *, struct client *,
 		     struct session *, struct winlink *, struct window_pane *);
 void		 format_defaults_window(struct format_tree *, struct window *);
