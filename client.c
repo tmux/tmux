@@ -518,7 +518,7 @@ client_write_open(void *data, size_t datalen)
 			errno = EBADF;
 		else {
 			cf->fd = dup(msg->fd);
-			if (client_flags & CLIENT_CONTROL)
+			if (~client_flags & CLIENT_CONTROL)
 				close(msg->fd); /* can only be used once */
 		}
 	}
@@ -673,7 +673,8 @@ client_read_open(void *data, size_t datalen)
 			errno = EBADF;
 		else {
 			cf->fd = dup(msg->fd);
-			close(msg->fd); /* can only be used once */
+			if (~client_flags & CLIENT_CONTROL)
+				close(msg->fd); /* can only be used once */
 		}
 	}
 	if (cf->fd == -1) {
