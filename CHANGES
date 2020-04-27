@@ -125,6 +125,11 @@ CHANGES FROM 3.1 TO 3.2
 
 * Add number operators for formats (+, -, *, / and m),
 
+CHANGES FROM 3.1 TO 3.1a
+
+* Do not close stdout prematurely in control mode since it is needed to print
+  exit messages. Prevents hanging when detaching with iTerm2.
+
 CHANGES FROM 3.0a TO 3.1
 
 * Only search the visible part of the history when marking (highlighting)
