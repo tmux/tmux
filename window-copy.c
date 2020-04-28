@@ -3004,7 +3004,7 @@ window_copy_write_line(struct window_mode_entry *wme,
 	size_t				 size = 0;
 	u_int				 hsize = screen_hsize(data->backing);
 
-	style_apply(&gc, oo, "mode-style");
+	style_apply(&gc, oo, "mode-style", NULL);
 	gc.flags |= GRID_FLAG_NOPALETTE;
 
 	if (py == 0 && s->rupper < s->rlower && !data->hide_position) {
@@ -3311,7 +3311,7 @@ window_copy_set_selection(struct window_mode_entry *wme, int may_redraw,
 	}
 
 	/* Set colours and selection. */
-	style_apply(&gc, oo, "mode-style");
+	style_apply(&gc, oo, "mode-style", NULL);
 	gc.flags |= GRID_FLAG_NOPALETTE;
 	screen_set_selection(s, sx, sy, endsx, endsy, data->rectflag,
 	    data->modekeys, &gc);

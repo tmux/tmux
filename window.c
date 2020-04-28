@@ -872,6 +872,9 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	wp->fd = -1;
 	wp->event = NULL;
 
+	wp->fg = 8;
+	wp->bg = 8;
+
 	TAILQ_INIT(&wp->modes);
 
 	wp->layout_cell = NULL;

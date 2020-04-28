@@ -53,6 +53,9 @@ struct options_entry {
 	const struct options_table_entry	*tableentry;
 	union options_value			 value;
 
+	int					 cached;
+	struct style				 style;
+
 	RB_ENTRY(options_entry)			 entry;
 };
 
@@ -73,9 +76,6 @@ static struct options_entry	*options_add(struct options *, const char *);
 	    (o)->tableentry->type == OPTIONS_TABLE_COLOUR ||		\
 	    (o)->tableentry->type == OPTIONS_TABLE_FLAG ||		\
 	    (o)->tableentry->type == OPTIONS_TABLE_CHOICE))
-#define OPTIONS_IS_STYLE(o) \
-	((o)->tableentry != NULL &&					\
-	    (o)->tableentry->type == OPTIONS_TABLE_STYLE)
 #define OPTIONS_IS_COMMAND(o) \
 	((o)->tableentry != NULL &&					\
 	    (o)->tableentry->type == OPTIONS_TABLE_COMMAND)
@@ -123,8 +123,6 @@ options_value_tostring(struct options_entry *o, union options_value *ov,
 
 	if (OPTIONS_IS_COMMAND(o))
 		return (cmd_list_print(ov->cmdlist, 0));
-	if (OPTIONS_IS_STYLE(o))
-		return (xstrdup(style_tostring(&ov->style)));
 	if (OPTIONS_IS_NUMBER(o)) {
 		switch (o->tableentry->type) {
 		case OPTIONS_TABLE_NUMBER:
@@ -146,7 +144,6 @@ options_value_tostring(struct options_entry *o, union options_value *ov,
 			s = xstrdup(o->tableentry->choices[ov->number]);
 			break;
 		case OPTIONS_TABLE_STRING:
-		case OPTIONS_TABLE_STYLE:
 		case OPTIONS_TABLE_COMMAND:
 			fatalx("not a number option type");
 		}
@@ -257,10 +254,6 @@ options_default(struct options *oo, const struct options_table_entry *oe)
 	switch (oe->type) {
 	case OPTIONS_TABLE_STRING:
 		ov->string = xstrdup(oe->default_str);
-		break;
-	case OPTIONS_TABLE_STYLE:
-		style_set(&ov->style, &grid_default_cell);
-		style_parse(&ov->style, &grid_default_cell, oe->default_str);
 		break;
 	default:
 		ov->number = oe->default_num;
@@ -653,25 +646,13 @@ options_get_number(struct options *oo, const char *name)
 	return (o->value.number);
 }
 
-struct style *
-options_get_style(struct options *oo, const char *name)
-{
-	struct options_entry	*o;
-
-	o = options_get(oo, name);
-	if (o == NULL)
-		fatalx("missing option %s", name);
-	if (!OPTIONS_IS_STYLE(o))
-		fatalx("option %s is not a style", name);
-	return (&o->value.style);
-}
-
 struct options_entry *
 options_set_string(struct options *oo, const char *name, int append,
     const char *fmt, ...)
 {
 	struct options_entry	*o;
 	va_list			 ap;
+	const char		*separator = "";
 	char			*s, *value;
 
 	va_start(ap, fmt);
@@ -680,7 +661,12 @@ options_set_string(struct options *oo, const char *name, int append,
 
 	o = options_get_only(oo, name);
 	if (o != NULL && append && OPTIONS_IS_STRING(o)) {
-		xasprintf(&value, "%s%s", o->value.string, s);
+		if (*name != '@') {
+			separator = o->tableentry->separator;
+			if (separator == NULL)
+				separator = "";
+		}
+		xasprintf(&value, "%s%s%s", o->value.string, separator, s);
 		free(s);
 	} else
 		value = s;
@@ -696,6 +682,7 @@ options_set_string(struct options *oo, const char *name, int append,
 		fatalx("option %s is not a string", name);
 	free(o->value.string);
 	o->value.string = value;
+	o->cached = 0;
 	return (o);
 }
 
@@ -717,35 +704,6 @@ options_set_number(struct options *oo, const char *name, long long value)
 	if (!OPTIONS_IS_NUMBER(o))
 		fatalx("option %s is not a number", name);
 	o->value.number = value;
-	return (o);
-}
-
-struct options_entry *
-options_set_style(struct options *oo, const char *name, int append,
-    const char *value)
-{
-	struct options_entry	*o;
-	struct style		 sy;
-
-	if (*name == '@')
-		fatalx("user option %s must be a string", name);
-
-	o = options_get_only(oo, name);
-	if (o != NULL && append && OPTIONS_IS_STYLE(o))
-		style_copy(&sy, &o->value.style);
-	else
-		style_set(&sy, &grid_default_cell);
-	if (style_parse(&sy, &grid_default_cell, value) == -1)
-		return (NULL);
-	if (o == NULL) {
-		o = options_default(oo, options_parent_table_entry(oo, name));
-		if (o == NULL)
-			return (NULL);
-	}
-
-	if (!OPTIONS_IS_STYLE(o))
-		fatalx("option %s is not a style", name);
-	style_copy(&o->value.style, &sy);
 	return (o);
 }
 
@@ -873,4 +831,36 @@ options_scope_from_flags(struct args *args, int window,
 		*oo = s->options;
 		return (OPTIONS_TABLE_SESSION);
 	}
+}
+
+struct style *
+options_string_to_style(struct options *oo, const char *name,
+    struct format_tree *ft)
+{
+	struct options_entry	*o;
+	const char		*s;
+	char			*expanded;
+
+	o = options_get(oo, name);
+	if (o == NULL || !OPTIONS_IS_STRING(o))
+		return (NULL);
+
+	if (o->cached)
+		return (&o->style);
+	s = o->value.string;
+	log_debug("%s: %s is '%s'", __func__, name, s);
+
+	o->cached = (strstr(s, "#{") == NULL);
+	if (ft != NULL && !o->cached) {
+		expanded = format_expand(ft, s);
+		if (style_parse(&o->style, &grid_default_cell, expanded) != 0) {
+			free(expanded);
+			return (NULL);
+		}
+		free(expanded);
+	} else {
+		if (style_parse(&o->style, &grid_default_cell, s) != 0)
+			return (NULL);
+	}
+	return (&o->style);
 }

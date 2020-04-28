@@ -151,8 +151,7 @@ menu_draw_cb(struct client *c, __unused struct screen_redraw_ctx *ctx0)
 	u_int			 i, px = md->px, py = md->py;
 	struct grid_cell	 gc;
 
-	memcpy(&gc, &grid_default_cell, sizeof gc);
-	style_apply(&gc, c->session->curw->window->options, "mode-style");
+	style_apply(&gc, c->session->curw->window->options, "mode-style", NULL);
 
 	screen_write_start(&ctx, NULL, s);
 	screen_write_clearscreen(&ctx, 8);

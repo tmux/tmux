@@ -260,10 +260,9 @@ screen_redraw_make_pane_status(struct client *c, struct window *w,
 	struct screen		 old;
 
 	if (wp == w->active)
-		style_apply(&gc, w->options, "pane-active-border-style");
+		style_apply(&gc, w->options, "pane-active-border-style", NULL);
 	else
-		style_apply(&gc, w->options, "pane-border-style");
-
+		style_apply(&gc, w->options, "pane-border-style", NULL);
 	fmt = options_get_string(w->options, "pane-border-format");
 
 	ft = format_create(c, NULL, FORMAT_PANE|wp->id, FORMAT_STATUS);
@@ -536,8 +535,8 @@ screen_redraw_draw_borders(struct screen_redraw_ctx *ctx)
 
 	log_debug("%s: %s @%u", __func__, c->name, w->id);
 
-	style_apply(&other_gc, oo, "pane-border-style");
-	style_apply(&active_gc, oo, "pane-active-border-style");
+	style_apply(&other_gc, oo, "pane-border-style", NULL);
+	style_apply(&active_gc, oo, "pane-active-border-style", NULL);
 	active_gc.attr = other_gc.attr = GRID_ATTR_CHARSET;
 
 	memcpy(&m_other_gc, &other_gc, sizeof m_other_gc);

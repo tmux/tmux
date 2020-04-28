@@ -557,7 +557,7 @@ mode_tree_draw(struct mode_tree_data *mtd)
 
 	memcpy(&gc0, &grid_default_cell, sizeof gc0);
 	memcpy(&gc, &grid_default_cell, sizeof gc);
-	style_apply(&gc, oo, "mode-style");
+	style_apply(&gc, oo, "mode-style", NULL);
 
 	w = mtd->width;
 	h = mtd->height;
