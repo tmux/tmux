@@ -850,7 +850,9 @@ options_string_to_style(struct options *oo, const char *name,
 	s = o->value.string;
 	log_debug("%s: %s is '%s'", __func__, name, s);
 
+	style_set(&o->style, &grid_default_cell);
 	o->cached = (strstr(s, "#{") == NULL);
+
 	if (ft != NULL && !o->cached) {
 		expanded = format_expand(ft, s);
 		if (style_parse(&o->style, &grid_default_cell, expanded) != 0) {
