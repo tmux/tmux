@@ -22,7 +22,7 @@ LDADD = $(LIBOBJS)
 if IS_GCC
 AM_CFLAGS += -std=gnu99 -O2
 if IS_DEBUG
-AM_CFLAGS += -g -O0
+AM_CFLAGS += -g
 AM_CFLAGS += -Wno-long-long -Wall -W -Wformat=2
 AM_CFLAGS += -Wmissing-prototypes -Wstrict-prototypes -Wmissing-declarations
 AM_CFLAGS += -Wwrite-strings -Wshadow -Wpointer-arith -Wsign-compare
