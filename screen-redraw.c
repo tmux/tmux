@@ -294,14 +294,14 @@ screen_redraw_make_pane_status(struct client *c, struct window *w,
 	struct screen_write_ctx	 ctx;
 	struct screen		 old;
 
-	if (wp == w->active)
-		style_apply(&gc, w->options, "pane-active-border-style", NULL);
-	else
-		style_apply(&gc, w->options, "pane-border-style", NULL);
-	fmt = options_get_string(w->options, "pane-border-format");
-
 	ft = format_create(c, NULL, FORMAT_PANE|wp->id, FORMAT_STATUS);
-	format_defaults(ft, c, NULL, NULL, wp);
+	format_defaults(ft, c, c->session, c->session->curw, wp);
+
+	if (wp == w->active)
+		style_apply(&gc, w->options, "pane-active-border-style", ft);
+	else
+		style_apply(&gc, w->options, "pane-border-style", ft);
+	fmt = options_get_string(w->options, "pane-border-format");
 
 	expanded = format_expand_time(ft, fmt);
 	if (wp->sx < 4)
