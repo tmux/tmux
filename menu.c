@@ -150,11 +150,8 @@ menu_draw_cb(struct client *c, __unused struct screen_redraw_ctx *ctx0)
 	struct screen_write_ctx	 ctx;
 	u_int			 i, px = md->px, py = md->py;
 	struct grid_cell	 gc;
-	struct format_tree	*ft;
 
-	ft = format_create_from_state(md->item, c, &md->fs);
-	style_apply(&gc, c->session->curw->window->options, "mode-style", ft);
-	format_free(ft);
+	style_apply(&gc, c->session->curw->window->options, "mode-style", NULL);
 
 	screen_write_start(&ctx, NULL, s);
 	screen_write_clearscreen(&ctx, 8);
