@@ -955,6 +955,9 @@ struct window_pane {
 	size_t		 written;
 	size_t		 skipped;
 
+	int		 border_gc_set;
+	struct grid_cell border_gc;
+
 	TAILQ_ENTRY(window_pane) entry;
 	RB_ENTRY(window_pane) tree_entry;
 };
