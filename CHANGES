@@ -1,6 +1,29 @@
 CHANGES FROM 3.1 TO 3.2
 
-* Add extension terminfo(5) capabilities for margins.
+* Sanitize session names like window names instead of forbidding invalid ones.
+
+* Check if the clear terminfo(5) capability starts with CSI and if so then
+  assume the terminal is VT100-like, rather than relying on the XT capability.
+
+* Improve command prompt tab completion and add menus both for strings and for
+  -t and -s (when used without a trailing space).
+
+* Change all the style options to string options so they can support formats.
+  Change pane-border-active-style to use this to change the border colour when
+  in a mode or with synchronize-panes on. This also implies a few minor changes
+  to existing behaviour:
+
+  - set-option -a with a style option automatically inserts a comma between the
+    old value and appended text.
+
+  - OSC 10 and 11 no longer set the window-style option, instead they store the
+    colour internally in the pane data and it is used as the default when the
+    option is evaluated.
+
+  - status-fg and -bg now override status-style instead of the option values
+    being changed.
+
+* Add extension terminfo(5) capabilities for margins and focus reporting.
 
 * Try $XDG_CONFIG_HOME/tmux/tmux.conf as well as ~/.config/tmux/tmux.conf for
   configuration file (the search paths are in TMUX_CONF in Makefile.am).
