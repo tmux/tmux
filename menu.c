@@ -150,8 +150,11 @@ menu_draw_cb(struct client *c, __unused struct screen_redraw_ctx *ctx0)
 	struct screen_write_ctx	 ctx;
 	u_int			 i, px = md->px, py = md->py;
 	struct grid_cell	 gc;
+	struct format_tree	*ft;
 
-	style_apply(&gc, c->session->curw->window->options, "mode-style", NULL);
+	ft = format_create_from_state(md->item, c, &md->fs);
+	style_apply(&gc, c->session->curw->window->options, "mode-style", ft);
+	format_free(ft);
 
 	screen_write_start(&ctx, NULL, s);
 	screen_write_clearscreen(&ctx, 8);
@@ -240,6 +243,10 @@ menu_key_cb(struct client *c, struct key_event *event)
 		} while ((name == NULL || *name == '-') && md->choice != old);
 		c->flags |= CLIENT_REDRAWOVERLAY;
 		return (0);
+	case KEYC_BSPACE:
+		if (~md->flags & MENU_TAB)
+			break;
+		return (1);
 	case '\011': /* Tab */
 		if (~md->flags & MENU_TAB)
 			break;
