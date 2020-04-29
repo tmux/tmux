@@ -45,6 +45,10 @@ static void	screen_redraw_draw_pane(struct screen_redraw_ctx *,
 
 #define CELL_BORDERS " xqlkmjwvtun~"
 
+const struct grid_cell screen_redraw_border_cell = {
+	{ { ' ' }, 0, 1, 1 }, GRID_ATTR_CHARSET, 0, 8, 8, 0
+};
+
 /* Return if window has only two panes. */
 static int
 screen_redraw_two_panes(struct window *w)
@@ -556,25 +560,30 @@ screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j)
 	struct tty		*tty = &c->tty;
 	struct window_pane	*wp;
 	u_int			 type, x = ctx->ox + i, y = ctx->oy + j;
+	int			 pane_status = ctx->pane_status;
 	const struct grid_cell	*gc;
 	struct grid_cell	 copy;
 
 	if (c->overlay_check != NULL && !c->overlay_check(c, x, y))
 		return;
 
-	type = screen_redraw_check_cell(c, x, y, ctx->pane_status, &wp);
+	type = screen_redraw_check_cell(c, x, y, pane_status, &wp);
 	if (type == CELL_INSIDE)
 		return;
 
-	gc = screen_redraw_draw_borders_style(ctx, x, y, wp);
-	if (gc == NULL)
-		return;
+	if (wp == NULL)
+		gc = &screen_redraw_border_cell;
+	else {
+		gc = screen_redraw_draw_borders_style(ctx, x, y, wp);
+		if (gc == NULL)
+			return;
 
-	if (server_is_marked(s, s->curw, marked_pane.wp) &&
-	    screen_redraw_check_is(x, y, ctx->pane_status, marked_pane.wp)) {
-		memcpy(&copy, gc, sizeof copy);
-		copy.attr ^= GRID_ATTR_REVERSE;
-		gc = &copy;
+		if (server_is_marked(s, s->curw, marked_pane.wp) &&
+		    screen_redraw_check_is(x, y, pane_status, marked_pane.wp)) {
+			memcpy(&copy, gc, sizeof copy);
+			copy.attr ^= GRID_ATTR_REVERSE;
+			gc = &copy;
+		}
 	}
 
 	tty_attributes(tty, gc, NULL);
