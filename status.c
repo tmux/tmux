@@ -1376,6 +1376,11 @@ status_prompt_complete_list(u_int *size, const char *s, int at_start)
 			list = xreallocarray(list, (*size) + 1, sizeof *list);
 			list[(*size)++] = xstrdup((*cmdent)->name);
 		}
+		if ((*cmdent)->alias != NULL &&
+		    strncmp((*cmdent)->alias, s, slen) == 0) {
+			list = xreallocarray(list, (*size) + 1, sizeof *list);
+			list[(*size)++] = xstrdup((*cmdent)->alias);
+		}
 	}
 	o = options_get_only(global_options, "command-alias");
 	if (o != NULL) {
