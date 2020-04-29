@@ -1,5 +1,10 @@
 CHANGES FROM 3.1 TO 3.2
 
+* Improve search match marking in copy mode. Two new options
+  copy-mode-match-style and copy-mode-current-match-style to set the style for
+  matches and for the current match respectively. Also a change so that if a
+  copy key is pressed with no selection, the current match (if any) is copied.
+
 * Sanitize session names like window names instead of forbidding invalid ones.
 
 * Check if the clear terminfo(5) capability starts with CSI and if so then
