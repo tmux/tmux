@@ -655,6 +655,22 @@ const struct options_table_entry options_table[] = {
 	  .default_num = 1
 	},
 
+	{ .name = "copy-mode-match-style",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "bg=cyan,fg=black",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ","
+	},
+
+	{ .name = "copy-mode-current-match-style",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "bg=magenta,fg=black",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ","
+	},
+
 	{ .name = "main-pane-height",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,
