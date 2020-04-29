@@ -90,6 +90,7 @@ cmd_respawn_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	wp->flags |= PANE_REDRAW;
+	server_redraw_window_borders(wp->window);
 	server_status_window(wp->window);
 
 	environ_free(sc.environ);

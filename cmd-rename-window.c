@@ -54,6 +54,7 @@ cmd_rename_window_exec(struct cmd *self, struct cmdq_item *item)
 	window_set_name(wl->window, newname);
 	options_set_number(wl->window->options, "automatic-rename", 0);
 
+	server_redraw_window_borders(wl->window);
 	server_status_window(wl->window);
 	free(newname);
 

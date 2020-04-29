@@ -96,6 +96,7 @@ check_window_name(struct window *w)
 	if (strcmp(name, w->name) != 0) {
 		log_debug("@%u new name %s (was %s)", w->id, name, w->name);
 		window_set_name(w, name);
+		server_redraw_window_borders(w);
 		server_status_window(w);
 	} else
 		log_debug("@%u name not changed (still %s)", w->id, w->name);
