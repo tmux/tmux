@@ -40,8 +40,8 @@ const struct cmd_entry cmd_command_prompt_entry = {
 	.name = "command-prompt",
 	.alias = NULL,
 
-	.args = { "1kiI:Np:t:", 0, 1 },
-	.usage = "[-1kiN] [-I inputs] [-p prompts] " CMD_TARGET_CLIENT_USAGE " "
+	.args = { "1kiI:Np:Tt:W", 0, 1 },
+	.usage = "[-1kiNTW] [-I inputs] [-p prompts] " CMD_TARGET_CLIENT_USAGE " "
 		 "[template]",
 
 	.flags = CMD_CLIENT_TFLAG,
@@ -121,6 +121,10 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 		cdata->flags |= PROMPT_INCREMENTAL;
 	else if (args_has(args, 'k'))
 		cdata->flags |= PROMPT_KEY;
+	else if (args_has(args, 'W'))
+		cdata->flags |= PROMPT_WINDOW;
+	else if (args_has(args, 'T'))
+		cdata->flags |= PROMPT_TARGET;
 	status_prompt_set(tc, prompt, input, cmd_command_prompt_callback,
 	    cmd_command_prompt_free, cdata, cdata->flags);
 	free(prompt);
