@@ -1,3 +1,7 @@
+CHANGES FROM 3.1a TO 3.1b
+
+* Fix crash when allow-rename is on and an empty name is set.
+
 CHANGES FROM 3.1 TO 3.1a
 
 * Do not close stdout prematurely in control mode since it is needed to print

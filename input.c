@@ -2304,7 +2304,7 @@ input_exit_rename(struct input_ctx *ictx)
 		return;
 
 	if (ictx->input_len == 0) {
-		oe = options_get(wp->window->options, "automatic-rename");
+		oe = options_get_only(wp->window->options, "automatic-rename");
 		if (oe != NULL)
 			options_remove(oe);
 		return;
