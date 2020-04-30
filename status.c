@@ -490,6 +490,7 @@ status_message_redraw(struct client *c)
 	size_t			 len;
 	u_int			 lines, offset;
 	struct grid_cell	 gc;
+	struct format_tree	*ft;
 
 	if (c->tty.sx == 0 || c->tty.sy == 0)
 		return (0);
@@ -504,7 +505,9 @@ status_message_redraw(struct client *c)
 	if (len > c->tty.sx)
 		len = c->tty.sx;
 
-	style_apply(&gc, s->options, "message-style", NULL);
+	ft = format_create_defaults(NULL, c, NULL, NULL, NULL);
+	style_apply(&gc, s->options, "message-style", ft);
+	format_free(ft);
 
 	screen_write_start(&ctx, NULL, sl->active);
 	screen_write_fast_copy(&ctx, &sl->screen, 0, 0, c->tty.sx, lines - 1);
@@ -636,6 +639,7 @@ status_prompt_redraw(struct client *c)
 	u_int			 i, lines, offset, left, start, width;
 	u_int			 pcursor, pwidth;
 	struct grid_cell	 gc, cursorgc;
+	struct format_tree	*ft;
 
 	if (c->tty.sx == 0 || c->tty.sy == 0)
 		return (0);
@@ -646,10 +650,12 @@ status_prompt_redraw(struct client *c)
 		lines = 1;
 	screen_init(sl->active, c->tty.sx, lines, 0);
 
+	ft = format_create_defaults(NULL, c, NULL, NULL, NULL);
 	if (c->prompt_mode == PROMPT_COMMAND)
-		style_apply(&gc, s->options, "message-command-style", NULL);
+		style_apply(&gc, s->options, "message-command-style", ft);
 	else
-		style_apply(&gc, s->options, "message-style", NULL);
+		style_apply(&gc, s->options, "message-style", ft);
+	format_free(ft);
 
 	memcpy(&cursorgc, &gc, sizeof cursorgc);
 	cursorgc.attr ^= GRID_ATTR_REVERSE;
