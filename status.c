@@ -346,8 +346,15 @@ status_redraw(struct client *c)
 	if (c->tty.sy == 0 || lines == 0)
 		return (1);
 
+	/* Create format tree. */
+	flags = FORMAT_STATUS;
+	if (c->flags & CLIENT_STATUSFORCE)
+		flags |= FORMAT_FORCE;
+	ft = format_create(c, NULL, FORMAT_NONE, flags);
+	format_defaults(ft, c, NULL, NULL, NULL);
+
 	/* Set up default colour. */
-	style_apply(&gc, s->options, "status-style", NULL);
+	style_apply(&gc, s->options, "status-style", ft);
 	fg = options_get_number(s->options, "status-fg");
 	if (fg != 8)
 		gc.fg = fg;
@@ -366,13 +373,6 @@ status_redraw(struct client *c)
 		changed = force = 1;
 	}
 	screen_write_start(&ctx, NULL, &sl->screen);
-
-	/* Create format tree. */
-	flags = FORMAT_STATUS;
-	if (c->flags & CLIENT_STATUSFORCE)
-		flags |= FORMAT_FORCE;
-	ft = format_create(c, NULL, FORMAT_NONE, flags);
-	format_defaults(ft, c, NULL, NULL, NULL);
 
 	/* Write the status lines. */
 	o = options_get(s->options, "status-format");
