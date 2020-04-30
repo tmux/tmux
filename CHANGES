@@ -1,4 +1,4 @@
-CHANGES FROM 3.1 TO 3.2
+CHANGES FROM 3.1b TO 3.2
 
 * Improve search match marking in copy mode. Two new options
   copy-mode-match-style and copy-mode-current-match-style to set the style for
@@ -152,6 +152,10 @@ CHANGES FROM 3.1 TO 3.2
 * Add a copy-mode -H flag to hide the position marker in the top right.
 
 * Add number operators for formats (+, -, *, / and m),
+
+CHANGES FROM 3.1a TO 3.1b
+
+* Fix crash when allow-rename is on and an empty name is set.
 
 CHANGES FROM 3.1 TO 3.1a
 
