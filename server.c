@@ -480,4 +480,5 @@ server_child_stopped(pid_t pid, int status)
 			}
 		}
 	}
+	job_check_died(pid, status);
 }

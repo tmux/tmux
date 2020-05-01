@@ -296,6 +296,15 @@ paste_set(char *data, size_t size, const char *name, char **cause)
 	return (0);
 }
 
+/* Set paste data without otherwise changing it. */
+void
+paste_replace(struct paste_buffer *pb, char *data, size_t size)
+{
+	free(pb->data);
+	pb->data = data;
+	pb->size = size;
+}
+
 /* Convert start of buffer into a nice string. */
 char *
 paste_make_sample(struct paste_buffer *pb)

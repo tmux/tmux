@@ -209,6 +209,12 @@ const struct options_table_entry options_table[] = {
 	  .default_str = "screen"
 	},
 
+	{ .name = "editor",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .default_str = _PATH_VI
+	},
+
 	{ .name = "escape-time",
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .scope = OPTIONS_TABLE_SERVER,

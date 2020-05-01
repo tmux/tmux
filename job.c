@@ -19,6 +19,7 @@
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
 
 #include <fcntl.h>
 #include <signal.h>
@@ -283,6 +284,12 @@ job_check_died(pid_t pid, int status)
 	}
 	if (job == NULL)
 		return;
+	if (WIFSTOPPED(status)) {
+		if (WSTOPSIG(status) == SIGTTIN || WSTOPSIG(status) == SIGTTOU)
+			return;
+		killpg(job->pid, SIGCONT);
+		return;
+	}
 	log_debug("job died %p: %s, pid %ld", job, job->cmd, (long) job->pid);
 
 	job->status = status;

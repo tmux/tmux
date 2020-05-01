@@ -313,7 +313,7 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	else if (args_has(args, 'E'))
 		flags |= POPUP_CLOSEEXIT;
 	if (popup_display(flags, item, px, py, w, h, nlines, lines, shellcmd,
-	    cmd, cwd, tc, target) != 0)
+	    cmd, cwd, tc, target, NULL, NULL) != 0)
 		return (CMD_RETURN_NORMAL);
 	return (CMD_RETURN_WAIT);
 }
