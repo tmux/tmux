@@ -90,6 +90,10 @@ void	warnx(const char *, ...);
 #define _PATH_DEFPATH	"/usr/bin:/bin"
 #endif
 
+#ifndef _PATH_VI
+#define _PATH_VI	"/usr/bin/vi"
+#endif
+
 #ifndef __OpenBSD__
 #define pledge(s, p) (0)
 #endif
