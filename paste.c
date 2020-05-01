@@ -311,7 +311,7 @@ paste_make_sample(struct paste_buffer *pb)
 {
 	char		*buf;
 	size_t		 len, used;
-	const int	 flags = VIS_OCTAL|VIS_TAB|VIS_NL;
+	const int	 flags = VIS_OCTAL|VIS_CSTYLE|VIS_TAB|VIS_NL;
 	const size_t	 width = 200;
 
 	len = pb->size;
