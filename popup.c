@@ -367,6 +367,7 @@ popup_job_update_cb(struct job *job)
 {
 	struct popup_data	*pd = job_get_data(job);
 	struct evbuffer		*evb = job_get_event(job)->input;
+	struct client		*c = pd->c;
 	struct screen		*s = &pd->s;
 	void			*data = EVBUFFER_DATA(evb);
 	size_t			 size = EVBUFFER_LENGTH(evb);
@@ -374,9 +375,13 @@ popup_job_update_cb(struct job *job)
 	if (size == 0)
 		return;
 
-	pd->c->tty.flags &= ~TTY_FREEZE;
+	c->overlay_check = NULL;
+	c->tty.flags &= ~TTY_FREEZE;
+
 	input_parse_screen(pd->ictx, s, popup_init_ctx_cb, pd, data, size);
-	pd->c->tty.flags |= TTY_FREEZE;
+
+	c->tty.flags |= TTY_FREEZE;
+	c->overlay_check = popup_check_cb;
 
 	evbuffer_drain(evb, size);
 }
