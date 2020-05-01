@@ -1,5 +1,11 @@
 CHANGES FROM 3.1b TO 3.2
 
+* Add a key (e) in buffer mode to open the buffer in an editor. The buffer
+  contents is updated when the editor exits.
+
+* Add -e flag for new-session to set environment variables, like the same flag
+  for new-window.
+
 * Improve search match marking in copy mode. Two new options
   copy-mode-match-style and copy-mode-current-match-style to set the style for
   matches and for the current match respectively. Also a change so that if a
