@@ -75,8 +75,7 @@ static void	tty_default_attributes(struct tty *, struct window_pane *,
 
 #define tty_use_margin(tty) \
 	(tty->term->flags & TERM_DECSLRM)
-
-#define tty_pane_full_width(tty, ctx) \
+#define tty_full_width(tty, ctx) \
 	((ctx)->xoff == 0 && (ctx)->sx >= (tty)->sx)
 
 #define TTY_BLOCK_INTERVAL (100000 /* 100 milliseconds */)
@@ -1511,7 +1510,7 @@ tty_cmd_insertcharacter(struct tty *tty, const struct tty_ctx *ctx)
 	struct window_pane	*wp = ctx->wp;
 
 	if (ctx->bigger ||
-	    !tty_pane_full_width(tty, ctx) ||
+	    !tty_full_width(tty, ctx) ||
 	    tty_fake_bce(tty, wp, ctx->bg) ||
 	    (!tty_term_has(tty->term, TTYC_ICH) &&
 	    !tty_term_has(tty->term, TTYC_ICH1))) {
@@ -1532,7 +1531,7 @@ tty_cmd_deletecharacter(struct tty *tty, const struct tty_ctx *ctx)
 	struct window_pane	*wp = ctx->wp;
 
 	if (ctx->bigger ||
-	    !tty_pane_full_width(tty, ctx) ||
+	    !tty_full_width(tty, ctx) ||
 	    tty_fake_bce(tty, wp, ctx->bg) ||
 	    (!tty_term_has(tty->term, TTYC_DCH) &&
 	    !tty_term_has(tty->term, TTYC_DCH1))) {
@@ -1570,7 +1569,7 @@ void
 tty_cmd_insertline(struct tty *tty, const struct tty_ctx *ctx)
 {
 	if (ctx->bigger ||
-	    !tty_pane_full_width(tty, ctx) ||
+	    !tty_full_width(tty, ctx) ||
 	    tty_fake_bce(tty, ctx->wp, ctx->bg) ||
 	    !tty_term_has(tty->term, TTYC_CSR) ||
 	    !tty_term_has(tty->term, TTYC_IL1) ||
@@ -1594,7 +1593,7 @@ void
 tty_cmd_deleteline(struct tty *tty, const struct tty_ctx *ctx)
 {
 	if (ctx->bigger ||
-	    !tty_pane_full_width(tty, ctx) ||
+	    !tty_full_width(tty, ctx) ||
 	    tty_fake_bce(tty, ctx->wp, ctx->bg) ||
 	    !tty_term_has(tty->term, TTYC_CSR) ||
 	    !tty_term_has(tty->term, TTYC_DL1) ||
@@ -1654,7 +1653,7 @@ tty_cmd_reverseindex(struct tty *tty, const struct tty_ctx *ctx)
 		return;
 
 	if (ctx->bigger ||
-	    (!tty_pane_full_width(tty, ctx) && !tty_use_margin(tty)) ||
+	    (!tty_full_width(tty, ctx) && !tty_use_margin(tty)) ||
 	    tty_fake_bce(tty, wp, 8) ||
 	    !tty_term_has(tty->term, TTYC_CSR) ||
 	    (!tty_term_has(tty->term, TTYC_RI) &&
@@ -1686,7 +1685,7 @@ tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 		return;
 
 	if (ctx->bigger ||
-	    (!tty_pane_full_width(tty, ctx) && !tty_use_margin(tty)) ||
+	    (!tty_full_width(tty, ctx) && !tty_use_margin(tty)) ||
 	    tty_fake_bce(tty, wp, 8) ||
 	    !tty_term_has(tty->term, TTYC_CSR) ||
 	    wp->sx == 1 ||
@@ -1725,7 +1724,7 @@ tty_cmd_scrollup(struct tty *tty, const struct tty_ctx *ctx)
 	u_int			 i;
 
 	if (ctx->bigger ||
-	    (!tty_pane_full_width(tty, ctx) && !tty_use_margin(tty)) ||
+	    (!tty_full_width(tty, ctx) && !tty_use_margin(tty)) ||
 	    tty_fake_bce(tty, wp, 8) ||
 	    !tty_term_has(tty->term, TTYC_CSR) ||
 	    wp->sx == 1 ||
@@ -1762,7 +1761,7 @@ tty_cmd_scrolldown(struct tty *tty, const struct tty_ctx *ctx)
 	u_int			 i;
 
 	if (ctx->bigger ||
-	    (!tty_pane_full_width(tty, ctx) && !tty_use_margin(tty)) ||
+	    (!tty_full_width(tty, ctx) && !tty_use_margin(tty)) ||
 	    tty_fake_bce(tty, wp, 8) ||
 	    !tty_term_has(tty->term, TTYC_CSR) ||
 	    (!tty_term_has(tty->term, TTYC_RI) &&
@@ -1887,7 +1886,7 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 
 	if (ctx->xoff + ctx->ocx - ctx->wox > tty->sx - 1 &&
 	    ctx->ocy == ctx->orlower &&
-	    tty_pane_full_width(tty, ctx))
+	    tty_full_width(tty, ctx))
 		tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
 
 	tty_margin_off(tty);
@@ -1908,7 +1907,7 @@ tty_cmd_cells(struct tty *tty, const struct tty_ctx *ctx)
 	    (ctx->xoff + ctx->ocx < ctx->wox ||
 	    ctx->xoff + ctx->ocx + ctx->num > ctx->wox + ctx->wsx)) {
 		if (!ctx->wrapped ||
-		    !tty_pane_full_width(tty, ctx) ||
+		    !tty_full_width(tty, ctx) ||
 		    (tty->term->flags & TERM_NOXENL) ||
 		    ctx->xoff + ctx->ocx != 0 ||
 		    ctx->yoff + ctx->ocy != tty->cy + 1 ||
@@ -2123,7 +2122,7 @@ tty_cursor_pane_unless_wrap(struct tty *tty, const struct tty_ctx *ctx,
     u_int cx, u_int cy)
 {
 	if (!ctx->wrapped ||
-	    !tty_pane_full_width(tty, ctx) ||
+	    !tty_full_width(tty, ctx) ||
 	    (tty->term->flags & TERM_NOXENL) ||
 	    ctx->xoff + cx != 0 ||
 	    ctx->yoff + cy != tty->cy + 1 ||
