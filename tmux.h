@@ -1509,7 +1509,7 @@ RB_HEAD(client_files, client_file);
 typedef int (*prompt_input_cb)(struct client *, void *, const char *, int);
 typedef void (*prompt_free_cb)(void *);
 typedef int (*overlay_check_cb)(struct client *, u_int, u_int);
-typedef int (*overlay_mode_cb)(struct client *, u_int *, u_int *);
+typedef struct screen *(*overlay_mode_cb)(struct client *, u_int *, u_int *);
 typedef void (*overlay_draw_cb)(struct client *, struct screen_redraw_ctx *);
 typedef int (*overlay_key_cb)(struct client *, struct key_event *);
 typedef void (*overlay_free_cb)(struct client *);

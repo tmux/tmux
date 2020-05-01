@@ -136,7 +136,7 @@ popup_write_screen(struct client *c, struct popup_data *pd)
 	screen_write_stop(&ctx);
 }
 
-static int
+static struct screen *
 popup_mode_cb(struct client *c, u_int *cx, u_int *cy)
 {
 	struct popup_data	*pd = c->overlay_data;
@@ -145,7 +145,7 @@ popup_mode_cb(struct client *c, u_int *cx, u_int *cy)
 		return (0);
 	*cx = pd->px + 1 + pd->s.cx;
 	*cy = pd->py + 1 + pd->s.cy;
-	return (pd->s.mode);
+	return (&pd->s);
 }
 
 static int
