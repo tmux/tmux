@@ -77,7 +77,7 @@ static void	tty_default_attributes(struct tty *, struct window_pane *,
 	(tty->term->flags & TERM_DECSLRM)
 
 #define tty_pane_full_width(tty, ctx) \
-	((ctx)->xoff == 0 && screen_size_x((ctx)->wp->screen) >= (tty)->sx)
+	((ctx)->xoff == 0 && (ctx)->sx >= (tty)->sx)
 
 #define TTY_BLOCK_INTERVAL (100000 /* 100 milliseconds */)
 #define TTY_BLOCK_START(tty) (1 + ((tty)->sx * (tty)->sy) * 8)
@@ -897,9 +897,7 @@ tty_update_client_offset(struct client *c)
 static int
 tty_large_region(__unused struct tty *tty, const struct tty_ctx *ctx)
 {
-	struct window_pane	*wp = ctx->wp;
-
-	return (ctx->orlower - ctx->orupper >= screen_size_y(wp->screen) / 2);
+	return (ctx->orlower - ctx->orupper >= ctx->sy / 2);
 }
 
 /*
@@ -933,7 +931,6 @@ tty_redraw_region(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct client		*c = tty->client;
 	struct window_pane	*wp = ctx->wp;
-	struct screen		*s = wp->screen;
 	u_int			 i;
 
 	/*
@@ -947,7 +944,7 @@ tty_redraw_region(struct tty *tty, const struct tty_ctx *ctx)
 	}
 
 	if (ctx->ocy < ctx->orupper || ctx->ocy > ctx->orlower) {
-		for (i = ctx->ocy; i < screen_size_y(s); i++)
+		for (i = ctx->ocy; i < ctx->sy; i++)
 			tty_draw_pane(tty, ctx, i);
 	} else {
 		for (i = ctx->orupper; i <= ctx->orlower; i++)
@@ -1222,7 +1219,7 @@ tty_draw_pane(struct tty *tty, const struct tty_ctx *ctx, u_int py)
 {
 	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
-	u_int			 nx = screen_size_x(s), i, x, rx, ry;
+	u_int			 nx = ctx->sx, i, x, rx, ry;
 
 	log_debug("%s: %s %u %d", __func__, tty->client->name, py, ctx->bigger);
 
@@ -1621,23 +1618,20 @@ void
 tty_cmd_clearline(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
-	u_int			 nx;
 
 	tty_default_attributes(tty, wp, ctx->bg);
 
-	nx = screen_size_x(wp->screen);
-	tty_clear_pane_line(tty, ctx, ctx->ocy, 0, nx, ctx->bg);
+	tty_clear_pane_line(tty, ctx, ctx->ocy, 0, ctx->sx, ctx->bg);
 }
 
 void
 tty_cmd_clearendofline(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
-	u_int			 nx;
+	u_int			 nx = ctx->sx - ctx->ocx;
 
 	tty_default_attributes(tty, wp, ctx->bg);
 
-	nx = screen_size_x(wp->screen) - ctx->ocx;
 	tty_clear_pane_line(tty, ctx, ctx->ocy, ctx->ocx, nx, ctx->bg);
 }
 
@@ -1801,18 +1795,18 @@ tty_cmd_clearendofscreen(struct tty *tty, const struct tty_ctx *ctx)
 
 	tty_default_attributes(tty, wp, ctx->bg);
 
-	tty_region_pane(tty, ctx, 0, screen_size_y(wp->screen) - 1);
+	tty_region_pane(tty, ctx, 0, ctx->sy - 1);
 	tty_margin_off(tty);
 
 	px = 0;
-	nx = screen_size_x(wp->screen);
+	nx = ctx->sx;
 	py = ctx->ocy + 1;
-	ny = screen_size_y(wp->screen) - ctx->ocy - 1;
+	ny = ctx->sy - ctx->ocy - 1;
 
 	tty_clear_pane_area(tty, ctx, py, ny, px, nx, ctx->bg);
 
 	px = ctx->ocx;
-	nx = screen_size_x(wp->screen) - ctx->ocx;
+	nx = ctx->sx - ctx->ocx;
 	py = ctx->ocy;
 
 	tty_clear_pane_line(tty, ctx, py, px, nx, ctx->bg);
@@ -1826,11 +1820,11 @@ tty_cmd_clearstartofscreen(struct tty *tty, const struct tty_ctx *ctx)
 
 	tty_default_attributes(tty, wp, ctx->bg);
 
-	tty_region_pane(tty, ctx, 0, screen_size_y(wp->screen) - 1);
+	tty_region_pane(tty, ctx, 0, ctx->sy - 1);
 	tty_margin_off(tty);
 
 	px = 0;
-	nx = screen_size_x(wp->screen);
+	nx = ctx->sx;
 	py = 0;
 	ny = ctx->ocy;
 
@@ -1851,13 +1845,13 @@ tty_cmd_clearscreen(struct tty *tty, const struct tty_ctx *ctx)
 
 	tty_default_attributes(tty, wp, ctx->bg);
 
-	tty_region_pane(tty, ctx, 0, screen_size_y(wp->screen) - 1);
+	tty_region_pane(tty, ctx, 0, ctx->sy - 1);
 	tty_margin_off(tty);
 
 	px = 0;
-	nx = screen_size_x(wp->screen);
+	nx = ctx->sx;
 	py = 0;
-	ny = screen_size_y(wp->screen);
+	ny = ctx->sy;
 
 	tty_clear_pane_area(tty, ctx, py, ny, px, nx, ctx->bg);
 }
@@ -1866,7 +1860,6 @@ void
 tty_cmd_alignmenttest(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
-	struct screen		*s = wp->screen;
 	u_int			 i, j;
 
 	if (ctx->bigger) {
@@ -1876,12 +1869,12 @@ tty_cmd_alignmenttest(struct tty *tty, const struct tty_ctx *ctx)
 
 	tty_attributes(tty, &grid_default_cell, wp);
 
-	tty_region_pane(tty, ctx, 0, screen_size_y(s) - 1);
+	tty_region_pane(tty, ctx, 0, ctx->sy - 1);
 	tty_margin_off(tty);
 
-	for (j = 0; j < screen_size_y(s); j++) {
+	for (j = 0; j < ctx->sy; j++) {
 		tty_cursor_pane(tty, ctx, 0, j);
-		for (i = 0; i < screen_size_x(s); i++)
+		for (i = 0; i < ctx->sx; i++)
 			tty_putc(tty, 'E');
 	}
 }

@@ -112,6 +112,9 @@ screen_write_initctx(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx,
 
 	ttyctx->wp = ctx->wp;
 
+	ttyctx->sx = screen_size_x(s);
+	ttyctx->sy = screen_size_y(s);
+
 	ttyctx->ocx = s->cx;
 	ttyctx->ocy = s->cy;
 
