@@ -317,7 +317,7 @@ screen_redraw_make_pane_status(struct client *c, struct window *w,
 	screen_init(&wp->status_screen, width, 1, 0);
 	wp->status_screen.mode = 0;
 
-	screen_write_start(&ctx, NULL, &wp->status_screen);
+	screen_write_start(&ctx, &wp->status_screen);
 
 	gc.attr |= GRID_ATTR_CHARSET;
 	for (i = 0; i < width; i++)
@@ -394,7 +394,8 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 
 		if (ctx->statustop)
 			yoff += ctx->statuslines;
-		tty_draw_line(tty, NULL, s, i, 0, width, x, yoff - ctx->oy);
+		tty_draw_line(tty, s, i, 0, width, x, yoff - ctx->oy,
+		    &grid_default_cell, NULL);
 	}
 	tty_cursor(tty, 0, 0);
 }
@@ -586,7 +587,7 @@ screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j)
 		}
 	}
 
-	tty_attributes(tty, gc, NULL);
+	tty_attributes(tty, gc, &grid_default_cell, NULL);
 	if (ctx->statustop)
 		tty_cursor(tty, i, ctx->statuslines + j);
 	else
@@ -647,8 +648,10 @@ screen_redraw_draw_status(struct screen_redraw_ctx *ctx)
 		y = 0;
 	else
 		y = c->tty.sy - ctx->statuslines;
-	for (i = 0; i < ctx->statuslines; i++)
-		tty_draw_line(tty, NULL, s, 0, i, UINT_MAX, 0, y + i);
+	for (i = 0; i < ctx->statuslines; i++) {
+		tty_draw_line(tty, s, 0, i, UINT_MAX, 0, y + i,
+		    &grid_default_cell, NULL);
+	}
 }
 
 /* Draw one pane. */
@@ -659,6 +662,7 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 	struct window	*w = c->session->curw->window;
 	struct tty	*tty = &c->tty;
 	struct screen	*s;
+	struct grid_cell defaults;
 	u_int		 i, j, top, x, y, width;
 
 	log_debug("%s: %s @%u %%%u", __func__, c->name, w->id, wp->id);
@@ -702,6 +706,8 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 		log_debug("%s: %s %%%u line %u,%u at %u,%u, width %u",
 		    __func__, c->name, wp->id, i, j, x, y, width);
 
-		tty_draw_line(tty, wp, s, i, j, width, x, y);
+		tty_default_colours(&defaults, wp);
+		tty_draw_line(tty, s, i, j, width, x, y, &defaults,
+		    wp->palette);
 	}
 }

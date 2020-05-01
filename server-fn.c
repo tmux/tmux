@@ -319,7 +319,7 @@ server_destroy_pane(struct window_pane *wp, int notify)
 		if (notify)
 			notify_pane("pane-died", wp);
 
-		screen_write_start(&ctx, wp, &wp->base);
+		screen_write_start_pane(&ctx, wp, &wp->base);
 		screen_write_scrollregion(&ctx, 0, screen_size_y(ctx.s) - 1);
 		screen_write_cursormove(&ctx, 0, screen_size_y(ctx.s) - 1, 0);
 		screen_write_linefeed(&ctx, 1, 8);

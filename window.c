@@ -1006,26 +1006,6 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 }
 
 void
-window_pane_alternate_on(struct window_pane *wp, struct grid_cell *gc,
-    int cursor)
-{
-	if (!options_get_number(wp->options, "alternate-screen"))
-		return;
-	screen_alternate_on(&wp->base, gc, cursor);
-	wp->flags |= PANE_REDRAW;
-}
-
-void
-window_pane_alternate_off(struct window_pane *wp, struct grid_cell *gc,
-    int cursor)
-{
-	if (!options_get_number(wp->options, "alternate-screen"))
-		return;
-	screen_alternate_off(&wp->base, gc, cursor);
-	wp->flags |= PANE_REDRAW;
-}
-
-void
 window_pane_set_palette(struct window_pane *wp, u_int n, int colour)
 {
 	if (n > 0xff)

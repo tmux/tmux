@@ -372,7 +372,7 @@ status_redraw(struct client *c)
 		screen_resize(&sl->screen, width, lines, 0);
 		changed = force = 1;
 	}
-	screen_write_start(&ctx, NULL, &sl->screen);
+	screen_write_start(&ctx, &sl->screen);
 
 	/* Write the status lines. */
 	o = options_get(s->options, "status-format");
@@ -509,7 +509,7 @@ status_message_redraw(struct client *c)
 	style_apply(&gc, s->options, "message-style", ft);
 	format_free(ft);
 
-	screen_write_start(&ctx, NULL, sl->active);
+	screen_write_start(&ctx, sl->active);
 	screen_write_fast_copy(&ctx, &sl->screen, 0, 0, c->tty.sx, lines - 1);
 	screen_write_cursormove(&ctx, 0, lines - 1, 0);
 	for (offset = 0; offset < c->tty.sx; offset++)
@@ -664,7 +664,7 @@ status_prompt_redraw(struct client *c)
 	if (start > c->tty.sx)
 		start = c->tty.sx;
 
-	screen_write_start(&ctx, NULL, sl->active);
+	screen_write_start(&ctx, sl->active);
 	screen_write_fast_copy(&ctx, &sl->screen, 0, 0, c->tty.sx, lines - 1);
 	screen_write_cursormove(&ctx, 0, lines - 1, 0);
 	for (offset = 0; offset < c->tty.sx; offset++)
