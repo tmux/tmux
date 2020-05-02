@@ -1540,7 +1540,7 @@ server_client_reset_state(struct client *c)
 	struct tty		*tty = &c->tty;
 	struct window		*w = c->session->curw->window;
 	struct window_pane	*wp = w->active, *loop;
-	struct screen		*s;
+	struct screen		*s = NULL;
 	struct options		*oo = c->session->options;
 	int			 mode = 0, cursor, flags;
 	u_int			 cx = 0, cy = 0, ox, oy, sx, sy;
@@ -1553,9 +1553,10 @@ server_client_reset_state(struct client *c)
 	tty->flags &= ~TTY_BLOCK;
 
 	/* Get mode from overlay if any, else from screen. */
-	if (c->overlay_draw != NULL && c->overlay_mode != NULL)
-		s = c->overlay_mode(c, &cx, &cy);
-	else
+	if (c->overlay_draw != NULL) {
+		if (c->overlay_mode != NULL)
+			s = c->overlay_mode(c, &cx, &cy);
+	} else
 		s = wp->screen;
 	if (s != NULL)
 		mode = s->mode;
