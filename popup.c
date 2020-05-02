@@ -79,8 +79,8 @@ popup_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 	ttyctx->wsx = c->tty.sx;
 	ttyctx->wsy = c->tty.sy;
 
-	ttyctx->xoff = pd->px + 1;
-	ttyctx->yoff = pd->py + 1;
+	ttyctx->xoff = ttyctx->rxoff = pd->px + 1;
+	ttyctx->yoff = ttyctx->ryoff = pd->py + 1;
 
 	return (1);
 }

@@ -987,7 +987,7 @@ static int
 tty_clamp_line(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
     u_int nx, u_int *i, u_int *x, u_int *rx, u_int *ry)
 {
-	u_int	xoff = ctx->xoff + px;
+	u_int	xoff = ctx->rxoff + px;
 
 	if (!tty_is_visible(tty, ctx, px, py, nx, 1))
 		return (0);
@@ -1082,7 +1082,7 @@ tty_clamp_area(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
     u_int nx, u_int ny, u_int *i, u_int *j, u_int *x, u_int *y, u_int *rx,
     u_int *ry)
 {
-	u_int	xoff = ctx->xoff + px, yoff = ctx->yoff + py;
+	u_int	xoff = ctx->rxoff + px, yoff = ctx->ryoff + py;
 
 	if (!tty_is_visible(tty, ctx, px, py, nx, ny))
 		return (0);
