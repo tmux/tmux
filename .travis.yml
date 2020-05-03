@@ -8,6 +8,16 @@ compiler:
   - gcc
   - clang
 
+arch:
+  - amd64
+  - arm64
+
+dist:
+  - xenial
+  - bionic
+  - trusty
+  - precise
+
 env:
   - BUILD=
   - BUILD=static
