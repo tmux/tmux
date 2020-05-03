@@ -9,4 +9,9 @@ if [ "$TRAVIS_OS_NAME" = "linux" ]; then
 				pkg-config \
 				libutempter-dev \
 				build-essential
+
+	if [ "$BUILD" = "musl" ]; then
+		sudo apt-get -y install musl-dev \
+					musl-tools
+	fi
 fi
