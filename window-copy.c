@@ -3057,25 +3057,28 @@ window_copy_update_style(struct window_mode_entry *wme, u_int fx, u_int fy,
     const struct grid_cell *cgc)
 {
 	struct window_copy_mode_data	*data = wme->data;
-	u_int				 mark, at, start, end, cy;
+	u_int				 mark, start, end, cy, cursor, current;
 	u_int				 sx = screen_size_x(data->backing);
 
 	if (data->searchmark == NULL)
 		return;
-	mark = data->searchmark[(fy * sx) + fx];
+
+	current = (fy * sx) + fx;
+
+	mark = data->searchmark[current];
 	if (mark == 0)
 		return;
 
 	cy = screen_hsize(data->backing) - data->oy + data->cy;
-	at = (cy * sx) + data->cx;
-	if (data->searchmark[at] == mark) {
-		window_copy_match_start_end(data, at, &start, &end);
-		if (at >= start && at <= end) {
+	cursor = (cy * sx) + data->cx;
+	if (data->searchmark[cursor] == mark) {
+		window_copy_match_start_end(data, cursor, &start, &end);
+		if (current >= start && current <= end) {
 			gc->attr = cgc->attr;
 			gc->fg = cgc->fg;
 			gc->bg = cgc->bg;
+			return;
 		}
-		return;
 	}
 
 	gc->attr = mgc->attr;
