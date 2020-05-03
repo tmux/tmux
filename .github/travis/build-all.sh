@@ -28,7 +28,7 @@ tar -zxf ncurses-*.tar.gz || exit 1
 				--without-tests \
 				--without-tack \
 				--disable-database \
-				--with-termcap \
+				--enable-termcap \
 				--enable-pc-files \
 				--with-pkg-config-libdir=$BUILD/lib/pkgconfig &&
 	 make && make install) || exit 1
