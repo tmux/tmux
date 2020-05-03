@@ -258,7 +258,8 @@ struct window_copy_mode_data {
 	int		 searchregex;
 	char		*searchstr;
 	u_char		*searchmark;
-	u_int		 searchcount;
+	int		 searchcount;
+	int		 searchmore;
 	int		 searchthis;
 	int		 searchx;
 	int		 searchy;
@@ -266,7 +267,8 @@ struct window_copy_mode_data {
 	u_char		 searchgen;
 
 	int		 timeout;	/* search has timed out */
-#define WINDOW_COPY_SEARCH_TIMEOUT 10
+#define WINDOW_COPY_SEARCH_TIMEOUT 10000
+#define WINDOW_COPY_SEARCH_ALL_TIMEOUT 200
 
 	int		 jumptype;
 	char		 jumpchar;
@@ -2847,6 +2849,15 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 	return (found);
 }
 
+static uint64_t
+window_copy_get_time(void)
+{
+	struct timeval	tv;
+
+	gettimeofday(&tv, NULL);
+	return ((tv.tv_sec * 1000ULL) + (tv.tv_usec / 1000ULL));
+}
+
 static int
 window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
     int regex)
@@ -2856,13 +2867,13 @@ window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
 	struct screen_write_ctx		 ctx;
 	struct grid			*gd = s->grid;
 	const struct grid_line		*gl;
-	int				 found, cis, which = -1;
+	int				 found, cis, which = -1, stopped = 0;
 	int				 cflags = REG_EXTENDED;
 	u_int				 px, py, i, b, nfound = 0, width;
-	u_int				 ssize = 1;
+	u_int				 ssize = 1, start, end;
 	char				*sbuf;
 	regex_t				 reg;
-	time_t				 tstart, t;
+	uint64_t			 stop = 0, tstart, t;
 
 	if (ssp == NULL) {
 		width = screen_write_strlen("%s", data->searchstr);
@@ -2877,10 +2888,6 @@ window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
 
 	cis = window_copy_is_lowercase(data->searchstr);
 
-	free(data->searchmark);
-	data->searchmark = xcalloc(gd->hsize + gd->sy, gd->sx);
-	data->searchgen = 1;
-
 	if (regex) {
 		sbuf = xmalloc(ssize);
 		sbuf[0] = '\0';
@@ -2893,13 +2900,18 @@ window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
 			return (0);
 		}
 	}
-	time(&tstart);
-	for (py = gd->hsize - data->oy; py > 0; py--) {
-		gl = grid_peek_line(gd, py - 1);
-		if (~gl->flags & GRID_LINE_WRAPPED)
-			break;
-	}
-	for (; py < gd->hsize - data->oy + gd->sy; py++) {
+	tstart = window_copy_get_time();
+
+	start = 0;
+	end = gd->hsize + gd->sy;
+	stop = window_copy_get_time() + WINDOW_COPY_SEARCH_ALL_TIMEOUT;
+
+again:
+	free(data->searchmark);
+	data->searchmark = xcalloc(gd->hsize + gd->sy, gd->sx);
+	data->searchgen = 1;
+
+	for (py = start; py < end; py++) {
 		px = 0;
 		for (;;) {
 			if (regex) {
@@ -2930,29 +2942,60 @@ window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
 			px++;
 		}
 
-		time(&t);
+		t = window_copy_get_time();
 		if (t - tstart > WINDOW_COPY_SEARCH_TIMEOUT) {
 			data->timeout = 1;
 			break;
 		}
+		if (stop != 0 && t > stop) {
+			stopped = 1;
+			break;
+		}
 	}
+	if (data->timeout) {
+		window_copy_clear_marks(wme);
+		goto out;
+	}
+
+	if (stopped && stop != 0) {
+		/* Try again but just the visible context. */
+		for (start = gd->hsize - data->oy; start > 0; start--) {
+			gl = grid_peek_line(gd, start - 1);
+			if (~gl->flags & GRID_LINE_WRAPPED)
+				break;
+		}
+		end = gd->hsize - data->oy + gd->sy;
+		stop = 0;
+		goto again;
+	}
+
+	if (stopped) {
+		data->searchthis = -1;
+		if (nfound > 1000)
+			data->searchcount = 1000;
+		else if (nfound > 100)
+			data->searchcount = 100;
+		else if (nfound > 10)
+			data->searchcount = 10;
+		else
+			data->searchcount = -1;
+		data->searchmore = 1;
+	} else {
+		if (which != -1)
+			data->searchthis = 1 + nfound - which;
+		else
+			data->searchthis = -1;
+		data->searchcount = nfound;
+		data->searchmore = 0;
+	}
+
+out:
+	if (ssp == &ss)
+		screen_free(&ss);
 	if (regex) {
 		free(sbuf);
 		regfree(&reg);
 	}
-	if (data->timeout) {
-		window_copy_clear_marks(wme);
-		return (1);
-	}
-
-	if (which != -1)
-		data->searchthis = 1 + nfound - which;
-	else
-		data->searchthis = -1;
-	data->searchcount = nfound;
-
-	if (ssp == &ss)
-		screen_free(&ss);
 	return (1);
 }
 
@@ -3136,13 +3179,16 @@ window_copy_write_line(struct window_mode_entry *wme,
 				    "[%u/%u]", data->oy, hsize);
 			}
 		} else {
-			if (data->searchthis == -1) {
+			if (data->searchcount == -1) {
 				size = xsnprintf(hdr, sizeof hdr,
-				    "(%u results) [%d/%u]", data->searchcount,
-				    data->oy, hsize);
+				    "[%u/%u]", data->oy, hsize);
+			} else if (data->searchthis == -1) {
+				size = xsnprintf(hdr, sizeof hdr,
+				    "(%d%s results) [%u/%u]", data->searchcount,
+				    data->searchmore ? "+" : "", data->oy, hsize);
 			} else {
 				size = xsnprintf(hdr, sizeof hdr,
-				    "(%u/%u results) [%d/%u]", data->searchthis,
+				    "(%d/%d results) [%u/%u]", data->searchthis,
 				    data->searchcount, data->oy, hsize);
 			}
 		}
