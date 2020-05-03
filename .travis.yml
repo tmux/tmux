@@ -1,16 +1,29 @@
 language: c
 
 os:
-    - linux
-    - osx
+  - linux
+  - osx
 
 compiler:
-    - gcc
-    - clang
+  - gcc
+  - clang
+
+env:
+  - BUILD=
+  - BUILD=static
+
+jobs:
+  exclude:
+    - os: osx
+    - compiler: gcc
+    - env: BUILD=static
+  exclude:
+    - os: osx
+    - compiler: clang
+    - env: BUILD=static
 
 before_install:
-    - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo apt-get update -qq; fi
-    - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo apt-get -y install bison autotools-dev libncurses5-dev libevent-dev pkg-config libutempter-dev build-essential; fi
+  - sh .github/travis/before-install.sh
 
 script:
-    - ./autogen.sh && ./configure && make
+  - sh .github/travis/build.sh
