@@ -25,6 +25,14 @@ jobs:
     - os: osx
       compiler: clang
       env: BUILD=static
+    - os: linux
+      compiler: gcc
+      arch: arm64
+      env: BUILD=all
+    - os: linux
+      compiler: clang
+      arch: arm64
+      env: BUILD=all
 
 before_install:
   - sh .github/travis/before-install.sh
