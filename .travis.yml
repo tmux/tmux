@@ -15,12 +15,11 @@ env:
 jobs:
   exclude:
     - os: osx
-    - compiler: gcc
-    - env: BUILD=static
-  exclude:
+      compiler: gcc
+      env: BUILD=static
     - os: osx
-    - compiler: clang
-    - env: BUILD=static
+      compiler: clang
+      env: BUILD=static
 
 before_install:
   - sh .github/travis/before-install.sh
