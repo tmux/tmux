@@ -1,5 +1,7 @@
 CHANGES FROM 3.1a TO 3.1b
 
+* Fix build on systems without sys/queue.h.
+
 * Fix crash when allow-rename is on and an empty name is set.
 
 CHANGES FROM 3.1 TO 3.1a
