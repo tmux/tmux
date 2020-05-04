@@ -306,8 +306,9 @@ window_copy_clone_screen(struct screen *src, struct screen *hint, u_int *cx,
     u_int *cy, int trim)
 {
 	struct screen		*dst;
-	u_int			 sy;
 	const struct grid_line	*gl;
+	u_int			 sy, wx, wy;
+	int			 reflow;
 
 	dst = xcalloc(1, sizeof *dst);
 
@@ -324,6 +325,11 @@ window_copy_clone_screen(struct screen *src, struct screen *hint, u_int *cx,
 	    screen_size_x(src), sy, screen_size_x(hint),
 	    screen_hsize(src) + screen_size_y(src));
 	screen_init(dst, screen_size_x(src), sy, screen_hlimit(src));
+
+	/* Ensure history is on for the backing grid so lines are not deleted
+	 * during resizing. */
+	if (~dst->grid->flags & GRID_HISTORY)
+		dst->grid->flags |= GRID_HISTORY;
 	grid_duplicate_lines(dst->grid, 0, src->grid, 0, sy);
 
 	dst->grid->sy = sy - screen_hsize(src);
@@ -337,8 +343,19 @@ window_copy_clone_screen(struct screen *src, struct screen *hint, u_int *cx,
 		dst->cy = src->cy;
 	}
 
+	if (cx != NULL && cy != NULL) {
+		*cx = dst->cx;
+		*cy = screen_hsize(dst) + dst->cy;
+		reflow = (screen_size_x(hint) != screen_size_x(dst));
+	}
+	else
+		reflow = 0;
+	if (reflow)
+		grid_wrap_position(dst->grid, *cx, *cy, &wx, &wy);
 	screen_resize_cursor(dst, screen_size_x(hint), screen_size_y(hint), 1,
-	    0, cx, cy, 1);
+	    0, 0);
+	if (reflow)
+		grid_unwrap_position(dst->grid, cx, cy, wx, wy);
 
 	return (dst);
 }
@@ -392,13 +409,12 @@ window_copy_init(struct window_mode_entry *wme,
 	data->backing = window_copy_clone_screen(base, &data->screen, &cx, &cy,
 	    wme->swp != wme->wp);
 
+	data->cx = cx;
 	if (cy < screen_hsize(data->backing)) {
-		data->cx = cx;
 		data->cy = 0;
 		data->oy = screen_hsize(data->backing) - cy;
 	} else {
-		data->cx = data->backing->cx;
-		data->cy = data->backing->cy;
+		data->cy = cy - screen_hsize(data->backing);
 		data->oy = 0;
 	}
 
@@ -741,14 +757,10 @@ window_copy_resize(struct window_mode_entry *wme, u_int sx, u_int sy)
 	reflow = (gd->sx != sx);
 	if (reflow)
 		grid_wrap_position(gd, cx, cy, &wx, &wy);
-	screen_resize_cursor(data->backing, sx, sy, 1, 0, NULL, NULL, 0);
+	screen_resize_cursor(data->backing, sx, sy, 1, 0, 0);
 	if (reflow)
 		grid_unwrap_position(gd, &cx, &cy, wx, wy);
 
-	if (cx >= gd->sx)
-		cx = 0;
-	if (cy >= gd->hsize + gd->sy)
-		cy = gd->hsize + gd->sy - 1;
 	data->cx = cx;
 	if (cy < gd->hsize) {
 		data->cy = 0;
