@@ -338,7 +338,7 @@ window_copy_clone_screen(struct screen *src, struct screen *hint, u_int *cx,
 	}
 
 	screen_resize_cursor(dst, screen_size_x(hint), screen_size_y(hint), 1,
-	    0, cx, cy);
+	    0, cx, cy, 1);
 
 	return (dst);
 }
@@ -731,16 +731,32 @@ window_copy_resize(struct window_mode_entry *wme, u_int sx, u_int sy)
 {
 	struct window_copy_mode_data	*data = wme->data;
 	struct screen			*s = &data->screen;
+	struct grid			*gd = data->backing->grid;
+	u_int				 cx, cy, wx, wy;
+	int				 reflow;
 
 	screen_resize(s, sx, sy, 0);
-	screen_resize_cursor(data->backing, sx, sy, 1, 0, NULL, NULL);
+	cx = data->cx;
+	cy = gd->hsize + data->cy - data->oy;
+	reflow = (gd->sx != sx);
+	if (reflow)
+		grid_wrap_position(gd, cx, cy, &wx, &wy);
+	screen_resize_cursor(data->backing, sx, sy, 1, 0, NULL, NULL, 0);
+	if (reflow)
+		grid_unwrap_position(gd, &cx, &cy, wx, wy);
 
-	if (data->cy > sy - 1)
-		data->cy = sy - 1;
-	if (data->cx > sx)
-		data->cx = sx;
-	if (data->oy > screen_hsize(data->backing))
-		data->oy = screen_hsize(data->backing);
+	if (cx >= gd->sx)
+		cx = 0;
+	if (cy >= gd->hsize + gd->sy)
+		cy = gd->hsize + gd->sy - 1;
+	data->cx = cx;
+	if (cy < gd->hsize) {
+		data->cy = 0;
+		data->oy = gd->hsize - cy;
+	} else {
+		data->cy = cy - gd->hsize;
+		data->oy = 0;
+	}
 
 	window_copy_size_changed(wme);
 	window_copy_redraw_screen(wme);

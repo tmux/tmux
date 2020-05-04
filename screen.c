@@ -48,7 +48,7 @@ struct screen_title_entry {
 TAILQ_HEAD(screen_titles, screen_title_entry);
 
 static void	screen_resize_y(struct screen *, u_int, int, u_int *);
-static void	screen_reflow(struct screen *, u_int, u_int *, u_int *);
+static void	screen_reflow(struct screen *, u_int, u_int *, u_int *, int);
 
 /* Free titles stack. */
 static void
@@ -222,7 +222,7 @@ screen_pop_title(struct screen *s)
 /* Resize screen and return cursor position. */
 void
 screen_resize_cursor(struct screen *s, u_int sx, u_int sy, int reflow,
-    int eat_empty, u_int *cx, u_int *cy)
+    int eat_empty, u_int *cx, u_int *cy, int cursor)
 {
 	u_int	tcx, tcy;
 
@@ -256,7 +256,7 @@ screen_resize_cursor(struct screen *s, u_int sx, u_int sy, int reflow,
 		screen_resize_y(s, sy, eat_empty, cy);
 
 	if (reflow)
-		screen_reflow(s, sx, cx, cy);
+		screen_reflow(s, sx, cx, cy, cursor);
 
 	if (*cy >= s->grid->hsize) {
 		s->cx = *cx;
@@ -276,7 +276,7 @@ screen_resize_cursor(struct screen *s, u_int sx, u_int sy, int reflow,
 void
 screen_resize(struct screen *s, u_int sx, u_int sy, int reflow)
 {
-	screen_resize_cursor(s, sx, sy, reflow, 1, NULL, NULL);
+	screen_resize_cursor(s, sx, sy, reflow, 1, NULL, NULL, 1);
 }
 
 static void
@@ -524,17 +524,22 @@ screen_select_cell(struct screen *s, struct grid_cell *dst,
 
 /* Reflow wrapped lines. */
 static void
-screen_reflow(struct screen *s, u_int new_x, u_int *cx, u_int *cy)
+screen_reflow(struct screen *s, u_int new_x, u_int *cx, u_int *cy, int cursor)
 {
 	u_int	wx, wy;
 
-	grid_wrap_position(s->grid, *cx, *cy, &wx, &wy);
-	log_debug("%s: cursor %u,%u is %u,%u", __func__, *cx, *cy, wx, wy);
+	if (cursor) {
+		grid_wrap_position(s->grid, *cx, *cy, &wx, &wy);
+		log_debug("%s: cursor %u,%u is %u,%u", __func__, *cx, *cy, wx,
+		    wy);
+	}
 
 	grid_reflow(s->grid, new_x);
 
-	grid_unwrap_position(s->grid, cx, cy, wx, wy);
-	log_debug("%s: new cursor is %u,%u", __func__, *cx,* cy);
+	if (cursor) {
+		grid_unwrap_position(s->grid, cx, cy, wx, wy);
+		log_debug("%s: new cursor is %u,%u", __func__, *cx,* cy);
+	}
 }
 
 /*
