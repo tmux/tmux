@@ -1285,7 +1285,7 @@ grid_reflow(struct grid *gd, u_int sx)
 
 		/*
 		 * If the line is exactly right or the first character is wider
-		 * than the targe width, just move it across unchanged.
+		 * than the target width, just move it across unchanged.
 		 */
 		if (width == sx || first > sx) {
 			grid_reflow_move(target, gl);
