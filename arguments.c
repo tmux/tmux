@@ -55,11 +55,11 @@ args_cmp(struct args_entry *a1, struct args_entry *a2)
 
 /* Find a flag in the arguments tree. */
 static struct args_entry *
-args_find(struct args *args, u_char ch)
+args_find(struct args *args, u_char flag)
 {
 	struct args_entry	entry;
 
-	entry.flag = ch;
+	entry.flag = flag;
 	return (RB_FIND(args_tree, &args->tree, &entry));
 }
 
@@ -248,11 +248,11 @@ args_escape(const char *s)
 
 /* Return if an argument is present. */
 int
-args_has(struct args *args, u_char ch)
+args_has(struct args *args, u_char flag)
 {
 	struct args_entry	*entry;
 
-	entry = args_find(args, ch);
+	entry = args_find(args, flag);
 	if (entry == NULL)
 		return (0);
 	return (entry->count);
@@ -260,15 +260,15 @@ args_has(struct args *args, u_char ch)
 
 /* Set argument value in the arguments tree. */
 void
-args_set(struct args *args, u_char ch, const char *s)
+args_set(struct args *args, u_char flag, const char *s)
 {
 	struct args_entry	*entry;
 	struct args_value	*value;
 
-	entry = args_find(args, ch);
+	entry = args_find(args, flag);
 	if (entry == NULL) {
 		entry = xcalloc(1, sizeof *entry);
-		entry->flag = ch;
+		entry->flag = flag;
 		entry->count = 1;
 		TAILQ_INIT(&entry->values);
 		RB_INSERT(args_tree, &args->tree, entry);
@@ -284,22 +284,44 @@ args_set(struct args *args, u_char ch, const char *s)
 
 /* Get argument value. Will be NULL if it isn't present. */
 const char *
-args_get(struct args *args, u_char ch)
+args_get(struct args *args, u_char flag)
 {
 	struct args_entry	*entry;
 
-	if ((entry = args_find(args, ch)) == NULL)
+	if ((entry = args_find(args, flag)) == NULL)
+		return (NULL);
+	if (TAILQ_EMPTY(&entry->values))
 		return (NULL);
 	return (TAILQ_LAST(&entry->values, args_values)->value);
 }
 
+/* Get first argument. */
+u_char
+args_first(struct args *args, struct args_entry **entry)
+{
+	*entry = RB_MIN(args_tree, &args->tree);
+	if (*entry == NULL)
+		return (0);
+	return ((*entry)->flag);
+}
+
+/* Get next argument. */
+u_char
+args_next(struct args_entry **entry)
+{
+	*entry = RB_NEXT(args_tree, &args->tree, *entry);
+	if (*entry == NULL)
+		return (0);
+	return ((*entry)->flag);
+}
+
 /* Get first value in argument. */
 const char *
-args_first_value(struct args *args, u_char ch, struct args_value **value)
+args_first_value(struct args *args, u_char flag, struct args_value **value)
 {
 	struct args_entry	*entry;
 
-	if ((entry = args_find(args, ch)) == NULL)
+	if ((entry = args_find(args, flag)) == NULL)
 		return (NULL);
 
 	*value = TAILQ_FIRST(&entry->values);
@@ -322,15 +344,15 @@ args_next_value(struct args_value **value)
 
 /* Convert an argument value to a number. */
 long long
-args_strtonum(struct args *args, u_char ch, long long minval, long long maxval,
-    char **cause)
+args_strtonum(struct args *args, u_char flag, long long minval,
+    long long maxval, char **cause)
 {
 	const char		*errstr;
 	long long 	 	 ll;
 	struct args_entry	*entry;
 	struct args_value	*value;
 
-	if ((entry = args_find(args, ch)) == NULL) {
+	if ((entry = args_find(args, flag)) == NULL) {
 		*cause = xstrdup("missing");
 		return (0);
 	}
@@ -348,13 +370,13 @@ args_strtonum(struct args *args, u_char ch, long long minval, long long maxval,
 
 /* Convert an argument to a number which may be a percentage. */
 long long
-args_percentage(struct args *args, u_char ch, long long minval,
+args_percentage(struct args *args, u_char flag, long long minval,
     long long maxval, long long curval, char **cause)
 {
 	const char		*value;
 	struct args_entry	*entry;
 
-	if ((entry = args_find(args, ch)) == NULL) {
+	if ((entry = args_find(args, flag)) == NULL) {
 		*cause = xstrdup("missing");
 		return (0);
 	}

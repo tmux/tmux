@@ -2090,6 +2090,8 @@ char		*args_print(struct args *);
 char		*args_escape(const char *);
 int		 args_has(struct args *, u_char);
 const char	*args_get(struct args *, u_char);
+u_char		 args_first(struct args *, struct args_entry **);
+u_char		 args_next(struct args_entry **);
 const char	*args_first_value(struct args *, u_char, struct args_value **);
 const char	*args_next_value(struct args_value **);
 long long	 args_strtonum(struct args *, u_char, long long, long long,
