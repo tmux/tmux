@@ -252,6 +252,8 @@ environ_for_session(struct session *s, int no_TERM)
 	if (!no_TERM) {
 		value = options_get_string(global_options, "default-terminal");
 		environ_set(env, "TERM", 0, "%s", value);
+		environ_set(env, "TERM_PROGRAM", 0, "%s", "tmux");
+		environ_set(env, "TERM_PROGRAM_VERSION", 0, "%s", getversion());
 	}
 
 	if (s != NULL)
