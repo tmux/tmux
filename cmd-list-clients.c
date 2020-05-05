@@ -31,7 +31,7 @@
 #define LIST_CLIENTS_TEMPLATE					\
 	"#{client_name}: #{session_name} "			\
 	"[#{client_width}x#{client_height} #{client_termname}]"	\
-	"#{?client_utf8, (utf8),} #{?client_readonly, (ro),}"
+	"#{?client_utf8, (utf8),}#{?client_readonly, (ro),}"
 
 static enum cmd_retval	cmd_list_clients_exec(struct cmd *, struct cmdq_item *);
 
