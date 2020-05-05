@@ -37,8 +37,9 @@ const struct cmd_entry cmd_attach_session_entry = {
 	.name = "attach-session",
 	.alias = "attach",
 
-	.args = { "c:dErt:x", 0, 0 },
-	.usage = "[-dErx] [-c working-directory] " CMD_TARGET_SESSION_USAGE,
+	.args = { "c:dEf:rt:x", 0, 0 },
+	.usage = "[-dErx] [-c working-directory] [-f flags] "
+	         CMD_TARGET_SESSION_USAGE,
 
 	/* -t is special */
 
@@ -48,7 +49,7 @@ const struct cmd_entry cmd_attach_session_entry = {
 
 enum cmd_retval
 cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
-    int xflag, int rflag, const char *cflag, int Eflag)
+    int xflag, int rflag, const char *cflag, int Eflag, const char *fflag)
 {
 	struct cmd_find_state	*current = cmdq_get_current(item);
 	struct cmd_find_state	 target;
@@ -101,6 +102,10 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 		free((void *)s->cwd);
 		s->cwd = format_single(item, cflag, c, s, wl, wp);
 	}
+	if (fflag)
+		server_client_set_flags(c, fflag);
+	if (rflag)
+		c->flags |= (CLIENT_READONLY|CLIENT_IGNORESIZE);
 
 	c->last_session = c->session;
 	if (c->session != NULL) {
@@ -135,8 +140,6 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
-		if (rflag)
-			c->flags |= CLIENT_READONLY;
 
 		if (dflag || xflag) {
 			if (xflag)
@@ -182,5 +185,5 @@ cmd_attach_session_exec(struct cmd *self, struct cmdq_item *item)
 
 	return (cmd_attach_session(item, args_get(args, 't'),
 	    args_has(args, 'd'), args_has(args, 'x'), args_has(args, 'r'),
-	    args_get(args, 'c'), args_has(args, 'E')));
+	    args_get(args, 'c'), args_has(args, 'E'), args_get(args, 'f')));
 }
