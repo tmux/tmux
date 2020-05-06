@@ -50,6 +50,9 @@ static struct event	 server_ev_accept;
 
 struct cmd_find_state	 marked_pane;
 
+static u_int		 message_next;
+struct message_list	 message_log;
+
 static int	server_loop(void);
 static void	server_send_exit(void);
 static void	server_accept(int, short, void *);
@@ -194,6 +197,7 @@ server_start(struct tmuxproc *client, int flags, struct event_base *base,
 	TAILQ_INIT(&clients);
 	RB_INIT(&sessions);
 	key_bindings_init();
+	TAILQ_INIT(&message_log);
 
 	gettimeofday(&start_time, NULL);
 
@@ -481,4 +485,35 @@ server_child_stopped(pid_t pid, int status)
 		}
 	}
 	job_check_died(pid, status);
+}
+
+/* Add to message log. */
+void
+server_add_message(const char *fmt, ...)
+{
+	struct message_entry	*msg, *msg1;
+	char			*s;
+	va_list			 ap;
+	u_int			 limit;
+
+	va_start(ap, fmt);
+	xvasprintf(&s, fmt, ap);
+	va_end(ap);
+
+	log_debug("message: %s", s);
+
+	msg = xcalloc(1, sizeof *msg);
+	gettimeofday(&msg->msg_time, NULL);
+	msg->msg_num = message_next++;
+	msg->msg = s;
+	TAILQ_INSERT_TAIL(&message_log, msg, entry);
+
+	limit = options_get_number(global_options, "message-limit");
+	TAILQ_FOREACH_SAFE(msg, &message_log, entry, msg1) {
+		if (msg->msg_num + limit >= message_next)
+			break;
+		free(msg->msg);
+		TAILQ_REMOVE(&message_log, msg, entry);
+		free(msg);
+	}
 }

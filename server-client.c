@@ -211,22 +211,11 @@ server_client_create(int fd)
 	c->queue = cmdq_new();
 
 	c->tty.fd = -1;
-	c->title = NULL;
-
-	c->session = NULL;
-	c->last_session = NULL;
 
 	c->tty.sx = 80;
 	c->tty.sy = 24;
 
 	status_init(c);
-
-	c->message_string = NULL;
-	TAILQ_INIT(&c->message_log);
-
-	c->prompt_string = NULL;
-	c->prompt_buffer = NULL;
-	c->prompt_index = 0;
 
 	RB_INIT(&c->files);
 
@@ -270,7 +259,6 @@ server_client_open(struct client *c, char **cause)
 void
 server_client_lost(struct client *c)
 {
-	struct message_entry	*msg, *msg1;
 	struct client_file	*cf;
 
 	c->flags |= CLIENT_DEAD;
@@ -311,11 +299,6 @@ server_client_lost(struct client *c)
 	free(c->message_string);
 	if (event_initialized(&c->message_timer))
 		evtimer_del(&c->message_timer);
-	TAILQ_FOREACH_SAFE(msg, &c->message_log, entry, msg1) {
-		free(msg->msg);
-		TAILQ_REMOVE(&c->message_log, msg, entry);
-		free(msg);
-	}
 
 	free(c->prompt_saved);
 	free(c->prompt_string);
@@ -1126,6 +1109,7 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 			c->tty.mouse_drag_update(c, m);
 			goto out;
 		}
+		event->key = key;
 	}
 
 	/* Find affected pane. */
@@ -2204,37 +2188,6 @@ server_client_dispatch_read_done(struct client *c, struct imsg *imsg)
 	log_debug("%s: file %d read done", c->name, cf->stream);
 	cf->error = msg->error;
 	file_fire_done(cf);
-}
-
-/* Add to client message log. */
-void
-server_client_add_message(struct client *c, const char *fmt, ...)
-{
-	struct message_entry	*msg, *msg1;
-	char			*s;
-	va_list			 ap;
-	u_int			 limit;
-
-	va_start(ap, fmt);
-	xvasprintf(&s, fmt, ap);
-	va_end(ap);
-
-	log_debug("message %s (client %p)", s, c);
-
-	msg = xcalloc(1, sizeof *msg);
-	msg->msg_time = time(NULL);
-	msg->msg_num = c->message_next++;
-	msg->msg = s;
-	TAILQ_INSERT_TAIL(&c->message_log, msg, entry);
-
-	limit = options_get_number(global_options, "message-limit");
-	TAILQ_FOREACH_SAFE(msg, &c->message_log, entry, msg1) {
-		if (msg->msg_num + limit >= c->message_next)
-			break;
-		free(msg->msg);
-		TAILQ_REMOVE(&c->message_log, msg, entry);
-		free(msg);
-	}
 }
 
 /* Get client working directory. */

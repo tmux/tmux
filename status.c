@@ -436,7 +436,7 @@ status_message_set(struct client *c, const char *fmt, ...)
 	xvasprintf(&c->message_string, fmt, ap);
 	va_end(ap);
 
-	server_client_add_message(c, "%s", c->message_string);
+	server_add_message("%s message: %s", c->name, c->message_string);
 
 	delay = options_get_number(c->session->options, "display-time");
 	if (delay > 0) {

@@ -534,6 +534,27 @@ cmdq_find_flag(struct cmdq_item *item, struct cmd_find_state *fs,
 	return (CMD_RETURN_NORMAL);
 }
 
+/* Add message with command. */
+static void
+cmdq_add_message(struct cmdq_item *item)
+{
+	struct client		*c = item->client;
+	struct cmdq_state	*state = item->state;
+	const char		*name = c->name, *key;
+	char			*tmp;
+
+	tmp = cmd_print(item->cmd);
+	if (c != NULL) {
+		if (c->session != NULL && state->event.key != KEYC_NONE) {
+			key = key_string_lookup_key(state->event.key);
+			server_add_message("%s key %s: %s", name, key, tmp);
+		} else
+			server_add_message("%s command: %s", name, tmp);
+	} else
+		server_add_message("command: %s", tmp);
+	free(tmp);
+}
+
 /* Fire command on command queue. */
 static enum cmd_retval
 cmdq_fire_command(struct cmdq_item *item)
@@ -549,6 +570,8 @@ cmdq_fire_command(struct cmdq_item *item)
 	int			 flags, quiet = 0;
 	char			*tmp;
 
+	if (cfg_finished)
+		cmdq_add_message(item);
 	if (log_get_level() > 1) {
 		tmp = cmd_print(cmd);
 		log_debug("%s %s: (%u) %s", __func__, name, item->group, tmp);
@@ -819,6 +842,7 @@ cmdq_error(struct cmdq_item *item, const char *fmt, ...)
 		cmd_get_source(cmd, &file, &line);
 		cfg_add_cause("%s:%u: %s", file, line, msg);
 	} else if (c->session == NULL || (c->flags & CLIENT_CONTROL)) {
+		server_add_message("%s message: %s", c->name, msg);
 		if (~c->flags & CLIENT_UTF8) {
 			tmp = msg;
 			msg = utf8_sanitize(tmp);
