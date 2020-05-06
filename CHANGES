@@ -1,5 +1,40 @@
 CHANGES FROM 3.1b TO 3.2
 
+* Change message log (C-b ~) so there is one for the server rather than one per
+  client and it remains after detach, and make it useful by logging every
+  command.
+
+* Add M-+ and M-- to tree mode to expand and collapse all.
+
+* Change the existing client flags for control mode to apply for any client,
+  use the same mechanism for the read-only flag and add an ignore-size flag.
+
+  refresh-client -F has become -f (-F stays for backwards compatibility) and
+  attach-session and switch-client now have -f flags also. A new format
+  "client_flags" lists the flags and is shown by list-clients by default.
+
+  This separates the read-only flag from "ignore size" behaviour (new
+  ignore-size) flag - both behaviours are useful in different circumstances.
+
+  attach -r and switchc -r remain and set or toggle both flags together.
+
+* Store and restore cursor position when copy mode is resized.
+
+* Export TERM_PROGRAM and TERM_PROGRAM_VERSION like various other terminals.
+
+* Add formats for after hook command arguments: hook_arguments with all the
+  arguments together; hook_argument_0, hook_argument_1 and so on with
+  individual arguments; hook_flag_X if flag -X is present; hook_flag_X_0,
+  hook_flag_X_1 and so on if -X appears multiple times.
+
+* Try to search the entire history first for up to 200 ms so a search count can
+  be shown. If it takes too long, search the visible text only.
+
+* Use VIS_CSTYLE for paste buffers also (show \012 as \n).
+
+* Change default formats for tree mode, client mode and buffer mode to be more
+  compact and remove some clutter.
+
 * Add a key (e) in buffer mode to open the buffer in an editor. The buffer
   contents is updated when the editor exits.
 
