@@ -1326,45 +1326,44 @@ static char *
 format_pretty_time(time_t t)
 {
 	struct tm       now_tm, tm;
-	time_t		now;
+	time_t		now, age;
 	char		s[6];
-	int		y, m, d;
+	int		m;
 
 	time(&now);
 	if (now < t)
 		now = t;
+	age = now - t;
+
 	localtime_r(&now, &now_tm);
 	localtime_r(&t, &tm);
 
-	y = now_tm.tm_year - 1;
-	if (tm.tm_year < y ||
-	    (tm.tm_year == y &&
-	    (tm.tm_mon <= now_tm.tm_mon || tm.tm_mday <= now_tm.tm_mday))) {
-		/* Last year. */
-		strftime(s, sizeof s, "%h%y", &tm);
+	/* Last 24 hours. */
+	if (age < 24 * 3600) {
+		strftime(s, sizeof s, "%H:%M", &tm);
 		return (xstrdup(s));
 	}
+
+	/* This month or last 28 days. */
+	if ((tm.tm_year == now_tm.tm_year && tm.tm_mon == now_tm.tm_mon) ||
+	    age < 28 * 24 * 3600) {
+		strftime(s, sizeof s, "%a%d", &tm);
+		return (xstrdup(s));
+	}
+
+	/* Last 12 months. */
 	if (now_tm.tm_mon == 0)
 		m = 11;
 	else
 		m = now_tm.tm_mon - 1;
-	if (tm.tm_mon < m || (tm.tm_mon == m && tm.tm_mday < now_tm.tm_mday)) {
-		/* Last month. */
+	if ((tm.tm_year == now_tm.tm_year && tm.tm_mon < now_tm.tm_mon) ||
+	    (tm.tm_year == now_tm.tm_year - 1 && tm.tm_mon > now_tm.tm_mon)) {
 		strftime(s, sizeof s, "%d%b", &tm);
 		return (xstrdup(s));
 	}
-	if (now_tm.tm_mday == 0)
-		d = 31;
-	else
-		d = now_tm.tm_mday - 1;
-	if (tm.tm_mday < d ||
-	    (tm.tm_mday == d && tm.tm_mday < now_tm.tm_mday)) {
-		/* This day. */
-		strftime(s, sizeof s, "%a%d", &tm);
-		return (xstrdup(s));
-	}
-	/* Today. */
-	strftime(s, sizeof s, "%H:%M", &tm);
+
+	/* Older than that. */
+	strftime(s, sizeof s, "%h%y", &tm);
 	return (xstrdup(s));
 }
 
@@ -1377,44 +1376,31 @@ format_find(struct format_tree *ft, const char *key, int modifiers)
 	static char		 s[64];
 	struct options_entry	*o;
 	int			 idx;
-	char			*found, *saved;
+	char			*found = NULL, *saved;
+	const char		*errstr;
+	time_t			 t = 0;
 
-	if (~modifiers & FORMAT_TIMESTRING) {
-		o = options_parse_get(global_options, key, &idx, 0);
-		if (o == NULL && ft->wp != NULL)
-			o = options_parse_get(ft->wp->options, key, &idx, 0);
-		if (o == NULL && ft->w != NULL)
-			o = options_parse_get(ft->w->options, key, &idx, 0);
-		if (o == NULL)
-			o = options_parse_get(global_w_options, key, &idx, 0);
-		if (o == NULL && ft->s != NULL)
-			o = options_parse_get(ft->s->options, key, &idx, 0);
-		if (o == NULL)
-			o = options_parse_get(global_s_options, key, &idx, 0);
-		if (o != NULL) {
-			found = options_tostring(o, idx, 1);
-			goto found;
-		}
+	o = options_parse_get(global_options, key, &idx, 0);
+	if (o == NULL && ft->wp != NULL)
+		o = options_parse_get(ft->wp->options, key, &idx, 0);
+	if (o == NULL && ft->w != NULL)
+		o = options_parse_get(ft->w->options, key, &idx, 0);
+	if (o == NULL)
+		o = options_parse_get(global_w_options, key, &idx, 0);
+	if (o == NULL && ft->s != NULL)
+		o = options_parse_get(ft->s->options, key, &idx, 0);
+	if (o == NULL)
+		o = options_parse_get(global_s_options, key, &idx, 0);
+	if (o != NULL) {
+		found = options_tostring(o, idx, 1);
+		goto found;
 	}
-	found = NULL;
 
-	fe_find.key = (char *) key;
+	fe_find.key = (char *)key;
 	fe = RB_FIND(format_entry_tree, &ft->tree, &fe_find);
 	if (fe != NULL) {
-		if (modifiers & FORMAT_TIMESTRING) {
-			if (fe->t == 0)
-				return (NULL);
-			if (modifiers & FORMAT_PRETTY)
-				found = format_pretty_time(fe->t);
-			else {
-				ctime_r(&fe->t, s);
-				s[strcspn(s, "\n")] = '\0';
-				found = xstrdup(s);
-			}
-			goto found;
-		}
 		if (fe->t != 0) {
-			xasprintf(&found, "%lld", (long long)fe->t);
+			t = fe->t;
 			goto found;
 		}
 		if (fe->value == NULL && fe->cb != NULL)
@@ -1440,7 +1426,28 @@ format_find(struct format_tree *ft, const char *key, int modifiers)
 	return (NULL);
 
 found:
-	if (found == NULL)
+	if (modifiers & FORMAT_TIMESTRING) {
+		if (t == 0 && found != NULL) {
+			t = strtonum(found, 0, INT64_MAX, &errstr);
+			if (errstr != NULL)
+				t = 0;
+			free(found);
+		}
+		if (t == 0)
+			return (NULL);
+		if (modifiers & FORMAT_PRETTY)
+			found = format_pretty_time(t);
+		else {
+			ctime_r(&t, s);
+			s[strcspn(s, "\n")] = '\0';
+			found = xstrdup(s);
+		}
+		return (found);
+	}
+
+	if (t != 0)
+		xasprintf(&found, "%lld", (long long)t);
+	else if (found == NULL)
 		return (NULL);
 	if (modifiers & FORMAT_BASENAME) {
 		saved = found;
