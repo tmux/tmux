@@ -540,11 +540,12 @@ cmdq_add_message(struct cmdq_item *item)
 {
 	struct client		*c = item->client;
 	struct cmdq_state	*state = item->state;
-	const char		*name = c->name, *key;
+	const char		*name, *key;
 	char			*tmp;
 
 	tmp = cmd_print(item->cmd);
 	if (c != NULL) {
+		name = c->name;
 		if (c->session != NULL && state->event.key != KEYC_NONE) {
 			key = key_string_lookup_key(state->event.key);
 			server_add_message("%s key %s: %s", name, key, tmp);
