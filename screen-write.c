@@ -360,7 +360,79 @@ screen_write_strlen(const char *fmt, ...)
 	return (size);
 }
 
-/* Write simple string (no UTF-8 or maximum length). */
+/* Write string wrapped over lines. */
+void
+screen_write_text(struct screen_write_ctx *ctx, u_int width, u_int lines,
+    const struct grid_cell *gcp, const char *fmt, ...)
+{
+	struct screen		*s = ctx->s;
+	u_int			 cx = s->cx, cy = s->cy;
+	va_list			 ap;
+	char			*tmp;
+	u_int			 i, end, next, idx = 0, at;
+	struct utf8_data	*text;
+	struct grid_cell	 gc;
+
+	memcpy(&gc, gcp, sizeof gc);
+
+	va_start(ap, fmt);
+	xvasprintf(&tmp, fmt, ap);
+	va_end(ap);
+
+	text = utf8_fromcstr(tmp);
+	free(tmp);
+
+	while (text[idx].size != 0) {
+		/* Find the end of what can fit on the line. */
+		at = 0;
+		for (end = idx; text[end].size != 0; end++) {
+			if (text[end].size == 1 && text[end].data[0] == '\n')
+				break;
+			if (at + text[end].width > width)
+				break;
+			at += text[end].width;
+		}
+
+		/*
+		 * If we're on a space, that's the end. If not, walk back to
+		 * try and find one.
+		 */
+		if (text[end].size == 0)
+			next = end;
+		else if (text[end].size == 1 && text[end].data[0] == '\n')
+			next = end + 1;
+		else if (text[end].size == 1 && text[end].data[0] == ' ')
+			next = end + 1;
+		else {
+			for (i = end; i > idx; i--) {
+				if (text[i].size == 1 && text[i].data[0] == ' ')
+					break;
+			}
+			if (i != idx) {
+				next = i + 1;
+				end = i;
+			} else
+				next = end;
+		}
+
+		/* Print the line. */
+		for (i = idx; i < end; i++) {
+			utf8_copy(&gc.data, &text[i]);
+			screen_write_cell(ctx, &gc);
+		}
+
+		/* If at the bottom, stop. */
+		if (s->cy == cy + lines - 1)
+			break;
+		screen_write_cursormove(ctx, cx, s->cy + 1, 0);
+		idx = next;
+	}
+
+	screen_write_cursormove(ctx, cx, s->cy + 1, 0);
+	free(text);
+}
+
+/* Write simple string (no maximum length). */
 void
 screen_write_puts(struct screen_write_ctx *ctx, const struct grid_cell *gcp,
     const char *fmt, ...)

@@ -547,7 +547,7 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 	 */
 	cp = expanded;
 	while (*cp != '\0') {
-		if (cp[0] != '#' || cp[1] != '[') {
+		if (cp[0] != '#' || cp[1] != '[' || sy.ignore) {
 			/* See if this is a UTF-8 character. */
 			if ((more = utf8_open(ud, *cp)) == UTF8_MORE) {
 				while (*++cp != '\0' && more == UTF8_MORE)

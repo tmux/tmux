@@ -1952,6 +1952,53 @@ includes all sessions in any session groups in the tree rather than only the
 first.
 This command works only if at least one client is attached.
 .It Xo
+.Ic customize-mode
+.Op Fl NZ
+.Op Fl F Ar format
+.Op Fl f Ar filter
+.Op Fl t Ar target-pane
+.Op Ar template
+.Xc
+Put a pane into customize mode, where options may be browsed and modified from a
+list.
+Option values in the list are shown for the active pane in the current window.
+.Fl Z
+zooms the pane.
+The following keys may be used in customize mode:
+.Bl -column "Key" "Function" -offset indent
+.It Sy "Key" Ta Sy "Function"
+.It Li "Enter" Ta "Set pane, window, session or global option value"
+.It Li "Up" Ta "Select previous item"
+.It Li "Down" Ta "Select next item"
+.It Li "+" Ta "Expand selected item"
+.It Li "-" Ta "Collapse selected item"
+.It Li "M-+" Ta "Expand all items"
+.It Li "M--" Ta "Collapse all items"
+.It Li "s" Ta "Set pane, window, session or global option value"
+.It Li "S" Ta "Set global option value"
+.It Li "w" Ta "Set window option value, if option is for pane and window"
+.It Li "u" Ta "Unset an option (set to default value if global)"
+.It Li "U" Ta "Unset tagged options"
+.It Li "C-s" Ta "Search by name"
+.It Li "n" Ta "Repeat last search"
+.It Li "t" Ta "Toggle if item is tagged"
+.It Li "T" Ta "Tag no items"
+.It Li "C-t" Ta "Tag all items"
+.It Li "f" Ta "Enter a format to filter items"
+.It Li "v" Ta "Toggle option information"
+.It Li "q" Ta "Exit mode"
+.El
+.Pp
+.Fl f
+specifies an initial filter: the filter is a format - if it evaluates to zero,
+the item in the list is not shown, otherwise it is shown.
+If a filter would lead to an empty list, it is ignored.
+.Fl F
+specifies the format for each item in the tree.
+.Fl N
+starts without the option information.
+This command works only if at least one client is attached.
+.It Xo
 .Ic display-panes
 .Op Fl b
 .Op Fl d Ar duration

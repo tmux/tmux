@@ -45,6 +45,7 @@ struct mode_tree_data {
 	mode_tree_draw_cb         drawcb;
 	mode_tree_search_cb       searchcb;
 	mode_tree_menu_cb         menucb;
+	mode_tree_height_cb       heightcb;
 
 	struct mode_tree_list	  children;
 	struct mode_tree_list	  saved;
@@ -210,7 +211,7 @@ mode_tree_clear_tagged(struct mode_tree_list *mtl)
 	}
 }
 
-static void
+void
 mode_tree_up(struct mode_tree_data *mtd, int wrap)
 {
 	if (mtd->current == 0) {
@@ -343,7 +344,8 @@ mode_tree_each_tagged(struct mode_tree_data *mtd, mode_tree_each_cb cb,
 struct mode_tree_data *
 mode_tree_start(struct window_pane *wp, struct args *args,
     mode_tree_build_cb buildcb, mode_tree_draw_cb drawcb,
-    mode_tree_search_cb searchcb, mode_tree_menu_cb menucb, void *modedata,
+    mode_tree_search_cb searchcb, mode_tree_menu_cb menucb,
+    mode_tree_height_cb heightcb, void *modedata,
     const struct menu_item *menu, const char **sort_list, u_int sort_size,
     struct screen **s)
 {
@@ -381,6 +383,7 @@ mode_tree_start(struct window_pane *wp, struct args *args,
 	mtd->drawcb = drawcb;
 	mtd->searchcb = searchcb;
 	mtd->menucb = menucb;
+	mtd->heightcb = heightcb;
 
 	TAILQ_INIT(&mtd->children);
 
@@ -402,6 +405,27 @@ mode_tree_zoom(struct mode_tree_data *mtd, struct args *args)
 			server_redraw_window(wp->window);
 	} else
 		mtd->zoomed = -1;
+}
+
+static void
+mode_tree_set_height(struct mode_tree_data *mtd)
+{
+	struct screen	*s = &mtd->screen;
+	u_int		 height;
+
+	if (mtd->heightcb != NULL) {
+		height = mtd->heightcb(mtd, screen_size_y(s));
+		if (height < screen_size_y(s))
+		    mtd->height = screen_size_y(s) - height;
+	} else {
+		mtd->height = (screen_size_y(s) / 3) * 2;
+		if (mtd->height > mtd->line_size)
+			mtd->height = screen_size_y(s) / 2;
+	}
+	if (mtd->height < 10)
+		mtd->height = screen_size_y(s);
+	if (screen_size_y(s) - mtd->height < 2)
+		mtd->height = screen_size_y(s);
 }
 
 void
@@ -434,15 +458,9 @@ mode_tree_build(struct mode_tree_data *mtd)
 	mode_tree_set_current(mtd, tag);
 
 	mtd->width = screen_size_x(s);
-	if (mtd->preview) {
-		mtd->height = (screen_size_y(s) / 3) * 2;
-		if (mtd->height > mtd->line_size)
-			mtd->height = screen_size_y(s) / 2;
-		if (mtd->height < 10)
-			mtd->height = screen_size_y(s);
-		if (screen_size_y(s) - mtd->height < 2)
-			mtd->height = screen_size_y(s);
-	} else
+	if (mtd->preview)
+		mode_tree_set_height(mtd);
+	else
 		mtd->height = screen_size_y(s);
 	mode_tree_check_selected(mtd);
 }
@@ -502,7 +520,8 @@ mode_tree_add(struct mode_tree_data *mtd, struct mode_tree_item *parent,
 
 	mti->tag = tag;
 	mti->name = xstrdup(name);
-	mti->text = xstrdup(text);
+	if (text != NULL)
+		mti->text = xstrdup(text);
 
 	saved = mode_tree_find_item(&mtd->saved, tag);
 	if (saved != NULL) {
@@ -621,8 +640,8 @@ mode_tree_draw(struct mode_tree_data *mtd)
 			tag = "*";
 		else
 			tag = "";
-		xasprintf(&text, "%-*s%s%s%s: ", keylen, key, start, mti->name,
-		    tag);
+		xasprintf(&text, "%-*s%s%s%s%s", keylen, key, start, mti->name,
+		    tag, (mti->text != NULL) ? ": " : "" );
 		width = utf8_cstrwidth(text);
 		if (width > w)
 			width = w;
@@ -636,11 +655,17 @@ mode_tree_draw(struct mode_tree_data *mtd)
 		if (i != mtd->current) {
 			screen_write_clearendofline(&ctx, 8);
 			screen_write_nputs(&ctx, w, &gc0, "%s", text);
-			format_draw(&ctx, &gc0, w - width, mti->text, NULL);
+			if (mti->text != NULL) {
+				format_draw(&ctx, &gc0, w - width, mti->text,
+				    NULL);
+			}
 		} else {
 			screen_write_clearendofline(&ctx, gc.bg);
 			screen_write_nputs(&ctx, w, &gc, "%s", text);
-			format_draw(&ctx, &gc, w - width, mti->text, NULL);
+			if (mti->text != NULL) {
+				format_draw(&ctx, &gc, w - width, mti->text,
+				    NULL);
+			}
 		}
 		free(text);
 
@@ -662,9 +687,12 @@ mode_tree_draw(struct mode_tree_data *mtd)
 	screen_write_cursormove(&ctx, 0, h, 0);
 	screen_write_box(&ctx, w, sy - h);
 
-	xasprintf(&text, " %s (sort: %s%s)", mti->name,
-	    mtd->sort_list[mtd->sort_crit.field],
-	    mtd->sort_crit.reversed ? ", reversed" : "");
+	if (mtd->sort_list != NULL) {
+		xasprintf(&text, " %s (sort: %s%s)", mti->name,
+		    mtd->sort_list[mtd->sort_crit.field],
+		    mtd->sort_crit.reversed ? ", reversed" : "");
+	} else
+		xasprintf(&text, " %s", mti->name);
 	if (w - 2 >= strlen(text)) {
 		screen_write_cursormove(&ctx, 1, h, 0);
 		screen_write_puts(&ctx, &gc0, "%s", text);
@@ -1027,7 +1055,7 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 		break;
 	case 'O':
 		mtd->sort_crit.field++;
-		if (mtd->sort_crit.field == mtd->sort_size)
+		if (mtd->sort_crit.field >= mtd->sort_size)
 			mtd->sort_crit.field = 0;
 		mode_tree_build(mtd);
 		break;

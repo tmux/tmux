@@ -747,6 +747,7 @@ enum style_default_type {
 /* Style option. */
 struct style {
 	struct grid_cell	gc;
+	int			ignore;
 
 	int			fill;
 	enum style_align	align;
@@ -1720,6 +1721,9 @@ struct options_table_entry {
 
 	const char		 *separator;
 	const char		 *pattern;
+
+	const char		 *text;
+	const char		 *unit;
 };
 
 /* Common command usages. */
@@ -1897,6 +1901,7 @@ void	notify_pane(const char *, struct window_pane *);
 /* options.c */
 struct options	*options_create(struct options *);
 void		 options_free(struct options *);
+struct options	*options_get_parent(struct options *);
 void		 options_set_parent(struct options *, struct options *);
 struct options_entry *options_first(struct options *);
 struct options_entry *options_next(struct options_entry *);
@@ -1904,7 +1909,9 @@ struct options_entry *options_empty(struct options *,
 		     const struct options_table_entry *);
 struct options_entry *options_default(struct options *,
 		     const struct options_table_entry *);
+char		*options_default_to_string(const struct options_table_entry *);
 const char	*options_name(struct options_entry *);
+struct options	*options_owner(struct options_entry *);
 const struct options_table_entry *options_table_entry(struct options_entry *);
 struct options_entry *options_get_only(struct options *, const char *);
 struct options_entry *options_get(struct options *, const char *);
@@ -1919,9 +1926,9 @@ struct options_array_item *options_array_first(struct options_entry *);
 struct options_array_item *options_array_next(struct options_array_item *);
 u_int		 options_array_item_index(struct options_array_item *);
 union options_value *options_array_item_value(struct options_array_item *);
-int		 options_isarray(struct options_entry *);
-int		 options_isstring(struct options_entry *);
-char		*options_tostring(struct options_entry *, int, int);
+int		 options_is_array(struct options_entry *);
+int		 options_is_string(struct options_entry *);
+char		*options_to_string(struct options_entry *, int, int);
 char		*options_parse(const char *, int *);
 struct options_entry *options_parse_get(struct options *, const char *, int *,
 		     int);
@@ -1941,6 +1948,10 @@ int		 options_scope_from_flags(struct args *, int,
 		     struct cmd_find_state *, struct options **, char **);
 struct style	*options_string_to_style(struct options *, const char *,
 		     struct format_tree *);
+int		 options_from_string(struct options *,
+		     const struct options_table_entry *, const char *,
+		     const char *, int, char **);
+void		 options_push_changes(const char *);
 
 /* options-table.c */
 extern const struct options_table_entry options_table[];
@@ -2460,6 +2471,8 @@ void	 screen_write_start_callback(struct screen_write_ctx *, struct screen *,
 void	 screen_write_stop(struct screen_write_ctx *);
 void	 screen_write_reset(struct screen_write_ctx *);
 size_t printflike(1, 2) screen_write_strlen(const char *, ...);
+void printflike(5, 6) screen_write_text(struct screen_write_ctx *, u_int, u_int,
+	     const struct grid_cell *, const char *, ...);
 void printflike(3, 4) screen_write_puts(struct screen_write_ctx *,
 	     const struct grid_cell *, const char *, ...);
 void printflike(4, 5) screen_write_nputs(struct screen_write_ctx *,
@@ -2678,6 +2691,7 @@ typedef void (*mode_tree_draw_cb)(void *, void *, struct screen_write_ctx *,
 	     u_int, u_int);
 typedef int (*mode_tree_search_cb)(void *, void *, const char *);
 typedef void (*mode_tree_menu_cb)(void *, struct client *, key_code);
+typedef u_int (*mode_tree_height_cb)(void *, u_int);
 typedef void (*mode_tree_each_cb)(void *, void *, struct client *, key_code);
 u_int	 mode_tree_count_tagged(struct mode_tree_data *);
 void	*mode_tree_get_current(struct mode_tree_data *);
@@ -2686,11 +2700,12 @@ void	 mode_tree_expand(struct mode_tree_data *, uint64_t);
 int	 mode_tree_set_current(struct mode_tree_data *, uint64_t);
 void	 mode_tree_each_tagged(struct mode_tree_data *, mode_tree_each_cb,
 	     struct client *, key_code, int);
+void	 mode_tree_up(struct mode_tree_data *, int);
 void	 mode_tree_down(struct mode_tree_data *, int);
 struct mode_tree_data *mode_tree_start(struct window_pane *, struct args *,
 	     mode_tree_build_cb, mode_tree_draw_cb, mode_tree_search_cb,
-	     mode_tree_menu_cb, void *, const struct menu_item *, const char **,
-	     u_int, struct screen **);
+	     mode_tree_menu_cb, mode_tree_height_cb, void *,
+	     const struct menu_item *, const char **, u_int, struct screen **);
 void	 mode_tree_zoom(struct mode_tree_data *, struct args *);
 void	 mode_tree_build(struct mode_tree_data *);
 void	 mode_tree_free(struct mode_tree_data *);
@@ -2727,6 +2742,9 @@ void		 window_copy_pageup(struct window_pane *, int);
 void		 window_copy_start_drag(struct client *, struct mouse_event *);
 char		*window_copy_get_word(struct window_pane *, u_int, u_int);
 char		*window_copy_get_line(struct window_pane *, u_int);
+
+/* window-option.c */
+extern const struct window_mode window_customize_mode;
 
 /* names.c */
 void	 check_window_name(struct window *);
