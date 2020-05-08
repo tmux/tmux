@@ -494,6 +494,9 @@ window_customize_draw(void *modedata, void *itemdata,
 	screen_write_text(ctx, sx, sy, &grid_default_cell, "%s", text);
 	if (s->cy >= cy + sy - 1)
 		goto out;
+	screen_write_cursormove(ctx, s->cx, s->cy + 1, 0);
+	if (s->cy >= cy + sy - 1)
+		goto out;
 
 	if (oe == NULL)
 		text = "user";
@@ -524,6 +527,9 @@ window_customize_draw(void *modedata, void *itemdata,
 		if (s->cy > cy + sy - 1)
 			goto out;
 	}
+	screen_write_cursormove(ctx, s->cx, s->cy + 1, 0);
+	if (s->cy >= cy + sy - 1)
+		goto out;
 
 	value = options_to_string(o, idx, 0);
 	if (oe != NULL && idx == -1) {

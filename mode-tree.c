@@ -708,7 +708,8 @@ mode_tree_draw(struct mode_tree_data *mtd)
 			else
 				screen_write_puts(&ctx, &gc0, "active");
 			screen_write_puts(&ctx, &gc0, ") ");
-		}
+		} else
+			screen_write_puts(&ctx, &gc0, " ");
 	}
 	free(text);
 

@@ -428,7 +428,7 @@ screen_write_text(struct screen_write_ctx *ctx, u_int width, u_int lines,
 		idx = next;
 	}
 
-	screen_write_cursormove(ctx, cx, s->cy + 1, 0);
+	screen_write_cursormove(ctx, cx, s->cy, 0);
 	free(text);
 }
 
