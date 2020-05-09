@@ -1365,9 +1365,9 @@ window_copy_cmd_next_matching_bracket(struct window_copy_cmd_state *cs)
 				px = data->cx;
 				py = screen_hsize(s) + data->cy - data->oy;
 				grid_get_cell(s->grid, px, py, &gc);
-				if (gc.data.size != 1 ||
-				    (gc.flags & GRID_FLAG_PADDING) ||
-				    strchr(close, *gc.data.data) == NULL)
+				if (gc.data.size == 1 &&
+				    (~gc.flags & GRID_FLAG_PADDING) &&
+				    strchr(close, *gc.data.data) != NULL)
 					window_copy_scroll_to(wme, sx, sy);
 				break;
 			}
