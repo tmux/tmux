@@ -190,7 +190,8 @@ cmd_run_shell_callback(struct job *job)
 		retcode = WTERMSIG(status);
 		xasprintf(&msg, "'%s' terminated by signal %d", cmd, retcode);
 		retcode += 128;
-	}
+	} else
+		retcode = 0;
 	if (msg != NULL)
 		cmd_run_shell_print(job, msg);
 	free(msg);
