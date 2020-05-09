@@ -361,15 +361,14 @@ screen_write_strlen(const char *fmt, ...)
 }
 
 /* Write string wrapped over lines. */
-void
-screen_write_text(struct screen_write_ctx *ctx, u_int width, u_int lines,
-    const struct grid_cell *gcp, const char *fmt, ...)
+int
+screen_write_text(struct screen_write_ctx *ctx, u_int cx, u_int width,
+    u_int lines, int more, const struct grid_cell *gcp, const char *fmt, ...)
 {
 	struct screen		*s = ctx->s;
-	u_int			 cx = s->cx, cy = s->cy;
 	va_list			 ap;
 	char			*tmp;
-	u_int			 i, end, next, idx = 0, at;
+	u_int			 cy = s->cy, i, end, next, idx = 0, at, left;
 	struct utf8_data	*text;
 	struct grid_cell	 gc;
 
@@ -382,13 +381,14 @@ screen_write_text(struct screen_write_ctx *ctx, u_int width, u_int lines,
 	text = utf8_fromcstr(tmp);
 	free(tmp);
 
-	while (text[idx].size != 0) {
+	left = (cx + width) - s->cx;
+	for (;;) {
 		/* Find the end of what can fit on the line. */
 		at = 0;
 		for (end = idx; text[end].size != 0; end++) {
 			if (text[end].size == 1 && text[end].data[0] == '\n')
 				break;
-			if (at + text[end].width > width)
+			if (at + text[end].width > left)
 				break;
 			at += text[end].width;
 		}
@@ -422,14 +422,32 @@ screen_write_text(struct screen_write_ctx *ctx, u_int width, u_int lines,
 		}
 
 		/* If at the bottom, stop. */
-		if (s->cy == cy + lines - 1)
-			break;
-		screen_write_cursormove(ctx, cx, s->cy + 1, 0);
 		idx = next;
+		if (s->cy == cy + lines - 1 || text[idx].size == 0)
+			break;
+
+		screen_write_cursormove(ctx, cx, s->cy + 1, 0);
+		left = width;
 	}
 
-	screen_write_cursormove(ctx, cx, s->cy, 0);
+	/*
+	 * Fail if on the last line and there is more to come or at the end, or
+	 * if the text was not entirely consumed.
+	 */
+	if ((s->cy == cy + lines - 1 && (!more || s->cx == cx + width)) ||
+	    text[idx].size != 0) {
+		free(text);
+		return (0);
+	}
 	free(text);
+
+	/*
+	 * If no more to come, move to the next line. Otherwise, leave on
+	 * the same line (except if at the end).
+	 */
+	if (!more || s->cx == cx + width)
+		screen_write_cursormove(ctx, cx, s->cy + 1, 0);
+	return (1);
 }
 
 /* Write simple string (no maximum length). */

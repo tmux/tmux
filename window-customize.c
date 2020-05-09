@@ -491,10 +491,10 @@ window_customize_draw(void *modedata, void *itemdata,
 		text = "This option doesn't have a description.";
 	else
 		text = oe->text;
-	screen_write_text(ctx, sx, sy, &grid_default_cell, "%s", text);
-	if (s->cy >= cy + sy - 1)
+	if (!screen_write_text(ctx, cx, sx, sy, 0, &grid_default_cell, "%s",
+	    text))
 		goto out;
-	screen_write_cursormove(ctx, s->cx, s->cy + 1, 0);
+	screen_write_cursormove(ctx, cx, s->cy + 1, 0); /* skip line */
 	if (s->cy >= cy + sy - 1)
 		goto out;
 
@@ -509,25 +509,24 @@ window_customize_draw(void *modedata, void *itemdata,
 		text = "session";
 	else
 		text = "server";
-	screen_write_text(ctx, sx, sy - (s->cy - cy), &grid_default_cell,
-	    "This is a %s option.", text);
-	if (s->cy > cy + sy - 1)
+	if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy), 0,
+	    &grid_default_cell, "This is a %s option.", text))
 		goto out;
 	if (oe != NULL && (oe->flags & OPTIONS_TABLE_IS_ARRAY)) {
 		if (idx != -1) {
-			screen_write_text(ctx, sx, sy - (s->cy - cy),
-			    &grid_default_cell,
-			    "This is an array option, index %u.", idx);
+			if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy),
+			    0, &grid_default_cell,
+			    "This is an array option, index %u.", idx))
+				goto out;
 		} else {
-			screen_write_text(ctx, sx, sy - (s->cy - cy),
-			    &grid_default_cell, "This is an array option.");
+			if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy),
+			    0, &grid_default_cell, "This is an array option."))
+				goto out;
 		}
 		if (idx == -1)
 			goto out;
-		if (s->cy > cy + sy - 1)
-			goto out;
 	}
-	screen_write_cursormove(ctx, s->cx, s->cy + 1, 0);
+	screen_write_cursormove(ctx, cx, s->cy + 1, 0); /* skip line */
 	if (s->cy >= cy + sy - 1)
 		goto out;
 
@@ -539,19 +538,15 @@ window_customize_draw(void *modedata, void *itemdata,
 			default_value = NULL;
 		}
 	}
-	screen_write_nputs(ctx, sx, &grid_default_cell, "Option value: %s%s%s",
-	    value, space, unit);
-	screen_write_cursormove(ctx, cx, s->cy + 1, 0);
-	if (s->cy > cy + sy - 1)
+	if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy), 0,
+	    &grid_default_cell, "Option value: %s%s%s", value, space, unit))
 		goto out;
-
 	if (oe == NULL || oe->type == OPTIONS_TABLE_STRING) {
 		expanded = format_expand(ft, value);
 		if (strcmp(expanded, value) != 0) {
-			screen_write_nputs(ctx, sx, &grid_default_cell,
-			    "This expands to: %s", expanded);
-			screen_write_cursormove(ctx, cx, s->cy + 1, 0);
-			if (s->cy > cy + sy - 1)
+			if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy),
+			    0, &grid_default_cell, "This expands to: %s",
+			    expanded))
 				goto out;
 		}
 		free(expanded);
@@ -562,44 +557,38 @@ window_customize_draw(void *modedata, void *itemdata,
 			strlcat(choices, ", ", sizeof choices);
 		}
 		choices[strlen(choices) - 2] = '\0';
-		screen_write_nputs(ctx, sx, &grid_default_cell,
-		    "Available values are: %s", choices);
-		screen_write_cursormove(ctx, cx, s->cy + 1, 0);
-		if (s->cy > cy + sy - 1)
+		if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy), 0,
+		    &grid_default_cell, "Available values are: %s",
+		    choices))
 			goto out;
 	}
 	if (oe != NULL && oe->type == OPTIONS_TABLE_COLOUR) {
-		screen_write_nputs(ctx, sx, &grid_default_cell,
-		    "This is a colour option: ");
-		if (sx > 24) {
-			memcpy(&gc, &grid_default_cell, sizeof gc);
-			gc.fg = options_get_number(item->oo, name);
-			screen_write_nputs(ctx, sx - 24, &gc, "EXAMPLE");
-		}
-		screen_write_cursormove(ctx, cx, s->cy + 1, 0);
-		if (s->cy > cy + sy - 1)
+		if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy), 1,
+		    &grid_default_cell, "This is a colour option: "))
+			goto out;
+		memcpy(&gc, &grid_default_cell, sizeof gc);
+		gc.fg = options_get_number(item->oo, name);
+		if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy), 0, &gc,
+		    "EXAMPLE"))
 			goto out;
 	}
 	if (oe != NULL && (oe->flags & OPTIONS_TABLE_IS_STYLE)) {
-		screen_write_nputs(ctx, sx, &grid_default_cell,
-		    "This is a style option: ");
-		if (sx > 24) {
-			style_apply(&gc, item->oo, name, ft);
-			screen_write_nputs(ctx, sx - 24, &gc, "EXAMPLE");
-		}
-		screen_write_cursormove(ctx, cx, s->cy + 1, 0);
-		if (s->cy > cy + sy - 1)
+		if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy), 1,
+		    &grid_default_cell, "This is a style option: "))
+			goto out;
+		style_apply(&gc, item->oo, name, ft);
+		if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy), 0, &gc,
+		    "EXAMPLE"))
 			goto out;
 	}
 	if (default_value != NULL) {
-		screen_write_nputs(ctx, sx, &grid_default_cell,
-		    "The default is: %s%s%s", default_value, space, unit);
-		screen_write_cursormove(ctx, cx, s->cy + 1, 0);
-		if (s->cy > cy + sy - 1)
+		if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy), 0,
+		    &grid_default_cell, "The default is: %s%s%s", default_value,
+		    space, unit))
 			goto out;
 	}
 
-	screen_write_cursormove(ctx, cx, s->cy + 1, 0);
+	screen_write_cursormove(ctx, cx, s->cy + 1, 0); /* skip line */
 	if (s->cy > cy + sy - 1)
 		goto out;
 	if (oe != NULL && (oe->flags & OPTIONS_TABLE_IS_ARRAY)) {
@@ -626,11 +615,10 @@ window_customize_draw(void *modedata, void *itemdata,
 		parent = options_get_only(wo, name);
 		if (parent != NULL) {
 			value = options_to_string(parent, -1 , 0);
-			screen_write_nputs(ctx, sx, &grid_default_cell,
+			if (!screen_write_text(ctx, s->cx, sx,
+			    sy - (s->cy - cy), 0, &grid_default_cell,
 			    "Window value (from window %u): %s%s%s", fs.wl->idx,
-			    value, space, unit);
-			screen_write_cursormove(ctx, cx, s->cy + 1, 0);
-			if (s->cy > cy + sy - 1)
+			    value, space, unit))
 				goto out;
 		}
 	}
@@ -638,10 +626,9 @@ window_customize_draw(void *modedata, void *itemdata,
 		parent = options_get_only(go, name);
 		if (parent != NULL) {
 			value = options_to_string(parent, -1 , 0);
-			screen_write_nputs(ctx, sx, &grid_default_cell,
-			    "Global value: %s%s%s", value, space, unit);
-			screen_write_cursormove(ctx, cx, s->cy + 1, 0);
-			if (s->cy > cy + sy - 1)
+			if (!screen_write_text(ctx, s->cx, sx,
+			    sy - (s->cy - cy), 0, &grid_default_cell,
+			    "Global value: %s%s%s", value, space, unit))
 				goto out;
 		}
 	}

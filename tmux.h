@@ -2471,8 +2471,8 @@ void	 screen_write_start_callback(struct screen_write_ctx *, struct screen *,
 void	 screen_write_stop(struct screen_write_ctx *);
 void	 screen_write_reset(struct screen_write_ctx *);
 size_t printflike(1, 2) screen_write_strlen(const char *, ...);
-void printflike(5, 6) screen_write_text(struct screen_write_ctx *, u_int, u_int,
-	     const struct grid_cell *, const char *, ...);
+int printflike(7, 8) screen_write_text(struct screen_write_ctx *, u_int, u_int,
+	     u_int, int, const struct grid_cell *, const char *, ...);
 void printflike(3, 4) screen_write_puts(struct screen_write_ctx *,
 	     const struct grid_cell *, const char *, ...);
 void printflike(4, 5) screen_write_nputs(struct screen_write_ctx *,
