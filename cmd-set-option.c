@@ -75,10 +75,6 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 	struct args			*args = cmd_get_args(self);
 	int				 append = args_has(args, 'a');
 	struct cmd_find_state		*target = cmdq_get_target(item);
-	struct client			*loop;
-	struct session			*s = target->s;
-	struct window			*w;
-	struct window_pane		*wp;
 	struct options			*oo;
 	struct options_entry		*parent, *o;
 	char				*name, *argument, *value = NULL, *cause;
