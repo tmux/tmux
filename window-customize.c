@@ -268,7 +268,7 @@ window_customize_build_option(struct window_customize_modedata *data,
 	if (oe != NULL && oe->unit != NULL)
 		format_add(ft, "option_unit", "%s", oe->unit);
 	else
-		format_add(ft, "option_unit", "");
+		format_add(ft, "option_unit", "%s", "");
 
 	if (!array) {
 		value = options_to_string(o, -1, 0);
@@ -367,12 +367,12 @@ window_customize_build_options(struct window_customize_modedata *data,
 			o = options_get(oo1, list[i]);
 		else
 			o = options_get(oo2, list[i]);
-		if (options_owner(o) == oo0)
-			scope = scope0;
+		if (options_owner(o) == oo2)
+			scope = scope2;
 		else if (options_owner(o) == oo1)
 			scope = scope1;
-		else if (options_owner(o) == oo2)
-			scope = scope2;
+		else
+			scope = scope0;
 		window_customize_build_option(data, top, scope, o, ft, filter,
 		    fs);
 	}
@@ -391,12 +391,12 @@ window_customize_build_options(struct window_customize_modedata *data,
 			o = options_get(oo1, name);
 		else
 			o = loop;
-		if (options_owner(o) == oo0)
-			scope = scope0;
+		if (options_owner(o) == oo2)
+			scope = scope2;
 		else if (options_owner(o) == oo1)
 			scope = scope1;
-		else if (options_owner(o) == oo2)
-			scope = scope2;
+		else
+			scope = scope0;
 		window_customize_build_option(data, top, scope, o, ft, filter,
 		    fs);
 		loop = options_next(loop);
@@ -805,7 +805,7 @@ window_customize_set_option(struct client *c, struct window_customize_modedata *
     struct window_customize_itemdata *item, int global, int pane)
 {
 	struct options_entry			*o;
- 	const struct options_table_entry	*oe;
+	const struct options_table_entry	*oe;
 	struct options				*oo;
 	struct window_customize_itemdata	*new_item;
 	int					 flag, idx = item->idx;
