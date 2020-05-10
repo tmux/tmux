@@ -1,5 +1,15 @@
 CHANGES FROM 3.1b TO 3.2
 
+* Add a -D flag to make the tmux server run in the foreground and not as a
+  daemon.
+
+* Do not loop forever in copy mode when search finds an empty match.
+
+* Fix the next-matching-bracket logic when using vi(1) keys.
+
+* Add a customize mode where options may be browsed and changed, includes
+  adding a brief description of each option. Bound to "C-b C" by default.
+
 * Change message log (C-b ~) so there is one for the server rather than one per
   client and it remains after detach, and make it useful by logging every
   command.
