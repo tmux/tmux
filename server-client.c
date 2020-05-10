@@ -241,7 +241,7 @@ server_client_open(struct client *c, char **cause)
 	if (c->flags & CLIENT_CONTROL)
 		return (0);
 
-	if (strcmp(c->ttyname, ttynam) ||
+	if (strcmp(c->ttyname, ttynam) == 0||
 	    ((isatty(STDIN_FILENO) &&
 	    (ttynam = ttyname(STDIN_FILENO)) != NULL &&
 	    strcmp(c->ttyname, ttynam) == 0) ||
