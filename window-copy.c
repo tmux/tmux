@@ -131,6 +131,7 @@ static void	window_copy_rectangle_toggle(struct window_mode_entry *);
 static void	window_copy_move_mouse(struct mouse_event *);
 static void	window_copy_drag_update(struct client *, struct mouse_event *);
 static void	window_copy_drag_release(struct client *, struct mouse_event *);
+static void	window_copy_jump_to_mark(struct window_mode_entry *);
 
 const struct window_mode window_copy_mode = {
 	.name = "copy-mode",
@@ -253,6 +254,9 @@ struct window_copy_mode_data {
 
 	u_int		 lastcx; 	/* position in last line w/ content */
 	u_int		 lastsx;	/* size of last line w/ content */
+
+	u_int		 mx;		/* mark position */
+	u_int		 my;
 
 	int		 searchtype;
 	int		 searchregex;
@@ -424,6 +428,8 @@ window_copy_init(struct window_mode_entry *wme,
 
 	data->screen.cx = data->cx;
 	data->screen.cy = data->cy;
+	data->mx = data->cx;
+	data->my = screen_hsize(data->backing) + data->cy - data->oy;
 
 	screen_write_start(&ctx, &data->screen);
 	for (i = 0; i < screen_size_y(&data->screen); i++)
@@ -1734,6 +1740,16 @@ window_copy_cmd_select_word(struct window_copy_cmd_state *cs)
 }
 
 static enum window_copy_cmd_action
+window_copy_cmd_set_mark(struct window_copy_cmd_state *cs)
+{
+	struct window_copy_mode_data	*data = cs->wme->data;
+
+	data->mx = data->cx;
+	data->my = screen_hsize(data->backing) + data->cy - data->oy;
+	return (WINDOW_COPY_CMD_NOTHING);
+}
+
+static enum window_copy_cmd_action
 window_copy_cmd_start_of_line(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
@@ -1874,6 +1890,15 @@ window_copy_cmd_jump_to_forward(struct window_copy_cmd_state *cs)
 		for (; np != 0; np--)
 			window_copy_cursor_jump_to(wme);
 	}
+	return (WINDOW_COPY_CMD_NOTHING);
+}
+
+static enum window_copy_cmd_action
+window_copy_cmd_jump_to_mark(struct window_copy_cmd_state *cs)
+{
+	struct window_mode_entry	*wme = cs->wme;
+
+	window_copy_jump_to_mark(wme);
 	return (WINDOW_COPY_CMD_NOTHING);
 }
 
@@ -2154,6 +2179,8 @@ static const struct {
 	  window_copy_cmd_jump_to_backward },
 	{ "jump-to-forward", 1, 1, 1,
 	  window_copy_cmd_jump_to_forward },
+	{ "jump-to-mark", 0, 0, 0,
+	  window_copy_cmd_jump_to_mark },
 	{ "middle-line", 0, 0, 1,
 	  window_copy_cmd_middle_line },
 	{ "next-matching-bracket", 0, 0, 0,
@@ -2214,6 +2241,8 @@ static const struct {
 	  window_copy_cmd_select_line },
 	{ "select-word", 0, 0, 0,
 	  window_copy_cmd_select_word },
+	{ "set-mark", 0, 0, 0,
+	  window_copy_cmd_set_mark },
 	{ "start-of-line", 0, 0, 1,
 	  window_copy_cmd_start_of_line },
 	{ "stop-selection", 0, 0, 0,
@@ -4686,4 +4715,27 @@ window_copy_drag_release(struct client *c, struct mouse_event *m)
 
 	data = wme->data;
 	evtimer_del(&data->dragtimer);
+}
+
+static void
+window_copy_jump_to_mark(struct window_mode_entry *wme)
+{
+	struct window_copy_mode_data	*data = wme->data;
+	u_int				 tmx, tmy;
+
+	window_copy_clear_selection(wme);
+
+	tmx = data->cx;
+	tmy = screen_hsize(data->backing) + data->cy - data->oy;
+	data->cx = data->mx;
+	if (data->my < screen_hsize(data->backing)) {
+		data->cy = 0;
+		data->oy = screen_hsize(data->backing) - data->my;
+	} else {
+		data->cy = data->my - screen_hsize(data->backing);
+		data->oy = 0;
+	}
+	data->mx = tmx;
+	data->my = tmy;
+	window_copy_redraw_screen(wme);
 }
