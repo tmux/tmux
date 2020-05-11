@@ -772,7 +772,7 @@ window_customize_set_callback(struct client *c, void *itemdata, const char *s,
 
 fail:
 	*cause = toupper((u_char)*cause);
-	status_message_set(c, "%s", cause);
+	status_message_set(c, 1, "%s", cause);
 	free(cause);
 	return (0);
 }

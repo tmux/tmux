@@ -423,7 +423,7 @@ status_redraw(struct client *c)
 
 /* Set a status line message. */
 void
-status_message_set(struct client *c, const char *fmt, ...)
+status_message_set(struct client *c, int ignore_styles, const char *fmt, ...)
 {
 	struct timeval	tv;
 	va_list		ap;
@@ -433,6 +433,7 @@ status_message_set(struct client *c, const char *fmt, ...)
 	status_push_screen(c);
 
 	va_start(ap, fmt);
+	c->message_ignore_styles = ignore_styles;
 	xvasprintf(&c->message_string, fmt, ap);
 	va_end(ap);
 
@@ -515,7 +516,10 @@ status_message_redraw(struct client *c)
 	for (offset = 0; offset < c->tty.sx; offset++)
 		screen_write_putc(&ctx, &gc, ' ');
 	screen_write_cursormove(&ctx, 0, lines - 1, 0);
-	screen_write_nputs(&ctx, len, &gc, "%s", c->message_string);
+	if (c->message_ignore_styles)
+		screen_write_nputs(&ctx, len, &gc, "%s", c->message_string);
+	else
+		format_draw(&ctx, &gc, c->tty.sx, c->message_string, NULL);
 	screen_write_stop(&ctx);
 
 	if (grid_compare(sl->active->grid, old_screen.grid) == 0) {
