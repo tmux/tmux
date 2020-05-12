@@ -1669,6 +1669,7 @@ RB_HEAD(key_bindings, key_binding);
 struct key_table {
 	const char		*name;
 	struct key_bindings	 key_bindings;
+	struct key_bindings	 default_key_bindings;
 
 	u_int			 references;
 
@@ -2245,6 +2246,7 @@ struct key_table *key_bindings_first_table(void);
 struct key_table *key_bindings_next_table(struct key_table *);
 void	 key_bindings_unref_table(struct key_table *);
 struct key_binding *key_bindings_get(struct key_table *, key_code);
+struct key_binding *key_bindings_get_default(struct key_table *, key_code);
 struct key_binding *key_bindings_first(struct key_table *);
 struct key_binding *key_bindings_next(struct key_table *, struct key_binding *);
 void	 key_bindings_add(const char *, key_code, const char *, int,

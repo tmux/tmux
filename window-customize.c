@@ -564,9 +564,12 @@ window_customize_build(void *modedata,
 	i = 0;
 	kt = key_bindings_first_table();
 	while (kt != NULL) {
-		window_customize_build_keys(data, kt, ft, filter, &fs, i);
-		if (++i == 256)
-			break;
+		if (!RB_EMPTY(&kt->key_bindings)) {
+			window_customize_build_keys(data, kt, ft, filter, &fs,
+			    i);
+			if (++i == 256)
+				break;
+		}
 		kt = key_bindings_next_table(kt);
 	}
 
@@ -581,9 +584,9 @@ window_customize_draw_key(__unused struct window_customize_modedata *data,
 	struct screen		*s = ctx->s;
 	u_int			 cx = s->cx, cy = s->cy;
 	struct key_table	*kt;
-	struct key_binding	*bd;
+	struct key_binding	*bd, *default_bd;
 	const char		*note, *period = "";
-	char			*tmp;
+	char			*cmd, *default_cmd;
 
 	if (item == NULL || !window_customize_get_key(item, &kt, &bd))
 		return;
@@ -611,12 +614,25 @@ window_customize_draw_key(__unused struct window_customize_modedata *data,
 	if (s->cy >= cy + sy - 1)
 		return;
 
-	tmp = cmd_list_print(bd->cmdlist, 0);
+	cmd = cmd_list_print(bd->cmdlist, 0);
 	if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy), 0,
-	    &grid_default_cell, "Command: %s", tmp)) {
-		free(tmp);
+	    &grid_default_cell, "Command: %s", cmd)) {
+		free(cmd);
 		return;
 	}
+	default_bd = key_bindings_get_default(kt, bd->key);
+	if (default_bd != NULL) {
+		default_cmd = cmd_list_print(default_bd->cmdlist, 0);
+		if (strcmp(cmd, default_cmd) != 0 &&
+		    !screen_write_text(ctx, cx, sx, sy - (s->cy - cy), 0,
+		    &grid_default_cell, "The default is: %s", default_cmd)) {
+			free(default_cmd);
+			free(cmd);
+			return;
+		}
+		free(default_cmd);
+	}
+	free(cmd);
 }
 
 static void
