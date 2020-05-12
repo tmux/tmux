@@ -528,7 +528,7 @@ mode_tree_add(struct mode_tree_data *mtd, struct mode_tree_item *parent,
 	struct mode_tree_item	*mti, *saved;
 
 	log_debug("%s: %llu, %s %s", __func__, (unsigned long long)tag,
-	    name, text);
+	    name, (text == NULL ? "" : text));
 
 	mti = xcalloc(1, sizeof *mti);
 	mti->parent = parent;
