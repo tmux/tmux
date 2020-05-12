@@ -1970,8 +1970,8 @@ This command works only if at least one client is attached.
 .Op Fl t Ar target-pane
 .Op Ar template
 .Xc
-Put a pane into customize mode, where options may be browsed and modified from a
-list.
+Put a pane into customize mode, where options and key bindings may be browsed
+and modified from a list.
 Option values in the list are shown for the active pane in the current window.
 .Fl Z
 zooms the pane.
@@ -1985,11 +1985,11 @@ The following keys may be used in customize mode:
 .It Li "-" Ta "Collapse selected item"
 .It Li "M-+" Ta "Expand all items"
 .It Li "M--" Ta "Collapse all items"
-.It Li "s" Ta "Set pane, window, session or global option value"
+.It Li "s" Ta "Set option value or key attribute"
 .It Li "S" Ta "Set global option value"
 .It Li "w" Ta "Set window option value, if option is for pane and window"
-.It Li "u" Ta "Unset an option (set to default value if global)"
-.It Li "U" Ta "Unset tagged options"
+.It Li "u" Ta "Unset an option (set to default value if global) or unbind a key"
+.It Li "U" Ta "Unset tagged options and unbind tagged keys"
 .It Li "C-s" Ta "Search by name"
 .It Li "n" Ta "Repeat last search"
 .It Li "t" Ta "Toggle if item is tagged"

@@ -2698,7 +2698,9 @@ typedef u_int (*mode_tree_height_cb)(void *, u_int);
 typedef void (*mode_tree_each_cb)(void *, void *, struct client *, key_code);
 u_int	 mode_tree_count_tagged(struct mode_tree_data *);
 void	*mode_tree_get_current(struct mode_tree_data *);
+const char *mode_tree_get_current_name(struct mode_tree_data *);
 void	 mode_tree_expand_current(struct mode_tree_data *);
+void	 mode_tree_collapse_current(struct mode_tree_data *);
 void	 mode_tree_expand(struct mode_tree_data *, uint64_t);
 int	 mode_tree_set_current(struct mode_tree_data *, uint64_t);
 void	 mode_tree_each_tagged(struct mode_tree_data *, mode_tree_each_cb,
@@ -2716,6 +2718,7 @@ void	 mode_tree_resize(struct mode_tree_data *, u_int, u_int);
 struct mode_tree_item *mode_tree_add(struct mode_tree_data *,
 	     struct mode_tree_item *, void *, uint64_t, const char *,
 	     const char *, int);
+void	 mode_tree_draw_as_parent(struct mode_tree_item *);
 void	 mode_tree_remove(struct mode_tree_data *, struct mode_tree_item *);
 void	 mode_tree_draw(struct mode_tree_data *);
 int	 mode_tree_key(struct mode_tree_data *, struct client *, key_code *,
