@@ -1746,7 +1746,7 @@ window_copy_cmd_set_mark(struct window_copy_cmd_state *cs)
 
 	data->mx = data->cx;
 	data->my = screen_hsize(data->backing) + data->cy - data->oy;
-	return (WINDOW_COPY_CMD_NOTHING);
+	return (WINDOW_COPY_CMD_REDRAW);
 }
 
 static enum window_copy_cmd_action
@@ -3158,11 +3158,26 @@ window_copy_match_at_cursor(struct window_copy_mode_data *data)
 static void
 window_copy_update_style(struct window_mode_entry *wme, u_int fx, u_int fy,
     struct grid_cell *gc, const struct grid_cell *mgc,
-    const struct grid_cell *cgc)
+    const struct grid_cell *cgc, const struct grid_cell *mkgc)
 {
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 mark, start, end, cy, cursor, current;
 	u_int				 sx = screen_size_x(data->backing);
+	int				 inv = 0;
+
+	if (fy == data->my) {
+		gc->attr = mkgc->attr;
+		if (fx == data->mx)
+			inv = 1;
+		if (inv) {
+			gc->fg = mkgc->bg;
+			gc->bg = mkgc->fg;
+		}
+		else {
+			gc->fg = mkgc->fg;
+			gc->bg = mkgc->bg;
+		}
+	}
 
 	if (data->searchmark == NULL)
 		return;
@@ -3179,21 +3194,34 @@ window_copy_update_style(struct window_mode_entry *wme, u_int fx, u_int fy,
 		window_copy_match_start_end(data, cursor, &start, &end);
 		if (current >= start && current <= end) {
 			gc->attr = cgc->attr;
-			gc->fg = cgc->fg;
-			gc->bg = cgc->bg;
+			if (inv) {
+				gc->fg = cgc->bg;
+				gc->bg = cgc->fg;
+			}
+			else {
+				gc->fg = cgc->fg;
+				gc->bg = cgc->bg;
+			}
 			return;
 		}
 	}
 
 	gc->attr = mgc->attr;
-	gc->fg = mgc->fg;
-	gc->bg = mgc->bg;
+	if (inv) {
+		gc->fg = mgc->bg;
+		gc->bg = mgc->fg;
+	}
+	else {
+		gc->fg = mgc->fg;
+		gc->bg = mgc->bg;
+	}
 }
 
 static void
 window_copy_write_one(struct window_mode_entry *wme,
     struct screen_write_ctx *ctx, u_int py, u_int fy, u_int nx,
-    const struct grid_cell *mgc, const struct grid_cell *cgc)
+    const struct grid_cell *mgc, const struct grid_cell *cgc,
+    const struct grid_cell *mkgc)
 {
 	struct window_copy_mode_data	*data = wme->data;
 	struct grid			*gd = data->backing->grid;
@@ -3204,7 +3232,8 @@ window_copy_write_one(struct window_mode_entry *wme,
 	for (fx = 0; fx < nx; fx++) {
 		grid_get_cell(gd, fx, fy, &gc);
 		if (fx + gc.data.width <= nx) {
-			window_copy_update_style(wme, fx, fy, &gc, mgc, cgc);
+			window_copy_update_style(wme, fx, fy, &gc, mgc, cgc,
+			    mkgc);
 			screen_write_cell(ctx, &gc);
 		}
 	}
@@ -3218,7 +3247,7 @@ window_copy_write_line(struct window_mode_entry *wme,
 	struct window_copy_mode_data	*data = wme->data;
 	struct screen			*s = &data->screen;
 	struct options			*oo = wp->window->options;
-	struct grid_cell		 gc, mgc, cgc;
+	struct grid_cell		 gc, mgc, cgc, mkgc;
 	char				 hdr[512];
 	size_t				 size = 0;
 	u_int				 hsize = screen_hsize(data->backing);
@@ -3229,6 +3258,8 @@ window_copy_write_line(struct window_mode_entry *wme,
 	mgc.flags |= GRID_FLAG_NOPALETTE;
 	style_apply(&cgc, oo, "copy-mode-current-match-style", NULL);
 	cgc.flags |= GRID_FLAG_NOPALETTE;
+	style_apply(&mkgc, oo, "copy-mode-mark-style", NULL);
+	mkgc.flags |= GRID_FLAG_NOPALETTE;
 
 	if (py == 0 && s->rupper < s->rlower && !data->hide_position) {
 		if (data->searchmark == NULL) {
@@ -3262,7 +3293,7 @@ window_copy_write_line(struct window_mode_entry *wme,
 
 	if (size < screen_size_x(s)) {
 		window_copy_write_one(wme, ctx, py, hsize - data->oy + py,
-		    screen_size_x(s) - size, &mgc, &cgc);
+		    screen_size_x(s) - size, &mgc, &cgc, &mkgc);
 	}
 
 	if (py == data->cy && data->cx == screen_size_x(s)) {
