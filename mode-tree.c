@@ -80,6 +80,7 @@ struct mode_tree_item {
 
 	int				 expanded;
 	int				 tagged;
+	int				 draw_as_parent;
 
 	struct mode_tree_list		 children;
 	TAILQ_ENTRY(mode_tree_item)	 entry;
@@ -248,11 +249,26 @@ mode_tree_get_current(struct mode_tree_data *mtd)
 	return (mtd->line_list[mtd->current].item->itemdata);
 }
 
+const char *
+mode_tree_get_current_name(struct mode_tree_data *mtd)
+{
+	return (mtd->line_list[mtd->current].item->name);
+}
+
 void
 mode_tree_expand_current(struct mode_tree_data *mtd)
 {
 	if (!mtd->line_list[mtd->current].item->expanded) {
 		mtd->line_list[mtd->current].item->expanded = 1;
+		mode_tree_build(mtd);
+	}
+}
+
+void
+mode_tree_collapse_current(struct mode_tree_data *mtd)
+{
+	if (mtd->line_list[mtd->current].item->expanded) {
+		mtd->line_list[mtd->current].item->expanded = 0;
 		mode_tree_build(mtd);
 	}
 }
@@ -512,7 +528,7 @@ mode_tree_add(struct mode_tree_data *mtd, struct mode_tree_item *parent,
 	struct mode_tree_item	*mti, *saved;
 
 	log_debug("%s: %llu, %s %s", __func__, (unsigned long long)tag,
-	    name, text);
+	    name, (text == NULL ? "" : text));
 
 	mti = xcalloc(1, sizeof *mti);
 	mti->parent = parent;
@@ -541,6 +557,12 @@ mode_tree_add(struct mode_tree_data *mtd, struct mode_tree_item *parent,
 		TAILQ_INSERT_TAIL(&mtd->children, mti, entry);
 
 	return (mti);
+}
+
+void
+mode_tree_draw_as_parent(struct mode_tree_item *mti)
+{
+	mti->draw_as_parent = 1;
 }
 
 void
@@ -683,6 +705,8 @@ mode_tree_draw(struct mode_tree_data *mtd)
 
 	line = &mtd->line_list[mtd->current];
 	mti = line->item;
+	if (mti->draw_as_parent)
+		mti = mti->parent;
 
 	screen_write_cursormove(&ctx, 0, h, 0);
 	screen_write_box(&ctx, w, sy - h);

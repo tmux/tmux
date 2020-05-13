@@ -68,7 +68,8 @@ cmd_list_keys_get_width(const char *tablename, key_code only)
 	while (bd != NULL) {
 		if ((only != KEYC_UNKNOWN && bd->key != only) ||
 		    KEYC_IS_MOUSE(bd->key) ||
-		    bd->note == NULL) {
+		    bd->note == NULL ||
+		    *bd->note == '\0') {
 			bd = key_bindings_next(table, bd);
 			continue;
 		}
@@ -99,14 +100,15 @@ cmd_list_keys_print_notes(struct cmdq_item *item, struct args *args,
 	while (bd != NULL) {
 		if ((only != KEYC_UNKNOWN && bd->key != only) ||
 		    KEYC_IS_MOUSE(bd->key) ||
-		    (bd->note == NULL && !args_has(args, 'a'))) {
+		    ((bd->note == NULL || *bd->note == '\0') &&
+		    !args_has(args, 'a'))) {
 			bd = key_bindings_next(table, bd);
 			continue;
 		}
 		found = 1;
 		key = key_string_lookup_key(bd->key);
 
-		if (bd->note == NULL)
+		if (bd->note == NULL || *bd->note == '\0')
 			note = cmd_list_print(bd->cmdlist, 1);
 		else
 			note = xstrdup(bd->note);
