@@ -797,7 +797,7 @@ const struct options_table_entry options_table[] = {
 	{ .name = "copy-mode-mark-style",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_str = "bg=white,fg=black",
+	  .default_str = "bg=red,fg=black",
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
 	  .text = "Style of the marked line in copy mode."

@@ -257,6 +257,7 @@ struct window_copy_mode_data {
 
 	u_int		 mx;		/* mark position */
 	u_int		 my;
+	int		 showmark;
 
 	int		 searchtype;
 	int		 searchregex;
@@ -430,6 +431,7 @@ window_copy_init(struct window_mode_entry *wme,
 	data->screen.cy = data->cy;
 	data->mx = data->cx;
 	data->my = screen_hsize(data->backing) + data->cy - data->oy;
+	data->showmark = 0;
 
 	screen_write_start(&ctx, &data->screen);
 	for (i = 0; i < screen_size_y(&data->screen); i++)
@@ -454,6 +456,9 @@ window_copy_view_init(struct window_mode_entry *wme,
 
 	data->backing = s = xmalloc(sizeof *data->backing);
 	screen_init(s, screen_size_x(base), screen_size_y(base), UINT_MAX);
+	data->mx = data->cx;
+	data->my = screen_hsize(data->backing) + data->cy - data->oy;
+	data->showmark = 0;
 
 	return (&data->screen);
 }
@@ -1746,6 +1751,7 @@ window_copy_cmd_set_mark(struct window_copy_cmd_state *cs)
 
 	data->mx = data->cx;
 	data->my = screen_hsize(data->backing) + data->cy - data->oy;
+	data->showmark = 1;
 	return (WINDOW_COPY_CMD_REDRAW);
 }
 
@@ -3165,7 +3171,7 @@ window_copy_update_style(struct window_mode_entry *wme, u_int fx, u_int fy,
 	u_int				 sx = screen_size_x(data->backing);
 	int				 inv = 0;
 
-	if (fy == data->my) {
+	if (data->showmark && fy == data->my) {
 		gc->attr = mkgc->attr;
 		if (fx == data->mx)
 			inv = 1;
@@ -4754,8 +4760,6 @@ window_copy_jump_to_mark(struct window_mode_entry *wme)
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 tmx, tmy;
 
-	window_copy_clear_selection(wme);
-
 	tmx = data->cx;
 	tmy = screen_hsize(data->backing) + data->cy - data->oy;
 	data->cx = data->mx;
@@ -4768,5 +4772,7 @@ window_copy_jump_to_mark(struct window_mode_entry *wme)
 	}
 	data->mx = tmx;
 	data->my = tmy;
+	data->showmark = 1;
+	window_copy_update_selection(wme, 0, 0);
 	window_copy_redraw_screen(wme);
 }
