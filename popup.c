@@ -22,6 +22,7 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "tmux.h"
 
@@ -55,6 +56,12 @@ struct popup_data {
 	u_int			  lx;
 	u_int			  ly;
 	u_int			  lb;
+};
+
+struct popup_editor {
+	char			*path;
+	popup_finish_edit_cb	 cb;
+	void			*arg;
 };
 
 static void
@@ -517,5 +524,95 @@ popup_display(int flags, struct cmdq_item *item, u_int px, u_int py, u_int sx,
 
 	server_client_set_overlay(c, 0, popup_check_cb, popup_mode_cb,
 	    popup_draw_cb, popup_key_cb, popup_free_cb, pd);
+	return (0);
+}
+
+static void
+popup_editor_free(struct popup_editor *pe)
+{
+	unlink(pe->path);
+	free(pe->path);
+	free(pe);
+}
+
+static void
+popup_editor_close_cb(int status, void *arg)
+{
+	struct popup_editor	*pe = arg;
+	FILE			*f;
+	char			*buf = NULL;
+	off_t			 len = 0;
+
+	if (status != 0) {
+		pe->cb(NULL, 0, pe->arg);
+		popup_editor_free(pe);
+		return;
+	}
+
+	f = fopen(pe->path, "r");
+	if (f != NULL) {
+		fseeko(f, 0, SEEK_END);
+		len = ftello(f);
+		fseeko(f, 0, SEEK_SET);
+
+		if (len == 0 ||
+		    (uintmax_t)len > (uintmax_t)SIZE_MAX ||
+		    (buf = malloc(len)) == NULL ||
+		    fread(buf, len, 1, f) != 1) {
+			free(buf);
+			buf = NULL;
+			len = 0;
+		}
+		fclose(f);
+	}
+	pe->cb(buf, len, pe->arg); /* callback now owns buffer */
+	popup_editor_free(pe);
+}
+
+int
+popup_editor(struct client *c, const char *buf, size_t len,
+    popup_finish_edit_cb cb, void *arg)
+{
+	struct popup_editor	*pe;
+	int			 fd;
+	FILE			*f;
+	char			*cmd;
+	char			 path[] = _PATH_TMP "tmux.XXXXXXXX";
+	const char		*editor;
+	u_int			 px, py, sx, sy;
+
+	editor = options_get_string(global_options, "editor");
+	if (*editor == '\0')
+		return (-1);
+
+	fd = mkstemp(path);
+	if (fd == -1)
+		return (-1);
+	f = fdopen(fd, "w");
+	if (fwrite(buf, len, 1, f) != 1) {
+		fclose(f);
+		return (-1);
+	}
+	fclose(f);
+
+	pe = xcalloc(1, sizeof *pe);
+	pe->path = xstrdup(path);
+	pe->cb = cb;
+	pe->arg = arg;
+
+	sx = c->tty.sx * 9 / 10;
+	sy = c->tty.sy * 9 / 10;
+	px = (c->tty.sx / 2) - (sx / 2);
+	py = (c->tty.sy / 2) - (sy / 2);
+
+	xasprintf(&cmd, "%s %s", editor, path);
+	if (popup_display(POPUP_WRITEKEYS|POPUP_CLOSEEXIT, NULL, px, py, sx, sy,
+	    0, NULL, cmd, NULL, _PATH_TMP, c, NULL, popup_editor_close_cb,
+	    pe) != 0) {
+		popup_editor_free(pe);
+		free(cmd);
+		return (-1);
+	}
+	free(cmd);
 	return (0);
 }

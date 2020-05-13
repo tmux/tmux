@@ -98,7 +98,6 @@ struct window_buffer_modedata {
 
 struct window_buffer_editdata {
 	u_int			 wp_id;
-	char			*path;
 	char			*name;
 	struct paste_buffer	*pb;
 };
@@ -364,19 +363,14 @@ window_buffer_do_paste(void *modedata, void *itemdata, struct client *c,
 static void
 window_buffer_finish_edit(struct window_buffer_editdata *ed)
 {
-	unlink(ed->path);
-	free(ed->path);
 	free(ed->name);
 	free(ed);
 }
 
 static void
-window_buffer_edit_close_cb(int status, void *arg)
+window_buffer_edit_close_cb(char *buf, size_t len, void *arg)
 {
 	struct window_buffer_editdata	*ed = arg;
-	FILE				*f;
-	off_t				 len;
-	char				*buf;
 	size_t				 oldlen;
 	const char			*oldbuf;
 	struct paste_buffer		*pb;
@@ -384,7 +378,7 @@ window_buffer_edit_close_cb(int status, void *arg)
 	struct window_buffer_modedata	*data;
 	struct window_mode_entry	*wme;
 
-	if (status != 0) {
+	if (buf == NULL || len == 0) {
 		window_buffer_finish_edit(ed);
 		return;
 	}
@@ -395,26 +389,13 @@ window_buffer_edit_close_cb(int status, void *arg)
 		return;
 	}
 
-	f = fopen(ed->path, "r");
-	if (f != NULL) {
-		fseeko(f, 0, SEEK_END);
-		len = ftello(f);
-		fseeko(f, 0, SEEK_SET);
-
-		if (len > 0 &&
-		    (uintmax_t)len <= (uintmax_t)SIZE_MAX &&
-		    (buf = malloc(len)) != NULL &&
-		    fread(buf, len, 1, f) == 1) {
-			oldbuf = paste_buffer_data(pb, &oldlen);
-			if (oldlen != '\0' &&
-			    oldbuf[oldlen - 1] != '\n' &&
-			    buf[len - 1] == '\n')
-				len--;
-			if (len != 0)
-				paste_replace(pb, buf, len);
-		}
-		fclose(f);
-	}
+	oldbuf = paste_buffer_data(pb, &oldlen);
+	if (oldlen != '\0' &&
+	    oldbuf[oldlen - 1] != '\n' &&
+	    buf[len - 1] == '\n')
+		len--;
+	if (len != 0)
+		paste_replace(pb, buf, len);
 
 	wp = window_pane_find_by_id(ed->wp_id);
 	if (wp != NULL) {
@@ -434,51 +415,21 @@ window_buffer_start_edit(struct window_buffer_modedata *data,
     struct window_buffer_itemdata *item, struct client *c)
 {
 	struct paste_buffer		*pb;
-	int				 fd;
-	FILE				*f;
 	const char			*buf;
 	size_t				 len;
 	struct window_buffer_editdata	*ed;
-	char				*cmd;
-	char				 path[] = _PATH_TMP "tmux.XXXXXXXX";
-	const char			*editor;
-	u_int				 px, py, sx, sy;
 
 	if ((pb = paste_get_name(item->name)) == NULL)
 		return;
 	buf = paste_buffer_data(pb, &len);
 
-	editor = options_get_string(global_options, "editor");
-	if (*editor == '\0')
-		return;
-
-	fd = mkstemp(path);
-	if (fd == -1)
-		return;
-	f = fdopen(fd, "w");
-	if (fwrite(buf, len, 1, f) != 1) {
-		fclose(f);
-		return;
-	}
-	fclose(f);
-
 	ed = xcalloc(1, sizeof *ed);
 	ed->wp_id = data->wp->id;
-	ed->path = xstrdup(path);
 	ed->name = xstrdup(paste_buffer_name(pb));
 	ed->pb = pb;
 
-	sx = c->tty.sx * 9 / 10;
-	sy = c->tty.sy * 9 / 10;
-	px = (c->tty.sx / 2) - (sx / 2);
-	py = (c->tty.sy / 2) - (sy / 2);
-
-	xasprintf(&cmd, "%s %s", editor, path);
-	if (popup_display(POPUP_WRITEKEYS|POPUP_CLOSEEXIT, NULL, px, py, sx, sy,
-	    0, NULL, cmd, NULL, _PATH_TMP, c, NULL, window_buffer_edit_close_cb,
-	    ed) != 0)
+	if (popup_editor(c, buf, len, window_buffer_edit_close_cb, ed) != 0)
 		window_buffer_finish_edit(ed);
-	free(cmd);
 }
 
 static void
