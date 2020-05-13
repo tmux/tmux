@@ -1506,7 +1506,7 @@ struct client_file {
 	client_file_cb			 cb;
 	void				*data;
 
-	RB_ENTRY (client_file)		 entry;
+	RB_ENTRY(client_file)		 entry;
 };
 RB_HEAD(client_files, client_file);
 
