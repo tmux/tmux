@@ -693,8 +693,7 @@ tty_update_mode(struct tty *tty, int mode, struct screen *s)
 	}
 	if (s != NULL && tty->cstyle != s->cstyle) {
 		if (tty_term_has(tty->term, TTYC_SS)) {
-			if (s->cstyle == 0 &&
-			    tty_term_has(tty->term, TTYC_SE))
+			if (s->cstyle == 0 && tty_term_has(tty->term, TTYC_SE))
 				tty_putcode(tty, TTYC_SE);
 			else
 				tty_putcode1(tty, TTYC_SS, s->cstyle);
@@ -792,7 +791,7 @@ tty_window_offset1(struct tty *tty, u_int *ox, u_int *oy, u_int *sx, u_int *sy)
 {
 	struct client		*c = tty->client;
 	struct window		*w = c->session->curw->window;
-	struct window_pane	*wp = w->active;
+	struct window_pane	*wp = server_client_get_pane(c);
 	u_int			 cx, cy, lines;
 
 	lines = status_line_size(c);

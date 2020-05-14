@@ -1510,6 +1510,14 @@ struct client_file {
 };
 RB_HEAD(client_files, client_file);
 
+/* Client window. */
+struct client_window {
+	u_int			 window;
+	struct window_pane	*pane;
+	RB_ENTRY(client_window)	 entry;
+};
+RB_HEAD(client_windows, client_window);
+
 /* Client connection. */
 typedef int (*prompt_input_cb)(struct client *, void *, const char *, int);
 typedef void (*prompt_free_cb)(void *);
@@ -1522,6 +1530,8 @@ struct client {
 	const char	*name;
 	struct tmuxpeer	*peer;
 	struct cmdq_list *queue;
+
+	struct client_windows windows;
 
 	pid_t		 pid;
 	int		 fd;
@@ -1587,6 +1597,7 @@ struct client {
 #define CLIENT_STARTSERVER 0x10000000
 #define CLIENT_REDRAWPANES 0x20000000
 #define CLIENT_NOFORK 0x40000000
+#define CLIENT_ACTIVEPANE 0x80000000ULL
 #define CLIENT_ALLREDRAWFLAGS		\
 	(CLIENT_REDRAWWINDOW|		\
 	 CLIENT_REDRAWSTATUS|		\
@@ -1602,7 +1613,7 @@ struct client {
 	(CLIENT_DEAD|		\
 	 CLIENT_SUSPENDED|	\
 	 CLIENT_DETACHING)
-	int		 flags;
+	uint64_t	 flags;
 	struct key_table *keytable;
 
 	uint64_t	 redraw_panes;
@@ -2301,6 +2312,7 @@ void	 server_add_accept(int);
 void printflike(1, 2) server_add_message(const char *, ...);
 
 /* server-client.c */
+RB_PROTOTYPE(client_windows, client_window, entry, server_client_window_cmp);
 u_int	 server_client_how_many(void);
 void	 server_client_set_overlay(struct client *, u_int, overlay_check_cb,
 	     overlay_mode_cb, overlay_draw_cb, overlay_key_cb,
@@ -2323,6 +2335,9 @@ void	 server_client_push_stderr(struct client *);
 const char *server_client_get_cwd(struct client *, struct session *);
 void	 server_client_set_flags(struct client *, const char *);
 const char *server_client_get_flags(struct client *);
+struct window_pane *server_client_get_pane(struct client *);
+void	 server_client_set_pane(struct client *, struct window_pane *);
+void	 server_client_remove_pane(struct window_pane *);
 
 /* server-fn.c */
 void	 server_redraw_client(struct client *);

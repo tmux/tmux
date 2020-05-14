@@ -159,6 +159,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_ERROR);
 	}
 	if (input && window_pane_start_input(new_wp, item, &cause) != 0) {
+		server_client_remove_pane(new_wp);
 		layout_close_pane(new_wp);
 		window_remove_pane(wp->window, new_wp);
 		cmdq_error(item, "%s", cause);

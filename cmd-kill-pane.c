@@ -54,6 +54,7 @@ cmd_kill_pane_exec(struct cmd *self, struct cmdq_item *item)
 		TAILQ_FOREACH_SAFE(loopwp, &wl->window->panes, entry, tmpwp) {
 			if (loopwp == wp)
 				continue;
+			server_client_remove_pane(loopwp);
 			layout_close_pane(loopwp);
 			window_remove_pane(wl->window, loopwp);
 		}

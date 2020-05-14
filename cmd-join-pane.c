@@ -135,6 +135,7 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 
 	layout_close_pane(src_wp);
 
+	server_client_remove_pane(src_wp);
 	window_lost_pane(src_w, src_wp);
 	TAILQ_REMOVE(&src_w->panes, src_wp, entry);
 
