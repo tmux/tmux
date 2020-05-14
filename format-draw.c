@@ -600,7 +600,8 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 
 		/* If this style pushed or popped the default, update it. */
 		if (sy.default_type == STYLE_DEFAULT_PUSH) {
-			memcpy(&current_default, &saved_sy.gc, sizeof current_default);
+			memcpy(&current_default, &saved_sy.gc,
+			    sizeof current_default);
 			sy.default_type = STYLE_DEFAULT_BASE;
 		} else if (sy.default_type == STYLE_DEFAULT_POP) {
 			memcpy(&current_default, base, sizeof current_default);

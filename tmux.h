@@ -822,6 +822,7 @@ struct screen_redraw_ctx {
 	int		 statustop;
 
 	int		 pane_status;
+	int		 pane_lines;
 
 	u_int		 sx;
 	u_int		 sy;
@@ -1051,6 +1052,13 @@ TAILQ_HEAD(winlink_stack, winlink);
 #define PANE_STATUS_OFF 0
 #define PANE_STATUS_TOP 1
 #define PANE_STATUS_BOTTOM 2
+
+/* Pane border lines option. */
+#define PANE_LINES_SINGLE 0
+#define PANE_LINES_DOUBLE 1
+#define PANE_LINES_HEAVY 2
+#define PANE_LINES_SIMPLE 3
+#define PANE_LINES_NUMBER 4
 
 /* Layout direction. */
 enum layout_type {
@@ -2032,6 +2040,8 @@ void	tty_putcode_ptr2(struct tty *, enum tty_code_code, const void *,
 void	tty_puts(struct tty *, const char *);
 void	tty_putc(struct tty *, u_char);
 void	tty_putn(struct tty *, const void *, size_t, u_int);
+void	tty_cell(struct tty *, const struct grid_cell *,
+	    const struct grid_cell *, int *);
 int	tty_init(struct tty *, struct client *, int);
 void	tty_resize(struct tty *);
 void	tty_set_size(struct tty *, u_int, u_int, u_int, u_int);
@@ -2105,6 +2115,7 @@ void		 tty_default_features(int *, const char *, u_int);
 /* tty-acs.c */
 int		 tty_acs_needed(struct tty *);
 const char	*tty_acs_get(struct tty *, u_char);
+int		 tty_acs_reverse_get(struct tty *, const char *, size_t);
 
 /* tty-keys.c */
 void		tty_keys_build(struct tty *);

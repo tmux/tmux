@@ -59,6 +59,9 @@ static const char *options_table_visual_bell_list[] = {
 static const char *options_table_pane_status_list[] = {
 	"off", "top", "bottom", NULL
 };
+static const char *options_table_pane_lines_list[] = {
+	"single", "double", "heavy", "simple", "number", NULL
+};
 static const char *options_table_set_clipboard_list[] = {
 	"off", "external", "on", NULL
 };
@@ -901,6 +904,14 @@ const struct options_table_entry options_table[] = {
 	  .default_str = "#{?pane_active,#[reverse],}#{pane_index}#[default] "
 			 "\"#{pane_title}\"",
 	  .text = "Format of text in the pane status lines."
+	},
+
+	{ .name = "pane-border-lines",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .choices = options_table_pane_lines_list,
+	  .default_num = PANE_LINES_SINGLE,
+	  .text = "Type of the pane type lines."
 	},
 
 	{ .name = "pane-border-status",
