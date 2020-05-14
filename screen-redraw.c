@@ -212,13 +212,13 @@ screen_redraw_cell_border(struct client *c, u_int px, u_int py, int pane_status)
 	struct window		*w = c->session->curw->window;
 	struct window_pane	*wp;
 
-	/* On the window border? */
-	if (px == w->sx || py == w->sy)
-		return (1);
-
 	/* Outside the window? */
 	if (px > w->sx || py > w->sy)
 		return (0);
+
+	/* On the window border? */
+	if (px == w->sx || py == w->sy)
+		return (1);
 
 	/* Check all the panes. */
 	TAILQ_FOREACH(wp, &w->panes, entry) {
