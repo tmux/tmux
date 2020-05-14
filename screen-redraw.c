@@ -92,8 +92,13 @@ screen_redraw_border_set(struct window_pane *wp, int pane_lines, int cell_type,
 
 	switch (pane_lines) {
 	case PANE_LINES_NUMBER:
+		if (cell_type == CELL_OUTSIDE) {
+			gc->attr |= GRID_ATTR_CHARSET;
+			utf8_set(&gc->data, CELL_BORDERS[CELL_OUTSIDE]);
+			break;
+		}
 		gc->attr &= ~GRID_ATTR_CHARSET;
-		if (window_pane_index(wp, &idx) == 0)
+		if (wp != NULL && window_pane_index(wp, &idx) == 0)
 			utf8_set(&gc->data, '0' + (idx % 10));
 		else
 			utf8_set(&gc->data, '*');
