@@ -2361,8 +2361,9 @@ void printflike(3, 4) status_message_set(struct client *, int, const char *,
 	     ...);
 void	 status_message_clear(struct client *);
 int	 status_message_redraw(struct client *);
-void	 status_prompt_set(struct client *, const char *, const char *,
-	     prompt_input_cb, prompt_free_cb, void *, int);
+void	 status_prompt_set(struct client *, struct cmd_find_state *,
+	     const char *, const char *, prompt_input_cb, prompt_free_cb,
+	     void *, int);
 void	 status_prompt_clear(struct client *);
 int	 status_prompt_redraw(struct client *);
 int	 status_prompt_key(struct client *, key_code);

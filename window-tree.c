@@ -1234,7 +1234,7 @@ window_tree_key(struct window_mode_entry *wme, struct client *c,
 		if (prompt == NULL)
 			break;
 		data->references++;
-		status_prompt_set(c, prompt, "",
+		status_prompt_set(c, NULL, prompt, "",
 		    window_tree_kill_current_callback, window_tree_command_free,
 		    data, PROMPT_SINGLE|PROMPT_NOFORMAT);
 		free(prompt);
@@ -1245,7 +1245,7 @@ window_tree_key(struct window_mode_entry *wme, struct client *c,
 			break;
 		xasprintf(&prompt, "Kill %u tagged? ", tagged);
 		data->references++;
-		status_prompt_set(c, prompt, "",
+		status_prompt_set(c, NULL, prompt, "",
 		    window_tree_kill_tagged_callback, window_tree_command_free,
 		    data, PROMPT_SINGLE|PROMPT_NOFORMAT);
 		free(prompt);
@@ -1257,8 +1257,9 @@ window_tree_key(struct window_mode_entry *wme, struct client *c,
 		else
 			xasprintf(&prompt, "(current) ");
 		data->references++;
-		status_prompt_set(c, prompt, "", window_tree_command_callback,
-		    window_tree_command_free, data, PROMPT_NOFORMAT);
+		status_prompt_set(c, NULL, prompt, "",
+		    window_tree_command_callback, window_tree_command_free,
+		    data, PROMPT_NOFORMAT);
 		free(prompt);
 		break;
 	case '\r':
