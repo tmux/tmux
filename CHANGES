@@ -71,8 +71,10 @@ CHANGES FROM 3.1b TO 3.2
 * Check if the clear terminfo(5) capability starts with CSI and if so then
   assume the terminal is VT100-like, rather than relying on the XT capability.
 
-* Improve command prompt tab completion and add menus both for strings and for
-  -t and -s (when used without a trailing space).
+* Improve command prompt tab completion and add menus both for strings and -t
+  and -s (when used without a trailing space). command-prompt has additional
+  flags for only completing a window (-W) and a target (-T), allowing C-b ' to
+  only show windows and C-b . only targets.
 
 * Change all the style options to string options so they can support formats.
   Change pane-border-active-style to use this to change the border colour when
