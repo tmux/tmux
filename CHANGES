@@ -1,5 +1,15 @@
 CHANGES FROM 3.1b TO 3.2
 
+* Add an active-pane client flag (set with attach-session -f, new-session -f
+  or refresh-client -f). This allows a client to have an independent active
+  pane for interactive use (the window client pane is still used for many
+  things however).
+
+* Add a mark to copy mode, this is set with the set-mark command (bound to X)
+  and appears with the entire line shown using copy-mode-mark-style and the
+  marked character in reverse. The jump-to-mark command (bound to M-x) swaps
+  the mark and the cursor positions.
+
 * Add a -D flag to make the tmux server run in the foreground and not as a
   daemon.
 
@@ -8,7 +18,7 @@ CHANGES FROM 3.1b TO 3.2
 * Fix the next-matching-bracket logic when using vi(1) keys.
 
 * Add a customize mode where options may be browsed and changed, includes
-  adding a brief description of each option. Bound to "C-b C" by default.
+  adding a brief description of each option. Bound to C-b C by default.
 
 * Change message log (C-b ~) so there is one for the server rather than one per
   client and it remains after detach, and make it useful by logging every
@@ -21,7 +31,7 @@ CHANGES FROM 3.1b TO 3.2
 
   refresh-client -F has become -f (-F stays for backwards compatibility) and
   attach-session and switch-client now have -f flags also. A new format
-  "client_flags" lists the flags and is shown by list-clients by default.
+  client_flags lists the flags and is shown by list-clients by default.
 
   This separates the read-only flag from "ignore size" behaviour (new
   ignore-size) flag - both behaviours are useful in different circumstances.
