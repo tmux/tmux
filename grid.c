@@ -1391,7 +1391,9 @@ grid_line_length(struct grid *gd, u_int py)
 		px = gd->sx;
 	while (px > 0) {
 		grid_get_cell(gd, px - 1, py, &gc);
-		if (gc.data.size != 1 || *gc.data.data != ' ')
+		if ((gc.flags & GRID_FLAG_PADDING) ||
+		    gc.data.size != 1 ||
+		    *gc.data.data != ' ')
 			break;
 		px--;
 	}

@@ -798,7 +798,9 @@ typedef void (*screen_write_init_ctx_cb)(struct screen_write_ctx *,
 struct screen_write_ctx {
 	struct window_pane	*wp;
 	struct screen		*s;
-	int			 sync;
+
+	int			 flags;
+#define SCREEN_WRITE_SYNC 0x1
 
 	screen_write_init_ctx_cb init_ctx_cb;
 	void			*arg;
