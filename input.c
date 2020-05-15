@@ -1385,15 +1385,15 @@ input_csi_dispatch(struct input_ctx *ictx)
 			screen_write_cursormove(sctx, m - 1, n - 1, 1);
 		break;
 	case INPUT_CSI_MODSET:
-		n = input_get(ictx, 0, 1, 1);
-		m = input_get(ictx, 1, 1, 1);
+		n = input_get(ictx, 0, 0, 0);
+		m = input_get(ictx, 1, 0, 0);
 		if (n == 0 || (n == 4 && m == 0))
 			screen_write_mode_clear(sctx, MODE_KEXTENDED);
 		else if (n == 4 && (m == 1 || m == 2))
 			screen_write_mode_set(sctx, MODE_KEXTENDED);
 		break;
 	case INPUT_CSI_MODOFF:
-		n = input_get(ictx, 0, 1, 1);
+		n = input_get(ictx, 0, 0, 0);
 		if (n == 4)
 			screen_write_mode_clear(sctx, MODE_KEXTENDED);
 		break;
