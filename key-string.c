@@ -143,7 +143,7 @@ key_string_get_modifiers(const char **string)
 			break;
 		case 'M':
 		case 'm':
-			modifiers |= KEYC_ESCAPE;
+			modifiers |= KEYC_META;
 			break;
 		case 'S':
 		case 's':
@@ -265,7 +265,7 @@ key_string_lookup_key(key_code key)
 	/* Fill in the modifiers. */
 	if (key & KEYC_CTRL)
 		strlcat(out, "C-", sizeof out);
-	if (key & KEYC_ESCAPE)
+	if (key & KEYC_META)
 		strlcat(out, "M-", sizeof out);
 	if (key & KEYC_SHIFT)
 		strlcat(out, "S-", sizeof out);
