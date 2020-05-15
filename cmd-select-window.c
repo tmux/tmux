@@ -85,6 +85,7 @@ static enum cmd_retval
 cmd_select_window_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
+	struct client		*c = cmdq_get_client(item);
 	struct cmd_find_state	*current = cmdq_get_current(item);
 	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct winlink		*wl = target->wl;
@@ -141,6 +142,8 @@ cmd_select_window_exec(struct cmd *self, struct cmdq_item *item)
 		}
 		cmdq_insert_hook(s, item, current, "after-select-window");
 	}
+	if (c->session != NULL)
+		s->curw->window->latest = c;
 	recalculate_sizes();
 
 	return (CMD_RETURN_NORMAL);
