@@ -459,7 +459,7 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 	 * If this is a normal 7-bit key, just send it, with a leading escape
 	 * if necessary. If it is a UTF-8 key, split it and send it.
 	 */
-	justkey = (key & ~KEYC_META);
+	justkey = (key & ~(KEYC_META|KEYC_IMPLIED_META));
 	if (justkey <= 0x7f) {
 		if (key & KEYC_META)
 			bufferevent_write(bev, "\033", 1);
