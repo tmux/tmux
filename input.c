@@ -1609,7 +1609,9 @@ input_csi_dispatch(struct input_ctx *ictx)
 			screen_set_cursor_style(s, n);
 		break;
 	case INPUT_CSI_XDA:
-		input_reply(ictx, "\033P>|tmux %s\033\\", getversion());
+		n = input_get(ictx, 0, 0, 0);
+		if (n != 0)
+			input_reply(ictx, "\033P>|tmux %s\033\\", getversion());
 		break;
 
 	}
