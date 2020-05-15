@@ -896,7 +896,65 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 	*size = end + 1;
 
 	/* Store the key and modifiers. */
-	*key = number;
+	switch (number) {
+	case 2:
+		*key = KEYC_IC;
+		break;
+	case 3:
+		*key = KEYC_DC;
+		break;
+	case 5:
+		*key = KEYC_PPAGE;
+		break;
+	case 6:
+		*key = KEYC_NPAGE;
+		break;
+	case 7:
+		*key = KEYC_HOME;
+		break;
+	case 8:
+		*key = KEYC_END;
+		break;
+	case 11:
+		*key = KEYC_F1;
+		break;
+	case 12:
+		*key = KEYC_F2;
+		break;
+	case 13:
+		*key = KEYC_F3;
+		break;
+	case 14:
+		*key = KEYC_F4;
+		break;
+	case 15:
+		*key = KEYC_F5;
+		break;
+	case 17:
+		*key = KEYC_F6;
+		break;
+	case 18:
+		*key = KEYC_F7;
+		break;
+	case 19:
+		*key = KEYC_F8;
+		break;
+	case 20:
+		*key = KEYC_F9;
+		break;
+	case 21:
+		*key = KEYC_F10;
+		break;
+	case 23:
+		*key = KEYC_F11;
+		break;
+	case 24:
+		*key = KEYC_F12;
+		break;
+	default:
+		*key = number;
+		break;
+	}
 	switch (modifiers) {
 	case 2:
 		(*key) |= KEYC_SHIFT;
