@@ -129,7 +129,7 @@ options_value_to_string(struct options_entry *o, union options_value *ov,
 			xasprintf(&s, "%lld", ov->number);
 			break;
 		case OPTIONS_TABLE_KEY:
-			s = xstrdup(key_string_lookup_key(ov->number));
+			s = xstrdup(key_string_lookup_key(ov->number, 0));
 			break;
 		case OPTIONS_TABLE_COLOUR:
 			s = xstrdup(colour_tostring(ov->number));
@@ -282,7 +282,7 @@ options_default_to_string(const struct options_table_entry *oe)
 		xasprintf(&s, "%lld", oe->default_num);
 		break;
 	case OPTIONS_TABLE_KEY:
-		s = xstrdup(key_string_lookup_key(oe->default_num));
+		s = xstrdup(key_string_lookup_key(oe->default_num, 0));
 		break;
 	case OPTIONS_TABLE_COLOUR:
 		s = xstrdup(colour_tostring(oe->default_num));

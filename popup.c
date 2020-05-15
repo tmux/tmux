@@ -340,7 +340,7 @@ popup_key_cb(struct client *c, struct key_event *event)
 		format_defaults(ft, c, fs->s, fs->wl, fs->wp);
 	else
 		format_defaults(ft, c, NULL, NULL, NULL);
-	format_add(ft, "popup_key", "%s", key_string_lookup_key(event->key));
+	format_add(ft, "popup_key", "%s", key_string_lookup_key(event->key, 0));
 	if (KEYC_IS_MOUSE(event->key)) {
 		format_add(ft, "popup_mouse", "1");
 		format_add(ft, "popup_mouse_x", "%u", m->x - pd->px);

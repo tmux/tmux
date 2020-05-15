@@ -212,7 +212,7 @@ key_string_lookup_string(const char *string)
 				return (KEYC_UNKNOWN);
 			if (utf8_combine(&ud, &wc) != UTF8_DONE)
 				return (KEYC_UNKNOWN);
-			return (wc | modifiers);
+			return (wc|modifiers);
 		}
 
 		/* Otherwise look the key up in the table. */
@@ -236,14 +236,15 @@ key_string_lookup_string(const char *string)
 		modifiers &= ~KEYC_CTRL;
 	}
 
-	return (key | modifiers);
+	return (key|modifiers);
 }
 
 /* Convert a key code into string format, with prefix if necessary. */
 const char *
-key_string_lookup_key(key_code key)
+key_string_lookup_key(key_code key, int with_flags)
 {
-	static char		 out[32];
+	key_code		 saved = key;
+	static char		 out[64];
 	char			 tmp[8];
 	const char		*s;
 	u_int			 i;
@@ -255,12 +256,12 @@ key_string_lookup_key(key_code key)
 	/* Literal keys are themselves. */
 	if (key & KEYC_LITERAL) {
 		snprintf(out, sizeof out, "%c", (int)(key & 0xff));
-		return (out);
+		goto out;
 	}
 
 	/* Display C-@ as C-Space. */
-	if ((key & KEYC_MASK_KEY) == 0)
-		key = ' ' | KEYC_CTRL | (key & KEYC_MASK_MOD);
+	if ((key & (KEYC_MASK_KEY|KEYC_MASK_MODIFIERS)) == 0)
+		key = ' '|KEYC_CTRL;
 
 	/* Fill in the modifiers. */
 	if (key & KEYC_CTRL)
@@ -272,8 +273,10 @@ key_string_lookup_key(key_code key)
 	key &= KEYC_MASK_KEY;
 
 	/* Handle no key. */
-	if (key == KEYC_NONE)
-		return ("None");
+	if (key == KEYC_NONE) {
+		s = "None";
+		goto append;
+	}
 
 	/* Handle special keys. */
 	if (key == KEYC_UNKNOWN) {
@@ -331,7 +334,7 @@ key_string_lookup_key(key_code key)
 	if (key >= KEYC_USER && key < KEYC_USER + KEYC_NUSER) {
 		snprintf(tmp, sizeof tmp, "User%u", (u_int)(key - KEYC_USER));
 		strlcat(out, tmp, sizeof out);
-		return (out);
+		goto out;
 	}
 
 	/* Try the key against the string table. */
@@ -341,7 +344,7 @@ key_string_lookup_key(key_code key)
 	}
 	if (i != nitems(key_string_table)) {
 		strlcat(out, key_string_table[i].string, sizeof out);
-		return (out);
+		goto out;
 	}
 
 	/* Is this a UTF-8 key? */
@@ -350,14 +353,14 @@ key_string_lookup_key(key_code key)
 			off = strlen(out);
 			memcpy(out + off, ud.data, ud.size);
 			out[off + ud.size] = '\0';
-			return (out);
+			goto out;
 		}
 	}
 
 	/* Invalid keys are errors. */
 	if (key > 255) {
 		snprintf(out, sizeof out, "Invalid#%llx", key);
-		return (out);
+		goto out;
 	}
 
 	/* Check for standard or control key. */
@@ -375,9 +378,25 @@ key_string_lookup_key(key_code key)
 		xsnprintf(tmp, sizeof tmp, "\\%llo", key);
 
 	strlcat(out, tmp, sizeof out);
-	return (out);
+	goto out;
 
 append:
 	strlcat(out, s, sizeof out);
+
+out:
+	if (with_flags && (saved & KEYC_MASK_FLAGS) != 0) {
+		strlcat(out, "[", sizeof out);
+		if (saved & KEYC_LITERAL)
+			strlcat(out, "L", sizeof out);
+		if (saved & KEYC_KEYPAD)
+			strlcat(out, "K", sizeof out);
+		if (saved & KEYC_CURSOR)
+			strlcat(out, "C", sizeof out);
+		if (saved & KEYC_IMPLIED_META)
+			strlcat(out, "I", sizeof out);
+		if (saved & KEYC_BUILD_MODIFIERS)
+			strlcat(out, "B", sizeof out);
+		strlcat(out, "]", sizeof out);
+	}
 	return (out);
 }

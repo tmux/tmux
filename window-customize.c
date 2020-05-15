@@ -460,7 +460,7 @@ window_customize_build_keys(struct window_customize_modedata *data,
 
 	bd = key_bindings_first(kt);
 	while (bd != NULL) {
-		format_add(ft, "key", "%s", key_string_lookup_key(bd->key));
+		format_add(ft, "key", "%s", key_string_lookup_key(bd->key, 0));
 		if (bd->note != NULL)
 			format_add(ft, "key_note", "%s", bd->note);
 		if (filter != NULL) {
@@ -1233,7 +1233,7 @@ window_customize_set_key(struct client *c,
 	if (strcmp(s, "Repeat") == 0)
 		bd->flags ^= KEY_BINDING_REPEAT;
 	else if (strcmp(s, "Command") == 0) {
-		xasprintf(&prompt, "(%s) ", key_string_lookup_key(key));
+		xasprintf(&prompt, "(%s) ", key_string_lookup_key(key, 0));
 		value = cmd_list_print(bd->cmdlist, 0);
 
 		new_item = xcalloc(1, sizeof *new_item);
@@ -1250,7 +1250,7 @@ window_customize_set_key(struct client *c,
 		free(prompt);
 		free(value);
 	} else if (strcmp(s, "Note") == 0) {
-		xasprintf(&prompt, "(%s) ", key_string_lookup_key(key));
+		xasprintf(&prompt, "(%s) ", key_string_lookup_key(key, 0));
 
 		new_item = xcalloc(1, sizeof *new_item);
 		new_item->data = data;
@@ -1395,7 +1395,7 @@ window_customize_key(struct window_mode_entry *wme, struct client *c,
 			break;
 		if (item->scope == WINDOW_CUSTOMIZE_KEY) {
 			xasprintf(&prompt, "Unbind key %s? ",
-			    key_string_lookup_key(item->key));
+			    key_string_lookup_key(item->key, 0));
 		} else
 			xasprintf(&prompt, "Unset option %s? ", item->name);
 		data->references++;

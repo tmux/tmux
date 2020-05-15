@@ -1023,7 +1023,7 @@ status_prompt_key(struct client *c, key_code key)
 	int			 keys;
 
 	if (c->prompt_flags & PROMPT_KEY) {
-		keystring = key_string_lookup_key(key);
+		keystring = key_string_lookup_key(key, 0);
 		c->prompt_inputcb(c, c->prompt_data, keystring, 1);
 		status_prompt_clear(c);
 		return (0);
@@ -1039,7 +1039,7 @@ status_prompt_key(struct client *c, key_code key)
 		free(s);
 		return (1);
 	}
-	key &= ~KEYC_XTERM;
+	key &= ~KEYC_MASK_FLAGS;
 
 	keys = options_get_number(c->session->options, "status-keys");
 	if (keys == MODEKEY_VI) {

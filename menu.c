@@ -81,7 +81,7 @@ menu_add_item(struct menu *menu, const struct menu_item *item,
 		return;
 	}
 	if (*s != '-' && item->key != KEYC_UNKNOWN && item->key != KEYC_NONE) {
-		key = key_string_lookup_key(item->key);
+		key = key_string_lookup_key(item->key, 0);
 		xasprintf(&name, "%s#[default] #[align=right](%s)", s, key);
 	} else
 		xasprintf(&name, "%s", s);

@@ -265,82 +265,82 @@ static struct input_key_entry input_key_defaults[] = {
 	},
 
 	/* Keys with an embedded modifier. */
-	{ .key = KEYC_F1|KEYC_XTERM,
+	{ .key = KEYC_F1|KEYC_BUILD_MODIFIERS,
 	  .data = "\033[1;_P"
 	},
-	{ .key = KEYC_F2|KEYC_XTERM,
+	{ .key = KEYC_F2|KEYC_BUILD_MODIFIERS,
 	  .data = "\033[1;_Q"
 	},
-	{ .key = KEYC_F3|KEYC_XTERM,
+	{ .key = KEYC_F3|KEYC_BUILD_MODIFIERS,
 	  .data = "\033[1;_R"
 	},
-	{ .key = KEYC_F4|KEYC_XTERM,
+	{ .key = KEYC_F4|KEYC_BUILD_MODIFIERS,
 	  .data = "\033[1;_S"
 	},
-	{ .key = KEYC_F5|KEYC_XTERM,
+	{ .key = KEYC_F5|KEYC_BUILD_MODIFIERS,
 	  .data = "\033[15;_~"
 	},
-	{ .key = KEYC_F6|KEYC_XTERM,
+	{ .key = KEYC_F6|KEYC_BUILD_MODIFIERS,
 	  .data = "\033[17;_~"
 	},
-	{ .key = KEYC_F7|KEYC_XTERM,
+	{ .key = KEYC_F7|KEYC_BUILD_MODIFIERS,
 	  .data = "\033[18;_~"
 	},
-	{ .key = KEYC_F8|KEYC_XTERM,
+	{ .key = KEYC_F8|KEYC_BUILD_MODIFIERS,
 	  .data = "\033[19;_~"
 	},
-	{ .key = KEYC_F9|KEYC_XTERM,
+	{ .key = KEYC_F9|KEYC_BUILD_MODIFIERS,
 	  .data = "\033[20;_~"
 	},
-	{ .key = KEYC_F10|KEYC_XTERM,
+	{ .key = KEYC_F10|KEYC_BUILD_MODIFIERS,
 	  .data = "\033[21;_~"
 	},
-	{ .key = KEYC_F11|KEYC_XTERM,
+	{ .key = KEYC_F11|KEYC_BUILD_MODIFIERS,
 	  .data = "\033[23;_~"
 	},
-	{ .key = KEYC_F12|KEYC_XTERM,
+	{ .key = KEYC_F12|KEYC_BUILD_MODIFIERS,
 	  .data = "\033[24;_~"
 	},
-	{ .key = KEYC_UP|KEYC_XTERM,
+	{ .key = KEYC_UP|KEYC_BUILD_MODIFIERS,
 	  .data = "\033[1;_A"
 	},
-	{ .key = KEYC_DOWN|KEYC_XTERM,
+	{ .key = KEYC_DOWN|KEYC_BUILD_MODIFIERS,
 	  .data = "\033[1;_B"
 	},
-	{ .key = KEYC_RIGHT|KEYC_XTERM,
+	{ .key = KEYC_RIGHT|KEYC_BUILD_MODIFIERS,
 	  .data = "\033[1;_C"
 	},
-	{ .key = KEYC_LEFT|KEYC_XTERM,
+	{ .key = KEYC_LEFT|KEYC_BUILD_MODIFIERS,
 	  .data = "\033[1;_D"
 	},
-	{ .key = KEYC_HOME|KEYC_XTERM,
+	{ .key = KEYC_HOME|KEYC_BUILD_MODIFIERS,
 	  .data = "\033[1;_H"
 	},
-	{ .key = KEYC_END|KEYC_XTERM,
+	{ .key = KEYC_END|KEYC_BUILD_MODIFIERS,
 	  .data = "\033[1;_F"
 	},
-	{ .key = KEYC_PPAGE|KEYC_XTERM,
+	{ .key = KEYC_PPAGE|KEYC_BUILD_MODIFIERS,
 	  .data = "\033[5;_~"
 	},
-	{ .key = KEYC_NPAGE|KEYC_XTERM,
+	{ .key = KEYC_NPAGE|KEYC_BUILD_MODIFIERS,
 	  .data = "\033[6;_~"
 	},
-	{ .key = KEYC_IC|KEYC_XTERM,
+	{ .key = KEYC_IC|KEYC_BUILD_MODIFIERS,
 	  .data = "\033[2;_~"
 	},
-	{ .key = KEYC_DC|KEYC_XTERM,
+	{ .key = KEYC_DC|KEYC_BUILD_MODIFIERS,
 	  .data = "\033[3;_~" }
 };
 static const key_code input_key_modifiers[] = {
 	0,
 	0,
-	KEYC_SHIFT|KEYC_XTERM,
-	KEYC_META|KEYC_XTERM,
-	KEYC_SHIFT|KEYC_META|KEYC_XTERM,
-	KEYC_CTRL|KEYC_XTERM,
-	KEYC_SHIFT|KEYC_CTRL|KEYC_XTERM,
-	KEYC_META|KEYC_CTRL|KEYC_XTERM,
-	KEYC_SHIFT|KEYC_META|KEYC_CTRL|KEYC_XTERM
+	KEYC_SHIFT,
+	KEYC_META|KEYC_IMPLIED_META,
+	KEYC_SHIFT|KEYC_META|KEYC_IMPLIED_META,
+	KEYC_CTRL,
+	KEYC_SHIFT|KEYC_CTRL,
+	KEYC_META|KEYC_IMPLIED_META|KEYC_CTRL,
+	KEYC_SHIFT|KEYC_META|KEYC_CTRL
 };
 
 /* Input key comparison function. */
@@ -352,6 +352,15 @@ input_key_cmp(struct input_key_entry *ike1, struct input_key_entry *ike2)
 	if (ike1->key > ike2->key)
 		return (1);
 	return (0);
+}
+
+/* Look for key in tree. */
+static struct input_key_entry *
+input_key_get (key_code key)
+{
+	struct input_key_entry	entry = { .key = key };
+
+	return (RB_FIND(input_key_tree, &input_key_tree, &entry));
 }
 
 /* Split a character into two UTF-8 bytes. */
@@ -374,20 +383,22 @@ input_key_build(void)
 	struct input_key_entry	*ike, *new;
 	u_int			 i, j;
 	char			*data;
+	key_code		 key;
 
 	for (i = 0; i < nitems(input_key_defaults); i++) {
 		ike = &input_key_defaults[i];
-		if (~ike->key & KEYC_XTERM) {
+		if (~ike->key & KEYC_BUILD_MODIFIERS) {
 			RB_INSERT(input_key_tree, &input_key_tree, ike);
 			continue;
 		}
 
 		for (j = 2; j < nitems(input_key_modifiers); j++) {
+			key = (ike->key & ~KEYC_BUILD_MODIFIERS);
 			data = xstrdup(ike->data);
 			data[strcspn(data, "_")] = '0' + j;
 
 			new = xcalloc(1, sizeof *new);
-			new->key = ike->key|input_key_modifiers[j];
+			new->key = key|input_key_modifiers[j];
 			new->data = data;
 			RB_INSERT(input_key_tree, &input_key_tree, new);
 		}
@@ -395,7 +406,7 @@ input_key_build(void)
 
 	RB_FOREACH(ike, input_key_tree, &input_key_tree) {
 		log_debug("%s: 0x%llx (%s) is %s", __func__, ike->key,
-		    key_string_lookup_key(ike->key), ike->data);
+		    key_string_lookup_key(ike->key, 1), ike->data);
 	}
 }
 
@@ -405,7 +416,7 @@ input_key_pane(struct window_pane *wp, key_code key, struct mouse_event *m)
 {
 	if (log_get_level() != 0) {
 		log_debug("writing key 0x%llx (%s) to %%%u", key,
-		    key_string_lookup_key(key), wp->id);
+		    key_string_lookup_key(key, 1), wp->id);
 	}
 
 	if (KEYC_IS_MOUSE(key)) {
@@ -420,7 +431,7 @@ input_key_pane(struct window_pane *wp, key_code key, struct mouse_event *m)
 int
 input_key(struct screen *s, struct bufferevent *bev, key_code key)
 {
-	struct input_key_entry	*ike, entry;
+	struct input_key_entry	*ike;
 	size_t			 datalen;
 	key_code		 justkey, newkey;
 	struct utf8_data	 ud;
@@ -441,14 +452,14 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 		newkey = options_get_number(global_options, "backspace");
 		if (newkey >= 0x7f)
 			newkey = '\177';
-		key = newkey|(key & KEYC_MASK_MOD);
+		key = newkey|(key & (KEYC_MASK_MODIFIERS|KEYC_MASK_FLAGS));
 	}
 
 	/*
 	 * If this is a normal 7-bit key, just send it, with a leading escape
 	 * if necessary. If it is a UTF-8 key, split it and send it.
 	 */
-	justkey = (key & ~(KEYC_XTERM|KEYC_META));
+	justkey = (key & ~KEYC_META);
 	if (justkey <= 0x7f) {
 		if (key & KEYC_META)
 			bufferevent_write(bev, "\033", 1);
@@ -473,8 +484,10 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 		key &= ~KEYC_KEYPAD;
 	if (~s->mode & MODE_KCURSOR)
 		key &= ~KEYC_CURSOR;
-	entry.key = key;
-	if ((ike = RB_FIND(input_key_tree, &input_key_tree, &entry)) == NULL) {
+	ike = input_key_get(key);
+	if (ike == NULL && (key & KEYC_META) && (~key & KEYC_IMPLIED_META))
+		ike = input_key_get(key & ~KEYC_META);
+	if (ike == NULL) {
 		log_debug("key 0x%llx missing", key);
 		return (-1);
 	}
@@ -482,7 +495,7 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 	log_debug("found key 0x%llx: \"%s\"", key, ike->data);
 
 	/* Prefix a \033 for escape. */
-	if (key & KEYC_META)
+	if (key & KEYC_META && (~key & KEYC_IMPLIED_META))
 		bufferevent_write(bev, "\033", 1);
 	bufferevent_write(bev, ike->data, datalen);
 	return (0);

@@ -114,26 +114,30 @@ struct winlink;
 #define VISUAL_BOTH 2
 
 /* Special key codes. */
-#define KEYC_NONE    0x00ff000000000ULL
-#define KEYC_UNKNOWN 0x00fe000000000ULL
-#define KEYC_BASE    0x0001000000000ULL
-#define KEYC_USER    0x0002000000000ULL
+#define KEYC_NONE            0x00ff000000000ULL
+#define KEYC_UNKNOWN         0x00fe000000000ULL
+#define KEYC_BASE            0x0001000000000ULL
+#define KEYC_USER            0x0002000000000ULL
 
 /* Key modifier bits. */
-#define KEYC_META    0x0100000000000ULL
-#define KEYC_CTRL    0x0200000000000ULL
-#define KEYC_SHIFT   0x0400000000000ULL
-#define KEYC_XTERM   0x0800000000000ULL
-#define KEYC_LITERAL 0x1000000000000ULL
-#define KEYC_KEYPAD  0x2000000000000ULL
-#define KEYC_CURSOR  0x4000000000000ULL
+#define KEYC_META            0x00100000000000ULL
+#define KEYC_CTRL            0x00200000000000ULL
+#define KEYC_SHIFT           0x00400000000000ULL
+
+/* Key flag bits. */
+#define KEYC_LITERAL         0x01000000000000ULL
+#define KEYC_KEYPAD          0x02000000000000ULL
+#define KEYC_CURSOR          0x04000000000000ULL
+#define KEYC_IMPLIED_META    0x08000000000000ULL
+#define KEYC_BUILD_MODIFIERS 0x10000000000000ULL
+
+/* Masks for key bits. */
+#define KEYC_MASK_MODIFIERS  0x00f00000000000ULL
+#define KEYC_MASK_FLAGS      0xff000000000000ULL
+#define KEYC_MASK_KEY        0x000fffffffffffULL
 
 /* Available user keys. */
 #define KEYC_NUSER 1000
-
-/* Mask to obtain key w/o modifiers. */
-#define KEYC_MASK_MOD 0xff00000000000ULL
-#define KEYC_MASK_KEY 0x00fffffffffffULL
 
 /* Is this a mouse key? */
 #define KEYC_IS_MOUSE(key) (((key) & KEYC_MASK_KEY) >= KEYC_MOUSE &&	\
@@ -2286,7 +2290,7 @@ struct cmdq_item *key_bindings_dispatch(struct key_binding *,
 
 /* key-string.c */
 key_code	 key_string_lookup_string(const char *);
-const char	*key_string_lookup_key(key_code);
+const char	*key_string_lookup_key(key_code, int);
 
 /* alerts.c */
 void	alerts_reset_all(void);
