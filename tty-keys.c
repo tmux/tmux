@@ -878,7 +878,7 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 	}
 	if (end == len)
 		return (1);
-	if (buf[end] != '~' && buf[end] != 'u')
+	if (end == sizeof tmp || (buf[end] != '~' && buf[end] != 'u'))
 		return (-1);
 
 	/* Copy to the buffer. */
