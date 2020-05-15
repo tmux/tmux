@@ -328,7 +328,7 @@ popup_key_cb(struct client *c, struct key_event *event)
 			bufferevent_write(job_get_event(pd->job), buf, len);
 			return (0);
 		}
-		input_key(NULL, &pd->s, job_get_event(pd->job), event->key);
+		input_key(&pd->s, job_get_event(pd->job), event->key);
 		return (0);
 	}
 

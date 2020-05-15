@@ -69,33 +69,33 @@ static const struct tty_default_key_raw tty_default_raw_keys[] = {
 	 * put the terminal into keypad_xmit mode. Translation of numbers
 	 * mode/applications mode is done in input-keys.c.
 	 */
-	{ "\033Oo", KEYC_KP_SLASH },
-	{ "\033Oj", KEYC_KP_STAR },
-	{ "\033Om", KEYC_KP_MINUS },
-	{ "\033Ow", KEYC_KP_SEVEN },
-	{ "\033Ox", KEYC_KP_EIGHT },
-	{ "\033Oy", KEYC_KP_NINE },
-	{ "\033Ok", KEYC_KP_PLUS },
-	{ "\033Ot", KEYC_KP_FOUR },
-	{ "\033Ou", KEYC_KP_FIVE },
-	{ "\033Ov", KEYC_KP_SIX },
-	{ "\033Oq", KEYC_KP_ONE },
-	{ "\033Or", KEYC_KP_TWO },
-	{ "\033Os", KEYC_KP_THREE },
-	{ "\033OM", KEYC_KP_ENTER },
-	{ "\033Op", KEYC_KP_ZERO },
-	{ "\033On", KEYC_KP_PERIOD },
+	{ "\033Oo", KEYC_KP_SLASH|KEYC_KEYPAD },
+	{ "\033Oj", KEYC_KP_STAR|KEYC_KEYPAD },
+	{ "\033Om", KEYC_KP_MINUS|KEYC_KEYPAD },
+	{ "\033Ow", KEYC_KP_SEVEN|KEYC_KEYPAD },
+	{ "\033Ox", KEYC_KP_EIGHT|KEYC_KEYPAD },
+	{ "\033Oy", KEYC_KP_NINE|KEYC_KEYPAD },
+	{ "\033Ok", KEYC_KP_PLUS|KEYC_KEYPAD },
+	{ "\033Ot", KEYC_KP_FOUR|KEYC_KEYPAD },
+	{ "\033Ou", KEYC_KP_FIVE|KEYC_KEYPAD },
+	{ "\033Ov", KEYC_KP_SIX|KEYC_KEYPAD },
+	{ "\033Oq", KEYC_KP_ONE|KEYC_KEYPAD },
+	{ "\033Or", KEYC_KP_TWO|KEYC_KEYPAD },
+	{ "\033Os", KEYC_KP_THREE|KEYC_KEYPAD },
+	{ "\033OM", KEYC_KP_ENTER|KEYC_KEYPAD },
+	{ "\033Op", KEYC_KP_ZERO|KEYC_KEYPAD },
+	{ "\033On", KEYC_KP_PERIOD|KEYC_KEYPAD },
 
 	/* Arrow keys. */
-	{ "\033OA", KEYC_UP },
-	{ "\033OB", KEYC_DOWN },
-	{ "\033OC", KEYC_RIGHT },
-	{ "\033OD", KEYC_LEFT },
+	{ "\033OA", KEYC_UP|KEYC_CURSOR },
+	{ "\033OB", KEYC_DOWN|KEYC_CURSOR },
+	{ "\033OC", KEYC_RIGHT|KEYC_CURSOR },
+	{ "\033OD", KEYC_LEFT|KEYC_CURSOR },
 
-	{ "\033[A", KEYC_UP },
-	{ "\033[B", KEYC_DOWN },
-	{ "\033[C", KEYC_RIGHT },
-	{ "\033[D", KEYC_LEFT },
+	{ "\033[A", KEYC_UP|KEYC_CURSOR },
+	{ "\033[B", KEYC_DOWN|KEYC_CURSOR },
+	{ "\033[C", KEYC_RIGHT|KEYC_CURSOR },
+	{ "\033[D", KEYC_LEFT|KEYC_CURSOR },
 
 	/* Other (xterm) "cursor" keys. */
 	{ "\033OH", KEYC_HOME },
@@ -182,11 +182,59 @@ static const struct tty_default_key_raw tty_default_raw_keys[] = {
 	{ "\033[201~", KEYC_PASTE_END },
 };
 
+/* Default xterm keys. */
+struct tty_default_key_xterm {
+	const char	*template;
+	key_code	 key;
+};
+static const struct tty_default_key_xterm tty_default_xterm_keys[] = {
+	{ "\033[1;_P", KEYC_F1 },
+	{ "\033O1;_P", KEYC_F1 },
+	{ "\033O_P", KEYC_F1 },
+	{ "\033[1;_Q", KEYC_F2 },
+	{ "\033O1;_Q", KEYC_F2 },
+	{ "\033O_Q", KEYC_F2 },
+	{ "\033[1;_R", KEYC_F3 },
+	{ "\033O1;_R", KEYC_F3 },
+	{ "\033O_R", KEYC_F3 },
+	{ "\033[1;_S", KEYC_F4 },
+	{ "\033O1;_S", KEYC_F4 },
+	{ "\033O_S", KEYC_F4 },
+	{ "\033[15;_~", KEYC_F5 },
+	{ "\033[17;_~", KEYC_F6 },
+	{ "\033[18;_~", KEYC_F7 },
+	{ "\033[19;_~", KEYC_F8 },
+	{ "\033[20;_~", KEYC_F9 },
+	{ "\033[21;_~", KEYC_F10 },
+	{ "\033[23;_~", KEYC_F11 },
+	{ "\033[24;_~", KEYC_F12 },
+	{ "\033[1;_A", KEYC_UP },
+	{ "\033[1;_B", KEYC_DOWN },
+	{ "\033[1;_C", KEYC_RIGHT },
+	{ "\033[1;_D", KEYC_LEFT },
+	{ "\033[1;_H", KEYC_HOME },
+	{ "\033[1;_F", KEYC_END },
+	{ "\033[5;_~", KEYC_PPAGE },
+	{ "\033[6;_~", KEYC_NPAGE },
+	{ "\033[2;_~", KEYC_IC },
+	{ "\033[3;_~", KEYC_DC },
+};
+static const key_code tty_default_xterm_modifiers[] = {
+	0,
+	0,
+	KEYC_SHIFT|KEYC_XTERM,
+	KEYC_ESCAPE|KEYC_XTERM,
+	KEYC_SHIFT|KEYC_ESCAPE|KEYC_XTERM,
+	KEYC_CTRL|KEYC_XTERM,
+	KEYC_SHIFT|KEYC_CTRL|KEYC_XTERM,
+	KEYC_ESCAPE|KEYC_CTRL|KEYC_XTERM,
+	KEYC_SHIFT|KEYC_ESCAPE|KEYC_CTRL|KEYC_XTERM
+};
+
 /*
- * Default terminfo(5) keys. Any keys that have builtin modifiers
- * (that is, where the key itself contains the modifiers) has the
- * KEYC_XTERM flag set so a leading escape is not treated as meta (and
- * probably removed).
+ * Default terminfo(5) keys. Any keys that have builtin modifiers (that is,
+ * where the key itself contains the modifiers) has the KEYC_XTERM flag set so
+ * a leading escape is not treated as meta (and probably removed).
  */
 struct tty_default_key_code {
 	enum tty_code_code	code;
@@ -272,10 +320,10 @@ static const struct tty_default_key_code tty_default_code_keys[] = {
 	{ TTYC_KCBT, KEYC_BTAB },
 
 	/* Arrow keys from terminfo. */
-	{ TTYC_KCUU1, KEYC_UP },
-	{ TTYC_KCUD1, KEYC_DOWN },
-	{ TTYC_KCUB1, KEYC_LEFT },
-	{ TTYC_KCUF1, KEYC_RIGHT },
+	{ TTYC_KCUU1, KEYC_UP|KEYC_CURSOR },
+	{ TTYC_KCUD1, KEYC_DOWN|KEYC_CURSOR },
+	{ TTYC_KCUB1, KEYC_LEFT|KEYC_CURSOR },
+	{ TTYC_KCUF1, KEYC_RIGHT|KEYC_CURSOR },
 
 	/* Key and modifier capabilities. */
 	{ TTYC_KDC2, KEYC_DC|KEYC_SHIFT|KEYC_XTERM },
@@ -403,17 +451,30 @@ void
 tty_keys_build(struct tty *tty)
 {
 	const struct tty_default_key_raw	*tdkr;
+	const struct tty_default_key_xterm	*tdkx;
 	const struct tty_default_key_code	*tdkc;
-	u_int		 			 i;
+	u_int		 			 i, j;
 	const char				*s;
 	struct options_entry			*o;
 	struct options_array_item		*a;
 	union options_value			*ov;
+	char					 copy[16];
+	key_code				 key;
 
 	if (tty->key_tree != NULL)
 		tty_keys_free(tty);
 	tty->key_tree = NULL;
 
+	for (i = 0; i < nitems(tty_default_xterm_keys); i++) {
+		tdkx = &tty_default_xterm_keys[i];
+		for (j = 2; j < nitems(tty_default_xterm_modifiers); j++) {
+			strlcpy(copy, tdkx->template, sizeof copy);
+			copy[strcspn(copy, "_")] = '0' + j;
+
+			key = tdkx->key|tty_default_xterm_modifiers[j];
+			tty_keys_add(tty, copy, key);
+		}
+	}
 	for (i = 0; i < nitems(tty_default_raw_keys); i++) {
 		tdkr = &tty_default_raw_keys[i];
 
@@ -516,7 +577,6 @@ tty_keys_next1(struct tty *tty, const char *buf, size_t len, key_code *key,
 	enum utf8_state		 more;
 	u_int			 i;
 	wchar_t			 wc;
-	int			 n;
 
 	log_debug("%s: next key is %zu (%.*s) (expired=%d)", c->name, len,
 	    (int)len, buf, expired);
@@ -533,13 +593,6 @@ tty_keys_next1(struct tty *tty, const char *buf, size_t len, key_code *key,
 		*key = tk->key;
 		return (0);
 	}
-
-	/* Is this an an xterm(1) key? */
-	n = xterm_keys_find(buf, len, size, key);
-	if (n == 0)
-		return (0);
-	if (n == 1 && !expired)
-		return (1);
 
 	/* Is this valid UTF-8? */
 	more = utf8_open(&ud, (u_char)*buf);

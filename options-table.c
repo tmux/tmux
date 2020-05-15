@@ -1052,11 +1052,12 @@ const struct options_table_entry options_table[] = {
 		  "bottom."
 	},
 
-	{ .name = "xterm-keys",
+	{ .name = "xterm-keys", /* no longer used */
 	  .type = OPTIONS_TABLE_FLAG,
 	  .scope = OPTIONS_TABLE_WINDOW,
 	  .default_num = 1,
-	  .text = "Whether xterm-style function key sequences should be sent."
+	  .text = "Whether xterm-style function key sequences should be sent. "
+	          "This option is no longer used."
 	},
 
 	/* Hook options. */
