@@ -21,6 +21,7 @@
 
 #include <netinet/in.h>
 
+#include <ctype.h>
 #include <limits.h>
 #include <resolv.h>
 #include <stdlib.h>
@@ -46,6 +47,8 @@ static struct tty_key *tty_keys_find(struct tty *, const char *, size_t,
 static int	tty_keys_next1(struct tty *, const char *, size_t, key_code *,
 		    size_t *, int);
 static void	tty_keys_callback(int, short, void *);
+static int	tty_keys_extended_key(struct tty *, const char *, size_t,
+		    size_t *, key_code *);
 static int	tty_keys_mouse(struct tty *, const char *, size_t, size_t *,
 		    struct mouse_event *);
 static int	tty_keys_clipboard(struct tty *, const char *, size_t,
@@ -690,6 +693,16 @@ tty_keys_next(struct tty *tty)
 		goto partial_key;
 	}
 
+	/* Is this an extended key press? */
+	switch (tty_keys_extended_key(tty, buf, len, &size, &key)) {
+	case 0:		/* yes */
+		goto complete_key;
+	case -1:	/* no, or not valid */
+		break;
+	case 1:		/* partial */
+		goto partial_key;
+	}
+
 first_key:
 	/* Try to lookup complete key. */
 	n = tty_keys_next1(tty, buf, len, &key, &size, expired);
@@ -825,6 +838,96 @@ tty_keys_callback(__unused int fd, __unused short events, void *data)
 		while (tty_keys_next(tty))
 			;
 	}
+}
+
+/*
+ * Handle extended key input. This has two forms: \033[27;m;k~ and \033[k;mu,
+ * where k is key as a number and m is a modifier. Returns 0 for success, -1
+ * for failure, 1 for partial;
+ */
+static int
+tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
+    size_t *size, key_code *key)
+{
+	struct client	*c = tty->client;
+	size_t		 end;
+	u_int		 number, modifiers;
+	char		 tmp[64];
+
+	*size = 0;
+
+	/* First two bytes are always \033[. */
+	if (buf[0] != '\033')
+		return (-1);
+	if (len == 1)
+		return (1);
+	if (buf[1] != '[')
+		return (-1);
+	if (len == 2)
+		return (1);
+
+	/*
+	 * Look for a terminator. Stop at either '~' or anything that isn't a
+	 * number or ';'.
+	 */
+	for (end = 2; end < len && end != sizeof tmp; end++) {
+		if (buf[end] == '~')
+			break;
+		if (!isdigit((u_char)buf[end]) && buf[end] != ';')
+			break;
+	}
+	if (end == len)
+		return (1);
+	if (buf[end] != '~' && buf[end] != 'u')
+		return (-1);
+
+	/* Copy to the buffer. */
+	memcpy(tmp, buf + 2, end);
+	tmp[end] = '\0';
+
+	/* Try to parse either form of key. */
+	if (buf[end] == '~') {
+		if (sscanf(tmp, "27;%u;%u", &modifiers, &number) != 2)
+			return (-1);
+	} else {
+		if (sscanf(tmp ,"%u;%u", &number, &modifiers) != 2)
+			return (-1);
+	}
+	*size = end + 1;
+
+	/* Store the key and modifiers. */
+	*key = number|KEYC_XTERM;
+	switch (modifiers) {
+	case 2:
+		(*key) |= KEYC_SHIFT;
+		break;
+	case 3:
+		(*key) |= KEYC_ESCAPE;
+		break;
+	case 4:
+		(*key) |= (KEYC_SHIFT|KEYC_ESCAPE);
+		break;
+	case 5:
+		(*key) |= KEYC_CTRL;
+		break;
+	case 6:
+		(*key) |= (KEYC_SHIFT|KEYC_CTRL);
+		break;
+	case 7:
+		(*key) |= (KEYC_ESCAPE|KEYC_CTRL);
+		break;
+	case 8:
+		(*key) |= (KEYC_SHIFT|KEYC_ESCAPE|KEYC_CTRL);
+		break;
+	default:
+		*key = KEYC_NONE;
+		break;
+	}
+	if (log_get_level() != 0) {
+		log_debug("%s: extended key %.*s is %llx (%s)", c->name,
+		    (int)*size, buf, *key, key_string_lookup_key(*key));
+	}
+	return (0);
 }
 
 /*
