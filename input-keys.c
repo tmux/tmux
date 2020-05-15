@@ -496,6 +496,8 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 	}
 
 	/* No builtin key sequence; construct an extended key sequence. */
+	if (~s->mode & MODE_KEXTENDED)
+		goto missing;
 	outkey = (key & KEYC_MASK_KEY);
 	if (outkey >= KEYC_BASE) {
 		switch (outkey) {

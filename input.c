@@ -241,6 +241,8 @@ enum input_csi_type {
 	INPUT_CSI_HPA,
 	INPUT_CSI_ICH,
 	INPUT_CSI_IL,
+	INPUT_CSI_MODOFF,
+	INPUT_CSI_MODSET,
 	INPUT_CSI_RCP,
 	INPUT_CSI_REP,
 	INPUT_CSI_RM,
@@ -288,7 +290,9 @@ static const struct input_table_entry input_csi_table[] = {
 	{ 'h', "?", INPUT_CSI_SM_PRIVATE },
 	{ 'l', "",  INPUT_CSI_RM },
 	{ 'l', "?", INPUT_CSI_RM_PRIVATE },
+	{ 'm', ">", INPUT_CSI_MODSET },
 	{ 'm', "",  INPUT_CSI_SGR },
+	{ 'n', ">", INPUT_CSI_MODOFF },
 	{ 'n', "",  INPUT_CSI_DSR },
 	{ 'q', " ", INPUT_CSI_DECSCUSR },
 	{ 'q', ">", INPUT_CSI_XDA },
@@ -1379,6 +1383,19 @@ input_csi_dispatch(struct input_ctx *ictx)
 		m = input_get(ictx, 1, 1, 1);
 		if (n != -1 && m != -1)
 			screen_write_cursormove(sctx, m - 1, n - 1, 1);
+		break;
+	case INPUT_CSI_MODSET:
+		n = input_get(ictx, 0, 1, 1);
+		m = input_get(ictx, 1, 1, 1);
+		if (n == 0 || (n == 4 && m == 0))
+			screen_write_mode_clear(sctx, MODE_KEXTENDED);
+		else if (n == 4 && (m == 1 || m == 2))
+			screen_write_mode_set(sctx, MODE_KEXTENDED);
+		break;
+	case INPUT_CSI_MODOFF:
+		n = input_get(ictx, 0, 1, 1);
+		if (n == 4)
+			screen_write_mode_clear(sctx, MODE_KEXTENDED);
 		break;
 	case INPUT_CSI_WINOPS:
 		input_csi_dispatch_winops(ictx);

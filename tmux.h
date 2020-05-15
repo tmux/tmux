@@ -579,8 +579,8 @@ struct msg_write_close {
 #define MODE_CURSOR 0x1
 #define MODE_INSERT 0x2
 #define MODE_KCURSOR 0x4
-#define MODE_KKEYPAD 0x8	/* set = application, clear = number */
-#define MODE_WRAP 0x10		/* whether lines wrap */
+#define MODE_KKEYPAD 0x8
+#define MODE_WRAP 0x10
 #define MODE_MOUSE_STANDARD 0x20
 #define MODE_MOUSE_BUTTON 0x40
 #define MODE_BLINKING 0x80
@@ -591,6 +591,7 @@ struct msg_write_close {
 #define MODE_MOUSE_ALL 0x1000
 #define MODE_ORIGIN 0x2000
 #define MODE_CRLF 0x4000
+#define MODE_KEXTENDED 0x8000
 
 #define ALL_MODES 0xffffff
 #define ALL_MOUSE_MODES (MODE_MOUSE_STANDARD|MODE_MOUSE_BUTTON|MODE_MOUSE_ALL)
