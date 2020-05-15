@@ -226,7 +226,7 @@ menu_key_cb(struct client *c, struct key_event *event)
 			goto chosen;
 		}
 	}
-	switch (event->key) {
+	switch (event->key & ~KEYC_MASK_FLAGS) {
 	case KEYC_UP:
 	case 'k':
 		if (old == -1)
