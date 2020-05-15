@@ -432,9 +432,9 @@ int
 input_key(struct screen *s, struct bufferevent *bev, key_code key)
 {
 	struct input_key_entry	*ike;
-	size_t			 datalen;
-	key_code		 justkey, newkey;
+	key_code		 justkey, newkey, outkey;
 	struct utf8_data	 ud;
+	char			 tmp[64], modifier;
 
 	/* Mouse keys need a pane. */
 	if (KEYC_IS_MOUSE(key))
@@ -487,18 +487,106 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 	ike = input_key_get(key);
 	if (ike == NULL && (key & KEYC_META) && (~key & KEYC_IMPLIED_META))
 		ike = input_key_get(key & ~KEYC_META);
-	if (ike == NULL) {
-		log_debug("key 0x%llx missing", key);
-		return (-1);
+	if (ike != NULL) {
+		log_debug("found key 0x%llx: \"%s\"", key, ike->data);
+		if (key & KEYC_META && (~key & KEYC_IMPLIED_META))
+			bufferevent_write(bev, "\033", 1);
+		bufferevent_write(bev, ike->data, strlen(ike->data));
+		return (0);
 	}
-	datalen = strlen(ike->data);
-	log_debug("found key 0x%llx: \"%s\"", key, ike->data);
 
-	/* Prefix a \033 for escape. */
-	if (key & KEYC_META && (~key & KEYC_IMPLIED_META))
-		bufferevent_write(bev, "\033", 1);
-	bufferevent_write(bev, ike->data, datalen);
+	/* No builtin key sequence; construct an extended key sequence. */
+	outkey = (key & KEYC_MASK_KEY);
+	if (outkey >= KEYC_BASE) {
+		switch (outkey) {
+		case KEYC_IC:
+			outkey = 2;
+			break;
+		case KEYC_DC:
+			outkey = 3;
+			break;
+		case KEYC_PPAGE:
+			outkey = 5;
+			break;
+		case KEYC_NPAGE:
+			outkey = 6;
+			break;
+		case KEYC_HOME:
+			outkey = 7;
+			break;
+		case KEYC_END:
+			outkey = 8;
+			break;
+		case KEYC_F1:
+			outkey = 11;
+			break;
+		case KEYC_F2:
+			outkey = 12;
+			break;
+		case KEYC_F3:
+			outkey = 13;
+			break;
+		case KEYC_F4:
+			outkey = 14;
+			break;
+		case KEYC_F5:
+			outkey = 15;
+			break;
+		case KEYC_F6:
+			outkey = 17;
+			break;
+		case KEYC_F7:
+			outkey = 18;
+			break;
+		case KEYC_F8:
+			outkey = 19;
+			break;
+		case KEYC_F9:
+			outkey = 20;
+			break;
+		case KEYC_F10:
+			outkey = 21;
+			break;
+		case KEYC_F11:
+			outkey = 23;
+			break;
+		case KEYC_F12:
+			outkey = 24;
+			break;
+		default:
+			goto missing;
+		}
+	}
+	switch (key & KEYC_MASK_MODIFIERS) {
+	case KEYC_SHIFT:
+		modifier = '2';
+		break;
+	case KEYC_META:
+		modifier = '3';
+		break;
+	case KEYC_SHIFT|KEYC_META:
+		modifier = '4';
+		break;
+	case KEYC_CTRL:
+		modifier = '5';
+		break;
+	case KEYC_SHIFT|KEYC_CTRL:
+		modifier = '6';
+		break;
+	case KEYC_META|KEYC_CTRL:
+		modifier = '7';
+		break;
+	case KEYC_SHIFT|KEYC_META|KEYC_CTRL:
+		modifier = '8';
+		break;
+	}
+	xsnprintf(tmp, sizeof tmp, "\033[%llu;%cu", outkey, modifier);
+	bufferevent_write(bev, tmp, strlen(tmp));
 	return (0);
+
+missing:
+	log_debug("key 0x%llx missing", key);
+	return (-1);
 }
 
 /* Get mouse event string. */
