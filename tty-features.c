@@ -190,6 +190,18 @@ static const struct tty_feature tty_feature_sync = {
 	0
 };
 
+/* Terminal supports extended keys. */
+static const char *tty_feature_extkeys_capabilities[] = {
+	"Eneks=\\E[>4;1m",
+	"Dseks=\\E[>4m",
+	NULL
+};
+static const struct tty_feature tty_feature_extkeys = {
+	"extkeys",
+	tty_feature_extkeys_capabilities,
+	0
+};
+
 /* Terminal supports DECSLRM margins. */
 static const char *tty_feature_margins_capabilities[] = {
 	"Enmg=\\E[?69h",
@@ -218,6 +230,7 @@ static const struct tty_feature *tty_features[] = {
 	&tty_feature_ccolour,
 	&tty_feature_clipboard,
 	&tty_feature_cstyle,
+	&tty_feature_extkeys,
 	&tty_feature_focus,
 	&tty_feature_margins,
 	&tty_feature_overline,
@@ -321,7 +334,7 @@ tty_default_features(int *feat, const char *name, u_int version)
 	} table[] = {
 #define TTY_FEATURES_BASE_MODERN_XTERM "256,RGB,bpaste,clipboard,strikethrough,title"
 		{ .name = "mintty",
-		  .features = TTY_FEATURES_BASE_MODERN_XTERM ",ccolour,cstyle,margins,overline"
+		  .features = TTY_FEATURES_BASE_MODERN_XTERM ",ccolour,cstyle,extkeys,margins,overline"
 		},
 		{ .name = "tmux",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ",ccolour,cstyle,focus,overline,usstyle"
@@ -333,7 +346,7 @@ tty_default_features(int *feat, const char *name, u_int version)
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM ",cstyle,margins,sync"
 		},
 		{ .name = "XTerm",
-		  .features = TTY_FEATURES_BASE_MODERN_XTERM ",ccolour,cstyle,focus,margins,rectfill"
+		  .features = TTY_FEATURES_BASE_MODERN_XTERM ",ccolour,cstyle,extkeys,focus,margins,rectfill"
 		}
 	};
 	u_int	i;

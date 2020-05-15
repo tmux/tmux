@@ -251,6 +251,14 @@ const struct options_table_entry options_table[] = {
 		  "clients."
 	},
 
+	{ .name = "extended-keys",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .default_num = 0,
+	  .text = "Whether to request extended key sequences from terminals "
+	          "that support it."
+	},
+
 	{ .name = "focus-events",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .scope = OPTIONS_TABLE_SERVER,

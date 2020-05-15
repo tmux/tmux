@@ -292,6 +292,7 @@ enum tty_code_code {
 	TTYC_DL,
 	TTYC_DL1,
 	TTYC_DSBP,
+	TTYC_DSEKS,
 	TTYC_DSFCS,
 	TTYC_DSMG,
 	TTYC_E3,
@@ -301,6 +302,7 @@ enum tty_code_code {
 	TTYC_EL1,
 	TTYC_ENACS,
 	TTYC_ENBP,
+	TTYC_ENEKS,
 	TTYC_ENFCS,
 	TTYC_ENMG,
 	TTYC_FSL,
@@ -1286,7 +1288,7 @@ struct tty {
 /* 0x8 unused */
 #define TTY_STARTED 0x10
 #define TTY_OPENED 0x20
-#define TTY_FOCUS 0x40
+/* 0x40 unused */
 #define TTY_BLOCK 0x80
 #define TTY_HAVEDA 0x100
 #define TTY_HAVEXDA 0x200

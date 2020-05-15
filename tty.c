@@ -329,10 +329,10 @@ tty_start_tty(struct tty *tty)
 		tty_puts(tty, "\033[?1006l\033[?1005l");
 	}
 
-	if (options_get_number(global_options, "focus-events")) {
-		tty->flags |= TTY_FOCUS;
+	if (options_get_number(global_options, "focus-events"))
 		tty_raw(tty, tty_term_string(tty->term, TTYC_ENFCS));
-	}
+	if (options_get_number(global_options, "extended-keys"))
+		tty_raw(tty, tty_term_string(tty->term, TTYC_ENEKS));
 	if (tty->term->flags & TERM_VT100LIKE)
 		tty_puts(tty, "\033[?7727h");
 
@@ -415,12 +415,10 @@ tty_stop_tty(struct tty *tty)
 		tty_raw(tty, "\033[?1006l\033[?1005l");
 	}
 
-	if (tty->flags & TTY_FOCUS) {
-		tty->flags &= ~TTY_FOCUS;
-		tty_raw(tty, tty_term_string(tty->term, TTYC_DSFCS));
-	}
 	if (tty->term->flags & TERM_VT100LIKE)
 		tty_raw(tty, "\033[?7727l");
+	tty_raw(tty, tty_term_string(tty->term, TTYC_DSFCS));
+	tty_raw(tty, tty_term_string(tty->term, TTYC_DSEKS));
 
 	if (tty_use_margin(tty))
 		tty_raw(tty, tty_term_string(tty->term, TTYC_DSMG));
