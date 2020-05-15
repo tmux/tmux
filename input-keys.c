@@ -340,7 +340,7 @@ static const key_code input_key_modifiers[] = {
 	KEYC_CTRL,
 	KEYC_SHIFT|KEYC_CTRL,
 	KEYC_META|KEYC_IMPLIED_META|KEYC_CTRL,
-	KEYC_SHIFT|KEYC_META|KEYC_CTRL
+	KEYC_SHIFT|KEYC_META|KEYC_IMPLIED_META|KEYC_CTRL
 };
 
 /* Input key comparison function. */
