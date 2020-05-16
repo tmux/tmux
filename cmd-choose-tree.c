@@ -68,6 +68,19 @@ const struct cmd_entry cmd_choose_buffer_entry = {
 	.exec = cmd_choose_tree_exec
 };
 
+const struct cmd_entry cmd_customize_mode_entry = {
+	.name = "customize-mode",
+	.alias = NULL,
+
+	.args = { "F:f:Nt:Z", 0, 0 },
+	.usage = "[-NZ] [-F format] [-f filter] " CMD_TARGET_PANE_USAGE,
+
+	.target = { 't', CMD_FIND_PANE, 0 },
+
+	.flags = 0,
+	.exec = cmd_choose_tree_exec
+};
+
 static enum cmd_retval
 cmd_choose_tree_exec(struct cmd *self, struct cmdq_item *item)
 {
@@ -84,7 +97,9 @@ cmd_choose_tree_exec(struct cmd *self, struct cmdq_item *item)
 		if (server_client_how_many() == 0)
 			return (CMD_RETURN_NORMAL);
 		mode = &window_client_mode;
-	} else
+	} else if (cmd_get_entry(self) == &cmd_customize_mode_entry)
+		mode = &window_customize_mode;
+	else
 		mode = &window_tree_mode;
 
 	window_pane_set_mode(wp, NULL, mode, target, args);

@@ -360,7 +360,97 @@ screen_write_strlen(const char *fmt, ...)
 	return (size);
 }
 
-/* Write simple string (no UTF-8 or maximum length). */
+/* Write string wrapped over lines. */
+int
+screen_write_text(struct screen_write_ctx *ctx, u_int cx, u_int width,
+    u_int lines, int more, const struct grid_cell *gcp, const char *fmt, ...)
+{
+	struct screen		*s = ctx->s;
+	va_list			 ap;
+	char			*tmp;
+	u_int			 cy = s->cy, i, end, next, idx = 0, at, left;
+	struct utf8_data	*text;
+	struct grid_cell	 gc;
+
+	memcpy(&gc, gcp, sizeof gc);
+
+	va_start(ap, fmt);
+	xvasprintf(&tmp, fmt, ap);
+	va_end(ap);
+
+	text = utf8_fromcstr(tmp);
+	free(tmp);
+
+	left = (cx + width) - s->cx;
+	for (;;) {
+		/* Find the end of what can fit on the line. */
+		at = 0;
+		for (end = idx; text[end].size != 0; end++) {
+			if (text[end].size == 1 && text[end].data[0] == '\n')
+				break;
+			if (at + text[end].width > left)
+				break;
+			at += text[end].width;
+		}
+
+		/*
+		 * If we're on a space, that's the end. If not, walk back to
+		 * try and find one.
+		 */
+		if (text[end].size == 0)
+			next = end;
+		else if (text[end].size == 1 && text[end].data[0] == '\n')
+			next = end + 1;
+		else if (text[end].size == 1 && text[end].data[0] == ' ')
+			next = end + 1;
+		else {
+			for (i = end; i > idx; i--) {
+				if (text[i].size == 1 && text[i].data[0] == ' ')
+					break;
+			}
+			if (i != idx) {
+				next = i + 1;
+				end = i;
+			} else
+				next = end;
+		}
+
+		/* Print the line. */
+		for (i = idx; i < end; i++) {
+			utf8_copy(&gc.data, &text[i]);
+			screen_write_cell(ctx, &gc);
+		}
+
+		/* If at the bottom, stop. */
+		idx = next;
+		if (s->cy == cy + lines - 1 || text[idx].size == 0)
+			break;
+
+		screen_write_cursormove(ctx, cx, s->cy + 1, 0);
+		left = width;
+	}
+
+	/*
+	 * Fail if on the last line and there is more to come or at the end, or
+	 * if the text was not entirely consumed.
+	 */
+	if ((s->cy == cy + lines - 1 && (!more || s->cx == cx + width)) ||
+	    text[idx].size != 0) {
+		free(text);
+		return (0);
+	}
+	free(text);
+
+	/*
+	 * If no more to come, move to the next line. Otherwise, leave on
+	 * the same line (except if at the end).
+	 */
+	if (!more || s->cx == cx + width)
+		screen_write_cursormove(ctx, cx, s->cy + 1, 0);
+	return (1);
+}
+
+/* Write simple string (no maximum length). */
 void
 screen_write_puts(struct screen_write_ctx *ctx, const struct grid_cell *gcp,
     const char *fmt, ...)

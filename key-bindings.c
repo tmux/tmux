@@ -89,9 +89,8 @@ key_bindings_cmp(struct key_binding *bd1, struct key_binding *bd2)
 }
 
 static void
-key_bindings_free(struct key_table *table, struct key_binding *bd)
+key_bindings_free(struct key_binding *bd)
 {
-	RB_REMOVE(key_bindings, &table->key_bindings, bd);
 	cmd_list_free(bd->cmdlist);
 	free((void *)bd->note);
 	free(bd);
@@ -110,6 +109,7 @@ key_bindings_get_table(const char *name, int create)
 	table = xmalloc(sizeof *table);
 	table->name = xstrdup(name);
 	RB_INIT(&table->key_bindings);
+	RB_INIT(&table->default_key_bindings);
 
 	table->references = 1; /* one reference in key_tables */
 	RB_INSERT(key_tables, &key_tables, table);
@@ -138,8 +138,14 @@ key_bindings_unref_table(struct key_table *table)
 	if (--table->references != 0)
 		return;
 
-	RB_FOREACH_SAFE(bd, key_bindings, &table->key_bindings, bd1)
-		key_bindings_free(table, bd);
+	RB_FOREACH_SAFE(bd, key_bindings, &table->key_bindings, bd1) {
+		RB_REMOVE(key_bindings, &table->key_bindings, bd);
+		key_bindings_free(bd);
+	}
+	RB_FOREACH_SAFE(bd, key_bindings, &table->default_key_bindings, bd1) {
+		RB_REMOVE(key_bindings, &table->default_key_bindings, bd);
+		key_bindings_free(bd);
+	}
 
 	free((void *)table->name);
 	free(table);
@@ -152,6 +158,15 @@ key_bindings_get(struct key_table *table, key_code key)
 
 	bd.key = key;
 	return (RB_FIND(key_bindings, &table->key_bindings, &bd));
+}
+
+struct key_binding *
+key_bindings_get_default(struct key_table *table, key_code key)
+{
+	struct key_binding	bd;
+
+	bd.key = key;
+	return (RB_FIND(key_bindings, &table->default_key_bindings, &bd));
 }
 
 struct key_binding *
@@ -176,8 +191,10 @@ key_bindings_add(const char *name, key_code key, const char *note, int repeat,
 	table = key_bindings_get_table(name, 1);
 
 	bd = key_bindings_get(table, key & ~KEYC_XTERM);
-	if (bd != NULL)
-		key_bindings_free(table, bd);
+	if (bd != NULL) {
+		RB_REMOVE(key_bindings, &table->key_bindings, bd);
+		key_bindings_free(bd);
+	}
 
 	bd = xcalloc(1, sizeof *bd);
 	bd->key = key;
@@ -203,9 +220,12 @@ key_bindings_remove(const char *name, key_code key)
 	bd = key_bindings_get(table, key & ~KEYC_XTERM);
 	if (bd == NULL)
 		return;
-	key_bindings_free(table, bd);
 
-	if (RB_EMPTY(&table->key_bindings)) {
+	RB_REMOVE(key_bindings, &table->key_bindings, bd);
+	key_bindings_free(bd);
+
+	if (RB_EMPTY(&table->key_bindings) &&
+	    RB_EMPTY(&table->default_key_bindings)) {
 		RB_REMOVE(key_tables, &key_tables, table);
 		key_bindings_unref_table(table);
 	}
@@ -226,6 +246,28 @@ key_bindings_remove_table(const char *name)
 		if (c->keytable == table)
 			server_client_set_key_table(c, NULL);
 	}
+}
+
+static enum cmd_retval
+key_bindings_init_done(__unused struct cmdq_item *item, __unused void *data)
+{
+	struct key_table	*table;
+	struct key_binding	*bd, *new_bd;
+
+	RB_FOREACH(table, key_tables, &key_tables) {
+		RB_FOREACH(bd, key_bindings, &table->key_bindings) {
+			new_bd = xcalloc(1, sizeof *bd);
+			new_bd->key = bd->key;
+			if (bd->note != NULL)
+				new_bd->note = xstrdup(bd->note);
+			new_bd->flags = bd->flags;
+			new_bd->cmdlist = bd->cmdlist;
+			new_bd->cmdlist->references++;
+			RB_INSERT(key_bindings, &table->default_key_bindings,
+			    new_bd);
+		}
+	}
+	return (CMD_RETURN_NORMAL);
 }
 
 void
@@ -278,6 +320,7 @@ key_bindings_init(void)
 		"bind -N 'Toggle the marked pane' m select-pane -m",
 		"bind -N 'Select the next window' n next-window",
 		"bind -N 'Select the next pane' o select-pane -t:.+",
+		"bind -N 'Customize options' C customize-mode -Z",
 		"bind -N 'Select the previous pane' p previous-window",
 		"bind -N 'Display pane numbers' q display-panes",
 		"bind -N 'Redraw the current client' r refresh-client",
@@ -524,6 +567,7 @@ key_bindings_init(void)
 		cmdq_append(NULL, cmdq_get_command(pr->cmdlist, NULL));
 		cmd_list_free(pr->cmdlist);
 	}
+	cmdq_append(NULL, cmdq_get_callback(key_bindings_init_done, NULL));
 }
 
 static enum cmd_retval

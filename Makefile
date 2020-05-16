@@ -120,6 +120,7 @@ SRCS=	alerts.c \
 	window-client.c \
 	window-clock.c \
 	window-copy.c \
+	window-customize.c \
 	window-tree.c \
 	window.c \
 	xmalloc.c \

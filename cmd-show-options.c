@@ -151,7 +151,7 @@ cmd_show_options_print(struct cmd *self, struct cmdq_item *item,
 		xasprintf(&tmp, "%s[%d]", name, idx);
 		name = tmp;
 	} else {
-		if (options_isarray(o)) {
+		if (options_is_array(o)) {
 			a = options_array_first(o);
 			if (a == NULL) {
 				if (!args_has(args, 'v'))
@@ -168,10 +168,10 @@ cmd_show_options_print(struct cmd *self, struct cmdq_item *item,
 		}
 	}
 
-	value = options_tostring(o, idx, 0);
+	value = options_to_string(o, idx, 0);
 	if (args_has(args, 'v'))
 		cmdq_print(item, "%s", value);
-	else if (options_isstring(o)) {
+	else if (options_is_string(o)) {
 		escaped = args_escape(value);
 		if (parent)
 			cmdq_print(item, "%s* %s", name, escaped);
@@ -229,7 +229,7 @@ cmd_show_options_all(struct cmd *self, struct cmdq_item *item, int scope,
 		} else
 			parent = 0;
 
-		if (!options_isarray(o))
+		if (!options_is_array(o))
 			cmd_show_options_print(self, item, o, -1, parent);
 		else if ((a = options_array_first(o)) == NULL) {
 			if (!args_has(args, 'v')) {
