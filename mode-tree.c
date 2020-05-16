@@ -987,7 +987,7 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 	choice = -1;
 	if (*key >= '0' && *key <= '9')
 		choice = (*key) - '0';
-	else if (((*key) & KEYC_MASK_MOD) == KEYC_ESCAPE) {
+	else if (((*key) & KEYC_MASK_MODIFIERS) == KEYC_META) {
 		tmp = (*key) & KEYC_MASK_KEY;
 		if (tmp >= 'a' && tmp <= 'z')
 			choice = 10 + (tmp - 'a');
@@ -1111,12 +1111,12 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 			mode_tree_build(mtd);
 		}
 		break;
-	case '-'|KEYC_ESCAPE:
+	case '-'|KEYC_META:
 		TAILQ_FOREACH(mti, &mtd->children, entry)
 			mti->expanded = 0;
 		mode_tree_build(mtd);
 		break;
-	case '+'|KEYC_ESCAPE:
+	case '+'|KEYC_META:
 		TAILQ_FOREACH(mti, &mtd->children, entry)
 			mti->expanded = 1;
 		mode_tree_build(mtd);

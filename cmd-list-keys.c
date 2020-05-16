@@ -73,7 +73,7 @@ cmd_list_keys_get_width(const char *tablename, key_code only)
 			bd = key_bindings_next(table, bd);
 			continue;
 		}
-		width = utf8_cstrwidth(key_string_lookup_key(bd->key));
+		width = utf8_cstrwidth(key_string_lookup_key(bd->key, 0));
 		if (width > keywidth)
 			keywidth = width;
 
@@ -106,7 +106,7 @@ cmd_list_keys_print_notes(struct cmdq_item *item, struct args *args,
 			continue;
 		}
 		found = 1;
-		key = key_string_lookup_key(bd->key);
+		key = key_string_lookup_key(bd->key, 0);
 
 		if (bd->note == NULL || *bd->note == '\0')
 			note = cmd_list_print(bd->cmdlist, 1);
@@ -135,7 +135,7 @@ cmd_list_keys_get_prefix(struct args *args, key_code *prefix)
 	*prefix = options_get_number(global_s_options, "prefix");
 	if (!args_has(args, 'P')) {
 		if (*prefix != KEYC_NONE)
-			xasprintf(&s, "%s ", key_string_lookup_key(*prefix));
+			xasprintf(&s, "%s ", key_string_lookup_key(*prefix, 0));
 		else
 			s = xstrdup("");
 	} else
@@ -221,7 +221,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 				bd = key_bindings_next(table, bd);
 				continue;
 			}
-			key = args_escape(key_string_lookup_key(bd->key));
+			key = args_escape(key_string_lookup_key(bd->key, 0));
 
 			if (bd->flags & KEY_BINDING_REPEAT)
 				repeat = 1;
@@ -255,7 +255,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 				continue;
 			}
 			found = 1;
-			key = args_escape(key_string_lookup_key(bd->key));
+			key = args_escape(key_string_lookup_key(bd->key, 0));
 
 			if (!repeat)
 				r = "";

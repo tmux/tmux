@@ -547,7 +547,7 @@ cmdq_add_message(struct cmdq_item *item)
 	if (c != NULL) {
 		name = c->name;
 		if (c->session != NULL && state->event.key != KEYC_NONE) {
-			key = key_string_lookup_key(state->event.key);
+			key = key_string_lookup_key(state->event.key, 0);
 			server_add_message("%s key %s: %s", name, key, tmp);
 		} else
 			server_add_message("%s command: %s", name, tmp);
