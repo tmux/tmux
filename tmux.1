@@ -4463,7 +4463,8 @@ The following variables are available, where appropriate:
 .It Li "client_readonly" Ta "" Ta "1 if client is readonly"
 .It Li "client_session" Ta "" Ta "Name of the client's session"
 .It Li "client_termname" Ta "" Ta "Terminal name of client"
-.It Li "client_termfeatures" Ta "" Ta "Terminal features of client"
+.It Li "client_termtype" Ta "" Ta "Terminal type of client, if available"
+.It Li "client_termfeatures" Ta "" Ta "Terminal features of client, if any"
 .It Li "client_tty" Ta "" Ta "Pseudo terminal of client"
 .It Li "client_utf8" Ta "" Ta "1 if client supports UTF-8"
 .It Li "client_width" Ta "" Ta "Width of client"
@@ -5555,6 +5556,10 @@ It is not normally necessary to set these manually, instead the
 .Ic terminal-features
 option should be used.
 .Bl -tag -width Ds
+.It Em \&AX
+An existing extension that tells
+.Nm
+the terminal supports default colours.
 .It Em \&Cs , Cr
 Set the cursor colour.
 The first takes a single string argument and is used to set the colour;
@@ -5567,6 +5572,19 @@ $ printf '\e033]12;red\e033\e\e'
 .Ed
 .It Em \&Cmg, \&Clmg, \&Dsmg , \&Enmg
 Set, clear, disable or enable DECSLRM margins.
+These are set automatically if the terminal reports it is
+.Em VT420
+compatible.
+.It Em \&Dsbp , \&Enbp
+Disable and enable bracketed paste.
+These are set automatically if the
+.Em XT
+capability is present.
+.It Em \&Dsfcs , \&Enfcs
+Disable and enable focus reporting.
+These are set automatically if the
+.Em XT
+capability is present.
 .It Em \&Smol
 Enable the overline attribute.
 .It Em \&Smulx
@@ -5617,6 +5635,11 @@ See the
 option above and the
 .Xr xterm 1
 man page.
+.It Em \&XT
+This is an existing extension capability that tmux uses to mean that the
+terminal supports the
+.Xr xterm 1
+title set sequences and to automatically set some of the capabilities above.
 .El
 .Sh CONTROL MODE
 .Nm
