@@ -39,9 +39,9 @@ const struct cmd_entry cmd_new_session_entry = {
 	.name = "new-session",
 	.alias = "new",
 
-	.args = { "Ac:dDe:EF:n:Ps:t:x:Xy:", 0, -1 },
+	.args = { "Ac:dDe:EF:f:n:Ps:t:x:Xy:", 0, -1 },
 	.usage = "[-AdDEPX] [-c start-directory] [-e environment] [-F format] "
-		 "[-n window-name] [-s session-name] "
+		 "[-f flags] [-n window-name] [-s session-name] "
 		 CMD_TARGET_SESSION_USAGE " [-x width] [-y height] [command]",
 
 	.target = { 't', CMD_FIND_SESSION, CMD_FIND_CANFAIL },
@@ -112,7 +112,7 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 		if (as != NULL) {
 			retval = cmd_attach_session(item, as->name,
 			    args_has(args, 'D'), args_has(args, 'X'), 0, NULL,
-			    args_has(args, 'E'));
+			    args_has(args, 'E'), args_get(args, 'f'));
 			free(newname);
 			return (retval);
 		}
@@ -306,6 +306,8 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	 * taking this session and needs to get MSG_READY and stay around.
 	 */
 	if (!detached) {
+		if (args_has(args, 'f'))
+			server_client_set_flags(c, args_get(args, 'f'));
 		if (!already_attached) {
 			if (~c->flags & CLIENT_CONTROL)
 				proc_send(c->peer, MSG_READY, -1, NULL, 0);

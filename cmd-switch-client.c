@@ -34,7 +34,7 @@ const struct cmd_entry cmd_switch_client_entry = {
 	.name = "switch-client",
 	.alias = "switchc",
 
-	.args = { "lc:Enpt:rT:Z", 0, 0 },
+	.args = { "lc:EFnpt:rT:Z", 0, 0 },
 	.usage = "[-ElnprZ] [-c target-client] [-t target-session] "
 		 "[-T key-table]",
 
@@ -74,8 +74,12 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 	wl = target.wl;
 	wp = target.wp;
 
-	if (args_has(args, 'r'))
-		tc->flags ^= CLIENT_READONLY;
+	if (args_has(args, 'r')) {
+		if (tc->flags & CLIENT_READONLY)
+			tc->flags &= ~(CLIENT_READONLY|CLIENT_IGNORESIZE);
+		else
+			tc->flags |= (CLIENT_READONLY|CLIENT_IGNORESIZE);
+	}
 
 	tablename = args_get(args, 'T');
 	if (tablename != NULL) {

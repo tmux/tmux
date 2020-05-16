@@ -34,8 +34,8 @@ const struct cmd_entry cmd_refresh_client_entry = {
 	.name = "refresh-client",
 	.alias = "refresh",
 
-	.args = { "cC:DF:lLRSt:U", 0, 1 },
-	.usage = "[-cDlLRSU] [-C XxY] [-F flags] " CMD_TARGET_CLIENT_USAGE
+	.args = { "cC:Df:F:lLRSt:U", 0, 1 },
+	.usage = "[-cDlLRSU] [-C XxY] [-f flags] " CMD_TARGET_CLIENT_USAGE
 		" [adjustment]",
 
 	.flags = CMD_AFTERHOOK|CMD_CLIENT_TFLAG,
@@ -50,7 +50,6 @@ cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 	struct tty	*tty = &tc->tty;
 	struct window	*w;
 	const char	*size, *errstr;
-	char		*copy, *next, *s;
 	u_int		 x, y, adjust;
 
 	if (args_has(args, 'c') ||
@@ -108,7 +107,12 @@ cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 	}
 
-	if (args_has(args, 'C') || args_has(args, 'F')) {
+	if (args_has(args, 'F')) /* -F is an alias for -f */
+		server_client_set_flags(tc, args_get(args, 'F'));
+	if (args_has(args, 'f'))
+		server_client_set_flags(tc, args_get(args, 'f'));
+
+	if (args_has(args, 'C')) {
 		if (args_has(args, 'C')) {
 			if (!(tc->flags & CLIENT_CONTROL)) {
 				cmdq_error(item, "not a control client");
@@ -128,19 +132,6 @@ cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 			tty_set_size(&tc->tty, x, y, 0, 0);
 			tc->flags |= CLIENT_SIZECHANGED;
 			recalculate_sizes();
-		}
-		if (args_has(args, 'F')) {
-			if (!(tc->flags & CLIENT_CONTROL)) {
-				cmdq_error(item, "not a control client");
-				return (CMD_RETURN_ERROR);
-			}
-			s = copy = xstrdup(args_get(args, 'F'));
-			while ((next = strsep(&s, ",")) != NULL) {
-				/* Unknown flags are ignored. */
-				if (strcmp(next, "no-output") == 0)
-					tc->flags |= CLIENT_CONTROL_NOOUTPUT;
-			}
-			free(copy);
 		}
 		return (CMD_RETURN_NORMAL);
 	}

@@ -1568,7 +1568,7 @@ struct client {
 #define CLIENT_CONTROLCONTROL 0x4000
 #define CLIENT_FOCUSED 0x8000
 #define CLIENT_UTF8 0x10000
-/* 0x20000 unused */
+#define CLIENT_IGNORESIZE 0x20000
 #define CLIENT_IDENTIFIED 0x40000
 #define CLIENT_STATUSFORCE 0x80000
 #define CLIENT_DOUBLECLICK 0x100000
@@ -2163,7 +2163,7 @@ char		*cmd_template_replace(const char *, const char *, int);
 
 /* cmd-attach-session.c */
 enum cmd_retval	 cmd_attach_session(struct cmdq_item *, const char *, int, int,
-		     int, const char *, int);
+		     int, const char *, int, const char *);
 
 /* cmd-parse.c */
 void		 cmd_parse_empty(struct cmd_parse_input *);
@@ -2302,6 +2302,8 @@ void	 server_client_push_stderr(struct client *);
 void printflike(2, 3) server_client_add_message(struct client *, const char *,
 	     ...);
 const char *server_client_get_cwd(struct client *, struct session *);
+void	 server_client_set_flags(struct client *, const char *);
+const char *server_client_get_flags(struct client *);
 
 /* server-fn.c */
 void	 server_redraw_client(struct client *);
