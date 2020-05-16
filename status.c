@@ -39,7 +39,7 @@ static void	 status_prompt_add_history(const char *);
 
 static char	*status_prompt_complete(struct client *, const char *, u_int);
 static char	*status_prompt_complete_window_menu(struct client *,
-		     struct session *, u_int, char);
+		     struct session *, const char *, u_int, char);
 
 struct status_prompt_menu {
 	struct client	 *c;
@@ -1071,15 +1071,7 @@ process_key:
 		}
 		break;
 	case '\011': /* Tab */
-		if (c->prompt_flags & PROMPT_WINDOW) {
-			s = status_prompt_complete_window_menu(c, c->session,
-			    0, '\0');
-			if (s != NULL) {
-				free(c->prompt_buffer);
-				c->prompt_buffer = utf8_fromcstr(s);
-				c->prompt_index = utf8_strlen(c->prompt_buffer);
-			}
-		} else if (status_prompt_replace_complete(c, NULL))
+		if (status_prompt_replace_complete(c, NULL))
 			goto changed;
 		break;
 	case KEYC_BSPACE:
@@ -1537,7 +1529,7 @@ status_prompt_complete_list_menu(struct client *c, char **list, u_int size,
 /* Show complete word menu. */
 static char *
 status_prompt_complete_window_menu(struct client *c, struct session *s,
-    u_int offset, char flag)
+    const char *word, u_int offset, char flag)
 {
 	struct menu			 *menu;
 	struct menu_item		  item;
@@ -1561,6 +1553,15 @@ status_prompt_complete_window_menu(struct client *c, struct session *s,
 
 	menu = menu_create("");
 	RB_FOREACH(wl, winlinks, &s->windows) {
+		if (word != NULL && *word != '\0') {
+			xasprintf(&tmp, "%d", wl->idx);
+			if (strncmp(tmp, word, strlen(word)) != 0) {
+				free(tmp);
+				continue;
+			}
+			free(tmp);
+		}
+
 		list = xreallocarray(list, size + 1, sizeof *list);
 		if (c->prompt_flags & PROMPT_WINDOW) {
 			xasprintf(&tmp, "%d (%s)", wl->idx, wl->window->name);
@@ -1578,6 +1579,10 @@ status_prompt_complete_window_menu(struct client *c, struct session *s,
 
 		if (size == height)
 			break;
+	}
+	if (size == 0) {
+		menu_free(menu);
+		return (NULL);
 	}
 	if (size == 1) {
 		menu_free(menu);
@@ -1656,10 +1661,11 @@ status_prompt_complete(struct client *c, const char *word, u_int offset)
 	char		  flag = '\0';
 	u_int		  size = 0, i;
 
-	if (*word == '\0' && (~c->prompt_flags & PROMPT_TARGET))
+	if (*word == '\0' &&
+	    ((c->prompt_flags & (PROMPT_TARGET|PROMPT_WINDOW)) == 0))
 		return (NULL);
 
-	if ((~c->prompt_flags & PROMPT_TARGET) &&
+	if (((c->prompt_flags & (PROMPT_TARGET|PROMPT_WINDOW)) == 0) &&
 	    strncmp(word, "-t", 2) != 0 &&
 	    strncmp(word, "-s", 2) != 0) {
 		list = status_prompt_complete_list(&size, word, offset == 0);
@@ -1672,13 +1678,20 @@ status_prompt_complete(struct client *c, const char *word, u_int offset)
 		goto found;
 	}
 
-	if (c->prompt_flags & PROMPT_TARGET) {
+	if (c->prompt_flags & (PROMPT_TARGET|PROMPT_WINDOW)) {
 		s = word;
 		flag = '\0';
 	} else {
 		s = word + 2;
 		flag = word[1];
 		offset += 2;
+	}
+
+	/* If this is a window completion, open the window menu. */
+	if (c->prompt_flags & PROMPT_WINDOW) {
+		out = status_prompt_complete_window_menu(c, c->session, s,
+		    offset, '\0');
+		goto found;
 	}
 	colon = strchr(s, ':');
 
@@ -1700,8 +1713,8 @@ status_prompt_complete(struct client *c, const char *word, u_int offset)
 			if (session == NULL)
 				goto found;
 		}
-		out = status_prompt_complete_window_menu(c, session, offset,
-		    flag);
+		out = status_prompt_complete_window_menu(c, session, colon + 1,
+		    offset, flag);
 		if (out == NULL)
 			return (NULL);
 	}
