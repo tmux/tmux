@@ -1012,12 +1012,18 @@ struct window {
 	u_int		 xpixel;
 	u_int		 ypixel;
 
+	u_int		 new_sx;
+	u_int		 new_sy;
+	u_int		 new_xpixel;
+	u_int		 new_ypixel;
+
 	int		 flags;
 #define WINDOW_BELL 0x1
 #define WINDOW_ACTIVITY 0x2
 #define WINDOW_SILENCE 0x4
 #define WINDOW_ZOOMED 0x8
 #define WINDOW_WASZOOMED 0x10
+#define WINDOW_RESIZE 0x20
 #define WINDOW_ALERTFLAGS (WINDOW_BELL|WINDOW_ACTIVITY|WINDOW_SILENCE)
 
 	int		 alerts_queued;
