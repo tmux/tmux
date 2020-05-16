@@ -33,7 +33,7 @@
  * - alternate escape (under XT).
  *
  * Also:
- * - XT is used to decide whether to send DA and DSR;
+ * - XT is used to decide whether to send DA and XDA;
  * - DECSLRM and DECFRA use a flag instead of capabilities;
  * - UTF-8 is a separate flag on the client; needed for unattached clients.
  */
