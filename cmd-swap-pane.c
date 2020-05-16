@@ -79,6 +79,9 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (src_wp == dst_wp)
 		goto out;
 
+	server_client_remove_pane(src_wp);
+	server_client_remove_pane(dst_wp);
+
 	tmp_wp = TAILQ_PREV(dst_wp, window_panes, entry);
 	TAILQ_REMOVE(&dst_w->panes, dst_wp, entry);
 	TAILQ_REPLACE(&src_w->panes, src_wp, dst_wp, entry);

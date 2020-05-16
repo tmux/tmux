@@ -986,6 +986,8 @@ the client is read-only
 the client does not affect the size of other clients
 .It no-output
 the client does not receive pane output in control mode
+.It active-pane
+the client has an independent active pane
 .El
 .Pp
 A leading
@@ -1000,6 +1002,13 @@ When a client is read-only, only keys bound to the
 or
 .Ic switch-client
 commands have any effect.
+A client with the
+.Ar active-pane
+flag allows the active pane to be selected independently of the window's active
+pane used by clients without the flag.
+This only affects the cursor position and commands issued from the client;
+other features such as hooks and styles continue to use the window's active
+pane.
 .Pp
 If no server is started,
 .Ic attach-session

@@ -89,6 +89,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	TAILQ_REMOVE(&w->panes, wp, entry);
+	server_client_remove_pane(wp);
 	window_lost_pane(w, wp);
 	layout_close_pane(wp);
 

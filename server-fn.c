@@ -187,6 +187,7 @@ server_kill_pane(struct window_pane *wp)
 		recalculate_sizes();
 	} else {
 		server_unzoom_window(w);
+		server_client_remove_pane(wp);
 		layout_close_pane(wp);
 		window_remove_pane(w, wp);
 		server_redraw_window(w);
@@ -348,6 +349,7 @@ server_destroy_pane(struct window_pane *wp, int notify)
 		notify_pane("pane-exited", wp);
 
 	server_unzoom_window(w);
+	server_client_remove_pane(wp);
 	layout_close_pane(wp);
 	window_remove_pane(w, wp);
 

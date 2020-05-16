@@ -588,22 +588,22 @@ cmd_find_get_pane_with_window(struct cmd_find_state *fs, const char *pane)
 			return (-1);
 		return (0);
 	} else if (strcmp(pane, "{up-of}") == 0) {
-		fs->wp = window_pane_find_up(fs->w->active);
+		fs->wp = window_pane_find_up(fs->current->wp);
 		if (fs->wp == NULL)
 			return (-1);
 		return (0);
 	} else if (strcmp(pane, "{down-of}") == 0) {
-		fs->wp = window_pane_find_down(fs->w->active);
+		fs->wp = window_pane_find_down(fs->current->wp);
 		if (fs->wp == NULL)
 			return (-1);
 		return (0);
 	} else if (strcmp(pane, "{left-of}") == 0) {
-		fs->wp = window_pane_find_left(fs->w->active);
+		fs->wp = window_pane_find_left(fs->current->wp);
 		if (fs->wp == NULL)
 			return (-1);
 		return (0);
 	} else if (strcmp(pane, "{right-of}") == 0) {
-		fs->wp = window_pane_find_right(fs->w->active);
+		fs->wp = window_pane_find_right(fs->current->wp);
 		if (fs->wp == NULL)
 			return (-1);
 		return (0);
@@ -615,7 +615,7 @@ cmd_find_get_pane_with_window(struct cmd_find_state *fs, const char *pane)
 			n = strtonum(pane + 1, 1, INT_MAX, NULL);
 		else
 			n = 1;
-		wp = fs->w->active;
+		wp = fs->current->wp;
 		if (pane[0] == '+')
 			fs->wp = window_pane_next_by_number(fs->w, wp, n);
 		else
@@ -867,7 +867,18 @@ cmd_find_from_client(struct cmd_find_state *fs, struct client *c, int flags)
 
 	/* If this is an attached client, all done. */
 	if (c->session != NULL) {
-		cmd_find_from_session(fs, c->session, flags);
+		cmd_find_clear_state(fs, flags);
+
+		fs->wp = server_client_get_pane(c);
+		if (fs->wp == NULL) {
+			cmd_find_from_session(fs, c->session, flags);
+			return (0);
+		}
+		fs->s = c->session;
+		fs->wl = fs->s->curw;
+		fs->w = fs->wl->window;
+
+		cmd_find_log_state(__func__, fs);
 		return (0);
 	}
 	cmd_find_clear_state(fs, flags);

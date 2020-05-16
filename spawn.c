@@ -362,6 +362,7 @@ spawn_pane(struct spawn_context *sc, char **cause)
 		xasprintf(cause, "fork failed: %s", strerror(errno));
 		new_wp->fd = -1;
 		if (~sc->flags & SPAWN_RESPAWN) {
+			server_client_remove_pane(new_wp);
 			layout_close_pane(new_wp);
 			window_remove_pane(w, new_wp);
 		}

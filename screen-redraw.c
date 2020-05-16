@@ -242,7 +242,7 @@ screen_redraw_check_cell(struct client *c, u_int px, u_int py, int pane_status,
     struct window_pane **wpp)
 {
 	struct window		*w = c->session->curw->window;
-	struct window_pane	*wp;
+	struct window_pane	*wp, *active;
 	int			 border;
 	u_int			 right, line;
 
@@ -254,7 +254,7 @@ screen_redraw_check_cell(struct client *c, u_int px, u_int py, int pane_status,
 		return (screen_redraw_type_of_cell(c, px, py, pane_status));
 
 	if (pane_status != PANE_STATUS_OFF) {
-		wp = w->active;
+		active = wp = server_client_get_pane(c);
 		do {
 			if (!window_pane_visible(wp))
 				goto next1;
@@ -272,10 +272,10 @@ screen_redraw_check_cell(struct client *c, u_int px, u_int py, int pane_status,
 			wp = TAILQ_NEXT(wp, entry);
 			if (wp == NULL)
 				wp = TAILQ_FIRST(&w->panes);
-		} while (wp != w->active);
+		} while (wp != active);
 	}
 
-	wp = w->active;
+	active = wp = server_client_get_pane(c);
 	do {
 		if (!window_pane_visible(wp))
 			goto next2;
@@ -296,7 +296,7 @@ screen_redraw_check_cell(struct client *c, u_int px, u_int py, int pane_status,
 		wp = TAILQ_NEXT(wp, entry);
 		if (wp == NULL)
 			wp = TAILQ_FIRST(&w->panes);
-	} while (wp != w->active);
+	} while (wp != active);
 
 	return (CELL_OUTSIDE);
 }
@@ -330,7 +330,7 @@ screen_redraw_make_pane_status(struct client *c, struct window *w,
 	ft = format_create(c, NULL, FORMAT_PANE|wp->id, FORMAT_STATUS);
 	format_defaults(ft, c, c->session, c->session->curw, wp);
 
-	if (wp == w->active)
+	if (wp == server_client_get_pane(c))
 		style_apply(&gc, w->options, "pane-active-border-style", ft);
 	else
 		style_apply(&gc, w->options, "pane-border-style", ft);
@@ -558,6 +558,7 @@ screen_redraw_draw_borders_style(struct screen_redraw_ctx *ctx, u_int x,
 	struct client		*c = ctx->c;
 	struct session		*s = c->session;
 	struct window		*w = s->curw->window;
+	struct window_pane	*active = server_client_get_pane(c);
 	struct options		*oo = w->options;
 	struct grid_cell	*gc;
 	struct format_tree	*ft;
@@ -569,7 +570,7 @@ screen_redraw_draw_borders_style(struct screen_redraw_ctx *ctx, u_int x,
 	ft = format_create_defaults(NULL, c, s, s->curw, wp);
 	gc = &wp->border_gc;
 
-	if (screen_redraw_check_is(x, y, ctx->pane_status, w->active)) {
+	if (screen_redraw_check_is(x, y, ctx->pane_status, active)) {
 		style_apply(gc, oo, "pane-active-border-style", ft);
 		gc->attr |= GRID_ATTR_CHARSET;
 	} else {
