@@ -1150,7 +1150,7 @@ tty_keys_extended_device_attributes(struct tty *tty, const char *buf,
 	*size = 5 + i;
 
 	/* Add terminal features. */
-	if (strncmp(tmp, "ITerm2 ", 7) == 0) {
+	if (strncmp(tmp, "iTerm2 ", 7) == 0) {
 		tty_add_features(&c->term_features,
 		    "256,"
 		    "RGB,"
