@@ -19,6 +19,7 @@
 #include <sys/types.h>
 
 #include <ctype.h>
+#include <fnmatch.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>

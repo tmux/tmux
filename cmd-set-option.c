@@ -18,7 +18,6 @@
 
 #include <sys/types.h>
 
-#include <fnmatch.h>
 #include <stdlib.h>
 #include <string.h>
 
