@@ -253,7 +253,7 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_SERVER,
 	  .minimum = 0,
 	  .maximum = INT_MAX,
-	  .default_num = 100
+	  .default_num = 1000
 	},
 
 	{ .name = "set-clipboard",

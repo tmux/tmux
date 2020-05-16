@@ -46,8 +46,6 @@ static void	 format_job_timer(int, short, void *);
 
 static char	*format_find(struct format_tree *, const char *, int);
 static void	 format_add_cb(struct format_tree *, const char *, format_cb);
-static void	 format_add_tv(struct format_tree *, const char *,
-		     struct timeval *);
 static int	 format_replace(struct format_tree *, const char *, size_t,
 		     char **, size_t *, size_t *);
 static void	 format_defaults_session(struct format_tree *,
@@ -1260,7 +1258,7 @@ format_add(struct format_tree *ft, const char *key, const char *fmt, ...)
 }
 
 /* Add a key and time. */
-static void
+void
 format_add_tv(struct format_tree *ft, const char *key, struct timeval *tv)
 {
 	struct format_entry	*fe, *fe_now;

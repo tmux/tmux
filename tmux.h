@@ -1341,11 +1341,13 @@ struct tty_ctx {
 
 /* Saved message entry. */
 struct message_entry {
-	char	*msg;
-	u_int	 msg_num;
-	time_t	 msg_time;
-	TAILQ_ENTRY(message_entry) entry;
+	char				*msg;
+	u_int				 msg_num;
+	struct timeval			 msg_time;
+
+	TAILQ_ENTRY(message_entry)	 entry;
 };
+TAILQ_HEAD(message_list, message_entry);
 
 /* Parsed arguments structures. */
 struct args_entry;
@@ -1603,8 +1605,6 @@ struct client {
 
 	char		*message_string;
 	struct event	 message_timer;
-	u_int		 message_next;
-	TAILQ_HEAD(, message_entry) message_log;
 
 	char		*prompt_string;
 	struct utf8_data *prompt_buffer;
@@ -1846,6 +1846,8 @@ void		 format_free(struct format_tree *);
 void		 format_merge(struct format_tree *, struct format_tree *);
 void printflike(3, 4) format_add(struct format_tree *, const char *,
 		     const char *, ...);
+void		 format_add_tv(struct format_tree *, const char *,
+		     struct timeval *);
 void		 format_each(struct format_tree *, void (*)(const char *,
 		     const char *, void *), void *);
 char		*format_expand_time(struct format_tree *, const char *);
@@ -2269,6 +2271,7 @@ void	 file_push(struct client_file *);
 extern struct tmuxproc *server_proc;
 extern struct clients clients;
 extern struct cmd_find_state marked_pane;
+extern struct message_list message_log;
 void	 server_set_marked(struct session *, struct winlink *,
 	     struct window_pane *);
 void	 server_clear_marked(void);
@@ -2278,6 +2281,7 @@ int	 server_check_marked(void);
 int	 server_start(struct tmuxproc *, int, struct event_base *, int, char *);
 void	 server_update_socket(void);
 void	 server_add_accept(int);
+void printflike(1, 2) server_add_message(const char *, ...);
 
 /* server-client.c */
 u_int	 server_client_how_many(void);
@@ -2299,8 +2303,6 @@ void	 server_client_exec(struct client *, const char *);
 void	 server_client_loop(void);
 void	 server_client_push_stdout(struct client *);
 void	 server_client_push_stderr(struct client *);
-void printflike(2, 3) server_client_add_message(struct client *, const char *,
-	     ...);
 const char *server_client_get_cwd(struct client *, struct session *);
 void	 server_client_set_flags(struct client *, const char *);
 const char *server_client_get_flags(struct client *);
