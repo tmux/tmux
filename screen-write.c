@@ -184,10 +184,10 @@ screen_write_initctx(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx,
 	}
 
 	if (ctx->wp != NULL &&
-	    !ctx->sync &&
+	    (~ctx->flags & SCREEN_WRITE_SYNC) &&
 	    (sync || ctx->wp != ctx->wp->window->active)) {
 		tty_write(tty_cmd_syncstart, ttyctx);
-		ctx->sync = 1;
+		ctx->flags |= SCREEN_WRITE_SYNC;
 	}
 }
 
