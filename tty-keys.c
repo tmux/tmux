@@ -21,6 +21,7 @@
 
 #include <netinet/in.h>
 
+#include <ctype.h>
 #include <limits.h>
 #include <resolv.h>
 #include <stdlib.h>
@@ -46,6 +47,8 @@ static struct tty_key *tty_keys_find(struct tty *, const char *, size_t,
 static int	tty_keys_next1(struct tty *, const char *, size_t, key_code *,
 		    size_t *, int);
 static void	tty_keys_callback(int, short, void *);
+static int	tty_keys_extended_key(struct tty *, const char *, size_t,
+		    size_t *, key_code *);
 static int	tty_keys_mouse(struct tty *, const char *, size_t, size_t *,
 		    struct mouse_event *);
 static int	tty_keys_clipboard(struct tty *, const char *, size_t,
@@ -69,33 +72,33 @@ static const struct tty_default_key_raw tty_default_raw_keys[] = {
 	 * put the terminal into keypad_xmit mode. Translation of numbers
 	 * mode/applications mode is done in input-keys.c.
 	 */
-	{ "\033Oo", KEYC_KP_SLASH },
-	{ "\033Oj", KEYC_KP_STAR },
-	{ "\033Om", KEYC_KP_MINUS },
-	{ "\033Ow", KEYC_KP_SEVEN },
-	{ "\033Ox", KEYC_KP_EIGHT },
-	{ "\033Oy", KEYC_KP_NINE },
-	{ "\033Ok", KEYC_KP_PLUS },
-	{ "\033Ot", KEYC_KP_FOUR },
-	{ "\033Ou", KEYC_KP_FIVE },
-	{ "\033Ov", KEYC_KP_SIX },
-	{ "\033Oq", KEYC_KP_ONE },
-	{ "\033Or", KEYC_KP_TWO },
-	{ "\033Os", KEYC_KP_THREE },
-	{ "\033OM", KEYC_KP_ENTER },
-	{ "\033Op", KEYC_KP_ZERO },
-	{ "\033On", KEYC_KP_PERIOD },
+	{ "\033Oo", KEYC_KP_SLASH|KEYC_KEYPAD },
+	{ "\033Oj", KEYC_KP_STAR|KEYC_KEYPAD },
+	{ "\033Om", KEYC_KP_MINUS|KEYC_KEYPAD },
+	{ "\033Ow", KEYC_KP_SEVEN|KEYC_KEYPAD },
+	{ "\033Ox", KEYC_KP_EIGHT|KEYC_KEYPAD },
+	{ "\033Oy", KEYC_KP_NINE|KEYC_KEYPAD },
+	{ "\033Ok", KEYC_KP_PLUS|KEYC_KEYPAD },
+	{ "\033Ot", KEYC_KP_FOUR|KEYC_KEYPAD },
+	{ "\033Ou", KEYC_KP_FIVE|KEYC_KEYPAD },
+	{ "\033Ov", KEYC_KP_SIX|KEYC_KEYPAD },
+	{ "\033Oq", KEYC_KP_ONE|KEYC_KEYPAD },
+	{ "\033Or", KEYC_KP_TWO|KEYC_KEYPAD },
+	{ "\033Os", KEYC_KP_THREE|KEYC_KEYPAD },
+	{ "\033OM", KEYC_KP_ENTER|KEYC_KEYPAD },
+	{ "\033Op", KEYC_KP_ZERO|KEYC_KEYPAD },
+	{ "\033On", KEYC_KP_PERIOD|KEYC_KEYPAD },
 
 	/* Arrow keys. */
-	{ "\033OA", KEYC_UP },
-	{ "\033OB", KEYC_DOWN },
-	{ "\033OC", KEYC_RIGHT },
-	{ "\033OD", KEYC_LEFT },
+	{ "\033OA", KEYC_UP|KEYC_CURSOR },
+	{ "\033OB", KEYC_DOWN|KEYC_CURSOR },
+	{ "\033OC", KEYC_RIGHT|KEYC_CURSOR },
+	{ "\033OD", KEYC_LEFT|KEYC_CURSOR },
 
-	{ "\033[A", KEYC_UP },
-	{ "\033[B", KEYC_DOWN },
-	{ "\033[C", KEYC_RIGHT },
-	{ "\033[D", KEYC_LEFT },
+	{ "\033[A", KEYC_UP|KEYC_CURSOR },
+	{ "\033[B", KEYC_DOWN|KEYC_CURSOR },
+	{ "\033[C", KEYC_RIGHT|KEYC_CURSOR },
+	{ "\033[D", KEYC_LEFT|KEYC_CURSOR },
 
 	/* Other (xterm) "cursor" keys. */
 	{ "\033OH", KEYC_HOME },
@@ -182,11 +185,59 @@ static const struct tty_default_key_raw tty_default_raw_keys[] = {
 	{ "\033[201~", KEYC_PASTE_END },
 };
 
+/* Default xterm keys. */
+struct tty_default_key_xterm {
+	const char	*template;
+	key_code	 key;
+};
+static const struct tty_default_key_xterm tty_default_xterm_keys[] = {
+	{ "\033[1;_P", KEYC_F1 },
+	{ "\033O1;_P", KEYC_F1 },
+	{ "\033O_P", KEYC_F1 },
+	{ "\033[1;_Q", KEYC_F2 },
+	{ "\033O1;_Q", KEYC_F2 },
+	{ "\033O_Q", KEYC_F2 },
+	{ "\033[1;_R", KEYC_F3 },
+	{ "\033O1;_R", KEYC_F3 },
+	{ "\033O_R", KEYC_F3 },
+	{ "\033[1;_S", KEYC_F4 },
+	{ "\033O1;_S", KEYC_F4 },
+	{ "\033O_S", KEYC_F4 },
+	{ "\033[15;_~", KEYC_F5 },
+	{ "\033[17;_~", KEYC_F6 },
+	{ "\033[18;_~", KEYC_F7 },
+	{ "\033[19;_~", KEYC_F8 },
+	{ "\033[20;_~", KEYC_F9 },
+	{ "\033[21;_~", KEYC_F10 },
+	{ "\033[23;_~", KEYC_F11 },
+	{ "\033[24;_~", KEYC_F12 },
+	{ "\033[1;_A", KEYC_UP },
+	{ "\033[1;_B", KEYC_DOWN },
+	{ "\033[1;_C", KEYC_RIGHT },
+	{ "\033[1;_D", KEYC_LEFT },
+	{ "\033[1;_H", KEYC_HOME },
+	{ "\033[1;_F", KEYC_END },
+	{ "\033[5;_~", KEYC_PPAGE },
+	{ "\033[6;_~", KEYC_NPAGE },
+	{ "\033[2;_~", KEYC_IC },
+	{ "\033[3;_~", KEYC_DC },
+};
+static const key_code tty_default_xterm_modifiers[] = {
+	0,
+	0,
+	KEYC_SHIFT,
+	KEYC_META|KEYC_IMPLIED_META,
+	KEYC_SHIFT|KEYC_META|KEYC_IMPLIED_META,
+	KEYC_CTRL,
+	KEYC_SHIFT|KEYC_CTRL,
+	KEYC_META|KEYC_IMPLIED_META|KEYC_CTRL,
+	KEYC_SHIFT|KEYC_META|KEYC_IMPLIED_META|KEYC_CTRL
+};
+
 /*
- * Default terminfo(5) keys. Any keys that have builtin modifiers
- * (that is, where the key itself contains the modifiers) has the
- * KEYC_XTERM flag set so a leading escape is not treated as meta (and
- * probably removed).
+ * Default terminfo(5) keys. Any keys that have builtin modifiers (that is,
+ * where the key itself contains the modifiers) has the KEYC_XTERM flag set so
+ * a leading escape is not treated as meta (and probably removed).
  */
 struct tty_default_key_code {
 	enum tty_code_code	code;
@@ -207,61 +258,61 @@ static const struct tty_default_key_code tty_default_code_keys[] = {
 	{ TTYC_KF11, KEYC_F11 },
 	{ TTYC_KF12, KEYC_F12 },
 
-	{ TTYC_KF13, KEYC_F1|KEYC_SHIFT|KEYC_XTERM },
-	{ TTYC_KF14, KEYC_F2|KEYC_SHIFT|KEYC_XTERM },
-	{ TTYC_KF15, KEYC_F3|KEYC_SHIFT|KEYC_XTERM },
-	{ TTYC_KF16, KEYC_F4|KEYC_SHIFT|KEYC_XTERM },
-	{ TTYC_KF17, KEYC_F5|KEYC_SHIFT|KEYC_XTERM },
-	{ TTYC_KF18, KEYC_F6|KEYC_SHIFT|KEYC_XTERM },
-	{ TTYC_KF19, KEYC_F7|KEYC_SHIFT|KEYC_XTERM },
-	{ TTYC_KF20, KEYC_F8|KEYC_SHIFT|KEYC_XTERM },
-	{ TTYC_KF21, KEYC_F9|KEYC_SHIFT|KEYC_XTERM },
-	{ TTYC_KF22, KEYC_F10|KEYC_SHIFT|KEYC_XTERM },
-	{ TTYC_KF23, KEYC_F11|KEYC_SHIFT|KEYC_XTERM },
-	{ TTYC_KF24, KEYC_F12|KEYC_SHIFT|KEYC_XTERM },
+	{ TTYC_KF13, KEYC_F1|KEYC_SHIFT },
+	{ TTYC_KF14, KEYC_F2|KEYC_SHIFT },
+	{ TTYC_KF15, KEYC_F3|KEYC_SHIFT },
+	{ TTYC_KF16, KEYC_F4|KEYC_SHIFT },
+	{ TTYC_KF17, KEYC_F5|KEYC_SHIFT },
+	{ TTYC_KF18, KEYC_F6|KEYC_SHIFT },
+	{ TTYC_KF19, KEYC_F7|KEYC_SHIFT },
+	{ TTYC_KF20, KEYC_F8|KEYC_SHIFT },
+	{ TTYC_KF21, KEYC_F9|KEYC_SHIFT },
+	{ TTYC_KF22, KEYC_F10|KEYC_SHIFT },
+	{ TTYC_KF23, KEYC_F11|KEYC_SHIFT },
+	{ TTYC_KF24, KEYC_F12|KEYC_SHIFT },
 
-	{ TTYC_KF25, KEYC_F1|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KF26, KEYC_F2|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KF27, KEYC_F3|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KF28, KEYC_F4|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KF29, KEYC_F5|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KF30, KEYC_F6|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KF31, KEYC_F7|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KF32, KEYC_F8|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KF33, KEYC_F9|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KF34, KEYC_F10|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KF35, KEYC_F11|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KF36, KEYC_F12|KEYC_CTRL|KEYC_XTERM },
+	{ TTYC_KF25, KEYC_F1|KEYC_CTRL },
+	{ TTYC_KF26, KEYC_F2|KEYC_CTRL },
+	{ TTYC_KF27, KEYC_F3|KEYC_CTRL },
+	{ TTYC_KF28, KEYC_F4|KEYC_CTRL },
+	{ TTYC_KF29, KEYC_F5|KEYC_CTRL },
+	{ TTYC_KF30, KEYC_F6|KEYC_CTRL },
+	{ TTYC_KF31, KEYC_F7|KEYC_CTRL },
+	{ TTYC_KF32, KEYC_F8|KEYC_CTRL },
+	{ TTYC_KF33, KEYC_F9|KEYC_CTRL },
+	{ TTYC_KF34, KEYC_F10|KEYC_CTRL },
+	{ TTYC_KF35, KEYC_F11|KEYC_CTRL },
+	{ TTYC_KF36, KEYC_F12|KEYC_CTRL },
 
-	{ TTYC_KF37, KEYC_F1|KEYC_SHIFT|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KF38, KEYC_F2|KEYC_SHIFT|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KF39, KEYC_F3|KEYC_SHIFT|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KF40, KEYC_F4|KEYC_SHIFT|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KF41, KEYC_F5|KEYC_SHIFT|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KF42, KEYC_F6|KEYC_SHIFT|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KF43, KEYC_F7|KEYC_SHIFT|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KF44, KEYC_F8|KEYC_SHIFT|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KF45, KEYC_F9|KEYC_SHIFT|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KF46, KEYC_F10|KEYC_SHIFT|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KF47, KEYC_F11|KEYC_SHIFT|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KF48, KEYC_F12|KEYC_SHIFT|KEYC_CTRL|KEYC_XTERM },
+	{ TTYC_KF37, KEYC_F1|KEYC_SHIFT|KEYC_CTRL },
+	{ TTYC_KF38, KEYC_F2|KEYC_SHIFT|KEYC_CTRL },
+	{ TTYC_KF39, KEYC_F3|KEYC_SHIFT|KEYC_CTRL },
+	{ TTYC_KF40, KEYC_F4|KEYC_SHIFT|KEYC_CTRL },
+	{ TTYC_KF41, KEYC_F5|KEYC_SHIFT|KEYC_CTRL },
+	{ TTYC_KF42, KEYC_F6|KEYC_SHIFT|KEYC_CTRL },
+	{ TTYC_KF43, KEYC_F7|KEYC_SHIFT|KEYC_CTRL },
+	{ TTYC_KF44, KEYC_F8|KEYC_SHIFT|KEYC_CTRL },
+	{ TTYC_KF45, KEYC_F9|KEYC_SHIFT|KEYC_CTRL },
+	{ TTYC_KF46, KEYC_F10|KEYC_SHIFT|KEYC_CTRL },
+	{ TTYC_KF47, KEYC_F11|KEYC_SHIFT|KEYC_CTRL },
+	{ TTYC_KF48, KEYC_F12|KEYC_SHIFT|KEYC_CTRL },
 
-	{ TTYC_KF49, KEYC_F1|KEYC_ESCAPE|KEYC_XTERM },
-	{ TTYC_KF50, KEYC_F2|KEYC_ESCAPE|KEYC_XTERM },
-	{ TTYC_KF51, KEYC_F3|KEYC_ESCAPE|KEYC_XTERM },
-	{ TTYC_KF52, KEYC_F4|KEYC_ESCAPE|KEYC_XTERM },
-	{ TTYC_KF53, KEYC_F5|KEYC_ESCAPE|KEYC_XTERM },
-	{ TTYC_KF54, KEYC_F6|KEYC_ESCAPE|KEYC_XTERM },
-	{ TTYC_KF55, KEYC_F7|KEYC_ESCAPE|KEYC_XTERM },
-	{ TTYC_KF56, KEYC_F8|KEYC_ESCAPE|KEYC_XTERM },
-	{ TTYC_KF57, KEYC_F9|KEYC_ESCAPE|KEYC_XTERM },
-	{ TTYC_KF58, KEYC_F10|KEYC_ESCAPE|KEYC_XTERM },
-	{ TTYC_KF59, KEYC_F11|KEYC_ESCAPE|KEYC_XTERM },
-	{ TTYC_KF60, KEYC_F12|KEYC_ESCAPE|KEYC_XTERM },
+	{ TTYC_KF49, KEYC_F1|KEYC_META|KEYC_IMPLIED_META },
+	{ TTYC_KF50, KEYC_F2|KEYC_META|KEYC_IMPLIED_META },
+	{ TTYC_KF51, KEYC_F3|KEYC_META|KEYC_IMPLIED_META },
+	{ TTYC_KF52, KEYC_F4|KEYC_META|KEYC_IMPLIED_META },
+	{ TTYC_KF53, KEYC_F5|KEYC_META|KEYC_IMPLIED_META },
+	{ TTYC_KF54, KEYC_F6|KEYC_META|KEYC_IMPLIED_META },
+	{ TTYC_KF55, KEYC_F7|KEYC_META|KEYC_IMPLIED_META },
+	{ TTYC_KF56, KEYC_F8|KEYC_META|KEYC_IMPLIED_META },
+	{ TTYC_KF57, KEYC_F9|KEYC_META|KEYC_IMPLIED_META },
+	{ TTYC_KF58, KEYC_F10|KEYC_META|KEYC_IMPLIED_META },
+	{ TTYC_KF59, KEYC_F11|KEYC_META|KEYC_IMPLIED_META },
+	{ TTYC_KF60, KEYC_F12|KEYC_META|KEYC_IMPLIED_META },
 
-	{ TTYC_KF61, KEYC_F1|KEYC_ESCAPE|KEYC_SHIFT|KEYC_XTERM },
-	{ TTYC_KF62, KEYC_F2|KEYC_ESCAPE|KEYC_SHIFT|KEYC_XTERM },
-	{ TTYC_KF63, KEYC_F3|KEYC_ESCAPE|KEYC_SHIFT|KEYC_XTERM },
+	{ TTYC_KF61, KEYC_F1|KEYC_META|KEYC_IMPLIED_META|KEYC_SHIFT },
+	{ TTYC_KF62, KEYC_F2|KEYC_META|KEYC_IMPLIED_META|KEYC_SHIFT },
+	{ TTYC_KF63, KEYC_F3|KEYC_META|KEYC_IMPLIED_META|KEYC_SHIFT },
 
 	{ TTYC_KICH1, KEYC_IC },
 	{ TTYC_KDCH1, KEYC_DC },
@@ -272,74 +323,74 @@ static const struct tty_default_key_code tty_default_code_keys[] = {
 	{ TTYC_KCBT, KEYC_BTAB },
 
 	/* Arrow keys from terminfo. */
-	{ TTYC_KCUU1, KEYC_UP },
-	{ TTYC_KCUD1, KEYC_DOWN },
-	{ TTYC_KCUB1, KEYC_LEFT },
-	{ TTYC_KCUF1, KEYC_RIGHT },
+	{ TTYC_KCUU1, KEYC_UP|KEYC_CURSOR },
+	{ TTYC_KCUD1, KEYC_DOWN|KEYC_CURSOR },
+	{ TTYC_KCUB1, KEYC_LEFT|KEYC_CURSOR },
+	{ TTYC_KCUF1, KEYC_RIGHT|KEYC_CURSOR },
 
 	/* Key and modifier capabilities. */
-	{ TTYC_KDC2, KEYC_DC|KEYC_SHIFT|KEYC_XTERM },
-	{ TTYC_KDC3, KEYC_DC|KEYC_ESCAPE|KEYC_XTERM },
-	{ TTYC_KDC4, KEYC_DC|KEYC_SHIFT|KEYC_ESCAPE|KEYC_XTERM },
-	{ TTYC_KDC5, KEYC_DC|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KDC6, KEYC_DC|KEYC_SHIFT|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KDC7, KEYC_DC|KEYC_ESCAPE|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KIND, KEYC_DOWN|KEYC_SHIFT|KEYC_XTERM },
-	{ TTYC_KDN2, KEYC_DOWN|KEYC_SHIFT|KEYC_XTERM },
-	{ TTYC_KDN3, KEYC_DOWN|KEYC_ESCAPE|KEYC_XTERM },
-	{ TTYC_KDN4, KEYC_DOWN|KEYC_SHIFT|KEYC_ESCAPE|KEYC_XTERM },
-	{ TTYC_KDN5, KEYC_DOWN|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KDN6, KEYC_DOWN|KEYC_SHIFT|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KDN7, KEYC_DOWN|KEYC_ESCAPE|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KEND2, KEYC_END|KEYC_SHIFT|KEYC_XTERM },
-	{ TTYC_KEND3, KEYC_END|KEYC_ESCAPE|KEYC_XTERM },
-	{ TTYC_KEND4, KEYC_END|KEYC_SHIFT|KEYC_ESCAPE|KEYC_XTERM },
-	{ TTYC_KEND5, KEYC_END|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KEND6, KEYC_END|KEYC_SHIFT|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KEND7, KEYC_END|KEYC_ESCAPE|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KHOM2, KEYC_HOME|KEYC_SHIFT|KEYC_XTERM },
-	{ TTYC_KHOM3, KEYC_HOME|KEYC_ESCAPE|KEYC_XTERM },
-	{ TTYC_KHOM4, KEYC_HOME|KEYC_SHIFT|KEYC_ESCAPE|KEYC_XTERM },
-	{ TTYC_KHOM5, KEYC_HOME|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KHOM6, KEYC_HOME|KEYC_SHIFT|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KHOM7, KEYC_HOME|KEYC_ESCAPE|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KIC2, KEYC_IC|KEYC_SHIFT|KEYC_XTERM },
-	{ TTYC_KIC3, KEYC_IC|KEYC_ESCAPE|KEYC_XTERM },
-	{ TTYC_KIC4, KEYC_IC|KEYC_SHIFT|KEYC_ESCAPE|KEYC_XTERM },
-	{ TTYC_KIC5, KEYC_IC|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KIC6, KEYC_IC|KEYC_SHIFT|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KIC7, KEYC_IC|KEYC_ESCAPE|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KLFT2, KEYC_LEFT|KEYC_SHIFT|KEYC_XTERM },
-	{ TTYC_KLFT3, KEYC_LEFT|KEYC_ESCAPE|KEYC_XTERM },
-	{ TTYC_KLFT4, KEYC_LEFT|KEYC_SHIFT|KEYC_ESCAPE|KEYC_XTERM },
-	{ TTYC_KLFT5, KEYC_LEFT|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KLFT6, KEYC_LEFT|KEYC_SHIFT|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KLFT7, KEYC_LEFT|KEYC_ESCAPE|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KNXT2, KEYC_NPAGE|KEYC_SHIFT|KEYC_XTERM },
-	{ TTYC_KNXT3, KEYC_NPAGE|KEYC_ESCAPE|KEYC_XTERM },
-	{ TTYC_KNXT4, KEYC_NPAGE|KEYC_SHIFT|KEYC_ESCAPE|KEYC_XTERM },
-	{ TTYC_KNXT5, KEYC_NPAGE|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KNXT6, KEYC_NPAGE|KEYC_SHIFT|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KNXT7, KEYC_NPAGE|KEYC_ESCAPE|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KPRV2, KEYC_PPAGE|KEYC_SHIFT|KEYC_XTERM },
-	{ TTYC_KPRV3, KEYC_PPAGE|KEYC_ESCAPE|KEYC_XTERM },
-	{ TTYC_KPRV4, KEYC_PPAGE|KEYC_SHIFT|KEYC_ESCAPE|KEYC_XTERM },
-	{ TTYC_KPRV5, KEYC_PPAGE|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KPRV6, KEYC_PPAGE|KEYC_SHIFT|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KPRV7, KEYC_PPAGE|KEYC_ESCAPE|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KRIT2, KEYC_RIGHT|KEYC_SHIFT|KEYC_XTERM },
-	{ TTYC_KRIT3, KEYC_RIGHT|KEYC_ESCAPE|KEYC_XTERM },
-	{ TTYC_KRIT4, KEYC_RIGHT|KEYC_SHIFT|KEYC_ESCAPE|KEYC_XTERM },
-	{ TTYC_KRIT5, KEYC_RIGHT|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KRIT6, KEYC_RIGHT|KEYC_SHIFT|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KRIT7, KEYC_RIGHT|KEYC_ESCAPE|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KRI, KEYC_UP|KEYC_SHIFT|KEYC_XTERM },
-	{ TTYC_KUP2, KEYC_UP|KEYC_SHIFT|KEYC_XTERM },
-	{ TTYC_KUP3, KEYC_UP|KEYC_ESCAPE|KEYC_XTERM },
-	{ TTYC_KUP4, KEYC_UP|KEYC_SHIFT|KEYC_ESCAPE|KEYC_XTERM },
-	{ TTYC_KUP5, KEYC_UP|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KUP6, KEYC_UP|KEYC_SHIFT|KEYC_CTRL|KEYC_XTERM },
-	{ TTYC_KUP7, KEYC_UP|KEYC_ESCAPE|KEYC_CTRL|KEYC_XTERM },
+	{ TTYC_KDC2, KEYC_DC|KEYC_SHIFT },
+	{ TTYC_KDC3, KEYC_DC|KEYC_META|KEYC_IMPLIED_META },
+	{ TTYC_KDC4, KEYC_DC|KEYC_SHIFT|KEYC_META|KEYC_IMPLIED_META },
+	{ TTYC_KDC5, KEYC_DC|KEYC_CTRL },
+	{ TTYC_KDC6, KEYC_DC|KEYC_SHIFT|KEYC_CTRL },
+	{ TTYC_KDC7, KEYC_DC|KEYC_META|KEYC_IMPLIED_META|KEYC_CTRL },
+	{ TTYC_KIND, KEYC_DOWN|KEYC_SHIFT },
+	{ TTYC_KDN2, KEYC_DOWN|KEYC_SHIFT },
+	{ TTYC_KDN3, KEYC_DOWN|KEYC_META|KEYC_IMPLIED_META },
+	{ TTYC_KDN4, KEYC_DOWN|KEYC_SHIFT|KEYC_META|KEYC_IMPLIED_META },
+	{ TTYC_KDN5, KEYC_DOWN|KEYC_CTRL },
+	{ TTYC_KDN6, KEYC_DOWN|KEYC_SHIFT|KEYC_CTRL },
+	{ TTYC_KDN7, KEYC_DOWN|KEYC_META|KEYC_IMPLIED_META|KEYC_CTRL },
+	{ TTYC_KEND2, KEYC_END|KEYC_SHIFT },
+	{ TTYC_KEND3, KEYC_END|KEYC_META|KEYC_IMPLIED_META },
+	{ TTYC_KEND4, KEYC_END|KEYC_SHIFT|KEYC_META|KEYC_IMPLIED_META },
+	{ TTYC_KEND5, KEYC_END|KEYC_CTRL },
+	{ TTYC_KEND6, KEYC_END|KEYC_SHIFT|KEYC_CTRL },
+	{ TTYC_KEND7, KEYC_END|KEYC_META|KEYC_IMPLIED_META|KEYC_CTRL },
+	{ TTYC_KHOM2, KEYC_HOME|KEYC_SHIFT },
+	{ TTYC_KHOM3, KEYC_HOME|KEYC_META|KEYC_IMPLIED_META },
+	{ TTYC_KHOM4, KEYC_HOME|KEYC_SHIFT|KEYC_META|KEYC_IMPLIED_META },
+	{ TTYC_KHOM5, KEYC_HOME|KEYC_CTRL },
+	{ TTYC_KHOM6, KEYC_HOME|KEYC_SHIFT|KEYC_CTRL },
+	{ TTYC_KHOM7, KEYC_HOME|KEYC_META|KEYC_IMPLIED_META|KEYC_CTRL },
+	{ TTYC_KIC2, KEYC_IC|KEYC_SHIFT },
+	{ TTYC_KIC3, KEYC_IC|KEYC_META|KEYC_IMPLIED_META },
+	{ TTYC_KIC4, KEYC_IC|KEYC_SHIFT|KEYC_META|KEYC_IMPLIED_META },
+	{ TTYC_KIC5, KEYC_IC|KEYC_CTRL },
+	{ TTYC_KIC6, KEYC_IC|KEYC_SHIFT|KEYC_CTRL },
+	{ TTYC_KIC7, KEYC_IC|KEYC_META|KEYC_IMPLIED_META|KEYC_CTRL },
+	{ TTYC_KLFT2, KEYC_LEFT|KEYC_SHIFT },
+	{ TTYC_KLFT3, KEYC_LEFT|KEYC_META|KEYC_IMPLIED_META },
+	{ TTYC_KLFT4, KEYC_LEFT|KEYC_SHIFT|KEYC_META|KEYC_IMPLIED_META },
+	{ TTYC_KLFT5, KEYC_LEFT|KEYC_CTRL },
+	{ TTYC_KLFT6, KEYC_LEFT|KEYC_SHIFT|KEYC_CTRL },
+	{ TTYC_KLFT7, KEYC_LEFT|KEYC_META|KEYC_IMPLIED_META|KEYC_CTRL },
+	{ TTYC_KNXT2, KEYC_NPAGE|KEYC_SHIFT },
+	{ TTYC_KNXT3, KEYC_NPAGE|KEYC_META|KEYC_IMPLIED_META },
+	{ TTYC_KNXT4, KEYC_NPAGE|KEYC_SHIFT|KEYC_META|KEYC_IMPLIED_META },
+	{ TTYC_KNXT5, KEYC_NPAGE|KEYC_CTRL },
+	{ TTYC_KNXT6, KEYC_NPAGE|KEYC_SHIFT|KEYC_CTRL },
+	{ TTYC_KNXT7, KEYC_NPAGE|KEYC_META|KEYC_IMPLIED_META|KEYC_CTRL },
+	{ TTYC_KPRV2, KEYC_PPAGE|KEYC_SHIFT },
+	{ TTYC_KPRV3, KEYC_PPAGE|KEYC_META|KEYC_IMPLIED_META },
+	{ TTYC_KPRV4, KEYC_PPAGE|KEYC_SHIFT|KEYC_META|KEYC_IMPLIED_META },
+	{ TTYC_KPRV5, KEYC_PPAGE|KEYC_CTRL },
+	{ TTYC_KPRV6, KEYC_PPAGE|KEYC_SHIFT|KEYC_CTRL },
+	{ TTYC_KPRV7, KEYC_PPAGE|KEYC_META|KEYC_IMPLIED_META|KEYC_CTRL },
+	{ TTYC_KRIT2, KEYC_RIGHT|KEYC_SHIFT },
+	{ TTYC_KRIT3, KEYC_RIGHT|KEYC_META|KEYC_IMPLIED_META },
+	{ TTYC_KRIT4, KEYC_RIGHT|KEYC_SHIFT|KEYC_META|KEYC_IMPLIED_META },
+	{ TTYC_KRIT5, KEYC_RIGHT|KEYC_CTRL },
+	{ TTYC_KRIT6, KEYC_RIGHT|KEYC_SHIFT|KEYC_CTRL },
+	{ TTYC_KRIT7, KEYC_RIGHT|KEYC_META|KEYC_IMPLIED_META|KEYC_CTRL },
+	{ TTYC_KRI, KEYC_UP|KEYC_SHIFT },
+	{ TTYC_KUP2, KEYC_UP|KEYC_SHIFT },
+	{ TTYC_KUP3, KEYC_UP|KEYC_META|KEYC_IMPLIED_META },
+	{ TTYC_KUP4, KEYC_UP|KEYC_SHIFT|KEYC_META|KEYC_IMPLIED_META },
+	{ TTYC_KUP5, KEYC_UP|KEYC_CTRL },
+	{ TTYC_KUP6, KEYC_UP|KEYC_SHIFT|KEYC_CTRL },
+	{ TTYC_KUP7, KEYC_UP|KEYC_META|KEYC_IMPLIED_META|KEYC_CTRL },
 };
 
 /* Add key to tree. */
@@ -350,7 +401,7 @@ tty_keys_add(struct tty *tty, const char *s, key_code key)
 	size_t		 size;
 	const char     	*keystr;
 
-	keystr = key_string_lookup_key(key);
+	keystr = key_string_lookup_key(key, 1);
 	if ((tk = tty_keys_find(tty, s, strlen(s), &size)) == NULL) {
 		log_debug("new key %s: 0x%llx (%s)", s, key, keystr);
 		tty_keys_add1(&tty->key_tree, s, key);
@@ -403,17 +454,30 @@ void
 tty_keys_build(struct tty *tty)
 {
 	const struct tty_default_key_raw	*tdkr;
+	const struct tty_default_key_xterm	*tdkx;
 	const struct tty_default_key_code	*tdkc;
-	u_int		 			 i;
+	u_int		 			 i, j;
 	const char				*s;
 	struct options_entry			*o;
 	struct options_array_item		*a;
 	union options_value			*ov;
+	char					 copy[16];
+	key_code				 key;
 
 	if (tty->key_tree != NULL)
 		tty_keys_free(tty);
 	tty->key_tree = NULL;
 
+	for (i = 0; i < nitems(tty_default_xterm_keys); i++) {
+		tdkx = &tty_default_xterm_keys[i];
+		for (j = 2; j < nitems(tty_default_xterm_modifiers); j++) {
+			strlcpy(copy, tdkx->template, sizeof copy);
+			copy[strcspn(copy, "_")] = '0' + j;
+
+			key = tdkx->key|tty_default_xterm_modifiers[j];
+			tty_keys_add(tty, copy, key);
+		}
+	}
 	for (i = 0; i < nitems(tty_default_raw_keys); i++) {
 		tdkr = &tty_default_raw_keys[i];
 
@@ -516,7 +580,6 @@ tty_keys_next1(struct tty *tty, const char *buf, size_t len, key_code *key,
 	enum utf8_state		 more;
 	u_int			 i;
 	wchar_t			 wc;
-	int			 n;
 
 	log_debug("%s: next key is %zu (%.*s) (expired=%d)", c->name, len,
 	    (int)len, buf, expired);
@@ -533,13 +596,6 @@ tty_keys_next1(struct tty *tty, const char *buf, size_t len, key_code *key,
 		*key = tk->key;
 		return (0);
 	}
-
-	/* Is this an an xterm(1) key? */
-	n = xterm_keys_find(buf, len, size, key);
-	if (n == 0)
-		return (0);
-	if (n == 1 && !expired)
-		return (1);
 
 	/* Is this valid UTF-8? */
 	more = utf8_open(&ud, (u_char)*buf);
@@ -637,6 +693,16 @@ tty_keys_next(struct tty *tty)
 		goto partial_key;
 	}
 
+	/* Is this an extended key press? */
+	switch (tty_keys_extended_key(tty, buf, len, &size, &key)) {
+	case 0:		/* yes */
+		goto complete_key;
+	case -1:	/* no, or not valid */
+		break;
+	case 1:		/* partial */
+		goto partial_key;
+	}
+
 first_key:
 	/* Try to lookup complete key. */
 	n = tty_keys_next1(tty, buf, len, &key, &size, expired);
@@ -653,7 +719,7 @@ first_key:
 		/* Look for a key without the escape. */
 		n = tty_keys_next1(tty, buf + 1, len - 1, &key, &size, expired);
 		if (n == 0) {	/* found */
-			if (key & KEYC_XTERM) {
+			if (key & KEYC_IMPLIED_META) {
 				/*
 				 * We want the escape key as well as the xterm
 				 * key, because the xterm sequence implicitly
@@ -665,7 +731,7 @@ first_key:
 				size = 1;
 				goto complete_key;
 			}
-			key |= KEYC_ESCAPE;
+			key |= KEYC_META;
 			size++;
 			goto complete_key;
 		}
@@ -678,7 +744,7 @@ first_key:
 	 * escape). So pass it through even if the timer has not expired.
 	 */
 	if (*buf == '\033' && len >= 2) {
-		key = (u_char)buf[1] | KEYC_ESCAPE;
+		key = (u_char)buf[1] | KEYC_META;
 		size = 2;
 	} else {
 		key = (u_char)buf[0];
@@ -723,7 +789,7 @@ complete_key:
 	 */
 	bspace = tty->tio.c_cc[VERASE];
 	if (bspace != _POSIX_VDISABLE && (key & KEYC_MASK_KEY) == bspace)
-		key = (key & KEYC_MASK_MOD) | KEYC_BSPACE;
+		key = (key & KEYC_MASK_MODIFIERS)|KEYC_BSPACE;
 
 	/* Remove data from buffer. */
 	evbuffer_drain(tty->in, size);
@@ -772,6 +838,96 @@ tty_keys_callback(__unused int fd, __unused short events, void *data)
 		while (tty_keys_next(tty))
 			;
 	}
+}
+
+/*
+ * Handle extended key input. This has two forms: \033[27;m;k~ and \033[k;mu,
+ * where k is key as a number and m is a modifier. Returns 0 for success, -1
+ * for failure, 1 for partial;
+ */
+static int
+tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
+    size_t *size, key_code *key)
+{
+	struct client	*c = tty->client;
+	size_t		 end;
+	u_int		 number, modifiers;
+	char		 tmp[64];
+
+	*size = 0;
+
+	/* First two bytes are always \033[. */
+	if (buf[0] != '\033')
+		return (-1);
+	if (len == 1)
+		return (1);
+	if (buf[1] != '[')
+		return (-1);
+	if (len == 2)
+		return (1);
+
+	/*
+	 * Look for a terminator. Stop at either '~' or anything that isn't a
+	 * number or ';'.
+	 */
+	for (end = 2; end < len && end != sizeof tmp; end++) {
+		if (buf[end] == '~')
+			break;
+		if (!isdigit((u_char)buf[end]) && buf[end] != ';')
+			break;
+	}
+	if (end == len)
+		return (1);
+	if (end == sizeof tmp || (buf[end] != '~' && buf[end] != 'u'))
+		return (-1);
+
+	/* Copy to the buffer. */
+	memcpy(tmp, buf + 2, end);
+	tmp[end] = '\0';
+
+	/* Try to parse either form of key. */
+	if (buf[end] == '~') {
+		if (sscanf(tmp, "27;%u;%u", &modifiers, &number) != 2)
+			return (-1);
+	} else {
+		if (sscanf(tmp ,"%u;%u", &number, &modifiers) != 2)
+			return (-1);
+	}
+	*size = end + 1;
+
+	/* Store the key and modifiers. */
+	*key = number;
+	switch (modifiers) {
+	case 2:
+		(*key) |= KEYC_SHIFT;
+		break;
+	case 3:
+		(*key) |= (KEYC_META|KEYC_IMPLIED_META);
+		break;
+	case 4:
+		(*key) |= (KEYC_SHIFT|KEYC_META|KEYC_IMPLIED_META);
+		break;
+	case 5:
+		(*key) |= KEYC_CTRL;
+		break;
+	case 6:
+		(*key) |= (KEYC_SHIFT|KEYC_CTRL);
+		break;
+	case 7:
+		(*key) |= (KEYC_META|KEYC_CTRL);
+		break;
+	case 8:
+		(*key) |= (KEYC_SHIFT|KEYC_META|KEYC_IMPLIED_META|KEYC_CTRL);
+		break;
+	default:
+		*key = KEYC_NONE;
+		break;
+	}
+	if (log_get_level() != 0) {
+		log_debug("%s: extended key %.*s is %llx (%s)", c->name,
+		    (int)*size, buf, *key, key_string_lookup_key(*key, 1));
+	}
+	return (0);
 }
 
 /*
@@ -1137,7 +1293,7 @@ tty_keys_extended_device_attributes(struct tty *tty, const char *buf,
 	else if (strncmp(tmp, "tmux ", 5) == 0)
 		tty_default_features(&c->term_features, "tmux", 0);
 	else if (strncmp(tmp, "XTerm(", 6) == 0)
-		tty_default_features(&c->term_features, "xterm", 0);
+		tty_default_features(&c->term_features, "XTerm", 0);
 	else if (strncmp(tmp, "mintty ", 7) == 0)
 		tty_default_features(&c->term_features, "mintty", 0);
 	log_debug("%s: received extended DA %.*s", c->name, (int)*size, buf);

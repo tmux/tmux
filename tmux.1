@@ -3225,6 +3225,12 @@ sessions.
 .Op Ic on | off
 .Xc
 If enabled, the server will exit when there are no attached clients.
+.It Xo Ic extended-keys
+.Op Ic on | off
+.Xc
+When enabled, extended keys are requested from the terminal and if supported
+are recognised by
+.Nm .
 .It Xo Ic focus-events
 .Op Ic on | off
 .Xc
@@ -4054,16 +4060,6 @@ option.
 .Xc
 If this option is set, searches will wrap around the end of the pane contents.
 The default is on.
-.Pp
-.It Xo Ic xterm-keys
-.Op Ic on | off
-.Xc
-If this option is set,
-.Nm
-will generate
-.Xr xterm 1 -style
-function key sequences; these have a number included to indicate modifiers such
-as Shift, Alt or Ctrl.
 .El
 .Pp
 Available pane options are:
@@ -5754,6 +5750,8 @@ Disable and enable bracketed paste.
 These are set automatically if the
 .Em XT
 capability is present.
+.It Em \&Dseks , \&Eneks
+Disable and enable extended keys.
 .It Em \&Dsfcs , \&Enfcs
 Disable and enable focus reporting.
 These are set automatically if the

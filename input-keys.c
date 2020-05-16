@@ -33,112 +33,340 @@
 
 static void	 input_key_mouse(struct window_pane *, struct mouse_event *);
 
-struct input_key_ent {
-	key_code	 key;
-	const char	*data;
+/* Entry in the key tree. */
+struct input_key_entry {
+	key_code			 key;
+	const char			*data;
 
-	int		 flags;
-#define INPUTKEY_KEYPAD 0x1	/* keypad key */
-#define INPUTKEY_CURSOR 0x2	/* cursor key */
+	RB_ENTRY(input_key_entry)	 entry;
 };
+RB_HEAD(input_key_tree, input_key_entry);
 
-static const struct input_key_ent input_keys[] = {
+/* Tree of input keys. */
+static int	input_key_cmp(struct input_key_entry *,
+		    struct input_key_entry *);
+RB_GENERATE_STATIC(input_key_tree, input_key_entry, entry, input_key_cmp);
+struct input_key_tree input_key_tree = RB_INITIALIZER(&input_key_tree);
+
+/* List of default keys, the tree is built from this. */
+static struct input_key_entry input_key_defaults[] = {
 	/* Paste keys. */
-	{ KEYC_PASTE_START,	"\033[200~",	0 },
-	{ KEYC_PASTE_END,	"\033[201~",	0 },
+	{ .key = KEYC_PASTE_START,
+	  .data = "\033[200~"
+	},
+	{ .key = KEYC_PASTE_END,
+	  .data = "\033[201~"
+	},
 
 	/* Function keys. */
-	{ KEYC_F1,		"\033OP",	0 },
-	{ KEYC_F2,		"\033OQ",	0 },
-	{ KEYC_F3,		"\033OR",	0 },
-	{ KEYC_F4,		"\033OS",	0 },
-	{ KEYC_F5,		"\033[15~",	0 },
-	{ KEYC_F6,		"\033[17~",	0 },
-	{ KEYC_F7,		"\033[18~",	0 },
-	{ KEYC_F8,		"\033[19~",	0 },
-	{ KEYC_F9,		"\033[20~",	0 },
-	{ KEYC_F10,		"\033[21~",	0 },
-	{ KEYC_F11,		"\033[23~",	0 },
-	{ KEYC_F12,		"\033[24~",	0 },
-	{ KEYC_F1|KEYC_SHIFT,	"\033[25~",	0 },
-	{ KEYC_F2|KEYC_SHIFT,	"\033[26~",	0 },
-	{ KEYC_F3|KEYC_SHIFT,	"\033[28~",	0 },
-	{ KEYC_F4|KEYC_SHIFT,	"\033[29~",	0 },
-	{ KEYC_F5|KEYC_SHIFT,	"\033[31~",	0 },
-	{ KEYC_F6|KEYC_SHIFT,	"\033[32~",	0 },
-	{ KEYC_F7|KEYC_SHIFT,	"\033[33~",	0 },
-	{ KEYC_F8|KEYC_SHIFT,	"\033[34~",	0 },
-	{ KEYC_IC,		"\033[2~",	0 },
-	{ KEYC_DC,		"\033[3~",	0 },
-	{ KEYC_HOME,		"\033[1~",	0 },
-	{ KEYC_END,		"\033[4~",	0 },
-	{ KEYC_NPAGE,		"\033[6~",	0 },
-	{ KEYC_PPAGE,		"\033[5~",	0 },
-	{ KEYC_BTAB,		"\033[Z",	0 },
+	{ .key = KEYC_F1,
+	  .data = "\033OP"
+	},
+	{ .key = KEYC_F2,
+	  .data = "\033OQ"
+	},
+	{ .key = KEYC_F3,
+	  .data = "\033OR"
+	},
+	{ .key = KEYC_F4,
+	  .data = "\033OS"
+	},
+	{ .key = KEYC_F5,
+	  .data = "\033[15~"
+	},
+	{ .key = KEYC_F6,
+	  .data = "\033[17~"
+	},
+	{ .key = KEYC_F7,
+	  .data = "\033[18~"
+	},
+	{ .key = KEYC_F8,
+	  .data = "\033[19~"
+	},
+	{ .key = KEYC_F9,
+	  .data = "\033[20~"
+	},
+	{ .key = KEYC_F10,
+	  .data = "\033[21~"
+	},
+	{ .key = KEYC_F11,
+	  .data = "\033[23~"
+	},
+	{ .key = KEYC_F12,
+	  .data = "\033[24~"
+	},
+	{ .key = KEYC_F1|KEYC_SHIFT,
+	  .data = "\033[25~"
+	},
+	{ .key = KEYC_F2|KEYC_SHIFT,
+	  .data = "\033[26~"
+	},
+	{ .key = KEYC_F3|KEYC_SHIFT,
+	  .data = "\033[28~"
+	},
+	{ .key = KEYC_F4|KEYC_SHIFT,
+	  .data = "\033[29~"
+	},
+	{ .key = KEYC_F5|KEYC_SHIFT,
+	  .data = "\033[31~"
+	},
+	{ .key = KEYC_F6|KEYC_SHIFT,
+	  .data = "\033[32~"
+	},
+	{ .key = KEYC_F7|KEYC_SHIFT,
+	  .data = "\033[33~"
+	},
+	{ .key = KEYC_F8|KEYC_SHIFT,
+	  .data = "\033[34~"
+	},
+	{ .key = KEYC_IC,
+	  .data = "\033[2~"
+	},
+	{ .key = KEYC_DC,
+	  .data = "\033[3~"
+	},
+	{ .key = KEYC_HOME,
+	  .data = "\033[1~"
+	},
+	{ .key = KEYC_END,
+	  .data = "\033[4~"
+	},
+	{ .key = KEYC_NPAGE,
+	  .data = "\033[6~"
+	},
+	{ .key = KEYC_PPAGE,
+	  .data = "\033[5~"
+	},
+	{ .key = KEYC_BTAB,
+	  .data = "\033[Z"
+	},
 
-	/*
-	 * Arrow keys. Cursor versions must come first. The codes are toggled
-	 * between CSI and SS3 versions when ctrl is pressed.
-	 */
-	{ KEYC_UP|KEYC_CTRL,	"\033[A",	INPUTKEY_CURSOR },
-	{ KEYC_DOWN|KEYC_CTRL,	"\033[B",	INPUTKEY_CURSOR },
-	{ KEYC_RIGHT|KEYC_CTRL,	"\033[C",	INPUTKEY_CURSOR },
-	{ KEYC_LEFT|KEYC_CTRL,	"\033[D",	INPUTKEY_CURSOR },
+	/* Arrow keys. */
+	{ .key = KEYC_UP|KEYC_CURSOR,
+	  .data = "\033OA"
+	},
+	{ .key = KEYC_DOWN|KEYC_CURSOR,
+	  .data = "\033OB"
+	},
+	{ .key = KEYC_RIGHT|KEYC_CURSOR,
+	  .data = "\033OC"
+	},
+	{ .key = KEYC_LEFT|KEYC_CURSOR,
+	  .data = "\033OD"
+	},
+	{ .key = KEYC_UP,
+	  .data = "\033[A"
+	},
+	{ .key = KEYC_DOWN,
+	  .data = "\033[B"
+	},
+	{ .key = KEYC_RIGHT,
+	  .data = "\033[C"
+	},
+	{ .key = KEYC_LEFT,
+	  .data = "\033[D"
+	},
 
-	{ KEYC_UP,		"\033OA",	INPUTKEY_CURSOR },
-	{ KEYC_DOWN,		"\033OB",	INPUTKEY_CURSOR },
-	{ KEYC_RIGHT,		"\033OC",	INPUTKEY_CURSOR },
-	{ KEYC_LEFT,		"\033OD",	INPUTKEY_CURSOR },
+	/* Keypad keys. */
+	{ .key = KEYC_KP_SLASH|KEYC_KEYPAD,
+	  .data = "\033Oo"
+	},
+	{ .key = KEYC_KP_STAR|KEYC_KEYPAD,
+	  .data = "\033Oj"
+	},
+	{ .key = KEYC_KP_MINUS|KEYC_KEYPAD,
+	  .data = "\033Om"
+	},
+	{ .key = KEYC_KP_SEVEN|KEYC_KEYPAD,
+	  .data = "\033Ow"
+	},
+	{ .key = KEYC_KP_EIGHT|KEYC_KEYPAD,
+	  .data = "\033Ox"
+	},
+	{ .key = KEYC_KP_NINE|KEYC_KEYPAD,
+	  .data = "\033Oy"
+	},
+	{ .key = KEYC_KP_PLUS|KEYC_KEYPAD,
+	  .data = "\033Ok"
+	},
+	{ .key = KEYC_KP_FOUR|KEYC_KEYPAD,
+	  .data = "\033Ot"
+	},
+	{ .key = KEYC_KP_FIVE|KEYC_KEYPAD,
+	  .data = "\033Ou"
+	},
+	{ .key = KEYC_KP_SIX|KEYC_KEYPAD,
+	  .data = "\033Ov"
+	},
+	{ .key = KEYC_KP_ONE|KEYC_KEYPAD,
+	  .data = "\033Oq"
+	},
+	{ .key = KEYC_KP_TWO|KEYC_KEYPAD,
+	  .data = "\033Or"
+	},
+	{ .key = KEYC_KP_THREE|KEYC_KEYPAD,
+	  .data = "\033Os"
+	},
+	{ .key = KEYC_KP_ENTER|KEYC_KEYPAD,
+	  .data = "\033OM"
+	},
+	{ .key = KEYC_KP_ZERO|KEYC_KEYPAD,
+	  .data = "\033Op"
+	},
+	{ .key = KEYC_KP_PERIOD|KEYC_KEYPAD,
+	  .data = "\033On"
+	},
+	{ .key = KEYC_KP_SLASH,
+	  .data = "/"
+	},
+	{ .key = KEYC_KP_STAR,
+	  .data = "*"
+	},
+	{ .key = KEYC_KP_MINUS,
+	  .data = "-"
+	},
+	{ .key = KEYC_KP_SEVEN,
+	  .data = "7"
+	},
+	{ .key = KEYC_KP_EIGHT,
+	  .data = "8"
+	},
+	{ .key = KEYC_KP_NINE,
+	  .data = "9"
+	},
+	{ .key = KEYC_KP_PLUS,
+	  .data = "+"
+	},
+	{ .key = KEYC_KP_FOUR,
+	  .data = "4"
+	},
+	{ .key = KEYC_KP_FIVE,
+	  .data = "5"
+	},
+	{ .key = KEYC_KP_SIX,
+	  .data = "6"
+	},
+	{ .key = KEYC_KP_ONE,
+	  .data = "1"
+	},
+	{ .key = KEYC_KP_TWO,
+	  .data = "2"
+	},
+	{ .key = KEYC_KP_THREE,
+	  .data = "3"
+	},
+	{ .key = KEYC_KP_ENTER,
+	  .data = "\n"
+	},
+	{ .key = KEYC_KP_ZERO,
+	  .data = "0"
+	},
+	{ .key = KEYC_KP_PERIOD,
+	  .data = "."
+	},
 
-	{ KEYC_UP|KEYC_CTRL,	"\033OA",	0 },
-	{ KEYC_DOWN|KEYC_CTRL,	"\033OB",	0 },
-	{ KEYC_RIGHT|KEYC_CTRL,	"\033OC",	0 },
-	{ KEYC_LEFT|KEYC_CTRL,	"\033OD",	0 },
-
-	{ KEYC_UP,		"\033[A",	0 },
-	{ KEYC_DOWN,		"\033[B",	0 },
-	{ KEYC_RIGHT,		"\033[C",	0 },
-	{ KEYC_LEFT,		"\033[D",	0 },
-
-	/* Keypad keys. Keypad versions must come first. */
-	{ KEYC_KP_SLASH,	"\033Oo",	INPUTKEY_KEYPAD },
-	{ KEYC_KP_STAR,		"\033Oj",	INPUTKEY_KEYPAD },
-	{ KEYC_KP_MINUS,	"\033Om",	INPUTKEY_KEYPAD },
-	{ KEYC_KP_SEVEN,	"\033Ow",	INPUTKEY_KEYPAD },
-	{ KEYC_KP_EIGHT,	"\033Ox",	INPUTKEY_KEYPAD },
-	{ KEYC_KP_NINE,		"\033Oy",	INPUTKEY_KEYPAD },
-	{ KEYC_KP_PLUS,		"\033Ok",	INPUTKEY_KEYPAD },
-	{ KEYC_KP_FOUR,		"\033Ot",	INPUTKEY_KEYPAD },
-	{ KEYC_KP_FIVE,		"\033Ou",	INPUTKEY_KEYPAD },
-	{ KEYC_KP_SIX,		"\033Ov",	INPUTKEY_KEYPAD },
-	{ KEYC_KP_ONE,		"\033Oq",	INPUTKEY_KEYPAD },
-	{ KEYC_KP_TWO,		"\033Or",	INPUTKEY_KEYPAD },
-	{ KEYC_KP_THREE,	"\033Os",	INPUTKEY_KEYPAD },
-	{ KEYC_KP_ENTER,	"\033OM",	INPUTKEY_KEYPAD },
-	{ KEYC_KP_ZERO,		"\033Op",	INPUTKEY_KEYPAD },
-	{ KEYC_KP_PERIOD,	"\033On",	INPUTKEY_KEYPAD },
-
-	{ KEYC_KP_SLASH,	"/",		0 },
-	{ KEYC_KP_STAR,		"*",		0 },
-	{ KEYC_KP_MINUS,	"-",		0 },
-	{ KEYC_KP_SEVEN,	"7",		0 },
-	{ KEYC_KP_EIGHT,	"8",		0 },
-	{ KEYC_KP_NINE,		"9",		0 },
-	{ KEYC_KP_PLUS,		"+",		0 },
-	{ KEYC_KP_FOUR,		"4",		0 },
-	{ KEYC_KP_FIVE,		"5",		0 },
-	{ KEYC_KP_SIX,		"6",		0 },
-	{ KEYC_KP_ONE,		"1",		0 },
-	{ KEYC_KP_TWO,		"2",		0 },
-	{ KEYC_KP_THREE,	"3",		0 },
-	{ KEYC_KP_ENTER,	"\n",		0 },
-	{ KEYC_KP_ZERO,		"0",		0 },
-	{ KEYC_KP_PERIOD,	".",		0 },
+	/* Keys with an embedded modifier. */
+	{ .key = KEYC_F1|KEYC_BUILD_MODIFIERS,
+	  .data = "\033[1;_P"
+	},
+	{ .key = KEYC_F2|KEYC_BUILD_MODIFIERS,
+	  .data = "\033[1;_Q"
+	},
+	{ .key = KEYC_F3|KEYC_BUILD_MODIFIERS,
+	  .data = "\033[1;_R"
+	},
+	{ .key = KEYC_F4|KEYC_BUILD_MODIFIERS,
+	  .data = "\033[1;_S"
+	},
+	{ .key = KEYC_F5|KEYC_BUILD_MODIFIERS,
+	  .data = "\033[15;_~"
+	},
+	{ .key = KEYC_F6|KEYC_BUILD_MODIFIERS,
+	  .data = "\033[17;_~"
+	},
+	{ .key = KEYC_F7|KEYC_BUILD_MODIFIERS,
+	  .data = "\033[18;_~"
+	},
+	{ .key = KEYC_F8|KEYC_BUILD_MODIFIERS,
+	  .data = "\033[19;_~"
+	},
+	{ .key = KEYC_F9|KEYC_BUILD_MODIFIERS,
+	  .data = "\033[20;_~"
+	},
+	{ .key = KEYC_F10|KEYC_BUILD_MODIFIERS,
+	  .data = "\033[21;_~"
+	},
+	{ .key = KEYC_F11|KEYC_BUILD_MODIFIERS,
+	  .data = "\033[23;_~"
+	},
+	{ .key = KEYC_F12|KEYC_BUILD_MODIFIERS,
+	  .data = "\033[24;_~"
+	},
+	{ .key = KEYC_UP|KEYC_BUILD_MODIFIERS,
+	  .data = "\033[1;_A"
+	},
+	{ .key = KEYC_DOWN|KEYC_BUILD_MODIFIERS,
+	  .data = "\033[1;_B"
+	},
+	{ .key = KEYC_RIGHT|KEYC_BUILD_MODIFIERS,
+	  .data = "\033[1;_C"
+	},
+	{ .key = KEYC_LEFT|KEYC_BUILD_MODIFIERS,
+	  .data = "\033[1;_D"
+	},
+	{ .key = KEYC_HOME|KEYC_BUILD_MODIFIERS,
+	  .data = "\033[1;_H"
+	},
+	{ .key = KEYC_END|KEYC_BUILD_MODIFIERS,
+	  .data = "\033[1;_F"
+	},
+	{ .key = KEYC_PPAGE|KEYC_BUILD_MODIFIERS,
+	  .data = "\033[5;_~"
+	},
+	{ .key = KEYC_NPAGE|KEYC_BUILD_MODIFIERS,
+	  .data = "\033[6;_~"
+	},
+	{ .key = KEYC_IC|KEYC_BUILD_MODIFIERS,
+	  .data = "\033[2;_~"
+	},
+	{ .key = KEYC_DC|KEYC_BUILD_MODIFIERS,
+	  .data = "\033[3;_~" }
 };
+static const key_code input_key_modifiers[] = {
+	0,
+	0,
+	KEYC_SHIFT,
+	KEYC_META|KEYC_IMPLIED_META,
+	KEYC_SHIFT|KEYC_META|KEYC_IMPLIED_META,
+	KEYC_CTRL,
+	KEYC_SHIFT|KEYC_CTRL,
+	KEYC_META|KEYC_IMPLIED_META|KEYC_CTRL,
+	KEYC_SHIFT|KEYC_META|KEYC_IMPLIED_META|KEYC_CTRL
+};
+
+/* Input key comparison function. */
+static int
+input_key_cmp(struct input_key_entry *ike1, struct input_key_entry *ike2)
+{
+	if (ike1->key < ike2->key)
+		return (-1);
+	if (ike1->key > ike2->key)
+		return (1);
+	return (0);
+}
+
+/* Look for key in tree. */
+static struct input_key_entry *
+input_key_get (key_code key)
+{
+	struct input_key_entry	entry = { .key = key };
+
+	return (RB_FIND(input_key_tree, &input_key_tree, &entry));
+}
 
 /* Split a character into two UTF-8 bytes. */
 static size_t
-input_split2(u_int c, u_char *dst)
+input_key_split2(u_int c, u_char *dst)
 {
 	if (c > 0x7f) {
 		dst[0] = (c >> 6) | 0xc0;
@@ -149,32 +377,65 @@ input_split2(u_int c, u_char *dst)
 	return (1);
 }
 
+/* Build input key tree. */
+void
+input_key_build(void)
+{
+	struct input_key_entry	*ike, *new;
+	u_int			 i, j;
+	char			*data;
+	key_code		 key;
+
+	for (i = 0; i < nitems(input_key_defaults); i++) {
+		ike = &input_key_defaults[i];
+		if (~ike->key & KEYC_BUILD_MODIFIERS) {
+			RB_INSERT(input_key_tree, &input_key_tree, ike);
+			continue;
+		}
+
+		for (j = 2; j < nitems(input_key_modifiers); j++) {
+			key = (ike->key & ~KEYC_BUILD_MODIFIERS);
+			data = xstrdup(ike->data);
+			data[strcspn(data, "_")] = '0' + j;
+
+			new = xcalloc(1, sizeof *new);
+			new->key = key|input_key_modifiers[j];
+			new->data = data;
+			RB_INSERT(input_key_tree, &input_key_tree, new);
+		}
+	}
+
+	RB_FOREACH(ike, input_key_tree, &input_key_tree) {
+		log_debug("%s: 0x%llx (%s) is %s", __func__, ike->key,
+		    key_string_lookup_key(ike->key, 1), ike->data);
+	}
+}
+
 /* Translate a key code into an output key sequence for a pane. */
 int
 input_key_pane(struct window_pane *wp, key_code key, struct mouse_event *m)
 {
-	log_debug("writing key 0x%llx (%s) to %%%u", key,
-	    key_string_lookup_key(key), wp->id);
+	if (log_get_level() != 0) {
+		log_debug("writing key 0x%llx (%s) to %%%u", key,
+		    key_string_lookup_key(key, 1), wp->id);
+	}
 
 	if (KEYC_IS_MOUSE(key)) {
 		if (m != NULL && m->wp != -1 && (u_int)m->wp == wp->id)
 			input_key_mouse(wp, m);
 		return (0);
 	}
-	return (input_key(wp, wp->screen, wp->event, key));
+	return (input_key(wp->screen, wp->event, key));
 }
 
 /* Translate a key code into an output key sequence. */
 int
-input_key(struct window_pane *wp, struct screen *s, struct bufferevent *bev,
-    key_code key)
+input_key(struct screen *s, struct bufferevent *bev, key_code key)
 {
-	const struct input_key_ent	*ike;
-	u_int				 i;
-	size_t				 dlen;
-	char				*out;
-	key_code			 justkey, newkey;
-	struct utf8_data		 ud;
+	struct input_key_entry	*ike;
+	key_code		 justkey, newkey, outkey;
+	struct utf8_data	 ud;
+	char			 tmp[64], modifier;
 
 	/* Mouse keys need a pane. */
 	if (KEYC_IS_MOUSE(key))
@@ -192,16 +453,16 @@ input_key(struct window_pane *wp, struct screen *s, struct bufferevent *bev,
 		newkey = options_get_number(global_options, "backspace");
 		if (newkey >= 0x7f)
 			newkey = '\177';
-		key = newkey|(key & KEYC_MASK_MOD);
+		key = newkey|(key & (KEYC_MASK_MODIFIERS|KEYC_MASK_FLAGS));
 	}
 
 	/*
 	 * If this is a normal 7-bit key, just send it, with a leading escape
 	 * if necessary. If it is a UTF-8 key, split it and send it.
 	 */
-	justkey = (key & ~(KEYC_XTERM|KEYC_ESCAPE));
+	justkey = (key & ~(KEYC_META|KEYC_IMPLIED_META));
 	if (justkey <= 0x7f) {
-		if (key & KEYC_ESCAPE)
+		if (key & KEYC_META)
 			bufferevent_write(bev, "\033", 1);
 		ud.data[0] = justkey;
 		bufferevent_write(bev, &ud.data[0], 1);
@@ -210,51 +471,69 @@ input_key(struct window_pane *wp, struct screen *s, struct bufferevent *bev,
 	if (justkey > 0x7f && justkey < KEYC_BASE) {
 		if (utf8_split(justkey, &ud) != UTF8_DONE)
 			return (-1);
-		if (key & KEYC_ESCAPE)
+		if (key & KEYC_META)
 			bufferevent_write(bev, "\033", 1);
 		bufferevent_write(bev, ud.data, ud.size);
 		return (0);
 	}
 
 	/*
-	 * Then try to look this up as an xterm key, if the flag to output them
-	 * is set.
+	 * Look up in the tree. If not in application keypad or cursor mode,
+	 * remove the flags from the key.
 	 */
-	if (wp == NULL || options_get_number(wp->window->options, "xterm-keys")) {
-		if ((out = xterm_keys_lookup(key)) != NULL) {
-			bufferevent_write(bev, out, strlen(out));
-			free(out);
-			return (0);
-		}
+	if (~s->mode & MODE_KKEYPAD)
+		key &= ~KEYC_KEYPAD;
+	if (~s->mode & MODE_KCURSOR)
+		key &= ~KEYC_CURSOR;
+	ike = input_key_get(key);
+	if (ike == NULL && (key & KEYC_META) && (~key & KEYC_IMPLIED_META))
+		ike = input_key_get(key & ~KEYC_META);
+	if (ike != NULL) {
+		log_debug("found key 0x%llx: \"%s\"", key, ike->data);
+		if (key & KEYC_META && (~key & KEYC_IMPLIED_META))
+			bufferevent_write(bev, "\033", 1);
+		bufferevent_write(bev, ike->data, strlen(ike->data));
+		return (0);
 	}
-	key &= ~KEYC_XTERM;
 
-	/* Otherwise look the key up in the table. */
-	for (i = 0; i < nitems(input_keys); i++) {
-		ike = &input_keys[i];
-
-		if ((ike->flags & INPUTKEY_KEYPAD) && (~s->mode & MODE_KKEYPAD))
-			continue;
-		if ((ike->flags & INPUTKEY_CURSOR) && (~s->mode & MODE_KCURSOR))
-			continue;
-
-		if ((key & KEYC_ESCAPE) && (ike->key | KEYC_ESCAPE) == key)
-			break;
-		if (ike->key == key)
-			break;
+	/* No builtin key sequence; construct an extended key sequence. */
+	if (~s->mode & MODE_KEXTENDED) {
+		if ((key & KEYC_MASK_MODIFIERS) == KEYC_CTRL &&
+		    (key & KEYC_MASK_KEY) < KEYC_BASE)
+			return (input_key(s, bev, key & ~KEYC_CTRL));
+		goto missing;
 	}
-	if (i == nitems(input_keys)) {
-		log_debug("key 0x%llx missing", key);
-		return (-1);
+	outkey = (key & KEYC_MASK_KEY);
+	switch (key & KEYC_MASK_MODIFIERS) {
+	case KEYC_SHIFT:
+		modifier = '2';
+		break;
+	case KEYC_META:
+		modifier = '3';
+		break;
+	case KEYC_SHIFT|KEYC_META:
+		modifier = '4';
+		break;
+	case KEYC_CTRL:
+		modifier = '5';
+		break;
+	case KEYC_SHIFT|KEYC_CTRL:
+		modifier = '6';
+		break;
+	case KEYC_META|KEYC_CTRL:
+		modifier = '7';
+		break;
+	case KEYC_SHIFT|KEYC_META|KEYC_CTRL:
+		modifier = '8';
+		break;
 	}
-	dlen = strlen(ike->data);
-	log_debug("found key 0x%llx: \"%s\"", key, ike->data);
-
-	/* Prefix a \033 for escape. */
-	if (key & KEYC_ESCAPE)
-		bufferevent_write(bev, "\033", 1);
-	bufferevent_write(bev, ike->data, dlen);
+	xsnprintf(tmp, sizeof tmp, "\033[%llu;%cu", outkey, modifier);
+	bufferevent_write(bev, tmp, strlen(tmp));
 	return (0);
+
+missing:
+	log_debug("key 0x%llx missing", key);
+	return (-1);
 }
 
 /* Get mouse event string. */
@@ -309,9 +588,9 @@ input_key_get_mouse(struct screen *s, struct mouse_event *m, u_int x, u_int y,
 		if (m->b > 0x7ff - 32 || x > 0x7ff - 33 || y > 0x7ff - 33)
 			return (0);
 		len = xsnprintf(buf, sizeof buf, "\033[M");
-		len += input_split2(m->b + 32, &buf[len]);
-		len += input_split2(x + 33, &buf[len]);
-		len += input_split2(y + 33, &buf[len]);
+		len += input_key_split2(m->b + 32, &buf[len]);
+		len += input_key_split2(x + 33, &buf[len]);
+		len += input_key_split2(y + 33, &buf[len]);
 	} else {
 		if (m->b > 223)
 			return (0);

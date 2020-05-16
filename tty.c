@@ -286,6 +286,8 @@ tty_start_timer_callback(__unused int fd, __unused short events, void *data)
 	struct client	*c = tty->client;
 
 	log_debug("%s: start timer fired", c->name);
+	if ((tty->flags & (TTY_HAVEDA|TTY_HAVEXDA)) == 0)
+		tty_update_features(tty);
 	tty->flags |= (TTY_HAVEDA|TTY_HAVEXDA);
 }
 
@@ -328,13 +330,6 @@ tty_start_tty(struct tty *tty)
 		tty_puts(tty, "\033[?1000l\033[?1002l\033[?1003l");
 		tty_puts(tty, "\033[?1006l\033[?1005l");
 	}
-
-	if (options_get_number(global_options, "focus-events")) {
-		tty->flags |= TTY_FOCUS;
-		tty_raw(tty, tty_term_string(tty->term, TTYC_ENFCS));
-	}
-	if (tty->term->flags & TERM_VT100LIKE)
-		tty_puts(tty, "\033[?7727h");
 
 	evtimer_set(&tty->start_timer, tty_start_timer_callback, tty);
 	evtimer_add(&tty->start_timer, &tv);
@@ -415,12 +410,10 @@ tty_stop_tty(struct tty *tty)
 		tty_raw(tty, "\033[?1006l\033[?1005l");
 	}
 
-	if (tty->flags & TTY_FOCUS) {
-		tty->flags &= ~TTY_FOCUS;
-		tty_raw(tty, tty_term_string(tty->term, TTYC_DSFCS));
-	}
 	if (tty->term->flags & TERM_VT100LIKE)
 		tty_raw(tty, "\033[?7727l");
+	tty_raw(tty, tty_term_string(tty->term, TTYC_DSFCS));
+	tty_raw(tty, tty_term_string(tty->term, TTYC_DSEKS));
 
 	if (tty_use_margin(tty))
 		tty_raw(tty, tty_term_string(tty->term, TTYC_DSMG));
@@ -471,6 +464,12 @@ tty_update_features(struct tty *tty)
 
 	if (tty_use_margin(tty))
 		tty_putcode(tty, TTYC_ENMG);
+	if (options_get_number(global_options, "extended-keys"))
+		tty_puts(tty, tty_term_string(tty->term, TTYC_ENEKS));
+	if (options_get_number(global_options, "focus-events"))
+		tty_raw(tty, tty_term_string(tty->term, TTYC_ENFCS));
+	if (tty->term->flags & TERM_VT100LIKE)
+		tty_puts(tty, "\033[?7727h");
 }
 
 void
