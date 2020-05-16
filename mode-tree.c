@@ -887,7 +887,7 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
     struct mouse_event *m, u_int *xp, u_int *yp)
 {
 	struct mode_tree_line	*line;
-	struct mode_tree_item	*current, *parent;
+	struct mode_tree_item	*current, *parent, *mti;
 	u_int			 i, x, y;
 	int			 choice;
 	key_code		 tmp;
@@ -1057,6 +1057,16 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 			current->expanded = 1;
 			mode_tree_build(mtd);
 		}
+		break;
+	case '-'|KEYC_ESCAPE:
+		TAILQ_FOREACH(mti, &mtd->children, entry)
+			mti->expanded = 0;
+		mode_tree_build(mtd);
+		break;
+	case '+'|KEYC_ESCAPE:
+		TAILQ_FOREACH(mti, &mtd->children, entry)
+			mti->expanded = 1;
+		mode_tree_build(mtd);
 		break;
 	case '?':
 	case '/':
