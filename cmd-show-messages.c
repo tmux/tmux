@@ -27,7 +27,7 @@
 #include "tmux.h"
 
 /*
- * Show client message log.
+ * Show message log.
  */
 
 #define SHOW_MESSAGES_TEMPLATE \

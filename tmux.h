@@ -112,24 +112,30 @@ struct winlink;
 #define VISUAL_BOTH 2
 
 /* Special key codes. */
-#define KEYC_NONE    0x00ff000000000ULL
-#define KEYC_UNKNOWN 0x00fe000000000ULL
-#define KEYC_BASE    0x0001000000000ULL
-#define KEYC_USER    0x0002000000000ULL
+#define KEYC_NONE            0x00ff000000000ULL
+#define KEYC_UNKNOWN         0x00fe000000000ULL
+#define KEYC_BASE            0x0001000000000ULL
+#define KEYC_USER            0x0002000000000ULL
 
 /* Key modifier bits. */
-#define KEYC_ESCAPE  0x0100000000000ULL
-#define KEYC_CTRL    0x0200000000000ULL
-#define KEYC_SHIFT   0x0400000000000ULL
-#define KEYC_XTERM   0x0800000000000ULL
-#define KEYC_LITERAL 0x1000000000000ULL
+#define KEYC_META            0x00100000000000ULL
+#define KEYC_CTRL            0x00200000000000ULL
+#define KEYC_SHIFT           0x00400000000000ULL
+
+/* Key flag bits. */
+#define KEYC_LITERAL         0x01000000000000ULL
+#define KEYC_KEYPAD          0x02000000000000ULL
+#define KEYC_CURSOR          0x04000000000000ULL
+#define KEYC_IMPLIED_META    0x08000000000000ULL
+#define KEYC_BUILD_MODIFIERS 0x10000000000000ULL
+
+/* Masks for key bits. */
+#define KEYC_MASK_MODIFIERS  0x00f00000000000ULL
+#define KEYC_MASK_FLAGS      0xff000000000000ULL
+#define KEYC_MASK_KEY        0x000fffffffffffULL
 
 /* Available user keys. */
 #define KEYC_NUSER 1000
-
-/* Mask to obtain key w/o modifiers. */
-#define KEYC_MASK_MOD 0xff00000000000ULL
-#define KEYC_MASK_KEY 0x00fffffffffffULL
 
 /* Is this a mouse key? */
 #define KEYC_IS_MOUSE(key) (((key) & KEYC_MASK_KEY) >= KEYC_MOUSE &&	\
@@ -284,6 +290,7 @@ enum tty_code_code {
 	TTYC_DL,
 	TTYC_DL1,
 	TTYC_DSBP,
+	TTYC_DSEKS,
 	TTYC_DSFCS,
 	TTYC_DSMG,
 	TTYC_E3,
@@ -293,6 +300,7 @@ enum tty_code_code {
 	TTYC_EL1,
 	TTYC_ENACS,
 	TTYC_ENBP,
+	TTYC_ENEKS,
 	TTYC_ENFCS,
 	TTYC_ENMG,
 	TTYC_FSL,
@@ -569,8 +577,8 @@ struct msg_write_close {
 #define MODE_CURSOR 0x1
 #define MODE_INSERT 0x2
 #define MODE_KCURSOR 0x4
-#define MODE_KKEYPAD 0x8	/* set = application, clear = number */
-#define MODE_WRAP 0x10		/* whether lines wrap */
+#define MODE_KKEYPAD 0x8
+#define MODE_WRAP 0x10
 #define MODE_MOUSE_STANDARD 0x20
 #define MODE_MOUSE_BUTTON 0x40
 #define MODE_BLINKING 0x80
@@ -581,6 +589,7 @@ struct msg_write_close {
 #define MODE_MOUSE_ALL 0x1000
 #define MODE_ORIGIN 0x2000
 #define MODE_CRLF 0x4000
+#define MODE_KEXTENDED 0x8000
 
 #define ALL_MODES 0xffffff
 #define ALL_MOUSE_MODES (MODE_MOUSE_STANDARD|MODE_MOUSE_BUTTON|MODE_MOUSE_ALL)
@@ -1001,12 +1010,18 @@ struct window {
 	u_int		 xpixel;
 	u_int		 ypixel;
 
+	u_int		 new_sx;
+	u_int		 new_sy;
+	u_int		 new_xpixel;
+	u_int		 new_ypixel;
+
 	int		 flags;
 #define WINDOW_BELL 0x1
 #define WINDOW_ACTIVITY 0x2
 #define WINDOW_SILENCE 0x4
 #define WINDOW_ZOOMED 0x8
 #define WINDOW_WASZOOMED 0x10
+#define WINDOW_RESIZE 0x20
 #define WINDOW_ALERTFLAGS (WINDOW_BELL|WINDOW_ACTIVITY|WINDOW_SILENCE)
 
 	int		 alerts_queued;
@@ -1278,7 +1293,7 @@ struct tty {
 /* 0x8 unused */
 #define TTY_STARTED 0x10
 #define TTY_OPENED 0x20
-#define TTY_FOCUS 0x40
+/* 0x40 unused */
 #define TTY_BLOCK 0x80
 #define TTY_HAVEDA 0x100
 #define TTY_HAVEXDA 0x200
@@ -2282,7 +2297,7 @@ struct cmdq_item *key_bindings_dispatch(struct key_binding *,
 
 /* key-string.c */
 key_code	 key_string_lookup_string(const char *);
-const char	*key_string_lookup_key(key_code);
+const char	*key_string_lookup_key(key_code, int);
 
 /* alerts.c */
 void	alerts_reset_all(void);
@@ -2415,15 +2430,11 @@ void	 input_parse_screen(struct input_ctx *, struct screen *,
 	     screen_write_init_ctx_cb, void *, u_char *, size_t);
 
 /* input-key.c */
+void	 input_key_build(void);
 int	 input_key_pane(struct window_pane *, key_code, struct mouse_event *);
-int	 input_key(struct window_pane *, struct screen *, struct bufferevent *,
-	     key_code);
+int	 input_key(struct screen *, struct bufferevent *, key_code);
 int	 input_key_get_mouse(struct screen *, struct mouse_event *, u_int,
 	     u_int, const char **, size_t *);
-
-/* xterm-keys.c */
-char	*xterm_keys_lookup(key_code);
-int	 xterm_keys_find(const char *, size_t, size_t *, key_code *);
 
 /* colour.c */
 int	 colour_find_rgb(u_char, u_char, u_char);

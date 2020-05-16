@@ -440,13 +440,15 @@ window_pane_send_resize(struct window_pane *wp, int yadjust)
 {
 	struct window	*w = wp->window;
 	struct winsize	 ws;
+	u_int  		 sy = wp->sy + yadjust;
 
 	if (wp->fd == -1)
 		return;
+	log_debug("%s: %%%u resize to %u,%u", __func__, wp->id, wp->sx, sy);
 
 	memset(&ws, 0, sizeof ws);
 	ws.ws_col = wp->sx;
-	ws.ws_row = wp->sy + yadjust;
+	ws.ws_row = sy;
 	ws.ws_xpixel = w->xpixel * ws.ws_col;
 	ws.ws_ypixel = w->ypixel * ws.ws_row;
 	if (ioctl(wp->fd, TIOCSWINSZ, &ws) == -1)
@@ -991,7 +993,6 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme != NULL && wme->mode->resize != NULL)
 		wme->mode->resize(wme, sx, sy);
-
 	wp->flags |= (PANE_RESIZE|PANE_RESIZED);
 }
 
@@ -1135,8 +1136,10 @@ window_pane_key(struct window_pane *wp, struct client *c, struct session *s,
 
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme != NULL) {
-		if (wme->mode->key != NULL && c != NULL)
-			wme->mode->key(wme, c, s, wl, (key & ~KEYC_XTERM), m);
+		if (wme->mode->key != NULL && c != NULL) {
+			key &= ~KEYC_MASK_FLAGS;
+			wme->mode->key(wme, c, s, wl, key, m);
+		}
 		return (0);
 	}
 

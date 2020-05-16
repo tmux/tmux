@@ -33,8 +33,9 @@
 #include "tmux.h"
 
 static void	server_client_free(int, short, void *);
-static void	server_client_check_focus(struct window_pane *);
-static void	server_client_check_resize(struct window_pane *);
+static void	server_client_check_pane_focus(struct window_pane *);
+static void	server_client_check_pane_resize(struct window_pane *);
+static void	server_client_check_window_resize(struct window *);
 static key_code	server_client_check_mouse(struct client *, struct key_event *);
 static void	server_client_repeat_timer(int, short, void *);
 static void	server_client_click_timer(int, short, void *);
@@ -1035,14 +1036,14 @@ have_event:
 out:
 	/* Apply modifiers if any. */
 	if (b & MOUSE_MASK_META)
-		key |= KEYC_ESCAPE;
+		key |= KEYC_META;
 	if (b & MOUSE_MASK_CTRL)
 		key |= KEYC_CTRL;
 	if (b & MOUSE_MASK_SHIFT)
 		key |= KEYC_SHIFT;
 
 	if (log_get_level() != 0)
-		log_debug("mouse key is %s", key_string_lookup_key (key));
+		log_debug("mouse key is %s", key_string_lookup_key (key, 1));
 	return (key);
 }
 
@@ -1174,7 +1175,7 @@ table_changed:
 	 * The prefix always takes precedence and forces a switch to the prefix
 	 * table, unless we are already there.
 	 */
-	key0 = (key & ~KEYC_XTERM);
+	key0 = (key & (KEYC_MASK_KEY|KEYC_MASK_MODIFIERS));
 	if ((key0 == (key_code)options_get_number(s->options, "prefix") ||
 	    key0 == (key_code)options_get_number(s->options, "prefix2")) &&
 	    strcmp(table->name, "prefix") != 0) {
@@ -1341,10 +1342,13 @@ server_client_loop(void)
 	struct client		*c;
 	struct window		*w;
 	struct window_pane	*wp;
-	struct winlink		*wl;
-	struct session		*s;
-	int			 focus, attached, resize;
+	int			 focus;
 
+	/* Check for window resize. This is done before redrawing. */
+	RB_FOREACH(w, windows, &windows)
+		server_client_check_window_resize(w);
+
+	/* Check clients. */
 	TAILQ_FOREACH(c, &clients, entry) {
 		server_client_check_exit(c);
 		if (c->session != NULL) {
@@ -1356,39 +1360,39 @@ server_client_loop(void)
 	/*
 	 * Any windows will have been redrawn as part of clients, so clear
 	 * their flags now. Also check pane focus and resize.
-	 *
-	 * As an optimization, panes in windows that are in an attached session
-	 * but not the current window are not resized (this reduces the amount
-	 * of work needed when, for example, resizing an X terminal a
-	 * lot). Windows in no attached session are resized immediately since
-	 * that is likely to have come from a command like split-window and be
-	 * what the user wanted.
 	 */
 	focus = options_get_number(global_options, "focus-events");
 	RB_FOREACH(w, windows, &windows) {
-		attached = resize = 0;
-		TAILQ_FOREACH(wl, &w->winlinks, wentry) {
-			s = wl->session;
-			if (s->attached != 0)
-				attached = 1;
-			if (s->attached != 0 && s->curw == wl) {
-				resize = 1;
-				break;
-			}
-		}
-		if (!attached)
-			resize = 1;
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (wp->fd != -1) {
 				if (focus)
-					server_client_check_focus(wp);
-				if (resize)
-					server_client_check_resize(wp);
+					server_client_check_pane_focus(wp);
+				server_client_check_pane_resize(wp);
 			}
 			wp->flags &= ~PANE_REDRAW;
 		}
 		check_window_name(w);
 	}
+}
+
+/* Check if window needs to be resized. */
+static void
+server_client_check_window_resize(struct window *w)
+{
+	struct winlink	*wl;
+
+	if (~w->flags & WINDOW_RESIZE)
+		return;
+
+	TAILQ_FOREACH(wl, &w->winlinks, wentry) {
+		if (wl->session->attached != 0 && wl->session->curw == wl)
+			break;
+	}
+	if (wl == NULL)
+		return;
+
+	log_debug("%s: resizing window @%u", __func__, w->id);
+	resize_window(w, w->new_sx, w->new_sy, w->new_xpixel, w->new_ypixel);
 }
 
 /* Check if we need to force a resize. */
@@ -1472,7 +1476,7 @@ server_client_resize_event(__unused int fd, __unused short events, void *data)
 
 /* Check if pane should be resized. */
 static void
-server_client_check_resize(struct window_pane *wp)
+server_client_check_pane_resize(struct window_pane *wp)
 {
 	if (~wp->flags & PANE_RESIZE)
 		return;
@@ -1490,7 +1494,7 @@ server_client_check_resize(struct window_pane *wp)
 
 /* Check whether pane should be focused. */
 static void
-server_client_check_focus(struct window_pane *wp)
+server_client_check_pane_focus(struct window_pane *wp)
 {
 	struct client	*c;
 	int		 push;
