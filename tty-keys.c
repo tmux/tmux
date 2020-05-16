@@ -1064,10 +1064,7 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 	/* Add terminal features. */
 	switch (p[0]) {
 	case 41: /* VT420 */
-		tty_add_features(&c->term_features,
-		    "margins,"
-		    "rectfill",
-		    ",");
+		tty_add_features(&c->term_features, "margins,rectfill", ",");
 		break;
 	case 'M': /* mintty */
 		tty_default_features(&c->term_features, "mintty", 0);

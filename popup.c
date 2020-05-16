@@ -70,8 +70,10 @@ popup_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 {
 	struct popup_data	*pd = ttyctx->arg;
 
+	if (c != pd->c)
+		return (0);
 	if (pd->c->flags & CLIENT_REDRAWOVERLAY)
-		return (-1);
+		return (0);
 
 	ttyctx->bigger = 0;
 	ttyctx->wox = 0;
