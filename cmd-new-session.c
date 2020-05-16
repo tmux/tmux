@@ -70,13 +70,14 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_find_state	*current = cmdq_get_current(item);
 	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct client		*c = cmdq_get_client(item);
-	struct session		*s, *as, *groupwith;
+	struct session		*s, *as, *groupwith = NULL;
 	struct environ		*env;
 	struct options		*oo;
 	struct termios		 tio, *tiop;
-	struct session_group	*sg;
-	const char		*errstr, *template, *group, *prefix, *tmp;
+	struct session_group	*sg = NULL;
+	const char		*errstr, *template, *group, *tmp;
 	char			*cause, *cwd = NULL, *cp, *newname = NULL;
+	char			*name, *prefix = NULL;
 	int			 detached, already_attached, is_control = 0;
 	u_int			 sx, sy, dsx, dsy;
 	struct spawn_context	 sc;
@@ -98,11 +99,9 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 
 	tmp = args_get(args, 's');
 	if (tmp != NULL) {
-		newname = format_single(item, tmp, c, NULL, NULL, NULL);
-		if (!session_check_name(newname)) {
-			cmdq_error(item, "bad session name: %s", newname);
-			goto fail;
-		}
+		name = format_single(item, tmp, c, NULL, NULL, NULL);
+		newname = session_check_name(name);
+		free(name);
 	}
 	if (args_has(args, 'A')) {
 		if (newname != NULL)
@@ -126,24 +125,16 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	group = args_get(args, 't');
 	if (group != NULL) {
 		groupwith = target->s;
-		if (groupwith == NULL) {
-			if (!session_check_name(group)) {
-				cmdq_error(item, "bad group name: %s", group);
-				goto fail;
-			}
+		if (groupwith == NULL)
 			sg = session_group_find(group);
-		} else
+		else
 			sg = session_group_contains(groupwith);
 		if (sg != NULL)
-			prefix = sg->name;
+			prefix = xstrdup(sg->name);
 		else if (groupwith != NULL)
-			prefix = groupwith->name;
+			prefix = xstrdup(groupwith->name);
 		else
-			prefix = group;
-	} else {
-		groupwith = NULL;
-		sg = NULL;
-		prefix = NULL;
+			prefix = session_check_name(group);
 	}
 
 	/* Set -d if no client. */
@@ -353,10 +344,12 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 
 	free(cwd);
 	free(newname);
+	free(prefix);
 	return (CMD_RETURN_NORMAL);
 
 fail:
 	free(cwd);
 	free(newname);
+	free(prefix);
 	return (CMD_RETURN_ERROR);
 }

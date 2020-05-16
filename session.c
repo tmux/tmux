@@ -23,6 +23,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <vis.h>
 #include <time.h>
 
 #include "tmux.h"
@@ -123,7 +124,6 @@ session_create(const char *prefix, const char *name, const char *cwd,
 
 	s->cwd = xstrdup(cwd);
 
-	s->curw = NULL;
 	TAILQ_INIT(&s->lastw);
 	RB_INIT(&s->windows);
 
@@ -142,7 +142,6 @@ session_create(const char *prefix, const char *name, const char *cwd,
 		s->name = xstrdup(name);
 		s->id = next_session_id++;
 	} else {
-		s->name = NULL;
 		do {
 			s->id = next_session_id++;
 			free(s->name);
@@ -232,11 +231,20 @@ session_destroy(struct session *s, int notify, const char *from)
 	session_remove_ref(s, __func__);
 }
 
-/* Check a session name is valid: not empty and no colons or periods. */
-int
+/* Sanitize session name. */
+char *
 session_check_name(const char *name)
 {
-	return (*name != '\0' && name[strcspn(name, ":.")] == '\0');
+	char	*copy, *cp, *new_name;
+
+	copy = xstrdup(name);
+	for (cp = copy; *cp != '\0'; cp++) {
+		if (*cp == ':' || *cp == '.')
+			*cp = '_';
+	}
+	utf8_stravis(&new_name, copy, VIS_OCTAL|VIS_CSTYLE|VIS_TAB|VIS_NL);
+	free(copy);
+	return (new_name);
 }
 
 /* Lock session if it has timed out. */
@@ -556,6 +564,7 @@ session_group_remove(struct session *s)
 	TAILQ_REMOVE(&sg->sessions, s, gentry);
 	if (TAILQ_EMPTY(&sg->sessions)) {
 		RB_REMOVE(session_groups, &session_groups, sg);
+		free((void *)sg->name);
 		free(sg);
 	}
 }
