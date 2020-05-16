@@ -351,6 +351,7 @@ menu_display(struct menu *menu, int flags, struct cmdq_item *item, u_int px,
 	screen_init(&md->s, menu->width + 4, menu->count + 2, 0);
 	if (~md->flags & MENU_NOMOUSE)
 		md->s.mode |= MODE_MOUSE_ALL;
+	md->s.mode &= ~MODE_CURSOR;
 
 	md->px = px;
 	md->py = py;
