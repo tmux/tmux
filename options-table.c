@@ -795,6 +795,15 @@ const struct options_table_entry options_table[] = {
 	  .text = "Style of the current search match in copy mode."
 	},
 
+	{ .name = "copy-mode-mark-style",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "bg=red,fg=black",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ",",
+	  .text = "Style of the marked line in copy mode."
+	},
+
 	{ .name = "main-pane-height",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,

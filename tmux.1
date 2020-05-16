@@ -1555,6 +1555,7 @@ The following commands are supported in copy mode:
 .It Li "jump-reverse" Ta "," Ta ","
 .It Li "jump-to-backward <to>" Ta "T" Ta ""
 .It Li "jump-to-forward <to>" Ta "t" Ta ""
+.It Li "jump-to-mark" Ta "M-x" Ta "M-x"
 .It Li "middle-line" Ta "M" Ta "M-r"
 .It Li "next-matching-bracket" Ta "%" Ta "M-C-f"
 .It Li "next-paragraph" Ta "}" Ta "M-}"
@@ -1585,6 +1586,7 @@ The following commands are supported in copy mode:
 .It Li "search-reverse" Ta "N" Ta "N"
 .It Li "select-line" Ta "V" Ta ""
 .It Li "select-word" Ta "" Ta ""
+.It Li "set-mark" Ta "X" Ta "X"
 .It Li "start-of-line" Ta "0" Ta "C-a"
 .It Li "stop-selection" Ta "" Ta ""
 .It Li "top-line" Ta "H" Ta "M-R"
@@ -3811,6 +3813,14 @@ this is a percentage of the window size.
 .Pp
 .It Ic copy-mode-match-style Ar style
 Set the style of search matches in copy mode.
+For how to specify
+.Ar style ,
+see the
+.Sx STYLES
+section.
+.Pp
+.It Ic copy-mode-mark-style Ar style
+Set the style of the line containing the mark in copy mode.
 For how to specify
 .Ar style ,
 see the
