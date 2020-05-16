@@ -1094,6 +1094,7 @@ Lock all clients attached to
 .It Xo Ic new-session
 .Op Fl AdDEPX
 .Op Fl c Ar start-directory
+.Op Fl e Ar environment
 .Op Fl F Ar format
 .Op Fl n Ar window-name
 .Op Fl s Ar session-name
@@ -1200,6 +1201,11 @@ If
 is used, the
 .Ic update-environment
 option will not be applied.
+.Fl e
+takes the form
+.Ql VARIABLE=value
+and sets an environment variable for the newly created session; it may be
+specified multiple times.
 .It Xo Ic refresh-client
 .Op Fl cDlLRSU
 .Op Fl C Ar XxY
