@@ -25,15 +25,12 @@
 
 /*
  * Still hardcoded:
- * - bracket paste (sent if application asks for it);
  * - mouse (under kmous capability);
- * - focus events (under XT and focus-events option);
  * - default colours (under AX or op capabilities);
  * - AIX colours (under colors >= 16);
- * - alternate escape (under XT).
+ * - alternate escape (if terminal is VT100-like).
  *
  * Also:
- * - XT is used to decide whether to send DA and XDA;
  * - DECFRA uses a flag instead of capabilities;
  * - UTF-8 is a separate flag on the client; needed for unattached clients.
  */
@@ -51,7 +48,7 @@ static const char *tty_feature_title_capabilities[] = {
 	"fsl=\\a",
 	NULL
 };
-static struct tty_feature tty_feature_title = {
+static const struct tty_feature tty_feature_title = {
 	"title",
 	tty_feature_title_capabilities,
 	0
@@ -62,7 +59,7 @@ static const char *tty_feature_clipboard_capabilities[] = {
 	"Ms=\\E]52;%p1%s;%p2%s\\a",
 	NULL
 };
-static struct tty_feature tty_feature_clipboard = {
+static const struct tty_feature tty_feature_clipboard = {
 	"clipboard",
 	tty_feature_clipboard_capabilities,
 	0
@@ -81,7 +78,7 @@ static const char *tty_feature_rgb_capabilities[] = {
 	"setaf=\\E[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m",
 	NULL
 };
-static struct tty_feature tty_feature_rgb = {
+static const struct tty_feature tty_feature_rgb = {
 	"RGB",
 	tty_feature_rgb_capabilities,
 	TERM_256COLOURS|TERM_RGBCOLOURS
@@ -94,7 +91,7 @@ static const char *tty_feature_256_capabilities[] = {
 	"setaf=\\E[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m",
 	NULL
 };
-static struct tty_feature tty_feature_256 = {
+static const struct tty_feature tty_feature_256 = {
 	"256",
 	tty_feature_256_capabilities,
 	TERM_256COLOURS
@@ -105,7 +102,7 @@ static const char *tty_feature_overline_capabilities[] = {
 	"Smol=\\E[53m",
 	NULL
 };
-static struct tty_feature tty_feature_overline = {
+static const struct tty_feature tty_feature_overline = {
 	"overline",
 	tty_feature_overline_capabilities,
 	0
@@ -117,9 +114,33 @@ static const char *tty_feature_usstyle_capabilities[] = {
 	"Setulc=\E[58::2::%p1%{65536}%/%d::%p1%{256}%/%{255}%&%d::%p1%{255}%&%d%;m",
 	NULL
 };
-static struct tty_feature tty_feature_usstyle = {
+static const struct tty_feature tty_feature_usstyle = {
 	"usstyle",
 	tty_feature_usstyle_capabilities,
+	0
+};
+
+/* Terminal supports bracketed paste. */
+static const char *tty_feature_bpaste_capabilities[] = {
+	"Enbp=\\E[?2004h",
+	"Dsbp=\\E[?2004l",
+	NULL
+};
+static const struct tty_feature tty_feature_bpaste = {
+	"bpaste",
+	tty_feature_bpaste_capabilities,
+	0
+};
+
+/* Terminal supports focus reporting. */
+static const char *tty_feature_focus_capabilities[] = {
+	"Enfcs=\\E[?1004h",
+	"Dsfcs=\\E[?1004l",
+	NULL
+};
+static const struct tty_feature tty_feature_focus = {
+	"focus",
+	tty_feature_focus_capabilities,
 	0
 };
 
@@ -129,7 +150,7 @@ static const char *tty_feature_cstyle_capabilities[] = {
 	"Se=\\E[2 q",
 	NULL
 };
-static struct tty_feature tty_feature_cstyle = {
+static const struct tty_feature tty_feature_cstyle = {
 	"cstyle",
 	tty_feature_cstyle_capabilities,
 	0
@@ -141,9 +162,20 @@ static const char *tty_feature_ccolour_capabilities[] = {
 	"Cr=\\E]112\\a",
 	NULL
 };
-static struct tty_feature tty_feature_ccolour = {
+static const struct tty_feature tty_feature_ccolour = {
 	"ccolour",
 	tty_feature_ccolour_capabilities,
+	0
+};
+
+/* Terminal supports strikethrough. */
+static const char *tty_feature_strikethrough_capabilities[] = {
+	"smxx=\\E[9m",
+	NULL
+};
+static const struct tty_feature tty_feature_strikethrough = {
+	"strikethrough",
+	tty_feature_strikethrough_capabilities,
 	0
 };
 
@@ -152,7 +184,7 @@ static const char *tty_feature_sync_capabilities[] = {
 	"Sync=\\EP=%p1%ds\\E\\\\",
 	NULL
 };
-static struct tty_feature tty_feature_sync = {
+static const struct tty_feature tty_feature_sync = {
 	"sync",
 	tty_feature_sync_capabilities,
 	0
@@ -166,14 +198,14 @@ static const char *tty_feature_margins_capabilities[] = {
 	"Cmg=\\E[%i%p1%d;%p2%ds",
 	NULL
 };
-static struct tty_feature tty_feature_margins = {
+static const struct tty_feature tty_feature_margins = {
 	"margins",
 	tty_feature_margins_capabilities,
 	TERM_DECSLRM
 };
 
 /* Terminal supports DECFRA rectangle fill. */
-static struct tty_feature tty_feature_rectfill = {
+static const struct tty_feature tty_feature_rectfill = {
 	"rectfill",
 	NULL,
 	TERM_DECFRA
@@ -182,13 +214,16 @@ static struct tty_feature tty_feature_rectfill = {
 /* Available terminal features. */
 static const struct tty_feature *tty_features[] = {
 	&tty_feature_256,
-	&tty_feature_clipboard,
+	&tty_feature_bpaste,
 	&tty_feature_ccolour,
+	&tty_feature_clipboard,
 	&tty_feature_cstyle,
+	&tty_feature_focus,
 	&tty_feature_margins,
 	&tty_feature_overline,
 	&tty_feature_rectfill,
 	&tty_feature_rgb,
+	&tty_feature_strikethrough,
 	&tty_feature_sync,
 	&tty_feature_title,
 	&tty_feature_usstyle
@@ -201,7 +236,7 @@ tty_add_features(int *feat, const char *s, const char *separators)
 	char				 *next, *loop, *copy;
 	u_int				  i;
 
-	log_debug("%s: %s", __func__, s);
+	log_debug("adding terminal features %s", s);
 
 	loop = copy = xstrdup(s);
 	while ((next = strsep(&loop, separators)) != NULL) {
@@ -274,4 +309,40 @@ tty_apply_features(struct tty_term *term, int feat)
 		return (0);
 	term->features |= feat;
 	return (1);
+}
+
+void
+tty_default_features(int *feat, const char *name, u_int version)
+{
+	static struct {
+		const char	*name;
+		u_int		 version;
+		const char	*features;
+	} table[] = {
+#define TTY_FEATURES_BASE_MODERN_XTERM "256,RGB,bpaste,clipboard,strikethrough,title"
+		{ .name = "mintty",
+		  .features = TTY_FEATURES_BASE_MODERN_XTERM ",ccolour,cstyle,margins,overline"
+		},
+		{ .name = "tmux",
+		  .features = TTY_FEATURES_BASE_MODERN_XTERM ",ccolour,cstyle,focus,overline,usstyle"
+		},
+		{ .name = "rxvt-unicode",
+		  .features = "256,bpaste,ccolour,cstyle,title"
+		},
+		{ .name = "iTerm2",
+		  .features = TTY_FEATURES_BASE_MODERN_XTERM ",cstyle,margins,sync"
+		},
+		{ .name = "XTerm",
+		  .features = TTY_FEATURES_BASE_MODERN_XTERM ",ccolour,cstyle,focus,margins,rectfill"
+		}
+	};
+	u_int	i;
+
+	for (i = 0; i < nitems(table); i++) {
+		if (strcmp(table[i].name, name) != 0)
+			continue;
+		if (version != 0 && version < table[i].version)
+			continue;
+		tty_add_features(feat, table[i].features, ",");
+	}
 }

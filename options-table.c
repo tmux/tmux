@@ -261,7 +261,7 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SERVER,
 	  .flags = OPTIONS_TABLE_IS_ARRAY,
-	  .default_str = "tmux*:XT,screen*:XT,xterm*:XT",
+	  .default_str = "",
 	  .separator = ","
 	},
 
