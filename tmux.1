@@ -4969,7 +4969,7 @@ session option.
 Commands related to the status line are as follows:
 .Bl -tag -width Ds
 .It Xo Ic command-prompt
-.Op Fl 1ikN
+.Op Fl 1ikNTW
 .Op Fl I Ar inputs
 .Op Fl p Ar prompts
 .Op Fl t Ar target-client
@@ -5028,6 +5028,14 @@ makes the prompt only accept numeric key presses.
 .Fl i
 executes the command every time the prompt input changes instead of when the
 user exits the command prompt.
+.Fl T
+tells
+.Nm
+that the prompt is for a target which affects what completions are offered when
+.Em Tab
+is pressed;
+.Fl W
+is similar but indicates the prompt is for a window.
 .Pp
 The following keys have a special meaning in the command prompt, depending
 on the value of the

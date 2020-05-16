@@ -1602,6 +1602,8 @@ struct client {
 #define PROMPT_INCREMENTAL 0x4
 #define PROMPT_NOFORMAT 0x8
 #define PROMPT_KEY 0x10
+#define PROMPT_WINDOW 0x20
+#define PROMPT_TARGET 0x40
 	int		 prompt_flags;
 
 	struct session	*session;
