@@ -65,8 +65,6 @@ static void	tty_emulate_repeat(struct tty *, enum tty_code_code,
 		    enum tty_code_code, u_int);
 static void	tty_repeat_space(struct tty *, u_int);
 static void	tty_draw_pane(struct tty *, const struct tty_ctx *, u_int);
-static void	tty_cell(struct tty *, const struct grid_cell *,
-		    const struct grid_cell *, int *);
 static void	tty_default_attributes(struct tty *, const struct grid_cell *,
 		    int *, u_int);
 
@@ -1243,7 +1241,7 @@ static const struct grid_cell *
 tty_check_codeset(struct tty *tty, const struct grid_cell *gc)
 {
 	static struct grid_cell	new;
-	u_int			n;
+	int			c;
 
 	/* Characters less than 0x7f are always fine, no matter what. */
 	if (gc->data.size == 1 && *gc->data.data < 0x7f)
@@ -1252,14 +1250,21 @@ tty_check_codeset(struct tty *tty, const struct grid_cell *gc)
 	/* UTF-8 terminal and a UTF-8 character - fine. */
 	if (tty->client->flags & CLIENT_UTF8)
 		return (gc);
+	memcpy(&new, gc, sizeof new);
+
+	/* See if this can be mapped to an ACS character. */
+	c = tty_acs_reverse_get(tty, gc->data.data, gc->data.size);
+	if (c != -1) {
+		utf8_set(&new.data, c);
+		new.attr |= GRID_ATTR_CHARSET;
+		return (&new);
+	}
 
 	/* Replace by the right number of underscores. */
-	n = gc->data.width;
-	if (n > UTF8_SIZE)
-		n = UTF8_SIZE;
-	memcpy(&new, gc, sizeof new);
-	new.data.size = n;
-	memset(new.data.data, '_', n);
+	new.data.size = gc->data.width;
+	if (new.data.size > UTF8_SIZE)
+		new.data.size = UTF8_SIZE;
+	memset(new.data.data, '_', new.data.size);
 	return (&new);
 }
 
@@ -1924,7 +1929,7 @@ tty_cmd_syncstart(struct tty *tty, __unused const struct tty_ctx *ctx)
 	tty_sync_start(tty);
 }
 
-static void
+void
 tty_cell(struct tty *tty, const struct grid_cell *gc,
     const struct grid_cell *defaults, int *palette)
 {
@@ -1940,12 +1945,13 @@ tty_cell(struct tty *tty, const struct grid_cell *gc,
 	if (gc->flags & GRID_FLAG_PADDING)
 		return;
 
-	/* Set the attributes. */
-	tty_attributes(tty, gc, defaults, palette);
-
-	/* Get the cell and if ASCII write with putc to do ACS translation. */
+	/* Check the output codeset and apply attributes. */
 	gcp = tty_check_codeset(tty, gc);
+	tty_attributes(tty, gcp, defaults, palette);
+
+	/* If it is a single character, write with putc to handle ACS. */
 	if (gcp->data.size == 1) {
+		tty_attributes(tty, gcp, defaults, palette);
 		if (*gcp->data.data < 0x20 || *gcp->data.data == 0x7f)
 			return;
 		tty_putc(tty, *gcp->data.data);

@@ -3924,6 +3924,28 @@ but set the starting index for pane numbers.
 .It Ic pane-border-format Ar format
 Set the text shown in pane border status lines.
 .Pp
+.It Ic pane-border-lines Ar type
+Set the type of characters used for drawing pane borders.
+.Ar type
+may be one of:
+.Bl -tag -width Ds
+.It single
+single lines using ACS or UTF-8 characters
+.It double
+double lines using UTF-8 characters
+.It heavy
+heavy lines using UTF-8 characters
+.It simple
+simple ASCII characters
+.It number
+the pane number
+.El
+.Pp
+.Ql double
+and
+.Ql heavy
+will fall back to standard ACS line drawing when UTF-8 is not supported.
+.Pp
 .It Xo Ic pane-border-status
 .Op Ic off | top | bottom
 .Xc
