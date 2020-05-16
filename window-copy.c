@@ -406,7 +406,7 @@ window_copy_init(struct window_mode_entry *wme,
 	data->screen.cx = data->cx;
 	data->screen.cy = data->cy;
 
-	screen_write_start(&ctx, NULL, &data->screen);
+	screen_write_start(&ctx, &data->screen);
 	for (i = 0; i < screen_size_y(&data->screen); i++)
 		window_copy_write_line(wme, &ctx, i);
 	screen_write_cursormove(&ctx, data->cx, data->cy, 0);
@@ -473,7 +473,7 @@ window_copy_vadd(struct window_pane *wp, const char *fmt, va_list ap)
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 
 	old_hsize = screen_hsize(data->backing);
-	screen_write_start(&back_ctx, NULL, backing);
+	screen_write_start(&back_ctx, backing);
 	if (data->backing_written) {
 		/*
 		 * On the second or later line, do a CRLF before writing
@@ -489,7 +489,7 @@ window_copy_vadd(struct window_pane *wp, const char *fmt, va_list ap)
 
 	data->oy += screen_hsize(data->backing) - old_hsize;
 
-	screen_write_start(&ctx, wp, &data->screen);
+	screen_write_start_pane(&ctx, wp, &data->screen);
 
 	/*
 	 * If the history has changed, draw the top line.
@@ -713,7 +713,7 @@ window_copy_size_changed(struct window_mode_entry *wme)
 	window_copy_clear_selection(wme);
 	window_copy_clear_marks(wme);
 
-	screen_write_start(&ctx, NULL, s);
+	screen_write_start(&ctx, s);
 	window_copy_write_lines(wme, &ctx, 0, screen_size_y(s));
 	screen_write_stop(&ctx);
 
@@ -2822,7 +2822,7 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 	fy = screen_hsize(data->backing) - data->oy + data->cy;
 
 	screen_init(&ss, screen_write_strlen("%s", str), 1, 0);
-	screen_write_start(&ctx, NULL, &ss);
+	screen_write_start(&ctx, &ss);
 	screen_write_nputs(&ctx, -1, &grid_default_cell, "%s", str);
 	screen_write_stop(&ctx);
 
@@ -2867,7 +2867,7 @@ window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
 	if (ssp == NULL) {
 		width = screen_write_strlen("%s", data->searchstr);
 		screen_init(&ss, width, 1, 0);
-		screen_write_start(&ctx, NULL, &ss);
+		screen_write_start(&ctx, &ss);
 		screen_write_nputs(&ctx, -1, &grid_default_cell, "%s",
 		    data->searchstr);
 		screen_write_stop(&ctx);
@@ -3207,7 +3207,7 @@ window_copy_redraw_lines(struct window_mode_entry *wme, u_int py, u_int ny)
 	struct screen_write_ctx	 	 ctx;
 	u_int				 i;
 
-	screen_write_start(&ctx, wp, NULL);
+	screen_write_start_pane(&ctx, wp, NULL);
 	for (i = py; i < py + ny; i++)
 		window_copy_write_line(wme, &ctx, i);
 	screen_write_cursormove(&ctx, data->cx, data->cy, 0);
@@ -3326,7 +3326,7 @@ window_copy_update_cursor(struct window_mode_entry *wme, u_int cx, u_int cy)
 	if (data->cx == screen_size_x(s))
 		window_copy_redraw_lines(wme, data->cy, 1);
 	else {
-		screen_write_start(&ctx, wp, NULL);
+		screen_write_start_pane(&ctx, wp, NULL);
 		screen_write_cursormove(&ctx, data->cx, data->cy, 0);
 		screen_write_stop(&ctx);
 	}
@@ -3579,7 +3579,7 @@ window_copy_copy_buffer(struct window_mode_entry *wme, const char *prefix,
 	struct screen_write_ctx	 ctx;
 
 	if (options_get_number(global_options, "set-clipboard") != 0) {
-		screen_write_start(&ctx, wp, NULL);
+		screen_write_start_pane(&ctx, wp, NULL);
 		screen_write_setselection(&ctx, buf, len);
 		screen_write_stop(&ctx);
 		notify_pane("pane-set-clipboard", wp);
@@ -3636,7 +3636,7 @@ window_copy_append_selection(struct window_mode_entry *wme)
 		return;
 
 	if (options_get_number(global_options, "set-clipboard") != 0) {
-		screen_write_start(&ctx, wp, NULL);
+		screen_write_start_pane(&ctx, wp, NULL);
 		screen_write_setselection(&ctx, buf, len);
 		screen_write_stop(&ctx);
 		notify_pane("pane-set-clipboard", wp);
@@ -4399,7 +4399,7 @@ window_copy_scroll_up(struct window_mode_entry *wme, u_int ny)
 		window_copy_search_marks(wme, NULL, data->searchregex);
 	window_copy_update_selection(wme, 0, 0);
 
-	screen_write_start(&ctx, wp, NULL);
+	screen_write_start_pane(&ctx, wp, NULL);
 	screen_write_cursormove(&ctx, 0, 0, 0);
 	screen_write_deleteline(&ctx, ny, 8);
 	window_copy_write_lines(wme, &ctx, screen_size_y(s) - ny, ny);
@@ -4435,7 +4435,7 @@ window_copy_scroll_down(struct window_mode_entry *wme, u_int ny)
 		window_copy_search_marks(wme, NULL, data->searchregex);
 	window_copy_update_selection(wme, 0, 0);
 
-	screen_write_start(&ctx, wp, NULL);
+	screen_write_start_pane(&ctx, wp, NULL);
 	screen_write_cursormove(&ctx, 0, 0, 0);
 	screen_write_insertline(&ctx, ny, 8);
 	window_copy_write_lines(wme, &ctx, 0, ny);

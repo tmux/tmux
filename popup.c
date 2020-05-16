@@ -58,6 +58,44 @@ struct popup_data {
 };
 
 static void
+popup_redraw_cb(const struct tty_ctx *ttyctx)
+{
+	struct popup_data	*pd = ttyctx->arg;
+
+	pd->c->flags |= CLIENT_REDRAWOVERLAY;
+}
+
+static int
+popup_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
+{
+	struct popup_data	*pd = ttyctx->arg;
+
+	if (pd->c->flags & CLIENT_REDRAWOVERLAY)
+		return (-1);
+
+	ttyctx->bigger = 0;
+	ttyctx->wox = 0;
+	ttyctx->woy = 0;
+	ttyctx->wsx = c->tty.sx;
+	ttyctx->wsy = c->tty.sy;
+
+	ttyctx->xoff = ttyctx->rxoff = pd->px + 1;
+	ttyctx->yoff = ttyctx->ryoff = pd->py + 1;
+
+	return (1);
+}
+
+static void
+popup_init_ctx_cb(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx)
+{
+	struct popup_data	*pd = ctx->arg;
+
+	ttyctx->redraw_cb = popup_redraw_cb;
+	ttyctx->set_client_cb = popup_set_client_cb;
+	ttyctx->arg = pd;
+}
+
+static void
 popup_write_screen(struct client *c, struct popup_data *pd)
 {
 	struct cmdq_item	*item = pd->item;
@@ -72,7 +110,7 @@ popup_write_screen(struct client *c, struct popup_data *pd)
 	else
 		format_defaults(ft, c, NULL, NULL, NULL);
 
-	screen_write_start(&ctx, NULL, &pd->s);
+	screen_write_start(&ctx, &pd->s);
 	screen_write_clearscreen(&ctx, 8);
 
 	y = 0;
@@ -98,7 +136,7 @@ popup_write_screen(struct client *c, struct popup_data *pd)
 	screen_write_stop(&ctx);
 }
 
-static int
+static struct screen *
 popup_mode_cb(struct client *c, u_int *cx, u_int *cy)
 {
 	struct popup_data	*pd = c->overlay_data;
@@ -107,7 +145,7 @@ popup_mode_cb(struct client *c, u_int *cx, u_int *cy)
 		return (0);
 	*cx = pd->px + 1 + pd->s.cx;
 	*cy = pd->py + 1 + pd->s.cy;
-	return (pd->s.mode);
+	return (&pd->s);
 }
 
 static int
@@ -132,7 +170,7 @@ popup_draw_cb(struct client *c, __unused struct screen_redraw_ctx *ctx0)
 	u_int			 i, px = pd->px, py = pd->py;
 
 	screen_init(&s, pd->sx, pd->sy, 0);
-	screen_write_start(&ctx, NULL, &s);
+	screen_write_start(&ctx, &s);
 	screen_write_clearscreen(&ctx, 8);
 	screen_write_box(&ctx, pd->sx, pd->sy);
 	screen_write_cursormove(&ctx, 1, 1, 0);
@@ -140,8 +178,10 @@ popup_draw_cb(struct client *c, __unused struct screen_redraw_ctx *ctx0)
 	screen_write_stop(&ctx);
 
 	c->overlay_check = NULL;
-	for (i = 0; i < pd->sy; i++)
-		tty_draw_line(tty, NULL, &s, 0, i, pd->sx, px, py + i);
+	for (i = 0; i < pd->sy; i++){
+		tty_draw_line(tty, &s, 0, i, pd->sx, px, py + i,
+		    &grid_default_cell, NULL);
+	}
 	c->overlay_check = popup_check_cb;
 }
 
@@ -327,15 +367,23 @@ popup_job_update_cb(struct job *job)
 {
 	struct popup_data	*pd = job_get_data(job);
 	struct evbuffer		*evb = job_get_event(job)->input;
+	struct client		*c = pd->c;
 	struct screen		*s = &pd->s;
 	void			*data = EVBUFFER_DATA(evb);
 	size_t			 size = EVBUFFER_LENGTH(evb);
 
-	if (size != 0) {
-		input_parse_screen(pd->ictx, s, data, size);
-		evbuffer_drain(evb, size);
-		pd->c->flags |= CLIENT_REDRAWOVERLAY;
-	}
+	if (size == 0)
+		return;
+
+	c->overlay_check = NULL;
+	c->tty.flags &= ~TTY_FREEZE;
+
+	input_parse_screen(pd->ictx, s, popup_init_ctx_cb, pd, data, size);
+
+	c->tty.flags |= TTY_FREEZE;
+	c->overlay_check = popup_check_cb;
+
+	evbuffer_drain(evb, size);
 }
 
 static void

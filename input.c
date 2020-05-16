@@ -842,9 +842,9 @@ input_reset(struct input_ctx *ictx, int clear)
 
 	if (clear && wp != NULL) {
 		if (TAILQ_EMPTY(&wp->modes))
-			screen_write_start(sctx, wp, &wp->base);
+			screen_write_start_pane(sctx, wp, &wp->base);
 		else
-			screen_write_start(sctx, NULL, &wp->base);
+			screen_write_start(sctx, &wp->base);
 		screen_write_reset(sctx);
 		screen_write_stop(sctx);
 	}
@@ -960,9 +960,9 @@ input_parse_buffer(struct window_pane *wp, u_char *buf, size_t len)
 
 	/* NULL wp if there is a mode set as don't want to update the tty. */
 	if (TAILQ_EMPTY(&wp->modes))
-		screen_write_start(sctx, wp, &wp->base);
+		screen_write_start_pane(sctx, wp, &wp->base);
 	else
-		screen_write_start(sctx, NULL, &wp->base);
+		screen_write_start(sctx, &wp->base);
 
 	log_debug("%s: %%%u %s, %zu bytes: %.*s", __func__, wp->id,
 	    ictx->state->name, len, (int)len, buf);
@@ -973,15 +973,15 @@ input_parse_buffer(struct window_pane *wp, u_char *buf, size_t len)
 
 /* Parse given input for screen. */
 void
-input_parse_screen(struct input_ctx *ictx, struct screen *s, u_char *buf,
-    size_t len)
+input_parse_screen(struct input_ctx *ictx, struct screen *s,
+    screen_write_init_ctx_cb cb, void *arg, u_char *buf, size_t len)
 {
 	struct screen_write_ctx	*sctx = &ictx->ctx;
 
 	if (len == 0)
 		return;
 
-	screen_write_start(sctx, NULL, s);
+	screen_write_start_callback(sctx, s, cb, arg);
 	input_parse(ictx, buf, len);
 	screen_write_stop(sctx);
 }
@@ -1632,7 +1632,6 @@ static void
 input_csi_dispatch_rm_private(struct input_ctx *ictx)
 {
 	struct screen_write_ctx	*sctx = &ictx->ctx;
-	struct window_pane	*wp = ictx->wp;
 	struct grid_cell	*gc = &ictx->cell.cell;
 	u_int			 i;
 
@@ -1677,16 +1676,10 @@ input_csi_dispatch_rm_private(struct input_ctx *ictx)
 			break;
 		case 47:
 		case 1047:
-			if (wp != NULL)
-				window_pane_alternate_off(wp, gc, 0);
-			else
-				screen_alternate_off(sctx->s, gc, 0);
+			screen_write_alternateoff(sctx, gc, 0);
 			break;
 		case 1049:
-			if (wp != NULL)
-				window_pane_alternate_off(wp, gc, 1);
-			else
-				screen_alternate_off(sctx->s, gc, 1);
+			screen_write_alternateoff(sctx, gc, 1);
 			break;
 		case 2004:
 			screen_write_mode_clear(sctx, MODE_BRACKETPASTE);
@@ -1782,16 +1775,10 @@ input_csi_dispatch_sm_private(struct input_ctx *ictx)
 			break;
 		case 47:
 		case 1047:
-			if (wp != NULL)
-				window_pane_alternate_on(wp, gc, 0);
-			else
-				screen_alternate_on(sctx->s, gc, 0);
+			screen_write_alternateon(sctx, gc, 0);
 			break;
 		case 1049:
-			if (wp != NULL)
-				window_pane_alternate_on(wp, gc, 1);
-			else
-				screen_alternate_on(sctx->s, gc, 1);
+			screen_write_alternateon(sctx, gc, 1);
 			break;
 		case 2004:
 			screen_write_mode_set(sctx, MODE_BRACKETPASTE);
@@ -2595,7 +2582,7 @@ input_osc_52(struct input_ctx *ictx, const char *p)
 		return;
 	}
 
-	screen_write_start(&ctx, wp, NULL);
+	screen_write_start_pane(&ctx, wp, NULL);
 	screen_write_setselection(&ctx, out, outlen);
 	screen_write_stop(&ctx);
 	notify_pane("pane-set-clipboard", wp);

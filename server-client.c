@@ -1542,9 +1542,9 @@ server_client_reset_state(struct client *c)
 	struct tty		*tty = &c->tty;
 	struct window		*w = c->session->curw->window;
 	struct window_pane	*wp = w->active, *loop;
-	struct screen		*s;
+	struct screen		*s = NULL;
 	struct options		*oo = c->session->options;
-	int			 mode, cursor, flags;
+	int			 mode = 0, cursor, flags;
 	u_int			 cx = 0, cy = 0, ox, oy, sx, sy;
 
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
@@ -1556,17 +1556,14 @@ server_client_reset_state(struct client *c)
 
 	/* Get mode from overlay if any, else from screen. */
 	if (c->overlay_draw != NULL) {
-		s = NULL;
-		if (c->overlay_mode == NULL)
-			mode = 0;
-		else
-			mode = c->overlay_mode(c, &cx, &cy);
-	} else {
+		if (c->overlay_mode != NULL)
+			s = c->overlay_mode(c, &cx, &cy);
+	} else
 		s = wp->screen;
+	if (s != NULL)
 		mode = s->mode;
-		if (c->prompt_string != NULL || c->message_string != NULL)
-			mode &= ~MODE_CURSOR;
-	}
+	if (c->prompt_string != NULL || c->message_string != NULL)
+		mode &= ~MODE_CURSOR;
 	log_debug("%s: client %s mode %x", __func__, c->name, mode);
 
 	/* Reset region and margin. */

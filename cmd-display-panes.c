@@ -131,9 +131,7 @@ cmd_display_panes_draw_pane(struct screen_redraw_ctx *ctx,
 		gc.bg = active_colour;
 	else
 		gc.bg = colour;
-	gc.flags |= GRID_FLAG_NOPALETTE;
-
-	tty_attributes(tty, &gc, wp);
+	tty_attributes(tty, &gc, &grid_default_cell, NULL);
 	for (ptr = buf; *ptr != '\0'; ptr++) {
 		if (*ptr < '0' || *ptr > '9')
 			continue;
@@ -160,9 +158,7 @@ draw_text:
 		gc.fg = active_colour;
 	else
 		gc.fg = colour;
-	gc.flags |= GRID_FLAG_NOPALETTE;
-
-	tty_attributes(tty, &gc, wp);
+	tty_attributes(tty, &gc, &grid_default_cell, NULL);
 	tty_puts(tty, buf);
 
 	tty_cursor(tty, 0, 0);

@@ -130,14 +130,12 @@ menu_free(struct menu *menu)
 	free(menu);
 }
 
-static int
+static struct screen *
 menu_mode_cb(struct client *c, __unused u_int *cx, __unused u_int *cy)
 {
 	struct menu_data	*md = c->overlay_data;
 
-	if (~md->flags & MENU_NOMOUSE)
-		return (MODE_MOUSE_ALL);
-	return (0);
+	return (&md->s);
 }
 
 static void
@@ -153,13 +151,15 @@ menu_draw_cb(struct client *c, __unused struct screen_redraw_ctx *ctx0)
 
 	style_apply(&gc, c->session->curw->window->options, "mode-style", NULL);
 
-	screen_write_start(&ctx, NULL, s);
+	screen_write_start(&ctx, s);
 	screen_write_clearscreen(&ctx, 8);
 	screen_write_menu(&ctx, menu, md->choice, &gc);
 	screen_write_stop(&ctx);
 
-	for (i = 0; i < screen_size_y(&md->s); i++)
-		tty_draw_line(tty, NULL, s, 0, i, menu->width + 4, px, py + i);
+	for (i = 0; i < screen_size_y(&md->s); i++) {
+		tty_draw_line(tty, s, 0, i, menu->width + 4, px, py + i,
+		    &grid_default_cell, NULL);
+	}
 }
 
 static void
@@ -349,6 +349,8 @@ menu_display(struct menu *menu, int flags, struct cmdq_item *item, u_int px,
 	if (fs != NULL)
 		cmd_find_copy_state(&md->fs, fs);
 	screen_init(&md->s, menu->width + 4, menu->count + 2, 0);
+	if (~md->flags & MENU_NOMOUSE)
+		md->s.mode |= MODE_MOUSE_ALL;
 
 	md->px = px;
 	md->py = py;

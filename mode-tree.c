@@ -562,7 +562,7 @@ mode_tree_draw(struct mode_tree_data *mtd)
 	w = mtd->width;
 	h = mtd->height;
 
-	screen_write_start(&ctx, NULL, s);
+	screen_write_start(&ctx, s);
 	screen_write_clearscreen(&ctx, 8);
 
 	if (mtd->line_size > 10)

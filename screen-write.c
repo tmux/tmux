@@ -27,8 +27,8 @@ static void	screen_write_collect_clear(struct screen_write_ctx *, u_int,
 		    u_int);
 static int	screen_write_collect_clear_end(struct screen_write_ctx *, u_int,
 		    u_int, u_int);
-static int	screen_write_collect_clear_start(struct screen_write_ctx *, u_int,
-		    u_int, u_int);
+static int	screen_write_collect_clear_start(struct screen_write_ctx *,
+		    u_int, u_int, u_int);
 static void	screen_write_collect_scroll(struct screen_write_ctx *);
 static void	screen_write_collect_flush(struct screen_write_ctx *, int,
 		    const char *);
@@ -101,6 +101,50 @@ screen_write_set_cursor(struct screen_write_ctx *ctx, int cx, int cy)
 		evtimer_add(&w->offset_timer, &tv);
 }
 
+/* Do a full redraw. */
+static void
+screen_write_redraw_cb(const struct tty_ctx *ttyctx)
+{
+	struct window_pane	*wp = ttyctx->arg;
+
+	wp->flags |= PANE_REDRAW;
+}
+
+/* Update context for client. */
+static int
+screen_write_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
+{
+	struct window_pane	*wp = ttyctx->arg;
+
+	if (c->session->curw->window != wp->window)
+		return (0);
+	if (wp->layout_cell == NULL)
+		return (0);
+
+	if (wp->flags & (PANE_REDRAW|PANE_DROP))
+		return (-1);
+	if (c->flags & CLIENT_REDRAWPANES) {
+		/*
+		 * Redraw is already deferred to redraw another pane - redraw
+		 * this one also when that happens.
+		 */
+		log_debug("adding %%%u to deferred redraw", wp->id);
+		wp->flags |= PANE_REDRAW;
+		return (-1);
+	}
+
+	ttyctx->bigger = tty_window_offset(&c->tty, &ttyctx->wox, &ttyctx->woy,
+	    &ttyctx->wsx, &ttyctx->wsy);
+
+	ttyctx->xoff = ttyctx->rxoff = wp->xoff;
+	ttyctx->yoff = ttyctx->ryoff = wp->yoff;
+
+	if (status_at_line(c) == 0)
+		ttyctx->yoff += status_line_size(c);
+
+	return (1);
+}
+
 /* Set up context for TTY command. */
 static void
 screen_write_initctx(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx,
@@ -110,16 +154,34 @@ screen_write_initctx(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx,
 
 	memset(ttyctx, 0, sizeof *ttyctx);
 
-	ttyctx->wp = ctx->wp;
+	if (ctx->wp != NULL) {
+		tty_default_colours(&ttyctx->defaults, ctx->wp);
+		ttyctx->palette = ctx->wp->palette;
+	} else {
+		memcpy(&ttyctx->defaults, &grid_default_cell,
+		    sizeof ttyctx->defaults);
+		ttyctx->palette = NULL;
+	}
 
+	ttyctx->s = s;
 	ttyctx->sx = screen_size_x(s);
 	ttyctx->sy = screen_size_y(s);
 
 	ttyctx->ocx = s->cx;
 	ttyctx->ocy = s->cy;
-
 	ttyctx->orlower = s->rlower;
 	ttyctx->orupper = s->rupper;
+
+	if (ctx->init_ctx_cb != NULL)
+		ctx->init_ctx_cb(ctx, ttyctx);
+	else {
+		ttyctx->redraw_cb = screen_write_redraw_cb;
+		if (ctx->wp == NULL)
+			ttyctx->set_client_cb = NULL;
+		else
+			ttyctx->set_client_cb = screen_write_set_client_cb;
+		ttyctx->arg = ctx->wp;
+	}
 
 	if (ctx->wp != NULL &&
 	    !ctx->sync &&
@@ -151,18 +213,13 @@ screen_write_free_list(struct screen *s)
 	free(s->write_list);
 }
 
-/* Initialize writing with a window. */
-void
-screen_write_start(struct screen_write_ctx *ctx, struct window_pane *wp,
-    struct screen *s)
+/* Set up for writing. */
+static void
+screen_write_init(struct screen_write_ctx *ctx, struct screen *s)
 {
 	memset(ctx, 0, sizeof *ctx);
 
-	ctx->wp = wp;
-	if (wp != NULL && s == NULL)
-		ctx->s = wp->screen;
-	else
-		ctx->s = s;
+	ctx->s = s;
 
 	if (ctx->s->write_list == NULL)
 		screen_write_make_list(ctx->s);
@@ -170,17 +227,51 @@ screen_write_start(struct screen_write_ctx *ctx, struct window_pane *wp,
 
 	ctx->scrolled = 0;
 	ctx->bg = 8;
+}
+
+/* Initialize writing with a pane. */
+void
+screen_write_start_pane(struct screen_write_ctx *ctx, struct window_pane *wp,
+    struct screen *s)
+{
+	if (s == NULL)
+		s = wp->screen;
+	screen_write_init(ctx, s);
+	ctx->wp = wp;
 
 	if (log_get_level() != 0) {
-		if (wp != NULL) {
-			log_debug("%s: size %ux%u, pane %%%u (at %u,%u)",
-			    __func__, screen_size_x(ctx->s),
-			    screen_size_y(ctx->s), wp->id, wp->xoff, wp->yoff);
-		} else {
-			log_debug("%s: size %ux%u, no pane",
-			    __func__, screen_size_x(ctx->s),
-			    screen_size_y(ctx->s));
-		}
+		log_debug("%s: size %ux%u, pane %%%u (at %u,%u)",
+		    __func__, screen_size_x(ctx->s), screen_size_y(ctx->s),
+		    wp->id, wp->xoff, wp->yoff);
+	}
+}
+
+/* Initialize writing with a callback. */
+void
+screen_write_start_callback(struct screen_write_ctx *ctx, struct screen *s,
+    screen_write_init_ctx_cb cb, void *arg)
+{
+	screen_write_init(ctx, s);
+
+	ctx->init_ctx_cb = cb;
+	ctx->arg = arg;
+
+	if (log_get_level() != 0) {
+		log_debug("%s: size %ux%u, with callback", __func__,
+		    screen_size_x(ctx->s), screen_size_y(ctx->s));
+	}
+}
+
+
+/* Initialize writing. */
+void
+screen_write_start(struct screen_write_ctx *ctx, struct screen *s)
+{
+	screen_write_init(ctx, s);
+
+	if (log_get_level() != 0) {
+		log_debug("%s: size %ux%u, no pane", __func__,
+		    screen_size_x(ctx->s), screen_size_y(ctx->s));
 	}
 }
 
@@ -1798,4 +1889,36 @@ screen_write_rawstring(struct screen_write_ctx *ctx, u_char *str, u_int len)
 	ttyctx.num = len;
 
 	tty_write(tty_cmd_rawstring, &ttyctx);
+}
+
+/* Turn alternate screen on. */
+void
+screen_write_alternateon(struct screen_write_ctx *ctx, struct grid_cell *gc,
+    int cursor)
+{
+	struct tty_ctx		 ttyctx;
+	struct window_pane	*wp = ctx->wp;
+
+	if (wp != NULL && !options_get_number(wp->options, "alternate-screen"))
+		return;
+	screen_alternate_on(ctx->s, gc, cursor);
+
+	screen_write_initctx(ctx, &ttyctx, 1);
+	ttyctx.redraw_cb(&ttyctx);
+}
+
+/* Turn alternate screen off. */
+void
+screen_write_alternateoff(struct screen_write_ctx *ctx, struct grid_cell *gc,
+    int cursor)
+{
+	struct tty_ctx		 ttyctx;
+	struct window_pane	*wp = ctx->wp;
+
+	if (wp != NULL && !options_get_number(wp->options, "alternate-screen"))
+		return;
+	screen_alternate_off(ctx->s, gc, cursor);
+
+	screen_write_initctx(ctx, &ttyctx, 1);
+	ttyctx.redraw_cb(&ttyctx);
 }
