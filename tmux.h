@@ -279,6 +279,8 @@ enum tty_code_code {
 	TTYC_DIM,
 	TTYC_DL,
 	TTYC_DL1,
+	TTYC_DSBP,
+	TTYC_DSFCS,
 	TTYC_DSMG,
 	TTYC_E3,
 	TTYC_ECH,
@@ -286,6 +288,8 @@ enum tty_code_code {
 	TTYC_EL,
 	TTYC_EL1,
 	TTYC_ENACS,
+	TTYC_ENBP,
+	TTYC_ENFCS,
 	TTYC_ENMG,
 	TTYC_FSL,
 	TTYC_HOME,
@@ -924,8 +928,8 @@ struct window_pane {
 
 	struct input_ctx *ictx;
 
-	struct style	 cached_style;
-	struct style	 cached_active_style;
+	struct grid_cell cached_gc;
+	struct grid_cell cached_active_gc;
 	int		*palette;
 
 	int		 pipe_fd;
@@ -1196,6 +1200,7 @@ struct tty_term {
 #define TERM_DECSLRM 0x4
 #define TERM_DECFRA 0x8
 #define TERM_RGBCOLOURS 0x10
+#define TERM_VT100LIKE 0x20
 	int		 flags;
 
 	LIST_ENTRY(tty_term) entry;
@@ -1504,6 +1509,7 @@ struct client {
 
 	char		*term_name;
 	int		 term_features;
+	char		*term_type;
 
 	char		*ttyname;
 	struct tty	 tty;
@@ -1819,7 +1825,14 @@ char		*format_expand(struct format_tree *, const char *);
 char		*format_single(struct cmdq_item *, const char *,
 		     struct client *, struct session *, struct winlink *,
 		     struct window_pane *);
+char		*format_single_from_state(struct cmdq_item *, const char *,
+		    struct client *, struct cmd_find_state *);
 char		*format_single_from_target(struct cmdq_item *, const char *);
+struct format_tree *format_create_defaults(struct cmdq_item *, struct client *,
+		     struct session *, struct winlink *, struct window_pane *);
+struct format_tree *format_create_from_state(struct cmdq_item *,
+		     struct client *, struct cmd_find_state *);
+struct format_tree *format_create_from_target(struct cmdq_item *);
 void		 format_defaults(struct format_tree *, struct client *,
 		     struct session *, struct winlink *, struct window_pane *);
 void		 format_defaults_window(struct format_tree *, struct window *);
@@ -2028,6 +2041,7 @@ const char	*tty_term_describe(struct tty_term *, enum tty_code_code);
 void		 tty_add_features(int *, const char *, const char *);
 const char	*tty_get_features(int);
 int		 tty_apply_features(struct tty_term *, int);
+void		 tty_default_features(int *, const char *, u_int);
 
 /* tty-acs.c */
 int		 tty_acs_needed(struct tty *);
@@ -2349,6 +2363,8 @@ int	 attributes_fromstring(const char *);
 extern const struct grid_cell grid_default_cell;
 void	 grid_empty_line(struct grid *, u_int, u_int);
 int	 grid_cells_equal(const struct grid_cell *, const struct grid_cell *);
+int	 grid_cells_look_equal(const struct grid_cell *,
+	     const struct grid_cell *);
 struct grid *grid_create(u_int, u_int, u_int);
 void	 grid_destroy(struct grid *);
 int	 grid_compare(struct grid *, struct grid *);
@@ -2713,7 +2729,7 @@ struct session	*session_create(const char *, const char *, const char *,
 void		 session_destroy(struct session *, int,  const char *);
 void		 session_add_ref(struct session *, const char *);
 void		 session_remove_ref(struct session *, const char *);
-int		 session_check_name(const char *);
+char		*session_check_name(const char *);
 void		 session_update_activity(struct session *, struct timeval *);
 struct session	*session_next_session(struct session *);
 struct session	*session_previous_session(struct session *);
@@ -2804,10 +2820,8 @@ int		 style_parse(struct style *,const struct grid_cell *,
 const char	*style_tostring(struct style *);
 void		 style_apply(struct grid_cell *, struct options *,
 		     const char *);
-int		 style_equal(struct style *, struct style *);
 void		 style_set(struct style *, const struct grid_cell *);
 void		 style_copy(struct style *, struct style *);
-int		 style_is_default(struct style *);
 
 /* spawn.c */
 struct winlink	*spawn_window(struct spawn_context *, char **);

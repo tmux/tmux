@@ -73,7 +73,7 @@ menu_add_item(struct menu *menu, const struct menu_item *item,
 		return;
 
 	if (fs != NULL)
-		s = format_single(qitem, item->name, c, fs->s, fs->wl, fs->wp);
+		s = format_single_from_state(qitem, item->name, c, fs);
 	else
 		s = format_single(qitem, item->name, c, NULL, NULL, NULL);
 	if (*s == '\0') { /* no item if empty after format expanded */
@@ -91,7 +91,7 @@ menu_add_item(struct menu *menu, const struct menu_item *item,
 	cmd = item->command;
 	if (cmd != NULL) {
 		if (fs != NULL)
-			s = format_single(qitem, cmd, c, fs->s, fs->wl, fs->wp);
+			s = format_single_from_state(qitem, cmd, c, fs);
 		else
 			s = format_single(qitem, cmd, c, NULL, NULL, NULL);
 	} else

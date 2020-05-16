@@ -330,13 +330,12 @@ tty_start_tty(struct tty *tty)
 		tty_puts(tty, "\033[?1006l\033[?1005l");
 	}
 
-	if (tty_term_flag(tty->term, TTYC_XT)) {
-		if (options_get_number(global_options, "focus-events")) {
-			tty->flags |= TTY_FOCUS;
-			tty_puts(tty, "\033[?1004h");
-		}
-		tty_puts(tty, "\033[?7727h");
+	if (options_get_number(global_options, "focus-events")) {
+		tty->flags |= TTY_FOCUS;
+		tty_raw(tty, tty_term_string(tty->term, TTYC_ENFCS));
 	}
+	if (tty->term->flags & TERM_VT100LIKE)
+		tty_puts(tty, "\033[?7727h");
 
 	evtimer_set(&tty->start_timer, tty_start_timer_callback, tty);
 	evtimer_add(&tty->start_timer, &tv);
@@ -358,7 +357,7 @@ tty_send_requests(struct tty *tty)
 	if (~tty->flags & TTY_STARTED)
 		return;
 
-	if (tty_term_flag(tty->term, TTYC_XT)) {
+	if (tty->term->flags & TERM_VT100LIKE) {
 		if (~tty->flags & TTY_HAVEDA)
 			tty_puts(tty, "\033[>c");
 		if (~tty->flags & TTY_HAVEXDA)
@@ -407,7 +406,7 @@ tty_stop_tty(struct tty *tty)
 			tty_raw(tty, tty_term_string1(tty->term, TTYC_SS, 0));
 	}
 	if (tty->mode & MODE_BRACKETPASTE)
-		tty_raw(tty, "\033[?2004l");
+		tty_raw(tty, tty_term_string(tty->term, TTYC_DSBP));
 	if (*tty->ccolour != '\0')
 		tty_raw(tty, tty_term_string(tty->term, TTYC_CR));
 
@@ -417,13 +416,12 @@ tty_stop_tty(struct tty *tty)
 		tty_raw(tty, "\033[?1006l\033[?1005l");
 	}
 
-	if (tty_term_flag(tty->term, TTYC_XT)) {
-		if (tty->flags & TTY_FOCUS) {
-			tty->flags &= ~TTY_FOCUS;
-			tty_raw(tty, "\033[?1004l");
-		}
-		tty_raw(tty, "\033[?7727l");
+	if (tty->flags & TTY_FOCUS) {
+		tty->flags &= ~TTY_FOCUS;
+		tty_raw(tty, tty_term_string(tty->term, TTYC_DSFCS));
 	}
+	if (tty->term->flags & TERM_VT100LIKE)
+		tty_raw(tty, "\033[?7727l");
 
 	if (tty_use_margin(tty))
 		tty_raw(tty, tty_term_string(tty->term, TTYC_DSMG));
@@ -676,7 +674,8 @@ tty_update_mode(struct tty *tty, int mode, struct screen *s)
 		mode &= ~MODE_CURSOR;
 
 	changed = mode ^ tty->mode;
-	log_debug("%s: update mode %x to %x", c->name, tty->mode, mode);
+	if (changed != 0)
+		log_debug("%s: update mode %x to %x", c->name, tty->mode, mode);
 
 	if (changed & MODE_BLINKING) {
 		if (tty_term_has(tty->term, TTYC_CVVIS))
@@ -729,9 +728,9 @@ tty_update_mode(struct tty *tty, int mode, struct screen *s)
 	}
 	if (changed & MODE_BRACKETPASTE) {
 		if (mode & MODE_BRACKETPASTE)
-			tty_puts(tty, "\033[?2004h");
+			tty_putcode(tty, TTYC_ENBP);
 		else
-			tty_puts(tty, "\033[?2004l");
+			tty_putcode(tty, TTYC_DSBP);
 	}
 	tty->mode = mode;
 }
@@ -2691,27 +2690,19 @@ static void
 tty_default_colours(struct grid_cell *gc, struct window_pane *wp)
 {
 	struct options	*oo = wp->options;
-	struct style	*style, *active_style;
 	int		 c;
 
 	if (wp->flags & PANE_STYLECHANGED) {
 		wp->flags &= ~PANE_STYLECHANGED;
-
-		active_style = options_get_style(oo, "window-active-style");
-		style = options_get_style(oo, "window-style");
-
-		style_copy(&wp->cached_active_style, active_style);
-		style_copy(&wp->cached_style, style);
-	} else {
-		active_style = &wp->cached_active_style;
-		style = &wp->cached_style;
+		style_apply(&wp->cached_active_gc, oo, "window-active-style");
+		style_apply(&wp->cached_gc, oo, "window-style");
 	}
 
 	if (gc->fg == 8) {
-		if (wp == wp->window->active && active_style->gc.fg != 8)
-			gc->fg = active_style->gc.fg;
+		if (wp == wp->window->active && wp->cached_active_gc.fg != 8)
+			gc->fg = wp->cached_active_gc.fg;
 		else
-			gc->fg = style->gc.fg;
+			gc->fg = wp->cached_gc.fg;
 
 		if (gc->fg != 8) {
 			c = window_pane_get_palette(wp, gc->fg);
@@ -2721,10 +2712,10 @@ tty_default_colours(struct grid_cell *gc, struct window_pane *wp)
 	}
 
 	if (gc->bg == 8) {
-		if (wp == wp->window->active && active_style->gc.bg != 8)
-			gc->bg = active_style->gc.bg;
+		if (wp == wp->window->active && wp->cached_active_gc.bg != 8)
+			gc->bg = wp->cached_active_gc.bg;
 		else
-			gc->bg = style->gc.bg;
+			gc->bg = wp->cached_gc.bg;
 
 		if (gc->bg != 8) {
 			c = window_pane_get_palette(wp, gc->bg);
