@@ -1305,19 +1305,21 @@ struct tty_ctx {
 	u_int		 orupper;
 	u_int		 orlower;
 
-	/* Pane offset. */
+	/* Target region (usually pane) offset and size. */
 	u_int		 xoff;
 	u_int		 yoff;
+	u_int		 sx;
+	u_int		 sy;
 
 	/* The background colour used for clearing (erasing). */
 	u_int		 bg;
 
-	/* Window offset and size. */
+	/* Containing region (usually window) offset and size. */
 	int		 bigger;
-	u_int		 ox;
-	u_int		 oy;
-	u_int		 sx;
-	u_int		 sy;
+	u_int		 wox;
+	u_int		 woy;
+	u_int		 wsx;
+	u_int		 wsy;
 };
 
 /* Saved message entry. */
