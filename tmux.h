@@ -2796,6 +2796,7 @@ __dead void printflike(1, 2) fatalx(const char *, ...);
 
 /* menu.c */
 #define MENU_NOMOUSE 0x1
+#define MENU_TAB 0x2
 struct menu	*menu_create(const char *);
 void		 menu_add_items(struct menu *, const struct menu_item *,
 		    struct cmdq_item *, struct client *,

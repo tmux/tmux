@@ -1296,10 +1296,6 @@ server_client_handle_key(struct client *c, struct key_event *event)
 	 */
 	if (~c->flags & CLIENT_READONLY) {
 		status_message_clear(c);
-		if (c->prompt_string != NULL) {
-			if (status_prompt_key(c, event->key) == 0)
-				return (0);
-		}
 		if (c->overlay_key != NULL) {
 			switch (c->overlay_key(c, event)) {
 			case 0:
@@ -1310,6 +1306,10 @@ server_client_handle_key(struct client *c, struct key_event *event)
 			}
 		}
 		server_client_clear_overlay(c);
+		if (c->prompt_string != NULL) {
+			if (status_prompt_key(c, event->key) == 0)
+				return (0);
+		}
 	}
 
 	/*
@@ -1564,6 +1564,8 @@ server_client_reset_state(struct client *c)
 	} else {
 		s = wp->screen;
 		mode = s->mode;
+		if (c->prompt_string != NULL || c->message_string != NULL)
+			mode &= ~MODE_CURSOR;
 	}
 	log_debug("%s: client %s mode %x", __func__, c->name, mode);
 

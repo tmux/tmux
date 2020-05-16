@@ -240,6 +240,16 @@ menu_key_cb(struct client *c, struct key_event *event)
 		} while ((name == NULL || *name == '-') && md->choice != old);
 		c->flags |= CLIENT_REDRAWOVERLAY;
 		return (0);
+	case KEYC_BSPACE:
+		if (~md->flags & MENU_TAB)
+			break;
+		return (1);
+	case '\011': /* Tab */
+		if (~md->flags & MENU_TAB)
+			break;
+		if (md->choice == count - 1)
+			return (1);
+		/* FALLTHROUGH */
 	case KEYC_DOWN:
 	case 'j':
 		if (old == -1)
@@ -253,6 +263,31 @@ menu_key_cb(struct client *c, struct key_event *event)
 		} while ((name == NULL || *name == '-') && md->choice != old);
 		c->flags |= CLIENT_REDRAWOVERLAY;
 		return (0);
+	case 'g':
+	case KEYC_PPAGE:
+	case '\002': /* C-b */
+		if (md->choice > 5)
+			md->choice -= 5;
+		else
+			md->choice = 0;
+		while (md->choice != count && (name == NULL || *name == '-'))
+			md->choice++;
+		if (md->choice == count)
+			md->choice = -1;
+		c->flags |= CLIENT_REDRAWOVERLAY;
+		break;
+	case 'G':
+	case KEYC_NPAGE:
+		if (md->choice > count - 6)
+			md->choice = count - 1;
+		else
+			md->choice += 5;
+		while (md->choice != -1 && (name == NULL || *name == '-'))
+			md->choice--;
+		c->flags |= CLIENT_REDRAWOVERLAY;
+		break;
+	case '\006': /* C-f */
+		break;
 	case '\r':
 		goto chosen;
 	case '\033': /* Escape */
