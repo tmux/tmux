@@ -117,7 +117,7 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'p'))
 		cmdq_print(item, "%s", msg);
 	else if (tc != NULL)
-		status_message_set(tc, "%s", msg);
+		status_message_set(tc, 0, "%s", msg);
 	free(msg);
 
 	format_free(ft);
