@@ -260,17 +260,37 @@ style_tostring(struct style *sy)
 	return (s);
 }
 
-/* Apply a style. */
+/* Apply a style on top of the given style. */
 void
-style_apply(struct grid_cell *gc, struct options *oo, const char *name)
+style_add(struct grid_cell *gc, struct options *oo, const char *name,
+    struct format_tree *ft)
 {
-	struct style	*sy;
+	struct style		*sy;
+	struct format_tree	*ft0 = NULL;
 
-	memcpy(gc, &grid_default_cell, sizeof *gc);
-	sy = options_get_style(oo, name);
-	gc->fg = sy->gc.fg;
-	gc->bg = sy->gc.bg;
+	if (ft == NULL)
+		ft = ft0 = format_create(NULL, NULL, 0, FORMAT_NOJOBS);
+
+	sy = options_string_to_style(oo, name, ft);
+	if (sy == NULL)
+		sy = &style_default;
+	if (sy->gc.fg != 8)
+		gc->fg = sy->gc.fg;
+	if (sy->gc.bg != 8)
+		gc->bg = sy->gc.bg;
 	gc->attr |= sy->gc.attr;
+
+	if (ft0 != NULL)
+		format_free(ft0);
+}
+
+/* Apply a style on top of the default style. */
+void
+style_apply(struct grid_cell *gc, struct options *oo, const char *name,
+    struct format_tree *ft)
+{
+	memcpy(gc, &grid_default_cell, sizeof *gc);
+	style_add(gc, oo, name, ft);
 }
 
 /* Initialize style from cell. */

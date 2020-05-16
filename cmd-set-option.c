@@ -93,7 +93,6 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 	char				*name, *argument, *value = NULL, *cause;
 	int				 window, idx, already, error, ambiguous;
 	int				 scope;
-	struct style			*sy;
 
 	window = (cmd_get_entry(self) == &cmd_set_window_option_entry);
 
@@ -232,16 +231,6 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 				tty_keys_build(&loop->tty);
 		}
 	}
-	if (strcmp(name, "status-fg") == 0 || strcmp(name, "status-bg") == 0) {
-		sy = options_get_style(oo, "status-style");
-		sy->gc.fg = options_get_number(oo, "status-fg");
-		sy->gc.bg = options_get_number(oo, "status-bg");
-	}
-	if (strcmp(name, "status-style") == 0) {
-		sy = options_get_style(oo, "status-style");
-		options_set_number(oo, "status-fg", sy->gc.fg);
-		options_set_number(oo, "status-bg", sy->gc.bg);
-	}
 	if (strcmp(name, "status") == 0 ||
 	    strcmp(name, "status-interval") == 0)
 		status_timer_start_all();
@@ -283,16 +272,38 @@ fail:
 }
 
 static int
+cmd_set_option_check_string(const struct options_table_entry *oe,
+    const char *value, char **cause)
+{
+	struct style	sy;
+
+	if (strcmp(oe->name, "default-shell") == 0 && !checkshell(value)) {
+		xasprintf(cause, "not a suitable shell: %s", value);
+		return (-1);
+	}
+	if (oe->pattern != NULL && fnmatch(oe->pattern, value, 0) != 0) {
+		xasprintf(cause, "value is invalid: %s", value);
+		return (-1);
+	}
+	if ((oe->flags & OPTIONS_TABLE_IS_STYLE) &&
+	    strstr(value, "#{") == NULL &&
+	    style_parse(&sy, &grid_default_cell, value) != 0) {
+		xasprintf(cause, "invalid style: %s", value);
+		return (-1);
+	}
+	return (0);
+}
+
+static int
 cmd_set_option_set(struct cmd *self, struct cmdq_item *item, struct options *oo,
     struct options_entry *parent, const char *value)
 {
 	const struct options_table_entry	*oe;
 	struct args				*args = cmd_get_args(self);
 	int					 append = args_has(args, 'a');
-	struct options_entry			*o;
 	long long				 number;
 	const char				*errstr, *new;
-	char					*old;
+	char					*old, *cause;
 	key_code				 key;
 
 	oe = options_table_entry(parent);
@@ -308,17 +319,12 @@ cmd_set_option_set(struct cmd *self, struct cmdq_item *item, struct options *oo,
 		old = xstrdup(options_get_string(oo, oe->name));
 		options_set_string(oo, oe->name, append, "%s", value);
 		new = options_get_string(oo, oe->name);
-		if (strcmp(oe->name, "default-shell") == 0 &&
-		    !checkshell(new)) {
+		if (cmd_set_option_check_string(oe, new, &cause) != 0) {
+			cmdq_error(item, "%s", cause);
+			free(cause);
+
 			options_set_string(oo, oe->name, 0, "%s", old);
 			free(old);
-			cmdq_error(item, "not a suitable shell: %s", value);
-			return (-1);
-		}
-		if (oe->pattern != NULL && fnmatch(oe->pattern, new, 0) != 0) {
-			options_set_string(oo, oe->name, 0, "%s", old);
-			free(old);
-			cmdq_error(item, "value is invalid: %s", value);
 			return (-1);
 		}
 		free(old);
@@ -350,13 +356,6 @@ cmd_set_option_set(struct cmd *self, struct cmdq_item *item, struct options *oo,
 		return (cmd_set_option_flag(item, oe, oo, value));
 	case OPTIONS_TABLE_CHOICE:
 		return (cmd_set_option_choice(item, oe, oo, value));
-	case OPTIONS_TABLE_STYLE:
-		o = options_set_style(oo, oe->name, append, value);
-		if (o == NULL) {
-			cmdq_error(item, "bad style: %s", value);
-			return (-1);
-		}
-		return (0);
 	case OPTIONS_TABLE_COMMAND:
 		break;
 	}

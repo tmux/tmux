@@ -2687,6 +2687,14 @@ tty_try_colour(struct tty *tty, int colour, const char *type)
 }
 
 static void
+tty_window_default_style(struct grid_cell *gc, struct window_pane *wp)
+{
+	memcpy(gc, &grid_default_cell, sizeof *gc);
+	gc->fg = wp->fg;
+	gc->bg = wp->bg;
+}
+
+static void
 tty_default_colours(struct grid_cell *gc, struct window_pane *wp)
 {
 	struct options	*oo = wp->options;
@@ -2694,8 +2702,12 @@ tty_default_colours(struct grid_cell *gc, struct window_pane *wp)
 
 	if (wp->flags & PANE_STYLECHANGED) {
 		wp->flags &= ~PANE_STYLECHANGED;
-		style_apply(&wp->cached_active_gc, oo, "window-active-style");
-		style_apply(&wp->cached_gc, oo, "window-style");
+
+		tty_window_default_style(&wp->cached_active_gc, wp);
+		style_add(&wp->cached_active_gc, oo, "window-active-style",
+		    NULL);
+		tty_window_default_style(&wp->cached_gc, wp);
+		style_add(&wp->cached_gc, oo, "window-style", NULL);
 	}
 
 	if (gc->fg == 8) {

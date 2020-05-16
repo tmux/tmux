@@ -91,7 +91,6 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 		else
 			window_zoom(wp);
 		server_redraw_window(w);
-		server_status_window(w);
 		return (CMD_RETURN_NORMAL);
 	}
 	server_unzoom_window(w);

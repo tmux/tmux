@@ -321,7 +321,7 @@ status_redraw(struct client *c)
 	struct screen_write_ctx		 ctx;
 	struct grid_cell		 gc;
 	u_int				 lines, i, n, width = c->tty.sx;
-	int				 flags, force = 0, changed = 0;
+	int				 flags, force = 0, changed = 0, fg, bg;
 	struct options_entry		*o;
 	union options_value		*ov;
 	struct format_tree		*ft;
@@ -339,7 +339,13 @@ status_redraw(struct client *c)
 		return (1);
 
 	/* Set up default colour. */
-	style_apply(&gc, s->options, "status-style");
+	style_apply(&gc, s->options, "status-style", NULL);
+	fg = options_get_number(s->options, "status-fg");
+	if (fg != 8)
+		gc.fg = fg;
+	bg = options_get_number(s->options, "status-bg");
+	if (bg != 8)
+		gc.bg = bg;
 	if (!grid_cells_equal(&gc, &sl->style)) {
 		force = 1;
 		memcpy(&sl->style, &gc, sizeof sl->style);
@@ -490,7 +496,7 @@ status_message_redraw(struct client *c)
 	if (len > c->tty.sx)
 		len = c->tty.sx;
 
-	style_apply(&gc, s->options, "message-style");
+	style_apply(&gc, s->options, "message-style", NULL);
 
 	screen_write_start(&ctx, NULL, sl->active);
 	screen_write_fast_copy(&ctx, &sl->screen, 0, 0, c->tty.sx, lines - 1);
@@ -633,9 +639,9 @@ status_prompt_redraw(struct client *c)
 	screen_init(sl->active, c->tty.sx, lines, 0);
 
 	if (c->prompt_mode == PROMPT_COMMAND)
-		style_apply(&gc, s->options, "message-command-style");
+		style_apply(&gc, s->options, "message-command-style", NULL);
 	else
-		style_apply(&gc, s->options, "message-style");
+		style_apply(&gc, s->options, "message-style", NULL);
 
 	memcpy(&cursorgc, &gc, sizeof cursorgc);
 	cursorgc.attr ^= GRID_ATTR_REVERSE;

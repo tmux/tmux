@@ -401,15 +401,19 @@ const struct options_table_entry options_table[] = {
 	},
 
 	{ .name = "message-command-style",
-	  .type = OPTIONS_TABLE_STYLE,
+	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_str = "bg=black,fg=yellow"
+	  .default_str = "bg=black,fg=yellow",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ","
 	},
 
 	{ .name = "message-style",
-	  .type = OPTIONS_TABLE_STYLE,
+	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_str = "bg=yellow,fg=black"
+	  .default_str = "bg=yellow,fg=black",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ","
 	},
 
 	{ .name = "mouse",
@@ -473,13 +477,13 @@ const struct options_table_entry options_table[] = {
 	{ .name = "status-bg",
 	  .type = OPTIONS_TABLE_COLOUR,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_num = 2,
+	  .default_num = 8,
 	},
 
 	{ .name = "status-fg",
 	  .type = OPTIONS_TABLE_COLOUR,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_num = 0,
+	  .default_num = 8,
 	},
 
 	{ .name = "status-format",
@@ -526,9 +530,11 @@ const struct options_table_entry options_table[] = {
 	},
 
 	{ .name = "status-left-style",
-	  .type = OPTIONS_TABLE_STYLE,
+	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_str = "default"
+	  .default_str = "default",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ","
 	},
 
 	{ .name = "status-position",
@@ -555,15 +561,19 @@ const struct options_table_entry options_table[] = {
 	},
 
 	{ .name = "status-right-style",
-	  .type = OPTIONS_TABLE_STYLE,
+	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_str = "default"
+	  .default_str = "default",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ","
 	},
 
 	{ .name = "status-style",
-	  .type = OPTIONS_TABLE_STYLE,
+	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_str = "bg=green,fg=black"
+	  .default_str = "bg=green,fg=black",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ","
 	},
 
 	{ .name = "update-environment",
@@ -666,9 +676,11 @@ const struct options_table_entry options_table[] = {
 	},
 
 	{ .name = "mode-style",
-	  .type = OPTIONS_TABLE_STYLE,
+	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_str = "bg=yellow,fg=black"
+	  .default_str = "bg=yellow,fg=black",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ","
 	},
 
 	{ .name = "monitor-activity",
@@ -704,9 +716,11 @@ const struct options_table_entry options_table[] = {
 	},
 
 	{ .name = "pane-active-border-style",
-	  .type = OPTIONS_TABLE_STYLE,
+	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_str = "fg=green"
+	  .default_str = "#{?pane_in_mode,fg=yellow,#{?synchronize-panes,fg=red,fg=green}}",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ","
 	},
 
 	{ .name = "pane-base-index",
@@ -732,9 +746,11 @@ const struct options_table_entry options_table[] = {
 	},
 
 	{ .name = "pane-border-style",
-	  .type = OPTIONS_TABLE_STYLE,
+	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_str = "default"
+	  .default_str = "default",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ","
 	},
 
 	{ .name = "remain-on-exit",
@@ -750,9 +766,11 @@ const struct options_table_entry options_table[] = {
 	},
 
 	{ .name = "window-active-style",
-	  .type = OPTIONS_TABLE_STYLE,
+	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
-	  .default_str = "default"
+	  .default_str = "default",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ","
 	},
 
 	{ .name = "window-size",
@@ -763,21 +781,27 @@ const struct options_table_entry options_table[] = {
 	},
 
 	{ .name = "window-style",
-	  .type = OPTIONS_TABLE_STYLE,
+	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
-	  .default_str = "default"
+	  .default_str = "default",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ","
 	},
 
 	{ .name = "window-status-activity-style",
-	  .type = OPTIONS_TABLE_STYLE,
+	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_str = "reverse"
+	  .default_str = "reverse",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ","
 	},
 
 	{ .name = "window-status-bell-style",
-	  .type = OPTIONS_TABLE_STYLE,
+	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_str = "reverse"
+	  .default_str = "reverse",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ","
 	},
 
 	{ .name = "window-status-current-format",
@@ -787,9 +811,11 @@ const struct options_table_entry options_table[] = {
 	},
 
 	{ .name = "window-status-current-style",
-	  .type = OPTIONS_TABLE_STYLE,
+	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_str = "default"
+	  .default_str = "default",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ","
 	},
 
 	{ .name = "window-status-format",
@@ -799,9 +825,11 @@ const struct options_table_entry options_table[] = {
 	},
 
 	{ .name = "window-status-last-style",
-	  .type = OPTIONS_TABLE_STYLE,
+	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_str = "default"
+	  .default_str = "default",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ","
 	},
 
 	{ .name = "window-status-separator",
@@ -811,9 +839,11 @@ const struct options_table_entry options_table[] = {
 	},
 
 	{ .name = "window-status-style",
-	  .type = OPTIONS_TABLE_STYLE,
+	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_str = "default"
+	  .default_str = "default",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ","
 	},
 
 	{ .name = "wrap-search",
