@@ -496,8 +496,12 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 	}
 
 	/* No builtin key sequence; construct an extended key sequence. */
-	if (~s->mode & MODE_KEXTENDED)
+	if (~s->mode & MODE_KEXTENDED) {
+		if ((key & KEYC_MASK_MODIFIERS) == KEYC_CTRL &&
+		    (key & KEYC_MASK_KEY) < KEYC_BASE)
+			return (input_key(s, bev, key & ~KEYC_CTRL));
 		goto missing;
+	}
 	outkey = (key & KEYC_MASK_KEY);
 	switch (key & KEYC_MASK_MODIFIERS) {
 	case KEYC_SHIFT:
