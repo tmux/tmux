@@ -257,12 +257,13 @@ struct window_copy_mode_data {
 	int		 searchtype;
 	int		 searchregex;
 	char		*searchstr;
-	bitstr_t	*searchmark;
+	u_char		*searchmark;
 	u_int		 searchcount;
 	int		 searchthis;
 	int		 searchx;
 	int		 searchy;
 	int		 searcho;
+	u_char		 searchgen;
 
 	int		 timeout;	/* search has timed out */
 #define WINDOW_COPY_SEARCH_TIMEOUT 10
@@ -362,10 +363,7 @@ window_copy_common_init(struct window_mode_entry *wme)
 		data->searchregex = 0;
 		data->searchstr = NULL;
 	}
-	data->searchmark = NULL;
 	data->searchx = data->searchy = data->searcho = -1;
-	data->timeout = 0;
-	data->viewmode = 0;
 
 	data->jumptype = WINDOW_COPY_OFF;
 	data->jumpchar = '\0';
@@ -2860,7 +2858,7 @@ window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
 	const struct grid_line		*gl;
 	int				 found, cis, which = -1;
 	int				 cflags = REG_EXTENDED;
-	u_int				 px, py, b, nfound = 0, width;
+	u_int				 px, py, i, b, nfound = 0, width;
 	u_int				 ssize = 1;
 	char				*sbuf;
 	regex_t				 reg;
@@ -2880,7 +2878,8 @@ window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
 	cis = window_copy_is_lowercase(data->searchstr);
 
 	free(data->searchmark);
-	data->searchmark = bit_alloc((gd->hsize + gd->sy) * gd->sx);
+	data->searchmark = xcalloc(gd->hsize + gd->sy, gd->sx);
+	data->searchgen = 1;
 
 	if (regex) {
 		sbuf = xmalloc(ssize);
@@ -2921,7 +2920,12 @@ window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
 				which = nfound;
 
 			b = (py * gd->sx) + px;
-			bit_nset(data->searchmark, b, b + width - 1);
+			for (i = b; i < b + width; i++)
+				data->searchmark[i] = data->searchgen;
+			if (data->searchgen == UCHAR_MAX)
+				data->searchgen = 1;
+			else
+				data->searchgen++;
 
 			px++;
 		}
@@ -2992,6 +2996,114 @@ window_copy_goto_line(struct window_mode_entry *wme, const char *linestr)
 }
 
 static void
+window_copy_match_start_end(struct window_copy_mode_data *data, u_int at,
+    u_int *start, u_int *end)
+{
+	struct grid	*gd = data->backing->grid;
+	u_int		 last = (gd->hsize + gd->sy) * gd->sx - 1;
+	u_char		 mark = data->searchmark[at];
+
+	*start = *end = at;
+	while (*start != 0 && data->searchmark[*start] == mark)
+		(*start)--;
+	if (data->searchmark[*start] != mark)
+		(*start)++;
+	while (*end != last && data->searchmark[*end] == mark)
+		(*end)++;
+	if (data->searchmark[*end] != mark)
+		(*end)--;
+}
+
+static char *
+window_copy_match_at_cursor(struct window_copy_mode_data *data)
+{
+	struct grid	*gd = data->backing->grid;
+	struct grid_cell gc;
+	u_int		 at, start, end, cy, px, py;
+	u_int		 sx = screen_size_x(data->backing);
+	char		*buf = NULL;
+	size_t		 len = 0;
+
+	if (data->searchmark == NULL)
+		return (NULL);
+
+	cy = screen_hsize(data->backing) - data->oy + data->cy;
+	at = (cy * sx) + data->cx;
+	if (data->searchmark[at] == 0)
+		return (NULL);
+	window_copy_match_start_end(data, at, &start, &end);
+
+	/*
+	 * Cells will not be set in the marked array unless they are valid text
+	 * and wrapping will be taken care of, so we can just copy.
+ 	 */
+	for (at = start; at <= end; at++) {
+		py = at / sx;
+		px = at % (py * sx);
+
+		grid_get_cell(gd, px, py, &gc);
+		buf = xrealloc(buf, len + gc.data.size + 1);
+		memcpy(buf + len, gc.data.data, gc.data.size);
+		len += gc.data.size;
+	}
+	if (len != 0)
+		buf[len] = '\0';
+	return (buf);
+}
+
+static void
+window_copy_update_style(struct window_mode_entry *wme, u_int fx, u_int fy,
+    struct grid_cell *gc, const struct grid_cell *mgc,
+    const struct grid_cell *cgc)
+{
+	struct window_copy_mode_data	*data = wme->data;
+	u_int				 mark, at, start, end, cy;
+	u_int				 sx = screen_size_x(data->backing);
+
+	if (data->searchmark == NULL)
+		return;
+	mark = data->searchmark[(fy * sx) + fx];
+	if (mark == 0)
+		return;
+
+	cy = screen_hsize(data->backing) - data->oy + data->cy;
+	at = (cy * sx) + data->cx;
+	if (data->searchmark[at] == mark) {
+		window_copy_match_start_end(data, at, &start, &end);
+		if (at >= start && at <= end) {
+			gc->attr = cgc->attr;
+			gc->fg = cgc->fg;
+			gc->bg = cgc->bg;
+		}
+		return;
+	}
+
+	gc->attr = mgc->attr;
+	gc->fg = mgc->fg;
+	gc->bg = mgc->bg;
+}
+
+static void
+window_copy_write_one(struct window_mode_entry *wme,
+    struct screen_write_ctx *ctx, u_int py, u_int fy, u_int nx,
+    const struct grid_cell *mgc, const struct grid_cell *cgc)
+{
+	struct window_copy_mode_data	*data = wme->data;
+	struct grid			*gd = data->backing->grid;
+	struct grid_cell		 gc;
+	u_int		 		 fx;
+
+	screen_write_cursormove(ctx, 0, py, 0);
+	for (fx = 0; fx < nx; fx++) {
+		grid_get_cell(gd, fx, fy, &gc);
+		if (fx + gc.data.width <= nx) {
+			window_copy_update_style(wme, fx, fy, &gc, mgc, cgc);
+			screen_write_cell(ctx, &gc);
+		}
+	}
+}
+
+static void
 window_copy_write_line(struct window_mode_entry *wme,
     struct screen_write_ctx *ctx, u_int py)
 {
@@ -2999,13 +3111,17 @@ window_copy_write_line(struct window_mode_entry *wme,
 	struct window_copy_mode_data	*data = wme->data;
 	struct screen			*s = &data->screen;
 	struct options			*oo = wp->window->options;
-	struct grid_cell		 gc;
+	struct grid_cell		 gc, mgc, cgc;
 	char				 hdr[512];
 	size_t				 size = 0;
 	u_int				 hsize = screen_hsize(data->backing);
 
 	style_apply(&gc, oo, "mode-style", NULL);
 	gc.flags |= GRID_FLAG_NOPALETTE;
+	style_apply(&mgc, oo, "copy-mode-match-style", NULL);
+	mgc.flags |= GRID_FLAG_NOPALETTE;
+	style_apply(&cgc, oo, "copy-mode-current-match-style", NULL);
+	cgc.flags |= GRID_FLAG_NOPALETTE;
 
 	if (py == 0 && s->rupper < s->rlower && !data->hide_position) {
 		if (data->searchmark == NULL) {
@@ -3035,15 +3151,13 @@ window_copy_write_line(struct window_mode_entry *wme,
 		size = 0;
 
 	if (size < screen_size_x(s)) {
-		screen_write_cursormove(ctx, 0, py, 0);
-		screen_write_copy(ctx, data->backing, 0, hsize - data->oy + py,
-		    screen_size_x(s) - size, 1, data->searchmark, &gc);
+		window_copy_write_one(wme, ctx, py, hsize - data->oy + py,
+		    screen_size_x(s) - size, &mgc, &cgc);
 	}
 
 	if (py == data->cy && data->cx == screen_size_x(s)) {
-		memcpy(&gc, &grid_default_cell, sizeof gc);
 		screen_write_cursormove(ctx, screen_size_x(s) - 1, py, 0);
-		screen_write_putc(ctx, &gc, '$');
+		screen_write_putc(ctx, &grid_default_cell, '$');
 	}
 }
 
@@ -3354,8 +3468,12 @@ window_copy_get_selection(struct window_mode_entry *wme, size_t *len)
 	u_int				 firstsx, lastex, restex, restsx, selx;
 	int				 keys;
 
-	if (data->screen.sel == NULL && data->lineflag == LINE_SEL_NONE)
-		return (NULL);
+	if (data->screen.sel == NULL && data->lineflag == LINE_SEL_NONE) {
+		buf = window_copy_match_at_cursor(data);
+		if (buf != NULL)
+			*len = strlen(buf);
+		return (buf);
+	}
 
 	buf = xmalloc(1);
 	off = 0;

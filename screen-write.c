@@ -344,44 +344,9 @@ screen_write_vnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
 	free(msg);
 }
 
-/* Copy from another screen. Assumes target region is big enough. */
-void
-screen_write_copy(struct screen_write_ctx *ctx, struct screen *src, u_int px,
-    u_int py, u_int nx, u_int ny, bitstr_t *mbs, const struct grid_cell *mgc)
-{
-	struct screen		*s = ctx->s;
-	struct grid		*gd = src->grid;
-	struct grid_cell	 gc;
-	u_int		 	 xx, yy, cx, cy, b;
-
-	if (nx == 0 || ny == 0)
-		return;
-
-	cx = s->cx;
-	cy = s->cy;
-
-	for (yy = py; yy < py + ny; yy++) {
-		for (xx = px; xx < px + nx; xx++) {
-			grid_get_cell(gd, xx, yy, &gc);
-			if (mbs != NULL) {
-				b = (yy * screen_size_x(src)) + xx;
-				if (bit_test(mbs, b)) {
-					gc.attr = mgc->attr;
-					gc.fg = mgc->fg;
-					gc.bg = mgc->bg;
-				}
-			}
-			if (xx + gc.data.width <= px + nx)
-				screen_write_cell(ctx, &gc);
-		}
-		cy++;
-		screen_write_set_cursor(ctx, cx, cy);
-	}
-}
-
 /*
- * Copy from another screen but without the selection stuff. Also assumes the
- * target region is already big enough.
+ * Copy from another screen but without the selection stuff. Assumes the target
+ * region is already big enough.
  */
 void
 screen_write_fast_copy(struct screen_write_ctx *ctx, struct screen *src,
