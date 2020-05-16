@@ -110,33 +110,103 @@ areshell(const char *shell)
 }
 
 static char *
+expand_path(const char *path, const char *home)
+{
+	char			*expanded, *name;
+	const char		*end;
+	struct environ_entry	*value;
+
+	if (strncmp(path, "~/", 2) == 0) {
+		if (home == NULL)
+			return (NULL);
+		xasprintf(&expanded, "%s%s", home, path + 1);
+		return (expanded);
+	}
+
+	if (*path == '$') {
+		end = strchr(path, '/');
+		if (end == NULL)
+			name = xstrdup(path + 1);
+		else
+			name = xstrndup(path + 1, end - path - 1);
+		value = environ_find(global_environ, name);
+		free(name);
+		if (value == NULL)
+			return (NULL);
+		if (end == NULL)
+			end = "";
+		xasprintf(&expanded, "%s%s", value->value, end);
+		return (expanded);
+	}
+
+	return (xstrdup(path));
+}
+
+void
+expand_paths(const char *s, char ***paths, u_int *n)
+{
+	const char	*home = find_home();
+	char		*copy, *next, *tmp, resolved[PATH_MAX], *expanded;
+	u_int		 i;
+
+	*paths = NULL;
+	*n = 0;
+
+	copy = tmp = xstrdup(s);
+	while ((next = strsep(&tmp, ":")) != NULL) {
+		expanded = expand_path(next, home);
+		if (expanded == NULL) {
+			log_debug("%s: invalid path: %s", __func__, next);
+			continue;
+		}
+		if (realpath(expanded, resolved) == NULL) {
+			log_debug("%s: realpath(\"%s\") failed: %s", __func__,
+			    expanded, strerror(errno));
+			free(expanded);
+			continue;
+		}
+		free(expanded);
+		for (i = 0; i < *n; i++) {
+			if (strcmp(resolved, (*paths)[i]) == 0)
+				break;
+		}
+		if (i != *n) {
+			log_debug("%s: duplicate path: %s", __func__, resolved);
+			continue;
+		}
+		*paths = xreallocarray(*paths, (*n) + 1, sizeof *paths);
+		(*paths)[(*n)++] = xstrdup(resolved);
+	}
+	free(copy);
+}
+
+static char *
 make_label(const char *label, char **cause)
 {
-	char		*base, resolved[PATH_MAX], *path, *s;
-	struct stat	 sb;
-	uid_t		 uid;
+	char		**paths, *path, *base;
+	u_int		  i, n;
+	struct stat	  sb;
+	uid_t		  uid;
 
 	*cause = NULL;
-
 	if (label == NULL)
 		label = "default";
 	uid = getuid();
 
-	if ((s = getenv("TMUX_TMPDIR")) != NULL && *s != '\0')
-		xasprintf(&base, "%s/tmux-%ld", s, (long)uid);
-	else
-		xasprintf(&base, "%s/tmux-%ld", _PATH_TMP, (long)uid);
-	if (realpath(base, resolved) == NULL &&
-	    strlcpy(resolved, base, sizeof resolved) >= sizeof resolved) {
-		errno = ERANGE;
-		free(base);
-		goto fail;
+	expand_paths(TMUX_SOCK, &paths, &n);
+	if (n == 0) {
+		xasprintf(cause, "no suitable socket path");
+		return (NULL);
 	}
-	free(base);
+	path = paths[0]; /* can only have one socket! */
+	for (i = 1; i < n; i++)
+		free(paths[i]);
+	free(paths);
 
-	if (mkdir(resolved, S_IRWXU) != 0 && errno != EEXIST)
+	xasprintf(&base, "%s/tmux-%ld", path, (long)uid);
+	if (mkdir(base, S_IRWXU) != 0 && errno != EEXIST)
 		goto fail;
-	if (lstat(resolved, &sb) != 0)
+	if (lstat(base, &sb) != 0)
 		goto fail;
 	if (!S_ISDIR(sb.st_mode)) {
 		errno = ENOTDIR;
@@ -146,11 +216,13 @@ make_label(const char *label, char **cause)
 		errno = EACCES;
 		goto fail;
 	}
-	xasprintf(&path, "%s/%s", resolved, label);
+	xasprintf(&path, "%s/%s", base, label);
+	free(base);
 	return (path);
 
 fail:
-	xasprintf(cause, "error creating %s (%s)", resolved, strerror(errno));
+	xasprintf(cause, "error creating %s (%s)", base, strerror(errno));
+	free(base);
 	return (NULL);
 }
 
