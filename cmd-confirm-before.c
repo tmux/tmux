@@ -56,6 +56,7 @@ cmd_confirm_before_exec(struct cmd *self, struct cmdq_item *item)
 	struct args			*args = cmd_get_args(self);
 	struct cmd_confirm_before_data	*cdata;
 	struct client			*tc = cmdq_get_target_client(item);
+	struct cmd_find_state		*target = cmdq_get_target(item);
 	char				*cmd, *copy, *new_prompt, *ptr;
 	const char			*prompt;
 
@@ -71,8 +72,9 @@ cmd_confirm_before_exec(struct cmd *self, struct cmdq_item *item)
 	cdata = xmalloc(sizeof *cdata);
 	cdata->cmd = xstrdup(args->argv[0]);
 
-	status_prompt_set(tc, new_prompt, NULL, cmd_confirm_before_callback,
-	    cmd_confirm_before_free, cdata, PROMPT_SINGLE);
+	status_prompt_set(tc, target, new_prompt, NULL,
+	    cmd_confirm_before_callback, cmd_confirm_before_free, cdata,
+	    PROMPT_SINGLE);
 
 	free(new_prompt);
 	return (CMD_RETURN_NORMAL);

@@ -1111,7 +1111,7 @@ window_customize_set_option(struct client *c,
 		new_item->idx = idx;
 
 		data->references++;
-		status_prompt_set(c, prompt, value,
+		status_prompt_set(c, NULL, prompt, value,
 		    window_customize_set_option_callback,
 		    window_customize_free_item_callback, new_item,
 		    PROMPT_NOFORMAT);
@@ -1243,7 +1243,7 @@ window_customize_set_key(struct client *c,
 		new_item->key = key;
 
 		data->references++;
-		status_prompt_set(c, prompt, value,
+		status_prompt_set(c, NULL, prompt, value,
 		    window_customize_set_command_callback,
 		    window_customize_free_item_callback, new_item,
 		    PROMPT_NOFORMAT);
@@ -1259,7 +1259,8 @@ window_customize_set_key(struct client *c,
 		new_item->key = key;
 
 		data->references++;
-		status_prompt_set(c, prompt, (bd->note == NULL ? "" : bd->note),
+		status_prompt_set(c, NULL, prompt,
+		    (bd->note == NULL ? "" : bd->note),
 		    window_customize_set_note_callback,
 		    window_customize_free_item_callback, new_item,
 		    PROMPT_NOFORMAT);
@@ -1398,7 +1399,7 @@ window_customize_key(struct window_mode_entry *wme, struct client *c,
 		} else
 			xasprintf(&prompt, "Unset option %s? ", item->name);
 		data->references++;
-		status_prompt_set(c, prompt, "",
+		status_prompt_set(c, NULL, prompt, "",
 		    window_customize_unset_current_callback,
 		    window_customize_free_callback, data,
 		    PROMPT_SINGLE|PROMPT_NOFORMAT);
@@ -1410,7 +1411,7 @@ window_customize_key(struct window_mode_entry *wme, struct client *c,
 			break;
 		xasprintf(&prompt, "Unset or unbind %u tagged? ", tagged);
 		data->references++;
-		status_prompt_set(c, prompt, "",
+		status_prompt_set(c, NULL, prompt, "",
 		    window_customize_unset_tagged_callback,
 		    window_customize_free_callback, data,
 		    PROMPT_SINGLE|PROMPT_NOFORMAT);

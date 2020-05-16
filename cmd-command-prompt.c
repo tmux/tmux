@@ -66,6 +66,7 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = cmd_get_args(self);
 	struct client			*tc = cmdq_get_target_client(item);
+	struct cmd_find_state		*target = cmdq_get_target(item);
 	const char			*inputs, *prompts;
 	struct cmd_command_prompt_cdata	*cdata;
 	char				*prompt, *ptr, *input = NULL;
@@ -125,8 +126,9 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 		cdata->flags |= PROMPT_WINDOW;
 	else if (args_has(args, 'T'))
 		cdata->flags |= PROMPT_TARGET;
-	status_prompt_set(tc, prompt, input, cmd_command_prompt_callback,
-	    cmd_command_prompt_free, cdata, cdata->flags);
+	status_prompt_set(tc, target, prompt, input,
+	    cmd_command_prompt_callback, cmd_command_prompt_free, cdata,
+	    cdata->flags);
 	free(prompt);
 
 	return (CMD_RETURN_NORMAL);

@@ -213,7 +213,6 @@ server_client_create(int fd)
 	c->queue = cmdq_new();
 
 	c->tty.fd = -1;
-
 	c->tty.sx = 80;
 	c->tty.sy = 24;
 
@@ -272,7 +271,7 @@ server_client_open(struct client *c, char **cause)
 void
 server_client_lost(struct client *c)
 {
-	struct client_file	*cf;
+	struct client_file	*cf, *cf1;
 
 	c->flags |= CLIENT_DEAD;
 
@@ -280,7 +279,7 @@ server_client_lost(struct client *c)
 	status_prompt_clear(c);
 	status_message_clear(c);
 
-	RB_FOREACH(cf, client_files, &c->files) {
+	RB_FOREACH_SAFE(cf, client_files, &c->files, cf1) {
 		cf->error = EINTR;
 		file_fire_done(cf);
 	}
@@ -2250,7 +2249,7 @@ server_client_set_flags(struct client *c, const char *flags)
 
 }
 
-/*Get client flags. This is only flags useful to show to users. */
+/* Get client flags. This is only flags useful to show to users. */
 const char *
 server_client_get_flags(struct client *c)
 {

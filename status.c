@@ -532,14 +532,17 @@ status_message_redraw(struct client *c)
 
 /* Enable status line prompt. */
 void
-status_prompt_set(struct client *c, const char *msg, const char *input,
-    prompt_input_cb inputcb, prompt_free_cb freecb, void *data, int flags)
+status_prompt_set(struct client *c, struct cmd_find_state *fs,
+    const char *msg, const char *input, prompt_input_cb inputcb,
+    prompt_free_cb freecb, void *data, int flags)
 {
 	struct format_tree	*ft;
 	char			*tmp, *cp;
 
-	ft = format_create(c, NULL, FORMAT_NONE, 0);
-	format_defaults(ft, c, NULL, NULL, NULL);
+	if (fs != NULL)
+		ft = format_create_from_state(NULL, c, fs);
+	else
+		ft = format_create_defaults(NULL, c, NULL, NULL, NULL);
 
 	if (input == NULL)
 		input = "";
