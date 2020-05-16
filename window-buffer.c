@@ -18,9 +18,12 @@
 
 #include <sys/types.h>
 
+#include <paths.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 #include <vis.h>
 
 #include "tmux.h"
@@ -93,6 +96,13 @@ struct window_buffer_modedata {
 
 	struct window_buffer_itemdata	**item_list;
 	u_int				  item_size;
+};
+
+struct window_buffer_editdata {
+	u_int			 wp_id;
+	char			*path;
+	char			*name;
+	struct paste_buffer	*pb;
 };
 
 static struct window_buffer_itemdata *
@@ -354,6 +364,126 @@ window_buffer_do_paste(void *modedata, void *itemdata, struct client *c,
 }
 
 static void
+window_buffer_finish_edit(struct window_buffer_editdata *ed)
+{
+	unlink(ed->path);
+	free(ed->path);
+	free(ed->name);
+	free(ed);
+}
+
+static void
+window_buffer_edit_close_cb(int status, void *arg)
+{
+	struct window_buffer_editdata	*ed = arg;
+	FILE				*f;
+	off_t				 len;
+	char				*buf;
+	size_t				 oldlen;
+	const char			*oldbuf;
+	struct paste_buffer		*pb;
+	struct window_pane		*wp;
+	struct window_buffer_modedata	*data;
+	struct window_mode_entry	*wme;
+
+	if (status != 0) {
+		window_buffer_finish_edit(ed);
+		return;
+	}
+
+	pb = paste_get_name(ed->name);
+	if (pb == NULL || pb != ed->pb) {
+		window_buffer_finish_edit(ed);
+		return;
+	}
+
+	f = fopen(ed->path, "r");
+	if (f != NULL) {
+		fseeko(f, 0, SEEK_END);
+		len = ftello(f);
+		fseeko(f, 0, SEEK_SET);
+
+		if (len > 0 &&
+		    (uintmax_t)len <= (uintmax_t)SIZE_MAX &&
+		    (buf = malloc(len)) != NULL &&
+		    fread(buf, len, 1, f) == 1) {
+			oldbuf = paste_buffer_data(pb, &oldlen);
+			if (oldlen != '\0' &&
+			    oldbuf[oldlen - 1] != '\n' &&
+			    buf[len - 1] == '\n')
+				len--;
+			if (len != 0)
+				paste_replace(pb, buf, len);
+		}
+		fclose(f);
+	}
+
+	wp = window_pane_find_by_id(ed->wp_id);
+	if (wp != NULL) {
+		wme = TAILQ_FIRST(&wp->modes);
+		if (wme->mode == &window_buffer_mode) {
+			data = wme->data;
+			mode_tree_build(data->data);
+			mode_tree_draw(data->data);
+		}
+		wp->flags |= PANE_REDRAW;
+	}
+	window_buffer_finish_edit(ed);
+}
+
+static void
+window_buffer_start_edit(struct window_buffer_modedata *data,
+    struct window_buffer_itemdata *item, struct client *c)
+{
+	struct paste_buffer		*pb;
+	int				 fd;
+	FILE				*f;
+	const char			*buf;
+	size_t				 len;
+	struct window_buffer_editdata	*ed;
+	char				*cmd;
+	char				 path[] = _PATH_TMP "tmux.XXXXXXXX";
+	const char			*editor;
+	u_int				 px, py, sx, sy;
+
+	if ((pb = paste_get_name(item->name)) == NULL)
+		return;
+	buf = paste_buffer_data(pb, &len);
+
+	editor = options_get_string(global_options, "editor");
+	if (*editor == '\0')
+		return;
+
+	fd = mkstemp(path);
+	if (fd == -1)
+		return;
+	f = fdopen(fd, "w");
+	if (fwrite(buf, len, 1, f) != 1) {
+		fclose(f);
+		return;
+	}
+	fclose(f);
+
+	ed = xcalloc(1, sizeof *ed);
+	ed->wp_id = data->wp->id;
+	ed->path = xstrdup(path);
+	ed->name = xstrdup(paste_buffer_name(pb));
+	ed->pb = pb;
+
+	sx = c->tty.sx * 9 / 10;
+	sy = c->tty.sy * 9 / 10;
+	px = (c->tty.sx / 2) - (sx / 2);
+	py = (c->tty.sy / 2) - (sy / 2);
+
+	xasprintf(&cmd, "%s %s", editor, path);
+	if (popup_display(POPUP_WRITEKEYS|POPUP_CLOSEEXIT, NULL, px, py, sx, sy,
+	    0, NULL, cmd, NULL, _PATH_TMP, c, NULL, window_buffer_edit_close_cb,
+	    ed) != 0)
+		window_buffer_finish_edit(ed);
+	free(cmd);
+}
+
+static void
 window_buffer_key(struct window_mode_entry *wme, struct client *c,
     __unused struct session *s, __unused struct winlink *wl, key_code key,
     struct mouse_event *m)
@@ -366,6 +496,10 @@ window_buffer_key(struct window_mode_entry *wme, struct client *c,
 
 	finished = mode_tree_key(mtd, c, &key, m, NULL, NULL);
 	switch (key) {
+	case 'e':
+		item = mode_tree_get_current(mtd);
+		window_buffer_start_edit(data, item, c);
+		break;
 	case 'd':
 		item = mode_tree_get_current(mtd);
 		window_buffer_do_delete(data, item, c, key);

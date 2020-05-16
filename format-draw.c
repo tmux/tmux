@@ -738,7 +738,7 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 
 	/*
 	 * Draw the screens. How they are arranged depends on where the list
-	 * appearsq.
+	 * appears.
 	 */
 	switch (list_align) {
 	case STYLE_ALIGN_DEFAULT:

@@ -443,6 +443,7 @@ main(int argc, char **argv)
 
 	/* Override keys to vi if VISUAL or EDITOR are set. */
 	if ((s = getenv("VISUAL")) != NULL || (s = getenv("EDITOR")) != NULL) {
+		options_set_string(global_options, "editor", 0, "%s", s);
 		if (strrchr(s, '/') != NULL)
 			s = strrchr(s, '/') + 1;
 		if (strstr(s, "vi") != NULL)

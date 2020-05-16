@@ -3113,6 +3113,10 @@ Set the time in milliseconds for which
 waits after an escape is input to determine if it is part of a function or meta
 key sequences.
 The default is 500 milliseconds.
+.It Ic editor Ar shell-command
+Set the command used when
+.Nm
+runs an editor.
 .It Xo Ic exit-empty
 .Op Ic on | off
 .Xc
@@ -5339,6 +5343,7 @@ The following keys may be used in buffer mode:
 .It Li "P" Ta "Paste tagged buffers"
 .It Li "d" Ta "Delete selected buffer"
 .It Li "D" Ta "Delete tagged buffers"
+.It Li "e" Ta "Open the buffer in an editor"
 .It Li "f" Ta "Enter a format to filter items"
 .It Li "O" Ta "Change sort field"
 .It Li "r" Ta "Reverse sort order"
