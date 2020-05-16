@@ -23,7 +23,7 @@
 .Sh SYNOPSIS
 .Nm tmux
 .Bk -words
-.Op Fl 2CluvV
+.Op Fl 2CDluvV
 .Op Fl c Ar shell-command
 .Op Fl f Ar file
 .Op Fl L Ar socket-name
@@ -122,6 +122,17 @@ This option is for compatibility with
 when
 .Nm
 is used as a login shell.
+.It Fl D
+Do not start the
+.Nm
+server as a daemon.
+This also turns the
+.Ic exit-empty
+option off.
+With
+.Fl D ,
+.Ar command
+may not be specified.
 .It Fl f Ar file
 Specify an alternative configuration file.
 By default,

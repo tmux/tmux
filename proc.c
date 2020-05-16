@@ -37,6 +37,7 @@ struct tmuxproc {
 
 	void		(*signalcb)(int);
 
+	struct event	  ev_sigint;
 	struct event	  ev_sighup;
 	struct event	  ev_sigchld;
 	struct event	  ev_sigcont;
@@ -221,10 +222,13 @@ proc_set_signals(struct tmuxproc *tp, void (*signalcb)(int))
 	sa.sa_flags = SA_RESTART;
 	sa.sa_handler = SIG_IGN;
 
-	sigaction(SIGINT, &sa, NULL);
 	sigaction(SIGPIPE, &sa, NULL);
 	sigaction(SIGTSTP, &sa, NULL);
+	sigaction(SIGTTIN, &sa, NULL);
+	sigaction(SIGTTOU, &sa, NULL);
 
+	signal_set(&tp->ev_sigint, SIGINT, proc_signal_cb, tp);
+	signal_add(&tp->ev_sigint, NULL);
 	signal_set(&tp->ev_sighup, SIGHUP, proc_signal_cb, tp);
 	signal_add(&tp->ev_sighup, NULL);
 	signal_set(&tp->ev_sigchld, SIGCHLD, proc_signal_cb, tp);
@@ -251,10 +255,10 @@ proc_clear_signals(struct tmuxproc *tp, int defaults)
 	sa.sa_flags = SA_RESTART;
 	sa.sa_handler = SIG_DFL;
 
-	sigaction(SIGINT, &sa, NULL);
 	sigaction(SIGPIPE, &sa, NULL);
 	sigaction(SIGTSTP, &sa, NULL);
 
+	signal_del(&tp->ev_sigint);
 	signal_del(&tp->ev_sighup);
 	signal_del(&tp->ev_sigchld);
 	signal_del(&tp->ev_sigcont);
@@ -264,6 +268,7 @@ proc_clear_signals(struct tmuxproc *tp, int defaults)
 	signal_del(&tp->ev_sigwinch);
 
 	if (defaults) {
+		sigaction(SIGINT, &sa, NULL);
 		sigaction(SIGHUP, &sa, NULL);
 		sigaction(SIGCHLD, &sa, NULL);
 		sigaction(SIGCONT, &sa, NULL);
