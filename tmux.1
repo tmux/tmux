@@ -4407,6 +4407,21 @@ Adding
 .Ql p (
 .Ql `t/p` )
 will use shorter but less accurate time format for times in the past.
+A custom format may be given using an
+.Ql f
+suffix (note that
+.Ql %
+must be escaped as
+.Ql %%
+if the format is separately being passed through
+.Xr strftime 3 ,
+for example in the
+.Ic status-left
+option):
+.Ql #{t/f/%%H#:%%M:window_activity} ,
+see
+.Xr strftime 3 .
+.Pp
 The
 .Ql b:\&
 and

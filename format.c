@@ -44,7 +44,6 @@ typedef void (*format_cb)(struct format_tree *, struct format_entry *);
 static char	*format_job_get(struct format_tree *, const char *);
 static void	 format_job_timer(int, short, void *);
 
-static char	*format_find(struct format_tree *, const char *, int);
 static void	 format_add_cb(struct format_tree *, const char *, format_cb);
 static int	 format_replace(struct format_tree *, const char *, size_t,
 		     char **, size_t *, size_t *);
@@ -122,8 +121,8 @@ struct format_tree {
 
 	struct cmdq_item	*item;
 	struct client		*client;
-	u_int			 tag;
 	int			 flags;
+	u_int			 tag;
 	time_t			 time;
 	u_int			 loop;
 
@@ -1369,16 +1368,17 @@ format_pretty_time(time_t t)
 
 /* Find a format entry. */
 static char *
-format_find(struct format_tree *ft, const char *key, int modifiers)
+format_find(struct format_tree *ft, const char *key, int modifiers,
+    const char *time_format)
 {
 	struct format_entry	*fe, fe_find;
 	struct environ_entry	*envent;
-	static char		 s[64];
 	struct options_entry	*o;
 	int			 idx;
-	char			*found = NULL, *saved;
+	char			*found = NULL, *saved, s[512];
 	const char		*errstr;
 	time_t			 t = 0;
+	struct tm		 tm;
 
 	o = options_parse_get(global_options, key, &idx, 0);
 	if (o == NULL && ft->wp != NULL)
@@ -1438,8 +1438,13 @@ found:
 		if (modifiers & FORMAT_PRETTY)
 			found = format_pretty_time(t);
 		else {
-			ctime_r(&t, s);
-			s[strcspn(s, "\n")] = '\0';
+			if (time_format != NULL) {
+				localtime_r(&t, &tm);
+				strftime(s, sizeof s, time_format, &tm);
+			} else {
+				ctime_r(&t, s);
+				s[strcspn(s, "\n")] = '\0';
+			}
 			found = xstrdup(s);
 		}
 		return (found);
@@ -1467,6 +1472,30 @@ found:
 	return (found);
 }
 
+/* Remove escaped characters from string. */
+static char *
+format_strip(const char *s)
+{
+	char	*out, *cp;
+	int	 brackets = 0;
+
+	cp = out = xmalloc(strlen(s) + 1);
+	for (; *s != '\0'; s++) {
+		if (*s == '#' && s[1] == '{')
+			brackets++;
+		if (*s == '#' && strchr(",#{}:", s[1]) != NULL) {
+			if (brackets != 0)
+				*cp++ = *s;
+			continue;
+		}
+		if (*s == '}')
+			brackets--;
+		*cp++ = *s;
+	}
+	*cp = '\0';
+	return (out);
+}
+
 /* Skip until end. */
 const char *
 format_skip(const char *s, const char *end)
@@ -1476,7 +1505,7 @@ format_skip(const char *s, const char *end)
 	for (; *s != '\0'; s++) {
 		if (*s == '#' && s[1] == '{')
 			brackets++;
-		if (*s == '#' && strchr(",#{}", s[1]) != NULL) {
+		if (*s == '#' && strchr(",#{}:", s[1]) != NULL) {
 			s++;
 			continue;
 		}
@@ -1584,7 +1613,7 @@ format_build_modifiers(struct format_tree *ft, const char **s, u_int *count)
 	*count = 0;
 
 	while (*cp != '\0' && *cp != ':') {
-		/* Skip and separator character. */
+		/* Skip any separator character. */
 		if (*cp == ';')
 			cp++;
 
@@ -1975,6 +2004,7 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 {
 	struct window_pane	 *wp = ft->wp;
 	const char		 *errptr, *copy, *cp, *marker = NULL;
+	const char		 *time_format = NULL;
 	char			 *copy0, *condition, *found, *new;
 	char			 *value, *left, *right;
 	size_t			  valuelen;
@@ -2052,6 +2082,9 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 					break;
 				if (strchr(fm->argv[0], 'p') != NULL)
 					modifiers |= FORMAT_PRETTY;
+				else if (fm->argc >= 2 &&
+				    strchr(fm->argv[0], 'f') != NULL)
+					time_format = format_strip(fm->argv[1]);
 				break;
 			case 'q':
 				modifiers |= FORMAT_QUOTE;
@@ -2178,7 +2211,7 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 		condition = xstrndup(copy + 1, cp - (copy + 1));
 		format_log(ft, "condition is: %s", condition);
 
-		found = format_find(ft, condition, modifiers);
+		found = format_find(ft, condition, modifiers, time_format);
 		if (found == NULL) {
 			/*
 			 * If the condition not found, try to expand it. If
@@ -2223,7 +2256,7 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 			value = xstrdup("");
 	} else {
 		/* Neither: look up directly. */
-		value = format_find(ft, copy, modifiers);
+		value = format_find(ft, copy, modifiers, time_format);
 		if (value == NULL) {
 			format_log(ft, "format '%s' not found", copy);
 			value = xstrdup("");
