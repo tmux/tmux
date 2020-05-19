@@ -497,10 +497,35 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 
 	/* No builtin key sequence; construct an extended key sequence. */
 	if (~s->mode & MODE_KEXTENDED) {
-		if ((key & KEYC_MASK_MODIFIERS) == KEYC_CTRL &&
-		    (key & KEYC_MASK_KEY) < KEYC_BASE)
-			return (input_key(s, bev, key & ~KEYC_CTRL));
-		goto missing;
+		justkey = (key & KEYC_MASK_KEY);
+		if ((key & KEYC_MASK_MODIFIERS) != KEYC_CTRL)
+			goto missing;
+		switch (justkey) {
+		case ' ':
+		case '2':
+			key = 0||(key & ~KEYC_MASK_KEY);
+			break;
+		case '|':
+			key = 28|(key & ~KEYC_MASK_KEY);
+			break;
+		case '6':
+			key = 30|(key & ~KEYC_MASK_KEY);
+			break;
+		case '-':
+		case '/':
+			key = 31|(key & ~KEYC_MASK_KEY);
+			break;
+		case '?':
+			key = 127|(key & ~KEYC_MASK_KEY);
+			break;
+		default:
+			if (justkey >= 'A' && justkey <= '_')
+				key = (justkey - 'A')|(key & ~KEYC_MASK_KEY);
+			else if (justkey >= 'a' && justkey <= '~')
+				key = (justkey - 96)|(key & ~KEYC_MASK_KEY);
+			break;
+		}
+		return (input_key(s, bev, key & ~KEYC_CTRL));
 	}
 	outkey = (key & KEYC_MASK_KEY);
 	switch (key & KEYC_MASK_MODIFIERS) {
