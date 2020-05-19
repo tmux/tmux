@@ -2,6 +2,7 @@ language: c
 
 os:
   - linux
+  - freebsd
   - osx
 
 compiler:
@@ -28,6 +29,19 @@ jobs:
     - os: osx
       compiler: clang
       env: BUILD=static
+    # No musl on FreeBSD
+    - os: freebsd
+      compiler: gcc
+      env: BUILD=musl
+    - os: freebsd
+      compiler: clang
+      env: BUILD=musl
+    - os: freebsd
+      compiler: gcc
+      env: BUILD=musl-static
+    - os: freebsd
+      compiler: clang
+      env: BUILD=musl-static
     # No musl on OS X
     - os: osx
       compiler: gcc
