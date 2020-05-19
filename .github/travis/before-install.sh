@@ -15,3 +15,10 @@ if [ "$TRAVIS_OS_NAME" = "linux" ]; then
 					musl-tools
 	fi
 fi
+
+if [ "$TRAVIS_OS_NAME" = "freebsd" ]; then
+	sudo pkg install -y \
+		automake \
+		libevent \
+		pkgconf
+fi
