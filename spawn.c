@@ -446,7 +446,6 @@ complete:
 	}
 #endif
 
-	new_wp->pipe_off = 0;
 	new_wp->flags &= ~PANE_EXITED;
 
 	sigprocmask(SIG_SETMASK, &oldset, NULL);
