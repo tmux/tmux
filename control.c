@@ -38,6 +38,53 @@ control_write(struct client *c, const char *fmt, ...)
 	va_end(ap);
 }
 
+/* Write output from a pane. */
+void
+control_write_output(struct client *c, struct window_pane *wp)
+{
+	struct client_offset	*co;
+	struct evbuffer		*message;
+	u_char			*new_data;
+	size_t			 new_size, i;
+
+	if (c->flags & CLIENT_CONTROL_NOOUTPUT)
+		return;
+
+	/*
+	 * Only write input if the window pane is linked to a window belonging
+	 * to the client's session.
+	 */
+	if (winlink_find_by_window(&c->session->windows, wp->window) == NULL)
+		return;
+
+	co = server_client_add_pane_offset(c, wp);
+	if (co->flags & CLIENT_OFFSET_OFF) {
+		window_pane_update_used_data(wp, &co->offset, SIZE_MAX, 1);
+		return;
+	}
+	new_data = window_pane_get_new_data(wp, &co->offset, &new_size);
+	if (new_size == 0)
+		return;
+
+	message = evbuffer_new();
+	if (message == NULL)
+		fatalx("out of memory");
+	evbuffer_add_printf(message, "%%output %%%u ", wp->id);
+
+	for (i = 0; i < new_size; i++) {
+		if (new_data[i] < ' ' || new_data[i] == '\\')
+			evbuffer_add_printf(message, "\\%03o", new_data[i]);
+		else
+			evbuffer_add_printf(message, "%c", new_data[i]);
+	}
+	evbuffer_add(message, "", 1);
+
+	control_write(c, "%s", EVBUFFER_DATA(message));
+	evbuffer_free(message);
+
+	window_pane_update_used_data(wp, &co->offset, new_size, 1);
+}
+
 /* Control error callback. */
 static enum cmd_retval
 control_error(struct cmdq_item *item, void *data)

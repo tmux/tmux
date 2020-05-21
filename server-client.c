@@ -33,6 +33,7 @@
 static void	server_client_free(int, short, void *);
 static void	server_client_check_pane_focus(struct window_pane *);
 static void	server_client_check_pane_resize(struct window_pane *);
+static void	server_client_check_pane_buffer(struct window_pane *);
 static void	server_client_check_window_resize(struct window *);
 static key_code	server_client_check_mouse(struct client *, struct key_event *);
 static void	server_client_repeat_timer(int, short, void *);
@@ -67,6 +68,43 @@ server_client_window_cmp(struct client_window *cw1,
 	return (0);
 }
 RB_GENERATE(client_windows, client_window, entry, server_client_window_cmp);
+
+/* Compare client offsets. */
+static int
+server_client_offset_cmp(struct client_offset *co1, struct client_offset *co2)
+{
+	if (co1->pane < co2->pane)
+		return (-1);
+	if (co1->pane > co2->pane)
+		return (1);
+	return (0);
+}
+RB_GENERATE(client_offsets, client_offset, entry, server_client_offset_cmp);
+
+/* Get pane offsets for this client. */
+struct client_offset *
+server_client_get_pane_offset(struct client *c, struct window_pane *wp)
+{
+	struct client_offset	co = { .pane = wp->id };
+
+	return (RB_FIND(client_offsets, &c->offsets, &co));
+}
+
+/* Add pane offsets for this client. */
+struct client_offset *
+server_client_add_pane_offset(struct client *c, struct window_pane *wp)
+{
+	struct client_offset	*co;
+
+	co = server_client_get_pane_offset(c, wp);
+	if (co != NULL)
+		return (co);
+	co = xcalloc(1, sizeof *co);
+	co->pane = wp->id;
+	RB_INSERT(client_offsets, &c->offsets, co);
+	memcpy(&co->offset, &wp->offset, sizeof co->offset);
+	return (co);
+}
 
 /* Number of attached clients. */
 u_int
@@ -224,15 +262,14 @@ server_client_create(int fd)
 
 	c->queue = cmdq_new();
 	RB_INIT(&c->windows);
+	RB_INIT(&c->offsets);
+	RB_INIT(&c->files);
 
 	c->tty.fd = -1;
 	c->tty.sx = 80;
 	c->tty.sy = 24;
 
 	status_init(c);
-
-	RB_INIT(&c->files);
-
 	c->flags |= CLIENT_FOCUSED;
 
 	c->keytable = key_bindings_get_table("root", 1);
@@ -286,6 +323,7 @@ server_client_lost(struct client *c)
 {
 	struct client_file	*cf, *cf1;
 	struct client_window	*cw, *cw1;
+	struct client_offset	*co, *co1;
 
 	c->flags |= CLIENT_DEAD;
 
@@ -300,6 +338,10 @@ server_client_lost(struct client *c)
 	RB_FOREACH_SAFE(cw, client_windows, &c->windows, cw1) {
 		RB_REMOVE(client_windows, &c->windows, cw);
 		free(cw);
+	}
+	RB_FOREACH_SAFE(co, client_offsets, &c->offsets, co1) {
+		RB_REMOVE(client_offsets, &c->offsets, co);
+		free(co);
 	}
 
 	TAILQ_REMOVE(&clients, c, entry);
@@ -1366,6 +1408,7 @@ server_client_loop(void)
 				if (focus)
 					server_client_check_pane_focus(wp);
 				server_client_check_pane_resize(wp);
+				server_client_check_pane_buffer(wp);
 			}
 			wp->flags &= ~PANE_REDRAW;
 		}
@@ -1488,6 +1531,88 @@ server_client_check_pane_resize(struct window_pane *wp)
 		server_client_start_resize_timer(wp);
 	} else
 		log_debug("%s: %%%u timer running", __func__, wp->id);
+}
+
+/* Check pane buffer size. */
+static void
+server_client_check_pane_buffer(struct window_pane *wp)
+{
+	struct evbuffer			*evb = wp->event->input;
+	size_t				 minimum;
+	struct client			*c;
+	struct client_offset		*co;
+	int				 off = !TAILQ_EMPTY(&clients);
+
+	/*
+	 * Work out the minimum acknowledged size. This is the most that can be
+	 * removed from the buffer.
+	 */
+	minimum = wp->offset.acknowledged;
+	if (wp->pipe_fd != -1 && wp->pipe_offset.acknowledged < minimum)
+		minimum = wp->pipe_offset.acknowledged;
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (c->session == NULL)
+			continue;
+		if ((~c->flags & CLIENT_CONTROL) ||
+		    (c->flags & CLIENT_CONTROL_NOOUTPUT) ||
+		    (co = server_client_get_pane_offset(c, wp)) == NULL) {
+			off = 0;
+			continue;
+		}
+		if (~co->flags & CLIENT_OFFSET_OFF)
+			off = 0;
+		log_debug("%s: %s has %zu bytes used, %zu bytes acknowledged "
+		    "for %%%u", __func__, c->name, co->offset.used,
+		    co->offset.acknowledged, wp->id);
+		if (co->offset.acknowledged < minimum)
+			minimum = co->offset.acknowledged;
+	}
+	minimum -= wp->base_offset;
+	if (minimum == 0)
+		goto out;
+
+	/* Drain the buffer. */
+	log_debug("%s: %%%u has %zu minimum (of %zu) bytes acknowledged",
+	    __func__, wp->id, minimum, EVBUFFER_LENGTH(evb));
+	evbuffer_drain(evb, minimum);
+
+	/*
+	 * Adjust the base offset. If it would roll over, all the offsets into
+	 * the buffer need to be adjusted.
+	 */
+	if (wp->base_offset > SIZE_MAX - minimum) {
+		log_debug("%s: %%%u base offset has wrapped", __func__, wp->id);
+		wp->offset.acknowledged -= wp->base_offset;
+		wp->offset.used -= wp->base_offset;
+		if (wp->pipe_fd != -1) {
+			wp->pipe_offset.acknowledged -= wp->base_offset;
+			wp->pipe_offset.used -= wp->base_offset;
+		}
+		TAILQ_FOREACH(c, &clients, entry) {
+			if (c->session == NULL || (~c->flags & CLIENT_CONTROL))
+				continue;
+			co = server_client_get_pane_offset(c, wp);
+			if (co != NULL) {
+				co->offset.acknowledged -= wp->base_offset;
+				co->offset.used -= wp->base_offset;
+			}
+		}
+		wp->base_offset = minimum;
+	} else
+		wp->base_offset += minimum;
+
+out:
+	/*
+	 * If there is data remaining, and there are no clients able to consume
+	 * it, do not read any more. This is true when 1) there are attached
+	 * clients 2) all the clients are control clients 3) all of them have
+	 * either the OFF flag set, or are otherwise not able to accept any
+	 * more data for this pane.
+	 */
+	if (off)
+		bufferevent_disable(wp->event, EV_READ);
+	else
+		bufferevent_enable(wp->event, EV_READ);
 }
 
 /* Check whether pane should be focused. */
