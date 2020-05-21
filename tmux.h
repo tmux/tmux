@@ -896,6 +896,12 @@ struct window_mode_entry {
 	TAILQ_ENTRY (window_mode_entry)	 entry;
 };
 
+/* Offsets into pane buffer. */
+struct window_pane_offset {
+	size_t	used;
+	size_t	acknowledged;
+};
+
 /* Child window structure. */
 struct window_pane {
 	u_int		 id;
@@ -946,6 +952,8 @@ struct window_pane {
 
 	int		 fd;
 	struct bufferevent *event;
+	struct window_pane_offset offset;
+	size_t		 base_offset;
 
 	struct event	 resize_timer;
 
@@ -957,7 +965,7 @@ struct window_pane {
 
 	int		 pipe_fd;
 	struct bufferevent *pipe_event;
-	size_t		 pipe_off;
+	struct window_pane_offset pipe_offset;
 
 	struct screen	*screen;
 	struct screen	 base;
@@ -1541,6 +1549,18 @@ struct client_window {
 };
 RB_HEAD(client_windows, client_window);
 
+/* Client offsets. */
+struct client_offset {
+	u_int				pane;
+
+	struct window_pane_offset	offset;
+	int				flags;
+#define CLIENT_OFFSET_OFF 0x1
+
+	RB_ENTRY(client_offset)		entry;
+};
+RB_HEAD(client_offsets, client_offset);
+
 /* Client connection. */
 typedef int (*prompt_input_cb)(struct client *, void *, const char *, int);
 typedef void (*prompt_free_cb)(void *);
@@ -1555,6 +1575,7 @@ struct client {
 	struct cmdq_list *queue;
 
 	struct client_windows windows;
+	struct client_offsets offsets;
 
 	pid_t		 pid;
 	int		 fd;
@@ -1927,7 +1948,6 @@ char		*format_trim_right(const char *, u_int);
 
 /* notify.c */
 void	notify_hook(struct cmdq_item *, const char *);
-void	notify_input(struct window_pane *, const u_char *, size_t);
 void	notify_client(const char *, struct client *);
 void	notify_session(const char *, struct session *);
 void	notify_winlink(const char *, struct winlink *);
@@ -2339,6 +2359,11 @@ void printflike(1, 2) server_add_message(const char *, ...);
 
 /* server-client.c */
 RB_PROTOTYPE(client_windows, client_window, entry, server_client_window_cmp);
+RB_PROTOTYPE(client_offsets, client_offset, entry, server_client_offset_cmp);
+struct client_offset *server_client_get_pane_offset(struct client *,
+	     struct window_pane *);
+struct client_offset *server_client_add_pane_offset(struct client *,
+	     struct window_pane *);
 u_int	 server_client_how_many(void);
 void	 server_client_set_overlay(struct client *, u_int, overlay_check_cb,
 	     overlay_mode_cb, overlay_draw_cb, overlay_key_cb,
@@ -2684,6 +2709,12 @@ void		 winlink_clear_flags(struct winlink *);
 int		 winlink_shuffle_up(struct session *, struct winlink *);
 int		 window_pane_start_input(struct window_pane *,
 		     struct cmdq_item *, char **);
+void		*window_pane_get_new_data(struct window_pane *,
+		     struct window_pane_offset *, size_t *);
+void		 window_pane_update_used_data(struct window_pane *,
+		     struct window_pane_offset *, size_t, int);
+void		 window_pane_acknowledge_data(struct window_pane *,
+		     struct window_pane_offset *, size_t);
 
 /* layout.c */
 u_int		 layout_count_cells(struct layout_cell *);
@@ -2800,6 +2831,7 @@ char	*parse_window_name(const char *);
 /* control.c */
 void	control_start(struct client *);
 void printflike(2, 3) control_write(struct client *, const char *, ...);
+void	control_write_output(struct client *, struct window_pane *);
 
 /* control-notify.c */
 void	control_notify_input(struct client *, struct window_pane *,

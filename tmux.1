@@ -1251,6 +1251,7 @@ and sets an environment variable for the newly created session; it may be
 specified multiple times.
 .It Xo Ic refresh-client
 .Op Fl cDlLRSU
+.Op Fl A Ar pane:state
 .Op Fl C Ar XxY
 .Op Fl f Ar flags
 .Op Fl t Ar target-client
@@ -1295,7 +1296,25 @@ window, changing the current window in the attached session will reset
 it.
 .Pp
 .Fl C
-sets the width and height of a control client.
+sets the width and height of a control mode client.
+.Fl A
+informs
+.Nm
+of a control mode client's interest in a pane.
+The argument is a pane ID (with leading
+.Ql % ) ,
+a colon, then one of
+.Ql on
+or
+.Ql off .
+If
+.Ql off ,
+.Nm
+will not send output from the pane to the client and if all clients have turned
+the pane off, will stop reading from the pane.
+.Fl A
+may be given multiple times.
+.Pp
 .Fl f
 sets a comma-separated list of client flags, see
 .Ic attach-session .

@@ -881,7 +881,6 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	wp->sy = wp->osx = sy;
 
 	wp->pipe_fd = -1;
-	wp->pipe_off = 0;
 	wp->pipe_event = NULL;
 
 	screen_init(&wp->base, sx, sy, hlimit);
@@ -933,22 +932,28 @@ window_pane_destroy(struct window_pane *wp)
 static void
 window_pane_read_callback(__unused struct bufferevent *bufev, void *data)
 {
-	struct window_pane	*wp = data;
-	struct evbuffer		*evb = wp->event->input;
-	size_t			 size = EVBUFFER_LENGTH(evb);
-	char			*new_data;
-	size_t			 new_size;
+	struct window_pane		*wp = data;
+	struct evbuffer			*evb = wp->event->input;
+	struct window_pane_offset	*wpo = &wp->pipe_offset;
+	size_t				 size = EVBUFFER_LENGTH(evb);
+	char				*new_data;
+	size_t				 new_size;
+	struct client			*c;
 
-	new_size = size - wp->pipe_off;
-	if (wp->pipe_fd != -1 && new_size > 0) {
-		new_data = EVBUFFER_DATA(evb) + wp->pipe_off;
-		bufferevent_write(wp->pipe_event, new_data, new_size);
+	if (wp->pipe_fd != -1) {
+		new_data = window_pane_get_new_data(wp, wpo, &new_size);
+		if (new_size > 0) {
+			bufferevent_write(wp->pipe_event, new_data, new_size);
+			window_pane_update_used_data(wp, wpo, new_size, 1);
+		}
 	}
 
 	log_debug("%%%u has %zu bytes", wp->id, size);
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (c->session != NULL && c->flags & CLIENT_CONTROL)
+			control_write_output(c, wp);
+	}
 	input_parse_pane(wp);
-
-	wp->pipe_off = EVBUFFER_LENGTH(evb);
 }
 
 static void
@@ -1540,4 +1545,41 @@ window_pane_start_input(struct window_pane *wp, struct cmdq_item *item,
 	file_read(c, "-", window_pane_input_callback, cdata);
 
 	return (0);
+}
+
+void *
+window_pane_get_new_data(struct window_pane *wp,
+    struct window_pane_offset *wpo, size_t *size)
+{
+	size_t	used = wpo->used - wp->base_offset;
+
+	*size = EVBUFFER_LENGTH(wp->event->input) - used;
+	return (EVBUFFER_DATA(wp->event->input) + used);
+}
+
+void
+window_pane_update_used_data(struct window_pane *wp,
+    struct window_pane_offset *wpo, size_t size, int acknowledge)
+{
+	size_t	used = wpo->used - wp->base_offset;
+
+	if (size > EVBUFFER_LENGTH(wp->event->input) - used)
+		size = EVBUFFER_LENGTH(wp->event->input) - used;
+	wpo->used += size;
+
+	if (acknowledge)
+		window_pane_acknowledge_data(wp, wpo, size);
+}
+
+void
+window_pane_acknowledge_data(struct window_pane *wp,
+    struct window_pane_offset *wpo, size_t size)
+{
+	size_t	acknowledged = wpo->acknowledged - wp->base_offset;
+
+	if (size > EVBUFFER_LENGTH(wp->event->input) - acknowledged)
+		size = EVBUFFER_LENGTH(wp->event->input) - acknowledged;
+	wpo->acknowledged += size;
+	if (wpo->acknowledged > wpo->used)
+		wpo->acknowledged = wpo->used;
 }

@@ -34,23 +34,55 @@ const struct cmd_entry cmd_refresh_client_entry = {
 	.name = "refresh-client",
 	.alias = "refresh",
 
-	.args = { "cC:Df:F:lLRSt:U", 0, 1 },
-	.usage = "[-cDlLRSU] [-C XxY] [-f flags] " CMD_TARGET_CLIENT_USAGE
-		" [adjustment]",
+	.args = { "A:cC:Df:F:lLRSt:U", 0, 1 },
+	.usage = "[-cDlLRSU] [-A pane:state] [-C XxY] [-f flags] "
+		 CMD_TARGET_CLIENT_USAGE " [adjustment]",
 
 	.flags = CMD_AFTERHOOK|CMD_CLIENT_TFLAG,
 	.exec = cmd_refresh_client_exec
 };
 
+static void
+cmd_refresh_client_update_offset(struct client *tc, const char *value)
+{
+	struct window_pane	*wp;
+	struct client_offset	*co;
+	char			*copy, *colon;
+	u_int			 pane;
+
+	if (*value != '%')
+		return;
+	copy = xstrdup(value);
+	if ((colon = strchr(copy, ':')) == NULL)
+		goto out;
+	*colon++ = '\0';
+
+	if (sscanf(copy, "%%%u", &pane) != 1)
+		goto out;
+	wp = window_pane_find_by_id(pane);
+	if (wp == NULL)
+		goto out;
+
+	co = server_client_add_pane_offset(tc, wp);
+	if (strcmp(colon, "on") == 0)
+		co->flags &= ~CLIENT_OFFSET_OFF;
+	else if (strcmp(colon, "off") == 0)
+		co->flags |= CLIENT_OFFSET_OFF;
+
+out:
+	free(copy);
+}
+
 static enum cmd_retval
 cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args	*args = cmd_get_args(self);
-	struct client	*tc = cmdq_get_target_client(item);
-	struct tty	*tty = &tc->tty;
-	struct window	*w;
-	const char	*size, *errstr;
-	u_int		 x, y, adjust;
+	struct args		*args = cmd_get_args(self);
+	struct client		*tc = cmdq_get_target_client(item);
+	struct tty		*tty = &tc->tty;
+	struct window		*w;
+	const char		*size, *errstr, *value;
+	u_int			 x, y, adjust;
+	struct args_value	*av;
 
 	if (args_has(args, 'c') ||
 	    args_has(args, 'L') ||
@@ -112,11 +144,19 @@ cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'f'))
 		server_client_set_flags(tc, args_get(args, 'f'));
 
-	if (args_has(args, 'C')) {
-		if (~tc->flags & CLIENT_CONTROL) {
-			cmdq_error(item, "not a control client");
-			return (CMD_RETURN_ERROR);
+	if (args_has(args, 'A')) {
+		if (~tc->flags & CLIENT_CONTROL)
+			goto not_control_client;
+		value = args_first_value(args, 'A', &av);
+		while (value != NULL) {
+			cmd_refresh_client_update_offset(tc, value);
+			value = args_next_value(&av);
 		}
+		return (CMD_RETURN_NORMAL);
+	}
+	if (args_has(args, 'C')) {
+		if (~tc->flags & CLIENT_CONTROL)
+			goto not_control_client;
 		size = args_get(args, 'C');
 		if (sscanf(size, "%u,%u", &x, &y) != 2 &&
 		    sscanf(size, "%ux%u", &x, &y) != 2) {
@@ -142,4 +182,8 @@ cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 		server_redraw_client(tc);
 	}
 	return (CMD_RETURN_NORMAL);
+
+not_control_client:
+	cmdq_error(item, "not a control client");
+	return (CMD_RETURN_ERROR);
 }

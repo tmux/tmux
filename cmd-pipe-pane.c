@@ -56,16 +56,17 @@ const struct cmd_entry cmd_pipe_pane_entry = {
 static enum cmd_retval
 cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = cmd_get_args(self);
-	struct cmd_find_state	*target = cmdq_get_target(item);
-	struct client		*tc = cmdq_get_target_client(item);
-	struct window_pane	*wp = target->wp;
-	struct session		*s = target->s;
-	struct winlink		*wl = target->wl;
-	char			*cmd;
-	int			 old_fd, pipe_fd[2], null_fd, in, out;
-	struct format_tree	*ft;
-	sigset_t		 set, oldset;
+	struct args			*args = cmd_get_args(self);
+	struct cmd_find_state		*target = cmdq_get_target(item);
+	struct client			*tc = cmdq_get_target_client(item);
+	struct window_pane		*wp = target->wp;
+	struct session			*s = target->s;
+	struct winlink			*wl = target->wl;
+	struct window_pane_offset	*wpo = &wp->pipe_offset;
+	char				*cmd;
+	int				 old_fd, pipe_fd[2], null_fd, in, out;
+	struct format_tree		*ft;
+	sigset_t			 set, oldset;
 
 	/* Destroy the old pipe. */
 	old_fd = wp->pipe_fd;
@@ -159,10 +160,7 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 		close(pipe_fd[1]);
 
 		wp->pipe_fd = pipe_fd[0];
-		if (wp->fd != -1)
-			wp->pipe_off = EVBUFFER_LENGTH(wp->event->input);
-		else
-			wp->pipe_off = 0;
+		memcpy(wpo, &wp->offset, sizeof *wpo);
 
 		setblocking(wp->pipe_fd, 0);
 		wp->pipe_event = bufferevent_new(wp->pipe_fd,

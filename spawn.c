@@ -439,7 +439,6 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	_exit(1);
 
 complete:
-	new_wp->pipe_off = 0;
 	new_wp->flags &= ~PANE_EXITED;
 
 	sigprocmask(SIG_SETMASK, &oldset, NULL);

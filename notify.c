@@ -210,17 +210,6 @@ notify_hook(struct cmdq_item *item, const char *name)
 }
 
 void
-notify_input(struct window_pane *wp, const u_char *buf, size_t len)
-{
-	struct client	*c;
-
-	TAILQ_FOREACH(c, &clients, entry) {
-		if (c->flags & CLIENT_CONTROL)
-			control_notify_input(c, wp, buf, len);
-	}
-}
-
-void
 notify_client(const char *name, struct client *c)
 {
 	struct cmd_find_state	fs;

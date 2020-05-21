@@ -942,10 +942,12 @@ input_parse(struct input_ctx *ictx, u_char *buf, size_t len)
 void
 input_parse_pane(struct window_pane *wp)
 {
-	struct evbuffer	*evb = wp->event->input;
+	void	*new_data;
+	size_t	 new_size;
 
-	input_parse_buffer(wp, EVBUFFER_DATA(evb), EVBUFFER_LENGTH(evb));
-	evbuffer_drain(evb, EVBUFFER_LENGTH(evb));
+	new_data = window_pane_get_new_data(wp, &wp->offset, &new_size);
+	input_parse_buffer(wp, new_data, new_size);
+	window_pane_update_used_data(wp, &wp->offset, new_size, 1);
 }
 
 /* Parse given input. */
@@ -960,7 +962,6 @@ input_parse_buffer(struct window_pane *wp, u_char *buf, size_t len)
 
 	window_update_activity(wp->window);
 	wp->flags |= PANE_CHANGED;
-	notify_input(wp, buf, len);
 
 	/* NULL wp if there is a mode set as don't want to update the tty. */
 	if (TAILQ_EMPTY(&wp->modes))
