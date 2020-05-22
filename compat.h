@@ -25,6 +25,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <termios.h>
+#include <term.h>
 #include <wchar.h>
 
 #if defined(HAVE_CURSES_H)
