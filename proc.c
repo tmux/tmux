@@ -183,8 +183,19 @@ proc_start(const char *name)
 
 	log_debug("%s started (%ld): version %s, socket %s, protocol %d", name,
 	    (long)getpid(), getversion(), socket_path, PROTOCOL_VERSION);
-	log_debug("on %s %s %s; libevent %s (%s)", u.sysname, u.release,
-	    u.version, event_get_version(), event_get_method());
+	log_debug("on %s %s %s; libevent %s (%s)"
+#ifdef HAVE_UTF8PROC
+	    "; utf8proc %s/%s"
+#endif
+#ifdef NCURSES_VERSION
+	    "; ncurses " NCURSES_VERSION
+#endif
+	    , u.sysname, u.release, u.version
+	    , event_get_version(), event_get_method()
+#ifdef HAVE_UTF8PROC
+	    , utf8proc_version (), utf8proc_unicode_version ()
+#endif
+	);
 
 	tp = xcalloc(1, sizeof *tp);
 	tp->name = xstrdup(name);

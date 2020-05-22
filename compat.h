@@ -27,6 +27,12 @@
 #include <termios.h>
 #include <wchar.h>
 
+#if defined(HAVE_CURSES_H)
+#include <curses.h>
+#elif defined(HAVE_NCURSES_H)
+#include <ncurses.h>
+#endif
+
 #ifndef __GNUC__
 #define __attribute__(a)
 #endif
