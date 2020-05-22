@@ -186,7 +186,7 @@ proc_start(const char *name)
 	log_debug("on %s %s %s", u.sysname, u.release, u.version);
 	log_debug("using libevent %s (%s)"
 #ifdef HAVE_UTF8PROC
-	    "; utf8proc %s/%s"
+	    "; utf8proc %s (Unicode %s)"
 #endif
 #ifdef NCURSES_VERSION
 	    "; ncurses " NCURSES_VERSION
