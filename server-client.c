@@ -71,43 +71,6 @@ server_client_window_cmp(struct client_window *cw1,
 }
 RB_GENERATE(client_windows, client_window, entry, server_client_window_cmp);
 
-/* Compare client offsets. */
-static int
-server_client_offset_cmp(struct client_offset *co1, struct client_offset *co2)
-{
-	if (co1->pane < co2->pane)
-		return (-1);
-	if (co1->pane > co2->pane)
-		return (1);
-	return (0);
-}
-RB_GENERATE(client_offsets, client_offset, entry, server_client_offset_cmp);
-
-/* Get pane offsets for this client. */
-struct client_offset *
-server_client_get_pane_offset(struct client *c, struct window_pane *wp)
-{
-	struct client_offset	co = { .pane = wp->id };
-
-	return (RB_FIND(client_offsets, &c->offsets, &co));
-}
-
-/* Add pane offsets for this client. */
-struct client_offset *
-server_client_add_pane_offset(struct client *c, struct window_pane *wp)
-{
-	struct client_offset	*co;
-
-	co = server_client_get_pane_offset(c, wp);
-	if (co != NULL)
-		return (co);
-	co = xcalloc(1, sizeof *co);
-	co->pane = wp->id;
-	RB_INSERT(client_offsets, &c->offsets, co);
-	memcpy(&co->offset, &wp->offset, sizeof co->offset);
-	return (co);
-}
-
 /* Number of attached clients. */
 u_int
 server_client_how_many(void)
@@ -264,7 +227,6 @@ server_client_create(int fd)
 
 	c->queue = cmdq_new();
 	RB_INIT(&c->windows);
-	RB_INIT(&c->offsets);
 	RB_INIT(&c->files);
 
 	c->tty.fd = -1;
@@ -325,7 +287,6 @@ server_client_lost(struct client *c)
 {
 	struct client_file	*cf, *cf1;
 	struct client_window	*cw, *cw1;
-	struct client_offset	*co, *co1;
 
 	c->flags |= CLIENT_DEAD;
 
@@ -341,10 +302,7 @@ server_client_lost(struct client *c)
 		RB_REMOVE(client_windows, &c->windows, cw);
 		free(cw);
 	}
-	RB_FOREACH_SAFE(co, client_offsets, &c->offsets, co1) {
-		RB_REMOVE(client_offsets, &c->offsets, co);
-		free(co);
-	}
+	control_free_offsets(c);
 
 	TAILQ_REMOVE(&clients, c, entry);
 	log_debug("lost client %p", c);
@@ -1542,8 +1500,9 @@ server_client_check_pane_buffer(struct window_pane *wp)
 	struct evbuffer			*evb = wp->event->input;
 	size_t				 minimum;
 	struct client			*c;
-	struct client_offset		*co;
-	int				 off = !TAILQ_EMPTY(&clients);
+	struct window_pane_offset	*wpo;
+	int				 off = 1, flag;
+	u_int				 attached_clients = 0;
 
 	/*
 	 * Work out the minimum acknowledged size. This is the most that can be
@@ -1555,20 +1514,28 @@ server_client_check_pane_buffer(struct window_pane *wp)
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (c->session == NULL)
 			continue;
-		if ((~c->flags & CLIENT_CONTROL) ||
-		    (c->flags & CLIENT_CONTROL_NOOUTPUT) ||
-		    (co = server_client_get_pane_offset(c, wp)) == NULL) {
+		attached_clients++;
+
+		if (~c->flags & CLIENT_CONTROL) {
 			off = 0;
 			continue;
 		}
-		if (~co->flags & CLIENT_OFFSET_OFF)
+		wpo = control_pane_offset(c, wp, &flag);
+		if (wpo == NULL) {
 			off = 0;
+			continue;
+		}
+		if (!flag)
+			off = 0;
+
 		log_debug("%s: %s has %zu bytes used, %zu bytes acknowledged "
-		    "for %%%u", __func__, c->name, co->offset.used,
-		    co->offset.acknowledged, wp->id);
-		if (co->offset.acknowledged < minimum)
-			minimum = co->offset.acknowledged;
+		    "for %%%u", __func__, c->name, wpo->used, wpo->acknowledged,
+		    wp->id);
+		if (wpo->acknowledged < minimum)
+			minimum = wpo->acknowledged;
 	}
+	if (attached_clients == 0)
+		off = 0;
 	minimum -= wp->base_offset;
 	if (minimum == 0)
 		goto out;
@@ -1593,10 +1560,10 @@ server_client_check_pane_buffer(struct window_pane *wp)
 		TAILQ_FOREACH(c, &clients, entry) {
 			if (c->session == NULL || (~c->flags & CLIENT_CONTROL))
 				continue;
-			co = server_client_get_pane_offset(c, wp);
-			if (co != NULL) {
-				co->offset.acknowledged -= wp->base_offset;
-				co->offset.used -= wp->base_offset;
+			wpo = control_pane_offset(c, wp, &flag);
+			if (wpo != NULL && !flag) {
+				wpo->acknowledged -= wp->base_offset;
+				wpo->used -= wp->base_offset;
 			}
 		}
 		wp->base_offset = minimum;
@@ -2394,9 +2361,10 @@ server_client_set_flags(struct client *c, const char *flags)
 			c->flags &= ~flag;
 		else
 			c->flags |= flag;
+		if (flag == CLIENT_CONTROL_NOOUTPUT)
+			control_free_offsets(c);
 	}
 	free(copy);
-
 }
 
 /* Get client flags. This is only flags useful to show to users. */
