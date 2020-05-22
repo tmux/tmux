@@ -18,16 +18,15 @@
 
 #include <sys/types.h>
 
-#include <fnmatch.h>
-#include <stdlib.h>
-#include <string.h>
-#include <term.h>
-
 #if defined(HAVE_CURSES_H)
 #include <curses.h>
 #elif defined(HAVE_NCURSES_H)
 #include <ncurses.h>
 #endif
+#include <fnmatch.h>
+#include <stdlib.h>
+#include <string.h>
+#include <term.h>
 
 #include "tmux.h"
 
