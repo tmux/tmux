@@ -26,6 +26,124 @@
 
 #include "tmux.h"
 
+/* Control offsets. */
+struct control_offset {
+	u_int				pane;
+
+	struct window_pane_offset	offset;
+	int				flags;
+#define CONTROL_OFFSET_OFF 0x1
+
+	RB_ENTRY(control_offset)		entry;
+};
+RB_HEAD(control_offsets, control_offset);
+
+/* Compare client offsets. */
+static int
+control_offset_cmp(struct control_offset *co1, struct control_offset *co2)
+{
+	if (co1->pane < co2->pane)
+		return (-1);
+	if (co1->pane > co2->pane)
+		return (1);
+	return (0);
+}
+RB_GENERATE_STATIC(control_offsets, control_offset, entry, control_offset_cmp);
+
+/* Get pane offsets for this client. */
+static struct control_offset *
+control_get_offset(struct client *c, struct window_pane *wp)
+{
+	struct control_offset	co = { .pane = wp->id };
+
+	if (c->offsets == NULL)
+		return (NULL);
+	return (RB_FIND(control_offsets, c->offsets, &co));
+}
+
+/* Add pane offsets for this client. */
+static struct control_offset *
+control_add_offset(struct client *c, struct window_pane *wp)
+{
+	struct control_offset	*co;
+
+	co = control_get_offset(c, wp);
+	if (co != NULL)
+		return (co);
+
+	if (c->offsets == NULL) {
+		c->offsets = xmalloc(sizeof *c->offsets);
+		RB_INIT(c->offsets);
+	}
+
+	co = xcalloc(1, sizeof *co);
+	co->pane = wp->id;
+	RB_INSERT(control_offsets, c->offsets, co);
+	memcpy(&co->offset, &wp->offset, sizeof co->offset);
+	return (co);
+}
+
+/* Free control offsets. */
+void
+control_free_offsets(struct client *c)
+{
+	struct control_offset	*co, *co1;
+
+	if (c->offsets == NULL)
+		return;
+	RB_FOREACH_SAFE(co, control_offsets, c->offsets, co1) {
+		RB_REMOVE(control_offsets, c->offsets, co);
+		free(co);
+	}
+	free(c->offsets);
+}
+
+/* Get offsets for client. */
+struct window_pane_offset *
+control_pane_offset(struct client *c, struct window_pane *wp, int *off)
+{
+	struct control_offset	*co;
+
+	if (c->flags & CLIENT_CONTROL_NOOUTPUT) {
+		*off = 0;
+		return (NULL);
+	}
+
+	co = control_get_offset(c, wp);
+	if (co == NULL) {
+		*off = 0;
+		return (NULL);
+	}
+	if (co->flags & CONTROL_OFFSET_OFF) {
+		*off = 1;
+		return (NULL);
+	}
+	return (&co->offset);
+}
+
+/* Set pane as on. */
+void
+control_set_pane_on(struct client *c, struct window_pane *wp)
+{
+	struct control_offset	*co;
+
+	co = control_get_offset(c, wp);
+	if (co != NULL) {
+		co->flags &= ~CONTROL_OFFSET_OFF;
+		memcpy(&co->offset, &wp->offset, sizeof co->offset);
+	}
+}
+
+/* Set pane as off. */
+void
+control_set_pane_off(struct client *c, struct window_pane *wp)
+{
+	struct control_offset	*co;
+
+	co = control_add_offset(c, wp);
+	co->flags |= CONTROL_OFFSET_OFF;
+}
+
 /* Write a line. */
 void
 control_write(struct client *c, const char *fmt, ...)
@@ -42,7 +160,7 @@ control_write(struct client *c, const char *fmt, ...)
 void
 control_write_output(struct client *c, struct window_pane *wp)
 {
-	struct client_offset	*co;
+	struct control_offset	*co;
 	struct evbuffer		*message;
 	u_char			*new_data;
 	size_t			 new_size, i;
@@ -57,8 +175,8 @@ control_write_output(struct client *c, struct window_pane *wp)
 	if (winlink_find_by_window(&c->session->windows, wp->window) == NULL)
 		return;
 
-	co = server_client_add_pane_offset(c, wp);
-	if (co->flags & CLIENT_OFFSET_OFF) {
+	co = control_add_offset(c, wp);
+	if (co->flags & CONTROL_OFFSET_OFF) {
 		window_pane_update_used_data(wp, &co->offset, SIZE_MAX, 1);
 		return;
 	}
@@ -133,6 +251,7 @@ control_callback(__unused struct client *c, __unused const char *path,
 	}
 }
 
+/* Initialize for control mode. */
 void
 control_start(struct client *c)
 {

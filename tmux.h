@@ -47,6 +47,7 @@ struct cmdq_item;
 struct cmdq_list;
 struct cmdq_state;
 struct cmds;
+struct control_offsets;
 struct environ;
 struct format_job_tree;
 struct format_tree;
@@ -1551,18 +1552,6 @@ struct client_window {
 };
 RB_HEAD(client_windows, client_window);
 
-/* Client offsets. */
-struct client_offset {
-	u_int				pane;
-
-	struct window_pane_offset	offset;
-	int				flags;
-#define CLIENT_OFFSET_OFF 0x1
-
-	RB_ENTRY(client_offset)		entry;
-};
-RB_HEAD(client_offsets, client_offset);
-
 /* Client connection. */
 typedef int (*prompt_input_cb)(struct client *, void *, const char *, int);
 typedef void (*prompt_free_cb)(void *);
@@ -1577,7 +1566,7 @@ struct client {
 	struct cmdq_list *queue;
 
 	struct client_windows windows;
-	struct client_offsets offsets;
+	struct control_offsets *offsets;
 
 	pid_t		 pid;
 	int		 fd;
@@ -2361,11 +2350,6 @@ void printflike(1, 2) server_add_message(const char *, ...);
 
 /* server-client.c */
 RB_PROTOTYPE(client_windows, client_window, entry, server_client_window_cmp);
-RB_PROTOTYPE(client_offsets, client_offset, entry, server_client_offset_cmp);
-struct client_offset *server_client_get_pane_offset(struct client *,
-	     struct window_pane *);
-struct client_offset *server_client_add_pane_offset(struct client *,
-	     struct window_pane *);
 u_int	 server_client_how_many(void);
 void	 server_client_set_overlay(struct client *, u_int, overlay_check_cb,
 	     overlay_mode_cb, overlay_draw_cb, overlay_key_cb,
@@ -2832,6 +2816,11 @@ char	*parse_window_name(const char *);
 
 /* control.c */
 void	control_start(struct client *);
+void	control_set_pane_on(struct client *, struct window_pane *);
+void	control_set_pane_off(struct client *, struct window_pane *);
+struct window_pane_offset *control_pane_offset(struct client *,
+	   struct window_pane *, int *);
+void	control_free_offsets(struct client *);
 void printflike(2, 3) control_write(struct client *, const char *, ...);
 void	control_write_output(struct client *, struct window_pane *);
 
