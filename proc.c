@@ -27,6 +27,10 @@
 #include <string.h>
 #include <unistd.h>
 
+#if defined(HAVE_NCURSES_H)
+#include <ncurses.h>
+#endif
+
 #include "tmux.h"
 
 struct tmuxproc {

@@ -25,14 +25,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <termios.h>
-#include <term.h>
 #include <wchar.h>
-
-#if defined(HAVE_CURSES_H)
-#include <curses.h>
-#elif defined(HAVE_NCURSES_H)
-#include <ncurses.h>
-#endif
 
 #ifdef HAVE_UTF8PROC
 #include <utf8proc.h>
