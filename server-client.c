@@ -1286,7 +1286,7 @@ forward_key:
 		window_pane_key(wp, c, s, wl, key, m);
 
 out:
-	if (s != NULL)
+	if (s != NULL && key != KEYC_FOCUS_OUT)
 		server_client_update_latest(c);
 	free(event);
 	return (CMD_RETURN_NORMAL);
