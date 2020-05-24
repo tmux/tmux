@@ -1283,7 +1283,6 @@ struct tty {
 	u_int		 rleft;
 	u_int		 rright;
 
-	int		 fd;
 	struct event	 event_in;
 	struct evbuffer	*in;
 	struct event	 event_out;
@@ -2064,7 +2063,7 @@ void	tty_putc(struct tty *, u_char);
 void	tty_putn(struct tty *, const void *, size_t, u_int);
 void	tty_cell(struct tty *, const struct grid_cell *,
 	    const struct grid_cell *, int *);
-int	tty_init(struct tty *, struct client *, int);
+int	tty_init(struct tty *, struct client *);
 void	tty_resize(struct tty *);
 void	tty_set_size(struct tty *, u_int, u_int, u_int, u_int);
 void	tty_start_tty(struct tty *);

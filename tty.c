@@ -90,19 +90,19 @@ tty_create_log(void)
 }
 
 int
-tty_init(struct tty *tty, struct client *c, int fd)
+tty_init(struct tty *tty, struct client *c)
 {
-	if (!isatty(fd))
+	if (!isatty(c->fd))
 		return (-1);
 
 	memset(tty, 0, sizeof *tty);
-
-	tty->fd = fd;
 	tty->client = c;
 
 	tty->cstyle = 0;
 	tty->ccolour = xstrdup("");
 
+	if (tcgetattr(c->fd, &tty->tio) != 0)
+		return (-1);
 	return (0);
 }
 
@@ -113,7 +113,7 @@ tty_resize(struct tty *tty)
 	struct winsize	 ws;
 	u_int		 sx, sy, xpixel, ypixel;
 
-	if (ioctl(tty->fd, TIOCGWINSZ, &ws) != -1) {
+	if (ioctl(c->fd, TIOCGWINSZ, &ws) != -1) {
 		sx = ws.ws_col;
 		if (sx == 0) {
 			sx = 80;
@@ -156,7 +156,7 @@ tty_read_callback(__unused int fd, __unused short events, void *data)
 	size_t		 size = EVBUFFER_LENGTH(tty->in);
 	int		 nread;
 
-	nread = evbuffer_read(tty->in, tty->fd, -1);
+	nread = evbuffer_read(tty->in, c->fd, -1);
 	if (nread == 0 || nread == -1) {
 		if (nread == 0)
 			log_debug("%s: read closed", name);
@@ -225,7 +225,7 @@ tty_write_callback(__unused int fd, __unused short events, void *data)
 	size_t		 size = EVBUFFER_LENGTH(tty->out);
 	int		 nwrite;
 
-	nwrite = evbuffer_write(tty->out, tty->fd);
+	nwrite = evbuffer_write(tty->out, c->fd);
 	if (nwrite == -1)
 		return;
 	log_debug("%s: wrote %d bytes (of %zu)", c->name, nwrite, size);
@@ -250,7 +250,7 @@ tty_open(struct tty *tty, char **cause)
 	struct client	*c = tty->client;
 
 	tty->term = tty_term_create(tty, c->term_name, &c->term_features,
-	    tty->fd, cause);
+	    c->fd, cause);
 	if (tty->term == NULL) {
 		tty_close(tty);
 		return (-1);
@@ -259,13 +259,13 @@ tty_open(struct tty *tty, char **cause)
 
 	tty->flags &= ~(TTY_NOCURSOR|TTY_FREEZE|TTY_BLOCK|TTY_TIMER);
 
-	event_set(&tty->event_in, tty->fd, EV_PERSIST|EV_READ,
+	event_set(&tty->event_in, c->fd, EV_PERSIST|EV_READ,
 	    tty_read_callback, tty);
 	tty->in = evbuffer_new();
 	if (tty->in == NULL)
 		fatal("out of memory");
 
-	event_set(&tty->event_out, tty->fd, EV_WRITE, tty_write_callback, tty);
+	event_set(&tty->event_out, c->fd, EV_WRITE, tty_write_callback, tty);
 	tty->out = evbuffer_new();
 	if (tty->out == NULL)
 		fatal("out of memory");
@@ -298,21 +298,19 @@ tty_start_tty(struct tty *tty)
 	struct termios	 tio;
 	struct timeval	 tv = { .tv_sec = 1 };
 
-	if (tty->fd != -1 && tcgetattr(tty->fd, &tty->tio) == 0) {
-		setblocking(tty->fd, 0);
-		event_add(&tty->event_in, NULL);
+	setblocking(c->fd, 0);
+	event_add(&tty->event_in, NULL);
 
-		memcpy(&tio, &tty->tio, sizeof tio);
-		tio.c_iflag &= ~(IXON|IXOFF|ICRNL|INLCR|IGNCR|IMAXBEL|ISTRIP);
-		tio.c_iflag |= IGNBRK;
-		tio.c_oflag &= ~(OPOST|ONLCR|OCRNL|ONLRET);
-		tio.c_lflag &= ~(IEXTEN|ICANON|ECHO|ECHOE|ECHONL|ECHOCTL|
-		    ECHOPRT|ECHOKE|ISIG);
-		tio.c_cc[VMIN] = 1;
-		tio.c_cc[VTIME] = 0;
-		if (tcsetattr(tty->fd, TCSANOW, &tio) == 0)
-			tcflush(tty->fd, TCIOFLUSH);
-	}
+	memcpy(&tio, &tty->tio, sizeof tio);
+	tio.c_iflag &= ~(IXON|IXOFF|ICRNL|INLCR|IGNCR|IMAXBEL|ISTRIP);
+	tio.c_iflag |= IGNBRK;
+	tio.c_oflag &= ~(OPOST|ONLCR|OCRNL|ONLRET);
+	tio.c_lflag &= ~(IEXTEN|ICANON|ECHO|ECHOE|ECHONL|ECHOCTL|ECHOPRT|
+	    ECHOKE|ISIG);
+	tio.c_cc[VMIN] = 1;
+	tio.c_cc[VTIME] = 0;
+	if (tcsetattr(c->fd, TCSANOW, &tio) == 0)
+		tcflush(c->fd, TCIOFLUSH);
 
 	tty_putcode(tty, TTYC_SMCUP);
 
@@ -363,7 +361,8 @@ tty_send_requests(struct tty *tty)
 void
 tty_stop_tty(struct tty *tty)
 {
-	struct winsize	ws;
+	struct client	*c = tty->client;
+	struct winsize	 ws;
 
 	if (!(tty->flags & TTY_STARTED))
 		return;
@@ -382,9 +381,9 @@ tty_stop_tty(struct tty *tty)
 	 * because the fd is invalid. Things like ssh -t can easily leave us
 	 * with a dead tty.
 	 */
-	if (ioctl(tty->fd, TIOCGWINSZ, &ws) == -1)
+	if (ioctl(c->fd, TIOCGWINSZ, &ws) == -1)
 		return;
-	if (tcsetattr(tty->fd, TCSANOW, &tty->tio) == -1)
+	if (tcsetattr(c->fd, TCSANOW, &tty->tio) == -1)
 		return;
 
 	tty_raw(tty, tty_term_string2(tty->term, TTYC_CSR, 0, ws.ws_row - 1));
@@ -419,7 +418,7 @@ tty_stop_tty(struct tty *tty)
 		tty_raw(tty, tty_term_string(tty->term, TTYC_DSMG));
 	tty_raw(tty, tty_term_string(tty->term, TTYC_RMCUP));
 
-	setblocking(tty->fd, 1);
+	setblocking(c->fd, 1);
 }
 
 void
@@ -439,11 +438,6 @@ tty_close(struct tty *tty)
 		tty_keys_free(tty);
 
 		tty->flags &= ~TTY_OPENED;
-	}
-
-	if (tty->fd != -1) {
-		close(tty->fd);
-		tty->fd = -1;
 	}
 }
 
@@ -475,12 +469,13 @@ tty_update_features(struct tty *tty)
 void
 tty_raw(struct tty *tty, const char *s)
 {
-	ssize_t	n, slen;
-	u_int	i;
+	struct client	*c = tty->client;
+	ssize_t		 n, slen;
+	u_int		 i;
 
 	slen = strlen(s);
 	for (i = 0; i < 5; i++) {
-		n = write(tty->fd, s, slen);
+		n = write(c->fd, s, slen);
 		if (n >= 0) {
 			s += n;
 			slen -= n;
