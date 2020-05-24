@@ -299,7 +299,6 @@ server_client_lost(struct client *c)
 		RB_REMOVE(client_windows, &c->windows, cw);
 		free(cw);
 	}
-	control_free_offsets(c);
 
 	TAILQ_REMOVE(&clients, c, entry);
 	log_debug("lost client %p", c);
@@ -2346,15 +2345,18 @@ server_client_set_flags(struct client *c, const char *flags)
 		if (not)
 			next++;
 
-		if (strcmp(next, "no-output") == 0)
-			flag = CLIENT_CONTROL_NOOUTPUT;
-		else if (strcmp(next, "read-only") == 0)
+		flag = 0;
+		if (c->flags & CLIENT_CONTROL) {
+			if (strcmp(next, "no-output") == 0)
+				flag = CLIENT_CONTROL_NOOUTPUT;
+		}
+		if (strcmp(next, "read-only") == 0)
 			flag = CLIENT_READONLY;
 		else if (strcmp(next, "ignore-size") == 0)
 			flag = CLIENT_IGNORESIZE;
 		else if (strcmp(next, "active-pane") == 0)
 			flag = CLIENT_ACTIVEPANE;
-		else
+		if (flag == 0)
 			continue;
 
 		log_debug("client %s set flag %s", c->name, next);
