@@ -38,6 +38,11 @@ struct control_offset {
 };
 RB_HEAD(control_offsets, control_offset);
 
+/* Control state. */
+struct control_state {
+	struct control_offsets	offsets;
+};
+
 /* Compare client offsets. */
 static int
 control_offset_cmp(struct control_offset *co1, struct control_offset *co2)
@@ -54,31 +59,26 @@ RB_GENERATE_STATIC(control_offsets, control_offset, entry, control_offset_cmp);
 static struct control_offset *
 control_get_offset(struct client *c, struct window_pane *wp)
 {
-	struct control_offset	co = { .pane = wp->id };
+	struct control_state	*cs = c->control_state;
+	struct control_offset	 co = { .pane = wp->id };
 
-	if (c->offsets == NULL)
-		return (NULL);
-	return (RB_FIND(control_offsets, c->offsets, &co));
+	return (RB_FIND(control_offsets, &cs->offsets, &co));
 }
 
 /* Add pane offsets for this client. */
 static struct control_offset *
 control_add_offset(struct client *c, struct window_pane *wp)
 {
+	struct control_state	*cs = c->control_state;
 	struct control_offset	*co;
 
 	co = control_get_offset(c, wp);
 	if (co != NULL)
 		return (co);
 
-	if (c->offsets == NULL) {
-		c->offsets = xmalloc(sizeof *c->offsets);
-		RB_INIT(c->offsets);
-	}
-
 	co = xcalloc(1, sizeof *co);
 	co->pane = wp->id;
-	RB_INSERT(control_offsets, c->offsets, co);
+	RB_INSERT(control_offsets, &cs->offsets, co);
 	memcpy(&co->offset, &wp->offset, sizeof co->offset);
 	return (co);
 }
@@ -87,15 +87,13 @@ control_add_offset(struct client *c, struct window_pane *wp)
 void
 control_free_offsets(struct client *c)
 {
+	struct control_state	*cs = c->control_state;
 	struct control_offset	*co, *co1;
 
-	if (c->offsets == NULL)
-		return;
-	RB_FOREACH_SAFE(co, control_offsets, c->offsets, co1) {
-		RB_REMOVE(control_offsets, c->offsets, co);
+	RB_FOREACH_SAFE(co, control_offsets, &cs->offsets, co1) {
+		RB_REMOVE(control_offsets, &cs->offsets, co);
 		free(co);
 	}
-	free(c->offsets);
 }
 
 /* Get offsets for client. */
@@ -255,8 +253,23 @@ control_callback(__unused struct client *c, __unused const char *path,
 void
 control_start(struct client *c)
 {
+	struct control_state	*cs;
+
+	cs = c->control_state = xcalloc(1, sizeof *cs);
+	RB_INIT(&cs->offsets);
+
 	file_read(c, "-", control_callback, c);
 
 	if (c->flags & CLIENT_CONTROLCONTROL)
 		file_print(c, "\033P1000p");
+}
+
+/* Stop control mode. */
+void
+control_stop(struct client *c)
+{
+	struct control_state	*cs = c->control_state;
+
+	control_free_offsets(c);
+	free(cs);
 }

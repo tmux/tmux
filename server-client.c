@@ -227,7 +227,6 @@ server_client_create(int fd)
 	RB_INIT(&c->windows);
 	RB_INIT(&c->files);
 
-	c->tty.fd = -1;
 	c->tty.sx = 80;
 	c->tty.sy = 24;
 
@@ -305,10 +304,8 @@ server_client_lost(struct client *c)
 	TAILQ_REMOVE(&clients, c, entry);
 	log_debug("lost client %p", c);
 
-	/*
-	 * If CLIENT_TERMINAL hasn't been set, then tty_init hasn't been called
-	 * and tty_free might close an unrelated fd.
-	 */
+	if (c->flags & CLIENT_CONTROL)
+		control_stop(c);
 	if (c->flags & CLIENT_TERMINAL)
 		tty_free(&c->tty);
 	free(c->ttyname);
@@ -340,6 +337,10 @@ server_client_lost(struct client *c)
 	proc_remove_peer(c->peer);
 	c->peer = NULL;
 
+	if (c->fd != -1) {
+		close(c->fd);
+		c->fd = -1;
+	}
 	server_client_unref(c);
 
 	server_add_accept(0); /* may be more file descriptors now */
@@ -2006,7 +2007,7 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 			break;
 		c->flags &= ~CLIENT_SUSPENDED;
 
-		if (c->tty.fd == -1) /* exited in the meantime */
+		if (c->fd == -1) /* exited in the meantime */
 			break;
 		s = c->session;
 
@@ -2212,11 +2213,9 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 	if (c->flags & CLIENT_CONTROL) {
 		close(c->fd);
 		c->fd = -1;
-
 		control_start(c);
-		c->tty.fd = -1;
 	} else if (c->fd != -1) {
-		if (tty_init(&c->tty, c, c->fd) != 0) {
+		if (tty_init(&c->tty, c) != 0) {
 			close(c->fd);
 			c->fd = -1;
 		} else {

@@ -47,7 +47,7 @@ struct cmdq_item;
 struct cmdq_list;
 struct cmdq_state;
 struct cmds;
-struct control_offsets;
+struct control_state;
 struct environ;
 struct format_job_tree;
 struct format_tree;
@@ -1285,7 +1285,6 @@ struct tty {
 	u_int		 rleft;
 	u_int		 rright;
 
-	int		 fd;
 	struct event	 event_in;
 	struct evbuffer	*in;
 	struct event	 event_out;
@@ -1566,7 +1565,7 @@ struct client {
 	struct cmdq_list *queue;
 
 	struct client_windows windows;
-	struct control_offsets *offsets;
+	struct control_state *control_state;
 
 	pid_t		 pid;
 	int		 fd;
@@ -2066,7 +2065,7 @@ void	tty_putc(struct tty *, u_char);
 void	tty_putn(struct tty *, const void *, size_t, u_int);
 void	tty_cell(struct tty *, const struct grid_cell *,
 	    const struct grid_cell *, int *);
-int	tty_init(struct tty *, struct client *, int);
+int	tty_init(struct tty *, struct client *);
 void	tty_resize(struct tty *);
 void	tty_set_size(struct tty *, u_int, u_int, u_int, u_int);
 void	tty_start_tty(struct tty *);
@@ -2816,6 +2815,7 @@ char	*parse_window_name(const char *);
 
 /* control.c */
 void	control_start(struct client *);
+void	control_stop(struct client *);
 void	control_set_pane_on(struct client *, struct window_pane *);
 void	control_set_pane_off(struct client *, struct window_pane *);
 struct window_pane_offset *control_pane_offset(struct client *,
