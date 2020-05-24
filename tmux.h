@@ -45,7 +45,7 @@ struct cmdq_item;
 struct cmdq_list;
 struct cmdq_state;
 struct cmds;
-struct control_offsets;
+struct control_state;
 struct environ;
 struct format_job_tree;
 struct format_tree;
@@ -1563,7 +1563,7 @@ struct client {
 	struct cmdq_list *queue;
 
 	struct client_windows windows;
-	struct control_offsets *offsets;
+	struct control_state *control_state;
 
 	pid_t		 pid;
 	int		 fd;
@@ -2813,6 +2813,7 @@ char	*parse_window_name(const char *);
 
 /* control.c */
 void	control_start(struct client *);
+void	control_stop(struct client *);
 void	control_set_pane_on(struct client *, struct window_pane *);
 void	control_set_pane_off(struct client *, struct window_pane *);
 struct window_pane_offset *control_pane_offset(struct client *,

@@ -306,6 +306,8 @@ server_client_lost(struct client *c)
 	TAILQ_REMOVE(&clients, c, entry);
 	log_debug("lost client %p", c);
 
+	if (c->flags & CLIENT_CONTROL)
+		control_stop(c);
 	if (c->flags & CLIENT_TERMINAL)
 		tty_free(&c->tty);
 	free(c->ttyname);
