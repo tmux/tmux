@@ -28,6 +28,180 @@
 
 static int	utf8_width(wchar_t);
 
+struct utf8_big_item {
+	u_int			index;
+	RB_ENTRY(utf8_big_item)	entry;
+
+	char			data[UTF8_SIZE];
+	u_char			size;
+};
+RB_HEAD(utf8_big_tree, utf8_big_item);
+
+static int
+utf8_big_cmp(struct utf8_big_item *bi1, struct utf8_big_item *bi2)
+{
+	if (bi1->size < bi2->size)
+		return (-1);
+	if (bi1->size > bi2->size)
+		return (1);
+	return (memcmp(bi1->data, bi2->data, bi1->size));
+}
+RB_GENERATE_STATIC(utf8_big_tree, utf8_big_item, entry, utf8_big_cmp);
+static struct utf8_big_tree utf8_big_tree = RB_INITIALIZER(utf8_big_tree);
+
+static struct utf8_big_item *utf8_big_list;
+static u_int utf8_big_list_size;
+static u_int utf8_big_list_used;
+
+union utf8_big_map {
+	uint32_t	value;
+	struct {
+		u_char	flags;
+#define UTF8_BIG_SIZE 0x1f
+#define UTF8_BIG_WIDTH2 0x20
+
+		u_char	data[3];
+	};
+} __packed;
+
+static const union utf8_big_map utf8_big_space1 = {
+	.flags = 1,
+	.data = " "
+};
+static const union utf8_big_map utf8_big_space2 = {
+	.flags = UTF8_BIG_WIDTH2|2,
+	.data = "  "
+};
+
+/* Get a big item by index. */
+static struct utf8_big_item *
+utf8_get_big_item(const char *data, size_t size)
+{
+	struct utf8_big_item bi;
+
+	memcpy(bi.data, data, size);
+	bi.size = size;
+
+	return (RB_FIND(utf8_big_tree, &utf8_big_tree, &bi));
+}
+
+/* Add a big item. */
+static int
+utf8_put_big_item(const char *data, size_t size, u_int *index)
+{
+	struct utf8_big_item	*bi;
+
+	bi = utf8_get_big_item(data, size);
+	if (bi != NULL) {
+		*index = bi->index;
+		log_debug("%s: have %.*s at %u", __func__, (int)size, data,
+		    *index);
+		return (0);
+	}
+
+	if (utf8_big_list_used == utf8_big_list_size) {
+		if (utf8_big_list_size == 0xffffff)
+			return (-1);
+		if (utf8_big_list_size == 0)
+			utf8_big_list_size = 256;
+		else if (utf8_big_list_size > 0x7fffff)
+			utf8_big_list_size = 0xffffff;
+		else
+			utf8_big_list_size *= 2;
+		utf8_big_list = xreallocarray(utf8_big_list, utf8_big_list_size,
+		    sizeof *utf8_big_list);
+	}
+	*index = utf8_big_list_used++;
+
+	bi = &utf8_big_list[*index];
+	bi->index = *index;
+	memcpy(bi->data, data, size);
+	bi->size = size;
+	RB_INSERT(utf8_big_tree, &utf8_big_tree, bi);
+
+	log_debug("%s: added %.*s at %u", __func__, (int)size, data, *index);
+	return (0);
+}
+
+/* Get UTF-8 as index into buffer. */
+uint32_t
+utf8_map_big(const struct utf8_data *ud)
+{
+	union utf8_big_map	 m = { .value = 0 };
+	u_int			 o;
+	const char		*data = ud->data;
+	size_t			 size = ud->size;
+
+	if (ud->width != 1 && ud->width != 2)
+		return (utf8_big_space1.value);
+
+	if (size > UTF8_BIG_SIZE)
+		goto fail;
+	if (size == 1)
+		return (utf8_set_big(data[0], 1));
+
+	m.flags = size;
+	if (ud->width == 2)
+		m.flags |= UTF8_BIG_WIDTH2;
+
+	if (size <= 3) {
+		memcpy(&m.data, data, size);
+		return (m.value);
+	}
+
+	if (utf8_put_big_item(data, size, &o) != 0)
+		goto fail;
+	m.data[0] = (o & 0xff);
+	m.data[1] = (o >> 8) & 0xff;
+	m.data[2] = (o >> 16);
+	return (m.value);
+
+fail:
+	if (ud->width == 1)
+		return (utf8_big_space1.value);
+	return (utf8_big_space2.value);
+}
+
+/* Get UTF-8 from index into buffer. */
+void
+utf8_get_big(uint32_t v, struct utf8_data *ud)
+{
+	union utf8_big_map	 m = { .value = v };
+	struct utf8_big_item	*bi;
+	u_int			 o;
+
+	memset(ud, 0, sizeof *ud);
+	ud->size = ud->have = (m.flags & UTF8_BIG_SIZE);
+	if (m.flags & UTF8_BIG_WIDTH2)
+		ud->width = 2;
+	else
+		ud->width = 1;
+
+	if (ud->size <= 3) {
+		memcpy(ud->data, m.data, ud->size);
+		return;
+	}
+
+	o = ((uint32_t)m.data[2] << 16)|((uint32_t)m.data[1] << 8)|m.data[0];
+	if (o >= utf8_big_list_used)
+		memset(ud->data, ' ', ud->size);
+	else {
+		bi = &utf8_big_list[o];
+		memcpy(ud->data, bi->data, ud->size);
+	}
+}
+
+/* Get big value for UTF-8 single character. */
+uint32_t
+utf8_set_big(char c, u_int width)
+{
+	union utf8_big_map	m = { .flags = 1, .data[0] = c };
+
+	if (width == 2)
+		m.flags |= UTF8_BIG_WIDTH2;
+	return (m.value);
+}
+
 /* Set a single character. */
 void
 utf8_set(struct utf8_data *ud, u_char ch)
