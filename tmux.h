@@ -597,11 +597,11 @@ struct msg_write_close {
 #define MOTION_MOUSE_MODES (MODE_MOUSE_BUTTON|MODE_MOUSE_ALL)
 
 /*
- * A single UTF-8 character. UTF8_SIZE must be big enough to hold
- * combining characters as well, currently at most five (of three
- * bytes) are supported.
-*/
-#define UTF8_SIZE 18
+ * A single UTF-8 character. UTF8_SIZE must be big enough to hold combining
+ * characters as well. It can't be more than 32 bytes without changes to how
+ * big characters are stored.
+ */
+#define UTF8_SIZE 21
 struct utf8_data {
 	u_char	data[UTF8_SIZE];
 
@@ -609,7 +609,7 @@ struct utf8_data {
 	u_char	size;
 
 	u_char	width;	/* 0xff if invalid */
-} __packed;
+};
 enum utf8_state {
 	UTF8_MORE,
 	UTF8_DONE,
@@ -663,13 +663,25 @@ enum utf8_state {
 
 /* Grid cell data. */
 struct grid_cell {
-	struct utf8_data	data; /* 21 bytes */
+	struct utf8_data	data;
+	u_short			attr;
+	u_char			flags;
+	int			fg;
+	int			bg;
+	int			us;
+};
+
+/* Grid extended cell entry. */
+struct grid_extd_entry {
+	uint32_t		data;
 	u_short			attr;
 	u_char			flags;
 	int			fg;
 	int			bg;
 	int			us;
 } __packed;
+
+/* Grid cell entry. */
 struct grid_cell_entry {
 	u_char			flags;
 	union {
@@ -690,7 +702,7 @@ struct grid_line {
 	struct grid_cell_entry	*celldata;
 
 	u_int			 extdsize;
-	struct grid_cell	*extddata;
+	struct grid_extd_entry	*extddata;
 
 	int			 flags;
 } __packed;
@@ -2877,6 +2889,9 @@ u_int		 session_group_attached_count(struct session_group *);
 void		 session_renumber_windows(struct session *);
 
 /* utf8.c */
+uint32_t	 utf8_set_big(char, u_int);
+uint32_t	 utf8_map_big(const struct utf8_data *);
+void		 utf8_get_big(uint32_t, struct utf8_data *);
 void		 utf8_set(struct utf8_data *, u_char);
 void		 utf8_copy(struct utf8_data *, const struct utf8_data *);
 enum utf8_state	 utf8_open(struct utf8_data *, u_char);

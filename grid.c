@@ -100,11 +100,11 @@ grid_get_extended_cell(struct grid_line *gl, struct grid_cell_entry *gce,
 }
 
 /* Set cell as extended. */
-static struct grid_cell *
+static struct grid_extd_entry *
 grid_extended_cell(struct grid_line *gl, struct grid_cell_entry *gce,
     const struct grid_cell *gc)
 {
-	struct grid_cell	*gcp;
+	struct grid_extd_entry	*gee;
 	int			 flags = (gc->flags & ~GRID_FLAG_CLEARED);
 
 	if (~gce->flags & GRID_FLAG_EXTENDED)
@@ -113,10 +113,14 @@ grid_extended_cell(struct grid_line *gl, struct grid_cell_entry *gce,
 		fatalx("offset too big");
 	gl->flags |= GRID_LINE_EXTENDED;
 
-	gcp = &gl->extddata[gce->offset];
-	memcpy(gcp, gc, sizeof *gcp);
-	gcp->flags = flags;
-	return (gcp);
+	gee = &gl->extddata[gce->offset];
+	gee->data = utf8_map_big(&gc->data);
+	gee->attr = gc->attr;
+	gee->flags = flags;
+	gee->fg = gc->fg;
+	gee->bg = gc->bg;
+	gee->us = gc->us;
+	return (gee);
 }
 
 /* Free up unused extended cells. */
@@ -124,9 +128,9 @@ static void
 grid_compact_line(struct grid_line *gl)
 {
 	int			 new_extdsize = 0;
-	struct grid_cell	*new_extddata;
+	struct grid_extd_entry	*new_extddata;
 	struct grid_cell_entry	*gce;
-	struct grid_cell	*gc;
+	struct grid_extd_entry	*gee;
 	u_int			 px, idx;
 
 	if (gl->extdsize == 0)
@@ -150,8 +154,8 @@ grid_compact_line(struct grid_line *gl)
 	for (px = 0; px < gl->cellsize; px++) {
 		gce = &gl->celldata[px];
 		if (gce->flags & GRID_FLAG_EXTENDED) {
-			gc = &gl->extddata[gce->offset];
-			memcpy(&new_extddata[idx], gc, sizeof *gc);
+			gee = &gl->extddata[gce->offset];
+			memcpy(&new_extddata[idx], gee, sizeof *gee);
 			gce->offset = idx++;
 		}
 	}
@@ -181,17 +185,14 @@ grid_clear_cell(struct grid *gd, u_int px, u_int py, u_int bg)
 {
 	struct grid_line	*gl = &gd->linedata[py];
 	struct grid_cell_entry	*gce = &gl->celldata[px];
-	struct grid_cell	*gc;
+	struct grid_extd_entry	*gee;
 
 	memcpy(gce, &grid_cleared_entry, sizeof *gce);
 	if (bg != 8) {
 		if (bg & COLOUR_FLAG_RGB) {
 			grid_get_extended_cell(gl, gce, gce->flags);
-			gl->flags |= GRID_LINE_EXTENDED;
-
-			gc = &gl->extddata[gce->offset];
-			memcpy(gc, &grid_cleared_cell, sizeof *gc);
-			gc->bg = bg;
+			gee = grid_extended_cell(gl, gce, &grid_cleared_cell);
+			gee->bg = bg;
 		} else {
 			if (bg & COLOUR_FLAG_256)
 				gce->flags |= GRID_FLAG_BG256;
@@ -483,12 +484,20 @@ static void
 grid_get_cell1(struct grid_line *gl, u_int px, struct grid_cell *gc)
 {
 	struct grid_cell_entry	*gce = &gl->celldata[px];
+	struct grid_extd_entry	*gee;
 
 	if (gce->flags & GRID_FLAG_EXTENDED) {
 		if (gce->offset >= gl->extdsize)
 			memcpy(gc, &grid_default_cell, sizeof *gc);
-		else
-			memcpy(gc, &gl->extddata[gce->offset], sizeof *gc);
+		else {
+			gee = &gl->extddata[gce->offset];
+			gc->flags = gee->flags;
+			gc->attr = gee->attr;
+			gc->fg = gee->fg;
+			gc->bg = gee->bg;
+			gc->us = gee->us;
+			utf8_get_big(gee->data, &gc->data);
+		}
 		return;
 	}
 
@@ -545,7 +554,7 @@ grid_set_cells(struct grid *gd, u_int px, u_int py, const struct grid_cell *gc,
 {
 	struct grid_line	*gl;
 	struct grid_cell_entry	*gce;
-	struct grid_cell	*gcp;
+	struct grid_extd_entry	*gee;
 	u_int			 i;
 
 	if (grid_check_y(gd, __func__, py) != 0)
@@ -560,8 +569,8 @@ grid_set_cells(struct grid *gd, u_int px, u_int py, const struct grid_cell *gc,
 	for (i = 0; i < slen; i++) {
 		gce = &gl->celldata[px + i];
 		if (grid_need_extended_cell(gce, gc)) {
-			gcp = grid_extended_cell(gl, gce, gc);
-			utf8_set(&gcp->data, s[i]);
+			gee = grid_extended_cell(gl, gce, gc);
+			gee->data = utf8_set_big(s[i], 1);
 		} else
 			grid_store_cell(gce, gc, s[i]);
 	}

@@ -2551,23 +2551,33 @@ window_copy_search_rl_regex(struct grid *gd, u_int *ppx, u_int *psx, u_int py,
 }
 
 static const char *
-window_copy_cellstring(const struct grid_line *gl, u_int px, size_t *size)
+window_copy_cellstring(const struct grid_line *gl, u_int px, size_t *size,
+    int *allocated)
 {
+	static struct utf8_data	 ud;
 	struct grid_cell_entry	*gce;
+	char			*copy;
 
 	if (px >= gl->cellsize) {
 		*size = 1;
+		*allocated = 0;
 		return (" ");
 	}
 
 	gce = &gl->celldata[px];
 	if (~gce->flags & GRID_FLAG_EXTENDED) {
 		*size = 1;
+		*allocated = 0;
 		return (&gce->data.data);
 	}
 
-	*size = gl->extddata[gce->offset].data.size;
-	return (gl->extddata[gce->offset].data.data);
+	utf8_get_big(gl->extddata[gce->offset].data, &ud);
+	*size = ud.size;
+	*allocated = 1;
+
+	copy = xmalloc(ud.size);
+	memcpy(copy, ud.data, ud.size);
+	return (copy);
 }
 
 /* Find last match in given range. */
@@ -2630,6 +2640,7 @@ window_copy_stringify(struct grid *gd, u_int py, u_int first, u_int last,
 	const struct grid_line	*gl;
 	const char		*d;
 	size_t			 bufsize = 1024, dlen;
+	int			 allocated;
 
 	while (bufsize < newsize)
 		bufsize *= 2;
@@ -2638,7 +2649,7 @@ window_copy_stringify(struct grid *gd, u_int py, u_int first, u_int last,
 	gl = grid_peek_line(gd, py);
 	bx = *size - 1;
 	for (ax = first; ax < last; ax++) {
-		d = window_copy_cellstring(gl, ax, &dlen);
+		d = window_copy_cellstring(gl, ax, &dlen, &allocated);
 		newsize += dlen;
 		while (bufsize < newsize) {
 			bufsize *= 2;
@@ -2650,6 +2661,8 @@ window_copy_stringify(struct grid *gd, u_int py, u_int first, u_int last,
 			memcpy(buf + bx, d, dlen);
 			bx += dlen;
 		}
+		if (allocated)
+			free((void *)d);
 	}
 	buf[newsize - 1] = '\0';
 
@@ -2670,6 +2683,7 @@ window_copy_cstrtocellpos(struct grid *gd, u_int ncells, u_int *ppx, u_int *ppy,
 	struct {
 		const char	*d;
 		size_t		 dlen;
+		int		 allocated;
 	} *cells;
 
 	/* Populate the array of cell data. */
@@ -2680,7 +2694,7 @@ window_copy_cstrtocellpos(struct grid *gd, u_int ncells, u_int *ppx, u_int *ppy,
 	gl = grid_peek_line(gd, pywrap);
 	while (cell < ncells) {
 		cells[cell].d = window_copy_cellstring(gl, px,
-		    &cells[cell].dlen);
+		    &cells[cell].dlen, &cells[cell].allocated);
 		cell++;
 		px++;
 		if (px == gd->sx) {
@@ -2738,6 +2752,10 @@ window_copy_cstrtocellpos(struct grid *gd, u_int ncells, u_int *ppx, u_int *ppy,
 	*ppy = pywrap;
 
 	/* Free cell data. */
+	for (cell = 0; cell < ncells; cell++) {
+		if (cells[cell].allocated)
+			free((void *)cells[cell].d);
+	}
 	free(cells);
 }
 
