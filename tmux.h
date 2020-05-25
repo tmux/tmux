@@ -675,7 +675,7 @@ struct grid_cell {
 
 /* Grid extended cell entry. */
 struct grid_extd_entry {
-	uint32_t		data;
+	u_int			data;
 	u_short			attr;
 	u_char			flags;
 	int			fg;
@@ -2891,9 +2891,9 @@ u_int		 session_group_attached_count(struct session_group *);
 void		 session_renumber_windows(struct session *);
 
 /* utf8.c */
-uint32_t	 utf8_set_big(char, u_int);
-uint32_t	 utf8_map_big(const struct utf8_data *);
-void		 utf8_get_big(uint32_t, struct utf8_data *);
+u_int		 utf8_set_big(char, u_int);
+u_int		 utf8_map_big(const struct utf8_data *);
+void		 utf8_get_big(u_int, struct utf8_data *);
 void		 utf8_set(struct utf8_data *, u_char);
 void		 utf8_copy(struct utf8_data *, const struct utf8_data *);
 enum utf8_state	 utf8_open(struct utf8_data *, u_char);

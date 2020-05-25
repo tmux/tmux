@@ -761,22 +761,46 @@ format_cb_history_bytes(struct format_tree *ft, struct format_entry *fe)
 	struct window_pane	*wp = ft->wp;
 	struct grid		*gd;
 	struct grid_line	*gl;
-	unsigned long long	 size;
+	size_t		         size = 0;
 	u_int			 i;
 
 	if (wp == NULL)
 		return;
 	gd = wp->base.grid;
 
-	size = 0;
-	for (i = 0; i < gd->hsize; i++) {
+	for (i = 0; i < gd->hsize + gd->sy; i++) {
 		gl = grid_get_line(gd, i);
 		size += gl->cellsize * sizeof *gl->celldata;
 		size += gl->extdsize * sizeof *gl->extddata;
 	}
-	size += gd->hsize * sizeof *gl;
+	size += (gd->hsize + gd->sy) * sizeof *gl;
 
-	xasprintf(&fe->value, "%llu", size);
+	xasprintf(&fe->value, "%zu", size);
+}
+
+/* Callback for history_all_bytes. */
+static void
+format_cb_history_all_bytes(struct format_tree *ft, struct format_entry *fe)
+{
+	struct window_pane	*wp = ft->wp;
+	struct grid		*gd;
+	struct grid_line	*gl;
+	u_int			 i, lines, cells = 0, extended_cells = 0;
+
+	if (wp == NULL)
+		return;
+	gd = wp->base.grid;
+
+	lines = gd->hsize + gd->sy;
+	for (i = 0; i < lines; i++) {
+		gl = grid_get_line(gd, i);
+		cells += gl->cellsize;
+		extended_cells += gl->extdsize;
+	}
+
+	xasprintf(&fe->value, "%u,%zu,%u,%zu,%u,%zu", lines,
+	    lines * sizeof *gl, cells, cells * sizeof *gl->celldata,
+	    extended_cells, extended_cells * sizeof *gl->extddata);
 }
 
 /* Callback for pane_tabs. */
@@ -2823,6 +2847,7 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 	format_add(ft, "history_size", "%u", gd->hsize);
 	format_add(ft, "history_limit", "%u", gd->hlimit);
 	format_add_cb(ft, "history_bytes", format_cb_history_bytes);
+	format_add_cb(ft, "history_all_bytes", format_cb_history_all_bytes);
 
 	format_add(ft, "pane_written", "%zu", wp->written);
 	format_add(ft, "pane_skipped", "%zu", wp->skipped);

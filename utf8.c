@@ -54,7 +54,7 @@ static u_int utf8_big_list_size;
 static u_int utf8_big_list_used;
 
 union utf8_big_map {
-	uint32_t	value;
+	u_int	value;
 	struct {
 		u_char	flags;
 #define UTF8_BIG_SIZE 0x1f
@@ -124,7 +124,7 @@ utf8_put_big_item(const char *data, size_t size, u_int *index)
 }
 
 /* Get UTF-8 as index into buffer. */
-uint32_t
+u_int
 utf8_map_big(const struct utf8_data *ud)
 {
 	union utf8_big_map	 m = { .value = 0 };
@@ -164,7 +164,7 @@ fail:
 
 /* Get UTF-8 from index into buffer. */
 void
-utf8_get_big(uint32_t v, struct utf8_data *ud)
+utf8_get_big(u_int v, struct utf8_data *ud)
 {
 	union utf8_big_map	 m = { .value = v };
 	struct utf8_big_item	*bi;
@@ -182,7 +182,7 @@ utf8_get_big(uint32_t v, struct utf8_data *ud)
 		return;
 	}
 
-	o = ((uint32_t)m.data[2] << 16)|((uint32_t)m.data[1] << 8)|m.data[0];
+	o = ((u_int)m.data[2] << 16)|((u_int)m.data[1] << 8)|m.data[0];
 	if (o >= utf8_big_list_used)
 		memset(ud->data, ' ', ud->size);
 	else {
@@ -192,7 +192,7 @@ utf8_get_big(uint32_t v, struct utf8_data *ud)
 }
 
 /* Get big value for UTF-8 single character. */
-uint32_t
+u_int
 utf8_set_big(char c, u_int width)
 {
 	union utf8_big_map	m = { .flags = 1, .data[0] = c };
