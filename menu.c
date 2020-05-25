@@ -111,6 +111,7 @@ menu_create(const char *title)
 
 	menu = xcalloc(1, sizeof *menu);
 	menu->title = xstrdup(title);
+	menu->width = format_width(title);
 
 	return (menu);
 }

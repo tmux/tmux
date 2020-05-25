@@ -3167,7 +3167,7 @@ window_copy_match_at_cursor(struct window_copy_mode_data *data)
  	 */
 	for (at = start; at <= end; at++) {
 		py = at / sx;
-		px = at % (py * sx);
+		px = at - (py * sx);
 
 		grid_get_cell(gd, px, py, &gc);
 		buf = xrealloc(buf, len + gc.data.size + 1);
