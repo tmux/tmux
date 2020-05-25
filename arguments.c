@@ -407,11 +407,11 @@ args_string_percentage(const char *value, long long minval, long long maxval,
 		}
 		ll = (curval * ll) / 100;
 		if (ll < minval) {
-			*cause = xstrdup("too large");
+			*cause = xstrdup("too small");
 			return (0);
 		}
 		if (ll > maxval) {
-			*cause = xstrdup("too small");
+			*cause = xstrdup("too large");
 			return (0);
 		}
 	} else {

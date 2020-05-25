@@ -117,7 +117,7 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'y')) {
 		y = args_percentage(args, 'y', 0, INT_MAX, w->sy, &cause);
 		if (cause != NULL) {
-			cmdq_error(item, "width %s", cause);
+			cmdq_error(item, "height %s", cause);
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
