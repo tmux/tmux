@@ -76,7 +76,7 @@ grid_need_extended_cell(const struct grid_cell_entry *gce,
 		return (1);
 	if (gc->attr > 0xff)
 		return (1);
-	if (gc->data.size != 1 || gc->data.width != 1)
+	if (gc->data.size > 1 || gc->data.width > 1)
 		return (1);
 	if ((gc->fg & COLOUR_FLAG_RGB) || (gc->bg & COLOUR_FLAG_RGB))
 		return (1);
@@ -496,6 +496,7 @@ grid_get_cell1(struct grid_line *gl, u_int px, struct grid_cell *gc)
 			gc->fg = gee->fg;
 			gc->bg = gee->bg;
 			gc->us = gee->us;
+			log_debug("!!! %x", gc->flags);
 			utf8_to_data(gee->data, &gc->data);
 		}
 		return;
@@ -541,6 +542,7 @@ grid_set_cell(struct grid *gd, u_int px, u_int py, const struct grid_cell *gc)
 		gl->cellused = px + 1;
 
 	gce = &gl->celldata[px];
+	if (gc->flags & GRID_FLAG_PADDING) log_debug("!!! padding %d\n", grid_need_extended_cell(gce, gc));
 	if (grid_need_extended_cell(gce, gc))
 		grid_extended_cell(gl, gce, gc);
 	else

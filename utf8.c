@@ -230,17 +230,27 @@ utf8_copy(struct utf8_data *to, const struct utf8_data *from)
 }
 
 /* Get width of Unicode character. */
-static int
-utf8_width(wchar_t wc)
+static enum utf8_state
+utf8_width(struct utf8_data *ud, int *width)
 {
-	int	width;
+	wchar_t	wc;
 
-	width = wcwidth(wc);
-	if (width < 0 || width > 0xff) {
-		log_debug("Unicode %04lx, wcwidth() %d", (long)wc, width);
-		return (-1);
+	switch (mbtowc(&wc, ud->data, ud->size)) {
+	case -1:
+		log_debug("UTF-8 %.*s, mbtowc() %d", (int)ud->size, ud->data,
+		    errno);
+		mbtowc(NULL, NULL, MB_CUR_MAX);
+		return (UTF8_ERROR);
+	case 0:
+		return (UTF8_ERROR);
 	}
-	return (width);
+	*width = wcwidth(wc);
+	if (*width < 0 || *width > 0xff) {
+		log_debug("UTF-8 %.*s, wcwidth() %d", (int)ud->size, ud->data,
+		    *width);
+		return (UTF8_ERROR);
+	}
+	return (UTF8_DONE);
 }
 
 /*
@@ -270,7 +280,6 @@ utf8_open(struct utf8_data *ud, u_char ch)
 enum utf8_state
 utf8_append(struct utf8_data *ud, u_char ch)
 {
-	wchar_t	wc;
 	int	width;
 
 	if (ud->have >= ud->size)
@@ -287,48 +296,10 @@ utf8_append(struct utf8_data *ud, u_char ch)
 
 	if (ud->width == 0xff)
 		return (UTF8_ERROR);
-
-	if (utf8_combine(ud, &wc) != UTF8_DONE)
-		return (UTF8_ERROR);
-	if ((width = utf8_width(wc)) < 0)
+	if (utf8_width(ud, &width) != UTF8_DONE)
 		return (UTF8_ERROR);
 	ud->width = width;
 
-	return (UTF8_DONE);
-}
-
-/* Combine UTF-8 into Unicode. */
-enum utf8_state
-utf8_combine(const struct utf8_data *ud, wchar_t *wc)
-{
-	switch (mbtowc(wc, ud->data, ud->size)) {
-	case -1:
-		log_debug("UTF-8 %.*s, mbtowc() %d", (int)ud->size, ud->data,
-		    errno);
-		mbtowc(NULL, NULL, MB_CUR_MAX);
-		return (UTF8_ERROR);
-	case 0:
-		return (UTF8_ERROR);
-	default:
-		return (UTF8_DONE);
-	}
-}
-
-/* Split Unicode into UTF-8. */
-enum utf8_state
-utf8_split(wchar_t wc, struct utf8_data *ud)
-{
-	char	s[MB_LEN_MAX];
-	int	slen;
-
-	slen = wctomb(s, wc);
-	if (slen <= 0 || slen > (int)sizeof ud->data)
-		return (UTF8_ERROR);
-
-	memcpy(ud->data, s, slen);
-	ud->size = slen;
-
-	ud->width = utf8_width(wc);
 	return (UTF8_DONE);
 }
 

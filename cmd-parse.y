@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <wchar.h>
 
 #include "tmux.h"
 
@@ -1251,10 +1252,9 @@ error:
 static int
 yylex_token_escape(char **buf, size_t *len)
 {
-	int			 ch, type, o2, o3;
-	u_int			 size, i, tmp;
-	char			 s[9];
-	struct utf8_data	 ud;
+	int	 ch, type, o2, o3, mlen;
+	u_int	 size, i, tmp;
+	char	 s[9], m[MB_LEN_MAX];
 
 	ch = yylex_getc();
 
@@ -1339,11 +1339,12 @@ unicode:
 		yyerror("invalid \\%c argument", type);
 		return (0);
 	}
-	if (utf8_split(tmp, &ud) != UTF8_DONE) {
+	mlen = wctomb(m, tmp);
+	if (mlen <= 0 || mlen > (int)sizeof m) {
 		yyerror("invalid \\%c argument", type);
 		return (0);
 	}
-	yylex_append(buf, len, ud.data, ud.size);
+	yylex_append(buf, len, m, mlen);
 	return (1);
 }
 
