@@ -315,38 +315,7 @@ utf8_append(struct utf8_data *ud, u_char ch)
 	return (UTF8_DONE);
 }
 
-/* Get width of Unicode character. */
-static int
-utf8_width(wchar_t wc)
-{
-	int	width;
-
-#ifdef HAVE_UTF8PROC
-	width = utf8proc_wcwidth(wc);
-#else
-	width = wcwidth(wc);
-#endif
-	if (width < 0 || width > 0xff) {
-		log_debug("Unicode %04lx, wcwidth() %d", (long)wc, width);
-
-#ifndef __OpenBSD__
-		/*
-		 * Many platforms (particularly and inevitably OS X) have no
-		 * width for relatively common characters (wcwidth() returns
-		 * -1); assume width 1 in this case. This will be wrong for
-		 * genuinely nonprintable characters, but they should be
-		 * rare. We may pass through stuff that ideally we would block,
-		 * but this is no worse than sending the same to the terminal
-		 * without tmux.
-		 */
-		if (width < 0)
-			return (1);
-#endif
-		return (-1);
-	}
-	return (width);
-}
-
+/*
  * Encode len characters from src into dst, which is guaranteed to have four
  * bytes available for each character from src (for \abc or UTF-8) plus space
  * for \0.
