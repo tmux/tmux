@@ -27,7 +27,6 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <termios.h>
-#include <wchar.h>
 
 #ifdef HAVE_UTEMPTER
 #include <utempter.h>
@@ -598,10 +597,13 @@ struct msg_write_close {
 #define ALL_MOUSE_MODES (MODE_MOUSE_STANDARD|MODE_MOUSE_BUTTON|MODE_MOUSE_ALL)
 #define MOTION_MOUSE_MODES (MODE_MOUSE_BUTTON|MODE_MOUSE_ALL)
 
+/* A single UTF-8 character. */
+typedef u_int utf8_char;
+
 /*
- * A single UTF-8 character. UTF8_SIZE must be big enough to hold combining
+ * An expanded UTF-8 character. UTF8_SIZE must be big enough to hold combining
  * characters as well. It can't be more than 32 bytes without changes to how
- * big characters are stored.
+ * characters are stored.
  */
 #define UTF8_SIZE 21
 struct utf8_data {
@@ -675,7 +677,7 @@ struct grid_cell {
 
 /* Grid extended cell entry. */
 struct grid_extd_entry {
-	u_int			data;
+	utf8_char		data;
 	u_short			attr;
 	u_char			flags;
 	int			fg;
@@ -2891,15 +2893,13 @@ u_int		 session_group_attached_count(struct session_group *);
 void		 session_renumber_windows(struct session *);
 
 /* utf8.c */
-u_int		 utf8_set_big(char, u_int);
-u_int		 utf8_map_big(const struct utf8_data *);
-void		 utf8_get_big(u_int, struct utf8_data *);
+utf8_char	 utf8_build_one(char, u_int);
+enum utf8_state	 utf8_from_data(const struct utf8_data *, utf8_char *);
+void		 utf8_to_data(utf8_char, struct utf8_data *);
 void		 utf8_set(struct utf8_data *, u_char);
 void		 utf8_copy(struct utf8_data *, const struct utf8_data *);
 enum utf8_state	 utf8_open(struct utf8_data *, u_char);
 enum utf8_state	 utf8_append(struct utf8_data *, u_char);
-enum utf8_state	 utf8_combine(const struct utf8_data *, wchar_t *);
-enum utf8_state	 utf8_split(wchar_t, struct utf8_data *);
 int		 utf8_isvalid(const char *);
 int		 utf8_strvis(char *, const char *, size_t, int);
 int		 utf8_stravis(char **, const char *, int);

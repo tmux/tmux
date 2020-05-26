@@ -468,10 +468,9 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 		return (0);
 	}
 	if (justkey > 0x7f && justkey < KEYC_BASE) {
-		if (utf8_split(justkey, &ud) != UTF8_DONE)
-			return (-1);
 		if (key & KEYC_META)
 			bufferevent_write(bev, "\033", 1);
+		utf8_to_data(justkey, &ud);
 		bufferevent_write(bev, ud.data, ud.size);
 		return (0);
 	}
