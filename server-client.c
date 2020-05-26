@@ -221,7 +221,7 @@ server_client_create(int fd)
 	c->environ = environ_create();
 
 	c->fd = -1;
-	c->cwd = NULL;
+	c->out_fd = -1;
 
 	c->queue = cmdq_new();
 	RB_INIT(&c->windows);
@@ -336,6 +336,8 @@ server_client_lost(struct client *c)
 	proc_remove_peer(c->peer);
 	c->peer = NULL;
 
+	if (c->out_fd != -1)
+		close(c->out_fd);
 	if (c->fd != -1) {
 		close(c->fd);
 		c->fd = -1;
@@ -1571,10 +1573,9 @@ server_client_check_pane_buffer(struct window_pane *wp)
 out:
 	/*
 	 * If there is data remaining, and there are no clients able to consume
-	 * it, do not read any more. This is true when 1) there are attached
-	 * clients 2) all the clients are control clients 3) all of them have
-	 * either the OFF flag set, or are otherwise not able to accept any
-	 * more data for this pane.
+	 * it, do not read any more. This is true when there are attached
+	 * clients, all of which are control clients which are not able to
+	 * accept any more data.
 	 */
 	if (off)
 		bufferevent_disable(wp->event, EV_READ);
@@ -1967,6 +1968,7 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 	case MSG_IDENTIFY_TTYNAME:
 	case MSG_IDENTIFY_CWD:
 	case MSG_IDENTIFY_STDIN:
+	case MSG_IDENTIFY_STDOUT:
 	case MSG_IDENTIFY_ENVIRON:
 	case MSG_IDENTIFY_CLIENTPID:
 	case MSG_IDENTIFY_DONE:
@@ -2177,6 +2179,12 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 		c->fd = imsg->fd;
 		log_debug("client %p IDENTIFY_STDIN %d", c, imsg->fd);
 		break;
+	case MSG_IDENTIFY_STDOUT:
+		if (datalen != 0)
+			fatalx("bad MSG_IDENTIFY_STDOUT size");
+		c->out_fd = imsg->fd;
+		log_debug("client %p IDENTIFY_STDOUT %d", c, imsg->fd);
+		break;
 	case MSG_IDENTIFY_ENVIRON:
 		if (datalen == 0 || data[datalen - 1] != '\0')
 			fatalx("bad MSG_IDENTIFY_ENVIRON string");
@@ -2209,11 +2217,9 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 	c->fd = open(c->ttyname, O_RDWR|O_NOCTTY);
 #endif
 
-	if (c->flags & CLIENT_CONTROL) {
-		close(c->fd);
-		c->fd = -1;
+	 if (c->flags & CLIENT_CONTROL)
 		control_start(c);
-	} else if (c->fd != -1) {
+	else if (c->fd != -1) {
 		if (tty_init(&c->tty, c) != 0) {
 			close(c->fd);
 			c->fd = -1;
@@ -2221,6 +2227,8 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 			tty_resize(&c->tty);
 			c->flags |= CLIENT_TERMINAL;
 		}
+		close(c->out_fd);
+		c->out_fd = -1;
 	}
 
 	/*
@@ -2337,7 +2345,8 @@ void
 server_client_set_flags(struct client *c, const char *flags)
 {
 	char	*s, *copy, *next;
-	int	 flag, not;
+	uint64_t flag;
+	int	 not;
 
 	s = copy = xstrdup (flags);
 	while ((next = strsep(&s, ",")) != NULL) {

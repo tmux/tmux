@@ -239,7 +239,9 @@ file_write(struct client *c, const char *path, int flags, const void *bdata,
 		cf->path = xstrdup("-");
 
 		fd = STDOUT_FILENO;
-		if (c == NULL || c->flags & CLIENT_ATTACHED) {
+		if (c == NULL ||
+		    (c->flags & CLIENT_ATTACHED) ||
+		    (c->flags & CLIENT_CONTROL)) {
 			cf->error = EBADF;
 			goto done;
 		}
@@ -308,7 +310,9 @@ file_read(struct client *c, const char *path, client_file_cb cb, void *cbdata)
 		cf->path = xstrdup("-");
 
 		fd = STDIN_FILENO;
-		if (c == NULL || c->flags & CLIENT_ATTACHED) {
+		if (c == NULL ||
+		    (c->flags & CLIENT_ATTACHED) ||
+		    (c->flags & CLIENT_CONTROL)) {
 			cf->error = EBADF;
 			goto done;
 		}

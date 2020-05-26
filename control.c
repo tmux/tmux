@@ -23,10 +23,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "tmux.h"
 
-/* Control offsets. */
+/* Control client offset. */
 struct control_offset {
 	u_int				pane;
 
@@ -34,13 +35,16 @@ struct control_offset {
 	int				flags;
 #define CONTROL_OFFSET_OFF 0x1
 
-	RB_ENTRY(control_offset)		entry;
+	RB_ENTRY(control_offset)	entry;
 };
 RB_HEAD(control_offsets, control_offset);
 
-/* Control state. */
+/* Control client state. */
 struct control_state {
-	struct control_offsets	offsets;
+	struct control_offsets	 offsets;
+
+	struct bufferevent	*read_event;
+	struct bufferevent	*write_event;
 };
 
 /* Compare client offsets. */
@@ -146,18 +150,24 @@ control_set_pane_off(struct client *c, struct window_pane *wp)
 void
 control_write(struct client *c, const char *fmt, ...)
 {
-	va_list	ap;
+	struct control_state	*cs = c->control_state;
+	va_list			 ap;
+	char			*s;
 
 	va_start(ap, fmt);
-	file_vprint(c, fmt, ap);
-	file_print(c, "\n");
+	xvasprintf(&s, fmt, ap);
 	va_end(ap);
+
+	bufferevent_write(cs->write_event, s, strlen(s));
+	bufferevent_write(cs->write_event, "\n", 1);
+	free(s);
 }
 
 /* Write output from a pane. */
 void
 control_write_output(struct client *c, struct window_pane *wp)
 {
+	struct control_state	*cs = c->control_state;
 	struct control_offset	*co;
 	struct evbuffer		*message;
 	u_char			*new_data;
@@ -165,11 +175,6 @@ control_write_output(struct client *c, struct window_pane *wp)
 
 	if (c->flags & CLIENT_CONTROL_NOOUTPUT)
 		return;
-
-	/*
-	 * Only write input if the window pane is linked to a window belonging
-	 * to the client's session.
-	 */
 	if (winlink_find_by_window(&c->session->windows, wp->window) == NULL)
 		return;
 
@@ -193,15 +198,15 @@ control_write_output(struct client *c, struct window_pane *wp)
 		else
 			evbuffer_add_printf(message, "%c", new_data[i]);
 	}
-	evbuffer_add(message, "", 1);
+	evbuffer_add(message, "\n", 1);
 
-	control_write(c, "%s", EVBUFFER_DATA(message));
+	bufferevent_write_buffer(cs->write_event, message);
 	evbuffer_free(message);
 
 	window_pane_update_used_data(wp, &co->offset, new_size, 1);
 }
 
-/* Control error callback. */
+/* Control client error callback. */
 static enum cmd_retval
 control_error(struct cmdq_item *item, void *data)
 {
@@ -216,17 +221,26 @@ control_error(struct cmdq_item *item, void *data)
 	return (CMD_RETURN_NORMAL);
 }
 
-/* Control input callback. Read lines and fire commands. */
+/* Control client error callback. */
 static void
-control_callback(__unused struct client *c, __unused const char *path,
-    int read_error, int closed, struct evbuffer *buffer, __unused void *data)
+control_error_callback(__unused struct bufferevent *bufev,
+    __unused short what, void *data)
 {
+	struct client	*c = data;
+
+	c->flags |= CLIENT_EXIT;
+}
+
+/* Control client input callback. Read lines and fire commands. */
+static void
+control_read_callback(__unused struct bufferevent *bufev, void *data)
+{
+	struct client		*c = data;
+	struct control_state	*cs = c->control_state;
+	struct evbuffer		*buffer = cs->read_event->input;
 	char			*line, *error;
 	struct cmdq_state	*state;
 	enum cmd_parse_status	 status;
-
-	if (closed || read_error != 0)
-		c->flags |= CLIENT_EXIT;
 
 	for (;;) {
 		line = evbuffer_readln(buffer, NULL, EVBUFFER_EOL_LF);
@@ -255,13 +269,30 @@ control_start(struct client *c)
 {
 	struct control_state	*cs;
 
+	if (c->flags & CLIENT_CONTROLCONTROL) {
+		close(c->out_fd);
+		c->out_fd = -1;
+	} else
+		setblocking(c->out_fd, 0);
+	setblocking(c->fd, 0);
+
 	cs = c->control_state = xcalloc(1, sizeof *cs);
 	RB_INIT(&cs->offsets);
 
-	file_read(c, "-", control_callback, c);
+	cs->read_event = bufferevent_new(c->fd, control_read_callback, NULL,
+	    control_error_callback, c);
+	bufferevent_enable(cs->read_event, EV_READ);
 
 	if (c->flags & CLIENT_CONTROLCONTROL)
-		file_print(c, "\033P1000p");
+		cs->write_event = cs->read_event;
+	else {
+		cs->write_event = bufferevent_new(c->out_fd, NULL, NULL,
+		    control_error_callback, c);
+	}
+	bufferevent_enable(cs->write_event, EV_WRITE);
+
+	if (c->flags & CLIENT_CONTROLCONTROL)
+		control_write(c, "\033P1000p");
 }
 
 /* Stop control mode. */
@@ -269,6 +300,10 @@ void
 control_stop(struct client *c)
 {
 	struct control_state	*cs = c->control_state;
+
+	if (~c->flags & CLIENT_CONTROLCONTROL)
+		bufferevent_free(cs->write_event);
+	bufferevent_free(cs->read_event);
 
 	control_free_offsets(c);
 	free(cs);

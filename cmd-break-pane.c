@@ -80,6 +80,10 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
+		if (args_has(args, 'n')) {
+			window_set_name(w, args_get(args, 'n'));
+			options_set_number(w->options, "automatic-rename", 0);
+		}
 		server_unlink_window(src_s, wl);
 		return (CMD_RETURN_NORMAL);
 	}
