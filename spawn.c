@@ -395,6 +395,9 @@ spawn_pane(struct spawn_context *sc, char **cause)
 		now.c_cc[VERASE] = '\177';
 	else
 		now.c_cc[VERASE] = key;
+#ifdef IUTF8
+	now.c_iflag |= IUTF8;
+#endif
 	if (tcsetattr(STDIN_FILENO, TCSANOW, &now) != 0)
 		_exit(1);
 
