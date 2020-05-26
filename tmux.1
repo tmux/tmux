@@ -2596,8 +2596,7 @@ spreads the current pane and any panes next to it out evenly.
 .D1 (alias: Ic selectp )
 Make pane
 .Ar target-pane
-the active pane in window
-.Ar target-window .
+the active pane in its window.
 If one of
 .Fl D ,
 .Fl L ,
@@ -3057,8 +3056,8 @@ User options may have any name, so long as they are prefixed with
 and be set to any string.
 For example:
 .Bd -literal -offset indent
-$ tmux setw -q @foo "abc123"
-$ tmux showw -v @foo
+$ tmux set -wq @foo "abc123"
+$ tmux show -wv @foo
 abc123
 .Ed
 .Pp
