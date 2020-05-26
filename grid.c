@@ -496,7 +496,6 @@ grid_get_cell1(struct grid_line *gl, u_int px, struct grid_cell *gc)
 			gc->fg = gee->fg;
 			gc->bg = gee->bg;
 			gc->us = gee->us;
-			log_debug("!!! %x", gc->flags);
 			utf8_to_data(gee->data, &gc->data);
 		}
 		return;
