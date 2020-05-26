@@ -136,12 +136,16 @@ utf8_from_data(const struct utf8_data *ud, utf8_char *uc)
 	u_int		 offset;
 
 	if (ud->width != 1 && ud->width != 2)
-		return (utf8_space1.uc);
+		fatalx("invalid UTF-8 width");
+	if (ud->size == 0)
+		fatalx("invalid UTF-8 size");
 
 	if (ud->size > UTF8_FLAG_SIZE)
 		goto fail;
-	if (ud->size == 1)
-		return (utf8_build_one(ud->data[0], 1));
+	if (ud->size == 1) {
+		*uc = utf8_build_one(ud->data[0], 1);
+		return (UTF8_DONE);
+	}
 
 	m.flags = ud->size;
 	if (ud->width == 2)
