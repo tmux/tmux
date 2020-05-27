@@ -541,7 +541,6 @@ grid_set_cell(struct grid *gd, u_int px, u_int py, const struct grid_cell *gc)
 		gl->cellused = px + 1;
 
 	gce = &gl->celldata[px];
-	if (gc->flags & GRID_FLAG_PADDING) log_debug("!!! padding %d\n", grid_need_extended_cell(gce, gc));
 	if (grid_need_extended_cell(gce, gc))
 		grid_extended_cell(gl, gce, gc);
 	else
