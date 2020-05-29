@@ -2079,7 +2079,7 @@ With
 .Fl b ,
 other commands are not blocked from running until the indicator is closed.
 .It Xo Ic find-window
-.Op Fl rCNTZ
+.Op Fl iCNrTZ
 .Op Fl t Ar target-pane
 .Ar match-string
 .Xc
@@ -2098,6 +2098,8 @@ matches only visible window contents,
 matches only the window name and
 .Fl T
 matches only the window title.
+.Fl i
+makes the search ignore case.
 The default is
 .Fl CNT .
 .Fl Z
