@@ -486,9 +486,13 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 	ike = input_key_get(key);
 	if (ike == NULL && (key & KEYC_META) && (~key & KEYC_IMPLIED_META))
 		ike = input_key_get(key & ~KEYC_META);
+	if (ike == NULL && (key & KEYC_CURSOR))
+		ike = input_key_get(key & ~KEYC_CURSOR);
+	if (ike == NULL && (key & KEYC_KEYPAD))
+		ike = input_key_get(key & ~KEYC_KEYPAD);
 	if (ike != NULL) {
 		log_debug("found key 0x%llx: \"%s\"", key, ike->data);
-		if (key & KEYC_META && (~key & KEYC_IMPLIED_META))
+		if ((key & KEYC_META) && (~key & KEYC_IMPLIED_META))
 			bufferevent_write(bev, "\033", 1);
 		bufferevent_write(bev, ike->data, strlen(ike->data));
 		return (0);
@@ -496,13 +500,13 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 
 	/* No builtin key sequence; construct an extended key sequence. */
 	if (~s->mode & MODE_KEXTENDED) {
-		justkey = (key & KEYC_MASK_KEY);
 		if ((key & KEYC_MASK_MODIFIERS) != KEYC_CTRL)
 			goto missing;
+		justkey = (key & KEYC_MASK_KEY);
 		switch (justkey) {
 		case ' ':
 		case '2':
-			key = 0||(key & ~KEYC_MASK_KEY);
+			key = 0|(key & ~KEYC_MASK_KEY);
 			break;
 		case '|':
 			key = 28|(key & ~KEYC_MASK_KEY);
@@ -522,6 +526,8 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 				key = (justkey - 'A')|(key & ~KEYC_MASK_KEY);
 			else if (justkey >= 'a' && justkey <= '~')
 				key = (justkey - 96)|(key & ~KEYC_MASK_KEY);
+			else
+				return (0);
 			break;
 		}
 		return (input_key(s, bev, key & ~KEYC_CTRL));
