@@ -85,9 +85,6 @@ struct winlink;
 /* Automatic name refresh interval, in microseconds. Must be < 1 second. */
 #define NAME_INTERVAL 500000
 
-/* Maximum size of data to hold from a pane. */
-#define READ_SIZE 8192
-
 /* Default pixel cell sizes. */
 #define DEFAULT_XPIXEL 16
 #define DEFAULT_YPIXEL 32
@@ -915,7 +912,6 @@ struct window_mode_entry {
 /* Offsets into pane buffer. */
 struct window_pane_offset {
 	size_t	used;
-	size_t	acknowledged;
 };
 
 /* Child window structure. */
@@ -1627,7 +1623,7 @@ struct client {
 #define CLIENT_DEAD 0x200
 #define CLIENT_REDRAWBORDERS 0x400
 #define CLIENT_READONLY 0x800
-#define CLIENT_DETACHING 0x1000
+/* 0x1000 unused */
 #define CLIENT_CONTROL 0x2000
 #define CLIENT_CONTROLCONTROL 0x4000
 #define CLIENT_FOCUSED 0x8000
@@ -1657,12 +1653,21 @@ struct client {
 #define CLIENT_UNATTACHEDFLAGS	\
 	(CLIENT_DEAD|		\
 	 CLIENT_SUSPENDED|	\
-	 CLIENT_DETACHING)
+	 CLIENT_EXIT)
 #define CLIENT_NOSIZEFLAGS	\
 	(CLIENT_DEAD|		\
 	 CLIENT_SUSPENDED|	\
-	 CLIENT_DETACHING)
+	 CLIENT_EXIT)
 	uint64_t	 flags;
+
+	enum {
+		CLIENT_EXIT_RETURN,
+		CLIENT_EXIT_SHUTDOWN,
+		CLIENT_EXIT_DETACH
+	}		 exit_type;
+	enum msgtype	 exit_msgtype;
+	char		*exit_session;
+
 	struct key_table *keytable;
 
 	uint64_t	 redraw_panes;
@@ -2712,8 +2717,6 @@ int		 window_pane_start_input(struct window_pane *,
 void		*window_pane_get_new_data(struct window_pane *,
 		     struct window_pane_offset *, size_t *);
 void		 window_pane_update_used_data(struct window_pane *,
-		     struct window_pane_offset *, size_t, int);
-void		 window_pane_acknowledge_data(struct window_pane *,
 		     struct window_pane_offset *, size_t);
 
 /* layout.c */
@@ -2829,15 +2832,17 @@ char	*default_window_name(struct window *);
 char	*parse_window_name(const char *);
 
 /* control.c */
+void	control_flush(struct client *);
 void	control_start(struct client *);
 void	control_stop(struct client *);
 void	control_set_pane_on(struct client *, struct window_pane *);
 void	control_set_pane_off(struct client *, struct window_pane *);
 struct window_pane_offset *control_pane_offset(struct client *,
 	   struct window_pane *, int *);
-void	control_free_offsets(struct client *);
+void	control_reset_offsets(struct client *);
 void printflike(2, 3) control_write(struct client *, const char *, ...);
 void	control_write_output(struct client *, struct window_pane *);
+int	control_all_done(struct client *);
 
 /* control-notify.c */
 void	control_notify_input(struct client *, struct window_pane *,

@@ -165,7 +165,10 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	 * the terminal as that calls tcsetattr() to prepare for tmux taking
 	 * over.
 	 */
-	if (!detached && !already_attached && c->fd != -1) {
+	if (!detached &&
+	    !already_attached &&
+	    c->fd != -1 &&
+	    (~c->flags & CLIENT_CONTROL)) {
 		if (server_client_check_nested(cmdq_get_client(item))) {
 			cmdq_error(item, "sessions should be nested with care, "
 			    "unset $TMUX to force");

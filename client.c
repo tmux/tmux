@@ -384,6 +384,11 @@ client_main(struct event_base *base, int argc, char **argv, int flags, int feat)
 		client_exec(client_execshell, client_execcmd);
 	}
 
+	/* Restore streams to blocking. */
+	setblocking(STDIN_FILENO, 1);
+	setblocking(STDOUT_FILENO, 1);
+	setblocking(STDERR_FILENO, 1);
+
 	/* Print the exit message, if any, and exit. */
 	if (client_attached) {
 		if (client_exitreason != CLIENT_EXIT_NONE)
@@ -392,18 +397,17 @@ client_main(struct event_base *base, int argc, char **argv, int flags, int feat)
 		ppid = getppid();
 		if (client_exittype == MSG_DETACHKILL && ppid > 1)
 			kill(ppid, SIGHUP);
-	} else if (client_flags & CLIENT_CONTROLCONTROL) {
+	} else if (client_flags & CLIENT_CONTROL) {
 		if (client_exitreason != CLIENT_EXIT_NONE)
 			printf("%%exit %s\n", client_exit_message());
 		else
 			printf("%%exit\n");
-		printf("\033\\");
-		tcsetattr(STDOUT_FILENO, TCSAFLUSH, &saved_tio);
+		if (client_flags & CLIENT_CONTROLCONTROL) {
+			printf("\033\\");
+			tcsetattr(STDOUT_FILENO, TCSAFLUSH, &saved_tio);
+		}
 	} else if (client_exitreason != CLIENT_EXIT_NONE)
 		fprintf(stderr, "%s\n", client_exit_message());
-	setblocking(STDIN_FILENO, 1);
-	setblocking(STDOUT_FILENO, 1);
-	setblocking(STDERR_FILENO, 1);
 	return (client_exitval);
 }
 

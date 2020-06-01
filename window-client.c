@@ -166,7 +166,7 @@ window_client_build(void *modedata, struct mode_tree_sort_criteria *sort_crit,
 	data->item_size = 0;
 
 	TAILQ_FOREACH(c, &clients, entry) {
-		if (c->session == NULL || (c->flags & (CLIENT_DETACHING)))
+		if (c->session == NULL || (c->flags & CLIENT_UNATTACHEDFLAGS))
 			continue;
 
 		item = window_client_add_item(data);

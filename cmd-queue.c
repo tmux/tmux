@@ -780,7 +780,7 @@ cmdq_guard(struct cmdq_item *item, const char *guard, int flags)
 	u_int		 number = item->number;
 
 	if (c != NULL && (c->flags & CLIENT_CONTROL))
-		file_print(c, "%%%s %ld %u %d\n", guard, t, number, flags);
+		control_write(c, "%%%s %ld %u %d", guard, t, number, flags);
 }
 
 /* Show message from command. */
@@ -807,7 +807,10 @@ cmdq_print(struct cmdq_item *item, const char *fmt, ...)
 			msg = utf8_sanitize(tmp);
 			free(tmp);
 		}
-		file_print(c, "%s\n", msg);
+		if (c->flags & CLIENT_CONTROL)
+			control_write(c, "%s", msg);
+		else
+			file_print(c, "%s\n", msg);
 	} else {
 		wp = server_client_get_pane(c);
 		wme = TAILQ_FIRST(&wp->modes);
@@ -849,7 +852,7 @@ cmdq_error(struct cmdq_item *item, const char *fmt, ...)
 			free(tmp);
 		}
 		if (c->flags & CLIENT_CONTROL)
-			file_print(c, "%s\n", msg);
+			control_write(c, "%s", msg);
 		else
 			file_error(c, "%s\n", msg);
 		c->retval = 1;
