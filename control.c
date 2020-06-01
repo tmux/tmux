@@ -48,7 +48,7 @@ struct control_block {
 
 	TAILQ_ENTRY(control_block)	 entry;
 	TAILQ_ENTRY(control_block)	 all_entry;
- };
+};
 
 /* Control client pane. */
 struct control_pane {
@@ -455,8 +455,10 @@ control_write_pending(struct client *c, struct control_pane *cp, size_t limit)
 	if (s == NULL ||
 	    (wp = window_pane_find_by_id(cp->pane)) == NULL ||
 	    winlink_find_by_window(&s->windows, wp->window) == NULL) {
-		TAILQ_FOREACH_SAFE(cb, &cp->blocks, entry, cb1)
+		TAILQ_FOREACH_SAFE(cb, &cp->blocks, entry, cb1) {
+			TAILQ_REMOVE(&cp->blocks, cb, entry);
 			control_free_block(cs, cb);
+		}
 		control_flush_all_blocks(c);
 		return (0);
 	}
