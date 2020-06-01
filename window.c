@@ -954,16 +954,17 @@ window_pane_read_callback(__unused struct bufferevent *bufev, void *data)
 		new_data = window_pane_get_new_data(wp, wpo, &new_size);
 		if (new_size > 0) {
 			bufferevent_write(wp->pipe_event, new_data, new_size);
-			window_pane_update_used_data(wp, wpo, new_size, 1);
+			window_pane_update_used_data(wp, wpo, new_size);
 		}
 	}
 
 	log_debug("%%%u has %zu bytes", wp->id, size);
 	TAILQ_FOREACH(c, &clients, entry) {
-		if (c->session != NULL && c->flags & CLIENT_CONTROL)
+		if (c->session != NULL && (c->flags & CLIENT_CONTROL))
 			control_write_output(c, wp);
 	}
 	input_parse_pane(wp);
+	bufferevent_disable(wp->event, EV_READ);
 }
 
 static void
@@ -988,7 +989,6 @@ window_pane_set_event(struct window_pane *wp)
 	    NULL, window_pane_error_callback, wp);
 	wp->ictx = input_init(wp, wp->event);
 
-	bufferevent_setwatermark(wp->event, EV_READ, 0, READ_SIZE);
 	bufferevent_enable(wp->event, EV_READ|EV_WRITE);
 }
 
@@ -1569,27 +1569,11 @@ window_pane_get_new_data(struct window_pane *wp,
 
 void
 window_pane_update_used_data(struct window_pane *wp,
-    struct window_pane_offset *wpo, size_t size, int acknowledge)
+    struct window_pane_offset *wpo, size_t size)
 {
 	size_t	used = wpo->used - wp->base_offset;
 
 	if (size > EVBUFFER_LENGTH(wp->event->input) - used)
 		size = EVBUFFER_LENGTH(wp->event->input) - used;
 	wpo->used += size;
-
-	if (acknowledge)
-		window_pane_acknowledge_data(wp, wpo, size);
-}
-
-void
-window_pane_acknowledge_data(struct window_pane *wp,
-    struct window_pane_offset *wpo, size_t size)
-{
-	size_t	acknowledged = wpo->acknowledged - wp->base_offset;
-
-	if (size > EVBUFFER_LENGTH(wp->event->input) - acknowledged)
-		size = EVBUFFER_LENGTH(wp->event->input) - acknowledged;
-	wpo->acknowledged += size;
-	if (wpo->acknowledged > wpo->used)
-		wpo->acknowledged = wpo->used;
 }

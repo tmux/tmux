@@ -56,6 +56,9 @@ static void	server_client_dispatch_read_data(struct client *,
 static void	server_client_dispatch_read_done(struct client *,
 		    struct imsg *);
 
+/* Maximum data allowed to be held for a pane for a control client. */
+#define SERVER_CLIENT_PANE_LIMIT 16777216
+
 /* Compare client windows. */
 static int
 server_client_window_cmp(struct client_window *cw1,
@@ -78,7 +81,7 @@ server_client_how_many(void)
 
 	n = 0;
 	TAILQ_FOREACH(c, &clients, entry) {
-		if (c->session != NULL && (~c->flags & CLIENT_DETACHING))
+		if (c->session != NULL && (~c->flags & CLIENT_UNATTACHEDFLAGS))
 			n++;
 	}
 	return (n);
@@ -384,7 +387,7 @@ server_client_suspend(struct client *c)
 {
 	struct session	*s = c->session;
 
-	if (s == NULL || (c->flags & CLIENT_DETACHING))
+	if (s == NULL || (c->flags & CLIENT_UNATTACHEDFLAGS))
 		return;
 
 	tty_stop_tty(&c->tty);
@@ -398,12 +401,14 @@ server_client_detach(struct client *c, enum msgtype msgtype)
 {
 	struct session	*s = c->session;
 
-	if (s == NULL || (c->flags & CLIENT_DETACHING))
+	if (s == NULL || (c->flags & CLIENT_UNATTACHEDFLAGS))
 		return;
 
-	c->flags |= CLIENT_DETACHING;
-	notify_client("client-detached", c);
-	proc_send(c->peer, msgtype, -1, s->name, strlen(s->name) + 1);
+	c->flags |= CLIENT_EXIT;
+
+	c->exit_type = CLIENT_EXIT_DETACH;
+	c->exit_msgtype = msgtype;
+	c->exit_session = xstrdup(s->name);
 }
 
 /* Execute command to replace a client. */
@@ -1505,12 +1510,12 @@ server_client_check_pane_buffer(struct window_pane *wp)
 	u_int				 attached_clients = 0;
 
 	/*
-	 * Work out the minimum acknowledged size. This is the most that can be
-	 * removed from the buffer.
+	 * Work out the minimum used size. This is the most that can be removed
+	 * from the buffer.
 	 */
-	minimum = wp->offset.acknowledged;
-	if (wp->pipe_fd != -1 && wp->pipe_offset.acknowledged < minimum)
-		minimum = wp->pipe_offset.acknowledged;
+	minimum = wp->offset.used;
+	if (wp->pipe_fd != -1 && wp->pipe_offset.used < minimum)
+		minimum = wp->pipe_offset.used;
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (c->session == NULL)
 			continue;
@@ -1528,11 +1533,13 @@ server_client_check_pane_buffer(struct window_pane *wp)
 		if (!flag)
 			off = 0;
 
-		log_debug("%s: %s has %zu bytes used, %zu bytes acknowledged "
-		    "for %%%u", __func__, c->name, wpo->used, wpo->acknowledged,
-		    wp->id);
-		if (wpo->acknowledged < minimum)
-			minimum = wpo->acknowledged;
+		log_debug("%s: %s has %zu bytes used for %%%u", __func__,
+		    c->name, wpo->used - wp->base_offset, wp->id);
+		if (wpo->used - wp->base_offset > SERVER_CLIENT_PANE_LIMIT) {
+			control_flush(c);
+			c->flags |= CLIENT_EXIT;
+		} else if (wpo->used < minimum)
+			minimum = wpo->used;
 	}
 	if (attached_clients == 0)
 		off = 0;
@@ -1541,8 +1548,8 @@ server_client_check_pane_buffer(struct window_pane *wp)
 		goto out;
 
 	/* Drain the buffer. */
-	log_debug("%s: %%%u has %zu minimum (of %zu) bytes acknowledged",
-	    __func__, wp->id, minimum, EVBUFFER_LENGTH(evb));
+	log_debug("%s: %%%u has %zu minimum (of %zu) bytes used", __func__,
+	    wp->id, minimum, EVBUFFER_LENGTH(evb));
 	evbuffer_drain(evb, minimum);
 
 	/*
@@ -1551,20 +1558,15 @@ server_client_check_pane_buffer(struct window_pane *wp)
 	 */
 	if (wp->base_offset > SIZE_MAX - minimum) {
 		log_debug("%s: %%%u base offset has wrapped", __func__, wp->id);
-		wp->offset.acknowledged -= wp->base_offset;
 		wp->offset.used -= wp->base_offset;
-		if (wp->pipe_fd != -1) {
-			wp->pipe_offset.acknowledged -= wp->base_offset;
+		if (wp->pipe_fd != -1)
 			wp->pipe_offset.used -= wp->base_offset;
-		}
 		TAILQ_FOREACH(c, &clients, entry) {
 			if (c->session == NULL || (~c->flags & CLIENT_CONTROL))
 				continue;
 			wpo = control_pane_offset(c, wp, &flag);
-			if (wpo != NULL && !flag) {
-				wpo->acknowledged -= wp->base_offset;
+			if (wpo != NULL && !flag)
 				wpo->used -= wp->base_offset;
-			}
 		}
 		wp->base_offset = minimum;
 	} else
@@ -1577,6 +1579,7 @@ out:
 	 * clients, all of which are control clients which are not able to
 	 * accept any more data.
 	 */
+	log_debug("%s: pane %%%u is %s", __func__, wp->id, off ? "off" : "on");
 	if (off)
 		bufferevent_disable(wp->event, EV_READ);
 	else
@@ -1768,12 +1771,16 @@ static void
 server_client_check_exit(struct client *c)
 {
 	struct client_file	*cf;
+	const char		*name = c->exit_session;
 
-	if (~c->flags & CLIENT_EXIT)
-		return;
-	if (c->flags & CLIENT_EXITED)
+	if ((c->flags & CLIENT_EXITED) || (~c->flags & CLIENT_EXIT))
 		return;
 
+	if (c->flags & CLIENT_CONTROL) {
+		control_flush(c);
+		if (!control_all_done(c))
+			return;
+	}
 	RB_FOREACH(cf, client_files, &c->files) {
 		if (EVBUFFER_LENGTH(cf->buffer) != 0)
 			return;
@@ -1781,8 +1788,20 @@ server_client_check_exit(struct client *c)
 
 	if (c->flags & CLIENT_ATTACHED)
 		notify_client("client-detached", c);
-	proc_send(c->peer, MSG_EXIT, -1, &c->retval, sizeof c->retval);
 	c->flags |= CLIENT_EXITED;
+
+	switch (c->exit_type) {
+	case CLIENT_EXIT_RETURN:
+		proc_send(c->peer, MSG_EXIT, -1, &c->retval, sizeof c->retval);
+		break;
+	case CLIENT_EXIT_SHUTDOWN:
+		proc_send(c->peer, MSG_SHUTDOWN, -1, NULL, 0);
+		break;
+	case CLIENT_EXIT_DETACH:
+		proc_send(c->peer, c->exit_msgtype, -1, name, strlen(name) + 1);
+		break;
+	}
+	free(c->exit_session);
 }
 
 /* Redraw timer callback. */
@@ -1994,7 +2013,6 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 	case MSG_EXITING:
 		if (datalen != 0)
 			fatalx("bad MSG_EXITING size");
-
 		c->session = NULL;
 		tty_close(&c->tty);
 		proc_send(c->peer, MSG_EXITED, -1, NULL, 0);
@@ -2048,7 +2066,7 @@ server_client_command_done(struct cmdq_item *item, __unused void *data)
 
 	if (~c->flags & CLIENT_ATTACHED)
 		c->flags |= CLIENT_EXIT;
-	else if (~c->flags & CLIENT_DETACHING)
+	else if (~c->flags & CLIENT_EXIT)
 		tty_send_requests(&c->tty);
 	return (CMD_RETURN_NORMAL);
 }
@@ -2374,7 +2392,7 @@ server_client_set_flags(struct client *c, const char *flags)
 		else
 			c->flags |= flag;
 		if (flag == CLIENT_CONTROL_NOOUTPUT)
-			control_free_offsets(c);
+			control_reset_offsets(c);
 	}
 	free(copy);
 }

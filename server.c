@@ -294,9 +294,8 @@ server_send_exit(void)
 		if (c->flags & CLIENT_SUSPENDED)
 			server_client_lost(c);
 		else {
-			if (c->flags & CLIENT_ATTACHED)
-				notify_client("client-detached", c);
-			proc_send(c->peer, MSG_SHUTDOWN, -1, NULL, 0);
+			c->flags |= CLIENT_EXIT;
+			c->exit_type = CLIENT_EXIT_SHUTDOWN;
 		}
 		c->session = NULL;
 	}
