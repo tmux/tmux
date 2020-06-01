@@ -1912,6 +1912,7 @@ char		*paste_make_sample(struct paste_buffer *);
 #define FORMAT_WINDOW 0x40000000U
 struct format_tree;
 struct format_modifier;
+typedef char *(*format_cb)(struct format_tree *);
 const char	*format_skip(const char *, const char *);
 int		 format_true(const char *);
 struct format_tree *format_create(struct client *, struct cmdq_item *, int,
@@ -1922,6 +1923,7 @@ void printflike(3, 4) format_add(struct format_tree *, const char *,
 		     const char *, ...);
 void		 format_add_tv(struct format_tree *, const char *,
 		     struct timeval *);
+void		 format_add_cb(struct format_tree *, const char *, format_cb);
 void		 format_each(struct format_tree *, void (*)(const char *,
 		     const char *, void *), void *);
 char		*format_expand_time(struct format_tree *, const char *);

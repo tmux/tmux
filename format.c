@@ -38,13 +38,9 @@
  * string.
  */
 
-struct format_entry;
-typedef void (*format_cb)(struct format_tree *, struct format_entry *);
-
 static char	*format_job_get(struct format_tree *, const char *);
 static void	 format_job_timer(int, short, void *);
 
-static void	 format_add_cb(struct format_tree *, const char *, format_cb);
 static int	 format_replace(struct format_tree *, const char *, size_t,
 		     char **, size_t *, size_t *);
 static void	 format_defaults_session(struct format_tree *,
@@ -421,50 +417,51 @@ format_job_timer(__unused int fd, __unused short events, __unused void *arg)
 }
 
 /* Callback for host. */
-static void
-format_cb_host(__unused struct format_tree *ft, struct format_entry *fe)
+static char *
+format_cb_host(__unused struct format_tree *ft)
 {
 	char host[HOST_NAME_MAX + 1];
 
 	if (gethostname(host, sizeof host) != 0)
-		fe->value = xstrdup("");
-	else
-		fe->value = xstrdup(host);
+		return (xstrdup(""));
+	return (xstrdup(host));
 }
 
 /* Callback for host_short. */
-static void
-format_cb_host_short(__unused struct format_tree *ft, struct format_entry *fe)
+static char *
+format_cb_host_short(__unused struct format_tree *ft)
 {
 	char host[HOST_NAME_MAX + 1], *cp;
 
 	if (gethostname(host, sizeof host) != 0)
-		fe->value = xstrdup("");
-	else {
-		if ((cp = strchr(host, '.')) != NULL)
-			*cp = '\0';
-		fe->value = xstrdup(host);
-	}
+		return (xstrdup(""));
+	if ((cp = strchr(host, '.')) != NULL)
+		*cp = '\0';
+	return (xstrdup(host));
 }
 
 /* Callback for pid. */
-static void
-format_cb_pid(__unused struct format_tree *ft, struct format_entry *fe)
+static char *
+format_cb_pid(__unused struct format_tree *ft)
 {
-	xasprintf(&fe->value, "%ld", (long)getpid());
+	char	*value;
+
+	xasprintf(&value, "%ld", (long)getpid());
+	return (value);
 }
 
 /* Callback for session_attached_list. */
-static void
-format_cb_session_attached_list(struct format_tree *ft, struct format_entry *fe)
+static char *
+format_cb_session_attached_list(struct format_tree *ft)
 {
 	struct session	*s = ft->s;
 	struct client	*loop;
 	struct evbuffer	*buffer;
 	int		 size;
+	char		*value = NULL;
 
 	if (s == NULL)
-		return;
+		return (NULL);
 
 	buffer = evbuffer_new();
 	if (buffer == NULL)
@@ -479,20 +476,21 @@ format_cb_session_attached_list(struct format_tree *ft, struct format_entry *fe)
 	}
 
 	if ((size = EVBUFFER_LENGTH(buffer)) != 0)
-		xasprintf(&fe->value, "%.*s", size, EVBUFFER_DATA(buffer));
+		xasprintf(&value, "%.*s", size, EVBUFFER_DATA(buffer));
 	evbuffer_free(buffer);
+	return (value);
 }
 
 /* Callback for session_alerts. */
-static void
-format_cb_session_alerts(struct format_tree *ft, struct format_entry *fe)
+static char *
+format_cb_session_alerts(struct format_tree *ft)
 {
 	struct session	*s = ft->s;
 	struct winlink	*wl;
 	char		 alerts[1024], tmp[16];
 
 	if (s == NULL)
-		return;
+		return (NULL);
 
 	*alerts = '\0';
 	RB_FOREACH(wl, winlinks, &s->windows) {
@@ -510,19 +508,19 @@ format_cb_session_alerts(struct format_tree *ft, struct format_entry *fe)
 		if (wl->flags & WINLINK_SILENCE)
 			strlcat(alerts, "~", sizeof alerts);
 	}
-	fe->value = xstrdup(alerts);
+	return (xstrdup(alerts));
 }
 
 /* Callback for session_stack. */
-static void
-format_cb_session_stack(struct format_tree *ft, struct format_entry *fe)
+static char *
+format_cb_session_stack(struct format_tree *ft)
 {
 	struct session	*s = ft->s;
 	struct winlink	*wl;
 	char		 result[1024], tmp[16];
 
 	if (s == NULL)
-		return;
+		return (NULL);
 
 	xsnprintf(result, sizeof result, "%u", s->curw->idx);
 	TAILQ_FOREACH(wl, &s->lastw, sentry) {
@@ -532,16 +530,17 @@ format_cb_session_stack(struct format_tree *ft, struct format_entry *fe)
 			strlcat(result, ",", sizeof result);
 		strlcat(result, tmp, sizeof result);
 	}
-	fe->value = xstrdup(result);
+	return (xstrdup(result));
 }
 
 /* Callback for window_stack_index. */
-static void
-format_cb_window_stack_index(struct format_tree *ft, struct format_entry *fe)
+static char *
+format_cb_window_stack_index(struct format_tree *ft)
 {
 	struct session	*s = ft->wl->session;
 	struct winlink	*wl;
 	u_int		 idx;
+	char		*value = NULL;
 
 	idx = 0;
 	TAILQ_FOREACH(wl, &s->lastw, sentry) {
@@ -549,21 +548,21 @@ format_cb_window_stack_index(struct format_tree *ft, struct format_entry *fe)
 		if (wl == ft->wl)
 			break;
 	}
-	if (wl != NULL)
-		xasprintf(&fe->value, "%u", idx);
-	else
-		fe->value = xstrdup("0");
+	if (wl == NULL)
+		return (xstrdup("0"));
+	xasprintf(&value, "%u", idx);
+	return (value);
 }
 
 /* Callback for window_linked_sessions_list. */
-static void
-format_cb_window_linked_sessions_list(struct format_tree *ft,
-    struct format_entry *fe)
+static char *
+format_cb_window_linked_sessions_list(struct format_tree *ft)
 {
 	struct window	*w = ft->wl->window;
 	struct winlink	*wl;
 	struct evbuffer	*buffer;
 	int		 size;
+	char		*value = NULL;
 
 	buffer = evbuffer_new();
 	if (buffer == NULL)
@@ -576,36 +575,38 @@ format_cb_window_linked_sessions_list(struct format_tree *ft,
 	}
 
 	if ((size = EVBUFFER_LENGTH(buffer)) != 0)
-		xasprintf(&fe->value, "%.*s", size, EVBUFFER_DATA(buffer));
+		xasprintf(&value, "%.*s", size, EVBUFFER_DATA(buffer));
 	evbuffer_free(buffer);
+	return (value);
 }
 
 /* Callback for window_active_sessions. */
-static void
-format_cb_window_active_sessions(struct format_tree *ft,
-    struct format_entry *fe)
+static char *
+format_cb_window_active_sessions(struct format_tree *ft)
 {
 	struct window	*w = ft->wl->window;
 	struct winlink	*wl;
 	u_int		 n = 0;
+	char		*value;
 
 	TAILQ_FOREACH(wl, &w->winlinks, wentry) {
 		if (wl->session->curw == wl)
 			n++;
 	}
 
-	xasprintf(&fe->value, "%u", n);
+	xasprintf(&value, "%u", n);
+	return (value);
 }
 
 /* Callback for window_active_sessions_list. */
-static void
-format_cb_window_active_sessions_list(struct format_tree *ft,
-    struct format_entry *fe)
+static char *
+format_cb_window_active_sessions_list(struct format_tree *ft)
 {
 	struct window	*w = ft->wl->window;
 	struct winlink	*wl;
 	struct evbuffer	*buffer;
 	int		 size;
+	char		*value = NULL;
 
 	buffer = evbuffer_new();
 	if (buffer == NULL)
@@ -620,18 +621,20 @@ format_cb_window_active_sessions_list(struct format_tree *ft,
 	}
 
 	if ((size = EVBUFFER_LENGTH(buffer)) != 0)
-		xasprintf(&fe->value, "%.*s", size, EVBUFFER_DATA(buffer));
+		xasprintf(&value, "%.*s", size, EVBUFFER_DATA(buffer));
 	evbuffer_free(buffer);
+	return (value);
 }
 
 /* Callback for window_active_clients. */
-static void
-format_cb_window_active_clients(struct format_tree *ft, struct format_entry *fe)
+static char *
+format_cb_window_active_clients(struct format_tree *ft)
 {
 	struct window	*w = ft->wl->window;
 	struct client	*loop;
 	struct session	*client_session;
 	u_int		 n = 0;
+	char		*value;
 
 	TAILQ_FOREACH(loop, &clients, entry) {
 		client_session = loop->session;
@@ -642,19 +645,20 @@ format_cb_window_active_clients(struct format_tree *ft, struct format_entry *fe)
 			n++;
 	}
 
-	xasprintf(&fe->value, "%u", n);
+	xasprintf(&value, "%u", n);
+	return (value);
 }
 
 /* Callback for window_active_clients_list. */
-static void
-format_cb_window_active_clients_list(struct format_tree *ft,
-    struct format_entry *fe)
+static char *
+format_cb_window_active_clients_list(struct format_tree *ft)
 {
 	struct window	*w = ft->wl->window;
 	struct client	*loop;
 	struct session	*client_session;
 	struct evbuffer	*buffer;
 	int		 size;
+	char		*value = NULL;
 
 	buffer = evbuffer_new();
 	if (buffer == NULL)
@@ -673,58 +677,58 @@ format_cb_window_active_clients_list(struct format_tree *ft,
 	}
 
 	if ((size = EVBUFFER_LENGTH(buffer)) != 0)
-		xasprintf(&fe->value, "%.*s", size, EVBUFFER_DATA(buffer));
+		xasprintf(&value, "%.*s", size, EVBUFFER_DATA(buffer));
 	evbuffer_free(buffer);
+	return (value);
 }
 
 /* Callback for window_layout. */
-static void
-format_cb_window_layout(struct format_tree *ft, struct format_entry *fe)
+static char *
+format_cb_window_layout(struct format_tree *ft)
 {
 	struct window	*w = ft->w;
 
 	if (w == NULL)
-		return;
+		return (NULL);
 
 	if (w->saved_layout_root != NULL)
-		fe->value = layout_dump(w->saved_layout_root);
-	else
-		fe->value = layout_dump(w->layout_root);
+		return (layout_dump(w->saved_layout_root));
+	return (layout_dump(w->layout_root));
 }
 
 /* Callback for window_visible_layout. */
-static void
-format_cb_window_visible_layout(struct format_tree *ft, struct format_entry *fe)
+static char *
+format_cb_window_visible_layout(struct format_tree *ft)
 {
 	struct window	*w = ft->w;
 
 	if (w == NULL)
-		return;
+		return (NULL);
 
-	fe->value = layout_dump(w->layout_root);
+	return (layout_dump(w->layout_root));
 }
 
 /* Callback for pane_start_command. */
-static void
-format_cb_start_command(struct format_tree *ft, struct format_entry *fe)
+static char *
+format_cb_start_command(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
 
 	if (wp == NULL)
-		return;
+		return (NULL);
 
-	fe->value = cmd_stringify_argv(wp->argc, wp->argv);
+	return (cmd_stringify_argv(wp->argc, wp->argv));
 }
 
 /* Callback for pane_current_command. */
-static void
-format_cb_current_command(struct format_tree *ft, struct format_entry *fe)
+static char *
+format_cb_current_command(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
-	char			*cmd;
+	char			*cmd, *value;
 
 	if (wp == NULL || wp->shell == NULL)
-		return;
+		return (NULL);
 
 	cmd = get_proc_name(wp->fd, wp->tty);
 	if (cmd == NULL || *cmd == '\0') {
@@ -735,37 +739,40 @@ format_cb_current_command(struct format_tree *ft, struct format_entry *fe)
 			cmd = xstrdup(wp->shell);
 		}
 	}
-	fe->value = parse_window_name(cmd);
+	value = parse_window_name(cmd);
 	free(cmd);
+	return (value);
 }
 
 /* Callback for pane_current_path. */
-static void
-format_cb_current_path(struct format_tree *ft, struct format_entry *fe)
+static char *
+format_cb_current_path(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
 	char			*cwd;
 
 	if (wp == NULL)
-		return;
+		return (NULL);
 
 	cwd = get_proc_cwd(wp->fd);
-	if (cwd != NULL)
-		fe->value = xstrdup(cwd);
+	if (cwd == NULL)
+		return (NULL);
+	return (xstrdup(cwd));
 }
 
 /* Callback for history_bytes. */
-static void
-format_cb_history_bytes(struct format_tree *ft, struct format_entry *fe)
+static char *
+format_cb_history_bytes(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
 	struct grid		*gd;
 	struct grid_line	*gl;
 	size_t		         size = 0;
 	u_int			 i;
+	char			*value;
 
 	if (wp == NULL)
-		return;
+		return (NULL);
 	gd = wp->base.grid;
 
 	for (i = 0; i < gd->hsize + gd->sy; i++) {
@@ -775,20 +782,22 @@ format_cb_history_bytes(struct format_tree *ft, struct format_entry *fe)
 	}
 	size += (gd->hsize + gd->sy) * sizeof *gl;
 
-	xasprintf(&fe->value, "%zu", size);
+	xasprintf(&value, "%zu", size);
+	return (value);
 }
 
 /* Callback for history_all_bytes. */
-static void
-format_cb_history_all_bytes(struct format_tree *ft, struct format_entry *fe)
+static char *
+format_cb_history_all_bytes(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
 	struct grid		*gd;
 	struct grid_line	*gl;
 	u_int			 i, lines, cells = 0, extended_cells = 0;
+	char			*value;
 
 	if (wp == NULL)
-		return;
+		return (NULL);
 	gd = wp->base.grid;
 
 	lines = gd->hsize + gd->sy;
@@ -798,22 +807,24 @@ format_cb_history_all_bytes(struct format_tree *ft, struct format_entry *fe)
 		extended_cells += gl->extdsize;
 	}
 
-	xasprintf(&fe->value, "%u,%zu,%u,%zu,%u,%zu", lines,
+	xasprintf(&value, "%u,%zu,%u,%zu,%u,%zu", lines,
 	    lines * sizeof *gl, cells, cells * sizeof *gl->celldata,
 	    extended_cells, extended_cells * sizeof *gl->extddata);
+	return (value);
 }
 
 /* Callback for pane_tabs. */
-static void
-format_cb_pane_tabs(struct format_tree *ft, struct format_entry *fe)
+static char *
+format_cb_pane_tabs(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
 	struct evbuffer		*buffer;
 	u_int			 i;
 	int			 size;
+	char			*value = NULL;
 
 	if (wp == NULL)
-		return;
+		return (NULL);
 
 	buffer = evbuffer_new();
 	if (buffer == NULL)
@@ -827,25 +838,27 @@ format_cb_pane_tabs(struct format_tree *ft, struct format_entry *fe)
 		evbuffer_add_printf(buffer, "%u", i);
 	}
 	if ((size = EVBUFFER_LENGTH(buffer)) != 0)
-		xasprintf(&fe->value, "%.*s", size, EVBUFFER_DATA(buffer));
+		xasprintf(&value, "%.*s", size, EVBUFFER_DATA(buffer));
 	evbuffer_free(buffer);
+	return (value);
 }
 
 /* Callback for session_group_list. */
-static void
-format_cb_session_group_list(struct format_tree *ft, struct format_entry *fe)
+static char *
+format_cb_session_group_list(struct format_tree *ft)
 {
 	struct session		*s = ft->s;
 	struct session_group	*sg;
 	struct session		*loop;
 	struct evbuffer		*buffer;
 	int			 size;
+	char			*value = NULL;
 
 	if (s == NULL)
-		return;
+		return (NULL);
 	sg = session_group_contains(s);
 	if (sg == NULL)
-		return;
+		return (NULL);
 
 	buffer = evbuffer_new();
 	if (buffer == NULL)
@@ -858,26 +871,27 @@ format_cb_session_group_list(struct format_tree *ft, struct format_entry *fe)
 	}
 
 	if ((size = EVBUFFER_LENGTH(buffer)) != 0)
-		xasprintf(&fe->value, "%.*s", size, EVBUFFER_DATA(buffer));
+		xasprintf(&value, "%.*s", size, EVBUFFER_DATA(buffer));
 	evbuffer_free(buffer);
+	return (value);
 }
 
 /* Callback for session_group_attached_list. */
-static void
-format_cb_session_group_attached_list(struct format_tree *ft,
-    struct format_entry *fe)
+static char *
+format_cb_session_group_attached_list(struct format_tree *ft)
 {
 	struct session		*s = ft->s, *client_session, *session_loop;
 	struct session_group	*sg;
 	struct client		*loop;
 	struct evbuffer		*buffer;
 	int			 size;
+	char			*value = NULL;
 
 	if (s == NULL)
-		return;
+		return (NULL);
 	sg = session_group_contains(s);
 	if (sg == NULL)
-		return;
+		return (NULL);
 
 	buffer = evbuffer_new();
 	if (buffer == NULL)
@@ -897,36 +911,40 @@ format_cb_session_group_attached_list(struct format_tree *ft,
 	}
 
 	if ((size = EVBUFFER_LENGTH(buffer)) != 0)
-		xasprintf(&fe->value, "%.*s", size, EVBUFFER_DATA(buffer));
+		xasprintf(&value, "%.*s", size, EVBUFFER_DATA(buffer));
 	evbuffer_free(buffer);
+	return (value);
 }
 
 /* Callback for pane_in_mode. */
-static void
-format_cb_pane_in_mode(struct format_tree *ft, struct format_entry *fe)
+static char *
+format_cb_pane_in_mode(struct format_tree *ft)
 {
 	struct window_pane		*wp = ft->wp;
 	u_int				 n = 0;
 	struct window_mode_entry	*wme;
+	char				*value;
 
 	if (wp == NULL)
-		return;
+		return (NULL);
 
 	TAILQ_FOREACH(wme, &wp->modes, entry)
 	    n++;
-	xasprintf(&fe->value, "%u", n);
+	xasprintf(&value, "%u", n);
+	return (value);
 }
 
 /* Callback for pane_at_top. */
-static void
-format_cb_pane_at_top(struct format_tree *ft, struct format_entry *fe)
+static char *
+format_cb_pane_at_top(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
 	struct window		*w;
 	int			 status, flag;
+	char			*value;
 
 	if (wp == NULL)
-		return;
+		return (NULL);
 	w = wp->window;
 
 	status = options_get_number(w->options, "pane-border-status");
@@ -934,19 +952,21 @@ format_cb_pane_at_top(struct format_tree *ft, struct format_entry *fe)
 		flag = (wp->yoff == 1);
 	else
 		flag = (wp->yoff == 0);
-	xasprintf(&fe->value, "%d", flag);
+	xasprintf(&value, "%d", flag);
+	return (value);
 }
 
 /* Callback for pane_at_bottom. */
-static void
-format_cb_pane_at_bottom(struct format_tree *ft, struct format_entry *fe)
+static char *
+format_cb_pane_at_bottom(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
 	struct window		*w;
 	int			 status, flag;
+	char			*value;
 
 	if (wp == NULL)
-		return;
+		return (NULL);
 	w = wp->window;
 
 	status = options_get_number(w->options, "pane-border-status");
@@ -954,22 +974,25 @@ format_cb_pane_at_bottom(struct format_tree *ft, struct format_entry *fe)
 		flag = (wp->yoff + wp->sy == w->sy - 1);
 	else
 		flag = (wp->yoff + wp->sy == w->sy);
-	xasprintf(&fe->value, "%d", flag);
+	xasprintf(&value, "%d", flag);
+	return (value);
 }
 
 /* Callback for cursor_character. */
-static void
-format_cb_cursor_character(struct format_tree *ft, struct format_entry *fe)
+static char *
+format_cb_cursor_character(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
 	struct grid_cell	 gc;
+	char			*value = NULL;
 
 	if (wp == NULL)
-		return;
+		return (NULL);
 
 	grid_view_get_cell(wp->base.grid, wp->base.cx, wp->base.cy, &gc);
 	if (~gc.flags & GRID_FLAG_PADDING)
-		xasprintf(&fe->value, "%.*s", (int)gc.data.size, gc.data.data);
+		xasprintf(&value, "%.*s", (int)gc.data.size, gc.data.data);
+	return (value);
 }
 
 /* Return word at given coordinates. Caller frees. */
@@ -1043,8 +1066,8 @@ format_grid_word(struct grid *gd, u_int x, u_int y)
 }
 
 /* Callback for mouse_word. */
-static void
-format_cb_mouse_word(struct format_tree *ft, struct format_entry *fe)
+static char *
+format_cb_mouse_word(struct format_tree *ft)
 {
 	struct window_pane	*wp;
 	struct grid		*gd;
@@ -1052,25 +1075,21 @@ format_cb_mouse_word(struct format_tree *ft, struct format_entry *fe)
 	char			*s;
 
 	if (!ft->m.valid)
-		return;
+		return (NULL);
 	wp = cmd_mouse_pane(&ft->m, NULL, NULL);
 	if (wp == NULL)
-		return;
+		return (NULL);
 	if (cmd_mouse_at(wp, &ft->m, &x, &y, 0) != 0)
-		return;
+		return (NULL);
 
 	if (!TAILQ_EMPTY(&wp->modes)) {
 		if (TAILQ_FIRST(&wp->modes)->mode == &window_copy_mode ||
 		    TAILQ_FIRST(&wp->modes)->mode == &window_view_mode)
-			s = window_copy_get_word(wp, x, y);
-		else
-			s = NULL;
-	} else {
-		gd = wp->base.grid;
-		s = format_grid_word(gd, x, gd->hsize + y);
+			return (s = window_copy_get_word(wp, x, y));
+		return (NULL);
 	}
-	if (s != NULL)
-		fe->value = s;
+	gd = wp->base.grid;
+	return (format_grid_word(gd, x, gd->hsize + y));
 }
 
 /* Return line at given coordinates. Caller frees. */
@@ -1100,34 +1119,29 @@ format_grid_line(struct grid *gd, u_int y)
 }
 
 /* Callback for mouse_line. */
-static void
-format_cb_mouse_line(struct format_tree *ft, struct format_entry *fe)
+static char *
+format_cb_mouse_line(struct format_tree *ft)
 {
 	struct window_pane	*wp;
 	struct grid		*gd;
 	u_int			 x, y;
-	char			*s;
 
 	if (!ft->m.valid)
-		return;
+		return (NULL);
 	wp = cmd_mouse_pane(&ft->m, NULL, NULL);
 	if (wp == NULL)
-		return;
+		return (NULL);
 	if (cmd_mouse_at(wp, &ft->m, &x, &y, 0) != 0)
-		return;
+		return (NULL);
 
 	if (!TAILQ_EMPTY(&wp->modes)) {
 		if (TAILQ_FIRST(&wp->modes)->mode == &window_copy_mode ||
 		    TAILQ_FIRST(&wp->modes)->mode == &window_view_mode)
-			s = window_copy_get_line(wp, y);
-		else
-			s = NULL;
-	} else {
-		gd = wp->base.grid;
-		s = format_grid_line(gd, gd->hsize + y);
+			return (window_copy_get_line(wp, y));
+		return (NULL);
 	}
-	if (s != NULL)
-		fe->value = s;
+	gd = wp->base.grid;
+	return (format_grid_line(gd, gd->hsize + y));
 }
 
 /* Merge one format tree into another. */
@@ -1244,7 +1258,7 @@ format_each(struct format_tree *ft, void (*cb)(const char *, const char *,
 			cb(fe->key, s, arg);
 		} else {
 			if (fe->value == NULL && fe->cb != NULL) {
-				fe->cb(ft, fe);
+				fe->value = fe->cb(ft);
 				if (fe->value == NULL)
 					fe->value = xstrdup("");
 			}
@@ -1304,7 +1318,7 @@ format_add_tv(struct format_tree *ft, const char *key, struct timeval *tv)
 }
 
 /* Add a key and function. */
-static void
+void
 format_add_cb(struct format_tree *ft, const char *key, format_cb cb)
 {
 	struct format_entry	*fe;
@@ -1427,10 +1441,11 @@ format_find(struct format_tree *ft, const char *key, int modifiers,
 			t = fe->t;
 			goto found;
 		}
-		if (fe->value == NULL && fe->cb != NULL)
-			fe->cb(ft, fe);
-		if (fe->value == NULL)
-			fe->value = xstrdup("");
+		if (fe->value == NULL && fe->cb != NULL) {
+			fe->value = fe->cb(ft);
+			if (fe->value == NULL)
+				fe->value = xstrdup("");
+		}
 		found = xstrdup(fe->value);
 		goto found;
 	}
