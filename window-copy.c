@@ -3721,7 +3721,7 @@ window_copy_get_selection(struct window_mode_entry *wme, size_t *len)
 	/* Don't bother if no data. */
 	if (off == 0) {
 		free(buf);
-		*len = 0
+		*len = 0;
 		return (NULL);
 	}
 	if (keys == MODEKEY_EMACS || lastex <= ey_last)
