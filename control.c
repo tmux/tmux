@@ -45,6 +45,7 @@
 struct control_block {
 	size_t				 size;
 	char				*line;
+	uint64_t			 t;
 
 	TAILQ_ENTRY(control_block)	 entry;
 	TAILQ_ENTRY(control_block)	 all_entry;
@@ -152,6 +153,21 @@ control_add_pane(struct client *c, struct window_pane *wp)
 	return (cp);
 }
 
+/* Get actual pane for this client. */
+static struct window_pane *
+control_window_pane(struct client *c, u_int pane)
+{
+	struct window_pane	*wp;
+
+	if (c->session == NULL)
+		return (NULL);
+	if ((wp = window_pane_find_by_id(pane)) == NULL)
+		return (NULL);
+	if (winlink_find_by_window(&c->session->windows, wp->window) == NULL)
+		return (NULL);
+	return (wp);
+}
+
 /* Reset control offsets. */
 void
 control_reset_offsets(struct client *c)
@@ -253,6 +269,7 @@ control_write(struct client *c, const char *fmt, ...)
 	cb = xcalloc(1, sizeof *cb);
 	xvasprintf(&cb->line, fmt, ap);
 	TAILQ_INSERT_TAIL(&cs->all_blocks, cb, all_entry);
+	cb->t = get_timer();
 
 	log_debug("%s: %s: storing line: %s", __func__, c->name, cb->line);
 	bufferevent_enable(cs->write_event, EV_WRITE);
@@ -290,6 +307,7 @@ control_write_output(struct client *c, struct window_pane *wp)
 	cb = xcalloc(1, sizeof *cb);
 	cb->size = new_size;
 	TAILQ_INSERT_TAIL(&cs->all_blocks, cb, all_entry);
+	cb->t = get_timer();
 
 	TAILQ_INSERT_TAIL(&cp->blocks, cb, entry);
 	log_debug("%s: %s: new output block of %zu for %%%u", __func__, c->name,
@@ -446,15 +464,13 @@ static int
 control_write_pending(struct client *c, struct control_pane *cp, size_t limit)
 {
 	struct control_state	*cs = c->control_state;
-	struct session		*s = c->session;
 	struct window_pane	*wp = NULL;
 	struct evbuffer		*message = NULL;
 	size_t			 used = 0, size;
 	struct control_block	*cb, *cb1;
 
-	if (s == NULL ||
-	    (wp = window_pane_find_by_id(cp->pane)) == NULL ||
-	    winlink_find_by_window(&s->windows, wp->window) == NULL) {
+	wp = control_window_pane(c, cp->pane);
+	if (wp == NULL) {
 		TAILQ_FOREACH_SAFE(cb, &cp->blocks, entry, cb1) {
 			TAILQ_REMOVE(&cp->blocks, cb, entry);
 			control_free_block(cs, cb);

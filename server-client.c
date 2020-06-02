@@ -1779,7 +1779,9 @@ server_client_check_exit(struct client *c)
 	struct client_file	*cf;
 	const char		*name = c->exit_session;
 
-	if ((c->flags & CLIENT_EXITED) || (~c->flags & CLIENT_EXIT))
+	if (c->flags & (CLIENT_DEAD|CLIENT_EXITED))
+		return;
+	if (~c->flags & CLIENT_EXIT)
 		return;
 
 	if (c->flags & CLIENT_CONTROL) {

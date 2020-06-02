@@ -637,8 +637,6 @@ tty_keys_next(struct tty *tty)
 	struct mouse_event	 m = { 0 };
 	struct key_event	*event;
 
-	gettimeofday(&tv, NULL);
-
 	/* Get key buffer. */
 	buf = EVBUFFER_DATA(tty->in);
 	len = EVBUFFER_LENGTH(tty->in);
