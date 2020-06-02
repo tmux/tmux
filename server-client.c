@@ -1508,6 +1508,7 @@ server_client_check_pane_buffer(struct window_pane *wp)
 	struct window_pane_offset	*wpo;
 	int				 off = 1, flag;
 	u_int				 attached_clients = 0;
+	size_t				 new_size;
 
 	/*
 	 * Work out the minimum used size. This is the most that can be removed
@@ -1533,12 +1534,15 @@ server_client_check_pane_buffer(struct window_pane *wp)
 		if (!flag)
 			off = 0;
 
-		log_debug("%s: %s has %zu bytes used for %%%u", __func__,
-		    c->name, wpo->used - wp->base_offset, wp->id);
-		if (wpo->used - wp->base_offset > SERVER_CLIENT_PANE_LIMIT) {
+		window_pane_get_new_data(wp, wpo, &new_size);
+		log_debug("%s: %s has %zu bytes used and %zu left for %%%u",
+		    __func__, c->name, wpo->used - wp->base_offset, new_size,
+		    wp->id);
+		if (new_size > SERVER_CLIENT_PANE_LIMIT) {
 			control_flush(c);
 			c->flags |= CLIENT_EXIT;
-		} else if (wpo->used < minimum)
+		}
+		if (wpo->used < minimum)
 			minimum = wpo->used;
 	}
 	if (attached_clients == 0)
@@ -1773,7 +1777,9 @@ server_client_check_exit(struct client *c)
 	struct client_file	*cf;
 	const char		*name = c->exit_session;
 
-	if ((c->flags & CLIENT_EXITED) || (~c->flags & CLIENT_EXIT))
+	if (c->flags & (CLIENT_DEAD|CLIENT_EXITED))
+		return;
+	if (~c->flags & CLIENT_EXIT)
 		return;
 
 	if (c->flags & CLIENT_CONTROL) {
