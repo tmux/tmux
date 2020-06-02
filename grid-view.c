@@ -45,6 +45,13 @@ grid_view_set_cell(struct grid *gd, u_int px, u_int py,
 	grid_set_cell(gd, grid_view_x(gd, px), grid_view_y(gd, py), gc);
 }
 
+/* Set padding. */
+void
+grid_view_set_padding(struct grid *gd, u_int px, u_int py)
+{
+	grid_set_padding(gd, grid_view_x(gd, px), grid_view_y(gd, py));
+}
+
 /* Set cells. */
 void
 grid_view_set_cells(struct grid *gd, u_int px, u_int py,
