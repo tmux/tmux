@@ -40,8 +40,16 @@ const struct grid_cell grid_default_cell = {
 	{ { ' ' }, 0, 1, 1 }, 0, 0, 8, 8, 0
 };
 
+/*
+ * Padding grid cell data. Padding cells are the only zero width cell that
+ * appears in the grid - because of this, they are always extended cells.
+ */
+static const struct grid_cell grid_padding_cell = {
+	{ { '!' }, 0, 0, 0 }, 0, GRID_FLAG_PADDING, 8, 8, 0
+};
+
 /* Cleared grid cell data. */
-const struct grid_cell grid_cleared_cell = {
+static const struct grid_cell grid_cleared_cell = {
 	{ { ' ' }, 0, 1, 1 }, 0, GRID_FLAG_CLEARED, 8, 8, 0
 };
 static const struct grid_cell_entry grid_cleared_entry = {
@@ -524,7 +532,7 @@ grid_get_cell(struct grid *gd, u_int px, u_int py, struct grid_cell *gc)
 		grid_get_cell1(&gd->linedata[py], px, gc);
 }
 
-/* Set cell at relative position. */
+/* Set cell at position. */
 void
 grid_set_cell(struct grid *gd, u_int px, u_int py, const struct grid_cell *gc)
 {
@@ -547,7 +555,14 @@ grid_set_cell(struct grid *gd, u_int px, u_int py, const struct grid_cell *gc)
 		grid_store_cell(gce, gc, gc->data.data[0]);
 }
 
-/* Set cells at relative position. */
+/* Set padding at position. */
+void
+grid_set_padding(struct grid *gd, u_int px, u_int py)
+{
+	grid_set_cell(gd, px, py, &grid_padding_cell);
+}
+
+/* Set cells at position. */
 void
 grid_set_cells(struct grid *gd, u_int px, u_int py, const struct grid_cell *gc,
     const char *s, size_t slen)

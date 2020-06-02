@@ -1380,9 +1380,10 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 			screen_select_cell(s, &last, gcp);
 		else
 			memcpy(&last, gcp, sizeof last);
-		if (!tty_check_overlay(tty, atx + ux, aty))
-			ux += gcp->data.width;
-		else if (ux + gcp->data.width > nx) {
+		if (!tty_check_overlay(tty, atx + ux, aty)) {
+			if (~gcp->flags & GRID_FLAG_PADDING)
+				ux += gcp->data.width;
+		} else if (ux + gcp->data.width > nx) {
 			tty_attributes(tty, &last, defaults, palette);
 			tty_cursor(tty, atx + ux, aty);
 			for (j = 0; j < gcp->data.width; j++) {
@@ -1397,7 +1398,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 			for (j = 0; j < gcp->data.size; j++)
 				tty_putc(tty, gcp->data.data[j]);
 			ux += gcp->data.width;
-		} else {
+		} else if (~gcp->flags & GRID_FLAG_PADDING) {
 			memcpy(buf + len, gcp->data.data, gcp->data.size);
 			len += gcp->data.size;
 			width += gcp->data.width;
