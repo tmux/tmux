@@ -162,14 +162,14 @@ utf8_from_data(const struct utf8_data *ud, utf8_char *uc)
 		m.data[1] = (offset >> 8) & 0xff;
 		m.data[2] = (offset >> 16);
 	}
-	*uc = m.uc;
+	*uc = htonl(m.uc);
 	return (UTF8_DONE);
 
 fail:
 	if (ud->width == 1)
-		*uc = utf8_space1.uc;
+		*uc = htonl(utf8_space1.uc);
 	else
-		*uc = utf8_space2.uc;
+		*uc = htonl(utf8_space2.uc);
 	return (UTF8_ERROR);
 }
 
@@ -177,7 +177,7 @@ fail:
 void
 utf8_to_data(utf8_char uc, struct utf8_data *ud)
 {
-	union utf8_map		 m = { .uc = uc };
+	union utf8_map		 m = { .uc = ntohl(uc) };
 	struct utf8_item	*ui;
 	u_int			 offset;
 
@@ -210,7 +210,7 @@ utf8_build_one(char c, u_int width)
 
 	if (width == 2)
 		m.flags |= UTF8_FLAG_WIDTH2;
-	return (m.uc);
+	return (htonl(m.uc));
 }
 
 /* Set a single character. */
