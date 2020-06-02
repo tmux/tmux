@@ -3628,6 +3628,8 @@ window_copy_get_selection(struct window_mode_entry *wme, size_t *len)
 		buf = window_copy_match_at_cursor(data);
 		if (buf != NULL)
 			*len = strlen(buf);
+		else
+			*len = 0;
 		return (buf);
 	}
 
@@ -3719,6 +3721,7 @@ window_copy_get_selection(struct window_mode_entry *wme, size_t *len)
 	/* Don't bother if no data. */
 	if (off == 0) {
 		free(buf);
+		*len = 0;
 		return (NULL);
 	}
 	if (keys == MODEKEY_EMACS || lastex <= ey_last)
@@ -3753,9 +3756,6 @@ window_copy_copy_pipe(struct window_mode_entry *wme, struct session *s,
 	struct job	*job;
 
 	buf = window_copy_get_selection(wme, &len);
-	if (buf == NULL)
-		return;
-
 	if (cmd == NULL || *cmd == '\0')
 		cmd = options_get_string(global_options, "copy-command");
 	if (cmd != NULL && *cmd != '\0') {
@@ -3763,7 +3763,8 @@ window_copy_copy_pipe(struct window_mode_entry *wme, struct session *s,
 		    -1, -1);
 		bufferevent_write(job_get_event(job), buf, len);
 	}
-	window_copy_copy_buffer(wme, prefix, buf, len);
+	if (buf != NULL)
+		window_copy_copy_buffer(wme, prefix, buf, len);
 }
 
 static void

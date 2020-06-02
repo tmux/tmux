@@ -55,19 +55,26 @@ union utf8_map {
 	utf8_char	uc;
 	struct {
 		u_char	flags;
-#define UTF8_FLAG_SIZE 0x1f
-#define UTF8_FLAG_WIDTH2 0x20
-
 		u_char	data[3];
 	};
 } __packed;
 
+#define UTF8_GET_SIZE(flags) ((flags) & 0x1f)
+#define UTF8_GET_WIDTH(flags) (((flags) >> 5) - 1)
+
+#define UTF8_SET_SIZE(size) (size)
+#define UTF8_SET_WIDTH(width) ((width + 1) << 5)
+
+static const union utf8_map utf8_space0 = {
+	.flags = UTF8_SET_WIDTH(0)|UTF8_SET_SIZE(0),
+	.data = ""
+};
 static const union utf8_map utf8_space1 = {
-	.flags = 1,
+	.flags = UTF8_SET_WIDTH(1)|UTF8_SET_SIZE(1),
 	.data = " "
 };
 static const union utf8_map utf8_space2 = {
-	.flags = UTF8_FLAG_WIDTH2|2,
+	.flags = UTF8_SET_WIDTH(2)|UTF8_SET_SIZE(2),
 	.data = "  "
 };
 
@@ -134,24 +141,12 @@ utf8_from_data(const struct utf8_data *ud, utf8_char *uc)
 	union utf8_map	 m = { .uc = 0 };
 	u_int		 offset;
 
-	if (ud->width == 0)
-		goto fail;
-	if (ud->width != 1 && ud->width != 2)
+	if (ud->width > 2)
 		fatalx("invalid UTF-8 width");
-	if (ud->size == 0)
-		fatalx("invalid UTF-8 size");
 
-	if (ud->size > UTF8_FLAG_SIZE)
+	if (ud->size > UTF8_SIZE)
 		goto fail;
-	if (ud->size == 1) {
-		*uc = utf8_build_one(ud->data[0], 1);
-		return (UTF8_DONE);
-	}
-
-	m.flags = ud->size;
-	if (ud->width == 2)
-		m.flags |= UTF8_FLAG_WIDTH2;
-
+	m.flags = UTF8_SET_SIZE(ud->size)|UTF8_SET_WIDTH(ud->width);
 	if (ud->size <= 3)
 		memcpy(m.data, ud->data, ud->size);
 	else {
@@ -165,7 +160,9 @@ utf8_from_data(const struct utf8_data *ud, utf8_char *uc)
 	return (UTF8_DONE);
 
 fail:
-	if (ud->width == 1)
+	if (ud->width == 0)
+		*uc = htonl(utf8_space0.uc);
+	else if (ud->width == 1)
 		*uc = htonl(utf8_space1.uc);
 	else
 		*uc = htonl(utf8_space2.uc);
@@ -181,11 +178,8 @@ utf8_to_data(utf8_char uc, struct utf8_data *ud)
 	u_int			 offset;
 
 	memset(ud, 0, sizeof *ud);
-	ud->size = ud->have = (m.flags & UTF8_FLAG_SIZE);
-	if (m.flags & UTF8_FLAG_WIDTH2)
-		ud->width = 2;
-	else
-		ud->width = 1;
+	ud->size = ud->have = UTF8_GET_SIZE(m.flags);
+	ud->width = UTF8_GET_WIDTH(m.flags);
 
 	if (ud->size <= 3) {
 		memcpy(ud->data, m.data, ud->size);
@@ -203,12 +197,12 @@ utf8_to_data(utf8_char uc, struct utf8_data *ud)
 
 /* Get UTF-8 character from a single ASCII character. */
 u_int
-utf8_build_one(char c, u_int width)
+utf8_build_one(u_char ch)
 {
-	union utf8_map	m = { .flags = 1, .data[0] = c };
+	union utf8_map	m;
 
-	if (width == 2)
-		m.flags |= UTF8_FLAG_WIDTH2;
+	m.flags = UTF8_SET_SIZE(1)|UTF8_SET_WIDTH(1);
+	m.data[0] = ch;
 	return (htonl(m.uc));
 }
 

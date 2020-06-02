@@ -2904,7 +2904,7 @@ u_int		 session_group_attached_count(struct session_group *);
 void		 session_renumber_windows(struct session *);
 
 /* utf8.c */
-utf8_char	 utf8_build_one(char, u_int);
+utf8_char	 utf8_build_one(u_char);
 enum utf8_state	 utf8_from_data(const struct utf8_data *, utf8_char *);
 void		 utf8_to_data(utf8_char, struct utf8_data *);
 void		 utf8_set(struct utf8_data *, u_char);
