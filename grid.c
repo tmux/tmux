@@ -76,7 +76,7 @@ grid_need_extended_cell(const struct grid_cell_entry *gce,
 		return (1);
 	if (gc->attr > 0xff)
 		return (1);
-	if (gc->data.size > 1 || gc->data.width > 1)
+	if (gc->data.size != 1 || gc->data.width != 1)
 		return (1);
 	if ((gc->fg & COLOUR_FLAG_RGB) || (gc->bg & COLOUR_FLAG_RGB))
 		return (1);
@@ -570,7 +570,7 @@ grid_set_cells(struct grid *gd, u_int px, u_int py, const struct grid_cell *gc,
 		gce = &gl->celldata[px + i];
 		if (grid_need_extended_cell(gce, gc)) {
 			gee = grid_extended_cell(gl, gce, gc);
-			gee->data = utf8_build_one(s[i], 1);
+			gee->data = utf8_build_one(s[i]);
 		} else
 			grid_store_cell(gce, gc, s[i]);
 	}
