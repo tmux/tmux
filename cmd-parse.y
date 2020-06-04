@@ -535,9 +535,11 @@ argument_statements	: statement '}'
 			{
 				$$ = $1;
 			}
-			| statements '}'
+			| statements statement '}'
 			{
 				$$ = $1;
+				TAILQ_CONCAT($$, $2, entry);
+				free($2);
 			}
 
 %%
