@@ -226,6 +226,11 @@ args_escape(const char *s)
 		return (escaped);
 	}
 
+	if (strchr(s, ' ') != NULL && strchr(s, '\'') == NULL) {
+		xasprintf(&escaped, "'%s'", s);
+		return (escaped);
+	}
+
 	flags = VIS_OCTAL|VIS_CSTYLE|VIS_TAB|VIS_NL;
 	if (s[strcspn(s, quoted)] != '\0')
 		flags |= VIS_DQ;
