@@ -1,5 +1,26 @@
 CHANGES FROM 3.1b TO 3.2
 
+* Add support for extended keys - both xterm(1)'s CSI 27 ~ sequence and the
+  libtickit CSI u sequence are accepted; only the latter is output. tmux will
+  only attempt to use these if the extended-keys option is on and it can detect
+  that the terminal outside supports them (or is told it does with the
+  "extkeys" terminal feature).
+
+* Add an option to set the pane border lines style from a choice of single
+  lines (ACS or UTF-8), double or heavy (UTF-8), simple (plain ASCII) or number
+  (the pane numbers). Lines that won't work on a non-UTF-8 terminal are
+  translated back into ACS when they are output.
+
+* Make focus events update the latest client (like a key press).
+
+* Store UTF-8 characters differently to reduce memory use.
+
+* Fix break-pane -n when only one pane in the window.
+
+* Instead of sending all data to control mode clients as fast as possible, add
+  a limit of how much data will be sent to the client and try to use it for
+  panes with some degree of fairness.
+
 * Add an active-pane client flag (set with attach-session -f, new-session -f
   or refresh-client -f). This allows a client to have an independent active
   pane for interactive use (the window client pane is still used for many
