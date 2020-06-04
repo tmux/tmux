@@ -649,6 +649,8 @@ grid_clear_lines(struct grid *gd, u_int py, u_int ny, u_int bg)
 		grid_free_line(gd, yy);
 		grid_empty_line(gd, yy, bg);
 	}
+	if (py != 0)
+		gd->linedata[py - 1].flags &= ~GRID_LINE_WRAPPED;
 }
 
 /* Move a group of lines. */
@@ -675,6 +677,8 @@ grid_move_lines(struct grid *gd, u_int dy, u_int py, u_int ny, u_int bg)
 			continue;
 		grid_free_line(gd, yy);
 	}
+	if (dy != 0)
+		gd->linedata[dy - 1].flags &= ~GRID_LINE_WRAPPED;
 
 	memmove(&gd->linedata[dy], &gd->linedata[py],
 	    ny * (sizeof *gd->linedata));
@@ -687,7 +691,10 @@ grid_move_lines(struct grid *gd, u_int dy, u_int py, u_int ny, u_int bg)
 		if (yy < dy || yy >= dy + ny)
 			grid_empty_line(gd, yy, bg);
 	}
+	if (py != 0 && (py < dy || py >= dy + ny))
+		gd->linedata[py - 1].flags &= ~GRID_LINE_WRAPPED;
 }
+
 
 /* Move a group of cells. */
 void
