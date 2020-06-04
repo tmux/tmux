@@ -2979,6 +2979,21 @@ window_copy_visible_lines(struct window_copy_mode_data *data, u_int *start,
 }
 
 static int
+window_copy_search_mark_at(struct window_copy_mode_data *data, u_int px, u_int py,
+    u_int *at)
+{
+	struct screen	*s = data->backing;
+	struct grid	*gd = s->grid;
+
+	if (py < gd->hsize - data->oy)
+		return (-1);
+	if (py > gd->hsize - data->oy + gd->sy - 1)
+		return (-1);
+	*at = ((py - (gd->hsize - data->oy)) * gd->sx) + px;
+	return (0);
+}
+
+static int
 window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
     int regex, int visible_only)
 {
@@ -3031,7 +3046,7 @@ window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
 
 again:
 	free(data->searchmark);
-	data->searchmark = xcalloc(gd->hsize + gd->sy, gd->sx);
+	data->searchmark = xcalloc(gd->sx, gd->sy);
 	data->searchgen = 1;
 
 	for (py = start; py < end; py++) {
@@ -3054,13 +3069,16 @@ again:
 			    py == gd->hsize + data->cy - data->oy)
 				which = nfound;
 
-			b = (py * gd->sx) + px;
-			for (i = b; i < b + width; i++)
-				data->searchmark[i] = data->searchgen;
-			if (data->searchgen == UCHAR_MAX)
-				data->searchgen = 1;
-			else
-				data->searchgen++;
+			if (window_copy_search_mark_at(data, px, py, &b) == 0) {
+				if (b + width > gd->sx * gd->sy)
+					width = (gd->sx * gd->sy) - b;
+				for (i = b; i < b + width; i++)
+					data->searchmark[i] = data->searchgen;
+				if (data->searchgen == UCHAR_MAX)
+					data->searchgen = 1;
+				else
+					data->searchgen++;
+			}
 
 			px++;
 		}
@@ -3163,7 +3181,7 @@ window_copy_match_start_end(struct window_copy_mode_data *data, u_int at,
     u_int *start, u_int *end)
 {
 	struct grid	*gd = data->backing->grid;
-	u_int		 last = (gd->hsize + gd->sy) * gd->sx - 1;
+	u_int		 last = (gd->sy * gd->sx) - 1;
 	u_char		 mark = data->searchmark[at];
 
 	*start = *end = at;
@@ -3191,7 +3209,8 @@ window_copy_match_at_cursor(struct window_copy_mode_data *data)
 		return (NULL);
 
 	cy = screen_hsize(data->backing) - data->oy + data->cy;
-	at = (cy * sx) + data->cx;
+	if (window_copy_search_mark_at(data, data->cx, cy, &at) != 0)
+		return (NULL);
 	if (data->searchmark[at] == 0)
 		return (NULL);
 	window_copy_match_start_end(data, at, &start, &end);
@@ -3204,7 +3223,7 @@ window_copy_match_at_cursor(struct window_copy_mode_data *data)
 		py = at / sx;
 		px = at - (py * sx);
 
-		grid_get_cell(gd, px, py, &gc);
+		grid_get_cell(gd, px, gd->hsize + py - data->oy, &gc);
 		buf = xrealloc(buf, len + gc.data.size + 1);
 		memcpy(buf + len, gc.data.data, gc.data.size);
 		len += gc.data.size;
@@ -3221,7 +3240,6 @@ window_copy_update_style(struct window_mode_entry *wme, u_int fx, u_int fy,
 {
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 mark, start, end, cy, cursor, current;
-	u_int				 sx = screen_size_x(data->backing);
 	int				 inv = 0;
 
 	if (data->showmark && fy == data->my) {
@@ -3241,15 +3259,15 @@ window_copy_update_style(struct window_mode_entry *wme, u_int fx, u_int fy,
 	if (data->searchmark == NULL)
 		return;
 
-	current = (fy * sx) + fx;
-
+	if (window_copy_search_mark_at(data, fx, fy, &current) != 0)
+		return;
 	mark = data->searchmark[current];
 	if (mark == 0)
 		return;
 
 	cy = screen_hsize(data->backing) - data->oy + data->cy;
-	cursor = (cy * sx) + data->cx;
-	if (data->searchmark[cursor] == mark) {
+	if (window_copy_search_mark_at(data, data->cx, cy, &cursor) == 0 &&
+	    data->searchmark[cursor] == mark) {
 		window_copy_match_start_end(data, cursor, &start, &end);
 		if (current >= start && current <= end) {
 			gc->attr = cgc->attr;
