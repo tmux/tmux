@@ -1494,24 +1494,33 @@ yylex_token(int ch)
 	buf = xmalloc(1);
 
 	for (;;) {
-		/*
-		 * EOF or \n are always the end of the token. If inside quotes
-		 * they are an error.
-		 */
-		if (ch == EOF || ch == '\n') {
-			if (state != NONE)
-				goto error;
+		/* EOF or \n are always the end of the token. */
+		if (ch == EOF || (state == NONE && ch == '\n'))
 			break;
-		}
 
-		/* Whitespace or ; ends a token unless inside quotes. */
+		/* Whitespace or ; or } ends a token unless inside quotes. */
 		if ((ch == ' ' || ch == '\t' || ch == ';' || ch == '}') &&
 		    state == NONE)
 			break;
 
-		/*
-		 * \ ~ and $ are expanded except in single quotes.
-		 */
+		/* Spaces and comments inside quotes after \n are removed. */
+		if (ch == '\n' && state != NONE) {
+			while ((ch = yylex_getc()) == ' ' || ch == '\t')
+				/* nothing */;
+			if (ch != '#')
+				continue;
+			ch = yylex_getc();
+			if (strchr(",#{}:", ch) != NULL) {
+				yylex_ungetc(ch);
+				ch = '#';
+			} else {
+				while ((ch = yylex_getc()) != '\n' && ch != EOF)
+					/* nothing */;
+			}
+			continue;
+		}
+
+		/* \ ~ and $ are expanded except in single quotes. */
 		if (ch == '\\' && state != SINGLE_QUOTES) {
 			if (!yylex_token_escape(&buf, &len))
 				goto error;
@@ -1530,9 +1539,7 @@ yylex_token(int ch)
 		if (ch == '}' && state == NONE)
 			goto error;  /* unmatched (matched ones were handled) */
 
-		/*
-		 * ' and " starts or end quotes (and is consumed).
-		 */
+		/* ' and " starts or end quotes (and is consumed). */
 		if (ch == '\'') {
 			if (state == NONE) {
 				state = SINGLE_QUOTES;
@@ -1554,9 +1561,7 @@ yylex_token(int ch)
 			}
 		}
 
-		/*
-		 * Otherwise add the character to the buffer.
-		 */
+		/* Otherwise add the character to the buffer. */
 		yylex_append1(&buf, &len, ch);
 
 	skip:
