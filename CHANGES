@@ -1,5 +1,21 @@
 CHANGES FROM 3.1b TO 3.2
 
+* Add support for pausing a pane when the output buffered for a control mode
+  client gets too far behind. The pause-after flag with a time is set on the
+  pane with refresh-client -f and a paused pane may be resumed with
+  refresh-client -A.
+
+* Allow strings in configuration files to span multiple lines - newlines and
+  any leading whitespace are removed, as well as any following comments that
+  couldn't be part of a format. This allows long formats or other strings to be
+  annotated and indented.
+
+* Instead of using a custom parse function to process {} in configuration
+  files, treat as a set of statements the same as outside {} and convert back
+  to a string as the last step. This means the rules are consistent inside and
+  outside {}, %if and friends work at the right time, and the final result
+  isn't littered with unnecessary newlines.
+
 * Add support for extended keys - both xterm(1)'s CSI 27 ~ sequence and the
   libtickit CSI u sequence are accepted; only the latter is output. tmux will
   only attempt to use these if the extended-keys option is on and it can detect
