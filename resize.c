@@ -227,7 +227,7 @@ done:
 }
 
 void
-recalculate_size(struct window *w)
+recalculate_size(struct window *w, int now)
 {
 	struct session	*s;
 	struct client	*c;
@@ -348,10 +348,10 @@ recalculate_size(struct window *w)
 		break;
 	}
 	if (w->flags & WINDOW_RESIZE) {
-		if (changed && w->new_sx == sx && w->new_sy == sy)
+		if (!now && changed && w->new_sx == sx && w->new_sy == sy)
 			changed = 0;
 	} else {
-		if (changed && w->sx == sx && w->sy == sy)
+		if (!now && changed && w->sx == sx && w->sy == sy)
 			changed = 0;
 	}
 
@@ -360,7 +360,7 @@ recalculate_size(struct window *w)
 		return;
 	}
 	log_debug("%s: @%u new size %u,%u", __func__, w->id, sx, sy);
-	if (type == WINDOW_SIZE_MANUAL)
+	if (now || type == WINDOW_SIZE_MANUAL)
 		resize_window(w, sx, sy, xpixel, ypixel);
 	else {
 		w->new_sx = sx;
@@ -375,6 +375,12 @@ recalculate_size(struct window *w)
 
 void
 recalculate_sizes(void)
+{
+	recalculate_sizes_now(0);
+}
+
+void
+recalculate_sizes_now(int now)
 {
 	struct session	*s;
 	struct client	*c;
@@ -407,5 +413,5 @@ recalculate_sizes(void)
 
 	/* Walk each window and adjust the size. */
 	RB_FOREACH(w, windows, &windows)
-		recalculate_size(w);
+		recalculate_size(w, now);
 }

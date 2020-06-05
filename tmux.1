@@ -977,14 +977,18 @@ detaching the client, typically causing it to exit.
 sets a comma-separated list of client flags.
 The flags are:
 .Bl -tag -width Ds
-.It read-only
-the client is read-only
+.It active-pane
+the client has an independent active pane
 .It ignore-size
 the client does not affect the size of other clients
 .It no-output
 the client does not receive pane output in control mode
-.It active-pane
-the client has an independent active pane
+.It pause-after=seconds
+output is paused once the pane is
+.Ar seconds
+behind in control mode
+.It read-only
+the client is read-only
 .El
 .Pp
 A leading
@@ -1295,22 +1299,27 @@ it.
 .Fl C
 sets the width and height of a control mode client.
 .Fl A
-informs
-.Nm
-of a control mode client's interest in a pane.
+allows a control mode client to trigger actions on a pane.
 The argument is a pane ID (with leading
 .Ql % ) ,
 a colon, then one of
-.Ql on
+.Ql on ,
+.Ql off
 or
-.Ql off .
+.Ql continue .
 If
 .Ql off ,
 .Nm
 will not send output from the pane to the client and if all clients have turned
 the pane off, will stop reading from the pane.
+If
+.Ql continue ,
+.Nm
+will return to sending output to a paused pane (see the
+.Ar pause-after
+flag).
 .Fl A
-may be given multiple times.
+may be given multiple times for different panes.
 .Pp
 .Fl f
 sets a comma-separated list of client flags, see
@@ -3345,6 +3354,10 @@ Allows setting the system clipboard.
 Allows setting the cursor colour.
 .It cstyle
 Allows setting the cursor style.
+.It extkeys
+Supports extended keys.
+.It focus
+Supports focus reporting.
 .It margins
 Supports DECSLRM margins.
 .It overline
@@ -3353,6 +3366,8 @@ Supports the overline SGR attribute.
 Supports the DECFRA rectangle fill escape sequence.
 .It RGB
 Supports RGB colour with the SGR escape sequences.
+.It strikethrough
+Supports the strikethrough SGR escape sequence.
 .It sync
 Supports synchronized updates.
 .It title
@@ -5881,6 +5896,12 @@ The client is now attached to the session with ID
 .Ar session-id ,
 which is named
 .Ar name .
+.It Ic %continue Ar pane-id
+The pane has been continued after being paused (if the
+.Ar pause-after
+flag is set, see
+.Ic refresh-client
+.Fl A ) .
 .It Ic %exit Op Ar reason
 The
 .Nm
@@ -5907,6 +5928,10 @@ escapes non-printable characters and backslash as octal \\xxx.
 The pane with ID
 .Ar pane-id
 has changed mode.
+.It Ic %pause Ar pane-id
+The pane has been paused (if the
+.Ar pause-after
+flag is set).
 .It Ic %session-changed Ar session-id Ar name
 The client is now attached to the session with ID
 .Ar session-id ,

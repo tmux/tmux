@@ -1575,7 +1575,9 @@ struct client {
 	struct cmdq_list *queue;
 
 	struct client_windows windows;
+
 	struct control_state *control_state;
+	u_int		 pause_age;
 
 	pid_t		 pid;
 	int		 fd;
@@ -1643,6 +1645,7 @@ struct client {
 #define CLIENT_REDRAWPANES 0x20000000
 #define CLIENT_NOFORK 0x40000000
 #define CLIENT_ACTIVEPANE 0x80000000ULL
+#define CLIENT_CONTROL_PAUSEAFTER 0x100000000ULL
 #define CLIENT_ALLREDRAWFLAGS		\
 	(CLIENT_REDRAWWINDOW|		\
 	 CLIENT_REDRAWSTATUS|		\
@@ -2449,8 +2452,9 @@ void	 status_prompt_save_history(void);
 void	 resize_window(struct window *, u_int, u_int, int, int);
 void	 default_window_size(struct client *, struct session *, struct window *,
 	     u_int *, u_int *, u_int *, u_int *, int);
-void	 recalculate_size(struct window *);
+void	 recalculate_size(struct window *, int);
 void	 recalculate_sizes(void);
+void	 recalculate_sizes_now(int);
 
 /* input.c */
 struct input_ctx *input_init(struct window_pane *, struct bufferevent *);
@@ -2837,11 +2841,12 @@ char	*default_window_name(struct window *);
 char	*parse_window_name(const char *);
 
 /* control.c */
-void	control_flush(struct client *);
+void	control_discard(struct client *);
 void	control_start(struct client *);
 void	control_stop(struct client *);
 void	control_set_pane_on(struct client *, struct window_pane *);
 void	control_set_pane_off(struct client *, struct window_pane *);
+void	control_continue_pane(struct client *, struct window_pane *);
 struct window_pane_offset *control_pane_offset(struct client *,
 	   struct window_pane *, int *);
 void	control_reset_offsets(struct client *);

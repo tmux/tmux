@@ -65,6 +65,7 @@ struct control_pane {
 
 	int				 flags;
 #define CONTROL_PANE_OFF 0x1
+#define CONTROL_PANE_PAUSED 0x2
 
 	int				 pending_flag;
 	TAILQ_ENTRY(control_pane)	 pending_entry;
@@ -153,6 +154,19 @@ control_add_pane(struct client *c, struct window_pane *wp)
 	return (cp);
 }
 
+/* Discard output for a pane. */
+static void
+control_discard_pane(struct client *c, struct control_pane *cp)
+{
+	struct control_state	*cs = c->control_state;
+	struct control_block	*cb, *cb1;
+
+	TAILQ_FOREACH_SAFE(cb, &cp->blocks, entry, cb1) {
+		TAILQ_REMOVE(&cp->blocks, cb, entry);
+		control_free_block(cs, cb);
+	}
+}
+
 /* Get actual pane for this client. */
 static struct window_pane *
 control_window_pane(struct client *c, u_int pane)
@@ -197,7 +211,7 @@ control_pane_offset(struct client *c, struct window_pane *wp, int *off)
 	}
 
 	cp = control_get_pane(c, wp);
-	if (cp == NULL) {
+	if (cp == NULL || (cp->flags & CONTROL_PANE_PAUSED)) {
 		*off = 0;
 		return (NULL);
 	}
@@ -216,7 +230,7 @@ control_set_pane_on(struct client *c, struct window_pane *wp)
 	struct control_pane	*cp;
 
 	cp = control_get_pane(c, wp);
-	if (cp != NULL) {
+	if (cp != NULL && (cp->flags & CONTROL_PANE_OFF)) {
 		cp->flags &= ~CONTROL_PANE_OFF;
 		memcpy(&cp->offset, &wp->offset, sizeof cp->offset);
 		memcpy(&cp->queued, &wp->offset, sizeof cp->queued);
@@ -231,6 +245,21 @@ control_set_pane_off(struct client *c, struct window_pane *wp)
 
 	cp = control_add_pane(c, wp);
 	cp->flags |= CONTROL_PANE_OFF;
+}
+
+/* Continue a paused pane. */
+void
+control_continue_pane(struct client *c, struct window_pane *wp)
+{
+	struct control_pane	*cp;
+
+	cp = control_get_pane(c, wp);
+	if (cp != NULL && (cp->flags & CONTROL_PANE_PAUSED)) {
+		cp->flags &= ~CONTROL_PANE_PAUSED;
+		memcpy(&cp->offset, &wp->offset, sizeof cp->offset);
+		memcpy(&cp->queued, &wp->offset, sizeof cp->queued);
+		control_write(c, "%%continue %%%u", wp->id);
+	}
 }
 
 /* Write a line. */
@@ -285,6 +314,7 @@ control_write_output(struct client *c, struct window_pane *wp)
 	struct control_pane	*cp;
 	struct control_block	*cb;
 	size_t			 new_size;
+	uint64_t		 t;
 
 	if (winlink_find_by_window(&c->session->windows, wp->window) == NULL)
 		return;
@@ -296,8 +326,22 @@ control_write_output(struct client *c, struct window_pane *wp)
 		return;
 	}
 	cp = control_add_pane(c, wp);
-	if (cp->flags & CONTROL_PANE_OFF)
+	if (cp->flags & (CONTROL_PANE_OFF|CONTROL_PANE_PAUSED))
 		goto ignore;
+	if (c->flags & CLIENT_CONTROL_PAUSEAFTER) {
+		cb = TAILQ_FIRST(&cp->blocks);
+		if (cb != NULL) {
+			t = get_timer();
+			log_debug("%s: %s: %%%u is %lld behind", __func__,
+			    c->name, wp->id, (long long)t - cb->t);
+			if (cb->t < t - c->pause_age) {
+				cp->flags |= CONTROL_PANE_PAUSED;
+				control_discard_pane(c, cp);
+				control_write(c, "%%pause %%%u", wp->id);
+				return;
+			}
+		}
+	}
 
 	window_pane_get_new_data(wp, &cp->queued, &new_size);
 	if (new_size == 0)
@@ -585,20 +629,15 @@ control_start(struct client *c)
 	}
 }
 
-/* Flush all output for a client that is detaching. */
+/* Discard all output for a client. */
 void
-control_flush(struct client *c)
+control_discard(struct client *c)
 {
 	struct control_state	*cs = c->control_state;
 	struct control_pane	*cp;
-	struct control_block	*cb, *cb1;
 
-	RB_FOREACH(cp, control_panes, &cs->panes) {
-		TAILQ_FOREACH_SAFE(cb, &cp->blocks, entry, cb1) {
-			TAILQ_REMOVE(&cp->blocks, cb, entry);
-			control_free_block(cs, cb);
-		}
-	}
+	RB_FOREACH(cp, control_panes, &cs->panes)
+		control_discard_pane(c, cp);
 }
 
 /* Stop control mode. */

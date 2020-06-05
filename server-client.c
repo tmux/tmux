@@ -1093,7 +1093,7 @@ server_client_update_latest(struct client *c)
 	w->latest = c;
 
 	if (options_get_number(w->options, "window-size") == WINDOW_SIZE_LATEST)
-		recalculate_size(w);
+		recalculate_size(w, 0);
 }
 
 /*
@@ -1541,7 +1541,7 @@ server_client_check_pane_buffer(struct window_pane *wp)
 		    __func__, c->name, wpo->used - wp->base_offset, new_size,
 		    wp->id);
 		if (new_size > SERVER_CLIENT_PANE_LIMIT) {
-			control_flush(c);
+			control_discard(c);
 			c->flags |= CLIENT_EXIT;
 		}
 		if (wpo->used < minimum)
@@ -1785,7 +1785,7 @@ server_client_check_exit(struct client *c)
 		return;
 
 	if (c->flags & CLIENT_CONTROL) {
-		control_flush(c);
+		control_discard(c);
 		if (!control_all_done(c))
 			return;
 	}
@@ -2362,6 +2362,23 @@ server_client_get_cwd(struct client *c, struct session *s)
 	return ("/");
 }
 
+/* Get control client flags. */
+static uint64_t
+server_client_control_flags(struct client *c, const char *next)
+{
+	if (strcmp(next, "pause-after") == 0) {
+		c->pause_age = 0;
+		return (CLIENT_CONTROL_PAUSEAFTER);
+	}
+	if (sscanf(next, "pause-after=%u", &c->pause_age) == 1) {
+		c->pause_age *= 1000;
+		return (CLIENT_CONTROL_PAUSEAFTER);
+	}
+	if (strcmp(next, "no-output") == 0)
+		return (CLIENT_CONTROL_NOOUTPUT);
+	return (0);
+}
+
 /* Set client flags. */
 void
 server_client_set_flags(struct client *c, const char *flags)
@@ -2376,11 +2393,10 @@ server_client_set_flags(struct client *c, const char *flags)
 		if (not)
 			next++;
 
-		flag = 0;
-		if (c->flags & CLIENT_CONTROL) {
-			if (strcmp(next, "no-output") == 0)
-				flag = CLIENT_CONTROL_NOOUTPUT;
-		}
+		if (c->flags & CLIENT_CONTROL)
+			flag = server_client_control_flags(c, next);
+		else
+			flag = 0;
 		if (strcmp(next, "read-only") == 0)
 			flag = CLIENT_READONLY;
 		else if (strcmp(next, "ignore-size") == 0)
@@ -2405,7 +2421,8 @@ server_client_set_flags(struct client *c, const char *flags)
 const char *
 server_client_get_flags(struct client *c)
 {
-	static char s[256];
+	static char	s[256];
+	char	 	tmp[32];
 
 	*s = '\0';
 	if (c->flags & CLIENT_ATTACHED)
@@ -2416,6 +2433,11 @@ server_client_get_flags(struct client *c)
 		strlcat(s, "ignore-size,", sizeof s);
 	if (c->flags & CLIENT_CONTROL_NOOUTPUT)
 		strlcat(s, "no-output,", sizeof s);
+	if (c->flags & CLIENT_CONTROL_PAUSEAFTER) {
+		xsnprintf(tmp, sizeof tmp, "pause-after=%u,",
+		    c->pause_age / 1000);
+		strlcat(s, tmp, sizeof s);
+	}
 	if (c->flags & CLIENT_READONLY)
 		strlcat(s, "read-only,", sizeof s);
 	if (c->flags & CLIENT_ACTIVEPANE)
