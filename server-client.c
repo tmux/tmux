@@ -43,7 +43,6 @@ static void	server_client_check_redraw(struct client *);
 static void	server_client_set_title(struct client *);
 static void	server_client_reset_state(struct client *);
 static int	server_client_assume_paste(struct session *);
-static void	server_client_resize_event(int, short, void *);
 
 static void	server_client_dispatch(struct imsg *, void *);
 static void	server_client_dispatch_command(struct client *, struct imsg *);
@@ -1401,50 +1400,14 @@ server_client_check_window_resize(struct window *w)
 	resize_window(w, w->new_sx, w->new_sy, w->new_xpixel, w->new_ypixel);
 }
 
-/* Check if we need to force a resize. */
-static int
-server_client_resize_force(struct window_pane *wp)
-{
-	struct timeval	tv = { .tv_usec = 100000 };
-
-	/*
-	 * If we are resizing to the same size as when we entered the loop
-	 * (that is, to the same size the application currently thinks it is),
-	 * tmux may have gone through several resizes internally and thrown
-	 * away parts of the screen. So we need the application to actually
-	 * redraw even though its final size has not changed.
-	 */
-
-	if (wp->flags & PANE_RESIZEFORCE) {
-		wp->flags &= ~PANE_RESIZEFORCE;
-		return (0);
-	}
-
-	if (wp->sx != wp->osx ||
-	    wp->sy != wp->osy ||
-	    wp->sx <= 1 ||
-	    wp->sy <= 1)
-		return (0);
-
-	log_debug("%s: %%%u forcing resize", __func__, wp->id);
-	window_pane_send_resize(wp, -1);
-
-	evtimer_add(&wp->resize_timer, &tv);
-	wp->flags |= PANE_RESIZEFORCE;
-	return (1);
-}
-
-/* Resize a pane. */
+/* Resize timer event. */
 static void
-server_client_resize_pane(struct window_pane *wp)
+server_client_resize_timer(__unused int fd, __unused short events, void *data)
 {
-	log_debug("%s: %%%u resize to %u,%u", __func__, wp->id, wp->sx, wp->sy);
-	window_pane_send_resize(wp, 0);
+	struct window_pane	*wp = data;
 
-	wp->flags &= ~PANE_RESIZE;
-
-	wp->osx = wp->sx;
-	wp->osy = wp->sy;
+	log_debug("%s: %%%u resize timer expired", __func__, wp->id);
+	evtimer_del(&wp->resize_timer);
 }
 
 /* Start the resize timer. */
@@ -1453,49 +1416,74 @@ server_client_start_resize_timer(struct window_pane *wp)
 {
 	struct timeval	tv = { .tv_usec = 250000 };
 
-	if (!evtimer_pending(&wp->resize_timer, NULL))
-		evtimer_add(&wp->resize_timer, &tv);
+	log_debug("%s: %%%u resize timer started", __func__, wp->id);
+	evtimer_add(&wp->resize_timer, &tv);
 }
 
-/* Resize timer event. */
+/* Force timer event. */
 static void
-server_client_resize_event(__unused int fd, __unused short events, void *data)
+server_client_force_timer(__unused int fd, __unused short events, void *data)
 {
 	struct window_pane	*wp = data;
 
-	evtimer_del(&wp->resize_timer);
+	log_debug("%s: %%%u force timer expired", __func__, wp->id);
+	evtimer_del(&wp->force_timer);
+	wp->flags |= PANE_RESIZENOW;
+}
 
-	if (~wp->flags & PANE_RESIZE)
-		return;
-	log_debug("%s: %%%u timer fired (was%s resized)", __func__, wp->id,
-	    (wp->flags & PANE_RESIZED) ? "" : " not");
+/* Start the force timer. */
+static void
+server_client_start_force_timer(struct window_pane *wp)
+{
+	struct timeval	tv = { .tv_usec = 10000 };
 
-	if (wp->base.saved_grid == NULL && (wp->flags & PANE_RESIZED)) {
-		log_debug("%s: %%%u deferring timer", __func__, wp->id);
-		server_client_start_resize_timer(wp);
-	} else if (!server_client_resize_force(wp)) {
-		log_debug("%s: %%%u resizing pane", __func__, wp->id);
-		server_client_resize_pane(wp);
-	}
-	wp->flags &= ~PANE_RESIZED;
+	log_debug("%s: %%%u force timer started", __func__, wp->id);
+	evtimer_add(&wp->force_timer, &tv);
 }
 
 /* Check if pane should be resized. */
 static void
 server_client_check_pane_resize(struct window_pane *wp)
 {
+	if (!event_initialized(&wp->resize_timer))
+		evtimer_set(&wp->resize_timer, server_client_resize_timer, wp);
+	if (!event_initialized(&wp->force_timer))
+		evtimer_set(&wp->force_timer, server_client_force_timer, wp);
+
 	if (~wp->flags & PANE_RESIZE)
 		return;
+	log_debug("%s: %%%u needs to be resized", __func__, wp->id);
 
-	if (!event_initialized(&wp->resize_timer))
-		evtimer_set(&wp->resize_timer, server_client_resize_event, wp);
+	if (evtimer_pending(&wp->resize_timer, NULL)) {
+		log_debug("%s: %%%u resize timer is running", __func__, wp->id);
+		return;
+	}
+	server_client_start_resize_timer(wp);
 
-	if (!evtimer_pending(&wp->resize_timer, NULL)) {
-		log_debug("%s: %%%u starting timer", __func__, wp->id);
-		server_client_resize_pane(wp);
-		server_client_start_resize_timer(wp);
-	} else
-		log_debug("%s: %%%u timer running", __func__, wp->id);
+	if (~wp->flags & PANE_RESIZEFORCE) {
+		/*
+		 * The timer is not running and we don't need to force a
+		 * resize, so just resize immediately.
+		 */
+		log_debug("%s: resizing %%%u now", __func__, wp->id);
+		window_pane_send_resize(wp, 0);
+		wp->flags &= ~PANE_RESIZE;
+	} else {
+		/*
+		 * The timer is not running, but we need to force a resize. If
+		 * the force timer has expired, resize to the real size now.
+		 * Otherwise resize to the force size and start the timer.
+		 */
+		if (wp->flags & PANE_RESIZENOW) {
+			log_debug("%s: resizing %%%u after forced resize", __func__, wp->id);
+			window_pane_send_resize(wp, 0);
+			wp->flags &= ~(PANE_RESIZE|PANE_RESIZEFORCE|PANE_RESIZENOW);
+		} else if (!evtimer_pending(&wp->force_timer, NULL)) {
+			log_debug("%s: forcing resize of %%%u", __func__, wp->id);
+			window_pane_send_resize(wp, 1);
+			server_client_start_force_timer(wp);
+		}
+	}
 }
 
 /* Check pane buffer size. */
