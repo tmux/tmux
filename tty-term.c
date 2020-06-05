@@ -57,6 +57,7 @@ struct tty_term_code_entry {
 
 static const struct tty_term_code_entry tty_term_codes[] = {
 	[TTYC_ACSC] = { TTYCODE_STRING, "acsc" },
+	[TTYC_AM] = { TTYCODE_FLAG, "am" },
 	[TTYC_AX] = { TTYCODE_FLAG, "AX" },
 	[TTYC_BCE] = { TTYCODE_FLAG, "bce" },
 	[TTYC_BEL] = { TTYCODE_STRING, "bel" },
@@ -277,7 +278,6 @@ static const struct tty_term_code_entry tty_term_codes[] = {
 	[TTYC_TSL] = { TTYCODE_STRING, "tsl" },
 	[TTYC_U8] = { TTYCODE_NUMBER, "U8" },
 	[TTYC_VPA] = { TTYCODE_STRING, "vpa" },
-	[TTYC_XENL] = { TTYCODE_FLAG, "xenl" },
 	[TTYC_XT] = { TTYCODE_FLAG, "XT" }
 };
 
@@ -586,17 +586,22 @@ tty_term_create(struct tty *tty, char *name, int *feat, int fd, char **cause)
 	tty_term_apply_overrides(term);
 
 	/*
-	 * Terminals without xenl (eat newline glitch) wrap at at $COLUMNS - 1
+	 * Terminals without am (auto right margin) wrap at at $COLUMNS - 1
 	 * rather than $COLUMNS (the cursor can never be beyond $COLUMNS - 1).
 	 *
-	 * This is irritating, most notably because it is impossible to write
-	 * to the very bottom-right of the screen without scrolling.
+	 * Terminals without xenl (eat newline glitch) ignore a newline beyond
+	 * the right edge of the terminal, but tmux doesn't care about this -
+	 * it always uses absolute only moves the cursor with a newline when
+	 * also sending a linefeed.
+	 *
+	 * This is irritating, most notably because it is painful to write to
+	 * the very bottom-right of the screen without scrolling.
 	 *
 	 * Flag the terminal here and apply some workarounds in other places to
 	 * do the best possible.
 	 */
-	if (!tty_term_flag(term, TTYC_XENL))
-		term->flags |= TERM_NOXENL;
+	if (!tty_term_flag(term, TTYC_AM))
+		term->flags |= TERM_NOAM;
 
 	/* Generate ACS table. If none is present, use nearest ASCII. */
 	memset(term->acs, 0, sizeof term->acs);
