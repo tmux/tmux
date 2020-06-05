@@ -66,6 +66,8 @@ cmd_refresh_client_update_offset(struct client *tc, const char *value)
 		control_set_pane_on(tc, wp);
 	else if (strcmp(colon, "off") == 0)
 		control_set_pane_off(tc, wp);
+	else if (strcmp(colon, "continue") == 0)
+		control_continue_pane(tc, wp);
 
 out:
 	free(copy);
@@ -168,7 +170,7 @@ cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 		}
 		tty_set_size(&tc->tty, x, y, 0, 0);
 		tc->flags |= CLIENT_SIZECHANGED;
-		recalculate_sizes();
+		recalculate_sizes_now(1);
 		return (CMD_RETURN_NORMAL);
 	}
 
