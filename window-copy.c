@@ -266,7 +266,6 @@ struct window_copy_mode_data {
 	u_int		 my;
 	int		 showmark;
 
-	uint64_t	 searchtime;
 	int		 searchtype;
 	int		 searchregex;
 	char		*searchstr;
@@ -282,7 +281,6 @@ struct window_copy_mode_data {
 	int		 timeout;	/* search has timed out */
 #define WINDOW_COPY_SEARCH_TIMEOUT 10000
 #define WINDOW_COPY_SEARCH_ALL_TIMEOUT 200
-#define WINDOW_COPY_SEARCH_REPEAT 50
 
 	int		 jumptype;
 	char		 jumpchar;
@@ -1662,10 +1660,6 @@ window_copy_cmd_search_again(struct window_copy_cmd_state *cs)
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 np = wme->prefix;
 
-	if (data->searchtime != 0 &&
-	    get_timer() - data->searchtime < WINDOW_COPY_SEARCH_REPEAT)
-		return (WINDOW_COPY_CMD_NOTHING);
-
 	if (data->searchtype == WINDOW_COPY_SEARCHUP) {
 		for (; np != 0; np--)
 			window_copy_search_up(wme, data->searchregex);
@@ -1673,7 +1667,6 @@ window_copy_cmd_search_again(struct window_copy_cmd_state *cs)
 		for (; np != 0; np--)
 			window_copy_search_down(wme, data->searchregex);
 	}
-	data->searchtime = get_timer();
 	return (WINDOW_COPY_CMD_NOTHING);
 }
 
@@ -1684,10 +1677,6 @@ window_copy_cmd_search_reverse(struct window_copy_cmd_state *cs)
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 np = wme->prefix;
 
-	if (data->searchtime != 0 &&
-	    get_timer() - data->searchtime < WINDOW_COPY_SEARCH_REPEAT)
-		return (WINDOW_COPY_CMD_NOTHING);
-
 	if (data->searchtype == WINDOW_COPY_SEARCHUP) {
 		for (; np != 0; np--)
 			window_copy_search_down(wme, data->searchregex);
@@ -1695,7 +1684,6 @@ window_copy_cmd_search_reverse(struct window_copy_cmd_state *cs)
 		for (; np != 0; np--)
 			window_copy_search_up(wme, data->searchregex);
 	}
-	data->searchtime = get_timer();
 	return (WINDOW_COPY_CMD_NOTHING);
 }
 
