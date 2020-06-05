@@ -257,6 +257,7 @@ enum {
 /* Termcap codes. */
 enum tty_code_code {
 	TTYC_ACSC,
+	TTYC_AM,
 	TTYC_AX,
 	TTYC_BCE,
 	TTYC_BEL,
@@ -477,7 +478,6 @@ enum tty_code_code {
 	TTYC_TSL,
 	TTYC_U8,
 	TTYC_VPA,
-	TTYC_XENL,
 	TTYC_XT
 };
 
@@ -1256,7 +1256,7 @@ struct tty_term {
 	struct tty_code	*codes;
 
 #define TERM_256COLOURS 0x1
-#define TERM_NOXENL 0x2
+#define TERM_NOAM 0x2
 #define TERM_DECSLRM 0x4
 #define TERM_DECFRA 0x8
 #define TERM_RGBCOLOURS 0x10

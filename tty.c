@@ -564,7 +564,7 @@ tty_putc(struct tty *tty, u_char ch)
 {
 	const char	*acs;
 
-	if ((tty->term->flags & TERM_NOXENL) &&
+	if ((tty->term->flags & TERM_NOAM) &&
 	    ch >= 0x20 && ch != 0x7f &&
 	    tty->cy == tty->sy - 1 &&
 	    tty->cx + 1 >= tty->sx)
@@ -586,11 +586,11 @@ tty_putc(struct tty *tty, u_char ch)
 				tty->cy++;
 
 			/*
-			 * On !xenl terminals, force the cursor position to
-			 * where we think it should be after a line wrap - this
-			 * means it works on sensible terminals as well.
+			 * On !am terminals, force the cursor position to where
+			 * we think it should be after a line wrap - this means
+			 * it works on sensible terminals as well.
 			 */
-			if (tty->term->flags & TERM_NOXENL)
+			if (tty->term->flags & TERM_NOAM)
 				tty_putcode2(tty, TTYC_CUP, tty->cy, tty->cx);
 		} else
 			tty->cx++;
@@ -600,7 +600,7 @@ tty_putc(struct tty *tty, u_char ch)
 void
 tty_putn(struct tty *tty, const void *buf, size_t len, u_int width)
 {
-	if ((tty->term->flags & TERM_NOXENL) &&
+	if ((tty->term->flags & TERM_NOAM) &&
 	    tty->cy == tty->sy - 1 &&
 	    tty->cx + len >= tty->sx)
 		len = tty->sx - tty->cx - 1;
@@ -1875,7 +1875,7 @@ tty_cmd_cells(struct tty *tty, const struct tty_ctx *ctx)
 	    ctx->xoff + ctx->ocx + ctx->num > ctx->wox + ctx->wsx)) {
 		if (!ctx->wrapped ||
 		    !tty_full_width(tty, ctx) ||
-		    (tty->term->flags & TERM_NOXENL) ||
+		    (tty->term->flags & TERM_NOAM) ||
 		    ctx->xoff + ctx->ocx != 0 ||
 		    ctx->yoff + ctx->ocy != tty->cy + 1 ||
 		    tty->cx < tty->sx ||
@@ -1931,7 +1931,7 @@ tty_cell(struct tty *tty, const struct grid_cell *gc,
 	const struct grid_cell	*gcp;
 
 	/* Skip last character if terminal is stupid. */
-	if ((tty->term->flags & TERM_NOXENL) &&
+	if ((tty->term->flags & TERM_NOAM) &&
 	    tty->cy == tty->sy - 1 &&
 	    tty->cx == tty->sx - 1)
 		return;
@@ -2087,7 +2087,7 @@ tty_cursor_pane_unless_wrap(struct tty *tty, const struct tty_ctx *ctx,
 {
 	if (!ctx->wrapped ||
 	    !tty_full_width(tty, ctx) ||
-	    (tty->term->flags & TERM_NOXENL) ||
+	    (tty->term->flags & TERM_NOAM) ||
 	    ctx->xoff + cx != 0 ||
 	    ctx->yoff + cy != tty->cy + 1 ||
 	    tty->cx < tty->sx ||
