@@ -52,32 +52,11 @@ static struct utf8_item *utf8_list;
 static u_int		 utf8_list_size;
 static u_int		 utf8_list_used;
 
-union utf8_map {
-	utf8_char	uc;
-	struct {
-		u_char	flags;
-		u_char	data[3];
-	};
-} __packed;
+#define UTF8_GET_SIZE(uc) (((uc) >> 24) & 0x1f)
+#define UTF8_GET_WIDTH(flags) (((uc) >> 29) - 1)
 
-#define UTF8_GET_SIZE(flags) ((flags) & 0x1f)
-#define UTF8_GET_WIDTH(flags) (((flags) >> 5) - 1)
-
-#define UTF8_SET_SIZE(size) (size)
-#define UTF8_SET_WIDTH(width) ((width + 1) << 5)
-
-static const union utf8_map utf8_space0 = {
-	.flags = UTF8_SET_WIDTH(0)|UTF8_SET_SIZE(0),
-	.data = ""
-};
-static const union utf8_map utf8_space1 = {
-	.flags = UTF8_SET_WIDTH(1)|UTF8_SET_SIZE(1),
-	.data = " "
-};
-static const union utf8_map utf8_space2 = {
-	.flags = UTF8_SET_WIDTH(2)|UTF8_SET_SIZE(2),
-	.data = "  "
-};
+#define UTF8_SET_SIZE(size) (((utf8_char)(size)) << 24)
+#define UTF8_SET_WIDTH(width) ((((utf8_char)(width)) + 1) << 29)
 
 /* Get a UTF-8 item by offset. */
 static struct utf8_item *
@@ -139,34 +118,31 @@ utf8_put_item(const char *data, size_t size, u_int *offset)
 enum utf8_state
 utf8_from_data(const struct utf8_data *ud, utf8_char *uc)
 {
-	union utf8_map	 m = { .uc = 0 };
-	u_int		 offset;
+	u_int	offset;
 
 	if (ud->width > 2)
 		fatalx("invalid UTF-8 width");
 
 	if (ud->size > UTF8_SIZE)
 		goto fail;
-	m.flags = UTF8_SET_SIZE(ud->size)|UTF8_SET_WIDTH(ud->width);
-	if (ud->size <= 3)
-		memcpy(m.data, ud->data, ud->size);
-	else {
-		if (utf8_put_item(ud->data, ud->size, &offset) != 0)
-			goto fail;
-		m.data[0] = (offset & 0xff);
-		m.data[1] = (offset >> 8) & 0xff;
-		m.data[2] = (offset >> 16);
-	}
-	*uc = htonl(m.uc);
+	if (ud->size <= 3) {
+		offset = (((utf8_char)ud->data[2] << 16)|
+		          ((utf8_char)ud->data[1] << 8)|
+		          ((utf8_char)ud->data[0]));
+	} else if (utf8_put_item(ud->data, ud->size, &offset) != 0)
+		goto fail;
+	*uc = UTF8_SET_SIZE(ud->size)|UTF8_SET_WIDTH(ud->width)|offset;
+	log_debug("%s: (%d %d %.*s) -> %08x", __func__, ud->width, ud->size,
+	    (int)ud->size, ud->data, *uc);
 	return (UTF8_DONE);
 
 fail:
 	if (ud->width == 0)
-		*uc = htonl(utf8_space0.uc);
+		*uc = UTF8_SET_SIZE(0)|UTF8_SET_WIDTH(0);
 	else if (ud->width == 1)
-		*uc = htonl(utf8_space1.uc);
+		*uc = UTF8_SET_SIZE(1)|UTF8_SET_WIDTH(1)|0x20;
 	else
-		*uc = htonl(utf8_space2.uc);
+		*uc = UTF8_SET_SIZE(1)|UTF8_SET_WIDTH(1)|0x2020;
 	return (UTF8_ERROR);
 }
 
@@ -174,37 +150,36 @@ fail:
 void
 utf8_to_data(utf8_char uc, struct utf8_data *ud)
 {
-	union utf8_map		 m = { .uc = ntohl(uc) };
 	struct utf8_item	*ui;
 	u_int			 offset;
 
 	memset(ud, 0, sizeof *ud);
-	ud->size = ud->have = UTF8_GET_SIZE(m.flags);
-	ud->width = UTF8_GET_WIDTH(m.flags);
+	ud->size = ud->have = UTF8_GET_SIZE(uc);
+	ud->width = UTF8_GET_WIDTH(uc);
 
 	if (ud->size <= 3) {
-		memcpy(ud->data, m.data, ud->size);
-		return;
+		ud->data[2] = (uc >> 16);
+		ud->data[1] = ((uc >> 8) & 0xff);
+		ud->data[0] = (uc & 0xff);
+	} else {
+		offset = (uc & 0xffffff);
+		if (offset >= utf8_list_used)
+			memset(ud->data, ' ', ud->size);
+		else {
+			ui = &utf8_list[offset];
+			memcpy(ud->data, ui->data, ud->size);
+		}
 	}
 
-	offset = ((u_int)m.data[2] << 16)|((u_int)m.data[1] << 8)|m.data[0];
-	if (offset >= utf8_list_used)
-		memset(ud->data, ' ', ud->size);
-	else {
-		ui = &utf8_list[offset];
-		memcpy(ud->data, ui->data, ud->size);
-	}
+	log_debug("%s: %08x -> (%d %d %.*s)", __func__, uc, ud->width, ud->size,
+	    (int)ud->size, ud->data);
 }
 
 /* Get UTF-8 character from a single ASCII character. */
 u_int
 utf8_build_one(u_char ch)
 {
-	union utf8_map	m;
-
-	m.flags = UTF8_SET_SIZE(1)|UTF8_SET_WIDTH(1);
-	m.data[0] = ch;
-	return (htonl(m.uc));
+	return (UTF8_SET_SIZE(1)|UTF8_SET_WIDTH(1)|ch);
 }
 
 /* Set a single character. */
