@@ -28,16 +28,16 @@
 #include "tmux.h"
 
 struct utf8_item {
-	u_int			offset;
-	RB_ENTRY(utf8_item)	entry;
+	RB_ENTRY(utf8_item)	index_entry;
+	u_int			index;
 
+	RB_ENTRY(utf8_item)	data_entry;
 	char			data[UTF8_SIZE];
 	u_char			size;
 };
-RB_HEAD(utf8_tree, utf8_item);
 
 static int
-utf8_cmp(struct utf8_item *ui1, struct utf8_item *ui2)
+utf8_data_cmp(struct utf8_item *ui1, struct utf8_item *ui2)
 {
 	if (ui1->size < ui2->size)
 		return (-1);
@@ -45,12 +45,24 @@ utf8_cmp(struct utf8_item *ui1, struct utf8_item *ui2)
 		return (1);
 	return (memcmp(ui1->data, ui2->data, ui1->size));
 }
-RB_GENERATE_STATIC(utf8_tree, utf8_item, entry, utf8_cmp);
-static struct utf8_tree utf8_tree = RB_INITIALIZER(utf8_tree);
+RB_HEAD(utf8_data_tree, utf8_item);
+RB_GENERATE_STATIC(utf8_data_tree, utf8_item, data_entry, utf8_data_cmp);
+static struct utf8_data_tree utf8_data_tree = RB_INITIALIZER(utf8_data_tree);
 
-static struct utf8_item *utf8_list;
-static u_int		 utf8_list_size;
-static u_int		 utf8_list_used;
+static int
+utf8_index_cmp(struct utf8_item *ui1, struct utf8_item *ui2)
+{
+	if (ui1->index < ui2->index)
+		return (-1);
+	if (ui1->index > ui2->index)
+		return (1);
+	return (0);
+}
+RB_HEAD(utf8_index_tree, utf8_item);
+RB_GENERATE_STATIC(utf8_index_tree, utf8_item, index_entry, utf8_index_cmp);
+static struct utf8_index_tree utf8_index_tree = RB_INITIALIZER(utf8_index_tree);
+
+static u_int utf8_next_index;
 
 #define UTF8_GET_SIZE(uc) (((uc) >> 24) & 0x1f)
 #define UTF8_GET_WIDTH(flags) (((uc) >> 29) - 1)
@@ -58,59 +70,56 @@ static u_int		 utf8_list_used;
 #define UTF8_SET_SIZE(size) (((utf8_char)(size)) << 24)
 #define UTF8_SET_WIDTH(width) ((((utf8_char)(width)) + 1) << 29)
 
-/* Get a UTF-8 item by offset. */
+/* Get a UTF-8 item from data. */
 static struct utf8_item *
-utf8_get_item(const char *data, size_t size)
+utf8_item_by_data(const char *data, size_t size)
 {
 	struct utf8_item	ui;
 
 	memcpy(ui.data, data, size);
 	ui.size = size;
 
-	return (RB_FIND(utf8_tree, &utf8_tree, &ui));
+	return (RB_FIND(utf8_data_tree, &utf8_data_tree, &ui));
 }
 
-/* Expand UTF-8 list. */
-static int
-utf8_expand_list(void)
+/* Get a UTF-8 item from data. */
+static struct utf8_item *
+utf8_item_by_index(u_int index)
 {
-	if (utf8_list_size == 0xffffff)
-		return (-1);
-	if (utf8_list_size == 0)
-		utf8_list_size = 256;
-	else if (utf8_list_size > 0x7fffff)
-		utf8_list_size = 0xffffff;
-	else
-		utf8_list_size *= 2;
-	utf8_list = xreallocarray(utf8_list, utf8_list_size, sizeof *utf8_list);
-	return (0);
+	struct utf8_item	ui;
+
+	ui.index = index;
+
+	return (RB_FIND(utf8_index_tree, &utf8_index_tree, &ui));
 }
 
 /* Add a UTF-8 item. */
 static int
-utf8_put_item(const char *data, size_t size, u_int *offset)
+utf8_put_item(const char *data, size_t size, u_int *index)
 {
 	struct utf8_item	*ui;
 
-	ui = utf8_get_item(data, size);
+	ui = utf8_item_by_data(data, size);
 	if (ui != NULL) {
-		*offset = ui->offset;
-		log_debug("%s: have %.*s at %u", __func__, (int)size, data,
-		    *offset);
+		log_debug("%s: found %.*s = %u", __func__, (int)size, data,
+		    *index);
+		*index = ui->index;
 		return (0);
 	}
 
-	if (utf8_list_used == utf8_list_size && utf8_expand_list() != 0)
+	if (utf8_next_index == 0xffffff + 1)
 		return (-1);
-	*offset = utf8_list_used++;
 
-	ui = &utf8_list[*offset];
-	ui->offset = *offset;
+	ui = xcalloc(1, sizeof *ui);
+	ui->index = utf8_next_index++;
+	RB_INSERT(utf8_index_tree, &utf8_index_tree, ui);
+
 	memcpy(ui->data, data, size);
 	ui->size = size;
-	RB_INSERT(utf8_tree, &utf8_tree, ui);
+	RB_INSERT(utf8_data_tree, &utf8_data_tree, ui);
 
-	log_debug("%s: added %.*s at %u", __func__, (int)size, data, *offset);
+	log_debug("%s: added %.*s = %u", __func__, (int)size, data, *index);
+	*index = ui->index;
 	return (0);
 }
 
@@ -118,7 +127,7 @@ utf8_put_item(const char *data, size_t size, u_int *offset)
 enum utf8_state
 utf8_from_data(const struct utf8_data *ud, utf8_char *uc)
 {
-	u_int	offset;
+	u_int	index;
 
 	if (ud->width > 2)
 		fatalx("invalid UTF-8 width");
@@ -126,12 +135,12 @@ utf8_from_data(const struct utf8_data *ud, utf8_char *uc)
 	if (ud->size > UTF8_SIZE)
 		goto fail;
 	if (ud->size <= 3) {
-		offset = (((utf8_char)ud->data[2] << 16)|
+		index = (((utf8_char)ud->data[2] << 16)|
 		          ((utf8_char)ud->data[1] << 8)|
 		          ((utf8_char)ud->data[0]));
-	} else if (utf8_put_item(ud->data, ud->size, &offset) != 0)
+	} else if (utf8_put_item(ud->data, ud->size, &index) != 0)
 		goto fail;
-	*uc = UTF8_SET_SIZE(ud->size)|UTF8_SET_WIDTH(ud->width)|offset;
+	*uc = UTF8_SET_SIZE(ud->size)|UTF8_SET_WIDTH(ud->width)|index;
 	log_debug("%s: (%d %d %.*s) -> %08x", __func__, ud->width, ud->size,
 	    (int)ud->size, ud->data, *uc);
 	return (UTF8_DONE);
@@ -151,7 +160,7 @@ void
 utf8_to_data(utf8_char uc, struct utf8_data *ud)
 {
 	struct utf8_item	*ui;
-	u_int			 offset;
+	u_int			 index;
 
 	memset(ud, 0, sizeof *ud);
 	ud->size = ud->have = UTF8_GET_SIZE(uc);
@@ -162,13 +171,11 @@ utf8_to_data(utf8_char uc, struct utf8_data *ud)
 		ud->data[1] = ((uc >> 8) & 0xff);
 		ud->data[0] = (uc & 0xff);
 	} else {
-		offset = (uc & 0xffffff);
-		if (offset >= utf8_list_used)
+		index = (uc & 0xffffff);
+		if ((ui = utf8_item_by_index(index)) == NULL)
 			memset(ud->data, ' ', ud->size);
-		else {
-			ui = &utf8_list[offset];
+		else
 			memcpy(ud->data, ui->data, ud->size);
-		}
 	}
 
 	log_debug("%s: %08x -> (%d %d %.*s)", __func__, uc, ud->width, ud->size,
