@@ -4541,8 +4541,8 @@ window_copy_cursor_previous_word_pos(struct window_mode_entry *wme,
 				    screen_hsize(data->backing) - 1))
 					goto out;
 
-				py = screen_hsize(data->backing) + data->cy -
-				    data->oy;
+				/* prev line */
+				py--; 
 				px = window_copy_find_length(wme, py);
 
 				/* Stop if separator at EOL. */
