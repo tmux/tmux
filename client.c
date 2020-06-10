@@ -45,11 +45,13 @@ static enum {
 	CLIENT_EXIT_LOST_SERVER,
 	CLIENT_EXIT_EXITED,
 	CLIENT_EXIT_SERVER_EXITED,
+	CLIENT_EXIT_MESSAGE_PROVIDED
 } client_exitreason = CLIENT_EXIT_NONE;
 static int		 client_exitflag;
 static int		 client_exitval;
 static enum msgtype	 client_exittype;
 static const char	*client_exitsession;
+static char		*client_exitmessage;
 static const char	*client_execshell;
 static const char	*client_execcmd;
 static int		 client_attached;
@@ -207,6 +209,8 @@ client_exit_message(void)
 		return ("exited");
 	case CLIENT_EXIT_SERVER_EXITED:
 		return ("server exited");
+	case CLIENT_EXIT_MESSAGE_PROVIDED:
+		return (client_exitmessage);
 	}
 	return ("unknown reason");
 }
@@ -791,13 +795,38 @@ client_dispatch(struct imsg *imsg, __unused void *arg)
 		client_dispatch_wait(imsg);
 }
 
+/* Process an exit message. */
+static void
+client_dispatch_exit_message(char *data, size_t datalen)
+{
+	int	retval;
+
+	if (datalen < sizeof retval && datalen != 0)
+		fatalx("bad MSG_EXIT size");
+
+	if (datalen >= sizeof retval) {
+		memcpy(&retval, data, sizeof retval);
+		client_exitval = retval;
+	}
+
+	if (datalen > sizeof retval) {
+		datalen -= sizeof retval;
+		data += sizeof retval;
+
+		client_exitmessage = xmalloc(datalen);
+		memcpy(client_exitmessage, data, datalen);
+		client_exitmessage[datalen - 1] = '\0';
+
+		client_exitreason = CLIENT_EXIT_MESSAGE_PROVIDED;
+	}
+}
+
 /* Dispatch imsgs when in wait state (before MSG_READY). */
 static void
 client_dispatch_wait(struct imsg *imsg)
 {
 	char		*data;
 	ssize_t		 datalen;
-	int		 retval;
 	static int	 pledge_applied;
 
 	/*
@@ -820,12 +849,7 @@ client_dispatch_wait(struct imsg *imsg)
 	switch (imsg->hdr.type) {
 	case MSG_EXIT:
 	case MSG_SHUTDOWN:
-		if (datalen != sizeof retval && datalen != 0)
-			fatalx("bad MSG_EXIT size");
-		if (datalen == sizeof retval) {
-			memcpy(&retval, data, sizeof retval);
-			client_exitval = retval;
-		}
+		client_dispatch_exit_message(data, datalen);
 		client_exitflag = 1;
 		client_exit();
 		break;
@@ -916,11 +940,10 @@ client_dispatch_attached(struct imsg *imsg)
 		proc_send(client_peer, MSG_EXITING, -1, NULL, 0);
 		break;
 	case MSG_EXIT:
-		if (datalen != 0 && datalen != sizeof (int))
-			fatalx("bad MSG_EXIT size");
-
+		client_dispatch_exit_message(data, datalen);
+		if (client_exitreason == CLIENT_EXIT_NONE)
+			client_exitreason = CLIENT_EXIT_EXITED;
 		proc_send(client_peer, MSG_EXITING, -1, NULL, 0);
-		client_exitreason = CLIENT_EXIT_EXITED;
 		break;
 	case MSG_EXITED:
 		if (datalen != 0)

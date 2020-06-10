@@ -89,12 +89,15 @@ struct control_state {
 	struct bufferevent		*write_event;
 };
 
-/* Low watermark. */
+/* Low and high watermarks. */
 #define CONTROL_BUFFER_LOW 512
 #define CONTROL_BUFFER_HIGH 8192
 
 /* Minimum to write to each client. */
 #define CONTROL_WRITE_MINIMUM 32
+
+/* Maximum age for clients that are not using pause mode. */
+#define CONTROL_MAXIMUM_AGE 300000
 
 /* Flags to ignore client. */
 #define CONTROL_IGNORE_FLAGS \
@@ -306,6 +309,41 @@ control_write(struct client *c, const char *fmt, ...)
 	va_end(ap);
 }
 
+/* Check age for this pane. */
+static int
+control_check_age(struct client *c, struct window_pane *wp,
+    struct control_pane *cp)
+{
+	struct control_block	*cb;
+	uint64_t		 t, age;
+
+	cb = TAILQ_FIRST(&cp->blocks);
+	if (cb == NULL)
+		return (0);
+	t = get_timer();
+	if (cb->t >= t)
+		return (0);
+
+	age = t - cb->t;
+	log_debug("%s: %s: %%%u is %llu behind", __func__, c->name, wp->id,
+	    (unsigned long long)age);
+
+	if (c->flags & CLIENT_CONTROL_PAUSEAFTER) {
+		if (age < c->pause_age)
+			return (0);
+		cp->flags |= CONTROL_PANE_PAUSED;
+		control_discard_pane(c, cp);
+		control_write(c, "%%pause %%%u", wp->id);
+	} else {
+		if (age < CONTROL_MAXIMUM_AGE)
+			return (0);
+		c->exit_message = xstrdup("too far behind");
+		c->flags |= CLIENT_EXIT;
+		control_discard(c);
+	}
+	return (1);
+}
+
 /* Write output from a pane. */
 void
 control_write_output(struct client *c, struct window_pane *wp)
@@ -314,7 +352,6 @@ control_write_output(struct client *c, struct window_pane *wp)
 	struct control_pane	*cp;
 	struct control_block	*cb;
 	size_t			 new_size;
-	uint64_t		 t;
 
 	if (winlink_find_by_window(&c->session->windows, wp->window) == NULL)
 		return;
@@ -328,20 +365,8 @@ control_write_output(struct client *c, struct window_pane *wp)
 	cp = control_add_pane(c, wp);
 	if (cp->flags & (CONTROL_PANE_OFF|CONTROL_PANE_PAUSED))
 		goto ignore;
-	if (c->flags & CLIENT_CONTROL_PAUSEAFTER) {
-		cb = TAILQ_FIRST(&cp->blocks);
-		if (cb != NULL) {
-			t = get_timer();
-			log_debug("%s: %s: %%%u is %lld behind", __func__,
-			    c->name, wp->id, (long long)t - cb->t);
-			if (cb->t < t - c->pause_age) {
-				cp->flags |= CONTROL_PANE_PAUSED;
-				control_discard_pane(c, cp);
-				control_write(c, "%%pause %%%u", wp->id);
-				return;
-			}
-		}
-	}
+	if (control_check_age(c, wp, cp))
+		return;
 
 	window_pane_get_new_data(wp, &cp->queued, &new_size);
 	if (new_size == 0)

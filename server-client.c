@@ -57,9 +57,6 @@ static void	server_client_dispatch_read_data(struct client *,
 static void	server_client_dispatch_read_done(struct client *,
 		    struct imsg *);
 
-/* Maximum data allowed to be held for a pane for a control client. */
-#define SERVER_CLIENT_PANE_LIMIT 16777216
-
 /* Compare client windows. */
 static int
 server_client_window_cmp(struct client_window *cw1,
@@ -1528,10 +1525,6 @@ server_client_check_pane_buffer(struct window_pane *wp)
 		log_debug("%s: %s has %zu bytes used and %zu left for %%%u",
 		    __func__, c->name, wpo->used - wp->base_offset, new_size,
 		    wp->id);
-		if (new_size > SERVER_CLIENT_PANE_LIMIT) {
-			control_discard(c);
-			c->flags |= CLIENT_EXIT;
-		}
 		if (wpo->used < minimum)
 			minimum = wpo->used;
 	}
@@ -1766,6 +1759,8 @@ server_client_check_exit(struct client *c)
 {
 	struct client_file	*cf;
 	const char		*name = c->exit_session;
+	char			*data;
+	size_t			 size, msize;
 
 	if (c->flags & (CLIENT_DEAD|CLIENT_EXITED))
 		return;
@@ -1788,7 +1783,17 @@ server_client_check_exit(struct client *c)
 
 	switch (c->exit_type) {
 	case CLIENT_EXIT_RETURN:
-		proc_send(c->peer, MSG_EXIT, -1, &c->retval, sizeof c->retval);
+		if (c->exit_message != NULL) {
+			msize = strlen(c->exit_message) + 1;
+			size = (sizeof c->retval) + msize;
+		} else
+			size = (sizeof c->retval);
+		data = xmalloc(size);
+		memcpy(data, &c->retval, sizeof c->retval);
+		if (c->exit_message != NULL)
+			memcpy(data + sizeof c->retval, c->exit_message, msize);
+		proc_send(c->peer, MSG_EXIT, -1, data, size);
+		free(data);
 		break;
 	case CLIENT_EXIT_SHUTDOWN:
 		proc_send(c->peer, MSG_SHUTDOWN, -1, NULL, 0);
@@ -1798,6 +1803,7 @@ server_client_check_exit(struct client *c)
 		break;
 	}
 	free(c->exit_session);
+	free(c->exit_message);
 }
 
 /* Redraw timer callback. */
