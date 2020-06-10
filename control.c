@@ -462,8 +462,8 @@ control_flush_all_blocks(struct client *c)
 
 /* Append data to buffer. */
 static struct evbuffer *
-control_append_data(struct control_pane *cp, struct evbuffer *message,
-    struct window_pane *wp, size_t size)
+control_append_data(struct client *c, struct control_pane *cp, uint64_t age,
+    struct evbuffer *message, struct window_pane *wp, size_t size)
 {
 	u_char	*new_data;
 	size_t	 new_size;
@@ -473,7 +473,12 @@ control_append_data(struct control_pane *cp, struct evbuffer *message,
 		message = evbuffer_new();
 		if (message == NULL)
 			fatalx("out of memory");
-		evbuffer_add_printf(message, "%%output %%%u ", wp->id);
+		if (c->flags & CLIENT_CONTROL_PAUSEAFTER) {
+			evbuffer_add_printf(message,
+			    "%%extended-output %%%u %llu : ", wp->id,
+			    (unsigned long long)age);
+		} else
+			evbuffer_add_printf(message, "%%output %%%u ", wp->id);
 	}
 
 	new_data = window_pane_get_new_data(wp, &cp->offset, &new_size);
@@ -512,6 +517,7 @@ control_write_pending(struct client *c, struct control_pane *cp, size_t limit)
 	struct evbuffer		*message = NULL;
 	size_t			 used = 0, size;
 	struct control_block	*cb, *cb1;
+	uint64_t		 age, t = get_timer();
 
 	wp = control_window_pane(c, cp->pane);
 	if (wp == NULL) {
@@ -525,15 +531,20 @@ control_write_pending(struct client *c, struct control_pane *cp, size_t limit)
 
 	while (used != limit && !TAILQ_EMPTY(&cp->blocks)) {
 		cb = TAILQ_FIRST(&cp->blocks);
-		log_debug("%s: %s: output block %zu for %%%u (used %zu/%zu)",
-		    __func__, c->name, cb->size, cp->pane, used, limit);
+		if (cb->t < t)
+			age = t - cb->t;
+		else
+			age = 0;
+		log_debug("%s: %s: output block %zu (age %llu) for %%%u "
+		    "(used %zu/%zu)", __func__, c->name, cb->size, age,
+		    cp->pane, used, limit);
 
 		size = cb->size;
 		if (size > limit - used)
 			size = limit - used;
 		used += size;
 
-		message = control_append_data(cp, message, wp, size);
+		message = control_append_data(c, cp, age, message, wp, size);
 
 		cb->size -= size;
 		if (cb->size == 0) {
