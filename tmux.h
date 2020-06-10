@@ -1670,6 +1670,7 @@ struct client {
 	}		 exit_type;
 	enum msgtype	 exit_msgtype;
 	char		*exit_session;
+	char		*exit_message;
 
 	struct key_table *keytable;
 

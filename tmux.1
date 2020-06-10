@@ -5727,29 +5727,32 @@ When a
 client detaches, it prints a message.
 This may be one of:
 .Bl -tag -width Ds
-.It [detached (from session ...)]
+.It detached (from session ...)
 The client was detached normally.
-.It [detached and SIGHUP]
+.It detached and SIGHUP
 The client was detached and its parent sent the
 .Dv SIGHUP
 signal (for example with
 .Ic detach-client
 .Fl P ) .
-.It [lost tty]
+.It lost tty
 The client's
 .Xr tty 4
 or
 .Xr pty 4
 was unexpectedly destroyed.
-.It [terminated]
+.It terminated
 The client was killed with
 .Dv SIGTERM .
-.It [exited]
+.It too far behind
+The client is in control mode and became unable to keep up with the data from
+.Nm .
+.It exited
 The server exited when it had no sessions.
-.It [server exited]
+.It server exited
 The server exited when it received
 .Dv SIGTERM .
-.It [server exited unexpectedly]
+.It server exited unexpectedly
 The server crashed or otherwise exited without telling the client the reason.
 .El
 .Sh TERMINFO EXTENSIONS
