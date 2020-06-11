@@ -1304,9 +1304,10 @@ The argument is a pane ID (with leading
 .Ql % ) ,
 a colon, then one of
 .Ql on ,
-.Ql off
+.Ql off ,
+.Ql continue
 or
-.Ql continue .
+.Ql pause .
 If
 .Ql off ,
 .Nm
@@ -1315,9 +1316,13 @@ the pane off, will stop reading from the pane.
 If
 .Ql continue ,
 .Nm
-will return to sending output to a paused pane (see the
+will return to sending output to the pane if it was paused (manually or with the
 .Ar pause-after
 flag).
+If
+.Ql pause ,
+.Nm
+will pause the pane.
 .Fl A
 may be given multiple times for different panes.
 .Pp

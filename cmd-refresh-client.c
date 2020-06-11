@@ -68,6 +68,8 @@ cmd_refresh_client_update_offset(struct client *tc, const char *value)
 		control_set_pane_off(tc, wp);
 	else if (strcmp(colon, "continue") == 0)
 		control_continue_pane(tc, wp);
+	else if (strcmp(colon, "pause") == 0)
+		control_pause_pane(tc, wp);
 
 out:
 	free(copy);
