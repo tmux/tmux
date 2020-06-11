@@ -1441,6 +1441,8 @@ status_prompt_complete_prefix(char **list, u_int size)
 	u_int	  i;
 	size_t	  j;
 
+	if (list == NULL || size == 0)
+		return (NULL);
 	out = xstrdup(list[0]);
 	for (i = 1; i < size; i++) {
 		j = strlen(list[i]);
@@ -1649,13 +1651,22 @@ status_prompt_complete_session(char ***list, u_int *size, const char *s,
     char flag)
 {
 	struct session	*loop;
-	char		*out, *tmp;
+	char		*out, *tmp, n[11];
 
 	RB_FOREACH(loop, sessions, &sessions) {
-		if (*s != '\0' && strncmp(loop->name, s, strlen(s)) != 0)
-			continue;
-		*list = xreallocarray(*list, (*size) + 2, sizeof **list);
-		xasprintf(&(*list)[(*size)++], "%s:", loop->name);
+		if (*s == '\0' || strncmp(loop->name, s, strlen(s)) == 0) {
+			*list = xreallocarray(*list, (*size) + 2,
+			    sizeof **list);
+			xasprintf(&(*list)[(*size)++], "%s:", loop->name);
+		} else if (*s == '$') {
+			xsnprintf(n, sizeof n, "%u", loop->id);
+			if (s[1] == '\0' ||
+			    strncmp(n, s + 1, strlen(s) - 1) == 0) {
+				*list = xreallocarray(*list, (*size) + 2,
+				    sizeof **list);
+				xasprintf(&(*list)[(*size)++], "$%s:", n);
+			}
+		}
 	}
 	out = status_prompt_complete_prefix(*list, *size);
 	if (out != NULL && flag != '\0') {
@@ -1670,7 +1681,7 @@ status_prompt_complete_session(char ***list, u_int *size, const char *s,
 static char *
 status_prompt_complete(struct client *c, const char *word, u_int offset)
 {
-	struct session   *session;
+	struct session	 *session;
 	const char	 *s, *colon;
 	char		**list = NULL, *copy = NULL, *out = NULL;
 	char		  flag = '\0';
