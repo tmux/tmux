@@ -26,6 +26,8 @@
 
 #include "tmux.h"
 
+struct window_copy_mode_data;
+
 static const char *window_copy_key_table(struct window_mode_entry *);
 static void	window_copy_command(struct window_mode_entry *, struct client *,
 		    struct session *, struct winlink *, struct args *,
@@ -42,7 +44,6 @@ static void	window_copy_pageup1(struct window_mode_entry *, int);
 static int	window_copy_pagedown(struct window_mode_entry *, int, int);
 static void	window_copy_next_paragraph(struct window_mode_entry *);
 static void	window_copy_previous_paragraph(struct window_mode_entry *);
-
 static void	window_copy_redraw_selection(struct window_mode_entry *, u_int);
 static void	window_copy_redraw_lines(struct window_mode_entry *, u_int,
 		    u_int);
@@ -51,7 +52,7 @@ static void	window_copy_write_line(struct window_mode_entry *,
 		    struct screen_write_ctx *, u_int);
 static void	window_copy_write_lines(struct window_mode_entry *,
 		    struct screen_write_ctx *, u_int, u_int);
-
+static char    *window_copy_match_at_cursor(struct window_copy_mode_data *);
 static void	window_copy_scroll_to(struct window_mode_entry *, u_int, u_int,
 		    int);
 static int	window_copy_search_compare(struct grid *, u_int, u_int,
@@ -60,13 +61,13 @@ static int	window_copy_search_lr(struct grid *, struct grid *, u_int *,
 		    u_int, u_int, u_int, int);
 static int	window_copy_search_rl(struct grid *, struct grid *, u_int *,
 		    u_int, u_int, u_int, int);
-static int	window_copy_last_regex(struct grid *gd, u_int py, u_int first,
-		    u_int last, u_int len, u_int *ppx, u_int *psx,
-		    const char *buf, const regex_t *preg, int eflags);
+static int	window_copy_last_regex(struct grid *, u_int, u_int, u_int,
+		    u_int, u_int *, u_int *, const char *, const regex_t *,
+		    int);
 static char    *window_copy_stringify(struct grid *, u_int, u_int, u_int,
 		    char *, u_int *);
-static void	window_copy_cstrtocellpos(struct grid *, u_int, u_int *, u_int *,
-		    const char *str);
+static void	window_copy_cstrtocellpos(struct grid *, u_int, u_int *,
+		    u_int *, const char *);
 static int	window_copy_search_marks(struct window_mode_entry *,
 		    struct screen *, int, int);
 static void	window_copy_clear_marks(struct window_mode_entry *);
@@ -702,12 +703,40 @@ window_copy_get_line(struct window_pane *wp, u_int y)
 	return (format_grid_line(gd, gd->hsize + y));
 }
 
+static char *
+window_copy_cursor_word_cb(struct format_tree *ft)
+{
+	struct window_pane		*wp = format_get_pane(ft);
+	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
+	struct window_copy_mode_data	*data = wme->data;
+
+	return (window_copy_get_word(wp, data->cx, data->cy));
+}
+
+static char *
+window_copy_cursor_line_cb(struct format_tree *ft)
+{
+	struct window_pane		*wp = format_get_pane(ft);
+	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
+	struct window_copy_mode_data	*data = wme->data;
+
+	return (window_copy_get_line(wp, data->cy));
+}
+
+static char *
+window_copy_search_match_cb(struct format_tree *ft)
+{
+	struct window_pane		*wp = format_get_pane(ft);
+	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
+	struct window_copy_mode_data	*data = wme->data;
+
+	return (window_copy_match_at_cursor(data));
+}
+
 static void
 window_copy_formats(struct window_mode_entry *wme, struct format_tree *ft)
 {
 	struct window_copy_mode_data	*data = wme->data;
-	struct grid			*gd = data->screen.grid;
-	char				*s;
 
 	format_add(ft, "scroll_position", "%d", data->oy);
 	format_add(ft, "rectangle_toggle", "%d", data->rectflag);
@@ -726,17 +755,11 @@ window_copy_formats(struct window_mode_entry *wme, struct format_tree *ft)
 	} else
 		format_add(ft, "selection_active", "%d", 0);
 
-	s = format_grid_word(gd, data->cx, gd->hsize + data->cy);
-	if (s != NULL) {
-		format_add(ft, "copy_cursor_word", "%s", s);
-		free(s);
-	}
+	format_add(ft, "search_present", "%d", data->searchmark != NULL);
+	format_add_cb(ft, "search_match", window_copy_search_match_cb);
 
-	s = format_grid_line(gd, gd->hsize + data->cy);
-	if (s != NULL) {
-		format_add(ft, "copy_cursor_line", "%s", s);
-		free(s);
-	}
+	format_add_cb(ft, "copy_cursor_word", window_copy_cursor_word_cb);
+	format_add_cb(ft, "copy_cursor_line", window_copy_cursor_line_cb);
 }
 
 static void
