@@ -1156,6 +1156,13 @@ format_merge(struct format_tree *ft, struct format_tree *from)
 	}
 }
 
+/* Get format pane. */
+struct window_pane *
+format_get_pane(struct format_tree *ft)
+{
+	return (ft->wp);
+}
+
 /* Add item bits to tree. */
 static void
 format_create_add_item(struct format_tree *ft, struct cmdq_item *item)
