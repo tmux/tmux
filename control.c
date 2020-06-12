@@ -569,6 +569,13 @@ control_write_pending(struct client *c, struct control_pane *cp, size_t limit)
 	}
 
 	while (used != limit && !TAILQ_EMPTY(&cp->blocks)) {
+		if (control_check_age(c, wp, cp)) {
+			if (message != NULL)
+				evbuffer_free(message);
+			message = NULL;
+			break;
+		}
+
 		cb = TAILQ_FIRST(&cp->blocks);
 		if (cb->t < t)
 			age = t - cb->t;
