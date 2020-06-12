@@ -212,32 +212,35 @@ args_print(struct args *args)
 char *
 args_escape(const char *s)
 {
-	static const char	 quoted[] = " #\"';${}";
+	static const char	 dquoted[] = " #';${}";
+	static const char	 squoted[] = " \"";
 	char			*escaped, *result;
-	int			 flags;
+	int			 flags, quotes = 0;
 
 	if (*s == '\0') {
 		xasprintf(&result, "''");
 		return (result);
 	}
+	if (s[strcspn(s, dquoted)] != '\0')
+		quotes = '"';
+	else if (s[strcspn(s, squoted)] != '\0')
+		quotes = '\'';
+
 	if (s[0] != ' ' &&
-	    (strchr(quoted, s[0]) != NULL || s[0] == '~') &&
-	    s[1] == '\0') {
+	    s[1] == '\0' &&
+	    (quotes != 0 || s[0] == '~')) {
 		xasprintf(&escaped, "\\%c", s[0]);
 		return (escaped);
 	}
 
-	if (strchr(s, ' ') != NULL && strchr(s, '\'') == NULL) {
-		xasprintf(&escaped, "'%s'", s);
-		return (escaped);
-	}
-
 	flags = VIS_OCTAL|VIS_CSTYLE|VIS_TAB|VIS_NL;
-	if (s[strcspn(s, quoted)] != '\0')
+	if (quotes == '"')
 		flags |= VIS_DQ;
 	utf8_stravis(&escaped, s, flags);
 
-	if (flags & VIS_DQ) {
+	if (quotes == '\'')
+		xasprintf(&result, "'%s'", escaped);
+	else if (quotes == '"') {
 		if (*escaped == '~')
 			xasprintf(&result, "\"\\%s\"", escaped);
 		else
