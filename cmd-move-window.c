@@ -32,8 +32,8 @@ const struct cmd_entry cmd_move_window_entry = {
 	.name = "move-window",
 	.alias = "movew",
 
-	.args = { "adkrs:t:", 0, 0 },
-	.usage = "[-dkr] " CMD_SRCDST_WINDOW_USAGE,
+	.args = { "abdkrs:t:", 0, 0 },
+	.usage = "[-abdkr] " CMD_SRCDST_WINDOW_USAGE,
 
 	.source = { 's', CMD_FIND_WINDOW, 0 },
 	/* -t is special */
@@ -46,8 +46,8 @@ const struct cmd_entry cmd_link_window_entry = {
 	.name = "link-window",
 	.alias = "linkw",
 
-	.args = { "adks:t:", 0, 0 },
-	.usage = "[-dk] " CMD_SRCDST_WINDOW_USAGE,
+	.args = { "abdks:t:", 0, 0 },
+	.usage = "[-abdk] " CMD_SRCDST_WINDOW_USAGE,
 
 	.source = { 's', CMD_FIND_WINDOW, 0 },
 	/* -t is special */
@@ -67,7 +67,7 @@ cmd_move_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct session		*dst;
 	struct winlink		*wl = source->wl;
 	char			*cause;
-	int			 idx, kflag, dflag, sflag;
+	int			 idx, kflag, dflag, sflag, before;
 
 	if (args_has(args, 'r')) {
 		if (cmd_find_target(&target, item, tflag, CMD_FIND_SESSION,
@@ -90,11 +90,12 @@ cmd_move_window_exec(struct cmd *self, struct cmdq_item *item)
 	dflag = args_has(args, 'd');
 	sflag = args_has(args, 's');
 
-	if (args_has(args, 'a')) {
+	before = args_has(args, 'b');
+	if (args_has(args, 'a') || before) {
 		if (target.wl != NULL)
-			idx = winlink_shuffle_up(dst, target.wl);
+			idx = winlink_shuffle_up(dst, target.wl, before);
 		else
-			idx = winlink_shuffle_up(dst, dst->curw);
+			idx = winlink_shuffle_up(dst, dst->curw, before);
 		if (idx == -1)
 			return (CMD_RETURN_ERROR);
 	}

@@ -1500,13 +1500,16 @@ winlink_clear_flags(struct winlink *wl)
 
 /* Shuffle window indexes up. */
 int
-winlink_shuffle_up(struct session *s, struct winlink *wl)
+winlink_shuffle_up(struct session *s, struct winlink *wl, int before)
 {
 	int	 idx, last;
 
 	if (wl == NULL)
 		return (-1);
-	idx = wl->idx + 1;
+	if (before)
+		idx = wl->idx;
+	else
+		idx = wl->idx + 1;
 
 	/* Find the next free index. */
 	for (last = idx; last < INT_MAX; last++) {
@@ -1519,8 +1522,9 @@ winlink_shuffle_up(struct session *s, struct winlink *wl)
 	/* Move everything from last - 1 to idx up a bit. */
 	for (; last > idx; last--) {
 		wl = winlink_find_by_index(&s->windows, last - 1);
-		server_link_window(s, wl, s, last, 0, 0, NULL);
-		server_unlink_window(s, wl);
+		RB_REMOVE(winlinks, &s->windows, wl);
+		wl->idx++;
+		RB_INSERT(winlinks, &s->windows, wl);
 	}
 
 	return (idx);
