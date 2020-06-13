@@ -34,8 +34,8 @@ const struct cmd_entry cmd_break_pane_entry = {
 	.name = "break-pane",
 	.alias = "breakp",
 
-	.args = { "adPF:n:s:t:", 0, 0 },
-	.usage = "[-adP] [-F format] [-n window-name] [-s src-pane] "
+	.args = { "abdPF:n:s:t:", 0, 0 },
+	.usage = "[-abdP] [-F format] [-n window-name] [-s src-pane] "
 		 "[-t dst-window]",
 
 	.source = { 's', CMD_FIND_PANE, 0 },
@@ -58,16 +58,16 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct session		*dst_s = target->s;
 	struct window_pane	*wp = source->wp;
 	struct window		*w = wl->window;
-	char			*name, *cause;
-	int			 idx = target->idx;
+	char			*name, *cause, *cp;
+	int			 idx = target->idx, before;
 	const char		*template;
-	char			*cp;
 
-	if (args_has(args, 'a')) {
+	before = args_has(args, 'b');
+	if (args_has(args, 'a') || before) {
 		if (target->wl != NULL)
-			idx = winlink_shuffle_up(dst_s, target->wl);
+			idx = winlink_shuffle_up(dst_s, target->wl, before);
 		else
-			idx = winlink_shuffle_up(dst_s, dst_s->curw);
+			idx = winlink_shuffle_up(dst_s, dst_s->curw, before);
 		if (idx == -1)
 			return (CMD_RETURN_ERROR);
 	}
