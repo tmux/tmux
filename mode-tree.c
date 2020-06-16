@@ -80,7 +80,9 @@ struct mode_tree_item {
 
 	int				 expanded;
 	int				 tagged;
+
 	int				 draw_as_parent;
+	int				 no_tag;
 
 	struct mode_tree_list		 children;
 	TAILQ_ENTRY(mode_tree_item)	 entry;
@@ -563,6 +565,12 @@ void
 mode_tree_draw_as_parent(struct mode_tree_item *mti)
 {
 	mti->draw_as_parent = 1;
+}
+
+void
+mode_tree_no_tag(struct mode_tree_item *mti)
+{
+	mti->no_tag = 1;
 }
 
 void
@@ -1053,6 +1061,8 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 		 * Do not allow parents and children to both be tagged: untag
 		 * all parents and children of current.
 		 */
+		if (current->no_tag)
+			break;
 		if (!current->tagged) {
 			parent = current->parent;
 			while (parent != NULL) {
@@ -1072,7 +1082,10 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 		break;
 	case '\024': /* C-t */
 		for (i = 0; i < mtd->line_size; i++) {
-			if (mtd->line_list[i].item->parent == NULL)
+			if ((mtd->line_list[i].item->parent == NULL &&
+			    !mtd->line_list[i].item->no_tag) ||
+			    (mtd->line_list[i].item->parent != NULL &&
+			    mtd->line_list[i].item->parent->no_tag))
 				mtd->line_list[i].item->tagged = 1;
 			else
 				mtd->line_list[i].item->tagged = 0;

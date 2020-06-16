@@ -2347,7 +2347,7 @@ static void
 input_exit_rename(struct input_ctx *ictx)
 {
 	struct window_pane	*wp = ictx->wp;
-	struct options_entry	*oe;
+	struct options_entry	*o;
 
 	if (wp == NULL)
 		return;
@@ -2361,9 +2361,9 @@ input_exit_rename(struct input_ctx *ictx)
 		return;
 
 	if (ictx->input_len == 0) {
-		oe = options_get_only(wp->window->options, "automatic-rename");
-		if (oe != NULL)
-			options_remove(oe);
+		o = options_get_only(wp->window->options, "automatic-rename");
+		if (o != NULL)
+			options_remove_or_default(o, -1, NULL);
 		return;
 	}
 	window_set_name(wp->window, ictx->input_buf);

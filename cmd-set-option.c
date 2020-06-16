@@ -151,16 +151,7 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'u')) {
 		if (o == NULL)
 			goto out;
-		if (idx == -1) {
-			if (*name == '@')
-				options_remove(o);
-			else if (oo == global_options ||
-			    oo == global_s_options ||
-			    oo == global_w_options)
-				options_default(oo, options_table_entry(o));
-			else
-				options_remove(o);
-		} else if (options_array_set(o, idx, NULL, 0, &cause) != 0) {
+		if (options_remove_or_default(o, idx, &cause) != 0) {
 			cmdq_error(item, "%s", cause);
 			free(cause);
 			goto fail;

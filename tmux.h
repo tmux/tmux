@@ -1990,7 +1990,6 @@ struct options	*options_owner(struct options_entry *);
 const struct options_table_entry *options_table_entry(struct options_entry *);
 struct options_entry *options_get_only(struct options *, const char *);
 struct options_entry *options_get(struct options *, const char *);
-void		 options_remove(struct options_entry *);
 void		 options_array_clear(struct options_entry *);
 union options_value *options_array_get(struct options_entry *, u_int);
 int		 options_array_set(struct options_entry *, u_int, const char *,
@@ -2027,6 +2026,8 @@ int		 options_from_string(struct options *,
 		     const struct options_table_entry *, const char *,
 		     const char *, int, char **);
 void		 options_push_changes(const char *);
+int		 options_remove_or_default(struct options_entry *, int,
+		     char **);
 
 /* options-table.c */
 extern const struct options_table_entry options_table[];
@@ -2327,7 +2328,9 @@ struct key_binding *key_bindings_next(struct key_table *, struct key_binding *);
 void	 key_bindings_add(const char *, key_code, const char *, int,
 	     struct cmd_list *);
 void	 key_bindings_remove(const char *, key_code);
+void	 key_bindings_reset(const char *, key_code);
 void	 key_bindings_remove_table(const char *);
+void	 key_bindings_reset_table(const char *);
 void	 key_bindings_init(void);
 struct cmdq_item *key_bindings_dispatch(struct key_binding *,
 	     struct cmdq_item *, struct client *, struct key_event *,
@@ -2804,6 +2807,7 @@ struct mode_tree_item *mode_tree_add(struct mode_tree_data *,
 	     struct mode_tree_item *, void *, uint64_t, const char *,
 	     const char *, int);
 void	 mode_tree_draw_as_parent(struct mode_tree_item *);
+void	 mode_tree_no_tag(struct mode_tree_item *);
 void	 mode_tree_remove(struct mode_tree_data *, struct mode_tree_item *);
 void	 mode_tree_draw(struct mode_tree_data *);
 int	 mode_tree_key(struct mode_tree_data *, struct client *, key_code *,
