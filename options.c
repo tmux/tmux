@@ -66,6 +66,7 @@ struct options {
 };
 
 static struct options_entry	*options_add(struct options *, const char *);
+static void			 options_remove(struct options_entry *);
 
 #define OPTIONS_IS_STRING(o)						\
 	((o)->tableentry == NULL ||					\
@@ -315,7 +316,7 @@ options_add(struct options *oo, const char *name)
 	return (o);
 }
 
-void
+static void
 options_remove(struct options_entry *o)
 {
 	struct options	*oo = o->owner;
@@ -1105,4 +1106,22 @@ options_push_changes(const char *name)
 		if (loop->session != NULL)
 			server_redraw_client(loop);
 	}
+}
+
+int
+options_remove_or_default(struct options_entry *o, int idx, char **cause)
+{
+	struct options	*oo = o->owner;
+
+	if (idx == -1) {
+		if (o->tableentry != NULL &&
+		    (oo == global_options ||
+		    oo == global_s_options ||
+		    oo == global_w_options))
+			options_default(oo, o->tableentry);
+		else
+			options_remove(o);
+	} else if (options_array_set(o, idx, NULL, 0, cause) != 0)
+		return (-1);
+	return (0);
 }

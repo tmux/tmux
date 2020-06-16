@@ -76,6 +76,11 @@ enum window_customize_scope {
 	WINDOW_CUSTOMIZE_PANE
 };
 
+enum window_customize_change {
+	WINDOW_CUSTOMIZE_UNSET,
+	WINDOW_CUSTOMIZE_RESET,
+};
+
 struct window_customize_itemdata {
 	struct window_customize_modedata	*data;
 	enum window_customize_scope		 scope;
@@ -101,6 +106,7 @@ struct window_customize_modedata {
 	u_int					  item_size;
 
 	struct cmd_find_state			  fs;
+	enum window_customize_change		  change;
 };
 
 static uint64_t
@@ -380,6 +386,7 @@ window_customize_build_options(struct window_customize_modedata *data,
 	enum window_customize_scope	  scope;
 
 	top = mode_tree_add(data->data, NULL, NULL, tag, title, NULL, 0);
+	mode_tree_no_tag(top);
 
 	/*
 	 * We get the options from the first tree, but build it using the
@@ -452,6 +459,7 @@ window_customize_build_keys(struct window_customize_modedata *data,
 
 	xasprintf(&title, "Key Table - %s", kt->name);
 	top = mode_tree_add(data->data, NULL, NULL, tag, title, NULL, 0);
+	mode_tree_no_tag(top);
 	free(title);
 
 	ft = format_create_from_state(NULL, NULL, fs);
@@ -476,6 +484,8 @@ window_customize_build_keys(struct window_customize_modedata *data,
 		item->scope = WINDOW_CUSTOMIZE_KEY;
 		item->table = xstrdup(kt->name);
 		item->key = bd->key;
+		item->name = xstrdup(key_string_lookup_key(item->key, 0));
+		item->idx = -1;
 
 		expanded = format_expand(ft, data->format);
 		child = mode_tree_add(data->data, top, item, (uint64_t)bd,
@@ -488,6 +498,7 @@ window_customize_build_keys(struct window_customize_modedata *data,
 		mti = mode_tree_add(data->data, child, item,
 		    tag|(bd->key << 3)|(0 << 1)|1, "Command", text, -1);
 		mode_tree_draw_as_parent(mti);
+		mode_tree_no_tag(mti);
 		free(text);
 
 		if (bd->note != NULL)
@@ -497,6 +508,7 @@ window_customize_build_keys(struct window_customize_modedata *data,
 		mti = mode_tree_add(data->data, child, item,
 		    tag|(bd->key << 3)|(1 << 1)|1, "Note", text, -1);
 		mode_tree_draw_as_parent(mti);
+		mode_tree_no_tag(mti);
 		free(text);
 
 		if (bd->flags & KEY_BINDING_REPEAT)
@@ -506,6 +518,7 @@ window_customize_build_keys(struct window_customize_modedata *data,
 		mti = mode_tree_add(data->data, child, item,
 		    tag|(bd->key << 3)|(2 << 1)|1, "Repeat", flag, -1);
 		mode_tree_draw_as_parent(mti);
+		mode_tree_no_tag(mti);
 
 		bd = key_bindings_next(kt, bd);
 	}
@@ -1125,8 +1138,7 @@ static void
 window_customize_unset_option(struct window_customize_modedata *data,
     struct window_customize_itemdata *item)
 {
-	struct options_entry			*o;
-	const struct options_table_entry	*oe;
+	struct options_entry	*o;
 
 	if (item == NULL || !window_customize_check_item(data, item, NULL))
 		return;
@@ -1134,20 +1146,30 @@ window_customize_unset_option(struct window_customize_modedata *data,
 	o = options_get(item->oo, item->name);
 	if (o == NULL)
 		return;
-	if (item->idx != -1) {
-		if (item == mode_tree_get_current(data->data))
-			mode_tree_up(data->data, 0);
-		options_array_set(o, item->idx, NULL, 0, NULL);
+	if (item->idx != -1 && item == mode_tree_get_current(data->data))
+		mode_tree_up(data->data, 0);
+	options_remove_or_default(o, item->idx, NULL);
+}
+
+static void
+window_customize_reset_option(struct window_customize_modedata *data,
+    struct window_customize_itemdata *item)
+{
+	struct options		*oo;
+	struct options_entry	*o;
+
+	if (item == NULL || !window_customize_check_item(data, item, NULL))
 		return;
+	if (item->idx != -1)
+		return;
+
+	oo = item->oo;
+	while (oo != NULL) {
+		o = options_get_only(item->oo, item->name);
+		if (o != NULL)
+			options_remove_or_default(o, -1, NULL);
+		oo = options_get_parent(oo);
 	}
-	oe = options_table_entry(o);
-	if (oe != NULL &&
-	    options_owner(o) != global_options &&
-	    options_owner(o) != global_s_options &&
-	    options_owner(o) != global_w_options)
-		options_remove(o);
-	else
-		options_default(options_owner(o), oe);
 }
 
 static int
@@ -1286,21 +1308,52 @@ window_customize_unset_key(struct window_customize_modedata *data,
 }
 
 static void
-window_customize_unset_each(void *modedata, void *itemdata,
+window_customize_reset_key(struct window_customize_modedata *data,
+    struct window_customize_itemdata *item)
+{
+	struct key_table	*kt;
+	struct key_binding	*dd, *bd;
+
+	if (item == NULL || !window_customize_get_key(item, &kt, &bd))
+		return;
+
+	dd = key_bindings_get_default(kt, bd->key);
+	if (dd != NULL && bd->cmdlist == dd->cmdlist)
+		return;
+	if (dd == NULL && item == mode_tree_get_current(data->data)) {
+		mode_tree_collapse_current(data->data);
+		mode_tree_up(data->data, 0);
+	}
+	key_bindings_reset(kt->name, bd->key);
+}
+
+static void
+window_customize_change_each(void *modedata, void *itemdata,
     __unused struct client *c, __unused key_code key)
 {
+	struct window_customize_modedata	*data = modedata;
 	struct window_customize_itemdata	*item = itemdata;
 
-	if (item->scope == WINDOW_CUSTOMIZE_KEY)
-		window_customize_unset_key(modedata, item);
-	else {
-		window_customize_unset_option(modedata, item);
-		options_push_changes(item->name);
+	switch (data->change) {
+	case WINDOW_CUSTOMIZE_UNSET:
+		if (item->scope == WINDOW_CUSTOMIZE_KEY)
+			window_customize_unset_key(data, item);
+		else
+			window_customize_unset_option(data, item);
+		break;
+	case WINDOW_CUSTOMIZE_RESET:
+		if (item->scope == WINDOW_CUSTOMIZE_KEY)
+			window_customize_reset_key(data, item);
+		else
+			window_customize_reset_option(data, item);
+		break;
 	}
+	if (item->scope != WINDOW_CUSTOMIZE_KEY)
+		options_push_changes(item->name);
 }
 
 static int
-window_customize_unset_current_callback(__unused struct client *c,
+window_customize_change_current_callback(__unused struct client *c,
     void *modedata, const char *s, __unused int done)
 {
 	struct window_customize_modedata	*data = modedata;
@@ -1312,12 +1365,22 @@ window_customize_unset_current_callback(__unused struct client *c,
 		return (0);
 
 	item = mode_tree_get_current(data->data);
-	if (item->scope == WINDOW_CUSTOMIZE_KEY)
-		window_customize_unset_key(data, item);
-	else {
-		window_customize_unset_option(data, item);
-		options_push_changes(item->name);
+	switch (data->change) {
+	case WINDOW_CUSTOMIZE_UNSET:
+		if (item->scope == WINDOW_CUSTOMIZE_KEY)
+			window_customize_unset_key(data, item);
+		else
+			window_customize_unset_option(data, item);
+		break;
+	case WINDOW_CUSTOMIZE_RESET:
+		if (item->scope == WINDOW_CUSTOMIZE_KEY)
+			window_customize_reset_key(data, item);
+		else
+			window_customize_reset_option(data, item);
+		break;
 	}
+	if (item->scope != WINDOW_CUSTOMIZE_KEY)
+		options_push_changes(item->name);
 	mode_tree_build(data->data);
 	mode_tree_draw(data->data);
 	data->wp->flags |= PANE_REDRAW;
@@ -1326,7 +1389,7 @@ window_customize_unset_current_callback(__unused struct client *c,
 }
 
 static int
-window_customize_unset_tagged_callback(struct client *c, void *modedata,
+window_customize_change_tagged_callback(struct client *c, void *modedata,
     const char *s, __unused int done)
 {
 	struct window_customize_modedata	*data = modedata;
@@ -1336,7 +1399,7 @@ window_customize_unset_tagged_callback(struct client *c, void *modedata,
 	if (tolower((u_char) s[0]) != 'y' || s[1] != '\0')
 		return (0);
 
-	mode_tree_each_tagged(data->data, window_customize_unset_each, c,
+	mode_tree_each_tagged(data->data, window_customize_change_each, c,
 	    KEYC_NONE, 0);
 	mode_tree_build(data->data);
 	mode_tree_draw(data->data);
@@ -1353,7 +1416,7 @@ window_customize_key(struct window_mode_entry *wme, struct client *c,
 	struct window_pane			*wp = wme->wp;
 	struct window_customize_modedata	*data = wme->data;
 	struct window_customize_itemdata	*item, *new_item;
-	int					 finished;
+	int					 finished, idx;
 	char					*prompt;
 	u_int					 tagged;
 
@@ -1390,17 +1453,43 @@ window_customize_key(struct window_mode_entry *wme, struct client *c,
 		options_push_changes(item->name);
 		mode_tree_build(data->data);
 		break;
+	case 'd':
+		if (item == NULL || item->idx != -1)
+			break;
+		xasprintf(&prompt, "Reset %s to default? ", item->name);
+		data->references++;
+		data->change = WINDOW_CUSTOMIZE_RESET;
+		status_prompt_set(c, NULL, prompt, "",
+		    window_customize_change_current_callback,
+		    window_customize_free_callback, data,
+		    PROMPT_SINGLE|PROMPT_NOFORMAT);
+		free(prompt);
+		break;
+	case 'D':
+		tagged = mode_tree_count_tagged(data->data);
+		if (tagged == 0)
+			break;
+		xasprintf(&prompt, "Reset %u tagged to default? ", tagged);
+		data->references++;
+		data->change = WINDOW_CUSTOMIZE_RESET;
+		status_prompt_set(c, NULL, prompt, "",
+		    window_customize_change_tagged_callback,
+		    window_customize_free_callback, data,
+		    PROMPT_SINGLE|PROMPT_NOFORMAT);
+		free(prompt);
+		break;
 	case 'u':
 		if (item == NULL)
 			break;
-		if (item->scope == WINDOW_CUSTOMIZE_KEY) {
-			xasprintf(&prompt, "Unbind key %s? ",
-			    key_string_lookup_key(item->key, 0));
-		} else
-			xasprintf(&prompt, "Unset option %s? ", item->name);
+		idx = item->idx;
+		if (idx != -1)
+			xasprintf(&prompt, "Unset %s[%d]? ", item->name, idx);
+		else
+			xasprintf(&prompt, "Unset %s? ", item->name);
 		data->references++;
+		data->change = WINDOW_CUSTOMIZE_UNSET;
 		status_prompt_set(c, NULL, prompt, "",
-		    window_customize_unset_current_callback,
+		    window_customize_change_current_callback,
 		    window_customize_free_callback, data,
 		    PROMPT_SINGLE|PROMPT_NOFORMAT);
 		free(prompt);
@@ -1409,10 +1498,11 @@ window_customize_key(struct window_mode_entry *wme, struct client *c,
 		tagged = mode_tree_count_tagged(data->data);
 		if (tagged == 0)
 			break;
-		xasprintf(&prompt, "Unset or unbind %u tagged? ", tagged);
+		xasprintf(&prompt, "Unset %u tagged? ", tagged);
 		data->references++;
+		data->change = WINDOW_CUSTOMIZE_UNSET;
 		status_prompt_set(c, NULL, prompt, "",
-		    window_customize_unset_tagged_callback,
+		    window_customize_change_tagged_callback,
 		    window_customize_free_callback, data,
 		    PROMPT_SINGLE|PROMPT_NOFORMAT);
 		free(prompt);
