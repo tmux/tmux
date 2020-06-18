@@ -13,7 +13,7 @@ TMP=$(mktemp)
 trap "rm -f $TMP" 0 1 15
 
 $TMUX2 -f/dev/null new -d || exit 1
-$TMUX2 set -as terminal-overrides ',*:xenl@' || exit 1
+$TMUX2 set -as terminal-overrides ',*:am@' || exit 1
 $TMUX2 set -g status-right 'RRR' || exit 1
 $TMUX2 set -g status-left 'LLL' || exit 1
 $TMUX2 set -g window-status-current-format 'WWW' || exit 1
