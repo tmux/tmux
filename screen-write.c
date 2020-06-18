@@ -103,7 +103,8 @@ screen_write_redraw_cb(const struct tty_ctx *ttyctx)
 {
 	struct window_pane	*wp = ttyctx->arg;
 
-	wp->flags |= PANE_REDRAW;
+	if (wp != NULL)
+		wp->flags |= PANE_REDRAW;
 }
 
 /* Update context for client. */
