@@ -35,7 +35,7 @@
 
 static struct tmuxproc	*client_proc;
 static struct tmuxpeer	*client_peer;
-static int		 client_flags;
+static uint64_t		 client_flags;
 static enum {
 	CLIENT_EXIT_NONE,
 	CLIENT_EXIT_DETACHED,
@@ -247,7 +247,9 @@ client_main(struct event_base *base, int argc, char **argv, int flags, int feat)
 	pid_t			 ppid;
 	enum msgtype		 msg;
 	struct termios		 tio, saved_tio;
-	size_t			 size;
+	size_t			 size, linesize = 0;
+	ssize_t			 linelen;
+	char			*line = NULL;
 
 	/* Ignore SIGCHLD now or daemon() in the server will leave a zombie. */
 	signal(SIGCHLD, SIG_IGN);
@@ -276,12 +278,13 @@ client_main(struct event_base *base, int argc, char **argv, int flags, int feat)
 			free(pr->error);
 	}
 
-	/* Save the flags. */
-	client_flags = flags;
-
 	/* Create client process structure (starts logging). */
 	client_proc = proc_start("client");
 	proc_set_signals(client_proc, client_signal);
+
+	/* Save the flags. */
+	client_flags = flags;
+	log_debug("flags are %#llx", client_flags);
 
 	/* Initialize the client socket and start the server. */
 	fd = client_connect(base, socket_path, client_flags);
@@ -406,8 +409,19 @@ client_main(struct event_base *base, int argc, char **argv, int flags, int feat)
 			printf("%%exit %s\n", client_exit_message());
 		else
 			printf("%%exit\n");
+		fflush(stdout);
+		if (client_flags & CLIENT_CONTROL_WAITEXIT) {
+			setvbuf(stdin, NULL, _IOLBF, 0);
+			for (;;) {
+				linelen = getline(&line, &linesize, stdin);
+				if (linelen <= 1)
+					break;
+			}
+			free(line);
+		}
 		if (client_flags & CLIENT_CONTROLCONTROL) {
 			printf("\033\\");
+			fflush(stdout);
 			tcsetattr(STDOUT_FILENO, TCSAFLUSH, &saved_tio);
 		}
 	} else if (client_exitreason != CLIENT_EXIT_NONE)
@@ -870,6 +884,13 @@ client_dispatch_wait(struct imsg *imsg)
 		client_exitval = 1;
 		proc_exit(client_proc);
 		break;
+	case MSG_FLAGS:
+		if (datalen != sizeof client_flags)
+			fatalx("bad MSG_FLAGS string");
+
+		memcpy(&client_flags, data, sizeof client_flags);
+		log_debug("new flags are %#llx", client_flags);
+		break;
 	case MSG_SHELL:
 		if (datalen == 0 || data[datalen - 1] != '\0')
 			fatalx("bad MSG_SHELL string");
@@ -916,6 +937,13 @@ client_dispatch_attached(struct imsg *imsg)
 	datalen = imsg->hdr.len - IMSG_HEADER_SIZE;
 
 	switch (imsg->hdr.type) {
+	case MSG_FLAGS:
+		if (datalen != sizeof client_flags)
+			fatalx("bad MSG_FLAGS string");
+
+		memcpy(&client_flags, data, sizeof client_flags);
+		log_debug("new flags are %#llx", client_flags);
+		break;
 	case MSG_DETACH:
 	case MSG_DETACHKILL:
 		if (datalen == 0 || data[datalen - 1] != '\0')

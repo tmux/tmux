@@ -695,6 +695,7 @@ control_discard(struct client *c)
 
 	RB_FOREACH(cp, control_panes, &cs->panes)
 		control_discard_pane(c, cp);
+	bufferevent_disable(cs->read_event, EV_READ);
 }
 
 /* Stop control mode. */

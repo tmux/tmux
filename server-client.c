@@ -2370,6 +2370,8 @@ server_client_control_flags(struct client *c, const char *next)
 	}
 	if (strcmp(next, "no-output") == 0)
 		return (CLIENT_CONTROL_NOOUTPUT);
+	if (strcmp(next, "wait-exit") == 0)
+		return (CLIENT_CONTROL_WAITEXIT);
 	return (0);
 }
 
@@ -2409,6 +2411,7 @@ server_client_set_flags(struct client *c, const char *flags)
 			control_reset_offsets(c);
 	}
 	free(copy);
+	proc_send(c->peer, MSG_FLAGS, -1, &c->flags, sizeof c->flags);
 }
 
 /* Get client flags. This is only flags useful to show to users. */
@@ -2427,6 +2430,8 @@ server_client_get_flags(struct client *c)
 		strlcat(s, "ignore-size,", sizeof s);
 	if (c->flags & CLIENT_CONTROL_NOOUTPUT)
 		strlcat(s, "no-output,", sizeof s);
+	if (c->flags & CLIENT_CONTROL_WAITEXIT)
+		strlcat(s, "wait-exit,", sizeof s);
 	if (c->flags & CLIENT_CONTROL_PAUSEAFTER) {
 		xsnprintf(tmp, sizeof tmp, "pause-after=%u,",
 		    c->pause_age / 1000);
