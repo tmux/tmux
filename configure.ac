@@ -113,6 +113,7 @@ AC_REPLACE_FUNCS([ \
 	fgetln \
 	freezero \
 	getdtablecount \
+	getline \
 	getprogname \
 	memmem \
 	recallocarray \

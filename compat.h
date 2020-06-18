@@ -345,6 +345,11 @@ int		 vasprintf(char **, const char *, va_list);
 char		*fgetln(FILE *, size_t *);
 #endif
 
+#ifndef HAVE_GETLINE
+/* getline.c */
+ssize_t		 getline(char **, size_t *, FILE *);
+#endif
+
 #ifndef HAVE_SETENV
 /* setenv.c */
 int		 setenv(const char *, const char *, int);
