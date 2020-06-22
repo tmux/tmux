@@ -1,5 +1,14 @@
 CHANGES FROM 3.1b TO 3.2
 
+* Add some formats for search in copy mode (search_present, search_match).
+
+* Do not wait on shutdown for commands started with run -b.
+
+* Add -b flags to insert a window before (like the existing -a for after) to
+  break-pane, move-window, new-window.
+
+* Make paste -p the default for ].
+
 * Add support for pausing a pane when the output buffered for a control mode
   client gets too far behind. The pause-after flag with a time is set on the
   pane with refresh-client -f and a paused pane may be resumed with
