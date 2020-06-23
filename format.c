@@ -224,7 +224,7 @@ format_log1(struct format_tree *ft, const char *from, const char *fmt, ...)
 		return;
 
 	va_start(ap, fmt);
-	vasprintf(&s, fmt, ap);
+	xvasprintf(&s, fmt, ap);
 	va_end(ap);
 
 	log_debug("%s: %s", from, s);
