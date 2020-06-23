@@ -28,6 +28,8 @@ static void	screen_redraw_draw_panes(struct screen_redraw_ctx *);
 static void	screen_redraw_draw_status(struct screen_redraw_ctx *);
 static void	screen_redraw_draw_pane(struct screen_redraw_ctx *,
 		    struct window_pane *);
+static void	screen_redraw_set_context(struct client *,
+		    struct screen_redraw_ctx *);
 
 #define CELL_INSIDE 0
 #define CELL_LEFTRIGHT 1
@@ -251,6 +253,10 @@ screen_redraw_type_of_cell(struct client *c, u_int px, u_int py,
 	u_int		 sx = w->sx, sy = w->sy;
 	int		 borders = 0;
 
+	/* Is this outside the window? */
+	if (px >= sx || py >= sy)
+		return (CELL_OUTSIDE);
+
 	/*
 	 * Construct a bitmask of whether the cells to the left (bit 4), right,
 	 * top, and bottom (bit 1) of this cell are borders.
@@ -263,13 +269,16 @@ screen_redraw_type_of_cell(struct client *c, u_int px, u_int py,
 		if (py != 0 &&
 		    screen_redraw_cell_border(c, px, py - 1, pane_status))
 			borders |= 2;
+		if (screen_redraw_cell_border(c, px, py + 1, pane_status))
+			borders |= 1;
 	} else {
 		if (py == 0 ||
 		    screen_redraw_cell_border(c, px, py - 1, pane_status))
-		    borders |= 2;
+			borders |= 2;
+		if (py != sy - 1 &&
+		    screen_redraw_cell_border(c, px, py + 1, pane_status))
+			borders |= 1;
 	}
-	if (py <= sy && screen_redraw_cell_border(c, px, py + 1, pane_status))
-		borders |= 1;
 
 	/*
 	 * Figure out what kind of border this cell is. Only one bit set
@@ -315,7 +324,7 @@ screen_redraw_check_cell(struct client *c, u_int px, u_int py, int pane_status,
 
 	*wpp = NULL;
 
-	if (px > w->sx || py > w->sy)
+	if (px >= w->sx || py >= w->sy)
 		return (CELL_OUTSIDE);
 	if (px == w->sx || py == w->sy) /* window border */
 		return (screen_redraw_type_of_cell(c, px, py, pane_status));
@@ -383,14 +392,16 @@ screen_redraw_check_is(u_int px, u_int py, int pane_status,
 
 /* Update pane status. */
 static int
-screen_redraw_make_pane_status(struct client *c, struct window *w,
-    struct window_pane *wp, int pane_lines)
+screen_redraw_make_pane_status(struct client *c, struct window_pane *wp,
+    struct screen_redraw_ctx *rctx, int pane_lines)
 {
+	struct window		*w = wp->window;
 	struct grid_cell	 gc;
 	const char		*fmt;
 	struct format_tree	*ft;
 	char			*expanded;
-	u_int			 width, i;
+	int			 pane_status = rctx->pane_status;
+	u_int			 width, i, cell_type, top, px, py;
 	struct screen_write_ctx	 ctx;
 	struct screen		 old;
 
@@ -415,9 +426,20 @@ screen_redraw_make_pane_status(struct client *c, struct window *w,
 
 	screen_write_start(&ctx, &wp->status_screen);
 
-	screen_redraw_border_set(wp, pane_lines, CELL_TOPBOTTOM, &gc);
-	for (i = 0; i < width; i++)
+	if (rctx->statustop)
+		top = rctx->statuslines;
+	else
+		top = 0;
+	for (i = 0; i < width; i++) {
+		px = wp->xoff + 2 + i;
+		if (rctx->pane_status == PANE_STATUS_TOP)
+			py = top + wp->yoff - 1;
+		else
+			py = top + wp->yoff + wp->sy;
+		cell_type = screen_redraw_type_of_cell(c, px, py, pane_status);
+		screen_redraw_border_set(wp, pane_lines, cell_type, &gc);
 		screen_write_cell(&ctx, &gc);
+	}
 	gc.attr &= ~GRID_ATTR_CHARSET;
 
 	screen_write_cursormove(&ctx, 0, 0, 0);
@@ -504,6 +526,7 @@ screen_redraw_update(struct client *c, int flags)
 	struct window_pane	*wp;
 	struct options		*wo = w->options;
 	int			 redraw, lines;
+	struct screen_redraw_ctx ctx;
 
 	if (c->message_string != NULL)
 		redraw = status_message_redraw(c);
@@ -518,10 +541,11 @@ screen_redraw_update(struct client *c, int flags)
 		flags |= CLIENT_REDRAWOVERLAY;
 
 	if (options_get_number(wo, "pane-border-status") != PANE_STATUS_OFF) {
+		screen_redraw_set_context(c, &ctx);
 		lines = options_get_number(wo, "pane-border-lines");
 		redraw = 0;
 		TAILQ_FOREACH(wp, &w->panes, entry) {
-			if (screen_redraw_make_pane_status(c, w, wp, lines))
+			if (screen_redraw_make_pane_status(c, wp, &ctx, lines))
 				redraw = 1;
 		}
 		if (redraw)
