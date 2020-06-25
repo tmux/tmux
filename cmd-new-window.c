@@ -68,10 +68,8 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	before = args_has(args, 'b');
 	if (args_has(args, 'a') || before) {
 		idx = winlink_shuffle_up(s, wl, before);
-		if (idx == -1) {
-			cmdq_error(item, "couldn't get a window index");
-			return (CMD_RETURN_ERROR);
-		}
+		if (idx == -1)
+			idx = target->idx;
 	}
 
 	memset(&sc, 0, sizeof sc);
@@ -114,7 +112,7 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 		if ((template = args_get(args, 'F')) == NULL)
 			template = NEW_WINDOW_TEMPLATE;
 		cp = format_single(item, template, tc, s, new_wl,
-		    new_wl->window->active);
+			new_wl->window->active);
 		cmdq_print(item, "%s", cp);
 		free(cp);
 	}
