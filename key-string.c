@@ -18,7 +18,9 @@
 
 #include <sys/types.h>
 
+#include <stdlib.h>
 #include <string.h>
+#include <wchar.h>
 
 #include "tmux.h"
 
@@ -163,13 +165,13 @@ key_code
 key_string_lookup_string(const char *string)
 {
 	static const char	*other = "!#()+,-.0123456789:;<=>'\r\t";
-	key_code		 key;
-	u_int			 u;
-	key_code		 modifiers;
-	struct utf8_data	 ud;
-	u_int			 i;
+	key_code		 key, modifiers;
+	u_int			 u, i;
+	struct utf8_data	 ud, *udp;
 	enum utf8_state		 more;
 	utf8_char		 uc;
+	char			 m[MB_LEN_MAX + 1];
+	int			 mlen;
 
 	/* Is this no key or any key? */
 	if (strcasecmp(string, "None") == 0)
@@ -181,9 +183,21 @@ key_string_lookup_string(const char *string)
 	if (string[0] == '0' && string[1] == 'x') {
 	        if (sscanf(string + 2, "%x", &u) != 1)
 	                return (KEYC_UNKNOWN);
-		if (u > 0x1fffff)
-	                return (KEYC_UNKNOWN);
-	        return (u);
+		mlen = wctomb(m, u);
+		if (mlen <= 0 || mlen > MB_LEN_MAX)
+			return (KEYC_UNKNOWN);
+		m[mlen] = '\0';
+
+		udp = utf8_fromcstr(m);
+		if (udp == NULL ||
+		    udp[0].size == 0 ||
+		    udp[1].size != 0 ||
+		    utf8_from_data(&udp[0], &uc) != UTF8_DONE) {
+			free(udp);
+			return (KEYC_UNKNOWN);
+		}
+		free(udp);
+		return (uc);
 	}
 
 	/* Check for modifiers. */
