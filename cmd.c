@@ -598,12 +598,7 @@ cmd_list_append(struct cmd_list *cmdlist, struct cmd *cmd)
 void
 cmd_list_move(struct cmd_list *cmdlist, struct cmd_list *from)
 {
-	struct cmd	*cmd, *cmd1;
-
-	TAILQ_FOREACH_SAFE(cmd, from->list, qentry, cmd1) {
-		TAILQ_REMOVE(from->list, cmd, qentry);
-		TAILQ_INSERT_TAIL(cmdlist->list, cmd, qentry);
-	}
+	TAILQ_CONCAT(cmdlist->list, from->list, qentry);
 	cmdlist->group = cmd_list_next_group++;
 }
 
