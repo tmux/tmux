@@ -1054,7 +1054,7 @@ window_tree_kill_each(__unused void *modedata, void *itemdata,
 		break;
 	case WINDOW_TREE_WINDOW:
 		if (wl != NULL)
-			server_kill_window(wl->window);
+			server_kill_window(wl->window, 1);
 		break;
 	case WINDOW_TREE_PANE:
 		if (wp != NULL)
