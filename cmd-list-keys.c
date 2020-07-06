@@ -164,6 +164,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 			cmdq_error(item, "invalid key: %s", args->argv[0]);
 			return (CMD_RETURN_ERROR);
 		}
+		only &= KEYC_MASK_KEY;
 	}
 
 	tablename = args_get(args, 'T');

@@ -32,30 +32,30 @@ static const struct {
 	key_code	key;
 } key_string_table[] = {
 	/* Function keys. */
-	{ "F1",		KEYC_F1 },
-	{ "F2",		KEYC_F2 },
-	{ "F3",		KEYC_F3 },
-	{ "F4",		KEYC_F4 },
-	{ "F5",		KEYC_F5 },
-	{ "F6",		KEYC_F6 },
-	{ "F7",		KEYC_F7 },
-	{ "F8",		KEYC_F8 },
-	{ "F9",		KEYC_F9 },
-	{ "F10",	KEYC_F10 },
-	{ "F11",	KEYC_F11 },
-	{ "F12",	KEYC_F12 },
-	{ "IC",		KEYC_IC },
-	{ "Insert",     KEYC_IC },
-	{ "DC",		KEYC_DC },
-	{ "Delete",     KEYC_DC },
-	{ "Home",	KEYC_HOME },
-	{ "End",	KEYC_END },
-	{ "NPage",	KEYC_NPAGE },
-	{ "PageDown",	KEYC_NPAGE },
-	{ "PgDn",	KEYC_NPAGE },
-	{ "PPage",	KEYC_PPAGE },
-	{ "PageUp",	KEYC_PPAGE },
-	{ "PgUp",	KEYC_PPAGE },
+	{ "F1",		KEYC_F1|KEYC_IMPLIED_META },
+	{ "F2",		KEYC_F2|KEYC_IMPLIED_META },
+	{ "F3",		KEYC_F3|KEYC_IMPLIED_META },
+	{ "F4",		KEYC_F4|KEYC_IMPLIED_META },
+	{ "F5",		KEYC_F5|KEYC_IMPLIED_META },
+	{ "F6",		KEYC_F6|KEYC_IMPLIED_META },
+	{ "F7",		KEYC_F7|KEYC_IMPLIED_META },
+	{ "F8",		KEYC_F8|KEYC_IMPLIED_META },
+	{ "F9",		KEYC_F9|KEYC_IMPLIED_META },
+	{ "F10",	KEYC_F10|KEYC_IMPLIED_META },
+	{ "F11",	KEYC_F11|KEYC_IMPLIED_META },
+	{ "F12",	KEYC_F12|KEYC_IMPLIED_META },
+	{ "IC",		KEYC_IC|KEYC_IMPLIED_META },
+	{ "Insert",     KEYC_IC|KEYC_IMPLIED_META },
+	{ "DC",		KEYC_DC|KEYC_IMPLIED_META },
+	{ "Delete",     KEYC_DC|KEYC_IMPLIED_META },
+	{ "Home",	KEYC_HOME|KEYC_IMPLIED_META },
+	{ "End",	KEYC_END|KEYC_IMPLIED_META },
+	{ "NPage",	KEYC_NPAGE|KEYC_IMPLIED_META },
+	{ "PageDown",	KEYC_NPAGE|KEYC_IMPLIED_META },
+	{ "PgDn",	KEYC_NPAGE|KEYC_IMPLIED_META },
+	{ "PPage",	KEYC_PPAGE|KEYC_IMPLIED_META },
+	{ "PageUp",	KEYC_PPAGE|KEYC_IMPLIED_META },
+	{ "PgUp",	KEYC_PPAGE|KEYC_IMPLIED_META },
 	{ "Tab",	'\011' },
 	{ "BTab",	KEYC_BTAB },
 	{ "Space",	' ' },
@@ -64,10 +64,10 @@ static const struct {
 	{ "Escape",	'\033' },
 
 	/* Arrow keys. */
-	{ "Up",		KEYC_UP|KEYC_CURSOR },
-	{ "Down",	KEYC_DOWN|KEYC_CURSOR },
-	{ "Left",	KEYC_LEFT|KEYC_CURSOR },
-	{ "Right",	KEYC_RIGHT|KEYC_CURSOR },
+	{ "Up",		KEYC_UP|KEYC_CURSOR|KEYC_IMPLIED_META },
+	{ "Down",	KEYC_DOWN|KEYC_CURSOR|KEYC_IMPLIED_META },
+	{ "Left",	KEYC_LEFT|KEYC_CURSOR|KEYC_IMPLIED_META },
+	{ "Right",	KEYC_RIGHT|KEYC_CURSOR|KEYC_IMPLIED_META },
 
 	/* Numeric keypad. */
 	{ "KP/", 	KEYC_KP_SLASH|KEYC_KEYPAD },
@@ -233,6 +233,8 @@ key_string_lookup_string(const char *string)
 		key = key_string_search_table(string);
 		if (key == KEYC_UNKNOWN)
 			return (KEYC_UNKNOWN);
+		if (~modifiers & KEYC_META)
+			key &= ~KEYC_IMPLIED_META;
 	}
 
 	/* Convert the standard control keys. */
