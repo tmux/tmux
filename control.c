@@ -76,6 +76,42 @@ struct control_pane {
 };
 RB_HEAD(control_panes, control_pane);
 
+/* Subscription pane. */
+struct control_sub_pane {
+	u_int				 pane;
+	u_int				 idx;
+	char				*last;
+
+	RB_ENTRY(control_sub_pane)	 entry;
+};
+RB_HEAD(control_sub_panes, control_sub_pane);
+
+/* Subscription window. */
+struct control_sub_window {
+	u_int				 window;
+	u_int				 idx;
+	char				*last;
+
+	RB_ENTRY(control_sub_window)	 entry;
+};
+RB_HEAD(control_sub_windows, control_sub_window);
+
+/* Control client subscription. */
+struct control_sub {
+	char				*name;
+	char				*format;
+
+	enum control_sub_type		 type;
+	u_int				 id;
+
+	char				*last;
+	struct control_sub_panes	 panes;
+	struct control_sub_windows	 windows;
+
+	RB_ENTRY(control_sub)		 entry;
+};
+RB_HEAD(control_subs, control_sub);
+
 /* Control client state. */
 struct control_state {
 	struct control_panes		 panes;
@@ -87,6 +123,9 @@ struct control_state {
 
 	struct bufferevent		*read_event;
 	struct bufferevent		*write_event;
+
+	struct control_subs		 subs;
+	struct event			 subs_timer;
 };
 
 /* Low and high watermarks. */
@@ -115,6 +154,73 @@ control_pane_cmp(struct control_pane *cp1, struct control_pane *cp2)
 	return (0);
 }
 RB_GENERATE_STATIC(control_panes, control_pane, entry, control_pane_cmp);
+
+/* Compare client subs. */
+static int
+control_sub_cmp(struct control_sub *csub1, struct control_sub *csub2)
+{
+	return (strcmp(csub1->name, csub2->name));
+}
+RB_GENERATE_STATIC(control_subs, control_sub, entry, control_sub_cmp);
+
+/* Compare client subscription panes. */
+static int
+control_sub_pane_cmp(struct control_sub_pane *csp1,
+    struct control_sub_pane *csp2)
+{
+	if (csp1->pane < csp2->pane)
+		return (-1);
+	if (csp1->pane > csp2->pane)
+		return (1);
+	if (csp1->idx < csp2->idx)
+		return (-1);
+	if (csp1->idx > csp2->idx)
+		return (1);
+	return (0);
+}
+RB_GENERATE_STATIC(control_sub_panes, control_sub_pane, entry,
+    control_sub_pane_cmp);
+
+/* Compare client subscription windows. */
+static int
+control_sub_window_cmp(struct control_sub_window *csw1,
+    struct control_sub_window *csw2)
+{
+	if (csw1->window < csw2->window)
+		return (-1);
+	if (csw1->window > csw2->window)
+		return (1);
+	if (csw1->idx < csw2->idx)
+		return (-1);
+	if (csw1->idx > csw2->idx)
+		return (1);
+	return (0);
+}
+RB_GENERATE_STATIC(control_sub_windows, control_sub_window, entry,
+    control_sub_window_cmp);
+
+/* Free a subscription. */
+static void
+control_free_sub(struct control_state *cs, struct control_sub *csub)
+{
+	struct control_sub_pane		*csp, *csp1;
+	struct control_sub_window	*csw, *csw1;
+
+	RB_FOREACH_SAFE(csp, control_sub_panes, &csub->panes, csp1) {
+		RB_REMOVE(control_sub_panes, &csub->panes, csp);
+		free(csp);
+	}
+	RB_FOREACH_SAFE(csw, control_sub_windows, &csub->windows, csw1) {
+		RB_REMOVE(control_sub_windows, &csub->windows, csw);
+		free(csw);
+	}
+	free(csub->last);
+
+	RB_REMOVE(control_subs, &cs->subs, csub);
+	free(csub->name);
+	free(csub->format);
+	free(csub);
+}
 
 /* Free a block. */
 static void
@@ -666,6 +772,7 @@ control_start(struct client *c)
 	RB_INIT(&cs->panes);
 	TAILQ_INIT(&cs->pending_list);
 	TAILQ_INIT(&cs->all_blocks);
+	RB_INIT(&cs->subs);
 
 	cs->read_event = bufferevent_new(c->fd, control_read_callback,
 	    control_write_callback, control_error_callback, c);
@@ -704,14 +811,298 @@ control_stop(struct client *c)
 {
 	struct control_state	*cs = c->control_state;
 	struct control_block	*cb, *cb1;
+	struct control_sub	*csub, *csub1;
 
 	if (~c->flags & CLIENT_CONTROLCONTROL)
 		bufferevent_free(cs->write_event);
 	bufferevent_free(cs->read_event);
+
+	RB_FOREACH_SAFE(csub, control_subs, &cs->subs, csub1)
+		control_free_sub(cs, csub);
+	if (evtimer_initialized(&cs->subs_timer))
+		evtimer_del(&cs->subs_timer);
 
 	TAILQ_FOREACH_SAFE(cb, &cs->all_blocks, all_entry, cb1)
 		control_free_block(cs, cb);
 	control_reset_offsets(c);
 
 	free(cs);
+}
+
+/* Check session subscription. */
+static void
+control_check_subs_session(struct client *c, struct control_sub *csub)
+{
+	struct session		*s = c->session;
+	struct format_tree	*ft;
+	char			*value;
+
+	ft = format_create_defaults(NULL, c, s, NULL, NULL);
+	value = format_expand(ft, csub->format);
+	format_free(ft);
+
+	if (csub->last != NULL && strcmp(value, csub->last) == 0) {
+		free(value);
+		return;
+	}
+	control_write(c,
+	    "%%subscription-changed %s $%u - - - : %s",
+	    csub->name, s->id, value);
+	free(csub->last);
+	csub->last = value;
+}
+
+/* Check pane subscription. */
+static void
+control_check_subs_pane(struct client *c, struct control_sub *csub)
+{
+	struct session		*s = c->session;
+	struct window_pane	*wp;
+	struct window		*w;
+	struct winlink		*wl;
+	struct format_tree	*ft;
+	char			*value;
+	struct control_sub_pane	*csp, find;
+
+	wp = window_pane_find_by_id(csub->id);
+	if (wp == NULL)
+		return;
+	w = wp->window;
+
+	TAILQ_FOREACH(wl, &w->winlinks, wentry) {
+		if (wl->session != s)
+			continue;
+
+		ft = format_create_defaults(NULL, c, s, wl, wp);
+		value = format_expand(ft, csub->format);
+		format_free(ft);
+
+		find.pane = wp->id;
+		find.idx = wl->idx;
+
+		csp = RB_FIND(control_sub_panes, &csub->panes, &find);
+		if (csp == NULL) {
+			csp = xcalloc(1, sizeof *csp);
+			csp->pane = wp->id;
+			csp->idx = wl->idx;
+			RB_INSERT(control_sub_panes, &csub->panes, csp);
+		}
+
+		if (csp->last != NULL && strcmp(value, csp->last) == 0) {
+			free(value);
+			continue;
+		}
+		control_write(c,
+		    "%%subscription-changed %s $%u @%u %u %%%u : %s",
+		    csub->name, s->id, w->id, wl->idx, wp->id, value);
+		free(csp->last);
+		csp->last = value;
+	}
+}
+
+/* Check all panes subscription. */
+static void
+control_check_subs_all_panes(struct client *c, struct control_sub *csub)
+{
+	struct session		*s = c->session;
+	struct window_pane	*wp;
+	struct window		*w;
+	struct winlink		*wl;
+	struct format_tree	*ft;
+	char			*value;
+	struct control_sub_pane	*csp, find;
+
+	RB_FOREACH(wl, winlinks, &s->windows) {
+		w = wl->window;
+		TAILQ_FOREACH(wp, &w->panes, entry) {
+			ft = format_create_defaults(NULL, c, s, wl, wp);
+			value = format_expand(ft, csub->format);
+			format_free(ft);
+
+			find.pane = wp->id;
+			find.idx = wl->idx;
+
+			csp = RB_FIND(control_sub_panes, &csub->panes, &find);
+			if (csp == NULL) {
+				csp = xcalloc(1, sizeof *csp);
+				csp->pane = wp->id;
+				csp->idx = wl->idx;
+				RB_INSERT(control_sub_panes, &csub->panes, csp);
+			}
+
+			if (csp->last != NULL &&
+			    strcmp(value, csp->last) == 0) {
+				free(value);
+				continue;
+			}
+			control_write(c,
+			    "%%subscription-changed %s $%u @%u %u %%%u : %s",
+			    csub->name, s->id, w->id, wl->idx, wp->id, value);
+			free(csp->last);
+			csp->last = value;
+		}
+	}
+}
+
+/* Check window subscription. */
+static void
+control_check_subs_window(struct client *c, struct control_sub *csub)
+{
+	struct session			*s = c->session;
+	struct window			*w;
+	struct winlink			*wl;
+	struct format_tree		*ft;
+	char				*value;
+	struct control_sub_window	*csw, find;
+
+	w = window_find_by_id(csub->id);
+	if (w == NULL)
+		return;
+
+	TAILQ_FOREACH(wl, &w->winlinks, wentry) {
+		if (wl->session != s)
+			continue;
+
+		ft = format_create_defaults(NULL, c, s, wl, NULL);
+		value = format_expand(ft, csub->format);
+		format_free(ft);
+
+		find.window = w->id;
+		find.idx = wl->idx;
+
+		csw = RB_FIND(control_sub_windows, &csub->windows, &find);
+		if (csw == NULL) {
+			csw = xcalloc(1, sizeof *csw);
+			csw->window = w->id;
+			csw->idx = wl->idx;
+			RB_INSERT(control_sub_windows, &csub->windows, csw);
+		}
+
+		if (csw->last != NULL && strcmp(value, csw->last) == 0) {
+			free(value);
+			continue;
+		}
+		control_write(c,
+		    "%%subscription-changed %s $%u @%u %u - : %s",
+		    csub->name, s->id, w->id, wl->idx, value);
+		free(csw->last);
+		csw->last = value;
+	}
+}
+
+/* Check all windows subscription. */
+static void
+control_check_subs_all_windows(struct client *c, struct control_sub *csub)
+{
+	struct session			*s = c->session;
+	struct window			*w;
+	struct winlink			*wl;
+	struct format_tree		*ft;
+	char				*value;
+	struct control_sub_window	*csw, find;
+
+	RB_FOREACH(wl, winlinks, &s->windows) {
+		w = wl->window;
+
+		ft = format_create_defaults(NULL, c, s, wl, NULL);
+		value = format_expand(ft, csub->format);
+		format_free(ft);
+
+		find.window = w->id;
+		find.idx = wl->idx;
+
+		csw = RB_FIND(control_sub_windows, &csub->windows, &find);
+		if (csw == NULL) {
+			csw = xcalloc(1, sizeof *csw);
+			csw->window = w->id;
+			csw->idx = wl->idx;
+			RB_INSERT(control_sub_windows, &csub->windows, csw);
+		}
+
+		if (csw->last != NULL && strcmp(value, csw->last) == 0) {
+			free(value);
+			continue;
+		}
+		control_write(c,
+		    "%%subscription-changed %s $%u @%u %u - : %s",
+		    csub->name, s->id, w->id, wl->idx, value);
+		free(csw->last);
+		csw->last = value;
+	}
+}
+
+/* Check subscriptions timer. */
+static void
+control_check_subs_timer(__unused int fd, __unused short events, void *data)
+{
+	struct client		*c = data;
+	struct control_state	*cs = c->control_state;
+	struct control_sub	*csub, *csub1;
+	struct timeval		 tv = { .tv_sec = 1 };
+
+	log_debug("%s: timer fired", __func__);
+	evtimer_add(&cs->subs_timer, &tv);
+
+	RB_FOREACH_SAFE(csub, control_subs, &cs->subs, csub1) {
+		switch (csub->type) {
+		case CONTROL_SUB_SESSION:
+			control_check_subs_session(c, csub);
+			break;
+		case CONTROL_SUB_PANE:
+			control_check_subs_pane(c, csub);
+			break;
+		case CONTROL_SUB_ALL_PANES:
+			control_check_subs_all_panes(c, csub);
+			break;
+		case CONTROL_SUB_WINDOW:
+			control_check_subs_window(c, csub);
+			break;
+		case CONTROL_SUB_ALL_WINDOWS:
+			control_check_subs_all_windows(c, csub);
+			break;
+		}
+	}
+}
+
+/* Add a subscription. */
+void
+control_add_sub(struct client *c, const char *name, enum control_sub_type type,
+    int id, const char *format)
+{
+	struct control_state	*cs = c->control_state;
+	struct control_sub	*csub, find;
+	struct timeval		 tv = { .tv_sec = 1 };
+
+	find.name = (char *)name;
+	if ((csub = RB_FIND(control_subs, &cs->subs, &find)) != NULL)
+		control_free_sub(cs, csub);
+
+	csub = xcalloc(1, sizeof *csub);
+	csub->name = xstrdup(name);
+	csub->type = type;
+	csub->id = id;
+	csub->format = xstrdup(format);
+	RB_INSERT(control_subs, &cs->subs, csub);
+
+	RB_INIT(&csub->panes);
+	RB_INIT(&csub->windows);
+
+	if (!evtimer_initialized(&cs->subs_timer))
+		evtimer_set(&cs->subs_timer, control_check_subs_timer, c);
+	if (!evtimer_pending(&cs->subs_timer, NULL))
+		evtimer_add(&cs->subs_timer, &tv);
+}
+
+/* Remove a subscription. */
+void
+control_remove_sub(struct client *c, const char *name)
+{
+	struct control_state	*cs = c->control_state;
+	struct control_sub	*csub, find;
+
+	find.name = (char *)name;
+	if ((csub = RB_FIND(control_subs, &cs->subs, &find)) != NULL)
+		control_free_sub(cs, csub);
+	if (RB_EMPTY(&cs->subs))
+		evtimer_del(&cs->subs_timer);
 }
