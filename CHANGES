@@ -1,5 +1,8 @@
 CHANGES FROM 3.1b TO 3.2
 
+* Add a way for control mode clients to subscribe to a format and be notified
+  of changes rather than having to poll.
+    
 * Add some formats for search in copy mode (search_present, search_match).
 
 * Do not wait on shutdown for commands started with run -b.
