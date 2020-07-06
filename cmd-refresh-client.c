@@ -34,27 +34,62 @@ const struct cmd_entry cmd_refresh_client_entry = {
 	.name = "refresh-client",
 	.alias = "refresh",
 
-	.args = { "A:cC:Df:F:lLRSt:U", 0, 1 },
-	.usage = "[-cDlLRSU] [-A pane:state] [-C XxY] [-f flags] "
-		 CMD_TARGET_CLIENT_USAGE " [adjustment]",
+	.args = { "A:B:cC:Df:F:lLRSt:U", 0, 1 },
+	.usage = "[-cDlLRSU] [-A pane:state] [-B name:what:format] "
+		 "[-C XxY] [-f flags] " CMD_TARGET_CLIENT_USAGE " [adjustment]",
 
 	.flags = CMD_AFTERHOOK|CMD_CLIENT_TFLAG,
 	.exec = cmd_refresh_client_exec
 };
 
 static void
+cmd_refresh_client_update_subscription(struct client *tc, const char *value)
+{
+	char			*copy, *split, *name, *what;
+	enum control_sub_type	 subtype;
+	int			 subid = -1;
+
+	copy = name = xstrdup(value);
+	if ((split = strchr(copy, ':')) == NULL) {
+		control_remove_sub(tc, copy);
+		goto out;
+	}
+	*split++ = '\0';
+
+	what = split;
+	if ((split = strchr(what, ':')) == NULL)
+		goto out;
+	*split++ = '\0';
+
+	if (strcmp(what, "%*") == 0)
+		subtype = CONTROL_SUB_ALL_PANES;
+	else if (sscanf(what, "%%%d", &subid) == 1 && subid >= 0)
+		subtype = CONTROL_SUB_PANE;
+	else if (strcmp(what, "@*") == 0)
+		subtype = CONTROL_SUB_ALL_WINDOWS;
+	else if (sscanf(what, "@%d", &subid) == 1 && subid >= 0)
+		subtype = CONTROL_SUB_WINDOW;
+	else
+		subtype = CONTROL_SUB_SESSION;
+	control_add_sub(tc, name, subtype, subid, split);
+
+out:
+	free(copy);
+}
+
+static void
 cmd_refresh_client_update_offset(struct client *tc, const char *value)
 {
 	struct window_pane	*wp;
-	char			*copy, *colon;
+	char			*copy, *split;
 	u_int			 pane;
 
 	if (*value != '%')
 		return;
 	copy = xstrdup(value);
-	if ((colon = strchr(copy, ':')) == NULL)
+	if ((split = strchr(copy, ':')) == NULL)
 		goto out;
-	*colon++ = '\0';
+	*split++ = '\0';
 
 	if (sscanf(copy, "%%%u", &pane) != 1)
 		goto out;
@@ -62,13 +97,13 @@ cmd_refresh_client_update_offset(struct client *tc, const char *value)
 	if (wp == NULL)
 		goto out;
 
-	if (strcmp(colon, "on") == 0)
+	if (strcmp(split, "on") == 0)
 		control_set_pane_on(tc, wp);
-	else if (strcmp(colon, "off") == 0)
+	else if (strcmp(split, "off") == 0)
 		control_set_pane_off(tc, wp);
-	else if (strcmp(colon, "continue") == 0)
+	else if (strcmp(split, "continue") == 0)
 		control_continue_pane(tc, wp);
-	else if (strcmp(colon, "pause") == 0)
+	else if (strcmp(split, "pause") == 0)
 		control_pause_pane(tc, wp);
 
 out:
@@ -152,6 +187,16 @@ cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 		value = args_first_value(args, 'A', &av);
 		while (value != NULL) {
 			cmd_refresh_client_update_offset(tc, value);
+			value = args_next_value(&av);
+		}
+		return (CMD_RETURN_NORMAL);
+	}
+	if (args_has(args, 'B')) {
+		if (~tc->flags & CLIENT_CONTROL)
+			goto not_control_client;
+		value = args_first_value(args, 'B', &av);
+		while (value != NULL) {
+			cmd_refresh_client_update_subscription(tc, value);
 			value = args_next_value(&av);
 		}
 		return (CMD_RETURN_NORMAL);

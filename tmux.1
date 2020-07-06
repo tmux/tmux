@@ -1255,6 +1255,7 @@ specified multiple times.
 .It Xo Ic refresh-client
 .Op Fl cDlLRSU
 .Op Fl A Ar pane:state
+.Op Fl B Ar name:what:format
 .Op Fl C Ar XxY
 .Op Fl f Ar flags
 .Op Fl t Ar target-client
@@ -1327,6 +1328,31 @@ If
 will pause the pane.
 .Fl A
 may be given multiple times for different panes.
+.Pp
+.Fl B
+sets a subscription to a format for a control mode client.
+The argument is split into three items by colons:
+.Ar name
+is a name for the subscription;
+.Ar what
+is a type of item to subscribe to;
+.Ar format
+is the format.
+After a subscription is added, changes to the format are reported with the
+.Ic %subscription-changed
+notification, at most once a second.
+If only the name is given, the subscription is removed.
+.Ar what
+may be empty to check the format only for the attached session, or one of:
+a pane ID such as
+.Ql %0 ;
+.Ql %*
+for all panes in the attached session;
+an window ID such as
+.Ql @0 ;
+or
+.Ql @*
+for all windows in the attached session.
 .Pp
 .Fl f
 sets a comma-separated list of client flags, see
@@ -5932,7 +5958,7 @@ or an error occurred.
 If present,
 .Ar reason
 describes why the client exited.
-.It Ic %extended-output Ar pane-id Ar age Ar ... : Ar value
+.It Ic %extended-output Ar pane-id Ar age Ar ... \&  : Ar value
 New form of
 .Ic %output
 sent when the
@@ -5980,6 +6006,26 @@ changed its active window to the window with ID
 .Ar window-id .
 .It Ic %sessions-changed
 A session was created or destroyed.
+.It Xo Ic %subscription-changed
+.Ar name
+.Ar session-id
+.Ar window-id
+.Ar window-index
+.Ar pane-id ... \&  :
+.Ar value
+.Xc
+The value of the format associated with subscription
+.Ar name
+has changed to
+.Ar value .
+See
+.Ic refresh-client
+.Fl B .
+Any arguments after
+.Ar pane-id
+up until a single
+.Ql \&:
+are for future use and should be ignored.
 .It Ic %unlinked-window-add Ar window-id
 The window with ID
 .Ar window-id
