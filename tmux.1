@@ -169,8 +169,17 @@ independent
 servers to be run.
 Unlike
 .Fl S
-a full path is not necessary: the sockets are all created in the same
-directory.
+a full path is not necessary: the sockets are all created in a directory
+.Pa tmux-UID
+under the directory given by
+.Ev TMUX_TMPDIR
+or in
+.Pa /tmp .
+The
+.Pa tmux-UID
+directory is created by
+.Nm
+and must not be world readable, writable or executable.
 .Pp
 If the socket is accidentally removed, the
 .Dv SIGUSR1
