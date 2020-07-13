@@ -1432,7 +1432,7 @@ yylex_token_variable(char **buf, size_t *len)
 	name[namelen] = '\0';
 
 	envent = environ_find(global_environ, name);
-	if (envent != NULL) {
+	if (envent != NULL && envent->value != NULL) {
 		value = envent->value;
 		log_debug("%s: %s -> %s", __func__, name, value);
 		yylex_append(buf, len, value, strlen(value));
