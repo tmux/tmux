@@ -2601,6 +2601,11 @@ window_copy_cellstring(const struct grid_line *gl, u_int px, size_t *size,
 	}
 
 	gce = &gl->celldata[px];
+	if (gce->flags & GRID_FLAG_PADDING) {
+		*size = 0;
+		*allocated = 0;
+		return (NULL);
+	}
 	if (~gce->flags & GRID_FLAG_EXTENDED) {
 		*size = 1;
 		*allocated = 0;
