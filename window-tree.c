@@ -1054,7 +1054,7 @@ window_tree_kill_each(__unused void *modedata, void *itemdata,
 		break;
 	case WINDOW_TREE_WINDOW:
 		if (wl != NULL)
-			server_kill_window(wl->window, 1);
+			server_kill_window(wl->window, 0);
 		break;
 	case WINDOW_TREE_PANE:
 		if (wp != NULL)
@@ -1076,6 +1076,7 @@ window_tree_kill_current_callback(struct client *c, void *modedata,
 		return (0);
 
 	window_tree_kill_each(data, mode_tree_get_current(mtd), c, KEYC_NONE);
+	server_renumber_all();
 
 	data->references++;
 	cmdq_append(c, cmdq_get_callback(window_tree_command_done, data));
@@ -1096,6 +1097,7 @@ window_tree_kill_tagged_callback(struct client *c, void *modedata,
 		return (0);
 
 	mode_tree_each_tagged(mtd, window_tree_kill_each, c, KEYC_NONE, 1);
+	server_renumber_all();
 
 	data->references++;
 	cmdq_append(c, cmdq_get_callback(window_tree_command_done, data));
