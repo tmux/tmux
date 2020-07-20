@@ -170,6 +170,14 @@ static const char *options_table_status_format_default[] = {
 	  .separator = "" \
 	}
 
+/* Map of name conversions. */
+const struct options_name_map options_other_names[] = {
+	{ "display-panes-color", "display-panes-colour" },
+	{ "display-panes-active-color", "display-panes-active-colour" },
+	{ "clock-mode-color", "clock-mode-colour" },
+	{ NULL, NULL }
+};
+
 /* Top-level options. */
 const struct options_table_entry options_table[] = {
 	/* Server options. */

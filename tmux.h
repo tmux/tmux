@@ -1790,6 +1790,7 @@ enum options_table_type {
 
 struct options_table_entry {
 	const char		 *name;
+	const char		 *alternative_name;
 	enum options_table_type	  type;
 	int			  scope;
 	int			  flags;
@@ -1807,6 +1808,11 @@ struct options_table_entry {
 
 	const char		 *text;
 	const char		 *unit;
+};
+
+struct options_name_map {
+	const char		*from;
+	const char		*to;
 };
 
 /* Common command usages. */
@@ -2041,7 +2047,8 @@ int		 options_remove_or_default(struct options_entry *, int,
 		     char **);
 
 /* options-table.c */
-extern const struct options_table_entry options_table[];
+extern const struct options_table_entry	options_table[];
+extern const struct options_name_map	options_other_names[];
 
 /* job.c */
 typedef void (*job_update_cb) (struct job *);
