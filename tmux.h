@@ -2942,6 +2942,7 @@ enum utf8_state	 utf8_append(struct utf8_data *, u_char);
 int		 utf8_isvalid(const char *);
 int		 utf8_strvis(char *, const char *, size_t, int);
 int		 utf8_stravis(char **, const char *, int);
+int		 utf8_stravisx(char **, const char *, size_t, int);
 char		*utf8_sanitize(const char *);
 size_t		 utf8_strlen(const struct utf8_data *);
 u_int		 utf8_strwidth(const struct utf8_data *, ssize_t);

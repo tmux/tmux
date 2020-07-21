@@ -353,6 +353,20 @@ utf8_stravis(char **dst, const char *src, int flag)
 	return (len);
 }
 
+/* Same as utf8_strvis but allocate the buffer. */
+int
+utf8_stravisx(char **dst, const char *src, size_t srclen, int flag)
+{
+	char	*buf;
+	int	 len;
+
+	buf = xreallocarray(NULL, 4, srclen + 1);
+	len = utf8_strvis(buf, src, srclen, flag);
+
+	*dst = xrealloc(buf, len + 1);
+	return (len);
+}
+
 /* Does this string contain anything that isn't valid UTF-8? */
 int
 utf8_isvalid(const char *s)
