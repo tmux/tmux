@@ -254,7 +254,7 @@ screen_redraw_type_of_cell(struct client *c, u_int px, u_int py,
 	int		 borders = 0;
 
 	/* Is this outside the window? */
-	if (px >= sx || py >= sy)
+	if (px > sx || py > sy)
 		return (CELL_OUTSIDE);
 
 	/*
@@ -330,7 +330,7 @@ screen_redraw_check_cell(struct client *c, u_int px, u_int py, int pane_status,
 
 	*wpp = NULL;
 
-	if (px >= w->sx || py >= w->sy)
+	if (px > w->sx || py > w->sy)
 		return (CELL_OUTSIDE);
 	if (px == w->sx || py == w->sy) /* window border */
 		return (screen_redraw_type_of_cell(c, px, py, pane_status));
