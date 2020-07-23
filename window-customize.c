@@ -403,9 +403,9 @@ window_customize_build_options(struct window_customize_modedata *data,
 	for (i = 0; i < size; i++) {
 		if (oo2 != NULL)
 			o = options_get(oo0, list[i]);
-		else if (oo1 != NULL)
+		if (o == NULL && oo1 != NULL)
 			o = options_get(oo1, list[i]);
-		else
+		if (o == NULL)
 			o = options_get(oo2, list[i]);
 		if (options_owner(o) == oo2)
 			scope = scope2;
