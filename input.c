@@ -1867,6 +1867,7 @@ input_csi_dispatch_winops(struct input_ctx *ictx)
 			case 2:
 				screen_pop_title(sctx->s);
 				if (wp != NULL) {
+					notify_pane("pane-title-changed", wp);
 					server_redraw_window_borders(wp->window);
 					server_status_window(wp->window);
 				}
@@ -2261,6 +2262,7 @@ input_exit_osc(struct input_ctx *ictx)
 	case 0:
 	case 2:
 		if (screen_set_title(sctx->s, p) && wp != NULL) {
+			notify_pane("pane-title-changed", wp);
 			server_redraw_window_borders(wp->window);
 			server_status_window(wp->window);
 		}
@@ -2326,6 +2328,7 @@ input_exit_apc(struct input_ctx *ictx)
 	log_debug("%s: \"%s\"", __func__, ictx->input_buf);
 
 	if (screen_set_title(sctx->s, ictx->input_buf) && wp != NULL) {
+		notify_pane("pane-title-changed", wp);
 		server_redraw_window_borders(wp->window);
 		server_status_window(wp->window);
 	}

@@ -1120,6 +1120,7 @@ const struct options_table_entry options_table[] = {
 	OPTIONS_TABLE_PANE_HOOK("pane-focus-out", ""),
 	OPTIONS_TABLE_PANE_HOOK("pane-mode-changed", ""),
 	OPTIONS_TABLE_PANE_HOOK("pane-set-clipboard", ""),
+	OPTIONS_TABLE_PANE_HOOK("pane-title-changed", ""),
 	OPTIONS_TABLE_HOOK("session-closed", ""),
 	OPTIONS_TABLE_HOOK("session-created", ""),
 	OPTIONS_TABLE_HOOK("session-renamed", ""),
