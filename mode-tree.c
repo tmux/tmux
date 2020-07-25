@@ -1176,7 +1176,7 @@ mode_tree_run_command(struct client *c, struct cmd_find_state *fs,
 		if (status == CMD_PARSE_ERROR) {
 			if (c != NULL) {
 				*error = toupper((u_char)*error);
-				status_message_set(c, 1, "%s", error);
+				status_message_set(c, 0, 1, "%s", error);
 			}
 			free(error);
 		}

@@ -316,9 +316,9 @@ alerts_set_message(struct winlink *wl, const char *type, const char *option)
 		if (visual == VISUAL_OFF)
 			continue;
 		if (c->session->curw == wl)
-			status_message_set(c, 1, "%s in current window", type);
+			status_message_set(c, 0, 1, "%s in current window", type);
 		else {
-			status_message_set(c, 1, "%s in window %d", type,
+			status_message_set(c, 0, 1, "%s in window %d", type,
 			    wl->idx);
 		}
 	}

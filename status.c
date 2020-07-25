@@ -423,11 +423,10 @@ status_redraw(struct client *c)
 
 /* Set a status line message. */
 void
-status_message_set(struct client *c, int ignore_styles, const char *fmt, ...)
+status_message_set(struct client *c, int delay, int ignore_styles, const char *fmt, ...)
 {
 	struct timeval	tv;
 	va_list		ap;
-	int		delay;
 
 	status_message_clear(c);
 	status_push_screen(c);
@@ -439,7 +438,9 @@ status_message_set(struct client *c, int ignore_styles, const char *fmt, ...)
 
 	server_add_message("%s message: %s", c->name, c->message_string);
 
-	delay = options_get_number(c->session->options, "display-time");
+  if (!delay) {
+    delay = options_get_number(c->session->options, "display-time");
+  }
 	if (delay > 0) {
 		tv.tv_sec = delay / 1000;
 		tv.tv_usec = (delay % 1000) * 1000L;
