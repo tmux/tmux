@@ -33,7 +33,7 @@
 	"- (%H:%M %d-%b-%y)"
 
 static enum cmd_retval	cmd_display_message_exec(struct cmd *,
-			    struct cmdq_item *);
+					struct cmdq_item *);
 
 const struct cmd_entry cmd_display_message_entry = {
 	.name = "display-message",
@@ -68,7 +68,7 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 	struct window_pane	*wp = target->wp;
 	const char		*template;
 	char			*msg, *cause;
-  int      delay;
+	int			 delay;
 	struct format_tree	*ft;
 	int			 flags;
 
@@ -86,14 +86,16 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_ERROR);
 	}
 
-  if (args_has(args, 'd')) {
-    delay = args_strtonum(args, 'd', 0, UINT_MAX, &cause);
-    if (cause != NULL) {
-      cmdq_error(item, "delay: %s", cause);
-      free(cause);
-      return (CMD_RETURN_ERROR);
-    }
-  }
+	if (args_has(args, 'd')) {
+		delay = args_strtonum(args, 'd', -1, UINT_MAX, &cause);
+		if (cause != NULL) {
+			cmdq_error(item, "delay: %s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
+		}
+	} else {
+		delay = -1;
+	}
 
 	template = args_get(args, 'F');
 	if (args->argc != 0)

@@ -858,7 +858,7 @@ cmdq_error(struct cmdq_item *item, const char *fmt, ...)
 		c->retval = 1;
 	} else {
 		*msg = toupper((u_char) *msg);
-		status_message_set(c, 0, 1, "%s", msg);
+		status_message_set(c, -1, 1, "%s", msg);
 	}
 
 	free(msg);

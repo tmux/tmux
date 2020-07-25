@@ -425,7 +425,7 @@ status_redraw(struct client *c)
 void
 status_message_set(struct client *c, int delay, int ignore_styles, const char *fmt, ...)
 {
-	struct timeval	tv;
+	struct timeval tv;
 	va_list		ap;
 
 	status_message_clear(c);
@@ -438,17 +438,23 @@ status_message_set(struct client *c, int delay, int ignore_styles, const char *f
 
 	server_add_message("%s message: %s", c->name, c->message_string);
 
-  if (!delay) {
-    delay = options_get_number(c->session->options, "display-time");
-  }
-	if (delay > 0) {
-		tv.tv_sec = delay / 1000;
-		tv.tv_usec = (delay % 1000) * 1000L;
-
+	/* With delay == -1 - `display-time` option is used, delay == 0 - wait for key press,
+	 * delay > 0 - actual delay time(in ms) */
+	if (delay == -1) {
+		delay = options_get_number(c->session->options, "display-time");
+	}
+	if (delay >= 0) {
 		if (event_initialized(&c->message_timer))
 			evtimer_del(&c->message_timer);
 		evtimer_set(&c->message_timer, status_message_callback, c);
-		evtimer_add(&c->message_timer, &tv);
+
+		if (delay == 0)
+			evtimer_add(&c->message_timer, NULL);
+		else {
+			tv.tv_sec = delay / 1000;
+			tv.tv_usec = (delay % 1000) * 1000L;
+			evtimer_add(&c->message_timer, &tv);
+		}
 	}
 
 	c->tty.flags |= (TTY_NOCURSOR|TTY_FREEZE);
