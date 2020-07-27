@@ -39,8 +39,8 @@ const struct cmd_entry cmd_display_message_entry = {
 	.name = "display-message",
 	.alias = "display",
 
-	.args = { "ac:Ipt:F:v", 0, 1 },
-	.usage = "[-aIpv] [-c target-client] [-F format] "
+	.args = { "acd:Ipt:F:v", 0, 1 },
+	.usage = "[-aIpv] [-c target-client] [-d delay] [-F format] "
 		 CMD_TARGET_PANE_USAGE " [message]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -68,6 +68,7 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 	struct window_pane	*wp = target->wp;
 	const char		*template;
 	char			*msg, *cause;
+	int			 delay = -1;
 	struct format_tree	*ft;
 	int			 flags;
 
@@ -83,6 +84,15 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'F') && args->argc != 0) {
 		cmdq_error(item, "only one of -F or argument must be given");
 		return (CMD_RETURN_ERROR);
+	}
+
+	if (args_has(args, 'd')) {
+		delay = args_strtonum(args, 'd', 0, UINT_MAX, &cause);
+		if (cause != NULL) {
+			cmdq_error(item, "delay %s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
+		}
 	}
 
 	template = args_get(args, 'F');
@@ -117,7 +127,7 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'p'))
 		cmdq_print(item, "%s", msg);
 	else if (tc != NULL)
-		status_message_set(tc, 0, "%s", msg);
+		status_message_set(tc, delay, 0, "%s", msg);
 	free(msg);
 
 	format_free(ft);

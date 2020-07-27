@@ -5378,6 +5378,7 @@ The following keys are also available:
 .It Xo Ic display-message
 .Op Fl aIpv
 .Op Fl c Ar target-client
+.Op Fl d Ar delay
 .Op Fl t Ar target-pane
 .Op Ar message
 .Xc
@@ -5387,7 +5388,14 @@ If
 .Fl p
 is given, the output is printed to stdout, otherwise it is displayed in the
 .Ar target-client
-status line.
+status line for up to
+.Ar delay
+milliseconds.
+If
+.Ar delay
+is not given, the
+.Ic message-time
+option is used; a delay of zero waits for a key press.
 The format of
 .Ar message
 is described in the
