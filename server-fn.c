@@ -341,6 +341,7 @@ server_destroy_pane(struct window_pane *wp, int notify)
 
 		time(&t);
 		ctime_r(&t, tim);
+		tim[strcspn(tim, "\n")] = '\0';
 
 		if (WIFEXITED(wp->status)) {
 			screen_write_nputs(&ctx, -1, &gc,
