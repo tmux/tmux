@@ -226,6 +226,7 @@ proc_set_signals(struct tmuxproc *tp, void (*signalcb)(int))
 	sigaction(SIGTSTP, &sa, NULL);
 	sigaction(SIGTTIN, &sa, NULL);
 	sigaction(SIGTTOU, &sa, NULL);
+	sigaction(SIGQUIT, &sa, NULL);
 
 	signal_set(&tp->ev_sigint, SIGINT, proc_signal_cb, tp);
 	signal_add(&tp->ev_sigint, NULL);
