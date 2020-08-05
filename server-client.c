@@ -1660,8 +1660,6 @@ server_client_reset_state(struct client *c)
 		s = wp->screen;
 	if (s != NULL)
 		mode = s->mode;
-	if (c->prompt_string != NULL || c->message_string != NULL)
-		mode &= ~MODE_CURSOR;
 	log_debug("%s: client %s mode %x", __func__, c->name, mode);
 
 	/* Reset region and margin. */
