@@ -463,7 +463,7 @@ grid_expand_line(struct grid *gd, u_int py, u_int sx, u_int bg)
 		sx = gd->sx / 4;
 	else if (sx < gd->sx / 2)
 		sx = gd->sx / 2;
-	else
+	else if (gd->sx > sx)
 		sx = gd->sx;
 
 	gl->celldata = xreallocarray(gl->celldata, sx, sizeof *gl->celldata);
@@ -1277,7 +1277,7 @@ grid_reflow(struct grid *gd, u_int sx)
 	struct grid		*target;
 	struct grid_line	*gl;
 	struct grid_cell	 gc;
-	u_int			 yy, width, i, at, first;
+	u_int			 yy, width, i, at;
 
 	/*
 	 * Create a destination grid. This is just used as a container for the
@@ -1294,13 +1294,12 @@ grid_reflow(struct grid *gd, u_int sx)
 			continue;
 
 		/*
-		 * Work out the width of this line. first is the width of the
-		 * first character, at is the point at which the available
-		 * width is hit, and width is the full line width.
+		 * Work out the width of this line. at is the point at which
+		 * the available width is hit, and width is the full line
+		 * width.
 		 */
-		first = at = width = 0;
+		at = width = 0;
 		if (~gl->flags & GRID_LINE_EXTENDED) {
-			first = 1;
 			width = gl->cellused;
 			if (width > sx)
 				at = sx;
@@ -1309,8 +1308,6 @@ grid_reflow(struct grid *gd, u_int sx)
 		} else {
 			for (i = 0; i < gl->cellused; i++) {
 				grid_get_cell1(gl, i, &gc);
-				if (i == 0)
-					first = gc.data.width;
 				if (at == 0 && width + gc.data.width > sx)
 					at = i;
 				width += gc.data.width;
@@ -1318,10 +1315,10 @@ grid_reflow(struct grid *gd, u_int sx)
 		}
 
 		/*
-		 * If the line is exactly right or the first character is wider
-		 * than the target width, just move it across unchanged.
+		 * If the line is exactly right, just move it across
+		 * unchanged.
 		 */
-		if (width == sx || first > sx) {
+		if (width == sx) {
 			grid_reflow_move(target, gl);
 			continue;
 		}
