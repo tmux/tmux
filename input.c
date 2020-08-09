@@ -2459,6 +2459,19 @@ input_osc_parse_colour(const char *p, u_int *r, u_int *g, u_int *b)
 	return (1);
 }
 
+static void
+input_osc_colour_reply(struct input_ctx *ictx, u_int n, int c)
+{
+    u_char      r, g, b;
+    const char  *e = ictx->input_end == INPUT_END_BEL ? "\007" : "\033\\";
+
+    if (~c & COLOUR_FLAG_RGB)
+        return;
+
+    colour_split_rgb(c, &r, &g, &b);
+    input_reply(ictx, "\033]%u;rgb:%02hhx/%02hhx/%02hhx%s", n, r, g, b, e);
+}
+
 /* Handle the OSC 4 sequence for setting (multiple) palette entries. */
 static void
 input_osc_4(struct input_ctx *ictx, const char *p)
@@ -2497,17 +2510,21 @@ bad:
 	free(copy);
 }
 
-/* Handle the OSC 10 sequence for setting foreground colour. */
+/* Handle the OSC 10 sequence for setting and querying foreground colour. */
 static void
 input_osc_10(struct input_ctx *ictx, const char *p)
 {
 	struct window_pane	*wp = ictx->wp;
+	struct grid_cell	defaults;
 	u_int			 r, g, b;
 
 	if (wp == NULL)
 		return;
-	if (strcmp(p, "?") == 0)
+	if (strcmp(p, "?") == 0) {
+        tty_default_colours(&defaults, wp);
+        input_osc_colour_reply(ictx, 10, defaults.fg);
 		return;
+    }
 
 	if (!input_osc_parse_colour(p, &r, &g, &b))
 		goto bad;
@@ -2520,17 +2537,21 @@ bad:
 	log_debug("bad OSC 10: %s", p);
 }
 
-/* Handle the OSC 11 sequence for setting background colour. */
+/* Handle the OSC 11 sequence for setting and querying background colour. */
 static void
 input_osc_11(struct input_ctx *ictx, const char *p)
 {
 	struct window_pane	*wp = ictx->wp;
+	struct grid_cell	defaults;
 	u_int			 r, g, b;
 
 	if (wp == NULL)
 		return;
-	if (strcmp(p, "?") == 0)
+	if (strcmp(p, "?") == 0) {
+        tty_default_colours(&defaults, wp);
+        input_osc_colour_reply(ictx, 11, defaults.bg);
 		return;
+    }
 
 	if (!input_osc_parse_colour(p, &r, &g, &b))
 	    goto bad;
