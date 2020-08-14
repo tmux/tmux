@@ -2465,6 +2465,10 @@ input_osc_colour_reply(struct input_ctx *ictx, u_int n, int c)
     u_char      r, g, b;
     const char  *e = ictx->input_end == INPUT_END_BEL ? "\007" : "\033\\";
 
+    /* Don't respond if color wasn't set by user. */
+    if (c == 8)
+        return;
+
     if (~c & COLOUR_FLAG_RGB)
         return;
 
