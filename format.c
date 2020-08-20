@@ -94,6 +94,7 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 #define FORMAT_WINDOWS 0x100
 #define FORMAT_PANES 0x200
 #define FORMAT_PRETTY 0x400
+#define FORMAT_LENGTH 0x800
 
 /* Limit on recursion. */
 #define FORMAT_LOOP_LIMIT 10
@@ -1647,7 +1648,7 @@ format_build_modifiers(struct format_tree *ft, const char **s, u_int *count)
 
 	/*
 	 * Modifiers are a ; separated list of the forms:
-	 *      l,m,C,b,d,t,q,E,T,S,W,P,<,>
+	 *      l,m,C,b,d,n,t,q,E,T,S,W,P,<,>
 	 *	=a
 	 *	=/a
 	 *      =/a/
@@ -1664,7 +1665,7 @@ format_build_modifiers(struct format_tree *ft, const char **s, u_int *count)
 			cp++;
 
 		/* Check single character modifiers with no arguments. */
-		if (strchr("lbdqETSWP<>", cp[0]) != NULL &&
+		if (strchr("lbdnqETSWP<>", cp[0]) != NULL &&
 		    format_is_end(cp[1])) {
 			format_add_modifier(&list, count, cp, 1, NULL, 0);
 			cp++;
@@ -2122,6 +2123,9 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 			case 'd':
 				modifiers |= FORMAT_DIRNAME;
 				break;
+			case 'n':
+				modifiers |= FORMAT_LENGTH;
+				break;
 			case 't':
 				modifiers |= FORMAT_TIMESTRING;
 				if (fm->argc < 1)
@@ -2301,13 +2305,17 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 		if (value == NULL)
 			value = xstrdup("");
 	} else {
-		/* Neither: look up directly. */
-		value = format_find(ft, copy, modifiers, time_format);
-		if (value == NULL) {
-			format_log(ft, "format '%s' not found", copy);
-			value = xstrdup("");
-		} else
-			format_log(ft, "format '%s' found: %s", copy, value);
+		if (strstr(copy, "#{") != 0) {
+			format_log(ft, "expanding inner format '%s'", copy);
+			value = format_expand(ft, copy);
+		} else {
+			value = format_find(ft, copy, modifiers, time_format);
+			if (value == NULL) {
+				format_log(ft, "format '%s' not found", copy);
+				value = xstrdup("");
+			} else
+				format_log(ft, "format '%s' found: %s", copy, value);
+		}
 	}
 
 done:
@@ -2316,8 +2324,7 @@ done:
 		new = format_expand(ft, value);
 		free(value);
 		value = new;
-	}
-	else if (modifiers & FORMAT_EXPANDTIME) {
+	} else if (modifiers & FORMAT_EXPANDTIME) {
 		new = format_expand_time(ft, value);
 		free(value);
 		value = new;
@@ -2369,6 +2376,14 @@ done:
 		free(value);
 		value = new;
 		format_log(ft, "applied padding width %d: %s", width, value);
+	}
+
+	/* Replace with the length if needed. */
+	if (modifiers & FORMAT_LENGTH) {
+		xasprintf(&new, "%zu", strlen(value));
+		free(value);
+		value = new;
+		format_log(ft, "replacing with length: %s", new);
 	}
 
 	/* Expand the buffer and copy in the value. */
