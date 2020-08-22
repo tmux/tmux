@@ -3560,10 +3560,12 @@ is destroyed.
 If off, the client is switched to the most recently active of the remaining
 sessions.
 .It Ic display-panes-active-colour Ar colour
+.D1 (alias: Ic display-panes-active-color )
 Set the colour used by the
 .Ic display-panes
 command to show the indicator for the active pane.
 .It Ic display-panes-colour Ar colour
+.D1 (alias: Ic display-panes-color )
 Set the colour used by the
 .Ic display-panes
 command to show the indicators for inactive panes.
@@ -3894,6 +3896,7 @@ used when the
 option is enabled.
 .Pp
 .It Ic clock-mode-colour Ar colour
+.D1 (alias: Ic clock-mode-color )
 Set clock colour.
 .Pp
 .It Xo Ic clock-mode-style
@@ -4901,6 +4904,10 @@ if supported the bright variants
 .Ic colour0
 to
 .Ic colour255
+(or
+.Ic color0
+to
+.Ic color255 )
 from the 256-colour set;
 .Ic default
 for the default colour;

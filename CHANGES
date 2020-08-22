@@ -1,6 +1,8 @@
 CHANGES FROM 3.2 TO 3.3
 
-* Allow spelling "colour" as "color"
+* Allow spelling "colour" as "color" for the options display-panes-active-colour,
+  display-panes-colour, and clock-mode-colour as well as when specifying colours
+  with colour0 to colour255.
 
 CHANGES FROM 3.1b TO 3.2
 
