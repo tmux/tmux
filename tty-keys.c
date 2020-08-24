@@ -1197,7 +1197,10 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 	if (tty->flags & TTY_HAVEDA)
 		return (-1);
 
-	/* First three bytes are always \033[?. */
+	/*
+	 * First three bytes are always \033[>. Some older Terminal.app
+	 * versions respond as for DA (\033[?) so accept and ignore that.
+	 */
 	if (buf[0] != '\033')
 		return (-1);
 	if (len == 1)
@@ -1206,7 +1209,7 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 		return (-1);
 	if (len == 2)
 		return (1);
-	if (buf[2] != '>')
+	if (buf[2] != '>' && buf[2] != '?')
 		return (-1);
 	if (len == 3)
 		return (1);
@@ -1223,6 +1226,10 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 		return (-1);
 	tmp[i] = '\0';
 	*size = 4 + i;
+
+	/* Ignore DA response. */
+	if (buf[2] == '?')
+		return (0);
 
 	/* Convert all arguments to numbers. */
 	cp = tmp;
