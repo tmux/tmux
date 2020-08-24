@@ -302,6 +302,8 @@ tty_term_strip(const char *s)
 				ptr++;
 			if (*ptr == '>')
 				ptr++;
+			if (*ptr == '\0')
+				break;
 		}
 
 		buf[len++] = *ptr;
