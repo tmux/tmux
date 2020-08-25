@@ -95,6 +95,18 @@ options_cmp(struct options_entry *lhs, struct options_entry *rhs)
 	return (strcmp(lhs->name, rhs->name));
 }
 
+static const char *
+options_map_name(const char *name)
+{
+	const struct options_name_map	*map;
+
+	for (map = options_other_names; map->from != NULL; map++) {
+		if (strcmp(map->from, name) == 0)
+			return (map->to);
+	}
+	return (name);
+}
+
 static const struct options_table_entry *
 options_parent_table_entry(struct options *oo, const char *s)
 {
@@ -204,10 +216,14 @@ options_next(struct options_entry *o)
 struct options_entry *
 options_get_only(struct options *oo, const char *name)
 {
-	struct options_entry	o;
+	struct options_entry	o = { .name = name }, *found;
 
-	o.name = name;
-	return (RB_FIND(options_tree, &oo->tree, &o));
+	found = RB_FIND(options_tree, &oo->tree, &o);
+	if (found == NULL) {
+		o.name = options_map_name(name);
+		return (RB_FIND(options_tree, &oo->tree, &o));
+	}
+	return (found);
 }
 
 struct options_entry *
@@ -608,18 +624,20 @@ char *
 options_match(const char *s, int *idx, int *ambiguous)
 {
 	const struct options_table_entry	*oe, *found;
-	char					*name;
+	char					*parsed;
+	const char				*name;
 	size_t					 namelen;
 
-	name = options_parse(s, idx);
-	if (name == NULL)
+	parsed = options_parse(s, idx);
+	if (parsed == NULL)
 		return (NULL);
-	namelen = strlen(name);
-
-	if (*name == '@') {
+	if (*parsed == '@') {
 		*ambiguous = 0;
-		return (name);
+		return (parsed);
 	}
+
+	name = options_map_name(parsed);
+	namelen = strlen(name);
 
 	found = NULL;
 	for (oe = options_table; oe->name != NULL; oe++) {
@@ -630,13 +648,13 @@ options_match(const char *s, int *idx, int *ambiguous)
 		if (strncmp(oe->name, name, namelen) == 0) {
 			if (found != NULL) {
 				*ambiguous = 1;
-				free(name);
+				free(parsed);
 				return (NULL);
 			}
 			found = oe;
 		}
 	}
-	free(name);
+	free(parsed);
 	if (found == NULL) {
 		*ambiguous = 0;
 		return (NULL);
