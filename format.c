@@ -2909,6 +2909,7 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 		format_add(ft, "pane_dead", "%d", wp->fd == -1);
 	else
 		format_add(ft, "pane_dead", "0");
+	format_add(ft, "pane_last", "%d", wp == w->last);
 
 	if (server_check_marked() && marked_pane.wp == wp)
 		format_add(ft, "pane_marked", "1");
