@@ -34,8 +34,8 @@ const struct cmd_entry cmd_set_environment_entry = {
 	.name = "set-environment",
 	.alias = "setenv",
 
-	.args = { "hgrt:u", 1, 2 },
-	.usage = "[-hgru] " CMD_TARGET_SESSION_USAGE " name [value]",
+	.args = { "Fhgrt:u", 1, 2 },
+	.usage = "[-Fhgru] " CMD_TARGET_SESSION_USAGE " name [value]",
 
 	.target = { 't', CMD_FIND_SESSION, CMD_FIND_CANFAIL },
 
@@ -50,6 +50,8 @@ cmd_set_environment_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct environ		*env;
 	const char		*name, *value, *tflag;
+	char			*expand = NULL;
+	enum cmd_retval		retval = CMD_RETURN_NORMAL;
 
 	name = args->argv[0];
 	if (*name == '\0') {
@@ -61,10 +63,16 @@ cmd_set_environment_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_ERROR);
 	}
 
-	if (args->argc < 2)
+	if (args->argc < 2) {
 		value = NULL;
-	else
-		value = args->argv[1];
+	} else {
+		if (args_has(args, 'F')) {
+			expand = format_single_from_target(item, args->argv[1]);
+			value = expand;
+		} else {
+			value = args->argv[1];
+		}
+	}
 
 	if (args_has(args, 'g'))
 		env = global_environ;
@@ -75,7 +83,8 @@ cmd_set_environment_exec(struct cmd *self, struct cmdq_item *item)
 				cmdq_error(item, "no such session: %s", tflag);
 			else
 				cmdq_error(item, "no current session");
-			return (CMD_RETURN_ERROR);
+			retval = CMD_RETURN_ERROR;
+			goto out;
 		}
 		env = target->s->environ;
 	}
@@ -83,25 +92,32 @@ cmd_set_environment_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'u')) {
 		if (value != NULL) {
 			cmdq_error(item, "can't specify a value with -u");
-			return (CMD_RETURN_ERROR);
+			retval = CMD_RETURN_ERROR;
+			goto out;
 		}
 		environ_unset(env, name);
 	} else if (args_has(args, 'r')) {
 		if (value != NULL) {
 			cmdq_error(item, "can't specify a value with -r");
-			return (CMD_RETURN_ERROR);
+			retval = CMD_RETURN_ERROR;
+			goto out;
 		}
 		environ_clear(env, name);
 	} else {
 		if (value == NULL) {
 			cmdq_error(item, "no value specified");
-			return (CMD_RETURN_ERROR);
+			retval = CMD_RETURN_ERROR;
+			goto out;
 		}
+
 		if (args_has(args, 'h'))
 			environ_set(env, name, ENVIRON_HIDDEN, "%s", value);
 		else
 			environ_set(env, name, 0, "%s", value);
 	}
 
-	return (CMD_RETURN_NORMAL);
+out:
+	if (expand)
+		free(expand);
+	return retval;
 }

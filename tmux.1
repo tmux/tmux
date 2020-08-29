@@ -1407,7 +1407,7 @@ and
 .Fl T
 show debugging information about jobs and terminals.
 .It Xo Ic source-file
-.Op Fl nqv
+.Op Fl Fnqv
 .Ar path
 .Ar ...
 .Xc
@@ -1417,6 +1417,9 @@ Execute commands from one or more files specified by
 (which may be
 .Xr glob 7
 patterns).
+If
+.Fl F
+is present, then paths are expanded as a format.
 If
 .Fl q
 is given, no error will be returned if
@@ -5098,7 +5101,7 @@ section).
 Commands to alter and view the environment are:
 .Bl -tag -width Ds
 .It Xo Ic set-environment
-.Op Fl hgru
+.Op Fl Fhgru
 .Op Fl t Ar target-session
 .Ar name Op Ar value
 .Xc
@@ -5109,6 +5112,9 @@ If
 is used, the change is made in the global environment; otherwise, it is applied
 to the session environment for
 .Ar target-session .
+If
+.Fl F
+is present, then the value is expanded as a format.
 The
 .Fl u
 flag unsets a variable.
