@@ -36,8 +36,8 @@ const struct cmd_entry cmd_source_file_entry = {
 	.name = "source-file",
 	.alias = "source",
 
-	.args = { "nqv", 1, -1 },
-	.usage = "[-nqv] path ...",
+	.args = { "Fnqv", 1, -1 },
+	.usage = "[-Fnqv] path ...",
 
 	.flags = 0,
 	.exec = cmd_source_file_exec
@@ -127,7 +127,7 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_source_file_data	*cdata;
 	struct client			*c = cmdq_get_client(item);
 	enum cmd_retval			 retval = CMD_RETURN_NORMAL;
-	char				*pattern, *cwd;
+	char				*pattern, *cwd, *expand = NULL;
 	const char			*path, *error;
 	glob_t				 g;
 	int				 i, result;
@@ -146,7 +146,12 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 	utf8_stravis(&cwd, server_client_get_cwd(c, NULL), VIS_GLOB);
 
 	for (i = 0; i < args->argc; i++) {
-		path = args->argv[i];
+		if (args_has(args, 'F')) {
+			free(expand);
+			expand = format_single_from_target(item, args->argv[i]);
+			path = expand;
+		} else
+			path = args->argv[i];
 		if (strcmp(path, "-") == 0) {
 			cmd_source_file_add(cdata, "-");
 			continue;
@@ -173,6 +178,7 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 			free(pattern);
 			continue;
 		}
+		free(expand);
 		free(pattern);
 
 		for (j = 0; j < g.gl_pathc; j++)
