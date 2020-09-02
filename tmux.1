@@ -5651,12 +5651,21 @@ See the
 .Sx FORMATS
 section.
 .It Xo Ic load-buffer
+.Op Fl w
 .Op Fl b Ar buffer-name
+.Op Fl t Ar target-client
 .Ar path
 .Xc
 .D1 (alias: Ic loadb )
 Load the contents of the specified paste buffer from
 .Ar path .
+If
+.Fl w
+is given, the buffer is also sent to the clipboard for
+.Ar target-client
+using the
+.Xr xterm 1
+escape sequence, if possible.
 .It Xo Ic paste-buffer
 .Op Fl dpr
 .Op Fl b Ar buffer-name
@@ -5693,14 +5702,22 @@ The
 .Fl a
 option appends to rather than overwriting the file.
 .It Xo Ic set-buffer
-.Op Fl a
+.Op Fl aw
 .Op Fl b Ar buffer-name
+.Op Fl t Ar target-client
 .Op Fl n Ar new-buffer-name
 .Ar data
 .Xc
 .D1 (alias: Ic setb )
 Set the contents of the specified buffer to
 .Ar data .
+If
+.Fl w
+is given, the buffer is also sent to the clipboard for
+.Ar target-client
+using the
+.Xr xterm 1
+escape sequence, if possible.
 The
 .Fl a
 option appends to rather than overwriting the buffer.

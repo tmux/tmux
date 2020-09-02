@@ -37,14 +37,15 @@ const struct cmd_entry cmd_load_buffer_entry = {
 	.name = "load-buffer",
 	.alias = "loadb",
 
-	.args = { "b:", 1, 1 },
-	.usage = CMD_BUFFER_USAGE " path",
+	.args = { "b:t:w", 1, 1 },
+	.usage = CMD_BUFFER_USAGE " " CMD_TARGET_CLIENT_USAGE " path",
 
-	.flags = CMD_AFTERHOOK,
+	.flags = CMD_AFTERHOOK|CMD_CLIENT_TFLAG|CMD_CLIENT_CANFAIL,
 	.exec = cmd_load_buffer_exec
 };
 
 struct cmd_load_buffer_data {
+	struct client		*client;
 	struct cmdq_item	*item;
 	char			*name;
 };
@@ -54,6 +55,7 @@ cmd_load_buffer_done(__unused struct client *c, const char *path, int error,
     int closed, struct evbuffer *buffer, void *data)
 {
 	struct cmd_load_buffer_data	*cdata = data;
+	struct client			*tc = cdata->client;
 	struct cmdq_item		*item = cdata->item;
 	void				*bdata = EVBUFFER_DATA(buffer);
 	size_t				 bsize = EVBUFFER_LENGTH(buffer);
@@ -72,7 +74,12 @@ cmd_load_buffer_done(__unused struct client *c, const char *path, int error,
 			cmdq_error(item, "%s", cause);
 			free(cause);
 			free(copy);
-		}
+		} else if (tc != NULL &&
+		    tc->session != NULL &&
+		    (~tc->flags & CLIENT_DEAD))
+			tty_set_selection(&tc->tty, copy, bsize);
+		if (tc != NULL)
+			server_client_unref(tc);
 	}
 	cmdq_continue(item);
 
@@ -84,6 +91,7 @@ static enum cmd_retval
 cmd_load_buffer_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = cmd_get_args(self);
+	struct client			*tc = cmdq_get_target_client(item);
 	struct cmd_load_buffer_data	*cdata;
 	const char			*bufname = args_get(args, 'b');
 	char				*path;
@@ -94,6 +102,10 @@ cmd_load_buffer_exec(struct cmd *self, struct cmdq_item *item)
 		cdata->name = xstrdup(bufname);
 	else
 		cdata->name = NULL;
+	if (args_has(args, 'w') && tc != NULL) {
+		cdata->client = tc;
+		cdata->client->references++;
+	}
 
 	path = format_single_from_target(item, args->argv[0]);
 	file_read(cmdq_get_client(item), path, cmd_load_buffer_done, cdata);
