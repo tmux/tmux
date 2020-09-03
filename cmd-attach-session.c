@@ -59,7 +59,7 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 	struct session		*s;
 	struct winlink		*wl;
 	struct window_pane	*wp;
-	char			*cause;
+	char			*cwd, *cause;
 	enum msgtype		 msgtype;
 
 	if (RB_EMPTY(&sessions)) {
@@ -99,8 +99,9 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 	}
 
 	if (cflag != NULL) {
+		cwd = format_single(item, cflag, c, s, wl, wp);
 		free((void *)s->cwd);
-		s->cwd = format_single(item, cflag, c, s, wl, wp);
+		s->cwd = cwd;
 	}
 	if (fflag)
 		server_client_set_flags(c, fflag);
