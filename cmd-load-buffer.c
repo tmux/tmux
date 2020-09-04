@@ -96,12 +96,10 @@ cmd_load_buffer_exec(struct cmd *self, struct cmdq_item *item)
 	const char			*bufname = args_get(args, 'b');
 	char				*path;
 
-	cdata = xmalloc(sizeof *cdata);
+	cdata = xcalloc(1, sizeof *cdata);
 	cdata->item = item;
 	if (bufname != NULL)
 		cdata->name = xstrdup(bufname);
-	else
-		cdata->name = NULL;
 	if (args_has(args, 'w') && tc != NULL) {
 		cdata->client = tc;
 		cdata->client->references++;
