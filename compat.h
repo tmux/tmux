@@ -35,6 +35,10 @@
 #define __attribute__(a)
 #endif
 
+#ifdef BROKEN___DEAD
+#undef __dead
+#endif
+
 #ifndef __unused
 #define __unused __attribute__ ((__unused__))
 #endif

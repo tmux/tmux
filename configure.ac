@@ -550,6 +550,12 @@ case "$host_os" in
 		AC_MSG_RESULT(darwin)
 		PLATFORM=darwin
 		#
+		# OS X uses __dead2 instead of __dead, like FreeBSD. But it
+		# defines __dead away so it needs to be removed before we can
+		# replace it.
+		#
+		AC_DEFINE(BROKEN___DEAD)
+		#
 		# OS X CMSG_FIRSTHDR is broken, so redefine it with a working
 		# one. daemon works but has some stupid side effects, so use
 		# our internal version which has a workaround.
