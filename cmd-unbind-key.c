@@ -46,25 +46,12 @@ cmd_unbind_key_exec(struct cmd *self, struct cmdq_item *item)
 	key_code	 key;
 	const char	*tablename;
 
-	if (!args_has(args, 'a')) {
-		if (args->argc != 1) {
-			cmdq_error(item, "missing key");
-			return (CMD_RETURN_ERROR);
-		}
-		key = key_string_lookup_string(args->argv[0]);
-		if (key == KEYC_NONE || key == KEYC_UNKNOWN) {
-			cmdq_error(item, "unknown key: %s", args->argv[0]);
-			return (CMD_RETURN_ERROR);
-		}
-	} else {
+	if (args_has(args, 'a')) {
 		if (args->argc != 0) {
 			cmdq_error(item, "key given with -a");
 			return (CMD_RETURN_ERROR);
 		}
-		key = KEYC_UNKNOWN;
-	}
 
-	if (key == KEYC_UNKNOWN) {
 		tablename = args_get(args, 'T');
 		if (tablename == NULL) {
 			key_bindings_remove_table("root");
@@ -79,6 +66,17 @@ cmd_unbind_key_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 	}
 
+	if (args->argc != 1) {
+		cmdq_error(item, "missing key");
+		return (CMD_RETURN_ERROR);
+	}
+
+	key = key_string_lookup_string(args->argv[0]);
+	if (key == KEYC_NONE || key == KEYC_UNKNOWN) {
+		cmdq_error(item, "unknown key: %s", args->argv[0]);
+		return (CMD_RETURN_ERROR);
+	}
+
 	if (args_has(args, 'T')) {
 		tablename = args_get(args, 'T');
 		if (key_bindings_get_table(tablename, 0) == NULL) {
@@ -89,6 +87,7 @@ cmd_unbind_key_exec(struct cmd *self, struct cmdq_item *item)
 		tablename = "root";
 	else
 		tablename = "prefix";
+
 	key_bindings_remove(tablename, key);
 	return (CMD_RETURN_NORMAL);
 }
