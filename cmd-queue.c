@@ -25,10 +25,6 @@
 
 #include "tmux.h"
 
-/* Command queue flags. */
-#define CMDQ_FIRED 0x1
-#define CMDQ_WAITING 0x2
-
 /* Command queue item type. */
 enum cmdq_type {
 	CMDQ_COMMAND,
@@ -157,6 +153,13 @@ struct client *
 cmdq_get_target_client(struct cmdq_item *item)
 {
 	return (item->target_client);
+}
+
+/* Get item flags. */
+int *
+cmdq_get_item_flags(struct cmdq_item *item)
+{
+	return &item->flags;
 }
 
 /* Get item state. */
@@ -840,6 +843,9 @@ cmdq_error(struct cmdq_item *item, const char *fmt, ...)
 	va_end(ap);
 
 	log_debug("%s: %s", __func__, msg);
+
+	if (item->flags & CMDQ_QUIET)
+		return;
 
 	if (c == NULL) {
 		cmd_get_source(cmd, &file, &line);

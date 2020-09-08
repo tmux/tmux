@@ -32,8 +32,8 @@ const struct cmd_entry cmd_unbind_key_entry = {
 	.name = "unbind-key",
 	.alias = "unbind",
 
-	.args = { "anT:", 0, 1 },
-	.usage = "[-an] [-T key-table] key",
+	.args = { "anqT:", 0, 1 },
+	.usage = "[-anq] [-T key-table] key",
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_unbind_key_exec
@@ -45,43 +45,58 @@ cmd_unbind_key_exec(struct cmd *self, struct cmdq_item *item)
 	struct args	*args = cmd_get_args(self);
 	key_code	 key;
 	const char	*tablename;
+	int		*flags = 0;
+	enum cmd_retval  retval;
+
+	if (args_has(args, 'q')) {
+		flags = cmdq_get_item_flags (item);
+		*flags |= CMDQ_QUIET;
+	}
 
 	if (args_has(args, 'a')) {
 		if (args->argc != 0) {
 			cmdq_error(item, "key given with -a");
-			return (CMD_RETURN_ERROR);
+			retval = CMD_RETURN_ERROR;
+			goto out;
 		}
 
 		tablename = args_get(args, 'T');
 		if (tablename == NULL) {
-			key_bindings_remove_table("root");
-			key_bindings_remove_table("prefix");
-			return (CMD_RETURN_NORMAL);
+			if (args_has(args, 'n'))
+				tablename = "root";
+			else
+				tablename = "prefix";
 		}
 		if (key_bindings_get_table(tablename, 0) == NULL) {
 			cmdq_error(item, "table %s doesn't exist", tablename);
-			return (CMD_RETURN_ERROR);
+			retval = CMD_RETURN_ERROR;
+			goto out;
 		}
+
 		key_bindings_remove_table(tablename);
-		return (CMD_RETURN_NORMAL);
+		retval = CMD_RETURN_NORMAL;
+		goto out;
 	}
 
 	if (args->argc != 1) {
 		cmdq_error(item, "missing key");
-		return (CMD_RETURN_ERROR);
+		retval = CMD_RETURN_ERROR;
+		goto out;
 	}
 
 	key = key_string_lookup_string(args->argv[0]);
 	if (key == KEYC_NONE || key == KEYC_UNKNOWN) {
 		cmdq_error(item, "unknown key: %s", args->argv[0]);
-		return (CMD_RETURN_ERROR);
+		retval = CMD_RETURN_ERROR;
+		goto out;
 	}
 
 	if (args_has(args, 'T')) {
 		tablename = args_get(args, 'T');
 		if (key_bindings_get_table(tablename, 0) == NULL) {
 			cmdq_error(item, "table %s doesn't exist", tablename);
-			return (CMD_RETURN_ERROR);
+			retval = CMD_RETURN_ERROR;
+			goto out;
 		}
 	} else if (args_has(args, 'n'))
 		tablename = "root";
@@ -89,5 +104,11 @@ cmd_unbind_key_exec(struct cmd *self, struct cmdq_item *item)
 		tablename = "prefix";
 
 	key_bindings_remove(tablename, key);
-	return (CMD_RETURN_NORMAL);
+	retval = CMD_RETURN_NORMAL;
+	goto out;
+
+out:
+	if (flags)
+		*flags &= ~CMDQ_QUIET;
+	return retval;
 }
