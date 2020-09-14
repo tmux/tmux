@@ -100,9 +100,8 @@ utf8_put_item(const char *data, size_t size, u_int *index)
 
 	ui = utf8_item_by_data(data, size);
 	if (ui != NULL) {
-		log_debug("%s: found %.*s = %u", __func__, (int)size, data,
-		    *index);
 		*index = ui->index;
+		log_debug("%s: found %.*s = %u", __func__, (int)size, data, *index);
 		return (0);
 	}
 
@@ -117,8 +116,8 @@ utf8_put_item(const char *data, size_t size, u_int *index)
 	ui->size = size;
 	RB_INSERT(utf8_data_tree, &utf8_data_tree, ui);
 
-	log_debug("%s: added %.*s = %u", __func__, (int)size, data, *index);
 	*index = ui->index;
+	log_debug("%s: added %.*s = %u", __func__, (int)size, data, *index);
 	return (0);
 }
 
