@@ -1366,6 +1366,16 @@ format_quote(const char *s)
 	return (out);
 }
 
+static size_t
+nowarn_strftime(char *s, size_t max, const char *fmt, const struct tm *tm)
+{
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-y2k"
+#pragma GCC diagnostic ignored "-Wformat-nonliteral"
+	return strftime(s, max, fmt, tm);
+#pragma GCC diagnostic pop
+}
+
 /* Make a prettier time. */
 static char *
 format_pretty_time(time_t t)
@@ -1403,7 +1413,7 @@ format_pretty_time(time_t t)
 	}
 
 	/* Older than that. */
-	strftime(s, sizeof s, "%h%y", &tm);
+	nowarn_strftime(s, sizeof s, "%h%y", &tm);
 	return (xstrdup(s));
 }
 
@@ -1482,7 +1492,7 @@ found:
 		else {
 			if (time_format != NULL) {
 				localtime_r(&t, &tm);
-				strftime(s, sizeof s, time_format, &tm);
+				nowarn_strftime(s, sizeof s, time_format, &tm);
 			} else {
 				ctime_r(&t, s);
 				s[strcspn(s, "\n")] = '\0';
@@ -2429,7 +2439,7 @@ format_expand1(struct format_tree *ft, const char *fmt, int time)
 
 	if (time) {
 		tm = localtime(&ft->time);
-		if (strftime(expanded, sizeof expanded, fmt, tm) == 0) {
+		if (nowarn_strftime(expanded, sizeof expanded, fmt, tm) == 0) {
 			format_log(ft, "format is too long");
 			return (xstrdup(""));
 		}
