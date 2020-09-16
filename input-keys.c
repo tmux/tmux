@@ -555,6 +555,9 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 	case KEYC_SHIFT|KEYC_META|KEYC_CTRL:
 		modifier = '8';
 		break;
+	default: /* shouldn't happen but prevents warning */
+		modifier = '0';
+		break;
 	}
 	xsnprintf(tmp, sizeof tmp, "\033[%llu;%cu", outkey, modifier);
 	bufferevent_write(bev, tmp, strlen(tmp));
