@@ -5,6 +5,16 @@
 *.core
 core
 tags
+TAGS
+ID
+GTAGS
+GRTAGS
+GSYMS
+GPATH
+cscope.out
+cscope.in.out
+cscope.po.out
+cscope.files
 .deps/
 compat/.dirstamp
 aclocal.m4
