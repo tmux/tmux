@@ -187,7 +187,7 @@ menu_key_cb(struct client *c, struct key_event *event)
 	struct mouse_event		*m = &event->m;
 	u_int				 i;
 	int				 count = menu->count, old = md->choice;
-	const char			*name;
+	const char			*name = NULL;
 	const struct menu_item		*item;
 	struct cmdq_state		*state;
 	enum cmd_parse_status		 status;
