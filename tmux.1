@@ -3039,7 +3039,7 @@ Send the prefix key, or with
 .Fl 2
 the secondary prefix key, to a window as if it was pressed.
 .It Xo Ic unbind-key
-.Op Fl an
+.Op Fl anq
 .Op Fl T Ar key-table
 .Ar key
 .Xc
@@ -3054,6 +3054,9 @@ are the same as for
 If
 .Fl a
 is present, all key bindings are removed.
+The
+.Fl q
+option prevents errors being displayed.
 .El
 .Sh OPTIONS
 The appearance and behaviour of
