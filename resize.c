@@ -242,9 +242,9 @@ recalculate_size(struct window *w, int now)
 	current = options_get_number(w->options, "aggressive-resize");
 
 	changed = 1;
+	sx = sy = 0;
 	switch (type) {
 	case WINDOW_SIZE_LARGEST:
-		sx = sy = 0;
 		TAILQ_FOREACH(c, &clients, entry) {
 			if (ignore_client_size(c))
 				continue;
