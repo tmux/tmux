@@ -72,7 +72,6 @@ static int	window_copy_search_marks(struct window_mode_entry *,
 		    struct screen *, int, int);
 static void	window_copy_clear_marks(struct window_mode_entry *);
 static void	window_copy_move_left(struct screen *, u_int *, u_int *, int);
-static void	window_copy_move_right(struct screen *, u_int *, u_int *, int);
 static int	window_copy_is_lowercase(const char *);
 static int	window_copy_search_jump(struct window_mode_entry *,
 		    struct grid *, struct grid *, u_int, u_int, u_int, int, int,
@@ -2817,23 +2816,6 @@ window_copy_move_left(struct screen *s, u_int *fx, u_int *fy, int wrapflag)
 		*fx = *fx - 1;
 }
 
-static void
-window_copy_move_right(struct screen *s, u_int *fx, u_int *fy, int wrapflag)
-{
-	if (*fx == screen_size_x(s) - 1) { /* right */
-		if (*fy == screen_hsize(s) + screen_size_y(s) - 1) { /* bottom */
-			if (wrapflag) {
-				*fx = 0;
-				*fy = 0;
-			}
-			return;
-		}
-		*fx = 0;
-		*fy = *fy + 1;
-	} else
-		*fx = *fx + 1;
-}
-
 static int
 window_copy_is_lowercase(const char *ptr)
 {
@@ -2930,7 +2912,8 @@ window_copy_search_jump(struct window_mode_entry *wme, struct grid *gd,
  * down.
  */
 static int
-window_copy_search(struct window_mode_entry *wme, int direction, int regex, int again)
+window_copy_search(struct window_mode_entry *wme, int direction, int regex,
+    int again)
 {
 	struct window_pane		*wp = wme->wp;
 	struct window_copy_mode_data	*data = wme->data;
