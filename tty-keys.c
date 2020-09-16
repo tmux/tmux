@@ -1097,7 +1097,7 @@ static int
 tty_keys_clipboard(__unused struct tty *tty, const char *buf, size_t len,
     size_t *size)
 {
-	size_t	 end, terminator, needed;
+	size_t	 end, terminator = 0, needed;
 	char	*copy, *out;
 	int	 outlen;
 
