@@ -72,7 +72,9 @@ static int	window_copy_search_marks(struct window_mode_entry *,
 		    struct screen *, int, int);
 static void	window_copy_clear_marks(struct window_mode_entry *);
 static void	window_copy_move_left(struct screen *, u_int *, u_int *, int);
+#ifdef UNUSED_FUNCTION
 static void	window_copy_move_right(struct screen *, u_int *, u_int *, int);
+#endif /* UNUSED_FUNCTION */
 static int	window_copy_is_lowercase(const char *);
 static int	window_copy_search_jump(struct window_mode_entry *,
 		    struct grid *, struct grid *, u_int, u_int, u_int, int, int,
@@ -2817,6 +2819,7 @@ window_copy_move_left(struct screen *s, u_int *fx, u_int *fy, int wrapflag)
 		*fx = *fx - 1;
 }
 
+#ifdef UNUSED_FUNCTION
 static void
 window_copy_move_right(struct screen *s, u_int *fx, u_int *fy, int wrapflag)
 {
@@ -2833,6 +2836,7 @@ window_copy_move_right(struct screen *s, u_int *fx, u_int *fy, int wrapflag)
 	} else
 		*fx = *fx + 1;
 }
+#endif /* UNUSED_FUNCTION */
 
 static int
 window_copy_is_lowercase(const char *ptr)
@@ -2858,7 +2862,7 @@ window_copy_search_jump(struct window_mode_entry *wme, struct grid *gd,
 {
 	u_int	 i, px, sx, ssize = 1;
 	int	 found = 0, cflags = REG_EXTENDED;
-	char	*sbuf;
+	char	*sbuf = NULL;
 	regex_t	 reg;
 
 	if (regex) {
