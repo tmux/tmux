@@ -687,7 +687,7 @@ control_write_pending(struct client *c, struct control_pane *cp, size_t limit)
 			age = t - cb->t;
 		else
 			age = 0;
-		log_debug("%s: %s: output block %zu (age %llu) for %%%u "
+		log_debug("%s: %s: output block %zu (age %lu) for %%%u "
 		    "(used %zu/%zu)", __func__, c->name, cb->size, age,
 		    cp->pane, used, limit);
 
