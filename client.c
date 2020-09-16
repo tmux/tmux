@@ -284,7 +284,7 @@ client_main(struct event_base *base, int argc, char **argv, int flags, int feat)
 
 	/* Save the flags. */
 	client_flags = flags;
-	log_debug("flags are %#llx", client_flags);
+	log_debug("flags are %#lx", client_flags);
 
 	/* Initialize the client socket and start the server. */
 	fd = client_connect(base, socket_path, client_flags);
@@ -891,7 +891,7 @@ client_dispatch_wait(struct imsg *imsg)
 			fatalx("bad MSG_FLAGS string");
 
 		memcpy(&client_flags, data, sizeof client_flags);
-		log_debug("new flags are %#llx", client_flags);
+		log_debug("new flags are %#lx", client_flags);
 		break;
 	case MSG_SHELL:
 		if (datalen == 0 || data[datalen - 1] != '\0')
@@ -944,7 +944,7 @@ client_dispatch_attached(struct imsg *imsg)
 			fatalx("bad MSG_FLAGS string");
 
 		memcpy(&client_flags, data, sizeof client_flags);
-		log_debug("new flags are %#llx", client_flags);
+		log_debug("new flags are %#lx", client_flags);
 		break;
 	case MSG_DETACH:
 	case MSG_DETACHKILL:
