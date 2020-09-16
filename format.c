@@ -1956,7 +1956,7 @@ format_replace_expression(struct format_modifier *mexp, struct format_tree *ft,
 	char		*endch, *value, *left = NULL, *right = NULL;
 	int		 use_fp = 0;
 	u_int		 prec = 0;
-	double		 mleft, mright, result;
+	double		 mleft, mright, result = 0;
 	enum { ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULUS } operator;
 
 	if (strcmp(mexp->argv[0], "+") == 0)
