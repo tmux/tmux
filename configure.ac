@@ -329,7 +329,9 @@ AC_SEARCH_LIBS(socket, socket)
 AC_CHECK_LIB(xnet, socket)
 
 # Check for CMSG_DATA. Some platforms require _XOPEN_SOURCE_EXTENDED (for
-# example see xopen_networking(7) on HP-UX).
+# example see xopen_networking(7) on HP-UX).  Other platforms require
+# _XOPEN_SOURCE 600 when compiling with c99 (for example see standards(7)
+# on Solaris).
 XOPEN_DEFINES=
 AC_MSG_CHECKING(for CMSG_DATA)
 AC_EGREP_CPP(
@@ -362,6 +364,26 @@ if test "x$found_cmsg_data" = xno; then
 	AC_MSG_RESULT($found_cmsg_data)
 	if test "x$found_cmsg_data" = xyes; then
 		XOPEN_DEFINES="-D_XOPEN_SOURCE -D_XOPEN_SOURCE_EXTENDED"
+	fi
+fi
+AC_MSG_RESULT($found_cmsg_data)
+if test "x$found_cmsg_data" = xno; then
+	AC_MSG_CHECKING(if CMSG_DATA needs _XOPEN_SOURCE 600 for c99)
+	AC_EGREP_CPP(
+		yes,
+		[
+			#define _XOPEN_SOURCE 600
+			#include <sys/socket.h>
+			#ifdef CMSG_DATA
+			yes
+			#endif
+		],
+		found_cmsg_data=yes,
+		found_cmsg_data=no
+	)
+	AC_MSG_RESULT($found_cmsg_data)
+	if test "x$found_cmsg_data" = xyes; then
+		XOPEN_DEFINES="-D_XOPEN_SOURCE=600"
 	else
 		AC_MSG_ERROR("CMSG_DATA not found")
 	fi
