@@ -2853,6 +2853,7 @@ window_copy_search_jump(struct window_mode_entry *wme, struct grid *gd,
 			free(sbuf);
 			return (0);
 		}
+		free(sbuf);
 	}
 
 	if (direction) {
@@ -2889,10 +2890,8 @@ window_copy_search_jump(struct window_mode_entry *wme, struct grid *gd,
 			fx = gd->sx - 1;
 		}
 	}
-	if (regex) {
-		free(sbuf);
+	if (regex)
 		regfree(&reg);
-	}
 
 	if (found) {
 		window_copy_scroll_to(wme, px, i, 1);
@@ -3042,6 +3041,7 @@ window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
 			free(sbuf);
 			return (0);
 		}
+		free(sbuf);
 	}
 	tstart = get_timer();
 
@@ -3139,10 +3139,8 @@ again:
 out:
 	if (ssp == &ss)
 		screen_free(&ss);
-	if (regex) {
-		free(sbuf);
+	if (regex)
 		regfree(&reg);
-	}
 	return (1);
 }
 
