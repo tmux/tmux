@@ -1031,7 +1031,7 @@ window_customize_set_option(struct client *c,
 		return;
 
 	oe = options_table_entry(o);
-	if (~oe->scope & OPTIONS_TABLE_PANE)
+	if (oe != NULL && ~oe->scope & OPTIONS_TABLE_PANE)
 		pane = 0;
 	if (oe != NULL && (oe->flags & OPTIONS_TABLE_IS_ARRAY)) {
 		scope = item->scope;

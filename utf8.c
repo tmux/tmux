@@ -101,7 +101,8 @@ utf8_put_item(const char *data, size_t size, u_int *index)
 	ui = utf8_item_by_data(data, size);
 	if (ui != NULL) {
 		*index = ui->index;
-		log_debug("%s: found %.*s = %u", __func__, (int)size, data, *index);
+		log_debug("%s: found %.*s = %u", __func__, (int)size, data,
+		    *index);
 		return (0);
 	}
 

@@ -72,9 +72,6 @@ static int	window_copy_search_marks(struct window_mode_entry *,
 		    struct screen *, int, int);
 static void	window_copy_clear_marks(struct window_mode_entry *);
 static void	window_copy_move_left(struct screen *, u_int *, u_int *, int);
-#ifdef UNUSED_FUNCTION
-static void	window_copy_move_right(struct screen *, u_int *, u_int *, int);
-#endif /* UNUSED_FUNCTION */
 static int	window_copy_is_lowercase(const char *);
 static int	window_copy_search_jump(struct window_mode_entry *,
 		    struct grid *, struct grid *, u_int, u_int, u_int, int, int,
@@ -2819,25 +2816,6 @@ window_copy_move_left(struct screen *s, u_int *fx, u_int *fy, int wrapflag)
 		*fx = *fx - 1;
 }
 
-#ifdef UNUSED_FUNCTION
-static void
-window_copy_move_right(struct screen *s, u_int *fx, u_int *fy, int wrapflag)
-{
-	if (*fx == screen_size_x(s) - 1) { /* right */
-		if (*fy == screen_hsize(s) + screen_size_y(s) - 1) { /* bottom */
-			if (wrapflag) {
-				*fx = 0;
-				*fy = 0;
-			}
-			return;
-		}
-		*fx = 0;
-		*fy = *fy + 1;
-	} else
-		*fx = *fx + 1;
-}
-#endif /* UNUSED_FUNCTION */
-
 static int
 window_copy_is_lowercase(const char *ptr)
 {
@@ -2875,6 +2853,7 @@ window_copy_search_jump(struct window_mode_entry *wme, struct grid *gd,
 			free(sbuf);
 			return (0);
 		}
+		free(sbuf);
 	}
 
 	if (direction) {
@@ -2911,10 +2890,8 @@ window_copy_search_jump(struct window_mode_entry *wme, struct grid *gd,
 			fx = gd->sx - 1;
 		}
 	}
-	if (regex) {
-		free(sbuf);
+	if (regex)
 		regfree(&reg);
-	}
 
 	if (found) {
 		window_copy_scroll_to(wme, px, i, 1);
@@ -2934,7 +2911,8 @@ window_copy_search_jump(struct window_mode_entry *wme, struct grid *gd,
  * down.
  */
 static int
-window_copy_search(struct window_mode_entry *wme, int direction, int regex, int again)
+window_copy_search(struct window_mode_entry *wme, int direction, int regex,
+    int again)
 {
 	struct window_pane		*wp = wme->wp;
 	struct window_copy_mode_data	*data = wme->data;
@@ -3063,6 +3041,7 @@ window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
 			free(sbuf);
 			return (0);
 		}
+		free(sbuf);
 	}
 	tstart = get_timer();
 
@@ -3160,10 +3139,8 @@ again:
 out:
 	if (ssp == &ss)
 		screen_free(&ss);
-	if (regex) {
-		free(sbuf);
+	if (regex)
 		regfree(&reg);
-	}
 	return (1);
 }
 

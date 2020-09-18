@@ -223,10 +223,11 @@ server_start(struct tmuxproc *client, int flags, struct event_base *base,
 	}
 
 	if (cause != NULL) {
-		cmdq_append(c, cmdq_get_error(cause));
-		free(cause);
-		if (c != NULL)
+		if (c != NULL) {
+			cmdq_append(c, cmdq_get_error(cause));
 			c->flags |= CLIENT_EXIT;
+		}
+		free(cause);
 	}
 
 	server_add_accept(0);
