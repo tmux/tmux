@@ -2471,14 +2471,7 @@ format_expand1(struct format_tree *ft, const char *fmt, int time)
 			format_log(ft, "found #(): %s", name);
 
 			if (ft->flags & FORMAT_NOJOBS) {
-				out = format_expand1(ft, fmt, time);
-				/* ugly, but works */
-				if (len - off < 3) {
-					buf = xreallocarray(buf, 2, len);
-					len *= 2;
-				}
-				buf[off++] = '#';
-				buf[off++] = '(';
+				out = xstrdup("");
 				format_log(ft, "#() is disabled");
 			} else {
 				ft->flags |= FORMAT_NOJOBS;
