@@ -2474,8 +2474,10 @@ format_expand1(struct format_tree *ft, const char *fmt, int time)
 				out = xstrdup("");
 				format_log(ft, "#() is disabled");
 			} else {
+				ft->flags |= FORMAT_NOJOBS;
 				out = format_job_get(ft, name);
 				format_log(ft, "#() result: %s", out);
+				ft->flags &= ~FORMAT_NOJOBS;
 			}
 			free(name);
 
