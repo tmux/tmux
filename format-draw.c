@@ -509,10 +509,11 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 	size_t			 size = strlen(expanded);
 	struct screen		*os = octx->s, s[TOTAL];
 	struct screen_write_ctx	 ctx[TOTAL];
-	u_int			 ocx = os->cx, ocy = os->cy, i, width[TOTAL];
+	u_int			 ocx = os->cx, ocy = os->cy, i, n, width[TOTAL];
 	u_int			 map[] = { LEFT, LEFT, CENTRE, RIGHT };
 	int			 focus_start = -1, focus_end = -1;
 	int			 list_state = -1, fill = -1;
+	int                      even;
 	enum style_align	 list_align = STYLE_ALIGN_DEFAULT;
 	struct grid_cell	 gc, current_default;
 	struct style		 sy, saved_sy;
@@ -547,6 +548,39 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 	 */
 	cp = expanded;
 	while (*cp != '\0') {
+		if (cp[0] == '#' && cp[1] != '[' && cp[1] != '\0') {
+			for (i = 1; cp[i] == '#'; i++) {}
+			if (cp[i] == '[') {
+				even = !(i % 2);
+				cp += i + (even ? 1 : -1);
+				if (!sy.ignore) {
+					n = i;
+					for (i = i/2; i > 0; i--) {
+						utf8_set(ud, '#');
+						screen_write_cell(&ctx[current],
+							&sy.gc);
+					}
+					width[current] += n/2;
+					if (even) {
+						utf8_set(ud, '[');
+						screen_write_cell(&ctx[current],
+							&sy.gc);
+						width[current]++;
+					}
+				}
+			} else {
+				width[current] += i;
+				cp += i;
+				for (; i > 0; i--) {
+					utf8_set(ud, '#');
+					screen_write_cell(&ctx[current],
+						&sy.gc);
+				}
+				continue;
+			}
+
+		}
+
 		if (cp[0] != '#' || cp[1] != '[' || sy.ignore) {
 			/* See if this is a UTF-8 character. */
 			if ((more = utf8_open(ud, *cp)) == UTF8_MORE) {
@@ -796,16 +830,42 @@ u_int
 format_width(const char *expanded)
 {
 	const char		*cp, *end;
-	u_int			 width = 0;
+	u_int			 n, even, width = 0;
 	struct utf8_data	 ud;
 	enum utf8_state		 more;
 
 	cp = expanded;
 	while (*cp != '\0') {
-		if (cp[0] == '#' && cp[1] == '[') {
+		if (*cp == '#') {
+			for (end = cp + 1; *end == '#'; end++) {}
+			n = end - cp;
+			/* just a string of #s */
+			if (*end != '[') {
+				width += n;
+				cp = end;
+				continue;
+			}
+
+			/* Always going to copy the escaped #s first. */
+			even = !(n % 2);
+			n = n/2;
+			width += n;
+
+			/* Number of #s is even, so we just have to add a [. */
+			if (even) {
+				width++;
+				cp = end + 1;
+				continue;
+			}
+
+			/*
+			 * Finally, deal with the style.
+			 */
+			cp = end - 1;
 			end = format_skip(cp + 2, "]");
-			if (end == NULL)
+			if (end == NULL) {
 				return (0);
+			}
 			cp = end + 1;
 		} else if ((more = utf8_open(&ud, *cp)) == UTF8_MORE) {
 			while (*++cp != '\0' && more == UTF8_MORE)
@@ -823,19 +883,65 @@ format_width(const char *expanded)
 	return (width);
 }
 
-/* Trim on the left, taking #[] into account. */
+/*
+ * Trim on the left, taking #[] into account.  Note, we copy the whole set of
+ * unescaped #s, but only add their escaped size to width. This is because the
+ * format_draw function will actually do the escaping when it runs
+ */
 char *
 format_trim_left(const char *expanded, u_int limit)
 {
 	char			*copy, *out;
 	const char		*cp = expanded, *end;
-	u_int			 width = 0;
+	u_int			 even, n, width = 0;
 	struct utf8_data	 ud;
 	enum utf8_state		 more;
 
 	out = copy = xmalloc(strlen(expanded) + 1);
 	while (*cp != '\0') {
-		if (cp[0] == '#' && cp[1] == '[') {
+		if (width >= limit) {
+			break;
+		}
+		if (*cp == '#') {
+			for (end = cp + 1; *end == '#'; end++) {}
+			n = end - cp;
+			/* just a string of #s */
+			if (*end != '[') {
+				if (n > limit - width) {
+					n = limit - width;
+				}
+				memcpy(out, cp, n);
+				out += n;
+				width += n;
+				cp = end;
+				continue;
+			}
+
+			/* Always going to copy the escaped #s first. */
+			even = !(n % 2);
+			n = n/2;
+			if (n > limit - width) {
+				n = limit - width;
+			}
+			width += n;
+			n *= 2;
+			memcpy(out, cp, n);
+			out += n;
+
+			/* Number of #s is even, so we just have to add a [. */
+			if (even) {
+				if (width + 1 <= limit) {
+					*out++ = '[';
+					width++;
+				}
+				cp = end + 1;
+				continue;
+			}
+
+			/*
+			 * Finally, deal with the style.
+			 */
+			cp = end - 1;
 			end = format_skip(cp + 2, "]");
 			if (end == NULL)
 				break;
@@ -873,7 +979,8 @@ format_trim_right(const char *expanded, u_int limit)
 {
 	char			*copy, *out;
 	const char		*cp = expanded, *end;
-	u_int			 width = 0, total_width, skip;
+	u_int			 width = 0, total_width, skip, orig_n, even;
+	long                     n; /* has to be able to go negative */
 	struct utf8_data	 ud;
 	enum utf8_state		 more;
 
@@ -883,11 +990,71 @@ format_trim_right(const char *expanded, u_int limit)
 	skip = total_width - limit;
 
 	out = copy = xmalloc(strlen(expanded) + 1);
+	for (n = 0; n <= strlen(expanded); n++) {
+		out[n] = '\0';
+	}
 	while (*cp != '\0') {
-		if (cp[0] == '#' && cp[1] == '[') {
+		if (*cp == '#') {
+			for (end = cp + 1; *end == '#'; end++) {}
+			orig_n = n = end - cp;
+			/* just a string of #s */
+			if (*end != '[') {
+				if (width <= skip) {
+					n -= (long)skip - width;
+					if (n < 0) {
+						n = 0;
+					}
+				}
+				if (n) {
+					memcpy(out, cp, n);
+					out += n;
+				}
+				/*
+				 * width always increases by the full amount
+				 * even if we can't copy anything yet
+				 */
+				width += orig_n;
+				cp = end;
+				continue;
+			}
+
+			/* Always going to copy the escaped #s first. */
+			even = !(n % 2);
+			n = n/2;
+			if (width <= skip) {
+				n -= (long)skip - width;
+				if (n < 0) {
+					n = 0;
+				}
+			}
+			if (n) {
+				/*
+				 * copy twice as much because it is hasn't been
+				 * escaped yet
+				 */
+				memcpy(out, cp, n*2);
+				out += n*2;
+			}
+			cp += orig_n;
+			width += orig_n/2;
+
+			/* Number of #s is even, so we just have to add a [. */
+			if (even) {
+				if (width > skip) {
+					*out++ = '[';
+				}
+				width++;
+				continue;
+			}
+
+			/*
+			 * Finally, deal with the style.
+			 */
+			cp = end - 1;
 			end = format_skip(cp + 2, "]");
-			if (end == NULL)
+			if (end == NULL) {
 				break;
+			}
 			memcpy(out, cp, end + 1 - cp);
 			out += (end + 1 - cp);
 			cp = end + 1;

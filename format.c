@@ -2502,8 +2502,63 @@ format_expand1(struct format_tree *ft, const char *fmt, int time)
 				break;
 			fmt += n + 1;
 			continue;
-		case '}':
 		case '#':
+			/*
+			 * #[ should be interpreted as a style, ##[ should be
+			 * interpreted as a # and a [, ###[ should be
+			 * interpreted as a # and a style, but styles are
+			 * interpreted by format_draw in format-draw.c, so if
+			 * handle the escaping of ## now, then it will look
+			 * like ##[ to format_draw which it will interpret as a
+			 * # and a [.  So if at the end of the #s we find a [,
+			 * we need to dump the whole contiguous mess on
+			 * format_draw to handle. If we don't then we can just
+			 * write n/2 #s to buf.
+			 */
+			n = 2;
+			while (*fmt == '#') {
+				fmt++;
+				n++;
+			}
+			/*
+			 * This makes my DRY nature squeal, but reducing the
+			 * number if statements needed to not repeat myself is
+			 * probably worse on modern architectures than the
+			 * slight size gain and human costs of the redundancy
+			 */
+			if (*fmt == '[') {
+				format_log(ft, "found #*%d[", n);
+				while (len - off < n + 2) {
+					buf = xreallocarray(buf, n + 1, len);
+					len *= 2;
+				}
+				for (; n > 0; n--) {
+					buf[off++] = '#';
+				}
+				buf[off++] = '[';
+				fmt++;
+			} else {
+				/*
+				 * if we wind up with #x at the end, then we
+				 * don't know how to handle x, so just back up
+				 * to the # and let the outer loop do its thing
+				 */
+				if (n % 2) {
+					fmt--;
+					n--;
+				}
+				format_log(ft, "found #*%d", n);
+				n = n/2;
+				while (len - off < n + 1) {
+					buf = xreallocarray(buf, n + 1, len);
+					len *= 2;
+				}
+				for (; n > 0; n--) {
+					buf[off++] = '#';
+				}
+			}
+			continue;
+		case '}':
 		case ',':
 			format_log(ft, "found #%c", ch);
 			while (len - off < 2) {
