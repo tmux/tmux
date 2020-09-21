@@ -92,9 +92,12 @@ ignore_client_size(struct client *c)
 	return (0);
 }
 
+typedef int (*skip_client_func)(struct client *, int, int, struct session *,
+	struct window *);
+
 static int
-clients_calculate_size(int type, struct window *w,
-	int (*skip_client) (struct client *),
+clients_calculate_size(int type, int current, struct session *s,
+	struct window *w, skip_client_func skip_client,
 	u_int *sx, u_int *sy, u_int *xpixel, u_int *ypixel)
 {
 	struct client	*loop;
@@ -129,7 +132,7 @@ clients_calculate_size(int type, struct window *w,
 				continue;
 		}
 
-		if (skip_client(loop))
+		if (skip_client(loop, type, current, s, w))
 			continue;
 
 		cx = loop->tty.sx;
@@ -164,9 +167,24 @@ clients_calculate_size(int type, struct window *w,
 	return 1;
 }
 
+static int
+default_skip_client (struct client *loop, int type, __unused int current,
+	struct session *s, struct window *w)
+{
+	if (type == WINDOW_SIZE_LATEST) {
+		s = loop->session;
+		return 0;
+	}
+	if (w != NULL && !session_has(loop->session, w))
+		return 1;
+	if (w == NULL && loop->session != s)
+		return 1;
+	return 0;
+}
+
 void
 default_window_size(struct client *c, struct session *s, struct window *w,
-    u_int *sx, u_int *sy, u_int *xpixel, u_int *ypixel, int type)
+	u_int *sx, u_int *sy, u_int *xpixel, u_int *ypixel, int type)
 {
 	const char	*value;
 	int		 changed = -1;
@@ -186,20 +204,8 @@ default_window_size(struct client *c, struct session *s, struct window *w,
 	}
 
 	if (changed == -1) {
-		int skip_client (struct client *loop) {
-			if (type == WINDOW_SIZE_LATEST) {
-				s = loop->session;
-				return 0;
-			}
-			if (w != NULL && !session_has(loop->session, w))
-				return 1;
-			if (w == NULL && loop->session != s)
-				return 1;
-			return 0;
-		}
-
-		changed = clients_calculate_size(type, w, skip_client, sx, sy,
-			xpixel, ypixel);
+		changed = clients_calculate_size(type, 0, s, w,
+			default_skip_client, sx, sy, xpixel, ypixel);
 	}
 
 	if (changed == 0) {
@@ -220,17 +226,21 @@ default_window_size(struct client *c, struct session *s, struct window *w,
 		*sy = WINDOW_MAXIMUM;
 }
 
+static int
+recalculate_skip_client(struct client *loop, __unused int type, int current,
+	__unused struct session *s, struct window *w)
+{
+	if (current)
+		return (loop->session->curw->window != w);
+	else 
+		return (session_has(loop->session, w) == 0);
+}
+
 void
 recalculate_size(struct window *w, int now)
 {
 	u_int		 sx, sy, xpixel = 0, ypixel = 0;
 	int		 type, current, changed;
-	int		 skip_client (struct client *loop) {
-		if (current)
-			return (loop->session->curw->window != w);
-		else 
-			return (session_has(loop->session, w) == 0);
-	}
 
 	if (w->active == NULL)
 		return;
@@ -239,8 +249,8 @@ recalculate_size(struct window *w, int now)
 	type = options_get_number(w->options, "window-size");
 	current = options_get_number(w->options, "aggressive-resize");
 
-	changed = clients_calculate_size(type, w, skip_client, &sx, &sy,
-		&xpixel, &ypixel);
+	changed = clients_calculate_size(type, current, NULL, w,
+		recalculate_skip_client, &sx, &sy, &xpixel, &ypixel);
 
 	if (w->flags & WINDOW_RESIZE) {
 		if (!now && changed && w->new_sx == sx && w->new_sy == sy)
