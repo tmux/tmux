@@ -92,130 +92,124 @@ ignore_client_size(struct client *c)
 	return (0);
 }
 
-void
-default_window_size(struct client *c, struct session *s, struct window *w,
-    u_int *sx, u_int *sy, u_int *xpixel, u_int *ypixel, int type)
+static int
+clients_calculate_size(int type, struct window *w,
+	int (*skip_client) (struct client *),
+	u_int *sx, u_int *sy, u_int *xpixel, u_int *ypixel)
 {
 	struct client	*loop;
 	u_int		 cx, cy, n;
-	const char	*value;
 
-	if (type == -1)
-		type = options_get_number(global_w_options, "window-size");
-	switch (type) {
-	case WINDOW_SIZE_LARGEST:
+	if (type == WINDOW_SIZE_MANUAL)
+		return 0;
+
+	if (type == WINDOW_SIZE_LARGEST)
 		*sx = *sy = 0;
-		*xpixel = *ypixel = 0;
+	else
+		*sx = *sy = UINT_MAX;
+
+	n = *xpixel = *ypixel = 0;
+
+	if (type == WINDOW_SIZE_LATEST) {
 		TAILQ_FOREACH(loop, &clients, entry) {
-			if (ignore_client_size(loop))
-				continue;
-			if (w != NULL && !session_has(loop->session, w))
-				continue;
-			if (w == NULL && loop->session != s)
-				continue;
+			if (!ignore_client_size(loop) &&
+			    session_has(loop->session, w)) {
+				if (++n > 1)
+					break;
+			}
+		}
+	}
 
-			cx = loop->tty.sx;
-			cy = loop->tty.sy - status_line_size(loop);
+	TAILQ_FOREACH(loop, &clients, entry) {
+		if (ignore_client_size(loop))
+			continue;
 
+		if (type == WINDOW_SIZE_LATEST) {
+			if (n > 1 && loop != w->latest)
+				continue;
+		}
+
+		if (skip_client(loop))
+			continue;
+
+		cx = loop->tty.sx;
+		cy = loop->tty.sy - status_line_size(loop);
+
+		if (type == WINDOW_SIZE_LARGEST) {
 			if (cx > *sx)
 				*sx = cx;
 			if (cy > *sy)
 				*sy = cy;
-
-			if (loop->tty.xpixel > *xpixel &&
-			    loop->tty.ypixel > *ypixel) {
-				*xpixel = loop->tty.xpixel;
-				*ypixel = loop->tty.ypixel;
-			}
-		}
-		if (*sx == 0 || *sy == 0)
-			goto manual;
-		break;
-	case WINDOW_SIZE_SMALLEST:
-		*sx = *sy = UINT_MAX;
-		*xpixel = *ypixel = 0;
-		TAILQ_FOREACH(loop, &clients, entry) {
-			if (ignore_client_size(loop))
-				continue;
-			if (w != NULL && !session_has(loop->session, w))
-				continue;
-			if (w == NULL && loop->session != s)
-				continue;
-
-			cx = loop->tty.sx;
-			cy = loop->tty.sy - status_line_size(loop);
-
+		} else {
 			if (cx < *sx)
 				*sx = cx;
 			if (cy < *sy)
 				*sy = cy;
-
-			if (loop->tty.xpixel > *xpixel &&
-			    loop->tty.ypixel > *ypixel) {
-				*xpixel = loop->tty.xpixel;
-				*ypixel = loop->tty.ypixel;
-			}
 		}
+
+		if (loop->tty.xpixel > *xpixel && loop->tty.ypixel > *ypixel) {
+			*xpixel = loop->tty.xpixel;
+			*ypixel = loop->tty.ypixel;
+		}
+	}
+
+	if (type == WINDOW_SIZE_LARGEST) {
+		if (*sx == 0 || *sy == 0)
+			return 0;
+	} else {
 		if (*sx == UINT_MAX || *sy == UINT_MAX)
-			goto manual;
-		break;
-	case WINDOW_SIZE_LATEST:
+			return 0;
+	}
+
+	return 1;
+}
+
+void
+default_window_size(struct client *c, struct session *s, struct window *w,
+    u_int *sx, u_int *sy, u_int *xpixel, u_int *ypixel, int type)
+{
+	const char	*value;
+	int		 changed = -1;
+
+	if (type == -1)
+		type = options_get_number(global_w_options, "window-size");
+
+	if (type == WINDOW_SIZE_LATEST) {
 		if (c != NULL && !ignore_client_size(c)) {
 			*sx = c->tty.sx;
 			*sy = c->tty.sy - status_line_size(c);
 			*xpixel = c->tty.xpixel;
-		        *ypixel = c->tty.ypixel;
-		} else {
-			if (w == NULL)
-				goto manual;
-			n = 0;
-			TAILQ_FOREACH(loop, &clients, entry) {
-				if (!ignore_client_size(loop) &&
-				    session_has(loop->session, w)) {
-					if (++n > 1)
-						break;
-				}
-			}
-			*sx = *sy = UINT_MAX;
-			*xpixel = *ypixel = 0;
-			TAILQ_FOREACH(loop, &clients, entry) {
-				if (ignore_client_size(loop))
-					continue;
-				if (n > 1 && loop != w->latest)
-					continue;
+			*ypixel = c->tty.ypixel;
+			changed = 1;
+		} else if (w == NULL)
+			changed = 0;
+	}
+
+	if (changed == -1) {
+		int skip_client (struct client *loop) {
+			if (type == WINDOW_SIZE_LATEST) {
 				s = loop->session;
-
-				cx = loop->tty.sx;
-				cy = loop->tty.sy - status_line_size(loop);
-
-				if (cx < *sx)
-					*sx = cx;
-				if (cy < *sy)
-					*sy = cy;
-
-				if (loop->tty.xpixel > *xpixel &&
-				    loop->tty.ypixel > *ypixel) {
-					*xpixel = loop->tty.xpixel;
-					*ypixel = loop->tty.ypixel;
-				}
+				return 0;
 			}
-			if (*sx == UINT_MAX || *sy == UINT_MAX)
-				goto manual;
+			if (w != NULL && !session_has(loop->session, w))
+				return 1;
+			if (w == NULL && loop->session != s)
+				return 1;
+			return 0;
 		}
-		break;
-	case WINDOW_SIZE_MANUAL:
-		goto manual;
-	}
-	goto done;
 
-manual:
-	value = options_get_string(s->options, "default-size");
-	if (sscanf(value, "%ux%u", sx, sy) != 2) {
-		*sx = 80;
-		*sy = 24;
+		changed = clients_calculate_size(type, w, skip_client, sx, sy,
+			xpixel, ypixel);
 	}
 
-done:
+	if (changed == 0) {
+		value = options_get_string(s->options, "default-size");
+		if (sscanf(value, "%ux%u", sx, sy) != 2) {
+			*sx = 80;
+			*sy = 24;
+		}
+	}
+
 	if (*sx < WINDOW_MINIMUM)
 		*sx = WINDOW_MINIMUM;
 	if (*sx > WINDOW_MAXIMUM)
@@ -229,10 +223,14 @@ done:
 void
 recalculate_size(struct window *w, int now)
 {
-	struct session	*s;
-	struct client	*c;
-	u_int		 sx, sy, cx, cy, xpixel = 0, ypixel = 0, n;
-	int		 type, current, has, changed;
+	u_int		 sx, sy, xpixel = 0, ypixel = 0;
+	int		 type, current, changed;
+	int		 skip_client (struct client *loop) {
+		if (current)
+			return (loop->session->curw->window != w);
+		else 
+			return (session_has(loop->session, w) == 0);
+	}
 
 	if (w->active == NULL)
 		return;
@@ -241,112 +239,9 @@ recalculate_size(struct window *w, int now)
 	type = options_get_number(w->options, "window-size");
 	current = options_get_number(w->options, "aggressive-resize");
 
-	changed = 1;
-	switch (type) {
-	case WINDOW_SIZE_LARGEST:
-		sx = sy = 0;
-		TAILQ_FOREACH(c, &clients, entry) {
-			if (ignore_client_size(c))
-				continue;
-			s = c->session;
+	changed = clients_calculate_size(type, w, skip_client, &sx, &sy,
+		&xpixel, &ypixel);
 
-			if (current)
-				has = (s->curw->window == w);
-			else
-				has = session_has(s, w);
-			if (!has)
-				continue;
-
-			cx = c->tty.sx;
-			cy = c->tty.sy - status_line_size(c);
-
-			if (cx > sx)
-				sx = cx;
-			if (cy > sy)
-				sy = cy;
-
-			if (c->tty.xpixel > xpixel && c->tty.ypixel > ypixel) {
-				xpixel = c->tty.xpixel;
-				ypixel = c->tty.ypixel;
-			}
-		}
-		if (sx == 0 || sy == 0)
-			changed = 0;
-		break;
-	case WINDOW_SIZE_SMALLEST:
-		sx = sy = UINT_MAX;
-		TAILQ_FOREACH(c, &clients, entry) {
-			if (ignore_client_size(c))
-				continue;
-			s = c->session;
-
-			if (current)
-				has = (s->curw->window == w);
-			else
-				has = session_has(s, w);
-			if (!has)
-				continue;
-
-			cx = c->tty.sx;
-			cy = c->tty.sy - status_line_size(c);
-
-			if (cx < sx)
-				sx = cx;
-			if (cy < sy)
-				sy = cy;
-
-			if (c->tty.xpixel > xpixel && c->tty.ypixel > ypixel) {
-				xpixel = c->tty.xpixel;
-				ypixel = c->tty.ypixel;
-			}
-		}
-		if (sx == UINT_MAX || sy == UINT_MAX)
-			changed = 0;
-		break;
-	case WINDOW_SIZE_LATEST:
-		n = 0;
-		TAILQ_FOREACH(c, &clients, entry) {
-			if (!ignore_client_size(c) &&
-			    session_has(c->session, w)) {
-				if (++n > 1)
-					break;
-			}
-		}
-		sx = sy = UINT_MAX;
-		TAILQ_FOREACH(c, &clients, entry) {
-			if (ignore_client_size(c))
-				continue;
-			if (n > 1 && c != w->latest)
-				continue;
-			s = c->session;
-
-			if (current)
-				has = (s->curw->window == w);
-			else
-				has = session_has(s, w);
-			if (!has)
-				continue;
-
-			cx = c->tty.sx;
-			cy = c->tty.sy - status_line_size(c);
-
-			if (cx < sx)
-				sx = cx;
-			if (cy < sy)
-				sy = cy;
-
-			if (c->tty.xpixel > xpixel && c->tty.ypixel > ypixel) {
-				xpixel = c->tty.xpixel;
-				ypixel = c->tty.ypixel;
-			}
-		}
-		if (sx == UINT_MAX || sy == UINT_MAX)
-			changed = 0;
-		break;
-	case WINDOW_SIZE_MANUAL:
-		changed = 0;
-		break;
-	}
 	if (w->flags & WINDOW_RESIZE) {
 		if (!now && changed && w->new_sx == sx && w->new_sy == sy)
 			changed = 0;
