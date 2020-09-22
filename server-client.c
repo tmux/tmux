@@ -1983,6 +1983,7 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 	switch (imsg->hdr.type) {
 	case MSG_IDENTIFY_FEATURES:
 	case MSG_IDENTIFY_FLAGS:
+	case MSG_IDENTIFY_LONGFLAGS:
 	case MSG_IDENTIFY_TERM:
 	case MSG_IDENTIFY_TTYNAME:
 	case MSG_IDENTIFY_CWD:
@@ -2141,6 +2142,7 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 	const char	*data, *home;
 	size_t		 datalen;
 	int		 flags, feat;
+	uint64_t	 longflags;
 	char		*name;
 
 	if (c->flags & CLIENT_IDENTIFIED)
@@ -2164,6 +2166,14 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 		memcpy(&flags, data, sizeof flags);
 		c->flags |= flags;
 		log_debug("client %p IDENTIFY_FLAGS %#x", c, flags);
+		break;
+	case MSG_IDENTIFY_LONGFLAGS:
+		if (datalen != sizeof longflags)
+			fatalx("bad MSG_IDENTIFY_LONGFLAGS size");
+		memcpy(&longflags, data, sizeof longflags);
+		c->flags |= longflags;
+		log_debug("client %p IDENTIFY_LONGFLAGS %#llx", c,
+		    (unsigned long long)longflags);
 		break;
 	case MSG_IDENTIFY_TERM:
 		if (datalen == 0 || data[datalen - 1] != '\0')
