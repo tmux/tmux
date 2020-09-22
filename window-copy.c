@@ -109,7 +109,7 @@ static void	window_copy_cursor_back_to_indentation(
 static void	window_copy_cursor_end_of_line(struct window_mode_entry *);
 static void	window_copy_other_end(struct window_mode_entry *);
 static void	window_copy_cursor_left(struct window_mode_entry *);
-static void	window_copy_cursor_right(struct window_mode_entry *);
+static void	window_copy_cursor_right(struct window_mode_entry *, int);
 static void	window_copy_cursor_up(struct window_mode_entry *, int);
 static void	window_copy_cursor_down(struct window_mode_entry *, int);
 static void	window_copy_cursor_jump(struct window_mode_entry *);
@@ -1093,7 +1093,7 @@ window_copy_cmd_cursor_right(struct window_copy_cmd_state *cs)
 	u_int				 np = wme->prefix;
 
 	for (; np != 0; np--)
-		window_copy_cursor_right(wme);
+		window_copy_cursor_right(wme, 0);
 	return (WINDOW_COPY_CMD_NOTHING);
 }
 
@@ -2962,7 +2962,7 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex,
 		window_copy_search_marks(wme, &ss, regex, visible_only);
 		if (foundlen != 0) {
 			for (i = 0; i < foundlen; i++)
-				window_copy_cursor_right(wme);
+				window_copy_cursor_right(wme, 1);
 		}
 	}
 	window_copy_redraw_screen(wme);
@@ -4142,7 +4142,7 @@ window_copy_cursor_left(struct window_mode_entry *wme)
 }
 
 static void
-window_copy_cursor_right(struct window_mode_entry *wme)
+window_copy_cursor_right(struct window_mode_entry *wme, int all)
 {
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 px, py, yy, cx, cy;
@@ -4150,7 +4150,7 @@ window_copy_cursor_right(struct window_mode_entry *wme)
 
 	py = screen_hsize(data->backing) + data->cy - data->oy;
 	yy = screen_hsize(data->backing) + screen_size_y(data->backing) - 1;
-	if (data->screen.sel != NULL && data->rectflag)
+	if (all || (data->screen.sel != NULL && data->rectflag))
 		px = screen_size_x(&data->screen);
 	else
 		px = window_copy_find_length(wme, py);
