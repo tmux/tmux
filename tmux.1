@@ -3167,6 +3167,9 @@ flag unsets an option, so a session inherits the option from the global
 options (or with
 .Fl g ,
 restores a global option to the default).
+.Ar value
+depends on the option and may be a number, a string, or a flag (on, off, or
+omitted to toggle).
 .Pp
 The
 .Fl o
@@ -3238,9 +3241,6 @@ includes hooks (omitted by default).
 .Fl A
 includes options inherited from a parent set of options, such options are
 marked with an asterisk.
-.Ar value
-depends on the option and may be a number, a string, or a flag (on, off, or
-omitted to toggle).
 .El
 .Pp
 Available server options are:
