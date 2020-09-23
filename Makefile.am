@@ -151,6 +151,7 @@ dist_tmux_SOURCES = \
 	mode-tree.c \
 	names.c \
 	notify.c \
+	nowarn.c \
 	options-table.c \
 	options.c \
 	paste.c \
@@ -209,3 +210,5 @@ install-exec-hook:
 	$(mkdir_p) $(DESTDIR)$(mandir)/man1
 	$(INSTALL_DATA) $(srcdir)/tmux.1.@MANFORMAT@ \
 		$(DESTDIR)$(mandir)/man1/tmux.1
+
+nowarn.o: AM_CPPFLAGS +=-Wno-format-y2k -Wno-format-nonliteral

@@ -32,6 +32,7 @@
 #include <unistd.h>
 
 #include "tmux.h"
+#include "nowarn.h"
 
 /*
  * Build a list of key-value pairs and use them to expand #{key} entries in a
@@ -1403,7 +1404,7 @@ format_pretty_time(time_t t)
 	}
 
 	/* Older than that. */
-	strftime(s, sizeof s, "%h%y", &tm);
+	NOWARN(strftime)(s, sizeof s, "%h%y", &tm);
 	return (xstrdup(s));
 }
 
@@ -1482,7 +1483,7 @@ found:
 		else {
 			if (time_format != NULL) {
 				localtime_r(&t, &tm);
-				strftime(s, sizeof s, time_format, &tm);
+				NOWARN(strftime)(s, sizeof s, time_format, &tm);
 			} else {
 				ctime_r(&t, s);
 				s[strcspn(s, "\n")] = '\0';
@@ -2429,7 +2430,7 @@ format_expand1(struct format_tree *ft, const char *fmt, int time)
 
 	if (time) {
 		tm = localtime(&ft->time);
-		if (strftime(expanded, sizeof expanded, fmt, tm) == 0) {
+		if (NOWARN(strftime)(expanded, sizeof expanded, fmt, tm) == 0) {
 			format_log(ft, "format is too long");
 			return (xstrdup(""));
 		}
