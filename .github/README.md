@@ -14,6 +14,9 @@ page](https://github.com/libevent/libevent/releases/latest).
 It also depends on [ncurses](https://www.gnu.org/software/ncurses/), available
 from [this page](https://invisible-mirror.net/archives/ncurses/).
 
+Last dependency necessary for compilation is [YACC](http://dinosaur.compilertools.net/), 
+available from [this page](https://www.tuhs.org/cgi-bin/utree.pl?file=V6/usr/source/yacc).
+
 ## Installation
 
 ### From release tarball

@@ -16,6 +16,10 @@ It also depends on ncurses, available from:
 
 	https://invisible-mirror.net/archives/ncurses/
 
+Last dependency necessary for compilation is YACC, available from:
+
+	https://www.tuhs.org/cgi-bin/utree.pl?file=V6/usr/source/yacc
+
 * Installation
 
 To build and install tmux from a release tarball, use:
