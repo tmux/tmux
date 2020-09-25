@@ -14,8 +14,8 @@ page](https://github.com/libevent/libevent/releases/latest).
 It also depends on [ncurses](https://www.gnu.org/software/ncurses/), available
 from [this page](https://invisible-mirror.net/archives/ncurses/).
 
-To build tmux, a C compiler (for example gcc or clang), make and a suitable
-yacc (yacc or bison) are needed.
+To build tmux, a C compiler (for example gcc or clang), make, pkg-config and a
+suitable yacc (yacc or bison) are needed.
 
 ## Installation
 
