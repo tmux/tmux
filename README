@@ -16,6 +16,9 @@ It also depends on ncurses, available from:
 
 	https://invisible-mirror.net/archives/ncurses/
 
+To build tmux, a C compiler (for example gcc or clang), make and a suitable
+yacc (yacc or bison) are needed.
+
 * Installation
 
 To build and install tmux from a release tarball, use:
