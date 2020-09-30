@@ -1,3 +1,9 @@
+tmux with hyperlinks support
+
+Patch date 10/15/2019 from https://github.com/tmux/tmux/issues/911 updated to work with HEAD from 09/29/2020, and applied.
+
+Compile, add  `set -ga terminal-overrides ',*:Hls=\E]8;id=%p1%s;%p2%s\E\\:Hlr=\E]8;;\E\\'` to tmux.conf and use with a terminal that supports hyperlinks.
+
 # Welcome to tmux!
 
 tmux is a terminal multiplexer: it enables a number of terminals to be created,
