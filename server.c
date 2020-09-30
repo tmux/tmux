@@ -41,6 +41,8 @@
  */
 
 struct clients		 clients;
+struct hyperlinks    hyperlinks = RB_INITIALIZER();
+u_int next_hyperlink;
 
 struct tmuxproc		*server_proc;
 static int		 server_fd = -1;
@@ -60,6 +62,24 @@ static void	server_signal(int);
 static void	server_child_signal(void);
 static void	server_child_exited(pid_t, int);
 static void	server_child_stopped(pid_t, int);
+
+RB_GENERATE(hyperlinks, hyperlink, entry, server_cmp_hyperlink);
+/* Compare two hyperlinks. */
+int
+server_cmp_hyperlink(struct hyperlink *hl1, struct hyperlink *hl2)
+{
+	return (hl1->id - hl2->id);
+}
+
+/* Get hyperlink. */
+struct hyperlink *
+server_get_hyperlink(u_int id)
+{
+	struct hyperlink	hl;
+
+	hl.id = id;
+	return (RB_FIND(hyperlinks, &hyperlinks, &hl));
+}
 
 /* Set marked pane. */
 void

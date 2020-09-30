@@ -37,7 +37,7 @@
 
 /* Default grid cell data. */
 const struct grid_cell grid_default_cell = {
-	{ { ' ' }, 0, 1, 1 }, 0, 0, 8, 8, 0
+	{ { ' ' }, 0, 1, 1 }, 0, 0, 8, 8, 0, 0
 };
 
 /*
@@ -45,12 +45,12 @@ const struct grid_cell grid_default_cell = {
  * appears in the grid - because of this, they are always extended cells.
  */
 static const struct grid_cell grid_padding_cell = {
-	{ { '!' }, 0, 0, 0 }, 0, GRID_FLAG_PADDING, 8, 8, 0
+	{ { '!' }, 0, 0, 0 }, 0, GRID_FLAG_PADDING, 8, 8, 0, 0
 };
 
 /* Cleared grid cell data. */
 static const struct grid_cell grid_cleared_cell = {
-	{ { ' ' }, 0, 1, 1 }, 0, GRID_FLAG_CLEARED, 8, 8, 0
+	{ { ' ' }, 0, 1, 1 }, 0, GRID_FLAG_CLEARED, 8, 8, 0, 0
 };
 static const struct grid_cell_entry grid_cleared_entry = {
 	GRID_FLAG_CLEARED, { .data = { 0, 8, 8, ' ' } }
@@ -89,6 +89,8 @@ grid_need_extended_cell(const struct grid_cell_entry *gce,
 	if ((gc->fg & COLOUR_FLAG_RGB) || (gc->bg & COLOUR_FLAG_RGB))
 		return (1);
 	if (gc->us != 0) /* only supports 256 or RGB */
+		return (1);
+	if (gc->link != 0) /* hyperlinks */
 		return (1);
 	return (0);
 }
@@ -229,6 +231,8 @@ grid_cells_look_equal(const struct grid_cell *gc1, const struct grid_cell *gc2)
 {
 	if (gc1->fg != gc2->fg || gc1->bg != gc2->bg)
 		return (0);
+	if (gc1->link != gc2->link)
+	  return (0);
 	if (gc1->attr != gc2->attr || gc1->flags != gc2->flags)
 		return (0);
 	return (1);
@@ -522,6 +526,7 @@ grid_get_cell1(struct grid_line *gl, u_int px, struct grid_cell *gc)
 		gc->bg |= COLOUR_FLAG_256;
 	gc->us = 0;
 	utf8_set(&gc->data, gce->data.data);
+	gc->link = 0;
 }
 
 /* Get cell for reading. */
