@@ -6,7 +6,43 @@ screen and continue running in the background, then later reattached.
 
 This release runs on OpenBSD, FreeBSD, NetBSD, Linux, OS X and Solaris.
 
-## Dependencies
+## Installation
+
+### Distribution Packages
+
+tmux is widely packaged in various Linux distributions.
+
+* Fedora
+
+~~~bash
+dnf install tmux
+~~~
+
+* RHEL/CentOS
+
+~~~bash
+yum install tmux
+~~~
+
+* Debian/Ubuntu
+
+~~~bash
+apt install tmux
+~~~
+
+* Arch
+
+~~~bash
+pacman -S tmux
+~~~
+
+* openSUSE
+
+~~~bash
+zypper install tmux
+~~~
+
+### Manual Compilation
 
 tmux depends on [libevent](https://libevent.org) 2.x, available from [this
 page](https://github.com/libevent/libevent/releases/latest).
@@ -17,9 +53,7 @@ from [this page](https://invisible-mirror.net/archives/ncurses/).
 To build tmux, a C compiler (for example gcc or clang), make, pkg-config and a
 suitable yacc (yacc or bison) are needed.
 
-## Installation
-
-### From release tarball
+#### From release tarball
 
 To build and install tmux from a release tarball, use:
 
@@ -31,7 +65,7 @@ sudo make install
 tmux can use the utempter library to update utmp(5), if it is installed - run
 configure with `--enable-utempter` to enable this.
 
-### From version control
+#### From version control
 
 To get and build the latest from version control - note that this requires
 `autoconf`, `automake` and `pkg-config`:
