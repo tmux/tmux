@@ -107,7 +107,7 @@ check_window_name(struct window *w)
 char *
 default_window_name(struct window *w)
 {
-	char    *cmd, *s;
+	char	*cmd, *s;
 
 	cmd = cmd_stringify_argv(w->active->argc, w->active->argv);
 	if (cmd != NULL && *cmd != '\0')
@@ -142,6 +142,10 @@ parse_window_name(const char *in)
 	char	*copy, *name, *ptr;
 
 	name = copy = xstrdup(in);
+	if (*name == '"')
+		name++;
+	name[strcspn (name, "\"")] = '\0';
+
 	if (strncmp(name, "exec ", (sizeof "exec ") - 1) == 0)
 		name = name + (sizeof "exec ") - 1;
 
