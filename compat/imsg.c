@@ -73,7 +73,13 @@ imsg_read(struct imsgbuf *ibuf)
 again:
 	if (getdtablecount() + imsg_fd_overhead +
 	    (int)((CMSG_SPACE(sizeof(int))-CMSG_SPACE(0))/sizeof(int))
-	    >= getdtablesize()) {
+	    >=
+#ifdef HAVE_SYSCONF
+	        sysconf(_SC_OPEN_MAX)
+#else
+		getdtablesize()
+#endif
+	) {
 		errno = EAGAIN;
 		free(ifd);
 		return (-1);
