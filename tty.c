@@ -2543,7 +2543,7 @@ tty_colours_fg(struct tty *tty, const struct grid_cell *gc)
 	/* Is this a 24-bit or 256-colour colour? */
 	if (gc->fg & COLOUR_FLAG_RGB || gc->fg & COLOUR_FLAG_256) {
 		if (tty_try_colour(tty, gc->fg, "38") == 0)
-			goto save_fg;
+			goto save;
 		/* Should not get here, already converted in tty_check_fg. */
 		return;
 	}
@@ -2555,13 +2555,13 @@ tty_colours_fg(struct tty *tty, const struct grid_cell *gc)
 			tty_puts(tty, s);
 		} else
 			tty_putcode1(tty, TTYC_SETAF, gc->fg - 90 + 8);
-		goto save_fg;
+		goto save;
 	}
 
 	/* Otherwise set the foreground colour. */
 	tty_putcode1(tty, TTYC_SETAF, gc->fg);
 
-save_fg:
+save:
 	/* Save the new values in the terminal current cell. */
 	tc->fg = gc->fg;
 }
@@ -2575,7 +2575,7 @@ tty_colours_bg(struct tty *tty, const struct grid_cell *gc)
 	/* Is this a 24-bit or 256-colour colour? */
 	if (gc->bg & COLOUR_FLAG_RGB || gc->bg & COLOUR_FLAG_256) {
 		if (tty_try_colour(tty, gc->bg, "48") == 0)
-			goto save_bg;
+			goto save;
 		/* Should not get here, already converted in tty_check_bg. */
 		return;
 	}
@@ -2587,13 +2587,13 @@ tty_colours_bg(struct tty *tty, const struct grid_cell *gc)
 			tty_puts(tty, s);
 		} else
 			tty_putcode1(tty, TTYC_SETAB, gc->bg - 90 + 8);
-		goto save_bg;
+		goto save;
 	}
 
 	/* Otherwise set the background colour. */
 	tty_putcode1(tty, TTYC_SETAB, gc->bg);
 
-save_bg:
+save:
 	/* Save the new values in the terminal current cell. */
 	tc->bg = gc->bg;
 }
@@ -2605,20 +2605,34 @@ tty_colours_us(struct tty *tty, const struct grid_cell *gc)
 	u_int			 c;
 	u_char			 r, g, b;
 
+	/* Clear underline colour. */
+	if (gc->us == 0) {
+		tty_putcode(tty, TTYC_OL);
+		goto save;
+	}
+
 	/* Must be an RGB colour - this should never happen. */
 	if (~gc->us & COLOUR_FLAG_RGB)
 		return;
 
 	/*
-	 * Setulc follows the ncurses(3) one argument "direct colour"
+	 * Setulc and setal follows the ncurses(3) one argument "direct colour"
 	 * capability format. Calculate the colour value.
 	 */
 	colour_split_rgb(gc->us, &r, &g, &b);
 	c = (65536 * r) + (256 * g) + b;
 
-	/* Write the colour. */
-	tty_putcode1(tty, TTYC_SETULC, c);
+	/*
+	 * Write the colour. Only use setal if the RGB flag is set because the
+	 * non-RGB version may be wrong.
+	 */
+	if (tty_term_has(tty->term, TTYC_SETULC))
+		tty_putcode1(tty, TTYC_SETULC, c);
+	else if (tty_term_has(tty->term, TTYC_SETAL) &&
+	    tty_term_has(tty->term, TTYC_RGB))
+		tty_putcode1(tty, TTYC_SETAL, c);
 
+save:
 	/* Save the new values in the terminal current cell. */
 	tc->us = gc->us;
 }
