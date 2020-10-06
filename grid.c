@@ -265,6 +265,9 @@ grid_free_lines(struct grid *gd, u_int py, u_int ny)
 
 	for (yy = py; yy < py + ny; yy++)
 		grid_free_line(gd, yy);
+#ifdef HAVE_MALLOC_TRIM
+	malloc_trim(0);
+#endif
 }
 
 /* Create a new grid. */
