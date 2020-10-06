@@ -259,7 +259,7 @@ format_copy_state(struct format_expand_state *to,
 	to->ft = from->ft;
 	to->loop = from->loop;
 	to->time = from->time;
-	to->flags = from->flags|flag;
+	to->flags = from->flags|flags;
 }
 
 /* Format job update callback. */
