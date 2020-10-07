@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <fnmatch.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -191,7 +192,11 @@ environ_update(struct options *oo, struct environ *src, struct environ *dst)
 	a = options_array_first(o);
 	while (a != NULL) {
 		ov = options_array_item_value(a);
-		if ((envent = environ_find(src, ov->string)) == NULL)
+		RB_FOREACH(envent, environ, src) {
+			if (fnmatch(ov->string, envent->name, 0) == 0)
+				break;
+		}
+		if (envent == NULL)
 			environ_clear(dst, ov->string);
 		else
 			environ_set(dst, envent->name, 0, "%s", envent->value);
