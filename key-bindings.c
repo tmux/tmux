@@ -380,7 +380,7 @@ key_bindings_init(void)
 		"bind -N 'Select the next window' n next-window",
 		"bind -N 'Select the next pane' o select-pane -t:.+",
 		"bind -N 'Customize options' C customize-mode -Z",
-		"bind -N 'Select the previous pane' p previous-window",
+		"bind -N 'Select the previous window' p previous-window",
 		"bind -N 'Display pane numbers' q display-panes",
 		"bind -N 'Redraw the current client' r refresh-client",
 		"bind -N 'Choose a session from a list' s choose-tree -Zs",
