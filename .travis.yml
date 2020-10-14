@@ -21,6 +21,9 @@ env:
   - BUILD=musl-static
 
 jobs:
+  # rustup failed on FreeBSD
+  allow_failures:
+    - os: freebsd
   exclude:
     # Static builds are broken on OS X (by Apple)
     - os: osx

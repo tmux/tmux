@@ -16,7 +16,7 @@ AM_CPPFLAGS += @XOPEN_DEFINES@ \
 	-DTMUX_CONF='"$(sysconfdir)/tmux.conf:~/.tmux.conf:$$XDG_CONFIG_HOME/tmux/tmux.conf:~/.config/tmux/tmux.conf"'
 
 # Additional object files.
-LDADD = $(LIBOBJS)
+LDADD = $(LIBOBJS) $(RUST_LIB)
 
 # Set flags for gcc.
 if IS_GCC
@@ -209,3 +209,34 @@ install-exec-hook:
 	$(mkdir_p) $(DESTDIR)$(mandir)/man1
 	$(INSTALL_DATA) $(srcdir)/tmux.1.@MANFORMAT@ \
 		$(DESTDIR)$(mandir)/man1/tmux.1
+
+RUST_SOURCES = \
+	Cargo.toml \
+	src/lib.rs
+
+RUST_EXTRA = \
+	Cargo.lock
+
+EXTRA_DIST += $(RUST_SOURCES) $(RUST_EXTRA)
+
+if IS_DEBUG
+CARGO_RELEASE_ARGS=
+else
+CARGO_RELEASE_ARGS=--release
+endif
+
+CARGO_VERBOSE = $(cargo_verbose_$(V))
+cargo_verbose_ = $(cargo_verbose_$(AM_DEFAULT_VERBOSITY))
+cargo_verbose_0 =
+cargo_verbose_1 = --verbose
+
+RUST_LIB=@abs_top_builddir@/target/@RUST_TARGET_SUBDIR@/libtmux.a
+
+@abs_top_builddir@/target/@RUST_TARGET_SUBDIR@/libtmux.a: $(RUST_SOURCES)
+	CARGO_TARGET_DIR=@abs_top_builddir@/target cargo build $(CARGO_VERBOSE) $(CARGO_RELEASE_ARGS)
+
+check-local:
+	CARGO_TARGET_DIR=@abs_top_builddir@/target cargo test $(CARGO_VERBOSE)
+
+clean-local:
+	CARGO_TARGET_DIR=@abs_top_builddir@/target cargo clean

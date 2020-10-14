@@ -1,5 +1,7 @@
 #!/bin/sh
 
+export PATH="${HOME}/.cargo/bin:${PATH}"
+
 sh autogen.sh || exit 1
 case "$BUILD" in
 	static)

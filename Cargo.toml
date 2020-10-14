@@ -1,0 +1,15 @@
+[package]
+name = "tmux"
+version = "3.2.0-rc2"
+authors = [ "NAKASHIMA, Makoto <makoto.nksm+github@gmail.com>" ]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+[lib]
+crate-type = [ "staticlib" ]
+
+[profile.release]
+lto = true

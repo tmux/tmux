@@ -32,6 +32,13 @@ AC_PROG_YACC
 PKG_PROG_PKG_CONFIG
 AC_USE_SYSTEM_EXTENSIONS
 
+AC_CHECK_PROG(CARGO, [cargo], [yes], [no])
+AS_IF(test x$CARGO = xno,
+	AC_MSG_ERROR([cargo is required.  Please install the Rust toolchain from https://www.rust-lang.org/]))
+AC_CHECK_PROG(RUSTC, [rustc], [yes], [no])
+AS_IF(test x$RUSTC = xno,
+	AC_MSG_ERROR([rustc is required.  Please install the Rust toolchain from https://www.rust-lang.org/]))
+
 # Default tmux.conf goes in /etc not ${prefix}/etc.
 test "$sysconfdir" = '${prefix}/etc' && sysconfdir=/etc
 
@@ -42,6 +49,16 @@ AC_ARG_ENABLE(
 	AC_HELP_STRING(--enable-debug, enable debug build flags),
 )
 AM_CONDITIONAL(IS_DEBUG, test "x$enable_debug" = xyes)
+
+AC_MSG_CHECKING(whether to build Rust code with debugging information)
+if test "x$enable_debug" = xyes; then
+	AC_MSG_RESULT(yes)
+	RUST_TARGET_SUBDIR=debug
+else
+	AC_MSG_RESULT(no)
+	RUST_TARGET_SUBDIR=release
+fi
+AC_SUBST([RUST_TARGET_SUBDIR])
 
 # Is this a static build?
 AC_ARG_ENABLE(
