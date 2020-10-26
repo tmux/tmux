@@ -271,6 +271,7 @@ proc_clear_signals(struct tmuxproc *tp, int defaults)
 
 	sigaction(SIGPIPE, &sa, NULL);
 	sigaction(SIGTSTP, &sa, NULL);
+	sigaction(SIGQUIT, &sa, NULL);
 
 	signal_del(&tp->ev_sigint);
 	signal_del(&tp->ev_sighup);
