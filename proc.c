@@ -282,6 +282,7 @@ proc_clear_signals(struct tmuxproc *tp, int defaults)
 
 	if (defaults) {
 		sigaction(SIGINT, &sa, NULL);
+		sigaction(SIGQUIT, &sa, NULL);
 		sigaction(SIGHUP, &sa, NULL);
 		sigaction(SIGCHLD, &sa, NULL);
 		sigaction(SIGCONT, &sa, NULL);
