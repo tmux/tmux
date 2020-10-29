@@ -36,9 +36,9 @@ const struct cmd_entry cmd_display_menu_entry = {
 	.name = "display-menu",
 	.alias = "menu",
 
-	.args = { "c:t:T:x:y:", 1, -1 },
+	.args = { "c:t:T:x:y:O", 1, -1 },
 	.usage = "[-c target-client] " CMD_TARGET_PANE_USAGE " [-T title] "
-		 "[-x position] [-y position] name key command ...",
+		 "[-x position] [-y position] [-O] name key command ...",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -195,6 +195,10 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	else
 		title = xstrdup("");
 	menu = menu_create(title);
+
+	if (args_has(args, 'O')) {
+		flags |= MENU_STAYOPEN;
+	}
 
 	for (i = 0; i != args->argc; /* nothing */) {
 		name = args->argv[i++];

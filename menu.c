@@ -204,6 +204,9 @@ menu_key_cb(struct client *c, struct key_event *event)
 		    m->y < md->py + 1 ||
 		    m->y > md->py + 1 + count - 1) {
 			if (MOUSE_RELEASE(m->b))
+				// Keeps menu open if parameter provided
+				return (!(md->flags & MENU_STAYOPEN));
+			else if ((MOUSE_BUTTONS(m->b) && !MOUSE_DRAG(m->b)) || !m->b)
 				return (1);
 			if (md->choice != -1) {
 				md->choice = -1;
@@ -303,6 +306,8 @@ chosen:
 	if (md->choice == -1)
 		return (1);
 	item = &menu->items[md->choice];
+	if ((md->flags & MENU_STAYOPEN) && item->name == NULL)
+		return (0);
 	if (item->name == NULL || *item->name == '-')
 		return (1);
 	if (md->cb != NULL) {

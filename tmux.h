@@ -1198,6 +1198,7 @@ RB_HEAD(sessions, session);
 #define MOUSE_WHEEL_DOWN 1
 
 /* Mouse helpers. */
+// Beware that MOUSE_BUTTONS doesn't consider left mouse button as its code is 0x0
 #define MOUSE_BUTTONS(b) ((b) & MOUSE_MASK_BUTTONS)
 #define MOUSE_WHEEL(b) ((b) & MOUSE_MASK_WHEEL)
 #define MOUSE_DRAG(b) ((b) & MOUSE_MASK_DRAG)
@@ -2981,6 +2982,7 @@ __dead void printflike(1, 2) fatalx(const char *, ...);
 /* menu.c */
 #define MENU_NOMOUSE 0x1
 #define MENU_TAB 0x2
+#define MENU_STAYOPEN 0x4
 struct menu	*menu_create(const char *);
 void		 menu_add_items(struct menu *, const struct menu_item *,
 		    struct cmdq_item *, struct client *,
