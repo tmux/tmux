@@ -2245,7 +2245,7 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 	c->fd = open(c->ttyname, O_RDWR|O_NOCTTY);
 #endif
 
-	 if (c->flags & CLIENT_CONTROL)
+	if (c->flags & CLIENT_CONTROL)
 		control_start(c);
 	else if (c->fd != -1) {
 		if (tty_init(&c->tty, c) != 0) {
@@ -2260,13 +2260,13 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 	}
 
 	/*
-	 * If this is the first client that has finished identifying, load
-	 * configuration files.
+	 * If this is the first client, load configuration files. Any later
+	 * clients are allowed to continue with their command even if the
+	 * config has not been loaded - they might have been run from inside it
 	 */
 	if ((~c->flags & CLIENT_EXIT) &&
-	    !cfg_finished &&
-	    c == TAILQ_FIRST(&clients) &&
-	    TAILQ_NEXT(c, entry) == NULL)
+	     !cfg_finished &&
+	     c == TAILQ_FIRST(&clients))
 		start_cfg();
 }
 
