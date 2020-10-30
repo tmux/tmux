@@ -2025,7 +2025,7 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 			break;
 		c->flags &= ~CLIENT_SUSPENDED;
 
-		if (c->fd == -1) /* exited in the meantime */
+		if (c->fd == -1 || c->session == NULL) /* exited already */
 			break;
 		s = c->session;
 
