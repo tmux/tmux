@@ -1588,10 +1588,6 @@ server_client_check_pane_focus(struct window_pane *wp)
 	if (wp->window->active != wp)
 		goto not_focused;
 
-	/* If we're in a mode, we're not focused. */
-	if (wp->screen != &wp->base)
-		goto not_focused;
-
 	/*
 	 * If our window is the current window in any focused clients with an
 	 * attached session, we're focused.
@@ -1691,8 +1687,8 @@ server_client_reset_state(struct client *c)
 	 * mode.
 	 */
 	if (options_get_number(oo, "mouse")) {
-		mode &= ~ALL_MOUSE_MODES;
 		if (c->overlay_draw == NULL) {
+			mode &= ~ALL_MOUSE_MODES;
 			TAILQ_FOREACH(loop, &w->panes, entry) {
 				if (loop->screen->mode & MODE_MOUSE_ALL)
 					mode |= MODE_MOUSE_ALL;

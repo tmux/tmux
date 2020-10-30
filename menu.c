@@ -203,16 +203,28 @@ menu_key_cb(struct client *c, struct key_event *event)
 		    m->x > md->px + 4 + menu->width ||
 		    m->y < md->py + 1 ||
 		    m->y > md->py + 1 + count - 1) {
-			if (MOUSE_RELEASE(m->b))
-				return (1);
+			if (~md->flags & MENU_STAYOPEN) {
+				if (MOUSE_RELEASE(m->b))
+					return (1);
+			} else {
+				if (!MOUSE_RELEASE(m->b) &&
+				    MOUSE_WHEEL(m->b) == 0 &&
+				    !MOUSE_DRAG(m->b))
+					return (1);
+			}
 			if (md->choice != -1) {
 				md->choice = -1;
 				c->flags |= CLIENT_REDRAWOVERLAY;
 			}
 			return (0);
 		}
-		if (MOUSE_RELEASE(m->b))
-			goto chosen;
+		if (~md->flags & MENU_STAYOPEN) {
+			if (MOUSE_RELEASE(m->b))
+				goto chosen;
+		} else {
+			if (MOUSE_WHEEL(m->b) == 0 && !MOUSE_DRAG(m->b))
+				goto chosen;
+		}
 		md->choice = m->y - (md->py + 1);
 		if (md->choice != old)
 			c->flags |= CLIENT_REDRAWOVERLAY;
@@ -303,6 +315,8 @@ chosen:
 	if (md->choice == -1)
 		return (1);
 	item = &menu->items[md->choice];
+	if ((md->flags & MENU_STAYOPEN) && item->name == NULL)
+		return (0);
 	if (item->name == NULL || *item->name == '-')
 		return (1);
 	if (md->cb != NULL) {

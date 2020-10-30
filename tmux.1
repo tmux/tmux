@@ -5331,6 +5331,7 @@ option.
 This command works only from inside
 .Nm .
 .It Xo Ic display-menu
+.Op Fl O
 .Op Fl c Ar target-client
 .Op Fl t Ar target-pane
 .Op Fl T Ar title
@@ -5382,8 +5383,14 @@ Both may be a row or column number, or one of the following special values:
 Each menu consists of items followed by a key shortcut shown in brackets.
 If the menu is too large to fit on the terminal, it is not displayed.
 Pressing the key shortcut chooses the corresponding item.
-If the mouse is enabled and the menu is opened from a mouse key binding, releasing
-the mouse button with an item selected will choose that item.
+If the mouse is enabled and the menu is opened from a mouse key binding,
+releasing the mouse button with an item selected chooses that item and
+releasing the mouse button without an item selected closes the menu.
+.Fl O
+changes this behaviour so that the menu does not close when the mouse button is
+released without an item selected the menu is not closed and a mouse button
+must be clicked to choose an item.
+.Pp
 The following keys are also available:
 .Bl -column "Key" "Function" -offset indent
 .It Sy "Key" Ta Sy "Function"
