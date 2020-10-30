@@ -1,4 +1,33 @@
-CHANGES FROM 3.1b TO 3.2
+CHANGES FROM 3.2 TO 3.3
+
+* Fire focus events even when the pane is in a mode.
+
+* Add -O flag to display-menu to not automatically close when all mouse buttons
+  are released.
+
+* Allow fnmatch(3) wildcards in update-environment.
+
+* Disable nested job expansion so that the result of #() is not expanded again.
+
+* Use the setal capability as well as (tmux's) Setulc.
+
+* Add -q flag to unbind-key to hide errors.
+
+* Allow -N without a command to change or add a note to an existing key.
+
+* Add a -w flag to set- and load-buffer to send to clipboard using OSC 52.
+
+* Add -F to set-environment and source-file.
+
+* Allow colour to be spelt as color in various places.
+
+* Add n: modifier to get length of a format.
+
+* Respond to OSC colour requests if a colour is available.
+
+* Add a -d option to display-message to set delay.
+
+CHANGES FROM 3.1c TO 3.2
 
 * Add a way for control mode clients to subscribe to a format and be notified
   of changes rather than having to poll.
@@ -264,6 +293,11 @@ CHANGES FROM 3.1b TO 3.2
 * Add a copy-mode -H flag to hide the position marker in the top right.
 
 * Add number operators for formats (+, -, *, / and m),
+
+CHANGED FROM 3.1b TO 3.1c
+
+* Do not write after the end of the array and overwrite the stack when
+  colon-separated SGR sequences contain empty arguments.
 
 CHANGES FROM 3.1a TO 3.1b
 
