@@ -1545,6 +1545,10 @@ input_csi_dispatch(struct input_ctx *ictx)
 		if (n == -1)
 			break;
 
+		m = screen_size_x(s) - s->cx;
+		if (n > m)
+			n = m;
+
 		if (ictx->last == -1)
 			break;
 		ictx->ch = ictx->last;
