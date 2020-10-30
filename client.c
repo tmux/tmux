@@ -36,6 +36,7 @@
 static struct tmuxproc	*client_proc;
 static struct tmuxpeer	*client_peer;
 static uint64_t		 client_flags;
+static int		 client_suspended;
 static enum {
 	CLIENT_EXIT_NONE,
 	CLIENT_EXIT_DETACHED,
@@ -221,7 +222,7 @@ static void
 client_exit(void)
 {
 	struct client_file	*cf;
-	size_t 			 left;
+	size_t			 left;
 	int			 waiting = 0;
 
 	RB_FOREACH (cf, client_files, &client_files) {
@@ -765,6 +766,7 @@ client_signal(int sig)
 	struct sigaction sigact;
 	int		 status;
 
+	log_debug("%s: %s", __func__, strsignal(sig));
 	if (sig == SIGCHLD)
 		waitpid(WAIT_ANY, &status, WNOHANG);
 	else if (!client_attached) {
@@ -778,7 +780,8 @@ client_signal(int sig)
 			proc_send(client_peer, MSG_EXITING, -1, NULL, 0);
 			break;
 		case SIGTERM:
-			client_exitreason = CLIENT_EXIT_TERMINATED;
+			if (!client_suspended)
+				client_exitreason = CLIENT_EXIT_TERMINATED;
 			client_exitval = 1;
 			proc_send(client_peer, MSG_EXITING, -1, NULL, 0);
 			break;
@@ -793,6 +796,7 @@ client_signal(int sig)
 			if (sigaction(SIGTSTP, &sigact, NULL) != 0)
 				fatal("sigaction failed");
 			proc_send(client_peer, MSG_WAKEUP, -1, NULL, 0);
+			client_suspended = 0;
 			break;
 		}
 	}
@@ -1005,6 +1009,7 @@ client_dispatch_attached(struct imsg *imsg)
 		sigact.sa_handler = SIG_DFL;
 		if (sigaction(SIGTSTP, &sigact, NULL) != 0)
 			fatal("sigaction failed");
+		client_suspended = 1;
 		kill(getpid(), SIGTSTP);
 		break;
 	case MSG_LOCK:
