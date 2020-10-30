@@ -1590,10 +1590,6 @@ server_client_check_pane_focus(struct window_pane *wp)
 	if (wp->window->active != wp)
 		goto not_focused;
 
-	/* If we're in a mode, we're not focused. */
-	if (wp->screen != &wp->base)
-		goto not_focused;
-
 	/*
 	 * If our window is the current window in any focused clients with an
 	 * attached session, we're focused.
