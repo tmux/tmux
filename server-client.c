@@ -1693,8 +1693,8 @@ server_client_reset_state(struct client *c)
 	 * mode.
 	 */
 	if (options_get_number(oo, "mouse")) {
-		mode &= ~ALL_MOUSE_MODES;
 		if (c->overlay_draw == NULL) {
+			mode &= ~ALL_MOUSE_MODES;
 			TAILQ_FOREACH(loop, &w->panes, entry) {
 				if (loop->screen->mode & MODE_MOUSE_ALL)
 					mode |= MODE_MOUSE_ALL;
