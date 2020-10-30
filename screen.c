@@ -79,6 +79,7 @@ screen_init(struct screen *s, u_int sx, u_int sy, u_int hlimit)
 
 	s->title = xstrdup("");
 	s->titles = NULL;
+	s->path = NULL;
 
 	s->cstyle = 0;
 	s->ccolour = xstrdup("");
@@ -121,6 +122,7 @@ screen_free(struct screen *s)
 {
 	free(s->sel);
 	free(s->tabs);
+	free(s->path);
 	free(s->title);
 	free(s->ccolour);
 
