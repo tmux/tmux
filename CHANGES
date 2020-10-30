@@ -1,3 +1,7 @@
+CHANGED FROM 3.1b TO 3.1c
+
+* Fix a stack overflow on colon-separated CSI parsing.
+
 CHANGES FROM 3.1a TO 3.1b
 
 * Fix build on systems without sys/queue.h.
