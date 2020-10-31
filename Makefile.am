@@ -197,6 +197,12 @@ if HAVE_UTF8PROC
 nodist_tmux_SOURCES += compat/utf8proc.c
 endif
 
+if NEED_FUZZING
+check_PROGRAMS = fuzz/input-fuzzer
+fuzz_input_fuzzer_LDFLAGS = $(FUZZING_LIBS)
+fuzz_input_fuzzer_LDADD = $(LDADD) $(tmux_OBJECTS)
+endif
+
 # Install tmux.1 in the right format.
 install-exec-hook:
 	if test x@MANFORMAT@ = xmdoc; then \

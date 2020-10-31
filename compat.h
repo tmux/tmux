@@ -52,6 +52,9 @@
 #ifndef __packed
 #define __packed __attribute__ ((__packed__))
 #endif
+#ifndef __weak
+#define __weak __attribute__ ((__weak__))
+#endif
 
 #ifndef ECHOPRT
 #define ECHOPRT 0
@@ -389,6 +392,11 @@ void		*recallocarray(void *, size_t, size_t, size_t);
 int		 utf8proc_wcwidth(wchar_t);
 int		 utf8proc_mbtowc(wchar_t *, const char *, size_t);
 int		 utf8proc_wctomb(char *, wchar_t);
+#endif
+
+#ifdef NEED_FUZZING
+/* tmux.c */
+#define main __weak main
 #endif
 
 /* getopt.c */
