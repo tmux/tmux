@@ -1984,7 +1984,17 @@ format_replace_expression(struct format_modifier *mexp,
 	int			 use_fp = 0;
 	u_int			 prec = 0;
 	double			 mleft, mright, result;
-	enum { ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULUS } operator;
+	enum { ADD,
+	       SUBTRACT,
+	       MULTIPLY,
+	       DIVIDE,
+	       MODULUS,
+	       EQUAL,
+	       NOT_EQUAL,
+	       GREATER_THAN,
+	       GREATER_THAN_EQUAL,
+	       LESS_THAN,
+	       LESS_THAN_EQUAL } operator;
 
 	if (strcmp(mexp->argv[0], "+") == 0)
 		operator = ADD;
@@ -1997,6 +2007,18 @@ format_replace_expression(struct format_modifier *mexp,
 	else if (strcmp(mexp->argv[0], "%") == 0 ||
 	    strcmp(mexp->argv[0], "m") == 0)
 		operator = MODULUS;
+	else if (strcmp(mexp->argv[0], "==") == 0)
+		operator = EQUAL;
+	else if (strcmp(mexp->argv[0], "!=") == 0)
+		operator = NOT_EQUAL;
+	else if (strcmp(mexp->argv[0], ">") == 0)
+		operator = GREATER_THAN;
+	else if (strcmp(mexp->argv[0], "<") == 0)
+		operator = LESS_THAN;
+	else if (strcmp(mexp->argv[0], ">=") == 0)
+		operator = GREATER_THAN_EQUAL;
+	else if (strcmp(mexp->argv[0], "<=") == 0)
+		operator = LESS_THAN_EQUAL;
 	else {
 		format_log(es, "expression has no valid operator: '%s'",
 		    mexp->argv[0]);
@@ -2058,6 +2080,24 @@ format_replace_expression(struct format_modifier *mexp,
 		break;
 	case MODULUS:
 		result = fmod(mleft, mright);
+		break;
+	case EQUAL:
+		result = fabs(mleft - mright) < 1e-9;
+		break;
+	case NOT_EQUAL:
+		result = fabs(mleft - mright) > 1e-9;
+		break;
+	case GREATER_THAN:
+		result = (mleft > mright);
+		break;
+	case GREATER_THAN_EQUAL:
+		result = (mleft >= mright);
+		break;
+	case LESS_THAN:
+		result = (mleft < mright);
+		break;
+	case LESS_THAN_EQUAL:
+		result = (mleft > mright);
 		break;
 	}
 	if (use_fp)
