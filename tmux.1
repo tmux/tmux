@@ -4544,7 +4544,7 @@ multiplication
 .Ql * ,
 division
 .Ql / ,
-and modulus
+modulus
 .Ql m
 or
 .Ql %
@@ -4553,7 +4553,15 @@ or
 must be escaped as
 .Ql %%
 in formats which are also expanded by
-.Xr strftime 3 ) .
+.Xr strftime 3 )
+and numeric comparison operators
+.Ql == ,
+.Ql != ,
+.Ql < ,
+.Ql <= ,
+.Ql >
+and
+.Ql >= .
 For example,
 .Ql #{e|*|f|4:5.5,3}
 multiplies 5.5 by 3 for a result with four decimal places and
