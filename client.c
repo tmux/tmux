@@ -36,6 +36,7 @@
 static struct tmuxproc	*client_proc;
 static struct tmuxpeer	*client_peer;
 static uint64_t		 client_flags;
+static int		 client_suspended;
 static enum {
 	CLIENT_EXIT_NONE,
 	CLIENT_EXIT_DETACHED,
@@ -59,7 +60,8 @@ static struct client_files client_files = RB_INITIALIZER(&client_files);
 
 static __dead void	 client_exec(const char *,const char *);
 static int		 client_get_lock(char *);
-static int		 client_connect(struct event_base *, const char *, int);
+static int		 client_connect(struct event_base *, const char *,
+			     uint64_t);
 static void		 client_send_identify(const char *, const char *, int);
 static void		 client_signal(int);
 static void		 client_dispatch(struct imsg *, void *);
@@ -100,7 +102,7 @@ client_get_lock(char *lockfile)
 
 /* Connect client to server. */
 static int
-client_connect(struct event_base *base, const char *path, int flags)
+client_connect(struct event_base *base, const char *path, uint64_t flags)
 {
 	struct sockaddr_un	sa;
 	size_t			size;
@@ -220,7 +222,7 @@ static void
 client_exit(void)
 {
 	struct client_file	*cf;
-	size_t 			 left;
+	size_t			 left;
 	int			 waiting = 0;
 
 	RB_FOREACH (cf, client_files, &client_files) {
@@ -238,7 +240,8 @@ client_exit(void)
 
 /* Client main loop. */
 int
-client_main(struct event_base *base, int argc, char **argv, int flags, int feat)
+client_main(struct event_base *base, int argc, char **argv, uint64_t flags,
+    int feat)
 {
 	struct cmd_parse_result	*pr;
 	struct msg_command	*data;
@@ -284,7 +287,7 @@ client_main(struct event_base *base, int argc, char **argv, int flags, int feat)
 
 	/* Save the flags. */
 	client_flags = flags;
-	log_debug("flags are %#llx", client_flags);
+	log_debug("flags are %#llx", (unsigned long long)client_flags);
 
 	/* Initialize the client socket and start the server. */
 	fd = client_connect(base, socket_path, client_flags);
@@ -442,6 +445,8 @@ client_send_identify(const char *ttynam, const char *cwd, int feat)
 	pid_t		  pid;
 
 	proc_send(client_peer, MSG_IDENTIFY_FLAGS, -1, &flags, sizeof flags);
+	proc_send(client_peer, MSG_IDENTIFY_LONGFLAGS, -1, &client_flags,
+	    sizeof client_flags);
 
 	if ((s = getenv("TERM")) == NULL)
 		s = "";
@@ -761,6 +766,7 @@ client_signal(int sig)
 	struct sigaction sigact;
 	int		 status;
 
+	log_debug("%s: %s", __func__, strsignal(sig));
 	if (sig == SIGCHLD)
 		waitpid(WAIT_ANY, &status, WNOHANG);
 	else if (!client_attached) {
@@ -774,7 +780,8 @@ client_signal(int sig)
 			proc_send(client_peer, MSG_EXITING, -1, NULL, 0);
 			break;
 		case SIGTERM:
-			client_exitreason = CLIENT_EXIT_TERMINATED;
+			if (!client_suspended)
+				client_exitreason = CLIENT_EXIT_TERMINATED;
 			client_exitval = 1;
 			proc_send(client_peer, MSG_EXITING, -1, NULL, 0);
 			break;
@@ -789,6 +796,7 @@ client_signal(int sig)
 			if (sigaction(SIGTSTP, &sigact, NULL) != 0)
 				fatal("sigaction failed");
 			proc_send(client_peer, MSG_WAKEUP, -1, NULL, 0);
+			client_suspended = 0;
 			break;
 		}
 	}
@@ -891,7 +899,8 @@ client_dispatch_wait(struct imsg *imsg)
 			fatalx("bad MSG_FLAGS string");
 
 		memcpy(&client_flags, data, sizeof client_flags);
-		log_debug("new flags are %#llx", client_flags);
+		log_debug("new flags are %#llx",
+		    (unsigned long long)client_flags);
 		break;
 	case MSG_SHELL:
 		if (datalen == 0 || data[datalen - 1] != '\0')
@@ -944,7 +953,8 @@ client_dispatch_attached(struct imsg *imsg)
 			fatalx("bad MSG_FLAGS string");
 
 		memcpy(&client_flags, data, sizeof client_flags);
-		log_debug("new flags are %#llx", client_flags);
+		log_debug("new flags are %#llx",
+		    (unsigned long long)client_flags);
 		break;
 	case MSG_DETACH:
 	case MSG_DETACHKILL:
@@ -999,6 +1009,7 @@ client_dispatch_attached(struct imsg *imsg)
 		sigact.sa_handler = SIG_DFL;
 		if (sigaction(SIGTSTP, &sigact, NULL) != 0)
 			fatal("sigaction failed");
+		client_suspended = 1;
 		kill(getpid(), SIGTSTP);
 		break;
 	case MSG_LOCK:

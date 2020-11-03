@@ -55,11 +55,11 @@ cmd_display_panes_draw_pane(struct screen_redraw_ctx *ctx,
 	struct session		*s = c->session;
 	struct options		*oo = s->options;
 	struct window		*w = wp->window;
-	struct grid_cell	 gc;
-	u_int			 idx, px, py, i, j, xoff, yoff, sx, sy;
+	struct grid_cell	 fgc, bgc;
+	u_int			 pane, idx, px, py, i, j, xoff, yoff, sx, sy;
 	int			 colour, active_colour;
-	char			 buf[16], *ptr;
-	size_t			 len;
+	char			 buf[16], lbuf[16], rbuf[16], *ptr;
+	size_t			 len, llen, rlen;
 
 	if (wp->xoff + wp->sx <= ctx->ox ||
 	    wp->xoff >= ctx->ox + ctx->sx ||
@@ -109,29 +109,50 @@ cmd_display_panes_draw_pane(struct screen_redraw_ctx *ctx,
 	px = sx / 2;
 	py = sy / 2;
 
-	if (window_pane_index(wp, &idx) != 0)
+	if (window_pane_index(wp, &pane) != 0)
 		fatalx("index not found");
-	len = xsnprintf(buf, sizeof buf, "%u", idx);
+	len = xsnprintf(buf, sizeof buf, "%u", pane);
 
 	if (sx < len)
 		return;
 	colour = options_get_number(oo, "display-panes-colour");
 	active_colour = options_get_number(oo, "display-panes-active-colour");
 
+	memcpy(&fgc, &grid_default_cell, sizeof fgc);
+	memcpy(&bgc, &grid_default_cell, sizeof bgc);
+	if (w->active == wp) {
+		fgc.fg = active_colour;
+		bgc.bg = active_colour;
+	} else {
+		fgc.fg = colour;
+		bgc.bg = colour;
+	}
+
+	rlen = xsnprintf(rbuf, sizeof rbuf, "%ux%u", wp->sx, wp->sy);
+	if (pane > 9 && pane < 35)
+		llen = xsnprintf(lbuf, sizeof lbuf, "%c", 'a' + (pane - 10));
+	else
+		llen = 0;
+
 	if (sx < len * 6 || sy < 5) {
-		tty_cursor(tty, xoff + px - len / 2, yoff + py);
-		goto draw_text;
+		tty_attributes(tty, &fgc, &grid_default_cell, NULL);
+		if (sx >= len + llen + 1) {
+			len += llen + 1;
+			tty_cursor(tty, xoff + px - len / 2, yoff + py);
+			tty_putn(tty, buf, len,  len);
+			tty_putn(tty, " ", 1, 1);
+			tty_putn(tty, lbuf, llen, llen);
+		} else {
+			tty_cursor(tty, xoff + px - len / 2, yoff + py);
+			tty_putn(tty, buf, len, len);
+		}
+		goto out;
 	}
 
 	px -= len * 3;
 	py -= 2;
 
-	memcpy(&gc, &grid_default_cell, sizeof gc);
-	if (w->active == wp)
-		gc.bg = active_colour;
-	else
-		gc.bg = colour;
-	tty_attributes(tty, &gc, &grid_default_cell, NULL);
+	tty_attributes(tty, &bgc, &grid_default_cell, NULL);
 	for (ptr = buf; *ptr != '\0'; ptr++) {
 		if (*ptr < '0' || *ptr > '9')
 			continue;
@@ -147,20 +168,20 @@ cmd_display_panes_draw_pane(struct screen_redraw_ctx *ctx,
 		px += 6;
 	}
 
-	len = xsnprintf(buf, sizeof buf, "%ux%u", wp->sx, wp->sy);
-	if (sx < len || sy < 6)
-		return;
-	tty_cursor(tty, xoff + sx - len, yoff);
+	if (sy <= 6)
+		goto out;
+	tty_attributes(tty, &fgc, &grid_default_cell, NULL);
+	if (rlen != 0 && sx >= rlen) {
+		tty_cursor(tty, xoff + sx - rlen, yoff);
+		tty_putn(tty, rbuf, rlen, rlen);
+	}
+	if (llen != 0) {
+		tty_cursor(tty, xoff + sx / 2 + len * 3 - llen - 1,
+		    yoff + py + 5);
+		tty_putn(tty, lbuf, llen, llen);
+	}
 
-draw_text:
-	memcpy(&gc, &grid_default_cell, sizeof gc);
-	if (w->active == wp)
-		gc.fg = active_colour;
-	else
-		gc.fg = colour;
-	tty_attributes(tty, &gc, &grid_default_cell, NULL);
-	tty_puts(tty, buf);
-
+out:
 	tty_cursor(tty, 0, 0);
 }
 
@@ -197,11 +218,21 @@ cmd_display_panes_key(struct client *c, struct key_event *event)
 	struct window			*w = c->session->curw->window;
 	struct window_pane		*wp;
 	enum cmd_parse_status		 status;
+	u_int				 index;
+	key_code			 key;
 
-	if (event->key < '0' || event->key > '9')
+	if (event->key >= '0' && event->key <= '9')
+		index = event->key - '0';
+	else if ((event->key & KEYC_MASK_MODIFIERS) == 0) {
+		key = (event->key & KEYC_MASK_KEY);
+		if (key >= 'a' && key <= 'z')
+			index = 10 + (key - 'a');
+		else
+			return (-1);
+	} else
 		return (-1);
 
-	wp = window_pane_at_index(w, event->key - '0');
+	wp = window_pane_at_index(w, index);
 	if (wp == NULL)
 		return (1);
 	window_unzoom(w);

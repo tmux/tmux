@@ -92,130 +92,156 @@ ignore_client_size(struct client *c)
 	return (0);
 }
 
-void
-default_window_size(struct client *c, struct session *s, struct window *w,
-    u_int *sx, u_int *sy, u_int *xpixel, u_int *ypixel, int type)
+static u_int
+clients_with_window(struct window *w)
 {
 	struct client	*loop;
-	u_int		 cx, cy, n;
-	const char	*value;
+	u_int		 n = 0;
 
-	if (type == -1)
-		type = options_get_number(global_w_options, "window-size");
-	switch (type) {
-	case WINDOW_SIZE_LARGEST:
+	TAILQ_FOREACH(loop, &clients, entry) {
+		if (ignore_client_size(loop) || !session_has(loop->session, w))
+			continue;
+		if (++n > 1)
+			break;
+	}
+	return (n);
+}
+
+static int
+clients_calculate_size(int type, int current, struct session *s,
+    struct window *w, int (*skip_client)(struct client *, int, int,
+    struct session *, struct window *), u_int *sx, u_int *sy, u_int *xpixel,
+    u_int *ypixel)
+{
+	struct client	*loop;
+	u_int		 cx, cy, n = 0;
+
+	/* Manual windows do not have their size changed based on a client. */
+	if (type == WINDOW_SIZE_MANUAL)
+		return (0);
+
+	/*
+	 * Start comparing with 0 for largest and UINT_MAX for smallest or
+	 * latest.
+	 */
+	if (type == WINDOW_SIZE_LARGEST)
 		*sx = *sy = 0;
-		*xpixel = *ypixel = 0;
-		TAILQ_FOREACH(loop, &clients, entry) {
-			if (ignore_client_size(loop))
-				continue;
-			if (w != NULL && !session_has(loop->session, w))
-				continue;
-			if (w == NULL && loop->session != s)
-				continue;
+	else
+		*sx = *sy = UINT_MAX;
+	*xpixel = *ypixel = 0;
 
-			cx = loop->tty.sx;
-			cy = loop->tty.sy - status_line_size(loop);
+	/*
+	 * For latest, count the number of clients with this window. We only
+	 * care if there is more than one.
+	 */
+	if (type == WINDOW_SIZE_LATEST)
+		n = clients_with_window(w);
 
+	/* Loop over the clients and work out the size. */
+	TAILQ_FOREACH(loop, &clients, entry) {
+		if (ignore_client_size(loop))
+			continue;
+		if (skip_client(loop, type, current, s, w))
+			continue;
+
+		/*
+		 * If there are multiple clients attached, only accept the
+		 * latest client; otherwise let the only client be chosen as
+		 * for smallest.
+		 */
+		if (type == WINDOW_SIZE_LATEST && n > 1 && loop != w->latest)
+			continue;
+
+		/* Work out this client's size. */
+		cx = loop->tty.sx;
+		cy = loop->tty.sy - status_line_size(loop);
+
+		/*
+		 * If it is larger or smaller than the best so far, update the
+		 * new size.
+		 */
+		if (type == WINDOW_SIZE_LARGEST) {
 			if (cx > *sx)
 				*sx = cx;
 			if (cy > *sy)
 				*sy = cy;
-
-			if (loop->tty.xpixel > *xpixel &&
-			    loop->tty.ypixel > *ypixel) {
-				*xpixel = loop->tty.xpixel;
-				*ypixel = loop->tty.ypixel;
-			}
-		}
-		if (*sx == 0 || *sy == 0)
-			goto manual;
-		break;
-	case WINDOW_SIZE_SMALLEST:
-		*sx = *sy = UINT_MAX;
-		*xpixel = *ypixel = 0;
-		TAILQ_FOREACH(loop, &clients, entry) {
-			if (ignore_client_size(loop))
-				continue;
-			if (w != NULL && !session_has(loop->session, w))
-				continue;
-			if (w == NULL && loop->session != s)
-				continue;
-
-			cx = loop->tty.sx;
-			cy = loop->tty.sy - status_line_size(loop);
-
+		} else {
 			if (cx < *sx)
 				*sx = cx;
 			if (cy < *sy)
 				*sy = cy;
-
-			if (loop->tty.xpixel > *xpixel &&
-			    loop->tty.ypixel > *ypixel) {
-				*xpixel = loop->tty.xpixel;
-				*ypixel = loop->tty.ypixel;
-			}
 		}
-		if (*sx == UINT_MAX || *sy == UINT_MAX)
-			goto manual;
-		break;
-	case WINDOW_SIZE_LATEST:
+		if (loop->tty.xpixel > *xpixel && loop->tty.ypixel > *ypixel) {
+			*xpixel = loop->tty.xpixel;
+			*ypixel = loop->tty.ypixel;
+		}
+	}
+
+	/* Return whether a suitable size was found. */
+	if (type == WINDOW_SIZE_LARGEST)
+		return (*sx != 0 && *sy != 0);
+	return (*sx != UINT_MAX && *sy != UINT_MAX);
+}
+
+static int
+default_window_size_skip_client (struct client *loop, int type,
+    __unused int current, struct session *s, struct window *w)
+{
+	/*
+	 * Latest checks separately, so do not check here. Otherwise only
+	 * include clients where the session contains the window or where the
+	 * session is the given session.
+	 */
+	if (type == WINDOW_SIZE_LATEST)
+		return (0);
+	if (w != NULL && !session_has(loop->session, w))
+		return (1);
+	if (w == NULL && loop->session != s)
+		return (1);
+	return (0);
+}
+
+void
+default_window_size(struct client *c, struct session *s, struct window *w,
+	u_int *sx, u_int *sy, u_int *xpixel, u_int *ypixel, int type)
+{
+	const char	*value;
+
+	/* Get type if not provided. */
+	if (type == -1)
+		type = options_get_number(global_w_options, "window-size");
+
+	/*
+	 * Latest clients can use the given client if suitable. If there is no
+	 * client and no window, use the default size as for manual type.
+	 */
+	if (type == WINDOW_SIZE_LATEST) {
 		if (c != NULL && !ignore_client_size(c)) {
 			*sx = c->tty.sx;
 			*sy = c->tty.sy - status_line_size(c);
 			*xpixel = c->tty.xpixel;
-		        *ypixel = c->tty.ypixel;
-		} else {
-			if (w == NULL)
-				goto manual;
-			n = 0;
-			TAILQ_FOREACH(loop, &clients, entry) {
-				if (!ignore_client_size(loop) &&
-				    session_has(loop->session, w)) {
-					if (++n > 1)
-						break;
-				}
-			}
-			*sx = *sy = UINT_MAX;
-			*xpixel = *ypixel = 0;
-			TAILQ_FOREACH(loop, &clients, entry) {
-				if (ignore_client_size(loop))
-					continue;
-				if (n > 1 && loop != w->latest)
-					continue;
-				s = loop->session;
-
-				cx = loop->tty.sx;
-				cy = loop->tty.sy - status_line_size(loop);
-
-				if (cx < *sx)
-					*sx = cx;
-				if (cy < *sy)
-					*sy = cy;
-
-				if (loop->tty.xpixel > *xpixel &&
-				    loop->tty.ypixel > *ypixel) {
-					*xpixel = loop->tty.xpixel;
-					*ypixel = loop->tty.ypixel;
-				}
-			}
-			if (*sx == UINT_MAX || *sy == UINT_MAX)
-				goto manual;
+			*ypixel = c->tty.ypixel;
+			goto done;
 		}
-		break;
-	case WINDOW_SIZE_MANUAL:
-		goto manual;
+		if (w == NULL)
+			type = WINDOW_SIZE_MANUAL;
 	}
-	goto done;
 
-manual:
-	value = options_get_string(s->options, "default-size");
-	if (sscanf(value, "%ux%u", sx, sy) != 2) {
-		*sx = 80;
-		*sy = 24;
+	/*
+	 * Look for a client to base the size on. If none exists (or the type
+	 * is manual), use the default-size option.
+	 */
+	if (!clients_calculate_size(type, 0, s, w,
+	    default_window_size_skip_client, sx, sy, xpixel, ypixel)) {
+		value = options_get_string(s->options, "default-size");
+		if (sscanf(value, "%ux%u", sx, sy) != 2) {
+			*sx = 80;
+			*sy = 24;
+		}
 	}
 
 done:
+	/* Make sure the limits are enforced. */
 	if (*sx < WINDOW_MINIMUM)
 		*sx = WINDOW_MINIMUM;
 	if (*sx > WINDOW_MAXIMUM)
@@ -226,127 +252,50 @@ done:
 		*sy = WINDOW_MAXIMUM;
 }
 
+static int
+recalculate_size_skip_client(struct client *loop, __unused int type,
+    int current, __unused struct session *s, struct window *w)
+{
+	/*
+	 * If the current flag is set, then skip any client where this window
+	 * is not the current window - this is used for aggressive-resize.
+	 * Otherwise skip any session that doesn't contain the window.
+	 */
+	if (current)
+		return (loop->session->curw->window != w);
+	return (session_has(loop->session, w) == 0);
+}
+
 void
 recalculate_size(struct window *w, int now)
 {
-	struct session	*s;
-	struct client	*c;
-	u_int		 sx, sy, cx, cy, xpixel = 0, ypixel = 0, n;
-	int		 type, current, has, changed;
+	u_int	sx, sy, xpixel = 0, ypixel = 0;
+	int	type, current, changed;
 
+	/*
+	 * Do not attempt to resize windows which have no pane, they must be on
+	 * the way to destruction.
+	 */
 	if (w->active == NULL)
 		return;
 	log_debug("%s: @%u is %u,%u", __func__, w->id, w->sx, w->sy);
 
+	/*
+	 * Type is manual, smallest, largest, latest. Current is the
+	 * aggressive-resize option (do not resize based on clients where the
+	 * window is not the current window).
+	 */
 	type = options_get_number(w->options, "window-size");
 	current = options_get_number(w->options, "aggressive-resize");
 
-	changed = 1;
-	switch (type) {
-	case WINDOW_SIZE_LARGEST:
-		sx = sy = 0;
-		TAILQ_FOREACH(c, &clients, entry) {
-			if (ignore_client_size(c))
-				continue;
-			s = c->session;
+	/* Look for a suitable client and get the new size. */
+	changed = clients_calculate_size(type, current, NULL, w,
+	    recalculate_size_skip_client, &sx, &sy, &xpixel, &ypixel);
 
-			if (current)
-				has = (s->curw->window == w);
-			else
-				has = session_has(s, w);
-			if (!has)
-				continue;
-
-			cx = c->tty.sx;
-			cy = c->tty.sy - status_line_size(c);
-
-			if (cx > sx)
-				sx = cx;
-			if (cy > sy)
-				sy = cy;
-
-			if (c->tty.xpixel > xpixel && c->tty.ypixel > ypixel) {
-				xpixel = c->tty.xpixel;
-				ypixel = c->tty.ypixel;
-			}
-		}
-		if (sx == 0 || sy == 0)
-			changed = 0;
-		break;
-	case WINDOW_SIZE_SMALLEST:
-		sx = sy = UINT_MAX;
-		TAILQ_FOREACH(c, &clients, entry) {
-			if (ignore_client_size(c))
-				continue;
-			s = c->session;
-
-			if (current)
-				has = (s->curw->window == w);
-			else
-				has = session_has(s, w);
-			if (!has)
-				continue;
-
-			cx = c->tty.sx;
-			cy = c->tty.sy - status_line_size(c);
-
-			if (cx < sx)
-				sx = cx;
-			if (cy < sy)
-				sy = cy;
-
-			if (c->tty.xpixel > xpixel && c->tty.ypixel > ypixel) {
-				xpixel = c->tty.xpixel;
-				ypixel = c->tty.ypixel;
-			}
-		}
-		if (sx == UINT_MAX || sy == UINT_MAX)
-			changed = 0;
-		break;
-	case WINDOW_SIZE_LATEST:
-		n = 0;
-		TAILQ_FOREACH(c, &clients, entry) {
-			if (!ignore_client_size(c) &&
-			    session_has(c->session, w)) {
-				if (++n > 1)
-					break;
-			}
-		}
-		sx = sy = UINT_MAX;
-		TAILQ_FOREACH(c, &clients, entry) {
-			if (ignore_client_size(c))
-				continue;
-			if (n > 1 && c != w->latest)
-				continue;
-			s = c->session;
-
-			if (current)
-				has = (s->curw->window == w);
-			else
-				has = session_has(s, w);
-			if (!has)
-				continue;
-
-			cx = c->tty.sx;
-			cy = c->tty.sy - status_line_size(c);
-
-			if (cx < sx)
-				sx = cx;
-			if (cy < sy)
-				sy = cy;
-
-			if (c->tty.xpixel > xpixel && c->tty.ypixel > ypixel) {
-				xpixel = c->tty.xpixel;
-				ypixel = c->tty.ypixel;
-			}
-		}
-		if (sx == UINT_MAX || sy == UINT_MAX)
-			changed = 0;
-		break;
-	case WINDOW_SIZE_MANUAL:
-		changed = 0;
-		break;
-	}
+	/*
+	 * Make sure the size has actually changed. If the window has already
+	 * got a resize scheduled, then use the new size; otherwise the old.
+	 */
 	if (w->flags & WINDOW_RESIZE) {
 		if (!now && changed && w->new_sx == sx && w->new_sy == sy)
 			changed = 0;
@@ -355,10 +304,20 @@ recalculate_size(struct window *w, int now)
 			changed = 0;
 	}
 
+	/*
+	 * If the size hasn't changed, update the window offset but not the
+	 * size.
+	 */
 	if (!changed) {
 		tty_update_window_offset(w);
 		return;
 	}
+
+	/*
+	 * If the now flag is set or if the window is sized manually, change
+	 * the size immediately. Otherwise set the flag and it will be done
+	 * later.
+	 */
 	log_debug("%s: @%u new size %u,%u", __func__, w->id, sx, sy);
 	if (now || type == WINDOW_SIZE_MANUAL)
 		resize_window(w, sx, sy, xpixel, ypixel);

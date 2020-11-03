@@ -1,6 +1,6 @@
 # configure.ac
 
-AC_INIT([tmux], 3.2-rc2)
+AC_INIT([tmux], next-3.3)
 AC_PREREQ([2.60])
 
 AC_CONFIG_AUX_DIR(etc)
@@ -113,6 +113,7 @@ AC_REPLACE_FUNCS([ \
 	fgetln \
 	freezero \
 	getdtablecount \
+	getdtablesize \
 	getline \
 	getprogname \
 	memmem \
@@ -327,6 +328,31 @@ fi
 AC_SEARCH_LIBS(inet_ntoa, nsl)
 AC_SEARCH_LIBS(socket, socket)
 AC_CHECK_LIB(xnet, socket)
+
+# Check if using glibc and have malloc_trim(3). The glibc free(3) is pretty bad
+# about returning memory to the kernel unless the application tells it when to
+# with malloc_trim(3).
+AC_MSG_CHECKING(if free doesn't work very well)
+AC_LINK_IFELSE([AC_LANG_SOURCE(
+	[
+		#include <stdlib.h>
+		#ifdef __GLIBC__
+		#include <malloc.h>
+		int main(void) {
+			malloc_trim (0);
+			exit(0);
+		}
+		#else
+		no
+		#endif
+	])],
+	found_malloc_trim=yes,
+	found_malloc_trim=no
+)
+AC_MSG_RESULT($found_malloc_trim)
+if test "x$found_malloc_trim" = xyes; then
+	AC_DEFINE(HAVE_MALLOC_TRIM)
+fi
 
 # Check for CMSG_DATA. On some platforms like HP-UX this requires UNIX 95
 # (_XOPEN_SOURCE and _XOPEN_SOURCE_EXTENDED) (see xopen_networking(7)). On
@@ -569,6 +595,12 @@ case "$host_os" in
 	*darwin*)
 		AC_MSG_RESULT(darwin)
 		PLATFORM=darwin
+		#
+		# OS X uses __dead2 instead of __dead, like FreeBSD. But it
+		# defines __dead away so it needs to be removed before we can
+		# replace it.
+		#
+		AC_DEFINE(BROKEN___DEAD)
 		#
 		# OS X CMSG_FIRSTHDR is broken, so redefine it with a working
 		# one. daemon works but has some stupid side effects, so use

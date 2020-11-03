@@ -450,6 +450,7 @@ enum tty_code_code {
 	TTYC_KUP6,
 	TTYC_KUP7,
 	TTYC_MS,
+	TTYC_OL,
 	TTYC_OP,
 	TTYC_REV,
 	TTYC_RGB,
@@ -461,6 +462,7 @@ enum tty_code_code {
 	TTYC_SE,
 	TTYC_SETAB,
 	TTYC_SETAF,
+	TTYC_SETAL,
 	TTYC_SETRGBB,
 	TTYC_SETRGBF,
 	TTYC_SETULC,
@@ -498,6 +500,7 @@ enum msgtype {
 	MSG_IDENTIFY_CWD,
 	MSG_IDENTIFY_FEATURES,
 	MSG_IDENTIFY_STDOUT,
+	MSG_IDENTIFY_LONGFLAGS,
 
 	MSG_COMMAND = 200,
 	MSG_DETACH,
@@ -1790,6 +1793,7 @@ enum options_table_type {
 
 struct options_table_entry {
 	const char		 *name;
+	const char		 *alternative_name;
 	enum options_table_type	  type;
 	int			  scope;
 	int			  flags;
@@ -1807,6 +1811,11 @@ struct options_table_entry {
 
 	const char		 *text;
 	const char		 *unit;
+};
+
+struct options_name_map {
+	const char		*from;
+	const char		*to;
 };
 
 /* Common command usages. */
@@ -2041,7 +2050,8 @@ int		 options_remove_or_default(struct options_entry *, int,
 		     char **);
 
 /* options-table.c */
-extern const struct options_table_entry options_table[];
+extern const struct options_table_entry	options_table[];
+extern const struct options_name_map	options_other_names[];
 
 /* job.c */
 typedef void (*job_update_cb) (struct job *);
@@ -2121,6 +2131,7 @@ int	tty_open(struct tty *, char **);
 void	tty_close(struct tty *);
 void	tty_free(struct tty *);
 void	tty_update_features(struct tty *);
+void	tty_set_selection(struct tty *, const char *, size_t);
 void	tty_write(void (*)(struct tty *, const struct tty_ctx *),
 	    struct tty_ctx *);
 void	tty_cmd_alignmenttest(struct tty *, const struct tty_ctx *);
@@ -2325,7 +2336,7 @@ void printflike(2, 3) cmdq_error(struct cmdq_item *, const char *, ...);
 void	cmd_wait_for_flush(void);
 
 /* client.c */
-int	client_main(struct event_base *, int, char **, int, int);
+int	client_main(struct event_base *, int, char **, uint64_t, int);
 
 /* key-bindings.c */
 struct key_table *key_bindings_get_table(const char *, int);
@@ -2452,8 +2463,7 @@ struct style_range *status_get_range(struct client *, u_int, u_int);
 void	 status_init(struct client *);
 void	 status_free(struct client *);
 int	 status_redraw(struct client *);
-void printflike(3, 4) status_message_set(struct client *, int, const char *,
-	     ...);
+void status_message_set(struct client *, int, int, const char *, ...);
 void	 status_message_clear(struct client *);
 int	 status_message_redraw(struct client *);
 void	 status_prompt_set(struct client *, struct cmd_find_state *,
@@ -2971,6 +2981,7 @@ __dead void printflike(1, 2) fatalx(const char *, ...);
 /* menu.c */
 #define MENU_NOMOUSE 0x1
 #define MENU_TAB 0x2
+#define MENU_STAYOPEN 0x4
 struct menu	*menu_create(const char *);
 void		 menu_add_items(struct menu *, const struct menu_item *,
 		    struct cmdq_item *, struct client *,

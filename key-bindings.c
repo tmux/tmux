@@ -191,6 +191,16 @@ key_bindings_add(const char *name, key_code key, const char *note, int repeat,
 	table = key_bindings_get_table(name, 1);
 
 	bd = key_bindings_get(table, key & ~KEYC_MASK_FLAGS);
+	if (cmdlist == NULL) {
+		if (bd != NULL) {
+			free((void *)bd->note);
+			if (note != NULL)
+				bd->note = xstrdup(note);
+			else
+				bd->note = NULL;
+		}
+		return;
+	}
 	if (bd != NULL) {
 		RB_REMOVE(key_bindings, &table->key_bindings, bd);
 		key_bindings_free(bd);

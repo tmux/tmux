@@ -200,7 +200,7 @@ alerts_check_bell(struct window *w)
 		 * not check WINLINK_BELL).
 		 */
 		s = wl->session;
-		if (s->curw != wl) {
+		if (s->curw != wl || s->attached == 0) {
 			wl->flags |= WINLINK_BELL;
 			server_status_session(s);
 		}
@@ -236,7 +236,7 @@ alerts_check_activity(struct window *w)
 		if (wl->flags & WINLINK_ACTIVITY)
 			continue;
 		s = wl->session;
-		if (s->curw != wl) {
+		if (s->curw != wl || s->attached == 0) {
 			wl->flags |= WINLINK_ACTIVITY;
 			server_status_session(s);
 		}
@@ -272,7 +272,7 @@ alerts_check_silence(struct window *w)
 		if (wl->flags & WINLINK_SILENCE)
 			continue;
 		s = wl->session;
-		if (s->curw != wl) {
+		if (s->curw != wl || s->attached == 0) {
 			wl->flags |= WINLINK_SILENCE;
 			server_status_session(s);
 		}
@@ -316,9 +316,9 @@ alerts_set_message(struct winlink *wl, const char *type, const char *option)
 		if (visual == VISUAL_OFF)
 			continue;
 		if (c->session->curw == wl)
-			status_message_set(c, 1, "%s in current window", type);
+			status_message_set(c, -1, 1, "%s in current window", type);
 		else {
-			status_message_set(c, 1, "%s in window %d", type,
+			status_message_set(c, -1, 1, "%s in window %d", type,
 			    wl->idx);
 		}
 	}

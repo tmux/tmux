@@ -189,6 +189,12 @@ colour_fromstring(const char *s)
 			return (-1);
 		return (n | COLOUR_FLAG_256);
 	}
+	if (strncasecmp(s, "color", (sizeof "color") - 1) == 0) {
+		n = strtonum(s + (sizeof "color") - 1, 0, 255, &errstr);
+		if (errstr != NULL)
+			return (-1);
+		return (n | COLOUR_FLAG_256);
+	}
 
 	if (strcasecmp(s, "default") == 0)
 		return (8);

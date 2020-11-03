@@ -27,12 +27,20 @@
 #include <termios.h>
 #include <wchar.h>
 
+#ifdef HAVE_MALLOC_TRIM
+#include <malloc.h>
+#endif
+
 #ifdef HAVE_UTF8PROC
 #include <utf8proc.h>
 #endif
 
 #ifndef __GNUC__
 #define __attribute__(a)
+#endif
+
+#ifdef BROKEN___DEAD
+#undef __dead
 #endif
 
 #ifndef __unused

@@ -1003,7 +1003,7 @@ wait for an empty line input before exiting in control mode
 .El
 .Pp
 A leading
-.Ql !
+.Ql \&!
 turns a flag off if the client is already attached.
 .Fl r
 is an alias for
@@ -1407,7 +1407,7 @@ and
 .Fl T
 show debugging information about jobs and terminals.
 .It Xo Ic source-file
-.Op Fl nqv
+.Op Fl Fnqv
 .Ar path
 .Ar ...
 .Xc
@@ -1417,6 +1417,11 @@ Execute commands from one or more files specified by
 (which may be
 .Xr glob 7
 patterns).
+If
+.Fl F
+is present, then
+.Ar path
+is expanded as a format.
 If
 .Fl q
 is given, no error will be returned if
@@ -1853,7 +1858,7 @@ The
 .Fl P
 option prints information about the new window after it has been created.
 By default, it uses the format
-.Ql #{session_name}:#{window_index}
+.Ql #{session_name}:#{window_index}.#{pane_index}
 but a different format may be specified with
 .Fl F .
 .It Xo Ic capture-pane
@@ -3034,7 +3039,7 @@ Send the prefix key, or with
 .Fl 2
 the secondary prefix key, to a window as if it was pressed.
 .It Xo Ic unbind-key
-.Op Fl an
+.Op Fl anq
 .Op Fl T Ar key-table
 .Ar key
 .Xc
@@ -3049,6 +3054,9 @@ are the same as for
 If
 .Fl a
 is present, all key bindings are removed.
+The
+.Fl q
+option prevents errors being returned.
 .El
 .Sh OPTIONS
 The appearance and behaviour of
@@ -3159,6 +3167,9 @@ flag unsets an option, so a session inherits the option from the global
 options (or with
 .Fl g ,
 restores a global option to the default).
+.Ar value
+depends on the option and may be a number, a string, or a flag (on, off, or
+omitted to toggle).
 .Pp
 The
 .Fl o
@@ -3230,9 +3241,6 @@ includes hooks (omitted by default).
 .Fl A
 includes options inherited from a parent set of options, such options are
 marked with an asterisk.
-.Ar value
-depends on the option and may be a number, a string, or a flag (on, off, or
-omitted to toggle).
 .El
 .Pp
 Available server options are:
@@ -4536,7 +4544,7 @@ multiplication
 .Ql * ,
 division
 .Ql / ,
-and modulus
+modulus
 .Ql m
 or
 .Ql %
@@ -4545,7 +4553,15 @@ or
 must be escaped as
 .Ql %%
 in formats which are also expanded by
-.Xr strftime 3 ) .
+.Xr strftime 3 )
+and numeric comparison operators
+.Ql == ,
+.Ql != ,
+.Ql < ,
+.Ql <= ,
+.Ql >
+and
+.Ql >= .
 For example,
 .Ql #{e|*|f|4:5.5,3}
 multiplies 5.5 by 3 for a result with four decimal places and
@@ -4574,6 +4590,9 @@ pads the string to a given width, for example
 .Ql #{p10:pane_title}
 will result in a width of at least 10 characters.
 A positive width pads on the left, a negative on the right.
+.Ql n
+expands to the length of the variable, for example
+.Ql #{n:window_name} .
 .Pp
 Prefixing a time variable with
 .Ql t:\&
@@ -4770,6 +4789,7 @@ The following variables are available, where appropriate:
 .It Li "pane_in_mode" Ta "" Ta "1 if pane is in a mode"
 .It Li "pane_index" Ta "#P" Ta "Index of pane"
 .It Li "pane_input_off" Ta "" Ta "1 if input to pane is disabled"
+.It Li "pane_last" Ta "" Ta "1 if last pane"
 .It Li "pane_left" Ta "" Ta "Left of pane"
 .It Li "pane_marked" Ta "" Ta "1 if this is the marked pane"
 .It Li "pane_marked_set" Ta "" Ta "1 if a marked pane is set"
@@ -5098,7 +5118,7 @@ section).
 Commands to alter and view the environment are:
 .Bl -tag -width Ds
 .It Xo Ic set-environment
-.Op Fl hgru
+.Op Fl Fhgru
 .Op Fl t Ar target-session
 .Ar name Op Ar value
 .Xc
@@ -5109,6 +5129,11 @@ If
 is used, the change is made in the global environment; otherwise, it is applied
 to the session environment for
 .Ar target-session .
+If
+.Fl F
+is present, then
+.Ar value
+is expanded as a format.
 The
 .Fl u
 flag unsets a variable.
@@ -5314,6 +5339,7 @@ option.
 This command works only from inside
 .Nm .
 .It Xo Ic display-menu
+.Op Fl O
 .Op Fl c Ar target-client
 .Op Fl t Ar target-pane
 .Op Fl T Ar title
@@ -5365,8 +5391,14 @@ Both may be a row or column number, or one of the following special values:
 Each menu consists of items followed by a key shortcut shown in brackets.
 If the menu is too large to fit on the terminal, it is not displayed.
 Pressing the key shortcut chooses the corresponding item.
-If the mouse is enabled and the menu is opened from a mouse key binding, releasing
-the mouse button with an item selected will choose that item.
+If the mouse is enabled and the menu is opened from a mouse key binding,
+releasing the mouse button with an item selected chooses that item and
+releasing the mouse button without an item selected closes the menu.
+.Fl O
+changes this behaviour so that the menu does not close when the mouse button is
+released without an item selected the menu is not closed and a mouse button
+must be clicked to choose an item.
+.Pp
 The following keys are also available:
 .Bl -column "Key" "Function" -offset indent
 .It Sy "Key" Ta Sy "Function"
@@ -5378,6 +5410,7 @@ The following keys are also available:
 .It Xo Ic display-message
 .Op Fl aIpv
 .Op Fl c Ar target-client
+.Op Fl d Ar delay
 .Op Fl t Ar target-pane
 .Op Ar message
 .Xc
@@ -5387,7 +5420,14 @@ If
 .Fl p
 is given, the output is printed to stdout, otherwise it is displayed in the
 .Ar target-client
-status line.
+status line for up to
+.Ar delay
+milliseconds.
+If
+.Ar delay
+is not given, the
+.Ic message-time
+option is used; a delay of zero waits for a key press.
 The format of
 .Ar message
 is described in the
@@ -5629,12 +5669,21 @@ See the
 .Sx FORMATS
 section.
 .It Xo Ic load-buffer
+.Op Fl w
 .Op Fl b Ar buffer-name
+.Op Fl t Ar target-client
 .Ar path
 .Xc
 .D1 (alias: Ic loadb )
 Load the contents of the specified paste buffer from
 .Ar path .
+If
+.Fl w
+is given, the buffer is also sent to the clipboard for
+.Ar target-client
+using the
+.Xr xterm 1
+escape sequence, if possible.
 .It Xo Ic paste-buffer
 .Op Fl dpr
 .Op Fl b Ar buffer-name
@@ -5671,14 +5720,22 @@ The
 .Fl a
 option appends to rather than overwriting the file.
 .It Xo Ic set-buffer
-.Op Fl a
+.Op Fl aw
 .Op Fl b Ar buffer-name
+.Op Fl t Ar target-client
 .Op Fl n Ar new-buffer-name
 .Ar data
 .Xc
 .D1 (alias: Ic setb )
 Set the contents of the specified buffer to
 .Ar data .
+If
+.Fl w
+is given, the buffer is also sent to the clipboard for
+.Ar target-client
+using the
+.Xr xterm 1
+escape sequence, if possible.
 The
 .Fl a
 option appends to rather than overwriting the buffer.
@@ -5855,8 +5912,8 @@ Set a styled underscore.
 The single parameter is one of: 0 for no underscore, 1 for normal
 underscore, 2 for double underscore, 3 for curly underscore, 4 for dotted
 underscore and 5 for dashed underscore.
-.It Em \&Setulc
-Set the underscore colour.
+.It Em \&Setulc , \&ol
+Set the underscore colour or reset to the default.
 The argument is (red * 65536) + (green * 256) + blue where each is between 0
 and 255.
 .It Em \&Ss , Se

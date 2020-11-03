@@ -157,7 +157,7 @@ server_start(struct tmuxproc *client, int flags, struct event_base *base,
 {
 	int		 pair[2];
 	sigset_t	 set, oldset;
-	struct client	*c;
+	struct client	*c = NULL;
 	char		*cause = NULL;
 
 	sigfillset(&set);
@@ -223,9 +223,11 @@ server_start(struct tmuxproc *client, int flags, struct event_base *base,
 	}
 
 	if (cause != NULL) {
-		cmdq_append(c, cmdq_get_error(cause));
+		if (c != NULL) {
+			cmdq_append(c, cmdq_get_error(cause));
+			c->flags |= CLIENT_EXIT;
+		}
 		free(cause);
-		c->flags |= CLIENT_EXIT;
 	}
 
 	server_add_accept(0);

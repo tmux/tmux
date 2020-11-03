@@ -380,7 +380,7 @@ window_customize_build_options(struct window_customize_modedata *data,
     struct format_tree *ft, const char *filter, struct cmd_find_state *fs)
 {
 	struct mode_tree_item		 *top;
-	struct options_entry		 *o, *loop;
+	struct options_entry		 *o = NULL, *loop;
 	const char			**list = NULL, *name;
 	u_int				  size = 0, i;
 	enum window_customize_scope	  scope;
@@ -1003,7 +1003,7 @@ window_customize_set_option_callback(struct client *c, void *itemdata,
 
 fail:
 	*cause = toupper((u_char)*cause);
-	status_message_set(c, 1, "%s", cause);
+	status_message_set(c, -1, 1, "%s", cause);
 	free(cause);
 	return (0);
 }
@@ -1018,7 +1018,7 @@ window_customize_set_option(struct client *c,
 	struct options				*oo;
 	struct window_customize_itemdata	*new_item;
 	int					 flag, idx = item->idx;
-	enum window_customize_scope		 scope;
+	enum window_customize_scope		 scope = WINDOW_CUSTOMIZE_NONE;
 	u_int					 choice;
 	const char				*name = item->name, *space = "";
 	char					*prompt, *value, *text;
@@ -1031,7 +1031,7 @@ window_customize_set_option(struct client *c,
 		return;
 
 	oe = options_table_entry(o);
-	if (~oe->scope & OPTIONS_TABLE_PANE)
+	if (oe != NULL && ~oe->scope & OPTIONS_TABLE_PANE)
 		pane = 0;
 	if (oe != NULL && (oe->flags & OPTIONS_TABLE_IS_ARRAY)) {
 		scope = item->scope;
@@ -1209,7 +1209,7 @@ window_customize_set_command_callback(struct client *c, void *itemdata,
 
 fail:
 	*error = toupper((u_char)*error);
-	status_message_set(c, 1, "%s", error);
+	status_message_set(c, -1, 1, "%s", error);
 	free(error);
 	return (0);
 }
