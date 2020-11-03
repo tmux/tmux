@@ -1,4 +1,4 @@
-CHANGES FROM 3.2 TO 3.3
+CHANGES FROM 3.1c TO 3.2
 
 * Fire focus events even when the pane is in a mode.
 
@@ -26,8 +26,6 @@ CHANGES FROM 3.2 TO 3.3
 * Respond to OSC colour requests if a colour is available.
 
 * Add a -d option to display-message to set delay.
-
-CHANGES FROM 3.1c TO 3.2
 
 * Add a way for control mode clients to subscribe to a format and be notified
   of changes rather than having to poll.
