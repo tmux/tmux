@@ -110,6 +110,10 @@ void	warnx(const char *, ...);
 #define pledge(s, p) (0)
 #endif
 
+#ifndef IMAXBEL
+#define IMAXBEL 0
+#endif
+
 #ifdef HAVE_STDINT_H
 #include <stdint.h>
 #else
