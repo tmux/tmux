@@ -662,7 +662,7 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_SESSION,
 	  .default_str = "#{?window_bigger,"
 			 "[#{window_offset_x}#,#{window_offset_y}] ,}"
-			 "\"#{=21:pane_title}\" %H:%M %d-%b-%y",
+			 "\"#{=21:pane_title}\" %Y-%m-%d %H:%M",
 	  .text = "Contents of the right side of the status line."
 
 	},
