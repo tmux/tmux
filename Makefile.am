@@ -58,6 +58,11 @@ if IS_NETBSD
 AM_CPPFLAGS += -D_OPENBSD_SOURCE
 endif
 
+# Set flags for Haiku.
+if IS_HAIKU
+AM_CPPFLAGS += -D_BSD_SOURCE
+endif
+
 # List of sources.
 dist_tmux_SOURCES = \
 	alerts.c \

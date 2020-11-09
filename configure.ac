@@ -296,12 +296,11 @@ AC_TRY_LINK(
 	found_b64_ntop=yes,
 	found_b64_ntop=no
 )
+OLD_LIBS="$LIBS"
 if test "x$found_b64_ntop" = xno; then
 	AC_MSG_RESULT(no)
-
 	AC_MSG_CHECKING(for b64_ntop with -lresolv)
-	OLD_LIBS="$LIBS"
-	LIBS="$LIBS -lresolv"
+	LIBS="$OLD_LIBS -lresolv"
 	AC_TRY_LINK(
 		[
 			#include <sys/types.h>
@@ -312,16 +311,28 @@ if test "x$found_b64_ntop" = xno; then
 		found_b64_ntop=yes,
 		found_b64_ntop=no
 	)
-	if test "x$found_b64_ntop" = xno; then
-		LIBS="$OLD_LIBS"
-		AC_MSG_RESULT(no)
-	fi
+fi
+if test "x$found_b64_ntop" = xno; then
+	AC_MSG_CHECKING(for b64_ntop with -lnetwork)
+	LIBS="$OLD_LIBS -lnetwork"
+	AC_TRY_LINK(
+		[
+			#include <sys/types.h>
+			#include <netinet/in.h>
+			#include <resolv.h>
+		],
+		[b64_ntop(NULL, 0, NULL, 0);],
+		found_b64_ntop=yes,
+		found_b64_ntop=no
+	)
 fi
 if test "x$found_b64_ntop" = xyes; then
 	AC_DEFINE(HAVE_B64_NTOP)
 	AC_MSG_RESULT(yes)
 else
+	LIBS="$OLD_LIBS"
 	AC_LIBOBJ(base64)
+	AC_MSG_RESULT(no)
 fi
 
 # Look for networking libraries.
@@ -656,6 +667,10 @@ case "$host_os" in
 		AC_MSG_RESULT(cygwin)
 		PLATFORM=cygwin
 		;;
+	*haiku*)
+		AC_MSG_RESULT(haiku)
+		PLATFORM=haiku
+		;;
 	*)
 		AC_MSG_RESULT(unknown)
 		PLATFORM=unknown
@@ -671,6 +686,7 @@ AM_CONDITIONAL(IS_NETBSD, test "x$PLATFORM" = xnetbsd)
 AM_CONDITIONAL(IS_OPENBSD, test "x$PLATFORM" = xopenbsd)
 AM_CONDITIONAL(IS_SUNOS, test "x$PLATFORM" = xsunos)
 AM_CONDITIONAL(IS_HPUX, test "x$PLATFORM" = xhpux)
+AM_CONDITIONAL(IS_HAIKU, test "x$PLATFORM" = xhaiku)
 AM_CONDITIONAL(IS_UNKNOWN, test "x$PLATFORM" = xunknown)
 
 # Save our CFLAGS/CPPFLAGS/LDFLAGS for the Makefile and restore the old user
