@@ -1551,7 +1551,6 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 		TAILQ_FOREACH_SAFE(ci, &cl->items, entry, tmp) {
 			screen_write_set_cursor(ctx, ci->x, y);
 			if (ci->type == CLEAR_END) {
-				log_debug("XXX %u %u", ci->x, ci->bg);
 				screen_write_initctx(ctx, &ttyctx, 1);
 				ttyctx.bg = ci->bg;
 				tty_write(tty_cmd_clearendofline, &ttyctx);
