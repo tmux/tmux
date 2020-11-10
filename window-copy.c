@@ -4526,10 +4526,11 @@ window_copy_cursor_previous_word_pos(struct window_mode_entry *wme,
     const char *separators, int already, u_int *ppx, u_int *ppy)
 {
 	struct window_copy_mode_data	*data = wme->data;
-	u_int				 px, py;
+	u_int				 px, py, hsize;
 
+	hsize = screen_hsize(data->backing);
 	px = data->cx;
-	py = screen_hsize(data->backing) + data->cy - data->oy;
+	py = hsize + data->cy - data->oy;
 
 	/* Move back to the previous word character. */
 	if (already || window_copy_in_set(wme, px, py, separators)) {
@@ -4542,9 +4543,7 @@ window_copy_cursor_previous_word_pos(struct window_mode_entry *wme,
 			} else {
 				if (py == 0 ||
 				    (data->cy == 0 &&
-				    (screen_hsize(data->backing) == 0 ||
-				    data->oy >=
-				    screen_hsize(data->backing) - 1)))
+				    (hsize == 0 || data->oy > hsize - 1)))
 					goto out;
 
 				py--;
@@ -4573,10 +4572,11 @@ window_copy_cursor_previous_word(struct window_mode_entry *wme,
     const char *separators, int already)
 {
 	struct window_copy_mode_data	*data = wme->data;
-	u_int				 px, py;
+	u_int				 px, py, hsize;
 
+	hsize = screen_hsize(data->backing);
 	px = data->cx;
-	py = screen_hsize(data->backing) + data->cy - data->oy;
+	py = hsize + data->cy - data->oy;
 
 	/* Move back to the previous word character. */
 	if (already || window_copy_in_set(wme, px, py, separators)) {
@@ -4588,14 +4588,11 @@ window_copy_cursor_previous_word(struct window_mode_entry *wme,
 					break;
 			} else {
 				if (data->cy == 0 &&
-				    (screen_hsize(data->backing) == 0 ||
-				    data->oy >=
-				    screen_hsize(data->backing) - 1))
+				    (hsize == 0 || data->oy > hsize - 1))
 					goto out;
 				window_copy_cursor_up(wme, 0);
 
-				py = screen_hsize(data->backing) + data->cy -
-				    data->oy;
+				py = hsize + data->cy - data->oy;
 				px = window_copy_find_length(wme, py);
 
 				/* Stop if separator at EOL. */
