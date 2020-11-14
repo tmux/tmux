@@ -1,4 +1,7 @@
 #!/bin/bash
+
+# Contributed by michaellee8 <ckmichael8@gmail.com> in 2020
+
 set -x
 set -e
 
