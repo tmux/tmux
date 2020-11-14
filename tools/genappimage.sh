@@ -1,3 +1,4 @@
+#!/bin/bash
 set -x
 set -e
 
@@ -30,30 +31,51 @@ OLD_CWD=$(readlink -f .)
 
 mkdir -p "$BUILD_DIR/AppDir/usr"
 
+cd $BUILD_DIR
+
+# Obtain and compile libevent
+
+git clone https://github.com/libevent/libevent --depth 1 \
+    -b release-2.1.12-stable
+cd libevent
+sh autogen.sh
+./configure \
+    --prefix="$BUILD_DIR/AppDir/usr" \
+    --enable-shared
+make -j4
+make install
+cd ../
+
 # Obtain and compile libncursesw6 so that we get 256 color support
 curl -OL https://invisible-island.net/datafiles/release/ncurses.tar.gz
 tar -xf ncurses.tar.gz
 NCURSES_DIR="$PWD/ncurses-6.2"
 pushd "$NCURSES_DIR"
-./configure --with-shared --enable-widec --prefix="$BUILD_DIR/AppDir/usr" \
+./configure --with-shared --prefix="$BUILD_DIR/AppDir/usr" \
     --without-normal --without-debug
 make -j4
 make install
 popd
 
-## Configure vifm now to make sure it uses our libncursesw6
+
+
+# Configure tmux now to make sure it uses our libncursesw6
+# and libevent
+cd $REPO_ROOT
 export LD_LIBRARY_PATH="$BUILD_DIR/AppDir/usr/lib"
-autoreconf -f -i
-autoconf
+# autoreconf -f -i
+# autoconf
+sh autogen.sh
 export CPPFLAGS="-I$BUILD_DIR/AppDir/usr/include -I$BUILD_DIR/AppDir/usr/include/ncursesw" 
 export LDFLAGS="-L$BUILD_DIR/AppDir/usr/lib"
+export PKG_CONFIG_PATH=$BUILD_DIR/AppDir/usr/lib/pkgconfig
 ./configure \
     --prefix="$BUILD_DIR/AppDir/usr" 
 make -j4
 make install
 
 # Copy the AppData file to AppDir manually
-cp -r "$REPO_ROOT/data/metainfo" "$BUILD_DIR/AppDir/usr/share/" 
+# cp -r "$REPO_ROOT/data/metainfo" "$BUILD_DIR/AppDir/usr/share/" 
 
 
 # Custom AppRun to provide $ARGV0 issues when used with zsh
@@ -65,9 +87,22 @@ cat << 'EOF' > AppDir/AppRun
 #!/bin/bash
 unset ARGV0
 export TERMINFO=$APPDIR/usr/share/terminfo
-exec "$(dirname "$(readlink  -f "${0}")")/usr/bin/vifm" ${@+"$@"}
+exec "$(dirname "$(readlink  -f "${0}")")/usr/bin/tmux" ${@+"$@"}
 EOF
 chmod 755 AppDir/AppRun
+
+
+cat << 'EOF' > AppDir/tmux.desktop
+[Desktop Entry]
+X-AppImage-Name=tmux
+X-AppImage-Version=1.0.0
+X-AppImage-Arch=x86_64
+Name=Tmux
+Exec=tmux
+Icon=favicon
+Type=Application
+Categories=Utility;
+EOF
 
 
 # Downloading linuxdeploy
@@ -77,8 +112,13 @@ curl -o ./linuxdeploy -L \
 
 chmod +rx ./linuxdeploy
 
-OUTPUT="vifm.appimage" ./linuxdeploy --appdir ./AppDir --output appimage \
-    --desktop-file "$REPO_ROOT/data/vifm.desktop" --icon-file "$REPO_ROOT/data/graphics/vifm.png" \
-    --executable "$BUILD_DIR/AppDir/usr/bin/vifm" --library "$BUILD_DIR/AppDir/usr/lib/libncursesw.so.6"
+# Requires imagemagick to convert favicon.ico
+convert "$REPO_ROOT/logo/favicon.ico" "$REPO_ROOT/logo/favicon..png"
+# favicon.ico here has multiple image size, we choose the largest one
+cp "$REPO_ROOT/logo/favicon-1.png" "$BUILD_DIR/AppDir/favicon.png"
 
-mv "vifm.appimage" "$OLD_CWD"
+OUTPUT="tmux.appimage" ./linuxdeploy --appdir ./AppDir --output appimage \
+    --icon-file "$REPO_ROOT/logo/favicon.ico" \
+    --executable "$BUILD_DIR/AppDir/usr/bin/tmux"
+
+mv "tmux.appimage" "$OLD_CWD"
