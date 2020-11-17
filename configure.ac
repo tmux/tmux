@@ -99,6 +99,7 @@ AC_CHECK_HEADERS([ \
 	dirent.h \
 	fcntl.h \
 	inttypes.h \
+	libproc.h \
 	libutil.h \
 	ndir.h \
 	paths.h \
@@ -124,7 +125,8 @@ AC_CHECK_FUNCS([ \
 	dirfd \
 	flock \
 	prctl \
-	sysconf \
+	proc_pidinfo \
+	sysconf
 ])
 
 # Check for functions with a compatibility implementation.
