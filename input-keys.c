@@ -329,7 +329,8 @@ static struct input_key_entry input_key_defaults[] = {
 	  .data = "\033[2;_~"
 	},
 	{ .key = KEYC_DC|KEYC_BUILD_MODIFIERS,
-	  .data = "\033[3;_~" }
+	  .data = "\033[3;_~"
+	}
 };
 static const key_code input_key_modifiers[] = {
 	0,
@@ -556,7 +557,7 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 		modifier = '8';
 		break;
 	default:
-		fatalx("invalid key modifiers: %llx", key);
+		goto missing;
 	}
 	xsnprintf(tmp, sizeof tmp, "\033[%llu;%cu", outkey, modifier);
 	bufferevent_write(bev, tmp, strlen(tmp));
