@@ -119,7 +119,7 @@ curl -o ./linuxdeploy -L \
 chmod +rx ./linuxdeploy
 
 # Requires imagemagick to convert favicon.ico
-convert "$REPO_ROOT/logo/favicon.ico" "$REPO_ROOT/logo/favicon..png"
+convert "$REPO_ROOT/logo/favicon.ico" "$REPO_ROOT/logo/favicon.png"
 # favicon.ico here has multiple image size, we choose the largest one
 cp "$REPO_ROOT/logo/favicon-1.png" "$BUILD_DIR/AppDir/favicon.png"
 
