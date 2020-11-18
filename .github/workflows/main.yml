@@ -11,7 +11,7 @@ jobs:
       - uses: actions/checkout@v2
       - name: Install dependencies
         run: |
-          sudo apt-get install -y pkg-config autotools automake \
+          sudo apt-get install -y pkg-config automake \
                                   autoconf curl imagemagick
       - name: Execute genappimage.sh
         run: |
