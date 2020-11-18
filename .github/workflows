@@ -1,0 +1,28 @@
+name: tmux
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install dependencies
+        run: |
+          sudo apt-get install -y pkg-config autotools automake \
+                                  autoconf curl imagemagick
+      - name: Execute genappimage.sh
+        run: |
+          bash .github/genappimage.sh
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.assets_url }}
+          asset_path: ./tmux.appimage
+          asset_name: tmux.appimage
+          asset_content_type: application/x-executable

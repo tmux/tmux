@@ -7,6 +7,9 @@ set -e
 
 # Reference: https://docs.appimage.org/packaging-guide/from-source/native-binaries.html#id2
 
+# Dependencies: sudo apt-get install pkg-config autotools automake \
+#                                    autoconf curl imagemagick
+
 # building in temporary directory to keep system clean
 # use RAM disk if possible (as in: not building on CI system 
 # like Travis, and RAM disk is available)
