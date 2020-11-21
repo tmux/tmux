@@ -54,6 +54,20 @@ sh autogen.sh
 ./tmux
 ~~~
 
+#### Add To Your Path
+
+```cd /usr/local/bin```
+
+```ln -s tmux /Users/youruser/tmux tmux```
+
+Or wherever your downloaded the repo
+
+###### Check That It's Executable
+
+```ls -o```
+
+```chmod o+x tmux```
+
 ## Contributing
 
 Bug reports, feature suggestions and especially code contributions are most
