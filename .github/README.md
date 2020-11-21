@@ -32,6 +32,7 @@ To build and install tmux from a release tarball, use:
 ~~~bash
 ./configure && make
 sudo make install
+./tmux
 ~~~
 
 tmux can use the utempter library to update utmp(5), if it is installed - run
