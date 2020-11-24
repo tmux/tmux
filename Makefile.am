@@ -84,6 +84,7 @@ dist_tmux_SOURCES = \
 	cmd-display-panes.c \
 	cmd-find-window.c \
 	cmd-find.c \
+	cmd-get-cwd.c \
 	cmd-if-shell.c \
 	cmd-join-pane.c \
 	cmd-kill-pane.c \
