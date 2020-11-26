@@ -155,7 +155,7 @@ cmd_display_menu_get_position(struct client *tc, struct cmdq_item *item,
 	else
 		format_add(ft, "popup_centre_x", "%ld", n);
 	n = (tty->sy - 1) / 2 + h / 2;
-	if (n + h >= tty->sy)
+	if (n >= tty->sy)
 		format_add(ft, "popup_centre_y", "%u", tty->sy - h);
 	else
 		format_add(ft, "popup_centre_y", "%ld", n);
