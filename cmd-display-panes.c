@@ -34,8 +34,8 @@ const struct cmd_entry cmd_display_panes_entry = {
 	.name = "display-panes",
 	.alias = "displayp",
 
-	.args = { "bd:t:", 0, 1 },
-	.usage = "[-b] [-d duration] " CMD_TARGET_CLIENT_USAGE " [template]",
+	.args = { "bd:Nt:", 0, 1 },
+	.usage = "[-bN] [-d duration] " CMD_TARGET_CLIENT_USAGE " [template]",
 
 	.flags = CMD_AFTERHOOK|CMD_CLIENT_TFLAG,
 	.exec = cmd_display_panes_exec
@@ -284,8 +284,15 @@ cmd_display_panes_exec(struct cmd *self, struct cmdq_item *item)
 	else
 		cdata->item = item;
 
-	server_client_set_overlay(tc, delay, NULL, NULL, cmd_display_panes_draw,
-	    cmd_display_panes_key, cmd_display_panes_free, cdata);
+	if (args_has(args, 'N')) {
+		server_client_set_overlay(tc, delay, NULL, NULL,
+		    cmd_display_panes_draw, NULL, cmd_display_panes_free,
+		    cdata);
+	} else {
+		server_client_set_overlay(tc, delay, NULL, NULL,
+		    cmd_display_panes_draw, cmd_display_panes_key,
+		    cmd_display_panes_free, cdata);
+	}
 
 	if (args_has(args, 'b'))
 		return (CMD_RETURN_NORMAL);
