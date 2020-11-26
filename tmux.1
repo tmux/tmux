@@ -2098,7 +2098,7 @@ starts without the option information.
 This command works only if at least one client is attached.
 .It Xo
 .Ic display-panes
-.Op Fl b
+.Op Fl bN
 .Op Fl d Ar duration
 .Op Fl t Ar target-client
 .Op Ar template
@@ -2111,7 +2111,8 @@ See the
 and
 .Ic display-panes-active-colour
 session options.
-The indicator is closed when a key is pressed or
+The indicator is closed when a key is pressed (unless
+.Fl N is given) or
 .Ar duration
 milliseconds have passed.
 If
