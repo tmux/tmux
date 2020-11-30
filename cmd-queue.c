@@ -768,7 +768,11 @@ cmdq_running(struct client *c)
 {
 	struct cmdq_list	*queue = cmdq_get(c);
 
-	return (queue->item);
+	if (queue->item == NULL)
+        return (NULL);
+    if (queue->item->flags & CMDQ_WAITING)
+        return (NULL);
+    return (queue->item);
 }
 
 /* Print a guard line. */
