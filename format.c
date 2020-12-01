@@ -99,6 +99,7 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 #define FORMAT_PRETTY 0x400
 #define FORMAT_LENGTH 0x800
 #define FORMAT_WIDTH 0x1000
+#define FORMAT_ESCAPE 0x2000
 
 /* Limit on recursion. */
 #define FORMAT_LOOP_LIMIT 10
@@ -1394,6 +1395,23 @@ format_quote(const char *s)
 	return (out);
 }
 
+/* Escape #s in string. */
+static char *
+format_escape(const char *s)
+{
+	const char	*cp;
+	char		*out, *at;
+
+	at = out = xmalloc(strlen(s) * 2 + 1);
+	for (cp = s; *cp != '\0'; cp++) {
+		if (*cp == '#')
+			*at++ = '#';
+		*at++ = *cp;
+	}
+	*at = '\0';
+	return (out);
+}
+
 /* Make a prettier time. */
 static char *
 format_pretty_time(time_t t)
@@ -1537,6 +1555,11 @@ found:
 	if (modifiers & FORMAT_QUOTE) {
 		saved = found;
 		found = xstrdup(format_quote(saved));
+		free(saved);
+	}
+	if (modifiers & FORMAT_ESCAPE) {
+		saved = found;
+		found = xstrdup(format_escape(saved));
 		free(saved);
 	}
 	return (found);
@@ -1689,7 +1712,7 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 			cp++;
 
 		/* Check single character modifiers with no arguments. */
-		if (strchr("lbdnqwETSWP<>", cp[0]) != NULL &&
+		if (strchr("lbdnwETSWP<>", cp[0]) != NULL &&
 		    format_is_end(cp[1])) {
 			format_add_modifier(&list, count, cp, 1, NULL, 0);
 			cp++;
@@ -1710,7 +1733,7 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 		}
 
 		/* Now try single character with arguments. */
-		if (strchr("mCst=pe", cp[0]) == NULL)
+		if (strchr("mCst=peq", cp[0]) == NULL)
 			break;
 		c = cp[0];
 
@@ -2216,7 +2239,10 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 					time_format = format_strip(fm->argv[1]);
 				break;
 			case 'q':
-				modifiers |= FORMAT_QUOTE;
+				if (fm->argc < 1)
+					modifiers |= FORMAT_QUOTE;
+				else if (strchr(fm->argv[0], 'e') != NULL)
+					modifiers |= FORMAT_ESCAPE;
 				break;
 			case 'E':
 				modifiers |= FORMAT_EXPAND;
