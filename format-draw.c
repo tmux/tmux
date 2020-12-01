@@ -563,13 +563,17 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 		if (cp[0] == '#' && cp[1] != '[' && cp[1] != '\0') {
 			for (n = 1; cp[n] == '#'; n++)
 				 /* nothing */;
+			even = ((n % 2) == 0);
 			if (cp[n] != '[') {
-				width[current] += n;
 				cp += n;
+				if (even)
+					n = (n / 2);
+				else
+					n = (n / 2) + 1;
+				width[current] += n;
 				format_draw_many(&ctx[current], &sy, '#', n);
 				continue;
 			}
-			even = ((n % 2) == 0);
 			if (even)
 				cp += (n + 1);
 			else
