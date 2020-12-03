@@ -40,6 +40,7 @@ static void	server_client_repeat_timer(int, short, void *);
 static void	server_client_click_timer(int, short, void *);
 static void	server_client_check_exit(struct client *);
 static void	server_client_check_redraw(struct client *);
+static void	server_client_check_modes(struct client *);
 static void	server_client_set_title(struct client *);
 static void	server_client_reset_state(struct client *);
 static int	server_client_assume_paste(struct session *);
@@ -1353,6 +1354,7 @@ server_client_loop(void)
 	TAILQ_FOREACH(c, &clients, entry) {
 		server_client_check_exit(c);
 		if (c->session != NULL) {
+			server_client_check_modes(c);
 			server_client_check_redraw(c);
 			server_client_reset_state(c);
 		}
@@ -1806,6 +1808,28 @@ server_client_redraw_timer(__unused int fd, __unused short events,
     __unused void *data)
 {
 	log_debug("redraw timer fired");
+}
+
+/*
+ * Check if modes need to be updated. Only modes in the current window are
+ * updated and it is done when the status line is redrawn.
+ */
+static void
+server_client_check_modes(struct client *c)
+{
+	struct window			*w = c->session->curw->window;
+	struct window_pane		*wp;
+	struct window_mode_entry	*wme;
+
+	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
+		return;
+	if (~c->flags & CLIENT_REDRAWSTATUS)
+		return;
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		wme = TAILQ_FIRST(&wp->modes);
+		if (wme != NULL && wme->mode->update != NULL)
+			wme->mode->update(wme);
+	}
 }
 
 /* Check for client redraws. */

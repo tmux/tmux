@@ -2447,7 +2447,7 @@ tty_check_fg(struct tty *tty, int *palette, struct grid_cell *gc)
 	/* Is this a 256-colour colour? */
 	if (gc->fg & COLOUR_FLAG_256) {
 		/* And not a 256 colour mode? */
-		if (colours != 256) {
+		if (colours < 256) {
 			gc->fg = colour_256to16(gc->fg);
 			if (gc->fg & 8) {
 				gc->fg &= 7;
@@ -2500,7 +2500,7 @@ tty_check_bg(struct tty *tty, int *palette, struct grid_cell *gc)
 		 * palette. Bold background doesn't exist portably, so just
 		 * discard the bold bit if set.
 		 */
-		if (colours != 256) {
+		if (colours < 256) {
 			gc->bg = colour_256to16(gc->bg);
 			if (gc->bg & 8) {
 				gc->bg &= 7;
