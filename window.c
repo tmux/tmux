@@ -1182,9 +1182,10 @@ window_pane_key(struct window_pane *wp, struct client *c, struct session *s,
 
 	if (KEYC_IS_MOUSE(key))
 		return (0);
-	if (options_get_number(wp->window->options, "synchronize-panes")) {
+	if (options_get_number(wp->options, "synchronize-panes")) {
 		TAILQ_FOREACH(wp2, &wp->window->panes, entry) {
 			if (wp2 != wp &&
+			    options_get_number(wp2->options, "synchronize-panes") &&
 			    TAILQ_EMPTY(&wp2->modes) &&
 			    wp2->fd != -1 &&
 			    (~wp2->flags & PANE_INPUTOFF) &&

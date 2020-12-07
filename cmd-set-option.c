@@ -149,9 +149,24 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 
 	/* Change the option. */
 	if (args_has(args, 'u')) {
-		if (o == NULL)
+		if (strcmp(name, "synchronize-panes") == 0 && scope == OPTIONS_TABLE_WINDOW) {
+			struct window *w = target->w;
+			struct window_pane *wp;
+			TAILQ_FOREACH(wp, &w->panes, entry) {
+				if (options_get_number(wp->options, "synchronize-panes")) {
+					o = options_get_only(wp->options, name);
+					if (options_remove_or_default(o, idx, &cause) != 0) {
+						cmdq_error(item, "%s", cause);
+						free(cause);
+						goto fail;
+					}
+				}
+			}
+		}
+		else if (o == NULL) {
 			goto out;
-		if (options_remove_or_default(o, idx, &cause) != 0) {
+		}
+		else if (options_remove_or_default(o, idx, &cause) != 0) {
 			cmdq_error(item, "%s", cause);
 			free(cause);
 			goto fail;
