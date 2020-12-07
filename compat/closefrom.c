@@ -14,8 +14,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "compat.h"
-
 #ifndef HAVE_CLOSEFROM
 
 #include <sys/types.h>
@@ -49,6 +47,8 @@
 #if defined(HAVE_LIBPROC_H)
 # include <libproc.h>
 #endif
+
+#include "compat.h"
 
 #ifndef OPEN_MAX
 # define OPEN_MAX	256
