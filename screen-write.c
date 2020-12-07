@@ -1240,8 +1240,6 @@ screen_write_linefeed(struct screen_write_ctx *ctx, int wrapped, u_int bg)
 	gl = grid_get_line(gd, gd->hsize + s->cy);
 	if (wrapped)
 		gl->flags |= GRID_LINE_WRAPPED;
-	else
-		gl->flags &= ~GRID_LINE_WRAPPED;
 
 	log_debug("%s: at %u,%u (region %u-%u)", __func__, s->cx, s->cy,
 	    s->rupper, s->rlower);
