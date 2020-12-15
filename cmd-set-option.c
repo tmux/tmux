@@ -33,8 +33,8 @@ const struct cmd_entry cmd_set_option_entry = {
 	.name = "set-option",
 	.alias = "set",
 
-	.args = { "aFgopqst:uw", 1, 2 },
-	.usage = "[-aFgopqsuw] " CMD_TARGET_PANE_USAGE " option [value]",
+	.args = { "aFgopqst:uUw", 1, 2 },
+	.usage = "[-aFgopqsuUw] " CMD_TARGET_PANE_USAGE " option [value]",
 
 	.target = { 't', CMD_FIND_PANE, CMD_FIND_CANFAIL },
 
@@ -74,8 +74,9 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 	struct args			*args = cmd_get_args(self);
 	int				 append = args_has(args, 'a');
 	struct cmd_find_state		*target = cmdq_get_target(item);
+	struct window_pane		*loop;
 	struct options			*oo;
-	struct options_entry		*parent, *o;
+	struct options_entry		*parent, *o, *po;
 	char				*name, *argument, *value = NULL, *cause;
 	int				 window, idx, already, error, ambiguous;
 	int				 scope;
@@ -148,7 +149,19 @@ cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	/* Change the option. */
-	if (args_has(args, 'u')) {
+	if (args_has(args, 'U') && scope == OPTIONS_TABLE_WINDOW) {
+		TAILQ_FOREACH(loop, &target->w->panes, entry) {
+			po = options_get_only(loop->options, name);
+			if (po == NULL)
+				continue;
+			if (options_remove_or_default(po, idx, &cause) != 0) {
+				cmdq_error(item, "%s", cause);
+				free(cause);
+				goto fail;
+			}
+		}
+	}
+	if (args_has(args, 'u') || args_has(args, 'U')) {
 		if (o == NULL)
 			goto out;
 		if (options_remove_or_default(o, idx, &cause) != 0) {

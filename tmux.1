@@ -3136,7 +3136,7 @@ abc123
 Commands which set options are as follows:
 .Bl -tag -width Ds
 .It Xo Ic set-option
-.Op Fl aFgopqsuw
+.Op Fl aFgopqsuUw
 .Op Fl t Ar target-pane
 .Ar option Ar value
 .Xc
@@ -3169,6 +3169,11 @@ flag unsets an option, so a session inherits the option from the global
 options (or with
 .Fl g ,
 restores a global option to the default).
+.Fl U
+unsets an option (like
+.Fl u )
+but if the option is a pane option also unsets the option on any panes in the
+window.
 .Ar value
 depends on the option and may be a number, a string, or a flag (on, off, or
 omitted to toggle).
@@ -4062,12 +4067,6 @@ see the
 section.
 Attributes are ignored.
 .Pp
-.It Xo Ic synchronize-panes
-.Op Ic on | off
-.Xc
-Duplicate input to any pane to all other panes in the same window (only
-for panes that are not in any special mode).
-.Pp
 .It Ic window-status-activity-style Ar style
 Set status line style for windows with an activity alert.
 For how to specify
@@ -4189,6 +4188,12 @@ exits.
 The pane may be reactivated with the
 .Ic respawn-pane
 command.
+.Pp
+.It Xo Ic synchronize-panes
+.Op Ic on | off
+.Xc
+Duplicate input to all other panes in the same window where this option is also
+on (only for panes that are not in any mode).
 .Pp
 .It Ic window-active-style Ar style
 Set the pane style when it is the active pane.
