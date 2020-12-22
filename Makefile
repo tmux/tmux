@@ -76,6 +76,7 @@ SRCS=	alerts.c \
 	file.c \
 	format.c \
 	format-draw.c \
+	grid-reader.c \
 	grid-view.c \
 	grid.c \
 	input-keys.c \
@@ -123,8 +124,7 @@ SRCS=	alerts.c \
 	window-customize.c \
 	window-tree.c \
 	window.c \
-	xmalloc.c \
-	xterm-keys.c
+	xmalloc.c
 
 CDIAGFLAGS+= -Wno-long-long -Wall -W -Wnested-externs -Wformat=2
 CDIAGFLAGS+= -Wmissing-prototypes -Wstrict-prototypes -Wmissing-declarations
