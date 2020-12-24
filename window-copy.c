@@ -3993,18 +3993,31 @@ window_copy_cursor_start_of_line(struct window_mode_entry *wme)
 {
 	struct window_copy_mode_data	*data = wme->data;
 	struct screen			*back_s = data->backing;
-	struct grid			*gd = back_s->grid;
-	u_int				 py;
+	struct grid_reader		 gr;
+	u_int				 px, py, cy, yy, ny, hsize;
 
-	if (data->cx == 0 && data->lineflag == LINE_SEL_NONE) {
-		py = screen_hsize(back_s) + data->cy - data->oy;
-		while (py > 0 &&
-		    grid_get_line(gd, py - 1)->flags & GRID_LINE_WRAPPED) {
-			window_copy_cursor_up(wme, 0);
-			py = screen_hsize(back_s) + data->cy - data->oy;
-		}
+	px = data->cx;
+	hsize = screen_hsize(back_s);
+	py = hsize + data->cy - data->oy;
+
+	grid_reader_start(&gr, back_s->grid, px, py);
+	grid_reader_cursor_start_of_line(&gr, 1);
+	grid_reader_get_cursor(&gr, &px, &py);
+
+	/* Scroll up if we went off the visible screen. */
+	yy = hsize - data->oy;
+	if (py < yy) {
+		ny = yy - py;
+		cy = 0;
+	} else {
+		ny = 0;
+		cy = py - yy;
 	}
-	window_copy_update_cursor(wme, 0, data->cy);
+	while (ny > 0) {
+		window_copy_cursor_up(wme, 1);
+		ny--;
+	}
+	window_copy_update_cursor(wme, px, cy);
 	if (window_copy_update_selection(wme, 1, 0))
 		window_copy_redraw_lines(wme, data->cy, 1);
 }
@@ -4037,30 +4050,35 @@ window_copy_cursor_end_of_line(struct window_mode_entry *wme)
 {
 	struct window_copy_mode_data	*data = wme->data;
 	struct screen			*back_s = data->backing;
-	struct grid			*gd = back_s->grid;
-	struct grid_line		*gl;
-	u_int				 px, py;
+	struct grid_reader		 gr;
+	u_int				 px, py, cy, yy, ny, hsize;
 
-	py = screen_hsize(back_s) + data->cy - data->oy;
-	px = window_copy_find_length(wme, py);
+	px = data->cx;
+	hsize = screen_hsize(back_s);
+	py =  hsize + data->cy - data->oy;
 
-	if (data->cx == px && data->lineflag == LINE_SEL_NONE) {
-		if (data->screen.sel != NULL && data->rectflag)
-			px = screen_size_x(back_s);
-		gl = grid_get_line(gd, py);
-		if (gl->flags & GRID_LINE_WRAPPED) {
-			while (py < gd->sy + gd->hsize) {
-				gl = grid_get_line(gd, py);
-				if (~gl->flags & GRID_LINE_WRAPPED)
-					break;
-				window_copy_cursor_down(wme, 0);
-				py = screen_hsize(back_s) + data->cy - data->oy;
-			}
-			px = window_copy_find_length(wme, py);
-		}
+	grid_reader_start(&gr, back_s->grid, px, py);
+	if (data->screen.sel != NULL && data->rectflag)
+		grid_reader_cursor_end_of_line(&gr, 1, 1);
+	else
+		grid_reader_cursor_end_of_line(&gr, 1, 0);
+	grid_reader_get_cursor(&gr, &px, &py);
+
+	/* Scroll down if we went off the visible screen. */
+	cy = py - hsize + data->oy;
+	yy = screen_size_y(back_s) - 1;
+	if (cy > yy)
+		ny = cy - yy;
+	else
+		ny = 0;
+	while (ny > 0) {
+	  window_copy_cursor_down(wme, 1);
+	  ny--;
 	}
-	window_copy_update_cursor(wme, px, data->cy);
-
+	if (cy > yy)
+		window_copy_update_cursor(wme, px, yy);
+	else
+		window_copy_update_cursor(wme, px, cy);
 	if (window_copy_update_selection(wme, 1, 0))
 		window_copy_redraw_lines(wme, data->cy, 1);
 }
@@ -4120,57 +4138,69 @@ static void
 window_copy_cursor_left(struct window_mode_entry *wme)
 {
 	struct window_copy_mode_data	*data = wme->data;
-	u_int				 py, cx;
-	struct grid_cell		 gc;
+	struct screen			*back_s = data->backing;
+	struct grid_reader		 gr;
+	u_int				 px, py, cy, yy, ny, hsize;
 
-	py = screen_hsize(data->backing) + data->cy - data->oy;
-	cx = data->cx;
-	while (cx > 0) {
-		grid_get_cell(data->backing->grid, cx, py, &gc);
-		if (~gc.flags & GRID_FLAG_PADDING)
-			break;
-		cx--;
+	px = data->cx;
+	hsize = screen_hsize(back_s);
+	py = hsize + data->cy - data->oy;
+
+	grid_reader_start(&gr, back_s->grid, px, py);
+	grid_reader_cursor_left(&gr);
+	grid_reader_get_cursor(&gr, &px, &py);
+
+	/* Scroll up if we went off the visible screen. */
+	yy = hsize - data->oy;
+	if (py < yy) {
+		ny = yy - py;
+		cy = 0;
+	} else {
+		ny = 0;
+		cy = py - yy;
 	}
-	if (cx == 0 && py > 0) {
-		window_copy_cursor_up(wme, 0);
-		window_copy_cursor_end_of_line(wme);
-	} else if (cx > 0) {
-		window_copy_update_cursor(wme, cx - 1, data->cy);
-		if (window_copy_update_selection(wme, 1, 0))
-			window_copy_redraw_lines(wme, data->cy, 1);
+	while (ny > 0) {
+		window_copy_cursor_up(wme, 1);
+		ny--;
 	}
+	window_copy_update_cursor(wme, px, cy);
+	if (window_copy_update_selection(wme, 1, 0))
+		window_copy_redraw_lines(wme, data->cy, 1);
 }
 
 static void
 window_copy_cursor_right(struct window_mode_entry *wme, int all)
 {
 	struct window_copy_mode_data	*data = wme->data;
-	u_int				 px, py, yy, cx, cy;
-	struct grid_cell		 gc;
+	struct screen			*back_s = data->backing;
+	struct grid_reader		 gr;
+	u_int				 px, py, cy, yy, ny, hsize;
 
-	py = screen_hsize(data->backing) + data->cy - data->oy;
-	yy = screen_hsize(data->backing) + screen_size_y(data->backing) - 1;
-	if (all || (data->screen.sel != NULL && data->rectflag))
-		px = screen_size_x(&data->screen);
+	px = data->cx;
+	hsize = screen_hsize(back_s);
+	py = hsize + data->cy - data->oy;
+
+	grid_reader_start(&gr, back_s->grid, px, py);
+	grid_reader_cursor_right(&gr, 1, all);
+	grid_reader_get_cursor(&gr, &px, &py);
+
+	/* Scroll down if we went off the visible screen. */
+	cy = py - hsize + data->oy;
+	yy = screen_size_y(back_s) - 1;
+	if (cy > yy)
+		ny = cy - yy;
 	else
-		px = window_copy_find_length(wme, py);
-
-	if (data->cx >= px && py < yy) {
-		window_copy_cursor_start_of_line(wme);
-		window_copy_cursor_down(wme, 0);
-	} else if (data->cx < px) {
-		cx = data->cx + 1;
-		cy = screen_hsize(data->backing) + data->cy - data->oy;
-		while (cx < px) {
-			grid_get_cell(data->backing->grid, cx, cy, &gc);
-			if (~gc.flags & GRID_FLAG_PADDING)
-				break;
-			cx++;
-		}
-		window_copy_update_cursor(wme, cx, data->cy);
-		if (window_copy_update_selection(wme, 1, 0))
-			window_copy_redraw_lines(wme, data->cy, 1);
+		ny = 0;
+	while (ny > 0) {
+	  window_copy_cursor_down(wme, 1);
+	  ny--;
 	}
+	if (cy > yy)
+		window_copy_update_cursor(wme, px, yy);
+	else
+		window_copy_update_cursor(wme, px, cy);
+	if (window_copy_update_selection(wme, 1, 0))
+		window_copy_redraw_lines(wme, data->cy, 1);
 }
 
 static void
@@ -4214,13 +4244,30 @@ window_copy_cursor_up(struct window_mode_entry *wme, int scroll_only)
 		px = window_copy_find_length(wme, py);
 		if ((data->cx >= data->lastsx && data->cx != px) ||
 		    data->cx > px)
-			window_copy_cursor_end_of_line(wme);
+		{
+			window_copy_update_cursor(wme, px, data->cy);
+			if (window_copy_update_selection(wme, 1, 0))
+				window_copy_redraw_lines(wme, data->cy, 1);
+		}
 	}
 
 	if (data->lineflag == LINE_SEL_LEFT_RIGHT)
-		window_copy_cursor_end_of_line(wme);
+	{
+		py = screen_hsize(data->backing) + data->cy - data->oy;
+		if (data->rectflag)
+			px = screen_size_x(data->backing);
+		else
+			px = window_copy_find_length(wme, py);
+		window_copy_update_cursor(wme, px, data->cy);
+		if (window_copy_update_selection(wme, 1, 0))
+			window_copy_redraw_lines(wme, data->cy, 1);
+	}
 	else if (data->lineflag == LINE_SEL_RIGHT_LEFT)
-		window_copy_cursor_start_of_line(wme);
+	{
+		window_copy_update_cursor(wme, 0, data->cy);
+		if (window_copy_update_selection(wme, 1, 0))
+			window_copy_redraw_lines(wme, data->cy, 1);
+	}
 }
 
 static void
@@ -4256,13 +4303,30 @@ window_copy_cursor_down(struct window_mode_entry *wme, int scroll_only)
 		px = window_copy_find_length(wme, py);
 		if ((data->cx >= data->lastsx && data->cx != px) ||
 		    data->cx > px)
-			window_copy_cursor_end_of_line(wme);
+		{
+			window_copy_update_cursor(wme, px, data->cy);
+			if (window_copy_update_selection(wme, 1, 0))
+				window_copy_redraw_lines(wme, data->cy, 1);
+		}
 	}
 
 	if (data->lineflag == LINE_SEL_LEFT_RIGHT)
-		window_copy_cursor_end_of_line(wme);
+	{
+		py = screen_hsize(data->backing) + data->cy - data->oy;
+		if (data->rectflag)
+			px = screen_size_x(data->backing);
+		else
+			px = window_copy_find_length(wme, py);
+		window_copy_update_cursor(wme, px, data->cy);
+		if (window_copy_update_selection(wme, 1, 0))
+			window_copy_redraw_lines(wme, data->cy, 1);
+	}
 	else if (data->lineflag == LINE_SEL_RIGHT_LEFT)
-		window_copy_cursor_start_of_line(wme);
+	{
+		window_copy_update_cursor(wme, 0, data->cy);
+		if (window_copy_update_selection(wme, 1, 0))
+			window_copy_redraw_lines(wme, data->cy, 1);
+	}
 }
 
 static void
@@ -4476,46 +4540,38 @@ window_copy_cursor_next_word_end(struct window_mode_entry *wme,
 	struct window_copy_mode_data	*data = wme->data;
 	struct options			*oo = wp->window->options;
 	struct screen			*back_s = data->backing;
-	u_int				 px, py, xx, yy;
-	int				 keys, expected = 1;
+	struct grid_reader		 gr;
+	u_int				 px, py, cy, yy, ny, hsize;
+	int				 keys;
 
 	px = data->cx;
-	py = screen_hsize(back_s) + data->cy - data->oy;
-	xx = window_copy_find_length(wme, py);
-	yy = screen_hsize(back_s) + screen_size_y(back_s) - 1;
+	hsize = screen_hsize(back_s);
+	py =  hsize + data->cy - data->oy;
 
+	grid_reader_start(&gr, back_s->grid, px, py);
 	keys = options_get_number(oo, "mode-keys");
-	if (keys == MODEKEY_VI && !window_copy_in_set(wme, px, py, separators))
-		px++;
+	if (keys == MODEKEY_VI && !grid_reader_in_set(&gr, separators))
+		grid_reader_cursor_right(&gr, 0, 0);
+	grid_reader_cursor_next_word_end(&gr, separators);
+	if (keys == MODEKEY_VI)
+		grid_reader_cursor_left(&gr);
+	grid_reader_get_cursor(&gr, &px, &py);
 
-	/*
-	 * First skip past any word characters, then any nonword characters.
-	 *
-	 * expected is initially set to 1 for the former and then 0 for the
-	 * latter.
-	 */
-	do {
-		while (px > xx ||
-		    window_copy_in_set(wme, px, py, separators) == expected) {
-			/* Move down if we're past the end of the line. */
-			if (px > xx) {
-				if (py == yy)
-					return;
-				window_copy_cursor_down(wme, 0);
-				px = 0;
-
-				py = screen_hsize(back_s) + data->cy - data->oy;
-				xx = window_copy_find_length(wme, py);
-			} else
-				px++;
-		}
-		expected = !expected;
-	} while (expected == 0);
-
-	if (keys == MODEKEY_VI && px != 0)
-		px--;
-
-	window_copy_update_cursor(wme, px, data->cy);
+	/* Scroll down if we went off the visible screen. */
+	cy = py - hsize + data->oy;
+	yy = screen_size_y(back_s) - 1;
+	if (cy > yy)
+		ny = cy - yy;
+	else
+		ny = 0;
+	while (ny > 0) {
+	  window_copy_cursor_down(wme, 1);
+	  ny--;
+	}
+	if (cy > yy)
+		window_copy_update_cursor(wme, px, yy);
+	else
+		window_copy_update_cursor(wme, px, cy);
 	if (window_copy_update_selection(wme, 1, no_reset))
 		window_copy_redraw_lines(wme, data->cy, 1);
 }
@@ -4572,43 +4628,32 @@ window_copy_cursor_previous_word(struct window_mode_entry *wme,
     const char *separators, int already)
 {
 	struct window_copy_mode_data	*data = wme->data;
-	u_int				 px, py, hsize;
+	struct screen			*back_s = data->backing;
+	struct grid_reader		 gr;
+	u_int				 px, py, cy, yy, ny, hsize;
 
-	hsize = screen_hsize(data->backing);
 	px = data->cx;
+	hsize = screen_hsize(back_s);
 	py = hsize + data->cy - data->oy;
 
-	/* Move back to the previous word character. */
-	if (already || window_copy_in_set(wme, px, py, separators)) {
-		for (;;) {
-			if (px > 0) {
-				px--;
-				if (!window_copy_in_set(wme, px, py,
-				    separators))
-					break;
-			} else {
-				if (data->cy == 0 &&
-				    (hsize == 0 || data->oy > hsize - 1))
-					goto out;
-				window_copy_cursor_up(wme, 0);
+	grid_reader_start(&gr, back_s->grid, px, py);
+	grid_reader_cursor_previous_word(&gr, separators, already);
+	grid_reader_get_cursor(&gr, &px, &py);
 
-				py = hsize + data->cy - data->oy;
-				px = window_copy_find_length(wme, py);
-
-				/* Stop if separator at EOL. */
-				if (px > 0 && window_copy_in_set(wme, px - 1,
-				    py, separators))
-					break;
-			}
-		}
+	/* Scroll up if we went off the visible screen. */
+	yy = hsize - data->oy;
+	if (py < yy) {
+		ny = yy - py;
+		cy = 0;
+	} else {
+		ny = 0;
+		cy = py - yy;
 	}
-
-	/* Move back to the beginning of this word. */
-	while (px > 0 && !window_copy_in_set(wme, px - 1, py, separators))
-		px--;
-
-out:
-	window_copy_update_cursor(wme, px, data->cy);
+	while (ny > 0) {
+		window_copy_cursor_up(wme, 1);
+		ny--;
+	}
+	window_copy_update_cursor(wme, px, cy);
 	if (window_copy_update_selection(wme, 1, 0))
 		window_copy_redraw_lines(wme, data->cy, 1);
 }
