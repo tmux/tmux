@@ -272,7 +272,7 @@ struct window_copy_mode_data {
 	u_char		*searchmark;
 	int		 searchcount;
 	int		 searchmore;
-	int		 searchthis;
+	int		 searchall;
 	int		 searchx;
 	int		 searchy;
 	int		 searcho;
@@ -396,6 +396,7 @@ window_copy_common_init(struct window_mode_entry *wme)
 		data->searchstr = NULL;
 	}
 	data->searchx = data->searchy = data->searcho = -1;
+	data->searchall = 1;
 
 	data->jumptype = WINDOW_COPY_OFF;
 	data->jumpchar = '\0';
@@ -2334,9 +2335,6 @@ window_copy_command(struct window_mode_entry *wme, struct client *c,
 		if (clear != WINDOW_COPY_CMD_CLEAR_NEVER) {
 			window_copy_clear_marks(wme);
 			data->searchx = data->searchy = -1;
-		} else if (data->searchthis != -1) {
-			data->searchthis = -1;
-			action = WINDOW_COPY_CMD_REDRAW;
 		}
 		if (action == WINDOW_COPY_CMD_NOTHING)
 			action = WINDOW_COPY_CMD_REDRAW;
@@ -2929,9 +2927,11 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex,
 	if (data->timeout)
 		return (0);
 
-	if (wp->searchstr == NULL || wp->searchregex != regex)
+	if (data->searchall || wp->searchstr == NULL ||
+	    wp->searchregex != regex) {
 		visible_only = 0;
-	else
+		data->searchall = 0;
+	} else
 		visible_only = (strcmp(wp->searchstr, str) == 0);
 	free(wp->searchstr);
 	wp->searchstr = xstrdup(str);
@@ -3116,7 +3116,6 @@ again:
 
 	if (!visible_only) {
 		if (stopped) {
-			data->searchthis = -1;
 			if (nfound > 1000)
 				data->searchcount = 1000;
 			else if (nfound > 100)
@@ -3127,10 +3126,6 @@ again:
 				data->searchcount = -1;
 			data->searchmore = 1;
 		} else {
-			if (which != -1)
-				data->searchthis = 1 + nfound - which;
-			else
-				data->searchthis = -1;
 			data->searchcount = nfound;
 			data->searchmore = 0;
 		}
@@ -3366,15 +3361,11 @@ window_copy_write_line(struct window_mode_entry *wme,
 			if (data->searchcount == -1) {
 				size = xsnprintf(hdr, sizeof hdr,
 				    "[%u/%u]", data->oy, hsize);
-			} else if (data->searchthis == -1) {
+			} else {
 				size = xsnprintf(hdr, sizeof hdr,
 				    "(%d%s results) [%u/%u]", data->searchcount,
 				    data->searchmore ? "+" : "", data->oy,
 				    hsize);
-			} else {
-				size = xsnprintf(hdr, sizeof hdr,
-				    "(%d/%d results) [%u/%u]", data->searchthis,
-				    data->searchcount, data->oy, hsize);
 			}
 		}
 		if (size > screen_size_x(s))
