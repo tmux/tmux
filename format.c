@@ -1876,7 +1876,7 @@ format_loop_sessions(struct format_expand_state *es, const char *fmt)
 	RB_FOREACH(s, sessions, &sessions) {
 		format_log(es, "session loop: $%u", s->id);
 		nft = format_create(c, item, FORMAT_NONE, ft->flags);
-		format_defaults(next.ft, ft->c, s, NULL, NULL);
+		format_defaults(nft, ft->c, s, NULL, NULL);
 		format_copy_state(&next, es, 0);
 		next.ft = nft;
 		expanded = format_expand1(&next, fmt);
