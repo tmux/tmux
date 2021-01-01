@@ -40,8 +40,8 @@ const struct cmd_entry cmd_run_shell_entry = {
 	.name = "run-shell",
 	.alias = "run",
 
-	.args = { "bd:t:", 0, 1 },
-	.usage = "[-b] [-d delay] " CMD_TARGET_PANE_USAGE " [shell-command]",
+	.args = { "bd:Ct:", 0, 1 },
+	.usage = "[-bC] [-d delay] " CMD_TARGET_PANE_USAGE " [shell-command]",
 
 	.target = { 't', CMD_FIND_PANE, CMD_FIND_CANFAIL },
 
@@ -50,13 +50,16 @@ const struct cmd_entry cmd_run_shell_entry = {
 };
 
 struct cmd_run_shell_data {
+	struct client		*client;
 	char			*cmd;
+	int			 shell;
 	char			*cwd;
 	struct cmdq_item	*item;
 	struct session		*s;
 	int			 wp_id;
 	struct event		 timer;
 	int			 flags;
+	struct cmd_parse_input	 pi;
 };
 
 static void
@@ -93,49 +96,69 @@ cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 	struct args			*args = cmd_get_args(self);
 	struct cmd_find_state		*target = cmdq_get_target(item);
 	struct cmd_run_shell_data	*cdata;
+	struct client			*tc = cmdq_get_target_client(item);
 	struct session			*s = target->s;
 	struct window_pane		*wp = target->wp;
 	const char			*delay;
 	double				 d;
 	struct timeval			 tv;
 	char				*end;
+	int				 wait = !args_has(args, 'b');
+
+	if ((delay = args_get(args, 'd')) != NULL) {
+		d = strtod(delay, &end);
+		if (*end != '\0') {
+			cmdq_error(item, "invalid delay time: %s", delay);
+			return (CMD_RETURN_ERROR);
+		}
+	} else if (args->argc == 0)
+		return (CMD_RETURN_NORMAL);
 
 	cdata = xcalloc(1, sizeof *cdata);
 	if (args->argc != 0)
 		cdata->cmd = format_single_from_target(item, args->argv[0]);
+
+	cdata->shell = !args_has(args, 'C');
+	if (!cdata->shell) {
+		memset(&cdata->pi, 0, sizeof cdata->pi);
+		cmd_get_source(self, &cdata->pi.file, &cdata->pi.line);
+		if (wait)
+			cdata->pi.item = item;
+		cdata->pi.c = tc;
+		cmd_find_copy_state(&cdata->pi.fs, target);
+	}
 
 	if (args_has(args, 't') && wp != NULL)
 		cdata->wp_id = wp->id;
 	else
 		cdata->wp_id = -1;
 
-	if (!args_has(args, 'b'))
+	if (wait) {
+		cdata->client = cmdq_get_client(item);
 		cdata->item = item;
-	else
+	} else {
+		cdata->client = tc;
 		cdata->flags |= JOB_NOWAIT;
+	}
+	if (cdata->client != NULL)
+		cdata->client->references++;
 
 	cdata->cwd = xstrdup(server_client_get_cwd(cmdq_get_client(item), s));
+
 	cdata->s = s;
 	if (s != NULL)
 		session_add_ref(s, __func__);
 
 	evtimer_set(&cdata->timer, cmd_run_shell_timer, cdata);
-
-	if ((delay = args_get(args, 'd')) != NULL) {
-		d = strtod(delay, &end);
-		if (*end != '\0') {
-			cmdq_error(item, "invalid delay time: %s", delay);
-			cmd_run_shell_free(cdata);
-			return (CMD_RETURN_ERROR);
-		}
+	if (delay != NULL) {
 		timerclear(&tv);
 		tv.tv_sec = (time_t)d;
 		tv.tv_usec = (d - (double)tv.tv_sec) * 1000000U;
 		evtimer_add(&cdata->timer, &tv);
 	} else
-		cmd_run_shell_timer(-1, 0, cdata);
+		event_active(&cdata->timer, EV_TIMEOUT, 1);
 
-	if (args_has(args, 'b'))
+	if (!wait)
 		return (CMD_RETURN_NORMAL);
 	return (CMD_RETURN_WAIT);
 }
@@ -144,17 +167,37 @@ static void
 cmd_run_shell_timer(__unused int fd, __unused short events, void* arg)
 {
 	struct cmd_run_shell_data	*cdata = arg;
+	struct client			*c = cdata->client;
+	const char			*cmd = cdata->cmd;
+	char				*error;
+	struct cmdq_item		*item = cdata->item;
+	enum cmd_parse_status		 status;
 
-	if (cdata->cmd != NULL) {
-		if (job_run(cdata->cmd, cdata->s, cdata->cwd, NULL,
+	if (cmd != NULL && cdata->shell) {
+		if (job_run(cmd, cdata->s, cdata->cwd, NULL,
 		    cmd_run_shell_callback, cmd_run_shell_free, cdata,
 		    cdata->flags, -1, -1) == NULL)
 			cmd_run_shell_free(cdata);
-	} else {
-		if (cdata->item != NULL)
-			cmdq_continue(cdata->item);
-		cmd_run_shell_free(cdata);
+		return;
 	}
+
+	if (cmd != NULL) {
+		if (item != NULL) {
+			status = cmd_parse_and_insert(cmd, &cdata->pi, item,
+			    cmdq_get_state(item), &error);
+		} else {
+			status = cmd_parse_and_append(cmd, &cdata->pi, c, NULL,
+			    &error);
+		}
+		if (status == CMD_PARSE_ERROR) {
+		       cmdq_error(cdata->item, "%s", error);
+		       free(error);
+		}
+	}
+
+	if (cdata->item != NULL)
+		cmdq_continue(cdata->item);
+	cmd_run_shell_free(cdata);
 }
 
 static void
@@ -215,6 +258,8 @@ cmd_run_shell_free(void *data)
 	evtimer_del(&cdata->timer);
 	if (cdata->s != NULL)
 		session_remove_ref(cdata->s, __func__);
+	if (cdata->client != NULL)
+		server_client_unref(cdata->client);
 	free(cdata->cwd);
 	free(cdata->cmd);
 	free(cdata);
