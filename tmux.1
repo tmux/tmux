@@ -5827,7 +5827,7 @@ Lock each client individually by running the command specified by the
 .Ic lock-command
 option.
 .It Xo Ic run-shell
-.Op Fl b
+.Op Fl bC
 .Op Fl d Ar delay
 .Op Fl t Ar target-pane
 .Op Ar shell-command
@@ -5835,9 +5835,14 @@ option.
 .D1 (alias: Ic run )
 Execute
 .Ar shell-command
-in the background without creating a window.
-Before being executed, shell-command is expanded using the rules specified in
-the
+or (with
+.Fl C )
+a
+.Nm
+command in the background without creating a window.
+Before being executed,
+.Ar shell-command
+is expanded using the rules specified in the
 .Sx FORMATS
 section.
 With
@@ -5847,11 +5852,13 @@ the command is run in the background.
 waits for
 .Ar delay
 seconds before starting the command.
-After the command finishes, any output to stdout is displayed in view mode (in
-the pane specified by
+If
+.Fl C
+is not given, any output to stdout is displayed in view mode (in the pane
+specified by
 .Fl t
-or the current pane if omitted).
-If the command doesn't return success, the exit status is also displayed.
+or the current pane if omitted) after the command finishes.
+If the command fails, the exit status is also displayed.
 .It Xo Ic wait-for
 .Op Fl L | S | U
 .Ar channel
