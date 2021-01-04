@@ -4181,10 +4181,13 @@ interactive application starts and restores it on exit, so that any output
 visible before the application starts reappears unchanged after it exits.
 .Pp
 .It Xo Ic remain-on-exit
-.Op Ic on | off
+.Op Ic on | off | failed
 .Xc
 A pane with this flag set is not destroyed when the program running in it
 exits.
+If set to
+.Ic failed ,
+then only when the program exit status is not zero.
 The pane may be reactivated with the
 .Ic respawn-pane
 command.
