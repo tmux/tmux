@@ -312,6 +312,7 @@ server_destroy_pane(struct window_pane *wp, int notify)
 	struct grid_cell	 gc;
 	time_t			 t;
 	char			 tim[26];
+	int			 remain_on_exit;
 
 	if (wp->fd != -1) {
 #ifdef HAVE_UTEMPTER
@@ -323,10 +324,17 @@ server_destroy_pane(struct window_pane *wp, int notify)
 		wp->fd = -1;
 	}
 
-	if (options_get_number(wp->options, "remain-on-exit")) {
-		if (~wp->flags & PANE_STATUSREADY)
-			return;
-
+	remain_on_exit = options_get_number(wp->options, "remain-on-exit");
+	if (remain_on_exit != 0 && (~wp->flags & PANE_STATUSREADY))
+		return;
+	switch (remain_on_exit) {
+	case 0:
+		break;
+	case 2:
+		if (WIFEXITED(wp->status) && WEXITSTATUS(wp->status) == 0)
+			break;
+		/* FALLTHROUGH */
+	case 1:
 		if (wp->flags & PANE_STATUSDRAWN)
 			return;
 		wp->flags |= PANE_STATUSDRAWN;
