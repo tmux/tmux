@@ -3009,7 +3009,7 @@ window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
 	struct screen			*s = data->backing, ss;
 	struct screen_write_ctx		 ctx;
 	struct grid			*gd = s->grid;
-	int				 found, cis, which = -1, stopped = 0;
+	int				 found, cis, stopped = 0;
 	int				 cflags = REG_EXTENDED;
 	u_int				 px, py, i, b, nfound = 0, width;
 	u_int				 ssize = 1, start, end;
@@ -3072,11 +3072,7 @@ again:
 				if (!found)
 					break;
 			}
-
 			nfound++;
-			if (px == data->cx &&
-			    py == gd->hsize + data->cy - data->oy)
-				which = nfound;
 
 			if (window_copy_search_mark_at(data, px, py, &b) == 0) {
 				if (b + width > gd->sx * gd->sy)
@@ -3088,7 +3084,6 @@ again:
 				else
 					data->searchgen++;
 			}
-
 			px += width;
 		}
 
