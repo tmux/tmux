@@ -543,7 +543,7 @@ status_prompt_set(struct client *c, struct cmd_find_state *fs,
     prompt_free_cb freecb, void *data, int flags)
 {
 	struct format_tree	*ft;
-	char			*tmp, *cp;
+	char			*tmp;
 
 	if (fs != NULL)
 		ft = format_create_from_state(NULL, c, fs);
@@ -563,7 +563,13 @@ status_prompt_set(struct client *c, struct cmd_find_state *fs,
 
 	c->prompt_string = format_expand_time(ft, msg);
 
-	c->prompt_buffer = utf8_fromcstr(tmp);
+	if (flags & PROMPT_INCREMENTAL) {
+		c->prompt_last = xstrdup(tmp);
+		c->prompt_buffer = utf8_fromcstr("");
+	} else {
+		c->prompt_last = NULL;
+		c->prompt_buffer = utf8_fromcstr(tmp);
+	}
 	c->prompt_index = utf8_strlen(c->prompt_buffer);
 
 	c->prompt_inputcb = inputcb;
@@ -579,11 +585,8 @@ status_prompt_set(struct client *c, struct cmd_find_state *fs,
 		c->tty.flags |= (TTY_NOCURSOR|TTY_FREEZE);
 	c->flags |= CLIENT_REDRAWSTATUS;
 
-	if ((flags & PROMPT_INCREMENTAL) && *tmp != '\0') {
-		xasprintf(&cp, "=%s", tmp);
-		c->prompt_inputcb(c, c->prompt_data, cp, 0);
-		free(cp);
-	}
+	if (flags & PROMPT_INCREMENTAL)
+		c->prompt_inputcb(c, c->prompt_data, "=", 0);
 
 	free(tmp);
 	format_free(ft);
@@ -598,6 +601,9 @@ status_prompt_clear(struct client *c)
 
 	if (c->prompt_freecb != NULL && c->prompt_data != NULL)
 		c->prompt_freecb(c->prompt_data);
+
+	free(c->prompt_last);
+	c->prompt_last = NULL;
 
 	free(c->prompt_string);
 	c->prompt_string = NULL;
@@ -1260,17 +1266,27 @@ process_key:
 			status_prompt_clear(c);
 		break;
 	case '\022': /* C-r */
-		if (c->prompt_flags & PROMPT_INCREMENTAL) {
+		if (~c->prompt_flags & PROMPT_INCREMENTAL)
+			break;
+		if (c->prompt_buffer[0].size == 0) {
+			prefix = '=';
+			free (c->prompt_buffer);
+			c->prompt_buffer = utf8_fromcstr(c->prompt_last);
+			c->prompt_index = utf8_strlen(c->prompt_buffer);
+		} else
 			prefix = '-';
-			goto changed;
-		}
-		break;
+		goto changed;
 	case '\023': /* C-s */
-		if (c->prompt_flags & PROMPT_INCREMENTAL) {
+		if (~c->prompt_flags & PROMPT_INCREMENTAL)
+			break;
+		if (c->prompt_buffer[0].size == 0) {
+			prefix = '=';
+			free (c->prompt_buffer);
+			c->prompt_buffer = utf8_fromcstr(c->prompt_last);
+			c->prompt_index = utf8_strlen(c->prompt_buffer);
+		} else
 			prefix = '+';
-			goto changed;
-		}
-		break;
+		goto changed;
 	default:
 		goto append_key;
 	}
