@@ -1693,6 +1693,7 @@ struct client {
 
 	char		*prompt_string;
 	struct utf8_data *prompt_buffer;
+	char		*prompt_last;
 	size_t		 prompt_index;
 	prompt_input_cb	 prompt_inputcb;
 	prompt_free_cb	 prompt_freecb;
