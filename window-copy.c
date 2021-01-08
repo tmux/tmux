@@ -2030,6 +2030,8 @@ window_copy_cmd_search_backward_incremental(struct window_copy_cmd_state *cs)
 
 	data->timeout = 0;
 
+	log_debug ("%s: %s", __func__, argument);
+
 	prefix = *argument++;
 	if (data->searchx == -1 || data->searchy == -1) {
 		data->searchx = data->cx;
@@ -2082,6 +2084,8 @@ window_copy_cmd_search_forward_incremental(struct window_copy_cmd_state *cs)
 	enum window_copy_cmd_action	 action = WINDOW_COPY_CMD_NOTHING;
 
 	data->timeout = 0;
+
+	log_debug ("%s: %s", __func__, argument);
 
 	prefix = *argument++;
 	if (data->searchx == -1 || data->searchy == -1) {
