@@ -232,8 +232,8 @@ if test "x$found_ncurses" = xyes; then
 	LIBS="$LIBNCURSES_LIBS $LIBTINFO_LIBS $LIBS"
 else
 	AC_SEARCH_LIBS(
-		[tinfo ncurses ncursesw],
 		setupterm,
+		[tinfo ncurses ncursesw],
 		found_ncurses=yes,
 		found_ncurses=no
 	)
