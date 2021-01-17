@@ -127,6 +127,8 @@ retry:
 		log_debug("connect failed: %s", strerror(errno));
 		if (errno != ECONNREFUSED && errno != ENOENT)
 			goto failed;
+		if (flags & CLIENT_NOSTARTSERVER)
+			goto failed;
 		if (~flags & CLIENT_STARTSERVER)
 			goto failed;
 		close(fd);

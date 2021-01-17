@@ -191,6 +191,11 @@ directories are missing).
 Behave as a login shell.
 This flag currently has no effect and is for compatibility with other shells
 when using tmux as a login shell.
+.It Fl N
+Do not start the server even if the command would normally do so (for example
+.Ic new-session
+or
+.Ic start-server ) .
 .It Fl S Ar socket-path
 Specify a full alternative path to the server socket.
 If
