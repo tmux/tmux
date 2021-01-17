@@ -324,6 +324,7 @@ AC_TRY_LINK(
 	found_b64_ntop=yes,
 	found_b64_ntop=no
 )
+AC_MSG_RESULT($found_b64_ntop)
 OLD_LIBS="$LIBS"
 if test "x$found_b64_ntop" = xno; then
 	AC_MSG_RESULT(no)
@@ -339,6 +340,7 @@ if test "x$found_b64_ntop" = xno; then
 		found_b64_ntop=yes,
 		found_b64_ntop=no
 	)
+	AC_MSG_RESULT($found_b64_ntop)
 fi
 if test "x$found_b64_ntop" = xno; then
 	AC_MSG_CHECKING(for b64_ntop with -lnetwork)
@@ -353,14 +355,13 @@ if test "x$found_b64_ntop" = xno; then
 		found_b64_ntop=yes,
 		found_b64_ntop=no
 	)
+	AC_MSG_RESULT($found_b64_ntop)
 fi
 if test "x$found_b64_ntop" = xyes; then
 	AC_DEFINE(HAVE_B64_NTOP)
-	AC_MSG_RESULT(yes)
 else
 	LIBS="$OLD_LIBS"
 	AC_LIBOBJ(base64)
-	AC_MSG_RESULT(no)
 fi
 
 # Look for networking libraries.
