@@ -22,7 +22,6 @@
 #include <sys/sysctl.h>
 
 #include <errno.h>
-#include <event.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>

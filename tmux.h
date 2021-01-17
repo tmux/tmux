@@ -22,7 +22,6 @@
 #include <sys/time.h>
 #include <sys/uio.h>
 
-#include <event.h>
 #include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>

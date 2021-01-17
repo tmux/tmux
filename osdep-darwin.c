@@ -20,7 +20,6 @@
 #include <sys/sysctl.h>
 
 #include <Availability.h>
-#include <event.h>
 #include <libproc.h>
 #include <stdlib.h>
 #include <string.h>

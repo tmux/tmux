@@ -18,7 +18,6 @@
 
 #include <sys/types.h>
 
-#include <event.h>
 #include <unistd.h>
 #include <kernel/OS.h>
 

@@ -24,7 +24,6 @@
 #include <sys/file.h>
 
 #include <errno.h>
-#include <event.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <stdlib.h>

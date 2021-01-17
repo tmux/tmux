@@ -19,7 +19,6 @@
 
 #include <sys/types.h>
 
-#include <event.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>

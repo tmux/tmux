@@ -19,7 +19,6 @@
 #include <sys/param.h>
 #include <sys/stat.h>
 
-#include <event.h>
 #include <fcntl.h>
 #include <procfs.h>
 #include <stdio.h>

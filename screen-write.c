@@ -259,7 +259,6 @@ screen_write_start_callback(struct screen_write_ctx *ctx, struct screen *s,
 	}
 }
 
-
 /* Initialize writing. */
 void
 screen_write_start(struct screen_write_ctx *ctx, struct screen *s)

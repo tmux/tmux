@@ -182,88 +182,72 @@ AC_SEARCH_LIBS(clock_gettime, rt)
 # implementations.
 AC_LIBOBJ(getopt)
 
-# Look for libevent.
+# Look for libevent. Try libevent_core or libevent with pkg-config first then
+# look for the library.
 PKG_CHECK_MODULES(
 	LIBEVENT,
-	libevent,
+	[libevent_core >= 2 libevent >= 2],
 	[
-		AM_CFLAGS="$LIBEVENT_CFLAGS $AM_CFLAGS"
-		CFLAGS="$AM_CFLAGS $SAVED_CFLAGS"
+		AM_CPPFLAGS="$LIBEVENT_CFLAGS $AM_CPPFLAGS"
+		CPPFLAGS="$AM_CPPFLAGS $SAVED_CPPFLAGS"
 		LIBS="$LIBEVENT_LIBS $LIBS"
 		found_libevent=yes
 	],
+	found_libevent=no
+)
+if test x$found_libevent = xno; then
+	AC_SEARCH_LIBS(
+		event_init,
+		[event_core event event-1.4],
+		found_libevent=yes,
+		found_libevent=no
+	)
+fi
+AC_CHECK_HEADER(
+	event2/event.h,
+	AC_DEFINE(HAVE_EVENT2_EVENT_H),
 	[
-		AC_SEARCH_LIBS(
-			event_init,
-			[event event-1.4 event2],
-			found_libevent=yes,
+		AC_CHECK_HEADER(
+			event.h,
+			AC_DEFINE(HAVE_EVENT_H),
 			found_libevent=no
 		)
 	]
-)
-AC_CHECK_HEADER(
-	event.h,
-	,
-	found_libevent=no
 )
 if test "x$found_libevent" = xno; then
 	AC_MSG_ERROR("libevent not found")
 fi
 
-# Look for ncurses.
+# Look for ncurses or curses. Try pkg-config first then directly for the
+# library.
 PKG_CHECK_MODULES(
-	LIBTINFO,
-	tinfo,
+	LIBNCURSES,
+	[tinfo ncurses ncursesw],
 	found_ncurses=yes,
 	found_ncurses=no
 )
-if test "x$found_ncurses" = xno; then
-	PKG_CHECK_MODULES(
-		LIBNCURSES,
-		ncurses,
-		found_ncurses=yes,
-		found_ncurses=no
-	)
-fi
-if test "x$found_ncurses" = xno; then
-	PKG_CHECK_MODULES(
-		LIBNCURSES,
-		ncursesw,
-		found_ncurses=yes,
-		found_ncurses=no
-	)
-fi
 if test "x$found_ncurses" = xyes; then
-	AM_CFLAGS="$LIBNCURSES_CFLAGS $LIBTINFO_CFLAGS $AM_CFLAGS"
-	CFLAGS="$LIBNCURSES_CFLAGS $LIBTINFO_CFLAGS $CFLAGS"
+	AM_CPPFLAGS="$LIBNCURSES_CFLAGS $LIBTINFO_CFLAGS $AM_CPPFLAGS"
+	CPPFLAGS="$LIBNCURSES_CFLAGS $LIBTINFO_CFLAGS $SAVED_CPPFLAGS"
 	LIBS="$LIBNCURSES_LIBS $LIBTINFO_LIBS $LIBS"
 else
-	# pkg-config didn't work, try ncurses.
-	AC_CHECK_LIB(
-		tinfo,
+	AC_SEARCH_LIBS(
+		[tinfo ncurses ncursesw],
 		setupterm,
 		found_ncurses=yes,
 		found_ncurses=no
 	)
-	if test "x$found_ncurses" = xno; then
-		AC_CHECK_LIB(
-			ncurses,
-			setupterm,
-			found_ncurses=yes,
-			found_ncurses=no
-		)
-	fi
 	if test "x$found_ncurses" = xyes; then
 		AC_CHECK_HEADER(
 			ncurses.h,
 			LIBS="$LIBS -lncurses",
-			found_ncurses=no)
+			found_ncurses=no
+		)
 	fi
 fi
 if test "x$found_ncurses" = xyes; then
 	AC_DEFINE(HAVE_NCURSES_H)
 else
-	# No ncurses, try curses.
 	AC_CHECK_LIB(
 		curses,
 		setupterm,
@@ -273,7 +257,8 @@ else
 	AC_CHECK_HEADER(
 		curses.h,
 		,
-		found_curses=no)
+		found_curses=no
+	)
 	if test "x$found_curses" = xyes; then
 		LIBS="$LIBS -lcurses"
 		AC_DEFINE(HAVE_CURSES_H)

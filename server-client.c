@@ -21,7 +21,6 @@
 #include <sys/uio.h>
 
 #include <errno.h>
-#include <event.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>

@@ -18,8 +18,6 @@
 
 #include <sys/types.h>
 
-#include <event.h>
-
 #include "tmux.h"
 
 char *

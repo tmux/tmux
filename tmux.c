@@ -21,7 +21,6 @@
 #include <sys/utsname.h>
 
 #include <errno.h>
-#include <event.h>
 #include <fcntl.h>
 #include <langinfo.h>
 #include <locale.h>

@@ -24,7 +24,6 @@
 #include <sys/wait.h>
 
 #include <errno.h>
-#include <event.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>

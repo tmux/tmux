@@ -23,10 +23,11 @@
 #include <sys/stat.h>
 
 #include <errno.h>
-#include <event.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+#include "compat.h"
 
 #ifndef nitems
 #define nitems(_a) (sizeof((_a)) / sizeof((_a)[0]))

@@ -21,7 +21,6 @@
 #include <sys/utsname.h>
 
 #include <errno.h>
-#include <event.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
