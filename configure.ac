@@ -185,16 +185,29 @@ AC_LIBOBJ(getopt)
 # Look for libevent. Try libevent_core or libevent with pkg-config first then
 # look for the library.
 PKG_CHECK_MODULES(
-	LIBEVENT,
-	[libevent_core >= 2 libevent >= 2],
+	LIBEVENT_CORE,
+	[libevent_core >= 2],
 	[
-		AM_CPPFLAGS="$LIBEVENT_CFLAGS $AM_CPPFLAGS"
+		AM_CPPFLAGS="$LIBEVENT_CORE_CFLAGS $AM_CPPFLAGS"
 		CPPFLAGS="$AM_CPPFLAGS $SAVED_CPPFLAGS"
-		LIBS="$LIBEVENT_LIBS $LIBS"
+		LIBS="$LIBEVENT_CORE_LIBS $LIBS"
 		found_libevent=yes
 	],
 	found_libevent=no
 )
+if test x$found_libevent = xno; then
+	PKG_CHECK_MODULES(
+		LIBEVENT,
+		[libevent >= 2],
+		[
+			AM_CPPFLAGS="$LIBEVENT_CFLAGS $AM_CPPFLAGS"
+			CPPFLAGS="$AM_CPPFLAGS $SAVED_CPPFLAGS"
+			LIBS="$LIBEVENT_LIBS $LIBS"
+			found_libevent=yes
+		],
+		found_libevent=no
+	)
+fi
 if test x$found_libevent = xno; then
 	AC_SEARCH_LIBS(
 		event_init,
@@ -221,16 +234,43 @@ fi
 # Look for ncurses or curses. Try pkg-config first then directly for the
 # library.
 PKG_CHECK_MODULES(
-	LIBNCURSES,
-	[tinfo ncurses ncursesw],
-	found_ncurses=yes,
+	LIBTINFO,
+	tinfo,
+	[
+		AM_CPPFLAGS="$LIBTINFO_CFLAGS $AM_CPPFLAGS"
+		CPPFLAGS="$LIBTINFO_CFLAGS $SAVED_CPPFLAGS"
+		LIBS="$LIBTINFO_LIBS $LIBS"
+		found_ncurses=yes
+	],
 	found_ncurses=no
 )
-if test "x$found_ncurses" = xyes; then
-	AM_CPPFLAGS="$LIBNCURSES_CFLAGS $LIBTINFO_CFLAGS $AM_CPPFLAGS"
-	CPPFLAGS="$LIBNCURSES_CFLAGS $LIBTINFO_CFLAGS $SAVED_CPPFLAGS"
-	LIBS="$LIBNCURSES_LIBS $LIBTINFO_LIBS $LIBS"
-else
+if test "x$found_ncurses" = xno; then
+	PKG_CHECK_MODULES(
+		LIBNCURSES,
+		ncurses,
+		[
+			AM_CPPFLAGS="$LIBNCURSES_CFLAGS $AM_CPPFLAGS"
+			CPPFLAGS="$LIBNCURSES_CFLAGS $SAVED_CPPFLAGS"
+			LIBS="$LIBNCURSES_LIBS $LIBS"
+			found_ncurses=yes
+		],
+		found_ncurses=no
+	)
+fi
+if test "x$found_ncurses" = xno; then
+	PKG_CHECK_MODULES(
+		LIBNCURSESW,
+		ncursesw,
+		[
+			AM_CPPFLAGS="$LIBNCURSESW_CFLAGS $AM_CPPFLAGS"
+			CPPFLAGS="$LIBNCURSESW_CFLAGS $SAVED_CPPFLAGS"
+			LIBS="$LIBNCURSESW_LIBS $LIBS"
+			found_ncurses=yes
+		],
+		found_ncurses=no
+	)
+fi
+if test "x$found_ncurses" = xno; then
 	AC_SEARCH_LIBS(
 		setupterm,
 		[tinfo ncurses ncursesw],
