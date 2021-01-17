@@ -35,4 +35,4 @@ tar -zxf ncurses-*.tar.gz || exit 1
 
 sh autogen.sh || exit 1
 PKG_CONFIG_PATH=$BUILD/lib/pkgconfig ./configure --prefix=$BUILD "$@"
-make && make install || exit 1
+make && make install || (cat config.log; exit 1)
