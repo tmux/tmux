@@ -1531,20 +1531,9 @@ tty_cmd_deletecharacter(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cmd_clearcharacter(struct tty *tty, const struct tty_ctx *ctx)
 {
-	if (ctx->bigger) {
-		tty_draw_pane(tty, ctx, ctx->ocy);
-		return;
-	}
-
 	tty_default_attributes(tty, &ctx->defaults, ctx->palette, ctx->bg);
 
-	tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
-
-	if (tty_term_has(tty->term, TTYC_ECH) &&
-	    !tty_fake_bce(tty, &ctx->defaults, 8))
-		tty_putcode1(tty, TTYC_ECH, ctx->num);
-	else
-		tty_repeat_space(tty, ctx->num);
+	tty_clear_pane_line(tty, ctx, ctx->ocy, ctx->ocx, ctx->num, ctx->bg);
 }
 
 void

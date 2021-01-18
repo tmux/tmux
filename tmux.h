@@ -1890,7 +1890,6 @@ const char	*find_home(void);
 const char	*getversion(void);
 void		 expand_paths(const char *, char ***, u_int *);
 
-
 /* proc.c */
 struct imsg;
 int	proc_send(struct tmuxpeer *, enum msgtype, int, const void *, size_t);

@@ -259,7 +259,6 @@ screen_write_start_callback(struct screen_write_ctx *ctx, struct screen *s,
 	}
 }
 
-
 /* Initialize writing. */
 void
 screen_write_start(struct screen_write_ctx *ctx, struct screen *s)
@@ -1517,6 +1516,7 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 	struct screen_write_collect_item	*ci, *tmp;
 	struct screen_write_collect_line	*cl;
 	u_int					 y, cx, cy, items = 0;
+	int					 clear = 0;
 	struct tty_ctx				 ttyctx;
 	size_t					 written = 0;
 
@@ -1540,22 +1540,29 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 	cx = s->cx; cy = s->cy;
 	for (y = 0; y < screen_size_y(s); y++) {
 		cl = &ctx->s->write_list[y];
-		if (cl->bg != 0) {
-			screen_write_set_cursor(ctx, 0, y);
-			screen_write_initctx(ctx, &ttyctx, 1);
-			ttyctx.bg = cl->bg - 1;
-			tty_write(tty_cmd_clearline, &ttyctx);
-		}
 		TAILQ_FOREACH_SAFE(ci, &cl->items, entry, tmp) {
+			if (clear != -1 &&
+			    (u_int)clear != ci->x &&
+			    cl->bg != 0) {
+				screen_write_set_cursor(ctx, clear, y);
+				screen_write_initctx(ctx, &ttyctx, 1);
+				ttyctx.bg = cl->bg - 1;
+				ttyctx.num = ci->x - clear;
+				log_debug("clear %u at %u", ttyctx.num, clear);
+				tty_write(tty_cmd_clearcharacter, &ttyctx);
+			}
+
 			screen_write_set_cursor(ctx, ci->x, y);
 			if (ci->type == CLEAR_END) {
 				screen_write_initctx(ctx, &ttyctx, 1);
 				ttyctx.bg = ci->bg;
 				tty_write(tty_cmd_clearendofline, &ttyctx);
+				clear = -1;
 			} else if (ci->type == CLEAR_START) {
 				screen_write_initctx(ctx, &ttyctx, 1);
 				ttyctx.bg = ci->bg;
 				tty_write(tty_cmd_clearstartofline, &ttyctx);
+				clear = ci->x + 1;
 			} else {
 				screen_write_initctx(ctx, &ttyctx, 0);
 				ttyctx.cell = &ci->gc;
@@ -1563,6 +1570,7 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 				ttyctx.ptr = cl->data + ci->x;
 				ttyctx.num = ci->used;
 				tty_write(tty_cmd_cells, &ttyctx);
+				clear = ci->x + ci->used;
 			}
 
 			items++;
@@ -1571,6 +1579,16 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 			TAILQ_REMOVE(&cl->items, ci, entry);
 			free(ci);
 		}
+		if (clear != -1 &&
+		    (u_int)clear != screen_size_x(s) - 1 &&
+		    cl->bg != 0) {
+			screen_write_set_cursor(ctx, clear, y);
+			screen_write_initctx(ctx, &ttyctx, 1);
+			ttyctx.bg = cl->bg - 1;
+			log_debug("clear to end at %u", clear);
+			tty_write(tty_cmd_clearendofline, &ttyctx);
+		}
+		clear = 0;
 		cl->bg = 0;
 	}
 	s->cx = cx; s->cy = cy;
