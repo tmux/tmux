@@ -3453,10 +3453,10 @@ window_copy_synchronize_cursor_end(struct window_mode_entry *wme, int begin,
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 xx, yy;
 
+	xx = data->cx;
 	yy = screen_hsize(data->backing) + data->cy - data->oy;
 	switch (data->selflag) {
 	case SEL_WORD:
-		xx = data->cx;
 		if (no_reset)
 			break;
 		begin = 0;
@@ -3482,10 +3482,8 @@ window_copy_synchronize_cursor_end(struct window_mode_entry *wme, int begin,
 		}
 		break;
 	case SEL_LINE:
-		if (no_reset) {
-			xx = data->cx;
+		if (no_reset)
 			break;
-		}
 		begin = 0;
 		if (data->dy > yy) {
 			/* Right to left selection. */
@@ -3505,7 +3503,6 @@ window_copy_synchronize_cursor_end(struct window_mode_entry *wme, int begin,
 		}
 		break;
 	case SEL_CHAR:
-		xx = data->cx;
 		break;
 	}
 	if (begin) {
@@ -4784,22 +4781,22 @@ window_copy_start_drag(struct client *c, struct mouse_event *m)
 	if (x < data->selrx || x > data->endselrx || yg != data->selry)
 		data->selflag = SEL_CHAR;
 	switch (data->selflag) {
-		case SEL_WORD:
-			if (data->ws != NULL) {
-				window_copy_update_cursor(wme, x, y);
-				window_copy_cursor_previous_word_pos(wme,
-				    data->ws, 0, &x, &y);
-				y -= screen_hsize(data->backing) - data->oy;
-			}
+	case SEL_WORD:
+		if (data->ws != NULL) {
 			window_copy_update_cursor(wme, x, y);
-			break;
-		case SEL_LINE:
-			window_copy_update_cursor(wme, 0, y);
-			break;
-		case SEL_CHAR:
-			window_copy_update_cursor(wme, x, y);
-			window_copy_start_selection(wme);
-			break;
+			window_copy_cursor_previous_word_pos(wme, data->ws, 0,
+			    &x, &y);
+			y -= screen_hsize(data->backing) - data->oy;
+		}
+		window_copy_update_cursor(wme, x, y);
+		break;
+	case SEL_LINE:
+		window_copy_update_cursor(wme, 0, y);
+		break;
+	case SEL_CHAR:
+		window_copy_update_cursor(wme, x, y);
+		window_copy_start_selection(wme);
+		break;
 	}
 
 	window_copy_redraw_screen(wme);
