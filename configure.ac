@@ -367,7 +367,6 @@ AC_TRY_LINK(
 AC_MSG_RESULT($found_b64_ntop)
 OLD_LIBS="$LIBS"
 if test "x$found_b64_ntop" = xno; then
-	AC_MSG_RESULT(no)
 	AC_MSG_CHECKING(for b64_ntop with -lresolv)
 	LIBS="$OLD_LIBS -lresolv"
 	AC_TRY_LINK(
