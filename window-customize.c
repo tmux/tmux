@@ -190,13 +190,6 @@ window_customize_scope_text(enum window_customize_scope scope,
 	u_int	 idx;
 
 	switch (scope) {
-	case WINDOW_CUSTOMIZE_NONE:
-	case WINDOW_CUSTOMIZE_KEY:
-	case WINDOW_CUSTOMIZE_SERVER:
-	case WINDOW_CUSTOMIZE_GLOBAL_SESSION:
-	case WINDOW_CUSTOMIZE_GLOBAL_WINDOW:
-		s = xstrdup("");
-		break;
 	case WINDOW_CUSTOMIZE_PANE:
 		window_pane_index(fs->wp, &idx);
 		xasprintf(&s, "pane %u", idx);
@@ -206,6 +199,9 @@ window_customize_scope_text(enum window_customize_scope scope,
 		break;
 	case WINDOW_CUSTOMIZE_WINDOW:
 		xasprintf(&s, "window %u", fs->wl->idx);
+		break;
+	default:
+		s = xstrdup("");
 		break;
 	}
 	return (s);
