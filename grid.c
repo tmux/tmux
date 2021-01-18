@@ -701,7 +701,6 @@ grid_move_lines(struct grid *gd, u_int dy, u_int py, u_int ny, u_int bg)
 		gd->linedata[py - 1].flags &= ~GRID_LINE_WRAPPED;
 }
 
-
 /* Move a group of cells. */
 void
 grid_move_cells(struct grid *gd, u_int dx, u_int px, u_int py, u_int nx,
