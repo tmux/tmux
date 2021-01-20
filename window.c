@@ -810,15 +810,18 @@ window_destroy_panes(struct window *w)
 }
 
 const char *
-window_printable_flags(struct winlink *wl)
+window_printable_flags(struct winlink *wl, int escape)
 {
 	struct session	*s = wl->session;
 	static char	 flags[32];
 	int		 pos;
 
 	pos = 0;
-	if (wl->flags & WINLINK_ACTIVITY)
+	if (wl->flags & WINLINK_ACTIVITY) {
 		flags[pos++] = '#';
+		if (escape)
+			flags[pos++] = '#';
+	}
 	if (wl->flags & WINLINK_BELL)
 		flags[pos++] = '!';
 	if (wl->flags & WINLINK_SILENCE)
