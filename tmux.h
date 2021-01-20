@@ -2761,7 +2761,7 @@ int		 window_pane_key(struct window_pane *, struct client *,
 int		 window_pane_visible(struct window_pane *);
 u_int		 window_pane_search(struct window_pane *, const char *, int,
 		     int);
-const char	*window_printable_flags(struct winlink *);
+const char	*window_printable_flags(struct winlink *, int);
 struct window_pane *window_pane_find_up(struct window_pane *);
 struct window_pane *window_pane_find_down(struct window_pane *);
 struct window_pane *window_pane_find_left(struct window_pane *);

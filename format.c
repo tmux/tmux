@@ -89,7 +89,7 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 #define FORMAT_TIMESTRING 0x1
 #define FORMAT_BASENAME 0x2
 #define FORMAT_DIRNAME 0x4
-#define FORMAT_QUOTE 0x8
+#define FORMAT_QUOTE_SHELL 0x8
 #define FORMAT_LITERAL 0x10
 #define FORMAT_EXPAND 0x20
 #define FORMAT_EXPANDTIME 0x40
@@ -99,7 +99,7 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 #define FORMAT_PRETTY 0x400
 #define FORMAT_LENGTH 0x800
 #define FORMAT_WIDTH 0x1000
-#define FORMAT_ESCAPE 0x2000
+#define FORMAT_QUOTE_STYLE 0x2000
 
 /* Limit on recursion. */
 #define FORMAT_LOOP_LIMIT 10
@@ -1378,9 +1378,9 @@ format_add_cb(struct format_tree *ft, const char *key, format_cb cb)
 	fe->value = NULL;
 }
 
-/* Quote special characters in string. */
+/* Quote shell special characters in string. */
 static char *
-format_quote(const char *s)
+format_quote_shell(const char *s)
 {
 	const char	*cp;
 	char		*out, *at;
@@ -1395,9 +1395,9 @@ format_quote(const char *s)
 	return (out);
 }
 
-/* Escape #s in string. */
+/* Quote #s in string. */
 static char *
-format_escape(const char *s)
+format_quote_style(const char *s)
 {
 	const char	*cp;
 	char		*out, *at;
@@ -1552,14 +1552,14 @@ found:
 		found = xstrdup(dirname(saved));
 		free(saved);
 	}
-	if (modifiers & FORMAT_QUOTE) {
+	if (modifiers & FORMAT_QUOTE_SHELL) {
 		saved = found;
-		found = xstrdup(format_quote(saved));
+		found = xstrdup(format_quote_shell(saved));
 		free(saved);
 	}
-	if (modifiers & FORMAT_ESCAPE) {
+	if (modifiers & FORMAT_QUOTE_STYLE) {
 		saved = found;
-		found = xstrdup(format_escape(saved));
+		found = xstrdup(format_quote_style(saved));
 		free(saved);
 	}
 	return (found);
@@ -2240,9 +2240,10 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 				break;
 			case 'q':
 				if (fm->argc < 1)
-					modifiers |= FORMAT_QUOTE;
-				else if (strchr(fm->argv[0], 'e') != NULL)
-					modifiers |= FORMAT_ESCAPE;
+					modifiers |= FORMAT_QUOTE_SHELL;
+				else if (strchr(fm->argv[0], 'e') != NULL ||
+				    strchr(fm->argv[0], 'h') != NULL)
+					modifiers |= FORMAT_QUOTE_STYLE;
 				break;
 			case 'E':
 				modifiers |= FORMAT_EXPAND;
@@ -2980,7 +2981,8 @@ format_defaults_winlink(struct format_tree *ft, struct winlink *wl)
 
 	format_add(ft, "window_index", "%d", wl->idx);
 	format_add_cb(ft, "window_stack_index", format_cb_window_stack_index);
-	format_add(ft, "window_flags", "%s", window_printable_flags(wl));
+	format_add(ft, "window_flags", "%s", window_printable_flags(wl, 1));
+	format_add(ft, "window_raw_flags", "%s", window_printable_flags(wl, 0));
 	format_add(ft, "window_active", "%d", wl == s->curw);
 	format_add_cb(ft, "window_active_sessions",
 	    format_cb_window_active_sessions);
