@@ -128,7 +128,7 @@ static void	window_copy_cursor_previous_word(struct window_mode_entry *,
 		    const char *, int);
 static void	window_copy_scroll_up(struct window_mode_entry *, u_int);
 static void	window_copy_scroll_down(struct window_mode_entry *, u_int);
-static void	window_copy_rectangle_toggle(struct window_mode_entry *);
+static void	window_copy_rectangle_set(struct window_mode_entry *, int);
 static void	window_copy_move_mouse(struct mouse_event *);
 static void	window_copy_drag_update(struct client *, struct mouse_event *);
 static void	window_copy_drag_release(struct client *, struct mouse_event *);
@@ -1626,13 +1626,37 @@ window_copy_cmd_previous_word(struct window_copy_cmd_state *cs)
 }
 
 static enum window_copy_cmd_action
+window_copy_cmd_rectangle_on(struct window_copy_cmd_state *cs)
+{
+	struct window_mode_entry	*wme = cs->wme;
+	struct window_copy_mode_data	*data = wme->data;
+
+	data->lineflag = LINE_SEL_NONE;
+	window_copy_rectangle_set(wme, 1);
+
+	return (WINDOW_COPY_CMD_NOTHING);
+}
+
+static enum window_copy_cmd_action
+window_copy_cmd_rectangle_off(struct window_copy_cmd_state *cs)
+{
+	struct window_mode_entry	*wme = cs->wme;
+	struct window_copy_mode_data	*data = wme->data;
+
+	data->lineflag = LINE_SEL_NONE;
+	window_copy_rectangle_set(wme, 0);
+
+	return (WINDOW_COPY_CMD_NOTHING);
+}
+
+static enum window_copy_cmd_action
 window_copy_cmd_rectangle_toggle(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
 	struct window_copy_mode_data	*data = wme->data;
 
 	data->lineflag = LINE_SEL_NONE;
-	window_copy_rectangle_toggle(wme);
+	window_copy_rectangle_set(wme, !data->rectflag);
 
 	return (WINDOW_COPY_CMD_NOTHING);
 }
@@ -2251,6 +2275,10 @@ static const struct {
 	  window_copy_cmd_previous_space },
 	{ "previous-word", 0, 0, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  window_copy_cmd_previous_word },
+	{ "rectangle-on", 0, 0, WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  window_copy_cmd_rectangle_on },
+	{ "rectangle-off", 0, 0, WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  window_copy_cmd_rectangle_off },
 	{ "rectangle-toggle", 0, 0, WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  window_copy_cmd_rectangle_toggle },
 	{ "refresh-from-pane", 0, 0, WINDOW_COPY_CMD_CLEAR_ALWAYS,
@@ -4712,12 +4740,12 @@ window_copy_scroll_down(struct window_mode_entry *wme, u_int ny)
 }
 
 static void
-window_copy_rectangle_toggle(struct window_mode_entry *wme)
+window_copy_rectangle_set(struct window_mode_entry *wme, int rectflag)
 {
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 px, py;
 
-	data->rectflag = !data->rectflag;
+	data->rectflag = rectflag;
 
 	py = screen_hsize(data->backing) + data->cy - data->oy;
 	px = window_copy_find_length(wme, py);
