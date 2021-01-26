@@ -573,7 +573,14 @@ screen_alternate_on(struct screen *s, struct grid_cell *gc, int cursor)
 void
 screen_alternate_off(struct screen *s, struct grid_cell *gc, int cursor)
 {
-	u_int	sx, sy;
+	u_int	sx = screen_size_x(s), sy = screen_size_y(s);
+
+	/*
+	 * If the current size is different, temporarily resize to the old size
+	 * before copying back.
+	 */
+	if (s->saved_grid != NULL)
+		screen_resize(s, s->saved_grid->sx, s->saved_grid->sy, 1);
 
 	/*
 	 * Restore the cursor position and cell. This happens even if not
@@ -581,29 +588,23 @@ screen_alternate_off(struct screen *s, struct grid_cell *gc, int cursor)
 	 */
 	if (cursor && s->saved_cx != UINT_MAX && s->saved_cy != UINT_MAX) {
 		s->cx = s->saved_cx;
-		if (s->cx > screen_size_x(s) - 1)
-			s->cx = screen_size_x(s) - 1;
 		s->cy = s->saved_cy;
-		if (s->cy > screen_size_y(s) - 1)
-			s->cy = screen_size_y(s) - 1;
 		if (gc != NULL)
 			memcpy(gc, &s->saved_cell, sizeof *gc);
 	}
 
-	if (s->saved_grid == NULL)
+	/* If not in the alternate screen, do nothing more. */
+	if (s->saved_grid == NULL) {
+		if (s->cx > screen_size_x(s) - 1)
+			s->cx = screen_size_x(s) - 1;
+		if (s->cy > screen_size_y(s) - 1)
+			s->cy = screen_size_y(s) - 1;
 		return;
-	sx = screen_size_x(s);
-	sy = screen_size_y(s);
-
-	/*
-	 * If the current size is bigger, temporarily resize to the old size
-	 * before copying back.
-	 */
-	if (sy > s->saved_grid->sy)
-		screen_resize(s, sx, s->saved_grid->sy, 1);
+	}
 
 	/* Restore the saved grid. */
-	grid_duplicate_lines(s->grid, screen_hsize(s), s->saved_grid, 0, sy);
+	grid_duplicate_lines(s->grid, screen_hsize(s), s->saved_grid, 0,
+	    s->saved_grid->sy);
 
 	/*
 	 * Turn history back on (so resize can use it) and then resize back to
@@ -611,9 +612,13 @@ screen_alternate_off(struct screen *s, struct grid_cell *gc, int cursor)
 	 */
 	if (s->saved_flags & GRID_HISTORY)
 		s->grid->flags |= GRID_HISTORY;
-	if (sy > s->saved_grid->sy || sx != s->saved_grid->sx)
-		screen_resize(s, sx, sy, 1);
+	screen_resize(s, sx, sy, 1);
 
 	grid_destroy(s->saved_grid);
 	s->saved_grid = NULL;
+
+	if (s->cx > screen_size_x(s) - 1)
+		s->cx = screen_size_x(s) - 1;
+	if (s->cy > screen_size_y(s) - 1)
+		s->cy = screen_size_y(s) - 1;
 }
