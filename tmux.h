@@ -55,8 +55,8 @@ struct mouse_event;
 struct options;
 struct options_array_item;
 struct options_entry;
-struct screen_write_collect_item;
-struct screen_write_collect_line;
+struct screen_write_citem;
+struct screen_write_cline;
 struct screen_write_ctx;
 struct session;
 struct tty_ctx;
@@ -794,55 +794,51 @@ struct style {
 struct screen_sel;
 struct screen_titles;
 struct screen {
-	char			*title;
-	char			*path;
-	struct screen_titles	*titles;
+	char				*title;
+	char				*path;
+	struct screen_titles		*titles;
 
-	struct grid		*grid;		/* grid data */
+	struct grid			*grid;	  /* grid data */
 
-	u_int			 cx;		/* cursor x */
-	u_int			 cy;		/* cursor y */
+	u_int				 cx;	  /* cursor x */
+	u_int				 cy;	  /* cursor y */
 
-	u_int			 cstyle;	/* cursor style */
-	char			*ccolour;	/* cursor colour string */
+	u_int				 cstyle;  /* cursor style */
+	char				*ccolour; /* cursor colour string */
 
-	u_int			 rupper;	/* scroll region top */
-	u_int			 rlower;	/* scroll region bottom */
+	u_int				 rupper;  /* scroll region top */
+	u_int				 rlower;  /* scroll region bottom */
 
-	int			 mode;
+	int				 mode;
 
-	u_int			 saved_cx;
-	u_int			 saved_cy;
-	struct grid		*saved_grid;
-	struct grid_cell	 saved_cell;
-	int			 saved_flags;
+	u_int				 saved_cx;
+	u_int				 saved_cy;
+	struct grid			*saved_grid;
+	struct grid_cell		 saved_cell;
+	int				 saved_flags;
 
-	bitstr_t		*tabs;
-	struct screen_sel	*sel;
+	bitstr_t			*tabs;
+	struct screen_sel		*sel;
 
-	struct screen_write_collect_line *write_list;
+	struct screen_write_cline	*write_list;
 };
 
 /* Screen write context. */
 typedef void (*screen_write_init_ctx_cb)(struct screen_write_ctx *,
     struct tty_ctx *);
 struct screen_write_ctx {
-	struct window_pane	*wp;
-	struct screen		*s;
+	struct window_pane		*wp;
+	struct screen			*s;
 
-	int			 flags;
+	int				 flags;
 #define SCREEN_WRITE_SYNC 0x1
 
-	screen_write_init_ctx_cb init_ctx_cb;
-	void			*arg;
+	screen_write_init_ctx_cb	 init_ctx_cb;
+	void				*arg;
 
-	struct screen_write_collect_item *item;
-	u_int			 scrolled;
-	u_int			 bg;
-
-	u_int			 cells;
-	u_int			 written;
-	u_int			 skipped;
+	struct screen_write_citem	*item;
+	u_int				 scrolled;
+	u_int				 bg;
 };
 
 /* Screen redraw context. */
@@ -1000,9 +996,6 @@ struct window_pane {
 
 	char		*searchstr;
 	int		 searchregex;
-
-	size_t		 written;
-	size_t		 skipped;
 
 	int		 border_gc_set;
 	struct grid_cell border_gc;
