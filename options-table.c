@@ -72,7 +72,7 @@ static const char *options_table_remain_on_exit_list[] = {
 	"off", "on", "failed", NULL
 };
 static const char *options_table_detach_on_destroy_list[] = {
-	"off", "on", "smart", NULL
+	"off", "on", "no-detached", NULL
 };
 
 /* Status line format. */
