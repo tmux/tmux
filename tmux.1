@@ -3575,12 +3575,14 @@ The default is 80x24.
 If enabled and the session is no longer attached to any clients, it is
 destroyed.
 .It Xo Ic detach-on-destroy
-.Op Ic on | off
+.Op Ic off | on | smart
 .Xc
 If on (the default), the client is detached when the session it is attached to
 is destroyed.
 If off, the client is switched to the most recently active of the remaining
 sessions.
+If smart, the client is switched to the most recently active of the remaining
+detached sessions.
 .It Ic display-panes-active-colour Ar colour
 Set the colour used by the
 .Ic display-panes

@@ -71,6 +71,9 @@ static const char *options_table_window_size_list[] = {
 static const char *options_table_remain_on_exit_list[] = {
 	"off", "on", "failed", NULL
 };
+static const char *options_table_detach_on_destroy_list[] = {
+	"off", "on", "smart", NULL
+};
 
 /* Status line format. */
 #define OPTIONS_TABLE_STATUS_FORMAT1 \
@@ -404,8 +407,9 @@ const struct options_table_entry options_table[] = {
 	},
 
 	{ .name = "detach-on-destroy",
-	  .type = OPTIONS_TABLE_FLAG,
+	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_SESSION,
+	  .choices = options_table_detach_on_destroy_list,
 	  .default_num = 1,
 	  .text = "Whether to detach when a session is destroyed, or switch "
 		  "the client to another session if any exist."
