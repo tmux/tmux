@@ -402,11 +402,25 @@ server_destroy_session_group(struct session *s)
 static struct session *
 server_next_session(struct session *s)
 {
-	struct session *s_loop, *s_out;
+	struct session *s_loop, *s_out = NULL;
 
-	s_out = NULL;
 	RB_FOREACH(s_loop, sessions, &sessions) {
 		if (s_loop == s)
+			continue;
+		if (s_out == NULL ||
+		    timercmp(&s_loop->activity_time, &s_out->activity_time, <))
+			s_out = s_loop;
+	}
+	return (s_out);
+}
+
+static struct session *
+server_next_detached_session(struct session *s)
+{
+	struct session *s_loop, *s_out = NULL;
+
+	RB_FOREACH(s_loop, sessions, &sessions) {
+		if (s_loop == s || s_loop->attached)
 			continue;
 		if (s_out == NULL ||
 		    timercmp(&s_loop->activity_time, &s_out->activity_time, <))
@@ -420,12 +434,15 @@ server_destroy_session(struct session *s)
 {
 	struct client	*c;
 	struct session	*s_new;
+	int		 detach_on_destroy;
 
-	if (!options_get_number(s->options, "detach-on-destroy"))
+	detach_on_destroy = options_get_number(s->options, "detach-on-destroy");
+	if (detach_on_destroy == 0)
 		s_new = server_next_session(s);
+	else if (detach_on_destroy == 2)
+		s_new = server_next_detached_session(s);
 	else
 		s_new = NULL;
-
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (c->session != s)
 			continue;
