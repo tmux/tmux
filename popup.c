@@ -322,8 +322,8 @@ popup_key_cb(struct client *c, struct key_event *event)
 			return (0);
 		if (KEYC_IS_MOUSE(event->key)) {
 			/* Must be inside, checked already. */
-			if (!input_key_get_mouse(&pd->s, m, m->x - pd->px,
-			    m->y - pd->py, &buf, &len))
+			if (!input_key_get_mouse(&pd->s, m, m->x - pd->px - 1,
+			    m->y - pd->py - 1, &buf, &len))
 				return (0);
 			bufferevent_write(job_get_event(pd->job), buf, len);
 			return (0);
