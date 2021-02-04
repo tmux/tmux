@@ -108,11 +108,15 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 			cmdq_error(item, "no last pane");
 			return (CMD_RETURN_ERROR);
 		}
-		if (args_has(args, 'e'))
+		if (args_has(args, 'e')) {
 			lastwp->flags &= ~PANE_INPUTOFF;
-		else if (args_has(args, 'd'))
+			server_redraw_window_borders(lastwp->window);
+			server_status_window(lastwp->window);
+		} else if (args_has(args, 'd')) {
 			lastwp->flags |= PANE_INPUTOFF;
-		else {
+			server_redraw_window_borders(lastwp->window);
+			server_status_window(lastwp->window);
+		} else {
 			if (window_push_zoom(w, args_has(args, 'Z')))
 				server_redraw_window(w);
 			window_redraw_active_switch(w, lastwp);
@@ -188,10 +192,14 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (args_has(args, 'e')) {
 		wp->flags &= ~PANE_INPUTOFF;
+		server_redraw_window_borders(wp->window);
+		server_status_window(wp->window);
 		return (CMD_RETURN_NORMAL);
 	}
 	if (args_has(args, 'd')) {
 		wp->flags |= PANE_INPUTOFF;
+		server_redraw_window_borders(wp->window);
+		server_status_window(wp->window);
 		return (CMD_RETURN_NORMAL);
 	}
 
