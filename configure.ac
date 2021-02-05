@@ -133,6 +133,7 @@ AC_CHECK_FUNCS([ \
 AC_REPLACE_FUNCS([ \
 	asprintf \
 	cfmakeraw \
+	clock_gettime \
 	closefrom \
 	explicit_bzero \
 	fgetln \

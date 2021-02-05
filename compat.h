@@ -265,6 +265,13 @@ void	warnx(const char *, ...);
 #define HOST_NAME_MAX 255
 #endif
 
+#ifndef CLOCK_REALTIME
+#define CLOCK_REALTIME 0
+#endif
+#ifndef CLOCK_MONOTONIC
+#define CLOCK_MONOTONIC CLOCK_REALTIME
+#endif
+
 #ifndef HAVE_FLOCK
 #define LOCK_SH 0
 #define LOCK_EX 0
@@ -340,6 +347,11 @@ const char	*getprogname(void);
 #ifndef HAVE_SETPROCTITLE
 /* setproctitle.c */
 void		 setproctitle(const char *, ...);
+#endif
+
+#ifndef HAVE_CLOCK_GETTIME
+/* clock_gettime.c */
+int		 clock_gettime(int, struct timespec *);
 #endif
 
 #ifndef HAVE_B64_NTOP
