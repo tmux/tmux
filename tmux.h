@@ -261,6 +261,7 @@ enum tty_code_code {
 	TTYC_AX,
 	TTYC_BCE,
 	TTYC_BEL,
+	TTYC_BIDI,
 	TTYC_BLINK,
 	TTYC_BOLD,
 	TTYC_CIVIS,
