@@ -61,6 +61,7 @@ static const struct tty_term_code_entry tty_term_codes[] = {
 	[TTYC_AX] = { TTYCODE_FLAG, "AX" },
 	[TTYC_BCE] = { TTYCODE_FLAG, "bce" },
 	[TTYC_BEL] = { TTYCODE_STRING, "bel" },
+	[TTYC_BIDI] = { TTYCODE_STRING, "Bidi" },
 	[TTYC_BLINK] = { TTYCODE_STRING, "blink" },
 	[TTYC_BOLD] = { TTYCODE_STRING, "bold" },
 	[TTYC_CIVIS] = { TTYCODE_STRING, "civis" },

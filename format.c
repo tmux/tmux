@@ -100,6 +100,8 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 #define FORMAT_LENGTH 0x800
 #define FORMAT_WIDTH 0x1000
 #define FORMAT_QUOTE_STYLE 0x2000
+#define FORMAT_WINDOW_NAME 0x4000
+#define FORMAT_SESSION_NAME 0x8000
 
 /* Limit on recursion. */
 #define FORMAT_LOOP_LIMIT 10
@@ -1733,7 +1735,7 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 		}
 
 		/* Now try single character with arguments. */
-		if (strchr("mCst=peq", cp[0]) == NULL)
+		if (strchr("mCNst=peq", cp[0]) == NULL)
 			break;
 		c = cp[0];
 
@@ -1857,6 +1859,24 @@ format_search(struct format_modifier *fm, struct window_pane *wp, const char *s)
 	return (value);
 }
 
+/* Does session name exist? */
+static char *
+format_session_name(struct format_expand_state *es, const char *fmt)
+{
+	char		*name;
+	struct session	*s;
+
+	name = format_expand1(es, fmt);
+	RB_FOREACH(s, sessions, &sessions) {
+		if (strcmp(s->name, name) == 0) {
+			free(name);
+			return (xstrdup("1"));
+		}
+	}
+	free(name);
+	return (xstrdup("0"));
+}
+
 /* Loop over sessions. */
 static char *
 format_loop_sessions(struct format_expand_state *es, const char *fmt)
@@ -1890,6 +1910,30 @@ format_loop_sessions(struct format_expand_state *es, const char *fmt)
 	}
 
 	return (value);
+}
+
+/* Does window name exist? */
+static char *
+format_window_name(struct format_expand_state *es, const char *fmt)
+{
+	struct format_tree	*ft = es->ft;
+	char			*name;
+	struct winlink		*wl;
+
+	if (ft->s == NULL) {
+		format_log(es, "window name but no session");
+		return (NULL);
+	}
+
+	name = format_expand1(es, fmt);
+	RB_FOREACH(wl, winlinks, &ft->s->windows) {
+		if (strcmp(wl->window->name, name) == 0) {
+			free(name);
+			return (xstrdup("1"));
+		}
+	}
+	free(name);
+	return (xstrdup("0"));
 }
 
 /* Loop over windows. */
@@ -2251,6 +2295,13 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 			case 'T':
 				modifiers |= FORMAT_EXPANDTIME;
 				break;
+			case 'N':
+				if (fm->argc < 1 ||
+				    strchr(fm->argv[0], 'w') != NULL)
+					modifiers |= FORMAT_WINDOW_NAME;
+				else if (strchr(fm->argv[0], 's') != NULL)
+					modifiers |= FORMAT_SESSION_NAME;
+				break;
 			case 'S':
 				modifiers |= FORMAT_SESSIONS;
 				break;
@@ -2289,6 +2340,14 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 			goto fail;
 	} else if (modifiers & FORMAT_PANES) {
 		value = format_loop_panes(es, copy);
+		if (value == NULL)
+			goto fail;
+	} else if (modifiers & FORMAT_WINDOW_NAME) {
+		value = format_window_name(es, copy);
+		if (value == NULL)
+			goto fail;
+	} else if (modifiers & FORMAT_SESSION_NAME) {
+		value = format_session_name(es, copy);
 		if (value == NULL)
 			goto fail;
 	} else if (search != NULL) {

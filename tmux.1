@@ -2348,7 +2348,7 @@ the
 .Ic base-index
 option.
 .It Xo Ic new-window
-.Op Fl abdkP
+.Op Fl abdkPS
 .Op Fl c Ar start-directory
 .Op Fl e Ar environment
 .Op Fl F Ar format
@@ -2377,6 +2377,14 @@ represents the window to be created; if the target already exists an error is
 shown, unless the
 .Fl k
 flag is used, in which case it is destroyed.
+If
+.Fl S
+is given and a window named
+.Ar window-name
+already exists, it is selected (unless
+.Fl d
+is also given in which case the command does nothing).
+.Pp
 .Ar shell-command
 is the command to execute.
 If
@@ -4688,6 +4696,17 @@ For example, to get a list of windows formatted like the status line:
 #{W:#{E:window-status-format} ,#{E:window-status-current-format} }
 .Ed
 .Pp
+.Ql N:\&
+checks if a window (without any suffix or with the
+.Ql w
+suffix) or a session (with the
+.Ql s
+suffix) name exists, for example
+.Ql `N/w:foo`
+is replaced with 1 if a window named
+.Ql foo
+exists.
+.Pp
 A prefix of the form
 .Ql s/foo/bar/:\&
 will substitute
@@ -5934,6 +5953,10 @@ option should be used.
 An existing extension that tells
 .Nm
 the terminal supports default colours.
+.It Em \&Bidi
+Tell
+.Nm
+that the terminal supports the VTE bidirectional text extensions.
 .It Em \&Cs , Cr
 Set the cursor colour.
 The first takes a single string argument and is used to set the colour;

@@ -38,8 +38,8 @@ const struct cmd_entry cmd_new_window_entry = {
 	.name = "new-window",
 	.alias = "neww",
 
-	.args = { "abc:de:F:kn:Pt:", 0, -1 },
-	.usage = "[-abdkP] [-c start-directory] [-e environment] [-F format] "
+	.args = { "abc:de:F:kn:PSt:", 0, -1 },
+	.usage = "[-abdkPS] [-c start-directory] [-e environment] [-F format] "
 		 "[-n window-name] " CMD_TARGET_WINDOW_USAGE " [command]",
 
 	.target = { 't', CMD_FIND_WINDOW, CMD_FIND_WINDOW_INDEX },
@@ -52,6 +52,7 @@ static enum cmd_retval
 cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
+	struct client		*c = cmdq_get_client(item);
 	struct cmd_find_state	*current = cmdq_get_current(item);
 	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct spawn_context	 sc;
@@ -59,11 +60,40 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct session		*s = target->s;
 	struct winlink		*wl = target->wl;
 	int			 idx = target->idx, before;
-	struct winlink		*new_wl;
+	struct winlink		*new_wl = NULL;
 	char			*cause = NULL, *cp;
-	const char		*template, *add;
+	const char		*template, *add, *name;
 	struct cmd_find_state	 fs;
 	struct args_value	*value;
+
+	/*
+	 * If -S and -n are given and -t is not and a single window with this
+	 * name already exists, select it.
+	 */
+	name = args_get(args, 'n');
+	if (args_has(args, 'S') && name != NULL && target->idx == -1) {
+		RB_FOREACH(wl, winlinks, &s->windows) {
+			if (strcmp(wl->window->name, name) != 0)
+				continue;
+			if (new_wl == NULL) {
+				new_wl = wl;
+				continue;
+			}
+			cmdq_error(item, "multiple windows named %s", name);
+			return (CMD_RETURN_ERROR);
+		}
+		if (new_wl != NULL) {
+			if (args_has(args, 'd'))
+				return (CMD_RETURN_NORMAL);
+			if (session_set_current(s, new_wl) == 0)
+				server_redraw_session(s);
+			if (c != NULL && c->session != NULL)
+				s->curw->window->latest = c;
+			recalculate_sizes();
+			return (CMD_RETURN_NORMAL);
+		}
+	}
+
 
 	before = args_has(args, 'b');
 	if (args_has(args, 'a') || before) {

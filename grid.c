@@ -1048,14 +1048,14 @@ grid_duplicate_lines(struct grid *dst, u_int dy, struct grid *src, u_int sy,
 			    srcl->cellsize * sizeof *dstl->celldata);
 		} else
 			dstl->celldata = NULL;
-
 		if (srcl->extdsize != 0) {
 			dstl->extdsize = srcl->extdsize;
 			dstl->extddata = xreallocarray(NULL, dstl->extdsize,
 			    sizeof *dstl->extddata);
 			memcpy(dstl->extddata, srcl->extddata, dstl->extdsize *
 			    sizeof *dstl->extddata);
-		}
+		} else
+			dstl->extddata = NULL;
 
 		sy++;
 		dy++;
