@@ -2455,6 +2455,8 @@ server_client_get_flags(struct client *c)
 	*s = '\0';
 	if (c->flags & CLIENT_ATTACHED)
 		strlcat(s, "attached,", sizeof s);
+	if (c->flags & CLIENT_FOCUSED)
+		strlcat(s, "focused,", sizeof s);
 	if (c->flags & CLIENT_CONTROL)
 		strlcat(s, "control-mode,", sizeof s);
 	if (c->flags & CLIENT_IGNORESIZE)
