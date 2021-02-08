@@ -93,7 +93,7 @@ static void    *window_copy_get_selection(struct window_mode_entry *, size_t *);
 static void	window_copy_copy_buffer(struct window_mode_entry *,
 		    const char *, void *, size_t);
 static void	window_copy_pipe(struct window_mode_entry *,
-		    struct session *, const char *, const char *);
+		    struct session *, const char *);
 static void	window_copy_copy_pipe(struct window_mode_entry *,
 		    struct session *, const char *, const char *);
 static void	window_copy_copy_selection(struct window_mode_entry *,
@@ -1885,17 +1885,12 @@ window_copy_cmd_pipe_no_clear(struct window_copy_cmd_state *cs)
 	struct winlink			*wl = cs->wl;
 	struct window_pane		*wp = wme->wp;
 	char				*command = NULL;
-	char				*prefix = NULL;
-
-	if (cs->args->argc == 3)
-		prefix = format_single(NULL, cs->args->argv[2], c, s, wl, wp);
 
 	if (s != NULL && cs->args->argc > 1 && *cs->args->argv[1] != '\0')
 		command = format_single(NULL, cs->args->argv[1], c, s, wl, wp);
-	window_copy_pipe(wme, s, prefix, command);
+	window_copy_pipe(wme, s, command);
 	free(command);
 
-	free(prefix);
 	return (WINDOW_COPY_CMD_NOTHING);
 }
 
@@ -2312,11 +2307,11 @@ static const struct {
 	  window_copy_cmd_page_down_and_cancel },
 	{ "page-up", 0, 0, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  window_copy_cmd_page_up },
-	{ "pipe-no-clear", 0, 2, WINDOW_COPY_CMD_CLEAR_NEVER,
+	{ "pipe-no-clear", 0, 1, WINDOW_COPY_CMD_CLEAR_NEVER,
 	  window_copy_cmd_pipe_no_clear },
-	{ "pipe", 0, 2, WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	{ "pipe", 0, 1, WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  window_copy_cmd_pipe },
-	{ "pipe-and-cancel", 0, 2, WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	{ "pipe-and-cancel", 0, 1, WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  window_copy_cmd_pipe_and_cancel },
 	{ "previous-matching-bracket", 0, 0, WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  window_copy_cmd_previous_matching_bracket },
@@ -3893,7 +3888,7 @@ window_copy_copy_buffer(struct window_mode_entry *wme, const char *prefix,
 
 static void *
 window_copy_pipe_run(struct window_mode_entry *wme, struct session *s,
-    const char *prefix, const char *cmd, size_t *len)
+    const char *cmd, size_t *len)
 {
 	void		*buf;
 	struct job	*job;
@@ -3911,11 +3906,11 @@ window_copy_pipe_run(struct window_mode_entry *wme, struct session *s,
 
 static void
 window_copy_pipe(struct window_mode_entry *wme, struct session *s,
-    const char *prefix, const char *cmd)
+    const char *cmd)
 {
 	size_t		 len;
 
-	window_copy_pipe_run(wme, s, prefix, cmd, &len);
+	window_copy_pipe_run(wme, s, cmd, &len);
 }
 
 static void
@@ -3925,7 +3920,7 @@ window_copy_copy_pipe(struct window_mode_entry *wme, struct session *s,
 	void		*buf;
 	size_t		 len;
 
-	buf = window_copy_pipe_run(wme, s, prefix, cmd, &len);
+	buf = window_copy_pipe_run(wme, s, cmd, &len);
 	if (buf != NULL)
 		window_copy_copy_buffer(wme, prefix, buf, len);
 }
