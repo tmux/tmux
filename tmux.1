@@ -1653,6 +1653,9 @@ The following commands are supported in copy mode:
 .It Li "page-down" Ta "C-f" Ta "PageDown"
 .It Li "page-down-and-cancel" Ta "" Ta ""
 .It Li "page-up" Ta "C-b" Ta "PageUp"
+.It Li "pipe [<command>] [<prefix>]" Ta "" Ta ""
+.It Li "pipe-no-clear [<command>] [<prefix>]" Ta "" Ta ""
+.It Li "pipe-and-cancel [<command>] [<prefix>]" Ta "" Ta ""
 .It Li "previous-matching-bracket" Ta "" Ta "M-C-b"
 .It Li "previous-paragraph" Ta "{" Ta "M-{"
 .It Li "previous-space" Ta "B" Ta ""
@@ -1708,7 +1711,9 @@ so buffers are named
 .Ql buffer1
 and so on).
 Pipe commands take a command argument which is the command to which the
-copied text is piped.
+selected text is piped.
+.Ql copy-pipe
+variants also copy the selection.
 The
 .Ql -and-cancel
 variants of some commands exit copy mode after they have completed (for copy
