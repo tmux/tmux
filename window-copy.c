@@ -92,6 +92,8 @@ static void	window_copy_synchronize_cursor(struct window_mode_entry *, int);
 static void    *window_copy_get_selection(struct window_mode_entry *, size_t *);
 static void	window_copy_copy_buffer(struct window_mode_entry *,
 		    const char *, void *, size_t);
+static void	window_copy_pipe(struct window_mode_entry *,
+		    struct session *, const char *);
 static void	window_copy_copy_pipe(struct window_mode_entry *,
 		    struct session *, const char *, const char *);
 static void	window_copy_copy_selection(struct window_mode_entry *,
@@ -1875,6 +1877,44 @@ window_copy_cmd_copy_pipe_and_cancel(struct window_copy_cmd_state *cs)
 }
 
 static enum window_copy_cmd_action
+window_copy_cmd_pipe_no_clear(struct window_copy_cmd_state *cs)
+{
+	struct window_mode_entry	*wme = cs->wme;
+	struct client			*c = cs->c;
+	struct session			*s = cs->s;
+	struct winlink			*wl = cs->wl;
+	struct window_pane		*wp = wme->wp;
+	char				*command = NULL;
+
+	if (s != NULL && cs->args->argc > 1 && *cs->args->argv[1] != '\0')
+		command = format_single(NULL, cs->args->argv[1], c, s, wl, wp);
+	window_copy_pipe(wme, s, command);
+	free(command);
+
+	return (WINDOW_COPY_CMD_NOTHING);
+}
+
+static enum window_copy_cmd_action
+window_copy_cmd_pipe(struct window_copy_cmd_state *cs)
+{
+	struct window_mode_entry	*wme = cs->wme;
+
+	window_copy_cmd_pipe_no_clear(cs);
+	window_copy_clear_selection(wme);
+	return (WINDOW_COPY_CMD_REDRAW);
+}
+
+static enum window_copy_cmd_action
+window_copy_cmd_pipe_and_cancel(struct window_copy_cmd_state *cs)
+{
+	struct window_mode_entry	*wme = cs->wme;
+
+	window_copy_cmd_pipe_no_clear(cs);
+	window_copy_clear_selection(wme);
+	return (WINDOW_COPY_CMD_CANCEL);
+}
+
+static enum window_copy_cmd_action
 window_copy_cmd_goto_line(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
@@ -2267,6 +2307,12 @@ static const struct {
 	  window_copy_cmd_page_down_and_cancel },
 	{ "page-up", 0, 0, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  window_copy_cmd_page_up },
+	{ "pipe-no-clear", 0, 1, WINDOW_COPY_CMD_CLEAR_NEVER,
+	  window_copy_cmd_pipe_no_clear },
+	{ "pipe", 0, 1, WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  window_copy_cmd_pipe },
+	{ "pipe-and-cancel", 0, 1, WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  window_copy_cmd_pipe_and_cancel },
 	{ "previous-matching-bracket", 0, 0, WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  window_copy_cmd_previous_matching_bracket },
 	{ "previous-paragraph", 0, 0, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
@@ -3840,22 +3886,41 @@ window_copy_copy_buffer(struct window_mode_entry *wme, const char *prefix,
 	paste_add(prefix, buf, len);
 }
 
-static void
-window_copy_copy_pipe(struct window_mode_entry *wme, struct session *s,
-    const char *prefix, const char *cmd)
+static void *
+window_copy_pipe_run(struct window_mode_entry *wme, struct session *s,
+    const char *cmd, size_t *len)
 {
 	void		*buf;
-	size_t		 len;
 	struct job	*job;
 
-	buf = window_copy_get_selection(wme, &len);
+	buf = window_copy_get_selection(wme, len);
 	if (cmd == NULL || *cmd == '\0')
 		cmd = options_get_string(global_options, "copy-command");
 	if (cmd != NULL && *cmd != '\0') {
 		job = job_run(cmd, s, NULL, NULL, NULL, NULL, NULL, JOB_NOWAIT,
 		    -1, -1);
-		bufferevent_write(job_get_event(job), buf, len);
+		bufferevent_write(job_get_event(job), buf, *len);
 	}
+	return (buf);
+}
+
+static void
+window_copy_pipe(struct window_mode_entry *wme, struct session *s,
+    const char *cmd)
+{
+	size_t	len;
+
+	window_copy_pipe_run(wme, s, cmd, &len);
+}
+
+static void
+window_copy_copy_pipe(struct window_mode_entry *wme, struct session *s,
+    const char *prefix, const char *cmd)
+{
+	void	*buf;
+	size_t	 len;
+
+	buf = window_copy_pipe_run(wme, s, cmd, &len);
 	if (buf != NULL)
 		window_copy_copy_buffer(wme, prefix, buf, len);
 }
