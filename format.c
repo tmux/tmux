@@ -367,7 +367,10 @@ format_job_get(struct format_expand_state *es, const char *cmd)
 		RB_INSERT(format_job_tree, jobs, fj);
 	}
 
-	expanded = format_expand1(es, cmd);
+	format_copy_state(&next, es, FORMAT_EXPAND_NOJOBS);
+	next.flags &= ~FORMAT_EXPAND_TIME;
+
+	expanded = format_expand1(&next, cmd);
 	if (fj->expanded == NULL || strcmp(expanded, fj->expanded) != 0) {
 		free((void *)fj->expanded);
 		fj->expanded = xstrdup(expanded);
@@ -393,7 +396,6 @@ format_job_get(struct format_expand_state *es, const char *cmd)
 
 	if (ft->flags & FORMAT_STATUS)
 		fj->status = 1;
-	format_copy_state(&next, es, FORMAT_EXPAND_NOJOBS);
 	return (format_expand1(&next, fj->out));
 }
 
