@@ -872,12 +872,12 @@ arguments are
 commands.
 This may be a single argument passed to the shell, for example:
 .Bd -literal -offset indent
-new-window 'vi /etc/passwd'
+new-window 'vi ~/.tmux.conf'
 .Ed
 .Pp
 Will run:
 .Bd -literal -offset indent
-/bin/sh -c 'vi /etc/passwd'
+/bin/sh -c 'vi ~/.tmux.conf'
 .Ed
 .Pp
 Additionally, the
@@ -894,7 +894,7 @@ to be given as multiple arguments and executed directly (without
 This can avoid issues with shell quoting.
 For example:
 .Bd -literal -offset indent
-$ tmux new-window vi /etc/passwd
+$ tmux new-window vi ~/.tmux.conf
 .Ed
 .Pp
 Will run
@@ -940,7 +940,7 @@ $ tmux kill-window -t :1
 
 $ tmux new-window \e; split-window -d
 
-$ tmux new-session -d 'vi /etc/passwd' \e; split-window -d \e; attach
+$ tmux new-session -d 'vi ~/.tmux.conf' \e; split-window -d \e; attach
 .Ed
 .Sh CLIENTS AND SESSIONS
 The
