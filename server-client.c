@@ -51,12 +51,6 @@ static void	server_client_dispatch(struct imsg *, void *);
 static void	server_client_dispatch_command(struct client *, struct imsg *);
 static void	server_client_dispatch_identify(struct client *, struct imsg *);
 static void	server_client_dispatch_shell(struct client *);
-static void	server_client_dispatch_write_ready(struct client *,
-		    struct imsg *);
-static void	server_client_dispatch_read_data(struct client *,
-		    struct imsg *);
-static void	server_client_dispatch_read_done(struct client *,
-		    struct imsg *);
 
 /* Compare client windows. */
 static int
@@ -2070,13 +2064,13 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 		server_client_dispatch_shell(c);
 		break;
 	case MSG_WRITE_READY:
-		server_client_dispatch_write_ready(c, imsg);
+		file_write_ready(&c->files, imsg);
 		break;
 	case MSG_READ:
-		server_client_dispatch_read_data(c, imsg);
+		file_read_data(&c->files, imsg);
 		break;
 	case MSG_READ_DONE:
-		server_client_dispatch_read_done(c, imsg);
+		file_read_done(&c->files, imsg);
 		break;
 	}
 }
@@ -2300,71 +2294,6 @@ server_client_dispatch_shell(struct client *c)
 	proc_send(c->peer, MSG_SHELL, -1, shell, strlen(shell) + 1);
 
 	proc_kill_peer(c->peer);
-}
-
-/* Handle write ready message. */
-static void
-server_client_dispatch_write_ready(struct client *c, struct imsg *imsg)
-{
-	struct msg_write_ready	*msg = imsg->data;
-	size_t			 msglen = imsg->hdr.len - IMSG_HEADER_SIZE;
-	struct client_file	 find, *cf;
-
-	if (msglen != sizeof *msg)
-		fatalx("bad MSG_WRITE_READY size");
-	find.stream = msg->stream;
-	if ((cf = RB_FIND(client_files, &c->files, &find)) == NULL)
-		return;
-	if (msg->error != 0) {
-		cf->error = msg->error;
-		file_fire_done(cf);
-	} else
-		file_push(cf);
-}
-
-/* Handle read data message. */
-static void
-server_client_dispatch_read_data(struct client *c, struct imsg *imsg)
-{
-	struct msg_read_data	*msg = imsg->data;
-	size_t			 msglen = imsg->hdr.len - IMSG_HEADER_SIZE;
-	struct client_file	 find, *cf;
-	void			*bdata = msg + 1;
-	size_t			 bsize = msglen - sizeof *msg;
-
-	if (msglen < sizeof *msg)
-		fatalx("bad MSG_READ_DATA size");
-	find.stream = msg->stream;
-	if ((cf = RB_FIND(client_files, &c->files, &find)) == NULL)
-		return;
-
-	log_debug("%s: file %d read %zu bytes", c->name, cf->stream, bsize);
-	if (cf->error == 0) {
-		if (evbuffer_add(cf->buffer, bdata, bsize) != 0) {
-			cf->error = ENOMEM;
-			file_fire_done(cf);
-		} else
-			file_fire_read(cf);
-	}
-}
-
-/* Handle read done message. */
-static void
-server_client_dispatch_read_done(struct client *c, struct imsg *imsg)
-{
-	struct msg_read_done	*msg = imsg->data;
-	size_t			 msglen = imsg->hdr.len - IMSG_HEADER_SIZE;
-	struct client_file	 find, *cf;
-
-	if (msglen != sizeof *msg)
-		fatalx("bad MSG_READ_DONE size");
-	find.stream = msg->stream;
-	if ((cf = RB_FIND(client_files, &c->files, &find)) == NULL)
-		return;
-
-	log_debug("%s: file %d read done", c->name, cf->stream);
-	cf->error = msg->error;
-	file_fire_done(cf);
 }
 
 /* Get client working directory. */

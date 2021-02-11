@@ -477,257 +477,6 @@ client_send_identify(const char *ttynam, const char *cwd, int feat)
 	proc_send(client_peer, MSG_IDENTIFY_DONE, -1, NULL, 0);
 }
 
-/* File write error callback. */
-static void
-client_write_error_callback(__unused struct bufferevent *bev,
-    __unused short what, void *arg)
-{
-	struct client_file	*cf = arg;
-
-	log_debug("write error file %d", cf->stream);
-
-	bufferevent_free(cf->event);
-	cf->event = NULL;
-
-	close(cf->fd);
-	cf->fd = -1;
-
-	if (client_exitflag)
-		client_exit();
-}
-
-/* File write callback. */
-static void
-client_write_callback(__unused struct bufferevent *bev, void *arg)
-{
-	struct client_file	*cf = arg;
-
-	if (cf->closed && EVBUFFER_LENGTH(cf->event->output) == 0) {
-		bufferevent_free(cf->event);
-		close(cf->fd);
-		RB_REMOVE(client_files, &client_files, cf);
-		file_free(cf);
-	}
-
-	if (client_exitflag)
-		client_exit();
-}
-
-/* Open write file. */
-static void
-client_write_open(void *data, size_t datalen)
-{
-	struct msg_write_open	*msg = data;
-	const char		*path;
-	struct msg_write_ready	 reply;
-	struct client_file	 find, *cf;
-	const int		 flags = O_NONBLOCK|O_WRONLY|O_CREAT;
-	int			 error = 0;
-
-	if (datalen < sizeof *msg)
-		fatalx("bad MSG_WRITE_OPEN size");
-	if (datalen == sizeof *msg)
-		path = "-";
-	else
-		path = (const char *)(msg + 1);
-	log_debug("open write file %d %s", msg->stream, path);
-
-	find.stream = msg->stream;
-	if ((cf = RB_FIND(client_files, &client_files, &find)) == NULL) {
-		cf = file_create(NULL, msg->stream, NULL, NULL);
-		RB_INSERT(client_files, &client_files, cf);
-	} else {
-		error = EBADF;
-		goto reply;
-	}
-	if (cf->closed) {
-		error = EBADF;
-		goto reply;
-	}
-
-	cf->fd = -1;
-	if (msg->fd == -1)
-		cf->fd = open(path, msg->flags|flags, 0644);
-	else {
-		if (msg->fd != STDOUT_FILENO && msg->fd != STDERR_FILENO)
-			errno = EBADF;
-		else {
-			cf->fd = dup(msg->fd);
-			if (~client_flags & CLIENT_CONTROL)
-				close(msg->fd); /* can only be used once */
-		}
-	}
-	if (cf->fd == -1) {
-		error = errno;
-		goto reply;
-	}
-
-	cf->event = bufferevent_new(cf->fd, NULL, client_write_callback,
-	    client_write_error_callback, cf);
-	bufferevent_enable(cf->event, EV_WRITE);
-	goto reply;
-
-reply:
-	reply.stream = msg->stream;
-	reply.error = error;
-	proc_send(client_peer, MSG_WRITE_READY, -1, &reply, sizeof reply);
-}
-
-/* Write to client file. */
-static void
-client_write_data(void *data, size_t datalen)
-{
-	struct msg_write_data	*msg = data;
-	struct client_file	 find, *cf;
-	size_t			 size = datalen - sizeof *msg;
-
-	if (datalen < sizeof *msg)
-		fatalx("bad MSG_WRITE size");
-	find.stream = msg->stream;
-	if ((cf = RB_FIND(client_files, &client_files, &find)) == NULL)
-		fatalx("unknown stream number");
-	log_debug("write %zu to file %d", size, cf->stream);
-
-	if (cf->event != NULL)
-		bufferevent_write(cf->event, msg + 1, size);
-}
-
-/* Close client file. */
-static void
-client_write_close(void *data, size_t datalen)
-{
-	struct msg_write_close	*msg = data;
-	struct client_file	 find, *cf;
-
-	if (datalen != sizeof *msg)
-		fatalx("bad MSG_WRITE_CLOSE size");
-	find.stream = msg->stream;
-	if ((cf = RB_FIND(client_files, &client_files, &find)) == NULL)
-		fatalx("unknown stream number");
-	log_debug("close file %d", cf->stream);
-
-	if (cf->event == NULL || EVBUFFER_LENGTH(cf->event->output) == 0) {
-		if (cf->event != NULL)
-			bufferevent_free(cf->event);
-		if (cf->fd != -1)
-			close(cf->fd);
-		RB_REMOVE(client_files, &client_files, cf);
-		file_free(cf);
-	}
-}
-
-/* File read callback. */
-static void
-client_read_callback(__unused struct bufferevent *bev, void *arg)
-{
-	struct client_file	*cf = arg;
-	void			*bdata;
-	size_t			 bsize;
-	struct msg_read_data	*msg;
-	size_t			 msglen;
-
-	msg = xmalloc(sizeof *msg);
-	for (;;) {
-		bdata = EVBUFFER_DATA(cf->event->input);
-		bsize = EVBUFFER_LENGTH(cf->event->input);
-
-		if (bsize == 0)
-			break;
-		if (bsize > MAX_IMSGSIZE - IMSG_HEADER_SIZE - sizeof *msg)
-			bsize = MAX_IMSGSIZE - IMSG_HEADER_SIZE - sizeof *msg;
-		log_debug("read %zu from file %d", bsize, cf->stream);
-
-		msglen = (sizeof *msg) + bsize;
-		msg = xrealloc(msg, msglen);
-		msg->stream = cf->stream;
-		memcpy(msg + 1, bdata, bsize);
-		proc_send(client_peer, MSG_READ, -1, msg, msglen);
-
-		evbuffer_drain(cf->event->input, bsize);
-	}
-	free(msg);
-}
-
-/* File read error callback. */
-static void
-client_read_error_callback(__unused struct bufferevent *bev,
-    __unused short what, void *arg)
-{
-	struct client_file	*cf = arg;
-	struct msg_read_done	 msg;
-
-	log_debug("read error file %d", cf->stream);
-
-	msg.stream = cf->stream;
-	msg.error = 0;
-	proc_send(client_peer, MSG_READ_DONE, -1, &msg, sizeof msg);
-
-	bufferevent_free(cf->event);
-	close(cf->fd);
-	RB_REMOVE(client_files, &client_files, cf);
-	file_free(cf);
-}
-
-/* Open read file. */
-static void
-client_read_open(void *data, size_t datalen)
-{
-	struct msg_read_open	*msg = data;
-	const char		*path;
-	struct msg_read_done	 reply;
-	struct client_file	 find, *cf;
-	const int		 flags = O_NONBLOCK|O_RDONLY;
-	int			 error;
-
-	if (datalen < sizeof *msg)
-		fatalx("bad MSG_READ_OPEN size");
-	if (datalen == sizeof *msg)
-		path = "-";
-	else
-		path = (const char *)(msg + 1);
-	log_debug("open read file %d %s", msg->stream, path);
-
-	find.stream = msg->stream;
-	if ((cf = RB_FIND(client_files, &client_files, &find)) == NULL) {
-		cf = file_create(NULL, msg->stream, NULL, NULL);
-		RB_INSERT(client_files, &client_files, cf);
-	} else {
-		error = EBADF;
-		goto reply;
-	}
-	if (cf->closed) {
-		error = EBADF;
-		goto reply;
-	}
-
-	cf->fd = -1;
-	if (msg->fd == -1)
-		cf->fd = open(path, flags);
-	else {
-		if (msg->fd != STDIN_FILENO)
-			errno = EBADF;
-		else {
-			cf->fd = dup(msg->fd);
-			if (~client_flags & CLIENT_CONTROL)
-				close(msg->fd); /* can only be used once */
-		}
-	}
-	if (cf->fd == -1) {
-		error = errno;
-		goto reply;
-	}
-
-	cf->event = bufferevent_new(cf->fd, client_read_callback, NULL,
-	    client_read_error_callback, cf);
-	bufferevent_enable(cf->event, EV_READ);
-	return;
-
-reply:
-	reply.stream = msg->stream;
-	reply.error = error;
-	proc_send(client_peer, MSG_READ_DONE, -1, &reply, sizeof reply);
-}
-
 /* Run command in shell; used for -c. */
 static __dead void
 client_exec(const char *shell, const char *shellcmd)
@@ -800,6 +549,16 @@ client_signal(int sig)
 			break;
 		}
 	}
+}
+
+/* Callback for file write error or close. */
+static void
+client_file_check_cb(__unused struct client *c, __unused const char *path,
+    __unused int error, __unused int closed, __unused struct evbuffer *buffer,
+    __unused void *data)
+{
+	if (client_exitflag)
+		client_exit();
 }
 
 /* Callback for client read events. */
@@ -916,16 +675,20 @@ client_dispatch_wait(struct imsg *imsg)
 		proc_exit(client_proc);
 		break;
 	case MSG_READ_OPEN:
-		client_read_open(data, datalen);
+		file_read_open(&client_files, client_peer, imsg, 1,
+		    !(client_flags & CLIENT_CONTROL), client_file_check_cb,
+		    NULL);
 		break;
 	case MSG_WRITE_OPEN:
-		client_write_open(data, datalen);
+		file_write_open(&client_files, client_peer, imsg, 1,
+		    !(client_flags & CLIENT_CONTROL), client_file_check_cb,
+		    NULL);
 		break;
 	case MSG_WRITE:
-		client_write_data(data, datalen);
+		file_write_data(&client_files, imsg);
 		break;
 	case MSG_WRITE_CLOSE:
-		client_write_close(data, datalen);
+		file_write_close(&client_files, imsg);
 		break;
 	case MSG_OLDSTDERR:
 	case MSG_OLDSTDIN:
