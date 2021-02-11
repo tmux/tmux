@@ -223,20 +223,7 @@ client_exit_message(void)
 static void
 client_exit(void)
 {
-	struct client_file	*cf;
-	size_t			 left;
-	int			 waiting = 0;
-
-	RB_FOREACH (cf, client_files, &client_files) {
-		if (cf->event == NULL)
-			continue;
-		left = EVBUFFER_LENGTH(cf->event->output);
-		if (left != 0) {
-			waiting++;
-			log_debug("file %u %zu bytes left", cf->stream, left);
-		}
-	}
-	if (waiting == 0)
+	if (!file_write_left(&client_files))
 		proc_exit(client_proc);
 }
 

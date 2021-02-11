@@ -1899,6 +1899,7 @@ struct tmuxpeer *proc_add_peer(struct tmuxproc *, int,
 void	proc_remove_peer(struct tmuxpeer *);
 void	proc_kill_peer(struct tmuxpeer *);
 void	proc_toggle_log(struct tmuxproc *);
+pid_t	proc_fork_and_daemon(int *);
 
 /* cfg.c */
 extern int cfg_finished;
@@ -2389,6 +2390,7 @@ void	 file_write(struct client *, const char *, int, const void *, size_t,
 	     client_file_cb, void *);
 void	 file_read(struct client *, const char *, client_file_cb, void *);
 void	 file_push(struct client_file *);
+int	 file_write_left(struct client_files *);
 void	 file_write_open(struct client_files *, struct tmuxpeer *,
 	     struct imsg *, int, int, client_file_cb, void *);
 void	 file_write_data(struct client_files *, struct imsg *);

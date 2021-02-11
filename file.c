@@ -477,6 +477,26 @@ file_push(struct client_file *cf)
 	free(msg);
 }
 
+/* Check if any files have data left to write. */
+int
+file_write_left(struct client_files *files)
+{
+	struct client_file	*cf;
+	size_t			 left;
+	int			 waiting = 0;
+
+	RB_FOREACH (cf, client_files, files) {
+		if (cf->event == NULL)
+			continue;
+		left = EVBUFFER_LENGTH(cf->event->output);
+		if (left != 0) {
+			waiting++;
+			log_debug("file %u %zu bytes left", cf->stream, left);
+		}
+	}
+	return (waiting != 0);
+}
+
 /* Client file write error callback. */
 static void
 file_write_error_callback(__unused struct bufferevent *bev, __unused short what,
