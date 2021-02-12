@@ -485,7 +485,7 @@ file_write_left(struct client_files *files)
 	size_t			 left;
 	int			 waiting = 0;
 
-	RB_FOREACH (cf, client_files, files) {
+	RB_FOREACH(cf, client_files, files) {
 		if (cf->event == NULL)
 			continue;
 		left = EVBUFFER_LENGTH(cf->event->output);
