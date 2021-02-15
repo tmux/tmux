@@ -2526,6 +2526,7 @@ const char *colour_tostring(int);
 int	 colour_fromstring(const char *s);
 int	 colour_256toRGB(int);
 int	 colour_256to16(int);
+int	 colour_byname(const char *);
 
 /* attributes.c */
 const char *attributes_tostring(int);

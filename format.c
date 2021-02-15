@@ -878,6 +878,28 @@ format_cb_pane_tabs(struct format_tree *ft)
 	return (value);
 }
 
+/* Callback for pane_fg. */
+static char *
+format_cb_pane_fg(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+	struct grid_cell	 gc;
+
+	tty_default_colours(&gc, wp);
+	return (xstrdup(colour_tostring(gc.fg)));
+}
+
+/* Callback for pane_bg. */
+static char *
+format_cb_pane_bg(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+	struct grid_cell	 gc;
+
+	tty_default_colours(&gc, wp);
+	return (xstrdup(colour_tostring(gc.bg)));
+}
+
 /* Callback for session_group_list. */
 static char *
 format_cb_session_group_list(struct format_tree *ft)
@@ -3195,6 +3217,8 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 	    !!(wp->base.mode & MODE_MOUSE_SGR));
 
 	format_add_cb(ft, "pane_tabs", format_cb_pane_tabs);
+	format_add_cb(ft, "pane_fg", format_cb_pane_fg);
+	format_add_cb(ft, "pane_bg", format_cb_pane_bg);
 }
 
 /* Set default format keys for paste buffer. */
