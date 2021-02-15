@@ -301,3 +301,62 @@ grid_reader_cursor_previous_word(struct grid_reader *gr, const char *separators,
 	gr->cx = oldx;
 	gr->cy = oldy;
 }
+
+/* Jump forward to character. */
+int
+grid_reader_cursor_jump(struct grid_reader *gr, char jc)
+{
+	struct grid_cell	gc;
+	u_int			px, py, xx, yy;
+
+	px = gr->cx;
+	yy = gr->gd->hsize + gr->gd->sy - 1;
+
+	for (py = gr->cy; py <= yy; py++) {
+		xx = grid_line_length(gr->gd, py);
+		while (px < xx) {
+			grid_get_cell(gr->gd, px, py, &gc);
+			if (!(gc.flags & GRID_FLAG_PADDING) &&
+			    gc.data.size == 1 &&
+			    *gc.data.data == jc) {
+				gr->cx = px;
+				gr->cy = py;
+				return 1;
+			}
+			px++;
+		}
+
+		if (py == yy ||
+		    !(grid_get_line(gr->gd, py)->flags & GRID_LINE_WRAPPED))
+			return 0;
+		px = 0;
+	}
+}
+
+/* Jump back to character. */
+int
+grid_reader_cursor_jump_back(struct grid_reader *gr, char jc)
+{
+	struct grid_cell	gc;
+	u_int			px, py, xx;
+
+	xx = gr->cx + 1;
+
+	for (py = gr->cy + 1; py > 0; py--) {
+		for (px = xx; px > 0; px--) {
+			grid_get_cell(gr->gd, px - 1, py - 1, &gc);
+			if (!(gc.flags & GRID_FLAG_PADDING) &&
+			    gc.data.size == 1 &&
+			    *gc.data.data == jc) {
+				gr->cx = px - 1;
+				gr->cy = py - 1;
+				return 1;
+			}
+		}
+
+		if (py == 1 ||
+		    !(grid_get_line(gr->gd, py - 2)->flags & GRID_LINE_WRAPPED))
+			return 0;
+		xx = grid_line_length(gr->gd, py - 2);
+	}
+}

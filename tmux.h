@@ -2590,6 +2590,8 @@ void	 grid_reader_cursor_next_word(struct grid_reader *, const char *);
 void	 grid_reader_cursor_next_word_end(struct grid_reader *, const char *);
 void	 grid_reader_cursor_previous_word(struct grid_reader *, const char *,
 	     int);
+int	 grid_reader_cursor_jump(struct grid_reader *, char);
+int	 grid_reader_cursor_jump_back(struct grid_reader *, char);
 
 /* grid-view.c */
 void	 grid_view_get_cell(struct grid *, u_int, u_int, struct grid_cell *);
