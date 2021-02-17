@@ -501,6 +501,7 @@ enum msgtype {
 	MSG_IDENTIFY_FEATURES,
 	MSG_IDENTIFY_STDOUT,
 	MSG_IDENTIFY_LONGFLAGS,
+	MSG_IDENTIFY_TERMINFO,
 
 	MSG_COMMAND = 200,
 	MSG_DETACH,
@@ -1604,6 +1605,8 @@ struct client {
 	char		*term_name;
 	int		 term_features;
 	char		*term_type;
+	char	       **term_caps;
+	u_int		 term_ncaps;
 
 	char		*ttyname;
 	struct tty	 tty;
@@ -2168,8 +2171,12 @@ extern struct tty_terms tty_terms;
 u_int		 tty_term_ncodes(void);
 void		 tty_term_apply(struct tty_term *, const char *, int);
 void		 tty_term_apply_overrides(struct tty_term *);
-struct tty_term *tty_term_create(struct tty *, char *, int *, int, char **);
+struct tty_term *tty_term_create(struct tty *, char *, char **, u_int, int *,
+		     char **);
 void		 tty_term_free(struct tty_term *);
+int		 tty_term_read_list(const char *, int, char ***, u_int *,
+		     char **);
+void		 tty_term_free_list(char **, u_int);
 int		 tty_term_has(struct tty_term *, enum tty_code_code);
 const char	*tty_term_string(struct tty_term *, enum tty_code_code);
 const char	*tty_term_string1(struct tty_term *, enum tty_code_code, int);

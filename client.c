@@ -61,7 +61,8 @@ static __dead void	 client_exec(const char *,const char *);
 static int		 client_get_lock(char *);
 static int		 client_connect(struct event_base *, const char *,
 			     uint64_t);
-static void		 client_send_identify(const char *, const char *, int);
+static void		 client_send_identify(const char *, const char *,
+			     char **, u_int, const char *, int);
 static void		 client_signal(int);
 static void		 client_dispatch(struct imsg *, void *);
 static void		 client_dispatch_attached(struct imsg *);
@@ -234,13 +235,14 @@ client_main(struct event_base *base, int argc, char **argv, uint64_t flags,
 	struct cmd_parse_result	*pr;
 	struct msg_command	*data;
 	int			 fd, i;
-	const char		*ttynam, *cwd;
+	const char		*ttynam, *termname, *cwd;
 	pid_t			 ppid;
 	enum msgtype		 msg;
 	struct termios		 tio, saved_tio;
 	size_t			 size, linesize = 0;
 	ssize_t			 linelen;
-	char			*line = NULL;
+	char			*line = NULL, **caps = NULL, *cause;
+	u_int			 ncaps = 0;
 
 	/* Ignore SIGCHLD now or daemon() in the server will leave a zombie. */
 	signal(SIGCHLD, SIG_IGN);
@@ -296,6 +298,8 @@ client_main(struct event_base *base, int argc, char **argv, uint64_t flags,
 		cwd = "/";
 	if ((ttynam = ttyname(STDIN_FILENO)) == NULL)
 		ttynam = "";
+	if ((termname = getenv("TERM")) == NULL)
+		termname = "";
 
 	/*
 	 * Drop privileges for client. "proc exec" is needed for -c and for
@@ -310,6 +314,16 @@ client_main(struct event_base *base, int argc, char **argv, uint64_t flags,
 	    "stdio rpath wpath cpath unix sendfd proc exec tty",
 	    NULL) != 0)
 		fatal("pledge failed");
+
+	/* Load terminfo entry if any. */
+	if (isatty(STDIN_FILENO) &&
+	    *termname != '\0' &&
+	    tty_term_read_list(termname, STDIN_FILENO, &caps, &ncaps,
+	    &cause) != 0) {
+		fprintf(stderr, "%s\n", cause);
+		free(cause);
+		return (1);
+	}
 
 	/* Free stuff that is not used in the client. */
 	if (ptm_fd != -1)
@@ -341,7 +355,8 @@ client_main(struct event_base *base, int argc, char **argv, uint64_t flags,
 	}
 
 	/* Send identify messages. */
-	client_send_identify(ttynam, cwd, feat);
+	client_send_identify(ttynam, termname, caps, ncaps, cwd, feat);
+	tty_term_free_list(caps, ncaps);
 
 	/* Send first command. */
 	if (msg == MSG_COMMAND) {
@@ -424,26 +439,31 @@ client_main(struct event_base *base, int argc, char **argv, uint64_t flags,
 
 /* Send identify messages to server. */
 static void
-client_send_identify(const char *ttynam, const char *cwd, int feat)
+client_send_identify(const char *ttynam, const char *termname, char **caps,
+    u_int ncaps, const char *cwd, int feat)
 {
-	const char	 *s;
-	char		**ss;
-	size_t		  sslen;
-	int		  fd, flags = client_flags;
-	pid_t		  pid;
+	char	**ss;
+	size_t	  sslen;
+	int	  fd, flags = client_flags;
+	pid_t	  pid;
+	u_int	  i;
 
 	proc_send(client_peer, MSG_IDENTIFY_FLAGS, -1, &flags, sizeof flags);
 	proc_send(client_peer, MSG_IDENTIFY_LONGFLAGS, -1, &client_flags,
 	    sizeof client_flags);
 
-	if ((s = getenv("TERM")) == NULL)
-		s = "";
-	proc_send(client_peer, MSG_IDENTIFY_TERM, -1, s, strlen(s) + 1);
+	proc_send(client_peer, MSG_IDENTIFY_TERM, -1, termname,
+	    strlen(termname) + 1);
 	proc_send(client_peer, MSG_IDENTIFY_FEATURES, -1, &feat, sizeof feat);
 
 	proc_send(client_peer, MSG_IDENTIFY_TTYNAME, -1, ttynam,
 	    strlen(ttynam) + 1);
 	proc_send(client_peer, MSG_IDENTIFY_CWD, -1, cwd, strlen(cwd) + 1);
+
+	for (i = 0; i < ncaps; i++) {
+		proc_send(client_peer, MSG_IDENTIFY_TERMINFO, -1,
+		    caps[i], strlen(caps[i]) + 1);
+	}
 
 	if ((fd = dup(STDIN_FILENO)) == -1)
 		fatal("dup failed");

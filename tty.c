@@ -249,8 +249,8 @@ tty_open(struct tty *tty, char **cause)
 {
 	struct client	*c = tty->client;
 
-	tty->term = tty_term_create(tty, c->term_name, &c->term_features,
-	    c->fd, cause);
+	tty->term = tty_term_create(tty, c->term_name, c->term_caps,
+	    c->term_ncaps, &c->term_features, cause);
 	if (tty->term == NULL) {
 		tty_close(tty);
 		return (-1);

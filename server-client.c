@@ -304,6 +304,7 @@ server_client_lost(struct client *c)
 
 	free(c->term_name);
 	free(c->term_type);
+	tty_term_free_list(c->term_caps, c->term_ncaps);
 
 	status_free(c);
 
@@ -1994,16 +1995,17 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 	datalen = imsg->hdr.len - IMSG_HEADER_SIZE;
 
 	switch (imsg->hdr.type) {
+	case MSG_IDENTIFY_CLIENTPID:
+	case MSG_IDENTIFY_CWD:
+	case MSG_IDENTIFY_ENVIRON:
 	case MSG_IDENTIFY_FEATURES:
 	case MSG_IDENTIFY_FLAGS:
 	case MSG_IDENTIFY_LONGFLAGS:
-	case MSG_IDENTIFY_TERM:
-	case MSG_IDENTIFY_TTYNAME:
-	case MSG_IDENTIFY_CWD:
 	case MSG_IDENTIFY_STDIN:
 	case MSG_IDENTIFY_STDOUT:
-	case MSG_IDENTIFY_ENVIRON:
-	case MSG_IDENTIFY_CLIENTPID:
+	case MSG_IDENTIFY_TERM:
+	case MSG_IDENTIFY_TERMINFO:
+	case MSG_IDENTIFY_TTYNAME:
 	case MSG_IDENTIFY_DONE:
 		server_client_dispatch_identify(c, imsg);
 		break;
@@ -2196,6 +2198,14 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 		else
 			c->term_name = xstrdup(data);
 		log_debug("client %p IDENTIFY_TERM %s", c, data);
+		break;
+	case MSG_IDENTIFY_TERMINFO:
+		if (datalen == 0 || data[datalen - 1] != '\0')
+			fatalx("bad MSG_IDENTIFY_TERMINFO string");
+		c->term_caps = xreallocarray(c->term_caps, c->term_ncaps + 1,
+		    sizeof *c->term_caps);
+		c->term_caps[c->term_ncaps++] = xstrdup(data);
+		log_debug("client %p IDENTIFY_TERMINFO %s", c, data);
 		break;
 	case MSG_IDENTIFY_TTYNAME:
 		if (datalen == 0 || data[datalen - 1] != '\0')
