@@ -17,6 +17,8 @@
  */
 
 #include <sys/types.h>
+#include <sys/queue.h>
+#include <sys/socket.h>
 #include <sys/uio.h>
 #include <sys/utsname.h>
 
@@ -46,6 +48,8 @@ struct tmuxproc {
 	struct event	  ev_sigusr1;
 	struct event	  ev_sigusr2;
 	struct event	  ev_sigwinch;
+
+	TAILQ_HEAD(, tmuxpeer) peers;
 };
 
 struct tmuxpeer {
@@ -59,6 +63,8 @@ struct tmuxpeer {
 
 	void		(*dispatchcb)(struct imsg *, void *);
 	void		 *arg;
+
+	TAILQ_ENTRY(tmuxpeer) entry;
 };
 
 static int	peer_check_version(struct tmuxpeer *, struct imsg *);
@@ -202,6 +208,7 @@ proc_start(const char *name)
 
 	tp = xcalloc(1, sizeof *tp);
 	tp->name = xstrdup(name);
+	TAILQ_INIT(&tp->peers);
 
 	return (tp);
 }
@@ -219,6 +226,10 @@ proc_loop(struct tmuxproc *tp, int (*loopcb)(void))
 void
 proc_exit(struct tmuxproc *tp)
 {
+	struct tmuxpeer	*peer;
+
+	TAILQ_FOREACH(peer, &tp->peers, entry)
+	    imsg_flush(&peer->ibuf);
 	tp->exit = 1;
 }
 
@@ -309,6 +320,7 @@ proc_add_peer(struct tmuxproc *tp, int fd,
 	event_set(&peer->event, fd, EV_READ, proc_event_cb, peer);
 
 	log_debug("add peer %p: %d (%p)", peer, fd, arg);
+	TAILQ_INSERT_TAIL(&tp->peers, peer, entry);
 
 	proc_update_event(peer);
 	return (peer);
@@ -317,6 +329,7 @@ proc_add_peer(struct tmuxproc *tp, int fd,
 void
 proc_remove_peer(struct tmuxpeer *peer)
 {
+	TAILQ_REMOVE(&peer->parent->peers, peer, entry);
 	log_debug("remove peer %p", peer);
 
 	event_del(&peer->event);
@@ -336,4 +349,28 @@ void
 proc_toggle_log(struct tmuxproc *tp)
 {
 	log_toggle(tp->name);
+}
+
+pid_t
+proc_fork_and_daemon(int *fd)
+{
+	pid_t	pid;
+	int	pair[2];
+
+	if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, pair) != 0)
+		fatal("socketpair failed");
+	switch (pid = fork()) {
+	case -1:
+		fatal("fork failed");
+	case 0:
+		close(pair[0]);
+		*fd = pair[1];
+		if (daemon(1, 0) != 0)
+			fatal("daemon failed");
+		return (0);
+	default:
+		close(pair[1]);
+		*fd = pair[0];
+		return (pid);
+	}
 }

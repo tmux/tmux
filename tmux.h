@@ -1540,6 +1540,8 @@ typedef void (*client_file_cb) (struct client *, const char *, int, int,
     struct evbuffer *, void *);
 struct client_file {
 	struct client			*c;
+	struct tmuxpeer			*peer;
+	struct client_files		*tree;
 	int				 references;
 	int				 stream;
 
@@ -1898,6 +1900,7 @@ struct tmuxpeer *proc_add_peer(struct tmuxproc *, int,
 void	proc_remove_peer(struct tmuxpeer *);
 void	proc_kill_peer(struct tmuxpeer *);
 void	proc_toggle_log(struct tmuxproc *);
+pid_t	proc_fork_and_daemon(int *);
 
 /* cfg.c */
 extern int cfg_finished;
@@ -1908,6 +1911,7 @@ int	load_cfg(const char *, struct client *, struct cmdq_item *, int,
 int	load_cfg_from_buffer(const void *, size_t, const char *,
 	    struct client *, struct cmdq_item *, int, struct cmdq_item **);
 void	set_cfg_file(const char *);
+const char *get_cfg_file(void);
 void printflike(1, 2) cfg_add_cause(const char *, ...);
 void	cfg_print_causes(struct cmdq_item *);
 void	cfg_show_causes(struct session *);
@@ -2371,7 +2375,10 @@ void	alerts_check_session(struct session *);
 /* file.c */
 int	 file_cmp(struct client_file *, struct client_file *);
 RB_PROTOTYPE(client_files, client_file, entry, file_cmp);
-struct client_file *file_create(struct client *, int, client_file_cb, void *);
+struct client_file *file_create_with_peer(struct tmuxpeer *,
+	    struct client_files *, int, client_file_cb, void *);
+struct client_file *file_create_with_client(struct client *, int,
+	    client_file_cb, void *);
 void	 file_free(struct client_file *);
 void	 file_fire_done(struct client_file *);
 void	 file_fire_read(struct client_file *);
@@ -2384,6 +2391,16 @@ void	 file_write(struct client *, const char *, int, const void *, size_t,
 	     client_file_cb, void *);
 void	 file_read(struct client *, const char *, client_file_cb, void *);
 void	 file_push(struct client_file *);
+int	 file_write_left(struct client_files *);
+void	 file_write_open(struct client_files *, struct tmuxpeer *,
+	     struct imsg *, int, int, client_file_cb, void *);
+void	 file_write_data(struct client_files *, struct imsg *);
+void	 file_write_close(struct client_files *, struct imsg *);
+void	 file_read_open(struct client_files *, struct tmuxpeer *, struct imsg *,
+	     int, int, client_file_cb, void *);
+void	 file_write_ready(struct client_files *, struct imsg *);
+void	 file_read_data(struct client_files *, struct imsg *);
+void	 file_read_done(struct client_files *, struct imsg *);
 
 /* server.c */
 extern struct tmuxproc *server_proc;
@@ -2510,6 +2527,7 @@ const char *colour_tostring(int);
 int	 colour_fromstring(const char *s);
 int	 colour_256toRGB(int);
 int	 colour_256to16(int);
+int	 colour_byname(const char *);
 
 /* attributes.c */
 const char *attributes_tostring(int);
