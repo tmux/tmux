@@ -2460,8 +2460,10 @@ input_osc_parse_colour(const char *p)
 		    (1 - m) * (1 - k) * 255,
 		    (1 - y) * (1 - k) * 255);
 	} else {
-		while (*p == ' ')
+		while (len != 0 && *p == ' ') {
 			p++;
+			len--;
+		}
 		while (len != 0 && p[len - 1] == ' ')
 			len--;
 		copy = xstrndup(p, len);
