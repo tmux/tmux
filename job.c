@@ -113,8 +113,11 @@ job_run(const char *cmd, struct session *s, const char *cwd,
 		sigprocmask(SIG_SETMASK, &oldset, NULL);
 
 		if (cwd == NULL || chdir(cwd) != 0) {
-			if ((home = find_home()) == NULL || chdir(home) != 0)
-				chdir("/");
+			if ((home = find_home()) == NULL || chdir(home) != 0) {
+				if (chdir("/")) {
+					fatal("chdir(\"/\") failed");
+				}
+			}
 		}
 
 		environ_push(env);

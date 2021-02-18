@@ -378,8 +378,11 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	 * fails.
 	 */
 	if (chdir(new_wp->cwd) != 0) {
-		if ((tmp = find_home()) == NULL || chdir(tmp) != 0)
-			chdir("/");
+		if ((tmp = find_home()) == NULL || chdir(tmp) != 0) {
+			if (chdir("/")) {
+				fatal("chdir(\"/\") failed");
+			}
+		}
 	}
 
 	/*
