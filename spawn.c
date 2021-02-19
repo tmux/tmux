@@ -377,10 +377,10 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	 * Child process. Change to the working directory or home if that
 	 * fails.
 	 */
-	if (chdir(new_wp->cwd) != 0) {
-		if ((tmp = find_home()) == NULL || chdir(tmp) != 0)
-			chdir("/");
-	}
+	if (chdir(new_wp->cwd) != 0 &&
+	    ((tmp = find_home()) == NULL || chdir(tmp) != 0) &&
+	    chdir("/") != 0)
+		fatal("chdir failed");
 
 	/*
 	 * Update terminal escape characters from the session if available and
