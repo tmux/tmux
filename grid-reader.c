@@ -17,6 +17,7 @@
  */
 
 #include "tmux.h"
+#include <string.h>
 
 /* Initialise virtual cursor. */
 void
@@ -304,7 +305,7 @@ grid_reader_cursor_previous_word(struct grid_reader *gr, const char *separators,
 
 /* Jump forward to character. */
 int
-grid_reader_cursor_jump(struct grid_reader *gr, char jc)
+grid_reader_cursor_jump(struct grid_reader *gr, const struct utf8_data *jc)
 {
 	struct grid_cell	gc;
 	u_int			px, py, xx, yy;
@@ -317,8 +318,8 @@ grid_reader_cursor_jump(struct grid_reader *gr, char jc)
 		while (px < xx) {
 			grid_get_cell(gr->gd, px, py, &gc);
 			if (!(gc.flags & GRID_FLAG_PADDING) &&
-			    gc.data.size == 1 &&
-			    *gc.data.data == jc) {
+			    gc.data.size == jc->size &&
+			    memcmp(gc.data.data, jc->data, gc.data.size) == 0) {
 				gr->cx = px;
 				gr->cy = py;
 				return 1;
@@ -331,11 +332,12 @@ grid_reader_cursor_jump(struct grid_reader *gr, char jc)
 			return 0;
 		px = 0;
 	}
+	return 0;
 }
 
 /* Jump back to character. */
 int
-grid_reader_cursor_jump_back(struct grid_reader *gr, char jc)
+grid_reader_cursor_jump_back(struct grid_reader *gr, const struct utf8_data *jc)
 {
 	struct grid_cell	gc;
 	u_int			px, py, xx;
@@ -346,8 +348,8 @@ grid_reader_cursor_jump_back(struct grid_reader *gr, char jc)
 		for (px = xx; px > 0; px--) {
 			grid_get_cell(gr->gd, px - 1, py - 1, &gc);
 			if (!(gc.flags & GRID_FLAG_PADDING) &&
-			    gc.data.size == 1 &&
-			    *gc.data.data == jc) {
+			    gc.data.size == jc->size &&
+			    memcmp(gc.data.data, jc->data, gc.data.size) == 0) {
 				gr->cx = px - 1;
 				gr->cy = py - 1;
 				return 1;
@@ -359,4 +361,5 @@ grid_reader_cursor_jump_back(struct grid_reader *gr, char jc)
 			return 0;
 		xx = grid_line_length(gr->gd, py - 2);
 	}
+	return 0;
 }

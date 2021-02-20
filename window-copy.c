@@ -288,8 +288,8 @@ struct window_copy_mode_data {
 #define WINDOW_COPY_SEARCH_TIMEOUT 10000
 #define WINDOW_COPY_SEARCH_ALL_TIMEOUT 200
 
-	int		 jumptype;
-	char		 jumpchar;
+	int			 jumptype;
+	struct utf8_data	*jumpchar;
 
 	struct event	 dragtimer;
 #define WINDOW_COPY_DRAG_REPEAT_TIME 50000
@@ -405,7 +405,7 @@ window_copy_common_init(struct window_mode_entry *wme)
 	data->searchall = 1;
 
 	data->jumptype = WINDOW_COPY_OFF;
-	data->jumpchar = '\0';
+	data->jumpchar = NULL;
 
 	screen_init(&data->screen, screen_size_x(base), screen_size_y(base), 0);
 	data->modekeys = options_get_number(wp->window->options, "mode-keys");
@@ -486,6 +486,7 @@ window_copy_free(struct window_mode_entry *wme)
 
 	free(data->searchmark);
 	free(data->searchstr);
+	free(data->jumpchar);
 
 	screen_free(data->backing);
 	free(data->backing);
@@ -1939,7 +1940,8 @@ window_copy_cmd_jump_backward(struct window_copy_cmd_state *cs)
 
 	if (*argument != '\0') {
 		data->jumptype = WINDOW_COPY_JUMPBACKWARD;
-		data->jumpchar = *argument;
+		free(data->jumpchar);
+		data->jumpchar = utf8_fromcstr(argument);
 		for (; np != 0; np--)
 			window_copy_cursor_jump_back(wme);
 	}
@@ -1956,7 +1958,8 @@ window_copy_cmd_jump_forward(struct window_copy_cmd_state *cs)
 
 	if (*argument != '\0') {
 		data->jumptype = WINDOW_COPY_JUMPFORWARD;
-		data->jumpchar = *argument;
+		free(data->jumpchar);
+		data->jumpchar = utf8_fromcstr(argument);
 		for (; np != 0; np--)
 			window_copy_cursor_jump(wme);
 	}
@@ -1973,7 +1976,8 @@ window_copy_cmd_jump_to_backward(struct window_copy_cmd_state *cs)
 
 	if (*argument != '\0') {
 		data->jumptype = WINDOW_COPY_JUMPTOBACKWARD;
-		data->jumpchar = *argument;
+		free(data->jumpchar);
+		data->jumpchar = utf8_fromcstr(argument);
 		for (; np != 0; np--)
 			window_copy_cursor_jump_to_back(wme);
 	}
@@ -1990,7 +1994,8 @@ window_copy_cmd_jump_to_forward(struct window_copy_cmd_state *cs)
 
 	if (*argument != '\0') {
 		data->jumptype = WINDOW_COPY_JUMPTOFORWARD;
-		data->jumpchar = *argument;
+		free(data->jumpchar);
+		data->jumpchar = utf8_fromcstr(argument);
 		for (; np != 0; np--)
 			window_copy_cursor_jump_to(wme);
 	}
