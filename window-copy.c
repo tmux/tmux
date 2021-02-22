@@ -73,6 +73,8 @@ static int	window_copy_search_marks(struct window_mode_entry *,
 static void	window_copy_clear_marks(struct window_mode_entry *);
 static void	window_copy_move_left(struct screen *, u_int *, u_int *, int);
 static int	window_copy_is_lowercase(const char *);
+static void	window_copy_search_back_overlap(struct grid *, regex_t *,
+		    u_int *, u_int *, u_int *, u_int);
 static int	window_copy_search_jump(struct window_mode_entry *,
 		    struct grid *, struct grid *, u_int, u_int, u_int, int, int,
 		    int, int, u_int *);
@@ -2913,6 +2915,48 @@ window_copy_is_lowercase(const char *ptr)
 }
 
 /*
+ * Handle backward wrapped regex searches with overlapping matches. In this case
+ * find the longest overlapping match from previous wrapped lines.
+ */
+static void
+window_copy_search_back_overlap(struct grid *gd, regex_t *preg, u_int *ppx,
+    u_int *psx, u_int *ppy, u_int endline)
+{
+	u_int	endx, endy, oldendx, oldendy, px, py, sx;
+	int	found = 1;
+
+	oldendx = *ppx + *psx;
+	oldendy = *ppy - 1;
+	while (oldendx > gd->sx - 1) {
+		oldendx -= gd->sx;
+		oldendy++;
+	}
+	endx = oldendx;
+	endy = oldendy;
+	px = *ppx;
+	py = *ppy;
+	while (found && px == 0 && py - 1 > endline &&
+	       grid_get_line(gd, py - 2)->flags & GRID_LINE_WRAPPED &&
+	       endx == oldendx && endy == oldendy) {
+		py--;
+		found = window_copy_search_rl_regex(gd, &px, &sx, py - 1, 0,
+		    gd->sx, preg);
+		if (found) {
+			endx = px + sx;
+			endy = py - 1;
+			while (endx > gd->sx - 1) {
+				endx -= gd->sx;
+				endy++;
+			}
+			if (endx == oldendx && endy == oldendy) {
+				*ppx = px;
+				*ppy = py;
+			}
+		}
+	}
+}
+
+/*
  * Search for text stored in sgd starting from position fx,fy up to endline. If
  * found, jump to it. If cis then ignore case. The direction is 0 for searching
  * up, down otherwise. If wrap then go to begin/end of grid and try again if
@@ -2964,6 +3008,10 @@ window_copy_search_jump(struct window_mode_entry *wme, struct grid *gd,
 			if (regex) {
 				found = window_copy_search_rl_regex(gd,
 				    &px, &sx, i - 1, 0, fx + 1, &reg);
+				if (found) {
+					window_copy_search_back_overlap(gd,
+					    &reg, &px, &sx, &i, endline);
+				}
 			} else {
 				found = window_copy_search_rl(gd, sgd,
 				    &px, i - 1, 0, fx + 1, cis);
@@ -3048,6 +3096,12 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex,
 	if (found) {
 		window_copy_search_marks(wme, &ss, regex, visible_only);
 		if (foundlen != 0) {
+			/* Adjust for wrapped lines eating one right. */
+			i = data->cx + foundlen;
+			while (i > gd->sx - 1) {
+				i -= gd->sx;
+				window_copy_cursor_right(wme, 1);
+			}
 			for (i = 0; i < foundlen; i++)
 				window_copy_cursor_right(wme, 1);
 		}
@@ -3164,8 +3218,11 @@ again:
 			if (window_copy_search_mark_at(data, px, py, &b) == 0) {
 				if (b + width > gd->sx * gd->sy)
 					width = (gd->sx * gd->sy) - b;
-				for (i = b; i < b + width; i++)
+				for (i = b; i < b + width; i++) {
+					if (data->searchmark[i] != 0)
+						continue;
 					data->searchmark[i] = data->searchgen;
+				}
 				if (data->searchgen == UCHAR_MAX)
 					data->searchgen = 1;
 				else
