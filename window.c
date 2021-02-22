@@ -61,17 +61,6 @@ static u_int	next_window_pane_id;
 static u_int	next_window_id;
 static u_int	next_active_point;
 
-/* List of window modes. */
-const struct window_mode *all_window_modes[] = {
-	&window_buffer_mode,
-	&window_client_mode,
-	&window_clock_mode,
-	&window_copy_mode,
-	&window_tree_mode,
-	&window_view_mode,
-	NULL
-};
-
 struct window_pane_input_data {
 	struct cmdq_item	*item;
 	u_int			 wp;
