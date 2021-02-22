@@ -138,11 +138,12 @@ expand_path(const char *path, const char *home)
 	return (xstrdup(path));
 }
 
-void
-expand_paths(const char *s, char ***paths, u_int *n)
+static void
+expand_paths(const char *s, char ***paths, u_int *n, int ignore_errors)
 {
 	const char	*home = find_home();
 	char		*copy, *next, *tmp, resolved[PATH_MAX], *expanded;
+	char		*path;
 	u_int		 i;
 
 	*paths = NULL;
@@ -158,20 +159,26 @@ expand_paths(const char *s, char ***paths, u_int *n)
 		if (realpath(expanded, resolved) == NULL) {
 			log_debug("%s: realpath(\"%s\") failed: %s", __func__,
 			    expanded, strerror(errno));
+			if (ignore_errors) {
+				free(expanded);
+				continue;
+			}
+			path = expanded;
+		} else {
+			path = xstrdup(resolved);
 			free(expanded);
-			continue;
 		}
-		free(expanded);
 		for (i = 0; i < *n; i++) {
-			if (strcmp(resolved, (*paths)[i]) == 0)
+			if (strcmp(path, (*paths)[i]) == 0)
 				break;
 		}
 		if (i != *n) {
-			log_debug("%s: duplicate path: %s", __func__, resolved);
+			log_debug("%s: duplicate path: %s", __func__, path);
+			free(path);
 			continue;
 		}
 		*paths = xreallocarray(*paths, (*n) + 1, sizeof *paths);
-		(*paths)[(*n)++] = xstrdup(resolved);
+		(*paths)[(*n)++] = path;
 	}
 	free(copy);
 }
@@ -189,7 +196,7 @@ make_label(const char *label, char **cause)
 		label = "default";
 	uid = getuid();
 
-	expand_paths(TMUX_SOCK, &paths, &n);
+	expand_paths(TMUX_SOCK, &paths, &n, 1);
 	if (n == 0) {
 		xasprintf(cause, "no suitable socket path");
 		return (NULL);
@@ -320,10 +327,11 @@ main(int argc, char **argv)
 {
 	char					*path = NULL, *label = NULL;
 	char					*cause, **var;
-	const char				*s, *shell, *cwd;
+	const char				*s, *cwd;
 	int					 opt, keys, feat = 0;
 	uint64_t				 flags = 0;
 	const struct options_table_entry	*oe;
+	u_int					 i;
 
 	if (setlocale(LC_CTYPE, "en_US.UTF-8") == NULL &&
 	    setlocale(LC_CTYPE, "C.UTF-8") == NULL) {
@@ -339,6 +347,7 @@ main(int argc, char **argv)
 
 	if (**argv == '-')
 		flags = CLIENT_LOGIN;
+	expand_paths(TMUX_CONF, &cfg_files, &cfg_nfiles, 1);
 
 	while ((opt = getopt(argc, argv, "2c:CDdf:lL:NqS:T:uUvV")) != -1) {
 		switch (opt) {
@@ -358,7 +367,11 @@ main(int argc, char **argv)
 				flags |= CLIENT_CONTROL;
 			break;
 		case 'f':
-			set_cfg_file(optarg);
+			for (i = 0; i < cfg_nfiles; i++)
+				free(cfg_files[i]);
+			free(cfg_files);
+			expand_paths(optarg, &cfg_files, &cfg_nfiles, 0);
+			cfg_quiet = 0;
 			break;
  		case 'V':
 			printf("%s %s\n", getprogname(), getversion());
@@ -450,8 +463,8 @@ main(int argc, char **argv)
 	 * The default shell comes from SHELL or from the user's passwd entry
 	 * if available.
 	 */
-	shell = getshell();
-	options_set_string(global_s_options, "default-shell", 0, "%s", shell);
+	options_set_string(global_s_options, "default-shell", 0, "%s",
+	    getshell());
 
 	/* Override keys to vi if VISUAL or EDITOR are set. */
 	if ((s = getenv("VISUAL")) != NULL || (s = getenv("EDITOR")) != NULL) {

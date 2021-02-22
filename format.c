@@ -1412,6 +1412,26 @@ format_cb_client_written(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for config_files. */
+static void *
+format_cb_config_files(__unused struct format_tree *ft)
+{
+	char	*s = NULL;
+	size_t	 slen = 0;
+	u_int	 i;
+	size_t	 n;
+
+	for (i = 0; i < cfg_nfiles; i++) {
+		n = strlen(cfg_files[i]) + 1;
+		s = xrealloc(s, slen + n + 1);
+		slen += xsnprintf(s + slen, n + 1, "%s,", cfg_files[i]);
+	}
+	if (s == NULL)
+		return (xstrdup(""));
+	s[slen - 1] = '\0';
+	return (s);
+}
+
 /* Callback for cursor_flag. */
 static void *
 format_cb_cursor_flag(struct format_tree *ft)
@@ -2568,6 +2588,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "client_written", FORMAT_TABLE_STRING,
 	  format_cb_client_written
+	},
+	{ "config_files", FORMAT_TABLE_STRING,
+	  format_cb_config_files
 	},
 	{ "cursor_character", FORMAT_TABLE_STRING,
 	  format_cb_cursor_character
