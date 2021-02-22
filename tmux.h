@@ -1944,7 +1944,7 @@ char		*paste_make_sample(struct paste_buffer *);
 #define FORMAT_WINDOW 0x40000000U
 struct format_tree;
 struct format_modifier;
-typedef char *(*format_cb)(struct format_tree *);
+typedef void *(*format_cb)(struct format_tree *);
 const char	*format_skip(const char *, const char *);
 int		 format_true(const char *);
 struct format_tree *format_create(struct client *, struct cmdq_item *, int,
@@ -2713,7 +2713,6 @@ void	 screen_alternate_off(struct screen *, struct grid_cell *, int);
 /* window.c */
 extern struct windows windows;
 extern struct window_pane_tree all_window_panes;
-extern const struct window_mode *all_window_modes[];
 int		 window_cmp(struct window *, struct window *);
 RB_PROTOTYPE(windows, window, entry, window_cmp);
 int		 winlink_cmp(struct winlink *, struct winlink *);

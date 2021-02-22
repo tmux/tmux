@@ -119,13 +119,23 @@ struct format_entry {
 	RB_ENTRY(format_entry)	 entry;
 };
 
-/* Format entry tree. */
+/* Format type. */
+enum format_type {
+	FORMAT_TYPE_UNKNOWN,
+	FORMAT_TYPE_SESSION,
+	FORMAT_TYPE_WINDOW,
+	FORMAT_TYPE_PANE
+};
+
 struct format_tree {
+	enum format_type	 type;
+
 	struct client		*c;
 	struct session		*s;
 	struct winlink		*wl;
 	struct window		*w;
 	struct window_pane	*wp;
+	struct paste_buffer	*pb;
 
 	struct cmdq_item	*item;
 	struct client		*client;
@@ -144,6 +154,7 @@ struct format_expand_state {
 	struct format_tree	*ft;
 	u_int			 loop;
 	time_t			 time;
+	struct tm		 tm;
 	int			 flags;
 };
 
@@ -263,6 +274,7 @@ format_copy_state(struct format_expand_state *to,
 	to->ft = from->ft;
 	to->loop = from->loop;
 	to->time = from->time;
+	memcpy(&to->tm, &from->tm, sizeof to->tm);
 	to->flags = from->flags|flags;
 }
 
@@ -451,8 +463,21 @@ format_job_timer(__unused int fd, __unused short events, __unused void *arg)
 	evtimer_add(&format_job_event, &tv);
 }
 
+/* Wrapper for asprintf. */
+static char * printflike(1, 2)
+format_printf(const char *fmt, ...)
+{
+	va_list	 ap;
+	char	*s;
+
+	va_start(ap, fmt);
+	xvasprintf(&s, fmt, ap);
+	va_end(ap);
+	return (s);
+}
+
 /* Callback for host. */
-static char *
+static void *
 format_cb_host(__unused struct format_tree *ft)
 {
 	char host[HOST_NAME_MAX + 1];
@@ -463,7 +488,7 @@ format_cb_host(__unused struct format_tree *ft)
 }
 
 /* Callback for host_short. */
-static char *
+static void *
 format_cb_host_short(__unused struct format_tree *ft)
 {
 	char host[HOST_NAME_MAX + 1], *cp;
@@ -476,7 +501,7 @@ format_cb_host_short(__unused struct format_tree *ft)
 }
 
 /* Callback for pid. */
-static char *
+static void *
 format_cb_pid(__unused struct format_tree *ft)
 {
 	char	*value;
@@ -486,7 +511,7 @@ format_cb_pid(__unused struct format_tree *ft)
 }
 
 /* Callback for session_attached_list. */
-static char *
+static void *
 format_cb_session_attached_list(struct format_tree *ft)
 {
 	struct session	*s = ft->s;
@@ -517,7 +542,7 @@ format_cb_session_attached_list(struct format_tree *ft)
 }
 
 /* Callback for session_alerts. */
-static char *
+static void *
 format_cb_session_alerts(struct format_tree *ft)
 {
 	struct session	*s = ft->s;
@@ -547,7 +572,7 @@ format_cb_session_alerts(struct format_tree *ft)
 }
 
 /* Callback for session_stack. */
-static char *
+static void *
 format_cb_session_stack(struct format_tree *ft)
 {
 	struct session	*s = ft->s;
@@ -569,13 +594,17 @@ format_cb_session_stack(struct format_tree *ft)
 }
 
 /* Callback for window_stack_index. */
-static char *
+static void *
 format_cb_window_stack_index(struct format_tree *ft)
 {
-	struct session	*s = ft->wl->session;
+	struct session	*s;
 	struct winlink	*wl;
 	u_int		 idx;
 	char		*value = NULL;
+
+	if (ft->wl == NULL)
+		return (NULL);
+	s = ft->wl->session;
 
 	idx = 0;
 	TAILQ_FOREACH(wl, &s->lastw, sentry) {
@@ -590,14 +619,18 @@ format_cb_window_stack_index(struct format_tree *ft)
 }
 
 /* Callback for window_linked_sessions_list. */
-static char *
+static void *
 format_cb_window_linked_sessions_list(struct format_tree *ft)
 {
-	struct window	*w = ft->wl->window;
+	struct window	*w;
 	struct winlink	*wl;
 	struct evbuffer	*buffer;
 	int		 size;
 	char		*value = NULL;
+
+	if (ft->wl == NULL)
+		return (NULL);
+	w = ft->wl->window;
 
 	buffer = evbuffer_new();
 	if (buffer == NULL)
@@ -616,13 +649,17 @@ format_cb_window_linked_sessions_list(struct format_tree *ft)
 }
 
 /* Callback for window_active_sessions. */
-static char *
+static void *
 format_cb_window_active_sessions(struct format_tree *ft)
 {
-	struct window	*w = ft->wl->window;
+	struct window	*w;
 	struct winlink	*wl;
 	u_int		 n = 0;
 	char		*value;
+
+	if (ft->wl == NULL)
+		return (NULL);
+	w = ft->wl->window;
 
 	TAILQ_FOREACH(wl, &w->winlinks, wentry) {
 		if (wl->session->curw == wl)
@@ -634,14 +671,18 @@ format_cb_window_active_sessions(struct format_tree *ft)
 }
 
 /* Callback for window_active_sessions_list. */
-static char *
+static void *
 format_cb_window_active_sessions_list(struct format_tree *ft)
 {
-	struct window	*w = ft->wl->window;
+	struct window	*w;
 	struct winlink	*wl;
 	struct evbuffer	*buffer;
 	int		 size;
 	char		*value = NULL;
+
+	if (ft->wl == NULL)
+		return (NULL);
+	w = ft->wl->window;
 
 	buffer = evbuffer_new();
 	if (buffer == NULL)
@@ -662,14 +703,18 @@ format_cb_window_active_sessions_list(struct format_tree *ft)
 }
 
 /* Callback for window_active_clients. */
-static char *
+static void *
 format_cb_window_active_clients(struct format_tree *ft)
 {
-	struct window	*w = ft->wl->window;
+	struct window	*w;
 	struct client	*loop;
 	struct session	*client_session;
 	u_int		 n = 0;
 	char		*value;
+
+	if (ft->wl == NULL)
+		return (NULL);
+	w = ft->wl->window;
 
 	TAILQ_FOREACH(loop, &clients, entry) {
 		client_session = loop->session;
@@ -685,15 +730,19 @@ format_cb_window_active_clients(struct format_tree *ft)
 }
 
 /* Callback for window_active_clients_list. */
-static char *
+static void *
 format_cb_window_active_clients_list(struct format_tree *ft)
 {
-	struct window	*w = ft->wl->window;
+	struct window	*w;
 	struct client	*loop;
 	struct session	*client_session;
 	struct evbuffer	*buffer;
 	int		 size;
 	char		*value = NULL;
+
+	if (ft->wl == NULL)
+		return (NULL);
+	w = ft->wl->window;
 
 	buffer = evbuffer_new();
 	if (buffer == NULL)
@@ -718,7 +767,7 @@ format_cb_window_active_clients_list(struct format_tree *ft)
 }
 
 /* Callback for window_layout. */
-static char *
+static void *
 format_cb_window_layout(struct format_tree *ft)
 {
 	struct window	*w = ft->w;
@@ -732,7 +781,7 @@ format_cb_window_layout(struct format_tree *ft)
 }
 
 /* Callback for window_visible_layout. */
-static char *
+static void *
 format_cb_window_visible_layout(struct format_tree *ft)
 {
 	struct window	*w = ft->w;
@@ -744,7 +793,7 @@ format_cb_window_visible_layout(struct format_tree *ft)
 }
 
 /* Callback for pane_start_command. */
-static char *
+static void *
 format_cb_start_command(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
@@ -756,7 +805,7 @@ format_cb_start_command(struct format_tree *ft)
 }
 
 /* Callback for pane_current_command. */
-static char *
+static void *
 format_cb_current_command(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
@@ -780,7 +829,7 @@ format_cb_current_command(struct format_tree *ft)
 }
 
 /* Callback for pane_current_path. */
-static char *
+static void *
 format_cb_current_path(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
@@ -796,7 +845,7 @@ format_cb_current_path(struct format_tree *ft)
 }
 
 /* Callback for history_bytes. */
-static char *
+static void *
 format_cb_history_bytes(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
@@ -822,7 +871,7 @@ format_cb_history_bytes(struct format_tree *ft)
 }
 
 /* Callback for history_all_bytes. */
-static char *
+static void *
 format_cb_history_all_bytes(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
@@ -849,7 +898,7 @@ format_cb_history_all_bytes(struct format_tree *ft)
 }
 
 /* Callback for pane_tabs. */
-static char *
+static void *
 format_cb_pane_tabs(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
@@ -879,7 +928,7 @@ format_cb_pane_tabs(struct format_tree *ft)
 }
 
 /* Callback for pane_fg. */
-static char *
+static void *
 format_cb_pane_fg(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
@@ -890,7 +939,7 @@ format_cb_pane_fg(struct format_tree *ft)
 }
 
 /* Callback for pane_bg. */
-static char *
+static void *
 format_cb_pane_bg(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
@@ -901,7 +950,7 @@ format_cb_pane_bg(struct format_tree *ft)
 }
 
 /* Callback for session_group_list. */
-static char *
+static void *
 format_cb_session_group_list(struct format_tree *ft)
 {
 	struct session		*s = ft->s;
@@ -934,7 +983,7 @@ format_cb_session_group_list(struct format_tree *ft)
 }
 
 /* Callback for session_group_attached_list. */
-static char *
+static void *
 format_cb_session_group_attached_list(struct format_tree *ft)
 {
 	struct session		*s = ft->s, *client_session, *session_loop;
@@ -974,7 +1023,7 @@ format_cb_session_group_attached_list(struct format_tree *ft)
 }
 
 /* Callback for pane_in_mode. */
-static char *
+static void *
 format_cb_pane_in_mode(struct format_tree *ft)
 {
 	struct window_pane		*wp = ft->wp;
@@ -986,13 +1035,13 @@ format_cb_pane_in_mode(struct format_tree *ft)
 		return (NULL);
 
 	TAILQ_FOREACH(wme, &wp->modes, entry)
-	    n++;
+		n++;
 	xasprintf(&value, "%u", n);
 	return (value);
 }
 
 /* Callback for pane_at_top. */
-static char *
+static void *
 format_cb_pane_at_top(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
@@ -1014,7 +1063,7 @@ format_cb_pane_at_top(struct format_tree *ft)
 }
 
 /* Callback for pane_at_bottom. */
-static char *
+static void *
 format_cb_pane_at_bottom(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
@@ -1036,7 +1085,7 @@ format_cb_pane_at_bottom(struct format_tree *ft)
 }
 
 /* Callback for cursor_character. */
-static char *
+static void *
 format_cb_cursor_character(struct format_tree *ft)
 {
 	struct window_pane	*wp = ft->wp;
@@ -1052,78 +1101,8 @@ format_cb_cursor_character(struct format_tree *ft)
 	return (value);
 }
 
-/* Return word at given coordinates. Caller frees. */
-char *
-format_grid_word(struct grid *gd, u_int x, u_int y)
-{
-	const struct grid_line	*gl;
-	struct grid_cell	 gc;
-	const char		*ws;
-	struct utf8_data	*ud = NULL;
-	u_int			 end;
-	size_t			 size = 0;
-	int			 found = 0;
-	char			*s = NULL;
-
-	ws = options_get_string(global_s_options, "word-separators");
-
-	for (;;) {
-		grid_get_cell(gd, x, y, &gc);
-		if (gc.flags & GRID_FLAG_PADDING)
-			break;
-		if (utf8_cstrhas(ws, &gc.data)) {
-			found = 1;
-			break;
-		}
-
-		if (x == 0) {
-			if (y == 0)
-				break;
-			gl = grid_peek_line(gd, y - 1);
-			if (~gl->flags & GRID_LINE_WRAPPED)
-				break;
-			y--;
-			x = grid_line_length(gd, y);
-			if (x == 0)
-				break;
-		}
-		x--;
-	}
-	for (;;) {
-		if (found) {
-			end = grid_line_length(gd, y);
-			if (end == 0 || x == end - 1) {
-				if (y == gd->hsize + gd->sy - 1)
-					break;
-				gl = grid_peek_line(gd, y);
-				if (~gl->flags & GRID_LINE_WRAPPED)
-					break;
-				y++;
-				x = 0;
-			} else
-				x++;
-		}
-		found = 1;
-
-		grid_get_cell(gd, x, y, &gc);
-		if (gc.flags & GRID_FLAG_PADDING)
-			break;
-		if (utf8_cstrhas(ws, &gc.data))
-			break;
-
-		ud = xreallocarray(ud, size + 2, sizeof *ud);
-		memcpy(&ud[size++], &gc.data, sizeof *ud);
-	}
-	if (size != 0) {
-		ud[size].size = 0;
-		s = utf8_tocstr(ud);
-		free(ud);
-	}
-	return (s);
-}
-
 /* Callback for mouse_word. */
-static char *
+static void *
 format_cb_mouse_word(struct format_tree *ft)
 {
 	struct window_pane	*wp;
@@ -1149,34 +1128,8 @@ format_cb_mouse_word(struct format_tree *ft)
 	return (format_grid_word(gd, x, gd->hsize + y));
 }
 
-/* Return line at given coordinates. Caller frees. */
-char *
-format_grid_line(struct grid *gd, u_int y)
-{
-	struct grid_cell	 gc;
-	struct utf8_data	*ud = NULL;
-	u_int			 x;
-	size_t			 size = 0;
-	char			*s = NULL;
-
-	for (x = 0; x < grid_line_length(gd, y); x++) {
-		grid_get_cell(gd, x, y, &gc);
-		if (gc.flags & GRID_FLAG_PADDING)
-			break;
-
-		ud = xreallocarray(ud, size + 2, sizeof *ud);
-		memcpy(&ud[size++], &gc.data, sizeof *ud);
-	}
-	if (size != 0) {
-		ud[size].size = 0;
-		s = utf8_tocstr(ud);
-		free(ud);
-	}
-	return (s);
-}
-
 /* Callback for mouse_line. */
-static char *
+static void *
 format_cb_mouse_line(struct format_tree *ft)
 {
 	struct window_pane	*wp;
@@ -1199,6 +1152,1810 @@ format_cb_mouse_line(struct format_tree *ft)
 	}
 	gd = wp->base.grid;
 	return (format_grid_line(gd, gd->hsize + y));
+}
+
+/* Callback for alternate_on. */
+static void *
+format_cb_alternate_on(struct format_tree *ft)
+{
+	if (ft->wp != NULL) {
+		if (ft->wp->base.saved_grid != NULL)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for alternate_saved_x. */
+static void *
+format_cb_alternate_saved_x(struct format_tree *ft)
+{
+	if (ft->wp != NULL)
+		return (format_printf("%u", ft->wp->base.saved_cx));
+	return (NULL);
+}
+
+/* Callback for alternate_saved_y. */
+static void *
+format_cb_alternate_saved_y(struct format_tree *ft)
+{
+	if (ft->wp != NULL)
+		return (format_printf("%u", ft->wp->base.saved_cy));
+	return (NULL);
+}
+
+/* Callback for buffer_name. */
+static void *
+format_cb_buffer_name(struct format_tree *ft)
+{
+	if (ft->pb != NULL)
+		return (xstrdup(paste_buffer_name(ft->pb)));
+	return (NULL);
+}
+
+/* Callback for buffer_sample. */
+static void *
+format_cb_buffer_sample(struct format_tree *ft)
+{
+	if (ft->pb != NULL)
+		return (paste_make_sample(ft->pb));
+	return (NULL);
+}
+
+/* Callback for buffer_size. */
+static void *
+format_cb_buffer_size(struct format_tree *ft)
+{
+	size_t	size;
+
+	if (ft->pb != NULL) {
+		paste_buffer_data(ft->pb, &size);
+		return (format_printf("%zu", size));
+	}
+	return (NULL);
+}
+
+/* Callback for client_cell_height. */
+static void *
+format_cb_client_cell_height(struct format_tree *ft)
+{
+	if (ft->c != NULL && (ft->c->tty.flags & TTY_STARTED))
+		return (format_printf("%u", ft->c->tty.ypixel));
+	return (NULL);
+}
+
+/* Callback for client_cell_width. */
+static void *
+format_cb_client_cell_width(struct format_tree *ft)
+{
+	if (ft->c != NULL && (ft->c->tty.flags & TTY_STARTED))
+		return (format_printf("%u", ft->c->tty.xpixel));
+	return (NULL);
+}
+
+/* Callback for client_control_mode. */
+static void *
+format_cb_client_control_mode(struct format_tree *ft)
+{
+	if (ft->c != NULL) {
+		if (ft->c->flags & CLIENT_CONTROL)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for client_discarded. */
+static void *
+format_cb_client_discarded(struct format_tree *ft)
+{
+	if (ft->c != NULL)
+		return (format_printf("%zu", ft->c->discarded));
+	return (NULL);
+}
+
+/* Callback for client_flags. */
+static void *
+format_cb_client_flags(struct format_tree *ft)
+{
+	if (ft->c != NULL)
+		return (xstrdup(server_client_get_flags(ft->c)));
+	return (NULL);
+}
+
+/* Callback for client_height. */
+static void *
+format_cb_client_height(struct format_tree *ft)
+{
+	if (ft->c != NULL && (ft->c->tty.flags & TTY_STARTED))
+		return (format_printf("%u", ft->c->tty.sy));
+	return (NULL);
+}
+
+/* Callback for client_key_table. */
+static void *
+format_cb_client_key_table(struct format_tree *ft)
+{
+	if (ft->c != NULL)
+		return (xstrdup(ft->c->keytable->name));
+	return (NULL);
+}
+
+/* Callback for client_last_session. */
+static void *
+format_cb_client_last_session(struct format_tree *ft)
+{
+	if (ft->c != NULL &&
+	    ft->c->last_session != NULL &&
+	    session_alive(ft->c->last_session))
+		return (xstrdup(ft->c->last_session->name));
+	return (NULL);
+}
+
+/* Callback for client_name. */
+static void *
+format_cb_client_name(struct format_tree *ft)
+{
+	if (ft->c != NULL)
+		return (xstrdup(ft->c->name));
+	return (NULL);
+}
+
+/* Callback for client_pid. */
+static void *
+format_cb_client_pid(struct format_tree *ft)
+{
+	if (ft->c != NULL)
+		return (format_printf("%ld", (long)ft->c->pid));
+	return (NULL);
+}
+
+/* Callback for client_prefix. */
+static void *
+format_cb_client_prefix(struct format_tree *ft)
+{
+	const char	*name;
+
+	if (ft->c != NULL) {
+		name = server_client_get_key_table(ft->c);
+		if (strcmp(ft->c->keytable->name, name) == 0)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for client_readonly. */
+static void *
+format_cb_client_readonly(struct format_tree *ft)
+{
+	if (ft->c != NULL) {
+		if (ft->c->flags & CLIENT_READONLY)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for client_session. */
+static void *
+format_cb_client_session(struct format_tree *ft)
+{
+	if (ft->c != NULL && ft->c->session != NULL)
+		return (xstrdup(ft->c->session->name));
+	return (NULL);
+}
+
+/* Callback for client_termfeatures. */
+static void *
+format_cb_client_termfeatures(struct format_tree *ft)
+{
+	if (ft->c != NULL)
+		return (xstrdup(tty_get_features(ft->c->term_features)));
+	return (NULL);
+}
+
+/* Callback for client_termname. */
+static void *
+format_cb_client_termname(struct format_tree *ft)
+{
+	if (ft->c != NULL)
+		return (xstrdup(ft->c->term_name));
+	return (NULL);
+}
+
+/* Callback for client_termtype. */
+static void *
+format_cb_client_termtype(struct format_tree *ft)
+{
+	if (ft->c != NULL)
+		return (xstrdup(ft->c->term_type));
+	return (NULL);
+}
+
+/* Callback for client_tty. */
+static void *
+format_cb_client_tty(struct format_tree *ft)
+{
+	if (ft->c != NULL)
+		return (xstrdup(ft->c->ttyname));
+	return (NULL);
+}
+
+/* Callback for client_utf8. */
+static void *
+format_cb_client_utf8(struct format_tree *ft)
+{
+	if (ft->c != NULL) {
+		if (ft->c->flags & CLIENT_UTF8)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for client_width. */
+static void *
+format_cb_client_width(struct format_tree *ft)
+{
+	if (ft->c != NULL)
+		return (format_printf("%u", ft->c->tty.sx));
+	return (NULL);
+}
+
+/* Callback for client_written. */
+static void *
+format_cb_client_written(struct format_tree *ft)
+{
+	if (ft->c != NULL)
+		return (format_printf("%zu", ft->c->written));
+	return (NULL);
+}
+
+/* Callback for cursor_flag. */
+static void *
+format_cb_cursor_flag(struct format_tree *ft)
+{
+	if (ft->wp != NULL) {
+		if (ft->wp->base.mode & MODE_CURSOR)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for cursor_x. */
+static void *
+format_cb_cursor_x(struct format_tree *ft)
+{
+	if (ft->wp != NULL)
+		return (format_printf("%u", ft->wp->base.cx));
+	return (NULL);
+}
+
+/* Callback for cursor_y. */
+static void *
+format_cb_cursor_y(struct format_tree *ft)
+{
+	if (ft->wp != NULL)
+		return (format_printf("%u", ft->wp->base.cy));
+	return (NULL);
+}
+
+/* Callback for history_limit. */
+static void *
+format_cb_history_limit(struct format_tree *ft)
+{
+	if (ft->wp != NULL)
+		return (format_printf("%u", ft->wp->base.grid->hlimit));
+	return (NULL);
+}
+
+/* Callback for history_size. */
+static void *
+format_cb_history_size(struct format_tree *ft)
+{
+	if (ft->wp != NULL)
+		return (format_printf("%u", ft->wp->base.grid->hsize));
+	return (NULL);
+}
+
+/* Callback for insert_flag. */
+static void *
+format_cb_insert_flag(struct format_tree *ft)
+{
+	if (ft->wp != NULL) {
+		if (ft->wp->base.mode & MODE_INSERT)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for keypad_cursor_flag. */
+static void *
+format_cb_keypad_cursor_flag(struct format_tree *ft)
+{
+	if (ft->wp != NULL) {
+		if (ft->wp->base.mode & MODE_KCURSOR)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for keypad_flag. */
+static void *
+format_cb_keypad_flag(struct format_tree *ft)
+{
+	if (ft->wp != NULL) {
+		if (ft->wp->base.mode & MODE_KKEYPAD)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for mouse_all_flag. */
+static void *
+format_cb_mouse_all_flag(struct format_tree *ft)
+{
+	if (ft->wp != NULL) {
+		if (ft->wp->base.mode & MODE_MOUSE_ALL)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for mouse_any_flag. */
+static void *
+format_cb_mouse_any_flag(struct format_tree *ft)
+{
+	if (ft->wp != NULL) {
+		if (ft->wp->base.mode & ALL_MOUSE_MODES)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for mouse_button_flag. */
+static void *
+format_cb_mouse_button_flag(struct format_tree *ft)
+{
+	if (ft->wp != NULL) {
+		if (ft->wp->base.mode & MODE_MOUSE_BUTTON)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for mouse_pane. */
+static void *
+format_cb_mouse_pane(struct format_tree *ft)
+{
+	struct window_pane	*wp;
+
+	if (ft->m.valid) {
+		wp = cmd_mouse_pane(&ft->m, NULL, NULL);
+		if (wp != NULL)
+			return (format_printf("%%%u", wp->id));
+		return (NULL);
+	}
+	return (NULL);
+}
+
+/* Callback for mouse_sgr_flag. */
+static void *
+format_cb_mouse_sgr_flag(struct format_tree *ft)
+{
+	if (ft->wp != NULL) {
+		if (ft->wp->base.mode & MODE_MOUSE_SGR)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for mouse_standard_flag. */
+static void *
+format_cb_mouse_standard_flag(struct format_tree *ft)
+{
+	if (ft->wp != NULL) {
+		if (ft->wp->base.mode & MODE_MOUSE_STANDARD)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for mouse_utf8_flag. */
+static void *
+format_cb_mouse_utf8_flag(struct format_tree *ft)
+{
+	if (ft->wp != NULL) {
+		if (ft->wp->base.mode & MODE_MOUSE_UTF8)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for mouse_x. */
+static void *
+format_cb_mouse_x(struct format_tree *ft)
+{
+	struct window_pane	*wp;
+	u_int			 x, y;
+
+	if (ft->m.valid) {
+		wp = cmd_mouse_pane(&ft->m, NULL, NULL);
+		if (wp != NULL && cmd_mouse_at(wp, &ft->m, &x, &y, 0) == 0)
+			return (format_printf("%u", x));
+		return (NULL);
+	}
+	return (NULL);
+}
+
+/* Callback for mouse_y. */
+static void *
+format_cb_mouse_y(struct format_tree *ft)
+{
+	struct window_pane	*wp;
+	u_int			 x, y;
+
+	if (ft->m.valid) {
+		wp = cmd_mouse_pane(&ft->m, NULL, NULL);
+		if (wp != NULL && cmd_mouse_at(wp, &ft->m, &x, &y, 0) == 0)
+			return (format_printf("%u", y));
+		return (NULL);
+	}
+	return (NULL);
+}
+
+/* Callback for origin_flag. */
+static void *
+format_cb_origin_flag(struct format_tree *ft)
+{
+	if (ft->wp != NULL) {
+		if (ft->wp->base.mode & MODE_ORIGIN)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for pane_active. */
+static void *
+format_cb_pane_active(struct format_tree *ft)
+{
+	if (ft->wp != NULL) {
+		if (ft->wp == ft->wp->window->active)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for pane_at_left. */
+static void *
+format_cb_pane_at_left(struct format_tree *ft)
+{
+	if (ft->wp != NULL) {
+		if (ft->wp->xoff == 0)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for pane_at_right. */
+static void *
+format_cb_pane_at_right(struct format_tree *ft)
+{
+	if (ft->wp != NULL) {
+		if (ft->wp->xoff + ft->wp->sx == ft->wp->window->sx)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for pane_bottom. */
+static void *
+format_cb_pane_bottom(struct format_tree *ft)
+{
+	if (ft->wp != NULL)
+		return (format_printf("%u", ft->wp->yoff + ft->wp->sy - 1));
+	return (NULL);
+}
+
+/* Callback for pane_dead. */
+static void *
+format_cb_pane_dead(struct format_tree *ft)
+{
+	if (ft->wp != NULL) {
+		if (ft->wp->fd == -1)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for pane_dead_status. */
+static void *
+format_cb_pane_dead_status(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+
+	if (wp != NULL) {
+		if ((wp->flags & PANE_STATUSREADY) && WIFEXITED(wp->status))
+			return (format_printf("%d", WEXITSTATUS(wp->status)));
+		return (NULL);
+	}
+	return (NULL);
+}
+
+/* Callback for pane_format. */
+static void *
+format_cb_pane_format(struct format_tree *ft)
+{
+	if (ft->type == FORMAT_TYPE_PANE)
+		return (xstrdup("1"));
+	return (xstrdup("0"));
+}
+
+/* Callback for pane_height. */
+static void *
+format_cb_pane_height(struct format_tree *ft)
+{
+	if (ft->wp != NULL)
+		return (format_printf("%u", ft->wp->sy));
+	return (NULL);
+}
+
+/* Callback for pane_id. */
+static void *
+format_cb_pane_id(struct format_tree *ft)
+{
+	if (ft->wp != NULL)
+		return (format_printf("%%%u", ft->wp->id));
+	return (NULL);
+}
+
+/* Callback for pane_index. */
+static void *
+format_cb_pane_index(struct format_tree *ft)
+{
+	u_int	idx;
+
+	if (ft->wp != NULL && window_pane_index(ft->wp, &idx) == 0)
+		return (format_printf("%u", idx));
+	return (NULL);
+}
+
+/* Callback for pane_input_off. */
+static void *
+format_cb_pane_input_off(struct format_tree *ft)
+{
+	if (ft->wp != NULL) {
+		if (ft->wp->flags & PANE_INPUTOFF)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for pane_last. */
+static void *
+format_cb_pane_last(struct format_tree *ft)
+{
+	if (ft->wp != NULL) {
+		if (ft->wp == ft->wp->window->last)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for pane_left. */
+static void *
+format_cb_pane_left(struct format_tree *ft)
+{
+	if (ft->wp != NULL)
+		return (format_printf("%u", ft->wp->xoff));
+	return (NULL);
+}
+
+/* Callback for pane_marked. */
+static void *
+format_cb_pane_marked(struct format_tree *ft)
+{
+	if (ft->wp != NULL) {
+		if (server_check_marked() && marked_pane.wp == ft->wp)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for pane_marked_set. */
+static void *
+format_cb_pane_marked_set(struct format_tree *ft)
+{
+	if (ft->wp != NULL) {
+		if (server_check_marked())
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for pane_mode. */
+static void *
+format_cb_pane_mode(struct format_tree *ft)
+{
+	struct window_mode_entry	*wme;
+
+	if (ft->wp != NULL) {
+		wme = TAILQ_FIRST(&ft->wp->modes);
+		if (wme != NULL)
+			return (xstrdup(wme->mode->name));
+		return (NULL);
+	}
+	return (NULL);
+}
+
+/* Callback for pane_path. */
+static void *
+format_cb_pane_path(struct format_tree *ft)
+{
+	if (ft->wp != NULL) {
+		if (ft->wp->base.path == NULL)
+			return (xstrdup(""));
+		return (xstrdup(ft->wp->base.path));
+	}
+	return (NULL);
+}
+
+/* Callback for pane_pid. */
+static void *
+format_cb_pane_pid(struct format_tree *ft)
+{
+	if (ft->wp != NULL)
+		return (format_printf("%ld", (long)ft->wp->pid));
+	return (NULL);
+}
+
+/* Callback for pane_pipe. */
+static void *
+format_cb_pane_pipe(struct format_tree *ft)
+{
+	if (ft->wp != NULL) {
+		if (ft->wp->pipe_fd != -1)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for pane_right. */
+static void *
+format_cb_pane_right(struct format_tree *ft)
+{
+	if (ft->wp != NULL)
+		return (format_printf("%u", ft->wp->xoff + ft->wp->sx - 1));
+	return (NULL);
+}
+
+/* Callback for pane_search_string. */
+static void *
+format_cb_pane_search_string(struct format_tree *ft)
+{
+	if (ft->wp != NULL) {
+		if (ft->wp->searchstr == NULL)
+			return (xstrdup(""));
+		return (xstrdup(ft->wp->searchstr));
+	}
+	return (NULL);
+}
+
+/* Callback for pane_synchronized. */
+static void *
+format_cb_pane_synchronized(struct format_tree *ft)
+{
+	if (ft->wp != NULL) {
+		if (options_get_number(ft->wp->options, "synchronize-panes"))
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for pane_title. */
+static void *
+format_cb_pane_title(struct format_tree *ft)
+{
+	if (ft->wp != NULL)
+		return (xstrdup(ft->wp->base.title));
+	return (NULL);
+}
+
+/* Callback for pane_top. */
+static void *
+format_cb_pane_top(struct format_tree *ft)
+{
+	if (ft->wp != NULL)
+		return (format_printf("%u", ft->wp->yoff));
+	return (NULL);
+}
+
+/* Callback for pane_tty. */
+static void *
+format_cb_pane_tty(struct format_tree *ft)
+{
+	if (ft->wp != NULL)
+		return (xstrdup(ft->wp->tty));
+	return (NULL);
+}
+
+/* Callback for pane_width. */
+static void *
+format_cb_pane_width(struct format_tree *ft)
+{
+	if (ft->wp != NULL)
+		return (format_printf("%u", ft->wp->sx));
+	return (NULL);
+}
+
+/* Callback for scroll_region_lower. */
+static void *
+format_cb_scroll_region_lower(struct format_tree *ft)
+{
+	if (ft->wp != NULL)
+		return (format_printf("%u", ft->wp->base.rlower));
+	return (NULL);
+}
+
+/* Callback for scroll_region_upper. */
+static void *
+format_cb_scroll_region_upper(struct format_tree *ft)
+{
+	if (ft->wp != NULL)
+		return (format_printf("%u", ft->wp->base.rupper));
+	return (NULL);
+}
+
+/* Callback for session_attached. */
+static void *
+format_cb_session_attached(struct format_tree *ft)
+{
+	if (ft->s != NULL)
+		return (format_printf("%u", ft->s->attached));
+	return (NULL);
+}
+
+/* Callback for session_format. */
+static void *
+format_cb_session_format(struct format_tree *ft)
+{
+	if (ft->type == FORMAT_TYPE_SESSION)
+		return (xstrdup("1"));
+	return (xstrdup("0"));
+}
+
+/* Callback for session_group. */
+static void *
+format_cb_session_group(struct format_tree *ft)
+{
+	struct session_group	*sg;
+
+	if (ft->s != NULL && (sg = session_group_contains(ft->s)) != NULL)
+		return (xstrdup(sg->name));
+	return (NULL);
+}
+
+/* Callback for session_group_attached. */
+static void *
+format_cb_session_group_attached(struct format_tree *ft)
+{
+	struct session_group	*sg;
+
+	if (ft->s != NULL && (sg = session_group_contains(ft->s)) != NULL)
+		return (format_printf("%u", session_group_attached_count (sg)));
+	return (NULL);
+}
+
+/* Callback for session_group_many_attached. */
+static void *
+format_cb_session_group_many_attached(struct format_tree *ft)
+{
+	struct session_group	*sg;
+
+	if (ft->s != NULL && (sg = session_group_contains(ft->s)) != NULL) {
+		if (session_group_attached_count (sg) > 1)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for session_group_size. */
+static void *
+format_cb_session_group_size(struct format_tree *ft)
+{
+	struct session_group	*sg;
+
+	if (ft->s != NULL && (sg = session_group_contains(ft->s)) != NULL)
+		return (format_printf("%u", session_group_count (sg)));
+	return (NULL);
+}
+
+/* Callback for session_grouped. */
+static void *
+format_cb_session_grouped(struct format_tree *ft)
+{
+	if (ft->s != NULL) {
+		if (session_group_contains(ft->s) != NULL)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for session_id. */
+static void *
+format_cb_session_id(struct format_tree *ft)
+{
+	if (ft->s != NULL)
+		return (format_printf("$%u", ft->s->id));
+	return (NULL);
+}
+
+/* Callback for session_many_attached. */
+static void *
+format_cb_session_many_attached(struct format_tree *ft)
+{
+	if (ft->s != NULL) {
+		if (ft->s->attached > 1)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for session_marked. */
+static void *
+format_cb_session_marked(struct format_tree *ft)
+{
+	if (ft->s != NULL) {
+		if (server_check_marked() && marked_pane.s == ft->s)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for session_name. */
+static void *
+format_cb_session_name(struct format_tree *ft)
+{
+	if (ft->s != NULL)
+		return (xstrdup(ft->s->name));
+	return (NULL);
+}
+
+/* Callback for session_path. */
+static void *
+format_cb_session_path(struct format_tree *ft)
+{
+	if (ft->s != NULL)
+		return (xstrdup(ft->s->cwd));
+	return (NULL);
+}
+
+/* Callback for session_windows. */
+static void *
+format_cb_session_windows(struct format_tree *ft)
+{
+	if (ft->s != NULL)
+		return (format_printf ("%u", winlink_count(&ft->s->windows)));
+	return (NULL);
+}
+
+/* Callback for socket_path. */
+static void *
+format_cb_socket_path(__unused struct format_tree *ft)
+{
+	return (xstrdup(socket_path));
+}
+
+/* Callback for version. */
+static void *
+format_cb_version(__unused struct format_tree *ft)
+{
+	return (xstrdup(getversion()));
+}
+
+/* Callback for window_active. */
+static void *
+format_cb_window_active(struct format_tree *ft)
+{
+	if (ft->wl != NULL) {
+		if (ft->wl == ft->wl->session->curw)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for window_activity_flag. */
+static void *
+format_cb_window_activity_flag(struct format_tree *ft)
+{
+	if (ft->wl != NULL) {
+		if (ft->wl->flags & WINLINK_ACTIVITY)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for window_bell_flag. */
+static void *
+format_cb_window_bell_flag(struct format_tree *ft)
+{
+	if (ft->wl != NULL) {
+		if (ft->wl->flags & WINLINK_BELL)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for window_bigger. */
+static void *
+format_cb_window_bigger(struct format_tree *ft)
+{
+	u_int	ox, oy, sx, sy;
+
+	if (ft->c != NULL) {
+		if (tty_window_offset(&ft->c->tty, &ox, &oy, &sx, &sy))
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for window_cell_height. */
+static void *
+format_cb_window_cell_height(struct format_tree *ft)
+{
+	if (ft->w != NULL)
+		return (format_printf("%u", ft->w->ypixel));
+	return (NULL);
+}
+
+/* Callback for window_cell_width. */
+static void *
+format_cb_window_cell_width(struct format_tree *ft)
+{
+	if (ft->w != NULL)
+		return (format_printf("%u", ft->w->xpixel));
+	return (NULL);
+}
+
+/* Callback for window_end_flag. */
+static void *
+format_cb_window_end_flag(struct format_tree *ft)
+{
+	if (ft->wl != NULL) {
+		if (ft->wl == RB_MAX(winlinks, &ft->wl->session->windows))
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for window_flags. */
+static void *
+format_cb_window_flags(struct format_tree *ft)
+{
+	if (ft->wl != NULL)
+		return (xstrdup(window_printable_flags(ft->wl, 1)));
+	return (NULL);
+}
+
+/* Callback for window_format. */
+static void *
+format_cb_window_format(struct format_tree *ft)
+{
+	if (ft->type == FORMAT_TYPE_WINDOW)
+		return (xstrdup("1"));
+	return (xstrdup("0"));
+}
+
+/* Callback for window_height. */
+static void *
+format_cb_window_height(struct format_tree *ft)
+{
+	if (ft->w != NULL)
+		return (format_printf("%u", ft->w->sy));
+	return (NULL);
+}
+
+/* Callback for window_id. */
+static void *
+format_cb_window_id(struct format_tree *ft)
+{
+	if (ft->w != NULL)
+		return (format_printf("@%u", ft->w->id));
+	return (NULL);
+}
+
+/* Callback for window_index. */
+static void *
+format_cb_window_index(struct format_tree *ft)
+{
+	if (ft->wl != NULL)
+		return (format_printf("%d", ft->wl->idx));
+	return (NULL);
+}
+
+/* Callback for window_last_flag. */
+static void *
+format_cb_window_last_flag(struct format_tree *ft)
+{
+	if (ft->wl != NULL) {
+		if (ft->wl == TAILQ_FIRST(&ft->wl->session->lastw))
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for window_linked. */
+static void *
+format_cb_window_linked(struct format_tree *ft)
+{
+	if (ft->wl != NULL) {
+		if (session_is_linked(ft->wl->session, ft->wl->window))
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for window_linked_sessions. */
+static void *
+format_cb_window_linked_sessions(struct format_tree *ft)
+{
+	if (ft->wl != NULL)
+		return (format_printf("%u", ft->wl->window->references));
+	return (NULL);
+}
+
+/* Callback for window_marked_flag. */
+static void *
+format_cb_window_marked_flag(struct format_tree *ft)
+{
+	if (ft->wl != NULL) {
+		if (server_check_marked() && marked_pane.wl == ft->wl)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for window_name. */
+static void *
+format_cb_window_name(struct format_tree *ft)
+{
+	if (ft->w != NULL)
+		return (format_printf("%s", ft->w->name));
+	return (NULL);
+}
+
+/* Callback for window_offset_x. */
+static void *
+format_cb_window_offset_x(struct format_tree *ft)
+{
+	u_int	ox, oy, sx, sy;
+
+	if (ft->c != NULL) {
+		if (tty_window_offset(&ft->c->tty, &ox, &oy, &sx, &sy))
+			return (format_printf("%u", ox));
+		return (NULL);
+	}
+	return (NULL);
+}
+
+/* Callback for window_offset_y. */
+static void *
+format_cb_window_offset_y(struct format_tree *ft)
+{
+	u_int	ox, oy, sx, sy;
+
+	if (ft->c != NULL) {
+		if (tty_window_offset(&ft->c->tty, &ox, &oy, &sx, &sy))
+			return (format_printf("%u", oy));
+		return (NULL);
+	}
+	return (NULL);
+}
+
+/* Callback for window_panes. */
+static void *
+format_cb_window_panes(struct format_tree *ft)
+{
+	if (ft->w != NULL)
+		return (format_printf("%u", window_count_panes(ft->w)));
+	return (NULL);
+}
+
+/* Callback for window_raw_flags. */
+static void *
+format_cb_window_raw_flags(struct format_tree *ft)
+{
+	if (ft->wl != NULL)
+		return (xstrdup(window_printable_flags(ft->wl, 0)));
+	return (NULL);
+}
+
+/* Callback for window_silence_flag. */
+static void *
+format_cb_window_silence_flag(struct format_tree *ft)
+{
+	if (ft->wl != NULL) {
+		if (ft->wl->flags & WINLINK_SILENCE)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for window_start_flag. */
+static void *
+format_cb_window_start_flag(struct format_tree *ft)
+{
+	if (ft->wl != NULL) {
+		if (ft->wl == RB_MIN(winlinks, &ft->wl->session->windows))
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for window_width. */
+static void *
+format_cb_window_width(struct format_tree *ft)
+{
+	if (ft->w != NULL)
+		return (format_printf("%u", ft->w->sx));
+	return (NULL);
+}
+
+/* Callback for window_zoomed_flag. */
+static void *
+format_cb_window_zoomed_flag(struct format_tree *ft)
+{
+	if (ft->w != NULL) {
+		if (ft->w->flags & WINDOW_ZOOMED)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for wrap_flag. */
+static void *
+format_cb_wrap_flag(struct format_tree *ft)
+{
+	if (ft->wp != NULL) {
+		if (ft->wp->base.mode & MODE_WRAP)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for buffer_created. */
+static void *
+format_cb_buffer_created(struct format_tree *ft)
+{
+	static struct timeval	 tv;
+
+	if (ft->pb != NULL) {
+		timerclear(&tv);
+		tv.tv_sec = paste_buffer_created(ft->pb);
+		return (&tv);
+	}
+	return (NULL);
+}
+
+/* Callback for client_activity. */
+static void *
+format_cb_client_activity(struct format_tree *ft)
+{
+	if (ft->c != NULL)
+		return (&ft->c->activity_time);
+	return (NULL);
+}
+
+/* Callback for client_created. */
+static void *
+format_cb_client_created(struct format_tree *ft)
+{
+	if (ft->c != NULL)
+		return (&ft->c->creation_time);
+	return (NULL);
+}
+
+/* Callback for session_activity. */
+static void *
+format_cb_session_activity(struct format_tree *ft)
+{
+	if (ft->s != NULL)
+		return (&ft->s->activity_time);
+	return (NULL);
+}
+
+/* Callback for session_created. */
+static void *
+format_cb_session_created(struct format_tree *ft)
+{
+	if (ft->s != NULL)
+		return (&ft->s->creation_time);
+	return (NULL);
+}
+
+/* Callback for session_last_attached. */
+static void *
+format_cb_session_last_attached(struct format_tree *ft)
+{
+	if (ft->s != NULL)
+		return (&ft->s->last_attached_time);
+	return (NULL);
+}
+
+/* Callback for start_time. */
+static void *
+format_cb_start_time(__unused struct format_tree *ft)
+{
+	return (&start_time);
+}
+
+/* Callback for window_activity. */
+static void *
+format_cb_window_activity(struct format_tree *ft)
+{
+	if (ft->w != NULL)
+		return (&ft->w->activity_time);
+	return (NULL);
+}
+
+/* Callback for buffer_mode_format, */
+static void *
+format_cb_buffer_mode_format(__unused struct format_tree *ft)
+{
+	return (xstrdup(window_buffer_mode.default_format));
+}
+
+/* Callback for client_mode_format, */
+static void *
+format_cb_client_mode_format(__unused struct format_tree *ft)
+{
+	return (xstrdup(window_client_mode.default_format));
+}
+
+/* Callback for tree_mode_format, */
+static void *
+format_cb_tree_mode_format(__unused struct format_tree *ft)
+{
+	return (xstrdup(window_tree_mode.default_format));
+}
+
+/* Format table type. */
+enum format_table_type {
+	FORMAT_TABLE_STRING,
+	FORMAT_TABLE_TIME
+};
+
+/* Format table entry. */
+struct format_table_entry {
+	const char		*key;
+	enum format_table_type	 type;
+	format_cb		 cb;
+};
+
+/*
+ * Format table. Default format variables (that are almost always in the tree
+ * and where the value is expanded by a callback in this file) are listed here.
+ * Only variables which are added by the caller go into the tree.
+ */
+static const struct format_table_entry format_table[] = {
+	{ "alternate_on", FORMAT_TABLE_STRING,
+	  format_cb_alternate_on
+	},
+	{ "alternate_saved_x", FORMAT_TABLE_STRING,
+	  format_cb_alternate_saved_x
+	},
+	{ "alternate_saved_y", FORMAT_TABLE_STRING,
+	  format_cb_alternate_saved_y
+	},
+	{ "buffer_created", FORMAT_TABLE_TIME,
+	  format_cb_buffer_created
+	},
+	{ "buffer_mode_format", FORMAT_TABLE_STRING,
+	  format_cb_buffer_mode_format
+	},
+	{ "buffer_name", FORMAT_TABLE_STRING,
+	  format_cb_buffer_name
+	},
+	{ "buffer_sample", FORMAT_TABLE_STRING,
+	  format_cb_buffer_sample
+	},
+	{ "buffer_size", FORMAT_TABLE_STRING,
+	  format_cb_buffer_size
+	},
+	{ "client_activity", FORMAT_TABLE_TIME,
+	  format_cb_client_activity
+	},
+	{ "client_cell_height", FORMAT_TABLE_STRING,
+	  format_cb_client_cell_height
+	},
+	{ "client_cell_width", FORMAT_TABLE_STRING,
+	  format_cb_client_cell_width
+	},
+	{ "client_control_mode", FORMAT_TABLE_STRING,
+	  format_cb_client_control_mode
+	},
+	{ "client_created", FORMAT_TABLE_TIME,
+	  format_cb_client_created
+	},
+	{ "client_discarded", FORMAT_TABLE_STRING,
+	  format_cb_client_discarded
+	},
+	{ "client_flags", FORMAT_TABLE_STRING,
+	  format_cb_client_flags
+	},
+	{ "client_height", FORMAT_TABLE_STRING,
+	  format_cb_client_height
+	},
+	{ "client_key_table", FORMAT_TABLE_STRING,
+	  format_cb_client_key_table
+	},
+	{ "client_last_session", FORMAT_TABLE_STRING,
+	  format_cb_client_last_session
+	},
+	{ "client_mode_format", FORMAT_TABLE_STRING,
+	  format_cb_client_mode_format
+	},
+	{ "client_name", FORMAT_TABLE_STRING,
+	  format_cb_client_name
+	},
+	{ "client_pid", FORMAT_TABLE_STRING,
+	  format_cb_client_pid
+	},
+	{ "client_prefix", FORMAT_TABLE_STRING,
+	  format_cb_client_prefix
+	},
+	{ "client_readonly", FORMAT_TABLE_STRING,
+	  format_cb_client_readonly
+	},
+	{ "client_session", FORMAT_TABLE_STRING,
+	  format_cb_client_session
+	},
+	{ "client_termfeatures", FORMAT_TABLE_STRING,
+	  format_cb_client_termfeatures
+	},
+	{ "client_termname", FORMAT_TABLE_STRING,
+	  format_cb_client_termname
+	},
+	{ "client_termtype", FORMAT_TABLE_STRING,
+	  format_cb_client_termtype
+	},
+	{ "client_tty", FORMAT_TABLE_STRING,
+	  format_cb_client_tty
+	},
+	{ "client_utf8", FORMAT_TABLE_STRING,
+	  format_cb_client_utf8
+	},
+	{ "client_width", FORMAT_TABLE_STRING,
+	  format_cb_client_width
+	},
+	{ "client_written", FORMAT_TABLE_STRING,
+	  format_cb_client_written
+	},
+	{ "cursor_character", FORMAT_TABLE_STRING,
+	  format_cb_cursor_character
+	},
+	{ "cursor_flag", FORMAT_TABLE_STRING,
+	  format_cb_cursor_flag
+	},
+	{ "cursor_x", FORMAT_TABLE_STRING,
+	  format_cb_cursor_x
+	},
+	{ "cursor_y", FORMAT_TABLE_STRING,
+	  format_cb_cursor_y
+	},
+	{ "history_all_bytes", FORMAT_TABLE_STRING,
+	  format_cb_history_all_bytes
+	},
+	{ "history_bytes", FORMAT_TABLE_STRING,
+	  format_cb_history_bytes
+	},
+	{ "history_limit", FORMAT_TABLE_STRING,
+	  format_cb_history_limit
+	},
+	{ "history_size", FORMAT_TABLE_STRING,
+	  format_cb_history_size
+	},
+	{ "host", FORMAT_TABLE_STRING,
+	  format_cb_host
+	},
+	{ "host_short", FORMAT_TABLE_STRING,
+	  format_cb_host_short
+	},
+	{ "insert_flag", FORMAT_TABLE_STRING,
+	  format_cb_insert_flag
+	},
+	{ "keypad_cursor_flag", FORMAT_TABLE_STRING,
+	  format_cb_keypad_cursor_flag
+	},
+	{ "keypad_flag", FORMAT_TABLE_STRING,
+	  format_cb_keypad_flag
+	},
+	{ "mouse_all_flag", FORMAT_TABLE_STRING,
+	  format_cb_mouse_all_flag
+	},
+	{ "mouse_any_flag", FORMAT_TABLE_STRING,
+	  format_cb_mouse_any_flag
+	},
+	{ "mouse_button_flag", FORMAT_TABLE_STRING,
+	  format_cb_mouse_button_flag
+	},
+	{ "mouse_line", FORMAT_TABLE_STRING,
+	  format_cb_mouse_line
+	},
+	{ "mouse_pane", FORMAT_TABLE_STRING,
+	  format_cb_mouse_pane
+	},
+	{ "mouse_sgr_flag", FORMAT_TABLE_STRING,
+	  format_cb_mouse_sgr_flag
+	},
+	{ "mouse_standard_flag", FORMAT_TABLE_STRING,
+	  format_cb_mouse_standard_flag
+	},
+	{ "mouse_utf8_flag", FORMAT_TABLE_STRING,
+	  format_cb_mouse_utf8_flag
+	},
+	{ "mouse_word", FORMAT_TABLE_STRING,
+	  format_cb_mouse_word
+	},
+	{ "mouse_x", FORMAT_TABLE_STRING,
+	  format_cb_mouse_x
+	},
+	{ "mouse_y", FORMAT_TABLE_STRING,
+	  format_cb_mouse_y
+	},
+	{ "origin_flag", FORMAT_TABLE_STRING,
+	  format_cb_origin_flag
+	},
+	{ "pane_active", FORMAT_TABLE_STRING,
+	  format_cb_pane_active
+	},
+	{ "pane_at_bottom", FORMAT_TABLE_STRING,
+	  format_cb_pane_at_bottom
+	},
+	{ "pane_at_left", FORMAT_TABLE_STRING,
+	  format_cb_pane_at_left
+	},
+	{ "pane_at_right", FORMAT_TABLE_STRING,
+	  format_cb_pane_at_right
+	},
+	{ "pane_at_top", FORMAT_TABLE_STRING,
+	  format_cb_pane_at_top
+	},
+	{ "pane_bg", FORMAT_TABLE_STRING,
+	  format_cb_pane_bg
+	},
+	{ "pane_bottom", FORMAT_TABLE_STRING,
+	  format_cb_pane_bottom
+	},
+	{ "pane_current_command", FORMAT_TABLE_STRING,
+	  format_cb_current_command
+	},
+	{ "pane_current_path", FORMAT_TABLE_STRING,
+	  format_cb_current_path
+	},
+	{ "pane_dead", FORMAT_TABLE_STRING,
+	  format_cb_pane_dead
+	},
+	{ "pane_dead_status", FORMAT_TABLE_STRING,
+	  format_cb_pane_dead_status
+	},
+	{ "pane_fg", FORMAT_TABLE_STRING,
+	  format_cb_pane_fg
+	},
+	{ "pane_format", FORMAT_TABLE_STRING,
+	  format_cb_pane_format
+	},
+	{ "pane_height", FORMAT_TABLE_STRING,
+	  format_cb_pane_height
+	},
+	{ "pane_id", FORMAT_TABLE_STRING,
+	  format_cb_pane_id
+	},
+	{ "pane_in_mode", FORMAT_TABLE_STRING,
+	  format_cb_pane_in_mode
+	},
+	{ "pane_index", FORMAT_TABLE_STRING,
+	  format_cb_pane_index
+	},
+	{ "pane_input_off", FORMAT_TABLE_STRING,
+	  format_cb_pane_input_off
+	},
+	{ "pane_last", FORMAT_TABLE_STRING,
+	  format_cb_pane_last
+	},
+	{ "pane_left", FORMAT_TABLE_STRING,
+	  format_cb_pane_left
+	},
+	{ "pane_marked", FORMAT_TABLE_STRING,
+	  format_cb_pane_marked
+	},
+	{ "pane_marked_set", FORMAT_TABLE_STRING,
+	  format_cb_pane_marked_set
+	},
+	{ "pane_mode", FORMAT_TABLE_STRING,
+	  format_cb_pane_mode
+	},
+	{ "pane_path", FORMAT_TABLE_STRING,
+	  format_cb_pane_path
+	},
+	{ "pane_pid", FORMAT_TABLE_STRING,
+	  format_cb_pane_pid
+	},
+	{ "pane_pipe", FORMAT_TABLE_STRING,
+	  format_cb_pane_pipe
+	},
+	{ "pane_right", FORMAT_TABLE_STRING,
+	  format_cb_pane_right
+	},
+	{ "pane_search_string", FORMAT_TABLE_STRING,
+	  format_cb_pane_search_string
+	},
+	{ "pane_start_command", FORMAT_TABLE_STRING,
+	  format_cb_start_command
+	},
+	{ "pane_synchronized", FORMAT_TABLE_STRING,
+	  format_cb_pane_synchronized
+	},
+	{ "pane_tabs", FORMAT_TABLE_STRING,
+	  format_cb_pane_tabs
+	},
+	{ "pane_title", FORMAT_TABLE_STRING,
+	  format_cb_pane_title
+	},
+	{ "pane_top", FORMAT_TABLE_STRING,
+	  format_cb_pane_top
+	},
+	{ "pane_tty", FORMAT_TABLE_STRING,
+	  format_cb_pane_tty
+	},
+	{ "pane_width", FORMAT_TABLE_STRING,
+	  format_cb_pane_width
+	},
+	{ "pid", FORMAT_TABLE_STRING,
+	  format_cb_pid
+	},
+	{ "scroll_region_lower", FORMAT_TABLE_STRING,
+	  format_cb_scroll_region_lower
+	},
+	{ "scroll_region_upper", FORMAT_TABLE_STRING,
+	  format_cb_scroll_region_upper
+	},
+	{ "session_activity", FORMAT_TABLE_TIME,
+	  format_cb_session_activity
+	},
+	{ "session_alerts", FORMAT_TABLE_STRING,
+	  format_cb_session_alerts
+	},
+	{ "session_attached", FORMAT_TABLE_STRING,
+	  format_cb_session_attached
+	},
+	{ "session_attached_list", FORMAT_TABLE_STRING,
+	  format_cb_session_attached_list
+	},
+	{ "session_created", FORMAT_TABLE_TIME,
+	  format_cb_session_created
+	},
+	{ "session_format", FORMAT_TABLE_STRING,
+	  format_cb_session_format
+	},
+	{ "session_group", FORMAT_TABLE_STRING,
+	  format_cb_session_group
+	},
+	{ "session_group_attached", FORMAT_TABLE_STRING,
+	  format_cb_session_group_attached
+	},
+	{ "session_group_attached_list", FORMAT_TABLE_STRING,
+	  format_cb_session_group_attached_list
+	},
+	{ "session_group_list", FORMAT_TABLE_STRING,
+	  format_cb_session_group_list
+	},
+	{ "session_group_many_attached", FORMAT_TABLE_STRING,
+	  format_cb_session_group_many_attached
+	},
+	{ "session_group_size", FORMAT_TABLE_STRING,
+	  format_cb_session_group_size
+	},
+	{ "session_grouped", FORMAT_TABLE_STRING,
+	  format_cb_session_grouped
+	},
+	{ "session_id", FORMAT_TABLE_STRING,
+	  format_cb_session_id
+	},
+	{ "session_last_attached", FORMAT_TABLE_TIME,
+	  format_cb_session_last_attached
+	},
+	{ "session_many_attached", FORMAT_TABLE_STRING,
+	  format_cb_session_many_attached
+	},
+	{ "session_marked", FORMAT_TABLE_STRING,
+	  format_cb_session_marked,
+	},
+	{ "session_name", FORMAT_TABLE_STRING,
+	  format_cb_session_name
+	},
+	{ "session_path", FORMAT_TABLE_STRING,
+	  format_cb_session_path
+	},
+	{ "session_stack", FORMAT_TABLE_STRING,
+	  format_cb_session_stack
+	},
+	{ "session_windows", FORMAT_TABLE_STRING,
+	  format_cb_session_windows
+	},
+	{ "socket_path", FORMAT_TABLE_STRING,
+	  format_cb_socket_path
+	},
+	{ "start_time", FORMAT_TABLE_TIME,
+	  format_cb_start_time
+	},
+	{ "tree_mode_format", FORMAT_TABLE_STRING,
+	  format_cb_tree_mode_format
+	},
+	{ "version", FORMAT_TABLE_STRING,
+	  format_cb_version
+	},
+	{ "window_active", FORMAT_TABLE_STRING,
+	  format_cb_window_active
+	},
+	{ "window_active_clients", FORMAT_TABLE_STRING,
+	  format_cb_window_active_clients
+	},
+	{ "window_active_clients_list", FORMAT_TABLE_STRING,
+	  format_cb_window_active_clients_list
+	},
+	{ "window_active_sessions", FORMAT_TABLE_STRING,
+	  format_cb_window_active_sessions
+	},
+	{ "window_active_sessions_list", FORMAT_TABLE_STRING,
+	  format_cb_window_active_sessions_list
+	},
+	{ "window_activity", FORMAT_TABLE_TIME,
+	  format_cb_window_activity
+	},
+	{ "window_activity_flag", FORMAT_TABLE_STRING,
+	  format_cb_window_activity_flag
+	},
+	{ "window_bell_flag", FORMAT_TABLE_STRING,
+	  format_cb_window_bell_flag
+	},
+	{ "window_bigger", FORMAT_TABLE_STRING,
+	  format_cb_window_bigger
+	},
+	{ "window_cell_height", FORMAT_TABLE_STRING,
+	  format_cb_window_cell_height
+	},
+	{ "window_cell_width", FORMAT_TABLE_STRING,
+	  format_cb_window_cell_width
+	},
+	{ "window_end_flag", FORMAT_TABLE_STRING,
+	  format_cb_window_end_flag
+	},
+	{ "window_flags", FORMAT_TABLE_STRING,
+	  format_cb_window_flags
+	},
+	{ "window_format", FORMAT_TABLE_STRING,
+	  format_cb_window_format
+	},
+	{ "window_height", FORMAT_TABLE_STRING,
+	  format_cb_window_height
+	},
+	{ "window_id", FORMAT_TABLE_STRING,
+	  format_cb_window_id
+	},
+	{ "window_index", FORMAT_TABLE_STRING,
+	  format_cb_window_index
+	},
+	{ "window_last_flag", FORMAT_TABLE_STRING,
+	  format_cb_window_last_flag
+	},
+	{ "window_layout", FORMAT_TABLE_STRING,
+	  format_cb_window_layout
+	},
+	{ "window_linked", FORMAT_TABLE_STRING,
+	  format_cb_window_linked
+	},
+	{ "window_linked_sessions", FORMAT_TABLE_STRING,
+	  format_cb_window_linked_sessions
+	},
+	{ "window_linked_sessions_list", FORMAT_TABLE_STRING,
+	  format_cb_window_linked_sessions_list
+	},
+	{ "window_marked_flag", FORMAT_TABLE_STRING,
+	  format_cb_window_marked_flag
+	},
+	{ "window_name", FORMAT_TABLE_STRING,
+	  format_cb_window_name
+	},
+	{ "window_offset_x", FORMAT_TABLE_STRING,
+	  format_cb_window_offset_x
+	},
+	{ "window_offset_y", FORMAT_TABLE_STRING,
+	  format_cb_window_offset_y
+	},
+	{ "window_panes", FORMAT_TABLE_STRING,
+	  format_cb_window_panes
+	},
+	{ "window_raw_flags", FORMAT_TABLE_STRING,
+	  format_cb_window_raw_flags
+	},
+	{ "window_silence_flag", FORMAT_TABLE_STRING,
+	  format_cb_window_silence_flag
+	},
+	{ "window_stack_index", FORMAT_TABLE_STRING,
+	  format_cb_window_stack_index
+	},
+	{ "window_start_flag", FORMAT_TABLE_STRING,
+	  format_cb_window_start_flag
+	},
+	{ "window_visible_layout", FORMAT_TABLE_STRING,
+	  format_cb_window_visible_layout
+	},
+	{ "window_width", FORMAT_TABLE_STRING,
+	  format_cb_window_width
+	},
+	{ "window_zoomed_flag", FORMAT_TABLE_STRING,
+	  format_cb_window_zoomed_flag
+	},
+	{ "wrap_flag", FORMAT_TABLE_STRING,
+	  format_cb_wrap_flag
+	}
+};
+
+/* Compare format table entries. */
+static int
+format_table_compare(const void *key0, const void *entry0)
+{
+	const char			*key = key0;
+	const struct format_table_entry	*entry = entry0;
+
+	return (strcmp(key, entry->key));
+}
+
+/* Get a format callback. */
+static struct format_table_entry *
+format_table_get(const char *key)
+{
+	return (bsearch(key, format_table, nitems(format_table),
+	    sizeof *format_table, format_table_compare));
 }
 
 /* Merge one format tree into another. */
@@ -1226,20 +2983,8 @@ format_create_add_item(struct format_tree *ft, struct cmdq_item *item)
 {
 	struct key_event	*event = cmdq_get_event(item);
 	struct mouse_event	*m = &event->m;
-	struct window_pane	*wp;
-	u_int			 x, y;
 
 	cmdq_merge_formats(item, ft);
-
-	if (m->valid && ((wp = cmd_mouse_pane(m, NULL, NULL)) != NULL)) {
-		format_add(ft, "mouse_pane", "%%%u", wp->id);
-		if (cmd_mouse_at(wp, m, &x, &y, 0) == 0) {
-			format_add(ft, "mouse_x", "%u", x);
-			format_add(ft, "mouse_y", "%u", y);
-			format_add_cb(ft, "mouse_word", format_cb_mouse_word);
-			format_add_cb(ft, "mouse_line", format_cb_mouse_line);
-		}
-	}
 	memcpy(&ft->m, m, sizeof ft->m);
 }
 
@@ -1247,9 +2992,7 @@ format_create_add_item(struct format_tree *ft, struct cmdq_item *item)
 struct format_tree *
 format_create(struct client *c, struct cmdq_item *item, int tag, int flags)
 {
-	struct format_tree		 *ft;
-	const struct window_mode	**wm;
-	char				  tmp[64];
+	struct format_tree	*ft;
 
 	if (!event_initialized(&format_job_event)) {
 		evtimer_set(&format_job_event, format_job_timer, NULL);
@@ -1267,21 +3010,6 @@ format_create(struct client *c, struct cmdq_item *item, int tag, int flags)
 
 	ft->tag = tag;
 	ft->flags = flags;
-
-	format_add(ft, "version", "%s", getversion());
-	format_add_cb(ft, "host", format_cb_host);
-	format_add_cb(ft, "host_short", format_cb_host_short);
-	format_add_cb(ft, "pid", format_cb_pid);
-	format_add(ft, "socket_path", "%s", socket_path);
-	format_add_tv(ft, "start_time", &start_time);
-
-	for (wm = all_window_modes; *wm != NULL; wm++) {
-		if ((*wm)->default_format != NULL) {
-			xsnprintf(tmp, sizeof tmp, "%s_format", (*wm)->name);
-			tmp[strcspn(tmp, "-")] = '_';
-			format_add(ft, tmp, "%s", (*wm)->default_format);
-		}
-	}
 
 	if (item != NULL)
 		format_create_add_item(ft, item);
@@ -1312,9 +3040,28 @@ void
 format_each(struct format_tree *ft, void (*cb)(const char *, const char *,
     void *), void *arg)
 {
-	struct format_entry	*fe;
-	char			 s[64];
+	const struct format_table_entry	*fte;
+	struct format_entry		*fe;
+	u_int				 i;
+	char				 s[64];
+	void				*value;
+	struct timeval			*tv;
 
+	for (i = 0; i < nitems(format_table); i++) {
+		fte = &format_table[i];
+
+		value = fte->cb(ft);
+		if (value == NULL)
+			continue;
+		if (fte->type == FORMAT_TABLE_TIME) {
+			tv = value;
+			xsnprintf(s, sizeof s, "%lld", (long long)tv->tv_sec);
+			cb(fte->key, s, arg);
+		} else {
+			cb(fte->key, value, arg);
+			free(value);
+		}
+	}
 	RB_FOREACH(fe, format_entry_tree, &ft->tree) {
 		if (fe->time != 0) {
 			xsnprintf(s, sizeof s, "%lld", (long long)fe->time);
@@ -1484,14 +3231,16 @@ static char *
 format_find(struct format_tree *ft, const char *key, int modifiers,
     const char *time_format)
 {
-	struct format_entry	*fe, fe_find;
-	struct environ_entry	*envent;
-	struct options_entry	*o;
-	int			 idx;
-	char			*found = NULL, *saved, s[512];
-	const char		*errstr;
-	time_t			 t = 0;
-	struct tm		 tm;
+	struct format_table_entry	*fte;
+	void				*value;
+	struct format_entry		*fe, fe_find;
+	struct environ_entry		*envent;
+	struct options_entry		*o;
+	int				 idx;
+	char				*found = NULL, *saved, s[512];
+	const char			*errstr;
+	time_t				 t = 0;
+	struct tm			 tm;
 
 	o = options_parse_get(global_options, key, &idx, 0);
 	if (o == NULL && ft->wp != NULL)
@@ -1509,6 +3258,15 @@ format_find(struct format_tree *ft, const char *key, int modifiers,
 		goto found;
 	}
 
+	fte = format_table_get(key);
+	if (fte != NULL) {
+		value = fte->cb(ft);
+		if (fte->type == FORMAT_TABLE_TIME)
+			t = ((struct timeval *)value)->tv_sec;
+		else
+			found = value;
+		goto found;
+	}
 	fe_find.key = (char *)key;
 	fe = RB_FIND(format_entry_tree, &ft->tree, &fe_find);
 	if (fe != NULL) {
@@ -2619,7 +4377,6 @@ format_expand1(struct format_expand_state *es, const char *fmt)
 	const char		*ptr, *s;
 	size_t			 off, len, n, outlen;
 	int     		 ch, brackets;
-	struct tm		*tm;
 	char			 expanded[8192];
 
 	if (fmt == NULL || *fmt == '\0')
@@ -2631,11 +4388,12 @@ format_expand1(struct format_expand_state *es, const char *fmt)
 
 	format_log(es, "expanding format: %s", fmt);
 
-	if (es->flags & FORMAT_EXPAND_TIME) {
-		if (es->time == 0)
+	if ((es->flags & FORMAT_EXPAND_TIME) && strchr(fmt, '%') != NULL) {
+		if (es->time == 0) {
 			es->time = time(NULL);
-		tm = localtime(&es->time);
-		if (strftime(expanded, sizeof expanded, fmt, tm) == 0) {
+			localtime_r(&es->time, &es->tm);
+		}
+		if (strftime(expanded, sizeof expanded, fmt, &es->tm) == 0) {
 			format_log(es, "format is too long");
 			return (xstrdup(""));
 		}
@@ -2887,9 +4645,14 @@ format_defaults(struct format_tree *ft, struct client *c, struct session *s,
 	if (c != NULL && s != NULL && c->session != s)
 		log_debug("%s: session does not match", __func__);
 
-	format_add(ft, "session_format", "%d", s != NULL);
-	format_add(ft, "window_format", "%d", wl != NULL);
-	format_add(ft, "pane_format", "%d", wp != NULL);
+	if (s != NULL)
+		ft->type = FORMAT_TYPE_SESSION;
+	else if (wl != NULL)
+		ft->type = FORMAT_TYPE_WINDOW;
+	else if (wp != NULL)
+		ft->type = FORMAT_TYPE_PANE;
+	else
+		ft->type = FORMAT_TYPE_UNKNOWN;
 
 	if (s == NULL && c != NULL)
 		s = c->session;
@@ -2916,106 +4679,16 @@ format_defaults(struct format_tree *ft, struct client *c, struct session *s,
 static void
 format_defaults_session(struct format_tree *ft, struct session *s)
 {
-	struct session_group	*sg;
-
 	ft->s = s;
-
-	format_add(ft, "session_name", "%s", s->name);
-	format_add(ft, "session_path", "%s", s->cwd);
-	format_add(ft, "session_windows", "%u", winlink_count(&s->windows));
-	format_add(ft, "session_id", "$%u", s->id);
-
-	sg = session_group_contains(s);
-	format_add(ft, "session_grouped", "%d", sg != NULL);
-	if (sg != NULL) {
-		format_add(ft, "session_group", "%s", sg->name);
-		format_add(ft, "session_group_size", "%u",
-		    session_group_count (sg));
-		format_add(ft, "session_group_attached", "%u",
-		    session_group_attached_count (sg));
-		format_add(ft, "session_group_many_attached", "%u",
-		    session_group_attached_count (sg) > 1);
-		format_add_cb(ft, "session_group_list",
-		    format_cb_session_group_list);
-		format_add_cb(ft, "session_group_attached_list",
-		    format_cb_session_group_attached_list);
-	}
-
-	format_add_tv(ft, "session_created", &s->creation_time);
-	format_add_tv(ft, "session_last_attached", &s->last_attached_time);
-	format_add_tv(ft, "session_activity", &s->activity_time);
-
-	format_add(ft, "session_attached", "%u", s->attached);
-	format_add(ft, "session_many_attached", "%d", s->attached > 1);
-	format_add_cb(ft, "session_attached_list",
-	    format_cb_session_attached_list);
-
-	format_add_cb(ft, "session_alerts", format_cb_session_alerts);
-	format_add_cb(ft, "session_stack", format_cb_session_stack);
-
-	if (server_check_marked() && marked_pane.s == s)
-	    format_add(ft, "session_marked", "1");
-	else
-	    format_add(ft, "session_marked", "0");
 }
 
 /* Set default format keys for a client. */
 static void
 format_defaults_client(struct format_tree *ft, struct client *c)
 {
-	struct session	*s;
-	const char	*name;
-	struct tty	*tty = &c->tty;
-
 	if (ft->s == NULL)
 		ft->s = c->session;
 	ft->c = c;
-
-	format_add(ft, "client_name", "%s", c->name);
-	format_add(ft, "client_pid", "%ld", (long) c->pid);
-	format_add(ft, "client_height", "%u", tty->sy);
-	format_add(ft, "client_width", "%u", tty->sx);
-	format_add(ft, "client_cell_width", "%u", tty->xpixel);
-	format_add(ft, "client_cell_height", "%u", tty->ypixel);
-	format_add(ft, "client_tty", "%s", c->ttyname);
-	format_add(ft, "client_control_mode", "%d",
-		!!(c->flags & CLIENT_CONTROL));
-
-	format_add(ft, "client_termname", "%s", c->term_name);
-	format_add(ft, "client_termfeatures", "%s",
-	    tty_get_features(c->term_features));
-	if (c->term_type != NULL)
-		format_add(ft, "client_termtype", "%s", c->term_type);
-
-	format_add_tv(ft, "client_created", &c->creation_time);
-	format_add_tv(ft, "client_activity", &c->activity_time);
-
-	format_add(ft, "client_written", "%zu", c->written);
-	format_add(ft, "client_discarded", "%zu", c->discarded);
-
-	name = server_client_get_key_table(c);
-	if (strcmp(c->keytable->name, name) == 0)
-		format_add(ft, "client_prefix", "%d", 0);
-	else
-		format_add(ft, "client_prefix", "%d", 1);
-	format_add(ft, "client_key_table", "%s", c->keytable->name);
-
-	if (c->flags & CLIENT_UTF8)
-		format_add(ft, "client_utf8", "%d", 1);
-	else
-		format_add(ft, "client_utf8", "%d", 0);
-	if (c->flags & CLIENT_READONLY)
-		format_add(ft, "client_readonly", "%d", 1);
-	else
-		format_add(ft, "client_readonly", "%d", 0);
-	format_add(ft, "client_flags", "%s", server_client_get_flags(c));
-
-	s = c->session;
-	if (s != NULL)
-		format_add(ft, "client_session", "%s", s->name);
-	s = c->last_session;
-	if (s != NULL && session_alive(s))
-		format_add(ft, "client_last_session", "%s", s->name);
 }
 
 /* Set default format keys for a window. */
@@ -3023,221 +4696,131 @@ void
 format_defaults_window(struct format_tree *ft, struct window *w)
 {
 	ft->w = w;
-
-	format_add_tv(ft, "window_activity", &w->activity_time);
-	format_add(ft, "window_id", "@%u", w->id);
-	format_add(ft, "window_name", "%s", w->name);
-	format_add(ft, "window_width", "%u", w->sx);
-	format_add(ft, "window_height", "%u", w->sy);
-	format_add(ft, "window_cell_width", "%u", w->xpixel);
-	format_add(ft, "window_cell_height", "%u", w->ypixel);
-	format_add_cb(ft, "window_layout", format_cb_window_layout);
-	format_add_cb(ft, "window_visible_layout",
-	    format_cb_window_visible_layout);
-	format_add(ft, "window_panes", "%u", window_count_panes(w));
-	format_add(ft, "window_zoomed_flag", "%d",
-	    !!(w->flags & WINDOW_ZOOMED));
 }
 
 /* Set default format keys for a winlink. */
 static void
 format_defaults_winlink(struct format_tree *ft, struct winlink *wl)
 {
-	struct client	*c = ft->c;
-	struct session	*s = wl->session;
-	struct window	*w = wl->window;
-	int		 flag;
-	u_int		 ox, oy, sx, sy;
-
 	if (ft->w == NULL)
-		format_defaults_window(ft, w);
+		format_defaults_window(ft, wl->window);
 	ft->wl = wl;
-
-	if (c != NULL) {
-		flag = tty_window_offset(&c->tty, &ox, &oy, &sx, &sy);
-		format_add(ft, "window_bigger", "%d", flag);
-		if (flag) {
-			format_add(ft, "window_offset_x", "%u", ox);
-			format_add(ft, "window_offset_y", "%u", oy);
-		}
-	}
-
-	format_add(ft, "window_index", "%d", wl->idx);
-	format_add_cb(ft, "window_stack_index", format_cb_window_stack_index);
-	format_add(ft, "window_flags", "%s", window_printable_flags(wl, 1));
-	format_add(ft, "window_raw_flags", "%s", window_printable_flags(wl, 0));
-	format_add(ft, "window_active", "%d", wl == s->curw);
-	format_add_cb(ft, "window_active_sessions",
-	    format_cb_window_active_sessions);
-	format_add_cb(ft, "window_active_sessions_list",
-	    format_cb_window_active_sessions_list);
-	format_add_cb(ft, "window_active_clients",
-	    format_cb_window_active_clients);
-	format_add_cb(ft, "window_active_clients_list",
-	    format_cb_window_active_clients_list);
-
-	format_add(ft, "window_start_flag", "%d",
-	    !!(wl == RB_MIN(winlinks, &s->windows)));
-	format_add(ft, "window_end_flag", "%d",
-	    !!(wl == RB_MAX(winlinks, &s->windows)));
-
-	if (server_check_marked() && marked_pane.wl == wl)
-	    format_add(ft, "window_marked_flag", "1");
-	else
-	    format_add(ft, "window_marked_flag", "0");
-
-	format_add(ft, "window_bell_flag", "%d",
-	    !!(wl->flags & WINLINK_BELL));
-	format_add(ft, "window_activity_flag", "%d",
-	    !!(wl->flags & WINLINK_ACTIVITY));
-	format_add(ft, "window_silence_flag", "%d",
-	    !!(wl->flags & WINLINK_SILENCE));
-	format_add(ft, "window_last_flag", "%d",
-	    !!(wl == TAILQ_FIRST(&s->lastw)));
-	format_add(ft, "window_linked", "%d", session_is_linked(s, wl->window));
-
-	format_add_cb(ft, "window_linked_sessions_list",
-	    format_cb_window_linked_sessions_list);
-	format_add(ft, "window_linked_sessions", "%u",
-	    wl->window->references);
 }
 
 /* Set default format keys for a window pane. */
 void
 format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 {
-	struct window			*w = wp->window;
-	struct grid			*gd = wp->base.grid;
-	int  				 status = wp->status;
-	u_int				 idx;
 	struct window_mode_entry	*wme;
 
 	if (ft->w == NULL)
-		format_defaults_window(ft, w);
+		format_defaults_window(ft, wp->window);
 	ft->wp = wp;
 
-	format_add(ft, "history_size", "%u", gd->hsize);
-	format_add(ft, "history_limit", "%u", gd->hlimit);
-	format_add_cb(ft, "history_bytes", format_cb_history_bytes);
-	format_add_cb(ft, "history_all_bytes", format_cb_history_all_bytes);
-
-	if (window_pane_index(wp, &idx) != 0)
-		fatalx("index not found");
-	format_add(ft, "pane_index", "%u", idx);
-
-	format_add(ft, "pane_width", "%u", wp->sx);
-	format_add(ft, "pane_height", "%u", wp->sy);
-	format_add(ft, "pane_title", "%s", wp->base.title);
-	if (wp->base.path != NULL)
-	    format_add(ft, "pane_path", "%s", wp->base.path);
-	format_add(ft, "pane_id", "%%%u", wp->id);
-	format_add(ft, "pane_active", "%d", wp == w->active);
-	format_add(ft, "pane_input_off", "%d", !!(wp->flags & PANE_INPUTOFF));
-	format_add(ft, "pane_pipe", "%d", wp->pipe_fd != -1);
-
-	if ((wp->flags & PANE_STATUSREADY) && WIFEXITED(status))
-		format_add(ft, "pane_dead_status", "%d", WEXITSTATUS(status));
-	if (~wp->flags & PANE_EMPTY)
-		format_add(ft, "pane_dead", "%d", wp->fd == -1);
-	else
-		format_add(ft, "pane_dead", "0");
-	format_add(ft, "pane_last", "%d", wp == w->last);
-
-	if (server_check_marked() && marked_pane.wp == wp)
-		format_add(ft, "pane_marked", "1");
-	else
-		format_add(ft, "pane_marked", "0");
-	format_add(ft, "pane_marked_set", "%d", server_check_marked());
-
-	format_add(ft, "pane_left", "%u", wp->xoff);
-	format_add(ft, "pane_top", "%u", wp->yoff);
-	format_add(ft, "pane_right", "%u", wp->xoff + wp->sx - 1);
-	format_add(ft, "pane_bottom", "%u", wp->yoff + wp->sy - 1);
-	format_add(ft, "pane_at_left", "%d", wp->xoff == 0);
-	format_add_cb(ft, "pane_at_top", format_cb_pane_at_top);
-	format_add(ft, "pane_at_right", "%d", wp->xoff + wp->sx == w->sx);
-	format_add_cb(ft, "pane_at_bottom", format_cb_pane_at_bottom);
-
 	wme = TAILQ_FIRST(&wp->modes);
-	if (wme != NULL) {
-		format_add(ft, "pane_mode", "%s", wme->mode->name);
-		if (wme->mode->formats != NULL)
-			wme->mode->formats(wme, ft);
-	}
-	format_add_cb(ft, "pane_in_mode", format_cb_pane_in_mode);
-
-	format_add(ft, "pane_synchronized", "%d",
-	    !!options_get_number(wp->options, "synchronize-panes"));
-	if (wp->searchstr != NULL)
-		format_add(ft, "pane_search_string", "%s", wp->searchstr);
-
-	format_add(ft, "pane_tty", "%s", wp->tty);
-	format_add(ft, "pane_pid", "%ld", (long) wp->pid);
-	format_add_cb(ft, "pane_start_command", format_cb_start_command);
-	format_add_cb(ft, "pane_current_command", format_cb_current_command);
-	format_add_cb(ft, "pane_current_path", format_cb_current_path);
-
-	format_add(ft, "cursor_x", "%u", wp->base.cx);
-	format_add(ft, "cursor_y", "%u", wp->base.cy);
-	format_add_cb(ft, "cursor_character", format_cb_cursor_character);
-
-	format_add(ft, "scroll_region_upper", "%u", wp->base.rupper);
-	format_add(ft, "scroll_region_lower", "%u", wp->base.rlower);
-
-	format_add(ft, "alternate_on", "%d", wp->base.saved_grid != NULL);
-	if (wp->base.saved_cx != UINT_MAX)
-		format_add(ft, "alternate_saved_x", "%u", wp->base.saved_cx);
-	if (wp->base.saved_cy != UINT_MAX)
-		format_add(ft, "alternate_saved_y", "%u", wp->base.saved_cy);
-
-	format_add(ft, "cursor_flag", "%d",
-	    !!(wp->base.mode & MODE_CURSOR));
-	format_add(ft, "insert_flag", "%d",
-	    !!(wp->base.mode & MODE_INSERT));
-	format_add(ft, "keypad_cursor_flag", "%d",
-	    !!(wp->base.mode & MODE_KCURSOR));
-	format_add(ft, "keypad_flag", "%d",
-	    !!(wp->base.mode & MODE_KKEYPAD));
-	format_add(ft, "wrap_flag", "%d",
-	    !!(wp->base.mode & MODE_WRAP));
-	format_add(ft, "origin_flag", "%d",
-	    !!(wp->base.mode & MODE_ORIGIN));
-
-	format_add(ft, "mouse_any_flag", "%d",
-	    !!(wp->base.mode & ALL_MOUSE_MODES));
-	format_add(ft, "mouse_standard_flag", "%d",
-	    !!(wp->base.mode & MODE_MOUSE_STANDARD));
-	format_add(ft, "mouse_button_flag", "%d",
-	    !!(wp->base.mode & MODE_MOUSE_BUTTON));
-	format_add(ft, "mouse_all_flag", "%d",
-	    !!(wp->base.mode & MODE_MOUSE_ALL));
-	format_add(ft, "mouse_utf8_flag", "%d",
-	    !!(wp->base.mode & MODE_MOUSE_UTF8));
-	format_add(ft, "mouse_sgr_flag", "%d",
-	    !!(wp->base.mode & MODE_MOUSE_SGR));
-
-	format_add_cb(ft, "pane_tabs", format_cb_pane_tabs);
-	format_add_cb(ft, "pane_fg", format_cb_pane_fg);
-	format_add_cb(ft, "pane_bg", format_cb_pane_bg);
+	if (wme != NULL && wme->mode->formats != NULL)
+		wme->mode->formats(wme, ft);
 }
 
 /* Set default format keys for paste buffer. */
 void
 format_defaults_paste_buffer(struct format_tree *ft, struct paste_buffer *pb)
 {
-	struct timeval	 tv;
-	size_t		 size;
-	char		*s;
+	ft->pb = pb;
+}
 
-	timerclear(&tv);
-	tv.tv_sec = paste_buffer_created(pb);
-	paste_buffer_data(pb, &size);
+/* Return word at given coordinates. Caller frees. */
+char *
+format_grid_word(struct grid *gd, u_int x, u_int y)
+{
+	const struct grid_line	*gl;
+	struct grid_cell	 gc;
+	const char		*ws;
+	struct utf8_data	*ud = NULL;
+	u_int			 end;
+	size_t			 size = 0;
+	int			 found = 0;
+	char			*s = NULL;
 
-	format_add(ft, "buffer_size", "%zu", size);
-	format_add(ft, "buffer_name", "%s", paste_buffer_name(pb));
-	format_add_tv(ft, "buffer_created", &tv);
+	ws = options_get_string(global_s_options, "word-separators");
 
-	s = paste_make_sample(pb);
-	format_add(ft, "buffer_sample", "%s", s);
-	free(s);
+	for (;;) {
+		grid_get_cell(gd, x, y, &gc);
+		if (gc.flags & GRID_FLAG_PADDING)
+			break;
+		if (utf8_cstrhas(ws, &gc.data)) {
+			found = 1;
+			break;
+		}
+
+		if (x == 0) {
+			if (y == 0)
+				break;
+			gl = grid_peek_line(gd, y - 1);
+			if (~gl->flags & GRID_LINE_WRAPPED)
+				break;
+			y--;
+			x = grid_line_length(gd, y);
+			if (x == 0)
+				break;
+		}
+		x--;
+	}
+	for (;;) {
+		if (found) {
+			end = grid_line_length(gd, y);
+			if (end == 0 || x == end - 1) {
+				if (y == gd->hsize + gd->sy - 1)
+					break;
+				gl = grid_peek_line(gd, y);
+				if (~gl->flags & GRID_LINE_WRAPPED)
+					break;
+				y++;
+				x = 0;
+			} else
+				x++;
+		}
+		found = 1;
+
+		grid_get_cell(gd, x, y, &gc);
+		if (gc.flags & GRID_FLAG_PADDING)
+			break;
+		if (utf8_cstrhas(ws, &gc.data))
+			break;
+
+		ud = xreallocarray(ud, size + 2, sizeof *ud);
+		memcpy(&ud[size++], &gc.data, sizeof *ud);
+	}
+	if (size != 0) {
+		ud[size].size = 0;
+		s = utf8_tocstr(ud);
+		free(ud);
+	}
+	return (s);
+}
+
+/* Return line at given coordinates. Caller frees. */
+char *
+format_grid_line(struct grid *gd, u_int y)
+{
+	struct grid_cell	 gc;
+	struct utf8_data	*ud = NULL;
+	u_int			 x;
+	size_t			 size = 0;
+	char			*s = NULL;
+
+	for (x = 0; x < grid_line_length(gd, y); x++) {
+		grid_get_cell(gd, x, y, &gc);
+		if (gc.flags & GRID_FLAG_PADDING)
+			break;
+
+		ud = xreallocarray(ud, size + 2, sizeof *ud);
+		memcpy(&ud[size++], &gc.data, sizeof *ud);
+	}
+	if (size != 0) {
+		ud[size].size = 0;
+		s = utf8_tocstr(ud);
+		free(ud);
+	}
+	return (s);
 }
