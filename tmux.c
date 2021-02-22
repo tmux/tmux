@@ -347,6 +347,12 @@ main(int argc, char **argv)
 
 	if (**argv == '-')
 		flags = CLIENT_LOGIN;
+
+	global_environ = environ_create();
+	for (var = environ; *var != NULL; var++)
+		environ_put(global_environ, *var, 0);
+	if ((cwd = find_cwd()) != NULL)
+		environ_set(global_environ, "PWD", 0, "%s", cwd);
 	expand_paths(TMUX_CONF, &cfg_files, &cfg_nfiles, 1);
 
 	while ((opt = getopt(argc, argv, "2c:CDdf:lL:NqS:T:uUvV")) != -1) {
@@ -440,12 +446,6 @@ main(int argc, char **argv)
 		    strcasestr(s, "UTF8") != NULL)
 			flags |= CLIENT_UTF8;
 	}
-
-	global_environ = environ_create();
-	for (var = environ; *var != NULL; var++)
-		environ_put(global_environ, *var, 0);
-	if ((cwd = find_cwd()) != NULL)
-		environ_set(global_environ, "PWD", 0, "%s", cwd);
 
 	global_options = options_create(NULL);
 	global_s_options = options_create(NULL);
