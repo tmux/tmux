@@ -34,6 +34,10 @@
 
 extern char   **environ;
 
+#ifdef environ
+#undef environ
+#endif
+
 struct args;
 struct args_value;
 struct client;

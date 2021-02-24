@@ -18,7 +18,6 @@
 
 #include <sys/types.h>
 #include <sys/queue.h>
-#include <sys/socket.h>
 #include <sys/utsname.h>
 
 #include <errno.h>

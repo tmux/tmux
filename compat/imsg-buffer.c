@@ -17,7 +17,6 @@
  */
 
 #include <sys/types.h>
-#include <sys/socket.h>
 
 #include <limits.h>
 #include <errno.h>

@@ -20,20 +20,21 @@
 #include <sys/types.h>
 
 #ifdef _WIN32
-#undef environ
-struct termios {}
+struct termios {};
 #else
-#include <sys/uio.h>
-#include <termios.h>
-#include <sys/ioctl.h>
 #include <fnmatch.h>
 #include <pwd.h>
-
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <sys/uio.h>
+#include <sys/un.h>
+#include <sys/wait.h>
+#include <termios.h>
 #endif
 
 #include <limits.h>
-#include <stdio.h>
 #include <wchar.h>
+#include <stdio.h>
 
 #ifdef HAVE_EVENT2_EVENT_H
 #include <event2/event.h>
