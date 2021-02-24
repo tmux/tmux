@@ -1319,8 +1319,8 @@ format_cb_client_prefix(struct format_tree *ft)
 	if (ft->c != NULL) {
 		name = server_client_get_key_table(ft->c);
 		if (strcmp(ft->c->keytable->name, name) == 0)
-			return (xstrdup("1"));
-		return (xstrdup("0"));
+			return (xstrdup("0"));
+		return (xstrdup("1"));
 	}
 	return (NULL);
 }
