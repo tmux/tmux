@@ -18,13 +18,21 @@
 #define COMPAT_H
 
 #include <sys/types.h>
-#include <sys/ioctl.h>
-#include <sys/uio.h>
 
+#ifdef _WIN32
+#undef environ
+struct termios {}
+#else
+#include <sys/uio.h>
+#include <termios.h>
+#include <sys/ioctl.h>
 #include <fnmatch.h>
+#include <pwd.h>
+
+#endif
+
 #include <limits.h>
 #include <stdio.h>
-#include <termios.h>
 #include <wchar.h>
 
 #ifdef HAVE_EVENT2_EVENT_H

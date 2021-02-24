@@ -15,7 +15,6 @@
  */
 
 #include <sys/types.h>
-#include <sys/ioctl.h>
 
 #include <fcntl.h>
 #include <stdlib.h>

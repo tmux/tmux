@@ -20,12 +20,10 @@
 #define TMUX_H
 
 #include <sys/time.h>
-#include <sys/uio.h>
 
 #include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
-#include <termios.h>
 
 #ifdef HAVE_UTEMPTER
 #include <utempter.h>

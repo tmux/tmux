@@ -24,7 +24,6 @@
 #include <fcntl.h>
 #include <langinfo.h>
 #include <locale.h>
-#include <pwd.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>

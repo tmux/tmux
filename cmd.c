@@ -19,8 +19,6 @@
 #include <sys/types.h>
 #include <sys/time.h>
 
-#include <fnmatch.h>
-#include <pwd.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>

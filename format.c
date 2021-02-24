@@ -21,7 +21,6 @@
 
 #include <ctype.h>
 #include <errno.h>
-#include <fnmatch.h>
 #include <libgen.h>
 #include <math.h>
 #include <regex.h>
