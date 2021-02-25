@@ -17,21 +17,108 @@
 #ifndef COMPAT_H
 #define COMPAT_H
 
-#include <sys/types.h>
-
 #ifdef _WIN32
-struct termios {};
+
+#define _WIN32_WINNT_WIN10		0x0A00 		// Windows 10
+#define NTDDI_VERSION 			0x0A000006  /* _WIN10_RS5 */
+
+#define WIN32_LEAN_AND_MEAN
+
+#define NOGDI
+#define NOMCX
+#define NOSOUND
+#define NOSERVICE
+#define NOUSER
+
+struct winsize {
+	unsigned short  ws_row;         /* rows, in characters */
+	unsigned short  ws_col;         /* columns, in characters */
+	unsigned short  ws_xpixel;      /* horizontal size, pixels - not used */
+	unsigned short  ws_ypixel;      /* vertical size, pixels - not used */
+};
+
+
+#include <ncurses/term.h>
+#undef lines
+#undef columns
+
+
+#define O_NONBLOCK	  04000
+
+#define SIGHUP  	1
+#define SIGQUIT		3
+#define SIGCHLD 	17
+#define SIGCONT		18
+#define SIGUSR1 	10
+#define SIGUSR2		12
+#define SIGPIPE 	13
+#define SIGTSTP		20
+#define	SIGTTIN		21
+#define	SIGTTOU		22
+#define SIGWINCH 	28
+
+#include <winsock2.h>
+#include <ws2tcpip.h>
+
+struct iovec
+{
+	void *iov_base;	/* Pointer to data.  */
+	size_t iov_len;	/* Length of data.  */
+};
+
+struct msghdr
+  {
+    void *msg_name;		/* Address to send to/receive from.  */
+    socklen_t msg_namelen;	/* Length of address data.  */
+
+    struct iovec *msg_iov;	/* Vector of data to send/receive into.  */
+    size_t msg_iovlen;		/* Number of elements in the vector.  */
+
+    void *msg_control;		/* Ancillary data (eg BSD filedesc passing). */
+    size_t msg_controllen;	/* Ancillary data buffer length.
+				   !! The type should be socklen_t but the
+				   definition of the kernel is incompatible
+				   with this.  */
+
+    int msg_flags;		/* Flags on received message.  */
+  };
+
+#define SHUT_RD 	SD_RECEIVE
+#define SHUT_WR 	SD_SEND
+#define SHUT_RDWR	SD_BOTH
+
+#define UNIX_PATH_MAX 108
+
+typedef struct sockaddr_un
+{
+     ADDRESS_FAMILY sun_family;     /* AF_UNIX */
+     char sun_path[UNIX_PATH_MAX];  /* pathname */
+} SOCKADDR_UN, *PSOCKADDR_UN;
+
+#define SIO_AF_UNIX_GETPEERPID _WSAIOR(IOC_VENDOR, 256) // Returns ULONG PID of the connected peer process
+
+#define _PATH_POWERSHELL	"powershell.exe"
+
 #else
 #include <fnmatch.h>
+#include <glob.h>
+#include <langinfo.h>
 #include <pwd.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <arpa/nameser.h>
+#include <resolv.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <sys/utsname.h>
 #include <sys/uio.h>
 #include <sys/un.h>
 #include <sys/wait.h>
 #include <termios.h>
+
 #endif
 
+#include <sys/types.h>
 #include <limits.h>
 #include <wchar.h>
 #include <stdio.h>

@@ -19,14 +19,10 @@
 #include <sys/types.h>
 #include <sys/time.h>
 
-#include <netinet/in.h>
-
 #include <ctype.h>
 #include <limits.h>
-#include <resolv.h>
 #include <stdlib.h>
 #include <string.h>
-#include <termios.h>
 #include <unistd.h>
 
 #include "tmux.h"

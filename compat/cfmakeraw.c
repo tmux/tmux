@@ -18,7 +18,6 @@
 #include <sys/types.h>
 
 #include <string.h>
-#include <termios.h>
 
 #include "compat.h"
 

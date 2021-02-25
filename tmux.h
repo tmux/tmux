@@ -32,10 +32,11 @@
 #include "compat.h"
 #include "xmalloc.h"
 
+#ifdef _WIN32
+extern char   **_environ;
+#undef environ /* avoid shaddowing struct environ */
+#else
 extern char   **environ;
-
-#ifdef environ
-#undef environ
 #endif
 
 struct args;

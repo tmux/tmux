@@ -15,12 +15,12 @@
  */
 
 #include <sys/types.h>
+#include <sys/ioctl.h>
 
 #include <fcntl.h>
 #include <stdlib.h>
 #include <strings.h>
 #include <stropts.h>
-#include <termios.h>
 #include <unistd.h>
 
 #include "compat.h"

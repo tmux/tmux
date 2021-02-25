@@ -16,7 +16,6 @@
 
 #include <sys/types.h>
 
-#include <glob.h>
 #include <unistd.h>
 
 #include "compat.h"
