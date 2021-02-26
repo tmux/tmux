@@ -2099,6 +2099,28 @@ format_cb_version(__unused struct format_tree *ft)
 	return (xstrdup(getversion()));
 }
 
+/* Callback for active_window_index. */
+static void *
+format_cb_active_window_index(struct format_tree *ft)
+{
+	if (ft->s != NULL)
+		return (format_printf("%u", ft->s->curw->idx));
+	return (NULL);
+}
+
+/* Callback for last_window_index. */
+static void *
+format_cb_last_window_index(struct format_tree *ft)
+{
+	struct winlink	*wl;
+
+	if (ft->s != NULL) {
+		wl = RB_MAX(winlinks, &ft->s->windows);
+		return (format_printf("%u", wl->idx));
+	}
+	return (NULL);
+}
+
 /* Callback for window_active. */
 static void *
 format_cb_window_active(struct format_tree *ft)
@@ -2496,6 +2518,9 @@ struct format_table_entry {
  * Only variables which are added by the caller go into the tree.
  */
 static const struct format_table_entry format_table[] = {
+	{ "active_window_index", FORMAT_TABLE_STRING,
+	  format_cb_active_window_index
+	},
 	{ "alternate_on", FORMAT_TABLE_STRING,
 	  format_cb_alternate_on
 	},
@@ -2630,6 +2655,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "keypad_flag", FORMAT_TABLE_STRING,
 	  format_cb_keypad_flag
+	},
+	{ "last_window_index", FORMAT_TABLE_STRING,
+	  format_cb_last_window_index
 	},
 	{ "mouse_all_flag", FORMAT_TABLE_STRING,
 	  format_cb_mouse_all_flag
