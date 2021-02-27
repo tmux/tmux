@@ -1368,8 +1368,11 @@ format_cb_client_termname(struct format_tree *ft)
 static void *
 format_cb_client_termtype(struct format_tree *ft)
 {
-	if (ft->c != NULL)
+	if (ft->c != NULL) {
+		if (ft->c->term_type == NULL)
+			return (xstrdup(""));
 		return (xstrdup(ft->c->term_type));
+	}
 	return (NULL);
 }
 
