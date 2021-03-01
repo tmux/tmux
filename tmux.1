@@ -522,6 +522,69 @@ Commands separated by semicolons together form a
 - if a command in the sequence encounters an error, no subsequent commands are
 executed.
 .Pp
+It is recommended that a semicolon used as a command separator should be
+written as an individual token, for example from
+.Xr sh 1 :
+.Bd -literal -offset indent
+$ tmux neww \\; splitw
+.Ed
+.Pp
+Or:
+.Bd -literal -offset indent
+$ tmux neww ';' splitw
+.Ed
+.Pp
+Or from the tmux command prompt:
+.Bd -literal -offset indent
+neww ; splitw
+.Ed
+.Pp
+However, a trailing semicolon is also interpreted as a command separator,
+for example in these
+.Xr sh 1
+commands:
+.Bd -literal -offset indent
+$ tmux neww\\; splitw
+.Ed
+.Pp
+Or:
+.Bd -literal -offset indent
+$ tmux 'neww;' splitw
+.Ed
+.Pp
+As in these examples, when running tmux from the shell extra care must be taken
+to properly quote semicolons:
+.Bl -enum -offset Ds
+.It
+Semicolons that should be interpreted as a command separator
+should be escaped according to the shell conventions.
+For
+.Xr sh 1
+this typically means quoted (such as
+.Ql neww ';' splitw )
+or escaped (such as
+.Ql neww \\\\; splitw ) .
+.It
+Individual semicolons or trailing semicolons that should be interpreted as
+arguments should be escaped twice: once according to the shell conventions and
+a second time for
+.Nm ;
+for example:
+.Bd -literal -offset indent
+$ tmux neww 'foo\\;' bar
+$ tmux neww foo\\\\; bar
+.Ed
+.Pp
+.It
+Semicolons that are not individual tokens or trailing another token should only
+be escaped once according to shell conventions; for example:
+.Bd -literal -offset indent
+$ tmux neww 'foo-;-bar'
+$ tmux neww foo-\\;-bar
+.Ed
+.Pp
+.El
+.Pp
 Comments are marked by the unquoted # character - any remaining text after a
 comment is ignored until the end of the line.
 .Pp
