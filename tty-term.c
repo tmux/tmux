@@ -521,9 +521,6 @@ tty_term_create(struct tty *tty, char *name, char **caps, u_int ncaps,
 		a = options_array_next(a);
 	}
 
-	/* Delete curses data. */
-	del_curterm(cur_term);
-
 	/* Apply overrides so any capabilities used for features are changed. */
 	tty_term_apply_overrides(term);
 
