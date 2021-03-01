@@ -107,6 +107,9 @@ check_window_name(struct window *w)
 char *
 default_window_name(struct window *w)
 {
+        if (w->active == NULL)
+                return NULL;
+        
 	char	*cmd, *s;
 
 	cmd = cmd_stringify_argv(w->active->argc, w->active->argv);
