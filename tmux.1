@@ -544,7 +544,7 @@ for example in these
 .Xr sh 1
 commands:
 .Bd -literal -offset indent
-$ tmux neww\\; splitw
+$ tmux neww\e\e; splitw
 .Ed
 .Pp
 Or:
@@ -563,7 +563,7 @@ For
 this typically means quoted (such as
 .Ql neww ';' splitw )
 or escaped (such as
-.Ql neww \\\\; splitw ) .
+.Ql neww \e\e\e\e; splitw ) .
 .It
 Individual semicolons or trailing semicolons that should be interpreted as
 arguments should be escaped twice: once according to the shell conventions and
@@ -571,18 +571,16 @@ a second time for
 .Nm ;
 for example:
 .Bd -literal -offset indent
-$ tmux neww 'foo\\;' bar
-$ tmux neww foo\\\\; bar
+$ tmux neww 'foo\e\e;' bar
+$ tmux neww foo\e\e\e\e; bar
 .Ed
-.Pp
 .It
 Semicolons that are not individual tokens or trailing another token should only
 be escaped once according to shell conventions; for example:
 .Bd -literal -offset indent
 $ tmux neww 'foo-;-bar'
-$ tmux neww foo-\\;-bar
+$ tmux neww foo-\e\e;-bar
 .Ed
-.Pp
 .El
 .Pp
 Comments are marked by the unquoted # character - any remaining text after a
