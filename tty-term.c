@@ -695,7 +695,10 @@ tty_term_read_list(const char *name, int fd, char ***caps, u_int *ncaps,
 		(*ncaps)++;
 	}
 
+#if !defined(NCURSES_VERSION_MAJOR) || NCURSES_VERSION_MAJOR > 5 || \
+    (NCURSES_VERSION_MAJOR == 5 && NCURSES_VERSION_MINOR > 6)
 	del_curterm(cur_term);
+#endif
 	return (0);
 }
 
