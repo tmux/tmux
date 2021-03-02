@@ -182,7 +182,7 @@ spawn_window(struct spawn_context *sc, char **cause)
 			    NULL);
 			options_set_number(w->options, "automatic-rename", 0);
 		} else
-			w->name = xstrdup(default_window_name(w));
+			w->name = default_window_name(w);
 	}
 
 	/* Switch to the new window if required. */
@@ -263,8 +263,9 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	}
 
 	/*
-	 * Now we have a pane with nothing running in it ready for the new process.
-	 * Work out the command and arguments and store the working directory.
+	 * Now we have a pane with nothing running in it ready for the new
+	 * process. Work out the command and arguments and store the working
+	 * directory.
 	 */
 	if (sc->argc == 0 && (~sc->flags & SPAWN_RESPAWN)) {
 		cmd = options_get_string(s->options, "default-command");
@@ -377,10 +378,10 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	 * Child process. Change to the working directory or home if that
 	 * fails.
 	 */
-	if (chdir(new_wp->cwd) != 0) {
-		if ((tmp = find_home()) == NULL || chdir(tmp) != 0)
-			chdir("/");
-	}
+	if (chdir(new_wp->cwd) != 0 &&
+	    ((tmp = find_home()) == NULL || chdir(tmp) != 0) &&
+	    chdir("/") != 0)
+		fatal("chdir failed");
 
 	/*
 	 * Update terminal escape characters from the session if available and

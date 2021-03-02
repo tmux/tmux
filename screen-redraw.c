@@ -32,8 +32,8 @@ static void	screen_redraw_set_context(struct client *,
 		    struct screen_redraw_ctx *);
 
 #define CELL_INSIDE 0
-#define CELL_LEFTRIGHT 1
-#define CELL_TOPBOTTOM 2
+#define CELL_TOPBOTTOM 1
+#define CELL_LEFTRIGHT 2
 #define CELL_TOPLEFT 3
 #define CELL_TOPRIGHT 4
 #define CELL_BOTTOMLEFT 5
@@ -46,6 +46,9 @@ static void	screen_redraw_set_context(struct client *,
 #define CELL_OUTSIDE 12
 
 #define CELL_BORDERS " xqlkmjwvtun~"
+
+#define START_ISOLATE "\342\201\246"
+#define END_ISOLATE   "\342\201\251"
 
 static const struct utf8_data screen_redraw_double_borders[] = {
 	{ "", 0, 0, 0 },
@@ -299,7 +302,7 @@ screen_redraw_type_of_cell(struct client *c, u_int px, u_int py,
 	case 13:	/* 1101, left right bottom */
 		return (CELL_TOPJOIN);
 	case 12:	/* 1100, left right */
-		return (CELL_TOPBOTTOM);
+		return (CELL_LEFTRIGHT);
 	case 11:	/* 1011, left top bottom */
 		return (CELL_RIGHTJOIN);
 	case 10:	/* 1010, left top */
@@ -313,7 +316,7 @@ screen_redraw_type_of_cell(struct client *c, u_int px, u_int py,
 	case 5:		/* 0101, right bottom */
 		return (CELL_TOPLEFT);
 	case 3:		/* 0011, top bottom */
-		return (CELL_LEFTRIGHT);
+		return (CELL_TOPBOTTOM);
 	}
 	return (CELL_OUTSIDE);
 }
@@ -407,7 +410,7 @@ screen_redraw_make_pane_status(struct client *c, struct window_pane *wp,
 	struct format_tree	*ft;
 	char			*expanded;
 	int			 pane_status = rctx->pane_status;
-	u_int			 width, i, cell_type, top, px, py;
+	u_int			 width, i, cell_type, px, py;
 	struct screen_write_ctx	 ctx;
 	struct screen		 old;
 
@@ -432,16 +435,12 @@ screen_redraw_make_pane_status(struct client *c, struct window_pane *wp,
 
 	screen_write_start(&ctx, &wp->status_screen);
 
-	if (rctx->statustop)
-		top = rctx->statuslines;
-	else
-		top = 0;
 	for (i = 0; i < width; i++) {
 		px = wp->xoff + 2 + i;
 		if (rctx->pane_status == PANE_STATUS_TOP)
-			py = top + wp->yoff - 1;
+			py = wp->yoff - 1;
 		else
-			py = top + wp->yoff + wp->sy;
+			py = wp->yoff + wp->sy;
 		cell_type = screen_redraw_type_of_cell(c, px, py, pane_status);
 		screen_redraw_border_set(wp, pane_lines, cell_type, &gc);
 		screen_write_cell(&ctx, &gc);
@@ -684,7 +683,7 @@ screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j)
 	struct tty		*tty = &c->tty;
 	struct window_pane	*wp;
 	u_int			 cell_type, x = ctx->ox + i, y = ctx->oy + j;
-	int			 pane_status = ctx->pane_status;
+	int			 pane_status = ctx->pane_status, isolates;
 	struct grid_cell	 gc;
 	const struct grid_cell	*tmp;
 
@@ -709,11 +708,22 @@ screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j)
 	}
 	screen_redraw_border_set(wp, ctx->pane_lines, cell_type, &gc);
 
+	if (cell_type == CELL_TOPBOTTOM &&
+	    (c->flags & CLIENT_UTF8) &&
+	    tty_term_has(tty->term, TTYC_BIDI))
+		isolates = 1;
+	else
+		isolates = 0;
+
 	if (ctx->statustop)
 		tty_cursor(tty, i, ctx->statuslines + j);
 	else
 		tty_cursor(tty, i, j);
+	if (isolates)
+		tty_puts(tty, END_ISOLATE);
 	tty_cell(tty, &gc, &grid_default_cell, NULL);
+	if (isolates)
+		tty_puts(tty, START_ISOLATE);
 }
 
 /* Draw the borders. */

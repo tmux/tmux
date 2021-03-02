@@ -20,11 +20,12 @@
 #include <sys/sysctl.h>
 
 #include <Availability.h>
-#include <event.h>
 #include <libproc.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+#include "compat.h"
 
 char			*osdep_get_name(int, char *);
 char			*osdep_get_cwd(int);

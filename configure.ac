@@ -1,6 +1,6 @@
 # configure.ac
 
-AC_INIT([tmux], 3.2-rc3)
+AC_INIT([tmux], 3.2-rc4)
 AC_PREREQ([2.60])
 
 AC_CONFIG_AUX_DIR(etc)
@@ -20,6 +20,26 @@ AC_CANONICAL_HOST
 SAVED_CFLAGS="$CFLAGS"
 SAVED_CPPFLAGS="$CPPFLAGS"
 SAVED_LDFLAGS="$LDFLAGS"
+
+# Is this oss-fuzz build?
+AC_ARG_ENABLE(
+	fuzzing,
+	AC_HELP_STRING(--enable-fuzzing, build fuzzers)
+)
+AC_ARG_VAR(
+	FUZZING_LIBS,
+	AC_HELP_STRING(libraries to link fuzzing targets with)
+)
+
+# Set up convenient fuzzing defaults before initializing compiler.
+if test "x$enable_fuzzing" = xyes; then
+	AC_DEFINE(NEED_FUZZING)
+	test "x$CC" == x && CC=clang
+	test "x$FUZZING_LIBS" == x && \
+		FUZZING_LIBS="-fsanitize=fuzzer"
+	test "x$SAVED_CFLAGS" == x && \
+		AM_CFLAGS="-g -fsanitize=fuzzer-no-link,address"
+fi
 
 # Set up the compiler in two different ways and say yes we may want to install.
 AC_PROG_CC
@@ -54,8 +74,11 @@ if test "x$enable_static" = xyes; then
 	LDFLAGS="$AM_LDFLAGS $SAVED_LDFLAGS"
 fi
 
+# Do we need fuzzers?
+AM_CONDITIONAL(NEED_FUZZING, test "x$enable_fuzzing" = xyes)
+
 # Is this gcc?
-AM_CONDITIONAL(IS_GCC, test "x$GCC" = xyes)
+AM_CONDITIONAL(IS_GCC, test "x$GCC" = xyes -a "x$enable_fuzzing" != xyes)
 
 # Is this Sun CC?
 AC_EGREP_CPP(
@@ -110,6 +133,7 @@ AC_CHECK_FUNCS([ \
 AC_REPLACE_FUNCS([ \
 	asprintf \
 	cfmakeraw \
+	clock_gettime \
 	closefrom \
 	explicit_bzero \
 	fgetln \
@@ -119,8 +143,6 @@ AC_REPLACE_FUNCS([ \
 	getline \
 	getprogname \
 	memmem \
-	recallocarray \
-	reallocarray \
 	setenv \
 	setproctitle \
 	strcasestr \
@@ -132,6 +154,26 @@ AC_REPLACE_FUNCS([ \
 ])
 AC_FUNC_STRNLEN
 
+# Clang sanitizers wrap reallocarray even if it isn't available on the target
+# system. When compiled it always returns NULL and crashes the program. To
+# detect this we need a more complicated test.
+AC_MSG_CHECKING([for working reallocarray])
+AC_RUN_IFELSE([AC_LANG_PROGRAM(
+		[#include <stdlib.h>],
+		[return (reallocarray(NULL, 1, 1) == NULL);]
+	)],
+	AC_MSG_RESULT(yes),
+	[AC_LIBOBJ(reallocarray) AC_MSG_RESULT([no])]
+)
+AC_MSG_CHECKING([for working recallocarray])
+AC_RUN_IFELSE([AC_LANG_PROGRAM(
+		[#include <stdlib.h>],
+		[return (recallocarray(NULL, 1, 1, 1) == NULL);]
+	)],
+	AC_MSG_RESULT(yes),
+	[AC_LIBOBJ(recallocarray) AC_MSG_RESULT([no])]
+)
+
 # Look for clock_gettime. Must come before event_init.
 AC_SEARCH_LIBS(clock_gettime, rt)
 
@@ -141,88 +183,112 @@ AC_SEARCH_LIBS(clock_gettime, rt)
 # implementations.
 AC_LIBOBJ(getopt)
 
-# Look for libevent.
+# Look for libevent. Try libevent_core or libevent with pkg-config first then
+# look for the library.
 PKG_CHECK_MODULES(
-	LIBEVENT,
-	libevent,
+	LIBEVENT_CORE,
+	[libevent_core >= 2],
 	[
-		AM_CFLAGS="$LIBEVENT_CFLAGS $AM_CFLAGS"
-		CFLAGS="$AM_CFLAGS $SAVED_CFLAGS"
-		LIBS="$LIBEVENT_LIBS $LIBS"
+		AM_CPPFLAGS="$LIBEVENT_CORE_CFLAGS $AM_CPPFLAGS"
+		CPPFLAGS="$AM_CPPFLAGS $SAVED_CPPFLAGS"
+		LIBS="$LIBEVENT_CORE_LIBS $LIBS"
 		found_libevent=yes
 	],
+	found_libevent=no
+)
+if test x$found_libevent = xno; then
+	PKG_CHECK_MODULES(
+		LIBEVENT,
+		[libevent >= 2],
+		[
+			AM_CPPFLAGS="$LIBEVENT_CFLAGS $AM_CPPFLAGS"
+			CPPFLAGS="$AM_CPPFLAGS $SAVED_CPPFLAGS"
+			LIBS="$LIBEVENT_LIBS $LIBS"
+			found_libevent=yes
+		],
+		found_libevent=no
+	)
+fi
+if test x$found_libevent = xno; then
+	AC_SEARCH_LIBS(
+		event_init,
+		[event_core event event-1.4],
+		found_libevent=yes,
+		found_libevent=no
+	)
+fi
+AC_CHECK_HEADER(
+	event2/event.h,
+	AC_DEFINE(HAVE_EVENT2_EVENT_H),
 	[
-		AC_SEARCH_LIBS(
-			event_init,
-			[event event-1.4 event2],
-			found_libevent=yes,
+		AC_CHECK_HEADER(
+			event.h,
+			AC_DEFINE(HAVE_EVENT_H),
 			found_libevent=no
 		)
 	]
-)
-AC_CHECK_HEADER(
-	event.h,
-	,
-	found_libevent=no
 )
 if test "x$found_libevent" = xno; then
 	AC_MSG_ERROR("libevent not found")
 fi
 
-# Look for ncurses.
+# Look for ncurses or curses. Try pkg-config first then directly for the
+# library.
 PKG_CHECK_MODULES(
 	LIBTINFO,
 	tinfo,
-	found_ncurses=yes,
+	[
+		AM_CPPFLAGS="$LIBTINFO_CFLAGS $AM_CPPFLAGS"
+		CPPFLAGS="$LIBTINFO_CFLAGS $SAVED_CPPFLAGS"
+		LIBS="$LIBTINFO_LIBS $LIBS"
+		found_ncurses=yes
+	],
 	found_ncurses=no
 )
 if test "x$found_ncurses" = xno; then
 	PKG_CHECK_MODULES(
 		LIBNCURSES,
 		ncurses,
-		found_ncurses=yes,
+		[
+			AM_CPPFLAGS="$LIBNCURSES_CFLAGS $AM_CPPFLAGS"
+			CPPFLAGS="$LIBNCURSES_CFLAGS $SAVED_CPPFLAGS"
+			LIBS="$LIBNCURSES_LIBS $LIBS"
+			found_ncurses=yes
+		],
 		found_ncurses=no
 	)
 fi
 if test "x$found_ncurses" = xno; then
 	PKG_CHECK_MODULES(
-		LIBNCURSES,
+		LIBNCURSESW,
 		ncursesw,
-		found_ncurses=yes,
+		[
+			AM_CPPFLAGS="$LIBNCURSESW_CFLAGS $AM_CPPFLAGS"
+			CPPFLAGS="$LIBNCURSESW_CFLAGS $SAVED_CPPFLAGS"
+			LIBS="$LIBNCURSESW_LIBS $LIBS"
+			found_ncurses=yes
+		],
 		found_ncurses=no
 	)
 fi
-if test "x$found_ncurses" = xyes; then
-	AM_CFLAGS="$LIBNCURSES_CFLAGS $LIBTINFO_CFLAGS $AM_CFLAGS"
-	CFLAGS="$LIBNCURSES_CFLAGS $LIBTINFO_CFLAGS $CFLAGS"
-	LIBS="$LIBNCURSES_LIBS $LIBTINFO_LIBS $LIBS"
-else
-	# pkg-config didn't work, try ncurses.
-	AC_CHECK_LIB(
-		tinfo,
+if test "x$found_ncurses" = xno; then
+	AC_SEARCH_LIBS(
 		setupterm,
+		[tinfo ncurses ncursesw],
 		found_ncurses=yes,
 		found_ncurses=no
 	)
-	if test "x$found_ncurses" = xno; then
-		AC_CHECK_LIB(
-			ncurses,
-			setupterm,
-			found_ncurses=yes,
-			found_ncurses=no
-		)
-	fi
 	if test "x$found_ncurses" = xyes; then
 		AC_CHECK_HEADER(
 			ncurses.h,
 			LIBS="$LIBS -lncurses",
-			found_ncurses=no)
+			found_ncurses=no
+		)
 	fi
 fi
 if test "x$found_ncurses" = xyes; then
 	AC_DEFINE(HAVE_NCURSES_H)
 else
-	# No ncurses, try curses.
 	AC_CHECK_LIB(
 		curses,
 		setupterm,
@@ -232,7 +298,8 @@ else
 	AC_CHECK_HEADER(
 		curses.h,
 		,
-		found_curses=no)
+		found_curses=no
+	)
 	if test "x$found_curses" = xyes; then
 		LIBS="$LIBS -lcurses"
 		AC_DEFINE(HAVE_CURSES_H)
@@ -298,12 +365,11 @@ AC_TRY_LINK(
 	found_b64_ntop=yes,
 	found_b64_ntop=no
 )
+AC_MSG_RESULT($found_b64_ntop)
+OLD_LIBS="$LIBS"
 if test "x$found_b64_ntop" = xno; then
-	AC_MSG_RESULT(no)
-
 	AC_MSG_CHECKING(for b64_ntop with -lresolv)
-	OLD_LIBS="$LIBS"
-	LIBS="$LIBS -lresolv"
+	LIBS="$OLD_LIBS -lresolv"
 	AC_TRY_LINK(
 		[
 			#include <sys/types.h>
@@ -314,15 +380,27 @@ if test "x$found_b64_ntop" = xno; then
 		found_b64_ntop=yes,
 		found_b64_ntop=no
 	)
-	if test "x$found_b64_ntop" = xno; then
-		LIBS="$OLD_LIBS"
-		AC_MSG_RESULT(no)
-	fi
+	AC_MSG_RESULT($found_b64_ntop)
+fi
+if test "x$found_b64_ntop" = xno; then
+	AC_MSG_CHECKING(for b64_ntop with -lnetwork)
+	LIBS="$OLD_LIBS -lnetwork"
+	AC_TRY_LINK(
+		[
+			#include <sys/types.h>
+			#include <netinet/in.h>
+			#include <resolv.h>
+		],
+		[b64_ntop(NULL, 0, NULL, 0);],
+		found_b64_ntop=yes,
+		found_b64_ntop=no
+	)
+	AC_MSG_RESULT($found_b64_ntop)
 fi
 if test "x$found_b64_ntop" = xyes; then
 	AC_DEFINE(HAVE_B64_NTOP)
-	AC_MSG_RESULT(yes)
 else
+	LIBS="$OLD_LIBS"
 	AC_LIBOBJ(base64)
 fi
 
@@ -658,6 +736,10 @@ case "$host_os" in
 		AC_MSG_RESULT(cygwin)
 		PLATFORM=cygwin
 		;;
+	*haiku*)
+		AC_MSG_RESULT(haiku)
+		PLATFORM=haiku
+		;;
 	*)
 		AC_MSG_RESULT(unknown)
 		PLATFORM=unknown
@@ -673,6 +755,7 @@ AM_CONDITIONAL(IS_NETBSD, test "x$PLATFORM" = xnetbsd)
 AM_CONDITIONAL(IS_OPENBSD, test "x$PLATFORM" = xopenbsd)
 AM_CONDITIONAL(IS_SUNOS, test "x$PLATFORM" = xsunos)
 AM_CONDITIONAL(IS_HPUX, test "x$PLATFORM" = xhpux)
+AM_CONDITIONAL(IS_HAIKU, test "x$PLATFORM" = xhaiku)
 AM_CONDITIONAL(IS_UNKNOWN, test "x$PLATFORM" = xunknown)
 
 # Save our CFLAGS/CPPFLAGS/LDFLAGS for the Makefile and restore the old user

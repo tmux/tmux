@@ -30,6 +30,7 @@ static struct screen	*window_client_init(struct window_mode_entry *,
 static void		 window_client_free(struct window_mode_entry *);
 static void		 window_client_resize(struct window_mode_entry *, u_int,
 			     u_int);
+static void		 window_client_update(struct window_mode_entry *);
 static void		 window_client_key(struct window_mode_entry *,
 			     struct client *, struct session *,
 			     struct winlink *, key_code, struct mouse_event *);
@@ -59,6 +60,7 @@ const struct window_mode window_client_mode = {
 	.init = window_client_init,
 	.free = window_client_free,
 	.resize = window_client_resize,
+	.update = window_client_update,
 	.key = window_client_key,
 };
 
@@ -309,6 +311,16 @@ window_client_resize(struct window_mode_entry *wme, u_int sx, u_int sy)
 	struct window_client_modedata	*data = wme->data;
 
 	mode_tree_resize(data->data, sx, sy);
+}
+
+static void
+window_client_update(struct window_mode_entry *wme)
+{
+	struct window_client_modedata	*data = wme->data;
+
+	mode_tree_build(data->data);
+	mode_tree_draw(data->data);
+	data->wp->flags |= PANE_REDRAW;
 }
 
 static void

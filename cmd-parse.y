@@ -1505,8 +1505,12 @@ yylex_token(int ch)
 		    state == NONE)
 			break;
 
-		/* Spaces and comments inside quotes after \n are removed. */
+		/*
+		 * Spaces and comments inside quotes after \n are removed but
+		 * the \n is left.
+		 */
 		if (ch == '\n' && state != NONE) {
+			yylex_append1(&buf, &len, '\n');
 			while ((ch = yylex_getc()) == ' ' || ch == '\t')
 				/* nothing */;
 			if (ch != '#')

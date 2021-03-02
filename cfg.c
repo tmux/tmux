@@ -27,11 +27,14 @@
 #include "tmux.h"
 
 struct client		 *cfg_client;
-static char		 *cfg_file;
 int			  cfg_finished;
 static char		**cfg_causes;
 static u_int		  cfg_ncauses;
 static struct cmdq_item	 *cfg_item;
+
+int                       cfg_quiet = 1;
+char                    **cfg_files;
+u_int                     cfg_nfiles;
 
 static enum cmd_retval
 cfg_client_done(__unused struct cmdq_item *item, __unused void *data)
@@ -60,18 +63,10 @@ cfg_done(__unused struct cmdq_item *item, __unused void *data)
 }
 
 void
-set_cfg_file(const char *path)
-{
-	free(cfg_file);
-	cfg_file = xstrdup(path);
-}
-
-void
 start_cfg(void)
 {
 	struct client	 *c;
-	char		**paths;
-	u_int		  i, n;
+	u_int		  i;
 
 	/*
 	 * Configuration files are loaded without a client, so commands are run
@@ -89,15 +84,12 @@ start_cfg(void)
 		cmdq_append(c, cfg_item);
 	}
 
-	if (cfg_file == NULL) {
-		expand_paths(TMUX_CONF, &paths, &n);
-		for (i = 0; i < n; i++) {
-			load_cfg(paths[i], c, NULL, CMD_PARSE_QUIET, NULL);
-			free(paths[i]);
-		}
-		free(paths);
-	} else
-		load_cfg(cfg_file, c, NULL, 0, NULL);
+	for (i = 0; i < cfg_nfiles; i++) {
+		if (cfg_quiet)
+			load_cfg(cfg_files[i], c, NULL, CMD_PARSE_QUIET, NULL);
+		else
+			load_cfg(cfg_files[i], c, NULL, 0, NULL);
+	}
 
 	cmdq_append(NULL, cmdq_get_callback(cfg_done, NULL));
 }

@@ -68,6 +68,12 @@ static const char *options_table_set_clipboard_list[] = {
 static const char *options_table_window_size_list[] = {
 	"largest", "smallest", "manual", "latest", NULL
 };
+static const char *options_table_remain_on_exit_list[] = {
+	"off", "on", "failed", NULL
+};
+static const char *options_table_detach_on_destroy_list[] = {
+	"off", "on", "no-detached", NULL
+};
 
 /* Status line format. */
 #define OPTIONS_TABLE_STATUS_FORMAT1 \
@@ -401,8 +407,9 @@ const struct options_table_entry options_table[] = {
 	},
 
 	{ .name = "detach-on-destroy",
-	  .type = OPTIONS_TABLE_FLAG,
+	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_SESSION,
+	  .choices = options_table_detach_on_destroy_list,
 	  .default_num = 1,
 	  .text = "Whether to detach when a session is destroyed, or switch "
 		  "the client to another session if any exist."
@@ -948,16 +955,17 @@ const struct options_table_entry options_table[] = {
 	},
 
 	{ .name = "remain-on-exit",
-	  .type = OPTIONS_TABLE_FLAG,
+	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
+	  .choices = options_table_remain_on_exit_list,
 	  .default_num = 0,
 	  .text = "Whether panes should remain ('on') or be automatically "
-		  "killed ('off') when the program inside exits."
+		  "killed ('off' or 'failed') when the program inside exits."
 	},
 
 	{ .name = "synchronize-panes",
 	  .type = OPTIONS_TABLE_FLAG,
-	  .scope = OPTIONS_TABLE_WINDOW,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
 	  .default_num = 0,
 	  .text = "Whether typing should be sent to all panes simultaneously."
 	},

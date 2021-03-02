@@ -701,7 +701,6 @@ grid_move_lines(struct grid *gd, u_int dy, u_int py, u_int ny, u_int bg)
 		gd->linedata[py - 1].flags &= ~GRID_LINE_WRAPPED;
 }
 
-
 /* Move a group of cells. */
 void
 grid_move_cells(struct grid *gd, u_int dx, u_int px, u_int py, u_int nx,
@@ -1049,14 +1048,14 @@ grid_duplicate_lines(struct grid *dst, u_int dy, struct grid *src, u_int sy,
 			    srcl->cellsize * sizeof *dstl->celldata);
 		} else
 			dstl->celldata = NULL;
-
 		if (srcl->extdsize != 0) {
 			dstl->extdsize = srcl->extdsize;
 			dstl->extddata = xreallocarray(NULL, dstl->extdsize,
 			    sizeof *dstl->extddata);
 			memcpy(dstl->extddata, srcl->extddata, dstl->extdsize *
 			    sizeof *dstl->extddata);
-		}
+		} else
+			dstl->extddata = NULL;
 
 		sy++;
 		dy++;

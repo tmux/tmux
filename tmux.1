@@ -191,6 +191,11 @@ directories are missing).
 Behave as a login shell.
 This flag currently has no effect and is for compatibility with other shells
 when using tmux as a login shell.
+.It Fl N
+Do not start the server even if the command would normally do so (for example
+.Ic new-session
+or
+.Ic start-server ) .
 .It Fl S Ar socket-path
 Specify a full alternative path to the server socket.
 If
@@ -516,6 +521,67 @@ Commands separated by semicolons together form a
 .Ql command sequence
 - if a command in the sequence encounters an error, no subsequent commands are
 executed.
+.Pp
+It is recommended that a semicolon used as a command separator should be
+written as an individual token, for example from
+.Xr sh 1 :
+.Bd -literal -offset indent
+$ tmux neww \\; splitw
+.Ed
+.Pp
+Or:
+.Bd -literal -offset indent
+$ tmux neww ';' splitw
+.Ed
+.Pp
+Or from the tmux command prompt:
+.Bd -literal -offset indent
+neww ; splitw
+.Ed
+.Pp
+However, a trailing semicolon is also interpreted as a command separator,
+for example in these
+.Xr sh 1
+commands:
+.Bd -literal -offset indent
+$ tmux neww\e\e; splitw
+.Ed
+.Pp
+Or:
+.Bd -literal -offset indent
+$ tmux 'neww;' splitw
+.Ed
+.Pp
+As in these examples, when running tmux from the shell extra care must be taken
+to properly quote semicolons:
+.Bl -enum -offset Ds
+.It
+Semicolons that should be interpreted as a command separator
+should be escaped according to the shell conventions.
+For
+.Xr sh 1
+this typically means quoted (such as
+.Ql neww ';' splitw )
+or escaped (such as
+.Ql neww \e\e\e\e; splitw ) .
+.It
+Individual semicolons or trailing semicolons that should be interpreted as
+arguments should be escaped twice: once according to the shell conventions and
+a second time for
+.Nm ;
+for example:
+.Bd -literal -offset indent
+$ tmux neww 'foo\e\e;' bar
+$ tmux neww foo\e\e\e\e; bar
+.Ed
+.It
+Semicolons that are not individual tokens or trailing another token should only
+be escaped once according to shell conventions; for example:
+.Bd -literal -offset indent
+$ tmux neww 'foo-;-bar'
+$ tmux neww foo-\e\e;-bar
+.Ed
+.El
 .Pp
 Comments are marked by the unquoted # character - any remaining text after a
 comment is ignored until the end of the line.
@@ -867,12 +933,12 @@ arguments are
 commands.
 This may be a single argument passed to the shell, for example:
 .Bd -literal -offset indent
-new-window 'vi /etc/passwd'
+new-window 'vi ~/.tmux.conf'
 .Ed
 .Pp
 Will run:
 .Bd -literal -offset indent
-/bin/sh -c 'vi /etc/passwd'
+/bin/sh -c 'vi ~/.tmux.conf'
 .Ed
 .Pp
 Additionally, the
@@ -889,7 +955,7 @@ to be given as multiple arguments and executed directly (without
 This can avoid issues with shell quoting.
 For example:
 .Bd -literal -offset indent
-$ tmux new-window vi /etc/passwd
+$ tmux new-window vi ~/.tmux.conf
 .Ed
 .Pp
 Will run
@@ -935,7 +1001,7 @@ $ tmux kill-window -t :1
 
 $ tmux new-window \e; split-window -d
 
-$ tmux new-session -d 'vi /etc/passwd' \e; split-window -d \e; attach
+$ tmux new-session -d 'vi ~/.tmux.conf' \e; split-window -d \e; attach
 .Ed
 .Sh CLIENTS AND SESSIONS
 The
@@ -1357,7 +1423,7 @@ a pane ID such as
 .Ql %0 ;
 .Ql %*
 for all panes in the attached session;
-an window ID such as
+a window ID such as
 .Ql @0 ;
 or
 .Ql @*
@@ -1648,10 +1714,15 @@ The following commands are supported in copy mode:
 .It Li "page-down" Ta "C-f" Ta "PageDown"
 .It Li "page-down-and-cancel" Ta "" Ta ""
 .It Li "page-up" Ta "C-b" Ta "PageUp"
+.It Li "pipe [<command>] [<prefix>]" Ta "" Ta ""
+.It Li "pipe-no-clear [<command>] [<prefix>]" Ta "" Ta ""
+.It Li "pipe-and-cancel [<command>] [<prefix>]" Ta "" Ta ""
 .It Li "previous-matching-bracket" Ta "" Ta "M-C-b"
 .It Li "previous-paragraph" Ta "{" Ta "M-{"
 .It Li "previous-space" Ta "B" Ta ""
 .It Li "previous-word" Ta "b" Ta "M-b"
+.It Li "rectangle-on" Ta "" Ta ""
+.It Li "rectangle-off" Ta "" Ta ""
 .It Li "rectangle-toggle" Ta "v" Ta "R"
 .It Li "refresh-from-pane" Ta "r" Ta "r"
 .It Li "scroll-down" Ta "C-e" Ta "C-Down"
@@ -1701,7 +1772,9 @@ so buffers are named
 .Ql buffer1
 and so on).
 Pipe commands take a command argument which is the command to which the
-copied text is piped.
+selected text is piped.
+.Ql copy-pipe
+variants also copy the selection.
 The
 .Ql -and-cancel
 variants of some commands exit copy mode after they have completed (for copy
@@ -2098,7 +2171,7 @@ starts without the option information.
 This command works only if at least one client is attached.
 .It Xo
 .Ic display-panes
-.Op Fl b
+.Op Fl bN
 .Op Fl d Ar duration
 .Op Fl t Ar target-client
 .Op Ar template
@@ -2111,7 +2184,9 @@ See the
 and
 .Ic display-panes-active-colour
 session options.
-The indicator is closed when a key is pressed or
+The indicator is closed when a key is pressed (unless
+.Fl N
+is given) or
 .Ar duration
 milliseconds have passed.
 If
@@ -2339,7 +2414,7 @@ the
 .Ic base-index
 option.
 .It Xo Ic new-window
-.Op Fl abdkP
+.Op Fl abdkPS
 .Op Fl c Ar start-directory
 .Op Fl e Ar environment
 .Op Fl F Ar format
@@ -2368,6 +2443,14 @@ represents the window to be created; if the target already exists an error is
 shown, unless the
 .Fl k
 flag is used, in which case it is destroyed.
+If
+.Fl S
+is given and a window named
+.Ar window-name
+already exists, it is selected (unless
+.Fl d
+is also given in which case the command does nothing).
+.Pp
 .Ar shell-command
 is the command to execute.
 If
@@ -3134,7 +3217,7 @@ abc123
 Commands which set options are as follows:
 .Bl -tag -width Ds
 .It Xo Ic set-option
-.Op Fl aFgopqsuw
+.Op Fl aFgopqsuUw
 .Op Fl t Ar target-pane
 .Ar option Ar value
 .Xc
@@ -3167,6 +3250,11 @@ flag unsets an option, so a session inherits the option from the global
 options (or with
 .Fl g ,
 restores a global option to the default).
+.Fl U
+unsets an option (like
+.Fl u )
+but if the option is a pane option also unsets the option on any panes in the
+window.
 .Ar value
 depends on the option and may be a number, a string, or a flag (on, off, or
 omitted to toggle).
@@ -3559,12 +3647,16 @@ The default is 80x24.
 If enabled and the session is no longer attached to any clients, it is
 destroyed.
 .It Xo Ic detach-on-destroy
-.Op Ic on | off
+.Op Ic off | on | no-detached
 .Xc
 If on (the default), the client is detached when the session it is attached to
 is destroyed.
 If off, the client is switched to the most recently active of the remaining
 sessions.
+If
+.Ic no-detached ,
+the client is detached only if there are no detached sessions; if detached
+sessions exist, the client is switched to the most recently active.
 .It Ic display-panes-active-colour Ar colour
 Set the colour used by the
 .Ic display-panes
@@ -4058,12 +4150,6 @@ see the
 section.
 Attributes are ignored.
 .Pp
-.It Xo Ic synchronize-panes
-.Op Ic on | off
-.Xc
-Duplicate input to any pane to all other panes in the same window (only
-for panes that are not in any special mode).
-.Pp
 .It Ic window-status-activity-style Ar style
 Set status line style for windows with an activity alert.
 For how to specify
@@ -4178,13 +4264,22 @@ interactive application starts and restores it on exit, so that any output
 visible before the application starts reappears unchanged after it exits.
 .Pp
 .It Xo Ic remain-on-exit
-.Op Ic on | off
+.Op Ic on | off | failed
 .Xc
 A pane with this flag set is not destroyed when the program running in it
 exits.
+If set to
+.Ic failed ,
+then only when the program exit status is not zero.
 The pane may be reactivated with the
 .Ic respawn-pane
 command.
+.Pp
+.It Xo Ic synchronize-panes
+.Op Ic on | off
+.Xc
+Duplicate input to all other panes in the same window where this option is also
+on (only for panes that are not in any mode).
 .Pp
 .It Ic window-active-style Ar style
 Set the pane style when it is the active pane.
@@ -4589,7 +4684,9 @@ pads the string to a given width, for example
 will result in a width of at least 10 characters.
 A positive width pads on the left, a negative on the right.
 .Ql n
-expands to the length of the variable, for example
+expands to the length of the variable and
+.Ql w
+to its width when displayed, for example
 .Ql #{n:window_name} .
 .Pp
 Prefixing a time variable with
@@ -4632,7 +4729,12 @@ of the variable respectively.
 .Ql q:\&
 will escape
 .Xr sh 1
-special characters.
+special characters or with a
+.Ql h
+suffix, escape hash characters (so
+.Ql #
+becomes
+.Ql ## ) .
 .Ql E:\&
 will expand the format twice, for example
 .Ql #{E:status-left}
@@ -4657,6 +4759,17 @@ For example, to get a list of windows formatted like the status line:
 .Bd -literal -offset indent
 #{W:#{E:window-status-format} ,#{E:window-status-current-format} }
 .Ed
+.Pp
+.Ql N:\&
+checks if a window (without any suffix or with the
+.Ql w
+suffix) or a session (with the
+.Ql s
+suffix) name exists, for example
+.Ql `N/w:foo`
+is replaced with 1 if a window named
+.Ql foo
+exists.
 .Pp
 A prefix of the form
 .Ql s/foo/bar/:\&
@@ -4704,6 +4817,7 @@ will be replaced by
 The following variables are available, where appropriate:
 .Bl -column "XXXXXXXXXXXXXXXXXXX" "XXXXX"
 .It Sy "Variable name" Ta Sy "Alias" Ta Sy "Replaced with"
+.It Li "active_window_index" Ta "" Ta "Index of active window in session"
 .It Li "alternate_on" Ta "" Ta "1 if pane is in alternate screen"
 .It Li "alternate_saved_x" Ta "" Ta "Saved cursor X in alternate screen"
 .It Li "alternate_saved_y" Ta "" Ta "Saved cursor Y in alternate screen"
@@ -4726,9 +4840,9 @@ The following variables are available, where appropriate:
 .It Li "client_prefix" Ta "" Ta "1 if prefix key has been pressed"
 .It Li "client_readonly" Ta "" Ta "1 if client is readonly"
 .It Li "client_session" Ta "" Ta "Name of the client's session"
+.It Li "client_termfeatures" Ta "" Ta "Terminal features of client, if any"
 .It Li "client_termname" Ta "" Ta "Terminal name of client"
 .It Li "client_termtype" Ta "" Ta "Terminal type of client, if available"
-.It Li "client_termfeatures" Ta "" Ta "Terminal features of client, if any"
 .It Li "client_tty" Ta "" Ta "Pseudo terminal of client"
 .It Li "client_utf8" Ta "" Ta "1 if client supports UTF-8"
 .It Li "client_width" Ta "" Ta "Width of client"
@@ -4737,6 +4851,7 @@ The following variables are available, where appropriate:
 .It Li "command_list_alias" Ta "" Ta "Command alias if listing commands"
 .It Li "command_list_name" Ta "" Ta "Command name if listing commands"
 .It Li "command_list_usage" Ta "" Ta "Command usage if listing commands"
+.It Li "config_files" Ta "" Ta "List of configuration files loaded"
 .It Li "copy_cursor_line" Ta "" Ta "Line the cursor is on in copy mode"
 .It Li "copy_cursor_word" Ta "" Ta "Word under cursor in copy mode"
 .It Li "copy_cursor_x" Ta "" Ta "Cursor X position in copy mode"
@@ -4759,6 +4874,7 @@ The following variables are available, where appropriate:
 .It Li "insert_flag" Ta "" Ta "Pane insert flag"
 .It Li "keypad_cursor_flag" Ta "" Ta "Pane keypad cursor flag"
 .It Li "keypad_flag" Ta "" Ta "Pane keypad flag"
+.It Li "last_window_index" Ta "" Ta "Index of last window in session"
 .It Li "line" Ta "" Ta "Line number in the list"
 .It Li "mouse_all_flag" Ta "" Ta "Pane mouse all flag"
 .It Li "mouse_any_flag" Ta "" Ta "Pane mouse any flag"
@@ -4776,11 +4892,13 @@ The following variables are available, where appropriate:
 .It Li "pane_at_left" Ta "" Ta "1 if pane is at the left of window"
 .It Li "pane_at_right" Ta "" Ta "1 if pane is at the right of window"
 .It Li "pane_at_top" Ta "" Ta "1 if pane is at the top of window"
+.It Li "pane_bg" Ta "" Ta "Pane background colour"
 .It Li "pane_bottom" Ta "" Ta "Bottom of pane"
 .It Li "pane_current_command" Ta "" Ta "Current command if available"
 .It Li "pane_current_path" Ta "" Ta "Current path if available"
 .It Li "pane_dead" Ta "" Ta "1 if pane is dead"
 .It Li "pane_dead_status" Ta "" Ta "Exit status of process in dead pane"
+.It Li "pane_fg" Ta "" Ta "Pane foreground colour"
 .It Li "pane_format" Ta "" Ta "1 if format is for a pane"
 .It Li "pane_height" Ta "" Ta "Height of pane"
 .It Li "pane_id" Ta "#D" Ta "Unique pane ID"
@@ -4797,7 +4915,6 @@ The following variables are available, where appropriate:
 .It Li "pane_pipe" Ta "" Ta "1 if pane is being piped"
 .It Li "pane_right" Ta "" Ta "Right of pane"
 .It Li "pane_search_string" Ta "" Ta "Last search string in copy mode"
-.It Li "pane_skipped" Ta "" Ta "Bytes skipped as not visible in pane"
 .It Li "pane_start_command" Ta "" Ta "Command pane started with"
 .It Li "pane_synchronized" Ta "" Ta "1 if pane is synchronized"
 .It Li "pane_tabs" Ta "" Ta "Pane tab positions"
@@ -4805,17 +4922,13 @@ The following variables are available, where appropriate:
 .It Li "pane_top" Ta "" Ta "Top of pane"
 .It Li "pane_tty" Ta "" Ta "Pseudo terminal of pane"
 .It Li "pane_width" Ta "" Ta "Width of pane"
-.It Li "pane_written" Ta "" Ta "Bytes written by pane (aside from redrawing)"
 .It Li "pid" Ta "" Ta "Server PID"
-.It Li "popup_key" Ta "" Ta "Key pressed in popup"
-.It Li "popup_mouse_x" Ta "" Ta "Mouse X position in popup"
-.It Li "popup_mouse_y" Ta "" Ta "Mouse Y position in popup"
 .It Li "rectangle_toggle" Ta "" Ta "1 if rectangle selection is activated"
 .It Li "scroll_position" Ta "" Ta "Scroll position in copy mode"
 .It Li "scroll_region_lower" Ta "" Ta "Bottom of scroll region in pane"
 .It Li "scroll_region_upper" Ta "" Ta "Top of scroll region in pane"
-.It Li "search_present" Ta "" Ta "1 if search started in copy mode"
 .It Li "search_match" Ta "" Ta "Search match if any"
+.It Li "search_present" Ta "" Ta "1 if search started in copy mode"
 .It Li "selection_active" Ta "" Ta "1 if selection started and changes with the cursor in copy mode"
 .It Li "selection_end_x" Ta "" Ta "X position of the end of the selection"
 .It Li "selection_end_y" Ta "" Ta "Y position of the end of the selection"
@@ -4858,7 +4971,8 @@ The following variables are available, where appropriate:
 .It Li "window_cell_height" Ta "" Ta "Height of each cell in pixels"
 .It Li "window_cell_width" Ta "" Ta "Width of each cell in pixels"
 .It Li "window_end_flag" Ta "" Ta "1 if window has the highest index"
-.It Li "window_flags" Ta "#F" Ta "Window flags"
+.It Li "window_flags" Ta "#F" Ta "Window flags with # escaped as ##"
+.It Li "window_raw_flags" Ta "" Ta "Window flags with nothing escaped"
 .It Li "window_format" Ta "" Ta "1 if format is for a window"
 .It Li "window_height" Ta "" Ta "Height of window"
 .It Li "window_id" Ta "" Ta "Unique window ID"
@@ -5386,6 +5500,28 @@ Both may be a row or column number, or one of the following special values:
 .It Li "S" Ta Fl y Ta "The line above or below the status line"
 .El
 .Pp
+Or a format, which is expanded including the following additional variables:
+.Bl -column "XXXXXXXXXXXXXXXXXXXXXXXXXX" -offset indent
+.It Sy "Variable name" Ta Sy "Replaced with"
+.It Li "popup_centre_x" Ta "Centered in the client"
+.It Li "popup_centre_y" Ta "Centered in the client"
+.It Li "popup_height" Ta "Height of menu or popup"
+.It Li "popup_mouse_bottom" Ta "Bottom of at the mouse"
+.It Li "popup_mouse_centre_x" Ta "Horizontal centre at the mouse"
+.It Li "popup_mouse_centre_y" Ta "Vertical centre at the mouse"
+.It Li "popup_mouse_top" Ta "Top at the mouse"
+.It Li "popup_mouse_x" Ta "Mouse X position"
+.It Li "popup_mouse_y" Ta "Mouse Y position"
+.It Li "popup_pane_bottom" Ta "Bottom of the pane"
+.It Li "popup_pane_left" Ta "Left of the pane"
+.It Li "popup_pane_right" Ta "Right of the pane"
+.It Li "popup_pane_top" Ta "Top of the pane"
+.It Li "popup_status_line_y" Ta "Above or below the status line"
+.It Li "popup_width" Ta "Width of menu or popup"
+.It Li "popup_window_status_line_x" Ta "At the window position in status line"
+.It Li "popup_window_status_line_y" Ta "At the status line showing the window"
+.El
+.Pp
 Each menu consists of items followed by a key shortcut shown in brackets.
 If the menu is too large to fit on the terminal, it is not displayed.
 Pressing the key shortcut chooses the corresponding item.
@@ -5445,58 +5581,24 @@ lists the format variables and their values.
 forwards any input read from stdin to the empty pane given by
 .Ar target-pane .
 .It Xo Ic display-popup
-.Op Fl CEK
+.Op Fl CE
 .Op Fl c Ar target-client
 .Op Fl d Ar start-directory
 .Op Fl h Ar height
-.Op Fl R Ar shell-command
 .Op Fl t Ar target-pane
 .Op Fl w Ar width
 .Op Fl x Ar position
 .Op Fl y Ar position
-.Op Ar command Ar line Ar ...
+.Op Ar shell-command
 .Xc
 .D1 (alias: Ic popup )
-Display a popup on
+Display a popup running
+.Ar shell-command
+on
 .Ar target-client .
 A popup is a rectangular box drawn over the top of any panes.
 Panes are not updated while a popup is present.
-The popup content may be given in two ways:
-.Bl -enum -offset Ds
-.It
-A set of lines as arguments.
-Each line is a format which is expanded using
-.Ar target-pane
-as the target.
-If a line contains newlines it is split into multiple lines.
-Lines may use styles, see the
-.Sx STYLES
-section.
-.It
-A shell command given by
-.Fl R
-which is run and any output shown in the pane.
-.El
 .Pp
-The first argument,
-.Ar command ,
-is a
-.Nm
-command which is run when a key is pressed.
-The key is available in the
-.Ql popup_key
-format.
-After
-.Ar command
-is run, the popup is closed.
-It may be empty to discard any key presses.
-If
-.Fl K
-is given together with
-.Fl R ,
-key presses are instead passed to the
-.Fl R
-shell command.
 .Fl E
 closes the popup automatically when
 .Ar shell-command
@@ -5506,14 +5608,6 @@ Two
 closes the popup only if
 .Ar shell-command
 exited with success.
-With
-.Fl K ,
-.Ql Escape
-and
-.Ql C-c
-close the popup unless
-.Fl E
-is also given.
 .Pp
 .Fl x
 and
@@ -5526,11 +5620,7 @@ and
 .Fl h
 give the width and height - both may be a percentage (followed by
 .Ql % ) .
-If omitted, without
-.Fl R
-they are calculated from the given lines and with
-.Fl R
-they use half the terminal size.
+If omitted, half of the terminal size is used.
 .Pp
 The
 .Fl C
@@ -5789,7 +5879,7 @@ Lock each client individually by running the command specified by the
 .Ic lock-command
 option.
 .It Xo Ic run-shell
-.Op Fl b
+.Op Fl bC
 .Op Fl d Ar delay
 .Op Fl t Ar target-pane
 .Op Ar shell-command
@@ -5797,9 +5887,14 @@ option.
 .D1 (alias: Ic run )
 Execute
 .Ar shell-command
-in the background without creating a window.
-Before being executed, shell-command is expanded using the rules specified in
-the
+or (with
+.Fl C )
+a
+.Nm
+command in the background without creating a window.
+Before being executed,
+.Ar shell-command
+is expanded using the rules specified in the
 .Sx FORMATS
 section.
 With
@@ -5809,11 +5904,13 @@ the command is run in the background.
 waits for
 .Ar delay
 seconds before starting the command.
-After the command finishes, any output to stdout is displayed in view mode (in
-the pane specified by
+If
+.Fl C
+is not given, any output to stdout is displayed in view mode (in the pane
+specified by
 .Fl t
-or the current pane if omitted).
-If the command doesn't return success, the exit status is also displayed.
+or the current pane if omitted) after the command finishes.
+If the command fails, the exit status is also displayed.
 .It Xo Ic wait-for
 .Op Fl L | S | U
 .Ar channel
@@ -5876,6 +5973,10 @@ option should be used.
 An existing extension that tells
 .Nm
 the terminal supports default colours.
+.It Em \&Bidi
+Tell
+.Nm
+that the terminal supports the VTE bidirectional text extensions.
 .It Em \&Cs , Cr
 Set the cursor colour.
 The first takes a single string argument and is used to set the colour;

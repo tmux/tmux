@@ -1,7 +1,5 @@
-/* $OpenBSD$ */
-
 /*
- * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
+ * Copyright (c) 2021 Nicholas Marriott <nicholas.marriott@gmail.com>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -17,23 +15,23 @@
  */
 
 #include <sys/types.h>
+#include <sys/time.h>
 
-#include "tmux.h"
+#include "compat.h"
 
-char *
-osdep_get_name(__unused int fd, __unused char *tty)
+#ifndef TIMEVAL_TO_TIMESPEC
+#define TIMEVAL_TO_TIMESPEC(tv, ts) do {	\
+	(ts)->tv_sec = (tv)->tv_sec;		\
+	(ts)->tv_nsec = (tv)->tv_usec * 1000;	\
+} while (0)
+#endif
+
+int
+clock_gettime(int clock, struct timespec *ts)
 {
-	return (NULL);
-}
+	struct timeval	tv;
 
-char *
-osdep_get_cwd(int fd)
-{
-	return (NULL);
-}
-
-struct event_base *
-osdep_event_init(void)
-{
-	return (event_init());
+	gettimeofday(&tv, NULL);
+	TIMEVAL_TO_TIMESPEC(&tv, ts);
+	return 0;
 }

@@ -21,7 +21,6 @@
 #include <sys/uio.h>
 
 #include <errno.h>
-#include <event.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
@@ -40,6 +39,7 @@ static void	server_client_repeat_timer(int, short, void *);
 static void	server_client_click_timer(int, short, void *);
 static void	server_client_check_exit(struct client *);
 static void	server_client_check_redraw(struct client *);
+static void	server_client_check_modes(struct client *);
 static void	server_client_set_title(struct client *);
 static void	server_client_reset_state(struct client *);
 static int	server_client_assume_paste(struct session *);
@@ -48,12 +48,6 @@ static void	server_client_dispatch(struct imsg *, void *);
 static void	server_client_dispatch_command(struct client *, struct imsg *);
 static void	server_client_dispatch_identify(struct client *, struct imsg *);
 static void	server_client_dispatch_shell(struct client *);
-static void	server_client_dispatch_write_ready(struct client *,
-		    struct imsg *);
-static void	server_client_dispatch_read_data(struct client *,
-		    struct imsg *);
-static void	server_client_dispatch_read_done(struct client *,
-		    struct imsg *);
 
 /* Compare client windows. */
 static int
@@ -310,6 +304,7 @@ server_client_lost(struct client *c)
 
 	free(c->term_name);
 	free(c->term_type);
+	tty_term_free_list(c->term_caps, c->term_ncaps);
 
 	status_free(c);
 
@@ -1353,6 +1348,7 @@ server_client_loop(void)
 	TAILQ_FOREACH(c, &clients, entry) {
 		server_client_check_exit(c);
 		if (c->session != NULL) {
+			server_client_check_modes(c);
 			server_client_check_redraw(c);
 			server_client_reset_state(c);
 		}
@@ -1777,11 +1773,11 @@ server_client_check_exit(struct client *c)
 
 	switch (c->exit_type) {
 	case CLIENT_EXIT_RETURN:
-		if (c->exit_message != NULL) {
+		if (c->exit_message != NULL)
 			msize = strlen(c->exit_message) + 1;
-			size = (sizeof c->retval) + msize;
-		} else
-			size = (sizeof c->retval);
+		else
+			msize = 0;
+		size = (sizeof c->retval) + msize;
 		data = xmalloc(size);
 		memcpy(data, &c->retval, sizeof c->retval);
 		if (c->exit_message != NULL)
@@ -1806,6 +1802,28 @@ server_client_redraw_timer(__unused int fd, __unused short events,
     __unused void *data)
 {
 	log_debug("redraw timer fired");
+}
+
+/*
+ * Check if modes need to be updated. Only modes in the current window are
+ * updated and it is done when the status line is redrawn.
+ */
+static void
+server_client_check_modes(struct client *c)
+{
+	struct window			*w = c->session->curw->window;
+	struct window_pane		*wp;
+	struct window_mode_entry	*wme;
+
+	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
+		return;
+	if (~c->flags & CLIENT_REDRAWSTATUS)
+		return;
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		wme = TAILQ_FIRST(&wp->modes);
+		if (wme != NULL && wme->mode->update != NULL)
+			wme->mode->update(wme);
+	}
 }
 
 /* Check for client redraws. */
@@ -1977,16 +1995,17 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 	datalen = imsg->hdr.len - IMSG_HEADER_SIZE;
 
 	switch (imsg->hdr.type) {
+	case MSG_IDENTIFY_CLIENTPID:
+	case MSG_IDENTIFY_CWD:
+	case MSG_IDENTIFY_ENVIRON:
 	case MSG_IDENTIFY_FEATURES:
 	case MSG_IDENTIFY_FLAGS:
 	case MSG_IDENTIFY_LONGFLAGS:
-	case MSG_IDENTIFY_TERM:
-	case MSG_IDENTIFY_TTYNAME:
-	case MSG_IDENTIFY_CWD:
 	case MSG_IDENTIFY_STDIN:
 	case MSG_IDENTIFY_STDOUT:
-	case MSG_IDENTIFY_ENVIRON:
-	case MSG_IDENTIFY_CLIENTPID:
+	case MSG_IDENTIFY_TERM:
+	case MSG_IDENTIFY_TERMINFO:
+	case MSG_IDENTIFY_TTYNAME:
 	case MSG_IDENTIFY_DONE:
 		server_client_dispatch_identify(c, imsg);
 		break;
@@ -2044,13 +2063,13 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 		server_client_dispatch_shell(c);
 		break;
 	case MSG_WRITE_READY:
-		server_client_dispatch_write_ready(c, imsg);
+		file_write_ready(&c->files, imsg);
 		break;
 	case MSG_READ:
-		server_client_dispatch_read_data(c, imsg);
+		file_read_data(&c->files, imsg);
 		break;
 	case MSG_READ_DONE:
-		server_client_dispatch_read_done(c, imsg);
+		file_read_done(&c->files, imsg);
 		break;
 	}
 }
@@ -2180,6 +2199,14 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 			c->term_name = xstrdup(data);
 		log_debug("client %p IDENTIFY_TERM %s", c, data);
 		break;
+	case MSG_IDENTIFY_TERMINFO:
+		if (datalen == 0 || data[datalen - 1] != '\0')
+			fatalx("bad MSG_IDENTIFY_TERMINFO string");
+		c->term_caps = xreallocarray(c->term_caps, c->term_ncaps + 1,
+		    sizeof *c->term_caps);
+		c->term_caps[c->term_ncaps++] = xstrdup(data);
+		log_debug("client %p IDENTIFY_TERMINFO %s", c, data);
+		break;
 	case MSG_IDENTIFY_TTYNAME:
 		if (datalen == 0 || data[datalen - 1] != '\0')
 			fatalx("bad MSG_IDENTIFY_TTYNAME string");
@@ -2280,71 +2307,6 @@ server_client_dispatch_shell(struct client *c)
 	proc_kill_peer(c->peer);
 }
 
-/* Handle write ready message. */
-static void
-server_client_dispatch_write_ready(struct client *c, struct imsg *imsg)
-{
-	struct msg_write_ready	*msg = imsg->data;
-	size_t			 msglen = imsg->hdr.len - IMSG_HEADER_SIZE;
-	struct client_file	 find, *cf;
-
-	if (msglen != sizeof *msg)
-		fatalx("bad MSG_WRITE_READY size");
-	find.stream = msg->stream;
-	if ((cf = RB_FIND(client_files, &c->files, &find)) == NULL)
-		return;
-	if (msg->error != 0) {
-		cf->error = msg->error;
-		file_fire_done(cf);
-	} else
-		file_push(cf);
-}
-
-/* Handle read data message. */
-static void
-server_client_dispatch_read_data(struct client *c, struct imsg *imsg)
-{
-	struct msg_read_data	*msg = imsg->data;
-	size_t			 msglen = imsg->hdr.len - IMSG_HEADER_SIZE;
-	struct client_file	 find, *cf;
-	void			*bdata = msg + 1;
-	size_t			 bsize = msglen - sizeof *msg;
-
-	if (msglen < sizeof *msg)
-		fatalx("bad MSG_READ_DATA size");
-	find.stream = msg->stream;
-	if ((cf = RB_FIND(client_files, &c->files, &find)) == NULL)
-		return;
-
-	log_debug("%s: file %d read %zu bytes", c->name, cf->stream, bsize);
-	if (cf->error == 0) {
-		if (evbuffer_add(cf->buffer, bdata, bsize) != 0) {
-			cf->error = ENOMEM;
-			file_fire_done(cf);
-		} else
-			file_fire_read(cf);
-	}
-}
-
-/* Handle read done message. */
-static void
-server_client_dispatch_read_done(struct client *c, struct imsg *imsg)
-{
-	struct msg_read_done	*msg = imsg->data;
-	size_t			 msglen = imsg->hdr.len - IMSG_HEADER_SIZE;
-	struct client_file	 find, *cf;
-
-	if (msglen != sizeof *msg)
-		fatalx("bad MSG_READ_DONE size");
-	find.stream = msg->stream;
-	if ((cf = RB_FIND(client_files, &c->files, &find)) == NULL)
-		return;
-
-	log_debug("%s: file %d read done", c->name, cf->stream);
-	cf->error = msg->error;
-	file_fire_done(cf);
-}
-
 /* Get client working directory. */
 const char *
 server_client_get_cwd(struct client *c, struct session *s)
@@ -2432,6 +2394,8 @@ server_client_get_flags(struct client *c)
 	*s = '\0';
 	if (c->flags & CLIENT_ATTACHED)
 		strlcat(s, "attached,", sizeof s);
+	if (c->flags & CLIENT_FOCUSED)
+		strlcat(s, "focused,", sizeof s);
 	if (c->flags & CLIENT_CONTROL)
 		strlcat(s, "control-mode,", sizeof s);
 	if (c->flags & CLIENT_IGNORESIZE)

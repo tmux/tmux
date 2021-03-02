@@ -61,17 +61,6 @@ static u_int	next_window_pane_id;
 static u_int	next_window_id;
 static u_int	next_active_point;
 
-/* List of window modes. */
-const struct window_mode *all_window_modes[] = {
-	&window_buffer_mode,
-	&window_client_mode,
-	&window_clock_mode,
-	&window_copy_mode,
-	&window_tree_mode,
-	&window_view_mode,
-	NULL
-};
-
 struct window_pane_input_data {
 	struct cmdq_item	*item;
 	u_int			 wp;
@@ -810,15 +799,18 @@ window_destroy_panes(struct window *w)
 }
 
 const char *
-window_printable_flags(struct winlink *wl)
+window_printable_flags(struct winlink *wl, int escape)
 {
 	struct session	*s = wl->session;
 	static char	 flags[32];
 	int		 pos;
 
 	pos = 0;
-	if (wl->flags & WINLINK_ACTIVITY)
+	if (wl->flags & WINLINK_ACTIVITY) {
 		flags[pos++] = '#';
+		if (escape)
+			flags[pos++] = '#';
+	}
 	if (wl->flags & WINLINK_BELL)
 		flags[pos++] = '!';
 	if (wl->flags & WINLINK_SILENCE)
@@ -1155,12 +1147,27 @@ window_pane_reset_mode_all(struct window_pane *wp)
 		window_pane_reset_mode(wp);
 }
 
+static void
+window_pane_copy_key(struct window_pane *wp, key_code key)
+{
+ 	struct window_pane	*loop;
+
+	TAILQ_FOREACH(loop, &wp->window->panes, entry) {
+		if (loop != wp &&
+		    TAILQ_EMPTY(&loop->modes) &&
+		    loop->fd != -1 &&
+		    (~loop->flags & PANE_INPUTOFF) &&
+		    window_pane_visible(loop) &&
+		    options_get_number(loop->options, "synchronize-panes"))
+			input_key_pane(loop, key, NULL);
+	}
+}
+
 int
 window_pane_key(struct window_pane *wp, struct client *c, struct session *s,
     struct winlink *wl, key_code key, struct mouse_event *m)
 {
 	struct window_mode_entry	*wme;
-	struct window_pane		*wp2;
 
 	if (KEYC_IS_MOUSE(key) && m == NULL)
 		return (-1);
@@ -1182,16 +1189,8 @@ window_pane_key(struct window_pane *wp, struct client *c, struct session *s,
 
 	if (KEYC_IS_MOUSE(key))
 		return (0);
-	if (options_get_number(wp->window->options, "synchronize-panes")) {
-		TAILQ_FOREACH(wp2, &wp->window->panes, entry) {
-			if (wp2 != wp &&
-			    TAILQ_EMPTY(&wp2->modes) &&
-			    wp2->fd != -1 &&
-			    (~wp2->flags & PANE_INPUTOFF) &&
-			    window_pane_visible(wp2))
-				input_key_pane(wp2, key, NULL);
-		}
-	}
+	if (options_get_number(wp->options, "synchronize-panes"))
+		window_pane_copy_key(wp, key);
 	return (0);
 }
 

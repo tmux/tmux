@@ -61,6 +61,7 @@ static const struct tty_term_code_entry tty_term_codes[] = {
 	[TTYC_AX] = { TTYCODE_FLAG, "AX" },
 	[TTYC_BCE] = { TTYCODE_FLAG, "bce" },
 	[TTYC_BEL] = { TTYCODE_STRING, "bel" },
+	[TTYC_BIDI] = { TTYCODE_STRING, "Bidi" },
 	[TTYC_BLINK] = { TTYCODE_STRING, "blink" },
 	[TTYC_BOLD] = { TTYCODE_STRING, "bold" },
 	[TTYC_CIVIS] = { TTYCODE_STRING, "civis" },
@@ -452,7 +453,8 @@ tty_term_apply_overrides(struct tty_term *term)
 }
 
 struct tty_term *
-tty_term_create(struct tty *tty, char *name, int *feat, int fd, char **cause)
+tty_term_create(struct tty *tty, char *name, char **caps, u_int ncaps,
+    int *feat, char **cause)
 {
 	struct tty_term				*term;
 	const struct tty_term_code_entry	*ent;
@@ -460,10 +462,9 @@ tty_term_create(struct tty *tty, char *name, int *feat, int fd, char **cause)
 	struct options_entry			*o;
 	struct options_array_item		*a;
 	union options_value			*ov;
-	u_int					 i;
-	int		 			 n, error;
-	const char				*s, *acs;
-	size_t					 offset;
+	u_int					 i, j;
+	const char				*s, *acs, *value;
+	size_t					 offset, namelen;
 	char					*first;
 
 	log_debug("adding term %s", name);
@@ -474,57 +475,38 @@ tty_term_create(struct tty *tty, char *name, int *feat, int fd, char **cause)
 	term->codes = xcalloc(tty_term_ncodes(), sizeof *term->codes);
 	LIST_INSERT_HEAD(&tty_terms, term, entry);
 
-	/* Set up curses terminal. */
-	if (setupterm(name, fd, &error) != OK) {
-		switch (error) {
-		case 1:
-			xasprintf(cause, "can't use hardcopy terminal: %s",
-			    name);
-			break;
-		case 0:
-			xasprintf(cause, "missing or unsuitable terminal: %s",
-			    name);
-			break;
-		case -1:
-			xasprintf(cause, "can't find terminfo database");
-			break;
-		default:
-			xasprintf(cause, "unknown error");
-			break;
-		}
-		goto error;
-	}
-
 	/* Fill in codes. */
-	for (i = 0; i < tty_term_ncodes(); i++) {
-		ent = &tty_term_codes[i];
+	for (i = 0; i < ncaps; i++) {
+		namelen = strcspn(caps[i], "=");
+		if (namelen == 0)
+			continue;
+		value = caps[i] + namelen + 1;
 
-		code = &term->codes[i];
-		code->type = TTYCODE_NONE;
-		switch (ent->type) {
-		case TTYCODE_NONE:
-			break;
-		case TTYCODE_STRING:
-			s = tigetstr((char *) ent->name);
-			if (s == NULL || s == (char *) -1)
+		for (j = 0; j < tty_term_ncodes(); j++) {
+			ent = &tty_term_codes[j];
+			if (strncmp(ent->name, caps[i], namelen) != 0)
+				continue;
+			if (ent->name[namelen] != '\0')
+				continue;
+
+			code = &term->codes[j];
+			code->type = TTYCODE_NONE;
+			switch (ent->type) {
+			case TTYCODE_NONE:
 				break;
-			code->type = TTYCODE_STRING;
-			code->value.string = tty_term_strip(s);
-			break;
-		case TTYCODE_NUMBER:
-			n = tigetnum((char *) ent->name);
-			if (n == -1 || n == -2)
+			case TTYCODE_STRING:
+				code->type = TTYCODE_STRING;
+				code->value.string = tty_term_strip(value);
 				break;
-			code->type = TTYCODE_NUMBER;
-			code->value.number = n;
-			break;
-		case TTYCODE_FLAG:
-			n = tigetflag((char *) ent->name);
-			if (n == -1)
+			case TTYCODE_NUMBER:
+				code->type = TTYCODE_NUMBER;
+				code->value.number = atoi(value);
 				break;
-			code->type = TTYCODE_FLAG;
-			code->value.flag = n;
-			break;
+			case TTYCODE_FLAG:
+				code->type = TTYCODE_FLAG;
+				code->value.flag = (*value == '1');
+				break;
+			}
 		}
 	}
 
@@ -646,6 +628,88 @@ tty_term_free(struct tty_term *term)
 	LIST_REMOVE(term, entry);
 	free(term->name);
 	free(term);
+}
+
+int
+tty_term_read_list(const char *name, int fd, char ***caps, u_int *ncaps,
+    char **cause)
+{
+	const struct tty_term_code_entry	*ent;
+	int					 error, n;
+	u_int					 i;
+	const char				*s;
+	char					 tmp[11];
+
+	if (setupterm(name, fd, &error) != OK) {
+		switch (error) {
+		case 1:
+			xasprintf(cause, "can't use hardcopy terminal: %s",
+			    name);
+			break;
+		case 0:
+			xasprintf(cause, "missing or unsuitable terminal: %s",
+			    name);
+			break;
+		case -1:
+			xasprintf(cause, "can't find terminfo database");
+			break;
+		default:
+			xasprintf(cause, "unknown error");
+			break;
+		}
+		return (-1);
+	}
+
+	*ncaps = 0;
+	*caps = NULL;
+
+	for (i = 0; i < tty_term_ncodes(); i++) {
+		ent = &tty_term_codes[i];
+		switch (ent->type) {
+		case TTYCODE_NONE:
+			break;
+		case TTYCODE_STRING:
+			s = tigetstr((char *)ent->name);
+			if (s == NULL || s == (char *)-1)
+				continue;
+			break;
+		case TTYCODE_NUMBER:
+			n = tigetnum((char *)ent->name);
+			if (n == -1 || n == -2)
+				continue;
+			xsnprintf(tmp, sizeof tmp, "%d", n);
+			s = tmp;
+			break;
+		case TTYCODE_FLAG:
+			n = tigetflag((char *) ent->name);
+			if (n == -1)
+				continue;
+			if (n)
+				s = "1";
+			else
+				s = "0";
+			break;
+		}
+		*caps = xreallocarray(*caps, (*ncaps) + 1, sizeof **caps);
+		xasprintf(&(*caps)[*ncaps], "%s=%s", ent->name, s);
+		(*ncaps)++;
+	}
+
+#if !defined(NCURSES_VERSION_MAJOR) || NCURSES_VERSION_MAJOR > 5 || \
+    (NCURSES_VERSION_MAJOR == 5 && NCURSES_VERSION_MINOR > 6)
+	del_curterm(cur_term);
+#endif
+	return (0);
+}
+
+void
+tty_term_free_list(char **caps, u_int ncaps)
+{
+	u_int	i;
+
+	for (i = 0; i < ncaps; i++)
+		free(caps[i]);
+	free(caps);
 }
 
 int

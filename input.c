@@ -138,6 +138,8 @@ static void	input_osc_10(struct input_ctx *, const char *);
 static void	input_osc_11(struct input_ctx *, const char *);
 static void	input_osc_52(struct input_ctx *, const char *);
 static void	input_osc_104(struct input_ctx *, const char *);
+static void	input_osc_110(struct input_ctx *, const char *);
+static void	input_osc_111(struct input_ctx *, const char *);
 
 /* Transition entry/exit handlers. */
 static void	input_clear(struct input_ctx *);
@@ -2099,6 +2101,7 @@ input_csi_dispatch_sgr(struct input_ctx *ictx)
 			gc->attr |= GRID_ATTR_UNDERSCORE;
 			break;
 		case 5:
+		case 6:
 			gc->attr |= GRID_ATTR_BLINK;
 			break;
 		case 7:
@@ -2109,6 +2112,10 @@ input_csi_dispatch_sgr(struct input_ctx *ictx)
 			break;
 		case 9:
 			gc->attr |= GRID_ATTR_STRIKETHROUGH;
+			break;
+		case 21:
+			gc->attr &= ~GRID_ATTR_ALL_UNDERSCORE;
+			gc->attr |= GRID_ATTR_UNDERSCORE_2;
 			break;
 		case 22:
 			gc->attr &= ~(GRID_ATTR_BRIGHT|GRID_ATTR_DIM);
@@ -2304,6 +2311,12 @@ input_exit_osc(struct input_ctx *ictx)
 	case 104:
 		input_osc_104(ictx, p);
 		break;
+	case 110:
+		input_osc_110(ictx, p);
+		break;
+	case 111:
+		input_osc_111(ictx, p);
+		break;
 	case 112:
 		if (*p == '\0') /* no arguments allowed */
 			screen_set_cursor_colour(sctx->s, "");
@@ -2422,50 +2435,43 @@ input_top_bit_set(struct input_ctx *ictx)
 
 /* Parse colour from OSC. */
 static int
-input_osc_parse_colour(const char *p, u_int *r, u_int *g, u_int *b)
+input_osc_parse_colour(const char *p)
 {
-	u_int		 rsize, gsize, bsize;
-	const char	*cp, *s = p;
+	double	 c, m, y, k = 0;
+	u_int	 r, g, b;
+	size_t	 len = strlen(p);
+	int	 colour = -1;
+	char	*copy;
 
-	if (sscanf(p, "rgb:%x/%x/%x", r, g, b) != 3)
-		return (0);
-	p += 4;
-
-	cp = strchr(p, '/');
-	rsize = cp - p;
-	if (rsize == 1)
-		(*r) = (*r) | ((*r) << 4);
-	else if (rsize == 3)
-		(*r) >>= 4;
-	else if (rsize == 4)
-		(*r) >>= 8;
-	else if (rsize != 2)
-		return (0);
-
-	p = cp + 1;
-	cp = strchr(p, '/');
-	gsize = cp - p;
-	if (gsize == 1)
-		(*g) = (*g) | ((*g) << 4);
-	else if (gsize == 3)
-		(*g) >>= 4;
-	else if (gsize == 4)
-		(*g) >>= 8;
-	else if (gsize != 2)
-		return (0);
-
-	bsize = strlen(cp + 1);
-	if (bsize == 1)
-		(*b) = (*b) | ((*b) << 4);
-	else if (bsize == 3)
-		(*b) >>= 4;
-	else if (bsize == 4)
-		(*b) >>= 8;
-	else if (bsize != 2)
-		return (0);
-
-	log_debug("%s: %s = %02x%02x%02x", __func__, s, *r, *g, *b);
-	return (1);
+	if ((len == 12 && sscanf(p, "rgb:%02x/%02x/%02x", &r, &g, &b) == 3) ||
+	    (len == 7 && sscanf(p, "#%02x%02x%02x", &r, &g, &b) == 3) ||
+	    sscanf(p, "%d,%d,%d", &r, &g, &b) == 3)
+		colour = colour_join_rgb(r, g, b);
+	else if ((len == 18 &&
+	    sscanf(p, "rgb:%04x/%04x/%04x", &r, &g, &b) == 3) ||
+	    (len == 13 && sscanf(p, "#%04x%04x%04x", &r, &g, &b) == 3))
+		colour = colour_join_rgb(r >> 8, g >> 8, b >> 8);
+	else if ((sscanf(p, "cmyk:%lf/%lf/%lf/%lf", &c, &m, &y, &k) == 4 ||
+	    sscanf(p, "cmy:%lf/%lf/%lf", &c, &m, &y) == 3) &&
+	    c >= 0 && c <= 1 && m >= 0 && m <= 1 &&
+	    y >= 0 && y <= 1 && k >= 0 && k <= 1) {
+		colour = colour_join_rgb(
+		    (1 - c) * (1 - k) * 255,
+		    (1 - m) * (1 - k) * 255,
+		    (1 - y) * (1 - k) * 255);
+	} else {
+		while (len != 0 && *p == ' ') {
+			p++;
+			len--;
+		}
+		while (len != 0 && p[len - 1] == ' ')
+			len--;
+		copy = xstrndup(p, len);
+		colour = colour_byname(copy);
+		free(copy);
+	}
+	log_debug("%s: %s = %s", __func__, p, colour_tostring(colour));
+	return (colour);
 }
 
 /* Reply to a colour request. */
@@ -2493,7 +2499,7 @@ input_osc_4(struct input_ctx *ictx, const char *p)
 	struct window_pane	*wp = ictx->wp;
 	char			*copy, *s, *next = NULL;
 	long			 idx;
-	u_int			 r, g, b;
+	int			 c;
 
 	if (wp == NULL)
 		return;
@@ -2507,12 +2513,12 @@ input_osc_4(struct input_ctx *ictx, const char *p)
 			goto bad;
 
 		s = strsep(&next, ";");
-		if (!input_osc_parse_colour(s, &r, &g, &b)) {
+		if ((c = input_osc_parse_colour(s)) == -1) {
 			s = next;
 			continue;
 		}
 
-		window_pane_set_palette(wp, idx, colour_join_rgb(r, g, b));
+		window_pane_set_palette(wp, idx, c);
 		s = next;
 	}
 
@@ -2530,7 +2536,7 @@ input_osc_10(struct input_ctx *ictx, const char *p)
 {
 	struct window_pane	*wp = ictx->wp;
 	struct grid_cell	 defaults;
-	u_int			 r, g, b;
+	int			 c;
 
 	if (wp == NULL)
 		return;
@@ -2541,9 +2547,9 @@ input_osc_10(struct input_ctx *ictx, const char *p)
 		return;
 	}
 
-	if (!input_osc_parse_colour(p, &r, &g, &b))
+	if ((c = input_osc_parse_colour(p)) == -1)
 		goto bad;
-	wp->fg = colour_join_rgb(r, g, b);
+	wp->fg = c;
 	wp->flags |= (PANE_REDRAW|PANE_STYLECHANGED);
 
 	return;
@@ -2552,13 +2558,29 @@ bad:
 	log_debug("bad OSC 10: %s", p);
 }
 
+/* Handle the OSC 110 sequence for resetting background colour. */
+static void
+input_osc_110(struct input_ctx *ictx, const char *p)
+{
+	struct window_pane	*wp = ictx->wp;
+
+	if (wp == NULL)
+		return;
+
+	if (*p != '\0')
+		return;
+
+	wp->fg = 8;
+	wp->flags |= (PANE_REDRAW|PANE_STYLECHANGED);
+}
+
 /* Handle the OSC 11 sequence for setting and querying background colour. */
 static void
 input_osc_11(struct input_ctx *ictx, const char *p)
 {
 	struct window_pane	*wp = ictx->wp;
 	struct grid_cell	 defaults;
-	u_int			 r, g, b;
+	int			 c;
 
 	if (wp == NULL)
 		return;
@@ -2569,15 +2591,31 @@ input_osc_11(struct input_ctx *ictx, const char *p)
 		return;
 	}
 
-	if (!input_osc_parse_colour(p, &r, &g, &b))
-	    goto bad;
-	wp->bg = colour_join_rgb(r, g, b);
+	if ((c = input_osc_parse_colour(p)) == -1)
+		goto bad;
+	wp->bg = c;
 	wp->flags |= (PANE_REDRAW|PANE_STYLECHANGED);
 
 	return;
 
 bad:
 	log_debug("bad OSC 11: %s", p);
+}
+
+/* Handle the OSC 111 sequence for resetting background colour. */
+static void
+input_osc_111(struct input_ctx *ictx, const char *p)
+{
+	struct window_pane	*wp = ictx->wp;
+
+	if (wp == NULL)
+		return;
+
+	if (*p != '\0')
+		return;
+
+	wp->bg = 8;
+	wp->flags |= (PANE_REDRAW|PANE_STYLECHANGED);
 }
 
 /* Handle the OSC 52 sequence for setting the clipboard. */

@@ -249,8 +249,8 @@ tty_open(struct tty *tty, char **cause)
 {
 	struct client	*c = tty->client;
 
-	tty->term = tty_term_create(tty, c->term_name, &c->term_features,
-	    c->fd, cause);
+	tty->term = tty_term_create(tty, c->term_name, c->term_caps,
+	    c->term_ncaps, &c->term_features, cause);
 	if (tty->term == NULL) {
 		tty_close(tty);
 		return (-1);
@@ -694,28 +694,26 @@ tty_update_mode(struct tty *tty, int mode, struct screen *s)
 	}
 	if ((changed & ALL_MOUSE_MODES) &&
 	    tty_term_has(tty->term, TTYC_KMOUS)) {
-		if ((mode & ALL_MOUSE_MODES) == 0)
+		/*
+		 * If the mouse modes have changed, clear any that are set and
+		 * apply again. There are differences in how terminals track
+		 * the various bits.
+		 */
+		if (tty->mode & MODE_MOUSE_SGR)
 			tty_puts(tty, "\033[?1006l");
-		if ((changed & MODE_MOUSE_STANDARD) &&
-		    (~mode & MODE_MOUSE_STANDARD))
+		if (tty->mode & MODE_MOUSE_STANDARD)
 			tty_puts(tty, "\033[?1000l");
-		if ((changed & MODE_MOUSE_BUTTON) &&
-		    (~mode & MODE_MOUSE_BUTTON))
+		if (tty->mode & MODE_MOUSE_BUTTON)
 			tty_puts(tty, "\033[?1002l");
-		if ((changed & MODE_MOUSE_ALL) &&
-		    (~mode & MODE_MOUSE_ALL))
+		if (tty->mode & MODE_MOUSE_ALL)
 			tty_puts(tty, "\033[?1003l");
-
 		if (mode & ALL_MOUSE_MODES)
 			tty_puts(tty, "\033[?1006h");
-		if ((changed & MODE_MOUSE_STANDARD) &&
-		    (mode & MODE_MOUSE_STANDARD))
+		if (mode & MODE_MOUSE_STANDARD)
 			tty_puts(tty, "\033[?1000h");
-		if ((changed & MODE_MOUSE_BUTTON) &&
-		    (mode & MODE_MOUSE_BUTTON))
+		if (mode & MODE_MOUSE_BUTTON)
 			tty_puts(tty, "\033[?1002h");
-		if ((changed & MODE_MOUSE_ALL) &&
-		    (mode & MODE_MOUSE_ALL))
+		if (mode & MODE_MOUSE_ALL)
 			tty_puts(tty, "\033[?1003h");
 	}
 	if (changed & MODE_BRACKETPASTE) {
@@ -1533,20 +1531,9 @@ tty_cmd_deletecharacter(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cmd_clearcharacter(struct tty *tty, const struct tty_ctx *ctx)
 {
-	if (ctx->bigger) {
-		tty_draw_pane(tty, ctx, ctx->ocy);
-		return;
-	}
-
 	tty_default_attributes(tty, &ctx->defaults, ctx->palette, ctx->bg);
 
-	tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
-
-	if (tty_term_has(tty->term, TTYC_ECH) &&
-	    !tty_fake_bce(tty, &ctx->defaults, 8))
-		tty_putcode1(tty, TTYC_ECH, ctx->num);
-	else
-		tty_repeat_space(tty, ctx->num);
+	tty_clear_pane_line(tty, ctx, ctx->ocy, ctx->ocx, ctx->num, ctx->bg);
 }
 
 void
@@ -2449,7 +2436,7 @@ tty_check_fg(struct tty *tty, int *palette, struct grid_cell *gc)
 	/* Is this a 256-colour colour? */
 	if (gc->fg & COLOUR_FLAG_256) {
 		/* And not a 256 colour mode? */
-		if (colours != 256) {
+		if (colours < 256) {
 			gc->fg = colour_256to16(gc->fg);
 			if (gc->fg & 8) {
 				gc->fg &= 7;
@@ -2502,7 +2489,7 @@ tty_check_bg(struct tty *tty, int *palette, struct grid_cell *gc)
 		 * palette. Bold background doesn't exist portably, so just
 		 * discard the bold bit if set.
 		 */
-		if (colours != 256) {
+		if (colours < 256) {
 			gc->bg = colour_256to16(gc->bg);
 			if (gc->bg & 8) {
 				gc->bg &= 7;

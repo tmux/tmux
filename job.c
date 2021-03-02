@@ -66,19 +66,20 @@ struct job {
 /* All jobs list. */
 static LIST_HEAD(joblist, job) all_jobs = LIST_HEAD_INITIALIZER(all_jobs);
 
-/* Start a job running, if it isn't already. */
+/* Start a job running. */
 struct job *
-job_run(const char *cmd, struct session *s, const char *cwd,
-    job_update_cb updatecb, job_complete_cb completecb, job_free_cb freecb,
-    void *data, int flags, int sx, int sy)
+job_run(const char *cmd, int argc, char **argv, struct session *s,
+    const char *cwd, job_update_cb updatecb, job_complete_cb completecb,
+    job_free_cb freecb, void *data, int flags, int sx, int sy)
 {
-	struct job	*job;
-	struct environ	*env;
-	pid_t		 pid;
-	int		 nullfd, out[2], master;
-	const char	*home;
-	sigset_t	 set, oldset;
-	struct winsize	 ws;
+	struct job	 *job;
+	struct environ	 *env;
+	pid_t		  pid;
+	int		  nullfd, out[2], master;
+	const char	 *home;
+	sigset_t	  set, oldset;
+	struct winsize	  ws;
+	char		**argvp;
 
 	/*
 	 * Do not set TERM during .tmux.conf, it is nice to be able to use
@@ -99,7 +100,13 @@ job_run(const char *cmd, struct session *s, const char *cwd,
 			goto fail;
 		pid = fork();
 	}
-	log_debug("%s: cmd=%s, cwd=%s", __func__, cmd, cwd == NULL ? "" : cwd);
+	if (cmd == NULL) {
+		cmd_log_argv(argc, argv, "%s:", __func__);
+		log_debug("%s: cwd=%s", __func__, cwd == NULL ? "" : cwd);
+	} else {
+		log_debug("%s: cmd=%s, cwd=%s", __func__, cmd,
+		    cwd == NULL ? "" : cwd);
+	}
 
 	switch (pid) {
 	case -1:
@@ -112,10 +119,10 @@ job_run(const char *cmd, struct session *s, const char *cwd,
 		proc_clear_signals(server_proc, 1);
 		sigprocmask(SIG_SETMASK, &oldset, NULL);
 
-		if (cwd == NULL || chdir(cwd) != 0) {
-			if ((home = find_home()) == NULL || chdir(home) != 0)
-				chdir("/");
-		}
+		if ((cwd == NULL || chdir(cwd) != 0) &&
+		    ((home = find_home()) == NULL || chdir(home) != 0) &&
+		    chdir("/") != 0)
+			fatal("chdir failed");
 
 		environ_push(env);
 		environ_free(env);
@@ -139,8 +146,14 @@ job_run(const char *cmd, struct session *s, const char *cwd,
 		}
 		closefrom(STDERR_FILENO + 1);
 
-		execl(_PATH_BSHELL, "sh", "-c", cmd, (char *) NULL);
-		fatal("execl failed");
+		if (cmd != NULL) {
+			execl(_PATH_BSHELL, "sh", "-c", cmd, (char *) NULL);
+			fatal("execl failed");
+		} else {
+			argvp = cmd_copy_argv(argc, argv);
+			execvp(argvp[0], argvp);
+			fatal("execvp failed");
+		}
 	}
 
 	sigprocmask(SIG_SETMASK, &oldset, NULL);
@@ -150,7 +163,10 @@ job_run(const char *cmd, struct session *s, const char *cwd,
 	job->state = JOB_RUNNING;
 	job->flags = flags;
 
-	job->cmd = xstrdup(cmd);
+	if (cmd != NULL)
+		job->cmd = xstrdup(cmd);
+	else
+		job->cmd = cmd_stringify_argv(argc, argv);
 	job->pid = pid;
 	job->status = 0;
 

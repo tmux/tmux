@@ -28,7 +28,7 @@ AM_CFLAGS += -Wmissing-prototypes -Wstrict-prototypes -Wmissing-declarations
 AM_CFLAGS += -Wwrite-strings -Wshadow -Wpointer-arith -Wsign-compare
 AM_CFLAGS += -Wundef -Wbad-function-cast -Winline -Wcast-align
 AM_CFLAGS += -Wdeclaration-after-statement -Wno-pointer-sign -Wno-attributes
-AM_CFLAGS += -Wno-unused-result
+AM_CFLAGS += -Wno-unused-result -Wno-format-y2k
 AM_CPPFLAGS += -DDEBUG
 endif
 AM_CPPFLAGS += -iquote.
@@ -56,6 +56,11 @@ endif
 # Set flags for NetBSD.
 if IS_NETBSD
 AM_CPPFLAGS += -D_OPENBSD_SOURCE
+endif
+
+# Set flags for Haiku.
+if IS_HAIKU
+AM_CPPFLAGS += -D_BSD_SOURCE
 endif
 
 # List of sources.
@@ -136,6 +141,7 @@ dist_tmux_SOURCES = \
 	file.c \
 	format.c \
 	format-draw.c \
+	grid-reader.c \
 	grid-view.c \
 	grid.c \
 	input-keys.c \
@@ -195,6 +201,12 @@ endif
 # Add compat file for utf8proc.
 if HAVE_UTF8PROC
 nodist_tmux_SOURCES += compat/utf8proc.c
+endif
+
+if NEED_FUZZING
+check_PROGRAMS = fuzz/input-fuzzer
+fuzz_input_fuzzer_LDFLAGS = $(FUZZING_LIBS)
+fuzz_input_fuzzer_LDADD = $(LDADD) $(tmux_OBJECTS)
 endif
 
 # Install tmux.1 in the right format.
