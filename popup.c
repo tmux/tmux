@@ -31,13 +31,7 @@ struct popup_data {
 	struct cmdq_item	 *item;
 	int			  flags;
 
-	char			**lines;
-	u_int			  nlines;
-
-	char			 *cmd;
-	struct cmd_find_state	  fs;
 	struct screen		  s;
-
 	struct job		 *job;
 	struct input_ctx	 *ictx;
 	int			  status;
@@ -104,54 +98,11 @@ popup_init_ctx_cb(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx)
 	ttyctx->arg = pd;
 }
 
-static void
-popup_write_screen(struct client *c, struct popup_data *pd)
-{
-	struct cmdq_item	*item = pd->item;
-	struct screen_write_ctx	 ctx;
-	char			*copy, *next, *loop, *tmp;
-	struct format_tree	*ft;
-	u_int			 i, y;
-
-	ft = format_create(c, item, FORMAT_NONE, 0);
-	if (cmd_find_valid_state(&pd->fs))
-		format_defaults(ft, c, pd->fs.s, pd->fs.wl, pd->fs.wp);
-	else
-		format_defaults(ft, c, NULL, NULL, NULL);
-
-	screen_write_start(&ctx, &pd->s);
-	screen_write_clearscreen(&ctx, 8);
-
-	y = 0;
-	for (i = 0; i < pd->nlines; i++) {
-		if (y == pd->sy - 2)
-			break;
-		copy = next = xstrdup(pd->lines[i]);
-		while ((loop = strsep(&next, "\n")) != NULL) {
-			if (y == pd->sy - 2)
-				break;
-			tmp = format_expand(ft, loop);
-			screen_write_cursormove(&ctx, 0, y, 0);
-			format_draw(&ctx, &grid_default_cell, pd->sx - 2, tmp,
-			    NULL);
-			free(tmp);
-			y++;
-		}
-		free(copy);
-	}
-
-	format_free(ft);
-	screen_write_cursormove(&ctx, 0, y, 0);
-	screen_write_stop(&ctx);
-}
-
 static struct screen *
 popup_mode_cb(struct client *c, u_int *cx, u_int *cy)
 {
 	struct popup_data	*pd = c->overlay_data;
 
-	if (pd->ictx == NULL)
-		return (0);
 	*cx = pd->px + 1 + pd->s.cx;
 	*cy = pd->py + 1 + pd->s.cy;
 	return (&pd->s);
@@ -199,14 +150,12 @@ popup_free_cb(struct client *c)
 {
 	struct popup_data	*pd = c->overlay_data;
 	struct cmdq_item	*item = pd->item;
-	u_int			 i;
 
 	if (pd->cb != NULL)
 		pd->cb(pd->status, pd->arg);
 
 	if (item != NULL) {
-		if (pd->ictx != NULL &&
-		    cmdq_get_client(item) != NULL &&
+		if (cmdq_get_client(item) != NULL &&
 		    cmdq_get_client(item)->session == NULL)
 			cmdq_get_client(item)->retval = pd->status;
 		cmdq_continue(item);
@@ -215,15 +164,9 @@ popup_free_cb(struct client *c)
 
 	if (pd->job != NULL)
 		job_free(pd->job);
-	if (pd->ictx != NULL)
-		input_free(pd->ictx);
-
-	for (i = 0; i < pd->nlines; i++)
-		free(pd->lines[i]);
-	free(pd->lines);
+	input_free(pd->ictx);
 
 	screen_free(&pd->s);
-	free(pd->cmd);
 	free(pd);
 }
 
@@ -262,9 +205,7 @@ popup_handle_drag(struct client *c, struct popup_data *pd,
 		pd->sy = m->y - pd->py;
 
 		screen_resize(&pd->s, pd->sx - 2, pd->sy - 2, 0);
-		if (pd->ictx == NULL)
-			popup_write_screen(c, pd);
-		else if (pd->job != NULL)
+		if (pd->job != NULL)
 			job_resize(pd->job, pd->sx - 2, pd->sy - 2);
 		server_redraw_client(c);
 	}
@@ -275,13 +216,8 @@ popup_key_cb(struct client *c, struct key_event *event)
 {
 	struct popup_data	*pd = c->overlay_data;
 	struct mouse_event	*m = &event->m;
-	struct cmd_find_state	*fs = &pd->fs;
-	struct format_tree	*ft;
-	const char		*cmd, *buf;
+	const char		*buf;
 	size_t			 len;
-	struct cmdq_state	*state;
-	enum cmd_parse_status	 status;
-	char			*error;
 
 	if (KEYC_IS_MOUSE(event->key)) {
 		if (pd->dragging != OFF) {
@@ -313,13 +249,11 @@ popup_key_cb(struct client *c, struct key_event *event)
 		}
 	}
 
-	if (pd->ictx != NULL && (pd->flags & POPUP_WRITEKEYS)) {
-		if (((pd->flags & (POPUP_CLOSEEXIT|POPUP_CLOSEEXITZERO)) == 0 ||
-		    pd->job == NULL) &&
-		    (event->key == '\033' || event->key == '\003'))
-			return (1);
-		if (pd->job == NULL)
-			return (0);
+	if ((((pd->flags & (POPUP_CLOSEEXIT|POPUP_CLOSEEXITZERO)) == 0) ||
+	    pd->job == NULL) &&
+	    (event->key == '\033' || event->key == '\003'))
+		return (1);
+	if (pd->job != NULL) {
 		if (KEYC_IS_MOUSE(event->key)) {
 			/* Must be inside, checked already. */
 			if (!input_key_get_mouse(&pd->s, m, m->x - pd->px - 1,
@@ -329,40 +263,8 @@ popup_key_cb(struct client *c, struct key_event *event)
 			return (0);
 		}
 		input_key(&pd->s, job_get_event(pd->job), event->key);
-		return (0);
 	}
-
-	if (pd->cmd == NULL)
-		return (1);
-
-	ft = format_create(NULL, pd->item, FORMAT_NONE, 0);
-	if (cmd_find_valid_state(fs))
-		format_defaults(ft, c, fs->s, fs->wl, fs->wp);
-	else
-		format_defaults(ft, c, NULL, NULL, NULL);
-	format_add(ft, "popup_key", "%s", key_string_lookup_key(event->key, 0));
-	if (KEYC_IS_MOUSE(event->key)) {
-		format_add(ft, "popup_mouse", "1");
-		format_add(ft, "popup_mouse_x", "%u", m->x - pd->px);
-		format_add(ft, "popup_mouse_y", "%u", m->y - pd->py);
-	}
-	cmd = format_expand(ft, pd->cmd);
-	format_free(ft);
-
-	if (pd->item != NULL)
-		event = cmdq_get_event(pd->item);
-	else
-		event = NULL;
-	state = cmdq_new_state(&pd->fs, event, 0);
-
-	status = cmd_parse_and_append(cmd, NULL, c, state, &error);
-	if (status == CMD_PARSE_ERROR) {
-		cmdq_append(c, cmdq_get_error(error));
-		free(error);
-	}
-	cmdq_free_state(state);
-
-	return (1);
+	return (0);
 
 out:
 	pd->lx = m->x;
@@ -415,62 +317,12 @@ popup_job_complete_cb(struct job *job)
 		server_client_clear_overlay(pd->c);
 }
 
-u_int
-popup_height(u_int nlines, const char **lines)
-{
-	char	*copy, *next, *loop;
-	u_int	 i, height = 0;
-
-	for (i = 0; i < nlines; i++) {
-		copy = next = xstrdup(lines[i]);
-		while ((loop = strsep(&next, "\n")) != NULL)
-			height++;
-		free(copy);
-	}
-
-	return (height);
-}
-
-u_int
-popup_width(struct cmdq_item *item, u_int nlines, const char **lines,
-    struct client *c, struct cmd_find_state *fs)
-{
-	char			*copy, *next, *loop, *tmp;
-	struct format_tree	*ft;
-	u_int			 i, width = 0, tmpwidth;
-
-	ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
-	if (fs != NULL && cmd_find_valid_state(fs))
-		format_defaults(ft, c, fs->s, fs->wl, fs->wp);
-	else
-		format_defaults(ft, c, NULL, NULL, NULL);
-
-	for (i = 0; i < nlines; i++) {
-		copy = next = xstrdup(lines[i]);
-		while ((loop = strsep(&next, "\n")) != NULL) {
-			tmp = format_expand(ft, loop);
-			tmpwidth = format_width(tmp);
-			if (tmpwidth > width)
-				width = tmpwidth;
-			free(tmp);
-		}
-		free(copy);
-	}
-
-	format_free(ft);
-	return (width);
-}
-
 int
 popup_display(int flags, struct cmdq_item *item, u_int px, u_int py, u_int sx,
-    u_int sy, u_int nlines, const char **lines, const char *shellcmd,
-    const char *cmd, const char *cwd, struct client *c,
-    struct cmd_find_state *fs, popup_close_cb cb, void *arg)
+    u_int sy, const char *shellcmd, int argc, char **argv, const char *cwd,
+    struct client *c, struct session *s, popup_close_cb cb, void *arg)
 {
 	struct popup_data	*pd;
-	u_int			 i;
-	struct session		*s;
-	int			 jobflags;
 
 	if (sx < 3 || sy < 3)
 		return (-1);
@@ -488,39 +340,17 @@ popup_display(int flags, struct cmdq_item *item, u_int px, u_int py, u_int sx,
 	pd->arg = arg;
 	pd->status = 128 + SIGHUP;
 
-	if (fs != NULL)
-		cmd_find_copy_state(&pd->fs, fs);
 	screen_init(&pd->s, sx - 2, sy - 2, 0);
-
-	if (cmd != NULL)
-		pd->cmd = xstrdup(cmd);
 
 	pd->px = px;
 	pd->py = py;
 	pd->sx = sx;
 	pd->sy = sy;
 
-	pd->nlines = nlines;
-	if (pd->nlines != 0)
-		pd->lines = xreallocarray(NULL, pd->nlines, sizeof *pd->lines);
-
-	for (i = 0; i < pd->nlines; i++)
-		pd->lines[i] = xstrdup(lines[i]);
-	popup_write_screen(c, pd);
-
-	if (shellcmd != NULL) {
-		if (fs != NULL)
-			s = fs->s;
-		else
-			s = NULL;
-		jobflags = JOB_NOWAIT|JOB_PTY;
-		if (flags & POPUP_WRITEKEYS)
-		    jobflags |= JOB_KEEPWRITE;
-		pd->job = job_run(shellcmd, s, cwd, popup_job_update_cb,
-		    popup_job_complete_cb, NULL, pd, jobflags, pd->sx - 2,
-		    pd->sy - 2);
-		pd->ictx = input_init(NULL, job_get_event(pd->job));
-	}
+	pd->job = job_run(shellcmd, argc, argv, s, cwd,
+	    popup_job_update_cb, popup_job_complete_cb, NULL, pd,
+	    JOB_NOWAIT|JOB_PTY|JOB_KEEPWRITE, pd->sx - 2, pd->sy - 2);
+	pd->ictx = input_init(NULL, job_get_event(pd->job));
 
 	server_client_set_overlay(c, 0, popup_check_cb, popup_mode_cb,
 	    popup_draw_cb, popup_key_cb, popup_free_cb, pd);
@@ -606,9 +436,8 @@ popup_editor(struct client *c, const char *buf, size_t len,
 	py = (c->tty.sy / 2) - (sy / 2);
 
 	xasprintf(&cmd, "%s %s", editor, path);
-	if (popup_display(POPUP_WRITEKEYS|POPUP_CLOSEEXIT, NULL, px, py, sx, sy,
-	    0, NULL, cmd, NULL, _PATH_TMP, c, NULL, popup_editor_close_cb,
-	    pe) != 0) {
+	if (popup_display(POPUP_CLOSEEXIT, NULL, px, py, sx, sy, cmd, 0, NULL,
+	    _PATH_TMP, c, NULL, popup_editor_close_cb, pe) != 0) {
 		popup_editor_free(pe);
 		free(cmd);
 		return (-1);

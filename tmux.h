@@ -2068,9 +2068,9 @@ typedef void (*job_free_cb) (void *);
 #define JOB_NOWAIT 0x1
 #define JOB_KEEPWRITE 0x2
 #define JOB_PTY 0x4
-struct job	*job_run(const char *, struct session *, const char *,
-		     job_update_cb, job_complete_cb, job_free_cb, void *, int,
-		     int, int);
+struct job	*job_run(const char *, int, char **, struct session *,
+		     const char *, job_update_cb, job_complete_cb, job_free_cb,
+		     void *, int, int, int);
 void		 job_free(struct job *);
 void		 job_resize(struct job *, u_int, u_int);
 void		 job_check_died(pid_t, int);
@@ -3040,18 +3040,13 @@ int		 menu_display(struct menu *, int, struct cmdq_item *, u_int,
 		    menu_choice_cb, void *);
 
 /* popup.c */
-#define POPUP_WRITEKEYS 0x1
-#define POPUP_CLOSEEXIT 0x2
-#define POPUP_CLOSEEXITZERO 0x4
+#define POPUP_CLOSEEXIT 0x1
+#define POPUP_CLOSEEXITZERO 0x2
 typedef void (*popup_close_cb)(int, void *);
 typedef void (*popup_finish_edit_cb)(char *, size_t, void *);
-u_int		 popup_width(struct cmdq_item *, u_int, const char **,
-		    struct client *, struct cmd_find_state *);
-u_int		 popup_height(u_int, const char **);
 int		 popup_display(int, struct cmdq_item *, u_int, u_int, u_int,
-		    u_int, u_int, const char **, const char *, const char *,
-		    const char *, struct client *, struct cmd_find_state *,
-		    popup_close_cb, void *);
+		    u_int, const char *, int, char **, const char *,
+		    struct client *, struct session *, popup_close_cb, void *);
 int		 popup_editor(struct client *, const char *, size_t,
 		    popup_finish_edit_cb, void *);
 

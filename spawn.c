@@ -182,7 +182,7 @@ spawn_window(struct spawn_context *sc, char **cause)
 			    NULL);
 			options_set_number(w->options, "automatic-rename", 0);
 		} else
-			w->name = xstrdup(default_window_name(w));
+			w->name = default_window_name(w);
 	}
 
 	/* Switch to the new window if required. */
@@ -263,8 +263,9 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	}
 
 	/*
-	 * Now we have a pane with nothing running in it ready for the new process.
-	 * Work out the command and arguments and store the working directory.
+	 * Now we have a pane with nothing running in it ready for the new
+	 * process. Work out the command and arguments and store the working
+	 * directory.
 	 */
 	if (sc->argc == 0 && (~sc->flags & SPAWN_RESPAWN)) {
 		cmd = options_get_string(s->options, "default-command");

@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <paths.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -50,10 +51,10 @@ const struct cmd_entry cmd_display_popup_entry = {
 	.name = "display-popup",
 	.alias = "popup",
 
-	.args = { "CEKc:d:h:R:t:w:x:y:", 0, -1 },
-	.usage = "[-CEK] [-c target-client] [-d start-directory] [-h height] "
-	         "[-R shell-command] " CMD_TARGET_PANE_USAGE " [-w width] "
-	         "[-x position] [-y position] [command line ...]",
+	.args = { "Cc:d:Eh:t:w:x:y:", 0, -1 },
+	.usage = "[-CE] [-c target-client] [-d start-directory] [-h height] "
+	         CMD_TARGET_PANE_USAGE " [-w width] "
+	         "[-x position] [-y position] [command]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -325,13 +326,14 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
 	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct session		*s = target->s;
 	struct client		*tc = cmdq_get_target_client(item);
 	struct tty		*tty = &tc->tty;
-	const char		*value, *cmd = NULL, **lines = NULL;
+	const char		*value, *shell[] = { NULL, NULL };
 	const char		*shellcmd = NULL;
-	char			*cwd, *cause;
-	int			 flags = 0;
-	u_int			 px, py, w, h, nlines = 0;
+	char			*cwd, *cause, **argv = args->argv;
+	int			 flags = 0, argc = args->argc;
+	u_int			 px, py, w, h;
 
 	if (args_has(args, 'C')) {
 		server_client_clear_overlay(tc);
@@ -340,17 +342,7 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	if (tc->overlay_draw != NULL)
 		return (CMD_RETURN_NORMAL);
 
-	if (args->argc >= 1)
-		cmd = args->argv[0];
-	if (args->argc >= 2) {
-		lines = (const char **)args->argv + 1;
-		nlines = args->argc - 1;
-	}
-
-	if (nlines != 0)
-		h = popup_height(nlines, lines) + 2;
-	else
-		h = tty->sy / 2;
+	h = tty->sy / 2;
 	if (args_has(args, 'h')) {
 		h = args_percentage(args, 'h', 1, tty->sy, tty->sy, &cause);
 		if (cause != NULL) {
@@ -360,10 +352,7 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 		}
 	}
 
-	if (nlines != 0)
-		w = popup_width(item, nlines, lines, tc, target) + 2;
-	else
-		w = tty->sx / 2;
+	w = tty->sx / 2;
 	if (args_has(args, 'w')) {
 		w = args_percentage(args, 'w', 1, tty->sx, tty->sx, &cause);
 		if (cause != NULL) {
@@ -384,20 +373,26 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	if (value != NULL)
 		cwd = format_single_from_target(item, value);
 	else
-		cwd = xstrdup(server_client_get_cwd(tc, target->s));
+		cwd = xstrdup(server_client_get_cwd(tc, s));
+	if (argc == 0)
+		shellcmd = options_get_string(s->options, "default-command");
+	else if (argc == 1)
+		shellcmd = argv[0];
+	if (argc <= 1 && (shellcmd == NULL || *shellcmd == '\0')) {
+		shellcmd = NULL;
+		shell[0] = options_get_string(s->options, "default-shell");
+		if (!checkshell(shell[0]))
+			shell[0] = _PATH_BSHELL;
+		argc = 1;
+		argv = (char**)shell;
+	}
 
-	value = args_get(args, 'R');
-	if (value != NULL)
-		shellcmd = format_single_from_target(item, value);
-
-	if (args_has(args, 'K'))
-		flags |= POPUP_WRITEKEYS;
 	if (args_has(args, 'E') > 1)
 		flags |= POPUP_CLOSEEXITZERO;
 	else if (args_has(args, 'E'))
 		flags |= POPUP_CLOSEEXIT;
-	if (popup_display(flags, item, px, py, w, h, nlines, lines, shellcmd,
-	    cmd, cwd, tc, target, NULL, NULL) != 0)
+	if (popup_display(flags, item, px, py, w, h, shellcmd, argc, argv, cwd,
+	    tc, s, NULL, NULL) != 0)
 		return (CMD_RETURN_NORMAL);
 	return (CMD_RETURN_WAIT);
 }
