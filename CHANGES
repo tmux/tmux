@@ -1,8 +1,68 @@
-CHANGES FROM 3.2 TO 3.3
-
-XXX
-
 CHANGES FROM 3.1c TO 3.2
+
+* Improve performance of format evaluation.
+
+* Make jump command support UTF-8 in copy mode.
+
+* Support X11 colour names and other colour formats for OSC 10 and 11.
+
+* Add "pipe" variants of "copy-pipe" commands which do not copy.
+
+* Include "focused" in client flags.
+
+* Send Unicode directional isolate characters around horizontal pane borders if
+  the terminal supports UTF-8 and an extension terminfo(5) capability "Bidi" is
+  present.
+
+* Add a -S flag to new-window to make it select the existing window if one
+  with the given name already exists rather than failing with an error.
+
+* Addd a format modifier to check if a window or session name exists (N/w or
+  N/s).
+
+* Add compat clock_gettime for older macOS.
+
+* Add a no-detached choice to detach-on-destroy which detaches only if there
+  are no other detached sessions to switch to.
+
+* Add rectangle-on and rectangle-off copy mode commands.
+
+* Change so that window_flags escapes # automatically. A new format
+  window_raw_flags contains the old unescaped version.
+
+* Add -N flag to never start server even if command would normally do so.
+
+* With incremental search, start empty and only repeat the previous search if
+  the user tries to search again with an empty prompt.
+
+* Add a value for remain-on-exit that only keeps the pane if the program
+  failed.
+
+* Add a -C flag to run-shell to use a tmux command rather than a shell command.
+
+* Do not list user options with show-hooks.
+
+* Remove current match indicator in copy mode which can't work anymore since we
+  only search the visible region.
+
+* Make synchronize-panes a pane option and add -U flag to set-option to unset
+  an option on all panes.
+
+* Make replacement of ##s consistent when drawing formats, whether followed by
+  [ or not. Add a flag (e) to the q: format modifier to double up #s
+
+* Add -N flag to display-panes to ignore keys.
+
+* Change how escaping is processed for formats so that ## and # can be used in
+  styles.
+
+* Add a 'w' format modifier for string width.
+
+* Add support for Haiku.
+
+* Expand menu and popup -x and -y as formats.
+
+* Add numeric comparisons for formats.
 
 * Fire focus events even when the pane is in a mode.
 
@@ -271,9 +331,9 @@ CHANGES FROM 3.1c TO 3.2
 * Change default position for display-menu -x and -y to centre rather than top
   left.
 
-* Add support for per-client transient popups, similar to menus. These are
-  created with new command display-popup. Popups may either show fixed text and
-  trigger a tmux command when a key is pressed, or run a program (-R flag).
+* Add support for per-client transient popups, similar to menus but which are
+  connected to an external command (like a pane). These are created with new
+  command display-popup.
 
 * Change double and triple click bindings so that only one is fired (previously
   double click was fired on the way to triple click). Also add default double
