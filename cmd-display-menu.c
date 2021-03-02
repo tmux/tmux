@@ -18,7 +18,6 @@
 
 #include <sys/types.h>
 
-#include <paths.h>
 #include <stdlib.h>
 #include <string.h>
 
