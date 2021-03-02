@@ -184,7 +184,7 @@ spawn_window(struct spawn_context *sc, char **cause)
 			    NULL);
 			options_set_number(w->options, "automatic-rename", 0);
 		} else
-			w->name = xstrdup(default_window_name(w));
+			w->name = default_window_name(w);
 	}
 
 	/* Switch to the new window if required. */
