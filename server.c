@@ -42,7 +42,7 @@
 struct clients		 clients;
 
 struct tmuxproc		*server_proc;
-static int		 server_fd = -1;
+static evutil_socket_t	server_fd = -1;
 static uint64_t		 server_client_flags;
 static int		 server_exit;
 static struct event	 server_ev_accept;
@@ -99,19 +99,20 @@ server_check_marked(void)
 }
 
 /* Create server socket. */
-static int
+static evutil_socket_t
 server_create_socket(int flags, char **cause)
 {
 	struct sockaddr_un	sa;
 	size_t			size;
 	mode_t			mask;
-	int			fd, saved_errno;
+	evutil_socket_t		fd;
+	int			saved_errno;
 
 	memset(&sa, 0, sizeof sa);
 	sa.sun_family = AF_UNIX;
 	size = strlcpy(sa.sun_path, socket_path, sizeof sa.sun_path);
 	if (size >= sizeof sa.sun_path) {
-		errno = ENAMETOOLONG;
+		EVUTIL_SET_SOCKET_ERROR(ENAMETOOLONG);
 		goto fail;
 	}
 	unlink(sa.sun_path);
@@ -124,17 +125,17 @@ server_create_socket(int flags, char **cause)
 	else
 		mask = umask(S_IXUSR|S_IRWXG|S_IRWXO);
 	if (bind(fd, (struct sockaddr *)&sa, sizeof sa) == -1) {
-		saved_errno = errno;
-		close(fd);
-		errno = saved_errno;
+		saved_errno = evutil_socket_geterror(fd);
+		evutil_closesocket(fd);
+		EVUTIL_SET_SOCKET_ERROR(saved_errno);
 		goto fail;
 	}
 	umask(mask);
 
 	if (listen(fd, 128) == -1) {
-		saved_errno = errno;
-		close(fd);
-		errno = saved_errno;
+		saved_errno = evutil_socket_geterror(fd);
+		evutil_closesocket(fd);
+		EVUTIL_SET_SOCKET_ERROR(saved_errno);
 		goto fail;
 	}
 	setblocking(fd, 0);
@@ -144,7 +145,7 @@ server_create_socket(int flags, char **cause)
 fail:
 	if (cause != NULL) {
 		xasprintf(cause, "error creating %s (%s)", socket_path,
-		    strerror(errno));
+		    evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
 	}
 	return (-1);
 }
@@ -334,7 +335,7 @@ server_accept(int fd, short events, __unused void *data)
 {
 	struct sockaddr_storage	sa;
 	socklen_t		slen = sizeof sa;
-	int			newfd;
+	evutil_socket_t		newfd;
 
 	server_add_accept(0);
 	if (!(events & EV_READ))
@@ -342,9 +343,10 @@ server_accept(int fd, short events, __unused void *data)
 
 	newfd = accept(fd, (struct sockaddr *) &sa, &slen);
 	if (newfd == -1) {
-		if (errno == EAGAIN || errno == EINTR || errno == ECONNABORTED)
+		const int e = evutil_socket_geterror(fd);
+		if (e == EAGAIN || e == EINTR || e == ECONNABORTED)
 			return;
-		if (errno == ENFILE || errno == EMFILE) {
+		if (e == ENFILE || e == EMFILE) {
 			/* Delete and don't try again for 1 second. */
 			server_add_accept(1);
 			return;
@@ -388,7 +390,7 @@ server_add_accept(int timeout)
 static void
 server_signal(int sig)
 {
-	int	fd;
+	evutil_socket_t	fd;
 
 	log_debug("%s: %s", __func__, strsignal(sig));
 	switch (sig) {
@@ -404,7 +406,7 @@ server_signal(int sig)
 		event_del(&server_ev_accept);
 		fd = server_create_socket(server_client_flags, NULL);
 		if (fd != -1) {
-			close(server_fd);
+			evutil_closesocket(server_fd);
 			server_fd = fd;
 			server_update_socket();
 		}

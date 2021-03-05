@@ -59,7 +59,7 @@ static struct client_files client_files = RB_INITIALIZER(&client_files);
 
 static __dead void	 client_exec(const char *,const char *);
 static int		 client_get_lock(char *);
-static int		 client_connect(struct event_base *, const char *,
+static evutil_socket_t  client_connect(struct event_base *, const char *,
 			     uint64_t);
 static void		 client_send_identify(const char *, const char *,
 			     char **, u_int, const char *, int);
@@ -101,19 +101,20 @@ client_get_lock(char *lockfile)
 }
 
 /* Connect client to server. */
-static int
+static evutil_socket_t
 client_connect(struct event_base *base, const char *path, uint64_t flags)
 {
 	struct sockaddr_un	sa;
 	size_t			size;
-	int			fd, lockfd = -1, locked = 0;
+	evutil_socket_t 	fd;
+	int			lockfd = -1, locked = 0;
 	char		       *lockfile = NULL;
 
 	memset(&sa, 0, sizeof sa);
 	sa.sun_family = AF_UNIX;
 	size = strlcpy(sa.sun_path, path, sizeof sa.sun_path);
 	if (size >= sizeof sa.sun_path) {
-		errno = ENAMETOOLONG;
+		EVUTIL_SET_SOCKET_ERROR(ENAMETOOLONG);
 		return (-1);
 	}
 	log_debug("socket is %s", path);
@@ -124,14 +125,15 @@ retry:
 
 	log_debug("trying connect");
 	if (connect(fd, (struct sockaddr *)&sa, sizeof sa) == -1) {
-		log_debug("connect failed: %s", strerror(errno));
-		if (errno != ECONNREFUSED && errno != ENOENT)
+		const int e = evutil_socket_geterror(fd);
+		log_debug("connect failed: %s", evutil_socket_error_to_string(e));
+		if (e != ECONNREFUSED && e != ENOENT)
 			goto failed;
 		if (flags & CLIENT_NOSTARTSERVER)
 			goto failed;
 		if (~flags & CLIENT_STARTSERVER)
 			goto failed;
-		close(fd);
+		evutil_closesocket(fd);
 
 		if (!locked) {
 			xasprintf(&lockfile, "%s.lock", path);
@@ -176,7 +178,7 @@ failed:
 		free(lockfile);
 		close(lockfd);
 	}
-	close(fd);
+	evutil_closesocket(fd);
 	return (-1);
 }
 
@@ -234,7 +236,8 @@ client_main(struct event_base *base, int argc, char **argv, uint64_t flags,
 {
 	struct cmd_parse_result	*pr;
 	struct msg_command	*data;
-	int			 fd, i;
+	evutil_socket_t		 fd;
+	int 			 i;
 	const char		*ttynam, *termname, *cwd;
 	pid_t			 ppid;
 	enum msgtype		 msg;
@@ -282,7 +285,7 @@ client_main(struct event_base *base, int argc, char **argv, uint64_t flags,
 	/* Initialize the client socket and start the server. */
 	fd = client_connect(base, socket_path, client_flags);
 	if (fd == -1) {
-		if (errno == ECONNREFUSED) {
+		if (EVUTIL_SOCKET_ERROR() == ECONNREFUSED) {
 			fprintf(stderr, "no server running on %s\n",
 			    socket_path);
 		} else {
