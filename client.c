@@ -125,7 +125,7 @@ retry:
 
 	log_debug("trying connect");
 	if (connect(fd, (struct sockaddr *)&sa, sizeof sa) == -1) {
-		const int e = evutil_socket_geterror(fd);
+		const int e = EVUTIL_SOCKET_ERROR();
 		log_debug("connect failed: %s", evutil_socket_error_to_string(e));
 		if (e != ECONNREFUSED && e != ENOENT)
 			goto failed;

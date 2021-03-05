@@ -125,7 +125,7 @@ server_create_socket(int flags, char **cause)
 	else
 		mask = umask(S_IXUSR|S_IRWXG|S_IRWXO);
 	if (bind(fd, (struct sockaddr *)&sa, sizeof sa) == -1) {
-		saved_errno = evutil_socket_geterror(fd);
+		saved_errno = EVUTIL_SOCKET_ERROR();
 		evutil_closesocket(fd);
 		EVUTIL_SET_SOCKET_ERROR(saved_errno);
 		goto fail;
@@ -133,7 +133,7 @@ server_create_socket(int flags, char **cause)
 	umask(mask);
 
 	if (listen(fd, 128) == -1) {
-		saved_errno = evutil_socket_geterror(fd);
+		saved_errno = EVUTIL_SOCKET_ERROR();
 		evutil_closesocket(fd);
 		EVUTIL_SET_SOCKET_ERROR(saved_errno);
 		goto fail;
@@ -343,7 +343,7 @@ server_accept(int fd, short events, __unused void *data)
 
 	newfd = accept(fd, (struct sockaddr *) &sa, &slen);
 	if (newfd == -1) {
-		const int e = evutil_socket_geterror(fd);
+		const int e = EVUTIL_SOCKET_ERROR();
 		if (e == EAGAIN || e == EINTR || e == ECONNABORTED)
 			return;
 		if (e == ENFILE || e == EMFILE) {
