@@ -1775,7 +1775,7 @@ window_copy_cmd_select_word(struct window_copy_cmd_state *cs)
 	struct window_mode_entry	*wme = cs->wme;
 	struct session			*s = cs->s;
 	struct window_copy_mode_data	*data = wme->data;
-	u_int				 px, py;
+	u_int				 px, py, nextx, nexty;
 
 	data->lineflag = LINE_SEL_LEFT_RIGHT;
 	data->rectflag = 0;
@@ -1791,8 +1791,16 @@ window_copy_cmd_select_word(struct window_copy_cmd_state *cs)
 	data->selry = py;
 	window_copy_start_selection(wme);
 
+	/* Handle single character words. */
+	nextx = px + 1;
+	nexty = py;
+	if (grid_get_line(data->backing->grid, nexty)->flags &
+	    GRID_LINE_WRAPPED && nextx > screen_size_x(data->backing) - 1) {
+		nextx = 0;
+		nexty++;
+	}
 	if (px >= window_copy_find_length(wme, py) ||
-	    !window_copy_in_set(wme, px + 1, py, data->ws))
+	    !window_copy_in_set(wme, nextx, nexty, data->ws))
 		window_copy_cursor_next_word_end(wme, data->ws, 1);
 	else {
 		window_copy_update_cursor(wme, px, data->cy);
@@ -1801,7 +1809,10 @@ window_copy_cmd_select_word(struct window_copy_cmd_state *cs)
 	}
 	data->endselrx = data->cx;
 	data->endselry = screen_hsize(data->backing) + data->cy - data->oy;
-	if (data->dx > data->endselrx)
+	if (data->dy > data->endselry) {
+		data->dy = data->endselry;
+		data->dx = data->endselrx;
+	} else if (data->dx > data->endselrx)
 		data->dx = data->endselrx;
 
 	return (WINDOW_COPY_CMD_REDRAW);
