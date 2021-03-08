@@ -4551,6 +4551,7 @@ window_copy_cursor_next_word(struct window_mode_entry *wme,
 	    data->oy, oldy, px, py, 0);
 }
 
+/* Compute the next place where a word ends. */
 static void
 window_copy_cursor_next_word_end_pos(struct window_mode_entry *wme,
     const char *separators, u_int *ppx, u_int *ppy)
@@ -4559,47 +4560,27 @@ window_copy_cursor_next_word_end_pos(struct window_mode_entry *wme,
 	struct window_copy_mode_data	*data = wme->data;
 	struct options			*oo = wp->window->options;
 	struct screen			*back_s = data->backing;
-	u_int				 px, py, xx, yy;
-	int				 keys, expected = 1;
+	struct grid_reader		 gr;
+	u_int				 px, py, hsize;
+	int				 keys;
 
 	px = data->cx;
-	py = screen_hsize(back_s) + data->cy - data->oy;
-	xx = window_copy_find_length(wme, py);
-	yy = screen_hsize(back_s) + screen_size_y(back_s) - 1;
+	hsize = screen_hsize(back_s);
+	py =  hsize + data->cy - data->oy;
 
+	grid_reader_start(&gr, back_s->grid, px, py);
 	keys = options_get_number(oo, "mode-keys");
-	if (keys == MODEKEY_VI && !window_copy_in_set(wme, px, py, separators))
-		px++;
-
-	/*
-	 * First skip past any word characters, then any non-word characters.
-	 *
-	 * expected is initially set to 1 for the former and then 0 for the
-	 * latter.
-	 */
-	do {
-		while (px > xx ||
-		    window_copy_in_set(wme, px, py, separators) == expected) {
-			/* Move down if we're past the end of the line. */
-			if (px > xx) {
-				if (py == yy)
-					return;
-				py++;
-				px = 0;
-				xx = window_copy_find_length(wme, py);
-			} else
-				px++;
-		}
-		expected = !expected;
-	} while (expected == 0);
-
-	if (keys == MODEKEY_VI && px != 0)
-		px--;
-
+	if (keys == MODEKEY_VI && !grid_reader_in_set(&gr, separators))
+		grid_reader_cursor_right(&gr, 0, 0);
+	grid_reader_cursor_next_word_end(&gr, separators);
+	if (keys == MODEKEY_VI)
+		grid_reader_cursor_left(&gr);
+	grid_reader_get_cursor(&gr, &px, &py);
 	*ppx = px;
 	*ppy = py;
 }
 
+/* Move to the next place where a word ends. */
 static void
 window_copy_cursor_next_word_end(struct window_mode_entry *wme,
     const char *separators, int no_reset)
@@ -4635,42 +4616,17 @@ window_copy_cursor_previous_word_pos(struct window_mode_entry *wme,
     const char *separators, int already, u_int *ppx, u_int *ppy)
 {
 	struct window_copy_mode_data	*data = wme->data;
+	struct screen			*back_s = data->backing;
+	struct grid_reader		 gr;
 	u_int				 px, py, hsize;
 
-	hsize = screen_hsize(data->backing);
 	px = data->cx;
+	hsize = screen_hsize(back_s);
 	py = hsize + data->cy - data->oy;
 
-	/* Move back to the previous word character. */
-	if (already || window_copy_in_set(wme, px, py, separators)) {
-		for (;;) {
-			if (px > 0) {
-				px--;
-				if (!window_copy_in_set(wme, px, py,
-				    separators))
-					break;
-			} else {
-				if (py == 0 ||
-				    (data->cy == 0 &&
-				    (hsize == 0 || data->oy > hsize - 1)))
-					goto out;
-
-				py--;
-				px = window_copy_find_length(wme, py);
-
-				/* Stop if separator at EOL. */
-				if (px > 0 && window_copy_in_set(wme, px - 1,
-				    py, separators))
-					break;
-			}
-		}
-	}
-
-	/* Move back to the beginning of this word. */
-	while (px > 0 && !window_copy_in_set(wme, px - 1, py, separators))
-		px--;
-
-out:
+	grid_reader_start(&gr, back_s->grid, px, py);
+	grid_reader_cursor_previous_word(&gr, separators, already);
+	grid_reader_get_cursor(&gr, &px, &py);
 	*ppx = px;
 	*ppy = py;
 }
