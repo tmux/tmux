@@ -3366,8 +3366,11 @@ window_copy_match_at_cursor(struct window_copy_mode_data *data)
 	cy = screen_hsize(data->backing) - data->oy + data->cy;
 	if (window_copy_search_mark_at(data, data->cx, cy, &at) != 0)
 		return (NULL);
-	if (data->searchmark[at] == 0)
-		return (NULL);
+	if (data->searchmark[at] == 0) {
+		/* Allow one position after the match. */
+		if (at == 0 || data->searchmark[--at] == 0)
+			return (NULL);
+	}
 	window_copy_match_start_end(data, at, &start, &end);
 
 	/*
