@@ -1759,12 +1759,15 @@ window_copy_cmd_select_line(struct window_copy_cmd_state *cs)
 	window_copy_cursor_start_of_line(wme);
 	data->selrx = data->cx;
 	data->selry = screen_hsize(data->backing) + data->cy - data->oy;
-	data->endselrx = window_copy_find_length(wme, data->selry);
 	data->endselry = data->selry;
 	window_copy_start_selection(wme);
-	for (; np > 1; np--)
-		window_copy_cursor_down(wme, 0);
 	window_copy_cursor_end_of_line(wme);
+	data->endselry = screen_hsize(data->backing) + data->cy - data->oy;
+	data->endselrx = window_copy_find_length(wme, data->endselry);
+	for (; np > 1; np--) {
+		window_copy_cursor_down(wme, 0);
+		window_copy_cursor_end_of_line(wme);
+	}
 
 	return (WINDOW_COPY_CMD_REDRAW);
 }
@@ -1775,7 +1778,7 @@ window_copy_cmd_select_word(struct window_copy_cmd_state *cs)
 	struct window_mode_entry	*wme = cs->wme;
 	struct session			*s = cs->s;
 	struct window_copy_mode_data	*data = wme->data;
-	u_int				 px, py;
+	u_int				 px, py, nextx, nexty;
 
 	data->lineflag = LINE_SEL_LEFT_RIGHT;
 	data->rectflag = 0;
@@ -1791,8 +1794,16 @@ window_copy_cmd_select_word(struct window_copy_cmd_state *cs)
 	data->selry = py;
 	window_copy_start_selection(wme);
 
+	/* Handle single character words. */
+	nextx = px + 1;
+	nexty = py;
+	if (grid_get_line(data->backing->grid, nexty)->flags &
+	    GRID_LINE_WRAPPED && nextx > screen_size_x(data->backing) - 1) {
+		nextx = 0;
+		nexty++;
+	}
 	if (px >= window_copy_find_length(wme, py) ||
-	    !window_copy_in_set(wme, px + 1, py, data->ws))
+	    !window_copy_in_set(wme, nextx, nexty, data->ws))
 		window_copy_cursor_next_word_end(wme, data->ws, 1);
 	else {
 		window_copy_update_cursor(wme, px, data->cy);
@@ -1801,7 +1812,10 @@ window_copy_cmd_select_word(struct window_copy_cmd_state *cs)
 	}
 	data->endselrx = data->cx;
 	data->endselry = screen_hsize(data->backing) + data->cy - data->oy;
-	if (data->dx > data->endselrx)
+	if (data->dy > data->endselry) {
+		data->dy = data->endselry;
+		data->dx = data->endselrx;
+	} else if (data->dx > data->endselrx)
 		data->dx = data->endselrx;
 
 	return (WINDOW_COPY_CMD_REDRAW);
@@ -3635,6 +3649,8 @@ window_copy_synchronize_cursor_end(struct window_mode_entry *wme, int begin,
 			data->endsely = data->endselry;
 		} else {
 			/* Left to right selection. */
+			if (yy < data->endselry)
+				yy = data->endselry;
 			xx = window_copy_find_length(wme, yy);
 
 			/* Reset the start. */
@@ -3929,8 +3945,12 @@ window_copy_get_selection(struct window_mode_entry *wme, size_t *len)
 		*len = 0;
 		return (NULL);
 	}
-	if (keys == MODEKEY_EMACS || lastex <= ey_last)
-		off -= 1; /* remove final \n (unless at end in vi mode) */
+	 /* Remove final \n (unless at end in vi mode). */
+	if (keys == MODEKEY_EMACS || lastex <= ey_last) {
+		if (~grid_get_line(data->backing->grid, ey)->flags &
+		    GRID_LINE_WRAPPED || lastex != ey_last)
+		off -= 1;
+	}
 	*len = off;
 	return (buf);
 }
@@ -4531,6 +4551,7 @@ window_copy_cursor_next_word(struct window_mode_entry *wme,
 	    data->oy, oldy, px, py, 0);
 }
 
+/* Compute the next place where a word ends. */
 static void
 window_copy_cursor_next_word_end_pos(struct window_mode_entry *wme,
     const char *separators, u_int *ppx, u_int *ppy)
@@ -4539,47 +4560,27 @@ window_copy_cursor_next_word_end_pos(struct window_mode_entry *wme,
 	struct window_copy_mode_data	*data = wme->data;
 	struct options			*oo = wp->window->options;
 	struct screen			*back_s = data->backing;
-	u_int				 px, py, xx, yy;
-	int				 keys, expected = 1;
+	struct grid_reader		 gr;
+	u_int				 px, py, hsize;
+	int				 keys;
 
 	px = data->cx;
-	py = screen_hsize(back_s) + data->cy - data->oy;
-	xx = window_copy_find_length(wme, py);
-	yy = screen_hsize(back_s) + screen_size_y(back_s) - 1;
+	hsize = screen_hsize(back_s);
+	py =  hsize + data->cy - data->oy;
 
+	grid_reader_start(&gr, back_s->grid, px, py);
 	keys = options_get_number(oo, "mode-keys");
-	if (keys == MODEKEY_VI && !window_copy_in_set(wme, px, py, separators))
-		px++;
-
-	/*
-	 * First skip past any word characters, then any non-word characters.
-	 *
-	 * expected is initially set to 1 for the former and then 0 for the
-	 * latter.
-	 */
-	do {
-		while (px > xx ||
-		    window_copy_in_set(wme, px, py, separators) == expected) {
-			/* Move down if we're past the end of the line. */
-			if (px > xx) {
-				if (py == yy)
-					return;
-				py++;
-				px = 0;
-				xx = window_copy_find_length(wme, py);
-			} else
-				px++;
-		}
-		expected = !expected;
-	} while (expected == 0);
-
-	if (keys == MODEKEY_VI && px != 0)
-		px--;
-
+	if (keys == MODEKEY_VI && !grid_reader_in_set(&gr, separators))
+		grid_reader_cursor_right(&gr, 0, 0);
+	grid_reader_cursor_next_word_end(&gr, separators);
+	if (keys == MODEKEY_VI)
+		grid_reader_cursor_left(&gr);
+	grid_reader_get_cursor(&gr, &px, &py);
 	*ppx = px;
 	*ppy = py;
 }
 
+/* Move to the next place where a word ends. */
 static void
 window_copy_cursor_next_word_end(struct window_mode_entry *wme,
     const char *separators, int no_reset)
@@ -4615,42 +4616,17 @@ window_copy_cursor_previous_word_pos(struct window_mode_entry *wme,
     const char *separators, int already, u_int *ppx, u_int *ppy)
 {
 	struct window_copy_mode_data	*data = wme->data;
+	struct screen			*back_s = data->backing;
+	struct grid_reader		 gr;
 	u_int				 px, py, hsize;
 
-	hsize = screen_hsize(data->backing);
 	px = data->cx;
+	hsize = screen_hsize(back_s);
 	py = hsize + data->cy - data->oy;
 
-	/* Move back to the previous word character. */
-	if (already || window_copy_in_set(wme, px, py, separators)) {
-		for (;;) {
-			if (px > 0) {
-				px--;
-				if (!window_copy_in_set(wme, px, py,
-				    separators))
-					break;
-			} else {
-				if (py == 0 ||
-				    (data->cy == 0 &&
-				    (hsize == 0 || data->oy > hsize - 1)))
-					goto out;
-
-				py--;
-				px = window_copy_find_length(wme, py);
-
-				/* Stop if separator at EOL. */
-				if (px > 0 && window_copy_in_set(wme, px - 1,
-				    py, separators))
-					break;
-			}
-		}
-	}
-
-	/* Move back to the beginning of this word. */
-	while (px > 0 && !window_copy_in_set(wme, px - 1, py, separators))
-		px--;
-
-out:
+	grid_reader_start(&gr, back_s->grid, px, py);
+	grid_reader_cursor_previous_word(&gr, separators, already);
+	grid_reader_get_cursor(&gr, &px, &py);
 	*ppx = px;
 	*ppy = py;
 }
