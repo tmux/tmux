@@ -157,13 +157,14 @@ format_draw_put_list(struct screen_write_ctx *octx,
 static void
 format_draw_none(struct screen_write_ctx *octx, u_int available, u_int ocx,
     u_int ocy, struct screen *left, struct screen *centre, struct screen *right,
-    struct format_ranges *frs)
+    struct screen *abs_centre, struct format_ranges *frs)
 {
-	u_int	width_left, width_centre, width_right;
+	u_int	width_left, width_centre, width_right, width_abs_centre;
 
 	width_left = left->cx;
 	width_centre = centre->cx;
 	width_right = right->cx;
+	width_abs_centre = abs_centre->cx;
 
 	/*
 	 * Try to keep as much of the left and right as possible at the expense
@@ -199,23 +200,34 @@ format_draw_none(struct screen_write_ctx *octx, u_int available, u_int ocx,
 	    - width_centre / 2,
 	    centre->cx / 2 - width_centre / 2,
 	    width_centre);
+
+	/*
+	 * Write abs_centre in the perfect centre of all horizontal space.
+	 */
+	if (width_abs_centre > available)
+		width_abs_centre = available;
+	format_draw_put(octx, ocx, ocy, abs_centre, frs,
+	    (available - width_abs_centre) / 2,
+	    0,
+	    width_abs_centre);
 }
 
 /* Draw format with list on the left. */
 static void
 format_draw_left(struct screen_write_ctx *octx, u_int available, u_int ocx,
     u_int ocy, struct screen *left, struct screen *centre, struct screen *right,
-    struct screen *list, struct screen *list_left, struct screen *list_right,
-    struct screen *after, int focus_start, int focus_end,
-    struct format_ranges *frs)
+    struct screen *abs_centre, struct screen *list, struct screen *list_left,
+    struct screen *list_right, struct screen *after, int focus_start,
+    int focus_end, struct format_ranges *frs)
 {
 	u_int			width_left, width_centre, width_right;
-	u_int			width_list, width_after;
+	u_int			width_list, width_after, width_abs_centre;
 	struct screen_write_ctx	ctx;
 
 	width_left = left->cx;
 	width_centre = centre->cx;
 	width_right = right->cx;
+	width_abs_centre = abs_centre->cx;
 	width_list = list->cx;
 	width_after = after->cx;
 
@@ -247,7 +259,7 @@ format_draw_left(struct screen_write_ctx *octx, u_int available, u_int ocx,
 		screen_write_stop(&ctx);
 
 		format_draw_none(octx, available, ocx, ocy, left, centre,
-		    right, frs);
+		    right, abs_centre, frs);
 		return;
 	}
 
@@ -291,23 +303,34 @@ format_draw_left(struct screen_write_ctx *octx, u_int available, u_int ocx,
 		focus_start = focus_end = 0;
 	format_draw_put_list(octx, ocx, ocy, width_left, width_list, list,
 	    list_left, list_right, focus_start, focus_end, frs);
+
+	/*
+	 * Write abs_centre in the perfect centre of all horizontal space.
+	 */
+	if (width_abs_centre > available)
+		width_abs_centre = available;
+	format_draw_put(octx, ocx, ocy, abs_centre, frs,
+	    (available - width_abs_centre) / 2,
+	    0,
+	    width_abs_centre);
 }
 
 /* Draw format with list in the centre. */
 static void
 format_draw_centre(struct screen_write_ctx *octx, u_int available, u_int ocx,
     u_int ocy, struct screen *left, struct screen *centre, struct screen *right,
-    struct screen *list, struct screen *list_left, struct screen *list_right,
-    struct screen *after, int focus_start, int focus_end,
-    struct format_ranges *frs)
+    struct screen *abs_centre, struct screen *list, struct screen *list_left,
+    struct screen *list_right, struct screen *after, int focus_start,
+    int focus_end, struct format_ranges *frs)
 {
-	u_int			width_left, width_centre, width_right;
-	u_int			width_list, width_after, middle;
+	u_int			width_left, width_centre, width_right, middle;
+	u_int			width_list, width_after, width_abs_centre;
 	struct screen_write_ctx	ctx;
 
 	width_left = left->cx;
 	width_centre = centre->cx;
 	width_right = right->cx;
+	width_abs_centre = abs_centre->cx;
 	width_list = list->cx;
 	width_after = after->cx;
 
@@ -339,7 +362,7 @@ format_draw_centre(struct screen_write_ctx *octx, u_int available, u_int ocx,
 		screen_write_stop(&ctx);
 
 		format_draw_none(octx, available, ocx, ocy, left, centre,
-		    right, frs);
+		    right, abs_centre, frs);
 		return;
 	}
 
@@ -388,23 +411,34 @@ format_draw_centre(struct screen_write_ctx *octx, u_int available, u_int ocx,
 	format_draw_put_list(octx, ocx, ocy, middle - width_list / 2,
 	    width_list, list, list_left, list_right, focus_start, focus_end,
 	    frs);
+
+	/*
+	 * Write abs_centre in the perfect centre of all horizontal space.
+	 */
+	if (width_abs_centre > available)
+		width_abs_centre = available;
+	format_draw_put(octx, ocx, ocy, abs_centre, frs,
+	    (available - width_abs_centre) / 2,
+	    0,
+	    width_abs_centre);
 }
 
 /* Draw format with list on the right. */
 static void
 format_draw_right(struct screen_write_ctx *octx, u_int available, u_int ocx,
     u_int ocy, struct screen *left, struct screen *centre, struct screen *right,
-    struct screen *list, struct screen *list_left, struct screen *list_right,
-    struct screen *after, int focus_start, int focus_end,
-    struct format_ranges *frs)
+    struct screen *abs_centre,     struct screen *list,
+    struct screen *list_left, struct screen *list_right, struct screen *after,
+    int focus_start, int focus_end, struct format_ranges *frs)
 {
 	u_int			width_left, width_centre, width_right;
-	u_int			width_list, width_after;
+	u_int			width_list, width_after, width_abs_centre;
 	struct screen_write_ctx	ctx;
 
 	width_left = left->cx;
 	width_centre = centre->cx;
 	width_right = right->cx;
+	width_abs_centre = abs_centre->cx;
 	width_list = list->cx;
 	width_after = after->cx;
 
@@ -436,7 +470,7 @@ format_draw_right(struct screen_write_ctx *octx, u_int available, u_int ocx,
 		screen_write_stop(&ctx);
 
 		format_draw_none(octx, available, ocx, ocy, left, centre,
-		    right, frs);
+		    right, abs_centre, frs);
 		return;
 	}
 
@@ -484,6 +518,118 @@ format_draw_right(struct screen_write_ctx *octx, u_int available, u_int ocx,
 	format_draw_put_list(octx, ocx, ocy, available - width_list -
 	    width_after, width_list, list, list_left, list_right, focus_start,
 	    focus_end, frs);
+
+	/*
+	 * Write abs_centre in the perfect centre of all horizontal space.
+	 */
+	if (width_abs_centre > available)
+		width_abs_centre = available;
+	format_draw_put(octx, ocx, ocy, abs_centre, frs,
+	    (available - width_abs_centre) / 2,
+	    0,
+	    width_abs_centre);
+}
+
+static void
+format_draw_absolute_centre(struct screen_write_ctx *octx, u_int available,
+    u_int ocx, u_int ocy, struct screen *left, struct screen *centre,
+    struct screen *right, struct screen *abs_centre, struct screen *list,
+    struct screen *list_left, struct screen *list_right, struct screen *after,
+    int focus_start, int focus_end, struct format_ranges *frs)
+{
+	u_int	width_left, width_centre, width_right, width_abs_centre;
+	u_int	width_list, width_after, middle, abs_centre_offset;
+
+	width_left = left->cx;
+	width_centre = centre->cx;
+	width_right = right->cx;
+	width_abs_centre = abs_centre->cx;
+	width_list = list->cx;
+	width_after = after->cx;
+
+	/*
+	 * Trim first centre, then the right, then the left.
+	 */
+	while (width_left +
+	    width_centre +
+	    width_right > available) {
+		if (width_centre > 0)
+			width_centre--;
+		else if (width_right > 0)
+			width_right--;
+		else
+			width_left--;
+	}
+
+	/*
+	 * We trim list after and abs_centre independently, as we are drawing
+	 * them over the rest. Trim first the list, then after the list, then
+	 * abs_centre.
+	 */
+	while (width_list + width_after + width_abs_centre > available) {
+		if (width_list > 0)
+			width_list--;
+		else if (width_after > 0)
+			width_after--;
+		else
+			width_abs_centre--;
+	}
+
+	/* Write left at 0. */
+	format_draw_put(octx, ocx, ocy, left, frs, 0, 0, width_left);
+
+	/* Write right at available - width_right. */
+	format_draw_put(octx, ocx, ocy, right, frs,
+	    available - width_right,
+	    right->cx - width_right,
+	    width_right);
+
+	/*
+	 * Keep writing centre at the relative centre. Only the list is written
+	 * in the absolute centre of the horizontal space.
+	 */
+	middle = (width_left + ((available - width_right) - width_left) / 2);
+
+	/*
+	 * Write centre at
+	 *     middle - width_centre.
+	 */
+	format_draw_put(octx, ocx, ocy, centre, frs,
+		middle - width_centre,
+		0,
+		width_centre);
+
+	/*
+	 * If there is no focus given, keep the centre in focus.
+	 */
+	if (focus_start == -1 || focus_end == -1)
+		focus_start = focus_end = list->cx / 2;
+
+	/*
+	 * We centre abs_centre and the list together, so their shared centre is
+	 * in the perfect centre of horizontal space.
+	 */
+	abs_centre_offset = (available - width_list - width_abs_centre) / 2;
+
+	/*
+	 * Write abs_centre before the list.
+	 */
+	format_draw_put(octx, ocx, ocy, abs_centre, frs, abs_centre_offset,
+	    0, width_abs_centre);
+	abs_centre_offset += width_abs_centre;
+
+	/*
+	 * Draw the list in the absolute centre
+	 */
+	format_draw_put_list(octx, ocx, ocy, abs_centre_offset, width_list,
+	    list, list_left, list_right, focus_start, focus_end, frs);
+	abs_centre_offset += width_list;
+
+	/*
+	 * Write after at the end of the centre
+	 */
+	format_draw_put(octx, ocx, ocy, after, frs, abs_centre_offset, 0,
+	    width_after);
 }
 
 /* Draw multiple characters. */
@@ -506,6 +652,7 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 	enum { LEFT,
 	       CENTRE,
 	       RIGHT,
+	       ABSOLUTE_CENTRE,
 	       LIST,
 	       LIST_LEFT,
 	       LIST_RIGHT,
@@ -514,6 +661,7 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 	const char	        *names[] = { "LEFT",
 					     "CENTRE",
 					     "RIGHT",
+					     "ABSOLUTE_CENTRE",
 					     "LIST",
 					     "LIST_LEFT",
 					     "LIST_RIGHT",
@@ -522,7 +670,11 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 	struct screen		*os = octx->s, s[TOTAL];
 	struct screen_write_ctx	 ctx[TOTAL];
 	u_int			 ocx = os->cx, ocy = os->cy, n, i, width[TOTAL];
-	u_int			 map[] = { LEFT, LEFT, CENTRE, RIGHT };
+	u_int			 map[] = { LEFT,
+					   LEFT,
+					   CENTRE,
+					   RIGHT,
+					   ABSOLUTE_CENTRE };
 	int			 focus_start = -1, focus_end = -1;
 	int			 list_state = -1, fill = -1, even;
 	enum style_align	 list_align = STYLE_ALIGN_DEFAULT;
@@ -789,25 +941,35 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 	case STYLE_ALIGN_DEFAULT:
 		/* No list. */
 		format_draw_none(octx, available, ocx, ocy, &s[LEFT],
-		    &s[CENTRE], &s[RIGHT], &frs);
+		    &s[CENTRE], &s[RIGHT], &s[ABSOLUTE_CENTRE], &frs);
 		break;
 	case STYLE_ALIGN_LEFT:
 		/* List is part of the left. */
 		format_draw_left(octx, available, ocx, ocy, &s[LEFT],
-		    &s[CENTRE], &s[RIGHT], &s[LIST], &s[LIST_LEFT],
-		    &s[LIST_RIGHT], &s[AFTER], focus_start, focus_end, &frs);
+		    &s[CENTRE], &s[RIGHT], &s[ABSOLUTE_CENTRE], &s[LIST],
+		    &s[LIST_LEFT], &s[LIST_RIGHT], &s[AFTER],
+		    focus_start, focus_end, &frs);
 		break;
 	case STYLE_ALIGN_CENTRE:
 		/* List is part of the centre. */
 		format_draw_centre(octx, available, ocx, ocy, &s[LEFT],
-		    &s[CENTRE], &s[RIGHT], &s[LIST], &s[LIST_LEFT],
-		    &s[LIST_RIGHT], &s[AFTER], focus_start, focus_end, &frs);
+		    &s[CENTRE], &s[RIGHT], &s[ABSOLUTE_CENTRE], &s[LIST],
+		    &s[LIST_LEFT], &s[LIST_RIGHT], &s[AFTER],
+		    focus_start, focus_end, &frs);
 		break;
 	case STYLE_ALIGN_RIGHT:
 		/* List is part of the right. */
 		format_draw_right(octx, available, ocx, ocy, &s[LEFT],
-		    &s[CENTRE], &s[RIGHT], &s[LIST], &s[LIST_LEFT],
-		    &s[LIST_RIGHT], &s[AFTER], focus_start, focus_end, &frs);
+		    &s[CENTRE], &s[RIGHT], &s[ABSOLUTE_CENTRE], &s[LIST],
+		    &s[LIST_LEFT], &s[LIST_RIGHT], &s[AFTER],
+		    focus_start, focus_end, &frs);
+		break;
+	case STYLE_ALIGN_ABSOLUTE_CENTRE:
+		/* List is in the centre of the entire horizontal space. */
+		format_draw_absolute_centre(octx, available, ocx, ocy, &s[LEFT],
+		    &s[CENTRE], &s[RIGHT], &s[ABSOLUTE_CENTRE], &s[LIST],
+		    &s[LIST_LEFT], &s[LIST_RIGHT], &s[AFTER],
+		    focus_start, focus_end, &frs);
 		break;
 	}
 

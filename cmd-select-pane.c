@@ -117,7 +117,7 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 			server_redraw_window_borders(lastwp->window);
 			server_status_window(lastwp->window);
 		} else {
-			if (window_push_zoom(w, args_has(args, 'Z')))
+			if (window_push_zoom(w, 0, args_has(args, 'Z')))
 				server_redraw_window(w);
 			window_redraw_active_switch(w, lastwp);
 			if (window_set_active_pane(w, lastwp, 1)) {
@@ -171,19 +171,19 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (args_has(args, 'L')) {
-		window_push_zoom(w, 1);
+		window_push_zoom(w, 0, 1);
 		wp = window_pane_find_left(wp);
 		window_pop_zoom(w);
 	} else if (args_has(args, 'R')) {
-		window_push_zoom(w, 1);
+		window_push_zoom(w, 0, 1);
 		wp = window_pane_find_right(wp);
 		window_pop_zoom(w);
 	} else if (args_has(args, 'U')) {
-		window_push_zoom(w, 1);
+		window_push_zoom(w, 0, 1);
 		wp = window_pane_find_up(wp);
 		window_pop_zoom(w);
 	} else if (args_has(args, 'D')) {
-		window_push_zoom(w, 1);
+		window_push_zoom(w, 0, 1);
 		wp = window_pane_find_down(wp);
 		window_pop_zoom(w);
 	}
@@ -220,7 +220,7 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 		activewp = w->active;
 	if (wp == activewp)
 		return (CMD_RETURN_NORMAL);
-	if (window_push_zoom(w, args_has(args, 'Z')))
+	if (window_push_zoom(w, 0, args_has(args, 'Z')))
 		server_redraw_window(w);
 	window_redraw_active_switch(w, wp);
 	if (c != NULL && c->session != NULL && (c->flags & CLIENT_ACTIVEPANE))

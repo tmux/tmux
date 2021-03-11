@@ -46,6 +46,7 @@ static int		 server_fd = -1;
 static uint64_t		 server_client_flags;
 static int		 server_exit;
 static struct event	 server_ev_accept;
+static struct event	 server_ev_tidy;
 
 struct cmd_find_state	 marked_pane;
 
@@ -149,15 +150,33 @@ fail:
 	return (-1);
 }
 
+/* Tidy up every hour. */
+static void
+server_tidy_event(__unused int fd, __unused short events, __unused void *data)
+{
+    struct timeval	tv = { .tv_sec = 3600 };
+    uint64_t		t = get_timer();
+
+    format_tidy_jobs();
+
+#ifdef HAVE_MALLOC_TRIM
+    malloc_trim(0);
+#endif
+
+    log_debug("%s: took %llu milliseconds", __func__, get_timer() - t);
+    evtimer_add(&server_ev_tidy, &tv);
+}
+
 /* Fork new server. */
 int
 server_start(struct tmuxproc *client, int flags, struct event_base *base,
     int lockfd, char *lockfile)
 {
-	int		  fd;
-	sigset_t	  set, oldset;
-	struct client	 *c = NULL;
-	char		 *cause = NULL;
+	int		 fd;
+	sigset_t	 set, oldset;
+	struct client	*c = NULL;
+	char		*cause = NULL;
+	struct timeval	 tv = { .tv_sec = 3600 };
 
 	sigfillset(&set);
 	sigprocmask(SIG_BLOCK, &set, &oldset);
@@ -215,6 +234,9 @@ server_start(struct tmuxproc *client, int flags, struct event_base *base,
 		}
 		free(cause);
 	}
+
+	evtimer_set(&server_ev_tidy, server_tidy_event, NULL);
+	evtimer_add(&server_ev_tidy, &tv);
 
 	server_add_accept(0);
 	proc_loop(server_proc, server_loop);

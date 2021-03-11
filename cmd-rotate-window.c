@@ -52,7 +52,7 @@ cmd_rotate_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct layout_cell	*lc;
 	u_int			 sx, sy, xoff, yoff;
 
-	window_push_zoom(w, args_has(args, 'Z'));
+	window_push_zoom(w, 0, args_has(args, 'Z'));
 
 	if (args_has(args, 'D')) {
 		wp = TAILQ_LAST(&w->panes, window_panes);

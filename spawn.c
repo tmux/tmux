@@ -259,7 +259,10 @@ spawn_pane(struct spawn_context *sc, char **cause)
 		layout_init(w, new_wp);
 	} else {
 		new_wp = window_add_pane(w, sc->wp0, hlimit, sc->flags);
-		layout_assign_pane(sc->lc, new_wp);
+		if (sc->flags & SPAWN_ZOOM)
+			layout_assign_pane(sc->lc, new_wp, 1);
+		else
+			layout_assign_pane(sc->lc, new_wp, 0);
 	}
 
 	/*

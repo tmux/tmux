@@ -45,7 +45,7 @@ static const char *options_table_status_keys_list[] = {
 	"emacs", "vi", NULL
 };
 static const char *options_table_status_justify_list[] = {
-	"left", "centre", "right", NULL
+	"left", "centre", "right", "absolute-centre", NULL
 };
 static const char *options_table_status_position_list[] = {
 	"top", "bottom", NULL
