@@ -3815,10 +3815,11 @@ seconds.
 By default, updates will occur every 15 seconds.
 A setting of zero disables redrawing at interval.
 .It Xo Ic status-justify
-.Op Ic left | centre | right
+.Op Ic left | centre | right | absolute-centre
 .Xc
-Set the position of the window list component of the status line: left, centre
-or right justified.
+Set the position of the window list in the status line: left, centre or right.
+centre puts the window list in the relative centre of the available free space;
+absolute-centre uses the centre of the entire horizontal space.
 .It Xo Ic status-keys
 .Op Ic vi | emacs
 .Xc
