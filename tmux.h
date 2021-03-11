@@ -1947,6 +1947,7 @@ char		*paste_make_sample(struct paste_buffer *);
 struct format_tree;
 struct format_modifier;
 typedef void *(*format_cb)(struct format_tree *);
+void		 format_tidy_jobs(void);
 const char	*format_skip(const char *, const char *);
 int		 format_true(const char *);
 struct format_tree *format_create(struct client *, struct cmdq_item *, int,
