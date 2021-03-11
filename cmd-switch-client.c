@@ -118,7 +118,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 			return (CMD_RETURN_NORMAL);
 		if (wl != NULL && wp != NULL && wp != wl->window->active) {
 			w = wl->window;
-			if (window_push_zoom(w, args_has(args, 'Z')))
+			if (window_push_zoom(w, 0, args_has(args, 'Z')))
 				server_redraw_window(w);
 			window_redraw_active_switch(w, wp);
 			window_set_active_pane(w, wp, 1);

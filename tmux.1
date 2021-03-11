@@ -2804,7 +2804,7 @@ is given and the selected window is already the current window,
 the command behaves like
 .Ic last-window .
 .It Xo Ic split-window
-.Op Fl bdfhIvP
+.Op Fl bdfhIvPZ
 .Op Fl c Ar start-directory
 .Op Fl e Ar environment
 .Op Fl l Ar size
@@ -2840,6 +2840,8 @@ option creates a new pane spanning the full window height (with
 or full window width (with
 .Fl v ) ,
 instead of splitting the active pane.
+.Fl Z
+zooms if the window is not zoomed, or keeps it zoomed if already zoomed.
 .Pp
 An empty
 .Ar shell-command
@@ -3813,10 +3815,11 @@ seconds.
 By default, updates will occur every 15 seconds.
 A setting of zero disables redrawing at interval.
 .It Xo Ic status-justify
-.Op Ic left | centre | right
+.Op Ic left | centre | right | absolute-centre
 .Xc
-Set the position of the window list component of the status line: left, centre
-or right justified.
+Set the position of the window list in the status line: left, centre or right.
+centre puts the window list in the relative centre of the available free space;
+absolute-centre uses the centre of the entire horizontal space.
 .It Xo Ic status-keys
 .Op Ic vi | emacs
 .Xc

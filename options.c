@@ -1115,7 +1115,7 @@ options_push_changes(const char *name)
 	}
 	if (strcmp(name, "pane-border-status") == 0) {
 		RB_FOREACH(w, windows, &windows)
-			layout_fix_panes(w);
+			layout_fix_panes(w, NULL);
 	}
 	RB_FOREACH(s, sessions, &sessions)
 		status_update_cache(s);

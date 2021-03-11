@@ -41,7 +41,6 @@
 struct format_expand_state;
 
 static char	*format_job_get(struct format_expand_state *, const char *);
-static void	 format_job_timer(int, short, void *);
 static char	*format_expand1(struct format_expand_state *, const char *);
 static int	 format_replace(struct format_expand_state *, const char *,
 		     size_t, char **, size_t *, size_t *);
@@ -69,7 +68,6 @@ struct format_job {
 };
 
 /* Format job tree. */
-static struct event format_job_event;
 static int format_job_cmp(struct format_job *, struct format_job *);
 static RB_HEAD(format_job_tree, format_job) format_jobs = RB_INITIALIZER();
 RB_GENERATE_STATIC(format_job_tree, format_job, entry, format_job_cmp);
@@ -437,6 +435,19 @@ format_job_tidy(struct format_job_tree *jobs, int force)
 	}
 }
 
+/* Tidy old jobs for all clients. */
+void
+format_tidy_jobs(void)
+{
+	struct client	*c;
+
+	format_job_tidy(&format_jobs, 0);
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (c->jobs != NULL)
+			format_job_tidy(c->jobs, 0);
+	}
+}
+
 /* Remove old jobs for client. */
 void
 format_lost_client(struct client *c)
@@ -444,23 +455,6 @@ format_lost_client(struct client *c)
 	if (c->jobs != NULL)
 		format_job_tidy(c->jobs, 1);
 	free(c->jobs);
-}
-
-/* Remove old jobs periodically. */
-static void
-format_job_timer(__unused int fd, __unused short events, __unused void *arg)
-{
-	struct client	*c;
-	struct timeval	 tv = { .tv_sec = 60 };
-
-	format_job_tidy(&format_jobs, 0);
-	TAILQ_FOREACH(c, &clients, entry) {
-		if (c->jobs != NULL)
-			format_job_tidy(c->jobs, 0);
-	}
-
-	evtimer_del(&format_job_event);
-	evtimer_add(&format_job_event, &tv);
 }
 
 /* Wrapper for asprintf. */
@@ -3047,11 +3041,6 @@ struct format_tree *
 format_create(struct client *c, struct cmdq_item *item, int tag, int flags)
 {
 	struct format_tree	*ft;
-
-	if (!event_initialized(&format_job_event)) {
-		evtimer_set(&format_job_event, format_job_timer, NULL);
-		format_job_timer(-1, 0, NULL);
-	}
 
 	ft = xcalloc(1, sizeof *ft);
 	RB_INIT(&ft->tree);

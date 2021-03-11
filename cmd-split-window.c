@@ -39,8 +39,8 @@ const struct cmd_entry cmd_split_window_entry = {
 	.name = "split-window",
 	.alias = "splitw",
 
-	.args = { "bc:de:fF:hIl:p:Pt:v", 0, -1 },
-	.usage = "[-bdefhIPv] [-c start-directory] [-e environment] "
+	.args = { "bc:de:fF:hIl:p:Pt:vZ", 0, -1 },
+	.usage = "[-bdefhIPvZ] [-c start-directory] [-e environment] "
 		 "[-F format] [-l size] " CMD_TARGET_PANE_USAGE " [command]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -110,7 +110,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	} else
 		size = -1;
 
-	server_unzoom_window(wp->window);
+	window_push_zoom(wp->window, 1, args_has(args, 'Z'));
 	input = (args_has(args, 'I') && args->argc == 0);
 
 	flags = 0;
@@ -152,6 +152,8 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	sc.flags = flags;
 	if (args_has(args, 'd'))
 		sc.flags |= SPAWN_DETACHED;
+	if (args_has(args, 'Z'))
+		sc.flags |= SPAWN_ZOOM;
 
 	if ((new_wp = spawn_pane(&sc, &cause)) == NULL) {
 		cmdq_error(item, "create pane failed: %s", cause);
@@ -168,6 +170,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	if (!args_has(args, 'd'))
 		cmd_find_from_winlink_pane(current, wl, new_wp, 0);
+	window_pop_zoom(wp->window);
 	server_redraw_window(wp->window);
 	server_status_session(s);
 

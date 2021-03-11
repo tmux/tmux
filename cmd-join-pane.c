@@ -146,7 +146,7 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 		TAILQ_INSERT_BEFORE(dst_wp, src_wp, entry);
 	else
 		TAILQ_INSERT_AFTER(&dst_w->panes, dst_wp, src_wp, entry);
-	layout_assign_pane(lc, src_wp);
+	layout_assign_pane(lc, src_wp, 0);
 
 	recalculate_sizes();
 

@@ -629,18 +629,18 @@ window_unzoom(struct window *w)
 		wp->layout_cell = wp->saved_layout_cell;
 		wp->saved_layout_cell = NULL;
 	}
-	layout_fix_panes(w);
+	layout_fix_panes(w, NULL);
 	notify_window("window-layout-changed", w);
 
 	return (0);
 }
 
 int
-window_push_zoom(struct window *w, int flag)
+window_push_zoom(struct window *w, int always, int flag)
 {
 	log_debug("%s: @%u %d", __func__, w->id,
 	    flag && (w->flags & WINDOW_ZOOMED));
-	if (flag && (w->flags & WINDOW_ZOOMED))
+	if (flag && (always || (w->flags & WINDOW_ZOOMED)))
 		w->flags |= WINDOW_WASZOOMED;
 	else
 		w->flags &= ~WINDOW_WASZOOMED;
