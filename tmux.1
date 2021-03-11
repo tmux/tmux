@@ -2804,7 +2804,7 @@ is given and the selected window is already the current window,
 the command behaves like
 .Ic last-window .
 .It Xo Ic split-window
-.Op Fl bdfhIvP
+.Op Fl bdfhIvPZ
 .Op Fl c Ar start-directory
 .Op Fl e Ar environment
 .Op Fl l Ar size
@@ -2840,6 +2840,8 @@ option creates a new pane spanning the full window height (with
 or full window width (with
 .Fl v ) ,
 instead of splitting the active pane.
+.Fl Z
+zooms if the window is not zoomed, or keeps it zoomed if already zoomed.
 .Pp
 An empty
 .Ar shell-command

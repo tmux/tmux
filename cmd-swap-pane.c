@@ -58,7 +58,7 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 	src_w = source->wl->window;
 	src_wp = source->wp;
 
-	if (window_push_zoom(dst_w, args_has(args, 'Z')))
+	if (window_push_zoom(dst_w, 0, args_has(args, 'Z')))
 		server_redraw_window(dst_w);
 
 	if (args_has(args, 'D')) {
@@ -73,7 +73,7 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 			src_wp = TAILQ_LAST(&dst_w->panes, window_panes);
 	}
 
-	if (src_w != dst_w && window_push_zoom(src_w, args_has(args, 'Z')))
+	if (src_w != dst_w && window_push_zoom(src_w, 0, args_has(args, 'Z')))
 		server_redraw_window(src_w);
 
 	if (src_wp == dst_wp)

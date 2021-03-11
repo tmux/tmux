@@ -1862,6 +1862,7 @@ struct spawn_context {
 #define SPAWN_NONOTIFY 0x10
 #define SPAWN_FULLSIZE 0x20
 #define SPAWN_EMPTY 0x40
+#define SPAWN_ZOOM 0x80
 };
 
 /* Mode tree sort order. */
@@ -2752,7 +2753,7 @@ void		 window_resize(struct window *, u_int, u_int, int, int);
 void		 window_pane_send_resize(struct window_pane *, int);
 int		 window_zoom(struct window_pane *);
 int		 window_unzoom(struct window *);
-int		 window_push_zoom(struct window *, int);
+int		 window_push_zoom(struct window *, int, int);
 int		 window_pop_zoom(struct window *);
 void		 window_lost_pane(struct window *, struct window_pane *);
 void		 window_remove_pane(struct window *, struct window_pane *);
@@ -2815,7 +2816,7 @@ void		 layout_set_size(struct layout_cell *, u_int, u_int, u_int,
 void		 layout_make_leaf(struct layout_cell *, struct window_pane *);
 void		 layout_make_node(struct layout_cell *, enum layout_type);
 void		 layout_fix_offsets(struct window *);
-void		 layout_fix_panes(struct window *);
+void		 layout_fix_panes(struct window *, struct window_pane *);
 void		 layout_resize_adjust(struct window *, struct layout_cell *,
 		     enum layout_type, int);
 void		 layout_init(struct window *, struct window_pane *);
@@ -2825,7 +2826,8 @@ void		 layout_resize_pane(struct window_pane *, enum layout_type,
 		     int, int);
 void		 layout_resize_pane_to(struct window_pane *, enum layout_type,
 		     u_int);
-void		 layout_assign_pane(struct layout_cell *, struct window_pane *);
+void		 layout_assign_pane(struct layout_cell *, struct window_pane *,
+		     int);
 struct layout_cell *layout_split_pane(struct window_pane *, enum layout_type,
 		     int, int);
 void		 layout_close_pane(struct window_pane *);

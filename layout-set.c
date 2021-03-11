@@ -160,7 +160,7 @@ layout_set_even(struct window *w, enum layout_type type)
 
 	/* Fix cell offsets. */
 	layout_fix_offsets(w);
-	layout_fix_panes(w);
+	layout_fix_panes(w, NULL);
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
@@ -270,7 +270,7 @@ layout_set_main_h(struct window *w)
 
 	/* Fix cell offsets. */
 	layout_fix_offsets(w);
-	layout_fix_panes(w);
+	layout_fix_panes(w, NULL);
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
@@ -368,7 +368,7 @@ layout_set_main_v(struct window *w)
 
 	/* Fix cell offsets. */
 	layout_fix_offsets(w);
-	layout_fix_panes(w);
+	layout_fix_panes(w, NULL);
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
@@ -477,7 +477,7 @@ layout_set_tiled(struct window *w)
 
 	/* Fix cell offsets. */
 	layout_fix_offsets(w);
-	layout_fix_panes(w);
+	layout_fix_panes(w, NULL);
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
