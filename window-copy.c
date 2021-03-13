@@ -278,6 +278,7 @@ struct window_copy_mode_data {
 	int		 showmark;
 
 	int		 searchtype;
+	int		 searchdirection;
 	int		 searchregex;
 	char		*searchstr;
 	u_char		*searchmark;
@@ -3092,6 +3093,8 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 	if (regex && str[strcspn(str, "^$*+()?[].\\")] == '\0')
 		regex = 0;
 
+	data->searchdirection = direction;
+
 	if (data->timeout)
 		return (0);
 
@@ -3499,13 +3502,15 @@ window_copy_update_style(struct window_mode_entry *wme, u_int fx, u_int fy,
 	cy = screen_hsize(data->backing) - data->oy + data->cy;
 	if (window_copy_search_mark_at(data, data->cx, cy, &cursor) == 0) {
 		keys = options_get_number(wp->window->options, "mode-keys");
-		if (data->searchmark[cursor] == mark)
-			found = 1;
-		else if (cursor != 0 && keys == MODEKEY_EMACS) {
-			cursor--;
-			if (data->searchmark[cursor] == mark)
+		if (cursor != 0 &&
+		    keys == MODEKEY_EMACS &&
+		    data->searchdirection) {
+			if (data->searchmark[cursor - 1] == mark) {
+				cursor--;
 				found = 1;
-		}
+			}
+		} else if (data->searchmark[cursor] == mark)
+			found = 1;
 		if (found) {
 			window_copy_match_start_end(data, cursor, &start, &end);
 			if (current >= start && current <= end) {
