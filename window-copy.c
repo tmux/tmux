@@ -3467,9 +3467,11 @@ window_copy_update_style(struct window_mode_entry *wme, u_int fx, u_int fy,
     struct grid_cell *gc, const struct grid_cell *mgc,
     const struct grid_cell *cgc, const struct grid_cell *mkgc)
 {
+	struct window_pane		*wp = wme->wp;
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 mark, start, end, cy, cursor, current;
 	int				 inv = 0, found = 0;
+	int				 keys;
 
 	if (data->showmark && fy == data->my) {
 		gc->attr = mkgc->attr;
@@ -3496,9 +3498,10 @@ window_copy_update_style(struct window_mode_entry *wme, u_int fx, u_int fy,
 
 	cy = screen_hsize(data->backing) - data->oy + data->cy;
 	if (window_copy_search_mark_at(data, data->cx, cy, &cursor) == 0) {
+		keys = options_get_number(wp->window->options, "mode-keys");
 		if (data->searchmark[cursor] == mark)
 			found = 1;
-		else if (cursor != 0) {
+		else if (cursor != 0 && keys == MODEKEY_EMACS) {
 			cursor--;
 			if (data->searchmark[cursor] == mark)
 				found = 1;
