@@ -2946,6 +2946,7 @@ void	control_notify_window_unlinked(struct session *, struct window *);
 void	control_notify_window_linked(struct session *, struct window *);
 void	control_notify_window_renamed(struct window *);
 void	control_notify_client_session_changed(struct client *);
+void	control_notify_client_detached(struct client *);
 void	control_notify_session_renamed(struct session *);
 void	control_notify_session_created(struct session *);
 void	control_notify_session_closed(struct session *);
