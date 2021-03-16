@@ -172,6 +172,17 @@ control_notify_client_session_changed(struct client *cc)
 }
 
 void
+control_notify_client_detached(struct client *cc)
+{
+	struct client	*c;
+
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (CONTROL_SHOULD_NOTIFY_CLIENT(c))
+			control_write(c, "%%client-detached %s", cc->name);
+	}
+}
+
+void
 control_notify_session_renamed(struct session *s)
 {
 	struct client	*c;
