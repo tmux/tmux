@@ -135,6 +135,7 @@ static void	input_set_state(struct input_ctx *,
 static void	input_reset_cell(struct input_ctx *);
 
 static void	input_osc_4(struct input_ctx *, const char *);
+static void	input_osc_8(struct input_ctx *, const char *);
 static void	input_osc_10(struct input_ctx *, const char *);
 static void	input_osc_11(struct input_ctx *, const char *);
 static void	input_osc_12(struct input_ctx *, const char *);
@@ -2318,6 +2319,9 @@ input_exit_osc(struct input_ctx *ictx)
 			}
 		}
 		break;
+	case 8:
+		input_osc_8(ictx, p);
+		break;
 	case 10:
 		input_osc_10(ictx, p);
 		break;
@@ -2560,6 +2564,38 @@ input_osc_4(struct input_ctx *ictx, const char *p)
 	if (redraw)
 		screen_write_fullredraw(&ictx->ctx);
 	free(copy);
+}
+
+/* Handle the OSC 8 sequence for embedding hyperlinks. */
+static void
+input_osc_8(struct input_ctx *ictx, const char *p)
+{
+	struct grid_cell  *gc = &ictx->cell.cell;
+	char              *end;
+	struct hyperlink  *hl;
+
+	if ((end = strchr(p, ';')) == NULL)
+		goto bad;
+	end++;
+	if (*end == '\0') {
+		gc->link = 0;
+		return;
+	}
+
+	/* XXX parse ID and check pane tree, reuse entry if present */
+
+	hl = xcalloc(1, sizeof *hl);
+	hl->id = ++next_hyperlink;
+	hl->link = xstrdup(end);
+	RB_INSERT (hyperlinks, &hyperlinks, hl);
+
+	log_debug("hyperlink %u = %s", hl->id, hl->link);
+
+	gc->link = hl->id;
+	return;
+
+bad:
+	log_debug("bad OSC 8 %s", p);
 }
 
 /* Handle the OSC 10 sequence for setting and querying foreground colour. */
