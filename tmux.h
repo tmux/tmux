@@ -324,6 +324,8 @@ enum tty_code_code {
 	TTYC_ENFCS,
 	TTYC_ENMG,
 	TTYC_FSL,
+	TTYC_HLS,
+	TTYC_HLR,
 	TTYC_HOME,
 	TTYC_HPA,
 	TTYC_ICH,
@@ -620,6 +622,7 @@ struct grid_cell {
 	int			fg;
 	int			bg;
 	int			us;
+	u_int			link;
 };
 
 /* Grid extended cell entry. */
@@ -672,6 +675,14 @@ struct grid {
 
 	struct grid_line	*linedata;
 };
+
+/* Hyperlink tree entry. */
+struct hyperlink {
+	u_int            id;
+	const char      *link;
+	RB_ENTRY(hyperlink)  entry;
+};
+RB_HEAD(hyperlinks, hyperlink);
 
 /* Virtual cursor in a grid. */
 struct grid_reader {
@@ -2442,6 +2453,11 @@ void	 file_read_done(struct client_files *, struct imsg *);
 extern struct tmuxproc *server_proc;
 extern struct clients clients;
 extern struct cmd_find_state marked_pane;
+extern struct hyperlinks hyperlinks;
+extern u_int next_hyperlink;
+int	server_cmp_hyperlink(struct hyperlink *, struct hyperlink *);
+struct hyperlink *server_get_hyperlink(u_int);
+RB_PROTOTYPE(hyperlinks, hyperlink, entry, server_cmp_hyperlink);
 extern struct message_list message_log;
 void	 server_set_marked(struct session *, struct winlink *,
 	     struct window_pane *);
