@@ -3082,8 +3082,10 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 	struct screen_write_ctx		 ctx;
 	struct grid			*gd = s->grid;
 	const char			*str = data->searchstr;
-	u_int				 fx, fy, endline, at, start, scanx, scany, cy;
-	int				 wrapflag, cis, found, visible_only, keys;
+	u_int				 at, cy, endline, fx, fy;
+	u_int				 scanx, scany, start;
+	int				 cis, found, keys, visible_only;
+	int				 wrapflag;
 
 	if (regex && str[strcspn(str, "^$*+()?[].\\")] == '\0')
 		regex = 0;
@@ -3126,12 +3128,16 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 		 */
 		if (keys == MODEKEY_VI) {
 			if (data->searchmark != NULL &&
-			    window_copy_search_mark_at(data, fx, fy, &start) == 0 &&
+			    window_copy_search_mark_at(
+				data, fx, fy, &start) == 0 &&
 			    data->searchmark[start] != 0) {
-				while (window_copy_search_mark_at(data, fx, fy, &at) == 0) {
-					if (data->searchmark[at] != data->searchmark[start])
+				while (window_copy_search_mark_at(
+				           data, fx, fy, &at) == 0) {
+					if (data->searchmark[at] !=
+					        data->searchmark[start])
 						break;
-					window_copy_move_right(s, &fx, &fy, wrapflag);
+					window_copy_move_right(s, &fx, &fy,
+					    wrapflag);
 				}
 			}
 			else
@@ -3148,8 +3154,10 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 		if (data->searchmark != NULL &&
 		    window_copy_search_mark_at(data, fx, fy, &start) == 0 &&
 		    data->searchmark[start] != 0) {
-			while (window_copy_search_mark_at(data, fx, fy, &at) == 0) {
-				if (data->searchmark[at] != data->searchmark[start])
+			while (window_copy_search_mark_at(
+			           data, fx, fy, &at) == 0) {
+				if (data->searchmark[at] !=
+				        data->searchmark[start])
 					break;
 				window_copy_move_left(s, &fx, &fy, wrapflag);
 			}
@@ -3163,12 +3171,15 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 		    data->searchmark[start] != 0) {
 			scanx = fx;
 			scany = fy;
-			while (window_copy_search_mark_at(data, scanx, scany, &at) == 0) {
-				if (data->searchmark[at] != data->searchmark[start])
+			while (window_copy_search_mark_at(
+			           data, scanx, scany, &at) == 0) {
+				if (data->searchmark[at] !=
+				        data->searchmark[start])
 					break;
 				fx = scanx;
 				fy = scany;
-				window_copy_move_left(s, &scanx, &scany, wrapflag);
+				window_copy_move_left(s, &scanx, &scany,
+				    wrapflag);
 			}
 		}
 		endline = 0;
@@ -3190,9 +3201,12 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 			 */
 			if (window_copy_search_mark_at(data, fx, fy, &start) == 0
 			    && start > 0
-			    && data->searchmark[start] == data->searchmark[start - 1]) {
-				while (window_copy_search_mark_at(data, fx, fy, &at) == 0 &&
-				       data->searchmark[at] == data->searchmark[start]) {
+			    && data->searchmark[start] ==
+			        data->searchmark[start - 1]) {
+				while (window_copy_search_mark_at(data, fx, fy,
+				           &at) == 0 &&
+				       data->searchmark[at] ==
+				           data->searchmark[start]) {
 				       window_copy_move_right(s, &fx, &fy, 0);
 				}
 				window_copy_search_jump(wme, gd, ss.grid, fx, fy,
@@ -3206,13 +3220,19 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 			if (keys == MODEKEY_EMACS) {
 				scanx = data->cx;
 				scany = cy;
-				if (window_copy_search_mark_at(data, scanx, scany, &start) == 0) {
-					while (window_copy_search_mark_at(data, scanx, scany, &at) == 0 &&
-					       data->searchmark[at] == data->searchmark[start]) {
-						window_copy_move_right(s, &scanx, &scany, 0);
+				if (window_copy_search_mark_at(data, scanx,
+				        scany, &start) == 0) {
+					while (window_copy_search_mark_at(data,
+					           scanx, scany, &at) == 0 &&
+					       data->searchmark[at] ==
+					           data->searchmark[start]) {
+						window_copy_move_right(s, &scanx,
+						    &scany, 0);
 					}
 					data->cx = scanx;
-					data->cy = scany - screen_hsize(data->backing) + data-> oy;
+					data->cy = scany -
+					    screen_hsize(data->backing) +
+					    data-> oy;
 				}
 			}
 		}
@@ -3223,15 +3243,21 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 			 */
 			scanx = data->cx;
 			scany = cy;
-			if (window_copy_search_mark_at(data, scanx, scany, &start) == 0) {
-				while (window_copy_search_mark_at(data, scanx, scany, &at) == 0 &&
-				       data->searchmark[at] == data->searchmark[start]) {
+			if (window_copy_search_mark_at(data, scanx, scany,
+			        &start) == 0) {
+				while (window_copy_search_mark_at(data, scanx,
+				           scany, &at) == 0 &&
+				       data->searchmark[at] ==
+				           data->searchmark[start]) {
 					data->cx = scanx;
-					data->cy = scany - screen_hsize(data->backing) + data-> oy;
+					data->cy = scany -
+					    screen_hsize(data->backing) +
+					    data-> oy;
 					if (at == 0)
 						break;
 
-					window_copy_move_left(s, &scanx, &scany, 0);
+					window_copy_move_left(s, &scanx, &scany,
+					    0);
 				}
 			}
 		}
