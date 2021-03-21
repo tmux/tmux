@@ -74,7 +74,11 @@ static int	window_copy_search_marks(struct window_mode_entry *,
 		    struct screen *, int, int);
 static void	window_copy_clear_marks(struct window_mode_entry *);
 static void	window_copy_move_left(struct screen *, u_int *, u_int *, int);
-static void window_copy_move_right(struct screen *, u_int *, u_int *, int);
+static void	window_copy_move_right(struct screen *, u_int *, u_int *, int);
+static void	window_copy_move_before_search_mark(
+		    struct window_copy_mode_data *, u_int *, u_int *, int);
+static void	window_copy_move_after_search_mark(
+		    struct window_copy_mode_data *, u_int *, u_int *, int);
 static int	window_copy_is_lowercase(const char *);
 static void	window_copy_search_back_overlap(struct grid *, regex_t *,
 		    u_int *, u_int *, u_int *, u_int);
@@ -3069,6 +3073,46 @@ window_copy_search_jump(struct window_mode_entry *wme, struct grid *gd,
 	return (0);
 }
 
+static void
+window_copy_move_before_search_mark(struct window_copy_mode_data *data,
+    u_int *fx, u_int *fy, int wrapflag)
+{
+	struct screen  *s = data->backing;
+	u_int		at, start;
+
+	if (window_copy_search_mark_at(data, *fx, *fy, &start) == 0 &&
+	    data->searchmark[start] != 0) {
+		while (window_copy_search_mark_at(data, *fx, *fy, &at) == 0) {
+			if (data->searchmark[at] != data->searchmark[start])
+				break;
+			window_copy_move_left(s, fx, fy, wrapflag);
+		}
+	}
+}
+
+static void
+window_copy_move_after_search_mark(struct window_copy_mode_data *data,
+    u_int *fx, u_int *fy, int wrapflag)
+{
+	struct screen  *s = data->backing;
+	u_int		at, start;
+
+	if (window_copy_search_mark_at(data, *fx, *fy, &start) == 0 &&
+	    data->searchmark[start] != 0) {
+		while (window_copy_search_mark_at(data, *fx, *fy, &at) == 0) {
+			if (data->searchmark[at] != data->searchmark[start])
+				break;
+			/* Stop if not wrapping and at the end of the grid. */
+			if (!wrapflag &&
+			    *fx == screen_size_x(s) - 1 &&
+			    *fy == screen_hsize(s) + screen_size_y(s) - 1)
+				break;
+
+			window_copy_move_right(s, fx, fy, wrapflag);
+		}
+	}
+}
+
 /*
  * Search in for text searchstr. If direction is 0 then search up, otherwise
  * down.
@@ -3082,8 +3126,7 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 	struct screen_write_ctx		 ctx;
 	struct grid			*gd = s->grid;
 	const char			*str = data->searchstr;
-	u_int				 at, cy, endline, fx, fy;
-	u_int				 scanx, scany, start;
+	u_int				 at, endline, fx, fy, start;
 	int				 cis, found, keys, visible_only;
 	int				 wrapflag;
 
@@ -3116,8 +3159,9 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 	wrapflag = options_get_number(wp->window->options, "wrap-search");
 	cis = window_copy_is_lowercase(str);
 
+	keys = options_get_number(wp->window->options, "mode-keys");
+
 	if (direction) {
-		keys = options_get_number(wp->window->options, "mode-keys");
 		/*
 		 * Behave according to mode-keys. If it is emacs, search forward
 		 * leaves the cursor after the match. If it is vi, the cursor
@@ -3127,61 +3171,24 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 		 * forward.
 		 */
 		if (keys == MODEKEY_VI) {
-			if (data->searchmark != NULL &&
-			    window_copy_search_mark_at(
-				data, fx, fy, &start) == 0 &&
-			    data->searchmark[start] != 0) {
-				while (window_copy_search_mark_at(
-				           data, fx, fy, &at) == 0) {
-					if (data->searchmark[at] !=
-					        data->searchmark[start])
-						break;
-					window_copy_move_right(s, &fx, &fy,
-					    wrapflag);
-				}
-			}
-			else
+			if (data->searchmark != NULL)
+				window_copy_move_after_search_mark(data, &fx,
+				    &fy, wrapflag);
+			else {
 				/*
 				 * When there are no search marks, start the
 				 * search after the current cursor position.
 				 */
 				window_copy_move_right(s, &fx, &fy, wrapflag);
+			}
 		}
 		endline = gd->hsize + gd->sy - 1;
 	}
 	else {
 		/* Scan to just before current search mark. */
-		if (data->searchmark != NULL &&
-		    window_copy_search_mark_at(data, fx, fy, &start) == 0 &&
-		    data->searchmark[start] != 0) {
-			while (window_copy_search_mark_at(
-			           data, fx, fy, &at) == 0) {
-				if (data->searchmark[at] !=
-				        data->searchmark[start])
-					break;
-				window_copy_move_left(s, &fx, &fy, wrapflag);
-			}
-		}
-		/*
-		 * Scan to the beginning of previous search mark if still on a
-		 * search mark.
-		 */
-		if (data->searchmark != NULL &&
-		    window_copy_search_mark_at(data, fx, fy, &start) == 0 &&
-		    data->searchmark[start] != 0) {
-			scanx = fx;
-			scany = fy;
-			while (window_copy_search_mark_at(
-			           data, scanx, scany, &at) == 0) {
-				if (data->searchmark[at] !=
-				        data->searchmark[start])
-					break;
-				fx = scanx;
-				fy = scany;
-				window_copy_move_left(s, &scanx, &scany,
-				    wrapflag);
-			}
-		}
+		if (data->searchmark != NULL)
+			window_copy_move_before_search_mark(data, &fx, &fy,
+			    wrapflag);
 		endline = 0;
 	}
 
@@ -3189,51 +3196,37 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 	    wrapflag, direction, regex);
 	if (found) {
 		window_copy_search_marks(wme, &ss, regex, visible_only);
-		cy = screen_hsize(data->backing) - data->oy + data->cy;
+		fx = data->cx;
+		fy = screen_hsize(data->backing) - data->oy + data->cy;
 
-		if (direction) {
+		/*
+		 * When searching forward, if the cursor is not at the beginning
+		 * of the mark, search again.
+		 */
+		if (direction &&
+		    window_copy_search_mark_at(data, fx, fy, &at) == 0 &&
+		    at > 0 &&
+		    data->searchmark[at] == data->searchmark[at - 1]) {
+			window_copy_move_after_search_mark(data, &fx, &fy,
+			    wrapflag);
+			window_copy_search_jump(wme, gd, ss.grid, fx,
+			    fy, endline, cis, wrapflag, direction,
+			    regex);
 			fx = data->cx;
 			fy = screen_hsize(data->backing) - data->oy + data->cy;
+		}
 
-			/*
-			 * When searching forward, if the cursor is not at the
-			 * beginning of the mark, search again.
-			 */
-			if (window_copy_search_mark_at(data, fx, fy, &start) == 0
-			    && start > 0
-			    && data->searchmark[start] ==
-			        data->searchmark[start - 1]) {
-				while (window_copy_search_mark_at(data, fx, fy,
-				           &at) == 0 &&
-				       data->searchmark[at] ==
-				           data->searchmark[start]) {
-				       window_copy_move_right(s, &fx, &fy, 0);
-				}
-				window_copy_search_jump(wme, gd, ss.grid, fx, fy,
-				    endline, cis, wrapflag, direction, regex);
-			}
-
+		if (direction) {
 			/*
 			 * When in Emacs mode, position the cursor just after
 			 * the mark.
 			 */
 			if (keys == MODEKEY_EMACS) {
-				scanx = data->cx;
-				scany = cy;
-				if (window_copy_search_mark_at(data, scanx,
-				        scany, &start) == 0) {
-					while (window_copy_search_mark_at(data,
-					           scanx, scany, &at) == 0 &&
-					       data->searchmark[at] ==
-					           data->searchmark[start]) {
-						window_copy_move_right(s, &scanx,
-						    &scany, 0);
-					}
-					data->cx = scanx;
-					data->cy = scany -
-					    screen_hsize(data->backing) +
-					    data-> oy;
-				}
+				window_copy_move_after_search_mark(data, &fx,
+				    &fy, wrapflag);
+				data->cx = fx;
+				data->cy = fy - screen_hsize(data->backing) +
+				    data-> oy;
 			}
 		}
 		else {
@@ -3241,23 +3234,20 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 			 * When searching backward, position the cursor at the
 			 * beginning of the mark.
 			 */
-			scanx = data->cx;
-			scany = cy;
-			if (window_copy_search_mark_at(data, scanx, scany,
+			if (window_copy_search_mark_at(data, fx, fy,
 			        &start) == 0) {
-				while (window_copy_search_mark_at(data, scanx,
-				           scany, &at) == 0 &&
+				while (window_copy_search_mark_at(data, fx, fy,
+				           &at) == 0 &&
 				       data->searchmark[at] ==
 				           data->searchmark[start]) {
-					data->cx = scanx;
-					data->cy = scany -
+					data->cx = fx;
+					data->cy = fy -
 					    screen_hsize(data->backing) +
 					    data-> oy;
 					if (at == 0)
 						break;
 
-					window_copy_move_left(s, &scanx, &scany,
-					    0);
+					window_copy_move_left(s, &fx, &fy, 0);
 				}
 			}
 		}
