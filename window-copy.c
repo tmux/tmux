@@ -75,8 +75,6 @@ static int	window_copy_search_marks(struct window_mode_entry *,
 static void	window_copy_clear_marks(struct window_mode_entry *);
 static void	window_copy_move_left(struct screen *, u_int *, u_int *, int);
 static void	window_copy_move_right(struct screen *, u_int *, u_int *, int);
-static void	window_copy_move_before_search_mark(
-		    struct window_copy_mode_data *, u_int *, u_int *, int);
 static void	window_copy_move_after_search_mark(
 		    struct window_copy_mode_data *, u_int *, u_int *, int);
 static int	window_copy_is_lowercase(const char *);
@@ -3074,23 +3072,6 @@ window_copy_search_jump(struct window_mode_entry *wme, struct grid *gd,
 }
 
 static void
-window_copy_move_before_search_mark(struct window_copy_mode_data *data,
-    u_int *fx, u_int *fy, int wrapflag)
-{
-	struct screen  *s = data->backing;
-	u_int		at, start;
-
-	if (window_copy_search_mark_at(data, *fx, *fy, &start) == 0 &&
-	    data->searchmark[start] != 0) {
-		while (window_copy_search_mark_at(data, *fx, *fy, &at) == 0) {
-			if (data->searchmark[at] != data->searchmark[start])
-				break;
-			window_copy_move_left(s, fx, fy, wrapflag);
-		}
-	}
-}
-
-static void
 window_copy_move_after_search_mark(struct window_copy_mode_data *data,
     u_int *fx, u_int *fy, int wrapflag)
 {
@@ -3185,10 +3166,7 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 		endline = gd->hsize + gd->sy - 1;
 	}
 	else {
-		/* Scan to just before current search mark. */
-		if (data->searchmark != NULL)
-			window_copy_move_before_search_mark(data, &fx, &fy,
-			    wrapflag);
+		window_copy_move_left(s, &fx, &fy, wrapflag);
 		endline = 0;
 	}
 
