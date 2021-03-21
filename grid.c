@@ -133,6 +133,7 @@ grid_extended_cell(struct grid_line *gl, struct grid_cell_entry *gce,
 	gee->fg = gc->fg;
 	gee->bg = gc->bg;
 	gee->us = gc->us;
+	gee->link = gc->link;
 	return (gee);
 }
 
@@ -511,6 +512,7 @@ grid_get_cell1(struct grid_line *gl, u_int px, struct grid_cell *gc)
 			gc->fg = gee->fg;
 			gc->bg = gee->bg;
 			gc->us = gee->us;
+			gc->link = gee->link;
 			utf8_to_data(gee->data, &gc->data);
 		}
 		return;
