@@ -2584,7 +2584,7 @@ void	 grid_reader_get_cursor(struct grid_reader *, u_int *, u_int *);
 u_int	 grid_reader_line_length(struct grid_reader *);
 int	 grid_reader_in_set(struct grid_reader *, const char *);
 void	 grid_reader_cursor_right(struct grid_reader *, int, int);
-void	 grid_reader_cursor_left(struct grid_reader *);
+void	 grid_reader_cursor_left(struct grid_reader *, int);
 void	 grid_reader_cursor_down(struct grid_reader *);
 void	 grid_reader_cursor_up(struct grid_reader *);
 void	 grid_reader_cursor_start_of_line(struct grid_reader *, int);
@@ -2597,6 +2597,7 @@ int	 grid_reader_cursor_jump(struct grid_reader *,
 	     const struct utf8_data *);
 int	 grid_reader_cursor_jump_back(struct grid_reader *,
 	     const struct utf8_data *);
+void	 grid_reader_cursor_back_to_indentation(struct grid_reader *);
 
 /* grid-view.c */
 void	 grid_view_get_cell(struct grid *, u_int, u_int, struct grid_cell *);
