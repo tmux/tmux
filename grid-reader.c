@@ -71,7 +71,7 @@ grid_reader_cursor_right(struct grid_reader *gr, int wrap, int all)
 
 /* Move cursor back one position. */
 void
-grid_reader_cursor_left(struct grid_reader *gr)
+grid_reader_cursor_left(struct grid_reader *gr, int wrap)
 {
 	struct grid_cell	gc;
 
@@ -81,7 +81,9 @@ grid_reader_cursor_left(struct grid_reader *gr)
 			break;
 		gr->cx--;
 	}
-	if (gr->cx == 0 && gr->cy > 0) {
+	if (gr->cx == 0 && gr->cy > 0 &&
+	    (wrap ||
+	     grid_get_line(gr->gd, gr->cy - 1)->flags & GRID_LINE_WRAPPED)) {
 		grid_reader_cursor_up(gr);
 		grid_reader_cursor_end_of_line(gr, 0, 0);
 	} else if (gr->cx > 0)
@@ -362,4 +364,26 @@ grid_reader_cursor_jump_back(struct grid_reader *gr, const struct utf8_data *jc)
 		xx = grid_line_length(gr->gd, py - 2);
 	}
 	return 0;
+}
+
+/* Jump back to the first non-blank character of the line. */
+void
+grid_reader_cursor_back_to_indentation(struct grid_reader *gr)
+{
+	struct grid_cell	gc;
+	u_int			px, py, xx, yy;
+
+	yy = gr->gd->hsize + gr->gd->sy - 1;
+	grid_reader_cursor_start_of_line(gr, 1);
+
+	for (py = gr->cy; py <= yy; py++) {
+		xx = grid_line_length(gr->gd, py);
+		for (px = 0; px < xx; px++) {
+			grid_get_cell(gr->gd, px, py, &gc);
+			if (gc.data.size != 1 || *gc.data.data != ' ')
+				break;
+		}
+		if (~grid_get_line(gr->gd, py)->flags & GRID_LINE_WRAPPED)
+			break;
+	}
 }
