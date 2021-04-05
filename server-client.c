@@ -299,6 +299,9 @@ server_client_lost(struct client *c)
 	TAILQ_REMOVE(&clients, c, entry);
 	log_debug("lost client %p", c);
 
+	if (c->flags & CLIENT_ATTACHED)
+		notify_client("client-detached", c);
+
 	if (c->flags & CLIENT_CONTROL)
 		control_stop(c);
 	if (c->flags & CLIENT_TERMINAL)
@@ -1769,9 +1772,6 @@ server_client_check_exit(struct client *c)
 		if (EVBUFFER_LENGTH(cf->buffer) != 0)
 			return;
 	}
-
-	if (c->flags & CLIENT_ATTACHED)
-		notify_client("client-detached", c);
 	c->flags |= CLIENT_EXITED;
 
 	switch (c->exit_type) {
