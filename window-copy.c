@@ -4291,23 +4291,19 @@ static void
 window_copy_cursor_back_to_indentation(struct window_mode_entry *wme)
 {
 	struct window_copy_mode_data	*data = wme->data;
-	u_int				 px, py, xx;
-	struct grid_cell		 gc;
+	struct screen			*back_s = data->backing;
+	struct grid_reader		 gr;
+	u_int				 px, py, oldy, hsize;
 
-	px = 0;
-	py = screen_hsize(data->backing) + data->cy - data->oy;
-	xx = window_copy_find_length(wme, py);
+	px = data->cx;
+	hsize = screen_hsize(back_s);
+	py = hsize + data->cy - data->oy;
+	oldy = data->cy;
 
-	while (px < xx) {
-		grid_get_cell(data->backing->grid, px, py, &gc);
-		if (gc.data.size != 1 || *gc.data.data != ' ')
-			break;
-		px++;
-	}
-
-	window_copy_update_cursor(wme, px, data->cy);
-	if (window_copy_update_selection(wme, 1, 0))
-		window_copy_redraw_lines(wme, data->cy, 1);
+	grid_reader_start(&gr, back_s->grid, px, py);
+	grid_reader_cursor_back_to_indentation(&gr);
+	grid_reader_get_cursor(&gr, &px, &py);
+	window_copy_acquire_cursor_up(wme, hsize, data->oy, oldy, px, py);
 }
 
 static void
@@ -4398,7 +4394,7 @@ window_copy_cursor_left(struct window_mode_entry *wme)
 	oldy = data->cy;
 
 	grid_reader_start(&gr, back_s->grid, px, py);
-	grid_reader_cursor_left(&gr);
+	grid_reader_cursor_left(&gr, 1);
 	grid_reader_get_cursor(&gr, &px, &py);
 	window_copy_acquire_cursor_up(wme, hsize, data->oy, oldy, px, py);
 }
@@ -4583,10 +4579,8 @@ window_copy_cursor_jump_back(struct window_mode_entry *wme)
 	py = hsize + data->cy - data->oy;
 	oldy = data->cy;
 
-	if (px > 0)
-		px--;
-
 	grid_reader_start(&gr, back_s->grid, px, py);
+	grid_reader_cursor_left(&gr, 0);
 	if (grid_reader_cursor_jump_back(&gr, data->jumpchar)) {
 		grid_reader_get_cursor(&gr, &px, &py);
 		window_copy_acquire_cursor_up(wme, hsize, data->oy, oldy, px,
@@ -4609,7 +4603,7 @@ window_copy_cursor_jump_to(struct window_mode_entry *wme)
 
 	grid_reader_start(&gr, back_s->grid, px, py);
 	if (grid_reader_cursor_jump(&gr, data->jumpchar)) {
-		grid_reader_cursor_left(&gr);
+		grid_reader_cursor_left(&gr, 1);
 		grid_reader_get_cursor(&gr, &px, &py);
 		window_copy_acquire_cursor_down(wme, hsize,
 		    screen_size_y(back_s), data->oy, oldy, px, py, 0);
@@ -4629,13 +4623,9 @@ window_copy_cursor_jump_to_back(struct window_mode_entry *wme)
 	py = hsize + data->cy - data->oy;
 	oldy = data->cy;
 
-	if (px > 0)
-		px--;
-
-	if (px > 0)
-		px--;
-
 	grid_reader_start(&gr, back_s->grid, px, py);
+	grid_reader_cursor_left(&gr, 0);
+	grid_reader_cursor_left(&gr, 0);
 	if (grid_reader_cursor_jump_back(&gr, data->jumpchar)) {
 		grid_reader_cursor_right(&gr, 1, 0);
 		grid_reader_get_cursor(&gr, &px, &py);
@@ -4688,7 +4678,7 @@ window_copy_cursor_next_word_end_pos(struct window_mode_entry *wme,
 		grid_reader_cursor_right(&gr, 0, 0);
 	grid_reader_cursor_next_word_end(&gr, separators);
 	if (keys == MODEKEY_VI)
-		grid_reader_cursor_left(&gr);
+		grid_reader_cursor_left(&gr, 1);
 	grid_reader_get_cursor(&gr, &px, &py);
 	*ppx = px;
 	*ppy = py;
@@ -4718,7 +4708,7 @@ window_copy_cursor_next_word_end(struct window_mode_entry *wme,
 		grid_reader_cursor_right(&gr, 0, 0);
 	grid_reader_cursor_next_word_end(&gr, separators);
 	if (keys == MODEKEY_VI)
-		grid_reader_cursor_left(&gr);
+		grid_reader_cursor_left(&gr, 1);
 	grid_reader_get_cursor(&gr, &px, &py);
 	window_copy_acquire_cursor_down(wme, hsize, screen_size_y(back_s),
 	    data->oy, oldy, px, py, no_reset);
