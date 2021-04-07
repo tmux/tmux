@@ -871,6 +871,7 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 	char		 tmp[64];
 	cc_t		 bspace;
 	key_code	 nkey;
+	key_code	 onlykey;
 
 	*size = 0;
 
@@ -948,19 +949,26 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 		break;
 	}
 
-    /* Don't allow both KEYC_CTRL and implied. */
-	if ((nkey & KEYC_CTRL) && (nkey & KEYC_MASK_KEY) < 32)
-		nkey &= ~KEYC_CTRL;
-	if ((nkey & KEYC_MASK_MODIFIERS) == KEYC_CTRL) {
-		nkey &= KEYC_MASK_KEY;
-		if (nkey >= 97 && nkey <= 122)
-			nkey -= 96;
-		else if (nkey == 32)
-			nkey = 0;
-		else if (nkey == 63)
-			nkey = 127;
-		else
-			nkey |= KEYC_CTRL;
+	/*
+	 * Don't allow both KEYC_CTRL and as an implied modifier. Also convert
+	 * C-X into C-x and so on.
+	 */
+	if (nkey & KEYC_CTRL){
+		onlykey = (nkey & KEYC_MASK_KEY);
+		if (onlykey < 32)
+			onlykey = (nkey & ~KEYC_CTRL);
+		else {
+			if (onlykey >= 97 && onlykey <= 122)
+				onlykey -= 96;
+			else if (onlykey >= 64 && onlykey <= 95)
+				onlykey -= 64;
+			else if (onlykey == 32)
+				onlykey = 0;
+			else if (onlykey == 63)
+				onlykey = 127;
+			onlykey |= ((nkey & KEYC_MASK_MODIFIERS) & ~KEYC_CTRL);
+		}
+		nkey = onlykey;
 	}
 
 	if (log_get_level() != 0) {
