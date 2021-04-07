@@ -43,7 +43,7 @@ const struct cmd_entry cmd_display_message_entry = {
 	.usage = "[-aIpv] [-c target-client] [-d delay] [-F format] "
 		 CMD_TARGET_PANE_USAGE " [message]",
 
-	.target = { 't', CMD_FIND_PANE, 0 },
+	.target = { 't', CMD_FIND_PANE, CMD_FIND_CANFAIL },
 
 	.flags = CMD_AFTERHOOK|CMD_CLIENT_CFLAG|CMD_CLIENT_CANFAIL,
 	.exec = cmd_display_message_exec
@@ -73,6 +73,8 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 	int			 flags;
 
 	if (args_has(args, 'I')) {
+		if (wp == NULL)
+			return (CMD_RETURN_NORMAL);
 		if (window_pane_start_input(wp, item, &cause) != 0) {
 			cmdq_error(item, "%s", cause);
 			free(cause);
@@ -109,8 +111,10 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 	 */
 	if (tc != NULL && tc->session == s)
 		c = tc;
-	else
+	else if (s != NULL)
 		c = cmd_find_best_client(s);
+	else
+		c = NULL;
 	if (args_has(args, 'v'))
 		flags = FORMAT_VERBOSE;
 	else
@@ -124,7 +128,9 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	msg = format_expand_time(ft, template);
-	if (args_has(args, 'p'))
+	if (cmdq_get_client(item) == NULL)
+		cmdq_error(item, "%s", msg);
+	else if (args_has(args, 'p'))
 		cmdq_print(item, "%s", msg);
 	else if (tc != NULL)
 		status_message_set(tc, delay, 0, "%s", msg);
