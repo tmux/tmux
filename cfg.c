@@ -103,6 +103,7 @@ load_cfg(const char *path, struct client *c, struct cmdq_item *item, int flags,
 	struct cmd_parse_input	 pi;
 	struct cmd_parse_result	*pr;
 	struct cmdq_item	*new_item0;
+	struct cmdq_state	*state;
 
 	if (new_item != NULL)
 		*new_item = NULL;
@@ -136,12 +137,19 @@ load_cfg(const char *path, struct client *c, struct cmdq_item *item, int flags,
 		return (0);
 	}
 
-	new_item0 = cmdq_get_command(pr->cmdlist, NULL);
+	if (item != NULL)
+		state = cmdq_copy_state(cmdq_get_state(item));
+	else
+		state = cmdq_new_state(NULL, NULL, 0);
+	cmdq_add_format(state, "current_file", "%s", pi.file);
+
+	new_item0 = cmdq_get_command(pr->cmdlist, state);
 	if (item != NULL)
 		new_item0 = cmdq_insert_after(item, new_item0);
 	else
 		new_item0 = cmdq_append(NULL, new_item0);
 	cmd_list_free(pr->cmdlist);
+	cmdq_free_state(state);
 
 	if (new_item != NULL)
 		*new_item = new_item0;
@@ -156,6 +164,7 @@ load_cfg_from_buffer(const void *buf, size_t len, const char *path,
 	struct cmd_parse_input	 pi;
 	struct cmd_parse_result	*pr;
 	struct cmdq_item	*new_item0;
+	struct cmdq_state	*state;
 
 	if (new_item != NULL)
 		*new_item = NULL;
@@ -182,12 +191,19 @@ load_cfg_from_buffer(const void *buf, size_t len, const char *path,
 		return (0);
 	}
 
-	new_item0 = cmdq_get_command(pr->cmdlist, NULL);
+	if (item != NULL)
+		state = cmdq_copy_state(cmdq_get_state(item));
+	else
+		state = cmdq_new_state(NULL, NULL, 0);
+	cmdq_add_format(state, "current_file", "%s", pi.file);
+
+	new_item0 = cmdq_get_command(pr->cmdlist, state);
 	if (item != NULL)
 		new_item0 = cmdq_insert_after(item, new_item0);
 	else
 		new_item0 = cmdq_append(NULL, new_item0);
 	cmd_list_free(pr->cmdlist);
+	cmdq_free_state(state);
 
 	if (new_item != NULL)
 		*new_item = new_item0;

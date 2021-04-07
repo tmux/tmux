@@ -276,7 +276,7 @@ cmdq_merge_formats(struct cmdq_item *item, struct format_tree *ft)
 	const struct cmd_entry	*entry;
 
 	if (item->cmd != NULL) {
-		entry = cmd_get_entry (item->cmd);
+		entry = cmd_get_entry(item->cmd);
 		format_add(ft, "command", "%s", entry->name);
 	}
 	if (item->state->formats != NULL)
