@@ -61,7 +61,7 @@ static int	tty_keys_extended_device_attributes(struct tty *, const char *,
 /* Default raw keys. */
 struct tty_default_key_raw {
 	const char	       *string;
-	key_code	 	key;
+	key_code		key;
 };
 static const struct tty_default_key_raw tty_default_raw_keys[] = {
 	/* Application escape. */
@@ -262,7 +262,7 @@ static const key_code tty_default_xterm_modifiers[] = {
  */
 struct tty_default_key_code {
 	enum tty_code_code	code;
-	key_code	 	key;
+	key_code		key;
 };
 static const struct tty_default_key_code tty_default_code_keys[] = {
 	/* Function keys. */
@@ -420,7 +420,7 @@ tty_keys_add(struct tty *tty, const char *s, key_code key)
 {
 	struct tty_key	*tk;
 	size_t		 size;
-	const char     	*keystr;
+	const char	*keystr;
 
 	keystr = key_string_lookup_key(key, 1);
 	if ((tk = tty_keys_find(tty, s, strlen(s), &size)) == NULL) {
@@ -477,7 +477,7 @@ tty_keys_build(struct tty *tty)
 	const struct tty_default_key_raw	*tdkr;
 	const struct tty_default_key_xterm	*tdkx;
 	const struct tty_default_key_code	*tdkc;
-	u_int		 			 i, j;
+	u_int					 i, j;
 	const char				*s;
 	struct options_entry			*o;
 	struct options_array_item		*a;
@@ -869,6 +869,8 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 	size_t		 end;
 	u_int		 number, modifiers;
 	char		 tmp[64];
+	cc_t		 bspace;
+	key_code	 nkey;
 
 	*size = 0;
 
@@ -911,38 +913,61 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 	}
 	*size = end + 1;
 
-	/* Store the key and modifiers. */
-	*key = number;
+	/* Store the key. */
+	bspace = tty->tio.c_cc[VERASE];
+	if (bspace != _POSIX_VDISABLE && number == bspace)
+		nkey = KEYC_BSPACE;
+	else
+		nkey = number;
+
+	/* Update the modifiers. */
 	switch (modifiers) {
 	case 2:
-		(*key) |= KEYC_SHIFT;
+		nkey |= KEYC_SHIFT;
 		break;
 	case 3:
-		(*key) |= (KEYC_META|KEYC_IMPLIED_META);
+		nkey |= (KEYC_META|KEYC_IMPLIED_META);
 		break;
 	case 4:
-		(*key) |= (KEYC_SHIFT|KEYC_META|KEYC_IMPLIED_META);
+		nkey |= (KEYC_SHIFT|KEYC_META|KEYC_IMPLIED_META);
 		break;
 	case 5:
-		(*key) |= KEYC_CTRL;
+		nkey |= KEYC_CTRL;
 		break;
 	case 6:
-		(*key) |= (KEYC_SHIFT|KEYC_CTRL);
+		nkey |= (KEYC_SHIFT|KEYC_CTRL);
 		break;
 	case 7:
-		(*key) |= (KEYC_META|KEYC_CTRL);
+		nkey |= (KEYC_META|KEYC_CTRL);
 		break;
 	case 8:
-		(*key) |= (KEYC_SHIFT|KEYC_META|KEYC_IMPLIED_META|KEYC_CTRL);
+		nkey |= (KEYC_SHIFT|KEYC_META|KEYC_IMPLIED_META|KEYC_CTRL);
 		break;
 	default:
 		*key = KEYC_NONE;
 		break;
 	}
+
+    /* Don't allow both KEYC_CTRL and implied. */
+	if ((nkey & KEYC_CTRL) && (nkey & KEYC_MASK_KEY) < 32)
+		nkey &= ~KEYC_CTRL;
+	if ((nkey & KEYC_MASK_MODIFIERS) == KEYC_CTRL) {
+		nkey &= KEYC_MASK_KEY;
+		if (nkey >= 97 && nkey <= 122)
+			nkey -= 96;
+		else if (nkey == 32)
+			nkey = 0;
+		else if (nkey == 63)
+			nkey = 127;
+		else
+			nkey |= KEYC_CTRL;
+	}
+
 	if (log_get_level() != 0) {
 		log_debug("%s: extended key %.*s is %llx (%s)", c->name,
-		    (int)*size, buf, *key, key_string_lookup_key(*key, 1));
+		    (int)*size, buf, nkey, key_string_lookup_key(nkey, 1));
 	}
+	*key = nkey;
 	return (0);
 }
 
