@@ -239,10 +239,11 @@ key_string_lookup_string(const char *string)
 
 	/* Convert the standard control keys. */
 	if (key < KEYC_BASE && (modifiers & KEYC_CTRL) &&
-	    strchr(other, key) == NULL &&
-	    (key < 64 || key > 95)) {
+	    strchr(other, key) == NULL) {
 		if (key >= 97 && key <= 122)
 			key -= 96;
+		else if (key >= 64 && key <= 95)
+                       key -= 64;
 		else if (key == 32)
 			key = 0;
 		else if (key == 63)
