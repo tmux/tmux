@@ -430,7 +430,7 @@ input_key_pane(struct window_pane *wp, key_code key, struct mouse_event *m)
 }
 
 static void
-input_key_write(const char *from, struct bufferevent *bev, const void *data,
+input_key_write(const char *from, struct bufferevent *bev, const char *data,
     size_t size)
 {
 	log_debug("%s: %.*s", from, (int)size, data);
