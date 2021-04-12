@@ -1985,12 +1985,17 @@ The default is to capture only the visible contents of the pane.
 .Op Fl NrZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
+.Op Fl K Ar key-format
 .Op Fl O Ar sort-order
 .Op Fl t Ar target-pane
 .Op Ar template
 .Xc
 Put a pane into client mode, allowing a client to be selected interactively from
 a list.
+Each client is shown on one line.
+A shortcut key is shown on the left in brackets allowing for immediate choice,
+or the list may be navigated and an item chosen or otherwise manipulated using
+the keys below.
 .Fl Z
 zooms the pane.
 The following keys may be used in client mode:
@@ -2040,7 +2045,9 @@ specifies an initial filter: the filter is a format - if it evaluates to zero,
 the item in the list is not shown, otherwise it is shown.
 If a filter would lead to an empty list, it is ignored.
 .Fl F
-specifies the format for each item in the list.
+specifies the format for each item in the list and
+.Fl K
+a format for each shortcut key; both are evaluated once for each line.
 .Fl N
 starts without the preview.
 This command works only if at least one client is attached.
@@ -2049,12 +2056,17 @@ This command works only if at least one client is attached.
 .Op Fl GNrswZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
+.Op Fl K Ar key-format
 .Op Fl O Ar sort-order
 .Op Fl t Ar target-pane
 .Op Ar template
 .Xc
 Put a pane into tree mode, where a session, window or pane may be chosen
-interactively from a list.
+interactively from a tree.
+Each session, window or pane is shown on one line.
+A shortcut key is shown on the left in brackets allowing for immediate choice,
+or the tree may be navigated and an item chosen or otherwise manipulated using
+the keys below.
 .Fl s
 starts with sessions collapsed and
 .Fl w
@@ -2113,7 +2125,9 @@ specifies an initial filter: the filter is a format - if it evaluates to zero,
 the item in the list is not shown, otherwise it is shown.
 If a filter would lead to an empty list, it is ignored.
 .Fl F
-specifies the format for each item in the tree.
+specifies the format for each item in the tree and
+.Fl K
+a format for each shortcut key; both are evaluated once for each line.
 .Fl N
 starts without the preview.
 .Fl G
@@ -4663,6 +4677,11 @@ For example,
 multiplies 5.5 by 3 for a result with four decimal places and
 .Ql #{e|%%:7,3}
 returns the modulus of 7 and 3.
+.Ql a
+replaces a numeric argument by its ASCII equivalent, so
+.Ql #{a:98}
+results in
+.Ql b .
 .Pp
 A limit may be placed on the length of the resultant string by prefixing it
 by an
@@ -5681,12 +5700,17 @@ The buffer commands are as follows:
 .Op Fl NZr
 .Op Fl F Ar format
 .Op Fl f Ar filter
+.Op Fl K Ar key-format
 .Op Fl O Ar sort-order
 .Op Fl t Ar target-pane
 .Op Ar template
 .Xc
 Put a pane into buffer mode, where a buffer may be chosen interactively from
 a list.
+Each buffer is shown on one line.
+A shortcut key is shown on the left in brackets allowing for immediate choice,
+or the list may be navigated and an item chosen or otherwise manipulated using
+the keys below.
 .Fl Z
 zooms the pane.
 The following keys may be used in buffer mode:
@@ -5734,7 +5758,9 @@ specifies an initial filter: the filter is a format - if it evaluates to zero,
 the item in the list is not shown, otherwise it is shown.
 If a filter would lead to an empty list, it is ignored.
 .Fl F
-specifies the format for each item in the list.
+specifies the format for each item in the list and
+.Fl K
+a format for each shortcut key; both are evaluated once for each line.
 .Fl N
 starts without the preview.
 This command works only if at least one client is attached.
