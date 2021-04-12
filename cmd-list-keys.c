@@ -113,9 +113,10 @@ cmd_list_keys_print_notes(struct cmdq_item *item, struct args *args,
 		else
 			note = xstrdup(bd->note);
 		tmp = utf8_padcstr(key, keywidth + 1);
-		if (args_has(args, '1') && tc != NULL)
-			status_message_set(tc, -1, 1, "%s%s%s", prefix, tmp, note);
-		else
+		if (args_has(args, '1') && tc != NULL) {
+			status_message_set(tc, -1, 1, 0, "%s%s%s", prefix, tmp,
+			    note);
+		} else
 			cmdq_print(item, "%s%s%s", prefix, tmp, note);
 		free(tmp);
 		free(note);

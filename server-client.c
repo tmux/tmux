@@ -1308,7 +1308,11 @@ server_client_handle_key(struct client *c, struct key_event *event)
 	 * immediately rather than queued.
 	 */
 	if (~c->flags & CLIENT_READONLY) {
-		status_message_clear(c);
+		if (c->message_string != NULL) {
+			if (c->message_ignore_keys)
+				return (0);
+			status_message_clear(c);
+		}
 		if (c->overlay_key != NULL) {
 			switch (c->overlay_key(c, event)) {
 			case 0:

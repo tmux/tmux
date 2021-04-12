@@ -193,7 +193,7 @@ cmd_run_shell_timer(__unused int fd, __unused short events, void* arg)
 		if (status == CMD_PARSE_ERROR) {
 			if (cdata->item == NULL) {
 				*error = toupper((u_char)*error);
-				status_message_set(c, -1, 1, "%s", error);
+				status_message_set(c, -1, 1, 0, "%s", error);
 			} else
 				cmdq_error(cdata->item, "%s", error);
 			free(error);

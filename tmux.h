@@ -1688,6 +1688,7 @@ struct client {
 
 	uint64_t	 redraw_panes;
 
+	int		 message_ignore_keys;
 	int		 message_ignore_styles;
 	char		*message_string;
 	struct event	 message_timer;
@@ -2491,7 +2492,7 @@ struct style_range *status_get_range(struct client *, u_int, u_int);
 void	 status_init(struct client *);
 void	 status_free(struct client *);
 int	 status_redraw(struct client *);
-void status_message_set(struct client *, int, int, const char *, ...);
+void status_message_set(struct client *, int, int, int, const char *, ...);
 void	 status_message_clear(struct client *);
 int	 status_message_redraw(struct client *);
 void	 status_prompt_set(struct client *, struct cmd_find_state *,

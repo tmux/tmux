@@ -424,7 +424,7 @@ status_redraw(struct client *c)
 /* Set a status line message. */
 void
 status_message_set(struct client *c, int delay, int ignore_styles,
-    const char *fmt, ...)
+    int ignore_keys, const char *fmt, ...)
 {
 	struct timeval	tv;
 	va_list		ap;
@@ -433,7 +433,6 @@ status_message_set(struct client *c, int delay, int ignore_styles,
 	status_push_screen(c);
 
 	va_start(ap, fmt);
-	c->message_ignore_styles = ignore_styles;
 	xvasprintf(&c->message_string, fmt, ap);
 	va_end(ap);
 
@@ -455,6 +454,10 @@ status_message_set(struct client *c, int delay, int ignore_styles,
 
 		evtimer_add(&c->message_timer, &tv);
 	}
+
+	if (delay != 0)
+		c->message_ignore_keys = ignore_keys;
+	c->message_ignore_styles = ignore_styles;
 
 	c->tty.flags |= (TTY_NOCURSOR|TTY_FREEZE);
 	c->flags |= CLIENT_REDRAWSTATUS;
