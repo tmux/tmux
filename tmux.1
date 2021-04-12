@@ -5565,7 +5565,7 @@ The following keys are also available:
 .It Li "q" Ta "Exit menu"
 .El
 .It Xo Ic display-message
-.Op Fl aIpv
+.Op Fl aINpv
 .Op Fl c Ar target-client
 .Op Fl d Ar delay
 .Op Fl t Ar target-pane
@@ -5585,6 +5585,8 @@ If
 is not given, the
 .Ic message-time
 option is used; a delay of zero waits for a key press.
+.Ql N
+ignores key presses and closes only after the delay expires.
 The format of
 .Ar message
 is described in the
