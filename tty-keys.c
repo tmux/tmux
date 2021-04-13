@@ -953,11 +953,14 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 	 * Don't allow both KEYC_CTRL and as an implied modifier. Also convert
 	 * C-X into C-x and so on.
 	 */
-	if (nkey & KEYC_CTRL){
+	if (nkey & KEYC_CTRL) {
 		onlykey = (nkey & KEYC_MASK_KEY);
-		if (onlykey < 32)
-			onlykey = (nkey & ~KEYC_CTRL);
-		else {
+		if (onlykey < 32) {
+			if (onlykey != 9)
+				onlykey = (nkey & ~KEYC_CTRL);
+			else
+				onlykey = (9|KEYC_CTRL);
+		} else {
 			if (onlykey >= 97 && onlykey <= 122)
 				onlykey -= 96;
 			else if (onlykey >= 64 && onlykey <= 95)
