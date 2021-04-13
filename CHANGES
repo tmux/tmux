@@ -1,4 +1,20 @@
+CHANGES FROM 3.2 TO 3.3
+
+XXX
+
 CHANGES FROM 3.1c TO 3.2
+
+* Add a flag to disable keys to close a message.
+
+* Permit shortcut keys in buffer, client, tree modes to be configured with a
+  format (-K flag to choose-buffer, choose-client, choose-tree).
+
+* Add a current_file format for the config file being parsed.
+
+* When display-message used in config file, show the message after the config
+  file finishes.
+
+* Add client-detached notification in control mode.
 
 * Improve performance of format evaluation.
 
