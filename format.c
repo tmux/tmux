@@ -100,6 +100,7 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 #define FORMAT_QUOTE_STYLE 0x2000
 #define FORMAT_WINDOW_NAME 0x4000
 #define FORMAT_SESSION_NAME 0x8000
+#define FORMAT_CHARACTER 0x10000
 
 /* Limit on recursion. */
 #define FORMAT_LOOP_LIMIT 10
@@ -3522,7 +3523,7 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 
 	/*
 	 * Modifiers are a ; separated list of the forms:
-	 *      l,m,C,b,d,n,t,w,q,E,T,S,W,P,<,>
+	 *      l,m,C,a,b,d,n,t,w,q,E,T,S,W,P,<,>
 	 *	=a
 	 *	=/a
 	 *      =/a/
@@ -3539,7 +3540,7 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 			cp++;
 
 		/* Check single character modifiers with no arguments. */
-		if (strchr("lbdnwETSWP<>", cp[0]) != NULL &&
+		if (strchr("labdnwETSWP<>", cp[0]) != NULL &&
 		    format_is_end(cp[1])) {
 			format_add_modifier(&list, count, cp, 1, NULL, 0);
 			cp++;
@@ -3956,7 +3957,7 @@ format_replace_expression(struct format_modifier *mexp,
 		mright = (long long)mright;
 	}
 	format_log(es, "expression left side is: %.*f", prec, mleft);
-	format_log(es, "expression right side is:  %.*f", prec, mright);
+	format_log(es, "expression right side is: %.*f", prec, mright);
 
 	switch (operator) {
 	case ADD:
@@ -4016,10 +4017,10 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 {
 	struct format_tree		 *ft = es->ft;
 	struct window_pane		 *wp = ft->wp;
-	const char			 *errptr, *copy, *cp, *marker = NULL;
+	const char			 *errstr, *copy, *cp, *marker = NULL;
 	const char			 *time_format = NULL;
 	char				 *copy0, *condition, *found, *new;
-	char				 *value, *left, *right;
+	char				 *value, *left, *right, c;
 	size_t				  valuelen;
 	int				  modifiers = 0, limit = 0, width = 0;
 	int				  j;
@@ -4063,8 +4064,8 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 				if (fm->argc < 1)
 					break;
 				limit = strtonum(fm->argv[0], INT_MIN, INT_MAX,
-				    &errptr);
-				if (errptr != NULL)
+				    &errstr);
+				if (errstr != NULL)
 					limit = 0;
 				if (fm->argc >= 2 && fm->argv[1] != NULL)
 					marker = fm->argv[1];
@@ -4073,8 +4074,8 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 				if (fm->argc < 1)
 					break;
 				width = strtonum(fm->argv[0], INT_MIN, INT_MAX,
-				    &errptr);
-				if (errptr != NULL)
+				    &errstr);
+				if (errstr != NULL)
 					width = 0;
 				break;
 			case 'w':
@@ -4087,6 +4088,9 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 				break;
 			case 'l':
 				modifiers |= FORMAT_LITERAL;
+				break;
+			case 'a':
+				modifiers |= FORMAT_CHARACTER;
 				break;
 			case 'b':
 				modifiers |= FORMAT_BASENAME;
@@ -4151,6 +4155,18 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 	/* Is this a literal string? */
 	if (modifiers & FORMAT_LITERAL) {
 		value = xstrdup(copy);
+		goto done;
+	}
+
+	/* Is this a character? */
+	if (modifiers & FORMAT_CHARACTER) {
+		new = format_expand1(es, copy);
+		c = strtonum(new, 32, 126, &errstr);
+		if (errstr != NULL)
+			value = xstrdup("");
+		else
+			xasprintf(&value, "%c", c);
+		free (new);
 		goto done;
 	}
 

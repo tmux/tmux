@@ -45,9 +45,9 @@ static const struct {
 	{ "F11",	KEYC_F11|KEYC_IMPLIED_META },
 	{ "F12",	KEYC_F12|KEYC_IMPLIED_META },
 	{ "IC",		KEYC_IC|KEYC_IMPLIED_META },
-	{ "Insert",     KEYC_IC|KEYC_IMPLIED_META },
+	{ "Insert",	KEYC_IC|KEYC_IMPLIED_META },
 	{ "DC",		KEYC_DC|KEYC_IMPLIED_META },
-	{ "Delete",     KEYC_DC|KEYC_IMPLIED_META },
+	{ "Delete",	KEYC_DC|KEYC_IMPLIED_META },
 	{ "Home",	KEYC_HOME|KEYC_IMPLIED_META },
 	{ "End",	KEYC_END|KEYC_IMPLIED_META },
 	{ "NPage",	KEYC_NPAGE|KEYC_IMPLIED_META },
@@ -70,7 +70,7 @@ static const struct {
 	{ "Right",	KEYC_RIGHT|KEYC_CURSOR|KEYC_IMPLIED_META },
 
 	/* Numeric keypad. */
-	{ "KP/", 	KEYC_KP_SLASH|KEYC_KEYPAD },
+	{ "KP/",	KEYC_KP_SLASH|KEYC_KEYPAD },
 	{ "KP*",	KEYC_KP_STAR|KEYC_KEYPAD },
 	{ "KP-",	KEYC_KP_MINUS|KEYC_KEYPAD },
 	{ "KP7",	KEYC_KP_SEVEN|KEYC_KEYPAD },
@@ -164,7 +164,7 @@ key_string_get_modifiers(const char **string)
 key_code
 key_string_lookup_string(const char *string)
 {
-	static const char	*other = "!#()+,-.0123456789:;<=>'\r\t";
+	static const char	*other = "!#()+,-.0123456789:;<=>'\r\t\177";
 	key_code		 key, modifiers;
 	u_int			 u, i;
 	struct utf8_data	 ud, *udp;
@@ -181,8 +181,8 @@ key_string_lookup_string(const char *string)
 
 	/* Is this a hexadecimal value? */
 	if (string[0] == '0' && string[1] == 'x') {
-	        if (sscanf(string + 2, "%x", &u) != 1)
-	                return (KEYC_UNKNOWN);
+		if (sscanf(string + 2, "%x", &u) != 1)
+			return (KEYC_UNKNOWN);
 		mlen = wctomb(m, u);
 		if (mlen <= 0 || mlen > MB_LEN_MAX)
 			return (KEYC_UNKNOWN);
@@ -238,11 +238,12 @@ key_string_lookup_string(const char *string)
 	}
 
 	/* Convert the standard control keys. */
-	if (key < KEYC_BASE && (modifiers & KEYC_CTRL) && !strchr(other, key)) {
+	if (key < KEYC_BASE && (modifiers & KEYC_CTRL) &&
+	    strchr(other, key) == NULL) {
 		if (key >= 97 && key <= 122)
 			key -= 96;
 		else if (key >= 64 && key <= 95)
-			key -= 64;
+                       key -= 64;
 		else if (key == 32)
 			key = 0;
 		else if (key == 63)

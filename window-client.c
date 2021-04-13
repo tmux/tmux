@@ -40,6 +40,17 @@ static void		 window_client_key(struct window_mode_entry *,
 #define WINDOW_CLIENT_DEFAULT_FORMAT \
 	"#{t/p:client_activity}: session #{session_name}"
 
+#define WINDOW_CLIENT_DEFAULT_KEY_FORMAT \
+	"#{?#{e|<:#{line},10}," \
+		"#{line}" \
+	"," \
+		"#{?#{e|<:#{line},36},"	\
+	        	"M-#{a:#{e|+:97,#{e|-:#{line},10}}}" \
+		"," \
+	        	"" \
+		"}" \
+	"}"
+
 static const struct menu_item window_client_menu_items[] = {
 	{ "Detach", 'd', NULL },
 	{ "Detach Tagged", 'D', NULL },
@@ -87,6 +98,7 @@ struct window_client_modedata {
 
 	struct mode_tree_data		 *data;
 	char				 *format;
+	char				 *key_format;
 	char				 *command;
 
 	struct window_client_itemdata	**item_list;
@@ -252,6 +264,26 @@ window_client_menu(void *modedata, struct client *c, key_code key)
 	window_client_key(wme, c, NULL, NULL, key, NULL);
 }
 
+static key_code
+window_client_get_key(void *modedata, void *itemdata, u_int line)
+{
+	struct window_client_modedata	*data = modedata;
+	struct window_client_itemdata	*item = itemdata;
+	struct format_tree		*ft;
+	char				*expanded;
+	key_code			 key;
+
+	ft = format_create(NULL, NULL, FORMAT_NONE, 0);
+	format_defaults(ft, item->c, NULL, 0, NULL);
+	format_add(ft, "line", "%u", line);
+
+	expanded = format_expand(ft, data->key_format);
+	key = key_string_lookup_string(expanded);
+	free(expanded);
+	format_free(ft);
+	return key;
+}
+
 static struct screen *
 window_client_init(struct window_mode_entry *wme,
     __unused struct cmd_find_state *fs, struct args *args)
@@ -267,15 +299,19 @@ window_client_init(struct window_mode_entry *wme,
 		data->format = xstrdup(WINDOW_CLIENT_DEFAULT_FORMAT);
 	else
 		data->format = xstrdup(args_get(args, 'F'));
+	if (args == NULL || !args_has(args, 'K'))
+		data->key_format = xstrdup(WINDOW_CLIENT_DEFAULT_KEY_FORMAT);
+	else
+		data->key_format = xstrdup(args_get(args, 'K'));
 	if (args == NULL || args->argc == 0)
 		data->command = xstrdup(WINDOW_CLIENT_DEFAULT_COMMAND);
 	else
 		data->command = xstrdup(args->argv[0]);
 
 	data->data = mode_tree_start(wp, args, window_client_build,
-	    window_client_draw, NULL, window_client_menu, NULL, data,
-	    window_client_menu_items, window_client_sort_list,
-	    nitems(window_client_sort_list), &s);
+	    window_client_draw, NULL, window_client_menu, NULL,
+	    window_client_get_key, data, window_client_menu_items,
+	    window_client_sort_list, nitems(window_client_sort_list), &s);
 	mode_tree_zoom(data->data, args);
 
 	mode_tree_build(data->data);
@@ -300,6 +336,7 @@ window_client_free(struct window_mode_entry *wme)
 	free(data->item_list);
 
 	free(data->format);
+	free(data->key_format);
 	free(data->command);
 
 	free(data);

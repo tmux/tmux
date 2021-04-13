@@ -125,6 +125,8 @@ notify_callback(struct cmdq_item *item, void *data)
 		control_notify_window_renamed(ne->window);
 	if (strcmp(ne->name, "client-session-changed") == 0)
 		control_notify_client_session_changed(ne->client);
+	if (strcmp(ne->name, "client-detached") == 0)
+		control_notify_client_detached(ne->client);
 	if (strcmp(ne->name, "session-renamed") == 0)
 		control_notify_session_renamed(ne->session);
 	if (strcmp(ne->name, "session-created") == 0)

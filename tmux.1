@@ -1985,12 +1985,17 @@ The default is to capture only the visible contents of the pane.
 .Op Fl NrZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
+.Op Fl K Ar key-format
 .Op Fl O Ar sort-order
 .Op Fl t Ar target-pane
 .Op Ar template
 .Xc
 Put a pane into client mode, allowing a client to be selected interactively from
 a list.
+Each client is shown on one line.
+A shortcut key is shown on the left in brackets allowing for immediate choice,
+or the list may be navigated and an item chosen or otherwise manipulated using
+the keys below.
 .Fl Z
 zooms the pane.
 The following keys may be used in client mode:
@@ -2040,7 +2045,9 @@ specifies an initial filter: the filter is a format - if it evaluates to zero,
 the item in the list is not shown, otherwise it is shown.
 If a filter would lead to an empty list, it is ignored.
 .Fl F
-specifies the format for each item in the list.
+specifies the format for each item in the list and
+.Fl K
+a format for each shortcut key; both are evaluated once for each line.
 .Fl N
 starts without the preview.
 This command works only if at least one client is attached.
@@ -2049,12 +2056,17 @@ This command works only if at least one client is attached.
 .Op Fl GNrswZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
+.Op Fl K Ar key-format
 .Op Fl O Ar sort-order
 .Op Fl t Ar target-pane
 .Op Ar template
 .Xc
 Put a pane into tree mode, where a session, window or pane may be chosen
-interactively from a list.
+interactively from a tree.
+Each session, window or pane is shown on one line.
+A shortcut key is shown on the left in brackets allowing for immediate choice,
+or the tree may be navigated and an item chosen or otherwise manipulated using
+the keys below.
 .Fl s
 starts with sessions collapsed and
 .Fl w
@@ -2113,7 +2125,9 @@ specifies an initial filter: the filter is a format - if it evaluates to zero,
 the item in the list is not shown, otherwise it is shown.
 If a filter would lead to an empty list, it is ignored.
 .Fl F
-specifies the format for each item in the tree.
+specifies the format for each item in the tree and
+.Fl K
+a format for each shortcut key; both are evaluated once for each line.
 .Fl N
 starts without the preview.
 .Fl G
@@ -3149,8 +3163,8 @@ The appearance and behaviour of
 may be modified by changing the value of various options.
 There are four types of option:
 .Em server options ,
-.Em session options
-.Em window options
+.Em session options ,
+.Em window options ,
 and
 .Em pane options .
 .Pp
@@ -4663,6 +4677,11 @@ For example,
 multiplies 5.5 by 3 for a result with four decimal places and
 .Ql #{e|%%:7,3}
 returns the modulus of 7 and 3.
+.Ql a
+replaces a numeric argument by its ASCII equivalent, so
+.Ql #{a:98}
+results in
+.Ql b .
 .Pp
 A limit may be placed on the length of the resultant string by prefixing it
 by an
@@ -4859,6 +4878,7 @@ The following variables are available, where appropriate:
 .It Li "copy_cursor_word" Ta "" Ta "Word under cursor in copy mode"
 .It Li "copy_cursor_x" Ta "" Ta "Cursor X position in copy mode"
 .It Li "copy_cursor_y" Ta "" Ta "Cursor Y position in copy mode"
+.It Li "current_file" Ta "" Ta "Current configuration file"
 .It Li "cursor_character" Ta "" Ta "Character at cursor in pane"
 .It Li "cursor_flag" Ta "" Ta "Pane cursor flag"
 .It Li "cursor_x" Ta "" Ta "Cursor X position in pane"
@@ -5545,7 +5565,7 @@ The following keys are also available:
 .It Li "q" Ta "Exit menu"
 .El
 .It Xo Ic display-message
-.Op Fl aIpv
+.Op Fl aINpv
 .Op Fl c Ar target-client
 .Op Fl d Ar delay
 .Op Fl t Ar target-pane
@@ -5565,6 +5585,8 @@ If
 is not given, the
 .Ic message-time
 option is used; a delay of zero waits for a key press.
+.Ql N
+ignores key presses and closes only after the delay expires.
 The format of
 .Ar message
 is described in the
@@ -5680,12 +5702,17 @@ The buffer commands are as follows:
 .Op Fl NZr
 .Op Fl F Ar format
 .Op Fl f Ar filter
+.Op Fl K Ar key-format
 .Op Fl O Ar sort-order
 .Op Fl t Ar target-pane
 .Op Ar template
 .Xc
 Put a pane into buffer mode, where a buffer may be chosen interactively from
 a list.
+Each buffer is shown on one line.
+A shortcut key is shown on the left in brackets allowing for immediate choice,
+or the list may be navigated and an item chosen or otherwise manipulated using
+the keys below.
 .Fl Z
 zooms the pane.
 The following keys may be used in buffer mode:
@@ -5733,7 +5760,9 @@ specifies an initial filter: the filter is a format - if it evaluates to zero,
 the item in the list is not shown, otherwise it is shown.
 If a filter would lead to an empty list, it is ignored.
 .Fl F
-specifies the format for each item in the list.
+specifies the format for each item in the list and
+.Fl K
+a format for each shortcut key; both are evaluated once for each line.
 .Fl N
 starts without the preview.
 This command works only if at least one client is attached.
@@ -6107,6 +6136,8 @@ A notification will never occur inside an output block.
 .Pp
 The following notifications are defined:
 .Bl -tag -width Ds
+.It Ic %client-detached Ar client
+The client has detached.
 .It Ic %client-session-changed Ar client session-id name
 The client is now attached to the session with ID
 .Ar session-id ,

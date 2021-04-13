@@ -276,7 +276,7 @@ cmdq_merge_formats(struct cmdq_item *item, struct format_tree *ft)
 	const struct cmd_entry	*entry;
 
 	if (item->cmd != NULL) {
-		entry = cmd_get_entry (item->cmd);
+		entry = cmd_get_entry(item->cmd);
 		format_add(ft, "command", "%s", entry->name);
 	}
 	if (item->state->formats != NULL)
@@ -862,7 +862,7 @@ cmdq_error(struct cmdq_item *item, const char *fmt, ...)
 		c->retval = 1;
 	} else {
 		*msg = toupper((u_char) *msg);
-		status_message_set(c, -1, 1, "%s", msg);
+		status_message_set(c, -1, 1, 0, "%s", msg);
 	}
 
 	free(msg);

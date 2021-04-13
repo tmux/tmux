@@ -670,19 +670,10 @@ tty_update_mode(struct tty *tty, int mode, struct screen *s)
 	if (changed != 0)
 		log_debug("%s: update mode %x to %x", c->name, tty->mode, mode);
 
-	if (changed & MODE_BLINKING) {
-		if (tty_term_has(tty->term, TTYC_CVVIS))
-			tty_putcode(tty, TTYC_CVVIS);
-		else
-			tty_putcode(tty, TTYC_CNORM);
-		changed |= MODE_CURSOR;
-	}
-	if (changed & MODE_CURSOR) {
-		if (mode & MODE_CURSOR)
-			tty_putcode(tty, TTYC_CNORM);
-		else
-			tty_putcode(tty, TTYC_CIVIS);
-	}
+	/*
+	 * The cursor blinking flag can be reset by setting the cursor style, so
+	 * set the style first.
+	 */
 	if (s != NULL && tty->cstyle != s->cstyle) {
 		if (tty_term_has(tty->term, TTYC_SS)) {
 			if (s->cstyle == 0 && tty_term_has(tty->term, TTYC_SE))
@@ -691,7 +682,28 @@ tty_update_mode(struct tty *tty, int mode, struct screen *s)
 				tty_putcode1(tty, TTYC_SS, s->cstyle);
 		}
 		tty->cstyle = s->cstyle;
+		changed |= (MODE_CURSOR|MODE_BLINKING);
 	}
+
+	/*
+	 * Cursor invisible (RM ?25) overrides cursor blinking (SM ?12 or RM
+	 * 34), and we need to be careful not send cnorm after cvvis since it
+	 * can undo it.
+	 */
+	if (changed & (MODE_CURSOR|MODE_BLINKING)) {
+		log_debug("%s: cursor %s, %sblinking", __func__,
+		    (mode & MODE_CURSOR) ? "on" : "off",
+		    (mode & MODE_BLINKING) ? "" : "not ");
+		if (~mode & MODE_CURSOR)
+			tty_putcode(tty, TTYC_CIVIS);
+		else if (mode & MODE_BLINKING) {
+			tty_putcode(tty, TTYC_CNORM);
+			if (tty_term_has(tty->term, TTYC_CVVIS))
+				tty_putcode(tty, TTYC_CVVIS);
+		} else
+			tty_putcode(tty, TTYC_CNORM);
+	}
+
 	if ((changed & ALL_MOUSE_MODES) &&
 	    tty_term_has(tty->term, TTYC_KMOUS)) {
 		/*

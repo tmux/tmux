@@ -296,6 +296,9 @@ server_client_lost(struct client *c)
 	TAILQ_REMOVE(&clients, c, entry);
 	log_debug("lost client %p", c);
 
+	if (c->flags & CLIENT_ATTACHED)
+		notify_client("client-detached", c);
+
 	if (c->flags & CLIENT_CONTROL)
 		control_stop(c);
 	if (c->flags & CLIENT_TERMINAL)
@@ -1305,7 +1308,11 @@ server_client_handle_key(struct client *c, struct key_event *event)
 	 * immediately rather than queued.
 	 */
 	if (~c->flags & CLIENT_READONLY) {
-		status_message_clear(c);
+		if (c->message_string != NULL) {
+			if (c->message_ignore_keys)
+				return (0);
+			status_message_clear(c);
+		}
 		if (c->overlay_key != NULL) {
 			switch (c->overlay_key(c, event)) {
 			case 0:
@@ -1766,9 +1773,6 @@ server_client_check_exit(struct client *c)
 		if (EVBUFFER_LENGTH(cf->buffer) != 0)
 			return;
 	}
-
-	if (c->flags & CLIENT_ATTACHED)
-		notify_client("client-detached", c);
 	c->flags |= CLIENT_EXITED;
 
 	switch (c->exit_type) {

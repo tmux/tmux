@@ -428,6 +428,14 @@ input_key_pane(struct window_pane *wp, key_code key, struct mouse_event *m)
 	return (input_key(wp->screen, wp->event, key));
 }
 
+static void
+input_key_write(const char *from, struct bufferevent *bev, const char *data,
+    size_t size)
+{
+	log_debug("%s: %.*s", from, (int)size, data);
+	bufferevent_write(bev, data, size);
+}
+
 /* Translate a key code into an output key sequence. */
 int
 input_key(struct screen *s, struct bufferevent *bev, key_code key)
@@ -444,7 +452,7 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 	/* Literal keys go as themselves (can't be more than eight bits). */
 	if (key & KEYC_LITERAL) {
 		ud.data[0] = (u_char)key;
-		bufferevent_write(bev, &ud.data[0], 1);
+		input_key_write(__func__, bev, &ud.data[0], 1);
 		return (0);
 	}
 
@@ -463,16 +471,16 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 	justkey = (key & ~(KEYC_META|KEYC_IMPLIED_META));
 	if (justkey <= 0x7f) {
 		if (key & KEYC_META)
-			bufferevent_write(bev, "\033", 1);
+			input_key_write(__func__, bev, "\033", 1);
 		ud.data[0] = justkey;
-		bufferevent_write(bev, &ud.data[0], 1);
+		input_key_write(__func__, bev, &ud.data[0], 1);
 		return (0);
 	}
 	if (justkey > 0x7f && justkey < KEYC_BASE) {
 		if (key & KEYC_META)
-			bufferevent_write(bev, "\033", 1);
+			input_key_write(__func__, bev, "\033", 1);
 		utf8_to_data(justkey, &ud);
-		bufferevent_write(bev, ud.data, ud.size);
+		input_key_write(__func__, bev, ud.data, ud.size);
 		return (0);
 	}
 
@@ -494,8 +502,8 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 	if (ike != NULL) {
 		log_debug("found key 0x%llx: \"%s\"", key, ike->data);
 		if ((key & KEYC_META) && (~key & KEYC_IMPLIED_META))
-			bufferevent_write(bev, "\033", 1);
-		bufferevent_write(bev, ike->data, strlen(ike->data));
+			input_key_write(__func__, bev, "\033", 1);
+		input_key_write(__func__, bev, ike->data, strlen(ike->data));
 		return (0);
 	}
 
@@ -560,7 +568,7 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 		goto missing;
 	}
 	xsnprintf(tmp, sizeof tmp, "\033[%llu;%cu", outkey, modifier);
-	bufferevent_write(bev, tmp, strlen(tmp));
+	input_key_write(__func__, bev, tmp, strlen(tmp));
 	return (0);
 
 missing:
@@ -656,5 +664,5 @@ input_key_mouse(struct window_pane *wp, struct mouse_event *m)
 	if (!input_key_get_mouse(s, m, x, y, &buf, &len))
 		return;
 	log_debug("writing mouse %.*s to %%%u", (int)len, buf, wp->id);
-	bufferevent_write(wp->event, buf, len);
+	input_key_write(__func__, wp->event, buf, len);
 }

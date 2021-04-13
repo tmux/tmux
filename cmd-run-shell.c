@@ -20,6 +20,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -190,8 +191,12 @@ cmd_run_shell_timer(__unused int fd, __unused short events, void* arg)
 			    &error);
 		}
 		if (status == CMD_PARSE_ERROR) {
-		       cmdq_error(cdata->item, "%s", error);
-		       free(error);
+			if (cdata->item == NULL) {
+				*error = toupper((u_char)*error);
+				status_message_set(c, -1, 1, 0, "%s", error);
+			} else
+				cmdq_error(cdata->item, "%s", error);
+			free(error);
 		}
 	}
 

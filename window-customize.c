@@ -890,8 +890,8 @@ window_customize_init(struct window_mode_entry *wme, struct cmd_find_state *fs,
 
 	data->data = mode_tree_start(wp, args, window_customize_build,
 	    window_customize_draw, NULL, window_customize_menu,
-	    window_customize_height, data, window_customize_menu_items, NULL, 0,
-	    &s);
+	    window_customize_height, NULL, data, window_customize_menu_items,
+	    NULL, 0, &s);
 	mode_tree_zoom(data->data, args);
 
 	mode_tree_build(data->data);
@@ -999,7 +999,7 @@ window_customize_set_option_callback(struct client *c, void *itemdata,
 
 fail:
 	*cause = toupper((u_char)*cause);
-	status_message_set(c, -1, 1, "%s", cause);
+	status_message_set(c, -1, 1, 0, "%s", cause);
 	free(cause);
 	return (0);
 }
@@ -1205,7 +1205,7 @@ window_customize_set_command_callback(struct client *c, void *itemdata,
 
 fail:
 	*error = toupper((u_char)*error);
-	status_message_set(c, -1, 1, "%s", error);
+	status_message_set(c, -1, 1, 0, "%s", error);
 	free(error);
 	return (0);
 }
