@@ -955,23 +955,19 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 	 */
 	if (nkey & KEYC_CTRL) {
 		onlykey = (nkey & KEYC_MASK_KEY);
-		if (onlykey < 32) {
-			if (onlykey != 9)
-				onlykey = (nkey & ~KEYC_CTRL);
-			else
-				onlykey = (9|KEYC_CTRL);
-		} else {
-			if (onlykey >= 97 && onlykey <= 122)
-				onlykey -= 96;
-			else if (onlykey >= 64 && onlykey <= 95)
-				onlykey -= 64;
-			else if (onlykey == 32)
-				onlykey = 0;
-			else if (onlykey == 63)
-				onlykey = 127;
-			onlykey |= ((nkey & KEYC_MASK_MODIFIERS) & ~KEYC_CTRL);
-		}
-		nkey = onlykey;
+		if (onlykey < 32 && onlykey != 9)
+			/* nothing */;
+		else if (onlykey >= 97 && onlykey <= 122)
+			onlykey -= 96;
+		else if (onlykey >= 64 && onlykey <= 95)
+			onlykey -= 64;
+		else if (onlykey == 32)
+			onlykey = 0;
+		else if (onlykey == 63)
+			onlykey = 127;
+		else
+			onlykey |= KEYC_CTRL;
+		nkey = onlykey|((nkey & KEYC_MASK_MODIFIERS) & ~KEYC_CTRL);
 	}
 
 	if (log_get_level() != 0) {
