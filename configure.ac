@@ -163,7 +163,6 @@ AC_RUN_IFELSE([AC_LANG_PROGRAM(
 		[return (reallocarray(NULL, 1, 1) == NULL);]
 	)],
 	AC_MSG_RESULT(yes),
-	[AC_LIBOBJ(reallocarray) AC_MSG_RESULT([no])],
 	[AC_LIBOBJ(reallocarray) AC_MSG_RESULT([no])]
 )
 AC_MSG_CHECKING([for working recallocarray])
@@ -172,7 +171,6 @@ AC_RUN_IFELSE([AC_LANG_PROGRAM(
 		[return (recallocarray(NULL, 1, 1, 1) == NULL);]
 	)],
 	AC_MSG_RESULT(yes),
-	[AC_LIBOBJ(recallocarray) AC_MSG_RESULT([no])],
 	[AC_LIBOBJ(recallocarray) AC_MSG_RESULT([no])]
 )
 
