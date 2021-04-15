@@ -252,7 +252,8 @@ static const key_code tty_default_xterm_modifiers[] = {
 	KEYC_CTRL,
 	KEYC_SHIFT|KEYC_CTRL,
 	KEYC_META|KEYC_IMPLIED_META|KEYC_CTRL,
-	KEYC_SHIFT|KEYC_META|KEYC_IMPLIED_META|KEYC_CTRL
+	KEYC_SHIFT|KEYC_META|KEYC_IMPLIED_META|KEYC_CTRL,
+	KEYC_META|KEYC_IMPLIED_META
 };
 
 /*
@@ -943,6 +944,9 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 		break;
 	case 8:
 		nkey |= (KEYC_SHIFT|KEYC_META|KEYC_IMPLIED_META|KEYC_CTRL);
+		break;
+	case 9:
+		nkey |= (KEYC_META|KEYC_IMPLIED_META);
 		break;
 	default:
 		*key = KEYC_NONE;
