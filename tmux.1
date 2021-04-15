@@ -6116,12 +6116,13 @@ and matching
 .Em %end
 or
 .Em %error
-have two arguments: an integer time (as seconds from epoch) and command number.
+have three arguments: an integer time (as seconds from epoch), command number and
+flags (currently not used).
 For example:
 .Bd -literal -offset indent
-%begin 1363006971 2
+%begin 1363006971 2 1
 0: ksh* (1 panes) [80x24] [layout b25f,80x24,0,0,2] @2 (active)
-%end 1363006971 2
+%end 1363006971 2 1
 .Ed
 .Pp
 The
