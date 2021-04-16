@@ -205,7 +205,7 @@ cmd_display_menu_get_position(struct client *tc, struct cmdq_item *item,
 	if (xp == NULL || strcmp(xp, "C") == 0)
 		xp = "#{popup_centre_x}";
 	else if (strcmp(xp, "R") == 0)
-		xp = "#{popup_right}";
+		xp = "#{popup_pane_right}";
 	else if (strcmp(xp, "P") == 0)
 		xp = "#{popup_pane_left}";
 	else if (strcmp(xp, "M") == 0)
