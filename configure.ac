@@ -150,9 +150,18 @@ AC_REPLACE_FUNCS([ \
 	strlcpy \
 	strndup \
 	strsep \
-	strtonum \
 ])
 AC_FUNC_STRNLEN
+
+# Check if strtonum works.
+AC_MSG_CHECKING([for working strtonum])
+AC_RUN_IFELSE([AC_LANG_PROGRAM(
+         [#include <stdlib.h>],
+         [return (strtonum("0", 0, 1, NULL) == 0 ? 0 : 1);]
+	 )],
+	 [AC_DEFINE(HAVE_STRTONUM) AC_MSG_RESULT(yes)],
+	 [AC_LIBOBJ(strtonum) AC_MSG_RESULT(no)]
+)
 
 # Clang sanitizers wrap reallocarray even if it isn't available on the target
 # system. When compiled it always returns NULL and crashes the program. To
