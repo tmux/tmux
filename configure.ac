@@ -34,10 +34,10 @@ AC_ARG_VAR(
 # Set up convenient fuzzing defaults before initializing compiler.
 if test "x$enable_fuzzing" = xyes; then
 	AC_DEFINE(NEED_FUZZING)
-	test "x$CC" == x && CC=clang
-	test "x$FUZZING_LIBS" == x && \
+	test "x$CC" = x && CC=clang
+	test "x$FUZZING_LIBS" = x && \
 		FUZZING_LIBS="-fsanitize=fuzzer"
-	test "x$SAVED_CFLAGS" == x && \
+	test "x$SAVED_CFLAGS" = x && \
 		AM_CFLAGS="-g -fsanitize=fuzzer-no-link,address"
 fi
 
