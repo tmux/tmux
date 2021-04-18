@@ -371,19 +371,26 @@ void
 grid_reader_cursor_back_to_indentation(struct grid_reader *gr)
 {
 	struct grid_cell	gc;
-	u_int			px, py, xx, yy;
+	u_int			px, py, xx, yy, oldx, oldy;
 
 	yy = gr->gd->hsize + gr->gd->sy - 1;
+	oldx = gr->cx;
+	oldy = gr->cy;
 	grid_reader_cursor_start_of_line(gr, 1);
 
 	for (py = gr->cy; py <= yy; py++) {
 		xx = grid_line_length(gr->gd, py);
 		for (px = 0; px < xx; px++) {
 			grid_get_cell(gr->gd, px, py, &gc);
-			if (gc.data.size != 1 || *gc.data.data != ' ')
-				break;
+			if (gc.data.size != 1 || *gc.data.data != ' ') {
+				gr->cx = px;
+				gr->cy = py;
+				return;
+			}
 		}
 		if (~grid_get_line(gr->gd, py)->flags & GRID_LINE_WRAPPED)
 			break;
 	}
+	gr->cx = oldx;
+	gr->cy = oldy;
 }
