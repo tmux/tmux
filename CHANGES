@@ -33,7 +33,7 @@ CHANGES FROM 3.1c TO 3.2
 * Add a -S flag to new-window to make it select the existing window if one
   with the given name already exists rather than failing with an error.
 
-* Addd a format modifier to check if a window or session name exists (N/w or
+* Add a format modifier to check if a window or session name exists (N/w or
   N/s).
 
 * Add compat clock_gettime for older macOS.
@@ -65,7 +65,7 @@ CHANGES FROM 3.1c TO 3.2
   an option on all panes.
 
 * Make replacement of ##s consistent when drawing formats, whether followed by
-  [ or not. Add a flag (e) to the q: format modifier to double up #s
+  [ or not. Add a flag (e) to the q: format modifier to double up #s.
 
 * Add -N flag to display-panes to ignore keys.
 
@@ -269,7 +269,7 @@ CHANGES FROM 3.1c TO 3.2
 
 * Wait until the initial command sequence is done before sending a device
   attributes request and other bits that prompt a reply from the terminal. This
-  means that stray relies are not left on the terminal if the command has
+  means that stray replies are not left on the terminal if the command has
   attached and then immediately detached and tmux will not be around to receive
   them.
 
@@ -284,7 +284,7 @@ CHANGES FROM 3.1c TO 3.2
   window-renamed
   window-unlinked
 
-  And these now pane options:
+  And these are now pane options:
 
   pane-died
   pane-exited
@@ -359,7 +359,7 @@ CHANGES FROM 3.1c TO 3.2
 * Add a default binding for button 2 to paste.
 
 * Add -d flag to run-shell to delay before running the command and allow it to
-  run without a command so it just delays.
+  be used without a command so it just delays.
 
 * Add C-g to cancel command prompt with vi keys as well as emacs, and q in
   command mode.
