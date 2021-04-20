@@ -215,6 +215,9 @@ key_bindings_add(const char *name, key_code key, const char *note, int repeat,
 	if (repeat)
 		bd->flags |= KEY_BINDING_REPEAT;
 	bd->cmdlist = cmdlist;
+
+	log_debug("%s: %#llx %s = %s", __func__, bd->key,
+	    key_string_lookup_key(bd->key, 1), cmd_list_print(bd->cmdlist, 0));
 }
 
 void
@@ -230,6 +233,9 @@ key_bindings_remove(const char *name, key_code key)
 	bd = key_bindings_get(table, key & ~KEYC_MASK_FLAGS);
 	if (bd == NULL)
 		return;
+
+	log_debug("%s: %#llx %s", __func__, bd->key,
+	    key_string_lookup_key(bd->key, 1));
 
 	RB_REMOVE(key_bindings, &table->key_bindings, bd);
 	key_bindings_free(bd);
