@@ -959,7 +959,10 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 	 */
 	if (nkey & KEYC_CTRL) {
 		onlykey = (nkey & KEYC_MASK_KEY);
-		if (onlykey < 32 && onlykey != 9)
+		if (onlykey < 32 &&
+		    onlykey != 9 &&
+		    onlykey != 13 &&
+		    onlykey != 27)
 			/* nothing */;
 		else if (onlykey >= 97 && onlykey <= 122)
 			onlykey -= 96;
