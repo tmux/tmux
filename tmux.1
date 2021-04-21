@@ -3418,11 +3418,24 @@ sessions.
 .Xc
 If enabled, the server will exit when there are no attached clients.
 .It Xo Ic extended-keys
-.Op Ic on | off
+.Op Ic on | off | always
 .Xc
-When enabled, extended keys are requested from the terminal and if supported
-are recognised by
-.Nm .
+When
+.Ic on
+or
+.Ic always ,
+the escape sequence to enable extended keys is sent to the terminal, if
+.Nm
+knows that it is supported.
+.Nm
+always recognises extended keys itself.
+If this option is
+.Ic on ,
+.Nm
+will only forward extended keys to applications when they request them; if
+.Ic always ,
+.Nm
+will always forward the keys.
 .It Xo Ic focus-events
 .Op Ic on | off
 .Xc
