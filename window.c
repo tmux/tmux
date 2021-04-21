@@ -329,6 +329,8 @@ window_create(u_int sx, u_int sy, u_int xpixel, u_int ypixel)
 
 	window_update_activity(w);
 
+	log_debug("%s: @%u create %ux%u (%ux%u)", __func__, w->id, sx, sy,
+	    w->xpixel, w->ypixel);
 	return (w);
 }
 
