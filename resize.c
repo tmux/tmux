@@ -108,17 +108,19 @@ clients_with_window(struct window *w)
 }
 
 static int
-clients_calculate_size(int type, int current, struct session *s,
-    struct window *w, int (*skip_client)(struct client *, int, int,
-    struct session *, struct window *), u_int *sx, u_int *sy, u_int *xpixel,
-    u_int *ypixel)
+clients_calculate_size(int type, int current, struct client *c,
+    struct session *s, struct window *w, int (*skip_client)(struct client *,
+    int, int, struct session *, struct window *), u_int *sx, u_int *sy,
+    u_int *xpixel, u_int *ypixel)
 {
 	struct client	*loop;
 	u_int		 cx, cy, n = 0;
 
 	/* Manual windows do not have their size changed based on a client. */
-	if (type == WINDOW_SIZE_MANUAL)
+	if (type == WINDOW_SIZE_MANUAL) {
+		log_debug("%s: type is manual", __func__);
 		return (0);
+	}
 
 	/*
 	 * Start comparing with 0 for largest and UINT_MAX for smallest or
@@ -139,18 +141,24 @@ clients_calculate_size(int type, int current, struct session *s,
 
 	/* Loop over the clients and work out the size. */
 	TAILQ_FOREACH(loop, &clients, entry) {
-		if (ignore_client_size(loop))
+		if (loop != c && ignore_client_size(loop)) {
+			log_debug("%s: ignoring %s", __func__, loop->name);
 			continue;
-		if (skip_client(loop, type, current, s, w))
+		}
+		if (loop != c && skip_client(loop, type, current, s, w)) {
+			log_debug("%s: skipping %s", __func__, loop->name);
 			continue;
+		}
 
 		/*
 		 * If there are multiple clients attached, only accept the
 		 * latest client; otherwise let the only client be chosen as
 		 * for smallest.
 		 */
-		if (type == WINDOW_SIZE_LATEST && n > 1 && loop != w->latest)
+		if (type == WINDOW_SIZE_LATEST && n > 1 && loop != w->latest) {
+			log_debug("%s: %s is not latest", __func__, loop->name);
 			continue;
+		}
 
 		/* Work out this client's size. */
 		cx = loop->tty.sx;
@@ -175,16 +183,24 @@ clients_calculate_size(int type, int current, struct session *s,
 			*xpixel = loop->tty.xpixel;
 			*ypixel = loop->tty.ypixel;
 		}
+		log_debug("%s: after %s (%ux%u), size is %ux%u", __func__,
+		    loop->name, cx, cy, *sx, *sy);
 	}
 
 	/* Return whether a suitable size was found. */
-	if (type == WINDOW_SIZE_LARGEST)
+	if (type == WINDOW_SIZE_LARGEST) {
+		log_debug("%s: type is largest", __func__);
 		return (*sx != 0 && *sy != 0);
+	}
+	if (type == WINDOW_SIZE_LATEST)
+		log_debug("%s: type is latest", __func__);
+	else
+		log_debug("%s: type is smallest", __func__);
 	return (*sx != UINT_MAX && *sy != UINT_MAX);
 }
 
 static int
-default_window_size_skip_client (struct client *loop, int type,
+default_window_size_skip_client(struct client *loop, int type,
     __unused int current, struct session *s, struct window *w)
 {
 	/*
@@ -221,23 +237,25 @@ default_window_size(struct client *c, struct session *s, struct window *w,
 			*sy = c->tty.sy - status_line_size(c);
 			*xpixel = c->tty.xpixel;
 			*ypixel = c->tty.ypixel;
+			log_debug("%s: using %ux%u from %s", __func__, *sx, *sy,
+			    c->name);
 			goto done;
 		}
-		if (w == NULL)
-			type = WINDOW_SIZE_MANUAL;
 	}
 
 	/*
 	 * Look for a client to base the size on. If none exists (or the type
 	 * is manual), use the default-size option.
 	 */
-	if (!clients_calculate_size(type, 0, s, w,
+	if (!clients_calculate_size(type, 0, c, s, w,
 	    default_window_size_skip_client, sx, sy, xpixel, ypixel)) {
 		value = options_get_string(s->options, "default-size");
 		if (sscanf(value, "%ux%u", sx, sy) != 2) {
 			*sx = 80;
 			*sy = 24;
 		}
+		log_debug("%s: using %ux%u from default-size", __func__, *sx,
+		    *sy);
 	}
 
 done:
@@ -250,6 +268,7 @@ done:
 		*sy = WINDOW_MINIMUM;
 	if (*sy > WINDOW_MAXIMUM)
 		*sy = WINDOW_MAXIMUM;
+	log_debug("%s: resulting size is %ux%u", __func__, *sx, *sy);
 }
 
 static int
@@ -289,7 +308,7 @@ recalculate_size(struct window *w, int now)
 	current = options_get_number(w->options, "aggressive-resize");
 
 	/* Look for a suitable client and get the new size. */
-	changed = clients_calculate_size(type, current, NULL, w,
+	changed = clients_calculate_size(type, current, NULL, NULL, w,
 	    recalculate_size_skip_client, &sx, &sy, &xpixel, &ypixel);
 
 	/*
