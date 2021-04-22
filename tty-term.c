@@ -251,6 +251,7 @@ static const struct tty_term_code_entry tty_term_codes[] = {
 	[TTYC_MS] = { TTYCODE_STRING, "Ms" },
 	[TTYC_OL] = { TTYCODE_STRING, "ol" },
 	[TTYC_OP] = { TTYCODE_STRING, "op" },
+	[TTYC_RECT] = { TTYCODE_STRING, "Rect" },
 	[TTYC_REV] = { TTYCODE_STRING, "rev" },
 	[TTYC_RGB] = { TTYCODE_FLAG, "RGB" },
 	[TTYC_RIN] = { TTYCODE_STRING, "rin" },
@@ -434,10 +435,11 @@ tty_term_apply_overrides(struct tty_term *term)
 	struct options_entry		*o;
 	struct options_array_item	*a;
 	union options_value		*ov;
-	const char			*s;
+	const char			*s, *acs;
 	size_t				 offset;
 	char				*first;
 
+	/* Update capabilities from the option. */
 	o = options_get_only(global_options, "terminal-overrides");
 	a = options_array_first(o);
 	while (a != NULL) {
@@ -450,6 +452,64 @@ tty_term_apply_overrides(struct tty_term *term)
 			tty_term_apply(term, s + offset, 0);
 		a = options_array_next(a);
 	}
+
+	/* Update the RGB flag if the terminal has RGB colours. */
+	if (tty_term_has(term, TTYC_SETRGBF) &&
+	    tty_term_has(term, TTYC_SETRGBB))
+		term->flags |= TERM_RGBCOLOURS;
+	else
+		term->flags &= ~TERM_RGBCOLOURS;
+	log_debug("RGBCOLOURS flag is %d", !!(term->flags & TERM_RGBCOLOURS));
+
+	/*
+	 * Set or clear the DECSLRM flag if the terminal has the margin
+	 * capabilities.
+	 */
+	if (tty_term_has(term, TTYC_CMG) && tty_term_has(term, TTYC_CLMG))
+		term->flags |= TERM_DECSLRM;
+	else
+		term->flags &= ~TERM_DECSLRM;
+	log_debug("DECSLRM flag is %d", !!(term->flags & TERM_DECSLRM));
+
+	/*
+	 * Set or clear the DECFRA flag if the terminal has the rectangle
+	 * capability.
+	 */
+	if (tty_term_has(term, TTYC_RECT))
+		term->flags |= TERM_DECFRA;
+	else
+		term->flags &= ~TERM_DECFRA;
+	log_debug("DECFRA flag is %d", !!(term->flags & TERM_DECFRA));
+
+	/*
+	 * Terminals without am (auto right margin) wrap at at $COLUMNS - 1
+	 * rather than $COLUMNS (the cursor can never be beyond $COLUMNS - 1).
+	 *
+	 * Terminals without xenl (eat newline glitch) ignore a newline beyond
+	 * the right edge of the terminal, but tmux doesn't care about this -
+	 * it always uses absolute only moves the cursor with a newline when
+	 * also sending a linefeed.
+	 *
+	 * This is irritating, most notably because it is painful to write to
+	 * the very bottom-right of the screen without scrolling.
+	 *
+	 * Flag the terminal here and apply some workarounds in other places to
+	 * do the best possible.
+	 */
+	if (!tty_term_flag(term, TTYC_AM))
+		term->flags |= TERM_NOAM;
+	else
+		term->flags &= ~TERM_NOAM;
+	log_debug("NOAM flag is %d", !!(term->flags & TERM_NOAM));
+
+	/* Generate ACS table. If none is present, use nearest ASCII. */
+	memset(term->acs, 0, sizeof term->acs);
+	if (tty_term_has(term, TTYC_ACSC))
+		acs = tty_term_string(term, TTYC_ACSC);
+	else
+		acs = "a#j+k+l+m+n+o-p-q-r-s-t+u+v+w+x|y<z>~.";
+	for (; acs[0] != '\0' && acs[1] != '\0'; acs += 2)
+		term->acs[(u_char) acs[0]][0] = acs[1];
 }
 
 struct tty_term *
@@ -463,7 +523,7 @@ tty_term_create(struct tty *tty, char *name, char **caps, u_int ncaps,
 	struct options_array_item		*a;
 	union options_value			*ov;
 	u_int					 i, j;
-	const char				*s, *acs, *value;
+	const char				*s, *value;
 	size_t					 offset, namelen;
 	char					*first;
 
@@ -566,40 +626,10 @@ tty_term_create(struct tty *tty, char *name, char **caps, u_int ncaps,
 	    (!tty_term_has(term, TTYC_SETRGBF) ||
 	    !tty_term_has(term, TTYC_SETRGBB)))
 		tty_add_features(feat, "RGB", ",");
-	if (tty_term_has(term, TTYC_SETRGBF) &&
-	    tty_term_has(term, TTYC_SETRGBB))
-		term->flags |= TERM_RGBCOLOURS;
 
 	/* Apply the features and overrides again. */
-	tty_apply_features(term, *feat);
-	tty_term_apply_overrides(term);
-
-	/*
-	 * Terminals without am (auto right margin) wrap at at $COLUMNS - 1
-	 * rather than $COLUMNS (the cursor can never be beyond $COLUMNS - 1).
-	 *
-	 * Terminals without xenl (eat newline glitch) ignore a newline beyond
-	 * the right edge of the terminal, but tmux doesn't care about this -
-	 * it always uses absolute only moves the cursor with a newline when
-	 * also sending a linefeed.
-	 *
-	 * This is irritating, most notably because it is painful to write to
-	 * the very bottom-right of the screen without scrolling.
-	 *
-	 * Flag the terminal here and apply some workarounds in other places to
-	 * do the best possible.
-	 */
-	if (!tty_term_flag(term, TTYC_AM))
-		term->flags |= TERM_NOAM;
-
-	/* Generate ACS table. If none is present, use nearest ASCII. */
-	memset(term->acs, 0, sizeof term->acs);
-	if (tty_term_has(term, TTYC_ACSC))
-		acs = tty_term_string(term, TTYC_ACSC);
-	else
-		acs = "a#j+k+l+m+n+o-p-q-r-s-t+u+v+w+x|y<z>~.";
-	for (; acs[0] != '\0' && acs[1] != '\0'; acs += 2)
-		term->acs[(u_char) acs[0]][0] = acs[1];
+	if (tty_apply_features(term, *feat))
+		tty_term_apply_overrides(term);
 
 	/* Log the capabilities. */
 	for (i = 0; i < tty_term_ncodes(); i++)

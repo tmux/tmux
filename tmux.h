@@ -452,6 +452,7 @@ enum tty_code_code {
 	TTYC_MS,
 	TTYC_OL,
 	TTYC_OP,
+	TTYC_RECT,
 	TTYC_REV,
 	TTYC_RGB,
 	TTYC_RI,
