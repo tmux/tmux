@@ -136,7 +136,7 @@ clients_calculate_size(int type, int current, struct client *c,
 	 * For latest, count the number of clients with this window. We only
 	 * care if there is more than one.
 	 */
-	if (type == WINDOW_SIZE_LATEST)
+	if (type == WINDOW_SIZE_LATEST && w != NULL)
 		n = clients_with_window(w);
 
 	/* Loop over the clients and work out the size. */
