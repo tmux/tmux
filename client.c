@@ -244,6 +244,8 @@ client_main(struct event_base *base, int argc, char **argv, uint64_t flags,
 	char			*line = NULL, **caps = NULL, *cause;
 	u_int			 ncaps = 0;
 
+	log_add_level();  
+
 	/* Ignore SIGCHLD now or daemon() in the server will leave a zombie. */
 	signal(SIGCHLD, SIG_IGN);
 
