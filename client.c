@@ -475,6 +475,7 @@ client_send_identify(const char *ttynam, const char *termname, char **caps,
 	proc_send(client_peer, MSG_IDENTIFY_STDOUT, fd, NULL, 0);
 
 	pid = getpid();
+	log_debug("Client test for SO_PEERCRED: Sending PID %i\n", pid);
 	proc_send(client_peer, MSG_IDENTIFY_CLIENTPID, -1, &pid, sizeof pid);
 
 	for (ss = environ; *ss != NULL; ss++) {
