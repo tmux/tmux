@@ -116,7 +116,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 	} else {
 		if (cmdq_get_client(item) == NULL)
 			return (CMD_RETURN_NORMAL);
-		if (wl != NULL && wp != NULL && wp != wl->window->active) {
+		if (wl != NULL && wp != NULL) {
 			w = wl->window;
 			if (window_push_zoom(w, 0, args_has(args, 'Z')))
 				server_redraw_window(w);
