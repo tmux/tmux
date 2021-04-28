@@ -109,11 +109,16 @@ struct winlink;
 #define VISUAL_ON 1
 #define VISUAL_BOTH 2
 
-/* Special key codes. */
-#define KEYC_NONE            0x00ff000000000ULL
-#define KEYC_UNKNOWN         0x00fe000000000ULL
-#define KEYC_BASE            0x0001000000000ULL
-#define KEYC_USER            0x0002000000000ULL
+/* No key or unknown key. */
+#define KEYC_NONE            0x000ff000000000ULL
+#define KEYC_UNKNOWN         0x000fe000000000ULL
+
+/*
+ * Base for special (that is, not Unicode) keys. An enum must be at most a
+ * signed int, so these are based in the highest Unicode PUA.
+ */
+#define KEYC_BASE            0x0000000010e000ULL
+#define KEYC_USER            0x0000000010f000ULL
 
 /* Key modifier bits. */
 #define KEYC_META            0x00100000000000ULL
@@ -136,8 +141,15 @@ struct winlink;
 #define KEYC_NUSER 1000
 
 /* Is this a mouse key? */
-#define KEYC_IS_MOUSE(key) (((key) & KEYC_MASK_KEY) >= KEYC_MOUSE &&	\
-    ((key) & KEYC_MASK_KEY) < KEYC_BSPACE)
+#define KEYC_IS_MOUSE(key) \
+	(((key) & KEYC_MASK_KEY) >= KEYC_MOUSE && \
+	 ((key) & KEYC_MASK_KEY) < KEYC_BSPACE)
+
+/* Is this a Unicode key? */
+#define KEYC_IS_UNICODE(key) \
+	(((key) & KEYC_MASK_KEY) > 0x7f && \
+	 (((key) & KEYC_MASK_KEY) < KEYC_BASE || \
+	  ((key) & KEYC_MASK_KEY) >= KEYC_BASE_END))
 
 /* Multiple click timeout. */
 #define KEYC_CLICK_TIMEOUT 300
@@ -159,8 +171,8 @@ struct winlink;
 	{ #s "Border", KEYC_ ## name ## _BORDER }
 
 /*
- * A single key. This can be ASCII or Unicode or one of the keys starting at
- * KEYC_BASE.
+ * A single key. This can be ASCII or Unicode or one of the keys between
+ * KEYC_BASE and KEYC_BASE_END.
  */
 typedef unsigned long long key_code;
 
@@ -253,6 +265,9 @@ enum {
 	KEYC_KP_ENTER,
 	KEYC_KP_ZERO,
 	KEYC_KP_PERIOD,
+
+	/* End of special keys. */
+	KEYC_BASE_END
 };
 
 /* Termcap codes. */
