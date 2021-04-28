@@ -1447,83 +1447,78 @@ server_client_resize_timer(__unused int fd, __unused short events, void *data)
 	evtimer_del(&wp->resize_timer);
 }
 
-/* Start the resize timer. */
-static void
-server_client_start_resize_timer(struct window_pane *wp)
-{
-	struct timeval	tv = { .tv_usec = 250000 };
-
-	log_debug("%s: %%%u resize timer started", __func__, wp->id);
-	evtimer_add(&wp->resize_timer, &tv);
-}
-
-/* Force timer event. */
-static void
-server_client_force_timer(__unused int fd, __unused short events, void *data)
-{
-	struct window_pane	*wp = data;
-
-	log_debug("%s: %%%u force timer expired", __func__, wp->id);
-	evtimer_del(&wp->force_timer);
-	wp->flags |= PANE_RESIZENOW;
-}
-
-/* Start the force timer. */
-static void
-server_client_start_force_timer(struct window_pane *wp)
-{
-	struct timeval	tv = { .tv_usec = 10000 };
-
-	log_debug("%s: %%%u force timer started", __func__, wp->id);
-	evtimer_add(&wp->force_timer, &tv);
-}
-
 /* Check if pane should be resized. */
 static void
 server_client_check_pane_resize(struct window_pane *wp)
 {
+	struct window_pane_resize	*r;
+	struct window_pane_resize	*r1;
+	struct window_pane_resize	*first;
+	struct window_pane_resize	*last;
+	struct timeval			 tv = { .tv_usec = 250000 };
+
+	if (TAILQ_EMPTY(&wp->resize_queue))
+		return;
+
 	if (!event_initialized(&wp->resize_timer))
 		evtimer_set(&wp->resize_timer, server_client_resize_timer, wp);
-	if (!event_initialized(&wp->force_timer))
-		evtimer_set(&wp->force_timer, server_client_force_timer, wp);
-
-	if (~wp->flags & PANE_RESIZE)
+	if (evtimer_pending(&wp->resize_timer, NULL))
 		return;
+
 	log_debug("%s: %%%u needs to be resized", __func__, wp->id);
-
-	if (evtimer_pending(&wp->resize_timer, NULL)) {
-		log_debug("%s: %%%u resize timer is running", __func__, wp->id);
-		return;
+	TAILQ_FOREACH(r, &wp->resize_queue, entry) {
+		log_debug("queued resize: %ux%u -> %ux%u", r->osx, r->osy,
+		    r->sx, r->sy);
 	}
-	server_client_start_resize_timer(wp);
 
-	if (~wp->flags & PANE_RESIZEFORCE) {
-		/*
-		 * The timer is not running and we don't need to force a
-		 * resize, so just resize immediately.
-		 */
-		log_debug("%s: resizing %%%u now", __func__, wp->id);
-		window_pane_send_resize(wp, 0);
-		wp->flags &= ~PANE_RESIZE;
+	/*
+	 * There are three cases that matter:
+	 *
+	 * - Only one resize. It can just be applied.
+	 *
+	 * - Multiple resizes and the ending size is different from the
+	 *   starting size. We can discard all resizes except the most recent.
+	 *
+	 * - Multiple resizes and the ending size is the same as the starting
+	 *   size. We must resize at least twice to force the application to
+	 *   redraw. So apply the first and leave the last on the queue for
+	 *   next time.
+	 */
+	first = TAILQ_FIRST(&wp->resize_queue);
+	last = TAILQ_LAST(&wp->resize_queue, window_pane_resizes);
+	if (first == last) {
+		/* Only one resize. */
+		window_pane_send_resize(wp, first->sx, first->sy);
+		TAILQ_REMOVE(&wp->resize_queue, first, entry);
+		free(first);
+	} else if (last->sx != first->osx || last->sy != first->osy) {
+		/* Multiple resizes ending up with a different size. */
+		window_pane_send_resize(wp, last->sx, last->sy);
+		TAILQ_FOREACH_SAFE(r, &wp->resize_queue, entry, r1) {
+			TAILQ_REMOVE(&wp->resize_queue, r, entry);
+			free(r);
+		}
 	} else {
 		/*
-		 * The timer is not running, but we need to force a resize. If
-		 * the force timer has expired, resize to the real size now.
-		 * Otherwise resize to the force size and start the timer.
+		 * Multiple resizes ending up with the same size. There will
+		 * not be more than one to the same size in succession so we
+		 * can just use the last-but-one on the list and leave the last
+		 * for later. We reduce the time until the next check to avoid
+		 * a long delay between the resizes.
 		 */
-		if (wp->flags & PANE_RESIZENOW) {
-			log_debug("%s: resizing %%%u after forced resize",
-			    __func__, wp->id);
-			window_pane_send_resize(wp, 0);
-			wp->flags &= ~(PANE_RESIZE|PANE_RESIZEFORCE|PANE_RESIZENOW);
-		} else if (!evtimer_pending(&wp->force_timer, NULL)) {
-			log_debug("%s: forcing resize of %%%u", __func__,
-			    wp->id);
-			window_pane_send_resize(wp, 1);
-			server_client_start_force_timer(wp);
+		r = TAILQ_PREV(last, window_pane_resizes, entry);
+		window_pane_send_resize(wp, r->sx, r->sy);
+		TAILQ_FOREACH_SAFE(r, &wp->resize_queue, entry, r1) {
+			if (r == last)
+				break;
+			TAILQ_REMOVE(&wp->resize_queue, r, entry);
+			free(r);
 		}
+		tv.tv_usec = 10000;
 	}
+	evtimer_add(&wp->resize_timer, &tv);
 }
+
 
 /* Check pane buffer size. */
 static void
