@@ -919,13 +919,25 @@ struct window_mode_entry {
 	struct screen			*screen;
 	u_int				 prefix;
 
-	TAILQ_ENTRY (window_mode_entry)	 entry;
+	TAILQ_ENTRY(window_mode_entry)	 entry;
 };
 
 /* Offsets into pane buffer. */
 struct window_pane_offset {
 	size_t	used;
 };
+
+/* Queued pane resize. */
+struct window_pane_resize {
+	u_int				sx;
+	u_int				sy;
+
+	u_int				osx;
+	u_int				osy;
+
+	TAILQ_ENTRY(window_pane_resize)	entry;
+};
+TAILQ_HEAD(window_pane_resizes, window_pane_resize);
 
 /* Child window structure. */
 struct window_pane {
@@ -951,8 +963,8 @@ struct window_pane {
 #define PANE_REDRAW 0x1
 #define PANE_DROP 0x2
 #define PANE_FOCUSED 0x4
-#define PANE_RESIZE 0x8
-#define PANE_RESIZEFORCE 0x10
+/* 0x8 unused */
+/* 0x10 unused */
 #define PANE_FOCUSPUSH 0x20
 #define PANE_INPUTOFF 0x40
 #define PANE_CHANGED 0x80
@@ -961,7 +973,6 @@ struct window_pane {
 #define PANE_STATUSDRAWN 0x400
 #define PANE_EMPTY 0x800
 #define PANE_STYLECHANGED 0x1000
-#define PANE_RESIZENOW 0x2000
 
 	int		 argc;
 	char	       **argv;
@@ -978,8 +989,8 @@ struct window_pane {
 	struct window_pane_offset offset;
 	size_t		 base_offset;
 
+	struct window_pane_resizes resize_queue;
 	struct event	 resize_timer;
-	struct event	 force_timer;
 
 	struct input_ctx *ictx;
 
@@ -997,7 +1008,7 @@ struct window_pane {
 	struct screen	 status_screen;
 	size_t		 status_size;
 
-	TAILQ_HEAD (, window_mode_entry) modes;
+	TAILQ_HEAD(, window_mode_entry) modes;
 
 	char		*searchstr;
 	int		 searchregex;
@@ -2756,7 +2767,7 @@ void		 window_redraw_active_switch(struct window *,
 struct window_pane *window_add_pane(struct window *, struct window_pane *,
 		     u_int, int);
 void		 window_resize(struct window *, u_int, u_int, int, int);
-void		 window_pane_send_resize(struct window_pane *, int);
+void		 window_pane_send_resize(struct window_pane *, u_int, u_int);
 int		 window_zoom(struct window_pane *);
 int		 window_unzoom(struct window *);
 int		 window_push_zoom(struct window *, int, int);
