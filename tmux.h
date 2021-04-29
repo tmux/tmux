@@ -34,6 +34,10 @@
 #include "compat.h"
 #include "xmalloc.h"
 
+#if defined (TMUX_SESSION_EXTRAS)
+#define TMUX_SESSION_EXTRAS_LOG "[session extras]"
+#endif
+
 extern char   **environ;
 
 struct args;
