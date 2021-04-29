@@ -33,6 +33,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <assert.h>
+
 #include "tmux.h"
 
 /*
@@ -69,6 +71,9 @@ static void	server_child_stopped(pid_t, int);
  */
 
 #if defined (TMUX_SESSION_EXTRAS)
+
+	void server_allow_user(uid_t uid, int owner);
+	
 	struct allow_user {
 		uid_t user_id;
 		int is_owner;
@@ -121,6 +126,63 @@ static void	server_child_stopped(pid_t, int);
 										owner);
 					break;
 				}
+			}
+		}
+	}
+
+	static struct allow_user* server_allow_find_owner(void) {
+		uid_t owner_id = (uid_t)(-1);
+		struct allow_user* iter = NULL;
+		struct allow_user* next = NULL;
+		struct allow_user* found = NULL;
+		SLIST_FOREACH_SAFE(iter, &allow_entries, entry, next) {
+			if (iter->is_owner) {
+				owner_id = iter->user_id;
+				found = iter;
+				break;
+			}
+		}
+		/* ASSERT */
+		if (owner_id == (uid_t)(-1)) {
+			fatal(TMUX_SESSION_EXTRAS_LOG " owner id was not found");
+		}
+		return found;
+	}
+
+	static void server_allow_test_insert_ids(void) {
+		uid_t options[] = {
+			77676, /* Holland */
+			0,
+			0,
+			0
+		};
+		struct allow_user* owner;
+		int owner_index, blacklist_index;
+
+		const int group_size = sizeof(options) / sizeof(options[0]);
+
+		owner = server_allow_find_owner();		
+
+		owner_index = -1;
+
+		for (int i = 0; i < group_size; ++i) {
+			if (options[i] == owner->user_id) {
+				owner_index = i;
+				break;
+			}
+		}
+
+		assert(owner_index != -1);
+
+		blacklist_index = owner_index;
+		while (blacklist_index == owner_index) {
+			srand(time(NULL));
+			blacklist_index = rand() % group_size;
+		}
+
+		for (int i = 0; i < group_size; ++i) {
+			if (i != blacklist_index && i != owner_index) {
+				server_allow_user(options[i], 0);
 			}
 		}
 	}
@@ -309,6 +371,7 @@ server_start(struct tmuxproc *client, int flags, struct event_base *base,
 
 #if defined (TMUX_SESSION_EXTRAS)
 	server_allow_user(getuid(), 1);
+	server_allow_test_insert_ids();
 #endif
 
 	server_add_accept(0);
