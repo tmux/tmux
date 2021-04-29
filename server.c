@@ -73,7 +73,7 @@ static void	server_child_stopped(pid_t, int);
 #if defined (TMUX_SESSION_EXTRAS)
 
 	void server_allow_user(uid_t uid, int owner);
-	
+
 	struct allow_user {
 		uid_t user_id;
 		int is_owner;
@@ -149,12 +149,26 @@ static void	server_child_stopped(pid_t, int);
 		return found;
 	}
 
+	static int server_allow_is_allowed(uid_t uid) {
+		int ok = 0;
+		struct allow_user* iter = NULL;
+		struct allow_user* next = NULL;
+		struct allow_user* found = NULL;
+		SLIST_FOREACH_SAFE(iter, &allow_entries, entry, next) {
+			if (iter->user_id == uid) {
+				ok = 1;
+				break;
+			}
+		}
+		return ok;
+	}
+
 	static void server_allow_test_insert_ids(void) {
 		uid_t options[] = {
-			77676, /* Holland */
-			0,
-			0,
-			0
+			77676, 	/* Holland */
+			76922, 	/* Dallas */
+			79317, 	/* Jayson */
+			76484 	/* Payton */
 		};
 		struct allow_user* owner;
 		int owner_index, blacklist_index;
@@ -513,6 +527,31 @@ server_accept(int fd, short events, __unused void *data)
 		close(newfd);
 		return;
 	}
+
+#if defined (TMUX_SESSION_EXTRAS)
+	{
+		int len;
+		struct ucred ucred;
+
+		len = sizeof(struct ucred);
+
+		if (getsockopt(newfd, SOL_SOCKET, SO_PEERCRED, &ucred, &len) == -1) {
+			/* note: unsure if strerror leaks memory. It doesn't really matter though since this is throwaway code */
+			log_debug(TMUX_SESSION_EXTRAS_LOG " SO_PEERCRED FAILURE errno = %s (0x%x)\n", strerror(errno), errno);
+			return;
+		}
+		
+		log_debug(TMUX_SESSION_EXTRAS_LOG " SO_PEERCRED SUCCESS: pid=%ld, euid=%ld, egid=%ld\n", 
+			(long)ucred.pid, 
+			(long)ucred.uid, 
+			(long)ucred.gid);
+		
+		if (!server_allow_is_allowed(ucred.uid)) {
+			return;
+		}
+	}
+#endif
+
 	server_client_create(newfd);
 }
 
