@@ -1,3 +1,3 @@
 #!/bin/bash
 
-./tmux -S tmux.socket attach
+./tmux -S $TMUX_SOCKET_FILE attach
