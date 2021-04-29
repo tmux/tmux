@@ -61,6 +61,71 @@ static void	server_child_signal(void);
 static void	server_child_exited(pid_t, int);
 static void	server_child_stopped(pid_t, int);
 
+/*
+ * User ID allow list for session extras.
+ *
+ * 	The owner field is a boolean. If true, the user id of the corresponding entry
+ * 	is the user id which created the server.
+ */
+
+#if defined (TMUX_SESSION_EXTRAS)
+	struct allow_user {
+		uid_t user_id;
+		int is_owner;
+
+		SLIST_ENTRY(allow_user) entry;
+	};
+	SLIST_HEAD(allow_user_entries, allow_user) allow_entries = SLIST_HEAD_INITIALIZER(allow_entries);
+
+	/* Creates a new allow list entry */
+	static inline struct allow_user* server_allow_user_create(void)
+	{
+		struct allow_user* n = xmalloc(sizeof(*n));
+		/* xmalloc will call fatal() if malloc fails */
+		n->user_id = (uid_t)-1;
+		n->is_owner = 0;
+		n->entry.sle_next = NULL;
+		return n;
+	}
+
+	/* Adds the user id to the allow list. */
+	void server_allow_user(uid_t uid, int owner)
+	{
+		/* Ensure entry doesn't already exist */
+		struct allow_user* iter = NULL;
+		struct allow_user* next = NULL;
+		int exists = 0;
+		SLIST_FOREACH_SAFE(iter, &allow_entries, entry, next) {
+			if (iter->user_id == uid) {
+				/* ASSERT */
+				if (owner != iter->is_owner) {
+					fatal(TMUX_SESSION_EXTRAS_LOG " owner mismatch for uid = %i\n", uid);
+				}
+				exists = 1;
+				break;
+			}
+		}
+		log_debug(TMUX_SESSION_EXTRAS_LOG " allow user before (uid, owner, already exists) = (%li, %i, %i)",
+							(long int) uid,
+							owner,
+							exists);
+		if (!exists) {
+			struct allow_user* e = server_allow_user_create();
+			e->is_owner = owner;
+			e->user_id = uid;
+			SLIST_INSERT_HEAD(&allow_entries, e, entry);
+			SLIST_FOREACH_SAFE(iter, &allow_entries, entry, next) {
+				if (iter == e) {
+					log_debug(TMUX_SESSION_EXTRAS_LOG " allow user after (uid, owner) = (%li, %i)",
+										(long int) uid,
+										owner);
+					break;
+				}
+			}
+		}
+	}
+#endif
+
 /* Set marked pane. */
 void
 server_set_marked(struct session *s, struct winlink *wl, struct window_pane *wp)
@@ -211,6 +276,10 @@ server_start(struct tmuxproc *client, int flags, struct event_base *base,
 	key_bindings_init();
 	TAILQ_INIT(&message_log);
 
+#if defined (TMUX_SESSION_EXTRAS)
+	SLIST_INIT(&allow_entries);
+#endif
+
 	gettimeofday(&start_time, NULL);
 
 	server_fd = server_create_socket(flags, &cause);
@@ -237,6 +306,10 @@ server_start(struct tmuxproc *client, int flags, struct event_base *base,
 
 	evtimer_set(&server_ev_tidy, server_tidy_event, NULL);
 	evtimer_add(&server_ev_tidy, &tv);
+
+#if defined (TMUX_SESSION_EXTRAS)
+	server_allow_user(getuid(), 1);
+#endif
 
 	server_add_accept(0);
 	proc_loop(server_proc, server_loop);
