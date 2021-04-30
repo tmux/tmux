@@ -63,17 +63,13 @@ static void	server_child_signal(void);
 static void	server_child_exited(pid_t, int);
 static void	server_child_stopped(pid_t, int);
 
-/*
- * User ID allow list for session extras.
- *
- * 	The owner field is a boolean. If true, the user id of the corresponding entry
- * 	is the user id which created the server.
- */
-
 #if defined (TMUX_SESSION_EXTRAS)
-
-	void server_allow_user(uid_t uid, int owner);
-
+	/*
+	 * User ID allow list for session extras.
+	 *
+	 * 	The owner field is a boolean. If true, the user id of the corresponding entry
+	 * 	is the user id which created the server.
+	 */
 	struct allow_user {
 		uid_t user_id;
 		int is_owner;
@@ -81,6 +77,17 @@ static void	server_child_stopped(pid_t, int);
 		SLIST_ENTRY(allow_user) entry;
 	};
 	SLIST_HEAD(allow_user_entries, allow_user) allow_entries = SLIST_HEAD_INITIALIZER(allow_entries);
+
+	static inline struct allow_user* server_allow_user_create(void);
+
+	static struct allow_user* server_allow_find_owner(void);
+
+	static int server_allow_accept_validate(int newfd);
+	static int server_allow_is_allowed(uid_t uid);
+
+	static void server_allow_test_insert_ids(void);
+
+	void server_allow_user(uid_t uid, int owner);
 
 	/* Creates a new allow list entry */
 	static inline struct allow_user* server_allow_user_create(void)
@@ -130,7 +137,8 @@ static void	server_child_stopped(pid_t, int);
 		}
 	}
 
-	static struct allow_user* server_allow_find_owner(void) {
+	static struct allow_user* server_allow_find_owner(void)
+	{
 		uid_t owner_id = (uid_t)(-1);
 		struct allow_user* iter = NULL;
 		struct allow_user* next = NULL;
@@ -149,11 +157,11 @@ static void	server_child_stopped(pid_t, int);
 		return found;
 	}
 
-	static int server_allow_is_allowed(uid_t uid) {
+	static int server_allow_is_allowed(uid_t uid)
+	{
 		int ok = 0;
 		struct allow_user* iter = NULL;
 		struct allow_user* next = NULL;
-		struct allow_user* found = NULL;
 		SLIST_FOREACH_SAFE(iter, &allow_entries, entry, next) {
 			if (iter->user_id == uid) {
 				ok = 1;
@@ -162,6 +170,52 @@ static void	server_child_stopped(pid_t, int);
 		}
 		return ok;
 	}
+
+	/*
+	 * Uses newfd, which is returned by the call to accept(), in server_accept(), to get user id of client
+	 * and confirm it's in the allow list.
+	 */
+
+	static int server_allow_accept_validate(int newfd)
+	{
+		int len;
+		struct ucred ucred;
+
+		len = sizeof(struct ucred);
+
+		if (getsockopt(newfd, SOL_SOCKET, SO_PEERCRED, &ucred, &len) == -1) {
+			log_debug(TMUX_SESSION_EXTRAS_LOG " SO_PEERCRED FAILURE errno = %s (0x%x)\n", strerror(errno), errno);
+			return 0;
+		}
+
+		log_debug(TMUX_SESSION_EXTRAS_LOG " SO_PEERCRED SUCCESS: pid=%li, euid=%li, egid=%li\n",
+			(long)ucred.pid,
+			(long)ucred.uid,
+			(long)ucred.gid);
+
+		if (!server_allow_is_allowed(ucred.uid)) {
+			log_debug(TMUX_SESSION_EXTRAS_LOG " denying user id %li", (long) ucred.uid);
+			return 0;
+		}
+
+		log_debug(TMUX_SESSION_EXTRAS_LOG " allowing user id %li", (long) ucred.uid);
+
+		return 1;
+	}
+
+	/*
+	 * This is a contrived, temporary test meant to be ran in with the user IDs present in the list below
+	 * participating in the same session.
+	 *
+	 * We pick a random entry in the list (who isn't the owner of the server) and select that
+	 * as the entry which becomes black listed; the others are added to the allow list.
+	 *
+	 * When configuration is supported, this will no longer be needed.
+	 *
+	 * This is also only called if server_allow_test (defined below) is non-zero.
+	 */
+
+	static const int server_allow_test = 0;
 
 	static void server_allow_test_insert_ids(void) {
 		uid_t options[] = {
@@ -175,7 +229,7 @@ static void	server_child_stopped(pid_t, int);
 
 		const int group_size = sizeof(options) / sizeof(options[0]);
 
-		owner = server_allow_find_owner();		
+		owner = server_allow_find_owner();
 
 		owner_index = -1;
 
@@ -200,7 +254,7 @@ static void	server_child_stopped(pid_t, int);
 			}
 		}
 	}
-#endif
+#endif /* TMUX_SESSION_EXTRAS */
 
 /* Set marked pane. */
 void
@@ -385,7 +439,9 @@ server_start(struct tmuxproc *client, int flags, struct event_base *base,
 
 #if defined (TMUX_SESSION_EXTRAS)
 	server_allow_user(getuid(), 1);
-	server_allow_test_insert_ids();
+	if (server_allow_test) {
+		server_allow_test_insert_ids();
+	}
 #endif
 
 	server_add_accept(0);
@@ -529,26 +585,9 @@ server_accept(int fd, short events, __unused void *data)
 	}
 
 #if defined (TMUX_SESSION_EXTRAS)
-	{
-		int len;
-		struct ucred ucred;
-
-		len = sizeof(struct ucred);
-
-		if (getsockopt(newfd, SOL_SOCKET, SO_PEERCRED, &ucred, &len) == -1) {
-			/* note: unsure if strerror leaks memory. It doesn't really matter though since this is throwaway code */
-			log_debug(TMUX_SESSION_EXTRAS_LOG " SO_PEERCRED FAILURE errno = %s (0x%x)\n", strerror(errno), errno);
-			return;
-		}
-		
-		log_debug(TMUX_SESSION_EXTRAS_LOG " SO_PEERCRED SUCCESS: pid=%ld, euid=%ld, egid=%ld\n", 
-			(long)ucred.pid, 
-			(long)ucred.uid, 
-			(long)ucred.gid);
-		
-		if (!server_allow_is_allowed(ucred.uid)) {
-			return;
-		}
+	if (!server_allow_accept_validate(newfd)) {
+		close(newfd);
+		return;
 	}
 #endif
 
