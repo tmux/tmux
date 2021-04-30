@@ -2191,41 +2191,6 @@ error:
 	c->flags |= CLIENT_EXIT;
 }
 
-static void __test_pid(struct client* c) 
-{
-  /* tmuxpeer struct is defined in a separate module; the type is meant to be opaque */
-	struct peertype {
-		struct tmuxproc *parent;
-
-		struct imsgbuf ibuf;
-		struct event event;
-
-		int flags;
-#define PEER_BAD 0x1
-
-		void (*dispatchcb)(struct imsg *, void *);
-		void *arg;
-
-		TAILQ_ENTRY(tmuxpeer)
-		entry;
-	};
-
-	struct peertype *peer = (struct peertype *)c->peer;
-
-	int len;
-	struct ucred ucred;
-
-	len = sizeof(struct ucred);
-
-	if (getsockopt(peer->ibuf.fd, SOL_SOCKET, SO_PEERCRED, &ucred, &len) == -1) {
-		/* note: unsure if strerror leaks memory. It doesn't really matter though since this is throwaway code */
-		log_debug("SO_PEERCRED FAILURE for pid=%ld. errno = %s (0x%x)\n", c->pid, strerror(errno), errno);
-	}
-	else {
-		log_debug("SO_PEERCRED SUCCESS: c->pid=%ld, pid=%ld, euid=%ld, egid=%ld\n", (long)c->pid, (long)ucred.pid, (long)ucred.uid, (long)ucred.gid);
-	}
-}
-
 /* Handle identify message. */
 static void
 server_client_dispatch_identify(struct client *c, struct imsg *imsg)
