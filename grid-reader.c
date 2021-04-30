@@ -153,6 +153,27 @@ grid_reader_cursor_end_of_line(struct grid_reader *gr, int wrap, int all)
 		gr->cx = grid_reader_line_length(gr);
 }
 
+/* Handle line wrapping while moving the cursor. */
+static int
+grid_reader_handle_wrap(struct grid_reader *gr, u_int *xx, u_int *yy)
+{
+	/* Make sure the cursor lies within the grid reader's bounding area,
+	 * wrapping to the next line as necessary.
+	 * Return zero iff the cursor would wrap past the bottom of the grid. */
+	while (gr->cx > *xx) {
+		if (gr->cy == *yy)
+			return 0;
+		grid_reader_cursor_start_of_line(gr, 0);
+		grid_reader_cursor_down(gr);
+
+		if (grid_get_line(gr->gd, gr->cy)->flags & GRID_LINE_WRAPPED)
+			*xx = gr->gd->sx - 1;
+		else
+			*xx = grid_reader_line_length(gr);
+	}
+	return 1;
+}
+
 /* Check if character under cursor is in set. */
 int
 grid_reader_in_set(struct grid_reader *gr, const char *set)
@@ -167,10 +188,10 @@ grid_reader_in_set(struct grid_reader *gr, const char *set)
 
 /* Move cursor to the start of the next word. */
 void
-grid_reader_cursor_next_word(struct grid_reader *gr, const char *separators)
+grid_reader_cursor_next_word(struct grid_reader *gr, const char *skips,
+    const char *symbols)
 {
 	u_int	xx, yy;
-	int expected = 0;
 
 	/* Do not break up wrapped words. */
 	if (grid_get_line(gr->gd, gr->cy)->flags & GRID_LINE_WRAPPED)
@@ -180,41 +201,46 @@ grid_reader_cursor_next_word(struct grid_reader *gr, const char *separators)
 	yy = gr->gd->hsize + gr->gd->sy - 1;
 
 	/*
-	 * If we started inside a word, skip over word characters. Then skip
-	 * over separators till the next word.
+	 * In Emacs mode, skips is the set of word-separators,
+	 * and symbols should be empty.
+	 * In Vi mode, skips is the set of vi-word-whitespace characers,
+	 * and symbols is the set of vi-word-symbols.
+	 * When navigating via spaces (e.g. next-space),
+	 * symbols should be empty in both modes.
 	 *
-	 * expected is initially set to 0 for the former and then 1 for the
-	 * latter. It is finally set to 0 when the beginning of the next word is
-	 * found.
+	 * If we started on a symbol, skip over subsequent symbols.
+	 * Otherwise, if we started on a non-skip character,
+	 * skip over subsequent characters that are neither skips nor symbols.
+	 * Then, skip over skip characters (if any)
+	 * until the next symbol or otherwise non-skip character.
 	 */
-	do {
-		while (gr->cx > xx ||
-		    grid_reader_in_set(gr, separators) == expected) {
-			/* Move down if we are past the end of the line. */
-			if (gr->cx > xx) {
-				if (gr->cy == yy)
-					return;
-				grid_reader_cursor_start_of_line(gr, 0);
-				grid_reader_cursor_down(gr);
 
-				if (grid_get_line(gr->gd, gr->cy)->flags &
-				    GRID_LINE_WRAPPED)
-					xx = gr->gd->sx - 1;
-				else
-					xx = grid_reader_line_length(gr);
-			} else
-				gr->cx++;
-		}
-		expected = !expected;
-	} while (expected == 1);
+	if (!grid_reader_handle_wrap(gr, &xx, &yy))
+		return;
+	if (grid_reader_in_set(gr, symbols)) {
+		do
+			gr->cx++;
+		while (grid_reader_handle_wrap(gr, &xx, &yy)
+		    && grid_reader_in_set(gr, symbols));
+	} else if (!grid_reader_in_set(gr, skips)) {
+		do
+			gr->cx++;
+		while (grid_reader_handle_wrap(gr, &xx, &yy)
+		    && !(grid_reader_in_set(gr, symbols)
+		        || grid_reader_in_set(gr, skips)));
+	}
+	while (grid_reader_handle_wrap(gr, &xx, &yy)
+	    && grid_reader_in_set(gr, skips)
+	    && !grid_reader_in_set(gr, symbols))
+		gr->cx++;
 }
 
 /* Move cursor to the end of the next word. */
 void
-grid_reader_cursor_next_word_end(struct grid_reader *gr, const char *separators)
+grid_reader_cursor_next_word_end(struct grid_reader *gr, const char *skips,
+	const char *symbols)
 {
 	u_int	xx, yy;
-	int	expected = 1;
 
 	/* Do not break up wrapped words. */
 	if (grid_get_line(gr->gd, gr->cy)->flags & GRID_LINE_WRAPPED)
@@ -224,49 +250,61 @@ grid_reader_cursor_next_word_end(struct grid_reader *gr, const char *separators)
 	yy = gr->gd->hsize + gr->gd->sy - 1;
 
 	/*
-	 * If we started on a separator, skip over separators. Then skip over
-	 * word characters till the next separator.
+	 * In Emacs mode, skips is the set of word-separators,
+	 * and symbols should be empty.
+	 * In Vi mode, skips is the set of vi-word-whitespace characers,
+	 * and symbols is the set of vi-word-symbols.
+	 * When navigating via spaces (e.g. next-space),
+	 * symbols should be empty in both modes.
 	 *
-	 * expected is initially set to 1 for the former and then 1 for the
-	 * latter. It is finally set to 1 when the end of the next word is
-	 * found.
+	 * If we started on a skip character that is not included in symbols,
+	 * move until reaching the first symbol or otherwise non-skip character.
+	 * If that character is a symbol, treat subsequent symbols as a word,
+	 * and continue moving until the first non-symbol.
+	 * Otherwise, continue moving until the first symbol or skip character.
 	 */
-	do {
-		while (gr->cx > xx ||
-		    grid_reader_in_set(gr, separators) == expected) {
-			/* Move down if we are past the end of the line. */
-			if (gr->cx > xx) {
-				if (gr->cy == yy)
-					return;
-				grid_reader_cursor_start_of_line(gr, 0);
-				grid_reader_cursor_down(gr);
 
-				if (grid_get_line(gr->gd, gr->cy)->flags &
-				    GRID_LINE_WRAPPED)
-					xx = gr->gd->sx - 1;
-				else
-					xx = grid_reader_line_length(gr);
-			} else
+	while (grid_reader_handle_wrap(gr, &xx, &yy)) {
+		if (grid_reader_in_set(gr, symbols)) {
+			do
 				gr->cx++;
+			while (grid_reader_handle_wrap(gr, &xx, &yy)
+			    && grid_reader_in_set(gr, symbols));
+			return;
+		} else if (grid_reader_in_set(gr, skips))
+			gr->cx++;
+		else {
+			do
+				gr->cx++;
+			while (grid_reader_handle_wrap(gr, &xx, &yy)
+			    && !(grid_reader_in_set(gr, symbols)
+			        || grid_reader_in_set(gr, skips)));
+			return;
 		}
-		expected = !expected;
-	} while (expected == 0);
+	}
 }
 
 /* Move to the previous place where a word begins. */
 void
-grid_reader_cursor_previous_word(struct grid_reader *gr, const char *separators,
-    int already)
+grid_reader_cursor_previous_word(struct grid_reader *gr, const char *skips,
+    const char *symbols, int already, int stop_at_eol)
 {
-	int	oldx, oldy, r;
+	int	oldx, oldy, at_eol, word_is_symbols = 0;
 
 	/* Move back to the previous word character. */
-	if (already || grid_reader_in_set(gr, separators)) {
+	if (already
+	    || (grid_reader_in_set(gr, skips)
+	            && !grid_reader_in_set(gr, symbols))) {
 		for (;;) {
 			if (gr->cx > 0) {
 				gr->cx--;
-				if (!grid_reader_in_set(gr, separators))
+				if (grid_reader_in_set(gr, symbols)) {
+					word_is_symbols = 1;
 					break;
+				}
+				if (!grid_reader_in_set(gr, skips)) {
+					break;
+				}
 			} else {
 				if (gr->cy == 0)
 					return;
@@ -274,16 +312,19 @@ grid_reader_cursor_previous_word(struct grid_reader *gr, const char *separators,
 				grid_reader_cursor_end_of_line(gr, 0, 0);
 
 				/* Stop if separator at EOL. */
-				if (gr->cx > 0) {
+				if (stop_at_eol && gr->cx > 0) {
 					oldx = gr->cx;
 					gr->cx--;
-					r = grid_reader_in_set(gr, separators);
+					at_eol = grid_reader_in_set(gr, skips)
+					    && !grid_reader_in_set(gr, symbols);
 					gr->cx = oldx;
-					if (r)
+					if (at_eol)
 						break;
 				}
 			}
 		}
+	} else if (grid_reader_in_set(gr, symbols)) {
+		word_is_symbols = 1;
 	}
 
 	/* Move back to the beginning of this word. */
@@ -300,7 +341,10 @@ grid_reader_cursor_previous_word(struct grid_reader *gr, const char *separators,
 		}
 		if (gr->cx > 0)
 			gr->cx--;
-	} while (!grid_reader_in_set(gr, separators));
+	} while (word_is_symbols
+	    ? grid_reader_in_set(gr, symbols)
+	    : !(grid_reader_in_set(gr,skips)
+		    || grid_reader_in_set(gr, symbols)));
 	gr->cx = oldx;
 	gr->cy = oldy;
 }

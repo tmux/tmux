@@ -2625,10 +2625,12 @@ void	 grid_reader_cursor_down(struct grid_reader *);
 void	 grid_reader_cursor_up(struct grid_reader *);
 void	 grid_reader_cursor_start_of_line(struct grid_reader *, int);
 void	 grid_reader_cursor_end_of_line(struct grid_reader *, int, int);
-void	 grid_reader_cursor_next_word(struct grid_reader *, const char *);
-void	 grid_reader_cursor_next_word_end(struct grid_reader *, const char *);
+void	 grid_reader_cursor_next_word(struct grid_reader *, const char *,
+	     const char *);
+void	 grid_reader_cursor_next_word_end(struct grid_reader *, const char *,
+	     const char *);
 void	 grid_reader_cursor_previous_word(struct grid_reader *, const char *,
-	     int);
+	     const char *, int, int);
 int	 grid_reader_cursor_jump(struct grid_reader *,
 	     const struct utf8_data *);
 int	 grid_reader_cursor_jump_back(struct grid_reader *,

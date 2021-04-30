@@ -746,7 +746,23 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SESSION,
 	  .default_str = " ",
-	  .text = "Characters considered to separate words."
+	  .text = "Characters considered to separate words in Emacs mode."
+	},
+
+	{ .name = "vi-word-whitespace",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_str = " \t",
+	  .text = "Characters considered whitespace "
+		  "for word navigation in Vi mode."
+	},
+
+	{ .name = "vi-word-symbols",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_str = "+-*/^=()[]{}@#$%&:;<>.,/\\|?~`'\"",
+	  .text = "Characters considered symbols "
+		  "for word navigation in Vi mode."
 	},
 
 	/* Window options. */
