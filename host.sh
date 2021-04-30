@@ -1,7 +1,3 @@
 #!/bin/bash
 
-rm -f $TMUX_SOCKET_FILE
-touch $TMUX_SOCKET_FILE
-chmod 666 $TMUX_SOCKET_FILE
-
 ./tmux -S $TMUX_SOCKET_FILE
