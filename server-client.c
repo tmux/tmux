@@ -1691,7 +1691,10 @@ server_client_reset_state(struct client *c)
 		s = wp->screen;
 	if (s != NULL)
 		mode = s->mode;
-	log_debug("%s: client %s mode %x", __func__, c->name, mode);
+	if (log_get_level() != 0) {
+		log_debug("%s: client %s mode %s", __func__, c->name,
+		    screen_mode_to_string(mode));
+	}
 
 	/* Reset region and margin. */
 	tty_region_off(tty);
