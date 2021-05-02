@@ -697,7 +697,7 @@ tty_term_read_list(const char *name, int fd, char ***caps, u_int *ncaps,
 		ent = &tty_term_codes[i];
 		switch (ent->type) {
 		case TTYCODE_NONE:
-			break;
+			fatalx("invalid code in tty_term_codes");
 		case TTYCODE_STRING:
 			s = tigetstr((char *)ent->name);
 			if (s == NULL || s == (char *)-1)
