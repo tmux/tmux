@@ -78,7 +78,7 @@ $TMUX send-keys -X next-word
 $TMUX send-keys -X next-word-end
 $TMUX send-keys -X next-word-end
 $TMUX send-keys -X copy-selection
-[ "$($TMUX show-buffer)" = "... @nd then \$ymbols[]{}" ] || exit 1
+[ "$($TMUX show-buffer)" = "... @nd then \$ym_bols[]{}" ] || exit 1
 
 # Test that `previous-word` treats other symbols as letters
 # and `next-word` wraps around for indented symbols
@@ -86,7 +86,7 @@ $TMUX send-keys -X previous-word
 $TMUX send-keys -X begin-selection
 $TMUX send-keys -X next-word
 $TMUX send-keys -X copy-selection
-[ "$($TMUX show-buffer)" = "$(echo -e "\$ymbols[]{}\n ")" ] || exit 1
+[ "$($TMUX show-buffer)" = "$(echo -e "\$ym_bols[]{}\n ")" ] || exit 1
 
 # Test that `next-word-end` treats digits as letters
 $TMUX send-keys -X next-word-end

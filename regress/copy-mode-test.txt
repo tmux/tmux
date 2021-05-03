@@ -1,5 +1,5 @@
 A line of words
 	Indented line
 Another line...
-... @nd then $ymbols[]{}
+... @nd then $ym_bols[]{}
  ?? 500xyz
