@@ -1,6 +1,7 @@
 CHANGES FROM 3.2 TO 3.3
 
-XXX
+* Add 2 new session options to control navigation by word boundaries
+  when using Vi-style copy mode.
 
 CHANGES FROM 3.1c TO 3.2
 

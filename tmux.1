@@ -1782,19 +1782,24 @@ commands) or when the cursor reaches the bottom (for scrolling commands).
 .Ql -no-clear
 variants do not clear the selection.
 .Pp
-The next and previous word keys use space and the
-.Ql - ,
-.Ql _
-and
-.Ql @
-characters as word delimiters by default, but this can be adjusted by
-setting the
+The next and previous word keys use space characters as word delimiters
+by default, but this can be adjusted by setting the
 .Em word-separators
-session option.
+session option (in Emacs mode).
+If using Vi mode,
+.Em word-separators
+is ignored, and word navigation is instead controlled by the session options
+.Em vi-word-whitespace ,
+which defines whitespace characters, and
+.Em vi-word-symbols ,
+which defines non-whitespace and non-letter characters.
+All other characters a considered letters,
+and if a letter in included in both the whitespace and symbols strings,
+it is considered a symbol rather than whitespace.
 Next word moves to the start of the next word, next word end to the end of the
 next word and previous word to the start of the previous word.
 The three next and previous space keys work similarly but use a space alone as
-the word separator.
+the word separator, no matter how the options are configured.
 .Pp
 The jump commands enable quick movement within a line.
 For instance, typing
@@ -3969,11 +3974,22 @@ is enabled, prints a message after the interval has expired on a given window
 instead of sending a bell.
 If set to both, a bell and a message are produced.
 .It Ic word-separators Ar string
-Sets the session's conception of what characters are considered word
-separators, for the purposes of the next and previous word commands in
-copy mode.
-The default is
-.Ql \ -_@ .
+In Emacs-style copy mode,
+sets the session's conception of what characters are considered word
+separators, for the purposes of the next and previous word commands.
+The default is space characters only.
+Ignored in Vi-style copy mode.
+.Pp
+.It Ic vi-word-whitespace Ar string
+.It Ic vi-word-symbols Ar string
+In Vi-style copy mode,
+sets the session's conception of what characters are considered whitespace or
+symbols, for the purposes of the next and previous word commands.
+If a letter is included in both options,
+it is considered a symbol and not whitespace.
+The default is space characters only, and
+.Ql +-*/^=()[]{}@#$%&:;<>.,/\\|?~`'\" , respectively.
+Ignored in Emacs-style copy mode.
 .El
 .Pp
 Available window options are:
