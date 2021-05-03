@@ -163,7 +163,8 @@ server_tidy_event(__unused int fd, __unused short events, __unused void *data)
     malloc_trim(0);
 #endif
 
-    log_debug("%s: took %llu milliseconds", __func__, get_timer() - t);
+    log_debug("%s: took %llu milliseconds", __func__,
+        (unsigned long long)(get_timer() - t));
     evtimer_add(&server_ev_tidy, &tv);
 }
 
