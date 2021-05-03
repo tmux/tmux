@@ -301,6 +301,15 @@ const struct options_table_entry options_table[] = {
 	  .text = "Maximum number of server messages to keep."
 	},
 
+	{ .name = "prompt-history-limit",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .minimum = 0,
+	  .maximum = INT_MAX,
+	  .default_num = 100,
+	  .text = "Maximum number of commands to keep in history."
+	},
+
 	{ .name = "set-clipboard",
 	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_SERVER,

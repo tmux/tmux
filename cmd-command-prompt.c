@@ -40,25 +40,26 @@ const struct cmd_entry cmd_command_prompt_entry = {
 	.name = "command-prompt",
 	.alias = NULL,
 
-	.args = { "1kiI:Np:Tt:W", 0, 1 },
-	.usage = "[-1kiNTW] [-I inputs] [-p prompts] " CMD_TARGET_CLIENT_USAGE " "
-		 "[template]",
+	.args = { "1kiI:Np:t:T:", 0, 1 },
+	.usage = "[-1kiN] [-I inputs] [-p prompts] " CMD_TARGET_CLIENT_USAGE
+		 " [-T type] [template]",
 
 	.flags = CMD_CLIENT_TFLAG,
 	.exec = cmd_command_prompt_exec
 };
 
 struct cmd_command_prompt_cdata {
-	int	 flags;
+	int		 flags;
+	enum prompt_type prompt_type;
 
-	char	*inputs;
-	char	*next_input;
+	char		*inputs;
+	char		*next_input;
 
-	char	*prompts;
-	char	*next_prompt;
+	char		*prompts;
+	char		*next_prompt;
 
-	char	*template;
-	int	 idx;
+	char		*template;
+	int	 	idx;
 };
 
 static enum cmd_retval
@@ -67,7 +68,7 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 	struct args			*args = cmd_get_args(self);
 	struct client			*tc = cmdq_get_target_client(item);
 	struct cmd_find_state		*target = cmdq_get_target(item);
-	const char			*inputs, *prompts;
+	const char			*inputs, *prompts, *type;
 	struct cmd_command_prompt_cdata	*cdata;
 	char				*prompt, *ptr, *input = NULL;
 	size_t				 n;
@@ -114,6 +115,16 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 		input = strsep(&cdata->next_input, ",");
 	}
 
+	/* Get prompt type. */
+	if ((type = args_get(args, 'T')) != NULL) {
+		cdata->prompt_type = status_prompt_type(type);
+		if (cdata->prompt_type == PROMPT_TYPE_INVALID) {
+			cmdq_error(item, "unknown type: %s", type);
+			return (CMD_RETURN_ERROR);
+		}
+	} else
+		cdata->prompt_type = PROMPT_TYPE_COMMAND;
+
 	if (args_has(args, '1'))
 		cdata->flags |= PROMPT_SINGLE;
 	else if (args_has(args, 'N'))
@@ -122,13 +133,9 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 		cdata->flags |= PROMPT_INCREMENTAL;
 	else if (args_has(args, 'k'))
 		cdata->flags |= PROMPT_KEY;
-	else if (args_has(args, 'W'))
-		cdata->flags |= PROMPT_WINDOW;
-	else if (args_has(args, 'T'))
-		cdata->flags |= PROMPT_TARGET;
 	status_prompt_set(tc, target, prompt, input,
 	    cmd_command_prompt_callback, cmd_command_prompt_free, cdata,
-	    cdata->flags);
+	    cdata->flags, cdata->prompt_type);
 	free(prompt);
 
 	return (CMD_RETURN_NORMAL);

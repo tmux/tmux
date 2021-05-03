@@ -1572,6 +1572,16 @@ struct status_line {
 	struct status_line_entry entries[STATUS_LINES_LIMIT];
 };
 
+/* Prompt type. */
+#define PROMPT_NTYPES 4
+enum prompt_type {
+	PROMPT_TYPE_COMMAND,
+	PROMPT_TYPE_SEARCH,
+	PROMPT_TYPE_TARGET,
+	PROMPT_TYPE_WINDOW_TARGET,
+	PROMPT_TYPE_INVALID = 0xff
+};
+
 /* File in client. */
 typedef void (*client_file_cb) (struct client *, const char *, int, int,
     struct evbuffer *, void *);
@@ -1735,18 +1745,16 @@ struct client {
 	prompt_input_cb	 prompt_inputcb;
 	prompt_free_cb	 prompt_freecb;
 	void		*prompt_data;
-	u_int		 prompt_hindex;
+	u_int		 prompt_hindex[PROMPT_NTYPES];
 	enum { PROMPT_ENTRY, PROMPT_COMMAND } prompt_mode;
 	struct utf8_data *prompt_saved;
-
 #define PROMPT_SINGLE 0x1
 #define PROMPT_NUMERIC 0x2
 #define PROMPT_INCREMENTAL 0x4
 #define PROMPT_NOFORMAT 0x8
 #define PROMPT_KEY 0x10
-#define PROMPT_WINDOW 0x20
-#define PROMPT_TARGET 0x40
 	int		 prompt_flags;
+	enum prompt_type prompt_type;
 
 	struct session	*session;
 	struct session	*last_session;
@@ -2518,6 +2526,8 @@ void	 server_check_unattached(void);
 void	 server_unzoom_window(struct window *);
 
 /* status.c */
+extern char	**status_prompt_hlist[];
+extern u_int	  status_prompt_hsize[];
 void	 status_timer_start(struct client *);
 void	 status_timer_start_all(void);
 void	 status_update_cache(struct session *);
@@ -2532,13 +2542,15 @@ void	 status_message_clear(struct client *);
 int	 status_message_redraw(struct client *);
 void	 status_prompt_set(struct client *, struct cmd_find_state *,
 	     const char *, const char *, prompt_input_cb, prompt_free_cb,
-	     void *, int);
+	     void *, int, enum prompt_type);
 void	 status_prompt_clear(struct client *);
 int	 status_prompt_redraw(struct client *);
 int	 status_prompt_key(struct client *, key_code);
 void	 status_prompt_update(struct client *, const char *, const char *);
 void	 status_prompt_load_history(void);
 void	 status_prompt_save_history(void);
+const char *status_prompt_type_string(u_int);
+enum prompt_type status_prompt_type(const char *type);
 
 /* resize.c */
 void	 resize_window(struct window *, u_int, u_int, int, int);
