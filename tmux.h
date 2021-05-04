@@ -590,6 +590,9 @@ struct msg_write_close {
 	int	stream;
 };
 
+/* Character classes. */
+#define WHITESPACE " "
+
 /* Mode keys. */
 #define MODEKEY_EMACS 0
 #define MODEKEY_VI 1
@@ -2625,12 +2628,10 @@ void	 grid_reader_cursor_down(struct grid_reader *);
 void	 grid_reader_cursor_up(struct grid_reader *);
 void	 grid_reader_cursor_start_of_line(struct grid_reader *, int);
 void	 grid_reader_cursor_end_of_line(struct grid_reader *, int, int);
-void	 grid_reader_cursor_next_word(struct grid_reader *, const char *,
-	     const char *);
-void	 grid_reader_cursor_next_word_end(struct grid_reader *, const char *,
-	     const char *);
+void	 grid_reader_cursor_next_word(struct grid_reader *, const char *);
+void	 grid_reader_cursor_next_word_end(struct grid_reader *, const char *);
 void	 grid_reader_cursor_previous_word(struct grid_reader *, const char *,
-	     const char *, int, int);
+	     int, int);
 int	 grid_reader_cursor_jump(struct grid_reader *,
 	     const struct utf8_data *);
 int	 grid_reader_cursor_jump_back(struct grid_reader *,

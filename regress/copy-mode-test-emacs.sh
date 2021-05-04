@@ -13,6 +13,7 @@ $TMUX set -g window-size manual || exit 1
 
 # Enter copy mode and go to the first column of the first row.
 $TMUX set-window-option -g mode-keys emacs
+$TMUX set-window-option -g word-separators ""
 $TMUX copy-mode
 $TMUX send-keys -X history-top
 $TMUX send-keys -X start-of-line

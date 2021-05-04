@@ -17,6 +17,7 @@
  */
 
 #include "tmux.h"
+#include <stdbool.h>
 #include <string.h>
 
 /* Initialise virtual cursor. */
@@ -188,8 +189,7 @@ grid_reader_in_set(struct grid_reader *gr, const char *set)
 
 /* Move cursor to the start of the next word. */
 void
-grid_reader_cursor_next_word(struct grid_reader *gr, const char *skips,
-    const char *symbols)
+grid_reader_cursor_next_word(struct grid_reader *gr, const char *separators)
 {
 	u_int	xx, yy;
 
@@ -201,44 +201,42 @@ grid_reader_cursor_next_word(struct grid_reader *gr, const char *skips,
 	yy = gr->gd->hsize + gr->gd->sy - 1;
 
 	/*
-	 * In Emacs mode, skips is the set of word-separators,
-	 * and symbols should be empty.
-	 * In Vi mode, skips is the set of vi-word-whitespace characers,
-	 * and symbols is the set of vi-word-symbols.
-	 * When navigating via spaces (e.g. next-space),
-	 * symbols should be empty in both modes.
+	 * When navigating via spaces (e.g. next-space)
+	 * separators should be empty.
 	 *
-	 * If we started on a symbol, skip over subsequent symbols.
-	 * Otherwise, if we started on a non-skip character,
-	 * skip over subsequent characters that are neither skips nor symbols.
-	 * Then, skip over skip characters (if any)
-	 * until the next symbol or otherwise non-skip character.
+	 * If we started on a separator that is not whitespace,
+	 * skip over subsequent separators that are not whitespace.
+	 * Otherwise, if we started on a non-whitespace character, skip over
+	 * subsequent characters that are neither whitespace nor separators.
+	 * Then, skip over whitespace (if any)
+	 * until the next non-whitespace character.
 	 */
 
 	if (!grid_reader_handle_wrap(gr, &xx, &yy))
 		return;
-	if (grid_reader_in_set(gr, symbols)) {
-		do
-			gr->cx++;
-		while (grid_reader_handle_wrap(gr, &xx, &yy)
-		    && grid_reader_in_set(gr, symbols));
-	} else if (!grid_reader_in_set(gr, skips)) {
-		do
-			gr->cx++;
-		while (grid_reader_handle_wrap(gr, &xx, &yy)
-		    && !(grid_reader_in_set(gr, symbols)
-		        || grid_reader_in_set(gr, skips)));
+	if (!grid_reader_in_set(gr, WHITESPACE)) {
+		if (grid_reader_in_set(gr, separators)) {
+			do
+				gr->cx++;
+			while (grid_reader_handle_wrap(gr, &xx, &yy)
+			    && grid_reader_in_set(gr, separators)
+			    && !grid_reader_in_set(gr, WHITESPACE));
+		} else {
+			do
+				gr->cx++;
+			while (grid_reader_handle_wrap(gr, &xx, &yy)
+			    && !(grid_reader_in_set(gr, separators)
+			        || grid_reader_in_set(gr, WHITESPACE)));
+		}
 	}
 	while (grid_reader_handle_wrap(gr, &xx, &yy)
-	    && grid_reader_in_set(gr, skips)
-	    && !grid_reader_in_set(gr, symbols))
+	    && grid_reader_in_set(gr, WHITESPACE))
 		gr->cx++;
 }
 
 /* Move cursor to the end of the next word. */
 void
-grid_reader_cursor_next_word_end(struct grid_reader *gr, const char *skips,
-	const char *symbols)
+grid_reader_cursor_next_word_end(struct grid_reader *gr, const char *separators)
 {
 	u_int	xx, yy;
 
@@ -250,35 +248,32 @@ grid_reader_cursor_next_word_end(struct grid_reader *gr, const char *skips,
 	yy = gr->gd->hsize + gr->gd->sy - 1;
 
 	/*
-	 * In Emacs mode, skips is the set of word-separators,
-	 * and symbols should be empty.
-	 * In Vi mode, skips is the set of vi-word-whitespace characers,
-	 * and symbols is the set of vi-word-symbols.
 	 * When navigating via spaces (e.g. next-space),
-	 * symbols should be empty in both modes.
+	 * separators should be empty in both modes.
 	 *
-	 * If we started on a skip character that is not included in symbols,
-	 * move until reaching the first symbol or otherwise non-skip character.
-	 * If that character is a symbol, treat subsequent symbols as a word,
-	 * and continue moving until the first non-symbol.
-	 * Otherwise, continue moving until the first symbol or skip character.
+	 * If we started on a whitespace,
+	 * move until reaching the first non-whitespace character.
+	 * If that character is a separator, treat subsequent separators as a word,
+	 * and continue moving until the first non-separator.
+	 * Otherwise, continue moving until the first separator or whitespace.
 	 */
 
 	while (grid_reader_handle_wrap(gr, &xx, &yy)) {
-		if (grid_reader_in_set(gr, symbols)) {
-			do
-				gr->cx++;
-			while (grid_reader_handle_wrap(gr, &xx, &yy)
-			    && grid_reader_in_set(gr, symbols));
-			return;
-		} else if (grid_reader_in_set(gr, skips))
+		if (grid_reader_in_set(gr, WHITESPACE))
 			gr->cx++;
-		else {
+		else if (grid_reader_in_set(gr, separators)) {
 			do
 				gr->cx++;
 			while (grid_reader_handle_wrap(gr, &xx, &yy)
-			    && !(grid_reader_in_set(gr, symbols)
-			        || grid_reader_in_set(gr, skips)));
+			    && grid_reader_in_set(gr, separators)
+			    && !grid_reader_in_set(gr, WHITESPACE));
+			return;
+		} else {
+			do
+				gr->cx++;
+			while (grid_reader_handle_wrap(gr, &xx, &yy)
+			    && !(grid_reader_in_set(gr, WHITESPACE)
+			        || grid_reader_in_set(gr, separators)));
 			return;
 		}
 	}
@@ -286,23 +281,20 @@ grid_reader_cursor_next_word_end(struct grid_reader *gr, const char *skips,
 
 /* Move to the previous place where a word begins. */
 void
-grid_reader_cursor_previous_word(struct grid_reader *gr, const char *skips,
-    const char *symbols, int already, int stop_at_eol)
+grid_reader_cursor_previous_word(struct grid_reader *gr, const char *separators,
+    int already, int stop_at_eol)
 {
-	int	oldx, oldy, at_eol, word_is_symbols = 0;
+	int	oldx, oldy, at_eol;
+	bool word_is_letters;
 
 	/* Move back to the previous word character. */
-	if (already
-	    || (grid_reader_in_set(gr, skips)
-	            && !grid_reader_in_set(gr, symbols))) {
+	if (already || grid_reader_in_set(gr, WHITESPACE)) {
 		for (;;) {
 			if (gr->cx > 0) {
 				gr->cx--;
-				if (grid_reader_in_set(gr, symbols)) {
-					word_is_symbols = 1;
-					break;
-				}
-				if (!grid_reader_in_set(gr, skips)) {
+				if (!grid_reader_in_set(gr, WHITESPACE)) {
+					word_is_letters =
+					    !grid_reader_in_set(gr, separators);
 					break;
 				}
 			} else {
@@ -315,17 +307,18 @@ grid_reader_cursor_previous_word(struct grid_reader *gr, const char *skips,
 				if (stop_at_eol && gr->cx > 0) {
 					oldx = gr->cx;
 					gr->cx--;
-					at_eol = grid_reader_in_set(gr, skips)
-					    && !grid_reader_in_set(gr, symbols);
+					at_eol =
+					    grid_reader_in_set(gr, WHITESPACE);
 					gr->cx = oldx;
-					if (at_eol)
+					if (at_eol) {
+						word_is_letters = false;
 						break;
+					}
 				}
 			}
 		}
-	} else if (grid_reader_in_set(gr, symbols)) {
-		word_is_symbols = 1;
-	}
+	} else
+		word_is_letters = !grid_reader_in_set(gr, separators);
 
 	/* Move back to the beginning of this word. */
 	do {
@@ -341,10 +334,8 @@ grid_reader_cursor_previous_word(struct grid_reader *gr, const char *skips,
 		}
 		if (gr->cx > 0)
 			gr->cx--;
-	} while (word_is_symbols
-	    ? grid_reader_in_set(gr, symbols)
-	    : !(grid_reader_in_set(gr,skips)
-		    || grid_reader_in_set(gr, symbols)));
+	} while (!grid_reader_in_set(gr, WHITESPACE)
+	    && (word_is_letters != grid_reader_in_set(gr, separators)));
 	gr->cx = oldx;
 	gr->cy = oldy;
 }
