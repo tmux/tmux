@@ -1360,8 +1360,10 @@ append_key:
 		return (0);
 	if (key <= 0x7f)
 		utf8_set(&tmp, key);
-	else
+	else if (KEYC_IS_UNICODE(key))
 		utf8_to_data(key, &tmp);
+	else
+		return (0);
 
 	c->prompt_buffer = xreallocarray(c->prompt_buffer, size + 2,
 	    sizeof *c->prompt_buffer);
