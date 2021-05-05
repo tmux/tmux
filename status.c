@@ -22,6 +22,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -768,8 +769,10 @@ status_prompt_space(const struct utf8_data *ud)
 }
 
 /*
- * Translate key from emacs to vi. Return 0 to drop key, 1 to process the key
+ * Translate key from vi to emacs. Return 0 to drop key, 1 to process the key
  * as an emacs key; return 2 to append to the buffer.
+ *
+ * Uses the special flag KEYC_VI to indicate keys that cannot be translated.
  */
 static int
 status_prompt_translate_key(struct client *c, key_code key, key_code *new_key)
@@ -843,17 +846,25 @@ status_prompt_translate_key(struct client *c, key_code key, key_code *new_key)
 		*new_key = KEYC_BSPACE;
 		return (1);
 	case 'b':
-	case 'B':
 		*new_key = 'b'|KEYC_META;
+		return (1);
+	case 'B':
+		*new_key = 'B'|KEYC_VI;
 		return (1);
 	case 'd':
 		*new_key = '\025';
 		return (1);
 	case 'e':
+		*new_key = 'e'|KEYC_VI;
+		return (1);
 	case 'E':
+		*new_key = 'E'|KEYC_VI;
+		return (1);
 	case 'w':
-	case 'W':
 		*new_key = 'f'|KEYC_META;
+		return (1);
+	case 'W':
+		*new_key = 'W'|KEYC_VI;
 		return (1);
 	case 'p':
 		*new_key = '\031'; /* C-y */
@@ -1034,7 +1045,8 @@ status_prompt_key(struct client *c, key_code key)
 {
 	struct options		*oo = c->session->options;
 	char			*s, *cp, prefix = '=';
-	const char		*histstr, *ws = NULL, *keystring;
+	const char		*histstr, *separators = NULL, *keystring;
+	bool			 word_is_separators, next_word;
 	size_t			 size, idx;
 	struct utf8_data	 tmp;
 	int			 keys;
@@ -1140,20 +1152,24 @@ process_key:
 		}
 		break;
 	case '\027': /* C-w */
-		ws = options_get_string(oo, "word-separators");
+		separators = options_get_string(oo, "word-separators");
 		idx = c->prompt_index;
 
-		/* Find a non-separator. */
+		/* Find non-whitespace. */
 		while (idx != 0) {
 			idx--;
-			if (!status_prompt_in_list(ws, &c->prompt_buffer[idx]))
+			if (!status_prompt_space(&c->prompt_buffer[idx]))
 				break;
 		}
+		word_is_separators =
+		    status_prompt_in_list(separators, &c->prompt_buffer[idx]);
 
-		/* Find the separator at the beginning of the word. */
+		/* Find the character before the beginning of the word. */
 		while (idx != 0) {
 			idx--;
-			if (status_prompt_in_list(ws, &c->prompt_buffer[idx])) {
+			if (status_prompt_space(&c->prompt_buffer[idx])
+			    || word_is_separators != status_prompt_in_list(
+			        separators, &c->prompt_buffer[idx])) {
 				/* Go back to the word. */
 				idx++;
 				break;
@@ -1175,50 +1191,90 @@ process_key:
 		c->prompt_index = idx;
 
 		goto changed;
-	case 'f'|KEYC_META:
+	case 'E'|KEYC_VI:
+		next_word = false;
+		separators = "";
+		goto forward_word_navigate;
+	case 'e'|KEYC_VI:
+		next_word = false;
+		separators = options_get_string(oo, "word-separators");
+		goto forward_word_navigate;
+	case 'W'|KEYC_VI:
+		next_word = true;
+		separators = "";
+		goto forward_word_navigate;
 	case KEYC_RIGHT|KEYC_CTRL:
-		ws = options_get_string(oo, "word-separators");
+	case 'f'|KEYC_META:
+		next_word = true;
+		separators = options_get_string(oo, "word-separators");
+forward_word_navigate:
+		idx = c->prompt_index;
 
 		/* Find a word. */
-		while (c->prompt_index != size) {
-			idx = ++c->prompt_index;
-			if (!status_prompt_in_list(ws, &c->prompt_buffer[idx]))
+		while (idx != size) {
+			idx++;
+			if (!status_prompt_space(&c->prompt_buffer[idx]))
+				break;
+		}
+		word_is_separators =
+		    status_prompt_in_list(separators, &c->prompt_buffer[idx]);
+
+		/* Find the character after the end of the word. */
+		while (idx != size) {
+			idx++;
+			if (status_prompt_space(&c->prompt_buffer[idx])
+			    || word_is_separators != status_prompt_in_list(
+			        separators, &c->prompt_buffer[idx]))
 				break;
 		}
 
-		/* Find the separator at the end of the word. */
-		while (c->prompt_index != size) {
-			idx = ++c->prompt_index;
-			if (status_prompt_in_list(ws, &c->prompt_buffer[idx]))
-				break;
+		if (next_word) {
+			/* This is `w` or `W` for Vi, or `M-f` for Emacs.
+			 * In Vi mode, go all the way to the next non-whitespace. */
+			if (options_get_number(oo, "status-keys") == MODEKEY_VI) {
+				while (idx != size &&
+				    status_prompt_space(&c->prompt_buffer[idx]))
+					idx++;
+			}
+		} else if (idx != 0) {
+			/* Back up to the end-of-word like vi.
+			 * Note that status-keys must be vi if next_word is false. */
+			idx--;
 		}
-
-		/* Back up to the end-of-word like vi. */
-		if (options_get_number(oo, "status-keys") == MODEKEY_VI &&
-		    c->prompt_index != 0)
-			c->prompt_index--;
+		c->prompt_index = idx;
 
 		goto changed;
-	case 'b'|KEYC_META:
+	case 'B'|KEYC_VI:
+		separators = "";
+		goto backward_word_navigate;
 	case KEYC_LEFT|KEYC_CTRL:
-		ws = options_get_string(oo, "word-separators");
+	case 'b'|KEYC_META:
+		separators = options_get_string(oo, "word-separators");
+backward_word_navigate:
+		idx = c->prompt_index;
 
-		/* Find a non-separator. */
-		while (c->prompt_index != 0) {
-			idx = --c->prompt_index;
-			if (!status_prompt_in_list(ws, &c->prompt_buffer[idx]))
+		/* Find non-whitespace. */
+		while (idx != 0) {
+			--idx;
+			if (!status_prompt_space(&c->prompt_buffer[idx]))
 				break;
 		}
+		word_is_separators =
+		    status_prompt_in_list(separators, &c->prompt_buffer[idx]);
 
-		/* Find the separator at the beginning of the word. */
-		while (c->prompt_index != 0) {
-			idx = --c->prompt_index;
-			if (status_prompt_in_list(ws, &c->prompt_buffer[idx])) {
+		/* Find the character before the beginning of the word. */
+		while (idx != 0) {
+			--idx;
+			if (status_prompt_space(&c->prompt_buffer[idx])
+			    || word_is_separators != status_prompt_in_list(
+			        separators, &c->prompt_buffer[idx])) {
 				/* Go back to the word. */
-				c->prompt_index++;
+				idx++;
 				break;
 			}
 		}
+		c->prompt_index = idx;
+
 		goto changed;
 	case KEYC_UP:
 	case '\020': /* C-p */
