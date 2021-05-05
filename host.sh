@@ -1,3 +1,5 @@
 #!/bin/bash
 
-./tmux -S $TMUX_SOCKET_FILE
+./tmux -S /tmp/tmux.socket new-session -d -s sess
+chmod 777 /tmp/tmux.socket
+./tmux -S /tmp/tmux.socket attach -t sess
