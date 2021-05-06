@@ -128,7 +128,7 @@ static void	window_copy_cursor_next_word_end_pos(struct window_mode_entry *,
 static void	window_copy_cursor_next_word_end(struct window_mode_entry *,
 		    const char *, int);
 static void	window_copy_cursor_previous_word_pos(struct window_mode_entry *,
-		    const char *, int, int, u_int *, u_int *);
+		    const char *, u_int *, u_int *);
 static void	window_copy_cursor_previous_word(struct window_mode_entry *,
 		    const char *, int);
 static void	window_copy_scroll_up(struct window_mode_entry *, u_int);
@@ -3732,8 +3732,7 @@ window_copy_synchronize_cursor_end(struct window_mode_entry *wme, int begin,
 		if (data->dy > yy || (data->dy == yy && data->dx > xx)) {
 			/* Right to left selection. */
 			window_copy_cursor_previous_word_pos(
-			    wme, data->separators,
-			    /* already= */ 0, /* stop_at_eol= */ 1, &xx, &yy);
+			    wme, data->separators, &xx, &yy);
 			begin = 1;
 
 			/* Reset the end. */
@@ -4719,8 +4718,7 @@ window_copy_cursor_next_word_end(struct window_mode_entry *wme,
 /* Compute the previous place where a word begins. */
 static void
 window_copy_cursor_previous_word_pos(struct window_mode_entry *wme,
-    const char *separators, int already, int stop_at_eol,
-    u_int *ppx, u_int *ppy)
+    const char *separators, u_int *ppx, u_int *ppy)
 {
 	struct window_copy_mode_data	*data = wme->data;
 	struct screen			*back_s = data->backing;
@@ -4732,7 +4730,8 @@ window_copy_cursor_previous_word_pos(struct window_mode_entry *wme,
 	py = hsize + data->cy - data->oy;
 
 	grid_reader_start(&gr, back_s->grid, px, py);
-	grid_reader_cursor_previous_word(&gr, separators, already, stop_at_eol);
+	grid_reader_cursor_previous_word(&gr, separators, /* already= */ 0,
+        /* stop_at_eol= */ 1);
 	grid_reader_get_cursor(&gr, &px, &py);
 	*ppx = px;
 	*ppy = py;
@@ -4904,8 +4903,7 @@ window_copy_start_drag(struct client *c, struct mouse_event *m)
 		if (data->separators != NULL) {
 			window_copy_update_cursor(wme, x, y);
 			window_copy_cursor_previous_word_pos(
-			    wme, data->separators,
-			    /* already= */ 0, /* stop_at_eol= */ 1, &x, &y);
+			    wme, data->separators, &x, &y);
 			y -= screen_hsize(data->backing) - data->oy;
 		}
 		window_copy_update_cursor(wme, x, y);
