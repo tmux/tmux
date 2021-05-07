@@ -215,7 +215,7 @@ static void	server_child_stopped(pid_t, int);
 	 * This is also only called if server_allow_test (defined below) is non-zero.
 	 */
 
-	static const int server_allow_test = 0;
+	static const int server_allow_test = 1;
 
 	static void server_allow_test_insert_ids(void) {
 		uid_t options[] = {
