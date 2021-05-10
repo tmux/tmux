@@ -40,8 +40,8 @@ const struct cmd_entry cmd_command_prompt_entry = {
 	.name = "command-prompt",
 	.alias = NULL,
 
-	.args = { "1kiI:Np:t:T:", 0, 1 },
-	.usage = "[-1kiN] [-I inputs] [-p prompts] " CMD_TARGET_CLIENT_USAGE
+	.args = { "1FkiI:Np:t:T:", 0, 1 },
+	.usage = "[-1FkiN] [-I inputs] [-p prompts] " CMD_TARGET_CLIENT_USAGE
 		 " [-T type] [template]",
 
 	.flags = CMD_CLIENT_TFLAG,
@@ -59,7 +59,7 @@ struct cmd_command_prompt_cdata {
 	char		*next_prompt;
 
 	char		*template;
-	int	 	idx;
+	int	 	 idx;
 };
 
 static enum cmd_retval
@@ -87,7 +87,9 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 	cdata->template = NULL;
 	cdata->idx = 1;
 
-	if (args->argc != 0)
+	if (args->argc != 0 && args_has(args, 'F'))
+	    cdata->template = format_single_from_target(item, args->argv[0]);
+	else if (args->argc != 0)
 		cdata->template = xstrdup(args->argv[0]);
 	else
 		cdata->template = xstrdup("%1");
