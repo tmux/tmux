@@ -22,7 +22,6 @@
 #include <errno.h>
 #include <limits.h>
 #include <stdarg.h>
-#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -1039,6 +1038,83 @@ status_prompt_replace_complete(struct client *c, const char *s)
 	return (1);
 }
 
+/* Prompt forward a word. */
+static void
+status_prompt_forward_word(struct client *c, size_t size, int next_word,
+    const char *separators)
+{
+	struct options	*oo = c->session->options;
+	size_t		 idx = c->prompt_index;
+	int		 word_is_separators;
+
+	/* Find a word. */
+	while (idx != size) {
+		idx++;
+		if (!status_prompt_space(&c->prompt_buffer[idx]))
+			break;
+	}
+	word_is_separators = status_prompt_in_list(separators,
+	    &c->prompt_buffer[idx]);
+
+	/* Find the character after the end of the word. */
+	while (idx != size) {
+		idx++;
+		if (status_prompt_space(&c->prompt_buffer[idx]) ||
+		    word_is_separators != status_prompt_in_list(separators,
+		    &c->prompt_buffer[idx]))
+			break;
+	}
+
+	if (next_word) {
+		/*
+		 * This is 'w' or 'W' for Vi, or 'M-f' for emacs. In vi mode,
+		 * go all the way to the next non-whitespace.
+		 */
+		if (options_get_number(oo, "status-keys") == MODEKEY_VI) {
+			while (idx != size &&
+			    status_prompt_space(&c->prompt_buffer[idx]))
+				idx++;
+		}
+	} else if (idx != 0) {
+		/*
+		 * Back up to the end-of-word like vi. Note that status-keys
+		 * must be vi if next_word is false.
+		 */
+		idx--;
+	}
+	c->prompt_index = idx;
+}
+
+/* Prompt backward a word. */
+static void
+status_prompt_backward_word(struct client *c, const char *separators)
+{
+	size_t	idx = c->prompt_index;
+	int	word_is_separators;
+
+	/* Find non-whitespace. */
+	while (idx != 0) {
+		--idx;
+		if (!status_prompt_space(&c->prompt_buffer[idx]))
+			break;
+	}
+	word_is_separators = status_prompt_in_list(separators,
+	    &c->prompt_buffer[idx]);
+
+	/* Find the character before the beginning of the word. */
+	while (idx != 0) {
+		--idx;
+		if (status_prompt_space(&c->prompt_buffer[idx]) ||
+		    word_is_separators != status_prompt_in_list(separators,
+		    &c->prompt_buffer[idx])) {
+			/* Go back to the word. */
+			idx++;
+			break;
+		}
+	}
+	c->prompt_index = idx;
+}
+
 /* Handle keys in prompt. */
 int
 status_prompt_key(struct client *c, key_code key)
@@ -1046,10 +1122,9 @@ status_prompt_key(struct client *c, key_code key)
 	struct options		*oo = c->session->options;
 	char			*s, *cp, prefix = '=';
 	const char		*histstr, *separators = NULL, *keystring;
-	bool			 word_is_separators, next_word;
 	size_t			 size, idx;
 	struct utf8_data	 tmp;
-	int			 keys;
+	int			 keys, word_is_separators;
 
 	if (c->prompt_flags & PROMPT_KEY) {
 		keystring = key_string_lookup_key(key, 0);
@@ -1161,15 +1236,15 @@ process_key:
 			if (!status_prompt_space(&c->prompt_buffer[idx]))
 				break;
 		}
-		word_is_separators =
-		    status_prompt_in_list(separators, &c->prompt_buffer[idx]);
+		word_is_separators = status_prompt_in_list(separators,
+		    &c->prompt_buffer[idx]);
 
 		/* Find the character before the beginning of the word. */
 		while (idx != 0) {
 			idx--;
-			if (status_prompt_space(&c->prompt_buffer[idx])
-			    || word_is_separators != status_prompt_in_list(
-			        separators, &c->prompt_buffer[idx])) {
+			if (status_prompt_space(&c->prompt_buffer[idx]) ||
+			    word_is_separators != status_prompt_in_list(
+			    separators, &c->prompt_buffer[idx])) {
 				/* Go back to the word. */
 				idx++;
 				break;
@@ -1192,89 +1267,27 @@ process_key:
 
 		goto changed;
 	case 'E'|KEYC_VI:
-		next_word = false;
-		separators = "";
-		goto forward_word_navigate;
+		status_prompt_forward_word(c, size, 0, "");
+		goto changed;
 	case 'e'|KEYC_VI:
-		next_word = false;
 		separators = options_get_string(oo, "word-separators");
-		goto forward_word_navigate;
+		status_prompt_forward_word(c, size, 0, separators);
+		goto changed;
 	case 'W'|KEYC_VI:
-		next_word = true;
-		separators = "";
-		goto forward_word_navigate;
+		status_prompt_forward_word(c, size, 1, "");
+		goto changed;
 	case KEYC_RIGHT|KEYC_CTRL:
 	case 'f'|KEYC_META:
-		next_word = true;
 		separators = options_get_string(oo, "word-separators");
-forward_word_navigate:
-		idx = c->prompt_index;
-
-		/* Find a word. */
-		while (idx != size) {
-			idx++;
-			if (!status_prompt_space(&c->prompt_buffer[idx]))
-				break;
-		}
-		word_is_separators =
-		    status_prompt_in_list(separators, &c->prompt_buffer[idx]);
-
-		/* Find the character after the end of the word. */
-		while (idx != size) {
-			idx++;
-			if (status_prompt_space(&c->prompt_buffer[idx])
-			    || word_is_separators != status_prompt_in_list(
-			        separators, &c->prompt_buffer[idx]))
-				break;
-		}
-
-		if (next_word) {
-			/* This is `w` or `W` for Vi, or `M-f` for Emacs.
-			 * In Vi mode, go all the way to the next non-whitespace. */
-			if (options_get_number(oo, "status-keys") == MODEKEY_VI) {
-				while (idx != size &&
-				    status_prompt_space(&c->prompt_buffer[idx]))
-					idx++;
-			}
-		} else if (idx != 0) {
-			/* Back up to the end-of-word like vi.
-			 * Note that status-keys must be vi if next_word is false. */
-			idx--;
-		}
-		c->prompt_index = idx;
-
+		status_prompt_forward_word(c, size, 1, separators);
 		goto changed;
 	case 'B'|KEYC_VI:
-		separators = "";
-		goto backward_word_navigate;
+		status_prompt_backward_word(c, "");
+		goto changed;
 	case KEYC_LEFT|KEYC_CTRL:
 	case 'b'|KEYC_META:
 		separators = options_get_string(oo, "word-separators");
-backward_word_navigate:
-		idx = c->prompt_index;
-
-		/* Find non-whitespace. */
-		while (idx != 0) {
-			--idx;
-			if (!status_prompt_space(&c->prompt_buffer[idx]))
-				break;
-		}
-		word_is_separators =
-		    status_prompt_in_list(separators, &c->prompt_buffer[idx]);
-
-		/* Find the character before the beginning of the word. */
-		while (idx != 0) {
-			--idx;
-			if (status_prompt_space(&c->prompt_buffer[idx])
-			    || word_is_separators != status_prompt_in_list(
-			        separators, &c->prompt_buffer[idx])) {
-				/* Go back to the word. */
-				idx++;
-				break;
-			}
-		}
-		c->prompt_index = idx;
-
+		status_prompt_backward_word(c, separators);
 		goto changed;
 	case KEYC_UP:
 	case '\020': /* C-p */

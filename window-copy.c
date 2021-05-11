@@ -1788,8 +1788,8 @@ window_copy_cmd_select_word(struct window_copy_cmd_state *cs)
 	data->dx = data->cx;
 	data->dy = screen_hsize(data->backing) + data->cy - data->oy;
 
-	data->separators = options_get_string(
-	    session_options, "word-separators");
+	data->separators = options_get_string(session_options,
+	    "word-separators");
 	window_copy_cursor_previous_word(wme, data->separators, 0);
 	px = data->cx;
 	py = screen_hsize(data->backing) + data->cy - data->oy;
@@ -1805,8 +1805,8 @@ window_copy_cmd_select_word(struct window_copy_cmd_state *cs)
 		nextx = 0;
 		nexty++;
 	}
-	if (px >= window_copy_find_length(wme, py)
-	    || !window_copy_in_set(wme, nextx, nexty, WHITESPACE))
+	if (px >= window_copy_find_length(wme, py) ||
+	    !window_copy_in_set(wme, nextx, nexty, WHITESPACE))
 		window_copy_cursor_next_word_end(wme, data->separators, 1);
 	else {
 		window_copy_update_cursor(wme, px, data->cy);
@@ -3731,8 +3731,8 @@ window_copy_synchronize_cursor_end(struct window_mode_entry *wme, int begin,
 		begin = 0;
 		if (data->dy > yy || (data->dy == yy && data->dx > xx)) {
 			/* Right to left selection. */
-			window_copy_cursor_previous_word_pos(
-			    wme, data->separators, &xx, &yy);
+			window_copy_cursor_previous_word_pos(wme,
+			    data->separators, &xx, &yy);
 			begin = 1;
 
 			/* Reset the end. */
@@ -3741,9 +3741,10 @@ window_copy_synchronize_cursor_end(struct window_mode_entry *wme, int begin,
 		} else {
 			/* Left to right selection. */
 			if (xx >= window_copy_find_length(wme, yy) ||
-			    !window_copy_in_set(wme, xx + 1, yy, WHITESPACE))
-				window_copy_cursor_next_word_end_pos(
-				    wme, data->separators, &xx, &yy);
+			    !window_copy_in_set(wme, xx + 1, yy, WHITESPACE)) {
+				window_copy_cursor_next_word_end_pos(wme,
+				    data->separators, &xx, &yy);
+			}
 
 			/* Reset the start. */
 			data->selx = data->selrx;
@@ -4902,8 +4903,8 @@ window_copy_start_drag(struct client *c, struct mouse_event *m)
 	case SEL_WORD:
 		if (data->separators != NULL) {
 			window_copy_update_cursor(wme, x, y);
-			window_copy_cursor_previous_word_pos(
-			    wme, data->separators, &x, &y);
+			window_copy_cursor_previous_word_pos(wme,
+			    data->separators, &x, &y);
 			y -= screen_hsize(data->backing) - data->oy;
 		}
 		window_copy_update_cursor(wme, x, y);
