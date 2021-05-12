@@ -67,7 +67,9 @@ cmd_source_file_complete(struct client *c, struct cmd_source_file_data *cdata)
 	struct cmdq_item	*new_item;
 
 	if (cfg_finished) {
-		if (cdata->retval == CMD_RETURN_ERROR && c->session == NULL)
+		if (cdata->retval == CMD_RETURN_ERROR &&
+		    c != NULL &&
+		    c->session == NULL)
 			c->retval = 1;
 		new_item = cmdq_get_callback(cmd_source_file_complete_cb, NULL);
 		cmdq_insert_after(cdata->after, new_item);
