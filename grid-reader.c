@@ -153,6 +153,29 @@ grid_reader_cursor_end_of_line(struct grid_reader *gr, int wrap, int all)
 		gr->cx = grid_reader_line_length(gr);
 }
 
+/* Handle line wrapping while moving the cursor. */
+static int
+grid_reader_handle_wrap(struct grid_reader *gr, u_int *xx, u_int *yy)
+{
+	/*
+	 * Make sure the cursor lies within the grid reader's bounding area,
+	 * wrapping to the next line as necessary. Return zero if the cursor
+	 * would wrap past the bottom of the grid.
+	 */
+	while (gr->cx > *xx) {
+		if (gr->cy == *yy)
+			return (0);
+		grid_reader_cursor_start_of_line(gr, 0);
+		grid_reader_cursor_down(gr);
+
+		if (grid_get_line(gr->gd, gr->cy)->flags & GRID_LINE_WRAPPED)
+			*xx = gr->gd->sx - 1;
+		else
+			*xx = grid_reader_line_length(gr);
+	}
+	return (1);
+}
+
 /* Check if character under cursor is in set. */
 int
 grid_reader_in_set(struct grid_reader *gr, const char *set)
@@ -170,7 +193,6 @@ void
 grid_reader_cursor_next_word(struct grid_reader *gr, const char *separators)
 {
 	u_int	xx, yy;
-	int expected = 0;
 
 	/* Do not break up wrapped words. */
 	if (grid_get_line(gr->gd, gr->cy)->flags & GRID_LINE_WRAPPED)
@@ -180,33 +202,35 @@ grid_reader_cursor_next_word(struct grid_reader *gr, const char *separators)
 	yy = gr->gd->hsize + gr->gd->sy - 1;
 
 	/*
-	 * If we started inside a word, skip over word characters. Then skip
-	 * over separators till the next word.
+	 * When navigating via spaces (for example with next-space) separators
+	 * should be empty.
 	 *
-	 * expected is initially set to 0 for the former and then 1 for the
-	 * latter. It is finally set to 0 when the beginning of the next word is
-	 * found.
+	 * If we started on a separator that is not whitespace, skip over
+	 * subsequent separators that are not whitespace. Otherwise, if we
+	 * started on a non-whitespace character, skip over subsequent
+	 * characters that are neither whitespace nor separators. Then, skip
+	 * over whitespace (if any) until the next non-whitespace character.
 	 */
-	do {
-		while (gr->cx > xx ||
-		    grid_reader_in_set(gr, separators) == expected) {
-			/* Move down if we are past the end of the line. */
-			if (gr->cx > xx) {
-				if (gr->cy == yy)
-					return;
-				grid_reader_cursor_start_of_line(gr, 0);
-				grid_reader_cursor_down(gr);
-
-				if (grid_get_line(gr->gd, gr->cy)->flags &
-				    GRID_LINE_WRAPPED)
-					xx = gr->gd->sx - 1;
-				else
-					xx = grid_reader_line_length(gr);
-			} else
+	if (!grid_reader_handle_wrap(gr, &xx, &yy))
+		return;
+	if (!grid_reader_in_set(gr, WHITESPACE)) {
+		if (grid_reader_in_set(gr, separators)) {
+			do
 				gr->cx++;
+			while (grid_reader_handle_wrap(gr, &xx, &yy) &&
+			    grid_reader_in_set(gr, separators) &&
+			    !grid_reader_in_set(gr, WHITESPACE));
+		} else {
+			do
+				gr->cx++;
+			while (grid_reader_handle_wrap(gr, &xx, &yy) &&
+			    !(grid_reader_in_set(gr, separators) ||
+			    grid_reader_in_set(gr, WHITESPACE)));
 		}
-		expected = !expected;
-	} while (expected == 1);
+	}
+	while (grid_reader_handle_wrap(gr, &xx, &yy) &&
+	    grid_reader_in_set(gr, WHITESPACE))
+		gr->cx++;
 }
 
 /* Move cursor to the end of the next word. */
@@ -214,7 +238,6 @@ void
 grid_reader_cursor_next_word_end(struct grid_reader *gr, const char *separators)
 {
 	u_int	xx, yy;
-	int	expected = 1;
 
 	/* Do not break up wrapped words. */
 	if (grid_get_line(gr->gd, gr->cy)->flags & GRID_LINE_WRAPPED)
@@ -224,49 +247,54 @@ grid_reader_cursor_next_word_end(struct grid_reader *gr, const char *separators)
 	yy = gr->gd->hsize + gr->gd->sy - 1;
 
 	/*
-	 * If we started on a separator, skip over separators. Then skip over
-	 * word characters till the next separator.
+	 * When navigating via spaces (for example with next-space), separators
+	 * should be empty in both modes.
 	 *
-	 * expected is initially set to 1 for the former and then 1 for the
-	 * latter. It is finally set to 1 when the end of the next word is
-	 * found.
+	 * If we started on a whitespace, move until reaching the first
+	 * non-whitespace character. If that character is a separator, treat
+	 * subsequent separators as a word, and continue moving until the first
+	 * non-separator. Otherwise, continue moving until the first separator
+	 * or whitespace.
 	 */
-	do {
-		while (gr->cx > xx ||
-		    grid_reader_in_set(gr, separators) == expected) {
-			/* Move down if we are past the end of the line. */
-			if (gr->cx > xx) {
-				if (gr->cy == yy)
-					return;
-				grid_reader_cursor_start_of_line(gr, 0);
-				grid_reader_cursor_down(gr);
 
-				if (grid_get_line(gr->gd, gr->cy)->flags &
-				    GRID_LINE_WRAPPED)
-					xx = gr->gd->sx - 1;
-				else
-					xx = grid_reader_line_length(gr);
-			} else
+	while (grid_reader_handle_wrap(gr, &xx, &yy)) {
+		if (grid_reader_in_set(gr, WHITESPACE))
+			gr->cx++;
+		else if (grid_reader_in_set(gr, separators)) {
+			do
 				gr->cx++;
+			while (grid_reader_handle_wrap(gr, &xx, &yy) &&
+			    grid_reader_in_set(gr, separators) &&
+			    !grid_reader_in_set(gr, WHITESPACE));
+			return;
+		} else {
+			do
+				gr->cx++;
+			while (grid_reader_handle_wrap(gr, &xx, &yy) &&
+			    !(grid_reader_in_set(gr, WHITESPACE) ||
+			    grid_reader_in_set(gr, separators)));
+			return;
 		}
-		expected = !expected;
-	} while (expected == 0);
+	}
 }
 
 /* Move to the previous place where a word begins. */
 void
 grid_reader_cursor_previous_word(struct grid_reader *gr, const char *separators,
-    int already)
+    int already, int stop_at_eol)
 {
-	int	oldx, oldy, r;
+	int	oldx, oldy, at_eol, word_is_letters;
 
 	/* Move back to the previous word character. */
-	if (already || grid_reader_in_set(gr, separators)) {
+	if (already || grid_reader_in_set(gr, WHITESPACE)) {
 		for (;;) {
 			if (gr->cx > 0) {
 				gr->cx--;
-				if (!grid_reader_in_set(gr, separators))
+				if (!grid_reader_in_set(gr, WHITESPACE)) {
+					word_is_letters =
+					    !grid_reader_in_set(gr, separators);
 					break;
+				}
 			} else {
 				if (gr->cy == 0)
 					return;
@@ -274,17 +302,21 @@ grid_reader_cursor_previous_word(struct grid_reader *gr, const char *separators,
 				grid_reader_cursor_end_of_line(gr, 0, 0);
 
 				/* Stop if separator at EOL. */
-				if (gr->cx > 0) {
+				if (stop_at_eol && gr->cx > 0) {
 					oldx = gr->cx;
 					gr->cx--;
-					r = grid_reader_in_set(gr, separators);
+					at_eol = grid_reader_in_set(gr,
+					    WHITESPACE);
 					gr->cx = oldx;
-					if (r)
+					if (at_eol) {
+						word_is_letters = 0;
 						break;
+					}
 				}
 			}
 		}
-	}
+	} else
+		word_is_letters = !grid_reader_in_set(gr, separators);
 
 	/* Move back to the beginning of this word. */
 	do {
@@ -292,15 +324,16 @@ grid_reader_cursor_previous_word(struct grid_reader *gr, const char *separators,
 		oldy = gr->cy;
 		if (gr->cx == 0) {
 			if (gr->cy == 0 ||
-			  ~grid_get_line(gr->gd, gr->cy - 1)->flags &
-			  GRID_LINE_WRAPPED)
+			    (~grid_get_line(gr->gd, gr->cy - 1)->flags &
+			    GRID_LINE_WRAPPED))
 				break;
 			grid_reader_cursor_up(gr);
 			grid_reader_cursor_end_of_line(gr, 0, 1);
 		}
 		if (gr->cx > 0)
 			gr->cx--;
-	} while (!grid_reader_in_set(gr, separators));
+	} while (!grid_reader_in_set(gr, WHITESPACE) &&
+	    word_is_letters != grid_reader_in_set(gr, separators));
 	gr->cx = oldx;
 	gr->cy = oldy;
 }
@@ -324,17 +357,17 @@ grid_reader_cursor_jump(struct grid_reader *gr, const struct utf8_data *jc)
 			    memcmp(gc.data.data, jc->data, gc.data.size) == 0) {
 				gr->cx = px;
 				gr->cy = py;
-				return 1;
+				return (1);
 			}
 			px++;
 		}
 
 		if (py == yy ||
 		    !(grid_get_line(gr->gd, py)->flags & GRID_LINE_WRAPPED))
-			return 0;
+			return (0);
 		px = 0;
 	}
-	return 0;
+	return (0);
 }
 
 /* Jump back to character. */
@@ -354,16 +387,16 @@ grid_reader_cursor_jump_back(struct grid_reader *gr, const struct utf8_data *jc)
 			    memcmp(gc.data.data, jc->data, gc.data.size) == 0) {
 				gr->cx = px - 1;
 				gr->cy = py - 1;
-				return 1;
+				return (1);
 			}
 		}
 
 		if (py == 1 ||
 		    !(grid_get_line(gr->gd, py - 2)->flags & GRID_LINE_WRAPPED))
-			return 0;
+			return (0);
 		xx = grid_line_length(gr->gd, py - 2);
 	}
-	return 0;
+	return (0);
 }
 
 /* Jump back to the first non-blank character of the line. */

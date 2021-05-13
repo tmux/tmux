@@ -131,6 +131,7 @@ struct winlink;
 #define KEYC_CURSOR          0x04000000000000ULL
 #define KEYC_IMPLIED_META    0x08000000000000ULL
 #define KEYC_BUILD_MODIFIERS 0x10000000000000ULL
+#define KEYC_VI              0x20000000000000ULL
 
 /* Masks for key bits. */
 #define KEYC_MASK_MODIFIERS  0x00f00000000000ULL
@@ -589,6 +590,9 @@ struct msg_write_ready {
 struct msg_write_close {
 	int	stream;
 };
+
+/* Character classes. */
+#define WHITESPACE " "
 
 /* Mode keys. */
 #define MODEKEY_EMACS 0
@@ -2640,7 +2644,7 @@ void	 grid_reader_cursor_end_of_line(struct grid_reader *, int, int);
 void	 grid_reader_cursor_next_word(struct grid_reader *, const char *);
 void	 grid_reader_cursor_next_word_end(struct grid_reader *, const char *);
 void	 grid_reader_cursor_previous_word(struct grid_reader *, const char *,
-	     int);
+	     int, int);
 int	 grid_reader_cursor_jump(struct grid_reader *,
 	     const struct utf8_data *);
 int	 grid_reader_cursor_jump_back(struct grid_reader *,
