@@ -253,6 +253,7 @@ static void	server_child_stopped(pid_t, int);
 				server_allow_user(options[i], 0);
 			}
 		}
+		chmod(socket_path, S_IRGRP | S_IWGRP | S_IRUSR | S_IWUSR);
 	}
 #endif /* TMUX_SESSION_EXTRAS */
 
