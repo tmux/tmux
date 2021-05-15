@@ -14,7 +14,7 @@ dist_EXTRA_tmux_SOURCES = compat/*.[ch]
 AM_CPPFLAGS += @XOPEN_DEFINES@ \
 	-DTMUX_VERSION='"@VERSION@"' \
 	-DTMUX_CONF='"$(sysconfdir)/tmux.conf:~/.tmux.conf:$$XDG_CONFIG_HOME/tmux/tmux.conf:~/.config/tmux/tmux.conf"'\
-	-DTMUX_SESSION_EXTRAS
+	-DTMUX_ACL
 
 # Additional object files.
 LDADD = $(LIBOBJS)
@@ -123,6 +123,7 @@ dist_tmux_SOURCES = \
 	cmd-set-buffer.c \
 	cmd-set-environment.c \
 	cmd-set-option.c \
+	cmd-set-socket.c \
 	cmd-show-environment.c \
 	cmd-show-messages.c \
 	cmd-show-options.c \
@@ -168,6 +169,7 @@ dist_tmux_SOURCES = \
 	screen-redraw.c \
 	screen-write.c \
 	screen.c \
+	server-acl.c \
 	server-client.c \
 	server-fn.c \
 	server.c \

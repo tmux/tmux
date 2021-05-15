@@ -34,10 +34,6 @@
 #include "compat.h"
 #include "xmalloc.h"
 
-#if defined (TMUX_SESSION_EXTRAS)
-#define TMUX_SESSION_EXTRAS_LOG "[session extras]"
-#endif
-
 extern char   **environ;
 
 struct args;
@@ -3080,5 +3076,18 @@ struct window_pane *spawn_pane(struct spawn_context *, char **);
 
 /* regsub.c */
 char		*regsub(const char *, const char *, const char *, int);
+
+#if defined(TMUX_ACL)
+
+/* server-acl.c */
+
+void server_acl_init(void);
+
+void server_acl_user_allow(uid_t uid, int owner);
+
+int server_acl_accept_validate(int newf);
+
+
+#endif /* TMUX_ACL */
 
 #endif /* TMUX_H */
