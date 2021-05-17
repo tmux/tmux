@@ -3991,7 +3991,7 @@ format_replace_expression(struct format_modifier *mexp,
 		result = (mleft < mright);
 		break;
 	case LESS_THAN_EQUAL:
-		result = (mleft >= mright);
+		result = (mleft <= mright);
 		break;
 	}
 	if (use_fp)
