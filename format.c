@@ -103,7 +103,7 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 #define FORMAT_CHARACTER 0x10000
 
 /* Limit on recursion. */
-#define FORMAT_LOOP_LIMIT 10
+#define FORMAT_LOOP_LIMIT 100
 
 /* Format expand flags. */
 #define FORMAT_EXPAND_TIME 0x1
@@ -4441,8 +4441,10 @@ format_expand1(struct format_expand_state *es, const char *fmt)
 	if (fmt == NULL || *fmt == '\0')
 		return (xstrdup(""));
 
-	if (es->loop == FORMAT_LOOP_LIMIT)
+	if (es->loop == FORMAT_LOOP_LIMIT) {
+		format_log(es, "reached loop limit (%u)", FORMAT_LOOP_LIMIT);
 		return (xstrdup(""));
+	}
 	es->loop++;
 
 	format_log(es, "expanding format: %s", fmt);
