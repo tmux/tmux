@@ -109,11 +109,16 @@ struct winlink;
 #define VISUAL_ON 1
 #define VISUAL_BOTH 2
 
-/* Special key codes. */
-#define KEYC_NONE            0x00ff000000000ULL
-#define KEYC_UNKNOWN         0x00fe000000000ULL
-#define KEYC_BASE            0x0001000000000ULL
-#define KEYC_USER            0x0002000000000ULL
+/* No key or unknown key. */
+#define KEYC_NONE            0x000ff000000000ULL
+#define KEYC_UNKNOWN         0x000fe000000000ULL
+
+/*
+ * Base for special (that is, not Unicode) keys. An enum must be at most a
+ * signed int, so these are based in the highest Unicode PUA.
+ */
+#define KEYC_BASE            0x0000000010e000ULL
+#define KEYC_USER            0x0000000010f000ULL
 
 /* Key modifier bits. */
 #define KEYC_META            0x00100000000000ULL
@@ -126,6 +131,7 @@ struct winlink;
 #define KEYC_CURSOR          0x04000000000000ULL
 #define KEYC_IMPLIED_META    0x08000000000000ULL
 #define KEYC_BUILD_MODIFIERS 0x10000000000000ULL
+#define KEYC_VI              0x20000000000000ULL
 
 /* Masks for key bits. */
 #define KEYC_MASK_MODIFIERS  0x00f00000000000ULL
@@ -136,8 +142,15 @@ struct winlink;
 #define KEYC_NUSER 1000
 
 /* Is this a mouse key? */
-#define KEYC_IS_MOUSE(key) (((key) & KEYC_MASK_KEY) >= KEYC_MOUSE &&	\
-    ((key) & KEYC_MASK_KEY) < KEYC_BSPACE)
+#define KEYC_IS_MOUSE(key) \
+	(((key) & KEYC_MASK_KEY) >= KEYC_MOUSE && \
+	 ((key) & KEYC_MASK_KEY) < KEYC_BSPACE)
+
+/* Is this a Unicode key? */
+#define KEYC_IS_UNICODE(key) \
+	(((key) & KEYC_MASK_KEY) > 0x7f && \
+	 (((key) & KEYC_MASK_KEY) < KEYC_BASE || \
+	  ((key) & KEYC_MASK_KEY) >= KEYC_BASE_END))
 
 /* Multiple click timeout. */
 #define KEYC_CLICK_TIMEOUT 300
@@ -159,8 +172,8 @@ struct winlink;
 	{ #s "Border", KEYC_ ## name ## _BORDER }
 
 /*
- * A single key. This can be ASCII or Unicode or one of the keys starting at
- * KEYC_BASE.
+ * A single key. This can be ASCII or Unicode or one of the keys between
+ * KEYC_BASE and KEYC_BASE_END.
  */
 typedef unsigned long long key_code;
 
@@ -253,6 +266,9 @@ enum {
 	KEYC_KP_ENTER,
 	KEYC_KP_ZERO,
 	KEYC_KP_PERIOD,
+
+	/* End of special keys. */
+	KEYC_BASE_END
 };
 
 /* Termcap codes. */
@@ -575,6 +591,9 @@ struct msg_write_close {
 	int	stream;
 };
 
+/* Character classes. */
+#define WHITESPACE " "
+
 /* Mode keys. */
 #define MODEKEY_EMACS 0
 #define MODEKEY_VI 1
@@ -795,6 +814,14 @@ struct style {
 	enum style_default_type	default_type;
 };
 
+/* Cursor style. */
+enum screen_cursor_style {
+	SCREEN_CURSOR_DEFAULT,
+	SCREEN_CURSOR_BLOCK,
+	SCREEN_CURSOR_UNDERLINE,
+	SCREEN_CURSOR_BAR
+};
+
 /* Virtual screen. */
 struct screen_sel;
 struct screen_titles;
@@ -808,8 +835,8 @@ struct screen {
 	u_int				 cx;	  /* cursor x */
 	u_int				 cy;	  /* cursor y */
 
-	u_int				 cstyle;  /* cursor style */
-	char				*ccolour; /* cursor colour string */
+	enum screen_cursor_style	 cstyle;  /* cursor style */
+	char				*ccolour; /* cursor colour */
 
 	u_int				 rupper;  /* scroll region top */
 	u_int				 rlower;  /* scroll region bottom */
@@ -919,13 +946,25 @@ struct window_mode_entry {
 	struct screen			*screen;
 	u_int				 prefix;
 
-	TAILQ_ENTRY (window_mode_entry)	 entry;
+	TAILQ_ENTRY(window_mode_entry)	 entry;
 };
 
 /* Offsets into pane buffer. */
 struct window_pane_offset {
 	size_t	used;
 };
+
+/* Queued pane resize. */
+struct window_pane_resize {
+	u_int				sx;
+	u_int				sy;
+
+	u_int				osx;
+	u_int				osy;
+
+	TAILQ_ENTRY(window_pane_resize)	entry;
+};
+TAILQ_HEAD(window_pane_resizes, window_pane_resize);
 
 /* Child window structure. */
 struct window_pane {
@@ -951,8 +990,8 @@ struct window_pane {
 #define PANE_REDRAW 0x1
 #define PANE_DROP 0x2
 #define PANE_FOCUSED 0x4
-#define PANE_RESIZE 0x8
-#define PANE_RESIZEFORCE 0x10
+/* 0x8 unused */
+/* 0x10 unused */
 #define PANE_FOCUSPUSH 0x20
 #define PANE_INPUTOFF 0x40
 #define PANE_CHANGED 0x80
@@ -961,7 +1000,6 @@ struct window_pane {
 #define PANE_STATUSDRAWN 0x400
 #define PANE_EMPTY 0x800
 #define PANE_STYLECHANGED 0x1000
-#define PANE_RESIZENOW 0x2000
 
 	int		 argc;
 	char	       **argv;
@@ -978,8 +1016,8 @@ struct window_pane {
 	struct window_pane_offset offset;
 	size_t		 base_offset;
 
+	struct window_pane_resizes resize_queue;
 	struct event	 resize_timer;
-	struct event	 force_timer;
 
 	struct input_ctx *ictx;
 
@@ -997,7 +1035,7 @@ struct window_pane {
 	struct screen	 status_screen;
 	size_t		 status_size;
 
-	TAILQ_HEAD (, window_mode_entry) modes;
+	TAILQ_HEAD(, window_mode_entry) modes;
 
 	char		*searchstr;
 	int		 searchregex;
@@ -1286,7 +1324,7 @@ struct tty {
 
 	u_int		 cx;
 	u_int		 cy;
-	u_int		 cstyle;
+	enum screen_cursor_style cstyle;
 	char		*ccolour;
 
 	int		 oflag;
@@ -1538,6 +1576,16 @@ struct status_line {
 	struct status_line_entry entries[STATUS_LINES_LIMIT];
 };
 
+/* Prompt type. */
+#define PROMPT_NTYPES 4
+enum prompt_type {
+	PROMPT_TYPE_COMMAND,
+	PROMPT_TYPE_SEARCH,
+	PROMPT_TYPE_TARGET,
+	PROMPT_TYPE_WINDOW_TARGET,
+	PROMPT_TYPE_INVALID = 0xff
+};
+
 /* File in client. */
 typedef void (*client_file_cb) (struct client *, const char *, int, int,
     struct evbuffer *, void *);
@@ -1701,18 +1749,16 @@ struct client {
 	prompt_input_cb	 prompt_inputcb;
 	prompt_free_cb	 prompt_freecb;
 	void		*prompt_data;
-	u_int		 prompt_hindex;
+	u_int		 prompt_hindex[PROMPT_NTYPES];
 	enum { PROMPT_ENTRY, PROMPT_COMMAND } prompt_mode;
 	struct utf8_data *prompt_saved;
-
 #define PROMPT_SINGLE 0x1
 #define PROMPT_NUMERIC 0x2
 #define PROMPT_INCREMENTAL 0x4
 #define PROMPT_NOFORMAT 0x8
 #define PROMPT_KEY 0x10
-#define PROMPT_WINDOW 0x20
-#define PROMPT_TARGET 0x40
 	int		 prompt_flags;
+	enum prompt_type prompt_type;
 
 	struct session	*session;
 	struct session	*last_session;
@@ -2484,6 +2530,8 @@ void	 server_check_unattached(void);
 void	 server_unzoom_window(struct window *);
 
 /* status.c */
+extern char	**status_prompt_hlist[];
+extern u_int	  status_prompt_hsize[];
 void	 status_timer_start(struct client *);
 void	 status_timer_start_all(void);
 void	 status_update_cache(struct session *);
@@ -2498,13 +2546,15 @@ void	 status_message_clear(struct client *);
 int	 status_message_redraw(struct client *);
 void	 status_prompt_set(struct client *, struct cmd_find_state *,
 	     const char *, const char *, prompt_input_cb, prompt_free_cb,
-	     void *, int);
+	     void *, int, enum prompt_type);
 void	 status_prompt_clear(struct client *);
 int	 status_prompt_redraw(struct client *);
 int	 status_prompt_key(struct client *, key_code);
 void	 status_prompt_update(struct client *, const char *, const char *);
 void	 status_prompt_load_history(void);
 void	 status_prompt_save_history(void);
+const char *status_prompt_type_string(u_int);
+enum prompt_type status_prompt_type(const char *type);
 
 /* resize.c */
 void	 resize_window(struct window *, u_int, u_int, int, int);
@@ -2594,7 +2644,7 @@ void	 grid_reader_cursor_end_of_line(struct grid_reader *, int, int);
 void	 grid_reader_cursor_next_word(struct grid_reader *, const char *);
 void	 grid_reader_cursor_next_word_end(struct grid_reader *, const char *);
 void	 grid_reader_cursor_previous_word(struct grid_reader *, const char *,
-	     int);
+	     int, int);
 int	 grid_reader_cursor_jump(struct grid_reader *,
 	     const struct utf8_data *);
 int	 grid_reader_cursor_jump_back(struct grid_reader *,
@@ -2716,6 +2766,7 @@ void	 screen_select_cell(struct screen *, struct grid_cell *,
 	     const struct grid_cell *);
 void	 screen_alternate_on(struct screen *, struct grid_cell *, int);
 void	 screen_alternate_off(struct screen *, struct grid_cell *, int);
+const char *screen_mode_to_string(int);
 
 /* window.c */
 extern struct windows windows;
@@ -2756,7 +2807,7 @@ void		 window_redraw_active_switch(struct window *,
 struct window_pane *window_add_pane(struct window *, struct window_pane *,
 		     u_int, int);
 void		 window_resize(struct window *, u_int, u_int, int, int);
-void		 window_pane_send_resize(struct window_pane *, int);
+void		 window_pane_send_resize(struct window_pane *, u_int, u_int);
 int		 window_zoom(struct window_pane *);
 int		 window_unzoom(struct window *);
 int		 window_push_zoom(struct window *, int, int);

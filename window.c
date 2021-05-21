@@ -425,25 +425,18 @@ window_resize(struct window *w, u_int sx, u_int sy, int xpixel, int ypixel)
 }
 
 void
-window_pane_send_resize(struct window_pane *wp, int force)
+window_pane_send_resize(struct window_pane *wp, u_int sx, u_int sy)
 {
 	struct window	*w = wp->window;
 	struct winsize	 ws;
-	u_int  		 sy;
 
 	if (wp->fd == -1)
 		return;
 
-	if (!force)
-		sy = wp->sy;
-	else if (wp->sy <= 1)
-		sy = wp->sy + 1;
-	else
-		sy = wp->sy - 1;
-	log_debug("%s: %%%u resize to %u,%u", __func__, wp->id, wp->sx, sy);
+	log_debug("%s: %%%u resize to %u,%u", __func__, wp->id, sx, sy);
 
 	memset(&ws, 0, sizeof ws);
-	ws.ws_col = wp->sx;
+	ws.ws_col = sx;
 	ws.ws_row = sy;
 	ws.ws_xpixel = w->xpixel * ws.ws_col;
 	ws.ws_ypixel = w->ypixel * ws.ws_row;
@@ -867,29 +860,19 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	wp->id = next_window_pane_id++;
 	RB_INSERT(window_pane_tree, &all_window_panes, wp);
 
-	wp->argc = 0;
-	wp->argv = NULL;
-	wp->shell = NULL;
-	wp->cwd = NULL;
-
 	wp->fd = -1;
-	wp->event = NULL;
 
 	wp->fg = 8;
 	wp->bg = 8;
 
 	TAILQ_INIT(&wp->modes);
 
-	wp->layout_cell = NULL;
-
-	wp->xoff = 0;
-	wp->yoff = 0;
+	TAILQ_INIT (&wp->resize_queue);
 
 	wp->sx = sx;
 	wp->sy = sy;
 
 	wp->pipe_fd = -1;
-	wp->pipe_event = NULL;
 
 	screen_init(&wp->base, sx, sy, hlimit);
 	wp->screen = &wp->base;
@@ -905,6 +888,9 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 static void
 window_pane_destroy(struct window_pane *wp)
 {
+	struct window_pane_resize	*r;
+	struct window_pane_resize	*r1;
+
 	window_pane_reset_mode_all(wp);
 	free(wp->searchstr);
 
@@ -929,8 +915,10 @@ window_pane_destroy(struct window_pane *wp)
 
 	if (event_initialized(&wp->resize_timer))
 		event_del(&wp->resize_timer);
-	if (event_initialized(&wp->force_timer))
-		event_del(&wp->force_timer);
+	TAILQ_FOREACH_SAFE(r, &wp->resize_queue, entry, r1) {
+		TAILQ_REMOVE(&wp->resize_queue, r, entry);
+		free(r);
+	}
 
 	RB_REMOVE(window_pane_tree, &all_window_panes, wp);
 
@@ -999,9 +987,18 @@ void
 window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 {
 	struct window_mode_entry	*wme;
+	struct window_pane_resize	*r;
 
 	if (sx == wp->sx && sy == wp->sy)
 		return;
+
+	r = xmalloc (sizeof *r);
+	r->sx = sx;
+	r->sy = sy;
+	r->osx = wp->sx;
+	r->osy = wp->sy;
+	TAILQ_INSERT_TAIL (&wp->resize_queue, r, entry);
+
 	wp->sx = sx;
 	wp->sy = sy;
 
@@ -1011,14 +1008,6 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme != NULL && wme->mode->resize != NULL)
 		wme->mode->resize(wme, sx, sy);
-
-	/*
-	 * If the pane has already been resized, set the force flag and make
-	 * the application resize twice to force it to redraw.
-	 */
-	if (wp->flags & PANE_RESIZE)
-		wp->flags |= PANE_RESIZEFORCE;
-	wp->flags |= PANE_RESIZE;
 }
 
 void

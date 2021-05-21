@@ -103,7 +103,7 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 #define FORMAT_CHARACTER 0x10000
 
 /* Limit on recursion. */
-#define FORMAT_LOOP_LIMIT 10
+#define FORMAT_LOOP_LIMIT 100
 
 /* Format expand flags. */
 #define FORMAT_EXPAND_TIME 0x1
@@ -3991,7 +3991,7 @@ format_replace_expression(struct format_modifier *mexp,
 		result = (mleft < mright);
 		break;
 	case LESS_THAN_EQUAL:
-		result = (mleft > mright);
+		result = (mleft <= mright);
 		break;
 	}
 	if (use_fp)
@@ -4199,7 +4199,7 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 			value = xstrdup("0");
 		} else {
 			format_log(es, "search '%s' pane %%%u", new, wp->id);
-			value = format_search(fm, wp, new);
+			value = format_search(search, wp, new);
 		}
 		free(new);
 	} else if (cmp != NULL) {
@@ -4441,8 +4441,10 @@ format_expand1(struct format_expand_state *es, const char *fmt)
 	if (fmt == NULL || *fmt == '\0')
 		return (xstrdup(""));
 
-	if (es->loop == FORMAT_LOOP_LIMIT)
+	if (es->loop == FORMAT_LOOP_LIMIT) {
+		format_log(es, "reached loop limit (%u)", FORMAT_LOOP_LIMIT);
 		return (xstrdup(""));
+	}
 	es->loop++;
 
 	format_log(es, "expanding format: %s", fmt);

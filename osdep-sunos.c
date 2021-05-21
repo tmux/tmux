@@ -96,5 +96,17 @@ osdep_get_cwd(int fd)
 struct event_base *
 osdep_event_init(void)
 {
-	return (event_init());
+	struct event_base	*base;
+
+	/*
+	 * On Illumos, evports don't seem to work properly. It is not clear if
+	 * this a problem in libevent, with the way tmux uses file descriptors,
+	 * or with some types of file descriptor. But using poll instead is
+	 * fine.
+	 */
+	setenv("EVENT_NOEVPORT", "1", 1);
+
+	base = event_init();
+	unsetenv("EVENT_NOEVPORT");
+	return (base);
 }

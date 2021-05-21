@@ -94,30 +94,6 @@ static struct input_key_entry input_key_defaults[] = {
 	{ .key = KEYC_F12,
 	  .data = "\033[24~"
 	},
-	{ .key = KEYC_F1|KEYC_SHIFT,
-	  .data = "\033[25~"
-	},
-	{ .key = KEYC_F2|KEYC_SHIFT,
-	  .data = "\033[26~"
-	},
-	{ .key = KEYC_F3|KEYC_SHIFT,
-	  .data = "\033[28~"
-	},
-	{ .key = KEYC_F4|KEYC_SHIFT,
-	  .data = "\033[29~"
-	},
-	{ .key = KEYC_F5|KEYC_SHIFT,
-	  .data = "\033[31~"
-	},
-	{ .key = KEYC_F6|KEYC_SHIFT,
-	  .data = "\033[32~"
-	},
-	{ .key = KEYC_F7|KEYC_SHIFT,
-	  .data = "\033[33~"
-	},
-	{ .key = KEYC_F8|KEYC_SHIFT,
-	  .data = "\033[34~"
-	},
 	{ .key = KEYC_IC,
 	  .data = "\033[2~"
 	},
@@ -476,7 +452,7 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 		input_key_write(__func__, bev, &ud.data[0], 1);
 		return (0);
 	}
-	if (justkey > 0x7f && justkey < KEYC_BASE) {
+	if (KEYC_IS_UNICODE(justkey)) {
 		if (key & KEYC_META)
 			input_key_write(__func__, bev, "\033", 1);
 		utf8_to_data(justkey, &ud);

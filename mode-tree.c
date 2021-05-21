@@ -1168,7 +1168,7 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 		mtd->references++;
 		status_prompt_set(c, NULL, "(search) ", "",
 		    mode_tree_search_callback, mode_tree_search_free, mtd,
-		    PROMPT_NOFORMAT);
+		    PROMPT_NOFORMAT, PROMPT_TYPE_SEARCH);
 		break;
 	case 'n':
 		mode_tree_search_set(mtd);
@@ -1177,7 +1177,7 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 		mtd->references++;
 		status_prompt_set(c, NULL, "(filter) ", mtd->filter,
 		    mode_tree_filter_callback, mode_tree_filter_free, mtd,
-		    PROMPT_NOFORMAT);
+		    PROMPT_NOFORMAT, PROMPT_TYPE_SEARCH);
 		break;
 	case 'v':
 		mtd->preview = !mtd->preview;

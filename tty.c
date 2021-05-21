@@ -98,7 +98,7 @@ tty_init(struct tty *tty, struct client *c)
 	memset(tty, 0, sizeof *tty);
 	tty->client = c;
 
-	tty->cstyle = 0;
+	tty->cstyle = SCREEN_CURSOR_DEFAULT;
 	tty->ccolour = xstrdup("");
 
 	if (tcgetattr(c->fd, &tty->tio) != 0)
@@ -392,10 +392,10 @@ tty_stop_tty(struct tty *tty)
 	tty_raw(tty, tty_term_string(tty->term, TTYC_SGR0));
 	tty_raw(tty, tty_term_string(tty->term, TTYC_RMKX));
 	tty_raw(tty, tty_term_string(tty->term, TTYC_CLEAR));
-	if (tty_term_has(tty->term, TTYC_SS) && tty->cstyle != 0) {
+	if (tty->cstyle != SCREEN_CURSOR_DEFAULT) {
 		if (tty_term_has(tty->term, TTYC_SE))
 			tty_raw(tty, tty_term_string(tty->term, TTYC_SE));
-		else
+		else if (tty_term_has(tty->term, TTYC_SS))
 			tty_raw(tty, tty_term_string1(tty->term, TTYC_SS, 0));
 	}
 	if (tty->mode & MODE_BRACKETPASTE)
@@ -657,51 +657,98 @@ tty_force_cursor_colour(struct tty *tty, const char *ccolour)
 void
 tty_update_mode(struct tty *tty, int mode, struct screen *s)
 {
-	struct client	*c = tty->client;
-	int		 changed;
-
-	if (s != NULL && strcmp(s->ccolour, tty->ccolour) != 0)
-		tty_force_cursor_colour(tty, s->ccolour);
+	struct client		*c = tty->client;
+	int			 changed;
+	enum screen_cursor_style cstyle = tty->cstyle;
 
 	if (tty->flags & TTY_NOCURSOR)
 		mode &= ~MODE_CURSOR;
 
 	changed = mode ^ tty->mode;
-	if (changed != 0)
-		log_debug("%s: update mode %x to %x", c->name, tty->mode, mode);
-
-	/*
-	 * The cursor blinking flag can be reset by setting the cursor style, so
-	 * set the style first.
-	 */
-	if (s != NULL && tty->cstyle != s->cstyle) {
-		if (tty_term_has(tty->term, TTYC_SS)) {
-			if (s->cstyle == 0 && tty_term_has(tty->term, TTYC_SE))
-				tty_putcode(tty, TTYC_SE);
-			else
-				tty_putcode1(tty, TTYC_SS, s->cstyle);
-		}
-		tty->cstyle = s->cstyle;
-		changed |= (MODE_CURSOR|MODE_BLINKING);
+	if (log_get_level() != 0 && changed != 0) {
+		log_debug("%s: current mode %s", c->name,
+		    screen_mode_to_string(tty->mode));
+		log_debug("%s: setting mode %s", c->name,
+		    screen_mode_to_string(mode));
 	}
 
-	/*
-	 * Cursor invisible (RM ?25) overrides cursor blinking (SM ?12 or RM
-	 * 34), and we need to be careful not send cnorm after cvvis since it
-	 * can undo it.
-	 */
-	if (changed & (MODE_CURSOR|MODE_BLINKING)) {
-		log_debug("%s: cursor %s, %sblinking", __func__,
-		    (mode & MODE_CURSOR) ? "on" : "off",
-		    (mode & MODE_BLINKING) ? "" : "not ");
-		if (~mode & MODE_CURSOR)
+	if (s != NULL) {
+		if (strcmp(s->ccolour, tty->ccolour) != 0)
+			tty_force_cursor_colour(tty, s->ccolour);
+		cstyle = s->cstyle;
+	}
+	if (~mode & MODE_CURSOR) {
+		/* Cursor now off - set as invisible. */
+		if (changed & MODE_CURSOR)
 			tty_putcode(tty, TTYC_CIVIS);
-		else if (mode & MODE_BLINKING) {
-			tty_putcode(tty, TTYC_CNORM);
-			if (tty_term_has(tty->term, TTYC_CVVIS))
+	} else if ((changed & (MODE_CURSOR|MODE_BLINKING)) ||
+	    cstyle != tty->cstyle) {
+		/*
+		 * Cursor now on, blinking flag changed or style changed. Start
+		 * by setting the cursor to normal.
+		 */
+		tty_putcode(tty, TTYC_CNORM);
+		switch (cstyle) {
+		case SCREEN_CURSOR_DEFAULT:
+			/*
+			 * If the old style wasn't default, then reset it to
+			 * default.
+			 */
+			if (tty->cstyle != SCREEN_CURSOR_DEFAULT) {
+				if (tty_term_has(tty->term, TTYC_SE))
+					tty_putcode(tty, TTYC_SE);
+				else
+					tty_putcode1(tty, TTYC_SS, 0);
+			}
+
+			/* Set the cursor as very visible if necessary. */
+			if (mode & MODE_BLINKING)
 				tty_putcode(tty, TTYC_CVVIS);
-		} else
-			tty_putcode(tty, TTYC_CNORM);
+			break;
+		case SCREEN_CURSOR_BLOCK:
+			/*
+			 * Set style to either block blinking (1) or steady (2)
+			 * if supported, otherwise just check the blinking
+			 * flag.
+			 */
+			if (tty_term_has(tty->term, TTYC_SS)) {
+				if (mode & MODE_BLINKING)
+					tty_putcode1(tty, TTYC_SS, 1);
+				else
+					tty_putcode1(tty, TTYC_SS, 2);
+			} else if (mode & MODE_BLINKING)
+				tty_putcode(tty, TTYC_CVVIS);
+			break;
+		case SCREEN_CURSOR_UNDERLINE:
+			/*
+			 * Set style to either underline blinking (3) or steady
+			 * (4) if supported, otherwise just check the blinking
+			 * flag.
+			 */
+			if (tty_term_has(tty->term, TTYC_SS)) {
+				if (mode & MODE_BLINKING)
+					tty_putcode1(tty, TTYC_SS, 3);
+				else
+					tty_putcode1(tty, TTYC_SS, 4);
+			} else if (mode & MODE_BLINKING)
+				tty_putcode(tty, TTYC_CVVIS);
+			break;
+		case SCREEN_CURSOR_BAR:
+			/*
+			 * Set style to either bar blinking (5) or steady (6)
+			 * if supported, otherwise just check the blinking
+			 * flag.
+			 */
+			if (tty_term_has(tty->term, TTYC_SS)) {
+				if (mode & MODE_BLINKING)
+					tty_putcode1(tty, TTYC_SS, 5);
+				else
+					tty_putcode1(tty, TTYC_SS, 6);
+			} else if (mode & MODE_BLINKING)
+				tty_putcode(tty, TTYC_CVVIS);
+			break;
+		}
+		tty->cstyle = cstyle;
 	}
 
 	if ((changed & ALL_MOUSE_MODES) &&

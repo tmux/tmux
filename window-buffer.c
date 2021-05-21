@@ -294,9 +294,9 @@ window_buffer_get_key(void *modedata, void *itemdata, u_int line)
 	struct window_buffer_modedata	*data = modedata;
 	struct window_buffer_itemdata	*item = itemdata;
 	struct format_tree		*ft;
-	struct session			*s;
-	struct winlink			*wl;
-	struct window_pane		*wp;
+	struct session			*s = NULL;
+	struct winlink			*wl = NULL;
+	struct window_pane		*wp = NULL;
 	struct paste_buffer		*pb;
 	char				*expanded;
 	key_code			 key;

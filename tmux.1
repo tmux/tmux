@@ -1782,19 +1782,18 @@ commands) or when the cursor reaches the bottom (for scrolling commands).
 .Ql -no-clear
 variants do not clear the selection.
 .Pp
-The next and previous word keys use space and the
-.Ql - ,
-.Ql _
-and
-.Ql @
-characters as word delimiters by default, but this can be adjusted by
-setting the
+The next and previous word keys skip over whitespace and treat consecutive
+runs of either word separators or other letters as words.
+Word separators can be customized with the
 .Em word-separators
 session option.
 Next word moves to the start of the next word, next word end to the end of the
 next word and previous word to the start of the previous word.
 The three next and previous space keys work similarly but use a space alone as
 the word separator.
+Setting
+.Em word-separators
+to the empty string makes next/previous word equivalent to next/previous space.
 .Pp
 The jump commands enable quick movement within a line.
 For instance, typing
@@ -2953,6 +2952,8 @@ Ctrl keys may be prefixed with
 .Ql C-
 or
 .Ql ^ ,
+Shift keys with
+.Ql S-
 and Alt (meta) with
 .Ql M- .
 In addition, the following special key names are accepted:
@@ -3451,7 +3452,9 @@ will write command prompt history on exit and load it from on start.
 .It Ic message-limit Ar number
 Set the number of error or information messages to save in the message log for
 each client.
-The default is 100.
+.It Ic prompt-history-limit Ar number
+Set the number of history items to save in the history file for each type of
+command prompt.
 .It Xo Ic set-clipboard
 .Op Ic on | external | off
 .Xc
@@ -3970,9 +3973,6 @@ If set to both, a bell and a message are produced.
 Sets the session's conception of what characters are considered word
 separators, for the purposes of the next and previous word commands in
 copy mode.
-The default is
-.Ql \ -_@ .
-.El
 .Pp
 Available window options are:
 .Pp
@@ -5374,11 +5374,25 @@ session option.
 .Pp
 Commands related to the status line are as follows:
 .Bl -tag -width Ds
+.It Xo Ic clear-prompt-history
+.Op Fl T Ar prompt-type
+.Xc
+.D1 (alias: Ic clrphist)
+Clear status prompt history for prompt type
+.Ar prompt-type .
+If
+.Fl T
+is omitted, then clear history for all types.
+See
+.Ic command-prompt
+for possible values for
+.Ar prompt-type .
 .It Xo Ic command-prompt
-.Op Fl 1ikNTW
+.Op Fl 1FikN
 .Op Fl I Ar inputs
 .Op Fl p Ar prompts
 .Op Fl t Ar target-client
+.Op Fl T Ar prompt-type
 .Op Ar template
 .Xc
 Open the command prompt in a client.
@@ -5389,6 +5403,11 @@ to execute commands interactively.
 If
 .Ar template
 is specified, it is used as the command.
+With
+.Fl F ,
+.Ar template
+is expanded as a format.
+.Pp
 If present,
 .Fl I
 is a comma-separated list of the initial text for each prompt.
@@ -5434,14 +5453,20 @@ makes the prompt only accept numeric key presses.
 .Fl i
 executes the command every time the prompt input changes instead of when the
 user exits the command prompt.
+.Pp
 .Fl T
 tells
 .Nm
-that the prompt is for a target which affects what completions are offered when
+the prompt type.
+This affects what completions are offered when
 .Em Tab
-is pressed;
-.Fl W
-is similar but indicates the prompt is for a window.
+is pressed.
+Available types are:
+.Ql command ,
+.Ql search ,
+.Ql target
+and
+.Ql window-target .
 .Pp
 The following keys have a special meaning in the command prompt, depending
 on the value of the
@@ -5663,6 +5688,19 @@ If omitted, half of the terminal size is used.
 The
 .Fl C
 flag closes any popup on the client.
+.It Xo Ic show-prompt-history
+.Op Fl T Ar prompt-type
+.Xc
+.D1 (alias: Ic showphist)
+Display status prompt history for prompt type
+.Ar prompt-type .
+If
+.Fl T
+is omitted, then show history for all types.
+See
+.Ic command-prompt
+for possible values for
+.Ar prompt-type .
 .El
 .Sh BUFFERS
 .Nm

@@ -1296,7 +1296,7 @@ window_tree_key(struct window_mode_entry *wme, struct client *c,
 		data->references++;
 		status_prompt_set(c, NULL, prompt, "",
 		    window_tree_kill_current_callback, window_tree_command_free,
-		    data, PROMPT_SINGLE|PROMPT_NOFORMAT);
+		    data, PROMPT_SINGLE|PROMPT_NOFORMAT, PROMPT_TYPE_COMMAND);
 		free(prompt);
 		break;
 	case 'X':
@@ -1307,7 +1307,7 @@ window_tree_key(struct window_mode_entry *wme, struct client *c,
 		data->references++;
 		status_prompt_set(c, NULL, prompt, "",
 		    window_tree_kill_tagged_callback, window_tree_command_free,
-		    data, PROMPT_SINGLE|PROMPT_NOFORMAT);
+		    data, PROMPT_SINGLE|PROMPT_NOFORMAT, PROMPT_TYPE_COMMAND);
 		free(prompt);
 		break;
 	case ':':
@@ -1319,7 +1319,7 @@ window_tree_key(struct window_mode_entry *wme, struct client *c,
 		data->references++;
 		status_prompt_set(c, NULL, prompt, "",
 		    window_tree_command_callback, window_tree_command_free,
-		    data, PROMPT_NOFORMAT);
+		    data, PROMPT_NOFORMAT, PROMPT_TYPE_COMMAND);
 		free(prompt);
 		break;
 	case '\r':

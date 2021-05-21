@@ -33,9 +33,9 @@ static void	 status_message_callback(int, short, void *);
 static void	 status_timer_callback(int, short, void *);
 
 static char	*status_prompt_find_history_file(void);
-static const char *status_prompt_up_history(u_int *);
-static const char *status_prompt_down_history(u_int *);
-static void	 status_prompt_add_history(const char *);
+static const char *status_prompt_up_history(u_int *, u_int);
+static const char *status_prompt_down_history(u_int *, u_int);
+static void	 status_prompt_add_history(const char *, u_int);
 
 static char	*status_prompt_complete(struct client *, const char *, u_int);
 static char	*status_prompt_complete_window_menu(struct client *,
@@ -49,10 +49,16 @@ struct status_prompt_menu {
 	char		  flag;
 };
 
+static const char	*prompt_type_strings[] = {
+	"command",
+	"search",
+	"target",
+	"window-target"
+};
+
 /* Status prompt history. */
-#define PROMPT_HISTORY 100
-static char	**status_prompt_hlist;
-static u_int	  status_prompt_hsize;
+char		**status_prompt_hlist[PROMPT_NTYPES];
+u_int		  status_prompt_hsize[PROMPT_NTYPES];
 
 /* Find the history file to load/save from/to. */
 static char *
@@ -73,6 +79,28 @@ status_prompt_find_history_file(void)
 		return (NULL);
 	xasprintf(&path, "%s%s", home, history_file + 1);
 	return (path);
+}
+
+/* Add loaded history item to the appropriate list. */
+static void
+status_prompt_add_typed_history(char *line)
+{
+	char			*typestr;
+	enum prompt_type	 type = PROMPT_TYPE_INVALID;
+
+	typestr = strsep(&line, ":");
+	if (line != NULL)
+		type = status_prompt_type(typestr);
+	if (type == PROMPT_TYPE_INVALID) {
+		/*
+		 * Invalid types are not expected, but this provides backward
+		 * compatibility with old history files.
+		 */
+		if (line != NULL)
+			*(--line) = ':';
+		status_prompt_add_history(typestr, PROMPT_TYPE_COMMAND);
+	} else
+		status_prompt_add_history(line, type);
 }
 
 /* Load status prompt history from file. */
@@ -102,12 +130,12 @@ status_prompt_load_history(void)
 		if (length > 0) {
 			if (line[length - 1] == '\n') {
 				line[length - 1] = '\0';
-				status_prompt_add_history(line);
+				status_prompt_add_typed_history(line);
 			} else {
 				tmp = xmalloc(length + 1);
 				memcpy(tmp, line, length);
 				tmp[length] = '\0';
-				status_prompt_add_history(tmp);
+				status_prompt_add_typed_history(tmp);
 				free(tmp);
 			}
 		}
@@ -120,7 +148,7 @@ void
 status_prompt_save_history(void)
 {
 	FILE	*f;
-	u_int	 i;
+	u_int	 i, type;
 	char	*history_file;
 
 	if ((history_file = status_prompt_find_history_file()) == NULL)
@@ -135,9 +163,13 @@ status_prompt_save_history(void)
 	}
 	free(history_file);
 
-	for (i = 0; i < status_prompt_hsize; i++) {
-		fputs(status_prompt_hlist[i], f);
-		fputc('\n', f);
+	for (type = 0; type < PROMPT_NTYPES; type++) {
+		for (i = 0; i < status_prompt_hsize[type]; i++) {
+			fputs(prompt_type_strings[type], f);
+			fputc(':', f);
+			fputs(status_prompt_hlist[type][i], f);
+			fputc('\n', f);
+		}
 	}
 	fclose(f);
 
@@ -545,7 +577,7 @@ status_message_redraw(struct client *c)
 void
 status_prompt_set(struct client *c, struct cmd_find_state *fs,
     const char *msg, const char *input, prompt_input_cb inputcb,
-    prompt_free_cb freecb, void *data, int flags)
+    prompt_free_cb freecb, void *data, int flags, enum prompt_type prompt_type)
 {
 	struct format_tree	*ft;
 	char			*tmp;
@@ -581,9 +613,10 @@ status_prompt_set(struct client *c, struct cmd_find_state *fs,
 	c->prompt_freecb = freecb;
 	c->prompt_data = data;
 
-	c->prompt_hindex = 0;
+	memset(c->prompt_hindex, 0, sizeof c->prompt_hindex);
 
 	c->prompt_flags = flags;
+	c->prompt_type = prompt_type;
 	c->prompt_mode = PROMPT_ENTRY;
 
 	if (~flags & PROMPT_INCREMENTAL)
@@ -644,7 +677,7 @@ status_prompt_update(struct client *c, const char *msg, const char *input)
 	c->prompt_buffer = utf8_fromcstr(tmp);
 	c->prompt_index = utf8_strlen(c->prompt_buffer);
 
-	c->prompt_hindex = 0;
+	memset(c->prompt_hindex, 0, sizeof c->prompt_hindex);
 
 	c->flags |= CLIENT_REDRAWSTATUS;
 
@@ -768,7 +801,7 @@ status_prompt_space(const struct utf8_data *ud)
 }
 
 /*
- * Translate key from emacs to vi. Return 0 to drop key, 1 to process the key
+ * Translate key from vi to emacs. Return 0 to drop key, 1 to process the key
  * as an emacs key; return 2 to append to the buffer.
  */
 static int
@@ -843,17 +876,25 @@ status_prompt_translate_key(struct client *c, key_code key, key_code *new_key)
 		*new_key = KEYC_BSPACE;
 		return (1);
 	case 'b':
-	case 'B':
 		*new_key = 'b'|KEYC_META;
+		return (1);
+	case 'B':
+		*new_key = 'B'|KEYC_VI;
 		return (1);
 	case 'd':
 		*new_key = '\025';
 		return (1);
 	case 'e':
+		*new_key = 'e'|KEYC_VI;
+		return (1);
 	case 'E':
+		*new_key = 'E'|KEYC_VI;
+		return (1);
 	case 'w':
+		*new_key = 'w'|KEYC_VI;
+		return (1);
 	case 'W':
-		*new_key = 'f'|KEYC_META;
+		*new_key = 'W'|KEYC_VI;
 		return (1);
 	case 'p':
 		*new_key = '\031'; /* C-y */
@@ -1028,16 +1069,125 @@ status_prompt_replace_complete(struct client *c, const char *s)
 	return (1);
 }
 
+/* Prompt forward to the next beginning of a word. */
+static void
+status_prompt_forward_word(struct client *c, size_t size, int vi,
+    const char *separators)
+{
+	size_t		 idx = c->prompt_index;
+	int		 word_is_separators;
+
+	/* In emacs mode, skip until the first non-whitespace character. */
+	if (!vi)
+		while (idx != size &&
+		    status_prompt_space(&c->prompt_buffer[idx]))
+			idx++;
+
+	/* Can't move forward if we're already at the end. */
+	if (idx == size) {
+		c->prompt_index = idx;
+		return;
+	}
+
+	/* Determine the current character class (separators or not). */
+	word_is_separators = status_prompt_in_list(separators,
+	    &c->prompt_buffer[idx]) &&
+	    !status_prompt_space(&c->prompt_buffer[idx]);
+
+	/* Skip ahead until the first space or opposite character class. */
+	do {
+		idx++;
+		if (status_prompt_space(&c->prompt_buffer[idx])) {
+			/* In vi mode, go to the start of the next word. */
+			if (vi)
+				while (idx != size &&
+				    status_prompt_space(&c->prompt_buffer[idx]))
+					idx++;
+			break;
+		}
+	} while (idx != size && word_is_separators == status_prompt_in_list(
+	    separators, &c->prompt_buffer[idx]));
+
+	c->prompt_index = idx;
+}
+
+/* Prompt forward to the next end of a word. */
+static void
+status_prompt_end_word(struct client *c, size_t size, const char *separators)
+{
+	size_t		 idx = c->prompt_index;
+	int		 word_is_separators;
+
+	/* Can't move forward if we're already at the end. */
+	if (idx == size)
+		return;
+
+	/* Find the next word. */
+	do {
+		idx++;
+		if (idx == size) {
+			c->prompt_index = idx;
+			return;
+		}
+	} while (status_prompt_space(&c->prompt_buffer[idx]));
+
+	/* Determine the character class (separators or not). */
+	word_is_separators = status_prompt_in_list(separators,
+	    &c->prompt_buffer[idx]);
+
+	/* Skip ahead until the next space or opposite character class. */
+	do {
+		idx++;
+		if (idx == size)
+			break;
+	} while (!status_prompt_space(&c->prompt_buffer[idx]) &&
+	    word_is_separators == status_prompt_in_list(separators,
+	    &c->prompt_buffer[idx]));
+
+	/* Back up to the previous character to stop at the end of the word. */
+	c->prompt_index = idx - 1;
+}
+
+/* Prompt backward to the previous beginning of a word. */
+static void
+status_prompt_backward_word(struct client *c, const char *separators)
+{
+	size_t	idx = c->prompt_index;
+	int	word_is_separators;
+
+	/* Find non-whitespace. */
+	while (idx != 0) {
+		--idx;
+		if (!status_prompt_space(&c->prompt_buffer[idx]))
+			break;
+	}
+	word_is_separators = status_prompt_in_list(separators,
+	    &c->prompt_buffer[idx]);
+
+	/* Find the character before the beginning of the word. */
+	while (idx != 0) {
+		--idx;
+		if (status_prompt_space(&c->prompt_buffer[idx]) ||
+		    word_is_separators != status_prompt_in_list(separators,
+		    &c->prompt_buffer[idx])) {
+			/* Go back to the word. */
+			idx++;
+			break;
+		}
+	}
+	c->prompt_index = idx;
+}
+
 /* Handle keys in prompt. */
 int
 status_prompt_key(struct client *c, key_code key)
 {
 	struct options		*oo = c->session->options;
 	char			*s, *cp, prefix = '=';
-	const char		*histstr, *ws = NULL, *keystring;
+	const char		*histstr, *separators = NULL, *keystring;
 	size_t			 size, idx;
 	struct utf8_data	 tmp;
-	int			 keys;
+	int			 keys, word_is_separators;
 
 	if (c->prompt_flags & PROMPT_KEY) {
 		keystring = key_string_lookup_key(key, 0);
@@ -1140,20 +1290,24 @@ process_key:
 		}
 		break;
 	case '\027': /* C-w */
-		ws = options_get_string(oo, "word-separators");
+		separators = options_get_string(oo, "word-separators");
 		idx = c->prompt_index;
 
-		/* Find a non-separator. */
+		/* Find non-whitespace. */
 		while (idx != 0) {
 			idx--;
-			if (!status_prompt_in_list(ws, &c->prompt_buffer[idx]))
+			if (!status_prompt_space(&c->prompt_buffer[idx]))
 				break;
 		}
+		word_is_separators = status_prompt_in_list(separators,
+		    &c->prompt_buffer[idx]);
 
-		/* Find the separator at the beginning of the word. */
+		/* Find the character before the beginning of the word. */
 		while (idx != 0) {
 			idx--;
-			if (status_prompt_in_list(ws, &c->prompt_buffer[idx])) {
+			if (status_prompt_space(&c->prompt_buffer[idx]) ||
+			    word_is_separators != status_prompt_in_list(
+			    separators, &c->prompt_buffer[idx])) {
 				/* Go back to the word. */
 				idx++;
 				break;
@@ -1175,54 +1329,37 @@ process_key:
 		c->prompt_index = idx;
 
 		goto changed;
-	case 'f'|KEYC_META:
 	case KEYC_RIGHT|KEYC_CTRL:
-		ws = options_get_string(oo, "word-separators");
-
-		/* Find a word. */
-		while (c->prompt_index != size) {
-			idx = ++c->prompt_index;
-			if (!status_prompt_in_list(ws, &c->prompt_buffer[idx]))
-				break;
-		}
-
-		/* Find the separator at the end of the word. */
-		while (c->prompt_index != size) {
-			idx = ++c->prompt_index;
-			if (status_prompt_in_list(ws, &c->prompt_buffer[idx]))
-				break;
-		}
-
-		/* Back up to the end-of-word like vi. */
-		if (options_get_number(oo, "status-keys") == MODEKEY_VI &&
-		    c->prompt_index != 0)
-			c->prompt_index--;
-
+	case 'f'|KEYC_META:
+		separators = options_get_string(oo, "word-separators");
+		status_prompt_forward_word(c, size, 0, separators);
 		goto changed;
-	case 'b'|KEYC_META:
+	case 'E'|KEYC_VI:
+		status_prompt_end_word(c, size, "");
+		goto changed;
+	case 'e'|KEYC_VI:
+		separators = options_get_string(oo, "word-separators");
+		status_prompt_end_word(c, size, separators);
+		goto changed;
+	case 'W'|KEYC_VI:
+		status_prompt_forward_word(c, size, 1, "");
+		goto changed;
+	case 'w'|KEYC_VI:
+		separators = options_get_string(oo, "word-separators");
+		status_prompt_forward_word(c, size, 1, separators);
+		goto changed;
+	case 'B'|KEYC_VI:
+		status_prompt_backward_word(c, "");
+		goto changed;
 	case KEYC_LEFT|KEYC_CTRL:
-		ws = options_get_string(oo, "word-separators");
-
-		/* Find a non-separator. */
-		while (c->prompt_index != 0) {
-			idx = --c->prompt_index;
-			if (!status_prompt_in_list(ws, &c->prompt_buffer[idx]))
-				break;
-		}
-
-		/* Find the separator at the beginning of the word. */
-		while (c->prompt_index != 0) {
-			idx = --c->prompt_index;
-			if (status_prompt_in_list(ws, &c->prompt_buffer[idx])) {
-				/* Go back to the word. */
-				c->prompt_index++;
-				break;
-			}
-		}
+	case 'b'|KEYC_META:
+		separators = options_get_string(oo, "word-separators");
+		status_prompt_backward_word(c, separators);
 		goto changed;
 	case KEYC_UP:
 	case '\020': /* C-p */
-		histstr = status_prompt_up_history(&c->prompt_hindex);
+		histstr = status_prompt_up_history(c->prompt_hindex,
+		    c->prompt_type);
 		if (histstr == NULL)
 			break;
 		free(c->prompt_buffer);
@@ -1231,7 +1368,8 @@ process_key:
 		goto changed;
 	case KEYC_DOWN:
 	case '\016': /* C-n */
-		histstr = status_prompt_down_history(&c->prompt_hindex);
+		histstr = status_prompt_down_history(c->prompt_hindex,
+		    c->prompt_type);
 		if (histstr == NULL)
 			break;
 		free(c->prompt_buffer);
@@ -1259,7 +1397,7 @@ process_key:
 	case '\n':
 		s = utf8_tocstr(c->prompt_buffer);
 		if (*s != '\0')
-			status_prompt_add_history(s);
+			status_prompt_add_history(s, c->prompt_type);
 		if (c->prompt_inputcb(c, c->prompt_data, s, 1) == 0)
 			status_prompt_clear(c);
 		free(s);
@@ -1300,12 +1438,14 @@ process_key:
 	return (0);
 
 append_key:
-	if (key <= 0x1f || key >= KEYC_BASE)
+	if (key <= 0x1f || (key >= KEYC_BASE && key < KEYC_BASE_END))
 		return (0);
 	if (key <= 0x7f)
 		utf8_set(&tmp, key);
-	else
+	else if (KEYC_IS_UNICODE(key))
 		utf8_to_data(key, &tmp);
+	else
+		return (0);
 
 	c->prompt_buffer = xreallocarray(c->prompt_buffer, size + 2,
 	    sizeof *c->prompt_buffer);
@@ -1348,54 +1488,78 @@ changed:
 
 /* Get previous line from the history. */
 static const char *
-status_prompt_up_history(u_int *idx)
+status_prompt_up_history(u_int *idx, u_int type)
 {
 	/*
 	 * History runs from 0 to size - 1. Index is from 0 to size. Zero is
 	 * empty.
 	 */
 
-	if (status_prompt_hsize == 0 || *idx == status_prompt_hsize)
+	if (status_prompt_hsize[type] == 0 ||
+	    idx[type] == status_prompt_hsize[type])
 		return (NULL);
-	(*idx)++;
-	return (status_prompt_hlist[status_prompt_hsize - *idx]);
+	idx[type]++;
+	return (status_prompt_hlist[type][status_prompt_hsize[type] - idx[type]]);
 }
 
 /* Get next line from the history. */
 static const char *
-status_prompt_down_history(u_int *idx)
+status_prompt_down_history(u_int *idx, u_int type)
 {
-	if (status_prompt_hsize == 0 || *idx == 0)
+	if (status_prompt_hsize[type] == 0 || idx[type] == 0)
 		return ("");
-	(*idx)--;
-	if (*idx == 0)
+	idx[type]--;
+	if (idx[type] == 0)
 		return ("");
-	return (status_prompt_hlist[status_prompt_hsize - *idx]);
+	return (status_prompt_hlist[type][status_prompt_hsize[type] - idx[type]]);
 }
 
 /* Add line to the history. */
 static void
-status_prompt_add_history(const char *line)
+status_prompt_add_history(const char *line, u_int type)
 {
-	size_t	size;
+	u_int	i, oldsize, newsize, freecount, hlimit, new = 1;
+	size_t	movesize;
 
-	if (status_prompt_hsize > 0 &&
-	    strcmp(status_prompt_hlist[status_prompt_hsize - 1], line) == 0)
-		return;
+	oldsize = status_prompt_hsize[type];
+	if (oldsize > 0 &&
+	    strcmp(status_prompt_hlist[type][oldsize - 1], line) == 0)
+		new = 0;
 
-	if (status_prompt_hsize == PROMPT_HISTORY) {
-		free(status_prompt_hlist[0]);
-
-		size = (PROMPT_HISTORY - 1) * sizeof *status_prompt_hlist;
-		memmove(&status_prompt_hlist[0], &status_prompt_hlist[1], size);
-
-		status_prompt_hlist[status_prompt_hsize - 1] = xstrdup(line);
-		return;
+	hlimit = options_get_number(global_options, "prompt-history-limit");
+	if (hlimit > oldsize) {
+		if (new == 0)
+			return;
+		newsize = oldsize + new;
+	} else {
+		newsize = hlimit;
+		freecount = oldsize + new - newsize;
+		if (freecount > oldsize)
+			freecount = oldsize;
+		if (freecount == 0)
+			return;
+		for (i = 0; i < freecount; i++)
+			free(status_prompt_hlist[type][i]);
+		movesize = (oldsize - freecount) *
+		    sizeof *status_prompt_hlist[type];
+		if (movesize > 0) {
+			memmove(&status_prompt_hlist[type][0],
+			    &status_prompt_hlist[type][freecount], movesize);
+		}
 	}
 
-	status_prompt_hlist = xreallocarray(status_prompt_hlist,
-	    status_prompt_hsize + 1, sizeof *status_prompt_hlist);
-	status_prompt_hlist[status_prompt_hsize++] = xstrdup(line);
+	if (newsize == 0) {
+		free(status_prompt_hlist[type]);
+		status_prompt_hlist[type] = NULL;
+	} else if (newsize != oldsize) {
+		status_prompt_hlist[type] =
+		    xreallocarray(status_prompt_hlist[type], newsize,
+			sizeof *status_prompt_hlist[type]);
+	}
+
+	if (new == 1 && newsize > 0)
+		status_prompt_hlist[type][newsize - 1] = xstrdup(line);
+	status_prompt_hsize[type] = newsize;
 }
 
 /* Build completion list. */
@@ -1501,7 +1665,7 @@ status_prompt_menu_callback(__unused struct menu *menu, u_int idx, key_code key,
 			s = xstrdup(spm->list[idx]);
 		else
 			xasprintf(&s, "-%c%s", spm->flag, spm->list[idx]);
-		if (c->prompt_flags & PROMPT_WINDOW) {
+		if (c->prompt_type == PROMPT_TYPE_WINDOW_TARGET) {
 			free(c->prompt_buffer);
 			c->prompt_buffer = utf8_fromcstr(s);
 			c->prompt_index = utf8_strlen(c->prompt_buffer);
@@ -1609,7 +1773,7 @@ status_prompt_complete_window_menu(struct client *c, struct session *s,
 		}
 
 		list = xreallocarray(list, size + 1, sizeof *list);
-		if (c->prompt_flags & PROMPT_WINDOW) {
+		if (c->prompt_type == PROMPT_TYPE_WINDOW_TARGET) {
 			xasprintf(&tmp, "%d (%s)", wl->idx, wl->window->name);
 			xasprintf(&list[size++], "%d", wl->idx);
 		} else {
@@ -1717,10 +1881,12 @@ status_prompt_complete(struct client *c, const char *word, u_int offset)
 	u_int		  size = 0, i;
 
 	if (*word == '\0' &&
-	    ((c->prompt_flags & (PROMPT_TARGET|PROMPT_WINDOW)) == 0))
+	    c->prompt_type != PROMPT_TYPE_TARGET &&
+	    c->prompt_type != PROMPT_TYPE_WINDOW_TARGET)
 		return (NULL);
 
-	if (((c->prompt_flags & (PROMPT_TARGET|PROMPT_WINDOW)) == 0) &&
+	if (c->prompt_type != PROMPT_TYPE_TARGET &&
+	    c->prompt_type != PROMPT_TYPE_WINDOW_TARGET &&
 	    strncmp(word, "-t", 2) != 0 &&
 	    strncmp(word, "-s", 2) != 0) {
 		list = status_prompt_complete_list(&size, word, offset == 0);
@@ -1733,7 +1899,8 @@ status_prompt_complete(struct client *c, const char *word, u_int offset)
 		goto found;
 	}
 
-	if (c->prompt_flags & (PROMPT_TARGET|PROMPT_WINDOW)) {
+	if (c->prompt_type == PROMPT_TYPE_TARGET ||
+	    c->prompt_type == PROMPT_TYPE_WINDOW_TARGET) {
 		s = word;
 		flag = '\0';
 	} else {
@@ -1743,7 +1910,7 @@ status_prompt_complete(struct client *c, const char *word, u_int offset)
 	}
 
 	/* If this is a window completion, open the window menu. */
-	if (c->prompt_flags & PROMPT_WINDOW) {
+	if (c->prompt_type == PROMPT_TYPE_WINDOW_TARGET) {
 		out = status_prompt_complete_window_menu(c, c->session, s,
 		    offset, '\0');
 		goto found;
@@ -1792,4 +1959,26 @@ found:
 		free(list);
 	}
 	return (out);
+}
+
+/* Return the type of the prompt as an enum. */
+enum prompt_type
+status_prompt_type(const char *type)
+{
+	u_int	i;
+
+	for (i = 0; i < PROMPT_NTYPES; i++) {
+		if (strcmp(type, status_prompt_type_string(i)) == 0)
+			return (i);
+	}
+	return (PROMPT_TYPE_INVALID);
+}
+
+/* Accessor for prompt_type_strings. */
+const char *
+status_prompt_type_string(u_int type)
+{
+	if (type >= PROMPT_NTYPES)
+		return ("invalid");
+	return (prompt_type_strings[type]);
 }

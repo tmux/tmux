@@ -1,6 +1,8 @@
 CHANGES FROM 3.2 TO 3.3
 
-XXX
+* More accurate vi(1) word navigation in copy mode and on the status line. This
+  changes the meaning of the word-separators option - setting it to the empty
+  string is equivalent to the previous behavior.
 
 CHANGES FROM 3.1c TO 3.2
 
