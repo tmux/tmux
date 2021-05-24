@@ -59,6 +59,7 @@ void server_acl_init(void)
 	SLIST_INIT(&acl_entries);
 	/* need to insert host username */
 	server_acl_user_allow(getuid(), 1);
+	chmod(socket_path, S_IRGRP | S_IWGRP | S_IRUSR | S_IWUSR);
 }
 
 void server_acl_user_allow(uid_t uid, int owner)
