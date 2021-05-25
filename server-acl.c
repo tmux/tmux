@@ -60,6 +60,16 @@ void server_acl_init(void)
 	/* need to insert host username */
 	server_acl_user_allow(getuid(), 1);
 	chmod(socket_path, S_IRGRP | S_IWGRP | S_IRUSR | S_IWUSR);
+	
+	/* // Allows UID's provided from text file in ACL list
+	FILE* uid_file = fopen("test.txt", "r"); //TODO: Establish universal filename & path.
+    int uid = 0;
+    while (!feof(uid_file)) {
+        fscanf(uid_file, "%d", &uid);
+		server_acl_user_allow((uid_t)uid, 0); //TODO: Is owner 1 or 0?
+    }
+    fclose(uid_file);
+	*/
 }
 
 void server_acl_user_allow(uid_t uid, int owner)
