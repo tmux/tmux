@@ -83,9 +83,7 @@ void server_acl_init(void)
 		user_data = getpwnam(username);
 		uid = user_data->pw_uid;
 
-		if (uid != host_uid) {
-			server_acl_user_allow(uid, 0);
-		}
+	
 		
 		if (user_data == NULL) {
 			log_debug(TMUX_ACL_LOG " getpwnam failed to find UID for username %s", username);
