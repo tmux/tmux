@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <pwd.h>
 
 
 #define TMUX_ACL_LOG "[access control list]"
@@ -57,28 +58,47 @@ static int server_acl_is_allowed(uid_t uid)
 
 void server_acl_init(void)
 {
-	
-	FILE * uid_file = fopen("uid.txt", "r+");
 	uid_t host_uid = getuid();
 	uid_t uid = 0;
-
+	struct passwd* user_data;
+	FILE * username_file = fopen("whitelist.txt", "r+");
+	char * username = malloc(128);
+	
+	if (username == NULL) {
+		fatal(TMUX_ACL_LOG " malloc failed in server_acl_init");
+	}
+	if (username_file == NULL) {
+		log_debug(TMUX_ACL_LOG " server-acl.c was unable to open whitelist.txt");
+	}
+	
 	SLIST_INIT(&acl_entries);
 	/* need to insert host username */
 	server_acl_user_allow(host_uid, 1);
 	chmod(socket_path, S_IRGRP | S_IWGRP | S_IRUSR | S_IWUSR);
 
-	
-    
-	// Allows UID's provided from text file in ACL list
-	
-    while (!feof(uid_file)) {
-        fscanf(uid_file, "%d", &uid);
+	/* Reads uid.txt for usernames, then allows said users to the ACL whitelist */
+    while (!feof(username_file)) {
+		
+        fscanf(username_file, "%s", username);
+		user_data = getpwnam(username);
+		uid = user_data->pw_uid;
+
 		if (uid != host_uid) {
 			server_acl_user_allow(uid, 0);
 		}
+		
+		if (user_data == NULL) {
+			log_debug(TMUX_ACL_LOG " getpwnam failed to find UID for username %s", username);
+		}
+		if (uid == host_uid) {
+			log_debug(TMUX_ACL_LOG " whitelist.txt contains the username of the host");
+		}
+		
+		else {
+			server_acl_user_allow(uid, 0);
+		}
     }
-    fclose(uid_file);
-	
+    fclose(username_file);
 }
 
 void server_acl_user_allow(uid_t uid, int owner)
