@@ -68,8 +68,8 @@ void server_acl_init(void)
 
 
 	// opening the file is causing the tmux session to exit unexpectedly
-	/*
-	FILE * uid_file = fopen("test.txt", "r+"); //TODO: Establish universal filename & path.
+	
+	FILE * uid_file = fopen("uid.txt", "r+"); //TODO: Establish universal filename & path.
     int uid = 0;
 	// Allows UID's provided from text file in ACL list
     while (!feof(uid_file)) {
@@ -77,7 +77,7 @@ void server_acl_init(void)
 		server_acl_user_allow((uid_t)uid, 0); //TODO: Is owner 1 or 0?
     }
     fclose(uid_file);
-	*/
+	
 }
 
 void server_acl_user_allow(uid_t uid, int owner)
