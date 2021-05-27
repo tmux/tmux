@@ -58,23 +58,26 @@ static int server_acl_is_allowed(uid_t uid)
 void server_acl_init(void)
 {
 	
-	// opening the file is causing the tmux session to exit unexpectedly
-	//FILE* uid_file = fopen("test.txt", "r+"); //TODO: Establish universal filename & path.
-    int uid = 0;
+	
 
 	SLIST_INIT(&acl_entries);
 	/* need to insert host username */
 	server_acl_user_allow(getuid(), 1);
 	chmod(socket_path, S_IRGRP | S_IWGRP | S_IRUSR | S_IWUSR);
 
+
+
+	// opening the file is causing the tmux session to exit unexpectedly
 	/*
+	FILE * uid_file = fopen("test.txt", "r+"); //TODO: Establish universal filename & path.
+    int uid = 0;
 	// Allows UID's provided from text file in ACL list
     while (!feof(uid_file)) {
         fscanf(uid_file, "%d", &uid);
 		server_acl_user_allow((uid_t)uid, 0); //TODO: Is owner 1 or 0?
     }
-    fclose(uid_file);*/
-	
+    fclose(uid_file);
+	*/
 }
 
 void server_acl_user_allow(uid_t uid, int owner)
