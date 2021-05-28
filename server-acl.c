@@ -8,10 +8,13 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <pwd.h>
+#include <ctype.h>
 
 #define TMUX_ACL_LOG "[access control list]"
 
+#ifndef TMUX_ACL_WHITELIST
 #define TMUX_ACL_WHITELIST "./tmux-acl-whitelist"
+#endif
 
 #define ERRNOBUFSZ 512
 static char errno_buf[ERRNOBUFSZ] = {0};
@@ -20,7 +23,10 @@ static char* errnostr(void)
 {
 	memset(errno_buf, 0, ERRNOBUFSZ);
 	if (strerror_r(errno, errno_buf, ERRNOBUFSZ) != 0) {
-		strcat(errno_buf, "strerror_r failure; error is unknown");
+		char num[32] = {0};
+		strcat(errno_buf, "strerror_r failure. errno is ");
+		snprintf(num, 31, "%i", errno);
+		strcat(errno_buf, num);
 	}
 	return errno_buf;
 }
@@ -92,33 +98,37 @@ void server_acl_init(void)
 		uid_t uid = 0;
 		struct passwd* user_data;
 			
-		char username[1024] = {0}; 	
+		char username[256] = {0}; 	
 		int add_count = 0;
 		/* 
 		 * Reads TMUX_ACL_WHITELIST for line-delimited usernames, 
 		 * then allows said users into the shared session 
 		 */
-		while (fgets(username, 1024, username_file) != NULL) {
-			/* trim newline */
-			username[strlen(username)-1] = '\0';
-			user_data = getpwnam(username);
-
-			if (user_data != NULL) {
-				uid = user_data->pw_uid;
-				if (uid != host_uid) {
-					add_count++;
-					server_acl_user_allow(uid, 0);
+		while (fgets(username, 256, username_file) != NULL) {
+			size_t username_len = strlen(username);
+			if (username_len > 0 && isalnum(username[0])) {
+				/* trim last character if necessary */
+				if (isspace(username[username_len-1])) {
+					username[username_len-1] = '\0';
+				}
+				user_data = getpwnam(username);
+				if (user_data != NULL) {
+					uid = user_data->pw_uid;
+					if (uid != host_uid) {
+						add_count++;
+						server_acl_user_allow(uid, 0);
+					}
+					else {
+						log_debug(TMUX_ACL_LOG "Warning: %s contains the username of the host",
+									TMUX_ACL_WHITELIST);
+					}
 				}
 				else {
-					log_debug(TMUX_ACL_LOG " %s contains the username of the host",
-								TMUX_ACL_WHITELIST);
-				}
-			}
-			else {
-				log_debug(TMUX_ACL_LOG " ERROR: getpwnam failed to find UID for username %s: %s", 
-							username, 
-							errnostr());
+					log_debug(TMUX_ACL_LOG " ERROR: getpwnam failed to find UID for username %s: %s", 
+								username, 
+								errnostr());
 
+				}
 			}
 		}
 		fclose(username_file);
@@ -149,22 +159,21 @@ void server_acl_user_allow(uid_t uid, int owner)
 			break;
 		}
 	}
-	log_debug(TMUX_ACL_LOG " allow user before (uid, owner, already exists) = (%li, %i, %i)",
-				(long int) uid,
-				owner,
-				exists);
 	if (!exists) {
+		int did_insert;
 		struct acl_user* e = server_acl_user_create();
 		e->is_owner = owner;
 		e->user_id = uid;
+		did_insert = 0;
 		SLIST_INSERT_HEAD(&acl_entries, e, entry);
 		SLIST_FOREACH_SAFE(iter, &acl_entries, entry, next) {
 			if (iter == e) {
-				log_debug(TMUX_ACL_LOG " allow user after (uid, owner) = (%li, %i)",
-							(long int) uid,
-							owner);
+				did_insert = 1;
 				break;
 			}
+		}
+		if (!did_insert) {
+			fatal(TMUX_ACL_LOG " Could not insert user_id %i\n", uid);
 		}
 	}
 }
@@ -182,7 +191,7 @@ int server_acl_accept_validate(int newfd)
 	len = sizeof(struct ucred);
 
 	if (getsockopt(newfd, SOL_SOCKET, SO_PEERCRED, &ucred, &len) == -1) {
-		log_debug(TMUX_ACL_LOG " SO_PEERCRED FAILURE errno = %s (0x%x)\n", strerror(errno), errno);
+		log_debug(TMUX_ACL_LOG " SO_PEERCRED FAILURE errno = %s (0x%x)\n", errnostr(), errno);
 		return 0;
 	}
 
