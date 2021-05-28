@@ -11,7 +11,7 @@
 
 #define TMUX_ACL_LOG "[access control list]"
 
-#define TMUX_ACL_WHITELIST "~/.tmux-acl-whitelist"
+#define TMUX_ACL_WHITELIST "./tmux-acl-whitelist"
 
 #define ERRNOBUFSZ 512
 static char errno_buf[ERRNOBUFSZ] = {0};
@@ -86,7 +86,7 @@ void server_acl_init(void)
 	 * User may not care about ACL whitelisting for their session, 
 	 * so if it doesn't exist it's reasonable to not create it. 
 	 */
-	username_file = fopen(TMUX_ACL_WHITELIST, "r");
+	username_file = fopen(TMUX_ACL_WHITELIST, "rb");
 	
 	if (username_file != NULL) {
 		uid_t uid = 0;
@@ -98,11 +98,13 @@ void server_acl_init(void)
 		 * Reads TMUX_ACL_WHITELIST for line-delimited usernames, 
 		 * then allows said users into the shared session 
 		 */
-		while (fgets(username, 1024, username_file) != NULL) {	
+		while (fgets(username, 1024, username_file) != NULL) {
+            /* trim newline */
+            username[strlen(username)-1] = '\0';
 			user_data = getpwnam(username);
-			uid = user_data->pw_uid;
 
 			if (user_data != NULL) {
+                uid = user_data->pw_uid;
 				if (uid != host_uid) {
 					add_count++;
 					server_acl_user_allow(uid, 0);
