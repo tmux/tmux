@@ -99,12 +99,12 @@ void server_acl_init(void)
 		 * then allows said users into the shared session 
 		 */
 		while (fgets(username, 1024, username_file) != NULL) {
-            /* trim newline */
-            username[strlen(username)-1] = '\0';
+			/* trim newline */
+			username[strlen(username)-1] = '\0';
 			user_data = getpwnam(username);
 
 			if (user_data != NULL) {
-                uid = user_data->pw_uid;
+				uid = user_data->pw_uid;
 				if (uid != host_uid) {
 					add_count++;
 					server_acl_user_allow(uid, 0);
@@ -116,8 +116,8 @@ void server_acl_init(void)
 			}
 			else {
 				log_debug(TMUX_ACL_LOG " ERROR: getpwnam failed to find UID for username %s: %s", 
-						  username, 
-						  errnostr());
+							username, 
+							errnostr());
 
 			}
 		}
@@ -150,9 +150,9 @@ void server_acl_user_allow(uid_t uid, int owner)
 		}
 	}
 	log_debug(TMUX_ACL_LOG " allow user before (uid, owner, already exists) = (%li, %i, %i)",
-			  (long int) uid,
-			  owner,
-			  exists);
+				(long int) uid,
+				owner,
+				exists);
 	if (!exists) {
 		struct acl_user* e = server_acl_user_create();
 		e->is_owner = owner;
@@ -161,8 +161,8 @@ void server_acl_user_allow(uid_t uid, int owner)
 		SLIST_FOREACH_SAFE(iter, &acl_entries, entry, next) {
 			if (iter == e) {
 				log_debug(TMUX_ACL_LOG " allow user after (uid, owner) = (%li, %i)",
-						  (long int) uid,
-						  owner);
+							(long int) uid,
+							owner);
 				break;
 			}
 		}
@@ -187,9 +187,9 @@ int server_acl_accept_validate(int newfd)
 	}
 
 	log_debug(TMUX_ACL_LOG " SO_PEERCRED SUCCESS: pid=%li, euid=%li, egid=%li\n",
-			  (long)ucred.pid,
-			  (long)ucred.uid,
-			  (long)ucred.gid);
+				(long)ucred.pid,
+				(long)ucred.uid,
+				(long)ucred.gid);
 
 	if (!server_acl_is_allowed(ucred.uid)) {
 		log_debug(TMUX_ACL_LOG " denying user id %li", (long) ucred.uid);
