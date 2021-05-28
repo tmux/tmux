@@ -9,9 +9,21 @@
 #include <sys/stat.h>
 #include <pwd.h>
 
-
 #define TMUX_ACL_LOG "[access control list]"
 
+#define TMUX_ACL_WHITELIST "~/.tmux-acl-whitelist"
+
+#define ERRNOBUFSZ 512
+static char errno_buf[ERRNOBUFSZ] = {0};
+
+static char* errnostr(void)
+{
+	memset(errno_buf, 0, ERRNOBUFSZ);
+	if (strerror_r(errno, errno_buf, ERRNOBUFSZ) != 0) {
+		strcat(errno_buf, "strerror_r failure; error is unknown");
+	}
+	return errno_buf;
+}
 
 /*
  * User ID allow list for session extras.
@@ -58,42 +70,65 @@ static int server_acl_is_allowed(uid_t uid)
 
 void server_acl_init(void)
 {
-	uid_t host_uid = getuid();
-	uid_t uid = 0;
-	struct passwd* user_data;
-	FILE * username_file = fopen("whitelist.txt", "r+");
-	char * username = malloc(128);
-	
-	if (username == NULL) {
-		fatal(TMUX_ACL_LOG " malloc failed in server_acl_init");
-	}
-	if (username_file == NULL) {
-		log_debug(TMUX_ACL_LOG " server-acl.c was unable to open whitelist.txt");
-	}
+	FILE* username_file; 
+	uid_t host_uid;
+
+	host_uid = getuid();
 	
 	SLIST_INIT(&acl_entries);
-	/* need to insert host username */
+	
+	/* 
+	 * need to insert host username 
+	 */
 	server_acl_user_allow(host_uid, 1);
-	chmod(socket_path, S_IRGRP | S_IWGRP | S_IRUSR | S_IWUSR);
+	
+	/* 
+	 * User may not care about ACL whitelisting for their session, 
+	 * so if it doesn't exist it's reasonable to not create it. 
+	 */
+	username_file = fopen(TMUX_ACL_WHITELIST, "r");
+	
+	if (username_file != NULL) {
+		uid_t uid = 0;
+		struct passwd* user_data;
+			
+		char username[1024] = {0}; 	
+		int add_count = 0;
+		/* 
+		 * Reads TMUX_ACL_WHITELIST for line-delimited usernames, 
+		 * then allows said users into the shared session 
+		 */
+		while (fgets(username, 1024, username_file) != NULL) {	
+			user_data = getpwnam(username);
+			uid = user_data->pw_uid;
 
-	/* Reads uid.txt for usernames, then allows said users to the ACL whitelist */
-    while (!feof(username_file)) {
-		
-        fscanf(username_file, "%s", username);
-		user_data = getpwnam(username);
-		uid = user_data->pw_uid;
+			if (user_data != NULL) {
+				if (uid != host_uid) {
+					add_count++;
+					server_acl_user_allow(uid, 0);
+				}
+				else {
+					log_debug(TMUX_ACL_LOG " %s contains the username of the host",
+								TMUX_ACL_WHITELIST);
+				}
+			}
+			else {
+				log_debug(TMUX_ACL_LOG " ERROR: getpwnam failed to find UID for username %s: %s", 
+						  username, 
+						  errnostr());
 
-		if (user_data == NULL) {
-			log_debug(TMUX_ACL_LOG " getpwnam failed to find UID for username %s", username);
+			}
 		}
-		if (uid == host_uid) {
-			log_debug(TMUX_ACL_LOG " whitelist.txt contains the username of the host");
+		fclose(username_file);
+
+		/* We do have whitelisted users, so we should open the socket*/
+		if (add_count > 0) {
+			chmod(socket_path, S_IRGRP | S_IWGRP | S_IRUSR | S_IWUSR);
 		}
-		else {
-			server_acl_user_allow(uid, 0);
-		}
-    }
-    fclose(username_file);
+	}
+	else {
+		log_debug(TMUX_ACL_LOG " Warning: Could not open %s: %s", TMUX_ACL_WHITELIST, errnostr()); 
+	}
 }
 
 void server_acl_user_allow(uid_t uid, int owner)
