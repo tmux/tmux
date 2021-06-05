@@ -66,6 +66,8 @@ static int	window_copy_last_regex(struct grid *, u_int, u_int, u_int,
 		    int);
 static int	window_copy_search_mark_at(struct window_copy_mode_data *,
 		    u_int, u_int, u_int *);
+static u_int	window_copy_which(struct window_copy_mode_data *,
+		    struct grid *);
 static char    *window_copy_stringify(struct grid *, u_int, u_int, u_int,
 		    char *, u_int *);
 static void	window_copy_cstrtocellpos(struct grid *, u_int, u_int *,
@@ -203,6 +205,15 @@ struct window_copy_cmd_state {
 	struct winlink			*wl;
 };
 
+/* A single entry in a map from a line number to the number of search results
+ * from the start to that line, inclusive. The map is sparse, i.e., only lines
+ * which actually have the start of the search pattern are recorded.
+ */
+struct window_copy_search_stats {
+	u_int	line;
+	u_int	count;
+};
+
 /*
  * Copy mode's visible screen (the "screen" field) is filled from one of two
  * sources: the original contents of the pane (used when we actually enter via
@@ -282,6 +293,7 @@ struct window_copy_mode_data {
 	u_char		*searchmark;
 	int		 searchcount;
 	int		 searchmore;
+	u_int		 searchthis;
 	int		 searchall;
 	int		 searchx;
 	int		 searchy;
@@ -297,6 +309,11 @@ struct window_copy_mode_data {
 
 	struct event	 dragtimer;
 #define WINDOW_COPY_DRAG_REPEAT_TIME 50000
+
+	struct window_copy_search_stats	*sstats;	/* Current search result data */
+	u_int				 statsize;	/* Number of entries recorded */
+	u_int				 statlimit;	/* Number of entries allocated */
+#define WINDOW_COPY_NSTATS 256
 };
 
 static void
@@ -2444,6 +2461,9 @@ window_copy_command(struct window_mode_entry *wme, struct client *c,
 		if (clear != WINDOW_COPY_CMD_CLEAR_NEVER) {
 			window_copy_clear_marks(wme);
 			data->searchx = data->searchy = -1;
+		} else if (data->searchthis > 0) {
+			data->searchthis = 0;
+			action = WINDOW_COPY_CMD_REDRAW;
 		}
 		if (action == WINDOW_COPY_CMD_NOTHING)
 			action = WINDOW_COPY_CMD_REDRAW;
@@ -3266,6 +3286,24 @@ window_copy_search_mark_at(struct window_copy_mode_data *data, u_int px,
 	return (0);
 }
 
+/* When searching only the visible area, the count for a match equals the number
+ * of matches found just above the visible area (map entry at line hsize - oy or
+ * the last one before that) plus the number of matches in the visible area
+ * (assuming it did not time out).
+ */
+static u_int
+window_copy_which(struct window_copy_mode_data *data, struct grid *gd)
+{
+	u_int	i, yy = gd->hsize - data->oy;
+
+	for (i = data->statsize; i > 0; i--) {
+		if (data->sstats[i - 1].line <= yy)
+			return (data->sstats[i - 1].count);
+	}
+
+	return (0);
+}
+
 static int
 window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
     int regex, int visible_only)
@@ -3277,7 +3315,8 @@ window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
 	int				 found, cis, stopped = 0;
 	int				 cflags = REG_EXTENDED;
 	u_int				 px, py, i, b, nfound = 0, width;
-	u_int				 ssize = 1, start, end;
+	u_int				 ssize = 1, start, end, newnf, oldnf;
+	u_int				 which = 0;
 	char				*sbuf;
 	regex_t				 reg;
 	uint64_t			 stop = 0, tstart, t;
@@ -3316,6 +3355,14 @@ window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
 		start = 0;
 		end = gd->hsize + gd->sy;
 		stop = get_timer() + WINDOW_COPY_SEARCH_ALL_TIMEOUT;
+
+		/* Reset search statistics */
+		free(data->sstats);
+		data->statsize = 0;
+		data->statlimit = WINDOW_COPY_NSTATS;
+		data->sstats = xreallocarray(NULL, data->statlimit,
+		    sizeof data->sstats[0]);
+		oldnf = 0;
 	}
 
 again:
@@ -3324,6 +3371,20 @@ again:
 	data->searchgen = 1;
 
 	for (py = start; py < end; py++) {
+		/* Update search statistics */
+		newnf = nfound;
+		if (!visible_only && !stopped && newnf > oldnf) {
+			data->sstats[data->statsize].line = py;
+			data->sstats[data->statsize].count = newnf;
+			oldnf = newnf;
+			data->statsize++;
+			if (data->statsize == data->statlimit) {
+				data->statlimit *= 2;
+				data->sstats = xreallocarray(data->sstats,
+				    data->statlimit, sizeof data->sstats[0]);
+			}
+		}
+
 		px = 0;
 		for (;;) {
 			if (regex) {
@@ -3338,6 +3399,18 @@ again:
 					break;
 			}
 			nfound++;
+			if (px == data->cx &&
+			    py == gd->hsize + data->cy - data->oy) {
+				if (visible_only) {
+					if (!data->searchmore) {
+						which = window_copy_which(data,
+						    gd) + nfound;
+					}
+				} else {
+					if (!stopped)
+						which = nfound;
+				}
+			}
 
 			if (window_copy_search_mark_at(data, px, py, &b) == 0) {
 				if (b + width > gd->sx * gd->sy)
@@ -3379,6 +3452,7 @@ again:
 
 	if (!visible_only) {
 		if (stopped) {
+			data->searchthis = 0;
 			if (nfound > 1000)
 				data->searchcount = 1000;
 			else if (nfound > 100)
@@ -3389,9 +3463,13 @@ again:
 				data->searchcount = -1;
 			data->searchmore = 1;
 		} else {
+			data->searchthis = which;
 			data->searchcount = nfound;
 			data->searchmore = 0;
 		}
+	} else {
+		if (!data->searchmore)
+			data->searchthis = which;
 	}
 
 out:
@@ -3632,11 +3710,15 @@ window_copy_write_line(struct window_mode_entry *wme,
 			if (data->searchcount == -1) {
 				size = xsnprintf(hdr, sizeof hdr,
 				    "[%u/%u]", data->oy, hsize);
-			} else {
+			} else if (data->searchthis == 0) {
 				size = xsnprintf(hdr, sizeof hdr,
 				    "(%d%s results) [%u/%u]", data->searchcount,
 				    data->searchmore ? "+" : "", data->oy,
 				    hsize);
+			} else {
+				size = xsnprintf(hdr, sizeof hdr,
+				    "(%d/%d results) [%u/%u]", data->searchthis,
+				    data->searchcount, data->oy, hsize);
 			}
 		}
 		if (size > screen_size_x(s))
