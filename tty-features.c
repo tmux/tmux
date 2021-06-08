@@ -25,7 +25,6 @@
 
 /*
  * Still hardcoded:
- * - mouse (under kmous capability);
  * - default colours (under AX or op capabilities);
  * - AIX colours (under colors >= 16);
  * - alternate escape (if terminal is VT100-like).
@@ -51,6 +50,17 @@ static const char *tty_feature_title_capabilities[] = {
 static const struct tty_feature tty_feature_title = {
 	"title",
 	tty_feature_title_capabilities,
+	0
+};
+
+/* Terminal has mouse support. */
+static const char *tty_feature_mouse_capabilities[] = {
+	"kmous=\\E[M",
+	NULL
+};
+static const struct tty_feature tty_feature_mouse = {
+	"mouse",
+	tty_feature_mouse_capabilities,
 	0
 };
 
@@ -238,6 +248,7 @@ static const struct tty_feature *tty_features[] = {
 	&tty_feature_extkeys,
 	&tty_feature_focus,
 	&tty_feature_margins,
+	&tty_feature_mouse,
 	&tty_feature_overline,
 	&tty_feature_rectfill,
 	&tty_feature_rgb,
@@ -338,7 +349,7 @@ tty_default_features(int *feat, const char *name, u_int version)
 		const char	*features;
 	} table[] = {
 #define TTY_FEATURES_BASE_MODERN_XTERM \
-	"256,RGB,bpaste,clipboard,strikethrough,title"
+	"256,RGB,bpaste,clipboard,mouse,strikethrough,title"
 		{ .name = "mintty",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM
 			      ",ccolour,cstyle,extkeys,margins,overline,usstyle"
@@ -348,7 +359,7 @@ tty_default_features(int *feat, const char *name, u_int version)
 			      ",ccolour,cstyle,focus,overline,usstyle"
 		},
 		{ .name = "rxvt-unicode",
-		  .features = "256,bpaste,ccolour,cstyle,title"
+		  .features = "256,bpaste,ccolour,cstyle,mouse,title"
 		},
 		{ .name = "iTerm2",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM
