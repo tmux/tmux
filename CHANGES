@@ -5,7 +5,7 @@ CHANGES FROM 3.2a TO 3.3
   disables blinking or not. This now matches xterm's behaviour.
 
 * More accurate vi(1) word navigation in copy mode and on the status line. This
-  changes the meaning of the word-separators option - setting it to the empty
+  changes the meaning of the word-separators option: setting it to the empty
   string is equivalent to the previous behavior.
 
 * Add -F for command-prompt and use it to fix "Rename" on the window menu.
