@@ -5392,7 +5392,7 @@ See
 for possible values for
 .Ar prompt-type .
 .It Xo Ic command-prompt
-.Op Fl 1ikN
+.Op Fl 1FikN
 .Op Fl I Ar inputs
 .Op Fl p Ar prompts
 .Op Fl t Ar target-client
@@ -5407,6 +5407,11 @@ to execute commands interactively.
 If
 .Ar template
 is specified, it is used as the command.
+With
+.Fl F ,
+.Ar template
+is expanded as a format.
+.Pp
 If present,
 .Fl I
 is a comma-separated list of the initial text for each prompt.

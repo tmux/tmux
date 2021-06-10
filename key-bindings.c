@@ -41,7 +41,7 @@
 	" 'Kill' 'X' {kill-window}" \
 	" 'Respawn' 'R' {respawn-window -k}" \
 	" '#{?pane_marked,Unmark,Mark}' 'm' {select-pane -m}" \
-	" 'Rename' 'n' {command-prompt -I \"#W\" \"rename-window -- '%%'\"}" \
+	" 'Rename' 'n' {command-prompt -FI \"#W\" \"rename-window -t#{window_id} -- '%%'\"}" \
 	" ''" \
 	" 'New After' 'w' {new-window -a}" \
 	" 'New At End' 'W' {new-window}"
