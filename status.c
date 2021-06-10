@@ -876,17 +876,25 @@ status_prompt_translate_key(struct client *c, key_code key, key_code *new_key)
 		*new_key = KEYC_BSPACE;
 		return (1);
 	case 'b':
-	case 'B':
 		*new_key = 'b'|KEYC_META;
+		return (1);
+	case 'B':
+		*new_key = 'B'|KEYC_VI;
 		return (1);
 	case 'd':
 		*new_key = '\025';
 		return (1);
 	case 'e':
+		*new_key = 'e'|KEYC_VI;
+		return (1);
 	case 'E':
+		*new_key = 'E'|KEYC_VI;
+		return (1);
 	case 'w':
+		*new_key = 'w'|KEYC_VI;
+		return (1);
 	case 'W':
-		*new_key = 'f'|KEYC_META;
+		*new_key = 'W'|KEYC_VI;
 		return (1);
 	case 'p':
 		*new_key = '\031'; /* C-y */
@@ -1061,16 +1069,125 @@ status_prompt_replace_complete(struct client *c, const char *s)
 	return (1);
 }
 
+/* Prompt forward to the next beginning of a word. */
+static void
+status_prompt_forward_word(struct client *c, size_t size, int vi,
+    const char *separators)
+{
+	size_t		 idx = c->prompt_index;
+	int		 word_is_separators;
+
+	/* In emacs mode, skip until the first non-whitespace character. */
+	if (!vi)
+		while (idx != size &&
+		    status_prompt_space(&c->prompt_buffer[idx]))
+			idx++;
+
+	/* Can't move forward if we're already at the end. */
+	if (idx == size) {
+		c->prompt_index = idx;
+		return;
+	}
+
+	/* Determine the current character class (separators or not). */
+	word_is_separators = status_prompt_in_list(separators,
+	    &c->prompt_buffer[idx]) &&
+	    !status_prompt_space(&c->prompt_buffer[idx]);
+
+	/* Skip ahead until the first space or opposite character class. */
+	do {
+		idx++;
+		if (status_prompt_space(&c->prompt_buffer[idx])) {
+			/* In vi mode, go to the start of the next word. */
+			if (vi)
+				while (idx != size &&
+				    status_prompt_space(&c->prompt_buffer[idx]))
+					idx++;
+			break;
+		}
+	} while (idx != size && word_is_separators == status_prompt_in_list(
+	    separators, &c->prompt_buffer[idx]));
+
+	c->prompt_index = idx;
+}
+
+/* Prompt forward to the next end of a word. */
+static void
+status_prompt_end_word(struct client *c, size_t size, const char *separators)
+{
+	size_t		 idx = c->prompt_index;
+	int		 word_is_separators;
+
+	/* Can't move forward if we're already at the end. */
+	if (idx == size)
+		return;
+
+	/* Find the next word. */
+	do {
+		idx++;
+		if (idx == size) {
+			c->prompt_index = idx;
+			return;
+		}
+	} while (status_prompt_space(&c->prompt_buffer[idx]));
+
+	/* Determine the character class (separators or not). */
+	word_is_separators = status_prompt_in_list(separators,
+	    &c->prompt_buffer[idx]);
+
+	/* Skip ahead until the next space or opposite character class. */
+	do {
+		idx++;
+		if (idx == size)
+			break;
+	} while (!status_prompt_space(&c->prompt_buffer[idx]) &&
+	    word_is_separators == status_prompt_in_list(separators,
+	    &c->prompt_buffer[idx]));
+
+	/* Back up to the previous character to stop at the end of the word. */
+	c->prompt_index = idx - 1;
+}
+
+/* Prompt backward to the previous beginning of a word. */
+static void
+status_prompt_backward_word(struct client *c, const char *separators)
+{
+	size_t	idx = c->prompt_index;
+	int	word_is_separators;
+
+	/* Find non-whitespace. */
+	while (idx != 0) {
+		--idx;
+		if (!status_prompt_space(&c->prompt_buffer[idx]))
+			break;
+	}
+	word_is_separators = status_prompt_in_list(separators,
+	    &c->prompt_buffer[idx]);
+
+	/* Find the character before the beginning of the word. */
+	while (idx != 0) {
+		--idx;
+		if (status_prompt_space(&c->prompt_buffer[idx]) ||
+		    word_is_separators != status_prompt_in_list(separators,
+		    &c->prompt_buffer[idx])) {
+			/* Go back to the word. */
+			idx++;
+			break;
+		}
+	}
+	c->prompt_index = idx;
+}
+
 /* Handle keys in prompt. */
 int
 status_prompt_key(struct client *c, key_code key)
 {
 	struct options		*oo = c->session->options;
 	char			*s, *cp, prefix = '=';
-	const char		*histstr, *ws = NULL, *keystring;
+	const char		*histstr, *separators = NULL, *keystring;
 	size_t			 size, idx;
 	struct utf8_data	 tmp;
-	int			 keys;
+	int			 keys, word_is_separators;
 
 	if (c->prompt_flags & PROMPT_KEY) {
 		keystring = key_string_lookup_key(key, 0);
@@ -1173,20 +1290,24 @@ process_key:
 		}
 		break;
 	case '\027': /* C-w */
-		ws = options_get_string(oo, "word-separators");
+		separators = options_get_string(oo, "word-separators");
 		idx = c->prompt_index;
 
-		/* Find a non-separator. */
+		/* Find non-whitespace. */
 		while (idx != 0) {
 			idx--;
-			if (!status_prompt_in_list(ws, &c->prompt_buffer[idx]))
+			if (!status_prompt_space(&c->prompt_buffer[idx]))
 				break;
 		}
+		word_is_separators = status_prompt_in_list(separators,
+		    &c->prompt_buffer[idx]);
 
-		/* Find the separator at the beginning of the word. */
+		/* Find the character before the beginning of the word. */
 		while (idx != 0) {
 			idx--;
-			if (status_prompt_in_list(ws, &c->prompt_buffer[idx])) {
+			if (status_prompt_space(&c->prompt_buffer[idx]) ||
+			    word_is_separators != status_prompt_in_list(
+			    separators, &c->prompt_buffer[idx])) {
 				/* Go back to the word. */
 				idx++;
 				break;
@@ -1208,50 +1329,32 @@ process_key:
 		c->prompt_index = idx;
 
 		goto changed;
-	case 'f'|KEYC_META:
 	case KEYC_RIGHT|KEYC_CTRL:
-		ws = options_get_string(oo, "word-separators");
-
-		/* Find a word. */
-		while (c->prompt_index != size) {
-			idx = ++c->prompt_index;
-			if (!status_prompt_in_list(ws, &c->prompt_buffer[idx]))
-				break;
-		}
-
-		/* Find the separator at the end of the word. */
-		while (c->prompt_index != size) {
-			idx = ++c->prompt_index;
-			if (status_prompt_in_list(ws, &c->prompt_buffer[idx]))
-				break;
-		}
-
-		/* Back up to the end-of-word like vi. */
-		if (options_get_number(oo, "status-keys") == MODEKEY_VI &&
-		    c->prompt_index != 0)
-			c->prompt_index--;
-
+	case 'f'|KEYC_META:
+		separators = options_get_string(oo, "word-separators");
+		status_prompt_forward_word(c, size, 0, separators);
 		goto changed;
-	case 'b'|KEYC_META:
+	case 'E'|KEYC_VI:
+		status_prompt_end_word(c, size, "");
+		goto changed;
+	case 'e'|KEYC_VI:
+		separators = options_get_string(oo, "word-separators");
+		status_prompt_end_word(c, size, separators);
+		goto changed;
+	case 'W'|KEYC_VI:
+		status_prompt_forward_word(c, size, 1, "");
+		goto changed;
+	case 'w'|KEYC_VI:
+		separators = options_get_string(oo, "word-separators");
+		status_prompt_forward_word(c, size, 1, separators);
+		goto changed;
+	case 'B'|KEYC_VI:
+		status_prompt_backward_word(c, "");
+		goto changed;
 	case KEYC_LEFT|KEYC_CTRL:
-		ws = options_get_string(oo, "word-separators");
-
-		/* Find a non-separator. */
-		while (c->prompt_index != 0) {
-			idx = --c->prompt_index;
-			if (!status_prompt_in_list(ws, &c->prompt_buffer[idx]))
-				break;
-		}
-
-		/* Find the separator at the beginning of the word. */
-		while (c->prompt_index != 0) {
-			idx = --c->prompt_index;
-			if (status_prompt_in_list(ws, &c->prompt_buffer[idx])) {
-				/* Go back to the word. */
-				c->prompt_index++;
-				break;
-			}
-		}
+	case 'b'|KEYC_META:
+		separators = options_get_string(oo, "word-separators");
+		status_prompt_backward_word(c, separators);
 		goto changed;
 	case KEYC_UP:
 	case '\020': /* C-p */
@@ -1339,8 +1442,10 @@ append_key:
 		return (0);
 	if (key <= 0x7f)
 		utf8_set(&tmp, key);
-	else
+	else if (KEYC_IS_UNICODE(key))
 		utf8_to_data(key, &tmp);
+	else
+		return (0);
 
 	c->prompt_buffer = xreallocarray(c->prompt_buffer, size + 2,
 	    sizeof *c->prompt_buffer);

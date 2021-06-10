@@ -1782,19 +1782,18 @@ commands) or when the cursor reaches the bottom (for scrolling commands).
 .Ql -no-clear
 variants do not clear the selection.
 .Pp
-The next and previous word keys use space and the
-.Ql - ,
-.Ql _
-and
-.Ql @
-characters as word delimiters by default, but this can be adjusted by
-setting the
+The next and previous word keys skip over whitespace and treat consecutive
+runs of either word separators or other letters as words.
+Word separators can be customized with the
 .Em word-separators
 session option.
 Next word moves to the start of the next word, next word end to the end of the
 next word and previous word to the start of the previous word.
 The three next and previous space keys work similarly but use a space alone as
 the word separator.
+Setting
+.Em word-separators
+to the empty string makes next/previous word equivalent to next/previous space.
 .Pp
 The jump commands enable quick movement within a line.
 For instance, typing
@@ -3974,9 +3973,6 @@ If set to both, a bell and a message are produced.
 Sets the session's conception of what characters are considered word
 separators, for the purposes of the next and previous word commands in
 copy mode.
-The default is
-.Ql \ -_@ .
-.El
 .Pp
 Available window options are:
 .Pp
