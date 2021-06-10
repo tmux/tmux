@@ -252,7 +252,8 @@ static const key_code tty_default_xterm_modifiers[] = {
 	KEYC_CTRL,
 	KEYC_SHIFT|KEYC_CTRL,
 	KEYC_META|KEYC_IMPLIED_META|KEYC_CTRL,
-	KEYC_SHIFT|KEYC_META|KEYC_IMPLIED_META|KEYC_CTRL
+	KEYC_SHIFT|KEYC_META|KEYC_IMPLIED_META|KEYC_CTRL,
+	KEYC_META|KEYC_IMPLIED_META
 };
 
 /*
@@ -944,6 +945,9 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 	case 8:
 		nkey |= (KEYC_SHIFT|KEYC_META|KEYC_IMPLIED_META|KEYC_CTRL);
 		break;
+	case 9:
+		nkey |= (KEYC_META|KEYC_IMPLIED_META);
+		break;
 	default:
 		*key = KEYC_NONE;
 		break;
@@ -955,7 +959,10 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 	 */
 	if (nkey & KEYC_CTRL) {
 		onlykey = (nkey & KEYC_MASK_KEY);
-		if (onlykey < 32 && onlykey != 9)
+		if (onlykey < 32 &&
+		    onlykey != 9 &&
+		    onlykey != 13 &&
+		    onlykey != 27)
 			/* nothing */;
 		else if (onlykey >= 97 && onlykey <= 122)
 			onlykey -= 96;
