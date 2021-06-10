@@ -1123,7 +1123,7 @@ window_customize_set_option(struct client *c,
 		status_prompt_set(c, NULL, prompt, value,
 		    window_customize_set_option_callback,
 		    window_customize_free_item_callback, new_item,
-		    PROMPT_NOFORMAT);
+		    PROMPT_NOFORMAT, PROMPT_TYPE_COMMAND);
 
 		free(prompt);
 		free(value);
@@ -1264,7 +1264,7 @@ window_customize_set_key(struct client *c,
 		status_prompt_set(c, NULL, prompt, value,
 		    window_customize_set_command_callback,
 		    window_customize_free_item_callback, new_item,
-		    PROMPT_NOFORMAT);
+		    PROMPT_NOFORMAT, PROMPT_TYPE_COMMAND);
 		free(prompt);
 		free(value);
 	} else if (strcmp(s, "Note") == 0) {
@@ -1281,7 +1281,7 @@ window_customize_set_key(struct client *c,
 		    (bd->note == NULL ? "" : bd->note),
 		    window_customize_set_note_callback,
 		    window_customize_free_item_callback, new_item,
-		    PROMPT_NOFORMAT);
+		    PROMPT_NOFORMAT, PROMPT_TYPE_COMMAND);
 		free(prompt);
 	}
 }
@@ -1458,7 +1458,7 @@ window_customize_key(struct window_mode_entry *wme, struct client *c,
 		status_prompt_set(c, NULL, prompt, "",
 		    window_customize_change_current_callback,
 		    window_customize_free_callback, data,
-		    PROMPT_SINGLE|PROMPT_NOFORMAT);
+		    PROMPT_SINGLE|PROMPT_NOFORMAT, PROMPT_TYPE_COMMAND);
 		free(prompt);
 		break;
 	case 'D':
@@ -1471,7 +1471,7 @@ window_customize_key(struct window_mode_entry *wme, struct client *c,
 		status_prompt_set(c, NULL, prompt, "",
 		    window_customize_change_tagged_callback,
 		    window_customize_free_callback, data,
-		    PROMPT_SINGLE|PROMPT_NOFORMAT);
+		    PROMPT_SINGLE|PROMPT_NOFORMAT, PROMPT_TYPE_COMMAND);
 		free(prompt);
 		break;
 	case 'u':
@@ -1487,7 +1487,7 @@ window_customize_key(struct window_mode_entry *wme, struct client *c,
 		status_prompt_set(c, NULL, prompt, "",
 		    window_customize_change_current_callback,
 		    window_customize_free_callback, data,
-		    PROMPT_SINGLE|PROMPT_NOFORMAT);
+		    PROMPT_SINGLE|PROMPT_NOFORMAT, PROMPT_TYPE_COMMAND);
 		free(prompt);
 		break;
 	case 'U':
@@ -1500,7 +1500,7 @@ window_customize_key(struct window_mode_entry *wme, struct client *c,
 		status_prompt_set(c, NULL, prompt, "",
 		    window_customize_change_tagged_callback,
 		    window_customize_free_callback, data,
-		    PROMPT_SINGLE|PROMPT_NOFORMAT);
+		    PROMPT_SINGLE|PROMPT_NOFORMAT, PROMPT_TYPE_COMMAND);
 		free(prompt);
 		break;
 	case 'H':

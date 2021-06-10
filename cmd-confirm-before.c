@@ -74,7 +74,7 @@ cmd_confirm_before_exec(struct cmd *self, struct cmdq_item *item)
 
 	status_prompt_set(tc, target, new_prompt, NULL,
 	    cmd_confirm_before_callback, cmd_confirm_before_free, cdata,
-	    PROMPT_SINGLE);
+	    PROMPT_SINGLE, PROMPT_TYPE_COMMAND);
 
 	free(new_prompt);
 	return (CMD_RETURN_NORMAL);
