@@ -1,4 +1,4 @@
-CHANGES FROM 3.2 TO 3.3
+CHANGES FROM 3.2a TO 3.3
 
 * Change cursor style handling so tmux understands which sequences contain
   blinking and sets the flag appropriately, means that it works whether cnorm
@@ -12,6 +12,19 @@ CHANGES FROM 3.2 TO 3.3
 
 * Add different command histories for different types of prompts ("command",
   "search" etc). From Anindya Mukherjee.
+
+CHANGES FROM 3.2 TO 3.2a
+
+* Add an "always" value for the "extended-keys" option; if set then tmux will
+  forward extended keys to applications even if they do not request them.
+
+* Add a "mouse" terminal feature so tmux can enable the mouse on terminals
+  where it is known to be supported even if terminfo(5) says otherwise.
+
+* Do not expand the filename given to -f so it can contain colons.
+
+* Fixes for problems with extended keys and modifiers, scroll region,
+  source-file, crosscompiling, format modifiers and other minor issues.
 
 CHANGES FROM 3.1c TO 3.2
 
