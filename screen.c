@@ -81,7 +81,7 @@ screen_init(struct screen *s, u_int sx, u_int sy, u_int hlimit)
 	s->titles = NULL;
 	s->path = NULL;
 
-	s->cstyle = 0;
+	s->cstyle = SCREEN_CURSOR_DEFAULT;
 	s->ccolour = xstrdup("");
 	s->tabs = NULL;
 	s->sel = NULL;
@@ -156,9 +156,35 @@ screen_reset_tabs(struct screen *s)
 void
 screen_set_cursor_style(struct screen *s, u_int style)
 {
-	if (style <= 6) {
-		s->cstyle = style;
+	switch (style)
+	{
+	case 0:
+		s->cstyle = SCREEN_CURSOR_DEFAULT;
+		break;
+	case 1:
+		s->cstyle = SCREEN_CURSOR_BLOCK;
+		s->mode |= MODE_BLINKING;
+		break;
+	case 2:
+		s->cstyle = SCREEN_CURSOR_BLOCK;
 		s->mode &= ~MODE_BLINKING;
+		break;
+	case 3:
+		s->cstyle = SCREEN_CURSOR_UNDERLINE;
+		s->mode |= MODE_BLINKING;
+		break;
+	case 4:
+		s->cstyle = SCREEN_CURSOR_UNDERLINE;
+		s->mode &= ~MODE_BLINKING;
+		break;
+	case 5:
+		s->cstyle = SCREEN_CURSOR_BAR;
+		s->mode |= MODE_BLINKING;
+		break;
+	case 6:
+		s->cstyle = SCREEN_CURSOR_BAR;
+		s->mode &= ~MODE_BLINKING;
+		break;
 	}
 }
 
