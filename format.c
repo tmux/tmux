@@ -4199,7 +4199,7 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 			value = xstrdup("0");
 		} else {
 			format_log(es, "search '%s' pane %%%u", new, wp->id);
-			value = format_search(fm, wp, new);
+			value = format_search(search, wp, new);
 		}
 		free(new);
 	} else if (cmp != NULL) {
