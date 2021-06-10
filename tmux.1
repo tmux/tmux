@@ -3418,11 +3418,24 @@ sessions.
 .Xc
 If enabled, the server will exit when there are no attached clients.
 .It Xo Ic extended-keys
-.Op Ic on | off
+.Op Ic on | off | always
 .Xc
-When enabled, extended keys are requested from the terminal and if supported
-are recognised by
-.Nm .
+When
+.Ic on
+or
+.Ic always ,
+the escape sequence to enable extended keys is sent to the terminal, if
+.Nm
+knows that it is supported.
+.Nm
+always recognises extended keys itself.
+If this option is
+.Ic on ,
+.Nm
+will only forward extended keys to applications when they request them; if
+.Ic always ,
+.Nm
+will always forward the keys.
 .It Xo Ic focus-events
 .Op Ic on | off
 .Xc
@@ -3501,8 +3514,8 @@ capabilities to be set instead,
 is intended for classes of functionality supported in a standard way but not
 reported by
 .Xr terminfo 5 .
-Care must be taken only to configure this with features the terminal actually
-support.
+Care must be taken to configure this only with features the terminal actually
+supports.
 .Pp
 This is an array option where each entry is a colon-separated string made up
 of a terminal type pattern (matched using

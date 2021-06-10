@@ -1390,6 +1390,8 @@ input_csi_dispatch(struct input_ctx *ictx)
 	case INPUT_CSI_MODSET:
 		n = input_get(ictx, 0, 0, 0);
 		m = input_get(ictx, 1, 0, 0);
+		if (options_get_number(global_options, "extended-keys") == 2)
+			break;
 		if (n == 0 || (n == 4 && m == 0))
 			screen_write_mode_clear(sctx, MODE_KEXTENDED);
 		else if (n == 4 && (m == 1 || m == 2))
