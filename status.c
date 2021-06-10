@@ -1300,7 +1300,7 @@ process_key:
 	return (0);
 
 append_key:
-	if (key <= 0x1f || key >= KEYC_BASE)
+	if (key <= 0x1f || (key >= KEYC_BASE && key < KEYC_BASE_END))
 		return (0);
 	if (key <= 0x7f)
 		utf8_set(&tmp, key);
