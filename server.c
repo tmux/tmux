@@ -117,6 +117,10 @@ server_create_socket(int flags, char **cause)
 	}
 	unlink(sa.sun_path);
 
+	if (socket_path[0] == '@') {
+	    sa.sun_path[0] = '\0';
+	}
+
 	if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
 		goto fail;
 

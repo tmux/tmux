@@ -118,6 +118,10 @@ client_connect(struct event_base *base, const char *path, uint64_t flags)
 	}
 	log_debug("socket is %s", path);
 
+	if (path[0] == '@') {
+	    sa.sun_path[0] = '\0';
+	}
+
 retry:
 	if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
 		return (-1);
