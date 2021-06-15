@@ -257,7 +257,7 @@ CHANGES FROM 3.1c TO 3.2
   only show windows and C-b . only targets.
 
 * Change all the style options to string options so they can support formats.
-  Change pane-border-active-style to use this to change the border colour when
+  Change pane-active-border-style to use this to change the border colour when
   in a mode or with synchronize-panes on. This also implies a few minor changes
   to existing behaviour:
 
