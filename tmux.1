@@ -2102,9 +2102,11 @@ The following keys may be used in tree mode:
 .It Li "q" Ta "Exit mode"
 .El
 .Pp
-After a session, window or pane is chosen,
+After a session, window or pane is chosen, the first instance of
 .Ql %%
-is replaced by the target in
+and all instances of
+.Ql %1
+are replaced by the target in
 .Ar template
 and the result executed as a command.
 If
@@ -4330,6 +4332,7 @@ For how to specify
 see the
 .Sx STYLES
 section.
+.El
 .El
 .Sh HOOKS
 .Nm

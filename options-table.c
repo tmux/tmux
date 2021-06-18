@@ -367,7 +367,7 @@ const struct options_table_entry options_table[] = {
 	  .maximum = INT_MAX,
 	  .default_num = 1,
 	  .unit = "milliseconds",
-	  .text = "Maximum time between input to assume it pasting rather "
+	  .text = "Maximum time between input to assume it is pasting rather "
 		  "than typing."
 	},
 
@@ -614,7 +614,7 @@ const struct options_table_entry options_table[] = {
 	  .text = "Formats for the status lines. "
 		  "Each array member is the format for one status line. "
 		  "The default status line is made up of several components "
-		  "which may be configured individually with other option such "
+		  "which may be configured individually with other options such "
 		  "as 'status-left'."
 	},
 
@@ -951,7 +951,8 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_WINDOW,
 	  .choices = options_table_pane_lines_list,
 	  .default_num = PANE_LINES_SINGLE,
-	  .text = "Type of the pane type lines."
+	  .text = "Type of characters used to draw pane border lines. Some of "
+	          "these are only supported on terminals with UTF-8 support."
 	},
 
 	{ .name = "pane-border-status",
