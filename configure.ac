@@ -160,6 +160,7 @@ AC_RUN_IFELSE([AC_LANG_PROGRAM(
          [return (strtonum("0", 0, 1, NULL) == 0 ? 0 : 1);]
 	 )],
 	 [AC_DEFINE(HAVE_STRTONUM) AC_MSG_RESULT(yes)],
+	 [AC_LIBOBJ(strtonum) AC_MSG_RESULT(no)],
 	 [AC_LIBOBJ(strtonum) AC_MSG_RESULT(no)]
 )
 
