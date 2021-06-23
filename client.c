@@ -160,7 +160,7 @@ retry:
 			goto retry;
 		}
 
-		if (lockfd >= 0 && unlink(path) != 0 && errno != ENOENT) {
+		if (lockfd >= 0 && (path[0] != '@' && unlink(path) != 0) && errno != ENOENT) {
 			free(lockfile);
 			close(lockfd);
 			return (-1);

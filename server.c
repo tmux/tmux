@@ -115,10 +115,11 @@ server_create_socket(int flags, char **cause)
 		errno = ENAMETOOLONG;
 		goto fail;
 	}
-	unlink(sa.sun_path);
 
 	if (socket_path[0] == '@') {
 	    sa.sun_path[0] = '\0';
+	} else {
+	    unlink(sa.sun_path);
 	}
 
 	if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
@@ -339,7 +340,7 @@ server_update_socket(void)
 	if (n != last) {
 		last = n;
 
-		if (stat(socket_path, &sb) != 0)
+		if (socket_path[0] == '@' || stat(socket_path, &sb) != 0)
 			return;
 		mode = sb.st_mode & ACCESSPERMS;
 		if (n != 0) {
