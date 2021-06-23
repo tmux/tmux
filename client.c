@@ -118,9 +118,11 @@ client_connect(struct event_base *base, const char *path, uint64_t flags)
 	}
 	log_debug("socket is %s", path);
 
+#ifdef __ANDROID__
 	if (path[0] == '@') {
 	    sa.sun_path[0] = '\0';
 	}
+#endif
 
 retry:
 	if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
@@ -160,7 +162,13 @@ retry:
 			goto retry;
 		}
 
-		if (lockfd >= 0 && (path[0] != '@' && unlink(path) != 0) && errno != ENOENT) {
+		if (lockfd >= 0 &&
+			(
+#ifdef __ANDROID__
+			    path[0] != '@' &&
+#endif
+			    unlink(path) != 0
+			) && errno != ENOENT) {
 			free(lockfile);
 			close(lockfd);
 			return (-1);

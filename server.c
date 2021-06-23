@@ -116,11 +116,15 @@ server_create_socket(int flags, char **cause)
 		goto fail;
 	}
 
+#ifdef __ANDROID__
 	if (socket_path[0] == '@') {
 	    sa.sun_path[0] = '\0';
 	} else {
+#endif
 	    unlink(sa.sun_path);
+#ifdef __ANDROID__
 	}
+#endif
 
 	if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
 		goto fail;
@@ -340,7 +344,12 @@ server_update_socket(void)
 	if (n != last) {
 		last = n;
 
-		if (socket_path[0] == '@' || stat(socket_path, &sb) != 0)
+		if (
+#ifdef __ANDROID__
+			socket_path[0] == '@' ||
+#endif
+			stat(socket_path, &sb) != 0
+		)
 			return;
 		mode = sb.st_mode & ACCESSPERMS;
 		if (n != 0) {
