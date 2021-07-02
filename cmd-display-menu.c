@@ -376,7 +376,7 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	if (argc == 0)
 		shellcmd = options_get_string(s->options, "default-command");
 	else if (argc == 1)
-		shellcmd = argv[0];
+		shellcmd = format_single_from_target(item,argv[0]);
 	if (argc <= 1 && (shellcmd == NULL || *shellcmd == '\0')) {
 		shellcmd = NULL;
 		shell[0] = options_get_string(s->options, "default-shell");
