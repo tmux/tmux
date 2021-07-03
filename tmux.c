@@ -207,16 +207,19 @@ make_label(const char *label, char **cause)
 	free(paths);
 
 	xasprintf(&base, "%s/tmux-%ld", path, (long)uid);
-	if (mkdir(base, S_IRWXU) != 0 && errno != EEXIST)
+	if ((mkdir(base, S_IRWXU) != 0 && errno != EEXIST) ||
+	    lstat(base, &sb) != 0) {
+		xasprintf(cause, "error creating %s (%s)", base, strerror(errno));
 		goto fail;
-	if (lstat(base, &sb) != 0)
-		goto fail;
+	}
 	if (!S_ISDIR(sb.st_mode)) {
 		errno = ENOTDIR;
+		xasprintf(cause, "%s is not a directory", base);
 		goto fail;
 	}
 	if (sb.st_uid != uid || (sb.st_mode & S_IRWXO) != 0) {
 		errno = EACCES;
+		xasprintf(cause, "unsafe permissions for %s", base);
 		goto fail;
 	}
 	xasprintf(&path, "%s/%s", base, label);
@@ -224,7 +227,6 @@ make_label(const char *label, char **cause)
 	return (path);
 
 fail:
-	xasprintf(cause, "error creating %s (%s)", base, strerror(errno));
 	free(base);
 	return (NULL);
 }
