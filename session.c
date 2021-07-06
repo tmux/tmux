@@ -235,6 +235,8 @@ session_check_name(const char *name)
 {
 	char	*copy, *cp, *new_name;
 
+	if (*name == '\0')
+		return (NULL);
 	copy = xstrdup(name);
 	for (cp = copy; *cp != '\0'; cp++) {
 		if (*cp == ':' || *cp == '.')
