@@ -102,6 +102,11 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	if (tmp != NULL) {
 		name = format_single(item, tmp, c, NULL, NULL, NULL);
 		newname = session_check_name(name);
+		if (newname == NULL) {
+			cmdq_error(item, "invalid session: %s", name);
+			free(name);
+			return (CMD_RETURN_ERROR);
+		}
 		free(name);
 	}
 	if (args_has(args, 'A')) {
@@ -134,8 +139,14 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 			prefix = xstrdup(sg->name);
 		else if (groupwith != NULL)
 			prefix = xstrdup(groupwith->name);
-		else
+		else {
 			prefix = session_check_name(group);
+			if (prefix == NULL) {
+				cmdq_error(item, "invalid session group: %s",
+				    group);
+				goto fail;
+			}
+		}
 	}
 
 	/* Set -d if no client. */
