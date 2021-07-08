@@ -175,7 +175,7 @@ cmd_display_menu_get_position(struct client *tc, struct cmdq_item *item,
 			format_add(ft, "popup_mouse_centre_y", "%ld", n);
 		n = (long)event->m.y + h;
 		if (n + h >= tty->sy)
-			format_add(ft, "popup_mouse_top", "%u", tty->sy - h);
+			format_add(ft, "popup_mouse_top", "%u", tty->sy - 1);
 		else
 			format_add(ft, "popup_mouse_top", "%ld", n);
 		n = event->m.y - h;
