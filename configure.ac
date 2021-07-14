@@ -617,7 +617,7 @@ AC_CHECK_DECL(
 )
 AC_CHECK_DECL(
 	TAILQ_PREV,
-	found_queue_h=yes,
+	,
 	found_queue_h=no,
 	[#include <sys/queue.h>]
 )
