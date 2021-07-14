@@ -233,7 +233,7 @@ const struct options_table_entry options_table[] = {
 	{ .name = "default-terminal",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SERVER,
-	  .default_str = "screen",
+	  .default_str = TMUX_TERM,
 	  .text = "Default for the 'TERM' environment variable."
 	},
 
