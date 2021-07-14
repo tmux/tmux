@@ -74,6 +74,21 @@ if test "x$enable_static" = xyes; then
 	LDFLAGS="$AM_LDFLAGS $SAVED_LDFLAGS"
 fi
 
+# Allow default TERM to be set.
+AC_ARG_WITH(
+	TERM,
+	AC_HELP_STRING(--with-TERM, set default TERM),
+	[DEFAULT_TERM=$withval],
+	[DEFAULT_TERM=]
+)
+case "x$DEFAULT_TERM" in
+	xscreen*|xtmux*|x)
+	;;
+	*)
+		AC_MSG_ERROR("unsuitable TERM (must be screen* or tmux*)")
+	;;
+esac
+
 # Do we need fuzzers?
 AM_CONDITIONAL(NEED_FUZZING, test "x$enable_fuzzing" = xyes)
 
@@ -156,12 +171,12 @@ AC_FUNC_STRNLEN
 # Check if strtonum works.
 AC_MSG_CHECKING([for working strtonum])
 AC_RUN_IFELSE([AC_LANG_PROGRAM(
-         [#include <stdlib.h>],
-         [return (strtonum("0", 0, 1, NULL) == 0 ? 0 : 1);]
-	 )],
-	 [AC_DEFINE(HAVE_STRTONUM) AC_MSG_RESULT(yes)],
-	 [AC_LIBOBJ(strtonum) AC_MSG_RESULT(no)],
-	 [AC_LIBOBJ(strtonum) AC_MSG_RESULT(no)]
+		[#include <stdlib.h>],
+		[return (strtonum("0", 0, 1, NULL) == 0 ? 0 : 1);]
+	)],
+	[AC_DEFINE(HAVE_STRTONUM) AC_MSG_RESULT(yes)],
+	[AC_LIBOBJ(strtonum) AC_MSG_RESULT(no)],
+	[AC_LIBOBJ(strtonum) AC_MSG_RESULT(no)]
 )
 
 # Clang sanitizers wrap reallocarray even if it isn't available on the target
@@ -299,6 +314,7 @@ if test "x$found_ncurses" = xno; then
 	fi
 fi
 if test "x$found_ncurses" = xyes; then
+	CPPFLAGS="$CPPFLAGS -DHAVE_NCURSES_H"
 	AC_DEFINE(HAVE_NCURSES_H)
 else
 	AC_CHECK_LIB(
@@ -314,6 +330,7 @@ else
 	)
 	if test "x$found_curses" = xyes; then
 		LIBS="$LIBS -lcurses"
+		CPPFLAGS="$CPPFLAGS -DHAVE_CURSES_H"
 		AC_DEFINE(HAVE_CURSES_H)
 	else
 		AC_MSG_ERROR("curses not found")
@@ -672,6 +689,71 @@ if test -d /proc/$$; then
 else
 	AC_MSG_RESULT(no)
 fi
+
+# Try to figure out what the best value for TERM might be.
+if test "x$DEFAULT_TERM" = x; then
+	DEFAULT_TERM=screen
+	AC_MSG_CHECKING(TERM)
+	AC_RUN_IFELSE([AC_LANG_SOURCE(
+		[
+			#include <stdio.h>
+			#include <stdlib.h>
+			#if defined(HAVE_CURSES_H)
+			#include <curses.h>
+			#elif defined(HAVE_NCURSES_H)
+			#include <ncurses.h>
+			#endif
+			#include <term.h>
+			int main(void) {
+				if (setupterm("screen-256color", -1, NULL) != OK)
+					exit(1);
+				exit(0);
+			}
+		 ])],
+		 [DEFAULT_TERM=screen-256color],
+		 ,
+	)
+	AC_RUN_IFELSE([AC_LANG_SOURCE(
+		[
+			#include <stdio.h>
+			#include <stdlib.h>
+			#if defined(HAVE_CURSES_H)
+			#include <curses.h>
+			#elif defined(HAVE_NCURSES_H)
+			#include <ncurses.h>
+			#endif
+			#include <term.h>
+			int main(void) {
+				if (setupterm("tmux", -1, NULL) != OK)
+					exit(1);
+				exit(0);
+			}
+		 ])],
+		 [DEFAULT_TERM=tmux],
+		 ,
+	)
+	AC_RUN_IFELSE([AC_LANG_SOURCE(
+		[
+			#include <stdio.h>
+			#include <stdlib.h>
+			#if defined(HAVE_CURSES_H)
+			#include <curses.h>
+			#elif defined(HAVE_NCURSES_H)
+			#include <ncurses.h>
+			#endif
+			#include <term.h>
+			int main(void) {
+				if (setupterm("tmux-256color", -1, NULL) != OK)
+					exit(1);
+				exit(0);
+			}
+		 ])],
+		 [DEFAULT_TERM=tmux-256color],
+		 ,
+	)
+	AC_MSG_RESULT($DEFAULT_TERM)
+fi
+AC_SUBST(DEFAULT_TERM)
 
 # Man page defaults to mdoc.
 MANFORMAT=mdoc
