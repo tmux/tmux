@@ -74,6 +74,9 @@ struct winlink;
 #ifndef TMUX_SOCK
 #define TMUX_SOCK "$TMUX_TMPDIR:" _PATH_TMP
 #endif
+#ifndef TMUX_TERM
+#define TMUX_TERM "screen"
+#endif
 
 /* Minimum layout cell size, NOT including border lines. */
 #define PANE_MINIMUM 1
