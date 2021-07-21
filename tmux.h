@@ -1629,6 +1629,7 @@ typedef struct screen *(*overlay_mode_cb)(struct client *, u_int *, u_int *);
 typedef void (*overlay_draw_cb)(struct client *, struct screen_redraw_ctx *);
 typedef int (*overlay_key_cb)(struct client *, struct key_event *);
 typedef void (*overlay_free_cb)(struct client *);
+typedef void (*overlay_resize_cb)(struct client *);
 struct client {
 	const char	*name;
 	struct tmuxpeer	*peer;
@@ -1776,6 +1777,7 @@ struct client {
 	overlay_draw_cb	 overlay_draw;
 	overlay_key_cb	 overlay_key;
 	overlay_free_cb	 overlay_free;
+	overlay_resize_cb overlay_resize;
 	void		*overlay_data;
 	struct event	 overlay_timer;
 
@@ -2483,7 +2485,7 @@ RB_PROTOTYPE(client_windows, client_window, entry, server_client_window_cmp);
 u_int	 server_client_how_many(void);
 void	 server_client_set_overlay(struct client *, u_int, overlay_check_cb,
 	     overlay_mode_cb, overlay_draw_cb, overlay_key_cb,
-	     overlay_free_cb, void *);
+	     overlay_free_cb, overlay_resize_cb, void *);
 void	 server_client_clear_overlay(struct client *);
 void	 server_client_set_key_table(struct client *, const char *);
 const char *server_client_get_key_table(struct client *);

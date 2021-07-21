@@ -390,6 +390,6 @@ menu_display(struct menu *menu, int flags, struct cmdq_item *item, u_int px,
 	md->data = data;
 
 	server_client_set_overlay(c, 0, NULL, menu_mode_cb, menu_draw_cb,
-	    menu_key_cb, menu_free_cb, md);
+	    menu_key_cb, menu_free_cb, NULL, md);
 	return (0);
 }
