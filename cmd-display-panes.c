@@ -286,12 +286,12 @@ cmd_display_panes_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (args_has(args, 'N')) {
 		server_client_set_overlay(tc, delay, NULL, NULL,
-		    cmd_display_panes_draw, NULL, cmd_display_panes_free,
+		    cmd_display_panes_draw, NULL, cmd_display_panes_free, NULL,
 		    cdata);
 	} else {
 		server_client_set_overlay(tc, delay, NULL, NULL,
 		    cmd_display_panes_draw, cmd_display_panes_key,
-		    cmd_display_panes_free, cdata);
+		    cmd_display_panes_free, NULL, cdata);
 	}
 
 	if (args_has(args, 'b'))

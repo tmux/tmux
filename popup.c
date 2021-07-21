@@ -38,10 +38,17 @@ struct popup_data {
 	popup_close_cb		  cb;
 	void			 *arg;
 
+	/* Current position and size. */
 	u_int			  px;
 	u_int			  py;
 	u_int			  sx;
 	u_int			  sy;
+
+	/* Preferred position and size. */
+	u_int			  ppx;
+	u_int			  ppy;
+	u_int			  psx;
+	u_int			  psy;
 
 	enum { OFF, MOVE, SIZE }  dragging;
 	u_int			  dx;
@@ -132,9 +139,14 @@ popup_draw_cb(struct client *c, __unused struct screen_redraw_ctx *ctx0)
 	screen_init(&s, pd->sx, pd->sy, 0);
 	screen_write_start(&ctx, &s);
 	screen_write_clearscreen(&ctx, 8);
-	screen_write_box(&ctx, pd->sx, pd->sy);
-	screen_write_cursormove(&ctx, 1, 1, 0);
-	screen_write_fast_copy(&ctx, &pd->s, 0, 0, pd->sx - 2, pd->sy - 2);
+
+	/* Skip drawing popup if the terminal is too small. */
+	if (pd->sx > 2 && pd->sy > 2) {
+		screen_write_box(&ctx, pd->sx, pd->sy);
+		screen_write_cursormove(&ctx, 1, 1, 0);
+		screen_write_fast_copy(&ctx, &pd->s, 0, 0, pd->sx - 2,
+		    pd->sy - 2);
+	}
 	screen_write_stop(&ctx);
 
 	c->overlay_check = NULL;
@@ -171,6 +183,41 @@ popup_free_cb(struct client *c)
 }
 
 static void
+popup_resize_cb(struct client *c)
+{
+	struct popup_data	*pd = c->overlay_data;
+	struct tty		*tty = &c->tty;
+
+	if (pd == NULL)
+		return;
+
+	/* Adjust position and size. */
+	if (pd->psy > tty->sy)
+		pd->sy = tty->sy;
+	else
+		pd->sy = pd->psy;
+	if (pd->psx > tty->sx)
+		pd->sx = tty->sx;
+	else
+		pd->sx = pd->psx;
+	if (pd->ppy + pd->sy > tty->sy)
+		pd->py = tty->sy - pd->sy;
+	else
+		pd->py = pd->ppy;
+	if (pd->ppx + pd->sx > tty->sx)
+		pd->px = tty->sx - pd->sx;
+	else
+		pd->px = pd->ppx;
+
+	/* Avoid zero size screens. */
+	if (pd->sx > 2 && pd->sy > 2) {
+		screen_resize(&pd->s, pd->sx - 2, pd->sy - 2, 0);
+		if (pd->job != NULL)
+			job_resize(pd->job, pd->sx - 2, pd->sy - 2);
+	}
+}
+
+static void
 popup_handle_drag(struct client *c, struct popup_data *pd,
     struct mouse_event *m)
 {
@@ -195,6 +242,8 @@ popup_handle_drag(struct client *c, struct popup_data *pd,
 		pd->py = py;
 		pd->dx = m->x - pd->px;
 		pd->dy = m->y - pd->py;
+		pd->ppx = px;
+		pd->ppy = py;
 		server_redraw_client(c);
 	} else if (pd->dragging == SIZE) {
 		if (m->x < pd->px + 3)
@@ -203,6 +252,8 @@ popup_handle_drag(struct client *c, struct popup_data *pd,
 			return;
 		pd->sx = m->x - pd->px;
 		pd->sy = m->y - pd->py;
+		pd->psx = pd->sx;
+		pd->psy = pd->sy;
 
 		screen_resize(&pd->s, pd->sx - 2, pd->sy - 2, 0);
 		if (pd->job != NULL)
@@ -347,13 +398,18 @@ popup_display(int flags, struct cmdq_item *item, u_int px, u_int py, u_int sx,
 	pd->sx = sx;
 	pd->sy = sy;
 
+	pd->ppx = px;
+	pd->ppy = py;
+	pd->psx = sx;
+	pd->psy = sy;
+
 	pd->job = job_run(shellcmd, argc, argv, s, cwd,
 	    popup_job_update_cb, popup_job_complete_cb, NULL, pd,
 	    JOB_NOWAIT|JOB_PTY|JOB_KEEPWRITE, pd->sx - 2, pd->sy - 2);
 	pd->ictx = input_init(NULL, job_get_event(pd->job));
 
 	server_client_set_overlay(c, 0, popup_check_cb, popup_mode_cb,
-	    popup_draw_cb, popup_key_cb, popup_free_cb, pd);
+	    popup_draw_cb, popup_key_cb, popup_free_cb, popup_resize_cb, pd);
 	return (0);
 }
 

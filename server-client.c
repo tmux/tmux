@@ -90,7 +90,7 @@ void
 server_client_set_overlay(struct client *c, u_int delay,
     overlay_check_cb checkcb, overlay_mode_cb modecb,
     overlay_draw_cb drawcb, overlay_key_cb keycb, overlay_free_cb freecb,
-    void *data)
+    overlay_resize_cb resizecb, void *data)
 {
 	struct timeval	tv;
 
@@ -111,6 +111,7 @@ server_client_set_overlay(struct client *c, u_int delay,
 	c->overlay_draw = drawcb;
 	c->overlay_key = keycb;
 	c->overlay_free = freecb;
+	c->overlay_resize = resizecb;
 	c->overlay_data = data;
 
 	c->tty.flags |= TTY_FREEZE;
@@ -2058,9 +2059,12 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 		if (c->flags & CLIENT_CONTROL)
 			break;
 		server_client_update_latest(c);
-		server_client_clear_overlay(c);
 		tty_resize(&c->tty);
 		recalculate_sizes();
+		if (c->overlay_resize == NULL)
+			server_client_clear_overlay(c);
+		else
+			c->overlay_resize(c);
 		server_redraw_client(c);
 		if (c->session != NULL)
 			notify_client("client-resized", c);
