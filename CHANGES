@@ -13,6 +13,8 @@ CHANGES FROM 3.2a TO 3.3
 * Add different command histories for different types of prompts ("command",
   "search" etc). From Anindya Mukherjee.
 
+* Update the session environment when the latest active client changes.
+
 CHANGES FROM 3.2 TO 3.2a
 
 * Add an "always" value for the "extended-keys" option; if set then tmux will
@@ -133,7 +135,7 @@ CHANGES FROM 3.1c TO 3.2
 
 * Add a way for control mode clients to subscribe to a format and be notified
   of changes rather than having to poll.
-    
+
 * Add some formats for search in copy mode (search_present, search_match).
 
 * Do not wait on shutdown for commands started with run -b.

@@ -721,7 +721,7 @@ const struct options_table_entry options_table[] = {
 	  .default_str = "DISPLAY KRB5CCNAME SSH_ASKPASS SSH_AUTH_SOCK "
 			 "SSH_AGENT_PID SSH_CONNECTION WINDOWID XAUTHORITY",
 	  .text = "List of environment variables to update in the session "
-		  "environment when a client is attached."
+		  "environment when a client is attached or has activity."
 	},
 
 	{ .name = "visual-activity",

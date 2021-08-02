@@ -3941,7 +3941,7 @@ see the
 section.
 .It Ic update-environment[] Ar variable
 Set list of environment variables to be copied into the session environment
-when a new session is created or an existing session is attached.
+from the latest active client attached to that session.
 Any variables that do not exist in the source environment are set to be
 removed from the session environment (as if
 .Fl r
@@ -5253,8 +5253,8 @@ The result is the initial environment passed to the new process.
 .Pp
 The
 .Ic update-environment
-session option may be used to update the session environment from the client
-when a new session is created or an old reattached.
+session option may be used to update the session environment with the
+environment of the latest active client attached to that session.
 .Nm
 also initialises the
 .Ev TMUX
