@@ -1127,6 +1127,8 @@ server_client_update_latest(struct client *c)
 
 	if (options_get_number(w->options, "window-size") == WINDOW_SIZE_LATEST)
 		recalculate_size(w, 0);
+
+	notify_client("client-active", c);
 }
 
 /*
