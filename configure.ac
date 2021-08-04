@@ -770,19 +770,32 @@ case "$host_os" in
 		AC_MSG_RESULT(darwin)
 		PLATFORM=darwin
 		#
-		# OS X uses __dead2 instead of __dead, like FreeBSD. But it
-		# defines __dead away so it needs to be removed before we can
-		# replace it.
+		# macOS uses __dead2 instead of __dead, like FreeBSD. But it defines
+		# __dead away so it needs to be removed before we can replace it.
 		#
 		AC_DEFINE(BROKEN___DEAD)
 		#
-		# OS X CMSG_FIRSTHDR is broken, so redefine it with a working
-		# one. daemon works but has some stupid side effects, so use
-		# our internal version which has a workaround.
+		# macOS CMSG_FIRSTHDR is broken, so redefine it with a working one.
+		# daemon works but has some stupid side effects, so use our internal
+		# version which has a workaround.
 		#
 		AC_DEFINE(BROKEN_CMSG_FIRSTHDR)
 		AC_LIBOBJ(daemon)
 		AC_LIBOBJ(daemon-darwin)
+		#
+		# macOS wcwidth(3) is bad, so complain and suggest using utf8proc
+		# instead.
+		#
+		if test "x$enable_utf8proc" = x; then
+			AC_MSG_NOTICE([])
+			AC_MSG_NOTICE([	   macOS library support for Unicode is very poor,])
+			AC_MSG_NOTICE([	   particularly for complex codepoints like emojis;])
+			AC_MSG_NOTICE([	   to use these correctly, configuring with])
+			AC_MSG_NOTICE([	   --enable-utf8proc is recommended. To build])
+			AC_MSG_NOTICE([	   without anyway, use --disable-utf8proc])
+			AC_MSG_NOTICE([])
+			AC_MSG_ERROR([must give --enable-utf8proc or --disable-utf8proc])
+		fi
 		;;
 	*dragonfly*)
 		AC_MSG_RESULT(dragonfly)
