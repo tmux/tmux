@@ -117,7 +117,8 @@ server_client_set_overlay(struct client *c, u_int delay,
 	c->overlay_resize = resizecb;
 	c->overlay_data = data;
 
-	c->tty.flags |= TTY_FREEZE;
+	if (c->overlay_check == NULL)
+		c->tty.flags |= TTY_FREEZE;
 	if (c->overlay_mode == NULL)
 		c->tty.flags |= TTY_NOCURSOR;
 	server_redraw_client(c);
