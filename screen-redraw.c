@@ -636,7 +636,7 @@ screen_redraw_pane(struct client *c, struct window_pane *wp)
 {
 	struct screen_redraw_ctx	 ctx;
 
-	if (c->overlay_draw != NULL || !window_pane_visible(wp))
+	if (!window_pane_visible(wp))
 		return;
 
 	screen_redraw_set_context(c, &ctx);
