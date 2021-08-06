@@ -1463,9 +1463,15 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 				tty_attributes(tty, &last, defaults, palette);
 				tty_cursor(tty, atx + ux, aty);
 				for (j = 0; j < gcp->data.width; j++) {
-					if (ux + j > nx)
+					if (ux > nx)
 						break;
-					tty_putc(tty, ' ');
+					if (tty_check_overlay(tty, atx + ux,
+					    aty))
+						tty_putc(tty, ' ');
+					else {
+						tty_cursor(tty, atx + ux + 1,
+						    aty);
+					}
 					ux++;
 				}
 			}
