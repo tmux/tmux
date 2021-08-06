@@ -1348,7 +1348,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	const struct grid_cell	*gcp;
 	struct grid_line	*gl;
 	struct client		*c = tty->client;
-	u_int			 i, j, ux, sx, width;
+	u_int			 i, j, ux, sx, width, hidden;
 	int			 flags, cleared = 0, wrapped = 0;
 	char			 buf[512];
 	size_t			 len;
@@ -1449,17 +1449,25 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 			screen_select_cell(s, &last, gcp);
 		else
 			memcpy(&last, gcp, sizeof last);
-		if (!tty_check_overlay(tty, atx + ux, aty)) {
+
+		hidden = 0;
+		for (j = 0; j < gcp->data.width; j++) {
+			if (!tty_check_overlay(tty, atx + ux + j, aty))
+				hidden++;
+		}
+		if (hidden != 0 && hidden == gcp->data.width) {
 			if (~gcp->flags & GRID_FLAG_PADDING)
 				ux += gcp->data.width;
-		} else if (ux + gcp->data.width > nx) {
-			tty_attributes(tty, &last, defaults, palette);
-			tty_cursor(tty, atx + ux, aty);
-			for (j = 0; j < gcp->data.width; j++) {
-				if (ux + j > nx)
-					break;
-				tty_putc(tty, ' ');
-				ux++;
+		} else if (hidden != 0 || ux + gcp->data.width > nx) {
+			if (~gcp->flags & GRID_FLAG_PADDING) {
+				tty_attributes(tty, &last, defaults, palette);
+				tty_cursor(tty, atx + ux, aty);
+				for (j = 0; j < gcp->data.width; j++) {
+					if (ux + j > nx)
+						break;
+					tty_putc(tty, ' ');
+					ux++;
+				}
 			}
 		} else if (gcp->attr & GRID_ATTR_CHARSET) {
 			tty_attributes(tty, &last, defaults, palette);
