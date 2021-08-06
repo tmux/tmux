@@ -1348,8 +1348,8 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	const struct grid_cell	*gcp;
 	struct grid_line	*gl;
 	struct client		*c = tty->client;
-	u_int			 i, j, ux, sx, width;
-	int			 flags, cleared = 0, wrapped = 0, hidden;
+	u_int			 i, j, ux, sx, width, hidden;
+	int			 flags, cleared = 0, wrapped = 0;
 	char			 buf[512];
 	size_t			 len;
 	u_int			 cellsize;
@@ -1452,12 +1452,13 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 
 		hidden = 0;
 		for (j = 0; j < gcp->data.width; j++) {
-			if (!tty_check_overlay(tty, atx + ux + j, aty)) {
-				hidden = 1;
-				break;
-			}
+			if (!tty_check_overlay(tty, atx + ux + j, aty))
+				hidden++;
 		}
-		if (hidden || ux + gcp->data.width > nx) {
+		if (hidden != 0 && hidden == gcp->data.width) {
+			if (~gcp->flags & GRID_FLAG_PADDING)
+				ux += gcp->data.width;
+		} else if (hidden != 0 || ux + gcp->data.width > nx) {
 			if (~gcp->flags & GRID_FLAG_PADDING) {
 				tty_attributes(tty, &last, defaults, palette);
 				tty_cursor(tty, atx + ux, aty);
