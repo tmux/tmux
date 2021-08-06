@@ -1726,6 +1726,8 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 {
 	struct screen		*s = ctx->s;
 	struct grid		*gd = s->grid;
+	const struct utf8_data	*ud = &gc->data;
+	const struct utf8_data	 zwj = { "\342\200\215", 0, 3, 0 };
 	struct grid_line	*gl;
 	struct grid_cell_entry	*gce;
 	struct grid_cell 	 tmp_gc, now_gc;
@@ -1738,16 +1740,38 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	if (gc->flags & GRID_FLAG_PADDING)
 		return;
 
-	/* If the width is zero, combine onto the previous character. */
-	if (width == 0) {
+	/*
+	 * If this is a zero width joiner, set the flag so the next character
+	 * will be treated as zero width and appended. Note that we assume a
+	 * ZWJ will not change the width - the width of the first character is
+	 * used.
+	 */
+	if (ud->size == 3 && memcmp(ud->data, "\342\200\215", 3) == 0) {
+		log_debug("zero width joiner at %u,%u", s->cx, s->cy);
+		ctx->flags |= SCREEN_WRITE_ZWJ;
+		return;
+	}
+
+	/*
+	 * If the width is zero, combine onto the previous character. We always
+	 * combine with the cell to the left of the cursor position. In theory,
+	 * the application could have moved the cursor somewhere else, but if
+	 * they are silly enough to do that, who cares?
+	 */
+	if (ctx->flags & SCREEN_WRITE_ZWJ) {
 		screen_write_collect_flush(ctx, 0, __func__);
-		if ((gc = screen_write_combine(ctx, &gc->data, &xx)) != 0) {
+		screen_write_combine(ctx, &zwj, &xx);
+	}
+	if (width == 0 || (ctx->flags & SCREEN_WRITE_ZWJ)) {
+		ctx->flags &= ~SCREEN_WRITE_ZWJ;
+		screen_write_collect_flush(ctx, 0, __func__);
+		if ((gc = screen_write_combine(ctx, ud, &xx)) != 0) {
 			cx = s->cx; cy = s->cy;
 			screen_write_set_cursor(ctx, xx, s->cy);
 			screen_write_initctx(ctx, &ttyctx, 0);
 			ttyctx.cell = gc;
 			tty_write(tty_cmd_cell, &ttyctx);
-			s->cx = cx; s->cy = cy;
+			s->cx = xx + gc->data.width; s->cy = cy;
 		}
 		return;
 	}
