@@ -820,10 +820,13 @@ complete_key:
 	tty->flags &= ~TTY_TIMER;
 
 	/* Check for focus events. */
-	if (key == KEYC_FOCUS_OUT)
+	if (key == KEYC_FOCUS_OUT) {
 		tty->client->flags &= ~CLIENT_FOCUSED;
-	else if (key == KEYC_FOCUS_IN)
+		notify_client("client-focus-out", c);
+	} else if (key == KEYC_FOCUS_IN) {
 		tty->client->flags |= CLIENT_FOCUSED;
+		notify_client("client-focus-in", c);
+	}
 
 	/* Fire the key. */
 	if (key != KEYC_UNKNOWN) {
