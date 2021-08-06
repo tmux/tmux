@@ -596,7 +596,7 @@ screen_write_hline(struct screen_write_ctx *ctx, u_int nx, int left, int right)
 	screen_write_set_cursor(ctx, cx, cy);
 }
 
-/* Draw a horizontal line on screen. */
+/* Draw a vertical line on screen. */
 void
 screen_write_vline(struct screen_write_ctx *ctx, u_int ny, int top, int bottom)
 {
