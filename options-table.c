@@ -1147,6 +1147,8 @@ const struct options_table_entry options_table[] = {
 	OPTIONS_TABLE_HOOK("client-active", ""),
 	OPTIONS_TABLE_HOOK("client-attached", ""),
 	OPTIONS_TABLE_HOOK("client-detached", ""),
+ 	OPTIONS_TABLE_HOOK("client-focus-in", ""),
+ 	OPTIONS_TABLE_HOOK("client-focus-out", ""),
 	OPTIONS_TABLE_HOOK("client-resized", ""),
 	OPTIONS_TABLE_HOOK("client-session-changed", ""),
 	OPTIONS_TABLE_PANE_HOOK("pane-died", ""),
