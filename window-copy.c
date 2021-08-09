@@ -966,6 +966,42 @@ window_copy_cmd_copy_end_of_line(struct window_copy_cmd_state *cs)
 	struct session			*s = cs->s;
 	struct winlink			*wl = cs->wl;
 	struct window_pane		*wp = wme->wp;
+	u_int				 np = wme->prefix, ocx, ocy, ooy;
+	struct window_copy_mode_data	*data = wme->data;
+	char				*prefix = NULL;
+
+	if (cs->args->argc == 2)
+		prefix = format_single(NULL, cs->args->argv[1], c, s, wl, wp);
+
+	ocx = data->cx;
+	ocy = data->cy;
+	ooy = data->oy;
+
+	window_copy_start_selection(wme);
+	for (; np > 1; np--)
+		window_copy_cursor_down(wme, 0);
+	window_copy_cursor_end_of_line(wme);
+
+	if (s != NULL)
+		window_copy_copy_selection(wme, prefix);
+	window_copy_clear_selection(wme);
+
+	data->cx = ocx;
+	data->cy = ocy;
+	data->oy = ooy;
+
+	free(prefix);
+	return (WINDOW_COPY_CMD_REDRAW);
+}
+
+static enum window_copy_cmd_action
+window_copy_cmd_copy_end_of_line_and_cancel(struct window_copy_cmd_state *cs)
+{
+	struct window_mode_entry	*wme = cs->wme;
+	struct client			*c = cs->c;
+	struct session			*s = cs->s;
+	struct winlink			*wl = cs->wl;
+	struct window_pane		*wp = wme->wp;
 	u_int				 np = wme->prefix;
 	char				*prefix = NULL;
 
@@ -990,6 +1026,44 @@ window_copy_cmd_copy_end_of_line(struct window_copy_cmd_state *cs)
 
 static enum window_copy_cmd_action
 window_copy_cmd_copy_line(struct window_copy_cmd_state *cs)
+{
+	struct window_mode_entry	*wme = cs->wme;
+	struct client			*c = cs->c;
+	struct session			*s = cs->s;
+	struct winlink			*wl = cs->wl;
+	struct window_pane		*wp = wme->wp;
+	struct window_copy_mode_data	*data = wme->data;
+	u_int				 np = wme->prefix, ocx, ocy, ooy;
+	char				*prefix = NULL;
+
+	if (cs->args->argc == 2)
+		prefix = format_single(NULL, cs->args->argv[1], c, s, wl, wp);
+
+	ocx = data->cx;
+	ocy = data->cy;
+	ooy = data->oy;
+
+	data->selflag = SEL_CHAR;
+	window_copy_cursor_start_of_line(wme);
+	window_copy_start_selection(wme);
+	for (; np > 1; np--)
+		window_copy_cursor_down(wme, 0);
+	window_copy_cursor_end_of_line(wme);
+
+	if (s != NULL)
+		window_copy_copy_selection(wme, prefix);
+	window_copy_clear_selection(wme);
+
+	data->cx = ocx;
+	data->cy = ocy;
+	data->oy = ooy;
+
+	free(prefix);
+	return (WINDOW_COPY_CMD_REDRAW);
+}
+
+static enum window_copy_cmd_action
+window_copy_cmd_copy_line_and_cancel(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
 	struct client			*c = cs->c;
@@ -2264,8 +2338,12 @@ static const struct {
 	  window_copy_cmd_clear_selection },
 	{ "copy-end-of-line", 0, 1, WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  window_copy_cmd_copy_end_of_line },
+	{ "copy-end-of-line-and-cancel", 0, 1, WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  window_copy_cmd_copy_end_of_line_and_cancel },
 	{ "copy-line", 0, 1, WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  window_copy_cmd_copy_line },
+	{ "copy-line-and-cancel", 0, 1, WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  window_copy_cmd_copy_line_and_cancel },
 	{ "copy-pipe-no-clear", 0, 2, WINDOW_COPY_CMD_CLEAR_NEVER,
 	  window_copy_cmd_copy_pipe_no_clear },
 	{ "copy-pipe", 0, 2, WINDOW_COPY_CMD_CLEAR_ALWAYS,
