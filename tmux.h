@@ -652,6 +652,15 @@ enum utf8_state {
 /* Special colours. */
 #define COLOUR_DEFAULT(c) ((c) == 8 || (c) == 9)
 
+/* Replacement palette. */
+struct colour_palette {
+	int	 fg;
+	int	 bg;
+
+	int	*palette;
+	int	*default_palette;
+};
+
 /* Grid attributes. Anything above 0xff is stored in an extended cell. */
 #define GRID_ATTR_BRIGHT 0x1
 #define GRID_ATTR_DIM 0x2
@@ -989,9 +998,6 @@ struct window_pane {
 	u_int		 xoff;
 	u_int		 yoff;
 
-	int		 fg;
-	int		 bg;
-
 	int		 flags;
 #define PANE_REDRAW 0x1
 #define PANE_DROP 0x2
@@ -1029,7 +1035,7 @@ struct window_pane {
 
 	struct grid_cell cached_gc;
 	struct grid_cell cached_active_gc;
-	int		*palette;
+	struct colour_palette palette;
 
 	int		 pipe_fd;
 	struct bufferevent *pipe_event;
@@ -1427,7 +1433,7 @@ struct tty_ctx {
 
 	/* The default colours and palette. */
 	struct grid_cell defaults;
-	int		*palette;
+	struct colour_palette *palette;
 
 	/* Containing region (usually window) offset and size. */
 	int		 bigger;
@@ -1827,11 +1833,11 @@ RB_HEAD(key_tables, key_table);
 /* Option data. */
 RB_HEAD(options_array, options_array_item);
 union options_value {
-	char				 *string;
-	long long			  number;
-	struct style			  style;
-	struct options_array		  array;
-	struct cmd_list			 *cmdlist;
+	char			*string;
+	long long		 number;
+	struct style		 style;
+	struct options_array	 array;
+	struct cmd_list		*cmdlist;
 };
 
 /* Option table entries. */
@@ -2165,7 +2171,7 @@ void	tty_update_window_offset(struct window *);
 void	tty_update_client_offset(struct client *);
 void	tty_raw(struct tty *, const char *);
 void	tty_attributes(struct tty *, const struct grid_cell *,
-	    const struct grid_cell *, int *);
+	    const struct grid_cell *, struct colour_palette *);
 void	tty_reset(struct tty *);
 void	tty_region_off(struct tty *);
 void	tty_margin_off(struct tty *);
@@ -2181,7 +2187,7 @@ void	tty_puts(struct tty *, const char *);
 void	tty_putc(struct tty *, u_char);
 void	tty_putn(struct tty *, const void *, size_t, u_int);
 void	tty_cell(struct tty *, const struct grid_cell *,
-	    const struct grid_cell *, int *);
+	    const struct grid_cell *, struct colour_palette *);
 int	tty_init(struct tty *, struct client *);
 void	tty_resize(struct tty *);
 void	tty_set_size(struct tty *, u_int, u_int, u_int, u_int);
@@ -2191,7 +2197,7 @@ void	tty_stop_tty(struct tty *);
 void	tty_set_title(struct tty *, const char *);
 void	tty_update_mode(struct tty *, int, struct screen *);
 void	tty_draw_line(struct tty *, struct screen *, u_int, u_int, u_int,
-	    u_int, u_int, const struct grid_cell *, int *);
+	    u_int, u_int, const struct grid_cell *, struct colour_palette *);
 void	tty_sync_start(struct tty *);
 void	tty_sync_end(struct tty *);
 int	tty_open(struct tty *, char **);
@@ -2573,7 +2579,8 @@ void	 recalculate_sizes(void);
 void	 recalculate_sizes_now(int);
 
 /* input.c */
-struct input_ctx *input_init(struct window_pane *, struct bufferevent *);
+struct input_ctx *input_init(struct window_pane *, struct bufferevent *,
+	     struct colour_palette *);
 void	 input_free(struct input_ctx *);
 void	 input_reset(struct input_ctx *, int);
 struct evbuffer *input_pending(struct input_ctx *);
@@ -2598,6 +2605,12 @@ int	 colour_fromstring(const char *s);
 int	 colour_256toRGB(int);
 int	 colour_256to16(int);
 int	 colour_byname(const char *);
+void	 colour_palette_init(struct colour_palette *);
+void	 colour_palette_clear(struct colour_palette *);
+void	 colour_palette_free(struct colour_palette *);
+int	 colour_palette_get(struct colour_palette *, int);
+int	 colour_palette_set(struct colour_palette *, int, int);
+void	 colour_palette_from_option(struct colour_palette *, struct options *);
 
 /* attributes.c */
 const char *attributes_tostring(int);
@@ -2737,6 +2750,7 @@ void	 screen_write_clearendofscreen(struct screen_write_ctx *, u_int);
 void	 screen_write_clearstartofscreen(struct screen_write_ctx *, u_int);
 void	 screen_write_clearscreen(struct screen_write_ctx *, u_int);
 void	 screen_write_clearhistory(struct screen_write_ctx *);
+void	 screen_write_fullredraw(struct screen_write_ctx *);
 void	 screen_write_collect_end(struct screen_write_ctx *);
 void	 screen_write_collect_add(struct screen_write_ctx *,
 	     const struct grid_cell *);
@@ -2834,10 +2848,6 @@ struct window_pane *window_pane_find_by_id_str(const char *);
 struct window_pane *window_pane_find_by_id(u_int);
 int		 window_pane_destroy_ready(struct window_pane *);
 void		 window_pane_resize(struct window_pane *, u_int, u_int);
-void		 window_pane_set_palette(struct window_pane *, u_int, int);
-void		 window_pane_unset_palette(struct window_pane *, u_int);
-void		 window_pane_reset_palette(struct window_pane *);
-int		 window_pane_get_palette(struct window_pane *, int);
 int		 window_pane_set_mode(struct window_pane *,
 		     struct window_pane *, const struct window_mode *,
 		     struct cmd_find_state *, struct args *);

@@ -197,8 +197,9 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (args_has(args, 'R')) {
-		window_pane_reset_palette(wp);
+		colour_palette_clear(&wp->palette);
 		input_reset(wp->ictx, 1);
+		wp->flags |= (PANE_STYLECHANGED|PANE_REDRAW);
 	}
 
 	for (; np != 0; np--) {

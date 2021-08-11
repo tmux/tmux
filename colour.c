@@ -944,3 +944,115 @@ colour_byname(const char *name)
 	}
 	return (-1);
 }
+
+/* Initialize palette. */
+void
+colour_palette_init(struct colour_palette *p)
+{
+	p->fg = 8;
+	p->bg = 8;
+	p->palette = NULL;
+	p->default_palette = NULL;
+}
+
+/* Clear palette. */
+void
+colour_palette_clear(struct colour_palette *p)
+{
+	p->fg = 8;
+	p->bg = 8;
+	if (p != NULL) {
+		free(p->palette);
+		p->palette = NULL;
+	}
+}
+
+/* Free a palette. */
+void
+colour_palette_free(struct colour_palette *p)
+{
+	if (p != NULL) {
+		free(p->palette);
+		p->palette = NULL;
+		free(p->default_palette);
+		p->default_palette = NULL;
+	}
+}
+
+/* Get a colour from a palette. */
+int
+colour_palette_get(struct colour_palette *p, int c)
+{
+	if (p == NULL)
+		return (-1);
+
+	if (c >= 90 && c <= 97)
+		c = 8 + c - 90;
+	else if (c & COLOUR_FLAG_256)
+		c &= ~COLOUR_FLAG_256;
+	else if (c >= 8)
+		return (-1);
+
+	if (p->palette != NULL && p->palette[c] != -1)
+		return (p->palette[c]);
+	if (p->default_palette != NULL && p->default_palette[c] != -1)
+		return (p->default_palette[c]);
+	return (-1);
+}
+
+/* Set a colour in a palette. */
+int
+colour_palette_set(struct colour_palette *p, int n, int c)
+{
+	u_int	i;
+
+	if (p == NULL || n > 255)
+		return (0);
+
+	if (c == -1 && p->palette == NULL)
+		return (0);
+
+	if (c != -1 && p->palette == NULL) {
+		if (p->palette == NULL)
+			p->palette = xcalloc(256, sizeof *p->palette);
+		for (i = 0; i < 256; i++)
+			p->palette[i] = -1;
+	}
+	p->palette[n] = c;
+	return (1);
+}
+
+/* Build palette defaults from an option. */
+void
+colour_palette_from_option(struct colour_palette *p, struct options *oo)
+{
+	struct options_entry		*o;
+	struct options_array_item	*a;
+	u_int				 i, n;
+	int				 c;
+
+	if (p == NULL)
+		return;
+
+	o = options_get(oo, "pane-colours");
+	if ((a = options_array_first(o)) == NULL) {
+		if (p->default_palette != NULL) {
+			free(p->default_palette);
+			p->default_palette = NULL;
+		}
+		return;
+	}
+	if (p->default_palette == NULL)
+		p->default_palette = xcalloc(256, sizeof *p->default_palette);
+	for (i = 0; i < 256; i++)
+		p->default_palette[i] = -1;
+	while (a != NULL) {
+		n = options_array_item_index(a);
+		if (n < 256) {
+			c = options_array_item_value(a)->number;
+			p->default_palette[n] = c;
+		}
+		a = options_array_next(a);
+	}
+
+}
