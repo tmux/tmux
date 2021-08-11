@@ -2041,6 +2041,7 @@ tty_set_selection(struct tty *tty, const char *buf, size_t len)
 
 	b64_ntop(buf, len, encoded, size);
 	tty_putcode_ptr2(tty, TTYC_MS, "", encoded);
+	tty->client->redraw = EVBUFFER_LENGTH(tty->out);
 
 	free(encoded);
 }
