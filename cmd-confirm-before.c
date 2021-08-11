@@ -39,15 +39,17 @@ const struct cmd_entry cmd_confirm_before_entry = {
 	.name = "confirm-before",
 	.alias = "confirm",
 
-	.args = { "p:t:", 1, 1 },
-	.usage = "[-p prompt] " CMD_TARGET_CLIENT_USAGE " command",
+	.args = { "bp:t:", 1, 1 },
+	.usage = "[-b] [-p prompt] " CMD_TARGET_CLIENT_USAGE " command",
 
 	.flags = CMD_CLIENT_TFLAG,
 	.exec = cmd_confirm_before_exec
 };
 
 struct cmd_confirm_before_data {
-	char	*cmd;
+	char			*cmd;
+	struct cmdq_item	*item;
+	struct cmd_parse_input	 pi;
 };
 
 static enum cmd_retval
@@ -59,6 +61,7 @@ cmd_confirm_before_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_find_state		*target = cmdq_get_target(item);
 	char				*cmd, *copy, *new_prompt, *ptr;
 	const char			*prompt;
+	int				 wait = !args_has(args, 'b');
 
 	if ((prompt = args_get(args, 'p')) != NULL)
 		xasprintf(&new_prompt, "%s ", prompt);
@@ -72,12 +75,24 @@ cmd_confirm_before_exec(struct cmd *self, struct cmdq_item *item)
 	cdata = xmalloc(sizeof *cdata);
 	cdata->cmd = xstrdup(args->argv[0]);
 
+	memset(&cdata->pi, 0, sizeof cdata->pi);
+	cmd_get_source(self, &cdata->pi.file, &cdata->pi.line);
+	if (wait)
+		cdata->pi.item = item;
+	cdata->pi.c = tc;
+	cmd_find_copy_state(&cdata->pi.fs, target);
+
+	if (wait)
+		cdata->item = item;
+
 	status_prompt_set(tc, target, new_prompt, NULL,
 	    cmd_confirm_before_callback, cmd_confirm_before_free, cdata,
 	    PROMPT_SINGLE, PROMPT_TYPE_COMMAND);
 
 	free(new_prompt);
-	return (CMD_RETURN_NORMAL);
+	if (!wait)
+		return (CMD_RETURN_NORMAL);
+	return (CMD_RETURN_WAIT);
 }
 
 static int
@@ -85,23 +100,32 @@ cmd_confirm_before_callback(struct client *c, void *data, const char *s,
     __unused int done)
 {
 	struct cmd_confirm_before_data	*cdata = data;
+	const char			*cmd = cdata->cmd;
 	char				*error;
+	struct cmdq_item		*item = cdata->item;
 	enum cmd_parse_status		 status;
 
 	if (c->flags & CLIENT_DEAD)
 		return (0);
 
 	if (s == NULL || *s == '\0')
-		return (0);
+		goto out;
 	if (tolower((u_char)s[0]) != 'y' || s[1] != '\0')
-		return (0);
+		goto out;
 
-	status = cmd_parse_and_append(cdata->cmd, NULL, c, NULL, &error);
+	if (item != NULL) {
+		status = cmd_parse_and_insert(cmd, &cdata->pi, item,
+		    cmdq_get_state(item), &error);
+	} else
+		status = cmd_parse_and_append(cmd, &cdata->pi, c, NULL, &error);
 	if (status == CMD_PARSE_ERROR) {
 		cmdq_append(c, cmdq_get_error(error));
 		free(error);
 	}
 
+out:
+	if (item != NULL)
+		cmdq_continue(item);
 	return (0);
 }
 

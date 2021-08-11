@@ -680,7 +680,10 @@ screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j)
 {
 	struct client		*c = ctx->c;
 	struct session		*s = c->session;
+	struct window		*w = s->curw->window;
+	struct options		*oo = w->options;
 	struct tty		*tty = &c->tty;
+	struct format_tree	*ft;
 	struct window_pane	*wp;
 	u_int			 cell_type, x = ctx->ox + i, y = ctx->oy + j;
 	int			 pane_status = ctx->pane_status, isolates;
@@ -694,9 +697,17 @@ screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j)
 	if (cell_type == CELL_INSIDE)
 		return;
 
-	if (wp == NULL)
-		memcpy(&gc, &grid_default_cell, sizeof gc);
-	else {
+	if (wp == NULL) {
+		if (!ctx->no_pane_gc_set) {
+			ft = format_create_defaults(NULL, c, s, s->curw, NULL);
+			memcpy(&ctx->no_pane_gc, &grid_default_cell, sizeof gc);
+			style_add(&ctx->no_pane_gc, oo, "pane-border-style",
+			    ft);
+			format_free(ft);
+			ctx->no_pane_gc_set = 1;
+		}
+		memcpy(&gc, &ctx->no_pane_gc, sizeof gc);
+	} else {
 		tmp = screen_redraw_draw_borders_style(ctx, x, y, wp);
 		if (tmp == NULL)
 			return;
