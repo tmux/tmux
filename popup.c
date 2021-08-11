@@ -32,6 +32,7 @@ struct popup_data {
 	int			  flags;
 
 	struct screen		  s;
+	struct colour_palette	  palette;
 	struct job		 *job;
 	struct input_ctx	 *ictx;
 	int			  status;
@@ -100,6 +101,7 @@ popup_init_ctx_cb(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx)
 {
 	struct popup_data	*pd = ctx->arg;
 
+	ttyctx->palette = &pd->palette;
 	ttyctx->redraw_cb = popup_redraw_cb;
 	ttyctx->set_client_cb = popup_set_client_cb;
 	ttyctx->arg = pd;
@@ -135,6 +137,8 @@ popup_draw_cb(struct client *c, __unused struct screen_redraw_ctx *ctx0)
 	struct screen		 s;
 	struct screen_write_ctx	 ctx;
 	u_int			 i, px = pd->px, py = pd->py;
+	struct colour_palette	*palette = &pd->palette;
+	struct grid_cell	 gc;
 
 	screen_init(&s, pd->sx, pd->sy, 0);
 	screen_write_start(&ctx, &s);
@@ -149,11 +153,13 @@ popup_draw_cb(struct client *c, __unused struct screen_redraw_ctx *ctx0)
 	}
 	screen_write_stop(&ctx);
 
+	memcpy(&gc, &grid_default_cell, sizeof gc);
+	gc.fg = pd->palette.fg;
+	gc.bg = pd->palette.bg;
+
 	c->overlay_check = NULL;
-	for (i = 0; i < pd->sy; i++){
-		tty_draw_line(tty, &s, 0, i, pd->sx, px, py + i,
-		    &grid_default_cell, NULL);
-	}
+	for (i = 0; i < pd->sy; i++)
+		tty_draw_line(tty, &s, 0, i, pd->sx, px, py + i, &gc, palette);
 	c->overlay_check = popup_check_cb;
 }
 
@@ -179,6 +185,7 @@ popup_free_cb(struct client *c)
 	input_free(pd->ictx);
 
 	screen_free(&pd->s);
+	colour_palette_free(&pd->palette);
 	free(pd);
 }
 
@@ -388,6 +395,8 @@ popup_display(int flags, struct cmdq_item *item, u_int px, u_int py, u_int sx,
 	pd->status = 128 + SIGHUP;
 
 	screen_init(&pd->s, sx - 2, sy - 2, 0);
+	colour_palette_init(&pd->palette);
+	colour_palette_from_option(&pd->palette, global_w_options);
 
 	pd->px = px;
 	pd->py = py;
@@ -402,7 +411,7 @@ popup_display(int flags, struct cmdq_item *item, u_int px, u_int py, u_int sx,
 	pd->job = job_run(shellcmd, argc, argv, s, cwd,
 	    popup_job_update_cb, popup_job_complete_cb, NULL, pd,
 	    JOB_NOWAIT|JOB_PTY|JOB_KEEPWRITE, pd->sx - 2, pd->sy - 2);
-	pd->ictx = input_init(NULL, job_get_event(pd->job));
+	pd->ictx = input_init(NULL, job_get_event(pd->job), &pd->palette);
 
 	server_client_set_overlay(c, 0, popup_check_cb, popup_mode_cb,
 	    popup_draw_cb, popup_key_cb, popup_free_cb, popup_resize_cb, pd);

@@ -171,15 +171,6 @@ screen_write_initctx(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx,
 
 	memset(ttyctx, 0, sizeof *ttyctx);
 
-	if (ctx->wp != NULL) {
-		tty_default_colours(&ttyctx->defaults, ctx->wp);
-		ttyctx->palette = ctx->wp->palette;
-	} else {
-		memcpy(&ttyctx->defaults, &grid_default_cell,
-		    sizeof ttyctx->defaults);
-		ttyctx->palette = NULL;
-	}
-
 	ttyctx->s = s;
 	ttyctx->sx = screen_size_x(s);
 	ttyctx->sy = screen_size_y(s);
@@ -189,15 +180,21 @@ screen_write_initctx(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx,
 	ttyctx->orlower = s->rlower;
 	ttyctx->orupper = s->rupper;
 
-	if (ctx->init_ctx_cb != NULL)
+	memcpy(&ttyctx->defaults, &grid_default_cell, sizeof ttyctx->defaults);
+	if (ctx->init_ctx_cb != NULL) {
 		ctx->init_ctx_cb(ctx, ttyctx);
-	else {
+		if (ttyctx->palette != NULL) {
+			ttyctx->defaults.fg = ttyctx->palette->fg;
+			ttyctx->defaults.bg = ttyctx->palette->bg;
+		}
+	} else {
 		ttyctx->redraw_cb = screen_write_redraw_cb;
-		if (ctx->wp == NULL)
-			ttyctx->set_client_cb = NULL;
-		else
+		if (ctx->wp != NULL) {
+			tty_default_colours(&ttyctx->defaults, ctx->wp);
+			ttyctx->palette = &ctx->wp->palette;
 			ttyctx->set_client_cb = screen_write_set_client_cb;
-		ttyctx->arg = ctx->wp;
+			ttyctx->arg = ctx->wp;
+		}
 	}
 
 	if (ctx->wp != NULL &&
@@ -680,6 +677,7 @@ screen_write_box(struct screen_write_ctx *ctx, u_int nx, u_int ny)
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	gc.attr |= GRID_ATTR_CHARSET;
+	gc.flags |= GRID_FLAG_NOPALETTE;
 
 	screen_write_putc(ctx, &gc, 'l');
 	for (i = 1; i < nx - 1; i++)
@@ -1421,6 +1419,18 @@ void
 screen_write_clearhistory(struct screen_write_ctx *ctx)
 {
 	grid_clear_history(ctx->s->grid);
+}
+
+/* Force a full redraw. */
+void
+screen_write_fullredraw(struct screen_write_ctx *ctx)
+{
+	struct tty_ctx	 ttyctx;
+
+	screen_write_collect_flush(ctx, 0, __func__);
+
+	screen_write_initctx(ctx, &ttyctx, 1);
+	ttyctx.redraw_cb(&ttyctx);
 }
 
 /* Trim collected items. */

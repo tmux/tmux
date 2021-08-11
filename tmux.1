@@ -1677,9 +1677,13 @@ The following commands are supported in copy mode:
 .It Li "cancel" Ta "q" Ta "Escape"
 .It Li "clear-selection" Ta "Escape" Ta "C-g"
 .It Li "copy-end-of-line [<prefix>]" Ta "" Ta ""
-.It Li "copy-end-of-line-and-cancel [<prefix>]" Ta "D" Ta "C-k"
+.It Li "copy-end-of-line-and-cancel [<prefix>]" Ta "" Ta ""
+.It Li "copy-pipe-end-of-line [<command>] [<prefix>]" Ta "" Ta ""
+.It Li "copy-pipe-end-of-line-and-cancel [<command>] [<prefix>]" Ta "D" Ta "C-k"
 .It Li "copy-line [<prefix>]" Ta "" Ta ""
 .It Li "copy-line-and-cancel [<prefix>]" Ta "" Ta ""
+.It Li "copy-pipe-line [<command>] [<prefix>]" Ta "" Ta ""
+.It Li "copy-pipe-line-and-cancel [<command>] [<prefix>]" Ta "" Ta ""
 .It Li "copy-pipe [<command>] [<prefix>]" Ta "" Ta ""
 .It Li "copy-pipe-no-clear [<command>] [<prefix>]" Ta "" Ta ""
 .It Li "copy-pipe-and-cancel [<command>] [<prefix>]" Ta "" Ta ""
@@ -4143,7 +4147,6 @@ see the
 .Sx STYLES
 section.
 Attributes are ignored.
-.Pp
 .It Ic pane-base-index Ar index
 Like
 .Ic base-index ,
@@ -4300,6 +4303,13 @@ capabilities.
 The alternate screen feature preserves the contents of the window when an
 interactive application starts and restores it on exit, so that any output
 visible before the application starts reappears unchanged after it exits.
+.Pp
+.It Ic pane-colours[] Ar colour
+The default colour palette.
+Each entry in the array defines the colour
+.Nm
+uses when the colour with that index is requested.
+The index may be from zero to 255.
 .Pp
 .It Xo Ic remain-on-exit
 .Op Ic on | off | failed

@@ -77,6 +77,7 @@ struct input_ctx {
 	struct window_pane     *wp;
 	struct bufferevent     *event;
 	struct screen_write_ctx ctx;
+	struct colour_palette  *palette;
 
 	struct input_cell	cell;
 
@@ -797,13 +798,15 @@ input_restore_state(struct input_ctx *ictx)
 
 /* Initialise input parser. */
 struct input_ctx *
-input_init(struct window_pane *wp, struct bufferevent *bev)
+input_init(struct window_pane *wp, struct bufferevent *bev,
+    struct colour_palette *palette)
 {
 	struct input_ctx	*ictx;
 
 	ictx = xcalloc(1, sizeof *ictx);
 	ictx->wp = wp;
 	ictx->event = bev;
+	ictx->palette = palette;
 
 	ictx->input_space = INPUT_BUF_START;
 	ictx->input_buf = xmalloc(INPUT_BUF_START);
@@ -1252,7 +1255,6 @@ static int
 input_esc_dispatch(struct input_ctx *ictx)
 {
 	struct screen_write_ctx		*sctx = &ictx->ctx;
-	struct window_pane		*wp = ictx->wp;
 	struct screen			*s = sctx->s;
 	struct input_table_entry	*entry;
 
@@ -1269,10 +1271,10 @@ input_esc_dispatch(struct input_ctx *ictx)
 
 	switch (entry->type) {
 	case INPUT_ESC_RIS:
-		if (wp != NULL)
-			window_pane_reset_palette(wp);
+		colour_palette_clear(ictx->palette);
 		input_reset_cell(ictx);
 		screen_write_reset(sctx);
+		screen_write_fullredraw(sctx);
 		break;
 	case INPUT_ESC_IND:
 		screen_write_linefeed(sctx, 0, ictx->cell.cell.bg);
@@ -1874,11 +1876,11 @@ input_csi_dispatch_winops(struct input_ctx *ictx)
 			case 0:
 			case 2:
 				screen_pop_title(sctx->s);
-				if (wp != NULL) {
-					notify_pane("pane-title-changed", wp);
-					server_redraw_window_borders(wp->window);
-					server_status_window(wp->window);
-				}
+				if (wp == NULL)
+					break;
+				notify_pane("pane-title-changed", wp);
+				server_redraw_window_borders(wp->window);
+				server_status_window(wp->window);
 				break;
 			}
 			break;
@@ -2498,37 +2500,35 @@ input_osc_colour_reply(struct input_ctx *ictx, u_int n, int c)
 static void
 input_osc_4(struct input_ctx *ictx, const char *p)
 {
-	struct window_pane	*wp = ictx->wp;
-	char			*copy, *s, *next = NULL;
-	long			 idx;
-	int			 c;
-
-	if (wp == NULL)
-		return;
+	char	*copy, *s, *next = NULL;
+	long	 idx;
+	int	 c, bad = 0, redraw = 0;
 
 	copy = s = xstrdup(p);
 	while (s != NULL && *s != '\0') {
 		idx = strtol(s, &next, 10);
-		if (*next++ != ';')
-			goto bad;
-		if (idx < 0 || idx >= 0x100)
-			goto bad;
+		if (*next++ != ';') {
+			bad = 1;
+			break;
+		}
+		if (idx < 0 || idx >= 256) {
+			bad = 1;
+			break;
+		}
 
 		s = strsep(&next, ";");
 		if ((c = input_osc_parse_colour(s)) == -1) {
 			s = next;
 			continue;
 		}
-
-		window_pane_set_palette(wp, idx, c);
+		if (colour_palette_set(ictx->palette, idx, c))
+			redraw = 1;
 		s = next;
 	}
-
-	free(copy);
-	return;
-
-bad:
-	log_debug("bad OSC 4: %s", p);
+	if (bad)
+		log_debug("bad OSC 4: %s", p);
+	if (redraw)
+		screen_write_fullredraw(&ictx->ctx);
 	free(copy);
 }
 
@@ -2540,24 +2540,22 @@ input_osc_10(struct input_ctx *ictx, const char *p)
 	struct grid_cell	 defaults;
 	int			 c;
 
-	if (wp == NULL)
-		return;
-
 	if (strcmp(p, "?") == 0) {
-		tty_default_colours(&defaults, wp);
-		input_osc_colour_reply(ictx, 10, defaults.fg);
+		if (wp != NULL) {
+			tty_default_colours(&defaults, wp);
+			input_osc_colour_reply(ictx, 10, defaults.fg);
+		}
 		return;
 	}
 
-	if ((c = input_osc_parse_colour(p)) == -1)
-		goto bad;
-	wp->fg = c;
-	wp->flags |= (PANE_REDRAW|PANE_STYLECHANGED);
-
-	return;
-
-bad:
-	log_debug("bad OSC 10: %s", p);
+	if ((c = input_osc_parse_colour(p)) == -1) {
+		log_debug("bad OSC 10: %s", p);
+		return;
+	}
+	ictx->palette->fg = c;
+	if (wp != NULL)
+		wp->flags |= PANE_STYLECHANGED;
+	screen_write_fullredraw(&ictx->ctx);
 }
 
 /* Handle the OSC 110 sequence for resetting background colour. */
@@ -2566,14 +2564,12 @@ input_osc_110(struct input_ctx *ictx, const char *p)
 {
 	struct window_pane	*wp = ictx->wp;
 
-	if (wp == NULL)
-		return;
-
 	if (*p != '\0')
 		return;
-
-	wp->fg = 8;
-	wp->flags |= (PANE_REDRAW|PANE_STYLECHANGED);
+	ictx->palette->fg = 8;
+	if (wp != NULL)
+		wp->flags |= PANE_STYLECHANGED;
+	screen_write_fullredraw(&ictx->ctx);
 }
 
 /* Handle the OSC 11 sequence for setting and querying background colour. */
@@ -2584,24 +2580,22 @@ input_osc_11(struct input_ctx *ictx, const char *p)
 	struct grid_cell	 defaults;
 	int			 c;
 
-	if (wp == NULL)
-		return;
-
 	if (strcmp(p, "?") == 0) {
-		tty_default_colours(&defaults, wp);
-		input_osc_colour_reply(ictx, 11, defaults.bg);
+		if (wp != NULL) {
+			tty_default_colours(&defaults, wp);
+			input_osc_colour_reply(ictx, 11, defaults.bg);
+		}
 		return;
 	}
 
-	if ((c = input_osc_parse_colour(p)) == -1)
-		goto bad;
-	wp->bg = c;
-	wp->flags |= (PANE_REDRAW|PANE_STYLECHANGED);
-
-	return;
-
-bad:
-	log_debug("bad OSC 11: %s", p);
+	if ((c = input_osc_parse_colour(p)) == -1) {
+		log_debug("bad OSC 11: %s", p);
+		return;
+	}
+	ictx->palette->bg = c;
+	if (wp != NULL)
+		wp->flags |= PANE_STYLECHANGED;
+	screen_write_fullredraw(&ictx->ctx);
 }
 
 /* Handle the OSC 111 sequence for resetting background colour. */
@@ -2610,14 +2604,12 @@ input_osc_111(struct input_ctx *ictx, const char *p)
 {
 	struct window_pane	*wp = ictx->wp;
 
-	if (wp == NULL)
-		return;
-
 	if (*p != '\0')
 		return;
-
-	wp->bg = 8;
-	wp->flags |= (PANE_REDRAW|PANE_STYLECHANGED);
+	ictx->palette->bg = 8;
+	if (wp != NULL)
+		wp->flags |= PANE_STYLECHANGED;
+	screen_write_fullredraw(&ictx->ctx);
 }
 
 /* Handle the OSC 52 sequence for setting the clipboard. */
@@ -2692,34 +2684,35 @@ input_osc_52(struct input_ctx *ictx, const char *p)
 static void
 input_osc_104(struct input_ctx *ictx, const char *p)
 {
-	struct window_pane	*wp = ictx->wp;
-	char			*copy, *s;
-	long			 idx;
-
-	if (wp == NULL)
-		return;
+	char	*copy, *s;
+	long	 idx;
+	int	 bad = 0, redraw = 0;
 
 	if (*p == '\0') {
-		window_pane_reset_palette(wp);
+		colour_palette_clear(ictx->palette);
+		screen_write_fullredraw(&ictx->ctx);
 		return;
 	}
 
 	copy = s = xstrdup(p);
 	while (*s != '\0') {
 		idx = strtol(s, &s, 10);
-		if (*s != '\0' && *s != ';')
-			goto bad;
-		if (idx < 0 || idx >= 0x100)
-			goto bad;
-
-		window_pane_unset_palette(wp, idx);
+		if (*s != '\0' && *s != ';') {
+			bad = 1;
+			break;
+		}
+		if (idx < 0 || idx >= 256) {
+			bad = 1;
+			break;
+		}
+		if (colour_palette_set(ictx->palette, idx, -1))
+			redraw = 1;
 		if (*s == ';')
 			s++;
 	}
-	free(copy);
-	return;
-
-bad:
-	log_debug("bad OSC 104: %s", p);
+	if (bad)
+		log_debug("bad OSC 104: %s", p);
+	if (redraw)
+		screen_write_fullredraw(&ictx->ctx);
 	free(copy);
 }

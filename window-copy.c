@@ -959,19 +959,29 @@ window_copy_cmd_clear_selection(struct window_copy_cmd_state *cs)
 }
 
 static enum window_copy_cmd_action
-window_copy_cmd_copy_end_of_line(struct window_copy_cmd_state *cs)
+window_copy_do_copy_end_of_line(struct window_copy_cmd_state *cs, int pipe,
+    int cancel)
 {
-	struct window_mode_entry	*wme = cs->wme;
-	struct client			*c = cs->c;
-	struct session			*s = cs->s;
-	struct winlink			*wl = cs->wl;
-	struct window_pane		*wp = wme->wp;
-	u_int				 np = wme->prefix, ocx, ocy, ooy;
-	struct window_copy_mode_data	*data = wme->data;
-	char				*prefix = NULL;
+	struct window_mode_entry	 *wme = cs->wme;
+	int				  argc = cs->args->argc;
+	char				**argv = cs->args->argv;
+	struct client			 *c = cs->c;
+	struct session			 *s = cs->s;
+	struct winlink			 *wl = cs->wl;
+	struct window_pane		 *wp = wme->wp;
+	u_int				  np = wme->prefix, ocx, ocy, ooy;
+	struct window_copy_mode_data	 *data = wme->data;
+	char				 *prefix = NULL, *command = NULL;
 
-	if (cs->args->argc == 2)
-		prefix = format_single(NULL, cs->args->argv[1], c, s, wl, wp);
+	if (pipe) {
+		if (argc == 3)
+			prefix = format_single(NULL, argv[2], c, s, wl, wp);
+		if (s != NULL && argc > 1 && *argv[1] != '\0')
+			command = format_single(NULL, argv[1], c, s, wl, wp);
+	} else {
+		if (argc == 2)
+			prefix = format_single(NULL, argv[1], c, s, wl, wp);
+	}
 
 	ocx = data->cx;
 	ocy = data->cy;
@@ -982,8 +992,18 @@ window_copy_cmd_copy_end_of_line(struct window_copy_cmd_state *cs)
 		window_copy_cursor_down(wme, 0);
 	window_copy_cursor_end_of_line(wme);
 
-	if (s != NULL)
-		window_copy_copy_selection(wme, prefix);
+	if (s != NULL) {
+		if (pipe)
+			window_copy_copy_pipe(wme, s, prefix, command);
+		else
+			window_copy_copy_selection(wme, prefix);
+
+		if (cancel) {
+			free(prefix);
+			free(command);
+			return (WINDOW_COPY_CMD_CANCEL);
+		}
+	}
 	window_copy_clear_selection(wme);
 
 	data->cx = ocx;
@@ -991,108 +1011,115 @@ window_copy_cmd_copy_end_of_line(struct window_copy_cmd_state *cs)
 	data->oy = ooy;
 
 	free(prefix);
+	free(command);
 	return (WINDOW_COPY_CMD_REDRAW);
+}
+
+static enum window_copy_cmd_action
+window_copy_cmd_copy_end_of_line(struct window_copy_cmd_state *cs)
+{
+	return (window_copy_do_copy_end_of_line(cs, 0, 0));
 }
 
 static enum window_copy_cmd_action
 window_copy_cmd_copy_end_of_line_and_cancel(struct window_copy_cmd_state *cs)
 {
-	struct window_mode_entry	*wme = cs->wme;
-	struct client			*c = cs->c;
-	struct session			*s = cs->s;
-	struct winlink			*wl = cs->wl;
-	struct window_pane		*wp = wme->wp;
-	u_int				 np = wme->prefix;
-	char				*prefix = NULL;
+	return (window_copy_do_copy_end_of_line(cs, 0, 1));
+}
 
-	if (cs->args->argc == 2)
-		prefix = format_single(NULL, cs->args->argv[1], c, s, wl, wp);
+static enum window_copy_cmd_action
+window_copy_cmd_copy_pipe_end_of_line(struct window_copy_cmd_state *cs)
+{
+	return (window_copy_do_copy_end_of_line(cs, 1, 0));
+}
 
+static enum window_copy_cmd_action
+window_copy_cmd_copy_pipe_end_of_line_and_cancel(
+    struct window_copy_cmd_state *cs)
+{
+	return (window_copy_do_copy_end_of_line(cs, 1, 1));
+}
+
+static enum window_copy_cmd_action
+window_copy_do_copy_line(struct window_copy_cmd_state *cs, int pipe, int cancel)
+{
+	struct window_mode_entry	 *wme = cs->wme;
+	int				  argc = cs->args->argc;
+	char				**argv = cs->args->argv;
+	struct client			 *c = cs->c;
+	struct session			 *s = cs->s;
+	struct winlink			 *wl = cs->wl;
+	struct window_pane		 *wp = wme->wp;
+	struct window_copy_mode_data	 *data = wme->data;
+	u_int				  np = wme->prefix, ocx, ocy, ooy;
+	char				 *prefix = NULL, *command = NULL;
+
+	if (pipe) {
+		if (argc == 3)
+			prefix = format_single(NULL, argv[2], c, s, wl, wp);
+		if (s != NULL && argc > 1 && *argv[1] != '\0')
+			command = format_single(NULL, argv[1], c, s, wl, wp);
+	} else {
+		if (argc == 2)
+			prefix = format_single(NULL, argv[1], c, s, wl, wp);
+	}
+
+	ocx = data->cx;
+	ocy = data->cy;
+	ooy = data->oy;
+
+	data->selflag = SEL_CHAR;
+	window_copy_cursor_start_of_line(wme);
 	window_copy_start_selection(wme);
 	for (; np > 1; np--)
 		window_copy_cursor_down(wme, 0);
 	window_copy_cursor_end_of_line(wme);
 
 	if (s != NULL) {
-		window_copy_copy_selection(wme, prefix);
+		if (pipe)
+			window_copy_copy_pipe(wme, s, prefix, command);
+		else
+			window_copy_copy_selection(wme, prefix);
 
-		free(prefix);
-		return (WINDOW_COPY_CMD_CANCEL);
+		if (cancel) {
+			free(prefix);
+			free(command);
+			return (WINDOW_COPY_CMD_CANCEL);
+		}
 	}
+	window_copy_clear_selection(wme);
+
+	data->cx = ocx;
+	data->cy = ocy;
+	data->oy = ooy;
 
 	free(prefix);
+	free(command);
 	return (WINDOW_COPY_CMD_REDRAW);
 }
 
 static enum window_copy_cmd_action
 window_copy_cmd_copy_line(struct window_copy_cmd_state *cs)
 {
-	struct window_mode_entry	*wme = cs->wme;
-	struct client			*c = cs->c;
-	struct session			*s = cs->s;
-	struct winlink			*wl = cs->wl;
-	struct window_pane		*wp = wme->wp;
-	struct window_copy_mode_data	*data = wme->data;
-	u_int				 np = wme->prefix, ocx, ocy, ooy;
-	char				*prefix = NULL;
-
-	if (cs->args->argc == 2)
-		prefix = format_single(NULL, cs->args->argv[1], c, s, wl, wp);
-
-	ocx = data->cx;
-	ocy = data->cy;
-	ooy = data->oy;
-
-	data->selflag = SEL_CHAR;
-	window_copy_cursor_start_of_line(wme);
-	window_copy_start_selection(wme);
-	for (; np > 1; np--)
-		window_copy_cursor_down(wme, 0);
-	window_copy_cursor_end_of_line(wme);
-
-	if (s != NULL)
-		window_copy_copy_selection(wme, prefix);
-	window_copy_clear_selection(wme);
-
-	data->cx = ocx;
-	data->cy = ocy;
-	data->oy = ooy;
-
-	free(prefix);
-	return (WINDOW_COPY_CMD_REDRAW);
+	return (window_copy_do_copy_line(cs, 0, 0));
 }
 
 static enum window_copy_cmd_action
 window_copy_cmd_copy_line_and_cancel(struct window_copy_cmd_state *cs)
 {
-	struct window_mode_entry	*wme = cs->wme;
-	struct client			*c = cs->c;
-	struct session			*s = cs->s;
-	struct winlink			*wl = cs->wl;
-	struct window_pane		*wp = wme->wp;
-	struct window_copy_mode_data	*data = wme->data;
-	u_int				 np = wme->prefix;
-	char				*prefix = NULL;
+	return (window_copy_do_copy_line(cs, 0, 1));
+}
 
-	if (cs->args->argc == 2)
-		prefix = format_single(NULL, cs->args->argv[1], c, s, wl, wp);
+static enum window_copy_cmd_action
+window_copy_cmd_copy_pipe_line(struct window_copy_cmd_state *cs)
+{
+	return (window_copy_do_copy_line(cs, 1, 0));
+}
 
-	data->selflag = SEL_CHAR;
-	window_copy_cursor_start_of_line(wme);
-	window_copy_start_selection(wme);
-	for (; np > 1; np--)
-		window_copy_cursor_down(wme, 0);
-	window_copy_cursor_end_of_line(wme);
-
-	if (s != NULL) {
-		window_copy_copy_selection(wme, prefix);
-
-		free(prefix);
-		return (WINDOW_COPY_CMD_CANCEL);
-	}
-
-	free(prefix);
-	return (WINDOW_COPY_CMD_REDRAW);
+static enum window_copy_cmd_action
+window_copy_cmd_copy_pipe_line_and_cancel(struct window_copy_cmd_state *cs)
+{
+	return (window_copy_do_copy_line(cs, 1, 1));
 }
 
 static enum window_copy_cmd_action
@@ -2308,8 +2335,7 @@ window_copy_cmd_refresh_from_pane(struct window_copy_cmd_state *cs)
 
 	screen_free(data->backing);
 	free(data->backing);
-	data->backing = window_copy_clone_screen(&wp->base, &data->screen, NULL,
-	    NULL, wme->swp != wme->wp);
+	data->backing = window_copy_clone_screen(&wp->base, &data->screen, NULL,   NULL, wme->swp != wme->wp);
 
 	window_copy_size_changed(wme);
 	return (WINDOW_COPY_CMD_REDRAW);
@@ -2322,156 +2348,480 @@ static const struct {
 	enum window_copy_cmd_clear	  clear;
 	enum window_copy_cmd_action	(*f)(struct window_copy_cmd_state *);
 } window_copy_cmd_table[] = {
-	{ "append-selection", 0, 0, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_append_selection },
-	{ "append-selection-and-cancel", 0, 0, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_append_selection_and_cancel },
-	{ "back-to-indentation", 0, 0, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_back_to_indentation },
-	{ "begin-selection", 0, 0, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_begin_selection },
-	{ "bottom-line", 0, 0, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
-	  window_copy_cmd_bottom_line },
-	{ "cancel", 0, 0, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_cancel },
-	{ "clear-selection", 0, 0, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_clear_selection },
-	{ "copy-end-of-line", 0, 1, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_copy_end_of_line },
-	{ "copy-end-of-line-and-cancel", 0, 1, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_copy_end_of_line_and_cancel },
-	{ "copy-line", 0, 1, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_copy_line },
-	{ "copy-line-and-cancel", 0, 1, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_copy_line_and_cancel },
-	{ "copy-pipe-no-clear", 0, 2, WINDOW_COPY_CMD_CLEAR_NEVER,
-	  window_copy_cmd_copy_pipe_no_clear },
-	{ "copy-pipe", 0, 2, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_copy_pipe },
-	{ "copy-pipe-and-cancel", 0, 2, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_copy_pipe_and_cancel },
-	{ "copy-selection-no-clear", 0, 1, WINDOW_COPY_CMD_CLEAR_NEVER,
-	  window_copy_cmd_copy_selection_no_clear },
-	{ "copy-selection", 0, 1, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_copy_selection },
-	{ "copy-selection-and-cancel", 0, 1, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_copy_selection_and_cancel },
-	{ "cursor-down", 0, 0, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
-	  window_copy_cmd_cursor_down },
-	{ "cursor-down-and-cancel", 0, 0, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_cursor_down_and_cancel },
-	{ "cursor-left", 0, 0, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
-	  window_copy_cmd_cursor_left },
-	{ "cursor-right", 0, 0, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
-	  window_copy_cmd_cursor_right },
-	{ "cursor-up", 0, 0, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
-	  window_copy_cmd_cursor_up },
-	{ "end-of-line", 0, 0, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
-	  window_copy_cmd_end_of_line },
-	{ "goto-line", 1, 1, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
-	  window_copy_cmd_goto_line },
-	{ "halfpage-down", 0, 0, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
-	  window_copy_cmd_halfpage_down },
-	{ "halfpage-down-and-cancel", 0, 0, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_halfpage_down_and_cancel },
-	{ "halfpage-up", 0, 0, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
-	  window_copy_cmd_halfpage_up },
-	{ "history-bottom", 0, 0, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
-	  window_copy_cmd_history_bottom },
-	{ "history-top", 0, 0, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
-	  window_copy_cmd_history_top },
-	{ "jump-again", 0, 0, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
-	  window_copy_cmd_jump_again },
-	{ "jump-backward", 1, 1, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
-	  window_copy_cmd_jump_backward },
-	{ "jump-forward", 1, 1, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
-	  window_copy_cmd_jump_forward },
-	{ "jump-reverse", 0, 0, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
-	  window_copy_cmd_jump_reverse },
-	{ "jump-to-backward", 1, 1, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
-	  window_copy_cmd_jump_to_backward },
-	{ "jump-to-forward", 1, 1, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
-	  window_copy_cmd_jump_to_forward },
-	{ "jump-to-mark", 0, 0, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_jump_to_mark },
-	{ "middle-line", 0, 0, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
-	  window_copy_cmd_middle_line },
-	{ "next-matching-bracket", 0, 0, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_next_matching_bracket },
-	{ "next-paragraph", 0, 0, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
-	  window_copy_cmd_next_paragraph },
-	{ "next-space", 0, 0, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
-	  window_copy_cmd_next_space },
-	{ "next-space-end", 0, 0, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
-	  window_copy_cmd_next_space_end },
-	{ "next-word", 0, 0, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
-	  window_copy_cmd_next_word },
-	{ "next-word-end", 0, 0, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
-	  window_copy_cmd_next_word_end },
-	{ "other-end", 0, 0, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
-	  window_copy_cmd_other_end },
-	{ "page-down", 0, 0, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
-	  window_copy_cmd_page_down },
-	{ "page-down-and-cancel", 0, 0, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_page_down_and_cancel },
-	{ "page-up", 0, 0, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
-	  window_copy_cmd_page_up },
-	{ "pipe-no-clear", 0, 1, WINDOW_COPY_CMD_CLEAR_NEVER,
-	  window_copy_cmd_pipe_no_clear },
-	{ "pipe", 0, 1, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_pipe },
-	{ "pipe-and-cancel", 0, 1, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_pipe_and_cancel },
-	{ "previous-matching-bracket", 0, 0, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_previous_matching_bracket },
-	{ "previous-paragraph", 0, 0, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
-	  window_copy_cmd_previous_paragraph },
-	{ "previous-space", 0, 0, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
-	  window_copy_cmd_previous_space },
-	{ "previous-word", 0, 0, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
-	  window_copy_cmd_previous_word },
-	{ "rectangle-on", 0, 0, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_rectangle_on },
-	{ "rectangle-off", 0, 0, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_rectangle_off },
-	{ "rectangle-toggle", 0, 0, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_rectangle_toggle },
-	{ "refresh-from-pane", 0, 0, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_refresh_from_pane },
-	{ "scroll-down", 0, 0, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
-	  window_copy_cmd_scroll_down },
-	{ "scroll-down-and-cancel", 0, 0, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_scroll_down_and_cancel },
-	{ "scroll-up", 0, 0, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
-	  window_copy_cmd_scroll_up },
-	{ "search-again", 0, 0, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_search_again },
-	{ "search-backward", 0, 1, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_search_backward },
-	{ "search-backward-text", 0, 1, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_search_backward_text },
-	{ "search-backward-incremental", 1, 1, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_search_backward_incremental },
-	{ "search-forward", 0, 1, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_search_forward },
-	{ "search-forward-text", 0, 1, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_search_forward_text },
-	{ "search-forward-incremental", 1, 1, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_search_forward_incremental },
-	{ "search-reverse", 0, 0, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_search_reverse },
-	{ "select-line", 0, 0, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_select_line },
-	{ "select-word", 0, 0, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_select_word },
-	{ "set-mark", 0, 0, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_set_mark },
-	{ "start-of-line", 0, 0, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
-	  window_copy_cmd_start_of_line },
-	{ "stop-selection", 0, 0, WINDOW_COPY_CMD_CLEAR_ALWAYS,
-	  window_copy_cmd_stop_selection },
-	{ "top-line", 0, 0, WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
-	  window_copy_cmd_top_line },
+	{ .command = "append-selection",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_append_selection
+	},
+	{ .command = "append-selection-and-cancel",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_append_selection_and_cancel
+	},
+	{ .command = "back-to-indentation",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_back_to_indentation
+	},
+	{ .command = "begin-selection",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_begin_selection
+	},
+	{ .command = "bottom-line",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+	  .f = window_copy_cmd_bottom_line
+	},
+	{ .command = "cancel",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_cancel
+	},
+	{ .command = "clear-selection",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_clear_selection
+	},
+	{ .command = "copy-end-of-line",
+	  .minargs = 0,
+	  .maxargs = 1,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_copy_end_of_line
+	},
+	{ .command = "copy-end-of-line-and-cancel",
+	  .minargs = 0,
+	  .maxargs = 1,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_copy_end_of_line_and_cancel
+	},
+	{ .command = "copy-pipe-end-of-line",
+	  .minargs = 0,
+	  .maxargs = 2,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_copy_pipe_end_of_line
+	},
+	{ .command = "copy-pipe-end-of-line-and-cancel",
+	  .minargs = 0,
+	  .maxargs = 2,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_copy_pipe_end_of_line_and_cancel
+	},
+	{ .command = "copy-line",
+	  .minargs = 0,
+	  .maxargs = 1,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_copy_line
+	},
+	{ .command = "copy-line-and-cancel",
+	  .minargs = 0,
+	  .maxargs = 1,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_copy_line_and_cancel
+	},
+	{ .command = "copy-pipe-line",
+	  .minargs = 0,
+	  .maxargs = 2,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_copy_pipe_line
+	},
+	{ .command = "copy-pipe-line-and-cancel",
+	  .minargs = 0,
+	  .maxargs = 2,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_copy_pipe_line_and_cancel
+	},
+	{ .command = "copy-pipe-no-clear",
+	  .minargs = 0,
+	  .maxargs = 2,
+	  .clear = WINDOW_COPY_CMD_CLEAR_NEVER,
+	  .f = window_copy_cmd_copy_pipe_no_clear
+	},
+	{ .command = "copy-pipe",
+	  .minargs = 0,
+	  .maxargs = 2,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_copy_pipe
+	},
+	{ .command = "copy-pipe-and-cancel",
+	  .minargs = 0,
+	  .maxargs = 2,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_copy_pipe_and_cancel
+	},
+	{ .command = "copy-selection-no-clear",
+	  .minargs = 0,
+	  .maxargs = 1,
+	  .clear = WINDOW_COPY_CMD_CLEAR_NEVER,
+	  .f = window_copy_cmd_copy_selection_no_clear
+	},
+	{ .command = "copy-selection",
+	  .minargs = 0,
+	  .maxargs = 1,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_copy_selection
+	},
+	{ .command = "copy-selection-and-cancel",
+	  .minargs = 0,
+	  .maxargs = 1,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_copy_selection_and_cancel
+	},
+	{ .command = "cursor-down",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+	  .f = window_copy_cmd_cursor_down
+	},
+	{ .command = "cursor-down-and-cancel",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_cursor_down_and_cancel
+	},
+	{ .command = "cursor-left",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+	  .f = window_copy_cmd_cursor_left
+	},
+	{ .command = "cursor-right",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+	  .f = window_copy_cmd_cursor_right
+	},
+	{ .command = "cursor-up",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+	  .f = window_copy_cmd_cursor_up
+	},
+	{ .command = "end-of-line",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+	  .f = window_copy_cmd_end_of_line
+	},
+	{ .command = "goto-line",
+	  .minargs = 1,
+	  .maxargs = 1,
+	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+	  .f = window_copy_cmd_goto_line
+	},
+	{ .command = "halfpage-down",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+	  .f = window_copy_cmd_halfpage_down
+	},
+	{ .command = "halfpage-down-and-cancel",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_halfpage_down_and_cancel
+	},
+	{ .command = "halfpage-up",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+	  .f = window_copy_cmd_halfpage_up
+	},
+	{ .command = "history-bottom",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+	  .f = window_copy_cmd_history_bottom
+	},
+	{ .command = "history-top",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+	  .f = window_copy_cmd_history_top
+	},
+	{ .command = "jump-again",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+	  .f = window_copy_cmd_jump_again
+	},
+	{ .command = "jump-backward",
+	  .minargs = 1,
+	  .maxargs = 1,
+	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+	  .f = window_copy_cmd_jump_backward
+	},
+	{ .command = "jump-forward",
+	  .minargs = 1,
+	  .maxargs = 1,
+	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+	  .f = window_copy_cmd_jump_forward
+	},
+	{ .command = "jump-reverse",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+	  .f = window_copy_cmd_jump_reverse
+	},
+	{ .command = "jump-to-backward",
+	  .minargs = 1,
+	  .maxargs = 1,
+	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+	  .f = window_copy_cmd_jump_to_backward
+	},
+	{ .command = "jump-to-forward",
+	  .minargs = 1,
+	  .maxargs = 1,
+	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+	  .f = window_copy_cmd_jump_to_forward
+	},
+	{ .command = "jump-to-mark",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_jump_to_mark
+	},
+	{ .command = "middle-line",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+	  .f = window_copy_cmd_middle_line
+	},
+	{ .command = "next-matching-bracket",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_next_matching_bracket
+	},
+	{ .command = "next-paragraph",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+	  .f = window_copy_cmd_next_paragraph
+	},
+	{ .command = "next-space",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+	  .f = window_copy_cmd_next_space
+	},
+	{ .command = "next-space-end",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+	  .f = window_copy_cmd_next_space_end
+	},
+	{ .command = "next-word",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+	  .f = window_copy_cmd_next_word
+	},
+	{ .command = "next-word-end",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+	  .f = window_copy_cmd_next_word_end
+	},
+	{ .command = "other-end",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+	  .f = window_copy_cmd_other_end
+	},
+	{ .command = "page-down",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+	  .f = window_copy_cmd_page_down
+	},
+	{ .command = "page-down-and-cancel",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_page_down_and_cancel
+	},
+	{ .command = "page-up",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+	  .f = window_copy_cmd_page_up
+	},
+	{ .command = "pipe-no-clear",
+	  .minargs = 0,
+	  .maxargs = 1,
+	  .clear = WINDOW_COPY_CMD_CLEAR_NEVER,
+	  .f = window_copy_cmd_pipe_no_clear
+	},
+	{ .command = "pipe",
+	  .minargs = 0,
+	  .maxargs = 1,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_pipe
+	},
+	{ .command = "pipe-and-cancel",
+	  .minargs = 0,
+	  .maxargs = 1,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_pipe_and_cancel
+	},
+	{ .command = "previous-matching-bracket",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_previous_matching_bracket
+	},
+	{ .command = "previous-paragraph",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+	  .f = window_copy_cmd_previous_paragraph
+	},
+	{ .command = "previous-space",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+	  .f = window_copy_cmd_previous_space
+	},
+	{ .command = "previous-word",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+	  .f = window_copy_cmd_previous_word
+	},
+	{ .command = "rectangle-on",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_rectangle_on
+	},
+	{ .command = "rectangle-off",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_rectangle_off
+	},
+	{ .command = "rectangle-toggle",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_rectangle_toggle
+	},
+	{ .command = "refresh-from-pane",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_refresh_from_pane
+	},
+	{ .command = "scroll-down",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+	  .f = window_copy_cmd_scroll_down
+	},
+	{ .command = "scroll-down-and-cancel",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_scroll_down_and_cancel
+	},
+	{ .command = "scroll-up",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+	  .f = window_copy_cmd_scroll_up
+	},
+	{ .command = "search-again",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_search_again
+	},
+	{ .command = "search-backward",
+	  .minargs = 0,
+	  .maxargs = 1,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_search_backward
+	},
+	{ .command = "search-backward-text",
+	  .minargs = 0,
+	  .maxargs = 1,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_search_backward_text
+	},
+	{ .command = "search-backward-incremental",
+	  .minargs = 1,
+	  .maxargs = 1,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_search_backward_incremental
+	},
+	{ .command = "search-forward",
+	  .minargs = 0,
+	  .maxargs = 1,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_search_forward
+	},
+	{ .command = "search-forward-text",
+	  .minargs = 0,
+	  .maxargs = 1,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_search_forward_text
+	},
+	{ .command = "search-forward-incremental",
+	  .minargs = 1,
+	  .maxargs = 1,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_search_forward_incremental
+	},
+	{ .command = "search-reverse",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_search_reverse
+	},
+	{ .command = "select-line",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_select_line
+	},
+	{ .command = "select-word",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_select_word
+	},
+	{ .command = "set-mark",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_set_mark
+	},
+	{ .command = "start-of-line",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+	  .f = window_copy_cmd_start_of_line
+	},
+	{ .command = "stop-selection",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_stop_selection
+	},
+	{ .command = "top-line",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+	  .f = window_copy_cmd_top_line
+	}
 };
 
 static void
