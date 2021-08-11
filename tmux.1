@@ -5507,6 +5507,7 @@ option:
 .It Li "Transpose characters" Ta "" Ta "C-t"
 .El
 .It Xo Ic confirm-before
+.Op Fl b
 .Op Fl p Ar prompt
 .Op Fl t Ar target-client
 .Ar command
@@ -5523,9 +5524,9 @@ is the prompt to display; otherwise a prompt is constructed from
 It may contain the special character sequences supported by the
 .Ic status-left
 option.
-.Pp
-This command works only from inside
-.Nm .
+With
+.Fl b ,
+the prompt is shown in the background and the client.
 .It Xo Ic display-menu
 .Op Fl O
 .Op Fl c Ar target-client
