@@ -886,6 +886,9 @@ struct screen_redraw_ctx {
 	int		 pane_status;
 	int		 pane_lines;
 
+	struct grid_cell no_pane_gc;
+	int		 no_pane_gc_set;
+
 	u_int		 sx;
 	u_int		 sy;
 	u_int		 ox;
