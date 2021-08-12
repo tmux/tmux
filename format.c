@@ -3098,7 +3098,7 @@ format_log_debug_cb(const char *key, const char *value, void *arg)
 void
 format_log_debug(struct format_tree *ft, const char *prefix)
 {
-	format_each(ft, format_log_debug_cb, prefix);
+	format_each(ft, format_log_debug_cb, (void *)prefix);
 }
 
 /* Walk each format. */

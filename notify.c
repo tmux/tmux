@@ -200,7 +200,7 @@ notify_hook(struct cmdq_item *item, const char *name)
 	ne.client = cmdq_get_client(item);
 	ne.session = target->s;
 	ne.window = target->w;
-	ne.pane = target->wp->id;
+	ne.pane = (target->wp != NULL ? target->wp->id : -1);
 
 	ne.formats = format_create(NULL, NULL, 0, FORMAT_NOJOBS);
 	format_add(ne.formats, "hook", "%s", name);
