@@ -51,7 +51,7 @@ int
 style_parse(struct style *sy, const struct grid_cell *base, const char *in)
 {
 	struct style	saved;
-	const char	delimiters[] = " ,", *cp;
+	const char	delimiters[] = " ,\n", *cp;
 	char		tmp[256], *found;
 	int		value;
 	size_t		end;
