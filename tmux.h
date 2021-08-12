@@ -2023,6 +2023,7 @@ void printflike(3, 4) format_add(struct format_tree *, const char *,
 void		 format_add_tv(struct format_tree *, const char *,
 		     struct timeval *);
 void		 format_add_cb(struct format_tree *, const char *, format_cb);
+void		 format_log_debug(struct format_tree *, const char *);
 void		 format_each(struct format_tree *, void (*)(const char *,
 		     const char *, void *), void *);
 char		*format_expand_time(struct format_tree *, const char *);
@@ -2382,6 +2383,7 @@ struct cmdq_state *cmdq_copy_state(struct cmdq_state *);
 void		  cmdq_free_state(struct cmdq_state *);
 void printflike(3, 4) cmdq_add_format(struct cmdq_state *, const char *,
 		     const char *, ...);
+void		  cmdq_add_formats(struct cmdq_state *, struct format_tree *);
 void		  cmdq_merge_formats(struct cmdq_item *, struct format_tree *);
 struct cmdq_list *cmdq_new(void);
 void cmdq_free(struct cmdq_list *);
