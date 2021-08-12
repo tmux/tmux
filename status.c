@@ -390,10 +390,10 @@ status_redraw(struct client *c)
 	/* Set up default colour. */
 	style_apply(&gc, s->options, "status-style", ft);
 	fg = options_get_number(s->options, "status-fg");
-	if (fg != 8)
+	if (!COLOUR_DEFAULT(fg))
 		gc.fg = fg;
 	bg = options_get_number(s->options, "status-bg");
-	if (bg != 8)
+	if (!COLOUR_DEFAULT(bg))
 		gc.bg = bg;
 	if (!grid_cells_equal(&gc, &sl->style)) {
 		force = 1;

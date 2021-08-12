@@ -2790,18 +2790,23 @@ tty_window_default_style(struct grid_cell *gc, struct window_pane *wp)
 void
 tty_default_colours(struct grid_cell *gc, struct window_pane *wp)
 {
-	struct options	*oo = wp->options;
+	struct options		*oo = wp->options;
+	struct format_tree	*ft;
 
 	memcpy(gc, &grid_default_cell, sizeof *gc);
 
 	if (wp->flags & PANE_STYLECHANGED) {
+		log_debug("%%%u: style changed", wp->id);
 		wp->flags &= ~PANE_STYLECHANGED;
 
+		ft = format_create(NULL, NULL, FORMAT_PANE|wp->id,
+		    FORMAT_NOJOBS);
+		format_defaults(ft, NULL, NULL, NULL, wp);
 		tty_window_default_style(&wp->cached_active_gc, wp);
-		style_add(&wp->cached_active_gc, oo, "window-active-style",
-		    NULL);
+		style_add(&wp->cached_active_gc, oo, "window-active-style", ft);
 		tty_window_default_style(&wp->cached_gc, wp);
-		style_add(&wp->cached_gc, oo, "window-style", NULL);
+		style_add(&wp->cached_gc, oo, "window-style", ft);
+		format_free(ft);
 	}
 
 	if (gc->fg == 8) {

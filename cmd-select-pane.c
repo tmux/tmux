@@ -145,10 +145,12 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 		markedwp = marked_pane.wp;
 
 		if (lastwp != NULL) {
+			lastwp->flags |= (PANE_REDRAW|PANE_STYLECHANGED);
 			server_redraw_window_borders(lastwp->window);
 			server_status_window(lastwp->window);
 		}
 		if (markedwp != NULL) {
+			markedwp->flags |= (PANE_REDRAW|PANE_STYLECHANGED);
 			server_redraw_window_borders(markedwp->window);
 			server_status_window(markedwp->window);
 		}
