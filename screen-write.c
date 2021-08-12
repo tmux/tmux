@@ -1775,13 +1775,13 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	if (width == 0 || (ctx->flags & SCREEN_WRITE_ZWJ)) {
 		ctx->flags &= ~SCREEN_WRITE_ZWJ;
 		screen_write_collect_flush(ctx, 0, __func__);
-		if ((gc = screen_write_combine(ctx, ud, &xx)) != 0) {
+		if ((gc = screen_write_combine(ctx, ud, &xx)) != NULL) {
 			cx = s->cx; cy = s->cy;
 			screen_write_set_cursor(ctx, xx, s->cy);
 			screen_write_initctx(ctx, &ttyctx, 0);
 			ttyctx.cell = gc;
 			tty_write(tty_cmd_cell, &ttyctx);
-			s->cx = xx + gc->data.width; s->cy = cy;
+			s->cx = cx; s->cy = cy;
 		}
 		return;
 	}
