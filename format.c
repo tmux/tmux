@@ -4300,15 +4300,14 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 			if (strcmp(found, condition) == 0) {
 				free(found);
 				found = xstrdup("");
-				format_log(es, "condition '%s' found: %s",
-				    condition, found);
-			} else {
 				format_log(es,
 				    "condition '%s' not found; assuming false",
 				    condition);
 			}
-		} else
-			format_log(es, "condition '%s' found", condition);
+		} else {
+			format_log(es, "condition '%s' found: %s", condition,
+			    found);
+		}
 
 		if (format_choose(es, cp + 1, &left, &right, 0) != 0) {
 			format_log(es, "condition '%s' syntax error: %s",
