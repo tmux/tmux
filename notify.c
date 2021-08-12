@@ -25,30 +25,14 @@
 
 struct notify_entry {
 	const char		*name;
+	struct cmd_find_state	 fs;
+	struct format_tree	*formats;
 
 	struct client		*client;
 	struct session		*session;
 	struct window		*window;
 	int			 pane;
-
-	struct cmd_find_state	 fs;
 };
-
-static void
-notify_hook_formats(struct cmdq_state *state, struct session *s,
-    struct window *w, int pane)
-{
-	if (s != NULL) {
-		cmdq_add_format(state, "hook_session", "$%u", s->id);
-		cmdq_add_format(state, "hook_session_name", "%s", s->name);
-	}
-	if (w != NULL) {
-		cmdq_add_format(state, "hook_window", "@%u", w->id);
-		cmdq_add_format(state, "hook_window_name", "%s", w->name);
-	}
-	if (pane != -1)
-		cmdq_add_format(state, "hook_pane", "%%%d", pane);
-}
 
 static void
 notify_insert_hook(struct cmdq_item *item, struct notify_entry *ne)
@@ -57,8 +41,6 @@ notify_insert_hook(struct cmdq_item *item, struct notify_entry *ne)
 	struct options			*oo;
 	struct cmdq_item		*new_item;
 	struct cmdq_state		*new_state;
-	struct session			*s = ne->session;
-	struct window			*w = ne->window;
 	struct options_entry		*o;
 	struct options_array_item	*a;
 	struct cmd_list			*cmdlist;
@@ -88,8 +70,7 @@ notify_insert_hook(struct cmdq_item *item, struct notify_entry *ne)
 		return;
 
 	new_state = cmdq_new_state(&fs, NULL, CMDQ_STATE_NOHOOKS);
-	cmdq_add_format(new_state, "hook", "%s", ne->name);
-	notify_hook_formats(new_state, s, w, ne->pane);
+	cmdq_add_formats(new_state, ne->formats);
 
 	a = options_array_first(o);
 	while (a != NULL) {
@@ -148,6 +129,7 @@ notify_callback(struct cmdq_item *item, void *data)
 	if (ne->fs.s != NULL)
 		session_remove_ref(ne->fs.s, __func__);
 
+	format_free(ne->formats);
 	free((void *)ne->name);
 	free(ne);
 
@@ -171,11 +153,23 @@ notify_add(const char *name, struct cmd_find_state *fs, struct client *c,
 	ne->client = c;
 	ne->session = s;
 	ne->window = w;
+	ne->pane = (wp != NULL ? wp->id : -1);
 
+	ne->formats = format_create(NULL, NULL, 0, FORMAT_NOJOBS);
+	format_add(ne->formats, "hook", "%s", name);
+	if (c != NULL)
+		format_add(ne->formats, "hook_client", "%s", c->name);
+	if (s != NULL) {
+		format_add(ne->formats, "hook_session", "$%u", s->id);
+		format_add(ne->formats, "hook_session_name", "%s", s->name);
+	}
+	if (w != NULL) {
+		format_add(ne->formats, "hook_window", "@%u", w->id);
+		format_add(ne->formats, "hook_window_name", "%s", w->name);
+	}
 	if (wp != NULL)
-		ne->pane = wp->id;
-	else
-		ne->pane = -1;
+		format_add(ne->formats, "hook_pane", "%%%d", wp->id);
+	format_log_debug(ne->formats, __func__);
 
 	if (c != NULL)
 		c->references++;
@@ -205,9 +199,14 @@ notify_hook(struct cmdq_item *item, const char *name)
 	ne.client = cmdq_get_client(item);
 	ne.session = target->s;
 	ne.window = target->w;
-	ne.pane = target->wp->id;
+	ne.pane = (target->wp != NULL ? target->wp->id : -1);
+
+	ne.formats = format_create(NULL, NULL, 0, FORMAT_NOJOBS);
+	format_add(ne.formats, "hook", "%s", name);
+	format_log_debug(ne.formats, __func__);
 
 	notify_insert_hook(item, &ne);
+	format_free(ne.formats);
 }
 
 void

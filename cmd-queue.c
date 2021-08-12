@@ -269,6 +269,15 @@ cmdq_add_format(struct cmdq_state *state, const char *key, const char *fmt, ...)
 	free(value);
 }
 
+/* Add formats to command queue. */
+void
+cmdq_add_formats(struct cmdq_state *state, struct format_tree *ft)
+{
+	if (state->formats == NULL)
+		state->formats = format_create(NULL, NULL, FORMAT_NONE, 0);
+	format_merge(state->formats, ft);
+}
+
 /* Merge formats from item. */
 void
 cmdq_merge_formats(struct cmdq_item *item, struct format_tree *ft)
