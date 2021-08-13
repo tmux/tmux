@@ -162,12 +162,12 @@ popup_check_cb(struct client *c, void *data, u_int px, u_int py)
 {
 	struct popup_data	*pd = data;
 
+	if (pd->md != NULL && menu_check_cb(c, pd->md, px, py) == 0)
+		return (0);
 	if (px < pd->px || px > pd->px + pd->sx - 1)
 		return (1);
 	if (py < pd->py || py > pd->py + pd->sy - 1)
 		return (1);
-	if (pd->md != NULL)
-		return (menu_check_cb(c, pd->md, px, py));
 	return (0);
 }
 
