@@ -78,8 +78,8 @@ static const struct menu_item popup_menu_items[] = {
 	{ "Fill Space", 'F', NULL },
 	{ "Centre", 'C', NULL },
 	{ "", KEYC_NONE, NULL },
-	{ "Make Pane (H)", 'h', NULL },
-	{ "Make Pane (V)", 'v', NULL },
+	{ "To Horizontal Pane", 'h', NULL },
+	{ "To Vertical Pane", 'v', NULL },
 
 	{ NULL, KEYC_NONE, NULL }
 };
@@ -299,6 +299,7 @@ popup_make_pane(struct popup_data *pd, enum layout_type type)
 	struct layout_cell	*lc;
 	struct window_pane	*wp = w->active, *new_wp;
 	u_int			 hlimit;
+	const char		*shell;
 
 	window_unzoom(w);
 
@@ -307,16 +308,24 @@ popup_make_pane(struct popup_data *pd, enum layout_type type)
 	new_wp = window_add_pane(wp->window, NULL, hlimit, 0);
 	layout_assign_pane(lc, new_wp, 0);
 
-	new_wp->fd = job_transfer(pd->job);
+	new_wp->fd = job_transfer(pd->job, &new_wp->pid, new_wp->tty,
+	    sizeof new_wp->tty);
 	pd->job = NULL;
 
+	screen_set_title(&pd->s, new_wp->base.title);
 	screen_free(&new_wp->base);
 	memcpy(&new_wp->base, &pd->s, sizeof wp->base);
 	screen_resize(&new_wp->base, new_wp->sx, new_wp->sy, 1);
 	screen_init(&pd->s, 1, 1, 0);
 
+	shell = options_get_string(s->options, "default-shell");
+	if (!checkshell(shell))
+		shell = _PATH_BSHELL;
+	new_wp->shell = xstrdup(shell);
+
 	window_pane_set_event(new_wp);
 	window_set_active_pane(w, new_wp, 1);
+	new_wp->flags |= PANE_CHANGED;
 
 	pd->close = 1;
 }

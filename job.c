@@ -52,6 +52,7 @@ struct job {
 
 	char			*cmd;
 	pid_t			 pid;
+	char		         tty[TTY_NAME_MAX];
 	int			 status;
 
 	int			 fd;
@@ -81,7 +82,7 @@ job_run(const char *cmd, int argc, char **argv, struct session *s,
 	const char	 *home;
 	sigset_t	  set, oldset;
 	struct winsize	  ws;
-	char		**argvp;
+	char		**argvp, tty[TTY_NAME_MAX];
 
 	/*
 	 * Do not set TERM during .tmux.conf, it is nice to be able to use
@@ -96,7 +97,7 @@ job_run(const char *cmd, int argc, char **argv, struct session *s,
 		memset(&ws, 0, sizeof ws);
 		ws.ws_col = sx;
 		ws.ws_row = sy;
-		pid = fdforkpty(ptm_fd, &master, NULL, NULL, &ws);
+		pid = fdforkpty(ptm_fd, &master, tty, NULL, &ws);
 	} else {
 		if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, out) != 0)
 			goto fail;
@@ -170,6 +171,7 @@ job_run(const char *cmd, int argc, char **argv, struct session *s,
 	else
 		job->cmd = cmd_stringify_argv(argc, argv);
 	job->pid = pid;
+	strlcpy(job->tty, tty, sizeof job->tty);
 	job->status = 0;
 
 	LIST_INSERT_HEAD(&all_jobs, job, entry);
@@ -203,11 +205,16 @@ fail:
 
 /* Take job's file descriptor and free the job. */
 int
-job_transfer(struct job *job)
+job_transfer(struct job *job, pid_t *pid, char *tty, size_t ttylen)
 {
 	int	fd = job->fd;
 
 	log_debug("transfer job %p: %s", job, job->cmd);
+
+	if (pid != NULL)
+		*pid = job->pid;
+	if (tty != NULL)
+		strlcpy(tty, job->tty, ttylen);
 
 	LIST_REMOVE(job, entry);
 	free(job->cmd);
