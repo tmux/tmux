@@ -489,9 +489,16 @@ popup_job_update_cb(struct job *job)
 	if (size == 0)
 		return;
 
-	c->overlay_check = NULL;
+	if (pd->md != NULL) {
+		c->overlay_check = menu_check_cb;
+		c->overlay_data = pd->md;
+	} else {
+		c->overlay_check = NULL;
+		c->overlay_data = NULL;
+	}
 	input_parse_screen(pd->ictx, s, popup_init_ctx_cb, pd, data, size);
 	c->overlay_check = popup_check_cb;
+	c->overlay_data = pd;
 
 	evbuffer_drain(evb, size);
 }
