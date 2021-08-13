@@ -75,7 +75,6 @@ cmd_confirm_before_exec(struct cmd *self, struct cmdq_item *item)
 	cdata = xmalloc(sizeof *cdata);
 	cdata->cmd = xstrdup(args->argv[0]);
 
-	memset(&cdata->pi, 0, sizeof cdata->pi);
 	cmd_get_source(self, &cdata->pi.file, &cdata->pi.line);
 	if (wait)
 		cdata->pi.item = item;
@@ -88,8 +87,8 @@ cmd_confirm_before_exec(struct cmd *self, struct cmdq_item *item)
 	status_prompt_set(tc, target, new_prompt, NULL,
 	    cmd_confirm_before_callback, cmd_confirm_before_free, cdata,
 	    PROMPT_SINGLE, PROMPT_TYPE_COMMAND);
-
 	free(new_prompt);
+
 	if (!wait)
 		return (CMD_RETURN_NORMAL);
 	return (CMD_RETURN_WAIT);
@@ -104,14 +103,16 @@ cmd_confirm_before_callback(struct client *c, void *data, const char *s,
 	char				*error;
 	struct cmdq_item		*item = cdata->item;
 	enum cmd_parse_status		 status;
+	int				 retcode = 1;
 
 	if (c->flags & CLIENT_DEAD)
-		return (0);
+		goto out;
 
 	if (s == NULL || *s == '\0')
 		goto out;
 	if (tolower((u_char)s[0]) != 'y' || s[1] != '\0')
 		goto out;
+	retcode = 0;
 
 	if (item != NULL) {
 		status = cmd_parse_and_insert(cmd, &cdata->pi, item,
@@ -124,8 +125,12 @@ cmd_confirm_before_callback(struct client *c, void *data, const char *s,
 	}
 
 out:
-	if (item != NULL)
-		cmdq_continue(item);
+        if (item != NULL) {
+                if (cmdq_get_client(item) != NULL &&
+                    cmdq_get_client(item)->session == NULL)
+                        cmdq_get_client(item)->retval = retcode;
+                cmdq_continue(item);
+        }
 	return (0);
 }
 

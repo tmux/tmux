@@ -104,8 +104,6 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 	cdata->cmd_if = xstrdup(args->argv[1]);
 	if (args->argc == 3)
 		cdata->cmd_else = xstrdup(args->argv[2]);
-	else
-		cdata->cmd_else = NULL;
 
 	if (!args_has(args, 'b'))
 		cdata->client = cmdq_get_client(item);
@@ -116,10 +114,7 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (!args_has(args, 'b'))
 		cdata->item = item;
-	else
-		cdata->item = NULL;
 
-	memset(&cdata->input, 0, sizeof cdata->input);
 	cmd_get_source(self, &file, &cdata->input.line);
 	if (file != NULL)
 		cdata->input.file = xstrdup(file);

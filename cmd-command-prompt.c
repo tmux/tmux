@@ -40,8 +40,8 @@ const struct cmd_entry cmd_command_prompt_entry = {
 	.name = "command-prompt",
 	.alias = NULL,
 
-	.args = { "1FkiI:Np:t:T:", 0, 1 },
-	.usage = "[-1FkiN] [-I inputs] [-p prompts] " CMD_TARGET_CLIENT_USAGE
+	.args = { "1bFkiI:Np:t:T:", 0, 1 },
+	.usage = "[-1bFkiN] [-I inputs] [-p prompts] " CMD_TARGET_CLIENT_USAGE
 		 " [-T type] [template]",
 
 	.flags = CMD_CLIENT_TFLAG,
@@ -49,17 +49,20 @@ const struct cmd_entry cmd_command_prompt_entry = {
 };
 
 struct cmd_command_prompt_cdata {
-	int		 flags;
-	enum prompt_type prompt_type;
+	struct cmdq_item	*item;
+	struct cmd_parse_input	 pi;
 
-	char		*inputs;
-	char		*next_input;
+	int			 flags;
+	enum prompt_type	 prompt_type;
 
-	char		*prompts;
-	char		*next_prompt;
+	char			*inputs;
+	char			*next_input;
 
-	char		*template;
-	int	 	 idx;
+	char			*prompts;
+	char			*next_prompt;
+
+	char			*template;
+	int	 		 idx;
 };
 
 static enum cmd_retval
@@ -72,20 +75,22 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_command_prompt_cdata	*cdata;
 	char				*prompt, *ptr, *input = NULL;
 	size_t				 n;
+	int				 wait = !args_has(args, 'b');
 
 	if (tc->prompt_string != NULL)
 		return (CMD_RETURN_NORMAL);
 
 	cdata = xcalloc(1, sizeof *cdata);
-
-	cdata->inputs = NULL;
-	cdata->next_input = NULL;
-
-	cdata->prompts = NULL;
-	cdata->next_prompt = NULL;
-
-	cdata->template = NULL;
 	cdata->idx = 1;
+
+	cmd_get_source(self, &cdata->pi.file, &cdata->pi.line);
+	if (wait)
+		cdata->pi.item = item;
+	cdata->pi.c = tc;
+	cmd_find_copy_state(&cdata->pi.fs, target);
+
+	if (wait)
+		cdata->item = item;
 
 	if (args->argc != 0 && args_has(args, 'F'))
 	    cdata->template = format_single_from_target(item, args->argv[0]);
@@ -140,7 +145,9 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 	    cdata->flags, cdata->prompt_type);
 	free(prompt);
 
-	return (CMD_RETURN_NORMAL);
+	if (!wait)
+		return (CMD_RETURN_NORMAL);
+	return (CMD_RETURN_WAIT);
 }
 
 static int
@@ -150,12 +157,13 @@ cmd_command_prompt_callback(struct client *c, void *data, const char *s,
 	struct cmd_command_prompt_cdata	*cdata = data;
 	char				*new_template, *prompt, *ptr, *error;
 	char				*input = NULL;
+	struct cmdq_item		*item = cdata->item;
 	enum cmd_parse_status		 status;
 
 	if (s == NULL)
-		return (0);
+		goto out;
 	if (done && (cdata->flags & PROMPT_INCREMENTAL))
-		return (0);
+		goto out;
 
 	new_template = cmd_template_replace(cdata->template, s, cdata->idx);
 	if (done) {
@@ -177,7 +185,13 @@ cmd_command_prompt_callback(struct client *c, void *data, const char *s,
 		return (1);
 	}
 
-	status = cmd_parse_and_append(new_template, NULL, c, NULL, &error);
+	if (item != NULL) {
+		status = cmd_parse_and_insert(new_template, &cdata->pi, item,
+		    cmdq_get_state(item), &error);
+	} else {
+		status = cmd_parse_and_append(new_template, &cdata->pi, c, NULL,
+		    &error);
+	}
 	if (status == CMD_PARSE_ERROR) {
 		cmdq_append(c, cmdq_get_error(error));
 		free(error);
@@ -187,6 +201,10 @@ cmd_command_prompt_callback(struct client *c, void *data, const char *s,
 		free(new_template);
 	if (c->prompt_inputcb != cmd_command_prompt_callback)
 		return (1);
+
+out:
+        if (item != NULL)
+                cmdq_continue(item);
 	return (0);
 }
 
