@@ -31,6 +31,7 @@
 #include <stdio.h>
 #include <termios.h>
 
+#include "tmux-protocol.h"
 #include "xmalloc.h"
 
 extern char   **environ;
@@ -60,12 +61,11 @@ struct screen_write_cline;
 struct screen_write_ctx;
 struct session;
 struct tty_ctx;
+struct tty_code;
+struct tty_key;
 struct tmuxpeer;
 struct tmuxproc;
 struct winlink;
-
-/* Client-server protocol version. */
-#define PROTOCOL_VERSION 8
 
 /* Default configuration files and socket paths. */
 #ifndef TMUX_CONF
@@ -502,95 +502,6 @@ enum tty_code_code {
 	TTYC_U8,
 	TTYC_VPA,
 	TTYC_XT
-};
-
-/* Message codes. */
-enum msgtype {
-	MSG_VERSION = 12,
-
-	MSG_IDENTIFY_FLAGS = 100,
-	MSG_IDENTIFY_TERM,
-	MSG_IDENTIFY_TTYNAME,
-	MSG_IDENTIFY_OLDCWD, /* unused */
-	MSG_IDENTIFY_STDIN,
-	MSG_IDENTIFY_ENVIRON,
-	MSG_IDENTIFY_DONE,
-	MSG_IDENTIFY_CLIENTPID,
-	MSG_IDENTIFY_CWD,
-	MSG_IDENTIFY_FEATURES,
-	MSG_IDENTIFY_STDOUT,
-	MSG_IDENTIFY_LONGFLAGS,
-	MSG_IDENTIFY_TERMINFO,
-
-	MSG_COMMAND = 200,
-	MSG_DETACH,
-	MSG_DETACHKILL,
-	MSG_EXIT,
-	MSG_EXITED,
-	MSG_EXITING,
-	MSG_LOCK,
-	MSG_READY,
-	MSG_RESIZE,
-	MSG_SHELL,
-	MSG_SHUTDOWN,
-	MSG_OLDSTDERR, /* unused */
-	MSG_OLDSTDIN, /* unused */
-	MSG_OLDSTDOUT, /* unused */
-	MSG_SUSPEND,
-	MSG_UNLOCK,
-	MSG_WAKEUP,
-	MSG_EXEC,
-	MSG_FLAGS,
-
-	MSG_READ_OPEN = 300,
-	MSG_READ,
-	MSG_READ_DONE,
-	MSG_WRITE_OPEN,
-	MSG_WRITE,
-	MSG_WRITE_READY,
-	MSG_WRITE_CLOSE
-};
-
-/*
- * Message data.
- *
- * Don't forget to bump PROTOCOL_VERSION if any of these change!
- */
-struct msg_command {
-	int	argc;
-}; /* followed by packed argv */
-
-struct msg_read_open {
-	int	stream;
-	int	fd;
-}; /* followed by path */
-
-struct msg_read_data {
-	int	stream;
-};
-
-struct msg_read_done {
-	int	stream;
-	int	error;
-};
-
-struct msg_write_open {
-	int	stream;
-	int	fd;
-	int	flags;
-}; /* followed by path */
-
-struct msg_write_data {
-	int	stream;
-}; /* followed by data */
-
-struct msg_write_ready {
-	int	stream;
-	int	error;
-};
-
-struct msg_write_close {
-	int	stream;
 };
 
 /* Character classes. */
@@ -1292,18 +1203,7 @@ struct key_event {
 	struct mouse_event	m;
 };
 
-/* TTY information. */
-struct tty_key {
-	char		 ch;
-	key_code	 key;
-
-	struct tty_key	*left;
-	struct tty_key	*right;
-
-	struct tty_key	*next;
-};
-
-struct tty_code;
+/* Terminal definition. */
 struct tty_term {
 	char		*name;
 	struct tty	*tty;
@@ -1325,6 +1225,7 @@ struct tty_term {
 };
 LIST_HEAD(tty_terms, tty_term);
 
+/* Client terminal. */
 struct tty {
 	struct client	*client;
 	struct event	 start_timer;
@@ -1393,7 +1294,7 @@ struct tty {
 	struct tty_key	*key_tree;
 };
 
-/* TTY command context. */
+/* Terminal command context. */
 typedef void (*tty_ctx_redraw_cb)(const struct tty_ctx *);
 typedef int (*tty_ctx_set_client_cb)(struct tty_ctx *, struct client *);
 struct tty_ctx {
