@@ -43,7 +43,7 @@ LLVMFuzzerTestOneInput(const unsigned char *data, size_t size)
 	w = window_create(PANE_WIDTH, PANE_HEIGHT, 0, 0);
 	wp = window_add_pane(w, NULL, 0, 0);
 	bufferevent_pair_new(libevent, BEV_OPT_CLOSE_ON_FREE, vpty);
-	wp->ictx = input_init(wp, vpty[0]);
+	wp->ictx = input_init(wp, vpty[0], NULL);
 	window_add_ref(w, __func__);
 
 	input_parse_buffer(wp, (u_char*) data, size);
