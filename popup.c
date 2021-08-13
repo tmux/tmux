@@ -77,6 +77,18 @@ static const struct menu_item popup_menu_items[] = {
 	{ "", KEYC_NONE, NULL },
 	{ "Fill Space", 'F', NULL },
 	{ "Centre", 'C', NULL },
+	{ "", KEYC_NONE, NULL },
+	{ "Make Pane (H)", 'h', NULL },
+	{ "Make Pane (V)", 'v', NULL },
+
+	{ NULL, KEYC_NONE, NULL }
+};
+
+static const struct menu_item popup_internal_menu_items[] = {
+	{ "Close", 'q', NULL },
+	{ "", KEYC_NONE, NULL },
+	{ "Fill Space", 'F', NULL },
+	{ "Centre", 'C', NULL },
 
 	{ NULL, KEYC_NONE, NULL }
 };
@@ -279,6 +291,37 @@ popup_resize_cb(__unused struct client *c, void *data)
 }
 
 static void
+popup_make_pane(struct popup_data *pd, enum layout_type type)
+{
+	struct client		*c = pd->c;
+	struct session		*s = c->session;
+	struct window		*w = s->curw->window;
+	struct layout_cell	*lc;
+	struct window_pane	*wp = w->active, *new_wp;
+	u_int			 hlimit;
+
+	window_unzoom(w);
+
+	lc = layout_split_pane(wp, type, -1, 0);
+	hlimit = options_get_number(s->options, "history-limit");
+	new_wp = window_add_pane(wp->window, NULL, hlimit, 0);
+	layout_assign_pane(lc, new_wp, 0);
+
+	new_wp->fd = job_transfer(pd->job);
+	pd->job = NULL;
+
+	screen_free(&new_wp->base);
+	memcpy(&new_wp->base, &pd->s, sizeof wp->base);
+	screen_resize(&new_wp->base, new_wp->sx, new_wp->sy, 1);
+	screen_init(&pd->s, 1, 1, 0);
+
+	window_pane_set_event(new_wp);
+	window_set_active_pane(w, new_wp, 1);
+
+	pd->close = 1;
+}
+
+static void
 popup_menu_done(__unused struct menu *menu, __unused u_int choice,
     key_code key, void *data)
 {
@@ -311,6 +354,12 @@ popup_menu_done(__unused struct menu *menu, __unused u_int choice,
 		pd->px = c->tty.sx / 2 - pd->sx / 2;
 		pd->py = c->tty.sy / 2 - pd->sy / 2;
 		server_redraw_client(c);
+		break;
+	case 'h':
+		popup_make_pane(pd, LAYOUT_LEFTRIGHT);
+		break;
+	case 'v':
+		popup_make_pane(pd, LAYOUT_TOPBOTTOM);
 		break;
 	case 'q':
 		pd->close = 1;
@@ -460,7 +509,11 @@ popup_key_cb(struct client *c, void *data, struct key_event *event)
 
 menu:
 	pd->menu = menu_create("");
-	menu_add_items(pd->menu, popup_menu_items, NULL, NULL, NULL);
+	if (pd->flags & POPUP_INTERNAL) {
+		menu_add_items(pd->menu, popup_internal_menu_items, NULL, NULL,
+		    NULL);
+	} else
+		menu_add_items(pd->menu, popup_menu_items, NULL, NULL, NULL);
 	if (m->x >= (pd->menu->width + 4) / 2)
 		x = m->x - (pd->menu->width + 4) / 2;
 	else
@@ -659,8 +712,8 @@ popup_editor(struct client *c, const char *buf, size_t len,
 	py = (c->tty.sy / 2) - (sy / 2);
 
 	xasprintf(&cmd, "%s %s", editor, path);
-	if (popup_display(POPUP_CLOSEEXIT, NULL, px, py, sx, sy, cmd, 0, NULL,
-	    _PATH_TMP, c, NULL, popup_editor_close_cb, pe) != 0) {
+	if (popup_display(POPUP_INTERNAL|POPUP_CLOSEEXIT, NULL, px, py, sx, sy,
+	    cmd, 0, NULL, _PATH_TMP, c, NULL, popup_editor_close_cb, pe) != 0) {
 		popup_editor_free(pe);
 		free(cmd);
 		return (-1);

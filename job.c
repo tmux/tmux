@@ -201,6 +201,27 @@ fail:
 	return (NULL);
 }
 
+/* Take job's file descriptor and free the job. */
+int
+job_transfer(struct job *job)
+{
+	int	fd = job->fd;
+
+	log_debug("transfer job %p: %s", job, job->cmd);
+
+	LIST_REMOVE(job, entry);
+	free(job->cmd);
+
+	if (job->freecb != NULL && job->data != NULL)
+		job->freecb(job->data);
+
+	if (job->event != NULL)
+		bufferevent_free(job->event);
+
+	free(job);
+	return (fd);
+}
+
 /* Kill and free an individual job. */
 void
 job_free(struct job *job)
