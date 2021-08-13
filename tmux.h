@@ -1004,7 +1004,7 @@ struct window_pane {
 #define PANE_FOCUSED 0x4
 /* 0x8 unused */
 /* 0x10 unused */
-#define PANE_FOCUSPUSH 0x20
+/* 0x20 unused */
 #define PANE_INPUTOFF 0x40
 #define PANE_CHANGED 0x80
 #define PANE_EXITED 0x100
@@ -2506,6 +2506,7 @@ int	 server_client_handle_key(struct client *, struct key_event *);
 struct client *server_client_create(int);
 int	 server_client_open(struct client *, char **);
 void	 server_client_unref(struct client *);
+void	 server_client_set_session(struct client *, struct session *);
 void	 server_client_lost(struct client *);
 void	 server_client_suspend(struct client *);
 void	 server_client_detach(struct client *, enum msgtype);
@@ -2826,6 +2827,8 @@ struct window_pane *window_find_string(struct window *, const char *);
 int		 window_has_pane(struct window *, struct window_pane *);
 int		 window_set_active_pane(struct window *, struct window_pane *,
 		     int);
+void		 window_update_focus(struct window *);
+void		 window_pane_update_focus(struct window_pane *);
 void		 window_redraw_active_switch(struct window *,
 		     struct window_pane *);
 struct window_pane *window_add_pane(struct window *, struct window_pane *,

@@ -134,23 +134,9 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 	if (!args_has(args, 'E'))
 		environ_update(s->options, tc->environ, s->environ);
 
-	if (tc->session != NULL && tc->session != s)
-		tc->last_session = tc->session;
-	tc->session = s;
+	server_client_set_session(tc, s);
 	if (~cmdq_get_flags(item) & CMDQ_STATE_REPEAT)
 		server_client_set_key_table(tc, NULL);
-	tty_update_client_offset(tc);
-	status_timer_start(tc);
-	notify_client("client-session-changed", tc);
-	session_update_activity(s, NULL);
-	gettimeofday(&s->last_attached_time, NULL);
-
-	server_check_unattached();
-	server_redraw_client(tc);
-	s->curw->flags &= ~WINLINK_ALERTFLAGS;
-	s->curw->window->latest = tc;
-	recalculate_sizes();
-	alerts_check_session(s);
 
 	return (CMD_RETURN_NORMAL);
 }

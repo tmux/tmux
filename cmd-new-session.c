@@ -329,18 +329,10 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 				proc_send(c->peer, MSG_READY, -1, NULL, 0);
 		} else if (c->session != NULL)
 			c->last_session = c->session;
-		c->session = s;
+		server_client_set_session(c, s);
 		if (~cmdq_get_flags(item) & CMDQ_STATE_REPEAT)
 			server_client_set_key_table(c, NULL);
-		tty_update_client_offset(c);
-		status_timer_start(c);
-		notify_client("client-session-changed", c);
-		session_update_activity(s, NULL);
-		gettimeofday(&s->last_attached_time, NULL);
-		server_redraw_client(c);
 	}
-	recalculate_sizes();
-	server_update_socket();
 
 	/*
 	 * If there are still configuration file errors to display, put the new
