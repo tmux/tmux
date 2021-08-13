@@ -131,18 +131,33 @@ menu_free(struct menu *menu)
 	free(menu);
 }
 
-static struct screen *
-menu_mode_cb(struct client *c, __unused u_int *cx, __unused u_int *cy)
+struct screen *
+menu_mode_cb(__unused struct client *c, void *data, __unused u_int *cx,
+    __unused u_int *cy)
 {
-	struct menu_data	*md = c->overlay_data;
+	struct menu_data	*md = data;
 
 	return (&md->s);
 }
 
-static void
-menu_draw_cb(struct client *c, __unused struct screen_redraw_ctx *ctx0)
+int
+menu_check_cb(__unused struct client *c, void *data, u_int px, u_int py)
 {
-	struct menu_data	*md = c->overlay_data;
+	struct menu_data	*md = data;
+	struct menu		*menu = md->menu;
+
+	if (px < md->px || px > md->px + menu->width + 3)
+		return (1);
+	if (py < md->py || py > md->py + menu->count + 1)
+		return (1);
+	return (0);
+}
+
+void
+menu_draw_cb(struct client *c, void *data,
+    __unused struct screen_redraw_ctx *rctx)
+{
+	struct menu_data	*md = data;
 	struct tty		*tty = &c->tty;
 	struct screen		*s = &md->s;
 	struct menu		*menu = md->menu;
@@ -163,10 +178,10 @@ menu_draw_cb(struct client *c, __unused struct screen_redraw_ctx *ctx0)
 	}
 }
 
-static void
-menu_free_cb(struct client *c)
+void
+menu_free_cb(__unused struct client *c, void *data)
 {
-	struct menu_data	*md = c->overlay_data;
+	struct menu_data	*md = data;
 
 	if (md->item != NULL)
 		cmdq_continue(md->item);
@@ -179,10 +194,10 @@ menu_free_cb(struct client *c)
 	free(md);
 }
 
-static int
-menu_key_cb(struct client *c, struct key_event *event)
+int
+menu_key_cb(struct client *c, void *data, struct key_event *event)
 {
-	struct menu_data		*md = c->overlay_data;
+	struct menu_data		*md = data;
 	struct menu			*menu = md->menu;
 	struct mouse_event		*m = &event->m;
 	u_int				 i;
@@ -342,8 +357,8 @@ chosen:
 	return (1);
 }
 
-int
-menu_display(struct menu *menu, int flags, struct cmdq_item *item, u_int px,
+struct menu_data *
+menu_prepare(struct menu *menu, int flags, struct cmdq_item *item, u_int px,
     u_int py, struct client *c, struct cmd_find_state *fs, menu_choice_cb cb,
     void *data)
 {
@@ -352,7 +367,7 @@ menu_display(struct menu *menu, int flags, struct cmdq_item *item, u_int px,
 	const char		*name;
 
 	if (c->tty.sx < menu->width + 4 || c->tty.sy < menu->count + 2)
-		return (-1);
+		return (NULL);
 	if (px + menu->width + 4 > c->tty.sx)
 		px = c->tty.sx - menu->width - 4;
 	if (py + menu->count + 2 > c->tty.sy)
@@ -388,7 +403,19 @@ menu_display(struct menu *menu, int flags, struct cmdq_item *item, u_int px,
 
 	md->cb = cb;
 	md->data = data;
+	return (md);
+}
 
+int
+menu_display(struct menu *menu, int flags, struct cmdq_item *item, u_int px,
+    u_int py, struct client *c, struct cmd_find_state *fs, menu_choice_cb cb,
+    void *data)
+{
+	struct menu_data	*md;
+
+	md = menu_prepare(menu, flags, item, px, py, c, fs, cb, data);
+	if (md == NULL)
+		return (-1);
 	server_client_set_overlay(c, 0, NULL, menu_mode_cb, menu_draw_cb,
 	    menu_key_cb, menu_free_cb, NULL, md);
 	return (0);

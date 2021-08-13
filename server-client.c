@@ -134,7 +134,7 @@ server_client_clear_overlay(struct client *c)
 		evtimer_del(&c->overlay_timer);
 
 	if (c->overlay_free != NULL)
-		c->overlay_free(c);
+		c->overlay_free(c, c->overlay_data);
 
 	c->overlay_check = NULL;
 	c->overlay_mode = NULL;
@@ -1390,7 +1390,7 @@ server_client_handle_key(struct client *c, struct key_event *event)
 			status_message_clear(c);
 		}
 		if (c->overlay_key != NULL) {
-			switch (c->overlay_key(c, event)) {
+			switch (c->overlay_key(c, c->overlay_data, event)) {
 			case 0:
 				return (0);
 			case 1:
@@ -1673,7 +1673,7 @@ server_client_reset_state(struct client *c)
 	/* Get mode from overlay if any, else from screen. */
 	if (c->overlay_draw != NULL) {
 		if (c->overlay_mode != NULL)
-			s = c->overlay_mode(c, &cx, &cy);
+			s = c->overlay_mode(c, c->overlay_data, &cx, &cy);
 	} else
 		s = wp->screen;
 	if (s != NULL)
@@ -2050,7 +2050,7 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 		if (c->overlay_resize == NULL)
 			server_client_clear_overlay(c);
 		else
-			c->overlay_resize(c);
+			c->overlay_resize(c, c->overlay_data);
 		server_redraw_client(c);
 		if (c->session != NULL)
 			notify_client("client-resized", c);

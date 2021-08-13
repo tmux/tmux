@@ -51,6 +51,7 @@ struct format_job_tree;
 struct format_tree;
 struct input_ctx;
 struct job;
+struct menu_data;
 struct mode_tree_data;
 struct mouse_event;
 struct options;
@@ -1535,12 +1536,14 @@ RB_HEAD(client_windows, client_window);
 /* Client connection. */
 typedef int (*prompt_input_cb)(struct client *, void *, const char *, int);
 typedef void (*prompt_free_cb)(void *);
-typedef int (*overlay_check_cb)(struct client *, u_int, u_int);
-typedef struct screen *(*overlay_mode_cb)(struct client *, u_int *, u_int *);
-typedef void (*overlay_draw_cb)(struct client *, struct screen_redraw_ctx *);
-typedef int (*overlay_key_cb)(struct client *, struct key_event *);
-typedef void (*overlay_free_cb)(struct client *);
-typedef void (*overlay_resize_cb)(struct client *);
+typedef int (*overlay_check_cb)(struct client *, void *, u_int, u_int);
+typedef struct screen *(*overlay_mode_cb)(struct client *, void *, u_int *,
+	    u_int *);
+typedef void (*overlay_draw_cb)(struct client *, void *,
+	    struct screen_redraw_ctx *);
+typedef int (*overlay_key_cb)(struct client *, void *, struct key_event *);
+typedef void (*overlay_free_cb)(struct client *, void *);
+typedef void (*overlay_resize_cb)(struct client *, void *);
 struct client {
 	const char	*name;
 	struct tmuxpeer	*peer;
@@ -3018,9 +3021,18 @@ void		 menu_add_item(struct menu *, const struct menu_item *,
 		    struct cmdq_item *, struct client *,
 		    struct cmd_find_state *);
 void		 menu_free(struct menu *);
+struct menu_data *menu_prepare(struct menu *, int, struct cmdq_item *, u_int,
+		    u_int, struct client *, struct cmd_find_state *,
+		    menu_choice_cb, void *);
 int		 menu_display(struct menu *, int, struct cmdq_item *, u_int,
 		    u_int, struct client *, struct cmd_find_state *,
 		    menu_choice_cb, void *);
+struct screen	*menu_mode_cb(struct client *, void *, u_int *, u_int *);
+int		 menu_check_cb(struct client *, void *, u_int, u_int);
+void		 menu_draw_cb(struct client *, void *,
+		    struct screen_redraw_ctx *);
+void		 menu_free_cb(struct client *, void *);
+int		 menu_key_cb(struct client *, void *, struct key_event *);
 
 /* popup.c */
 #define POPUP_CLOSEEXIT 0x1

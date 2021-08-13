@@ -1318,7 +1318,7 @@ tty_check_overlay(struct tty *tty, u_int px, u_int py)
 
 	if (c->overlay_check == NULL)
 		return (1);
-	return (c->overlay_check(c, px, py));
+	return (c->overlay_check(c, c->overlay_data, px, py));
 }
 
 void

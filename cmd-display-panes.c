@@ -186,7 +186,8 @@ out:
 }
 
 static void
-cmd_display_panes_draw(struct client *c, struct screen_redraw_ctx *ctx)
+cmd_display_panes_draw(struct client *c, __unused void *data,
+    struct screen_redraw_ctx *ctx)
 {
 	struct window		*w = c->session->curw->window;
 	struct window_pane	*wp;
@@ -200,9 +201,9 @@ cmd_display_panes_draw(struct client *c, struct screen_redraw_ctx *ctx)
 }
 
 static void
-cmd_display_panes_free(struct client *c)
+cmd_display_panes_free(__unused struct client *c, void *data)
 {
-	struct cmd_display_panes_data	*cdata = c->overlay_data;
+	struct cmd_display_panes_data	*cdata = data;
 
 	if (cdata->item != NULL)
 		cmdq_continue(cdata->item);
@@ -211,9 +212,9 @@ cmd_display_panes_free(struct client *c)
 }
 
 static int
-cmd_display_panes_key(struct client *c, struct key_event *event)
+cmd_display_panes_key(struct client *c, void *data, struct key_event *event)
 {
-	struct cmd_display_panes_data	*cdata = c->overlay_data;
+	struct cmd_display_panes_data	*cdata = data;
 	char				*cmd, *expanded, *error;
 	struct window			*w = c->session->curw->window;
 	struct window_pane		*wp;

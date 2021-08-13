@@ -624,7 +624,7 @@ screen_redraw_screen(struct client *c)
 	}
 	if (c->overlay_draw != NULL && (flags & CLIENT_REDRAWOVERLAY)) {
 		log_debug("%s: redrawing overlay", c->name);
-		c->overlay_draw(c, &ctx);
+		c->overlay_draw(c, c->overlay_data, &ctx);
 	}
 
 	tty_reset(&c->tty);
@@ -690,7 +690,8 @@ screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j)
 	struct grid_cell	 gc;
 	const struct grid_cell	*tmp;
 
-	if (c->overlay_check != NULL && !c->overlay_check(c, x, y))
+	if (c->overlay_check != NULL &&
+	    !c->overlay_check(c, c->overlay_data, x, y))
 		return;
 
 	cell_type = screen_redraw_check_cell(c, x, y, pane_status, &wp);
