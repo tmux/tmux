@@ -3025,6 +3025,7 @@ int		 menu_display(struct menu *, int, struct cmdq_item *, u_int,
 /* popup.c */
 #define POPUP_CLOSEEXIT 0x1
 #define POPUP_CLOSEEXITZERO 0x2
+#define POPUP_NOBORDER 0x4
 typedef void (*popup_close_cb)(int, void *);
 typedef void (*popup_finish_edit_cb)(char *, size_t, void *);
 int		 popup_display(int, struct cmdq_item *, u_int, u_int, u_int,

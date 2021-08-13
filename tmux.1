@@ -5677,7 +5677,7 @@ lists the format variables and their values.
 forwards any input read from stdin to the empty pane given by
 .Ar target-pane .
 .It Xo Ic display-popup
-.Op Fl CE
+.Op Fl BCE
 .Op Fl c Ar target-client
 .Op Fl d Ar start-directory
 .Op Fl h Ar height
@@ -5717,6 +5717,8 @@ and
 give the width and height - both may be a percentage (followed by
 .Ql % ) .
 If omitted, half of the terminal size is used.
+.Fl B
+does not surround the popup by a border.
 .Pp
 The
 .Fl C

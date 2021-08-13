@@ -91,8 +91,13 @@ popup_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 	ttyctx->wsx = c->tty.sx;
 	ttyctx->wsy = c->tty.sy;
 
-	ttyctx->xoff = ttyctx->rxoff = pd->px + 1;
-	ttyctx->yoff = ttyctx->ryoff = pd->py + 1;
+	if (pd->flags & POPUP_NOBORDER) {
+		ttyctx->xoff = ttyctx->rxoff = pd->px;
+		ttyctx->yoff = ttyctx->ryoff = pd->py;
+	} else {
+		ttyctx->xoff = ttyctx->rxoff = pd->px + 1;
+		ttyctx->yoff = ttyctx->ryoff = pd->py + 1;
+	}
 
 	return (1);
 }
@@ -113,8 +118,13 @@ popup_mode_cb(struct client *c, u_int *cx, u_int *cy)
 {
 	struct popup_data	*pd = c->overlay_data;
 
-	*cx = pd->px + 1 + pd->s.cx;
-	*cy = pd->py + 1 + pd->s.cy;
+	if (pd->flags & POPUP_NOBORDER) {
+		*cx = pd->px + pd->s.cx;
+		*cy = pd->py + pd->s.cy;
+	} else {
+		*cx = pd->px + 1 + pd->s.cx;
+		*cy = pd->py + 1 + pd->s.cy;
+	}
 	return (&pd->s);
 }
 
@@ -145,8 +155,10 @@ popup_draw_cb(struct client *c, __unused struct screen_redraw_ctx *ctx0)
 	screen_write_start(&ctx, &s);
 	screen_write_clearscreen(&ctx, 8);
 
-	/* Skip drawing popup if the terminal is too small. */
-	if (pd->sx > 2 && pd->sy > 2) {
+	if (pd->flags & POPUP_NOBORDER) {
+		screen_write_cursormove(&ctx, 0, 0, 0);
+		screen_write_fast_copy(&ctx, &pd->s, 0, 0, pd->sx, pd->sy);
+	} else if (pd->sx > 2 && pd->sy > 2) {
 		screen_write_box(&ctx, pd->sx, pd->sy);
 		screen_write_cursormove(&ctx, 1, 1, 0);
 		screen_write_fast_copy(&ctx, &pd->s, 0, 0, pd->sx - 2,
@@ -218,7 +230,11 @@ popup_resize_cb(struct client *c)
 		pd->px = pd->ppx;
 
 	/* Avoid zero size screens. */
-	if (pd->sx > 2 && pd->sy > 2) {
+	if (pd->flags & POPUP_NOBORDER) {
+		screen_resize(&pd->s, pd->sx, pd->sy, 0);
+		if (pd->job != NULL)
+			job_resize(pd->job, pd->sx, pd->sy );
+	} else if (pd->sx > 2 && pd->sy > 2) {
 		screen_resize(&pd->s, pd->sx - 2, pd->sy - 2, 0);
 		if (pd->job != NULL)
 			job_resize(pd->job, pd->sx - 2, pd->sy - 2);
@@ -254,18 +270,31 @@ popup_handle_drag(struct client *c, struct popup_data *pd,
 		pd->ppy = py;
 		server_redraw_client(c);
 	} else if (pd->dragging == SIZE) {
-		if (m->x < pd->px + 3)
-			return;
-		if (m->y < pd->py + 3)
-			return;
+		if (pd->flags & POPUP_NOBORDER) {
+			if (m->x < pd->px + 1)
+				return;
+			if (m->y < pd->py + 1)
+				return;
+		} else {
+			if (m->x < pd->px + 3)
+				return;
+			if (m->y < pd->py + 3)
+				return;
+		}
 		pd->sx = m->x - pd->px;
 		pd->sy = m->y - pd->py;
 		pd->psx = pd->sx;
 		pd->psy = pd->sy;
 
-		screen_resize(&pd->s, pd->sx - 2, pd->sy - 2, 0);
-		if (pd->job != NULL)
-			job_resize(pd->job, pd->sx - 2, pd->sy - 2);
+		if (pd->flags & POPUP_NOBORDER) {
+			screen_resize(&pd->s, pd->sx, pd->sy, 0);
+			if (pd->job != NULL)
+				job_resize(pd->job, pd->sx, pd->sy);
+		} else {
+			screen_resize(&pd->s, pd->sx - 2, pd->sy - 2, 0);
+			if (pd->job != NULL)
+				job_resize(pd->job, pd->sx - 2, pd->sy - 2);
+		}
 		server_redraw_client(c);
 	}
 }
@@ -277,6 +306,7 @@ popup_key_cb(struct client *c, struct key_event *event)
 	struct mouse_event	*m = &event->m;
 	const char		*buf;
 	size_t			 len;
+	u_int			 px, py;
 
 	if (KEYC_IS_MOUSE(event->key)) {
 		if (pd->dragging != OFF) {
@@ -292,10 +322,11 @@ popup_key_cb(struct client *c, struct key_event *event)
 			return (0);
 		}
 		if ((m->b & MOUSE_MASK_META) ||
-		    m->x == pd->px ||
+		    ((~pd->flags & POPUP_NOBORDER) &&
+		    (m->x == pd->px ||
 		    m->x == pd->px + pd->sx - 1 ||
 		    m->y == pd->py ||
-		    m->y == pd->py + pd->sy - 1) {
+		    m->y == pd->py + pd->sy - 1))) {
 			if (!MOUSE_DRAG(m->b))
 				goto out;
 			if (MOUSE_BUTTONS(m->lb) == 0)
@@ -315,8 +346,14 @@ popup_key_cb(struct client *c, struct key_event *event)
 	if (pd->job != NULL) {
 		if (KEYC_IS_MOUSE(event->key)) {
 			/* Must be inside, checked already. */
-			if (!input_key_get_mouse(&pd->s, m, m->x - pd->px - 1,
-			    m->y - pd->py - 1, &buf, &len))
+			if (pd->flags & POPUP_NOBORDER) {
+				px = m->x - pd->px;
+				py = m->y - pd->py;
+			} else {
+				px = m->x - pd->px - 1;
+				py = m->y - pd->py - 1;
+			}
+			if (!input_key_get_mouse(&pd->s, m, px, py, &buf, &len))
 				return (0);
 			bufferevent_write(job_get_event(pd->job), buf, len);
 			return (0);
@@ -378,9 +415,19 @@ popup_display(int flags, struct cmdq_item *item, u_int px, u_int py, u_int sx,
     struct client *c, struct session *s, popup_close_cb cb, void *arg)
 {
 	struct popup_data	*pd;
+	u_int			 jx, jy;
 
-	if (sx < 3 || sy < 3)
-		return (-1);
+	if (flags & POPUP_NOBORDER) {
+		if (sx < 1 || sy < 1)
+			return (-1);
+		jx = sx;
+		jy = sy;
+	} else {
+		if (sx < 3 || sy < 3)
+			return (-1);
+		jx = sx - 2;
+		jy = sy - 2;
+	}
 	if (c->tty.sx < sx || c->tty.sy < sy)
 		return (-1);
 
@@ -411,7 +458,7 @@ popup_display(int flags, struct cmdq_item *item, u_int px, u_int py, u_int sx,
 
 	pd->job = job_run(shellcmd, argc, argv, s, cwd,
 	    popup_job_update_cb, popup_job_complete_cb, NULL, pd,
-	    JOB_NOWAIT|JOB_PTY|JOB_KEEPWRITE, pd->sx - 2, pd->sy - 2);
+	    JOB_NOWAIT|JOB_PTY|JOB_KEEPWRITE, jx, jy);
 	pd->ictx = input_init(NULL, job_get_event(pd->job), &pd->palette);
 
 	server_client_set_overlay(c, 0, popup_check_cb, popup_mode_cb,
