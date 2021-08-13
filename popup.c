@@ -442,6 +442,7 @@ popup_key_cb(struct client *c, void *data, struct key_event *event)
 	const char		*buf;
 	size_t			 len;
 	u_int			 px, py, x;
+	enum { NONE, LEFT, RIGHT, TOP, BOTTOM } border = NONE;
 
 	if (pd->md != NULL) {
 		if (menu_key_cb(c, pd->md, event) == 1) {
@@ -468,20 +469,22 @@ popup_key_cb(struct client *c, void *data, struct key_event *event)
 				goto menu;
 			return (0);
 		}
-		if ((~pd->flags & POPUP_NOBORDER) &&
-		    (~m->b & MOUSE_MASK_META) &&
+		if (~pd->flags & POPUP_NOBORDER) {
+			if (m->x == pd->px)
+				border = LEFT;
+			else if (m->x == pd->px + pd->sx - 1)
+				border = RIGHT;
+			else if (m->y == pd->py)
+				border = TOP;
+			else if (m->y == pd->py + pd->sy - 1)
+				border = BOTTOM;
+		}
+		if ((m->b & MOUSE_MASK_MODIFIERS) == 0 &&
 		    MOUSE_BUTTONS(m->b) == 2 &&
-		    (m->x == pd->px ||
-		    m->x == pd->px + pd->sx - 1 ||
-		    m->y == pd->py ||
-		    m->y == pd->py + pd->sy - 1))
+		    (border == LEFT || border == TOP))
 		    goto menu;
-		if ((m->b & MOUSE_MASK_META) ||
-		    ((~pd->flags & POPUP_NOBORDER) &&
-		    (m->x == pd->px ||
-		    m->x == pd->px + pd->sx - 1 ||
-		    m->y == pd->py ||
-		    m->y == pd->py + pd->sy - 1))) {
+		if (((m->b & MOUSE_MASK_MODIFIERS) == MOUSE_MASK_META) ||
+		    border != NONE) {
 			if (!MOUSE_DRAG(m->b))
 				goto out;
 			if (MOUSE_BUTTONS(m->lb) == 0)

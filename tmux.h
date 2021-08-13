@@ -1158,6 +1158,7 @@ RB_HEAD(sessions, session);
 #define MOUSE_MASK_CTRL 16
 #define MOUSE_MASK_DRAG 32
 #define MOUSE_MASK_WHEEL 64
+#define MOUSE_MASK_MODIFIERS (MOUSE_MASK_SHIFT|MOUSE_MASK_META|MOUSE_MASK_CTRL)
 
 /* Mouse wheel states. */
 #define MOUSE_WHEEL_UP 0
