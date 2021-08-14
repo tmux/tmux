@@ -959,10 +959,10 @@ colour_palette_init(struct colour_palette *p)
 void
 colour_palette_clear(struct colour_palette *p)
 {
-	p->fg = 8;
-	p->bg = 8;
 	if (p != NULL) {
-		free(p->palette);
+		p->fg = 8;
+		p->bg = 8;
+ 		free(p->palette);
 		p->palette = NULL;
 	}
 }
