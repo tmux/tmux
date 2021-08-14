@@ -32,6 +32,7 @@
 #endif
 
 #include "compat.h"
+#include "tmux-protocol.h"
 #include "xmalloc.h"
 
 extern char   **environ;
@@ -51,6 +52,7 @@ struct format_job_tree;
 struct format_tree;
 struct input_ctx;
 struct job;
+struct menu_data;
 struct mode_tree_data;
 struct mouse_event;
 struct options;
@@ -61,12 +63,11 @@ struct screen_write_cline;
 struct screen_write_ctx;
 struct session;
 struct tty_ctx;
+struct tty_code;
+struct tty_key;
 struct tmuxpeer;
 struct tmuxproc;
 struct winlink;
-
-/* Client-server protocol version. */
-#define PROTOCOL_VERSION 8
 
 /* Default configuration files and socket paths. */
 #ifndef TMUX_CONF
@@ -505,95 +506,6 @@ enum tty_code_code {
 	TTYC_XT
 };
 
-/* Message codes. */
-enum msgtype {
-	MSG_VERSION = 12,
-
-	MSG_IDENTIFY_FLAGS = 100,
-	MSG_IDENTIFY_TERM,
-	MSG_IDENTIFY_TTYNAME,
-	MSG_IDENTIFY_OLDCWD, /* unused */
-	MSG_IDENTIFY_STDIN,
-	MSG_IDENTIFY_ENVIRON,
-	MSG_IDENTIFY_DONE,
-	MSG_IDENTIFY_CLIENTPID,
-	MSG_IDENTIFY_CWD,
-	MSG_IDENTIFY_FEATURES,
-	MSG_IDENTIFY_STDOUT,
-	MSG_IDENTIFY_LONGFLAGS,
-	MSG_IDENTIFY_TERMINFO,
-
-	MSG_COMMAND = 200,
-	MSG_DETACH,
-	MSG_DETACHKILL,
-	MSG_EXIT,
-	MSG_EXITED,
-	MSG_EXITING,
-	MSG_LOCK,
-	MSG_READY,
-	MSG_RESIZE,
-	MSG_SHELL,
-	MSG_SHUTDOWN,
-	MSG_OLDSTDERR, /* unused */
-	MSG_OLDSTDIN, /* unused */
-	MSG_OLDSTDOUT, /* unused */
-	MSG_SUSPEND,
-	MSG_UNLOCK,
-	MSG_WAKEUP,
-	MSG_EXEC,
-	MSG_FLAGS,
-
-	MSG_READ_OPEN = 300,
-	MSG_READ,
-	MSG_READ_DONE,
-	MSG_WRITE_OPEN,
-	MSG_WRITE,
-	MSG_WRITE_READY,
-	MSG_WRITE_CLOSE
-};
-
-/*
- * Message data.
- *
- * Don't forget to bump PROTOCOL_VERSION if any of these change!
- */
-struct msg_command {
-	int	argc;
-}; /* followed by packed argv */
-
-struct msg_read_open {
-	int	stream;
-	int	fd;
-}; /* followed by path */
-
-struct msg_read_data {
-	int	stream;
-};
-
-struct msg_read_done {
-	int	stream;
-	int	error;
-};
-
-struct msg_write_open {
-	int	stream;
-	int	fd;
-	int	flags;
-}; /* followed by path */
-
-struct msg_write_data {
-	int	stream;
-}; /* followed by data */
-
-struct msg_write_ready {
-	int	stream;
-	int	error;
-};
-
-struct msg_write_close {
-	int	stream;
-};
-
 /* Character classes. */
 #define WHITESPACE " "
 
@@ -1005,7 +917,7 @@ struct window_pane {
 #define PANE_FOCUSED 0x4
 /* 0x8 unused */
 /* 0x10 unused */
-#define PANE_FOCUSPUSH 0x20
+/* 0x20 unused */
 #define PANE_INPUTOFF 0x40
 #define PANE_CHANGED 0x80
 #define PANE_EXITED 0x100
@@ -1293,18 +1205,7 @@ struct key_event {
 	struct mouse_event	m;
 };
 
-/* TTY information. */
-struct tty_key {
-	char		 ch;
-	key_code	 key;
-
-	struct tty_key	*left;
-	struct tty_key	*right;
-
-	struct tty_key	*next;
-};
-
-struct tty_code;
+/* Terminal definition. */
 struct tty_term {
 	char		*name;
 	struct tty	*tty;
@@ -1326,6 +1227,7 @@ struct tty_term {
 };
 LIST_HEAD(tty_terms, tty_term);
 
+/* Client terminal. */
 struct tty {
 	struct client	*client;
 	struct event	 start_timer;
@@ -1394,7 +1296,7 @@ struct tty {
 	struct tty_key	*key_tree;
 };
 
-/* TTY command context. */
+/* Terminal command context. */
 typedef void (*tty_ctx_redraw_cb)(const struct tty_ctx *);
 typedef int (*tty_ctx_set_client_cb)(struct tty_ctx *, struct client *);
 struct tty_ctx {
@@ -1635,12 +1537,14 @@ RB_HEAD(client_windows, client_window);
 /* Client connection. */
 typedef int (*prompt_input_cb)(struct client *, void *, const char *, int);
 typedef void (*prompt_free_cb)(void *);
-typedef int (*overlay_check_cb)(struct client *, u_int, u_int);
-typedef struct screen *(*overlay_mode_cb)(struct client *, u_int *, u_int *);
-typedef void (*overlay_draw_cb)(struct client *, struct screen_redraw_ctx *);
-typedef int (*overlay_key_cb)(struct client *, struct key_event *);
-typedef void (*overlay_free_cb)(struct client *);
-typedef void (*overlay_resize_cb)(struct client *);
+typedef int (*overlay_check_cb)(struct client *, void *, u_int, u_int);
+typedef struct screen *(*overlay_mode_cb)(struct client *, void *, u_int *,
+	    u_int *);
+typedef void (*overlay_draw_cb)(struct client *, void *,
+	    struct screen_redraw_ctx *);
+typedef int (*overlay_key_cb)(struct client *, void *, struct key_event *);
+typedef void (*overlay_free_cb)(struct client *, void *);
+typedef void (*overlay_resize_cb)(struct client *, void *);
 struct client {
 	const char	*name;
 	struct tmuxpeer	*peer;
@@ -2139,6 +2043,7 @@ struct job	*job_run(const char *, int, char **, struct session *,
 		     const char *, job_update_cb, job_complete_cb, job_free_cb,
 		     void *, int, int, int);
 void		 job_free(struct job *);
+int		 job_transfer(struct job *, pid_t *, char *, size_t);
 void		 job_resize(struct job *, u_int, u_int);
 void		 job_check_died(pid_t, int);
 int		 job_get_status(struct job *);
@@ -2507,6 +2412,7 @@ int	 server_client_handle_key(struct client *, struct key_event *);
 struct client *server_client_create(int);
 int	 server_client_open(struct client *, char **);
 void	 server_client_unref(struct client *);
+void	 server_client_set_session(struct client *, struct session *);
 void	 server_client_lost(struct client *);
 void	 server_client_suspend(struct client *);
 void	 server_client_detach(struct client *, enum msgtype);
@@ -2827,6 +2733,8 @@ struct window_pane *window_find_string(struct window *, const char *);
 int		 window_has_pane(struct window *, struct window_pane *);
 int		 window_set_active_pane(struct window *, struct window_pane *,
 		     int);
+void		 window_update_focus(struct window *);
+void		 window_pane_update_focus(struct window_pane *);
 void		 window_redraw_active_switch(struct window *,
 		     struct window_pane *);
 struct window_pane *window_add_pane(struct window *, struct window_pane *,
@@ -3116,13 +3024,24 @@ void		 menu_add_item(struct menu *, const struct menu_item *,
 		    struct cmdq_item *, struct client *,
 		    struct cmd_find_state *);
 void		 menu_free(struct menu *);
+struct menu_data *menu_prepare(struct menu *, int, struct cmdq_item *, u_int,
+		    u_int, struct client *, struct cmd_find_state *,
+		    menu_choice_cb, void *);
 int		 menu_display(struct menu *, int, struct cmdq_item *, u_int,
 		    u_int, struct client *, struct cmd_find_state *,
 		    menu_choice_cb, void *);
+struct screen	*menu_mode_cb(struct client *, void *, u_int *, u_int *);
+int		 menu_check_cb(struct client *, void *, u_int, u_int);
+void		 menu_draw_cb(struct client *, void *,
+		    struct screen_redraw_ctx *);
+void		 menu_free_cb(struct client *, void *);
+int		 menu_key_cb(struct client *, void *, struct key_event *);
 
 /* popup.c */
 #define POPUP_CLOSEEXIT 0x1
 #define POPUP_CLOSEEXITZERO 0x2
+#define POPUP_NOBORDER 0x4
+#define POPUP_INTERNAL 0x8
 typedef void (*popup_close_cb)(int, void *);
 typedef void (*popup_finish_edit_cb)(char *, size_t, void *);
 int		 popup_display(int, struct cmdq_item *, u_int, u_int, u_int,

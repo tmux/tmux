@@ -124,17 +124,9 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 		if (!Eflag)
 			environ_update(s->options, c->environ, s->environ);
 
-		c->session = s;
+		server_client_set_session(c, s);
 		if (~cmdq_get_flags(item) & CMDQ_STATE_REPEAT)
 			server_client_set_key_table(c, NULL);
-		tty_update_client_offset(c);
-		status_timer_start(c);
-		notify_client("client-session-changed", c);
-		session_update_activity(s, NULL);
-		gettimeofday(&s->last_attached_time, NULL);
-		server_redraw_client(c);
-		s->curw->flags &= ~WINLINK_ALERTFLAGS;
-		s->curw->window->latest = c;
 	} else {
 		if (server_client_open(c, &cause) != 0) {
 			cmdq_error(item, "open terminal failed: %s", cause);
@@ -156,25 +148,14 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 		if (!Eflag)
 			environ_update(s->options, c->environ, s->environ);
 
-		c->session = s;
+		server_client_set_session(c, s);
 		server_client_set_key_table(c, NULL);
-		tty_update_client_offset(c);
-		status_timer_start(c);
-		notify_client("client-session-changed", c);
-		session_update_activity(s, NULL);
-		gettimeofday(&s->last_attached_time, NULL);
-		server_redraw_client(c);
-		s->curw->flags &= ~WINLINK_ALERTFLAGS;
-		s->curw->window->latest = c;
 
 		if (~c->flags & CLIENT_CONTROL)
 			proc_send(c->peer, MSG_READY, -1, NULL, 0);
 		notify_client("client-attached", c);
 		c->flags |= CLIENT_ATTACHED;
 	}
-	recalculate_sizes();
-	alerts_check_session(s);
-	server_update_socket();
 
 	return (CMD_RETURN_NORMAL);
 }

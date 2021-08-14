@@ -465,6 +465,52 @@ window_has_pane(struct window *w, struct window_pane *wp)
 	return (0);
 }
 
+void
+window_update_focus(struct window *w)
+{
+	if (w != NULL) {
+		log_debug("%s: @%u", __func__, w->id);
+		window_pane_update_focus(w->active);
+	}
+}
+
+void
+window_pane_update_focus(struct window_pane *wp)
+{
+	struct client	*c;
+	int		 focused = 0;
+
+	if (wp != NULL) {
+		if (wp != wp->window->active)
+			focused = 0;
+		else {
+			TAILQ_FOREACH(c, &clients, entry) {
+				if (c->session != NULL &&
+				    c->session->attached != 0 &&
+				    (c->flags & CLIENT_FOCUSED) &&
+				    c->session->curw->window == wp->window) {
+					focused = 1;
+					break;
+				}
+			}
+		}
+		if (!focused && (wp->flags & PANE_FOCUSED)) {
+			log_debug("%s: %%%u focus out", __func__, wp->id);
+			if (wp->base.mode & MODE_FOCUSON)
+				bufferevent_write(wp->event, "\033[O", 3);
+			notify_pane("pane-focus-out", wp);
+			wp->flags &= ~PANE_FOCUSED;
+		} else if (focused && (~wp->flags & PANE_FOCUSED)) {
+			log_debug("%s: %%%u focus in", __func__, wp->id);
+			if (wp->base.mode & MODE_FOCUSON)
+				bufferevent_write(wp->event, "\033[I", 3);
+			notify_pane("pane-focus-in", wp);
+			wp->flags |= PANE_FOCUSED;
+		} else
+			log_debug("%s: %%%u focus unchanged", __func__, wp->id);
+	}
+}
+
 int
 window_set_active_pane(struct window *w, struct window_pane *wp, int notify)
 {
@@ -477,6 +523,11 @@ window_set_active_pane(struct window *w, struct window_pane *wp, int notify)
 	w->active = wp;
 	w->active->active_point = next_active_point++;
 	w->active->flags |= PANE_CHANGED;
+
+	if (options_get_number(global_options, "focus-events")) {
+		window_pane_update_focus(w->last);
+		window_pane_update_focus(w->active);
+	}
 
 	tty_update_window_offset(w);
 

@@ -121,7 +121,6 @@ cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 
 	cdata->shell = !args_has(args, 'C');
 	if (!cdata->shell) {
-		memset(&cdata->pi, 0, sizeof cdata->pi);
 		cmd_get_source(self, &cdata->pi.file, &cdata->pi.line);
 		if (wait)
 			cdata->pi.item = item;

@@ -5414,7 +5414,7 @@ See
 for possible values for
 .Ar prompt-type .
 .It Xo Ic command-prompt
-.Op Fl 1FikN
+.Op Fl 1bFikN
 .Op Fl I Ar inputs
 .Op Fl p Ar prompts
 .Op Fl t Ar target-client
@@ -5517,6 +5517,11 @@ option:
 .It Li "Move cursor to start" Ta "0" Ta "C-a"
 .It Li "Transpose characters" Ta "" Ta "C-t"
 .El
+.Pp
+With
+.Fl b ,
+the prompt is shown in the background and the invoking client does not exit
+until it is dismissed.
 .It Xo Ic confirm-before
 .Op Fl b
 .Op Fl p Ar prompt
@@ -5537,7 +5542,8 @@ It may contain the special character sequences supported by the
 option.
 With
 .Fl b ,
-the prompt is shown in the background and the client.
+the prompt is shown in the background and the invoking client does not exit
+until it is dismissed.
 .It Xo Ic display-menu
 .Op Fl O
 .Op Fl c Ar target-client
@@ -5671,7 +5677,7 @@ lists the format variables and their values.
 forwards any input read from stdin to the empty pane given by
 .Ar target-pane .
 .It Xo Ic display-popup
-.Op Fl CE
+.Op Fl BCE
 .Op Fl c Ar target-client
 .Op Fl d Ar start-directory
 .Op Fl h Ar height
@@ -5711,6 +5717,8 @@ and
 give the width and height - both may be a percentage (followed by
 .Ql % ) .
 If omitted, half of the terminal size is used.
+.Fl B
+does not surround the popup by a border.
 .Pp
 The
 .Fl C
