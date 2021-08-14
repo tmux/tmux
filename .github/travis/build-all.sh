@@ -6,7 +6,7 @@ LIBEVENT=https://github.com/libevent/libevent/releases/download/release-2.1.11-s
 le.tar.gz
 NCURSES=https://ftp.gnu.org/gnu/ncurses/ncurses-6.2.tar.gz
 
-wget -4q $LIBEVENT || exit 1
+wget -4q "$LIBEVENT" || exit 1
 tar -zxf libevent-*.tar.gz || exit 1
 (cd libevent-*/ &&
 	 ./configure --prefix=$BUILD \
@@ -15,7 +15,7 @@ tar -zxf libevent-*.tar.gz || exit 1
 		     --disable-samples &&
 	 make && make install) || exit 1
 
-wget -4q $NCURSES || exit 1
+wget -4q "$NCURSES" || exit 1
 tar -zxf ncurses-*.tar.gz || exit 1
 (cd ncurses-*/ &&
 	CPPFLAGS=-P ./configure --prefix=$BUILD \

@@ -20,7 +20,7 @@ check() {
 	r=$($TMUX2 capturep -Cep|tail -1|sed 's|\\033\[||g')
 
 	#printf "$1 = [$v = $2] [$r = $3]"
-	if [ "$v" = "$2" -a "$r" = "$3" ]; then
+	if [ "$v" = "$2" ] && [ "$r" = "$3" ]; then
 		: #printf " good\n"
 	else
 		#printf " \033[31mbad\033[0m\n"
