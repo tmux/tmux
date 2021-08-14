@@ -2556,10 +2556,12 @@ input_osc_10(struct input_ctx *ictx, const char *p)
 		log_debug("bad OSC 10: %s", p);
 		return;
 	}
-	ictx->palette->fg = c;
-	if (wp != NULL)
-		wp->flags |= PANE_STYLECHANGED;
-	screen_write_fullredraw(&ictx->ctx);
+	if (ictx->palette != NULL) {
+		ictx->palette->fg = c;
+		if (wp != NULL)
+			wp->flags |= PANE_STYLECHANGED;
+		screen_write_fullredraw(&ictx->ctx);
+	}
 }
 
 /* Handle the OSC 110 sequence for resetting background colour. */
@@ -2570,10 +2572,12 @@ input_osc_110(struct input_ctx *ictx, const char *p)
 
 	if (*p != '\0')
 		return;
-	ictx->palette->fg = 8;
-	if (wp != NULL)
-		wp->flags |= PANE_STYLECHANGED;
-	screen_write_fullredraw(&ictx->ctx);
+	if (ictx->palette != NULL) {
+		ictx->palette->fg = 8;
+		if (wp != NULL)
+			wp->flags |= PANE_STYLECHANGED;
+		screen_write_fullredraw(&ictx->ctx);
+	}
 }
 
 /* Handle the OSC 11 sequence for setting and querying background colour. */
@@ -2596,10 +2600,12 @@ input_osc_11(struct input_ctx *ictx, const char *p)
 		log_debug("bad OSC 11: %s", p);
 		return;
 	}
-	ictx->palette->bg = c;
-	if (wp != NULL)
-		wp->flags |= PANE_STYLECHANGED;
-	screen_write_fullredraw(&ictx->ctx);
+	if (ictx->palette != NULL) {
+		ictx->palette->bg = c;
+		if (wp != NULL)
+			wp->flags |= PANE_STYLECHANGED;
+		screen_write_fullredraw(&ictx->ctx);
+	}
 }
 
 /* Handle the OSC 111 sequence for resetting background colour. */
@@ -2610,10 +2616,12 @@ input_osc_111(struct input_ctx *ictx, const char *p)
 
 	if (*p != '\0')
 		return;
-	ictx->palette->bg = 8;
-	if (wp != NULL)
-		wp->flags |= PANE_STYLECHANGED;
-	screen_write_fullredraw(&ictx->ctx);
+	if (ictx->palette != NULL) {
+		ictx->palette->bg = 8;
+		if (wp != NULL)
+			wp->flags |= PANE_STYLECHANGED;
+		screen_write_fullredraw(&ictx->ctx);
+	}
 }
 
 /* Handle the OSC 52 sequence for setting the clipboard. */
