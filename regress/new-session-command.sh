@@ -11,7 +11,7 @@ $TMUX kill-server 2>/dev/null
 
 TMP=$(mktemp)
 trap "rm -f $TMP" 0 1 15
- 
+
 cat <<EOF >$TMP
 new sleep 101
 new -- sleep 102
