@@ -39,7 +39,7 @@ const struct cmd_entry cmd_display_message_entry = {
 	.name = "display-message",
 	.alias = "display",
 
-	.args = { "acd:INpt:F:v", 0, 1 },
+	.args = { "ac:d:INpt:F:v", 0, 1 },
 	.usage = "[-aINpv] [-c target-client] [-d delay] [-F format] "
 		 CMD_TARGET_PANE_USAGE " [message]",
 
