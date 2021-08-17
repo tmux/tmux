@@ -79,6 +79,8 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (tc->prompt_string != NULL)
 		return (CMD_RETURN_NORMAL);
+	if (args_has(args, 'i'))
+		wait = 0;
 
 	cdata = xcalloc(1, sizeof *cdata);
 	cdata->idx = 1;
