@@ -2039,9 +2039,22 @@ tty_cmd_rawstring(struct tty *tty, const struct tty_ctx *ctx)
 }
 
 void
-tty_cmd_syncstart(struct tty *tty, __unused const struct tty_ctx *ctx)
+tty_cmd_syncstart(struct tty *tty, const struct tty_ctx *ctx)
 {
-	tty_sync_start(tty);
+	if (ctx->num == 0x11) {
+		/*
+		 * This is an overlay and a command that moves, the cursor so
+		 * start synchronized updates.
+		 */
+		tty_sync_start(tty);
+	} else if (~ctx->num & 0x10) {
+		/*
+		 * This is a pane. If there is an overlay, always start;
+		 * otherwise, only if requested.
+		 */
+		if (ctx->num || tty->client->overlay_draw != NULL)
+			tty_sync_start(tty);
+	}
 }
 
 void
