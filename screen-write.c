@@ -197,9 +197,20 @@ screen_write_initctx(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx,
 		}
 	}
 
-	if (ctx->wp != NULL &&
-	    (~ctx->flags & SCREEN_WRITE_SYNC) &&
-	    (sync || ctx->wp != ctx->wp->window->active)) {
+	if (~ctx->flags & SCREEN_WRITE_SYNC) {
+		/*
+		 * For the active pane or for an overlay (no pane), we want to
+		 * only use synchronized updates if requested (commands that
+		 * move the cursor); for other panes, always use it, since the
+		 * cursor will have to move.
+		 */
+		if (ctx->wp != NULL) {
+			if (ctx->wp != ctx->wp->window->active)
+				ttyctx->num = 1;
+			else
+				ttyctx->num = sync;
+		} else
+			ttyctx->num = 0x10|sync;
 		tty_write(tty_cmd_syncstart, ttyctx);
 		ctx->flags |= SCREEN_WRITE_SYNC;
 	}
