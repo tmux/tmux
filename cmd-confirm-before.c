@@ -72,7 +72,7 @@ cmd_confirm_before_exec(struct cmd *self, struct cmdq_item *item)
 		free(copy);
 	}
 
-	cdata = xmalloc(sizeof *cdata);
+	cdata = xcalloc(1, sizeof *cdata);
 	cdata->cmd = xstrdup(args->argv[0]);
 
 	cmd_get_source(self, &cdata->pi.file, &cdata->pi.line);

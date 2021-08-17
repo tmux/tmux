@@ -2043,7 +2043,7 @@ tty_cmd_syncstart(struct tty *tty, const struct tty_ctx *ctx)
 {
 	if (ctx->num == 0x11) {
 		/*
-		 * This is an overlay and a command that moves, the cursor so
+		 * This is an overlay and a command that moves the cursor so
 		 * start synchronized updates.
 		 */
 		tty_sync_start(tty);
