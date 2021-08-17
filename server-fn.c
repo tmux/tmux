@@ -445,7 +445,7 @@ server_destroy_session(struct session *s)
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (c->session != s)
 			continue;
-		server_client_set_session(c, NULL);
+		server_client_set_session(c, s_new);
 		if (s_new == NULL)
 			c->flags |= CLIENT_EXIT;
 	}
