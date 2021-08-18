@@ -834,6 +834,7 @@ cmd_parse_build_commands(struct cmd_parse_commands *cmds,
 			cmd_parse_free_command(cmd);
 			continue;
 		}
+		cmd_parse_flatten_command(cmd2);
 		for (i = 1; i < cmd->argc; i++)
 			cmd_append_argv(&cmd2->argc, &cmd2->argv, cmd->argv[i]);
 
