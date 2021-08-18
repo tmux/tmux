@@ -42,13 +42,28 @@ struct cmd_parse_scope {
 	TAILQ_ENTRY (cmd_parse_scope)	 entry;
 };
 
+enum cmd_parse_argument_type {
+	CMD_PARSE_STRING,
+	CMD_PARSE_COMMANDS
+};
+
+struct cmd_parse_argument {
+	enum cmd_parse_argument_type	 type;
+	char				*string;
+	struct cmd_parse_commands	*commands;
+
+	TAILQ_ENTRY(cmd_parse_argument)	 entry;
+};
+TAILQ_HEAD(cmd_parse_arguments, cmd_parse_argument);
+
 struct cmd_parse_command {
-	u_int				  line;
+	u_int				 line;
+	struct cmd_parse_arguments	 arguments;
 
-	int				  argc;
-	char				**argv;
+	int				 argc;
+	char			       **argv;
 
-	TAILQ_ENTRY(cmd_parse_command)	  entry;
+	TAILQ_ENTRY(cmd_parse_command)	 entry;
 };
 TAILQ_HEAD(cmd_parse_commands, cmd_parse_command);
 
@@ -80,16 +95,15 @@ static void	 cmd_parse_free_commands(struct cmd_parse_commands *);
 static char	*cmd_parse_commands_to_string(struct cmd_parse_commands *);
 static void	 cmd_parse_print_commands(struct cmd_parse_input *, u_int,
 		     struct cmd_list *);
+static void	 cmd_parse_flatten_command(struct cmd_parse_command *);
 
 %}
 
 %union
 {
 	char					 *token;
-	struct {
-		int				  argc;
-		char				**argv;
-	} arguments;
+	struct cmd_parse_arguments		 *arguments;
+	struct cmd_parse_argument		 *argument;
 	int					  flag;
 	struct {
 		int				  flag;
@@ -107,8 +121,9 @@ static void	 cmd_parse_print_commands(struct cmd_parse_input *, u_int,
 %token ENDIF
 %token <token> FORMAT TOKEN EQUALS
 
-%type <token> argument expanded format
+%type <token> expanded format
 %type <arguments> arguments
+%type <argument> argument
 %type <flag> if_open if_elif
 %type <elif> elif elif1
 %type <commands> argument_statements statements statement
@@ -360,7 +375,7 @@ commands	: command
 			struct cmd_parse_state	*ps = &parse_state;
 
 			$$ = cmd_parse_new_commands();
-			if ($1->argc != 0 &&
+			if (!TAILQ_EMPTY(&$1->arguments) &&
 			    (ps->scope == NULL || ps->scope->flag))
 				TAILQ_INSERT_TAIL($$, $1, entry);
 			else
@@ -380,7 +395,7 @@ commands	: command
 		{
 			struct cmd_parse_state	*ps = &parse_state;
 
-			if ($3->argc != 0 &&
+			if (!TAILQ_EMPTY(&$3->arguments) &&
 			    (ps->scope == NULL || ps->scope->flag)) {
 				$$ = $1;
 				TAILQ_INSERT_TAIL($$, $3, entry);
@@ -401,27 +416,38 @@ command		: assignment
 
 			$$ = xcalloc(1, sizeof *$$);
 			$$->line = ps->input->line;
+			TAILQ_INIT(&$$->arguments);
 		}
 		| optional_assignment TOKEN
 		{
-			struct cmd_parse_state	*ps = &parse_state;
+			struct cmd_parse_state		*ps = &parse_state;
+			struct cmd_parse_argument	*arg;
 
 			$$ = xcalloc(1, sizeof *$$);
 			$$->line = ps->input->line;
+			TAILQ_INIT(&$$->arguments);
 
-			cmd_prepend_argv(&$$->argc, &$$->argv, $2);
-
+			arg = xcalloc(1, sizeof *arg);
+			arg->type = CMD_PARSE_STRING;
+			arg->string = xstrdup($2);
+			TAILQ_INSERT_HEAD(&$$->arguments, arg, entry);
 		}
 		| optional_assignment TOKEN arguments
 		{
-			struct cmd_parse_state	*ps = &parse_state;
+			struct cmd_parse_state		*ps = &parse_state;
+			struct cmd_parse_argument	*arg;
 
 			$$ = xcalloc(1, sizeof *$$);
 			$$->line = ps->input->line;
+			TAILQ_INIT(&$$->arguments);
 
-			$$->argc = $3.argc;
-			$$->argv = $3.argv;
-			cmd_prepend_argv(&$$->argc, &$$->argv, $2);
+			TAILQ_CONCAT(&$$->arguments, $3, entry);
+			free($3);
+
+			arg = xcalloc(1, sizeof *arg);
+			arg->type = CMD_PARSE_STRING;
+			arg->string = xstrdup($2);
+			TAILQ_INSERT_HEAD(&$$->arguments, arg, entry);
 		}
 
 condition1	: if_open commands if_close
@@ -505,30 +531,34 @@ elif1		: if_elif commands
 
 arguments	: argument
 		{
-			$$.argc = 1;
-			$$.argv = xreallocarray(NULL, 1, sizeof *$$.argv);
+			$$ = xcalloc(1, sizeof *$$);
+			TAILQ_INIT($$);
 
-			$$.argv[0] = $1;
+			TAILQ_INSERT_HEAD($$, $1, entry);
 		}
 		| argument arguments
 		{
-			cmd_prepend_argv(&$2.argc, &$2.argv, $1);
-			free($1);
+			TAILQ_INSERT_HEAD($2, $1, entry);
 			$$ = $2;
 		}
 
 argument	: TOKEN
 		{
-			$$ = $1;
+			$$ = xcalloc(1, sizeof *$$);
+			$$->type = CMD_PARSE_STRING;
+			$$->string = xstrdup($1);
 		}
 		| EQUALS
 		{
-			$$ = $1;
+			$$ = xcalloc(1, sizeof *$$);
+			$$->type = CMD_PARSE_STRING;
+			$$->string = xstrdup($1);
 		}
 		| '{' argument_statements
 		{
-			$$ = cmd_parse_commands_to_string($2);
-			cmd_parse_free_commands($2);
+			$$ = xcalloc(1, sizeof *$$);
+			$$->type = CMD_PARSE_COMMANDS;
+			$$->commands = $2;
 		}
 
 argument_statements	: statement '}'
@@ -573,9 +603,29 @@ cmd_parse_print_commands(struct cmd_parse_input *pi, u_int line,
 }
 
 static void
+cmd_parse_free_arguments(struct cmd_parse_arguments *args)
+{
+	struct cmd_parse_argument	*arg, *arg1;
+
+	TAILQ_FOREACH_SAFE(arg, args, entry, arg1) {
+		switch (arg->type) {
+		case CMD_PARSE_STRING:
+			free(arg->string);
+			break;
+		case CMD_PARSE_COMMANDS:
+			cmd_parse_free_commands(arg->commands);
+			break;
+		}
+		TAILQ_REMOVE(args, arg, entry);
+		free(arg);
+	}
+}
+
+static void
 cmd_parse_free_command(struct cmd_parse_command *cmd)
 {
 	cmd_free_argv(cmd->argc, cmd->argv);
+	cmd_parse_free_arguments(&cmd->arguments);
 	free(cmd);
 }
 
@@ -585,7 +635,7 @@ cmd_parse_new_commands(void)
 	struct cmd_parse_commands	*cmds;
 
 	cmds = xmalloc(sizeof *cmds);
-	TAILQ_INIT (cmds);
+	TAILQ_INIT(cmds);
 	return (cmds);
 }
 
@@ -599,30 +649,6 @@ cmd_parse_free_commands(struct cmd_parse_commands *cmds)
 		cmd_parse_free_command(cmd);
 	}
 	free(cmds);
-}
-
-static char *
-cmd_parse_commands_to_string(struct cmd_parse_commands *cmds)
-{
-	struct cmd_parse_command	 *cmd;
-	char				 *string = NULL, *s, *line;
-
-	TAILQ_FOREACH(cmd, cmds, entry) {
-		line = cmd_stringify_argv(cmd->argc, cmd->argv);
-		if (string == NULL)
-			s = line;
-		else {
-			xasprintf(&s, "%s ; %s", s, line);
-			free(line);
-		}
-
-		free(string);
-		string = s;
-	}
-	if (string == NULL)
-		string = xstrdup("");
-	log_debug("%s: %s", __func__, string);
-	return (string);
 }
 
 static struct cmd_parse_commands *
@@ -674,6 +700,84 @@ cmd_parse_do_buffer(const char *buf, size_t len, struct cmd_parse_input *pi,
 	return (cmd_parse_run_parser(cause));
 }
 
+static void
+cmd_parse_log_commands(struct cmd_parse_commands *cmds, const char *prefix)
+{
+	struct cmd_parse_command	*cmd;
+	struct cmd_parse_argument	*arg;
+	u_int				 i, j;
+	char				*s;
+
+	i = 0;
+	TAILQ_FOREACH(cmd, cmds, entry) {
+		j = 0;
+		TAILQ_FOREACH(arg, &cmd->arguments, entry) {
+			switch (arg->type) {
+			case CMD_PARSE_STRING:
+				log_debug("%s %u:%u: %s", prefix, i, j,
+				    arg->string);
+				break;
+			case CMD_PARSE_COMMANDS:
+				xasprintf(&s, "%s %u:%u", prefix, i, j);
+				cmd_parse_log_commands(arg->commands, s);
+				free(s);
+				break;
+			}
+			j++;
+		}
+		i++;
+	}
+}
+
+static char *
+cmd_parse_commands_to_string(struct cmd_parse_commands *cmds)
+{
+	struct cmd_parse_command	 *cmd;
+	char				 *string = NULL, *s, *line;
+
+	TAILQ_FOREACH(cmd, cmds, entry) {
+		cmd_parse_flatten_command(cmd);
+
+		line = cmd_stringify_argv(cmd->argc, cmd->argv);
+		if (string == NULL)
+			s = line;
+		else {
+			xasprintf(&s, "%s ; %s", s, line);
+			free(line);
+		}
+
+		free(string);
+		string = s;
+	}
+	if (string == NULL)
+		string = xstrdup("");
+	log_debug("%s: %s", __func__, string);
+	return (string);
+}
+
+static void
+cmd_parse_flatten_command(struct cmd_parse_command *cmd)
+{
+	struct cmd_parse_argument	*arg;
+	char				*s;
+
+	cmd->argc = 0;
+	cmd->argv = NULL;
+
+	TAILQ_FOREACH(arg, &cmd->arguments, entry) {
+		switch (arg->type) {
+		case CMD_PARSE_STRING:
+			cmd_append_argv(&cmd->argc, &cmd->argv, arg->string);
+			break;
+		case CMD_PARSE_COMMANDS:
+			s = cmd_parse_commands_to_string(arg->commands);
+			cmd_append_argv(&cmd->argc, &cmd->argv, s);
+			free(s);
+			break;
+		}
+	}
+}
+
 static struct cmd_parse_result *
 cmd_parse_build_commands(struct cmd_parse_commands *cmds,
     struct cmd_parse_input *pi)
@@ -693,6 +797,11 @@ cmd_parse_build_commands(struct cmd_parse_commands *cmds,
 		pr.status = CMD_PARSE_EMPTY;
 		return (&pr);
 	}
+
+	/* Flatten command arguments. */
+	cmd_parse_log_commands(cmds, __func__);
+	TAILQ_FOREACH(cmd, cmds, entry)
+		cmd_parse_flatten_command(cmd);
 
 	/*
 	 * Walk the commands and expand any aliases. Each alias is parsed
@@ -918,12 +1027,35 @@ cmd_parse_from_buffer(const void *buf, size_t len, struct cmd_parse_input *pi)
 	return (cmd_parse_build_commands(cmds, pi));
 }
 
+static void
+cmd_parse_add_command(struct cmd_parse_commands *cmds,
+    struct cmd_parse_input *pi, int argc, char **argv)
+{
+	struct cmd_parse_command	*cmd;
+	struct cmd_parse_argument	*arg;
+	int				 i;
+
+	cmd_log_argv(argc, argv, "%s", __func__);
+
+	cmd = xcalloc(1, sizeof *cmd);
+	cmd->line = pi->line;
+
+	TAILQ_INIT(&cmd->arguments);
+	for (i = 0; i < argc; i++) {
+		arg = xcalloc(1, sizeof *arg);
+		arg->type = CMD_PARSE_STRING;
+		arg->string = xstrdup(argv[i]);
+		TAILQ_INSERT_TAIL(&cmd->arguments, arg, entry);
+	}
+
+	TAILQ_INSERT_TAIL(cmds, cmd, entry);
+}
+
 struct cmd_parse_result *
 cmd_parse_from_arguments(int argc, char **argv, struct cmd_parse_input *pi)
 {
 	struct cmd_parse_input		  input;
 	struct cmd_parse_commands	 *cmds;
-	struct cmd_parse_command	 *cmd;
 	char				**copy, **new_argv;
 	size_t				  size;
 	int				  i, last, new_argc;
@@ -958,37 +1090,16 @@ cmd_parse_from_arguments(int argc, char **argv, struct cmd_parse_input *pi)
 		if (size != 0)
 			new_argc++;
 
-		if (new_argc != 0) {
-			cmd_log_argv(new_argc, new_argv, "%s: at %u", __func__,
-			    i);
-
-			cmd = xcalloc(1, sizeof *cmd);
-			cmd->line = pi->line;
-
-			cmd->argc = new_argc;
-			cmd->argv = cmd_copy_argv(new_argc, new_argv);
-
-			TAILQ_INSERT_TAIL(cmds, cmd, entry);
-		}
-
+		if (new_argc != 0)
+			cmd_parse_add_command(cmds, pi, new_argc, new_argv);
 		last = i + 1;
 	}
 	if (last != argc) {
 		new_argv = copy + last;
 		new_argc = argc - last;
 
-		if (new_argc != 0) {
-			cmd_log_argv(new_argc, new_argv, "%s: at %u", __func__,
-			    last);
-
-			cmd = xcalloc(1, sizeof *cmd);
-			cmd->line = pi->line;
-
-			cmd->argc = new_argc;
-			cmd->argv = cmd_copy_argv(new_argc, new_argv);
-
-			TAILQ_INSERT_TAIL(cmds, cmd, entry);
-		}
+		if (new_argc != 0)
+			cmd_parse_add_command(cmds, pi, new_argc, new_argv);
 	}
 
 	cmd_free_argv(argc, copy);
