@@ -334,7 +334,7 @@ input_key_cmp(struct input_key_entry *ike1, struct input_key_entry *ike2)
 
 /* Look for key in tree. */
 static struct input_key_entry *
-input_key_get (key_code key)
+input_key_get(key_code key)
 {
 	struct input_key_entry	entry = { .key = key };
 

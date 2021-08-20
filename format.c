@@ -4078,8 +4078,7 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 			case 's':
 				if (fm->argc < 2)
 					break;
-				sub = xreallocarray (sub, nsub + 1,
-				    sizeof *sub);
+				sub = xreallocarray(sub, nsub + 1, sizeof *sub);
 				sub[nsub++] = fm;
 				break;
 			case '=':
@@ -4188,7 +4187,7 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 			value = xstrdup("");
 		else
 			xasprintf(&value, "%c", c);
-		free (new);
+		free(new);
 		goto done;
 	}
 
@@ -4752,7 +4751,7 @@ format_defaults(struct format_tree *ft, struct client *c, struct session *s,
 	if (wp != NULL)
 		format_defaults_pane(ft, wp);
 
-	pb = paste_get_top (NULL);
+	pb = paste_get_top(NULL);
 	if (pb != NULL)
 		format_defaults_paste_buffer(ft, pb);
 }

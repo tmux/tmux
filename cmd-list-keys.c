@@ -211,7 +211,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 
 	repeat = 0;
 	tablewidth = keywidth = 0;
-	table = key_bindings_first_table ();
+	table = key_bindings_first_table();
 	while (table != NULL) {
 		if (tablename != NULL && strcmp(table->name, tablename) != 0) {
 			table = key_bindings_next_table(table);
@@ -243,8 +243,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 
 	tmpsize = 256;
 	tmp = xmalloc(tmpsize);
-
-	table = key_bindings_first_table ();
+	table = key_bindings_first_table();
 	while (table != NULL) {
 		if (tablename != NULL && strcmp(table->name, tablename) != 0) {
 			table = key_bindings_next_table(table);

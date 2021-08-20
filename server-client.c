@@ -2378,7 +2378,7 @@ server_client_set_flags(struct client *c, const char *flags)
 	uint64_t flag;
 	int	 not;
 
-	s = copy = xstrdup (flags);
+	s = copy = xstrdup(flags);
 	while ((next = strsep(&s, ",")) != NULL) {
 		not = (*next == '!');
 		if (not)
