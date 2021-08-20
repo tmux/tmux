@@ -778,6 +778,23 @@ cmd_parse_flatten_command(struct cmd_parse_command *cmd)
 	}
 }
 
+static struct cmd *
+cmd_parse_build_command(struct cmd_parse_command *cmd,
+    struct cmd_parse_input *pi, u_int line, struct cmd_parse_result *pr)
+{
+	struct cmd	*add;
+	char		*cause;
+
+	add = cmd_parse(cmd->argc, cmd->argv, pi->file, line, &cause);
+	if (add == NULL) {
+		pr->status = CMD_PARSE_ERROR;
+		pr->error = cmd_parse_get_error(pi->file, line, cause);
+		free(cause);
+		return (NULL);
+	}
+	return (add);
+}
+
 static struct cmd_parse_result *
 cmd_parse_build_commands(struct cmd_parse_commands *cmds,
     struct cmd_parse_input *pi)
@@ -787,7 +804,7 @@ cmd_parse_build_commands(struct cmd_parse_commands *cmds,
 	struct cmd_parse_command	*cmd, *cmd2, *next, *next2, *after;
 	u_int				 line = UINT_MAX;
 	int				 i;
-	struct cmd_list			*cmdlist = NULL, *result;
+	struct cmd_list			*current = NULL, *result;
 	struct cmd			*add;
 	char				*name, *alias, *cause, *s;
 
@@ -859,36 +876,30 @@ cmd_parse_build_commands(struct cmd_parse_commands *cmds,
 	 */
 	result = cmd_list_new();
 	TAILQ_FOREACH(cmd, cmds, entry) {
-		name = cmd->argv[0];
-		log_debug("%s: %u %s", __func__, cmd->line, name);
-		cmd_log_argv(cmd->argc, cmd->argv, __func__);
-
-		if (cmdlist == NULL ||
-		    ((~pi->flags & CMD_PARSE_ONEGROUP) && cmd->line != line)) {
-			if (cmdlist != NULL) {
-				cmd_parse_print_commands(pi, line, cmdlist);
-				cmd_list_move(result, cmdlist);
-				cmd_list_free(cmdlist);
+		if (((~pi->flags & CMD_PARSE_ONEGROUP) && cmd->line != line)) {
+			if (current != NULL) {
+				cmd_parse_print_commands(pi, line, current);
+				cmd_list_move(result, current);
+				cmd_list_free(current);
 			}
-			cmdlist = cmd_list_new();
+			current = cmd_list_new();
 		}
+		if (current == NULL)
+			current = cmd_list_new();
 		line = cmd->line;
 
-		add = cmd_parse(cmd->argc, cmd->argv, pi->file, line, &cause);
+		add = cmd_parse_build_command(cmd, pi, line, &pr);
 		if (add == NULL) {
 			cmd_list_free(result);
-			pr.status = CMD_PARSE_ERROR;
-			pr.error = cmd_parse_get_error(pi->file, line, cause);
-			free(cause);
-			cmd_list_free(cmdlist);
+			cmd_list_free(current);
 			goto out;
 		}
-		cmd_list_append(cmdlist, add);
+		cmd_list_append(current, add);
 	}
-	if (cmdlist != NULL) {
-		cmd_parse_print_commands(pi, line, cmdlist);
-		cmd_list_move(result, cmdlist);
-		cmd_list_free(cmdlist);
+	if (current != NULL) {
+		cmd_parse_print_commands(pi, line, current);
+		cmd_list_move(result, current);
+		cmd_list_free(current);
 	}
 
 	s = cmd_list_print(result, 0);
