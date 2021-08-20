@@ -51,7 +51,7 @@ cmd_rename_session_exec(struct cmd *self, struct cmdq_item *item)
 	struct session		*s = target->s;
 	char			*newname, *tmp;
 
-	tmp = format_single_from_target(item, args->argv[0]);
+	tmp = format_single_from_target(item, args_string(args, 0));
 	newname = session_check_name(tmp);
 	if (newname == NULL) {
 		cmdq_error(item, "invalid session: %s", tmp);

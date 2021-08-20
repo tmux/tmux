@@ -117,7 +117,7 @@ cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 	struct client		*tc = cmdq_get_target_client(item);
 	struct tty		*tty = &tc->tty;
 	struct window		*w;
-	const char		*size, *errstr, *value;
+	const char		*size, *errstr;
 	u_int			 x, y, adjust;
 	struct args_value	*av;
 
@@ -127,10 +127,11 @@ cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 	    args_has(args, 'U') ||
 	    args_has(args, 'D'))
 	{
-		if (args->argc == 0)
+		if (args_count(args) == 0)
 			adjust = 1;
 		else {
-			adjust = strtonum(args->argv[0], 1, INT_MAX, &errstr);
+			adjust = strtonum(args_string(args, 0), 1, INT_MAX,
+			    &errstr);
 			if (errstr != NULL) {
 				cmdq_error(item, "adjustment %s", errstr);
 				return (CMD_RETURN_ERROR);
@@ -184,20 +185,20 @@ cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'A')) {
 		if (~tc->flags & CLIENT_CONTROL)
 			goto not_control_client;
-		value = args_first_value(args, 'A', &av);
-		while (value != NULL) {
-			cmd_refresh_client_update_offset(tc, value);
-			value = args_next_value(&av);
+		av = args_first_value(args, 'A');
+		while (av != NULL) {
+			cmd_refresh_client_update_offset(tc, av->value);
+			av = args_next_value(av);
 		}
 		return (CMD_RETURN_NORMAL);
 	}
 	if (args_has(args, 'B')) {
 		if (~tc->flags & CLIENT_CONTROL)
 			goto not_control_client;
-		value = args_first_value(args, 'B', &av);
-		while (value != NULL) {
-			cmd_refresh_client_update_subscription(tc, value);
-			value = args_next_value(&av);
+		av = args_first_value(args, 'B');
+		while (av != NULL) {
+			cmd_refresh_client_update_subscription(tc, av->value);
+			av = args_next_value(av);
 		}
 		return (CMD_RETURN_NORMAL);
 	}

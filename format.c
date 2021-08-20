@@ -2085,7 +2085,7 @@ static void *
 format_cb_session_windows(struct format_tree *ft)
 {
 	if (ft->s != NULL)
-		return (format_printf ("%u", winlink_count(&ft->s->windows)));
+		return (format_printf("%u", winlink_count(&ft->s->windows)));
 	return (NULL);
 }
 
@@ -3626,7 +3626,7 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 				break;
 			cp++;
 
-			argv = xreallocarray (argv, argc + 1, sizeof *argv);
+			argv = xreallocarray(argv, argc + 1, sizeof *argv);
 			value = xstrndup(cp, end - cp);
 			argv[argc++] = format_expand1(es, value);
 			free(value);

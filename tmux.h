@@ -38,7 +38,6 @@
 extern char   **environ;
 
 struct args;
-struct args_value;
 struct client;
 struct cmd;
 struct cmd_find_state;
@@ -1357,14 +1356,15 @@ struct message_entry {
 };
 TAILQ_HEAD(message_list, message_entry);
 
-/* Parsed arguments structures. */
+/* Argument value. */
+struct args_value {
+	char			*value;
+	TAILQ_ENTRY(args_value)	 entry;
+};
+
+/* Arguments set. */
 struct args_entry;
 RB_HEAD(args_tree, args_entry);
-struct args {
-	struct args_tree	  tree;
-	int			  argc;
-	char			**argv;
-};
 
 /* Command find structures. */
 enum cmd_find_type {
@@ -2184,7 +2184,8 @@ int		tty_keys_next(struct tty *);
 /* arguments.c */
 void		 args_set(struct args *, u_char, const char *);
 struct args 	*args_create(void);
-struct args	*args_parse(const char *, int, char **);
+struct args	*args_parse(const char *, int, char **, int, int);
+void		 args_vector(struct args *, int *, char ***);
 void		 args_free(struct args *);
 char		*args_print(struct args *);
 char		*args_escape(const char *);
@@ -2192,8 +2193,10 @@ int		 args_has(struct args *, u_char);
 const char	*args_get(struct args *, u_char);
 u_char		 args_first(struct args *, struct args_entry **);
 u_char		 args_next(struct args_entry **);
-const char	*args_first_value(struct args *, u_char, struct args_value **);
-const char	*args_next_value(struct args_value **);
+u_int		 args_count(struct args *);
+const char	*args_string(struct args *, u_int);
+struct args_value *args_first_value(struct args *, u_char);
+struct args_value *args_next_value(struct args_value *);
 long long	 args_strtonum(struct args *, u_char, long long, long long,
 		     char **);
 long long	 args_percentage(struct args *, u_char, long long,
@@ -2232,8 +2235,8 @@ int		 cmd_find_from_nothing(struct cmd_find_state *, int);
 /* cmd.c */
 extern const struct cmd_entry *cmd_table[];
 void printflike(3, 4) cmd_log_argv(int, char **, const char *, ...);
-void		 cmd_prepend_argv(int *, char ***, char *);
-void		 cmd_append_argv(int *, char ***, char *);
+void		 cmd_prepend_argv(int *, char ***, const char *);
+void		 cmd_append_argv(int *, char ***, const char *);
 int		 cmd_pack_argv(int, char **, char *, size_t);
 int		 cmd_unpack_argv(char *, size_t, int, char ***);
 char	       **cmd_copy_argv(int, char **);

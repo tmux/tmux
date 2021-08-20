@@ -56,10 +56,11 @@ cmd_resize_window_exec(struct cmd *self, struct cmdq_item *item)
 	u_int			 adjust, sx, sy;
 	int			 xpixel = -1, ypixel = -1;
 
-	if (args->argc == 0)
+	if (args_count(args) == 0)
 		adjust = 1;
 	else {
-		adjust = strtonum(args->argv[0], 1, INT_MAX, &errstr);
+		adjust = strtonum(args_string(args, 0), 1, INT_MAX,
+		    &errstr);
 		if (errstr != NULL) {
 			cmdq_error(item, "adjustment %s", errstr);
 			return (CMD_RETURN_ERROR);

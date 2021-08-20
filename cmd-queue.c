@@ -352,12 +352,12 @@ cmdq_insert_hook(struct session *s, struct cmdq_item *item,
 	struct cmdq_state		*state = item->state;
 	struct cmd			*cmd = item->cmd;
 	struct args			*args = cmd_get_args(cmd);
-	struct args_entry		*entryp;
-	struct args_value		*valuep;
+	struct args_entry		*ae;
+	struct args_value		*av;
 	struct options			*oo;
 	va_list				 ap;
 	char				*name, tmp[32], flag, *arguments;
-	int				 i;
+	u_int				 i;
 	const char			*value;
 	struct cmdq_item		*new_item;
 	struct cmdq_state		*new_state;
@@ -394,11 +394,11 @@ cmdq_insert_hook(struct session *s, struct cmdq_item *item,
 	cmdq_add_format(new_state, "hook_arguments", "%s", arguments);
 	free(arguments);
 
-	for (i = 0; i < args->argc; i++) {
+	for (i = 0; i < args_count(args); i++) {
 		xsnprintf(tmp, sizeof tmp, "hook_argument_%d", i);
-		cmdq_add_format(new_state, tmp, "%s", args->argv[i]);
+		cmdq_add_format(new_state, tmp, "%s", args_string(args, i));
 	}
-	flag = args_first(args, &entryp);
+	flag = args_first(args, &ae);
 	while (flag != 0) {
 		value = args_get(args, flag);
 		if (value == NULL) {
@@ -410,15 +410,15 @@ cmdq_insert_hook(struct session *s, struct cmdq_item *item,
 		}
 
 		i = 0;
-		value = args_first_value(args, flag, &valuep);
-		while (value != NULL) {
+		av = args_first_value(args, flag);
+		while (av != NULL) {
 			xsnprintf(tmp, sizeof tmp, "hook_flag_%c_%d", flag, i);
-			cmdq_add_format(new_state, tmp, "%s", value);
+			cmdq_add_format(new_state, tmp, "%s", av->value);
 			i++;
-			value = args_next_value(&valuep);
+			av = args_next_value(av);
 		}
 
-		flag = args_next(&entryp);
+		flag = args_next(&ae);
 	}
 
 	a = options_array_first(o);

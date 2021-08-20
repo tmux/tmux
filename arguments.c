@@ -28,10 +28,6 @@
  * Manipulate command arguments.
  */
 
-struct args_value {
-	char			*value;
-	TAILQ_ENTRY(args_value)	 entry;
-};
 TAILQ_HEAD(args_values, args_value);
 
 struct args_entry {
@@ -39,6 +35,12 @@ struct args_entry {
 	struct args_values	 values;
 	u_int			 count;
 	RB_ENTRY(args_entry)	 entry;
+};
+
+struct args {
+	struct args_tree	  tree;
+	int			  argc;
+	char			**argv;
 };
 
 static struct args_entry	*args_find(struct args *, u_char);
@@ -76,7 +78,7 @@ args_create(void)
 
 /* Parse an argv and argc into a new argument set. */
 struct args *
-args_parse(const char *template, int argc, char **argv)
+args_parse(const char *template, int argc, char **argv, int lower, int upper)
 {
 	struct args	*args;
 	int		 opt;
@@ -102,6 +104,10 @@ args_parse(const char *template, int argc, char **argv)
 	args->argc = argc;
 	args->argv = cmd_copy_argv(argc, argv);
 
+	if ((lower != -1 && argc < lower) || (upper != -1 && argc > upper)) {
+		args_free(args);
+		return (NULL);
+	}
 	return (args);
 }
 
@@ -129,11 +135,19 @@ args_free(struct args *args)
 	free(args);
 }
 
+/* Convert arguments to vector. */
+void
+args_vector(struct args *args, int *argc, char ***argv)
+{
+	*argc = args->argc;
+	*argv = cmd_copy_argv(args->argc, args->argv);
+}
+
 /* Add to string. */
 static void printflike(3, 4)
 args_print_add(char **buf, size_t *len, const char *fmt, ...)
 {
-	va_list  ap;
+	va_list	 ap;
 	char	*s;
 	size_t	 slen;
 
@@ -146,23 +160,6 @@ args_print_add(char **buf, size_t *len, const char *fmt, ...)
 
 	strlcat(*buf, s, *len);
 	free(s);
-}
-
-/* Add value to string. */
-static void
-args_print_add_value(char **buf, size_t *len, struct args_entry *entry,
-    struct args_value *value)
-{
-	char	*escaped;
-
-	if (**buf != '\0')
-		args_print_add(buf, len, " -%c ", entry->flag);
-	else
-		args_print_add(buf, len, "-%c ", entry->flag);
-
-	escaped = args_escape(value->value);
-	args_print_add(buf, len, "%s", escaped);
-	free(escaped);
 }
 
 /* Add argument to string. */
@@ -183,7 +180,7 @@ args_print_add_argument(char **buf, size_t *len, const char *argument)
 char *
 args_print(struct args *args)
 {
-	size_t		 	 len;
+	size_t			 len;
 	char			*buf;
 	int			 i;
 	u_int			 j;
@@ -206,8 +203,13 @@ args_print(struct args *args)
 
 	/* Then the flags with arguments. */
 	RB_FOREACH(entry, args_tree, &args->tree) {
-		TAILQ_FOREACH(value, &entry->values, entry)
-			args_print_add_value(&buf, &len, entry, value);
+		TAILQ_FOREACH(value, &entry->values, entry) {
+			if (*buf != '\0')
+				args_print_add(&buf, &len, " -%c", entry->flag);
+			else
+				args_print_add(&buf, &len, "-%c", entry->flag);
+			args_print_add_argument(&buf, &len, value->value);
+		}
 	}
 
 	/* And finally the argument vector. */
@@ -333,31 +335,38 @@ args_next(struct args_entry **entry)
 	return ((*entry)->flag);
 }
 
-/* Get first value in argument. */
+/* Get argument count. */
+u_int
+args_count(struct args *args)
+{
+	return (args->argc);
+}
+
+/* Return argument as string. */
 const char *
-args_first_value(struct args *args, u_char flag, struct args_value **value)
+args_string(struct args *args, u_int idx)
+{
+	if (idx >= (u_int)args->argc)
+		return (NULL);
+	return (args->argv[idx]);
+}
+
+/* Get first value in argument. */
+struct args_value *
+args_first_value(struct args *args, u_char flag)
 {
 	struct args_entry	*entry;
 
 	if ((entry = args_find(args, flag)) == NULL)
 		return (NULL);
-
-	*value = TAILQ_FIRST(&entry->values);
-	if (*value == NULL)
-		return (NULL);
-	return ((*value)->value);
+	return (TAILQ_FIRST(&entry->values));
 }
 
 /* Get next value in argument. */
-const char *
-args_next_value(struct args_value **value)
+struct args_value *
+args_next_value(struct args_value *value)
 {
-	if (*value == NULL)
-		return (NULL);
-	*value = TAILQ_NEXT(*value, entry);
-	if (*value == NULL)
-		return (NULL);
-	return ((*value)->value);
+	return (TAILQ_NEXT(value, entry));
 }
 
 /* Convert an argument value to a number. */
@@ -366,7 +375,7 @@ args_strtonum(struct args *args, u_char flag, long long minval,
     long long maxval, char **cause)
 {
 	const char		*errstr;
-	long long 	 	 ll;
+	long long		 ll;
 	struct args_entry	*entry;
 	struct args_value	*value;
 
@@ -408,7 +417,7 @@ args_string_percentage(const char *value, long long minval, long long maxval,
     long long curval, char **cause)
 {
 	const char	*errstr;
-	long long 	 ll;
+	long long	 ll;
 	size_t		 valuelen = strlen(value);
 	char		*copy;
 

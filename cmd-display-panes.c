@@ -276,8 +276,8 @@ cmd_display_panes_exec(struct cmd *self, struct cmdq_item *item)
 		delay = options_get_number(s->options, "display-panes-time");
 
 	cdata = xmalloc(sizeof *cdata);
-	if (args->argc != 0)
-		cdata->command = xstrdup(args->argv[0]);
+	if (args_count(args))
+		cdata->command = xstrdup(args_string(args, 0));
 	else
 		cdata->command = xstrdup("select-pane -t '%%'");
 	if (args_has(args, 'b'))

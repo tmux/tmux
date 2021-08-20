@@ -842,26 +842,23 @@ window_copy_expand_search_string(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
 	struct window_copy_mode_data	*data = wme->data;
-	const char			*argument;
+	const char			*ss = args_string(cs->args, 1);
 	char				*expanded;
 
-	if (cs->args->argc == 2) {
-		argument = cs->args->argv[1];
-		if (*argument != '\0') {
-			if (args_has(cs->args, 'F')) {
-				expanded = format_single(NULL, argument, NULL,
-				    NULL, NULL, wme->wp);
-				if (*expanded == '\0') {
-					free(expanded);
-					return (0);
-				}
-				free(data->searchstr);
-				data->searchstr = expanded;
-			} else {
-				free(data->searchstr);
-				data->searchstr = xstrdup(argument);
-			}
+	if (ss == NULL || *ss == '\0')
+		return (0);
+
+	if (args_has(cs->args, 'F')) {
+		expanded = format_single(NULL, ss, NULL, NULL, NULL, wme->wp);
+		if (*expanded == '\0') {
+			free(expanded);
+			return (0);
 		}
+		free(data->searchstr);
+		data->searchstr = expanded;
+	} else {
+		free(data->searchstr);
+		data->searchstr = xstrdup(ss);
 	}
 	return (1);
 }
@@ -963,24 +960,25 @@ window_copy_do_copy_end_of_line(struct window_copy_cmd_state *cs, int pipe,
     int cancel)
 {
 	struct window_mode_entry	 *wme = cs->wme;
-	int				  argc = cs->args->argc;
-	char				**argv = cs->args->argv;
 	struct client			 *c = cs->c;
 	struct session			 *s = cs->s;
 	struct winlink			 *wl = cs->wl;
 	struct window_pane		 *wp = wme->wp;
+	u_int				  count = args_count(cs->args);
 	u_int				  np = wme->prefix, ocx, ocy, ooy;
 	struct window_copy_mode_data	 *data = wme->data;
 	char				 *prefix = NULL, *command = NULL;
+	const char			 *arg1 = args_string(cs->args, 1);
+	const char			 *arg2 = args_string(cs->args, 2);
 
 	if (pipe) {
-		if (argc == 3)
-			prefix = format_single(NULL, argv[2], c, s, wl, wp);
-		if (s != NULL && argc > 1 && *argv[1] != '\0')
-			command = format_single(NULL, argv[1], c, s, wl, wp);
+		if (count == 3)
+			prefix = format_single(NULL, arg2, c, s, wl, wp);
+		if (s != NULL && count > 1 && *arg1 != '\0')
+			command = format_single(NULL, arg1, c, s, wl, wp);
 	} else {
-		if (argc == 2)
-			prefix = format_single(NULL, argv[1], c, s, wl, wp);
+		if (count == 2)
+			prefix = format_single(NULL, arg1, c, s, wl, wp);
 	}
 
 	ocx = data->cx;
@@ -1044,24 +1042,25 @@ static enum window_copy_cmd_action
 window_copy_do_copy_line(struct window_copy_cmd_state *cs, int pipe, int cancel)
 {
 	struct window_mode_entry	 *wme = cs->wme;
-	int				  argc = cs->args->argc;
-	char				**argv = cs->args->argv;
 	struct client			 *c = cs->c;
 	struct session			 *s = cs->s;
 	struct winlink			 *wl = cs->wl;
 	struct window_pane		 *wp = wme->wp;
 	struct window_copy_mode_data	 *data = wme->data;
+	u_int				  count = args_count(cs->args);
 	u_int				  np = wme->prefix, ocx, ocy, ooy;
 	char				 *prefix = NULL, *command = NULL;
+	const char			 *arg1 = args_string(cs->args, 1);
+	const char			 *arg2 = args_string(cs->args, 2);
 
 	if (pipe) {
-		if (argc == 3)
-			prefix = format_single(NULL, argv[2], c, s, wl, wp);
-		if (s != NULL && argc > 1 && *argv[1] != '\0')
-			command = format_single(NULL, argv[1], c, s, wl, wp);
+		if (count == 3)
+			prefix = format_single(NULL, arg2, c, s, wl, wp);
+		if (s != NULL && count > 1 && *arg1 != '\0')
+			command = format_single(NULL, arg1, c, s, wl, wp);
 	} else {
-		if (argc == 2)
-			prefix = format_single(NULL, argv[1], c, s, wl, wp);
+		if (count == 2)
+			prefix = format_single(NULL, arg1, c, s, wl, wp);
 	}
 
 	ocx = data->cx;
@@ -1131,9 +1130,10 @@ window_copy_cmd_copy_selection_no_clear(struct window_copy_cmd_state *cs)
 	struct winlink			*wl = cs->wl;
 	struct window_pane		*wp = wme->wp;
 	char				*prefix = NULL;
+	const char			*arg1 = args_string(cs->args, 1);
 
-	if (cs->args->argc == 2)
-		prefix = format_single(NULL, cs->args->argv[1], c, s, wl, wp);
+	if (arg1 != NULL)
+		prefix = format_single(NULL, arg1, c, s, wl, wp);
 
 	if (s != NULL)
 		window_copy_copy_selection(wme, prefix);
@@ -1885,7 +1885,6 @@ window_copy_cmd_select_word(struct window_copy_cmd_state *cs)
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 px, py, nextx, nexty;
 
-
 	data->lineflag = LINE_SEL_LEFT_RIGHT;
 	data->rectflag = 0;
 	data->selflag = SEL_WORD;
@@ -1969,14 +1968,15 @@ window_copy_cmd_copy_pipe_no_clear(struct window_copy_cmd_state *cs)
 	struct session			*s = cs->s;
 	struct winlink			*wl = cs->wl;
 	struct window_pane		*wp = wme->wp;
-	char				*command = NULL;
-	char				*prefix = NULL;
+	char				*command = NULL, *prefix = NULL;
+	const char			*arg1 = args_string(cs->args, 1);
+	const char			*arg2 = args_string(cs->args, 2);
 
-	if (cs->args->argc == 3)
-		prefix = format_single(NULL, cs->args->argv[2], c, s, wl, wp);
+	if (arg2 != NULL)
+		prefix = format_single(NULL, arg2, c, s, wl, wp);
 
-	if (s != NULL && cs->args->argc > 1 && *cs->args->argv[1] != '\0')
-		command = format_single(NULL, cs->args->argv[1], c, s, wl, wp);
+	if (s != NULL && arg1 != NULL && *arg1 != '\0')
+		command = format_single(NULL, arg1, c, s, wl, wp);
 	window_copy_copy_pipe(wme, s, prefix, command);
 	free(command);
 
@@ -2013,9 +2013,10 @@ window_copy_cmd_pipe_no_clear(struct window_copy_cmd_state *cs)
 	struct winlink			*wl = cs->wl;
 	struct window_pane		*wp = wme->wp;
 	char				*command = NULL;
+	const char			*arg1 = args_string(cs->args, 1);
 
-	if (s != NULL && cs->args->argc > 1 && *cs->args->argv[1] != '\0')
-		command = format_single(NULL, cs->args->argv[1], c, s, wl, wp);
+	if (s != NULL && arg1 != NULL && *arg1 != '\0')
+		command = format_single(NULL, arg1, c, s, wl, wp);
 	window_copy_pipe(wme, s, command);
 	free(command);
 
@@ -2046,10 +2047,10 @@ static enum window_copy_cmd_action
 window_copy_cmd_goto_line(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
-	const char			*argument = cs->args->argv[1];
+	const char			*arg1 = args_string(cs->args, 1);
 
-	if (*argument != '\0')
-		window_copy_goto_line(wme, argument);
+	if (*arg1 != '\0')
+		window_copy_goto_line(wme, arg1);
 	return (WINDOW_COPY_CMD_NOTHING);
 }
 
@@ -2059,12 +2060,12 @@ window_copy_cmd_jump_backward(struct window_copy_cmd_state *cs)
 	struct window_mode_entry	*wme = cs->wme;
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 np = wme->prefix;
-	const char			*argument = cs->args->argv[1];
+	const char			*arg1 = args_string(cs->args, 1);
 
-	if (*argument != '\0') {
+	if (*arg1 != '\0') {
 		data->jumptype = WINDOW_COPY_JUMPBACKWARD;
 		free(data->jumpchar);
-		data->jumpchar = utf8_fromcstr(argument);
+		data->jumpchar = utf8_fromcstr(arg1);
 		for (; np != 0; np--)
 			window_copy_cursor_jump_back(wme);
 	}
@@ -2077,12 +2078,12 @@ window_copy_cmd_jump_forward(struct window_copy_cmd_state *cs)
 	struct window_mode_entry	*wme = cs->wme;
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 np = wme->prefix;
-	const char			*argument = cs->args->argv[1];
+	const char			*arg1 = args_string(cs->args, 1);
 
-	if (*argument != '\0') {
+	if (*arg1 != '\0') {
 		data->jumptype = WINDOW_COPY_JUMPFORWARD;
 		free(data->jumpchar);
-		data->jumpchar = utf8_fromcstr(argument);
+		data->jumpchar = utf8_fromcstr(arg1);
 		for (; np != 0; np--)
 			window_copy_cursor_jump(wme);
 	}
@@ -2095,12 +2096,12 @@ window_copy_cmd_jump_to_backward(struct window_copy_cmd_state *cs)
 	struct window_mode_entry	*wme = cs->wme;
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 np = wme->prefix;
-	const char			*argument = cs->args->argv[1];
+	const char			*arg1 = args_string(cs->args, 1);
 
-	if (*argument != '\0') {
+	if (*arg1 != '\0') {
 		data->jumptype = WINDOW_COPY_JUMPTOBACKWARD;
 		free(data->jumpchar);
-		data->jumpchar = utf8_fromcstr(argument);
+		data->jumpchar = utf8_fromcstr(arg1);
 		for (; np != 0; np--)
 			window_copy_cursor_jump_to_back(wme);
 	}
@@ -2113,12 +2114,12 @@ window_copy_cmd_jump_to_forward(struct window_copy_cmd_state *cs)
 	struct window_mode_entry	*wme = cs->wme;
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 np = wme->prefix;
-	const char			*argument = cs->args->argv[1];
+	const char			*arg1 = args_string(cs->args, 1);
 
-	if (*argument != '\0') {
+	if (*arg1 != '\0') {
 		data->jumptype = WINDOW_COPY_JUMPTOFORWARD;
 		free(data->jumpchar);
-		data->jumpchar = utf8_fromcstr(argument);
+		data->jumpchar = utf8_fromcstr(arg1);
 		for (; np != 0; np--)
 			window_copy_cursor_jump_to(wme);
 	}
@@ -2219,27 +2220,27 @@ window_copy_cmd_search_backward_incremental(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
 	struct window_copy_mode_data	*data = wme->data;
-	const char			*argument = cs->args->argv[1];
+	const char			*arg1 = args_string(cs->args, 1);
 	const char			*ss = data->searchstr;
 	char				 prefix;
 	enum window_copy_cmd_action	 action = WINDOW_COPY_CMD_NOTHING;
 
 	data->timeout = 0;
 
-	log_debug("%s: %s", __func__, argument);
+	log_debug("%s: %s", __func__, arg1);
 
-	prefix = *argument++;
+	prefix = *arg1++;
 	if (data->searchx == -1 || data->searchy == -1) {
 		data->searchx = data->cx;
 		data->searchy = data->cy;
 		data->searcho = data->oy;
-	} else if (ss != NULL && strcmp(argument, ss) != 0) {
+	} else if (ss != NULL && strcmp(arg1, ss) != 0) {
 		data->cx = data->searchx;
 		data->cy = data->searchy;
 		data->oy = data->searcho;
 		action = WINDOW_COPY_CMD_REDRAW;
 	}
-	if (*argument == '\0') {
+	if (*arg1 == '\0') {
 		window_copy_clear_marks(wme);
 		return (WINDOW_COPY_CMD_REDRAW);
 	}
@@ -2249,7 +2250,7 @@ window_copy_cmd_search_backward_incremental(struct window_copy_cmd_state *cs)
 		data->searchtype = WINDOW_COPY_SEARCHUP;
 		data->searchregex = 0;
 		free(data->searchstr);
-		data->searchstr = xstrdup(argument);
+		data->searchstr = xstrdup(arg1);
 		if (!window_copy_search_up(wme, 0)) {
 			window_copy_clear_marks(wme);
 			return (WINDOW_COPY_CMD_REDRAW);
@@ -2259,7 +2260,7 @@ window_copy_cmd_search_backward_incremental(struct window_copy_cmd_state *cs)
 		data->searchtype = WINDOW_COPY_SEARCHDOWN;
 		data->searchregex = 0;
 		free(data->searchstr);
-		data->searchstr = xstrdup(argument);
+		data->searchstr = xstrdup(arg1);
 		if (!window_copy_search_down(wme, 0)) {
 			window_copy_clear_marks(wme);
 			return (WINDOW_COPY_CMD_REDRAW);
@@ -2274,27 +2275,27 @@ window_copy_cmd_search_forward_incremental(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
 	struct window_copy_mode_data	*data = wme->data;
-	const char			*argument = cs->args->argv[1];
+	const char			*arg1 = args_string(cs->args, 1);
 	const char			*ss = data->searchstr;
 	char				 prefix;
 	enum window_copy_cmd_action	 action = WINDOW_COPY_CMD_NOTHING;
 
 	data->timeout = 0;
 
-	log_debug("%s: %s", __func__, argument);
+	log_debug("%s: %s", __func__, arg1);
 
-	prefix = *argument++;
+	prefix = *arg1++;
 	if (data->searchx == -1 || data->searchy == -1) {
 		data->searchx = data->cx;
 		data->searchy = data->cy;
 		data->searcho = data->oy;
-	} else if (ss != NULL && strcmp(argument, ss) != 0) {
+	} else if (ss != NULL && strcmp(arg1, ss) != 0) {
 		data->cx = data->searchx;
 		data->cy = data->searchy;
 		data->oy = data->searcho;
 		action = WINDOW_COPY_CMD_REDRAW;
 	}
-	if (*argument == '\0') {
+	if (*arg1 == '\0') {
 		window_copy_clear_marks(wme);
 		return (WINDOW_COPY_CMD_REDRAW);
 	}
@@ -2304,7 +2305,7 @@ window_copy_cmd_search_forward_incremental(struct window_copy_cmd_state *cs)
 		data->searchtype = WINDOW_COPY_SEARCHDOWN;
 		data->searchregex = 0;
 		free(data->searchstr);
-		data->searchstr = xstrdup(argument);
+		data->searchstr = xstrdup(arg1);
 		if (!window_copy_search_down(wme, 0)) {
 			window_copy_clear_marks(wme);
 			return (WINDOW_COPY_CMD_REDRAW);
@@ -2314,7 +2315,7 @@ window_copy_cmd_search_forward_incremental(struct window_copy_cmd_state *cs)
 		data->searchtype = WINDOW_COPY_SEARCHUP;
 		data->searchregex = 0;
 		free(data->searchstr);
-		data->searchstr = xstrdup(argument);
+		data->searchstr = xstrdup(arg1);
 		if (!window_copy_search_up(wme, 0)) {
 			window_copy_clear_marks(wme);
 			return (WINDOW_COPY_CMD_REDRAW);
@@ -2343,8 +2344,8 @@ window_copy_cmd_refresh_from_pane(struct window_copy_cmd_state *cs)
 
 static const struct {
 	const char			 *command;
-	int				  minargs;
-	int				  maxargs;
+	u_int				  minargs;
+	u_int				  maxargs;
 	enum window_copy_cmd_clear	  clear;
 	enum window_copy_cmd_action	(*f)(struct window_copy_cmd_state *);
 } window_copy_cmd_table[] = {
@@ -2834,12 +2835,12 @@ window_copy_command(struct window_mode_entry *wme, struct client *c,
 	enum window_copy_cmd_action	 action;
 	enum window_copy_cmd_clear	 clear = WINDOW_COPY_CMD_CLEAR_NEVER;
 	const char			*command;
-	u_int				 i;
+	u_int				 i, count = args_count(args);
 	int				 keys;
 
-	if (args->argc == 0)
+	if (count == 0)
 		return;
-	command = args->argv[0];
+	command = args_string(args, 0);
 
 	if (m != NULL && m->valid && !MOUSE_WHEEL(m->b))
 		window_copy_move_mouse(m);
@@ -2855,8 +2856,8 @@ window_copy_command(struct window_mode_entry *wme, struct client *c,
 	action = WINDOW_COPY_CMD_NOTHING;
 	for (i = 0; i < nitems(window_copy_cmd_table); i++) {
 		if (strcmp(window_copy_cmd_table[i].command, command) == 0) {
-			if (args->argc - 1 < window_copy_cmd_table[i].minargs ||
-			    args->argc - 1 > window_copy_cmd_table[i].maxargs)
+			if (count - 1 < window_copy_cmd_table[i].minargs ||
+			    count - 1 > window_copy_cmd_table[i].maxargs)
 				break;
 			clear = window_copy_cmd_table[i].clear;
 			action = window_copy_cmd_table[i].f(&cs);
@@ -5189,14 +5190,16 @@ window_copy_cursor_previous_word(struct window_mode_entry *wme,
     const char *separators, int already)
 {
 	struct window_copy_mode_data	*data = wme->data;
+	struct window			*w = wme->wp->window;
 	struct screen			*back_s = data->backing;
 	struct grid_reader		 gr;
 	u_int				 px, py, oldy, hsize;
 	int				 stop_at_eol;
 
-	stop_at_eol =
-	    options_get_number(wme->wp->window->options, "mode-keys")
-	        == MODEKEY_EMACS;
+	if (options_get_number(w->options, "mode-keys") == MODEKEY_EMACS)
+		stop_at_eol = 1;
+	else
+		stop_at_eol = 0;
 
 	px = data->cx;
 	hsize = screen_hsize(back_s);

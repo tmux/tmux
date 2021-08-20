@@ -47,7 +47,7 @@ cmd_find_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct args		*args = cmd_get_args(self), *new_args;
 	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct window_pane	*wp = target->wp;
-	const char		*s = args->argv[0], *suffix = "";
+	const char		*s = args_string(args, 0), *suffix = "";
 	char			*filter;
 	int			 C, N, T;
 

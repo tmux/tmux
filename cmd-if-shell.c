@@ -65,21 +65,20 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_find_state		*target = cmdq_get_target(item);
 	struct cmdq_state		*state = cmdq_get_state(item);
 	struct cmd_if_shell_data	*cdata;
-	char				*shellcmd, *cmd, *error;
-	const char			*file;
+	char				*shellcmd, *error;
+	const char			*cmd = NULL, *file;
 	struct client			*tc = cmdq_get_target_client(item);
 	struct session			*s = target->s;
 	struct cmd_parse_input		 pi;
 	enum cmd_parse_status		 status;
+	u_int				 count = args_count(args);
 
-	shellcmd = format_single_from_target(item, args->argv[0]);
+	shellcmd = format_single_from_target(item, args_string(args, 0));
 	if (args_has(args, 'F')) {
 		if (*shellcmd != '0' && *shellcmd != '\0')
-			cmd = args->argv[1];
-		else if (args->argc == 3)
-			cmd = args->argv[2];
-		else
-			cmd = NULL;
+			cmd = args_string(args, 1);
+		else if (count == 3)
+			cmd = args_string(args, 2);
 		free(shellcmd);
 		if (cmd == NULL)
 			return (CMD_RETURN_NORMAL);
@@ -101,9 +100,9 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 
 	cdata = xcalloc(1, sizeof *cdata);
 
-	cdata->cmd_if = xstrdup(args->argv[1]);
-	if (args->argc == 3)
-		cdata->cmd_else = xstrdup(args->argv[2]);
+	cdata->cmd_if = xstrdup(args_string(args, 1));
+	if (count == 3)
+		cdata->cmd_else = xstrdup(args_string(args, 2));
 
 	if (!args_has(args, 'b'))
 		cdata->client = cmdq_get_client(item);

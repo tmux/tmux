@@ -579,7 +579,7 @@ cmd_parse_get_error(const char *file, u_int line, const char *error)
 	if (file == NULL)
 		s = xstrdup(error);
 	else
-		xasprintf (&s, "%s:%u: %s", file, line, error);
+		xasprintf(&s, "%s:%u: %s", file, line, error);
 	return (s);
 }
 

@@ -251,7 +251,7 @@ cmd_log_argv(int argc, char **argv, const char *fmt, ...)
 
 /* Prepend to an argument vector. */
 void
-cmd_prepend_argv(int *argc, char ***argv, char *arg)
+cmd_prepend_argv(int *argc, char ***argv, const char *arg)
 {
 	char	**new_argv;
 	int	  i;
@@ -268,7 +268,7 @@ cmd_prepend_argv(int *argc, char ***argv, char *arg)
 
 /* Append to an argument vector. */
 void
-cmd_append_argv(int *argc, char ***argv, char *arg)
+cmd_append_argv(int *argc, char ***argv, const char *arg)
 {
 	*argv = xreallocarray(*argv, (*argc) + 1, sizeof **argv);
 	(*argv)[(*argc)++] = xstrdup(arg);
@@ -517,12 +517,9 @@ cmd_parse(int argc, char **argv, const char *file, u_int line, char **cause)
 		return (NULL);
 	cmd_log_argv(argc, argv, "%s: %s", __func__, entry->name);
 
-	args = args_parse(entry->args.template, argc, argv);
+	args = args_parse(entry->args.template, argc, argv, entry->args.lower,
+	    entry->args.upper);
 	if (args == NULL)
-		goto usage;
-	if (entry->args.lower != -1 && args->argc < entry->args.lower)
-		goto usage;
-	if (entry->args.upper != -1 && args->argc > entry->args.upper)
 		goto usage;
 
 	cmd = xcalloc(1, sizeof *cmd);
