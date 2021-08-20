@@ -2085,7 +2085,7 @@ static void *
 format_cb_session_windows(struct format_tree *ft)
 {
 	if (ft->s != NULL)
-		return (format_printf ("%u", winlink_count(&ft->s->windows)));
+		return (format_printf("%u", winlink_count(&ft->s->windows)));
 	return (NULL);
 }
 
