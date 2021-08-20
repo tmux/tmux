@@ -252,7 +252,7 @@ cmd_log_argv(int argc, char **argv, const char *fmt, ...)
 
 /* Prepend to an argument vector. */
 void
-cmd_prepend_argv(int *argc, char ***argv, char *arg)
+cmd_prepend_argv(int *argc, char ***argv, const char *arg)
 {
 	char	**new_argv;
 	int	  i;
@@ -269,7 +269,7 @@ cmd_prepend_argv(int *argc, char ***argv, char *arg)
 
 /* Append to an argument vector. */
 void
-cmd_append_argv(int *argc, char ***argv, char *arg)
+cmd_append_argv(int *argc, char ***argv, const char *arg)
 {
 	*argv = xreallocarray(*argv, (*argc) + 1, sizeof **argv);
 	(*argv)[(*argc)++] = xstrdup(arg);

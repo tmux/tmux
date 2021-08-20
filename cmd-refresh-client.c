@@ -117,7 +117,7 @@ cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 	struct client		*tc = cmdq_get_target_client(item);
 	struct tty		*tty = &tc->tty;
 	struct window		*w;
-	const char		*size, *errstr, *value;
+	const char		*size, *errstr;
 	u_int			 x, y, adjust;
 	struct args_value	*av;
 
@@ -187,7 +187,7 @@ cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 		av = args_first_value(args, 'A');
 		while (av != NULL) {
 			cmd_refresh_client_update_offset(tc, av->value);
-			av = args_next_value(&av);
+			av = args_next_value(av);
 		}
 		return (CMD_RETURN_NORMAL);
 	}
@@ -196,7 +196,7 @@ cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 			goto not_control_client;
 		av = args_first_value(args, 'B');
 		while (av != NULL) {
-			cmd_refresh_client_update_subscription(tc, av);
+			cmd_refresh_client_update_subscription(tc, av->value);
 			av = args_next_value(av);
 		}
 		return (CMD_RETURN_NORMAL);

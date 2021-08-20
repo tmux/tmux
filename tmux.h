@@ -2236,8 +2236,8 @@ int		 cmd_find_from_nothing(struct cmd_find_state *, int);
 /* cmd.c */
 extern const struct cmd_entry *cmd_table[];
 void printflike(3, 4) cmd_log_argv(int, char **, const char *, ...);
-void		 cmd_prepend_argv(int *, char ***, char *);
-void		 cmd_append_argv(int *, char ***, char *);
+void		 cmd_prepend_argv(int *, char ***, const char *);
+void		 cmd_append_argv(int *, char ***, const char *);
 int		 cmd_pack_argv(int, char **, char *, size_t);
 int		 cmd_unpack_argv(char *, size_t, int, char ***);
 char	       **cmd_copy_argv(int, char **);
