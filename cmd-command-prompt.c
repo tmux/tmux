@@ -71,9 +71,10 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 	struct args			*args = cmd_get_args(self);
 	struct client			*tc = cmdq_get_target_client(item);
 	struct cmd_find_state		*target = cmdq_get_target(item);
-	const char			*inputs, *prompts, *type;
+	const char			*inputs, *prompts, *type, *s;
 	struct cmd_command_prompt_cdata	*cdata;
-	char				*prompt, *ptr, *input = NULL;
+	char				*prompt, *comma, *input = NULL;
+	u_int				 count = args_count(args);
 	size_t				 n;
 	int				 wait = !args_has(args, 'b');
 
@@ -94,28 +95,30 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 	if (wait)
 		cdata->item = item;
 
-	if (args->argc != 0 && args_has(args, 'F'))
-	    cdata->template = format_single_from_target(item, args->argv[0]);
-	else if (args->argc != 0)
-		cdata->template = xstrdup(args->argv[0]);
-	else
+	if (count != 0) {
+		s = args_string(args, 0);
+		if (args_has(args, 'F'))
+			cdata->template = format_single_from_target(item, s);
+		else
+			cdata->template = xstrdup(s);
+	}  else
 		cdata->template = xstrdup("%1");
 
 	if ((prompts = args_get(args, 'p')) != NULL)
 		cdata->prompts = xstrdup(prompts);
-	else if (args->argc != 0) {
+	else if (count != 0) {
 		n = strcspn(cdata->template, " ,");
-		xasprintf(&cdata->prompts, "(%.*s) ", (int) n, cdata->template);
+		xasprintf(&cdata->prompts, "(%.*s) ", (int)n, cdata->template);
 	} else
 		cdata->prompts = xstrdup(":");
 
 	/* Get first prompt. */
 	cdata->next_prompt = cdata->prompts;
-	ptr = strsep(&cdata->next_prompt, ",");
+	comma = strsep(&cdata->next_prompt, ",");
 	if (prompts == NULL)
-		prompt = xstrdup(ptr);
+		prompt = xstrdup(comma);
 	else
-		xasprintf(&prompt, "%s ", ptr);
+		xasprintf(&prompt, "%s ", comma);
 
 	/* Get initial prompt input. */
 	if ((inputs = args_get(args, 'I')) != NULL) {
@@ -157,7 +160,7 @@ cmd_command_prompt_callback(struct client *c, void *data, const char *s,
     int done)
 {
 	struct cmd_command_prompt_cdata	*cdata = data;
-	char				*new_template, *prompt, *ptr, *error;
+	char				*new_template, *prompt, *comma, *error;
 	char				*input = NULL;
 	struct cmdq_item		*item = cdata->item;
 	enum cmd_parse_status		 status;
@@ -177,8 +180,8 @@ cmd_command_prompt_callback(struct client *c, void *data, const char *s,
 	 * Check if there are more prompts; if so, get its respective input
 	 * and update the prompt data.
 	 */
-	if (done && (ptr = strsep(&cdata->next_prompt, ",")) != NULL) {
-		xasprintf(&prompt, "%s ", ptr);
+	if (done && (comma = strsep(&cdata->next_prompt, ",")) != NULL) {
+		xasprintf(&prompt, "%s ", comma);
 		input = strsep(&cdata->next_input, ",");
 		status_prompt_update(c, prompt, input);
 

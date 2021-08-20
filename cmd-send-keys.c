@@ -90,7 +90,7 @@ static struct cmdq_item *
 cmd_send_keys_inject_string(struct cmdq_item *item, struct cmdq_item *after,
     struct args *args, int i)
 {
-	const char		*s = args->argv[i];
+	const char		*s = args_string(args, i);
 	struct utf8_data	*ud, *loop;
 	utf8_char		 uc;
 	key_code		 key;
@@ -145,9 +145,9 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 	struct mouse_event		*m = &event->m;
 	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
 	struct cmdq_item		*after = item;
-	int				 i;
 	key_code			 key;
-	u_int				 np = 1;
+	u_int				 i, np = 1;
+	u_int				 count = args_count(args);
 	char				*cause = NULL;
 
 	if (args_has(args, 'N')) {
@@ -157,7 +157,7 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
-		if (wme != NULL && (args_has(args, 'X') || args->argc == 0)) {
+		if (wme != NULL && (args_has(args, 'X') || count == 0)) {
 			if (wme->mode->command == NULL) {
 				cmdq_error(item, "not in a mode");
 				return (CMD_RETURN_ERROR);
@@ -203,7 +203,7 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	for (; np != 0; np--) {
-		for (i = 0; i < args->argc; i++) {
+		for (i = 0; i < count; i++) {
 			after = cmd_send_keys_inject_string(item, after, args,
 			    i);
 		}

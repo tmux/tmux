@@ -1364,11 +1364,6 @@ struct args_value {
 /* Arguments set. */
 struct args_entry;
 RB_HEAD(args_tree, args_entry);
-struct args {
-	struct args_tree	  tree;
-	int			  argc;
-	char			**argv;
-};
 
 /* Command find structures. */
 enum cmd_find_type {
@@ -2188,7 +2183,8 @@ int		tty_keys_next(struct tty *);
 /* arguments.c */
 void		 args_set(struct args *, u_char, const char *);
 struct args 	*args_create(void);
-struct args	*args_parse(const char *, int, char **);
+struct args	*args_parse(const char *, int, char **, int, int);
+void		 args_vector(struct args *, int *, char ***);
 void		 args_free(struct args *);
 char		*args_print(struct args *);
 char		*args_escape(const char *);
@@ -2196,6 +2192,8 @@ int		 args_has(struct args *, u_char);
 const char	*args_get(struct args *, u_char);
 u_char		 args_first(struct args *, struct args_entry **);
 u_char		 args_next(struct args_entry **);
+u_int		 args_count(struct args *);
+const char	*args_string(struct args *, u_int);
 struct args_value *args_first_value(struct args *, u_char);
 struct args_value *args_next_value(struct args_value *);
 long long	 args_strtonum(struct args *, u_char, long long, long long,

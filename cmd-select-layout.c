@@ -105,23 +105,23 @@ cmd_select_layout_exec(struct cmd *self, struct cmdq_item *item)
 		goto changed;
 	}
 
+	if (args_count(args) != 0)
+		layoutname = args_string(args, 0);
+	else if (args_has(args, 'o'))
+		layoutname = oldlayout;
+	else
+		layoutname = NULL;
+
 	if (!args_has(args, 'o')) {
-		if (args->argc == 0)
+		if (layoutname == NULL)
 			layout = w->lastlayout;
 		else
-			layout = layout_set_lookup(args->argv[0]);
+			layout = layout_set_lookup(layoutname);
 		if (layout != -1) {
 			layout_set_select(w, layout);
 			goto changed;
 		}
 	}
-
-	if (args->argc != 0)
-		layoutname = args->argv[0];
-	else if (args_has(args, 'o'))
-		layoutname = oldlayout;
-	else
-		layoutname = NULL;
 
 	if (layoutname != NULL) {
 		if (layout_parse(w, layoutname) == -1) {

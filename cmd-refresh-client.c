@@ -127,10 +127,11 @@ cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 	    args_has(args, 'U') ||
 	    args_has(args, 'D'))
 	{
-		if (args->argc == 0)
+		if (args_count(args) == 0)
 			adjust = 1;
 		else {
-			adjust = strtonum(args->argv[0], 1, INT_MAX, &errstr);
+			adjust = strtonum(args_string(args, 0), 1, INT_MAX,
+			    &errstr);
 			if (errstr != NULL) {
 				cmdq_error(item, "adjustment %s", errstr);
 				return (CMD_RETURN_ERROR);

@@ -55,12 +55,11 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct client		*c = cmdq_get_client(item);
 	struct cmd_find_state	*current = cmdq_get_current(item);
 	struct cmd_find_state	*target = cmdq_get_target(item);
-	struct spawn_context	 sc;
+	struct spawn_context	 sc = { 0 };
 	struct client		*tc = cmdq_get_target_client(item);
 	struct session		*s = target->s;
-	struct winlink		*wl = target->wl;
+	struct winlink		*wl = target->wl, *new_wl = NULL;
 	int			 idx = target->idx, before;
-	struct winlink		*new_wl = NULL;
 	char			*cause = NULL, *cp;
 	const char		*template, *name;
 	struct cmd_find_state	 fs;
@@ -101,14 +100,12 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 			idx = target->idx;
 	}
 
-	memset(&sc, 0, sizeof sc);
 	sc.item = item;
 	sc.s = s;
 	sc.tc = tc;
 
 	sc.name = args_get(args, 'n');
-	sc.argc = args->argc;
-	sc.argv = args->argv;
+	args_vector(args, &sc.argc, &sc.argv);
 	sc.environ = environ_create();
 
 	av = args_first_value(args, 'e');
@@ -129,6 +126,8 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	if ((new_wl = spawn_window(&sc, &cause)) == NULL) {
 		cmdq_error(item, "create window failed: %s", cause);
 		free(cause);
+		if (sc.argv != NULL)
+			cmd_free_argv(sc.argc, sc.argv);
 		environ_free(sc.environ);
 		return (CMD_RETURN_ERROR);
 	}
@@ -150,6 +149,8 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	cmd_find_from_winlink(&fs, new_wl, 0);
 	cmdq_insert_hook(s, item, &fs, "after-new-window");
 
+	if (sc.argv != NULL)
+		cmd_free_argv(sc.argc, sc.argv);
 	environ_free(sc.environ);
 	return (CMD_RETURN_NORMAL);
 }

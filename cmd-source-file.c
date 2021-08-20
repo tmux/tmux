@@ -129,11 +129,11 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_source_file_data	*cdata;
 	struct client			*c = cmdq_get_client(item);
 	enum cmd_retval			 retval = CMD_RETURN_NORMAL;
-	char				*pattern, *cwd, *expand = NULL;
+	char				*pattern, *cwd, *expanded = NULL;
 	const char			*path, *error;
 	glob_t				 g;
-	int				 i, result;
-	u_int				 j;
+	int				 result;
+	u_int				 i, j;
 
 	cdata = xcalloc(1, sizeof *cdata);
 	cdata->item = item;
@@ -147,13 +147,13 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 
 	utf8_stravis(&cwd, server_client_get_cwd(c, NULL), VIS_GLOB);
 
-	for (i = 0; i < args->argc; i++) {
+	for (i = 0; i < args_count(args); i++) {
+		path = args_string(args, i);
 		if (args_has(args, 'F')) {
-			free(expand);
-			expand = format_single_from_target(item, args->argv[i]);
-			path = expand;
-		} else
-			path = args->argv[i];
+			free(expanded);
+			expanded = format_single_from_target(item, path);
+			path = expanded;
+		}
 		if (strcmp(path, "-") == 0) {
 			cmd_source_file_add(cdata, "-");
 			continue;
@@ -180,7 +180,7 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 			free(pattern);
 			continue;
 		}
-		free(expand);
+		free(expanded);
 		free(pattern);
 
 		for (j = 0; j < g.gl_pathc; j++)

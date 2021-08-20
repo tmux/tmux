@@ -48,12 +48,13 @@ cmd_bind_key_exec(struct cmd *self, struct cmdq_item *item)
 	key_code		  key;
 	const char		 *tablename, *note = args_get(args, 'N');
 	struct cmd_parse_result	 *pr;
-	char			**argv = args->argv;
-	int			  argc = args->argc, repeat;
+	char			**argv;
+	int			  argc, repeat;
+	u_int			  count = args_count(args);
 
-	key = key_string_lookup_string(argv[0]);
+	key = key_string_lookup_string(args_string(args, 0));
 	if (key == KEYC_NONE || key == KEYC_UNKNOWN) {
-		cmdq_error(item, "unknown key: %s", argv[0]);
+		cmdq_error(item, "unknown key: %s", args_string(args, 0));
 		return (CMD_RETURN_ERROR);
 	}
 
@@ -65,11 +66,14 @@ cmd_bind_key_exec(struct cmd *self, struct cmdq_item *item)
 		tablename = "prefix";
 	repeat = args_has(args, 'r');
 
-	if (argc != 1) {
-		if (argc == 2)
-			pr = cmd_parse_from_string(argv[1], NULL);
-		else
+	if (count != 1) {
+		if (count == 2)
+			pr = cmd_parse_from_string(args_string(args, 1), NULL);
+		else {
+			args_vector(args, &argc, &argv);
 			pr = cmd_parse_from_arguments(argc - 1, argv + 1, NULL);
+			cmd_free_argv(argc, argv);
+		}
 		switch (pr->status) {
 		case CMD_PARSE_EMPTY:
 			cmdq_error(item, "empty command");

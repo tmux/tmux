@@ -357,7 +357,7 @@ cmdq_insert_hook(struct session *s, struct cmdq_item *item,
 	struct options			*oo;
 	va_list				 ap;
 	char				*name, tmp[32], flag, *arguments;
-	int				 i;
+	u_int				 i;
 	const char			*value;
 	struct cmdq_item		*new_item;
 	struct cmdq_state		*new_state;
@@ -394,9 +394,9 @@ cmdq_insert_hook(struct session *s, struct cmdq_item *item,
 	cmdq_add_format(new_state, "hook_arguments", "%s", arguments);
 	free(arguments);
 
-	for (i = 0; i < args->argc; i++) {
+	for (i = 0; i < args_count(args); i++) {
 		xsnprintf(tmp, sizeof tmp, "hook_argument_%d", i);
-		cmdq_add_format(new_state, tmp, "%s", args->argv[i]);
+		cmdq_add_format(new_state, tmp, "%s", args_string(args, i));
 	}
 	flag = args_first(args, &ae);
 	while (flag != 0) {

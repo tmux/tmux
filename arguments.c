@@ -38,6 +38,12 @@ struct args_entry {
 	RB_ENTRY(args_entry)	 entry;
 };
 
+struct args {
+	struct args_tree	  tree;
+	int			  argc;
+	char			**argv;
+};
+
 static struct args_entry	*args_find(struct args *, u_char);
 
 static int	args_cmp(struct args_entry *, struct args_entry *);
@@ -73,7 +79,7 @@ args_create(void)
 
 /* Parse an argv and argc into a new argument set. */
 struct args *
-args_parse(const char *template, int argc, char **argv)
+args_parse(const char *template, int argc, char **argv, int lower, int upper)
 {
 	struct args	*args;
 	int		 opt;
@@ -99,6 +105,10 @@ args_parse(const char *template, int argc, char **argv)
 	args->argc = argc;
 	args->argv = cmd_copy_argv(argc, argv);
 
+	if ((lower != -1 && argc < lower) || (upper != -1 && argc > upper)) {
+		args_free(args);
+		return (NULL);
+	}
 	return (args);
 }
 
@@ -126,6 +136,14 @@ args_free(struct args *args)
 	free(args);
 }
 
+/* Convert arguments to vector. */
+void
+args_vector(struct args *args, int *argc, char ***argv)
+{
+	*argc = args->argc;
+	*argv = cmd_copy_argv(args->argc, args->argv);
+}
+
 /* Add to string. */
 static void printflike(3, 4)
 args_print_add(char **buf, size_t *len, const char *fmt, ...)
@@ -143,23 +161,6 @@ args_print_add(char **buf, size_t *len, const char *fmt, ...)
 
 	strlcat(*buf, s, *len);
 	free(s);
-}
-
-/* Add value to string. */
-static void
-args_print_add_value(char **buf, size_t *len, struct args_entry *entry,
-    struct args_value *value)
-{
-	char	*escaped;
-
-	if (**buf != '\0')
-		args_print_add(buf, len, " -%c ", entry->flag);
-	else
-		args_print_add(buf, len, "-%c ", entry->flag);
-
-	escaped = args_escape(value->value);
-	args_print_add(buf, len, "%s", escaped);
-	free(escaped);
 }
 
 /* Add argument to string. */
@@ -203,8 +204,13 @@ args_print(struct args *args)
 
 	/* Then the flags with arguments. */
 	RB_FOREACH(entry, args_tree, &args->tree) {
-		TAILQ_FOREACH(value, &entry->values, entry)
-			args_print_add_value(&buf, &len, entry, value);
+		TAILQ_FOREACH(value, &entry->values, entry) {
+			if (*buf != '\0')
+				args_print_add(&buf, &len, " -%c", entry->flag);
+			else
+				args_print_add(&buf, &len, "-%c", entry->flag);
+			args_print_add_argument(&buf, &len, value->value);
+		}
 	}
 
 	/* And finally the argument vector. */
@@ -328,6 +334,22 @@ args_next(struct args_entry **entry)
 	if (*entry == NULL)
 		return (0);
 	return ((*entry)->flag);
+}
+
+/* Get argument count. */
+u_int
+args_count(struct args *args)
+{
+	return (args->argc);
+}
+
+/* Return argument as string. */
+const char *
+args_string(struct args *args, u_int idx)
+{
+	if (idx >= (u_int)args->argc)
+		return (NULL);
+	return (args->argv[idx]);
 }
 
 /* Get first value in argument. */
