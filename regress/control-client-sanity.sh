@@ -8,8 +8,7 @@ TMUX="$TEST_TMUX -Ltest"
 $TMUX kill-server 2>/dev/null
 
 TMP=$(mktemp)
-OUT=$(mktemp)
-trap "rm -f $TMP $OUT" 0 1 15
+trap "rm -f $TMP" 0 1 15
 
 $TMUX -f/dev/null new -d -x200 -y200 || exit 1
 $TMUX -f/dev/null splitw || exit 1
