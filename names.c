@@ -146,7 +146,7 @@ parse_window_name(const char *in)
 	name = copy = xstrdup(in);
 	if (*name == '"')
 		name++;
-	name[strcspn (name, "\"")] = '\0';
+	name[strcspn(name, "\"")] = '\0';
 
 	if (strncmp(name, "exec ", (sizeof "exec ") - 1) == 0)
 		name = name + (sizeof "exec ") - 1;

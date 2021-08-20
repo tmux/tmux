@@ -63,6 +63,17 @@ args_find(struct args *args, u_char flag)
 	return (RB_FIND(args_tree, &args->tree, &entry));
 }
 
+/* Create an empty arguments set. */
+struct args *
+args_create(void)
+{
+	struct args	 *args;
+
+	args = xcalloc(1, sizeof *args);
+	RB_INIT(&args->tree);
+	return (args);
+}
+
 /* Parse an argv and argc into a new argument set. */
 struct args *
 args_parse(const char *template, int argc, char **argv)
@@ -70,12 +81,11 @@ args_parse(const char *template, int argc, char **argv)
 	struct args	*args;
 	int		 opt;
 
-	args = xcalloc(1, sizeof *args);
-
 	optreset = 1;
 	optind = 1;
 	optarg = NULL;
 
+	args = args_create();
 	while ((opt = getopt(argc, argv, template)) != -1) {
 		if (opt < 0)
 			continue;

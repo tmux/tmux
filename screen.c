@@ -697,6 +697,6 @@ screen_mode_to_string(int mode)
 		strlcat(tmp, "CRLF,", sizeof tmp);
 	if (mode & MODE_KEXTENDED)
 		strlcat(tmp, "KEXTENDED,", sizeof tmp);
-	tmp[strlen (tmp) - 1] = '\0';
+	tmp[strlen(tmp) - 1] = '\0';
 	return (tmp);
 }

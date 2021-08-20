@@ -931,6 +931,8 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	wp->pipe_fd = -1;
 
 	colour_palette_init(&wp->palette);
+	colour_palette_from_option(&wp->palette, wp->options);
+
 	screen_init(&wp->base, sx, sy, hlimit);
 	wp->screen = &wp->base;
 

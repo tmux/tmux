@@ -1413,7 +1413,7 @@ process_key:
 			break;
 		if (c->prompt_buffer[0].size == 0) {
 			prefix = '=';
-			free (c->prompt_buffer);
+			free(c->prompt_buffer);
 			c->prompt_buffer = utf8_fromcstr(c->prompt_last);
 			c->prompt_index = utf8_strlen(c->prompt_buffer);
 		} else
@@ -1424,7 +1424,7 @@ process_key:
 			break;
 		if (c->prompt_buffer[0].size == 0) {
 			prefix = '=';
-			free (c->prompt_buffer);
+			free(c->prompt_buffer);
 			c->prompt_buffer = utf8_fromcstr(c->prompt_last);
 			c->prompt_index = utf8_strlen(c->prompt_buffer);
 		} else

@@ -2226,7 +2226,7 @@ window_copy_cmd_search_backward_incremental(struct window_copy_cmd_state *cs)
 
 	data->timeout = 0;
 
-	log_debug ("%s: %s", __func__, argument);
+	log_debug("%s: %s", __func__, argument);
 
 	prefix = *argument++;
 	if (data->searchx == -1 || data->searchy == -1) {
@@ -2281,7 +2281,7 @@ window_copy_cmd_search_forward_incremental(struct window_copy_cmd_state *cs)
 
 	data->timeout = 0;
 
-	log_debug ("%s: %s", __func__, argument);
+	log_debug("%s: %s", __func__, argument);
 
 	prefix = *argument++;
 	if (data->searchx == -1 || data->searchy == -1) {
@@ -2859,7 +2859,7 @@ window_copy_command(struct window_mode_entry *wme, struct client *c,
 			    args->argc - 1 > window_copy_cmd_table[i].maxargs)
 				break;
 			clear = window_copy_cmd_table[i].clear;
-			action = window_copy_cmd_table[i].f (&cs);
+			action = window_copy_cmd_table[i].f(&cs);
 			break;
 		}
 	}

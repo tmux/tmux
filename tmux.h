@@ -2183,6 +2183,7 @@ int		tty_keys_next(struct tty *);
 
 /* arguments.c */
 void		 args_set(struct args *, u_char, const char *);
+struct args 	*args_create(void);
 struct args	*args_parse(const char *, int, char **);
 void		 args_free(struct args *);
 char		*args_print(struct args *);
