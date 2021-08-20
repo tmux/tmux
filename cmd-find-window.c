@@ -48,7 +48,7 @@ cmd_find_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct window_pane	*wp = target->wp;
 	const char		*s = args->argv[0], *suffix = "";
-	char			*filter, *argv = { NULL };
+	char			*filter;
 	int			 C, N, T;
 
 	C = args_has(args, 'C');
@@ -91,7 +91,7 @@ cmd_find_window_exec(struct cmd *self, struct cmdq_item *item)
 	else
 		xasprintf(&filter, "#{m%s:*%s*,#{pane_title}}", suffix, s);
 
-	new_args = args_parse("", 1, &argv);
+	new_args = args_create();
 	if (args_has(args, 'Z'))
 		args_set(new_args, 'Z', NULL);
 	args_set(new_args, 'f', filter);
