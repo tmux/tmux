@@ -309,7 +309,6 @@ server_client_attached_lost(struct client *c)
 	}
 }
 
-
 /* Set client session. */
 void
 server_client_set_session(struct client *c, struct session *s)
@@ -1553,7 +1552,6 @@ server_client_check_pane_resize(struct window_pane *wp)
 	}
 	evtimer_add(&wp->resize_timer, &tv);
 }
-
 
 /* Check pane buffer size. */
 static void

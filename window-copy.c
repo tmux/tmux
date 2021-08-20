@@ -1885,7 +1885,6 @@ window_copy_cmd_select_word(struct window_copy_cmd_state *cs)
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 px, py, nextx, nexty;
 
-
 	data->lineflag = LINE_SEL_LEFT_RIGHT;
 	data->rectflag = 0;
 	data->selflag = SEL_WORD;

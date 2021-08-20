@@ -94,7 +94,6 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 		}
 	}
 
-
 	before = args_has(args, 'b');
 	if (args_has(args, 'a') || before) {
 		idx = winlink_shuffle_up(s, wl, before);
