@@ -2841,6 +2841,7 @@ window_copy_command(struct window_mode_entry *wme, struct client *c,
 	if (count == 0)
 		return;
 	command = args_string(args, 0);
+
 	if (m != NULL && m->valid && !MOUSE_WHEEL(m->b))
 		window_copy_move_mouse(m);
 
