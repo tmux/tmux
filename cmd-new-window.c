@@ -62,9 +62,9 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	int			 idx = target->idx, before;
 	struct winlink		*new_wl = NULL;
 	char			*cause = NULL, *cp;
-	const char		*template, *add, *name;
+	const char		*template, *name;
 	struct cmd_find_state	 fs;
-	struct args_value	*value;
+	struct args_value	*av;
 
 	/*
 	 * If -S and -n are given and -t is not and a single window with this
@@ -112,10 +112,10 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	sc.argv = args->argv;
 	sc.environ = environ_create();
 
-	add = args_first_value(args, 'e', &value);
-	while (add != NULL) {
-		environ_put(sc.environ, add, 0);
-		add = args_next_value(&value);
+	av = args_first_value(args, 'e');
+	while (av != NULL) {
+		environ_put(sc.environ, av->value, 0);
+		av = args_next_value(av);
 	}
 
 	sc.idx = idx;
@@ -130,6 +130,7 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	if ((new_wl = spawn_window(&sc, &cause)) == NULL) {
 		cmdq_error(item, "create window failed: %s", cause);
 		free(cause);
+		environ_free(sc.environ);
 		return (CMD_RETURN_ERROR);
 	}
 	if (!args_has(args, 'd') || new_wl == s->curw) {

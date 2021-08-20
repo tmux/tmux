@@ -54,8 +54,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct session		*s = target->s;
 	struct winlink		*wl = target->wl;
 	char			*cause = NULL;
-	const char		*add;
-	struct args_value	*value;
+	struct args_value	*av;
 
 	memset(&sc, 0, sizeof sc);
 	sc.item = item;
@@ -68,10 +67,10 @@ cmd_respawn_window_exec(struct cmd *self, struct cmdq_item *item)
 	sc.argv = args->argv;
 	sc.environ = environ_create();
 
-	add = args_first_value(args, 'e', &value);
-	while (add != NULL) {
-		environ_put(sc.environ, add, 0);
-		add = args_next_value(&value);
+	av = args_first_value(args, 'e');
+	while (av != NULL) {
+		environ_put(sc.environ, av->value, 0);
+		av = args_next_value(av);
 	}
 
 	sc.idx = -1;
@@ -84,6 +83,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (spawn_window(&sc, &cause) == NULL) {
 		cmdq_error(item, "respawn window failed: %s", cause);
 		free(cause);
+		environ_free(sc.environ);
 		return (CMD_RETURN_ERROR);
 	}
 

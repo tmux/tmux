@@ -184,20 +184,20 @@ cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'A')) {
 		if (~tc->flags & CLIENT_CONTROL)
 			goto not_control_client;
-		value = args_first_value(args, 'A', &av);
-		while (value != NULL) {
-			cmd_refresh_client_update_offset(tc, value);
-			value = args_next_value(&av);
+		av = args_first_value(args, 'A');
+		while (av != NULL) {
+			cmd_refresh_client_update_offset(tc, av->value);
+			av = args_next_value(&av);
 		}
 		return (CMD_RETURN_NORMAL);
 	}
 	if (args_has(args, 'B')) {
 		if (~tc->flags & CLIENT_CONTROL)
 			goto not_control_client;
-		value = args_first_value(args, 'B', &av);
-		while (value != NULL) {
-			cmd_refresh_client_update_subscription(tc, value);
-			value = args_next_value(&av);
+		av = args_first_value(args, 'B');
+		while (av != NULL) {
+			cmd_refresh_client_update_subscription(tc, av);
+			av = args_next_value(av);
 		}
 		return (CMD_RETURN_NORMAL);
 	}

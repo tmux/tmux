@@ -75,7 +75,7 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	struct options		*oo;
 	struct termios		 tio, *tiop;
 	struct session_group	*sg = NULL;
-	const char		*errstr, *template, *group, *tmp, *add;
+	const char		*errstr, *template, *group, *tmp;
 	char			*cause, *cwd = NULL, *cp, *newname = NULL;
 	char			*name, *prefix = NULL;
 	int			 detached, already_attached, is_control = 0;
@@ -83,7 +83,7 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	struct spawn_context	 sc;
 	enum cmd_retval		 retval;
 	struct cmd_find_state    fs;
-	struct args_value	*value;
+	struct args_value	*av;
 
 	if (cmd_get_entry(self) == &cmd_has_session_entry) {
 		/*
@@ -269,10 +269,10 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	env = environ_create();
 	if (c != NULL && !args_has(args, 'E'))
 		environ_update(global_s_options, c->environ, env);
-	add = args_first_value(args, 'e', &value);
-	while (add != NULL) {
-		environ_put(env, add, 0);
-		add = args_next_value(&value);
+	av = args_first_value(args, 'e');
+	while (av != NULL) {
+		environ_put(env, av->value, 0);
+		av = args_next_value(av);
 	}
 	s = session_create(prefix, newname, cwd, env, oo, tiop);
 

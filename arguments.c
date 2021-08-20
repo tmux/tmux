@@ -29,10 +29,6 @@
  * Manipulate command arguments.
  */
 
-struct args_value {
-	char			*value;
-	TAILQ_ENTRY(args_value)	 entry;
-};
 TAILQ_HEAD(args_values, args_value);
 
 struct args_entry {
@@ -335,30 +331,21 @@ args_next(struct args_entry **entry)
 }
 
 /* Get first value in argument. */
-const char *
-args_first_value(struct args *args, u_char flag, struct args_value **value)
+struct args_value *
+args_first_value(struct args *args, u_char flag)
 {
 	struct args_entry	*entry;
 
 	if ((entry = args_find(args, flag)) == NULL)
 		return (NULL);
-
-	*value = TAILQ_FIRST(&entry->values);
-	if (*value == NULL)
-		return (NULL);
-	return ((*value)->value);
+	return (TAILQ_FIRST(&entry->values));
 }
 
 /* Get next value in argument. */
-const char *
-args_next_value(struct args_value **value)
+struct args_value *
+args_next_value(struct args_value *value)
 {
-	if (*value == NULL)
-		return (NULL);
-	*value = TAILQ_NEXT(*value, entry);
-	if (*value == NULL)
-		return (NULL);
-	return ((*value)->value);
+	return (TAILQ_NEXT(value, entry));
 }
 
 /* Convert an argument value to a number. */
