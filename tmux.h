@@ -1365,6 +1365,13 @@ struct args_value {
 struct args_entry;
 RB_HEAD(args_tree, args_entry);
 
+/* Arguments parsing state. */
+struct args_parse {
+	const char	*template;
+	int		 lower;
+	int		 upper;
+};
+
 /* Command find structures. */
 enum cmd_find_type {
 	CMD_FIND_PANE,
@@ -1453,11 +1460,7 @@ struct cmd_entry {
 	const char		*name;
 	const char		*alias;
 
-	struct {
-		const char	*template;
-		int		 lower;
-		int		 upper;
-	} args;
+	struct args_parse	 args;
 	const char		*usage;
 
 	struct cmd_entry_flag	 source;
@@ -2183,7 +2186,7 @@ int		tty_keys_next(struct tty *);
 /* arguments.c */
 void		 args_set(struct args *, u_char, const char *);
 struct args 	*args_create(void);
-struct args	*args_parse(const char *, int, char **, int, int);
+struct args	*args_parse(const struct args_parse *, int, char **);
 void		 args_vector(struct args *, int *, char ***);
 void		 args_free(struct args *);
 char		*args_print(struct args *);

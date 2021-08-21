@@ -79,7 +79,7 @@ args_create(void)
 
 /* Parse an argv and argc into a new argument set. */
 struct args *
-args_parse(const char *template, int argc, char **argv, int lower, int upper)
+args_parse(const struct args_parse *parse, int argc, char **argv)
 {
 	struct args	*args;
 	int		 opt;
@@ -89,10 +89,10 @@ args_parse(const char *template, int argc, char **argv, int lower, int upper)
 	optarg = NULL;
 
 	args = args_create();
-	while ((opt = getopt(argc, argv, template)) != -1) {
+	while ((opt = getopt(argc, argv, parse->template)) != -1) {
 		if (opt < 0)
 			continue;
-		if (opt == '?' || strchr(template, opt) == NULL) {
+		if (opt == '?' || strchr(parse->template, opt) == NULL) {
 			args_free(args);
 			return (NULL);
 		}
@@ -105,7 +105,8 @@ args_parse(const char *template, int argc, char **argv, int lower, int upper)
 	args->argc = argc;
 	args->argv = cmd_copy_argv(argc, argv);
 
-	if ((lower != -1 && argc < lower) || (upper != -1 && argc > upper)) {
+	if ((parse->lower != -1 && argc < parse->lower) ||
+	    (parse->upper != -1 && argc > parse->upper)) {
 		args_free(args);
 		return (NULL);
 	}
