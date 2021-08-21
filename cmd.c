@@ -221,10 +221,6 @@ struct cmd {
 	char			 *file;
 	u_int			  line;
 
-	char			 *alias;
-	int			  argc;
-	char			**argv;
-
 	TAILQ_ENTRY(cmd)	  qentry;
 };
 TAILQ_HEAD(cmds, cmd);
@@ -529,10 +525,6 @@ cmd_parse(int argc, char **argv, const char *file, u_int line, char **cause)
 		cmd->file = xstrdup(file);
 	cmd->line = line;
 
-	cmd->alias = NULL;
-	cmd->argc = argc;
-	cmd->argv = cmd_copy_argv(argc, argv);
-
 	return (cmd);
 
 usage:
@@ -546,9 +538,6 @@ usage:
 void
 cmd_free(struct cmd *cmd)
 {
-	free(cmd->alias);
-	cmd_free_argv(cmd->argc, cmd->argv);
-
 	free(cmd->file);
 
 	args_free(cmd->args);
@@ -593,7 +582,18 @@ cmd_list_append(struct cmd_list *cmdlist, struct cmd *cmd)
 	TAILQ_INSERT_TAIL(cmdlist->list, cmd, qentry);
 }
 
-/* Move all commands from one command list to another */
+/* Append all commands from one list to another.  */
+void
+cmd_list_append_all(struct cmd_list *cmdlist, struct cmd_list *from)
+{
+	struct cmd	*cmd;
+
+	TAILQ_FOREACH(cmd, from->list, qentry)
+		cmd->group = cmdlist->group;
+	TAILQ_CONCAT(cmdlist->list, from->list, qentry);
+}
+
+/* Move all commands from one command list to another. */
 void
 cmd_list_move(struct cmd_list *cmdlist, struct cmd_list *from)
 {
