@@ -1357,7 +1357,7 @@ TAILQ_HEAD(message_list, message_entry);
 
 /* Argument value. */
 struct args_value {
-	char			*value;
+	char			*string;
 	TAILQ_ENTRY(args_value)	 entry;
 };
 

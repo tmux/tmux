@@ -69,7 +69,7 @@ cmd_respawn_pane_exec(struct cmd *self, struct cmdq_item *item)
 
 	av = args_first_value(args, 'e');
 	while (av != NULL) {
-		environ_put(sc.environ, av->value, 0);
+		environ_put(sc.environ, av->string, 0);
 		av = args_next_value(av);
 	}
 

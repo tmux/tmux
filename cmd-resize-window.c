@@ -59,8 +59,7 @@ cmd_resize_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_count(args) == 0)
 		adjust = 1;
 	else {
-		adjust = strtonum(args_string(args, 0), 1, INT_MAX,
-		    &errstr);
+		adjust = strtonum(args_string(args, 0), 1, INT_MAX, &errstr);
 		if (errstr != NULL) {
 			cmdq_error(item, "adjustment %s", errstr);
 			return (CMD_RETURN_ERROR);
