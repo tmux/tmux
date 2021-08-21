@@ -871,7 +871,7 @@ cmd_parse_build_commands(struct cmd_parse_commands *cmds,
 			cmd_list_free(current);
 			return;
 		}
-		cmd_list_move(current, add);
+		cmd_list_append_all(current, add);
 		cmd_list_free(add);
 	}
 	if (current != NULL) {
