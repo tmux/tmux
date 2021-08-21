@@ -2148,9 +2148,6 @@ server_client_dispatch_command(struct client *c, struct imsg *imsg)
 
 	pr = cmd_parse_from_arguments(argc, argv, NULL);
 	switch (pr->status) {
-	case CMD_PARSE_EMPTY:
-		cause = xstrdup("empty command");
-		goto error;
 	case CMD_PARSE_ERROR:
 		cause = pr->error;
 		goto error;

@@ -1418,7 +1418,6 @@ enum cmd_retval {
 
 /* Command parse result. */
 enum cmd_parse_status {
-	CMD_PARSE_EMPTY,
 	CMD_PARSE_ERROR,
 	CMD_PARSE_SUCCESS
 };
