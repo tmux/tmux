@@ -478,6 +478,13 @@ cmdq_remove_group(struct cmdq_item *item)
 	}
 }
 
+/* Empty command callback. */
+static enum cmd_retval
+cmdq_empty_command(__unused struct cmdq_item *item, __unused void *data)
+{
+	return (CMD_RETURN_NORMAL);
+}
+
 /* Get a command for the command queue. */
 struct cmdq_item *
 cmdq_get_command(struct cmd_list *cmdlist, struct cmdq_state *state)
@@ -487,12 +494,14 @@ cmdq_get_command(struct cmd_list *cmdlist, struct cmdq_state *state)
 	const struct cmd_entry	*entry;
 	int			 created = 0;
 
+	if ((cmd = cmd_list_first(cmdlist)) == NULL)
+		return (cmdq_get_callback(cmdq_empty_command, NULL));
+
 	if (state == NULL) {
 		state = cmdq_new_state(NULL, NULL, 0);
 		created = 1;
 	}
 
-	cmd = cmd_list_first(cmdlist);
 	while (cmd != NULL) {
 		entry = cmd_get_entry(cmd);
 

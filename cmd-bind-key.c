@@ -75,9 +75,6 @@ cmd_bind_key_exec(struct cmd *self, struct cmdq_item *item)
 			cmd_free_argv(argc, argv);
 		}
 		switch (pr->status) {
-		case CMD_PARSE_EMPTY:
-			cmdq_error(item, "empty command");
-			return (CMD_RETURN_ERROR);
 		case CMD_PARSE_ERROR:
 			cmdq_error(item, "%s", pr->error);
 			free(pr->error);

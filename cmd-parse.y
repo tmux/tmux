@@ -744,7 +744,8 @@ cmd_parse_expand_alias(struct cmd_parse_command *cmd,
 
 	first = TAILQ_FIRST(&cmd->arguments);
 	if (first == NULL || first->type != CMD_PARSE_STRING) {
-		pr->status = CMD_PARSE_EMPTY;
+		pr->status = CMD_PARSE_SUCCESS;
+		pr->cmdlist = cmd_list_new();
 		return (1);
 	}
 	name = first->string;
@@ -840,7 +841,8 @@ cmd_parse_build_commands(struct cmd_parse_commands *cmds,
 
 	/* Check for an empty list. */
 	if (TAILQ_EMPTY(cmds)) {
-		pr->status = CMD_PARSE_EMPTY;
+		pr->status = CMD_PARSE_SUCCESS;
+		pr->cmdlist = cmd_list_new();
 		return;
 	}
  	cmd_parse_log_commands(cmds, __func__);
@@ -942,8 +944,6 @@ cmd_parse_and_insert(const char *s, struct cmd_parse_input *pi,
 
 	pr = cmd_parse_from_string(s, pi);
 	switch (pr->status) {
-	case CMD_PARSE_EMPTY:
-		break;
 	case CMD_PARSE_ERROR:
 		if (error != NULL)
 			*error = pr->error;
@@ -968,8 +968,6 @@ cmd_parse_and_append(const char *s, struct cmd_parse_input *pi,
 
 	pr = cmd_parse_from_string(s, pi);
 	switch (pr->status) {
-	case CMD_PARSE_EMPTY:
-		break;
 	case CMD_PARSE_ERROR:
 		if (error != NULL)
 			*error = pr->error;
@@ -1000,9 +998,8 @@ cmd_parse_from_buffer(const void *buf, size_t len, struct cmd_parse_input *pi)
 	memset(&pr, 0, sizeof pr);
 
 	if (len == 0) {
-		pr.status = CMD_PARSE_EMPTY;
-		pr.cmdlist = NULL;
-		pr.error = NULL;
+		pr.status = CMD_PARSE_SUCCESS;
+		pr.cmdlist = cmd_list_new();
 		return (&pr);
 	}
 

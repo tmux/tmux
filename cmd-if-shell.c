@@ -159,8 +159,6 @@ cmd_if_shell_callback(struct job *job)
 
 	pr = cmd_parse_from_string(cmd, &cdata->input);
 	switch (pr->status) {
-	case CMD_PARSE_EMPTY:
-		break;
 	case CMD_PARSE_ERROR:
 		if (cdata->item != NULL)
 		       cmdq_error(cdata->item, "%s", pr->error);

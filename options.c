@@ -443,10 +443,6 @@ options_array_set(struct options_entry *o, u_int idx, const char *value,
 	if (OPTIONS_IS_COMMAND(o)) {
 		pr = cmd_parse_from_string(value, NULL);
 		switch (pr->status) {
-		case CMD_PARSE_EMPTY:
-			if (cause != NULL)
-				*cause = xstrdup("empty command");
-			return (-1);
 		case CMD_PARSE_ERROR:
 			if (cause != NULL)
 				*cause = pr->error;
