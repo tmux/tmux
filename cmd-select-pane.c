@@ -33,7 +33,7 @@ const struct cmd_entry cmd_select_pane_entry = {
 	.name = "select-pane",
 	.alias = "selectp",
 
-	.args = { "DdegLlMmP:RT:t:UZ", 0, 0 }, /* -P and -g deprecated */
+	.args = { "DdegLlMmP:RT:t:UZ", 0, 0, NULL }, /* -P and -g deprecated */
 	.usage = "[-DdeLlMmRUZ] [-T title] " CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -46,7 +46,7 @@ const struct cmd_entry cmd_last_pane_entry = {
 	.name = "last-pane",
 	.alias = "lastp",
 
-	.args = { "det:Z", 0, 0 },
+	.args = { "det:Z", 0, 0, NULL },
 	.usage = "[-deZ] " CMD_TARGET_WINDOW_USAGE,
 
 	.target = { 't', CMD_FIND_WINDOW, 0 },

@@ -38,7 +38,7 @@ const struct cmd_entry cmd_show_options_entry = {
 	.name = "show-options",
 	.alias = "show",
 
-	.args = { "AgHpqst:vw", 0, 1 },
+	.args = { "AgHpqst:vw", 0, 1, NULL },
 	.usage = "[-AgHpqsvw] " CMD_TARGET_PANE_USAGE " [option]",
 
 	.target = { 't', CMD_FIND_PANE, CMD_FIND_CANFAIL },
@@ -51,7 +51,7 @@ const struct cmd_entry cmd_show_window_options_entry = {
 	.name = "show-window-options",
 	.alias = "showw",
 
-	.args = { "gvt:", 0, 1 },
+	.args = { "gvt:", 0, 1, NULL },
 	.usage = "[-gv] " CMD_TARGET_WINDOW_USAGE " [option]",
 
 	.target = { 't', CMD_FIND_WINDOW, CMD_FIND_CANFAIL },
@@ -64,7 +64,7 @@ const struct cmd_entry cmd_show_hooks_entry = {
 	.name = "show-hooks",
 	.alias = NULL,
 
-	.args = { "gpt:w", 0, 1 },
+	.args = { "gpt:w", 0, 1, NULL },
 	.usage = "[-gpw] " CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, CMD_FIND_CANFAIL },

@@ -36,7 +36,7 @@ const struct cmd_entry cmd_display_menu_entry = {
 	.name = "display-menu",
 	.alias = "menu",
 
-	.args = { "c:t:OT:x:y:", 1, -1 },
+	.args = { "c:t:OT:x:y:", 1, -1, NULL },
 	.usage = "[-O] [-c target-client] " CMD_TARGET_PANE_USAGE " [-T title] "
 		 "[-x position] [-y position] name key command ...",
 
@@ -50,7 +50,7 @@ const struct cmd_entry cmd_display_popup_entry = {
 	.name = "display-popup",
 	.alias = "popup",
 
-	.args = { "BCc:d:Eh:t:w:x:y:", 0, -1 },
+	.args = { "BCc:d:Eh:t:w:x:y:", 0, -1, NULL },
 	.usage = "[-BCE] [-c target-client] [-d start-directory] [-h height] "
 	         CMD_TARGET_PANE_USAGE " [-w width] "
 	         "[-x position] [-y position] [command]",

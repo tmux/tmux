@@ -35,7 +35,7 @@ const struct cmd_entry cmd_source_file_entry = {
 	.name = "source-file",
 	.alias = "source",
 
-	.args = { "Fnqv", 1, -1 },
+	.args = { "Fnqv", 1, -1, NULL },
 	.usage = "[-Fnqv] path ...",
 
 	.flags = 0,

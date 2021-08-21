@@ -38,7 +38,7 @@ const struct cmd_entry cmd_show_messages_entry = {
 	.name = "show-messages",
 	.alias = "showmsgs",
 
-	.args = { "JTt:", 0, 0 },
+	.args = { "JTt:", 0, 0, NULL },
 	.usage = "[-JT] " CMD_TARGET_CLIENT_USAGE,
 
 	.flags = CMD_AFTERHOOK|CMD_CLIENT_TFLAG,

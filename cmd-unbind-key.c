@@ -32,7 +32,7 @@ const struct cmd_entry cmd_unbind_key_entry = {
 	.name = "unbind-key",
 	.alias = "unbind",
 
-	.args = { "anqT:", 0, 1 },
+	.args = { "anqT:", 0, 1, NULL },
 	.usage = "[-anq] [-T key-table] key",
 
 	.flags = CMD_AFTERHOOK,

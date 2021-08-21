@@ -38,7 +38,7 @@ const struct cmd_entry cmd_if_shell_entry = {
 	.name = "if-shell",
 	.alias = "if",
 
-	.args = { "bFt:", 2, 3 },
+	.args = { "bFt:", 2, 3, NULL },
 	.usage = "[-bF] " CMD_TARGET_PANE_USAGE " shell-command command "
 		 "[command]",
 

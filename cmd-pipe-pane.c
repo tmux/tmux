@@ -43,7 +43,7 @@ const struct cmd_entry cmd_pipe_pane_entry = {
 	.name = "pipe-pane",
 	.alias = "pipep",
 
-	.args = { "IOot:", 0, 1 },
+	.args = { "IOot:", 0, 1, NULL },
 	.usage = "[-IOo] " CMD_TARGET_PANE_USAGE " [shell-command]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },

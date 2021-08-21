@@ -49,7 +49,7 @@ const struct cmd_entry cmd_list_windows_entry = {
 	.name = "list-windows",
 	.alias = "lsw",
 
-	.args = { "F:f:at:", 0, 0 },
+	.args = { "F:f:at:", 0, 0, NULL },
 	.usage = "[-a] [-F format] [-f filter] " CMD_TARGET_SESSION_USAGE,
 
 	.target = { 't', CMD_FIND_SESSION, 0 },

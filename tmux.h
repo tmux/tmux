@@ -1358,13 +1358,22 @@ TAILQ_HEAD(message_list, message_entry);
 
 /* Argument value. */
 struct args_value {
-	char			*value;
+	char			*string;
 	TAILQ_ENTRY(args_value)	 entry;
 };
 
 /* Arguments set. */
 struct args_entry;
 RB_HEAD(args_tree, args_entry);
+
+/* Arguments parsing state. */
+typedef enum args_type (*args_parse_cb)(struct args *, u_int);
+struct args_parse {
+	const char	*template;
+	int		 lower;
+	int		 upper;
+	args_parse_cb	 cb;
+};
 
 /* Command find structures. */
 enum cmd_find_type {
@@ -1454,11 +1463,7 @@ struct cmd_entry {
 	const char		*name;
 	const char		*alias;
 
-	struct {
-		const char	*template;
-		int		 lower;
-		int		 upper;
-	} args;
+	struct args_parse	 args;
 	const char		*usage;
 
 	struct cmd_entry_flag	 source;
@@ -2184,7 +2189,7 @@ int		tty_keys_next(struct tty *);
 /* arguments.c */
 void		 args_set(struct args *, u_char, const char *);
 struct args 	*args_create(void);
-struct args	*args_parse(const char *, int, char **, int, int);
+struct args	*args_parse(const struct args_parse *, int, char **);
 void		 args_vector(struct args *, int *, char ***);
 void		 args_free(struct args *);
 char		*args_print(struct args *);

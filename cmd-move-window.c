@@ -32,7 +32,7 @@ const struct cmd_entry cmd_move_window_entry = {
 	.name = "move-window",
 	.alias = "movew",
 
-	.args = { "abdkrs:t:", 0, 0 },
+	.args = { "abdkrs:t:", 0, 0, NULL },
 	.usage = "[-abdkr] " CMD_SRCDST_WINDOW_USAGE,
 
 	.source = { 's', CMD_FIND_WINDOW, 0 },
@@ -46,7 +46,7 @@ const struct cmd_entry cmd_link_window_entry = {
 	.name = "link-window",
 	.alias = "linkw",
 
-	.args = { "abdks:t:", 0, 0 },
+	.args = { "abdks:t:", 0, 0, NULL },
 	.usage = "[-abdk] " CMD_SRCDST_WINDOW_USAGE,
 
 	.source = { 's', CMD_FIND_WINDOW, 0 },

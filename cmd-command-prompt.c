@@ -40,7 +40,7 @@ const struct cmd_entry cmd_command_prompt_entry = {
 	.name = "command-prompt",
 	.alias = NULL,
 
-	.args = { "1bFkiI:Np:t:T:", 0, 1 },
+	.args = { "1bFkiI:Np:t:T:", 0, 1, NULL },
 	.usage = "[-1bFkiN] [-I inputs] [-p prompts] " CMD_TARGET_CLIENT_USAGE
 		 " [-T type] [template]",
 

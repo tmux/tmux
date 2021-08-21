@@ -34,7 +34,7 @@ const struct cmd_entry cmd_respawn_window_entry = {
 	.name = "respawn-window",
 	.alias = "respawnw",
 
-	.args = { "c:e:kt:", 0, -1 },
+	.args = { "c:e:kt:", 0, -1, NULL },
 	.usage = "[-k] [-c start-directory] [-e environment] "
 		 CMD_TARGET_WINDOW_USAGE " [command]",
 
@@ -67,7 +67,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmdq_item *item)
 
 	av = args_first_value(args, 'e');
 	while (av != NULL) {
-		environ_put(sc.environ, av->value, 0);
+		environ_put(sc.environ, av->string, 0);
 		av = args_next_value(av);
 	}
 

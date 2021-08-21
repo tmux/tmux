@@ -39,7 +39,7 @@ const struct cmd_entry cmd_split_window_entry = {
 	.name = "split-window",
 	.alias = "splitw",
 
-	.args = { "bc:de:fF:hIl:p:Pt:vZ", 0, -1 },
+	.args = { "bc:de:fF:hIl:p:Pt:vZ", 0, -1, NULL },
 	.usage = "[-bdefhIPvZ] [-c start-directory] [-e environment] "
 		 "[-F format] [-l size] " CMD_TARGET_PANE_USAGE " [command]",
 
@@ -141,7 +141,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 
 	av = args_first_value(args, 'e');
 	while (av != NULL) {
-		environ_put(sc.environ, av->value, 0);
+		environ_put(sc.environ, av->string, 0);
 		av = args_next_value(av);
 	}
 

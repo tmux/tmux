@@ -34,7 +34,7 @@ const struct cmd_entry cmd_refresh_client_entry = {
 	.name = "refresh-client",
 	.alias = "refresh",
 
-	.args = { "A:B:cC:Df:F:lLRSt:U", 0, 1 },
+	.args = { "A:B:cC:Df:F:lLRSt:U", 0, 1, NULL },
 	.usage = "[-cDlLRSU] [-A pane:state] [-B name:what:format] "
 		 "[-C XxY] [-f flags] " CMD_TARGET_CLIENT_USAGE " [adjustment]",
 
@@ -187,7 +187,7 @@ cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 			goto not_control_client;
 		av = args_first_value(args, 'A');
 		while (av != NULL) {
-			cmd_refresh_client_update_offset(tc, av->value);
+			cmd_refresh_client_update_offset(tc, av->string);
 			av = args_next_value(av);
 		}
 		return (CMD_RETURN_NORMAL);
@@ -197,7 +197,7 @@ cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 			goto not_control_client;
 		av = args_first_value(args, 'B');
 		while (av != NULL) {
-			cmd_refresh_client_update_subscription(tc, av->value);
+			cmd_refresh_client_update_subscription(tc, av->string);
 			av = args_next_value(av);
 		}
 		return (CMD_RETURN_NORMAL);

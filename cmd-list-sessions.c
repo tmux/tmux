@@ -42,7 +42,7 @@ const struct cmd_entry cmd_list_sessions_entry = {
 	.name = "list-sessions",
 	.alias = "ls",
 
-	.args = { "F:f:", 0, 0 },
+	.args = { "F:f:", 0, 0, NULL },
 	.usage = "[-F format] [-f filter]",
 
 	.flags = CMD_AFTERHOOK,

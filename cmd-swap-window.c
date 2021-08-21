@@ -32,7 +32,7 @@ const struct cmd_entry cmd_swap_window_entry = {
 	.name = "swap-window",
 	.alias = "swapw",
 
-	.args = { "ds:t:", 0, 0 },
+	.args = { "ds:t:", 0, 0, NULL },
 	.usage = "[-d] " CMD_SRCDST_WINDOW_USAGE,
 
 	.source = { 's', CMD_FIND_WINDOW, CMD_FIND_DEFAULT_MARKED },

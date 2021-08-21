@@ -78,7 +78,7 @@ args_create(void)
 
 /* Parse an argv and argc into a new argument set. */
 struct args *
-args_parse(const char *template, int argc, char **argv, int lower, int upper)
+args_parse(const struct args_parse *parse, int argc, char **argv)
 {
 	struct args	*args;
 	int		 opt;
@@ -88,10 +88,10 @@ args_parse(const char *template, int argc, char **argv, int lower, int upper)
 	optarg = NULL;
 
 	args = args_create();
-	while ((opt = getopt(argc, argv, template)) != -1) {
+	while ((opt = getopt(argc, argv, parse->template)) != -1) {
 		if (opt < 0)
 			continue;
-		if (opt == '?' || strchr(template, opt) == NULL) {
+		if (opt == '?' || strchr(parse->template, opt) == NULL) {
 			args_free(args);
 			return (NULL);
 		}
@@ -104,7 +104,8 @@ args_parse(const char *template, int argc, char **argv, int lower, int upper)
 	args->argc = argc;
 	args->argv = cmd_copy_argv(argc, argv);
 
-	if ((lower != -1 && argc < lower) || (upper != -1 && argc > upper)) {
+	if ((parse->lower != -1 && argc < parse->lower) ||
+	    (parse->upper != -1 && argc > parse->upper)) {
 		args_free(args);
 		return (NULL);
 	}
@@ -126,7 +127,7 @@ args_free(struct args *args)
 		RB_REMOVE(args_tree, &args->tree, entry);
 		TAILQ_FOREACH_SAFE(value, &entry->values, entry, value1) {
 			TAILQ_REMOVE(&entry->values, value, entry);
-			free(value->value);
+			free(value->string);
 			free(value);
 		}
 		free(entry);
@@ -208,7 +209,7 @@ args_print(struct args *args)
 				args_print_add(&buf, &len, " -%c", entry->flag);
 			else
 				args_print_add(&buf, &len, "-%c", entry->flag);
-			args_print_add_argument(&buf, &len, value->value);
+			args_print_add_argument(&buf, &len, value->string);
 		}
 	}
 
@@ -297,7 +298,7 @@ args_set(struct args *args, u_char flag, const char *s)
 
 	if (s != NULL) {
 		value = xcalloc(1, sizeof *value);
-		value->value = xstrdup(s);
+		value->string = xstrdup(s);
 		TAILQ_INSERT_TAIL(&entry->values, value, entry);
 	}
 }
@@ -312,7 +313,7 @@ args_get(struct args *args, u_char flag)
 		return (NULL);
 	if (TAILQ_EMPTY(&entry->values))
 		return (NULL);
-	return (TAILQ_LAST(&entry->values, args_values)->value);
+	return (TAILQ_LAST(&entry->values, args_values)->string);
 }
 
 /* Get first argument. */
@@ -385,7 +386,7 @@ args_strtonum(struct args *args, u_char flag, long long minval,
 	}
 	value = TAILQ_LAST(&entry->values, args_values);
 
-	ll = strtonum(value->value, minval, maxval, &errstr);
+	ll = strtonum(value->string, minval, maxval, &errstr);
 	if (errstr != NULL) {
 		*cause = xstrdup(errstr);
 		return (0);
@@ -407,7 +408,7 @@ args_percentage(struct args *args, u_char flag, long long minval,
 		*cause = xstrdup("missing");
 		return (0);
 	}
-	value = TAILQ_LAST(&entry->values, args_values)->value;
+	value = TAILQ_LAST(&entry->values, args_values)->string;
 	return (args_string_percentage(value, minval, maxval, curval, cause));
 }
 

@@ -413,7 +413,7 @@ cmdq_insert_hook(struct session *s, struct cmdq_item *item,
 		av = args_first_value(args, flag);
 		while (av != NULL) {
 			xsnprintf(tmp, sizeof tmp, "hook_flag_%c_%d", flag, i);
-			cmdq_add_format(new_state, tmp, "%s", av->value);
+			cmdq_add_format(new_state, tmp, "%s", av->string);
 			i++;
 			av = args_next_value(av);
 		}

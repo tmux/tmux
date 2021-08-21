@@ -33,7 +33,7 @@ const struct cmd_entry cmd_resize_window_entry = {
 	.name = "resize-window",
 	.alias = "resizew",
 
-	.args = { "aADLRt:Ux:y:", 0, 1 },
+	.args = { "aADLRt:Ux:y:", 0, 1, NULL },
 	.usage = "[-aADLRU] [-x width] [-y height] " CMD_TARGET_WINDOW_USAGE " "
 		 "[adjustment]",
 
@@ -59,8 +59,7 @@ cmd_resize_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_count(args) == 0)
 		adjust = 1;
 	else {
-		adjust = strtonum(args_string(args, 0), 1, INT_MAX,
-		    &errstr);
+		adjust = strtonum(args_string(args, 0), 1, INT_MAX, &errstr);
 		if (errstr != NULL) {
 			cmdq_error(item, "adjustment %s", errstr);
 			return (CMD_RETURN_ERROR);

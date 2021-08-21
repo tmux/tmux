@@ -34,7 +34,7 @@ const struct cmd_entry cmd_display_panes_entry = {
 	.name = "display-panes",
 	.alias = "displayp",
 
-	.args = { "bd:Nt:", 0, 1 },
+	.args = { "bd:Nt:", 0, 1, NULL },
 	.usage = "[-bN] [-d duration] " CMD_TARGET_CLIENT_USAGE " [template]",
 
 	.flags = CMD_AFTERHOOK|CMD_CLIENT_TFLAG,

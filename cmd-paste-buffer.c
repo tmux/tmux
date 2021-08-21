@@ -33,7 +33,7 @@ const struct cmd_entry cmd_paste_buffer_entry = {
 	.name = "paste-buffer",
 	.alias = "pasteb",
 
-	.args = { "db:prs:t:", 0, 0 },
+	.args = { "db:prs:t:", 0, 0, NULL },
 	.usage = "[-dpr] [-s separator] " CMD_BUFFER_USAGE " "
 		 CMD_TARGET_PANE_USAGE,
 
