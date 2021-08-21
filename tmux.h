@@ -1369,6 +1369,7 @@ struct args_value {
 		char		*string;
 		struct cmd_list	*cmdlist;
 	};
+	char			*cached;
 	TAILQ_ENTRY(args_value)	 entry;
 };
 
@@ -2196,7 +2197,7 @@ void		tty_keys_free(struct tty *);
 int		tty_keys_next(struct tty *);
 
 /* arguments.c */
-void		 args_set(struct args *, u_char, const char *);
+void		 args_set(struct args *, u_char, struct args_value *);
 struct args 	*args_create(void);
 struct args	*args_parse(const struct args_parse *, struct args_value *,
     		     u_int);
@@ -2210,6 +2211,7 @@ const char	*args_get(struct args *, u_char);
 u_char		 args_first(struct args *, struct args_entry **);
 u_char		 args_next(struct args_entry **);
 u_int		 args_count(struct args *);
+struct args_value *args_value(struct args *, u_int);
 const char	*args_string(struct args *, u_int);
 struct args_value *args_first_value(struct args *, u_char);
 struct args_value *args_next_value(struct args_value *);

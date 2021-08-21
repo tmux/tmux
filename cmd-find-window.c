@@ -48,7 +48,7 @@ cmd_find_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct window_pane	*wp = target->wp;
 	const char		*s = args_string(args, 0), *suffix = "";
-	char			*filter;
+	struct args_value	*filter;
 	int			 C, N, T;
 
 	C = args_has(args, 'C');
@@ -65,31 +65,41 @@ cmd_find_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (!C && !N && !T)
 		C = N = T = 1;
 
+	filter = xcalloc(1, sizeof *filter);
+	filter->type = ARGS_STRING;
+
 	if (C && N && T) {
-		xasprintf(&filter,
+		xasprintf(&filter->string,
 		    "#{||:"
 		    "#{C%s:%s},#{||:#{m%s:*%s*,#{window_name}},"
 		    "#{m%s:*%s*,#{pane_title}}}}",
 		    suffix, s, suffix, s, suffix, s);
 	} else if (C && N) {
-		xasprintf(&filter,
+		xasprintf(&filter->string,
 		    "#{||:#{C%s:%s},#{m%s:*%s*,#{window_name}}}",
 		    suffix, s, suffix, s);
 	} else if (C && T) {
-		xasprintf(&filter,
+		xasprintf(&filter->string,
 		    "#{||:#{C%s:%s},#{m%s:*%s*,#{pane_title}}}",
 		    suffix, s, suffix, s);
 	} else if (N && T) {
-		xasprintf(&filter,
+		xasprintf(&filter->string,
 		    "#{||:#{m%s:*%s*,#{window_name}},"
 		    "#{m%s:*%s*,#{pane_title}}}",
 		    suffix, s, suffix, s);
-	} else if (C)
-		xasprintf(&filter, "#{C%s:%s}", suffix, s);
-	else if (N)
-		xasprintf(&filter, "#{m%s:*%s*,#{window_name}}", suffix, s);
-	else
-		xasprintf(&filter, "#{m%s:*%s*,#{pane_title}}", suffix, s);
+	} else if (C) {
+		xasprintf(&filter->string,
+		    "#{C%s:%s}",
+		    suffix, s);
+	} else if (N) {
+		xasprintf(&filter->string,
+		    "#{m%s:*%s*,#{window_name}}",
+		    suffix, s);
+	} else {
+		xasprintf(&filter->string,
+		    "#{m%s:*%s*,#{pane_title}}",
+		    suffix, s);
+	}
 
 	new_args = args_create();
 	if (args_has(args, 'Z'))
@@ -97,9 +107,7 @@ cmd_find_window_exec(struct cmd *self, struct cmdq_item *item)
 	args_set(new_args, 'f', filter);
 
 	window_pane_set_mode(wp, NULL, &window_tree_mode, target, new_args);
-
 	args_free(new_args);
-	free(filter);
 
 	return (CMD_RETURN_NORMAL);
 }

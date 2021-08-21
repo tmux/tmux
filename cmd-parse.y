@@ -804,7 +804,8 @@ cmd_parse_build_command(struct cmd_parse_command *cmd,
 		return (cmdlist);
 
 	TAILQ_FOREACH(arg, &cmd->arguments, entry) {
-		values = xreallocarray(values, count + 1, sizeof *values);
+		values = xrecallocarray(values, count, count + 1,
+		    sizeof *values);
 		switch (arg->type) {
 		case CMD_PARSE_STRING:
 			values[count].type = ARGS_STRING;
