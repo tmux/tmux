@@ -496,27 +496,26 @@ ambiguous:
 
 /* Parse a single command from an argument vector. */
 struct cmd *
-cmd_parse(int argc, char **argv, const char *file, u_int line, char **cause)
+cmd_parse(struct args_value *values, u_int count, const char *file, u_int line,
+    char **cause)
 {
 	const struct cmd_entry	*entry;
-	const char		*name;
 	struct cmd		*cmd;
 	struct args		*args;
 
-	if (argc == 0) {
+	if (count == 0 || values[0].type != ARGS_STRING) {
 		xasprintf(cause, "no command");
 		return (NULL);
 	}
-	name = argv[0];
-
-	entry = cmd_find(name, cause);
+	entry = cmd_find(values[0].string, cause);
 	if (entry == NULL)
 		return (NULL);
-	cmd_log_argv(argc, argv, "%s: %s", __func__, entry->name);
 
-	args = args_parse(&entry->args, argc, argv);
-	if (args == NULL)
-		goto usage;
+	args = args_parse(&entry->args, values, count);
+	if (args == NULL) {
+		xasprintf(cause, "usage: %s %s", entry->name, entry->usage);
+		return (NULL);
+	}
 
 	cmd = xcalloc(1, sizeof *cmd);
 	cmd->entry = entry;
@@ -527,12 +526,6 @@ cmd_parse(int argc, char **argv, const char *file, u_int line, char **cause)
 	cmd->line = line;
 
 	return (cmd);
-
-usage:
-	if (args != NULL)
-		args_free(args);
-	xasprintf(cause, "usage: %s %s", entry->name, entry->usage);
-	return (NULL);
 }
 
 /* Free a command. */

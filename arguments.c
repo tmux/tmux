@@ -18,9 +18,9 @@
 
 #include <sys/types.h>
 
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <vis.h>
 
 #include "tmux.h"
@@ -66,6 +66,20 @@ args_find(struct args *args, u_char flag)
 	return (RB_FIND(args_tree, &args->tree, &entry));
 }
 
+/* Get value as string. */
+static char *
+args_value_as_string(struct args_value *value)
+{
+	switch (value->type) {
+	case ARGS_NONE:
+		return (xstrdup(""));
+	case ARGS_COMMANDS:
+		return (cmd_list_print(value->cmdlist, 0));
+	case ARGS_STRING:
+		return (xstrdup(value->string));
+	}
+}
+
 /* Create an empty arguments set. */
 struct args *
 args_create(void)
@@ -77,40 +91,107 @@ args_create(void)
 	return (args);
 }
 
-/* Parse an argv and argc into a new argument set. */
+/* Parse arguments into a new argument set. */
 struct args *
-args_parse(const struct args_parse *parse, int argc, char **argv)
+args_parse(const struct args_parse *parse, struct args_value *values,
+    u_int count)
 {
-	struct args	*args;
-	int		 opt;
+	struct args		*args;
+	u_int		 	 i;
+	struct args_value	*value;
+	u_char			 flag, argument;
+	const char		*found, *string;
+	char			*s;
 
-	optreset = 1;
-	optind = 1;
-	optarg = NULL;
+	if (count == 0)
+		return (args_create());
 
 	args = args_create();
-	while ((opt = getopt(argc, argv, parse->template)) != -1) {
-		if (opt < 0)
-			continue;
-		if (opt == '?' || strchr(parse->template, opt) == NULL) {
-			args_free(args);
-			return (NULL);
+	for (i = 1; i < count; /* nothing */) {
+		value = &values[i];
+
+		s = args_value_as_string(value);
+		log_debug("%s: %u = %s", __func__, i, s);
+		free(s);
+
+		if (value->type != ARGS_STRING)
+			break;
+
+		string = value->string;
+		if (*string++ != '-' || *string == '\0')
+			break;
+		i++;
+		if (string[0] == '-' && string[1] == '\0')
+			break;
+
+		for (;;) {
+			flag = *string++;
+			if (flag == '\0')
+				break;
+			if (!isalnum(flag)) {
+				args_free(args);
+				return (NULL);
+			}
+			found = strchr(parse->template, flag);
+			if (found == NULL) {
+				args_free(args);
+				return (NULL);
+			}
+			argument = *++found;
+			if (argument != ':') {
+				log_debug("%s: add -%c", __func__, flag);
+				args_set(args, flag, NULL);
+				continue;
+			}
+			if (*string != '\0')
+				s = xstrdup(string);
+			else {
+				if (i == count) {
+					args_free(args);
+					return (NULL);
+				}
+				s = args_value_as_string(&values[i++]);
+			}
+			log_debug("%s: add -%c = %s", __func__, flag, s);
+			args_set(args, flag, s);
+			free(s);
+			break;
 		}
-		args_set(args, opt, optarg);
-		optarg = NULL;
 	}
-	argc -= optind;
-	argv += optind;
+	log_debug("%s: flags end at %u of %u", __func__, i, count);
+	if (i != count) {
+		for (/* nothing */; i < count; i++) {
+			value = &values[i];
 
-	args->argc = argc;
-	args->argv = cmd_copy_argv(argc, argv);
+			s = args_value_as_string(value);
+			log_debug("%s: %u = %s", __func__, i, s);
+			cmd_append_argv(&args->argc, &args->argv, s);
+			free(s);
+		}
+	}
 
-	if ((parse->lower != -1 && argc < parse->lower) ||
-	    (parse->upper != -1 && argc > parse->upper)) {
+	if ((parse->lower != -1 && args->argc < parse->lower) ||
+	    (parse->upper != -1 && args->argc > parse->upper)) {
 		args_free(args);
 		return (NULL);
 	}
 	return (args);
+}
+
+/* Free a value. */
+void
+args_free_value(struct args_value *value)
+{
+	switch (value->type) {
+	case ARGS_NONE:
+		break;
+	case ARGS_STRING:
+		free(value->string);
+		break;
+	case ARGS_COMMANDS:
+		cmd_list_free(value->cmdlist);
+		break;
+	}
 }
 
 /* Free an arguments set. */
