@@ -39,9 +39,9 @@ struct args_entry {
 };
 
 struct args {
-	struct args_tree	  tree;
-	int			  argc;
-	char			**argv;
+	struct args_tree	 tree;
+	u_int			 count;
+	struct args_value	*values;
 };
 
 static struct args_entry	*args_find(struct args *, u_char);
@@ -66,17 +66,37 @@ args_find(struct args *args, u_char flag)
 	return (RB_FIND(args_tree, &args->tree, &entry));
 }
 
+/* Copy value. */
+static void
+args_copy_value(struct args_value *to, struct args_value *from)
+{
+	to->type = from->type;
+	switch (from->type) {
+	case ARGS_NONE:
+		break;
+	case ARGS_COMMANDS:
+		to->cmdlist = from->cmdlist;
+		to->cmdlist->references++;
+		break;
+	case ARGS_STRING:
+		to->string = xstrdup(from->string);
+		break;
+	}
+}
+
 /* Get value as string. */
-static char *
+static const char *
 args_value_as_string(struct args_value *value)
 {
 	switch (value->type) {
 	case ARGS_NONE:
-		return (xstrdup(""));
+		return ("");
 	case ARGS_COMMANDS:
-		return (cmd_list_print(value->cmdlist, 0));
+		if (value->cached == NULL)
+			value->cached = cmd_list_print(value->cmdlist, 0);
+		return (value->cached);
 	case ARGS_STRING:
-		return (xstrdup(value->string));
+		return (value->string);
 	}
 }
 
@@ -98,10 +118,9 @@ args_parse(const struct args_parse *parse, struct args_value *values,
 {
 	struct args		*args;
 	u_int		 	 i;
-	struct args_value	*value;
+	struct args_value	*value, *new;
 	u_char			 flag, argument;
-	const char		*found, *string;
-	char			*s;
+	const char		*found, *string, *s;
 
 	if (count == 0)
 		return (args_create());
@@ -109,11 +128,6 @@ args_parse(const struct args_parse *parse, struct args_value *values,
 	args = args_create();
 	for (i = 1; i < count; /* nothing */) {
 		value = &values[i];
-
-		s = args_value_as_string(value);
-		log_debug("%s: %u = %s", __func__, i, s);
-		free(s);
-
 		if (value->type != ARGS_STRING)
 			break;
 
@@ -143,18 +157,20 @@ args_parse(const struct args_parse *parse, struct args_value *values,
 				args_set(args, flag, NULL);
 				continue;
 			}
-			if (*string != '\0')
-				s = xstrdup(string);
-			else {
+			new = xcalloc(1, sizeof *value);
+			if (*string != '\0') {
+				new->type = ARGS_STRING;
+				new->string = xstrdup(string);
+			} else {
 				if (i == count) {
 					args_free(args);
 					return (NULL);
 				}
-				s = args_value_as_string(&values[i++]);
+				args_copy_value(new, &values[i++]);
 			}
+			s = args_value_as_string(new);
 			log_debug("%s: add -%c = %s", __func__, flag, s);
-			args_set(args, flag, s);
-			free(s);
+			args_set(args, flag, new);
 			break;
 		}
 	}
@@ -165,13 +181,15 @@ args_parse(const struct args_parse *parse, struct args_value *values,
 
 			s = args_value_as_string(value);
 			log_debug("%s: %u = %s", __func__, i, s);
-			cmd_append_argv(&args->argc, &args->argv, s);
-			free(s);
+
+			args->values = xrecallocarray(args->values,
+			    args->count, args->count + 1, sizeof *args->values);
+			args_copy_value(&args->values[args->count++], value);
 		}
 	}
 
-	if ((parse->lower != -1 && args->argc < parse->lower) ||
-	    (parse->upper != -1 && args->argc > parse->upper)) {
+	if ((parse->lower != -1 && args->count < (u_int)parse->lower) ||
+	    (parse->upper != -1 && args->count > (u_int)parse->upper)) {
 		args_free(args);
 		return (NULL);
 	}
@@ -192,6 +210,7 @@ args_free_value(struct args_value *value)
 		cmd_list_free(value->cmdlist);
 		break;
 	}
+	free(value->cached);
 }
 
 /* Free an arguments set. */
@@ -202,14 +221,17 @@ args_free(struct args *args)
 	struct args_entry	*entry1;
 	struct args_value	*value;
 	struct args_value	*value1;
+	u_int			 i;
 
-	cmd_free_argv(args->argc, args->argv);
+	for (i = 0; i < args->count; i++)
+		args_free_value(&args->values[i]);
+	free(args->values);
 
 	RB_FOREACH_SAFE(entry, args_tree, &args->tree, entry1) {
 		RB_REMOVE(args_tree, &args->tree, entry);
 		TAILQ_FOREACH_SAFE(value, &entry->values, entry, value1) {
 			TAILQ_REMOVE(&entry->values, value, entry);
-			free(value->string);
+			args_free_value(value);
 			free(value);
 		}
 		free(entry);
@@ -222,8 +244,16 @@ args_free(struct args *args)
 void
 args_vector(struct args *args, int *argc, char ***argv)
 {
-	*argc = args->argc;
-	*argv = cmd_copy_argv(args->argc, args->argv);
+	struct args_value	*value;
+	u_int			 i;
+
+	*argc = 0;
+	*argv = NULL;
+
+	for (i = 0; i < args->count; i++) {
+		value = &args->values[i];
+		cmd_append_argv(argc, argv, args_value_as_string(value));
+	}
 }
 
 /* Add to string. */
@@ -245,18 +275,28 @@ args_print_add(char **buf, size_t *len, const char *fmt, ...)
 	free(s);
 }
 
-/* Add argument to string. */
+/* Add value to string. */
 static void
-args_print_add_argument(char **buf, size_t *len, const char *argument)
+args_print_add_value(char **buf, size_t *len, struct args_value *value)
 {
-	char	*escaped;
+	char	*expanded = NULL;
 
 	if (**buf != '\0')
 		args_print_add(buf, len, " ");
 
-	escaped = args_escape(argument);
-	args_print_add(buf, len, "%s", escaped);
-	free(escaped);
+	switch (value->type) {
+	case ARGS_NONE:
+		break;
+	case ARGS_COMMANDS:
+		expanded = cmd_list_print(value->cmdlist, 0);
+		args_print_add(buf, len, "{ %s }", expanded);
+		break;
+	case ARGS_STRING:
+		expanded = args_escape(value->string);
+		args_print_add(buf, len, "%s", expanded);
+		break;
+	}
+	free(expanded);
 }
 
 /* Print a set of arguments. */
@@ -265,8 +305,7 @@ args_print(struct args *args)
 {
 	size_t			 len;
 	char			*buf;
-	int			 i;
-	u_int			 j;
+	u_int			 i, j;
 	struct args_entry	*entry;
 	struct args_value	*value;
 
@@ -291,13 +330,13 @@ args_print(struct args *args)
 				args_print_add(&buf, &len, " -%c", entry->flag);
 			else
 				args_print_add(&buf, &len, "-%c", entry->flag);
-			args_print_add_argument(&buf, &len, value->string);
+			args_print_add_value(&buf, &len, value);
 		}
 	}
 
 	/* And finally the argument vector. */
-	for (i = 0; i < args->argc; i++)
-		args_print_add_argument(&buf, &len, args->argv[i]);
+	for (i = 0; i < args->count; i++)
+		args_print_add_value(&buf, &len, &args->values[i]);
 
 	return (buf);
 }
@@ -363,10 +402,9 @@ args_has(struct args *args, u_char flag)
 
 /* Set argument value in the arguments tree. */
 void
-args_set(struct args *args, u_char flag, const char *s)
+args_set(struct args *args, u_char flag, struct args_value *value)
 {
 	struct args_entry	*entry;
-	struct args_value	*value;
 
 	entry = args_find(args, flag);
 	if (entry == NULL) {
@@ -377,12 +415,8 @@ args_set(struct args *args, u_char flag, const char *s)
 		RB_INSERT(args_tree, &args->tree, entry);
 	} else
 		entry->count++;
-
-	if (s != NULL) {
-		value = xcalloc(1, sizeof *value);
-		value->string = xstrdup(s);
+	if (value != NULL && value->type != ARGS_NONE)
 		TAILQ_INSERT_TAIL(&entry->values, value, entry);
-	}
 }
 
 /* Get argument value. Will be NULL if it isn't present. */
@@ -422,16 +456,25 @@ args_next(struct args_entry **entry)
 u_int
 args_count(struct args *args)
 {
-	return (args->argc);
+	return (args->count);
+}
+
+/* Get argument value. */
+struct args_value *
+args_value(struct args *args, u_int idx)
+{
+	if (idx >= args->count)
+		return (NULL);
+	return (&args->values[idx]);
 }
 
 /* Return argument as string. */
 const char *
 args_string(struct args *args, u_int idx)
 {
-	if (idx >= (u_int)args->argc)
+	if (idx >= args->count)
 		return (NULL);
-	return (args->argv[idx]);
+	return (args_value_as_string(&args->values[idx]));
 }
 
 /* Get first value in argument. */
