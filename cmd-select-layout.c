@@ -33,7 +33,7 @@ const struct cmd_entry cmd_select_layout_entry = {
 	.name = "select-layout",
 	.alias = "selectl",
 
-	.args = { "Enopt:", 0, 1 },
+	.args = { "Enopt:", 0, 1, NULL },
 	.usage = "[-Enop] " CMD_TARGET_PANE_USAGE " [layout-name]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -46,7 +46,7 @@ const struct cmd_entry cmd_next_layout_entry = {
 	.name = "next-layout",
 	.alias = "nextl",
 
-	.args = { "t:", 0, 0 },
+	.args = { "t:", 0, 0, NULL },
 	.usage = CMD_TARGET_WINDOW_USAGE,
 
 	.target = { 't', CMD_FIND_WINDOW, 0 },
@@ -59,7 +59,7 @@ const struct cmd_entry cmd_previous_layout_entry = {
 	.name = "previous-layout",
 	.alias = "prevl",
 
-	.args = { "t:", 0, 0 },
+	.args = { "t:", 0, 0, NULL },
 	.usage = CMD_TARGET_WINDOW_USAGE,
 
 	.target = { 't', CMD_FIND_WINDOW, 0 },

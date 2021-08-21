@@ -1366,10 +1366,12 @@ struct args_entry;
 RB_HEAD(args_tree, args_entry);
 
 /* Arguments parsing state. */
+typedef enum args_type (*args_parse_cb)(struct args *, u_int);
 struct args_parse {
 	const char	*template;
 	int		 lower;
 	int		 upper;
+	args_parse_cb	 cb;
 };
 
 /* Command find structures. */

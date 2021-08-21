@@ -32,7 +32,7 @@ const struct cmd_entry cmd_kill_pane_entry = {
 	.name = "kill-pane",
 	.alias = "killp",
 
-	.args = { "at:", 0, 0 },
+	.args = { "at:", 0, 0, NULL },
 	.usage = "[-a] " CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },

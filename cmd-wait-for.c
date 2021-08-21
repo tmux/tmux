@@ -34,7 +34,7 @@ const struct cmd_entry cmd_wait_for_entry = {
 	.name = "wait-for",
 	.alias = "wait",
 
-	.args = { "LSU", 1, 1 },
+	.args = { "LSU", 1, 1, NULL },
 	.usage = "[-L|-S|-U] channel",
 
 	.flags = 0,

@@ -31,7 +31,7 @@ const struct cmd_entry cmd_show_prompt_history_entry = {
 	.name = "show-prompt-history",
 	.alias = "showphist",
 
-	.args = { "T:", 0, 0 },
+	.args = { "T:", 0, 0, NULL },
 	.usage = "[-T type]",
 
 	.flags = CMD_AFTERHOOK,
@@ -42,7 +42,7 @@ const struct cmd_entry cmd_clear_prompt_history_entry = {
 	.name = "clear-prompt-history",
 	.alias = "clearphist",
 
-	.args = { "T:", 0, 0 },
+	.args = { "T:", 0, 0, NULL },
 	.usage = "[-T type]",
 
 	.flags = CMD_AFTERHOOK,

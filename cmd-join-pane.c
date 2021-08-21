@@ -36,7 +36,7 @@ const struct cmd_entry cmd_join_pane_entry = {
 	.name = "join-pane",
 	.alias = "joinp",
 
-	.args = { "bdfhvp:l:s:t:", 0, 0 },
+	.args = { "bdfhvp:l:s:t:", 0, 0, NULL },
 	.usage = "[-bdfhv] [-l size] " CMD_SRCDST_PANE_USAGE,
 
 	.source = { 's', CMD_FIND_PANE, CMD_FIND_DEFAULT_MARKED },
@@ -50,7 +50,7 @@ const struct cmd_entry cmd_move_pane_entry = {
 	.name = "move-pane",
 	.alias = "movep",
 
-	.args = { "bdfhvp:l:s:t:", 0, 0 },
+	.args = { "bdfhvp:l:s:t:", 0, 0, NULL },
 	.usage = "[-bdfhv] [-l size] " CMD_SRCDST_PANE_USAGE,
 
 	.source = { 's', CMD_FIND_PANE, CMD_FIND_DEFAULT_MARKED },

@@ -32,7 +32,7 @@ const struct cmd_entry cmd_find_window_entry = {
 	.name = "find-window",
 	.alias = "findw",
 
-	.args = { "CiNrt:TZ", 1, 1 },
+	.args = { "CiNrt:TZ", 1, 1, NULL },
 	.usage = "[-CiNrTZ] " CMD_TARGET_PANE_USAGE " match-string",
 
 	.target = { 't', CMD_FIND_PANE, 0 },

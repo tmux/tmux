@@ -38,7 +38,7 @@ const struct cmd_entry cmd_list_panes_entry = {
 	.name = "list-panes",
 	.alias = "lsp",
 
-	.args = { "asF:f:t:", 0, 0 },
+	.args = { "asF:f:t:", 0, 0, NULL },
 	.usage = "[-as] [-F format] [-f filter] " CMD_TARGET_WINDOW_USAGE,
 
 	.target = { 't', CMD_FIND_WINDOW, 0 },

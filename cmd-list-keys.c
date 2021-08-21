@@ -36,7 +36,7 @@ const struct cmd_entry cmd_list_keys_entry = {
 	.name = "list-keys",
 	.alias = "lsk",
 
-	.args = { "1aNP:T:", 0, 1 },
+	.args = { "1aNP:T:", 0, 1, NULL },
 	.usage = "[-1aN] [-P prefix-string] [-T key-table] [key]",
 
 	.flags = CMD_STARTSERVER|CMD_AFTERHOOK,
@@ -47,7 +47,7 @@ const struct cmd_entry cmd_list_commands_entry = {
 	.name = "list-commands",
 	.alias = "lscm",
 
-	.args = { "F:", 0, 1 },
+	.args = { "F:", 0, 1, NULL },
 	.usage = "[-F format] [command]",
 
 	.flags = CMD_STARTSERVER|CMD_AFTERHOOK,

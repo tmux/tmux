@@ -33,7 +33,7 @@ const struct cmd_entry cmd_rename_window_entry = {
 	.name = "rename-window",
 	.alias = "renamew",
 
-	.args = { "t:", 1, 1 },
+	.args = { "t:", 1, 1, NULL },
 	.usage = CMD_TARGET_WINDOW_USAGE " new-name",
 
 	.target = { 't', CMD_FIND_WINDOW, 0 },

@@ -36,7 +36,7 @@ const struct cmd_entry cmd_resize_pane_entry = {
 	.name = "resize-pane",
 	.alias = "resizep",
 
-	.args = { "DLMRTt:Ux:y:Z", 0, 1 },
+	.args = { "DLMRTt:Ux:y:Z", 0, 1, NULL },
 	.usage = "[-DLMRTUZ] [-x width] [-y height] " CMD_TARGET_PANE_USAGE " "
 		 "[adjustment]",
 

@@ -39,7 +39,7 @@ const struct cmd_entry cmd_new_session_entry = {
 	.name = "new-session",
 	.alias = "new",
 
-	.args = { "Ac:dDe:EF:f:n:Ps:t:x:Xy:", 0, -1 },
+	.args = { "Ac:dDe:EF:f:n:Ps:t:x:Xy:", 0, -1, NULL },
 	.usage = "[-AdDEPX] [-c start-directory] [-e environment] [-F format] "
 		 "[-f flags] [-n window-name] [-s session-name] "
 		 CMD_TARGET_SESSION_USAGE " [-x width] [-y height] [command]",
@@ -54,7 +54,7 @@ const struct cmd_entry cmd_has_session_entry = {
 	.name = "has-session",
 	.alias = "has",
 
-	.args = { "t:", 0, 0 },
+	.args = { "t:", 0, 0, NULL },
 	.usage = CMD_TARGET_SESSION_USAGE,
 
 	.target = { 't', CMD_FIND_SESSION, 0 },

@@ -36,7 +36,7 @@ const struct cmd_entry cmd_list_buffers_entry = {
 	.name = "list-buffers",
 	.alias = "lsb",
 
-	.args = { "F:f:", 0, 0 },
+	.args = { "F:f:", 0, 0, NULL },
 	.usage = "[-F format] [-f filter]",
 
 	.flags = CMD_AFTERHOOK,

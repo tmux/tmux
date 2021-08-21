@@ -33,7 +33,7 @@ const struct cmd_entry cmd_resize_window_entry = {
 	.name = "resize-window",
 	.alias = "resizew",
 
-	.args = { "aADLRt:Ux:y:", 0, 1 },
+	.args = { "aADLRt:Ux:y:", 0, 1, NULL },
 	.usage = "[-aADLRU] [-x width] [-y height] " CMD_TARGET_WINDOW_USAGE " "
 		 "[adjustment]",
 

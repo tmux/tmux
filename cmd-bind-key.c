@@ -33,7 +33,7 @@ const struct cmd_entry cmd_bind_key_entry = {
 	.name = "bind-key",
 	.alias = "bind",
 
-	.args = { "nrN:T:", 1, -1 },
+	.args = { "nrN:T:", 1, -1, NULL },
 	.usage = "[-nr] [-T key-table] [-N note] key "
 	         "[command [arguments]]",
 

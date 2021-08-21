@@ -37,7 +37,7 @@ const struct cmd_entry cmd_attach_session_entry = {
 	.name = "attach-session",
 	.alias = "attach",
 
-	.args = { "c:dEf:rt:x", 0, 0 },
+	.args = { "c:dEf:rt:x", 0, 0, NULL },
 	.usage = "[-dErx] [-c working-directory] [-f flags] "
 	         CMD_TARGET_SESSION_USAGE,
 

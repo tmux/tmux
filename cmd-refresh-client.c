@@ -34,7 +34,7 @@ const struct cmd_entry cmd_refresh_client_entry = {
 	.name = "refresh-client",
 	.alias = "refresh",
 
-	.args = { "A:B:cC:Df:F:lLRSt:U", 0, 1 },
+	.args = { "A:B:cC:Df:F:lLRSt:U", 0, 1, NULL },
 	.usage = "[-cDlLRSU] [-A pane:state] [-B name:what:format] "
 		 "[-C XxY] [-f flags] " CMD_TARGET_CLIENT_USAGE " [adjustment]",
 

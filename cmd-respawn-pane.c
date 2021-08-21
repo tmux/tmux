@@ -34,7 +34,7 @@ const struct cmd_entry cmd_respawn_pane_entry = {
 	.name = "respawn-pane",
 	.alias = "respawnp",
 
-	.args = { "c:e:kt:", 0, -1 },
+	.args = { "c:e:kt:", 0, -1, NULL },
 	.usage = "[-k] [-c start-directory] [-e environment] "
 		 CMD_TARGET_PANE_USAGE " [command]",
 

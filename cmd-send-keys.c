@@ -33,7 +33,7 @@ const struct cmd_entry cmd_send_keys_entry = {
 	.name = "send-keys",
 	.alias = "send",
 
-	.args = { "FHlMN:Rt:X", 0, -1 },
+	.args = { "FHlMN:Rt:X", 0, -1, NULL },
 	.usage = "[-FHlMRX] [-N repeat-count] " CMD_TARGET_PANE_USAGE
 	         " key ...",
 
@@ -47,7 +47,7 @@ const struct cmd_entry cmd_send_prefix_entry = {
 	.name = "send-prefix",
 	.alias = NULL,
 
-	.args = { "2t:", 0, 0 },
+	.args = { "2t:", 0, 0, NULL },
 	.usage = "[-2] " CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },

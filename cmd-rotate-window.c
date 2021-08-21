@@ -31,7 +31,7 @@ const struct cmd_entry cmd_rotate_window_entry = {
 	.name = "rotate-window",
 	.alias = "rotatew",
 
-	.args = { "Dt:UZ", 0, 0 },
+	.args = { "Dt:UZ", 0, 0, NULL },
 	.usage = "[-DUZ] " CMD_TARGET_WINDOW_USAGE,
 
 	.target = { 't', CMD_FIND_WINDOW, 0 },
