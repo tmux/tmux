@@ -121,8 +121,6 @@ cmd_display_menu_get_position(struct client *tc, struct cmdq_item *item,
 			if (sr != NULL)
 				break;
 		}
-		if (line == lines)
-			ranges = &tc->status.entries[0].ranges;
 
 		if (sr != NULL) {
 			format_add(ft, "popup_window_status_line_x", "%u",

@@ -280,7 +280,7 @@ server_client_open(struct client *c, char **cause)
 static void
 server_client_attached_lost(struct client *c)
 {
-	struct session	*s = c->session;
+	struct session	*s;
 	struct window	*w;
 	struct client	*loop;
 	struct client	*found;
