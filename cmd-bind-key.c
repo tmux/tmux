@@ -50,6 +50,7 @@ cmd_bind_key_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_parse_result	 *pr;
 	char			**argv;
 	int			  argc, repeat;
+	struct args_value	 *value;
 	u_int			  count = args_count(args);
 
 	key = key_string_lookup_string(args_string(args, 0));
@@ -66,24 +67,32 @@ cmd_bind_key_exec(struct cmd *self, struct cmdq_item *item)
 		tablename = "prefix";
 	repeat = args_has(args, 'r');
 
-	if (count != 1) {
-		if (count == 2)
-			pr = cmd_parse_from_string(args_string(args, 1), NULL);
-		else {
-			args_vector(args, &argc, &argv);
-			pr = cmd_parse_from_arguments(argc - 1, argv + 1, NULL);
-			cmd_free_argv(argc, argv);
-		}
-		switch (pr->status) {
-		case CMD_PARSE_ERROR:
-			cmdq_error(item, "%s", pr->error);
-			free(pr->error);
-			return (CMD_RETURN_ERROR);
-		case CMD_PARSE_SUCCESS:
-			break;
-		}
-		key_bindings_add(tablename, key, note, repeat, pr->cmdlist);
-	} else
+	if (count == 1) {
 		key_bindings_add(tablename, key, note, repeat, NULL);
+		return (CMD_RETURN_NORMAL);
+	}
+
+	value = args_value(args, 1);
+	if (count == 2 && value->type == ARGS_COMMANDS) {
+		key_bindings_add(tablename, key, note, repeat, value->cmdlist);
+		return (CMD_RETURN_NORMAL);
+	}
+
+	if (count == 2)
+		pr = cmd_parse_from_string(args_string(args, 1), NULL);
+	else {
+		args_vector(args, &argc, &argv);
+		pr = cmd_parse_from_arguments(argc - 1, argv + 1, NULL);
+		cmd_free_argv(argc, argv);
+	}
+	switch (pr->status) {
+	case CMD_PARSE_ERROR:
+		cmdq_error(item, "%s", pr->error);
+		free(pr->error);
+		return (CMD_RETURN_ERROR);
+	case CMD_PARSE_SUCCESS:
+		break;
+	}
+	key_bindings_add(tablename, key, note, repeat, pr->cmdlist);
 	return (CMD_RETURN_NORMAL);
 }
