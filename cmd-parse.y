@@ -772,7 +772,7 @@ cmd_parse_expand_alias(struct cmd_parse_command *cmd,
 	TAILQ_REMOVE(&cmd->arguments, first, entry);
 	cmd_parse_free_argument(first);
 
-	after = TAILQ_NEXT(TAILQ_FIRST(&last->arguments), entry);
+	after = TAILQ_FIRST(&last->arguments);
 	TAILQ_FOREACH_SAFE(arg, &cmd->arguments, entry, arg1) {
 		TAILQ_REMOVE(&cmd->arguments, arg, entry);
 		if (after == NULL)

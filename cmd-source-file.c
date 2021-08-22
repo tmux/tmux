@@ -179,12 +179,12 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 			free(pattern);
 			continue;
 		}
-		free(expanded);
 		free(pattern);
 
 		for (j = 0; j < g.gl_pathc; j++)
 			cmd_source_file_add(cdata, g.gl_pathv[j]);
 	}
+	free(expanded);
 
 	cdata->after = item;
 	cdata->retval = retval;

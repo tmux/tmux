@@ -555,7 +555,7 @@ file_write_open(struct client_files *files, struct tmuxpeer *peer,
 	log_debug("open write file %d %s", msg->stream, path);
 
 	find.stream = msg->stream;
-	if ((cf = RB_FIND(client_files, files, &find)) != NULL) {
+	if (RB_FIND(client_files, files, &find) != NULL) {
 		error = EBADF;
 		goto reply;
 	}
@@ -714,7 +714,7 @@ file_read_open(struct client_files *files, struct tmuxpeer *peer,
 	log_debug("open read file %d %s", msg->stream, path);
 
 	find.stream = msg->stream;
-	if ((cf = RB_FIND(client_files, files, &find)) != NULL) {
+	if (RB_FIND(client_files, files, &find) != NULL) {
 		error = EBADF;
 		goto reply;
 	}
