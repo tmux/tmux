@@ -632,6 +632,36 @@ format_draw_absolute_centre(struct screen_write_ctx *octx, u_int available,
 	    width_after);
 }
 
+/* Get width and count of any leading #s. */
+static const char *
+format_leading_hashes(const char *cp, u_int *n, u_int *width)
+{
+	for (*n = 0; cp[*n] == '#'; (*n)++)
+		/* nothing */;
+	if (*n == 0) {
+		*width = 0;
+		return (cp);
+	}
+	if (cp[*n] != '[') {
+		if ((*n % 2) == 0)
+			*width = (*n / 2);
+		else
+			*width = (*n / 2) + 1;
+		return (cp + *n);
+	}
+	*width = (*n / 2);
+	if ((*n % 2) == 0) {
+		/*
+		 * An even number of #s means that all #s are escaped, so not a
+		 * style. The caller should not skip this. Return pointing to
+		 * the [.
+		 */
+		return (cp + *n);
+	}
+	/* This is a style, so return pointing to the #. */
+	return (cp + *n - 1);
+}
+
 /* Draw multiple characters. */
 static void
 format_draw_many(struct screen_write_ctx *ctx, struct style *sy, char ch,
@@ -1002,37 +1032,22 @@ u_int
 format_width(const char *expanded)
 {
 	const char		*cp, *end;
-	u_int			 n, width = 0;
+	u_int			 n, leading_width, width = 0;
 	struct utf8_data	 ud;
 	enum utf8_state		 more;
 
 	cp = expanded;
 	while (*cp != '\0') {
 		if (*cp == '#') {
-			for (n = 1; cp[n] == '#'; n++)
-				/* nothing */;
-			if (cp[n] != '[') {
-				width += n;
-				cp += n;
-				continue;
+			end = format_leading_hashes(cp, &n, &leading_width);
+			width += leading_width;
+			cp = end;
+			if (*cp == '#') {
+				end = format_skip(cp + 2, "]");
+				if (end == NULL)
+					return (0);
+				cp = end + 1;
 			}
-			width += (n / 2); /* one for each ## */
-
-			if ((n % 2) == 0) {
-				/*
-				 * An even number of #s means that all #s are
-				 * escaped, so not a style.
-				 */
-				width++; /* one for the [ */
-				cp += (n + 1);
-				continue;
-			}
-			cp += (n - 1); /* point to the [ */
-
-			end = format_skip(cp + 2, "]");
-			if (end == NULL)
-				return (0);
-			cp = end + 1;
 		} else if ((more = utf8_open(&ud, *cp)) == UTF8_MORE) {
 			while (*++cp != '\0' && more == UTF8_MORE)
 				more = utf8_append(&ud, *cp);
@@ -1059,7 +1074,7 @@ format_trim_left(const char *expanded, u_int limit)
 {
 	char			*copy, *out;
 	const char		*cp = expanded, *end;
-	u_int			 even, n, width = 0;
+	u_int			 n, width = 0, leading_width;
 	struct utf8_data	 ud;
 	enum utf8_state		 more;
 
@@ -1068,44 +1083,27 @@ format_trim_left(const char *expanded, u_int limit)
 		if (width >= limit)
 			break;
 		if (*cp == '#') {
-			for (end = cp + 1; *end == '#'; end++)
-				/* nothing */;
-			n = end - cp;
-			if (*end != '[') {
-				if (n > limit - width)
-					n = limit - width;
-				memcpy(out, cp, n);
-				out += n;
-				width += n;
-				cp = end;
-				continue;
-			}
-			even = ((n % 2) == 0);
-
-			n /= 2;
-			if (n > limit - width)
-				n = limit - width;
-			width += n;
-			n *= 2;
-			memcpy(out, cp, n);
-			out += n;
-
-			if (even) {
-				if (width + 1 <= limit) {
-					*out++ = '[';
-					width++;
+			end = format_leading_hashes(cp, &n, &leading_width);
+			if (leading_width > limit - width)
+				leading_width = limit - width;
+			if (leading_width != 0) {
+				if (n == 1)
+					*out++ = '#';
+				else {
+					memset(out, '#', 2 * leading_width);
+					out += 2 * leading_width;
 				}
-				cp = end + 1;
-				continue;
+				width += leading_width;
 			}
-			cp = end - 1;
-
-			end = format_skip(cp + 2, "]");
-			if (end == NULL)
-				break;
-			memcpy(out, cp, end + 1 - cp);
-			out += (end + 1 - cp);
-			cp = end + 1;
+			cp = end;
+			if (*cp == '#') {
+				end = format_skip(cp + 2, "]");
+				if (end == NULL)
+					break;
+				memcpy(out, cp, end + 1 - cp);
+				out += (end + 1 - cp);
+				cp = end + 1;
+			}
 		} else if ((more = utf8_open(&ud, *cp)) == UTF8_MORE) {
 			while (*++cp != '\0' && more == UTF8_MORE)
 				more = utf8_append(&ud, *cp);
@@ -1137,7 +1135,8 @@ format_trim_right(const char *expanded, u_int limit)
 {
 	char			*copy, *out;
 	const char		*cp = expanded, *end;
-	u_int			 width = 0, total_width, skip, old_n, even, n;
+	u_int			 width = 0, total_width, skip, n;
+	u_int			 leading_width, copy_width;
 	struct utf8_data	 ud;
 	enum utf8_state		 more;
 
@@ -1149,64 +1148,32 @@ format_trim_right(const char *expanded, u_int limit)
 	out = copy = xcalloc(1, strlen(expanded) + 1);
 	while (*cp != '\0') {
 		if (*cp == '#') {
-			for (end = cp + 1; *end == '#'; end++)
-				/* nothing */;
-			old_n = n = end - cp;
-			if (*end != '[') {
-				if (width <= skip) {
-					if (skip - width >= n)
-						n = 0;
-					else
-						n -= (skip - width);
-				}
-				if (n != 0) {
-					memcpy(out, cp, n);
-					out += n;
-				}
-
-				/*
-				 * The width always increases by the full
-				 * amount even if we can't copy anything yet.
-				 */
-				width += old_n;
-				cp = end;
-				continue;
-			}
-			even = ((n % 2) == 0);
-
-			n /= 2;
+			end = format_leading_hashes(cp, &n, &leading_width);
 			if (width <= skip) {
-				if (skip - width >= n)
-					n = 0;
+				if (skip - width >= leading_width)
+					copy_width = 0;
 				else
-					n -= (skip - width);
+					copy_width -= (skip - width);
+			} else
+				copy_width = leading_width;
+			if (copy_width != 0) {
+				if (n == 1)
+					*out++ = '#';
+				else {
+					memset(out, '#', 2 * copy_width);
+					out += 2 * copy_width;
+				}
 			}
-			if (n != 0) {
-				/*
-				 * Copy the full amount because it hasn't been
-				 * escaped yet.
-				 */
-				memcpy(out, cp, old_n);
-				out += old_n;
+			width += leading_width;
+			cp = end;
+			if (*cp == '#') {
+				end = format_skip(cp + 2, "]");
+				if (end == NULL)
+					break;
+				memcpy(out, cp, end + 1 - cp);
+				out += (end + 1 - cp);
+				cp = end + 1;
 			}
-			cp += old_n;
-			width += (old_n / 2) - even;
-
-			if (even) {
-				if (width > skip)
-					*out++ = '[';
-				width++;
-				continue;
-			}
-			cp = end - 1;
-
-			end = format_skip(cp + 2, "]");
-			if (end == NULL) {
-				break;
-			}
-			memcpy(out, cp, end + 1 - cp);
-			out += (end + 1 - cp);
-			cp = end + 1;
 		} else if ((more = utf8_open(&ud, *cp)) == UTF8_MORE) {
 			while (*++cp != '\0' && more == UTF8_MORE)
 				more = utf8_append(&ud, *cp);
