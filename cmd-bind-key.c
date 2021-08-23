@@ -75,6 +75,7 @@ cmd_bind_key_exec(struct cmd *self, struct cmdq_item *item)
 	value = args_value(args, 1);
 	if (count == 2 && value->type == ARGS_COMMANDS) {
 		key_bindings_add(tablename, key, note, repeat, value->cmdlist);
+		value->cmdlist->references++;
 		return (CMD_RETURN_NORMAL);
 	}
 
