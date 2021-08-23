@@ -66,6 +66,7 @@ static void
 cmd_source_file_complete(struct client *c, struct cmd_source_file_data *cdata)
 {
 	struct cmdq_item	*new_item;
+	u_int			 i;
 
 	if (cfg_finished) {
 		if (cdata->retval == CMD_RETURN_ERROR &&
@@ -76,6 +77,8 @@ cmd_source_file_complete(struct client *c, struct cmd_source_file_data *cdata)
 		cmdq_insert_after(cdata->after, new_item);
 	}
 
+	for (i = 0; i < cdata->nfiles; i++)
+		free(cdata->files[i]);
 	free(cdata->files);
 	free(cdata);
 }
@@ -177,6 +180,7 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 				cmdq_error(item, "%s: %s", path, error);
 				retval = CMD_RETURN_ERROR;
 			}
+			globfree(&g);
 			free(pattern);
 			continue;
 		}
@@ -184,6 +188,7 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 
 		for (j = 0; j < g.gl_pathc; j++)
 			cmd_source_file_add(cdata, g.gl_pathv[j]);
+		globfree(&g);
 	}
 	free(expanded);
 

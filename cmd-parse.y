@@ -426,7 +426,7 @@ command		: assignment
 
 			arg = xcalloc(1, sizeof *arg);
 			arg->type = CMD_PARSE_STRING;
-			arg->string = xstrdup($2);
+			arg->string = $2;
 			TAILQ_INSERT_HEAD(&$$->arguments, arg, entry);
 		}
 		| optional_assignment TOKEN arguments
@@ -443,7 +443,7 @@ command		: assignment
 
 			arg = xcalloc(1, sizeof *arg);
 			arg->type = CMD_PARSE_STRING;
-			arg->string = xstrdup($2);
+			arg->string = $2;
 			TAILQ_INSERT_HEAD(&$$->arguments, arg, entry);
 		}
 
@@ -543,13 +543,13 @@ argument	: TOKEN
 		{
 			$$ = xcalloc(1, sizeof *$$);
 			$$->type = CMD_PARSE_STRING;
-			$$->string = xstrdup($1);
+			$$->string = $1;
 		}
 		| EQUALS
 		{
 			$$ = xcalloc(1, sizeof *$$);
 			$$->type = CMD_PARSE_STRING;
-			$$->string = xstrdup($1);
+			$$->string = $1;
 		}
 		| '{' argument_statements
 		{
@@ -817,7 +817,6 @@ cmd_parse_build_command(struct cmd_parse_command *cmd,
 				goto out;
 			values[count].type = ARGS_COMMANDS;
 			values[count].cmdlist = pr->cmdlist;
-			values[count].cmdlist->references++;
 			break;
 		}
 		count++;
