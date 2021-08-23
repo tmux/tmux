@@ -817,6 +817,7 @@ cmd_parse_build_command(struct cmd_parse_command *cmd,
 				goto out;
 			values[count].type = ARGS_COMMANDS;
 			values[count].cmdlist = pr->cmdlist;
+			values[count].cmdlist->references++;
 			break;
 		}
 		count++;
