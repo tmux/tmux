@@ -29,8 +29,10 @@
  * Manipulate command arguments.
  */
 
+/* List of argument values. */
 TAILQ_HEAD(args_values, args_value);
 
+/* Single arguments flag. */
 struct args_entry {
 	u_char			 flag;
 	struct args_values	 values;
@@ -38,10 +40,18 @@ struct args_entry {
 	RB_ENTRY(args_entry)	 entry;
 };
 
+/* Parsed argument flags and values. */
 struct args {
 	struct args_tree	 tree;
 	u_int			 count;
 	struct args_value	*values;
+};
+
+/* Prepared command state. */
+struct args_command_state {
+	struct cmd_list		*cmdlist;
+	char			*cmd;
+	struct cmd_parse_input	 pi;
 };
 
 static struct args_entry	*args_find(struct args *, u_char);
@@ -475,6 +485,133 @@ args_string(struct args *args, u_int idx)
 	if (idx >= args->count)
 		return (NULL);
 	return (args_value_as_string(&args->values[idx]));
+}
+
+/* Make a command now. */
+struct cmd_list *
+args_make_commands_now(struct cmd *self, struct cmdq_item *item, u_int idx)
+{
+	struct args_command_state	*state;
+	char				*error;
+	struct cmd_list			*cmdlist;
+
+	state = args_make_commands_prepare(self, item, idx, NULL, 0, 0);
+	cmdlist = args_make_commands(state, 0, NULL, &error);
+	args_make_commands_free(state);
+	if (cmdlist == NULL) {
+		cmdq_error(item, "%s", error);
+		free(error);
+	}
+	return (cmdlist);
+}
+
+/* Save bits to make a command later. */
+struct args_command_state *
+args_make_commands_prepare(struct cmd *self, struct cmdq_item *item, u_int idx,
+    const char *default_command, int wait, int expand)
+{
+	struct args			*args = cmd_get_args(self);
+	struct cmd_find_state		*target = cmdq_get_target(item);
+	struct client			*tc = cmdq_get_target_client(item);
+	struct args_value		*value;
+	struct args_command_state	*state;
+	const char			*cmd;
+
+	state = xcalloc(1, sizeof *state);
+
+	if (idx < args->count) {
+		value = &args->values[idx];
+		if (value->type == ARGS_COMMANDS) {
+			state->cmdlist = value->cmdlist;
+			state->cmdlist->references++;
+			return (state);
+		}
+		cmd = value->string;
+	} else {
+		if (default_command == NULL)
+			fatalx("argument out of range");
+		cmd = default_command;
+	}
+
+
+	if (expand)
+		state->cmd = format_single_from_target(item, cmd);
+	else
+		state->cmd = xstrdup(cmd);
+	log_debug("%s: %s", __func__, state->cmd);
+
+	if (wait)
+		state->pi.item = item;
+	cmd_get_source(self, &state->pi.file, &state->pi.line);
+	state->pi.c = tc;
+	if (state->pi.c != NULL)
+		state->pi.c->references++;
+	cmd_find_copy_state(&state->pi.fs, target);
+
+	return (state);
+}
+
+/* Return argument as command. */
+struct cmd_list *
+args_make_commands(struct args_command_state *state, int argc, char **argv,
+    char **error)
+{
+	struct cmd_parse_result	*pr;
+	char			*cmd, *new_cmd;
+	int			 i;
+
+	if (state->cmdlist != NULL)
+		return (state->cmdlist);
+
+	cmd = xstrdup(state->cmd);
+	for (i = 0; i < argc; i++) {
+		new_cmd = cmd_template_replace(cmd, argv[i], i + 1);
+		log_debug("%s: %%%u %s: %s", __func__, i + 1, argv[i], new_cmd);
+		free(cmd);
+		cmd = new_cmd;
+	}
+	log_debug("%s: %s", __func__, cmd);
+
+	pr = cmd_parse_from_string(cmd, &state->pi);
+	free(cmd);
+	switch (pr->status) {
+	case CMD_PARSE_ERROR:
+		*error = pr->error;
+		return (NULL);
+	case CMD_PARSE_SUCCESS:
+		return (pr->cmdlist);
+	}
+}
+
+/* Free commands state. */
+void
+args_make_commands_free(struct args_command_state *state)
+{
+	if (state->cmdlist != NULL)
+		cmd_list_free(state->cmdlist);
+	if (state->pi.c != NULL)
+		server_client_unref(state->pi.c);
+	free(state->cmd);
+	free(state);
+}
+
+/* Get prepared command. */
+char *
+args_make_commands_get_command(struct args_command_state *state)
+{
+	struct cmd	*first;
+	int		 n;
+	char		*s;
+
+	if (state->cmdlist != NULL) {
+		first = cmd_list_first(state->cmdlist);
+		if (first == NULL)
+			return (xstrdup(""));
+		return (xstrdup(cmd_get_entry(first)->name));
+	}
+	n = strcspn(state->cmd, " ,");
+	xasprintf(&s, "%.*s", n, state->cmd);
+	return (s);
 }
 
 /* Get first value in argument. */

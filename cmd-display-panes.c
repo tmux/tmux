@@ -42,8 +42,8 @@ const struct cmd_entry cmd_display_panes_entry = {
 };
 
 struct cmd_display_panes_data {
-	struct cmdq_item	*item;
-	char			*command;
+	struct cmdq_item		*item;
+	struct args_command_state	*state;
 };
 
 static void
@@ -207,7 +207,7 @@ cmd_display_panes_free(__unused struct client *c, void *data)
 
 	if (cdata->item != NULL)
 		cmdq_continue(cdata->item);
-	free(cdata->command);
+	args_make_commands_free(cdata->state);
 	free(cdata);
 }
 
@@ -215,10 +215,11 @@ static int
 cmd_display_panes_key(struct client *c, void *data, struct key_event *event)
 {
 	struct cmd_display_panes_data	*cdata = data;
-	char				*cmd, *expanded, *error;
+	char				*expanded, *error;
+	struct cmdq_item		*item = cdata->item, *new_item;
+	struct cmd_list			*cmdlist;
 	struct window			*w = c->session->curw->window;
 	struct window_pane		*wp;
-	enum cmd_parse_status		 status;
 	u_int				 index;
 	key_code			 key;
 
@@ -239,15 +240,19 @@ cmd_display_panes_key(struct client *c, void *data, struct key_event *event)
 	window_unzoom(w);
 
 	xasprintf(&expanded, "%%%u", wp->id);
-	cmd = cmd_template_replace(cdata->command, expanded, 1);
 
-	status = cmd_parse_and_append(cmd, NULL, c, NULL, &error);
-	if (status == CMD_PARSE_ERROR) {
+	cmdlist = args_make_commands(cdata->state, 1, &expanded, &error);
+	if (cmdlist == NULL) {
 		cmdq_append(c, cmdq_get_error(error));
 		free(error);
+	} else if (item == NULL) {
+		new_item = cmdq_get_command(cmdlist, NULL);
+		cmdq_append(c, new_item);
+	} else {
+		new_item = cmdq_get_command(cmdlist, cmdq_get_state(item));
+		cmdq_insert_after(item, new_item);
 	}
 
-	free(cmd);
 	free(expanded);
 	return (1);
 }
@@ -261,6 +266,7 @@ cmd_display_panes_exec(struct cmd *self, struct cmdq_item *item)
 	u_int		 		 delay;
 	char				*cause;
 	struct cmd_display_panes_data	*cdata;
+	int				 wait = !args_has(args, 'b');
 
 	if (tc->overlay_draw != NULL)
 		return (CMD_RETURN_NORMAL);
@@ -275,15 +281,11 @@ cmd_display_panes_exec(struct cmd *self, struct cmdq_item *item)
 	} else
 		delay = options_get_number(s->options, "display-panes-time");
 
-	cdata = xmalloc(sizeof *cdata);
-	if (args_count(args))
-		cdata->command = xstrdup(args_string(args, 0));
-	else
-		cdata->command = xstrdup("select-pane -t '%%'");
-	if (args_has(args, 'b'))
-		cdata->item = NULL;
-	else
+	cdata = xcalloc(1, sizeof *cdata);
+	if (wait)
 		cdata->item = item;
+	cdata->state = args_make_commands_prepare(self, item, 0,
+	    "select-pane -t \"%%%\"", wait, 0);
 
 	if (args_has(args, 'N')) {
 		server_client_set_overlay(tc, delay, NULL, NULL,
@@ -295,7 +297,7 @@ cmd_display_panes_exec(struct cmd *self, struct cmdq_item *item)
 		    cmd_display_panes_free, NULL, cdata);
 	}
 
-	if (args_has(args, 'b'))
+	if (!wait)
 		return (CMD_RETURN_NORMAL);
 	return (CMD_RETURN_WAIT);
 }

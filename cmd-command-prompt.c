@@ -48,21 +48,24 @@ const struct cmd_entry cmd_command_prompt_entry = {
 	.exec = cmd_command_prompt_exec
 };
 
+struct cmd_command_prompt_prompt {
+	char	*input;
+	char	*prompt;
+};
+
 struct cmd_command_prompt_cdata {
-	struct cmdq_item	*item;
-	struct cmd_parse_input	 pi;
+	struct cmdq_item		 *item;
+	struct args_command_state	 *state;
 
-	int			 flags;
-	enum prompt_type	 prompt_type;
+	int				  flags;
+	enum prompt_type		  prompt_type;
 
-	char			*inputs;
-	char			*next_input;
+	struct cmd_command_prompt_prompt *prompts;
+	u_int				  count;
+	u_int				  current;
 
-	char			*prompts;
-	char			*next_prompt;
-
-	char			*template;
-	int	 		 idx;
+	int				  argc;
+	char				**argv;
 };
 
 static enum cmd_retval
@@ -71,12 +74,12 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 	struct args			*args = cmd_get_args(self);
 	struct client			*tc = cmdq_get_target_client(item);
 	struct cmd_find_state		*target = cmdq_get_target(item);
-	const char			*inputs, *prompts, *type, *s;
+	const char			*type, *s, *input;
 	struct cmd_command_prompt_cdata	*cdata;
-	char				*prompt, *comma, *input = NULL;
+	char				*tmp, *prompts, *prompt, *next_prompt;
+	char				*inputs, *next_input;
 	u_int				 count = args_count(args);
-	size_t				 n;
-	int				 wait = !args_has(args, 'b');
+	int				 wait = !args_has(args, 'b'), space = 1;
 
 	if (tc->prompt_string != NULL)
 		return (CMD_RETURN_NORMAL);
@@ -84,50 +87,49 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 		wait = 0;
 
 	cdata = xcalloc(1, sizeof *cdata);
-	cdata->idx = 1;
-
-	cmd_get_source(self, &cdata->pi.file, &cdata->pi.line);
-	if (wait)
-		cdata->pi.item = item;
-	cdata->pi.c = tc;
-	cmd_find_copy_state(&cdata->pi.fs, target);
-
 	if (wait)
 		cdata->item = item;
+	cdata->state = args_make_commands_prepare(self, item, 0, "%1", wait,
+	    args_has(args, 'F'));
 
-	if (count != 0) {
-		s = args_string(args, 0);
-		if (args_has(args, 'F'))
-			cdata->template = format_single_from_target(item, s);
-		else
-			cdata->template = xstrdup(s);
-	}  else
-		cdata->template = xstrdup("%1");
-
-	if ((prompts = args_get(args, 'p')) != NULL)
-		cdata->prompts = xstrdup(prompts);
-	else if (count != 0) {
-		n = strcspn(cdata->template, " ,");
-		xasprintf(&cdata->prompts, "(%.*s) ", (int)n, cdata->template);
+	if ((s = args_get(args, 'p')) == NULL) {
+		if (count != 0) {
+			tmp = args_make_commands_get_command(cdata->state);
+			xasprintf(&prompts, "(%s)", tmp);
+			free(tmp);
+		} else {
+			prompts = xstrdup(":");
+			space = 0;
+		}
+		next_prompt = prompts;
 	} else
-		cdata->prompts = xstrdup(":");
-
-	/* Get first prompt. */
-	cdata->next_prompt = cdata->prompts;
-	comma = strsep(&cdata->next_prompt, ",");
-	if (prompts == NULL)
-		prompt = xstrdup(comma);
+		next_prompt = prompts = xstrdup (s);
+	if ((s = args_get(args, 'I')) != NULL)
+		next_input = inputs = xstrdup(s);
 	else
-		xasprintf(&prompt, "%s ", comma);
+		next_input = NULL;
+	while ((prompt = strsep(&next_prompt, ",")) != NULL) {
+		cdata->prompts = xreallocarray(cdata->prompts, cdata->count + 1,
+		    sizeof *cdata->prompts);
+		if (!space)
+			tmp = xstrdup(prompt);
+		else
+			xasprintf(&tmp, "%s ", prompt);
+		cdata->prompts[cdata->count].prompt = tmp;
 
-	/* Get initial prompt input. */
-	if ((inputs = args_get(args, 'I')) != NULL) {
-		cdata->inputs = xstrdup(inputs);
-		cdata->next_input = cdata->inputs;
-		input = strsep(&cdata->next_input, ",");
+		if (next_input != NULL) {
+			input = strsep(&next_input, ",");
+			if (input == NULL)
+				input = "";
+		} else
+			input = "";
+		cdata->prompts[cdata->count].input = xstrdup(input);
+
+		cdata->count++;
 	}
+	free(inputs);
+	free(prompts);
 
-	/* Get prompt type. */
 	if ((type = args_get(args, 'T')) != NULL) {
 		cdata->prompt_type = status_prompt_type(type);
 		if (cdata->prompt_type == PROMPT_TYPE_INVALID) {
@@ -145,10 +147,9 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 		cdata->flags |= PROMPT_INCREMENTAL;
 	else if (args_has(args, 'k'))
 		cdata->flags |= PROMPT_KEY;
-	status_prompt_set(tc, target, prompt, input,
-	    cmd_command_prompt_callback, cmd_command_prompt_free, cdata,
-	    cdata->flags, cdata->prompt_type);
-	free(prompt);
+	status_prompt_set(tc, target, cdata->prompts[0].prompt,
+	    cdata->prompts[0].input, cmd_command_prompt_callback,
+	    cmd_command_prompt_free, cdata, cdata->flags, cdata->prompt_type);
 
 	if (!wait)
 		return (CMD_RETURN_NORMAL);
@@ -159,51 +160,39 @@ static int
 cmd_command_prompt_callback(struct client *c, void *data, const char *s,
     int done)
 {
-	struct cmd_command_prompt_cdata	*cdata = data;
-	char				*new_template, *prompt, *comma, *error;
-	char				*input = NULL;
-	struct cmdq_item		*item = cdata->item;
-	enum cmd_parse_status		 status;
+	struct cmd_command_prompt_cdata		*cdata = data;
+	char					*error;
+	struct cmdq_item			*item = cdata->item, *new_item;
+	struct cmd_list				*cmdlist;
+	struct cmd_command_prompt_prompt	*prompt;
 
 	if (s == NULL)
 		goto out;
-	if (done && (cdata->flags & PROMPT_INCREMENTAL))
-		goto out;
-
-	new_template = cmd_template_replace(cdata->template, s, cdata->idx);
 	if (done) {
-		free(cdata->template);
-		cdata->template = new_template;
+		if (cdata->flags & PROMPT_INCREMENTAL)
+			goto out;
+
+		cmd_append_argv(&cdata->argc, &cdata->argv, s);
+		if (++cdata->current != cdata->count) {
+			prompt = &cdata->prompts[cdata->current];
+			status_prompt_update(c, prompt->prompt, prompt->input);
+			return (1);
+		}
 	}
 
-	/*
-	 * Check if there are more prompts; if so, get its respective input
-	 * and update the prompt data.
-	 */
-	if (done && (comma = strsep(&cdata->next_prompt, ",")) != NULL) {
-		xasprintf(&prompt, "%s ", comma);
-		input = strsep(&cdata->next_input, ",");
-		status_prompt_update(c, prompt, input);
-
-		free(prompt);
-		cdata->idx++;
-		return (1);
-	}
-
-	if (item != NULL) {
-		status = cmd_parse_and_insert(new_template, &cdata->pi, item,
-		    cmdq_get_state(item), &error);
-	} else {
-		status = cmd_parse_and_append(new_template, &cdata->pi, c, NULL,
-		    &error);
-	}
-	if (status == CMD_PARSE_ERROR) {
+	cmdlist = args_make_commands(cdata->state, cdata->argc, cdata->argv,
+	    &error);
+	if (cmdlist == NULL) {
 		cmdq_append(c, cmdq_get_error(error));
 		free(error);
+	} else if (item == NULL) {
+		new_item = cmdq_get_command(cmdlist, NULL);
+		cmdq_append(c, new_item);
+	} else {
+		new_item = cmdq_get_command(cmdlist, cmdq_get_state(item));
+		cmdq_insert_after(item, new_item);
 	}
 
-	if (!done)
-		free(new_template);
 	if (c->prompt_inputcb != cmd_command_prompt_callback)
 		return (1);
 
@@ -217,9 +206,14 @@ static void
 cmd_command_prompt_free(void *data)
 {
 	struct cmd_command_prompt_cdata	*cdata = data;
+	u_int				 i;
 
-	free(cdata->inputs);
+	for (i = 0; i < cdata->count; i++) {
+		free(cdata->prompts[i].prompt);
+		free(cdata->prompts[i].input);
+	}
 	free(cdata->prompts);
-	free(cdata->template);
+	cmd_free_argv(cdata->argc, cdata->argv);
+	args_make_commands_free(cdata->state);
 	free(cdata);
 }
