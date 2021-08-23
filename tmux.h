@@ -38,6 +38,7 @@
 extern char   **environ;
 
 struct args;
+struct args_command_state;
 struct client;
 struct cmd;
 struct cmd_find_state;
@@ -2214,6 +2215,14 @@ u_char		 args_next(struct args_entry **);
 u_int		 args_count(struct args *);
 struct args_value *args_value(struct args *, u_int);
 const char	*args_string(struct args *, u_int);
+struct cmd_list	*args_make_commands_now(struct cmd *, struct cmdq_item *,
+		     u_int);
+struct args_command_state *args_make_commands_prepare(struct cmd *,
+		     struct cmdq_item *, u_int, const char *, int, int);
+struct cmd_list *args_make_commands(struct args_command_state *, int, char **,
+		     char **);
+void		 args_make_commands_free(struct args_command_state *);
+char		*args_make_commands_get_command(struct args_command_state *);
 struct args_value *args_first_value(struct args *, u_char);
 struct args_value *args_next_value(struct args_value *);
 long long	 args_strtonum(struct args *, u_char, long long, long long,
