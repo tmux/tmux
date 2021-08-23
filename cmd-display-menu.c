@@ -218,7 +218,7 @@ cmd_display_menu_get_position(struct client *tc, struct cmdq_item *item,
 	else if (n < 0)
 		n = 0;
 	*px = n;
-	log_debug("%s: -x: %s = %s = %u", __func__, xp, p, *px);
+	log_debug("%s: -x: %s = %s = %u (-w %u)", __func__, xp, p, *px, w);
 	free(p);
 
 	/* Expand vertical position  */
@@ -244,7 +244,7 @@ cmd_display_menu_get_position(struct client *tc, struct cmdq_item *item,
 	else if (n < 0)
 		n = 0;
 	*py = n;
-	log_debug("%s: -y: %s = %s = %u", __func__, yp, p, *py);
+	log_debug("%s: -y: %s = %s = %u (-h %u)", __func__, yp, p, *py, h);
 	free(p);
 
 	return (1);
@@ -359,10 +359,10 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 		}
 	}
 
-	if (w > tty->sx - 1)
-		w = tty->sx - 1;
-	if (h > tty->sy - 1)
-		h = tty->sy - 1;
+	if (w > tty->sx)
+		w = tty->sx;
+	if (h > tty->sy)
+		h = tty->sy;
 	if (!cmd_display_menu_get_position(tc, item, args, &px, &py, w, h))
 		return (CMD_RETURN_NORMAL);
 
