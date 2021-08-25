@@ -30,9 +30,6 @@
 static FILE	*log_file;
 static int	 log_level;
 
-static void	 log_event_cb(int, const char *);
-static void	 log_vwrite(const char *, va_list);
-
 /* Log callback for libevent. */
 static void
 log_event_cb(__unused int severity, const char *msg)
@@ -101,7 +98,7 @@ log_close(void)
 }
 
 /* Write a log message. */
-static void
+static void printflike(1, 0)
 log_vwrite(const char *msg, va_list ap)
 {
 	char		*fmt, *out;
