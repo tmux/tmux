@@ -14,6 +14,7 @@ $TMUX -f/dev/null new -d -x200 -y200 || exit 1
 $TMUX -f/dev/null splitw || exit 1
 sleep 1
 cat <<EOF|$TMUX -C a >$TMP
+refresh-client -C 200x200
 selectp -t%0
 splitw
 neww
