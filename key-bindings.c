@@ -634,8 +634,10 @@ key_bindings_init(void)
 
 	for (i = 0; i < nitems(defaults); i++) {
 		pr = cmd_parse_from_string(defaults[i], NULL);
-		if (pr->status != CMD_PARSE_SUCCESS)
+		if (pr->status != CMD_PARSE_SUCCESS) {
+			log_debug("%s", pr->error);
 			fatalx("bad default key: %s", defaults[i]);
+		}
 		cmdq_append(NULL, cmdq_get_command(pr->cmdlist, NULL));
 		cmd_list_free(pr->cmdlist);
 	}

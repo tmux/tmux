@@ -29,8 +29,10 @@
  * Prompt for command in client.
  */
 
-static enum cmd_retval	cmd_command_prompt_exec(struct cmd *,
-			    struct cmdq_item *);
+static enum args_parse_type	cmd_command_prompt_args_parse(struct args *,
+				    u_int, char **);
+static enum cmd_retval		cmd_command_prompt_exec(struct cmd *,
+				    struct cmdq_item *);
 
 static int	cmd_command_prompt_callback(struct client *, void *,
 		    const char *, int);
@@ -40,7 +42,7 @@ const struct cmd_entry cmd_command_prompt_entry = {
 	.name = "command-prompt",
 	.alias = NULL,
 
-	.args = { "1bFkiI:Np:t:T:", 0, 1, NULL },
+	.args = { "1bFkiI:Np:t:T:", 0, 1, cmd_command_prompt_args_parse },
 	.usage = "[-1bFkiN] [-I inputs] [-p prompts] " CMD_TARGET_CLIENT_USAGE
 		 " [-T type] [template]",
 
@@ -67,6 +69,13 @@ struct cmd_command_prompt_cdata {
 	int				  argc;
 	char				**argv;
 };
+
+static enum args_parse_type
+cmd_command_prompt_args_parse(__unused struct args *args, __unused u_int idx,
+    __unused char **cause)
+{
+	return (ARGS_PARSE_COMMANDS_OR_STRING);
+}
 
 static enum cmd_retval
 cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
@@ -197,8 +206,8 @@ cmd_command_prompt_callback(struct client *c, void *data, const char *s,
 		return (1);
 
 out:
-        if (item != NULL)
-                cmdq_continue(item);
+	if (item != NULL)
+		cmdq_continue(item);
 	return (0);
 }
 

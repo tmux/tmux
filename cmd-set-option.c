@@ -27,13 +27,16 @@
  * Set an option.
  */
 
-static enum cmd_retval	cmd_set_option_exec(struct cmd *, struct cmdq_item *);
+static enum args_parse_type	cmd_set_option_args_parse(struct args *,
+				    u_int, char **);
+static enum cmd_retval		cmd_set_option_exec(struct cmd *,
+				    struct cmdq_item *);
 
 const struct cmd_entry cmd_set_option_entry = {
 	.name = "set-option",
 	.alias = "set",
 
-	.args = { "aFgopqst:uUw", 1, 2, NULL },
+	.args = { "aFgopqst:uUw", 1, 2, cmd_set_option_args_parse },
 	.usage = "[-aFgopqsuUw] " CMD_TARGET_PANE_USAGE " option [value]",
 
 	.target = { 't', CMD_FIND_PANE, CMD_FIND_CANFAIL },
@@ -46,7 +49,7 @@ const struct cmd_entry cmd_set_window_option_entry = {
 	.name = "set-window-option",
 	.alias = "setw",
 
-	.args = { "aFgoqt:u", 1, 2, NULL },
+	.args = { "aFgoqt:u", 1, 2, cmd_set_option_args_parse },
 	.usage = "[-aFgoqu] " CMD_TARGET_WINDOW_USAGE " option [value]",
 
 	.target = { 't', CMD_FIND_WINDOW, CMD_FIND_CANFAIL },
@@ -59,7 +62,7 @@ const struct cmd_entry cmd_set_hook_entry = {
 	.name = "set-hook",
 	.alias = NULL,
 
-	.args = { "agpRt:uw", 1, 2, NULL },
+	.args = { "agpRt:uw", 1, 2, cmd_set_option_args_parse },
 	.usage = "[-agpRuw] " CMD_TARGET_PANE_USAGE " hook [command]",
 
 	.target = { 't', CMD_FIND_PANE, CMD_FIND_CANFAIL },
@@ -67,6 +70,15 @@ const struct cmd_entry cmd_set_hook_entry = {
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_set_option_exec
 };
+
+static enum args_parse_type
+cmd_set_option_args_parse(__unused struct args *args, u_int idx,
+    __unused char **cause)
+{
+	if (idx == 1)
+		return (ARGS_PARSE_COMMANDS_OR_STRING);
+	return (ARGS_PARSE_STRING);
+}
 
 static enum cmd_retval
 cmd_set_option_exec(struct cmd *self, struct cmdq_item *item)

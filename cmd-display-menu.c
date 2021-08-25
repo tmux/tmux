@@ -27,16 +27,18 @@
  * Display a menu on a client.
  */
 
-static enum cmd_retval	cmd_display_menu_exec(struct cmd *,
-			    struct cmdq_item *);
-static enum cmd_retval	cmd_display_popup_exec(struct cmd *,
-			    struct cmdq_item *);
+static enum args_parse_type	cmd_display_menu_args_parse(struct args *,
+				    u_int, char **);
+static enum cmd_retval		cmd_display_menu_exec(struct cmd *,
+				    struct cmdq_item *);
+static enum cmd_retval		cmd_display_popup_exec(struct cmd *,
+				    struct cmdq_item *);
 
 const struct cmd_entry cmd_display_menu_entry = {
 	.name = "display-menu",
 	.alias = "menu",
 
-	.args = { "c:t:OT:x:y:", 1, -1, NULL },
+	.args = { "c:t:OT:x:y:", 1, -1, cmd_display_menu_args_parse },
 	.usage = "[-O] [-c target-client] " CMD_TARGET_PANE_USAGE " [-T title] "
 		 "[-x position] [-y position] name key command ...",
 
@@ -52,14 +54,38 @@ const struct cmd_entry cmd_display_popup_entry = {
 
 	.args = { "BCc:d:Eh:t:w:x:y:", 0, -1, NULL },
 	.usage = "[-BCE] [-c target-client] [-d start-directory] [-h height] "
-	         CMD_TARGET_PANE_USAGE " [-w width] "
-	         "[-x position] [-y position] [command]",
+		 CMD_TARGET_PANE_USAGE " [-w width] "
+		 "[-x position] [-y position] [shell-command]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
 	.flags = CMD_AFTERHOOK|CMD_CLIENT_CFLAG,
 	.exec = cmd_display_popup_exec
 };
+
+static enum args_parse_type
+cmd_display_menu_args_parse(struct args *args, u_int idx, __unused char **cause)
+{
+	u_int			 i = 0;
+	enum args_parse_type	 type = ARGS_PARSE_STRING;
+
+	for (;;) {
+		type = ARGS_PARSE_STRING;
+		if (i == idx)
+			break;
+		if (*args_string(args, i++) == '\0')
+			continue;
+
+		type = ARGS_PARSE_STRING;
+		if (i++ == idx)
+			break;
+
+		type = ARGS_PARSE_COMMANDS_OR_STRING;
+		if (i++ == idx)
+			break;
+	}
+	return (type);
+}
 
 static int
 cmd_display_menu_get_position(struct client *tc, struct cmdq_item *item,
