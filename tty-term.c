@@ -661,7 +661,7 @@ tty_term_read_list(const char *name, int fd, char ***caps, u_int *ncaps,
 	const char				*s;
 	char					 tmp[11];
 
-	if (setupterm(name, fd, &error) != OK) {
+	if (setupterm((char *)name, fd, &error) != OK) {
 		switch (error) {
 		case 1:
 			xasprintf(cause, "can't use hardcopy terminal: %s",
