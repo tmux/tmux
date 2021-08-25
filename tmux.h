@@ -1378,8 +1378,16 @@ struct args_value {
 struct args_entry;
 RB_HEAD(args_tree, args_entry);
 
+/* Arguments parsing type. */
+enum args_parse_type {
+	ARGS_PARSE_INVALID,
+	ARGS_PARSE_STRING,
+	ARGS_PARSE_COMMANDS_OR_STRING,
+	ARGS_PARSE_COMMANDS
+};
+
 /* Arguments parsing state. */
-typedef enum args_type (*args_parse_cb)(struct args *, u_int);
+typedef enum args_parse_type (*args_parse_cb)(struct args *, u_int, char **);
 struct args_parse {
 	const char	*template;
 	int		 lower;
@@ -2201,7 +2209,7 @@ int		tty_keys_next(struct tty *);
 void		 args_set(struct args *, u_char, struct args_value *);
 struct args 	*args_create(void);
 struct args	*args_parse(const struct args_parse *, struct args_value *,
-    		     u_int);
+		     u_int, char **);
 void		 args_vector(struct args *, int *, char ***);
 void		 args_free_value(struct args_value *);
 void		 args_free(struct args *);

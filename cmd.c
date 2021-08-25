@@ -502,6 +502,7 @@ cmd_parse(struct args_value *values, u_int count, const char *file, u_int line,
 	const struct cmd_entry	*entry;
 	struct cmd		*cmd;
 	struct args		*args;
+	char			*error;
 
 	if (count == 0 || values[0].type != ARGS_STRING) {
 		xasprintf(cause, "no command");
@@ -511,9 +512,14 @@ cmd_parse(struct args_value *values, u_int count, const char *file, u_int line,
 	if (entry == NULL)
 		return (NULL);
 
-	args = args_parse(&entry->args, values, count);
-	if (args == NULL) {
+	args = args_parse(&entry->args, values, count, &error);
+	if (args == NULL && error == NULL) {
 		xasprintf(cause, "usage: %s %s", entry->name, entry->usage);
+		return (NULL);
+	}
+	if (args == NULL) {
+		xasprintf(cause, "command %s: %s", entry->name, error);
+		free(error);
 		return (NULL);
 	}
 

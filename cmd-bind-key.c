@@ -27,19 +27,31 @@
  * Bind a key to a command.
  */
 
-static enum cmd_retval	cmd_bind_key_exec(struct cmd *, struct cmdq_item *);
+static enum args_parse_type	cmd_bind_key_args_parse(struct args *, u_int,
+				    char **);
+static enum cmd_retval		cmd_bind_key_exec(struct cmd *,
+				    struct cmdq_item *);
 
 const struct cmd_entry cmd_bind_key_entry = {
 	.name = "bind-key",
 	.alias = "bind",
 
-	.args = { "nrN:T:", 1, -1, NULL },
+	.args = { "nrN:T:", 1, -1, cmd_bind_key_args_parse },
 	.usage = "[-nr] [-T key-table] [-N note] key "
 	         "[command [arguments]]",
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_bind_key_exec
 };
+
+static enum args_parse_type
+cmd_bind_key_args_parse(__unused struct args *args, u_int idx,
+    __unused char **cause)
+{
+	if (idx == 1)
+		return (ARGS_PARSE_COMMANDS_OR_STRING);
+	return (ARGS_PARSE_STRING);
+}
 
 static enum cmd_retval
 cmd_bind_key_exec(struct cmd *self, struct cmdq_item *item)

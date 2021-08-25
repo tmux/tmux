@@ -30,7 +30,10 @@
  * Runs a command without a window.
  */
 
-static enum cmd_retval	cmd_run_shell_exec(struct cmd *, struct cmdq_item *);
+static enum args_parse_type	cmd_run_shell_args_parse(struct args *, u_int,
+				    char **);
+static enum cmd_retval		cmd_run_shell_exec(struct cmd *,
+				    struct cmdq_item *);
 
 static void	cmd_run_shell_timer(int, short, void *);
 static void	cmd_run_shell_callback(struct job *);
@@ -41,7 +44,7 @@ const struct cmd_entry cmd_run_shell_entry = {
 	.name = "run-shell",
 	.alias = "run",
 
-	.args = { "bd:Ct:", 0, 1, NULL },
+	.args = { "bd:Ct:", 0, 1, cmd_run_shell_args_parse },
 	.usage = "[-bC] [-d delay] " CMD_TARGET_PANE_USAGE " [shell-command]",
 
 	.target = { 't', CMD_FIND_PANE, CMD_FIND_CANFAIL },
@@ -61,6 +64,15 @@ struct cmd_run_shell_data {
 	struct event		 timer;
 	int			 flags;
 };
+
+static enum args_parse_type
+cmd_run_shell_args_parse(struct args *args, __unused u_int idx,
+    __unused char **cause)
+{
+	if (args_has(args, 'C'))
+		return (ARGS_PARSE_COMMANDS_OR_STRING);
+	return (ARGS_PARSE_STRING);
+}
 
 static void
 cmd_run_shell_print(struct job *job, const char *msg)

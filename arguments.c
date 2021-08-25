@@ -124,10 +124,11 @@ args_create(void)
 /* Parse arguments into a new argument set. */
 struct args *
 args_parse(const struct args_parse *parse, struct args_value *values,
-    u_int count)
+    u_int count, char **cause)
 {
 	struct args		*args;
 	u_int			 i;
+	enum args_parse_type	 type;
 	struct args_value	*value, *new;
 	u_char			 flag, argument;
 	const char		*found, *string, *s;
@@ -153,11 +154,13 @@ args_parse(const struct args_parse *parse, struct args_value *values,
 			if (flag == '\0')
 				break;
 			if (!isalnum(flag)) {
+				xasprintf(cause, "invalid flag -%c", flag);
 				args_free(args);
 				return (NULL);
 			}
 			found = strchr(parse->template, flag);
 			if (found == NULL) {
+				xasprintf(cause, "unknown flag -%c", flag);
 				args_free(args);
 				return (NULL);
 			}
@@ -167,12 +170,22 @@ args_parse(const struct args_parse *parse, struct args_value *values,
 				args_set(args, flag, NULL);
 				continue;
 			}
-			new = xcalloc(1, sizeof *value);
+			new = xcalloc(1, sizeof *new);
 			if (*string != '\0') {
 				new->type = ARGS_STRING;
 				new->string = xstrdup(string);
 			} else {
 				if (i == count) {
+					xasprintf(cause,
+					    "-%c expects an argument",
+					    flag);
+					args_free(args);
+					return (NULL);
+				}
+				if (values[i].type != ARGS_STRING) {
+					xasprintf(cause,
+					    "-%c argument must be a string",
+					    flag);
 					args_free(args);
 					return (NULL);
 				}
@@ -192,14 +205,60 @@ args_parse(const struct args_parse *parse, struct args_value *values,
 			s = args_value_as_string(value);
 			log_debug("%s: %u = %s", __func__, i, s);
 
+			if (parse->cb != NULL) {
+				type = parse->cb(args, args->count, cause);
+				if (type == ARGS_PARSE_INVALID) {
+					args_free(args);
+					return (NULL);
+				}
+			} else
+				type = ARGS_PARSE_STRING;
+
 			args->values = xrecallocarray(args->values,
 			    args->count, args->count + 1, sizeof *args->values);
-			args_copy_value(&args->values[args->count++], value);
+			new = &args->values[args->count++];
+
+			switch (type) {
+			case ARGS_PARSE_INVALID:
+				fatalx("unexpected argument type");
+			case ARGS_PARSE_STRING:
+				if (value->type != ARGS_STRING) {
+					xasprintf(cause,
+					    "argument %u must be \"string\"",
+					    args->count);
+					args_free(args);
+					return (NULL);
+				}
+				args_copy_value(new, value);
+				break;
+			case ARGS_PARSE_COMMANDS_OR_STRING:
+				args_copy_value(new, value);
+				break;
+			case ARGS_PARSE_COMMANDS:
+				if (value->type != ARGS_COMMANDS) {
+					xasprintf(cause,
+					    "argument %u must be { commands }",
+					    args->count);
+					args_free(args);
+					return (NULL);
+				}
+				args_copy_value(new, value);
+				break;
+			}
 		}
 	}
 
-	if ((parse->lower != -1 && args->count < (u_int)parse->lower) ||
-	    (parse->upper != -1 && args->count > (u_int)parse->upper)) {
+	if (parse->lower != -1 && args->count < (u_int)parse->lower) {
+		xasprintf(cause,
+		    "too few arguments (need at least %u)",
+		    parse->lower);
+		args_free(args);
+		return (NULL);
+	}
+	if (parse->upper != -1 && args->count > (u_int)parse->upper) {
+		xasprintf(cause,
+		    "too many arguments (need at most %u)",
+		    parse->upper);
 		args_free(args);
 		return (NULL);
 	}
@@ -254,15 +313,25 @@ args_free(struct args *args)
 void
 args_vector(struct args *args, int *argc, char ***argv)
 {
-	struct args_value	*value;
-	u_int			 i;
+	char	*s;
+	u_int	 i;
 
 	*argc = 0;
 	*argv = NULL;
 
 	for (i = 0; i < args->count; i++) {
-		value = &args->values[i];
-		cmd_append_argv(argc, argv, args_value_as_string(value));
+		switch (args->values[i].type) {
+		case ARGS_NONE:
+			break;
+		case ARGS_STRING:
+			cmd_append_argv(argc, argv, args->values[i].string);
+			break;
+		case ARGS_COMMANDS:
+			s = cmd_list_print(args->values[i].cmdlist, 0);
+			cmd_append_argv(argc, argv, s);
+			free(s);
+			break;
+		}
 	}
 }
 

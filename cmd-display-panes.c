@@ -27,14 +27,16 @@
  * Display panes on a client.
  */
 
-static enum cmd_retval	cmd_display_panes_exec(struct cmd *,
-			    struct cmdq_item *);
+static enum args_parse_type	cmd_display_panes_args_parse(struct args *,
+				    u_int, char **);
+static enum cmd_retval		cmd_display_panes_exec(struct cmd *,
+				    struct cmdq_item *);
 
 const struct cmd_entry cmd_display_panes_entry = {
 	.name = "display-panes",
 	.alias = "displayp",
 
-	.args = { "bd:Nt:", 0, 1, NULL },
+	.args = { "bd:Nt:", 0, 1, cmd_display_panes_args_parse },
 	.usage = "[-bN] [-d duration] " CMD_TARGET_CLIENT_USAGE " [template]",
 
 	.flags = CMD_AFTERHOOK|CMD_CLIENT_TFLAG,
@@ -45,6 +47,13 @@ struct cmd_display_panes_data {
 	struct cmdq_item		*item;
 	struct args_command_state	*state;
 };
+
+static enum args_parse_type
+cmd_display_panes_args_parse(__unused struct args *args, __unused u_int idx,
+    __unused char **cause)
+{
+	return (ARGS_PARSE_COMMANDS_OR_STRING);
+}
 
 static void
 cmd_display_panes_draw_pane(struct screen_redraw_ctx *ctx,
@@ -139,7 +148,7 @@ cmd_display_panes_draw_pane(struct screen_redraw_ctx *ctx,
 		if (sx >= len + llen + 1) {
 			len += llen + 1;
 			tty_cursor(tty, xoff + px - len / 2, yoff + py);
-			tty_putn(tty, buf, len,  len);
+			tty_putn(tty, buf, len,	 len);
 			tty_putn(tty, " ", 1, 1);
 			tty_putn(tty, lbuf, llen, llen);
 		} else {
@@ -263,7 +272,7 @@ cmd_display_panes_exec(struct cmd *self, struct cmdq_item *item)
 	struct args			*args = cmd_get_args(self);
 	struct client			*tc = cmdq_get_target_client(item);
 	struct session			*s = tc->session;
-	u_int		 		 delay;
+	u_int				 delay;
 	char				*cause;
 	struct cmd_display_panes_data	*cdata;
 	int				 wait = !args_has(args, 'b');
