@@ -243,6 +243,13 @@ default_window_size(struct client *c, struct session *s, struct window *w,
 		}
 	}
 
+        /*
+         * Ignore the given client if it is a control client - the creating
+         * client should only affect the size if it is not a control client.
+         */
+        if (c != NULL && (c->flags & CLIENT_CONTROL))
+                c = NULL;
+
 	/*
 	 * Look for a client to base the size on. If none exists (or the type
 	 * is manual), use the default-size option.
