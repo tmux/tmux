@@ -51,7 +51,7 @@ resize_window(struct window *w, u_int sx, u_int sy, int xpixel, int ypixel)
 	if (sy < w->layout_root->sy)
 		sy = w->layout_root->sy;
 	window_resize(w, sx, sy, xpixel, ypixel);
-	log_debug("%s: @%u resized to %u,%u; layout %u,%u", __func__, w->id,
+	log_debug("%s: @%u resized to %ux%u; layout %ux%u", __func__, w->id,
 	    sx, sy, w->layout_root->sx, w->layout_root->sy);
 
 	/* Restore the window zoom state. */
@@ -186,6 +186,10 @@ clients_calculate_size(int type, int current, struct client *c,
 		log_debug("%s: after %s (%ux%u), size is %ux%u", __func__,
 		    loop->name, cx, cy, *sx, *sy);
 	}
+	if (*sx != UINT_MAX && *sy != UINT_MAX)
+		log_debug("%s: calculated size %ux%u", __func__, *sx, *sy);
+	else
+		log_debug("%s: no calculated size", __func__);
 
 	/* Return whether a suitable size was found. */
 	if (type == WINDOW_SIZE_LARGEST) {
@@ -231,16 +235,14 @@ default_window_size(struct client *c, struct session *s, struct window *w,
 	 * Latest clients can use the given client if suitable. If there is no
 	 * client and no window, use the default size as for manual type.
 	 */
-	if (type == WINDOW_SIZE_LATEST) {
-		if (c != NULL && !ignore_client_size(c)) {
-			*sx = c->tty.sx;
-			*sy = c->tty.sy - status_line_size(c);
-			*xpixel = c->tty.xpixel;
-			*ypixel = c->tty.ypixel;
-			log_debug("%s: using %ux%u from %s", __func__, *sx, *sy,
-			    c->name);
-			goto done;
-		}
+	if (type == WINDOW_SIZE_LATEST && c != NULL && !ignore_client_size(c)) {
+		*sx = c->tty.sx;
+		*sy = c->tty.sy - status_line_size(c);
+		*xpixel = c->tty.xpixel;
+		*ypixel = c->tty.ypixel;
+		log_debug("%s: using %ux%u from %s", __func__, *sx, *sy,
+		    c->name);
+		goto done;
 	}
 
         /*
@@ -304,7 +306,7 @@ recalculate_size(struct window *w, int now)
 	 */
 	if (w->active == NULL)
 		return;
-	log_debug("%s: @%u is %u,%u", __func__, w->id, w->sx, w->sy);
+	log_debug("%s: @%u is %ux%u", __func__, w->id, w->sx, w->sy);
 
 	/*
 	 * Type is manual, smallest, largest, latest. Current is the
@@ -335,6 +337,7 @@ recalculate_size(struct window *w, int now)
 	 * size.
 	 */
 	if (!changed) {
+		log_debug("%s: @%u no size change", __func__, w->id);
 		tty_update_window_offset(w);
 		return;
 	}
@@ -344,7 +347,7 @@ recalculate_size(struct window *w, int now)
 	 * the size immediately. Otherwise set the flag and it will be done
 	 * later.
 	 */
-	log_debug("%s: @%u new size %u,%u", __func__, w->id, sx, sy);
+	log_debug("%s: @%u new size %ux%u", __func__, w->id, sx, sy);
 	if (now || type == WINDOW_SIZE_MANUAL)
 		resize_window(w, sx, sy, xpixel, ypixel);
 	else {
