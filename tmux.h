@@ -2343,7 +2343,7 @@ struct cmdq_item *cmdq_get_callback1(const char *, cmdq_cb, void *);
 struct cmdq_item *cmdq_get_error(const char *);
 struct cmdq_item *cmdq_insert_after(struct cmdq_item *, struct cmdq_item *);
 struct cmdq_item *cmdq_append(struct client *, struct cmdq_item *);
-void		 cmdq_insert_hook(struct session *, struct cmdq_item *,
+void printflike(4, 5) cmdq_insert_hook(struct session *, struct cmdq_item *,
 		     struct cmd_find_state *, const char *, ...);
 void		 cmdq_continue(struct cmdq_item *);
 u_int		 cmdq_next(struct client *);
@@ -2399,7 +2399,7 @@ void	 file_fire_done(struct client_file *);
 void	 file_fire_read(struct client_file *);
 int	 file_can_print(struct client *);
 void printflike(2, 3) file_print(struct client *, const char *, ...);
-void	 file_vprint(struct client *, const char *, va_list);
+void printflike(2, 0) file_vprint(struct client *, const char *, va_list);
 void	 file_print_buffer(struct client *, void *, size_t);
 void printflike(2, 3) file_error(struct client *, const char *, ...);
 void	 file_write(struct client *, const char *, int, const void *, size_t,
@@ -2499,7 +2499,8 @@ struct style_range *status_get_range(struct client *, u_int, u_int);
 void	 status_init(struct client *);
 void	 status_free(struct client *);
 int	 status_redraw(struct client *);
-void status_message_set(struct client *, int, int, int, const char *, ...);
+void printflike(5, 6) status_message_set(struct client *, int, int, int,
+	     const char *, ...);
 void	 status_message_clear(struct client *);
 int	 status_message_redraw(struct client *);
 void	 status_prompt_set(struct client *, struct cmd_find_state *,
@@ -2654,7 +2655,7 @@ void printflike(3, 4) screen_write_puts(struct screen_write_ctx *,
 	     const struct grid_cell *, const char *, ...);
 void printflike(4, 5) screen_write_nputs(struct screen_write_ctx *,
 	     ssize_t, const struct grid_cell *, const char *, ...);
-void	 screen_write_vnputs(struct screen_write_ctx *, ssize_t,
+void printflike(4, 0) screen_write_vnputs(struct screen_write_ctx *, ssize_t,
 	     const struct grid_cell *, const char *, va_list);
 void	 screen_write_putc(struct screen_write_ctx *, const struct grid_cell *,
 	     u_char);
@@ -2923,7 +2924,8 @@ extern const struct window_mode window_client_mode;
 extern const struct window_mode window_copy_mode;
 extern const struct window_mode window_view_mode;
 void printflike(2, 3) window_copy_add(struct window_pane *, const char *, ...);
-void		 window_copy_vadd(struct window_pane *, const char *, va_list);
+void printflike(2, 0) window_copy_vadd(struct window_pane *, const char *,
+		     va_list);
 void		 window_copy_pageup(struct window_pane *, int);
 void		 window_copy_start_drag(struct client *, struct mouse_event *);
 char		*window_copy_get_word(struct window_pane *, u_int, u_int);
