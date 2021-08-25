@@ -45,12 +45,10 @@ const struct cmd_entry cmd_bind_key_entry = {
 };
 
 static enum args_parse_type
-cmd_bind_key_args_parse(__unused struct args *args, u_int idx,
+cmd_bind_key_args_parse(__unused struct args *args, __unused u_int idx,
     __unused char **cause)
 {
-	if (idx == 1)
-		return (ARGS_PARSE_COMMANDS_OR_STRING);
-	return (ARGS_PARSE_STRING);
+	return (ARGS_PARSE_COMMANDS_OR_STRING);
 }
 
 static enum cmd_retval
