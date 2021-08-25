@@ -77,7 +77,7 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 	const char			*type, *s, *input;
 	struct cmd_command_prompt_cdata	*cdata;
 	char				*tmp, *prompts, *prompt, *next_prompt;
-	char				*inputs, *next_input;
+	char				*inputs = NULL, *next_input;
 	u_int				 count = args_count(args);
 	int				 wait = !args_has(args, 'b'), space = 1;
 
