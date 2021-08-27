@@ -544,6 +544,23 @@ cmd_free(struct cmd *cmd)
 	free(cmd);
 }
 
+/* Copy a command. */
+struct cmd *
+cmd_copy(struct cmd *cmd, int argc, char **argv)
+{
+	struct cmd	*new_cmd;
+
+	new_cmd = xcalloc(1, sizeof *new_cmd);
+	new_cmd->entry = cmd->entry;
+	new_cmd->args = args_copy(cmd->args, argc, argv);
+
+	if (cmd->file != NULL)
+		new_cmd->file = xstrdup(cmd->file);
+	new_cmd->line = cmd->line;
+
+	return (new_cmd);
+}
+
 /* Get a command as a string. */
 char *
 cmd_print(struct cmd *cmd)
@@ -616,6 +633,37 @@ cmd_list_free(struct cmd_list *cmdlist)
 	}
 	free(cmdlist->list);
 	free(cmdlist);
+}
+
+/* Copy a command list, expanding %s in arguments. */
+struct cmd_list *
+cmd_list_copy(struct cmd_list *cmdlist, int argc, char **argv)
+{
+	struct cmd	*cmd;
+	struct cmd_list	*new_cmdlist;
+	struct cmd	*new_cmd;
+	u_int		 group = cmdlist->group;
+	char		*s;
+
+	s = cmd_list_print(cmdlist, 0);
+	log_debug("%s: %s", __func__, s);
+	free(s);
+
+	new_cmdlist = cmd_list_new();
+	TAILQ_FOREACH(cmd, cmdlist->list, qentry) {
+		if (cmd->group != group) {
+			new_cmdlist->group = cmd_list_next_group++;
+			group = cmd->group;
+		}
+		new_cmd = cmd_copy(cmd, argc, argv);
+		cmd_list_append(new_cmdlist, new_cmd);
+	}
+
+	s = cmd_list_print(new_cmdlist, 0);
+	log_debug("%s: %s", __func__, s);
+	free(s);
+
+	return (new_cmdlist);
 }
 
 /* Get a command list as a string. */

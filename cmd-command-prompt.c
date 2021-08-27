@@ -169,11 +169,13 @@ static int
 cmd_command_prompt_callback(struct client *c, void *data, const char *s,
     int done)
 {
-	struct cmd_command_prompt_cdata		*cdata = data;
-	char					*error;
-	struct cmdq_item			*item = cdata->item, *new_item;
-	struct cmd_list				*cmdlist;
-	struct cmd_command_prompt_prompt	*prompt;
+	struct cmd_command_prompt_cdata		 *cdata = data;
+	char					 *error;
+	struct cmdq_item			 *item = cdata->item, *new_item;
+	struct cmd_list				 *cmdlist;
+	struct cmd_command_prompt_prompt	 *prompt;
+	int					  argc = 0;
+	char					**argv = NULL;
 
 	if (s == NULL)
 		goto out;
@@ -181,7 +183,6 @@ cmd_command_prompt_callback(struct client *c, void *data, const char *s,
 		if (cdata->flags & PROMPT_INCREMENTAL)
 			goto out;
 
-		cmd_append_argv(&cdata->argc, &cdata->argv, s);
 		if (++cdata->current != cdata->count) {
 			prompt = &cdata->prompts[cdata->current];
 			status_prompt_update(c, prompt->prompt, prompt->input);
@@ -189,8 +190,15 @@ cmd_command_prompt_callback(struct client *c, void *data, const char *s,
 		}
 	}
 
-	cmdlist = args_make_commands(cdata->state, cdata->argc, cdata->argv,
-	    &error);
+	argc = cdata->argc;
+	argv = cmd_copy_argv(cdata->argc, cdata->argv);
+	cmd_append_argv(&argc, &argv, s);
+	if (done) {
+		cdata->argc = argc;
+		cdata->argv = cmd_copy_argv(argc, argv);
+	}
+
+	cmdlist = args_make_commands(cdata->state, argc, argv, &error);
 	if (cmdlist == NULL) {
 		cmdq_append(c, cmdq_get_error(error));
 		free(error);
@@ -201,6 +209,7 @@ cmd_command_prompt_callback(struct client *c, void *data, const char *s,
 		new_item = cmdq_get_command(cmdlist, cmdq_get_state(item));
 		cmdq_insert_after(item, new_item);
 	}
+	cmd_free_argv(argc, argv);
 
 	if (c->prompt_inputcb != cmd_command_prompt_callback)
 		return (1);

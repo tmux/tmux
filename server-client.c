@@ -2124,6 +2124,7 @@ server_client_dispatch_command(struct client *c, struct imsg *imsg)
 	int			  argc;
 	char			**argv, *cause;
 	struct cmd_parse_result	 *pr;
+	struct args_value	 *values;
 
 	if (c->flags & CLIENT_EXIT)
 		return;
@@ -2149,7 +2150,8 @@ server_client_dispatch_command(struct client *c, struct imsg *imsg)
 		*argv = xstrdup("new-session");
 	}
 
-	pr = cmd_parse_from_arguments(argc, argv, NULL);
+	values = args_from_vector(argc, argv);
+	pr = cmd_parse_from_arguments(values, argc, NULL);
 	switch (pr->status) {
 	case CMD_PARSE_ERROR:
 		cause = pr->error;
@@ -2157,6 +2159,8 @@ server_client_dispatch_command(struct client *c, struct imsg *imsg)
 	case CMD_PARSE_SUCCESS:
 		break;
 	}
+	args_free_values(values, argc);
+	free(values);
 	cmd_free_argv(argc, argv);
 
 	cmdq_append(c, cmdq_get_command(pr->cmdlist, NULL));

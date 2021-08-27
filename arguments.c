@@ -166,7 +166,7 @@ args_parse(const struct args_parse *parse, struct args_value *values,
 			}
 			argument = *++found;
 			if (argument != ':') {
-				log_debug("%s: add -%c", __func__, flag);
+				log_debug("%s: -%c", __func__, flag);
 				args_set(args, flag, NULL);
 				continue;
 			}
@@ -192,7 +192,7 @@ args_parse(const struct args_parse *parse, struct args_value *values,
 				args_copy_value(new, &values[i++]);
 			}
 			s = args_value_as_string(new);
-			log_debug("%s: add -%c = %s", __func__, flag, s);
+			log_debug("%s: -%c = %s", __func__, flag, s);
 			args_set(args, flag, new);
 			break;
 		}
@@ -203,7 +203,8 @@ args_parse(const struct args_parse *parse, struct args_value *values,
 			value = &values[i];
 
 			s = args_value_as_string(value);
-			log_debug("%s: %u = %s", __func__, i, s);
+			log_debug("%s: %u = %s (type %d)", __func__, i, s,
+			    value->type);
 
 			if (parse->cb != NULL) {
 				type = parse->cb(args, args->count, cause);
@@ -265,6 +266,63 @@ args_parse(const struct args_parse *parse, struct args_value *values,
 	return (args);
 }
 
+/* Copy and expand a value. */
+static void
+args_copy_copy_value(struct args_value *to, struct args_value *from, int argc,
+    char **argv)
+{
+	char	*s, *expanded;
+	int	 i;
+
+	to->type = from->type;
+	switch (from->type) {
+	case ARGS_NONE:
+		break;
+	case ARGS_STRING:
+		expanded = xstrdup(from->string);
+		for (i = 0; i < argc; i++) {
+			s = cmd_template_replace(expanded, argv[i], i + 1);
+			free(expanded);
+			expanded = s;
+		}
+		to->string = expanded;
+		break;
+	case ARGS_COMMANDS:
+		to->cmdlist = cmd_list_copy(from->cmdlist, argc, argv);
+		break;
+	}
+}
+
+/* Copy an arguments set. */
+struct args *
+args_copy(struct args *args, int argc, char **argv)
+{
+	struct args		*new_args;
+	struct args_entry	*entry;
+	struct args_value	*value, *new_value;
+	u_int			 i;
+
+	new_args = args_create();
+	RB_FOREACH(entry, args_tree, &args->tree) {
+		if (entry->count == 1) {
+			args_set(new_args, entry->flag, NULL);
+			continue;
+		}
+		TAILQ_FOREACH(value, &entry->values, entry) {
+			new_value = xcalloc(1, sizeof *new_value);
+			args_copy_copy_value(new_value, value, argc, argv);
+			args_set(new_args, entry->flag, new_value);
+		}
+	}
+	new_args->count = args->count;
+	new_args->values = xcalloc(args->count, sizeof *new_args->values);
+	for (i = 0; i < args->count; i++) {
+		new_value = &new_args->values[i];
+		args_copy_copy_value(new_value, &args->values[i], argc, argv);
+	}
+	return (new_args);
+}
+
 /* Free a value. */
 void
 args_free_value(struct args_value *value)
@@ -282,6 +340,16 @@ args_free_value(struct args_value *value)
 	free(value->cached);
 }
 
+/* Free values. */
+void
+args_free_values(struct args_value *values, u_int count)
+{
+	u_int	i;
+
+	for (i = 0; i < count; i++)
+		args_free_value(&values[i]);
+}
+
 /* Free an arguments set. */
 void
 args_free(struct args *args)
@@ -290,10 +358,8 @@ args_free(struct args *args)
 	struct args_entry	*entry1;
 	struct args_value	*value;
 	struct args_value	*value1;
-	u_int			 i;
 
-	for (i = 0; i < args->count; i++)
-		args_free_value(&args->values[i]);
+	args_free_values(args->values, args->count);
 	free(args->values);
 
 	RB_FOREACH_SAFE(entry, args_tree, &args->tree, entry1) {
@@ -311,7 +377,7 @@ args_free(struct args *args)
 
 /* Convert arguments to vector. */
 void
-args_vector(struct args *args, int *argc, char ***argv)
+args_to_vector(struct args *args, int *argc, char ***argv)
 {
 	char	*s;
 	u_int	 i;
@@ -333,6 +399,21 @@ args_vector(struct args *args, int *argc, char ***argv)
 			break;
 		}
 	}
+}
+
+/* Convert arguments from vector. */
+struct args_value *
+args_from_vector(int argc, char **argv)
+{
+	struct args_value	*values;
+	int			 i;
+
+	values = xcalloc(argc, sizeof *values);
+	for (i = 0; i < argc; i++) {
+		values[i].type = ARGS_STRING;
+		values[i].string = xstrdup(argv[i]);
+	}
+	return (values);
 }
 
 /* Add to string. */
@@ -424,7 +505,7 @@ args_print(struct args *args)
 char *
 args_escape(const char *s)
 {
-	static const char	 dquoted[] = " #';${}";
+	static const char	 dquoted[] = " #';${}%";
 	static const char	 squoted[] = " \"";
 	char			*escaped, *result;
 	int			 flags, quotes = 0;
@@ -538,6 +619,13 @@ args_count(struct args *args)
 	return (args->count);
 }
 
+/* Get argument values. */
+struct args_value *
+args_values(struct args *args)
+{
+	return (args->values);
+}
+
 /* Get argument value. */
 struct args_value *
 args_value(struct args *args, u_int idx)
@@ -570,8 +658,8 @@ args_make_commands_now(struct cmd *self, struct cmdq_item *item, u_int idx)
 		cmdq_error(item, "%s", error);
 		free(error);
 	}
-       else
-	       cmdlist->references++;
+	else
+		cmdlist->references++;
 	args_make_commands_free(state);
 	return (cmdlist);
 }
@@ -631,8 +719,11 @@ args_make_commands(struct args_command_state *state, int argc, char **argv,
 	char			*cmd, *new_cmd;
 	int			 i;
 
-	if (state->cmdlist != NULL)
-		return (state->cmdlist);
+	if (state->cmdlist != NULL) {
+		if (argc == 0)
+			return (state->cmdlist);
+		return (cmd_list_copy(state->cmdlist, argc, argv));
+	}
 
 	cmd = xstrdup(state->cmd);
 	for (i = 0; i < argc; i++) {

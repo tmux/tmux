@@ -2217,8 +2217,11 @@ void		 args_set(struct args *, u_char, struct args_value *);
 struct args 	*args_create(void);
 struct args	*args_parse(const struct args_parse *, struct args_value *,
 		     u_int, char **);
-void		 args_vector(struct args *, int *, char ***);
+struct args	*args_copy(struct args *, int, char **);
+void		 args_to_vector(struct args *, int *, char ***);
+struct args_value *args_from_vector(int, char **);
 void		 args_free_value(struct args_value *);
+void		 args_free_values(struct args_value *, u_int);
 void		 args_free(struct args *);
 char		*args_print(struct args *);
 char		*args_escape(const char *);
@@ -2227,6 +2230,7 @@ const char	*args_get(struct args *, u_char);
 u_char		 args_first(struct args *, struct args_entry **);
 u_char		 args_next(struct args_entry **);
 u_int		 args_count(struct args *);
+struct args_value *args_values(struct args *);
 struct args_value *args_value(struct args *, u_int);
 const char	*args_string(struct args *, u_int);
 struct cmd_list	*args_make_commands_now(struct cmd *, struct cmdq_item *,
@@ -2291,9 +2295,11 @@ u_int		 cmd_get_group(struct cmd *);
 void		 cmd_get_source(struct cmd *, const char **, u_int *);
 struct cmd	*cmd_parse(struct args_value *, u_int, const char *, u_int,
 		     char **);
+struct cmd	*cmd_copy(struct cmd *, int, char **);
 void		 cmd_free(struct cmd *);
 char		*cmd_print(struct cmd *);
 struct cmd_list	*cmd_list_new(void);
+struct cmd_list	*cmd_list_copy(struct cmd_list *, int, char **);
 void		 cmd_list_append(struct cmd_list *, struct cmd *);
 void		 cmd_list_append_all(struct cmd_list *, struct cmd_list *);
 void		 cmd_list_move(struct cmd_list *, struct cmd_list *);
@@ -2327,7 +2333,7 @@ enum cmd_parse_status cmd_parse_and_append(const char *,
 		     struct cmdq_state *, char **);
 struct cmd_parse_result *cmd_parse_from_buffer(const void *, size_t,
 		     struct cmd_parse_input *);
-struct cmd_parse_result *cmd_parse_from_arguments(int, char **,
+struct cmd_parse_result *cmd_parse_from_arguments(struct args_value *, u_int,
 		     struct cmd_parse_input *);
 
 /* cmd-queue.c */
