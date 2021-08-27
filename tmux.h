@@ -998,6 +998,8 @@ struct window {
 
 	u_int		 sx;
 	u_int		 sy;
+	u_int		 manual_sx;
+	u_int		 manual_sy;
 	u_int		 xpixel;
 	u_int		 ypixel;
 
@@ -1555,6 +1557,10 @@ RB_HEAD(client_files, client_file);
 struct client_window {
 	u_int			 window;
 	struct window_pane	*pane;
+
+	u_int			 sx;
+	u_int			 sy;
+
 	RB_ENTRY(client_window)	 entry;
 };
 RB_HEAD(client_windows, client_window);
@@ -1650,6 +1656,7 @@ struct client {
 #define CLIENT_ACTIVEPANE 0x80000000ULL
 #define CLIENT_CONTROL_PAUSEAFTER 0x100000000ULL
 #define CLIENT_CONTROL_WAITEXIT 0x200000000ULL
+#define CLIENT_WINDOWSIZECHANGED 0x400000000ULL
 #define CLIENT_ALLREDRAWFLAGS		\
 	(CLIENT_REDRAWWINDOW|		\
 	 CLIENT_REDRAWSTATUS|		\
@@ -2465,6 +2472,8 @@ void	 server_client_push_stderr(struct client *);
 const char *server_client_get_cwd(struct client *, struct session *);
 void	 server_client_set_flags(struct client *, const char *);
 const char *server_client_get_flags(struct client *);
+struct client_window *server_client_get_client_window(struct client *, u_int);
+struct client_window *server_client_add_client_window(struct client *, u_int);
 struct window_pane *server_client_get_pane(struct client *);
 void	 server_client_set_pane(struct client *, struct window_pane *);
 void	 server_client_remove_pane(struct window_pane *);

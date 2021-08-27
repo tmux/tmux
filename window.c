@@ -318,6 +318,8 @@ window_create(u_int sx, u_int sy, u_int xpixel, u_int ypixel)
 
 	w->sx = sx;
 	w->sy = sy;
+	w->manual_sx = sx;
+	w->manual_sy = sy;
 	w->xpixel = xpixel;
 	w->ypixel = ypixel;
 

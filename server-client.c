@@ -2443,12 +2443,27 @@ server_client_get_flags(struct client *c)
 }
 
 /* Get client window. */
-static struct client_window *
+struct client_window *
 server_client_get_client_window(struct client *c, u_int id)
 {
 	struct client_window	cw = { .window = id };
 
 	return (RB_FIND(client_windows, &c->windows, &cw));
+}
+
+/* Add client window. */
+struct client_window *
+server_client_add_client_window(struct client *c, u_int id)
+{
+	struct client_window	*cw;
+
+	cw = server_client_get_client_window(c, id);
+	if (cw == NULL) {
+		cw = xcalloc(1, sizeof *cw);
+		cw->window = id;
+		RB_INSERT(client_windows, &c->windows, cw);
+	}
+	return cw;
 }
 
 /* Get client active pane. */
@@ -2479,12 +2494,7 @@ server_client_set_pane(struct client *c, struct window_pane *wp)
 	if (s == NULL)
 		return;
 
-	cw = server_client_get_client_window(c, s->curw->window->id);
-	if (cw == NULL) {
-		cw = xcalloc(1, sizeof *cw);
-		cw->window = s->curw->window->id;
-		RB_INSERT(client_windows, &c->windows, cw);
-	}
+	cw = server_client_add_client_window(c, s->curw->window->id);
 	cw->pane = wp;
 	log_debug("%s pane now %%%u", c->name, wp->id);
 }
