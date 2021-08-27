@@ -407,7 +407,7 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 			shell = _PATH_BSHELL;
 		cmd_append_argv(&argc, &argv, shell);
 	} else
-		args_vector(args, &argc, &argv);
+		args_to_vector(args, &argc, &argv);
 
 	if (args_has(args, 'E') > 1)
 		flags |= POPUP_CLOSEEXITZERO;

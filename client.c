@@ -243,6 +243,7 @@ client_main(struct event_base *base, int argc, char **argv, uint64_t flags,
 	ssize_t			 linelen;
 	char			*line = NULL, **caps = NULL, *cause;
 	u_int			 ncaps = 0;
+	struct args_value	*values;
 
 	/* Ignore SIGCHLD now or daemon() in the server will leave a zombie. */
 	signal(SIGCHLD, SIG_IGN);
@@ -258,17 +259,20 @@ client_main(struct event_base *base, int argc, char **argv, uint64_t flags,
 		msg = MSG_COMMAND;
 
 		/*
-		 * It sucks parsing the command string twice (in client and
-		 * later in server) but it is necessary to get the start server
-		 * flag.
+		 * It's annoying parsing the command string twice (in client
+		 * and later in server) but it is necessary to get the start
+		 * server flag.
 		 */
-		pr = cmd_parse_from_arguments(argc, argv, NULL);
+		values = args_from_vector(argc, argv);
+		pr = cmd_parse_from_arguments(values, argc, NULL);
 		if (pr->status == CMD_PARSE_SUCCESS) {
 			if (cmd_list_any_have(pr->cmdlist, CMD_STARTSERVER))
 				flags |= CLIENT_STARTSERVER;
 			cmd_list_free(pr->cmdlist);
 		} else
 			free(pr->error);
+		args_free_values(values, argc);
+		free(values);
 	}
 
 	/* Create client process structure (starts logging). */

@@ -999,6 +999,8 @@ struct window {
 
 	u_int		 sx;
 	u_int		 sy;
+	u_int		 manual_sx;
+	u_int		 manual_sy;
 	u_int		 xpixel;
 	u_int		 ypixel;
 
@@ -1556,6 +1558,10 @@ RB_HEAD(client_files, client_file);
 struct client_window {
 	u_int			 window;
 	struct window_pane	*pane;
+
+	u_int			 sx;
+	u_int			 sy;
+
 	RB_ENTRY(client_window)	 entry;
 };
 RB_HEAD(client_windows, client_window);
@@ -1651,6 +1657,7 @@ struct client {
 #define CLIENT_ACTIVEPANE 0x80000000ULL
 #define CLIENT_CONTROL_PAUSEAFTER 0x100000000ULL
 #define CLIENT_CONTROL_WAITEXIT 0x200000000ULL
+#define CLIENT_WINDOWSIZECHANGED 0x400000000ULL
 #define CLIENT_ALLREDRAWFLAGS		\
 	(CLIENT_REDRAWWINDOW|		\
 	 CLIENT_REDRAWSTATUS|		\
@@ -2211,8 +2218,11 @@ void		 args_set(struct args *, u_char, struct args_value *);
 struct args 	*args_create(void);
 struct args	*args_parse(const struct args_parse *, struct args_value *,
 		     u_int, char **);
-void		 args_vector(struct args *, int *, char ***);
+struct args	*args_copy(struct args *, int, char **);
+void		 args_to_vector(struct args *, int *, char ***);
+struct args_value *args_from_vector(int, char **);
 void		 args_free_value(struct args_value *);
+void		 args_free_values(struct args_value *, u_int);
 void		 args_free(struct args *);
 char		*args_print(struct args *);
 char		*args_escape(const char *);
@@ -2221,6 +2231,7 @@ const char	*args_get(struct args *, u_char);
 u_char		 args_first(struct args *, struct args_entry **);
 u_char		 args_next(struct args_entry **);
 u_int		 args_count(struct args *);
+struct args_value *args_values(struct args *);
 struct args_value *args_value(struct args *, u_int);
 const char	*args_string(struct args *, u_int);
 struct cmd_list	*args_make_commands_now(struct cmd *, struct cmdq_item *,
@@ -2285,9 +2296,11 @@ u_int		 cmd_get_group(struct cmd *);
 void		 cmd_get_source(struct cmd *, const char **, u_int *);
 struct cmd	*cmd_parse(struct args_value *, u_int, const char *, u_int,
 		     char **);
+struct cmd	*cmd_copy(struct cmd *, int, char **);
 void		 cmd_free(struct cmd *);
 char		*cmd_print(struct cmd *);
 struct cmd_list	*cmd_list_new(void);
+struct cmd_list	*cmd_list_copy(struct cmd_list *, int, char **);
 void		 cmd_list_append(struct cmd_list *, struct cmd *);
 void		 cmd_list_append_all(struct cmd_list *, struct cmd_list *);
 void		 cmd_list_move(struct cmd_list *, struct cmd_list *);
@@ -2321,7 +2334,7 @@ enum cmd_parse_status cmd_parse_and_append(const char *,
 		     struct cmdq_state *, char **);
 struct cmd_parse_result *cmd_parse_from_buffer(const void *, size_t,
 		     struct cmd_parse_input *);
-struct cmd_parse_result *cmd_parse_from_arguments(int, char **,
+struct cmd_parse_result *cmd_parse_from_arguments(struct args_value *, u_int,
 		     struct cmd_parse_input *);
 
 /* cmd-queue.c */
@@ -2466,6 +2479,8 @@ void	 server_client_push_stderr(struct client *);
 const char *server_client_get_cwd(struct client *, struct session *);
 void	 server_client_set_flags(struct client *, const char *);
 const char *server_client_get_flags(struct client *);
+struct client_window *server_client_get_client_window(struct client *, u_int);
+struct client_window *server_client_add_client_window(struct client *, u_int);
 struct window_pane *server_client_get_pane(struct client *);
 void	 server_client_set_pane(struct client *, struct window_pane *);
 void	 server_client_remove_pane(struct window_pane *);

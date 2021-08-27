@@ -36,7 +36,7 @@ const struct cmd_entry cmd_respawn_pane_entry = {
 
 	.args = { "c:e:kt:", 0, -1, NULL },
 	.usage = "[-k] [-c start-directory] [-e environment] "
-		 CMD_TARGET_PANE_USAGE " [command]",
+		 CMD_TARGET_PANE_USAGE " [shell-command]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -61,10 +61,8 @@ cmd_respawn_pane_exec(struct cmd *self, struct cmdq_item *item)
 	sc.wl = wl;
 
 	sc.wp0 = wp;
-	sc.lc = NULL;
 
-	sc.name = NULL;
-	args_vector(args, &sc.argc, &sc.argv);
+	args_to_vector(args, &sc.argc, &sc.argv);
 	sc.environ = environ_create();
 
 	av = args_first_value(args, 'e');

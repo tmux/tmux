@@ -1331,7 +1331,7 @@ specified multiple times.
 .Op Fl cDlLRSU
 .Op Fl A Ar pane:state
 .Op Fl B Ar name:what:format
-.Op Fl C Ar XxY
+.Op Fl C Ar size
 .Op Fl f Ar flags
 .Op Fl t Ar target-client
 .Op Ar adjustment
@@ -1375,7 +1375,17 @@ window, changing the current window in the attached session will reset
 it.
 .Pp
 .Fl C
-sets the width and height of a control mode client.
+sets the width and height of a control mode client or of a window for a
+control mode client,
+.Ar size
+must be one of
+.Ql widthxheight
+or
+.Ql window ID:widthxheight ,
+for example
+.Ql 80x24
+or
+.Ql @0:80x24 .
 .Fl A
 allows a control mode client to trigger actions on a pane.
 The argument is a pane ID (with leading

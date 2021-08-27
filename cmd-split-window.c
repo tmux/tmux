@@ -41,7 +41,8 @@ const struct cmd_entry cmd_split_window_entry = {
 
 	.args = { "bc:de:fF:hIl:p:Pt:vZ", 0, -1, NULL },
 	.usage = "[-bdefhIPvZ] [-c start-directory] [-e environment] "
-		 "[-F format] [-l size] " CMD_TARGET_PANE_USAGE " [command]",
+		 "[-F format] [-l size] " CMD_TARGET_PANE_USAGE
+		 "[shell-command]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -135,8 +136,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	sc.wp0 = wp;
 	sc.lc = lc;
 
-	sc.name = NULL;
-	args_vector(args, &sc.argc, &sc.argv);
+	args_to_vector(args, &sc.argc, &sc.argv);
 	sc.environ = environ_create();
 
 	av = args_first_value(args, 'e');

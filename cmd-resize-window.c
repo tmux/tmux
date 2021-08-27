@@ -108,7 +108,9 @@ cmd_resize_window_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	options_set_number(w->options, "window-size", WINDOW_SIZE_MANUAL);
-	resize_window(w, sx, sy, xpixel, ypixel);
+	w->manual_sx = sx;
+	w->manual_sy = sy;
+	recalculate_size(w, 1);
 
 	return (CMD_RETURN_NORMAL);
 }

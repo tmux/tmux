@@ -42,7 +42,8 @@ const struct cmd_entry cmd_new_session_entry = {
 	.args = { "Ac:dDe:EF:f:n:Ps:t:x:Xy:", 0, -1, NULL },
 	.usage = "[-AdDEPX] [-c start-directory] [-e environment] [-F format] "
 		 "[-f flags] [-n window-name] [-s session-name] "
-		 CMD_TARGET_SESSION_USAGE " [-x width] [-y height] [command]",
+		 CMD_TARGET_SESSION_USAGE " [-x width] [-y height] "
+		 "[shell-command]",
 
 	.target = { 't', CMD_FIND_SESSION, CMD_FIND_CANFAIL },
 
@@ -283,7 +284,7 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 		sc.tc = c;
 
 	sc.name = args_get(args, 'n');
-	args_vector(args, &sc.argc, &sc.argv);
+	args_to_vector(args, &sc.argc, &sc.argv);
 
 	sc.idx = -1;
 	sc.cwd = args_get(args, 'c');
