@@ -381,7 +381,7 @@ menu_prepare(struct menu *menu, int flags, struct cmdq_item *item, u_int px,
 		cmd_find_copy_state(&md->fs, fs);
 	screen_init(&md->s, menu->width + 4, menu->count + 2, 0);
 	if (~md->flags & MENU_NOMOUSE)
-		md->s.mode |= MODE_MOUSE_BUTTON;
+		md->s.mode |= (MODE_MOUSE_ALL|MODE_MOUSE_BUTTON);
 	md->s.mode &= ~MODE_CURSOR;
 
 	md->px = px;
