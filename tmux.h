@@ -2234,7 +2234,7 @@ struct args_value *args_values(struct args *);
 struct args_value *args_value(struct args *, u_int);
 const char	*args_string(struct args *, u_int);
 struct cmd_list	*args_make_commands_now(struct cmd *, struct cmdq_item *,
-		     u_int);
+		     u_int, int);
 struct args_command_state *args_make_commands_prepare(struct cmd *,
 		     struct cmdq_item *, u_int, const char *, int, int);
 struct cmd_list *args_make_commands(struct args_command_state *, int, char **,

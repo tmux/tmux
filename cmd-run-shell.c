@@ -132,7 +132,7 @@ cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 		if (cmd != NULL)
 			cdata->cmd = format_single_from_target(item, cmd);
 	} else {
-		cdata->cmdlist = args_make_commands_now(self, item, 0);
+		cdata->cmdlist = args_make_commands_now(self, item, 0, 1);
 		if (cdata->cmdlist == NULL)
 			return (CMD_RETURN_ERROR);
 	}
