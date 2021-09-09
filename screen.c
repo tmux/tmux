@@ -676,9 +676,9 @@ screen_mode_to_string(int mode)
 	if (mode & MODE_WRAP)
 		strlcat(tmp, "WRAP,", sizeof tmp);
 	if (mode & MODE_MOUSE_STANDARD)
-		strlcat(tmp, "STANDARD,", sizeof tmp);
+		strlcat(tmp, "MOUSE_STANDARD,", sizeof tmp);
 	if (mode & MODE_MOUSE_BUTTON)
-		strlcat(tmp, "BUTTON,", sizeof tmp);
+		strlcat(tmp, "MOUSE_BUTTON,", sizeof tmp);
 	if (mode & MODE_BLINKING)
 		strlcat(tmp, "BLINKING,", sizeof tmp);
 	if (mode & MODE_MOUSE_UTF8)
@@ -690,7 +690,7 @@ screen_mode_to_string(int mode)
 	if (mode & MODE_FOCUSON)
 		strlcat(tmp, "FOCUSON,", sizeof tmp);
 	if (mode & MODE_MOUSE_ALL)
-		strlcat(tmp, "ALL,", sizeof tmp);
+		strlcat(tmp, "MOUSE_ALL,", sizeof tmp);
 	if (mode & MODE_ORIGIN)
 		strlcat(tmp, "ORIGIN,", sizeof tmp);
 	if (mode & MODE_CRLF)
