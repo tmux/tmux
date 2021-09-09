@@ -742,15 +742,14 @@ cmd_parse_log_commands(struct cmd_parse_commands *cmds, const char *prefix)
 
 static int
 cmd_parse_expand_alias(struct cmd_parse_command *cmd,
-    struct cmd_parse_input *pi, struct cmd_parse_result *pr,
-    struct cmd_list **cmdlist)
+    struct cmd_parse_input *pi, struct cmd_parse_result *pr)
 {
-	struct cmd_parse_argument	*arg, *arg1, *first, *after;
+	struct cmd_parse_argument	*arg, *arg1, *first;
 	struct cmd_parse_commands	*cmds;
 	struct cmd_parse_command	*last;
 	char				*alias, *name, *cause;
 
-	*cmdlist = NULL;
+	memset(pr, 0, sizeof *pr);
 
 	first = TAILQ_FIRST(&cmd->arguments);
 	if (first == NULL || first->type != CMD_PARSE_STRING) {
@@ -775,43 +774,38 @@ cmd_parse_expand_alias(struct cmd_parse_command *cmd,
 
 	last = TAILQ_LAST(cmds, cmd_parse_commands);
 	if (last == NULL) {
-		*cmdlist = cmd_list_new();
+		pr->status = CMD_PARSE_SUCCESS;
+		pr->cmdlist = cmd_list_new();
 		return (1);
 	}
 
 	TAILQ_REMOVE(&cmd->arguments, first, entry);
 	cmd_parse_free_argument(first);
 
-	after = TAILQ_FIRST(&last->arguments);
 	TAILQ_FOREACH_SAFE(arg, &cmd->arguments, entry, arg1) {
 		TAILQ_REMOVE(&cmd->arguments, arg, entry);
-		if (after == NULL)
-			TAILQ_INSERT_TAIL(&last->arguments, arg, entry);
-		else
-			TAILQ_INSERT_AFTER(&last->arguments, after, arg, entry);
-		after = arg;
+		TAILQ_INSERT_TAIL(&last->arguments, arg, entry);
 	}
  	cmd_parse_log_commands(cmds, __func__);
 
 	cmd_parse_build_commands(cmds, pi, pr);
-	if (pr->status != CMD_PARSE_SUCCESS)
-		*cmdlist = pr->cmdlist;
 	return (1);
 }
 
-static struct cmd_list *
+static void
 cmd_parse_build_command(struct cmd_parse_command *cmd,
     struct cmd_parse_input *pi, struct cmd_parse_result *pr)
 {
 	struct cmd_parse_argument	*arg;
-	struct cmd_list			*cmdlist = NULL;
 	struct cmd			*add;
 	char				*cause;
 	struct args_value		*values = NULL;
 	u_int				 count = 0, idx;
 
-	if (cmd_parse_expand_alias(cmd, pi, pr, &cmdlist))
-		return (cmdlist);
+	memset(pr, 0, sizeof *pr);
+
+	if (cmd_parse_expand_alias(cmd, pi, pr))
+		return;
 
 	TAILQ_FOREACH(arg, &cmd->arguments, entry) {
 		values = xrecallocarray(values, count, count + 1,
@@ -844,14 +838,14 @@ cmd_parse_build_command(struct cmd_parse_command *cmd,
 		free(cause);
 		goto out;
 	}
-	cmdlist = cmd_list_new();
-	cmd_list_append(cmdlist, add);
+	pr->status = CMD_PARSE_SUCCESS;
+	pr->cmdlist = cmd_list_new();
+	cmd_list_append(pr->cmdlist, add);
 
 out:
 	for (idx = 0; idx < count; idx++)
 		args_free_value(&values[idx]);
 	free(values);
-	return (cmdlist);
 }
 
 static void
@@ -860,8 +854,10 @@ cmd_parse_build_commands(struct cmd_parse_commands *cmds,
 {
 	struct cmd_parse_command	*cmd;
 	u_int				 line = UINT_MAX;
-	struct cmd_list			*current = NULL, *result, *add;
+	struct cmd_list			*current = NULL, *result;
 	char				*s;
+
+	memset(pr, 0, sizeof *pr);
 
 	/* Check for an empty list. */
 	if (TAILQ_EMPTY(cmds)) {
@@ -891,14 +887,14 @@ cmd_parse_build_commands(struct cmd_parse_commands *cmds,
 			current = cmd_list_new();
 		line = pi->line = cmd->line;
 
-		add = cmd_parse_build_command(cmd, pi, pr);
-		if (add == NULL) {
+		cmd_parse_build_command(cmd, pi, pr);
+		if (pr->status != CMD_PARSE_SUCCESS) {
 			cmd_list_free(result);
 			cmd_list_free(current);
 			return;
 		}
-		cmd_list_append_all(current, add);
-		cmd_list_free(add);
+		cmd_list_append_all(current, pr->cmdlist);
+		cmd_list_free(pr->cmdlist);
 	}
 	if (current != NULL) {
 		cmd_parse_print_commands(pi, current);
@@ -1061,6 +1057,7 @@ cmd_parse_from_arguments(struct args_value *values, u_int count,
 		memset(&input, 0, sizeof input);
 		pi = &input;
 	}
+	memset(&pr, 0, sizeof pr);
 
 	cmds = cmd_parse_new_commands();
 
