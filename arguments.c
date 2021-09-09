@@ -651,13 +651,14 @@ args_string(struct args *args, u_int idx)
 
 /* Make a command now. */
 struct cmd_list *
-args_make_commands_now(struct cmd *self, struct cmdq_item *item, u_int idx)
+args_make_commands_now(struct cmd *self, struct cmdq_item *item, u_int idx,
+    int expand)
 {
 	struct args_command_state	*state;
 	char				*error;
 	struct cmd_list			*cmdlist;
 
-	state = args_make_commands_prepare(self, item, idx, NULL, 0, 0);
+	state = args_make_commands_prepare(self, item, idx, NULL, 0, expand);
 	cmdlist = args_make_commands(state, 0, NULL, &error);
 	if (cmdlist == NULL) {
 		cmdq_error(item, "%s", error);
