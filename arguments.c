@@ -153,6 +153,10 @@ args_parse(const struct args_parse *parse, struct args_value *values,
 			flag = *string++;
 			if (flag == '\0')
 				break;
+			if (flag == '?') {
+				args_free(args);
+				return (NULL);
+			}
 			if (!isalnum(flag)) {
 				xasprintf(cause, "invalid flag -%c", flag);
 				args_free(args);
