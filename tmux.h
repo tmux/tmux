@@ -93,20 +93,6 @@ struct winlink;
 #define DEFAULT_XPIXEL 16
 #define DEFAULT_YPIXEL 32
 
-/* Don't complain about format arguments. */
-#if __clang__ || __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6)
-#define no_format_nonliteral(x) do { \
-	_Pragma ("GCC diagnostic push") \
-	_Pragma ("GCC diagnostic ignored \"-Wformat-nonliteral\"") \
-	 x; \
-	_Pragma ("GCC diagnostic pop") \
-} while (0)
-#else
-#define no_format_nonliteral(x) do { \
-	 x; \
-} while (0)
-#endif
-
 /* Attribute to make GCC check printf-like arguments. */
 #define printflike(a, b) __attribute__ ((format (printf, a, b)))
 
