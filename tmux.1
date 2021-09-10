@@ -710,6 +710,26 @@ Conditionals may be given on one line, for example:
 .Bd -literal -offset indent
 %if #{==:#{host},myhost} set -g status-style bg=red %endif
 .Ed
+.Pp
+You may also use
+.Ql %if
+/
+.Ql %elif
+/
+.Ql %endif
+to make your configuration file compatible with different version of tmux.
+Even if the commands have different arguments in different versions.
+For example, say you want a green status line if running a development
+build, blue if version 3.1 or abov, and red otherwise:
+.Bd -literal -offset indent
+%if #{m/r:^next-,#{version}}
+set -g status-style bg=green
+%elif #{&&:#{m/r:^[0-9]+\.[0-9]+$,#{version}},#{e|>=|f:#{version},3.1}}
+set -g status-style bg=blue
+%else
+set -g status-style bg=red
+%endif
+.Ed
 .Sh COMMANDS
 This section describes the commands supported by
 .Nm .
