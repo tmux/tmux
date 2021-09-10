@@ -501,7 +501,7 @@ cmd_parse(struct args_value *values, u_int count, const char *file, u_int line,
 	const struct cmd_entry	*entry;
 	struct cmd		*cmd;
 	struct args		*args;
-	char			*error;
+	char			*error = NULL;
 
 	if (count == 0 || values[0].type != ARGS_STRING) {
 		xasprintf(cause, "no command");
