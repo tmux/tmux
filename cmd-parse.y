@@ -749,6 +749,8 @@ cmd_parse_expand_alias(struct cmd_parse_command *cmd,
 	struct cmd_parse_command	*last;
 	char				*alias, *name, *cause;
 
+	if (pi->flags & CMD_PARSE_NOALIAS)
+		return (0);
 	memset(pr, 0, sizeof *pr);
 
 	first = TAILQ_FIRST(&cmd->arguments);
@@ -786,9 +788,11 @@ cmd_parse_expand_alias(struct cmd_parse_command *cmd,
 		TAILQ_REMOVE(&cmd->arguments, arg, entry);
 		TAILQ_INSERT_TAIL(&last->arguments, arg, entry);
 	}
- 	cmd_parse_log_commands(cmds, __func__);
+	cmd_parse_log_commands(cmds, __func__);
 
+	pi->flags |= CMD_PARSE_NOALIAS;
 	cmd_parse_build_commands(cmds, pi, pr);
+	pi->flags &= ~CMD_PARSE_NOALIAS;
 	return (1);
 }
 
@@ -865,7 +869,7 @@ cmd_parse_build_commands(struct cmd_parse_commands *cmds,
 		pr->cmdlist = cmd_list_new();
 		return;
 	}
- 	cmd_parse_log_commands(cmds, __func__);
+	cmd_parse_log_commands(cmds, __func__);
 
 	/*
 	 * Parse each command into a command list. Create a new command list
@@ -1422,7 +1426,7 @@ yylex_token_escape(char **buf, size_t *len)
 			if (o3 >= '0' && o3 <= '7') {
 				ch = 64 * (ch - '0') +
 				      8 * (o2 - '0') +
-				          (o3 - '0');
+					  (o3 - '0');
 				yylex_append1(buf, len, ch);
 				return (1);
 			}
