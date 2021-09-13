@@ -55,6 +55,14 @@ source tree with:
 
 A small example configuration is in example_tmux.conf.
 
+Other documentation is available in the wiki:
+
+	https://github.com/tmux/tmux/wiki
+
+Also see the tmux FAQ at:
+
+	https://github.com/tmux/tmux/wiki/FAQ
+
 A bash(1) completion file is at:
 
 	https://github.com/imomaliev/tmux-bash-completion
