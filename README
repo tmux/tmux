@@ -70,6 +70,14 @@ A bash(1) completion file is at:
 For debugging, run tmux with -v and -vv to generate server and client log files
 in the current directory.
 
+A lot of information is available in the official Wiki:
+
+	https://github.com/tmux/tmux/wiki
+
+In particular, make sure to check the FAQ:
+
+	https://github.com/tmux/tmux/wiki/FAQ
+
 * Support
 
 The tmux mailing list for general discussion and bug reports is:
