@@ -1,10 +1,15 @@
 CHANGES FROM 3.2a TO 3.3
 
+* Change so that {} is converted to tmux commands immediately when parsed. This
+  means it must contain valid tmux commands. For commands which expand %% and
+  %%%, this now only happens within string arguments. Use of aliases inside {}
+  is now forbidden. Processing of commands given in quotes remains the same.
+
 * Disable evports on SunOS since they are broken.
 
 * Do not expand the file given with tmux -f so it can contain :s.
 
-* Bump FORMAT_LOOOP_LIMIT and add a log message when hit.
+* Bump FORMAT_LOOP_LIMIT and add a log message when hit.
 
 * Add a terminal feature for the mouse (since FreeBSD termcap does not have kmous).
 
@@ -50,8 +55,8 @@ CHANGES FROM 3.2a TO 3.3
 
 * Add display-popup -B to open a popup without a border.
 
-* Add a menu for popups that can be opened with button 3 outside the popup or
-  on the left or top border. Resizing now only works on the right and bottom
+* Add a menu for popups that can be opened with button three outside the popup
+  or on the left or top border. Resizing now only works on the right and bottom
   borders or when using Meta. The menu allows a popup to be closed, expanded to
   the full size of the client, centered in the client or changed into a pane.
 
