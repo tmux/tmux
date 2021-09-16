@@ -2468,24 +2468,22 @@ out:
 static void
 tty_hyperlink(struct tty *tty, const struct grid_cell *gc)
 {
-	struct hyperlink    *hl;
-	char             s[16];
+	// TODO: `server_client_get_pane` is returning incorrect results right when you split a pane that has existing links on screen,
+	//       since the active pane is no longer the one with the links.
+	struct window_pane	*wp = server_client_get_pane(tty->client);
+	const char		*uri;
+	const char		*param_id;
 
 	if (gc->link == tty->cell.link)
 		return;
 	tty->cell.link = gc->link;
 
-	if (gc->link == 0)
+	if (gc->link == 0 || !hyperlink_get(wp, gc->link, &uri, &param_id))
 		tty_putcode(tty, TTYC_HLR);
-	else {
-		hl = server_get_hyperlink(gc->link);
-		if (hl == NULL)
-			tty_putcode(tty, TTYC_HLR);
-		else {
-			snprintf(s, sizeof s, "%u", hl->id);
-			tty_putcode_ptr2(tty, TTYC_HLS, s, hl->link);
-		}
-	}
+	else if (param_id == NULL)
+		tty_putcode_ptr1(tty, TTYC_HLA, uri);
+	else
+		tty_putcode_ptr2(tty, TTYC_HLS, param_id, uri);
 }
 
 void

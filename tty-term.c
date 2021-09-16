@@ -104,6 +104,7 @@ static const struct tty_term_code_entry tty_term_codes[] = {
 	[TTYC_ENMG] = { TTYCODE_STRING, "Enmg" },
 	[TTYC_FSL] = { TTYCODE_STRING, "fsl" },
 	[TTYC_HLS] = { TTYCODE_STRING, "Hls" },
+	[TTYC_HLA] = { TTYCODE_STRING, "Hla" },
 	[TTYC_HLR] = { TTYCODE_STRING, "Hlr" },
 	[TTYC_HOME] = { TTYCODE_STRING, "home" },
 	[TTYC_HPA] = { TTYCODE_STRING, "hpa" },
