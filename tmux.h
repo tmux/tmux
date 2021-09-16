@@ -325,6 +325,7 @@ enum tty_code_code {
 	TTYC_ENMG,
 	TTYC_FSL,
 	TTYC_HLS,
+	TTYC_HLA,
 	TTYC_HLR,
 	TTYC_HOME,
 	TTYC_HPA,
@@ -677,13 +678,66 @@ struct grid {
 	struct grid_line	*linedata;
 };
 
-/* Hyperlink tree entry. */
-struct hyperlink {
-	u_int            id;
-	const char      *link;
-	RB_ENTRY(hyperlink)  entry;
+/*
+ * To efficiently store OSC-8 hyperlinks in extended cell attributes, assign
+ * each hyperlink cell a numerical ID called the 'attribute ID'. This is
+ * distinct from the string-valued ID described in the [specification][1],
+ * henceforth referred to as the 'parameter ID'. Use a dual-layer tree to map
+ * a URI / parameter ID pair to an attribute ID. Use a single-layer tree to do
+ * the inverse; retrieve the URI and parameter ID given an attribute ID.
+ *
+ * The dual-layer tree for the forward mapping primarily ensures that each
+ * unique URI is not duplicated in memory. The first layer maps URIs to nodes
+ * containing second-layer trees, which map parameter IDs to attribute IDs.
+ *
+ * [1]: https://gist.github.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda
+ */
+
+/* Second-layer tree for forward hyperlink mapping. */
+struct hyperlink_param_id_to_attr_id {
+	/* parameter ID of a hyperlink */
+	const char      *param_id;
+
+	/* attribute ID of a hyperlink */
+	u_int            attr_id;
+
+	/* entry for the second-layer tree */
+	RB_ENTRY(hyperlink_param_id_to_attr_id)	entry;
 };
-RB_HEAD(hyperlinks, hyperlink);
+RB_HEAD(hyperlink_param_id_to_attr_ids, hyperlink_param_id_to_attr_id);
+
+/* First-layer tree for forward hyperlink mapping. */
+struct hyperlink_uri_to_param_id_tree {
+	/* URI of a hyperlink */
+	const char      *uri;
+
+	/* default attribute ID for links with no parameter ID
+	 * to save an extra lookup in the typical case */
+	u_int            default_attr_id;
+	/* the second-layer tree, indexed by parameter ID */
+	struct hyperlink_param_id_to_attr_ids	attr_ids_by_param_id;
+
+	/* entry for the top-layer tree */
+	RB_ENTRY(hyperlink_uri_to_param_id_tree)	entry;
+};
+RB_HEAD(hyperlink_uri_to_param_id_trees, hyperlink_uri_to_param_id_tree);
+
+/* Tree for backward hyperlink mapping. */
+struct hyperlink_attr_id_to_link {
+	/* attribute ID of the hyperlink */
+	u_int		 attr_id;
+
+	/* URI of the hyperlink, re-used from the corresponding entry in
+	 * `hyperlink_uri_to_param_id_trees` */
+	const char	*uri;
+	/* parameter ID of the hyperlink, re-used from the corresponding entry
+	 * in `attr_ids_by_param_id` */
+	const char	*param_id;
+
+	/* entry for the reverse-lookup tree */
+	RB_ENTRY(hyperlink_attr_id_to_link)	entry;
+};
+RB_HEAD(hyperlink_attr_id_to_links, hyperlink_attr_id_to_link);
 
 /* Virtual cursor in a grid. */
 struct grid_reader {
@@ -922,6 +976,10 @@ struct window_pane {
 
 	u_int		 xoff;
 	u_int		 yoff;
+
+	struct hyperlink_uri_to_param_id_trees	hyperlink_forward_mapping;
+	struct hyperlink_attr_id_to_links	hyperlink_backward_mapping;
+	u_int					hyperlink_next_attr_id;
 
 	int		 flags;
 #define PANE_REDRAW 0x1
@@ -2454,11 +2512,6 @@ void	 file_read_done(struct client_files *, struct imsg *);
 extern struct tmuxproc *server_proc;
 extern struct clients clients;
 extern struct cmd_find_state marked_pane;
-extern struct hyperlinks hyperlinks;
-extern u_int next_hyperlink;
-int	server_cmp_hyperlink(struct hyperlink *, struct hyperlink *);
-struct hyperlink *server_get_hyperlink(u_int);
-RB_PROTOTYPE(hyperlinks, hyperlink, entry, server_cmp_hyperlink);
 extern struct message_list message_log;
 void	 server_set_marked(struct session *, struct winlink *,
 	     struct window_pane *);
@@ -3144,5 +3197,26 @@ struct window_pane *spawn_pane(struct spawn_context *, char **);
 
 /* regsub.c */
 char		*regsub(const char *, const char *, const char *, int);
+
+/* hyperlink.c */
+int	hyperlink_param_id_to_attr_id_cmp(
+	    struct hyperlink_param_id_to_attr_id *,
+	    struct hyperlink_param_id_to_attr_id *);
+int	hyperlink_uri_to_param_id_tree_cmp(
+	    struct hyperlink_uri_to_param_id_tree *,
+	    struct hyperlink_uri_to_param_id_tree *);
+int	hyperlink_attr_id_to_link_cmp(
+	    struct hyperlink_attr_id_to_link *,
+	    struct hyperlink_attr_id_to_link *);
+RB_PROTOTYPE(hyperlink_param_id_to_attr_ids, hyperlink_param_id_to_attr_id,
+    entry, hyperlink_param_id_to_attr_id_cmp);
+RB_PROTOTYPE(hyperlink_uri_to_param_id_trees, hyperlink_uri_to_param_id_tree,
+    entry, hyperlink_uri_to_param_id_tree_cmp);
+RB_PROTOTYPE(hyperlink_attr_id_to_links, hyperlink_attr_id_to_link,
+    entry, hyperlink_attr_id_to_link_cmp);
+u_int	 hyperlink_put(struct window_pane *, const char *, const char *);
+int	 hyperlink_get(struct window_pane *, u_int, const char **,
+	    const char **);
+void	 hyperlink_destroy_trees(struct window_pane *);
 
 #endif /* TMUX_H */

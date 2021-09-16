@@ -149,6 +149,7 @@ dist_tmux_SOURCES = \
 	grid-reader.c \
 	grid-view.c \
 	grid.c \
+	hyperlink.c \
 	input-keys.c \
 	input.c \
 	job.c \

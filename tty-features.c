@@ -75,6 +75,19 @@ static const struct tty_feature tty_feature_clipboard = {
 	0
 };
 
+/* Terminal supports OSC 8 hyperlinks. */
+static const char *tty_feature_hyperlink_capabilities[] = {
+	"Hlr=\\E]8;;\\E\\\\",
+	"Hla=\\E]8;;%p1%s\\E\\\\",
+	"Hls=\\E]8;id=%p1%s;%p2%s\\E\\\\",
+	NULL
+};
+static const struct tty_feature tty_feature_hyperlink = {
+	"hyperlink",
+	tty_feature_hyperlink_capabilities,
+	0
+};
+
 /*
  * Terminal supports RGB colour. This replaces setab and setaf also since
  * terminals with RGB have versions that do not allow setting colours from the
@@ -244,6 +257,7 @@ static const struct tty_feature *tty_features[] = {
 	&tty_feature_bpaste,
 	&tty_feature_ccolour,
 	&tty_feature_clipboard,
+	&tty_feature_hyperlink,
 	&tty_feature_cstyle,
 	&tty_feature_extkeys,
 	&tty_feature_focus,

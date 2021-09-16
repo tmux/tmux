@@ -2544,31 +2544,49 @@ input_osc_4(struct input_ctx *ictx, const char *p)
 static void
 input_osc_8(struct input_ctx *ictx, const char *p)
 {
-	struct grid_cell  *gc = &ictx->cell.cell;
-	char              *end;
-	struct hyperlink  *hl;
+	struct window_pane	*wp = ictx->wp;
+	struct grid_cell	*gc = &ictx->cell.cell;
+	char			*start;
+	char			*end;
+	char			*uri;
+	char			*param_id = NULL;
+	int			final_param;
 
-	if ((end = strchr(p, ';')) == NULL)
-		goto bad;
-	end++;
-	if (*end == '\0') {
-		gc->link = 0;
-		return;
+	for (start = p; (end = strpbrk(start, ":;")) != NULL; start = end + 1) {
+		final_param = (*end == ';');
+
+		/* Since `sizeof "id="` is 4, this actually checks to make sure
+		 * the parameter ID value is non-empty. According to spec,
+		 * setting it empty is equivalent to omitting it entirely. */
+		if (end - start >= (sizeof "id=") &&
+		    strncmp(start, "id=", (sizeof "id=") - 1) == 0) {
+			// TODO: Should we be writing into the `p` buffer?
+			//       Nice to defer the potentially-unnecessary
+			//       string copy.
+			*end = '\0';
+			param_id = start + ((sizeof "id=") - 1);
+		}
+
+		if (final_param) {
+			uri = end + 1;
+
+			gc->link = hyperlink_put(wp, uri, param_id);
+
+			if (param_id == NULL)
+				log_debug("pane %u hyperlink %u (anonymous) = %s",
+				    wp->id, gc->link, uri);
+			else
+				log_debug("pane %u hyperlink %u (id=%s) = %s",
+				    wp->id, gc->link, param_id, uri);
+
+			return;
+		}
 	}
-
-	/* XXX parse ID and check pane tree, reuse entry if present */
-
-	hl = xcalloc(1, sizeof *hl);
-	hl->id = ++next_hyperlink;
-	hl->link = xstrdup(end);
-	RB_INSERT (hyperlinks, &hyperlinks, hl);
-
-	log_debug("hyperlink %u = %s", hl->id, hl->link);
-
-	gc->link = hl->id;
-	return;
-
-bad:
+	/* Replace NULL terminators that were inserted into the buffer while
+	 * parsing parameters, just for logging. */
+	for (end = p + strlen(p); end < start; end += strlen(end)) {
+		*end = ':';
+	}
 	log_debug("bad OSC 8 %s", p);
 }
 
