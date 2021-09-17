@@ -205,6 +205,9 @@ session_destroy(struct session *s, int notify, const char *from)
 	struct winlink	*wl;
 
 	log_debug("session %s destroyed (%s)", s->name, from);
+
+	if (s->curw == NULL)
+		return;
 	s->curw = NULL;
 
 	RB_REMOVE(sessions, &sessions, s);
