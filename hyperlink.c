@@ -207,9 +207,10 @@ char *
 hyperlink_write_namespaced(struct hyperlinks *hl, char *param_id,
     const char *raw_param_id, size_t raw_param_id_length)
 {
+	/* Print exactly 3 digits for the namespace. */
 	param_id = xrealloc(param_id, raw_param_id_length + 5);
-	snprintf(param_id, raw_param_id_length + 5, "%.3X.%s", hl->ns,
-	    raw_param_id);
+	snprintf(param_id, raw_param_id_length + 5, "%.3X.%s",
+	    hl->ns % (16 * 16 * 16), raw_param_id);
 	return param_id;
 }
 
