@@ -712,6 +712,7 @@ if test "x$DEFAULT_TERM" = x; then
 		 ])],
 		 [DEFAULT_TERM=screen-256color],
 		 ,
+		 [DEFAULT_TERM=screen]
 	)
 	AC_RUN_IFELSE([AC_LANG_SOURCE(
 		[
@@ -731,6 +732,7 @@ if test "x$DEFAULT_TERM" = x; then
 		 ])],
 		 [DEFAULT_TERM=tmux],
 		 ,
+		 [DEFAULT_TERM=screen]
 	)
 	AC_RUN_IFELSE([AC_LANG_SOURCE(
 		[
@@ -750,6 +752,7 @@ if test "x$DEFAULT_TERM" = x; then
 		 ])],
 		 [DEFAULT_TERM=tmux-256color],
 		 ,
+		 [DEFAULT_TERM=screen]
 	)
 	AC_MSG_RESULT($DEFAULT_TERM)
 fi
