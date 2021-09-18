@@ -87,6 +87,8 @@ screen_init(struct screen *s, u_int sx, u_int sy, u_int hlimit)
 
 	s->write_list = NULL;
 
+	hyperlink_init(&s->hyperlinks);
+
 	screen_reinit(s);
 }
 
@@ -115,6 +117,8 @@ screen_reinit(struct screen *s)
 
 	screen_clear_selection(s);
 	screen_free_titles(s);
+
+	hyperlink_reset(s->hyperlinks);
 }
 
 /* Destroy a screen. */
@@ -135,6 +139,8 @@ screen_free(struct screen *s)
 	grid_destroy(s->grid);
 
 	screen_free_titles(s);
+
+	hyperlink_free(s->hyperlinks);
 }
 
 /* Reset tabs to default, eight spaces apart. */

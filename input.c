@@ -2544,48 +2544,42 @@ input_osc_4(struct input_ctx *ictx, const char *p)
 static void
 input_osc_8(struct input_ctx *ictx, const char *p)
 {
-	struct window_pane	*wp = ictx->wp;
+	struct hyperlinks	*hl = ictx->wp->screen->hyperlinks;
 	struct grid_cell	*gc = &ictx->cell.cell;
-	char			*start;
-	char			*end;
-	char			*uri;
-	char			*param_id = NULL;
-	int			final_param;
+	const char	*start;
+	const char	*end;
+	const char	*uri;
+	char	    	*param_id = NULL;
 
 	for (start = p; (end = strpbrk(start, ":;")) != NULL; start = end + 1) {
-		final_param = (*end == ';');
 
-		/* Since `sizeof "id="` is 4, this actually checks to make sure
-		 * the parameter ID value is non-empty. According to spec,
-		 * setting it empty is equivalent to omitting it entirely. */
-		if (end - start >= (sizeof "id=") &&
+		if (end - start >= (ssize_t)(sizeof "id=") && /* id mustn't be empty */
 		    strncmp(start, "id=", (sizeof "id=") - 1) == 0) {
-			// TODO: Should we be writing into the `p` buffer?
-			//       Nice to defer the potentially-unnecessary
-			//       string copy.
-			*end = '\0';
-			param_id = start + ((sizeof "id=") - 1);
+			start += (sizeof "id=") - 1;
+			param_id = hyperlink_write_namespaced(hl, param_id,
+			    start, end - start);
 		}
 
-		if (final_param) {
+		/* The first ; is the end of parameters and start of the URI. */
+		if (*end == ';') {
 			uri = end + 1;
 
-			gc->link = hyperlink_put(wp, uri, param_id);
+			if (*uri == '\0') {
+				gc->link = 0;
+				return;
+			}
 
 			if (param_id == NULL)
-				log_debug("pane %u hyperlink %u (anonymous) = %s",
-				    wp->id, gc->link, uri);
+				log_debug("hyperlink (anonymous) %s", gc->link, uri);
 			else
-				log_debug("pane %u hyperlink %u (id=%s) = %s",
-				    wp->id, gc->link, param_id, uri);
+				log_debug("hyperlink (id=%s) %s", gc->link, param_id, uri);
+
+			gc->link = hyperlink_put(hl, uri, param_id);
+
+			log_debug("hyperlink assigned attribute ID %u", gc->link);
 
 			return;
 		}
-	}
-	/* Replace NULL terminators that were inserted into the buffer while
-	 * parsing parameters, just for logging. */
-	for (end = p + strlen(p); end < start; end += strlen(end)) {
-		*end = ':';
 	}
 	log_debug("bad OSC 8 %s", p);
 }
