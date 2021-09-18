@@ -6415,6 +6415,12 @@ Disable and enable focus reporting.
 These are set automatically if the
 .Em XT
 capability is present.
+.It Em \&Hls , \&Hla , \&Hlr
+Enable hyperlinks.
+If set, a sequence such as this will link a string of visible text to a URI:
+.Bd -literal -offset indent
+$ printf '\e]8;;http://example.com\e\\visible text\e]8;;\e\\'
+.Ed
 .It Em \&Rect
 Tell
 .Nm

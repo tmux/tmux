@@ -50,6 +50,7 @@ struct control_state;
 struct environ;
 struct format_job_tree;
 struct format_tree;
+struct hyperlinks;
 struct input_ctx;
 struct job;
 struct menu_data;
@@ -749,67 +750,6 @@ struct grid {
 	struct grid_line	*linedata;
 };
 
-/*
- * To efficiently store OSC-8 hyperlinks in extended cell attributes, assign
- * each hyperlink cell a numerical ID called the 'attribute ID'. This is
- * distinct from the string-valued ID described in the [specification][1],
- * henceforth referred to as the 'parameter ID'. Use a dual-layer tree to map
- * a URI / parameter ID pair to an attribute ID. Use a single-layer tree to do
- * the inverse; retrieve the URI and parameter ID given an attribute ID.
- *
- * The dual-layer tree for the forward mapping primarily ensures that each
- * unique URI is not duplicated in memory. The first layer maps URIs to nodes
- * containing second-layer trees, which map parameter IDs to attribute IDs.
- *
- * [1]: https://gist.github.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda
- */
-
-/* Second-layer tree for forward hyperlink mapping. */
-struct hyperlink_param_id_to_attr_id {
-	/* parameter ID of a hyperlink */
-	const char      *param_id;
-
-	/* attribute ID of a hyperlink */
-	u_int            attr_id;
-
-	/* entry for the second-layer tree */
-	RB_ENTRY(hyperlink_param_id_to_attr_id)	entry;
-};
-RB_HEAD(hyperlink_param_id_to_attr_ids, hyperlink_param_id_to_attr_id);
-
-/* First-layer tree for forward hyperlink mapping. */
-struct hyperlink_uri_to_param_id_tree {
-	/* URI of a hyperlink */
-	const char      *uri;
-
-	/* default attribute ID for links with no parameter ID
-	 * to save an extra lookup in the typical case */
-	u_int            default_attr_id;
-	/* the second-layer tree, indexed by parameter ID */
-	struct hyperlink_param_id_to_attr_ids	attr_ids_by_param_id;
-
-	/* entry for the top-layer tree */
-	RB_ENTRY(hyperlink_uri_to_param_id_tree)	entry;
-};
-RB_HEAD(hyperlink_uri_to_param_id_trees, hyperlink_uri_to_param_id_tree);
-
-/* Tree for backward hyperlink mapping. */
-struct hyperlink_attr_id_to_link {
-	/* attribute ID of the hyperlink */
-	u_int		 attr_id;
-
-	/* URI of the hyperlink, re-used from the corresponding entry in
-	 * `hyperlink_uri_to_param_id_trees` */
-	const char	*uri;
-	/* parameter ID of the hyperlink, re-used from the corresponding entry
-	 * in `attr_ids_by_param_id` */
-	const char	*param_id;
-
-	/* entry for the reverse-lookup tree */
-	RB_ENTRY(hyperlink_attr_id_to_link)	entry;
-};
-RB_HEAD(hyperlink_attr_id_to_links, hyperlink_attr_id_to_link);
-
 /* Virtual cursor in a grid. */
 struct grid_reader {
 	struct grid	*gd;
@@ -917,6 +857,8 @@ struct screen {
 	struct screen_sel		*sel;
 
 	struct screen_write_cline	*write_list;
+
+	struct hyperlinks		*hyperlinks;
 };
 
 /* Screen write context. */
@@ -1077,10 +1019,6 @@ struct window_pane {
 
 	u_int		 xoff;
 	u_int		 yoff;
-
-	struct hyperlink_uri_to_param_id_trees	hyperlink_forward_mapping;
-	struct hyperlink_attr_id_to_links	hyperlink_backward_mapping;
-	u_int					hyperlink_next_attr_id;
 
 	int		 flags;
 #define PANE_REDRAW 0x1
@@ -2317,7 +2255,8 @@ void	tty_update_window_offset(struct window *);
 void	tty_update_client_offset(struct client *);
 void	tty_raw(struct tty *, const char *);
 void	tty_attributes(struct tty *, const struct grid_cell *,
-	    const struct grid_cell *, struct colour_palette *);
+	    const struct grid_cell *, struct colour_palette *,
+	    const struct hyperlinks *);
 void	tty_reset(struct tty *);
 void	tty_region_off(struct tty *);
 void	tty_margin_off(struct tty *);
@@ -2334,7 +2273,8 @@ void	tty_puts(struct tty *, const char *);
 void	tty_putc(struct tty *, u_char);
 void	tty_putn(struct tty *, const void *, size_t, u_int);
 void	tty_cell(struct tty *, const struct grid_cell *,
-	    const struct grid_cell *, struct colour_palette *);
+	    const struct grid_cell *, struct colour_palette *,
+	    const struct hyperlinks *);
 int	tty_init(struct tty *, struct client *);
 void	tty_resize(struct tty *);
 void	tty_set_size(struct tty *, u_int, u_int, u_int, u_int);
@@ -3372,24 +3312,13 @@ int			 server_acl_join(struct client *);
 uid_t			 server_acl_get_uid(struct server_acl_user *);
 
 /* hyperlink.c */
-int	hyperlink_param_id_to_attr_id_cmp(
-	    struct hyperlink_param_id_to_attr_id *,
-	    struct hyperlink_param_id_to_attr_id *);
-int	hyperlink_uri_to_param_id_tree_cmp(
-	    struct hyperlink_uri_to_param_id_tree *,
-	    struct hyperlink_uri_to_param_id_tree *);
-int	hyperlink_attr_id_to_link_cmp(
-	    struct hyperlink_attr_id_to_link *,
-	    struct hyperlink_attr_id_to_link *);
-RB_PROTOTYPE(hyperlink_param_id_to_attr_ids, hyperlink_param_id_to_attr_id,
-    entry, hyperlink_param_id_to_attr_id_cmp);
-RB_PROTOTYPE(hyperlink_uri_to_param_id_trees, hyperlink_uri_to_param_id_tree,
-    entry, hyperlink_uri_to_param_id_tree_cmp);
-RB_PROTOTYPE(hyperlink_attr_id_to_links, hyperlink_attr_id_to_link,
-    entry, hyperlink_attr_id_to_link_cmp);
-u_int	 hyperlink_put(struct window_pane *, const char *, const char *);
-int	 hyperlink_get(struct window_pane *, u_int, const char **,
+u_int	 hyperlink_put(struct hyperlinks *, const char *, const char *);
+int	 hyperlink_get(const struct hyperlinks *, u_int, const char **,
 	    const char **);
-void	 hyperlink_destroy_trees(struct window_pane *);
+void	 hyperlink_init(struct hyperlinks **);
+char    *hyperlink_write_namespaced(struct hyperlinks *, char *, const char *,
+             size_t);
+void	 hyperlink_reset(struct hyperlinks *);
+void	 hyperlink_free(struct hyperlinks *);
 
 #endif /* TMUX_H */

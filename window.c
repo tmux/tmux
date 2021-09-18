@@ -926,10 +926,6 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 
 	wp->fd = -1;
 
-	RB_INIT(&wp->hyperlink_forward_mapping);
-	RB_INIT(&wp->hyperlink_backward_mapping);
-	wp->hyperlink_next_attr_id = 1;
-
 	TAILQ_INIT(&wp->modes);
 
 	TAILQ_INIT (&wp->resize_queue);
@@ -990,8 +986,6 @@ window_pane_destroy(struct window_pane *wp)
 	}
 
 	RB_REMOVE(window_pane_tree, &all_window_panes, wp);
-
-	hyperlink_destroy_trees(wp);
 
 	options_free(wp->options);
 	free((void *)wp->cwd);

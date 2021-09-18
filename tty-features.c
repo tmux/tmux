@@ -95,7 +95,7 @@ static const char *tty_feature_hyperlink_capabilities[] = {
 	NULL
 };
 static const struct tty_feature tty_feature_hyperlink = {
-	"hyperlink",
+	"hyperlinks",
 	tty_feature_hyperlink_capabilities,
 	0
 };
