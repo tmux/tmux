@@ -24,11 +24,11 @@ SAVED_LDFLAGS="$LDFLAGS"
 # Is this oss-fuzz build?
 AC_ARG_ENABLE(
 	fuzzing,
-	AC_HELP_STRING(--enable-fuzzing, build fuzzers)
+	AS_HELP_STRING(--enable-fuzzing, build fuzzers)
 )
 AC_ARG_VAR(
 	FUZZING_LIBS,
-	AC_HELP_STRING(libraries to link fuzzing targets with)
+	AS_HELP_STRING(libraries to link fuzzing targets with)
 )
 
 # Set up convenient fuzzing defaults before initializing compiler.
@@ -59,14 +59,14 @@ test "$sysconfdir" = '${prefix}/etc' && sysconfdir=/etc
 case "x$VERSION" in xnext*) enable_debug=yes;; esac
 AC_ARG_ENABLE(
 	debug,
-	AC_HELP_STRING(--enable-debug, enable debug build flags),
+	AS_HELP_STRING(--enable-debug, enable debug build flags),
 )
 AM_CONDITIONAL(IS_DEBUG, test "x$enable_debug" = xyes)
 
 # Is this a static build?
 AC_ARG_ENABLE(
 	static,
-	AC_HELP_STRING(--enable-static, create a static build)
+	AS_HELP_STRING(--enable-static, create a static build)
 )
 if test "x$enable_static" = xyes; then
 	test "x$PKG_CONFIG" != x && PKG_CONFIG="$PKG_CONFIG --static"
@@ -77,7 +77,7 @@ fi
 # Allow default TERM to be set.
 AC_ARG_WITH(
 	TERM,
-	AC_HELP_STRING(--with-TERM, set default TERM),
+	AS_HELP_STRING(--with-TERM, set default TERM),
 	[DEFAULT_TERM=$withval],
 	[DEFAULT_TERM=]
 )
@@ -340,7 +340,7 @@ fi
 # Look for utempter.
 AC_ARG_ENABLE(
 	utempter,
-	AC_HELP_STRING(--enable-utempter, use utempter if it is installed)
+	AS_HELP_STRING(--enable-utempter, use utempter if it is installed)
 )
 if test "x$enable_utempter" = xyes; then
 	AC_CHECK_HEADER(utempter.h, enable_utempter=yes, enable_utempter=no)
@@ -362,7 +362,7 @@ fi
 # Look for utf8proc.
 AC_ARG_ENABLE(
 	utf8proc,
-	AC_HELP_STRING(--enable-utf8proc, use utf8proc if it is installed)
+	AS_HELP_STRING(--enable-utf8proc, use utf8proc if it is installed)
 )
 if test "x$enable_utf8proc" = xyes; then
 	AC_CHECK_HEADER(utf8proc.h, enable_utf8proc=yes, enable_utf8proc=no)
@@ -384,13 +384,15 @@ AM_CONDITIONAL(HAVE_UTF8PROC, [test "x$enable_utf8proc" = xyes])
 
 # Check for b64_ntop. If we have b64_ntop, we assume b64_pton as well.
 AC_MSG_CHECKING(for b64_ntop)
-AC_TRY_LINK(
-	[
-		#include <sys/types.h>
-		#include <netinet/in.h>
-		#include <resolv.h>
-	],
-	[b64_ntop(NULL, 0, NULL, 0);],
+AC_LINK_IFELSE(
+  [AC_LANG_PROGRAM(
+    [
+      #include <sys/types.h>
+      #include <netinet/in.h>
+      #include <resolv.h>
+    ],
+	  [pb64_ntop(NULL, 0, NULL, 0);]
+  )],
 	found_b64_ntop=yes,
 	found_b64_ntop=no
 )
@@ -399,13 +401,15 @@ OLD_LIBS="$LIBS"
 if test "x$found_b64_ntop" = xno; then
 	AC_MSG_CHECKING(for b64_ntop with -lresolv)
 	LIBS="$OLD_LIBS -lresolv"
-	AC_TRY_LINK(
-		[
-			#include <sys/types.h>
-			#include <netinet/in.h>
-			#include <resolv.h>
-		],
-		[b64_ntop(NULL, 0, NULL, 0);],
+  AC_LINK_IFELSE(
+    [AC_LANG_PROGRAM(
+      [
+        #include <sys/types.h>
+        #include <netinet/in.h>
+        #include <resolv.h>
+      ],
+		  [b64_ntop(NULL, 0, NULL, 0);]
+    )],
 		found_b64_ntop=yes,
 		found_b64_ntop=no
 	)
@@ -414,13 +418,15 @@ fi
 if test "x$found_b64_ntop" = xno; then
 	AC_MSG_CHECKING(for b64_ntop with -lnetwork)
 	LIBS="$OLD_LIBS -lnetwork"
-	AC_TRY_LINK(
-		[
-			#include <sys/types.h>
-			#include <netinet/in.h>
-			#include <resolv.h>
-		],
-		[b64_ntop(NULL, 0, NULL, 0);],
+  AC_LINK_IFELSE(
+    [AC_LANG_PROGRAM(
+      [
+        #include <sys/types.h>
+        #include <netinet/in.h>
+        #include <resolv.h>
+      ],
+		  [b64_ntop(NULL, 0, NULL, 0);]
+    )],
 		found_b64_ntop=yes,
 		found_b64_ntop=no
 	)
@@ -875,4 +881,5 @@ AC_SUBST(AM_LDFLAGS)
 LDFLAGS="$SAVED_LDFLAGS"
 
 # autoconf should create a Makefile.
-AC_OUTPUT(Makefile)
+AC_CONFIG_FILES(Makefile)
+AC_OUTPUT
