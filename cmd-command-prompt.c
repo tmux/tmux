@@ -183,6 +183,7 @@ cmd_command_prompt_callback(struct client *c, void *data, const char *s,
 		if (cdata->flags & PROMPT_INCREMENTAL)
 			goto out;
 
+		cmd_append_argv(&cdata->argc, &cdata->argv, s);
 		if (++cdata->current != cdata->count) {
 			prompt = &cdata->prompts[cdata->current];
 			status_prompt_update(c, prompt->prompt, prompt->input);
