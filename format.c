@@ -1622,7 +1622,7 @@ format_cb_mouse_x(struct format_tree *ft)
 	if (ft->c != NULL && (ft->c->tty.flags & TTY_STARTED)) {
 		if (ft->m.statusat == 0 && ft->m.y < ft->m.statuslines)
 			return (format_printf("%u", ft->m.x));
-		if (ft->m.statusat > 0 && ft->m.y >= ft->m.statusat)
+		if (ft->m.statusat > 0 && ft->m.y >= (u_int)ft->m.statusat)
 			return (format_printf("%u", ft->m.x));
 	}
 	return (NULL);
@@ -1633,7 +1633,7 @@ static void *
 format_cb_mouse_y(struct format_tree *ft)
 {
 	struct window_pane	*wp;
-	u_int			 x, y, top;
+	u_int			 x, y;
 
 	if (!ft->m.valid)
 		return (NULL);
@@ -1643,7 +1643,7 @@ format_cb_mouse_y(struct format_tree *ft)
 	if (ft->c != NULL && (ft->c->tty.flags & TTY_STARTED)) {
 		if (ft->m.statusat == 0 && ft->m.y < ft->m.statuslines)
 			return (format_printf("%u", ft->m.y));
-		if (ft->m.statusat > 0 && ft->m.y >= ft->m.statusat)
+		if (ft->m.statusat > 0 && ft->m.y >= (u_int)ft->m.statusat)
 			return (format_printf("%u", ft->m.y - ft->m.statusat));
 	}
 	return (NULL);
