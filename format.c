@@ -1614,11 +1614,16 @@ format_cb_mouse_x(struct format_tree *ft)
 	struct window_pane	*wp;
 	u_int			 x, y;
 
-	if (ft->m.valid) {
-		wp = cmd_mouse_pane(&ft->m, NULL, NULL);
-		if (wp != NULL && cmd_mouse_at(wp, &ft->m, &x, &y, 0) == 0)
-			return (format_printf("%u", x));
+	if (!ft->m.valid)
 		return (NULL);
+	wp = cmd_mouse_pane(&ft->m, NULL, NULL);
+	if (wp != NULL && cmd_mouse_at(wp, &ft->m, &x, &y, 0) == 0)
+		return (format_printf("%u", x));
+	if (ft->c != NULL && (ft->c->tty.flags & TTY_STARTED)) {
+		if (ft->m.statusat == 0 && ft->m.y < ft->m.statuslines)
+			return (format_printf("%u", ft->m.x));
+		if (ft->m.statusat > 0 && ft->m.y >= ft->m.statusat)
+			return (format_printf("%u", ft->m.x));
 	}
 	return (NULL);
 }
@@ -1628,13 +1633,18 @@ static void *
 format_cb_mouse_y(struct format_tree *ft)
 {
 	struct window_pane	*wp;
-	u_int			 x, y;
+	u_int			 x, y, top;
 
-	if (ft->m.valid) {
-		wp = cmd_mouse_pane(&ft->m, NULL, NULL);
-		if (wp != NULL && cmd_mouse_at(wp, &ft->m, &x, &y, 0) == 0)
-			return (format_printf("%u", y));
+	if (!ft->m.valid)
 		return (NULL);
+	wp = cmd_mouse_pane(&ft->m, NULL, NULL);
+	if (wp != NULL && cmd_mouse_at(wp, &ft->m, &x, &y, 0) == 0)
+		return (format_printf("%u", y));
+	if (ft->c != NULL && (ft->c->tty.flags & TTY_STARTED)) {
+		if (ft->m.statusat == 0 && ft->m.y < ft->m.statuslines)
+			return (format_printf("%u", ft->m.y));
+		if (ft->m.statusat > 0 && ft->m.y >= ft->m.statusat)
+			return (format_printf("%u", ft->m.y - ft->m.statusat));
 	}
 	return (NULL);
 }
