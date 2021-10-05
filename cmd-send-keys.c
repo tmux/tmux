@@ -202,6 +202,12 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 		wp->flags |= (PANE_STYLECHANGED|PANE_REDRAW);
 	}
 
+	if (count == 0) {
+		for (; np != 0; np--)
+			cmd_send_keys_inject_key(item, NULL, event->key);
+		return (CMD_RETURN_NORMAL);
+	}
+
 	for (; np != 0; np--) {
 		for (i = 0; i < count; i++) {
 			after = cmd_send_keys_inject_string(item, after, args,
