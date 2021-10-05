@@ -163,27 +163,27 @@ screen_set_cursor_style(struct screen *s, u_int style)
 		break;
 	case 1:
 		s->cstyle = SCREEN_CURSOR_BLOCK;
-		s->mode |= MODE_BLINKING;
+		s->mode |= MODE_CURSOR_BLINKING;
 		break;
 	case 2:
 		s->cstyle = SCREEN_CURSOR_BLOCK;
-		s->mode &= ~MODE_BLINKING;
+		s->mode &= ~MODE_CURSOR_BLINKING;
 		break;
 	case 3:
 		s->cstyle = SCREEN_CURSOR_UNDERLINE;
-		s->mode |= MODE_BLINKING;
+		s->mode |= MODE_CURSOR_BLINKING;
 		break;
 	case 4:
 		s->cstyle = SCREEN_CURSOR_UNDERLINE;
-		s->mode &= ~MODE_BLINKING;
+		s->mode &= ~MODE_CURSOR_BLINKING;
 		break;
 	case 5:
 		s->cstyle = SCREEN_CURSOR_BAR;
-		s->mode |= MODE_BLINKING;
+		s->mode |= MODE_CURSOR_BLINKING;
 		break;
 	case 6:
 		s->cstyle = SCREEN_CURSOR_BAR;
-		s->mode &= ~MODE_BLINKING;
+		s->mode &= ~MODE_CURSOR_BLINKING;
 		break;
 	}
 }
@@ -680,8 +680,10 @@ screen_mode_to_string(int mode)
 		strlcat(tmp, "MOUSE_STANDARD,", sizeof tmp);
 	if (mode & MODE_MOUSE_BUTTON)
 		strlcat(tmp, "MOUSE_BUTTON,", sizeof tmp);
-	if (mode & MODE_BLINKING)
-		strlcat(tmp, "BLINKING,", sizeof tmp);
+	if (mode & MODE_CURSOR_BLINKING)
+		strlcat(tmp, "CURSOR_BLINKING,", sizeof tmp);
+	if (mode & MODE_CURSOR_VERY_VISIBLE)
+		strlcat(tmp, "CURSOR_VERY_VISIBLE,", sizeof tmp);
 	if (mode & MODE_MOUSE_UTF8)
 		strlcat(tmp, "UTF8,", sizeof tmp);
 	if (mode & MODE_MOUSE_SGR)
