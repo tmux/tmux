@@ -1537,7 +1537,7 @@ window_pane_input_callback(struct client *c, __unused const char *path,
 	size_t				 len = EVBUFFER_LENGTH(buffer);
 
 	wp = window_pane_find_by_id(cdata->wp);
-	if (wp == NULL || closed || error != 0 || c->flags & CLIENT_DEAD) {
+	if (wp == NULL || closed || error != 0 || (c->flags & CLIENT_DEAD)) {
 		if (wp == NULL)
 			c->flags |= CLIENT_EXIT;
 
@@ -1563,6 +1563,10 @@ window_pane_start_input(struct window_pane *wp, struct cmdq_item *item,
 		*cause = xstrdup("pane is not empty");
 		return (-1);
 	}
+	if (c->flags & (CLIENT_DEAD|CLIENT_EXITED))
+		return (1);
+	if (c->session != NULL)
+		return (1);
 
 	cdata = xmalloc(sizeof *cdata);
 	cdata->item = item;

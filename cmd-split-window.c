@@ -162,16 +162,22 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		environ_free(sc.environ);
 		return (CMD_RETURN_ERROR);
 	}
-	if (input && window_pane_start_input(new_wp, item, &cause) != 0) {
-		server_client_remove_pane(new_wp);
-		layout_close_pane(new_wp);
-		window_remove_pane(wp->window, new_wp);
-		cmdq_error(item, "%s", cause);
-		free(cause);
-		if (sc.argv != NULL)
-			cmd_free_argv(sc.argc, sc.argv);
-		environ_free(sc.environ);
-		return (CMD_RETURN_ERROR);
+	if (input) {
+		switch (window_pane_start_input(new_wp, item, &cause)) {
+		case -1:
+			server_client_remove_pane(new_wp);
+			layout_close_pane(new_wp);
+			window_remove_pane(wp->window, new_wp);
+			cmdq_error(item, "%s", cause);
+			free(cause);
+			if (sc.argv != NULL)
+				cmd_free_argv(sc.argc, sc.argv);
+			environ_free(sc.environ);
+			return (CMD_RETURN_ERROR);
+		case 1:
+			input = 0;
+			break;
+		}
 	}
 	if (!args_has(args, 'd'))
 		cmd_find_from_winlink_pane(current, wl, new_wp, 0);

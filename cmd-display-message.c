@@ -75,12 +75,16 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'I')) {
 		if (wp == NULL)
 			return (CMD_RETURN_NORMAL);
-		if (window_pane_start_input(wp, item, &cause) != 0) {
+		switch (window_pane_start_input(wp, item, &cause)) {
+		case -1:
 			cmdq_error(item, "%s", cause);
 			free(cause);
 			return (CMD_RETURN_ERROR);
+		case 1:
+			return (CMD_RETURN_NORMAL);
+		case 0:
+			return (CMD_RETURN_WAIT);
 		}
-		return (CMD_RETURN_WAIT);
 	}
 
 	if (args_has(args, 'F') && count != 0) {
