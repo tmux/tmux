@@ -2137,7 +2137,7 @@ screen_write_sixelimage(struct screen_write_ctx *ctx, struct sixel_image *si,
 		for (i = 0; i < lines; i++) {
 			grid_view_scroll_region_up(gd, 0, screen_size_y(s) - 1,
 			    bg);
-			screen_write_collect_scroll(ctx);
+			screen_write_collect_scroll(ctx, bg);
 		}
 		ctx->scrolled += lines;
 		if (lines > cy)
@@ -2145,11 +2145,11 @@ screen_write_sixelimage(struct screen_write_ctx *ctx, struct sixel_image *si,
 		else
 			screen_write_cursormove(ctx, -1, cy - lines, 0);
 	}
-	screen_write_collect_flush(ctx, 0);
+	screen_write_collect_flush(ctx, 0, __func__);
 
 	image_store(s, si);
 
-	screen_write_initctx(ctx, &ttyctx);
+	screen_write_initctx(ctx, &ttyctx, 0);
 	ttyctx.ptr = si;
 
 	tty_write(tty_cmd_sixelimage, &ttyctx);

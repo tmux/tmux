@@ -547,7 +547,7 @@ sixel_to_screen(struct sixel_image *si)
 	gc.attr |= (GRID_ATTR_CHARSET|GRID_ATTR_DIM);
 	utf8_set(&gc.data, '~');
 
-	screen_write_start(&ctx, NULL, s);
+	screen_write_start(&ctx, s);
 	if (sx == 1 || sy == 1) {
 		for (y = 0; y < sy; y++) {
 			for (x = 0; x < sx; x++)

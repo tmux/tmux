@@ -1500,14 +1500,13 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 void
 tty_draw_images(struct tty *tty, struct window_pane *wp, struct screen *s)
 {
+#if 0 /* XXX */
 	struct client	*c = tty->client;
 	struct image	*im;
 	struct tty_ctx	 ttyctx;
 
 	TAILQ_FOREACH(im, &s->images, entry) {
 		memset(&ttyctx, 0, sizeof ttyctx);
-
-		ttyctx.wp = wp;
 
 		ttyctx.ocx = im->px;
 		ttyctx.ocy = im->py;
@@ -1527,8 +1526,10 @@ tty_draw_images(struct tty *tty, struct window_pane *wp, struct screen *s)
 		ttyctx.ptr = im->data;
 		tty_cmd_sixelimage(tty, &ttyctx);
 	}
+#endif
 }
 
+void
 tty_sync_start(struct tty *tty)
 {
 	if (tty->flags & TTY_BLOCK)
@@ -2072,25 +2073,20 @@ tty_cmd_rawstring(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cmd_sixelimage(struct tty *tty, const struct tty_ctx *ctx)
 {
-	struct window_pane	*wp = ctx->wp;
 	struct sixel_image	*si = ctx->ptr;
 	struct sixel_image	*new;
-	int			 flags = (tty->term->flags|tty->term_flags);
 	char			*data;
 	size_t			 size;
 	u_int			 cx = ctx->ocx, cy = ctx->ocy, sx, sy;
 	u_int			 i, j, x, y, rx, ry;
 
-	if ((~flags & TERM_SIXEL) && !tty_term_has(tty->term, TTYC_SXL))
+	if ((~tty->term->flags & TERM_SIXEL) &&
+        !tty_term_has(tty->term, TTYC_SXL))
 		return;
 	if (tty->xpixel == 0 || tty->ypixel == 0)
 		return;
 
 	sixel_size_in_cells(si, &sx, &sy);
-	if (sx > wp->sx - cx)
-		sx = wp->sx - cx;
-	if (sy > wp->sy - cy)
-		sy = wp->sy - cy;
 	log_debug("%s: image is %ux%u", __func__, sx, sy);
 	if (!tty_clamp_area(tty, ctx, cx, cy, sx, sy, &i, &j, &x, &y, &rx, &ry))
 		return;
@@ -2115,7 +2111,7 @@ tty_cmd_sixelimage(struct tty *tty, const struct tty_ctx *ctx)
 	sixel_free(new);
 }
 
-static void
+void
 tty_cmd_syncstart(struct tty *tty, const struct tty_ctx *ctx)
 {
 	if (ctx->num == 0x11) {
@@ -2134,7 +2130,7 @@ tty_cmd_syncstart(struct tty *tty, const struct tty_ctx *ctx)
 	}
 }
 
-static void
+void
 tty_cell(struct tty *tty, const struct grid_cell *gc,
     const struct grid_cell *defaults, struct colour_palette *palette)
 {
