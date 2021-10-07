@@ -219,7 +219,7 @@ window_clock_draw_screen(struct window_mode_entry *wme)
 	colour = options_get_number(wp->window->options, "clock-mode-colour");
 	style = options_get_number(wp->window->options, "clock-mode-style");
 
-	screen_write_start(&ctx, NULL, s);
+	screen_write_start(&ctx, s);
 
 	t = time(NULL);
 	tm = localtime(&t);

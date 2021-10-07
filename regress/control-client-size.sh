@@ -20,9 +20,9 @@ sleep 1
 cat <<EOF|$TMUX -C a >$TMP
 ls -F':#{window_width} #{window_height}'
 refresh -C 100,50
-ls -F':#{window_width} #{window_height}'
 EOF
 grep ^: $TMP >$OUT
+$TMUX ls -F':#{window_width} #{window_height}' >>$OUT
 printf ":80 24\n:100 50\n"|cmp -s $OUT - || exit 1
 $TMUX kill-server 2>/dev/null
 
@@ -31,18 +31,18 @@ sleep 1
 cat <<EOF|$TMUX -f/dev/null -C a >$TMP
 ls -F':#{window_width} #{window_height}'
 refresh -C 80,24
-ls -F':#{window_width} #{window_height}'
 EOF
 grep ^: $TMP >$OUT
+$TMUX ls -F':#{window_width} #{window_height}' >>$OUT
 printf ":80 24\n:80 24\n"|cmp -s $OUT - || exit 1
 $TMUX kill-server 2>/dev/null
 
 cat <<EOF|$TMUX -f/dev/null -C new -x 100 -y 50 >$TMP
 ls -F':#{window_width} #{window_height}'
 refresh -C 80,24
-ls -F':#{window_width} #{window_height}'
 EOF
 grep ^: $TMP >$OUT
+$TMUX ls -F':#{window_width} #{window_height}' >>$OUT
 printf ":100 50\n:80 24\n"|cmp -s $OUT - || exit 1
 $TMUX kill-server 2>/dev/null
 

@@ -32,7 +32,7 @@ const struct cmd_entry cmd_kill_pane_entry = {
 	.name = "kill-pane",
 	.alias = "killp",
 
-	.args = { "at:", 0, 0 },
+	.args = { "at:", 0, 0, NULL },
 	.usage = "[-a] " CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -44,14 +44,17 @@ const struct cmd_entry cmd_kill_pane_entry = {
 static enum cmd_retval
 cmd_kill_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct winlink		*wl = item->target.wl;
-	struct window_pane	*loopwp, *tmpwp, *wp = item->target.wp;
+	struct args		*args = cmd_get_args(self);
+	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct winlink		*wl = target->wl;
+	struct window_pane	*loopwp, *tmpwp, *wp = target->wp;
 
-	if (args_has(self->args, 'a')) {
+	if (args_has(args, 'a')) {
 		server_unzoom_window(wl->window);
 		TAILQ_FOREACH_SAFE(loopwp, &wl->window->panes, entry, tmpwp) {
 			if (loopwp == wp)
 				continue;
+			server_client_remove_pane(loopwp);
 			layout_close_pane(loopwp);
 			window_remove_pane(wl->window, loopwp);
 		}

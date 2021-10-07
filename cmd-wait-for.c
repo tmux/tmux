@@ -34,7 +34,7 @@ const struct cmd_entry cmd_wait_for_entry = {
 	.name = "wait-for",
 	.alias = "wait",
 
-	.args = { "LSU", 1, 1 },
+	.args = { "LSU", 1, 1, NULL },
 	.usage = "[-L|-S|-U] channel",
 
 	.flags = 0,
@@ -120,12 +120,12 @@ cmd_wait_for_remove(struct wait_channel *wc)
 static enum cmd_retval
 cmd_wait_for_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args     	*args = self->args;
-	const char		*name = args->argv[0];
-	struct wait_channel	*wc, wc0;
+	struct args     	*args = cmd_get_args(self);
+	const char		*name = args_string(args, 0);
+	struct wait_channel	*wc, find;
 
-	wc0.name = name;
-	wc = RB_FIND(wait_channels, &wait_channels, &wc0);
+	find.name = name;
+	wc = RB_FIND(wait_channels, &wait_channels, &find);
 
 	if (args_has(args, 'S'))
 		return (cmd_wait_for_signal(item, name, wc));
@@ -167,7 +167,7 @@ static enum cmd_retval
 cmd_wait_for_wait(struct cmdq_item *item, const char *name,
     struct wait_channel *wc)
 {
-	struct client		*c = item->client;
+	struct client		*c = cmdq_get_client(item);
 	struct wait_item	*wi;
 
 	if (c == NULL) {
@@ -198,7 +198,7 @@ cmd_wait_for_lock(struct cmdq_item *item, const char *name,
 {
 	struct wait_item	*wi;
 
-	if (item->client == NULL) {
+	if (cmdq_get_client(item) == NULL) {
 		cmdq_error(item, "not able to lock");
 		return (CMD_RETURN_ERROR);
 	}

@@ -32,7 +32,7 @@ const struct cmd_entry cmd_swap_pane_entry = {
 	.name = "swap-pane",
 	.alias = "swapp",
 
-	.args = { "dDs:t:UZ", 0, 0 },
+	.args = { "dDs:t:UZ", 0, 0, NULL },
 	.usage = "[-dDUZ] " CMD_SRCDST_PANE_USAGE,
 
 	.source = { 's', CMD_FIND_PANE, CMD_FIND_DEFAULT_MARKED },
@@ -45,18 +45,20 @@ const struct cmd_entry cmd_swap_pane_entry = {
 static enum cmd_retval
 cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
+	struct args		*args = cmd_get_args(self);
+	struct cmd_find_state	*source = cmdq_get_source(item);
+	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct window		*src_w, *dst_w;
 	struct window_pane	*tmp_wp, *src_wp, *dst_wp;
 	struct layout_cell	*src_lc, *dst_lc;
 	u_int			 sx, sy, xoff, yoff;
 
-	dst_w = item->target.wl->window;
-	dst_wp = item->target.wp;
-	src_w = item->source.wl->window;
-	src_wp = item->source.wp;
+	dst_w = target->wl->window;
+	dst_wp = target->wp;
+	src_w = source->wl->window;
+	src_wp = source->wp;
 
-	if (window_push_zoom(dst_w, args_has(args, 'Z')))
+	if (window_push_zoom(dst_w, 0, args_has(args, 'Z')))
 		server_redraw_window(dst_w);
 
 	if (args_has(args, 'D')) {
@@ -71,11 +73,14 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 			src_wp = TAILQ_LAST(&dst_w->panes, window_panes);
 	}
 
-	if (src_w != dst_w && window_push_zoom(src_w, args_has(args, 'Z')))
+	if (src_w != dst_w && window_push_zoom(src_w, 0, args_has(args, 'Z')))
 		server_redraw_window(src_w);
 
 	if (src_wp == dst_wp)
 		goto out;
+
+	server_client_remove_pane(src_wp);
+	server_client_remove_pane(dst_wp);
 
 	tmp_wp = TAILQ_PREV(dst_wp, window_panes, entry);
 	TAILQ_REMOVE(&dst_w->panes, dst_wp, entry);

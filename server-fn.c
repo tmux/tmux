@@ -181,10 +181,11 @@ server_kill_pane(struct window_pane *wp)
 	struct window	*w = wp->window;
 
 	if (window_count_panes(w) == 1) {
-		server_kill_window(w);
+		server_kill_window(w, 1);
 		recalculate_sizes();
 	} else {
 		server_unzoom_window(w);
+		server_client_remove_pane(wp);
 		layout_close_pane(wp);
 		window_remove_pane(w, wp);
 		server_redraw_window(w);
@@ -192,19 +193,15 @@ server_kill_pane(struct window_pane *wp)
 }
 
 void
-server_kill_window(struct window *w)
+server_kill_window(struct window *w, int renumber)
 {
-	struct session		*s, *next_s, *target_s;
-	struct session_group	*sg;
-	struct winlink		*wl;
+	struct session	*s, *s1;
+	struct winlink	*wl;
 
-	next_s = RB_MIN(sessions, &sessions);
-	while (next_s != NULL) {
-		s = next_s;
-		next_s = RB_NEXT(sessions, &sessions, s);
-
+	RB_FOREACH_SAFE(s, sessions, &sessions, s1) {
 		if (!session_has(s, w))
 			continue;
+
 		server_unzoom_window(w);
 		while ((wl = winlink_find_by_window(&s->windows, w)) != NULL) {
 			if (session_detach(s, wl)) {
@@ -214,15 +211,33 @@ server_kill_window(struct window *w)
 				server_redraw_session_group(s);
 		}
 
-		if (options_get_number(s->options, "renumber-windows")) {
-			if ((sg = session_group_contains(s)) != NULL) {
-				TAILQ_FOREACH(target_s, &sg->sessions, gentry)
-					session_renumber_windows(target_s);
-			} else
-				session_renumber_windows(s);
-		}
+		if (renumber)
+			server_renumber_session(s);
 	}
 	recalculate_sizes();
+}
+
+void
+server_renumber_session(struct session *s)
+{
+	struct session_group	*sg;
+
+	if (options_get_number(s->options, "renumber-windows")) {
+		if ((sg = session_group_contains(s)) != NULL) {
+			TAILQ_FOREACH(s, &sg->sessions, gentry)
+			    session_renumber_windows(s);
+		} else
+			session_renumber_windows(s);
+	}
+}
+
+void
+server_renumber_all(void)
+{
+	struct session	*s;
+
+	RB_FOREACH(s, sessions, &sessions)
+		server_renumber_session(s);
 }
 
 int
@@ -297,6 +312,7 @@ server_destroy_pane(struct window_pane *wp, int notify)
 	struct grid_cell	 gc;
 	time_t			 t;
 	char			 tim[26];
+	int			 remain_on_exit;
 
 	if (wp->fd != -1) {
 #ifdef HAVE_UTEMPTER
@@ -308,10 +324,17 @@ server_destroy_pane(struct window_pane *wp, int notify)
 		wp->fd = -1;
 	}
 
-	if (options_get_number(wp->options, "remain-on-exit")) {
-		if (~wp->flags & PANE_STATUSREADY)
-			return;
-
+	remain_on_exit = options_get_number(wp->options, "remain-on-exit");
+	if (remain_on_exit != 0 && (~wp->flags & PANE_STATUSREADY))
+		return;
+	switch (remain_on_exit) {
+	case 0:
+		break;
+	case 2:
+		if (WIFEXITED(wp->status) && WEXITSTATUS(wp->status) == 0)
+			break;
+		/* FALLTHROUGH */
+	case 1:
 		if (wp->flags & PANE_STATUSDRAWN)
 			return;
 		wp->flags |= PANE_STATUSDRAWN;
@@ -319,7 +342,7 @@ server_destroy_pane(struct window_pane *wp, int notify)
 		if (notify)
 			notify_pane("pane-died", wp);
 
-		screen_write_start(&ctx, wp, &wp->base);
+		screen_write_start_pane(&ctx, wp, &wp->base);
 		screen_write_scrollregion(&ctx, 0, screen_size_y(ctx.s) - 1);
 		screen_write_cursormove(&ctx, 0, screen_size_y(ctx.s) - 1, 0);
 		screen_write_linefeed(&ctx, 1, 8);
@@ -327,6 +350,7 @@ server_destroy_pane(struct window_pane *wp, int notify)
 
 		time(&t);
 		ctime_r(&t, tim);
+		tim[strcspn(tim, "\n")] = '\0';
 
 		if (WIFEXITED(wp->status)) {
 			screen_write_nputs(&ctx, -1, &gc,
@@ -335,8 +359,8 @@ server_destroy_pane(struct window_pane *wp, int notify)
 			    tim);
 		} else if (WIFSIGNALED(wp->status)) {
 			screen_write_nputs(&ctx, -1, &gc,
-			    "Pane is dead (signal %d, %s)",
-			    WTERMSIG(wp->status),
+			    "Pane is dead (signal %s, %s)",
+			    sig2name(WTERMSIG(wp->status)),
 			    tim);
 		}
 
@@ -349,11 +373,12 @@ server_destroy_pane(struct window_pane *wp, int notify)
 		notify_pane("pane-exited", wp);
 
 	server_unzoom_window(w);
+	server_client_remove_pane(wp);
 	layout_close_pane(wp);
 	window_remove_pane(w, wp);
 
 	if (TAILQ_EMPTY(&w->panes))
-		server_kill_window(w);
+		server_kill_window(w, 1);
 	else
 		server_redraw_window(w);
 }
@@ -377,11 +402,25 @@ server_destroy_session_group(struct session *s)
 static struct session *
 server_next_session(struct session *s)
 {
-	struct session *s_loop, *s_out;
+	struct session *s_loop, *s_out = NULL;
 
-	s_out = NULL;
 	RB_FOREACH(s_loop, sessions, &sessions) {
 		if (s_loop == s)
+			continue;
+		if (s_out == NULL ||
+		    timercmp(&s_loop->activity_time, &s_out->activity_time, <))
+			s_out = s_loop;
+	}
+	return (s_out);
+}
+
+static struct session *
+server_next_detached_session(struct session *s)
+{
+	struct session *s_loop, *s_out = NULL;
+
+	RB_FOREACH(s_loop, sessions, &sessions) {
+		if (s_loop == s || s_loop->attached)
 			continue;
 		if (s_out == NULL ||
 		    timercmp(&s_loop->activity_time, &s_out->activity_time, <))
@@ -395,30 +434,21 @@ server_destroy_session(struct session *s)
 {
 	struct client	*c;
 	struct session	*s_new;
+	int		 detach_on_destroy;
 
-	if (!options_get_number(s->options, "detach-on-destroy"))
+	detach_on_destroy = options_get_number(s->options, "detach-on-destroy");
+	if (detach_on_destroy == 0)
 		s_new = server_next_session(s);
+	else if (detach_on_destroy == 2)
+		s_new = server_next_detached_session(s);
 	else
 		s_new = NULL;
-
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (c->session != s)
 			continue;
-		if (s_new == NULL) {
-			c->session = NULL;
+		server_client_set_session(c, s_new);
+		if (s_new == NULL)
 			c->flags |= CLIENT_EXIT;
-		} else {
-			c->last_session = NULL;
-			c->session = s_new;
-			server_client_set_key_table(c, NULL);
-			tty_update_client_offset(c);
-			status_timer_start(c);
-			notify_client("client-session-changed", c);
-			session_update_activity(s_new, NULL);
-			gettimeofday(&s_new->last_attached_time, NULL);
-			server_redraw_client(c);
-			alerts_check_session(s_new);
-		}
 	}
 	recalculate_sizes();
 }

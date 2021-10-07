@@ -587,22 +587,22 @@ cmd_find_get_pane_with_window(struct cmd_find_state *fs, const char *pane)
 			return (-1);
 		return (0);
 	} else if (strcmp(pane, "{up-of}") == 0) {
-		fs->wp = window_pane_find_up(fs->w->active);
+		fs->wp = window_pane_find_up(fs->current->wp);
 		if (fs->wp == NULL)
 			return (-1);
 		return (0);
 	} else if (strcmp(pane, "{down-of}") == 0) {
-		fs->wp = window_pane_find_down(fs->w->active);
+		fs->wp = window_pane_find_down(fs->current->wp);
 		if (fs->wp == NULL)
 			return (-1);
 		return (0);
 	} else if (strcmp(pane, "{left-of}") == 0) {
-		fs->wp = window_pane_find_left(fs->w->active);
+		fs->wp = window_pane_find_left(fs->current->wp);
 		if (fs->wp == NULL)
 			return (-1);
 		return (0);
 	} else if (strcmp(pane, "{right-of}") == 0) {
-		fs->wp = window_pane_find_right(fs->w->active);
+		fs->wp = window_pane_find_right(fs->current->wp);
 		if (fs->wp == NULL)
 			return (-1);
 		return (0);
@@ -614,7 +614,7 @@ cmd_find_get_pane_with_window(struct cmd_find_state *fs, const char *pane)
 			n = strtonum(pane + 1, 1, INT_MAX, NULL);
 		else
 			n = 1;
-		wp = fs->w->active;
+		wp = fs->current->wp;
 		if (pane[0] == '+')
 			fs->wp = window_pane_next_by_number(fs->w, wp, n);
 		else
@@ -866,7 +866,18 @@ cmd_find_from_client(struct cmd_find_state *fs, struct client *c, int flags)
 
 	/* If this is an attached client, all done. */
 	if (c->session != NULL) {
-		cmd_find_from_session(fs, c->session, flags);
+		cmd_find_clear_state(fs, flags);
+
+		fs->wp = server_client_get_pane(c);
+		if (fs->wp == NULL) {
+			cmd_find_from_session(fs, c->session, flags);
+			return (0);
+		}
+		fs->s = c->session;
+		fs->wl = fs->s->curw;
+		fs->w = fs->wl->window;
+
+		cmd_find_log_state(__func__, fs);
 		return (0);
 	}
 	cmd_find_clear_state(fs, flags);
@@ -960,10 +971,11 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 	if (server_check_marked() && (flags & CMD_FIND_DEFAULT_MARKED)) {
 		fs->current = &marked_pane;
 		log_debug("%s: current is marked pane", __func__);
-	} else if (cmd_find_valid_state(&item->shared->current)) {
-		fs->current = &item->shared->current;
+	} else if (cmd_find_valid_state(cmdq_get_current(item))) {
+		fs->current = cmdq_get_current(item);
 		log_debug("%s: current is from queue", __func__);
-	} else if (cmd_find_from_client(&current, item->client, flags) == 0) {
+	} else if (cmd_find_from_client(&current, cmdq_get_client(item),
+	    flags) == 0) {
 		fs->current = &current;
 		log_debug("%s: current is from client", __func__);
 	} else {
@@ -980,7 +992,7 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 
 	/* Mouse target is a plain = or {mouse}. */
 	if (strcmp(target, "=") == 0 || strcmp(target, "{mouse}") == 0) {
-		m = &item->shared->mouse;
+		m = &cmdq_get_event(item)->m;
 		switch (type) {
 		case CMD_FIND_PANE:
 			fs->wp = cmd_mouse_pane(m, &fs->s, &fs->wl);
@@ -1230,29 +1242,31 @@ no_pane:
 static struct client *
 cmd_find_current_client(struct cmdq_item *item, int quiet)
 {
-	struct client		*c;
+	struct client		*c = NULL, *found;
 	struct session		*s;
 	struct window_pane	*wp;
 	struct cmd_find_state	 fs;
 
-	if (item->client != NULL && item->client->session != NULL)
-		return (item->client);
+	if (item != NULL)
+		c = cmdq_get_client(item);
+	if (c != NULL && c->session != NULL)
+		return (c);
 
-	c = NULL;
-	if ((wp = cmd_find_inside_pane(item->client)) != NULL) {
+	found = NULL;
+	if (c != NULL && (wp = cmd_find_inside_pane(c)) != NULL) {
 		cmd_find_clear_state(&fs, CMD_FIND_QUIET);
 		fs.w = wp->window;
 		if (cmd_find_best_session_with_window(&fs) == 0)
-			c = cmd_find_best_client(fs.s);
+			found = cmd_find_best_client(fs.s);
 	} else {
 		s = cmd_find_best_session(NULL, 0, CMD_FIND_QUIET);
 		if (s != NULL)
-			c = cmd_find_best_client(s);
+			found = cmd_find_best_client(s);
 	}
-	if (c == NULL && !quiet)
+	if (found == NULL && item != NULL && !quiet)
 		cmdq_error(item, "no current client");
-	log_debug("%s: no target, return %p", __func__, c);
-	return (c);
+	log_debug("%s: no target, return %p", __func__, found);
+	return (found);
 }
 
 /* Find the target client or report an error and return NULL. */

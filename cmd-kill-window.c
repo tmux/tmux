@@ -30,7 +30,7 @@ const struct cmd_entry cmd_kill_window_entry = {
 	.name = "kill-window",
 	.alias = "killw",
 
-	.args = { "at:", 0, 0 },
+	.args = { "at:", 0, 0, NULL },
 	.usage = "[-a] " CMD_TARGET_WINDOW_USAGE,
 
 	.target = { 't', CMD_FIND_WINDOW, 0 },
@@ -43,7 +43,7 @@ const struct cmd_entry cmd_unlink_window_entry = {
 	.name = "unlink-window",
 	.alias = "unlinkw",
 
-	.args = { "kt:", 0, 0 },
+	.args = { "kt:", 0, 0, NULL },
 	.usage = "[-k] " CMD_TARGET_WINDOW_USAGE,
 
 	.target = { 't', CMD_FIND_WINDOW, 0 },
@@ -55,27 +55,56 @@ const struct cmd_entry cmd_unlink_window_entry = {
 static enum cmd_retval
 cmd_kill_window_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
-	struct winlink		*wl = item->target.wl, *wl2, *wl3;
+	struct args		*args = cmd_get_args(self);
+	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct winlink		*wl = target->wl, *loop;
 	struct window		*w = wl->window;
-	struct session		*s = item->target.s;
+	struct session		*s = target->s;
+	u_int			 found;
 
-	if (self->entry == &cmd_unlink_window_entry) {
-		if (!args_has(self->args, 'k') && !session_is_linked(s, w)) {
+	if (cmd_get_entry(self) == &cmd_unlink_window_entry) {
+		if (!args_has(args, 'k') && !session_is_linked(s, w)) {
 			cmdq_error(item, "window only linked to one session");
 			return (CMD_RETURN_ERROR);
 		}
 		server_unlink_window(s, wl);
-	} else {
-		if (args_has(args, 'a')) {
-			RB_FOREACH_SAFE(wl2, winlinks, &s->windows, wl3) {
-				if (wl != wl2)
-					server_kill_window(wl2->window);
-			}
-		} else
-			server_kill_window(wl->window);
+		recalculate_sizes();
+		return (CMD_RETURN_NORMAL);
 	}
 
-	recalculate_sizes();
+	if (args_has(args, 'a')) {
+		if (RB_PREV(winlinks, &s->windows, wl) == NULL &&
+		    RB_NEXT(winlinks, &s->windows, wl) == NULL)
+			return (CMD_RETURN_NORMAL);
+
+		/* Kill all windows except the current one. */
+		do {
+			found = 0;
+			RB_FOREACH(loop, winlinks, &s->windows) {
+				if (loop->window != wl->window) {
+					server_kill_window(loop->window, 0);
+					found++;
+					break;
+				}
+			}
+		} while (found != 0);
+
+		/*
+		 * If the current window appears in the session more than once,
+		 * kill it as well.
+		 */
+		found = 0;
+		RB_FOREACH(loop, winlinks, &s->windows) {
+			if (loop->window == wl->window)
+				found++;
+		}
+		if (found > 1)
+			server_kill_window(wl->window, 0);
+
+		server_renumber_all();
+		return (CMD_RETURN_NORMAL);
+	}
+
+	server_kill_window(wl->window, 1);
 	return (CMD_RETURN_NORMAL);
 }

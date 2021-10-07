@@ -26,7 +26,167 @@
 
 #include "tmux.h"
 
-static int	utf8_width(wchar_t);
+struct utf8_item {
+	RB_ENTRY(utf8_item)	index_entry;
+	u_int			index;
+
+	RB_ENTRY(utf8_item)	data_entry;
+	char			data[UTF8_SIZE];
+	u_char			size;
+};
+
+static int
+utf8_data_cmp(struct utf8_item *ui1, struct utf8_item *ui2)
+{
+	if (ui1->size < ui2->size)
+		return (-1);
+	if (ui1->size > ui2->size)
+		return (1);
+	return (memcmp(ui1->data, ui2->data, ui1->size));
+}
+RB_HEAD(utf8_data_tree, utf8_item);
+RB_GENERATE_STATIC(utf8_data_tree, utf8_item, data_entry, utf8_data_cmp);
+static struct utf8_data_tree utf8_data_tree = RB_INITIALIZER(utf8_data_tree);
+
+static int
+utf8_index_cmp(struct utf8_item *ui1, struct utf8_item *ui2)
+{
+	if (ui1->index < ui2->index)
+		return (-1);
+	if (ui1->index > ui2->index)
+		return (1);
+	return (0);
+}
+RB_HEAD(utf8_index_tree, utf8_item);
+RB_GENERATE_STATIC(utf8_index_tree, utf8_item, index_entry, utf8_index_cmp);
+static struct utf8_index_tree utf8_index_tree = RB_INITIALIZER(utf8_index_tree);
+
+static u_int utf8_next_index;
+
+#define UTF8_GET_SIZE(uc) (((uc) >> 24) & 0x1f)
+#define UTF8_GET_WIDTH(uc) (((uc) >> 29) - 1)
+
+#define UTF8_SET_SIZE(size) (((utf8_char)(size)) << 24)
+#define UTF8_SET_WIDTH(width) ((((utf8_char)(width)) + 1) << 29)
+
+/* Get a UTF-8 item from data. */
+static struct utf8_item *
+utf8_item_by_data(const char *data, size_t size)
+{
+	struct utf8_item	ui;
+
+	memcpy(ui.data, data, size);
+	ui.size = size;
+
+	return (RB_FIND(utf8_data_tree, &utf8_data_tree, &ui));
+}
+
+/* Get a UTF-8 item from data. */
+static struct utf8_item *
+utf8_item_by_index(u_int index)
+{
+	struct utf8_item	ui;
+
+	ui.index = index;
+
+	return (RB_FIND(utf8_index_tree, &utf8_index_tree, &ui));
+}
+
+/* Add a UTF-8 item. */
+static int
+utf8_put_item(const char *data, size_t size, u_int *index)
+{
+	struct utf8_item	*ui;
+
+	ui = utf8_item_by_data(data, size);
+	if (ui != NULL) {
+		*index = ui->index;
+		log_debug("%s: found %.*s = %u", __func__, (int)size, data,
+		    *index);
+		return (0);
+	}
+
+	if (utf8_next_index == 0xffffff + 1)
+		return (-1);
+
+	ui = xcalloc(1, sizeof *ui);
+	ui->index = utf8_next_index++;
+	RB_INSERT(utf8_index_tree, &utf8_index_tree, ui);
+
+	memcpy(ui->data, data, size);
+	ui->size = size;
+	RB_INSERT(utf8_data_tree, &utf8_data_tree, ui);
+
+	*index = ui->index;
+	log_debug("%s: added %.*s = %u", __func__, (int)size, data, *index);
+	return (0);
+}
+
+/* Get UTF-8 character from data. */
+enum utf8_state
+utf8_from_data(const struct utf8_data *ud, utf8_char *uc)
+{
+	u_int	index;
+
+	if (ud->width > 2)
+		fatalx("invalid UTF-8 width: %u", ud->width);
+
+	if (ud->size > UTF8_SIZE)
+		goto fail;
+	if (ud->size <= 3) {
+		index = (((utf8_char)ud->data[2] << 16)|
+		          ((utf8_char)ud->data[1] << 8)|
+		          ((utf8_char)ud->data[0]));
+	} else if (utf8_put_item(ud->data, ud->size, &index) != 0)
+		goto fail;
+	*uc = UTF8_SET_SIZE(ud->size)|UTF8_SET_WIDTH(ud->width)|index;
+	log_debug("%s: (%d %d %.*s) -> %08x", __func__, ud->width, ud->size,
+	    (int)ud->size, ud->data, *uc);
+	return (UTF8_DONE);
+
+fail:
+	if (ud->width == 0)
+		*uc = UTF8_SET_SIZE(0)|UTF8_SET_WIDTH(0);
+	else if (ud->width == 1)
+		*uc = UTF8_SET_SIZE(1)|UTF8_SET_WIDTH(1)|0x20;
+	else
+		*uc = UTF8_SET_SIZE(1)|UTF8_SET_WIDTH(1)|0x2020;
+	return (UTF8_ERROR);
+}
+
+/* Get UTF-8 data from character. */
+void
+utf8_to_data(utf8_char uc, struct utf8_data *ud)
+{
+	struct utf8_item	*ui;
+	u_int			 index;
+
+	memset(ud, 0, sizeof *ud);
+	ud->size = ud->have = UTF8_GET_SIZE(uc);
+	ud->width = UTF8_GET_WIDTH(uc);
+
+	if (ud->size <= 3) {
+		ud->data[2] = (uc >> 16);
+		ud->data[1] = ((uc >> 8) & 0xff);
+		ud->data[0] = (uc & 0xff);
+	} else {
+		index = (uc & 0xffffff);
+		if ((ui = utf8_item_by_index(index)) == NULL)
+			memset(ud->data, ' ', ud->size);
+		else
+			memcpy(ud->data, ui->data, ud->size);
+	}
+
+	log_debug("%s: %08x -> (%d %d %.*s)", __func__, uc, ud->width, ud->size,
+	    (int)ud->size, ud->data);
+}
+
+/* Get UTF-8 character from a single ASCII character. */
+u_int
+utf8_build_one(u_char ch)
+{
+	return (UTF8_SET_SIZE(1)|UTF8_SET_WIDTH(1)|ch);
+}
 
 /* Set a single character. */
 void
@@ -48,6 +208,51 @@ utf8_copy(struct utf8_data *to, const struct utf8_data *from)
 
 	for (i = to->size; i < sizeof to->data; i++)
 		to->data[i] = '\0';
+}
+
+/* Get width of Unicode character. */
+static enum utf8_state
+utf8_width(struct utf8_data *ud, int *width)
+{
+	wchar_t	wc;
+
+#ifdef HAVE_UTF8PROC
+	switch (utf8proc_mbtowc(&wc, ud->data, ud->size)) {
+#else
+	switch (mbtowc(&wc, ud->data, ud->size)) {
+#endif
+	case -1:
+		log_debug("UTF-8 %.*s, mbtowc() %d", (int)ud->size, ud->data,
+		    errno);
+		mbtowc(NULL, NULL, MB_CUR_MAX);
+		return (UTF8_ERROR);
+	case 0:
+		return (UTF8_ERROR);
+	}
+#ifdef HAVE_UTF8PROC
+	*width = utf8proc_wcwidth(wc);
+#else
+	*width = wcwidth(wc);
+#endif
+	if (*width >= 0 && *width <= 0xff)
+		return (UTF8_DONE);
+	log_debug("UTF-8 %.*s, wcwidth() %d", (int)ud->size, ud->data, *width);
+
+#ifndef __OpenBSD__
+	/*
+	 * Many platforms (particularly and inevitably OS X) have no width for
+	 * relatively common characters (wcwidth() returns -1); assume width 1
+	 * in this case. This will be wrong for genuinely nonprintable
+	 * characters, but they should be rare. We may pass through stuff that
+	 * ideally we would block, but this is no worse than sending the same
+	 * to the terminal without tmux.
+	 */
+	if (*width < 0) {
+		*width = 1;
+		return (UTF8_DONE);
+	}
+#endif
+	return (UTF8_ERROR);
 }
 
 /*
@@ -77,7 +282,6 @@ utf8_open(struct utf8_data *ud, u_char ch)
 enum utf8_state
 utf8_append(struct utf8_data *ud, u_char ch)
 {
-	wchar_t	wc;
 	int	width;
 
 	if (ud->have >= ud->size)
@@ -94,88 +298,10 @@ utf8_append(struct utf8_data *ud, u_char ch)
 
 	if (ud->width == 0xff)
 		return (UTF8_ERROR);
-
-	if (utf8_combine(ud, &wc) != UTF8_DONE)
-		return (UTF8_ERROR);
-	if ((width = utf8_width(wc)) < 0)
+	if (utf8_width(ud, &width) != UTF8_DONE)
 		return (UTF8_ERROR);
 	ud->width = width;
 
-	return (UTF8_DONE);
-}
-
-/* Get width of Unicode character. */
-static int
-utf8_width(wchar_t wc)
-{
-	int	width;
-
-#ifdef HAVE_UTF8PROC
-	width = utf8proc_wcwidth(wc);
-#else
-	width = wcwidth(wc);
-#endif
-	if (width < 0 || width > 0xff) {
-		log_debug("Unicode %04lx, wcwidth() %d", (long)wc, width);
-
-#ifndef __OpenBSD__
-		/*
-		 * Many platforms (particularly and inevitably OS X) have no
-		 * width for relatively common characters (wcwidth() returns
-		 * -1); assume width 1 in this case. This will be wrong for
-		 * genuinely nonprintable characters, but they should be
-		 * rare. We may pass through stuff that ideally we would block,
-		 * but this is no worse than sending the same to the terminal
-		 * without tmux.
-		 */
-		if (width < 0)
-			return (1);
-#endif
-		return (-1);
-	}
-	return (width);
-}
-
-/* Combine UTF-8 into Unicode. */
-enum utf8_state
-utf8_combine(const struct utf8_data *ud, wchar_t *wc)
-{
-#ifdef HAVE_UTF8PROC
-	switch (utf8proc_mbtowc(wc, ud->data, ud->size)) {
-#else
-	switch (mbtowc(wc, ud->data, ud->size)) {
-#endif
-	case -1:
-		log_debug("UTF-8 %.*s, mbtowc() %d", (int)ud->size, ud->data,
-		    errno);
-		mbtowc(NULL, NULL, MB_CUR_MAX);
-		return (UTF8_ERROR);
-	case 0:
-		return (UTF8_ERROR);
-	default:
-		return (UTF8_DONE);
-	}
-}
-
-/* Split Unicode into UTF-8. */
-enum utf8_state
-utf8_split(wchar_t wc, struct utf8_data *ud)
-{
-	char	s[MB_LEN_MAX];
-	int	slen;
-
-#ifdef HAVE_UTF8PROC
-	slen = utf8proc_wctomb(s, wc);
-#else
-	slen = wctomb(s, wc);
-#endif
-	if (slen <= 0 || slen > (int)sizeof ud->data)
-		return (UTF8_ERROR);
-
-	memcpy(ud->data, s, slen);
-	ud->size = slen;
-
-	ud->width = utf8_width(wc);
 	return (UTF8_DONE);
 }
 
@@ -188,12 +314,9 @@ int
 utf8_strvis(char *dst, const char *src, size_t len, int flag)
 {
 	struct utf8_data	 ud;
-	const char		*start, *end;
+	const char		*start = dst, *end = src + len;
 	enum utf8_state		 more;
 	size_t			 i;
-
-	start = dst;
-	end = src + len;
 
 	while (src < end) {
 		if ((more = utf8_open(&ud, *src)) == UTF8_MORE) {
@@ -220,7 +343,6 @@ utf8_strvis(char *dst, const char *src, size_t len, int flag)
 			dst = vis(dst, src[0], flag, '\0');
 		src++;
 	}
-
 	*dst = '\0';
 	return (dst - start);
 }
@@ -239,13 +361,27 @@ utf8_stravis(char **dst, const char *src, int flag)
 	return (len);
 }
 
+/* Same as utf8_strvis but allocate the buffer. */
+int
+utf8_stravisx(char **dst, const char *src, size_t srclen, int flag)
+{
+	char	*buf;
+	int	 len;
+
+	buf = xreallocarray(NULL, 4, srclen + 1);
+	len = utf8_strvis(buf, src, srclen, flag);
+
+	*dst = xrealloc(buf, len + 1);
+	return (len);
+}
+
 /* Does this string contain anything that isn't valid UTF-8? */
 int
 utf8_isvalid(const char *s)
 {
-	struct utf8_data	 ud;
-	const char		*end;
-	enum utf8_state		 more;
+	struct utf8_data ud;
+	const char	*end;
+	enum utf8_state	 more;
 
 	end = s + strlen(s);
 	while (s < end) {
@@ -271,15 +407,12 @@ utf8_isvalid(const char *s)
 char *
 utf8_sanitize(const char *src)
 {
-	char			*dst;
-	size_t			 n;
-	enum utf8_state		 more;
-	struct utf8_data	 ud;
-	u_int			 i;
+	char		*dst = NULL;
+	size_t		 n = 0;
+	enum utf8_state	 more;
+	struct utf8_data ud;
+	u_int		 i;
 
-	dst = NULL;
-
-	n = 0;
 	while (*src != '\0') {
 		dst = xreallocarray(dst, n + 1, sizeof *dst);
 		if ((more = utf8_open(&ud, *src)) == UTF8_MORE) {
@@ -300,7 +433,6 @@ utf8_sanitize(const char *src)
 			dst[n++] = '_';
 		src++;
 	}
-
 	dst = xreallocarray(dst, n + 1, sizeof *dst);
 	dst[n] = '\0';
 	return (dst);
@@ -322,9 +454,8 @@ u_int
 utf8_strwidth(const struct utf8_data *s, ssize_t n)
 {
 	ssize_t	i;
-	u_int	width;
+	u_int	width = 0;
 
-	width = 0;
 	for (i = 0; s[i].size != 0; i++) {
 		if (n != -1 && n == i)
 			break;
@@ -340,13 +471,10 @@ utf8_strwidth(const struct utf8_data *s, ssize_t n)
 struct utf8_data *
 utf8_fromcstr(const char *src)
 {
-	struct utf8_data	*dst;
-	size_t			 n;
+	struct utf8_data	*dst = NULL;
+	size_t			 n = 0;
 	enum utf8_state		 more;
 
-	dst = NULL;
-
-	n = 0;
 	while (*src != '\0') {
 		dst = xreallocarray(dst, n + 1, sizeof *dst);
 		if ((more = utf8_open(&dst[n], *src)) == UTF8_MORE) {
@@ -362,7 +490,6 @@ utf8_fromcstr(const char *src)
 		n++;
 		src++;
 	}
-
 	dst = xreallocarray(dst, n + 1, sizeof *dst);
 	dst[n].size = 0;
 	return (dst);
@@ -372,18 +499,14 @@ utf8_fromcstr(const char *src)
 char *
 utf8_tocstr(struct utf8_data *src)
 {
-	char	*dst;
-	size_t	 n;
+	char	*dst = NULL;
+	size_t	 n = 0;
 
-	dst = NULL;
-
-	n = 0;
 	for(; src->size != 0; src++) {
 		dst = xreallocarray(dst, n + src->size, 1);
 		memcpy(dst + n, src->data, src->size);
 		n += src->size;
 	}
-
 	dst = xreallocarray(dst, n + 1, 1);
 	dst[n] = '\0';
 	return (dst);
@@ -421,7 +544,7 @@ utf8_padcstr(const char *s, u_int width)
 {
 	size_t	 slen;
 	char	*out;
-	u_int	  n, i;
+	u_int	 n, i;
 
 	n = utf8_cstrwidth(s);
 	if (n >= width)
@@ -442,7 +565,7 @@ utf8_rpadcstr(const char *s, u_int width)
 {
 	size_t	 slen;
 	char	*out;
-	u_int	  n, i;
+	u_int	 n, i;
 
 	n = utf8_cstrwidth(s);
 	if (n >= width)

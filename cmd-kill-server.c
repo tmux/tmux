@@ -33,7 +33,7 @@ const struct cmd_entry cmd_kill_server_entry = {
 	.name = "kill-server",
 	.alias = NULL,
 
-	.args = { "", 0, 0 },
+	.args = { "", 0, 0, NULL },
 	.usage = "",
 
 	.flags = 0,
@@ -44,7 +44,7 @@ const struct cmd_entry cmd_start_server_entry = {
 	.name = "start-server",
 	.alias = "start",
 
-	.args = { "", 0, 0 },
+	.args = { "", 0, 0, NULL },
 	.usage = "",
 
 	.flags = CMD_STARTSERVER,
@@ -54,7 +54,7 @@ const struct cmd_entry cmd_start_server_entry = {
 static enum cmd_retval
 cmd_kill_server_exec(struct cmd *self, __unused struct cmdq_item *item)
 {
-	if (self->entry == &cmd_kill_server_entry)
+	if (cmd_get_entry(self) == &cmd_kill_server_entry)
 		kill(getpid(), SIGTERM);
 
 	return (CMD_RETURN_NORMAL);

@@ -122,7 +122,6 @@ session_create(const char *prefix, const char *name, const char *cwd,
 
 	s->cwd = xstrdup(cwd);
 
-	s->curw = NULL;
 	TAILQ_INIT(&s->lastw);
 	RB_INIT(&s->windows);
 
@@ -141,7 +140,6 @@ session_create(const char *prefix, const char *name, const char *cwd,
 		s->name = xstrdup(name);
 		s->id = next_session_id++;
 	} else {
-		s->name = NULL;
 		do {
 			s->id = next_session_id++;
 			free(s->name);
@@ -205,6 +203,9 @@ session_destroy(struct session *s, int notify, const char *from)
 	struct winlink	*wl;
 
 	log_debug("session %s destroyed (%s)", s->name, from);
+
+	if (s->curw == NULL)
+		return;
 	s->curw = NULL;
 
 	RB_REMOVE(sessions, &sessions, s);
@@ -231,11 +232,22 @@ session_destroy(struct session *s, int notify, const char *from)
 	session_remove_ref(s, __func__);
 }
 
-/* Check a session name is valid: not empty and no colons or periods. */
-int
+/* Sanitize session name. */
+char *
 session_check_name(const char *name)
 {
-	return (*name != '\0' && name[strcspn(name, ":.")] == '\0');
+	char	*copy, *cp, *new_name;
+
+	if (*name == '\0')
+		return (NULL);
+	copy = xstrdup(name);
+	for (cp = copy; *cp != '\0'; cp++) {
+		if (*cp == ':' || *cp == '.')
+			*cp = '_';
+	}
+	utf8_stravis(&new_name, copy, VIS_OCTAL|VIS_CSTYLE|VIS_TAB|VIS_NL);
+	free(copy);
+	return (new_name);
 }
 
 /* Lock session if it has timed out. */
@@ -478,6 +490,8 @@ session_last(struct session *s)
 int
 session_set_current(struct session *s, struct winlink *wl)
 {
+	struct winlink	*old = s->curw;
+
 	if (wl == NULL)
 		return (-1);
 	if (wl == s->curw)
@@ -486,6 +500,10 @@ session_set_current(struct session *s, struct winlink *wl)
 	winlink_stack_remove(&s->lastw, wl);
 	winlink_stack_push(&s->lastw, s->curw);
 	s->curw = wl;
+	if (options_get_number(global_options, "focus-events")) {
+		window_update_focus(old->window);
+		window_update_focus(wl->window);
+	}
 	winlink_clear_flags(wl);
 	window_update_activity(wl->window);
 	tty_update_window_offset(wl->window);
@@ -555,6 +573,7 @@ session_group_remove(struct session *s)
 	TAILQ_REMOVE(&sg->sessions, s, gentry);
 	if (TAILQ_EMPTY(&sg->sessions)) {
 		RB_REMOVE(session_groups, &session_groups, sg);
+		free((void *)sg->name);
 		free(sg);
 	}
 }

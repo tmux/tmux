@@ -34,8 +34,8 @@ const struct cmd_entry cmd_set_environment_entry = {
 	.name = "set-environment",
 	.alias = "setenv",
 
-	.args = { "grt:u", 1, 2 },
-	.usage = "[-gru] " CMD_TARGET_SESSION_USAGE " name [value]",
+	.args = { "Fhgrt:u", 1, 2, NULL },
+	.usage = "[-Fhgru] " CMD_TARGET_SESSION_USAGE " name [value]",
 
 	.target = { 't', CMD_FIND_SESSION, CMD_FIND_CANFAIL },
 
@@ -46,11 +46,14 @@ const struct cmd_entry cmd_set_environment_entry = {
 static enum cmd_retval
 cmd_set_environment_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args	*args = self->args;
-	struct environ	*env;
-	const char	*name, *value, *target;
+	struct args		*args = cmd_get_args(self);
+	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct environ		*env;
+	const char		*name = args_string(args, 0), *value;
+	const char		*tflag;
+	char			*expanded = NULL;
+	enum cmd_retval		 retval = CMD_RETURN_NORMAL;
 
-	name = args->argv[0];
 	if (*name == '\0') {
 		cmdq_error(item, "empty variable name");
 		return (CMD_RETURN_ERROR);
@@ -60,44 +63,57 @@ cmd_set_environment_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_ERROR);
 	}
 
-	if (args->argc < 2)
+	if (args_count(args) < 2)
 		value = NULL;
 	else
-		value = args->argv[1];
-
-	if (args_has(self->args, 'g'))
+		value = args_string(args, 1);
+	if (value != NULL && args_has(args, 'F')) {
+		expanded = format_single_from_target(item, value);
+		value = expanded;
+	}
+	if (args_has(args, 'g'))
 		env = global_environ;
 	else {
-		if (item->target.s == NULL) {
-			target = args_get(args, 't');
-			if (target != NULL)
-				cmdq_error(item, "no such session: %s", target);
+		if (target->s == NULL) {
+			tflag = args_get(args, 't');
+			if (tflag != NULL)
+				cmdq_error(item, "no such session: %s", tflag);
 			else
 				cmdq_error(item, "no current session");
-			return (CMD_RETURN_ERROR);
+			retval = CMD_RETURN_ERROR;
+			goto out;
 		}
-		env = item->target.s->environ;
+		env = target->s->environ;
 	}
 
-	if (args_has(self->args, 'u')) {
+	if (args_has(args, 'u')) {
 		if (value != NULL) {
 			cmdq_error(item, "can't specify a value with -u");
-			return (CMD_RETURN_ERROR);
+			retval = CMD_RETURN_ERROR;
+			goto out;
 		}
 		environ_unset(env, name);
-	} else if (args_has(self->args, 'r')) {
+	} else if (args_has(args, 'r')) {
 		if (value != NULL) {
 			cmdq_error(item, "can't specify a value with -r");
-			return (CMD_RETURN_ERROR);
+			retval = CMD_RETURN_ERROR;
+			goto out;
 		}
 		environ_clear(env, name);
 	} else {
 		if (value == NULL) {
 			cmdq_error(item, "no value specified");
-			return (CMD_RETURN_ERROR);
+			retval = CMD_RETURN_ERROR;
+			goto out;
 		}
-		environ_set(env, name, "%s", value);
+
+		if (args_has(args, 'h'))
+			environ_set(env, name, ENVIRON_HIDDEN, "%s", value);
+		else
+			environ_set(env, name, 0, "%s", value);
 	}
 
-	return (CMD_RETURN_NORMAL);
+out:
+	free(expanded);
+	return (retval);
 }

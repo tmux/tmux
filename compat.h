@@ -27,8 +27,33 @@
 #include <termios.h>
 #include <wchar.h>
 
+#ifdef HAVE_EVENT2_EVENT_H
+#include <event2/event.h>
+#include <event2/event_compat.h>
+#include <event2/event_struct.h>
+#include <event2/buffer.h>
+#include <event2/buffer_compat.h>
+#include <event2/bufferevent.h>
+#include <event2/bufferevent_struct.h>
+#include <event2/bufferevent_compat.h>
+#else
+#include <event.h>
+#endif
+
+#ifdef HAVE_MALLOC_TRIM
+#include <malloc.h>
+#endif
+
+#ifdef HAVE_UTF8PROC
+#include <utf8proc.h>
+#endif
+
 #ifndef __GNUC__
 #define __attribute__(a)
+#endif
+
+#ifdef BROKEN___DEAD
+#undef __dead
 #endif
 
 #ifndef __unused
@@ -39,6 +64,9 @@
 #endif
 #ifndef __packed
 #define __packed __attribute__ ((__packed__))
+#endif
+#ifndef __weak
+#define __weak __attribute__ ((__weak__))
 #endif
 
 #ifndef ECHOPRT
@@ -90,8 +118,16 @@ void	warnx(const char *, ...);
 #define _PATH_DEFPATH	"/usr/bin:/bin"
 #endif
 
+#ifndef _PATH_VI
+#define _PATH_VI	"/usr/bin/vi"
+#endif
+
 #ifndef __OpenBSD__
 #define pledge(s, p) (0)
+#endif
+
+#ifndef IMAXBEL
+#define IMAXBEL 0
 #endif
 
 #ifdef HAVE_STDINT_H
@@ -229,6 +265,13 @@ void	warnx(const char *, ...);
 #define HOST_NAME_MAX 255
 #endif
 
+#ifndef CLOCK_REALTIME
+#define CLOCK_REALTIME 0
+#endif
+#ifndef CLOCK_MONOTONIC
+#define CLOCK_MONOTONIC CLOCK_REALTIME
+#endif
+
 #ifndef HAVE_FLOCK
 #define LOCK_SH 0
 #define LOCK_EX 0
@@ -306,6 +349,11 @@ const char	*getprogname(void);
 void		 setproctitle(const char *, ...);
 #endif
 
+#ifndef HAVE_CLOCK_GETTIME
+/* clock_gettime.c */
+int		 clock_gettime(int, struct timespec *);
+#endif
+
 #ifndef HAVE_B64_NTOP
 /* base64.c */
 #undef b64_ntop
@@ -335,6 +383,11 @@ int		 vasprintf(char **, const char *, va_list);
 #ifndef HAVE_FGETLN
 /* fgetln.c */
 char		*fgetln(FILE *, size_t *);
+#endif
+
+#ifndef HAVE_GETLINE
+/* getline.c */
+ssize_t		 getline(char **, size_t *, FILE *);
 #endif
 
 #ifndef HAVE_SETENV
@@ -370,7 +423,11 @@ int		 utf8proc_mbtowc(wchar_t *, const char *, size_t);
 int		 utf8proc_wctomb(char *, wchar_t);
 #endif
 
-#ifndef HAVE_GETOPT
+#ifdef NEED_FUZZING
+/* tmux.c */
+#define main __weak main
+#endif
+
 /* getopt.c */
 extern int	BSDopterr;
 extern int	BSDoptind;
@@ -384,6 +441,5 @@ int	BSDgetopt(int, char *const *, const char *);
 #define optopt             BSDoptopt
 #define optreset           BSDoptreset
 #define optarg             BSDoptarg
-#endif
 
 #endif /* COMPAT_H */

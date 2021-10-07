@@ -30,7 +30,7 @@ const struct cmd_entry cmd_lock_server_entry = {
 	.name = "lock-server",
 	.alias = "lock",
 
-	.args = { "", 0, 0 },
+	.args = { "", 0, 0, NULL },
 	.usage = "",
 
 	.flags = CMD_AFTERHOOK,
@@ -41,7 +41,7 @@ const struct cmd_entry cmd_lock_session_entry = {
 	.name = "lock-session",
 	.alias = "locks",
 
-	.args = { "t:", 0, 0 },
+	.args = { "t:", 0, 0, NULL },
 	.usage = CMD_TARGET_SESSION_USAGE,
 
 	.target = { 't', CMD_FIND_SESSION, 0 },
@@ -54,28 +54,25 @@ const struct cmd_entry cmd_lock_client_entry = {
 	.name = "lock-client",
 	.alias = "lockc",
 
-	.args = { "t:", 0, 0 },
+	.args = { "t:", 0, 0, NULL },
 	.usage = CMD_TARGET_CLIENT_USAGE,
 
-	.flags = CMD_AFTERHOOK,
+	.flags = CMD_AFTERHOOK|CMD_CLIENT_TFLAG,
 	.exec = cmd_lock_server_exec
 };
 
 static enum cmd_retval
 cmd_lock_server_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args	*args = self->args;
-	struct client	*c;
+	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct client		*tc = cmdq_get_target_client(item);
 
-	if (self->entry == &cmd_lock_server_entry)
+	if (cmd_get_entry(self) == &cmd_lock_server_entry)
 		server_lock();
-	else if (self->entry == &cmd_lock_session_entry)
-		server_lock_session(item->target.s);
-	else {
-		if ((c = cmd_find_client(item, args_get(args, 't'), 0)) == NULL)
-			return (CMD_RETURN_ERROR);
-		server_lock_client(c);
-	}
+	else if (cmd_get_entry(self) == &cmd_lock_session_entry)
+		server_lock_session(target->s);
+	else
+		server_lock_client(tc);
 	recalculate_sizes();
 
 	return (CMD_RETURN_NORMAL);

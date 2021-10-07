@@ -296,13 +296,22 @@ paste_set(char *data, size_t size, const char *name, char **cause)
 	return (0);
 }
 
+/* Set paste data without otherwise changing it. */
+void
+paste_replace(struct paste_buffer *pb, char *data, size_t size)
+{
+	free(pb->data);
+	pb->data = data;
+	pb->size = size;
+}
+
 /* Convert start of buffer into a nice string. */
 char *
 paste_make_sample(struct paste_buffer *pb)
 {
 	char		*buf;
 	size_t		 len, used;
-	const int	 flags = VIS_OCTAL|VIS_TAB|VIS_NL;
+	const int	 flags = VIS_OCTAL|VIS_CSTYLE|VIS_TAB|VIS_NL;
 	const size_t	 width = 200;
 
 	len = pb->size;

@@ -28,10 +28,10 @@
  * List all clients.
  */
 
-#define LIST_CLIENTS_TEMPLATE					\
-	"#{client_name}: #{session_name} "			\
-	"[#{client_width}x#{client_height} #{client_termname}]"	\
-	"#{?client_utf8, (utf8),} #{?client_readonly, (ro),}"
+#define LIST_CLIENTS_TEMPLATE						\
+	"#{client_name}: #{session_name} "				\
+	"[#{client_width}x#{client_height} #{client_termname}] "	\
+	"#{?client_flags,(,}#{client_flags}#{?client_flags,),}"
 
 static enum cmd_retval	cmd_list_clients_exec(struct cmd *, struct cmdq_item *);
 
@@ -39,7 +39,7 @@ const struct cmd_entry cmd_list_clients_entry = {
 	.name = "list-clients",
 	.alias = "lsc",
 
-	.args = { "F:t:", 0, 0 },
+	.args = { "F:t:", 0, 0, NULL },
 	.usage = "[-F format] " CMD_TARGET_SESSION_USAGE,
 
 	.target = { 't', CMD_FIND_SESSION, 0 },
@@ -51,7 +51,8 @@ const struct cmd_entry cmd_list_clients_entry = {
 static enum cmd_retval
 cmd_list_clients_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args 		*args = self->args;
+	struct args 		*args = cmd_get_args(self);
+	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct client		*c;
 	struct session		*s;
 	struct format_tree	*ft;
@@ -60,7 +61,7 @@ cmd_list_clients_exec(struct cmd *self, struct cmdq_item *item)
 	char			*line;
 
 	if (args_has(args, 't'))
-		s = item->target.s;
+		s = target->s;
 	else
 		s = NULL;
 
@@ -72,7 +73,7 @@ cmd_list_clients_exec(struct cmd *self, struct cmdq_item *item)
 		if (c->session == NULL || (s != NULL && s != c->session))
 			continue;
 
-		ft = format_create(item->client, item, FORMAT_NONE, 0);
+		ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
 		format_add(ft, "line", "%u", idx);
 		format_defaults(ft, c, NULL, NULL, NULL);
 

@@ -36,8 +36,8 @@ const struct cmd_entry cmd_resize_pane_entry = {
 	.name = "resize-pane",
 	.alias = "resizep",
 
-	.args = { "DLMRt:Ux:y:Z", 0, 1 },
-	.usage = "[-DLMRUZ] [-x width] [-y height] " CMD_TARGET_PANE_USAGE " "
+	.args = { "DLMRTt:Ux:y:Z", 0, 1, NULL },
+	.usage = "[-DLMRTUZ] [-x width] [-y height] " CMD_TARGET_PANE_USAGE " "
 		 "[adjustment]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -49,26 +49,39 @@ const struct cmd_entry cmd_resize_pane_entry = {
 static enum cmd_retval
 cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
-	struct cmdq_shared	*shared = item->shared;
-	struct window_pane	*wp = item->target.wp;
-	struct winlink		*wl = item->target.wl;
+	struct args		*args = cmd_get_args(self);
+	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct key_event	*event = cmdq_get_event(item);
+	struct window_pane	*wp = target->wp;
+	struct winlink		*wl = target->wl;
 	struct window		*w = wl->window;
-	struct client		*c = item->client;
-	struct session		*s = item->target.s;
-	const char	       	*errstr, *p;
-	char			*cause, *copy;
+	struct client		*c = cmdq_get_client(item);
+	struct session		*s = target->s;
+	const char	       	*errstr;
+	char			*cause;
 	u_int			 adjust;
-	int			 x, y, percentage;
-	size_t			 plen;
+	int			 x, y;
+	struct grid		*gd = wp->base.grid;
+
+	if (args_has(args, 'T')) {
+		if (!TAILQ_EMPTY(&wp->modes))
+			return (CMD_RETURN_NORMAL);
+		adjust = screen_size_y(&wp->base) - 1 - wp->base.cy;
+		if (adjust > gd->hsize)
+			adjust = gd->hsize;
+		grid_remove_history(gd, adjust);
+		wp->base.cy += adjust;
+		wp->flags |= PANE_REDRAW;
+		return (CMD_RETURN_NORMAL);
+	}
 
 	if (args_has(args, 'M')) {
-		if (cmd_mouse_window(&shared->mouse, &s) == NULL)
+		if (!event->m.valid || cmd_mouse_window(&event->m, &s) == NULL)
 			return (CMD_RETURN_NORMAL);
 		if (c == NULL || c->session != s)
 			return (CMD_RETURN_NORMAL);
 		c->tty.mouse_drag_update = cmd_resize_pane_mouse_update;
-		cmd_resize_pane_mouse_update(c, &shared->mouse);
+		cmd_resize_pane_mouse_update(c, &event->m);
 		return (CMD_RETURN_NORMAL);
 	}
 
@@ -78,73 +91,35 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 		else
 			window_zoom(wp);
 		server_redraw_window(w);
-		server_status_window(w);
 		return (CMD_RETURN_NORMAL);
 	}
 	server_unzoom_window(w);
 
-	if (args->argc == 0)
+	if (args_count(args) == 0)
 		adjust = 1;
 	else {
-		adjust = strtonum(args->argv[0], 1, INT_MAX, &errstr);
+		adjust = strtonum(args_string(args, 0), 1, INT_MAX, &errstr);
 		if (errstr != NULL) {
 			cmdq_error(item, "adjustment %s", errstr);
 			return (CMD_RETURN_ERROR);
 		}
 	}
 
-	if ((p = args_get(args, 'x')) != NULL) {
-		plen = strlen(p);
-		if (p[plen - 1] == '%') {
-			copy = xstrdup(p);
-			copy[plen - 1] = '\0';
-			percentage = strtonum(copy, 0, INT_MAX, &errstr);
-			free(copy);
-			if (errstr != NULL) {
-				cmdq_error(item, "width %s", errstr);
-				return (CMD_RETURN_ERROR);
-			}
-			x = (w->sx * percentage) / 100;
-			if (x < PANE_MINIMUM)
-				x = PANE_MINIMUM;
-			if (x > INT_MAX)
-				x = INT_MAX;
-		} else {
-			x = args_strtonum(args, 'x', PANE_MINIMUM, INT_MAX,
-			    &cause);
-			if (cause != NULL) {
-				cmdq_error(item, "width %s", cause);
-				free(cause);
-				return (CMD_RETURN_ERROR);
-			}
+	if (args_has(args, 'x')) {
+		x = args_percentage(args, 'x', 0, INT_MAX, w->sx, &cause);
+		if (cause != NULL) {
+			cmdq_error(item, "width %s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
 		}
 		layout_resize_pane_to(wp, LAYOUT_LEFTRIGHT, x);
 	}
-	if ((p = args_get(args, 'y')) != NULL) {
-		plen = strlen(p);
-		if (p[plen - 1] == '%') {
-			copy = xstrdup(p);
-			copy[plen - 1] = '\0';
-			percentage = strtonum(copy, 0, INT_MAX, &errstr);
-			free(copy);
-			if (errstr != NULL) {
-				cmdq_error(item, "height %s", errstr);
-				return (CMD_RETURN_ERROR);
-			}
-			y = (w->sy * percentage) / 100;
-			if (y < PANE_MINIMUM)
-				y = PANE_MINIMUM;
-			if (y > INT_MAX)
-				y = INT_MAX;
-		}
-		else {
-			y = args_strtonum(args, 'y', PANE_MINIMUM, INT_MAX,
-			    &cause);
-			if (cause != NULL) {
-				cmdq_error(item, "height %s", cause);
-				free(cause);
-				return (CMD_RETURN_ERROR);
-			}
+	if (args_has(args, 'y')) {
+		y = args_percentage(args, 'y', 0, INT_MAX, w->sy, &cause);
+		if (cause != NULL) {
+			cmdq_error(item, "height %s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
 		}
 		layout_resize_pane_to(wp, LAYOUT_TOPBOTTOM, y);
 	}

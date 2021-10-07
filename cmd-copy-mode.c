@@ -30,9 +30,10 @@ const struct cmd_entry cmd_copy_mode_entry = {
 	.name = "copy-mode",
 	.alias = NULL,
 
-	.args = { "Met:u", 0, 0 },
-	.usage = "[-Mu] " CMD_TARGET_PANE_USAGE,
+	.args = { "eHMs:t:uq", 0, 0, NULL },
+	.usage = "[-eHMuq] [-s src-pane] " CMD_TARGET_PANE_USAGE,
 
+	.source =  { 's', CMD_FIND_PANE, 0 },
 	.target = { 't', CMD_FIND_PANE, 0 },
 
 	.flags = CMD_AFTERHOOK,
@@ -43,7 +44,7 @@ const struct cmd_entry cmd_clock_mode_entry = {
 	.name = "clock-mode",
 	.alias = NULL,
 
-	.args = { "t:", 0, 0 },
+	.args = { "t:", 0, 0, NULL },
 	.usage = CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -55,29 +56,40 @@ const struct cmd_entry cmd_clock_mode_entry = {
 static enum cmd_retval
 cmd_copy_mode_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
-	struct cmdq_shared	*shared = item->shared;
-	struct client		*c = item->client;
+	struct args		*args = cmd_get_args(self);
+	struct key_event	*event = cmdq_get_event(item);
+	struct cmd_find_state	*source = cmdq_get_source(item);
+	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct client		*c = cmdq_get_client(item);
 	struct session		*s;
-	struct window_pane	*wp = item->target.wp;
+	struct window_pane	*wp = target->wp, *swp;
+
+	if (args_has(args, 'q')) {
+		window_pane_reset_mode_all(wp);
+		return (CMD_RETURN_NORMAL);
+	}
 
 	if (args_has(args, 'M')) {
-		if ((wp = cmd_mouse_pane(&shared->mouse, &s, NULL)) == NULL)
+		if ((wp = cmd_mouse_pane(&event->m, &s, NULL)) == NULL)
 			return (CMD_RETURN_NORMAL);
 		if (c == NULL || c->session != s)
 			return (CMD_RETURN_NORMAL);
 	}
 
-	if (self->entry == &cmd_clock_mode_entry) {
-		window_pane_set_mode(wp, &window_clock_mode, NULL, NULL);
+	if (cmd_get_entry(self) == &cmd_clock_mode_entry) {
+		window_pane_set_mode(wp, NULL, &window_clock_mode, NULL, NULL);
 		return (CMD_RETURN_NORMAL);
 	}
 
-	if (!window_pane_set_mode(wp, &window_copy_mode, NULL, args)) {
+	if (args_has(args, 's'))
+		swp = source->wp;
+	else
+		swp = wp;
+	if (!window_pane_set_mode(wp, swp, &window_copy_mode, NULL, args)) {
 		if (args_has(args, 'M'))
-			window_copy_start_drag(c, &shared->mouse);
+			window_copy_start_drag(c, &event->m);
 	}
-	if (args_has(self->args, 'u'))
+	if (args_has(args, 'u'))
 		window_copy_pageup(wp, 0);
 
 	return (CMD_RETURN_NORMAL);

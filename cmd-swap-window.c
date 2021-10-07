@@ -32,7 +32,7 @@ const struct cmd_entry cmd_swap_window_entry = {
 	.name = "swap-window",
 	.alias = "swapw",
 
-	.args = { "ds:t:", 0, 0 },
+	.args = { "ds:t:", 0, 0, NULL },
 	.usage = "[-d] " CMD_SRCDST_WINDOW_USAGE,
 
 	.source = { 's', CMD_FIND_WINDOW, CMD_FIND_DEFAULT_MARKED },
@@ -45,20 +45,20 @@ const struct cmd_entry cmd_swap_window_entry = {
 static enum cmd_retval
 cmd_swap_window_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct session		*src, *dst;
+	struct args		*args = cmd_get_args(self);
+	struct cmd_find_state	*source = cmdq_get_source(item);
+	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct session		*src = source->s, *dst = target->s;
 	struct session_group	*sg_src, *sg_dst;
-	struct winlink		*wl_src, *wl_dst;
+	struct winlink		*wl_src = source->wl, *wl_dst = target->wl;
 	struct window		*w_src, *w_dst;
 
-	wl_src = item->source.wl;
-	src = item->source.s;
 	sg_src = session_group_contains(src);
-
-	wl_dst = item->target.wl;
-	dst = item->target.s;
 	sg_dst = session_group_contains(dst);
 
-	if (src != dst && sg_src != NULL && sg_dst != NULL &&
+	if (src != dst &&
+	    sg_src != NULL &&
+	    sg_dst != NULL &&
 	    sg_src == sg_dst) {
 		cmdq_error(item, "can't move window, sessions are grouped");
 		return (CMD_RETURN_ERROR);
@@ -77,7 +77,7 @@ cmd_swap_window_exec(struct cmd *self, struct cmdq_item *item)
 	wl_src->window = w_dst;
 	TAILQ_INSERT_TAIL(&w_dst->winlinks, wl_src, wentry);
 
-	if (args_has(self->args, 'd')) {
+	if (args_has(args, 'd')) {
 		session_select(dst, wl_dst->idx);
 		if (src != dst)
 			session_select(src, wl_src->idx);

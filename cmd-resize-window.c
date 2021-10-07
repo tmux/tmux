@@ -33,7 +33,7 @@ const struct cmd_entry cmd_resize_window_entry = {
 	.name = "resize-window",
 	.alias = "resizew",
 
-	.args = { "aADLRt:Ux:y:", 0, 1 },
+	.args = { "aADLRt:Ux:y:", 0, 1, NULL },
 	.usage = "[-aADLRU] [-x width] [-y height] " CMD_TARGET_WINDOW_USAGE " "
 		 "[adjustment]",
 
@@ -46,19 +46,20 @@ const struct cmd_entry cmd_resize_window_entry = {
 static enum cmd_retval
 cmd_resize_window_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
-	struct winlink		*wl = item->target.wl;
+	struct args		*args = cmd_get_args(self);
+	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct winlink		*wl = target->wl;
 	struct window		*w = wl->window;
-	struct session		*s = item->target.s;
+	struct session		*s = target->s;
 	const char	       	*errstr;
 	char			*cause;
 	u_int			 adjust, sx, sy;
 	int			 xpixel = -1, ypixel = -1;
 
-	if (args->argc == 0)
+	if (args_count(args) == 0)
 		adjust = 1;
 	else {
-		adjust = strtonum(args->argv[0], 1, INT_MAX, &errstr);
+		adjust = strtonum(args_string(args, 0), 1, INT_MAX, &errstr);
 		if (errstr != NULL) {
 			cmdq_error(item, "adjustment %s", errstr);
 			return (CMD_RETURN_ERROR);
@@ -107,7 +108,9 @@ cmd_resize_window_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	options_set_number(w->options, "window-size", WINDOW_SIZE_MANUAL);
-	resize_window(w, sx, sy, xpixel, ypixel);
+	w->manual_sx = sx;
+	w->manual_sy = sy;
+	recalculate_size(w, 1);
 
 	return (CMD_RETURN_NORMAL);
 }

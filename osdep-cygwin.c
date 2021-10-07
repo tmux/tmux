@@ -19,7 +19,6 @@
 #include <sys/param.h>
 #include <sys/stat.h>
 
-#include <event.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>

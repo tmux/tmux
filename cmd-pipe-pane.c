@@ -43,8 +43,8 @@ const struct cmd_entry cmd_pipe_pane_entry = {
 	.name = "pipe-pane",
 	.alias = "pipep",
 
-	.args = { "IOot:", 0, 1 },
-	.usage = "[-IOo] " CMD_TARGET_PANE_USAGE " [command]",
+	.args = { "IOot:", 0, 1, NULL },
+	.usage = "[-IOo] " CMD_TARGET_PANE_USAGE " [shell-command]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -55,15 +55,17 @@ const struct cmd_entry cmd_pipe_pane_entry = {
 static enum cmd_retval
 cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
-	struct client		*c = cmd_find_client(item, NULL, 1);
-	struct window_pane	*wp = item->target.wp;
-	struct session		*s = item->target.s;
-	struct winlink		*wl = item->target.wl;
-	char			*cmd;
-	int			 old_fd, pipe_fd[2], null_fd, in, out;
-	struct format_tree	*ft;
-	sigset_t		 set, oldset;
+	struct args			*args = cmd_get_args(self);
+	struct cmd_find_state		*target = cmdq_get_target(item);
+	struct client			*tc = cmdq_get_target_client(item);
+	struct window_pane		*wp = target->wp;
+	struct session			*s = target->s;
+	struct winlink			*wl = target->wl;
+	struct window_pane_offset	*wpo = &wp->pipe_offset;
+	char				*cmd;
+	int				 old_fd, pipe_fd[2], null_fd, in, out;
+	struct format_tree		*ft;
+	sigset_t			 set, oldset;
 
 	/* Destroy the old pipe. */
 	old_fd = wp->pipe_fd;
@@ -79,7 +81,7 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	/* If no pipe command, that is enough. */
-	if (args->argc == 0 || *args->argv[0] == '\0')
+	if (args_count(args) == 0 || *args_string(args, 0) == '\0')
 		return (CMD_RETURN_NORMAL);
 
 	/*
@@ -88,13 +90,13 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 	 *
 	 *	bind ^p pipep -o 'cat >>~/output'
 	 */
-	if (args_has(self->args, 'o') && old_fd != -1)
+	if (args_has(args, 'o') && old_fd != -1)
 		return (CMD_RETURN_NORMAL);
 
 	/* What do we want to do? Neither -I or -O is -O. */
-	if (args_has(self->args, 'I')) {
+	if (args_has(args, 'I')) {
 		in = 1;
-		out = args_has(self->args, 'O');
+		out = args_has(args, 'O');
 	} else {
 		in = 0;
 		out = 1;
@@ -107,9 +109,9 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	/* Expand the command. */
-	ft = format_create(item->client, item, FORMAT_NONE, 0);
-	format_defaults(ft, c, s, wl, wp);
-	cmd = format_expand_time(ft, args->argv[0]);
+	ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
+	format_defaults(ft, tc, s, wl, wp);
+	cmd = format_expand_time(ft, args_string(args, 0));
 	format_free(ft);
 
 	/* Fork the child. */
@@ -157,10 +159,7 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 		close(pipe_fd[1]);
 
 		wp->pipe_fd = pipe_fd[0];
-		if (wp->fd != -1)
-			wp->pipe_off = EVBUFFER_LENGTH(wp->event->input);
-		else
-			wp->pipe_off = 0;
+		memcpy(wpo, &wp->offset, sizeof *wpo);
 
 		setblocking(wp->pipe_fd, 0);
 		wp->pipe_event = bufferevent_new(wp->pipe_fd,

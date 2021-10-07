@@ -39,7 +39,7 @@ const struct cmd_entry cmd_capture_pane_entry = {
 	.name = "capture-pane",
 	.alias = "capturep",
 
-	.args = { "ab:CeE:JNpPqS:t:", 0, 0 },
+	.args = { "ab:CeE:JNpPqS:t:", 0, 0, NULL },
 	.usage = "[-aCeJNpPq] " CMD_BUFFER_USAGE " [-E end-line] "
 		 "[-S start-line] " CMD_TARGET_PANE_USAGE,
 
@@ -53,7 +53,7 @@ const struct cmd_entry cmd_clear_history_entry = {
 	.name = "clear-history",
 	.alias = "clearhist",
 
-	.args = { "t:", 0, 0 },
+	.args = { "t:", 0, 0, NULL },
 	.usage = CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -80,7 +80,7 @@ cmd_capture_pane_pending(struct args *args, struct window_pane *wp,
 	size_t		 linelen;
 	u_int		 i;
 
-	pending = input_pending(wp);
+	pending = input_pending(wp->ictx);
 	if (pending == NULL)
 		return (xstrdup(""));
 
@@ -118,7 +118,7 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 
 	sx = screen_size_x(&wp->base);
 	if (args_has(args, 'a')) {
-		gd = wp->saved_grid;
+		gd = wp->base.saved_grid;
 		if (gd == NULL) {
 			if (!args_has(args, 'q')) {
 				cmdq_error(item, "no alternate screen");
@@ -192,14 +192,14 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 static enum cmd_retval
 cmd_capture_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
-	struct client		*c = item->client;
-	struct window_pane	*wp = item->target.wp;
+	struct args		*args = cmd_get_args(self);
+	struct client		*c = cmdq_get_client(item);
+	struct window_pane	*wp = cmdq_get_target(item)->wp;
 	char			*buf, *cause;
 	const char		*bufname;
 	size_t			 len;
 
-	if (self->entry == &cmd_clear_history_entry) {
+	if (cmd_get_entry(self) == &cmd_clear_history_entry) {
 		window_pane_reset_mode_all(wp);
 		grid_clear_history(wp->base.grid);
 		return (CMD_RETURN_NORMAL);
@@ -214,15 +214,20 @@ cmd_capture_pane_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_ERROR);
 
 	if (args_has(args, 'p')) {
-		if (!file_can_print(c)) {
-			cmdq_error(item, "can't write output to client");
-			free(buf);
-			return (CMD_RETURN_ERROR);
-		}
-		file_print_buffer(c, buf, len);
-		if (args_has(args, 'P') && len > 0)
+		if (len > 0 && buf[len - 1] == '\n')
+			len--;
+		if (c->flags & CLIENT_CONTROL)
+			control_write(c, "%.*s", (int)len, buf);
+		else {
+			if (!file_can_print(c)) {
+				cmdq_error(item, "can't write to client");
+				free(buf);
+				return (CMD_RETURN_ERROR);
+			}
+			file_print_buffer(c, buf, len);
 			file_print(c, "\n");
-		free(buf);
+			free(buf);
+		}
 	} else {
 		bufname = NULL;
 		if (args_has(args, 'b'))

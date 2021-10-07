@@ -32,8 +32,8 @@ const struct cmd_entry cmd_move_window_entry = {
 	.name = "move-window",
 	.alias = "movew",
 
-	.args = { "adkrs:t:", 0, 0 },
-	.usage = "[-dkr] " CMD_SRCDST_WINDOW_USAGE,
+	.args = { "abdkrs:t:", 0, 0, NULL },
+	.usage = "[-abdkr] " CMD_SRCDST_WINDOW_USAGE,
 
 	.source = { 's', CMD_FIND_WINDOW, 0 },
 	/* -t is special */
@@ -46,8 +46,8 @@ const struct cmd_entry cmd_link_window_entry = {
 	.name = "link-window",
 	.alias = "linkw",
 
-	.args = { "adks:t:", 0, 0 },
-	.usage = "[-dk] " CMD_SRCDST_WINDOW_USAGE,
+	.args = { "abdks:t:", 0, 0, NULL },
+	.usage = "[-abdk] " CMD_SRCDST_WINDOW_USAGE,
 
 	.source = { 's', CMD_FIND_WINDOW, 0 },
 	/* -t is special */
@@ -59,49 +59,53 @@ const struct cmd_entry cmd_link_window_entry = {
 static enum cmd_retval
 cmd_move_window_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args	*args = self->args;
-	const char	*tflag = args_get(args, 't');
-	struct session	*src;
-	struct session	*dst;
-	struct winlink	*wl;
-	char		*cause;
-	int		 idx, kflag, dflag, sflag;
+	struct args		*args = cmd_get_args(self);
+	struct cmd_find_state	*source = cmdq_get_source(item);
+	struct cmd_find_state	 target;
+	const char		*tflag = args_get(args, 't');
+	struct session		*src = source->s;
+	struct session		*dst;
+	struct winlink		*wl = source->wl;
+	char			*cause;
+	int			 idx, kflag, dflag, sflag, before;
 
 	if (args_has(args, 'r')) {
-		if (cmd_find_target(&item->target, item, tflag,
-		    CMD_FIND_SESSION, CMD_FIND_QUIET) != 0)
+		if (cmd_find_target(&target, item, tflag, CMD_FIND_SESSION,
+		    CMD_FIND_QUIET) != 0)
 			return (CMD_RETURN_ERROR);
 
-		session_renumber_windows(item->target.s);
+		session_renumber_windows(target.s);
 		recalculate_sizes();
-		server_status_session(item->target.s);
+		server_status_session(target.s);
 
 		return (CMD_RETURN_NORMAL);
 	}
-	if (cmd_find_target(&item->target, item, tflag, CMD_FIND_WINDOW,
+	if (cmd_find_target(&target, item, tflag, CMD_FIND_WINDOW,
 	    CMD_FIND_WINDOW_INDEX) != 0)
 		return (CMD_RETURN_ERROR);
-	src = item->source.s;
-	dst = item->target.s;
-	wl = item->source.wl;
-	idx = item->target.idx;
+	dst = target.s;
+	idx = target.idx;
 
-	kflag = args_has(self->args, 'k');
-	dflag = args_has(self->args, 'd');
-	sflag = args_has(self->args, 's');
+	kflag = args_has(args, 'k');
+	dflag = args_has(args, 'd');
+	sflag = args_has(args, 's');
 
-	if (args_has(self->args, 'a')) {
-		if ((idx = winlink_shuffle_up(dst, dst->curw)) == -1)
+	before = args_has(args, 'b');
+	if (args_has(args, 'a') || before) {
+		if (target.wl != NULL)
+			idx = winlink_shuffle_up(dst, target.wl, before);
+		else
+			idx = winlink_shuffle_up(dst, dst->curw, before);
+		if (idx == -1)
 			return (CMD_RETURN_ERROR);
 	}
 
-	if (server_link_window(src, wl, dst, idx, kflag, !dflag,
-	    &cause) != 0) {
-		cmdq_error(item, "can't link window: %s", cause);
+	if (server_link_window(src, wl, dst, idx, kflag, !dflag, &cause) != 0) {
+		cmdq_error(item, "%s", cause);
 		free(cause);
 		return (CMD_RETURN_ERROR);
 	}
-	if (self->entry == &cmd_move_window_entry)
+	if (cmd_get_entry(self) == &cmd_move_window_entry)
 		server_unlink_window(src, wl);
 
 	/*

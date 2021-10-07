@@ -39,13 +39,13 @@ const struct cmd_entry cmd_display_message_entry = {
 	.name = "display-message",
 	.alias = "display",
 
-	.args = { "ac:Ipt:F:v", 0, 1 },
-	.usage = "[-aIpv] [-c target-client] [-F format] "
+	.args = { "ac:d:INpt:F:v", 0, 1, NULL },
+	.usage = "[-aINpv] [-c target-client] [-d delay] [-F format] "
 		 CMD_TARGET_PANE_USAGE " [message]",
 
-	.target = { 't', CMD_FIND_PANE, 0 },
+	.target = { 't', CMD_FIND_PANE, CMD_FIND_CANFAIL },
 
-	.flags = CMD_AFTERHOOK,
+	.flags = CMD_AFTERHOOK|CMD_CLIENT_CFLAG|CMD_CLIENT_CANFAIL,
 	.exec = cmd_display_message_exec
 };
 
@@ -60,33 +60,51 @@ cmd_display_message_each(const char *key, const char *value, void *arg)
 static enum cmd_retval
 cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
-	struct client		*c, *target_c;
-	struct session		*s = item->target.s;
-	struct winlink		*wl = item->target.wl;
-	struct window_pane	*wp = item->target.wp;
+	struct args		*args = cmd_get_args(self);
+	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct client		*tc = cmdq_get_target_client(item), *c;
+	struct session		*s = target->s;
+	struct winlink		*wl = target->wl;
+	struct window_pane	*wp = target->wp;
 	const char		*template;
 	char			*msg, *cause;
+	int			 delay = -1, flags;
 	struct format_tree	*ft;
-	int			 flags;
+	u_int			 count = args_count(args);
 
 	if (args_has(args, 'I')) {
-		if (window_pane_start_input(wp, item, &cause) != 0) {
+		if (wp == NULL)
+			return (CMD_RETURN_NORMAL);
+		switch (window_pane_start_input(wp, item, &cause)) {
+		case -1:
 			cmdq_error(item, "%s", cause);
 			free(cause);
 			return (CMD_RETURN_ERROR);
+		case 1:
+			return (CMD_RETURN_NORMAL);
+		case 0:
+			return (CMD_RETURN_WAIT);
 		}
-		return (CMD_RETURN_WAIT);
 	}
 
-	if (args_has(args, 'F') && args->argc != 0) {
+	if (args_has(args, 'F') && count != 0) {
 		cmdq_error(item, "only one of -F or argument must be given");
 		return (CMD_RETURN_ERROR);
 	}
 
-	template = args_get(args, 'F');
-	if (args->argc != 0)
-		template = args->argv[0];
+	if (args_has(args, 'd')) {
+		delay = args_strtonum(args, 'd', 0, UINT_MAX, &cause);
+		if (cause != NULL) {
+			cmdq_error(item, "delay %s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
+		}
+	}
+
+	if (count != 0)
+		template = args_string(args, 0);
+	else
+		template = args_get(args, 'F');
 	if (template == NULL)
 		template = DISPLAY_MESSAGE_TEMPLATE;
 
@@ -96,17 +114,18 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 	 * formats too, assuming it matches the session. If it doesn't, use the
 	 * best client for the session.
 	 */
-	c = cmd_find_client(item, args_get(args, 'c'), 1);
-	if (c != NULL && c->session == s)
-		target_c = c;
+	if (tc != NULL && tc->session == s)
+		c = tc;
+	else if (s != NULL)
+		c = cmd_find_best_client(s);
 	else
-		target_c = cmd_find_best_client(s);
-	if (args_has(self->args, 'v'))
+		c = NULL;
+	if (args_has(args, 'v'))
 		flags = FORMAT_VERBOSE;
 	else
 		flags = 0;
-	ft = format_create(item->client, item, FORMAT_NONE, flags);
-	format_defaults(ft, target_c, s, wl, wp);
+	ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, flags);
+	format_defaults(ft, c, s, wl, wp);
 
 	if (args_has(args, 'a')) {
 		format_each(ft, cmd_display_message_each, item);
@@ -114,10 +133,14 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	msg = format_expand_time(ft, template);
-	if (args_has(self->args, 'p'))
+	if (cmdq_get_client(item) == NULL)
+		cmdq_error(item, "%s", msg);
+	else if (args_has(args, 'p'))
 		cmdq_print(item, "%s", msg);
-	else if (c != NULL)
-		status_message_set(c, "%s", msg);
+	else if (tc != NULL) {
+		status_message_set(tc, delay, 0, args_has(args, 'N'), "%s",
+		    msg);
+	}
 	free(msg);
 
 	format_free(ft);

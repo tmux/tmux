@@ -18,15 +18,18 @@
 
 #include <sys/types.h>
 
+#include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <unistd.h>
 
 #include "tmux.h"
 
 /*
- * Show client message log.
+ * Show message log.
  */
+
+#define SHOW_MESSAGES_TEMPLATE \
+	"#{t/p:message_time}: #{message_text}"
 
 static enum cmd_retval	cmd_show_messages_exec(struct cmd *,
 			    struct cmdq_item *);
@@ -35,29 +38,31 @@ const struct cmd_entry cmd_show_messages_entry = {
 	.name = "show-messages",
 	.alias = "showmsgs",
 
-	.args = { "JTt:", 0, 0 },
+	.args = { "JTt:", 0, 0, NULL },
 	.usage = "[-JT] " CMD_TARGET_CLIENT_USAGE,
 
-	.flags = CMD_AFTERHOOK,
+	.flags = CMD_AFTERHOOK|CMD_CLIENT_TFLAG,
 	.exec = cmd_show_messages_exec
 };
 
-static int	cmd_show_messages_terminals(struct cmdq_item *, int);
-
 static int
-cmd_show_messages_terminals(struct cmdq_item *item, int blank)
+cmd_show_messages_terminals(struct cmd *self, struct cmdq_item *item, int blank)
 {
+	struct args	*args = cmd_get_args(self);
+	struct client	*tc = cmdq_get_target_client(item);
 	struct tty_term	*term;
 	u_int		 i, n;
 
 	n = 0;
 	LIST_FOREACH(term, &tty_terms, entry) {
+		if (args_has(args, 't') && term != tc->tty.term)
+			continue;
 		if (blank) {
 			cmdq_print(item, "%s", "");
 			blank = 0;
 		}
-		cmdq_print(item, "Terminal %u: %s [references=%u, flags=0x%x]:",
-		    n, term->name, term->references, term->flags);
+		cmdq_print(item, "Terminal %u: %s for %s, flags=0x%x:", n,
+		    term->name, term->tty->client->name, term->flags);
 		n++;
 		for (i = 0; i < tty_term_ncodes(); i++)
 			cmdq_print(item, "%s", tty_term_describe(term, i));
@@ -68,18 +73,15 @@ cmd_show_messages_terminals(struct cmdq_item *item, int blank)
 static enum cmd_retval
 cmd_show_messages_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
-	struct client		*c;
+	struct args		*args = cmd_get_args(self);
 	struct message_entry	*msg;
-	char			*tim;
+	char			*s;
 	int			 done, blank;
-
-	if ((c = cmd_find_client(item, args_get(args, 't'), 0)) == NULL)
-		return (CMD_RETURN_ERROR);
+	struct format_tree	*ft;
 
 	done = blank = 0;
 	if (args_has(args, 'T')) {
-		blank = cmd_show_messages_terminals(item, blank);
+		blank = cmd_show_messages_terminals(self, item, blank);
 		done = 1;
 	}
 	if (args_has(args, 'J')) {
@@ -89,12 +91,17 @@ cmd_show_messages_exec(struct cmd *self, struct cmdq_item *item)
 	if (done)
 		return (CMD_RETURN_NORMAL);
 
-	TAILQ_FOREACH(msg, &c->message_log, entry) {
-		tim = ctime(&msg->msg_time);
-		*strchr(tim, '\n') = '\0';
+	ft = format_create_from_target(item);
+	TAILQ_FOREACH_REVERSE(msg, &message_log, message_list, entry) {
+		format_add(ft, "message_text", "%s", msg->msg);
+		format_add(ft, "message_number", "%u", msg->msg_num);
+		format_add_tv(ft, "message_time", &msg->msg_time);
 
-		cmdq_print(item, "%s %s", tim, msg->msg);
+		s = format_expand(ft, SHOW_MESSAGES_TEMPLATE);
+		cmdq_print(item, "%s", s);
+		free(s);
 	}
+	format_free(ft);
 
 	return (CMD_RETURN_NORMAL);
 }

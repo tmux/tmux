@@ -22,6 +22,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "tmux.h"
 
@@ -111,6 +112,9 @@ colour_tostring(int c)
 	static char	s[32];
 	u_char		r, g, b;
 
+	if (c == -1)
+		return ("invalid");
+
 	if (c & COLOUR_FLAG_RGB) {
 		colour_split_rgb(c, &r, &g, &b);
 		xsnprintf(s, sizeof s, "#%02x%02x%02x", r, g, b);
@@ -189,6 +193,12 @@ colour_fromstring(const char *s)
 			return (-1);
 		return (n | COLOUR_FLAG_256);
 	}
+	if (strncasecmp(s, "color", (sizeof "color") - 1) == 0) {
+		n = strtonum(s + (sizeof "color") - 1, 0, 255, &errstr);
+		if (errstr != NULL)
+			return (-1);
+		return (n | COLOUR_FLAG_256);
+	}
 
 	if (strcasecmp(s, "default") == 0)
 		return (8);
@@ -227,7 +237,7 @@ colour_fromstring(const char *s)
 		return (96);
 	if (strcasecmp(s, "brightwhite") == 0 || strcmp(s, "97") == 0)
 		return (97);
-	return (-1);
+	return (colour_byname(s));
 }
 
 /* Convert 256 colour to RGB colour. */
@@ -328,4 +338,721 @@ colour_256to16(int c)
 	};
 
 	return (table[c & 0xff]);
+}
+
+/* Get colour by X11 colour name. */
+int
+colour_byname(const char *name)
+{
+	static const struct {
+		const char	*name;
+		int		 c;
+	} colours[] = {
+		{ "AliceBlue", 0xf0f8ff },
+		{ "AntiqueWhite", 0xfaebd7 },
+		{ "AntiqueWhite1", 0xffefdb },
+		{ "AntiqueWhite2", 0xeedfcc },
+		{ "AntiqueWhite3", 0xcdc0b0 },
+		{ "AntiqueWhite4", 0x8b8378 },
+		{ "BlanchedAlmond", 0xffebcd },
+		{ "BlueViolet", 0x8a2be2 },
+		{ "CadetBlue", 0x5f9ea0 },
+		{ "CadetBlue1", 0x98f5ff },
+		{ "CadetBlue2", 0x8ee5ee },
+		{ "CadetBlue3", 0x7ac5cd },
+		{ "CadetBlue4", 0x53868b },
+		{ "CornflowerBlue", 0x6495ed },
+		{ "DarkBlue", 0x00008b },
+		{ "DarkCyan", 0x008b8b },
+		{ "DarkGoldenrod", 0xb8860b },
+		{ "DarkGoldenrod1", 0xffb90f },
+		{ "DarkGoldenrod2", 0xeead0e },
+		{ "DarkGoldenrod3", 0xcd950c },
+		{ "DarkGoldenrod4", 0x8b6508 },
+		{ "DarkGray", 0xa9a9a9 },
+		{ "DarkGreen", 0x006400 },
+		{ "DarkGrey", 0xa9a9a9 },
+		{ "DarkKhaki", 0xbdb76b },
+		{ "DarkMagenta", 0x8b008b },
+		{ "DarkOliveGreen", 0x556b2f },
+		{ "DarkOliveGreen1", 0xcaff70 },
+		{ "DarkOliveGreen2", 0xbcee68 },
+		{ "DarkOliveGreen3", 0xa2cd5a },
+		{ "DarkOliveGreen4", 0x6e8b3d },
+		{ "DarkOrange", 0xff8c00 },
+		{ "DarkOrange1", 0xff7f00 },
+		{ "DarkOrange2", 0xee7600 },
+		{ "DarkOrange3", 0xcd6600 },
+		{ "DarkOrange4", 0x8b4500 },
+		{ "DarkOrchid", 0x9932cc },
+		{ "DarkOrchid1", 0xbf3eff },
+		{ "DarkOrchid2", 0xb23aee },
+		{ "DarkOrchid3", 0x9a32cd },
+		{ "DarkOrchid4", 0x68228b },
+		{ "DarkRed", 0x8b0000 },
+		{ "DarkSalmon", 0xe9967a },
+		{ "DarkSeaGreen", 0x8fbc8f },
+		{ "DarkSeaGreen1", 0xc1ffc1 },
+		{ "DarkSeaGreen2", 0xb4eeb4 },
+		{ "DarkSeaGreen3", 0x9bcd9b },
+		{ "DarkSeaGreen4", 0x698b69 },
+		{ "DarkSlateBlue", 0x483d8b },
+		{ "DarkSlateGray", 0x2f4f4f },
+		{ "DarkSlateGray1", 0x97ffff },
+		{ "DarkSlateGray2", 0x8deeee },
+		{ "DarkSlateGray3", 0x79cdcd },
+		{ "DarkSlateGray4", 0x528b8b },
+		{ "DarkSlateGrey", 0x2f4f4f },
+		{ "DarkTurquoise", 0x00ced1 },
+		{ "DarkViolet", 0x9400d3 },
+		{ "DeepPink", 0xff1493 },
+		{ "DeepPink1", 0xff1493 },
+		{ "DeepPink2", 0xee1289 },
+		{ "DeepPink3", 0xcd1076 },
+		{ "DeepPink4", 0x8b0a50 },
+		{ "DeepSkyBlue", 0x00bfff },
+		{ "DeepSkyBlue1", 0x00bfff },
+		{ "DeepSkyBlue2", 0x00b2ee },
+		{ "DeepSkyBlue3", 0x009acd },
+		{ "DeepSkyBlue4", 0x00688b },
+		{ "DimGray", 0x696969 },
+		{ "DimGrey", 0x696969 },
+		{ "DodgerBlue", 0x1e90ff },
+		{ "DodgerBlue1", 0x1e90ff },
+		{ "DodgerBlue2", 0x1c86ee },
+		{ "DodgerBlue3", 0x1874cd },
+		{ "DodgerBlue4", 0x104e8b },
+		{ "FloralWhite", 0xfffaf0 },
+		{ "ForestGreen", 0x228b22 },
+		{ "GhostWhite", 0xf8f8ff },
+		{ "GreenYellow", 0xadff2f },
+		{ "HotPink", 0xff69b4 },
+		{ "HotPink1", 0xff6eb4 },
+		{ "HotPink2", 0xee6aa7 },
+		{ "HotPink3", 0xcd6090 },
+		{ "HotPink4", 0x8b3a62 },
+		{ "IndianRed", 0xcd5c5c },
+		{ "IndianRed1", 0xff6a6a },
+		{ "IndianRed2", 0xee6363 },
+		{ "IndianRed3", 0xcd5555 },
+		{ "IndianRed4", 0x8b3a3a },
+		{ "LavenderBlush", 0xfff0f5 },
+		{ "LavenderBlush1", 0xfff0f5 },
+		{ "LavenderBlush2", 0xeee0e5 },
+		{ "LavenderBlush3", 0xcdc1c5 },
+		{ "LavenderBlush4", 0x8b8386 },
+		{ "LawnGreen", 0x7cfc00 },
+		{ "LemonChiffon", 0xfffacd },
+		{ "LemonChiffon1", 0xfffacd },
+		{ "LemonChiffon2", 0xeee9bf },
+		{ "LemonChiffon3", 0xcdc9a5 },
+		{ "LemonChiffon4", 0x8b8970 },
+		{ "LightBlue", 0xadd8e6 },
+		{ "LightBlue1", 0xbfefff },
+		{ "LightBlue2", 0xb2dfee },
+		{ "LightBlue3", 0x9ac0cd },
+		{ "LightBlue4", 0x68838b },
+		{ "LightCoral", 0xf08080 },
+		{ "LightCyan", 0xe0ffff },
+		{ "LightCyan1", 0xe0ffff },
+		{ "LightCyan2", 0xd1eeee },
+		{ "LightCyan3", 0xb4cdcd },
+		{ "LightCyan4", 0x7a8b8b },
+		{ "LightGoldenrod", 0xeedd82 },
+		{ "LightGoldenrod1", 0xffec8b },
+		{ "LightGoldenrod2", 0xeedc82 },
+		{ "LightGoldenrod3", 0xcdbe70 },
+		{ "LightGoldenrod4", 0x8b814c },
+		{ "LightGoldenrodYellow", 0xfafad2 },
+		{ "LightGray", 0xd3d3d3 },
+		{ "LightGreen", 0x90ee90 },
+		{ "LightGrey", 0xd3d3d3 },
+		{ "LightPink", 0xffb6c1 },
+		{ "LightPink1", 0xffaeb9 },
+		{ "LightPink2", 0xeea2ad },
+		{ "LightPink3", 0xcd8c95 },
+		{ "LightPink4", 0x8b5f65 },
+		{ "LightSalmon", 0xffa07a },
+		{ "LightSalmon1", 0xffa07a },
+		{ "LightSalmon2", 0xee9572 },
+		{ "LightSalmon3", 0xcd8162 },
+		{ "LightSalmon4", 0x8b5742 },
+		{ "LightSeaGreen", 0x20b2aa },
+		{ "LightSkyBlue", 0x87cefa },
+		{ "LightSkyBlue1", 0xb0e2ff },
+		{ "LightSkyBlue2", 0xa4d3ee },
+		{ "LightSkyBlue3", 0x8db6cd },
+		{ "LightSkyBlue4", 0x607b8b },
+		{ "LightSlateBlue", 0x8470ff },
+		{ "LightSlateGray", 0x778899 },
+		{ "LightSlateGrey", 0x778899 },
+		{ "LightSteelBlue", 0xb0c4de },
+		{ "LightSteelBlue1", 0xcae1ff },
+		{ "LightSteelBlue2", 0xbcd2ee },
+		{ "LightSteelBlue3", 0xa2b5cd },
+		{ "LightSteelBlue4", 0x6e7b8b },
+		{ "LightYellow", 0xffffe0 },
+		{ "LightYellow1", 0xffffe0 },
+		{ "LightYellow2", 0xeeeed1 },
+		{ "LightYellow3", 0xcdcdb4 },
+		{ "LightYellow4", 0x8b8b7a },
+		{ "LimeGreen", 0x32cd32 },
+		{ "MediumAquamarine", 0x66cdaa },
+		{ "MediumBlue", 0x0000cd },
+		{ "MediumOrchid", 0xba55d3 },
+		{ "MediumOrchid1", 0xe066ff },
+		{ "MediumOrchid2", 0xd15fee },
+		{ "MediumOrchid3", 0xb452cd },
+		{ "MediumOrchid4", 0x7a378b },
+		{ "MediumPurple", 0x9370db },
+		{ "MediumPurple1", 0xab82ff },
+		{ "MediumPurple2", 0x9f79ee },
+		{ "MediumPurple3", 0x8968cd },
+		{ "MediumPurple4", 0x5d478b },
+		{ "MediumSeaGreen", 0x3cb371 },
+		{ "MediumSlateBlue", 0x7b68ee },
+		{ "MediumSpringGreen", 0x00fa9a },
+		{ "MediumTurquoise", 0x48d1cc },
+		{ "MediumVioletRed", 0xc71585 },
+		{ "MidnightBlue", 0x191970 },
+		{ "MintCream", 0xf5fffa },
+		{ "MistyRose", 0xffe4e1 },
+		{ "MistyRose1", 0xffe4e1 },
+		{ "MistyRose2", 0xeed5d2 },
+		{ "MistyRose3", 0xcdb7b5 },
+		{ "MistyRose4", 0x8b7d7b },
+		{ "NavajoWhite", 0xffdead },
+		{ "NavajoWhite1", 0xffdead },
+		{ "NavajoWhite2", 0xeecfa1 },
+		{ "NavajoWhite3", 0xcdb38b },
+		{ "NavajoWhite4", 0x8b795e },
+		{ "NavyBlue", 0x000080 },
+		{ "OldLace", 0xfdf5e6 },
+		{ "OliveDrab", 0x6b8e23 },
+		{ "OliveDrab1", 0xc0ff3e },
+		{ "OliveDrab2", 0xb3ee3a },
+		{ "OliveDrab3", 0x9acd32 },
+		{ "OliveDrab4", 0x698b22 },
+		{ "OrangeRed", 0xff4500 },
+		{ "OrangeRed1", 0xff4500 },
+		{ "OrangeRed2", 0xee4000 },
+		{ "OrangeRed3", 0xcd3700 },
+		{ "OrangeRed4", 0x8b2500 },
+		{ "PaleGoldenrod", 0xeee8aa },
+		{ "PaleGreen", 0x98fb98 },
+		{ "PaleGreen1", 0x9aff9a },
+		{ "PaleGreen2", 0x90ee90 },
+		{ "PaleGreen3", 0x7ccd7c },
+		{ "PaleGreen4", 0x548b54 },
+		{ "PaleTurquoise", 0xafeeee },
+		{ "PaleTurquoise1", 0xbbffff },
+		{ "PaleTurquoise2", 0xaeeeee },
+		{ "PaleTurquoise3", 0x96cdcd },
+		{ "PaleTurquoise4", 0x668b8b },
+		{ "PaleVioletRed", 0xdb7093 },
+		{ "PaleVioletRed1", 0xff82ab },
+		{ "PaleVioletRed2", 0xee799f },
+		{ "PaleVioletRed3", 0xcd6889 },
+		{ "PaleVioletRed4", 0x8b475d },
+		{ "PapayaWhip", 0xffefd5 },
+		{ "PeachPuff", 0xffdab9 },
+		{ "PeachPuff1", 0xffdab9 },
+		{ "PeachPuff2", 0xeecbad },
+		{ "PeachPuff3", 0xcdaf95 },
+		{ "PeachPuff4", 0x8b7765 },
+		{ "PowderBlue", 0xb0e0e6 },
+		{ "RebeccaPurple", 0x663399 },
+		{ "RosyBrown", 0xbc8f8f },
+		{ "RosyBrown1", 0xffc1c1 },
+		{ "RosyBrown2", 0xeeb4b4 },
+		{ "RosyBrown3", 0xcd9b9b },
+		{ "RosyBrown4", 0x8b6969 },
+		{ "RoyalBlue", 0x4169e1 },
+		{ "RoyalBlue1", 0x4876ff },
+		{ "RoyalBlue2", 0x436eee },
+		{ "RoyalBlue3", 0x3a5fcd },
+		{ "RoyalBlue4", 0x27408b },
+		{ "SaddleBrown", 0x8b4513 },
+		{ "SandyBrown", 0xf4a460 },
+		{ "SeaGreen", 0x2e8b57 },
+		{ "SeaGreen1", 0x54ff9f },
+		{ "SeaGreen2", 0x4eee94 },
+		{ "SeaGreen3", 0x43cd80 },
+		{ "SeaGreen4", 0x2e8b57 },
+		{ "SkyBlue", 0x87ceeb },
+		{ "SkyBlue1", 0x87ceff },
+		{ "SkyBlue2", 0x7ec0ee },
+		{ "SkyBlue3", 0x6ca6cd },
+		{ "SkyBlue4", 0x4a708b },
+		{ "SlateBlue", 0x6a5acd },
+		{ "SlateBlue1", 0x836fff },
+		{ "SlateBlue2", 0x7a67ee },
+		{ "SlateBlue3", 0x6959cd },
+		{ "SlateBlue4", 0x473c8b },
+		{ "SlateGray", 0x708090 },
+		{ "SlateGray1", 0xc6e2ff },
+		{ "SlateGray2", 0xb9d3ee },
+		{ "SlateGray3", 0x9fb6cd },
+		{ "SlateGray4", 0x6c7b8b },
+		{ "SlateGrey", 0x708090 },
+		{ "SpringGreen", 0x00ff7f },
+		{ "SpringGreen1", 0x00ff7f },
+		{ "SpringGreen2", 0x00ee76 },
+		{ "SpringGreen3", 0x00cd66 },
+		{ "SpringGreen4", 0x008b45 },
+		{ "SteelBlue", 0x4682b4 },
+		{ "SteelBlue1", 0x63b8ff },
+		{ "SteelBlue2", 0x5cacee },
+		{ "SteelBlue3", 0x4f94cd },
+		{ "SteelBlue4", 0x36648b },
+		{ "VioletRed", 0xd02090 },
+		{ "VioletRed1", 0xff3e96 },
+		{ "VioletRed2", 0xee3a8c },
+		{ "VioletRed3", 0xcd3278 },
+		{ "VioletRed4", 0x8b2252 },
+		{ "WebGray", 0x808080 },
+		{ "WebGreen", 0x008000 },
+		{ "WebGrey", 0x808080 },
+		{ "WebMaroon", 0x800000 },
+		{ "WebPurple", 0x800080 },
+		{ "WhiteSmoke", 0xf5f5f5 },
+		{ "X11Gray", 0xbebebe },
+		{ "X11Green", 0x00ff00 },
+		{ "X11Grey", 0xbebebe },
+		{ "X11Maroon", 0xb03060 },
+		{ "X11Purple", 0xa020f0 },
+		{ "YellowGreen", 0x9acd32 },
+		{ "alice blue", 0xf0f8ff },
+		{ "antique white", 0xfaebd7 },
+		{ "aqua", 0x00ffff },
+		{ "aquamarine", 0x7fffd4 },
+		{ "aquamarine1", 0x7fffd4 },
+		{ "aquamarine2", 0x76eec6 },
+		{ "aquamarine3", 0x66cdaa },
+		{ "aquamarine4", 0x458b74 },
+		{ "azure", 0xf0ffff },
+		{ "azure1", 0xf0ffff },
+		{ "azure2", 0xe0eeee },
+		{ "azure3", 0xc1cdcd },
+		{ "azure4", 0x838b8b },
+		{ "beige", 0xf5f5dc },
+		{ "bisque", 0xffe4c4 },
+		{ "bisque1", 0xffe4c4 },
+		{ "bisque2", 0xeed5b7 },
+		{ "bisque3", 0xcdb79e },
+		{ "bisque4", 0x8b7d6b },
+		{ "black", 0x000000 },
+		{ "blanched almond", 0xffebcd },
+		{ "blue violet", 0x8a2be2 },
+		{ "blue", 0x0000ff },
+		{ "blue1", 0x0000ff },
+		{ "blue2", 0x0000ee },
+		{ "blue3", 0x0000cd },
+		{ "blue4", 0x00008b },
+		{ "brown", 0xa52a2a },
+		{ "brown1", 0xff4040 },
+		{ "brown2", 0xee3b3b },
+		{ "brown3", 0xcd3333 },
+		{ "brown4", 0x8b2323 },
+		{ "burlywood", 0xdeb887 },
+		{ "burlywood1", 0xffd39b },
+		{ "burlywood2", 0xeec591 },
+		{ "burlywood3", 0xcdaa7d },
+		{ "burlywood4", 0x8b7355 },
+		{ "cadet blue", 0x5f9ea0 },
+		{ "chartreuse", 0x7fff00 },
+		{ "chartreuse1", 0x7fff00 },
+		{ "chartreuse2", 0x76ee00 },
+		{ "chartreuse3", 0x66cd00 },
+		{ "chartreuse4", 0x458b00 },
+		{ "chocolate", 0xd2691e },
+		{ "chocolate1", 0xff7f24 },
+		{ "chocolate2", 0xee7621 },
+		{ "chocolate3", 0xcd661d },
+		{ "chocolate4", 0x8b4513 },
+		{ "coral", 0xff7f50 },
+		{ "coral1", 0xff7256 },
+		{ "coral2", 0xee6a50 },
+		{ "coral3", 0xcd5b45 },
+		{ "coral4", 0x8b3e2f },
+		{ "cornflower blue", 0x6495ed },
+		{ "cornsilk", 0xfff8dc },
+		{ "cornsilk1", 0xfff8dc },
+		{ "cornsilk2", 0xeee8cd },
+		{ "cornsilk3", 0xcdc8b1 },
+		{ "cornsilk4", 0x8b8878 },
+		{ "crimson", 0xdc143c },
+		{ "cyan", 0x00ffff },
+		{ "cyan1", 0x00ffff },
+		{ "cyan2", 0x00eeee },
+		{ "cyan3", 0x00cdcd },
+		{ "cyan4", 0x008b8b },
+		{ "dark blue", 0x00008b },
+		{ "dark cyan", 0x008b8b },
+		{ "dark goldenrod", 0xb8860b },
+		{ "dark gray", 0xa9a9a9 },
+		{ "dark green", 0x006400 },
+		{ "dark grey", 0xa9a9a9 },
+		{ "dark khaki", 0xbdb76b },
+		{ "dark magenta", 0x8b008b },
+		{ "dark olive green", 0x556b2f },
+		{ "dark orange", 0xff8c00 },
+		{ "dark orchid", 0x9932cc },
+		{ "dark red", 0x8b0000 },
+		{ "dark salmon", 0xe9967a },
+		{ "dark sea green", 0x8fbc8f },
+		{ "dark slate blue", 0x483d8b },
+		{ "dark slate gray", 0x2f4f4f },
+		{ "dark slate grey", 0x2f4f4f },
+		{ "dark turquoise", 0x00ced1 },
+		{ "dark violet", 0x9400d3 },
+		{ "deep pink", 0xff1493 },
+		{ "deep sky blue", 0x00bfff },
+		{ "dim gray", 0x696969 },
+		{ "dim grey", 0x696969 },
+		{ "dodger blue", 0x1e90ff },
+		{ "firebrick", 0xb22222 },
+		{ "firebrick1", 0xff3030 },
+		{ "firebrick2", 0xee2c2c },
+		{ "firebrick3", 0xcd2626 },
+		{ "firebrick4", 0x8b1a1a },
+		{ "floral white", 0xfffaf0 },
+		{ "forest green", 0x228b22 },
+		{ "fuchsia", 0xff00ff },
+		{ "gainsboro", 0xdcdcdc },
+		{ "ghost white", 0xf8f8ff },
+		{ "gold", 0xffd700 },
+		{ "gold1", 0xffd700 },
+		{ "gold2", 0xeec900 },
+		{ "gold3", 0xcdad00 },
+		{ "gold4", 0x8b7500 },
+		{ "goldenrod", 0xdaa520 },
+		{ "goldenrod1", 0xffc125 },
+		{ "goldenrod2", 0xeeb422 },
+		{ "goldenrod3", 0xcd9b1d },
+		{ "goldenrod4", 0x8b6914 },
+		{ "green yellow", 0xadff2f },
+		{ "green", 0x00ff00 },
+		{ "green1", 0x00ff00 },
+		{ "green2", 0x00ee00 },
+		{ "green3", 0x00cd00 },
+		{ "green4", 0x008b00 },
+		{ "honeydew", 0xf0fff0 },
+		{ "honeydew1", 0xf0fff0 },
+		{ "honeydew2", 0xe0eee0 },
+		{ "honeydew3", 0xc1cdc1 },
+		{ "honeydew4", 0x838b83 },
+		{ "hot pink", 0xff69b4 },
+		{ "indian red", 0xcd5c5c },
+		{ "indigo", 0x4b0082 },
+		{ "ivory", 0xfffff0 },
+		{ "ivory1", 0xfffff0 },
+		{ "ivory2", 0xeeeee0 },
+		{ "ivory3", 0xcdcdc1 },
+		{ "ivory4", 0x8b8b83 },
+		{ "khaki", 0xf0e68c },
+		{ "khaki1", 0xfff68f },
+		{ "khaki2", 0xeee685 },
+		{ "khaki3", 0xcdc673 },
+		{ "khaki4", 0x8b864e },
+		{ "lavender blush", 0xfff0f5 },
+		{ "lavender", 0xe6e6fa },
+		{ "lawn green", 0x7cfc00 },
+		{ "lemon chiffon", 0xfffacd },
+		{ "light blue", 0xadd8e6 },
+		{ "light coral", 0xf08080 },
+		{ "light cyan", 0xe0ffff },
+		{ "light goldenrod yellow", 0xfafad2 },
+		{ "light goldenrod", 0xeedd82 },
+		{ "light gray", 0xd3d3d3 },
+		{ "light green", 0x90ee90 },
+		{ "light grey", 0xd3d3d3 },
+		{ "light pink", 0xffb6c1 },
+		{ "light salmon", 0xffa07a },
+		{ "light sea green", 0x20b2aa },
+		{ "light sky blue", 0x87cefa },
+		{ "light slate blue", 0x8470ff },
+		{ "light slate gray", 0x778899 },
+		{ "light slate grey", 0x778899 },
+		{ "light steel blue", 0xb0c4de },
+		{ "light yellow", 0xffffe0 },
+		{ "lime green", 0x32cd32 },
+		{ "lime", 0x00ff00 },
+		{ "linen", 0xfaf0e6 },
+		{ "magenta", 0xff00ff },
+		{ "magenta1", 0xff00ff },
+		{ "magenta2", 0xee00ee },
+		{ "magenta3", 0xcd00cd },
+		{ "magenta4", 0x8b008b },
+		{ "maroon", 0xb03060 },
+		{ "maroon1", 0xff34b3 },
+		{ "maroon2", 0xee30a7 },
+		{ "maroon3", 0xcd2990 },
+		{ "maroon4", 0x8b1c62 },
+		{ "medium aquamarine", 0x66cdaa },
+		{ "medium blue", 0x0000cd },
+		{ "medium orchid", 0xba55d3 },
+		{ "medium purple", 0x9370db },
+		{ "medium sea green", 0x3cb371 },
+		{ "medium slate blue", 0x7b68ee },
+		{ "medium spring green", 0x00fa9a },
+		{ "medium turquoise", 0x48d1cc },
+		{ "medium violet red", 0xc71585 },
+		{ "midnight blue", 0x191970 },
+		{ "mint cream", 0xf5fffa },
+		{ "misty rose", 0xffe4e1 },
+		{ "moccasin", 0xffe4b5 },
+		{ "navajo white", 0xffdead },
+		{ "navy blue", 0x000080 },
+		{ "navy", 0x000080 },
+		{ "old lace", 0xfdf5e6 },
+		{ "olive drab", 0x6b8e23 },
+		{ "olive", 0x808000 },
+		{ "orange red", 0xff4500 },
+		{ "orange", 0xffa500 },
+		{ "orange1", 0xffa500 },
+		{ "orange2", 0xee9a00 },
+		{ "orange3", 0xcd8500 },
+		{ "orange4", 0x8b5a00 },
+		{ "orchid", 0xda70d6 },
+		{ "orchid1", 0xff83fa },
+		{ "orchid2", 0xee7ae9 },
+		{ "orchid3", 0xcd69c9 },
+		{ "orchid4", 0x8b4789 },
+		{ "pale goldenrod", 0xeee8aa },
+		{ "pale green", 0x98fb98 },
+		{ "pale turquoise", 0xafeeee },
+		{ "pale violet red", 0xdb7093 },
+		{ "papaya whip", 0xffefd5 },
+		{ "peach puff", 0xffdab9 },
+		{ "peru", 0xcd853f },
+		{ "pink", 0xffc0cb },
+		{ "pink1", 0xffb5c5 },
+		{ "pink2", 0xeea9b8 },
+		{ "pink3", 0xcd919e },
+		{ "pink4", 0x8b636c },
+		{ "plum", 0xdda0dd },
+		{ "plum1", 0xffbbff },
+		{ "plum2", 0xeeaeee },
+		{ "plum3", 0xcd96cd },
+		{ "plum4", 0x8b668b },
+		{ "powder blue", 0xb0e0e6 },
+		{ "purple", 0xa020f0 },
+		{ "purple1", 0x9b30ff },
+		{ "purple2", 0x912cee },
+		{ "purple3", 0x7d26cd },
+		{ "purple4", 0x551a8b },
+		{ "rebecca purple", 0x663399 },
+		{ "red", 0xff0000 },
+		{ "red1", 0xff0000 },
+		{ "red2", 0xee0000 },
+		{ "red3", 0xcd0000 },
+		{ "red4", 0x8b0000 },
+		{ "rosy brown", 0xbc8f8f },
+		{ "royal blue", 0x4169e1 },
+		{ "saddle brown", 0x8b4513 },
+		{ "salmon", 0xfa8072 },
+		{ "salmon1", 0xff8c69 },
+		{ "salmon2", 0xee8262 },
+		{ "salmon3", 0xcd7054 },
+		{ "salmon4", 0x8b4c39 },
+		{ "sandy brown", 0xf4a460 },
+		{ "sea green", 0x2e8b57 },
+		{ "seashell", 0xfff5ee },
+		{ "seashell1", 0xfff5ee },
+		{ "seashell2", 0xeee5de },
+		{ "seashell3", 0xcdc5bf },
+		{ "seashell4", 0x8b8682 },
+		{ "sienna", 0xa0522d },
+		{ "sienna1", 0xff8247 },
+		{ "sienna2", 0xee7942 },
+		{ "sienna3", 0xcd6839 },
+		{ "sienna4", 0x8b4726 },
+		{ "silver", 0xc0c0c0 },
+		{ "sky blue", 0x87ceeb },
+		{ "slate blue", 0x6a5acd },
+		{ "slate gray", 0x708090 },
+		{ "slate grey", 0x708090 },
+		{ "snow", 0xfffafa },
+		{ "snow1", 0xfffafa },
+		{ "snow2", 0xeee9e9 },
+		{ "snow3", 0xcdc9c9 },
+		{ "snow4", 0x8b8989 },
+		{ "spring green", 0x00ff7f },
+		{ "steel blue", 0x4682b4 },
+		{ "tan", 0xd2b48c },
+		{ "tan1", 0xffa54f },
+		{ "tan2", 0xee9a49 },
+		{ "tan3", 0xcd853f },
+		{ "tan4", 0x8b5a2b },
+		{ "teal", 0x008080 },
+		{ "thistle", 0xd8bfd8 },
+		{ "thistle1", 0xffe1ff },
+		{ "thistle2", 0xeed2ee },
+		{ "thistle3", 0xcdb5cd },
+		{ "thistle4", 0x8b7b8b },
+		{ "tomato", 0xff6347 },
+		{ "tomato1", 0xff6347 },
+		{ "tomato2", 0xee5c42 },
+		{ "tomato3", 0xcd4f39 },
+		{ "tomato4", 0x8b3626 },
+		{ "turquoise", 0x40e0d0 },
+		{ "turquoise1", 0x00f5ff },
+		{ "turquoise2", 0x00e5ee },
+		{ "turquoise3", 0x00c5cd },
+		{ "turquoise4", 0x00868b },
+		{ "violet red", 0xd02090 },
+		{ "violet", 0xee82ee },
+		{ "web gray", 0x808080 },
+		{ "web green", 0x008000 },
+		{ "web grey", 0x808080 },
+		{ "web maroon", 0x800000 },
+		{ "web purple", 0x800080 },
+		{ "wheat", 0xf5deb3 },
+		{ "wheat1", 0xffe7ba },
+		{ "wheat2", 0xeed8ae },
+		{ "wheat3", 0xcdba96 },
+		{ "wheat4", 0x8b7e66 },
+		{ "white smoke", 0xf5f5f5 },
+		{ "white", 0xffffff },
+		{ "x11 gray", 0xbebebe },
+		{ "x11 green", 0x00ff00 },
+		{ "x11 grey", 0xbebebe },
+		{ "x11 maroon", 0xb03060 },
+		{ "x11 purple", 0xa020f0 },
+		{ "yellow green", 0x9acd32 },
+		{ "yellow", 0xffff00 },
+		{ "yellow1", 0xffff00 },
+		{ "yellow2", 0xeeee00 },
+		{ "yellow3", 0xcdcd00 },
+		{ "yellow4", 0x8b8b00 }
+	};
+	u_int	i;
+	int	c;
+
+	if (strncmp(name, "grey", 4) == 0 || strncmp(name, "gray", 4) == 0) {
+		if (!isdigit((u_char)name[4]))
+			return (0xbebebe|COLOUR_FLAG_RGB);
+		c = round(2.55 * atoi(name + 4));
+		if (c < 0 || c > 255)
+			return (-1);
+		return (colour_join_rgb(c, c, c));
+	}
+	for (i = 0; i < nitems(colours); i++) {
+		if (strcasecmp(colours[i].name, name) == 0)
+			return (colours[i].c|COLOUR_FLAG_RGB);
+	}
+	return (-1);
+}
+
+/* Initialize palette. */
+void
+colour_palette_init(struct colour_palette *p)
+{
+	p->fg = 8;
+	p->bg = 8;
+	p->palette = NULL;
+	p->default_palette = NULL;
+}
+
+/* Clear palette. */
+void
+colour_palette_clear(struct colour_palette *p)
+{
+	if (p != NULL) {
+		p->fg = 8;
+		p->bg = 8;
+ 		free(p->palette);
+		p->palette = NULL;
+	}
+}
+
+/* Free a palette. */
+void
+colour_palette_free(struct colour_palette *p)
+{
+	if (p != NULL) {
+		free(p->palette);
+		p->palette = NULL;
+		free(p->default_palette);
+		p->default_palette = NULL;
+	}
+}
+
+/* Get a colour from a palette. */
+int
+colour_palette_get(struct colour_palette *p, int c)
+{
+	if (p == NULL)
+		return (-1);
+
+	if (c >= 90 && c <= 97)
+		c = 8 + c - 90;
+	else if (c & COLOUR_FLAG_256)
+		c &= ~COLOUR_FLAG_256;
+	else if (c >= 8)
+		return (-1);
+
+	if (p->palette != NULL && p->palette[c] != -1)
+		return (p->palette[c]);
+	if (p->default_palette != NULL && p->default_palette[c] != -1)
+		return (p->default_palette[c]);
+	return (-1);
+}
+
+/* Set a colour in a palette. */
+int
+colour_palette_set(struct colour_palette *p, int n, int c)
+{
+	u_int	i;
+
+	if (p == NULL || n > 255)
+		return (0);
+
+	if (c == -1 && p->palette == NULL)
+		return (0);
+
+	if (c != -1 && p->palette == NULL) {
+		if (p->palette == NULL)
+			p->palette = xcalloc(256, sizeof *p->palette);
+		for (i = 0; i < 256; i++)
+			p->palette[i] = -1;
+	}
+	p->palette[n] = c;
+	return (1);
+}
+
+/* Build palette defaults from an option. */
+void
+colour_palette_from_option(struct colour_palette *p, struct options *oo)
+{
+	struct options_entry		*o;
+	struct options_array_item	*a;
+	u_int				 i, n;
+	int				 c;
+
+	if (p == NULL)
+		return;
+
+	o = options_get(oo, "pane-colours");
+	if ((a = options_array_first(o)) == NULL) {
+		if (p->default_palette != NULL) {
+			free(p->default_palette);
+			p->default_palette = NULL;
+		}
+		return;
+	}
+	if (p->default_palette == NULL)
+		p->default_palette = xcalloc(256, sizeof *p->default_palette);
+	for (i = 0; i < 256; i++)
+		p->default_palette[i] = -1;
+	while (a != NULL) {
+		n = options_array_item_index(a);
+		if (n < 256) {
+			c = options_array_item_value(a)->number;
+			p->default_palette[n] = c;
+		}
+		a = options_array_next(a);
+	}
+
 }

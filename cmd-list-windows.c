@@ -28,14 +28,14 @@
  */
 
 #define LIST_WINDOWS_TEMPLATE					\
-	"#{window_index}: #{window_name}#{window_flags} "	\
+	"#{window_index}: #{window_name}#{window_raw_flags} "	\
 	"(#{window_panes} panes) "				\
 	"[#{window_width}x#{window_height}] "			\
 	"[layout #{window_layout}] #{window_id}"		\
 	"#{?window_active, (active),}";
 #define LIST_WINDOWS_WITH_SESSION_TEMPLATE			\
 	"#{session_name}:"					\
-	"#{window_index}: #{window_name}#{window_flags} "	\
+	"#{window_index}: #{window_name}#{window_raw_flags} "	\
 	"(#{window_panes} panes) "				\
 	"[#{window_width}x#{window_height}] "
 
@@ -49,8 +49,8 @@ const struct cmd_entry cmd_list_windows_entry = {
 	.name = "list-windows",
 	.alias = "lsw",
 
-	.args = { "F:at:", 0, 0 },
-	.usage = "[-a] [-F format] " CMD_TARGET_SESSION_USAGE,
+	.args = { "F:f:at:", 0, 0, NULL },
+	.usage = "[-a] [-F format] [-f filter] " CMD_TARGET_SESSION_USAGE,
 
 	.target = { 't', CMD_FIND_SESSION, 0 },
 
@@ -61,12 +61,13 @@ const struct cmd_entry cmd_list_windows_entry = {
 static enum cmd_retval
 cmd_list_windows_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args	*args = self->args;
+	struct args		*args = cmd_get_args(self);
+	struct cmd_find_state	*target = cmdq_get_target(item);
 
 	if (args_has(args, 'a'))
 		cmd_list_windows_server(self, item);
 	else
-		cmd_list_windows_session(self, item->target.s, item, 0);
+		cmd_list_windows_session(self, target->s, item, 0);
 
 	return (CMD_RETURN_NORMAL);
 }
@@ -84,12 +85,13 @@ static void
 cmd_list_windows_session(struct cmd *self, struct session *s,
     struct cmdq_item *item, int type)
 {
-	struct args		*args = self->args;
+	struct args		*args = cmd_get_args(self);
 	struct winlink		*wl;
 	u_int			 n;
 	struct format_tree	*ft;
-	const char		*template;
-	char			*line;
+	const char		*template, *filter;
+	char			*line, *expanded;
+	int			 flag;
 
 	template = args_get(args, 'F');
 	if (template == NULL) {
@@ -102,16 +104,25 @@ cmd_list_windows_session(struct cmd *self, struct session *s,
 			break;
 		}
 	}
+	filter = args_get(args, 'f');
 
 	n = 0;
 	RB_FOREACH(wl, winlinks, &s->windows) {
-		ft = format_create(item->client, item, FORMAT_NONE, 0);
+		ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
 		format_add(ft, "line", "%u", n);
 		format_defaults(ft, NULL, s, wl, NULL);
 
-		line = format_expand(ft, template);
-		cmdq_print(item, "%s", line);
-		free(line);
+		if (filter != NULL) {
+			expanded = format_expand(ft, filter);
+			flag = format_true(expanded);
+			free(expanded);
+		} else
+			flag = 1;
+		if (flag) {
+			line = format_expand(ft, template);
+			cmdq_print(item, "%s", line);
+			free(line);
+		}
 
 		format_free(ft);
 		n++;

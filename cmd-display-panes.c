@@ -27,24 +27,33 @@
  * Display panes on a client.
  */
 
-static enum cmd_retval	cmd_display_panes_exec(struct cmd *,
-			    struct cmdq_item *);
+static enum args_parse_type	cmd_display_panes_args_parse(struct args *,
+				    u_int, char **);
+static enum cmd_retval		cmd_display_panes_exec(struct cmd *,
+				    struct cmdq_item *);
 
 const struct cmd_entry cmd_display_panes_entry = {
 	.name = "display-panes",
 	.alias = "displayp",
 
-	.args = { "bd:t:", 0, 1 },
-	.usage = "[-b] [-d duration] " CMD_TARGET_CLIENT_USAGE " [template]",
+	.args = { "bd:Nt:", 0, 1, cmd_display_panes_args_parse },
+	.usage = "[-bN] [-d duration] " CMD_TARGET_CLIENT_USAGE " [template]",
 
-	.flags = CMD_AFTERHOOK,
+	.flags = CMD_AFTERHOOK|CMD_CLIENT_TFLAG,
 	.exec = cmd_display_panes_exec
 };
 
 struct cmd_display_panes_data {
-	struct cmdq_item	*item;
-	char			*command;
+	struct cmdq_item		*item;
+	struct args_command_state	*state;
 };
+
+static enum args_parse_type
+cmd_display_panes_args_parse(__unused struct args *args, __unused u_int idx,
+    __unused char **cause)
+{
+	return (ARGS_PARSE_COMMANDS_OR_STRING);
+}
 
 static void
 cmd_display_panes_draw_pane(struct screen_redraw_ctx *ctx,
@@ -55,11 +64,11 @@ cmd_display_panes_draw_pane(struct screen_redraw_ctx *ctx,
 	struct session		*s = c->session;
 	struct options		*oo = s->options;
 	struct window		*w = wp->window;
-	struct grid_cell	 gc;
-	u_int			 idx, px, py, i, j, xoff, yoff, sx, sy;
+	struct grid_cell	 fgc, bgc;
+	u_int			 pane, idx, px, py, i, j, xoff, yoff, sx, sy;
 	int			 colour, active_colour;
-	char			 buf[16], *ptr;
-	size_t			 len;
+	char			 buf[16], lbuf[16], rbuf[16], *ptr;
+	size_t			 len, llen, rlen;
 
 	if (wp->xoff + wp->sx <= ctx->ox ||
 	    wp->xoff >= ctx->ox + ctx->sx ||
@@ -109,31 +118,50 @@ cmd_display_panes_draw_pane(struct screen_redraw_ctx *ctx,
 	px = sx / 2;
 	py = sy / 2;
 
-	if (window_pane_index(wp, &idx) != 0)
+	if (window_pane_index(wp, &pane) != 0)
 		fatalx("index not found");
-	len = xsnprintf(buf, sizeof buf, "%u", idx);
+	len = xsnprintf(buf, sizeof buf, "%u", pane);
 
 	if (sx < len)
 		return;
 	colour = options_get_number(oo, "display-panes-colour");
 	active_colour = options_get_number(oo, "display-panes-active-colour");
 
+	memcpy(&fgc, &grid_default_cell, sizeof fgc);
+	memcpy(&bgc, &grid_default_cell, sizeof bgc);
+	if (w->active == wp) {
+		fgc.fg = active_colour;
+		bgc.bg = active_colour;
+	} else {
+		fgc.fg = colour;
+		bgc.bg = colour;
+	}
+
+	rlen = xsnprintf(rbuf, sizeof rbuf, "%ux%u", wp->sx, wp->sy);
+	if (pane > 9 && pane < 35)
+		llen = xsnprintf(lbuf, sizeof lbuf, "%c", 'a' + (pane - 10));
+	else
+		llen = 0;
+
 	if (sx < len * 6 || sy < 5) {
-		tty_cursor(tty, xoff + px - len / 2, yoff + py);
-		goto draw_text;
+		tty_attributes(tty, &fgc, &grid_default_cell, NULL);
+		if (sx >= len + llen + 1) {
+			len += llen + 1;
+			tty_cursor(tty, xoff + px - len / 2, yoff + py);
+			tty_putn(tty, buf, len,	 len);
+			tty_putn(tty, " ", 1, 1);
+			tty_putn(tty, lbuf, llen, llen);
+		} else {
+			tty_cursor(tty, xoff + px - len / 2, yoff + py);
+			tty_putn(tty, buf, len, len);
+		}
+		goto out;
 	}
 
 	px -= len * 3;
 	py -= 2;
 
-	memcpy(&gc, &grid_default_cell, sizeof gc);
-	if (w->active == wp)
-		gc.bg = active_colour;
-	else
-		gc.bg = colour;
-	gc.flags |= GRID_FLAG_NOPALETTE;
-
-	tty_attributes(tty, &gc, wp);
+	tty_attributes(tty, &bgc, &grid_default_cell, NULL);
 	for (ptr = buf; *ptr != '\0'; ptr++) {
 		if (*ptr < '0' || *ptr > '9')
 			continue;
@@ -149,27 +177,26 @@ cmd_display_panes_draw_pane(struct screen_redraw_ctx *ctx,
 		px += 6;
 	}
 
-	len = xsnprintf(buf, sizeof buf, "%ux%u", wp->sx, wp->sy);
-	if (sx < len || sy < 6)
-		return;
-	tty_cursor(tty, xoff + sx - len, yoff);
+	if (sy <= 6)
+		goto out;
+	tty_attributes(tty, &fgc, &grid_default_cell, NULL);
+	if (rlen != 0 && sx >= rlen) {
+		tty_cursor(tty, xoff + sx - rlen, yoff);
+		tty_putn(tty, rbuf, rlen, rlen);
+	}
+	if (llen != 0) {
+		tty_cursor(tty, xoff + sx / 2 + len * 3 - llen - 1,
+		    yoff + py + 5);
+		tty_putn(tty, lbuf, llen, llen);
+	}
 
-draw_text:
-	memcpy(&gc, &grid_default_cell, sizeof gc);
-	if (w->active == wp)
-		gc.fg = active_colour;
-	else
-		gc.fg = colour;
-	gc.flags |= GRID_FLAG_NOPALETTE;
-
-	tty_attributes(tty, &gc, wp);
-	tty_puts(tty, buf);
-
+out:
 	tty_cursor(tty, 0, 0);
 }
 
 static void
-cmd_display_panes_draw(struct client *c, struct screen_redraw_ctx *ctx)
+cmd_display_panes_draw(struct client *c, __unused void *data,
+    struct screen_redraw_ctx *ctx)
 {
 	struct window		*w = c->session->curw->window;
 	struct window_pane	*wp;
@@ -183,55 +210,58 @@ cmd_display_panes_draw(struct client *c, struct screen_redraw_ctx *ctx)
 }
 
 static void
-cmd_display_panes_free(struct client *c)
+cmd_display_panes_free(__unused struct client *c, void *data)
 {
-	struct cmd_display_panes_data	*cdata = c->overlay_data;
+	struct cmd_display_panes_data	*cdata = data;
 
 	if (cdata->item != NULL)
 		cmdq_continue(cdata->item);
-	free(cdata->command);
+	args_make_commands_free(cdata->state);
 	free(cdata);
 }
 
 static int
-cmd_display_panes_key(struct client *c, struct key_event *event)
+cmd_display_panes_key(struct client *c, void *data, struct key_event *event)
 {
-	struct cmd_display_panes_data	*cdata = c->overlay_data;
-	struct cmdq_item		*new_item;
-	char				*cmd, *expanded;
+	struct cmd_display_panes_data	*cdata = data;
+	char				*expanded, *error;
+	struct cmdq_item		*item = cdata->item, *new_item;
+	struct cmd_list			*cmdlist;
 	struct window			*w = c->session->curw->window;
 	struct window_pane		*wp;
-	struct cmd_parse_result		*pr;
+	u_int				 index;
+	key_code			 key;
 
-	if (event->key < '0' || event->key > '9')
+	if (event->key >= '0' && event->key <= '9')
+		index = event->key - '0';
+	else if ((event->key & KEYC_MASK_MODIFIERS) == 0) {
+		key = (event->key & KEYC_MASK_KEY);
+		if (key >= 'a' && key <= 'z')
+			index = 10 + (key - 'a');
+		else
+			return (-1);
+	} else
 		return (-1);
 
-	wp = window_pane_at_index(w, event->key - '0');
+	wp = window_pane_at_index(w, index);
 	if (wp == NULL)
 		return (1);
 	window_unzoom(w);
 
 	xasprintf(&expanded, "%%%u", wp->id);
-	cmd = cmd_template_replace(cdata->command, expanded, 1);
 
-	pr = cmd_parse_from_string(cmd, NULL);
-	switch (pr->status) {
-	case CMD_PARSE_EMPTY:
-		new_item = NULL;
-		break;
-	case CMD_PARSE_ERROR:
-		new_item = cmdq_get_error(pr->error);
-		free(pr->error);
+	cmdlist = args_make_commands(cdata->state, 1, &expanded, &error);
+	if (cmdlist == NULL) {
+		cmdq_append(c, cmdq_get_error(error));
+		free(error);
+	} else if (item == NULL) {
+		new_item = cmdq_get_command(cmdlist, NULL);
 		cmdq_append(c, new_item);
-		break;
-	case CMD_PARSE_SUCCESS:
-		new_item = cmdq_get_command(pr->cmdlist, NULL, NULL, 0);
-		cmd_list_free(pr->cmdlist);
-		cmdq_append(c, new_item);
-		break;
+	} else {
+		new_item = cmdq_get_command(cmdlist, cmdq_get_state(item));
+		cmdq_insert_after(item, new_item);
 	}
 
-	free(cmd);
 	free(expanded);
 	return (1);
 }
@@ -239,18 +269,15 @@ cmd_display_panes_key(struct client *c, struct key_event *event)
 static enum cmd_retval
 cmd_display_panes_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args			*args = self->args;
-	struct client			*c;
-	struct session			*s;
-	u_int		 		 delay;
+	struct args			*args = cmd_get_args(self);
+	struct client			*tc = cmdq_get_target_client(item);
+	struct session			*s = tc->session;
+	u_int				 delay;
 	char				*cause;
 	struct cmd_display_panes_data	*cdata;
+	int				 wait = !args_has(args, 'b');
 
-	if ((c = cmd_find_client(item, args_get(args, 't'), 0)) == NULL)
-		return (CMD_RETURN_ERROR);
-	s = c->session;
-
-	if (c->overlay_draw != NULL)
+	if (tc->overlay_draw != NULL)
 		return (CMD_RETURN_NORMAL);
 
 	if (args_has(args, 'd')) {
@@ -263,20 +290,23 @@ cmd_display_panes_exec(struct cmd *self, struct cmdq_item *item)
 	} else
 		delay = options_get_number(s->options, "display-panes-time");
 
-	cdata = xmalloc(sizeof *cdata);
-	if (args->argc != 0)
-		cdata->command = xstrdup(args->argv[0]);
-	else
-		cdata->command = xstrdup("select-pane -t '%%'");
-	if (args_has(args, 'b'))
-		cdata->item = NULL;
-	else
+	cdata = xcalloc(1, sizeof *cdata);
+	if (wait)
 		cdata->item = item;
+	cdata->state = args_make_commands_prepare(self, item, 0,
+	    "select-pane -t \"%%%\"", wait, 0);
 
-	server_client_set_overlay(c, delay, cmd_display_panes_draw,
-	    cmd_display_panes_key, cmd_display_panes_free, cdata);
+	if (args_has(args, 'N')) {
+		server_client_set_overlay(tc, delay, NULL, NULL,
+		    cmd_display_panes_draw, NULL, cmd_display_panes_free, NULL,
+		    cdata);
+	} else {
+		server_client_set_overlay(tc, delay, NULL, NULL,
+		    cmd_display_panes_draw, cmd_display_panes_key,
+		    cmd_display_panes_free, NULL, cdata);
+	}
 
-	if (args_has(args, 'b'))
+	if (!wait)
 		return (CMD_RETURN_NORMAL);
 	return (CMD_RETURN_WAIT);
 }

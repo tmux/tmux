@@ -33,7 +33,7 @@ const struct cmd_entry cmd_paste_buffer_entry = {
 	.name = "paste-buffer",
 	.alias = "pasteb",
 
-	.args = { "db:prs:t:", 0, 0 },
+	.args = { "db:prs:t:", 0, 0, NULL },
 	.usage = "[-dpr] [-s separator] " CMD_BUFFER_USAGE " "
 		 CMD_TARGET_PANE_USAGE,
 
@@ -46,8 +46,9 @@ const struct cmd_entry cmd_paste_buffer_entry = {
 static enum cmd_retval
 cmd_paste_buffer_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = self->args;
-	struct window_pane	*wp = item->target.wp;
+	struct args		*args = cmd_get_args(self);
+	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct window_pane	*wp = target->wp;
 	struct paste_buffer	*pb;
 	const char		*sepstr, *bufname, *bufdata, *bufend, *line;
 	size_t			 seplen, bufsize;

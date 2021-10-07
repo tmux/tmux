@@ -14,7 +14,16 @@ page](https://github.com/libevent/libevent/releases/latest).
 It also depends on [ncurses](https://www.gnu.org/software/ncurses/), available
 from [this page](https://invisible-mirror.net/archives/ncurses/).
 
+To build tmux, a C compiler (for example gcc or clang), make, pkg-config and a
+suitable yacc (yacc or bison) are needed.
+
 ## Installation
+
+### Binary packages
+
+Some platforms provide binary packages for tmux, although these are sometimes
+out of date. Examples are listed on
+[this page](https://github.com/tmux/tmux/wiki/Installing).
 
 ### From release tarball
 
@@ -27,6 +36,9 @@ sudo make install
 
 tmux can use the utempter library to update utmp(5), if it is installed - run
 configure with `--enable-utempter` to enable this.
+
+For more detailed instructions on building and installing tmux, see
+[this page](https://github.com/tmux/tmux/wiki/Installing).
 
 ### From version control
 
@@ -69,7 +81,7 @@ And a bash(1) completion file at:
 
 https://github.com/imomaliev/tmux-bash-completion
 
-For debugging, run tmux with `-v` or `-vv` to generate server and client log 
+For debugging, run tmux with `-v` or `-vv` to generate server and client log
 files in the current directory.
 
 ## Support

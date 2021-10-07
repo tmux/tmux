@@ -233,7 +233,7 @@ layout_parse(struct window *w, const char *layout)
 
 	/* Update pane offsets and sizes. */
 	layout_fix_offsets(w);
-	layout_fix_panes(w);
+	layout_fix_panes(w, NULL);
 	recalculate_sizes();
 
 	layout_print_cell(lc, __func__, 0);
