@@ -1027,6 +1027,7 @@ section.
 .Pp
 The following commands are available to manage clients and sessions:
 .Bl -tag -width Ds
+.Tg attach
 .It Xo Ic attach-session
 .Op Fl dErx
 .Op Fl c Ar working-directory
@@ -1113,6 +1114,7 @@ If
 is used, the
 .Ic update-environment
 option will not be applied.
+.Tg detach
 .It Xo Ic detach-client
 .Op Fl aP
 .Op Fl E Ar shell-command
@@ -1139,6 +1141,7 @@ With
 run
 .Ar shell-command
 to replace the client.
+.Tg has
 .It Ic has-session Op Fl t Ar target-session
 .D1 (alias: Ic has )
 Report an error and exit with 1 if the specified session does not exist.
@@ -1160,6 +1163,7 @@ The
 .Fl C
 flag clears alerts (bell, activity, or silence) in all windows linked to the
 session.
+.Tg lsc
 .It Xo Ic list-clients
 .Op Fl F Ar format
 .Op Fl t Ar target-session
@@ -1174,6 +1178,7 @@ section.
 If
 .Ar target-session
 is specified, list only clients connected to that session.
+.Tg lscm
 .It Xo Ic list-commands
 .Op Fl F Ar format
 .Op Ar command
@@ -1183,6 +1188,7 @@ List the syntax of
 .Ar command
 or - if omitted - of all commands supported by
 .Nm .
+.Tg ls
 .It Xo Ic list-sessions
 .Op Fl F Ar format
 .Op Fl f Ar filter
@@ -1197,6 +1203,7 @@ Only sessions for which the filter is true are shown.
 See the
 .Sx FORMATS
 section.
+.Tg lockc
 .It Ic lock-client Op Fl t Ar target-client
 .D1 (alias: Ic lockc )
 Lock
@@ -1204,10 +1211,12 @@ Lock
 see the
 .Ic lock-server
 command.
+.Tg locks
 .It Ic lock-session Op Fl t Ar target-session
 .D1 (alias: Ic locks )
 Lock all clients attached to
 .Ar target-session .
+.Tg new
 .It Xo Ic new-session
 .Op Fl AdDEPX
 .Op Fl c Ar start-directory
@@ -1327,6 +1336,7 @@ takes the form
 .Ql VARIABLE=value
 and sets an environment variable for the newly created session; it may be
 specified multiple times.
+.Tg refresh
 .It Xo Ic refresh-client
 .Op Fl cDlLRSU
 .Op Fl A Ar pane:state
@@ -1462,6 +1472,7 @@ resets so that the position follows the cursor.
 See the
 .Ic window-size
 option.
+.Tg rename
 .It Xo Ic rename-session
 .Op Fl t Ar target-session
 .Ar new-name
@@ -1469,6 +1480,7 @@ option.
 .D1 (alias: Ic rename )
 Rename the session to
 .Ar new-name .
+.Tg showmsgs
 .It Xo Ic show-messages
 .Op Fl JT
 .Op Fl t Ar target-client
@@ -1482,6 +1494,7 @@ server option.
 and
 .Fl T
 show debugging information about jobs and terminals.
+.Tg source
 .It Xo Ic source-file
 .Op Fl Fnqv
 .Ar path
@@ -1508,6 +1521,7 @@ With
 the file is parsed but no commands are executed.
 .Fl v
 shows the parsed commands and line numbers if possible.
+.Tg start
 .It Ic start-server
 .D1 (alias: Ic start )
 Start the
@@ -1524,6 +1538,7 @@ For example:
 .Bd -literal -offset indent
 $ tmux start \\; show -g
 .Ed
+.Tg suspendc
 .It Xo Ic suspend-client
 .Op Fl t Ar target-client
 .Xc
@@ -1531,6 +1546,7 @@ $ tmux start \\; show -g
 Suspend a client by sending
 .Dv SIGTSTP
 (tty stop).
+.Tg switchc
 .It Xo Ic switch-client
 .Op Fl ElnprZ
 .Op Fl c Ar target-client
@@ -1921,6 +1937,7 @@ from which the layout was originally defined.
 .Pp
 Commands related to windows and panes are as follows:
 .Bl -tag -width Ds
+.Tg breakp
 .It Xo Ic break-pane
 .Op Fl abdP
 .Op Fl F Ar format
@@ -1949,6 +1966,7 @@ By default, it uses the format
 .Ql #{session_name}:#{window_index}.#{pane_index}
 but a different format may be specified with
 .Fl F .
+.Tg capturep
 .It Xo Ic capture-pane
 .Op Fl aepPqCJN
 .Op Fl b Ar buffer-name
@@ -2201,6 +2219,7 @@ specifies the format for each item in the tree.
 starts without the option information.
 This command works only if at least one client is attached.
 .It Xo
+.Tg displayp
 .Ic display-panes
 .Op Fl bN
 .Op Fl d Ar duration
@@ -2241,6 +2260,7 @@ is "select-pane -t '%%'".
 With
 .Fl b ,
 other commands are not blocked from running until the indicator is closed.
+.Tg findw
 .It Xo Ic find-window
 .Op Fl iCNrTZ
 .Op Fl t Ar target-pane
@@ -2269,6 +2289,7 @@ The default is
 zooms the pane.
 .Pp
 This command works only if at least one client is attached.
+.Tg joinp
 .It Xo Ic join-pane
 .Op Fl bdfhv
 .Op Fl l Ar size
@@ -2298,6 +2319,7 @@ is omitted and a marked pane is present (see
 .Ic select-pane
 .Fl m ) ,
 the marked pane is used rather than the current pane.
+.Tg killp
 .It Xo Ic kill-pane
 .Op Fl a
 .Op Fl t Ar target-pane
@@ -2309,6 +2331,7 @@ The
 .Fl a
 option kills all but the pane given with
 .Fl t .
+.Tg killw
 .It Xo Ic kill-window
 .Op Fl a
 .Op Fl t Ar target-window
@@ -2321,6 +2344,7 @@ The
 .Fl a
 option kills all but the window given with
 .Fl t .
+.Tg lastp
 .It Xo Ic last-pane
 .Op Fl deZ
 .Op Fl t Ar target-window
@@ -2333,12 +2357,14 @@ keeps the window zoomed if it was zoomed.
 enables or
 .Fl d
 disables input to the pane.
+.Tg last
 .It Ic last-window Op Fl t Ar target-session
 .D1 (alias: Ic last )
 Select the last (previously selected) window.
 If no
 .Ar target-session
 is specified, select the last window of the current session.
+.Tg link
 .It Xo Ic link-window
 .Op Fl abdk
 .Op Fl s Ar src-window
@@ -2369,6 +2395,7 @@ exists, it is killed, otherwise an error is generated.
 If
 .Fl d
 is given, the newly linked window is not selected.
+.Tg lsp
 .It Xo Ic list-panes
 .Op Fl as
 .Op Fl F Ar format
@@ -2397,6 +2424,7 @@ Only panes for which the filter is true are shown.
 See the
 .Sx FORMATS
 section.
+.Tg lsw
 .It Xo Ic list-windows
 .Op Fl a
 .Op Fl F Ar format
@@ -2417,6 +2445,7 @@ Only windows for which the filter is true are shown.
 See the
 .Sx FORMATS
 section.
+.Tg movep
 .It Xo Ic move-pane
 .Op Fl bdfhv
 .Op Fl l Ar size
@@ -2426,6 +2455,7 @@ section.
 .D1 (alias: Ic movep )
 Does the same as
 .Ic join-pane .
+.Tg movew
 .It Xo Ic move-window
 .Op Fl abrdk
 .Op Fl s Ar src-window
@@ -2444,6 +2474,7 @@ all windows in the session are renumbered in sequential order, respecting
 the
 .Ic base-index
 option.
+.Tg neww
 .It Xo Ic new-window
 .Op Fl abdkPS
 .Op Fl c Ar start-directory
@@ -2526,9 +2557,11 @@ By default, it uses the format
 .Ql #{session_name}:#{window_index}
 but a different format may be specified with
 .Fl F .
+.Tg nextl
 .It Ic next-layout Op Fl t Ar target-window
 .D1 (alias: Ic nextl )
 Move a window to the next layout and rearrange the panes to fit.
+.Tg next
 .It Xo Ic next-window
 .Op Fl a
 .Op Fl t Ar target-session
@@ -2538,6 +2571,7 @@ Move to the next window in the session.
 If
 .Fl a
 is used, move to the next window with an alert.
+.Tg pipep
 .It Xo Ic pipe-pane
 .Op Fl IOo
 .Op Fl t Ar target-pane
@@ -2586,11 +2620,13 @@ be toggled with a single key, for example:
 .Bd -literal -offset indent
 bind-key C-p pipe-pane -o 'cat >>~/output.#I-#P'
 .Ed
+.Tg prevl
 .It Xo Ic previous-layout
 .Op Fl t Ar target-window
 .Xc
 .D1 (alias: Ic prevl )
 Move to the previous layout in the session.
+.Tg prev
 .It Xo Ic previous-window
 .Op Fl a
 .Op Fl t Ar target-session
@@ -2600,6 +2636,7 @@ Move to the previous window in the session.
 With
 .Fl a ,
 move to the previous window with an alert.
+.Tg renamew
 .It Xo Ic rename-window
 .Op Fl t Ar target-window
 .Ar new-name
@@ -2609,6 +2646,7 @@ Rename the current window, or the window at
 .Ar target-window
 if specified, to
 .Ar new-name .
+.Tg resizep
 .It Xo Ic resize-pane
 .Op Fl DLMRTUZ
 .Op Fl t Ar target-pane
@@ -2653,6 +2691,7 @@ begins mouse resizing (only valid if bound to a mouse key binding, see
 .Fl T
 trims all lines below the current cursor position and moves lines out of the
 history to replace them.
+.Tg resizew
 .It Xo Ic resize-window
 .Op Fl aADLRU
 .Op Fl t Ar target-window
@@ -2685,6 +2724,7 @@ the size of the smallest.
 This command will automatically set
 .Ic window-size
 to manual in the window options.
+.Tg respawnp
 .It Xo Ic respawn-pane
 .Op Fl k
 .Op Fl c Ar start-directory
@@ -2710,6 +2750,7 @@ The
 option has the same meaning as for the
 .Ic new-window
 command.
+.Tg respawnw
 .It Xo Ic respawn-window
 .Op Fl k
 .Op Fl c Ar start-directory
@@ -2735,6 +2776,7 @@ The
 option has the same meaning as for the
 .Ic new-window
 command.
+.Tg rotatew
 .It Xo Ic rotate-window
 .Op Fl DUZ
 .Op Fl t Ar target-window
@@ -2746,6 +2788,7 @@ lower) with
 or downward (numerically higher).
 .Fl Z
 keeps the window zoomed if it was zoomed.
+.Tg selectl
 .It Xo Ic select-layout
 .Op Fl Enop
 .Op Fl t Ar target-pane
@@ -2768,6 +2811,7 @@ commands.
 applies the last set layout if possible (undoes the most recent layout change).
 .Fl E
 spreads the current pane and any panes next to it out evenly.
+.Tg selectp
 .It Xo Ic select-pane
 .Op Fl DdeLlMmRUZ
 .Op Fl T Ar title
@@ -2812,6 +2856,7 @@ to
 .Ic swap-pane
 and
 .Ic swap-window .
+.Tg selectw
 .It Xo Ic select-window
 .Op Fl lnpT
 .Op Fl t Ar target-window
@@ -2834,6 +2879,7 @@ If
 is given and the selected window is already the current window,
 the command behaves like
 .Ic last-window .
+.Tg splitw
 .It Xo Ic split-window
 .Op Fl bdfhIvPZ
 .Op Fl c Ar start-directory
@@ -2894,6 +2940,7 @@ $ make 2>&1|tmux splitw -dI &
 All other options have the same meaning as for the
 .Ic new-window
 command.
+.Tg swapp
 .It Xo Ic swap-pane
 .Op Fl dDUZ
 .Op Fl s Ar src-pane
@@ -2922,6 +2969,7 @@ is omitted and a marked pane is present (see
 .Ic select-pane
 .Fl m ) ,
 the marked pane is used rather than the current pane.
+.Tg swapw
 .It Xo Ic swap-window
 .Op Fl d
 .Op Fl s Ar src-window
@@ -2943,6 +2991,7 @@ is omitted and a marked pane is present (see
 .Ic select-pane
 .Fl m ) ,
 the window containing the marked pane is used rather than the current window.
+.Tg unlinkw
 .It Xo Ic unlink-window
 .Op Fl k
 .Op Fl t Ar target-window
@@ -3013,6 +3062,7 @@ key will execute for all keys which do not have a more specific binding.
 .Pp
 Commands related to key bindings are as follows:
 .Bl -tag -width Ds
+.Tg bind
 .It Xo Ic bind-key
 .Op Fl nr
 .Op Fl N Ar note
@@ -3071,6 +3121,7 @@ attaches a note to the key (shown with
 To view the default bindings and possible commands, see the
 .Ic list-keys
 command.
+.Tg lsk
 .It Xo Ic list-keys
 .Op Fl 1aN
 .Op Fl P Ar prefix-string Fl T Ar key-table
@@ -3106,6 +3157,7 @@ specifies a prefix to print before each key and
 lists only the first matching key.
 .Fl a
 lists the command for keys that do not have a note rather than skipping them.
+.Tg send
 .It Xo Ic send-keys
 .Op Fl FHlMRX
 .Op Fl N Ar repeat-count
@@ -3157,6 +3209,7 @@ expands formats in arguments where appropriate.
 Send the prefix key, or with
 .Fl 2
 the secondary prefix key, to a window as if it was pressed.
+.Tg unbind
 .It Xo Ic unbind-key
 .Op Fl anq
 .Op Fl T Ar key-table
@@ -3252,6 +3305,7 @@ abc123
 .Pp
 Commands which set options are as follows:
 .Bl -tag -width Ds
+.Tg set
 .It Xo Ic set-option
 .Op Fl aFgopqsuUw
 .Op Fl t Ar target-pane
@@ -3326,6 +3380,7 @@ blue foreground.
 Without
 .Fl a ,
 the result would be the default background and a blue foreground.
+.Tg show
 .It Xo Ic show-options
 .Op Fl AgHpqsvw
 .Op Fl t Ar target-pane
@@ -5303,6 +5358,7 @@ section).
 .Pp
 Commands to alter and view the environment are:
 .Bl -tag -width Ds
+.Tg setenv
 .It Xo Ic set-environment
 .Op Fl Fhgru
 .Op Fl t Ar target-session
@@ -5328,6 +5384,7 @@ indicates the variable is to be removed from the environment before starting a
 new process.
 .Fl h
 marks the variable as hidden.
+.Tg showenv
 .It Xo Ic show-environment
 .Op Fl hgs
 .Op Fl t Ar target-session
@@ -5412,6 +5469,7 @@ session option.
 .Pp
 Commands related to the status line are as follows:
 .Bl -tag -width Ds
+.Tg clrphist
 .It Xo Ic clear-prompt-history
 .Op Fl T Ar prompt-type
 .Xc
@@ -5534,6 +5592,7 @@ With
 .Fl b ,
 the prompt is shown in the background and the invoking client does not exit
 until it is dismissed.
+.Tg confirm
 .It Xo Ic confirm-before
 .Op Fl b
 .Op Fl p Ar prompt
@@ -5556,6 +5615,7 @@ With
 .Fl b ,
 the prompt is shown in the background and the invoking client does not exit
 until it is dismissed.
+.Tg menu
 .It Xo Ic display-menu
 .Op Fl O
 .Op Fl c Ar target-client
@@ -5647,6 +5707,7 @@ The following keys are also available:
 .It Li "Down" Ta "Select next item"
 .It Li "q" Ta "Exit menu"
 .El
+.Tg display
 .It Xo Ic display-message
 .Op Fl aINpv
 .Op Fl c Ar target-client
@@ -5688,6 +5749,7 @@ lists the format variables and their values.
 .Fl I
 forwards any input read from stdin to the empty pane given by
 .Ar target-pane .
+.Tg popup
 .It Xo Ic display-popup
 .Op Fl BCE
 .Op Fl c Ar target-client
@@ -5735,6 +5797,7 @@ does not surround the popup by a border.
 The
 .Fl C
 flag closes any popup on the client.
+.Tg showphist
 .It Xo Ic show-prompt-history
 .Op Fl T Ar prompt-type
 .Xc
@@ -5864,14 +5927,17 @@ a format for each shortcut key; both are evaluated once for each line.
 .Fl N
 starts without the preview.
 This command works only if at least one client is attached.
+.Tg clearhist
 .It Ic clear-history Op Fl t Ar target-pane
 .D1 (alias: Ic clearhist )
 Remove and free the history for the specified pane.
+.Tg deleteb
 .It Ic delete-buffer Op Fl b Ar buffer-name
 .D1 (alias: Ic deleteb )
 Delete the buffer named
 .Ar buffer-name ,
 or the most recently added automatically named buffer if not specified.
+.Tg lsb
 .It Xo Ic list-buffers
 .Op Fl F Ar format
 .Op Fl f Ar filter
@@ -5892,6 +5958,7 @@ section.
 .Op Fl t Ar target-client
 .Ar path
 .Xc
+.Tg loadb
 .D1 (alias: Ic loadb )
 Load the contents of the specified paste buffer from
 .Ar path .
@@ -5902,6 +5969,7 @@ is given, the buffer is also sent to the clipboard for
 using the
 .Xr xterm 1
 escape sequence, if possible.
+.Tg pasteb
 .It Xo Ic paste-buffer
 .Op Fl dpr
 .Op Fl b Ar buffer-name
@@ -5926,6 +5994,7 @@ If
 .Fl p
 is specified, paste bracket control codes are inserted around the
 buffer if the application has requested bracketed paste mode.
+.Tg saveb
 .It Xo Ic save-buffer
 .Op Fl a
 .Op Fl b Ar buffer-name
@@ -5941,6 +6010,7 @@ option appends to rather than overwriting the file.
 .Op Fl aw
 .Op Fl b Ar buffer-name
 .Op Fl t Ar target-client
+.Tg setb
 .Op Fl n Ar new-buffer-name
 .Ar data
 .Xc
@@ -5961,6 +6031,7 @@ The
 .Fl n
 option renames the buffer to
 .Ar new-buffer-name .
+.Tg showb
 .It Xo Ic show-buffer
 .Op Fl b Ar buffer-name
 .Xc
@@ -5972,6 +6043,7 @@ Miscellaneous commands are as follows:
 .Bl -tag -width Ds
 .It Ic clock-mode Op Fl t Ar target-pane
 Display a large clock.
+.Tg if
 .It Xo Ic if-shell
 .Op Fl bF
 .Op Fl t Ar target-pane
@@ -6003,11 +6075,13 @@ is given,
 .Ar shell-command
 is not executed but considered success if neither empty nor zero (after formats
 are expanded).
+.Tg lock
 .It Ic lock-server
 .D1 (alias: Ic lock )
 Lock each client individually by running the command specified by the
 .Ic lock-command
 option.
+.Tg run
 .It Xo Ic run-shell
 .Op Fl bC
 .Op Fl d Ar delay
@@ -6041,6 +6115,7 @@ specified by
 .Fl t
 or the current pane if omitted) after the command finishes.
 If the command fails, the exit status is also displayed.
+.Tg wait
 .It Xo Ic wait-for
 .Op Fl L | S | U
 .Ar channel
