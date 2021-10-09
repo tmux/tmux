@@ -52,8 +52,8 @@ const struct cmd_entry cmd_display_popup_entry = {
 	.name = "display-popup",
 	.alias = "popup",
 
-	.args = { "BCc:d:Eh:t:w:x:y:", 0, -1, NULL },
-	.usage = "[-BCE] [-c target-client] [-d start-directory] [-h height] "
+	.args = { "BCc:d:e:Eh:t:w:x:y:", 0, -1, NULL },
+	.usage = "[-BCE] [-c target-client] [-d start-directory] [-e environment ][-h height] "
 		 CMD_TARGET_PANE_USAGE " [-w width] "
 		 "[-x position] [-y position] [shell-command]",
 
@@ -409,17 +409,32 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	} else
 		args_to_vector(args, &argc, &argv);
 
+	struct args_value	*av;
+	struct environ		*env = NULL;
+	if (args_has(args, 'e') >= 1) {
+		env = environ_create();
+		av = args_first_value(args, 'e');
+		while (av != NULL) {
+			environ_put(env, av->string, 0);
+			av = args_next_value(av);
+		}
+	}
+
 	if (args_has(args, 'E') > 1)
 		flags |= POPUP_CLOSEEXITZERO;
 	else if (args_has(args, 'E'))
 		flags |= POPUP_CLOSEEXIT;
 	if (args_has(args, 'B'))
 		flags |= POPUP_NOBORDER;
-	if (popup_display(flags, item, px, py, w, h, shellcmd, argc, argv, cwd,
-	    tc, s, NULL, NULL) != 0) {
+	if (popup_display(flags, item, px, py, w, h, env, shellcmd, argc, argv,
+			cwd, tc, s, NULL, NULL) != 0) {
 		cmd_free_argv(argc, argv);
+		if (env != NULL)
+			environ_free(env);
 		return (CMD_RETURN_NORMAL);
 	}
+	if (env != NULL)
+		environ_free(env);
 	cmd_free_argv(argc, argv);
 	return (CMD_RETURN_WAIT);
 }

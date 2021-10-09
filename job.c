@@ -69,7 +69,7 @@ static LIST_HEAD(joblist, job) all_jobs = LIST_HEAD_INITIALIZER(all_jobs);
 
 /* Start a job running. */
 struct job *
-job_run(const char *cmd, int argc, char **argv, struct session *s,
+job_run(const char *cmd, int argc, char **argv, struct environ *e, struct session *s,
     const char *cwd, job_update_cb updatecb, job_complete_cb completecb,
     job_free_cb freecb, void *data, int flags, int sx, int sy)
 {
@@ -87,6 +87,9 @@ job_run(const char *cmd, int argc, char **argv, struct session *s,
 	 * if-shell to decide on default-terminal based on outside TERM.
 	 */
 	env = environ_for_session(s, !cfg_finished);
+	if (e != NULL) {
+		environ_copy(e, env);
+	}
 
 	sigfillset(&set);
 	sigprocmask(SIG_BLOCK, &set, &oldset);

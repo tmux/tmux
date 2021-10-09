@@ -589,8 +589,9 @@ popup_job_complete_cb(struct job *job)
 
 int
 popup_display(int flags, struct cmdq_item *item, u_int px, u_int py, u_int sx,
-    u_int sy, const char *shellcmd, int argc, char **argv, const char *cwd,
-    struct client *c, struct session *s, popup_close_cb cb, void *arg)
+    u_int sy, struct environ *env, const char *shellcmd, int argc, char **argv,
+    const char *cwd, struct client *c, struct session *s, popup_close_cb cb,
+    void *arg)
 {
 	struct popup_data	*pd;
 	u_int			 jx, jy;
@@ -634,7 +635,7 @@ popup_display(int flags, struct cmdq_item *item, u_int px, u_int py, u_int sx,
 	pd->psx = sx;
 	pd->psy = sy;
 
-	pd->job = job_run(shellcmd, argc, argv, s, cwd,
+	pd->job = job_run(shellcmd, argc, argv, env, s, cwd,
 	    popup_job_update_cb, popup_job_complete_cb, NULL, pd,
 	    JOB_NOWAIT|JOB_PTY|JOB_KEEPWRITE, jx, jy);
 	pd->ictx = input_init(NULL, job_get_event(pd->job), &pd->palette);
@@ -724,7 +725,7 @@ popup_editor(struct client *c, const char *buf, size_t len,
 
 	xasprintf(&cmd, "%s %s", editor, path);
 	if (popup_display(POPUP_INTERNAL|POPUP_CLOSEEXIT, NULL, px, py, sx, sy,
-	    cmd, 0, NULL, _PATH_TMP, c, NULL, popup_editor_close_cb, pe) != 0) {
+	    NULL, cmd, 0, NULL, _PATH_TMP, c, NULL, popup_editor_close_cb, pe) != 0) {
 		popup_editor_free(pe);
 		free(cmd);
 		return (-1);
