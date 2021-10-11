@@ -180,16 +180,22 @@ popup_draw_cb(struct client *c, void *data, struct screen_redraw_ctx *rctx)
 	u_int			 i, px = pd->px, py = pd->py;
 	struct colour_palette	*palette = &pd->palette;
 	struct grid_cell	 gc;
+	struct grid_cell	 bgc;
 
 	screen_init(&s, pd->sx, pd->sy, 0);
 	screen_write_start(&ctx, &s);
 	screen_write_clearscreen(&ctx, 8);
 
+	memcpy(&bgc, &grid_default_cell, sizeof bgc);
+	style_apply(&bgc, c->session->curw->window->options, "popup-border-style", NULL);
+	palette->fg = bgc.fg;
+	palette->bg = bgc.bg;
+
 	if (pd->flags & POPUP_NOBORDER) {
 		screen_write_cursormove(&ctx, 0, 0, 0);
 		screen_write_fast_copy(&ctx, &pd->s, 0, 0, pd->sx, pd->sy);
 	} else if (pd->sx > 2 && pd->sy > 2) {
-		screen_write_box(&ctx, pd->sx, pd->sy);
+		screen_write_box(&ctx, pd->sx, pd->sy, &bgc);
 		screen_write_cursormove(&ctx, 1, 1, 0);
 		screen_write_fast_copy(&ctx, &pd->s, 0, 0, pd->sx - 2,
 		    pd->sy - 2);
@@ -197,8 +203,9 @@ popup_draw_cb(struct client *c, void *data, struct screen_redraw_ctx *rctx)
 	screen_write_stop(&ctx);
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
-	gc.fg = pd->palette.fg;
-	gc.bg = pd->palette.bg;
+	style_apply(&gc, c->session->curw->window->options, "popup-style", NULL);
+	palette->fg = gc.fg;
+	palette->bg = gc.bg;
 
 	if (pd->md != NULL) {
 		c->overlay_check = menu_check_cb;
