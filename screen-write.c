@@ -681,34 +681,37 @@ screen_write_box(struct screen_write_ctx *ctx, u_int nx, u_int ny,
     struct grid_cell *gcp)
 {
 	struct screen		*s = ctx->s;
+	struct grid_cell         gc;
 	u_int			 cx, cy, i;
 
 	cx = s->cx;
 	cy = s->cy;
 
-	if (gc == NULL)
-		memcpy(gc, &grid_default_cell, sizeof (struct grid_cell));
-	gc->attr |= GRID_ATTR_CHARSET;
-	gc->flags |= GRID_FLAG_NOPALETTE;
+	if (gcp != NULL)
+		memcpy(&gc, gcp, sizeof gc);
+	else
+		memcpy(&gc, &grid_default_cell, sizeof gc);
+	gc.attr |= GRID_ATTR_CHARSET;
+	gc.flags |= GRID_FLAG_NOPALETTE;
 
-	screen_write_putc(ctx, gc, 'l');
+	screen_write_putc(ctx, &gc, 'l');
 	for (i = 1; i < nx - 1; i++)
-		screen_write_putc(ctx, gc, 'q');
-	screen_write_putc(ctx, gc, 'k');
+		screen_write_putc(ctx, &gc, 'q');
+	screen_write_putc(ctx, &gc, 'k');
 
 	screen_write_set_cursor(ctx, cx, cy + ny - 1);
-	screen_write_putc(ctx, gc, 'm');
+	screen_write_putc(ctx, &gc, 'm');
 	for (i = 1; i < nx - 1; i++)
-		screen_write_putc(ctx, gc, 'q');
-	screen_write_putc(ctx, gc, 'j');
+		screen_write_putc(ctx, &gc, 'q');
+	screen_write_putc(ctx, &gc, 'j');
 
 	for (i = 1; i < ny - 1; i++) {
 		screen_write_set_cursor(ctx, cx, cy + i);
-		screen_write_putc(ctx, gc, 'x');
+		screen_write_putc(ctx, &gc, 'x');
 	}
 	for (i = 1; i < ny - 1; i++) {
 		screen_write_set_cursor(ctx, cx + nx - 1, cy + i);
-		screen_write_putc(ctx, gc, 'x');
+		screen_write_putc(ctx, &gc, 'x');
 	}
 
 	screen_write_set_cursor(ctx, cx, cy);
