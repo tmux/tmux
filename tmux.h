@@ -1567,10 +1567,18 @@ struct client_window {
 };
 RB_HEAD(client_windows, client_window);
 
+/* Visible areas not obstructed by overlays. */
+#define OVERLAY_MAX_RANGES 3
+struct overlay_ranges {
+	u_int	px[OVERLAY_MAX_RANGES];
+	u_int	nx[OVERLAY_MAX_RANGES];
+};
+
 /* Client connection. */
 typedef int (*prompt_input_cb)(struct client *, void *, const char *, int);
 typedef void (*prompt_free_cb)(void *);
-typedef int (*overlay_check_cb)(struct client *, void *, u_int, u_int);
+typedef void (*overlay_check_cb)(struct client*, void *, u_int, u_int, u_int,
+	    struct overlay_ranges *);
 typedef struct screen *(*overlay_mode_cb)(struct client *, void *, u_int *,
 	    u_int *);
 typedef void (*overlay_draw_cb)(struct client *, void *,
@@ -2462,6 +2470,8 @@ void	 server_client_set_overlay(struct client *, u_int, overlay_check_cb,
 	     overlay_mode_cb, overlay_draw_cb, overlay_key_cb,
 	     overlay_free_cb, overlay_resize_cb, void *);
 void	 server_client_clear_overlay(struct client *);
+void	 server_client_overlay_range(u_int, u_int, u_int, u_int, u_int, u_int,
+	     u_int, struct overlay_ranges *);
 void	 server_client_set_key_table(struct client *, const char *);
 const char *server_client_get_key_table(struct client *);
 int	 server_client_check_nested(struct client *);
@@ -3091,7 +3101,8 @@ int		 menu_display(struct menu *, int, struct cmdq_item *, u_int,
 		    u_int, struct client *, struct cmd_find_state *,
 		    menu_choice_cb, void *);
 struct screen	*menu_mode_cb(struct client *, void *, u_int *, u_int *);
-int		 menu_check_cb(struct client *, void *, u_int, u_int);
+void		 menu_check_cb(struct client *, void *, u_int, u_int, u_int,
+		    struct overlay_ranges *);
 void		 menu_draw_cb(struct client *, void *,
 		    struct screen_redraw_ctx *);
 void		 menu_free_cb(struct client *, void *);
