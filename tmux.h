@@ -2074,9 +2074,9 @@ typedef void (*job_free_cb) (void *);
 #define JOB_NOWAIT 0x1
 #define JOB_KEEPWRITE 0x2
 #define JOB_PTY 0x4
-struct job	*job_run(const char *, int, char **, struct session *,
-		     const char *, job_update_cb, job_complete_cb, job_free_cb,
-		     void *, int, int, int);
+struct job	*job_run(const char *, int, char **, struct environ *,
+		     struct session *, const char *, job_update_cb,
+		     job_complete_cb, job_free_cb, void *, int, int, int);
 void		 job_free(struct job *);
 int		 job_transfer(struct job *, pid_t *, char *, size_t);
 void		 job_resize(struct job *, u_int, u_int);
@@ -3107,8 +3107,9 @@ int		 menu_key_cb(struct client *, void *, struct key_event *);
 typedef void (*popup_close_cb)(int, void *);
 typedef void (*popup_finish_edit_cb)(char *, size_t, void *);
 int		 popup_display(int, struct cmdq_item *, u_int, u_int, u_int,
-		    u_int, const char *, int, char **, const char *,
-		    struct client *, struct session *, popup_close_cb, void *);
+		    u_int, struct environ *, const char *, int, char **,
+		    const char *, struct client *, struct session *,
+		    popup_close_cb, void *);
 int		 popup_editor(struct client *, const char *, size_t,
 		    popup_finish_edit_cb, void *);
 
