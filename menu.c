@@ -140,17 +140,16 @@ menu_mode_cb(__unused struct client *c, void *data, __unused u_int *cx,
 	return (&md->s);
 }
 
-int
-menu_check_cb(__unused struct client *c, void *data, u_int px, u_int py)
+/* Return parts of the input range which are not obstructed by the menu. */
+void
+menu_check_cb(__unused struct client *c, void *data, u_int px, u_int py,
+    u_int nx, struct overlay_ranges *r)
 {
 	struct menu_data	*md = data;
 	struct menu		*menu = md->menu;
 
-	if (px < md->px || px > md->px + menu->width + 3)
-		return (1);
-	if (py < md->py || py > md->py + menu->count + 1)
-		return (1);
-	return (0);
+	server_client_overlay_range(md->px, md->py, menu->width + 4,
+	    menu->count + 2, px, py, nx, r);
 }
 
 void
