@@ -685,14 +685,17 @@ screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j)
 	struct tty		*tty = &c->tty;
 	struct format_tree	*ft;
 	struct window_pane	*wp;
-	u_int			 cell_type, x = ctx->ox + i, y = ctx->oy + j;
-	int			 pane_status = ctx->pane_status, isolates;
 	struct grid_cell	 gc;
 	const struct grid_cell	*tmp;
+	struct overlay_ranges	 r;
+	u_int			 cell_type, x = ctx->ox + i, y = ctx->oy + j;
+	int			 pane_status = ctx->pane_status, isolates;
 
-	if (c->overlay_check != NULL &&
-	    !c->overlay_check(c, c->overlay_data, x, y))
-		return;
+	if (c->overlay_check != NULL) {
+		c->overlay_check(c, c->overlay_data, x, y, 1, &r);
+		if (r.nx[0] + r.nx[1] == 0)
+			return;
+	}
 
 	cell_type = screen_redraw_check_cell(c, x, y, pane_status, &wp);
 	if (cell_type == CELL_INSIDE)
