@@ -212,13 +212,14 @@ popup_draw_cb(struct client *c, void *data, struct screen_redraw_ctx *rctx)
 	struct colour_palette	*palette = &pd->palette;
 	struct grid_cell	 gc;
 	struct grid_cell	 bgc;
+	struct options          *o = c->session->curw->window->options;
 
 	screen_init(&s, pd->sx, pd->sy, 0);
 	screen_write_start(&ctx, &s);
 	screen_write_clearscreen(&ctx, 8);
 
 	memcpy(&bgc, &grid_default_cell, sizeof bgc);
-	style_apply(&bgc, c->session->curw->window->options, "popup-border-style", NULL);
+	style_apply(&bgc, o, "popup-border-style", NULL);
 	palette->fg = bgc.fg;
 	palette->bg = bgc.bg;
 
@@ -234,7 +235,7 @@ popup_draw_cb(struct client *c, void *data, struct screen_redraw_ctx *rctx)
 	screen_write_stop(&ctx);
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
-	style_apply(&gc, c->session->curw->window->options, "popup-style", NULL);
+	style_apply(&gc, o, "popup-style", NULL);
 	palette->fg = gc.fg;
 	palette->bg = gc.bg;
 

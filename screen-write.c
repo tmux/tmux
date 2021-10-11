@@ -677,7 +677,8 @@ screen_write_menu(struct screen_write_ctx *ctx, struct menu *menu,
 
 /* Draw a box on screen. */
 void
-screen_write_box(struct screen_write_ctx *ctx, u_int nx, u_int ny, struct grid_cell *gc)
+screen_write_box(struct screen_write_ctx *ctx, u_int nx, u_int ny,
+    struct grid_cell *gcp)
 {
 	struct screen		*s = ctx->s;
 	u_int			 cx, cy, i;
