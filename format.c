@@ -390,7 +390,7 @@ format_job_get(struct format_expand_state *es, const char *cmd)
 	if (force && fj->job != NULL)
 	       job_free(fj->job);
 	if (force || (fj->job == NULL && fj->last != t)) {
-		fj->job = job_run(expanded, 0, NULL, NULL,
+		fj->job = job_run(expanded, 0, NULL, NULL, NULL,
 		    server_client_get_cwd(ft->client, NULL), format_job_update,
 		    format_job_complete, NULL, fj, JOB_NOWAIT, -1, -1);
 		if (fj->job == NULL) {

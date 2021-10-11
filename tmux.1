@@ -5753,6 +5753,7 @@ forwards any input read from stdin to the empty pane given by
 .Op Fl BCE
 .Op Fl c Ar target-client
 .Op Fl d Ar start-directory
+.Op Fl e Ar environment
 .Op Fl h Ar height
 .Op Fl t Ar target-pane
 .Op Fl w Ar width
@@ -5792,6 +5793,12 @@ give the width and height - both may be a percentage (followed by
 If omitted, half of the terminal size is used.
 .Fl B
 does not surround the popup by a border.
+.Pp
+.Fl e
+takes the form
+.Ql VARIABLE=value
+and sets an environment variable for the popup; it may be specified multiple
+times.
 .Pp
 The
 .Fl C
