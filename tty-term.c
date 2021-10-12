@@ -664,10 +664,10 @@ int
 tty_term_read_list(const char *name, int fd, char ***caps, u_int *ncaps,
     char **cause)
 {
-	const struct tty_term_code_entry	*ent;
-	int					 error, n;
-	u_int					 i;
-	const char				*s;
+	const struct tty_term_code_entry	*ent = NULL;
+	int					 error = 0, n = 0;
+	u_int					 i = 0;
+	const char				*s = NULL;
 	char					 tmp[11];
 
 	if (setupterm((char *)name, fd, &error) != OK) {

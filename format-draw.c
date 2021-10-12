@@ -1133,10 +1133,10 @@ format_trim_left(const char *expanded, u_int limit)
 char *
 format_trim_right(const char *expanded, u_int limit)
 {
-	char			*copy, *out;
-	const char		*cp = expanded, *end;
-	u_int			 width = 0, total_width, skip, n;
-	u_int			 leading_width, copy_width;
+	char			*copy = NULL, *out = NULL;
+	const char		*cp = expanded, *end = NULL;
+	u_int			 width = 0, total_width = 0, skip = 0, n = 0;
+	u_int			 leading_width, copy_width = 0;
 	struct utf8_data	 ud;
 	enum utf8_state		 more;
 

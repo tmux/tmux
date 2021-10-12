@@ -3388,7 +3388,8 @@ found:
 		else {
 			if (time_format != NULL) {
 				localtime_r(&t, &tm);
-				strftime(s, sizeof s, time_format, &tm);
+				/* Ugly cast hack to pass with -Werror=format-nonliteral. */
+				((size_t (*)(char *, size_t, const char *, const struct tm *))strftime)(s, sizeof s, time_format, &tm);
 			} else {
 				ctime_r(&t, s);
 				s[strcspn(s, "\n")] = '\0';
@@ -4484,7 +4485,9 @@ format_expand1(struct format_expand_state *es, const char *fmt)
 			es->time = time(NULL);
 			localtime_r(&es->time, &es->tm);
 		}
-		if (strftime(expanded, sizeof expanded, fmt, &es->tm) == 0) {
+
+		/* Ugly cast hack to pass with -Werror=format-nonliteral. */
+		if(((size_t (*)(char *, size_t, const char *, const struct tm *))strftime)(expanded, sizeof expanded, fmt, &es->tm) == 0) {
 			format_log(es, "format is too long");
 			return (xstrdup(""));
 		}
