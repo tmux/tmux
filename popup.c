@@ -221,8 +221,6 @@ popup_draw_cb(struct client *c, void *data, struct screen_redraw_ctx *rctx)
 	memcpy(&bgc, &grid_default_cell, sizeof bgc);
 	bgc.attr = 0;
 	style_apply(&bgc, o, "popup-border-style", NULL);
-	palette->fg = bgc.fg;
-	palette->bg = bgc.bg;
 
 	if (pd->flags & POPUP_NOBORDER) {
 		screen_write_cursormove(&ctx, 0, 0, 0);
