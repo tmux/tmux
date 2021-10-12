@@ -219,6 +219,7 @@ popup_draw_cb(struct client *c, void *data, struct screen_redraw_ctx *rctx)
 	screen_write_clearscreen(&ctx, 8);
 
 	memcpy(&bgc, &grid_default_cell, sizeof bgc);
+	bgc.attr = 0;
 	style_apply(&bgc, o, "popup-border-style", NULL);
 	palette->fg = bgc.fg;
 	palette->bg = bgc.bg;
@@ -235,6 +236,7 @@ popup_draw_cb(struct client *c, void *data, struct screen_redraw_ctx *rctx)
 	screen_write_stop(&ctx);
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
+	gc.attr = 0;
 	style_apply(&gc, o, "popup-style", NULL);
 	palette->fg = gc.fg;
 	palette->bg = gc.bg;
