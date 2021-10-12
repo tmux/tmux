@@ -675,6 +675,17 @@ screen_write_menu(struct screen_write_ctx *ctx, struct menu *menu,
 	screen_write_set_cursor(ctx, cx, cy);
 }
 
+static void
+popup_redraw_border_set(int popup_lines, int cell_type, struct grid_cell *gc)
+{
+	switch(popup_lines) {
+	default:
+		gc->attr |= GRID_ATTR_CHARSET;
+		utf8_set(&gc->data, CELL_BORDERS[cell_type]);
+		break;
+	}
+}
+
 /* Draw a box on screen. */
 void
 screen_write_box(struct screen_write_ctx *ctx, u_int nx, u_int ny,
@@ -694,24 +705,33 @@ screen_write_box(struct screen_write_ctx *ctx, u_int nx, u_int ny,
 	gc.attr |= GRID_ATTR_CHARSET;
 	gc.flags |= GRID_FLAG_NOPALETTE;
 
-	screen_write_putc(ctx, &gc, 'l');
+	// Draw top border
+	popup_redraw_border_set(-1, CELL_TOPLEFT, &gc);
+	screen_write_cell(ctx, &gc);
+	popup_redraw_border_set(-1, CELL_LEFTRIGHT, &gc);
 	for (i = 1; i < nx - 1; i++)
-		screen_write_putc(ctx, &gc, 'q');
-	screen_write_putc(ctx, &gc, 'k');
+		screen_write_cell(ctx, &gc);
+	popup_redraw_border_set(-1, CELL_TOPRIGHT, &gc);
+	screen_write_cell(ctx, &gc);
 
+	// Draw bottom border
 	screen_write_set_cursor(ctx, cx, cy + ny - 1);
-	screen_write_putc(ctx, &gc, 'm');
+	popup_redraw_border_set(-1, CELL_BOTTOMLEFT, &gc);
+	screen_write_cell(ctx, &gc);
+	popup_redraw_border_set(-1, CELL_LEFTRIGHT, &gc);
 	for (i = 1; i < nx - 1; i++)
-		screen_write_putc(ctx, &gc, 'q');
-	screen_write_putc(ctx, &gc, 'j');
+		screen_write_cell(ctx, &gc);
+	popup_redraw_border_set(-1, CELL_BOTTOMRIGHT, &gc);
+	screen_write_cell(ctx, &gc);
 
+	popup_redraw_border_set(-1, CELL_TOPBOTTOM, &gc);
 	for (i = 1; i < ny - 1; i++) {
+		// Draw left border
 		screen_write_set_cursor(ctx, cx, cy + i);
-		screen_write_putc(ctx, &gc, 'x');
-	}
-	for (i = 1; i < ny - 1; i++) {
+		screen_write_cell(ctx, &gc);
+		// Draw right border
 		screen_write_set_cursor(ctx, cx + nx - 1, cy + i);
-		screen_write_putc(ctx, &gc, 'x');
+		screen_write_cell(ctx, &gc);
 	}
 
 	screen_write_set_cursor(ctx, cx, cy);

@@ -31,22 +31,6 @@ static void	screen_redraw_draw_pane(struct screen_redraw_ctx *,
 static void	screen_redraw_set_context(struct client *,
 		    struct screen_redraw_ctx *);
 
-#define CELL_INSIDE 0
-#define CELL_TOPBOTTOM 1
-#define CELL_LEFTRIGHT 2
-#define CELL_TOPLEFT 3
-#define CELL_TOPRIGHT 4
-#define CELL_BOTTOMLEFT 5
-#define CELL_BOTTOMRIGHT 6
-#define CELL_TOPJOIN 7
-#define CELL_BOTTOMJOIN 8
-#define CELL_LEFTJOIN 9
-#define CELL_RIGHTJOIN 10
-#define CELL_JOIN 11
-#define CELL_OUTSIDE 12
-
-#define CELL_BORDERS " xqlkmjwvtun~"
-
 #define START_ISOLATE "\342\201\246"
 #define END_ISOLATE   "\342\201\251"
 

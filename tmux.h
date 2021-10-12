@@ -614,6 +614,22 @@ struct colour_palette {
 #define GRID_LINE_EXTENDED 0x2
 #define GRID_LINE_DEAD 0x4
 
+#define CELL_INSIDE 0
+#define CELL_TOPBOTTOM 1
+#define CELL_LEFTRIGHT 2
+#define CELL_TOPLEFT 3
+#define CELL_TOPRIGHT 4
+#define CELL_BOTTOMLEFT 5
+#define CELL_BOTTOMRIGHT 6
+#define CELL_TOPJOIN 7
+#define CELL_BOTTOMJOIN 8
+#define CELL_LEFTJOIN 9
+#define CELL_RIGHTJOIN 10
+#define CELL_JOIN 11
+#define CELL_OUTSIDE 12
+
+#define CELL_BORDERS " xqlkmjwvtun~"
+
 /* Grid cell data. */
 struct grid_cell {
 	struct utf8_data	data;
