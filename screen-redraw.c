@@ -34,38 +34,6 @@ static void	screen_redraw_set_context(struct client *,
 #define START_ISOLATE "\342\201\246"
 #define END_ISOLATE   "\342\201\251"
 
-static const struct utf8_data screen_redraw_double_borders[] = {
-	{ "", 0, 0, 0 },
-	{ "\342\225\221", 0, 3, 1 }, /* U+2551 */
-	{ "\342\225\220", 0, 3, 1 }, /* U+2550 */
-	{ "\342\225\224", 0, 3, 1 }, /* U+2554 */
-	{ "\342\225\227", 0, 3, 1 }, /* U+2557 */
-	{ "\342\225\232", 0, 3, 1 }, /* U+255A */
-	{ "\342\225\235", 0, 3, 1 }, /* U+255D */
-	{ "\342\225\246", 0, 3, 1 }, /* U+2566 */
-	{ "\342\225\251", 0, 3, 1 }, /* U+2569 */
-	{ "\342\225\240", 0, 3, 1 }, /* U+2560 */
-	{ "\342\225\243", 0, 3, 1 }, /* U+2563 */
-	{ "\342\225\254", 0, 3, 1 }, /* U+256C */
-	{ "\302\267",     0, 2, 1 }  /* U+00B7 */
-};
-
-static const struct utf8_data screen_redraw_heavy_borders[] = {
-	{ "", 0, 0, 0 },
-	{ "\342\224\203", 0, 3, 1 }, /* U+2503 */
-	{ "\342\224\201", 0, 3, 1 }, /* U+2501 */
-	{ "\342\224\223", 0, 3, 1 }, /* U+2513 */
-	{ "\342\224\217", 0, 3, 1 }, /* U+250F */
-	{ "\342\224\227", 0, 3, 1 }, /* U+2517 */
-	{ "\342\224\233", 0, 3, 1 }, /* U+251B */
-	{ "\342\224\263", 0, 3, 1 }, /* U+2533 */
-	{ "\342\224\273", 0, 3, 1 }, /* U+253B */
-	{ "\342\224\243", 0, 3, 1 }, /* U+2523 */
-	{ "\342\224\253", 0, 3, 1 }, /* U+252B */
-	{ "\342\225\213", 0, 3, 1 }, /* U+254B */
-	{ "\302\267",     0, 2, 1 }  /* U+00B7 */
-};
-
 enum screen_redraw_border_type {
 	SCREEN_REDRAW_OUTSIDE,
 	SCREEN_REDRAW_INSIDE,
@@ -102,7 +70,7 @@ screen_redraw_border_set(struct window_pane *wp, int pane_lines, int cell_type,
 		break;
 	case PANE_LINES_SIMPLE:
 		gc->attr &= ~GRID_ATTR_CHARSET;
-		utf8_set(&gc->data, " |-+++++++++."[cell_type]);
+		utf8_set(&gc->data, SIMPLE_BORDERS[cell_type]);
 		break;
 	default:
 		gc->attr |= GRID_ATTR_CHARSET;

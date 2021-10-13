@@ -679,6 +679,28 @@ static void
 popup_redraw_border_set(int popup_lines, int cell_type, struct grid_cell *gc)
 {
 	switch(popup_lines) {
+        case POPUP_LINES_NONE:
+		break;
+        case POPUP_LINES_DOUBLE:
+                gc->attr &= ~GRID_ATTR_CHARSET;
+                utf8_copy(&gc->data, &screen_redraw_double_borders[cell_type]);
+		break;
+        case POPUP_LINES_HEAVY:
+                gc->attr &= ~GRID_ATTR_CHARSET;
+                utf8_copy(&gc->data, &screen_redraw_heavy_borders[cell_type]);
+		break;
+        case POPUP_LINES_ROUNDED:
+                gc->attr &= ~GRID_ATTR_CHARSET;
+                utf8_copy(&gc->data, &screen_redraw_rounded_borders[cell_type]);
+		break;
+        case POPUP_LINES_SIMPLE:
+                gc->attr &= ~GRID_ATTR_CHARSET;
+                utf8_set(&gc->data, SIMPLE_BORDERS[cell_type]);
+                break;
+        case POPUP_LINES_PADDED:
+                gc->attr &= ~GRID_ATTR_CHARSET;
+                utf8_set(&gc->data, PADDED_BORDERS[cell_type]);
+                break;
 	default:
 		gc->attr |= GRID_ATTR_CHARSET;
 		utf8_set(&gc->data, CELL_BORDERS[cell_type]);
@@ -706,30 +728,31 @@ screen_write_box(struct screen_write_ctx *ctx, u_int nx, u_int ny,
 	gc.flags |= GRID_FLAG_NOPALETTE;
 
 	// Draw top border
-	popup_redraw_border_set(-1, CELL_TOPLEFT, &gc);
+	popup_redraw_border_set(ctx->box_lines, CELL_TOPLEFT, &gc);
 	screen_write_cell(ctx, &gc);
-	popup_redraw_border_set(-1, CELL_LEFTRIGHT, &gc);
+	popup_redraw_border_set(ctx->box_lines, CELL_LEFTRIGHT, &gc);
 	for (i = 1; i < nx - 1; i++)
 		screen_write_cell(ctx, &gc);
-	popup_redraw_border_set(-1, CELL_TOPRIGHT, &gc);
+	popup_redraw_border_set(ctx->box_lines, CELL_TOPRIGHT, &gc);
 	screen_write_cell(ctx, &gc);
 
 	// Draw bottom border
 	screen_write_set_cursor(ctx, cx, cy + ny - 1);
-	popup_redraw_border_set(-1, CELL_BOTTOMLEFT, &gc);
+	popup_redraw_border_set(ctx->box_lines, CELL_BOTTOMLEFT, &gc);
 	screen_write_cell(ctx, &gc);
-	popup_redraw_border_set(-1, CELL_LEFTRIGHT, &gc);
+	popup_redraw_border_set(ctx->box_lines, CELL_LEFTRIGHT, &gc);
 	for (i = 1; i < nx - 1; i++)
 		screen_write_cell(ctx, &gc);
-	popup_redraw_border_set(-1, CELL_BOTTOMRIGHT, &gc);
+	popup_redraw_border_set(ctx->box_lines, CELL_BOTTOMRIGHT, &gc);
 	screen_write_cell(ctx, &gc);
 
-	popup_redraw_border_set(-1, CELL_TOPBOTTOM, &gc);
+	// Draw sides
+	popup_redraw_border_set(ctx->box_lines, CELL_TOPBOTTOM, &gc);
 	for (i = 1; i < ny - 1; i++) {
-		// Draw left border
+		// left side
 		screen_write_set_cursor(ctx, cx, cy + i);
 		screen_write_cell(ctx, &gc);
-		// Draw right border
+		// right side
 		screen_write_set_cursor(ctx, cx + nx - 1, cy + i);
 		screen_write_cell(ctx, &gc);
 	}

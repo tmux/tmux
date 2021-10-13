@@ -629,6 +629,8 @@ struct colour_palette {
 #define CELL_OUTSIDE 12
 
 #define CELL_BORDERS " xqlkmjwvtun~"
+#define SIMPLE_BORDERS " |-+++++++++."
+#define PADDED_BORDERS "             "
 
 /* Grid cell data. */
 struct grid_cell {
@@ -805,6 +807,7 @@ struct screen_write_ctx {
 	struct screen			*s;
 
 	int				 flags;
+	int				 box_lines;
 #define SCREEN_WRITE_SYNC 0x1
 #define SCREEN_WRITE_ZWJ 0x2
 
@@ -1084,6 +1087,63 @@ TAILQ_HEAD(winlink_stack, winlink);
 #define PANE_LINES_HEAVY 2
 #define PANE_LINES_SIMPLE 3
 #define PANE_LINES_NUMBER 4
+
+/* Popup border lines option. */
+#define POPUP_LINES_SINGLE 0
+#define POPUP_LINES_DOUBLE 1
+#define POPUP_LINES_HEAVY 2
+#define POPUP_LINES_SIMPLE 3
+#define POPUP_LINES_ROUNDED 4
+#define POPUP_LINES_PADDED 5
+#define POPUP_LINES_NONE 6
+
+static const struct utf8_data screen_redraw_double_borders[] = {
+	{ "", 0, 0, 0 },
+	{ "\342\225\221", 0, 3, 1 }, /* U+2551 */
+	{ "\342\225\220", 0, 3, 1 }, /* U+2550 */
+	{ "\342\225\224", 0, 3, 1 }, /* U+2554 */
+	{ "\342\225\227", 0, 3, 1 }, /* U+2557 */
+	{ "\342\225\232", 0, 3, 1 }, /* U+255A */
+	{ "\342\225\235", 0, 3, 1 }, /* U+255D */
+	{ "\342\225\246", 0, 3, 1 }, /* U+2566 */
+	{ "\342\225\251", 0, 3, 1 }, /* U+2569 */
+	{ "\342\225\240", 0, 3, 1 }, /* U+2560 */
+	{ "\342\225\243", 0, 3, 1 }, /* U+2563 */
+	{ "\342\225\254", 0, 3, 1 }, /* U+256C */
+	{ "\302\267",     0, 2, 1 }  /* U+00B7 */
+};
+
+static const struct utf8_data screen_redraw_heavy_borders[] = {
+	{ "", 0, 0, 0 },
+	{ "\342\224\203", 0, 3, 1 }, /* U+2503 */
+	{ "\342\224\201", 0, 3, 1 }, /* U+2501 */
+	{ "\342\224\217", 0, 3, 1 }, /* U+250F */
+	{ "\342\224\223", 0, 3, 1 }, /* U+2513 */
+	{ "\342\224\227", 0, 3, 1 }, /* U+2517 */
+	{ "\342\224\233", 0, 3, 1 }, /* U+251B */
+	{ "\342\224\263", 0, 3, 1 }, /* U+2533 */
+	{ "\342\224\273", 0, 3, 1 }, /* U+253B */
+	{ "\342\224\243", 0, 3, 1 }, /* U+2523 */
+	{ "\342\224\253", 0, 3, 1 }, /* U+252B */
+	{ "\342\225\213", 0, 3, 1 }, /* U+254B */
+	{ "\302\267",     0, 2, 1 }  /* U+00B7 */
+};
+
+static const struct utf8_data screen_redraw_rounded_borders[] = {
+       { "", 0, 0, 0 },
+       { "\342\224\202", 0, 3, 1 }, /* U+2502 */
+       { "\342\224\200", 0, 3, 1 }, /* U+2500 */
+       { "\342\225\255", 0, 3, 1 }, /* U+256D */
+       { "\342\225\256", 0, 3, 1 }, /* U+256E */
+       { "\342\225\260", 0, 3, 1 }, /* U+2570 */
+       { "\342\225\257", 0, 3, 1 }, /* U+256F */
+       { "\342\224\263", 0, 3, 1 }, /* U+2533 */
+       { "\342\224\273", 0, 3, 1 }, /* U+253B */
+       { "\342\224\243", 0, 3, 1 }, /* U+2523 */
+       { "\342\224\253", 0, 3, 1 }, /* U+252B */
+       { "\342\225\213", 0, 3, 1 }, /* U+254B */
+       { "\302\267",     0, 2, 1 }  /* U+00B7 */
+};
 
 /* Layout direction. */
 enum layout_type {
@@ -2083,6 +2143,9 @@ struct style	*options_string_to_style(struct options *, const char *,
 int		 options_from_string(struct options *,
 		     const struct options_table_entry *, const char *,
 		     const char *, int, char **);
+int		 string_choice_from_options(
+		     const struct options_table_entry *oe, const char *value,
+		     char **cause);
 void		 options_push_changes(const char *);
 int		 options_remove_or_default(struct options_entry *, int,
 		     char **);
@@ -3130,11 +3193,10 @@ int		 menu_key_cb(struct client *, void *, struct key_event *);
 /* popup.c */
 #define POPUP_CLOSEEXIT 0x1
 #define POPUP_CLOSEEXITZERO 0x2
-#define POPUP_NOBORDER 0x4
 #define POPUP_INTERNAL 0x8
 typedef void (*popup_close_cb)(int, void *);
 typedef void (*popup_finish_edit_cb)(char *, size_t, void *);
-int		 popup_display(int, struct cmdq_item *, u_int, u_int, u_int,
+int		 popup_display(int, int, struct cmdq_item *, u_int, u_int, u_int,
 		    u_int, struct environ *, const char *, int, char **,
 		    const char *, struct client *, struct session *,
 		    popup_close_cb, void *);
