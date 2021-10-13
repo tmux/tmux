@@ -1096,54 +1096,6 @@ TAILQ_HEAD(winlink_stack, winlink);
 #define BOX_LINES_PADDED 5
 #define BOX_LINES_NONE 6
 
-static const struct utf8_data screen_redraw_double_borders[] = {
-	{ "", 0, 0, 0 },
-	{ "\342\225\221", 0, 3, 1 }, /* U+2551 */
-	{ "\342\225\220", 0, 3, 1 }, /* U+2550 */
-	{ "\342\225\224", 0, 3, 1 }, /* U+2554 */
-	{ "\342\225\227", 0, 3, 1 }, /* U+2557 */
-	{ "\342\225\232", 0, 3, 1 }, /* U+255A */
-	{ "\342\225\235", 0, 3, 1 }, /* U+255D */
-	{ "\342\225\246", 0, 3, 1 }, /* U+2566 */
-	{ "\342\225\251", 0, 3, 1 }, /* U+2569 */
-	{ "\342\225\240", 0, 3, 1 }, /* U+2560 */
-	{ "\342\225\243", 0, 3, 1 }, /* U+2563 */
-	{ "\342\225\254", 0, 3, 1 }, /* U+256C */
-	{ "\302\267",     0, 2, 1 }  /* U+00B7 */
-};
-
-static const struct utf8_data screen_redraw_heavy_borders[] = {
-	{ "", 0, 0, 0 },
-	{ "\342\224\203", 0, 3, 1 }, /* U+2503 */
-	{ "\342\224\201", 0, 3, 1 }, /* U+2501 */
-	{ "\342\224\217", 0, 3, 1 }, /* U+250F */
-	{ "\342\224\223", 0, 3, 1 }, /* U+2513 */
-	{ "\342\224\227", 0, 3, 1 }, /* U+2517 */
-	{ "\342\224\233", 0, 3, 1 }, /* U+251B */
-	{ "\342\224\263", 0, 3, 1 }, /* U+2533 */
-	{ "\342\224\273", 0, 3, 1 }, /* U+253B */
-	{ "\342\224\243", 0, 3, 1 }, /* U+2523 */
-	{ "\342\224\253", 0, 3, 1 }, /* U+252B */
-	{ "\342\225\213", 0, 3, 1 }, /* U+254B */
-	{ "\302\267",     0, 2, 1 }  /* U+00B7 */
-};
-
-static const struct utf8_data screen_redraw_rounded_borders[] = {
-       { "", 0, 0, 0 },
-       { "\342\224\202", 0, 3, 1 }, /* U+2502 */
-       { "\342\224\200", 0, 3, 1 }, /* U+2500 */
-       { "\342\225\255", 0, 3, 1 }, /* U+256D */
-       { "\342\225\256", 0, 3, 1 }, /* U+256E */
-       { "\342\225\260", 0, 3, 1 }, /* U+2570 */
-       { "\342\225\257", 0, 3, 1 }, /* U+256F */
-       { "\342\224\263", 0, 3, 1 }, /* U+2533 */
-       { "\342\224\273", 0, 3, 1 }, /* U+253B */
-       { "\342\224\243", 0, 3, 1 }, /* U+2523 */
-       { "\342\224\253", 0, 3, 1 }, /* U+252B */
-       { "\342\225\213", 0, 3, 1 }, /* U+254B */
-       { "\302\267",     0, 2, 1 }  /* U+00B7 */
-};
-
 /* Layout direction. */
 enum layout_type {
 	LAYOUT_LEFTRIGHT,
@@ -2294,6 +2246,9 @@ void		 tty_default_features(int *, const char *, u_int);
 int		 tty_acs_needed(struct tty *);
 const char	*tty_acs_get(struct tty *, u_char);
 int		 tty_acs_reverse_get(struct tty *, const char *, size_t);
+const struct utf8_data *	tty_utf8_double_borders(int cell_type);
+const struct utf8_data *	tty_utf8_heavy_borders(int cell_type);
+const struct utf8_data *	tty_utf8_rounded_borders(int cell_type);
 
 /* tty-keys.c */
 void		tty_keys_build(struct tty *);

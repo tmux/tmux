@@ -683,15 +683,15 @@ screen_write_box_border_set(int popup_lines, int cell_type, struct grid_cell *gc
 		break;
         case BOX_LINES_DOUBLE:
                 gc->attr &= ~GRID_ATTR_CHARSET;
-                utf8_copy(&gc->data, &screen_redraw_double_borders[cell_type]);
+                utf8_copy(&gc->data, tty_utf8_double_borders(cell_type));
 		break;
         case BOX_LINES_HEAVY:
                 gc->attr &= ~GRID_ATTR_CHARSET;
-                utf8_copy(&gc->data, &screen_redraw_heavy_borders[cell_type]);
+                utf8_copy(&gc->data, tty_utf8_heavy_borders(cell_type));
 		break;
         case BOX_LINES_ROUNDED:
                 gc->attr &= ~GRID_ATTR_CHARSET;
-                utf8_copy(&gc->data, &screen_redraw_rounded_borders[cell_type]);
+                utf8_copy(&gc->data, tty_utf8_rounded_borders(cell_type));
 		break;
         case BOX_LINES_SIMPLE:
                 gc->attr &= ~GRID_ATTR_CHARSET;
