@@ -355,7 +355,8 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	struct tty		*tty = &tc->tty;
 	const char		*value, *shell, *shellcmd = NULL;
 	char			*cwd, *cause, **argv = NULL;
-	int			 lines = BOX_LINES_DEFAULT, flags = 0, argc = 0;
+	int			 flags = 0, argc = 0;
+	enum box_lines		 lines = BOX_LINES_DEFAULT;
 	u_int			 px, py, w, h, count = args_count(args);
 	struct args_value	*av;
 	struct environ		*env = NULL;

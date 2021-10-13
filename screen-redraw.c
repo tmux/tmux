@@ -42,8 +42,8 @@ enum screen_redraw_border_type {
 
 /* Get cell border character. */
 static void
-screen_redraw_border_set(struct window_pane *wp, int pane_lines, int cell_type,
-    struct grid_cell *gc)
+screen_redraw_border_set(struct window_pane *wp, enum pane_lines pane_lines,
+    int cell_type, struct grid_cell *gc)
 {
 	u_int	idx;
 
@@ -354,7 +354,7 @@ screen_redraw_check_is(u_int px, u_int py, int pane_status,
 /* Update pane status. */
 static int
 screen_redraw_make_pane_status(struct client *c, struct window_pane *wp,
-    struct screen_redraw_ctx *rctx, int pane_lines)
+    struct screen_redraw_ctx *rctx, enum pane_lines pane_lines)
 {
 	struct window		*w = wp->window;
 	struct grid_cell	 gc;
@@ -482,7 +482,8 @@ screen_redraw_update(struct client *c, int flags)
 	struct window		*w = c->session->curw->window;
 	struct window_pane	*wp;
 	struct options		*wo = w->options;
-	int			 redraw, lines;
+	int			 redraw;
+	enum pane_lines		 lines;
 	struct screen_redraw_ctx ctx;
 
 	if (c->message_string != NULL)

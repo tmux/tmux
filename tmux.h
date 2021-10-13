@@ -818,6 +818,27 @@ struct screen_write_ctx {
 	u_int				 bg;
 };
 
+/* Box border lines option. */
+enum box_lines {
+	BOX_LINES_DEFAULT = -1,
+	BOX_LINES_SINGLE,
+	BOX_LINES_DOUBLE,
+	BOX_LINES_HEAVY,
+	BOX_LINES_SIMPLE,
+	BOX_LINES_ROUNDED,
+	BOX_LINES_PADDED,
+	BOX_LINES_NONE,
+};
+
+/* Pane border lines option. */
+enum pane_lines {
+	PANE_LINES_SINGLE,
+	PANE_LINES_DOUBLE,
+	PANE_LINES_HEAVY,
+	PANE_LINES_SIMPLE,
+	PANE_LINES_NUMBER,
+};
+
 /* Screen redraw context. */
 struct screen_redraw_ctx {
 	struct client	*c;
@@ -826,7 +847,7 @@ struct screen_redraw_ctx {
 	int		 statustop;
 
 	int		 pane_status;
-	int		 pane_lines;
+	enum pane_lines	 pane_lines;
 
 	struct grid_cell no_pane_gc;
 	int		 no_pane_gc_set;
@@ -1079,23 +1100,6 @@ TAILQ_HEAD(winlink_stack, winlink);
 #define PANE_STATUS_OFF 0
 #define PANE_STATUS_TOP 1
 #define PANE_STATUS_BOTTOM 2
-
-/* Pane border lines option. */
-#define PANE_LINES_SINGLE 0
-#define PANE_LINES_DOUBLE 1
-#define PANE_LINES_HEAVY 2
-#define PANE_LINES_SIMPLE 3
-#define PANE_LINES_NUMBER 4
-
-/* Box border lines option. */
-#define BOX_LINES_DEFAULT -1
-#define BOX_LINES_SINGLE 0
-#define BOX_LINES_DOUBLE 1
-#define BOX_LINES_HEAVY 2
-#define BOX_LINES_SIMPLE 3
-#define BOX_LINES_ROUNDED 4
-#define BOX_LINES_PADDED 5
-#define BOX_LINES_NONE 6
 
 /* Layout direction. */
 enum layout_type {

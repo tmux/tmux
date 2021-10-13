@@ -30,7 +30,7 @@ struct popup_data {
 	struct client		 *c;
 	struct cmdq_item	 *item;
 	int			  flags;
-	int			  lines;
+	enum box_lines		  lines;
 
 	struct screen		  s;
 	struct colour_palette	  palette;
@@ -628,15 +628,15 @@ popup_job_complete_cb(struct job *job)
 }
 
 int
-popup_display(int flags, int lines, struct cmdq_item *item, u_int px, u_int py,
-    u_int sx, u_int sy, struct environ *env, const char *shellcmd, int argc,
-    char **argv, const char *cwd, struct client *c, struct session *s,
+popup_display(int flags, enum box_lines l, struct cmdq_item *item, u_int px,
+    u_int py, u_int sx, u_int sy, struct environ *env, const char *shellcmd,
+    int argc, char **argv, const char *cwd, struct client *c, struct session *s,
     popup_close_cb cb, void *arg)
 {
 	struct popup_data	*pd;
 	u_int			 jx, jy;
 
-	if (lines == BOX_LINES_NONE) {
+	if (l == BOX_LINES_NONE) {
 		if (sx < 1 || sy < 1)
 			return (-1);
 		jx = sx;
@@ -653,7 +653,7 @@ popup_display(int flags, int lines, struct cmdq_item *item, u_int px, u_int py,
 	pd = xcalloc(1, sizeof *pd);
 	pd->item = item;
 	pd->flags = flags;
-	pd->lines = lines;
+	pd->lines = l;
 
 	pd->c = c;
 	pd->c->references++;
