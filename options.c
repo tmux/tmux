@@ -990,11 +990,12 @@ options_from_string_flag(struct options *oo, const char *name,
 }
 
 int
-string_choice_from_options(const struct options_table_entry *oe,
+options_find_choice(const struct options_table_entry *oe,
     const char *value, char **cause)
 {
 	const char	**cp;
 	int		  n = 0, choice = -1;
+
 	for (cp = oe->choices; *cp != NULL; cp++) {
 		if (strcmp(*cp, value) == 0)
 			choice = n;
@@ -1018,7 +1019,7 @@ options_from_string_choice(const struct options_table_entry *oe,
 		if (choice < 2)
 			choice = !choice;
 	} else {
-		choice = string_choice_from_options(oe, value, cause);
+		choice = options_find_choice(oe, value, cause);
 		if (choice < 0)
 			return (-1);
 	}

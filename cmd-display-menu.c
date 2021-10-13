@@ -404,8 +404,8 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	else {
 		cause = NULL;
 		oe = options_get(o, "popup-border-lines");
-		lines = string_choice_from_options(options_table_entry(oe),
-		    value, &cause);
+		lines = options_find_choice(options_table_entry(oe), value,
+		    &cause);
 		if (cause != NULL) {
 			cmdq_error(item, "border-lines %s", cause);
 			free(cause);

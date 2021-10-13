@@ -2143,9 +2143,8 @@ struct style	*options_string_to_style(struct options *, const char *,
 int		 options_from_string(struct options *,
 		     const struct options_table_entry *, const char *,
 		     const char *, int, char **);
-int		 string_choice_from_options(
-		     const struct options_table_entry *oe, const char *value,
-		     char **cause);
+int	 	 options_find_choice( const struct options_table_entry *oe,
+		     const char *value, char **cause);
 void		 options_push_changes(const char *);
 int		 options_remove_or_default(struct options_entry *, int,
 		     char **);
