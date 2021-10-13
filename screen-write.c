@@ -711,7 +711,7 @@ popup_redraw_border_set(int popup_lines, int cell_type, struct grid_cell *gc)
 /* Draw a box on screen. */
 void
 screen_write_box(struct screen_write_ctx *ctx, u_int nx, u_int ny,
-    struct grid_cell *gcp)
+    const struct grid_cell *gcp)
 {
 	struct screen		*s = ctx->s;
 	struct grid_cell         gc;
