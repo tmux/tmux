@@ -1087,14 +1087,14 @@ TAILQ_HEAD(winlink_stack, winlink);
 #define PANE_LINES_SIMPLE 3
 #define PANE_LINES_NUMBER 4
 
-/* Popup border lines option. */
-#define POPUP_LINES_SINGLE 0
-#define POPUP_LINES_DOUBLE 1
-#define POPUP_LINES_HEAVY 2
-#define POPUP_LINES_SIMPLE 3
-#define POPUP_LINES_ROUNDED 4
-#define POPUP_LINES_PADDED 5
-#define POPUP_LINES_NONE 6
+/* Box border lines option. */
+#define BOX_LINES_SINGLE 0
+#define BOX_LINES_DOUBLE 1
+#define BOX_LINES_HEAVY 2
+#define BOX_LINES_SIMPLE 3
+#define BOX_LINES_ROUNDED 4
+#define BOX_LINES_PADDED 5
+#define BOX_LINES_NONE 6
 
 static const struct utf8_data screen_redraw_double_borders[] = {
 	{ "", 0, 0, 0 },

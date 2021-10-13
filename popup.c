@@ -117,7 +117,7 @@ popup_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 	ttyctx->wsx = c->tty.sx;
 	ttyctx->wsy = c->tty.sy;
 
-	if (pd->lines == POPUP_LINES_NONE) {
+	if (pd->lines == BOX_LINES_NONE) {
 		ttyctx->xoff = ttyctx->rxoff = pd->px;
 		ttyctx->yoff = ttyctx->ryoff = pd->py;
 	} else {
@@ -147,7 +147,7 @@ popup_mode_cb(__unused struct client *c, void *data, u_int *cx, u_int *cy)
 	if (pd->md != NULL)
 		return (menu_mode_cb(c, pd->md, cx, cy));
 
-	if (pd->lines == POPUP_LINES_NONE) {
+	if (pd->lines == BOX_LINES_NONE) {
 		*cx = pd->px + pd->s.cx;
 		*cy = pd->py + pd->s.cy;
 	} else {
@@ -223,7 +223,7 @@ popup_draw_cb(struct client *c, void *data, struct screen_redraw_ctx *rctx)
 	style_apply(&bgc, o, "popup-border-style", NULL);
 	bgc.attr = 0;
 
-	if (pd->lines == POPUP_LINES_NONE) {
+	if (pd->lines == BOX_LINES_NONE) {
 		screen_write_cursormove(&ctx, 0, 0, 0);
 		screen_write_fast_copy(&ctx, &pd->s, 0, 0, pd->sx, pd->sy);
 	} else if (pd->sx > 2 && pd->sy > 2) {
@@ -318,7 +318,7 @@ popup_resize_cb(__unused struct client *c, void *data)
 		pd->px = pd->ppx;
 
 	/* Avoid zero size screens. */
-	if (pd->lines == POPUP_LINES_NONE) {
+	if (pd->lines == BOX_LINES_NONE) {
 		screen_resize(&pd->s, pd->sx, pd->sy, 0);
 		if (pd->job != NULL)
 			job_resize(pd->job, pd->sx, pd->sy );
@@ -444,7 +444,7 @@ popup_handle_drag(struct client *c, struct popup_data *pd,
 		pd->ppy = py;
 		server_redraw_client(c);
 	} else if (pd->dragging == SIZE) {
-		if (pd->lines == POPUP_LINES_NONE) {
+		if (pd->lines == BOX_LINES_NONE) {
 			if (m->x < pd->px + 1)
 				return;
 			if (m->y < pd->py + 1)
@@ -460,7 +460,7 @@ popup_handle_drag(struct client *c, struct popup_data *pd,
 		pd->psx = pd->sx;
 		pd->psy = pd->sy;
 
-		if (pd->lines == POPUP_LINES_NONE) {
+		if (pd->lines == BOX_LINES_NONE) {
 			screen_resize(&pd->s, pd->sx, pd->sy, 0);
 			if (pd->job != NULL)
 				job_resize(pd->job, pd->sx, pd->sy);
@@ -508,7 +508,7 @@ popup_key_cb(struct client *c, void *data, struct key_event *event)
 				goto menu;
 			return (0);
 		}
-		if (pd->lines != POPUP_LINES_NONE) {
+		if (pd->lines != BOX_LINES_NONE) {
 			if (m->x == pd->px)
 				border = LEFT;
 			else if (m->x == pd->px + pd->sx - 1)
@@ -542,7 +542,7 @@ popup_key_cb(struct client *c, void *data, struct key_event *event)
 	if (pd->job != NULL) {
 		if (KEYC_IS_MOUSE(event->key)) {
 			/* Must be inside, checked already. */
-			if (pd->lines == POPUP_LINES_NONE) {
+			if (pd->lines == BOX_LINES_NONE) {
 				px = m->x - pd->px;
 				py = m->y - pd->py;
 			} else {
@@ -636,7 +636,7 @@ popup_display(int flags, int lines, struct cmdq_item *item, u_int px, u_int py,
 	struct popup_data	*pd;
 	u_int			 jx, jy;
 
-	if (lines == POPUP_LINES_NONE) {
+	if (lines == BOX_LINES_NONE) {
 		if (sx < 1 || sy < 1)
 			return (-1);
 		jx = sx;

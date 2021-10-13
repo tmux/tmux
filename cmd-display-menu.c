@@ -398,7 +398,7 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 
 	value = args_get(args, 'b');
 	if (args_has(args, 'B'))
-		lines = POPUP_LINES_NONE;
+		lines = BOX_LINES_NONE;
 	else if (value == NULL)
 		lines = options_get_number(o, "popup-border-lines");
 	else {

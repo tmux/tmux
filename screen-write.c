@@ -679,25 +679,25 @@ static void
 popup_redraw_border_set(int popup_lines, int cell_type, struct grid_cell *gc)
 {
 	switch(popup_lines) {
-        case POPUP_LINES_NONE:
+        case BOX_LINES_NONE:
 		break;
-        case POPUP_LINES_DOUBLE:
+        case BOX_LINES_DOUBLE:
                 gc->attr &= ~GRID_ATTR_CHARSET;
                 utf8_copy(&gc->data, &screen_redraw_double_borders[cell_type]);
 		break;
-        case POPUP_LINES_HEAVY:
+        case BOX_LINES_HEAVY:
                 gc->attr &= ~GRID_ATTR_CHARSET;
                 utf8_copy(&gc->data, &screen_redraw_heavy_borders[cell_type]);
 		break;
-        case POPUP_LINES_ROUNDED:
+        case BOX_LINES_ROUNDED:
                 gc->attr &= ~GRID_ATTR_CHARSET;
                 utf8_copy(&gc->data, &screen_redraw_rounded_borders[cell_type]);
 		break;
-        case POPUP_LINES_SIMPLE:
+        case BOX_LINES_SIMPLE:
                 gc->attr &= ~GRID_ATTR_CHARSET;
                 utf8_set(&gc->data, SIMPLE_BORDERS[cell_type]);
                 break;
-        case POPUP_LINES_PADDED:
+        case BOX_LINES_PADDED:
                 gc->attr &= ~GRID_ATTR_CHARSET;
                 utf8_set(&gc->data, PADDED_BORDERS[cell_type]);
                 break;

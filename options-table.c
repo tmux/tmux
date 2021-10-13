@@ -1006,7 +1006,7 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_WINDOW,
 	  .choices = options_table_popup_lines_list,
-	  .default_num = POPUP_LINES_SINGLE,
+	  .default_num = BOX_LINES_SINGLE,
 	  .text = "Type of characters used to draw popup border lines. Some of "
 	          "these are only supported on terminals with UTF-8 support."
 	},
