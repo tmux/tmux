@@ -645,7 +645,7 @@ screen_write_menu(struct screen_write_ctx *ctx, struct menu *menu,
 
 	memcpy(&default_gc, &grid_default_cell, sizeof default_gc);
 
-	screen_write_box(ctx, menu->width + 4, menu->count + 2);
+	screen_write_box(ctx, menu->width + 4, menu->count + 2, NULL);
 	screen_write_cursormove(ctx, cx + 2, cy, 0);
 	format_draw(ctx, &default_gc, menu->width, menu->title, NULL);
 
@@ -677,16 +677,20 @@ screen_write_menu(struct screen_write_ctx *ctx, struct menu *menu,
 
 /* Draw a box on screen. */
 void
-screen_write_box(struct screen_write_ctx *ctx, u_int nx, u_int ny)
+screen_write_box(struct screen_write_ctx *ctx, u_int nx, u_int ny,
+    const struct grid_cell *gcp)
 {
 	struct screen		*s = ctx->s;
-	struct grid_cell	 gc;
+	struct grid_cell         gc;
 	u_int			 cx, cy, i;
 
 	cx = s->cx;
 	cy = s->cy;
 
-	memcpy(&gc, &grid_default_cell, sizeof gc);
+	if (gcp != NULL)
+		memcpy(&gc, gcp, sizeof gc);
+	else
+		memcpy(&gc, &grid_default_cell, sizeof gc);
 	gc.attr |= GRID_ATTR_CHARSET;
 	gc.flags |= GRID_FLAG_NOPALETTE;
 

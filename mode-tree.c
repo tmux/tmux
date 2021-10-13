@@ -747,7 +747,7 @@ mode_tree_draw(struct mode_tree_data *mtd)
 		mti = mti->parent;
 
 	screen_write_cursormove(&ctx, 0, h, 0);
-	screen_write_box(&ctx, w, sy - h);
+	screen_write_box(&ctx, w, sy - h, NULL);
 
 	if (mtd->sort_list != NULL) {
 		xasprintf(&text, " %s (sort: %s%s)", mti->name,
