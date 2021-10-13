@@ -400,9 +400,7 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	value = args_get(args, 'b');
 	if (args_has(args, 'B'))
 		lines = BOX_LINES_NONE;
-	else if (value == NULL)
-		lines = options_get_number(o, "popup-border-lines");
-	else {
+	else if (value != NULL) {
 		cause = NULL;
 		oe = options_get(o, "popup-border-lines");
 		lines = options_find_choice(options_table_entry(oe), value,

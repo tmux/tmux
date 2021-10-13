@@ -635,8 +635,13 @@ popup_display(int flags, enum box_lines l, struct cmdq_item *item, u_int px,
 {
 	struct popup_data	*pd;
 	u_int			 jx, jy;
+	struct options		*o = s->curw->window->options;
+	enum box_lines		 lines;
+	lines = (l == BOX_LINES_DEFAULT)
+	    ? options_get_number(o, "popup-border-lines")
+	    : l;
 
-	if (l == BOX_LINES_NONE) {
+	if (lines == BOX_LINES_NONE) {
 		if (sx < 1 || sy < 1)
 			return (-1);
 		jx = sx;
@@ -653,7 +658,7 @@ popup_display(int flags, enum box_lines l, struct cmdq_item *item, u_int px,
 	pd = xcalloc(1, sizeof *pd);
 	pd->item = item;
 	pd->flags = flags;
-	pd->lines = l;
+	pd->lines = lines;
 
 	pd->c = c;
 	pd->c->references++;
