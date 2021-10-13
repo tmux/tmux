@@ -162,21 +162,21 @@ static const struct utf8_data utf8_data_rounded_borders[] = {
 const struct utf8_data *
 tty_utf8_double_borders(int cell_type)
 {
-	return &utf8_data_double_borders[cell_type];
+	return (&utf8_data_double_borders[cell_type]);
 }
 
 /* Get cell border character for heavy style. */
 const struct utf8_data *
 tty_utf8_heavy_borders(int cell_type)
 {
-	return &utf8_data_heavy_borders[cell_type];
+	return (&utf8_data_heavy_borders[cell_type]);
 }
 
 /* Get cell border character for rounded style. */
 const struct utf8_data *
 tty_utf8_rounded_borders(int cell_type)
 {
-	return &utf8_data_rounded_borders[cell_type];
+	return (&utf8_data_rounded_borders[cell_type]);
 }
 
 static int

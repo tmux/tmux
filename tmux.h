@@ -1088,6 +1088,7 @@ TAILQ_HEAD(winlink_stack, winlink);
 #define PANE_LINES_NUMBER 4
 
 /* Box border lines option. */
+#define BOX_LINES_DEFAULT -1
 #define BOX_LINES_SINGLE 0
 #define BOX_LINES_DOUBLE 1
 #define BOX_LINES_HEAVY 2
@@ -2094,7 +2095,7 @@ struct style	*options_string_to_style(struct options *, const char *,
 int		 options_from_string(struct options *,
 		     const struct options_table_entry *, const char *,
 		     const char *, int, char **);
-int	 	 options_find_choice( const struct options_table_entry *oe,
+int	 	 options_find_choice(const struct options_table_entry *oe,
 		     const char *value, char **cause);
 void		 options_push_changes(const char *);
 int		 options_remove_or_default(struct options_entry *, int,

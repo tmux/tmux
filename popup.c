@@ -765,8 +765,9 @@ popup_editor(struct client *c, const char *buf, size_t len,
 	py = (c->tty.sy / 2) - (sy / 2);
 
 	xasprintf(&cmd, "%s %s", editor, path);
-	if (popup_display(POPUP_INTERNAL|POPUP_CLOSEEXIT, -1, NULL, px, py, sx, sy,
-	    NULL, cmd, 0, NULL, _PATH_TMP, c, NULL, popup_editor_close_cb, pe) != 0) {
+	if (popup_display(POPUP_INTERNAL|POPUP_CLOSEEXIT, BOX_LINES_DEFAULT,
+	    NULL, px, py, sx, sy, NULL, cmd, 0, NULL, _PATH_TMP, c, NULL,
+	    popup_editor_close_cb, pe) != 0) {
 		popup_editor_free(pe);
 		free(cmd);
 		return (-1);
