@@ -59,8 +59,11 @@ static const char *options_table_visual_bell_list[] = {
 static const char *options_table_pane_status_list[] = {
 	"off", "top", "bottom", NULL
 };
-static const char *options_table_pane_lines_list[] = {
+static const char *options_table_pane_border_lines_list[] = {
 	"single", "double", "heavy", "simple", "number", NULL
+};
+static const char *options_table_popup_border_lines_list[] = {
+	"single", "double", "heavy", "simple", "rounded", "padded", "none", NULL
 };
 static const char *options_table_set_clipboard_list[] = {
 	"off", "external", "on", NULL
@@ -950,7 +953,7 @@ const struct options_table_entry options_table[] = {
 	{ .name = "pane-border-lines",
 	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_WINDOW,
-	  .choices = options_table_pane_lines_list,
+	  .choices = options_table_pane_border_lines_list,
 	  .default_num = PANE_LINES_SINGLE,
 	  .text = "Type of characters used to draw pane border lines. Some of "
 	          "these are only supported on terminals with UTF-8 support."
@@ -997,6 +1000,15 @@ const struct options_table_entry options_table[] = {
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
 	  .text = "Default style of popup borders."
+	},
+
+	{ .name = "popup-border-lines",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .choices = options_table_popup_border_lines_list,
+	  .default_num = BOX_LINES_SINGLE,
+	  .text = "Type of characters used to draw popup border lines. Some of "
+	          "these are only supported on terminals with UTF-8 support."
 	},
 
 	{ .name = "remain-on-exit",

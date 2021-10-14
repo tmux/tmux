@@ -645,7 +645,8 @@ screen_write_menu(struct screen_write_ctx *ctx, struct menu *menu,
 
 	memcpy(&default_gc, &grid_default_cell, sizeof default_gc);
 
-	screen_write_box(ctx, menu->width + 4, menu->count + 2, NULL);
+	screen_write_box(ctx, menu->width + 4, menu->count + 2,
+	    BOX_LINES_DEFAULT, NULL);
 	screen_write_cursormove(ctx, cx + 2, cy, 0);
 	format_draw(ctx, &default_gc, menu->width, menu->title, NULL);
 
@@ -675,10 +676,45 @@ screen_write_menu(struct screen_write_ctx *ctx, struct menu *menu,
 	screen_write_set_cursor(ctx, cx, cy);
 }
 
+static void
+screen_write_box_border_set(enum box_lines box_lines, int cell_type,
+    struct grid_cell *gc)
+{
+	switch (box_lines) {
+        case BOX_LINES_NONE:
+		break;
+        case BOX_LINES_DOUBLE:
+                gc->attr &= ~GRID_ATTR_CHARSET;
+                utf8_copy(&gc->data, tty_acs_double_borders(cell_type));
+		break;
+        case BOX_LINES_HEAVY:
+                gc->attr &= ~GRID_ATTR_CHARSET;
+                utf8_copy(&gc->data, tty_acs_heavy_borders(cell_type));
+		break;
+        case BOX_LINES_ROUNDED:
+                gc->attr &= ~GRID_ATTR_CHARSET;
+                utf8_copy(&gc->data, tty_acs_rounded_borders(cell_type));
+		break;
+        case BOX_LINES_SIMPLE:
+                gc->attr &= ~GRID_ATTR_CHARSET;
+                utf8_set(&gc->data, SIMPLE_BORDERS[cell_type]);
+                break;
+        case BOX_LINES_PADDED:
+                gc->attr &= ~GRID_ATTR_CHARSET;
+                utf8_set(&gc->data, PADDED_BORDERS[cell_type]);
+                break;
+	case BOX_LINES_SINGLE:
+	case BOX_LINES_DEFAULT:
+		gc->attr |= GRID_ATTR_CHARSET;
+		utf8_set(&gc->data, CELL_BORDERS[cell_type]);
+		break;
+	}
+}
+
 /* Draw a box on screen. */
 void
 screen_write_box(struct screen_write_ctx *ctx, u_int nx, u_int ny,
-    const struct grid_cell *gcp)
+    enum box_lines l, const struct grid_cell *gcp)
 {
 	struct screen		*s = ctx->s;
 	struct grid_cell         gc;
@@ -694,24 +730,34 @@ screen_write_box(struct screen_write_ctx *ctx, u_int nx, u_int ny,
 	gc.attr |= GRID_ATTR_CHARSET;
 	gc.flags |= GRID_FLAG_NOPALETTE;
 
-	screen_write_putc(ctx, &gc, 'l');
+	/* Draw top border */
+	screen_write_box_border_set(l, CELL_TOPLEFT, &gc);
+	screen_write_cell(ctx, &gc);
+	screen_write_box_border_set(l, CELL_LEFTRIGHT, &gc);
 	for (i = 1; i < nx - 1; i++)
-		screen_write_putc(ctx, &gc, 'q');
-	screen_write_putc(ctx, &gc, 'k');
+		screen_write_cell(ctx, &gc);
+	screen_write_box_border_set(l, CELL_TOPRIGHT, &gc);
+	screen_write_cell(ctx, &gc);
 
+	/* Draw bottom border */
 	screen_write_set_cursor(ctx, cx, cy + ny - 1);
-	screen_write_putc(ctx, &gc, 'm');
+	screen_write_box_border_set(l, CELL_BOTTOMLEFT, &gc);
+	screen_write_cell(ctx, &gc);
+	screen_write_box_border_set(l, CELL_LEFTRIGHT, &gc);
 	for (i = 1; i < nx - 1; i++)
-		screen_write_putc(ctx, &gc, 'q');
-	screen_write_putc(ctx, &gc, 'j');
+		screen_write_cell(ctx, &gc);
+	screen_write_box_border_set(l, CELL_BOTTOMRIGHT, &gc);
+	screen_write_cell(ctx, &gc);
 
+	/* Draw sides */
+	screen_write_box_border_set(l, CELL_TOPBOTTOM, &gc);
 	for (i = 1; i < ny - 1; i++) {
+		/* left side */
 		screen_write_set_cursor(ctx, cx, cy + i);
-		screen_write_putc(ctx, &gc, 'x');
-	}
-	for (i = 1; i < ny - 1; i++) {
+		screen_write_cell(ctx, &gc);
+		/* right side */
 		screen_write_set_cursor(ctx, cx + nx - 1, cy + i);
-		screen_write_putc(ctx, &gc, 'x');
+		screen_write_cell(ctx, &gc);
 	}
 
 	screen_write_set_cursor(ctx, cx, cy);

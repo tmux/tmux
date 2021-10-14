@@ -4276,6 +4276,50 @@ see the
 section.
 Attributes are ignored.
 .Pp
+.It Ic popup-style Ar style
+Set the popup style.
+For how to specify
+.Ar style ,
+see the
+.Sx STYLES
+section.
+Attributes are ignored.
+.Pp
+.It Ic popup-border-style Ar style
+Set the popup border style.
+For how to specify
+.Ar style ,
+see the
+.Sx STYLES
+section.
+Attributes are ignored.
+.Pp
+.It Ic popup-border-lines Ar type
+Set the type of characters used for drawing popup borders.
+.Ar type
+may be one of:
+.Bl -tag -width Ds
+.It single
+single lines using ACS or UTF-8 characters (default)
+.It rounded
+variation of single with rounded corners using UTF-8 characters
+.It double
+double lines using UTF-8 characters
+.It heavy
+heavy lines using UTF-8 characters
+.It simple
+simple ASCII characters
+.It padded
+simple ASCII space character
+.It none
+no border
+.El
+.Pp
+.Ql double
+and
+.Ql heavy
+will fall back to standard ACS line drawing when UTF-8 is not supported.
+.Pp
 .It Ic window-status-activity-style Ar style
 Set status line style for windows with an activity alert.
 For how to specify
@@ -5769,6 +5813,7 @@ forwards any input read from stdin to the empty pane given by
 .Tg popup
 .It Xo Ic display-popup
 .Op Fl BCE
+.Op Fl b Ar border-lines
 .Op Fl c Ar target-client
 .Op Fl d Ar start-directory
 .Op Fl e Ar environment
@@ -5809,8 +5854,21 @@ and
 give the width and height - both may be a percentage (followed by
 .Ql % ) .
 If omitted, half of the terminal size is used.
+.Pp
 .Fl B
 does not surround the popup by a border.
+.Pp
+.Fl b
+sets the type of border line for the popup.
+When
+.Fl B
+is specified the
+.Fl b
+option is ignored.
+See
+.Ic popup-border-lines
+for possible values for
+.Ar border-lines .
 .Pp
 .Fl e
 takes the form
