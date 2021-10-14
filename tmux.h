@@ -613,6 +613,24 @@ struct colour_palette {
 #define GRID_LINE_EXTENDED 0x2
 #define GRID_LINE_DEAD 0x4
 
+#define CELL_INSIDE 0
+#define CELL_TOPBOTTOM 1
+#define CELL_LEFTRIGHT 2
+#define CELL_TOPLEFT 3
+#define CELL_TOPRIGHT 4
+#define CELL_BOTTOMLEFT 5
+#define CELL_BOTTOMRIGHT 6
+#define CELL_TOPJOIN 7
+#define CELL_BOTTOMJOIN 8
+#define CELL_LEFTJOIN 9
+#define CELL_RIGHTJOIN 10
+#define CELL_JOIN 11
+#define CELL_OUTSIDE 12
+
+#define CELL_BORDERS " xqlkmjwvtun~"
+#define SIMPLE_BORDERS " |-+++++++++."
+#define PADDED_BORDERS "             "
+
 /* Grid cell data. */
 struct grid_cell {
 	struct utf8_data	data;
@@ -799,6 +817,27 @@ struct screen_write_ctx {
 	u_int				 bg;
 };
 
+/* Box border lines option. */
+enum box_lines {
+	BOX_LINES_DEFAULT = -1,
+	BOX_LINES_SINGLE,
+	BOX_LINES_DOUBLE,
+	BOX_LINES_HEAVY,
+	BOX_LINES_SIMPLE,
+	BOX_LINES_ROUNDED,
+	BOX_LINES_PADDED,
+	BOX_LINES_NONE
+};
+
+/* Pane border lines option. */
+enum pane_lines {
+	PANE_LINES_SINGLE,
+	PANE_LINES_DOUBLE,
+	PANE_LINES_HEAVY,
+	PANE_LINES_SIMPLE,
+	PANE_LINES_NUMBER
+};
+
 /* Screen redraw context. */
 struct screen_redraw_ctx {
 	struct client	*c;
@@ -807,7 +846,7 @@ struct screen_redraw_ctx {
 	int		 statustop;
 
 	int		 pane_status;
-	int		 pane_lines;
+	enum pane_lines	 pane_lines;
 
 	struct grid_cell no_pane_gc;
 	int		 no_pane_gc_set;
@@ -1060,13 +1099,6 @@ TAILQ_HEAD(winlink_stack, winlink);
 #define PANE_STATUS_OFF 0
 #define PANE_STATUS_TOP 1
 #define PANE_STATUS_BOTTOM 2
-
-/* Pane border lines option. */
-#define PANE_LINES_SINGLE 0
-#define PANE_LINES_DOUBLE 1
-#define PANE_LINES_HEAVY 2
-#define PANE_LINES_SIMPLE 3
-#define PANE_LINES_NUMBER 4
 
 /* Layout direction. */
 enum layout_type {
@@ -2066,6 +2098,8 @@ struct style	*options_string_to_style(struct options *, const char *,
 int		 options_from_string(struct options *,
 		     const struct options_table_entry *, const char *,
 		     const char *, int, char **);
+int	 	 options_find_choice(const struct options_table_entry *,
+		     const char *, char **);
 void		 options_push_changes(const char *);
 int		 options_remove_or_default(struct options_entry *, int,
 		     char **);
@@ -2216,6 +2250,9 @@ void		 tty_default_features(int *, const char *, u_int);
 int		 tty_acs_needed(struct tty *);
 const char	*tty_acs_get(struct tty *, u_char);
 int		 tty_acs_reverse_get(struct tty *, const char *, size_t);
+const struct utf8_data *tty_acs_double_borders(int);
+const struct utf8_data *tty_acs_heavy_borders(int);
+const struct utf8_data *tty_acs_rounded_borders(int);
 
 /* tty-keys.c */
 void		tty_keys_build(struct tty *);
@@ -2699,8 +2736,8 @@ void	 screen_write_hline(struct screen_write_ctx *, u_int, int, int);
 void	 screen_write_vline(struct screen_write_ctx *, u_int, int, int);
 void	 screen_write_menu(struct screen_write_ctx *, struct menu *, int,
 	     const struct grid_cell *);
-void	 screen_write_box(struct screen_write_ctx *, u_int, u_int,
-	     const struct grid_cell *gc);
+void	 screen_write_box(struct screen_write_ctx *, u_int, u_int, int,
+	     const struct grid_cell *);
 void	 screen_write_preview(struct screen_write_ctx *, struct screen *, u_int,
 	     u_int);
 void	 screen_write_backspace(struct screen_write_ctx *);
@@ -3112,12 +3149,11 @@ int		 menu_key_cb(struct client *, void *, struct key_event *);
 /* popup.c */
 #define POPUP_CLOSEEXIT 0x1
 #define POPUP_CLOSEEXITZERO 0x2
-#define POPUP_NOBORDER 0x4
-#define POPUP_INTERNAL 0x8
+#define POPUP_INTERNAL 0x4
 typedef void (*popup_close_cb)(int, void *);
 typedef void (*popup_finish_edit_cb)(char *, size_t, void *);
-int		 popup_display(int, struct cmdq_item *, u_int, u_int, u_int,
-		    u_int, struct environ *, const char *, int, char **,
+int		 popup_display(int, int, struct cmdq_item *, u_int, u_int,
+		    u_int, u_int, struct environ *, const char *, int, char **,
 		    const char *, struct client *, struct session *,
 		    popup_close_cb, void *);
 int		 popup_editor(struct client *, const char *, size_t,
