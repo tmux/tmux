@@ -1993,8 +1993,9 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cmd_cells(struct tty *tty, const struct tty_ctx *ctx)
 {
-	struct overlay_ranges	r;
-	u_int			i, px;
+	struct overlay_ranges	 r;
+	u_int			 i, px, py, cx;
+	char			*cp = ctx->ptr;
 
 	if (!tty_is_visible(tty, ctx, ctx->ocx, ctx->ocy, ctx->num, 1))
 		return;
@@ -2017,16 +2018,20 @@ tty_cmd_cells(struct tty *tty, const struct tty_ctx *ctx)
 
 	tty_margin_off(tty);
 	tty_cursor_pane_unless_wrap(tty, ctx, ctx->ocx, ctx->ocy);
-
 	tty_attributes(tty, ctx->cell, &ctx->defaults, ctx->palette);
-	px = tty->cx;
-	tty_check_overlay_range(tty, px, tty->cy, ctx->num, &r);
+
+	/* Get tty position from pane position for overlay check. */
+	px = ctx->xoff + ctx->ocx - ctx->wox;
+	py = ctx->yoff + ctx->ocy - ctx->woy;
+
+	tty_check_overlay_range(tty, px, py, ctx->num, &r);
 	for (i = 0; i < OVERLAY_MAX_RANGES; i++) {
 		if (r.nx[i] == 0)
 			continue;
-		tty_cursor(tty, r.px[i], tty->cy);
-		tty_putn(tty, (char *)ctx->ptr + r.px[i] - px, r.nx[i],
-		    r.nx[i]);
+		/* Convert back to pane position for printing. */
+		cx = r.px[i] - ctx->xoff + ctx->wox;
+		tty_cursor_pane_unless_wrap(tty, ctx, cx, ctx->ocy);
+		tty_putn(tty, cp + r.px[i] - px, r.nx[i], r.nx[i]);
 	}
 }
 
