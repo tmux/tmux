@@ -31,6 +31,8 @@ struct popup_data {
 	struct cmdq_item	 *item;
 	int			  flags;
 	enum box_lines		  lines;
+	const char 		 *style;
+	const char 		 *border_style;
 
 	struct screen		  s;
 	struct colour_palette	  palette;
@@ -214,15 +216,21 @@ popup_draw_cb(struct client *c, void *data, struct screen_redraw_ctx *rctx)
 	struct grid_cell	 gc;
 	struct grid_cell	 bgc;
 	struct options          *o = c->session->curw->window->options;
+	struct style		 sy;
 
 	screen_init(&s, pd->sx, pd->sy, 0);
 	screen_write_start(&ctx, &s);
 	screen_write_clearscreen(&ctx, 8);
 
-	memcpy(&bgc, &grid_default_cell, sizeof bgc);
-	bgc.attr = 0;
-	style_apply(&bgc, o, "popup-border-style", NULL);
-	bgc.attr = 0;
+	if (pd->border_style != NULL) {
+		style_parse(&sy, &grid_default_cell, pd->border_style);
+		memcpy(&bgc, &sy.gc, sizeof bgc);
+		bgc.attr = 0;
+	} else {
+		memcpy(&bgc, &grid_default_cell, sizeof bgc);
+		bgc.attr = 0;
+		style_apply(&bgc, o, "popup-border-style", NULL);
+	}
 
 	if (pd->lines == BOX_LINES_NONE) {
 		screen_write_cursormove(&ctx, 0, 0, 0);
@@ -235,9 +243,15 @@ popup_draw_cb(struct client *c, void *data, struct screen_redraw_ctx *rctx)
 	}
 	screen_write_stop(&ctx);
 
-	memcpy(&gc, &grid_default_cell, sizeof gc);
-	style_apply(&gc, o, "popup-style", NULL);
-	gc.attr = 0;
+	if (pd->style != NULL) {
+		style_parse(&sy, &grid_default_cell, pd->style);
+		memcpy(&gc, &sy.gc, sizeof gc);
+		gc.attr = 0;
+	} else {
+		memcpy(&gc, &grid_default_cell, sizeof gc);
+		gc.attr = 0;
+		style_apply(&gc, o, "popup-style", NULL);
+	}
 	palette->fg = gc.fg;
 	palette->bg = gc.bg;
 
@@ -632,7 +646,8 @@ int
 popup_display(int flags, enum box_lines lines, struct cmdq_item *item, u_int px,
     u_int py, u_int sx, u_int sy, struct environ *env, const char *shellcmd,
     int argc, char **argv, const char *cwd, struct client *c, struct session *s,
-    popup_close_cb cb, void *arg)
+    const char* popup_style, const char* popup_border_style, popup_close_cb cb,
+    void *arg)
 {
 	struct popup_data	*pd;
 	u_int			 jx, jy;
@@ -663,6 +678,8 @@ popup_display(int flags, enum box_lines lines, struct cmdq_item *item, u_int px,
 	pd->item = item;
 	pd->flags = flags;
 	pd->lines = lines;
+	pd->style = popup_style;
+	pd->border_style = popup_border_style;
 
 	pd->c = c;
 	pd->c->references++;
@@ -775,8 +792,8 @@ popup_editor(struct client *c, const char *buf, size_t len,
 
 	xasprintf(&cmd, "%s %s", editor, path);
 	if (popup_display(POPUP_INTERNAL|POPUP_CLOSEEXIT, BOX_LINES_DEFAULT,
-	    NULL, px, py, sx, sy, NULL, cmd, 0, NULL, _PATH_TMP, c, NULL,
-	    popup_editor_close_cb, pe) != 0) {
+	    NULL, px, py, sx, sy, NULL, cmd, 0, NULL, _PATH_TMP, c, NULL, NULL,
+	    NULL, popup_editor_close_cb, pe) != 0) {
 		popup_editor_free(pe);
 		free(cmd);
 		return (-1);

@@ -3157,7 +3157,7 @@ typedef void (*popup_finish_edit_cb)(char *, size_t, void *);
 int		 popup_display(int, int, struct cmdq_item *, u_int, u_int,
 		    u_int, u_int, struct environ *, const char *, int, char **,
 		    const char *, struct client *, struct session *,
-		    popup_close_cb, void *);
+		    const char *, const char *, popup_close_cb, void *);
 int		 popup_editor(struct client *, const char *, size_t,
 		    popup_finish_edit_cb, void *);
 

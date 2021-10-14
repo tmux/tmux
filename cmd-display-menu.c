@@ -52,9 +52,10 @@ const struct cmd_entry cmd_display_popup_entry = {
 	.name = "display-popup",
 	.alias = "popup",
 
-	.args = { "Bb:Cc:d:e:Eh:t:w:x:y:", 0, -1, NULL },
+	.args = { "Bb:Cc:d:e:Eh:s:S:t:w:x:y:", 0, -1, NULL },
 	.usage = "[-BCE] [-b border-lines] [-c target-client] "
 		 "[-d start-directory] [-e environment] [-h height] "
+		 "[-s popup-style] [-S popup-border-style] "
 		 CMD_TARGET_PANE_USAGE " "
 		 "[-w width] [-x position] [-y position] [shell-command]",
 
@@ -397,6 +398,15 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	if (!cmd_display_menu_get_position(tc, item, args, &px, &py, w, h))
 		return (CMD_RETURN_NORMAL);
 
+	const char* popup_style;
+	value = args_get(args, 's');
+	if (value != NULL)
+		popup_style = value;
+	const char* popup_border_style;
+	value = args_get(args, 'S');
+	if (value != NULL)
+		popup_border_style = value;
+
 	value = args_get(args, 'b');
 	if (args_has(args, 'B'))
 		lines = BOX_LINES_NONE;
@@ -443,7 +453,8 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	else if (args_has(args, 'E'))
 		flags |= POPUP_CLOSEEXIT;
 	if (popup_display(flags, lines, item, px, py, w, h, env, shellcmd, argc,
-	    argv, cwd, tc, s, NULL, NULL) != 0) {
+	    argv, cwd, tc, s, popup_style, popup_border_style, NULL,
+	    NULL) != 0) {
 		cmd_free_argv(argc, argv);
 		if (env != NULL)
 			environ_free(env);
