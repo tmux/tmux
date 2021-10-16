@@ -355,6 +355,7 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	struct client		*tc = cmdq_get_target_client(item);
 	struct tty		*tty = &tc->tty;
 	const char		*value, *shell, *shellcmd = NULL;
+	const char		*style, *border_style;
 	char			*cwd, *cause = NULL, **argv = NULL;
 	int			 flags = 0, argc = 0;
 	enum box_lines		 lines = BOX_LINES_DEFAULT;
@@ -398,14 +399,12 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	if (!cmd_display_menu_get_position(tc, item, args, &px, &py, w, h))
 		return (CMD_RETURN_NORMAL);
 
-	const char* popup_style;
 	value = args_get(args, 's');
 	if (value != NULL)
-		popup_style = value;
-	const char* popup_border_style;
+		style = value;
 	value = args_get(args, 'S');
 	if (value != NULL)
-		popup_border_style = value;
+		border_style = value;
 
 	value = args_get(args, 'b');
 	if (args_has(args, 'B'))
@@ -453,7 +452,7 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	else if (args_has(args, 'E'))
 		flags |= POPUP_CLOSEEXIT;
 	if (popup_display(flags, lines, item, px, py, w, h, env, shellcmd, argc,
-	    argv, cwd, tc, s, popup_style, popup_border_style, NULL,
+	    argv, cwd, tc, s, style, border_style, NULL,
 	    NULL) != 0) {
 		cmd_free_argv(argc, argv);
 		if (env != NULL)

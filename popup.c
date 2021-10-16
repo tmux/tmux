@@ -646,7 +646,7 @@ int
 popup_display(int flags, enum box_lines lines, struct cmdq_item *item, u_int px,
     u_int py, u_int sx, u_int sy, struct environ *env, const char *shellcmd,
     int argc, char **argv, const char *cwd, struct client *c, struct session *s,
-    const char* popup_style, const char* popup_border_style, popup_close_cb cb,
+    const char* style, const char* border_style, popup_close_cb cb,
     void *arg)
 {
 	struct popup_data	*pd;
@@ -678,8 +678,8 @@ popup_display(int flags, enum box_lines lines, struct cmdq_item *item, u_int px,
 	pd->item = item;
 	pd->flags = flags;
 	pd->lines = lines;
-	pd->style = popup_style;
-	pd->border_style = popup_border_style;
+	pd->style = style;
+	pd->border_style = border_style;
 
 	pd->c = c;
 	pd->c->references++;
