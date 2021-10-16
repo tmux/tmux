@@ -57,7 +57,7 @@ menu_add_item(struct menu *menu, const struct menu_item *item,
 	struct menu_item	*new_item;
 	const char		*key, *cmd;
 	char			*s, *name;
-	u_int			 width;
+	u_int			 width, max_width;
 	int			 line;
 
 	line = (item == NULL || item->name == NULL || *item->name == '\0');
@@ -100,6 +100,8 @@ menu_add_item(struct menu *menu, const struct menu_item *item,
 	new_item->key = item->key;
 
 	width = format_width(new_item->name);
+	max_width = c->tty.sx - 8;
+	width = (width < max_width) ? width : max_width;
 	if (width > menu->width)
 		menu->width = width;
 }
