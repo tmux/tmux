@@ -628,8 +628,8 @@ popup_job_complete_cb(struct job *job)
 		server_client_clear_overlay(pd->c);
 }
 
-int
-popup_display(int flags, enum box_lines lines, struct cmdq_item *item, u_int px,
+static struct popup_data *
+popup_prepare(int flags, enum box_lines lines, struct cmdq_item *item, u_int px,
     u_int py, u_int sx, u_int sy, struct environ *env, const char *shellcmd,
     int argc, char **argv, const char *cwd, struct client *c, struct session *s,
     popup_close_cb cb, void *arg)
@@ -647,17 +647,17 @@ popup_display(int flags, enum box_lines lines, struct cmdq_item *item, u_int px,
 	}
 	if (lines == BOX_LINES_NONE) {
 		if (sx < 1 || sy < 1)
-			return (-1);
+			return (NULL);
 		jx = sx;
 		jy = sy;
 	} else {
 		if (sx < 3 || sy < 3)
-			return (-1);
+			return (NULL);
 		jx = sx - 2;
 		jy = sy - 2;
 	}
 	if (c->tty.sx < sx || c->tty.sy < sy)
-		return (-1);
+		return (NULL);
 
 	pd = xcalloc(1, sizeof *pd);
 	pd->item = item;
@@ -689,7 +689,21 @@ popup_display(int flags, enum box_lines lines, struct cmdq_item *item, u_int px,
 	    popup_job_update_cb, popup_job_complete_cb, NULL, pd,
 	    JOB_NOWAIT|JOB_PTY|JOB_KEEPWRITE, jx, jy);
 	pd->ictx = input_init(NULL, job_get_event(pd->job), &pd->palette);
+	return (pd);
+}
 
+int
+popup_display(int flags, enum box_lines lines, struct cmdq_item *item, u_int px,
+    u_int py, u_int sx, u_int sy, struct environ *env, const char *shellcmd,
+    int argc, char **argv, const char *cwd, struct client *c, struct session *s,
+    popup_close_cb cb, void *arg)
+{
+	struct popup_data	*pd;
+
+	pd = popup_prepare(flags, lines, item, px, py, sx, sy, env, shellcmd,
+	    argc, argv, cwd, c, s, cb, arg);
+	if (pd == NULL)
+		return (-1);
 	server_client_set_overlay(c, 0, popup_check_cb, popup_mode_cb,
 	    popup_draw_cb, popup_key_cb, popup_free_cb, popup_resize_cb, pd);
 	return (0);
