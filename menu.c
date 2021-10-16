@@ -76,7 +76,7 @@ menu_add_item(struct menu *menu, const struct menu_item *item,
 		s = format_single_from_state(qitem, item->name, c, fs);
 	else
 		s = format_single(qitem, item->name, c, NULL, NULL, NULL);
-	if (*s == '\0') { /* no item if empty after format expanded */
+	if (*s == '\0') { /* No item if empty after format expanded */
 		menu->count--;
 		return;
 	}
@@ -100,6 +100,9 @@ menu_add_item(struct menu *menu, const struct menu_item *item,
 	new_item->key = item->key;
 
 	width = format_width(new_item->name);
+	/* Shorten width by 1 to disregard hyphen indicating disabled item */
+	if (*new_item->name == '-')
+		width--;
 	if (width > menu->width)
 		menu->width = width;
 }
