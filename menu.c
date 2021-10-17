@@ -80,6 +80,11 @@ menu_add_item(struct menu *menu, const struct menu_item *item,
 		menu->count--;
 		return;
 	}
+	max_width = c->tty.sx - 8;
+	if (strlen(s) -3 > max_width) {
+		s[max_width-1] = '>';
+		s[max_width] = '\0';
+	}
 	if (*s != '-' && item->key != KEYC_UNKNOWN && item->key != KEYC_NONE) {
 		key = key_string_lookup_key(item->key, 0);
 		xasprintf(&name, "%s#[default] #[align=right](%s)", s, key);
@@ -100,8 +105,6 @@ menu_add_item(struct menu *menu, const struct menu_item *item,
 	new_item->key = item->key;
 
 	width = format_width(new_item->name);
-	max_width = c->tty.sx - 8;
-	width = (width < max_width) ? width : max_width;
 	if (width > menu->width)
 		menu->width = width;
 }
