@@ -100,6 +100,8 @@ menu_add_item(struct menu *menu, const struct menu_item *item,
 	new_item->key = item->key;
 
 	width = format_width(new_item->name);
+	if (*new_item->name == '-')
+		width--;
 	if (width > menu->width)
 		menu->width = width;
 }
