@@ -399,12 +399,8 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	if (!cmd_display_menu_get_position(tc, item, args, &px, &py, w, h))
 		return (CMD_RETURN_NORMAL);
 
-	value = args_get(args, 's');
-	if (value != NULL)
-		style = value;
-	value = args_get(args, 'S');
-	if (value != NULL)
-		border_style = value;
+	style = args_get(args, 's');
+	border_style = args_get(args, 'S');
 
 	value = args_get(args, 'b');
 	if (args_has(args, 'B'))
