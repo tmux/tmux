@@ -59,6 +59,7 @@ menu_add_item(struct menu *menu, const struct menu_item *item,
 	char			*s, *name;
 	u_int			 width, max_width;
 	int			 line;
+	size_t			 slen;
 
 	line = (item == NULL || item->name == NULL || *item->name == '\0');
 	if (line && menu->count == 0)
@@ -80,16 +81,23 @@ menu_add_item(struct menu *menu, const struct menu_item *item,
 		menu->count--;
 		return;
 	}
-	max_width = c->tty.sx - 8;
-	if (strlen(s) -3 > max_width) {
-		s[max_width-1] = '>';
-		s[max_width] = '\0';
-	}
+	max_width = c->tty.sx - 4;
+	slen = strlen(s);
 	if (*s != '-' && item->key != KEYC_UNKNOWN && item->key != KEYC_NONE) {
 		key = key_string_lookup_key(item->key, 0);
+		max_width = max_width - strlen(key) - 3;
+		if (strlen(s) > max_width) {
+			s[max_width - 1] = '>';
+			s[max_width] = '\0';
+		}
 		xasprintf(&name, "%s#[default] #[align=right](%s)", s, key);
-	} else
+	} else {
+		if (slen > max_width) {
+			s[max_width - 1] = '>';
+			s[max_width] = '\0';
+		}
 		xasprintf(&name, "%s", s);
+	}
 	new_item->name = name;
 	free(s);
 
