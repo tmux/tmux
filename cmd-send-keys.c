@@ -203,7 +203,7 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (count == 0) {
-		if (args_has(args, 'N'))
+		if (args_has(args, 'N') || args_has(args, 'R'))
 			return (CMD_RETURN_NORMAL);
 		for (; np != 0; np--)
 			cmd_send_keys_inject_key(item, NULL, event->key);
