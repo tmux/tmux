@@ -31,8 +31,10 @@ struct popup_data {
 	struct cmdq_item	 *item;
 	int			  flags;
 	enum box_lines		  lines;
-	struct style		 *style;
-	struct style		 *border_style;
+	struct style		  style;
+	int			  style_set;
+	struct style		  border_style;
+	int			  border_style_set;
 
 	struct screen		  s;
 	struct colour_palette	  palette;
@@ -221,8 +223,8 @@ popup_draw_cb(struct client *c, void *data, struct screen_redraw_ctx *rctx)
 	screen_write_start(&ctx, &s);
 	screen_write_clearscreen(&ctx, 8);
 
-	if (pd->border_style != NULL) {
-		memcpy(&bgc, &pd->border_style->gc, sizeof bgc);
+	if (pd->border_style_set) {
+		memcpy(&bgc, &pd->border_style.gc, sizeof bgc);
 		bgc.attr = 0;
 	} else {
 		memcpy(&bgc, &grid_default_cell, sizeof bgc);
@@ -241,8 +243,8 @@ popup_draw_cb(struct client *c, void *data, struct screen_redraw_ctx *rctx)
 	}
 	screen_write_stop(&ctx);
 
-	if (pd->style != NULL) {
-		memcpy(&gc, &pd->style->gc, sizeof gc);
+	if (pd->style_set) {
+		memcpy(&gc, &pd->style.gc, sizeof gc);
 		gc.attr = 0;
 	} else {
 		memcpy(&gc, &grid_default_cell, sizeof gc);
@@ -676,12 +678,13 @@ popup_display(int flags, enum box_lines lines, struct cmdq_item *item, u_int px,
 	pd->flags = flags;
 	pd->lines = lines;
 	if (style != NULL) {
-		pd->style = xcalloc(1, sizeof *pd->style);
-		style_parse(pd->style, &grid_default_cell, style);
+		pd->style_set = 1;
+		style_parse(&pd->style, &grid_default_cell, style);
 	}
 	if (border_style != NULL) {
-		pd->border_style = xcalloc(1, sizeof *pd->border_style);
-		style_parse(pd->border_style, &grid_default_cell, border_style);
+		pd->border_style_set = 1;
+		style_parse(&pd->border_style, &grid_default_cell,
+		    border_style);
 	}
 
 	pd->c = c;

@@ -316,12 +316,3 @@ style_copy(struct style *dst, struct style *src)
 {
 	memcpy(dst, src, sizeof *dst);
 }
-
-/* Free a style. */
-void
-style_free(struct style *s)
-{
-	if (s != NULL) {
-		free(s);
-	}
-}
