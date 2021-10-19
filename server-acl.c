@@ -135,7 +135,9 @@ void server_acl_init(void)
 
 		/* We do have whitelisted users, so we should open the socket*/
 		if (add_count > 0) {
-			chmod(socket_path, S_IRGRP | S_IWGRP | S_IRUSR | S_IWUSR);
+			if (chmod(socket_path, S_IRGRP | S_IWGRP | S_IRUSR | S_IWUSR) != 0) {
+				log_debug(TMUX_ACL_LOG " Warning: chmod for %s failed with error %s", socket_path, errnostr());
+			}
 		}
 	}
 	else {
