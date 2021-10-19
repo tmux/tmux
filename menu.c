@@ -59,7 +59,7 @@ menu_add_item(struct menu *menu, const struct menu_item *item,
 	char			*s, *name;
 	u_int			 width, max_width;
 	int			 line;
-	size_t			 slen;
+	size_t			 klen, slen;
 
 	line = (item == NULL || item->name == NULL || *item->name == '\0');
 	if (line && menu->count == 0)
@@ -85,8 +85,12 @@ menu_add_item(struct menu *menu, const struct menu_item *item,
 	slen = strlen(s);
 	if (*s != '-' && item->key != KEYC_UNKNOWN && item->key != KEYC_NONE) {
 		key = key_string_lookup_key(item->key, 0);
-		max_width = max_width - strlen(key) - 3;
-		if (strlen(s) > max_width) {
+		klen = strlen(key) + 3;
+		if (max_width > klen)
+			max_width -= klen;
+		else
+			max_width = 0;
+		if (max_width !=0 && slen > max_width) {
 			s[max_width - 1] = '>';
 			s[max_width] = '\0';
 		}
