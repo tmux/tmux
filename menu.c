@@ -56,7 +56,7 @@ menu_add_item(struct menu *menu, const struct menu_item *item,
 {
 	struct menu_item	*new_item;
 	const char		*key, *cmd;
-	char			*s, *name;
+	char			*s, *name, *menu_key = NULL;
 	u_int			 width, max_width;
 	int			 line;
 	size_t			 klen, slen;
@@ -86,24 +86,23 @@ menu_add_item(struct menu *menu, const struct menu_item *item,
 	if (*s != '-' && item->key != KEYC_UNKNOWN && item->key != KEYC_NONE) {
 		key = key_string_lookup_key(item->key, 0);
 		klen = strlen(key) + 3;
-		if (max_width > klen)
+		if (max_width > klen) {
 			max_width -= klen;
-		else
-			max_width = 0;
-		if (max_width !=0 && slen > max_width) {
-			s[max_width - 1] = '>';
-			s[max_width] = '\0';
+			xasprintf(&menu_key, "#[default] #[align=right](%s)",
+			    key);
 		}
-		xasprintf(&name, "%s#[default] #[align=right](%s)", s, key);
-	} else {
-		if (slen > max_width) {
-			s[max_width - 1] = '>';
-			s[max_width] = '\0';
-		}
-		xasprintf(&name, "%s", s);
 	}
+	if (slen > max_width) {
+		s[max_width - 1] = '>';
+		s[max_width] = '\0';
+	}
+	if (menu_key != NULL)
+		xasprintf(&name, "%s%s", s, menu_key);
+	else
+		xasprintf(&name, "%s", s);
 	new_item->name = name;
 	free(s);
+	free(menu_key);
 
 	cmd = item->command;
 	if (cmd != NULL) {
