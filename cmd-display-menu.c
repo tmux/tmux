@@ -52,11 +52,11 @@ const struct cmd_entry cmd_display_popup_entry = {
 	.name = "display-popup",
 	.alias = "popup",
 
-	.args = { "Bb:Cc:d:e:Eh:s:S:t:w:x:y:", 0, -1, NULL },
+	.args = { "Bb:Cc:d:e:Eh:s:S:t:T:w:x:y:", 0, -1, NULL },
 	.usage = "[-BCE] [-b border-lines] [-c target-client] "
 		 "[-d start-directory] [-e environment] [-h height] "
 		 "[-s popup-style] [-S popup-border-style] "
-		 CMD_TARGET_PANE_USAGE " "
+		 CMD_TARGET_PANE_USAGE " [-T title] "
 		 "[-w width] [-x position] [-y position] [shell-command]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -356,7 +356,7 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	struct tty		*tty = &tc->tty;
 	const char		*value, *shell, *shellcmd = NULL;
 	const char		*style, *border_style;
-	char			*cwd, *cause = NULL, **argv = NULL;
+	char			*cwd, *cause = NULL, **argv = NULL, *title;
 	int			 flags = 0, argc = 0;
 	enum box_lines		 lines = BOX_LINES_DEFAULT;
 	u_int			 px, py, w, h, count = args_count(args);
@@ -443,20 +443,25 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 		}
 	}
 
+	if (args_has(args, 'T'))
+		title = format_single_from_target(item, args_get(args, 'T'));
+	else
+		title = xstrdup("");
 	if (args_has(args, 'E') > 1)
 		flags |= POPUP_CLOSEEXITZERO;
 	else if (args_has(args, 'E'))
 		flags |= POPUP_CLOSEEXIT;
 	if (popup_display(flags, lines, item, px, py, w, h, env, shellcmd, argc,
-	    argv, cwd, tc, s, style, border_style, NULL,
-	    NULL) != 0) {
+	    argv, cwd, title, tc, s, style, border_style, NULL, NULL) != 0) {
 		cmd_free_argv(argc, argv);
 		if (env != NULL)
 			environ_free(env);
+		free(title);
 		return (CMD_RETURN_NORMAL);
 	}
 	if (env != NULL)
 		environ_free(env);
+	free(title);
 	cmd_free_argv(argc, argv);
 	return (CMD_RETURN_WAIT);
 }

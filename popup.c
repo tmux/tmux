@@ -35,6 +35,7 @@ struct popup_data {
 	int			  style_set;
 	struct style		  border_style;
 	int			  border_style_set;
+	char			 *title;
 
 	struct screen		  s;
 	struct colour_palette	  palette;
@@ -236,7 +237,8 @@ popup_draw_cb(struct client *c, void *data, struct screen_redraw_ctx *rctx)
 		screen_write_cursormove(&ctx, 0, 0, 0);
 		screen_write_fast_copy(&ctx, &pd->s, 0, 0, pd->sx, pd->sy);
 	} else if (pd->sx > 2 && pd->sy > 2) {
-		screen_write_box(&ctx, pd->sx, pd->sy, pd->lines, &bgc);
+		screen_write_box(&ctx, pd->sx, pd->sy, pd->lines, &bgc,
+		    pd->title);
 		screen_write_cursormove(&ctx, 1, 1, 0);
 		screen_write_fast_copy(&ctx, &pd->s, 0, 0, pd->sx - 2,
 		    pd->sy - 2);
@@ -299,6 +301,7 @@ popup_free_cb(struct client *c, void *data)
 	screen_free(&pd->s);
 	colour_palette_free(&pd->palette);
 
+	free(pd->title);
 	free(pd);
 }
 
@@ -644,9 +647,9 @@ popup_job_complete_cb(struct job *job)
 int
 popup_display(int flags, enum box_lines lines, struct cmdq_item *item, u_int px,
     u_int py, u_int sx, u_int sy, struct environ *env, const char *shellcmd,
-    int argc, char **argv, const char *cwd, struct client *c, struct session *s,
-    const char* style, const char* border_style, popup_close_cb cb,
-    void *arg)
+    int argc, char **argv, const char *cwd, const char *title, struct client *c,
+    struct session *s, const char* style, const char* border_style,
+    popup_close_cb cb, void *arg)
 {
 	struct popup_data	*pd;
 	u_int			 jx, jy;
@@ -677,6 +680,7 @@ popup_display(int flags, enum box_lines lines, struct cmdq_item *item, u_int px,
 	pd->item = item;
 	pd->flags = flags;
 	pd->lines = lines;
+
 	if (style != NULL) {
 		pd->style_set = 1;
 		style_parse(&pd->style, &grid_default_cell, style);
@@ -686,6 +690,8 @@ popup_display(int flags, enum box_lines lines, struct cmdq_item *item, u_int px,
 		style_parse(&pd->border_style, &grid_default_cell,
 		    border_style);
 	}
+
+	pd->title = xstrdup(title);
 
 	pd->c = c;
 	pd->c->references++;
@@ -798,8 +804,8 @@ popup_editor(struct client *c, const char *buf, size_t len,
 
 	xasprintf(&cmd, "%s %s", editor, path);
 	if (popup_display(POPUP_INTERNAL|POPUP_CLOSEEXIT, BOX_LINES_DEFAULT,
-	    NULL, px, py, sx, sy, NULL, cmd, 0, NULL, _PATH_TMP, c, NULL, NULL,
-	    NULL, popup_editor_close_cb, pe) != 0) {
+	    NULL, px, py, sx, sy, NULL, cmd, 0, NULL, _PATH_TMP, NULL, c, NULL,
+	    NULL, NULL, popup_editor_close_cb, pe) != 0) {
 		popup_editor_free(pe);
 		free(cmd);
 		return (-1);

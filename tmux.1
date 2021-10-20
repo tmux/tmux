@@ -5803,6 +5803,7 @@ forwards any input read from stdin to the empty pane given by
 .Op Fl s Ar style
 .Op Fl S Ar style
 .Op Fl t Ar target-pane
+.Op Fl T Ar title
 .Op Fl w Ar width
 .Op Fl x Ar position
 .Op Fl y Ar position
@@ -5869,6 +5870,10 @@ takes the form
 .Ql VARIABLE=value
 and sets an environment variable for the popup; it may be specified multiple
 times.
+.Pp
+.Fl T
+is a format for the popup title (see
+.Sx FORMATS ) .
 .Pp
 The
 .Fl C
