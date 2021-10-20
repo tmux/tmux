@@ -228,7 +228,7 @@ popup_draw_cb(struct client *c, void *data, struct screen_redraw_ctx *rctx)
 		screen_write_cursormove(&ctx, 0, 0, 0);
 		screen_write_fast_copy(&ctx, &pd->s, 0, 0, pd->sx, pd->sy);
 	} else if (pd->sx > 2 && pd->sy > 2) {
-		screen_write_box(&ctx, pd->sx, pd->sy, pd->lines, &bgc);
+		screen_write_box(&ctx, pd->sx, pd->sy, pd->lines, &bgc, NULL);
 		screen_write_cursormove(&ctx, 1, 1, 0);
 		screen_write_fast_copy(&ctx, &pd->s, 0, 0, pd->sx - 2,
 		    pd->sy - 2);
