@@ -519,7 +519,8 @@ window_tree_draw_label(struct screen_write_ctx *ctx, u_int px, u_int py,
 
 	if (ox > 1 && ox + len < sx - 1 && sy >= 3) {
 		screen_write_cursormove(ctx, px + ox - 1, py + oy - 1, 0);
-		screen_write_box(ctx, len + 2, 3, BOX_LINES_DEFAULT, NULL);
+		screen_write_box(ctx, len + 2, 3, BOX_LINES_DEFAULT, NULL,
+		    NULL);
 	}
 	screen_write_cursormove(ctx, px + ox, py + oy, 0);
 	screen_write_puts(ctx, gc, "%s", label);
