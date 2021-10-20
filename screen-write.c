@@ -712,7 +712,7 @@ screen_write_box_border_set(enum box_lines box_lines, int cell_type,
 /* Draw a box on screen. */
 void
 screen_write_box(struct screen_write_ctx *ctx, u_int nx, u_int ny,
-    enum box_lines l, const struct grid_cell *gcp, const char *title)
+    enum box_lines l, const struct grid_cell *gcp, char *title)
 {
 	struct screen		*s = ctx->s;
 	struct grid_cell         gc;
