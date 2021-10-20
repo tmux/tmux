@@ -1186,7 +1186,7 @@ tty_keys_clipboard(__unused struct tty *tty, const char *buf, size_t len,
 		return (1);
 
 	/* Find the terminator if any. */
-	for (end = 5; end < len; end++) {
+	for (end = 5, terminator = 0; end < len; end++) {
 		if (buf[end] == '\007') {
 			terminator = 1;
 			break;
@@ -1203,6 +1203,9 @@ tty_keys_clipboard(__unused struct tty *tty, const char *buf, size_t len,
 	/* Skip the initial part. */
 	buf += 5;
 	end -= 5;
+
+	/* Adjust end so that it points to the *start* of the terminator sequence */
+	end -= terminator - 1;
 
 	/* Get the second argument. */
 	while (end != 0 && *buf != ';') {
