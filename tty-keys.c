@@ -1204,6 +1204,9 @@ tty_keys_clipboard(__unused struct tty *tty, const char *buf, size_t len,
 	buf += 5;
 	end -= 5;
 
+	/* Adjust end so that it points to the start of the terminator. */
+	end -= terminator - 1;
+
 	/* Get the second argument. */
 	while (end != 0 && *buf != ';') {
 		buf++;
