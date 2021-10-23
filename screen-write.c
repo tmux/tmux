@@ -582,98 +582,6 @@ screen_write_fast_copy(struct screen_write_ctx *ctx, struct screen *src,
 	}
 }
 
-/* Draw a horizontal line on screen. */
-void
-screen_write_hline(struct screen_write_ctx *ctx, u_int nx, int left, int right)
-{
-	struct screen		*s = ctx->s;
-	struct grid_cell	 gc;
-	u_int			 cx, cy, i;
-
-	cx = s->cx;
-	cy = s->cy;
-
-	memcpy(&gc, &grid_default_cell, sizeof gc);
-	gc.attr |= GRID_ATTR_CHARSET;
-
-	screen_write_putc(ctx, &gc, left ? 't' : 'q');
-	for (i = 1; i < nx - 1; i++)
-		screen_write_putc(ctx, &gc, 'q');
-	screen_write_putc(ctx, &gc, right ? 'u' : 'q');
-
-	screen_write_set_cursor(ctx, cx, cy);
-}
-
-/* Draw a vertical line on screen. */
-void
-screen_write_vline(struct screen_write_ctx *ctx, u_int ny, int top, int bottom)
-{
-	struct screen		*s = ctx->s;
-	struct grid_cell	 gc;
-	u_int			 cx, cy, i;
-
-	cx = s->cx;
-	cy = s->cy;
-
-	memcpy(&gc, &grid_default_cell, sizeof gc);
-	gc.attr |= GRID_ATTR_CHARSET;
-
-	screen_write_putc(ctx, &gc, top ? 'w' : 'x');
-	for (i = 1; i < ny - 1; i++) {
-		screen_write_set_cursor(ctx, cx, cy + i);
-		screen_write_putc(ctx, &gc, 'x');
-	}
-	screen_write_set_cursor(ctx, cx, cy + ny - 1);
-	screen_write_putc(ctx, &gc, bottom ? 'v' : 'x');
-
-	screen_write_set_cursor(ctx, cx, cy);
-}
-
-/* Draw a menu on screen. */
-void
-screen_write_menu(struct screen_write_ctx *ctx, struct menu *menu,
-    int choice, const struct grid_cell *choice_gc)
-{
-	struct screen		*s = ctx->s;
-	struct grid_cell	 default_gc;
-	const struct grid_cell	*gc = &default_gc;
-	u_int			 cx, cy, i, j;
-	const char		*name;
-
-	cx = s->cx;
-	cy = s->cy;
-
-	memcpy(&default_gc, &grid_default_cell, sizeof default_gc);
-
-	screen_write_box(ctx, menu->width + 4, menu->count + 2,
-	    BOX_LINES_DEFAULT, &default_gc, menu->title);
-
-	for (i = 0; i < menu->count; i++) {
-		name = menu->items[i].name;
-		if (name == NULL) {
-			screen_write_cursormove(ctx, cx, cy + 1 + i, 0);
-			screen_write_hline(ctx, menu->width + 4, 1, 1);
-		} else {
-			if (choice >= 0 && i == (u_int)choice && *name != '-')
-				gc = choice_gc;
-			screen_write_cursormove(ctx, cx + 2, cy + 1 + i, 0);
-			for (j = 0; j < menu->width; j++)
-				screen_write_putc(ctx, gc, ' ');
-			screen_write_cursormove(ctx, cx + 2, cy + 1 + i, 0);
-			if (*name == '-') {
-				name++;
-				default_gc.attr |= GRID_ATTR_DIM;
-				format_draw(ctx, gc, menu->width, name, NULL);
-				default_gc.attr &= ~GRID_ATTR_DIM;
-			} else
-				format_draw(ctx, gc, menu->width, name, NULL);
-			gc = &default_gc;
-		}
-	}
-
-	screen_write_set_cursor(ctx, cx, cy);
-}
-
 static void
 screen_write_box_border_set(enum box_lines box_lines, int cell_type,
     struct grid_cell *gc)
@@ -709,10 +617,143 @@ screen_write_box_border_set(enum box_lines box_lines, int cell_type,
 	}
 }
 
+/* Draw a horizontal line on screen. */
+void
+screen_write_hline(struct screen_write_ctx *ctx, u_int nx, enum box_lines l,
+    int left, int right, const struct grid_cell *menu_gc,
+    const struct grid_cell *border_gc)
+{
+	struct screen		*s = ctx->s;
+	struct grid_cell	 bgc, mgc;
+	u_int			 cx, cy, i;
+
+	cx = s->cx;
+	cy = s->cy;
+
+	if (border_gc != NULL)
+		memcpy(&bgc, border_gc, sizeof bgc);
+	else
+		memcpy(&bgc, &grid_default_cell, sizeof bgc);
+
+	if (menu_gc != NULL)
+		memcpy(&mgc, menu_gc, sizeof mgc);
+	else
+		memcpy(&mgc, &grid_default_cell, sizeof mgc);
+
+	if (l != BOX_LINES_NONE) {
+		screen_write_box_border_set(l,
+		    left ? CELL_LEFTJOIN : CELL_RIGHTJOIN, &bgc);
+		screen_write_cell(ctx, &bgc);
+	}
+	else
+		screen_write_cursormove(ctx, cx + 1, cy, 0);
+
+	enum box_lines separator = l;
+	if (separator == BOX_LINES_NONE)
+		separator = BOX_LINES_SINGLE;
+	screen_write_box_border_set(separator, CELL_LEFTRIGHT, &mgc);
+	for (i = 1; i < nx - 1; i++)
+		screen_write_cell(ctx, &mgc);
+
+	if (l != BOX_LINES_NONE) {
+		screen_write_box_border_set(l,
+		    right ? CELL_RIGHTJOIN : CELL_LEFTJOIN, &bgc);
+		screen_write_cell(ctx, &bgc);
+	}
+
+	screen_write_set_cursor(ctx, cx, cy);
+}
+
+/* Draw a vertical line on screen. */
+void
+screen_write_vline(struct screen_write_ctx *ctx, u_int ny, int top, int bottom)
+{
+	struct screen		*s = ctx->s;
+	struct grid_cell	 gc;
+	u_int			 cx, cy, i;
+
+	cx = s->cx;
+	cy = s->cy;
+
+	memcpy(&gc, &grid_default_cell, sizeof gc);
+	gc.attr |= GRID_ATTR_CHARSET;
+
+	screen_write_putc(ctx, &gc, top ? 'w' : 'x');
+	for (i = 1; i < ny - 1; i++) {
+		screen_write_set_cursor(ctx, cx, cy + i);
+		screen_write_putc(ctx, &gc, 'x');
+	}
+	screen_write_set_cursor(ctx, cx, cy + ny - 1);
+	screen_write_putc(ctx, &gc, bottom ? 'v' : 'x');
+
+	screen_write_set_cursor(ctx, cx, cy);
+}
+
+/* Draw a menu on screen. */
+void
+screen_write_menu(struct screen_write_ctx *ctx, struct menu *menu, int choice,
+    enum box_lines lines, const struct grid_cell *choice_gc,
+    const struct grid_cell *menu_gc, const struct grid_cell *border_gc)
+{
+	struct screen		*s = ctx->s;
+	struct grid_cell	 default_gc;
+	const struct grid_cell	*gc = menu_gc;
+	u_int			 cx, cy, i, j;
+	const char		*name;
+
+	cx = s->cx;
+	cy = s->cy;
+
+	memcpy(&default_gc, menu_gc, sizeof default_gc);
+
+	if (lines != BOX_LINES_NONE)
+		screen_write_box(ctx, menu->width + 4, menu->count + 2, lines,
+		    border_gc, menu->title);
+	else if (menu->title != NULL) {
+		screen_write_cursormove(ctx, cx + 1, cy, 0);
+		screen_write_putc(ctx, border_gc, ' ');
+		format_draw(ctx, border_gc, menu->width + 2, menu->title,
+		    NULL);
+		screen_write_cursormove(ctx, menu->width + 2, cy, 0);
+		screen_write_putc(ctx, border_gc, ' ');
+	}
+
+	for (i = 0; i < menu->count; i++) {
+		name = menu->items[i].name;
+		if (name == NULL) {
+			/* Draw separator line */
+			screen_write_cursormove(ctx, cx, cy + 1 + i, 0);
+			screen_write_hline(ctx, menu->width + 4, lines, 1, 1,
+			    menu_gc, border_gc);
+			continue;
+		}
+
+		if (choice >= 0 && i == (u_int)choice && *name != '-')
+			gc = choice_gc;
+		screen_write_cursormove(ctx, cx + 1, cy + 1 + i, 0);
+		for (j = 0; j < menu->width; j++)
+			screen_write_putc(ctx, gc, ' ');
+		screen_write_putc(ctx, gc, ' ');
+		screen_write_putc(ctx, menu_gc, ' ');
+		screen_write_cursormove(ctx, cx + 1, cy + 1 + i, 0);
+		screen_write_putc(ctx, menu_gc, ' ');
+		if (*name == '-') {
+			name++;
+			default_gc.attr |= GRID_ATTR_DIM;
+			format_draw(ctx, gc, menu->width, name, NULL);
+			default_gc.attr &= ~GRID_ATTR_DIM;
+		} else
+			format_draw(ctx, gc, menu->width, name, NULL);
+		gc = &default_gc;
+	}
+
+	screen_write_set_cursor(ctx, cx, cy);
+}
+
 /* Draw a box on screen. */
 void
 screen_write_box(struct screen_write_ctx *ctx, u_int nx, u_int ny,
-    enum box_lines lines, const struct grid_cell *gcp, const char *title)
+    enum box_lines lines, const struct grid_cell *box_gc, const char *title)
 {
 	struct screen		*s = ctx->s;
 	struct grid_cell         gc;
@@ -721,12 +762,11 @@ screen_write_box(struct screen_write_ctx *ctx, u_int nx, u_int ny,
 	cx = s->cx;
 	cy = s->cy;
 
-	if (gcp != NULL)
-		memcpy(&gc, gcp, sizeof gc);
+	if (box_gc != NULL)
+		memcpy(&gc, box_gc, sizeof gc);
 	else
 		memcpy(&gc, &grid_default_cell, sizeof gc);
 
-	gc.attr |= GRID_ATTR_CHARSET;
 	gc.flags |= GRID_FLAG_NOPALETTE;
 
 	/* Draw top border */

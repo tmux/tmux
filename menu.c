@@ -26,6 +26,11 @@
 struct menu_data {
 	struct cmdq_item	*item;
 	int			 flags;
+	enum box_lines		 lines;
+	struct style		 style;
+	int			 style_set;
+	struct style		 border_style;
+	int			 border_style_set;
 
 	struct cmd_find_state	 fs;
 	struct screen		 s;
@@ -164,13 +169,36 @@ menu_draw_cb(struct client *c, void *data,
 	struct menu		*menu = md->menu;
 	struct screen_write_ctx	 ctx;
 	u_int			 i, px = md->px, py = md->py;
-	struct grid_cell	 gc;
-
-	style_apply(&gc, c->session->curw->window->options, "mode-style", NULL);
+	struct grid_cell	 gc, bgc, cgc;
+	struct options          *o = c->session->curw->window->options;
 
 	screen_write_start(&ctx, s);
 	screen_write_clearscreen(&ctx, 8);
-	screen_write_menu(&ctx, menu, md->choice, &gc);
+
+	if (md->border_style_set) {
+		memcpy(&bgc, &md->border_style.gc, sizeof bgc);
+		bgc.attr = 0;
+	} else {
+		memcpy(&bgc, &grid_default_cell, sizeof bgc);
+		bgc.attr = 0;
+		style_apply(&bgc, o, "menu-border-style", NULL);
+	}
+
+	if (md->lines != BOX_LINES_NONE)
+		screen_write_box(&ctx, menu->width + 4, menu->count + 2,
+		    md->lines, &bgc, menu->title);
+
+	if (md->style_set) {
+		memcpy(&gc, &md->style.gc, sizeof gc);
+		gc.attr = 0;
+	} else {
+		memcpy(&gc, &grid_default_cell, sizeof gc);
+		gc.attr = 0;
+		style_apply(&gc, o, "menu-style", NULL);
+	}
+	style_apply(&cgc, c->session->curw->window->options, "mode-style", NULL);
+
+	screen_write_menu(&ctx, menu, md->choice, md->lines, &cgc, &gc, &bgc);
 	screen_write_stop(&ctx);
 
 	for (i = 0; i < screen_size_y(&md->s); i++) {
@@ -359,13 +387,15 @@ chosen:
 }
 
 struct menu_data *
-menu_prepare(struct menu *menu, int flags, struct cmdq_item *item, u_int px,
-    u_int py, struct client *c, struct cmd_find_state *fs, menu_choice_cb cb,
-    void *data)
+menu_prepare(struct menu *menu, int flags, enum box_lines lines,
+    struct cmdq_item *item, u_int px, u_int py, struct client *c,
+    const char* style, const char* border_style,
+    struct cmd_find_state *fs, menu_choice_cb cb, void *data)
 {
 	struct menu_data	*md;
 	u_int			 i;
 	const char		*name;
+	struct options		*o;
 
 	if (c->tty.sx < menu->width + 4 || c->tty.sy < menu->count + 2)
 		return (NULL);
@@ -373,10 +403,25 @@ menu_prepare(struct menu *menu, int flags, struct cmdq_item *item, u_int px,
 		px = c->tty.sx - menu->width - 4;
 	if (py + menu->count + 2 > c->tty.sy)
 		py = c->tty.sy - menu->count - 2;
+	if (lines == BOX_LINES_DEFAULT) {
+		o = c->session->curw->window->options;
+		lines = options_get_number(o, "menu-border-lines");
+	}
 
 	md = xcalloc(1, sizeof *md);
 	md->item = item;
 	md->flags = flags;
+	md->lines = lines;
+
+	if (style != NULL) {
+		md->style_set = 1;
+		style_parse(&md->style, &grid_default_cell, style);
+	}
+	if (border_style != NULL) {
+		md->border_style_set = 1;
+		style_parse(&md->border_style, &grid_default_cell,
+		    border_style);
+	}
 
 	if (fs != NULL)
 		cmd_find_copy_state(&md->fs, fs);
@@ -408,13 +453,15 @@ menu_prepare(struct menu *menu, int flags, struct cmdq_item *item, u_int px,
 }
 
 int
-menu_display(struct menu *menu, int flags, struct cmdq_item *item, u_int px,
-    u_int py, struct client *c, struct cmd_find_state *fs, menu_choice_cb cb,
-    void *data)
+menu_display(struct menu *menu, int flags, enum box_lines lines,
+    struct cmdq_item *item, u_int px, u_int py, struct client *c,
+    const char* style, const char* border_style,
+    struct cmd_find_state *fs, menu_choice_cb cb, void *data)
 {
 	struct menu_data	*md;
 
-	md = menu_prepare(menu, flags, item, px, py, c, fs, cb, data);
+	md = menu_prepare(menu, flags, lines, item, px, py, c, style,
+	    border_style, fs, cb, data);
 	if (md == NULL)
 		return (-1);
 	server_client_set_overlay(c, 0, NULL, menu_mode_cb, menu_draw_cb,

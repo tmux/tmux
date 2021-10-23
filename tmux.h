@@ -2733,9 +2733,11 @@ void	 screen_write_putc(struct screen_write_ctx *, const struct grid_cell *,
 	     u_char);
 void	 screen_write_fast_copy(struct screen_write_ctx *, struct screen *,
 	     u_int, u_int, u_int, u_int);
-void	 screen_write_hline(struct screen_write_ctx *, u_int, int, int);
+void	 screen_write_hline(struct screen_write_ctx *, u_int, enum box_lines,
+	    int, int, const struct grid_cell *, const struct grid_cell *);
 void	 screen_write_vline(struct screen_write_ctx *, u_int, int, int);
 void	 screen_write_menu(struct screen_write_ctx *, struct menu *, int,
+	     enum box_lines, const struct grid_cell *, const struct grid_cell *,
 	     const struct grid_cell *);
 void	 screen_write_box(struct screen_write_ctx *, u_int, u_int, int,
 	     const struct grid_cell *, const char *);
@@ -3134,11 +3136,13 @@ void		 menu_add_item(struct menu *, const struct menu_item *,
 		    struct cmdq_item *, struct client *,
 		    struct cmd_find_state *);
 void		 menu_free(struct menu *);
-struct menu_data *menu_prepare(struct menu *, int, struct cmdq_item *, u_int,
-		    u_int, struct client *, struct cmd_find_state *,
+struct menu_data *menu_prepare(struct menu *, int, enum box_lines,
+		    struct cmdq_item *, u_int, u_int, struct client *,
+		    const char*, const char*, struct cmd_find_state *,
 		    menu_choice_cb, void *);
-int		 menu_display(struct menu *, int, struct cmdq_item *, u_int,
-		    u_int, struct client *, struct cmd_find_state *,
+int		 menu_display(struct menu *, int, enum box_lines,
+		    struct cmdq_item *, u_int, u_int, struct client *,
+		    const char*, const char*, struct cmd_find_state *,
 		    menu_choice_cb, void *);
 struct screen	*menu_mode_cb(struct client *, void *, u_int *, u_int *);
 void		 menu_check_cb(struct client *, void *, u_int, u_int, u_int,

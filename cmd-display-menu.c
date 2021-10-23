@@ -38,8 +38,10 @@ const struct cmd_entry cmd_display_menu_entry = {
 	.name = "display-menu",
 	.alias = "menu",
 
-	.args = { "c:t:OT:x:y:", 1, -1, cmd_display_menu_args_parse },
-	.usage = "[-O] [-c target-client] " CMD_TARGET_PANE_USAGE " [-T title] "
+	.args = { "Bb:c:t:Os:S:T:x:y:", 1, -1, cmd_display_menu_args_parse },
+	.usage = "[-BO] [-b border-lines] [-c target-client] "
+		 "[-s menu-style] [-S menu-border-style] "
+		 CMD_TARGET_PANE_USAGE " [-T title] "
 		 "[-x position] [-y position] name key command ...",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -286,10 +288,13 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	struct client		*tc = cmdq_get_target_client(item);
 	struct menu		*menu = NULL;
 	struct menu_item	 menu_item;
-	const char		*key, *name;
-	char			*title;
+	const char		*key, *name, *value, *style, *border_style;
+	char			*cause = NULL, *title;
 	int			 flags = 0;
+	enum box_lines		 lines = BOX_LINES_DEFAULT;
 	u_int			 px, py, i, count = args_count(args);
+	struct options		*o = target->s->curw->window->options;
+	struct options_entry	*oe;
 
 	if (tc->overlay_draw != NULL)
 		return (CMD_RETURN_NORMAL);
@@ -299,6 +304,7 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	else
 		title = xstrdup("");
 	menu = menu_create(title);
+	free(title);
 
 	for (i = 0; i != count; /* nothing */) {
 		name = args_string(args, i++);
@@ -309,7 +315,6 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 
 		if (count - i < 2) {
 			cmdq_error(item, "not enough arguments");
-			free(title);
 			menu_free(menu);
 			return (CMD_RETURN_ERROR);
 		}
@@ -321,7 +326,6 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 
 		menu_add_item(menu, &menu_item, item, tc, target);
 	}
-	free(title);
 	if (menu == NULL) {
 		cmdq_error(item, "invalid menu arguments");
 		return (CMD_RETURN_ERROR);
@@ -336,12 +340,29 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 	}
 
+	style = args_get(args, 's');
+	border_style = args_get(args, 'S');
+
+	value = args_get(args, 'b');
+	if (args_has(args, 'B'))
+		lines = BOX_LINES_NONE;
+	else if (value != NULL) {
+		oe = options_get(o, "menu-border-lines");
+		lines = options_find_choice(options_table_entry(oe), value,
+		    &cause);
+		if (cause != NULL) {
+			cmdq_error(item, "menu-border-lines %s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
+		}
+	}
+
 	if (args_has(args, 'O'))
 		flags |= MENU_STAYOPEN;
 	if (!event->m.valid)
 		flags |= MENU_NOMOUSE;
-	if (menu_display(menu, flags, item, px, py, tc, target, NULL,
-	    NULL) != 0)
+	if (menu_display(menu, flags, lines, item, px, py, tc, style,
+	    border_style, target, NULL, NULL) != 0)
 		return (CMD_RETURN_NORMAL);
 	return (CMD_RETURN_WAIT);
 }

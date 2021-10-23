@@ -5660,8 +5660,11 @@ the prompt is shown in the background and the invoking client does not exit
 until it is dismissed.
 .Tg menu
 .It Xo Ic display-menu
-.Op Fl O
+.Op Fl BO
+.Op Fl b Ar border-lines
 .Op Fl c Ar target-client
+.Op Fl s Ar style
+.Op Fl S Ar style
 .Op Fl t Ar target-pane
 .Op Fl T Ar title
 .Op Fl x Ar position
@@ -5750,6 +5753,31 @@ The following keys are also available:
 .It Li "Down" Ta "Select next item"
 .It Li "q" Ta "Exit menu"
 .El
+.Pp
+.Fl B
+does not surround the menu by a border.
+.Pp
+.Fl b
+sets the type of border line for the menu.
+When
+.Fl B
+is specified the
+.Fl b
+option is ignored.
+See
+.Ic popup-border-lines
+for possible values for
+.Ar border-lines .
+.Pp
+.Fl s
+sets the style for the menu and
+.Fl S
+sets the style for the menu border.
+For how to specify
+.Ar style ,
+see the
+.Sx STYLES
+section.
 .Tg display
 .It Xo Ic display-message
 .Op Fl aINpv

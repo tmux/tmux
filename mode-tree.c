@@ -968,8 +968,8 @@ mode_tree_display_menu(struct mode_tree_data *mtd, struct client *c, u_int x,
 		x -= (menu->width + 4) / 2;
 	else
 		x = 0;
-	if (menu_display(menu, 0, NULL, x, y, c, NULL, mode_tree_menu_callback,
-	    mtm) != 0)
+	if (menu_display(menu, 0, BOX_LINES_DEFAULT, NULL, x, y, c,
+	    NULL, NULL, NULL, mode_tree_menu_callback, mtm) != 0)
 		menu_free(menu);
 }
 
