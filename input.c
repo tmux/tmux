@@ -137,6 +137,7 @@ static void	input_reset_cell(struct input_ctx *);
 static void	input_osc_4(struct input_ctx *, const char *);
 static void	input_osc_10(struct input_ctx *, const char *);
 static void	input_osc_11(struct input_ctx *, const char *);
+static void	input_osc_50(struct input_ctx *, const char *);
 static void	input_osc_52(struct input_ctx *, const char *);
 static void	input_osc_104(struct input_ctx *, const char *);
 static void	input_osc_110(struct input_ctx *, const char *);
@@ -2313,6 +2314,9 @@ input_exit_osc(struct input_ctx *ictx)
 		if (utf8_isvalid(p) && *p != '?') /* ? is colour request */
 			screen_set_cursor_colour(sctx->s, p);
 		break;
+	case 50:
+		input_osc_50(ictx, p);
+		break;
 	case 52:
 		input_osc_52(ictx, p);
 		break;
@@ -2439,6 +2443,18 @@ input_top_bit_set(struct input_ctx *ictx)
 	screen_write_collect_add(sctx, &ictx->cell.cell);
 
 	return (0);
+}
+
+/* Parse cursor shape from OSC. */
+static int
+input_osc_parse_cursor_shape(const char *p)
+{
+	u_int	 shape = SCREEN_CURSOR_DEFAULT;
+	size_t	len = strlen(p);
+
+	if ((len == 13 && sscanf(p, "CursorShape=%d", &shape)) == 1)
+		return (shape);
+	return (-1);
 }
 
 /* Parse colour from OSC. */
@@ -2622,6 +2638,34 @@ input_osc_111(struct input_ctx *ictx, const char *p)
 			wp->flags |= PANE_STYLECHANGED;
 		screen_write_fullredraw(&ictx->ctx);
 	}
+}
+
+/* Handle the OSC 50 sequence for setting the cursor style. */
+static void
+input_osc_50(struct input_ctx *ictx, const char *p)
+{
+	struct window_pane	*wp = ictx->wp;
+	int			 s;
+
+	switch(input_osc_parse_cursor_shape(p)) {
+	case SCREEN_CURSOR_DEFAULT:
+		s = 0;
+		break;
+	case SCREEN_CURSOR_BLOCK:
+		s = 2;
+		break;
+	case SCREEN_CURSOR_UNDERLINE:
+		s = 4;
+		break;
+	case SCREEN_CURSOR_BAR:
+		s = 6;
+		break;
+	case -1:
+	default:
+		log_debug("bad OSC 50: '%s'", p);
+		return;
+	}
+	screen_set_cursor_style(wp->screen, s);
 }
 
 /* Handle the OSC 52 sequence for setting the clipboard. */
