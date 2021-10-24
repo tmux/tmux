@@ -130,7 +130,7 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 		sigprocmask(SIG_SETMASK, &oldset, NULL);
 		close(pipe_fd[0]);
 
-		null_fd = open(_PATH_DEVNULL, O_WRONLY, 0);
+		null_fd = open(_PATH_DEVNULL, O_WRONLY);
 		if (out) {
 			if (dup2(pipe_fd[1], STDIN_FILENO) == -1)
 				_exit(1);
