@@ -1128,9 +1128,10 @@ options_push_changes(const char *name)
 		RB_FOREACH(w, windows, &windows) {
 			if (w->active == NULL)
 				continue;
-			if (options_get_string(w->options, name))
+			if (options_get_number(w->options, name))
 				screen_set_cursor_colour(w->active->screen,
-				    options_get_string(w->options, name));
+				    colour_tostring(options_get_number(
+					w->options, name)));
 		}
 	}
 	if (strcmp(name, "key-table") == 0) {
