@@ -53,6 +53,10 @@ static const char *options_table_status_position_list[] = {
 static const char *options_table_bell_action_list[] = {
 	"none", "any", "current", "other", NULL
 };
+static const char *options_table_cursor_style_list[] = {
+	"default", "block-blinking", "block", "underline-blinking", "underline",
+	"bar-blinking", "bar", NULL
+};
 static const char *options_table_visual_bell_list[] = {
 	"off", "on", "both", NULL
 };
@@ -187,6 +191,7 @@ const struct options_name_map options_other_names[] = {
 	{ "display-panes-color", "display-panes-colour" },
 	{ "display-panes-active-color", "display-panes-active-colour" },
 	{ "clock-mode-color", "clock-mode-colour" },
+	{ "cursor-color", "cursor-colour" },
 	{ "pane-colors", "pane-colours" },
 	{ NULL, NULL }
 };
@@ -232,6 +237,21 @@ const struct options_table_entry options_table[] = {
 	  .default_str = "",
 	  .text = "Shell command run when text is copied. "
 		  "If empty, no command is run."
+	},
+
+	{ .name = "cursor-colour",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "default",
+	  .text = "Color of the cursor."
+	},
+
+	{ .name = "cursor-style",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .choices = options_table_cursor_style_list,
+	  .default_num = SCREEN_CURSOR_DEFAULT,
+	  .text = "Style of the cursor."
 	},
 
 	{ .name = "default-terminal",

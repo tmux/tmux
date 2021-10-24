@@ -1111,8 +1111,26 @@ options_push_changes(const char *name)
 		RB_FOREACH(w, windows, &windows) {
 			if (w->active == NULL)
 				continue;
-			if (options_get_number(w->options, "automatic-rename"))
+			if (options_get_number(w->options, name))
 				w->active->flags |= PANE_CHANGED;
+		}
+	}
+	if (strcmp(name, "cursor-style") == 0) {
+		RB_FOREACH(w, windows, &windows) {
+			if (w->active == NULL)
+				continue;
+			if (options_get_number(w->options, name))
+				screen_set_cursor_style(w->active->screen,
+				    options_get_number(w->options, name));
+		}
+	}
+	if (strcmp(name, "cursor-colour") == 0) {
+		RB_FOREACH(w, windows, &windows) {
+			if (w->active == NULL)
+				continue;
+			if (options_get_string(w->options, name))
+				screen_set_cursor_colour(w->active->screen,
+				    options_get_string(w->options, name));
 		}
 	}
 	if (strcmp(name, "key-table") == 0) {
