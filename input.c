@@ -2652,19 +2652,23 @@ input_osc_50(struct input_ctx *ictx, const char *p)
 		s = 0;
 		break;
 	case SCREEN_CURSOR_BLOCK:
-		s = 2;
+		s = 1;
 		break;
 	case SCREEN_CURSOR_UNDERLINE:
-		s = 4;
+		s = 3;
 		break;
 	case SCREEN_CURSOR_BAR:
-		s = 6;
+		s = 5;
 		break;
 	case -1:
 	default:
 		log_debug("bad OSC 50: '%s'", p);
 		return;
 	}
+
+	if (s > 0 &&
+	    (wp->screen->mode & MODE_CURSOR_BLINKING) != MODE_CURSOR_BLINKING)
+		s++;
 	screen_set_cursor_style(wp->screen, s);
 }
 
