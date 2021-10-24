@@ -4415,6 +4415,19 @@ The alternate screen feature preserves the contents of the window when an
 interactive application starts and restores it on exit, so that any output
 visible before the application starts reappears unchanged after it exits.
 .Pp
+.It Ic cursor-colour Ar colour
+Set the colour of the cursor.
+.Pp
+.It Ic cursor-style Ar style
+Set the style of the cursor. Available styles are:
+.Ql default ,
+.Ql block-blinking ,
+.Ql block ,
+.Ql underline-blinking ,
+.Ql underline ,
+.Ql bar-blinking ,
+.Ql bar .
+.Pp
 .It Ic pane-colours[] Ar colour
 The default colour palette.
 Each entry in the array defines the colour
