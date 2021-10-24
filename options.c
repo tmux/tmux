@@ -1116,22 +1116,18 @@ options_push_changes(const char *name)
 		}
 	}
 	if (strcmp(name, "cursor-style") == 0) {
-		RB_FOREACH(w, windows, &windows) {
-			if (w->active == NULL)
-				continue;
-			if (options_get_number(w->options, name))
-				screen_set_cursor_style(w->active->screen,
-				    options_get_number(w->options, name));
+		RB_FOREACH(wp, window_pane_tree, &all_window_panes) {
+			if (options_get_number(wp->options, name))
+				screen_set_cursor_style(wp->screen,
+				    options_get_number(wp->options, name));
 		}
 	}
 	if (strcmp(name, "cursor-colour") == 0) {
-		RB_FOREACH(w, windows, &windows) {
-			if (w->active == NULL)
-				continue;
-			if (options_get_number(w->options, name))
-				screen_set_cursor_colour(w->active->screen,
+		RB_FOREACH(wp, window_pane_tree, &all_window_panes) {
+			if (options_get_number(wp->options, name))
+				screen_set_cursor_colour(wp->screen,
 				    colour_tostring(options_get_number(
-					w->options, name)));
+					wp->options, name)));
 		}
 	}
 	if (strcmp(name, "key-table") == 0) {
