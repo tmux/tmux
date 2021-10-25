@@ -184,8 +184,10 @@ screen_write_initctx(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx,
 	if (ctx->init_ctx_cb != NULL) {
 		ctx->init_ctx_cb(ctx, ttyctx);
 		if (ttyctx->palette != NULL) {
-			ttyctx->defaults.fg = ttyctx->palette->fg;
-			ttyctx->defaults.bg = ttyctx->palette->bg;
+			if (COLOUR_DEFAULT(ttyctx->defaults.fg))
+				ttyctx->defaults.fg = ttyctx->palette->fg;
+			if (COLOUR_DEFAULT(ttyctx->defaults.bg))
+				ttyctx->defaults.bg = ttyctx->palette->bg;
 		}
 	} else {
 		ttyctx->redraw_cb = screen_write_redraw_cb;
