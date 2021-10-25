@@ -1,4 +1,5 @@
 #!/bin/bash
+export TMUX_SOCKET_FILE=/tmp/tmux.socket
 
 rm -f $TMUX_SOCKET_FILE
 
