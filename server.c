@@ -386,7 +386,7 @@ server_accept(int fd, short events, __unused void *data)
 	}
 
 #if defined (TMUX_ACL)
-	if (!server_acl_accept_validate(newfd)) {
+	if (!server_acl_accept_validate(newfd, clients)) {
 		close(newfd);
 		return;
 	}

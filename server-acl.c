@@ -185,10 +185,12 @@ void server_acl_user_allow(uid_t uid, int owner)
  * and confirm it's in the allow list.
  */
 
-int server_acl_accept_validate(int newfd)
+int server_acl_accept_validate(int newfd, struct clients clients)
 {
 	int len;
 	struct ucred ucred;
+	struct client	*c;
+	struct passwd *pws;
 
 	len = sizeof(struct ucred);
 
@@ -197,14 +199,22 @@ int server_acl_accept_validate(int newfd)
 		return 0;
 	}
 
+	pws = getpwuid(ucred.uid);
+	
 	log_debug(TMUX_ACL_LOG " SO_PEERCRED SUCCESS: pid=%li, euid=%li, egid=%li\n",
 				(long)ucred.pid,
 				(long)ucred.uid,
 				(long)ucred.gid);
 
 	if (!server_acl_is_allowed(ucred.uid)) {
+		TAILQ_FOREACH(c, &clients, entry) {
+			status_message_set(c, 3000, 1, 0, "%s rejected from joining session", pws->pw_name);
+		}
 		log_debug(TMUX_ACL_LOG " denying user id %li", (long) ucred.uid);
 		return 0;
+	}
+	TAILQ_FOREACH(c, &clients, entry) {
+		status_message_set(c, 3000, 1, 0, "%s joined the session", pws->pw_name);
 	}
 
 	log_debug(TMUX_ACL_LOG " allowing user id %li", (long) ucred.uid);
