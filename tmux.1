@@ -5800,6 +5800,8 @@ forwards any input read from stdin to the empty pane given by
 .Op Fl d Ar start-directory
 .Op Fl e Ar environment
 .Op Fl h Ar height
+.Op Fl s Ar style
+.Op Fl S Ar border-style
 .Op Fl t Ar target-pane
 .Op Fl T Ar title
 .Op Fl w Ar width
@@ -5852,6 +5854,16 @@ See
 .Ic popup-border-lines
 for possible values for
 .Ar border-lines .
+.Pp
+.Fl s
+sets the style for the popup and
+.Fl S
+sets the style for the popup border.
+For how to specify
+.Ar style ,
+see the
+.Sx STYLES
+section.
 .Pp
 .Fl e
 takes the form

@@ -237,9 +237,9 @@ popup_draw_cb(struct client *c, void *data, struct screen_redraw_ctx *rctx)
 	screen_write_stop(&ctx);
 
 	memcpy(&defaults, &pd->defaults, sizeof defaults);
-	if (COLOUR_DEFAULT(defaults.fg))
+	if (defaults.fg == 8)
 		defaults.fg = palette->fg;
-	if (COLOUR_DEFAULT(defaults.bg))
+	if (defaults.bg == 8)
 		defaults.bg = palette->bg;
 
 	if (pd->md != NULL) {
@@ -636,11 +636,13 @@ int
 popup_display(int flags, enum box_lines lines, struct cmdq_item *item, u_int px,
     u_int py, u_int sx, u_int sy, struct environ *env, const char *shellcmd,
     int argc, char **argv, const char *cwd, const char *title, struct client *c,
-    struct session *s, popup_close_cb cb, void *arg)
+    struct session *s, const char* style, const char* border_style,
+    popup_close_cb cb, void *arg)
 {
 	struct popup_data	*pd;
 	u_int			 jx, jy;
 	struct options		*o;
+	struct style		 sytmp;
 
 	if (s != NULL)
 		o = s->curw->window->options;
@@ -678,6 +680,13 @@ popup_display(int flags, enum box_lines lines, struct cmdq_item *item, u_int px,
 	pd->border_lines = lines;
 	memcpy(&pd->border_cell, &grid_default_cell, sizeof pd->border_cell);
 	style_apply(&pd->border_cell, o, "popup-border-style", NULL);
+	if (border_style != NULL) {
+		style_set(&sytmp, &grid_default_cell);
+		if (style_parse(&sytmp, &pd->border_cell, border_style) == 0) {
+			pd->border_cell.fg = sytmp.gc.fg;
+			pd->border_cell.bg = sytmp.gc.bg;
+		}
+	}
 	pd->border_cell.attr = 0;
 
 	screen_init(&pd->s, sx - 2, sy - 2, 0);
@@ -686,6 +695,13 @@ popup_display(int flags, enum box_lines lines, struct cmdq_item *item, u_int px,
 
 	memcpy(&pd->defaults, &grid_default_cell, sizeof pd->defaults);
 	style_apply(&pd->defaults, o, "popup-style", NULL);
+	if (style != NULL) {
+		style_set(&sytmp, &grid_default_cell);
+		if (style_parse(&sytmp, &pd->defaults, style) == 0) {
+			pd->defaults.fg = sytmp.gc.fg;
+			pd->defaults.bg = sytmp.gc.bg;
+		}
+	}
 	pd->defaults.attr = 0;
 
 	pd->px = px;
@@ -789,7 +805,7 @@ popup_editor(struct client *c, const char *buf, size_t len,
 	xasprintf(&cmd, "%s %s", editor, path);
 	if (popup_display(POPUP_INTERNAL|POPUP_CLOSEEXIT, BOX_LINES_DEFAULT,
 	    NULL, px, py, sx, sy, NULL, cmd, 0, NULL, _PATH_TMP, NULL, c, NULL,
-	    popup_editor_close_cb, pe) != 0) {
+	    NULL, NULL, popup_editor_close_cb, pe) != 0) {
 		popup_editor_free(pe);
 		free(cmd);
 		return (-1);
