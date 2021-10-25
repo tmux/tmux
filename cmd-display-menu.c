@@ -57,9 +57,9 @@ const struct cmd_entry cmd_display_popup_entry = {
 	.args = { "Bb:Cc:d:e:Eh:s:S:t:T:w:x:y:", 0, -1, NULL },
 	.usage = "[-BCE] [-b border-lines] [-c target-client] "
 		 "[-d start-directory] [-e environment] [-h height] "
-		 "[-s popup-style] [-S popup-border-style] "
-		 CMD_TARGET_PANE_USAGE " [-T title] "
-		 "[-w width] [-x position] [-y position] [shell-command]",
+		 "[-s style] [-S border-style] " CMD_TARGET_PANE_USAGE
+		 "[-T title] [-w width] [-x position] [-y position] "
+		 "[shell-command]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -376,7 +376,8 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	struct client		*tc = cmdq_get_target_client(item);
 	struct tty		*tty = &tc->tty;
 	const char		*value, *shell, *shellcmd = NULL;
-	const char		*style, *border_style;
+	const char		*style = args_get(args, 's');
+	const char		*border_style = args_get(args, 'S');
 	char			*cwd, *cause = NULL, **argv = NULL, *title;
 	int			 flags = 0, argc = 0;
 	enum box_lines		 lines = BOX_LINES_DEFAULT;
