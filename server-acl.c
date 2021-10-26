@@ -115,13 +115,13 @@ void server_acl_init(void)
 				if (user_data != NULL) {
 					uid = user_data->pw_uid;
 					if (uid != host_uid) {
-						add_count++;
 						server_acl_user_allow(uid, 0);
 					}
 					else {
 						log_debug(TMUX_ACL_LOG "Warning: %s contains the username of the host",
 									TMUX_ACL_WHITELIST);
 					}
+					add_count++;
 				}
 				else {
 					log_debug(TMUX_ACL_LOG " ERROR: getpwnam failed to find UID for username %s: %s", 
