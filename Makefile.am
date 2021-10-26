@@ -67,6 +67,8 @@ endif
 # List of sources.
 dist_tmux_SOURCES = \
 	alerts.c \
+	cmd-add-whitelist.c \
+	cmd-remove-whitelist.c \
 	arguments.c \
 	attributes.c \
 	cfg.c \
@@ -123,7 +125,6 @@ dist_tmux_SOURCES = \
 	cmd-set-buffer.c \
 	cmd-set-environment.c \
 	cmd-set-option.c \
-	cmd-set-socket.c \
 	cmd-show-environment.c \
 	cmd-show-messages.c \
 	cmd-show-options.c \
