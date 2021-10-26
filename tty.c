@@ -665,7 +665,8 @@ tty_update_cursor(struct tty *tty, int mode, int changed, struct screen *s)
 {
 	enum		 screen_cursor_style cstyle;
 	int		 ccolour, cmode = mode;
-	const char	*colour;
+	static char	 colour[13];
+	u_char		 r, g, b;
 
 	/* Set cursor colour if changed. */
 	if (s != NULL) {
@@ -674,11 +675,16 @@ tty_update_cursor(struct tty *tty, int mode, int changed, struct screen *s)
 			ccolour = s->default_ccolour;
 		ccolour = colour_force_rgb(ccolour);
 		if (ccolour == -1)
-			colour = "";
-		else
-			colour = colour_tostring(ccolour);
-		if (strcmp(colour, tty->ccolour) != 0)
+			*colour = '\0';
+		else {
+			colour_split_rgb(ccolour, &r, &g, &b);
+			xsnprintf(colour, sizeof colour,
+			    "rgb:%02hhx/%02hhx/%02hhx", r, g, b);
+
+		}
+		if (strcmp(colour, tty->ccolour) != 0) {
 			tty_force_cursor_colour(tty, colour);
+		}
 	}
 
 	/* If cursor is off, set as invisible. */

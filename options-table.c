@@ -243,14 +243,14 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_COLOUR,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
 	  .default_num = -1,
-	  .text = "Color of the cursor."
+	  .text = "Colour of the cursor."
 	},
 
 	{ .name = "cursor-style",
 	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
 	  .choices = options_table_cursor_style_list,
-	  .default_num = SCREEN_CURSOR_DEFAULT,
+	  .default_num = 0,
 	  .text = "Style of the cursor."
 	},
 
