@@ -622,30 +622,30 @@ screen_write_box_border_set(enum box_lines box_lines, int cell_type,
 /* Draw a horizontal line on screen. */
 void
 screen_write_hline(struct screen_write_ctx *ctx, u_int nx, enum box_lines l,
-    int left, int right, const struct grid_cell *menu_gc,
-    const struct grid_cell *border_gc)
+    int left, int right, const struct grid_cell *gc,
+    const struct grid_cell *edge_gc)
 {
 	struct screen		*s = ctx->s;
-	struct grid_cell	 bgc, mgc;
+	struct grid_cell	 egc, lgc;
 	u_int			 cx, cy, i;
 
 	cx = s->cx;
 	cy = s->cy;
 
-	if (border_gc != NULL)
-		memcpy(&bgc, border_gc, sizeof bgc);
+	if (edge_gc != NULL)
+		memcpy(&egc, edge_gc, sizeof egc);
 	else
-		memcpy(&bgc, &grid_default_cell, sizeof bgc);
+		memcpy(&egc, &grid_default_cell, sizeof egc);
 
-	if (menu_gc != NULL)
-		memcpy(&mgc, menu_gc, sizeof mgc);
+	if (gc != NULL)
+		memcpy(&lgc, gc, sizeof lgc);
 	else
-		memcpy(&mgc, &grid_default_cell, sizeof mgc);
+		memcpy(&lgc, &grid_default_cell, sizeof lgc);
 
 	if (l != BOX_LINES_NONE) {
 		screen_write_box_border_set(l,
-		    left ? CELL_LEFTJOIN : CELL_RIGHTJOIN, &bgc);
-		screen_write_cell(ctx, &bgc);
+		    left ? CELL_LEFTJOIN : CELL_RIGHTJOIN, &egc);
+		screen_write_cell(ctx, &egc);
 	}
 	else
 		screen_write_cursormove(ctx, cx + 1, cy, 0);
@@ -653,14 +653,14 @@ screen_write_hline(struct screen_write_ctx *ctx, u_int nx, enum box_lines l,
 	enum box_lines separator = l;
 	if (separator == BOX_LINES_NONE)
 		separator = BOX_LINES_SINGLE;
-	screen_write_box_border_set(separator, CELL_LEFTRIGHT, &mgc);
+	screen_write_box_border_set(separator, CELL_LEFTRIGHT, &lgc);
 	for (i = 1; i < nx - 1; i++)
-		screen_write_cell(ctx, &mgc);
+		screen_write_cell(ctx, &lgc);
 
 	if (l != BOX_LINES_NONE) {
 		screen_write_box_border_set(l,
-		    right ? CELL_RIGHTJOIN : CELL_LEFTJOIN, &bgc);
-		screen_write_cell(ctx, &bgc);
+		    right ? CELL_RIGHTJOIN : CELL_LEFTJOIN, &egc);
+		screen_write_cell(ctx, &egc);
 	}
 
 	screen_write_set_cursor(ctx, cx, cy);

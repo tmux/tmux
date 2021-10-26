@@ -288,7 +288,9 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	struct client		*tc = cmdq_get_target_client(item);
 	struct menu		*menu = NULL;
 	struct menu_item	 menu_item;
-	const char		*key, *name, *value, *style, *border_style;
+	const char		*key, *name, *value;
+	const char		*style = args_get(args, 's');
+	const char		*border_style = args_get(args, 'S');
 	char			*cause = NULL, *title;
 	int			 flags = 0;
 	enum box_lines		 lines = BOX_LINES_DEFAULT;
