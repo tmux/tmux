@@ -1111,24 +1111,21 @@ options_push_changes(const char *name)
 		RB_FOREACH(w, windows, &windows) {
 			if (w->active == NULL)
 				continue;
-			if (options_get_number(w->options, name))
+			int option = options_get_number(w->options, name);
 				w->active->flags |= PANE_CHANGED;
 		}
 	}
-	if (strcmp(name, "cursor-style") == 0) {
-		RB_FOREACH(wp, window_pane_tree, &all_window_panes) {
-			if (options_get_number(wp->options, name))
-				screen_set_cursor_style(wp->screen,
-				    options_get_number(wp->options, name));
-		}
-	}
 	if (strcmp(name, "cursor-colour") == 0) {
-		RB_FOREACH(wp, window_pane_tree, &all_window_panes) {
-			if (options_get_number(wp->options, name))
-				screen_set_cursor_colour(wp->screen,
-				    colour_tostring(options_get_number(
-					wp->options, name)));
-		}
+		RB_FOREACH(wp, window_pane_tree, &all_window_panes)
+			wp->screen->default_ccolour =
+			options_get_number(wp->options, name);
+	}
+	if (strcmp(name, "cursor-style") == 0) {
+		RB_FOREACH(wp, window_pane_tree, &all_window_panes)
+			screen_set_cursor_style_mode(
+			    options_get_number(wp->options, name),
+			    &wp->screen->default_cstyle,
+			    &wp->screen->default_mode);
 	}
 	if (strcmp(name, "key-table") == 0) {
 		TAILQ_FOREACH(loop, &clients, entry)

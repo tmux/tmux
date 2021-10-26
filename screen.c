@@ -81,7 +81,9 @@ screen_init(struct screen *s, u_int sx, u_int sy, u_int hlimit)
 	s->path = NULL;
 
 	s->cstyle = SCREEN_CURSOR_DEFAULT;
-	s->ccolour = xstrdup("");
+	s->default_cstyle = SCREEN_CURSOR_DEFAULT;
+	s->ccolour = -1;
+	s->default_ccolour = -1;
 	s->tabs = NULL;
 	s->sel = NULL;
 
@@ -125,7 +127,6 @@ screen_free(struct screen *s)
 	free(s->tabs);
 	free(s->path);
 	free(s->title);
-	free(s->ccolour);
 
 	if (s->write_list != NULL)
 		screen_write_free_list(s);
@@ -151,48 +152,55 @@ screen_reset_tabs(struct screen *s)
 		bit_set(s->tabs, i);
 }
 
+/* Set screen cursor style and mode. */
+void
+screen_set_cursor_style_mode(u_int style, enum screen_cursor_style *cstyle,
+    int *mode)
+{
+	switch (style) {
+	case 0:
+		*cstyle = SCREEN_CURSOR_DEFAULT;
+		break;
+	case 1:
+		*cstyle = SCREEN_CURSOR_BLOCK;
+		*mode |= MODE_CURSOR_BLINKING;
+		break;
+	case 2:
+		*cstyle = SCREEN_CURSOR_BLOCK;
+		*mode &= ~MODE_CURSOR_BLINKING;
+		break;
+	case 3:
+		*cstyle = SCREEN_CURSOR_UNDERLINE;
+		*mode |= MODE_CURSOR_BLINKING;
+		break;
+	case 4:
+		*cstyle = SCREEN_CURSOR_UNDERLINE;
+		*mode &= ~MODE_CURSOR_BLINKING;
+		break;
+	case 5:
+		*cstyle = SCREEN_CURSOR_BAR;
+		*mode |= MODE_CURSOR_BLINKING;
+		break;
+	case 6:
+		*cstyle = SCREEN_CURSOR_BAR;
+		*mode &= ~MODE_CURSOR_BLINKING;
+		break;
+	}
+}
+
 /* Set screen cursor style. */
 void
 screen_set_cursor_style(struct screen *s, u_int style)
 {
 	log_debug("%s: new %u, was %u", __func__, style, s->cstyle);
-	switch (style) {
-	case 0:
-		s->cstyle = SCREEN_CURSOR_DEFAULT;
-		break;
-	case 1:
-		s->cstyle = SCREEN_CURSOR_BLOCK;
-		s->mode |= MODE_CURSOR_BLINKING;
-		break;
-	case 2:
-		s->cstyle = SCREEN_CURSOR_BLOCK;
-		s->mode &= ~MODE_CURSOR_BLINKING;
-		break;
-	case 3:
-		s->cstyle = SCREEN_CURSOR_UNDERLINE;
-		s->mode |= MODE_CURSOR_BLINKING;
-		break;
-	case 4:
-		s->cstyle = SCREEN_CURSOR_UNDERLINE;
-		s->mode &= ~MODE_CURSOR_BLINKING;
-		break;
-	case 5:
-		s->cstyle = SCREEN_CURSOR_BAR;
-		s->mode |= MODE_CURSOR_BLINKING;
-		break;
-	case 6:
-		s->cstyle = SCREEN_CURSOR_BAR;
-		s->mode &= ~MODE_CURSOR_BLINKING;
-		break;
-	}
+	screen_set_cursor_style_mode(style, &s->cstyle, &s->mode);
 }
 
 /* Set screen cursor colour. */
 void
 screen_set_cursor_colour(struct screen *s, const char *colour)
 {
-	free(s->ccolour);
-	s->ccolour = xstrdup(colour);
+	s->ccolour = input_osc_parse_colour(colour);
 }
 
 /* Set screen title. */

@@ -53,12 +53,12 @@ static const char *options_table_status_position_list[] = {
 static const char *options_table_bell_action_list[] = {
 	"none", "any", "current", "other", NULL
 };
+static const char *options_table_visual_bell_list[] = {
+	"off", "on", "both", NULL
+};
 static const char *options_table_cursor_style_list[] = {
 	"default", "block-blinking", "block", "underline-blinking", "underline",
 	"bar-blinking", "bar", NULL
-};
-static const char *options_table_visual_bell_list[] = {
-	"off", "on", "both", NULL
 };
 static const char *options_table_pane_status_list[] = {
 	"off", "top", "bottom", NULL
@@ -242,7 +242,7 @@ const struct options_table_entry options_table[] = {
 	{ .name = "cursor-colour",
 	  .type = OPTIONS_TABLE_COLOUR,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
-	  .default_str = "default",
+	  .default_num = -1,
 	  .text = "Color of the cursor."
 	},
 

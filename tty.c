@@ -663,14 +663,26 @@ tty_force_cursor_colour(struct tty *tty, const char *ccolour)
 static void
 tty_update_cursor(struct tty *tty, int mode, int changed, struct screen *s)
 {
-	enum screen_cursor_style cstyle;
+	enum		 screen_cursor_style cstyle;
+	int		 ccolour, cmode = mode;
+	const char	*colour;
 
 	/* Set cursor colour if changed. */
-	if (s != NULL && strcmp(s->ccolour, tty->ccolour) != 0)
-		tty_force_cursor_colour(tty, s->ccolour);
+	if (s != NULL) {
+		ccolour = s->ccolour;
+		if (ccolour == -1)
+			ccolour = s->default_ccolour;
+		ccolour = colour_force_rgb(ccolour);
+		if (ccolour == -1)
+			colour = "";
+		else
+			colour = colour_tostring(ccolour);
+		if (strcmp(colour, tty->ccolour) != 0)
+			tty_force_cursor_colour(tty, colour);
+	}
 
 	/* If cursor is off, set as invisible. */
-	if (~mode & MODE_CURSOR) {
+	if (~cmode & MODE_CURSOR) {
 		if (changed & MODE_CURSOR)
 			tty_putcode(tty, TTYC_CIVIS);
 		return;
@@ -679,8 +691,13 @@ tty_update_cursor(struct tty *tty, int mode, int changed, struct screen *s)
 	/* Check if blinking or very visible flag changed or style changed. */
 	if (s == NULL)
 		cstyle = tty->cstyle;
-	else
+	else {
 		cstyle = s->cstyle;
+		if (cstyle == SCREEN_CURSOR_DEFAULT) {
+			cstyle = s->default_cstyle;
+			cmode = s->default_mode;
+		}
+	}
 	if ((changed & CURSOR_MODES) == 0 && cstyle == tty->cstyle)
 		return;
 
@@ -700,34 +717,34 @@ tty_update_cursor(struct tty *tty, int mode, int changed, struct screen *s)
 			else
 				tty_putcode1(tty, TTYC_SS, 0);
 		}
-		if (mode & (MODE_CURSOR_BLINKING|MODE_CURSOR_VERY_VISIBLE))
+		if (cmode & (MODE_CURSOR_BLINKING|MODE_CURSOR_VERY_VISIBLE))
 			tty_putcode(tty, TTYC_CVVIS);
 		break;
 	case SCREEN_CURSOR_BLOCK:
 		if (tty_term_has(tty->term, TTYC_SS)) {
-			if (mode & MODE_CURSOR_BLINKING)
+			if (cmode & MODE_CURSOR_BLINKING)
 				tty_putcode1(tty, TTYC_SS, 1);
 			else
 				tty_putcode1(tty, TTYC_SS, 2);
-		} else if (mode & MODE_CURSOR_BLINKING)
+		} else if (cmode & MODE_CURSOR_BLINKING)
 			tty_putcode(tty, TTYC_CVVIS);
 		break;
 	case SCREEN_CURSOR_UNDERLINE:
 		if (tty_term_has(tty->term, TTYC_SS)) {
-			if (mode & MODE_CURSOR_BLINKING)
+			if (cmode & MODE_CURSOR_BLINKING)
 				tty_putcode1(tty, TTYC_SS, 3);
 			else
 				tty_putcode1(tty, TTYC_SS, 4);
-		} else if (mode & MODE_CURSOR_BLINKING)
+		} else if (cmode & MODE_CURSOR_BLINKING)
 			tty_putcode(tty, TTYC_CVVIS);
 		break;
 	case SCREEN_CURSOR_BAR:
 		if (tty_term_has(tty->term, TTYC_SS)) {
-			if (mode & MODE_CURSOR_BLINKING)
+			if (cmode & MODE_CURSOR_BLINKING)
 				tty_putcode1(tty, TTYC_SS, 5);
 			else
 				tty_putcode1(tty, TTYC_SS, 6);
-		} else if (mode & MODE_CURSOR_BLINKING)
+		} else if (cmode & MODE_CURSOR_BLINKING)
 			tty_putcode(tty, TTYC_CVVIS);
 		break;
 	}

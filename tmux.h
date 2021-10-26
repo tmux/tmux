@@ -780,12 +780,15 @@ struct screen {
 	u_int				 cy;	  /* cursor y */
 
 	enum screen_cursor_style	 cstyle;  /* cursor style */
-	char				*ccolour; /* cursor colour */
+	enum screen_cursor_style	 default_cstyle;
+	int				 ccolour; /* cursor colour */
+	int				 default_ccolour;
 
 	u_int				 rupper;  /* scroll region top */
 	u_int				 rlower;  /* scroll region bottom */
 
 	int				 mode;
+	int				 default_mode;
 
 	u_int				 saved_cx;
 	u_int				 saved_cy;
@@ -2599,6 +2602,7 @@ void	 recalculate_sizes_now(int);
 struct input_ctx *input_init(struct window_pane *, struct bufferevent *,
 	     struct colour_palette *);
 void	 input_free(struct input_ctx *);
+int	 input_osc_parse_colour(const char *);
 void	 input_reset(struct input_ctx *, int);
 struct evbuffer *input_pending(struct input_ctx *);
 void	 input_parse_pane(struct window_pane *);
@@ -2791,6 +2795,7 @@ void	 screen_reinit(struct screen *);
 void	 screen_free(struct screen *);
 void	 screen_reset_tabs(struct screen *);
 void	 screen_set_cursor_style(struct screen *, u_int);
+void	 screen_set_cursor_style_mode(u_int, enum screen_cursor_style *, int *);
 void	 screen_set_cursor_colour(struct screen *, const char *);
 int	 screen_set_title(struct screen *, const char *);
 void	 screen_set_path(struct screen *, const char *);
