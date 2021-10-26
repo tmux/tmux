@@ -4214,6 +4214,7 @@ see the
 .Sx STYLES
 section.
 Attributes are ignored.
+.Pp
 .It Ic pane-base-index Ar index
 Like
 .Ic base-index ,
@@ -4830,6 +4831,10 @@ replaces a numeric argument by its ASCII equivalent, so
 .Ql #{a:98}
 results in
 .Ql b .
+.Ql c
+replaces a
+.Nm
+colour by its six-digit hexadecimal RGB value.
 .Pp
 A limit may be placed on the length of the resultant string by prefixing it
 by an
@@ -5800,6 +5805,8 @@ forwards any input read from stdin to the empty pane given by
 .Op Fl d Ar start-directory
 .Op Fl e Ar environment
 .Op Fl h Ar height
+.Op Fl s Ar style
+.Op Fl S Ar border-style
 .Op Fl t Ar target-pane
 .Op Fl T Ar title
 .Op Fl w Ar width
@@ -5852,6 +5859,16 @@ See
 .Ic popup-border-lines
 for possible values for
 .Ar border-lines .
+.Pp
+.Fl s
+sets the style for the popup and
+.Fl S
+sets the style for the popup border.
+For how to specify
+.Ar style ,
+see the
+.Sx STYLES
+section.
 .Pp
 .Fl e
 takes the form

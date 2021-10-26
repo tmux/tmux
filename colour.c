@@ -105,6 +105,21 @@ colour_split_rgb(int c, u_char *r, u_char *g, u_char *b)
 	*b = c & 0xff;
 }
 
+/* Force colour to RGB if not already. */
+int
+colour_force_rgb(int c)
+{
+	if (c & COLOUR_FLAG_RGB)
+		return (c);
+	if (c & COLOUR_FLAG_256)
+		return (colour_256toRGB(c));
+	if (c >= 0 && c <= 7)
+		return (colour_256toRGB(c));
+	if (c >= 90 & c <= 97)
+		return (colour_256toRGB(8 + c - 90));
+	return (-1);
+}
+
 /* Convert colour to a string. */
 const char *
 colour_tostring(int c)

@@ -2617,6 +2617,7 @@ int	 input_key_get_mouse(struct screen *, struct mouse_event *, u_int,
 int	 colour_find_rgb(u_char, u_char, u_char);
 int	 colour_join_rgb(u_char, u_char, u_char);
 void	 colour_split_rgb(int, u_char *, u_char *, u_char *);
+int	 colour_force_rgb(int);
 const char *colour_tostring(int);
 int	 colour_fromstring(const char *s);
 int	 colour_256toRGB(int);
@@ -3157,7 +3158,8 @@ typedef void (*popup_finish_edit_cb)(char *, size_t, void *);
 int		 popup_display(int, int, struct cmdq_item *, u_int, u_int,
 		    u_int, u_int, struct environ *, const char *, int, char **,
 		    const char *, const char *, struct client *,
-		    struct session *, popup_close_cb, void *);
+		    struct session *, const char *, const char *,
+		    popup_close_cb, void *);
 int		 popup_editor(struct client *, const char *, size_t,
 		    popup_finish_edit_cb, void *);
 
