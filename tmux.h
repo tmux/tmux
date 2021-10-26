@@ -2617,6 +2617,7 @@ int	 input_key_get_mouse(struct screen *, struct mouse_event *, u_int,
 int	 colour_find_rgb(u_char, u_char, u_char);
 int	 colour_join_rgb(u_char, u_char, u_char);
 void	 colour_split_rgb(int, u_char *, u_char *, u_char *);
+int	 colour_force_rgb(int);
 const char *colour_tostring(int);
 int	 colour_fromstring(const char *s);
 int	 colour_256toRGB(int);
