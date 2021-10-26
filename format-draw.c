@@ -677,7 +677,8 @@ format_draw_many(struct screen_write_ctx *ctx, struct style *sy, char ch,
 /* Draw a format to a screen. */
 void
 format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
-    u_int available, const char *expanded, struct style_ranges *srs)
+    u_int available, const char *expanded, struct style_ranges *srs,
+    int default_colours)
 {
 	enum { LEFT,
 	       CENTRE,
@@ -819,6 +820,10 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 		log_debug("%s: style '%s' -> '%s'", __func__, tmp,
 		    style_tostring(&sy));
 		free(tmp);
+		if (default_colours) {
+			sy.gc.bg = base->bg;
+			sy.gc.fg = base->fg;
+		}
 
 		/* If this style has a fill colour, store it for later. */
 		if (sy.fill != 8)
