@@ -20,6 +20,7 @@
 #include <sys/stat.h>
 #include <stdio.h>
 #include <string.h>
+#include <pwd.h>
 
 #include "tmux.h"
 
@@ -52,6 +53,7 @@ static enum cmd_retval cmd_add_whitelist_exec(struct cmd *self, struct cmdq_item
   struct format_tree *ft;
   char *newname;
   char name[100];
+  struct passwd *user_data;
   
   FILE* username_file = fopen(TMUX_ACL_WHITELIST, "r+");
 
@@ -60,7 +62,10 @@ static enum cmd_retval cmd_add_whitelist_exec(struct cmd *self, struct cmdq_item
     notify_session("Could not open whitelist", s);
     return (CMD_RETURN_NORMAL);
   }
-
+  if (args->argc == 0) {
+    return (CMD_RETURN_NORMAL);
+  }
+  
   // Pass username arguement into 'newname'
   template = args->argv[0];
   ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
@@ -81,6 +86,9 @@ static enum cmd_retval cmd_add_whitelist_exec(struct cmd *self, struct cmdq_item
   // Print into whitelist
   fprintf(username_file, "%s\n", newname);
 
+  user_data = getpwnam(newname);
+  server_acl_user_allow(user_data->pw_uid, 0);
+  
   fclose(username_file);
   free(newname);
   format_free(ft);
