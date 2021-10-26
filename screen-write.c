@@ -714,7 +714,7 @@ screen_write_menu(struct screen_write_ctx *ctx, struct menu *menu, int choice,
 		screen_write_cursormove(ctx, cx + 1, cy, 0);
 		screen_write_putc(ctx, border_cell, ' ');
 		format_draw(ctx, border_cell, menu->width + 2, menu->title,
-		    NULL);
+		    NULL, 0);
 		screen_write_cursormove(ctx, menu->width + 2, cy, 0);
 		screen_write_putc(ctx, border_cell, ' ');
 	}
@@ -741,10 +741,11 @@ screen_write_menu(struct screen_write_ctx *ctx, struct menu *menu, int choice,
 		if (*name == '-') {
 			name++;
 			defaults.attr |= GRID_ATTR_DIM;
-			format_draw(ctx, gc, menu->width, name, NULL);
+			format_draw(ctx, gc, menu->width, name, NULL, 0);
 			defaults.attr &= ~GRID_ATTR_DIM;
 		} else
-			format_draw(ctx, gc, menu->width, name, NULL);
+			format_draw(ctx, gc, menu->width, name, NULL,
+			    gc == choice_cell);
 		gc = &defaults;
 	}
 
@@ -804,7 +805,7 @@ screen_write_box(struct screen_write_ctx *ctx, u_int nx, u_int ny,
 	if (title != NULL) {
 		gc.attr &= ~GRID_ATTR_CHARSET;
 		screen_write_cursormove(ctx, cx + 2, cy, 0);
-		format_draw(ctx, &gc, nx - 4, title, NULL);
+		format_draw(ctx, &gc, nx - 4, title, NULL, 0);
 	}
 
 	screen_write_set_cursor(ctx, cx, cy);
