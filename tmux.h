@@ -2036,7 +2036,7 @@ char		*format_grid_line(struct grid *, u_int);
 /* format-draw.c */
 void		 format_draw(struct screen_write_ctx *,
 		     const struct grid_cell *, u_int, const char *,
-		     struct style_ranges *);
+		     struct style_ranges *, int);
 u_int		 format_width(const char *);
 char		*format_trim_left(const char *, u_int);
 char		*format_trim_right(const char *, u_int);

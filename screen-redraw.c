@@ -400,7 +400,7 @@ screen_redraw_make_pane_status(struct client *c, struct window_pane *wp,
 	gc.attr &= ~GRID_ATTR_CHARSET;
 
 	screen_write_cursormove(&ctx, 0, 0, 0);
-	format_draw(&ctx, &gc, width, expanded, NULL);
+	format_draw(&ctx, &gc, width, expanded, NULL, 0);
 	screen_write_stop(&ctx);
 
 	free(expanded);
