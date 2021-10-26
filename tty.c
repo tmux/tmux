@@ -1972,10 +1972,9 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 		for (i = 0; i < OVERLAY_MAX_RANGES; i++)
 			vis += r.nx[i];
 		if (vis < gcp->data.width) {
-			tty_draw_line(tty, s, s->cx, s->cy,
-				    gcp->data.width, px, py, &ctx->defaults,
-				    ctx->palette);
-				return;
+			tty_draw_line(tty, s, s->cx, s->cy, gcp->data.width,
+			    px, py, &ctx->defaults, ctx->palette);
+			return;
 		}
 	}
 

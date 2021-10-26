@@ -140,7 +140,7 @@ job_run(const char *cmd, int argc, char **argv, struct environ *e, struct sessio
 				close(out[1]);
 			close(out[0]);
 
-			nullfd = open(_PATH_DEVNULL, O_RDWR, 0);
+			nullfd = open(_PATH_DEVNULL, O_RDWR);
 			if (nullfd == -1)
 				fatal("open failed");
 			if (dup2(nullfd, STDERR_FILENO) == -1)
