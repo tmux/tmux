@@ -31,6 +31,10 @@
 #include <utempter.h>
 #endif
 
+#ifndef TMUX_ACL
+#define TMUX_ACL 1
+#endif
+
 #include "compat.h"
 #include "xmalloc.h"
 
@@ -3135,6 +3139,8 @@ char		*regsub(const char *, const char *, const char *, int);
 void server_acl_init(void);
 
 void server_acl_user_allow(uid_t uid, int owner);
+
+void server_acl_user_deny(uid_t uid);
 
 int server_acl_accept_validate(int newf, struct clients clients);
 

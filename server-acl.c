@@ -181,6 +181,31 @@ void server_acl_user_allow(uid_t uid, int owner)
 }
 
 /*
+* Remove user from acl list.
+*/
+void server_acl_user_deny(uid_t uid)
+{
+	struct acl_user* iter = NULL;
+	struct acl_user* next = NULL;
+	int exists = 0;
+	SLIST_FOREACH_SAFE(iter, &acl_entries, entry, next) {
+		if (iter->user_id == uid) {
+			/* ASSERT */
+			if (iter->is_owner) {
+				fatal(TMUX_ACL_LOG " Attempt to remove host from acl list.");
+			}
+			exists = 1;
+			break;
+		}
+	}
+	if (exists) {
+		SLIST_REMOVE(&acl_entries, iter, acl_user, entry);
+	} else if (!exists) {
+		log_debug(TMUX_ACL_LOG " server_acl_deny warning: user %i was not found in acl list.\n", uid);
+	}
+}
+
+/*
  * Uses newfd, which is returned by the call to accept(), in server_accept(), to get user id of client
  * and confirm it's in the allow list.
  */
