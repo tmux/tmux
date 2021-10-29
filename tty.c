@@ -38,7 +38,7 @@ static int	tty_client_ready(struct client *);
 
 static void	tty_set_italics(struct tty *);
 static int	tty_try_colour(struct tty *, int, const char *);
-static void	tty_force_cursor_colour(struct tty *, const char *);
+static void	tty_force_cursor_colour(struct tty *, int);
 static void	tty_cursor_pane(struct tty *, const struct tty_ctx *, u_int,
 		    u_int);
 static void	tty_cursor_pane_unless_wrap(struct tty *,
@@ -105,7 +105,7 @@ tty_init(struct tty *tty, struct client *c)
 	tty->client = c;
 
 	tty->cstyle = SCREEN_CURSOR_DEFAULT;
-	tty->ccolour = xstrdup("");
+	tty->ccolour = -1;
 
 	if (tcgetattr(c->fd, &tty->tio) != 0)
 		return (-1);
@@ -341,8 +341,8 @@ tty_start_tty(struct tty *tty)
 	tty->flags |= TTY_STARTED;
 	tty_invalidate(tty);
 
-	if (*tty->ccolour != '\0')
-		tty_force_cursor_colour(tty, "");
+	if (tty->ccolour != -1)
+		tty_force_cursor_colour(tty, -1);
 
 	tty->mouse_drag_flag = 0;
 	tty->mouse_drag_update = NULL;
@@ -406,7 +406,7 @@ tty_stop_tty(struct tty *tty)
 	}
 	if (tty->mode & MODE_BRACKETPASTE)
 		tty_raw(tty, tty_term_string(tty->term, TTYC_DSBP));
-	if (*tty->ccolour != '\0')
+	if (tty->ccolour != -1)
 		tty_raw(tty, tty_term_string(tty->term, TTYC_CR));
 
 	tty_raw(tty, tty_term_string(tty->term, TTYC_CNORM));
@@ -451,7 +451,6 @@ void
 tty_free(struct tty *tty)
 {
 	tty_close(tty);
-	free(tty->ccolour);
 }
 
 void
@@ -650,41 +649,37 @@ tty_set_title(struct tty *tty, const char *title)
 }
 
 static void
-tty_force_cursor_colour(struct tty *tty, const char *ccolour)
+tty_force_cursor_colour(struct tty *tty, int c)
 {
-	if (*ccolour == '\0')
+	u_char	r, g, b;
+	char	s[13] = "";
+
+	if (c != -1)
+		c = colour_force_rgb(c);
+	if (c == tty->ccolour)
+		return;
+	if (c == -1)
 		tty_putcode(tty, TTYC_CR);
-	else
-		tty_putcode_ptr1(tty, TTYC_CS, ccolour);
-	free(tty->ccolour);
-	tty->ccolour = xstrdup(ccolour);
+	else {
+		colour_split_rgb(c, &r, &g, &b);
+		xsnprintf(s, sizeof s, "rgb:%02hhx/%02hhx/%02hhx", r, g, b);
+		tty_putcode_ptr1(tty, TTYC_CS, s);
+	}
+	tty->ccolour = c;
 }
 
 static void
 tty_update_cursor(struct tty *tty, int mode, int changed, struct screen *s)
 {
-	enum		 screen_cursor_style cstyle;
-	int		 ccolour, cmode = mode;
-	static char	 colour[13];
-	u_char		 r, g, b;
+	enum screen_cursor_style	cstyle;
+	int				ccolour, cmode = mode;
 
 	/* Set cursor colour if changed. */
 	if (s != NULL) {
 		ccolour = s->ccolour;
-		if (ccolour == -1)
+		if (s->ccolour == -1)
 			ccolour = s->default_ccolour;
-		ccolour = colour_force_rgb(ccolour);
-		if (ccolour == -1)
-			*colour = '\0';
-		else {
-			colour_split_rgb(ccolour, &r, &g, &b);
-			xsnprintf(colour, sizeof colour,
-			    "rgb:%02hhx/%02hhx/%02hhx", r, g, b);
-
-		}
-		if (strcmp(colour, tty->ccolour) != 0) {
-			tty_force_cursor_colour(tty, colour);
-		}
+		tty_force_cursor_colour(tty, ccolour);
 	}
 
 	/* If cursor is off, set as invisible. */

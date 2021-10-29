@@ -1280,7 +1280,7 @@ struct tty {
 	u_int		 cx;
 	u_int		 cy;
 	enum screen_cursor_style cstyle;
-	char		*ccolour;
+	int		 ccolour;
 
 	int		 oflag;
 	u_int		 oox;
