@@ -780,6 +780,7 @@ struct screen {
 	u_int				 cy;	  /* cursor y */
 
 	enum screen_cursor_style	 cstyle;  /* cursor style */
+	enum screen_cursor_style	 default_cstyle;
 	int				 ccolour; /* cursor colour */
 	int				 default_ccolour;
 
@@ -787,6 +788,7 @@ struct screen {
 	u_int				 rlower;  /* scroll region bottom */
 
 	int				 mode;
+	int				 default_mode;
 
 	u_int				 saved_cx;
 	u_int				 saved_cy;
@@ -2796,6 +2798,7 @@ void	 screen_reinit(struct screen *);
 void	 screen_free(struct screen *);
 void	 screen_reset_tabs(struct screen *);
 void	 screen_set_cursor_style(struct screen *, u_int);
+void	 screen_set_cursor_style_mode(u_int, enum screen_cursor_style *, int *);
 void	 screen_set_cursor_colour(struct screen *, const char *);
 int	 screen_set_title(struct screen *, const char *);
 void	 screen_set_path(struct screen *, const char *);
