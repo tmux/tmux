@@ -137,10 +137,12 @@ static void	input_reset_cell(struct input_ctx *);
 static void	input_osc_4(struct input_ctx *, const char *);
 static void	input_osc_10(struct input_ctx *, const char *);
 static void	input_osc_11(struct input_ctx *, const char *);
+static void	input_osc_12(struct input_ctx *, const char *);
 static void	input_osc_52(struct input_ctx *, const char *);
 static void	input_osc_104(struct input_ctx *, const char *);
 static void	input_osc_110(struct input_ctx *, const char *);
 static void	input_osc_111(struct input_ctx *, const char *);
+static void	input_osc_112(struct input_ctx *, const char *);
 
 /* Transition entry/exit handlers. */
 static void	input_clear(struct input_ctx *);
@@ -2310,8 +2312,7 @@ input_exit_osc(struct input_ctx *ictx)
 		input_osc_11(ictx, p);
 		break;
 	case 12:
-		if (utf8_isvalid(p) && *p != '?') /* ? is colour request */
-			screen_set_cursor_colour(sctx->s, p);
+		input_osc_12(ictx, p);
 		break;
 	case 52:
 		input_osc_52(ictx, p);
@@ -2326,8 +2327,7 @@ input_exit_osc(struct input_ctx *ictx)
 		input_osc_111(ictx, p);
 		break;
 	case 112:
-		if (*p == '\0') /* no arguments allowed */
-			screen_set_cursor_colour(sctx->s, "");
+		input_osc_112(ictx, p);
 		break;
 	default:
 		log_debug("%s: unknown '%u'", __func__, option);
@@ -2564,7 +2564,7 @@ input_osc_10(struct input_ctx *ictx, const char *p)
 	}
 }
 
-/* Handle the OSC 110 sequence for resetting background colour. */
+/* Handle the OSC 110 sequence for resetting foreground colour. */
 static void
 input_osc_110(struct input_ctx *ictx, const char *p)
 {
@@ -2623,6 +2623,35 @@ input_osc_111(struct input_ctx *ictx, const char *p)
 		screen_write_fullredraw(&ictx->ctx);
 	}
 }
+
+/* Handle the OSC 12 sequence for setting and querying cursor colour. */
+static void
+input_osc_12(struct input_ctx *ictx, const char *p)
+{
+	struct window_pane	*wp = ictx->wp;
+	int			 c;
+
+	if (strcmp(p, "?") == 0) {
+		if (wp != NULL)
+			input_osc_colour_reply(ictx, 12, ictx->ctx.s->ccolour);
+		return;
+	}
+
+	if ((c = input_osc_parse_colour(p)) == -1) {
+		log_debug("bad OSC 12: %s", p);
+		return;
+	}
+	screen_set_cursor_colour(ictx->ctx.s, p);
+}
+
+/* Handle the OSC 112 sequence for resetting cursor colour. */
+static void
+input_osc_112(struct input_ctx *ictx, const char *p)
+{
+	if (*p == '\0') /* no arguments allowed */
+		screen_set_cursor_colour(ictx->ctx.s, "");
+}
+
 
 /* Handle the OSC 52 sequence for setting the clipboard. */
 static void
