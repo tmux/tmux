@@ -2442,7 +2442,7 @@ input_top_bit_set(struct input_ctx *ictx)
 }
 
 /* Parse colour from OSC. */
-static int
+int
 input_osc_parse_colour(const char *p)
 {
 	double	 c, m, y, k = 0;

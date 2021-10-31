@@ -1111,8 +1111,14 @@ options_push_changes(const char *name)
 		RB_FOREACH(w, windows, &windows) {
 			if (w->active == NULL)
 				continue;
-			if (options_get_number(w->options, "automatic-rename"))
+			int option = options_get_number(w->options, name);
 				w->active->flags |= PANE_CHANGED;
+		}
+	}
+	if (strcmp(name, "cursor-colour") == 0) {
+		RB_FOREACH(wp, window_pane_tree, &all_window_panes) {
+			wp->screen->default_ccolour =
+			options_get_number(wp->options, name);
 		}
 	}
 	if (strcmp(name, "key-table") == 0) {

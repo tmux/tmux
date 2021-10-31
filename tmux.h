@@ -780,7 +780,8 @@ struct screen {
 	u_int				 cy;	  /* cursor y */
 
 	enum screen_cursor_style	 cstyle;  /* cursor style */
-	char				*ccolour; /* cursor colour */
+	int				 ccolour; /* cursor colour */
+	int				 default_ccolour;
 
 	u_int				 rupper;  /* scroll region top */
 	u_int				 rlower;  /* scroll region bottom */
@@ -1277,7 +1278,7 @@ struct tty {
 	u_int		 cx;
 	u_int		 cy;
 	enum screen_cursor_style cstyle;
-	char		*ccolour;
+	int		 ccolour;
 
 	int		 oflag;
 	u_int		 oox;
@@ -2602,6 +2603,7 @@ void	 recalculate_sizes_now(int);
 struct input_ctx *input_init(struct window_pane *, struct bufferevent *,
 	     struct colour_palette *);
 void	 input_free(struct input_ctx *);
+int	 input_osc_parse_colour(const char *);
 void	 input_reset(struct input_ctx *, int);
 struct evbuffer *input_pending(struct input_ctx *);
 void	 input_parse_pane(struct window_pane *);
