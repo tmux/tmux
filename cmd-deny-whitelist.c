@@ -92,7 +92,8 @@ enum cmd_retval cmd_deny_whitelist_exec(struct cmd *self, struct cmdq_item *item
     user_data = getpwnam(oldname);
     if (user_data != NULL) {
       server_acl_user_deny(user_data->pw_uid);
-      proc_remove_peer(client->peer);
+      //proc_kill_peer(client->peer);
+      //proc_update_event(client->peer);
     }
   
     fclose(username_file);
