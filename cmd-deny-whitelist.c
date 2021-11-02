@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <pwd.h>
 
 #include "tmux.h"
 
@@ -29,20 +30,20 @@
  * Removes a user from the whitelist
  */
 
-static enum cmd_retval cmd_remove_whitelist_exec(struct cmd *, struct cmdq_item *);
+static enum cmd_retval cmd_deny_whitelist_exec(struct cmd *, struct cmdq_item *);
 
-const struct cmd_entry cmd_remove_whitelist_entry = {
-  .name = "remove-whitelist",
-  .alias = "remove",
+const struct cmd_entry cmd_deny_whitelist_entry = {
+  .name = "deny-whitelist",
+  .alias = "deny",
 
   .args = { "", 0, 1 },
   .usage = "<username>",
 
   .flags = 0,
-  .exec = cmd_remove_whitelist_exec
+  .exec = cmd_deny_whitelist_exec
 };
 
-enum cmd_retval cmd_remove_whitelist_exec(struct cmd *self, struct cmdq_item *item) {
+enum cmd_retval cmd_deny_whitelist_exec(struct cmd *self, struct cmdq_item *item) {
 
     struct args *args = cmd_get_args(self);
     struct cmd_find_state *target = cmdq_get_target(item);
@@ -51,10 +52,16 @@ enum cmd_retval cmd_remove_whitelist_exec(struct cmd *self, struct cmdq_item *it
     struct format_tree *ft;
     char *oldname;
     char name[100];
-  
+    struct passwd *user_data;
+
     FILE* username_file = fopen(TMUX_ACL_WHITELIST, "r");
     FILE* temp_file = fopen("temp_whitelist", "w");
 
+    // *TEMP* Check for an empty command arguement
+    if (args->argc == 0) {
+      return (CMD_RETURN_NORMAL);
+    }
+      
     // Check that both files were opened successfully
     if (username_file == NULL) {
       notify_session("Could not open whitelist", s);
@@ -63,8 +70,7 @@ enum cmd_retval cmd_remove_whitelist_exec(struct cmd *self, struct cmdq_item *it
     if (temp_file == NULL) {
       notify_session("Could not open temp file", s);
     }
-
-    
+      
     // Pass username arguement into 'newname'
     template = args->argv[0];
     ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
@@ -78,6 +84,12 @@ enum cmd_retval cmd_remove_whitelist_exec(struct cmd *self, struct cmdq_item *it
       } else {
 	fprintf(temp_file, "%s", name);
       }
+    }
+
+    // Check that the username is valid and remove from the list
+    user_data = getpwnam(oldname);
+    if (user_data != NULL) {
+      server_acl_user_deny(user_data->pw_uid);
     }
   
     fclose(username_file);

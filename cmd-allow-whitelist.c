@@ -25,26 +25,26 @@
 #include "tmux.h"
 
 #define TMUX_ACL_WHITELIST "./tmux-acl-whitelist"
-#define MSG "test"
+#define MSG "placeholder"
 /*
  * Adds a new user to the whitelist
  *
  */
 
-static enum cmd_retval cmd_add_whitelist_exec(struct cmd *, struct cmdq_item *);
+static enum cmd_retval cmd_allow_whitelist_exec(struct cmd *, struct cmdq_item *);
 
-const struct cmd_entry cmd_add_whitelist_entry = {
-  .name = "add-whitelist",
-  .alias = "add",
+const struct cmd_entry cmd_allow_whitelist_entry = {
+  .name = "allow-whitelist",
+  .alias = "allow",
 
   .args = { "", 0, 1 },
   .usage = "[username]", 
 
   .flags = CMD_AFTERHOOK,
-  .exec = cmd_add_whitelist_exec
+  .exec = cmd_allow_whitelist_exec
 };
 
-static enum cmd_retval cmd_add_whitelist_exec(struct cmd *self, struct cmdq_item *item) {
+static enum cmd_retval cmd_allow_whitelist_exec(struct cmd *self, struct cmdq_item *item) {
 
   struct args *args = cmd_get_args(self);
   struct cmd_find_state *target = cmdq_get_target(item);
@@ -71,6 +71,18 @@ static enum cmd_retval cmd_add_whitelist_exec(struct cmd *self, struct cmdq_item
   ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
   newname = format_expand_time(ft, template);
 
+  // Check that the username is valid
+  user_data = getpwnam(newname);
+  if (user_data != NULL) {
+    server_acl_user_allow(user_data->pw_uid, 0);
+  } else {
+    fclose(username_file);
+    free(newname);
+    format_free(ft);
+  
+    return (CMD_RETURN_NORMAL);
+  }
+
   // Check if the name is already in the whitelist
   while (fgets(name, sizeof(name-1), username_file)) {
     if (strcmp(name, newname) == 0) {
@@ -85,9 +97,6 @@ static enum cmd_retval cmd_add_whitelist_exec(struct cmd *self, struct cmdq_item
   
   // Print into whitelist
   fprintf(username_file, "%s\n", newname);
-
-  user_data = getpwnam(newname);
-  server_acl_user_allow(user_data->pw_uid, 0);
   
   fclose(username_file);
   free(newname);
