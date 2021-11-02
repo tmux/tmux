@@ -99,7 +99,7 @@ void server_acl_init(void)
 		struct passwd* user_data;
 			
 		char username[256] = {0}; 	
-		int add_count = 0;
+		int add_count = 1;
 		/* 
 		 * Reads TMUX_ACL_WHITELIST for line-delimited usernames, 
 		 * then allows said users into the shared session 
@@ -116,12 +116,12 @@ void server_acl_init(void)
 					uid = user_data->pw_uid;
 					if (uid != host_uid) {
 						server_acl_user_allow(uid, 0);
+						add_count++;
 					}
 					else {
 						log_debug(TMUX_ACL_LOG "Warning: %s contains the username of the host",
 									TMUX_ACL_WHITELIST);
 					}
-					add_count++;
 				}
 				else {
 					log_debug(TMUX_ACL_LOG " ERROR: getpwnam failed to find UID for username %s: %s", 
