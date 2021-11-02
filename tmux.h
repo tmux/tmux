@@ -1958,6 +1958,10 @@ void	proc_kill_peer(struct tmuxpeer *);
 void	proc_toggle_log(struct tmuxproc *);
 pid_t	proc_fork_and_daemon(int *);
 
+#ifdef TMUX_ACL
+int proc_acl_get_ucred(struct tmuxpeer*, struct ucred*);
+#endif
+
 /* cfg.c */
 extern int cfg_finished;
 extern struct client *cfg_client;
@@ -3134,6 +3138,8 @@ char		*regsub(const char *, const char *, const char *, int);
 
 #if defined(TMUX_ACL)
 
+#define TMUX_ACL_LOG "[access control list]"
+
 /* server-acl.c */
 
 void server_acl_init(void);
@@ -3143,6 +3149,8 @@ void server_acl_user_allow(uid_t uid, int owner);
 void server_acl_user_deny(uid_t uid);
 
 int server_acl_accept_validate(int newf, struct clients clients);
+
+int server_acl_attach_session(struct client *c);
 
 
 #endif /* TMUX_ACL */

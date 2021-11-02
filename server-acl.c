@@ -10,8 +10,6 @@
 #include <pwd.h>
 #include <ctype.h>
 
-#define TMUX_ACL_LOG "[access control list]"
-
 #ifndef TMUX_ACL_WHITELIST
 #define TMUX_ACL_WHITELIST "./tmux-acl-whitelist"
 #endif
@@ -68,6 +66,20 @@ static int server_acl_is_allowed(uid_t uid)
 		}
 	}
 	return ok;
+}
+
+static struct acl_user* server_acl_user_find(uid_t uid)
+{
+	struct acl_user* ret = NULL;
+	struct acl_user* iter = NULL;
+	struct acl_user* next = NULL;
+	SLIST_FOREACH_SAFE(iter, &acl_entries, entry, next) {
+		if (iter->user_id == uid) {
+			ret = iter;
+			break;
+		}
+	}
+	return ret;
 }
 
 /*
@@ -245,6 +257,28 @@ int server_acl_accept_validate(int newfd, struct clients clients)
 	log_debug(TMUX_ACL_LOG " allowing user id %li", (long) ucred.uid);
 
 	return 1;
+}
+
+/* 
+ * Verify that the client's UID exists in the ACL list, 
+ * and then set the access of the client to read only for the session.
+ *
+ * The call to proc_acl_get_ucred() will log an error message if it fails.
+ */
+int server_acl_attach_session(struct client *c)
+{
+	struct ucred cred = {0};
+	int ret = 0;
+	if (proc_acl_get_ucred(c->peer, &cred)) {
+		struct acl_user *user = server_acl_user_find(cred.uid);
+		if (user != NULL) {
+			c->flags |= CLIENT_READONLY;
+			ret = 1;
+		} else {
+			fatal(TMUX_ACL_LOG "[server_acl_attach_session] invalid client attached to session: client name = %s, client uid = %i\n", c->name, cred.uid);
+		}
+	}
+	return ret;
 }
 
 #endif /* TMUX_ACL */
