@@ -668,12 +668,13 @@ tty_force_cursor_colour(struct tty *tty, int c)
 	tty->ccolour = c;
 }
 
-static void
-tty_update_cursor(struct tty *tty, int mode, int changed, struct screen *s)
+static int
+tty_update_cursor(struct tty *tty, int mode, struct screen *s)
 {
 	enum screen_cursor_style	cstyle;
-	int				ccolour, cmode = mode;
+	int				ccolour, changed, cmode = mode;
 
+	changed  = mode ^ tty->mode;
 	/* Set cursor colour if changed. */
 	if (s != NULL) {
 		ccolour = s->ccolour;
@@ -686,7 +687,7 @@ tty_update_cursor(struct tty *tty, int mode, int changed, struct screen *s)
 	if (~cmode & MODE_CURSOR) {
 		if (changed & MODE_CURSOR)
 			tty_putcode(tty, TTYC_CIVIS);
-		return;
+		return (cmode);
 	}
 
 	/* Check if blinking or very visible flag changed or style changed. */
@@ -696,11 +697,18 @@ tty_update_cursor(struct tty *tty, int mode, int changed, struct screen *s)
 		cstyle = s->cstyle;
 		if (cstyle == SCREEN_CURSOR_DEFAULT) {
 			cstyle = s->default_cstyle;
-			cmode = s->default_mode;
+			if ((cmode & MODE_CURSOR_BLINKING_CHANGED) == 0) {
+				if ((s->default_mode & MODE_CURSOR_BLINKING)
+				    == 0)
+					cmode &= ~MODE_CURSOR_BLINKING;
+				else
+					cmode |= MODE_CURSOR_BLINKING;
+			}
 		}
 	}
+	changed  = mode ^ tty->mode;
 	if ((changed & CURSOR_MODES) == 0 && cstyle == tty->cstyle)
-		return;
+		return (cmode);
 
 	/*
 	 * Set cursor style. If an explicit style has been set with DECSCUSR,
@@ -750,16 +758,19 @@ tty_update_cursor(struct tty *tty, int mode, int changed, struct screen *s)
 		break;
 	}
 	tty->cstyle = cstyle;
+	return (cmode);
  }
 
 void
 tty_update_mode(struct tty *tty, int mode, struct screen *s)
 {
 	struct client	*c = tty->client;
-	int		 changed;
+	int		 changed, tmode;
 
 	if (tty->flags & TTY_NOCURSOR)
 		mode &= ~MODE_CURSOR;
+
+	tmode = tty_update_cursor(tty, mode, s);
 
 	changed = mode ^ tty->mode;
 	if (log_get_level() != 0 && changed != 0) {
@@ -769,7 +780,6 @@ tty_update_mode(struct tty *tty, int mode, struct screen *s)
 		    screen_mode_to_string(mode));
 	}
 
-	tty_update_cursor(tty, mode, changed, s);
 	if ((changed & ALL_MOUSE_MODES) &&
 	    tty_term_has(tty->term, TTYC_KMOUS)) {
 		/*

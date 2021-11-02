@@ -531,6 +531,8 @@ enum tty_code_code {
 #define MODE_CRLF 0x4000
 #define MODE_KEXTENDED 0x8000
 #define MODE_CURSOR_VERY_VISIBLE 0x10000
+// Okay to insert this after MODE_CURSOR_BLINKING and shift other values?
+#define MODE_CURSOR_BLINKING_CHANGED 0x20000
 
 #define ALL_MODES 0xffffff
 #define ALL_MOUSE_MODES (MODE_MOUSE_STANDARD|MODE_MOUSE_BUTTON|MODE_MOUSE_ALL)
@@ -2605,7 +2607,6 @@ void	 recalculate_sizes_now(int);
 struct input_ctx *input_init(struct window_pane *, struct bufferevent *,
 	     struct colour_palette *);
 void	 input_free(struct input_ctx *);
-int	 input_osc_parse_colour(const char *);
 void	 input_reset(struct input_ctx *, int);
 struct evbuffer *input_pending(struct input_ctx *);
 void	 input_parse_pane(struct window_pane *);
