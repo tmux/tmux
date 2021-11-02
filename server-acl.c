@@ -68,7 +68,11 @@ static int server_acl_is_allowed(uid_t uid)
 	return ok;
 }
 
-static struct acl_user* server_acl_user_find(uid_t uid)
+/*
+ * Public API
+ */
+
+struct acl_user* server_acl_user_find(uid_t uid)
 {
 	struct acl_user* ret = NULL;
 	struct acl_user* iter = NULL;
@@ -82,9 +86,6 @@ static struct acl_user* server_acl_user_find(uid_t uid)
 	return ret;
 }
 
-/*
- * Public API
- */
 
 void server_acl_init(void)
 {
