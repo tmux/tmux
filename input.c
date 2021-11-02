@@ -1685,8 +1685,7 @@ input_csi_dispatch_rm_private(struct input_ctx *ictx)
 			break;
 		case 12:
 			screen_write_mode_clear(sctx, MODE_CURSOR_BLINKING);
-			screen_write_mode_set(sctx,
-			    MODE_CURSOR_BLINKING_CHANGED);
+			screen_write_mode_set(sctx, MODE_CURSOR_BLINKING_SET);
 			break;
 		case 25:	/* TCEM */
 			screen_write_mode_clear(sctx, MODE_CURSOR);
@@ -1776,8 +1775,7 @@ input_csi_dispatch_sm_private(struct input_ctx *ictx)
 			break;
 		case 12:
 			screen_write_mode_set(sctx, MODE_CURSOR_BLINKING);
-			screen_write_mode_set(sctx,
-			    MODE_CURSOR_BLINKING_CHANGED);
+			screen_write_mode_set(sctx, MODE_CURSOR_BLINKING_SET);
 			break;
 		case 25:	/* TCEM */
 			screen_write_mode_set(sctx, MODE_CURSOR);

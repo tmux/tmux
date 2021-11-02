@@ -674,7 +674,7 @@ tty_update_cursor(struct tty *tty, int mode, struct screen *s)
 	enum screen_cursor_style	cstyle;
 	int				ccolour, changed, cmode = mode;
 
-	changed  = mode ^ tty->mode;
+	changed  = cmode ^ tty->mode;
 	/* Set cursor colour if changed. */
 	if (s != NULL) {
 		ccolour = s->ccolour;
@@ -697,7 +697,7 @@ tty_update_cursor(struct tty *tty, int mode, struct screen *s)
 		cstyle = s->cstyle;
 		if (cstyle == SCREEN_CURSOR_DEFAULT) {
 			cstyle = s->default_cstyle;
-			if ((cmode & MODE_CURSOR_BLINKING_CHANGED) == 0) {
+			if ((cmode & MODE_CURSOR_BLINKING_SET) == 0) {
 				if ((s->default_mode & MODE_CURSOR_BLINKING)
 				    == 0)
 					cmode &= ~MODE_CURSOR_BLINKING;
@@ -706,7 +706,7 @@ tty_update_cursor(struct tty *tty, int mode, struct screen *s)
 			}
 		}
 	}
-	changed  = mode ^ tty->mode;
+	changed  = cmode ^ tty->mode;
 	if ((changed & CURSOR_MODES) == 0 && cstyle == tty->cstyle)
 		return (cmode);
 
@@ -770,9 +770,12 @@ tty_update_mode(struct tty *tty, int mode, struct screen *s)
 	if (tty->flags & TTY_NOCURSOR)
 		mode &= ~MODE_CURSOR;
 
-	tmode = tty_update_cursor(tty, mode, s);
+	if (tty_update_cursor(tty, mode, s) & MODE_CURSOR_BLINKING)
+		mode |= MODE_CURSOR_BLINKING;
+	else
+		mode &= ~MODE_CURSOR_BLINKING;
 
-	changed = mode ^ tty->mode;
+	changed = tmode ^ tty->mode;
 	if (log_get_level() != 0 && changed != 0) {
 		log_debug("%s: current mode %s", c->name,
 		    screen_mode_to_string(tty->mode));
