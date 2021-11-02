@@ -25,7 +25,7 @@
 #include "tmux.h"
 
 #define TMUX_ACL_WHITELIST "./tmux-acl-whitelist"
-#define MSG "placeholder"
+#define MSG TMUX_ACL_LOG
 /*
  * Adds a new user to the whitelist
  *

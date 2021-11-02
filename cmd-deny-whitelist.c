@@ -52,6 +52,7 @@ enum cmd_retval cmd_deny_whitelist_exec(struct cmd *self, struct cmdq_item *item
     struct format_tree *ft;
     char *oldname;
     char name[100];
+    struct client *client;
     struct passwd *user_data;
 
     FILE* username_file = fopen(TMUX_ACL_WHITELIST, "r");
@@ -73,7 +74,8 @@ enum cmd_retval cmd_deny_whitelist_exec(struct cmd *self, struct cmdq_item *item
       
     // Pass username arguement into 'newname'
     template = args->argv[0];
-    ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
+    client = cmdq_get_client(item);
+    ft = format_create(client, item, FORMAT_NONE, 0);
     oldname = format_expand_time(ft, template);
 
     // Transfer usernames to tmp file other than the name
@@ -90,6 +92,7 @@ enum cmd_retval cmd_deny_whitelist_exec(struct cmd *self, struct cmdq_item *item
     user_data = getpwnam(oldname);
     if (user_data != NULL) {
       server_acl_user_deny(user_data->pw_uid);
+      proc_remove_peer(client->peer);
     }
   
     fclose(username_file);
