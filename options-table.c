@@ -187,6 +187,7 @@ const struct options_name_map options_other_names[] = {
 	{ "display-panes-color", "display-panes-colour" },
 	{ "display-panes-active-color", "display-panes-active-colour" },
 	{ "clock-mode-color", "clock-mode-colour" },
+	{ "cursor-color", "cursor-colour" },
 	{ "pane-colors", "pane-colours" },
 	{ NULL, NULL }
 };
@@ -232,6 +233,13 @@ const struct options_table_entry options_table[] = {
 	  .default_str = "",
 	  .text = "Shell command run when text is copied. "
 		  "If empty, no command is run."
+	},
+
+	{ .name = "cursor-colour",
+	  .type = OPTIONS_TABLE_COLOUR,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
+	  .default_num = -1,
+	  .text = "Colour of the cursor."
 	},
 
 	{ .name = "default-terminal",

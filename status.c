@@ -1727,7 +1727,7 @@ status_prompt_complete_list_menu(struct client *c, char **list, u_int size,
 		item.name = list[i];
 		item.key = '0' + (i - spm->start);
 		item.command = NULL;
-		menu_add_item(menu, &item, NULL, NULL, NULL);
+		menu_add_item(menu, &item, NULL, c, NULL);
 	}
 
 	if (options_get_number(c->session->options, "status-position") == 0)

@@ -81,7 +81,8 @@ screen_init(struct screen *s, u_int sx, u_int sy, u_int hlimit)
 	s->path = NULL;
 
 	s->cstyle = SCREEN_CURSOR_DEFAULT;
-	s->ccolour = xstrdup("");
+	s->ccolour = -1;
+	s->default_ccolour = -1;
 	s->tabs = NULL;
 	s->sel = NULL;
 
@@ -125,7 +126,6 @@ screen_free(struct screen *s)
 	free(s->tabs);
 	free(s->path);
 	free(s->title);
-	free(s->ccolour);
 
 	if (s->write_list != NULL)
 		screen_write_free_list(s);
@@ -189,10 +189,9 @@ screen_set_cursor_style(struct screen *s, u_int style)
 
 /* Set screen cursor colour. */
 void
-screen_set_cursor_colour(struct screen *s, const char *colour)
+screen_set_cursor_colour(struct screen *s, int colour)
 {
-	free(s->ccolour);
-	s->ccolour = xstrdup(colour);
+	s->ccolour = colour;
 }
 
 /* Set screen title. */

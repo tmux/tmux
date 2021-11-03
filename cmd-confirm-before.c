@@ -72,7 +72,7 @@ cmd_confirm_before_exec(struct cmd *self, struct cmdq_item *item)
 	int				 wait = !args_has(args, 'b');
 
 	cdata = xcalloc(1, sizeof *cdata);
-	cdata->cmdlist = args_make_commands_now(self, item, 0, 0);
+	cdata->cmdlist = args_make_commands_now(self, item, 0, 1);
 	if (cdata->cmdlist == NULL)
 		return (CMD_RETURN_ERROR);
 

@@ -513,7 +513,7 @@ server_client_detach(struct client *c, enum msgtype msgtype)
 {
 	struct session	*s = c->session;
 
-	if (s == NULL || (c->flags & CLIENT_UNATTACHEDFLAGS))
+	if (s == NULL || (c->flags & CLIENT_NODETACHFLAGS))
 		return;
 
 	c->flags |= CLIENT_EXIT;
