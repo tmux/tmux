@@ -52,55 +52,23 @@ enum cmd_retval cmd_deny_whitelist_exec(struct cmd *self, struct cmdq_item *item
     struct format_tree *ft;
     char *oldname;
     char name[100];
-    struct client *client;
     struct passwd *user_data;
-
-    FILE* username_file = fopen(TMUX_ACL_WHITELIST, "r");
-    FILE* temp_file = fopen("temp_whitelist", "w");
 
     // *TEMP* Check for an empty command arguement
     if (args->argc == 0) {
       return (CMD_RETURN_NORMAL);
     }
       
-    // Check that both files were opened successfully
-    if (username_file == NULL) {
-      notify_session("Could not open whitelist", s);
-      return (CMD_RETURN_NORMAL);
-    }
-    if (temp_file == NULL) {
-      notify_session("Could not open temp file", s);
-    }
-      
     // Pass username arguement into 'newname'
     template = args->argv[0];
-    client = cmdq_get_client(item);
-    ft = format_create(client, item, FORMAT_NONE, 0);
+    ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
     oldname = format_expand_time(ft, template);
-
-    // Transfer usernames to tmp file other than the name
-    //  being removed
-    while (fgets(name, sizeof(name), username_file)) {
-      if (strstr(name, oldname) != NULL) {
-	continue;
-      } else {
-	fprintf(temp_file, "%s", name);
-      }
-    }
 
     // Check that the username is valid and remove from the list
     user_data = getpwnam(oldname);
     if (user_data != NULL) {
       server_acl_user_deny(user_data->pw_uid);
-      //proc_kill_peer(client->peer);
-      //proc_update_event(client->peer);
     }
-  
-    fclose(username_file);
-    fclose(temp_file);
-
-    // Give the temp file the correct name
-    rename("temp_whitelist", TMUX_ACL_WHITELIST);
     
     free(oldname);
     format_free(ft);

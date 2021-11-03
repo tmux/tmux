@@ -54,14 +54,8 @@ static enum cmd_retval cmd_allow_whitelist_exec(struct cmd *self, struct cmdq_it
   char *newname;
   char name[100];
   struct passwd *user_data;
-  
-  FILE* username_file = fopen(TMUX_ACL_WHITELIST, "r+");
 
-  // Check that the file was opened
-  if (username_file == NULL) {
-    notify_session("Could not open whitelist", s);
-    return (CMD_RETURN_NORMAL);
-  }
+  // Do nothing if no arguements present
   if (args->argc == 0) {
     return (CMD_RETURN_NORMAL);
   }
@@ -76,29 +70,12 @@ static enum cmd_retval cmd_allow_whitelist_exec(struct cmd *self, struct cmdq_it
   if (user_data != NULL) {
     server_acl_user_allow(user_data->pw_uid, 0);
   } else {
-    fclose(username_file);
     free(newname);
     format_free(ft);
   
     return (CMD_RETURN_NORMAL);
-  }
-
-  // Check if the name is already in the whitelist
-  while (fgets(name, sizeof(name-1), username_file)) {
-    if (strcmp(name, newname) == 0) {
-
-      fclose(username_file);
-      free(newname);
-      format_free(ft);
-      
-      return (CMD_RETURN_NORMAL);
-    }
-  }
+  }  
   
-  // Print into whitelist
-  fprintf(username_file, "%s\n", newname);
-  
-  fclose(username_file);
   free(newname);
   format_free(ft);
   
