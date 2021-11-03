@@ -668,11 +668,11 @@ tty_force_cursor_colour(struct tty *tty, int c)
 	tty->ccolour = c;
 }
 
-static void
-tty_update_cursor(struct tty *tty, int mode, int changed, struct screen *s)
+static int
+tty_update_cursor(struct tty *tty, int mode, struct screen *s)
 {
 	enum screen_cursor_style	cstyle;
-	int				ccolour;
+	int				ccolour, changed, cmode = mode;
 
 	/* Set cursor colour if changed. */
 	if (s != NULL) {
@@ -683,19 +683,32 @@ tty_update_cursor(struct tty *tty, int mode, int changed, struct screen *s)
 	}
 
 	/* If cursor is off, set as invisible. */
-	if (~mode & MODE_CURSOR) {
-		if (changed & MODE_CURSOR)
+	if (~cmode & MODE_CURSOR) {
+		if (tty->mode & MODE_CURSOR)
 			tty_putcode(tty, TTYC_CIVIS);
-		return;
+		return (cmode);
 	}
 
 	/* Check if blinking or very visible flag changed or style changed. */
 	if (s == NULL)
 		cstyle = tty->cstyle;
-	else
+	else {
 		cstyle = s->cstyle;
+		if (cstyle == SCREEN_CURSOR_DEFAULT) {
+			if (~cmode & MODE_CURSOR_BLINKING_SET) {
+				if (s->default_mode & MODE_CURSOR_BLINKING)
+					cmode |= MODE_CURSOR_BLINKING;
+				else
+					cmode &= ~MODE_CURSOR_BLINKING;
+			}
+			cstyle = s->default_cstyle;
+		}
+	}
+
+	/* If nothing changed, do nothing. */
+	changed = cmode ^ tty->mode;
 	if ((changed & CURSOR_MODES) == 0 && cstyle == tty->cstyle)
-		return;
+		return (cmode);
 
 	/*
 	 * Set cursor style. If an explicit style has been set with DECSCUSR,
@@ -713,48 +726,55 @@ tty_update_cursor(struct tty *tty, int mode, int changed, struct screen *s)
 			else
 				tty_putcode1(tty, TTYC_SS, 0);
 		}
-		if (mode & (MODE_CURSOR_BLINKING|MODE_CURSOR_VERY_VISIBLE))
+		if (cmode & (MODE_CURSOR_BLINKING|MODE_CURSOR_VERY_VISIBLE))
 			tty_putcode(tty, TTYC_CVVIS);
 		break;
 	case SCREEN_CURSOR_BLOCK:
 		if (tty_term_has(tty->term, TTYC_SS)) {
-			if (mode & MODE_CURSOR_BLINKING)
+			if (cmode & MODE_CURSOR_BLINKING)
 				tty_putcode1(tty, TTYC_SS, 1);
 			else
 				tty_putcode1(tty, TTYC_SS, 2);
-		} else if (mode & MODE_CURSOR_BLINKING)
+		} else if (cmode & MODE_CURSOR_BLINKING)
 			tty_putcode(tty, TTYC_CVVIS);
 		break;
 	case SCREEN_CURSOR_UNDERLINE:
 		if (tty_term_has(tty->term, TTYC_SS)) {
-			if (mode & MODE_CURSOR_BLINKING)
+			if (cmode & MODE_CURSOR_BLINKING)
 				tty_putcode1(tty, TTYC_SS, 3);
 			else
 				tty_putcode1(tty, TTYC_SS, 4);
-		} else if (mode & MODE_CURSOR_BLINKING)
+		} else if (cmode & MODE_CURSOR_BLINKING)
 			tty_putcode(tty, TTYC_CVVIS);
 		break;
 	case SCREEN_CURSOR_BAR:
 		if (tty_term_has(tty->term, TTYC_SS)) {
-			if (mode & MODE_CURSOR_BLINKING)
+			if (cmode & MODE_CURSOR_BLINKING)
 				tty_putcode1(tty, TTYC_SS, 5);
 			else
 				tty_putcode1(tty, TTYC_SS, 6);
-		} else if (mode & MODE_CURSOR_BLINKING)
+		} else if (cmode & MODE_CURSOR_BLINKING)
 			tty_putcode(tty, TTYC_CVVIS);
 		break;
 	}
 	tty->cstyle = cstyle;
+	return (cmode);
  }
 
 void
 tty_update_mode(struct tty *tty, int mode, struct screen *s)
 {
+	struct tty_term	*term = tty->term;
 	struct client	*c = tty->client;
 	int		 changed;
 
 	if (tty->flags & TTY_NOCURSOR)
 		mode &= ~MODE_CURSOR;
+
+	if (tty_update_cursor(tty, mode, s) & MODE_CURSOR_BLINKING)
+		mode |= MODE_CURSOR_BLINKING;
+	else
+		mode &= ~MODE_CURSOR_BLINKING;
 
 	changed = mode ^ tty->mode;
 	if (log_get_level() != 0 && changed != 0) {
@@ -764,9 +784,7 @@ tty_update_mode(struct tty *tty, int mode, struct screen *s)
 		    screen_mode_to_string(mode));
 	}
 
-	tty_update_cursor(tty, mode, changed, s);
-	if ((changed & ALL_MOUSE_MODES) &&
-	    tty_term_has(tty->term, TTYC_KMOUS)) {
+	if ((changed & ALL_MOUSE_MODES) && tty_term_has(term, TTYC_KMOUS)) {
 		/*
 		 * If the mouse modes have changed, clear any that are set and
 		 * apply again. There are differences in how terminals track

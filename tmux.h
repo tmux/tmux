@@ -531,6 +531,7 @@ enum tty_code_code {
 #define MODE_CRLF 0x4000
 #define MODE_KEXTENDED 0x8000
 #define MODE_CURSOR_VERY_VISIBLE 0x10000
+#define MODE_CURSOR_BLINKING_SET 0x20000
 
 #define ALL_MODES 0xffffff
 #define ALL_MOUSE_MODES (MODE_MOUSE_STANDARD|MODE_MOUSE_BUTTON|MODE_MOUSE_ALL)
@@ -780,6 +781,7 @@ struct screen {
 	u_int				 cy;	  /* cursor y */
 
 	enum screen_cursor_style	 cstyle;  /* cursor style */
+	enum screen_cursor_style	 default_cstyle;
 	int				 ccolour; /* cursor colour */
 	int				 default_ccolour;
 
@@ -787,6 +789,7 @@ struct screen {
 	u_int				 rlower;  /* scroll region bottom */
 
 	int				 mode;
+	int				 default_mode;
 
 	u_int				 saved_cx;
 	u_int				 saved_cy;
@@ -2794,7 +2797,7 @@ void	 screen_init(struct screen *, u_int, u_int, u_int);
 void	 screen_reinit(struct screen *);
 void	 screen_free(struct screen *);
 void	 screen_reset_tabs(struct screen *);
-void	 screen_set_cursor_style(struct screen *, u_int);
+void	 screen_set_cursor_style(u_int, enum screen_cursor_style *, int *);
 void	 screen_set_cursor_colour(struct screen *, int);
 int	 screen_set_title(struct screen *, const char *);
 void	 screen_set_path(struct screen *, const char *);
