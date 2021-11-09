@@ -279,6 +279,42 @@ int server_acl_accept_validate(int newfd, struct clients clientz)
 	return 1;
 }
 
+void server_acl_user_allow_write(struct passwd* user_data)
+{
+	struct acl_user* user = server_acl_user_find(user_data->pw_uid);
+	if (user != NULL) {
+		int found = 0;
+		struct client* c = NULL;
+		TAILQ_FOREACH(c, &clients, entry) {
+			struct ucred cred = {0};
+			if (proc_acl_get_ucred(c->peer, &cred)) {
+				if (cred.uid == user->user_id) {
+					c->flags &= (~CLIENT_READONLY);
+					found = 1;
+					break;
+				}
+			}
+			else {
+				server_acl_client_fail("[acl-allow-write] bad client, %s, found for user %s", 
+					c->name, 
+					user_data->pw_name
+				);
+			}
+		}
+		if (!found) {
+			server_acl_client_fail("[acl-allow-write] no client with username %s found", 
+				user_data->pw_name
+			);
+		}
+	}
+	else {
+		struct client* c = NULL;
+		TAILQ_FOREACH(c, &clients, entry) {
+			status_message_set(c, 3000, 1, 0, "[acl-allow-write] WARNING: user %s is not in the acl", user_data->pw_name);
+		}
+	}
+}
+
 /* 
  * Verify that the client's UID exists in the ACL list, 
  * and then set the access of the client to read only for the session.
