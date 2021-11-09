@@ -242,7 +242,7 @@ void server_acl_user_deny(uid_t uid)
  * and confirm it's in the allow list.
  */
 
-int server_acl_accept_validate(int newfd, struct clients clients)
+int server_acl_accept_validate(int newfd, struct clients clientz)
 {
 	int len;
 	struct ucred ucred;
@@ -264,13 +264,13 @@ int server_acl_accept_validate(int newfd, struct clients clients)
 				(long)ucred.gid);
 
 	if (!server_acl_is_allowed(ucred.uid)) {
-		TAILQ_FOREACH(c, &clients, entry) {
+		TAILQ_FOREACH(c, &clientz, entry) {
 			status_message_set(c, 3000, 1, 0, "%s rejected from joining session", pws->pw_name);
 		}
 		log_debug(TMUX_ACL_LOG " denying user id %li", (long) ucred.uid);
 		return 0;
 	}
-	TAILQ_FOREACH(c, &clients, entry) {
+	TAILQ_FOREACH(c, &clientz, entry) {
 		status_message_set(c, 3000, 1, 0, "%s joined the session", pws->pw_name);
 	}
 
