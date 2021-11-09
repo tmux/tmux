@@ -27,7 +27,7 @@
 
 #define TMUX_ACL_WHITELIST "./tmux-acl-whitelist"
 /*
- * Removes a user from the whitelist
+ * Removes a user from the acl-list
  */
 
 static enum cmd_retval cmd_deny_whitelist_exec(struct cmd *, struct cmdq_item *);
@@ -40,38 +40,55 @@ const struct cmd_entry cmd_deny_whitelist_entry = {
   .usage = "<username>",
 
   .flags = 0,
-  .exec = cmd_deny_whitelist_exec
+    .exec = cmd_deny_whitelist_exec
 };
 
 enum cmd_retval cmd_deny_whitelist_exec(struct cmd *self, struct cmdq_item *item) {
 
-    struct args *args = cmd_get_args(self);
-    struct cmd_find_state *target = cmdq_get_target(item);
-    struct session *s = target->s;
-    const char *template;
-    struct format_tree *ft;
-    char *oldname;
-    char name[100];
-    struct passwd *user_data;
+  struct args *args = cmd_get_args(self);
+  struct client *c = cmdq_get_target_client(item), *loop;
+  const char *template;
+  struct format_tree *ft;
+  char *oldname;
+  struct passwd *user_data;
+  struct ucred *u_cred = {0};
 
-    // *TEMP* Check for an empty command arguement
-    if (args->argc == 0) {
-      return (CMD_RETURN_NORMAL);
-    }
-      
-    // Pass username arguement into 'newname'
-    template = args->argv[0];
-    ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
-    oldname = format_expand_time(ft, template);
-
-    // Check that the username is valid and remove from the list
-    user_data = getpwnam(oldname);
-    if (user_data != NULL) {
-      server_acl_user_deny(user_data->pw_uid);
-    }
-    
-    free(oldname);
-    format_free(ft);
-    
+  if (args->argc == 0) {
+    cmdq_error(item, " argument <username> not provided");
     return (CMD_RETURN_NORMAL);
+  }
+
+  template = args->argv[0];
+  ft = format_create(c, item, FORMAT_NONE, 0);
+  oldname = format_expand_time(ft, template);
+
+  /*
+  TAILQ_FOREACH(loop, &clients, entry) {
+    struct tmuxpeer *proc = loop->peer;
+    cmdq_error(item, " removing user %s", proc->parent->name);
+    if (0) {
+      struct acl_user *user = server_acl_user_find(u_cred->uid);
+      if (user != NULL) {
+        cmdq_error(item, " user %s has been removed", oldname);
+        loop->exit_type |= CLIENT_EXIT_DETACH;
+      } else {
+        cmdq_error(item, " could not remove user %s", oldname);
+      }
+    }
+  }*/
+
+  user_data = getpwnam(oldname);
+  if (user_data != NULL) {
+    if (server_acl_user_find(user_data->pw_uid)) {
+      server_acl_user_deny(user_data->pw_uid); 
+      cmdq_error(item, " user %s has been removed", oldname);
+    } else {
+      cmdq_error(item, " user %s not found", oldname);
+    }
+  }
+
+  free(oldname);
+  format_free(ft);
+
+  return (CMD_RETURN_NORMAL);
 }
