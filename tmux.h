@@ -3154,6 +3154,9 @@ int server_acl_accept_validate(int newf, struct clients clients);
 
 int server_acl_attach_session(struct client *c);
 
+struct passwd;
+void server_acl_user_allow_write(struct passwd* user_data);
+
 void server_acl_client_fail(const char* message, ...);
 
 #endif /* TMUX_ACL */
