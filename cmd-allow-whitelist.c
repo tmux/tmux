@@ -27,8 +27,7 @@
 #define TMUX_ACL_WHITELIST "./tmux-acl-whitelist"
 #define MSG TMUX_ACL_LOG
 /*
- * Adds a new user to the whitelist
- *
+ * Adds a new user to the acl list
  */
 
 static enum cmd_retval cmd_allow_whitelist_exec(struct cmd *, struct cmdq_item *);
@@ -47,29 +46,31 @@ const struct cmd_entry cmd_allow_whitelist_entry = {
 static enum cmd_retval cmd_allow_whitelist_exec(struct cmd *self, struct cmdq_item *item) {
 
   struct args *args = cmd_get_args(self);
-  struct cmd_find_state *target = cmdq_get_target(item);
-  struct session *s = target->s;
   const char *template;
   struct format_tree *ft;
   char *newname;
-  char name[100];
   struct passwd *user_data;
 
-  // Do nothing if no arguements present
   if (args->argc == 0) {
+    cmdq_error(item, " argument <username> not provided");
     return (CMD_RETURN_NORMAL);
   }
   
-  // Pass username arguement into 'newname'
   template = args->argv[0];
   ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
   newname = format_expand_time(ft, template);
 
-  // Check that the username is valid
   user_data = getpwnam(newname);
   if (user_data != NULL) {
-    server_acl_user_allow(user_data->pw_uid, 0);
+    if (!server_acl_user_find(user_data->pw_uid)) {
+      cmdq_error(item, " user %s has been added", newname);
+      server_acl_user_allow(user_data->pw_uid, 0);
+    } else {
+      cmdq_error(item, " user %s is already added", newname);
+    }
   } else {
+    cmdq_error(item, " user %s not found", newname);
+
     free(newname);
     format_free(ft);
   
