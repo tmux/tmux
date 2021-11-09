@@ -26,6 +26,14 @@
 #include "tmux.h"
 
 #define TMUX_ACL_WHITELIST "./tmux-acl-whitelist"
+
+struct acl_user {
+	uid_t user_id;
+	int is_owner;
+
+	SLIST_ENTRY(acl_user) entry;
+};
+
 /*
  * Removes a user from the acl-list
  */
@@ -51,7 +59,7 @@ enum cmd_retval cmd_deny_whitelist_exec(struct cmd *self, struct cmdq_item *item
   struct format_tree *ft;
   char *oldname;
   struct passwd *user_data;
-  struct ucred *u_cred = {0};
+  struct ucred u_cred = {0};
 
   if (args->argc == 0) {
     cmdq_error(item, " argument <username> not provided");
@@ -61,23 +69,21 @@ enum cmd_retval cmd_deny_whitelist_exec(struct cmd *self, struct cmdq_item *item
   template = args->argv[0];
   ft = format_create(c, item, FORMAT_NONE, 0);
   oldname = format_expand_time(ft, template);
+  
+  user_data = getpwnam(oldname);
 
-  /*
-  TAILQ_FOREACH(loop, &clients, entry) {
-    struct tmuxpeer *proc = loop->peer;
-    cmdq_error(item, " removing user %s", proc->parent->name);
-    if (0) {
-      struct acl_user *user = server_acl_user_find(u_cred->uid);
-      if (user != NULL) {
-        cmdq_error(item, " user %s has been removed", oldname);
-        loop->exit_type |= CLIENT_EXIT_DETACH;
-      } else {
-        cmdq_error(item, " could not remove user %s", oldname);
+  if (user_data != NULL && server_acl_user_find(user_data->pw_uid)) {
+    TAILQ_FOREACH(loop, &clients, entry) {
+      struct acl_user* user = server_acl_user_find(user_data->pw_uid);
+      if (proc_acl_get_ucred(loop->peer, &u_cred)) {
+        if (u_cred.uid == user->user_id) {
+          loop->flags |= CLIENT_EXIT;
+          break;
+        }
       }
     }
-  }*/
+  }
 
-  user_data = getpwnam(oldname);
   if (user_data != NULL) {
     if (server_acl_user_find(user_data->pw_uid)) {
       server_acl_user_deny(user_data->pw_uid); 
