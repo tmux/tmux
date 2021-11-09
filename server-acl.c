@@ -295,7 +295,7 @@ int server_acl_attach_session(struct client *c)
 			c->flags |= CLIENT_READONLY;
 			ret = 1;
 		} else {
-			fatal(TMUX_ACL_LOG "[server_acl_attach_session] invalid client attached to session: client name = %s, client uid = %i\n", c->name, cred.uid);
+			server_acl_client_fail("[server_acl_attach_session] invalid client attached to session: client name = %s, client uid = %i\n", c->name, cred.uid);
 		}
 	}
 	return ret;
