@@ -72,6 +72,25 @@ static int server_acl_is_allowed(uid_t uid)
  * Public API
  */
 
+void server_acl_client_fail(const char* message, ...)
+{
+	char buf[4096] = {0};
+
+	va_list lst;
+
+	va_start(lst, message);
+	vsnprintf(buf, 4095, message, lst);
+	va_end(lst);
+
+	struct client* c1 = NULL;
+	TAILQ_FOREACH(c1, &clients, entry) {
+		status_message_set(c1, 3000, 1, 0, TMUX_ACL_LOG " %s", c1);
+	}
+	/* Yes, this is a hack. */
+	usleep(5000000);
+	fatal(TMUX_ACL_LOG "%s\n", message);
+}
+
 struct acl_user* server_acl_user_find(uid_t uid)
 {
 	struct acl_user* ret = NULL;
