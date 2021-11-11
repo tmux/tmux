@@ -29,7 +29,7 @@ uname -sp && tmux -V && echo $TERM
 
 Also include:
 
-- Your platform (Linux, OS X, or whatever).
+- Your platform (Linux, macOS, or whatever).
 
 - A brief description of the problem with steps to reproduce.
 

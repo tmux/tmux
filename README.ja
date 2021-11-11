@@ -3,7 +3,7 @@ tmuxへようこそ!
 tmuxはターミナルマルチプレクサーです。複数のターミナルを一つのスクリーン内に作成し、操作することができます。
 バックグラウンドで処理を実行中に一度スクリーンから離れて後から復帰することも可能です。
 
-OpenBSD、FreeBSD、NetBSD、Linux、OS X、Solarisで実行できます。
+OpenBSD、FreeBSD、NetBSD、Linux、macOS、Solarisで実行できます。
 
 tmuxはlibevent 2.x.に依存します。 下記からダウンロードしてください。
 
