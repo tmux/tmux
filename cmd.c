@@ -124,6 +124,7 @@ extern const struct cmd_entry cmd_up_pane_entry;
 extern const struct cmd_entry cmd_wait_for_entry;
 extern const struct cmd_entry cmd_allow_whitelist_entry;
 extern const struct cmd_entry cmd_deny_whitelist_entry;
+extern const struct cmd_entry cmd_acl_deny_write_entry;
 
 const struct cmd_entry *cmd_table[] = {
 #ifdef TMUX_ACL
@@ -220,6 +221,7 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_wait_for_entry,
 	&cmd_allow_whitelist_entry,
 	&cmd_deny_whitelist_entry,
+	&cmd_acl_deny_write_entry,
 	NULL
 };
 

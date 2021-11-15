@@ -72,25 +72,24 @@ enum cmd_retval cmd_deny_whitelist_exec(struct cmd *self, struct cmdq_item *item
   
   user_data = getpwnam(oldname);
 
-  if(user_data != NULL && server_acl_check_host(user_data->pw_uid)){
-    cmdq_error(item, " cannot remove host from whitelist");
-    return (CMD_RETURN_NORMAL);
-  }
-
-  if (user_data != NULL && server_acl_user_find(user_data->pw_uid)) {
-    TAILQ_FOREACH(loop, &clients, entry) {
-      struct acl_user* user = server_acl_user_find(user_data->pw_uid);
-      if (proc_acl_get_ucred(loop->peer, &u_cred)) {
-        if (u_cred.uid == user->user_id) {
-          loop->flags |= CLIENT_EXIT;
-          break;
+  if (user_data != NULL && !server_acl_check_host(user_data->pw_uid)) {
+    if (server_acl_user_find(user_data->pw_uid)) {
+      TAILQ_FOREACH(loop, &clients, entry) {
+        struct acl_user* user = server_acl_user_find(user_data->pw_uid);
+        if (proc_acl_get_ucred(loop->peer, &u_cred)) {
+          if (u_cred.uid == user->user_id) {
+            loop->flags |= CLIENT_EXIT;
+            break;
+          }
         }
       }
     }
   }
 
   if (user_data != NULL) {
-    if (server_acl_user_find(user_data->pw_uid)) {
+    if (server_acl_check_host(user_data->pw_uid)) {
+      cmdq_error(item, " cannot remove: user %s is the host", oldname);
+    } else if (server_acl_user_find(user_data->pw_uid)) {
       server_acl_user_deny(user_data->pw_uid); 
       cmdq_error(item, " user %s has been removed", oldname);
     } else {

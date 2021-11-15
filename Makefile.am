@@ -74,6 +74,7 @@ dist_tmux_SOURCES = \
 	cfg.c \
 	client.c \
 	cmd-acl-allow-write.c \
+	cmd-acl-deny-write.c \
 	cmd-attach-session.c \
 	cmd-bind-key.c \
 	cmd-break-pane.c \

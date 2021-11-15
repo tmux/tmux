@@ -24,26 +24,24 @@
 #include <pwd.h>
 
 #include "tmux.h"
-
-#define TMUX_ACL_WHITELIST "./tmux-acl-whitelist"
 /*
- * Removes a user from the whitelist
+ * Gives a guest write permissions
  */
 
-static enum cmd_retval cmd_acl_allow_write_exec(struct cmd *, struct cmdq_item *);
+static enum cmd_retval cmd_acl_deny_write_exec(struct cmd *, struct cmdq_item *);
 
-const struct cmd_entry cmd_acl_allow_write_entry = {
-  .name = "acl-allow-write",
-  .alias = "acl-write",
+const struct cmd_entry cmd_acl_deny_write_entry = {
+  .name = "acl-deny-write",
+  .alias = "acl-deny",
 
   .args = { "", 0, 1 },
   .usage = "<username>",
 
   .flags = 0,
-  .exec = cmd_acl_allow_write_exec
+  .exec = cmd_acl_deny_write_exec
 };
 
-enum cmd_retval cmd_acl_allow_write_exec(struct cmd *self, struct cmdq_item *item) {
+enum cmd_retval cmd_acl_deny_write_exec(struct cmd *self, struct cmdq_item *item) {
     struct args *args = cmd_get_args(self);
     const char *template;
     struct format_tree *ft;
@@ -51,19 +49,20 @@ enum cmd_retval cmd_acl_allow_write_exec(struct cmd *self, struct cmdq_item *ite
     struct passwd *user_data;
 
     if (args->argc == 0) {
-      cmdq_error(item, " argument <username> not provided");
+      cmdq_error(item, " arguement <username> not provided");
       return (CMD_RETURN_NORMAL);
     }
       
     template = args->argv[0];
     ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
     name = format_expand_time(ft, template);
+
     user_data = getpwnam(name);
 
     if (user_data != NULL) {
       if (!server_acl_check_host(user_data->pw_uid)) {
         if (server_acl_user_find(user_data->pw_uid)) {
-          server_acl_user_allow_write(user_data);
+          server_acl_user_deny_write(user_data);
         } else {
           cmdq_error(item, " user %s not found in whitelist", name);
         }
@@ -73,7 +72,7 @@ enum cmd_retval cmd_acl_allow_write_exec(struct cmd *self, struct cmdq_item *ite
     } else {
       struct client* c = NULL;
       TAILQ_FOREACH(c, &clients, entry) {
-        status_message_set(c, 3000, 1, 0, "[acl-allow-write] unknown user: %s", template);
+        status_message_set(c, 3000, 1, 0, "[acl-deny-write] unknown user: %s", template);
       }
     }
     
