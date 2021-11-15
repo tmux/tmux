@@ -63,7 +63,7 @@ enum cmd_retval cmd_acl_allow_write_exec(struct cmd *self, struct cmdq_item *ite
     // Check that the username is valid and remove from the list
     user_data = getpwnam(oldname);
 
-    if(server_acl_check_host(user_data->pw_uid)){
+    if(user_data != NULL && server_acl_check_host(user_data->pw_uid)){
       cmdq_error(item, " cannot change hosts write privileges");
       return (CMD_RETURN_NORMAL);
     }
