@@ -123,6 +123,12 @@ struct acl_user* server_acl_user_find(uid_t uid)
 	return ret;
 }
 
+int server_acl_check_host(uid_t uid)
+{
+	struct acl_user* user = server_acl_user_find(uid);
+	return user->is_owner;
+}
+
 
 void server_acl_init(void)
 {

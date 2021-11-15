@@ -61,6 +61,8 @@ enum cmd_retval cmd_deny_whitelist_exec(struct cmd *self, struct cmdq_item *item
   struct passwd *user_data;
   struct ucred u_cred = {0};
 
+  
+
   if (args->argc == 0) {
     cmdq_error(item, " argument <username> not provided");
     return (CMD_RETURN_NORMAL);
@@ -71,6 +73,11 @@ enum cmd_retval cmd_deny_whitelist_exec(struct cmd *self, struct cmdq_item *item
   oldname = format_expand_time(ft, template);
   
   user_data = getpwnam(oldname);
+
+  if(server_acl_check_host(user_data->pw_uid)){
+    cmdq_error(item, " cannot remove host from whitelist");
+    return (CMD_RETURN_NORMAL);
+  }
 
   if (user_data != NULL && server_acl_user_find(user_data->pw_uid)) {
     TAILQ_FOREACH(loop, &clients, entry) {

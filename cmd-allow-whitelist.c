@@ -59,8 +59,13 @@ static enum cmd_retval cmd_allow_whitelist_exec(struct cmd *self, struct cmdq_it
   template = args->argv[0];
   ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
   newname = format_expand_time(ft, template);
-
   user_data = getpwnam(newname);
+
+  if(server_acl_check_host(user_data->pw_uid)){
+    cmdq_error(item, " cannot add host to whitelist");
+    return (CMD_RETURN_NORMAL);
+  }
+
   if (user_data != NULL) {
     if (!server_acl_user_find(user_data->pw_uid)) {
       cmdq_error(item, " user %s has been added", newname);
