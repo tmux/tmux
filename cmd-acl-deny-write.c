@@ -31,8 +31,8 @@
 static enum cmd_retval cmd_acl_deny_write_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_acl_deny_write_entry = {
-  .name = "acl-deny-write",
-  .alias = "acl-deny",
+  .name = "deny-write",
+  .alias = NULL,
 
   .args = { "", 0, 1 },
   .usage = "<username>",
@@ -63,6 +63,7 @@ enum cmd_retval cmd_acl_deny_write_exec(struct cmd *self, struct cmdq_item *item
       if (!server_acl_check_host(user_data->pw_uid)) {
         if (server_acl_user_find(user_data->pw_uid)) {
           server_acl_user_deny_write(user_data);
+          cmdq_error(item, " user %s no longer has write privilege", name);
         } else {
           cmdq_error(item, " user %s not found in whitelist", name);
         }

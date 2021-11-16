@@ -33,8 +33,8 @@
 static enum cmd_retval cmd_acl_allow_write_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_acl_allow_write_entry = {
-  .name = "acl-allow-write",
-  .alias = "acl-write",
+  .name = "allow-write",
+  .alias = NULL,
 
   .args = { "", 0, 1 },
   .usage = "<username>",
@@ -64,6 +64,7 @@ enum cmd_retval cmd_acl_allow_write_exec(struct cmd *self, struct cmdq_item *ite
       if (!server_acl_check_host(user_data->pw_uid)) {
         if (server_acl_user_find(user_data->pw_uid)) {
           server_acl_user_allow_write(user_data);
+          cmdq_error(item, " user %s has write privilege", name);
         } else {
           cmdq_error(item, " user %s not found in whitelist", name);
         }
