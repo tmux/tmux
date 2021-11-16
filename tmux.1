@@ -3456,19 +3456,6 @@ Note that aliases are expanded when a command is parsed rather than when it is
 executed, so binding an alias with
 .Ic bind-key
 will bind the expanded form.
-.It Ic default-terminal Ar terminal
-Set the default terminal for new windows created in this session - the
-default value of the
-.Ev TERM
-environment variable.
-For
-.Nm
-to work correctly, this
-.Em must
-be set to
-.Ql screen ,
-.Ql tmux
-or a derivative of them.
 .It Ic copy-command Ar shell-command
 Give the command to pipe to if the
 .Ic copy-pipe
@@ -3751,6 +3738,19 @@ The value is the width and height separated by an
 .Ql x
 character.
 The default is 80x24.
+.It Ic default-terminal Ar terminal
+Set the default terminal for new windows created in this session - the
+default value of the
+.Ev TERM
+environment variable.
+For
+.Nm
+to work correctly, this
+.Em must
+be set to
+.Ql screen ,
+.Ql tmux
+or a derivative of them.
 .It Xo Ic destroy-unattached
 .Op Ic on | off
 .Xc
