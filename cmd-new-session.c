@@ -85,6 +85,13 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_find_state    fs;
 	struct args_value	*value;
 
+#if defined (TMUX_ACL)
+	if(!RB_EMPTY(&sessions)){
+		cmdq_error(item, "there is already an active session on that socket");
+		return (CMD_RETURN_ERROR);
+	}
+#endif
+
 	if (cmd_get_entry(self) == &cmd_has_session_entry) {
 		/*
 		 * cmd_find_target() will fail if the session cannot be found,
