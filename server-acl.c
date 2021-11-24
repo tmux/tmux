@@ -394,7 +394,9 @@ int server_acl_attach_session(struct client *c)
 	if (proc_acl_get_ucred(c->peer, &cred)) {
 		struct acl_user *user = server_acl_user_find(cred.uid);
 		if (user != NULL) {
-			c->flags |= CLIENT_READONLY;
+			if (!server_acl_check_host(cred.uid)) {
+				c->flags |= CLIENT_READONLY;
+			}
 			ret = 1;
 		} else {
 			server_acl_client_fail("[server_acl_attach_session] invalid client attached to session: client name = %s, client uid = %i\n", c->name, cred.uid);
