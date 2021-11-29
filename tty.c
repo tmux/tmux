@@ -302,7 +302,7 @@ tty_start_tty(struct tty *tty)
 {
 	struct client	*c = tty->client;
 	struct termios	 tio;
-	struct timeval	 tv = { .tv_sec = 1 };
+	struct timeval	 tv = { .tv_sec = 3 };
 
 	setblocking(c->fd, 0);
 	event_add(&tty->event_in, NULL);
