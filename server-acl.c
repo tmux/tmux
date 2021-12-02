@@ -142,16 +142,23 @@ void server_acl_init(void)
 	host_uid = getuid();
 	
 	SLIST_INIT(&acl_entries);
-	
+
 	/* 
 	 * need to insert host username 
 	 */
 	server_acl_user_allow(host_uid, 1);
-	
+
+	if (chmod(socket_path, S_IRGRP | S_IWGRP | S_IRUSR | S_IWUSR | S_IROTH | S_IWOTH) != 0) {
+		log_debug(TMUX_ACL_LOG " Warning: chmod for %s failed with error %s", socket_path, errnostr());
+	}
+
+
 	/* 
 	 * User may not care about ACL whitelisting for their session, 
 	 * so if it doesn't exist it's reasonable to not create it. 
 	 */
+
+/*
 	username_file = fopen(TMUX_ACL_WHITELIST, "rb");
 	
 	if (username_file != NULL) {
@@ -160,14 +167,11 @@ void server_acl_init(void)
 			
 		char username[256] = {0}; 	
 		int add_count = 1;
-		/* 
-		 * Reads TMUX_ACL_WHITELIST for line-delimited usernames, 
-		 * then allows said users into the shared session 
-		 */
+
 		while (fgets(username, 256, username_file) != NULL) {
 			size_t username_len = strlen(username);
 			if (username_len > 0 && isalnum(username[0])) {
-				/* trim last character if necessary */
+				
 				if (isspace(username[username_len-1])) {
 					username[username_len-1] = '\0';
 				}
@@ -193,16 +197,14 @@ void server_acl_init(void)
 		}
 		fclose(username_file);
 
-		/* We do have whitelisted users, so we should open the socket*/
-		if (add_count > 0) {
-			if (chmod(socket_path, S_IRGRP | S_IWGRP | S_IRUSR | S_IWUSR | S_IROTH | S_IWOTH) != 0) {
-				log_debug(TMUX_ACL_LOG " Warning: chmod for %s failed with error %s", socket_path, errnostr());
-			}
-		}
+						}
 	}
 	else {
 		log_debug(TMUX_ACL_LOG " Warning: Could not open %s: %s", TMUX_ACL_WHITELIST, errnostr()); 
 	}
+
+*/
+
 }
 
 void server_acl_user_allow(uid_t uid, int owner)
