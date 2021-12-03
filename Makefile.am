@@ -14,7 +14,9 @@ dist_EXTRA_tmux_SOURCES = compat/*.[ch]
 AM_CPPFLAGS += @XOPEN_DEFINES@ \
 	-DTMUX_VERSION='"@VERSION@"' \
 	-DTMUX_CONF='"$(sysconfdir)/tmux.conf:~/.tmux.conf:$$XDG_CONFIG_HOME/tmux/tmux.conf:~/.config/tmux/tmux.conf"' \
-	-DTMUX_TERM='"@DEFAULT_TERM@"'
+	-DTMUX_TERM='"@DEFAULT_TERM@"' \
+  -DTMUX_ACL
+
 
 # Additional object files.
 LDADD = $(LIBOBJS)
@@ -70,10 +72,14 @@ endif
 # List of sources.
 dist_tmux_SOURCES = \
 	alerts.c \
+	cmd-allow-whitelist.c \
+	cmd-deny-whitelist.c \
 	arguments.c \
 	attributes.c \
 	cfg.c \
 	client.c \
+	cmd-acl-allow-write.c \
+	cmd-acl-deny-write.c \
 	cmd-attach-session.c \
 	cmd-bind-key.c \
 	cmd-break-pane.c \
@@ -172,6 +178,7 @@ dist_tmux_SOURCES = \
 	screen-redraw.c \
 	screen-write.c \
 	screen.c \
+	server-acl.c \
 	server-client.c \
 	server-fn.c \
 	server.c \

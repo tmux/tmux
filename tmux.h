@@ -31,6 +31,10 @@
 #include <utempter.h>
 #endif
 
+#ifndef TMUX_ACL
+#define TMUX_ACL 1
+#endif
+
 #include "compat.h"
 #include "tmux-protocol.h"
 #include "xmalloc.h"
@@ -1955,6 +1959,10 @@ void	proc_kill_peer(struct tmuxpeer *);
 void	proc_toggle_log(struct tmuxproc *);
 pid_t	proc_fork_and_daemon(int *);
 
+#ifdef TMUX_ACL
+int proc_acl_get_ucred(struct tmuxpeer*, struct ucred*);
+#endif
+
 /* cfg.c */
 extern int cfg_finished;
 extern struct client *cfg_client;
@@ -3187,5 +3195,35 @@ struct window_pane *spawn_pane(struct spawn_context *, char **);
 
 /* regsub.c */
 char		*regsub(const char *, const char *, const char *, int);
+
+#if defined(TMUX_ACL)
+
+#define TMUX_ACL_LOG "[access control list]"
+
+/* server-acl.c */
+
+void server_acl_init(void);
+
+void server_acl_user_allow(uid_t uid, int owner);
+
+void server_acl_user_deny(uid_t uid);
+
+struct acl_user* server_acl_user_find(uid_t uid);
+
+int server_acl_check_host(uid_t uid);
+
+int server_acl_accept_validate(int newf, struct clients clients);
+
+int server_acl_attach_session(struct client *c);
+
+struct passwd;
+
+void server_acl_user_allow_write(struct passwd* user_data);
+
+void server_acl_user_deny_write(struct passwd* user_data);
+
+void server_acl_client_fail(const char* message, ...);
+
+#endif /* TMUX_ACL */
 
 #endif /* TMUX_H */

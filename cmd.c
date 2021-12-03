@@ -27,6 +27,10 @@
 
 #include "tmux.h"
 
+#ifdef TMUX_ACL
+extern const struct cmd_entry cmd_acl_allow_write_entry;
+#endif
+
 extern const struct cmd_entry cmd_attach_session_entry;
 extern const struct cmd_entry cmd_bind_key_entry;
 extern const struct cmd_entry cmd_break_pane_entry;
@@ -118,8 +122,14 @@ extern const struct cmd_entry cmd_unbind_key_entry;
 extern const struct cmd_entry cmd_unlink_window_entry;
 extern const struct cmd_entry cmd_up_pane_entry;
 extern const struct cmd_entry cmd_wait_for_entry;
+extern const struct cmd_entry cmd_allow_whitelist_entry;
+extern const struct cmd_entry cmd_deny_whitelist_entry;
+extern const struct cmd_entry cmd_acl_deny_write_entry;
 
 const struct cmd_entry *cmd_table[] = {
+#ifdef TMUX_ACL
+	&cmd_acl_allow_write_entry,
+#endif
 	&cmd_attach_session_entry,
 	&cmd_bind_key_entry,
 	&cmd_break_pane_entry,
@@ -209,6 +219,9 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_unbind_key_entry,
 	&cmd_unlink_window_entry,
 	&cmd_wait_for_entry,
+	&cmd_allow_whitelist_entry,
+	&cmd_deny_whitelist_entry,
+	&cmd_acl_deny_write_entry,
 	NULL
 };
 
