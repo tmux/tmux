@@ -31,7 +31,7 @@ const struct cmd_entry cmd_show_prompt_history_entry = {
 	.name = "show-prompt-history",
 	.alias = "showphist",
 
-	.args = { "T:", 0, 0 },
+	.args = { "T:", 0, 0, NULL },
 	.usage = "[-T type]",
 
 	.flags = CMD_AFTERHOOK,
@@ -42,7 +42,7 @@ const struct cmd_entry cmd_clear_prompt_history_entry = {
 	.name = "clear-prompt-history",
 	.alias = "clearphist",
 
-	.args = { "T:", 0, 0 },
+	.args = { "T:", 0, 0, NULL },
 	.usage = "[-T type]",
 
 	.flags = CMD_AFTERHOOK,
@@ -87,7 +87,7 @@ cmd_show_prompt_history_exec(struct cmd *self, struct cmdq_item *item)
 				cmdq_print(item, "%d: %s", hidx + 1,
 				    status_prompt_hlist[tidx][hidx]);
 			}
-			cmdq_print(item, "");
+			cmdq_print(item, "%s", "");
 		}
 	} else {
 		type = status_prompt_type(typestr);
@@ -101,7 +101,7 @@ cmd_show_prompt_history_exec(struct cmd *self, struct cmdq_item *item)
 			cmdq_print(item, "%d: %s", hidx + 1,
 			    status_prompt_hlist[type][hidx]);
 		}
-		cmdq_print(item, "");
+		cmdq_print(item, "%s", "");
 	}
 
 	return (CMD_RETURN_NORMAL);

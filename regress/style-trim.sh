@@ -19,11 +19,9 @@ check() {
 	sleep 1
 	r=$($TMUX2 capturep -Cep|tail -1|sed 's|\\033\[||g')
 
-	#printf "$1 = [$v = $2] [$r = $3]"
-	if [ "$v" = "$2" -a "$r" = "$3" ]; then
-		: #printf " good\n"
-	else
-		#printf " \033[31mbad\033[0m\n"
+	if [ "$v" != "$2" -o "$r" != "$3" ]; then
+		printf "$1 = [$v = $2] [$r = $3]"
+		printf " \033[31mbad\033[0m\n"
 		exit 1
 	fi
 }
@@ -46,16 +44,16 @@ check '#{V} #{w:V}' '#0123456 8' '#0123456 8'
 check '#{=3:V}' '#01' '#01'
 check '#{=-3:V}' '456' '456'
 
-# drawn as ##0123456
+# drawn as #0123456
 $TMUX setenv -g V '##0123456'
-check '#{V} #{w:V}' '##0123456 9' '##0123456 9'
-check '#{=3:V}' '##0' '##0'
+check '#{V} #{w:V}' '##0123456 8' '#0123456 8'
+check '#{=3:V}' '##01' '#01'
 check '#{=-3:V}' '456' '456'
 
-# drawn as ###0123456
+# drawn as ##0123456
 $TMUX setenv -g V '###0123456'
-check '#{V} #{w:V}' '###0123456 10' '###0123456 10'
-check '#{=3:V}' '###' '###'
+check '#{V} #{w:V}' '###0123456 9' '##0123456 9'
+check '#{=3:V}' '####0' '##0'
 check '#{=-3:V}' '456' '456'
 
 # drawn as 0123456

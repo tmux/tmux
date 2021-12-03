@@ -36,7 +36,7 @@ const struct cmd_entry cmd_resize_pane_entry = {
 	.name = "resize-pane",
 	.alias = "resizep",
 
-	.args = { "DLMRTt:Ux:y:Z", 0, 1 },
+	.args = { "DLMRTt:Ux:y:Z", 0, 1, NULL },
 	.usage = "[-DLMRTUZ] [-x width] [-y height] " CMD_TARGET_PANE_USAGE " "
 		 "[adjustment]",
 
@@ -95,10 +95,10 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	server_unzoom_window(w);
 
-	if (args->argc == 0)
+	if (args_count(args) == 0)
 		adjust = 1;
 	else {
-		adjust = strtonum(args->argv[0], 1, INT_MAX, &errstr);
+		adjust = strtonum(args_string(args, 0), 1, INT_MAX, &errstr);
 		if (errstr != NULL) {
 			cmdq_error(item, "adjustment %s", errstr);
 			return (CMD_RETURN_ERROR);

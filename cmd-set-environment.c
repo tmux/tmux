@@ -34,7 +34,7 @@ const struct cmd_entry cmd_set_environment_entry = {
 	.name = "set-environment",
 	.alias = "setenv",
 
-	.args = { "Fhgrt:u", 1, 2 },
+	.args = { "Fhgrt:u", 1, 2, NULL },
 	.usage = "[-Fhgru] " CMD_TARGET_SESSION_USAGE " name [value]",
 
 	.target = { 't', CMD_FIND_SESSION, CMD_FIND_CANFAIL },
@@ -49,11 +49,11 @@ cmd_set_environment_exec(struct cmd *self, struct cmdq_item *item)
 	struct args		*args = cmd_get_args(self);
 	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct environ		*env;
-	const char		*name, *value, *tflag;
-	char			*expand = NULL;
+	const char		*name = args_string(args, 0), *value;
+	const char		*tflag;
+	char			*expanded = NULL;
 	enum cmd_retval		 retval = CMD_RETURN_NORMAL;
 
-	name = args->argv[0];
 	if (*name == '\0') {
 		cmdq_error(item, "empty variable name");
 		return (CMD_RETURN_ERROR);
@@ -63,13 +63,14 @@ cmd_set_environment_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_ERROR);
 	}
 
-	if (args->argc < 2)
+	if (args_count(args) < 2)
 		value = NULL;
-	else if (args_has(args, 'F'))
-		value = expand = format_single_from_target(item, args->argv[1]);
 	else
-		value = args->argv[1];
-
+		value = args_string(args, 1);
+	if (value != NULL && args_has(args, 'F')) {
+		expanded = format_single_from_target(item, value);
+		value = expanded;
+	}
 	if (args_has(args, 'g'))
 		env = global_environ;
 	else {
@@ -113,6 +114,6 @@ cmd_set_environment_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 out:
-	free(expand);
+	free(expanded);
 	return (retval);
 }

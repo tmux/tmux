@@ -1,8 +1,96 @@
-CHANGES FROM 3.2 TO 3.3
+CHANGES FROM 3.2a TO 3.3
+
+* Change so that {} is converted to tmux commands immediately when parsed. This
+  means it must contain valid tmux commands. For commands which expand %% and
+  %%%, this now only happens within string arguments. Use of nested aliases
+  inside {} is now forbidden. Processing of commands given in quotes remains
+  the same.
+
+* Disable evports on SunOS since they are broken.
+
+* Do not expand the file given with tmux -f so it can contain :s.
+
+* Bump FORMAT_LOOP_LIMIT and add a log message when hit.
+
+* Add a terminal feature for the mouse (since FreeBSD termcap does not have kmous).
+
+* Forbid empty session names.
+
+* Improve error reporting when the tmux /tmp directory cannot be created or
+  used.
+
+* Give #() commands a one second grace period where the output is empty before
+  telling the user they aren't doing anything ("not ready").
+
+* When building, pick default-terminal from the first of tmux-256color, tmux,
+  screen-256color, screen that is available on the build system (--with-TERM
+  can override).
+
+* Do not close popups on resize, instead adjust them to fit.
+
+* Add a client-active hook.
+
+* Make window-linked and window-unlinked window options.
+
+* Do not configure on macOS without the user making a choice about utf8proc
+  (either --enable-utf8proc or --disable-utf8proc).
+
+* Do not freeze output in panes when a popup is open, let them continue to
+  redraw.
+
+* Add pipe variants of the line copy commands.
+
+* Change copy-line and copy-end-of-line not to cancel and add -and-cancel
+  variants, like the other copy commands.
+
+* Support the OSC palette-setting sequences in popups.
+
+* Add a pane-colours array option to specify the defaults palette.
+
+* Add support for Unicode zero-width joiner.
+
+* Make newline a style delimiter as well so they can cross multiple lines for
+  readability in configuration files.
+
+* Change focus to be driven by events rather than scanning panes so the
+  ordering of in and out is consistent.
+
+* Add display-popup -B to open a popup without a border.
+
+* Add a menu for popups that can be opened with button three outside the popup
+  or on the left or top border. Resizing now only works on the right and bottom
+  borders or when using Meta. The menu allows a popup to be closed, expanded to
+  the full size of the client, centered in the client or changed into a pane.
+
+* Make command-prompt and confirm-before block by default (like run-shell). A
+  new -b flags runs them in the background as before. Also set return code for
+  confirm-before.
+
+* Change cursor style handling so tmux understands which sequences contain
+  blinking and sets the flag appropriately, means that it works whether cnorm
+  disables blinking or not. This now matches xterm's behaviour.
 
 * More accurate vi(1) word navigation in copy mode and on the status line. This
-  changes the meaning of the word-separators option - setting it to the empty
+  changes the meaning of the word-separators option: setting it to the empty
   string is equivalent to the previous behavior.
+
+* Add -F for command-prompt and use it to fix "Rename" on the window menu.
+
+* Add different command histories for different types of prompts ("command",
+  "search" etc).
+
+CHANGES FROM 3.2 TO 3.2a
+
+* Add an "always" value for the "extended-keys" option; if set then tmux will
+  forward extended keys to applications even if they do not request them.
+
+* Add a "mouse" terminal feature so tmux can enable the mouse on terminals
+  where it is known to be supported even if terminfo(5) says otherwise.
+
+* Do not expand the filename given to -f so it can contain colons.
+
+* Fixes for problems with extended keys and modifiers, scroll region,
+  source-file, crosscompiling, format modifiers and other minor issues.
 
 CHANGES FROM 3.1c TO 3.2
 
@@ -111,7 +199,7 @@ CHANGES FROM 3.1c TO 3.2
 
 * Add a way for control mode clients to subscribe to a format and be notified
   of changes rather than having to poll.
-    
+
 * Add some formats for search in copy mode (search_present, search_match).
 
 * Do not wait on shutdown for commands started with run -b.
@@ -235,7 +323,7 @@ CHANGES FROM 3.1c TO 3.2
   only show windows and C-b . only targets.
 
 * Change all the style options to string options so they can support formats.
-  Change pane-border-active-style to use this to change the border colour when
+  Change pane-active-border-style to use this to change the border colour when
   in a mode or with synchronize-panes on. This also implies a few minor changes
   to existing behaviour:
 

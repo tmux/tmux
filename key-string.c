@@ -183,6 +183,8 @@ key_string_lookup_string(const char *string)
 	if (string[0] == '0' && string[1] == 'x') {
 		if (sscanf(string + 2, "%x", &u) != 1)
 			return (KEYC_UNKNOWN);
+		if (u < 32)
+			return (u);
 		mlen = wctomb(m, u);
 		if (mlen <= 0 || mlen > MB_LEN_MAX)
 			return (KEYC_UNKNOWN);

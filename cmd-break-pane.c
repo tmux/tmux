@@ -34,7 +34,7 @@ const struct cmd_entry cmd_break_pane_entry = {
 	.name = "break-pane",
 	.alias = "breakp",
 
-	.args = { "abdPF:n:s:t:", 0, 0 },
+	.args = { "abdPF:n:s:t:", 0, 0, NULL },
 	.usage = "[-abdP] [-F format] [-n window-name] [-s src-pane] "
 		 "[-t dst-window]",
 

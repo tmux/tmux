@@ -30,7 +30,6 @@
 #include "tmux.h"
 
 static void	server_client_free(int, short, void *);
-static void	server_client_check_pane_focus(struct window_pane *);
 static void	server_client_check_pane_resize(struct window_pane *);
 static void	server_client_check_pane_buffer(struct window_pane *);
 static void	server_client_check_window_resize(struct window *);
@@ -90,7 +89,7 @@ void
 server_client_set_overlay(struct client *c, u_int delay,
     overlay_check_cb checkcb, overlay_mode_cb modecb,
     overlay_draw_cb drawcb, overlay_key_cb keycb, overlay_free_cb freecb,
-    void *data)
+    overlay_resize_cb resizecb, void *data)
 {
 	struct timeval	tv;
 
@@ -111,9 +110,11 @@ server_client_set_overlay(struct client *c, u_int delay,
 	c->overlay_draw = drawcb;
 	c->overlay_key = keycb;
 	c->overlay_free = freecb;
+	c->overlay_resize = resizecb;
 	c->overlay_data = data;
 
-	c->tty.flags |= TTY_FREEZE;
+	if (c->overlay_check == NULL)
+		c->tty.flags |= TTY_FREEZE;
 	if (c->overlay_mode == NULL)
 		c->tty.flags |= TTY_NOCURSOR;
 	server_redraw_client(c);
@@ -130,7 +131,7 @@ server_client_clear_overlay(struct client *c)
 		evtimer_del(&c->overlay_timer);
 
 	if (c->overlay_free != NULL)
-		c->overlay_free(c);
+		c->overlay_free(c, c->overlay_data);
 
 	c->overlay_check = NULL;
 	c->overlay_mode = NULL;
@@ -141,6 +142,54 @@ server_client_clear_overlay(struct client *c)
 
 	c->tty.flags &= ~(TTY_FREEZE|TTY_NOCURSOR);
 	server_redraw_client(c);
+}
+
+/*
+ * Given overlay position and dimensions, return parts of the input range which
+ * are visible.
+ */
+void
+server_client_overlay_range(u_int x, u_int y, u_int sx, u_int sy, u_int px,
+    u_int py, u_int nx, struct overlay_ranges *r)
+{
+	u_int	ox, onx;
+
+	/* Return up to 2 ranges. */
+	r->px[2] = 0;
+	r->nx[2] = 0;
+
+	/* Trivial case of no overlap in the y direction. */
+	if (py < y || py > y + sy - 1) {
+		r->px[0] = px;
+		r->nx[0] = nx;
+		r->px[1] = 0;
+		r->nx[1] = 0;
+		return;
+	}
+
+	/* Visible bit to the left of the popup. */
+	if (px < x) {
+		r->px[0] = px;
+		r->nx[0] = x - px;
+		if (r->nx[0] > nx)
+			r->nx[0] = nx;
+	} else {
+		r->px[0] = 0;
+		r->nx[0] = 0;
+	}
+
+	/* Visible bit to the right of the popup. */
+	ox = x + sx;
+	if (px > ox)
+		ox = px;
+	onx = px + nx;
+	if (onx > ox) {
+		r->px[1] = ox;
+		r->nx[1] = onx - ox;
+	} else {
+		r->px[1] = 0;
+		r->nx[1] = 0;
+	}
 }
 
 /* Check if this client is inside this server. */
@@ -276,7 +325,7 @@ server_client_open(struct client *c, char **cause)
 static void
 server_client_attached_lost(struct client *c)
 {
-	struct session	*s = c->session;
+	struct session	*s;
 	struct window	*w;
 	struct client	*loop;
 	struct client	*found;
@@ -296,14 +345,46 @@ server_client_attached_lost(struct client *c)
 			s = loop->session;
 			if (loop == c || s == NULL || s->curw->window != w)
 				continue;
-			if (found == NULL ||
-			    timercmp(&loop->activity_time, &found->activity_time,
-			    >))
+			if (found == NULL || timercmp(&loop->activity_time,
+			    &found->activity_time, >))
 				found = loop;
 		}
 		if (found != NULL)
 			server_client_update_latest(found);
 	}
+}
+
+/* Set client session. */
+void
+server_client_set_session(struct client *c, struct session *s)
+{
+	struct session	*old = c->session;
+
+	if (s != NULL && c->session != NULL && c->session != s)
+		c->last_session = c->session;
+	else if (s == NULL)
+		c->last_session = NULL;
+	c->session = s;
+	c->flags |= CLIENT_FOCUSED;
+
+	if (old != NULL && old->curw != NULL)
+		window_update_focus(old->curw->window);
+	if (s != NULL) {
+		recalculate_sizes();
+		window_update_focus(s->curw->window);
+		session_update_activity(s, NULL);
+		gettimeofday(&s->last_attached_time, NULL);
+		s->curw->flags &= ~WINLINK_ALERTFLAGS;
+		s->curw->window->latest = c;
+		alerts_check_session(s);
+		tty_update_client_offset(c);
+		status_timer_start(c);
+		notify_client("client-session-changed", c);
+		server_redraw_client(c);
+	}
+
+	server_check_unattached();
+	server_update_socket();
 }
 
 /* Lost a client. */
@@ -432,7 +513,7 @@ server_client_detach(struct client *c, enum msgtype msgtype)
 {
 	struct session	*s = c->session;
 
-	if (s == NULL || (c->flags & CLIENT_UNATTACHEDFLAGS))
+	if (s == NULL || (c->flags & CLIENT_NODETACHFLAGS))
 		return;
 
 	c->flags |= CLIENT_EXIT;
@@ -1123,6 +1204,8 @@ server_client_update_latest(struct client *c)
 
 	if (options_get_number(w->options, "window-size") == WINDOW_SIZE_LATEST)
 		recalculate_size(w, 0);
+
+	notify_client("client-active", c);
 }
 
 /*
@@ -1351,7 +1434,7 @@ server_client_handle_key(struct client *c, struct key_event *event)
 			status_message_clear(c);
 		}
 		if (c->overlay_key != NULL) {
-			switch (c->overlay_key(c, event)) {
+			switch (c->overlay_key(c, c->overlay_data, event)) {
 			case 0:
 				return (0);
 			case 1:
@@ -1382,7 +1465,6 @@ server_client_loop(void)
 	struct client		*c;
 	struct window		*w;
 	struct window_pane	*wp;
-	int			 focus;
 
 	/* Check for window resize. This is done before redrawing. */
 	RB_FOREACH(w, windows, &windows)
@@ -1400,14 +1482,11 @@ server_client_loop(void)
 
 	/*
 	 * Any windows will have been redrawn as part of clients, so clear
-	 * their flags now. Also check pane focus and resize.
+	 * their flags now.
 	 */
-	focus = options_get_number(global_options, "focus-events");
 	RB_FOREACH(w, windows, &windows) {
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (wp->fd != -1) {
-				if (focus)
-					server_client_check_pane_focus(wp);
 				server_client_check_pane_resize(wp);
 				server_client_check_pane_buffer(wp);
 			}
@@ -1519,7 +1598,6 @@ server_client_check_pane_resize(struct window_pane *wp)
 	evtimer_add(&wp->resize_timer, &tv);
 }
 
-
 /* Check pane buffer size. */
 static void
 server_client_check_pane_buffer(struct window_pane *wp)
@@ -1608,54 +1686,6 @@ out:
 		bufferevent_enable(wp->event, EV_READ);
 }
 
-/* Check whether pane should be focused. */
-static void
-server_client_check_pane_focus(struct window_pane *wp)
-{
-	struct client	*c;
-	int		 push;
-
-	/* Do we need to push the focus state? */
-	push = wp->flags & PANE_FOCUSPUSH;
-	wp->flags &= ~PANE_FOCUSPUSH;
-
-	/* If we're not the active pane in our window, we're not focused. */
-	if (wp->window->active != wp)
-		goto not_focused;
-
-	/*
-	 * If our window is the current window in any focused clients with an
-	 * attached session, we're focused.
-	 */
-	TAILQ_FOREACH(c, &clients, entry) {
-		if (c->session == NULL || !(c->flags & CLIENT_FOCUSED))
-			continue;
-		if (c->session->attached == 0)
-			continue;
-
-		if (c->session->curw->window == wp->window)
-			goto focused;
-	}
-
-not_focused:
-	if (push || (wp->flags & PANE_FOCUSED)) {
-		if (wp->base.mode & MODE_FOCUSON)
-			bufferevent_write(wp->event, "\033[O", 3);
-		notify_pane("pane-focus-out", wp);
-	}
-	wp->flags &= ~PANE_FOCUSED;
-	return;
-
-focused:
-	if (push || !(wp->flags & PANE_FOCUSED)) {
-		if (wp->base.mode & MODE_FOCUSON)
-			bufferevent_write(wp->event, "\033[I", 3);
-		notify_pane("pane-focus-in", wp);
-		session_update_activity(c->session, NULL);
-	}
-	wp->flags |= PANE_FOCUSED;
-}
-
 /*
  * Update cursor position and mode settings. The scroll region and attributes
  * are cleared when idle (waiting for an event) as this is the most likely time
@@ -1686,7 +1716,7 @@ server_client_reset_state(struct client *c)
 	/* Get mode from overlay if any, else from screen. */
 	if (c->overlay_draw != NULL) {
 		if (c->overlay_mode != NULL)
-			s = c->overlay_mode(c, &cx, &cy);
+			s = c->overlay_mode(c, c->overlay_data, &cx, &cy);
 	} else
 		s = wp->screen;
 	if (s != NULL)
@@ -2058,9 +2088,12 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 		if (c->flags & CLIENT_CONTROL)
 			break;
 		server_client_update_latest(c);
-		server_client_clear_overlay(c);
 		tty_resize(&c->tty);
 		recalculate_sizes();
+		if (c->overlay_resize == NULL)
+			server_client_clear_overlay(c);
+		else
+			c->overlay_resize(c, c->overlay_data);
 		server_redraw_client(c);
 		if (c->session != NULL)
 			notify_client("client-resized", c);
@@ -2068,7 +2101,8 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 	case MSG_EXITING:
 		if (datalen != 0)
 			fatalx("bad MSG_EXITING size");
-		c->session = NULL;
+		server_client_set_session(c, NULL);
+		recalculate_sizes();
 		tty_close(&c->tty);
 		proc_send(c->peer, MSG_EXITED, -1, NULL, 0);
 		break;
@@ -2136,6 +2170,7 @@ server_client_dispatch_command(struct client *c, struct imsg *imsg)
 	int			  argc;
 	char			**argv, *cause;
 	struct cmd_parse_result	 *pr;
+	struct args_value	 *values;
 
 	if (c->flags & CLIENT_EXIT)
 		return;
@@ -2161,17 +2196,17 @@ server_client_dispatch_command(struct client *c, struct imsg *imsg)
 		*argv = xstrdup("new-session");
 	}
 
-	pr = cmd_parse_from_arguments(argc, argv, NULL);
+	values = args_from_vector(argc, argv);
+	pr = cmd_parse_from_arguments(values, argc, NULL);
 	switch (pr->status) {
-	case CMD_PARSE_EMPTY:
-		cause = xstrdup("empty command");
-		goto error;
 	case CMD_PARSE_ERROR:
 		cause = pr->error;
 		goto error;
 	case CMD_PARSE_SUCCESS:
 		break;
 	}
+	args_free_values(values, argc);
+	free(values);
 	cmd_free_argv(argc, argv);
 
 	cmdq_append(c, cmdq_get_command(pr->cmdlist, NULL));
@@ -2392,7 +2427,7 @@ server_client_set_flags(struct client *c, const char *flags)
 	uint64_t flag;
 	int	 not;
 
-	s = copy = xstrdup (flags);
+	s = copy = xstrdup(flags);
 	while ((next = strsep(&s, ",")) != NULL) {
 		not = (*next == '!');
 		if (not)
@@ -2462,12 +2497,27 @@ server_client_get_flags(struct client *c)
 }
 
 /* Get client window. */
-static struct client_window *
+struct client_window *
 server_client_get_client_window(struct client *c, u_int id)
 {
 	struct client_window	cw = { .window = id };
 
 	return (RB_FIND(client_windows, &c->windows, &cw));
+}
+
+/* Add client window. */
+struct client_window *
+server_client_add_client_window(struct client *c, u_int id)
+{
+	struct client_window	*cw;
+
+	cw = server_client_get_client_window(c, id);
+	if (cw == NULL) {
+		cw = xcalloc(1, sizeof *cw);
+		cw->window = id;
+		RB_INSERT(client_windows, &c->windows, cw);
+	}
+	return cw;
 }
 
 /* Get client active pane. */
@@ -2498,12 +2548,7 @@ server_client_set_pane(struct client *c, struct window_pane *wp)
 	if (s == NULL)
 		return;
 
-	cw = server_client_get_client_window(c, s->curw->window->id);
-	if (cw == NULL) {
-		cw = xcalloc(1, sizeof *cw);
-		cw->window = s->curw->window->id;
-		RB_INSERT(client_windows, &c->windows, cw);
-	}
+	cw = server_client_add_client_window(c, s->curw->window->id);
 	cw->pane = wp;
 	log_debug("%s pane now %%%u", c->name, wp->id);
 }

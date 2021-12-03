@@ -402,7 +402,7 @@ options_array_clear(struct options_entry *o)
 		return;
 
 	RB_FOREACH_SAFE(a, options_array, &o->value.array, a1)
-	    options_array_free(o, a);
+		options_array_free(o, a);
 }
 
 union options_value *
@@ -425,6 +425,7 @@ options_array_set(struct options_entry *o, u_int idx, const char *value,
 	struct options_array_item	*a;
 	char				*new;
 	struct cmd_parse_result		*pr;
+	long long		 	 number;
 
 	if (!OPTIONS_IS_ARRAY(o)) {
 		if (cause != NULL)
@@ -442,10 +443,6 @@ options_array_set(struct options_entry *o, u_int idx, const char *value,
 	if (OPTIONS_IS_COMMAND(o)) {
 		pr = cmd_parse_from_string(value, NULL);
 		switch (pr->status) {
-		case CMD_PARSE_EMPTY:
-			if (cause != NULL)
-				*cause = xstrdup("empty command");
-			return (-1);
 		case CMD_PARSE_ERROR:
 			if (cause != NULL)
 				*cause = pr->error;
@@ -476,6 +473,20 @@ options_array_set(struct options_entry *o, u_int idx, const char *value,
 		else
 			options_value_free(o, &a->value);
 		a->value.string = new;
+		return (0);
+	}
+
+	if (o->tableentry->type == OPTIONS_TABLE_COLOUR) {
+		if ((number = colour_fromstring(value)) == -1) {
+			xasprintf(cause, "bad colour: %s", value);
+			return (-1);
+		}
+		a = options_array_item(o, idx);
+		if (a == NULL)
+			a = options_array_new(o, idx);
+		else
+			options_value_free(o, &a->value);
+		a->value.number = number;
 		return (0);
 	}
 
@@ -978,28 +989,39 @@ options_from_string_flag(struct options *oo, const char *name,
 	return (0);
 }
 
+int
+options_find_choice(const struct options_table_entry *oe, const char *value,
+    char **cause)
+{
+	const char	**cp;
+	int		  n = 0, choice = -1;
+
+	for (cp = oe->choices; *cp != NULL; cp++) {
+		if (strcmp(*cp, value) == 0)
+			choice = n;
+		n++;
+	}
+	if (choice == -1) {
+		xasprintf(cause, "unknown value: %s", value);
+		return (-1);
+	}
+	return (choice);
+}
+
 static int
 options_from_string_choice(const struct options_table_entry *oe,
     struct options *oo, const char *name, const char *value, char **cause)
 {
-	const char	**cp;
-	int		  n, choice = -1;
+	int	choice = -1;
 
 	if (value == NULL) {
 		choice = options_get_number(oo, name);
 		if (choice < 2)
 			choice = !choice;
 	} else {
-		n = 0;
-		for (cp = oe->choices; *cp != NULL; cp++) {
-			if (strcmp(*cp, value) == 0)
-				choice = n;
-			n++;
-		}
-		if (choice == -1) {
-			xasprintf(cause, "unknown value: %s", value);
+		choice = options_find_choice(oe, value, cause);
+		if (choice < 0)
 			return (-1);
-		}
 	}
 	options_set_number(oo, name, choice);
 	return (0);
@@ -1084,13 +1106,28 @@ options_push_changes(const char *name)
 	struct session		*s;
 	struct window		*w;
 	struct window_pane	*wp;
+	int			 c;
 
 	if (strcmp(name, "automatic-rename") == 0) {
 		RB_FOREACH(w, windows, &windows) {
 			if (w->active == NULL)
 				continue;
-			if (options_get_number(w->options, "automatic-rename"))
+			if (options_get_number(w->options, name))
 				w->active->flags |= PANE_CHANGED;
+		}
+	}
+	if (strcmp(name, "cursor-colour") == 0) {
+		RB_FOREACH(wp, window_pane_tree, &all_window_panes) {
+			c = options_get_number(wp->options, name);
+			wp->screen->default_ccolour = c;
+		}
+	}
+	if (strcmp(name, "cursor-style") == 0) {
+		RB_FOREACH(wp, window_pane_tree, &all_window_panes) {
+			wp->screen->default_mode = 0;
+			screen_set_cursor_style(options_get_number(wp->options,
+			    name), &wp->screen->default_cstyle,
+			    &wp->screen->default_mode);
 		}
 	}
 	if (strcmp(name, "key-table") == 0) {
@@ -1112,6 +1149,10 @@ options_push_changes(const char *name)
 	    strcmp(name, "window-active-style") == 0) {
 		RB_FOREACH(wp, window_pane_tree, &all_window_panes)
 			wp->flags |= PANE_STYLECHANGED;
+	}
+	if (strcmp(name, "pane-colours") == 0) {
+		RB_FOREACH(wp, window_pane_tree, &all_window_panes)
+			colour_palette_from_option(&wp->palette, wp->options);
 	}
 	if (strcmp(name, "pane-border-status") == 0) {
 		RB_FOREACH(w, windows, &windows)

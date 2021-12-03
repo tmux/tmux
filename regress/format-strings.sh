@@ -125,14 +125,13 @@ test_conditional_with_pane_in_mode "#{?pane_in_mode,[abc,xyz],bonus}" "[abc" "xy
 test_conditional_with_pane_in_mode "#{?pane_in_mode,[abc#,xyz],bonus}" "[abc,xyz]" "bonus"
 
 
-# Escape comma inside of #(...)
-# Note: #() commands are run asynchronous and are substituted with result of the
-# *previous* run or a placeholder (like "<'echo ,' not ready") if the command
-# has not been run before. The format is updated as soon as the command
-# finishes. As we are printing the message only once it never gets updated
-# and the displayed message is "<'echo ,' not ready>"
+# Escape comma inside of #(...) Note: #() commands are run asynchronous and are
+# substituted with result of the *previous* run, an empty string if the command
+# is new, or a placeholder after a few seconds. The format is updated as soon
+# as the command finishes. As we are printing the message only once it never
+# gets updated and the displayed message is empty.
 test_format "#{?pane_in_mode,#(echo #,),xyz}" "xyz"
-test_conditional_with_pane_in_mode "#{?pane_in_mode,#(echo #,),xyz}" "<'echo ,' not ready>" "xyz"
+test_conditional_with_pane_in_mode "#{?pane_in_mode,#(echo #,),xyz}" "" "xyz"
 # This caching does not work :-(
 #$TMUX display-message -p "#(echo #,)" > /dev/null
 #test_conditional_with_pane_in_mode "#{?pane_in_mode,#(echo #,),xyz}" "," "xyz"

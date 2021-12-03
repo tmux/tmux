@@ -31,56 +31,8 @@ static void	screen_redraw_draw_pane(struct screen_redraw_ctx *,
 static void	screen_redraw_set_context(struct client *,
 		    struct screen_redraw_ctx *);
 
-#define CELL_INSIDE 0
-#define CELL_TOPBOTTOM 1
-#define CELL_LEFTRIGHT 2
-#define CELL_TOPLEFT 3
-#define CELL_TOPRIGHT 4
-#define CELL_BOTTOMLEFT 5
-#define CELL_BOTTOMRIGHT 6
-#define CELL_TOPJOIN 7
-#define CELL_BOTTOMJOIN 8
-#define CELL_LEFTJOIN 9
-#define CELL_RIGHTJOIN 10
-#define CELL_JOIN 11
-#define CELL_OUTSIDE 12
-
-#define CELL_BORDERS " xqlkmjwvtun~"
-
 #define START_ISOLATE "\342\201\246"
 #define END_ISOLATE   "\342\201\251"
-
-static const struct utf8_data screen_redraw_double_borders[] = {
-	{ "", 0, 0, 0 },
-	{ "\342\225\221", 0, 3, 1 }, /* U+2551 */
-	{ "\342\225\220", 0, 3, 1 }, /* U+2550 */
-	{ "\342\225\224", 0, 3, 1 }, /* U+2554 */
-	{ "\342\225\227", 0, 3, 1 }, /* U+2557 */
-	{ "\342\225\232", 0, 3, 1 }, /* U+255A */
-	{ "\342\225\235", 0, 3, 1 }, /* U+255D */
-	{ "\342\225\246", 0, 3, 1 }, /* U+2566 */
-	{ "\342\225\251", 0, 3, 1 }, /* U+2569 */
-	{ "\342\225\240", 0, 3, 1 }, /* U+2560 */
-	{ "\342\225\243", 0, 3, 1 }, /* U+2563 */
-	{ "\342\225\254", 0, 3, 1 }, /* U+256C */
-	{ "\302\267",     0, 2, 1 }  /* U+00B7 */
-};
-
-static const struct utf8_data screen_redraw_heavy_borders[] = {
-	{ "", 0, 0, 0 },
-	{ "\342\224\203", 0, 3, 1 }, /* U+2503 */
-	{ "\342\224\201", 0, 3, 1 }, /* U+2501 */
-	{ "\342\224\223", 0, 3, 1 }, /* U+2513 */
-	{ "\342\224\217", 0, 3, 1 }, /* U+250F */
-	{ "\342\224\227", 0, 3, 1 }, /* U+2517 */
-	{ "\342\224\233", 0, 3, 1 }, /* U+251B */
-	{ "\342\224\263", 0, 3, 1 }, /* U+2533 */
-	{ "\342\224\273", 0, 3, 1 }, /* U+253B */
-	{ "\342\224\243", 0, 3, 1 }, /* U+2523 */
-	{ "\342\224\253", 0, 3, 1 }, /* U+252B */
-	{ "\342\225\213", 0, 3, 1 }, /* U+254B */
-	{ "\302\267",     0, 2, 1 }  /* U+00B7 */
-};
 
 enum screen_redraw_border_type {
 	SCREEN_REDRAW_OUTSIDE,
@@ -90,8 +42,8 @@ enum screen_redraw_border_type {
 
 /* Get cell border character. */
 static void
-screen_redraw_border_set(struct window_pane *wp, int pane_lines, int cell_type,
-    struct grid_cell *gc)
+screen_redraw_border_set(struct window_pane *wp, enum pane_lines pane_lines,
+    int cell_type, struct grid_cell *gc)
 {
 	u_int	idx;
 
@@ -110,15 +62,15 @@ screen_redraw_border_set(struct window_pane *wp, int pane_lines, int cell_type,
 		break;
 	case PANE_LINES_DOUBLE:
 		gc->attr &= ~GRID_ATTR_CHARSET;
-		utf8_copy(&gc->data, &screen_redraw_double_borders[cell_type]);
+		utf8_copy(&gc->data, tty_acs_double_borders(cell_type));
 		break;
 	case PANE_LINES_HEAVY:
 		gc->attr &= ~GRID_ATTR_CHARSET;
-		utf8_copy(&gc->data, &screen_redraw_heavy_borders[cell_type]);
+		utf8_copy(&gc->data, tty_acs_heavy_borders(cell_type));
 		break;
 	case PANE_LINES_SIMPLE:
 		gc->attr &= ~GRID_ATTR_CHARSET;
-		utf8_set(&gc->data, " |-+++++++++."[cell_type]);
+		utf8_set(&gc->data, SIMPLE_BORDERS[cell_type]);
 		break;
 	default:
 		gc->attr |= GRID_ATTR_CHARSET;
@@ -402,7 +354,7 @@ screen_redraw_check_is(u_int px, u_int py, int pane_status,
 /* Update pane status. */
 static int
 screen_redraw_make_pane_status(struct client *c, struct window_pane *wp,
-    struct screen_redraw_ctx *rctx, int pane_lines)
+    struct screen_redraw_ctx *rctx, enum pane_lines pane_lines)
 {
 	struct window		*w = wp->window;
 	struct grid_cell	 gc;
@@ -448,7 +400,7 @@ screen_redraw_make_pane_status(struct client *c, struct window_pane *wp,
 	gc.attr &= ~GRID_ATTR_CHARSET;
 
 	screen_write_cursormove(&ctx, 0, 0, 0);
-	format_draw(&ctx, &gc, width, expanded, NULL);
+	format_draw(&ctx, &gc, width, expanded, NULL, 0);
 	screen_write_stop(&ctx);
 
 	free(expanded);
@@ -527,11 +479,12 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 static int
 screen_redraw_update(struct client *c, int flags)
 {
-	struct window		*w = c->session->curw->window;
-	struct window_pane	*wp;
-	struct options		*wo = w->options;
-	int			 redraw, lines;
-	struct screen_redraw_ctx ctx;
+	struct window			*w = c->session->curw->window;
+	struct window_pane		*wp;
+	struct options			*wo = w->options;
+	int				 redraw;
+	enum pane_lines			 lines;
+	struct screen_redraw_ctx	 ctx;
 
 	if (c->message_string != NULL)
 		redraw = status_message_redraw(c);
@@ -624,7 +577,7 @@ screen_redraw_screen(struct client *c)
 	}
 	if (c->overlay_draw != NULL && (flags & CLIENT_REDRAWOVERLAY)) {
 		log_debug("%s: redrawing overlay", c->name);
-		c->overlay_draw(c, &ctx);
+		c->overlay_draw(c, c->overlay_data, &ctx);
 	}
 
 	tty_reset(&c->tty);
@@ -636,7 +589,7 @@ screen_redraw_pane(struct client *c, struct window_pane *wp)
 {
 	struct screen_redraw_ctx	 ctx;
 
-	if (c->overlay_draw != NULL || !window_pane_visible(wp))
+	if (!window_pane_visible(wp))
 		return;
 
 	screen_redraw_set_context(c, &ctx);
@@ -680,23 +633,38 @@ screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j)
 {
 	struct client		*c = ctx->c;
 	struct session		*s = c->session;
+	struct window		*w = s->curw->window;
+	struct options		*oo = w->options;
 	struct tty		*tty = &c->tty;
+	struct format_tree	*ft;
 	struct window_pane	*wp;
-	u_int			 cell_type, x = ctx->ox + i, y = ctx->oy + j;
-	int			 pane_status = ctx->pane_status, isolates;
 	struct grid_cell	 gc;
 	const struct grid_cell	*tmp;
+	struct overlay_ranges	 r;
+	u_int			 cell_type, x = ctx->ox + i, y = ctx->oy + j;
+	int			 pane_status = ctx->pane_status, isolates;
 
-	if (c->overlay_check != NULL && !c->overlay_check(c, x, y))
-		return;
+	if (c->overlay_check != NULL) {
+		c->overlay_check(c, c->overlay_data, x, y, 1, &r);
+		if (r.nx[0] + r.nx[1] == 0)
+			return;
+	}
 
 	cell_type = screen_redraw_check_cell(c, x, y, pane_status, &wp);
 	if (cell_type == CELL_INSIDE)
 		return;
 
-	if (wp == NULL)
-		memcpy(&gc, &grid_default_cell, sizeof gc);
-	else {
+	if (wp == NULL) {
+		if (!ctx->no_pane_gc_set) {
+			ft = format_create_defaults(NULL, c, s, s->curw, NULL);
+			memcpy(&ctx->no_pane_gc, &grid_default_cell, sizeof gc);
+			style_add(&ctx->no_pane_gc, oo, "pane-border-style",
+			    ft);
+			format_free(ft);
+			ctx->no_pane_gc_set = 1;
+		}
+		memcpy(&gc, &ctx->no_pane_gc, sizeof gc);
+	} else {
 		tmp = screen_redraw_draw_borders_style(ctx, x, y, wp);
 		if (tmp == NULL)
 			return;
@@ -789,12 +757,13 @@ screen_redraw_draw_status(struct screen_redraw_ctx *ctx)
 static void
 screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 {
-	struct client	*c = ctx->c;
-	struct window	*w = c->session->curw->window;
-	struct tty	*tty = &c->tty;
-	struct screen	*s;
-	struct grid_cell defaults;
-	u_int		 i, j, top, x, y, width;
+	struct client		*c = ctx->c;
+	struct window		*w = c->session->curw->window;
+	struct tty		*tty = &c->tty;
+	struct screen		*s = wp->screen;
+	struct colour_palette	*palette = &wp->palette;
+	struct grid_cell	 defaults;
+	u_int			 i, j, top, x, y, width;
 
 	log_debug("%s: %s @%u %%%u", __func__, c->name, w->id, wp->id);
 
@@ -804,8 +773,6 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 		top = ctx->statuslines;
 	else
 		top = 0;
-
-	s = wp->screen;
 	for (j = 0; j < wp->sy; j++) {
 		if (wp->yoff + j < ctx->oy || wp->yoff + j >= ctx->oy + ctx->sy)
 			continue;
@@ -838,7 +805,6 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 		    __func__, c->name, wp->id, i, j, x, y, width);
 
 		tty_default_colours(&defaults, wp);
-		tty_draw_line(tty, s, i, j, width, x, y, &defaults,
-		    wp->palette);
+		tty_draw_line(tty, s, i, j, width, x, y, &defaults, palette);
 	}
 }

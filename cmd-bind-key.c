@@ -27,19 +27,29 @@
  * Bind a key to a command.
  */
 
-static enum cmd_retval	cmd_bind_key_exec(struct cmd *, struct cmdq_item *);
+static enum args_parse_type	cmd_bind_key_args_parse(struct args *, u_int,
+				    char **);
+static enum cmd_retval		cmd_bind_key_exec(struct cmd *,
+				    struct cmdq_item *);
 
 const struct cmd_entry cmd_bind_key_entry = {
 	.name = "bind-key",
 	.alias = "bind",
 
-	.args = { "nrN:T:", 1, -1 },
+	.args = { "nrN:T:", 1, -1, cmd_bind_key_args_parse },
 	.usage = "[-nr] [-T key-table] [-N note] key "
 	         "[command [arguments]]",
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_bind_key_exec
 };
+
+static enum args_parse_type
+cmd_bind_key_args_parse(__unused struct args *args, __unused u_int idx,
+    __unused char **cause)
+{
+	return (ARGS_PARSE_COMMANDS_OR_STRING);
+}
 
 static enum cmd_retval
 cmd_bind_key_exec(struct cmd *self, struct cmdq_item *item)
@@ -48,12 +58,13 @@ cmd_bind_key_exec(struct cmd *self, struct cmdq_item *item)
 	key_code		  key;
 	const char		 *tablename, *note = args_get(args, 'N');
 	struct cmd_parse_result	 *pr;
-	char			**argv = args->argv;
-	int			  argc = args->argc, repeat;
+	int			  repeat;
+	struct args_value	 *value;
+	u_int			  count = args_count(args);
 
-	key = key_string_lookup_string(argv[0]);
+	key = key_string_lookup_string(args_string(args, 0));
 	if (key == KEYC_NONE || key == KEYC_UNKNOWN) {
-		cmdq_error(item, "unknown key: %s", argv[0]);
+		cmdq_error(item, "unknown key: %s", args_string(args, 0));
 		return (CMD_RETURN_ERROR);
 	}
 
@@ -65,24 +76,32 @@ cmd_bind_key_exec(struct cmd *self, struct cmdq_item *item)
 		tablename = "prefix";
 	repeat = args_has(args, 'r');
 
-	if (argc != 1) {
-		if (argc == 2)
-			pr = cmd_parse_from_string(argv[1], NULL);
-		else
-			pr = cmd_parse_from_arguments(argc - 1, argv + 1, NULL);
-		switch (pr->status) {
-		case CMD_PARSE_EMPTY:
-			cmdq_error(item, "empty command");
-			return (CMD_RETURN_ERROR);
-		case CMD_PARSE_ERROR:
-			cmdq_error(item, "%s", pr->error);
-			free(pr->error);
-			return (CMD_RETURN_ERROR);
-		case CMD_PARSE_SUCCESS:
-			break;
-		}
-		key_bindings_add(tablename, key, note, repeat, pr->cmdlist);
-	} else
+	if (count == 1) {
 		key_bindings_add(tablename, key, note, repeat, NULL);
+		return (CMD_RETURN_NORMAL);
+	}
+
+	value = args_value(args, 1);
+	if (count == 2 && value->type == ARGS_COMMANDS) {
+		key_bindings_add(tablename, key, note, repeat, value->cmdlist);
+		value->cmdlist->references++;
+		return (CMD_RETURN_NORMAL);
+	}
+
+	if (count == 2)
+		pr = cmd_parse_from_string(args_string(args, 1), NULL);
+	else {
+		pr = cmd_parse_from_arguments(args_values(args) + 1, count - 1,
+		    NULL);
+	}
+	switch (pr->status) {
+	case CMD_PARSE_ERROR:
+		cmdq_error(item, "%s", pr->error);
+		free(pr->error);
+		return (CMD_RETURN_ERROR);
+	case CMD_PARSE_SUCCESS:
+		break;
+	}
+	key_bindings_add(tablename, key, note, repeat, pr->cmdlist);
 	return (CMD_RETURN_NORMAL);
 }

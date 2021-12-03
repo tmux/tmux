@@ -27,16 +27,18 @@
  * Display a menu on a client.
  */
 
-static enum cmd_retval	cmd_display_menu_exec(struct cmd *,
-			    struct cmdq_item *);
-static enum cmd_retval	cmd_display_popup_exec(struct cmd *,
-			    struct cmdq_item *);
+static enum args_parse_type	cmd_display_menu_args_parse(struct args *,
+				    u_int, char **);
+static enum cmd_retval		cmd_display_menu_exec(struct cmd *,
+				    struct cmdq_item *);
+static enum cmd_retval		cmd_display_popup_exec(struct cmd *,
+				    struct cmdq_item *);
 
 const struct cmd_entry cmd_display_menu_entry = {
 	.name = "display-menu",
 	.alias = "menu",
 
-	.args = { "c:t:OT:x:y:", 1, -1 },
+	.args = { "c:t:OT:x:y:", 1, -1, cmd_display_menu_args_parse },
 	.usage = "[-O] [-c target-client] " CMD_TARGET_PANE_USAGE " [-T title] "
 		 "[-x position] [-y position] name key command ...",
 
@@ -50,16 +52,42 @@ const struct cmd_entry cmd_display_popup_entry = {
 	.name = "display-popup",
 	.alias = "popup",
 
-	.args = { "Cc:d:Eh:t:w:x:y:", 0, -1 },
-	.usage = "[-CE] [-c target-client] [-d start-directory] [-h height] "
-	         CMD_TARGET_PANE_USAGE " [-w width] "
-	         "[-x position] [-y position] [command]",
+	.args = { "Bb:Cc:d:e:Eh:s:S:t:T:w:x:y:", 0, -1, NULL },
+	.usage = "[-BCE] [-b border-lines] [-c target-client] "
+		 "[-d start-directory] [-e environment] [-h height] "
+		 "[-s style] [-S border-style] " CMD_TARGET_PANE_USAGE
+		 "[-T title] [-w width] [-x position] [-y position] "
+		 "[shell-command]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
 	.flags = CMD_AFTERHOOK|CMD_CLIENT_CFLAG,
 	.exec = cmd_display_popup_exec
 };
+
+static enum args_parse_type
+cmd_display_menu_args_parse(struct args *args, u_int idx, __unused char **cause)
+{
+	u_int			 i = 0;
+	enum args_parse_type	 type = ARGS_PARSE_STRING;
+
+	for (;;) {
+		type = ARGS_PARSE_STRING;
+		if (i == idx)
+			break;
+		if (*args_string(args, i++) == '\0')
+			continue;
+
+		type = ARGS_PARSE_STRING;
+		if (i++ == idx)
+			break;
+
+		type = ARGS_PARSE_COMMANDS_OR_STRING;
+		if (i++ == idx)
+			break;
+	}
+	return (type);
+}
 
 static int
 cmd_display_menu_get_position(struct client *tc, struct cmdq_item *item,
@@ -120,8 +148,6 @@ cmd_display_menu_get_position(struct client *tc, struct cmdq_item *item,
 			if (sr != NULL)
 				break;
 		}
-		if (line == lines)
-			ranges = &tc->status.entries[0].ranges;
 
 		if (sr != NULL) {
 			format_add(ft, "popup_window_status_line_x", "%u",
@@ -174,8 +200,8 @@ cmd_display_menu_get_position(struct client *tc, struct cmdq_item *item,
 		} else
 			format_add(ft, "popup_mouse_centre_y", "%ld", n);
 		n = (long)event->m.y + h;
-		if (n + h >= tty->sy)
-			format_add(ft, "popup_mouse_top", "%u", tty->sy - h);
+		if (n >= tty->sy)
+			format_add(ft, "popup_mouse_top", "%u", tty->sy - 1);
 		else
 			format_add(ft, "popup_mouse_top", "%ld", n);
 		n = event->m.y - h;
@@ -219,7 +245,7 @@ cmd_display_menu_get_position(struct client *tc, struct cmdq_item *item,
 	else if (n < 0)
 		n = 0;
 	*px = n;
-	log_debug("%s: -x: %s = %s = %u", __func__, xp, p, *px);
+	log_debug("%s: -x: %s = %s = %u (-w %u)", __func__, xp, p, *px, w);
 	free(p);
 
 	/* Expand vertical position  */
@@ -245,7 +271,7 @@ cmd_display_menu_get_position(struct client *tc, struct cmdq_item *item,
 	else if (n < 0)
 		n = 0;
 	*py = n;
-	log_debug("%s: -y: %s = %s = %u", __func__, yp, p, *py);
+	log_debug("%s: -y: %s = %s = %u (-h %u)", __func__, yp, p, *py, h);
 	free(p);
 
 	return (1);
@@ -260,10 +286,10 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	struct client		*tc = cmdq_get_target_client(item);
 	struct menu		*menu = NULL;
 	struct menu_item	 menu_item;
-	const char		*key;
-	char			*title, *name;
-	int			 flags = 0, i;
-	u_int			 px, py;
+	const char		*key, *name;
+	char			*title;
+	int			 flags = 0;
+	u_int			 px, py, i, count = args_count(args);
 
 	if (tc->overlay_draw != NULL)
 		return (CMD_RETURN_NORMAL);
@@ -274,24 +300,24 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 		title = xstrdup("");
 	menu = menu_create(title);
 
-	for (i = 0; i != args->argc; /* nothing */) {
-		name = args->argv[i++];
+	for (i = 0; i != count; /* nothing */) {
+		name = args_string(args, i++);
 		if (*name == '\0') {
 			menu_add_item(menu, NULL, item, tc, target);
 			continue;
 		}
 
-		if (args->argc - i < 2) {
+		if (count - i < 2) {
 			cmdq_error(item, "not enough arguments");
 			free(title);
 			menu_free(menu);
 			return (CMD_RETURN_ERROR);
 		}
-		key = args->argv[i++];
+		key = args_string(args, i++);
 
 		menu_item.name = name;
 		menu_item.key = key_string_lookup_string(key);
-		menu_item.command = args->argv[i++];
+		menu_item.command = args_string(args, i++);
 
 		menu_add_item(menu, &menu_item, item, tc, target);
 	}
@@ -328,11 +354,17 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	struct session		*s = target->s;
 	struct client		*tc = cmdq_get_target_client(item);
 	struct tty		*tty = &tc->tty;
-	const char		*value, *shell[] = { NULL, NULL };
-	const char		*shellcmd = NULL;
-	char			*cwd, *cause, **argv = args->argv;
-	int			 flags = 0, argc = args->argc;
-	u_int			 px, py, w, h;
+	const char		*value, *shell, *shellcmd = NULL;
+	const char		*style = args_get(args, 's');
+	const char		*border_style = args_get(args, 'S');
+	char			*cwd, *cause = NULL, **argv = NULL, *title;
+	int			 flags = 0, argc = 0;
+	enum box_lines		 lines = BOX_LINES_DEFAULT;
+	u_int			 px, py, w, h, count = args_count(args);
+	struct args_value	*av;
+	struct environ		*env = NULL;
+	struct options		*o = s->curw->window->options;
+	struct options_entry	*oe;
 
 	if (args_has(args, 'C')) {
 		server_client_clear_overlay(tc);
@@ -361,37 +393,73 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 		}
 	}
 
-	if (w > tty->sx - 1)
-		w = tty->sx - 1;
-	if (h > tty->sy - 1)
-		h = tty->sy - 1;
+	if (w > tty->sx)
+		w = tty->sx;
+	if (h > tty->sy)
+		h = tty->sy;
 	if (!cmd_display_menu_get_position(tc, item, args, &px, &py, w, h))
 		return (CMD_RETURN_NORMAL);
+
+	value = args_get(args, 'b');
+	if (args_has(args, 'B'))
+		lines = BOX_LINES_NONE;
+	else if (value != NULL) {
+		oe = options_get(o, "popup-border-lines");
+		lines = options_find_choice(options_table_entry(oe), value,
+		    &cause);
+		if (cause != NULL) {
+			cmdq_error(item, "popup-border-lines %s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
+		}
+	}
 
 	value = args_get(args, 'd');
 	if (value != NULL)
 		cwd = format_single_from_target(item, value);
 	else
 		cwd = xstrdup(server_client_get_cwd(tc, s));
-	if (argc == 0)
+	if (count == 0)
 		shellcmd = options_get_string(s->options, "default-command");
-	else if (argc == 1)
-		shellcmd = argv[0];
-	if (argc <= 1 && (shellcmd == NULL || *shellcmd == '\0')) {
+	else if (count == 1)
+		shellcmd = args_string(args, 0);
+	if (count <= 1 && (shellcmd == NULL || *shellcmd == '\0')) {
 		shellcmd = NULL;
-		shell[0] = options_get_string(s->options, "default-shell");
-		if (!checkshell(shell[0]))
-			shell[0] = _PATH_BSHELL;
-		argc = 1;
-		argv = (char**)shell;
+		shell = options_get_string(s->options, "default-shell");
+		if (!checkshell(shell))
+			shell = _PATH_BSHELL;
+		cmd_append_argv(&argc, &argv, shell);
+	} else
+		args_to_vector(args, &argc, &argv);
+
+	if (args_has(args, 'e') >= 1) {
+		env = environ_create();
+		av = args_first_value(args, 'e');
+		while (av != NULL) {
+			environ_put(env, av->string, 0);
+			av = args_next_value(av);
+		}
 	}
 
+	if (args_has(args, 'T'))
+		title = format_single_from_target(item, args_get(args, 'T'));
+	else
+		title = xstrdup("");
 	if (args_has(args, 'E') > 1)
 		flags |= POPUP_CLOSEEXITZERO;
 	else if (args_has(args, 'E'))
 		flags |= POPUP_CLOSEEXIT;
-	if (popup_display(flags, item, px, py, w, h, shellcmd, argc, argv, cwd,
-	    tc, s, NULL, NULL) != 0)
+	if (popup_display(flags, lines, item, px, py, w, h, env, shellcmd, argc,
+	    argv, cwd, title, tc, s, style, border_style, NULL, NULL) != 0) {
+		cmd_free_argv(argc, argv);
+		if (env != NULL)
+			environ_free(env);
+		free(title);
 		return (CMD_RETURN_NORMAL);
+	}
+	if (env != NULL)
+		environ_free(env);
+	free(title);
+	cmd_free_argv(argc, argv);
 	return (CMD_RETURN_WAIT);
 }

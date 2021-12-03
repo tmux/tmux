@@ -1185,9 +1185,6 @@ window_customize_set_command_callback(struct client *c, void *itemdata,
 
 	pr = cmd_parse_from_string(s, NULL);
 	switch (pr->status) {
-	case CMD_PARSE_EMPTY:
-		error = xstrdup("empty command");
-		goto fail;
 	case CMD_PARSE_ERROR:
 		error = pr->error;
 		goto fail;

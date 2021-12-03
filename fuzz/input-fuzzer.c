@@ -16,6 +16,7 @@
 
 #include <stddef.h>
 #include <assert.h>
+#include <fcntl.h>
 
 #include "tmux.h"
 
@@ -26,7 +27,7 @@
 struct event_base *libevent;
 
 int
-LLVMFuzzerTestOneInput(const unsigned char *data, size_t size)
+LLVMFuzzerTestOneInput(const u_char *data, size_t size)
 {
 	struct bufferevent	*vpty[2];
 	struct window		*w;
@@ -43,10 +44,15 @@ LLVMFuzzerTestOneInput(const unsigned char *data, size_t size)
 	w = window_create(PANE_WIDTH, PANE_HEIGHT, 0, 0);
 	wp = window_add_pane(w, NULL, 0, 0);
 	bufferevent_pair_new(libevent, BEV_OPT_CLOSE_ON_FREE, vpty);
-	wp->ictx = input_init(wp, vpty[0]);
+	wp->ictx = input_init(wp, vpty[0], NULL);
 	window_add_ref(w, __func__);
 
-	input_parse_buffer(wp, (u_char*) data, size);
+	wp->fd = open("/dev/null", O_WRONLY);
+	if (wp->fd == -1)
+		errx(1, "open(\"/dev/null\") failed");
+	wp->event = bufferevent_new(wp->fd, NULL, NULL, NULL, NULL);
+
+	input_parse_buffer(wp, (u_char *)data, size);
 	while (cmdq_next(NULL) != 0)
 		;
 	error = event_base_loop(libevent, EVLOOP_NONBLOCK);
@@ -84,6 +90,7 @@ LLVMFuzzerInitialize(__unused int *argc, __unused char ***argv)
 	options_set_number(global_w_options, "monitor-bell", 0);
 	options_set_number(global_w_options, "allow-rename", 1);
 	options_set_number(global_options, "set-clipboard", 2);
+	socket_path = xstrdup("dummy");
 
 	return 0;
 }

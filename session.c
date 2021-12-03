@@ -203,6 +203,9 @@ session_destroy(struct session *s, int notify, const char *from)
 	struct winlink	*wl;
 
 	log_debug("session %s destroyed (%s)", s->name, from);
+
+	if (s->curw == NULL)
+		return;
 	s->curw = NULL;
 
 	RB_REMOVE(sessions, &sessions, s);
@@ -235,6 +238,8 @@ session_check_name(const char *name)
 {
 	char	*copy, *cp, *new_name;
 
+	if (*name == '\0')
+		return (NULL);
 	copy = xstrdup(name);
 	for (cp = copy; *cp != '\0'; cp++) {
 		if (*cp == ':' || *cp == '.')
@@ -485,6 +490,8 @@ session_last(struct session *s)
 int
 session_set_current(struct session *s, struct winlink *wl)
 {
+	struct winlink	*old = s->curw;
+
 	if (wl == NULL)
 		return (-1);
 	if (wl == s->curw)
@@ -493,6 +500,10 @@ session_set_current(struct session *s, struct winlink *wl)
 	winlink_stack_remove(&s->lastw, wl);
 	winlink_stack_push(&s->lastw, s->curw);
 	s->curw = wl;
+	if (options_get_number(global_options, "focus-events")) {
+		window_update_focus(old->window);
+		window_update_focus(wl->window);
+	}
 	winlink_clear_flags(wl);
 	window_update_activity(wl->window);
 	tty_update_window_offset(wl->window);

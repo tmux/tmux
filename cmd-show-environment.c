@@ -38,7 +38,7 @@ const struct cmd_entry cmd_show_environment_entry = {
 	.name = "show-environment",
 	.alias = "showenv",
 
-	.args = { "hgst:", 0, 1 },
+	.args = { "hgst:", 0, 1, NULL },
 	.usage = "[-hgs] " CMD_TARGET_SESSION_USAGE " [name]",
 
 	.target = { 't', CMD_FIND_SESSION, CMD_FIND_CANFAIL },
@@ -101,7 +101,7 @@ cmd_show_environment_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct environ		*env;
 	struct environ_entry	*envent;
-	const char		*tflag;
+	const char		*tflag, *name = args_string(args, 0);
 
 	if ((tflag = args_get(args, 't')) != NULL) {
 		if (target->s == NULL) {
@@ -124,10 +124,10 @@ cmd_show_environment_exec(struct cmd *self, struct cmdq_item *item)
 		env = target->s->environ;
 	}
 
-	if (args->argc != 0) {
-		envent = environ_find(env, args->argv[0]);
+	if (name != NULL) {
+		envent = environ_find(env, name);
 		if (envent == NULL) {
-			cmdq_error(item, "unknown variable: %s", args->argv[0]);
+			cmdq_error(item, "unknown variable: %s", name);
 			return (CMD_RETURN_ERROR);
 		}
 		cmd_show_environment_print(self, item, envent);

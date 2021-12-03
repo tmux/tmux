@@ -13,8 +13,10 @@ dist_EXTRA_tmux_SOURCES = compat/*.[ch]
 # Preprocessor flags.
 AM_CPPFLAGS += @XOPEN_DEFINES@ \
 	-DTMUX_VERSION='"@VERSION@"' \
-	-DTMUX_CONF='"$(sysconfdir)/tmux.conf:~/.tmux.conf:$$XDG_CONFIG_HOME/tmux/tmux.conf:~/.config/tmux/tmux.conf"'\
-	-DTMUX_ACL
+	-DTMUX_CONF='"$(sysconfdir)/tmux.conf:~/.tmux.conf:$$XDG_CONFIG_HOME/tmux/tmux.conf:~/.config/tmux/tmux.conf"' \
+	-DTMUX_TERM='"@DEFAULT_TERM@"' \
+  -DTMUX_ACL
+
 
 # Additional object files.
 LDADD = $(LIBOBJS)
@@ -30,6 +32,9 @@ AM_CFLAGS += -Wwrite-strings -Wshadow -Wpointer-arith -Wsign-compare
 AM_CFLAGS += -Wundef -Wbad-function-cast -Winline -Wcast-align
 AM_CFLAGS += -Wdeclaration-after-statement -Wno-pointer-sign -Wno-attributes
 AM_CFLAGS += -Wno-unused-result -Wno-format-y2k
+if IS_DARWIN
+AM_CFLAGS += -Wno-deprecated-declarations -Wno-cast-align
+endif
 AM_CPPFLAGS += -DDEBUG
 endif
 AM_CPPFLAGS += -iquote.
@@ -183,6 +188,7 @@ dist_tmux_SOURCES = \
 	style.c \
 	tmux.c \
 	tmux.h \
+	tmux-protocol.h \
 	tty-acs.c \
 	tty-features.c \
 	tty-keys.c \

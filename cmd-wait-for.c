@@ -34,7 +34,7 @@ const struct cmd_entry cmd_wait_for_entry = {
 	.name = "wait-for",
 	.alias = "wait",
 
-	.args = { "LSU", 1, 1 },
+	.args = { "LSU", 1, 1, NULL },
 	.usage = "[-L|-S|-U] channel",
 
 	.flags = 0,
@@ -121,11 +121,11 @@ static enum cmd_retval
 cmd_wait_for_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args     	*args = cmd_get_args(self);
-	const char		*name = args->argv[0];
-	struct wait_channel	*wc, wc0;
+	const char		*name = args_string(args, 0);
+	struct wait_channel	*wc, find;
 
-	wc0.name = name;
-	wc = RB_FIND(wait_channels, &wait_channels, &wc0);
+	find.name = name;
+	wc = RB_FIND(wait_channels, &wait_channels, &find);
 
 	if (args_has(args, 'S'))
 		return (cmd_wait_for_signal(item, name, wc));

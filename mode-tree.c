@@ -716,14 +716,14 @@ mode_tree_draw(struct mode_tree_data *mtd)
 			screen_write_nputs(&ctx, w, &gc0, "%s", text);
 			if (mti->text != NULL) {
 				format_draw(&ctx, &gc0, w - width, mti->text,
-				    NULL);
+				    NULL, 0);
 			}
 		} else {
 			screen_write_clearendofline(&ctx, gc.bg);
 			screen_write_nputs(&ctx, w, &gc, "%s", text);
 			if (mti->text != NULL) {
 				format_draw(&ctx, &gc, w - width, mti->text,
-				    NULL);
+				    NULL, 0);
 			}
 		}
 		free(text);
@@ -747,7 +747,7 @@ mode_tree_draw(struct mode_tree_data *mtd)
 		mti = mti->parent;
 
 	screen_write_cursormove(&ctx, 0, h, 0);
-	screen_write_box(&ctx, w, sy - h);
+	screen_write_box(&ctx, w, sy - h, BOX_LINES_DEFAULT, NULL, NULL);
 
 	if (mtd->sort_list != NULL) {
 		xasprintf(&text, " %s (sort: %s%s)", mti->name,
@@ -922,7 +922,7 @@ mode_tree_menu_callback(__unused struct menu *menu, __unused u_int idx,
 	if (mti->itemdata != mtm->itemdata)
 		goto out;
 	mtd->current = mtm->line;
-	mtd->menucb (mtd->modedata, mtm->c, key);
+	mtd->menucb(mtd->modedata, mtm->c, key);
 
 out:
 	mode_tree_remove_ref(mtd);

@@ -39,10 +39,11 @@ const struct cmd_entry cmd_new_session_entry = {
 	.name = "new-session",
 	.alias = "new",
 
-	.args = { "Ac:dDe:EF:f:n:Ps:t:x:Xy:", 0, -1 },
+	.args = { "Ac:dDe:EF:f:n:Ps:t:x:Xy:", 0, -1, NULL },
 	.usage = "[-AdDEPX] [-c start-directory] [-e environment] [-F format] "
 		 "[-f flags] [-n window-name] [-s session-name] "
-		 CMD_TARGET_SESSION_USAGE " [-x width] [-y height] [command]",
+		 CMD_TARGET_SESSION_USAGE " [-x width] [-y height] "
+		 "[shell-command]",
 
 	.target = { 't', CMD_FIND_SESSION, CMD_FIND_CANFAIL },
 
@@ -54,7 +55,7 @@ const struct cmd_entry cmd_has_session_entry = {
 	.name = "has-session",
 	.alias = "has",
 
-	.args = { "t:", 0, 0 },
+	.args = { "t:", 0, 0, NULL },
 	.usage = CMD_TARGET_SESSION_USAGE,
 
 	.target = { 't', CMD_FIND_SESSION, 0 },
@@ -75,15 +76,15 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	struct options		*oo;
 	struct termios		 tio, *tiop;
 	struct session_group	*sg = NULL;
-	const char		*errstr, *template, *group, *tmp, *add;
+	const char		*errstr, *template, *group, *tmp;
 	char			*cause, *cwd = NULL, *cp, *newname = NULL;
 	char			*name, *prefix = NULL;
 	int			 detached, already_attached, is_control = 0;
-	u_int			 sx, sy, dsx, dsy;
-	struct spawn_context	 sc;
+	u_int			 sx, sy, dsx, dsy, count = args_count(args);
+	struct spawn_context	 sc = { 0 };
 	enum cmd_retval		 retval;
 	struct cmd_find_state    fs;
-	struct args_value	*value;
+	struct args_value	*av;
 
 #if defined (TMUX_ACL)
 	if(!RB_EMPTY(&sessions)){
@@ -100,7 +101,7 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 	}
 
-	if (args_has(args, 't') && (args->argc != 0 || args_has(args, 'n'))) {
+	if (args_has(args, 't') && (count != 0 || args_has(args, 'n'))) {
 		cmdq_error(item, "command or window name given with target");
 		return (CMD_RETURN_ERROR);
 	}
@@ -109,6 +110,11 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	if (tmp != NULL) {
 		name = format_single(item, tmp, c, NULL, NULL, NULL);
 		newname = session_check_name(name);
+		if (newname == NULL) {
+			cmdq_error(item, "invalid session: %s", name);
+			free(name);
+			return (CMD_RETURN_ERROR);
+		}
 		free(name);
 	}
 	if (args_has(args, 'A')) {
@@ -141,8 +147,14 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 			prefix = xstrdup(sg->name);
 		else if (groupwith != NULL)
 			prefix = xstrdup(groupwith->name);
-		else
+		else {
 			prefix = session_check_name(group);
+			if (prefix == NULL) {
+				cmdq_error(item, "invalid session group: %s",
+				    group);
+				goto fail;
+			}
+		}
 	}
 
 	/* Set -d if no client. */
@@ -265,22 +277,21 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	env = environ_create();
 	if (c != NULL && !args_has(args, 'E'))
 		environ_update(global_s_options, c->environ, env);
-	add = args_first_value(args, 'e', &value);
-	while (add != NULL) {
-		environ_put(env, add, 0);
-		add = args_next_value(&value);
+	av = args_first_value(args, 'e');
+	while (av != NULL) {
+		environ_put(env, av->string, 0);
+		av = args_next_value(av);
 	}
 	s = session_create(prefix, newname, cwd, env, oo, tiop);
 
 	/* Spawn the initial window. */
-	memset(&sc, 0, sizeof sc);
 	sc.item = item;
 	sc.s = s;
-	sc.tc = c;
+	if (!detached)
+		sc.tc = c;
 
 	sc.name = args_get(args, 'n');
-	sc.argc = args->argc;
-	sc.argv = args->argv;
+	args_to_vector(args, &sc.argc, &sc.argv);
 
 	sc.idx = -1;
 	sc.cwd = args_get(args, 'c');
@@ -324,18 +335,10 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 				proc_send(c->peer, MSG_READY, -1, NULL, 0);
 		} else if (c->session != NULL)
 			c->last_session = c->session;
-		c->session = s;
+		server_client_set_session(c, s);
 		if (~cmdq_get_flags(item) & CMDQ_STATE_REPEAT)
 			server_client_set_key_table(c, NULL);
-		tty_update_client_offset(c);
-		status_timer_start(c);
-		notify_client("client-session-changed", c);
-		session_update_activity(s, NULL);
-		gettimeofday(&s->last_attached_time, NULL);
-		server_redraw_client(c);
 	}
-	recalculate_sizes();
-	server_update_socket();
 
 	/*
 	 * If there are still configuration file errors to display, put the new
@@ -361,12 +364,16 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	cmd_find_from_session(&fs, s, 0);
 	cmdq_insert_hook(s, item, &fs, "after-new-session");
 
+	if (sc.argv != NULL)
+		cmd_free_argv(sc.argc, sc.argv);
 	free(cwd);
 	free(newname);
 	free(prefix);
 	return (CMD_RETURN_NORMAL);
 
 fail:
+	if (sc.argv != NULL)
+		cmd_free_argv(sc.argc, sc.argv);
 	free(cwd);
 	free(newname);
 	free(prefix);

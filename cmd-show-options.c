@@ -38,7 +38,7 @@ const struct cmd_entry cmd_show_options_entry = {
 	.name = "show-options",
 	.alias = "show",
 
-	.args = { "AgHpqst:vw", 0, 1 },
+	.args = { "AgHpqst:vw", 0, 1, NULL },
 	.usage = "[-AgHpqsvw] " CMD_TARGET_PANE_USAGE " [option]",
 
 	.target = { 't', CMD_FIND_PANE, CMD_FIND_CANFAIL },
@@ -51,7 +51,7 @@ const struct cmd_entry cmd_show_window_options_entry = {
 	.name = "show-window-options",
 	.alias = "showw",
 
-	.args = { "gvt:", 0, 1 },
+	.args = { "gvt:", 0, 1, NULL },
 	.usage = "[-gv] " CMD_TARGET_WINDOW_USAGE " [option]",
 
 	.target = { 't', CMD_FIND_WINDOW, CMD_FIND_CANFAIL },
@@ -64,7 +64,7 @@ const struct cmd_entry cmd_show_hooks_entry = {
 	.name = "show-hooks",
 	.alias = NULL,
 
-	.args = { "gpt:w", 0, 1 },
+	.args = { "gpt:w", 0, 1, NULL },
 	.usage = "[-gpw] " CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, CMD_FIND_CANFAIL },
@@ -85,7 +85,7 @@ cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 
 	window = (cmd_get_entry(self) == &cmd_show_window_options_entry);
 
-	if (args->argc == 0) {
+	if (args_count(args) == 0) {
 		scope = options_scope_from_flags(args, window, target, &oo,
 		    &cause);
 		if (scope == OPTIONS_TABLE_NONE) {
@@ -97,7 +97,7 @@ cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 		}
 		return (cmd_show_options_all(self, item, scope, oo));
 	}
-	argument = format_single_from_target(item, args->argv[0]);
+	argument = format_single_from_target(item, args_string(args, 0));
 
 	name = options_match(argument, &idx, &ambiguous);
 	if (name == NULL) {
@@ -126,6 +126,12 @@ cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 		parent = 0;
 	if (o != NULL)
 		cmd_show_options_print(self, item, o, idx, parent);
+	else if (*name == '@') {
+		if (args_has(args, 'q'))
+			goto fail;
+		cmdq_error(item, "invalid option: %s", argument);
+		goto fail;
+	}
 
 	free(name);
 	free(argument);

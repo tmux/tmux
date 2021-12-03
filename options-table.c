@@ -56,11 +56,18 @@ static const char *options_table_bell_action_list[] = {
 static const char *options_table_visual_bell_list[] = {
 	"off", "on", "both", NULL
 };
+static const char *options_table_cursor_style_list[] = {
+	"default", "blinking-block", "block", "blinking-underline", "underline",
+	"blinking-bar", "bar", NULL
+};
 static const char *options_table_pane_status_list[] = {
 	"off", "top", "bottom", NULL
 };
-static const char *options_table_pane_lines_list[] = {
+static const char *options_table_pane_border_lines_list[] = {
 	"single", "double", "heavy", "simple", "number", NULL
+};
+static const char *options_table_popup_border_lines_list[] = {
+	"single", "double", "heavy", "simple", "rounded", "padded", "none", NULL
 };
 static const char *options_table_set_clipboard_list[] = {
 	"off", "external", "on", NULL
@@ -80,7 +87,7 @@ static const char *options_table_extended_keys_list[] = {
 
 /* Status line format. */
 #define OPTIONS_TABLE_STATUS_FORMAT1 \
-	"#[align=left range=left #{status-left-style}]" \
+	"#[align=left range=left #{E:status-left-style}]" \
 	"#[push-default]" \
 	"#{T;=/#{status-left-length}:status-left}" \
 	"#[pop-default]" \
@@ -89,20 +96,20 @@ static const char *options_table_extended_keys_list[] = {
 	"#[list=left-marker]<#[list=right-marker]>#[list=on]" \
 	"#{W:" \
 		"#[range=window|#{window_index} " \
-			"#{window-status-style}" \
+			"#{E:window-status-style}" \
 			"#{?#{&&:#{window_last_flag}," \
-				"#{!=:#{window-status-last-style},default}}, " \
-				"#{window-status-last-style}," \
+				"#{!=:#{E:window-status-last-style},default}}, " \
+				"#{E:window-status-last-style}," \
 			"}" \
 			"#{?#{&&:#{window_bell_flag}," \
-				"#{!=:#{window-status-bell-style},default}}, " \
-				"#{window-status-bell-style}," \
+				"#{!=:#{E:window-status-bell-style},default}}, " \
+				"#{E:window-status-bell-style}," \
 				"#{?#{&&:#{||:#{window_activity_flag}," \
 					     "#{window_silence_flag}}," \
 					"#{!=:" \
-					"#{window-status-activity-style}," \
+					"#{E:window-status-activity-style}," \
 					"default}}, " \
-					"#{window-status-activity-style}," \
+					"#{E:window-status-activity-style}," \
 				"}" \
 			"}" \
 		"]" \
@@ -113,23 +120,23 @@ static const char *options_table_extended_keys_list[] = {
 		"#{?window_end_flag,,#{window-status-separator}}" \
 	"," \
 		"#[range=window|#{window_index} list=focus " \
-			"#{?#{!=:#{window-status-current-style},default}," \
-				"#{window-status-current-style}," \
-				"#{window-status-style}" \
+			"#{?#{!=:#{E:window-status-current-style},default}," \
+				"#{E:window-status-current-style}," \
+				"#{E:window-status-style}" \
 			"}" \
 			"#{?#{&&:#{window_last_flag}," \
-				"#{!=:#{window-status-last-style},default}}, " \
-				"#{window-status-last-style}," \
+				"#{!=:#{E:window-status-last-style},default}}, " \
+				"#{E:window-status-last-style}," \
 			"}" \
 			"#{?#{&&:#{window_bell_flag}," \
-				"#{!=:#{window-status-bell-style},default}}, " \
-				"#{window-status-bell-style}," \
+				"#{!=:#{E:window-status-bell-style},default}}, " \
+				"#{E:window-status-bell-style}," \
 				"#{?#{&&:#{||:#{window_activity_flag}," \
 					     "#{window_silence_flag}}," \
 					"#{!=:" \
-					"#{window-status-activity-style}," \
+					"#{E:window-status-activity-style}," \
 					"default}}, " \
-					"#{window-status-activity-style}," \
+					"#{E:window-status-activity-style}," \
 				"}" \
 			"}" \
 		"]" \
@@ -139,7 +146,7 @@ static const char *options_table_extended_keys_list[] = {
 		"#[norange list=on default]" \
 		"#{?window_end_flag,,#{window-status-separator}}" \
 	"}" \
-	"#[nolist align=right range=right #{status-right-style}]" \
+	"#[nolist align=right range=right #{E:status-right-style}]" \
 	"#[push-default]" \
 	"#{T;=/#{status-right-length}:status-right}" \
 	"#[pop-default]" \
@@ -184,6 +191,8 @@ const struct options_name_map options_other_names[] = {
 	{ "display-panes-color", "display-panes-colour" },
 	{ "display-panes-active-color", "display-panes-active-colour" },
 	{ "clock-mode-color", "clock-mode-colour" },
+	{ "cursor-color", "cursor-colour" },
+	{ "pane-colors", "pane-colours" },
 	{ NULL, NULL }
 };
 
@@ -230,10 +239,25 @@ const struct options_table_entry options_table[] = {
 		  "If empty, no command is run."
 	},
 
+	{ .name = "cursor-colour",
+	  .type = OPTIONS_TABLE_COLOUR,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
+	  .default_num = -1,
+	  .text = "Colour of the cursor."
+	},
+
+	{ .name = "cursor-style",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
+	  .choices = options_table_cursor_style_list,
+	  .default_num = 0,
+	  .text = "Style of the cursor."
+	},
+
 	{ .name = "default-terminal",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SERVER,
-	  .default_str = "screen",
+	  .default_str = TMUX_TERM,
 	  .text = "Default for the 'TERM' environment variable."
 	},
 
@@ -367,7 +391,7 @@ const struct options_table_entry options_table[] = {
 	  .maximum = INT_MAX,
 	  .default_num = 1,
 	  .unit = "milliseconds",
-	  .text = "Maximum time between input to assume it pasting rather "
+	  .text = "Maximum time between input to assume it is pasting rather "
 		  "than typing."
 	},
 
@@ -614,7 +638,7 @@ const struct options_table_entry options_table[] = {
 	  .text = "Formats for the status lines. "
 		  "Each array member is the format for one status line. "
 		  "The default status line is made up of several components "
-		  "which may be configured individually with other option such "
+		  "which may be configured individually with other options such "
 		  "as 'status-left'."
 	},
 
@@ -949,9 +973,10 @@ const struct options_table_entry options_table[] = {
 	{ .name = "pane-border-lines",
 	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_WINDOW,
-	  .choices = options_table_pane_lines_list,
+	  .choices = options_table_pane_border_lines_list,
 	  .default_num = PANE_LINES_SINGLE,
-	  .text = "Type of the pane type lines."
+	  .text = "Type of characters used to draw pane border lines. Some of "
+	          "these are only supported on terminals with UTF-8 support."
 	},
 
 	{ .name = "pane-border-status",
@@ -969,6 +994,41 @@ const struct options_table_entry options_table[] = {
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
 	  .text = "Style of the pane status lines."
+	},
+
+	{ .name = "pane-colours",
+	  .type = OPTIONS_TABLE_COLOUR,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
+	  .default_str = "",
+	  .flags = OPTIONS_TABLE_IS_ARRAY,
+	  .text = "The default colour palette for colours zero to 255."
+	},
+
+	{ .name = "popup-style",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "default",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ",",
+	  .text = "Default style of popups."
+	},
+
+	{ .name = "popup-border-style",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "default",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ",",
+	  .text = "Default style of popup borders."
+	},
+
+	{ .name = "popup-border-lines",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .choices = options_table_popup_border_lines_list,
+	  .default_num = BOX_LINES_SINGLE,
+	  .text = "Type of characters used to draw popup border lines. Some of "
+	          "these are only supported on terminals with UTF-8 support."
 	},
 
 	{ .name = "remain-on-exit",
@@ -1143,8 +1203,11 @@ const struct options_table_entry options_table[] = {
 	OPTIONS_TABLE_HOOK("alert-activity", ""),
 	OPTIONS_TABLE_HOOK("alert-bell", ""),
 	OPTIONS_TABLE_HOOK("alert-silence", ""),
+	OPTIONS_TABLE_HOOK("client-active", ""),
 	OPTIONS_TABLE_HOOK("client-attached", ""),
 	OPTIONS_TABLE_HOOK("client-detached", ""),
+ 	OPTIONS_TABLE_HOOK("client-focus-in", ""),
+ 	OPTIONS_TABLE_HOOK("client-focus-out", ""),
 	OPTIONS_TABLE_HOOK("client-resized", ""),
 	OPTIONS_TABLE_HOOK("client-session-changed", ""),
 	OPTIONS_TABLE_PANE_HOOK("pane-died", ""),
@@ -1159,10 +1222,10 @@ const struct options_table_entry options_table[] = {
 	OPTIONS_TABLE_HOOK("session-renamed", ""),
 	OPTIONS_TABLE_HOOK("session-window-changed", ""),
 	OPTIONS_TABLE_WINDOW_HOOK("window-layout-changed", ""),
-	OPTIONS_TABLE_WINDOW_HOOK("window-linked", ""),
+	OPTIONS_TABLE_HOOK("window-linked", ""),
 	OPTIONS_TABLE_WINDOW_HOOK("window-pane-changed", ""),
 	OPTIONS_TABLE_WINDOW_HOOK("window-renamed", ""),
-	OPTIONS_TABLE_WINDOW_HOOK("window-unlinked", ""),
+	OPTIONS_TABLE_HOOK("window-unlinked", ""),
 
 	{ .name = NULL }
 };

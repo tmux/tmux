@@ -89,7 +89,7 @@ of the remote name "obsd-tmux", we can now create the master branch from
 % git checkout -b obsd-master obsd-tmux/master
 
 Adding in the fake history points
-================================= 
+=================================
 
 To tie both the "master" branch from "tmux" and the "obsd-master"
 branch from "tmux-openbsd" together, the fake history points added to the

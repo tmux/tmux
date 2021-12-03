@@ -50,6 +50,7 @@ struct job {
 
 	char			*cmd;
 	pid_t			 pid;
+	char		         tty[TTY_NAME_MAX];
 	int			 status;
 
 	int			 fd;
@@ -68,7 +69,7 @@ static LIST_HEAD(joblist, job) all_jobs = LIST_HEAD_INITIALIZER(all_jobs);
 
 /* Start a job running. */
 struct job *
-job_run(const char *cmd, int argc, char **argv, struct session *s,
+job_run(const char *cmd, int argc, char **argv, struct environ *e, struct session *s,
     const char *cwd, job_update_cb updatecb, job_complete_cb completecb,
     job_free_cb freecb, void *data, int flags, int sx, int sy)
 {
@@ -79,13 +80,16 @@ job_run(const char *cmd, int argc, char **argv, struct session *s,
 	const char	 *home;
 	sigset_t	  set, oldset;
 	struct winsize	  ws;
-	char		**argvp;
+	char		**argvp, tty[TTY_NAME_MAX];
 
 	/*
 	 * Do not set TERM during .tmux.conf, it is nice to be able to use
 	 * if-shell to decide on default-terminal based on outside TERM.
 	 */
 	env = environ_for_session(s, !cfg_finished);
+	if (e != NULL) {
+		environ_copy(e, env);
+	}
 
 	sigfillset(&set);
 	sigprocmask(SIG_BLOCK, &set, &oldset);
@@ -94,7 +98,7 @@ job_run(const char *cmd, int argc, char **argv, struct session *s,
 		memset(&ws, 0, sizeof ws);
 		ws.ws_col = sx;
 		ws.ws_row = sy;
-		pid = fdforkpty(ptm_fd, &master, NULL, NULL, &ws);
+		pid = fdforkpty(ptm_fd, &master, tty, NULL, &ws);
 	} else {
 		if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, out) != 0)
 			goto fail;
@@ -136,7 +140,7 @@ job_run(const char *cmd, int argc, char **argv, struct session *s,
 				close(out[1]);
 			close(out[0]);
 
-			nullfd = open(_PATH_DEVNULL, O_RDWR, 0);
+			nullfd = open(_PATH_DEVNULL, O_RDWR);
 			if (nullfd == -1)
 				fatal("open failed");
 			if (dup2(nullfd, STDERR_FILENO) == -1)
@@ -168,6 +172,7 @@ job_run(const char *cmd, int argc, char **argv, struct session *s,
 	else
 		job->cmd = cmd_stringify_argv(argc, argv);
 	job->pid = pid;
+	strlcpy(job->tty, tty, sizeof job->tty);
 	job->status = 0;
 
 	LIST_INSERT_HEAD(&all_jobs, job, entry);
@@ -197,6 +202,32 @@ fail:
 	sigprocmask(SIG_SETMASK, &oldset, NULL);
 	environ_free(env);
 	return (NULL);
+}
+
+/* Take job's file descriptor and free the job. */
+int
+job_transfer(struct job *job, pid_t *pid, char *tty, size_t ttylen)
+{
+	int	fd = job->fd;
+
+	log_debug("transfer job %p: %s", job, job->cmd);
+
+	if (pid != NULL)
+		*pid = job->pid;
+	if (tty != NULL)
+		strlcpy(tty, job->tty, ttylen);
+
+	LIST_REMOVE(job, entry);
+	free(job->cmd);
+
+	if (job->freecb != NULL && job->data != NULL)
+		job->freecb(job->data);
+
+	if (job->event != NULL)
+		bufferevent_free(job->event);
+
+	free(job);
+	return (fd);
 }
 
 /* Kill and free an individual job. */

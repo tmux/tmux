@@ -37,7 +37,7 @@ const struct cmd_entry cmd_load_buffer_entry = {
 	.name = "load-buffer",
 	.alias = "loadb",
 
-	.args = { "b:t:w", 1, 1 },
+	.args = { "b:t:w", 1, 1, NULL },
 	.usage = CMD_BUFFER_USAGE " " CMD_TARGET_CLIENT_USAGE " path",
 
 	.flags = CMD_AFTERHOOK|CMD_CLIENT_TFLAG|CMD_CLIENT_CANFAIL,
@@ -105,7 +105,7 @@ cmd_load_buffer_exec(struct cmd *self, struct cmdq_item *item)
 		cdata->client->references++;
 	}
 
-	path = format_single_from_target(item, args->argv[0]);
+	path = format_single_from_target(item, args_string(args, 0));
 	file_read(cmdq_get_client(item), path, cmd_load_buffer_done, cdata);
 	free(path);
 

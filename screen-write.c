@@ -171,15 +171,6 @@ screen_write_initctx(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx,
 
 	memset(ttyctx, 0, sizeof *ttyctx);
 
-	if (ctx->wp != NULL) {
-		tty_default_colours(&ttyctx->defaults, ctx->wp);
-		ttyctx->palette = ctx->wp->palette;
-	} else {
-		memcpy(&ttyctx->defaults, &grid_default_cell,
-		    sizeof ttyctx->defaults);
-		ttyctx->palette = NULL;
-	}
-
 	ttyctx->s = s;
 	ttyctx->sx = screen_size_x(s);
 	ttyctx->sy = screen_size_y(s);
@@ -189,20 +180,39 @@ screen_write_initctx(struct screen_write_ctx *ctx, struct tty_ctx *ttyctx,
 	ttyctx->orlower = s->rlower;
 	ttyctx->orupper = s->rupper;
 
-	if (ctx->init_ctx_cb != NULL)
+	memcpy(&ttyctx->defaults, &grid_default_cell, sizeof ttyctx->defaults);
+	if (ctx->init_ctx_cb != NULL) {
 		ctx->init_ctx_cb(ctx, ttyctx);
-	else {
+		if (ttyctx->palette != NULL) {
+			if (ttyctx->defaults.fg == 8)
+				ttyctx->defaults.fg = ttyctx->palette->fg;
+			if (ttyctx->defaults.bg == 8)
+				ttyctx->defaults.bg = ttyctx->palette->bg;
+		}
+	} else {
 		ttyctx->redraw_cb = screen_write_redraw_cb;
-		if (ctx->wp == NULL)
-			ttyctx->set_client_cb = NULL;
-		else
+		if (ctx->wp != NULL) {
+			tty_default_colours(&ttyctx->defaults, ctx->wp);
+			ttyctx->palette = &ctx->wp->palette;
 			ttyctx->set_client_cb = screen_write_set_client_cb;
-		ttyctx->arg = ctx->wp;
+			ttyctx->arg = ctx->wp;
+		}
 	}
 
-	if (ctx->wp != NULL &&
-	    (~ctx->flags & SCREEN_WRITE_SYNC) &&
-	    (sync || ctx->wp != ctx->wp->window->active)) {
+	if (~ctx->flags & SCREEN_WRITE_SYNC) {
+		/*
+		 * For the active pane or for an overlay (no pane), we want to
+		 * only use synchronized updates if requested (commands that
+		 * move the cursor); for other panes, always use it, since the
+		 * cursor will have to move.
+		 */
+		if (ctx->wp != NULL) {
+			if (ctx->wp != ctx->wp->window->active)
+				ttyctx->num = 1;
+			else
+				ttyctx->num = sync;
+		} else
+			ttyctx->num = 0x10|sync;
 		tty_write(tty_cmd_syncstart, ttyctx);
 		ctx->flags |= SCREEN_WRITE_SYNC;
 	}
@@ -596,7 +606,7 @@ screen_write_hline(struct screen_write_ctx *ctx, u_int nx, int left, int right)
 	screen_write_set_cursor(ctx, cx, cy);
 }
 
-/* Draw a horizontal line on screen. */
+/* Draw a vertical line on screen. */
 void
 screen_write_vline(struct screen_write_ctx *ctx, u_int ny, int top, int bottom)
 {
@@ -637,9 +647,8 @@ screen_write_menu(struct screen_write_ctx *ctx, struct menu *menu,
 
 	memcpy(&default_gc, &grid_default_cell, sizeof default_gc);
 
-	screen_write_box(ctx, menu->width + 4, menu->count + 2);
-	screen_write_cursormove(ctx, cx + 2, cy, 0);
-	format_draw(ctx, &default_gc, menu->width, menu->title, NULL);
+	screen_write_box(ctx, menu->width + 4, menu->count + 2,
+	    BOX_LINES_DEFAULT, &default_gc, menu->title);
 
 	for (i = 0; i < menu->count; i++) {
 		name = menu->items[i].name;
@@ -656,10 +665,12 @@ screen_write_menu(struct screen_write_ctx *ctx, struct menu *menu,
 			if (*name == '-') {
 				name++;
 				default_gc.attr |= GRID_ATTR_DIM;
-				format_draw(ctx, gc, menu->width, name, NULL);
+				format_draw(ctx, gc, menu->width, name, NULL,
+				    0);
 				default_gc.attr &= ~GRID_ATTR_DIM;
 			} else
-				format_draw(ctx, gc, menu->width, name, NULL);
+				format_draw(ctx, gc, menu->width, name, NULL,
+				    gc == choice_gc);
 			gc = &default_gc;
 		}
 	}
@@ -667,38 +678,95 @@ screen_write_menu(struct screen_write_ctx *ctx, struct menu *menu,
 	screen_write_set_cursor(ctx, cx, cy);
 }
 
+static void
+screen_write_box_border_set(enum box_lines box_lines, int cell_type,
+    struct grid_cell *gc)
+{
+	switch (box_lines) {
+        case BOX_LINES_NONE:
+		break;
+        case BOX_LINES_DOUBLE:
+                gc->attr &= ~GRID_ATTR_CHARSET;
+                utf8_copy(&gc->data, tty_acs_double_borders(cell_type));
+		break;
+        case BOX_LINES_HEAVY:
+                gc->attr &= ~GRID_ATTR_CHARSET;
+                utf8_copy(&gc->data, tty_acs_heavy_borders(cell_type));
+		break;
+        case BOX_LINES_ROUNDED:
+                gc->attr &= ~GRID_ATTR_CHARSET;
+                utf8_copy(&gc->data, tty_acs_rounded_borders(cell_type));
+		break;
+        case BOX_LINES_SIMPLE:
+                gc->attr &= ~GRID_ATTR_CHARSET;
+                utf8_set(&gc->data, SIMPLE_BORDERS[cell_type]);
+                break;
+        case BOX_LINES_PADDED:
+                gc->attr &= ~GRID_ATTR_CHARSET;
+                utf8_set(&gc->data, PADDED_BORDERS[cell_type]);
+                break;
+	case BOX_LINES_SINGLE:
+	case BOX_LINES_DEFAULT:
+		gc->attr |= GRID_ATTR_CHARSET;
+		utf8_set(&gc->data, CELL_BORDERS[cell_type]);
+		break;
+	}
+}
+
 /* Draw a box on screen. */
 void
-screen_write_box(struct screen_write_ctx *ctx, u_int nx, u_int ny)
+screen_write_box(struct screen_write_ctx *ctx, u_int nx, u_int ny,
+    enum box_lines lines, const struct grid_cell *gcp, const char *title)
 {
 	struct screen		*s = ctx->s;
-	struct grid_cell	 gc;
+	struct grid_cell         gc;
 	u_int			 cx, cy, i;
 
 	cx = s->cx;
 	cy = s->cy;
 
-	memcpy(&gc, &grid_default_cell, sizeof gc);
+	if (gcp != NULL)
+		memcpy(&gc, gcp, sizeof gc);
+	else
+		memcpy(&gc, &grid_default_cell, sizeof gc);
+
 	gc.attr |= GRID_ATTR_CHARSET;
+	gc.flags |= GRID_FLAG_NOPALETTE;
 
-	screen_write_putc(ctx, &gc, 'l');
+	/* Draw top border */
+	screen_write_box_border_set(lines, CELL_TOPLEFT, &gc);
+	screen_write_cell(ctx, &gc);
+	screen_write_box_border_set(lines, CELL_LEFTRIGHT, &gc);
 	for (i = 1; i < nx - 1; i++)
-		screen_write_putc(ctx, &gc, 'q');
-	screen_write_putc(ctx, &gc, 'k');
+		screen_write_cell(ctx, &gc);
+	screen_write_box_border_set(lines, CELL_TOPRIGHT, &gc);
+	screen_write_cell(ctx, &gc);
 
+	/* Draw bottom border */
 	screen_write_set_cursor(ctx, cx, cy + ny - 1);
-	screen_write_putc(ctx, &gc, 'm');
+	screen_write_box_border_set(lines, CELL_BOTTOMLEFT, &gc);
+	screen_write_cell(ctx, &gc);
+	screen_write_box_border_set(lines, CELL_LEFTRIGHT, &gc);
 	for (i = 1; i < nx - 1; i++)
-		screen_write_putc(ctx, &gc, 'q');
-	screen_write_putc(ctx, &gc, 'j');
+		screen_write_cell(ctx, &gc);
+	screen_write_box_border_set(lines, CELL_BOTTOMRIGHT, &gc);
+	screen_write_cell(ctx, &gc);
 
+	/* Draw sides */
+	screen_write_box_border_set(lines, CELL_TOPBOTTOM, &gc);
 	for (i = 1; i < ny - 1; i++) {
+		/* left side */
 		screen_write_set_cursor(ctx, cx, cy + i);
-		screen_write_putc(ctx, &gc, 'x');
-	}
-	for (i = 1; i < ny - 1; i++) {
+		screen_write_cell(ctx, &gc);
+		/* right side */
 		screen_write_set_cursor(ctx, cx + nx - 1, cy + i);
-		screen_write_putc(ctx, &gc, 'x');
+		screen_write_cell(ctx, &gc);
+	}
+
+	if (title != NULL) {
+		gc.attr &= ~GRID_ATTR_CHARSET;
+		screen_write_cursormove(ctx, cx + 2, cy, 0);
+		format_draw(ctx, &gc, nx - 4, title, NULL, 0);
 	}
 
 	screen_write_set_cursor(ctx, cx, cy);
@@ -1423,6 +1491,18 @@ screen_write_clearhistory(struct screen_write_ctx *ctx)
 	grid_clear_history(ctx->s->grid);
 }
 
+/* Force a full redraw. */
+void
+screen_write_fullredraw(struct screen_write_ctx *ctx)
+{
+	struct tty_ctx	 ttyctx;
+
+	screen_write_collect_flush(ctx, 0, __func__);
+
+	screen_write_initctx(ctx, &ttyctx, 1);
+	ttyctx.redraw_cb(&ttyctx);
+}
+
 /* Trim collected items. */
 static struct screen_write_citem *
 screen_write_collect_trim(struct screen_write_ctx *ctx, u_int y, u_int x,
@@ -1726,6 +1806,8 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 {
 	struct screen		*s = ctx->s;
 	struct grid		*gd = s->grid;
+	const struct utf8_data	*ud = &gc->data;
+	const struct utf8_data	 zwj = { "\342\200\215", 0, 3, 0 };
 	struct grid_line	*gl;
 	struct grid_cell_entry	*gce;
 	struct grid_cell 	 tmp_gc, now_gc;
@@ -1738,10 +1820,32 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	if (gc->flags & GRID_FLAG_PADDING)
 		return;
 
-	/* If the width is zero, combine onto the previous character. */
-	if (width == 0) {
+	/*
+	 * If this is a zero width joiner, set the flag so the next character
+	 * will be treated as zero width and appended. Note that we assume a
+	 * ZWJ will not change the width - the width of the first character is
+	 * used.
+	 */
+	if (ud->size == 3 && memcmp(ud->data, "\342\200\215", 3) == 0) {
+		log_debug("zero width joiner at %u,%u", s->cx, s->cy);
+		ctx->flags |= SCREEN_WRITE_ZWJ;
+		return;
+	}
+
+	/*
+	 * If the width is zero, combine onto the previous character. We always
+	 * combine with the cell to the left of the cursor position. In theory,
+	 * the application could have moved the cursor somewhere else, but if
+	 * they are silly enough to do that, who cares?
+	 */
+	if (ctx->flags & SCREEN_WRITE_ZWJ) {
 		screen_write_collect_flush(ctx, 0, __func__);
-		if ((gc = screen_write_combine(ctx, &gc->data, &xx)) != 0) {
+		screen_write_combine(ctx, &zwj, &xx);
+	}
+	if (width == 0 || (ctx->flags & SCREEN_WRITE_ZWJ)) {
+		ctx->flags &= ~SCREEN_WRITE_ZWJ;
+		screen_write_collect_flush(ctx, 0, __func__);
+		if ((gc = screen_write_combine(ctx, ud, &xx)) != NULL) {
 			cx = s->cx; cy = s->cy;
 			screen_write_set_cursor(ctx, xx, s->cy);
 			screen_write_initctx(ctx, &ttyctx, 0);

@@ -29,7 +29,7 @@ uname -sp && tmux -V && echo $TERM
 
 Also include:
 
-- Your platform (Linux, OS X, or whatever).
+- Your platform (Linux, macOS, or whatever).
 
 - A brief description of the problem with steps to reproduce.
 
@@ -37,7 +37,8 @@ Also include:
 
 - Your terminal, and `$TERM` inside and outside of tmux.
 
-- Logs from tmux (see below).
+- Logs from tmux (see below). Please attach logs to the issue directly rather
+  than using a download site or pastebin. Put in a zip file if necessary.
 
 - At most one or two screenshots, if helpful.
 

@@ -34,7 +34,7 @@ const struct cmd_entry cmd_rename_session_entry = {
 	.name = "rename-session",
 	.alias = "rename",
 
-	.args = { "t:", 1, 1 },
+	.args = { "t:", 1, 1, NULL },
 	.usage = CMD_TARGET_SESSION_USAGE " new-name",
 
 	.target = { 't', CMD_FIND_SESSION, 0 },
@@ -51,8 +51,13 @@ cmd_rename_session_exec(struct cmd *self, struct cmdq_item *item)
 	struct session		*s = target->s;
 	char			*newname, *tmp;
 
-	tmp = format_single_from_target(item, args->argv[0]);
+	tmp = format_single_from_target(item, args_string(args, 0));
 	newname = session_check_name(tmp);
+	if (newname == NULL) {
+		cmdq_error(item, "invalid session: %s", tmp);
+		free(tmp);
+		return (CMD_RETURN_ERROR);
+	}
 	free(tmp);
 	if (strcmp(newname, s->name) == 0) {
 		free(newname);

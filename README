@@ -4,7 +4,7 @@ tmux is a terminal multiplexer: it enables a number of terminals to be created,
 accessed, and controlled from a single screen. tmux may be detached from a
 screen and continue running in the background, then later reattached.
 
-This release runs on OpenBSD, FreeBSD, NetBSD, Linux, OS X and Solaris.
+This release runs on OpenBSD, FreeBSD, NetBSD, Linux, macOS and Solaris.
 
 * Dependencies
 
@@ -54,6 +54,14 @@ source tree with:
 	$ nroff -mdoc tmux.1|less
 
 A small example configuration is in example_tmux.conf.
+
+Other documentation is available in the wiki:
+
+	https://github.com/tmux/tmux/wiki
+
+Also see the tmux FAQ at:
+
+	https://github.com/tmux/tmux/wiki/FAQ
 
 A bash(1) completion file is at:
 

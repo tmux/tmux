@@ -38,9 +38,9 @@ const struct cmd_entry cmd_new_window_entry = {
 	.name = "new-window",
 	.alias = "neww",
 
-	.args = { "abc:de:F:kn:PSt:", 0, -1 },
+	.args = { "abc:de:F:kn:PSt:", 0, -1, NULL },
 	.usage = "[-abdkPS] [-c start-directory] [-e environment] [-F format] "
-		 "[-n window-name] " CMD_TARGET_WINDOW_USAGE " [command]",
+		 "[-n window-name] " CMD_TARGET_WINDOW_USAGE " [shell-command]",
 
 	.target = { 't', CMD_FIND_WINDOW, CMD_FIND_WINDOW_INDEX },
 
@@ -55,16 +55,15 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct client		*c = cmdq_get_client(item);
 	struct cmd_find_state	*current = cmdq_get_current(item);
 	struct cmd_find_state	*target = cmdq_get_target(item);
-	struct spawn_context	 sc;
+	struct spawn_context	 sc = { 0 };
 	struct client		*tc = cmdq_get_target_client(item);
 	struct session		*s = target->s;
-	struct winlink		*wl = target->wl;
+	struct winlink		*wl = target->wl, *new_wl = NULL;
 	int			 idx = target->idx, before;
-	struct winlink		*new_wl = NULL;
 	char			*cause = NULL, *cp;
-	const char		*template, *add, *name;
+	const char		*template, *name;
 	struct cmd_find_state	 fs;
-	struct args_value	*value;
+	struct args_value	*av;
 
 	/*
 	 * If -S and -n are given and -t is not and a single window with this
@@ -94,7 +93,6 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 		}
 	}
 
-
 	before = args_has(args, 'b');
 	if (args_has(args, 'a') || before) {
 		idx = winlink_shuffle_up(s, wl, before);
@@ -102,20 +100,18 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 			idx = target->idx;
 	}
 
-	memset(&sc, 0, sizeof sc);
 	sc.item = item;
 	sc.s = s;
 	sc.tc = tc;
 
 	sc.name = args_get(args, 'n');
-	sc.argc = args->argc;
-	sc.argv = args->argv;
+	args_to_vector(args, &sc.argc, &sc.argv);
 	sc.environ = environ_create();
 
-	add = args_first_value(args, 'e', &value);
-	while (add != NULL) {
-		environ_put(sc.environ, add, 0);
-		add = args_next_value(&value);
+	av = args_first_value(args, 'e');
+	while (av != NULL) {
+		environ_put(sc.environ, av->string, 0);
+		av = args_next_value(av);
 	}
 
 	sc.idx = idx;
@@ -130,6 +126,9 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	if ((new_wl = spawn_window(&sc, &cause)) == NULL) {
 		cmdq_error(item, "create window failed: %s", cause);
 		free(cause);
+		if (sc.argv != NULL)
+			cmd_free_argv(sc.argc, sc.argv);
+		environ_free(sc.environ);
 		return (CMD_RETURN_ERROR);
 	}
 	if (!args_has(args, 'd') || new_wl == s->curw) {
@@ -150,6 +149,8 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	cmd_find_from_winlink(&fs, new_wl, 0);
 	cmdq_insert_hook(s, item, &fs, "after-new-window");
 
+	if (sc.argv != NULL)
+		cmd_free_argv(sc.argc, sc.argv);
 	environ_free(sc.environ);
 	return (CMD_RETURN_NORMAL);
 }

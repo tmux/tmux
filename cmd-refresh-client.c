@@ -34,7 +34,7 @@ const struct cmd_entry cmd_refresh_client_entry = {
 	.name = "refresh-client",
 	.alias = "refresh",
 
-	.args = { "A:B:cC:Df:F:lLRSt:U", 0, 1 },
+	.args = { "A:B:cC:Df:F:lLRSt:U", 0, 1, NULL },
 	.usage = "[-cDlLRSU] [-A pane:state] [-B name:what:format] "
 		 "[-C XxY] [-f flags] " CMD_TARGET_CLIENT_USAGE " [adjustment]",
 
@@ -77,6 +77,58 @@ out:
 	free(copy);
 }
 
+static enum cmd_retval
+cmd_refresh_client_control_client_size(struct cmd *self, struct cmdq_item *item)
+{
+	struct args		*args = cmd_get_args(self);
+	struct client		*tc = cmdq_get_target_client(item);
+	const char		*size = args_get(args, 'C');
+	u_int			 w, x, y;
+	struct client_window	*cw;
+
+	if (sscanf(size, "@%u:%ux%u", &w, &x, &y) == 3) {
+		if (x < WINDOW_MINIMUM || x > WINDOW_MAXIMUM ||
+		    y < WINDOW_MINIMUM || y > WINDOW_MAXIMUM) {
+			cmdq_error(item, "size too small or too big");
+			return (CMD_RETURN_ERROR);
+		}
+		log_debug("%s: client %s window @%u: size %ux%u", __func__,
+		    tc->name, w, x, y);
+		cw = server_client_add_client_window(tc, w);
+		cw->sx = x;
+		cw->sy = y;
+		tc->flags |= CLIENT_WINDOWSIZECHANGED;
+		recalculate_sizes_now(1);
+		return (CMD_RETURN_NORMAL);
+	}
+	if (sscanf(size, "@%u:", &w) == 1) {
+		cw = server_client_get_client_window(tc, w);
+		if (cw != NULL) {
+			log_debug("%s: client %s window @%u: no size", __func__,
+			    tc->name, w);
+			cw->sx = 0;
+			cw->sy = 0;
+			recalculate_sizes_now(1);
+		}
+		return (CMD_RETURN_NORMAL);
+	}
+
+	if (sscanf(size, "%u,%u", &x, &y) != 2 &&
+	    sscanf(size, "%ux%u", &x, &y) != 2) {
+		cmdq_error(item, "bad size argument");
+		return (CMD_RETURN_ERROR);
+	}
+	if (x < WINDOW_MINIMUM || x > WINDOW_MAXIMUM ||
+	    y < WINDOW_MINIMUM || y > WINDOW_MAXIMUM) {
+		cmdq_error(item, "size too small or too big");
+		return (CMD_RETURN_ERROR);
+	}
+	tty_set_size(&tc->tty, x, y, 0, 0);
+	tc->flags |= CLIENT_SIZECHANGED;
+	recalculate_sizes_now(1);
+	return (CMD_RETURN_NORMAL);
+}
+
 static void
 cmd_refresh_client_update_offset(struct client *tc, const char *value)
 {
@@ -117,8 +169,8 @@ cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 	struct client		*tc = cmdq_get_target_client(item);
 	struct tty		*tty = &tc->tty;
 	struct window		*w;
-	const char		*size, *errstr, *value;
-	u_int			 x, y, adjust;
+	const char		*errstr;
+	u_int			 adjust;
 	struct args_value	*av;
 
 	if (args_has(args, 'c') ||
@@ -127,10 +179,11 @@ cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 	    args_has(args, 'U') ||
 	    args_has(args, 'D'))
 	{
-		if (args->argc == 0)
+		if (args_count(args) == 0)
 			adjust = 1;
 		else {
-			adjust = strtonum(args->argv[0], 1, INT_MAX, &errstr);
+			adjust = strtonum(args_string(args, 0), 1, INT_MAX,
+			    &errstr);
 			if (errstr != NULL) {
 				cmdq_error(item, "adjustment %s", errstr);
 				return (CMD_RETURN_ERROR);
@@ -184,41 +237,27 @@ cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'A')) {
 		if (~tc->flags & CLIENT_CONTROL)
 			goto not_control_client;
-		value = args_first_value(args, 'A', &av);
-		while (value != NULL) {
-			cmd_refresh_client_update_offset(tc, value);
-			value = args_next_value(&av);
+		av = args_first_value(args, 'A');
+		while (av != NULL) {
+			cmd_refresh_client_update_offset(tc, av->string);
+			av = args_next_value(av);
 		}
 		return (CMD_RETURN_NORMAL);
 	}
 	if (args_has(args, 'B')) {
 		if (~tc->flags & CLIENT_CONTROL)
 			goto not_control_client;
-		value = args_first_value(args, 'B', &av);
-		while (value != NULL) {
-			cmd_refresh_client_update_subscription(tc, value);
-			value = args_next_value(&av);
+		av = args_first_value(args, 'B');
+		while (av != NULL) {
+			cmd_refresh_client_update_subscription(tc, av->string);
+			av = args_next_value(av);
 		}
 		return (CMD_RETURN_NORMAL);
 	}
 	if (args_has(args, 'C')) {
 		if (~tc->flags & CLIENT_CONTROL)
 			goto not_control_client;
-		size = args_get(args, 'C');
-		if (sscanf(size, "%u,%u", &x, &y) != 2 &&
-		    sscanf(size, "%ux%u", &x, &y) != 2) {
-			cmdq_error(item, "bad size argument");
-			return (CMD_RETURN_ERROR);
-		}
-		if (x < WINDOW_MINIMUM || x > WINDOW_MAXIMUM ||
-		    y < WINDOW_MINIMUM || y > WINDOW_MAXIMUM) {
-			cmdq_error(item, "size too small or too big");
-			return (CMD_RETURN_ERROR);
-		}
-		tty_set_size(&tc->tty, x, y, 0, 0);
-		tc->flags |= CLIENT_SIZECHANGED;
-		recalculate_sizes_now(1);
-		return (CMD_RETURN_NORMAL);
+		return (cmd_refresh_client_control_client_size(self, item));
 	}
 
 	if (args_has(args, 'S')) {

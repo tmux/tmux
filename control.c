@@ -385,7 +385,7 @@ control_pause_pane(struct client *c, struct window_pane *wp)
 }
 
 /* Write a line. */
-static void
+static void printflike(2, 0)
 control_vwrite(struct client *c, const char *fmt, va_list ap)
 {
 	struct control_state	*cs = c->control_state;
@@ -664,7 +664,7 @@ control_write_pending(struct client *c, struct control_pane *cp, size_t limit)
 	uint64_t		 age, t = get_timer();
 
 	wp = control_window_pane(c, cp->pane);
-	if (wp == NULL) {
+	if (wp == NULL || wp->fd == -1) {
 		TAILQ_FOREACH_SAFE(cb, &cp->blocks, entry, cb1) {
 			TAILQ_REMOVE(&cp->blocks, cb, entry);
 			control_free_block(cs, cb);
@@ -864,7 +864,7 @@ control_check_subs_pane(struct client *c, struct control_sub *csub)
 	struct control_sub_pane	*csp, find;
 
 	wp = window_pane_find_by_id(csub->id);
-	if (wp == NULL)
+	if (wp == NULL || wp->fd == -1)
 		return;
 	w = wp->window;
 

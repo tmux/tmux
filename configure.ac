@@ -1,6 +1,6 @@
 # configure.ac
 
-AC_INIT([tmux], next-3.3)
+AC_INIT([tmux], next-3.4)
 AC_PREREQ([2.60])
 
 AC_CONFIG_AUX_DIR(etc)
@@ -24,11 +24,11 @@ SAVED_LDFLAGS="$LDFLAGS"
 # Is this oss-fuzz build?
 AC_ARG_ENABLE(
 	fuzzing,
-	AC_HELP_STRING(--enable-fuzzing, build fuzzers)
+	AS_HELP_STRING(--enable-fuzzing, build fuzzers)
 )
 AC_ARG_VAR(
 	FUZZING_LIBS,
-	AC_HELP_STRING(libraries to link fuzzing targets with)
+	AS_HELP_STRING(libraries to link fuzzing targets with)
 )
 
 # Set up convenient fuzzing defaults before initializing compiler.
@@ -59,20 +59,35 @@ test "$sysconfdir" = '${prefix}/etc' && sysconfdir=/etc
 case "x$VERSION" in xnext*) enable_debug=yes;; esac
 AC_ARG_ENABLE(
 	debug,
-	AC_HELP_STRING(--enable-debug, enable debug build flags),
+	AS_HELP_STRING(--enable-debug, enable debug build flags),
 )
 AM_CONDITIONAL(IS_DEBUG, test "x$enable_debug" = xyes)
 
 # Is this a static build?
 AC_ARG_ENABLE(
 	static,
-	AC_HELP_STRING(--enable-static, create a static build)
+	AS_HELP_STRING(--enable-static, create a static build)
 )
 if test "x$enable_static" = xyes; then
 	test "x$PKG_CONFIG" != x && PKG_CONFIG="$PKG_CONFIG --static"
 	AM_LDFLAGS="-static $AM_LDFLAGS"
 	LDFLAGS="$AM_LDFLAGS $SAVED_LDFLAGS"
 fi
+
+# Allow default TERM to be set.
+AC_ARG_WITH(
+	TERM,
+	AS_HELP_STRING(--with-TERM, set default TERM),
+	[DEFAULT_TERM=$withval],
+	[DEFAULT_TERM=]
+)
+case "x$DEFAULT_TERM" in
+	xscreen*|xtmux*|x)
+	;;
+	*)
+		AC_MSG_ERROR("unsuitable TERM (must be screen* or tmux*)")
+	;;
+esac
 
 # Do we need fuzzers?
 AM_CONDITIONAL(NEED_FUZZING, test "x$enable_fuzzing" = xyes)
@@ -156,11 +171,12 @@ AC_FUNC_STRNLEN
 # Check if strtonum works.
 AC_MSG_CHECKING([for working strtonum])
 AC_RUN_IFELSE([AC_LANG_PROGRAM(
-         [#include <stdlib.h>],
-         [return (strtonum("0", 0, 1, NULL) == 0 ? 0 : 1);]
-	 )],
-	 [AC_DEFINE(HAVE_STRTONUM) AC_MSG_RESULT(yes)],
-	 [AC_LIBOBJ(strtonum) AC_MSG_RESULT(no)]
+		[#include <stdlib.h>],
+		[return (strtonum("0", 0, 1, NULL) == 0 ? 0 : 1);]
+	)],
+	[AC_DEFINE(HAVE_STRTONUM) AC_MSG_RESULT(yes)],
+	[AC_LIBOBJ(strtonum) AC_MSG_RESULT(no)],
+	[AC_LIBOBJ(strtonum) AC_MSG_RESULT(no)]
 )
 
 # Clang sanitizers wrap reallocarray even if it isn't available on the target
@@ -298,6 +314,7 @@ if test "x$found_ncurses" = xno; then
 	fi
 fi
 if test "x$found_ncurses" = xyes; then
+	CPPFLAGS="$CPPFLAGS -DHAVE_NCURSES_H"
 	AC_DEFINE(HAVE_NCURSES_H)
 else
 	AC_CHECK_LIB(
@@ -313,6 +330,7 @@ else
 	)
 	if test "x$found_curses" = xyes; then
 		LIBS="$LIBS -lcurses"
+		CPPFLAGS="$CPPFLAGS -DHAVE_CURSES_H"
 		AC_DEFINE(HAVE_CURSES_H)
 	else
 		AC_MSG_ERROR("curses not found")
@@ -322,7 +340,7 @@ fi
 # Look for utempter.
 AC_ARG_ENABLE(
 	utempter,
-	AC_HELP_STRING(--enable-utempter, use utempter if it is installed)
+	AS_HELP_STRING(--enable-utempter, use utempter if it is installed)
 )
 if test "x$enable_utempter" = xyes; then
 	AC_CHECK_HEADER(utempter.h, enable_utempter=yes, enable_utempter=no)
@@ -344,7 +362,7 @@ fi
 # Look for utf8proc.
 AC_ARG_ENABLE(
 	utf8proc,
-	AC_HELP_STRING(--enable-utf8proc, use utf8proc if it is installed)
+	AS_HELP_STRING(--enable-utf8proc, use utf8proc if it is installed)
 )
 if test "x$enable_utf8proc" = xyes; then
 	AC_CHECK_HEADER(utf8proc.h, enable_utf8proc=yes, enable_utf8proc=no)
@@ -366,13 +384,15 @@ AM_CONDITIONAL(HAVE_UTF8PROC, [test "x$enable_utf8proc" = xyes])
 
 # Check for b64_ntop. If we have b64_ntop, we assume b64_pton as well.
 AC_MSG_CHECKING(for b64_ntop)
-AC_TRY_LINK(
+	AC_LINK_IFELSE([AC_LANG_PROGRAM(
 	[
 		#include <sys/types.h>
 		#include <netinet/in.h>
 		#include <resolv.h>
 	],
-	[b64_ntop(NULL, 0, NULL, 0);],
+	[
+		b64_ntop(NULL, 0, NULL, 0);
+	])],
 	found_b64_ntop=yes,
 	found_b64_ntop=no
 )
@@ -381,13 +401,15 @@ OLD_LIBS="$LIBS"
 if test "x$found_b64_ntop" = xno; then
 	AC_MSG_CHECKING(for b64_ntop with -lresolv)
 	LIBS="$OLD_LIBS -lresolv"
-	AC_TRY_LINK(
+	AC_LINK_IFELSE([AC_LANG_PROGRAM(
 		[
 			#include <sys/types.h>
 			#include <netinet/in.h>
 			#include <resolv.h>
 		],
-		[b64_ntop(NULL, 0, NULL, 0);],
+		[
+			b64_ntop(NULL, 0, NULL, 0);
+		])],
 		found_b64_ntop=yes,
 		found_b64_ntop=no
 	)
@@ -396,13 +418,15 @@ fi
 if test "x$found_b64_ntop" = xno; then
 	AC_MSG_CHECKING(for b64_ntop with -lnetwork)
 	LIBS="$OLD_LIBS -lnetwork"
-	AC_TRY_LINK(
+	AC_LINK_IFELSE([AC_LANG_PROGRAM(
 		[
 			#include <sys/types.h>
 			#include <netinet/in.h>
 			#include <resolv.h>
 		],
-		[b64_ntop(NULL, 0, NULL, 0);],
+		[
+			b64_ntop(NULL, 0, NULL, 0);
+		])],
 		found_b64_ntop=yes,
 		found_b64_ntop=no
 	)
@@ -599,7 +623,7 @@ AC_CHECK_DECL(
 )
 AC_CHECK_DECL(
 	TAILQ_PREV,
-	found_queue_h=yes,
+	,
 	found_queue_h=no,
 	[#include <sys/queue.h>]
 )
@@ -672,6 +696,74 @@ else
 	AC_MSG_RESULT(no)
 fi
 
+# Try to figure out what the best value for TERM might be.
+if test "x$DEFAULT_TERM" = x; then
+	DEFAULT_TERM=screen
+	AC_MSG_CHECKING(TERM)
+	AC_RUN_IFELSE([AC_LANG_SOURCE(
+		[
+			#include <stdio.h>
+			#include <stdlib.h>
+			#if defined(HAVE_CURSES_H)
+			#include <curses.h>
+			#elif defined(HAVE_NCURSES_H)
+			#include <ncurses.h>
+			#endif
+			#include <term.h>
+			int main(void) {
+				if (setupterm("screen-256color", -1, NULL) != OK)
+					exit(1);
+				exit(0);
+			}
+		 ])],
+		 [DEFAULT_TERM=screen-256color],
+		 ,
+		 [DEFAULT_TERM=screen]
+	)
+	AC_RUN_IFELSE([AC_LANG_SOURCE(
+		[
+			#include <stdio.h>
+			#include <stdlib.h>
+			#if defined(HAVE_CURSES_H)
+			#include <curses.h>
+			#elif defined(HAVE_NCURSES_H)
+			#include <ncurses.h>
+			#endif
+			#include <term.h>
+			int main(void) {
+				if (setupterm("tmux", -1, NULL) != OK)
+					exit(1);
+				exit(0);
+			}
+		 ])],
+		 [DEFAULT_TERM=tmux],
+		 ,
+		 [DEFAULT_TERM=screen]
+	)
+	AC_RUN_IFELSE([AC_LANG_SOURCE(
+		[
+			#include <stdio.h>
+			#include <stdlib.h>
+			#if defined(HAVE_CURSES_H)
+			#include <curses.h>
+			#elif defined(HAVE_NCURSES_H)
+			#include <ncurses.h>
+			#endif
+			#include <term.h>
+			int main(void) {
+				if (setupterm("tmux-256color", -1, NULL) != OK)
+					exit(1);
+				exit(0);
+			}
+		 ])],
+		 [DEFAULT_TERM=tmux-256color],
+		 ,
+		 [DEFAULT_TERM=screen]
+	)
+	AC_MSG_RESULT($DEFAULT_TERM)
+fi
+AC_SUBST(DEFAULT_TERM)
+
 # Man page defaults to mdoc.
 MANFORMAT=mdoc
 AC_SUBST(MANFORMAT)
@@ -687,19 +779,32 @@ case "$host_os" in
 		AC_MSG_RESULT(darwin)
 		PLATFORM=darwin
 		#
-		# OS X uses __dead2 instead of __dead, like FreeBSD. But it
-		# defines __dead away so it needs to be removed before we can
-		# replace it.
+		# macOS uses __dead2 instead of __dead, like FreeBSD. But it defines
+		# __dead away so it needs to be removed before we can replace it.
 		#
 		AC_DEFINE(BROKEN___DEAD)
 		#
-		# OS X CMSG_FIRSTHDR is broken, so redefine it with a working
-		# one. daemon works but has some stupid side effects, so use
-		# our internal version which has a workaround.
+		# macOS CMSG_FIRSTHDR is broken, so redefine it with a working one.
+		# daemon works but has some stupid side effects, so use our internal
+		# version which has a workaround.
 		#
 		AC_DEFINE(BROKEN_CMSG_FIRSTHDR)
 		AC_LIBOBJ(daemon)
 		AC_LIBOBJ(daemon-darwin)
+		#
+		# macOS wcwidth(3) is bad, so complain and suggest using utf8proc
+		# instead.
+		#
+		if test "x$enable_utf8proc" = x; then
+			AC_MSG_NOTICE([])
+			AC_MSG_NOTICE([	   macOS library support for Unicode is very poor,])
+			AC_MSG_NOTICE([	   particularly for complex codepoints like emojis;])
+			AC_MSG_NOTICE([	   to use these correctly, configuring with])
+			AC_MSG_NOTICE([	   --enable-utf8proc is recommended. To build])
+			AC_MSG_NOTICE([	   without anyway, use --disable-utf8proc])
+			AC_MSG_NOTICE([])
+			AC_MSG_ERROR([must give --enable-utf8proc or --disable-utf8proc])
+		fi
 		;;
 	*dragonfly*)
 		AC_MSG_RESULT(dragonfly)
@@ -779,4 +884,5 @@ AC_SUBST(AM_LDFLAGS)
 LDFLAGS="$SAVED_LDFLAGS"
 
 # autoconf should create a Makefile.
-AC_OUTPUT(Makefile)
+AC_CONFIG_FILES(Makefile)
+AC_OUTPUT

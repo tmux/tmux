@@ -33,7 +33,7 @@ const struct cmd_entry cmd_set_buffer_entry = {
 	.name = "set-buffer",
 	.alias = "setb",
 
-	.args = { "ab:t:n:w", 0, 1 },
+	.args = { "ab:t:n:w", 0, 1, NULL },
 	.usage = "[-aw] " CMD_BUFFER_USAGE " [-n new-buffer-name] "
 	         CMD_TARGET_CLIENT_USAGE " data",
 
@@ -45,7 +45,7 @@ const struct cmd_entry cmd_delete_buffer_entry = {
 	.name = "delete-buffer",
 	.alias = "deleteb",
 
-	.args = { "b:", 0, 0 },
+	.args = { "b:", 0, 0, NULL },
 	.usage = CMD_BUFFER_USAGE,
 
 	.flags = CMD_AFTERHOOK,
@@ -94,11 +94,11 @@ cmd_set_buffer_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 	}
 
-	if (args->argc != 1) {
+	if (args_count(args) != 1) {
 		cmdq_error(item, "no data specified");
 		return (CMD_RETURN_ERROR);
 	}
-	if ((newsize = strlen(args->argv[0])) == 0)
+	if ((newsize = strlen(args_string(args, 0))) == 0)
 		return (CMD_RETURN_NORMAL);
 
 	bufsize = 0;
@@ -111,7 +111,7 @@ cmd_set_buffer_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	bufdata = xrealloc(bufdata, bufsize + newsize);
-	memcpy(bufdata + bufsize, args->argv[0], newsize);
+	memcpy(bufdata + bufsize, args_string(args, 0), newsize);
 	bufsize += newsize;
 
 	if (paste_set(bufdata, bufsize, bufname, &cause) != 0) {

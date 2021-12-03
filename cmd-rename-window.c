@@ -33,7 +33,7 @@ const struct cmd_entry cmd_rename_window_entry = {
 	.name = "rename-window",
 	.alias = "renamew",
 
-	.args = { "t:", 1, 1 },
+	.args = { "t:", 1, 1, NULL },
 	.usage = CMD_TARGET_WINDOW_USAGE " new-name",
 
 	.target = { 't', CMD_FIND_WINDOW, 0 },
@@ -50,7 +50,7 @@ cmd_rename_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct winlink		*wl = target->wl;
 	char			*newname;
 
-	newname = format_single_from_target(item, args->argv[0]);
+	newname = format_single_from_target(item, args_string(args, 0));
 	window_set_name(wl->window, newname);
 	options_set_number(wl->window->options, "automatic-rename", 0);
 

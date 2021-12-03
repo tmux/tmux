@@ -7,11 +7,12 @@ TERM=screen
 TMUX="$TEST_TMUX -Ltest"
 $TMUX kill-server 2>/dev/null
 
-$TMUX -vv new -d
+$TMUX new -d
 $TMUX set -g remain-on-exit on
 
 do_test() {
 	$TMUX splitw "printf '$1'"
+	sleep 0.25
 	c="$($TMUX display -p '#{pane_bg}')"
 	$TMUX kill-pane
 	[ "$c" != "$2" ] && return 1

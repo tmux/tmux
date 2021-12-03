@@ -33,7 +33,7 @@ const struct cmd_entry cmd_kill_server_entry = {
 	.name = "kill-server",
 	.alias = NULL,
 
-	.args = { "", 0, 0 },
+	.args = { "", 0, 0, NULL },
 	.usage = "",
 
 	.flags = 0,
@@ -44,7 +44,7 @@ const struct cmd_entry cmd_start_server_entry = {
 	.name = "start-server",
 	.alias = "start",
 
-	.args = { "", 0, 0 },
+	.args = { "", 0, 0, NULL },
 	.usage = "",
 
 	.flags = CMD_STARTSERVER,

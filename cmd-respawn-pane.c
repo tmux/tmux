@@ -34,9 +34,9 @@ const struct cmd_entry cmd_respawn_pane_entry = {
 	.name = "respawn-pane",
 	.alias = "respawnp",
 
-	.args = { "c:e:kt:", 0, -1 },
+	.args = { "c:e:kt:", 0, -1, NULL },
 	.usage = "[-k] [-c start-directory] [-e environment] "
-		 CMD_TARGET_PANE_USAGE " [command]",
+		 CMD_TARGET_PANE_USAGE " [shell-command]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -49,31 +49,26 @@ cmd_respawn_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
 	struct cmd_find_state	*target = cmdq_get_target(item);
-	struct spawn_context	 sc;
+	struct spawn_context	 sc = { 0 };
 	struct session		*s = target->s;
 	struct winlink		*wl = target->wl;
 	struct window_pane	*wp = target->wp;
 	char			*cause = NULL;
-	const char		*add;
-	struct args_value	*value;
+	struct args_value	*av;
 
-	memset(&sc, 0, sizeof sc);
 	sc.item = item;
 	sc.s = s;
 	sc.wl = wl;
 
 	sc.wp0 = wp;
-	sc.lc = NULL;
 
-	sc.name = NULL;
-	sc.argc = args->argc;
-	sc.argv = args->argv;
+	args_to_vector(args, &sc.argc, &sc.argv);
 	sc.environ = environ_create();
 
-	add = args_first_value(args, 'e', &value);
-	while (add != NULL) {
-		environ_put(sc.environ, add, 0);
-		add = args_next_value(&value);
+	av = args_first_value(args, 'e');
+	while (av != NULL) {
+		environ_put(sc.environ, av->string, 0);
+		av = args_next_value(av);
 	}
 
 	sc.idx = -1;
@@ -86,6 +81,9 @@ cmd_respawn_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (spawn_pane(&sc, &cause) == NULL) {
 		cmdq_error(item, "respawn pane failed: %s", cause);
 		free(cause);
+		if (sc.argv != NULL)
+			cmd_free_argv(sc.argc, sc.argv);
+		environ_free(sc.environ);
 		return (CMD_RETURN_ERROR);
 	}
 
@@ -93,6 +91,8 @@ cmd_respawn_pane_exec(struct cmd *self, struct cmdq_item *item)
 	server_redraw_window_borders(wp->window);
 	server_status_window(wp->window);
 
+	if (sc.argv != NULL)
+		cmd_free_argv(sc.argc, sc.argv);
 	environ_free(sc.environ);
 	return (CMD_RETURN_NORMAL);
 }
