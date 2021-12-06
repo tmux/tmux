@@ -248,7 +248,14 @@ utf8_width(struct utf8_data *ud, int *width)
 	 * to the terminal without tmux.
 	 */
 	if (*width < 0) {
+#ifdef HAVE_UTF8PROC
 		*width = 1;
+#else
+		/* C1 control characters are non-printable, so they are always
+		 * zero width. (This is true of C0 control characters as well,
+		 * but they are handled separately from text already.) */
+		*width = (wc >= 0x80 && wc <= 0x9f) ? 0 : 1;
+#endif
 		return (UTF8_DONE);
 	}
 #endif
