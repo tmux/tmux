@@ -2505,7 +2505,8 @@ input_osc_colour_reply(struct input_ctx *ictx, u_int n, int c)
 	    end = "\007";
     else
 	    end = "\033\\";
-    input_reply(ictx, "\033]%u;rgb:%02hhx/%02hhx/%02hhx%s", n, r, g, b, end);
+    input_reply(ictx, "\033]%u;rgb:%02hhx%02hhx/%02hhx%02hhx/%02hhx%02hhx%s",
+	n, r, r, g, g, b, b, end);
 }
 
 /* Handle the OSC 4 sequence for setting (multiple) palette entries. */
@@ -2529,6 +2530,12 @@ input_osc_4(struct input_ctx *ictx, const char *p)
 		}
 
 		s = strsep(&next, ";");
+		if (strcmp(s, "?") == 0) {
+			c = colour_palette_get(ictx->palette, idx);
+			if (c != -1)
+				input_osc_colour_reply(ictx, 4, c);
+			continue;
+		}
 		if ((c = input_osc_parse_colour(s)) == -1) {
 			s = next;
 			continue;
