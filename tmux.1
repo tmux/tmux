@@ -1034,7 +1034,7 @@ The following commands are available to manage clients and sessions:
 .Op Fl f Ar flags
 .Op Fl t Ar target-session
 .Xc
-.D1 (alias: Ic attach )
+.D1 Pq alias: Ic attach
 If run from outside
 .Nm ,
 create a new client in the current terminal and attach it to
@@ -1121,7 +1121,7 @@ option will not be applied.
 .Op Fl s Ar target-session
 .Op Fl t Ar target-client
 .Xc
-.D1 (alias: Ic detach )
+.D1 Pq alias: Ic detach
 Detach the current client if bound to a key, the client specified with
 .Fl t ,
 or all clients currently attached to the session specified by
@@ -1143,7 +1143,7 @@ run
 to replace the client.
 .Tg has
 .It Ic has-session Op Fl t Ar target-session
-.D1 (alias: Ic has )
+.D1 Pq alias: Ic has
 Report an error and exit with 1 if the specified session does not exist.
 If it does exist, exit with 0.
 .It Ic kill-server
@@ -1168,7 +1168,7 @@ session.
 .Op Fl F Ar format
 .Op Fl t Ar target-session
 .Xc
-.D1 (alias: Ic lsc )
+.D1 Pq alias: Ic lsc
 List all clients attached to the server.
 For the meaning of the
 .Fl F
@@ -1183,7 +1183,7 @@ is specified, list only clients connected to that session.
 .Op Fl F Ar format
 .Op Ar command
 .Xc
-.D1 (alias: Ic lscm )
+.D1 Pq alias: Ic lscm
 List the syntax of
 .Ar command
 or - if omitted - of all commands supported by
@@ -1193,7 +1193,7 @@ or - if omitted - of all commands supported by
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Xc
-.D1 (alias: Ic ls )
+.D1 Pq alias: Ic ls
 List all sessions managed by the server.
 .Fl F
 specifies the format of each line and
@@ -1205,7 +1205,7 @@ See the
 section.
 .Tg lockc
 .It Ic lock-client Op Fl t Ar target-client
-.D1 (alias: Ic lockc )
+.D1 Pq alias: Ic lockc
 Lock
 .Ar target-client ,
 see the
@@ -1213,7 +1213,7 @@ see the
 command.
 .Tg locks
 .It Ic lock-session Op Fl t Ar target-session
-.D1 (alias: Ic locks )
+.D1 Pq alias: Ic locks
 Lock all clients attached to
 .Ar target-session .
 .Tg new
@@ -1230,7 +1230,7 @@ Lock all clients attached to
 .Op Fl y Ar height
 .Op Ar shell-command
 .Xc
-.D1 (alias: Ic new )
+.D1 Pq alias: Ic new
 Create a new session with name
 .Ar session-name .
 .Pp
@@ -1346,7 +1346,7 @@ specified multiple times.
 .Op Fl t Ar target-client
 .Op Ar adjustment
 .Xc
-.D1 (alias: Ic refresh )
+.D1 Pq alias: Ic refresh
 Refresh the current client if bound to a key, or a single client if one is given
 with
 .Fl t .
@@ -1477,7 +1477,7 @@ option.
 .Op Fl t Ar target-session
 .Ar new-name
 .Xc
-.D1 (alias: Ic rename )
+.D1 Pq alias: Ic rename
 Rename the session to
 .Ar new-name .
 .Tg showmsgs
@@ -1485,7 +1485,7 @@ Rename the session to
 .Op Fl JT
 .Op Fl t Ar target-client
 .Xc
-.D1 (alias: Ic showmsgs )
+.D1 Pq alias: Ic showmsgs
 Show server messages or information.
 Messages are stored, up to a maximum of the limit set by the
 .Ar message-limit
@@ -1500,7 +1500,7 @@ show debugging information about jobs and terminals.
 .Ar path
 .Ar ...
 .Xc
-.D1 (alias: Ic source )
+.D1 Pq alias: Ic source
 Execute commands from one or more files specified by
 .Ar path
 (which may be
@@ -1523,7 +1523,7 @@ the file is parsed but no commands are executed.
 shows the parsed commands and line numbers if possible.
 .Tg start
 .It Ic start-server
-.D1 (alias: Ic start )
+.D1 Pq alias: Ic start
 Start the
 .Nm
 server, if not already running, without creating any sessions.
@@ -1542,7 +1542,7 @@ $ tmux start \\; show -g
 .It Xo Ic suspend-client
 .Op Fl t Ar target-client
 .Xc
-.D1 (alias: Ic suspendc )
+.D1 Pq alias: Ic suspendc
 Suspend a client by sending
 .Dv SIGTSTP
 (tty stop).
@@ -1553,7 +1553,7 @@ Suspend a client by sending
 .Op Fl t Ar target-session
 .Op Fl T Ar key-table
 .Xc
-.D1 (alias: Ic switchc )
+.D1 Pq alias: Ic switchc
 Switch the current session for client
 .Ar target-client
 to
@@ -1945,7 +1945,7 @@ Commands related to windows and panes are as follows:
 .Op Fl s Ar src-pane
 .Op Fl t Ar dst-window
 .Xc
-.D1 (alias: Ic breakp )
+.D1 Pq alias: Ic breakp
 Break
 .Ar src-pane
 off from its containing window to make it the only pane in
@@ -1974,7 +1974,7 @@ but a different format may be specified with
 .Op Fl S Ar start-line
 .Op Fl t Ar target-pane
 .Xc
-.D1 (alias: Ic capturep )
+.D1 Pq alias: Ic capturep
 Capture the contents of a pane.
 If
 .Fl p
@@ -2226,7 +2226,7 @@ This command works only if at least one client is attached.
 .Op Fl t Ar target-client
 .Op Ar template
 .Xc
-.D1 (alias: Ic displayp )
+.D1 Pq alias: Ic displayp
 Display a visible indicator of each pane shown by
 .Ar target-client .
 See the
@@ -2266,7 +2266,7 @@ other commands are not blocked from running until the indicator is closed.
 .Op Fl t Ar target-pane
 .Ar match-string
 .Xc
-.D1 (alias: Ic findw )
+.D1 Pq alias: Ic findw
 Search for a
 .Xr fnmatch 3
 pattern or, with
@@ -2296,7 +2296,7 @@ This command works only if at least one client is attached.
 .Op Fl s Ar src-pane
 .Op Fl t Ar dst-pane
 .Xc
-.D1 (alias: Ic joinp )
+.D1 Pq alias: Ic joinp
 Like
 .Ic split-window ,
 but instead of splitting
@@ -2324,7 +2324,7 @@ the marked pane is used rather than the current pane.
 .Op Fl a
 .Op Fl t Ar target-pane
 .Xc
-.D1 (alias: Ic killp )
+.D1 Pq alias: Ic killp
 Destroy the given pane.
 If no panes remain in the containing window, it is also destroyed.
 The
@@ -2336,7 +2336,7 @@ option kills all but the pane given with
 .Op Fl a
 .Op Fl t Ar target-window
 .Xc
-.D1 (alias: Ic killw )
+.D1 Pq alias: Ic killw
 Kill the current window or the window at
 .Ar target-window ,
 removing it from any sessions to which it is linked.
@@ -2349,7 +2349,7 @@ option kills all but the window given with
 .Op Fl deZ
 .Op Fl t Ar target-window
 .Xc
-.D1 (alias: Ic lastp )
+.D1 Pq alias: Ic lastp
 Select the last (previously selected) pane.
 .Fl Z
 keeps the window zoomed if it was zoomed.
@@ -2359,7 +2359,7 @@ enables or
 disables input to the pane.
 .Tg last
 .It Ic last-window Op Fl t Ar target-session
-.D1 (alias: Ic last )
+.D1 Pq alias: Ic last
 Select the last (previously selected) window.
 If no
 .Ar target-session
@@ -2370,7 +2370,7 @@ is specified, select the last window of the current session.
 .Op Fl s Ar src-window
 .Op Fl t Ar dst-window
 .Xc
-.D1 (alias: Ic linkw )
+.D1 Pq alias: Ic linkw
 Link the window at
 .Ar src-window
 to the specified
@@ -2402,7 +2402,7 @@ is given, the newly linked window is not selected.
 .Op Fl f Ar filter
 .Op Fl t Ar target
 .Xc
-.D1 (alias: Ic lsp )
+.D1 Pq alias: Ic lsp
 If
 .Fl a
 is given,
@@ -2431,7 +2431,7 @@ section.
 .Op Fl f Ar filter
 .Op Fl t Ar target-session
 .Xc
-.D1 (alias: Ic lsw )
+.D1 Pq alias: Ic lsw
 If
 .Fl a
 is given, list all windows on the server.
@@ -2452,7 +2452,7 @@ section.
 .Op Fl s Ar src-pane
 .Op Fl t Ar dst-pane
 .Xc
-.D1 (alias: Ic movep )
+.D1 Pq alias: Ic movep
 Does the same as
 .Ic join-pane .
 .Tg movew
@@ -2461,7 +2461,7 @@ Does the same as
 .Op Fl s Ar src-window
 .Op Fl t Ar dst-window
 .Xc
-.D1 (alias: Ic movew )
+.D1 Pq alias: Ic movew
 This is similar to
 .Ic link-window ,
 except the window at
@@ -2484,7 +2484,7 @@ option.
 .Op Fl t Ar target-window
 .Op Ar shell-command
 .Xc
-.D1 (alias: Ic neww )
+.D1 Pq alias: Ic neww
 Create a new window.
 With
 .Fl a
@@ -2559,14 +2559,14 @@ but a different format may be specified with
 .Fl F .
 .Tg nextl
 .It Ic next-layout Op Fl t Ar target-window
-.D1 (alias: Ic nextl )
+.D1 Pq alias: Ic nextl
 Move a window to the next layout and rearrange the panes to fit.
 .Tg next
 .It Xo Ic next-window
 .Op Fl a
 .Op Fl t Ar target-session
 .Xc
-.D1 (alias: Ic next )
+.D1 Pq alias: Ic next
 Move to the next window in the session.
 If
 .Fl a
@@ -2577,7 +2577,7 @@ is used, move to the next window with an alert.
 .Op Fl t Ar target-pane
 .Op Ar shell-command
 .Xc
-.D1 (alias: Ic pipep )
+.D1 Pq alias: Ic pipep
 Pipe output sent by the program in
 .Ar target-pane
 to a shell command or vice versa.
@@ -2624,14 +2624,14 @@ bind-key C-p pipe-pane -o 'cat >>~/output.#I-#P'
 .It Xo Ic previous-layout
 .Op Fl t Ar target-window
 .Xc
-.D1 (alias: Ic prevl )
+.D1 Pq alias: Ic prevl
 Move to the previous layout in the session.
 .Tg prev
 .It Xo Ic previous-window
 .Op Fl a
 .Op Fl t Ar target-session
 .Xc
-.D1 (alias: Ic prev )
+.D1 Pq alias: Ic prev
 Move to the previous window in the session.
 With
 .Fl a ,
@@ -2641,7 +2641,7 @@ move to the previous window with an alert.
 .Op Fl t Ar target-window
 .Ar new-name
 .Xc
-.D1 (alias: Ic renamew )
+.D1 Pq alias: Ic renamew
 Rename the current window, or the window at
 .Ar target-window
 if specified, to
@@ -2654,7 +2654,7 @@ if specified, to
 .Op Fl y Ar height
 .Op Ar adjustment
 .Xc
-.D1 (alias: Ic resizep )
+.D1 Pq alias: Ic resizep
 Resize a pane, up, down, left or right by
 .Ar adjustment
 with
@@ -2699,7 +2699,7 @@ history to replace them.
 .Op Fl y Ar height
 .Op Ar adjustment
 .Xc
-.D1 (alias: Ic resizew )
+.D1 Pq alias: Ic resizew
 Resize a window, up, down, left or right by
 .Ar adjustment
 with
@@ -2732,7 +2732,7 @@ to manual in the window options.
 .Op Fl t Ar target-pane
 .Op Ar shell-command
 .Xc
-.D1 (alias: Ic respawnp )
+.D1 Pq alias: Ic respawnp
 Reactivate a pane in which the command has exited (see the
 .Ic remain-on-exit
 window option).
@@ -2758,7 +2758,7 @@ command.
 .Op Fl t Ar target-window
 .Op Ar shell-command
 .Xc
-.D1 (alias: Ic respawnw )
+.D1 Pq alias: Ic respawnw
 Reactivate a window in which the command has exited (see the
 .Ic remain-on-exit
 window option).
@@ -2781,7 +2781,7 @@ command.
 .Op Fl DUZ
 .Op Fl t Ar target-window
 .Xc
-.D1 (alias: Ic rotatew )
+.D1 Pq alias: Ic rotatew
 Rotate the positions of the panes within a window, either upward (numerically
 lower) with
 .Fl U
@@ -2794,7 +2794,7 @@ keeps the window zoomed if it was zoomed.
 .Op Fl t Ar target-pane
 .Op Ar layout-name
 .Xc
-.D1 (alias: Ic selectl )
+.D1 Pq alias: Ic selectl
 Choose a specific layout for a window.
 If
 .Ar layout-name
@@ -2817,7 +2817,7 @@ spreads the current pane and any panes next to it out evenly.
 .Op Fl T Ar title
 .Op Fl t Ar target-pane
 .Xc
-.D1 (alias: Ic selectp )
+.D1 Pq alias: Ic selectp
 Make pane
 .Ar target-pane
 the active pane in its window.
@@ -2861,7 +2861,7 @@ and
 .Op Fl lnpT
 .Op Fl t Ar target-window
 .Xc
-.D1 (alias: Ic selectw )
+.D1 Pq alias: Ic selectw
 Select the window at
 .Ar target-window .
 .Fl l ,
@@ -2889,7 +2889,7 @@ the command behaves like
 .Op Ar shell-command
 .Op Fl F Ar format
 .Xc
-.D1 (alias: Ic splitw )
+.D1 Pq alias: Ic splitw
 Create a new pane by splitting
 .Ar target-pane :
 .Fl h
@@ -2946,7 +2946,7 @@ command.
 .Op Fl s Ar src-pane
 .Op Fl t Ar dst-pane
 .Xc
-.D1 (alias: Ic swapp )
+.D1 Pq alias: Ic swapp
 Swap two panes.
 If
 .Fl U
@@ -2975,7 +2975,7 @@ the marked pane is used rather than the current pane.
 .Op Fl s Ar src-window
 .Op Fl t Ar dst-window
 .Xc
-.D1 (alias: Ic swapw )
+.D1 Pq alias: Ic swapw
 This is similar to
 .Ic link-window ,
 except the source and destination windows are swapped.
@@ -2996,7 +2996,7 @@ the window containing the marked pane is used rather than the current window.
 .Op Fl k
 .Op Fl t Ar target-window
 .Xc
-.D1 (alias: Ic unlinkw )
+.D1 Pq alias: Ic unlinkw
 Unlink
 .Ar target-window .
 Unless
@@ -3069,7 +3069,7 @@ Commands related to key bindings are as follows:
 .Op Fl T Ar key-table
 .Ar key command Op Ar arguments
 .Xc
-.D1 (alias: Ic bind )
+.D1 Pq alias: Ic bind
 Bind key
 .Ar key
 to
@@ -3127,7 +3127,7 @@ command.
 .Op Fl P Ar prefix-string Fl T Ar key-table
 .Op Ar key
 .Xc
-.D1 (alias: Ic lsk )
+.D1 Pq alias: Ic lsk
 List key bindings.
 There are two forms: the default lists keys as
 .Ic bind-key
@@ -3164,7 +3164,7 @@ lists the command for keys that do not have a note rather than skipping them.
 .Op Fl t Ar target-pane
 .Ar key Ar ...
 .Xc
-.D1 (alias: Ic send )
+.D1 Pq alias: Ic send
 Send a key or keys to a window.
 Each argument
 .Ar key
@@ -3215,7 +3215,7 @@ the secondary prefix key, to a window as if it was pressed.
 .Op Fl T Ar key-table
 .Ar key
 .Xc
-.D1 (alias: Ic unbind )
+.D1 Pq alias: Ic unbind
 Unbind the command bound to
 .Ar key .
 .Fl n
@@ -3311,7 +3311,7 @@ Commands which set options are as follows:
 .Op Fl t Ar target-pane
 .Ar option Ar value
 .Xc
-.D1 (alias: Ic set )
+.D1 Pq alias: Ic set
 Set a pane option with
 .Fl p ,
 a window option with
@@ -3386,7 +3386,7 @@ the result would be the default background and a blue foreground.
 .Op Fl t Ar target-pane
 .Op Ar option
 .Xc
-.D1 (alias: Ic show )
+.D1 Pq alias: Ic show
 Show the pane options (or a single option if
 .Ar option
 is provided) with
@@ -4427,7 +4427,8 @@ uses when the colour with that index is requested.
 The index may be from zero to 255.
 .Pp
 .It Ic cursor-style Ar style
-Set the style of the cursor. Available styles are:
+Set the style of the cursor.
+Available styles are:
 .Ic default ,
 .Ic blinking-block ,
 .Ic block ,
@@ -5425,7 +5426,7 @@ Commands to alter and view the environment are:
 .Op Fl t Ar target-session
 .Ar name Op Ar value
 .Xc
-.D1 (alias: Ic setenv )
+.D1 Pq alias: Ic setenv
 Set or unset an environment variable.
 If
 .Fl g
@@ -5451,7 +5452,7 @@ marks the variable as hidden.
 .Op Fl t Ar target-session
 .Op Ar variable
 .Xc
-.D1 (alias: Ic showenv )
+.D1 Pq alias: Ic showenv
 Display the environment for
 .Ar target-session
 or the global environment with
@@ -5534,7 +5535,7 @@ Commands related to the status line are as follows:
 .It Xo Ic clear-prompt-history
 .Op Fl T Ar prompt-type
 .Xc
-.D1 (alias: Ic clrphist)
+.D1 Pq alias: Ic clrphist
 Clear status prompt history for prompt type
 .Ar prompt-type .
 If
@@ -5660,7 +5661,7 @@ until it is dismissed.
 .Op Fl t Ar target-client
 .Ar command
 .Xc
-.D1 (alias: Ic confirm )
+.D1 Pq alias: Ic confirm
 Ask for confirmation before executing
 .Ar command .
 If
@@ -5689,7 +5690,7 @@ until it is dismissed.
 .Ar command
 .Ar ...
 .Xc
-.D1 (alias: Ic menu )
+.D1 Pq alias: Ic menu
 Display a menu on
 .Ar target-client .
 .Ar target-pane
@@ -5776,7 +5777,7 @@ The following keys are also available:
 .Op Fl t Ar target-pane
 .Op Ar message
 .Xc
-.D1 (alias: Ic display )
+.D1 Pq alias: Ic display
 Display a message.
 If
 .Fl p
@@ -5827,7 +5828,7 @@ forwards any input read from stdin to the empty pane given by
 .Op Fl y Ar position
 .Op Ar shell-command
 .Xc
-.D1 (alias: Ic popup )
+.D1 Pq alias: Ic popup
 Display a popup running
 .Ar shell-command
 on
@@ -5900,7 +5901,7 @@ flag closes any popup on the client.
 .It Xo Ic show-prompt-history
 .Op Fl T Ar prompt-type
 .Xc
-.D1 (alias: Ic showphist)
+.D1 Pq alias: Ic showphist
 Display status prompt history for prompt type
 .Ar prompt-type .
 If
@@ -6028,11 +6029,11 @@ starts without the preview.
 This command works only if at least one client is attached.
 .Tg clearhist
 .It Ic clear-history Op Fl t Ar target-pane
-.D1 (alias: Ic clearhist )
+.D1 Pq alias: Ic clearhist
 Remove and free the history for the specified pane.
 .Tg deleteb
 .It Ic delete-buffer Op Fl b Ar buffer-name
-.D1 (alias: Ic deleteb )
+.D1 Pq alias: Ic deleteb
 Delete the buffer named
 .Ar buffer-name ,
 or the most recently added automatically named buffer if not specified.
@@ -6041,7 +6042,7 @@ or the most recently added automatically named buffer if not specified.
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Xc
-.D1 (alias: Ic lsb )
+.D1 Pq alias: Ic lsb
 List the global buffers.
 .Fl F
 specifies the format of each line and
@@ -6058,7 +6059,7 @@ section.
 .Ar path
 .Xc
 .Tg loadb
-.D1 (alias: Ic loadb )
+.D1 Pq alias: Ic loadb
 Load the contents of the specified paste buffer from
 .Ar path .
 If
@@ -6075,7 +6076,7 @@ escape sequence, if possible.
 .Op Fl s Ar separator
 .Op Fl t Ar target-pane
 .Xc
-.D1 (alias: Ic pasteb )
+.D1 Pq alias: Ic pasteb
 Insert the contents of a paste buffer into the specified pane.
 If not specified, paste into the current one.
 With
@@ -6099,7 +6100,7 @@ buffer if the application has requested bracketed paste mode.
 .Op Fl b Ar buffer-name
 .Ar path
 .Xc
-.D1 (alias: Ic saveb )
+.D1 Pq alias: Ic saveb
 Save the contents of the specified paste buffer to
 .Ar path .
 The
@@ -6113,7 +6114,7 @@ option appends to rather than overwriting the file.
 .Op Fl n Ar new-buffer-name
 .Ar data
 .Xc
-.D1 (alias: Ic setb )
+.D1 Pq alias: Ic setb
 Set the contents of the specified buffer to
 .Ar data .
 If
@@ -6134,7 +6135,7 @@ option renames the buffer to
 .It Xo Ic show-buffer
 .Op Fl b Ar buffer-name
 .Xc
-.D1 (alias: Ic showb )
+.D1 Pq alias: Ic showb
 Display the contents of the specified buffer.
 .El
 .Sh MISCELLANEOUS
@@ -6149,7 +6150,7 @@ Display a large clock.
 .Ar shell-command command
 .Op Ar command
 .Xc
-.D1 (alias: Ic if )
+.D1 Pq alias: Ic if
 Execute the first
 .Ar command
 if
@@ -6176,7 +6177,7 @@ is not executed but considered success if neither empty nor zero (after formats
 are expanded).
 .Tg lock
 .It Ic lock-server
-.D1 (alias: Ic lock )
+.D1 Pq alias: Ic lock
 Lock each client individually by running the command specified by the
 .Ic lock-command
 option.
@@ -6187,7 +6188,7 @@ option.
 .Op Fl t Ar target-pane
 .Op Ar shell-command
 .Xc
-.D1 (alias: Ic run )
+.D1 Pq alias: Ic run
 Execute
 .Ar shell-command
 or (with
@@ -6219,7 +6220,7 @@ If the command fails, the exit status is also displayed.
 .Op Fl L | S | U
 .Ar channel
 .Xc
-.D1 (alias: Ic wait )
+.D1 Pq alias: Ic wait
 When used without options, prevents the client from exiting until woken using
 .Ic wait-for
 .Fl S

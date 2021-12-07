@@ -18,6 +18,7 @@
 
 #include <sys/param.h>	/* MAXCOMLEN */
 #include <sys/types.h>
+#include <sys/signal.h>
 #include <sys/proc.h>
 #include <sys/sysctl.h>
 #include <sys/stat.h>

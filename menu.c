@@ -89,22 +89,26 @@ menu_add_item(struct menu *menu, const struct menu_item *item,
 		keylen = strlen(key) + 3; /* 3 = space and two brackets */
 
 		/*
-		 * Only add the key if there is space for the entire item text
-		 * and the key.
+		 * Add the key if it is shorter than a quarter of the available
+		 * space or there is space for the entire item text and the
+		 * key.
 		 */
-		if (keylen >= max_width || slen >= max_width - keylen)
+		if (keylen <= max_width / 4)
+			max_width -= keylen;
+		else if (keylen >= max_width || slen >= max_width - keylen)
 			key = NULL;
 	}
 
-	if (key != NULL)
-		xasprintf(&name, "%s#[default] #[align=right](%s)", s, key);
-	else {
-		if (slen > max_width) {
-			max_width--;
-			suffix = ">";
-		}
-		xasprintf(&name, "%.*s%s", (int)max_width, s, suffix);
+	if (slen > max_width) {
+		max_width--;
+		suffix = ">";
 	}
+	if (key != NULL)
+		xasprintf(&name, "%.*s%s#[default] #[align=right](%s)",
+		    (int)max_width, s, suffix, key);
+	else
+		xasprintf(&name, "%.*s%s", (int)max_width, s, suffix);
+
 	new_item->name = name;
 	free(s);
 

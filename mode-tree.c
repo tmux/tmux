@@ -736,10 +736,8 @@ mode_tree_draw(struct mode_tree_data *mtd)
 	}
 
 	sy = screen_size_y(s);
-	if (!mtd->preview || sy <= 4 || h <= 4 || sy - h <= 4 || w <= 4) {
-		screen_write_stop(&ctx);
-		return;
-	}
+	if (!mtd->preview || sy <= 4 || h <= 4 || sy - h <= 4 || w <= 4)
+		goto done;
 
 	line = &mtd->line_list[mtd->current];
 	mti = line->item;
@@ -783,6 +781,8 @@ mode_tree_draw(struct mode_tree_data *mtd)
 		mtd->drawcb(mtd->modedata, mti->itemdata, &ctx, box_x, box_y);
 	}
 
+done:
+	screen_write_cursormove(&ctx, 0, mtd->current - mtd->offset, 0);
 	screen_write_stop(&ctx);
 }
 
@@ -1055,7 +1055,6 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 	case '\016': /* C-n */
 		mode_tree_down(mtd, 1);
 		break;
-	case 'g':
 	case KEYC_PPAGE:
 	case '\002': /* C-b */
 		for (i = 0; i < mtd->height; i++) {
@@ -1064,7 +1063,6 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 			mode_tree_up(mtd, 1);
 		}
 		break;
-	case 'G':
 	case KEYC_NPAGE:
 	case '\006': /* C-f */
 		for (i = 0; i < mtd->height; i++) {
@@ -1073,10 +1071,12 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 			mode_tree_down(mtd, 1);
 		}
 		break;
+	case 'g':
 	case KEYC_HOME:
 		mtd->current = 0;
 		mtd->offset = 0;
 		break;
+	case 'G':
 	case KEYC_END:
 		mtd->current = mtd->line_size - 1;
 		if (mtd->current > mtd->height - 1)

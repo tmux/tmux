@@ -2382,6 +2382,7 @@ static void
 input_exit_rename(struct input_ctx *ictx)
 {
 	struct window_pane	*wp = ictx->wp;
+	struct window		*w;
 	struct options_entry	*o;
 
 	if (wp == NULL)
@@ -2394,17 +2395,20 @@ input_exit_rename(struct input_ctx *ictx)
 
 	if (!utf8_isvalid(ictx->input_buf))
 		return;
+	w = wp->window;
 
 	if (ictx->input_len == 0) {
-		o = options_get_only(wp->window->options, "automatic-rename");
+		o = options_get_only(w->options, "automatic-rename");
 		if (o != NULL)
 			options_remove_or_default(o, -1, NULL);
-		return;
+		if (!options_get_number(w->options, "automatic-rename"))
+			window_set_name(w, "");
+	} else {
+		options_set_number(w->options, "automatic-rename", 0);
+		window_set_name(w, ictx->input_buf);
 	}
-	window_set_name(wp->window, ictx->input_buf);
-	options_set_number(wp->window->options, "automatic-rename", 0);
-	server_redraw_window_borders(wp->window);
-	server_status_window(wp->window);
+	server_redraw_window_borders(w);
+	server_status_window(w);
 }
 
 /* Open UTF-8 character. */
@@ -2501,7 +2505,8 @@ input_osc_colour_reply(struct input_ctx *ictx, u_int n, int c)
 	    end = "\007";
     else
 	    end = "\033\\";
-    input_reply(ictx, "\033]%u;rgb:%02hhx/%02hhx/%02hhx%s", n, r, g, b, end);
+    input_reply(ictx, "\033]%u;rgb:%02hhx%02hhx/%02hhx%02hhx/%02hhx%02hhx%s",
+	n, r, r, g, g, b, b, end);
 }
 
 /* Handle the OSC 4 sequence for setting (multiple) palette entries. */
@@ -2525,6 +2530,12 @@ input_osc_4(struct input_ctx *ictx, const char *p)
 		}
 
 		s = strsep(&next, ";");
+		if (strcmp(s, "?") == 0) {
+			c = colour_palette_get(ictx->palette, idx);
+			if (c != -1)
+				input_osc_colour_reply(ictx, 4, c);
+			continue;
+		}
 		if ((c = input_osc_parse_colour(s)) == -1) {
 			s = next;
 			continue;

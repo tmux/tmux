@@ -1759,6 +1759,7 @@ struct client {
 #define PROMPT_KEY 0x10
 	int		 prompt_flags;
 	enum prompt_type prompt_type;
+	int              prompt_cursor;
 
 	struct session	*session;
 	struct session	*last_session;
