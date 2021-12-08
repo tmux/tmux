@@ -25,7 +25,7 @@
 
 /* Table mapping ACS entries to UTF-8. */
 struct tty_acs_entry {
-	u_char	 	 key;
+	u_char		 key;
 	const char	*string;
 };
 static const struct tty_acs_entry tty_acs_table[] = {
@@ -61,7 +61,7 @@ static const struct tty_acs_entry tty_acs_table[] = {
 	{ 'x', "\342\224\202" },	/* vertical line */
 	{ 'y', "\342\211\244" },	/* less-than-or-equal-to */
 	{ 'z', "\342\211\245" },	/* greater-than-or-equal-to */
-	{ '{', "\317\200" },   		/* greek pi */
+	{ '{', "\317\200" },		/* greek pi */
 	{ '|', "\342\211\240" },	/* not-equal */
 	{ '}', "\302\243" },		/* UK pound sign */
 	{ '~', "\302\267" }		/* bullet */
@@ -109,6 +109,78 @@ static const struct tty_acs_reverse_entry tty_acs_reverse3[] = {
 	{ "\342\225\251", 'v' },
 	{ "\342\225\254", 'n' },
 };
+
+/* UTF-8 double borders. */
+static const struct utf8_data tty_acs_double_borders_list[] = {
+	{ "", 0, 0, 0 },
+	{ "\342\225\221", 0, 3, 1 }, /* U+2551 */
+	{ "\342\225\220", 0, 3, 1 }, /* U+2550 */
+	{ "\342\225\224", 0, 3, 1 }, /* U+2554 */
+	{ "\342\225\227", 0, 3, 1 }, /* U+2557 */
+	{ "\342\225\232", 0, 3, 1 }, /* U+255A */
+	{ "\342\225\235", 0, 3, 1 }, /* U+255D */
+	{ "\342\225\246", 0, 3, 1 }, /* U+2566 */
+	{ "\342\225\251", 0, 3, 1 }, /* U+2569 */
+	{ "\342\225\240", 0, 3, 1 }, /* U+2560 */
+	{ "\342\225\243", 0, 3, 1 }, /* U+2563 */
+	{ "\342\225\254", 0, 3, 1 }, /* U+256C */
+	{ "\302\267",	  0, 2, 1 }  /* U+00B7 */
+};
+
+/* UTF-8 heavy borders. */
+static const struct utf8_data tty_acs_heavy_borders_list[] = {
+	{ "", 0, 0, 0 },
+	{ "\342\224\203", 0, 3, 1 }, /* U+2503 */
+	{ "\342\224\201", 0, 3, 1 }, /* U+2501 */
+	{ "\342\224\217", 0, 3, 1 }, /* U+250F */
+	{ "\342\224\223", 0, 3, 1 }, /* U+2513 */
+	{ "\342\224\227", 0, 3, 1 }, /* U+2517 */
+	{ "\342\224\233", 0, 3, 1 }, /* U+251B */
+	{ "\342\224\263", 0, 3, 1 }, /* U+2533 */
+	{ "\342\224\273", 0, 3, 1 }, /* U+253B */
+	{ "\342\224\243", 0, 3, 1 }, /* U+2523 */
+	{ "\342\224\253", 0, 3, 1 }, /* U+252B */
+	{ "\342\225\213", 0, 3, 1 }, /* U+254B */
+	{ "\302\267",	  0, 2, 1 }  /* U+00B7 */
+};
+
+/* UTF-8 rounded borders. */
+static const struct utf8_data tty_acs_rounded_borders_list[] = {
+	{ "", 0, 0, 0 },
+	{ "\342\224\202", 0, 3, 1 }, /* U+2502 */
+	{ "\342\224\200", 0, 3, 1 }, /* U+2500 */
+	{ "\342\225\255", 0, 3, 1 }, /* U+256D */
+	{ "\342\225\256", 0, 3, 1 }, /* U+256E */
+	{ "\342\225\260", 0, 3, 1 }, /* U+2570 */
+	{ "\342\225\257", 0, 3, 1 }, /* U+256F */
+	{ "\342\224\263", 0, 3, 1 }, /* U+2533 */
+	{ "\342\224\273", 0, 3, 1 }, /* U+253B */
+	{ "\342\224\243", 0, 3, 1 }, /* U+2523 */
+	{ "\342\224\253", 0, 3, 1 }, /* U+252B */
+	{ "\342\225\213", 0, 3, 1 }, /* U+254B */
+	{ "\302\267",	  0, 2, 1 }  /* U+00B7 */
+};
+
+/* Get cell border character for double style. */
+const struct utf8_data *
+tty_acs_double_borders(int cell_type)
+{
+	return (&tty_acs_double_borders_list[cell_type]);
+}
+
+/* Get cell border character for heavy style. */
+const struct utf8_data *
+tty_acs_heavy_borders(int cell_type)
+{
+	return (&tty_acs_heavy_borders_list[cell_type]);
+}
+
+/* Get cell border character for rounded style. */
+const struct utf8_data *
+tty_acs_rounded_borders(int cell_type)
+{
+	return (&tty_acs_rounded_borders_list[cell_type]);
+}
 
 static int
 tty_acs_cmp(const void *key, const void *value)

@@ -108,6 +108,7 @@ args_value_as_string(struct args_value *value)
 	case ARGS_STRING:
 		return (value->string);
 	}
+	fatalx("unexpected argument type");
 }
 
 /* Create an empty arguments set. */
@@ -753,6 +754,7 @@ args_make_commands(struct args_command_state *state, int argc, char **argv,
 	case CMD_PARSE_SUCCESS:
 		return (pr->cmdlist);
 	}
+	fatalx("invalid parse return state");
 }
 
 /* Free commands state. */

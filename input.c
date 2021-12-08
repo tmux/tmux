@@ -137,10 +137,12 @@ static void	input_reset_cell(struct input_ctx *);
 static void	input_osc_4(struct input_ctx *, const char *);
 static void	input_osc_10(struct input_ctx *, const char *);
 static void	input_osc_11(struct input_ctx *, const char *);
+static void	input_osc_12(struct input_ctx *, const char *);
 static void	input_osc_52(struct input_ctx *, const char *);
 static void	input_osc_104(struct input_ctx *, const char *);
 static void	input_osc_110(struct input_ctx *, const char *);
 static void	input_osc_111(struct input_ctx *, const char *);
+static void	input_osc_112(struct input_ctx *, const char *);
 
 /* Transition entry/exit handlers. */
 static void	input_clear(struct input_ctx *);
@@ -1617,7 +1619,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 	case INPUT_CSI_DECSCUSR:
 		n = input_get(ictx, 0, 0, 0);
 		if (n != -1)
-			screen_set_cursor_style(s, n);
+			screen_set_cursor_style(n, &s->cstyle, &s->mode);
 		break;
 	case INPUT_CSI_XDA:
 		n = input_get(ictx, 0, 0, 0);
@@ -1683,6 +1685,7 @@ input_csi_dispatch_rm_private(struct input_ctx *ictx)
 			break;
 		case 12:
 			screen_write_mode_clear(sctx, MODE_CURSOR_BLINKING);
+			screen_write_mode_set(sctx, MODE_CURSOR_BLINKING_SET);
 			break;
 		case 25:	/* TCEM */
 			screen_write_mode_clear(sctx, MODE_CURSOR);
@@ -1772,6 +1775,7 @@ input_csi_dispatch_sm_private(struct input_ctx *ictx)
 			break;
 		case 12:
 			screen_write_mode_set(sctx, MODE_CURSOR_BLINKING);
+			screen_write_mode_set(sctx, MODE_CURSOR_BLINKING_SET);
 			break;
 		case 25:	/* TCEM */
 			screen_write_mode_set(sctx, MODE_CURSOR);
@@ -2322,8 +2326,7 @@ input_exit_osc(struct input_ctx *ictx)
 		input_osc_11(ictx, p);
 		break;
 	case 12:
-		if (utf8_isvalid(p) && *p != '?') /* ? is colour request */
-			screen_set_cursor_colour(sctx->s, p);
+		input_osc_12(ictx, p);
 		break;
 	case 52:
 		input_osc_52(ictx, p);
@@ -2338,8 +2341,7 @@ input_exit_osc(struct input_ctx *ictx)
 		input_osc_111(ictx, p);
 		break;
 	case 112:
-		if (*p == '\0') /* no arguments allowed */
-			screen_set_cursor_colour(sctx->s, "");
+		input_osc_112(ictx, p);
 		break;
 	default:
 		log_debug("%s: unknown '%u'", __func__, option);
@@ -2392,6 +2394,7 @@ static void
 input_exit_rename(struct input_ctx *ictx)
 {
 	struct window_pane	*wp = ictx->wp;
+	struct window		*w;
 	struct options_entry	*o;
 
 	if (wp == NULL)
@@ -2404,17 +2407,20 @@ input_exit_rename(struct input_ctx *ictx)
 
 	if (!utf8_isvalid(ictx->input_buf))
 		return;
+	w = wp->window;
 
 	if (ictx->input_len == 0) {
-		o = options_get_only(wp->window->options, "automatic-rename");
+		o = options_get_only(w->options, "automatic-rename");
 		if (o != NULL)
 			options_remove_or_default(o, -1, NULL);
-		return;
+		if (!options_get_number(w->options, "automatic-rename"))
+			window_set_name(w, "");
+	} else {
+		options_set_number(w->options, "automatic-rename", 0);
+		window_set_name(w, ictx->input_buf);
 	}
-	window_set_name(wp->window, ictx->input_buf);
-	options_set_number(wp->window->options, "automatic-rename", 0);
-	server_redraw_window_borders(wp->window);
-	server_status_window(wp->window);
+	server_redraw_window_borders(w);
+	server_status_window(w);
 }
 
 /* Open UTF-8 character. */
@@ -2501,7 +2507,9 @@ input_osc_colour_reply(struct input_ctx *ictx, u_int n, int c)
     u_char	 r, g, b;
     const char	*end;
 
-    if (c == 8 || (~c & COLOUR_FLAG_RGB))
+    if (c != -1)
+	    c = colour_force_rgb(c);
+    if (c == -1)
 	    return;
     colour_split_rgb(c, &r, &g, &b);
 
@@ -2509,7 +2517,8 @@ input_osc_colour_reply(struct input_ctx *ictx, u_int n, int c)
 	    end = "\007";
     else
 	    end = "\033\\";
-    input_reply(ictx, "\033]%u;rgb:%02hhx/%02hhx/%02hhx%s", n, r, g, b, end);
+    input_reply(ictx, "\033]%u;rgb:%02hhx%02hhx/%02hhx%02hhx/%02hhx%02hhx%s",
+	n, r, r, g, g, b, b, end);
 }
 
 /* Handle the OSC 4 sequence for setting (multiple) palette entries. */
@@ -2533,6 +2542,12 @@ input_osc_4(struct input_ctx *ictx, const char *p)
 		}
 
 		s = strsep(&next, ";");
+		if (strcmp(s, "?") == 0) {
+			c = colour_palette_get(ictx->palette, idx);
+			if (c != -1)
+				input_osc_colour_reply(ictx, 4, c);
+			continue;
+		}
 		if ((c = input_osc_parse_colour(s)) == -1) {
 			s = next;
 			continue;
@@ -2576,7 +2591,7 @@ input_osc_10(struct input_ctx *ictx, const char *p)
 	}
 }
 
-/* Handle the OSC 110 sequence for resetting background colour. */
+/* Handle the OSC 110 sequence for resetting foreground colour. */
 static void
 input_osc_110(struct input_ctx *ictx, const char *p)
 {
@@ -2635,6 +2650,39 @@ input_osc_111(struct input_ctx *ictx, const char *p)
 		screen_write_fullredraw(&ictx->ctx);
 	}
 }
+
+/* Handle the OSC 12 sequence for setting and querying cursor colour. */
+static void
+input_osc_12(struct input_ctx *ictx, const char *p)
+{
+	struct window_pane	*wp = ictx->wp;
+	int			 c;
+
+	if (strcmp(p, "?") == 0) {
+		if (wp != NULL) {
+			c = ictx->ctx.s->ccolour;
+			if (c == -1)
+				c = ictx->ctx.s->default_ccolour;
+			input_osc_colour_reply(ictx, 12, c);
+		}
+		return;
+	}
+
+	if ((c = input_osc_parse_colour(p)) == -1) {
+		log_debug("bad OSC 12: %s", p);
+		return;
+	}
+	screen_set_cursor_colour(ictx->ctx.s, c);
+}
+
+/* Handle the OSC 112 sequence for resetting cursor colour. */
+static void
+input_osc_112(struct input_ctx *ictx, const char *p)
+{
+	if (*p == '\0') /* no arguments allowed */
+		screen_set_cursor_colour(ictx->ctx.s, -1);
+}
+
 
 /* Handle the OSC 52 sequence for setting the clipboard. */
 static void

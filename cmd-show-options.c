@@ -126,6 +126,12 @@ cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 		parent = 0;
 	if (o != NULL)
 		cmd_show_options_print(self, item, o, idx, parent);
+	else if (*name == '@') {
+		if (args_has(args, 'q'))
+			goto fail;
+		cmdq_error(item, "invalid option: %s", argument);
+		goto fail;
+	}
 
 	free(name);
 	free(argument);

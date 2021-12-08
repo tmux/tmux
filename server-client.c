@@ -144,6 +144,54 @@ server_client_clear_overlay(struct client *c)
 	server_redraw_client(c);
 }
 
+/*
+ * Given overlay position and dimensions, return parts of the input range which
+ * are visible.
+ */
+void
+server_client_overlay_range(u_int x, u_int y, u_int sx, u_int sy, u_int px,
+    u_int py, u_int nx, struct overlay_ranges *r)
+{
+	u_int	ox, onx;
+
+	/* Return up to 2 ranges. */
+	r->px[2] = 0;
+	r->nx[2] = 0;
+
+	/* Trivial case of no overlap in the y direction. */
+	if (py < y || py > y + sy - 1) {
+		r->px[0] = px;
+		r->nx[0] = nx;
+		r->px[1] = 0;
+		r->nx[1] = 0;
+		return;
+	}
+
+	/* Visible bit to the left of the popup. */
+	if (px < x) {
+		r->px[0] = px;
+		r->nx[0] = x - px;
+		if (r->nx[0] > nx)
+			r->nx[0] = nx;
+	} else {
+		r->px[0] = 0;
+		r->nx[0] = 0;
+	}
+
+	/* Visible bit to the right of the popup. */
+	ox = x + sx;
+	if (px > ox)
+		ox = px;
+	onx = px + nx;
+	if (onx > ox) {
+		r->px[1] = ox;
+		r->nx[1] = onx - ox;
+	} else {
+		r->px[1] = 0;
+		r->nx[1] = 0;
+	}
+}
+
 /* Check if this client is inside this server. */
 int
 server_client_check_nested(struct client *c)
@@ -465,7 +513,7 @@ server_client_detach(struct client *c, enum msgtype msgtype)
 {
 	struct session	*s = c->session;
 
-	if (s == NULL || (c->flags & CLIENT_UNATTACHEDFLAGS))
+	if (s == NULL || (c->flags & CLIENT_NODETACHFLAGS))
 		return;
 
 	c->flags |= CLIENT_EXIT;
@@ -1655,7 +1703,7 @@ server_client_reset_state(struct client *c)
 	struct window_pane	*wp = server_client_get_pane(c), *loop;
 	struct screen		*s = NULL;
 	struct options		*oo = c->session->options;
-	int			 mode = 0, cursor, flags;
+	int			 mode = 0, cursor, flags, n;
 	u_int			 cx = 0, cy = 0, ox, oy, sx, sy;
 
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
@@ -1683,7 +1731,20 @@ server_client_reset_state(struct client *c)
 	tty_margin_off(tty);
 
 	/* Move cursor to pane cursor and offset. */
-	if (c->overlay_draw == NULL) {
+	if (c->prompt_string != NULL) {
+		n = options_get_number(c->session->options, "status-position");
+		if (n == 0)
+			cy = 0;
+		else {
+			n = status_line_size(c);
+			if (n == 0)
+				cy = tty->sy - 1;
+			else
+				cy = tty->sy - n;
+		}
+		cx = c->prompt_cursor;
+		mode &= ~MODE_CURSOR;
+	} else if (c->overlay_draw == NULL) {
 		cursor = 0;
 		tty_window_offset(tty, &ox, &oy, &sx, &sy);
 		if (wp->xoff + s->cx >= ox && wp->xoff + s->cx <= ox + sx &&

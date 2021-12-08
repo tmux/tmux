@@ -184,7 +184,7 @@ Oct Hex Name *	(* marks function used in DEC VT series or LA series terminals)
 230 98 X	Reserved for for future standard
 231 99 Y	Reserved
 232 9A Z     *	Reserved, but causes DEC terminals to respond with DA codes
-233 9B [ CSI *	Control Sequence Introducer (described in a seperate table)
+233 9B [ CSI *	Control Sequence Introducer (described in a separate table)
 234 9C \ ST  *	String Terminator (VT125 exits graphics)
 235 9D ] OSC	Operating System Command (reprograms intelligent terminal)
 236 9E ^ PM	Privacy Message (password verification), terminated by ST

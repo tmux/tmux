@@ -56,11 +56,18 @@ static const char *options_table_bell_action_list[] = {
 static const char *options_table_visual_bell_list[] = {
 	"off", "on", "both", NULL
 };
+static const char *options_table_cursor_style_list[] = {
+	"default", "blinking-block", "block", "blinking-underline", "underline",
+	"blinking-bar", "bar", NULL
+};
 static const char *options_table_pane_status_list[] = {
 	"off", "top", "bottom", NULL
 };
-static const char *options_table_pane_lines_list[] = {
+static const char *options_table_pane_border_lines_list[] = {
 	"single", "double", "heavy", "simple", "number", NULL
+};
+static const char *options_table_popup_border_lines_list[] = {
+	"single", "double", "heavy", "simple", "rounded", "padded", "none", NULL
 };
 static const char *options_table_set_clipboard_list[] = {
 	"off", "external", "on", NULL
@@ -184,6 +191,7 @@ const struct options_name_map options_other_names[] = {
 	{ "display-panes-color", "display-panes-colour" },
 	{ "display-panes-active-color", "display-panes-active-colour" },
 	{ "clock-mode-color", "clock-mode-colour" },
+	{ "cursor-color", "cursor-colour" },
 	{ "pane-colors", "pane-colours" },
 	{ NULL, NULL }
 };
@@ -229,6 +237,21 @@ const struct options_table_entry options_table[] = {
 	  .default_str = "",
 	  .text = "Shell command run when text is copied. "
 		  "If empty, no command is run."
+	},
+
+	{ .name = "cursor-colour",
+	  .type = OPTIONS_TABLE_COLOUR,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
+	  .default_num = -1,
+	  .text = "Colour of the cursor."
+	},
+
+	{ .name = "cursor-style",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
+	  .choices = options_table_cursor_style_list,
+	  .default_num = 0,
+	  .text = "Style of the cursor."
 	},
 
 	{ .name = "default-terminal",
@@ -950,7 +973,7 @@ const struct options_table_entry options_table[] = {
 	{ .name = "pane-border-lines",
 	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_WINDOW,
-	  .choices = options_table_pane_lines_list,
+	  .choices = options_table_pane_border_lines_list,
 	  .default_num = PANE_LINES_SINGLE,
 	  .text = "Type of characters used to draw pane border lines. Some of "
 	          "these are only supported on terminals with UTF-8 support."
@@ -979,6 +1002,33 @@ const struct options_table_entry options_table[] = {
 	  .default_str = "",
 	  .flags = OPTIONS_TABLE_IS_ARRAY,
 	  .text = "The default colour palette for colours zero to 255."
+	},
+
+	{ .name = "popup-style",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "default",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ",",
+	  .text = "Default style of popups."
+	},
+
+	{ .name = "popup-border-style",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "default",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ",",
+	  .text = "Default style of popup borders."
+	},
+
+	{ .name = "popup-border-lines",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .choices = options_table_popup_border_lines_list,
+	  .default_num = BOX_LINES_SINGLE,
+	  .text = "Type of characters used to draw popup border lines. Some of "
+	          "these are only supported on terminals with UTF-8 support."
 	},
 
 	{ .name = "remain-on-exit",
