@@ -6292,6 +6292,11 @@ to change the cursor colour from inside
 .Bd -literal -offset indent
 $ printf '\e033]12;red\e033\e\e'
 .Ed
+.Pp
+The colour is an
+.Xr X 7
+colour, see
+.Xr XParseColor 3 .
 .It Em \&Cmg, \&Clmg, \&Dsmg , \&Enmg
 Set, clear, disable or enable DECSLRM margins.
 These are set automatically if the terminal reports it is
