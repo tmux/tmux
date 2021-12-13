@@ -373,7 +373,7 @@ screen_redraw_make_pane_status(struct client *c, struct window_pane *wp,
 		style_apply(&gc, w->options, "pane-active-border-style", ft);
 	else
 		style_apply(&gc, w->options, "pane-border-style", ft);
-	fmt = options_get_string(w->options, "pane-border-format");
+	fmt = options_get_string(wp->options, "pane-border-format");
 
 	expanded = format_expand_time(ft, fmt);
 	if (wp->sx < 4)
