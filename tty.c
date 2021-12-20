@@ -1626,13 +1626,21 @@ tty_write(void (*cmdfn)(struct tty *, const struct tty_ctx *),
 	if (ctx->set_client_cb == NULL)
 		return;
 	TAILQ_FOREACH(c, &clients, entry) {
-		if (!tty_client_ready(c))
-			continue;
-		state = ctx->set_client_cb(ctx, c);
-		if (state == -1)
-			break;
-		if (state == 0)
-			continue;
+		if (ctx->allow_invisible_panes) {
+		    // Send passthrough sequences even if the window is
+		    // invisible.
+		    if (c->session == NULL || c->tty.term == NULL ||
+			c->flags & CLIENT_SUSPENDED)
+			    continue;
+		} else {
+			if (!tty_client_ready(c))
+				continue;
+			state = ctx->set_client_cb(ctx, c);
+			if (state == -1)
+				break;
+			if (state == 0)
+				continue;
+		}
 		cmdfn(&c->tty, ctx);
 	}
 }

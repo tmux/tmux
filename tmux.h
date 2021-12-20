@@ -1432,6 +1432,10 @@ struct tty_ctx {
 	void			*ptr;
 	void			*ptr2;
 
+	/* Whether this command should be sent even when the pane is not visible
+	 * (e.g. a pass-through sequence when allow-passthrough is 'all'). */
+	int		allow_invisible_panes;
+
 	/*
 	 * Cursor and region position before the screen was updated - this is
 	 * where the command should be applied; the values in the screen have
@@ -2891,7 +2895,8 @@ void	 screen_write_collect_add(struct screen_write_ctx *,
 void	 screen_write_cell(struct screen_write_ctx *, const struct grid_cell *);
 void	 screen_write_setselection(struct screen_write_ctx *, const char *,
 	     u_char *, u_int);
-void	 screen_write_rawstring(struct screen_write_ctx *, u_char *, u_int);
+void	 screen_write_rawstring(struct screen_write_ctx *, u_char *, u_int,
+	     int);
 void	 screen_write_alternateon(struct screen_write_ctx *,
 	     struct grid_cell *, int);
 void	 screen_write_alternateoff(struct screen_write_ctx *,

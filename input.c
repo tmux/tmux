@@ -2247,17 +2247,21 @@ input_dcs_dispatch(struct input_ctx *ictx)
 	size_t			 len = ictx->input_len;
 	const char		 prefix[] = "tmux;";
 	const u_int		 prefixlen = (sizeof prefix) - 1;
+	long long		 allow_passthrough = 0;
 
 	if (wp == NULL)
 		return (0);
 	if (ictx->flags & INPUT_DISCARD)
 		return (0);
-	if (!options_get_number(ictx->wp->options, "allow-passthrough"))
+	allow_passthrough =
+	    options_get_number(ictx->wp->options, "allow-passthrough");
+	if (!allow_passthrough)
 		return (0);
 	log_debug("%s: \"%s\"", __func__, buf);
 
 	if (len >= prefixlen && strncmp(buf, prefix, prefixlen) == 0)
-		screen_write_rawstring(sctx, buf + prefixlen, len - prefixlen);
+		screen_write_rawstring(sctx, buf + prefixlen, len - prefixlen,
+		    /*allow_invisible_panes=*/(allow_passthrough == 2));
 
 	return (0);
 }
