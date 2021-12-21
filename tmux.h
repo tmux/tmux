@@ -677,7 +677,7 @@ struct grid_line {
 	struct grid_extd_entry	*extddata;
 
 	int			 flags;
-} __packed;
+};
 
 /* Entire grid of cells. */
 struct grid {
