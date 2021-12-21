@@ -669,15 +669,15 @@ struct grid_cell_entry {
 
 /* Grid line. */
 struct grid_line {
+	struct grid_cell_entry	*celldata;
 	u_int			 cellused;
 	u_int			 cellsize;
-	struct grid_cell_entry	*celldata;
 
-	u_int			 extdsize;
 	struct grid_extd_entry	*extddata;
+	u_int			 extdsize;
 
 	int			 flags;
-} __packed;
+};
 
 /* Entire grid of cells. */
 struct grid {
