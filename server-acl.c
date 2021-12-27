@@ -18,8 +18,6 @@
 
 #include "tmux.h"
 
-#if defined(TMUX_ACL)
-
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -27,10 +25,6 @@
 #include <sys/stat.h>
 #include <pwd.h>
 #include <ctype.h>
-
-#ifndef TMUX_ACL_WHITELIST
-#define TMUX_ACL_WHITELIST "./tmux-acl-whitelist"
-#endif
 
 #define ERRNOBUFSZ 512
 static char errno_buf[ERRNOBUFSZ] = {0};
@@ -104,8 +98,7 @@ void server_acl_client_fail(const char* message, ...)
 	TAILQ_FOREACH(c1, &clients, entry) {
 		status_message_set(c1, 3000, 1, 0, TMUX_ACL_LOG " %s", c1);
 	}
-	/* Yes, this is a hack. */
-	usleep(5000000);
+	
 	fatal(TMUX_ACL_LOG "%s\n", message);
 }
 
@@ -147,63 +140,6 @@ void server_acl_init(void)
 	 * need to insert host username 
 	 */
 	server_acl_user_allow(host_uid, 1);
-
-	if (chmod(socket_path, S_IRGRP | S_IWGRP | S_IRUSR | S_IWUSR | S_IROTH | S_IWOTH) != 0) {
-		log_debug(TMUX_ACL_LOG " Warning: chmod for %s failed with error %s", socket_path, errnostr());
-	}
-
-
-	/* 
-	 * User may not care about ACL whitelisting for their session, 
-	 * so if it doesn't exist it's reasonable to not create it. 
-	 */
-
-/*
-	username_file = fopen(TMUX_ACL_WHITELIST, "rb");
-	
-	if (username_file != NULL) {
-		uid_t uid = 0;
-		struct passwd* user_data;
-			
-		char username[256] = {0}; 	
-		int add_count = 1;
-
-		while (fgets(username, 256, username_file) != NULL) {
-			size_t username_len = strlen(username);
-			if (username_len > 0 && isalnum(username[0])) {
-				
-				if (isspace(username[username_len-1])) {
-					username[username_len-1] = '\0';
-				}
-				user_data = getpwnam(username);
-				if (user_data != NULL) {
-					uid = user_data->pw_uid;
-					if (uid != host_uid) {
-						server_acl_user_allow(uid, 0);
-						add_count++;
-					}
-					else {
-						log_debug(TMUX_ACL_LOG "Warning: %s contains the username of the host",
-									TMUX_ACL_WHITELIST);
-					}
-				}
-				else {
-					log_debug(TMUX_ACL_LOG " ERROR: getpwnam failed to find UID for username %s: %s", 
-								username, 
-								errnostr());
-
-				}
-			}
-		}
-		fclose(username_file);
-
-						}
-	}
-	else {
-		log_debug(TMUX_ACL_LOG " Warning: Could not open %s: %s", TMUX_ACL_WHITELIST, errnostr()); 
-	}
-
-*/
 
 }
 
@@ -331,12 +267,6 @@ void server_acl_user_allow_write(struct passwd* user_data)
 				);
 			}
 		}
-		// Crashes tmux server even when client exists
-		/*if (!found) {
-			server_acl_client_fail("[acl-allow-write] no client with username %s found", 
-				user_data->pw_name
-			);
-		}*/
 	}
 	else {
 		struct client* c = NULL;
@@ -368,12 +298,6 @@ void server_acl_user_deny_write(struct passwd* user_data)
 				);
 			}
 		}
-		// Crashes tmux server even when client exists
-		/*if (!found) {
-			server_acl_client_fail("[acl-allow-write] no client with username %s found", 
-				user_data->pw_name
-			);
-		}*/
 	}
 	else {
 		struct client* c = NULL;
@@ -406,5 +330,3 @@ int server_acl_attach_session(struct client *c)
 	}
 	return ret;
 }
-
-#endif /* TMUX_ACL */

@@ -374,7 +374,6 @@ proc_fork_and_daemon(int *fd)
 	}
 }
 
-#ifdef TMUX_ACL
 int proc_acl_get_ucred(struct tmuxpeer* peer, struct ucred* out_ucred)
 {
 	int len = sizeof(*out_ucred);
@@ -384,5 +383,3 @@ int proc_acl_get_ucred(struct tmuxpeer* peer, struct ucred* out_ucred)
 	}
 	return 1;
 }
-#endif
-

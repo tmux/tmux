@@ -241,9 +241,7 @@ server_start(struct tmuxproc *client, int flags, struct event_base *base,
 	evtimer_set(&server_ev_tidy, server_tidy_event, NULL);
 	evtimer_add(&server_ev_tidy, &tv);
 
-#if defined (TMUX_ACL)
 	server_acl_init();
-#endif
 
 	server_add_accept(0);
 	proc_loop(server_proc, server_loop);
@@ -353,7 +351,6 @@ server_update_socket(void)
 				mode |= S_IXOTH;
 		} else
 			mode &= ~(S_IXUSR|S_IXGRP|S_IXOTH);
-		chmod(socket_path, mode);
 	}
 }
 
@@ -385,12 +382,10 @@ server_accept(int fd, short events, __unused void *data)
 		return;
 	}
 
-#if defined (TMUX_ACL)
 	if (!server_acl_accept_validate(newfd, clients)) {
 		close(newfd);
 		return;
 	}
-#endif
 
 	server_client_create(newfd);
 }

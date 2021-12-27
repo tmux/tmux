@@ -75,12 +75,10 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 		return (CMD_RETURN_ERROR);
 	}
 
-#ifdef TMUX_ACL
 	if (!server_acl_attach_session(c)) {
 		cmdq_error(item, TMUX_ACL_LOG " ACL attach session error");
 		return (CMD_RETURN_ERROR);
 	}
-#endif
 
 	if (tflag != NULL && tflag[strcspn(tflag, ":.")] != '\0') {
 		type = CMD_FIND_PANE;

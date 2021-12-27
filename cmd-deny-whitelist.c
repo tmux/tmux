@@ -25,8 +25,6 @@
 
 #include "tmux.h"
 
-#define TMUX_ACL_WHITELIST "./tmux-acl-whitelist"
-
 struct acl_user {
 	uid_t user_id;
 	int is_owner;
