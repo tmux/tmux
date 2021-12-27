@@ -24,8 +24,6 @@
 #include <pwd.h>
 
 #include "tmux.h"
-
-#define TMUX_ACL_WHITELIST "./tmux-acl-whitelist"
 /*
  * Removes a user from the whitelist
  */
@@ -44,18 +42,19 @@ const struct cmd_entry cmd_acl_allow_write_entry = {
 };
 
 enum cmd_retval cmd_acl_allow_write_exec(struct cmd *self, struct cmdq_item *item) {
-    struct args *args = cmd_get_args(self);
-    const char *template;
-    struct format_tree *ft;
-    char *name;
-    struct passwd *user_data;
 
-    if (args->argc == 0) {
-      cmdq_error(item, " argument <username> not provided");
+    struct args         *args = cmd_get_args(self);
+    const char          *template;
+    struct format_tree  *ft;
+    char                *name;
+    struct passwd       *user_data;
+
+    if (args_count(args) == 0) {
+      cmdq_error(item, " arguement <username> not provided");
       return (CMD_RETURN_NORMAL);
     }
       
-    template = args->argv[0];
+    template = args_string(args, 0);
     ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
     name = format_expand_time(ft, template);
     user_data = getpwnam(name);

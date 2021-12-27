@@ -17,6 +17,7 @@
  */
 
 #include <sys/types.h>
+
 #include <sys/stat.h>
 #include <stdio.h>
 #include <string.h>
@@ -24,7 +25,6 @@
 
 #include "tmux.h"
 
-#define TMUX_ACL_WHITELIST "./tmux-acl-whitelist"
 #define MSG TMUX_ACL_LOG
 /*
  * Adds a new user to the acl list
@@ -51,12 +51,12 @@ static enum cmd_retval cmd_allow_whitelist_exec(struct cmd *self, struct cmdq_it
   char *newname;
   struct passwd *user_data;
 
-  if (args->argc == 0) {
+  if (args_count(args) == 0) {
     cmdq_error(item, " argument <username> not provided");
     return (CMD_RETURN_NORMAL);
   }
   
-  template = args->argv[0];
+  template = args_string(args, 0);
   ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
   newname = format_expand_time(ft, template);
   user_data = getpwnam(newname);
@@ -68,9 +68,11 @@ static enum cmd_retval cmd_allow_whitelist_exec(struct cmd *self, struct cmdq_it
     } else {
       cmdq_error(item, " user %s is already added", newname);
     }
-  } else {
+  } else if (server_acl_check_host(user_data->pw_uid)) {
     cmdq_error(item, " cannot add: user %s is the host", newname);
-  }  
+  } else {
+    cmdq_error(item, " cannot find user %s", newname);
+  }
   
   free(newname);
   format_free(ft);

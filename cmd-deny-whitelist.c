@@ -61,12 +61,12 @@ enum cmd_retval cmd_deny_whitelist_exec(struct cmd *self, struct cmdq_item *item
   struct passwd *user_data;
   struct ucred u_cred = {0};
 
-  if (args->argc == 0) {
+  if (args_count(args) == 0) {
     cmdq_error(item, " argument <username> not provided");
     return (CMD_RETURN_NORMAL);
   }
 
-  template = args->argv[0];
+  template = args_string(args, 0);
   ft = format_create(c, item, FORMAT_NONE, 0);
   oldname = format_expand_time(ft, template);
   
