@@ -26,21 +26,6 @@
 #include <pwd.h>
 #include <ctype.h>
 
-#define ERRNOBUFSZ 512
-static char errno_buf[ERRNOBUFSZ] = {0};
-
-static char* errnostr(void)
-{
-	memset(errno_buf, 0, ERRNOBUFSZ);
-	if (strerror_r(errno, errno_buf, ERRNOBUFSZ) != 0) {
-		char num[32] = {0};
-		strcat(errno_buf, "strerror_r failure. errno is ");
-		snprintf(num, 31, "%i", errno);
-		strcat(errno_buf, num);
-	}
-	return errno_buf;
-}
-
 /*
  * User ID allow list for session extras.
  *
@@ -87,6 +72,7 @@ static int server_acl_is_allowed(uid_t uid)
 void server_acl_client_fail(const char* message, ...)
 {
 	char buf[4096] = {0};
+	struct client* c1 = NULL;
 
 	va_list lst;
 
@@ -94,9 +80,8 @@ void server_acl_client_fail(const char* message, ...)
 	vsnprintf(buf, 4095, message, lst);
 	va_end(lst);
 
-	struct client* c1 = NULL;
 	TAILQ_FOREACH(c1, &clients, entry) {
-		status_message_set(c1, 3000, 1, 0, TMUX_ACL_LOG " %s", c1);
+		status_message_set(c1, 3000, 1, 0, TMUX_ACL_LOG, " %s", c1);
 	}
 	
 	fatal(TMUX_ACL_LOG "%s\n", message);
@@ -129,7 +114,6 @@ int server_acl_check_host(uid_t uid)
 
 void server_acl_init(void)
 {
-	FILE* username_file; 
 	uid_t host_uid;
 
 	host_uid = getuid();
@@ -218,7 +202,7 @@ int server_acl_accept_validate(int newfd, struct clients clientz)
 	len = sizeof(struct ucred);
 
 	if (getsockopt(newfd, SOL_SOCKET, SO_PEERCRED, &ucred, &len) == -1) {
-		log_debug(TMUX_ACL_LOG " SO_PEERCRED FAILURE errno = %s (0x%x)\n", errnostr(), errno);
+		log_debug(TMUX_ACL_LOG " SO_PEERCRED FAILURE errno = %s (0x%x)\n", errno);
 		return 0;
 	}
 
@@ -292,7 +276,8 @@ void server_acl_user_deny_write(struct passwd* user_data)
 				}
 			}
 			else {
-				server_acl_client_fail("[acl-allow-write] bad client, %s, found for user %s", 
+				server_acl_client_fail(
+					"[acl-allow-write] bad client, %s, found for user %s", 
 					c->name, 
 					user_data->pw_name
 				);
@@ -302,7 +287,11 @@ void server_acl_user_deny_write(struct passwd* user_data)
 	else {
 		struct client* c = NULL;
 		TAILQ_FOREACH(c, &clients, entry) {
-			status_message_set(c, 3000, 1, 0, "[acl-allow-write] WARNING: user %s is not in the acl", user_data->pw_name);
+			status_message_set(
+				c, 3000, 1, 0, 
+				"[acl-allow-write] WARNING: user %s is not in the acl", 
+				user_data->pw_name
+			);
 		}
 	}
 }
@@ -320,12 +309,13 @@ int server_acl_attach_session(struct client *c)
 	if (proc_acl_get_ucred(c->peer, &cred)) {
 		struct acl_user *user = server_acl_user_find(cred.uid);
 		if (user != NULL) {
-			if (!server_acl_check_host(cred.uid)) {
-				c->flags |= CLIENT_READONLY;
-			}
 			ret = 1;
 		} else {
-			server_acl_client_fail("[server_acl_attach_session] invalid client attached to session: client name = %s, client uid = %i\n", c->name, cred.uid);
+			server_acl_client_fail(
+				"[server_acl_attach_session] invalid client attached to session: 
+					client name = %s, client uid = %i\n",
+				c->name, cred.uid
+			);
 		}
 	}
 	return ret;
