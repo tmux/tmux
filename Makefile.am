@@ -71,14 +71,11 @@ endif
 # List of sources.
 dist_tmux_SOURCES = \
 	alerts.c \
-	cmd-allow-whitelist.c \
-	cmd-deny-whitelist.c \
+	cmd-server-access.c \
 	arguments.c \
 	attributes.c \
 	cfg.c \
 	client.c \
-	cmd-acl-allow-write.c \
-	cmd-acl-deny-write.c \
 	cmd-attach-session.c \
 	cmd-bind-key.c \
 	cmd-break-pane.c \

@@ -27,7 +27,6 @@
 
 #include "tmux.h"
 
-extern const struct cmd_entry cmd_acl_allow_write_entry;
 extern const struct cmd_entry cmd_attach_session_entry;
 extern const struct cmd_entry cmd_bind_key_entry;
 extern const struct cmd_entry cmd_break_pane_entry;
@@ -96,6 +95,7 @@ extern const struct cmd_entry cmd_select_pane_entry;
 extern const struct cmd_entry cmd_select_window_entry;
 extern const struct cmd_entry cmd_send_keys_entry;
 extern const struct cmd_entry cmd_send_prefix_entry;
+extern const struct cmd_entry cmd_server_access_entry;
 extern const struct cmd_entry cmd_set_buffer_entry;
 extern const struct cmd_entry cmd_set_environment_entry;
 extern const struct cmd_entry cmd_set_hook_entry;
@@ -119,12 +119,8 @@ extern const struct cmd_entry cmd_unbind_key_entry;
 extern const struct cmd_entry cmd_unlink_window_entry;
 extern const struct cmd_entry cmd_up_pane_entry;
 extern const struct cmd_entry cmd_wait_for_entry;
-extern const struct cmd_entry cmd_allow_whitelist_entry;
-extern const struct cmd_entry cmd_deny_whitelist_entry;
-extern const struct cmd_entry cmd_acl_deny_write_entry;
 
 const struct cmd_entry *cmd_table[] = {
-	&cmd_acl_allow_write_entry,
 	&cmd_attach_session_entry,
 	&cmd_bind_key_entry,
 	&cmd_break_pane_entry,
@@ -192,6 +188,7 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_select_window_entry,
 	&cmd_send_keys_entry,
 	&cmd_send_prefix_entry,
+	&cmd_server_access_entry,
 	&cmd_set_buffer_entry,
 	&cmd_set_environment_entry,
 	&cmd_set_hook_entry,
@@ -214,9 +211,6 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_unbind_key_entry,
 	&cmd_unlink_window_entry,
 	&cmd_wait_for_entry,
-	&cmd_allow_whitelist_entry,
-	&cmd_deny_whitelist_entry,
-	&cmd_acl_deny_write_entry,
 	NULL
 };
 
