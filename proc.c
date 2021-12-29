@@ -378,7 +378,7 @@ int proc_acl_get_ucred(struct tmuxpeer* peer, struct ucred* out_ucred)
 {
 	int len = sizeof(*out_ucred);
 	if (getsockopt(peer->ibuf.fd, SOL_SOCKET, SO_PEERCRED, out_ucred, &len) == -1) {
-		log_debug(TMUX_ACL_LOG " proc_acl_get_ucred: SO_PEERCRED FAILURE. errno = %i\n", errno);
+		log_debug(" proc_acl_get_ucred: SO_PEERCRED FAILURE. errno = %i\n", errno);
 		return 0;
 	}
 	return 1;

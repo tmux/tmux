@@ -25,13 +25,6 @@
 #include <pwd.h>
 
 #include "tmux.h"
-
-struct acl_user {
-	uid_t user_id;
-	int is_owner;
-
-	SLIST_ENTRY(acl_user) entry;
-};
 /*
  *  Controls access to session
  */
@@ -66,6 +59,11 @@ cmd_server_access_exec(struct cmd *self, struct cmdq_item *item) {
     name = format_expand_time(ft, template);
     user_data = getpwnam(name);
 
+    if (user_data == NULL) {
+        cmdq_error(item, " unknown user: %s", name);
+        return (CMD_RETURN_NORMAL);
+    }
+
     if ((args_has(args, 'a') && args_has(args, 'd')) || 
         (args_has(args, 'w') && args_has(args, 'r'))) {
         
@@ -76,7 +74,7 @@ cmd_server_access_exec(struct cmd *self, struct cmdq_item *item) {
 
     if (args_has(args, 'a')) {
 
-        if (user_data != NULL && !server_acl_check_host(user_data->pw_uid)) {
+        if (!server_acl_check_host(user_data->pw_uid)) {
             if (!server_acl_user_find(user_data->pw_uid)) {
                 cmdq_error(item, " user %s has been added", name);
                 server_acl_user_allow(user_data->pw_uid, 0);
@@ -85,15 +83,12 @@ cmd_server_access_exec(struct cmd *self, struct cmdq_item *item) {
             }
         } else if (server_acl_check_host(user_data->pw_uid)) {
             cmdq_error(item, " cannot add: user %s is the host", name);
-        } else {
-            cmdq_error(item, " cannot find user %s", name);
         }
-        
     }
 
     if (args_has(args, 'd')) {
 
-        if (user_data != NULL && !server_acl_check_host(user_data->pw_uid)) {
+        if (!server_acl_check_host(user_data->pw_uid)) {
             if (server_acl_user_find(user_data->pw_uid)) {
                 TAILQ_FOREACH(loop, &clients, entry) {
                     struct acl_user* user = 
@@ -108,60 +103,42 @@ cmd_server_access_exec(struct cmd *self, struct cmdq_item *item) {
                 }
             }
         }
-
-        if (user_data != NULL) {
-            if (server_acl_check_host(user_data->pw_uid)) {
+        
+        if (server_acl_check_host(user_data->pw_uid)) {
             cmdq_error(item, " cannot remove: user %s is the host", name);
-            } else if (server_acl_user_find(user_data->pw_uid)) {
+        } else if (server_acl_user_find(user_data->pw_uid)) {
             server_acl_user_deny(user_data->pw_uid); 
             cmdq_error(item, " user %s has been removed", name);
-            } else {
+        } else {
             cmdq_error(item, " user %s not found", name);
-            }
         }
     }
 
     if (args_has(args, 'w')) {
 
-        if (user_data != NULL) {
-            if (!server_acl_check_host(user_data->pw_uid)) {
-                if (server_acl_user_find(user_data->pw_uid)) {
+        if (!server_acl_check_host(user_data->pw_uid)) {
+            if (server_acl_user_find(user_data->pw_uid)) {
                 server_acl_user_allow_write(user_data);
                 cmdq_error(item, " user %s has write privilege", name);
-                } else {
-                cmdq_error(item, " user %s not found in whitelist", name);
-                }
             } else {
-                cmdq_error(item, " cannot change hosts write privileges");
+                cmdq_error(item, " user %s not found in whitelist", name);
             }
         } else {
-            struct client* cli = NULL;
-            TAILQ_FOREACH(cli, &clients, entry) {
-                status_message_set(c, 3000, 1, 0, 
-                "[acl-allow-write] unknown user: %s", template);
-            }
+            cmdq_error(item, " cannot change hosts write privileges");
         }
     }
 
     if (args_has(args, 'r')) {
 
-        if (user_data != NULL) {
-            if (!server_acl_check_host(user_data->pw_uid)) {
-                if (server_acl_user_find(user_data->pw_uid)) {
+        if (!server_acl_check_host(user_data->pw_uid)) {
+             if (server_acl_user_find(user_data->pw_uid)) {
                 server_acl_user_deny_write(user_data);
                 cmdq_error(item, " removed user %s write privilege", name);
-                } else {
-                cmdq_error(item, " user %s not found in whitelist", name);
-                }
             } else {
-                cmdq_error(item, " cannot change hosts write privilege");
+                cmdq_error(item, " user %s not found in whitelist", name);
             }
         } else {
-            struct client* cli = NULL;
-            TAILQ_FOREACH(cli, &clients, entry) {
-                status_message_set(c, 3000, 1, 0, 
-                    "[acl-deny-write] unknown user: %s", template);
-            }
+            cmdq_error(item, " cannot change hosts write privilege");
         }
     }
 

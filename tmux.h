@@ -3192,7 +3192,12 @@ char		*regsub(const char *, const char *, const char *, int);
 
 
 /* server-acl.c */
-#define TMUX_ACL_LOG "[access control list]"
+struct acl_user {
+	uid_t user_id;
+	int is_owner;
+
+	SLIST_ENTRY(acl_user) entry;
+};
 void server_acl_init(void);
 void server_acl_user_allow(uid_t uid, int owner);
 void server_acl_user_deny(uid_t uid);
