@@ -21,3 +21,5 @@ tmux.1.*
 cmd-parse.c
 fuzz/*-fuzzer
 .dirstamp
+tmux-client-*
+tmux-server-*
