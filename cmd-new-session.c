@@ -94,6 +94,11 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 	}
 
+	if (!server_acl_join (c)) {
+		cmdq_error(item, " ACL attach session error");
+		return (CMD_RETURN_ERROR);
+	}
+
 	if (args_has(args, 't') && (count != 0 || args_has(args, 'n'))) {
 		cmdq_error(item, "command or window name given with target");
 		return (CMD_RETURN_ERROR);

@@ -75,7 +75,7 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 		return (CMD_RETURN_ERROR);
 	}
 
-	if (!server_acl_attach_session(c)) {
+	if (!server_acl_join (c)) {
 		cmdq_error(item, " ACL attach session error");
 		return (CMD_RETURN_ERROR);
 	}

@@ -196,7 +196,7 @@ int server_acl_accept_validate(int newfd, struct clients clientz)
 
 	if (!server_acl_is_allowed(ucred.uid)) {
 		TAILQ_FOREACH(c, &clientz, entry) {
-			status_message_set(c, 3000, 1, 0, "%s rejected from joining session", pws->pw_name);
+			status_message_set(c, 3000, 1, 0, "%s rejected from joining ", pws->pw_name);
 		}
 		log_debug(" denying user id %li", (long) ucred.uid);
 		return 0;
@@ -273,17 +273,20 @@ void server_acl_user_deny_write(struct passwd* user_data)
  *
  * The call to proc_acl_get_ucred() will log an error message if it fails.
  */
-int server_acl_attach_session(struct client *c)
+int server_acl_join(struct client *c)
 {
 	struct ucred cred = {0};
 	int ret = 0;
 	if (proc_acl_get_ucred(c->peer, &cred)) {
 		struct acl_user *user = server_acl_user_find(cred.uid);
 		if (user != NULL) {
+			if (!server_acl_check_host(cred.uid)) {
+				c->flags |= CLIENT_READONLY;
+			}
 			ret = 1;
 		} else {
 			log_debug(
-				" [acl_attach] invalid client attached : name = %s, uid = %i\n",
+				" [acl_join] invalid client joined : name = %s, uid = %i\n",
 				c->name, cred.uid
 			);
 		}
