@@ -791,26 +791,19 @@ tty_update_mode(struct tty *tty, int mode, struct screen *s)
 
 	if ((changed & ALL_MOUSE_MODES) && tty_term_has(term, TTYC_KMOUS)) {
 		/*
-		 * If the mouse modes have changed, clear any that are set and
-		 * apply again. There are differences in how terminals track
-		 * the various bits.
+		 * If the mouse modes have changed, clear then all and apply
+		 * again. There are differences in how terminals track the
+		 * various bits.
 		 */
-		if (tty->mode & MODE_MOUSE_SGR)
-			tty_puts(tty, "\033[?1006l");
-		if (tty->mode & MODE_MOUSE_STANDARD)
-			tty_puts(tty, "\033[?1000l");
-		if (tty->mode & MODE_MOUSE_BUTTON)
-			tty_puts(tty, "\033[?1002l");
-		if (tty->mode & MODE_MOUSE_ALL)
-			tty_puts(tty, "\033[?1003l");
+		tty_puts(tty, "\033[?1006l\033[?1000l\033[?1002l\033[?1003l");
 		if (mode & ALL_MOUSE_MODES)
 			tty_puts(tty, "\033[?1006h");
-		if (mode & MODE_MOUSE_STANDARD)
-			tty_puts(tty, "\033[?1000h");
-		if (mode & MODE_MOUSE_BUTTON)
-			tty_puts(tty, "\033[?1002h");
 		if (mode & MODE_MOUSE_ALL)
-			tty_puts(tty, "\033[?1003h");
+			tty_puts(tty, "\033[?1000h\033[?1002h\033[?1003h");
+		if (mode & MODE_MOUSE_BUTTON)
+			tty_puts(tty, "\033[?1000h\033[?1002h");
+		else if (mode & MODE_MOUSE_STANDARD)
+			tty_puts(tty, "\033[?1000h");
 	}
 	if (changed & MODE_BRACKETPASTE) {
 		if (mode & MODE_BRACKETPASTE)
