@@ -140,7 +140,9 @@ By default,
 loads the system configuration file from
 .Pa @SYSCONFDIR@/tmux.conf ,
 if present, then looks for a user configuration file at
-.Pa ~/.tmux.conf .
+.Pa ~/.tmux.conf 
+or
+.Pa ~/.config/tmux/tmux.conf .
 .Pp
 The configuration file is a set of
 .Nm
@@ -6628,6 +6630,10 @@ options.
 .Bl -tag -width "@SYSCONFDIR@/tmux.confXXX" -compact
 .It Pa ~/.tmux.conf
 Default
+.Nm
+configuration file.
+.It Pa ~/.config/tmux/tmux.conf
+User-specific
 .Nm
 configuration file.
 .It Pa @SYSCONFDIR@/tmux.conf
