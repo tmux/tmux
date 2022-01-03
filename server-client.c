@@ -1296,7 +1296,9 @@ table_changed:
 	 */
 	key0 = (key & (KEYC_MASK_KEY|KEYC_MASK_MODIFIERS));
 	if ((key0 == (key_code)options_get_number(s->options, "prefix") ||
-	    key0 == (key_code)options_get_number(s->options, "prefix2")) &&
+	    key0 == (key_code)options_get_number(s->options, "prefix2") ||
+	    key0 == (key_code)options_get_number(s->options, "prefix3") ||
+	    key0 == (key_code)options_get_number(s->options, "prefix4")) &&
 	    strcmp(table->name, "prefix") != 0) {
 		server_client_set_key_table(c, "prefix");
 		server_status_client(c);

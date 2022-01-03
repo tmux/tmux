@@ -47,8 +47,8 @@ const struct cmd_entry cmd_send_prefix_entry = {
 	.name = "send-prefix",
 	.alias = NULL,
 
-	.args = { "2t:", 0, 0, NULL },
-	.usage = "[-2] " CMD_TARGET_PANE_USAGE,
+	.args = { "234t:", 0, 0, NULL },
+	.usage = "[-2|-3|-4] " CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -188,7 +188,11 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (cmd_get_entry(self) == &cmd_send_prefix_entry) {
-		if (args_has(args, '2'))
+		if (args_has(args, '4'))
+			key = options_get_number(s->options, "prefix4");
+		else if (args_has(args, '3'))
+			key = options_get_number(s->options, "prefix3");
+		else if (args_has(args, '2'))
 			key = options_get_number(s->options, "prefix2");
 		else
 			key = options_get_number(s->options, "prefix");

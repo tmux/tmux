@@ -565,6 +565,20 @@ const struct options_table_entry options_table[] = {
 	  .text = "A second prefix key."
 	},
 
+	{ .name = "prefix3",
+	  .type = OPTIONS_TABLE_KEY,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_num = KEYC_NONE,
+	  .text = "A third prefix key."
+	},
+
+	{ .name = "prefix4",
+	  .type = OPTIONS_TABLE_KEY,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_num = KEYC_NONE,
+	  .text = "A fourth prefix key."
+	},
+
 	{ .name = "renumber-windows",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .scope = OPTIONS_TABLE_SESSION,
