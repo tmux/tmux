@@ -178,7 +178,7 @@ clients_calculate_size(int type, int current, struct client *c,
 			cw = NULL;
 
 		/* Work out this client's size. */
-		if (cw != NULL) {
+		if (cw != NULL && cw->sx != 0 && cw->sy != 0) {
 			cx = cw->sx;
 			cy = cw->sy;
 		} else {
