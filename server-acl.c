@@ -31,15 +31,18 @@
  * 	The owner field is a boolean. If true, the user id of the corresponding entry
  * 	is the user id which created the server.
  */
-SLIST_HEAD(acl_user_entries, acl_user) acl_entries = SLIST_HEAD_INITIALIZER(acl_entries);
+int uid_cmp(struct acl_user *user1, struct acl_user *user2) {
+	return (user1->user_id < user2->user_id ? -1 : user1->user_id > user2->user_id);
+}
+
+RB_HEAD(acl_user_entries, acl_user) acl_entries = RB_INITIALIZER(&acl_entries);
+RB_GENERATE_STATIC(acl_user_entries, acl_user, entry, uid_cmp);
 
 static struct acl_user* server_acl_user_create(void)
 {
 	struct acl_user* n = xmalloc(sizeof(*n));
 	/* xmalloc will call fatal() if malloc fails */
 	n->user_id = (uid_t)-1;
-	n->is_owner = 0;
-	n->entry.sle_next = NULL;
 	return n;
 }
 
@@ -47,8 +50,7 @@ static int server_acl_is_allowed(uid_t uid)
 {
 	int ok = 0;
 	struct acl_user* iter = NULL;
-	struct acl_user* next = NULL;
-	SLIST_FOREACH_SAFE(iter, &acl_entries, entry, next) {
+	RB_FOREACH(iter, acl_user_entries, &acl_entries) {
 		if (iter->user_id == uid) {
 			ok = 1;
 			break;
@@ -60,26 +62,22 @@ static int server_acl_is_allowed(uid_t uid)
 /*
  * Public API
  */
-
 struct acl_user* server_acl_user_find(uid_t uid)
 {
-	struct acl_user* ret = NULL;
 	struct acl_user* iter = NULL;
-	struct acl_user* next = NULL;
-	SLIST_FOREACH_SAFE(iter, &acl_entries, entry, next) {
+	RB_FOREACH(iter, acl_user_entries, &acl_entries) {
 		if (iter->user_id == uid) {
-			ret = iter;
 			break;
 		}
 	}
-	return ret;
+	return iter;
 }
 
 int server_acl_check_host(uid_t uid)
 {
 	struct acl_user* user = server_acl_user_find(uid);
 	if (user != NULL) {
-		return user->is_owner;
+		return 1;
 	} else {
 		return 0;
 	}
@@ -91,28 +89,25 @@ void server_acl_init(void)
 	uid_t host_uid;
 
 	host_uid = getuid();
-	
-	SLIST_INIT(&acl_entries);
 
 	/* 
 	 * need to insert host username 
 	 */
-	server_acl_user_allow(host_uid, 1);
+	server_acl_user_allow(host_uid/*, 1*/);
 
 }
 
-void server_acl_user_allow(uid_t uid, int owner)
+void server_acl_user_allow(uid_t uid/*, int owner*/)
 {
 	/* Ensure entry doesn't already exist */
 	struct acl_user* iter = NULL;
-	struct acl_user* next = NULL;
 	int exists = 0;
-	SLIST_FOREACH_SAFE(iter, &acl_entries, entry, next) {
+	RB_FOREACH(iter, acl_user_entries, &acl_entries) {
 		if (iter->user_id == uid) {
 			/* ASSERT */
-			if (owner != iter->is_owner) {
+			/*if (owner != iter->is_owner) {
 				fatal(" owner mismatch for uid = %i\n", uid);
-			}
+			}*/
 			exists = 1;
 			break;
 		}
@@ -120,11 +115,10 @@ void server_acl_user_allow(uid_t uid, int owner)
 	if (!exists) {
 		int did_insert;
 		struct acl_user* e = server_acl_user_create();
-		e->is_owner = owner;
 		e->user_id = uid;
 		did_insert = 0;
-		SLIST_INSERT_HEAD(&acl_entries, e, entry);
-		SLIST_FOREACH_SAFE(iter, &acl_entries, entry, next) {
+		RB_INSERT(acl_user_entries, &acl_entries, e);
+		RB_FOREACH(iter, acl_user_entries, &acl_entries) {
 			if (iter == e) {
 				did_insert = 1;
 				break;
@@ -142,20 +136,19 @@ void server_acl_user_allow(uid_t uid, int owner)
 void server_acl_user_deny(uid_t uid)
 {
 	struct acl_user* iter = NULL;
-	struct acl_user* next = NULL;
 	int exists = 0;
-	SLIST_FOREACH_SAFE(iter, &acl_entries, entry, next) {
+	RB_FOREACH(iter, acl_user_entries, &acl_entries) {
 		if (iter->user_id == uid) {
 			/* ASSERT */
-			if (iter->is_owner) {
+			/*if (iter->is_owner) {
 				fatal(" Attempt to remove host from acl list.");
-			}
+			}*/
 			exists = 1;
 			break;
 		}
 	}
 	if (exists) {
-		SLIST_REMOVE(&acl_entries, iter, acl_user, entry);
+		RB_REMOVE(acl_user_entries, &acl_entries, iter);
 	} else if (!exists) {
 		log_debug(" server_acl_deny warning: user %i was not found in acl list.\n", uid);
 	}

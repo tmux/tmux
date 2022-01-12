@@ -3193,13 +3193,12 @@ char		*regsub(const char *, const char *, const char *, int);
 
 /* server-acl.c */
 struct acl_user {
+	RB_ENTRY(acl_user) entry;
 	uid_t user_id;
-	int is_owner;
-
-	SLIST_ENTRY(acl_user) entry;
 };
+int uid_cmp(struct acl_user *, struct acl_user *);
 void server_acl_init(void);
-void server_acl_user_allow(uid_t uid, int owner);
+void server_acl_user_allow(uid_t uid);
 void server_acl_user_deny(uid_t uid);
 struct acl_user* server_acl_user_find(uid_t uid);
 int server_acl_check_host(uid_t uid);

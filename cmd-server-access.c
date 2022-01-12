@@ -113,7 +113,7 @@ cmd_server_access_exec(struct cmd *self, struct cmdq_item *item) {
 
         if (!server_acl_check_host(user_data->pw_uid)) {
             if (!server_acl_user_find(user_data->pw_uid)) {
-                server_acl_user_allow(user_data->pw_uid, 0);
+                server_acl_user_allow(user_data->pw_uid/*, 0*/);
                 cmdq_error(item, " user %s has been added", name);
             } else {
                 cmdq_error(item, " user %s is already added", name);
