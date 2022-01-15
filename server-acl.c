@@ -29,14 +29,17 @@
 struct acl_user* owner;
 
 /* Comparison for rb_tree */
-int uid_cmp(struct acl_user *user1, struct acl_user *user2) {
+int 
+uid_cmp(struct acl_user *user1, struct acl_user *user2) 
+{
 	return (user1->user_id < user2->user_id ? -1 : user1->user_id > user2->user_id);
 }
 
 RB_HEAD(acl_user_entries, acl_user) acl_entries = RB_INITIALIZER(&acl_entries);
 RB_GENERATE_STATIC(acl_user_entries, acl_user, entry, uid_cmp);
 
-static struct acl_user* server_acl_user_create(void)
+static struct acl_user* 
+server_acl_user_create(void)
 {
 	struct acl_user* n = xmalloc(sizeof(*n));
 	/* xmalloc will call fatal() if malloc fails */
@@ -44,14 +47,15 @@ static struct acl_user* server_acl_user_create(void)
 	return n;
 }
 
-static int server_acl_is_allowed(uid_t uid)
+static int 
+server_acl_is_allowed(uid_t uid)
 {
 	int ok = 0;
 	struct acl_user* iter = NULL;
 	RB_FOREACH(iter, acl_user_entries, &acl_entries) {
 		if (iter->user_id == uid) {
-			ok = 1;
-			break;
+				ok = 1;
+				break;
 		}
 	}
 	return ok;
@@ -60,24 +64,27 @@ static int server_acl_is_allowed(uid_t uid)
 /*
  * Public API
  */
-struct acl_user* server_acl_user_find(uid_t uid)
+struct acl_user* 
+server_acl_user_find(uid_t uid)
 {
 	struct acl_user* iter = NULL;
 	RB_FOREACH(iter, acl_user_entries, &acl_entries) {
-		if (iter->user_id == uid) {
-			break;
-		}
+			if (iter->user_id == uid) {
+				break;
+			}
 	}
 	return iter;
 }
 
-int server_acl_check_host(uid_t uid)
+int 
+server_acl_check_host(uid_t uid)
 {
 	return uid == owner->user_id;
 }
 
 
-void server_acl_init(void)
+void 
+server_acl_init(void)
 {
 	uid_t host_uid;
 
@@ -87,60 +94,64 @@ void server_acl_init(void)
 	owner->user_id = host_uid;
 }
 
-void server_acl_user_allow(uid_t uid/*, int owner*/)
+void 
+server_acl_user_allow(uid_t uid)
 {
 	/* Ensure entry doesn't already exist */
 	struct acl_user* iter = NULL;
 	int exists = 0;
 	RB_FOREACH(iter, acl_user_entries, &acl_entries) {
-		if (iter->user_id == uid) {
-			/* ASSERT */
-			if (owner->user_id != iter->user_id) {
-				fatal(" owner mismatch for uid = %i\n", uid);
-			}
-			exists = 1;
-			break;
-		}
-	}
-	if (!exists) {
-		int did_insert;
-		struct acl_user* e = server_acl_user_create();
-		e->user_id = uid;
-		did_insert = 0;
-		RB_INSERT(acl_user_entries, &acl_entries, e);
-		RB_FOREACH(iter, acl_user_entries, &acl_entries) {
-			if (iter == e) {
-				did_insert = 1;
+			if (iter->user_id == uid) {
+				/* ASSERT */
+				if (owner->user_id != iter->user_id) {
+					fatal(" owner mismatch for uid = %i\n", uid);
+				}
+				exists = 1;
 				break;
 			}
-		}
-		if (!did_insert) {
-			fatal(" Could not insert user_id %i\n", uid);
-		}
+	}
+	if (!exists) {
+			int did_insert;
+			struct acl_user* e = server_acl_user_create();
+			e->user_id = uid;
+			did_insert = 0;
+			RB_INSERT(acl_user_entries, &acl_entries, e);
+			RB_FOREACH(iter, acl_user_entries, &acl_entries) {
+				if (iter == e) {
+					did_insert = 1;
+					break;
+				}
+			}
+			if (!did_insert) {
+				fatal(" Could not insert user_id %i\n", uid);
+			}
 	}
 }
 
 /*
 * Remove user from acl list.
 */
-void server_acl_user_deny(uid_t uid)
+void 
+server_acl_user_deny(uid_t uid)
 {
 	struct acl_user* iter = NULL;
 	int exists = 0;
 	RB_FOREACH(iter, acl_user_entries, &acl_entries) {
-		if (iter->user_id == uid) {
-			/* ASSERT */
-			if (iter->user_id == owner->user_id) {
-				fatal(" Attempt to remove host from acl list.");
+			if (iter->user_id == uid) {
+				/* ASSERT */
+				if (iter->user_id == owner->user_id) {
+					fatal(" Attempt to remove host from acl list.");
+				}
+				exists = 1;
+				break;
 			}
-			exists = 1;
-			break;
-		}
 	}
 	if (exists) {
-		RB_REMOVE(acl_user_entries, &acl_entries, iter);
+			RB_REMOVE(acl_user_entries, &acl_entries, iter);
 	} else if (!exists) {
-		log_debug(" server_acl_deny warning: user %i was not found in acl list.\n", uid);
+			log_debug(
+			" server_acl_deny warning: user %i was not found in acl list.\n", 
+			uid);
 	}
 }
 
@@ -149,7 +160,8 @@ void server_acl_user_deny(uid_t uid)
  * and confirm it's in the allow list.
  */
 
-int server_acl_accept_validate(int newfd, struct clients clientz)
+int 
+server_acl_accept_validate(int newfd, struct clients clientz)
 {
 	int len;
 	struct ucred ucred;
@@ -159,17 +171,17 @@ int server_acl_accept_validate(int newfd, struct clients clientz)
 	len = sizeof(struct ucred);
 
 	if (getsockopt(newfd, SOL_SOCKET, SO_PEERCRED, &ucred, &len) == -1) {
-		log_debug(" SO_PEERCRED FAILURE errno = %d \n", errno); /*(0x%x)\*/
-		return 0;
+			log_debug(" SO_PEERCRED FAILURE errno = %d \n", errno); 
+			return 0;
 	}
 
 	pws = getpwuid(ucred.uid);
 	if (pws == NULL) {
-		log_debug(" SO_PEERCRED FAILURE: pid=%li, euid=%li, egid=%li\n",
-					(long)ucred.pid,
-					(long)ucred.uid,
-					(long)ucred.gid);
-		return 0;
+			log_debug(" SO_PEERCRED FAILURE: pid=%li, euid=%li, egid=%li\n",
+						(long)ucred.pid,
+						(long)ucred.uid,
+						(long)ucred.gid);
+			return 0;
 	}
 	
 	log_debug(" SO_PEERCRED SUCCESS: pid=%li, euid=%li, egid=%li\n",
@@ -178,14 +190,16 @@ int server_acl_accept_validate(int newfd, struct clients clientz)
 				(long)ucred.gid);
 
 	if (!server_acl_is_allowed(ucred.uid)) {
-		TAILQ_FOREACH(c, &clientz, entry) {
-			status_message_set(c, 3000, 1, 0, "%s rejected from joining ", pws->pw_name);
-		}
-		log_debug(" denying user id %li", (long) ucred.uid);
-		return 0;
+			TAILQ_FOREACH(c, &clientz, entry) {
+				status_message_set(c, 3000, 1, 0, 
+				"%s rejected from joining ", pws->pw_name);
+			}
+			log_debug(" denying user id %li", (long) ucred.uid);
+			return 0;
 	}
 	TAILQ_FOREACH(c, &clientz, entry) {
-		status_message_set(c, 3000, 1, 0, "%s joined the session", pws->pw_name);
+			status_message_set(c, 3000, 1, 0,
+			 "%s joined the session", pws->pw_name);
 	}
 
 	log_debug(" allowing user id %li", (long) ucred.uid);
@@ -193,60 +207,62 @@ int server_acl_accept_validate(int newfd, struct clients clientz)
 	return 1;
 }
 
-void server_acl_user_allow_write(struct passwd* user_data)
+void 
+server_acl_user_allow_write(struct passwd* user_data)
 {
 	struct acl_user* user = server_acl_user_find(user_data->pw_uid);
 	if (user != NULL) {
-		struct client* c = NULL;
-		TAILQ_FOREACH(c, &clients, entry) {
-			struct ucred cred = {0};
-			if (proc_acl_get_ucred(c->peer, &cred)) {
-				if (cred.uid == user->user_id) {
-					c->flags &= (~CLIENT_READONLY);
-					break;
+			struct client* c = NULL;
+			TAILQ_FOREACH(c, &clients, entry) {
+				struct ucred cred = {0};
+				if (proc_acl_get_ucred(c->peer, &cred)) {
+					if (cred.uid == user->user_id) {
+						c->flags &= (~CLIENT_READONLY);
+						break;
+					}
+				}
+				else {
+					log_debug(
+						" [acl-allow-write] bad client for user %s", 
+						c->name
+					);
 				}
 			}
-			else {
-				log_debug(
-					" [acl-allow-write] bad client for user %s", 
-					c->name
-				);
-			}
-		}
 	}
 }
 
-void server_acl_user_deny_write(struct passwd* user_data)
+void 
+server_acl_user_deny_write(struct passwd* user_data)
 {
 	struct acl_user* user = server_acl_user_find(user_data->pw_uid);
 	if (user != NULL) {
-		struct client* c = NULL;
-		TAILQ_FOREACH(c, &clients, entry) {
-			struct ucred cred = {0};
-			if (proc_acl_get_ucred(c->peer, &cred)) {
-				if (cred.uid == user->user_id) {
-					c->flags &= (CLIENT_READONLY);
-					break;
+			struct client* c = NULL;
+			TAILQ_FOREACH(c, &clients, entry) {
+				struct ucred cred = {0};
+				if (proc_acl_get_ucred(c->peer, &cred)) {
+					if (cred.uid == user->user_id) {
+						c->flags &= (CLIENT_READONLY);
+						break;
+					}
+				}
+				else {
+					log_debug(
+						" [acl-allow-write] bad client, %s, found for user %s", 
+						c->name, 
+						user_data->pw_name
+					);
 				}
 			}
-			else {
-				log_debug(
-					" [acl-allow-write] bad client, %s, found for user %s", 
-					c->name, 
+	}
+	else {
+			struct client* c = NULL;
+			TAILQ_FOREACH(c, &clients, entry) {
+				status_message_set(
+					c, 3000, 1, 0, 
+					"[acl-allow-write] WARNING: user %s is not in the acl", 
 					user_data->pw_name
 				);
 			}
-		}
-	}
-	else {
-		struct client* c = NULL;
-		TAILQ_FOREACH(c, &clients, entry) {
-			status_message_set(
-				c, 3000, 1, 0, 
-				"[acl-allow-write] WARNING: user %s is not in the acl", 
-				user_data->pw_name
-			);
-		}
 	}
 }
 
@@ -256,23 +272,24 @@ void server_acl_user_deny_write(struct passwd* user_data)
  *
  * The call to proc_acl_get_ucred() will log an error message if it fails.
  */
-int server_acl_join(struct client *c)
+int 
+server_acl_join(struct client *c)
 {
 	struct ucred cred = {0};
 	int ret = 0;
 	if (proc_acl_get_ucred(c->peer, &cred)) {
-		struct acl_user *user = server_acl_user_find(cred.uid);
-		if (user != NULL) {
-			if (!server_acl_check_host(cred.uid)) {
-				c->flags |= CLIENT_READONLY;
+			struct acl_user *user = server_acl_user_find(cred.uid);
+			if (user != NULL) {
+				if (user->user_id != owner->user_id) {
+					c->flags |= CLIENT_READONLY;
+				}
+				ret = 1;
+			} else {
+				log_debug(
+					" [acl_join] invalid client joined : name = %s, uid = %i\n",
+					c->name, cred.uid
+				);
 			}
-			ret = 1;
-		} else {
-			log_debug(
-				" [acl_join] invalid client joined : name = %s, uid = %i\n",
-				c->name, cred.uid
-			);
-		}
 	}
 	return ret;
 }

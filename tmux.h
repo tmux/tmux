@@ -3190,7 +3190,6 @@ struct window_pane *spawn_pane(struct spawn_context *, char **);
 /* regsub.c */
 char		*regsub(const char *, const char *, const char *, int);
 
-
 /* server-acl.c */
 struct acl_user {
 	RB_ENTRY(acl_user) entry;
