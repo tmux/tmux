@@ -25,12 +25,10 @@
 #include <sys/stat.h>
 #include <pwd.h>
 #include <ctype.h>
-/*
- * User ID allow list for session extras.
- *
- * 	The owner field is a boolean. If true, the user id of the corresponding entry
- * 	is the user id which created the server.
- */
+
+struct acl_user* owner;
+
+/* Comparison for rb_tree */
 int uid_cmp(struct acl_user *user1, struct acl_user *user2) {
 	return (user1->user_id < user2->user_id ? -1 : user1->user_id > user2->user_id);
 }
@@ -75,12 +73,7 @@ struct acl_user* server_acl_user_find(uid_t uid)
 
 int server_acl_check_host(uid_t uid)
 {
-	struct acl_user* user = server_acl_user_find(uid);
-	if (user != NULL) {
-		return 1;
-	} else {
-		return 0;
-	}
+	return uid == owner->user_id;
 }
 
 
@@ -89,12 +82,9 @@ void server_acl_init(void)
 	uid_t host_uid;
 
 	host_uid = getuid();
-
-	/* 
-	 * need to insert host username 
-	 */
-	server_acl_user_allow(host_uid/*, 1*/);
-
+	server_acl_user_allow(host_uid);
+	owner = server_acl_user_create();
+	owner->user_id = host_uid;
 }
 
 void server_acl_user_allow(uid_t uid/*, int owner*/)
@@ -105,9 +95,9 @@ void server_acl_user_allow(uid_t uid/*, int owner*/)
 	RB_FOREACH(iter, acl_user_entries, &acl_entries) {
 		if (iter->user_id == uid) {
 			/* ASSERT */
-			/*if (owner != iter->is_owner) {
+			if (owner->user_id != iter->user_id) {
 				fatal(" owner mismatch for uid = %i\n", uid);
-			}*/
+			}
 			exists = 1;
 			break;
 		}
@@ -140,9 +130,9 @@ void server_acl_user_deny(uid_t uid)
 	RB_FOREACH(iter, acl_user_entries, &acl_entries) {
 		if (iter->user_id == uid) {
 			/* ASSERT */
-			/*if (iter->is_owner) {
+			if (iter->user_id == owner->user_id) {
 				fatal(" Attempt to remove host from acl list.");
-			}*/
+			}
 			exists = 1;
 			break;
 		}
