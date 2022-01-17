@@ -668,7 +668,8 @@ popup_display(int flags, enum box_lines lines, struct cmdq_item *item, u_int px,
 	pd = xcalloc(1, sizeof *pd);
 	pd->item = item;
 	pd->flags = flags;
-	pd->title = xstrdup(title);
+	if (title != NULL)
+		pd->title = xstrdup(title);
 
 	pd->c = c;
 	pd->c->references++;
