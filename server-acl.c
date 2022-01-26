@@ -16,8 +16,6 @@
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "tmux.h"
-
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -26,10 +24,17 @@
 #include <pwd.h>
 #include <ctype.h>
 
+#include "tmux.h"
+
+struct acl_user {
+	RB_ENTRY(acl_user) entry;
+	uid_t user_id;
+};
+
 struct acl_user* owner;
 
 /* Comparison for rb_tree */
-int 
+static int 
 uid_cmp(struct acl_user *user1, struct acl_user *user2) 
 {
 	return (user1->user_id < user2->user_id ? -1 : user1->user_id > user2->user_id);
@@ -292,4 +297,10 @@ server_acl_join(struct client *c)
 			}
 	}
 	return ret;
+}
+
+uid_t
+server_acl_get_uid(struct acl_user* user) 
+{
+	return user->user_id;
 }

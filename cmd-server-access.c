@@ -85,7 +85,7 @@ cmd_server_access_exec(struct cmd *self, struct cmdq_item *item)
                         server_acl_user_find(user_data->pw_uid);
 
                         if (proc_acl_get_ucred(loop->peer, &u_cred)) {
-                            if (u_cred.uid == user->user_id) {
+                            if (u_cred.uid == server_acl_get_uid(user)) {
                                 loop->flags |= CLIENT_EXIT;
                                 break;
                             }
