@@ -27,6 +27,8 @@
 #include <stdio.h>
 #include <termios.h>
 
+#include <pwd.h>
+
 #ifdef HAVE_UTEMPTER
 #include <utempter.h>
 #endif

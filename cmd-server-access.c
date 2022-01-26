@@ -50,14 +50,12 @@ cmd_server_access_exec(struct cmd *self, struct cmdq_item *item)
     struct args *args = cmd_get_args(self);
     struct client *c = cmdq_get_target_client(item), *loop;
     const char  *template;
-    struct format_tree *ft;
     char        *name;
     struct passwd *user_data;
     struct ucred u_cred = {0};
 
     template = args_string(args, 0);
-    ft = format_create(c, item, FORMAT_NONE, 0);
-    name = format_expand_time(ft, template);
+    name = format_single(item, template, c, NULL, NULL, NULL);
     user_data = getpwnam(name);
 
     /* User doesn't exist */
@@ -104,7 +102,6 @@ cmd_server_access_exec(struct cmd *self, struct cmdq_item *item)
             }
 
             free(name);
-            format_free(ft);
 
             return (CMD_RETURN_NORMAL);
     }
@@ -155,7 +152,6 @@ cmd_server_access_exec(struct cmd *self, struct cmdq_item *item)
     }
 
     free(name);
-    format_free(ft);
 
     return (CMD_RETURN_NORMAL);
 }
