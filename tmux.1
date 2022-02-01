@@ -4989,7 +4989,9 @@ commands to finish; instead, the previous result from running the same command i
 or a placeholder if the command has not been run before.
 If the command hasn't exited, the most recent line of output will be used, but the status
 line will not be updated more than once a second.
-Commands are executed with the
+Commands are executed using
+.Pa /bin/sh
+and with the
 .Nm
 global environment set (see the
 .Sx GLOBAL AND SESSION ENVIRONMENT
@@ -6155,6 +6157,8 @@ Execute the first
 .Ar command
 if
 .Ar shell-command
+(run with
+.Pa /bin/sh )
 returns success or the second
 .Ar command
 otherwise.
@@ -6191,6 +6195,8 @@ option.
 .D1 Pq alias: Ic run
 Execute
 .Ar shell-command
+using
+.Pa /bin/sh
 or (with
 .Fl C )
 a
