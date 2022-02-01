@@ -81,8 +81,6 @@ menu_add_item(struct menu *menu, const struct menu_item *item,
 		menu->count--;
 		return;
 	}
-	if (c->tty.sx <= 4)
-		return;
 	max_width = c->tty.sx - 4;
 
 	slen = strlen(s);
