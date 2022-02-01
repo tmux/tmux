@@ -843,6 +843,12 @@ enum pane_lines {
 	PANE_LINES_NUMBER
 };
 
+/* Pane border indicator option. */
+#define PANE_BORDER_OFF 0
+#define PANE_BORDER_COLOUR 1
+#define PANE_BORDER_ARROWS 2
+#define PANE_BORDER_BOTH 3
+
 /* Screen redraw context. */
 struct screen_redraw_ctx {
 	struct client	*c;
