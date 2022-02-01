@@ -37,7 +37,11 @@ struct acl_user* owner;
 static int 
 uid_cmp(struct acl_user *user1, struct acl_user *user2) 
 {
-	return (user1->user_id < user2->user_id ? -1 : user1->user_id > user2->user_id);
+	if (user1->user_id < user2->user_id) {
+		return -1;
+	} else {
+		return user1->user_id > user2->user_id;
+	}
 }
 
 RB_HEAD(acl_user_entries, acl_user) acl_entries = RB_INITIALIZER(&acl_entries);
@@ -164,16 +168,20 @@ server_acl_user_deny(uid_t uid)
  * Uses newfd, which is returned by the call to accept(), in server_accept(), to get user id of client
  * and confirm it's in the allow list.
  */
-
 int 
 server_acl_accept_validate(int newfd, struct clients clientz)
 {
 	int len;
-	struct ucred ucred;
+	struct ucred ucred, *peer;
 	struct client	*c;
 	struct passwd *pws;
 
 	len = sizeof(struct ucred);
+
+	peer = osdep_so_peercred();
+	if (peer == NULL) {
+		return 0;
+	}
 
 	if (getsockopt(newfd, SOL_SOCKET, SO_PEERCRED, &ucred, &len) == -1) {
 			log_debug(" SO_PEERCRED FAILURE errno = %d \n", errno); 

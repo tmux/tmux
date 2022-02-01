@@ -3121,6 +3121,7 @@ int		 utf8_cstrhas(const char *, const struct utf8_data *);
 /* osdep-*.c */
 char		*osdep_get_name(int, char *);
 char		*osdep_get_cwd(int);
+struct ucred 	  *osdep_so_peercred(void);
 struct event_base *osdep_event_init(void);
 
 /* log.c */

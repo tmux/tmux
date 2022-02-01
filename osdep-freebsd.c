@@ -191,6 +191,11 @@ osdep_get_cwd(int fd)
 }
 #endif /* KERN_PROC_CWD */
 
+struct ucred *
+osdep_so_peercred(void) {
+	return (struct ucred *)SO_PEERCRED;
+}
+
 struct event_base *
 osdep_event_init(void)
 {

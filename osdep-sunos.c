@@ -93,6 +93,11 @@ osdep_get_cwd(int fd)
 	return (NULL);
 }
 
+struct ucred *
+osdep_so_peercred(void) {
+	return (struct ucred *)SO_PEERCRED;
+}
+
 struct event_base *
 osdep_event_init(void)
 {
