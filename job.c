@@ -87,9 +87,8 @@ job_run(const char *cmd, int argc, char **argv, struct environ *e, struct sessio
 	 * if-shell to decide on default-terminal based on outside TERM.
 	 */
 	env = environ_for_session(s, !cfg_finished);
-	if (e != NULL) {
+	if (e != NULL)
 		environ_copy(e, env);
-	}
 
 	sigfillset(&set);
 	sigprocmask(SIG_BLOCK, &set, &oldset);
