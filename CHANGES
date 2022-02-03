@@ -1,5 +1,45 @@
 CHANGES FROM 3.2a TO 3.3
 
+* Add an option (pane-border-indicators) to select how the active pane is shown
+  on the pane border (colour, arrows or both).
+
+* Support underscore styles with capture-pane -e.
+
+* Make pane-border-format a pane option rather than window.
+
+* Respond to OSC 4 queries
+
+* Fix g/G keys in modes to do the same thing as copy mode (and vi).
+
+* Bump the time terminals have to respond to device attributes queries to three
+  seconds.
+
+* If automatic-rename is off, allow the rename escape sequence to set an empty
+  name.
+
+* Trim menu item text more intelligently.
+
+* Add cursor-style and cursor-colour options to set the default cursor style
+  and colour.
+
+* Accept some useful and non-conflicting emacs keys in vi normal mode at the
+  command prompt.
+
+* Add a format modifier (c) to force a colour to RGB.
+
+* Add -s and -S to display-popup to set styles, -b to set lines and -T to set
+  popup title. New popup-border-lines, popup-border-style and popup-style
+  options set the defaults.
+
+* Add -e flag to set an environment variable for a popup.
+
+* Make send-keys without arguments send the key it is bound to (if bound to a
+  key).
+
+* Try to leave terminal cursor at the right position even when tmux is drawing
+  its own cursor or selection (such as at the command prompt and in choose
+  mode) for people using screen readers and similar which can make use of it.
+
 * Change so that {} is converted to tmux commands immediately when parsed. This
   means it must contain valid tmux commands. For commands which expand %% and
   %%%, this now only happens within string arguments. Use of nested aliases
