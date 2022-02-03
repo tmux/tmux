@@ -30,7 +30,6 @@ struct acl_user {
 	RB_ENTRY(acl_user) entry;
 	uid_t user_id;
 };
-
 struct acl_user* owner;
 
 /* Comparison for rb_tree */
@@ -119,7 +118,7 @@ server_acl_user_allow(uid_t uid)
 				break;
 			}
 	}
-	if (!exists) {
+	if (exists == 0) {
 			int did_insert;
 			struct acl_user* e = server_acl_user_create();
 			e->user_id = uid;
@@ -131,7 +130,7 @@ server_acl_user_allow(uid_t uid)
 					break;
 				}
 			}
-			if (!did_insert) {
+			if (did_insert == 0) {
 				fatal(" Could not insert user_id %i\n", uid);
 			}
 	}
@@ -143,8 +142,8 @@ server_acl_user_allow(uid_t uid)
 void 
 server_acl_user_deny(uid_t uid)
 {
-	struct acl_user* iter = NULL;
 	int exists = 0;
+	struct acl_user* iter = NULL;
 	RB_FOREACH(iter, acl_user_entries, &acl_entries) {
 			if (iter->user_id == uid) {
 				/* ASSERT */
@@ -157,7 +156,7 @@ server_acl_user_deny(uid_t uid)
 	}
 	if (exists) {
 			RB_REMOVE(acl_user_entries, &acl_entries, iter);
-	} else if (!exists) {
+	} else if (exists == 0) {
 			log_debug(
 			" server_acl_deny warning: user %i was not found in acl list.\n", 
 			uid);
@@ -173,8 +172,8 @@ server_acl_accept_validate(int newfd, struct clients clientz)
 {
 	int len;
 	struct ucred ucred, *peer;
-	struct client	*c;
-	struct passwd *pws;
+	struct client		*c;
+	struct passwd 		*pws;
 
 	len = sizeof(struct ucred);
 
@@ -202,7 +201,7 @@ server_acl_accept_validate(int newfd, struct clients clientz)
 				(long)ucred.uid,
 				(long)ucred.gid);
 
-	if (!server_acl_is_allowed(ucred.uid)) {
+	if (server_acl_is_allowed(ucred.uid) == 0) {
 			TAILQ_FOREACH(c, &clientz, entry) {
 				status_message_set(c, 3000, 1, 0, 
 				"%s rejected from joining ", pws->pw_name);

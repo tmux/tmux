@@ -76,7 +76,7 @@ cmd_server_access_exec(struct cmd *self, struct cmdq_item *item)
     /* Deny user */
     if (args_has(args, 'd')) {
 
-            if (!server_acl_check_host(user_data->pw_uid)) {
+            if (server_acl_check_host(user_data->pw_uid) == 0) {
                 if (server_acl_user_find(user_data->pw_uid)) {
                     TAILQ_FOREACH(loop, &clients, entry) {
                         struct acl_user* user = 
@@ -109,8 +109,8 @@ cmd_server_access_exec(struct cmd *self, struct cmdq_item *item)
     /* Allow user */
     if (args_has(args, 'a')) {
 
-            if (!server_acl_check_host(user_data->pw_uid)) {
-                if (!server_acl_user_find(user_data->pw_uid)) {
+            if (server_acl_check_host(user_data->pw_uid) == 0) {
+                if (server_acl_user_find(user_data->pw_uid) == 0) {
                     server_acl_user_allow(user_data->pw_uid);
                     cmdq_error(item, "user %s has been added", name);
                 } else {
@@ -124,7 +124,7 @@ cmd_server_access_exec(struct cmd *self, struct cmdq_item *item)
     /* Give write permission */
     if (args_has(args, 'w')) {
 
-            if (!server_acl_check_host(user_data->pw_uid)) {
+            if (server_acl_check_host(user_data->pw_uid) == 0) {
                 if (server_acl_user_find(user_data->pw_uid)) {
                     server_acl_user_allow_write(user_data);
                     cmdq_error(item, "user %s has write privilege", name);
@@ -139,7 +139,7 @@ cmd_server_access_exec(struct cmd *self, struct cmdq_item *item)
     /* Remove write permission */
     if (args_has(args, 'r')) {
 
-            if (!server_acl_check_host(user_data->pw_uid)) {
+            if (server_acl_check_host(user_data->pw_uid) == 0) {
                 if (server_acl_user_find(user_data->pw_uid)) {
                     server_acl_user_deny_write(user_data);
                     cmdq_error(item, "removed user %s write privilege", name);
