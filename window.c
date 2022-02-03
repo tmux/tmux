@@ -754,6 +754,7 @@ window_lost_pane(struct window *w, struct window_pane *wp)
 		if (w->active != NULL) {
 			w->active->flags |= PANE_CHANGED;
 			notify_window("window-pane-changed", w);
+			window_update_focus(w);
 		}
 	} else if (wp == w->last)
 		w->last = NULL;
