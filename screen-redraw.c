@@ -727,8 +727,10 @@ screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j)
 		    border == SCREEN_REDRAW_BORDER_RIGHT) ||
 		    (cell_type == CELL_RIGHTJOIN &&
 		    border == SCREEN_REDRAW_BORDER_LEFT)))) &&
-		    screen_redraw_check_is(x, y, pane_status, active))
+		    screen_redraw_check_is(x, y, pane_status, active)) {
+			gc.attr |= GRID_ATTR_CHARSET;
 			utf8_set(&gc.data, BORDER_MARKERS[border]);
+		}
 	}
 
 	tty_cell(tty, &gc, &grid_default_cell, NULL);
