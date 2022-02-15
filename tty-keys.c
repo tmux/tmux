@@ -1217,6 +1217,11 @@ tty_keys_clipboard(__unused struct tty *tty, const char *buf, size_t len,
 	buf++;
 	end--;
 
+	/* If we did not request this, ignore it. */
+	if (~tty->flags & TTY_OSC52QUERY)
+		return (0);
+	tty->flags &= ~TTY_OSC52QUERY;
+
 	/* It has to be a string so copy it. */
 	copy = xmalloc(end + 1);
 	memcpy(copy, buf, end);

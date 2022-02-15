@@ -225,7 +225,7 @@ cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	if (args_has(args, 'l')) {
-		tty_putcode_ptr2(&tc->tty, TTYC_MS, "", "?");
+		tty_send_osc52_query(&tc->tty);
 		return (CMD_RETURN_NORMAL);
 	}
 
