@@ -301,7 +301,7 @@ const struct options_table_entry options_table[] = {
 	  .choices = options_table_extended_keys_list,
 	  .default_num = 0,
 	  .text = "Whether to request extended key sequences from terminals "
-	          "that support it."
+		  "that support it."
 	},
 
 	{ .name = "focus-events",
@@ -800,6 +800,14 @@ const struct options_table_entry options_table[] = {
 		  "linked to ('off')."
 	},
 
+	{ .name = "allow-passthrough",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
+	  .default_num = 0,
+	  .text = "Whether applications are allowed to use the escape sequence "
+	          "to bypass tmux."
+	},
+
 	{ .name = "allow-rename",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
@@ -988,7 +996,7 @@ const struct options_table_entry options_table[] = {
 	  .choices = options_table_pane_border_lines_list,
 	  .default_num = PANE_LINES_SINGLE,
 	  .text = "Type of characters used to draw pane border lines. Some of "
-	          "these are only supported on terminals with UTF-8 support."
+		  "these are only supported on terminals with UTF-8 support."
 	},
 
 	{ .name = "pane-border-status",
@@ -1040,7 +1048,7 @@ const struct options_table_entry options_table[] = {
 	  .choices = options_table_popup_border_lines_list,
 	  .default_num = BOX_LINES_SINGLE,
 	  .text = "Type of characters used to draw popup border lines. Some of "
-	          "these are only supported on terminals with UTF-8 support."
+		  "these are only supported on terminals with UTF-8 support."
 	},
 
 	{ .name = "remain-on-exit",
@@ -1170,7 +1178,7 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_WINDOW,
 	  .default_num = 1,
 	  .text = "Whether xterm-style function key sequences should be sent. "
-	          "This option is no longer used."
+		  "This option is no longer used."
 	},
 
 	/* Hook options. */
@@ -1218,8 +1226,8 @@ const struct options_table_entry options_table[] = {
 	OPTIONS_TABLE_HOOK("client-active", ""),
 	OPTIONS_TABLE_HOOK("client-attached", ""),
 	OPTIONS_TABLE_HOOK("client-detached", ""),
- 	OPTIONS_TABLE_HOOK("client-focus-in", ""),
- 	OPTIONS_TABLE_HOOK("client-focus-out", ""),
+	OPTIONS_TABLE_HOOK("client-focus-in", ""),
+	OPTIONS_TABLE_HOOK("client-focus-out", ""),
 	OPTIONS_TABLE_HOOK("client-resized", ""),
 	OPTIONS_TABLE_HOOK("client-session-changed", ""),
 	OPTIONS_TABLE_PANE_HOOK("pane-died", ""),
