@@ -1277,6 +1277,7 @@ LIST_HEAD(tty_terms, tty_term);
 struct tty {
 	struct client	*client;
 	struct event	 start_timer;
+	struct event	 query_timer;
 
 	u_int		 sx;
 	u_int		 sy;
@@ -1320,7 +1321,7 @@ struct tty {
 #define TTY_NOBLOCK 0x8
 #define TTY_STARTED 0x10
 #define TTY_OPENED 0x20
-/* 0x40 unused */
+#define TTY_OSC52QUERY 0x40
 #define TTY_BLOCK 0x80
 #define TTY_HAVEDA 0x100
 #define TTY_HAVEXDA 0x200
@@ -2173,6 +2174,7 @@ void	tty_reset(struct tty *);
 void	tty_region_off(struct tty *);
 void	tty_margin_off(struct tty *);
 void	tty_cursor(struct tty *, u_int, u_int);
+void	tty_send_osc52_query(struct tty *);
 void	tty_putcode(struct tty *, enum tty_code_code);
 void	tty_putcode1(struct tty *, enum tty_code_code, int);
 void	tty_putcode2(struct tty *, enum tty_code_code, int, int);

@@ -83,6 +83,8 @@ static void	tty_check_overlay_range(struct tty *, u_int, u_int, u_int,
 #define TTY_BLOCK_START(tty) (1 + ((tty)->sx * (tty)->sy) * 8)
 #define TTY_BLOCK_STOP(tty) (1 + ((tty)->sx * (tty)->sy) / 8)
 
+#define TTY_QUERY_TIMEOUT 5
+
 void
 tty_create_log(void)
 {
@@ -307,7 +309,7 @@ tty_start_tty(struct tty *tty)
 {
 	struct client	*c = tty->client;
 	struct termios	 tio;
-	struct timeval	 tv = { .tv_sec = 3 };
+	struct timeval	 tv = { .tv_sec = TTY_QUERY_TIMEOUT };
 
 	setblocking(c->fd, 0);
 	event_add(&tty->event_in, NULL);
@@ -2917,3 +2919,26 @@ tty_default_attributes(struct tty *tty, const struct grid_cell *defaults,
 	gc.bg = bg;
 	tty_attributes(tty, &gc, defaults, palette);
 }
+
+static void
+tty_query_timer_callback(__unused int fd, __unused short events, void *data)
+{
+	struct tty	*tty = data;
+
+	tty->flags &= ~TTY_OSC52QUERY;
+}
+
+void
+tty_send_osc52_query(struct tty *tty)
+{
+	struct timeval	 tv = { .tv_sec = TTY_QUERY_TIMEOUT };
+
+	if ((~tty->flags & TTY_STARTED) || (tty->flags & TTY_OSC52QUERY))
+		return;
+	tty_putcode_ptr2(tty, TTYC_MS, "", "?");
+	tty->flags |= TTY_OSC52QUERY;
+
+	evtimer_set(&tty->query_timer, tty_query_timer_callback, tty);
+	evtimer_add(&tty->query_timer, &tv);
+}
+
