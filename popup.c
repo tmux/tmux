@@ -509,7 +509,7 @@ popup_key_cb(struct client *c, void *data, struct key_event *event)
 		    m->x > pd->px + pd->sx - 1 ||
 		    m->y < pd->py ||
 		    m->y > pd->py + pd->sy - 1) {
-			if (MOUSE_BUTTONS(m->b) == 2)
+			if (MOUSE_BUTTONS(m->b) == MOUSE_BUTTON_3)
 				goto menu;
 			return (0);
 		}
@@ -524,16 +524,16 @@ popup_key_cb(struct client *c, void *data, struct key_event *event)
 				border = BOTTOM;
 		}
 		if ((m->b & MOUSE_MASK_MODIFIERS) == 0 &&
-		    MOUSE_BUTTONS(m->b) == 2 &&
+		    MOUSE_BUTTONS(m->b) == MOUSE_BUTTON_3 &&
 		    (border == LEFT || border == TOP))
 		    goto menu;
 		if (((m->b & MOUSE_MASK_MODIFIERS) == MOUSE_MASK_META) ||
 		    border != NONE) {
 			if (!MOUSE_DRAG(m->b))
 				goto out;
-			if (MOUSE_BUTTONS(m->lb) == 0)
+			if (MOUSE_BUTTONS(m->lb) == MOUSE_BUTTON_1)
 				pd->dragging = MOVE;
-			else if (MOUSE_BUTTONS(m->lb) == 2)
+			else if (MOUSE_BUTTONS(m->lb) == MOUSE_BUTTON_3)
 				pd->dragging = SIZE;
 			pd->dx = m->lx - pd->px;
 			pd->dy = m->ly - pd->py;
