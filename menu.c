@@ -235,7 +235,7 @@ menu_key_cb(struct client *c, void *data, struct key_event *event)
 
 	if (KEYC_IS_MOUSE(event->key)) {
 		if (md->flags & MENU_NOMOUSE) {
-			if (MOUSE_BUTTONS(m->b) != 0)
+			if (MOUSE_BUTTONS(m->b) != MOUSE_BUTTON_1)
 				return (1);
 			return (0);
 		}
@@ -248,7 +248,7 @@ menu_key_cb(struct client *c, void *data, struct key_event *event)
 					return (1);
 			} else {
 				if (!MOUSE_RELEASE(m->b) &&
-				    MOUSE_WHEEL(m->b) == 0 &&
+				    !MOUSE_WHEEL(m->b) &&
 				    !MOUSE_DRAG(m->b))
 					return (1);
 			}
@@ -262,7 +262,7 @@ menu_key_cb(struct client *c, void *data, struct key_event *event)
 			if (MOUSE_RELEASE(m->b))
 				goto chosen;
 		} else {
-			if (MOUSE_WHEEL(m->b) == 0 && !MOUSE_DRAG(m->b))
+			if (!MOUSE_WHEEL(m->b) && !MOUSE_DRAG(m->b))
 				goto chosen;
 		}
 		md->choice = m->y - (md->py + 1);

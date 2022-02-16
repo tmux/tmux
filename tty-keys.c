@@ -1118,7 +1118,7 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size,
 		/* Type is M for press, m for release. */
 		sgr_type = ch;
 		if (sgr_type == 'm')
-			b |= 3;
+			b = 3;
 
 		/*
 		 * Some terminals (like PuTTY 0.63) mistakenly send
@@ -1126,7 +1126,7 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size,
 		 * Discard it before it reaches any program running inside
 		 * tmux.
 		 */
-		if (sgr_type == 'm' && (sgr_b & 64))
+		if (sgr_type == 'm' && MOUSE_WHEEL(sgr_b))
 		    return (-2);
 	} else
 		return (-1);
