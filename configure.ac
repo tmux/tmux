@@ -69,6 +69,11 @@ AC_ARG_ENABLE(
 	AS_HELP_STRING(--enable-static, create a static build)
 )
 if test "x$enable_static" = xyes; then
+	case "$host_os" in
+		*darwin*)
+			AC_MSG_ERROR([static linking is not supported on macOS])
+			;;
+	esac
 	test "x$PKG_CONFIG" != x && PKG_CONFIG="$PKG_CONFIG --static"
 	AM_LDFLAGS="-static $AM_LDFLAGS"
 	LDFLAGS="$AM_LDFLAGS $SAVED_LDFLAGS"
