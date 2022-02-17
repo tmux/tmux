@@ -1245,6 +1245,7 @@ const struct options_table_entry options_table[] = {
 	OPTIONS_TABLE_HOOK("window-linked", ""),
 	OPTIONS_TABLE_WINDOW_HOOK("window-pane-changed", ""),
 	OPTIONS_TABLE_WINDOW_HOOK("window-renamed", ""),
+	OPTIONS_TABLE_WINDOW_HOOK("window-resized", ""),
 	OPTIONS_TABLE_HOOK("window-unlinked", ""),
 
 	{ .name = NULL }
