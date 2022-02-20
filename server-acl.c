@@ -1,7 +1,8 @@
 /* $OpenBSD$ */
 
 /*
- * Copyright (c) 2021 Holland Schutte, Jayson Morberg, Dallas Lyons
+ * Copyright (c) 2021 Holland Schutte, Jayson Morberg
+ * Copyright (c) 2021 Dallas Lyons <dallasdlyons@gmail.com>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -16,13 +17,14 @@
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <sys/stat.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+
+#include <ctype.h>
+#include <pwd.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/stat.h>
-#include <pwd.h>
-#include <ctype.h>
 
 #include "tmux.h"
 
@@ -69,9 +71,6 @@ server_acl_is_allowed(uid_t uid)
 	return ok;
 }
 
-/*
- * Public API
- */
 struct acl_user* 
 server_acl_user_find(uid_t uid)
 {
@@ -179,11 +178,12 @@ server_acl_accept_validate(int newfd, struct clients clientz)
 
 	peer = osdep_so_peercred();
 	if (peer == NULL) {
+		log_debug(" SO_PEERCRED FAILURE: peer = NULL\n");
 		return 0;
 	}
 
 	if (getsockopt(newfd, SOL_SOCKET, SO_PEERCRED, &ucred, &len) == -1) {
-			log_debug(" SO_PEERCRED FAILURE errno = %d \n", errno); 
+			log_debug(" SO_PEERCRED FAILURE errno = %d\n", errno); 
 			return 0;
 	}
 

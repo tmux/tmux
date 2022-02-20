@@ -16,13 +16,13 @@
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <sys/stat.h>
 #include <sys/types.h>
 
-#include <sys/stat.h>
+#include <pwd.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <pwd.h>
 
 #include "tmux.h"
 
