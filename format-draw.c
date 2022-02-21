@@ -1141,7 +1141,7 @@ format_trim_right(const char *expanded, u_int limit)
 	char			*copy, *out;
 	const char		*cp = expanded, *end;
 	u_int			 width = 0, total_width, skip, n;
-	u_int			 leading_width, copy_width;
+	u_int			 leading_width, copy_width = 0;
 	struct utf8_data	 ud;
 	enum utf8_state		 more;
 
