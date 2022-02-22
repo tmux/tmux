@@ -3119,6 +3119,7 @@ void	control_notify_session_window_changed(struct session *);
 
 /* session.c */
 extern struct sessions sessions;
+extern u_int next_session_id;
 int	session_cmp(struct session *, struct session *);
 RB_PROTOTYPE(sessions, session, entry, session_cmp);
 int		 session_alive(struct session *);
