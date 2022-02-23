@@ -32,7 +32,6 @@ struct acl_user {
 	RB_ENTRY(acl_user) entry;
 	uid_t user_id;
 };
-struct acl_user* owner;
 
 /* Comparison for rb_tree */
 static int 
@@ -86,7 +85,7 @@ server_acl_user_find(uid_t uid)
 int 
 server_acl_check_host(uid_t uid)
 {
-	return uid == owner->user_id;
+	return uid == getuid();
 }
 
 
@@ -97,8 +96,6 @@ server_acl_init(void)
 
 	host_uid = getuid();
 	server_acl_user_allow(host_uid);
-	owner = server_acl_user_create();
-	owner->user_id = host_uid;
 }
 
 void 
@@ -110,7 +107,7 @@ server_acl_user_allow(uid_t uid)
 	RB_FOREACH(iter, acl_user_entries, &acl_entries) {
 			if (iter->user_id == uid) {
 				/* ASSERT */
-				if (owner->user_id != iter->user_id) {
+				if (getuid() != iter->user_id) {
 					fatal(" owner mismatch for uid = %i\n", uid);
 				}
 				exists = 1;
@@ -146,7 +143,7 @@ server_acl_user_deny(uid_t uid)
 	RB_FOREACH(iter, acl_user_entries, &acl_entries) {
 			if (iter->user_id == uid) {
 				/* ASSERT */
-				if (iter->user_id == owner->user_id) {
+				if (iter->user_id == getuid()) {
 					fatal(" Attempt to remove host from acl list.");
 				}
 				exists = 1;
@@ -292,7 +289,7 @@ server_acl_join(struct client *c)
 	if (proc_acl_get_ucred(c->peer, &cred)) {
 			struct acl_user *user = server_acl_user_find(cred.uid);
 			if (user != NULL) {
-				if (user->user_id != owner->user_id) {
+				if (user->user_id != getuid()) {
 					c->flags |= CLIENT_READONLY;
 				}
 				ret = 1;
