@@ -35,7 +35,7 @@ const struct cmd_entry cmd_server_access_entry = {
     .name = "server-access",
     .alias = NULL,
 
-    .args = { "adwr", 0, 1, NULL },
+    .args = { "adwr", 1, 1, NULL },
     .usage = "[-adrw]"
              CMD_TARGET_PANE_USAGE " [username]",
 
@@ -43,16 +43,68 @@ const struct cmd_entry cmd_server_access_entry = {
     .exec = cmd_server_access_exec
 };
 
+static enum cmd_retval
+cmd_server_access_allow(struct cmdq_item *item, struct passwd *user_data, char *name) 
+{
+
+    if (server_acl_check_host(user_data->pw_uid) == 0) {
+        if (server_acl_user_find(user_data->pw_uid) == 0) {
+            server_acl_user_allow(user_data->pw_uid);
+            cmdq_error(item, "user %s has been added", name);
+        } else {
+            cmdq_error(item, "user %s is already added", name);
+        }
+    } else if (server_acl_check_host(user_data->pw_uid)) {
+        cmdq_error(item, "cannot add: user %s is the host", name);
+    }
+
+    return (CMD_RETURN_NORMAL);
+}
+
+static enum cmd_retval
+cmd_server_access_deny(struct cmdq_item *item, struct passwd *user_data, char *name) 
+{
+
+    struct client *loop;
+    struct ucred u_cred = {0};
+
+    if (server_acl_check_host(user_data->pw_uid) == 0) {
+        if (server_acl_user_find(user_data->pw_uid)) {
+            TAILQ_FOREACH(loop, &clients, entry) {
+                struct acl_user* user = 
+                server_acl_user_find(user_data->pw_uid);
+
+                if (proc_acl_get_ucred(loop->peer, &u_cred)) {
+                    if (u_cred.uid == server_acl_get_uid(user)) {
+                        loop->flags |= CLIENT_EXIT;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    if (server_acl_check_host(user_data->pw_uid)) {
+        cmdq_error(item, "cannot remove: user %s is the host", name);
+    } else if (server_acl_user_find(user_data->pw_uid)) {
+        server_acl_user_deny(user_data->pw_uid); 
+        cmdq_error(item, "user %s has been removed", name);
+    } else {
+        cmdq_error(item, "user %s not found", name);
+    }
+
+    return (CMD_RETURN_NORMAL);
+}
+
 static enum cmd_retval 
 cmd_server_access_exec(struct cmd *self, struct cmdq_item *item) 
 {
 
     struct args *args = cmd_get_args(self);
-    struct client *c = cmdq_get_target_client(item), *loop;
+    struct client *c = cmdq_get_target_client(item);
     const char  *template;
     char        *name;
     struct passwd *user_data;
-    struct ucred u_cred = {0};
 
     template = args_string(args, 0);
     name = format_single(item, template, c, NULL, NULL, NULL);
@@ -75,50 +127,13 @@ cmd_server_access_exec(struct cmd *self, struct cmdq_item *item)
 
     /* Deny user */
     if (args_has(args, 'd')) {
-
-            if (server_acl_check_host(user_data->pw_uid) == 0) {
-                if (server_acl_user_find(user_data->pw_uid)) {
-                    TAILQ_FOREACH(loop, &clients, entry) {
-                        struct acl_user* user = 
-                        server_acl_user_find(user_data->pw_uid);
-
-                        if (proc_acl_get_ucred(loop->peer, &u_cred)) {
-                            if (u_cred.uid == server_acl_get_uid(user)) {
-                                loop->flags |= CLIENT_EXIT;
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        
-            if (server_acl_check_host(user_data->pw_uid)) {
-                cmdq_error(item, "cannot remove: user %s is the host", name);
-            } else if (server_acl_user_find(user_data->pw_uid)) {
-                server_acl_user_deny(user_data->pw_uid); 
-                cmdq_error(item, "user %s has been removed", name);
-            } else {
-                cmdq_error(item, "user %s not found", name);
-            }
-
-            free(name);
-
-            return (CMD_RETURN_NORMAL);
+        cmd_server_access_deny(item, user_data, name); 
+        return (CMD_RETURN_NORMAL);
     }
 
     /* Allow user */
     if (args_has(args, 'a')) {
-
-            if (server_acl_check_host(user_data->pw_uid) == 0) {
-                if (server_acl_user_find(user_data->pw_uid) == 0) {
-                    server_acl_user_allow(user_data->pw_uid);
-                    cmdq_error(item, "user %s has been added", name);
-                } else {
-                    cmdq_error(item, "user %s is already added", name);
-                }
-            } else if (server_acl_check_host(user_data->pw_uid)) {
-                cmdq_error(item, "cannot add: user %s is the host", name);
-            }
+        cmd_server_access_allow(item, user_data, name);
     }
 
     /* Give write permission */
