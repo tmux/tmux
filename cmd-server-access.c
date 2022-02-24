@@ -133,9 +133,10 @@ cmd_server_access_exec(struct cmd *self, struct cmdq_item *item)
                 CMD_RETURN_NORMAL) {
             status_message_set(c, 1000, 0, 0, "user %s has been removed",
 		        name);
+            free(name);
             return (CMD_RETURN_NORMAL);
         }
-        
+        free(name);
         return (CMD_RETURN_ERROR);
     }
 
