@@ -50,12 +50,13 @@ cmd_server_access_allow(struct cmdq_item *item, struct passwd *user_data, char *
     if (server_acl_check_host(user_data->pw_uid) == 0) {
         if (server_acl_user_find(user_data->pw_uid) == 0) {
             server_acl_user_allow(user_data->pw_uid);
-            cmdq_error(item, "user %s has been added", name);
         } else {
             cmdq_error(item, "user %s is already added", name);
+            return (CMD_RETURN_ERROR);
         }
     } else if (server_acl_check_host(user_data->pw_uid)) {
         cmdq_error(item, "cannot add: user %s is the host", name);
+        return (CMD_RETURN_ERROR);
     }
 
     return (CMD_RETURN_NORMAL);
@@ -86,11 +87,12 @@ cmd_server_access_deny(struct cmdq_item *item, struct passwd *user_data, char *n
 
     if (server_acl_check_host(user_data->pw_uid)) {
         cmdq_error(item, "cannot remove: user %s is the host", name);
+        return (CMD_RETURN_ERROR);
     } else if (server_acl_user_find(user_data->pw_uid)) {
         server_acl_user_deny(user_data->pw_uid); 
-        cmdq_error(item, "user %s has been removed", name);
     } else {
         cmdq_error(item, "user %s not found", name);
+        return (CMD_RETURN_ERROR);
     }
 
     return (CMD_RETURN_NORMAL);
@@ -113,7 +115,7 @@ cmd_server_access_exec(struct cmd *self, struct cmdq_item *item)
     /* User doesn't exist */
     if (user_data == NULL) {
             cmdq_error(item, "unknown user: %s", name);
-            return (CMD_RETURN_NORMAL);
+            return (CMD_RETURN_ERROR);
     }
 
     /* Contradictions */
@@ -121,19 +123,29 @@ cmd_server_access_exec(struct cmd *self, struct cmdq_item *item)
         (args_has(args, 'w') && args_has(args, 'r'))) {
         
             cmdq_error(item, "contradicting flags");
-            
-            return (CMD_RETURN_NORMAL);
+            free(name);
+            return (CMD_RETURN_ERROR);
     }
 
     /* Deny user */
     if (args_has(args, 'd')) {
-        cmd_server_access_deny(item, user_data, name); 
-        return (CMD_RETURN_NORMAL);
+        if (cmd_server_access_deny(item, user_data, name) == 
+                CMD_RETURN_NORMAL) {
+            status_message_set(c, 1000, 0, 0, "user %s has been removed",
+		        name);
+            return (CMD_RETURN_NORMAL);
+        }
+        
+        return (CMD_RETURN_ERROR);
     }
 
     /* Allow user */
     if (args_has(args, 'a')) {
-        cmd_server_access_allow(item, user_data, name);
+        if (cmd_server_access_allow(item, user_data, name) == 
+                CMD_RETURN_NORMAL) {
+            status_message_set(c, 1000, 0, 0, "user %s has been added",
+		        name);
+        }
     }
 
     /* Give write permission */
@@ -142,12 +154,17 @@ cmd_server_access_exec(struct cmd *self, struct cmdq_item *item)
             if (server_acl_check_host(user_data->pw_uid) == 0) {
                 if (server_acl_user_find(user_data->pw_uid)) {
                     server_acl_user_allow_write(user_data);
-                    cmdq_error(item, "user %s has write privilege", name);
+                    status_message_set(c, 1000, 0, 0, 
+                        "user %s has write privilege", name);
                 } else {
-                    cmdq_error(item, "user %s not found in whitelist", name);
+                    cmdq_error(item, "user %s not found in ACL", name);
+                    free(name);
+                    return (CMD_RETURN_ERROR);
                 }
             } else {
                 cmdq_error(item, "cannot change hosts write privileges");
+                free(name);
+                return (CMD_RETURN_ERROR);
             }
     }
 
@@ -157,12 +174,17 @@ cmd_server_access_exec(struct cmd *self, struct cmdq_item *item)
             if (server_acl_check_host(user_data->pw_uid) == 0) {
                 if (server_acl_user_find(user_data->pw_uid)) {
                     server_acl_user_deny_write(user_data);
-                    cmdq_error(item, "removed user %s write privilege", name);
+                    status_message_set(c, 1000, 0, 0, 
+                        "removed user %s write privilege", name);
                 } else {
                     cmdq_error(item, "user %s not found in whitelist", name);
+                    free(name);
+                    return (CMD_RETURN_ERROR);
                 }
             } else {
                 cmdq_error(item, "cannot change hosts write privilege");
+                free(name);
+                return (CMD_RETURN_ERROR);
             }
     }
 
