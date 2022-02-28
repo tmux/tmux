@@ -141,7 +141,7 @@ char *
 osdep_get_cwd(int fd)
 {
 	int		name[] = { CTL_KERN, KERN_PROC_CWD, 0 };
-	static char	path[MAXPATHLEN];
+	static char	path[PATH_MAX];
 	size_t		pathlen = sizeof path;
 
 	if ((name[2] = tcgetpgrp(fd)) == -1)
