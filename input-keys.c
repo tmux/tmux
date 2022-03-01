@@ -519,7 +519,7 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 	}
 	outkey = (key & KEYC_MASK_KEY);
 	modifiers = (key & KEYC_MASK_MODIFIERS);
-	if (outkey < ' ') {
+	if (outkey < 32 && outkey != 9 && outkey != 13 && outkey != 27) {
 		outkey = 64 + outkey;
 		modifiers |= KEYC_CTRL;
 	}
