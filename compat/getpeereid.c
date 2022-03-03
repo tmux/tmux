@@ -1,7 +1,5 @@
-/* $OpenBSD$ */
-
 /*
- * Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
+ * Copyright (c) 2022 Nicholas Marriott <nicholas.marriott@gmail.com>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -17,23 +15,26 @@
  */
 
 #include <sys/types.h>
+#include <sys/socket.h>
 
-#include "tmux.h"
+#include <stdio.h>
 
-char *
-osdep_get_name(__unused int fd, __unused char *tty)
+#include "compat.h"
+
+int
+getpeereid(int s, uid_t *uid, gid_t *gid)
 {
-	return (NULL);
-}
+#ifdef HAVE_SO_PEERCRED
+	struct ucred	uc;
+	int		len = sizeof uc;
 
-char *
-osdep_get_cwd(int fd)
-{
-	return (NULL);
-}
-
-struct event_base *
-osdep_event_init(void)
-{
-	return (event_init());
+	if (getsockopt(s, SOL_SOCKET, SO_PEERCRED, &uc, &len) == -1)
+		return (-1);
+	*uid = uc.uid;
+	*gid = uc.gid;
+	return (0);
+#else
+	errno = EOPNOTSUPP;
+	return (-1);
+#endif
 }

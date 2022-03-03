@@ -16,7 +16,6 @@ AM_CPPFLAGS += @XOPEN_DEFINES@ \
 	-DTMUX_CONF='"$(sysconfdir)/tmux.conf:~/.tmux.conf:$$XDG_CONFIG_HOME/tmux/tmux.conf:~/.config/tmux/tmux.conf"' \
 	-DTMUX_TERM='"@DEFAULT_TERM@"'
 
-
 # Additional object files.
 LDADD = $(LIBOBJS)
 
@@ -71,7 +70,6 @@ endif
 # List of sources.
 dist_tmux_SOURCES = \
 	alerts.c \
-	cmd-server-access.c \
 	arguments.c \
 	attributes.c \
 	cfg.c \
@@ -125,6 +123,7 @@ dist_tmux_SOURCES = \
 	cmd-select-pane.c \
 	cmd-select-window.c \
 	cmd-send-keys.c \
+	cmd-server-access.c \
 	cmd-set-buffer.c \
 	cmd-set-environment.c \
 	cmd-set-option.c \

@@ -164,54 +164,40 @@ server_acl_user_deny(uid_t uid)
  * and confirm it's in the allow list.
  */
 int 
-server_acl_accept_validate(int newfd, struct clients clientz)
+server_acl_accept_validate(int newfd)
 {
-	int len;
-	struct ucred ucred, *peer;
-	struct client		*c;
-	struct passwd 		*pws;
+	struct client *c;
+	struct passwd *pws;
+	uid_t		uid;
+	gid_t		gid;
 
-	len = sizeof(struct ucred);
+	if (getpeereid(newfd, &uid, &gid) != 0) {
+		log_debug(" SO_PEERCRED FAILURE: uid=%ld", (long)uid);
+		return 0;	
+	}
 
-	peer = osdep_so_peercred();
-	if (peer == NULL) {
-		log_debug(" SO_PEERCRED FAILURE: peer = NULL\n");
+	pws = getpwuid(uid);
+	if (pws == NULL) {
+		log_debug(" SO_PEERCRED FAILURE: uid=%ld", (long)uid);
 		return 0;
 	}
 
-	if (getsockopt(newfd, SOL_SOCKET, SO_PEERCRED, &ucred, &len) == -1) {
-			log_debug(" SO_PEERCRED FAILURE errno = %d\n", errno); 
-			return 0;
-	}
+	log_debug(" SO_PEERCRED SUCCESS: uid=%ld", (long)uid);
 
-	pws = getpwuid(ucred.uid);
-	if (pws == NULL) {
-			log_debug(" SO_PEERCRED FAILURE: pid=%li, euid=%li, egid=%li\n",
-						(long)ucred.pid,
-						(long)ucred.uid,
-						(long)ucred.gid);
-			return 0;
-	}
-	
-	log_debug(" SO_PEERCRED SUCCESS: pid=%li, euid=%li, egid=%li\n",
-				(long)ucred.pid,
-				(long)ucred.uid,
-				(long)ucred.gid);
-
-	if (server_acl_is_allowed(ucred.uid) == 0) {
-			TAILQ_FOREACH(c, &clientz, entry) {
+	if (server_acl_is_allowed(uid) == 0) {
+			TAILQ_FOREACH(c, &clients, entry) {
 				status_message_set(c, 3000, 1, 0, 
 				"%s rejected from joining ", pws->pw_name);
 			}
-			log_debug(" denying user id %li", (long) ucred.uid);
+			log_debug(" denying user id %li", (long)uid);
 			return 0;
 	}
-	TAILQ_FOREACH(c, &clientz, entry) {
+	TAILQ_FOREACH(c, &clients, entry) {
 			status_message_set(c, 3000, 1, 0,
 			 "%s joined the session", pws->pw_name);
 	}
 
-	log_debug(" allowing user id %li", (long) ucred.uid);
+	log_debug(" allowing user id %li", (long)uid);
 
 	return 1;
 }
@@ -223,14 +209,11 @@ server_acl_user_allow_write(struct passwd* user_data)
 	if (user != NULL) {
 			struct client* c = NULL;
 			TAILQ_FOREACH(c, &clients, entry) {
-				struct ucred cred = {0};
-				if (proc_acl_get_ucred(c->peer, &cred)) {
-					if (cred.uid == user->user_id) {
-						c->flags &= (~CLIENT_READONLY);
-						break;
-					}
-				}
-				else {
+				uid_t uid = proc_get_peer_uid(c->peer);
+				if (uid != (uid_t)-1) {
+					c->flags &= (~CLIENT_READONLY);
+					break;
+				} else {
 					log_debug(
 						" [acl-allow-write] bad client for user %s", 
 						c->name
@@ -247,23 +230,13 @@ server_acl_user_deny_write(struct passwd* user_data)
 	if (user != NULL) {
 			struct client* c = NULL;
 			TAILQ_FOREACH(c, &clients, entry) {
-				struct ucred cred = {0};
-				if (proc_acl_get_ucred(c->peer, &cred)) {
-					if (cred.uid == user->user_id) {
-						c->flags &= (CLIENT_READONLY);
-						break;
-					}
-				}
-				else {
-					log_debug(
-						" [acl-allow-write] bad client, %s, found for user %s", 
-						c->name, 
-						user_data->pw_name
-					);
+				uid_t uid = proc_get_peer_uid(c->peer);
+				if (uid == user->user_id) {
+					c->flags &= (CLIENT_READONLY);
+					break;
 				}
 			}
-	}
-	else {
+	} else {
 			struct client* c = NULL;
 			TAILQ_FOREACH(c, &clients, entry) {
 				status_message_set(
@@ -284,23 +257,17 @@ server_acl_user_deny_write(struct passwd* user_data)
 int 
 server_acl_join(struct client *c)
 {
-	struct ucred cred = {0};
-	int ret = 0;
-	if (proc_acl_get_ucred(c->peer, &cred)) {
-			struct acl_user *user = server_acl_user_find(cred.uid);
-			if (user != NULL) {
-				if (user->user_id != getuid()) {
-					c->flags |= CLIENT_READONLY;
-				}
-				ret = 1;
-			} else {
-				log_debug(
-					" [acl_join] invalid client joined : name = %s, uid = %i\n",
-					c->name, cred.uid
-				);
-			}
+	uid_t		uid = proc_get_peer_uid(c->peer);
+	struct acl_user *user;
+
+	user = server_acl_user_find(uid);
+	if (user != NULL) {
+		if (user->user_id != getuid()) 
+			c->flags |= CLIENT_READONLY;
+		return (1);
 	}
-	return ret;
+
+	return (0);
 }
 
 uid_t

@@ -155,6 +155,7 @@ AC_REPLACE_FUNCS([ \
 	freezero \
 	getdtablecount \
 	getdtablesize \
+	getpeereid \
 	getline \
 	getprogname \
 	memmem \
@@ -164,7 +165,7 @@ AC_REPLACE_FUNCS([ \
 	strlcat \
 	strlcpy \
 	strndup \
-	strsep \
+	strsep
 ])
 AC_FUNC_STRNLEN
 
@@ -677,6 +678,14 @@ AC_CHECK_DECL(
 	AC_DEFINE(HAVE_PR_SET_NAME),
 	,
 	[#include <sys/prctl.h>]
+)
+
+# Look for setsockopt(SO_PEERCRED).
+AC_CHECK_DECL(
+	SO_PEERCRED,
+	AC_DEFINE(HAVE_SO_PEERCRED),
+	,
+	[#include <sys/socket.h>]
 )
 
 # Look for fcntl(F_CLOSEM).

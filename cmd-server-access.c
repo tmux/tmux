@@ -67,7 +67,6 @@ cmd_server_access_deny(struct cmdq_item *item, struct passwd *user_data, char *n
 {
 
     struct client *loop;
-    struct ucred u_cred = {0};
 
     if (server_acl_check_host(user_data->pw_uid) == 0) {
         if (server_acl_user_find(user_data->pw_uid)) {
@@ -75,11 +74,10 @@ cmd_server_access_deny(struct cmdq_item *item, struct passwd *user_data, char *n
                 struct acl_user* user = 
                 server_acl_user_find(user_data->pw_uid);
 
-                if (proc_acl_get_ucred(loop->peer, &u_cred)) {
-                    if (u_cred.uid == server_acl_get_uid(user)) {
-                        loop->flags |= CLIENT_EXIT;
-                        break;
-                    }
+                uid_t uid = proc_get_peer_uid(loop->peer);
+                if (uid == server_acl_get_uid(user)) {
+                    loop->flags |= CLIENT_EXIT;
+                    break;
                 }
             }
         }

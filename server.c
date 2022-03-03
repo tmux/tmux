@@ -33,8 +33,6 @@
 #include <time.h>
 #include <unistd.h>
 
-
-
 #include "tmux.h"
 
 /*
@@ -351,6 +349,7 @@ server_update_socket(void)
 				mode |= S_IXOTH;
 		} else
 			mode &= ~(S_IXUSR|S_IXGRP|S_IXOTH);
+		chmod(socket_path, mode);
 	}
 }
 
@@ -382,7 +381,7 @@ server_accept(int fd, short events, __unused void *data)
 		return;
 	}
 
-	if (!server_acl_accept_validate(newfd, clients)) {
+	if (!server_acl_accept_validate(newfd)) {
 		close(newfd);
 		return;
 	}

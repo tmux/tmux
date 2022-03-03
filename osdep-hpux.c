@@ -32,11 +32,6 @@ osdep_get_cwd(__unused int fd)
 	return (NULL);
 }
 
-struct ucred *
-osdep_so_peercred(void) {
-	return (NULL);
-}
-
 struct event_base *
 osdep_event_init(void)
 {

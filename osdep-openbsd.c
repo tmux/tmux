@@ -141,7 +141,7 @@ char *
 osdep_get_cwd(int fd)
 {
 	int		name[] = { CTL_KERN, KERN_PROC_CWD, 0 };
-	static char	path[MAXPATHLEN];
+	static char	path[PATH_MAX];
 	size_t		pathlen = sizeof path;
 
 	if ((name[2] = tcgetpgrp(fd)) == -1)
@@ -149,11 +149,6 @@ osdep_get_cwd(int fd)
 	if (sysctl(name, 3, path, &pathlen, NULL, 0) != 0)
 		return (NULL);
 	return (path);
-}
-
-struct ucred *
-osdep_so_peercred(void) {
-	return (struct ucred *)SO_PEERCRED;
 }
 
 struct event_base *

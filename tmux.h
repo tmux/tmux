@@ -23,11 +23,10 @@
 #include <sys/uio.h>
 
 #include <limits.h>
+#include <pwd.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <termios.h>
-
-#include <pwd.h>
 
 #ifdef HAVE_UTEMPTER
 #include <utempter.h>
@@ -1944,7 +1943,6 @@ const char	*getversion(void);
 
 /* proc.c */
 struct imsg;
-int proc_acl_get_ucred(struct tmuxpeer*, struct ucred*);
 int	proc_send(struct tmuxpeer *, enum msgtype, int, const void *, size_t);
 struct tmuxproc *proc_start(const char *);
 void	proc_loop(struct tmuxproc *, int (*)(void));
@@ -1957,6 +1955,7 @@ void	proc_remove_peer(struct tmuxpeer *);
 void	proc_kill_peer(struct tmuxpeer *);
 void	proc_toggle_log(struct tmuxproc *);
 pid_t	proc_fork_and_daemon(int *);
+uid_t	proc_get_peer_uid(struct tmuxpeer *);
 
 /* cfg.c */
 extern int cfg_finished;
@@ -3121,7 +3120,6 @@ int		 utf8_cstrhas(const char *, const struct utf8_data *);
 /* osdep-*.c */
 char		*osdep_get_name(int, char *);
 char		*osdep_get_cwd(int);
-struct ucred 	  *osdep_so_peercred(void);
 struct event_base *osdep_event_init(void);
 
 /* log.c */
@@ -3193,17 +3191,16 @@ struct window_pane *spawn_pane(struct spawn_context *, char **);
 char		*regsub(const char *, const char *, const char *, int);
 
 /* server-acl.c */
-struct acl_user;
-void server_acl_init(void);
-void server_acl_user_allow(uid_t);
-void server_acl_user_deny(uid_t);
-struct acl_user* server_acl_user_find(uid_t);
-int server_acl_check_host(uid_t);
-int server_acl_accept_validate(int, struct clients);
-int server_acl_join (struct client *);
-void server_acl_user_allow_write(struct passwd *);
-void server_acl_user_deny_write(struct passwd *);
-void server_acl_client_fail(const char*, ...);
-uid_t server_acl_get_uid(struct acl_user*); 
+void		 server_acl_init(void);
+int		 server_acl_accept_validate(int);
+int		 server_acl_join (struct client *);
+struct acl_user	*server_acl_user_find(uid_t);
+int		 server_acl_check_host(uid_t);
+void		 server_acl_user_allow(uid_t);
+void		 server_acl_user_deny(uid_t);
+void		 server_acl_user_allow_write(struct passwd *);
+void		 server_acl_user_deny_write(struct passwd *);
+void		 server_acl_client_fail(const char *, ...);
+uid_t		 server_acl_get_uid(struct acl_user *);
 
 #endif /* TMUX_H */

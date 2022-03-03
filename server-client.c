@@ -2321,7 +2321,7 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 		if (datalen != sizeof c->pid)
 			fatalx("bad MSG_IDENTIFY_CLIENTPID size");
 		memcpy(&c->pid, data, sizeof c->pid);
-		log_debug("client %p IDENTIFY_CLIENTPID %ld", c, (long)c->pid);		
+		log_debug("client %p IDENTIFY_CLIENTPID %ld", c, (long)c->pid);
 		break;
 	default:
 		break;

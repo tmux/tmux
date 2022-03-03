@@ -374,12 +374,13 @@ proc_fork_and_daemon(int *fd)
 	}
 }
 
-int proc_acl_get_ucred(struct tmuxpeer* peer, struct ucred* out_ucred)
+uid_t
+proc_get_peer_uid(struct tmuxpeer *peer)
 {
-	int len = sizeof(*out_ucred);
-	if (getsockopt(peer->ibuf.fd, SOL_SOCKET, SO_PEERCRED, out_ucred, &len) == -1) {
-		log_debug(" proc_acl_get_ucred: SO_PEERCRED FAILURE. errno = %i\n", errno);
-		return 0;
-	}
-	return 1;
+	uid_t uid;
+	gid_t gid;
+
+	if (getpeereid(peer->ibuf.fd, &uid, &gid) != 0)
+		return ((uid_t)-1);
+	return (uid);
 }
