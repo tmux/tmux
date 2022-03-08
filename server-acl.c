@@ -17,261 +17,156 @@
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
-#include <sys/types.h>
 
 #include <ctype.h>
 #include <pwd.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
 #include "tmux.h"
 
-struct acl_user {
-	RB_ENTRY(acl_user) entry;
-	uid_t user_id;
+struct server_acl_user {
+	uid_t				uid;
+
+	int				flags;
+#define SERVER_ACL_READONLY 0x1
+
+	RB_ENTRY(server_acl_user)	entry;
 };
 
-/* Comparison for rb_tree */
-static int 
-uid_cmp(struct acl_user *user1, struct acl_user *user2) 
+static int
+server_acl_cmp(struct server_acl_user *user1, struct server_acl_user *user2)
 {
-	if (user1->user_id < user2->user_id) {
+	if (user1->uid < user2->uid)
 		return -1;
-	} else {
-		return user1->user_id > user2->user_id;
-	}
+	return user1->uid > user2->uid;
 }
 
-RB_HEAD(acl_user_entries, acl_user) acl_entries = RB_INITIALIZER(&acl_entries);
-RB_GENERATE_STATIC(acl_user_entries, acl_user, entry, uid_cmp);
+RB_HEAD(server_acl_entries, server_acl_user) server_acl_entries;
+RB_GENERATE_STATIC(server_acl_entries, server_acl_user, entry, server_acl_cmp);
 
-static struct acl_user* 
-server_acl_user_create(void)
-{
-	struct acl_user* n = xmalloc(sizeof(*n));
-	/* xmalloc will call fatal() if malloc fails */
-	n->user_id = (uid_t)-1;
-	return n;
-}
-
-static int 
-server_acl_is_allowed(uid_t uid)
-{
-	int ok = 0;
-	struct acl_user* iter = NULL;
-	RB_FOREACH(iter, acl_user_entries, &acl_entries) {
-		if (iter->user_id == uid) {
-				ok = 1;
-				break;
-		}
-	}
-	return ok;
-}
-
-struct acl_user* 
-server_acl_user_find(uid_t uid)
-{
-	struct acl_user* iter = NULL;
-	RB_FOREACH(iter, acl_user_entries, &acl_entries) {
-			if (iter->user_id == uid) {
-				break;
-			}
-	}
-	return iter;
-}
-
-int 
-server_acl_check_host(uid_t uid)
-{
-	return uid == getuid();
-}
-
-
-void 
+/* Initialize server_acl tree. */
+void
 server_acl_init(void)
 {
-	uid_t host_uid;
+	RB_INIT(&server_acl_entries);
 
-	host_uid = getuid();
-	server_acl_user_allow(host_uid);
+	if (getuid() != 0)
+		server_acl_user_allow(0);
+	server_acl_user_allow(getuid());
 }
 
-void 
+/* Find user entry. */
+struct server_acl_user*
+server_acl_user_find(uid_t uid)
+{
+	struct server_acl_user	find = { .uid = uid };
+
+	return RB_FIND(server_acl_entries, &server_acl_entries, &find);
+}
+
+/* Allow a user. */
+void
 server_acl_user_allow(uid_t uid)
 {
-	/* Ensure entry doesn't already exist */
-	struct acl_user* iter = NULL;
-	int exists = 0;
-	RB_FOREACH(iter, acl_user_entries, &acl_entries) {
-			if (iter->user_id == uid) {
-				/* ASSERT */
-				if (getuid() != iter->user_id) {
-					fatal(" owner mismatch for uid = %i\n", uid);
-				}
-				exists = 1;
-				break;
-			}
-	}
-	if (exists == 0) {
-			int did_insert;
-			struct acl_user* e = server_acl_user_create();
-			e->user_id = uid;
-			did_insert = 0;
-			RB_INSERT(acl_user_entries, &acl_entries, e);
-			RB_FOREACH(iter, acl_user_entries, &acl_entries) {
-				if (iter == e) {
-					did_insert = 1;
-					break;
-				}
-			}
-			if (did_insert == 0) {
-				fatal(" Could not insert user_id %i\n", uid);
-			}
+	struct server_acl_user	*user;
+
+	user = server_acl_user_find(uid);
+	if (user == NULL) {
+		user = xcalloc(1, sizeof *user);
+		user->uid = uid;
+		RB_INSERT(server_acl_entries, &server_acl_entries, user);
 	}
 }
 
-/*
-* Remove user from acl list.
-*/
-void 
+/* Deny a user (remove from the tree). */
+void
 server_acl_user_deny(uid_t uid)
 {
-	int exists = 0;
-	struct acl_user* iter = NULL;
-	RB_FOREACH(iter, acl_user_entries, &acl_entries) {
-			if (iter->user_id == uid) {
-				/* ASSERT */
-				if (iter->user_id == getuid()) {
-					fatal(" Attempt to remove host from acl list.");
-				}
-				exists = 1;
-				break;
-			}
-	}
-	if (exists) {
-			RB_REMOVE(acl_user_entries, &acl_entries, iter);
-	} else if (exists == 0) {
-			log_debug(
-			" server_acl_deny warning: user %i was not found in acl list.\n", 
-			uid);
-	}
-}
-
-/*
- * Uses newfd, which is returned by the call to accept(), in server_accept(), to get user id of client
- * and confirm it's in the allow list.
- */
-int 
-server_acl_accept_validate(int newfd)
-{
-	struct client *c;
-	struct passwd *pws;
-	uid_t		uid;
-	gid_t		gid;
-
-	if (getpeereid(newfd, &uid, &gid) != 0) {
-		log_debug(" SO_PEERCRED FAILURE: uid=%ld", (long)uid);
-		return 0;	
-	}
-
-	pws = getpwuid(uid);
-	if (pws == NULL) {
-		log_debug(" SO_PEERCRED FAILURE: uid=%ld", (long)uid);
-		return 0;
-	}
-
-	log_debug(" SO_PEERCRED SUCCESS: uid=%ld", (long)uid);
-
-	if (server_acl_is_allowed(uid) == 0) {
-			TAILQ_FOREACH(c, &clients, entry) {
-				status_message_set(c, 3000, 1, 0, 
-				"%s rejected from joining ", pws->pw_name);
-			}
-			log_debug(" denying user id %li", (long)uid);
-			return 0;
-	}
-	TAILQ_FOREACH(c, &clients, entry) {
-			status_message_set(c, 3000, 1, 0,
-			 "%s joined the session", pws->pw_name);
-	}
-
-	log_debug(" allowing user id %li", (long)uid);
-
-	return 1;
-}
-
-void 
-server_acl_user_allow_write(struct passwd* user_data)
-{
-	struct acl_user* user = server_acl_user_find(user_data->pw_uid);
-	if (user != NULL) {
-			struct client* c = NULL;
-			TAILQ_FOREACH(c, &clients, entry) {
-				uid_t uid = proc_get_peer_uid(c->peer);
-				if (uid != (uid_t)-1) {
-					c->flags &= (~CLIENT_READONLY);
-					break;
-				} else {
-					log_debug(
-						" [acl-allow-write] bad client for user %s", 
-						c->name
-					);
-				}
-			}
-	}
-}
-
-void 
-server_acl_user_deny_write(struct passwd* user_data)
-{
-	struct acl_user* user = server_acl_user_find(user_data->pw_uid);
-	if (user != NULL) {
-			struct client* c = NULL;
-			TAILQ_FOREACH(c, &clients, entry) {
-				uid_t uid = proc_get_peer_uid(c->peer);
-				if (uid == user->user_id) {
-					c->flags &= (CLIENT_READONLY);
-					break;
-				}
-			}
-	} else {
-			struct client* c = NULL;
-			TAILQ_FOREACH(c, &clients, entry) {
-				status_message_set(
-					c, 3000, 1, 0, 
-					"[acl-allow-write] WARNING: user %s is not in the acl", 
-					user_data->pw_name
-				);
-			}
-	}
-}
-
-/* 
- * Verify that the client's UID exists in the ACL list, 
- * and then set the access of the client to read only for the session.
- *
- * The call to proc_acl_get_ucred() will log an error message if it fails.
- */
-int 
-server_acl_join(struct client *c)
-{
-	uid_t		uid = proc_get_peer_uid(c->peer);
-	struct acl_user *user;
+	struct server_acl_user	*user;
 
 	user = server_acl_user_find(uid);
 	if (user != NULL) {
-		if (user->user_id != getuid()) 
-			c->flags |= CLIENT_READONLY;
-		return (1);
+		RB_REMOVE(server_acl_entries, &server_acl_entries, user);
+		free(user);
 	}
-
-	return (0);
 }
 
-uid_t
-server_acl_get_uid(struct acl_user* user) 
+/* Check if this file descriptor belongs to a user permitted to attach. */
+int
+server_acl_accept_validate(int newfd)
 {
-	return user->user_id;
+	uid_t	uid;
+	gid_t	gid;
+
+	if (getpeereid(newfd, &uid, &gid) != 0)
+		return 0;
+	return (server_acl_user_find(uid) != NULL);
+}
+
+/* Allow this user write access. */
+void
+server_acl_user_allow_write(uid_t uid)
+{
+	struct server_acl_user	*user;
+	struct client		*c;
+
+	user = server_acl_user_find(uid);
+	if (user == NULL)
+		return;
+	user->flags &= ~SERVER_ACL_READONLY;
+
+	TAILQ_FOREACH(c, &clients, entry) {
+		uid = proc_get_peer_uid(c->peer);
+		if (uid != (uid_t)-1 && uid == user->uid)
+			c->flags &= ~CLIENT_READONLY;
+	}
+}
+
+/* Deny this user write access. */
+void
+server_acl_user_deny_write(uid_t uid)
+{
+	struct server_acl_user	*user;
+	struct client		*c;
+
+	user = server_acl_user_find(uid);
+	if (user == NULL)
+		return;
+	user->flags |= SERVER_ACL_READONLY;
+
+	TAILQ_FOREACH(c, &clients, entry) {
+		uid = proc_get_peer_uid(c->peer);
+		if (uid == user->uid && uid == user->uid)
+			c->flags |= CLIENT_READONLY;
+	}
+}
+
+/*
+ * Check if the client's UID exists in the ACL list and if so, set as read only
+ * if needed. Return false if the user does not exist.
+ */
+int
+server_acl_join(struct client *c)
+{
+	struct server_acl_user	*user;
+	uid_t			 uid = proc_get_peer_uid(c->peer);
+
+	user = server_acl_user_find(uid);
+	if (user == NULL)
+		return (0);
+	if (user->flags & SERVER_ACL_READONLY)
+		c->flags |= CLIENT_READONLY;
+	return (1);
+}
+
+/* Get UID for user entry. */
+uid_t
+server_acl_get_uid(struct server_acl_user *user)
+{
+	return (user->uid);
 }

@@ -1,0 +1,446 @@
+diff --git a/Makefile.am b/Makefile.am
+index 68494932..65264cf5 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -123,6 +123,7 @@ dist_tmux_SOURCES = \
+ 	cmd-select-pane.c \
+ 	cmd-select-window.c \
+ 	cmd-send-keys.c \
++	cmd-server-access.c \
+ 	cmd-set-buffer.c \
+ 	cmd-set-environment.c \
+ 	cmd-set-option.c \
+@@ -172,6 +173,7 @@ dist_tmux_SOURCES = \
+ 	screen-redraw.c \
+ 	screen-write.c \
+ 	screen.c \
++	server-acl.c \
+ 	server-client.c \
+ 	server-fn.c \
+ 	server.c \
+diff --git a/cmd-attach-session.c b/cmd-attach-session.c
+index cc795b22..79e7356c 100644
+--- a/cmd-attach-session.c
++++ b/cmd-attach-session.c
+@@ -69,12 +69,18 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
+ 
+ 	if (c == NULL)
+ 		return (CMD_RETURN_NORMAL);
++
+ 	if (server_client_check_nested(c)) {
+ 		cmdq_error(item, "sessions should be nested with care, "
+ 		    "unset $TMUX to force");
+ 		return (CMD_RETURN_ERROR);
+ 	}
+ 
++	if (!server_acl_join(c)) {
++		cmdq_error(item, "access is not allowed");
++		return (CMD_RETURN_ERROR);
++	}
++
+ 	if (tflag != NULL && tflag[strcspn(tflag, ":.")] != '\0') {
+ 		type = CMD_FIND_PANE;
+ 		flags = 0;
+diff --git a/cmd-new-session.c b/cmd-new-session.c
+index cb9abfb3..33842760 100644
+--- a/cmd-new-session.c
++++ b/cmd-new-session.c
+@@ -94,6 +94,11 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
+ 		return (CMD_RETURN_NORMAL);
+ 	}
+ 
++	if (!server_acl_join(c)) {
++		cmdq_error(item, "access is not allowed");
++		return (CMD_RETURN_ERROR);
++	}
++
+ 	if (args_has(args, 't') && (count != 0 || args_has(args, 'n'))) {
+ 		cmdq_error(item, "command or window name given with target");
+ 		return (CMD_RETURN_ERROR);
+diff --git a/cmd-server-access.c b/cmd-server-access.c
+new file mode 100644
+index 00000000..e010bb12
+--- /dev/null
++++ b/cmd-server-access.c
+@@ -0,0 +1,132 @@
++/* $OpenBSD$ */
++
++/*
++ * Copyright (c) 2021 Dallas Lyons <dallasdlyons@gmail.com>
++ *
++ * Permission to use, copy, modify, and distribute this software for any
++ * purpose with or without fee is hereby granted, provided that the above
++ * copyright notice and this permission notice appear in all copies.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
++ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
++ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
++ * WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
++ * IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
++ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
++ */
++
++#include <sys/stat.h>
++#include <sys/types.h>
++
++#include <pwd.h>
++#include <stdio.h>
++#include <string.h>
++#include <stdlib.h>
++#include <unistd.h>
++
++#include "tmux.h"
++
++/*
++ * Controls access to session.
++ */
++
++static enum cmd_retval cmd_server_access_exec(struct cmd *, struct cmdq_item *);
++
++const struct cmd_entry cmd_server_access_entry = {
++    .name = "server-access",
++    .alias = NULL,
++
++    .args = { "adrw", 1, 1, NULL },
++    .usage = "[-adrw]" CMD_TARGET_PANE_USAGE " user",
++
++    .flags = CMD_CLIENT_CANFAIL,
++    .exec = cmd_server_access_exec
++};
++
++static enum cmd_retval
++cmd_server_access_deny(struct cmdq_item *item, struct passwd *pw)
++{
++    struct client		*loop;
++    struct server_acl_user	*user;
++    uid_t			 uid;
++
++    if ((user = server_acl_user_find(pw->pw_uid)) == NULL) {
++	    cmdq_error(item, "user %s not found", pw->pw_name);
++	    return (CMD_RETURN_ERROR);
++    }
++    server_acl_user_deny(pw->pw_uid);
++    TAILQ_FOREACH(loop, &clients, entry) {
++	    uid = proc_get_peer_uid(loop->peer);
++	    if (uid == server_acl_get_uid(user)) {
++		    loop->exit_message = xstrdup("access not allowed");
++                    loop->flags |= CLIENT_EXIT;
++	    }
++    }
++    return (CMD_RETURN_NORMAL);
++}
++
++static enum cmd_retval
++cmd_server_access_exec(struct cmd *self, struct cmdq_item *item)
++{
++
++    struct args		*args = cmd_get_args(self);
++    struct client	*c = cmdq_get_target_client(item);
++    char		*name;
++    struct passwd	*pw = NULL;
++
++    name = format_single(item, args_string(args, 0), c, NULL, NULL, NULL);
++    if (*name != '\0')
++	    pw = getpwnam(name);
++    if (pw == NULL) {
++            cmdq_error(item, "unknown user: %s", name);
++            return (CMD_RETURN_ERROR);
++    }
++    free(name);
++
++    if (pw->pw_uid == 0 || pw->pw_uid == getuid()) {
++	    cmdq_error(item, "%s owns the server, can't change access",
++		pw->pw_name);
++	    return (CMD_RETURN_ERROR);
++    }
++
++    if (args_has(args, 'a') && args_has(args, 'd')) {
++            cmdq_error(item, "-a and -d cannot be used together");
++            return (CMD_RETURN_ERROR);
++    }
++    if (args_has(args, 'w') && args_has(args, 'r')) {
++            cmdq_error(item, "-r and -w cannot be used together");
++            return (CMD_RETURN_ERROR);
++    }
++
++    if (args_has(args, 'd'))
++	    return (cmd_server_access_deny(item, pw));
++    if (args_has(args, 'a')) {
++        if (server_acl_user_find(pw->pw_uid) != NULL) {
++		cmdq_error(item, "user %s is already added", pw->pw_name);
++		return (CMD_RETURN_ERROR);
++	}
++	server_acl_user_allow(pw->pw_uid);
++	/* Do not return - allow -r or -w with -a. */
++    }
++
++    if (args_has(args, 'w')) {
++	    if (server_acl_user_find(pw->pw_uid) == NULL) {
++		    cmdq_error(item, "user %s not found", pw->pw_name);
++		    return (CMD_RETURN_ERROR);
++	    }
++	    server_acl_user_allow_write(pw->pw_uid);
++	    return (CMD_RETURN_NORMAL);
++    }
++
++    if (args_has(args, 'r')) {
++	    if (server_acl_user_find(pw->pw_uid) == NULL) {
++		    cmdq_error(item, "user %s not found", pw->pw_name);
++		    return (CMD_RETURN_ERROR);
++	    }
++	    server_acl_user_deny_write(pw->pw_uid);
++	    return (CMD_RETURN_NORMAL);
++    }
++
++    return (CMD_RETURN_NORMAL);
++}
+diff --git a/cmd.c b/cmd.c
+index f8027dfe..ed4f9940 100644
+--- a/cmd.c
++++ b/cmd.c
+@@ -95,6 +95,7 @@ extern const struct cmd_entry cmd_select_pane_entry;
+ extern const struct cmd_entry cmd_select_window_entry;
+ extern const struct cmd_entry cmd_send_keys_entry;
+ extern const struct cmd_entry cmd_send_prefix_entry;
++extern const struct cmd_entry cmd_server_access_entry;
+ extern const struct cmd_entry cmd_set_buffer_entry;
+ extern const struct cmd_entry cmd_set_environment_entry;
+ extern const struct cmd_entry cmd_set_hook_entry;
+@@ -187,6 +188,7 @@ const struct cmd_entry *cmd_table[] = {
+ 	&cmd_select_window_entry,
+ 	&cmd_send_keys_entry,
+ 	&cmd_send_prefix_entry,
++	&cmd_server_access_entry,
+ 	&cmd_set_buffer_entry,
+ 	&cmd_set_environment_entry,
+ 	&cmd_set_hook_entry,
+diff --git a/server-acl.c b/server-acl.c
+new file mode 100644
+index 00000000..5086dfbb
+--- /dev/null
++++ b/server-acl.c
+@@ -0,0 +1,172 @@
++/* $OpenBSD$ */
++
++/*
++ * Copyright (c) 2021 Holland Schutte, Jayson Morberg
++ * Copyright (c) 2021 Dallas Lyons <dallasdlyons@gmail.com>
++ *
++ * Permission to use, copy, modify, and distribute this software for any
++ * purpose with or without fee is hereby granted, provided that the above
++ * copyright notice and this permission notice appear in all copies.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
++ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
++ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
++ * WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
++ * IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
++ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
++ */
++
++#include <sys/types.h>
++#include <sys/stat.h>
++#include <sys/socket.h>
++
++#include <ctype.h>
++#include <pwd.h>
++#include <stdlib.h>
++#include <string.h>
++#include <unistd.h>
++
++#include "tmux.h"
++
++struct server_acl_user {
++	uid_t				uid;
++
++	int				flags;
++#define SERVER_ACL_READONLY 0x1
++
++	RB_ENTRY(server_acl_user)	entry;
++};
++
++static int
++server_acl_cmp(struct server_acl_user *user1, struct server_acl_user *user2)
++{
++	if (user1->uid < user2->uid)
++		return -1;
++	return user1->uid > user2->uid;
++}
++
++RB_HEAD(server_acl_entries, server_acl_user) server_acl_entries;
++RB_GENERATE_STATIC(server_acl_entries, server_acl_user, entry, server_acl_cmp);
++
++/* Initialize server_acl tree. */
++void
++server_acl_init(void)
++{
++	RB_INIT(&server_acl_entries);
++
++	if (getuid() != 0)
++		server_acl_user_allow(0);
++	server_acl_user_allow(getuid());
++}
++
++/* Find user entry. */
++struct server_acl_user*
++server_acl_user_find(uid_t uid)
++{
++	struct server_acl_user	find = { .uid = uid };
++
++	return RB_FIND(server_acl_entries, &server_acl_entries, &find);
++}
++
++/* Allow a user. */
++void
++server_acl_user_allow(uid_t uid)
++{
++	struct server_acl_user	*user;
++
++	user = server_acl_user_find(uid);
++	if (user == NULL) {
++		user = xcalloc(1, sizeof *user);
++		user->uid = uid;
++		RB_INSERT(server_acl_entries, &server_acl_entries, user);
++	}
++}
++
++/* Deny a user (remove from the tree). */
++void
++server_acl_user_deny(uid_t uid)
++{
++	struct server_acl_user	*user;
++
++	user = server_acl_user_find(uid);
++	if (user != NULL) {
++		RB_REMOVE(server_acl_entries, &server_acl_entries, user);
++		free(user);
++	}
++}
++
++/* Check if this file descriptor belongs to a user permitted to attach. */
++int
++server_acl_accept_validate(int newfd)
++{
++	uid_t	uid;
++	gid_t	gid;
++
++	if (getpeereid(newfd, &uid, &gid) != 0)
++		return 0;
++	return (server_acl_user_find(uid) != NULL);
++}
++
++/* Allow this user write access. */
++void
++server_acl_user_allow_write(uid_t uid)
++{
++	struct server_acl_user	*user;
++	struct client		*c;
++
++	user = server_acl_user_find(uid);
++	if (user == NULL)
++		return;
++	user->flags &= ~SERVER_ACL_READONLY;
++
++	TAILQ_FOREACH(c, &clients, entry) {
++		uid = proc_get_peer_uid(c->peer);
++		if (uid != (uid_t)-1 && uid == user->uid)
++			c->flags &= ~CLIENT_READONLY;
++	}
++}
++
++/* Deny this user write access. */
++void
++server_acl_user_deny_write(uid_t uid)
++{
++	struct server_acl_user	*user;
++	struct client		*c;
++
++	user = server_acl_user_find(uid);
++	if (user == NULL)
++		return;
++	user->flags |= SERVER_ACL_READONLY;
++
++	TAILQ_FOREACH(c, &clients, entry) {
++		uid = proc_get_peer_uid(c->peer);
++		if (uid == user->uid && uid == user->uid)
++			c->flags |= CLIENT_READONLY;
++	}
++}
++
++/*
++ * Check if the client's UID exists in the ACL list and if so, set as read only
++ * if needed. Return false if the user does not exist.
++ */
++int
++server_acl_join(struct client *c)
++{
++	struct server_acl_user	*user;
++	uid_t			 uid = proc_get_peer_uid(c->peer);
++
++	user = server_acl_user_find(uid);
++	if (user == NULL)
++		return (0);
++	if (user->flags & SERVER_ACL_READONLY)
++		c->flags |= CLIENT_READONLY;
++	return (1);
++}
++
++/* Get UID for user entry. */
++uid_t
++server_acl_get_uid(struct server_acl_user *user)
++{
++	return (user->uid);
++}
+diff --git a/server.c b/server.c
+index 29bcf88a..7af5efb9 100644
+--- a/server.c
++++ b/server.c
+@@ -239,6 +239,8 @@ server_start(struct tmuxproc *client, int flags, struct event_base *base,
+ 	evtimer_set(&server_ev_tidy, server_tidy_event, NULL);
+ 	evtimer_add(&server_ev_tidy, &tv);
+ 
++	server_acl_init();
++
+ 	server_add_accept(0);
+ 	proc_loop(server_proc, server_loop);
+ 
+@@ -374,10 +376,17 @@ server_accept(int fd, short events, __unused void *data)
+ 		}
+ 		fatal("accept failed");
+ 	}
++
+ 	if (server_exit) {
+ 		close(newfd);
+ 		return;
+ 	}
++
++	if (!server_acl_accept_validate(newfd)) {
++		close(newfd);
++		return;
++	}
++
+ 	server_client_create(newfd);
+ }
+ 
+diff --git a/tmux.h b/tmux.h
+index 78283aa2..d9966679 100644
+--- a/tmux.h
++++ b/tmux.h
+@@ -3262,4 +3262,15 @@ struct window_pane *spawn_pane(struct spawn_context *, char **);
+ /* regsub.c */
+ char		*regsub(const char *, const char *, const char *, int);
+ 
++/* server-acl.c */
++void			 server_acl_init(void);
++struct server_acl_user	*server_acl_user_find(uid_t);
++void			 server_acl_user_allow(uid_t);
++void			 server_acl_user_deny(uid_t);
++int			 server_acl_accept_validate(int);
++void			 server_acl_user_allow_write(uid_t);
++void			 server_acl_user_deny_write(uid_t);
++int			 server_acl_join(struct client *);
++uid_t			 server_acl_get_uid(struct server_acl_user *);
++
+ #endif /* TMUX_H */

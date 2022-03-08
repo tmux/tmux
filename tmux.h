@@ -3191,16 +3191,14 @@ struct window_pane *spawn_pane(struct spawn_context *, char **);
 char		*regsub(const char *, const char *, const char *, int);
 
 /* server-acl.c */
-void		 server_acl_init(void);
-int		 server_acl_accept_validate(int);
-int		 server_acl_join (struct client *);
-struct acl_user	*server_acl_user_find(uid_t);
-int		 server_acl_check_host(uid_t);
-void		 server_acl_user_allow(uid_t);
-void		 server_acl_user_deny(uid_t);
-void		 server_acl_user_allow_write(struct passwd *);
-void		 server_acl_user_deny_write(struct passwd *);
-void		 server_acl_client_fail(const char *, ...);
-uid_t		 server_acl_get_uid(struct acl_user *);
+void			 server_acl_init(void);
+struct server_acl_user	*server_acl_user_find(uid_t);
+void			 server_acl_user_allow(uid_t);
+void			 server_acl_user_deny(uid_t);
+int			 server_acl_accept_validate(int);
+void			 server_acl_user_allow_write(uid_t);
+void			 server_acl_user_deny_write(uid_t);
+int			 server_acl_join(struct client *);
+uid_t			 server_acl_get_uid(struct server_acl_user *);
 
 #endif /* TMUX_H */

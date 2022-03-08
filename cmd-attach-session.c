@@ -69,14 +69,15 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 
 	if (c == NULL)
 		return (CMD_RETURN_NORMAL);
+
 	if (server_client_check_nested(c)) {
 		cmdq_error(item, "sessions should be nested with care, "
 		    "unset $TMUX to force");
 		return (CMD_RETURN_ERROR);
 	}
 
-	if (!server_acl_join (c)) {
-		cmdq_error(item, " ACL attach session error");
+	if (!server_acl_join(c)) {
+		cmdq_error(item, "access is not allowed");
 		return (CMD_RETURN_ERROR);
 	}
 
