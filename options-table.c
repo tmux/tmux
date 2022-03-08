@@ -1060,6 +1060,19 @@ const struct options_table_entry options_table[] = {
 		  "killed ('off' or 'failed') when the program inside exits."
 	},
 
+	{ .name = "remain-on-exit-format",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
+	  .default_str = "Pane is dead ("
+			 "#{?#{!=:#{pane_dead_status},},"
+	                 "status #{pane_dead_status},}"
+			 "#{?#{!=:#{pane_dead_signal},},"
+	                 "signal #{pane_dead_signal},}, "
+			 "#{t:pane_dead_time})",
+	  .text = "Message shown after the program in a pane has exited, if "
+	          "remain-on-exit is enabled."
+	},
+
 	{ .name = "synchronize-panes",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,

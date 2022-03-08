@@ -310,9 +310,11 @@ server_destroy_pane(struct window_pane *wp, int notify)
 	struct window		*w = wp->window;
 	struct screen_write_ctx	 ctx;
 	struct grid_cell	 gc;
-	time_t			 t;
-	char			 tim[26];
 	int			 remain_on_exit;
+	const char		*s;
+	char			*expanded;
+	u_int			 sx = screen_size_x(&wp->base);
+	u_int			 sy = screen_size_y(&wp->base);
 
 	if (wp->fd != -1) {
 #ifdef HAVE_UTEMPTER
@@ -339,32 +341,26 @@ server_destroy_pane(struct window_pane *wp, int notify)
 			return;
 		wp->flags |= PANE_STATUSDRAWN;
 
+		gettimeofday(&wp->dead_time, NULL);
 		if (notify)
 			notify_pane("pane-died", wp);
 
-		screen_write_start_pane(&ctx, wp, &wp->base);
-		screen_write_scrollregion(&ctx, 0, screen_size_y(ctx.s) - 1);
-		screen_write_cursormove(&ctx, 0, screen_size_y(ctx.s) - 1, 0);
-		screen_write_linefeed(&ctx, 1, 8);
-		memcpy(&gc, &grid_default_cell, sizeof gc);
+		s = options_get_string(wp->options, "remain-on-exit-format");
+		if (*s != '\0') {
+			screen_write_start_pane(&ctx, wp, &wp->base);
+			screen_write_scrollregion(&ctx, 0, sy - 1);
+			screen_write_cursormove(&ctx, 0, sy - 1, 0);
+			screen_write_linefeed(&ctx, 1, 8);
+			memcpy(&gc, &grid_default_cell, sizeof gc);
 
-		time(&t);
-		ctime_r(&t, tim);
-		tim[strcspn(tim, "\n")] = '\0';
+			expanded = format_single(NULL, s, NULL, NULL, NULL, wp);
+			format_draw(&ctx, &gc, sx, expanded, NULL, 0);
+			free(expanded);
 
-		if (WIFEXITED(wp->status)) {
-			screen_write_nputs(&ctx, -1, &gc,
-			    "Pane is dead (status %d, %s)",
-			    WEXITSTATUS(wp->status),
-			    tim);
-		} else if (WIFSIGNALED(wp->status)) {
-			screen_write_nputs(&ctx, -1, &gc,
-			    "Pane is dead (signal %s, %s)",
-			    sig2name(WTERMSIG(wp->status)),
-			    tim);
+			screen_write_stop(&ctx);
 		}
+		wp->base.mode &= ~MODE_CURSOR;
 
-		screen_write_stop(&ctx);
 		wp->flags |= PANE_REDRAW;
 		return;
 	}
