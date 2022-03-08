@@ -1154,12 +1154,14 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size,
  * partial.
  */
 static int
-tty_keys_clipboard(__unused struct tty *tty, const char *buf, size_t len,
-    size_t *size)
+tty_keys_clipboard(struct tty *tty, const char *buf, size_t len, size_t *size)
 {
-	size_t	 end, terminator, needed;
-	char	*copy, *out;
-	int	 outlen;
+	struct client		*c = tty->client;
+	struct window_pane	*wp;
+	size_t			 end, terminator, needed;
+	char			*copy, *out;
+	int			 outlen;
+	u_int			 i;
 
 	*size = 0;
 
@@ -1221,6 +1223,7 @@ tty_keys_clipboard(__unused struct tty *tty, const char *buf, size_t len,
 	if (~tty->flags & TTY_OSC52QUERY)
 		return (0);
 	tty->flags &= ~TTY_OSC52QUERY;
+	evtimer_del(&tty->clipboard_timer);
 
 	/* It has to be a string so copy it. */
 	copy = xmalloc(end + 1);
@@ -1237,9 +1240,20 @@ tty_keys_clipboard(__unused struct tty *tty, const char *buf, size_t len,
 	}
 	free(copy);
 
-	/* Create a new paste buffer. */
+	/* Create a new paste buffer and forward to panes. */
 	log_debug("%s: %.*s", __func__, outlen, out);
-	paste_add(NULL, out, outlen);
+	if (c->flags & CLIENT_CLIPBOARDBUFFER) {
+		paste_add(NULL, out, outlen);
+		c->flags &= ~CLIENT_CLIPBOARDBUFFER;
+	}
+	for (i = 0; i < c->clipboard_npanes; i++) {
+		wp = window_pane_find_by_id(c->clipboard_panes[i]);
+		if (wp != NULL)
+			input_reply_clipboard(wp->event, out, outlen, "\033\\");
+	}
+	free(c->clipboard_panes);
+	c->clipboard_panes = NULL;
+	c->clipboard_npanes = 0;
 
 	return (0);
 }

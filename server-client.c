@@ -422,6 +422,7 @@ server_client_lost(struct client *c)
 	if (c->flags & CLIENT_TERMINAL)
 		tty_free(&c->tty);
 	free(c->ttyname);
+	free(c->clipboard_panes);
 
 	free(c->term_name);
 	free(c->term_type);
