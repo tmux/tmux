@@ -1332,7 +1332,7 @@ LIST_HEAD(tty_terms, tty_term);
 struct tty {
 	struct client	*client;
 	struct event	 start_timer;
-	struct event	 query_timer;
+	struct event	 clipboard_timer;
 
 	u_int		 sx;
 	u_int		 sy;
@@ -1685,50 +1685,50 @@ typedef int (*overlay_key_cb)(struct client *, void *, struct key_event *);
 typedef void (*overlay_free_cb)(struct client *, void *);
 typedef void (*overlay_resize_cb)(struct client *, void *);
 struct client {
-	const char	*name;
-	struct tmuxpeer	*peer;
-	struct cmdq_list *queue;
+	const char		*name;
+	struct tmuxpeer		*peer;
+	struct cmdq_list	*queue;
 
-	struct client_windows windows;
+	struct client_windows	 windows;
 
-	struct control_state *control_state;
-	u_int		 pause_age;
+	struct control_state	*control_state;
+	u_int			 pause_age;
 
-	pid_t		 pid;
-	int		 fd;
-	int		 out_fd;
-	struct event	 event;
-	int		 retval;
+	pid_t			 pid;
+	int			 fd;
+	int			 out_fd;
+	struct event		 event;
+	int			 retval;
 
-	struct timeval	 creation_time;
-	struct timeval	 activity_time;
+	struct timeval		 creation_time;
+	struct timeval		 activity_time;
 
-	struct environ	*environ;
+	struct environ		*environ;
 	struct format_job_tree	*jobs;
 
-	char		*title;
-	const char	*cwd;
+	char			*title;
+	const char		*cwd;
 
-	char		*term_name;
-	int		 term_features;
-	char		*term_type;
-	char	       **term_caps;
-	u_int		 term_ncaps;
+	char			*term_name;
+	int			 term_features;
+	char			*term_type;
+	char		       **term_caps;
+	u_int			 term_ncaps;
 
-	char		*ttyname;
-	struct tty	 tty;
+	char			*ttyname;
+	struct tty		 tty;
 
-	size_t		 written;
-	size_t		 discarded;
-	size_t		 redraw;
+	size_t			 written;
+	size_t			 discarded;
+	size_t			 redraw;
 
-	struct event	 repeat_timer;
+	struct event		 repeat_timer;
 
-	struct event	 click_timer;
-	u_int		 click_button;
-	struct mouse_event click_event;
+	struct event		 click_timer;
+	u_int			 click_button;
+	struct mouse_event	 click_event;
 
-	struct status_line status;
+	struct status_line	 status;
 
 #define CLIENT_TERMINAL 0x1
 #define CLIENT_LOGIN 0x2
@@ -1765,6 +1765,7 @@ struct client {
 #define CLIENT_CONTROL_PAUSEAFTER 0x100000000ULL
 #define CLIENT_CONTROL_WAITEXIT 0x200000000ULL
 #define CLIENT_WINDOWSIZECHANGED 0x400000000ULL
+#define CLIENT_CLIPBOARDBUFFER 0x800000000ULL
 #define CLIENT_ALLREDRAWFLAGS		\
 	(CLIENT_REDRAWWINDOW|		\
 	 CLIENT_REDRAWSTATUS|		\
@@ -1776,73 +1777,79 @@ struct client {
 	(CLIENT_DEAD|		\
 	 CLIENT_SUSPENDED|	\
 	 CLIENT_EXIT)
-#define CLIENT_NODETACHFLAGS 	\
+#define CLIENT_NODETACHFLAGS	\
 	(CLIENT_DEAD|		\
 	 CLIENT_EXIT)
 #define CLIENT_NOSIZEFLAGS	\
 	(CLIENT_DEAD|		\
 	 CLIENT_SUSPENDED|	\
 	 CLIENT_EXIT)
-	uint64_t	 flags;
+	uint64_t		 flags;
 
 	enum {
 		CLIENT_EXIT_RETURN,
 		CLIENT_EXIT_SHUTDOWN,
 		CLIENT_EXIT_DETACH
-	}		 exit_type;
-	enum msgtype	 exit_msgtype;
-	char		*exit_session;
-	char		*exit_message;
+	}			 exit_type;
+	enum msgtype		 exit_msgtype;
+	char			*exit_session;
+	char			*exit_message;
 
-	struct key_table *keytable;
+	struct key_table	*keytable;
 
-	uint64_t	 redraw_panes;
+	uint64_t		 redraw_panes;
 
-	int		 message_ignore_keys;
-	int		 message_ignore_styles;
-	char		*message_string;
-	struct event	 message_timer;
+	int			 message_ignore_keys;
+	int			 message_ignore_styles;
+	char			*message_string;
+	struct event		 message_timer;
 
-	char		*prompt_string;
-	struct utf8_data *prompt_buffer;
-	char		*prompt_last;
-	size_t		 prompt_index;
-	prompt_input_cb	 prompt_inputcb;
-	prompt_free_cb	 prompt_freecb;
-	void		*prompt_data;
-	u_int		 prompt_hindex[PROMPT_NTYPES];
-	enum { PROMPT_ENTRY, PROMPT_COMMAND } prompt_mode;
-	struct utf8_data *prompt_saved;
+	char			*prompt_string;
+	struct utf8_data	*prompt_buffer;
+	char			*prompt_last;
+	size_t			 prompt_index;
+	prompt_input_cb		 prompt_inputcb;
+	prompt_free_cb		 prompt_freecb;
+	void			*prompt_data;
+	u_int			 prompt_hindex[PROMPT_NTYPES];
+	enum {
+		PROMPT_ENTRY,
+		PROMPT_COMMAND
+	}			 prompt_mode;
+	struct utf8_data	*prompt_saved;
 #define PROMPT_SINGLE 0x1
 #define PROMPT_NUMERIC 0x2
 #define PROMPT_INCREMENTAL 0x4
 #define PROMPT_NOFORMAT 0x8
 #define PROMPT_KEY 0x10
-	int		 prompt_flags;
-	enum prompt_type prompt_type;
-	int              prompt_cursor;
+	int			 prompt_flags;
+	enum prompt_type	 prompt_type;
+	int			 prompt_cursor;
 
-	struct session	*session;
-	struct session	*last_session;
+	struct session		*session;
+	struct session		*last_session;
 
-	int		 references;
+	int			 references;
 
-	void		*pan_window;
-	u_int		 pan_ox;
-	u_int		 pan_oy;
+	void			*pan_window;
+	u_int			 pan_ox;
+	u_int			 pan_oy;
 
-	overlay_check_cb overlay_check;
-	overlay_mode_cb	 overlay_mode;
-	overlay_draw_cb	 overlay_draw;
-	overlay_key_cb	 overlay_key;
-	overlay_free_cb	 overlay_free;
-	overlay_resize_cb overlay_resize;
-	void		*overlay_data;
-	struct event	 overlay_timer;
+	overlay_check_cb	 overlay_check;
+	overlay_mode_cb		 overlay_mode;
+	overlay_draw_cb		 overlay_draw;
+	overlay_key_cb		 overlay_key;
+	overlay_free_cb		 overlay_free;
+	overlay_resize_cb	 overlay_resize;
+	void			*overlay_data;
+	struct event		 overlay_timer;
 
-	struct client_files files;
+	struct client_files	 files;
 
-	TAILQ_ENTRY(client) entry;
+	u_int			*clipboard_panes;
+	u_int			 clipboard_npanes;
+
+	TAILQ_ENTRY(client)	 entry;
 };
 TAILQ_HEAD(clients, client);
 
@@ -2016,6 +2023,7 @@ void	proc_remove_peer(struct tmuxpeer *);
 void	proc_kill_peer(struct tmuxpeer *);
 void	proc_toggle_log(struct tmuxproc *);
 pid_t	proc_fork_and_daemon(int *);
+uid_t	proc_get_peer_uid(struct tmuxpeer *);
 
 /* cfg.c */
 extern int cfg_finished;
@@ -2229,7 +2237,7 @@ void	tty_reset(struct tty *);
 void	tty_region_off(struct tty *);
 void	tty_margin_off(struct tty *);
 void	tty_cursor(struct tty *, u_int, u_int);
-void	tty_send_osc52_query(struct tty *);
+void	tty_clipboard_query(struct tty *);
 void	tty_putcode(struct tty *, enum tty_code_code);
 void	tty_putcode1(struct tty *, enum tty_code_code, int);
 void	tty_putcode2(struct tty *, enum tty_code_code, int, int);
@@ -2675,6 +2683,8 @@ void	 input_parse_pane(struct window_pane *);
 void	 input_parse_buffer(struct window_pane *, u_char *, size_t);
 void	 input_parse_screen(struct input_ctx *, struct screen *,
 	     screen_write_init_ctx_cb, void *, u_char *, size_t);
+void	 input_reply_clipboard(struct bufferevent *, const char *, size_t,
+	     const char *);
 
 /* input-key.c */
 void	 input_key_build(void);

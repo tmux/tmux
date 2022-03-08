@@ -2682,8 +2682,8 @@ input_osc_52(struct input_ctx *ictx, const char *p)
 {
 	struct window_pane	*wp = ictx->wp;
 	char			*end;
-	const char		*buf;
-	size_t			 len;
+	const char		*buf = NULL;
+	size_t			 len = 0;
 	u_char			*out;
 	int			 outlen, state;
 	struct screen_write_ctx	 ctx;
@@ -2703,26 +2703,12 @@ input_osc_52(struct input_ctx *ictx, const char *p)
 	log_debug("%s: %s", __func__, end);
 
 	if (strcmp(end, "?") == 0) {
-		if ((pb = paste_get_top(NULL)) != NULL) {
+		if ((pb = paste_get_top(NULL)) != NULL)
 			buf = paste_buffer_data(pb, &len);
-			outlen = 4 * ((len + 2) / 3) + 1;
-			out = xmalloc(outlen);
-			if ((outlen = b64_ntop(buf, len, out, outlen)) == -1) {
-				free(out);
-				return;
-			}
-		} else {
-			outlen = 0;
-			out = NULL;
-		}
-		bufferevent_write(ictx->event, "\033]52;;", 6);
-		if (outlen != 0)
-			bufferevent_write(ictx->event, out, outlen);
 		if (ictx->input_end == INPUT_END_BEL)
-			bufferevent_write(ictx->event, "\007", 1);
+			input_reply_clipboard(ictx->event, buf, len, "\007");
 		else
-			bufferevent_write(ictx->event, "\033\\", 2);
-		free(out);
+			input_reply_clipboard(ictx->event, buf, len, "\033\\");
 		return;
 	}
 
@@ -2779,4 +2765,27 @@ input_osc_104(struct input_ctx *ictx, const char *p)
 	if (redraw)
 		screen_write_fullredraw(&ictx->ctx);
 	free(copy);
+}
+
+void
+input_reply_clipboard(struct bufferevent *bev, const char *buf, size_t len,
+    const char *end)
+{
+	char	*out = NULL;
+	size_t	 outlen = 0;
+
+	if (buf != NULL && len != 0) {
+		outlen = 4 * ((len + 2) / 3) + 1;
+		out = xmalloc(outlen);
+		if ((outlen = b64_ntop(buf, len, out, outlen)) == -1) {
+			free(out);
+			return;
+		}
+	}
+
+	bufferevent_write(bev, "\033]52;;", 6);
+	if (outlen != 0)
+		bufferevent_write(bev, out, outlen);
+	bufferevent_write(bev, end, strlen(end));
+	free(out);
 }
