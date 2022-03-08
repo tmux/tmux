@@ -61,6 +61,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct client		*tc = cmdq_get_target_client(item);
 	struct session		*s = target->s;
 	struct winlink		*wl = target->wl;
+	struct window		*w = wl->window;
 	struct window_pane	*wp = target->wp, *new_wp;
 	enum layout_type	 type;
 	struct layout_cell	*lc;
@@ -87,10 +88,17 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 				cmdq_error(item, "percentage %s", errstr);
 				return (CMD_RETURN_ERROR);
 			}
-			if (type == LAYOUT_TOPBOTTOM)
-				size = (wp->sy * percentage) / 100;
-			else
-				size = (wp->sx * percentage) / 100;
+			if (args_has(args, 'f')) {
+				if (type == LAYOUT_TOPBOTTOM)
+					size = (w->sy * percentage) / 100;
+				else
+					size = (w->sx * percentage) / 100;
+			} else {
+				if (type == LAYOUT_TOPBOTTOM)
+					size = (wp->sy * percentage) / 100;
+				else
+					size = (wp->sx * percentage) / 100;
+			}
 		} else {
 			size = args_strtonum(args, 'l', 0, INT_MAX, &cause);
 			if (cause != NULL) {
@@ -106,10 +114,17 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
-		if (type == LAYOUT_TOPBOTTOM)
-			size = (wp->sy * percentage) / 100;
-		else
-			size = (wp->sx * percentage) / 100;
+		if (args_has(args, 'f')) {
+			if (type == LAYOUT_TOPBOTTOM)
+				size = (w->sy * percentage) / 100;
+			else
+				size = (w->sx * percentage) / 100;
+		} else {
+			if (type == LAYOUT_TOPBOTTOM)
+				size = (wp->sy * percentage) / 100;
+			else
+				size = (wp->sx * percentage) / 100;
+		}
 	} else
 		size = -1;
 
