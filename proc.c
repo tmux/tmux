@@ -55,6 +55,7 @@ struct tmuxpeer {
 
 	struct imsgbuf	 ibuf;
 	struct event	 event;
+	uid_t		 uid;
 
 	int		 flags;
 #define PEER_BAD 0x1
@@ -296,6 +297,7 @@ proc_add_peer(struct tmuxproc *tp, int fd,
     void (*dispatchcb)(struct imsg *, void *), void *arg)
 {
 	struct tmuxpeer	*peer;
+	gid_t		 gid;
 
 	peer = xcalloc(1, sizeof *peer);
 	peer->parent = tp;
@@ -305,6 +307,9 @@ proc_add_peer(struct tmuxproc *tp, int fd,
 
 	imsg_init(&peer->ibuf, fd);
 	event_set(&peer->event, fd, EV_READ, proc_event_cb, peer);
+
+	if (getpeereid(fd, &peer->uid, &gid) != 0)
+		peer->uid = (uid_t)-1;
 
 	log_debug("add peer %p: %d (%p)", peer, fd, arg);
 	TAILQ_INSERT_TAIL(&tp->peers, peer, entry);
@@ -360,4 +365,10 @@ proc_fork_and_daemon(int *fd)
 		*fd = pair[0];
 		return (pid);
 	}
+}
+
+uid_t
+proc_get_peer_uid(struct tmuxpeer *peer)
+{
+	return (peer->uid);
 }

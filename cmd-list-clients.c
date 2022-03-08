@@ -31,6 +31,8 @@
 #define LIST_CLIENTS_TEMPLATE						\
 	"#{client_name}: #{session_name} "				\
 	"[#{client_width}x#{client_height} #{client_termname}] "	\
+	"#{?#{!=:#{client_uid},#{uid}},"				\
+	"[user #{?client_user,#{client_user},#{client_uid},}] ,}"	\
 	"#{?client_flags,(,}#{client_flags}#{?client_flags,),}"
 
 static enum cmd_retval	cmd_list_clients_exec(struct cmd *, struct cmdq_item *);
