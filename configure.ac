@@ -128,6 +128,7 @@ AC_CHECK_HEADERS([ \
 	sys/dir.h \
 	sys/ndir.h \
 	sys/tree.h \
+	ucred.h \
 	util.h \
 ])
 
@@ -146,7 +147,8 @@ AC_CHECK_FUNCS([ \
 	flock \
 	prctl \
 	proc_pidinfo \
-	sysconf
+	getpeerucred \
+	sysconf \
 ])
 
 # Check for functions with a compatibility implementation.
@@ -170,7 +172,7 @@ AC_REPLACE_FUNCS([ \
 	strlcat \
 	strlcpy \
 	strndup \
-	strsep
+	strsep \
 ])
 AC_FUNC_STRNLEN
 

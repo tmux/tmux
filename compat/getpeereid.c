@@ -19,6 +19,10 @@
 
 #include <stdio.h>
 
+#ifdef HAVE_UCRED_H
+#include <ucred.h>
+#endif
+
 #include "compat.h"
 
 int
@@ -33,6 +37,21 @@ getpeereid(int s, uid_t *uid, gid_t *gid)
 	*uid = uc.uid;
 	*gid = uc.gid;
 	return (0);
+#elif defined(HAVE_GETPEERUCRED)
+int
+getpeereid(int s, uid_t *uid, gid_t *gid)
+{
+        ucred_t *ucred = NULL;
+
+        if (getpeerucred(s, &ucred) == -1)
+                return (-1);
+        if ((*uid = ucred_geteuid(ucred)) == -1)
+                return (-1);
+        if ((*gid = ucred_getrgid(ucred)) == -1)
+                return (-1);
+        ucred_free(ucred);
+        return (0);
+}
 #else
 	errno = EOPNOTSUPP;
 	return (-1);
