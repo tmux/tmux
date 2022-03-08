@@ -4468,6 +4468,11 @@ The pane may be reactivated with the
 .Ic respawn-pane
 command.
 .Pp
+.It Ic remain-on-exit-format Ar string
+Set the text shown at the bottom of exited panes when
+.Ic remain-on-exit
+is enabled.
+.Pp
 .It Xo Ic synchronize-panes
 .Op Ic on | off
 .Xc
@@ -5117,7 +5122,9 @@ The following variables are available, where appropriate:
 .It Li "pane_current_command" Ta "" Ta "Current command if available"
 .It Li "pane_current_path" Ta "" Ta "Current path if available"
 .It Li "pane_dead" Ta "" Ta "1 if pane is dead"
+.It Li "pane_dead_signal" Ta "" Ta "Exit signal of process in dead pane"
 .It Li "pane_dead_status" Ta "" Ta "Exit status of process in dead pane"
+.It Li "pane_dead_time" Ta "" Ta "Exit time of process in dead pane"
 .It Li "pane_fg" Ta "" Ta "Pane foreground colour"
 .It Li "pane_format" Ta "" Ta "1 if format is for a pane"
 .It Li "pane_height" Ta "" Ta "Height of pane"

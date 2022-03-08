@@ -1756,6 +1756,23 @@ format_cb_pane_dead(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for pane_dead_signal. */
+static void *
+format_cb_pane_dead_signal(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+	const char		*name;
+
+	if (wp != NULL) {
+		if ((wp->flags & PANE_STATUSREADY) && WIFSIGNALED(wp->status)) {
+			name = sig2name(WTERMSIG(wp->status));
+			return (format_printf("%s", name));
+		}
+		return (NULL);
+	}
+	return (NULL);
+}
+
 /* Callback for pane_dead_status. */
 static void *
 format_cb_pane_dead_status(struct format_tree *ft)
@@ -1765,6 +1782,20 @@ format_cb_pane_dead_status(struct format_tree *ft)
 	if (wp != NULL) {
 		if ((wp->flags & PANE_STATUSREADY) && WIFEXITED(wp->status))
 			return (format_printf("%d", WEXITSTATUS(wp->status)));
+		return (NULL);
+	}
+	return (NULL);
+}
+
+/* Callback for pane_dead_time. */
+static void *
+format_cb_pane_dead_time(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+
+	if (wp != NULL) {
+		if (wp->flags & PANE_STATUSDRAWN)
+			return (&wp->dead_time);
 		return (NULL);
 	}
 	return (NULL);
@@ -2804,8 +2835,14 @@ static const struct format_table_entry format_table[] = {
 	{ "pane_dead", FORMAT_TABLE_STRING,
 	  format_cb_pane_dead
 	},
+	{ "pane_dead_signal", FORMAT_TABLE_STRING,
+	  format_cb_pane_dead_signal
+	},
 	{ "pane_dead_status", FORMAT_TABLE_STRING,
 	  format_cb_pane_dead_status
+	},
+	{ "pane_dead_time", FORMAT_TABLE_TIME,
+	  format_cb_pane_dead_time
 	},
 	{ "pane_fg", FORMAT_TABLE_STRING,
 	  format_cb_pane_fg
