@@ -2921,24 +2921,29 @@ tty_default_attributes(struct tty *tty, const struct grid_cell *defaults,
 }
 
 static void
-tty_query_timer_callback(__unused int fd, __unused short events, void *data)
+tty_clipboard_query_callback(__unused int fd, __unused short events, void *data)
 {
 	struct tty	*tty = data;
+	struct client	*c = tty->client;
+
+	c->flags &= ~CLIENT_CLIPBOARDBUFFER;
+	free(c->clipboard_panes);
+	c->clipboard_panes = NULL;
+	c->clipboard_npanes = 0;
 
 	tty->flags &= ~TTY_OSC52QUERY;
 }
 
 void
-tty_send_osc52_query(struct tty *tty)
+tty_clipboard_query(struct tty *tty)
 {
 	struct timeval	 tv = { .tv_sec = TTY_QUERY_TIMEOUT };
 
 	if ((~tty->flags & TTY_STARTED) || (tty->flags & TTY_OSC52QUERY))
 		return;
 	tty_putcode_ptr2(tty, TTYC_MS, "", "?");
+
 	tty->flags |= TTY_OSC52QUERY;
-
-	evtimer_set(&tty->query_timer, tty_query_timer_callback, tty);
-	evtimer_add(&tty->query_timer, &tv);
+	evtimer_set(&tty->clipboard_timer, tty_clipboard_query_callback, tty);
+	evtimer_add(&tty->clipboard_timer, &tv);
 }
-

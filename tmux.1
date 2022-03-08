@@ -1338,11 +1338,12 @@ and sets an environment variable for the newly created session; it may be
 specified multiple times.
 .Tg refresh
 .It Xo Ic refresh-client
-.Op Fl cDlLRSU
+.Op Fl cDLRSU
 .Op Fl A Ar pane:state
 .Op Fl B Ar name:what:format
 .Op Fl C Ar size
 .Op Fl f Ar flags
+.Op Fl l Op Ar target-pane
 .Op Fl t Ar target-client
 .Op Ar adjustment
 .Xc
@@ -1456,7 +1457,11 @@ sets a comma-separated list of client flags, see
 .Fl l
 requests the clipboard from the client using the
 .Xr xterm 1
-escape sequence and stores it in a new paste buffer.
+escape sequence.
+If
+Ar target-pane
+is given, the clipboard is sent (in encoded form), otherwise it is stored in a
+new paste buffer.
 .Pp
 .Fl L ,
 .Fl R ,
@@ -5054,6 +5059,8 @@ The following variables are available, where appropriate:
 .It Li "client_termname" Ta "" Ta "Terminal name of client"
 .It Li "client_termtype" Ta "" Ta "Terminal type of client, if available"
 .It Li "client_tty" Ta "" Ta "Pseudo terminal of client"
+.It Li "client_uid" Ta "" Ta "UID of client process"
+.It Li "client_user" Ta "" Ta "User of client process"
 .It Li "client_utf8" Ta "" Ta "1 if client supports UTF-8"
 .It Li "client_width" Ta "" Ta "Width of client"
 .It Li "client_written" Ta "" Ta "Bytes written to client"
@@ -5171,6 +5178,8 @@ The following variables are available, where appropriate:
 .It Li "session_windows" Ta "" Ta "Number of windows in session"
 .It Li "socket_path" Ta "" Ta "Server socket path"
 .It Li "start_time" Ta "" Ta "Server start time"
+.It Li "uid" Ta "" Ta "Server UID"
+.It Li "user" Ta "" Ta "Server user"
 .It Li "version" Ta "" Ta "Server version"
 .It Li "window_active" Ta "" Ta "1 if window active"
 .It Li "window_active_clients" Ta "" Ta "Number of clients viewing this window"
@@ -5185,7 +5194,6 @@ The following variables are available, where appropriate:
 .It Li "window_cell_width" Ta "" Ta "Width of each cell in pixels"
 .It Li "window_end_flag" Ta "" Ta "1 if window has the highest index"
 .It Li "window_flags" Ta "#F" Ta "Window flags with # escaped as ##"
-.It Li "window_raw_flags" Ta "" Ta "Window flags with nothing escaped"
 .It Li "window_format" Ta "" Ta "1 if format is for a window"
 .It Li "window_height" Ta "" Ta "Height of window"
 .It Li "window_id" Ta "" Ta "Unique window ID"
@@ -5200,6 +5208,7 @@ The following variables are available, where appropriate:
 .It Li "window_offset_x" Ta "" Ta "X offset into window if larger than client"
 .It Li "window_offset_y" Ta "" Ta "Y offset into window if larger than client"
 .It Li "window_panes" Ta "" Ta "Number of panes in window"
+.It Li "window_raw_flags" Ta "" Ta "Window flags with nothing escaped"
 .It Li "window_silence_flag" Ta "" Ta "1 if window has silence alert"
 .It Li "window_stack_index" Ta "" Ta "Index in session most recent stack"
 .It Li "window_start_flag" Ta "" Ta "1 if window has the lowest index"
