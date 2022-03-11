@@ -81,7 +81,10 @@ server_acl_display(struct cmdq_item *item)
 			continue;
 		}
 		pw = getpwuid(loop->uid);
-		cmdq_print(item, "%s", pw->pw_name);
+		if (loop->flags == SERVER_ACL_READONLY)
+			cmdq_print(item, "%s (R)", pw->pw_name);
+		else
+			cmdq_print(item, "%s (W)", pw->pw_name);
 	}
 }
 
