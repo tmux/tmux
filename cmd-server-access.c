@@ -60,9 +60,10 @@ cmd_server_access_deny(struct cmdq_item *item, struct passwd *pw)
 	    if (uid == server_acl_get_uid(user)) {
 		    loop->exit_message = xstrdup("access not allowed");
                     loop->flags |= CLIENT_EXIT;
-            server_acl_user_deny(pw->pw_uid);
 	    }
     }
+    server_acl_user_deny(pw->pw_uid);
+    
     return (CMD_RETURN_NORMAL);
 }
 
@@ -75,10 +76,13 @@ cmd_server_access_exec(struct cmd *self, struct cmdq_item *item)
     char		*name;
     struct passwd	*pw = NULL;
 
-    /* displays current access list */
     if (args_has(args, 'l')) {
         server_acl_display(item);
         return (CMD_RETURN_NORMAL);
+    }
+    if (args_count(args) == 0) {
+        cmdq_error(item, "missing user arguement");
+        return (CMD_RETURN_ERROR);
     }
 
     name = format_single(item, args_string(args, 0), c, NULL, NULL, NULL);

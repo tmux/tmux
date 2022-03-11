@@ -73,14 +73,11 @@ server_acl_user_find(uid_t uid)
 void
 server_acl_display(struct cmdq_item *item) 
 {
-	int count; /* skip root being printed */
 	struct passwd *pw;
 	struct server_acl_user *loop;
 
-	count = 0;
 	RB_FOREACH(loop, server_acl_entries, &server_acl_entries) {
-		if (count != 1) {
-			count++;
+		if (loop->uid == 0) {
 			continue;
 		}
 		pw = getpwuid(loop->uid);
