@@ -3193,6 +3193,7 @@ char		*regsub(const char *, const char *, const char *, int);
 /* server-acl.c */
 void			 server_acl_init(void);
 struct server_acl_user	*server_acl_user_find(uid_t);
+void 			 server_acl_display(struct cmdq_item *);
 void			 server_acl_user_allow(uid_t);
 void			 server_acl_user_deny(uid_t);
 int			 server_acl_accept_validate(int);

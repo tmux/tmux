@@ -37,8 +37,8 @@ const struct cmd_entry cmd_server_access_entry = {
     .name = "server-access",
     .alias = NULL,
 
-    .args = { "adrw", 1, 1, NULL },
-    .usage = "[-adrw]" CMD_TARGET_PANE_USAGE " user",
+    .args = { "adrwl", 0, 1, NULL },
+    .usage = "[-adrwl]" CMD_TARGET_PANE_USAGE " user",
 
     .flags = CMD_CLIENT_CANFAIL,
     .exec = cmd_server_access_exec
@@ -74,6 +74,12 @@ cmd_server_access_exec(struct cmd *self, struct cmdq_item *item)
     struct client	*c = cmdq_get_target_client(item);
     char		*name;
     struct passwd	*pw = NULL;
+
+    /* displays current access list */
+    if (args_has(args, 'l')) {
+        server_acl_display(item);
+        return (CMD_RETURN_NORMAL);
+    }
 
     name = format_single(item, args_string(args, 0), c, NULL, NULL, NULL);
     if (*name != '\0')

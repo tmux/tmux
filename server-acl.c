@@ -69,6 +69,25 @@ server_acl_user_find(uid_t uid)
 	return RB_FIND(server_acl_entries, &server_acl_entries, &find);
 }
 
+/* Display the tree */
+void
+server_acl_display(struct cmdq_item *item) 
+{
+	int count; /* skip root being printed */
+	struct passwd *pw;
+	struct server_acl_user *loop;
+
+	count = 0;
+	RB_FOREACH(loop, server_acl_entries, &server_acl_entries) {
+		if (count != 1) {
+			count++;
+			continue;
+		}
+		pw = getpwuid(loop->uid);
+		cmdq_print(item, "%s", pw->pw_name);
+	}
+}
+
 /* Allow a user. */
 void
 server_acl_user_allow(uid_t uid)
