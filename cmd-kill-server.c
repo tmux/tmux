@@ -17,6 +17,7 @@
  */
 
 #include <sys/types.h>
+#include <sys/wait.h>
 
 #include <signal.h>
 #include <unistd.h>
@@ -54,8 +55,11 @@ const struct cmd_entry cmd_start_server_entry = {
 static enum cmd_retval
 cmd_kill_server_exec(struct cmd *self, __unused struct cmdq_item *item)
 {
-	if (cmd_get_entry(self) == &cmd_kill_server_entry)
+	if (cmd_get_entry(self) == &cmd_kill_server_entry) {
+		int status;
 		kill(getpid(), SIGTERM);
+		wait(&status);
+	}
 
 	return (CMD_RETURN_NORMAL);
 }
