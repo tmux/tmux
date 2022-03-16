@@ -1070,40 +1070,41 @@ RB_HEAD(window_pane_tree, window_pane);
 
 /* Window structure. */
 struct window {
-	u_int		 id;
-	void		*latest;
+	u_int			 id;
+	void			*latest;
 
-	char		*name;
-	struct event	 name_event;
-	struct timeval	 name_time;
+	char			*name;
+	struct event		 name_event;
+	struct timeval		 name_time;
 
-	struct event	 alerts_timer;
-	struct event	 offset_timer;
+	struct event		 alerts_timer;
+	struct event		 offset_timer;
 
-	struct timeval	 activity_time;
+	struct timeval		 activity_time;
 
-	struct window_pane *active;
-	struct window_pane *last;
-	struct window_panes panes;
+	struct window_pane	*active;
+	struct window_pane	*last;
+	struct window_panes	 panes;
 
-	int		 lastlayout;
-	struct layout_cell *layout_root;
-	struct layout_cell *saved_layout_root;
-	char		*old_layout;
+	int			 lastlayout;
+	struct layout_cell	*layout_root;
+	struct layout_cell	*saved_layout_root;
+	char			*old_layout;
 
-	u_int		 sx;
-	u_int		 sy;
-	u_int		 manual_sx;
-	u_int		 manual_sy;
-	u_int		 xpixel;
-	u_int		 ypixel;
+	u_int			 sx;
+	u_int			 sy;
+	u_int			 manual_sx;
+	u_int			 manual_sy;
+	u_int			 xpixel;
+	u_int			 ypixel;
 
-	u_int		 new_sx;
-	u_int		 new_sy;
-	u_int		 new_xpixel;
-	u_int		 new_ypixel;
+	u_int			 new_sx;
+	u_int			 new_sy;
+	u_int			 new_xpixel;
+	u_int			 new_ypixel;
 
-	int		 flags;
+	struct utf8_data	*fill_character;
+	int			 flags;
 #define WINDOW_BELL 0x1
 #define WINDOW_ACTIVITY 0x2
 #define WINDOW_SILENCE 0x4
@@ -1112,15 +1113,15 @@ struct window {
 #define WINDOW_RESIZE 0x20
 #define WINDOW_ALERTFLAGS (WINDOW_BELL|WINDOW_ACTIVITY|WINDOW_SILENCE)
 
-	int		 alerts_queued;
-	TAILQ_ENTRY(window) alerts_entry;
+	int			 alerts_queued;
+	TAILQ_ENTRY(window)	 alerts_entry;
 
-	struct options	*options;
+	struct options		*options;
 
-	u_int		 references;
-	TAILQ_HEAD(, winlink) winlinks;
+	u_int			 references;
+	TAILQ_HEAD(, winlink)	 winlinks;
 
-	RB_ENTRY(window) entry;
+	RB_ENTRY(window)	 entry;
 };
 RB_HEAD(windows, window);
 
@@ -2977,6 +2978,7 @@ void		*window_pane_get_new_data(struct window_pane *,
 		     struct window_pane_offset *, size_t *);
 void		 window_pane_update_used_data(struct window_pane *,
 		     struct window_pane_offset *, size_t);
+void		 window_set_fill_character(struct window *);
 
 /* layout.c */
 u_int		 layout_count_cells(struct layout_cell *);
