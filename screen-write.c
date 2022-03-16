@@ -1427,7 +1427,8 @@ screen_write_clearendofscreen(struct screen_write_ctx *ctx, u_int bg)
 	ttyctx.bg = bg;
 
 	/* Scroll into history if it is enabled and clearing entire screen. */
-	if (s->cx == 0 && s->cy == 0 && (gd->flags & GRID_HISTORY))
+	if (s->cx == 0 && s->cy == 0 && (gd->flags & GRID_HISTORY) &&
+	    options_get_number(ctx->wp->options, "scroll-on-clear"))
 		grid_view_clear_history(gd, bg);
 	else {
 		if (s->cx <= sx - 1)
