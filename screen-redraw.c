@@ -47,10 +47,15 @@ enum screen_redraw_border_type {
 
 /* Get cell border character. */
 static void
-screen_redraw_border_set(struct window_pane *wp, enum pane_lines pane_lines,
-    int cell_type, struct grid_cell *gc)
+screen_redraw_border_set(struct window *w, struct window_pane *wp,
+    enum pane_lines pane_lines, int cell_type, struct grid_cell *gc)
 {
 	u_int	idx;
+
+	if (cell_type == CELL_OUTSIDE && w->fill_character != NULL) {
+		utf8_copy(&gc->data, &w->fill_character[0]);
+		return;
+	}
 
 	switch (pane_lines) {
 	case PANE_LINES_NUMBER:
@@ -409,7 +414,7 @@ screen_redraw_make_pane_status(struct client *c, struct window_pane *wp,
 		else
 			py = wp->yoff + wp->sy;
 		cell_type = screen_redraw_type_of_cell(c, px, py, pane_status);
-		screen_redraw_border_set(wp, pane_lines, cell_type, &gc);
+		screen_redraw_border_set(w, wp, pane_lines, cell_type, &gc);
 		screen_write_cell(&ctx, &gc);
 	}
 	gc.attr &= ~GRID_ATTR_CHARSET;
@@ -690,7 +695,7 @@ screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j)
 		    screen_redraw_check_is(x, y, pane_status, marked_pane.wp))
 			gc.attr ^= GRID_ATTR_REVERSE;
 	}
-	screen_redraw_border_set(wp, ctx->pane_lines, cell_type, &gc);
+	screen_redraw_border_set(w, wp, ctx->pane_lines, cell_type, &gc);
 
 	if (cell_type == CELL_TOPBOTTOM &&
 	    (c->flags & CLIENT_UTF8) &&
