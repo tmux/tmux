@@ -882,6 +882,13 @@ const struct options_table_entry options_table[] = {
 	  .text = "Style of the marked line in copy mode."
 	},
 
+	{ .name = "fill-character",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "",
+	  .text = "Character used to fill unused parts of window."
+	},
+
 	{ .name = "main-pane-height",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,

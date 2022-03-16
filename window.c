@@ -331,6 +331,7 @@ window_create(u_int sx, u_int sy, u_int xpixel, u_int ypixel)
 	w->id = next_window_id++;
 	RB_INSERT(windows, &windows, w);
 
+	window_set_fill_character(w);
 	window_update_activity(w);
 
 	log_debug("%s: @%u create %ux%u (%ux%u)", __func__, w->id, sx, sy,
@@ -362,6 +363,7 @@ window_destroy(struct window *w)
 		event_del(&w->offset_timer);
 
 	options_free(w->options);
+	free(w->fill_character);
 
 	free(w->name);
 	free(w);
@@ -1588,4 +1590,21 @@ window_pane_update_used_data(struct window_pane *wp,
 	if (size > EVBUFFER_LENGTH(wp->event->input) - used)
 		size = EVBUFFER_LENGTH(wp->event->input) - used;
 	wpo->used += size;
+}
+
+void
+window_set_fill_character(struct window *w)
+{
+	const char		*value;
+	struct utf8_data	*ud;
+
+	free(w->fill_character);
+	w->fill_character = NULL;
+
+	value = options_get_string(w->options, "fill-character");
+	if (*value != '\0' && utf8_isvalid(value)) {
+		ud = utf8_fromcstr(value);
+		if (ud != NULL && ud[0].width == 1)
+			w->fill_character = ud;
+	}
 }
