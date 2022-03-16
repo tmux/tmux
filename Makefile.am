@@ -204,6 +204,11 @@ if NEED_FORKPTY
 nodist_tmux_SOURCES += compat/forkpty-@PLATFORM@.c
 endif
 
+# Add compat file for systemd.
+if HAVE_SYSTEMD
+nodist_tmux_SOURCES += compat/systemd.c
+endif
+
 # Add compat file for utf8proc.
 if HAVE_UTF8PROC
 nodist_tmux_SOURCES += compat/utf8proc.c

@@ -100,7 +100,7 @@ server_check_marked(void)
 }
 
 /* Create server socket. */
-static int
+int
 server_create_socket(int flags, char **cause)
 {
 	struct sockaddr_un	sa;
@@ -214,7 +214,11 @@ server_start(struct tmuxproc *client, int flags, struct event_base *base,
 
 	gettimeofday(&start_time, NULL);
 
+#ifdef HAVE_SYSTEMD
+	server_fd = systemd_create_socket(flags, &cause);
+#else
 	server_fd = server_create_socket(flags, &cause);
+#endif
 	if (server_fd != -1)
 		server_update_socket();
 	if (~flags & CLIENT_NOFORK)
@@ -424,14 +428,16 @@ server_signal(int sig)
 		server_child_signal();
 		break;
 	case SIGUSR1:
-		event_del(&server_ev_accept);
-		fd = server_create_socket(server_client_flags, NULL);
-		if (fd != -1) {
-			close(server_fd);
-			server_fd = fd;
-			server_update_socket();
+		if (socket_can_be_created_again) {
+			event_del(&server_ev_accept);
+			fd = server_create_socket(server_client_flags, NULL);
+			if (fd != -1) {
+				close(server_fd);
+				server_fd = fd;
+				server_update_socket();
+			}
+			server_add_accept(0);
 		}
-		server_add_accept(0);
 		break;
 	case SIGUSR2:
 		proc_toggle_log(server_proc);

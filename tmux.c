@@ -40,6 +40,7 @@ struct environ	*global_environ;
 
 struct timeval	 start_time;
 const char	*socket_path;
+int		 socket_can_be_created_again = 1;
 int		 ptm_fd = -1;
 const char	*shell_command;
 

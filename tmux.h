@@ -2001,6 +2001,7 @@ extern struct options	*global_s_options;
 extern struct options	*global_w_options;
 extern struct environ	*global_environ;
 extern struct timeval	 start_time;
+extern int		 socket_can_be_created_again;
 extern const char	*socket_path;
 extern const char	*shell_command;
 extern int		 ptm_fd;
@@ -2583,6 +2584,7 @@ int	 server_start(struct tmuxproc *, int, struct event_base *, int, char *);
 void	 server_update_socket(void);
 void	 server_add_accept(int);
 void printflike(1, 2) server_add_message(const char *, ...);
+int	 server_create_socket(int, char **);
 
 /* server-client.c */
 RB_PROTOTYPE(client_windows, client_window, entry, server_client_window_cmp);

@@ -390,6 +390,30 @@ if test "x$enable_utf8proc" = xyes; then
 fi
 AM_CONDITIONAL(HAVE_UTF8PROC, [test "x$enable_utf8proc" = xyes])
 
+# Check for systemd support.
+AC_ARG_ENABLE(
+	systemd,
+	AS_HELP_STRING(--enable-systemd, enable systemd integration)
+)
+if test x"$enable_systemd" = xyes; then
+	PKG_CHECK_MODULES(
+		SYSTEMD,
+		libsystemd,
+		[
+			AM_CPPFLAGS="$SYSTEMD_CFLAGS $AM_CPPFLAGS"
+			CPPFLAGS="$AM_CPPFLAGS $SAVED_CPPFLAGS"
+			LIBS="$SYSTEMD_LIBS $LIBS"
+			AC_DEFINE(HAVE_SYSTEMD)
+			found_systemd=yes
+		],
+		found_systemd=no
+	)
+	if test "x$found_systemd" = xno; then
+		AC_MSG_ERROR("systemd not found")
+	fi
+fi
+AM_CONDITIONAL(HAVE_SYSTEMD, [test "x$found_systemd" = xyes])
+
 # Check for b64_ntop. If we have b64_ntop, we assume b64_pton as well.
 AC_MSG_CHECKING(for b64_ntop)
 	AC_LINK_IFELSE([AC_LANG_PROGRAM(
