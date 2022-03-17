@@ -1479,7 +1479,9 @@ screen_write_clearscreen(struct screen_write_ctx *ctx, u_int bg)
 	ttyctx.bg = bg;
 
 	/* Scroll into history if it is enabled. */
-	if (s->grid->flags & GRID_HISTORY)
+	if ((s->grid->flags & GRID_HISTORY) &&
+	    ctx->wp != NULL &&
+	    options_get_number(ctx->wp->options, "scroll-on-clear"))
 		grid_view_clear_history(s->grid, bg);
 	else
 		grid_view_clear(s->grid, 0, 0, sx, sy, bg);
