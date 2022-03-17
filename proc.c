@@ -345,6 +345,12 @@ proc_kill_peer(struct tmuxpeer *peer)
 }
 
 void
+proc_flush_peer(struct tmuxpeer *peer)
+{
+	imsg_flush(&peer->ibuf);
+}
+
+void
 proc_toggle_log(struct tmuxproc *tp)
 {
 	log_toggle(tp->name);

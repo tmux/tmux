@@ -357,9 +357,10 @@ server_update_socket(void)
 static void
 server_accept(int fd, short events, __unused void *data)
 {
-	struct sockaddr_storage	sa;
-	socklen_t		slen = sizeof sa;
-	int			newfd;
+	struct sockaddr_storage	 sa;
+	socklen_t		 slen = sizeof sa;
+	int			 newfd;
+	struct client		*c;
 
 	server_add_accept(0);
 	if (!(events & EV_READ))
@@ -381,13 +382,11 @@ server_accept(int fd, short events, __unused void *data)
 		close(newfd);
 		return;
 	}
-
+	c = server_client_create(newfd);
 	if (!server_acl_accept_validate(newfd)) {
-		close(newfd);
-		return;
+		c->exit_message = xstrdup("access not allowed");
+		c->flags |= CLIENT_EXIT;
 	}
-
-	server_client_create(newfd);
 }
 
 /*
