@@ -1080,6 +1080,14 @@ const struct options_table_entry options_table[] = {
 	          "remain-on-exit is enabled."
 	},
 
+	{ .name = "scroll-on-clear",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
+	  .default_num = 1,
+	  .text = "Whether the contents of the screen should be scrolled into"
+		  "history when clearing the whole screen."
+	},
+
 	{ .name = "synchronize-panes",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
