@@ -1833,6 +1833,7 @@ struct client {
 	struct session		*last_session;
 
 	int			 references;
+<<<<<<< HEAD
 
 	void			*pan_window;
 	u_int			 pan_ox;
@@ -1852,6 +1853,27 @@ struct client {
 	u_int			*clipboard_panes;
 	u_int			 clipboard_npanes;
 
+=======
+
+	void			*pan_window;
+	u_int			 pan_ox;
+	u_int			 pan_oy;
+
+	overlay_check_cb	 overlay_check;
+	overlay_mode_cb		 overlay_mode;
+	overlay_draw_cb		 overlay_draw;
+	overlay_key_cb		 overlay_key;
+	overlay_free_cb		 overlay_free;
+	overlay_resize_cb	 overlay_resize;
+	void			*overlay_data;
+	struct event		 overlay_timer;
+
+	struct client_files	 files;
+
+	u_int			*clipboard_panes;
+	u_int			 clipboard_npanes;
+
+>>>>>>> 964deae422e4127a64f60fa3b54e2bf47b8e074c
 	TAILQ_ENTRY(client)	 entry;
 };
 TAILQ_HEAD(clients, client);
