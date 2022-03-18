@@ -60,7 +60,7 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 	const char	       	*errstr;
 	char			*cause;
 	u_int			 adjust;
-	int			 x, y;
+	int			 x, y, status;
 	struct grid		*gd = wp->base.grid;
 
 	if (args_has(args, 'T')) {
@@ -120,6 +120,17 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 			cmdq_error(item, "height %s", cause);
 			free(cause);
 			return (CMD_RETURN_ERROR);
+		}
+		status = options_get_number(w->options, "pane-border-status");
+		switch (status) {
+		case PANE_STATUS_TOP:
+			if (y != INT_MAX && wp->yoff == 1)
+				y++;
+			break;
+		case PANE_STATUS_BOTTOM:
+			if (y != INT_MAX && wp->yoff + wp->sy == w->sy - 1)
+				y++;
+			break;
 		}
 		layout_resize_pane_to(wp, LAYOUT_TOPBOTTOM, y);
 	}

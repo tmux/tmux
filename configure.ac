@@ -69,6 +69,11 @@ AC_ARG_ENABLE(
 	AS_HELP_STRING(--enable-static, create a static build)
 )
 if test "x$enable_static" = xyes; then
+	case "$host_os" in
+		*darwin*)
+			AC_MSG_ERROR([static linking is not supported on macOS])
+			;;
+	esac
 	test "x$PKG_CONFIG" != x && PKG_CONFIG="$PKG_CONFIG --static"
 	AM_LDFLAGS="-static $AM_LDFLAGS"
 	LDFLAGS="$AM_LDFLAGS $SAVED_LDFLAGS"
@@ -123,6 +128,7 @@ AC_CHECK_HEADERS([ \
 	sys/dir.h \
 	sys/ndir.h \
 	sys/tree.h \
+	ucred.h \
 	util.h \
 ])
 
@@ -141,7 +147,8 @@ AC_CHECK_FUNCS([ \
 	flock \
 	prctl \
 	proc_pidinfo \
-	sysconf
+	getpeerucred \
+	sysconf \
 ])
 
 # Check for functions with a compatibility implementation.

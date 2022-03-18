@@ -34,7 +34,7 @@ const struct cmd_entry cmd_refresh_client_entry = {
 	.name = "refresh-client",
 	.alias = "refresh",
 
-	.args = { "A:B:cC:Df:F:lLRSt:U", 0, 1, NULL },
+	.args = { "A:B:cC:Df:F:l::LRSt:U", 0, 1, NULL },
 	.usage = "[-cDlLRSU] [-A pane:state] [-B name:what:format] "
 		 "[-C XxY] [-f flags] " CMD_TARGET_CLIENT_USAGE " [adjustment]",
 
@@ -163,6 +163,37 @@ out:
 }
 
 static enum cmd_retval
+cmd_refresh_client_clipboard(struct cmd *self, struct cmdq_item *item)
+{
+	struct args		*args = cmd_get_args(self);
+	struct client		*tc = cmdq_get_target_client(item);
+	const char		*p;
+	u_int			 i;
+	struct cmd_find_state	 fs;
+
+	p = args_get(args, 'l');
+	if (p == NULL) {
+		if (tc->flags & CLIENT_CLIPBOARDBUFFER)
+			return (CMD_RETURN_NORMAL);
+		tc->flags |= CLIENT_CLIPBOARDBUFFER;
+	} else {
+		if (cmd_find_target(&fs, item, p, CMD_FIND_PANE, 0) != 0)
+			return (CMD_RETURN_ERROR);
+		for (i = 0; i < tc->clipboard_npanes; i++) {
+			if (tc->clipboard_panes[i] == fs.wp->id)
+				break;
+		}
+		if (i != tc->clipboard_npanes)
+			return (CMD_RETURN_NORMAL);
+		tc->clipboard_panes = xreallocarray (tc->clipboard_panes,
+		    tc->clipboard_npanes + 1, sizeof *tc->clipboard_panes);
+		tc->clipboard_panes[tc->clipboard_npanes++] = fs.wp->id;
+	}
+	tty_clipboard_query(&tc->tty);
+	return (CMD_RETURN_NORMAL);
+}
+
+static enum cmd_retval
 cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
@@ -224,10 +255,8 @@ cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 	}
 
-	if (args_has(args, 'l')) {
-		tty_putcode_ptr2(&tc->tty, TTYC_MS, "", "?");
-		return (CMD_RETURN_NORMAL);
-	}
+	if (args_has(args, 'l'))
+		return (cmd_refresh_client_clipboard(self, item));
 
 	if (args_has(args, 'F')) /* -F is an alias for -f */
 		server_client_set_flags(tc, args_get(args, 'F'));

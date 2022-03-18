@@ -334,6 +334,11 @@ char		*strndup(const char *, size_t);
 void		*memmem(const void *, size_t, const void *, size_t);
 #endif
 
+#ifndef HAVE_GETPEEREID
+/* getpeereid.c */
+int		getpeereid(int, uid_t *, gid_t *);
+#endif
+
 #ifndef HAVE_DAEMON
 /* daemon.c */
 int	 	 daemon(int, int);

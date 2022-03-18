@@ -2235,15 +2235,19 @@ input_enter_dcs(struct input_ctx *ictx)
 static int
 input_dcs_dispatch(struct input_ctx *ictx)
 {
+	struct window_pane	*wp = ictx->wp;
 	struct screen_write_ctx	*sctx = &ictx->ctx;
 	u_char			*buf = ictx->input_buf;
 	size_t			 len = ictx->input_len;
 	const char		 prefix[] = "tmux;";
 	const u_int		 prefixlen = (sizeof prefix) - 1;
 
+	if (wp == NULL)
+		return (0);
 	if (ictx->flags & INPUT_DISCARD)
 		return (0);
-
+	if (!options_get_number(ictx->wp->options, "allow-passthrough"))
+		return (0);
 	log_debug("%s: \"%s\"", __func__, buf);
 
 	if (len >= prefixlen && strncmp(buf, prefix, prefixlen) == 0)
@@ -2382,6 +2386,7 @@ static void
 input_exit_rename(struct input_ctx *ictx)
 {
 	struct window_pane	*wp = ictx->wp;
+	struct window		*w;
 	struct options_entry	*o;
 
 	if (wp == NULL)
@@ -2394,17 +2399,20 @@ input_exit_rename(struct input_ctx *ictx)
 
 	if (!utf8_isvalid(ictx->input_buf))
 		return;
+	w = wp->window;
 
 	if (ictx->input_len == 0) {
-		o = options_get_only(wp->window->options, "automatic-rename");
+		o = options_get_only(w->options, "automatic-rename");
 		if (o != NULL)
 			options_remove_or_default(o, -1, NULL);
-		return;
+		if (!options_get_number(w->options, "automatic-rename"))
+			window_set_name(w, "");
+	} else {
+		options_set_number(w->options, "automatic-rename", 0);
+		window_set_name(w, ictx->input_buf);
 	}
-	window_set_name(wp->window, ictx->input_buf);
-	options_set_number(wp->window->options, "automatic-rename", 0);
-	server_redraw_window_borders(wp->window);
-	server_status_window(wp->window);
+	server_redraw_window_borders(w);
+	server_status_window(w);
 }
 
 /* Open UTF-8 character. */
@@ -2501,7 +2509,8 @@ input_osc_colour_reply(struct input_ctx *ictx, u_int n, int c)
 	    end = "\007";
     else
 	    end = "\033\\";
-    input_reply(ictx, "\033]%u;rgb:%02hhx/%02hhx/%02hhx%s", n, r, g, b, end);
+    input_reply(ictx, "\033]%u;rgb:%02hhx%02hhx/%02hhx%02hhx/%02hhx%02hhx%s",
+	n, r, r, g, g, b, b, end);
 }
 
 /* Handle the OSC 4 sequence for setting (multiple) palette entries. */
@@ -2525,6 +2534,12 @@ input_osc_4(struct input_ctx *ictx, const char *p)
 		}
 
 		s = strsep(&next, ";");
+		if (strcmp(s, "?") == 0) {
+			c = colour_palette_get(ictx->palette, idx);
+			if (c != -1)
+				input_osc_colour_reply(ictx, 4, c);
+			continue;
+		}
 		if ((c = input_osc_parse_colour(s)) == -1) {
 			s = next;
 			continue;
@@ -2667,8 +2682,8 @@ input_osc_52(struct input_ctx *ictx, const char *p)
 {
 	struct window_pane	*wp = ictx->wp;
 	char			*end;
-	const char		*buf;
-	size_t			 len;
+	const char		*buf = NULL;
+	size_t			 len = 0;
 	u_char			*out;
 	int			 outlen, state;
 	struct screen_write_ctx	 ctx;
@@ -2688,26 +2703,12 @@ input_osc_52(struct input_ctx *ictx, const char *p)
 	log_debug("%s: %s", __func__, end);
 
 	if (strcmp(end, "?") == 0) {
-		if ((pb = paste_get_top(NULL)) != NULL) {
+		if ((pb = paste_get_top(NULL)) != NULL)
 			buf = paste_buffer_data(pb, &len);
-			outlen = 4 * ((len + 2) / 3) + 1;
-			out = xmalloc(outlen);
-			if ((outlen = b64_ntop(buf, len, out, outlen)) == -1) {
-				free(out);
-				return;
-			}
-		} else {
-			outlen = 0;
-			out = NULL;
-		}
-		bufferevent_write(ictx->event, "\033]52;;", 6);
-		if (outlen != 0)
-			bufferevent_write(ictx->event, out, outlen);
 		if (ictx->input_end == INPUT_END_BEL)
-			bufferevent_write(ictx->event, "\007", 1);
+			input_reply_clipboard(ictx->event, buf, len, "\007");
 		else
-			bufferevent_write(ictx->event, "\033\\", 2);
-		free(out);
+			input_reply_clipboard(ictx->event, buf, len, "\033\\");
 		return;
 	}
 
@@ -2764,4 +2765,27 @@ input_osc_104(struct input_ctx *ictx, const char *p)
 	if (redraw)
 		screen_write_fullredraw(&ictx->ctx);
 	free(copy);
+}
+
+void
+input_reply_clipboard(struct bufferevent *bev, const char *buf, size_t len,
+    const char *end)
+{
+	char	*out = NULL;
+	size_t	 outlen = 0;
+
+	if (buf != NULL && len != 0) {
+		outlen = 4 * ((len + 2) / 3) + 1;
+		out = xmalloc(outlen);
+		if ((outlen = b64_ntop(buf, len, out, outlen)) == -1) {
+			free(out);
+			return;
+		}
+	}
+
+	bufferevent_write(bev, "\033]52;;", 6);
+	if (outlen != 0)
+		bufferevent_write(bev, out, outlen);
+	bufferevent_write(bev, end, strlen(end));
+	free(out);
 }
