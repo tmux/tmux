@@ -388,10 +388,5 @@ proc_fork_and_daemon(int *fd)
 uid_t
 proc_get_peer_uid(struct tmuxpeer *peer)
 {
-	uid_t uid;
-	gid_t gid;
-
-	if (getpeereid(peer->ibuf.fd, &uid, &gid) != 0)
-		return ((uid_t)-1);
 	return (peer->uid);
 }
