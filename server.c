@@ -383,7 +383,7 @@ server_accept(int fd, short events, __unused void *data)
 		return;
 	}
 	c = server_client_create(newfd);
-	if (!server_acl_accept_validate(newfd)) {
+	if (!server_acl_join(c)) {
 		c->exit_message = xstrdup("access not allowed");
 		c->flags |= CLIENT_EXIT;
 	}

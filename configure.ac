@@ -172,7 +172,7 @@ AC_REPLACE_FUNCS([ \
 	strlcat \
 	strlcpy \
 	strndup \
-	strsep
+	strsep \
 ])
 AC_FUNC_STRNLEN
 

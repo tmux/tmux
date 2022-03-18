@@ -69,17 +69,16 @@ server_acl_user_find(uid_t uid)
 	return RB_FIND(server_acl_entries, &server_acl_entries, &find);
 }
 
-/* Display the tree */
+/* Display the tree. */
 void
-server_acl_display(struct cmdq_item *item) 
+server_acl_display(struct cmdq_item *item)
 {
-	struct passwd *pw;
-	struct server_acl_user *loop;
+	struct server_acl_user	*loop;
+	struct passwd		*pw;
 
 	RB_FOREACH(loop, server_acl_entries, &server_acl_entries) {
-		if (loop->uid == 0) {
+		if (loop->uid == 0)
 			continue;
-		}
 		pw = getpwuid(loop->uid);
 		if (loop->flags == SERVER_ACL_READONLY)
 			cmdq_print(item, "%s (R)", pw->pw_name);
@@ -113,18 +112,6 @@ server_acl_user_deny(uid_t uid)
 		RB_REMOVE(server_acl_entries, &server_acl_entries, user);
 		free(user);
 	}
-}
-
-/* Check if this file descriptor belongs to a user permitted to attach. */
-int
-server_acl_accept_validate(int newfd)
-{
-	uid_t	uid;
-	gid_t	gid;
-
-	if (getpeereid(newfd, &uid, &gid) != 0)
-		return 0;
-	return (server_acl_user_find(uid) != NULL);
 }
 
 /* Allow this user write access. */

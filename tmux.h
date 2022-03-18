@@ -23,7 +23,6 @@
 #include <sys/uio.h>
 
 #include <limits.h>
-#include <pwd.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <termios.h>
@@ -3273,7 +3272,6 @@ struct server_acl_user	*server_acl_user_find(uid_t);
 void 			 server_acl_display(struct cmdq_item *);
 void			 server_acl_user_allow(uid_t);
 void			 server_acl_user_deny(uid_t);
-int			 server_acl_accept_validate(int);
 void			 server_acl_user_allow_write(uid_t);
 void			 server_acl_user_deny_write(uid_t);
 int			 server_acl_join(struct client *);

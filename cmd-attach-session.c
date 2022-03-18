@@ -76,11 +76,6 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 		return (CMD_RETURN_ERROR);
 	}
 
-	if (!server_acl_join(c)) {
-		cmdq_error(item, "access is not allowed");
-		return (CMD_RETURN_ERROR);
-	}
-
 	if (tflag != NULL && tflag[strcspn(tflag, ":.")] != '\0') {
 		type = CMD_FIND_PANE;
 		flags = 0;
