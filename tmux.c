@@ -373,7 +373,13 @@ main(int argc, char **argv)
 			flags |= CLIENT_NOFORK;
 			break;
 		case 'C':
-			if (flags & CLIENT_CONTROL)
+			if(flags & CLIENT_CONTROLCONTROLCONTROL){
+				fprintf(stderr, "redundant -C\n");
+				usage();
+			}else if(flags & CLIENT_CONTROLCONTROL){
+				flags |= CLIENT_CONTROLCONTROLCONTROL;
+				flags &= ~CLIENT_CONTROLCONTROL;
+			}else if (flags & CLIENT_CONTROL)
 				flags |= CLIENT_CONTROLCONTROL;
 			else
 				flags |= CLIENT_CONTROL;

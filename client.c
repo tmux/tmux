@@ -393,6 +393,11 @@ client_main(struct event_base *base, int argc, char **argv, uint64_t flags,
 	} else if (msg == MSG_SHELL)
 		proc_send(client_peer, msg, -1, NULL, 0);
 
+	if(client_flags & CLIENT_CONTROLCONTROLCONTROL){
+		printf("\033P1000p");
+		fflush(stdout);
+	}
+
 	/* Start main loop. */
 	proc_loop(client_proc, NULL);
 
@@ -435,7 +440,7 @@ client_main(struct event_base *base, int argc, char **argv, uint64_t flags,
 			printf("\033\\");
 			fflush(stdout);
 			tcsetattr(STDOUT_FILENO, TCSAFLUSH, &saved_tio);
-		}
+		} // clients(like iTerm2) can work without "\033\\", relying on "%exit\n"
 	} else if (client_exitreason != CLIENT_EXIT_NONE)
 		fprintf(stderr, "%s\n", client_exit_message());
 	return (client_exitval);
