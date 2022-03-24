@@ -655,6 +655,18 @@ tty_set_title(struct tty *tty, const char *title)
 	tty_putcode(tty, TTYC_FSL);
 }
 
+void
+tty_set_path(struct tty *tty, const char *title)
+{
+	if (!tty_term_has(tty->term, TTYC_SWD) ||
+	    !tty_term_has(tty->term, TTYC_FSL))
+		return;
+
+	tty_putcode(tty, TTYC_SWD);
+	tty_puts(tty, title);
+	tty_putcode(tty, TTYC_FSL);
+}
+
 static void
 tty_force_cursor_colour(struct tty *tty, int c)
 {

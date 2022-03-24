@@ -3624,6 +3624,8 @@ Supports DECSLRM margins.
 Supports
 .Xr xterm 1
 mouse sequences.
+.It osc7
+Supports the OSC 7 working directory extension.
 .It overline
 Supports the overline SGR attribute.
 .It rectfill
@@ -6391,6 +6393,11 @@ $ printf '\e033[4 q'
 If
 .Em Se
 is not set, \&Ss with argument 0 will be used to reset the cursor style instead.
+.It Em \&Swd
+Set the opening sequence for the working directory notification.
+The sequence is terminated using the standard
+.Em fsl
+capability.
 .It Em \&Sync
 Start (parameter is 1) or end (parameter is 2) a synchronized update.
 .It Em \&Tc

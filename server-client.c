@@ -43,6 +43,7 @@ static void	server_client_check_exit(struct client *);
 static void	server_client_check_redraw(struct client *);
 static void	server_client_check_modes(struct client *);
 static void	server_client_set_title(struct client *);
+static void	server_client_set_path(struct client *);
 static void	server_client_reset_state(struct client *);
 static int	server_client_assume_paste(struct session *);
 static void	server_client_update_latest(struct client *);
@@ -2603,8 +2604,10 @@ server_client_check_redraw(struct client *c)
 	}
 
 	if (c->flags & CLIENT_ALLREDRAWFLAGS) {
-		if (options_get_number(s->options, "set-titles"))
+		if (options_get_number(s->options, "set-titles")) {
 			server_client_set_title(c);
+			server_client_set_path(c);
+		}
 		screen_redraw_screen(c);
 	}
 
@@ -2648,6 +2651,26 @@ server_client_set_title(struct client *c)
 	free(title);
 
 	format_free(ft);
+}
+
+/* Set client path. */
+static void
+server_client_set_path(struct client *c)
+{
+	struct session	*s = c->session;
+	const char	*path;
+
+	if (s->curw == NULL)
+		return;
+	if (s->curw->window->active->base.path == NULL)
+		path = "";
+	else
+		path = s->curw->window->active->base.path;
+	if (c->path == NULL || strcmp(path, c->path) != 0) {
+		free(c->path);
+		c->path = xstrdup(path);
+		tty_set_path(&c->tty, c->path);
+	}
 }
 
 /* Dispatch message from client. */
