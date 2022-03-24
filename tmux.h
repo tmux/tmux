@@ -540,6 +540,7 @@ enum tty_code_code {
 	TTYC_SMULX,
 	TTYC_SMXX,
 	TTYC_SS,
+	TTYC_SWD,
 	TTYC_SYNC,
 	TTYC_TC,
 	TTYC_TSL,
@@ -1709,6 +1710,7 @@ struct client {
 	struct format_job_tree	*jobs;
 
 	char			*title;
+	char			*path;
 	const char		*cwd;
 
 	char			*term_name;
@@ -2259,6 +2261,7 @@ void	tty_start_tty(struct tty *);
 void	tty_send_requests(struct tty *);
 void	tty_stop_tty(struct tty *);
 void	tty_set_title(struct tty *, const char *);
+void	tty_set_path(struct tty *, const char *);
 void	tty_update_mode(struct tty *, int, struct screen *);
 void	tty_draw_line(struct tty *, struct screen *, u_int, u_int, u_int,
 	    u_int, u_int, const struct grid_cell *, struct colour_palette *);
