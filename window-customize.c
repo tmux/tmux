@@ -680,9 +680,7 @@ window_customize_draw_option(struct window_customize_modedata *data,
 	}
 	ft = format_create_from_state(NULL, NULL, &fs);
 
-	if (oe == NULL)
-		text = "This is a user option.";
-	else if (oe->text == NULL)
+	if (oe == NULL || oe->text == NULL)
 		text = "This option doesn't have a description.";
 	else
 		text = oe->text;
