@@ -228,10 +228,10 @@ server_start(struct tmuxproc *client, int flags, struct event_base *base,
 
 	if (cause != NULL) {
 		if (c != NULL) {
-			cmdq_append(c, cmdq_get_error(cause));
+			c->exit_message = cause;
 			c->flags |= CLIENT_EXIT;
-		}
-		free(cause);
+		} else
+			free(cause);
 	}
 
 	evtimer_set(&server_ev_tidy, server_tidy_event, NULL);
