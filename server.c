@@ -236,8 +236,10 @@ server_start(struct tmuxproc *client, int flags, struct event_base *base,
 		if (c != NULL) {
 			c->exit_message = cause;
 			c->flags |= CLIENT_EXIT;
-		} else
-			free(cause);
+		} else {
+			fprintf(stderr, "%s\n", cause);
+			exit(1);
+		}
 	}
 
 	evtimer_set(&server_ev_tidy, server_tidy_event, NULL);
