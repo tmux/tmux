@@ -421,6 +421,11 @@ void		*reallocarray(void *, size_t, size_t);
 void		*recallocarray(void *, size_t, size_t, size_t);
 #endif
 
+#ifdef HAVE_SYSTEMD
+/* systemd.c */
+int		 systemd_create_socket(int, char **);
+#endif
+
 #ifdef HAVE_UTF8PROC
 /* utf8proc.c */
 int		 utf8proc_wcwidth(wchar_t);
