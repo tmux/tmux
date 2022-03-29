@@ -1488,6 +1488,28 @@ option.
 .D1 Pq alias: Ic rename
 Rename the session to
 .Ar new-name .
+.It Xo Ic server-access
+.Op Fl adwrl 
+.Ar name
+.Xc
+Change the access or read/write permission of a user, 
+specified by
+.Ar name ,
+for a shared session.
+This is unable to affect the owner of the session.
+.Pp
+.Fl a,
+.Fl d,
+is used to give or revoke access to the session for
+the specified user. If the user is already in the session and
+the
+.Fl d
+flag is specified the user will be disconnected.
+.Pp
+.Fl w,
+.Fl r,
+is used to change the permission for a user 
+to write or use commands inside the session.
 .Tg showmsgs
 .It Xo Ic show-messages
 .Op Fl JT
