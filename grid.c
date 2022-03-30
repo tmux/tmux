@@ -1003,7 +1003,7 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
 
 	gl = grid_peek_line(gd, py);
 	for (xx = px; xx < px + nx; xx++) {
-		if (gl == NULL || xx >= gl->cellsize)
+		if (gl == NULL || xx >= gl->cellused)
 			break;
 		grid_get_cell(gd, xx, py, &gc);
 		if (gc.flags & GRID_FLAG_PADDING)
