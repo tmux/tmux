@@ -128,7 +128,7 @@ colour_tostring(int c)
 	u_char		r, g, b;
 
 	if (c == -1)
-		return ("invalid");
+		return ("none");
 
 	if (c & COLOUR_FLAG_RGB) {
 		colour_split_rgb(c, &r, &g, &b);

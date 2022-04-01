@@ -102,7 +102,7 @@ cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 	name = options_match(argument, &idx, &ambiguous);
 	if (name == NULL) {
 		if (args_has(args, 'q'))
-			goto fail;
+			goto out;
 		if (ambiguous)
 			cmdq_error(item, "ambiguous option: %s", argument);
 		else
@@ -113,7 +113,7 @@ cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 	    &cause);
 	if (scope == OPTIONS_TABLE_NONE) {
 		if (args_has(args, 'q'))
-			goto fail;
+			goto out;
 		cmdq_error(item, "%s", cause);
 		free(cause);
 		goto fail;
@@ -128,11 +128,12 @@ cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 		cmd_show_options_print(self, item, o, idx, parent);
 	else if (*name == '@') {
 		if (args_has(args, 'q'))
-			goto fail;
+			goto out;
 		cmdq_error(item, "invalid option: %s", argument);
 		goto fail;
 	}
 
+out:
 	free(name);
 	free(argument);
 	return (CMD_RETURN_NORMAL);

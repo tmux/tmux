@@ -69,6 +69,11 @@ AC_ARG_ENABLE(
 	AS_HELP_STRING(--enable-static, create a static build)
 )
 if test "x$enable_static" = xyes; then
+	case "$host_os" in
+		*darwin*)
+			AC_MSG_ERROR([static linking is not supported on macOS])
+			;;
+	esac
 	test "x$PKG_CONFIG" != x && PKG_CONFIG="$PKG_CONFIG --static"
 	AM_LDFLAGS="-static $AM_LDFLAGS"
 	LDFLAGS="$AM_LDFLAGS $SAVED_LDFLAGS"
@@ -123,6 +128,7 @@ AC_CHECK_HEADERS([ \
 	sys/dir.h \
 	sys/ndir.h \
 	sys/tree.h \
+	ucred.h \
 	util.h \
 ])
 
@@ -141,7 +147,8 @@ AC_CHECK_FUNCS([ \
 	flock \
 	prctl \
 	proc_pidinfo \
-	sysconf
+	getpeerucred \
+	sysconf \
 ])
 
 # Check for functions with a compatibility implementation.
@@ -155,6 +162,7 @@ AC_REPLACE_FUNCS([ \
 	freezero \
 	getdtablecount \
 	getdtablesize \
+	getpeereid \
 	getline \
 	getprogname \
 	memmem \
@@ -381,6 +389,31 @@ if test "x$enable_utf8proc" = xyes; then
 	fi
 fi
 AM_CONDITIONAL(HAVE_UTF8PROC, [test "x$enable_utf8proc" = xyes])
+
+# Check for systemd support.
+AC_ARG_ENABLE(
+	systemd,
+	AS_HELP_STRING(--enable-systemd, enable systemd integration)
+)
+if test x"$enable_systemd" = xyes; then
+	PKG_CHECK_MODULES(
+		SYSTEMD,
+		libsystemd,
+		[
+			AM_CPPFLAGS="$SYSTEMD_CFLAGS $AM_CPPFLAGS"
+			CPPFLAGS="$AM_CPPFLAGS $SAVED_CPPFLAGS"
+			LIBS="$SYSTEMD_LIBS $LIBS"
+			found_systemd=yes
+		],
+		found_systemd=no
+	)
+	if test "x$found_systemd" = xyes; then
+		AC_DEFINE(HAVE_SYSTEMD)
+	else
+		AC_MSG_ERROR("systemd not found")
+	fi
+fi
+AM_CONDITIONAL(HAVE_SYSTEMD, [test "x$found_systemd" = xyes])
 
 # Check for b64_ntop. If we have b64_ntop, we assume b64_pton as well.
 AC_MSG_CHECKING(for b64_ntop)
@@ -677,6 +710,14 @@ AC_CHECK_DECL(
 	AC_DEFINE(HAVE_PR_SET_NAME),
 	,
 	[#include <sys/prctl.h>]
+)
+
+# Look for setsockopt(SO_PEERCRED).
+AC_CHECK_DECL(
+	SO_PEERCRED,
+	AC_DEFINE(HAVE_SO_PEERCRED),
+	,
+	[#include <sys/socket.h>]
 )
 
 # Look for fcntl(F_CLOSEM).

@@ -718,7 +718,7 @@ status_prompt_redraw(struct client *c)
 	memcpy(&cursorgc, &gc, sizeof cursorgc);
 	cursorgc.attr ^= GRID_ATTR_REVERSE;
 
-	start = screen_write_strlen("%s", c->prompt_string);
+	start = format_width(c->prompt_string);
 	if (start > c->tty.sx)
 		start = c->tty.sx;
 
@@ -728,7 +728,7 @@ status_prompt_redraw(struct client *c)
 	for (offset = 0; offset < c->tty.sx; offset++)
 		screen_write_putc(&ctx, &gc, ' ');
 	screen_write_cursormove(&ctx, 0, lines - 1, 0);
-	screen_write_nputs(&ctx, start, &gc, "%s", c->prompt_string);
+	format_draw(&ctx, &gc, start, c->prompt_string, NULL, 0);
 	screen_write_cursormove(&ctx, start, lines - 1, 0);
 
 	left = c->tty.sx - start;
@@ -1798,7 +1798,7 @@ status_prompt_complete_window_menu(struct client *c, struct session *s,
 		item.name = tmp;
 		item.key = '0' + size - 1;
 		item.command = NULL;
-		menu_add_item(menu, &item, NULL, NULL, NULL);
+		menu_add_item(menu, &item, NULL, c, NULL);
 		free(tmp);
 
 		if (size == height)

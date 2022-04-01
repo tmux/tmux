@@ -53,6 +53,18 @@ static const struct tty_feature tty_feature_title = {
 	0
 };
 
+/* Terminal has OSC 7 working directory. */
+static const char *tty_feature_osc7_capabilities[] = {
+	"Swd=\\E]7;",
+	"fsl=\\a",
+	NULL
+};
+static const struct tty_feature tty_feature_osc7 = {
+	"osc7",
+	tty_feature_osc7_capabilities,
+	0
+};
+
 /* Terminal has mouse support. */
 static const char *tty_feature_mouse_capabilities[] = {
 	"kmous=\\E[M",
@@ -249,6 +261,7 @@ static const struct tty_feature *tty_features[] = {
 	&tty_feature_focus,
 	&tty_feature_margins,
 	&tty_feature_mouse,
+	&tty_feature_osc7,
 	&tty_feature_overline,
 	&tty_feature_rectfill,
 	&tty_feature_rgb,
@@ -363,7 +376,7 @@ tty_default_features(int *feat, const char *name, u_int version)
 		},
 		{ .name = "iTerm2",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM
-			      ",cstyle,extkeys,margins,sync"
+			      ",cstyle,extkeys,margins,usstyle,sync"
 		},
 		{ .name = "XTerm",
 		  /*

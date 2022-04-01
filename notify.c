@@ -34,18 +34,37 @@ struct notify_entry {
 	int			 pane;
 };
 
+static struct cmdq_item *
+notify_insert_one_hook(struct cmdq_item *item, struct notify_entry *ne,
+    struct cmd_list *cmdlist, struct cmdq_state *state)
+{
+	struct cmdq_item	*new_item;
+	char			*s;
+
+	if (cmdlist == NULL)
+		return (item);
+	if (log_get_level() != 0) {
+		s = cmd_list_print(cmdlist, 0);
+		log_debug("%s: hook %s is: %s", __func__, ne->name, s);
+		free (s);
+	}
+	new_item = cmdq_get_command(cmdlist, state);
+	return (cmdq_insert_after(item, new_item));
+}
+
 static void
 notify_insert_hook(struct cmdq_item *item, struct notify_entry *ne)
 {
 	struct cmd_find_state		 fs;
 	struct options			*oo;
-	struct cmdq_item		*new_item;
-	struct cmdq_state		*new_state;
+	struct cmdq_state		*state;
 	struct options_entry		*o;
 	struct options_array_item	*a;
 	struct cmd_list			*cmdlist;
+	const char			*value;
+	struct cmd_parse_result		*pr;
 
-	log_debug("%s: %s", __func__, ne->name);
+	log_debug("%s: inserting hook %s", __func__, ne->name);
 
 	cmd_find_clear_state(&fs, 0);
 	if (cmd_find_empty_state(&ne->fs) || !cmd_find_valid_state(&ne->fs))
@@ -66,23 +85,37 @@ notify_insert_hook(struct cmdq_item *item, struct notify_entry *ne)
 		oo = fs.wl->window->options;
 		o = options_get(oo, ne->name);
 	}
-	if (o == NULL)
+	if (o == NULL) {
+		log_debug("%s: hook %s not found", __func__, ne->name);
 		return;
-
-	new_state = cmdq_new_state(&fs, NULL, CMDQ_STATE_NOHOOKS);
-	cmdq_add_formats(new_state, ne->formats);
-
-	a = options_array_first(o);
-	while (a != NULL) {
-		cmdlist = options_array_item_value(a)->cmdlist;
-		if (cmdlist != NULL) {
-			new_item = cmdq_get_command(cmdlist, new_state);
-			item = cmdq_insert_after(item, new_item);
-		}
-		a = options_array_next(a);
 	}
 
-	cmdq_free_state(new_state);
+	state = cmdq_new_state(&fs, NULL, CMDQ_STATE_NOHOOKS);
+	cmdq_add_formats(state, ne->formats);
+
+	if (*ne->name == '@') {
+		value = options_get_string(oo, ne->name);
+		pr = cmd_parse_from_string(value, NULL);
+		switch (pr->status) {
+		case CMD_PARSE_ERROR:
+			log_debug("%s: can't parse hook %s: %s", __func__,
+			    ne->name, pr->error);
+			free(pr->error);
+			break;
+		case CMD_PARSE_SUCCESS:
+			notify_insert_one_hook(item, ne, pr->cmdlist, state);
+			break;
+		}
+	} else {
+		a = options_array_first(o);
+		while (a != NULL) {
+			cmdlist = options_array_item_value(a)->cmdlist;
+			item = notify_insert_one_hook(item, ne, cmdlist, state);
+			a = options_array_next(a);
+		}
+	}
+
+	cmdq_free_state(state);
 }
 
 static enum cmd_retval

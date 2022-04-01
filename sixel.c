@@ -554,7 +554,7 @@ sixel_to_screen(struct sixel_image *si)
 				grid_view_set_cell(s->grid, x, y, &gc);
 		}
 	} else {
-		screen_write_box(&ctx, sx, sy);
+		screen_write_box(&ctx, sx, sy, BOX_LINES_DEFAULT, NULL, NULL);
 		for (y = 1; y < sy - 1; y++) {
 			for (x = 1; x < sx - 1; x++)
 				grid_view_set_cell(s->grid, x, y, &gc);

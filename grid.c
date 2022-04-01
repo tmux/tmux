@@ -826,6 +826,56 @@ grid_string_cells_bg(const struct grid_cell *gc, int *values)
 	return (n);
 }
 
+/* Get underscore colour sequence. */
+static size_t
+grid_string_cells_us(const struct grid_cell *gc, int *values)
+{
+	size_t	n;
+	u_char	r, g, b;
+
+	n = 0;
+	if (gc->us & COLOUR_FLAG_256) {
+		values[n++] = 58;
+		values[n++] = 5;
+		values[n++] = gc->us & 0xff;
+	} else if (gc->us & COLOUR_FLAG_RGB) {
+		values[n++] = 58;
+		values[n++] = 2;
+		colour_split_rgb(gc->us, &r, &g, &b);
+		values[n++] = r;
+		values[n++] = g;
+		values[n++] = b;
+	}
+	return (n);
+}
+
+/* Add on SGR code. */
+static void
+grid_string_cells_add_code(char *buf, size_t len, u_int n, int *s, int *newc,
+    int *oldc, size_t nnewc, size_t noldc, int escape_c0)
+{
+	u_int	i;
+	char	tmp[64];
+
+	if (nnewc != 0 &&
+	    (nnewc != noldc ||
+	    memcmp(newc, oldc, nnewc * sizeof newc[0]) != 0 ||
+	    (n != 0 && s[0] == 0))) {
+		if (escape_c0)
+			strlcat(buf, "\\033[", len);
+		else
+			strlcat(buf, "\033[", len);
+		for (i = 0; i < nnewc; i++) {
+			if (i + 1 < nnewc)
+				xsnprintf(tmp, sizeof tmp, "%d;", newc[i]);
+			else
+				xsnprintf(tmp, sizeof tmp, "%d", newc[i]);
+			strlcat(buf, tmp, len);
+		}
+		strlcat(buf, "m", len);
+	}
+}
+
 /*
  * Returns ANSI code to set particular attributes (colour, bold and so on)
  * given a current state.
@@ -861,7 +911,9 @@ grid_string_cells_code(const struct grid_cell *lastgc,
 
 	/* If any attribute is removed, begin with 0. */
 	for (i = 0; i < nitems(attrs); i++) {
-		if (!(attr & attrs[i].mask) && (lastattr & attrs[i].mask)) {
+		if (((~attr & attrs[i].mask) &&
+		    (lastattr & attrs[i].mask)) ||
+		    (lastgc->us != 0 && gc->us == 0)) {
 			s[n++] = 0;
 			lastattr &= GRID_ATTR_CHARSET;
 			break;
@@ -897,42 +949,20 @@ grid_string_cells_code(const struct grid_cell *lastgc,
 	/* If the foreground colour changed, write its parameters. */
 	nnewc = grid_string_cells_fg(gc, newc);
 	noldc = grid_string_cells_fg(lastgc, oldc);
-	if (nnewc != noldc ||
-	    memcmp(newc, oldc, nnewc * sizeof newc[0]) != 0 ||
-	    (n != 0 && s[0] == 0)) {
-		if (escape_c0)
-			strlcat(buf, "\\033[", len);
-		else
-			strlcat(buf, "\033[", len);
-		for (i = 0; i < nnewc; i++) {
-			if (i + 1 < nnewc)
-				xsnprintf(tmp, sizeof tmp, "%d;", newc[i]);
-			else
-				xsnprintf(tmp, sizeof tmp, "%d", newc[i]);
-			strlcat(buf, tmp, len);
-		}
-		strlcat(buf, "m", len);
-	}
+	grid_string_cells_add_code(buf, len, n, s, newc, oldc, nnewc, noldc,
+	    escape_c0);
 
 	/* If the background colour changed, append its parameters. */
 	nnewc = grid_string_cells_bg(gc, newc);
 	noldc = grid_string_cells_bg(lastgc, oldc);
-	if (nnewc != noldc ||
-	    memcmp(newc, oldc, nnewc * sizeof newc[0]) != 0 ||
-	    (n != 0 && s[0] == 0)) {
-		if (escape_c0)
-			strlcat(buf, "\\033[", len);
-		else
-			strlcat(buf, "\033[", len);
-		for (i = 0; i < nnewc; i++) {
-			if (i + 1 < nnewc)
-				xsnprintf(tmp, sizeof tmp, "%d;", newc[i]);
-			else
-				xsnprintf(tmp, sizeof tmp, "%d", newc[i]);
-			strlcat(buf, tmp, len);
-		}
-		strlcat(buf, "m", len);
-	}
+	grid_string_cells_add_code(buf, len, n, s, newc, oldc, nnewc, noldc,
+	    escape_c0);
+
+	/* If the underscore colour changed, append its parameters. */
+	nnewc = grid_string_cells_us(gc, newc);
+	noldc = grid_string_cells_us(lastgc, oldc);
+	grid_string_cells_add_code(buf, len, n, s, newc, oldc, nnewc, noldc,
+	    escape_c0);
 
 	/* Append shift in/shift out if needed. */
 	if ((attr & GRID_ATTR_CHARSET) && !(lastattr & GRID_ATTR_CHARSET)) {
@@ -973,7 +1003,7 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
 
 	gl = grid_peek_line(gd, py);
 	for (xx = px; xx < px + nx; xx++) {
-		if (gl == NULL || xx >= gl->cellsize)
+		if (gl == NULL || xx >= gl->cellused)
 			break;
 		grid_get_cell(gd, xx, py, &gc);
 		if (gc.flags & GRID_FLAG_PADDING)

@@ -100,7 +100,7 @@ server_check_marked(void)
 }
 
 /* Create server socket. */
-static int
+int
 server_create_socket(int flags, char **cause)
 {
 	struct sockaddr_un	sa;
@@ -214,7 +214,11 @@ server_start(struct tmuxproc *client, int flags, struct event_base *base,
 
 	gettimeofday(&start_time, NULL);
 
+#ifdef HAVE_SYSTEMD
+	server_fd = systemd_create_socket(flags, &cause);
+#else
 	server_fd = server_create_socket(flags, &cause);
+#endif
 	if (server_fd != -1)
 		server_update_socket();
 	if (~flags & CLIENT_NOFORK)
@@ -230,10 +234,12 @@ server_start(struct tmuxproc *client, int flags, struct event_base *base,
 
 	if (cause != NULL) {
 		if (c != NULL) {
-			cmdq_append(c, cmdq_get_error(cause));
+			c->exit_message = cause;
 			c->flags |= CLIENT_EXIT;
+		} else {
+			fprintf(stderr, "%s\n", cause);
+			exit(1);
 		}
-		free(cause);
 	}
 
 	evtimer_set(&server_ev_tidy, server_tidy_event, NULL);

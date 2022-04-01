@@ -83,6 +83,8 @@ static void	tty_check_overlay_range(struct tty *, u_int, u_int, u_int,
 #define TTY_BLOCK_START(tty) (1 + ((tty)->sx * (tty)->sy) * 8)
 #define TTY_BLOCK_STOP(tty) (1 + ((tty)->sx * (tty)->sy) / 8)
 
+#define TTY_QUERY_TIMEOUT 5
+
 void
 tty_create_log(void)
 {
@@ -307,7 +309,7 @@ tty_start_tty(struct tty *tty)
 {
 	struct client	*c = tty->client;
 	struct termios	 tio;
-	struct timeval	 tv = { .tv_sec = 3 };
+	struct timeval	 tv = { .tv_sec = TTY_QUERY_TIMEOUT };
 
 	setblocking(c->fd, 0);
 	event_add(&tty->event_in, NULL);
@@ -653,6 +655,18 @@ tty_set_title(struct tty *tty, const char *title)
 	tty_putcode(tty, TTYC_FSL);
 }
 
+void
+tty_set_path(struct tty *tty, const char *title)
+{
+	if (!tty_term_has(tty->term, TTYC_SWD) ||
+	    !tty_term_has(tty->term, TTYC_FSL))
+		return;
+
+	tty_putcode(tty, TTYC_SWD);
+	tty_puts(tty, title);
+	tty_putcode(tty, TTYC_FSL);
+}
+
 static void
 tty_force_cursor_colour(struct tty *tty, int c)
 {
@@ -791,26 +805,19 @@ tty_update_mode(struct tty *tty, int mode, struct screen *s)
 
 	if ((changed & ALL_MOUSE_MODES) && tty_term_has(term, TTYC_KMOUS)) {
 		/*
-		 * If the mouse modes have changed, clear any that are set and
-		 * apply again. There are differences in how terminals track
-		 * the various bits.
+		 * If the mouse modes have changed, clear then all and apply
+		 * again. There are differences in how terminals track the
+		 * various bits.
 		 */
-		if (tty->mode & MODE_MOUSE_SGR)
-			tty_puts(tty, "\033[?1006l");
-		if (tty->mode & MODE_MOUSE_STANDARD)
-			tty_puts(tty, "\033[?1000l");
-		if (tty->mode & MODE_MOUSE_BUTTON)
-			tty_puts(tty, "\033[?1002l");
-		if (tty->mode & MODE_MOUSE_ALL)
-			tty_puts(tty, "\033[?1003l");
+		tty_puts(tty, "\033[?1006l\033[?1000l\033[?1002l\033[?1003l");
 		if (mode & ALL_MOUSE_MODES)
 			tty_puts(tty, "\033[?1006h");
-		if (mode & MODE_MOUSE_STANDARD)
-			tty_puts(tty, "\033[?1000h");
-		if (mode & MODE_MOUSE_BUTTON)
-			tty_puts(tty, "\033[?1002h");
 		if (mode & MODE_MOUSE_ALL)
-			tty_puts(tty, "\033[?1003h");
+			tty_puts(tty, "\033[?1000h\033[?1002h\033[?1003h");
+		if (mode & MODE_MOUSE_BUTTON)
+			tty_puts(tty, "\033[?1000h\033[?1002h");
+		else if (mode & MODE_MOUSE_STANDARD)
+			tty_puts(tty, "\033[?1000h");
 	}
 	if (changed & MODE_BRACKETPASTE) {
 		if (mode & MODE_BRACKETPASTE)
@@ -2125,8 +2132,8 @@ tty_set_selection(struct tty *tty, const char *buf, size_t len)
 	encoded = xmalloc(size);
 
 	b64_ntop(buf, len, encoded, size);
+	tty->flags |= TTY_NOBLOCK;
 	tty_putcode_ptr2(tty, TTYC_MS, "", encoded);
-	tty->client->redraw = EVBUFFER_LENGTH(tty->out);
 
 	free(encoded);
 }
@@ -2134,6 +2141,7 @@ tty_set_selection(struct tty *tty, const char *buf, size_t len)
 void
 tty_cmd_rawstring(struct tty *tty, const struct tty_ctx *ctx)
 {
+	tty->flags |= TTY_NOBLOCK;
 	tty_add(tty, ctx->ptr, ctx->num);
 	tty_invalidate(tty);
 }
@@ -2995,4 +3003,32 @@ tty_default_attributes(struct tty *tty, const struct grid_cell *defaults,
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	gc.bg = bg;
 	tty_attributes(tty, &gc, defaults, palette);
+}
+
+static void
+tty_clipboard_query_callback(__unused int fd, __unused short events, void *data)
+{
+	struct tty	*tty = data;
+	struct client	*c = tty->client;
+
+	c->flags &= ~CLIENT_CLIPBOARDBUFFER;
+	free(c->clipboard_panes);
+	c->clipboard_panes = NULL;
+	c->clipboard_npanes = 0;
+
+	tty->flags &= ~TTY_OSC52QUERY;
+}
+
+void
+tty_clipboard_query(struct tty *tty)
+{
+	struct timeval	 tv = { .tv_sec = TTY_QUERY_TIMEOUT };
+
+	if ((~tty->flags & TTY_STARTED) || (tty->flags & TTY_OSC52QUERY))
+		return;
+	tty_putcode_ptr2(tty, TTYC_MS, "", "?");
+
+	tty->flags |= TTY_OSC52QUERY;
+	evtimer_set(&tty->clipboard_timer, tty_clipboard_query_callback, tty);
+	evtimer_add(&tty->clipboard_timer, &tv);
 }

@@ -63,6 +63,9 @@ static const char *options_table_cursor_style_list[] = {
 static const char *options_table_pane_status_list[] = {
 	"off", "top", "bottom", NULL
 };
+static const char *options_table_pane_border_indicators_list[] = {
+	"off", "colour", "arrows", "both", NULL
+};
 static const char *options_table_pane_border_lines_list[] = {
 	"single", "double", "heavy", "simple", "number", NULL
 };
@@ -274,6 +277,7 @@ const struct options_table_entry options_table[] = {
 	  .minimum = 0,
 	  .maximum = INT_MAX,
 	  .default_num = 500,
+	  .unit = "milliseconds",
 	  .text = "Time to wait before assuming a key is Escape."
 	},
 
@@ -298,7 +302,7 @@ const struct options_table_entry options_table[] = {
 	  .choices = options_table_extended_keys_list,
 	  .default_num = 0,
 	  .text = "Whether to request extended key sequences from terminals "
-	          "that support it."
+		  "that support it."
 	},
 
 	{ .name = "focus-events",
@@ -797,6 +801,14 @@ const struct options_table_entry options_table[] = {
 		  "linked to ('off')."
 	},
 
+	{ .name = "allow-passthrough",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
+	  .default_num = 0,
+	  .text = "Whether applications are allowed to use the escape sequence "
+	          "to bypass tmux."
+	},
+
 	{ .name = "allow-rename",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
@@ -868,6 +880,13 @@ const struct options_table_entry options_table[] = {
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
 	  .text = "Style of the marked line in copy mode."
+	},
+
+	{ .name = "fill-character",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "",
+	  .text = "Character used to fill unused parts of window."
 	},
 
 	{ .name = "main-pane-height",
@@ -964,10 +983,19 @@ const struct options_table_entry options_table[] = {
 
 	{ .name = "pane-border-format",
 	  .type = OPTIONS_TABLE_STRING,
-	  .scope = OPTIONS_TABLE_WINDOW,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
 	  .default_str = "#{?pane_active,#[reverse],}#{pane_index}#[default] "
 			 "\"#{pane_title}\"",
 	  .text = "Format of text in the pane status lines."
+	},
+
+	{ .name = "pane-border-indicators",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .choices = options_table_pane_border_indicators_list,
+	  .default_num = PANE_BORDER_COLOUR,
+	  .text = "Whether to indicate the active pane by colouring border or "
+		  "displaying arrow markers."
 	},
 
 	{ .name = "pane-border-lines",
@@ -976,7 +1004,7 @@ const struct options_table_entry options_table[] = {
 	  .choices = options_table_pane_border_lines_list,
 	  .default_num = PANE_LINES_SINGLE,
 	  .text = "Type of characters used to draw pane border lines. Some of "
-	          "these are only supported on terminals with UTF-8 support."
+		  "these are only supported on terminals with UTF-8 support."
 	},
 
 	{ .name = "pane-border-status",
@@ -1028,7 +1056,7 @@ const struct options_table_entry options_table[] = {
 	  .choices = options_table_popup_border_lines_list,
 	  .default_num = BOX_LINES_SINGLE,
 	  .text = "Type of characters used to draw popup border lines. Some of "
-	          "these are only supported on terminals with UTF-8 support."
+		  "these are only supported on terminals with UTF-8 support."
 	},
 
 	{ .name = "remain-on-exit",
@@ -1038,6 +1066,27 @@ const struct options_table_entry options_table[] = {
 	  .default_num = 0,
 	  .text = "Whether panes should remain ('on') or be automatically "
 		  "killed ('off' or 'failed') when the program inside exits."
+	},
+
+	{ .name = "remain-on-exit-format",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
+	  .default_str = "Pane is dead ("
+			 "#{?#{!=:#{pane_dead_status},},"
+	                 "status #{pane_dead_status},}"
+			 "#{?#{!=:#{pane_dead_signal},},"
+	                 "signal #{pane_dead_signal},}, "
+			 "#{t:pane_dead_time})",
+	  .text = "Message shown after the program in a pane has exited, if "
+	          "remain-on-exit is enabled."
+	},
+
+	{ .name = "scroll-on-clear",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
+	  .default_num = 1,
+	  .text = "Whether the contents of the screen should be scrolled into"
+		  "history when clearing the whole screen."
 	},
 
 	{ .name = "synchronize-panes",
@@ -1158,7 +1207,7 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_WINDOW,
 	  .default_num = 1,
 	  .text = "Whether xterm-style function key sequences should be sent. "
-	          "This option is no longer used."
+		  "This option is no longer used."
 	},
 
 	/* Hook options. */
@@ -1206,8 +1255,8 @@ const struct options_table_entry options_table[] = {
 	OPTIONS_TABLE_HOOK("client-active", ""),
 	OPTIONS_TABLE_HOOK("client-attached", ""),
 	OPTIONS_TABLE_HOOK("client-detached", ""),
- 	OPTIONS_TABLE_HOOK("client-focus-in", ""),
- 	OPTIONS_TABLE_HOOK("client-focus-out", ""),
+	OPTIONS_TABLE_HOOK("client-focus-in", ""),
+	OPTIONS_TABLE_HOOK("client-focus-out", ""),
 	OPTIONS_TABLE_HOOK("client-resized", ""),
 	OPTIONS_TABLE_HOOK("client-session-changed", ""),
 	OPTIONS_TABLE_PANE_HOOK("pane-died", ""),
@@ -1225,6 +1274,7 @@ const struct options_table_entry options_table[] = {
 	OPTIONS_TABLE_HOOK("window-linked", ""),
 	OPTIONS_TABLE_WINDOW_HOOK("window-pane-changed", ""),
 	OPTIONS_TABLE_WINDOW_HOOK("window-renamed", ""),
+	OPTIONS_TABLE_WINDOW_HOOK("window-resized", ""),
 	OPTIONS_TABLE_HOOK("window-unlinked", ""),
 
 	{ .name = NULL }

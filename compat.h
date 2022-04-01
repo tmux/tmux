@@ -334,6 +334,11 @@ char		*strndup(const char *, size_t);
 void		*memmem(const void *, size_t, const void *, size_t);
 #endif
 
+#ifndef HAVE_GETPEEREID
+/* getpeereid.c */
+int		getpeereid(int, uid_t *, gid_t *);
+#endif
+
 #ifndef HAVE_DAEMON
 /* daemon.c */
 int	 	 daemon(int, int);
@@ -414,6 +419,11 @@ void		*reallocarray(void *, size_t, size_t);
 #ifndef HAVE_RECALLOCARRAY
 /* recallocarray.c */
 void		*recallocarray(void *, size_t, size_t, size_t);
+#endif
+
+#ifdef HAVE_SYSTEMD
+/* systemd.c */
+int		 systemd_create_socket(int, char **);
 #endif
 
 #ifdef HAVE_UTF8PROC

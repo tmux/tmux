@@ -43,7 +43,7 @@ then later reattached.
 .Pp
 When
 .Nm
-is started it creates a new
+is started, it creates a new
 .Em session
 with a single
 .Em window
@@ -140,7 +140,10 @@ By default,
 loads the system configuration file from
 .Pa @SYSCONFDIR@/tmux.conf ,
 if present, then looks for a user configuration file at
-.Pa ~/.tmux.conf .
+.Pa ~/.tmux.conf,
+.Pa $XDG_CONFIG_HOME/tmux/tmux.conf
+or
+.Pa ~/.config/tmux/tmux.conf .
 .Pp
 The configuration file is a set of
 .Nm
@@ -1338,11 +1341,12 @@ and sets an environment variable for the newly created session; it may be
 specified multiple times.
 .Tg refresh
 .It Xo Ic refresh-client
-.Op Fl cDlLRSU
+.Op Fl cDLRSU
 .Op Fl A Ar pane:state
 .Op Fl B Ar name:what:format
 .Op Fl C Ar size
 .Op Fl f Ar flags
+.Op Fl l Op Ar target-pane
 .Op Fl t Ar target-client
 .Op Ar adjustment
 .Xc
@@ -1456,7 +1460,11 @@ sets a comma-separated list of client flags, see
 .Fl l
 requests the clipboard from the client using the
 .Xr xterm 1
-escape sequence and stores it in a new paste buffer.
+escape sequence.
+If
+Ar target-pane
+is given, the clipboard is sent (in encoded form), otherwise it is stored in a
+new paste buffer.
 .Pp
 .Fl L ,
 .Fl R ,
@@ -1773,6 +1781,7 @@ The following commands are supported in copy mode:
 .It Li "set-mark" Ta "X" Ta "X"
 .It Li "start-of-line" Ta "0" Ta "C-a"
 .It Li "stop-selection" Ta "" Ta ""
+.It Li "toggle-position" Ta "P" Ta "P"
 .It Li "top-line" Ta "H" Ta "M-R"
 .El
 .Pp
@@ -3618,6 +3627,8 @@ Supports DECSLRM margins.
 Supports
 .Xr xterm 1
 mouse sequences.
+.It osc7
+Supports the OSC 7 working directory extension.
 .It overline
 Supports the overline SGR attribute.
 .It rectfill
@@ -4108,6 +4119,9 @@ Set clock colour.
 .Xc
 Set clock hour format.
 .Pp
+.It Ic fill-character Ar character
+Set the character used to fill areas of the terminal unused by a window.
+.Pp
 .It Ic main-pane-height Ar height
 .It Ic main-pane-width Ar width
 Set the width or height of the main (left or top) pane in the
@@ -4222,6 +4236,12 @@ but set the starting index for pane numbers.
 .Pp
 .It Ic pane-border-format Ar format
 Set the text shown in pane border status lines.
+.Pp
+.It Xo Ic pane-border-indicators
+.Op Ic off | colour | arrows | both
+.Xc
+Indicate active pane by colouring only half of the border in windows with
+exactly two panes, by displaying arrow markers, by drawing both or neither.
 .Pp
 .It Ic pane-border-lines Ar type
 Set the type of characters used for drawing pane borders.
@@ -4396,6 +4416,13 @@ The default is on.
 Available pane options are:
 .Pp
 .Bl -tag -width Ds -compact
+.It Xo Ic allow-passthrough
+.Op Ic on | off
+.Xc
+Allow programs in the pane to bypass
+.Nm
+using a terminal escape sequence (\eePtmux;...\ee\e\e).
+.Pp
 .It Xo Ic allow-rename
 .Op Ic on | off
 .Xc
@@ -4448,6 +4475,17 @@ then only when the program exit status is not zero.
 The pane may be reactivated with the
 .Ic respawn-pane
 command.
+.Pp
+.It Ic remain-on-exit-format Ar string
+Set the text shown at the bottom of exited panes when
+.Ic remain-on-exit
+is enabled.
+.Pp
+.It Xo Ic scroll-on-clear
+.Op Ic on | off
+.Xc
+When the entire screen is cleared and this option is on, scroll the contents of
+the screen into history before clearing it.
 .Pp
 .It Xo Ic synchronize-panes
 .Op Ic on | off
@@ -4575,6 +4613,11 @@ Run when a session is renamed.
 Run when a window is linked into a session.
 .It window-renamed
 Run when a window is renamed.
+.It window-resized
+Run when a window is resized.
+This may be after the
+.Ar client-resized
+hook is run.
 .It window-unlinked
 Run when a window is unlinked from a session.
 .El
@@ -4989,7 +5032,9 @@ commands to finish; instead, the previous result from running the same command i
 or a placeholder if the command has not been run before.
 If the command hasn't exited, the most recent line of output will be used, but the status
 line will not be updated more than once a second.
-Commands are executed with the
+Commands are executed using
+.Pa /bin/sh
+and with the
 .Nm
 global environment set (see the
 .Sx GLOBAL AND SESSION ENVIRONMENT
@@ -5033,6 +5078,8 @@ The following variables are available, where appropriate:
 .It Li "client_termname" Ta "" Ta "Terminal name of client"
 .It Li "client_termtype" Ta "" Ta "Terminal type of client, if available"
 .It Li "client_tty" Ta "" Ta "Pseudo terminal of client"
+.It Li "client_uid" Ta "" Ta "UID of client process"
+.It Li "client_user" Ta "" Ta "User of client process"
 .It Li "client_utf8" Ta "" Ta "1 if client supports UTF-8"
 .It Li "client_width" Ta "" Ta "Width of client"
 .It Li "client_written" Ta "" Ta "Bytes written to client"
@@ -5077,6 +5124,7 @@ The following variables are available, where appropriate:
 .It Li "mouse_word" Ta "" Ta "Word under mouse, if any"
 .It Li "mouse_x" Ta "" Ta "Mouse X position, if any"
 .It Li "mouse_y" Ta "" Ta "Mouse Y position, if any"
+.It Li "next_session_id" Ta "" Ta "Unique session ID for next new session"
 .It Li "origin_flag" Ta "" Ta "Pane origin flag"
 .It Li "pane_active" Ta "" Ta "1 if active pane"
 .It Li "pane_at_bottom" Ta "" Ta "1 if pane is at the bottom of window"
@@ -5088,7 +5136,9 @@ The following variables are available, where appropriate:
 .It Li "pane_current_command" Ta "" Ta "Current command if available"
 .It Li "pane_current_path" Ta "" Ta "Current path if available"
 .It Li "pane_dead" Ta "" Ta "1 if pane is dead"
+.It Li "pane_dead_signal" Ta "" Ta "Exit signal of process in dead pane"
 .It Li "pane_dead_status" Ta "" Ta "Exit status of process in dead pane"
+.It Li "pane_dead_time" Ta "" Ta "Exit time of process in dead pane"
 .It Li "pane_fg" Ta "" Ta "Pane foreground colour"
 .It Li "pane_format" Ta "" Ta "1 if format is for a pane"
 .It Li "pane_height" Ta "" Ta "Height of pane"
@@ -5149,6 +5199,8 @@ The following variables are available, where appropriate:
 .It Li "session_windows" Ta "" Ta "Number of windows in session"
 .It Li "socket_path" Ta "" Ta "Server socket path"
 .It Li "start_time" Ta "" Ta "Server start time"
+.It Li "uid" Ta "" Ta "Server UID"
+.It Li "user" Ta "" Ta "Server user"
 .It Li "version" Ta "" Ta "Server version"
 .It Li "window_active" Ta "" Ta "1 if window active"
 .It Li "window_active_clients" Ta "" Ta "Number of clients viewing this window"
@@ -5163,7 +5215,6 @@ The following variables are available, where appropriate:
 .It Li "window_cell_width" Ta "" Ta "Width of each cell in pixels"
 .It Li "window_end_flag" Ta "" Ta "1 if window has the highest index"
 .It Li "window_flags" Ta "#F" Ta "Window flags with # escaped as ##"
-.It Li "window_raw_flags" Ta "" Ta "Window flags with nothing escaped"
 .It Li "window_format" Ta "" Ta "1 if format is for a window"
 .It Li "window_height" Ta "" Ta "Height of window"
 .It Li "window_id" Ta "" Ta "Unique window ID"
@@ -5178,6 +5229,7 @@ The following variables are available, where appropriate:
 .It Li "window_offset_x" Ta "" Ta "X offset into window if larger than client"
 .It Li "window_offset_y" Ta "" Ta "Y offset into window if larger than client"
 .It Li "window_panes" Ta "" Ta "Number of panes in window"
+.It Li "window_raw_flags" Ta "" Ta "Window flags with nothing escaped"
 .It Li "window_silence_flag" Ta "" Ta "1 if window has silence alert"
 .It Li "window_stack_index" Ta "" Ta "Index in session most recent stack"
 .It Li "window_start_flag" Ta "" Ta "1 if window has the lowest index"
@@ -5866,7 +5918,7 @@ does not surround the popup by a border.
 sets the type of border line for the popup.
 When
 .Fl B
-is specified the
+is specified, the
 .Fl b
 option is ignored.
 See
@@ -6155,6 +6207,8 @@ Execute the first
 .Ar command
 if
 .Ar shell-command
+(run with
+.Pa /bin/sh )
 returns success or the second
 .Ar command
 otherwise.
@@ -6191,6 +6245,8 @@ option.
 .D1 Pq alias: Ic run
 Execute
 .Ar shell-command
+using
+.Pa /bin/sh
 or (with
 .Fl C )
 a
@@ -6292,6 +6348,11 @@ to change the cursor colour from inside
 .Bd -literal -offset indent
 $ printf '\e033]12;red\e033\e\e'
 .Ed
+.Pp
+The colour is an
+.Xr X 7
+colour, see
+.Xr XParseColor 3 .
 .It Em \&Cmg, \&Clmg, \&Dsmg , \&Enmg
 Set, clear, disable or enable DECSLRM margins.
 These are set automatically if the terminal reports it is
@@ -6335,6 +6396,11 @@ $ printf '\e033[4 q'
 If
 .Em Se
 is not set, \&Ss with argument 0 will be used to reset the cursor style instead.
+.It Em \&Swd
+Set the opening sequence for the working directory notification.
+The sequence is terminated using the standard
+.Em fsl
+capability.
 .It Em \&Sxl
 Indicates that the terminal supports SIXEL.
 .It Em \&Sync
@@ -6509,6 +6575,14 @@ are for future use and should be ignored.
 The window with ID
 .Ar window-id
 was created but is not linked to the current session.
+.It Ic %unlinked-window-close Ar window-id
+The window with ID
+.Ar window-id ,
+which is not linked to the current session, was closed.
+.It Ic %unlinked-window-renamed Ar window-id
+The window with ID
+.Ar window-id ,
+which is not linked to the current session, was renamed.
 .It Ic %window-add Ar window-id
 The window with ID
 .Ar window-id
@@ -6567,7 +6641,7 @@ are replaced with underscores
 For input,
 .Nm
 always runs with a UTF-8 locale.
-If en_US.UTF-8 is provided by the operating system it is used and
+If en_US.UTF-8 is provided by the operating system, it is used and
 .Ev LC_CTYPE
 is ignored for input.
 Otherwise,
@@ -6616,6 +6690,8 @@ options.
 .Sh FILES
 .Bl -tag -width "@SYSCONFDIR@/tmux.confXXX" -compact
 .It Pa ~/.tmux.conf
+.It Pa $XDG_CONFIG_HOME/tmux/tmux.conf
+.It Pa ~/.config/tmux/tmux.conf
 Default
 .Nm
 configuration file.

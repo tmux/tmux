@@ -1154,13 +1154,13 @@ format_trim_right(const char *expanded, u_int limit)
 	while (*cp != '\0') {
 		if (*cp == '#') {
 			end = format_leading_hashes(cp, &n, &leading_width);
+			copy_width = leading_width;
 			if (width <= skip) {
-				if (skip - width >= leading_width)
+				if (skip - width >= copy_width)
 					copy_width = 0;
 				else
 					copy_width -= (skip - width);
-			} else
-				copy_width = leading_width;
+			}
 			if (copy_width != 0) {
 				if (n == 1)
 					*out++ = '#';

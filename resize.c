@@ -61,6 +61,7 @@ resize_window(struct window *w, u_int sx, u_int sy, int xpixel, int ypixel)
 	tty_update_window_offset(w);
 	server_redraw_window(w);
 	notify_window("window-layout-changed", w);
+	notify_window("window-resized", w);
 	w->flags &= ~WINDOW_RESIZE;
 }
 
@@ -178,7 +179,7 @@ clients_calculate_size(int type, int current, struct client *c,
 			cw = NULL;
 
 		/* Work out this client's size. */
-		if (cw != NULL) {
+		if (cw != NULL && cw->sx != 0 && cw->sy != 0) {
 			cx = cw->sx;
 			cy = cw->sy;
 		} else {

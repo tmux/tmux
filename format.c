@@ -24,6 +24,7 @@
 #include <fnmatch.h>
 #include <libgen.h>
 #include <math.h>
+#include <pwd.h>
 #include <regex.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -1387,6 +1388,35 @@ format_cb_client_tty(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for client_uid. */
+static void *
+format_cb_client_uid(struct format_tree *ft)
+{
+	uid_t	uid;
+
+	if (ft->c != NULL) {
+		uid = proc_get_peer_uid(ft->c->peer);
+		if (uid != (uid_t)-1)
+			return (format_printf("%ld", (long)uid));
+	}
+	return (NULL);
+}
+
+/* Callback for client_user. */
+static void *
+format_cb_client_user(struct format_tree *ft)
+{
+	uid_t		 uid;
+	struct passwd	*pw;
+
+	if (ft->c != NULL) {
+		uid = proc_get_peer_uid(ft->c->peer);
+		if (uid != (uid_t)-1 && (pw = getpwuid(uid)) != NULL)
+			return (xstrdup(pw->pw_name));
+	}
+	return (NULL);
+}
+
 /* Callback for client_utf8. */
 static void *
 format_cb_client_utf8(struct format_tree *ft)
@@ -1650,6 +1680,13 @@ format_cb_mouse_y(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for next_session_id. */
+static void *
+format_cb_next_session_id(__unused struct format_tree *ft)
+{
+	return (format_printf("$%u", next_session_id));
+}
+
 /* Callback for origin_flag. */
 static void *
 format_cb_origin_flag(struct format_tree *ft)
@@ -1719,6 +1756,23 @@ format_cb_pane_dead(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for pane_dead_signal. */
+static void *
+format_cb_pane_dead_signal(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+	const char		*name;
+
+	if (wp != NULL) {
+		if ((wp->flags & PANE_STATUSREADY) && WIFSIGNALED(wp->status)) {
+			name = sig2name(WTERMSIG(wp->status));
+			return (format_printf("%s", name));
+		}
+		return (NULL);
+	}
+	return (NULL);
+}
+
 /* Callback for pane_dead_status. */
 static void *
 format_cb_pane_dead_status(struct format_tree *ft)
@@ -1728,6 +1782,20 @@ format_cb_pane_dead_status(struct format_tree *ft)
 	if (wp != NULL) {
 		if ((wp->flags & PANE_STATUSREADY) && WIFEXITED(wp->status))
 			return (format_printf("%d", WEXITSTATUS(wp->status)));
+		return (NULL);
+	}
+	return (NULL);
+}
+
+/* Callback for pane_dead_time. */
+static void *
+format_cb_pane_dead_time(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+
+	if (wp != NULL) {
+		if (wp->flags & PANE_STATUSDRAWN)
+			return (&wp->dead_time);
 		return (NULL);
 	}
 	return (NULL);
@@ -2514,6 +2582,24 @@ format_cb_tree_mode_format(__unused struct format_tree *ft)
 	return (xstrdup(window_tree_mode.default_format));
 }
 
+/* Callback for uid. */
+static void *
+format_cb_uid(__unused struct format_tree *ft)
+{
+	return (format_printf("%ld", (long)getuid()));
+}
+
+/* Callback for user. */
+static void *
+format_cb_user(__unused struct format_tree *ft)
+{
+	struct passwd	*pw;
+
+	if ((pw = getpwuid(getuid())) != NULL)
+		return (xstrdup(pw->pw_name));
+	return NULL;
+}
+
 /* Format table type. */
 enum format_table_type {
 	FORMAT_TABLE_STRING,
@@ -2620,6 +2706,12 @@ static const struct format_table_entry format_table[] = {
 	{ "client_tty", FORMAT_TABLE_STRING,
 	  format_cb_client_tty
 	},
+	{ "client_uid", FORMAT_TABLE_STRING,
+	  format_cb_client_uid
+	},
+	{ "client_user", FORMAT_TABLE_STRING,
+	  format_cb_client_user
+	},
 	{ "client_utf8", FORMAT_TABLE_STRING,
 	  format_cb_client_utf8
 	},
@@ -2707,6 +2799,9 @@ static const struct format_table_entry format_table[] = {
 	{ "mouse_y", FORMAT_TABLE_STRING,
 	  format_cb_mouse_y
 	},
+	{ "next_session_id", FORMAT_TABLE_STRING,
+	  format_cb_next_session_id
+	},
 	{ "origin_flag", FORMAT_TABLE_STRING,
 	  format_cb_origin_flag
 	},
@@ -2740,8 +2835,14 @@ static const struct format_table_entry format_table[] = {
 	{ "pane_dead", FORMAT_TABLE_STRING,
 	  format_cb_pane_dead
 	},
+	{ "pane_dead_signal", FORMAT_TABLE_STRING,
+	  format_cb_pane_dead_signal
+	},
 	{ "pane_dead_status", FORMAT_TABLE_STRING,
 	  format_cb_pane_dead_status
+	},
+	{ "pane_dead_time", FORMAT_TABLE_TIME,
+	  format_cb_pane_dead_time
 	},
 	{ "pane_fg", FORMAT_TABLE_STRING,
 	  format_cb_pane_fg
@@ -2895,6 +2996,12 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "tree_mode_format", FORMAT_TABLE_STRING,
 	  format_cb_tree_mode_format
+	},
+	{ "uid", FORMAT_TABLE_STRING,
+	  format_cb_uid
+	},
+	{ "user", FORMAT_TABLE_STRING,
+	  format_cb_user
 	},
 	{ "version", FORMAT_TABLE_STRING,
 	  format_cb_version

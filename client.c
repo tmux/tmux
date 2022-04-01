@@ -531,7 +531,7 @@ client_signal(int sig)
 	if (sig == SIGCHLD)
 		waitpid(WAIT_ANY, &status, WNOHANG);
 	else if (!client_attached) {
-		if (sig == SIGTERM)
+		if (sig == SIGTERM || sig == SIGHUP)
 			proc_exit(client_proc);
 	} else {
 		switch (sig) {
