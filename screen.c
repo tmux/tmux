@@ -661,9 +661,9 @@ screen_mode_to_string(int mode)
 	static char	tmp[1024];
 
 	if (mode == 0)
-		return "NONE";
+		return ("NONE");
 	if (mode == ALL_MODES)
-		return "ALL";
+		return ("ALL");
 
 	*tmp = '\0';
 	if (mode & MODE_CURSOR)

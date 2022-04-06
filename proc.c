@@ -202,7 +202,7 @@ proc_start(const char *name)
 #endif
 	    , event_get_version(), event_get_method()
 #ifdef HAVE_UTF8PROC
-	    , utf8proc_version ()
+	    , utf8proc_version()
 #endif
 	);
 

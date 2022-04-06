@@ -2597,7 +2597,7 @@ format_cb_user(__unused struct format_tree *ft)
 
 	if ((pw = getpwuid(getuid())) != NULL)
 		return (xstrdup(pw->pw_name));
-	return NULL;
+	return (NULL);
 }
 
 /* Format table type. */

@@ -185,7 +185,7 @@ cmd_refresh_client_clipboard(struct cmd *self, struct cmdq_item *item)
 		}
 		if (i != tc->clipboard_npanes)
 			return (CMD_RETURN_NORMAL);
-		tc->clipboard_panes = xreallocarray (tc->clipboard_panes,
+		tc->clipboard_panes = xreallocarray(tc->clipboard_panes,
 		    tc->clipboard_npanes + 1, sizeof *tc->clipboard_panes);
 		tc->clipboard_panes[tc->clipboard_npanes++] = fs.wp->id;
 	}

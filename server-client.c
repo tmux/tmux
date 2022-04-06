@@ -3158,7 +3158,7 @@ server_client_add_client_window(struct client *c, u_int id)
 		cw->window = id;
 		RB_INSERT(client_windows, &c->windows, cw);
 	}
-	return cw;
+	return (cw);
 }
 
 /* Get client active pane. */

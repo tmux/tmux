@@ -1056,7 +1056,7 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 	if (sx == wp->sx && sy == wp->sy)
 		return;
 
-	r = xmalloc (sizeof *r);
+	r = xmalloc(sizeof *r);
 	r->sx = sx;
 	r->sy = sy;
 	r->osx = wp->sx;

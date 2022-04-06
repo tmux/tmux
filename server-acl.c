@@ -42,8 +42,8 @@ static int
 server_acl_cmp(struct server_acl_user *user1, struct server_acl_user *user2)
 {
 	if (user1->uid < user2->uid)
-		return -1;
-	return user1->uid > user2->uid;
+		return (-1);
+	return (user1->uid > user2->uid);
 }
 
 RB_HEAD(server_acl_entries, server_acl_user) server_acl_entries;
@@ -66,7 +66,7 @@ server_acl_user_find(uid_t uid)
 {
 	struct server_acl_user	find = { .uid = uid };
 
-	return RB_FIND(server_acl_entries, &server_acl_entries, &find);
+	return (RB_FIND(server_acl_entries, &server_acl_entries, &find));
 }
 
 /* Display the tree. */

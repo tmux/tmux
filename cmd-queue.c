@@ -126,7 +126,7 @@ cmdq_new(void)
 {
 	struct cmdq_list	*queue;
 
-	queue = xcalloc (1, sizeof *queue);
+	queue = xcalloc(1, sizeof *queue);
 	TAILQ_INIT (&queue->list);
 	return (queue);
 }
