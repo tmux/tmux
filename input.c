@@ -1798,6 +1798,8 @@ input_csi_dispatch_sm_private(struct input_ctx *ictx)
 			screen_write_mode_set(sctx, MODE_FOCUSON);
 			if (wp == NULL)
 				break;
+			if (!options_get_number(global_options, "focus-events"))
+				break;
 			if (wp->flags & PANE_FOCUSED)
 				bufferevent_write(wp->event, "\033[I", 3);
 			else
