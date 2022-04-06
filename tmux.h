@@ -3020,7 +3020,7 @@ void		 layout_spread_out(struct window_pane *);
 
 /* layout-custom.c */
 char		*layout_dump(struct layout_cell *);
-int		 layout_parse(struct window *, const char *);
+int		 layout_parse(struct window *, const char *, char **);
 
 /* layout-set.c */
 int		 layout_set_lookup(const char *);
