@@ -151,7 +151,7 @@ server_acl_user_deny_write(uid_t uid)
 
 	TAILQ_FOREACH(c, &clients, entry) {
 		uid = proc_get_peer_uid(c->peer);
-		if (uid == user->uid && uid == user->uid)
+		if (uid != (uid_t)-1 && uid == user->uid)
 			c->flags |= CLIENT_READONLY;
 	}
 }
@@ -164,7 +164,11 @@ int
 server_acl_join(struct client *c)
 {
 	struct server_acl_user	*user;
-	uid_t			 uid = proc_get_peer_uid(c->peer);
+	uid_t			 uid;
+
+	uid = proc_get_peer_uid(c->peer);
+	if (uid == (uid_t)-1)
+		return (0);
 
 	user = server_acl_user_find(uid);
 	if (user == NULL)

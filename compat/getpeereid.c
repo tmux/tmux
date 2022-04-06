@@ -53,7 +53,6 @@ getpeereid(int s, uid_t *uid, gid_t *gid)
         return (0);
 }
 #else
-	errno = EOPNOTSUPP;
-	return (-1);
+	return (getuid());
 #endif
 }

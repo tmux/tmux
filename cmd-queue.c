@@ -569,7 +569,7 @@ cmdq_add_message(struct cmdq_item *item)
 	tmp = cmd_print(item->cmd);
 	if (c != NULL) {
 		uid = proc_get_peer_uid(c->peer);
-		if (uid != getuid()) {
+		if (uid != (uid_t)-1 && uid != getuid()) {
 			if ((pw = getpwuid(uid)) != NULL)
 				xasprintf(&user, "[%s]", pw->pw_name);
 			else
