@@ -245,6 +245,8 @@ server_start(struct tmuxproc *client, int flags, struct event_base *base,
 	evtimer_set(&server_ev_tidy, server_tidy_event, NULL);
 	evtimer_add(&server_ev_tidy, &tv);
 
+	server_acl_init();
+
 	server_add_accept(0);
 	proc_loop(server_proc, server_loop);
 
@@ -361,9 +363,10 @@ server_update_socket(void)
 static void
 server_accept(int fd, short events, __unused void *data)
 {
-	struct sockaddr_storage	sa;
-	socklen_t		slen = sizeof sa;
-	int			newfd;
+	struct sockaddr_storage	 sa;
+	socklen_t		 slen = sizeof sa;
+	int			 newfd;
+	struct client		*c;
 
 	server_add_accept(0);
 	if (!(events & EV_READ))
@@ -380,11 +383,16 @@ server_accept(int fd, short events, __unused void *data)
 		}
 		fatal("accept failed");
 	}
+
 	if (server_exit) {
 		close(newfd);
 		return;
 	}
-	server_client_create(newfd);
+	c = server_client_create(newfd);
+	if (!server_acl_join(c)) {
+		c->exit_message = xstrdup("access not allowed");
+		c->flags |= CLIENT_EXIT;
+	}
 }
 
 /*

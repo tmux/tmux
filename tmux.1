@@ -1488,6 +1488,44 @@ option.
 .D1 Pq alias: Ic rename
 Rename the session to
 .Ar new-name .
+.It Xo Ic server-access
+.Op Fl adlrw
+.Op Ar user
+.Xc
+Change the access or read/write permission of
+.Ar user .
+The user running the
+.Nm
+server (its owner) and the root user cannot be changed and are always
+permitted access.
+.Pp
+.Fl a
+and
+.Fl d
+are used to give or revoke access for the specified user.
+If the user is already attached, the
+.Fl d
+flag causes their clients to be detached.
+.Pp
+.Fl r
+and
+.Fl w
+change the permissions for
+.Ar user :
+.Fl r
+makes their clients read-only and
+.Fl w
+writable.
+.Fl l
+lists current access permissions.
+.Pp
+By default, the access list is empty and
+.Nm
+creates sockets with file system permissions preventing access by any user
+other than the owner (and root).
+These permissions must be changed manually.
+Great care should be taken not to allow access to untrusted users even
+read-only.
 .Tg showmsgs
 .It Xo Ic show-messages
 .Op Fl JT
@@ -5072,7 +5110,7 @@ The following variables are available, where appropriate:
 .It Li "client_name" Ta "" Ta "Name of client"
 .It Li "client_pid" Ta "" Ta "PID of client process"
 .It Li "client_prefix" Ta "" Ta "1 if prefix key has been pressed"
-.It Li "client_readonly" Ta "" Ta "1 if client is readonly"
+.It Li "client_readonly" Ta "" Ta "1 if client is read-only"
 .It Li "client_session" Ta "" Ta "Name of the client's session"
 .It Li "client_termfeatures" Ta "" Ta "Terminal features of client, if any"
 .It Li "client_termname" Ta "" Ta "Terminal name of client"
