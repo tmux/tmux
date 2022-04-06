@@ -1,5 +1,35 @@
 CHANGES FROM 3.2a TO 3.3
 
+* Add an option (default off) to control the passthrough escape sequence.
+
+* Support more mouse buttons when the terminal sends them.
+
+* Add a window-resized hook which is fired when the window is actually resized
+  which may be later than the client resize.
+
+* Add next_session_id format with the next session ID.
+
+* Add formats for client and server UID and user.
+
+* Add argument to refresh-client -l to forward clipboard to a pane.
+
+* Add remain-on-exit-format to set text shown when pane is dead.
+
+* With split-window -f use percentages of window size not pane size.
+
+* Add an option (fill-character) to set the character used for unused areas of
+  a client.
+
+* Add an option (scroll-on-clear) to control if tmux scrolls into history on
+  clear.
+
+* Add a capability for OSC 7 and use it similarly to how the title is set (and
+  controlled by the same set-titles option).
+
+* Add support for systemd socket activation (where systemd creates the Unix
+  domain socket for tmux rather than tmux creating it). Build with
+  --enable-systemd.
+
 * Add an option (pane-border-indicators) to select how the active pane is shown
   on the pane border (colour, arrows or both).
 
