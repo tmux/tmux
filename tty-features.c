@@ -376,7 +376,7 @@ tty_default_features(int *feat, const char *name, u_int version)
 		},
 		{ .name = "iTerm2",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM
-			      ",cstyle,extkeys,margins,usstyle,sync"
+			      ",cstyle,extkeys,margins,usstyle,sync,osc7"
 		},
 		{ .name = "XTerm",
 		  /*
