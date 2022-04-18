@@ -856,7 +856,7 @@ cmdq_print(struct cmdq_item *item, const char *fmt, ...)
 			window_pane_set_mode(wp, NULL, &window_view_mode, NULL,
 			    NULL);
 		}
-		window_copy_add(wp, "%s", msg);
+		window_copy_add(wp, 0, "%s", msg);
 	}
 
 	free(msg);

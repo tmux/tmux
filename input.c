@@ -1078,6 +1078,9 @@ input_reply(struct input_ctx *ictx, const char *fmt, ...)
 	va_list			 ap;
 	char			*reply;
 
+	if (bev == NULL)
+		return;
+
 	va_start(ap, fmt);
 	xvasprintf(&reply, fmt, ap);
 	va_end(ap);
