@@ -1061,17 +1061,17 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size,
 		log_debug("%s: mouse input: %.*s", c->name, (int)*size, buf);
 
 		/* Check and return the mouse input. */
-		if (b < 32)
+		if (b < X10_MOUSE_BTN_OFFSET)
 			return (-1);
-		b -= 32;
-		if (x >= 33)
-			x -= 33;
-		else
-			x = 256 - x;
-		if (y >= 33)
-			y -= 33;
-		else
-			y = 256 - y;
+
+		b = b - X10_MOUSE_BTN_OFFSET;
+
+		/*
+		 * This is deliberately different from our behavior in `input_key_get_mouse`
+		 * The overflow behavior is kept for backward compatibility with 2756d12
+		 */
+		x = (x + X10_MOUSE_PARAM_CAP - X10_MOUSE_POS_OFFSET) % X10_MOUSE_PARAM_CAP;
+		x = (y + X10_MOUSE_PARAM_CAP - X10_MOUSE_POS_OFFSET) % X10_MOUSE_PARAM_CAP;
 	} else if (buf[2] == '<') {
 		/* Read the three inputs. */
 		*size = 3;

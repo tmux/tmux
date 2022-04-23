@@ -613,12 +613,23 @@ input_key_get_mouse(struct screen *s, struct mouse_event *m, u_int x, u_int y,
 		len += input_key_split2(x + 33, &buf[len]);
 		len += input_key_split2(y + 33, &buf[len]);
 	} else {
-		if (m->b > 223)
+		if (m->b + X10_MOUSE_BTN_OFFSET >= X10_MOUSE_PARAM_CAP) {
+			// no meaningful mitigation to this, drop the event.
 			return (0);
+		}
+
 		len = xsnprintf(buf, sizeof buf, "\033[M");
-		buf[len++] = m->b + 32;
-		buf[len++] = x + 33;
-		buf[len++] = y + 33;
+		buf[len++] = m->b + X10_MOUSE_BTN_OFFSET;
+
+		/*
+		 * Since the SGR mouse protocol support has been added to tmux, the incoming
+		 * x and y may be out of range which can be supported by the original X10 protocol.
+		 * The coordinates should be clamped to the supported range so as not to upset clients
+		 *
+		 * Please note that `tty_keys_mouse` uses an "overflow" behavior when decoding
+		 */
+		buf[len++] = X10_MOUSE_CLAMP_TO_PARAM(m->x + X10_MOUSE_POS_OFFSET);
+		buf[len++] = X10_MOUSE_CLAMP_TO_PARAM(m->y + X10_MOUSE_POS_OFFSET);
 	}
 
 	*rbuf = buf;

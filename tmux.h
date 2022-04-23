@@ -581,6 +581,12 @@ enum tty_code_code {
 #define MOTION_MOUSE_MODES (MODE_MOUSE_BUTTON|MODE_MOUSE_ALL)
 #define CURSOR_MODES (MODE_CURSOR|MODE_CURSOR_BLINKING|MODE_CURSOR_VERY_VISIBLE)
 
+/* X10 Mouse protocol support */
+#define X10_MOUSE_PARAM_CAP 0x100
+#define X10_MOUSE_BTN_OFFSET 0x20
+#define X10_MOUSE_POS_OFFSET 0x21
+#define X10_MOUSE_CLAMP_TO_PARAM(p) ((((uint)p) < (uint)X10_MOUSE_PARAM_CAP) ? (p) : (X10_MOUSE_PARAM_CAP-1))
+
 /* A single UTF-8 character. */
 typedef u_int utf8_char;
 
