@@ -3251,7 +3251,7 @@ The list of older changes is below.
 * (nicm) -n on new-session is now -s, and -n is now the initial window name.
   This was documented but not implemented :-/.
 * (nicm) kill-window command, bound to & by default (because it should be hard
-  to hit accidently).
+  to hit accidentally).
 * (nicm) bell-style option with three choices: "none" completely ignore bell;
   "any" pass through a bell in any window to current; "current" ignore bells
   except in current window. This applies only to the bell terminal signal,

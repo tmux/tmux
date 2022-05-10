@@ -81,7 +81,7 @@ cmd_server_access_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 	}
 	if (args_count(args) == 0) {
-		cmdq_error(item, "missing user arguement");
+		cmdq_error(item, "missing user argument");
 		return (CMD_RETURN_ERROR);
 	}
 
