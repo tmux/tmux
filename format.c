@@ -801,6 +801,20 @@ format_cb_start_command(struct format_tree *ft)
 	return (cmd_stringify_argv(wp->argc, wp->argv));
 }
 
+/* Callback for pane_start_path. */
+static void *
+format_cb_start_path(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+
+	if (wp == NULL)
+		return (NULL);
+
+	if (wp->cwd == NULL)
+		return (xstrdup(""));
+	return (xstrdup(wp->cwd));
+}
+
 /* Callback for pane_current_command. */
 static void *
 format_cb_current_command(struct format_tree *ft)
@@ -2897,6 +2911,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "pane_start_command", FORMAT_TABLE_STRING,
 	  format_cb_start_command
+	},
+	{ "pane_start_path", FORMAT_TABLE_STRING,
+	  format_cb_start_path
 	},
 	{ "pane_synchronized", FORMAT_TABLE_STRING,
 	  format_cb_pane_synchronized
