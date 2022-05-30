@@ -135,6 +135,9 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	server_redraw_window(src_w);
 	server_redraw_window(dst_w);
+	notify_window("window-layout-changed", src_w);
+	if (src_w != dst_w)
+		notify_window("window-layout-changed", dst_w);
 
 out:
 	if (window_pop_zoom(src_w))
