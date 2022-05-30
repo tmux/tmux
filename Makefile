@@ -55,6 +55,7 @@ SRCS=	alerts.c \
 	cmd-select-pane.c \
 	cmd-select-window.c \
 	cmd-send-keys.c \
+	cmd-server-access.c \
 	cmd-set-buffer.c \
 	cmd-set-environment.c \
 	cmd-set-option.c \
@@ -104,6 +105,7 @@ SRCS=	alerts.c \
 	screen-redraw.c \
 	screen-write.c \
 	screen.c \
+	server-acl.c \
 	server-client.c \
 	server-fn.c \
 	server.c \
