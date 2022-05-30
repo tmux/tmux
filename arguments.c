@@ -831,6 +831,12 @@ args_strtonum(struct args *args, u_char flag, long long minval,
 		return (0);
 	}
 	value = TAILQ_LAST(&entry->values, args_values);
+	if (value == NULL ||
+	    value->type != ARGS_STRING ||
+	    value->string == NULL) {
+		*cause = xstrdup("missing");
+		return (0);
+	}
 
 	ll = strtonum(value->string, minval, maxval, &errstr);
 	if (errstr != NULL) {
