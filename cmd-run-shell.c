@@ -84,22 +84,17 @@ cmd_run_shell_print(struct job *job, const char *msg)
 
 	if (cdata->wp_id != -1)
 		wp = window_pane_find_by_id(cdata->wp_id);
-	if (wp == NULL) {
-		if (cdata->item != NULL) {
-			cmdq_print(cdata->item, "%s", msg);
-			return;
-		}
-		if (cmd_find_from_nothing(&fs, 0) != 0)
-			return;
+	if (wp == NULL && cdata->item != NULL)
+		wp = server_client_get_pane(cdata->client);
+	if (wp == NULL && cmd_find_from_nothing(&fs, 0) == 0)
 		wp = fs.wp;
-		if (wp == NULL)
-			return;
-	}
+	if (wp == NULL)
+		return;
 
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme == NULL || wme->mode != &window_view_mode)
 		window_pane_set_mode(wp, NULL, &window_view_mode, NULL, NULL);
-	window_copy_add(wp, "%s", msg);
+	window_copy_add(wp, 1, "%s", msg);
 }
 
 static enum cmd_retval
@@ -227,7 +222,8 @@ cmd_run_shell_callback(struct job *job)
 	int				 retcode, status;
 
 	do {
-		if ((line = evbuffer_readline(event->input)) != NULL) {
+		line = evbuffer_readln(event->input, NULL, EVBUFFER_EOL_LF);
+		if (line != NULL) {
 			cmd_run_shell_print(job, line);
 			free(line);
 		}

@@ -1078,6 +1078,9 @@ input_reply(struct input_ctx *ictx, const char *fmt, ...)
 	va_list			 ap;
 	char			*reply;
 
+	if (bev == NULL)
+		return;
+
 	va_start(ap, fmt);
 	xvasprintf(&reply, fmt, ap);
 	va_end(ap);
@@ -1797,6 +1800,8 @@ input_csi_dispatch_sm_private(struct input_ctx *ictx)
 				break;
 			screen_write_mode_set(sctx, MODE_FOCUSON);
 			if (wp == NULL)
+				break;
+			if (!options_get_number(global_options, "focus-events"))
 				break;
 			if (wp->flags & PANE_FOCUSED)
 				bufferevent_write(wp->event, "\033[I", 3);
