@@ -112,7 +112,7 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 		}
 		next_prompt = prompts;
 	} else
-		next_prompt = prompts = xstrdup (s);
+		next_prompt = prompts = xstrdup(s);
 	if ((s = args_get(args, 'I')) != NULL)
 		next_input = inputs = xstrdup(s);
 	else
