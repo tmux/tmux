@@ -38,7 +38,7 @@ const struct cmd_entry cmd_server_access_entry = {
 	.alias = NULL,
 
 	.args = { "adlrw", 0, 1, NULL },
-	.usage = "[-adlrw]" CMD_TARGET_PANE_USAGE " [user]",
+	.usage = "[-adlrw] " CMD_TARGET_PANE_USAGE " [user]",
 
 	.flags = CMD_CLIENT_CANFAIL,
 	.exec = cmd_server_access_exec
