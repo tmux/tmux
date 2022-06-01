@@ -39,8 +39,8 @@ const struct cmd_entry cmd_split_window_entry = {
 	.name = "split-window",
 	.alias = "splitw",
 
-	.args = { "bc:de:fF:hIl:p:Pt:vZ", 0, -1, NULL },
-	.usage = "[-bdefhIPvZ] [-c start-directory] [-e environment] "
+	.args = { "bc:de:fF:GhIl:p:Pt:vZ", 0, -1, NULL },
+	.usage = "[-bdefGhIPvZ] [-c start-directory] [-e environment] "
 		 "[-F format] [-l size] " CMD_TARGET_PANE_USAGE
 		 "[shell-command]",
 
@@ -65,67 +65,55 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	enum layout_type	 type;
 	struct layout_cell	*lc;
 	struct cmd_find_state	 fs;
-	int			 size, percentage, flags, input;
-	const char		*template, *errstr, *p;
-	char			*cause, *cp, *copy;
-	size_t			 plen;
+	int			 size, flags, input;
+	const char		*template;
+	char			*cause = NULL, *cp;
 	struct args_value	*av;
-	u_int			 count = args_count(args);
+	u_int			 count = args_count(args), curval;
 
+	type = LAYOUT_TOPBOTTOM;
 	if (args_has(args, 'h'))
 		type = LAYOUT_LEFTRIGHT;
-	else
-		type = LAYOUT_TOPBOTTOM;
-	if ((p = args_get(args, 'l')) != NULL) {
-		plen = strlen(p);
-		if (p[plen - 1] == '%') {
-			copy = xstrdup(p);
-			copy[plen - 1] = '\0';
-			percentage = strtonum(copy, 0, INT_MAX, &errstr);
-			free(copy);
-			if (errstr != NULL) {
-				cmdq_error(item, "percentage %s", errstr);
-				return (CMD_RETURN_ERROR);
-			}
-			if (args_has(args, 'f')) {
-				if (type == LAYOUT_TOPBOTTOM)
-					size = (w->sy * percentage) / 100;
-				else
-					size = (w->sx * percentage) / 100;
-			} else {
-				if (type == LAYOUT_TOPBOTTOM)
-					size = (wp->sy * percentage) / 100;
-				else
-					size = (wp->sx * percentage) / 100;
-			}
-		} else {
-			size = args_strtonum(args, 'l', 0, INT_MAX, &cause);
-			if (cause != NULL) {
-				cmdq_error(item, "lines %s", cause);
-				free(cause);
-				return (CMD_RETURN_ERROR);
-			}
-		}
-	} else if (args_has(args, 'p')) {
-		percentage = args_strtonum(args, 'p', 0, INT_MAX, &cause);
-		if (cause != NULL) {
-			cmdq_error(item, "create pane failed: -p %s", cause);
-			free(cause);
-			return (CMD_RETURN_ERROR);
-		}
+
+	/* If the 'p' flag is dropped then this bit can be moved into 'l'. */
+	if (args_has(args, 'l') || args_has(args, 'p')) {
 		if (args_has(args, 'f')) {
 			if (type == LAYOUT_TOPBOTTOM)
-				size = (w->sy * percentage) / 100;
+				curval = w->sy;
 			else
-				size = (w->sx * percentage) / 100;
+				curval = w->sx;
 		} else {
 			if (type == LAYOUT_TOPBOTTOM)
-				size = (wp->sy * percentage) / 100;
+				curval = wp->sy;
 			else
-				size = (wp->sx * percentage) / 100;
+				curval = wp->sx;
 		}
-	} else
-		size = -1;
+	}
+
+	size = -1;
+	if (args_has(args, 'l')) {
+		if (args_has(args, 'G')) {
+			size = args_percentage_and_expand(args, 'l', 0, INT_MAX,
+				   curval, item, &cause);
+		} else {
+			size = args_percentage(args, 'l', 0, INT_MAX, curval,
+				   &cause);
+		}
+	} else if (args_has(args, 'p')) {
+		if (args_has(args, 'G')) {
+			size = args_strtonum_and_expand(args, 'l', 0, 100, item,
+				   &cause);
+		} else
+			size = args_strtonum(args, 'l', 0, 100, &cause);
+
+		if (cause == NULL)
+			size = curval * size / 100;
+	}
+	if (cause != NULL) {
+		cmdq_error(item, "size %s", cause);
+		free(cause);
+		return (CMD_RETURN_ERROR);
+	}
 
 	window_push_zoom(wp->window, 1, args_has(args, 'Z'));
 	input = (args_has(args, 'I') && count == 0);

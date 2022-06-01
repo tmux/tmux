@@ -151,7 +151,11 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 	char				*cause = NULL;
 
 	if (args_has(args, 'N')) {
-		np = args_strtonum(args, 'N', 1, UINT_MAX, &cause);
+		if (args_has(args, 'F')) {
+			np = args_strtonum_and_expand(args, 'N', 1, UINT_MAX,
+				 item, &cause);
+		} else
+			np = args_strtonum(args, 'N', 1, UINT_MAX, &cause);
 		if (cause != NULL) {
 			cmdq_error(item, "repeat count %s", cause);
 			free(cause);
