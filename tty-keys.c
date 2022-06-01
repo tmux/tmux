@@ -798,6 +798,8 @@ partial_key:
 
 	/* Get the time period. */
 	delay = options_get_number(global_options, "escape-time");
+	if (delay == 0)
+		delay = 1;
 	tv.tv_sec = delay / 1000;
 	tv.tv_usec = (delay % 1000) * 1000L;
 
