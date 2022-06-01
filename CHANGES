@@ -1,5 +1,25 @@
 CHANGES FROM 3.2a TO 3.3
 
+* Add an ACL list for users connecting to the tmux socket. Users may be
+  forbidden from attaching, forced to attach read-only, or allowed to attach
+  read-write. A new command, server-access, configures the list. File system
+  permissions must still be configured manually.
+
+* Emit window-layout-changed on swap-pane.
+
+* Better error reporting when applying custom layouts.
+
+* Handle ANSI escape sequences in run-shell output.
+
+* Add pane_start_path to match start_command.
+
+* Set PWD so shells have a hint about the real path.
+
+* Do not allow pipe-pane on dead panes.
+
+* Do not report mouse positions (incorrectly) above the maximum of 223 in
+  normal mouse mode.
+
 * Add an option (default off) to control the passthrough escape sequence.
 
 * Support more mouse buttons when the terminal sends them.
