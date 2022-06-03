@@ -814,7 +814,7 @@ tty_update_mode(struct tty *tty, int mode, struct screen *s)
 			tty_puts(tty, "\033[?1006h");
 		if (mode & MODE_MOUSE_ALL)
 			tty_puts(tty, "\033[?1000h\033[?1002h\033[?1003h");
-		if (mode & MODE_MOUSE_BUTTON)
+		else if (mode & MODE_MOUSE_BUTTON)
 			tty_puts(tty, "\033[?1000h\033[?1002h");
 		else if (mode & MODE_MOUSE_STANDARD)
 			tty_puts(tty, "\033[?1000h");
