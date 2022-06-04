@@ -100,7 +100,7 @@ cmd_choose_tree_exec(struct cmd *self, struct cmdq_item *item)
 	const struct window_mode	*mode;
 
 	if (cmd_get_entry(self) == &cmd_choose_buffer_entry) {
-		if (paste_get_top(NULL) == NULL)
+		if (paste_is_empty())
 			return (CMD_RETURN_NORMAL);
 		mode = &window_buffer_mode;
 	} else if (cmd_get_entry(self) == &cmd_choose_client_entry) {
