@@ -2058,6 +2058,7 @@ u_int		 paste_buffer_order(struct paste_buffer *);
 time_t		 paste_buffer_created(struct paste_buffer *);
 const char	*paste_buffer_data(struct paste_buffer *, size_t *);
 struct paste_buffer *paste_walk(struct paste_buffer *);
+int		 paste_is_empty(void);
 struct paste_buffer *paste_get_top(const char **);
 struct paste_buffer *paste_get_name(const char *);
 void		 paste_free(struct paste_buffer *);

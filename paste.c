@@ -111,6 +111,12 @@ paste_walk(struct paste_buffer *pb)
 	return (RB_NEXT(paste_time_tree, &paste_by_time, pb));
 }
 
+int
+paste_is_empty(void)
+{
+	return RB_ROOT(&paste_by_time) == NULL;
+}
+
 /* Get the most recent automatic buffer. */
 struct paste_buffer *
 paste_get_top(const char **name)
@@ -118,6 +124,8 @@ paste_get_top(const char **name)
 	struct paste_buffer	*pb;
 
 	pb = RB_MIN(paste_time_tree, &paste_by_time);
+	while (pb != NULL && !pb->automatic)
+		pb = RB_NEXT(paste_time_tree, &paste_by_time, pb);
 	if (pb == NULL)
 		return (NULL);
 	if (name != NULL)
