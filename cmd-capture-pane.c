@@ -39,8 +39,8 @@ const struct cmd_entry cmd_capture_pane_entry = {
 	.name = "capture-pane",
 	.alias = "capturep",
 
-	.args = { "ab:CeE:FJNpPqS:t:", 0, 0, NULL },
-	.usage = "[-aCeFJNpPq] " CMD_BUFFER_USAGE " [-E end-line] "
+	.args = { "ab:CeE:JNpPqS:t:", 0, 0, NULL },
+	.usage = "[-aCeJNpPq] " CMD_BUFFER_USAGE " [-E end-line] "
 		 "[-S start-line] " CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -133,11 +133,8 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 	if (Sflag != NULL && strcmp(Sflag, "-") == 0)
 		top = 0;
 	else {
-		if (args_has(args, 'F')) {
-			n = args_strtonum_and_expand(args, 'S', INT_MIN,
-				SHRT_MAX, item, &cause);
-		} else
-			n = args_strtonum(args, 'S', INT_MIN, SHRT_MAX, &cause);
+		n = args_strtonum_and_expand(args, 'S', INT_MIN, SHRT_MAX,
+			item, &cause);
 		if (cause != NULL) {
 			top = gd->hsize;
 			free(cause);
@@ -153,11 +150,8 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 	if (Eflag != NULL && strcmp(Eflag, "-") == 0)
 		bottom = gd->hsize + gd->sy - 1;
 	else {
-		if (args_has(args, 'F')) {
-			n = args_strtonum_and_expand(args, 'E', INT_MIN,
-				SHRT_MAX, item, &cause);
-		} else
-			n = args_strtonum(args, 'E', INT_MIN, SHRT_MAX, &cause);
+		n = args_strtonum_and_expand(args, 'E', INT_MIN, SHRT_MAX,
+			item, &cause);
 		if (cause != NULL) {
 			bottom = gd->hsize + gd->sy - 1;
 			free(cause);

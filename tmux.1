@@ -2015,7 +2015,7 @@ but a different format may be specified with
 .Fl F .
 .Tg capturep
 .It Xo Ic capture-pane
-.Op Fl aepPqCFJN
+.Op Fl aepPqCJN
 .Op Fl b Ar buffer-name
 .Op Fl E Ar end-line
 .Op Fl S Ar start-line
@@ -2059,8 +2059,6 @@ to
 is the start of the history and to
 .Fl E
 the end of the visible pane.
-.Fl F
-expands formats in arguments where appropriate.
 The default is to capture only the visible contents of the pane.
 .It Xo
 .Ic choose-client
@@ -2340,7 +2338,7 @@ zooms the pane.
 This command works only if at least one client is attached.
 .Tg joinp
 .It Xo Ic join-pane
-.Op Fl bdfFhv
+.Op Fl bdfhv
 .Op Fl l Ar size
 .Op Fl s Ar src-pane
 .Op Fl t Ar dst-pane
@@ -2361,8 +2359,6 @@ option causes
 .Ar src-pane
 to be joined to left of or above
 .Ar dst-pane .
-.Fl F
-expands formats in arguments where appropriate.
 .Pp
 If
 .Fl s
@@ -2932,7 +2928,7 @@ the command behaves like
 .Ic last-window .
 .Tg splitw
 .It Xo Ic split-window
-.Op Fl bdfGhIvPZ
+.Op Fl bdfhIvPZ
 .Op Fl c Ar start-directory
 .Op Fl e Ar environment
 .Op Fl l Ar size
@@ -2970,8 +2966,6 @@ or full window width (with
 instead of splitting the active pane.
 .Fl Z
 zooms if the window is not zoomed, or keeps it zoomed if already zoomed.
-.Fl G
-expands formats in arguments where appropriate.
 .Pp
 An empty
 .Ar shell-command

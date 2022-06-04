@@ -35,8 +35,8 @@ const struct cmd_entry cmd_join_pane_entry = {
 	.name = "join-pane",
 	.alias = "joinp",
 
-	.args = { "bdfFhvp:l:s:t:", 0, 0, NULL },
-	.usage = "[-bdfFhv] [-l size] " CMD_SRCDST_PANE_USAGE,
+	.args = { "bdfhvp:l:s:t:", 0, 0, NULL },
+	.usage = "[-bdfhv] [-l size] " CMD_SRCDST_PANE_USAGE,
 
 	.source = { 's', CMD_FIND_PANE, CMD_FIND_DEFAULT_MARKED },
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -49,8 +49,8 @@ const struct cmd_entry cmd_move_pane_entry = {
 	.name = "move-pane",
 	.alias = "movep",
 
-	.args = { "bdfFhvp:l:s:t:", 0, 0, NULL },
-	.usage = "[-bdfFhv] [-l size] " CMD_SRCDST_PANE_USAGE,
+	.args = { "bdfhvp:l:s:t:", 0, 0, NULL },
+	.usage = "[-bdfhv] [-l size] " CMD_SRCDST_PANE_USAGE,
 
 	.source = { 's', CMD_FIND_PANE, CMD_FIND_DEFAULT_MARKED },
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -75,7 +75,7 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 	int			 flags;
 	enum layout_type	 type;
 	struct layout_cell	*lc;
-	u_int			 curval;
+	u_int			 curval = 0;
 
 	dst_s = target->s;
 	dst_wl = target->wl;
@@ -115,20 +115,11 @@ cmd_join_pane_exec(struct cmd *self, struct cmdq_item *item)
 
 	size = -1;
 	if (args_has(args, 'l')) {
-		if (args_has(args, 'F')) {
-			size = args_percentage_and_expand(args, 'l', 0, INT_MAX,
-				   curval, item, &cause);
-		} else {
-			size = args_percentage(args, 'l', 0, INT_MAX, curval,
-				   &cause);
-		}
+		size = args_percentage_and_expand(args, 'l', 0, INT_MAX, curval,
+			   item, &cause);
 	} else if (args_has(args, 'p')) {
-		if (args_has(args, 'F')) {
-			size = args_strtonum_and_expand(args, 'l', 0, 100, item,
-				   &cause);
-		} else
-			size = args_strtonum(args, 'l', 0, 100, &cause);
-
+		size = args_strtonum_and_expand(args, 'l', 0, 100, item,
+			   &cause);
 		if (cause == NULL)
 			size = curval * size / 100;
 	}

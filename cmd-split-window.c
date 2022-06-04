@@ -39,8 +39,8 @@ const struct cmd_entry cmd_split_window_entry = {
 	.name = "split-window",
 	.alias = "splitw",
 
-	.args = { "bc:de:fF:GhIl:p:Pt:vZ", 0, -1, NULL },
-	.usage = "[-bdefGhIPvZ] [-c start-directory] [-e environment] "
+	.args = { "bc:de:fF:hIl:p:Pt:vZ", 0, -1, NULL },
+	.usage = "[-bdefhIPvZ] [-c start-directory] [-e environment] "
 		 "[-F format] [-l size] " CMD_TARGET_PANE_USAGE
 		 "[shell-command]",
 
@@ -69,7 +69,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	const char		*template;
 	char			*cause = NULL, *cp;
 	struct args_value	*av;
-	u_int			 count = args_count(args), curval;
+	u_int			 count = args_count(args), curval = 0;
 
 	type = LAYOUT_TOPBOTTOM;
 	if (args_has(args, 'h'))
@@ -92,20 +92,11 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 
 	size = -1;
 	if (args_has(args, 'l')) {
-		if (args_has(args, 'G')) {
-			size = args_percentage_and_expand(args, 'l', 0, INT_MAX,
-				   curval, item, &cause);
-		} else {
-			size = args_percentage(args, 'l', 0, INT_MAX, curval,
-				   &cause);
-		}
+		size = args_percentage_and_expand(args, 'l', 0, INT_MAX, curval,
+			   item, &cause);
 	} else if (args_has(args, 'p')) {
-		if (args_has(args, 'G')) {
-			size = args_strtonum_and_expand(args, 'l', 0, 100, item,
-				   &cause);
-		} else
-			size = args_strtonum(args, 'l', 0, 100, &cause);
-
+		size = args_strtonum_and_expand(args, 'l', 0, 100, item,
+			    &cause);
 		if (cause == NULL)
 			size = curval * size / 100;
 	}
