@@ -1421,6 +1421,7 @@ struct tty_ctx {
 
 	u_int			 num;
 	void			*ptr;
+	void			*ptr2;
 
 	/*
 	 * Cursor and region position before the screen was updated - this is
@@ -2278,7 +2279,7 @@ int	tty_open(struct tty *, char **);
 void	tty_close(struct tty *);
 void	tty_free(struct tty *);
 void	tty_update_features(struct tty *);
-void	tty_set_selection(struct tty *, const char *, size_t);
+void	tty_set_selection(struct tty *, const char *, const char *, size_t);
 void	tty_write(void (*)(struct tty *, const struct tty_ctx *),
 	    struct tty_ctx *);
 void	tty_cmd_alignmenttest(struct tty *, const struct tty_ctx *);
@@ -2872,7 +2873,8 @@ void	 screen_write_collect_end(struct screen_write_ctx *);
 void	 screen_write_collect_add(struct screen_write_ctx *,
 	     const struct grid_cell *);
 void	 screen_write_cell(struct screen_write_ctx *, const struct grid_cell *);
-void	 screen_write_setselection(struct screen_write_ctx *, u_char *, u_int);
+void	 screen_write_setselection(struct screen_write_ctx *, const char *,
+	     u_char *, u_int);
 void	 screen_write_rawstring(struct screen_write_ctx *, u_char *, u_int);
 void	 screen_write_alternateon(struct screen_write_ctx *,
 	     struct grid_cell *, int);

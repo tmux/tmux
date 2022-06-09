@@ -4570,7 +4570,7 @@ window_copy_copy_buffer(struct window_mode_entry *wme, const char *prefix,
 
 	if (options_get_number(global_options, "set-clipboard") != 0) {
 		screen_write_start_pane(&ctx, wp, NULL);
-		screen_write_setselection(&ctx, buf, len);
+		screen_write_setselection(&ctx, "", buf, len);
 		screen_write_stop(&ctx);
 		notify_pane("pane-set-clipboard", wp);
 	}
@@ -4644,7 +4644,7 @@ window_copy_append_selection(struct window_mode_entry *wme)
 
 	if (options_get_number(global_options, "set-clipboard") != 0) {
 		screen_write_start_pane(&ctx, wp, NULL);
-		screen_write_setselection(&ctx, buf, len);
+		screen_write_setselection(&ctx, "", buf, len);
 		screen_write_stop(&ctx);
 		notify_pane("pane-set-clipboard", wp);
 	}

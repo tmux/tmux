@@ -77,7 +77,7 @@ cmd_load_buffer_done(__unused struct client *c, const char *path, int error,
 		} else if (tc != NULL &&
 		    tc->session != NULL &&
 		    (~tc->flags & CLIENT_DEAD))
-			tty_set_selection(&tc->tty, copy, bsize);
+			tty_set_selection(&tc->tty, "", copy, bsize);
 		if (tc != NULL)
 			server_client_unref(tc);
 	}
