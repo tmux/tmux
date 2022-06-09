@@ -2693,6 +2693,9 @@ input_osc_52(struct input_ctx *ictx, const char *p)
 	int			 outlen, state;
 	struct screen_write_ctx	 ctx;
 	struct paste_buffer	*pb;
+	const char*              allow = "cpqs01234567";
+	char                     flags[sizeof allow] = "";
+	u_int			 i, j = 0;
 
 	if (wp == NULL)
 		return;
@@ -2706,6 +2709,12 @@ input_osc_52(struct input_ctx *ictx, const char *p)
 	if (*end == '\0')
 		return;
 	log_debug("%s: %s", __func__, end);
+
+	for (i = 0; p + i != end; i++) {
+		if (strchr(allow, p[i]) != NULL && strchr(flags, p[i]) == NULL)
+			flags[j++] = p[i];
+	}
+	log_debug("%s: %.*s %s", __func__, (int)(end - p - 1), p, flags);
 
 	if (strcmp(end, "?") == 0) {
 		if ((pb = paste_get_top(NULL)) != NULL)
@@ -2728,7 +2737,7 @@ input_osc_52(struct input_ctx *ictx, const char *p)
 	}
 
 	screen_write_start_pane(&ctx, wp, NULL);
-	screen_write_setselection(&ctx, out, outlen);
+	screen_write_setselection(&ctx, flags, out, outlen);
 	screen_write_stop(&ctx);
 	notify_pane("pane-set-clipboard", wp);
 

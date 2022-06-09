@@ -131,7 +131,7 @@ cmd_set_buffer_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_ERROR);
 	}
 	if (args_has(args, 'w') && tc != NULL)
- 		tty_set_selection(&tc->tty, bufdata, bufsize);
+ 		tty_set_selection(&tc->tty, "", bufdata, bufsize);
 
 	return (CMD_RETURN_NORMAL);
 }
