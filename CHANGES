@@ -1,3 +1,10 @@
+CHANGES FROM 3.3 TO 3.3a
+
+* Do not crash when run-shell produces output from a config file.
+
+* Do not unintentionally turn off all mouse mode when button mode is also
+  present.
+
 CHANGES FROM 3.2a TO 3.3
 
 * Add an ACL list for users connecting to the tmux socket. Users may be
