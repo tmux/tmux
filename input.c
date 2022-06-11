@@ -2696,7 +2696,7 @@ input_osc_52(struct input_ctx *ictx, const char *p)
 	struct screen_write_ctx	 ctx;
 	struct paste_buffer	*pb;
 	const char*              allow = "cpqs01234567";
-	char                     flags[sizeof allow] = "";
+	char                     flags[sizeof "cpqs01234567"] = "";
 	u_int			 i, j = 0;
 
 	if (wp == NULL)
