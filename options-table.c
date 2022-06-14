@@ -363,7 +363,8 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_SERVER,
 	  .flags = OPTIONS_TABLE_IS_ARRAY,
 	  .default_str = "xterm*:clipboard:ccolour:cstyle:focus:title,"
-			 "screen*:title",
+			 "screen*:title,"
+	                 "rxvt*:ignorefkeys",
 	  .separator = ",",
 	  .text = "List of terminal features, used if they cannot be "
 		  "automatically detected."
