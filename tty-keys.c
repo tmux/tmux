@@ -126,7 +126,7 @@ static const struct tty_default_key_raw tty_default_raw_keys[] = {
 	{ "\033\033[C", KEYC_RIGHT|KEYC_CURSOR|KEYC_META },
 	{ "\033\033[D", KEYC_LEFT|KEYC_CURSOR|KEYC_META },
 
-	/* Other (xterm) "cursor" keys. */
+	/* Other xterm keys. */
 	{ "\033OH", KEYC_HOME },
 	{ "\033OF", KEYC_END },
 
@@ -139,7 +139,7 @@ static const struct tty_default_key_raw tty_default_raw_keys[] = {
 	{ "\033\033[H", KEYC_HOME|KEYC_META|KEYC_IMPLIED_META },
 	{ "\033\033[F", KEYC_END|KEYC_META|KEYC_IMPLIED_META },
 
-	/* rxvt-style arrow + modifier keys. */
+	/* rxvt arrow keys. */
 	{ "\033Oa", KEYC_UP|KEYC_CTRL },
 	{ "\033Ob", KEYC_DOWN|KEYC_CTRL },
 	{ "\033Oc", KEYC_RIGHT|KEYC_CTRL },
@@ -150,7 +150,31 @@ static const struct tty_default_key_raw tty_default_raw_keys[] = {
 	{ "\033[c", KEYC_RIGHT|KEYC_SHIFT },
 	{ "\033[d", KEYC_LEFT|KEYC_SHIFT },
 
-	/* rxvt-style function + modifier keys (C = ^, S = $, C-S = @). */
+	/* rxvt function keys. */
+	{ "\033[11~", KEYC_F1 },
+	{ "\033[12~", KEYC_F2 },
+	{ "\033[13~", KEYC_F3 },
+	{ "\033[14~", KEYC_F4 },
+	{ "\033[15~", KEYC_F5 },
+	{ "\033[17~", KEYC_F6 },
+	{ "\033[18~", KEYC_F7 },
+	{ "\033[19~", KEYC_F8 },
+	{ "\033[20~", KEYC_F9 },
+	{ "\033[21~", KEYC_F10 },
+
+	{ "\033[23~", KEYC_F1|KEYC_SHIFT },
+	{ "\033[24~", KEYC_F2|KEYC_SHIFT },
+	{ "\033[25~", KEYC_F3|KEYC_SHIFT },
+	{ "\033[26~", KEYC_F4|KEYC_SHIFT },
+	{ "\033[28~", KEYC_F5|KEYC_SHIFT },
+	{ "\033[29~", KEYC_F6|KEYC_SHIFT },
+	{ "\033[31~", KEYC_F7|KEYC_SHIFT },
+	{ "\033[32~", KEYC_F8|KEYC_SHIFT },
+	{ "\033[33~", KEYC_F9|KEYC_SHIFT },
+	{ "\033[34~", KEYC_F10|KEYC_SHIFT },
+	{ "\033[23$", KEYC_F11|KEYC_SHIFT },
+	{ "\033[24$", KEYC_F12|KEYC_SHIFT },
+
 	{ "\033[11^", KEYC_F1|KEYC_CTRL },
 	{ "\033[12^", KEYC_F2|KEYC_CTRL },
 	{ "\033[13^", KEYC_F3|KEYC_CTRL },
@@ -163,31 +187,6 @@ static const struct tty_default_key_raw tty_default_raw_keys[] = {
 	{ "\033[21^", KEYC_F10|KEYC_CTRL },
 	{ "\033[23^", KEYC_F11|KEYC_CTRL },
 	{ "\033[24^", KEYC_F12|KEYC_CTRL },
-	{ "\033[2^", KEYC_IC|KEYC_CTRL },
-	{ "\033[3^", KEYC_DC|KEYC_CTRL },
-	{ "\033[7^", KEYC_HOME|KEYC_CTRL },
-	{ "\033[8^", KEYC_END|KEYC_CTRL },
-	{ "\033[6^", KEYC_NPAGE|KEYC_CTRL },
-	{ "\033[5^", KEYC_PPAGE|KEYC_CTRL },
-
-	{ "\033[11$", KEYC_F1|KEYC_SHIFT },
-	{ "\033[12$", KEYC_F2|KEYC_SHIFT },
-	{ "\033[13$", KEYC_F3|KEYC_SHIFT },
-	{ "\033[14$", KEYC_F4|KEYC_SHIFT },
-	{ "\033[15$", KEYC_F5|KEYC_SHIFT },
-	{ "\033[17$", KEYC_F6|KEYC_SHIFT },
-	{ "\033[18$", KEYC_F7|KEYC_SHIFT },
-	{ "\033[19$", KEYC_F8|KEYC_SHIFT },
-	{ "\033[20$", KEYC_F9|KEYC_SHIFT },
-	{ "\033[21$", KEYC_F10|KEYC_SHIFT },
-	{ "\033[23$", KEYC_F11|KEYC_SHIFT },
-	{ "\033[24$", KEYC_F12|KEYC_SHIFT },
-	{ "\033[2$", KEYC_IC|KEYC_SHIFT },
-	{ "\033[3$", KEYC_DC|KEYC_SHIFT },
-	{ "\033[7$", KEYC_HOME|KEYC_SHIFT },
-	{ "\033[8$", KEYC_END|KEYC_SHIFT },
-	{ "\033[6$", KEYC_NPAGE|KEYC_SHIFT },
-	{ "\033[5$", KEYC_PPAGE|KEYC_SHIFT },
 
 	{ "\033[11@", KEYC_F1|KEYC_CTRL|KEYC_SHIFT },
 	{ "\033[12@", KEYC_F2|KEYC_CTRL|KEYC_SHIFT },
@@ -201,12 +200,6 @@ static const struct tty_default_key_raw tty_default_raw_keys[] = {
 	{ "\033[21@", KEYC_F10|KEYC_CTRL|KEYC_SHIFT },
 	{ "\033[23@", KEYC_F11|KEYC_CTRL|KEYC_SHIFT },
 	{ "\033[24@", KEYC_F12|KEYC_CTRL|KEYC_SHIFT },
-	{ "\033[2@", KEYC_IC|KEYC_CTRL|KEYC_SHIFT },
-	{ "\033[3@", KEYC_DC|KEYC_CTRL|KEYC_SHIFT },
-	{ "\033[7@", KEYC_HOME|KEYC_CTRL|KEYC_SHIFT },
-	{ "\033[8@", KEYC_END|KEYC_CTRL|KEYC_SHIFT },
-	{ "\033[6@", KEYC_NPAGE|KEYC_CTRL|KEYC_SHIFT },
-	{ "\033[5@", KEYC_PPAGE|KEYC_CTRL|KEYC_SHIFT },
 
 	/* Focus tracking. */
 	{ "\033[I", KEYC_FOCUS_IN },
