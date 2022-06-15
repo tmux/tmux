@@ -1302,7 +1302,7 @@ Incompatible Changes
 
     bind -Tcopy-mode C-r command-prompt -i -p'search up' "send -X search-backward-incremental '%%'"
 
-  There are also some new commmands available with send -X, such as
+  There are also some new commands available with send -X, such as
   copy-pipe-and-cancel.
 * set-remain-on-exit has gone -- can be achieved with hooks instead.
 * Hooks: before hooks have been removed and only a selection of commands now
