@@ -2999,6 +2999,7 @@ void		*window_pane_get_new_data(struct window_pane *,
 void		 window_pane_update_used_data(struct window_pane *,
 		     struct window_pane_offset *, size_t);
 void		 window_set_fill_character(struct window *);
+void		 window_pane_default_cursor(struct window_pane *);
 
 /* layout.c */
 u_int		 layout_count_cells(struct layout_cell *);

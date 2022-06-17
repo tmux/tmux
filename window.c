@@ -940,6 +940,7 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 
 	screen_init(&wp->base, sx, sy, hlimit);
 	wp->screen = &wp->base;
+	window_pane_default_cursor(wp);
 
 	screen_init(&wp->status_screen, 1, 1, 0);
 
@@ -1617,4 +1618,18 @@ window_set_fill_character(struct window *w)
 		if (ud != NULL && ud[0].width == 1)
 			w->fill_character = ud;
 	}
+}
+
+void
+window_pane_default_cursor(struct window_pane *wp)
+{
+	struct screen	*s = wp->screen;
+	int		 c;
+
+	c = options_get_number(wp->options, "cursor-colour");
+	s->default_ccolour = c;
+
+	c = options_get_number(wp->options, "cursor-style");
+	s->default_mode = 0;
+	screen_set_cursor_style(c, &s->default_cstyle, &s->default_mode);
 }
