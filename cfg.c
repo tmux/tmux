@@ -52,8 +52,7 @@ cfg_done(__unused struct cmdq_item *item, __unused void *data)
 		return (CMD_RETURN_NORMAL);
 	cfg_finished = 1;
 
-	if (!RB_EMPTY(&sessions))
-		cfg_show_causes(RB_MIN(sessions, &sessions));
+	cfg_show_causes(NULL);
 
 	if (cfg_item != NULL)
 		cmdq_continue(cfg_item);
@@ -239,11 +238,29 @@ cfg_print_causes(struct cmdq_item *item)
 void
 cfg_show_causes(struct session *s)
 {
+	struct client			*c = TAILQ_FIRST(&clients);
 	struct window_pane		*wp;
 	struct window_mode_entry	*wme;
 	u_int				 i;
 
-	if (s == NULL || cfg_ncauses == 0)
+	if (cfg_ncauses == 0)
+		return;
+
+	if (c != NULL && (c->flags & CLIENT_CONTROL)) {
+		for (i = 0; i < cfg_ncauses; i++) {
+			control_write(c, "%%config-error %s", cfg_causes[i]);
+			free(cfg_causes[i]);
+		}
+		goto out;
+	}
+
+	if (s == NULL) {
+		if (c != NULL && c->session != NULL)
+			s = c->session;
+		else
+			s = RB_MIN(sessions, &sessions);
+	}
+	if (s == NULL || s->attached == 0) /* wait for an attached session */
 		return;
 	wp = s->curw->window->active;
 
@@ -255,6 +272,7 @@ cfg_show_causes(struct session *s)
 		free(cfg_causes[i]);
 	}
 
+out:
 	free(cfg_causes);
 	cfg_causes = NULL;
 	cfg_ncauses = 0;

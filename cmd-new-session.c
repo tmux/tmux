@@ -335,7 +335,7 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 
 	/*
 	 * If there are still configuration file errors to display, put the new
-	 * session's current window into more mode and display them now.
+	 * session's current window into view mode and display them now.
 	 */
 	if (cfg_finished)
 		cfg_show_causes(s);
