@@ -725,6 +725,7 @@ struct grid_line {
 	u_int			 extdsize;
 
 	int			 flags;
+	time_t			 time;
 };
 
 /* Entire grid of cells. */
@@ -2095,6 +2096,7 @@ void		 format_add_cb(struct format_tree *, const char *, format_cb);
 void		 format_log_debug(struct format_tree *, const char *);
 void		 format_each(struct format_tree *, void (*)(const char *,
 		     const char *, void *), void *);
+char		*format_pretty_time(time_t, int);
 char		*format_expand_time(struct format_tree *, const char *);
 char		*format_expand(struct format_tree *, const char *);
 char		*format_single(struct cmdq_item *, const char *,
@@ -2587,6 +2589,7 @@ extern struct tmuxproc *server_proc;
 extern struct clients clients;
 extern struct cmd_find_state marked_pane;
 extern struct message_list message_log;
+extern time_t current_time;
 void	 server_set_marked(struct session *, struct winlink *,
 	     struct window_pane *);
 void	 server_clear_marked(void);
