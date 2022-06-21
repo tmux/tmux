@@ -4092,8 +4092,9 @@ window_copy_write_line(struct window_mode_entry *wme,
 	struct window_copy_mode_data	*data = wme->data;
 	struct screen			*s = &data->screen;
 	struct options			*oo = wp->window->options;
+	struct grid_line		*gl;
 	struct grid_cell		 gc, mgc, cgc, mkgc;
-	char				 hdr[512];
+	char				 hdr[512], tmp[256], *t;
 	size_t				 size = 0;
 	u_int				 hsize = screen_hsize(data->backing);
 
@@ -4107,23 +4108,29 @@ window_copy_write_line(struct window_mode_entry *wme,
 	mkgc.flags |= GRID_FLAG_NOPALETTE;
 
 	if (py == 0 && s->rupper < s->rlower && !data->hide_position) {
+		gl = grid_get_line(data->backing->grid, hsize - data->oy);
+		if (gl->time == 0)
+			xsnprintf(tmp, sizeof tmp, "[%u/%u]", data->oy, hsize);
+		else {
+			t = format_pretty_time(gl->time, 1);
+			xsnprintf(tmp, sizeof tmp, "%s [%u/%u]", t, data->oy,
+			    hsize);
+			free(t);
+		}
+
 		if (data->searchmark == NULL) {
 			if (data->timeout) {
 				size = xsnprintf(hdr, sizeof hdr,
-				    "(timed out) [%u/%u]", data->oy, hsize);
-			} else {
-				size = xsnprintf(hdr, sizeof hdr,
-				    "[%u/%u]", data->oy, hsize);
-			}
+				    "(timed out) %s", tmp);
+			} else
+				size = xsnprintf(hdr, sizeof hdr, "%s", tmp);
 		} else {
-			if (data->searchcount == -1) {
+			if (data->searchcount == -1)
+				size = xsnprintf(hdr, sizeof hdr, "%s", tmp);
+			else {
 				size = xsnprintf(hdr, sizeof hdr,
-				    "[%u/%u]", data->oy, hsize);
-			} else {
-				size = xsnprintf(hdr, sizeof hdr,
-				    "(%d%s results) [%u/%u]", data->searchcount,
-				    data->searchmore ? "+" : "", data->oy,
-				    hsize);
+				    "(%d%s results) %s", data->searchcount,
+				    data->searchmore ? "+" : "", tmp);
 			}
 		}
 		if (size > screen_size_x(s))
