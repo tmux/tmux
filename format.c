@@ -4606,7 +4606,7 @@ format_expand1(struct format_expand_state *es, const char *fmt)
 {
 	struct format_tree	*ft = es->ft;
 	char			*buf, *out, *name;
-	const char		*ptr, *s;
+	const char		*ptr, *s, *style_end = NULL;
 	size_t			 off, len, n, outlen;
 	int     		 ch, brackets;
 	char			 expanded[8192];
@@ -4701,18 +4701,20 @@ format_expand1(struct format_expand_state *es, const char *fmt)
 				break;
 			fmt += n + 1;
 			continue;
+		case '[':
 		case '#':
 			/*
 			 * If ##[ (with two or more #s), then it is a style and
 			 * can be left for format_draw to handle.
 			 */
-			ptr = fmt;
-			n = 2;
+			ptr = fmt - (ch == '[');
+			n = 2 - (ch == '[');
 			while (*ptr == '#') {
 				ptr++;
 				n++;
 			}
 			if (*ptr == '[') {
+				style_end = format_skip(fmt - 2, "]");
 				format_log(es, "found #*%zu[", n);
 				while (len - off < n + 2) {
 					buf = xreallocarray(buf, 2, len);
@@ -4735,10 +4737,12 @@ format_expand1(struct format_expand_state *es, const char *fmt)
 			continue;
 		default:
 			s = NULL;
-			if (ch >= 'A' && ch <= 'Z')
-				s = format_upper[ch - 'A'];
-			else if (ch >= 'a' && ch <= 'z')
-				s = format_lower[ch - 'a'];
+			if (fmt > style_end) { /* skip inside #[] */
+				if (ch >= 'A' && ch <= 'Z')
+					s = format_upper[ch - 'A'];
+				else if (ch >= 'a' && ch <= 'z')
+					s = format_lower[ch - 'a'];
+			}
 			if (s == NULL) {
 				while (len - off < 3) {
 					buf = xreallocarray(buf, 2, len);
