@@ -4714,6 +4714,7 @@ format_expand1(struct format_expand_state *es, const char *fmt)
 				n++;
 			}
 			if (*ptr == '[') {
+				style_end = format_skip(fmt - 2, "]");
 				format_log(es, "found #*%zu[", n);
 				while (len - off < n + 2) {
 					buf = xreallocarray(buf, 2, len);
@@ -4722,7 +4723,6 @@ format_expand1(struct format_expand_state *es, const char *fmt)
 				memcpy(buf + off, fmt - 2, n + 1);
 				off += n + 1;
 				fmt = ptr + 1;
-				style_end = format_skip(fmt - 2, "]");
 				continue;
 			}
 			/* FALLTHROUGH */
