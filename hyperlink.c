@@ -1,3 +1,21 @@
+/* $OpenBSD$ */
+
+/*
+ * Copyright (c) 2021 Will <author@will.party>
+ * Copyright (c) 2022 Jeff Chiang <pobomp@gmail.com>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
+ * IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
 
 #include <string.h>
 
@@ -77,7 +95,7 @@ param_id_cmp(struct param_id_to_attr_id *left,
 static int
 attr_cmp(struct attr_id_to_link *left, struct attr_id_to_link *right)
 {
-	return (int)(left->attr_id - right->attr_id);
+	return left->attr_id - right->attr_id;
 }
 
 RB_PROTOTYPE_STATIC(uri_to_param_id_trees, uri_to_param_id_tree, entry,
@@ -92,7 +110,7 @@ RB_GENERATE_STATIC(param_id_to_attr_ids, param_id_to_attr_id, entry,
     param_id_cmp);
 RB_GENERATE_STATIC(attr_id_to_links, attr_id_to_link, entry, attr_cmp);
 
-static u_int
+static void
 hyperlink_put_inverse(struct hyperlinks *hl, u_int *attr_id_dest,
     const char *uri, const char *param_id)
 {
@@ -104,7 +122,6 @@ hyperlink_put_inverse(struct hyperlinks *hl, u_int *attr_id_dest,
 	attr_id_new->uri = uri;
 	attr_id_new->param_id = param_id;
 	RB_INSERT(attr_id_to_links, &hl->backward_mapping, attr_id_new);
-	return *attr_id_dest;
 }
 
 /*
@@ -125,12 +142,13 @@ hyperlink_put(struct hyperlinks *hl, const char *uri, const char *param_id)
 
 	if (uri_found != NULL) {
 		if (param_id == NULL) {
-			if (uri_found->default_attr_id == 0)
+			if (uri_found->default_attr_id == 0) {
 				/* Be sure to use the pre-copied URI from
 				 * uri_found. */
-				return hyperlink_put_inverse(hl,
+				hyperlink_put_inverse(hl,
 				    &uri_found->default_attr_id,
 				    uri_found->uri, NULL);
+			}
 			return uri_found->default_attr_id;
 		}
 
@@ -146,16 +164,21 @@ hyperlink_put(struct hyperlinks *hl, const char *uri, const char *param_id)
 	}
 
 	uri_found = xmalloc(sizeof *uri_found);
-	uri_found->uri = xstrdup(uri);
+
+	/* sanitize in case of invalid UTF-8 */
+	utf8_stravis((char**)&uri_found->uri, uri, VIS_OCTAL|VIS_CSTYLE);
+
 	RB_INIT(&uri_found->attr_ids_by_param_id);
 	RB_INSERT(uri_to_param_id_trees,
 	    &hl->forward_mapping, uri_found);
 
-	if (param_id == NULL)
+	if (param_id == NULL) {
 		/* Be sure to use the pre-copied URI from uri_found. */
-		return hyperlink_put_inverse(hl,
+		hyperlink_put_inverse(hl,
 		    &uri_found->default_attr_id, uri_found->uri,
 		    NULL);
+		return uri_found->default_attr_id;
+	}
 	uri_found->default_attr_id = 0;
 
 same_uri_different_param_id:
@@ -164,8 +187,9 @@ same_uri_different_param_id:
 	RB_INSERT(param_id_to_attr_ids,
 	    &uri_found->attr_ids_by_param_id, param_id_found);
 	/* Be sure to use the pre-copied value for URI. */
-	return hyperlink_put_inverse(hl, &param_id_found->attr_id,
+	hyperlink_put_inverse(hl, &param_id_found->attr_id,
 	    uri_found->uri, param_id);
+	return param_id_found->attr_id;
 }
 
 int
@@ -209,8 +233,12 @@ hyperlink_write_namespaced(struct hyperlinks *hl, char *param_id,
 {
 	/* Print exactly 3 digits for the namespace. */
 	param_id = xrealloc(param_id, raw_param_id_length + 5);
-	snprintf(param_id, raw_param_id_length + 5, "%.3X.%s",
-	    hl->ns % (16 * 16 * 16), raw_param_id);
+
+  /* sanitize in case of invalid UTF-8 */
+	utf8_strvis(param_id + 4, raw_param_id,
+      raw_param_id_length,  VIS_OCTAL|VIS_CSTYLE);
+	snprintf(param_id, raw_param_id_length + 5, "%.3X.",
+	    hl->ns % 0xfff);
 	return param_id;
 }
 
@@ -225,37 +253,34 @@ hyperlink_reset(struct hyperlinks *hl)
 	struct attr_id_to_link	*attr_id_next;
 
 	uri_curr = RB_MIN(uri_to_param_id_trees, &hl->forward_mapping);
-	while (uri_curr != NULL) {
-		uri_next = RB_NEXT(uri_to_param_id_trees,
-		    &hl->forward_mapping, uri_curr);
+
+	RB_FOREACH_SAFE(uri_curr, uri_to_param_id_trees, &hl->forward_mapping,
+			uri_next) {
 		RB_REMOVE(uri_to_param_id_trees, &hl->forward_mapping,
 		    uri_curr);
 		free(uri_curr->uri);
 
-		param_id_curr = RB_MIN(param_id_to_attr_ids, &uri_curr->attr_ids_by_param_id);
-		while (param_id_curr != NULL) {
-			param_id_next = RB_NEXT(param_id_to_attr_ids,
-			    &uri_curr->attr_ids_by_param_id, param_id_curr);
-			RB_REMOVE(param_id_to_attr_ids,
-			    &uri_curr->attr_ids_by_param_id, param_id_curr);
-			free(param_id_curr->param_id);
-			free(param_id_curr);
-			param_id_curr = param_id_next;
-		}
+		param_id_curr = RB_MIN(param_id_to_attr_ids,
+				&uri_curr->attr_ids_by_param_id);
 
+		RB_FOREACH_SAFE(param_id_curr, param_id_to_attr_ids, &uri_curr->attr_ids_by_param_id,
+				param_id_next) {
+				RB_REMOVE(param_id_to_attr_ids,
+						&uri_curr->attr_ids_by_param_id, param_id_curr);
+				free(param_id_curr->param_id);
+				free(param_id_curr);
+		}
 		free(uri_curr);
-		uri_curr = uri_next;
 	}
 
 	attr_id_curr = RB_MIN(attr_id_to_links,
 	    &hl->backward_mapping);
-	while (attr_id_curr != NULL) {
-		attr_id_next = RB_NEXT(attr_id_to_links,
-		    &hl->backward_mapping, attr_id_curr);
+
+	RB_FOREACH_SAFE(attr_id_curr, attr_id_to_links, &hl->backward_mapping,
+			attr_id_next) {
 		RB_REMOVE(attr_id_to_links,
 		    &hl->backward_mapping, attr_id_curr);
 		free(attr_id_curr);
-		attr_id_curr = attr_id_next;
 	}
 
 	hl->next_attr_id = 1;
