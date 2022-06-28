@@ -2592,13 +2592,14 @@ input_osc_8(struct input_ctx *ictx, const char *p)
 
 			if (*uri == '\0') {
 				gc->link = 0;
+				log_debug("close hyperlink");
 				return;
 			}
 
 			if (param_id == NULL)
-				log_debug("hyperlink (anonymous) %s", gc->link, uri);
+				log_debug("hyperlink (anonymous) %s", uri);
 			else
-				log_debug("hyperlink (id=%s) %s", gc->link, param_id, uri);
+				log_debug("hyperlink (id=%s) %s", param_id, uri);
 
 			gc->link = hyperlink_put(hl, uri, param_id);
 

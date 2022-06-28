@@ -2198,7 +2198,7 @@ tty_reset(struct tty *tty)
 
 	if (!grid_cells_equal(gc, &grid_default_cell)) {
 		if (gc->link != 0)
-			tty_putcode(tty, TTYC_HLS);
+			tty_putcode_ptr2(tty, TTYC_HLS, "", "");
 		if ((gc->attr & GRID_ATTR_CHARSET) && tty_acs_needed(tty))
 			tty_putcode(tty, TTYC_RMACS);
 		tty_putcode(tty, TTYC_SGR0);
@@ -2498,13 +2498,11 @@ tty_hyperlink(struct tty *tty, const struct grid_cell *gc,
 	if (gc->link == tty->cell.link)
 		return;
 	tty->cell.link = gc->link;
-
-	/* avoid any tty_putcode if gc->link is zero or hl is null */
-	if (gc->link == 0 || hl == NULL ||
-	    !hyperlink_get(hl, gc->link, &uri, &param_id))
-		return;
+	if(gc->link == 0 || hl == NULL ||
+			!hyperlink_get(hl, gc->link, &uri, &param_id))
+		tty_putcode_ptr2(tty, TTYC_HLS, "", "");
 	else if (param_id == NULL)
-		tty_putcode_ptr1(tty, TTYC_HLS, uri);
+		tty_putcode_ptr2(tty, TTYC_HLS, "", uri);
 	else
 		tty_putcode_ptr2(tty, TTYC_HLS, param_id, uri);
 }

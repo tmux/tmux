@@ -237,8 +237,8 @@ hyperlink_write_namespaced(struct hyperlinks *hl, char *param_id,
   /* sanitize in case of invalid UTF-8 */
 	utf8_strvis(param_id + 4, raw_param_id,
       raw_param_id_length,  VIS_OCTAL|VIS_CSTYLE);
-	snprintf(param_id, raw_param_id_length + 5, "%.3X.",
-	    hl->ns % 0xfff);
+	snprintf(param_id, 4, "%.3X.", hl->ns % 0xfff);
+	/* 3-digit.raw_param_id */
 	return param_id;
 }
 
