@@ -3659,7 +3659,7 @@ Allows setting the cursor style.
 Supports extended keys.
 .It focus
 Supports focus reporting.
-.It hyperplinks
+.It hyperlinks
 Supports OSC 8 hyperlinks.
 .It ignorefkeys
 Ignore function keys from
@@ -6418,12 +6418,7 @@ These are set automatically if the
 .Em XT
 capability is present.
 .It Em \&Hls
-Enable hyperlinks.
-If set, a sequence such as this will link a string of visible text to a URI:
-.Bd -literal -offset indent
-set -sa terminal-overrides ',*:Hls=\\033]8;%?%p1%l%tid=%p1%s%;;%p2%s\\033\\\\'
-$ printf '\\e]8;;http://example.com\\e\\\\visible text\\e]8;;\\e\\\\'
-.Ed
+Set or clear a hyperlink annotation.
 .It Em \&Rect
 Tell
 .Nm

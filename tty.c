@@ -69,7 +69,7 @@ static void	tty_emulate_repeat(struct tty *, enum tty_code_code,
 static void	tty_repeat_space(struct tty *, u_int);
 static void	tty_draw_pane(struct tty *, const struct tty_ctx *, u_int);
 static void	tty_default_attributes(struct tty *, const struct grid_cell *,
-		    struct colour_palette *, u_int, const struct hyperlinks *);
+		    struct colour_palette *, u_int, struct hyperlinks *);
 static int	tty_check_overlay(struct tty *, u_int, u_int);
 static void	tty_check_overlay_range(struct tty *, u_int, u_int, u_int,
 		    struct overlay_ranges *);
@@ -2160,7 +2160,7 @@ tty_cmd_syncstart(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cell(struct tty *tty, const struct grid_cell *gc,
     const struct grid_cell *defaults, struct colour_palette *palette,
-    const struct hyperlinks *hl)
+    struct hyperlinks *hl)
 {
 	const struct grid_cell	*gcp;
 
@@ -2490,27 +2490,29 @@ out:
 
 static void
 tty_hyperlink(struct tty *tty, const struct grid_cell *gc,
-	const struct hyperlinks *hl)
+    struct hyperlinks *hl)
 {
-	const char		*uri;
-	const char		*param_id;
+	const char	*uri, *id;
 
 	if (gc->link == tty->cell.link)
 		return;
 	tty->cell.link = gc->link;
-	if(gc->link == 0 || hl == NULL ||
-			!hyperlink_get(hl, gc->link, &uri, &param_id))
+
+	if (hl == NULL)
+		return;
+
+	if (gc->link == 0 || !hyperlink_get(hl, gc->link, &uri, &id))
 		tty_putcode_ptr2(tty, TTYC_HLS, "", "");
-	else if (param_id == NULL)
+	else if (id == NULL)
 		tty_putcode_ptr2(tty, TTYC_HLS, "", uri);
 	else
-		tty_putcode_ptr2(tty, TTYC_HLS, param_id, uri);
+		tty_putcode_ptr2(tty, TTYC_HLS, id, uri);
 }
 
 void
 tty_attributes(struct tty *tty, const struct grid_cell *gc,
     const struct grid_cell *defaults, struct colour_palette *palette,
-    const struct hyperlinks *hl)
+    struct hyperlinks *hl)
 {
 	struct grid_cell	*tc = &tty->cell, gc2;
 	int			 changed;
@@ -2974,7 +2976,7 @@ tty_default_colours(struct grid_cell *gc, struct window_pane *wp)
 
 static void
 tty_default_attributes(struct tty *tty, const struct grid_cell *defaults,
-    struct colour_palette *palette, u_int bg, const struct hyperlinks *hl)
+    struct colour_palette *palette, u_int bg, struct hyperlinks *hl)
 {
 	struct grid_cell	gc;
 

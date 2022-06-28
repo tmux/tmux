@@ -2254,7 +2254,7 @@ void	tty_update_client_offset(struct client *);
 void	tty_raw(struct tty *, const char *);
 void	tty_attributes(struct tty *, const struct grid_cell *,
 	    const struct grid_cell *, struct colour_palette *,
-	    const struct hyperlinks *);
+	    struct hyperlinks *);
 void	tty_reset(struct tty *);
 void	tty_region_off(struct tty *);
 void	tty_margin_off(struct tty *);
@@ -2272,7 +2272,7 @@ void	tty_putc(struct tty *, u_char);
 void	tty_putn(struct tty *, const void *, size_t, u_int);
 void	tty_cell(struct tty *, const struct grid_cell *,
 	    const struct grid_cell *, struct colour_palette *,
-	    const struct hyperlinks *);
+	    struct hyperlinks *);
 int	tty_init(struct tty *, struct client *);
 void	tty_resize(struct tty *);
 void	tty_set_size(struct tty *, u_int, u_int, u_int, u_int);
@@ -3311,10 +3311,10 @@ uid_t			 server_acl_get_uid(struct server_acl_user *);
 
 /* hyperlink.c */
 u_int	 hyperlink_put(struct hyperlinks *, const char *, const char *);
-int	 hyperlink_get(const struct hyperlinks *, u_int, const char **,
+int	 hyperlink_get(struct hyperlinks *, u_int, const char **,
 	    const char **);
 void	 hyperlink_init(struct hyperlinks **);
-char    *hyperlink_write_namespaced(struct hyperlinks *, char *, const char *,
+void	 hyperlink_add_namespace(struct hyperlinks *, char **, const char *,
              size_t);
 void	 hyperlink_reset(struct hyperlinks *);
 void	 hyperlink_free(struct hyperlinks *);

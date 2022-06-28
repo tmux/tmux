@@ -160,7 +160,7 @@ hyperlink_put(struct hyperlinks *hl, const char *uri, const char *param_id)
 		    &uri_found->attr_ids_by_param_id, &param_id_search);
 
 		if (param_id_found != NULL) {
-			free(param_id);
+			free((void *)param_id);
 			return param_id_found->attr_id;
 		}
 		goto same_uri_different_param_id;
@@ -196,7 +196,7 @@ same_uri_different_param_id:
 }
 
 int
-hyperlink_get(const struct hyperlinks *hl, u_int attr_id, const char **uri_out,
+hyperlink_get(struct hyperlinks *hl, u_int attr_id, const char **uri_out,
     const char **param_id_out)
 {
 	struct attr_id_to_link	 attr_id_search;
@@ -230,18 +230,17 @@ hyperlink_init(struct hyperlinks **hl)
  * rendering, so that links from different trees basically never have the same
  * parameter ID. It's not a big deal if there are rare collisions.
  */
-char *
-hyperlink_write_namespaced(struct hyperlinks *hl, char *param_id,
+void
+hyperlink_add_namespace(struct hyperlinks *hl, char **param_id,
     const char *raw_param_id, size_t raw_param_id_length)
 {
 	/* Print exactly 3 digits for the namespace. */
-	param_id = xrealloc(param_id, raw_param_id_length + 5);
-	snprintf(param_id, 5, "%.3X.", hl->ns % 0xfff);
-  /* sanitize in case of invalid UTF-8 */
-	utf8_strvis(param_id + 4, raw_param_id,
-      raw_param_id_length,  VIS_OCTAL|VIS_CSTYLE);
+	*param_id = xrealloc(*param_id, raw_param_id_length + 5);
+	snprintf(*param_id, 5, "%.3X.", hl->ns % 0xfff);
+	/* sanitize in case of invalid UTF-8 */
+	utf8_strvis(*param_id + 4, raw_param_id,
+	    raw_param_id_length,  VIS_OCTAL|VIS_CSTYLE);
 	/* 3-digit.raw_param_id */
-	return param_id;
 }
 
 void
@@ -260,7 +259,7 @@ hyperlink_reset(struct hyperlinks *hl)
 			uri_next) {
 		RB_REMOVE(uri_to_param_id_trees, &hl->forward_mapping,
 		    uri_curr);
-		free(uri_curr->uri);
+		free((void *)uri_curr->uri);
 
 		param_id_curr = RB_MIN(param_id_to_attr_ids,
 				&uri_curr->attr_ids_by_param_id);
@@ -269,8 +268,8 @@ hyperlink_reset(struct hyperlinks *hl)
 				param_id_next) {
 				RB_REMOVE(param_id_to_attr_ids,
 						&uri_curr->attr_ids_by_param_id, param_id_curr);
-				free(param_id_curr->param_id);
-				free(param_id_curr);
+				free((void *)param_id_curr->param_id);
+				free((void *)param_id_curr);
 		}
 		free(uri_curr);
 	}

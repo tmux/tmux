@@ -2572,43 +2572,33 @@ input_osc_8(struct input_ctx *ictx, const char *p)
 {
 	struct hyperlinks	*hl = ictx->wp->screen->hyperlinks;
 	struct grid_cell	*gc = &ictx->cell.cell;
-	const char	*start;
-	const char	*end;
-	const char	*uri;
-	char	    	*param_id = NULL;
+	const char		*start, *end, *uri;
+	char	    		*id = NULL;
 
 	for (start = p; (end = strpbrk(start, ":;")) != NULL; start = end + 1) {
-
-		if (end - start >= (ssize_t)(sizeof "id=") && /* id mustn't be empty */
-		    strncmp(start, "id=", (sizeof "id=") - 1) == 0) {
-			start += (sizeof "id=") - 1;
-			param_id = hyperlink_write_namespaced(hl, param_id,
-			    start, end - start);
+		if (end - start >= 4 && strncmp(start, "id=", 3) == 0) {
+			start += 3;
+			hyperlink_add_namespace(hl, &id, start, end - start);
 		}
 
 		/* The first ; is the end of parameters and start of the URI. */
-		if (*end == ';') {
-			uri = end + 1;
-
-			if (*uri == '\0') {
-				gc->link = 0;
-				log_debug("close hyperlink");
-				return;
-			}
-
-			if (param_id == NULL)
-				log_debug("hyperlink (anonymous) %s", uri);
-			else
-				log_debug("hyperlink (id=%s) %s", param_id, uri);
-
-			gc->link = hyperlink_put(hl, uri, param_id);
-
-			log_debug("hyperlink assigned attribute ID %u", gc->link);
-
-			return;
-		}
+		if (*end == ';')
+			break;
 	}
-	log_debug("bad OSC 8 %s", p);
+	if (end == NULL) {
+		log_debug("bad OSC 8 %s", p);
+		return;
+	}
+	uri = end + 1;
+	if (*uri == '\0') {
+		gc->link = 0;
+		return;
+	}
+	gc->link = hyperlink_put(hl, uri, id);
+	if (id == NULL)
+		log_debug("hyperlink (anonymous) %s = %u", uri, gc->link);
+	else
+		log_debug("hyperlink (id=%s) %s = %u", id, uri, gc->link);
 }
 
 /* Handle the OSC 10 sequence for setting and querying foreground colour. */
