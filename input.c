@@ -2566,6 +2566,24 @@ input_osc_4(struct input_ctx *ictx, const char *p)
 	free(copy);
 }
 
+/*
+ * Each hyperlink tree has a 'namespace' used to prefix parameter IDs when
+ * rendering, so that links from different trees basically never have the same
+ * parameter ID. It's not a big deal if there are rare collisions.
+ */
+static void
+hyperlink_add_namespace(struct hyperlinks *hl, char **id,
+    const char *raw_id, size_t raw_id_length)
+{
+	/* Print exactly 3 digits for the namespace. */
+	*id = xrealloc(*id, raw_id_length + 5);
+	snprintf(*id, 5, "%.3X.", hl->ns % 0xfff);
+	/* sanitize in case of invalid UTF-8 */
+	utf8_strvis(*id + 4, raw_id,
+	    raw_id_length,  VIS_OCTAL|VIS_CSTYLE);
+	/* 3-digit.raw_id */
+}
+
 /* Handle the OSC 8 sequence for embedding hyperlinks. */
 static void
 input_osc_8(struct input_ctx *ictx, const char *p)

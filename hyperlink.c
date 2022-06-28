@@ -41,129 +41,121 @@
 
 
 /* Second-layer tree for forward hyperlink mapping. */
-struct param_id_to_attr_id {
-	const char      *param_id;
+struct id_to_inner {
+	const char      *id;
 
-	u_int		 attr_id;
+	u_int		 inner;
 
-	RB_ENTRY(param_id_to_attr_id)	entry;
+	RB_ENTRY(id_to_inner)	entry;
 };
-RB_HEAD(param_id_to_attr_ids, param_id_to_attr_id);
+RB_HEAD(id_to_inners, id_to_inner);
 
 /* First-layer tree for forward hyperlink mapping. */
-struct uri_to_param_id_tree {
+struct uri_to_id_tree {
 	const char      *uri;
 
-	u_int				 default_attr_id;
-	struct param_id_to_attr_ids	 attr_ids_by_param_id;
+	u_int				 default_inner;
+	struct id_to_inners	 inners_by_id;
 
-	RB_ENTRY(uri_to_param_id_tree)	 entry;
+	RB_ENTRY(uri_to_id_tree)	 entry;
 };
-RB_HEAD(uri_to_param_id_trees, uri_to_param_id_tree);
+RB_HEAD(uri_to_id_trees, uri_to_id_tree);
 
 /* Tree for backward hyperlink mapping. */
-struct attr_id_to_link {
-	u_int		 attr_id;
+struct inner_to_link {
+	u_int		 inner;
 	const char	*uri;
-	const char	*param_id;
+	const char	*id;
 
-	RB_ENTRY(attr_id_to_link)	entry;
+	RB_ENTRY(inner_to_link)	entry;
 };
-RB_HEAD(attr_id_to_links, attr_id_to_link);
-
-struct hyperlinks {
-	u_int	 ns;
-	u_int	 next_attr_id;
-
-	struct uri_to_param_id_trees	forward_mapping;
-	struct attr_id_to_links		backward_mapping;
-};
+RB_HEAD(inner_to_links, inner_to_link);
 
 static int
-uri_cmp(struct uri_to_param_id_tree *left, struct uri_to_param_id_tree *right);
+uri_cmp(struct uri_to_id_tree *left, struct uri_to_id_tree *right);
 
 static int
-uri_cmp(struct uri_to_param_id_tree *left, struct uri_to_param_id_tree *right)
+uri_cmp(struct uri_to_id_tree *left, struct uri_to_id_tree *right)
 {
 	return strcmp(left->uri, right->uri);
 }
 
 static int
-param_id_cmp(struct param_id_to_attr_id *left,
-    struct param_id_to_attr_id *right)
+id_cmp(struct id_to_inner *left,
+    struct id_to_inner *right)
 {
-	return strcmp(left->param_id, right->param_id);
+	return strcmp(left->id, right->id);
 }
 
 static int
-attr_cmp(struct attr_id_to_link *left, struct attr_id_to_link *right)
+attr_cmp(struct inner_to_link *left, struct inner_to_link *right)
 {
-	return left->attr_id - right->attr_id;
+	return left->inner - right->inner;
 }
 
-RB_PROTOTYPE_STATIC(uri_to_param_id_trees, uri_to_param_id_tree, entry,
+RB_PROTOTYPE_STATIC(uri_to_id_trees, uri_to_id_tree, entry,
     uri_cmp);
-RB_PROTOTYPE_STATIC(param_id_to_attr_ids, param_id_to_attr_id, entry,
-    param_id_cmp);
-RB_PROTOTYPE_STATIC(attr_id_to_links, attr_id_to_link, entry, attr_cmp);
+RB_PROTOTYPE_STATIC(id_to_inners, id_to_inner, entry,
+    id_cmp);
+RB_PROTOTYPE_STATIC(inner_to_links, inner_to_link, entry, attr_cmp);
 
-RB_GENERATE_STATIC(uri_to_param_id_trees, uri_to_param_id_tree, entry,
+RB_GENERATE_STATIC(uri_to_id_trees, uri_to_id_tree, entry,
     uri_cmp);
-RB_GENERATE_STATIC(param_id_to_attr_ids, param_id_to_attr_id, entry,
-    param_id_cmp);
-RB_GENERATE_STATIC(attr_id_to_links, attr_id_to_link, entry, attr_cmp);
+RB_GENERATE_STATIC(id_to_inners, id_to_inner, entry,
+    id_cmp);
+RB_GENERATE_STATIC(inner_to_links, inner_to_link, entry, attr_cmp);
 
 static void
-hyperlink_put_inverse(struct hyperlinks *hl, u_int *attr_id_dest,
-    const char *uri, const char *param_id)
+hyperlink_put_inverse(struct hyperlinks *hl, u_int *inner_dest,
+    const char *uri, const char *id)
 {
-	struct attr_id_to_link	*attr_id_new;
+	struct inner_to_link	*inner_new;
 
-	*attr_id_dest = hl->next_attr_id++;
-	attr_id_new = xmalloc(sizeof *attr_id_new);
-	attr_id_new->attr_id = *attr_id_dest;
-	attr_id_new->uri = uri;
-	attr_id_new->param_id = param_id;
-	RB_INSERT(attr_id_to_links, &hl->backward_mapping, attr_id_new);
+	*inner_dest = hl->next_inner++;
+	inner_new = xmalloc(sizeof *inner_new);
+	inner_new->inner = *inner_dest;
+	inner_new->uri = uri;
+	inner_new->id = id;
+	RB_INSERT(inner_to_links, hl->backward_mapping, inner_new);
 }
 
 /*
- * Assume that param_id either has non-zero length or is NULL,
+ * Assume that id either has non-zero length or is NULL,
  * and that it's already copied from the input buffer if non-NULL.
  */
 u_int
-hyperlink_put(struct hyperlinks *hl, const char *uri, const char *param_id)
+hyperlink_put(struct hyperlinks *hl, const char *uri, const char *id)
 {
-	struct uri_to_param_id_tree	 uri_search;
-	struct uri_to_param_id_tree	*uri_found;
-	struct param_id_to_attr_id	 param_id_search;
-	struct param_id_to_attr_id	*param_id_found;
+	struct uri_to_id_tree	 uri_search;
+	struct uri_to_id_tree	*uri_found;
+	struct id_to_inner	 id_search;
+	struct id_to_inner	*id_found;
 
 	uri_search.uri = uri;
-	uri_found = RB_FIND(uri_to_param_id_trees,
-	    &hl->forward_mapping, &uri_search);
+	uri_found = RB_FIND(uri_to_id_trees,
+	    hl->forward_mapping, &uri_search);
 
 	if (uri_found != NULL) {
-		if (param_id == NULL) {
-			if (uri_found->default_attr_id == 0) {
+		if (id == NULL) {
+			if (uri_found->default_inner == 0) {
 				/* Be sure to use the pre-copied URI from
 				 * uri_found. */
 				hyperlink_put_inverse(hl,
-				    &uri_found->default_attr_id,
+				    &uri_found->default_inner,
 				    uri_found->uri, NULL);
 			}
-			return uri_found->default_attr_id;
+			return uri_found->default_inner;
 		}
 
-		param_id_search.param_id = param_id;
-		param_id_found = RB_FIND(param_id_to_attr_ids,
-		    &uri_found->attr_ids_by_param_id, &param_id_search);
+		id_search.id = id;
+		id_found = RB_FIND(id_to_inners,
+		    &uri_found->inners_by_id, &id_search);
 
-		if (param_id_found != NULL) {
-			free((void *)param_id);
-			return param_id_found->attr_id;
+		if (id_found != NULL) {
+			free((void *)id);
+			return id_found->inner;
 		}
-		goto same_uri_different_param_id;
+		goto same_uri_different_id;
 	}
 
 	uri_found = xmalloc(sizeof *uri_found);
@@ -171,45 +163,45 @@ hyperlink_put(struct hyperlinks *hl, const char *uri, const char *param_id)
 	/* sanitize in case of invalid UTF-8 */
 	utf8_stravis((char**)&uri_found->uri, uri, VIS_OCTAL|VIS_CSTYLE);
 
-	RB_INIT(&uri_found->attr_ids_by_param_id);
-	RB_INSERT(uri_to_param_id_trees,
-	    &hl->forward_mapping, uri_found);
+	RB_INIT(&uri_found->inners_by_id);
+	RB_INSERT(uri_to_id_trees,
+	    hl->forward_mapping, uri_found);
 
-	if (param_id == NULL) {
+	if (id == NULL) {
 		/* Be sure to use the pre-copied URI from uri_found. */
 		hyperlink_put_inverse(hl,
-		    &uri_found->default_attr_id, uri_found->uri,
+		    &uri_found->default_inner, uri_found->uri,
 		    NULL);
-		return uri_found->default_attr_id;
+		return uri_found->default_inner;
 	}
-	uri_found->default_attr_id = 0;
+	uri_found->default_inner = 0;
 
-same_uri_different_param_id:
-	param_id_found = xmalloc(sizeof *param_id_found);
-	param_id_found->param_id = param_id;
-	RB_INSERT(param_id_to_attr_ids,
-	    &uri_found->attr_ids_by_param_id, param_id_found);
+same_uri_different_id:
+	id_found = xmalloc(sizeof *id_found);
+	id_found->id = id;
+	RB_INSERT(id_to_inners,
+	    &uri_found->inners_by_id, id_found);
 	/* Be sure to use the pre-copied value for URI. */
-	hyperlink_put_inverse(hl, &param_id_found->attr_id,
-	    uri_found->uri, param_id);
-	return param_id_found->attr_id;
+	hyperlink_put_inverse(hl, &id_found->inner,
+	    uri_found->uri, id);
+	return id_found->inner;
 }
 
 int
-hyperlink_get(struct hyperlinks *hl, u_int attr_id, const char **uri_out,
-    const char **param_id_out)
+hyperlink_get(struct hyperlinks *hl, u_int inner, const char **uri_out,
+    const char **id_out)
 {
-	struct attr_id_to_link	 attr_id_search;
-	struct attr_id_to_link	*attr_id_found;
+	struct inner_to_link	 inner_search;
+	struct inner_to_link	*inner_found;
 
-	attr_id_search.attr_id = attr_id;
-	attr_id_found = RB_FIND(attr_id_to_links,
-	    &hl->backward_mapping, &attr_id_search);
+	inner_search.inner = inner;
+	inner_found = RB_FIND(inner_to_links,
+	    hl->backward_mapping, &inner_search);
 
-	if (attr_id_found == NULL)
+	if (inner_found == NULL)
 		return 0;
-	*uri_out = attr_id_found->uri;
-	*param_id_out = attr_id_found->param_id;
+	*uri_out = inner_found->uri;
+	*id_out = inner_found->id;
 	return 1;
 }
 
@@ -219,72 +211,54 @@ hyperlink_init(struct hyperlinks **hl)
 	static u_int    next_ns = 0;
 
 	*hl = xmalloc(sizeof **hl);
-	RB_INIT(&(*hl)->forward_mapping);
-	RB_INIT(&(*hl)->backward_mapping);
+	RB_INIT((*hl)->forward_mapping);
+	RB_INIT((*hl)->backward_mapping);
 	(*hl)->ns = next_ns++;
-	(*hl)->next_attr_id = 1;
-}
-
-/*
- * Each hyperlink tree has a 'namespace' used to prefix parameter IDs when
- * rendering, so that links from different trees basically never have the same
- * parameter ID. It's not a big deal if there are rare collisions.
- */
-void
-hyperlink_add_namespace(struct hyperlinks *hl, char **param_id,
-    const char *raw_param_id, size_t raw_param_id_length)
-{
-	/* Print exactly 3 digits for the namespace. */
-	*param_id = xrealloc(*param_id, raw_param_id_length + 5);
-	snprintf(*param_id, 5, "%.3X.", hl->ns % 0xfff);
-	/* sanitize in case of invalid UTF-8 */
-	utf8_strvis(*param_id + 4, raw_param_id,
-	    raw_param_id_length,  VIS_OCTAL|VIS_CSTYLE);
-	/* 3-digit.raw_param_id */
+	(*hl)->next_inner = 1;
 }
 
 void
 hyperlink_reset(struct hyperlinks *hl)
 {
-	struct uri_to_param_id_tree	*uri_curr;
-	struct uri_to_param_id_tree	*uri_next;
-	struct param_id_to_attr_id	*param_id_curr;
-	struct param_id_to_attr_id	*param_id_next;
-	struct attr_id_to_link	*attr_id_curr;
-	struct attr_id_to_link	*attr_id_next;
+	struct uri_to_id_tree	*uri_curr;
+	struct uri_to_id_tree	*uri_next;
+	struct id_to_inner	*id_curr;
+	struct id_to_inner	*id_next;
+	struct inner_to_link	*inner_curr;
+	struct inner_to_link	*inner_next;
 
-	uri_curr = RB_MIN(uri_to_param_id_trees, &hl->forward_mapping);
+	uri_curr = RB_MIN(uri_to_id_trees, hl->forward_mapping);
 
-	RB_FOREACH_SAFE(uri_curr, uri_to_param_id_trees, &hl->forward_mapping,
+	RB_FOREACH_SAFE(uri_curr, uri_to_id_trees, hl->forward_mapping,
 			uri_next) {
-		RB_REMOVE(uri_to_param_id_trees, &hl->forward_mapping,
+		RB_REMOVE(uri_to_id_trees, hl->forward_mapping,
 		    uri_curr);
 		free((void *)uri_curr->uri);
 
-		param_id_curr = RB_MIN(param_id_to_attr_ids,
-				&uri_curr->attr_ids_by_param_id);
+		id_curr = RB_MIN(id_to_inners,
+				&uri_curr->inners_by_id);
 
-		RB_FOREACH_SAFE(param_id_curr, param_id_to_attr_ids, &uri_curr->attr_ids_by_param_id,
-				param_id_next) {
-				RB_REMOVE(param_id_to_attr_ids,
-						&uri_curr->attr_ids_by_param_id, param_id_curr);
-				free((void *)param_id_curr->param_id);
-				free((void *)param_id_curr);
+		RB_FOREACH_SAFE(id_curr, id_to_inners, &uri_curr->inners_by_id,
+				id_next) {
+				RB_REMOVE(id_to_inners,
+						&uri_curr->inners_by_id, id_curr);
+				free((void *)id_curr->id);
+				free((void *)id_curr);
 		}
 		free(uri_curr);
 	}
 
-	attr_id_curr = RB_MIN(attr_id_to_links,
-	    &hl->backward_mapping);
+	inner_curr = RB_MIN(inner_to_links,
+	    hl->backward_mapping);
 
-	RB_FOREACH_SAFE(attr_id_curr, attr_id_to_links, &hl->backward_mapping,
-			attr_id_next) {
-		RB_REMOVE(attr_id_to_links,
-		    &hl->backward_mapping, attr_id_curr);
-		free(attr_id_curr);
+	RB_FOREACH_SAFE(inner_curr, inner_to_links, hl->backward_mapping,
+			inner_next) {
+		RB_REMOVE(inner_to_links,
+		    hl->backward_mapping, inner_curr);
+		free(inner_curr);
 	}
 
-	hl->next_attr_id = 1;
+	hl->next_inner = 1;
 }
 
 void

@@ -3310,12 +3310,18 @@ int			 server_acl_join(struct client *);
 uid_t			 server_acl_get_uid(struct server_acl_user *);
 
 /* hyperlink.c */
+struct hyperlinks {
+	u_int	 ns;
+	u_int	 next_inner;
+
+	struct uri_to_id_trees*	forward_mapping;
+	struct inner_to_links*	backward_mapping;
+};
+
 u_int	 hyperlink_put(struct hyperlinks *, const char *, const char *);
 int	 hyperlink_get(struct hyperlinks *, u_int, const char **,
 	    const char **);
 void	 hyperlink_init(struct hyperlinks **);
-void	 hyperlink_add_namespace(struct hyperlinks *, char **, const char *,
-             size_t);
 void	 hyperlink_reset(struct hyperlinks *);
 void	 hyperlink_free(struct hyperlinks *);
 
