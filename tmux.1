@@ -3659,6 +3659,8 @@ Allows setting the cursor style.
 Supports extended keys.
 .It focus
 Supports focus reporting.
+.It hyperplinks
+Supports OSC 8 hyperlinks.
 .It ignorefkeys
 Ignore function keys from
 .Xr terminfo 5
@@ -6419,7 +6421,7 @@ capability is present.
 Enable hyperlinks.
 If set, a sequence such as this will link a string of visible text to a URI:
 .Bd -literal -offset indent
-set -sa terminal-overrides ',*:Hls=\\E]8;%?%p1%l%tid=%;%p1%s;%p2%s\\E\\\\'
+set -sa terminal-overrides ',*:Hls=\\033]8;%id=%p1%s;%p2%s\\033\\\\'
 $ printf '\\e]8;;http://example.com\\e\\\\visible text\\e]8;;\\e\\\\'
 .Ed
 .It Em \&Rect

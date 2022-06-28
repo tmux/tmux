@@ -89,10 +89,10 @@ static const struct tty_feature tty_feature_clipboard = {
 
 /* Terminal supports OSC 8 hyperlinks. */
 static const char *tty_feature_hyperlink_capabilities[] = {
-  "Hls=\\E]8;id=%p1%s;%p2%s;\\E\\\\",
+	"Hls=\\E]8;id=%p1%s;%p2%s;\\E\\\\",
 	NULL
 };
-static const struct tty_feature tty_feature_hyperlink = {
+static const struct tty_feature tty_feature_hyperlinks = {
 	"hyperlinks",
 	tty_feature_hyperlink_capabilities,
 	0
@@ -341,7 +341,7 @@ static const struct tty_feature *tty_features[] = {
 	&tty_feature_bpaste,
 	&tty_feature_ccolour,
 	&tty_feature_clipboard,
-	&tty_feature_hyperlink,
+	&tty_feature_hyperlinks,
 	&tty_feature_cstyle,
 	&tty_feature_extkeys,
 	&tty_feature_focus,
