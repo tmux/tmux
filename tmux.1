@@ -6421,7 +6421,7 @@ capability is present.
 Enable hyperlinks.
 If set, a sequence such as this will link a string of visible text to a URI:
 .Bd -literal -offset indent
-set -sa terminal-overrides ',*:Hls=\\033]8;%id=%p1%s;%p2%s\\033\\\\'
+set -sa terminal-overrides ',*:Hls=\\033]8;%?%p1%l%tid=%p1%s%;;%p2%s\\033\\\\'
 $ printf '\\e]8;;http://example.com\\e\\\\visible text\\e]8;;\\e\\\\'
 .Ed
 .It Em \&Rect
