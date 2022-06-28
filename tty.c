@@ -2198,7 +2198,7 @@ tty_reset(struct tty *tty)
 
 	if (!grid_cells_equal(gc, &grid_default_cell)) {
 		if (gc->link != 0)
-			tty_putcode(tty, TTYC_HLR);
+			tty_putcode(tty, TTYC_HLS);
 		if ((gc->attr & GRID_ATTR_CHARSET) && tty_acs_needed(tty))
 			tty_putcode(tty, TTYC_RMACS);
 		tty_putcode(tty, TTYC_SGR0);
@@ -2499,13 +2499,12 @@ tty_hyperlink(struct tty *tty, const struct grid_cell *gc,
 		return;
 	tty->cell.link = gc->link;
 
-	// TODO: Should we just avoid any tty_putcode if gc->link is zero
-	//       or hl is null?
+	/* avoid any tty_putcode if gc->link is zero or hl is null */
 	if (gc->link == 0 || hl == NULL ||
 	    !hyperlink_get(hl, gc->link, &uri, &param_id))
-		tty_putcode(tty, TTYC_HLR);
+		return;
 	else if (param_id == NULL)
-		tty_putcode_ptr1(tty, TTYC_HLA, uri);
+		tty_putcode_ptr1(tty, TTYC_HLS, uri);
 	else
 		tty_putcode_ptr2(tty, TTYC_HLS, param_id, uri);
 }

@@ -368,8 +368,6 @@ enum tty_code_code {
 	TTYC_ENMG,
 	TTYC_FSL,
 	TTYC_HLS,
-	TTYC_HLA,
-	TTYC_HLR,
 	TTYC_HOME,
 	TTYC_HPA,
 	TTYC_ICH,

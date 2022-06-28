@@ -6415,12 +6415,11 @@ Disable and enable focus reporting.
 These are set automatically if the
 .Em XT
 capability is present.
-.It Em \&Hls , \&Hla , \&Hlr
+.It Em \&Hls
 Enable hyperlinks.
 If set, a sequence such as this will link a string of visible text to a URI:
 .Bd -literal -offset indent
-set -sa terminal-overrides ',*:Hla=\\033]8;;%p1%s\\033\\\\:Hlr=\\033]8;;\\033\\\\'
-set -sa terminal-overrides ',*:Hls=\\033]8;id=%p1%s;%p2%s\\033\\\\:Hlr=\\033]8;;\\033\\\\'
+set -sa terminal-overrides ',*:Hls=\\E]8;%?%p1%l%tid=%;%p1%s;%p2%s\\E\\\\'
 $ printf '\\e]8;;http://example.com\\e\\\\visible text\\e]8;;\\e\\\\'
 .Ed
 .It Em \&Rect
