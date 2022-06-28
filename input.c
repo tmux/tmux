@@ -2566,22 +2566,23 @@ input_osc_4(struct input_ctx *ictx, const char *p)
 	free(copy);
 }
 
+
 /*
  * Each hyperlink tree has a 'namespace' used to prefix parameter IDs when
  * rendering, so that links from different trees basically never have the same
  * parameter ID. It's not a big deal if there are rare collisions.
  */
-static void
-hyperlink_add_namespace(struct hyperlinks *hl, char **id,
-    const char *raw_id, size_t raw_id_length)
+static char *
+input_make_hyperlink(struct hyperlinks *hl,
+    const char *id, size_t idlen)
 {
-	/* Print exactly 3 digits for the namespace. */
-	*id = xrealloc(*id, raw_id_length + 5);
-	snprintf(*id, 5, "%.3X.", hl->ns % 0xfff);
+	char *tmp = NULL, *s=NULL;
+	log_debug("%s %s", __func__, id);
+	xasprintf(&tmp, "%x_%.*s", hyperlink_get_namespace(hl), (int)idlen, id);
 	/* sanitize in case of invalid UTF-8 */
-	utf8_strvis(*id + 4, raw_id,
-	    raw_id_length,  VIS_OCTAL|VIS_CSTYLE);
-	/* 3-digit.raw_id */
+	utf8_stravis(&s, tmp, VIS_OCTAL|VIS_CSTYLE);
+	free(tmp);
+	return (s);
 }
 
 /* Handle the OSC 8 sequence for embedding hyperlinks. */
@@ -2596,16 +2597,16 @@ input_osc_8(struct input_ctx *ictx, const char *p)
 	for (start = p; (end = strpbrk(start, ":;")) != NULL; start = end + 1) {
 		if (end - start >= 4 && strncmp(start, "id=", 3) == 0) {
 			start += 3;
-			hyperlink_add_namespace(hl, &id, start, end - start);
+			if (id != NULL)
+				break;
+			id = input_make_hyperlink(hl, start, end - start);
 		}
-
 		/* The first ; is the end of parameters and start of the URI. */
 		if (*end == ';')
 			break;
 	}
 	if (end == NULL) {
-		log_debug("bad OSC 8 %s", p);
-		return;
+		goto bad;
 	}
 	uri = end + 1;
 	if (*uri == '\0') {
@@ -2617,6 +2618,10 @@ input_osc_8(struct input_ctx *ictx, const char *p)
 		log_debug("hyperlink (anonymous) %s = %u", uri, gc->link);
 	else
 		log_debug("hyperlink (id=%s) %s = %u", id, uri, gc->link);
+
+bad:
+		log_debug("bad OSC 8 %s", p);
+		return;
 }
 
 /* Handle the OSC 10 sequence for setting and querying foreground colour. */

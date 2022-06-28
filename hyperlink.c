@@ -105,6 +105,14 @@ RB_GENERATE_STATIC(id_to_inners, id_to_inner, entry,
     id_cmp);
 RB_GENERATE_STATIC(inner_to_links, inner_to_link, entry, attr_cmp);
 
+struct hyperlinks {
+	u_int	 ns;
+	u_int	 next_inner;
+
+	struct uri_to_id_trees*	forward_mapping;
+	struct inner_to_links*	backward_mapping;
+};
+
 static void
 hyperlink_put_inverse(struct hyperlinks *hl, u_int *inner_dest,
     const char *uri, const char *id)
@@ -266,4 +274,10 @@ hyperlink_free(struct hyperlinks *hl)
 {
 	hyperlink_reset(hl);
 	free(hl);
+}
+
+u_int
+hyperlink_get_namespace(struct hyperlinks *hl)
+{
+	return hl->ns;
 }
