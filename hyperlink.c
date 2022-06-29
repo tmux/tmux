@@ -25,251 +25,171 @@
 #include "tmux.h"
 
 /*
- * To efficiently store OSC-8 hyperlinks in extended cell attributes, assign
- * each hyperlink cell a numerical ID called the 'attribute ID'. This is
- * distinct from the string-valued ID described in the [specification][1],
- * henceforth referred to as the 'parameter ID'. Use a dual-layer tree to map
- * a URI / parameter ID pair to an attribute ID. Use a single-layer tree to do
- * the inverse; retrieve the URI and parameter ID given an attribute ID.
+ * OSC 8 hyperlinks, described at:
  *
- * The dual-layer tree for the forward mapping primarily ensures that each
- * unique URI is not duplicated in memory. The first layer maps URIs to nodes
- * containing second-layer trees, which map parameter IDs to attribute IDs.
+ *     https://gist.github.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda
  *
- * [1]: https://gist.github.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda
+ * Each hyperlink and ID combination is assigned a number ("inner" in this
+ * file) which is stored in an extended grid cell and maps into a tree here.
+ *
+ * Each URI has one inner number and one external ID (which tmux uses to send
+ * the hyperlink to the terminal) and one internal ID (which is received from
+ * the sending application inside tmux).
+ *
+ * Anonymous hyperlinks are each unique and are not reused even if they have
+ * the same URI (terminals will not want to tie them together).
  */
 
+static uint64_t hyperlink_next_external_id = 1;
 
-/* Second-layer tree for forward hyperlink mapping. */
-struct id_to_inner {
-	const char      *id;
+struct hyperlink_uri {
+	u_int			 inner;
+	const char		*internal_id;
+	const char		*external_id;
+	const char		*uri;
 
-	u_int		 inner;
-
-	RB_ENTRY(id_to_inner)	entry;
+	RB_ENTRY(hyperlink_uri)	 by_inner_entry;
+	RB_ENTRY(hyperlink_uri)	 by_uri_entry; /* by internal ID and URI */
 };
-RB_HEAD(id_to_inners, id_to_inner);
-
-/* First-layer tree for forward hyperlink mapping. */
-struct uri_to_id_tree {
-	const char      *uri;
-
-	u_int				 default_inner;
-	struct id_to_inners	 inners_by_id;
-
-	RB_ENTRY(uri_to_id_tree)	 entry;
-};
-RB_HEAD(uri_to_id_trees, uri_to_id_tree);
-
-/* Tree for backward hyperlink mapping. */
-struct inner_to_link {
-	u_int		 inner;
-	const char	*uri;
-	const char	*id;
-
-	RB_ENTRY(inner_to_link)	entry;
-};
-RB_HEAD(inner_to_links, inner_to_link);
+RB_HEAD(hyperlink_by_uri_tree, hyperlink_uri);
+RB_HEAD(hyperlink_by_inner_tree, hyperlink_uri);
 
 struct hyperlinks {
-	u_int	 ns;
-	u_int	 next_inner;
-
-	struct uri_to_id_trees	forward_mapping;
-	struct inner_to_links	backward_mapping;
+	u_int				next_inner;
+	struct hyperlink_by_inner_tree	by_inner;
+	struct hyperlink_by_uri_tree	by_uri;
 };
 
 static int
-uri_cmp(struct uri_to_id_tree *left, struct uri_to_id_tree *right);
+hyperlink_by_uri_cmp(struct hyperlink_uri *left, struct hyperlink_uri *right)
+{
+	int	r;
+
+	if (*left->internal_id == '\0' || *right->internal_id == '\0') {
+		/*
+		 * If both URIs are anonymous, use the inner for comparison so
+		 * that they do not match even if the URI is the same - each
+		 * anonymous URI should be unique.
+		 */
+		if (*left->internal_id != '\0')
+			return (-1);
+		if (*right->internal_id != '\0')
+			return (1);
+		return (left->inner - right->inner);
+	}
+
+	r = strcmp(left->internal_id, right->internal_id);
+	if (r != 0)
+		return (r);
+	return (strcmp(left->uri, right->uri));
+}
+RB_PROTOTYPE_STATIC(hyperlink_by_uri_tree, hyperlink_uri, by_uri_entry,
+    hyperlink_by_uri_cmp);
+RB_GENERATE_STATIC(hyperlink_by_uri_tree, hyperlink_uri, by_uri_entry,
+    hyperlink_by_uri_cmp);
 
 static int
-uri_cmp(struct uri_to_id_tree *left, struct uri_to_id_tree *right)
+hyperlink_by_inner_cmp(struct hyperlink_uri *left, struct hyperlink_uri *right)
 {
-	return strcmp(left->uri, right->uri);
+	return (left->inner - right->inner);
 }
+RB_PROTOTYPE_STATIC(hyperlink_by_inner_tree, hyperlink_uri, by_inner_entry,
+    hyperlink_by_inner_cmp);
+RB_GENERATE_STATIC(hyperlink_by_inner_tree, hyperlink_uri, by_inner_entry,
+    hyperlink_by_inner_cmp);
 
-static int
-id_cmp(struct id_to_inner *left,
-    struct id_to_inner *right)
-{
-	return strcmp(left->id, right->id);
-}
-
-static int
-attr_cmp(struct inner_to_link *left, struct inner_to_link *right)
-{
-	return left->inner - right->inner;
-}
-
-RB_PROTOTYPE_STATIC(uri_to_id_trees, uri_to_id_tree, entry,
-    uri_cmp);
-RB_PROTOTYPE_STATIC(id_to_inners, id_to_inner, entry,
-    id_cmp);
-RB_PROTOTYPE_STATIC(inner_to_links, inner_to_link, entry, attr_cmp);
-
-RB_GENERATE_STATIC(uri_to_id_trees, uri_to_id_tree, entry,
-    uri_cmp);
-RB_GENERATE_STATIC(id_to_inners, id_to_inner, entry,
-    id_cmp);
-RB_GENERATE_STATIC(inner_to_links, inner_to_link, entry, attr_cmp);
-
-static void
-hyperlink_put_inverse(struct hyperlinks *hl, u_int *inner_dest,
-    const char *uri, const char *id)
-{
-	struct inner_to_link	*inner_new;
-
-	*inner_dest = hl->next_inner++;
-	inner_new = xmalloc(sizeof *inner_new);
-	inner_new->inner = *inner_dest;
-	inner_new->uri = uri;
-	inner_new->id = id;
-	RB_INSERT(inner_to_links, &hl->backward_mapping, inner_new);
-}
-
-/*
- * Assume that id either has non-zero length or is NULL,
- * and that it's already copied from the input buffer if non-NULL.
- */
+/* Store a new hyperlink or return if it already exists. */
 u_int
-hyperlink_put(struct hyperlinks *hl, const char *uri, const char *id)
+hyperlink_put(struct hyperlinks *hl, const char *uri_in,
+    const char *internal_id_in)
 {
-	struct uri_to_id_tree	 uri_search;
-	struct uri_to_id_tree	*uri_found;
-	struct id_to_inner	 id_search;
-	struct id_to_inner	*id_found;
+	struct hyperlink_uri	 find, *hlu;
+	char			*uri, *internal_id, *external_id;
 
-	uri_search.uri = uri;
-	uri_found = RB_FIND(uri_to_id_trees,
-	    &hl->forward_mapping, &uri_search);
+	/*
+	 * Anonymous URI are stored with an empty internal ID and the tree
+	 * comparator will make sure they never match each other (so each
+	 * anonymous URI is unique).
+	 */
+	if (internal_id_in == NULL)
+		internal_id_in = "";
 
-	if (uri_found != NULL) {
-		if (id == NULL) {
-			if (uri_found->default_inner == 0) {
-				/* Be sure to use the pre-copied URI from
-				 * uri_found. */
-				hyperlink_put_inverse(hl,
-				    &uri_found->default_inner,
-				    uri_found->uri, NULL);
-			}
-			return uri_found->default_inner;
+	utf8_stravis(&uri, uri_in, VIS_OCTAL|VIS_CSTYLE);
+	utf8_stravis(&internal_id, internal_id_in, VIS_OCTAL|VIS_CSTYLE);
+
+	if (*internal_id_in != '\0') {
+		find.uri = uri;
+		find.internal_id = internal_id;
+
+		hlu = RB_FIND(hyperlink_by_uri_tree, &hl->by_uri, &find);
+		if (hlu != NULL) {
+			free (uri);
+			free (internal_id);
+			return (hlu->inner);
 		}
-
-		id_search.id = id;
-		id_found = RB_FIND(id_to_inners,
-		    &uri_found->inners_by_id, &id_search);
-
-		if (id_found != NULL) {
-			free((void *)id);
-			return id_found->inner;
-		}
-		goto same_uri_different_id;
 	}
+	xasprintf(&external_id, "tmux%llX", hyperlink_next_external_id++);
 
-	uri_found = xmalloc(sizeof *uri_found);
+	hlu = xcalloc(1, sizeof *hlu);
+	hlu->inner = hl->next_inner++;
+	hlu->internal_id = internal_id;
+	hlu->external_id = external_id;
+	hlu->uri = uri;
+	RB_INSERT(hyperlink_by_uri_tree, &hl->by_uri, hlu);
+	RB_INSERT(hyperlink_by_inner_tree, &hl->by_inner, hlu);
 
-	/* sanitize in case of invalid UTF-8 */
-	utf8_stravis((char**)&uri_found->uri, uri, VIS_OCTAL|VIS_CSTYLE);
-
-	RB_INIT(&uri_found->inners_by_id);
-	RB_INSERT(uri_to_id_trees,
-	    &hl->forward_mapping, uri_found);
-
-	if (id == NULL) {
-		/* Be sure to use the pre-copied URI from uri_found. */
-		hyperlink_put_inverse(hl,
-		    &uri_found->default_inner, uri_found->uri,
-		    NULL);
-		return uri_found->default_inner;
-	}
-	uri_found->default_inner = 0;
-
-same_uri_different_id:
-	id_found = xmalloc(sizeof *id_found);
-	id_found->id = id;
-	RB_INSERT(id_to_inners,
-	    &uri_found->inners_by_id, id_found);
-	/* Be sure to use the pre-copied value for URI. */
-	hyperlink_put_inverse(hl, &id_found->inner,
-	    uri_found->uri, id);
-	return id_found->inner;
+	return (hlu->inner);
 }
 
+/* Get hyperlink by inner number. */
 int
 hyperlink_get(struct hyperlinks *hl, u_int inner, const char **uri_out,
-    const char **id_out)
+    const char **external_id_out)
 {
-	struct inner_to_link	 inner_search;
-	struct inner_to_link	*inner_found;
+	struct hyperlink_uri	find, *hlu;
 
-	inner_search.inner = inner;
-	inner_found = RB_FIND(inner_to_links,
-	    &hl->backward_mapping, &inner_search);
+	find.inner = inner;
 
-	if (inner_found == NULL)
-		return 0;
-	*uri_out = inner_found->uri;
-	*id_out = inner_found->id;
-	return 1;
+	hlu = RB_FIND(hyperlink_by_inner_tree, &hl->by_inner, &find);
+	if (hlu == NULL)
+		return (0);
+	*external_id_out = hlu->external_id;
+	*uri_out = hlu->uri;
+	return (1);
 }
 
-void
-hyperlink_init(struct hyperlinks **hl)
+/* Initialize hyperlink set. */
+struct hyperlinks *
+hyperlink_init(void)
 {
-	static u_int    next_ns = 0;
+	struct hyperlinks	*hl;
 
-	*hl = xmalloc(sizeof **hl);
-	RB_INIT(&(*hl)->forward_mapping);
-	RB_INIT(&(*hl)->backward_mapping);
-	(*hl)->ns = next_ns++;
-	(*hl)->next_inner = 1;
+	hl = xcalloc(1, sizeof *hl);
+	hl->next_inner = 1;
+	RB_INIT(&hl->by_uri);
+	RB_INIT(&hl->by_inner);
+	return (hl);
 }
 
+/* Free all hyperlinks but not the set itself. */
 void
 hyperlink_reset(struct hyperlinks *hl)
 {
-	struct uri_to_id_tree	*uri_curr;
-	struct uri_to_id_tree	*uri_next;
-	struct id_to_inner	*id_curr;
-	struct id_to_inner	*id_next;
-	struct inner_to_link	*inner_curr;
-	struct inner_to_link	*inner_next;
+	struct hyperlink_uri	*hlu, *hlu1;
 
-	RB_FOREACH_SAFE(uri_curr, uri_to_id_trees, &hl->forward_mapping,
-			uri_next) {
-		RB_REMOVE(uri_to_id_trees, &hl->forward_mapping,
-		    uri_curr);
-		free((void *)uri_curr->uri);
-
-		RB_FOREACH_SAFE(id_curr, id_to_inners, &uri_curr->inners_by_id,
-				id_next) {
-				RB_REMOVE(id_to_inners,
-						&uri_curr->inners_by_id, id_curr);
-				free((void *)id_curr->id);
-				free((void *)id_curr);
-		}
-		free(uri_curr);
+	RB_FOREACH_SAFE(hlu, hyperlink_by_inner_tree, &hl->by_inner, hlu1) {
+		free((void *)hlu->internal_id);
+		free((void *)hlu->external_id);
+		free((void *)hlu->uri);
+		RB_REMOVE(hyperlink_by_inner_tree, &hl->by_inner, hlu);
+		free(hlu);
 	}
-
-	RB_FOREACH_SAFE(inner_curr, inner_to_links, &hl->backward_mapping,
-			inner_next) {
-		RB_REMOVE(inner_to_links,
-		    &hl->backward_mapping, inner_curr);
-		free(inner_curr);
-	}
-
-	hl->next_inner = 1;
 }
 
+/* Free hyperlink set. */
 void
 hyperlink_free(struct hyperlinks *hl)
 {
 	hyperlink_reset(hl);
 	free(hl);
-}
-
-u_int
-hyperlink_get_namespace(struct hyperlinks *hl)
-{
-	return hl->ns;
 }

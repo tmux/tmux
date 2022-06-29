@@ -3311,12 +3311,12 @@ int			 server_acl_join(struct client *);
 uid_t			 server_acl_get_uid(struct server_acl_user *);
 
 /* hyperlink.c */
-u_int	 hyperlink_put(struct hyperlinks *, const char *, const char *);
-int	 hyperlink_get(struct hyperlinks *, u_int, const char **,
-	    const char **);
-void	 hyperlink_init(struct hyperlinks **);
-void	 hyperlink_reset(struct hyperlinks *);
-void	 hyperlink_free(struct hyperlinks *);
-u_int	 hyperlink_get_namespace(struct hyperlinks *);
+u_int	 		 hyperlink_put(struct hyperlinks *, const char *,
+			     const char *);
+int			 hyperlink_get(struct hyperlinks *, u_int,
+			     const char **, const char **);
+struct hyperlinks	*hyperlink_init(void);
+void			 hyperlink_reset(struct hyperlinks *);
+void			 hyperlink_free(struct hyperlinks *);
 
 #endif /* TMUX_H */

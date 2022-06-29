@@ -122,23 +122,14 @@ screen_reinit(struct screen *s)
 	screen_reset_hyperlinks(s);
 }
 
-/* Reset hyperlinks of a screen */
+/* Reset hyperlinks of a screen. */
 void
 screen_reset_hyperlinks(struct screen *s)
 {
 	if (s->hyperlinks == NULL)
-		hyperlink_init(&s->hyperlinks);
+		s->hyperlinks = hyperlink_init();
 	else
 		hyperlink_reset(s->hyperlinks);
-}
-
-void
-screen_free_hyperlinks(struct screen *s)
-{
-	if (s->hyperlinks == NULL)
-		return;
-	hyperlink_free(s->hyperlinks);
-	s->hyperlinks = NULL;
 }
 
 /* Destroy a screen. */
@@ -157,8 +148,9 @@ screen_free(struct screen *s)
 		grid_destroy(s->saved_grid);
 	grid_destroy(s->grid);
 
+	if (s->hyperlinks != NULL)
+		hyperlink_free(s->hyperlinks);
 	screen_free_titles(s);
-	screen_free_hyperlinks(s);
 }
 
 /* Reset tabs to default, eight spaces apart. */
