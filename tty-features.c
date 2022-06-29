@@ -18,6 +18,12 @@
 
 #include <sys/types.h>
 
+#if defined(HAVE_CURSES_H)
+#include <curses.h>
+#elif defined(HAVE_NCURSES_H)
+#include <ncurses.h>
+#endif
+
 #include <stdlib.h>
 #include <string.h>
 
