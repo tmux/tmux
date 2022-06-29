@@ -71,6 +71,14 @@ struct inner_to_link {
 };
 RB_HEAD(inner_to_links, inner_to_link);
 
+struct hyperlinks {
+	u_int	 ns;
+	u_int	 next_inner;
+
+	struct uri_to_id_trees	forward_mapping;
+	struct inner_to_links	backward_mapping;
+};
+
 static int
 uri_cmp(struct uri_to_id_tree *left, struct uri_to_id_tree *right);
 
@@ -105,14 +113,6 @@ RB_GENERATE_STATIC(id_to_inners, id_to_inner, entry,
     id_cmp);
 RB_GENERATE_STATIC(inner_to_links, inner_to_link, entry, attr_cmp);
 
-struct hyperlinks {
-	u_int	 ns;
-	u_int	 next_inner;
-
-	struct uri_to_id_trees*	forward_mapping;
-	struct inner_to_links*	backward_mapping;
-};
-
 static void
 hyperlink_put_inverse(struct hyperlinks *hl, u_int *inner_dest,
     const char *uri, const char *id)
@@ -124,7 +124,7 @@ hyperlink_put_inverse(struct hyperlinks *hl, u_int *inner_dest,
 	inner_new->inner = *inner_dest;
 	inner_new->uri = uri;
 	inner_new->id = id;
-	RB_INSERT(inner_to_links, hl->backward_mapping, inner_new);
+	RB_INSERT(inner_to_links, &hl->backward_mapping, inner_new);
 }
 
 /*
@@ -141,7 +141,7 @@ hyperlink_put(struct hyperlinks *hl, const char *uri, const char *id)
 
 	uri_search.uri = uri;
 	uri_found = RB_FIND(uri_to_id_trees,
-	    hl->forward_mapping, &uri_search);
+	    &hl->forward_mapping, &uri_search);
 
 	if (uri_found != NULL) {
 		if (id == NULL) {
@@ -173,7 +173,7 @@ hyperlink_put(struct hyperlinks *hl, const char *uri, const char *id)
 
 	RB_INIT(&uri_found->inners_by_id);
 	RB_INSERT(uri_to_id_trees,
-	    hl->forward_mapping, uri_found);
+	    &hl->forward_mapping, uri_found);
 
 	if (id == NULL) {
 		/* Be sure to use the pre-copied URI from uri_found. */
@@ -204,7 +204,7 @@ hyperlink_get(struct hyperlinks *hl, u_int inner, const char **uri_out,
 
 	inner_search.inner = inner;
 	inner_found = RB_FIND(inner_to_links,
-	    hl->backward_mapping, &inner_search);
+	    &hl->backward_mapping, &inner_search);
 
 	if (inner_found == NULL)
 		return 0;
@@ -219,8 +219,8 @@ hyperlink_init(struct hyperlinks **hl)
 	static u_int    next_ns = 0;
 
 	*hl = xmalloc(sizeof **hl);
-	RB_INIT((*hl)->forward_mapping);
-	RB_INIT((*hl)->backward_mapping);
+	RB_INIT(&(*hl)->forward_mapping);
+	RB_INIT(&(*hl)->backward_mapping);
 	(*hl)->ns = next_ns++;
 	(*hl)->next_inner = 1;
 }
@@ -235,11 +235,11 @@ hyperlink_reset(struct hyperlinks *hl)
 	struct inner_to_link	*inner_curr;
 	struct inner_to_link	*inner_next;
 
-	uri_curr = RB_MIN(uri_to_id_trees, hl->forward_mapping);
+	uri_curr = RB_MIN(uri_to_id_trees, &hl->forward_mapping);
 
-	RB_FOREACH_SAFE(uri_curr, uri_to_id_trees, hl->forward_mapping,
+	RB_FOREACH_SAFE(uri_curr, uri_to_id_trees, &hl->forward_mapping,
 			uri_next) {
-		RB_REMOVE(uri_to_id_trees, hl->forward_mapping,
+		RB_REMOVE(uri_to_id_trees, &hl->forward_mapping,
 		    uri_curr);
 		free((void *)uri_curr->uri);
 
@@ -257,12 +257,12 @@ hyperlink_reset(struct hyperlinks *hl)
 	}
 
 	inner_curr = RB_MIN(inner_to_links,
-	    hl->backward_mapping);
+	    &hl->backward_mapping);
 
-	RB_FOREACH_SAFE(inner_curr, inner_to_links, hl->backward_mapping,
+	RB_FOREACH_SAFE(inner_curr, inner_to_links, &hl->backward_mapping,
 			inner_next) {
 		RB_REMOVE(inner_to_links,
-		    hl->backward_mapping, inner_curr);
+		    &hl->backward_mapping, inner_curr);
 		free(inner_curr);
 	}
 
