@@ -17,6 +17,7 @@
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <compat/queue.h>
 #include <sys/types.h>
 
 #include <stdlib.h>
@@ -40,25 +41,32 @@
  * the same URI (terminals will not want to tie them together).
  */
 
+static u_int MAX_HYPERLINKS = 5000;
 static uint64_t hyperlink_next_external_id = 1;
+static u_int global_hyperlink_count = 0;
 
 struct hyperlink_uri {
 	u_int			 inner;
 	const char		*internal_id;
 	const char		*external_id;
 	const char		*uri;
+	struct hyperlinks		*tree;
 
+	TAILQ_ENTRY(hyperlink_uri) list_entry;
 	RB_ENTRY(hyperlink_uri)	 by_inner_entry;
 	RB_ENTRY(hyperlink_uri)	 by_uri_entry; /* by internal ID and URI */
 };
 RB_HEAD(hyperlink_by_uri_tree, hyperlink_uri);
 RB_HEAD(hyperlink_by_inner_tree, hyperlink_uri);
+TAILQ_HEAD(hyperlinks_dq, hyperlink_uri);
+static struct hyperlinks_dq global_hyperlinks;
 
 struct hyperlinks {
 	u_int				next_inner;
 	struct hyperlink_by_inner_tree	by_inner;
 	struct hyperlink_by_uri_tree	by_uri;
 };
+
 
 static int
 hyperlink_by_uri_cmp(struct hyperlink_uri *left, struct hyperlink_uri *right)
@@ -135,9 +143,21 @@ hyperlink_put(struct hyperlinks *hl, const char *uri_in,
 	hlu->internal_id = internal_id;
 	hlu->external_id = external_id;
 	hlu->uri = uri;
+	hlu->tree = hl;
 	RB_INSERT(hyperlink_by_uri_tree, &hl->by_uri, hlu);
 	RB_INSERT(hyperlink_by_inner_tree, &hl->by_inner, hlu);
-
+	TAILQ_INSERT_TAIL(&global_hyperlinks, hlu, list_entry);
+	global_hyperlink_count++;
+	log_debug("%s number %u", __func__, global_hyperlink_count);
+	if ( global_hyperlink_count + 1 == MAX_HYPERLINKS) {
+		struct hyperlink_uri *head;
+		while( (head = TAILQ_FIRST(&global_hyperlinks))) {
+			TAILQ_REMOVE(&global_hyperlinks, head, list_entry);
+			hyperlink_remove(head);
+			break;
+		}
+		global_hyperlink_count--;
+	}
 	return (hlu->inner);
 }
 
@@ -177,13 +197,8 @@ hyperlink_reset(struct hyperlinks *hl)
 {
 	struct hyperlink_uri	*hlu, *hlu1;
 
-	RB_FOREACH_SAFE(hlu, hyperlink_by_inner_tree, &hl->by_inner, hlu1) {
-		free((void *)hlu->internal_id);
-		free((void *)hlu->external_id);
-		free((void *)hlu->uri);
-		RB_REMOVE(hyperlink_by_inner_tree, &hl->by_inner, hlu);
-		free(hlu);
-	}
+	RB_FOREACH_SAFE(hlu, hyperlink_by_inner_tree, &hl->by_inner, hlu1)
+		hyperlink_remove(hlu);
 }
 
 /* Free hyperlink set. */
@@ -192,4 +207,26 @@ hyperlink_free(struct hyperlinks *hl)
 {
 	hyperlink_reset(hl);
 	free(hl);
+}
+
+void
+hyperlink_remove(struct hyperlink_uri *hlu)
+{
+	struct hyperlinks *owner = hlu->tree;
+
+	TAILQ_REMOVE(&global_hyperlinks, hlu, list_entry);
+	global_hyperlink_count--;
+
+	free((void *)hlu->internal_id);
+	free((void *)hlu->external_id);
+	free((void *)hlu->uri);
+	RB_REMOVE(hyperlink_by_inner_tree, &owner->by_inner, hlu);
+	RB_REMOVE(hyperlink_by_uri_tree, &owner->by_uri, hlu);
+	free(hlu);
+}
+
+/* Initialize global hyperlink queue. */
+void
+hyperlink_queue_init(void) {
+  TAILQ_INIT(&global_hyperlinks);
 }

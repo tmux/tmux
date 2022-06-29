@@ -50,6 +50,7 @@ struct control_state;
 struct environ;
 struct format_job_tree;
 struct format_tree;
+struct hyperlink_uri;
 struct hyperlinks;
 struct input_ctx;
 struct job;
@@ -3318,5 +3319,7 @@ int			 hyperlink_get(struct hyperlinks *, u_int,
 struct hyperlinks	*hyperlink_init(void);
 void			 hyperlink_reset(struct hyperlinks *);
 void			 hyperlink_free(struct hyperlinks *);
+void			 hyperlink_remove(struct hyperlink_uri *);
+void       hyperlink_queue_init(void);
 
 #endif /* TMUX_H */

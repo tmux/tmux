@@ -212,8 +212,8 @@ server_start(struct tmuxproc *client, int flags, struct event_base *base,
 	TAILQ_INIT(&clients);
 	RB_INIT(&sessions);
 	key_bindings_init();
+	hyperlink_queue_init();
 	TAILQ_INIT(&message_log);
-
 	gettimeofday(&start_time, NULL);
 
 #ifdef HAVE_SYSTEMD
