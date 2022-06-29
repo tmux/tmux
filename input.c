@@ -2605,7 +2605,8 @@ input_osc_8(struct input_ctx *ictx, const char *p)
 		if (*end == ';')
 			break;
 	}
-	if (end == NULL) {
+  log_debug("%s inner id = %s", __func__, id);
+	if (end == NULL || *end == '\0') {
 		goto bad;
 	}
 	uri = end + 1;

@@ -235,16 +235,11 @@ hyperlink_reset(struct hyperlinks *hl)
 	struct inner_to_link	*inner_curr;
 	struct inner_to_link	*inner_next;
 
-	uri_curr = RB_MIN(uri_to_id_trees, &hl->forward_mapping);
-
 	RB_FOREACH_SAFE(uri_curr, uri_to_id_trees, &hl->forward_mapping,
 			uri_next) {
 		RB_REMOVE(uri_to_id_trees, &hl->forward_mapping,
 		    uri_curr);
 		free((void *)uri_curr->uri);
-
-		id_curr = RB_MIN(id_to_inners,
-				&uri_curr->inners_by_id);
 
 		RB_FOREACH_SAFE(id_curr, id_to_inners, &uri_curr->inners_by_id,
 				id_next) {
@@ -255,9 +250,6 @@ hyperlink_reset(struct hyperlinks *hl)
 		}
 		free(uri_curr);
 	}
-
-	inner_curr = RB_MIN(inner_to_links,
-	    &hl->backward_mapping);
 
 	RB_FOREACH_SAFE(inner_curr, inner_to_links, &hl->backward_mapping,
 			inner_next) {
