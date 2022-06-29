@@ -2589,6 +2589,8 @@ input_make_hyperlink(struct hyperlinks *hl,
 static void
 input_osc_8(struct input_ctx *ictx, const char *p)
 {
+	if(ictx->wp == NULL)
+		return;
 	struct hyperlinks	*hl = ictx->wp->screen->hyperlinks;
 	struct grid_cell	*gc = &ictx->cell.cell;
 	const char		*start, *end, *uri;
