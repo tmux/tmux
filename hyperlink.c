@@ -220,8 +220,3 @@ hyperlink_remove(struct hyperlink_uri *hlu)
 	RB_REMOVE(hyperlink_by_uri_tree, &owner->by_uri, hlu);
 	free(hlu);
 }
-
-/* Initialize global hyperlink queue. */
-void
-hyperlink_queue_init(void) {
-}
