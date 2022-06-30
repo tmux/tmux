@@ -3320,6 +3320,5 @@ struct hyperlinks	*hyperlink_init(void);
 void			 hyperlink_reset(struct hyperlinks *);
 void			 hyperlink_free(struct hyperlinks *);
 void			 hyperlink_remove(struct hyperlink_uri *);
-void       hyperlink_queue_init(void);
 
 #endif /* TMUX_H */
