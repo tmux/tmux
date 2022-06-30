@@ -3659,6 +3659,8 @@ Allows setting the cursor style.
 Supports extended keys.
 .It focus
 Supports focus reporting.
+.It hyperlinks
+Supports OSC 8 hyperlinks.
 .It ignorefkeys
 Ignore function keys from
 .Xr terminfo 5
@@ -6125,9 +6127,14 @@ a format for each shortcut key; both are evaluated once for each line.
 starts without the preview.
 This command works only if at least one client is attached.
 .Tg clearhist
-.It Ic clear-history Op Fl t Ar target-pane
+.It Xo Ic clear-history
+.Op Fl H
+.Op Fl t Ar target-pane
+.Xc
 .D1 Pq alias: Ic clearhist
 Remove and free the history for the specified pane.
+.Fl H
+also removes all hyperlinks.
 .Tg deleteb
 .It Ic delete-buffer Op Fl b Ar buffer-name
 .D1 Pq alias: Ic deleteb
@@ -6415,6 +6422,8 @@ Disable and enable focus reporting.
 These are set automatically if the
 .Em XT
 capability is present.
+.It Em \&Hls
+Set or clear a hyperlink annotation.
 .It Em \&Rect
 Tell
 .Nm

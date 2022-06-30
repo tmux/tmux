@@ -89,6 +89,7 @@ screen_init(struct screen *s, u_int sx, u_int sy, u_int hlimit)
 	s->sel = NULL;
 
 	s->write_list = NULL;
+	s->hyperlinks = NULL;
 
 	screen_reinit(s);
 }
@@ -118,6 +119,17 @@ screen_reinit(struct screen *s)
 
 	screen_clear_selection(s);
 	screen_free_titles(s);
+	screen_reset_hyperlinks(s);
+}
+
+/* Reset hyperlinks of a screen. */
+void
+screen_reset_hyperlinks(struct screen *s)
+{
+	if (s->hyperlinks == NULL)
+		s->hyperlinks = hyperlinks_init();
+	else
+		hyperlinks_reset(s->hyperlinks);
 }
 
 /* Destroy a screen. */
@@ -136,6 +148,8 @@ screen_free(struct screen *s)
 		grid_destroy(s->saved_grid);
 	grid_destroy(s->grid);
 
+	if (s->hyperlinks != NULL)
+		hyperlinks_free(s->hyperlinks);
 	screen_free_titles(s);
 }
 

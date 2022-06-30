@@ -50,6 +50,8 @@ struct control_state;
 struct environ;
 struct format_job_tree;
 struct format_tree;
+struct hyperlinks_uri;
+struct hyperlinks;
 struct input_ctx;
 struct job;
 struct menu_data;
@@ -366,6 +368,7 @@ enum tty_code_code {
 	TTYC_ENFCS,
 	TTYC_ENMG,
 	TTYC_FSL,
+	TTYC_HLS,
 	TTYC_HOME,
 	TTYC_HPA,
 	TTYC_ICH,
@@ -690,6 +693,7 @@ struct grid_cell {
 	int			fg;
 	int			bg;
 	int			us;
+	u_int			link;
 };
 
 /* Grid extended cell entry. */
@@ -700,6 +704,7 @@ struct grid_extd_entry {
 	int			fg;
 	int			bg;
 	int			us;
+	u_int			link;
 } __packed;
 
 /* Grid cell entry. */
@@ -851,6 +856,8 @@ struct screen {
 	struct screen_sel		*sel;
 
 	struct screen_write_cline	*write_list;
+
+	struct hyperlinks		*hyperlinks;
 };
 
 /* Screen write context. */
@@ -2247,7 +2254,8 @@ void	tty_update_window_offset(struct window *);
 void	tty_update_client_offset(struct client *);
 void	tty_raw(struct tty *, const char *);
 void	tty_attributes(struct tty *, const struct grid_cell *,
-	    const struct grid_cell *, struct colour_palette *);
+	    const struct grid_cell *, struct colour_palette *,
+	    struct hyperlinks *);
 void	tty_reset(struct tty *);
 void	tty_region_off(struct tty *);
 void	tty_margin_off(struct tty *);
@@ -2264,7 +2272,8 @@ void	tty_puts(struct tty *, const char *);
 void	tty_putc(struct tty *, u_char);
 void	tty_putn(struct tty *, const void *, size_t, u_int);
 void	tty_cell(struct tty *, const struct grid_cell *,
-	    const struct grid_cell *, struct colour_palette *);
+	    const struct grid_cell *, struct colour_palette *,
+	    struct hyperlinks *);
 int	tty_init(struct tty *, struct client *);
 void	tty_resize(struct tty *);
 void	tty_set_size(struct tty *, u_int, u_int, u_int, u_int);
@@ -2895,6 +2904,7 @@ void	 screen_init(struct screen *, u_int, u_int, u_int);
 void	 screen_reinit(struct screen *);
 void	 screen_free(struct screen *);
 void	 screen_reset_tabs(struct screen *);
+void	 screen_reset_hyperlinks(struct screen *);
 void	 screen_set_cursor_style(u_int, enum screen_cursor_style *, int *);
 void	 screen_set_cursor_colour(struct screen *, int);
 int	 screen_set_title(struct screen *, const char *);
@@ -3300,5 +3310,14 @@ void			 server_acl_user_allow_write(uid_t);
 void			 server_acl_user_deny_write(uid_t);
 int			 server_acl_join(struct client *);
 uid_t			 server_acl_get_uid(struct server_acl_user *);
+
+/* hyperlink.c */
+u_int	 		 hyperlinks_put(struct hyperlinks *, const char *,
+			     const char *);
+int			 hyperlinks_get(struct hyperlinks *, u_int,
+			     const char **, const char **);
+struct hyperlinks	*hyperlinks_init(void);
+void			 hyperlinks_reset(struct hyperlinks *);
+void			 hyperlinks_free(struct hyperlinks *);
 
 #endif /* TMUX_H */
