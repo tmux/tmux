@@ -150,7 +150,7 @@ hyperlink_put(struct hyperlinks *hl, const char *uri_in,
 	TAILQ_INSERT_TAIL(&global_hyperlinks, hlu, list_entry);
 	global_hyperlink_count++;
 	log_debug("%s number %u", __func__, global_hyperlink_count);
-	if ( global_hyperlink_count + 1 == MAX_HYPERLINKS) {
+	if ( global_hyperlink_count == MAX_HYPERLINKS) {
 		hyperlink_remove(TAILQ_FIRST(&global_hyperlinks));
 		global_hyperlink_count--;
 	}
