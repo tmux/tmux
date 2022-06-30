@@ -211,7 +211,6 @@ server_start(struct tmuxproc *client, int flags, struct event_base *base,
 	RB_INIT(&sessions);
 	key_bindings_init();
 	TAILQ_INIT(&message_log);
-
 	gettimeofday(&start_time, NULL);
 
 	server_fd = server_create_socket(flags, &cause);

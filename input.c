@@ -135,6 +135,7 @@ static void	input_set_state(struct input_ctx *,
 static void	input_reset_cell(struct input_ctx *);
 
 static void	input_osc_4(struct input_ctx *, const char *);
+static void	input_osc_8(struct input_ctx *, const char *);
 static void	input_osc_10(struct input_ctx *, const char *);
 static void	input_osc_11(struct input_ctx *, const char *);
 static void	input_osc_12(struct input_ctx *, const char *);
@@ -2318,6 +2319,9 @@ input_exit_osc(struct input_ctx *ictx)
 			}
 		}
 		break;
+	case 8:
+		input_osc_8(ictx, p);
+		break;
 	case 10:
 		input_osc_10(ictx, p);
 		break;
@@ -2560,6 +2564,47 @@ input_osc_4(struct input_ctx *ictx, const char *p)
 	if (redraw)
 		screen_write_fullredraw(&ictx->ctx);
 	free(copy);
+}
+
+/* Handle the OSC 8 sequence for embedding hyperlinks. */
+static void
+input_osc_8(struct input_ctx *ictx, const char *p)
+{
+	struct hyperlinks	*hl = ictx->ctx.s->hyperlinks;
+	struct grid_cell	*gc = &ictx->cell.cell;
+	const char		*start, *end, *uri;
+	char	    		*id = NULL;
+
+	for (start = p; (end = strpbrk(start, ":;")) != NULL; start = end + 1) {
+		if (end - start >= 4 && strncmp(start, "id=", 3) == 0) {
+			if (id != NULL)
+				goto bad;
+			id = xstrndup(start + 3, end - start - 3);
+		}
+
+		/* The first ; is the end of parameters and start of the URI. */
+		if (*end == ';')
+			break;
+	}
+	if (end == NULL || *end != ';')
+		goto bad;
+	uri = end + 1;
+	if (*uri == '\0') {
+		gc->link = 0;
+		free(id);
+		return;
+	}
+	gc->link = hyperlinks_put(hl, uri, id);
+	if (id == NULL)
+		log_debug("hyperlink (anonymous) %s = %u", uri, gc->link);
+	else
+		log_debug("hyperlink (id=%s) %s = %u", id, uri, gc->link);
+	free(id);
+	return;
+
+bad:
+	log_debug("bad OSC 8 %s", p);
+	free(id);
 }
 
 /* Handle the OSC 10 sequence for setting and querying foreground colour. */

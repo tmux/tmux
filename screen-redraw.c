@@ -738,7 +738,7 @@ screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j)
 		}
 	}
 
-	tty_cell(tty, &gc, &grid_default_cell, NULL);
+	tty_cell(tty, &gc, &grid_default_cell, NULL, NULL);
 	if (isolates)
 		tty_puts(tty, START_ISOLATE);
 }

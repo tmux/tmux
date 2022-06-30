@@ -87,6 +87,17 @@ static const struct tty_feature tty_feature_clipboard = {
 	0
 };
 
+/* Terminal supports OSC 8 hyperlinks. */
+static const char *tty_feature_hyperlinks_capabilities[] = {
+	"*:Hls=\\E]8;%?%p1%l%tid=%p1%s%;;%p2%s\\E\\\\",
+	NULL
+};
+static const struct tty_feature tty_feature_hyperlinks = {
+	"hyperlinks",
+	tty_feature_hyperlinks_capabilities,
+	0
+};
+
 /*
  * Terminal supports RGB colour. This replaces setab and setaf also since
  * terminals with RGB have versions that do not allow setting colours from the
@@ -330,6 +341,7 @@ static const struct tty_feature *tty_features[] = {
 	&tty_feature_bpaste,
 	&tty_feature_ccolour,
 	&tty_feature_clipboard,
+	&tty_feature_hyperlinks,
 	&tty_feature_cstyle,
 	&tty_feature_extkeys,
 	&tty_feature_focus,
@@ -444,14 +456,14 @@ tty_default_features(int *feat, const char *name, u_int version)
 		},
 		{ .name = "tmux",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM
-			      ",ccolour,cstyle,focus,overline,usstyle"
+			      ",ccolour,cstyle,focus,overline,usstyle,hyperlinks"
 		},
 		{ .name = "rxvt-unicode",
 		  .features = "256,bpaste,ccolour,cstyle,mouse,title,ignorefkeys"
 		},
 		{ .name = "iTerm2",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM
-			      ",cstyle,extkeys,margins,usstyle,sync,osc7"
+			      ",cstyle,extkeys,margins,usstyle,sync,osc7,hyperlinks"
 		},
 		{ .name = "XTerm",
 		  /*
