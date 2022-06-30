@@ -6127,9 +6127,14 @@ a format for each shortcut key; both are evaluated once for each line.
 starts without the preview.
 This command works only if at least one client is attached.
 .Tg clearhist
-.It Ic clear-history Op Fl t Ar target-pane
+.It Xo Ic clear-history
+.Op Fl H
+.Op Fl t Ar target-pane
+.Xc
 .D1 Pq alias: Ic clearhist
 Remove and free the history for the specified pane.
+.Fl H
+also clears all OSC 8 hyperlink records.
 .Tg deleteb
 .It Ic delete-buffer Op Fl b Ar buffer-name
 .D1 Pq alias: Ic deleteb
