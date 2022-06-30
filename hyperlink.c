@@ -59,7 +59,8 @@ struct hyperlink_uri {
 RB_HEAD(hyperlink_by_uri_tree, hyperlink_uri);
 RB_HEAD(hyperlink_by_inner_tree, hyperlink_uri);
 TAILQ_HEAD(hyperlinks_dq, hyperlink_uri);
-static struct hyperlinks_dq global_hyperlinks;
+static struct hyperlinks_dq global_hyperlinks = \
+TAILQ_HEAD_INITIALIZER(global_hyperlinks);
 
 struct hyperlinks {
 	u_int				next_inner;
@@ -227,5 +228,4 @@ hyperlink_remove(struct hyperlink_uri *hlu)
 /* Initialize global hyperlink queue. */
 void
 hyperlink_queue_init(void) {
-  TAILQ_INIT(&global_hyperlinks);
 }
