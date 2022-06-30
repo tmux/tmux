@@ -152,7 +152,6 @@ hyperlink_put(struct hyperlinks *hl, const char *uri_in,
 	if ( global_hyperlink_count + 1 == MAX_HYPERLINKS) {
 		struct hyperlink_uri *head;
 		while( (head = TAILQ_FIRST(&global_hyperlinks))) {
-			TAILQ_REMOVE(&global_hyperlinks, head, list_entry);
 			hyperlink_remove(head);
 			break;
 		}
