@@ -1145,6 +1145,48 @@ format_cb_mouse_word(struct format_tree *ft)
 	return (format_grid_word(gd, x, gd->hsize + y));
 }
 
+char *
+format_grid_hyperlink(struct grid *gd, u_int x, u_int y, struct screen* screen)
+{
+	const struct hyperlink_uri *hl;
+	const char *id, *uri;
+	struct grid_cell	 gc;
+	size_t			 size = 0;
+  char *s = NULL;
+
+	grid_get_cell(gd, x, y, &gc);
+  if (gc.flags & GRID_FLAG_PADDING)
+    return (s);
+	if (gc.link != 0 && hyperlinks_get(screen->hyperlinks, gc.link, &uri, &id)) {
+    log_debug("%s uri = %s", __func__, uri);
+    size = strlen(uri);
+    utf8_stravis(&s, uri, size);
+    free((void *)uri);
+    free((void *)id);
+	}
+	return (s);
+}
+
+static void *
+format_cb_mouse_hyperlink(struct format_tree *ft)
+{
+	struct window_pane	*wp;
+	struct grid		*gd;
+	u_int			 x, y;
+	char			*s;
+
+	if (!ft->m.valid)
+		return (NULL);
+	wp = cmd_mouse_pane(&ft->m, NULL, NULL);
+	if (wp == NULL)
+		return (NULL);
+	if (cmd_mouse_at(wp, &ft->m, &x, &y, 0) != 0)
+		return (NULL);
+	gd = wp->base.grid;
+	return (format_grid_hyperlink(gd, x, gd->hsize + y, wp->screen));
+}
+
+
 /* Callback for mouse_line. */
 static void *
 format_cb_mouse_line(struct format_tree *ft)
@@ -2788,6 +2830,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "mouse_button_flag", FORMAT_TABLE_STRING,
 	  format_cb_mouse_button_flag
+	},
+	{ "mouse_hyperlink", FORMAT_TABLE_STRING,
+	  format_cb_mouse_hyperlink
 	},
 	{ "mouse_line", FORMAT_TABLE_STRING,
 	  format_cb_mouse_line

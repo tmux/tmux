@@ -2127,6 +2127,7 @@ void		 format_defaults_paste_buffer(struct format_tree *,
 		     struct paste_buffer *);
 void		 format_lost_client(struct client *);
 char		*format_grid_word(struct grid *, u_int, u_int);
+char		*format_grid_hyperlink(struct grid *, u_int, u_int, struct screen *);
 char		*format_grid_line(struct grid *, u_int);
 
 /* format-draw.c */
