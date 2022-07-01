@@ -885,18 +885,41 @@ grid_string_cells_add_code(char *buf, size_t len, u_int n, int *s, int *newc,
 	}
 }
 
+static void
+grid_string_cells_add_hyperlink (char *buf, size_t len, const char* id, const char* uri, int escape_c0) {
+	char	tmp[256];
+	if (escape_c0)
+		strlcat(buf, "\\033]8;", len);
+	else {
+		strlcat(buf, "\033]8;", len);
+	}
+	if(id[0] !='\0') {
+		xsnprintf(tmp, sizeof tmp, "id=%s;%s", id, uri);
+	}else{
+		xsnprintf(tmp, sizeof tmp, ";");
+  }
+	strlcat(buf, tmp, len);
+	if (escape_c0)
+		strlcat(buf, "\\033\\\\", len);
+	else {
+		strlcat(buf, "\033\\", len);
+	}
+}
+
 /*
  * Returns ANSI code to set particular attributes (colour, bold and so on)
  * given a current state.
  */
 static void
 grid_string_cells_code(const struct grid_cell *lastgc,
-    const struct grid_cell *gc, char *buf, size_t len, int escape_c0)
+    const struct grid_cell *gc, char *buf, size_t len, int escape_c0, const struct screen *screen)
 {
 	int	oldc[64], newc[64], s[128];
 	size_t	noldc, nnewc, n, i;
 	u_int	attr = gc->attr, lastattr = lastgc->attr;
 	char	tmp[64];
+	struct hyperlinks *hls;
+	const char	*uri, *id;
 
 	struct {
 		u_int	mask;
@@ -986,20 +1009,32 @@ grid_string_cells_code(const struct grid_cell *lastgc,
 		else
 			strlcat(buf, "\017", len);  /* SI */
 	}
+
+	if (screen!=NULL && lastgc->link!=gc->link)
+	{
+		hls = screen->hyperlinks;
+		log_debug("%s gc->link = %d", __func__, gc->link);
+		 if(hls != NULL && hyperlinks_get(hls, gc->link, &uri, &id) ) {
+				log_debug("%s gc hyperlink %s = %s", __func__, id, uri);
+				grid_string_cells_add_hyperlink(buf, len, id, uri, escape_c0);
+		}
+	}
 }
 
 /* Convert cells into a string. */
 char *
 grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
-    struct grid_cell **lastgc, int with_codes, int escape_c0, int trim)
+    struct grid_cell **lastgc, int with_codes, int escape_c0, int trim, struct screen *screen)
 {
 	struct grid_cell	 gc;
 	static struct grid_cell	 lastgc1;
 	const char		*data;
 	char			*buf, code[128];
-	size_t			 len, off, size, codelen;
+  char tmp[128];
+	size_t			 len, off, size, codelen, closelen;
 	u_int			 xx;
 	const struct grid_line	*gl;
+  u_int has_link= 0;
 
 	if (lastgc != NULL && *lastgc == NULL) {
 		memcpy(&lastgc1, &grid_default_cell, sizeof lastgc1);
@@ -1020,8 +1055,10 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
 
 		if (with_codes) {
 			grid_string_cells_code(*lastgc, &gc, code, sizeof code,
-			    escape_c0);
+			    escape_c0, screen);
 			codelen = strlen(code);
+			if(gc.link!=0)
+				has_link= 1;
 			memcpy(*lastgc, &gc, sizeof **lastgc);
 		} else
 			codelen = 0;
@@ -1044,6 +1081,15 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
 		}
 		memcpy(buf + off, data, size);
 		off += size;
+	}
+	if (has_link){
+			// close hyperlink
+			log_debug("%s close hyperlink", __func__);
+			*tmp = '\0';
+			grid_string_cells_add_hyperlink(tmp, sizeof tmp, "", "", escape_c0);
+			closelen = strlen(tmp);
+			memcpy(buf + off, tmp, closelen);
+			off += closelen;
 	}
 
 	if (trim) {
