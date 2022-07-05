@@ -1151,16 +1151,13 @@ format_grid_hyperlink(struct grid *gd, u_int x, u_int y, struct screen* screen)
 	const struct hyperlink_uri *hl;
 	const char *id, *uri;
 	struct grid_cell	 gc;
-	size_t			 size = 0;
-  char *s = NULL;
+	char *s = NULL;
 
 	grid_get_cell(gd, x, y, &gc);
 	if (gc.flags & GRID_FLAG_PADDING)
 		return (s);
 	if (gc.link != 0 && hyperlinks_get(screen->hyperlinks, gc.link, &uri, &id)) {
-		log_debug("%s uri = %s", __func__, uri);
-		size = strlen(uri);
-		utf8_stravis(&s, uri, size);
+		s = xstrdup(uri);
 	}
 	return (s);
 }
