@@ -890,20 +890,19 @@ grid_string_cells_add_hyperlink (char *buf, size_t len, const char* id, const ch
 	char	tmp[256];
 	if (escape_c0)
 		strlcat(buf, "\\033]8;", len);
-	else {
+	else
 		strlcat(buf, "\033]8;", len);
-	}
-	if(id[0] !='\0') {
+
+	if(id[0] !='\0')
 		xsnprintf(tmp, sizeof tmp, "id=%s;%s", id, uri);
-	}else{
+	else
 		xsnprintf(tmp, sizeof tmp, ";");
-  }
+
 	strlcat(buf, tmp, len);
 	if (escape_c0)
 		strlcat(buf, "\\033\\\\", len);
-	else {
+	else
 		strlcat(buf, "\033\\", len);
-	}
 }
 
 /*
@@ -1010,15 +1009,10 @@ grid_string_cells_code(const struct grid_cell *lastgc,
 			strlcat(buf, "\017", len);  /* SI */
 	}
 
-	if (screen!=NULL && lastgc->link!=gc->link)
-	{
+	if (screen != NULL && lastgc->link != gc->link)
 		hls = screen->hyperlinks;
-		log_debug("%s gc->link = %d", __func__, gc->link);
-		 if(hls != NULL && hyperlinks_get(hls, gc->link, &uri, &id) ) {
-				log_debug("%s gc hyperlink %s = %s", __func__, id, uri);
+		 if(hls != NULL && hyperlinks_get(hls, gc->link, &uri, &id))
 				grid_string_cells_add_hyperlink(buf, len, id, uri, escape_c0);
-		}
-	}
 }
 
 /* Convert cells into a string. */
@@ -1034,7 +1028,7 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
 	size_t			 len, off, size, codelen, closelen;
 	u_int			 xx;
 	const struct grid_line	*gl;
-  u_int has_link= 0;
+	u_int has_link = 0;
 
 	if (lastgc != NULL && *lastgc == NULL) {
 		memcpy(&lastgc1, &grid_default_cell, sizeof lastgc1);
@@ -1082,14 +1076,13 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
 		memcpy(buf + off, data, size);
 		off += size;
 	}
-	if (has_link){
-			// close hyperlink
-			log_debug("%s close hyperlink", __func__);
-			*tmp = '\0';
-			grid_string_cells_add_hyperlink(tmp, sizeof tmp, "", "", escape_c0);
-			closelen = strlen(tmp);
-			memcpy(buf + off, tmp, closelen);
-			off += closelen;
+
+	if (has_link) {
+		*tmp = '\0';
+		grid_string_cells_add_hyperlink(tmp, sizeof tmp, "", "", escape_c0);
+		closelen = strlen(tmp);
+		memcpy(buf + off, tmp, closelen);
+		off += closelen;
 	}
 
 	if (trim) {
