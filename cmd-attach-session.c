@@ -158,6 +158,9 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 		c->flags |= CLIENT_ATTACHED;
 	}
 
+	if (cfg_finished)
+		cfg_show_causes(s);
+
 	return (CMD_RETURN_NORMAL);
 }
 

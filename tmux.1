@@ -2115,9 +2115,11 @@ is not given, "detach-client -t '%%'" is used.
 specifies the initial sort field: one of
 .Ql name ,
 .Ql size ,
-.Ql creation ,
+.Ql creation
+(time),
 or
-.Ql activity .
+.Ql activity
+(time).
 .Fl r
 reverses the sort order.
 .Fl f
@@ -2199,7 +2201,8 @@ specifies the initial sort field: one of
 .Ql index ,
 .Ql name ,
 or
-.Ql time .
+.Ql time
+(activity).
 .Fl r
 reverses the sort order.
 .Fl f
@@ -6110,7 +6113,8 @@ is not given, "paste-buffer -b '%%'" is used.
 .Pp
 .Fl O
 specifies the initial sort field: one of
-.Ql time ,
+.Ql time
+(creation),
 .Ql name
 or
 .Ql size .
