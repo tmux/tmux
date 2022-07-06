@@ -2127,6 +2127,8 @@ void		 format_defaults_paste_buffer(struct format_tree *,
 		     struct paste_buffer *);
 void		 format_lost_client(struct client *);
 char		*format_grid_word(struct grid *, u_int, u_int);
+char		*format_grid_hyperlink(struct grid *, u_int, u_int,
+		     struct screen *);
 char		*format_grid_line(struct grid *, u_int);
 
 /* format-draw.c */
@@ -2774,7 +2776,7 @@ void	 grid_clear_lines(struct grid *, u_int, u_int, u_int);
 void	 grid_move_lines(struct grid *, u_int, u_int, u_int, u_int);
 void	 grid_move_cells(struct grid *, u_int, u_int, u_int, u_int, u_int);
 char	*grid_string_cells(struct grid *, u_int, u_int, u_int,
-	     struct grid_cell **, int, int, int);
+	     struct grid_cell **, int, int, int, struct screen *);
 void	 grid_duplicate_lines(struct grid *, u_int, struct grid *, u_int,
 	     u_int);
 void	 grid_reflow(struct grid *, u_int);
@@ -3315,7 +3317,7 @@ uid_t			 server_acl_get_uid(struct server_acl_user *);
 u_int	 		 hyperlinks_put(struct hyperlinks *, const char *,
 			     const char *);
 int			 hyperlinks_get(struct hyperlinks *, u_int,
-			     const char **, const char **);
+			     const char **, const char **, const char **);
 struct hyperlinks	*hyperlinks_init(void);
 void			 hyperlinks_reset(struct hyperlinks *);
 void			 hyperlinks_free(struct hyperlinks *);
