@@ -177,7 +177,7 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 	buf = NULL;
 	for (i = top; i <= bottom; i++) {
 		line = grid_string_cells(gd, 0, i, sx, &gc, with_codes,
-		    escape_c0, !join_lines && !no_trim);
+		    escape_c0, !join_lines && !no_trim, wp->screen);
 		linelen = strlen(line);
 
 		buf = cmd_capture_pane_append(buf, len, line, linelen);

@@ -2501,7 +2501,7 @@ tty_hyperlink(struct tty *tty, const struct grid_cell *gc,
 	if (hl == NULL)
 		return;
 
-	if (gc->link == 0 || !hyperlinks_get(hl, gc->link, &uri, &id))
+	if (gc->link == 0 || !hyperlinks_get(hl, gc->link, &uri, NULL, &id))
 		tty_putcode_ptr2(tty, TTYC_HLS, "", "");
 	else
 		tty_putcode_ptr2(tty, TTYC_HLS, id, uri);

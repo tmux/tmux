@@ -1145,6 +1145,25 @@ format_cb_mouse_word(struct format_tree *ft)
 	return (format_grid_word(gd, x, gd->hsize + y));
 }
 
+/* Callback for mouse_hyperlink. */
+static void *
+format_cb_mouse_hyperlink(struct format_tree *ft)
+{
+	struct window_pane	*wp;
+	struct grid		*gd;
+	u_int			 x, y;
+
+	if (!ft->m.valid)
+		return (NULL);
+	wp = cmd_mouse_pane(&ft->m, NULL, NULL);
+	if (wp == NULL)
+		return (NULL);
+	if (cmd_mouse_at(wp, &ft->m, &x, &y, 0) != 0)
+		return (NULL);
+	gd = wp->base.grid;
+	return (format_grid_hyperlink(gd, x, gd->hsize + y, wp->screen));
+}
+
 /* Callback for mouse_line. */
 static void *
 format_cb_mouse_line(struct format_tree *ft)
@@ -2788,6 +2807,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "mouse_button_flag", FORMAT_TABLE_STRING,
 	  format_cb_mouse_button_flag
+	},
+	{ "mouse_hyperlink", FORMAT_TABLE_STRING,
+	  format_cb_mouse_hyperlink
 	},
 	{ "mouse_line", FORMAT_TABLE_STRING,
 	  format_cb_mouse_line
@@ -5063,4 +5085,21 @@ format_grid_line(struct grid *gd, u_int y)
 		free(ud);
 	}
 	return (s);
+}
+
+/* Return hyperlink at given coordinates. Caller frees. */
+char *
+format_grid_hyperlink(struct grid *gd, u_int x, u_int y, struct screen* s)
+{
+	const char		*uri;
+	struct grid_cell	 gc;
+
+	grid_get_cell(gd, x, y, &gc);
+	if (gc.flags & GRID_FLAG_PADDING)
+		return (NULL);
+	if (s->hyperlinks == NULL || gc.link == 0)
+		return (NULL);
+	if (!hyperlinks_get(s->hyperlinks, gc.link, &uri, NULL, NULL))
+		return (NULL);
+	return (xstrdup(uri));
 }
