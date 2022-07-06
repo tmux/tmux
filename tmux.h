@@ -3134,6 +3134,7 @@ char	*parse_window_name(const char *);
 /* control.c */
 void	control_discard(struct client *);
 void	control_start(struct client *);
+void	control_ready(struct client *);
 void	control_stop(struct client *);
 void	control_set_pane_on(struct client *, struct window_pane *);
 void	control_set_pane_off(struct client *, struct window_pane *);
