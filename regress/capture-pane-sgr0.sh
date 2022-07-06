@@ -22,8 +22,8 @@ $TMUX -f/dev/null new -d "
 sleep 1
 
 (
-	printf '\033[1m\033[31m\033[42mabc\033[0m\033[31m\033[49mdef\033[39m\n'
-	printf '\033[100m bright bg \033[49m\n'
+	printf '\033[1m\033[31m\033[42mabc\033[0m\033[31m\033[49mdef\n'
+	printf '\033[39m\033[100m bright bg\n'
 ) | cmp - $TMP || exit 1
 
 $TMUX has 2>/dev/null && exit 1
