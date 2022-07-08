@@ -3638,18 +3638,9 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 		 * after the term the cursor is currently on when searching
 		 * forward.
 		 */
-		if (keys == MODEKEY_VI) {
-			if (data->searchmark != NULL)
-				window_copy_move_after_search_mark(data, &fx,
-				    &fy, wrapflag);
-			else {
-				/*
-				 * When there are no search marks, start the
-				 * search after the current cursor position.
-				 */
-				window_copy_move_right(s, &fx, &fy, wrapflag);
-			}
-		}
+		if (keys == MODEKEY_VI)
+			window_copy_move_right(s, &fx, &fy, wrapflag);
+
 		endline = gd->hsize + gd->sy - 1;
 	}
 	else {
