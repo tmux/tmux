@@ -24,6 +24,7 @@
 #include <fnmatch.h>
 #include <libgen.h>
 #include <math.h>
+#include <pwd.h>
 #include <regex.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -800,6 +801,20 @@ format_cb_start_command(struct format_tree *ft)
 	return (cmd_stringify_argv(wp->argc, wp->argv));
 }
 
+/* Callback for pane_start_path. */
+static void *
+format_cb_start_path(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+
+	if (wp == NULL)
+		return (NULL);
+
+	if (wp->cwd == NULL)
+		return (xstrdup(""));
+	return (xstrdup(wp->cwd));
+}
+
 /* Callback for pane_current_command. */
 static void *
 format_cb_current_command(struct format_tree *ft)
@@ -1130,6 +1145,25 @@ format_cb_mouse_word(struct format_tree *ft)
 	return (format_grid_word(gd, x, gd->hsize + y));
 }
 
+/* Callback for mouse_hyperlink. */
+static void *
+format_cb_mouse_hyperlink(struct format_tree *ft)
+{
+	struct window_pane	*wp;
+	struct grid		*gd;
+	u_int			 x, y;
+
+	if (!ft->m.valid)
+		return (NULL);
+	wp = cmd_mouse_pane(&ft->m, NULL, NULL);
+	if (wp == NULL)
+		return (NULL);
+	if (cmd_mouse_at(wp, &ft->m, &x, &y, 0) != 0)
+		return (NULL);
+	gd = wp->base.grid;
+	return (format_grid_hyperlink(gd, x, gd->hsize + y, wp->screen));
+}
+
 /* Callback for mouse_line. */
 static void *
 format_cb_mouse_line(struct format_tree *ft)
@@ -1384,6 +1418,35 @@ format_cb_client_tty(struct format_tree *ft)
 {
 	if (ft->c != NULL)
 		return (xstrdup(ft->c->ttyname));
+	return (NULL);
+}
+
+/* Callback for client_uid. */
+static void *
+format_cb_client_uid(struct format_tree *ft)
+{
+	uid_t	uid;
+
+	if (ft->c != NULL) {
+		uid = proc_get_peer_uid(ft->c->peer);
+		if (uid != (uid_t)-1)
+			return (format_printf("%ld", (long)uid));
+	}
+	return (NULL);
+}
+
+/* Callback for client_user. */
+static void *
+format_cb_client_user(struct format_tree *ft)
+{
+	uid_t		 uid;
+	struct passwd	*pw;
+
+	if (ft->c != NULL) {
+		uid = proc_get_peer_uid(ft->c->peer);
+		if (uid != (uid_t)-1 && (pw = getpwuid(uid)) != NULL)
+			return (xstrdup(pw->pw_name));
+	}
 	return (NULL);
 }
 
@@ -1650,6 +1713,13 @@ format_cb_mouse_y(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for next_session_id. */
+static void *
+format_cb_next_session_id(__unused struct format_tree *ft)
+{
+	return (format_printf("$%u", next_session_id));
+}
+
 /* Callback for origin_flag. */
 static void *
 format_cb_origin_flag(struct format_tree *ft)
@@ -1719,6 +1789,23 @@ format_cb_pane_dead(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for pane_dead_signal. */
+static void *
+format_cb_pane_dead_signal(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+	const char		*name;
+
+	if (wp != NULL) {
+		if ((wp->flags & PANE_STATUSREADY) && WIFSIGNALED(wp->status)) {
+			name = sig2name(WTERMSIG(wp->status));
+			return (format_printf("%s", name));
+		}
+		return (NULL);
+	}
+	return (NULL);
+}
+
 /* Callback for pane_dead_status. */
 static void *
 format_cb_pane_dead_status(struct format_tree *ft)
@@ -1728,6 +1815,20 @@ format_cb_pane_dead_status(struct format_tree *ft)
 	if (wp != NULL) {
 		if ((wp->flags & PANE_STATUSREADY) && WIFEXITED(wp->status))
 			return (format_printf("%d", WEXITSTATUS(wp->status)));
+		return (NULL);
+	}
+	return (NULL);
+}
+
+/* Callback for pane_dead_time. */
+static void *
+format_cb_pane_dead_time(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+
+	if (wp != NULL) {
+		if (wp->flags & PANE_STATUSDRAWN)
+			return (&wp->dead_time);
 		return (NULL);
 	}
 	return (NULL);
@@ -2514,6 +2615,24 @@ format_cb_tree_mode_format(__unused struct format_tree *ft)
 	return (xstrdup(window_tree_mode.default_format));
 }
 
+/* Callback for uid. */
+static void *
+format_cb_uid(__unused struct format_tree *ft)
+{
+	return (format_printf("%ld", (long)getuid()));
+}
+
+/* Callback for user. */
+static void *
+format_cb_user(__unused struct format_tree *ft)
+{
+	struct passwd	*pw;
+
+	if ((pw = getpwuid(getuid())) != NULL)
+		return (xstrdup(pw->pw_name));
+	return (NULL);
+}
+
 /* Format table type. */
 enum format_table_type {
 	FORMAT_TABLE_STRING,
@@ -2620,6 +2739,12 @@ static const struct format_table_entry format_table[] = {
 	{ "client_tty", FORMAT_TABLE_STRING,
 	  format_cb_client_tty
 	},
+	{ "client_uid", FORMAT_TABLE_STRING,
+	  format_cb_client_uid
+	},
+	{ "client_user", FORMAT_TABLE_STRING,
+	  format_cb_client_user
+	},
 	{ "client_utf8", FORMAT_TABLE_STRING,
 	  format_cb_client_utf8
 	},
@@ -2683,6 +2808,9 @@ static const struct format_table_entry format_table[] = {
 	{ "mouse_button_flag", FORMAT_TABLE_STRING,
 	  format_cb_mouse_button_flag
 	},
+	{ "mouse_hyperlink", FORMAT_TABLE_STRING,
+	  format_cb_mouse_hyperlink
+	},
 	{ "mouse_line", FORMAT_TABLE_STRING,
 	  format_cb_mouse_line
 	},
@@ -2706,6 +2834,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "mouse_y", FORMAT_TABLE_STRING,
 	  format_cb_mouse_y
+	},
+	{ "next_session_id", FORMAT_TABLE_STRING,
+	  format_cb_next_session_id
 	},
 	{ "origin_flag", FORMAT_TABLE_STRING,
 	  format_cb_origin_flag
@@ -2740,8 +2871,14 @@ static const struct format_table_entry format_table[] = {
 	{ "pane_dead", FORMAT_TABLE_STRING,
 	  format_cb_pane_dead
 	},
+	{ "pane_dead_signal", FORMAT_TABLE_STRING,
+	  format_cb_pane_dead_signal
+	},
 	{ "pane_dead_status", FORMAT_TABLE_STRING,
 	  format_cb_pane_dead_status
+	},
+	{ "pane_dead_time", FORMAT_TABLE_TIME,
+	  format_cb_pane_dead_time
 	},
 	{ "pane_fg", FORMAT_TABLE_STRING,
 	  format_cb_pane_fg
@@ -2796,6 +2933,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "pane_start_command", FORMAT_TABLE_STRING,
 	  format_cb_start_command
+	},
+	{ "pane_start_path", FORMAT_TABLE_STRING,
+	  format_cb_start_path
 	},
 	{ "pane_synchronized", FORMAT_TABLE_STRING,
 	  format_cb_pane_synchronized
@@ -2895,6 +3035,12 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "tree_mode_format", FORMAT_TABLE_STRING,
 	  format_cb_tree_mode_format
+	},
+	{ "uid", FORMAT_TABLE_STRING,
+	  format_cb_uid
+	},
+	{ "user", FORMAT_TABLE_STRING,
+	  format_cb_user
 	},
 	{ "version", FORMAT_TABLE_STRING,
 	  format_cb_version
@@ -3263,12 +3409,12 @@ format_quote_style(const char *s)
 }
 
 /* Make a prettier time. */
-static char *
-format_pretty_time(time_t t)
+char *
+format_pretty_time(time_t t, int seconds)
 {
 	struct tm       now_tm, tm;
 	time_t		now, age;
-	char		s[6];
+	char		s[9];
 
 	time(&now);
 	if (now < t)
@@ -3280,7 +3426,10 @@ format_pretty_time(time_t t)
 
 	/* Last 24 hours. */
 	if (age < 24 * 3600) {
-		strftime(s, sizeof s, "%H:%M", &tm);
+		if (seconds)
+			strftime(s, sizeof s, "%H:%M:%S", &tm);
+		else
+			strftime(s, sizeof s, "%H:%M", &tm);
 		return (xstrdup(s));
 	}
 
@@ -3385,7 +3534,7 @@ found:
 		if (t == 0)
 			return (NULL);
 		if (modifiers & FORMAT_PRETTY)
-			found = format_pretty_time(t);
+			found = format_pretty_time(t, 0);
 		else {
 			if (time_format != NULL) {
 				localtime_r(&t, &tm);
@@ -4479,7 +4628,7 @@ format_expand1(struct format_expand_state *es, const char *fmt)
 {
 	struct format_tree	*ft = es->ft;
 	char			*buf, *out, *name;
-	const char		*ptr, *s;
+	const char		*ptr, *s, *style_end = NULL;
 	size_t			 off, len, n, outlen;
 	int     		 ch, brackets;
 	char			 expanded[8192];
@@ -4574,18 +4723,20 @@ format_expand1(struct format_expand_state *es, const char *fmt)
 				break;
 			fmt += n + 1;
 			continue;
+		case '[':
 		case '#':
 			/*
 			 * If ##[ (with two or more #s), then it is a style and
 			 * can be left for format_draw to handle.
 			 */
-			ptr = fmt;
-			n = 2;
+			ptr = fmt - (ch == '[');
+			n = 2 - (ch == '[');
 			while (*ptr == '#') {
 				ptr++;
 				n++;
 			}
 			if (*ptr == '[') {
+				style_end = format_skip(fmt - 2, "]");
 				format_log(es, "found #*%zu[", n);
 				while (len - off < n + 2) {
 					buf = xreallocarray(buf, 2, len);
@@ -4608,10 +4759,12 @@ format_expand1(struct format_expand_state *es, const char *fmt)
 			continue;
 		default:
 			s = NULL;
-			if (ch >= 'A' && ch <= 'Z')
-				s = format_upper[ch - 'A'];
-			else if (ch >= 'a' && ch <= 'z')
-				s = format_lower[ch - 'a'];
+			if (fmt > style_end) { /* skip inside #[] */
+				if (ch >= 'A' && ch <= 'Z')
+					s = format_upper[ch - 'A'];
+				else if (ch >= 'a' && ch <= 'z')
+					s = format_lower[ch - 'a'];
+			}
 			if (s == NULL) {
 				while (len - off < 3) {
 					buf = xreallocarray(buf, 2, len);
@@ -4932,4 +5085,21 @@ format_grid_line(struct grid *gd, u_int y)
 		free(ud);
 	}
 	return (s);
+}
+
+/* Return hyperlink at given coordinates. Caller frees. */
+char *
+format_grid_hyperlink(struct grid *gd, u_int x, u_int y, struct screen* s)
+{
+	const char		*uri;
+	struct grid_cell	 gc;
+
+	grid_get_cell(gd, x, y, &gc);
+	if (gc.flags & GRID_FLAG_PADDING)
+		return (NULL);
+	if (s->hyperlinks == NULL || gc.link == 0)
+		return (NULL);
+	if (!hyperlinks_get(s->hyperlinks, gc.link, &uri, NULL, NULL))
+		return (NULL);
+	return (xstrdup(uri));
 }

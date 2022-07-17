@@ -53,6 +53,18 @@ static const struct tty_feature tty_feature_title = {
 	0
 };
 
+/* Terminal has OSC 7 working directory. */
+static const char *tty_feature_osc7_capabilities[] = {
+	"Swd=\\E]7;",
+	"fsl=\\a",
+	NULL
+};
+static const struct tty_feature tty_feature_osc7 = {
+	"osc7",
+	tty_feature_osc7_capabilities,
+	0
+};
+
 /* Terminal has mouse support. */
 static const char *tty_feature_mouse_capabilities[] = {
 	"kmous=\\E[M",
@@ -72,6 +84,21 @@ static const char *tty_feature_clipboard_capabilities[] = {
 static const struct tty_feature tty_feature_clipboard = {
 	"clipboard",
 	tty_feature_clipboard_capabilities,
+	0
+};
+
+/* Terminal supports OSC 8 hyperlinks. */
+static const char *tty_feature_hyperlinks_capabilities[] = {
+#if defined (__OpenBSD__) || (defined(NCURSES_VERSION_MAJOR) && \
+	(NCURSES_VERSION_MAJOR > 5 || \
+	(NCURSES_VERSION_MAJOR == 5 && NCURSES_VERSION_MINOR > 8)))
+	"*:Hls=\\E]8;%?%p1%l%tid=%p1%s%;;%p2%s\\E\\\\",
+#endif
+	NULL
+};
+static const struct tty_feature tty_feature_hyperlinks = {
+	"hyperlinks",
+	tty_feature_hyperlinks_capabilities,
 	0
 };
 
@@ -238,17 +265,94 @@ static const struct tty_feature tty_feature_rectfill = {
 	TERM_DECFRA
 };
 
+/* Use builtin function keys only. */
+static const char *tty_feature_ignorefkeys_capabilities[] = {
+	"kf0@",
+	"kf1@",
+	"kf2@",
+	"kf3@",
+	"kf4@",
+	"kf5@",
+	"kf6@",
+	"kf7@",
+	"kf8@",
+	"kf9@",
+	"kf10@",
+	"kf11@",
+	"kf12@",
+	"kf13@",
+	"kf14@",
+	"kf15@",
+	"kf16@",
+	"kf17@",
+	"kf18@",
+	"kf19@",
+	"kf20@",
+	"kf21@",
+	"kf22@",
+	"kf23@",
+	"kf24@",
+	"kf25@",
+	"kf26@",
+	"kf27@",
+	"kf28@",
+	"kf29@",
+	"kf30@",
+	"kf31@",
+	"kf32@",
+	"kf33@",
+	"kf34@",
+	"kf35@",
+	"kf36@",
+	"kf37@",
+	"kf38@",
+	"kf39@",
+	"kf40@",
+	"kf41@",
+	"kf42@",
+	"kf43@",
+	"kf44@",
+	"kf45@",
+	"kf46@",
+	"kf47@",
+	"kf48@",
+	"kf49@",
+	"kf50@",
+	"kf51@",
+	"kf52@",
+	"kf53@",
+	"kf54@",
+	"kf55@",
+	"kf56@",
+	"kf57@",
+	"kf58@",
+	"kf59@",
+	"kf60@",
+	"kf61@",
+	"kf62@",
+	"kf63@",
+	NULL
+};
+static const struct tty_feature tty_feature_ignorefkeys = {
+	"ignorefkeys",
+	tty_feature_ignorefkeys_capabilities,
+	0
+};
+
 /* Available terminal features. */
 static const struct tty_feature *tty_features[] = {
 	&tty_feature_256,
 	&tty_feature_bpaste,
 	&tty_feature_ccolour,
 	&tty_feature_clipboard,
+	&tty_feature_hyperlinks,
 	&tty_feature_cstyle,
 	&tty_feature_extkeys,
 	&tty_feature_focus,
+	&tty_feature_ignorefkeys,
 	&tty_feature_margins,
 	&tty_feature_mouse,
+	&tty_feature_osc7,
 	&tty_feature_overline,
 	&tty_feature_rectfill,
 	&tty_feature_rgb,
@@ -356,14 +460,14 @@ tty_default_features(int *feat, const char *name, u_int version)
 		},
 		{ .name = "tmux",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM
-			      ",ccolour,cstyle,focus,overline,usstyle"
+			      ",ccolour,cstyle,focus,overline,usstyle,hyperlinks"
 		},
 		{ .name = "rxvt-unicode",
-		  .features = "256,bpaste,ccolour,cstyle,mouse,title"
+		  .features = "256,bpaste,ccolour,cstyle,mouse,title,ignorefkeys"
 		},
 		{ .name = "iTerm2",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM
-			      ",cstyle,extkeys,margins,sync"
+			      ",cstyle,extkeys,margins,usstyle,sync,osc7,hyperlinks"
 		},
 		{ .name = "XTerm",
 		  /*

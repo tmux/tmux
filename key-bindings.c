@@ -54,6 +54,9 @@
 	" '#{?mouse_word,Copy #[underscore]#{=/9/...:mouse_word},}' 'c' {copy-mode -q; set-buffer -- \"#{q:mouse_word}\"}" \
 	" '#{?mouse_line,Copy Line,}' 'l' {copy-mode -q; set-buffer -- \"#{q:mouse_line}\"}" \
 	" ''" \
+	" '#{?mouse_hyperlink,Type #[underscore]#{=/9/...:mouse_hyperlink},}' 'C-h' {copy-mode -q; send-keys -l -- \"#{q:mouse_hyperlink}\"}" \
+	" '#{?mouse_hyperlink,Copy #[underscore]#{=/9/...:mouse_hyperlink},}' 'h' {copy-mode -q; set-buffer -- \"#{q:mouse_hyperlink}\"}" \
+	" ''" \
 	" 'Horizontal Split' 'h' {split-window -h}" \
 	" 'Vertical Split' 'v' {split-window -v}" \
 	" ''" \
@@ -492,6 +495,7 @@ key_bindings_init(void)
 		"bind -Tcopy-mode \\; { send -X jump-again }",
 		"bind -Tcopy-mode F { command-prompt -1p'(jump backward)' { send -X jump-backward '%%' } }",
 		"bind -Tcopy-mode N { send -X search-reverse }",
+		"bind -Tcopy-mode P { send -X toggle-position }",
 		"bind -Tcopy-mode R { send -X rectangle-toggle }",
 		"bind -Tcopy-mode T { command-prompt -1p'(jump to backward)' { send -X jump-to-backward '%%' } }",
 		"bind -Tcopy-mode X { send -X set-mark }",
@@ -588,6 +592,7 @@ key_bindings_init(void)
 		"bind -Tcopy-mode-vi L { send -X bottom-line }",
 		"bind -Tcopy-mode-vi M { send -X middle-line }",
 		"bind -Tcopy-mode-vi N { send -X search-reverse }",
+		"bind -Tcopy-mode-vi P { send -X toggle-position }",
 		"bind -Tcopy-mode-vi T { command-prompt -1p'(jump to backward)' { send -X jump-to-backward '%%' } }",
 		"bind -Tcopy-mode-vi V { send -X select-line }",
 		"bind -Tcopy-mode-vi W { send -X next-space }",

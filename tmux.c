@@ -325,7 +325,7 @@ find_home(void)
 const char *
 getversion(void)
 {
-	return TMUX_VERSION;
+	return (TMUX_VERSION);
 }
 
 int

@@ -144,7 +144,7 @@ cmd_display_panes_draw_pane(struct screen_redraw_ctx *ctx,
 		llen = 0;
 
 	if (sx < len * 6 || sy < 5) {
-		tty_attributes(tty, &fgc, &grid_default_cell, NULL);
+		tty_attributes(tty, &fgc, &grid_default_cell, NULL, NULL);
 		if (sx >= len + llen + 1) {
 			len += llen + 1;
 			tty_cursor(tty, xoff + px - len / 2, yoff + py);
@@ -161,7 +161,7 @@ cmd_display_panes_draw_pane(struct screen_redraw_ctx *ctx,
 	px -= len * 3;
 	py -= 2;
 
-	tty_attributes(tty, &bgc, &grid_default_cell, NULL);
+	tty_attributes(tty, &bgc, &grid_default_cell, NULL, NULL);
 	for (ptr = buf; *ptr != '\0'; ptr++) {
 		if (*ptr < '0' || *ptr > '9')
 			continue;
@@ -179,7 +179,7 @@ cmd_display_panes_draw_pane(struct screen_redraw_ctx *ctx,
 
 	if (sy <= 6)
 		goto out;
-	tty_attributes(tty, &fgc, &grid_default_cell, NULL);
+	tty_attributes(tty, &fgc, &grid_default_cell, NULL, NULL);
 	if (rlen != 0 && sx >= rlen) {
 		tty_cursor(tty, xoff + sx - rlen, yoff);
 		tty_putn(tty, rbuf, rlen, rlen);

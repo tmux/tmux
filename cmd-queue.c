@@ -19,9 +19,11 @@
 #include <sys/types.h>
 
 #include <ctype.h>
+#include <pwd.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "tmux.h"
 
@@ -124,7 +126,7 @@ cmdq_new(void)
 {
 	struct cmdq_list	*queue;
 
-	queue = xcalloc (1, sizeof *queue);
+	queue = xcalloc(1, sizeof *queue);
 	TAILQ_INIT (&queue->list);
 	return (queue);
 }
@@ -558,17 +560,31 @@ cmdq_add_message(struct cmdq_item *item)
 {
 	struct client		*c = item->client;
 	struct cmdq_state	*state = item->state;
-	const char		*name, *key;
+	const char		*key;
 	char			*tmp;
+	uid_t                    uid;
+	struct passwd		*pw;
+	char                    *user = NULL;
 
 	tmp = cmd_print(item->cmd);
 	if (c != NULL) {
-		name = c->name;
+		uid = proc_get_peer_uid(c->peer);
+		if (uid != (uid_t)-1 && uid != getuid()) {
+			if ((pw = getpwuid(uid)) != NULL)
+				xasprintf(&user, "[%s]", pw->pw_name);
+			else
+				user = xstrdup("[unknown]");
+		} else
+			user = xstrdup("");
 		if (c->session != NULL && state->event.key != KEYC_NONE) {
 			key = key_string_lookup_key(state->event.key, 0);
-			server_add_message("%s key %s: %s", name, key, tmp);
-		} else
-			server_add_message("%s command: %s", name, tmp);
+			server_add_message("%s%s key %s: %s", c->name, user,
+			    key, tmp);
+		} else {
+			server_add_message("%s%s command: %s", c->name, user,
+			    tmp);
+		}
+		free(user);
 	} else
 		server_add_message("command: %s", tmp);
 	free(tmp);
@@ -840,7 +856,7 @@ cmdq_print(struct cmdq_item *item, const char *fmt, ...)
 			window_pane_set_mode(wp, NULL, &window_view_mode, NULL,
 			    NULL);
 		}
-		window_copy_add(wp, "%s", msg);
+		window_copy_add(wp, 0, "%s", msg);
 	}
 
 	free(msg);

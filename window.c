@@ -329,6 +329,7 @@ window_create(u_int sx, u_int sy, u_int xpixel, u_int ypixel)
 	w->id = next_window_id++;
 	RB_INSERT(windows, &windows, w);
 
+	window_set_fill_character(w);
 	window_update_activity(w);
 
 	log_debug("%s: @%u create %ux%u (%ux%u)", __func__, w->id, sx, sy,
@@ -360,6 +361,7 @@ window_destroy(struct window *w)
 		event_del(&w->offset_timer);
 
 	options_free(w->options);
+	free(w->fill_character);
 
 	free(w->name);
 	free(w);
@@ -761,6 +763,7 @@ window_lost_pane(struct window *w, struct window_pane *wp)
 		if (w->active != NULL) {
 			w->active->flags |= PANE_CHANGED;
 			notify_window("window-pane-changed", w);
+			window_update_focus(w);
 		}
 	} else if (wp == w->last)
 		w->last = NULL;
@@ -937,6 +940,7 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 
 	screen_init(&wp->base, sx, sy, hlimit);
 	wp->screen = &wp->base;
+	window_pane_default_cursor(wp);
 
 	screen_init(&wp->status_screen, 1, 1, 0);
 
@@ -1053,7 +1057,7 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 	if (sx == wp->sx && sy == wp->sy)
 		return;
 
-	r = xmalloc (sizeof *r);
+	r = xmalloc(sizeof *r);
 	r->sx = sx;
 	r->sy = sy;
 	r->osx = wp->sx;
@@ -1597,4 +1601,35 @@ window_pane_update_used_data(struct window_pane *wp,
 	if (size > EVBUFFER_LENGTH(wp->event->input) - used)
 		size = EVBUFFER_LENGTH(wp->event->input) - used;
 	wpo->used += size;
+}
+
+void
+window_set_fill_character(struct window *w)
+{
+	const char		*value;
+	struct utf8_data	*ud;
+
+	free(w->fill_character);
+	w->fill_character = NULL;
+
+	value = options_get_string(w->options, "fill-character");
+	if (*value != '\0' && utf8_isvalid(value)) {
+		ud = utf8_fromcstr(value);
+		if (ud != NULL && ud[0].width == 1)
+			w->fill_character = ud;
+	}
+}
+
+void
+window_pane_default_cursor(struct window_pane *wp)
+{
+	struct screen	*s = wp->screen;
+	int		 c;
+
+	c = options_get_number(wp->options, "cursor-colour");
+	s->default_ccolour = c;
+
+	c = options_get_number(wp->options, "cursor-style");
+	s->default_mode = 0;
+	screen_set_cursor_style(c, &s->default_cstyle, &s->default_mode);
 }

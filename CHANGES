@@ -1,4 +1,101 @@
+CHANGES FROM 3.3 TO 3.3a
+
+* Do not crash when run-shell produces output from a config file.
+
+* Do not unintentionally turn off all mouse mode when button mode is also
+  present.
+
 CHANGES FROM 3.2a TO 3.3
+
+* Add an ACL list for users connecting to the tmux socket. Users may be
+  forbidden from attaching, forced to attach read-only, or allowed to attach
+  read-write. A new command, server-access, configures the list. File system
+  permissions must still be configured manually.
+
+* Emit window-layout-changed on swap-pane.
+
+* Better error reporting when applying custom layouts.
+
+* Handle ANSI escape sequences in run-shell output.
+
+* Add pane_start_path to match start_command.
+
+* Set PWD so shells have a hint about the real path.
+
+* Do not allow pipe-pane on dead panes.
+
+* Do not report mouse positions (incorrectly) above the maximum of 223 in
+  normal mouse mode.
+
+* Add an option (default off) to control the passthrough escape sequence.
+
+* Support more mouse buttons when the terminal sends them.
+
+* Add a window-resized hook which is fired when the window is actually resized
+  which may be later than the client resize.
+
+* Add next_session_id format with the next session ID.
+
+* Add formats for client and server UID and user.
+
+* Add argument to refresh-client -l to forward clipboard to a pane.
+
+* Add remain-on-exit-format to set text shown when pane is dead.
+
+* With split-window -f use percentages of window size not pane size.
+
+* Add an option (fill-character) to set the character used for unused areas of
+  a client.
+
+* Add an option (scroll-on-clear) to control if tmux scrolls into history on
+  clear.
+
+* Add a capability for OSC 7 and use it similarly to how the title is set (and
+  controlled by the same set-titles option).
+
+* Add support for systemd socket activation (where systemd creates the Unix
+  domain socket for tmux rather than tmux creating it). Build with
+  --enable-systemd.
+
+* Add an option (pane-border-indicators) to select how the active pane is shown
+  on the pane border (colour, arrows or both).
+
+* Support underscore styles with capture-pane -e.
+
+* Make pane-border-format a pane option rather than window.
+
+* Respond to OSC 4 queries
+
+* Fix g/G keys in modes to do the same thing as copy mode (and vi).
+
+* Bump the time terminals have to respond to device attributes queries to three
+  seconds.
+
+* If automatic-rename is off, allow the rename escape sequence to set an empty
+  name.
+
+* Trim menu item text more intelligently.
+
+* Add cursor-style and cursor-colour options to set the default cursor style
+  and colour.
+
+* Accept some useful and non-conflicting emacs keys in vi normal mode at the
+  command prompt.
+
+* Add a format modifier (c) to force a colour to RGB.
+
+* Add -s and -S to display-popup to set styles, -b to set lines and -T to set
+  popup title. New popup-border-lines, popup-border-style and popup-style
+  options set the defaults.
+
+* Add -e flag to set an environment variable for a popup.
+
+* Make send-keys without arguments send the key it is bound to (if bound to a
+  key).
+
+* Try to leave terminal cursor at the right position even when tmux is drawing
+  its own cursor or selection (such as at the command prompt and in choose
+  mode) for people using screen readers and similar which can make use of it.
 
 * Change so that {} is converted to tmux commands immediately when parsed. This
   means it must contain valid tmux commands. For commands which expand %% and
@@ -1205,7 +1302,7 @@ Incompatible Changes
 
     bind -Tcopy-mode C-r command-prompt -i -p'search up' "send -X search-backward-incremental '%%'"
 
-  There are also some new commmands available with send -X, such as
+  There are also some new commands available with send -X, such as
   copy-pipe-and-cancel.
 * set-remain-on-exit has gone -- can be achieved with hooks instead.
 * Hooks: before hooks have been removed and only a selection of commands now
@@ -3181,7 +3278,7 @@ The list of older changes is below.
 * (nicm) -n on new-session is now -s, and -n is now the initial window name.
   This was documented but not implemented :-/.
 * (nicm) kill-window command, bound to & by default (because it should be hard
-  to hit accidently).
+  to hit accidentally).
 * (nicm) bell-style option with three choices: "none" completely ignore bell;
   "any" pass through a bell in any window to current; "current" ignore bells
   except in current window. This applies only to the bell terminal signal,

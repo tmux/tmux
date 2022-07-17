@@ -16,8 +16,8 @@
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <sys/param.h>	/* MAXCOMLEN */
 #include <sys/types.h>
+#include <sys/signal.h>
 #include <sys/proc.h>
 #include <sys/sysctl.h>
 #include <sys/stat.h>
@@ -141,7 +141,7 @@ char *
 osdep_get_cwd(int fd)
 {
 	int		name[] = { CTL_KERN, KERN_PROC_CWD, 0 };
-	static char	path[MAXPATHLEN];
+	static char	path[PATH_MAX];
 	size_t		pathlen = sizeof path;
 
 	if ((name[2] = tcgetpgrp(fd)) == -1)

@@ -61,6 +61,7 @@ resize_window(struct window *w, u_int sx, u_int sy, int xpixel, int ypixel)
 	tty_update_window_offset(w);
 	server_redraw_window(w);
 	notify_window("window-layout-changed", w);
+	notify_window("window-resized", w);
 	w->flags &= ~WINDOW_RESIZE;
 }
 
@@ -178,7 +179,7 @@ clients_calculate_size(int type, int current, struct client *c,
 			cw = NULL;
 
 		/* Work out this client's size. */
-		if (cw != NULL) {
+		if (cw != NULL && cw->sx != 0 && cw->sy != 0) {
 			cx = cw->sx;
 			cy = cw->sy;
 		} else {
@@ -348,6 +349,8 @@ recalculate_size_skip_client(struct client *loop, __unused int type,
 	 * is not the current window - this is used for aggressive-resize.
 	 * Otherwise skip any session that doesn't contain the window.
 	 */
+	if (loop->session->curw == NULL)
+		return (1);
 	if (current)
 		return (loop->session->curw->window != w);
 	return (session_has(loop->session, w) == 0);

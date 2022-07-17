@@ -417,7 +417,7 @@ int
 input_key(struct screen *s, struct bufferevent *bev, key_code key)
 {
 	struct input_key_entry	*ike;
-	key_code		 justkey, newkey, outkey;
+	key_code		 justkey, newkey, outkey, modifiers;
 	struct utf8_data	 ud;
 	char			 tmp[64], modifier;
 
@@ -518,7 +518,12 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 		return (input_key(s, bev, key & ~KEYC_CTRL));
 	}
 	outkey = (key & KEYC_MASK_KEY);
-	switch (key & KEYC_MASK_MODIFIERS) {
+	modifiers = (key & KEYC_MASK_MODIFIERS);
+	if (outkey < 32 && outkey != 9 && outkey != 13 && outkey != 27) {
+		outkey = 64 + outkey;
+		modifiers |= KEYC_CTRL;
+	}
+	switch (modifiers) {
 	case KEYC_SHIFT:
 		modifier = '2';
 		break;
@@ -577,13 +582,13 @@ input_key_get_mouse(struct screen *s, struct mouse_event *m, u_int x, u_int y,
 	 */
 	if (m->sgr_type != ' ') {
 		if (MOUSE_DRAG(m->sgr_b) &&
-		    MOUSE_BUTTONS(m->sgr_b) == 3 &&
+		    MOUSE_RELEASE(m->sgr_b) &&
 		    (~s->mode & MODE_MOUSE_ALL))
 			return (0);
 	} else {
 		if (MOUSE_DRAG(m->b) &&
-		    MOUSE_BUTTONS(m->b) == 3 &&
-		    MOUSE_BUTTONS(m->lb) == 3 &&
+		    MOUSE_RELEASE(m->b) &&
+		    MOUSE_RELEASE(m->lb) &&
 		    (~s->mode & MODE_MOUSE_ALL))
 			return (0);
 	}
@@ -601,19 +606,34 @@ input_key_get_mouse(struct screen *s, struct mouse_event *m, u_int x, u_int y,
 		len = xsnprintf(buf, sizeof buf, "\033[<%u;%u;%u%c",
 		    m->sgr_b, x + 1, y + 1, m->sgr_type);
 	} else if (s->mode & MODE_MOUSE_UTF8) {
-		if (m->b > 0x7ff - 32 || x > 0x7ff - 33 || y > 0x7ff - 33)
+		if (m->b > MOUSE_PARAM_UTF8_MAX - MOUSE_PARAM_BTN_OFF ||
+		    x > MOUSE_PARAM_UTF8_MAX - MOUSE_PARAM_POS_OFF ||
+		    y > MOUSE_PARAM_UTF8_MAX - MOUSE_PARAM_POS_OFF)
 			return (0);
 		len = xsnprintf(buf, sizeof buf, "\033[M");
-		len += input_key_split2(m->b + 32, &buf[len]);
-		len += input_key_split2(x + 33, &buf[len]);
-		len += input_key_split2(y + 33, &buf[len]);
+		len += input_key_split2(m->b + MOUSE_PARAM_BTN_OFF, &buf[len]);
+		len += input_key_split2(x + MOUSE_PARAM_POS_OFF, &buf[len]);
+		len += input_key_split2(y + MOUSE_PARAM_POS_OFF, &buf[len]);
 	} else {
-		if (m->b > 223)
+		if (m->b + MOUSE_PARAM_BTN_OFF > MOUSE_PARAM_MAX)
 			return (0);
+
 		len = xsnprintf(buf, sizeof buf, "\033[M");
-		buf[len++] = m->b + 32;
-		buf[len++] = x + 33;
-		buf[len++] = y + 33;
+		buf[len++] = m->b + MOUSE_PARAM_BTN_OFF;
+
+		/*
+		 * The incoming x and y may be out of the range which can be
+		 * supported by the "normal" mouse protocol. Clamp the
+		 * coordinates to the supported range.
+		 */
+		if (x + MOUSE_PARAM_POS_OFF > MOUSE_PARAM_MAX)
+			buf[len++] = MOUSE_PARAM_MAX;
+		else
+			buf[len++] = x + MOUSE_PARAM_POS_OFF;
+		if (y + MOUSE_PARAM_POS_OFF > MOUSE_PARAM_MAX)
+			buf[len++] = MOUSE_PARAM_MAX;
+		else
+			buf[len++] = y + MOUSE_PARAM_POS_OFF;
 	}
 
 	*rbuf = buf;

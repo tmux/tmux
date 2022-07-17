@@ -53,8 +53,8 @@ const struct cmd_entry cmd_clear_history_entry = {
 	.name = "clear-history",
 	.alias = "clearhist",
 
-	.args = { "t:", 0, 0, NULL },
-	.usage = CMD_TARGET_PANE_USAGE,
+	.args = { "Ht:", 0, 0, NULL },
+	.usage = "[-H] " CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -133,7 +133,8 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 	if (Sflag != NULL && strcmp(Sflag, "-") == 0)
 		top = 0;
 	else {
-		n = args_strtonum(args, 'S', INT_MIN, SHRT_MAX, &cause);
+		n = args_strtonum_and_expand(args, 'S', INT_MIN, SHRT_MAX,
+			item, &cause);
 		if (cause != NULL) {
 			top = gd->hsize;
 			free(cause);
@@ -149,7 +150,8 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 	if (Eflag != NULL && strcmp(Eflag, "-") == 0)
 		bottom = gd->hsize + gd->sy - 1;
 	else {
-		n = args_strtonum(args, 'E', INT_MIN, SHRT_MAX, &cause);
+		n = args_strtonum_and_expand(args, 'E', INT_MIN, SHRT_MAX,
+			item, &cause);
 		if (cause != NULL) {
 			bottom = gd->hsize + gd->sy - 1;
 			free(cause);
@@ -175,7 +177,7 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 	buf = NULL;
 	for (i = top; i <= bottom; i++) {
 		line = grid_string_cells(gd, 0, i, sx, &gc, with_codes,
-		    escape_c0, !join_lines && !no_trim);
+		    escape_c0, !join_lines && !no_trim, wp->screen);
 		linelen = strlen(line);
 
 		buf = cmd_capture_pane_append(buf, len, line, linelen);
@@ -202,6 +204,8 @@ cmd_capture_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (cmd_get_entry(self) == &cmd_clear_history_entry) {
 		window_pane_reset_mode_all(wp);
 		grid_clear_history(wp->base.grid);
+		if (args_has(args, 'H'))
+			screen_reset_hyperlinks(wp->screen);
 		return (CMD_RETURN_NORMAL);
 	}
 

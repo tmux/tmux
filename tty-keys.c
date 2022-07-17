@@ -126,7 +126,7 @@ static const struct tty_default_key_raw tty_default_raw_keys[] = {
 	{ "\033\033[C", KEYC_RIGHT|KEYC_CURSOR|KEYC_META },
 	{ "\033\033[D", KEYC_LEFT|KEYC_CURSOR|KEYC_META },
 
-	/* Other (xterm) "cursor" keys. */
+	/* Other xterm keys. */
 	{ "\033OH", KEYC_HOME },
 	{ "\033OF", KEYC_END },
 
@@ -139,7 +139,7 @@ static const struct tty_default_key_raw tty_default_raw_keys[] = {
 	{ "\033\033[H", KEYC_HOME|KEYC_META|KEYC_IMPLIED_META },
 	{ "\033\033[F", KEYC_END|KEYC_META|KEYC_IMPLIED_META },
 
-	/* rxvt-style arrow + modifier keys. */
+	/* rxvt arrow keys. */
 	{ "\033Oa", KEYC_UP|KEYC_CTRL },
 	{ "\033Ob", KEYC_DOWN|KEYC_CTRL },
 	{ "\033Oc", KEYC_RIGHT|KEYC_CTRL },
@@ -150,7 +150,31 @@ static const struct tty_default_key_raw tty_default_raw_keys[] = {
 	{ "\033[c", KEYC_RIGHT|KEYC_SHIFT },
 	{ "\033[d", KEYC_LEFT|KEYC_SHIFT },
 
-	/* rxvt-style function + modifier keys (C = ^, S = $, C-S = @). */
+	/* rxvt function keys. */
+	{ "\033[11~", KEYC_F1 },
+	{ "\033[12~", KEYC_F2 },
+	{ "\033[13~", KEYC_F3 },
+	{ "\033[14~", KEYC_F4 },
+	{ "\033[15~", KEYC_F5 },
+	{ "\033[17~", KEYC_F6 },
+	{ "\033[18~", KEYC_F7 },
+	{ "\033[19~", KEYC_F8 },
+	{ "\033[20~", KEYC_F9 },
+	{ "\033[21~", KEYC_F10 },
+
+	{ "\033[23~", KEYC_F1|KEYC_SHIFT },
+	{ "\033[24~", KEYC_F2|KEYC_SHIFT },
+	{ "\033[25~", KEYC_F3|KEYC_SHIFT },
+	{ "\033[26~", KEYC_F4|KEYC_SHIFT },
+	{ "\033[28~", KEYC_F5|KEYC_SHIFT },
+	{ "\033[29~", KEYC_F6|KEYC_SHIFT },
+	{ "\033[31~", KEYC_F7|KEYC_SHIFT },
+	{ "\033[32~", KEYC_F8|KEYC_SHIFT },
+	{ "\033[33~", KEYC_F9|KEYC_SHIFT },
+	{ "\033[34~", KEYC_F10|KEYC_SHIFT },
+	{ "\033[23$", KEYC_F11|KEYC_SHIFT },
+	{ "\033[24$", KEYC_F12|KEYC_SHIFT },
+
 	{ "\033[11^", KEYC_F1|KEYC_CTRL },
 	{ "\033[12^", KEYC_F2|KEYC_CTRL },
 	{ "\033[13^", KEYC_F3|KEYC_CTRL },
@@ -163,31 +187,6 @@ static const struct tty_default_key_raw tty_default_raw_keys[] = {
 	{ "\033[21^", KEYC_F10|KEYC_CTRL },
 	{ "\033[23^", KEYC_F11|KEYC_CTRL },
 	{ "\033[24^", KEYC_F12|KEYC_CTRL },
-	{ "\033[2^", KEYC_IC|KEYC_CTRL },
-	{ "\033[3^", KEYC_DC|KEYC_CTRL },
-	{ "\033[7^", KEYC_HOME|KEYC_CTRL },
-	{ "\033[8^", KEYC_END|KEYC_CTRL },
-	{ "\033[6^", KEYC_NPAGE|KEYC_CTRL },
-	{ "\033[5^", KEYC_PPAGE|KEYC_CTRL },
-
-	{ "\033[11$", KEYC_F1|KEYC_SHIFT },
-	{ "\033[12$", KEYC_F2|KEYC_SHIFT },
-	{ "\033[13$", KEYC_F3|KEYC_SHIFT },
-	{ "\033[14$", KEYC_F4|KEYC_SHIFT },
-	{ "\033[15$", KEYC_F5|KEYC_SHIFT },
-	{ "\033[17$", KEYC_F6|KEYC_SHIFT },
-	{ "\033[18$", KEYC_F7|KEYC_SHIFT },
-	{ "\033[19$", KEYC_F8|KEYC_SHIFT },
-	{ "\033[20$", KEYC_F9|KEYC_SHIFT },
-	{ "\033[21$", KEYC_F10|KEYC_SHIFT },
-	{ "\033[23$", KEYC_F11|KEYC_SHIFT },
-	{ "\033[24$", KEYC_F12|KEYC_SHIFT },
-	{ "\033[2$", KEYC_IC|KEYC_SHIFT },
-	{ "\033[3$", KEYC_DC|KEYC_SHIFT },
-	{ "\033[7$", KEYC_HOME|KEYC_SHIFT },
-	{ "\033[8$", KEYC_END|KEYC_SHIFT },
-	{ "\033[6$", KEYC_NPAGE|KEYC_SHIFT },
-	{ "\033[5$", KEYC_PPAGE|KEYC_SHIFT },
 
 	{ "\033[11@", KEYC_F1|KEYC_CTRL|KEYC_SHIFT },
 	{ "\033[12@", KEYC_F2|KEYC_CTRL|KEYC_SHIFT },
@@ -201,12 +200,6 @@ static const struct tty_default_key_raw tty_default_raw_keys[] = {
 	{ "\033[21@", KEYC_F10|KEYC_CTRL|KEYC_SHIFT },
 	{ "\033[23@", KEYC_F11|KEYC_CTRL|KEYC_SHIFT },
 	{ "\033[24@", KEYC_F12|KEYC_CTRL|KEYC_SHIFT },
-	{ "\033[2@", KEYC_IC|KEYC_CTRL|KEYC_SHIFT },
-	{ "\033[3@", KEYC_DC|KEYC_CTRL|KEYC_SHIFT },
-	{ "\033[7@", KEYC_HOME|KEYC_CTRL|KEYC_SHIFT },
-	{ "\033[8@", KEYC_END|KEYC_CTRL|KEYC_SHIFT },
-	{ "\033[6@", KEYC_NPAGE|KEYC_CTRL|KEYC_SHIFT },
-	{ "\033[5@", KEYC_PPAGE|KEYC_CTRL|KEYC_SHIFT },
 
 	/* Focus tracking. */
 	{ "\033[I", KEYC_FOCUS_IN },
@@ -798,6 +791,8 @@ partial_key:
 
 	/* Get the time period. */
 	delay = options_get_number(global_options, "escape-time");
+	if (delay == 0)
+		delay = 1;
 	tv.tv_sec = delay / 1000;
 	tv.tv_usec = (delay % 1000) * 1000L;
 
@@ -1061,17 +1056,13 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size,
 		log_debug("%s: mouse input: %.*s", c->name, (int)*size, buf);
 
 		/* Check and return the mouse input. */
-		if (b < 32)
+		if (b < MOUSE_PARAM_BTN_OFF ||
+		    x < MOUSE_PARAM_POS_OFF ||
+		    y < MOUSE_PARAM_POS_OFF)
 			return (-1);
-		b -= 32;
-		if (x >= 33)
-			x -= 33;
-		else
-			x = 256 - x;
-		if (y >= 33)
-			y -= 33;
-		else
-			y = 256 - y;
+		b -= MOUSE_PARAM_BTN_OFF;
+		x -= MOUSE_PARAM_POS_OFF;
+		y -= MOUSE_PARAM_POS_OFF;
 	} else if (buf[2] == '<') {
 		/* Read the three inputs. */
 		*size = 3;
@@ -1118,7 +1109,7 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size,
 		/* Type is M for press, m for release. */
 		sgr_type = ch;
 		if (sgr_type == 'm')
-			b |= 3;
+			b = 3;
 
 		/*
 		 * Some terminals (like PuTTY 0.63) mistakenly send
@@ -1126,7 +1117,7 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size,
 		 * Discard it before it reaches any program running inside
 		 * tmux.
 		 */
-		if (sgr_type == 'm' && (sgr_b & 64))
+		if (sgr_type == 'm' && MOUSE_WHEEL(sgr_b))
 		    return (-2);
 	} else
 		return (-1);
@@ -1154,12 +1145,14 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size,
  * partial.
  */
 static int
-tty_keys_clipboard(__unused struct tty *tty, const char *buf, size_t len,
-    size_t *size)
+tty_keys_clipboard(struct tty *tty, const char *buf, size_t len, size_t *size)
 {
-	size_t	 end, terminator, needed;
-	char	*copy, *out;
-	int	 outlen;
+	struct client		*c = tty->client;
+	struct window_pane	*wp;
+	size_t			 end, terminator, needed;
+	char			*copy, *out;
+	int			 outlen;
+	u_int			 i;
 
 	*size = 0;
 
@@ -1217,6 +1210,12 @@ tty_keys_clipboard(__unused struct tty *tty, const char *buf, size_t len,
 	buf++;
 	end--;
 
+	/* If we did not request this, ignore it. */
+	if (~tty->flags & TTY_OSC52QUERY)
+		return (0);
+	tty->flags &= ~TTY_OSC52QUERY;
+	evtimer_del(&tty->clipboard_timer);
+
 	/* It has to be a string so copy it. */
 	copy = xmalloc(end + 1);
 	memcpy(copy, buf, end);
@@ -1232,9 +1231,20 @@ tty_keys_clipboard(__unused struct tty *tty, const char *buf, size_t len,
 	}
 	free(copy);
 
-	/* Create a new paste buffer. */
+	/* Create a new paste buffer and forward to panes. */
 	log_debug("%s: %.*s", __func__, outlen, out);
-	paste_add(NULL, out, outlen);
+	if (c->flags & CLIENT_CLIPBOARDBUFFER) {
+		paste_add(NULL, out, outlen);
+		c->flags &= ~CLIENT_CLIPBOARDBUFFER;
+	}
+	for (i = 0; i < c->clipboard_npanes; i++) {
+		wp = window_pane_find_by_id(c->clipboard_panes[i]);
+		if (wp != NULL)
+			input_reply_clipboard(wp->event, out, outlen, "\033\\");
+	}
+	free(c->clipboard_panes);
+	c->clipboard_panes = NULL;
+	c->clipboard_npanes = 0;
 
 	return (0);
 }

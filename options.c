@@ -1106,7 +1106,8 @@ options_push_changes(const char *name)
 	struct session		*s;
 	struct window		*w;
 	struct window_pane	*wp;
-	int			 c;
+
+	log_debug("%s: %s", __func__, name);
 
 	if (strcmp(name, "automatic-rename") == 0) {
 		RB_FOREACH(w, windows, &windows) {
@@ -1117,18 +1118,16 @@ options_push_changes(const char *name)
 		}
 	}
 	if (strcmp(name, "cursor-colour") == 0) {
-		RB_FOREACH(wp, window_pane_tree, &all_window_panes) {
-			c = options_get_number(wp->options, name);
-			wp->screen->default_ccolour = c;
-		}
+		RB_FOREACH(wp, window_pane_tree, &all_window_panes)
+			window_pane_default_cursor(wp);
 	}
 	if (strcmp(name, "cursor-style") == 0) {
-		RB_FOREACH(wp, window_pane_tree, &all_window_panes) {
-			wp->screen->default_mode = 0;
-			screen_set_cursor_style(options_get_number(wp->options,
-			    name), &wp->screen->default_cstyle,
-			    &wp->screen->default_mode);
-		}
+		RB_FOREACH(wp, window_pane_tree, &all_window_panes)
+			window_pane_default_cursor(wp);
+	}
+	if (strcmp(name, "fill-character") == 0) {
+		RB_FOREACH(w, windows, &windows)
+			window_set_fill_character(w);
 	}
 	if (strcmp(name, "key-table") == 0) {
 		TAILQ_FOREACH(loop, &clients, entry)

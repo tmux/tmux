@@ -67,6 +67,12 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct format_tree		*ft;
 	sigset_t			 set, oldset;
 
+	/* Do nothing if pane is dead. */
+	if (wp->fd == -1 || (wp->flags & PANE_EXITED)) {
+		cmdq_error(item, "target pane has exited");
+		return (CMD_RETURN_ERROR);
+	}
+
 	/* Destroy the old pipe. */
 	old_fd = wp->pipe_fd;
 	if (wp->pipe_fd != -1) {

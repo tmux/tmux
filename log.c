@@ -143,7 +143,7 @@ fatal(const char *msg, ...)
 	va_list	 ap;
 
 	if (snprintf(tmp, sizeof tmp, "fatal: %s: ", strerror(errno)) < 0)
-		exit (1);
+		exit(1);
 
 	va_start(ap, msg);
 	log_vwrite(msg, ap, tmp);
