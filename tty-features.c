@@ -21,6 +21,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if defined(HAVE_CURSES_H)
+#include <curses.h>
+#elif defined(HAVE_NCURSES_H)
+#include <ncurses.h>
+#endif
+
 #include "tmux.h"
 
 /*
