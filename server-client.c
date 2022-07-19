@@ -2221,7 +2221,8 @@ server_client_check_pane_buffer(struct window_pane *wp)
 		}
 		wpo = control_pane_offset(c, wp, &flag);
 		if (wpo == NULL) {
-			off = 0;
+			if (!flag)
+				off = 0;
 			continue;
 		}
 		if (!flag)
