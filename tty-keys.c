@@ -934,34 +934,16 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 		nkey = number;
 
 	/* Update the modifiers. */
-	switch (modifiers) {
-	case 2:
-		nkey |= KEYC_SHIFT;
-		break;
-	case 3:
-		nkey |= (KEYC_META|KEYC_IMPLIED_META);
-		break;
-	case 4:
-		nkey |= (KEYC_SHIFT|KEYC_META|KEYC_IMPLIED_META);
-		break;
-	case 5:
-		nkey |= KEYC_CTRL;
-		break;
-	case 6:
-		nkey |= (KEYC_SHIFT|KEYC_CTRL);
-		break;
-	case 7:
-		nkey |= (KEYC_META|KEYC_CTRL);
-		break;
-	case 8:
-		nkey |= (KEYC_SHIFT|KEYC_META|KEYC_IMPLIED_META|KEYC_CTRL);
-		break;
-	case 9:
-		nkey |= (KEYC_META|KEYC_IMPLIED_META);
-		break;
-	default:
-		*key = KEYC_NONE;
-		break;
+	if (modifiers > 0) {
+		modifiers--;
+		if (modifiers & 1)
+			nkey |= KEYC_SHIFT;
+		if (modifiers & 2)
+			nkey |= (KEYC_META|KEYC_IMPLIED_META); /* Alt */
+		if (modifiers & 4)
+			nkey |= KEYC_CTRL;
+		if (modifiers & 8)
+			nkey |= (KEYC_META|KEYC_IMPLIED_META); /* Meta */
 	}
 
 	/*
