@@ -268,10 +268,8 @@ if test "x$found_libevent" = xno; then
 fi
 
 # Look for yacc.
-AC_CHECK_PROG(found_yacc, yacc, yes, no)
-if test "x$found_yacc" = xno; then
-	AC_MSG_ERROR("yacc not found")
-fi
+$YACC &>/dev/null
+AS_IF([ test $? == 127 ], [AC_MSG_ERROR("yacc not found")])
 
 # Look for ncurses or curses. Try pkg-config first then directly for the
 # library.
