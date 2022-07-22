@@ -3612,6 +3612,8 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 		data->searchall = 0;
 	} else
 		visible_only = (strcmp(wp->searchstr, str) == 0);
+	if (visible_only == 0 && data->searchmark != NULL)
+		window_copy_clear_marks(wme);
 	free(wp->searchstr);
 	wp->searchstr = xstrdup(str);
 	wp->searchregex = regex;
