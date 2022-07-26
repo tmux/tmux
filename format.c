@@ -3564,12 +3564,12 @@ found:
 	}
 	if (modifiers & FORMAT_QUOTE_SHELL) {
 		saved = found;
-		found = xstrdup(format_quote_shell(saved));
+		found = format_quote_shell(saved);
 		free(saved);
 	}
 	if (modifiers & FORMAT_QUOTE_STYLE) {
 		saved = found;
-		found = xstrdup(format_quote_style(saved));
+		found = format_quote_style(saved);
 		free(saved);
 	}
 	return (found);
