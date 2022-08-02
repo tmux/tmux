@@ -895,6 +895,10 @@ args_percentage(struct args *args, u_char flag, long long minval,
 		*cause = xstrdup("missing");
 		return (0);
 	}
+	if (TAILQ_EMPTY(&entry->values)) {
+		*cause = xstrdup("empty");
+		return (0);
+	}
 	value = TAILQ_LAST(&entry->values, args_values)->string;
 	return (args_string_percentage(value, minval, maxval, curval, cause));
 }
@@ -909,6 +913,10 @@ args_string_percentage(const char *value, long long minval, long long maxval,
 	size_t		 valuelen = strlen(value);
 	char		*copy;
 
+	if (valuelen == 0) {
+		*cause = xstrdup("empty");
+		return (0);
+	}
 	if (value[valuelen - 1] == '%') {
 		copy = xstrdup(value);
 		copy[valuelen - 1] = '\0';
@@ -953,6 +961,10 @@ args_percentage_and_expand(struct args *args, u_char flag, long long minval,
 
 	if ((entry = args_find(args, flag)) == NULL) {
 		*cause = xstrdup("missing");
+		return (0);
+	}
+	if (TAILQ_EMPTY(&entry->values)) {
+		*cause = xstrdup("empty");
 		return (0);
 	}
 	value = TAILQ_LAST(&entry->values, args_values)->string;
