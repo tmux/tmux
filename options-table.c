@@ -87,6 +87,9 @@ static const char *options_table_detach_on_destroy_list[] = {
 static const char *options_table_extended_keys_list[] = {
 	"off", "on", "always", NULL
 };
+static const char *options_table_allow_passthrough_list[] = {
+	"off", "on", "all", NULL
+};
 
 /* Status line format. */
 #define OPTIONS_TABLE_STATUS_FORMAT1 \
@@ -803,11 +806,14 @@ const struct options_table_entry options_table[] = {
 	},
 
 	{ .name = "allow-passthrough",
-	  .type = OPTIONS_TABLE_FLAG,
+	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
+	  .choices = options_table_allow_passthrough_list,
 	  .default_num = 0,
 	  .text = "Whether applications are allowed to use the escape sequence "
-	          "to bypass tmux."
+		  "to bypass tmux. Can be 'off' (disallowed), 'on' (allowed "
+		  "if the pane is visible), or 'all' (allowed even if the pane "
+		  "is invisible)."
 	},
 
 	{ .name = "allow-rename",
