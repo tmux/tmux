@@ -267,6 +267,12 @@ if test "x$found_libevent" = xno; then
 	AC_MSG_ERROR("libevent not found")
 fi
 
+# Look for yacc.
+AC_CHECK_PROG(found_yacc, $YACC, yes, no)
+if test "x$found_yacc" = xno; then
+	AC_MSG_ERROR("yacc not found")
+fi
+
 # Look for ncurses or curses. Try pkg-config first then directly for the
 # library.
 PKG_CHECK_MODULES(
