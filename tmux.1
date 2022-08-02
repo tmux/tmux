@@ -4461,11 +4461,17 @@ Available pane options are:
 .Pp
 .Bl -tag -width Ds -compact
 .It Xo Ic allow-passthrough
-.Op Ic on | off
+.Op Ic on | off | all
 .Xc
 Allow programs in the pane to bypass
 .Nm
 using a terminal escape sequence (\eePtmux;...\ee\e\e).
+If set to
+.Ic on ,
+passthrough sequences will be allowed only if the pane is visible.
+If set to
+.Ic all ,
+they will be allowed even if the pane is invisible.
 .Pp
 .It Xo Ic allow-rename
 .Op Ic on | off
