@@ -3673,6 +3673,7 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 		if (direction &&
 		    window_copy_search_mark_at(data, fx, fy, &at) == 0 &&
 		    at > 0 &&
+		    data->searchmark != NULL &&
 		    data->searchmark[at] == data->searchmark[at - 1]) {
 			window_copy_move_after_search_mark(data, &fx, &fy,
 			    wrapflag);
@@ -3705,6 +3706,7 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 			        &start) == 0) {
 				while (window_copy_search_mark_at(data, fx, fy,
 				           &at) == 0 &&
+				       data->searchmark != NULL &&
 				       data->searchmark[at] ==
 				           data->searchmark[start]) {
 					data->cx = fx;
