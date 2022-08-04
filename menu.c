@@ -323,27 +323,64 @@ menu_key_cb(struct client *c, void *data, struct key_event *event)
 		} while ((name == NULL || *name == '-') && md->choice != old);
 		c->flags |= CLIENT_REDRAWOVERLAY;
 		return (0);
-	case 'g':
 	case KEYC_PPAGE:
 	case '\002': /* C-b */
-		if (md->choice > 5)
-			md->choice -= 5;
-		else
+		if (md->choice < 6)
 			md->choice = 0;
-		while (md->choice != count && (name == NULL || *name == '-'))
+		else {
+			i = 5;
+			while (i > 0) {
+				md->choice--;
+				name = menu->items[md->choice].name;
+				if (md->choice != 0 &&
+				    (name != NULL && *name != '-'))
+					i--;
+				else if (md->choice == 0)
+					break;
+			}
+		}
+		c->flags |= CLIENT_REDRAWOVERLAY;
+		break;
+	case KEYC_NPAGE:
+		if (md->choice > count - 6) {
+			md->choice = count - 1;
+			name = menu->items[md->choice].name;
+		} else {
+			i = 5;
+			while (i > 0) {
+				md->choice++;
+				name = menu->items[md->choice].name;
+				if (md->choice != count - 1 &&
+				    (name != NULL && *name != '-'))
+					i++;
+				else if (md->choice == count - 1)
+					break;
+			}
+		}
+		while (name == NULL || *name == '-') {
+			md->choice--;
+			name = menu->items[md->choice].name;
+		}
+		c->flags |= CLIENT_REDRAWOVERLAY;
+		break;
+	case 'g':
+	case KEYC_HOME:
+		md->choice = 0;
+		name = menu->items[md->choice].name;
+		while (name == NULL || *name == '-') {
 			md->choice++;
-		if (md->choice == count)
-			md->choice = -1;
+			name = menu->items[md->choice].name;
+		}
 		c->flags |= CLIENT_REDRAWOVERLAY;
 		break;
 	case 'G':
-	case KEYC_NPAGE:
-		if (md->choice > count - 6)
-			md->choice = count - 1;
-		else
-			md->choice += 5;
-		while (md->choice != -1 && (name == NULL || *name == '-'))
+	case KEYC_END:
+		md->choice = count - 1;
+		name = menu->items[md->choice].name;
+		while (name == NULL || *name == '-') {
 			md->choice--;
+			name = menu->items[md->choice].name;
+		}
 		c->flags |= CLIENT_REDRAWOVERLAY;
 		break;
 	case '\006': /* C-f */
