@@ -344,7 +344,7 @@ key_bindings_init_done(__unused struct cmdq_item *item, __unused void *data)
 void
 key_bindings_init(void)
 {
-	static const char *defaults[] = {
+	static const char * const defaults[] = {
 		/* Prefix keys. */
 		"bind -N 'Send the prefix key' C-b { send-prefix }",
 		"bind -N 'Rotate through the panes' C-o { rotate-window }",
