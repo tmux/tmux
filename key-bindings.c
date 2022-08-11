@@ -616,6 +616,8 @@ key_bindings_init(void)
 		"bind -Tcopy-mode-vi '{' { send -X previous-paragraph }",
 		"bind -Tcopy-mode-vi '}' { send -X next-paragraph }",
 		"bind -Tcopy-mode-vi % { send -X next-matching-bracket }",
+		"bind -Tcopy-mode-vi Home { send -X start-of-line }",
+		"bind -Tcopy-mode-vi End { send -X end-of-line }",
 		"bind -Tcopy-mode-vi MouseDown1Pane { select-pane }",
 		"bind -Tcopy-mode-vi MouseDrag1Pane { select-pane; send -X begin-selection }",
 		"bind -Tcopy-mode-vi MouseDragEnd1Pane { send -X copy-pipe-and-cancel }",
