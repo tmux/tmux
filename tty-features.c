@@ -271,6 +271,17 @@ static const struct tty_feature tty_feature_rectfill = {
 	TERM_DECFRA
 };
 
+/* Terminal does not use bright colors for bold display. */
+static const char *tty_feature_nobr_capabilities[] = {
+	"Nobr",
+	NULL
+};
+static const struct tty_feature tty_feature_nobr = {
+	"nobr",
+	tty_feature_nobr_capabilities,
+	0
+};
+
 /* Use builtin function keys only. */
 static const char *tty_feature_ignorefkeys_capabilities[] = {
 	"kf0@",
@@ -358,6 +369,7 @@ static const struct tty_feature *tty_features[] = {
 	&tty_feature_ignorefkeys,
 	&tty_feature_margins,
 	&tty_feature_mouse,
+	&tty_feature_nobr,
 	&tty_feature_osc7,
 	&tty_feature_overline,
 	&tty_feature_rectfill,
