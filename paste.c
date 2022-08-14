@@ -206,6 +206,8 @@ paste_add(const char *prefix, char *data, size_t size)
 	pb->order = paste_next_order++;
 	RB_INSERT(paste_name_tree, &paste_by_name, pb);
 	RB_INSERT(paste_time_tree, &paste_by_time, pb);
+
+        notify_paste(pb->name);
 }
 
 /* Rename a paste buffer. */
@@ -252,6 +254,9 @@ paste_rename(const char *oldname, const char *newname, char **cause)
 	pb->automatic = 0;
 
 	RB_INSERT(paste_name_tree, &paste_by_name, pb);
+
+        notify_paste(oldname);
+        notify_paste(newname);
 
 	return (0);
 }
@@ -301,6 +306,8 @@ paste_set(char *data, size_t size, const char *name, char **cause)
 	RB_INSERT(paste_name_tree, &paste_by_name, pb);
 	RB_INSERT(paste_time_tree, &paste_by_time, pb);
 
+        notify_paste(name);
+
 	return (0);
 }
 
@@ -311,6 +318,8 @@ paste_replace(struct paste_buffer *pb, char *data, size_t size)
 	free(pb->data);
 	pb->data = data;
 	pb->size = size;
+
+        notify_paste(pb->name);
 }
 
 /* Convert start of buffer into a nice string. */
