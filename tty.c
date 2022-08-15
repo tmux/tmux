@@ -2690,12 +2690,14 @@ tty_check_fg(struct tty *tty, struct colour_palette *palette,
 
 	/*
 	 * Perform substitution if this pane has a palette. If the bright
-	 * attribute is set, use the bright entry in the palette by changing to
-	 * the aixterm colour.
+	 * attribute is set and Nobr is not present, use the bright entry in
+	 * the palette by changing to the aixterm colour
 	 */
 	if (~gc->flags & GRID_FLAG_NOPALETTE) {
 		c = gc->fg;
-		if (c < 8 && gc->attr & GRID_ATTR_BRIGHT)
+		if (c < 8 &&
+		    gc->attr & GRID_ATTR_BRIGHT &&
+		    !tty_term_has(tty->term, TTYC_NOBR))
 			c += 90;
 		if ((c = colour_palette_get(palette, c)) != -1)
 			gc->fg = c;
