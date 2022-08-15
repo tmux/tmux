@@ -234,3 +234,16 @@ control_notify_session_window_changed(struct session *s)
 		    s->curw->window->id);
 	}
 }
+
+void
+control_notify_paste_buffer_changed(const char *name)
+{
+	struct client	*c;
+
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c))
+			continue;
+
+		control_write(c, "%%paste-changed %s", name);
+	}
+}
