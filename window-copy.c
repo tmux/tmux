@@ -1251,6 +1251,32 @@ window_copy_cmd_cursor_right(struct window_copy_cmd_state *cs)
 }
 
 static enum window_copy_cmd_action
+window_copy_cmd_scroll_middle(struct window_copy_cmd_state *cs)
+{
+	struct window_mode_entry	*wme = cs->wme;
+	struct window_copy_mode_data	*data = wme->data;
+	u_int				 mid_value, oy, delta;
+	int				 scroll_up; /* >0 up, <0 down */
+
+	mid_value = (screen_size_y(&data->screen) - 1) / 2;
+	scroll_up = data->cy - mid_value;
+	delta = abs(scroll_up);
+	oy = screen_hsize(data->backing) + data->cy - data->oy;
+
+	log_debug ("XXX %u %u %u %d %u", mid_value, oy, delta, scroll_up, data->oy);
+	if (scroll_up > 0 && data->oy >= delta) {
+		window_copy_scroll_up(wme, delta);
+		data->cy -= delta;
+	} else if (scroll_up < 0 && oy >= delta) {
+		window_copy_scroll_down(wme, delta);
+		data->cy += delta;
+	}
+
+	window_copy_update_selection(wme, 0, 0);
+	return (WINDOW_COPY_CMD_REDRAW);
+}
+
+static enum window_copy_cmd_action
 window_copy_cmd_cursor_up(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
@@ -2779,6 +2805,12 @@ static const struct {
 	  .maxargs = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_scroll_down_and_cancel
+	},
+	{ .command = "scroll-middle",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_scroll_middle
 	},
 	{ .command = "scroll-up",
 	  .minargs = 0,
