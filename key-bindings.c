@@ -605,6 +605,7 @@ key_bindings_init(void)
 		"bind -Tcopy-mode-vi h { send -X cursor-left }",
 		"bind -Tcopy-mode-vi j { send -X cursor-down }",
 		"bind -Tcopy-mode-vi k { send -X cursor-up }",
+		"bind -Tcopy-mode-vi z { send -X scroll-middle }",
 		"bind -Tcopy-mode-vi l { send -X cursor-right }",
 		"bind -Tcopy-mode-vi n { send -X search-again }",
 		"bind -Tcopy-mode-vi o { send -X other-end }",
