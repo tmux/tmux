@@ -588,6 +588,8 @@ file_write_open(struct client_files *files, struct tmuxpeer *peer,
 
 	cf->event = bufferevent_new(cf->fd, NULL, file_write_callback,
 	    file_write_error_callback, cf);
+	if (cf->event == NULL)
+		fatalx("out of memory");
 	bufferevent_enable(cf->event, EV_WRITE);
 	goto reply;
 
@@ -747,6 +749,8 @@ file_read_open(struct client_files *files, struct tmuxpeer *peer,
 
 	cf->event = bufferevent_new(cf->fd, file_read_callback, NULL,
 	    file_read_error_callback, cf);
+	if (cf->event == NULL)
+		fatalx("out of memory");
 	bufferevent_enable(cf->event, EV_READ);
 	return;
 
