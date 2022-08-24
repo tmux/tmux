@@ -1043,6 +1043,8 @@ window_pane_set_event(struct window_pane *wp)
 
 	wp->event = bufferevent_new(wp->fd, window_pane_read_callback,
 	    NULL, window_pane_error_callback, wp);
+	if (wp->event == NULL)
+		fatalx("out of memory");
 	wp->ictx = input_init(wp, wp->event, &wp->palette);
 
 	bufferevent_enable(wp->event, EV_READ|EV_WRITE);
