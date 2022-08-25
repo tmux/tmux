@@ -1235,14 +1235,14 @@ Lock all clients attached to
 Create a new session with name
 .Ar session-name .
 .Pp
-The new session is attached to the current terminal unless
+The new session is attached to the current terminal, unless
 .Fl d
 is given.
 .Ar window-name
 and
 .Ar shell-command
 are the name of and shell command to execute in the initial window.
-With
+When creating a detached session with
 .Fl d ,
 the initial size comes from the global
 .Ic default-size
