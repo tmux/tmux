@@ -154,7 +154,7 @@ layout_check(struct layout_cell *lc)
 
 /* Parse a layout string and arrange window as layout. */
 int
-layout_parse(struct window *w, const char *layout)
+layout_parse(struct window *w, const char *layout, char **cause)
 {
 	struct layout_cell	*lc, *lcchild;
 	struct window_pane	*wp;
@@ -165,22 +165,31 @@ layout_parse(struct window *w, const char *layout)
 	if (sscanf(layout, "%hx,", &csum) != 1)
 		return (-1);
 	layout += 5;
-	if (csum != layout_checksum(layout))
+	if (csum != layout_checksum(layout)) {
+		*cause = xstrdup("invalid layout");
 		return (-1);
+	}
 
 	/* Build the layout. */
 	lc = layout_construct(NULL, &layout);
-	if (lc == NULL)
+	if (lc == NULL) {
+		*cause = xstrdup("invalid layout");
 		return (-1);
-	if (*layout != '\0')
+	}
+	if (*layout != '\0') {
+		*cause = xstrdup("invalid layout");
 		goto fail;
+	}
 
 	/* Check this window will fit into the layout. */
 	for (;;) {
 		npanes = window_count_panes(w);
 		ncells = layout_count_cells(lc);
-		if (npanes > ncells)
+		if (npanes > ncells) {
+			xasprintf(cause, "have %u panes but need %u", npanes,
+			    ncells);
 			goto fail;
+		}
 		if (npanes == ncells)
 			break;
 
@@ -217,8 +226,10 @@ layout_parse(struct window *w, const char *layout)
 	}
 
 	/* Check the new layout. */
-	if (!layout_check(lc))
+	if (!layout_check(lc)) {
+		*cause = xstrdup("size mismatch after applying layout");
 		return (-1);
+	}
 
 	/* Resize to the layout size. */
 	window_resize(w, lc->sx, lc->sy, -1, -1);

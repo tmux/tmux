@@ -43,7 +43,7 @@ const struct cmd_entry cmd_attach_session_entry = {
 
 	/* -t is special */
 
-	.flags = CMD_STARTSERVER,
+	.flags = CMD_STARTSERVER|CMD_READONLY,
 	.exec = cmd_attach_session_exec
 };
 
@@ -69,6 +69,7 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 
 	if (c == NULL)
 		return (CMD_RETURN_NORMAL);
+
 	if (server_client_check_nested(c)) {
 		cmdq_error(item, "sessions should be nested with care, "
 		    "unset $TMUX to force");
@@ -156,6 +157,9 @@ cmd_attach_session(struct cmdq_item *item, const char *tflag, int dflag,
 		notify_client("client-attached", c);
 		c->flags |= CLIENT_ATTACHED;
 	}
+
+	if (cfg_finished)
+		cfg_show_causes(s);
 
 	return (CMD_RETURN_NORMAL);
 }

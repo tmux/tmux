@@ -775,13 +775,16 @@ control_start(struct client *c)
 
 	cs->read_event = bufferevent_new(c->fd, control_read_callback,
 	    control_write_callback, control_error_callback, c);
-	bufferevent_enable(cs->read_event, EV_READ);
+	if (cs->read_event == NULL)
+		fatalx("out of memory");
 
 	if (c->flags & CLIENT_CONTROLCONTROL)
 		cs->write_event = cs->read_event;
 	else {
 		cs->write_event = bufferevent_new(c->out_fd, NULL,
 		    control_write_callback, control_error_callback, c);
+		if (cs->write_event == NULL)
+			fatalx("out of memory");
 	}
 	bufferevent_setwatermark(cs->write_event, EV_WRITE, CONTROL_BUFFER_LOW,
 	    0);
@@ -790,6 +793,13 @@ control_start(struct client *c)
 		bufferevent_write(cs->write_event, "\033P1000p", 7);
 		bufferevent_enable(cs->write_event, EV_WRITE);
 	}
+}
+
+/* Control client ready. */
+void
+control_ready(struct client *c)
+{
+	bufferevent_enable(c->control_state->read_event, EV_READ);
 }
 
 /* Discard all output for a client. */

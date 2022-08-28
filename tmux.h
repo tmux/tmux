@@ -50,6 +50,8 @@ struct control_state;
 struct environ;
 struct format_job_tree;
 struct format_tree;
+struct hyperlinks_uri;
+struct hyperlinks;
 struct input_ctx;
 struct job;
 struct menu_data;
@@ -367,6 +369,7 @@ enum tty_code_code {
 	TTYC_ENFCS,
 	TTYC_ENMG,
 	TTYC_FSL,
+	TTYC_HLS,
 	TTYC_HOME,
 	TTYC_HPA,
 	TTYC_ICH,
@@ -513,6 +516,7 @@ enum tty_code_code {
 	TTYC_KUP6,
 	TTYC_KUP7,
 	TTYC_MS,
+	TTYC_NOBR,
 	TTYC_OL,
 	TTYC_OP,
 	TTYC_RECT,
@@ -582,6 +586,12 @@ enum tty_code_code {
 #define ALL_MOUSE_MODES (MODE_MOUSE_STANDARD|MODE_MOUSE_BUTTON|MODE_MOUSE_ALL)
 #define MOTION_MOUSE_MODES (MODE_MOUSE_BUTTON|MODE_MOUSE_ALL)
 #define CURSOR_MODES (MODE_CURSOR|MODE_CURSOR_BLINKING|MODE_CURSOR_VERY_VISIBLE)
+
+/* Mouse protocol constants. */
+#define MOUSE_PARAM_MAX 0xff
+#define MOUSE_PARAM_UTF8_MAX 0x7ff
+#define MOUSE_PARAM_BTN_OFF 0x20
+#define MOUSE_PARAM_POS_OFF 0x21
 
 /* A single UTF-8 character. */
 typedef u_int utf8_char;
@@ -686,6 +696,7 @@ struct grid_cell {
 	int			fg;
 	int			bg;
 	int			us;
+	u_int			link;
 };
 
 /* Grid extended cell entry. */
@@ -696,6 +707,7 @@ struct grid_extd_entry {
 	int			fg;
 	int			bg;
 	int			us;
+	u_int			link;
 } __packed;
 
 /* Grid cell entry. */
@@ -722,6 +734,7 @@ struct grid_line {
 	u_int			 extdsize;
 
 	int			 flags;
+	time_t			 time;
 };
 
 /* Entire grid of cells. */
@@ -862,6 +875,8 @@ struct screen {
 	struct images			 images;
 
 	struct screen_write_cline	*write_list;
+
+	struct hyperlinks		*hyperlinks;
 };
 
 /* Screen write context. */
@@ -1436,39 +1451,47 @@ struct tty_ctx {
 	u_int			 num;
 	void			*ptr;
 	int			 more;
+	void			*ptr2;
+
+	/*
+	 * Whether this command should be sent even when the pane is not
+	 * visible (used for a passthrough sequence when allow-passthrough is
+	 * "all").
+	 */
+	int			 allow_invisible_panes;
 
 	/*
 	 * Cursor and region position before the screen was updated - this is
 	 * where the command should be applied; the values in the screen have
 	 * already been updated.
 	 */
-	u_int		 ocx;
-	u_int		 ocy;
+	u_int			 ocx;
+	u_int			 ocy;
 
-	u_int		 orupper;
-	u_int		 orlower;
+	u_int			 orupper;
+	u_int			 orlower;
 
 	/* Target region (usually pane) offset and size. */
-	u_int		 xoff;
-	u_int		 yoff;
-	u_int		 rxoff;
-	u_int		 ryoff;
-	u_int		 sx;
-	u_int		 sy;
+	u_int			 xoff;
+	u_int			 yoff;
+	u_int			 rxoff;
+	u_int			 ryoff;
+	u_int			 sx;
+	u_int			 sy;
 
 	/* The background colour used for clearing (erasing). */
-	u_int		 bg;
+	u_int			 bg;
 
 	/* The default colours and palette. */
-	struct grid_cell defaults;
-	struct colour_palette *palette;
+	struct grid_cell	 defaults;
+	struct colour_palette	*palette;
 
 	/* Containing region (usually window) offset and size. */
-	int		 bigger;
-	u_int		 wox;
-	u_int		 woy;
-	u_int		 wsx;
-	u_int		 wsy;
+	int			 bigger;
+	u_int			 wox;
+	u_int			 woy;
+	u_int			 wsx;
+	u_int			 wsy;
 };
 
 /* Saved message entry. */
@@ -2045,6 +2068,7 @@ struct tmuxpeer *proc_add_peer(struct tmuxproc *, int,
 	    void (*)(struct imsg *, void *), void *);
 void	proc_remove_peer(struct tmuxpeer *);
 void	proc_kill_peer(struct tmuxpeer *);
+void	proc_flush_peer(struct tmuxpeer *);
 void	proc_toggle_log(struct tmuxproc *);
 pid_t	proc_fork_and_daemon(int *);
 uid_t	proc_get_peer_uid(struct tmuxpeer *);
@@ -2071,6 +2095,7 @@ u_int		 paste_buffer_order(struct paste_buffer *);
 time_t		 paste_buffer_created(struct paste_buffer *);
 const char	*paste_buffer_data(struct paste_buffer *, size_t *);
 struct paste_buffer *paste_walk(struct paste_buffer *);
+int		 paste_is_empty(void);
 struct paste_buffer *paste_get_top(const char **);
 struct paste_buffer *paste_get_name(const char *);
 void		 paste_free(struct paste_buffer *);
@@ -2107,6 +2132,7 @@ void		 format_add_cb(struct format_tree *, const char *, format_cb);
 void		 format_log_debug(struct format_tree *, const char *);
 void		 format_each(struct format_tree *, void (*)(const char *,
 		     const char *, void *), void *);
+char		*format_pretty_time(time_t, int);
 char		*format_expand_time(struct format_tree *, const char *);
 char		*format_expand(struct format_tree *, const char *);
 char		*format_single(struct cmdq_item *, const char *,
@@ -2129,6 +2155,8 @@ void		 format_defaults_paste_buffer(struct format_tree *,
 		     struct paste_buffer *);
 void		 format_lost_client(struct client *);
 char		*format_grid_word(struct grid *, u_int, u_int);
+char		*format_grid_hyperlink(struct grid *, u_int, u_int,
+		     struct screen *);
 char		*format_grid_line(struct grid *, u_int);
 
 /* format-draw.c */
@@ -2147,6 +2175,7 @@ void	notify_winlink(const char *, struct winlink *);
 void	notify_session_window(const char *, struct session *, struct window *);
 void	notify_window(const char *, struct window *);
 void	notify_pane(const char *, struct window_pane *);
+void	notify_paste_buffer(const char *);
 
 /* options.c */
 struct options	*options_create(struct options *);
@@ -2256,7 +2285,8 @@ void	tty_update_window_offset(struct window *);
 void	tty_update_client_offset(struct client *);
 void	tty_raw(struct tty *, const char *);
 void	tty_attributes(struct tty *, const struct grid_cell *,
-	    const struct grid_cell *, struct colour_palette *);
+	    const struct grid_cell *, struct colour_palette *,
+	    struct hyperlinks *);
 void	tty_reset(struct tty *);
 void	tty_region_off(struct tty *);
 void	tty_margin_off(struct tty *);
@@ -2273,7 +2303,8 @@ void	tty_puts(struct tty *, const char *);
 void	tty_putc(struct tty *, u_char);
 void	tty_putn(struct tty *, const void *, size_t, u_int);
 void	tty_cell(struct tty *, const struct grid_cell *,
-	    const struct grid_cell *, struct colour_palette *);
+	    const struct grid_cell *, struct colour_palette *,
+	    struct hyperlinks *);
 int	tty_init(struct tty *, struct client *);
 void	tty_resize(struct tty *);
 void	tty_set_size(struct tty *, u_int, u_int, u_int, u_int);
@@ -2292,7 +2323,7 @@ int	tty_open(struct tty *, char **);
 void	tty_close(struct tty *);
 void	tty_free(struct tty *);
 void	tty_update_features(struct tty *);
-void	tty_set_selection(struct tty *, const char *, size_t);
+void	tty_set_selection(struct tty *, const char *, const char *, size_t);
 void	tty_write(void (*)(struct tty *, const struct tty_ctx *),
 	    struct tty_ctx *);
 void	tty_cmd_alignmenttest(struct tty *, const struct tty_ctx *);
@@ -2398,10 +2429,16 @@ struct args_value *args_first_value(struct args *, u_char);
 struct args_value *args_next_value(struct args_value *);
 long long	 args_strtonum(struct args *, u_char, long long, long long,
 		     char **);
+long long	 args_strtonum_and_expand(struct args *, u_char, long long,
+		     long long, struct cmdq_item *, char **);
 long long	 args_percentage(struct args *, u_char, long long,
 		     long long, long long, char **);
 long long	 args_string_percentage(const char *, long long, long long,
 		     long long, char **);
+long long	 args_percentage_and_expand(struct args *, u_char, long long,
+		     long long, long long, struct cmdq_item *, char **);
+long long	 args_string_percentage_and_expand(const char *, long long,
+		     long long, long long, struct cmdq_item *, char **);
 
 /* cmd-find.c */
 int		 cmd_find_target(struct cmd_find_state *, struct cmdq_item *,
@@ -2595,6 +2632,7 @@ extern struct tmuxproc *server_proc;
 extern struct clients clients;
 extern struct cmd_find_state marked_pane;
 extern struct message_list message_log;
+extern time_t current_time;
 void	 server_set_marked(struct session *, struct winlink *,
 	     struct window_pane *);
 void	 server_clear_marked(void);
@@ -2769,7 +2807,7 @@ void	 grid_clear_lines(struct grid *, u_int, u_int, u_int);
 void	 grid_move_lines(struct grid *, u_int, u_int, u_int, u_int);
 void	 grid_move_cells(struct grid *, u_int, u_int, u_int, u_int, u_int);
 char	*grid_string_cells(struct grid *, u_int, u_int, u_int,
-	     struct grid_cell **, int, int, int);
+	     struct grid_cell **, int, int, int, struct screen *);
 void	 grid_duplicate_lines(struct grid *, u_int, struct grid *, u_int,
 	     u_int);
 void	 grid_reflow(struct grid *, u_int);
@@ -2882,8 +2920,10 @@ void	 screen_write_collect_end(struct screen_write_ctx *);
 void	 screen_write_collect_add(struct screen_write_ctx *,
 	     const struct grid_cell *);
 void	 screen_write_cell(struct screen_write_ctx *, const struct grid_cell *);
-void	 screen_write_setselection(struct screen_write_ctx *, u_char *, u_int);
-void	 screen_write_rawstring(struct screen_write_ctx *, u_char *, u_int);
+void	 screen_write_setselection(struct screen_write_ctx *, const char *,
+	     u_char *, u_int);
+void	 screen_write_rawstring(struct screen_write_ctx *, u_char *, u_int,
+	     int);
 void	 screen_write_sixelimage(struct screen_write_ctx *,
 	     struct sixel_image *, u_int);
 void	 screen_write_alternateon(struct screen_write_ctx *,
@@ -2900,6 +2940,7 @@ void	 screen_init(struct screen *, u_int, u_int, u_int);
 void	 screen_reinit(struct screen *);
 void	 screen_free(struct screen *);
 void	 screen_reset_tabs(struct screen *);
+void	 screen_reset_hyperlinks(struct screen *);
 void	 screen_set_cursor_style(u_int, enum screen_cursor_style *, int *);
 void	 screen_set_cursor_colour(struct screen *, int);
 int	 screen_set_title(struct screen *, const char *);
@@ -3007,6 +3048,7 @@ void		*window_pane_get_new_data(struct window_pane *,
 void		 window_pane_update_used_data(struct window_pane *,
 		     struct window_pane_offset *, size_t);
 void		 window_set_fill_character(struct window *);
+void		 window_pane_default_cursor(struct window_pane *);
 
 /* layout.c */
 u_int		 layout_count_cells(struct layout_cell *);
@@ -3043,7 +3085,7 @@ void		 layout_spread_out(struct window_pane *);
 
 /* layout-custom.c */
 char		*layout_dump(struct layout_cell *);
-int		 layout_parse(struct window *, const char *);
+int		 layout_parse(struct window *, const char *, char **);
 
 /* layout-set.c */
 int		 layout_set_lookup(const char *);
@@ -3108,8 +3150,9 @@ extern const struct window_mode window_client_mode;
 /* window-copy.c */
 extern const struct window_mode window_copy_mode;
 extern const struct window_mode window_view_mode;
-void printflike(2, 3) window_copy_add(struct window_pane *, const char *, ...);
-void printflike(2, 0) window_copy_vadd(struct window_pane *, const char *,
+void printflike(3, 4) window_copy_add(struct window_pane *, int, const char *,
+		     ...);
+void printflike(3, 0) window_copy_vadd(struct window_pane *, int, const char *,
 		     va_list);
 void		 window_copy_pageup(struct window_pane *, int);
 void		 window_copy_start_drag(struct client *, struct mouse_event *);
@@ -3127,6 +3170,7 @@ char	*parse_window_name(const char *);
 /* control.c */
 void	control_discard(struct client *);
 void	control_start(struct client *);
+void	control_ready(struct client *);
 void	control_stop(struct client *);
 void	control_set_pane_on(struct client *, struct window_pane *);
 void	control_set_pane_off(struct client *, struct window_pane *);
@@ -3157,6 +3201,7 @@ void	control_notify_session_renamed(struct session *);
 void	control_notify_session_created(struct session *);
 void	control_notify_session_closed(struct session *);
 void	control_notify_session_window_changed(struct session *);
+void	control_notify_paste_buffer_changed(const char *);
 
 /* session.c */
 extern struct sessions sessions;
@@ -3310,5 +3355,25 @@ struct sixel_image *sixel_scale(struct sixel_image *, u_int, u_int, u_int,
 char		*sixel_print(struct sixel_image *, struct sixel_image *,
 		     size_t *);
 struct screen	*sixel_to_screen(struct sixel_image *);
+
+/* server-acl.c */
+void			 server_acl_init(void);
+struct server_acl_user	*server_acl_user_find(uid_t);
+void 			 server_acl_display(struct cmdq_item *);
+void			 server_acl_user_allow(uid_t);
+void			 server_acl_user_deny(uid_t);
+void			 server_acl_user_allow_write(uid_t);
+void			 server_acl_user_deny_write(uid_t);
+int			 server_acl_join(struct client *);
+uid_t			 server_acl_get_uid(struct server_acl_user *);
+
+/* hyperlink.c */
+u_int	 		 hyperlinks_put(struct hyperlinks *, const char *,
+			     const char *);
+int			 hyperlinks_get(struct hyperlinks *, u_int,
+			     const char **, const char **, const char **);
+struct hyperlinks	*hyperlinks_init(void);
+void			 hyperlinks_reset(struct hyperlinks *);
+void			 hyperlinks_free(struct hyperlinks *);
 
 #endif /* TMUX_H */

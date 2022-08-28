@@ -123,6 +123,7 @@ dist_tmux_SOURCES = \
 	cmd-select-pane.c \
 	cmd-select-window.c \
 	cmd-send-keys.c \
+	cmd-server-access.c \
 	cmd-set-buffer.c \
 	cmd-set-environment.c \
 	cmd-set-option.c \
@@ -149,6 +150,7 @@ dist_tmux_SOURCES = \
 	grid-reader.c \
 	grid-view.c \
 	grid.c \
+	hyperlinks.c \
 	input-keys.c \
 	input.c \
 	image.c \
@@ -173,6 +175,7 @@ dist_tmux_SOURCES = \
 	screen-redraw.c \
 	screen-write.c \
 	screen.c \
+	server-acl.c \
 	server-client.c \
 	server-fn.c \
 	server.c \

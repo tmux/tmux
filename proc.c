@@ -202,7 +202,7 @@ proc_start(const char *name)
 #endif
 	    , event_get_version(), event_get_method()
 #ifdef HAVE_UTF8PROC
-	    , utf8proc_version ()
+	    , utf8proc_version()
 #endif
 	);
 
@@ -347,6 +347,12 @@ void
 proc_kill_peer(struct tmuxpeer *peer)
 {
 	peer->flags |= PEER_BAD;
+}
+
+void
+proc_flush_peer(struct tmuxpeer *peer)
+{
+	imsg_flush(&peer->ibuf);
 }
 
 void

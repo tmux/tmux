@@ -217,8 +217,6 @@ that is set does not contain
 .Qq UTF-8
 or
 .Qq UTF8 .
-This is equivalent to
-.Fl T Ar UTF-8 .
 .It Fl T Ar features
 Set terminal features for the client.
 This is a comma-separated list of features.
@@ -1488,6 +1486,44 @@ option.
 .D1 Pq alias: Ic rename
 Rename the session to
 .Ar new-name .
+.It Xo Ic server-access
+.Op Fl adlrw
+.Op Ar user
+.Xc
+Change the access or read/write permission of
+.Ar user .
+The user running the
+.Nm
+server (its owner) and the root user cannot be changed and are always
+permitted access.
+.Pp
+.Fl a
+and
+.Fl d
+are used to give or revoke access for the specified user.
+If the user is already attached, the
+.Fl d
+flag causes their clients to be detached.
+.Pp
+.Fl r
+and
+.Fl w
+change the permissions for
+.Ar user :
+.Fl r
+makes their clients read-only and
+.Fl w
+writable.
+.Fl l
+lists current access permissions.
+.Pp
+By default, the access list is empty and
+.Nm
+creates sockets with file system permissions preventing access by any user
+other than the owner (and root).
+These permissions must be changed manually.
+Great care should be taken not to allow access to untrusted users even
+read-only.
 .Tg showmsgs
 .It Xo Ic show-messages
 .Op Fl JT
@@ -1775,6 +1811,7 @@ The following commands are supported in copy mode:
 .It Li "search-forward <for>" Ta "/" Ta ""
 .It Li "search-forward-incremental <for>" Ta "" Ta "C-s"
 .It Li "search-forward-text <for>" Ta "" Ta ""
+.It Li "scroll-middle" Ta "z" Ta ""
 .It Li "search-reverse" Ta "N" Ta "N"
 .It Li "select-line" Ta "V" Ta ""
 .It Li "select-word" Ta "" Ta ""
@@ -2077,9 +2114,11 @@ is not given, "detach-client -t '%%'" is used.
 specifies the initial sort field: one of
 .Ql name ,
 .Ql size ,
-.Ql creation ,
+.Ql creation
+(time),
 or
-.Ql activity .
+.Ql activity
+(time).
 .Fl r
 reverses the sort order.
 .Fl f
@@ -2161,7 +2200,8 @@ specifies the initial sort field: one of
 .Ql index ,
 .Ql name ,
 or
-.Ql time .
+.Ql time
+(activity).
 .Fl r
 reverses the sort order.
 .Fl f
@@ -3621,6 +3661,14 @@ Allows setting the cursor style.
 Supports extended keys.
 .It focus
 Supports focus reporting.
+.It hyperlinks
+Supports OSC 8 hyperlinks.
+.It ignorefkeys
+Ignore function keys from
+.Xr terminfo 5
+and use the
+.Nm
+internal set only.
 .It margins
 Supports DECSLRM margins.
 .It mouse
@@ -4417,11 +4465,17 @@ Available pane options are:
 .Pp
 .Bl -tag -width Ds -compact
 .It Xo Ic allow-passthrough
-.Op Ic on | off
+.Op Ic on | off | all
 .Xc
 Allow programs in the pane to bypass
 .Nm
 using a terminal escape sequence (\eePtmux;...\ee\e\e).
+If set to
+.Ic on ,
+passthrough sequences will be allowed only if the pane is visible.
+If set to
+.Ic all ,
+they will be allowed even if the pane is invisible.
 .Pp
 .It Xo Ic allow-rename
 .Op Ic on | off
@@ -5072,7 +5126,7 @@ The following variables are available, where appropriate:
 .It Li "client_name" Ta "" Ta "Name of client"
 .It Li "client_pid" Ta "" Ta "PID of client process"
 .It Li "client_prefix" Ta "" Ta "1 if prefix key has been pressed"
-.It Li "client_readonly" Ta "" Ta "1 if client is readonly"
+.It Li "client_readonly" Ta "" Ta "1 if client is read-only"
 .It Li "client_session" Ta "" Ta "Name of the client's session"
 .It Li "client_termfeatures" Ta "" Ta "Terminal features of client, if any"
 .It Li "client_termname" Ta "" Ta "Terminal name of client"
@@ -5117,6 +5171,7 @@ The following variables are available, where appropriate:
 .It Li "mouse_all_flag" Ta "" Ta "Pane mouse all flag"
 .It Li "mouse_any_flag" Ta "" Ta "Pane mouse any flag"
 .It Li "mouse_button_flag" Ta "" Ta "Pane mouse button flag"
+.It Li "mouse_hyperlink" Ta "" Ta "Hyperlink under mouse, if any"
 .It Li "mouse_line" Ta "" Ta "Line under mouse, if any"
 .It Li "mouse_sgr_flag" Ta "" Ta "Pane mouse SGR flag"
 .It Li "mouse_standard_flag" Ta "" Ta "Pane mouse standard flag"
@@ -5157,6 +5212,7 @@ The following variables are available, where appropriate:
 .It Li "pane_right" Ta "" Ta "Right of pane"
 .It Li "pane_search_string" Ta "" Ta "Last search string in copy mode"
 .It Li "pane_start_command" Ta "" Ta "Command pane started with"
+.It Li "pane_start_path" Ta "" Ta "Path pane started with"
 .It Li "pane_synchronized" Ta "" Ta "1 if pane is synchronized"
 .It Li "pane_tabs" Ta "" Ta "Pane tab positions"
 .It Li "pane_title" Ta "#T" Ta "Title of pane (can be set by application)"
@@ -5583,11 +5639,11 @@ session option.
 .Pp
 Commands related to the status line are as follows:
 .Bl -tag -width Ds
-.Tg clrphist
+.Tg clearphist
 .It Xo Ic clear-prompt-history
 .Op Fl T Ar prompt-type
 .Xc
-.D1 Pq alias: Ic clrphist
+.D1 Pq alias: Ic clearphist
 Clear status prompt history for prompt type
 .Ar prompt-type .
 If
@@ -5841,7 +5897,7 @@ milliseconds.
 If
 .Ar delay
 is not given, the
-.Ic message-time
+.Ic display-time
 option is used; a delay of zero waits for a key press.
 .Ql N
 ignores key presses and closes only after the delay expires.
@@ -6062,7 +6118,8 @@ is not given, "paste-buffer -b '%%'" is used.
 .Pp
 .Fl O
 specifies the initial sort field: one of
-.Ql time ,
+.Ql time
+(creation),
 .Ql name
 or
 .Ql size .
@@ -6080,9 +6137,14 @@ a format for each shortcut key; both are evaluated once for each line.
 starts without the preview.
 This command works only if at least one client is attached.
 .Tg clearhist
-.It Ic clear-history Op Fl t Ar target-pane
+.It Xo Ic clear-history
+.Op Fl H
+.Op Fl t Ar target-pane
+.Xc
 .D1 Pq alias: Ic clearhist
 Remove and free the history for the specified pane.
+.Fl H
+also removes all hyperlinks.
 .Tg deleteb
 .It Ic delete-buffer Op Fl b Ar buffer-name
 .D1 Pq alias: Ic deleteb
@@ -6370,6 +6432,12 @@ Disable and enable focus reporting.
 These are set automatically if the
 .Em XT
 capability is present.
+.It Em \&Hls
+Set or clear a hyperlink annotation.
+.It Em \&Nobr
+Tell
+.Nm
+that the terminal does not use bright colors for bold display.
 .It Em \&Rect
 Tell
 .Nm
@@ -6489,6 +6557,8 @@ The client is now attached to the session with ID
 .Ar session-id ,
 which is named
 .Ar name .
+.It Ic %config-error Ar error
+An error has happened in a configuration file.
 .It Ic %continue Ar pane-id
 The pane has been continued after being paused (if the
 .Ar pause-after
@@ -6532,6 +6602,10 @@ escapes non-printable characters and backslash as octal \\xxx.
 The pane with ID
 .Ar pane-id
 has changed mode.
+.It Ic %paste-buffer-changed Ar name
+Paste buffer
+.Ar name
+has been changed.
 .It Ic %pause Ar pane-id
 The pane has been paused (if the
 .Ar pause-after

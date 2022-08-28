@@ -209,7 +209,7 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	struct window_pane	 *new_wp;
 	struct environ		 *child;
 	struct environ_entry	 *ee;
-	char			**argv, *cp, **argvp, *argv0, *cwd;
+	char			**argv, *cp, **argvp, *argv0, *cwd, *new_cwd;
 	const char		 *cmd, *tmp;
 	int			  argc;
 	u_int			  idx;
@@ -225,9 +225,15 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	 * Work out the current working directory. If respawning, use
 	 * the pane's stored one unless specified.
 	 */
-	if (sc->cwd != NULL)
+	if (sc->cwd != NULL) {
 		cwd = format_single(item, sc->cwd, c, target->s, NULL, NULL);
-	else if (~sc->flags & SPAWN_RESPAWN)
+		if (*cwd != '/') {
+			xasprintf(&new_cwd, "%s/%s", server_client_get_cwd(c,
+			    target->s), cwd);
+			free(cwd);
+			cwd = new_cwd;
+		}
+	} else if (~sc->flags & SPAWN_RESPAWN)
 		cwd = xstrdup(server_client_get_cwd(c, target->s));
 	else
 		cwd = NULL;
@@ -335,8 +341,7 @@ spawn_pane(struct spawn_context *sc, char **cause)
 		log_debug("%s: cmd=%s", __func__, cp);
 		free(cp);
 	}
-	if (cwd != NULL)
-		log_debug("%s: cwd=%s", __func__, cwd);
+	log_debug("%s: cwd=%s", __func__, new_wp->cwd);
 	cmd_log_argv(new_wp->argc, new_wp->argv, "%s", __func__);
 	environ_log(child, "%s: environment ", __func__);
 
@@ -382,9 +387,13 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	 * Child process. Change to the working directory or home if that
 	 * fails.
 	 */
-	if (chdir(new_wp->cwd) != 0 &&
-	    ((tmp = find_home()) == NULL || chdir(tmp) != 0) &&
-	    chdir("/") != 0)
+	if (chdir(new_wp->cwd) == 0)
+		environ_set(child, "PWD", 0, "%s", new_wp->cwd);
+	else if ((tmp = find_home()) != NULL && chdir(tmp) == 0)
+		environ_set(child, "PWD", 0, "%s", tmp);
+	else if (chdir("/") == 0)
+		environ_set(child, "PWD", 0, "/");
+	else
 		fatal("chdir failed");
 
 	/*

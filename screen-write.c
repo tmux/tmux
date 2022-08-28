@@ -2143,12 +2143,14 @@ screen_write_overwrite(struct screen_write_ctx *ctx, struct grid_cell *gc,
 
 /* Set external clipboard. */
 void
-screen_write_setselection(struct screen_write_ctx *ctx, u_char *str, u_int len)
+screen_write_setselection(struct screen_write_ctx *ctx, const char *flags,
+    u_char *str, u_int len)
 {
 	struct tty_ctx	ttyctx;
 
 	screen_write_initctx(ctx, &ttyctx, 0);
 	ttyctx.ptr = str;
+	ttyctx.ptr2 = (void *)flags;
 	ttyctx.num = len;
 
 	tty_write(tty_cmd_setselection, &ttyctx);
@@ -2156,13 +2158,15 @@ screen_write_setselection(struct screen_write_ctx *ctx, u_char *str, u_int len)
 
 /* Write unmodified string. */
 void
-screen_write_rawstring(struct screen_write_ctx *ctx, u_char *str, u_int len)
+screen_write_rawstring(struct screen_write_ctx *ctx, u_char *str, u_int len,
+    int allow_invisible_panes)
 {
 	struct tty_ctx	ttyctx;
 
 	screen_write_initctx(ctx, &ttyctx, 0);
 	ttyctx.ptr = str;
 	ttyctx.num = len;
+	ttyctx.allow_invisible_panes = allow_invisible_panes;
 
 	tty_write(tty_cmd_rawstring, &ttyctx);
 }

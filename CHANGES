@@ -1,4 +1,61 @@
+CHANGES FROM 3.3 TO 3.3a
+
+* Do not crash when run-shell produces output from a config file.
+
+* Do not unintentionally turn off all mouse mode when button mode is also
+  present.
+
 CHANGES FROM 3.2a TO 3.3
+
+* Add an ACL list for users connecting to the tmux socket. Users may be
+  forbidden from attaching, forced to attach read-only, or allowed to attach
+  read-write. A new command, server-access, configures the list. File system
+  permissions must still be configured manually.
+
+* Emit window-layout-changed on swap-pane.
+
+* Better error reporting when applying custom layouts.
+
+* Handle ANSI escape sequences in run-shell output.
+
+* Add pane_start_path to match start_command.
+
+* Set PWD so shells have a hint about the real path.
+
+* Do not allow pipe-pane on dead panes.
+
+* Do not report mouse positions (incorrectly) above the maximum of 223 in
+  normal mouse mode.
+
+* Add an option (default off) to control the passthrough escape sequence.
+
+* Support more mouse buttons when the terminal sends them.
+
+* Add a window-resized hook which is fired when the window is actually resized
+  which may be later than the client resize.
+
+* Add next_session_id format with the next session ID.
+
+* Add formats for client and server UID and user.
+
+* Add argument to refresh-client -l to forward clipboard to a pane.
+
+* Add remain-on-exit-format to set text shown when pane is dead.
+
+* With split-window -f use percentages of window size not pane size.
+
+* Add an option (fill-character) to set the character used for unused areas of
+  a client.
+
+* Add an option (scroll-on-clear) to control if tmux scrolls into history on
+  clear.
+
+* Add a capability for OSC 7 and use it similarly to how the title is set (and
+  controlled by the same set-titles option).
+
+* Add support for systemd socket activation (where systemd creates the Unix
+  domain socket for tmux rather than tmux creating it). Build with
+  --enable-systemd.
 
 * Add an option (pane-border-indicators) to select how the active pane is shown
   on the pane border (colour, arrows or both).
@@ -1245,7 +1302,7 @@ Incompatible Changes
 
     bind -Tcopy-mode C-r command-prompt -i -p'search up' "send -X search-backward-incremental '%%'"
 
-  There are also some new commmands available with send -X, such as
+  There are also some new commands available with send -X, such as
   copy-pipe-and-cancel.
 * set-remain-on-exit has gone -- can be achieved with hooks instead.
 * Hooks: before hooks have been removed and only a selection of commands now
@@ -3221,7 +3278,7 @@ The list of older changes is below.
 * (nicm) -n on new-session is now -s, and -n is now the initial window name.
   This was documented but not implemented :-/.
 * (nicm) kill-window command, bound to & by default (because it should be hard
-  to hit accidently).
+  to hit accidentally).
 * (nicm) bell-style option with three choices: "none" completely ignore bell;
   "any" pass through a bell in any window to current; "current" ignore bells
   except in current window. This applies only to the bell terminal signal,

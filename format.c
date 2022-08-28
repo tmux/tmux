@@ -801,6 +801,20 @@ format_cb_start_command(struct format_tree *ft)
 	return (cmd_stringify_argv(wp->argc, wp->argv));
 }
 
+/* Callback for pane_start_path. */
+static void *
+format_cb_start_path(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+
+	if (wp == NULL)
+		return (NULL);
+
+	if (wp->cwd == NULL)
+		return (xstrdup(""));
+	return (xstrdup(wp->cwd));
+}
+
 /* Callback for pane_current_command. */
 static void *
 format_cb_current_command(struct format_tree *ft)
@@ -1129,6 +1143,25 @@ format_cb_mouse_word(struct format_tree *ft)
 	}
 	gd = wp->base.grid;
 	return (format_grid_word(gd, x, gd->hsize + y));
+}
+
+/* Callback for mouse_hyperlink. */
+static void *
+format_cb_mouse_hyperlink(struct format_tree *ft)
+{
+	struct window_pane	*wp;
+	struct grid		*gd;
+	u_int			 x, y;
+
+	if (!ft->m.valid)
+		return (NULL);
+	wp = cmd_mouse_pane(&ft->m, NULL, NULL);
+	if (wp == NULL)
+		return (NULL);
+	if (cmd_mouse_at(wp, &ft->m, &x, &y, 0) != 0)
+		return (NULL);
+	gd = wp->base.grid;
+	return (format_grid_hyperlink(gd, x, gd->hsize + y, wp->screen));
 }
 
 /* Callback for mouse_line. */
@@ -2597,7 +2630,7 @@ format_cb_user(__unused struct format_tree *ft)
 
 	if ((pw = getpwuid(getuid())) != NULL)
 		return (xstrdup(pw->pw_name));
-	return NULL;
+	return (NULL);
 }
 
 /* Format table type. */
@@ -2775,6 +2808,9 @@ static const struct format_table_entry format_table[] = {
 	{ "mouse_button_flag", FORMAT_TABLE_STRING,
 	  format_cb_mouse_button_flag
 	},
+	{ "mouse_hyperlink", FORMAT_TABLE_STRING,
+	  format_cb_mouse_hyperlink
+	},
 	{ "mouse_line", FORMAT_TABLE_STRING,
 	  format_cb_mouse_line
 	},
@@ -2897,6 +2933,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "pane_start_command", FORMAT_TABLE_STRING,
 	  format_cb_start_command
+	},
+	{ "pane_start_path", FORMAT_TABLE_STRING,
+	  format_cb_start_path
 	},
 	{ "pane_synchronized", FORMAT_TABLE_STRING,
 	  format_cb_pane_synchronized
@@ -3370,12 +3409,12 @@ format_quote_style(const char *s)
 }
 
 /* Make a prettier time. */
-static char *
-format_pretty_time(time_t t)
+char *
+format_pretty_time(time_t t, int seconds)
 {
 	struct tm       now_tm, tm;
 	time_t		now, age;
-	char		s[6];
+	char		s[9];
 
 	time(&now);
 	if (now < t)
@@ -3387,7 +3426,10 @@ format_pretty_time(time_t t)
 
 	/* Last 24 hours. */
 	if (age < 24 * 3600) {
-		strftime(s, sizeof s, "%H:%M", &tm);
+		if (seconds)
+			strftime(s, sizeof s, "%H:%M:%S", &tm);
+		else
+			strftime(s, sizeof s, "%H:%M", &tm);
 		return (xstrdup(s));
 	}
 
@@ -3492,7 +3534,7 @@ found:
 		if (t == 0)
 			return (NULL);
 		if (modifiers & FORMAT_PRETTY)
-			found = format_pretty_time(t);
+			found = format_pretty_time(t, 0);
 		else {
 			if (time_format != NULL) {
 				localtime_r(&t, &tm);
@@ -3522,12 +3564,12 @@ found:
 	}
 	if (modifiers & FORMAT_QUOTE_SHELL) {
 		saved = found;
-		found = xstrdup(format_quote_shell(saved));
+		found = format_quote_shell(saved);
 		free(saved);
 	}
 	if (modifiers & FORMAT_QUOTE_STYLE) {
 		saved = found;
-		found = xstrdup(format_quote_style(saved));
+		found = format_quote_style(saved);
 		free(saved);
 	}
 	return (found);
@@ -4586,7 +4628,7 @@ format_expand1(struct format_expand_state *es, const char *fmt)
 {
 	struct format_tree	*ft = es->ft;
 	char			*buf, *out, *name;
-	const char		*ptr, *s;
+	const char		*ptr, *s, *style_end = NULL;
 	size_t			 off, len, n, outlen;
 	int     		 ch, brackets;
 	char			 expanded[8192];
@@ -4681,18 +4723,20 @@ format_expand1(struct format_expand_state *es, const char *fmt)
 				break;
 			fmt += n + 1;
 			continue;
+		case '[':
 		case '#':
 			/*
 			 * If ##[ (with two or more #s), then it is a style and
 			 * can be left for format_draw to handle.
 			 */
-			ptr = fmt;
-			n = 2;
+			ptr = fmt - (ch == '[');
+			n = 2 - (ch == '[');
 			while (*ptr == '#') {
 				ptr++;
 				n++;
 			}
 			if (*ptr == '[') {
+				style_end = format_skip(fmt - 2, "]");
 				format_log(es, "found #*%zu[", n);
 				while (len - off < n + 2) {
 					buf = xreallocarray(buf, 2, len);
@@ -4715,10 +4759,12 @@ format_expand1(struct format_expand_state *es, const char *fmt)
 			continue;
 		default:
 			s = NULL;
-			if (ch >= 'A' && ch <= 'Z')
-				s = format_upper[ch - 'A'];
-			else if (ch >= 'a' && ch <= 'z')
-				s = format_lower[ch - 'a'];
+			if (fmt > style_end) { /* skip inside #[] */
+				if (ch >= 'A' && ch <= 'Z')
+					s = format_upper[ch - 'A'];
+				else if (ch >= 'a' && ch <= 'z')
+					s = format_lower[ch - 'a'];
+			}
 			if (s == NULL) {
 				while (len - off < 3) {
 					buf = xreallocarray(buf, 2, len);
@@ -5039,4 +5085,21 @@ format_grid_line(struct grid *gd, u_int y)
 		free(ud);
 	}
 	return (s);
+}
+
+/* Return hyperlink at given coordinates. Caller frees. */
+char *
+format_grid_hyperlink(struct grid *gd, u_int x, u_int y, struct screen* s)
+{
+	const char		*uri;
+	struct grid_cell	 gc;
+
+	grid_get_cell(gd, x, y, &gc);
+	if (gc.flags & GRID_FLAG_PADDING)
+		return (NULL);
+	if (s->hyperlinks == NULL || gc.link == 0)
+		return (NULL);
+	if (!hyperlinks_get(s->hyperlinks, gc.link, &uri, NULL, NULL))
+		return (NULL);
+	return (xstrdup(uri));
 }

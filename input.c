@@ -135,6 +135,7 @@ static void	input_set_state(struct input_ctx *,
 static void	input_reset_cell(struct input_ctx *);
 
 static void	input_osc_4(struct input_ctx *, const char *);
+static void	input_osc_8(struct input_ctx *, const char *);
 static void	input_osc_10(struct input_ctx *, const char *);
 static void	input_osc_11(struct input_ctx *, const char *);
 static void	input_osc_12(struct input_ctx *, const char *);
@@ -1078,6 +1079,9 @@ input_reply(struct input_ctx *ictx, const char *fmt, ...)
 	va_list			 ap;
 	char			*reply;
 
+	if (bev == NULL)
+		return;
+
 	va_start(ap, fmt);
 	xvasprintf(&reply, fmt, ap);
 	va_end(ap);
@@ -1798,6 +1802,8 @@ input_csi_dispatch_sm_private(struct input_ctx *ictx)
 			screen_write_mode_set(sctx, MODE_FOCUSON);
 			if (wp == NULL)
 				break;
+			if (!options_get_number(global_options, "focus-events"))
+				break;
 			if (wp->flags & PANE_FOCUSED)
 				bufferevent_write(wp->event, "\033[I", 3);
 			else
@@ -2235,25 +2241,30 @@ input_enter_dcs(struct input_ctx *ictx)
 static int
 input_dcs_dispatch(struct input_ctx *ictx)
 {
-	struct screen_write_ctx	*sctx = &ictx->ctx;
 	struct window_pane	*wp = ictx->wp;
+	struct options		*oo = wp->options;
+	struct screen_write_ctx	*sctx = &ictx->ctx;
 	struct window		*w = wp->window;
 	u_char			*buf = ictx->input_buf;
 	size_t			 len = ictx->input_len;
 	const char		 prefix[] = "tmux;";
 	const u_int		 prefixlen = (sizeof prefix) - 1;
 	struct sixel_image	*si;
+	long long		 allow_passthrough = 0;
 
 	if (wp == NULL)
 		return (0);
 	if (ictx->flags & INPUT_DISCARD)
 		return (0);
-	if (!options_get_number(ictx->wp->options, "allow-passthrough"))
+	allow_passthrough = options_get_number(oo, "allow-passthrough");
+	if (!allow_passthrough)
 		return (0);
 	log_debug("%s: \"%s\"", __func__, buf);
 
-	if (len >= prefixlen && strncmp(buf, prefix, prefixlen) == 0)
-		screen_write_rawstring(sctx, buf + prefixlen, len - prefixlen);
+	if (len >= prefixlen && strncmp(buf, prefix, prefixlen) == 0) {
+		screen_write_rawstring(sctx, buf + prefixlen, len - prefixlen,
+		    allow_passthrough == 2);
+	}
 
 	if (buf[0] == 'q') {
 		si = sixel_parse(buf, len, w->xpixel, w->ypixel);
@@ -2297,6 +2308,8 @@ input_exit_osc(struct input_ctx *ictx)
 	option = 0;
 	while (*p >= '0' && *p <= '9')
 		option = option * 10 + *p++ - '0';
+	if (*p != ';' && *p != '\0')
+		return;
 	if (*p == ';')
 		p++;
 
@@ -2320,6 +2333,9 @@ input_exit_osc(struct input_ctx *ictx)
 				server_status_window(wp->window);
 			}
 		}
+		break;
+	case 8:
+		input_osc_8(ictx, p);
 		break;
 	case 10:
 		input_osc_10(ictx, p);
@@ -2565,6 +2581,47 @@ input_osc_4(struct input_ctx *ictx, const char *p)
 	free(copy);
 }
 
+/* Handle the OSC 8 sequence for embedding hyperlinks. */
+static void
+input_osc_8(struct input_ctx *ictx, const char *p)
+{
+	struct hyperlinks	*hl = ictx->ctx.s->hyperlinks;
+	struct grid_cell	*gc = &ictx->cell.cell;
+	const char		*start, *end, *uri;
+	char	    		*id = NULL;
+
+	for (start = p; (end = strpbrk(start, ":;")) != NULL; start = end + 1) {
+		if (end - start >= 4 && strncmp(start, "id=", 3) == 0) {
+			if (id != NULL)
+				goto bad;
+			id = xstrndup(start + 3, end - start - 3);
+		}
+
+		/* The first ; is the end of parameters and start of the URI. */
+		if (*end == ';')
+			break;
+	}
+	if (end == NULL || *end != ';')
+		goto bad;
+	uri = end + 1;
+	if (*uri == '\0') {
+		gc->link = 0;
+		free(id);
+		return;
+	}
+	gc->link = hyperlinks_put(hl, uri, id);
+	if (id == NULL)
+		log_debug("hyperlink (anonymous) %s = %u", uri, gc->link);
+	else
+		log_debug("hyperlink (id=%s) %s = %u", id, uri, gc->link);
+	free(id);
+	return;
+
+bad:
+	log_debug("bad OSC 8 %s", p);
+	free(id);
+}
+
 /* Handle the OSC 10 sequence for setting and querying foreground colour. */
 static void
 input_osc_10(struct input_ctx *ictx, const char *p)
@@ -2698,6 +2755,9 @@ input_osc_52(struct input_ctx *ictx, const char *p)
 	int			 outlen, state;
 	struct screen_write_ctx	 ctx;
 	struct paste_buffer	*pb;
+	const char*              allow = "cpqs01234567";
+	char                     flags[sizeof "cpqs01234567"] = "";
+	u_int			 i, j = 0;
 
 	if (wp == NULL)
 		return;
@@ -2711,6 +2771,12 @@ input_osc_52(struct input_ctx *ictx, const char *p)
 	if (*end == '\0')
 		return;
 	log_debug("%s: %s", __func__, end);
+
+	for (i = 0; p + i != end; i++) {
+		if (strchr(allow, p[i]) != NULL && strchr(flags, p[i]) == NULL)
+			flags[j++] = p[i];
+	}
+	log_debug("%s: %.*s %s", __func__, (int)(end - p - 1), p, flags);
 
 	if (strcmp(end, "?") == 0) {
 		if ((pb = paste_get_top(NULL)) != NULL)
@@ -2733,7 +2799,7 @@ input_osc_52(struct input_ctx *ictx, const char *p)
 	}
 
 	screen_write_start_pane(&ctx, wp, NULL);
-	screen_write_setselection(&ctx, out, outlen);
+	screen_write_setselection(&ctx, flags, out, outlen);
 	screen_write_stop(&ctx);
 	notify_pane("pane-set-clipboard", wp);
 

@@ -18,6 +18,7 @@
 #include <sys/socket.h>
 
 #include <stdio.h>
+#include <unistd.h>
 
 #ifdef HAVE_UCRED_H
 #include <ucred.h>
@@ -38,9 +39,6 @@ getpeereid(int s, uid_t *uid, gid_t *gid)
 	*gid = uc.gid;
 	return (0);
 #elif defined(HAVE_GETPEERUCRED)
-int
-getpeereid(int s, uid_t *uid, gid_t *gid)
-{
         ucred_t *ucred = NULL;
 
         if (getpeerucred(s, &ucred) == -1)
@@ -51,9 +49,9 @@ getpeereid(int s, uid_t *uid, gid_t *gid)
                 return (-1);
         ucred_free(ucred);
         return (0);
-}
 #else
-	errno = EOPNOTSUPP;
-	return (-1);
+	*uid = geteuid();
+	*gid = getegid();
+	return (0);
 #endif
 }
