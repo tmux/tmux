@@ -41,6 +41,9 @@ static const char *options_table_clock_mode_style_list[] = {
 static const char *options_table_status_list[] = {
 	"off", "on", "2", "3", "4", "5", NULL
 };
+static const char *options_table_status_prompt_line_list[] = {
+	"0", "1", "2", "3", "4", "5", NULL
+};
 static const char *options_table_status_keys_list[] = {
 	"emacs", "vi", NULL
 };
@@ -620,6 +623,13 @@ const struct options_table_entry options_table[] = {
 	  .choices = options_table_status_list,
 	  .default_num = 1,
 	  .text = "Number of lines in the status line."
+	},
+	{ .name = "status-prompt-line",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .choices = options_table_status_prompt_line_list,
+	  .default_num = 1,
+	  .text = "Line number of status prompt"
 	},
 
 	{ .name = "status-bg",

@@ -263,6 +263,15 @@ status_line_size(struct client *c)
 	return (s->statuslines);
 }
 
+/* Get the prompt line number for client's session. 1 means at the bottom. */
+u_int
+status_prompt_line_at(struct client *c)
+{
+	if (c->flags & (CLIENT_STATUSOFF|CLIENT_CONTROL))
+		return (1);
+	return (options_get_number(global_s_options, "status-prompt-line"));
+}
+
 /* Get window at window list position. */
 struct style_range *
 status_get_range(struct client *c, u_int x, u_int y)
@@ -694,7 +703,7 @@ status_prompt_redraw(struct client *c)
 	struct screen_write_ctx	 ctx;
 	struct session		*s = c->session;
 	struct screen		 old_screen;
-	u_int			 i, lines, offset, left, start, width;
+	u_int			 i, lines, offset, left, start, width, promptline;
 	u_int			 pcursor, pwidth;
 	struct grid_cell	 gc, cursorgc;
 	struct format_tree	*ft;
@@ -707,6 +716,10 @@ status_prompt_redraw(struct client *c)
 	if (lines <= 1)
 		lines = 1;
 	screen_init(sl->active, c->tty.sx, lines, 0);
+
+	promptline = status_prompt_line_at(c);
+	if (promptline <= 1 || promptline > lines)
+		promptline = 1;
 
 	ft = format_create_defaults(NULL, c, NULL, NULL, NULL);
 	if (c->prompt_mode == PROMPT_COMMAND)
@@ -723,13 +736,13 @@ status_prompt_redraw(struct client *c)
 		start = c->tty.sx;
 
 	screen_write_start(&ctx, sl->active);
-	screen_write_fast_copy(&ctx, &sl->screen, 0, 0, c->tty.sx, lines - 1);
-	screen_write_cursormove(&ctx, 0, lines - 1, 0);
+	screen_write_fast_copy(&ctx, &sl->screen, 0, 0, c->tty.sx, lines);
+	screen_write_cursormove(&ctx, 0, lines - promptline, 0);
 	for (offset = 0; offset < c->tty.sx; offset++)
 		screen_write_putc(&ctx, &gc, ' ');
-	screen_write_cursormove(&ctx, 0, lines - 1, 0);
+	screen_write_cursormove(&ctx, 0, lines - promptline, 0);
 	format_draw(&ctx, &gc, start, c->prompt_string, NULL, 0);
-	screen_write_cursormove(&ctx, start, lines - 1, 0);
+	screen_write_cursormove(&ctx, start, lines - promptline, 0);
 
 	left = c->tty.sx - start;
 	if (left == 0)

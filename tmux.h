@@ -2689,6 +2689,7 @@ void	 status_timer_start_all(void);
 void	 status_update_cache(struct session *);
 int	 status_at_line(struct client *);
 u_int	 status_line_size(struct client *);
+u_int	 status_prompt_line_at(struct client *);
 struct style_range *status_get_range(struct client *, u_int, u_int);
 void	 status_init(struct client *);
 void	 status_free(struct client *);
