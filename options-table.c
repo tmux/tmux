@@ -42,7 +42,7 @@ static const char *options_table_status_list[] = {
 	"off", "on", "2", "3", "4", "5", NULL
 };
 static const char *options_table_status_prompt_line_list[] = {
-	"0", "1", "2", "3", "4", "5", NULL
+	"0", "1", "2", "3", "4", NULL
 };
 static const char *options_table_status_keys_list[] = {
 	"emacs", "vi", NULL

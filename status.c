@@ -718,8 +718,8 @@ status_prompt_redraw(struct client *c)
 	screen_init(sl->active, c->tty.sx, lines, 0);
 
 	promptline = status_prompt_line_at(c);
-	if (promptline <= 1 || promptline > lines)
-		promptline = 1;
+	if (promptline > (lines - 1))
+		promptline = lines - 1;
 
 	ft = format_create_defaults(NULL, c, NULL, NULL, NULL);
 	if (c->prompt_mode == PROMPT_COMMAND)
@@ -737,12 +737,12 @@ status_prompt_redraw(struct client *c)
 
 	screen_write_start(&ctx, sl->active);
 	screen_write_fast_copy(&ctx, &sl->screen, 0, 0, c->tty.sx, lines);
-	screen_write_cursormove(&ctx, 0, lines - promptline, 0);
+	screen_write_cursormove(&ctx, 0, promptline, 0);
 	for (offset = 0; offset < c->tty.sx; offset++)
 		screen_write_putc(&ctx, &gc, ' ');
-	screen_write_cursormove(&ctx, 0, lines - promptline, 0);
+	screen_write_cursormove(&ctx, 0, promptline, 0);
 	format_draw(&ctx, &gc, start, c->prompt_string, NULL, 0);
-	screen_write_cursormove(&ctx, start, lines - promptline, 0);
+	screen_write_cursormove(&ctx, start, promptline, 0);
 
 	left = c->tty.sx - start;
 	if (left == 0)
