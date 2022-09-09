@@ -263,12 +263,12 @@ status_line_size(struct client *c)
 	return (s->statuslines);
 }
 
-/* Get the prompt line number for client's session. 1 means at the bottom. */
+/* Get the prompt line number for client's session. 0 means topmost line of the status */
 u_int
 status_prompt_line_at(struct client *c)
 {
 	if (c->flags & (CLIENT_STATUSOFF|CLIENT_CONTROL))
-		return (1);
+		return (0);
 	return (options_get_number(global_s_options, "status-prompt-line"));
 }
 

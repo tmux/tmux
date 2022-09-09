@@ -628,7 +628,7 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_SESSION,
 	  .choices = options_table_status_prompt_line_list,
-	  .default_num = 1,
+	  .default_num = 0,
 	  .text = "Line number of status prompt"
 	},
 
