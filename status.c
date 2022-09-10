@@ -271,7 +271,7 @@ status_prompt_line_at(struct client *c)
 
 	if (c->flags & (CLIENT_STATUSOFF|CLIENT_CONTROL))
 		return (1);
-	return (options_get_number(s->options, "status-prompt-line"));
+	return (options_get_number(s->options, "message-line"));
 }
 
 /* Get window at window list position. */
