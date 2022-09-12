@@ -2242,7 +2242,6 @@ static int
 input_dcs_dispatch(struct input_ctx *ictx)
 {
 	struct window_pane	*wp = ictx->wp;
-	struct options		*oo = wp->options;
 	struct screen_write_ctx	*sctx = &ictx->ctx;
 	u_char			*buf = ictx->input_buf;
 	size_t			 len = ictx->input_len;
@@ -2254,7 +2253,8 @@ input_dcs_dispatch(struct input_ctx *ictx)
 		return (0);
 	if (ictx->flags & INPUT_DISCARD)
 		return (0);
-	allow_passthrough = options_get_number(oo, "allow-passthrough");
+	allow_passthrough = options_get_number(wp->options,
+	    "allow-passthrough");
 	if (!allow_passthrough)
 		return (0);
 	log_debug("%s: \"%s\"", __func__, buf);
