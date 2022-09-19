@@ -21,6 +21,8 @@
 
 #include <systemd/sd-daemon.h>
 
+#include <string.h>
+
 #include "tmux.h"
 
 int
@@ -29,7 +31,7 @@ systemd_create_socket(int flags, char **cause)
 	int			fds;
 	int			fd;
 	struct sockaddr_un	sa;
-	int			addrlen = sizeof sa;
+	socklen_t		addrlen = sizeof sa;
 
 	fds = sd_listen_fds(0);
 	if (fds > 1) { /* too many file descriptors */
