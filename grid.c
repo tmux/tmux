@@ -861,40 +861,45 @@ grid_string_cells_us(const struct grid_cell *gc, int *values)
 /* Add on SGR code. */
 static void
 grid_string_cells_add_code(char *buf, size_t len, u_int n, int *s, int *newc,
-    int *oldc, size_t nnewc, size_t noldc, int escape_c0)
+    int *oldc, size_t nnewc, size_t noldc, int flags)
 {
 	u_int	i;
 	char	tmp[64];
+	int	reset = (n != 0 && s[0] == 0);
 
-	if (nnewc != 0 &&
-	    (nnewc != noldc ||
-	    memcmp(newc, oldc, nnewc * sizeof newc[0]) != 0 ||
-	    (n != 0 && s[0] == 0))) {
-		if (escape_c0)
-			strlcat(buf, "\\033[", len);
+	if (nnewc == 0)
+		return; /* no code to add */
+	if (!reset &&
+	    nnewc == noldc &&
+	    memcmp(newc, oldc, nnewc * sizeof newc[0]) == 0)
+		return; /* no reset and colour unchanged */
+	if (reset && (newc[0] == 49 || newc[0] == 39))
+		return; /* reset and colour default */
+
+	if (flags & GRID_STRING_ESCAPE_SEQUENCES)
+		strlcat(buf, "\\033[", len);
+	else
+		strlcat(buf, "\033[", len);
+	for (i = 0; i < nnewc; i++) {
+		if (i + 1 < nnewc)
+			xsnprintf(tmp, sizeof tmp, "%d;", newc[i]);
 		else
-			strlcat(buf, "\033[", len);
-		for (i = 0; i < nnewc; i++) {
-			if (i + 1 < nnewc)
-				xsnprintf(tmp, sizeof tmp, "%d;", newc[i]);
-			else
-				xsnprintf(tmp, sizeof tmp, "%d", newc[i]);
-			strlcat(buf, tmp, len);
-		}
-		strlcat(buf, "m", len);
+			xsnprintf(tmp, sizeof tmp, "%d", newc[i]);
+		strlcat(buf, tmp, len);
 	}
+	strlcat(buf, "m", len);
 }
 
 static int
 grid_string_cells_add_hyperlink(char *buf, size_t len, const char *id,
-    const char *uri, int escape_c0)
+    const char *uri, int flags)
 {
 	char	*tmp;
 
 	if (strlen(uri) + strlen(id) + 17 >= len)
 		return (0);
 
-	if (escape_c0)
+	if (flags & GRID_STRING_ESCAPE_SEQUENCES)
 		strlcat(buf, "\\033]8;", len);
 	else
 		strlcat(buf, "\033]8;", len);
@@ -905,7 +910,7 @@ grid_string_cells_add_hyperlink(char *buf, size_t len, const char *id,
 	} else
 		strlcat(buf, ";", len);
 	strlcat(buf, uri, len);
-	if (escape_c0)
+	if (flags & GRID_STRING_ESCAPE_SEQUENCES)
 		strlcat(buf, "\\033\\\\", len);
 	else
 		strlcat(buf, "\033\\", len);
@@ -918,7 +923,7 @@ grid_string_cells_add_hyperlink(char *buf, size_t len, const char *id,
  */
 static void
 grid_string_cells_code(const struct grid_cell *lastgc,
-    const struct grid_cell *gc, char *buf, size_t len, int escape_c0,
+    const struct grid_cell *gc, char *buf, size_t len, int flags,
     struct screen *sc, int *has_link)
 {
 	int			 oldc[64], newc[64], s[128];
@@ -927,7 +932,7 @@ grid_string_cells_code(const struct grid_cell *lastgc,
 	char			 tmp[64];
 	const char		*uri, *id;
 
-	struct {
+	static const struct {
 		u_int	mask;
 		u_int	code;
 	} attrs[] = {
@@ -966,7 +971,7 @@ grid_string_cells_code(const struct grid_cell *lastgc,
 	/* Write the attributes. */
 	*buf = '\0';
 	if (n > 0) {
-		if (escape_c0)
+		if (flags & GRID_STRING_ESCAPE_SEQUENCES)
 			strlcat(buf, "\\033[", len);
 		else
 			strlcat(buf, "\033[", len);
@@ -988,29 +993,29 @@ grid_string_cells_code(const struct grid_cell *lastgc,
 	nnewc = grid_string_cells_fg(gc, newc);
 	noldc = grid_string_cells_fg(lastgc, oldc);
 	grid_string_cells_add_code(buf, len, n, s, newc, oldc, nnewc, noldc,
-	    escape_c0);
+	    flags);
 
 	/* If the background colour changed, append its parameters. */
 	nnewc = grid_string_cells_bg(gc, newc);
 	noldc = grid_string_cells_bg(lastgc, oldc);
 	grid_string_cells_add_code(buf, len, n, s, newc, oldc, nnewc, noldc,
-	    escape_c0);
+	    flags);
 
 	/* If the underscore colour changed, append its parameters. */
 	nnewc = grid_string_cells_us(gc, newc);
 	noldc = grid_string_cells_us(lastgc, oldc);
 	grid_string_cells_add_code(buf, len, n, s, newc, oldc, nnewc, noldc,
-	    escape_c0);
+	    flags);
 
 	/* Append shift in/shift out if needed. */
 	if ((attr & GRID_ATTR_CHARSET) && !(lastattr & GRID_ATTR_CHARSET)) {
-		if (escape_c0)
+		if (flags & GRID_STRING_ESCAPE_SEQUENCES)
 			strlcat(buf, "\\016", len); /* SO */
 		else
 			strlcat(buf, "\016", len);  /* SO */
 	}
 	if (!(attr & GRID_ATTR_CHARSET) && (lastattr & GRID_ATTR_CHARSET)) {
-		if (escape_c0)
+		if (flags & GRID_STRING_ESCAPE_SEQUENCES)
 			strlcat(buf, "\\017", len); /* SI */
 		else
 			strlcat(buf, "\017", len);  /* SI */
@@ -1020,10 +1025,10 @@ grid_string_cells_code(const struct grid_cell *lastgc,
 	if (sc != NULL && sc->hyperlinks != NULL && lastgc->link != gc->link) {
 		if (hyperlinks_get(sc->hyperlinks, gc->link, &uri, &id, NULL)) {
 			*has_link = grid_string_cells_add_hyperlink(buf, len,
-			    id, uri, escape_c0);
+			    id, uri, flags);
 		} else if (*has_link) {
 			grid_string_cells_add_hyperlink(buf, len, "", "",
-			    escape_c0);
+			    flags);
 			*has_link = 0;
 		}
 	}
@@ -1032,15 +1037,14 @@ grid_string_cells_code(const struct grid_cell *lastgc,
 /* Convert cells into a string. */
 char *
 grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
-    struct grid_cell **lastgc, int with_codes, int escape_c0, int trim,
-    struct screen *s)
+    struct grid_cell **lastgc, int flags, struct screen *s)
 {
 	struct grid_cell	 gc;
 	static struct grid_cell	 lastgc1;
 	const char		*data;
 	char			*buf, code[8192];
 	size_t			 len, off, size, codelen;
-	u_int			 xx, has_link = 0;
+	u_int			 xx, has_link = 0, end;
 	const struct grid_line	*gl;
 
 	if (lastgc != NULL && *lastgc == NULL) {
@@ -1053,16 +1057,20 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
 	off = 0;
 
 	gl = grid_peek_line(gd, py);
+	if (flags & GRID_STRING_EMPTY_CELLS)
+		end = gl->cellsize;
+	else
+		end = gl->cellused;
 	for (xx = px; xx < px + nx; xx++) {
-		if (gl == NULL || xx >= gl->cellused)
+		if (gl == NULL || xx >= end)
 			break;
 		grid_get_cell(gd, xx, py, &gc);
 		if (gc.flags & GRID_FLAG_PADDING)
 			continue;
 
-		if (with_codes) {
+		if (flags & GRID_STRING_WITH_SEQUENCES) {
 			grid_string_cells_code(*lastgc, &gc, code, sizeof code,
-			    escape_c0, s, &has_link);
+			    flags, s, &has_link);
 			codelen = strlen(code);
 			memcpy(*lastgc, &gc, sizeof **lastgc);
 		} else
@@ -1070,7 +1078,9 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
 
 		data = gc.data.data;
 		size = gc.data.size;
-		if (escape_c0 && size == 1 && *data == '\\') {
+		if ((flags & GRID_STRING_ESCAPE_SEQUENCES) &&
+		    size == 1 &&
+		    *data == '\\') {
 			data = "\\\\";
 			size = 2;
 		}
@@ -1090,7 +1100,7 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
 
 	if (has_link) {
 		grid_string_cells_add_hyperlink(code, sizeof code, "", "",
-		    escape_c0);
+		    flags);
 		codelen = strlen(code);
 		while (len < off + size + codelen + 1) {
 			buf = xreallocarray(buf, 2, len);
@@ -1100,7 +1110,7 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
 		off += codelen;
 	}
 
-	if (trim) {
+	if (flags & GRID_STRING_TRIM_SPACES) {
 		while (off > 0 && buf[off - 1] == ' ')
 			off--;
 	}
