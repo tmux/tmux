@@ -1231,13 +1231,6 @@ tty_keys_clipboard(struct tty *tty, const char *buf, size_t len, size_t *size)
 	return (0);
 }
 
-//XXX primary DA
-//	for (i = 1; i < n; i++) {
-//		log_debug("%s: DA feature: %d", c->name, p[i]);
-//		if (p[i] == 4)
-//			flags |= TERM_SIXEL;
-//	}
-
 /*
  * Handle secondary device attributes input. Returns 0 for success, -1 for
  * failure, 1 for partial.
@@ -1251,7 +1244,7 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 	char		 tmp[64], *endptr, p[32] = { 0 }, *cp, *next;
 
 	*size = 0;
-	if (tty->flags & TTY_HAVEDA)
+	if (tty->flags & TTY_HAVEDA && tty->term->flags & TERM_SIXEL)
 		return (-1);
 
 	/*
@@ -1285,8 +1278,8 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 	*size = 4 + i;
 
 	/* Ignore DA response. */
-	if (buf[2] == '?')
-		return (0);
+	//if (buf[2] == '?')
+	//	return (0);
 
 	/* Convert all arguments to numbers. */
 	cp = tmp;
@@ -1301,6 +1294,15 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 	switch (p[0]) {
 	case 41: /* VT420 */
 		tty_add_features(&c->term_features, "margins,rectfill", ",");
+		break;
+	case 62: /* VT220 */
+	case 63: /* VT320 */
+	case 64: /* VT420 */
+	for (i = 1; i < n; i++) {
+		log_debug("%s: DA feature: %d", c->name, p[i]);
+		if (p[i] == 4)
+			tty->term->flags |= TERM_SIXEL;
+	}
 		break;
 	case 'M': /* mintty */
 		tty_default_features(&c->term_features, "mintty", 0);

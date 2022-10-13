@@ -367,6 +367,8 @@ tty_send_requests(struct tty *tty)
 			tty_puts(tty, "\033[>c");
 		if (~tty->flags & TTY_HAVEXDA)
 			tty_puts(tty, "\033[>q");
+		if (~tty->term->flags & TERM_SIXEL)
+			tty_puts(tty, "\033[c");
 	} else
 		tty->flags |= (TTY_HAVEDA|TTY_HAVEXDA);
 }
