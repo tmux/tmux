@@ -231,5 +231,5 @@ grid_view_string_cells(struct grid *gd, u_int px, u_int py, u_int nx)
 	px = grid_view_x(gd, px);
 	py = grid_view_y(gd, py);
 
-	return (grid_string_cells(gd, px, py, nx, NULL, 0, 0, 0, NULL));
+	return (grid_string_cells(gd, px, py, nx, NULL, 0, NULL));
 }

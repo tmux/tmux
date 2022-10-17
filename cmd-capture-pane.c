@@ -40,7 +40,7 @@ const struct cmd_entry cmd_capture_pane_entry = {
 	.alias = "capturep",
 
 	.args = { "ab:CeE:JNpPqS:t:", 0, 0, NULL },
-	.usage = "[-aCeJNpPq] " CMD_BUFFER_USAGE " [-E end-line] "
+	.usage = "[-aCeJNpPqT] " CMD_BUFFER_USAGE " [-E end-line] "
 		 "[-S start-line] " CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -110,7 +110,7 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 	struct grid		*gd;
 	const struct grid_line	*gl;
 	struct grid_cell	*gc = NULL;
-	int			 n, with_codes, escape_c0, join_lines, no_trim;
+	int			 n, join_lines, flags = 0;
 	u_int			 i, sx, top, bottom, tmp;
 	char			*cause, *buf, *line;
 	const char		*Sflag, *Eflag;
@@ -169,15 +169,19 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 		top = tmp;
 	}
 
-	with_codes = args_has(args, 'e');
-	escape_c0 = args_has(args, 'C');
 	join_lines = args_has(args, 'J');
-	no_trim = args_has(args, 'N');
+	if (args_has(args, 'e'))
+		flags |= GRID_STRING_WITH_SEQUENCES;
+	if (args_has(args, 'C'))
+		flags |= GRID_STRING_ESCAPE_SEQUENCES;
+	if (!join_lines && !args_has(args, 'T'))
+		flags |= GRID_STRING_EMPTY_CELLS;
+	if (!join_lines && !args_has(args, 'N'))
+		flags |= GRID_STRING_TRIM_SPACES;
 
 	buf = NULL;
 	for (i = top; i <= bottom; i++) {
-		line = grid_string_cells(gd, 0, i, sx, &gc, with_codes,
-		    escape_c0, !join_lines && !no_trim, wp->screen);
+		line = grid_string_cells(gd, 0, i, sx, &gc, flags, wp->screen);
 		linelen = strlen(line);
 
 		buf = cmd_capture_pane_append(buf, len, line, linelen);

@@ -670,6 +670,14 @@ struct colour_palette {
 #define GRID_LINE_EXTENDED 0x2
 #define GRID_LINE_DEAD 0x4
 
+/* Grid string flags. */
+#define GRID_STRING_WITH_SEQUENCES 0x1
+#define GRID_STRING_ESCAPE_SEQUENCES 0x2
+#define GRID_STRING_TRIM_SPACES 0x4
+#define GRID_STRING_USED_ONLY 0x8
+#define GRID_STRING_EMPTY_CELLS 0x10
+
+/* Cell positions. */
 #define CELL_INSIDE 0
 #define CELL_TOPBOTTOM 1
 #define CELL_LEFTRIGHT 2
@@ -684,6 +692,7 @@ struct colour_palette {
 #define CELL_JOIN 11
 #define CELL_OUTSIDE 12
 
+/* Cell borders. */
 #define CELL_BORDERS " xqlkmjwvtun~"
 #define SIMPLE_BORDERS " |-+++++++++."
 #define PADDED_BORDERS "             "
@@ -2807,7 +2816,7 @@ void	 grid_clear_lines(struct grid *, u_int, u_int, u_int);
 void	 grid_move_lines(struct grid *, u_int, u_int, u_int, u_int);
 void	 grid_move_cells(struct grid *, u_int, u_int, u_int, u_int, u_int);
 char	*grid_string_cells(struct grid *, u_int, u_int, u_int,
-	     struct grid_cell **, int, int, int, struct screen *);
+	     struct grid_cell **, int, struct screen *);
 void	 grid_duplicate_lines(struct grid *, u_int, struct grid *, u_int,
 	     u_int);
 void	 grid_reflow(struct grid *, u_int);

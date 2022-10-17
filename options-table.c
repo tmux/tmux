@@ -41,6 +41,9 @@ static const char *options_table_clock_mode_style_list[] = {
 static const char *options_table_status_list[] = {
 	"off", "on", "2", "3", "4", "5", NULL
 };
+static const char *options_table_message_line_list[] = {
+	"0", "1", "2", "3", "4", NULL
+};
 static const char *options_table_status_keys_list[] = {
 	"emacs", "vi", NULL
 };
@@ -541,13 +544,21 @@ const struct options_table_entry options_table[] = {
 		  "'mode-keys' is set to 'vi'."
 	},
 
+	{ .name = "message-line",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .choices = options_table_message_line_list,
+	  .default_num = 0,
+	  .text = "Position (line) of messages and the command prompt."
+	},
+
 	{ .name = "message-style",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SESSION,
 	  .default_str = "bg=yellow,fg=black",
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
-	  .text = "Style of the command prompt."
+	  .text = "Style of messages and the command prompt."
 	},
 
 	{ .name = "mouse",
