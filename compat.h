@@ -423,6 +423,7 @@ void		*recallocarray(void *, size_t, size_t, size_t);
 
 #ifdef HAVE_SYSTEMD
 /* systemd.c */
+int		 systemd_activated(void);
 int		 systemd_create_socket(int, char **);
 #endif
 

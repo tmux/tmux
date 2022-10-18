@@ -26,6 +26,12 @@
 #include "tmux.h"
 
 int
+systemd_activated(void)
+{
+	return (sd_listen_fds(0) >= 1);
+}
+
+int
 systemd_create_socket(int flags, char **cause)
 {
 	int			fds;
