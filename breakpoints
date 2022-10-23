@@ -1,9 +1,0 @@
-break tty_send_requests
-break server-client.c:2856
-break tty_keys_next
-break server_client_handle_key
-break server_client_key_callback
-break tty.c:304
-break tty.c:371
-break tty-keys.c:1318
-break tty-keys.c:1385
