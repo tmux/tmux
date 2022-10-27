@@ -1086,7 +1086,8 @@ cmd_parse_from_arguments(struct args_value *values, u_int count,
 				arg->type = CMD_PARSE_STRING;
 				arg->string = copy;
 				TAILQ_INSERT_TAIL(&cmd->arguments, arg, entry);
-			}
+			} else
+				free(copy);
 		} else if (values[i].type == ARGS_COMMANDS) {
 			arg = xcalloc(1, sizeof *arg);
 			arg->type = CMD_PARSE_PARSED_COMMANDS;
