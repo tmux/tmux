@@ -152,6 +152,8 @@ notify_callback(struct cmdq_item *item, void *data)
 		control_notify_session_window_changed(ne->session);
 	if (strcmp(ne->name, "paste-buffer-changed") == 0)
 		control_notify_paste_buffer_changed(ne->pbname);
+	if (strcmp(ne->name, "paste-buffer-deleted") == 0)
+		control_notify_paste_buffer_deleted(ne->pbname);
 
 	notify_insert_hook(item, ne);
 
@@ -306,10 +308,16 @@ notify_pane(const char *name, struct window_pane *wp)
 }
 
 void
-notify_paste_buffer(const char *pbname)
+notify_paste_buffer(const char *pbname, int deleted)
 {
   	struct cmd_find_state	fs;
 
 	cmd_find_clear_state(&fs, 0);
-	notify_add("paste-buffer-changed", &fs, NULL, NULL, NULL, NULL, pbname);
+	if (deleted) {
+		notify_add("paste-buffer-deleted", &fs, NULL, NULL, NULL, NULL,
+		    pbname);
+	} else {
+		notify_add("paste-buffer-changed", &fs, NULL, NULL, NULL, NULL,
+		    pbname);
+	}
 }

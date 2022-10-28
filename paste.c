@@ -150,7 +150,7 @@ paste_get_name(const char *name)
 void
 paste_free(struct paste_buffer *pb)
 {
-	notify_paste_buffer(pb->name);
+	notify_paste_buffer(pb->name, 1);
 
 	RB_REMOVE(paste_name_tree, &paste_by_name, pb);
 	RB_REMOVE(paste_time_tree, &paste_by_time, pb);
@@ -209,7 +209,7 @@ paste_add(const char *prefix, char *data, size_t size)
 	RB_INSERT(paste_name_tree, &paste_by_name, pb);
 	RB_INSERT(paste_time_tree, &paste_by_time, pb);
 
-	notify_paste_buffer(pb->name);
+	notify_paste_buffer(pb->name, 0);
 }
 
 /* Rename a paste buffer. */
@@ -257,8 +257,8 @@ paste_rename(const char *oldname, const char *newname, char **cause)
 
 	RB_INSERT(paste_name_tree, &paste_by_name, pb);
 
-	notify_paste_buffer(oldname);
-	notify_paste_buffer(newname);
+	notify_paste_buffer(oldname, 1);
+	notify_paste_buffer(newname, 0);
 
 	return (0);
 }
@@ -308,7 +308,7 @@ paste_set(char *data, size_t size, const char *name, char **cause)
 	RB_INSERT(paste_name_tree, &paste_by_name, pb);
 	RB_INSERT(paste_time_tree, &paste_by_time, pb);
 
-	notify_paste_buffer(name);
+	notify_paste_buffer(name, 0);
 
 	return (0);
 }
@@ -321,7 +321,7 @@ paste_replace(struct paste_buffer *pb, char *data, size_t size)
 	pb->data = data;
 	pb->size = size;
 
-	notify_paste_buffer(pb->name);
+	notify_paste_buffer(pb->name, 0);
 }
 
 /* Convert start of buffer into a nice string. */
