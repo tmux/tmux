@@ -431,7 +431,7 @@ input_key_write(const char *from, struct bufferevent *bev, const char *data,
 int
 input_key(struct screen *s, struct bufferevent *bev, key_code key)
 {
-	struct input_key_entry	*ike;
+	struct input_key_entry	*ike = NULL;
 	key_code		 justkey, newkey, outkey, modifiers;
 	struct utf8_data	 ud;
 	char			 tmp[64], modifier;
@@ -483,9 +483,10 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 		key &= ~KEYC_KEYPAD;
 	if (~s->mode & MODE_KCURSOR)
 		key &= ~KEYC_CURSOR;
-	if (~s->mode & MODE_KEXTENDED)
-		key &= ~KEYC_EXTENDED;
-	ike = input_key_get(key);
+	if (s->mode & MODE_KEXTENDED)
+		ike = input_key_get(key|KEYC_EXTENDED);
+	if (ike == NULL)
+		ike = input_key_get(key);
 	if (ike == NULL && (key & KEYC_META) && (~key & KEYC_IMPLIED_META))
 		ike = input_key_get(key & ~KEYC_META);
 	if (ike == NULL && (key & KEYC_CURSOR))
