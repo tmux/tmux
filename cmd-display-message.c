@@ -39,8 +39,8 @@ const struct cmd_entry cmd_display_message_entry = {
 	.name = "display-message",
 	.alias = "display",
 
-	.args = { "ac:d:INpt:F:v", 0, 1, NULL },
-	.usage = "[-aINpv] [-c target-client] [-d delay] [-F format] "
+	.args = { "ac:d:lINpt:F:v", 0, 1, NULL },
+	.usage = "[-aIlNpv] [-c target-client] [-d delay] [-F format] "
 		 CMD_TARGET_PANE_USAGE " [message]",
 
 	.target = { 't', CMD_FIND_PANE, CMD_FIND_CANFAIL },
@@ -67,7 +67,7 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 	struct winlink		*wl = target->wl;
 	struct window_pane	*wp = target->wp;
 	const char		*template;
-	char			*msg, *cause;
+	char			*cause, *msg;
 	int			 delay = -1, flags;
 	struct format_tree	*ft;
 	u_int			 count = args_count(args);
@@ -132,7 +132,11 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 	}
 
-	msg = format_expand_time(ft, template);
+	if (args_has(args, 'l'))
+		msg = xstrdup(template);
+	else
+		msg = format_expand_time(ft, template);
+
 	if (cmdq_get_client(item) == NULL)
 		cmdq_error(item, "%s", msg);
 	else if (args_has(args, 'p'))
