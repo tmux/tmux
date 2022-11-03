@@ -3575,7 +3575,32 @@ found:
 	return (found);
 }
 
-/* Remove escaped characters from string. */
+/* Unescape escaped characters. */
+static char *
+format_unescape(const char *s)
+{
+	char	*out, *cp;
+	int	 brackets = 0;
+
+	cp = out = xmalloc(strlen(s) + 1);
+	for (; *s != '\0'; s++) {
+		if (*s == '#' && s[1] == '{')
+			brackets++;
+		if (brackets == 0 &&
+		    *s == '#' &&
+		    strchr(",#{}:", s[1]) != NULL) {
+			*cp++ = *++s;
+ 			continue;
+		}
+		if (*s == '}')
+			brackets--;
+		*cp++ = *s;
+	}
+	*cp = '\0';
+	return (out);
+}
+
+/* Remove escaped characters. */
 static char *
 format_strip(const char *s)
 {
@@ -4338,7 +4363,8 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 
 	/* Is this a literal string? */
 	if (modifiers & FORMAT_LITERAL) {
-		value = xstrdup(copy);
+		format_log(es, "literal string is '%s'", copy);
+		value = format_unescape(copy);
 		goto done;
 	}
 
