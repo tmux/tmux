@@ -139,6 +139,7 @@ struct winlink;
 #define KEYC_IMPLIED_META    0x08000000000000ULL
 #define KEYC_BUILD_MODIFIERS 0x10000000000000ULL
 #define KEYC_VI              0x20000000000000ULL
+#define KEYC_EXTENDED        0x40000000000000ULL
 
 /* Masks for key bits. */
 #define KEYC_MASK_MODIFIERS  0x00f00000000000ULL
@@ -2184,7 +2185,7 @@ void	notify_winlink(const char *, struct winlink *);
 void	notify_session_window(const char *, struct session *, struct window *);
 void	notify_window(const char *, struct window *);
 void	notify_pane(const char *, struct window_pane *);
-void	notify_paste_buffer(const char *);
+void	notify_paste_buffer(const char *, int);
 
 /* options.c */
 struct options	*options_create(struct options *);
@@ -3211,6 +3212,7 @@ void	control_notify_session_created(struct session *);
 void	control_notify_session_closed(struct session *);
 void	control_notify_session_window_changed(struct session *);
 void	control_notify_paste_buffer_changed(const char *);
+void	control_notify_paste_buffer_deleted(const char *);
 
 /* session.c */
 extern struct sessions sessions;

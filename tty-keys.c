@@ -208,6 +208,9 @@ static const struct tty_default_key_raw tty_default_raw_keys[] = {
 	/* Paste keys. */
 	{ "\033[200~", KEYC_PASTE_START },
 	{ "\033[201~", KEYC_PASTE_END },
+
+	/* Extended keys. */
+	{ "\033[1;5Z", '\011'|KEYC_CTRL|KEYC_SHIFT },
 };
 
 /* Default xterm keys. */

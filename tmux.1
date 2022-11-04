@@ -5892,7 +5892,7 @@ The following keys are also available:
 .El
 .Tg display
 .It Xo Ic display-message
-.Op Fl aINpv
+.Op Fl aIlNpv
 .Op Fl c Ar target-client
 .Op Fl d Ar delay
 .Op Fl t Ar target-pane
@@ -5914,7 +5914,12 @@ is not given, the
 option is used; a delay of zero waits for a key press.
 .Ql N
 ignores key presses and closes only after the delay expires.
-The format of
+If
+.Fl l
+is given,
+.Ar message
+is printed unchanged.
+Otherwise, the format of
 .Ar message
 is described in the
 .Sx FORMATS
@@ -6619,6 +6624,10 @@ has changed mode.
 Paste buffer
 .Ar name
 has been changed.
+.It Ic %paste-buffer-deleted Ar name
+Paste buffer
+.Ar name
+has been deleted.
 .It Ic %pause Ar pane-id
 The pane has been paused (if the
 .Ar pause-after
