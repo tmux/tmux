@@ -1339,8 +1339,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 	struct screen_write_ctx	       *sctx = &ictx->ctx;
 	struct screen		       *s = sctx->s;
 	struct input_table_entry       *entry;
-	struct client		       *c;
-	int				i, n, m, sixel = 1;
+	int				i, n, m;
 	u_int				cx, bg = ictx->cell.cell.bg;
 
 	if (ictx->flags & INPUT_DISCARD)
@@ -1438,17 +1437,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 		case -1:
 			break;
 		case 0:
-			/* Advertise sixel if all clients support it. */
-			TAILQ_FOREACH(c, &clients, entry) {
-				if (~c->tty.term->flags & TERM_SIXEL) {
-					sixel = 0;
-					break;
-				}
-			}
-			if (sixel)
-				input_reply(ictx, "\033[?1;2;4c");
-			else
-				input_reply(ictx, "\033[?1;2c");
+			input_reply(ictx, "\033[?1;2;4c");
 			break;
 		default:
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);

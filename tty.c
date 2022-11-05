@@ -299,9 +299,9 @@ tty_start_timer_callback(__unused int fd, __unused short events, void *data)
 	struct client	*c = tty->client;
 
 	log_debug("%s: start timer fired", c->name);
-	if ((tty->flags & (TTY_HAVEDA|TTY_HAVEXDA)) == 0)
+	if ((tty->flags & (TTY_HAVEDA2|TTY_HAVEXDA)) == 0)
 		tty_update_features(tty);
-	tty->flags |= (TTY_HAVEDA|TTY_HAVEXDA);
+	tty->flags |= (TTY_HAVEDA2|TTY_HAVEXDA);
 }
 
 void
@@ -363,14 +363,14 @@ tty_send_requests(struct tty *tty)
 		return;
 
 	if (tty->term->flags & TERM_VT100LIKE) {
-		if (~tty->flags & TTY_HAVEDA)
+		if (~tty->term->flags & TTY_HAVEDA)
+			tty_puts(tty, "\033[c");
+		if (~tty->flags & TTY_HAVEDA2)
 			tty_puts(tty, "\033[>c");
 		if (~tty->flags & TTY_HAVEXDA)
 			tty_puts(tty, "\033[>q");
-		if (~tty->term->flags & TERM_SIXEL)
-			tty_puts(tty, "\033[c");
 	} else
-		tty->flags |= (TTY_HAVEDA|TTY_HAVEXDA);
+		tty->flags |= (TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA);
 }
 
 void

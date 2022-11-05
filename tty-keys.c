@@ -55,6 +55,8 @@ static int	tty_keys_clipboard(struct tty *, const char *, size_t,
 		    size_t *);
 static int	tty_keys_device_attributes(struct tty *, const char *, size_t,
 		    size_t *);
+static int	tty_keys_device_attributes2(struct tty *, const char *, size_t,
+		    size_t *);
 static int	tty_keys_extended_device_attributes(struct tty *, const char *,
 		    size_t, size_t *);
 
@@ -684,8 +686,19 @@ tty_keys_next(struct tty *tty)
 		goto partial_key;
 	}
 
-	/* Is this a device attributes response? */
+	/* Is this a primary device attributes response? */
 	switch (tty_keys_device_attributes(tty, buf, len, &size)) {
+	case 0:		/* yes */
+		key = KEYC_UNKNOWN;
+		goto complete_key;
+	case -1:	/* no, or not valid */
+		break;
+	case 1:		/* partial */
+		goto partial_key;
+	}
+
+	/* Is this a secondary device attributes response? */
+	switch (tty_keys_device_attributes2(tty, buf, len, &size)) {
 	case 0:		/* yes */
 		key = KEYC_UNKNOWN;
 		goto complete_key;
@@ -1235,7 +1248,7 @@ tty_keys_clipboard(struct tty *tty, const char *buf, size_t len, size_t *size)
 }
 
 /*
- * Handle secondary device attributes input. Returns 0 for success, -1 for
+ * Handle primary device attributes input. Returns 0 for success, -1 for
  * failure, 1 for partial.
  */
 static int
@@ -1247,12 +1260,11 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 	char		 tmp[64], *endptr, p[32] = { 0 }, *cp, *next;
 
 	*size = 0;
-	if (tty->flags & TTY_HAVEDA && tty->term->flags & TERM_SIXEL)
+	if (tty->flags & TTY_HAVEDA)
 		return (-1);
 
 	/*
-	 * First three bytes are always \033[>. Some older Terminal.app
-	 * versions respond as for DA (\033[?) so accept and ignore that.
+	 * First three bytes are always \033[?.
 	 */
 	if (buf[0] != '\033')
 		return (-1);
@@ -1262,27 +1274,97 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 		return (-1);
 	if (len == 2)
 		return (1);
-	if (buf[2] != '>' && buf[2] != '?')
+	if (buf[2] != '?')
 		return (-1);
 	if (len == 3)
 		return (1);
 
 	/* Copy the rest up to a 'c'. */
-	for (i = 0; i < (sizeof tmp) - 1; i++) {
+	for (i = 0; i < (sizeof tmp); i++) {
 		if (3 + i == len)
 			return (1);
 		if (buf[3 + i] == 'c')
 			break;
 		tmp[i] = buf[3 + i];
 	}
-	if (i == (sizeof tmp) - 1)
+	if (i == (sizeof tmp))
 		return (-1);
 	tmp[i] = '\0';
 	*size = 4 + i;
 
-	/* Ignore DA response. */
-	//if (buf[2] == '?')
-	//	return (0);
+	/* Convert all arguments to numbers. */
+	cp = tmp;
+	while ((next = strsep(&cp, ";")) != NULL) {
+		p[n] = strtoul(next, &endptr, 10);
+		if (*endptr != '\0')
+			p[n] = 0;
+		n++;
+	}
+
+	/* Add terminal features. */
+	switch (p[0]) {
+	case 62: /* VT220 */
+	case 63: /* VT320 */
+	case 64: /* VT420 */
+	for (i = 1; i < n; i++) {
+		log_debug("%s: DA feature: %d", c->name, p[i]);
+		if (p[i] == 4)
+			tty->term->flags |= TERM_SIXEL;
+	}
+		break;
+	}
+	log_debug("%s: received primary DA %.*s", c->name, (int)*size, buf);
+
+	tty_update_features(tty);
+	tty->flags |= TTY_HAVEDA;
+
+	return (0);
+}
+
+/*
+ * Handle secondary device attributes input. Returns 0 for success, -1 for
+ * failure, 1 for partial.
+ */
+static int
+tty_keys_device_attributes2(struct tty *tty, const char *buf, size_t len,
+    size_t *size)
+{
+	struct client	*c = tty->client;
+	u_int		 i, n = 0;
+	char		 tmp[64], *endptr, p[32] = { 0 }, *cp, *next;
+
+	*size = 0;
+	if (tty->flags & TTY_HAVEDA2)
+		return (-1);
+
+	/*
+	 * First three bytes are always \033[>.
+	 */
+	if (buf[0] != '\033')
+		return (-1);
+	if (len == 1)
+		return (1);
+	if (buf[1] != '[')
+		return (-1);
+	if (len == 2)
+		return (1);
+	if (buf[2] != '>')
+		return (-1);
+	if (len == 3)
+		return (1);
+
+	/* Copy the rest up to a 'c'. */
+	for (i = 0; i < (sizeof tmp); i++) {
+		if (3 + i == len)
+			return (1);
+		if (buf[3 + i] == 'c')
+			break;
+		tmp[i] = buf[3 + i];
+	}
+	if (i == (sizeof tmp))
+		return (-1);
+	tmp[i] = '\0';
+	*size = 4 + i;
 
 	/* Convert all arguments to numbers. */
 	cp = tmp;
@@ -1298,15 +1380,6 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 	case 41: /* VT420 */
 		tty_add_features(&c->term_features, "margins,rectfill", ",");
 		break;
-	case 62: /* VT220 */
-	case 63: /* VT320 */
-	case 64: /* VT420 */
-	for (i = 1; i < n; i++) {
-		log_debug("%s: DA feature: %d", c->name, p[i]);
-		if (p[i] == 4)
-			tty->term->flags |= TERM_SIXEL;
-	}
-		break;
 	case 'M': /* mintty */
 		tty_default_features(&c->term_features, "mintty", 0);
 		break;
@@ -1320,7 +1393,7 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 	log_debug("%s: received secondary DA %.*s", c->name, (int)*size, buf);
 
 	tty_update_features(tty);
-	tty->flags |= TTY_HAVEDA;
+	tty->flags |= TTY_HAVEDA2;
 
 	return (0);
 }
