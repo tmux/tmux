@@ -299,9 +299,9 @@ tty_start_timer_callback(__unused int fd, __unused short events, void *data)
 	struct client	*c = tty->client;
 
 	log_debug("%s: start timer fired", c->name);
-	if ((tty->flags & (TTY_HAVEDA2|TTY_HAVEXDA)) == 0)
+	if ((tty->flags & (TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA)) == 0)
 		tty_update_features(tty);
-	tty->flags |= (TTY_HAVEDA2|TTY_HAVEXDA);
+	tty->flags |= (TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA);
 }
 
 void
