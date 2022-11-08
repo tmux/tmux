@@ -7,20 +7,7 @@ TERM=screen
 TMUX="$TEST_TMUX -Ltest"
 $TMUX kill-server 2>/dev/null
 
-SCRIPT=$(mktemp)
-trap "rm -f $SCRIPT" 0 1 15
-
-cat <<EOF >"$SCRIPT"
-for control in \$(stty -a | grep -oa '\w* =' | cut -d' ' -f1); do
-  stty \$control undef
-done
-
-stty -a
-
-cat -tve
-EOF
-
-$TMUX -f/dev/null new -x20 -y2 -d -- /bin/sh "$SCRIPT" || exit 1
+$TMUX -f/dev/null new -x20 -y2 -d || exit 1
 
 sleep 0.1
 
@@ -30,9 +17,11 @@ assert_key () {
 	key=$1
 	expected_code=$2
 
-	$TMUX send-keys "$key" Enter
+	$TMUX new-window -- sh -c 'stty raw -echo && cat -tv'
+	$TMUX send-keys "$key" $
 
-	actual_code=$($TMUX capturep -p | head -1 | sed -e 's/\$//')
+	actual_code=$($TMUX capturep -p | head -1 | sed -e 's/\$$//')
+	$TMUX kill-window
 
 	if [ "$actual_code" = "$expected_code" ]; then
 		if [ -n "$VERBOSE" ]; then
@@ -62,10 +51,10 @@ assert_key 'C-f' '^F'	 -- 'M-C-f' '^[^F'
 assert_key 'C-g' '^G'	 -- 'M-C-g' '^[^G'
 assert_key 'C-h' '^H'	 -- 'M-C-h' '^[^H'
 assert_key 'C-i' '^I'	 -- 'M-C-i' '^[^I'
-# assert_key 'C-j' ''	 -- 'M-C-j' '' # NL
+assert_key 'C-j' ''	 -- 'M-C-j' '^[' # NL
 assert_key 'C-k' '^K'	 -- 'M-C-k' '^[^K'
 assert_key 'C-l' '^L'	 -- 'M-C-l' '^[^L'
-# assert_key 'C-m' ''	 -- 'M-C-m' '' # CR
+assert_key 'C-m' '^M'	 -- 'M-C-m' '^[^M'
 assert_key 'C-n' '^N'	 -- 'M-C-n' '^[^N'
 assert_key 'C-o' '^O'	 -- 'M-C-o' '^[^O'
 assert_key 'C-p' '^P'	 -- 'M-C-p' '^[^P'
@@ -242,7 +231,6 @@ assert_key 'KP9' '9' -- 'M-KP9' '^[9'
 
 # Extended keys
 $TMUX set -g extended-keys always
-$TMUX -f/dev/null new-window -- /bin/sh "$SCRIPT"
 
 assert_extended_key () {
 	extended_key=$1
