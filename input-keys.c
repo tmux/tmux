@@ -316,7 +316,7 @@ static struct input_key_entry input_key_defaults[] = {
 	  .data = "\033[9;5u"
 	},
 	{ .key = '\011'|KEYC_CTRL|KEYC_SHIFT,
-	  .data = "\011"
+	  .data = "\033[Z"
 	},
 	{ .key = '\011'|KEYC_CTRL|KEYC_SHIFT|KEYC_EXTENDED,
 	  .data = "\033[1;5Z"
