@@ -1345,8 +1345,8 @@ input_csi_dispatch(struct input_ctx *ictx)
 	if (ictx->flags & INPUT_DISCARD)
 		return (0);
 
-	log_debug("%s: '%c' \"%s\" \"%s\"",
-	    __func__, ictx->ch, ictx->interm_buf, ictx->param_buf);
+	log_debug("%s: '%c' \"%s\" \"%s\"", __func__, ictx->ch,
+	    ictx->interm_buf, ictx->param_buf);
 
 	if (input_split(ictx) != 0)
 		return (0);
@@ -1437,7 +1437,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 		case -1:
 			break;
 		case 0:
-			input_reply(ictx, "\033[?1;2c");
+			input_reply(ictx, "\033[?1;2;4c");
 			break;
 		default:
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);
