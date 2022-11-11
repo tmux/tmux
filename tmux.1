@@ -23,7 +23,7 @@
 .Sh SYNOPSIS
 .Nm tmux
 .Bk -words
-.Op Fl 2CDluvV
+.Op Fl 2CDlNuVv
 .Op Fl c Ar shell-command
 .Op Fl f Ar file
 .Op Fl L Ar socket-name
@@ -206,6 +206,12 @@ If
 is specified, the default socket directory is not used and any
 .Fl L
 flag is ignored.
+.It Fl T Ar features
+Set terminal features for the client.
+This is a comma-separated list of features.
+See the
+.Ic terminal-features
+option.
 .It Fl u
 Write UTF-8 output to the terminal even if the first environment
 variable of
@@ -217,12 +223,10 @@ that is set does not contain
 .Qq UTF-8
 or
 .Qq UTF8 .
-.It Fl T Ar features
-Set terminal features for the client.
-This is a comma-separated list of features.
-See the
-.Ic terminal-features
-option.
+.It Fl V
+Report the
+.Nm
+version.
 .It Fl v
 Request verbose logging.
 Log messages will be saved into
@@ -247,10 +251,6 @@ signal may be sent to the
 server process to toggle logging between on (as if
 .Fl v
 was given) and off.
-.It Fl V
-Report the
-.Nm
-version.
 .It Ar command Op Ar flags
 This specifies one of a set of commands used to control
 .Nm ,
