@@ -353,7 +353,7 @@ static const char *const tty_feature_sixel_capabilities[] = {
 static const struct tty_feature tty_feature_sixel = {
 	"sixel",
 	tty_feature_sixel_capabilities,
-	0
+	TERM_SIXEL
 };
 
 /* Available terminal features. */

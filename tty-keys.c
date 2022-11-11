@@ -1256,16 +1256,15 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
     size_t *size)
 {
 	struct client	*c = tty->client;
+	int		*features = &c->term_features;
 	u_int		 i, n = 0;
-	char		 tmp[64], *endptr, p[32] = { 0 }, *cp, *next;
+	char		 tmp[128], *endptr, p[32] = { 0 }, *cp, *next;
 
 	*size = 0;
 	if (tty->flags & TTY_HAVEDA)
 		return (-1);
 
-	/*
-	 * First three bytes are always \033[?.
-	 */
+	/* First three bytes are always \033[?. */
 	if (buf[0] != '\033')
 		return (-1);
 	if (len == 1)
@@ -1298,7 +1297,8 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 		p[n] = strtoul(next, &endptr, 10);
 		if (*endptr != '\0')
 			p[n] = 0;
-		n++;
+		if (++n == nitems(p))
+			break;
 	}
 
 	/* Add terminal features. */
@@ -1306,11 +1306,11 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 	case 62: /* VT220 */
 	case 63: /* VT320 */
 	case 64: /* VT420 */
-	for (i = 1; i < n; i++) {
-		log_debug("%s: DA feature: %d", c->name, p[i]);
-		if (p[i] == 4)
-			tty->term->flags |= TERM_SIXEL;
-	}
+		for (i = 1; i < n; i++) {
+			log_debug("%s: DA feature: %d", c->name, p[i]);
+			if (p[i] == 4)
+				tty_add_features(features, "sixel", ",");
+		}
 		break;
 	}
 	log_debug("%s: received primary DA %.*s", c->name, (int)*size, buf);
@@ -1330,16 +1330,15 @@ tty_keys_device_attributes2(struct tty *tty, const char *buf, size_t len,
     size_t *size)
 {
 	struct client	*c = tty->client;
+	int		*features = &c->term_features;
 	u_int		 i, n = 0;
-	char		 tmp[64], *endptr, p[32] = { 0 }, *cp, *next;
+	char		 tmp[128], *endptr, p[32] = { 0 }, *cp, *next;
 
 	*size = 0;
 	if (tty->flags & TTY_HAVEDA2)
 		return (-1);
 
-	/*
-	 * First three bytes are always \033[>.
-	 */
+	/* First three bytes are always \033[>. */
 	if (buf[0] != '\033')
 		return (-1);
 	if (len == 1)
@@ -1372,22 +1371,23 @@ tty_keys_device_attributes2(struct tty *tty, const char *buf, size_t len,
 		p[n] = strtoul(next, &endptr, 10);
 		if (*endptr != '\0')
 			p[n] = 0;
-		n++;
+		if (++n == nitems(p))
+			break;
 	}
 
 	/* Add terminal features. */
 	switch (p[0]) {
 	case 41: /* VT420 */
-		tty_add_features(&c->term_features, "margins,rectfill", ",");
+		tty_add_features(features, "margins,rectfill", ",");
 		break;
 	case 'M': /* mintty */
-		tty_default_features(&c->term_features, "mintty", 0);
+		tty_default_features(features, "mintty", 0);
 		break;
 	case 'T': /* tmux */
-		tty_default_features(&c->term_features, "tmux", 0);
+		tty_default_features(features, "tmux", 0);
 		break;
 	case 'U': /* rxvt-unicode */
-		tty_default_features(&c->term_features, "rxvt-unicode", 0);
+		tty_default_features(features, "rxvt-unicode", 0);
 		break;
 	}
 	log_debug("%s: received secondary DA %.*s", c->name, (int)*size, buf);
@@ -1407,6 +1407,7 @@ tty_keys_extended_device_attributes(struct tty *tty, const char *buf,
     size_t len, size_t *size)
 {
 	struct client	*c = tty->client;
+	int		*features = &c->term_features;
 	u_int		 i;
 	char		 tmp[128];
 
@@ -1447,13 +1448,13 @@ tty_keys_extended_device_attributes(struct tty *tty, const char *buf,
 
 	/* Add terminal features. */
 	if (strncmp(tmp, "iTerm2 ", 7) == 0)
-		tty_default_features(&c->term_features, "iTerm2", 0);
+		tty_default_features(features, "iTerm2", 0);
 	else if (strncmp(tmp, "tmux ", 5) == 0)
-		tty_default_features(&c->term_features, "tmux", 0);
+		tty_default_features(features, "tmux", 0);
 	else if (strncmp(tmp, "XTerm(", 6) == 0)
-		tty_default_features(&c->term_features, "XTerm", 0);
+		tty_default_features(features, "XTerm", 0);
 	else if (strncmp(tmp, "mintty ", 7) == 0)
-		tty_default_features(&c->term_features, "mintty", 0);
+		tty_default_features(features, "mintty", 0);
 	log_debug("%s: received extended DA %.*s", c->name, (int)*size, buf);
 
 	free(c->term_type);
