@@ -454,6 +454,9 @@ tty_term_apply_overrides(struct tty_term *term)
 		a = options_array_next(a);
 	}
 
+	/* Log the SIXEL flag. */
+	log_debug("SIXEL flag is %d", !!(term->flags & TERM_SIXEL));
+
 	/* Update the RGB flag if the terminal has RGB colours. */
 	if (tty_term_has(term, TTYC_SETRGBF) &&
 	    tty_term_has(term, TTYC_SETRGBB))
