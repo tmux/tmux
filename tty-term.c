@@ -268,6 +268,7 @@ static const struct tty_term_code_entry tty_term_codes[] = {
 	[TTYC_SETRGBF] = { TTYCODE_STRING, "setrgbf" },
 	[TTYC_SETULC] = { TTYCODE_STRING, "Setulc" },
 	[TTYC_SE] = { TTYCODE_STRING, "Se" },
+	[TTYC_SXL] =  { TTYCODE_FLAG, "Sxl" },
 	[TTYC_SGR0] = { TTYCODE_STRING, "sgr0" },
 	[TTYC_SITM] = { TTYCODE_STRING, "sitm" },
 	[TTYC_SMACS] = { TTYCODE_STRING, "smacs" },
@@ -455,6 +456,9 @@ tty_term_apply_overrides(struct tty_term *term)
 			tty_term_apply(term, s + offset, 0);
 		a = options_array_next(a);
 	}
+
+	/* Log the SIXEL flag. */
+	log_debug("SIXEL flag is %d", !!(term->flags & TERM_SIXEL));
 
 	/* Update the RGB flag if the terminal has RGB colours. */
 	if (tty_term_has(term, TTYC_SETRGBF) &&

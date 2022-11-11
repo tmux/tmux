@@ -3690,6 +3690,8 @@ Supports the overline SGR attribute.
 Supports the DECFRA rectangle fill escape sequence.
 .It RGB
 Supports RGB colour with the SGR escape sequences.
+.It sixel
+Supports SIXEL graphics.
 .It strikethrough
 Supports the strikethrough SGR escape sequence.
 .It sync
@@ -5083,6 +5085,15 @@ would change
 .Ql abABab
 into
 .Ql bxBxbx .
+A different delimiter character may also be used, to avoid collisions with
+literal slashes in the pattern.
+For example,
+.Ql s|foo/|bar/|:
+will substitute
+.Ql foo/
+with
+.Ql bar/
+throughout.
 .Pp
 In addition, the last line of a shell command's output may be inserted using
 .Ql #() .
@@ -6485,6 +6496,8 @@ Set the opening sequence for the working directory notification.
 The sequence is terminated using the standard
 .Em fsl
 capability.
+.It Em \&Sxl
+Indicates that the terminal supports SIXEL.
 .It Em \&Sync
 Start (parameter is 1) or end (parameter is 2) a synchronized update.
 .It Em \&Tc
