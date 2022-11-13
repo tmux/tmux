@@ -2180,10 +2180,20 @@ screen_write_sixelimage(struct screen_write_ctx *ctx, struct sixel_image *si,
 	struct screen		*s = ctx->s;
 	struct grid		*gd = s->grid;
 	struct tty_ctx		 ttyctx;
-	u_int			 x, y, sx, sy, cx = s->cx, cy = s->cy, i, lines;
+	u_int			 x, y, sx, sy, cx, cy, i, lines;
 	struct sixel_image	*new;
+	char			*ph;
 
 	sixel_size_in_cells(si, &x, &y);
+
+	/* Write a placeholder. */
+	xasprintf(&ph, "Sixel image (%ux%u)\n", x, y);
+	/* XXX This could use a rasteriser in future. */
+	screen_write_puts(ctx, &grid_default_cell, "%s", ph);
+	free(ph);
+	cx = s->cx;
+	cy = s->cy;
+
 	if (x > screen_size_x(s) || y > screen_size_y(s)) {
 		if (x > screen_size_x(s) - cx)
 			sx = screen_size_x(s) - cx;

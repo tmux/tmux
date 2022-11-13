@@ -130,5 +130,7 @@ image_scroll_up(struct screen *s, u_int lines)
 		sixel_size_in_cells(im->data, &im->sx, &im->sy);
 		redraw = 1;
 	}
-	return (redraw);
+	/* XXX Restore this after adding sixel draw calls everywhere needed.
+	 * return (redraw); */
+	return 0;
 }

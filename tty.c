@@ -2188,13 +2188,12 @@ tty_cmd_sixelimage(struct tty *tty, const struct tty_ctx *ctx)
 	size_t			 size;
 	u_int			 cx = ctx->ocx, cy = ctx->ocy, sx, sy;
 	u_int			 i, j, x, y, rx, ry;
-	int			 fake = 0;
 
 	if ((~tty->term->flags & TERM_SIXEL) &&
         !tty_term_has(tty->term, TTYC_SXL))
-		fake = 1;
+		return;
 	if (tty->xpixel == 0 || tty->ypixel == 0)
-		fake = 1;
+		return;
 
 	sixel_size_in_cells(si, &sx, &sy);
 	log_debug("%s: image is %ux%u", __func__, sx, sy);
@@ -2202,17 +2201,11 @@ tty_cmd_sixelimage(struct tty *tty, const struct tty_ctx *ctx)
 		return;
 	log_debug("%s: clamping to %u,%u-%u,%u", __func__, i, j, rx, ry);
 
-	if (fake == 1) {
-		xasprintf(&data, "Sixel image (%ux%u)", sx, sy);
-		size = strlen(data);
-	} else {
-		new = sixel_scale(si, tty->xpixel, tty->ypixel, i, j, rx, ry, 0);
-		if (new == NULL)
-			return;
+	new = sixel_scale(si, tty->xpixel, tty->ypixel, i, j, rx, ry, 0);
+	if (new == NULL)
+		return;
 
-		data = sixel_print(new, si, &size);
-	}
-
+	data = sixel_print(new, si, &size);
 	if (data != NULL) {
 		log_debug("%s: %zu bytes: %s", __func__, size, data);
 		tty_region_off(tty);
@@ -2224,9 +2217,7 @@ tty_cmd_sixelimage(struct tty *tty, const struct tty_ctx *ctx)
 		tty_invalidate(tty);
 		free(data);
 	}
-
-	if (fake == 0)
-		sixel_free(new);
+	sixel_free(new);
 }
 
 void
