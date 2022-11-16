@@ -831,6 +831,7 @@ struct style {
 struct image {
 	struct screen		*s;
 	struct sixel_image	*data;
+	char			*fallback;
 
 	u_int			 px;
 	u_int			 py;
