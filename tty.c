@@ -1579,7 +1579,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 void
 tty_draw_images(struct tty *tty, struct window_pane *wp, struct screen *s)
 {
-#if 0 /* XXX */
+//#if 0 /* XXX */
 	struct client	*c = tty->client;
 	struct image	*im;
 	struct tty_ctx	 ttyctx;
@@ -1593,8 +1593,8 @@ tty_draw_images(struct tty *tty, struct window_pane *wp, struct screen *s)
 		ttyctx.orlower = s->rlower;
 		ttyctx.orupper = s->rupper;
 
-		ttyctx.bigger = tty_window_offset(&c->tty, &ttyctx.ox,
-		    &ttyctx.oy, &ttyctx.sx, &ttyctx.sy);
+		ttyctx.bigger = tty_window_offset(&c->tty, &ttyctx.ocx,
+		    &ttyctx.ocy, &ttyctx.sx, &ttyctx.sy);
 
 		ttyctx.xoff = wp->xoff;
 		ttyctx.yoff = wp->yoff;
@@ -1602,10 +1602,10 @@ tty_draw_images(struct tty *tty, struct window_pane *wp, struct screen *s)
 		if (status_at_line(c) == 0)
 			ttyctx.yoff += status_line_size(c);
 
-		ttyctx.ptr = im->data;
-		tty_cmd_sixelimage(tty, &ttyctx);
+		ttyctx.ptr = im;
+		tty_write(tty_cmd_sixelimage, &ttyctx);
 	}
-#endif
+//#endif
 }
 
 void
