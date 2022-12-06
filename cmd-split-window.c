@@ -39,8 +39,8 @@ const struct cmd_entry cmd_split_window_entry = {
 	.name = "split-window",
 	.alias = "splitw",
 
-	.args = { "bc:de:fF:hIl:p:Pt:vZ", 0, -1, NULL },
-	.usage = "[-bdefhIPvZ] [-c start-directory] [-e environment] "
+	.args = { "abc:de:fF:hIl:p:Pt:vZ", 0, -1, NULL },
+	.usage = "[-abdefhIPvZ] [-c start-directory] [-e environment] "
 		 "[-F format] [-l size] " CMD_TARGET_PANE_USAGE
 		 "[shell-command]",
 
@@ -66,14 +66,26 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct layout_cell	*lc;
 	struct cmd_find_state	 fs;
 	int			 size, flags, input;
-	const char		*template;
+	const char		*template, *tmp;
 	char			*cause = NULL, *cp;
 	struct args_value	*av;
-	u_int			 count = args_count(args), curval = 0;
+	u_int			 count = args_count(args), curval = 0, gx, gy;
+	long long        real_x, real_y;
 
 	type = LAYOUT_TOPBOTTOM;
-	if (args_has(args, 'h'))
-		type = LAYOUT_LEFTRIGHT;
+	if (args_has(args, 'a')) {
+		tmp = options_get_string(s->options, "pane-autosplit-threshold");
+		if (sscanf(tmp, "%u:%u", &gx, &gy) != 2) {
+			gx = 2;
+			gy = 1;
+		}
+		if ((long long)gx * wp->sy <= (long long)gy * wp->sx) {
+			type = LAYOUT_LEFTRIGHT;
+		}
+	} else {
+		if (args_has(args, 'h'))
+			type = LAYOUT_LEFTRIGHT;
+	}
 
 	/* If the 'p' flag is dropped then this bit can be moved into 'l'. */
 	if (args_has(args, 'l') || args_has(args, 'p')) {

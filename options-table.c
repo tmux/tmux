@@ -990,6 +990,14 @@ const struct options_table_entry options_table[] = {
 	  .text = "Style of the active pane border."
 	},
 
+	{ .name = "pane-autosplit-threshold",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .pattern = "[0-9]*:[0-9]*",
+	  .default_str = "2:1",
+	  .text = "Aspect ratio for the threshold of the automatic split."
+	},
+
 	{ .name = "pane-base-index",
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .scope = OPTIONS_TABLE_WINDOW,
