@@ -227,12 +227,11 @@ utf8_width(struct utf8_data *ud, int *width)
 		return (UTF8_ERROR);
 	}
 	*width = wcwidth(wc);
-	if (*width < 0 || *width > 0xff) {
-		log_debug("UTF-8 %.*s, wcwidth() %d", (int)ud->size, ud->data,
-		    *width);
-		return (UTF8_ERROR);
-	}
-	return (UTF8_DONE);
+	log_debug("UTF-8 %.*s %#x, wcwidth() %d", (int)ud->size, ud->data,
+	    (u_int)wc, *width);
+	if (*width >= 0 && *width <= 0xff)
+		return (UTF8_DONE);
+	return (UTF8_ERROR);
 }
 
 /*
