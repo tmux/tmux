@@ -103,8 +103,8 @@ cmd_find_window_exec(struct cmd *self, struct cmdq_item *item)
 
 	new_args = args_create();
 	if (args_has(args, 'Z'))
-		args_set(new_args, 'Z', NULL);
-	args_set(new_args, 'f', filter);
+		args_set(new_args, 'Z', NULL, 0);
+	args_set(new_args, 'f', filter, 0);
 
 	window_pane_set_mode(wp, NULL, &window_tree_mode, target, new_args);
 	args_free(new_args);

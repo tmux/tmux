@@ -3212,13 +3212,14 @@ lists only the first matching key.
 lists the command for keys that do not have a note rather than skipping them.
 .Tg send
 .It Xo Ic send-keys
-.Op Fl FHlMRX
+.Op Fl FHKlMRX
+.Op Fl c Ar target-client
 .Op Fl N Ar repeat-count
 .Op Fl t Ar target-pane
 .Ar key Ar ...
 .Xc
 .D1 Pq alias: Ic send
-Send a key or keys to a window.
+Send a key or keys to a window or client.
 Each argument
 .Ar key
 is the name of the key (such as
@@ -3227,6 +3228,12 @@ or
 .Ql NPage )
 to send; if the string is not recognised as a key, it is sent as a series of
 characters.
+If
+.Fl K
+is given, keys are sent to
+.Ar target-client ,
+so they are looked up in the client's key table, rather than to
+.Ar target-pane .
 All arguments are sent sequentially from first to last.
 If no keys are given and the command is bound to a key, then that key is used.
 .Pp
