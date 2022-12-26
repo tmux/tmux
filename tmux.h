@@ -1410,7 +1410,7 @@ struct tty {
 #define TTY_HAVEDA 0x100 /* Primary DA. */
 #define TTY_HAVEXDA 0x200
 #define TTY_SYNCING 0x400
-#define TTY_HAVEDA2 0x800 /* Seconday DA. */
+#define TTY_HAVEDA2 0x800 /* Secondary DA. */
 	int		 flags;
 
 	struct tty_term	*term;
