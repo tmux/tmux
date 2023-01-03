@@ -834,7 +834,8 @@ cmdq_print_data(struct cmdq_item *item, int parse, struct evbuffer *evb)
 	char				*sanitized, *msg, *line;
 
 	if (!parse) {
-		utf8_stravisx(&msg, data, size, VIS_OCTAL|VIS_CSTYLE);
+		utf8_stravisx(&msg, data, size,
+		    VIS_OCTAL|VIS_CSTYLE|VIS_NOSLASH);
 		log_debug("%s: %s", __func__, msg);
 	} else {
 		msg = EVBUFFER_DATA(evb);

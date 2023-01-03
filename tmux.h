@@ -1380,6 +1380,8 @@ struct tty {
 	u_int		 osy;
 
 	int		 mode;
+	int              fg;
+	int              bg;
 
 	u_int		 rlower;
 	u_int		 rupper;
@@ -1411,6 +1413,10 @@ struct tty {
 #define TTY_HAVEXDA 0x200
 #define TTY_SYNCING 0x400
 #define TTY_HAVEDA2 0x800 /* Secondary DA. */
+#define TTY_HAVEFG 0x1000
+#define TTY_HAVEBG 0x2000
+#define TTY_ALL_REQUEST_FLAGS \
+	(TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA|TTY_HAVEFG|TTY_HAVEBG)
 	int		 flags;
 
 	struct tty_term	*term;
@@ -2759,6 +2765,7 @@ int	 colour_fromstring(const char *s);
 int	 colour_256toRGB(int);
 int	 colour_256to16(int);
 int	 colour_byname(const char *);
+int	 colour_parseX11(const char *);
 void	 colour_palette_init(struct colour_palette *);
 void	 colour_palette_clear(struct colour_palette *);
 void	 colour_palette_free(struct colour_palette *);
