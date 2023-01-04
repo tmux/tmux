@@ -86,6 +86,7 @@ dist_tmux_SOURCES = \
 	cmd-display-menu.c \
 	cmd-display-message.c \
 	cmd-display-panes.c \
+	cmd-echo.c \
 	cmd-find-window.c \
 	cmd-find.c \
 	cmd-if-shell.c \
