@@ -78,7 +78,8 @@ cmd_save_buffer_exec(struct cmd *self, struct cmdq_item *item)
 	int			 flags;
 	const char		*bufname = args_get(args, 'b'), *bufdata;
 	size_t			 bufsize;
-	char			*path, *tmp;
+	char			*path;
+	struct evbuffer		*evb;
 
 	if (bufname == NULL) {
 		if ((pb = paste_get_top(NULL)) == NULL) {
@@ -96,10 +97,12 @@ cmd_save_buffer_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (cmd_get_entry(self) == &cmd_show_buffer_entry) {
 		if (c->session != NULL || (c->flags & CLIENT_CONTROL)) {
-			utf8_stravisx(&tmp, bufdata, bufsize,
-			    VIS_OCTAL|VIS_CSTYLE|VIS_TAB);
-			cmdq_print(item, "%s", tmp);
-			free(tmp);
+			evb = evbuffer_new();
+			if (evb == NULL)
+				fatalx("out of memory");
+			evbuffer_add(evb, bufdata, bufsize);
+			cmdq_print_data(item, 1, evb);
+			evbuffer_free(evb);
 			return (CMD_RETURN_NORMAL);
 		}
 		path = xstrdup("-");
