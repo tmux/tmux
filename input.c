@@ -1086,6 +1086,7 @@ input_reply(struct input_ctx *ictx, const char *fmt, ...)
 	xvasprintf(&reply, fmt, ap);
 	va_end(ap);
 
+	log_debug("%s: %s", __func__, reply);
 	bufferevent_write(bev, reply, strlen(reply));
 	free(reply);
 }
@@ -2456,47 +2457,6 @@ input_top_bit_set(struct input_ctx *ictx)
 	return (0);
 }
 
-/* Parse colour from OSC. */
-static int
-input_osc_parse_colour(const char *p)
-{
-	double	 c, m, y, k = 0;
-	u_int	 r, g, b;
-	size_t	 len = strlen(p);
-	int	 colour = -1;
-	char	*copy;
-
-	if ((len == 12 && sscanf(p, "rgb:%02x/%02x/%02x", &r, &g, &b) == 3) ||
-	    (len == 7 && sscanf(p, "#%02x%02x%02x", &r, &g, &b) == 3) ||
-	    sscanf(p, "%d,%d,%d", &r, &g, &b) == 3)
-		colour = colour_join_rgb(r, g, b);
-	else if ((len == 18 &&
-	    sscanf(p, "rgb:%04x/%04x/%04x", &r, &g, &b) == 3) ||
-	    (len == 13 && sscanf(p, "#%04x%04x%04x", &r, &g, &b) == 3))
-		colour = colour_join_rgb(r >> 8, g >> 8, b >> 8);
-	else if ((sscanf(p, "cmyk:%lf/%lf/%lf/%lf", &c, &m, &y, &k) == 4 ||
-	    sscanf(p, "cmy:%lf/%lf/%lf", &c, &m, &y) == 3) &&
-	    c >= 0 && c <= 1 && m >= 0 && m <= 1 &&
-	    y >= 0 && y <= 1 && k >= 0 && k <= 1) {
-		colour = colour_join_rgb(
-		    (1 - c) * (1 - k) * 255,
-		    (1 - m) * (1 - k) * 255,
-		    (1 - y) * (1 - k) * 255);
-	} else {
-		while (len != 0 && *p == ' ') {
-			p++;
-			len--;
-		}
-		while (len != 0 && p[len - 1] == ' ')
-			len--;
-		copy = xstrndup(p, len);
-		colour = colour_byname(copy);
-		free(copy);
-	}
-	log_debug("%s: %s = %s", __func__, p, colour_tostring(colour));
-	return (colour);
-}
-
 /* Reply to a colour request. */
 static void
 input_osc_colour_reply(struct input_ctx *ictx, u_int n, int c)
@@ -2545,7 +2505,7 @@ input_osc_4(struct input_ctx *ictx, const char *p)
 				input_osc_colour_reply(ictx, 4, c);
 			continue;
 		}
-		if ((c = input_osc_parse_colour(s)) == -1) {
+		if ((c = colour_parseX11(s)) == -1) {
 			s = next;
 			continue;
 		}
@@ -2601,6 +2561,47 @@ bad:
 	free(id);
 }
 
+/*
+ * Get a client with a foreground for the pane. There isn't much to choose
+ * between them so just use the first.
+ */
+static int
+input_get_fg_client(struct window_pane *wp)
+{
+	struct window	*w = wp->window;
+	struct client	*loop;
+
+	TAILQ_FOREACH(loop, &clients, entry) {
+		if (loop->flags & CLIENT_UNATTACHEDFLAGS)
+			continue;
+		if (loop->session == NULL || !session_has(loop->session, w))
+			continue;
+		if (loop->tty.fg == -1)
+			continue;
+		return (loop->tty.fg);
+	}
+	return (-1);
+}
+
+/* Get a client with a background for the pane. */
+static int
+input_get_bg_client(struct window_pane *wp)
+{
+	struct window	*w = wp->window;
+	struct client	*loop;
+
+	TAILQ_FOREACH(loop, &clients, entry) {
+		if (loop->flags & CLIENT_UNATTACHEDFLAGS)
+			continue;
+		if (loop->session == NULL || !session_has(loop->session, w))
+			continue;
+		if (loop->tty.bg == -1)
+			continue;
+		return (loop->tty.bg);
+	}
+	return (-1);
+}
+
 /* Handle the OSC 10 sequence for setting and querying foreground colour. */
 static void
 input_osc_10(struct input_ctx *ictx, const char *p)
@@ -2610,14 +2611,18 @@ input_osc_10(struct input_ctx *ictx, const char *p)
 	int			 c;
 
 	if (strcmp(p, "?") == 0) {
-		if (wp != NULL) {
-			tty_default_colours(&defaults, wp);
-			input_osc_colour_reply(ictx, 10, defaults.fg);
-		}
+		if (wp == NULL)
+			return;
+		tty_default_colours(&defaults, wp);
+		if (COLOUR_DEFAULT(defaults.fg))
+			c = input_get_fg_client(wp);
+		else
+			c = defaults.fg;
+		input_osc_colour_reply(ictx, 10, c);
 		return;
 	}
 
-	if ((c = input_osc_parse_colour(p)) == -1) {
+	if ((c = colour_parseX11(p)) == -1) {
 		log_debug("bad OSC 10: %s", p);
 		return;
 	}
@@ -2654,14 +2659,18 @@ input_osc_11(struct input_ctx *ictx, const char *p)
 	int			 c;
 
 	if (strcmp(p, "?") == 0) {
-		if (wp != NULL) {
-			tty_default_colours(&defaults, wp);
-			input_osc_colour_reply(ictx, 11, defaults.bg);
-		}
+		if (wp == NULL)
+			return;
+		tty_default_colours(&defaults, wp);
+		if (COLOUR_DEFAULT(defaults.bg))
+			c = input_get_bg_client(wp);
+		else
+			c = defaults.bg;
+		input_osc_colour_reply(ictx, 11, c);
 		return;
 	}
 
-	if ((c = input_osc_parse_colour(p)) == -1) {
+	if ((c = colour_parseX11(p)) == -1) {
 		log_debug("bad OSC 11: %s", p);
 		return;
 	}
@@ -2706,7 +2715,7 @@ input_osc_12(struct input_ctx *ictx, const char *p)
 		return;
 	}
 
-	if ((c = input_osc_parse_colour(p)) == -1) {
+	if ((c = colour_parseX11(p)) == -1) {
 		log_debug("bad OSC 12: %s", p);
 		return;
 	}

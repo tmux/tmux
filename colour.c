@@ -960,6 +960,47 @@ colour_byname(const char *name)
 	return (-1);
 }
 
+/* Parse colour from an X11 string. */
+int
+colour_parseX11(const char *p)
+{
+	double	 c, m, y, k = 0;
+	u_int	 r, g, b;
+	size_t	 len = strlen(p);
+	int	 colour = -1;
+	char	*copy;
+
+	if ((len == 12 && sscanf(p, "rgb:%02x/%02x/%02x", &r, &g, &b) == 3) ||
+	    (len == 7 && sscanf(p, "#%02x%02x%02x", &r, &g, &b) == 3) ||
+	    sscanf(p, "%d,%d,%d", &r, &g, &b) == 3)
+		colour = colour_join_rgb(r, g, b);
+	else if ((len == 18 &&
+	    sscanf(p, "rgb:%04x/%04x/%04x", &r, &g, &b) == 3) ||
+	    (len == 13 && sscanf(p, "#%04x%04x%04x", &r, &g, &b) == 3))
+		colour = colour_join_rgb(r >> 8, g >> 8, b >> 8);
+	else if ((sscanf(p, "cmyk:%lf/%lf/%lf/%lf", &c, &m, &y, &k) == 4 ||
+	    sscanf(p, "cmy:%lf/%lf/%lf", &c, &m, &y) == 3) &&
+	    c >= 0 && c <= 1 && m >= 0 && m <= 1 &&
+	    y >= 0 && y <= 1 && k >= 0 && k <= 1) {
+		colour = colour_join_rgb(
+		    (1 - c) * (1 - k) * 255,
+		    (1 - m) * (1 - k) * 255,
+		    (1 - y) * (1 - k) * 255);
+	} else {
+		while (len != 0 && *p == ' ') {
+			p++;
+			len--;
+		}
+		while (len != 0 && p[len - 1] == ' ')
+			len--;
+		copy = xstrndup(p, len);
+		colour = colour_byname(copy);
+		free(copy);
+	}
+	log_debug("%s: %s = %s", __func__, p, colour_tostring(colour));
+	return (colour);
+}
+
 /* Initialize palette. */
 void
 colour_palette_init(struct colour_palette *p)
@@ -1069,5 +1110,4 @@ colour_palette_from_option(struct colour_palette *p, struct options *oo)
 		}
 		a = options_array_next(a);
 	}
-
 }

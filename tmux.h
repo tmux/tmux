@@ -1381,6 +1381,8 @@ struct tty {
 	u_int		 osy;
 
 	int		 mode;
+	int              fg;
+	int              bg;
 
 	u_int		 rlower;
 	u_int		 rupper;
@@ -1411,7 +1413,11 @@ struct tty {
 #define TTY_HAVEDA 0x100 /* Primary DA. */
 #define TTY_HAVEXDA 0x200
 #define TTY_SYNCING 0x400
-#define TTY_HAVEDA2 0x800 /* Seconday DA. */
+#define TTY_HAVEDA2 0x800 /* Secondary DA. */
+#define TTY_HAVEFG 0x1000
+#define TTY_HAVEBG 0x2000
+#define TTY_ALL_REQUEST_FLAGS \
+	(TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA|TTY_HAVEFG|TTY_HAVEBG)
 	int		 flags;
 
 	struct tty_term	*term;
@@ -2388,7 +2394,7 @@ void		tty_keys_free(struct tty *);
 int		tty_keys_next(struct tty *);
 
 /* arguments.c */
-void		 args_set(struct args *, u_char, struct args_value *);
+void		 args_set(struct args *, u_char, struct args_value *, int);
 struct args 	*args_create(void);
 struct args	*args_parse(const struct args_parse *, struct args_value *,
 		     u_int, char **);
@@ -2606,7 +2612,9 @@ void	 file_print_buffer(struct client *, void *, size_t);
 void printflike(2, 3) file_error(struct client *, const char *, ...);
 void	 file_write(struct client *, const char *, int, const void *, size_t,
 	     client_file_cb, void *);
-void	 file_read(struct client *, const char *, client_file_cb, void *);
+struct client_file *file_read(struct client *, const char *, client_file_cb,
+	     void *);
+void	 file_cancel(struct client_file *);
 void	 file_push(struct client_file *);
 int	 file_write_left(struct client_files *);
 void	 file_write_open(struct client_files *, struct tmuxpeer *,
@@ -2618,6 +2626,7 @@ void	 file_read_open(struct client_files *, struct tmuxpeer *, struct imsg *,
 void	 file_write_ready(struct client_files *, struct imsg *);
 void	 file_read_data(struct client_files *, struct imsg *);
 void	 file_read_done(struct client_files *, struct imsg *);
+void	 file_read_cancel(struct client_files *, struct imsg *);
 
 /* server.c */
 extern struct tmuxproc *server_proc;
@@ -2761,6 +2770,7 @@ int	 colour_fromstring(const char *s);
 int	 colour_256toRGB(int);
 int	 colour_256to16(int);
 int	 colour_byname(const char *);
+int	 colour_parseX11(const char *);
 void	 colour_palette_init(struct colour_palette *);
 void	 colour_palette_clear(struct colour_palette *);
 void	 colour_palette_free(struct colour_palette *);

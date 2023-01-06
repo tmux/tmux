@@ -108,6 +108,7 @@ tty_init(struct tty *tty, struct client *c)
 
 	tty->cstyle = SCREEN_CURSOR_DEFAULT;
 	tty->ccolour = -1;
+	tty->fg = tty->bg = -1;
 
 	if (tcgetattr(c->fd, &tty->tio) != 0)
 		return (-1);
@@ -286,7 +287,6 @@ tty_open(struct tty *tty, char **cause)
 	evtimer_set(&tty->timer, tty_timer_callback, tty);
 
 	tty_start_tty(tty);
-
 	tty_keys_build(tty);
 
 	return (0);
@@ -301,7 +301,7 @@ tty_start_timer_callback(__unused int fd, __unused short events, void *data)
 	log_debug("%s: start timer fired", c->name);
 	if ((tty->flags & (TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA)) == 0)
 		tty_update_features(tty);
-	tty->flags |= (TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA);
+	tty->flags |= TTY_ALL_REQUEST_FLAGS;
 }
 
 void
@@ -369,8 +369,12 @@ tty_send_requests(struct tty *tty)
 			tty_puts(tty, "\033[>c");
 		if (~tty->flags & TTY_HAVEXDA)
 			tty_puts(tty, "\033[>q");
+		if (~tty->flags & TTY_HAVEFG)
+			tty_puts(tty, "\033]10;?\033\\");
+		if (~tty->flags & TTY_HAVEBG)
+			tty_puts(tty, "\033]11;?\033\\");
 	} else
-		tty->flags |= (TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA);
+		tty->flags |= TTY_ALL_REQUEST_FLAGS;
 }
 
 void

@@ -149,7 +149,8 @@ file_fire_done_cb(__unused int fd, __unused short events, void *arg)
 	struct client_file	*cf = arg;
 	struct client		*c = cf->c;
 
-	if (cf->cb != NULL && (c == NULL || (~c->flags & CLIENT_DEAD)))
+	if (cf->cb != NULL &&
+	    (cf->closed || c == NULL || (~c->flags & CLIENT_DEAD)))
 		cf->cb(c, cf->path, cf->error, 1, cf->buffer, cf->data);
 	file_free(cf);
 }
@@ -352,7 +353,7 @@ done:
 }
 
 /* Read a file. */
-void
+struct client_file *
 file_read(struct client *c, const char *path, client_file_cb cb, void *cbdata)
 {
 	struct client_file	*cf;
@@ -420,10 +421,27 @@ skip:
 		goto done;
 	}
 	free(msg);
-	return;
+	return cf;
 
 done:
 	file_fire_done(cf);
+	return NULL;
+}
+
+/* Cancel a file read. */
+void
+file_cancel(struct client_file *cf)
+{
+	struct msg_read_cancel	 msg;
+
+	log_debug("read cancel file %d", cf->stream);
+
+	if (cf->closed)
+		return;
+	cf->closed = 1;
+
+	msg.stream = cf->stream;
+	proc_send(cf->peer, MSG_READ_CANCEL, -1, &msg, sizeof msg);
 }
 
 /* Push event, fired if there is more writing to be done. */
@@ -757,6 +775,24 @@ reply:
 	proc_send(peer, MSG_READ_DONE, -1, &reply, sizeof reply);
 }
 
+/* Handle a read cancel message (client). */
+void
+file_read_cancel(struct client_files *files, struct imsg *imsg)
+{
+	struct msg_read_cancel	*msg = imsg->data;
+	size_t			 msglen = imsg->hdr.len - IMSG_HEADER_SIZE;
+	struct client_file	 find, *cf;
+
+	if (msglen != sizeof *msg)
+		fatalx("bad MSG_READ_CANCEL size");
+	find.stream = msg->stream;
+	if ((cf = RB_FIND(client_files, files, &find)) == NULL)
+		fatalx("unknown stream number");
+	log_debug("cancel file %d", cf->stream);
+
+	file_read_error_callback(NULL, 0, cf);
+}
+
 /* Handle a write ready message (server). */
 void
 file_write_ready(struct client_files *files, struct imsg *imsg)
@@ -794,7 +830,7 @@ file_read_data(struct client_files *files, struct imsg *imsg)
 		return;
 
 	log_debug("file %d read %zu bytes", cf->stream, bsize);
-	if (cf->error == 0) {
+	if (cf->error == 0 && !cf->closed) {
 		if (evbuffer_add(cf->buffer, bdata, bsize) != 0) {
 			cf->error = ENOMEM;
 			file_fire_done(cf);

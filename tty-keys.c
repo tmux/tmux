@@ -59,6 +59,7 @@ static int	tty_keys_device_attributes2(struct tty *, const char *, size_t,
 		    size_t *);
 static int	tty_keys_extended_device_attributes(struct tty *, const char *,
 		    size_t, size_t *);
+static int	tty_keys_colours(struct tty *, const char *, size_t, size_t *);
 
 /* A key tree entry. */
 struct tty_key {
@@ -719,6 +720,17 @@ tty_keys_next(struct tty *tty)
 		goto partial_key;
 	}
 
+	/* Is this a colours response? */
+	switch (tty_keys_colours(tty, buf, len, &size)) {
+	case 0:		/* yes */
+		key = KEYC_UNKNOWN;
+		goto complete_key;
+	case -1:	/* no, or not valid */
+		break;
+	case 1:		/* partial */
+		goto partial_key;
+	}
+
 	/* Is this a mouse key press? */
 	switch (tty_keys_mouse(tty, buf, len, &size, &m)) {
 	case 0:		/* yes */
@@ -1278,7 +1290,7 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 	if (len == 3)
 		return (1);
 
-	/* Copy the rest up to a 'c'. */
+	/* Copy the rest up to a c. */
 	for (i = 0; i < (sizeof tmp); i++) {
 		if (3 + i == len)
 			return (1);
@@ -1352,7 +1364,7 @@ tty_keys_device_attributes2(struct tty *tty, const char *buf, size_t len,
 	if (len == 3)
 		return (1);
 
-	/* Copy the rest up to a 'c'. */
+	/* Copy the rest up to a c. */
 	for (i = 0; i < (sizeof tmp); i++) {
 		if (3 + i == len)
 			return (1);
@@ -1433,7 +1445,7 @@ tty_keys_extended_device_attributes(struct tty *tty, const char *buf,
 	if (len == 4)
 		return (1);
 
-	/* Copy the rest up to a '\033\\'. */
+	/* Copy the rest up to \033\. */
 	for (i = 0; i < (sizeof tmp) - 1; i++) {
 		if (4 + i == len)
 			return (1);
@@ -1462,6 +1474,71 @@ tty_keys_extended_device_attributes(struct tty *tty, const char *buf,
 
 	tty_update_features(tty);
 	tty->flags |= TTY_HAVEXDA;
+
+	return (0);
+}
+
+/*
+ * Handle foreground or background input. Returns 0 for success, -1 for
+ * failure, 1 for partial.
+ */
+static int
+tty_keys_colours(struct tty *tty, const char *buf, size_t len, size_t *size)
+{
+	struct client	*c = tty->client;
+	u_int		 i;
+	char		 tmp[128];
+	int		 n;
+
+	*size = 0;
+	if ((tty->flags & TTY_HAVEFG) && (tty->flags & TTY_HAVEBG))
+		return (-1);
+
+	/* First four bytes are always \033]1 and 0 or 1 and ;. */
+	if (buf[0] != '\033')
+		return (-1);
+	if (len == 1)
+		return (1);
+	if (buf[1] != ']')
+		return (-1);
+	if (len == 2)
+		return (1);
+	if (buf[2] != '1')
+		return (-1);
+	if (len == 3)
+		return (1);
+	if (buf[3] != '0' && buf[3] != '1')
+		return (-1);
+	if (len == 4)
+		return (1);
+	if (buf[4] != ';')
+		return (-1);
+	if (len == 5)
+		return (1);
+
+	/* Copy the rest up to \033\. */
+	for (i = 0; i < (sizeof tmp) - 1; i++) {
+		if (5 + i == len)
+			return (1);
+		if (buf[5 + i - 1] == '\033' && buf[5 + i] == '\\')
+			break;
+		tmp[i] = buf[5 + i];
+	}
+	if (i == (sizeof tmp) - 1)
+		return (-1);
+	tmp[i - 1] = '\0';
+	*size = 6 + i;
+
+	n = colour_parseX11(tmp);
+	if (n != -1 && buf[3] == '0') {
+		log_debug("%s: foreground is %s", c->name, colour_tostring(n));
+		tty->fg = n;
+		tty->flags |= TTY_HAVEFG;
+	} else if (n != -1) {
+		log_debug("%s: background is %s", c->name, colour_tostring(n));
+		tty->bg = n;
+		tty->flags |= TTY_HAVEBG;
+	}
 
 	return (0);
 }

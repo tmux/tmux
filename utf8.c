@@ -233,10 +233,10 @@ utf8_width(struct utf8_data *ud, int *width)
 	*width = utf8proc_wcwidth(wc);
 #else
 	*width = wcwidth(wc);
-#endif
+	log_debug("UTF-8 %.*s %#x, wcwidth() %d", (int)ud->size, ud->data,
+	    (u_int)wc, *width);
 	if (*width >= 0 && *width <= 0xff)
 		return (UTF8_DONE);
-	log_debug("UTF-8 %.*s, wcwidth() %d", (int)ud->size, ud->data, *width);
 	return (UTF8_ERROR);
 }
 
