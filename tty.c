@@ -1576,10 +1576,32 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	tty_update_mode(tty, tty->mode, s);
 }
 
+/* Update context for client. */
+static int
+tty_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
+{
+	struct window_pane	*wp = ttyctx->arg;
+
+	if (c->session->curw->window != wp->window)
+		return (0);
+	if (wp->layout_cell == NULL)
+		return (0);
+
+	ttyctx->bigger = tty_window_offset(&c->tty, &ttyctx->wox, &ttyctx->woy,
+	    &ttyctx->wsx, &ttyctx->wsy);
+
+	ttyctx->xoff = ttyctx->rxoff = wp->xoff;
+	ttyctx->yoff = ttyctx->ryoff = wp->yoff;
+
+	if (status_at_line(c) == 0)
+		ttyctx->yoff += status_line_size(c);
+
+	return (1);
+}
+
 void
 tty_draw_images(struct tty *tty, struct window_pane *wp, struct screen *s)
 {
-//#if 0 /* XXX */
 	struct client	*c = tty->client;
 	struct image	*im;
 	struct tty_ctx	 ttyctx;
@@ -1593,8 +1615,8 @@ tty_draw_images(struct tty *tty, struct window_pane *wp, struct screen *s)
 		ttyctx.orlower = s->rlower;
 		ttyctx.orupper = s->rupper;
 
-		ttyctx.bigger = tty_window_offset(&c->tty, &ttyctx.ocx,
-		    &ttyctx.ocy, &ttyctx.sx, &ttyctx.sy);
+		ttyctx.bigger = tty_window_offset(&c->tty, &ttyctx.xoff,
+		    &ttyctx.yoff, &ttyctx.sx, &ttyctx.sy);
 
 		ttyctx.xoff = wp->xoff;
 		ttyctx.yoff = wp->yoff;
@@ -1603,9 +1625,10 @@ tty_draw_images(struct tty *tty, struct window_pane *wp, struct screen *s)
 			ttyctx.yoff += status_line_size(c);
 
 		ttyctx.ptr = im;
+		ttyctx.arg = wp;
+		ttyctx.set_client_cb = tty_set_client_cb;
 		tty_write(tty_cmd_sixelimage, &ttyctx);
 	}
-//#endif
 }
 
 void
@@ -1643,7 +1666,7 @@ tty_client_ready(struct client *c)
 {
 	if (c->session == NULL || c->tty.term == NULL)
 		return (0);
-	if (c->flags & (CLIENT_REDRAWWINDOW|CLIENT_SUSPENDED))
+	if (c->flags & CLIENT_SUSPENDED)
 		return (0);
 	if (c->tty.flags & TTY_FREEZE)
 		return (0);
