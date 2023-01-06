@@ -1666,6 +1666,8 @@ tty_client_ready(struct client *c)
 {
 	if (c->session == NULL || c->tty.term == NULL)
 		return (0);
+	/* XXX Restore this after adding sixel draw calls everywhere needed.
+	if (c->flags & (CLIENT_REDRAWWINDOW|CLIENT_SUSPENDED)) */
 	if (c->flags & CLIENT_SUSPENDED)
 		return (0);
 	if (c->tty.flags & TTY_FREEZE)
