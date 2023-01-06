@@ -693,6 +693,9 @@ client_dispatch_wait(struct imsg *imsg)
 		    !(client_flags & CLIENT_CONTROL), client_file_check_cb,
 		    NULL);
 		break;
+	case MSG_READ_CANCEL:
+		file_read_cancel(&client_files, imsg);
+		break;
 	case MSG_WRITE_OPEN:
 		file_write_open(&client_files, client_peer, imsg, 1,
 		    !(client_flags & CLIENT_CONTROL), client_file_check_cb,
