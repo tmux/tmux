@@ -1535,8 +1535,10 @@ window_pane_input_callback(struct client *c, __unused const char *path,
 
 	wp = window_pane_find_by_id(cdata->wp);
 	if (cdata->file != NULL && (wp == NULL || c->flags & CLIENT_DEAD)) {
-		if (wp == NULL)
+		if (wp == NULL) {
+			c->retval = 1;
 			c->flags |= CLIENT_EXIT;
+		}
 		file_cancel(cdata->file);
 	} else if (cdata->file == NULL || closed || error != 0) {
 		cmdq_continue(cdata->item);
