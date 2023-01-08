@@ -230,13 +230,10 @@ utf8_width(struct utf8_data *ud, int *width)
 		return (UTF8_ERROR);
 	}
 	log_debug("UTF-8 %.*s is %08X", (int)ud->size, ud->data, (u_int)wc);
-<<<<<<< HEAD
 #ifdef HAVE_UTF8PROC
 	*width = utf8proc_wcwidth(wc);
 	log_debug("utf8proc_wcwidth(%08X) returned %d", (u_int)wc, *width);
 #else
-=======
->>>>>>> obsd-master
 	*width = wcwidth(wc);
 	log_debug("wcwidth(%08X) returned %d", (u_int)wc, *width);
 	if (*width < 0) {
@@ -246,10 +243,7 @@ utf8_width(struct utf8_data *ud, int *width)
 		 */
 		*width = (wc >= 0x80 && wc <= 0x9f) ? 0 : 1;
 	}
-<<<<<<< HEAD
 #endif
-=======
->>>>>>> obsd-master
 	if (*width >= 0 && *width <= 0xff)
 		return (UTF8_DONE);
 	return (UTF8_ERROR);
