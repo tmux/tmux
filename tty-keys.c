@@ -1528,13 +1528,11 @@ tty_keys_colours(struct tty *tty, const char *buf, size_t len, size_t *size)
 	}
 	if (i == (sizeof tmp) - 1)
 		return (-1);
-	if (tmp[i] == '\007') {
-		*size = 5 + i;
-		tmp[i] = '\0';
-	} else {
-		*size = 6 + i;
+	if (tmp[i - 1] == '\033')
 		tmp[i - 1] = '\0';
-	}
+	else
+		tmp[i] = '\0';
+	*size = 6 + i;
 
 	n = colour_parseX11(tmp);
 	if (n != -1 && buf[3] == '0') {
