@@ -496,6 +496,9 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 		ike = input_key_get(key & ~KEYC_EXTENDED);
 	if (ike != NULL) {
 		log_debug("found key 0x%llx: \"%s\"", key, ike->data);
+		if ((key == KEYC_PASTE_START || key == KEYC_PASTE_END) &&
+		    (~s->mode & MODE_BRACKETPASTE))
+			return (0);
 		if ((key & KEYC_META) && (~key & KEYC_IMPLIED_META))
 			input_key_write(__func__, bev, "\033", 1);
 		input_key_write(__func__, bev, ike->data, strlen(ike->data));
