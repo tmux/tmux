@@ -1887,7 +1887,9 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 		goto forward_key;
 
 	/* Treat everything as a regular key when pasting is detected. */
-	if (!KEYC_IS_MOUSE(key) && server_client_assume_paste(s))
+	if (!KEYC_IS_MOUSE(key) &&
+	    (~key & KEYC_SENT) &&
+	    server_client_assume_paste(s))
 		goto forward_key;
 
 	/*
