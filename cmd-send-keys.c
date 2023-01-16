@@ -74,7 +74,7 @@ cmd_send_keys_inject_key(struct cmdq_item *item, struct cmdq_item *after,
 		if (tc == NULL)
 			return (item);
 		event = xmalloc(sizeof *event);
-		event->key = key;
+		event->key = key|KEYC_SENT;
 		memset(&event->m, 0, sizeof event->m);
 		if (server_client_handle_key(tc, event) == 0)
 			free(event);
