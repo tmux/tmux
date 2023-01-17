@@ -132,6 +132,8 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 			src_w->last = NULL;
 		if (dst_w->last == dst_wp)
 			dst_w->last = NULL;
+		colour_palette_from_option(&src_wp->palette, src_wp->options);
+		colour_palette_from_option(&dst_wp->palette, dst_wp->options);
 	}
 	server_redraw_window(src_w);
 	server_redraw_window(dst_w);
