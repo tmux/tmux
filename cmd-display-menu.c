@@ -39,9 +39,10 @@ const struct cmd_entry cmd_display_menu_entry = {
 	.name = "display-menu",
 	.alias = "menu",
 
-	.args = { "c:t:OT:x:y:", 1, -1, cmd_display_menu_args_parse },
-	.usage = "[-O] [-c target-client] " CMD_TARGET_PANE_USAGE " [-T title] "
-		 "[-x position] [-y position] name key command ...",
+	.args = { "c:t:S:OT:x:y:", 1, -1, cmd_display_menu_args_parse },
+	.usage = "[-O] [-c target-client] [-S starting-choice] "
+		 CMD_TARGET_PANE_USAGE " [-T title] [-x position] "
+		 "[-y position] name key command ...",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -288,12 +289,26 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	struct menu		*menu = NULL;
 	struct menu_item	 menu_item;
 	const char		*key, *name;
-	char			*title;
-	int			 flags = 0;
+	char			*title, *cause;
+	int			 flags = 0, starting_choice = 0;
 	u_int			 px, py, i, count = args_count(args);
 
 	if (tc->overlay_draw != NULL)
 		return (CMD_RETURN_NORMAL);
+
+	if (args_has(args, 'S')) {
+		if (strcmp(args_get(args, 'S'), "-") == 0)
+			starting_choice = -1;
+		else {
+			starting_choice = args_strtonum(args, 'S', 0, UINT_MAX,
+			    &cause);
+			if (cause != NULL) {
+				cmdq_error(item, "starting choice %s", cause);
+				free(cause);
+				return (CMD_RETURN_ERROR);
+			}
+		}
+	}
 
 	if (args_has(args, 'T'))
 		title = format_single_from_target(item, args_get(args, 'T'));
@@ -341,8 +356,8 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 		flags |= MENU_STAYOPEN;
 	if (!event->m.valid)
 		flags |= MENU_NOMOUSE;
-	if (menu_display(menu, flags, item, px, py, tc, target, NULL,
-	    NULL) != 0)
+	if (menu_display(menu, flags, starting_choice, item, px, py, tc, target,
+	    NULL, NULL) != 0)
 		return (CMD_RETURN_NORMAL);
 	return (CMD_RETURN_WAIT);
 }

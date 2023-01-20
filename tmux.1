@@ -5815,6 +5815,7 @@ until it is dismissed.
 .Op Fl O
 .Op Fl c Ar target-client
 .Op Fl t Ar target-pane
+.Op Fl S Ar starting-choice
 .Op Fl T Ar title
 .Op Fl x Ar position
 .Op Fl y Ar position
@@ -5844,6 +5845,9 @@ command should be omitted.
 .Fl T
 is a format for the menu title (see
 .Sx FORMATS ) .
+.Fl S
+sets the menu item selected by default, if the menu is not bound to a mouse key
+binding.
 .Pp
 .Fl x
 and
