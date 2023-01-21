@@ -3295,11 +3295,11 @@ void		 menu_add_item(struct menu *, const struct menu_item *,
 		    struct cmdq_item *, struct client *,
 		    struct cmd_find_state *);
 void		 menu_free(struct menu *);
-struct menu_data *menu_prepare(struct menu *, int, struct cmdq_item *, u_int,
-		    u_int, struct client *, struct cmd_find_state *,
+struct menu_data *menu_prepare(struct menu *, int, int, struct cmdq_item *,
+		    u_int, u_int, struct client *, struct cmd_find_state *,
 		    menu_choice_cb, void *);
-int		 menu_display(struct menu *, int, struct cmdq_item *, u_int,
-		    u_int, struct client *, struct cmd_find_state *,
+int		 menu_display(struct menu *, int, int, struct cmdq_item *,
+		    u_int, u_int, struct client *, struct cmd_find_state *,
 		    menu_choice_cb, void *);
 struct screen	*menu_mode_cb(struct client *, void *, u_int *, u_int *);
 void		 menu_check_cb(struct client *, void *, u_int, u_int, u_int,
