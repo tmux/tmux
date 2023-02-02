@@ -162,8 +162,10 @@ layout_parse(struct window *w, const char *layout, char **cause)
 	u_short			 csum;
 
 	/* Check validity. */
-	if (sscanf(layout, "%hx,", &csum) != 1)
+	if (sscanf(layout, "%hx,", &csum) != 1) {
+		*cause = xstrdup("invalid layout");
 		return (-1);
+	}
 	layout += 5;
 	if (csum != layout_checksum(layout)) {
 		*cause = xstrdup("invalid layout");
