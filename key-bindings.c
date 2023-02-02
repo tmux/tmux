@@ -377,7 +377,7 @@ key_bindings_init(void)
 		"bind -N 'Move to the previously active pane' \\; { last-pane }",
 		"bind -N 'Choose a paste buffer from a list' = { choose-buffer -Z }",
 		"bind -N 'List key bindings' ? { list-keys -N }",
-		"bind -N 'Choose a client from a list' D { choose-client -Z }",
+		"bind -N 'Choose and detach a client from a list' D { choose-client -Z }",
 		"bind -N 'Spread panes out evenly' E { select-layout -E }",
 		"bind -N 'Switch to the last client' L { switch-client -l }",
 		"bind -N 'Clear the marked pane' M { select-pane -M }",
