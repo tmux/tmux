@@ -64,6 +64,8 @@ menu_add_item(struct menu *menu, const struct menu_item *item,
 	line = (item == NULL || item->name == NULL || *item->name == '\0');
 	if (line && menu->count == 0)
 		return;
+	if (line && menu->items[menu->count - 1].name == NULL)
+		return;
 
 	menu->items = xreallocarray(menu->items, menu->count + 1,
 	    sizeof *menu->items);
