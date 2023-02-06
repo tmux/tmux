@@ -1164,13 +1164,17 @@ session.
 .Tg lsc
 .It Xo Ic list-clients
 .Op Fl F Ar format
+.Op Fl f Ar filter
 .Op Fl t Ar target-session
 .Xc
 .D1 Pq alias: Ic lsc
 List all clients attached to the server.
-For the meaning of the
 .Fl F
-flag, see the
+specifies the format of each line and
+.Fl f
+a filter.
+Only clients for which the filter is true are shown.
+See the
 .Sx FORMATS
 section.
 If
