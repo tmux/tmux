@@ -466,7 +466,8 @@ and
 .Ic confirm-before ,
 parse their argument to create a new command which is inserted immediately
 after themselves.
-This means that arguments can be parsed twice or more - once when the parent command (such as
+This means that arguments can be parsed twice or more - once when the parent
+command (such as
 .Ic if-shell )
 is parsed and again when it parses and executes its command.
 Commands like
@@ -884,8 +885,8 @@ may consist entirely of the token
 .Ql {mouse}
 (alternative form
 .Ql = )
-to specify the session, window or pane where the most recent mouse event occurred
-(see the
+to specify the session, window or pane where the most recent mouse event
+occurred (see the
 .Sx MOUSE SUPPORT
 section)
 or
@@ -1461,7 +1462,7 @@ requests the clipboard from the client using the
 .Xr xterm 1
 escape sequence.
 If
-Ar target-pane
+.Ar target-pane
 is given, the clipboard is sent (in encoded form), otherwise it is stored in a
 new paste buffer.
 .Pp
@@ -1574,7 +1575,8 @@ server, if not already running, without creating any sessions.
 .Pp
 Note that as by default the
 .Nm
-server will exit with no sessions, this is only useful if a session is created in
+server will exit with no sessions, this is only useful if a session is created
+in
 .Pa ~/.tmux.conf ,
 .Ic exit-empty
 is turned off, or another command is run as part of the same command sequence.
@@ -1929,7 +1931,8 @@ bind PageUp copy-mode -eu
 .Ed
 .El
 .Pp
-A number of preset arrangements of panes are available, these are called layouts.
+A number of preset arrangements of panes are available, these are called
+layouts.
 These may be selected with the
 .Ic select-layout
 command or cycled with
@@ -4595,7 +4598,8 @@ hook and there are a number of hooks not associated with commands.
 .Pp
 Hooks are stored as array options, members of the array are executed in
 order when the hook is triggered.
-Like options different hooks may be global or belong to a session, window or pane.
+Like options different hooks may be global or belong to a session, window or
+pane.
 Hooks may be configured with the
 .Ic set-hook
 or
@@ -4778,7 +4782,8 @@ or
 .Ar target-pane
 in commands bound to mouse key bindings.
 It resolves to the window or pane over which the mouse event took place
-(for example, the window in the status line over which button 1 was released for a
+(for example, the window in the status line over which button 1 was released
+for a
 .Ql MouseUp1Status
 binding, or the pane over which the wheel was scrolled for a
 .Ql WheelDownPane
@@ -4918,13 +4923,16 @@ ignores case.
 For example:
 .Ql #{C/r:^Start}
 .Pp
-Numeric operators may be performed by prefixing two comma-separated alternatives with an
+Numeric operators may be performed by prefixing two comma-separated alternatives
+with an
 .Ql e
 and an operator.
 An optional
 .Ql f
-flag may be given after the operator to use floating point numbers, otherwise integers are used.
-This may be followed by a number giving the number of decimal places to use for the result.
+flag may be given after the operator to use floating point numbers, otherwise
+integers are used.
+This may be followed by a number giving the number of decimal places to use for
+the result.
 The available operators are:
 addition
 .Ql + ,
@@ -5054,10 +5062,11 @@ but also expands
 .Xr strftime 3
 specifiers.
 .Ql S:\& ,
-.Ql W:\&
-or
+.Ql W:\& ,
 .Ql P:\&
-will loop over each session, window or pane and insert the format once
+or
+.Ql L:\&
+will loop over each session, window, pane or client and insert the format once
 for each.
 For windows and panes, two comma-separated formats may be given:
 the second is used for the current window or active pane.
@@ -5084,7 +5093,8 @@ will substitute
 with
 .Ql bar
 throughout.
-The first argument may be an extended regular expression and a final argument may be
+The first argument may be an extended regular expression and a final argument
+may be
 .Ql i
 to ignore case, for example
 .Ql s/a(.)/\e1x/i:\&
@@ -5095,7 +5105,7 @@ into
 A different delimiter character may also be used, to avoid collisions with
 literal slashes in the pattern.
 For example,
-.Ql s|foo/|bar/|:
+.Ql s|foo/|bar/|:\&
 will substitute
 .Ql foo/
 with
@@ -5111,10 +5121,10 @@ When constructing formats,
 .Nm
 does not wait for
 .Ql #()
-commands to finish; instead, the previous result from running the same command is used,
-or a placeholder if the command has not been run before.
-If the command hasn't exited, the most recent line of output will be used, but the status
-line will not be updated more than once a second.
+commands to finish; instead, the previous result from running the same command
+is used, or a placeholder if the command has not been run before.
+If the command hasn't exited, the most recent line of output will be used, but
+the status line will not be updated more than once a second.
 Commands are executed using
 .Pa /bin/sh
 and with the
@@ -5415,8 +5425,8 @@ option:
 .Ic list=on
 marks the start of the list;
 .Ic list=focus
-is the part of the list that should be kept in focus if the entire list won't fit
-in the available space (typically the current window);
+is the part of the list that should be kept in focus if the entire list won't
+fit in the available space (typically the current window);
 .Ic list=left-marker
 and
 .Ic list=right-marker
@@ -6566,8 +6576,8 @@ and matching
 .Em %end
 or
 .Em %error
-have three arguments: an integer time (as seconds from epoch), command number and
-flags (currently not used).
+have three arguments: an integer time (as seconds from epoch), command number
+and flags (currently not used).
 For example:
 .Bd -literal -offset indent
 %begin 1363006971 2 1
@@ -6617,11 +6627,17 @@ sent when the
 .Ar pause-after
 flag is set.
 .Ar age
-is the time in milliseconds for which tmux had buffered the output before it was sent.
+is the time in milliseconds for which tmux had buffered the output before it
+was sent.
 Any subsequent arguments up until a single
 .Ql \&:
 are for future use and should be ignored.
-.It Ic %layout-change Ar window-id Ar window-layout Ar window-visible-layout Ar window-flags
+.It Xo Ic %layout-change
+.Ar window-id
+.Ar window-layout
+.Ar window-visible-layout
+.Ar window-flags
+.Xc
 The layout of a window with ID
 .Ar window-id
 changed.
