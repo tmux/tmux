@@ -840,6 +840,24 @@ format_cb_current_command(struct format_tree *ft)
 	return (value);
 }
 
+// relies on osdep_get_pid which is only implemented for macOS
+#ifdef __APPLE__
+/* Callback for pane_current_command_pid */
+static void *
+format_cb_current_command_pid(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+	char			 *value;
+
+	if (wp == NULL || wp->shell == NULL)
+		return (NULL);
+
+	pid_t pid = osdep_get_pid(wp->fd);
+	asprintf(&value, "%d", pid);
+	return value;
+}
+#endif
+
 /* Callback for pane_current_path. */
 static void *
 format_cb_current_path(struct format_tree *ft)
@@ -2866,6 +2884,11 @@ static const struct format_table_entry format_table[] = {
 	{ "pane_current_command", FORMAT_TABLE_STRING,
 	  format_cb_current_command
 	},
+	#ifdef __APPLE__
+	{ "pane_current_command_pid", FORMAT_TABLE_STRING,
+	  format_cb_current_command_pid
+	},
+	#endif
 	{ "pane_current_path", FORMAT_TABLE_STRING,
 	  format_cb_current_path
 	},

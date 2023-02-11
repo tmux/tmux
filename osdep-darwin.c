@@ -29,11 +29,20 @@
 
 char			*osdep_get_name(int, char *);
 char			*osdep_get_cwd(int);
+pid_t			osdep_get_pid(int);
 struct event_base	*osdep_event_init(void);
 
 #ifndef __unused
 #define __unused __attribute__ ((__unused__))
 #endif
+
+pid_t
+osdep_get_pid(int fd)
+{
+	pid_t				pid;
+	pid = tcgetpgrp(fd);
+	return pid;
+}
 
 char *
 osdep_get_name(int fd, __unused char *tty)

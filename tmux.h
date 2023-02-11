@@ -3272,6 +3272,9 @@ int		 utf8_cstrhas(const char *, const struct utf8_data *);
 /* osdep-*.c */
 char		*osdep_get_name(int, char *);
 char		*osdep_get_cwd(int);
+#ifdef __APPLE__
+pid_t		osdep_get_pid(int);
+#endif
 struct event_base *osdep_event_init(void);
 
 /* log.c */
