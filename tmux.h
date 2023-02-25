@@ -133,13 +133,14 @@ struct winlink;
 #define KEYC_SHIFT           0x00400000000000ULL
 
 /* Key flag bits. */
-#define KEYC_LITERAL         0x01000000000000ULL
-#define KEYC_KEYPAD          0x02000000000000ULL
-#define KEYC_CURSOR          0x04000000000000ULL
+#define KEYC_LITERAL	     0x01000000000000ULL
+#define KEYC_KEYPAD	     0x02000000000000ULL
+#define KEYC_CURSOR	     0x04000000000000ULL
 #define KEYC_IMPLIED_META    0x08000000000000ULL
 #define KEYC_BUILD_MODIFIERS 0x10000000000000ULL
-#define KEYC_VI              0x20000000000000ULL
-#define KEYC_EXTENDED        0x40000000000000ULL
+#define KEYC_VI		     0x20000000000000ULL
+#define KEYC_EXTENDED	     0x40000000000000ULL
+#define KEYC_SENT	     0x80000000000000ULL
 
 /* Masks for key bits. */
 #define KEYC_MASK_MODIFIERS  0x00f00000000000ULL
@@ -1399,6 +1400,8 @@ struct tty {
 	u_int		 osy;
 
 	int		 mode;
+	int              fg;
+	int              bg;
 
 	u_int		 rlower;
 	u_int		 rupper;
@@ -1429,7 +1432,11 @@ struct tty {
 #define TTY_HAVEDA 0x100 /* Primary DA. */
 #define TTY_HAVEXDA 0x200
 #define TTY_SYNCING 0x400
-#define TTY_HAVEDA2 0x800 /* Seconday DA. */
+#define TTY_HAVEDA2 0x800 /* Secondary DA. */
+#define TTY_HAVEFG 0x1000
+#define TTY_HAVEBG 0x2000
+#define TTY_ALL_REQUEST_FLAGS \
+	(TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA|TTY_HAVEFG|TTY_HAVEBG)
 	int		 flags;
 
 	struct tty_term	*term;
@@ -1825,6 +1832,7 @@ struct client {
 #define CLIENT_CONTROL_WAITEXIT 0x200000000ULL
 #define CLIENT_WINDOWSIZECHANGED 0x400000000ULL
 #define CLIENT_CLIPBOARDBUFFER 0x800000000ULL
+#define CLIENT_BRACKETPASTING 0x1000000000ULL
 #define CLIENT_ALLREDRAWFLAGS		\
 	(CLIENT_REDRAWWINDOW|		\
 	 CLIENT_REDRAWSTATUS|		\
@@ -2409,7 +2417,7 @@ void		tty_keys_free(struct tty *);
 int		tty_keys_next(struct tty *);
 
 /* arguments.c */
-void		 args_set(struct args *, u_char, struct args_value *);
+void		 args_set(struct args *, u_char, struct args_value *, int);
 struct args 	*args_create(void);
 struct args	*args_parse(const struct args_parse *, struct args_value *,
 		     u_int, char **);
@@ -2627,7 +2635,9 @@ void	 file_print_buffer(struct client *, void *, size_t);
 void printflike(2, 3) file_error(struct client *, const char *, ...);
 void	 file_write(struct client *, const char *, int, const void *, size_t,
 	     client_file_cb, void *);
-void	 file_read(struct client *, const char *, client_file_cb, void *);
+struct client_file *file_read(struct client *, const char *, client_file_cb,
+	     void *);
+void	 file_cancel(struct client_file *);
 void	 file_push(struct client_file *);
 int	 file_write_left(struct client_files *);
 void	 file_write_open(struct client_files *, struct tmuxpeer *,
@@ -2639,6 +2649,7 @@ void	 file_read_open(struct client_files *, struct tmuxpeer *, struct imsg *,
 void	 file_write_ready(struct client_files *, struct imsg *);
 void	 file_read_data(struct client_files *, struct imsg *);
 void	 file_read_done(struct client_files *, struct imsg *);
+void	 file_read_cancel(struct client_files *, struct imsg *);
 
 /* server.c */
 extern struct tmuxproc *server_proc;
@@ -2690,6 +2701,7 @@ struct client_window *server_client_add_client_window(struct client *, u_int);
 struct window_pane *server_client_get_pane(struct client *);
 void	 server_client_set_pane(struct client *, struct window_pane *);
 void	 server_client_remove_pane(struct window_pane *);
+void	 server_client_print(struct client *, int, struct evbuffer *);
 
 /* server-fn.c */
 void	 server_redraw_client(struct client *);
@@ -2782,6 +2794,7 @@ int	 colour_fromstring(const char *s);
 int	 colour_256toRGB(int);
 int	 colour_256to16(int);
 int	 colour_byname(const char *);
+int	 colour_parseX11(const char *);
 void	 colour_palette_init(struct colour_palette *);
 void	 colour_palette_clear(struct colour_palette *);
 void	 colour_palette_free(struct colour_palette *);
@@ -3306,11 +3319,11 @@ void		 menu_add_item(struct menu *, const struct menu_item *,
 		    struct cmdq_item *, struct client *,
 		    struct cmd_find_state *);
 void		 menu_free(struct menu *);
-struct menu_data *menu_prepare(struct menu *, int, struct cmdq_item *, u_int,
-		    u_int, struct client *, struct cmd_find_state *,
+struct menu_data *menu_prepare(struct menu *, int, int, struct cmdq_item *,
+		    u_int, u_int, struct client *, struct cmd_find_state *,
 		    menu_choice_cb, void *);
-int		 menu_display(struct menu *, int, struct cmdq_item *, u_int,
-		    u_int, struct client *, struct cmd_find_state *,
+int		 menu_display(struct menu *, int, int, struct cmdq_item *,
+		    u_int, u_int, struct client *, struct cmd_find_state *,
 		    menu_choice_cb, void *);
 struct screen	*menu_mode_cb(struct client *, void *, u_int *, u_int *);
 void		 menu_check_cb(struct client *, void *, u_int, u_int, u_int,

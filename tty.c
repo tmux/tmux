@@ -108,6 +108,7 @@ tty_init(struct tty *tty, struct client *c)
 
 	tty->cstyle = SCREEN_CURSOR_DEFAULT;
 	tty->ccolour = -1;
+	tty->fg = tty->bg = -1;
 
 	if (tcgetattr(c->fd, &tty->tio) != 0)
 		return (-1);
@@ -286,7 +287,6 @@ tty_open(struct tty *tty, char **cause)
 	evtimer_set(&tty->timer, tty_timer_callback, tty);
 
 	tty_start_tty(tty);
-
 	tty_keys_build(tty);
 
 	return (0);
@@ -301,7 +301,7 @@ tty_start_timer_callback(__unused int fd, __unused short events, void *data)
 	log_debug("%s: start timer fired", c->name);
 	if ((tty->flags & (TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA)) == 0)
 		tty_update_features(tty);
-	tty->flags |= (TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA);
+	tty->flags |= TTY_ALL_REQUEST_FLAGS;
 }
 
 void
@@ -341,6 +341,8 @@ tty_start_tty(struct tty *tty)
 		tty_puts(tty, "\033[?1000l\033[?1002l\033[?1003l");
 		tty_puts(tty, "\033[?1006l\033[?1005l");
 	}
+	if (tty_term_has(tty->term, TTYC_ENBP))
+		tty_putcode(tty, TTYC_ENBP);
 
 	evtimer_set(&tty->start_timer, tty_start_timer_callback, tty);
 	evtimer_add(&tty->start_timer, &tv);
@@ -369,8 +371,12 @@ tty_send_requests(struct tty *tty)
 			tty_puts(tty, "\033[>c");
 		if (~tty->flags & TTY_HAVEXDA)
 			tty_puts(tty, "\033[>q");
+		if (~tty->flags & TTY_HAVEFG)
+			tty_puts(tty, "\033]10;?\033\\");
+		if (~tty->flags & TTY_HAVEBG)
+			tty_puts(tty, "\033]11;?\033\\");
 	} else
-		tty->flags |= (TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA);
+		tty->flags |= TTY_ALL_REQUEST_FLAGS;
 }
 
 void
@@ -413,8 +419,6 @@ tty_stop_tty(struct tty *tty)
 		else if (tty_term_has(tty->term, TTYC_SS))
 			tty_raw(tty, tty_term_string1(tty->term, TTYC_SS, 0));
 	}
-	if (tty->mode & MODE_BRACKETPASTE)
-		tty_raw(tty, tty_term_string(tty->term, TTYC_DSBP));
 	if (tty->ccolour != -1)
 		tty_raw(tty, tty_term_string(tty->term, TTYC_CR));
 
@@ -423,6 +427,8 @@ tty_stop_tty(struct tty *tty)
 		tty_raw(tty, "\033[?1000l\033[?1002l\033[?1003l");
 		tty_raw(tty, "\033[?1006l\033[?1005l");
 	}
+	if (tty_term_has(tty->term, TTYC_DSBP))
+		tty_raw(tty, tty_term_string(tty->term, TTYC_DSBP));
 
 	if (tty->term->flags & TERM_VT100LIKE)
 		tty_raw(tty, "\033[?7727l");
@@ -820,12 +826,6 @@ tty_update_mode(struct tty *tty, int mode, struct screen *s)
 			tty_puts(tty, "\033[?1000h\033[?1002h");
 		else if (mode & MODE_MOUSE_STANDARD)
 			tty_puts(tty, "\033[?1000h");
-	}
-	if (changed & MODE_BRACKETPASTE) {
-		if (mode & MODE_BRACKETPASTE)
-			tty_putcode(tty, TTYC_ENBP);
-		else
-			tty_putcode(tty, TTYC_DSBP);
 	}
 	tty->mode = mode;
 }

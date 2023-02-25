@@ -37,6 +37,10 @@ struct args_entry {
 	u_char			 flag;
 	struct args_values	 values;
 	u_int			 count;
+
+	int			 flags;
+#define ARGS_ENTRY_OPTIONAL_VALUE 0x1
+
 	RB_ENTRY(args_entry)	 entry;
 };
 
@@ -122,6 +126,99 @@ args_create(void)
 	return (args);
 }
 
+/* Parse a single flag. */
+static int
+args_parse_flag_argument(struct args_value *values, u_int count, char **cause,
+    struct args *args, u_int *i, const char *string, int flag,
+    int optional_argument)
+{
+	struct args_value	*argument, *new;
+	const char		*s;
+
+	new = xcalloc(1, sizeof *new);
+	if (*string != '\0') {
+		new->type = ARGS_STRING;
+		new->string = xstrdup(string);
+		goto out;
+	}
+
+	if (*i == count)
+		argument = NULL;
+	else {
+		argument = &values[*i];
+		if (argument->type != ARGS_STRING) {
+			xasprintf(cause, "-%c argument must be a string", flag);
+			return (-1);
+		}
+	}
+	if (argument == NULL) {
+		if (optional_argument) {
+			log_debug("%s: -%c (optional)", __func__, flag);
+			args_set(args, flag, NULL, ARGS_ENTRY_OPTIONAL_VALUE);
+			return (0); /* either - or end */
+		}
+		xasprintf(cause, "-%c expects an argument", flag);
+		return (-1);
+	}
+	args_copy_value(new, argument);
+	(*i)++;
+
+out:
+	s = args_value_as_string(new);
+	log_debug("%s: -%c = %s", __func__, flag, s);
+	args_set(args, flag, new, 0);
+	return (0);
+}
+
+/* Parse flags argument. */
+static int
+args_parse_flags(const struct args_parse *parse, struct args_value *values,
+    u_int count, char **cause, struct args *args, int *i)
+{
+	struct args_value	*value;
+	u_char			 flag;
+	const char		*found, *string;
+	int			 optional_argument;
+
+	value = &values[*i];
+	if (value->type != ARGS_STRING)
+		return (1);
+
+	string = value->string;
+	log_debug("%s: next %s", __func__, string);
+	if (*string++ != '-' || *string == '\0')
+		return (1);
+	(*i)++;
+	if (string[0] == '-' && string[1] == '\0')
+		return (1);
+
+	for (;;) {
+		flag = *string++;
+		if (flag == '\0')
+			return (0);
+		if (flag == '?')
+			return (-1);
+		if (!isalnum(flag)) {
+			xasprintf(cause, "invalid flag -%c", flag);
+			return (-1);
+		}
+
+		found = strchr(parse->template, flag);
+		if (found == NULL) {
+			xasprintf(cause, "unknown flag -%c", flag);
+			return (-1);
+		}
+		if (found[1] != ':') {
+			log_debug("%s: -%c", __func__, flag);
+			args_set(args, flag, NULL, 0);
+			continue;
+		}
+		optional_argument = (found[2] == ':');
+		return (args_parse_flag_argument(values, count, cause, args, i,
+		    string, flag, optional_argument));
+	}
+}
+
 /* Parse arguments into a new argument set. */
 struct args *
 args_parse(const struct args_parse *parse, struct args_value *values,
@@ -131,86 +228,21 @@ args_parse(const struct args_parse *parse, struct args_value *values,
 	u_int			 i;
 	enum args_parse_type	 type;
 	struct args_value	*value, *new;
-	u_char			 flag;
-	const char		*found, *string, *s;
-	int			 optional_argument;
+	const char		*s;
+	int			 stop;
 
 	if (count == 0)
 		return (args_create());
 
 	args = args_create();
 	for (i = 1; i < count; /* nothing */) {
-		value = &values[i];
-		if (value->type != ARGS_STRING)
-			break;
-
-		string = value->string;
-		if (*string++ != '-' || *string == '\0')
-			break;
-		i++;
-		if (string[0] == '-' && string[1] == '\0')
-			break;
-
-		for (;;) {
-			flag = *string++;
-			if (flag == '\0')
-				break;
-			if (flag == '?') {
-				args_free(args);
-				return (NULL);
-			}
-			if (!isalnum(flag)) {
-				xasprintf(cause, "invalid flag -%c", flag);
-				args_free(args);
-				return (NULL);
-			}
-			found = strchr(parse->template, flag);
-			if (found == NULL) {
-				xasprintf(cause, "unknown flag -%c", flag);
-				args_free(args);
-				return (NULL);
-			}
-			if (*++found != ':') {
-				log_debug("%s: -%c", __func__, flag);
-				args_set(args, flag, NULL);
-				continue;
-			}
-			if (*found == ':') {
-				optional_argument = 1;
-				found++;
-			}
-			new = xcalloc(1, sizeof *new);
-			if (*string != '\0') {
-				new->type = ARGS_STRING;
-				new->string = xstrdup(string);
-			} else {
-				if (i == count) {
-					if (optional_argument) {
-						log_debug("%s: -%c", __func__,
-						    flag);
-						args_set(args, flag, NULL);
-						continue;
-					}
-					xasprintf(cause,
-					    "-%c expects an argument",
-					    flag);
-					args_free(args);
-					return (NULL);
-				}
-				if (values[i].type != ARGS_STRING) {
-					xasprintf(cause,
-					    "-%c argument must be a string",
-					    flag);
-					args_free(args);
-					return (NULL);
-				}
-				args_copy_value(new, &values[i++]);
-			}
-			s = args_value_as_string(new);
-			log_debug("%s: -%c = %s", __func__, flag, s);
-			args_set(args, flag, new);
-			break;
+		stop = args_parse_flags(parse, values, count, cause, args, &i);
+		if (stop == -1) {
+			args_free(args);
+			return (NULL);
 		}
+		if (stop == 1)
+			break;
 	}
 	log_debug("%s: flags end at %u of %u", __func__, i, count);
 	if (i != count) {
@@ -323,13 +355,13 @@ args_copy(struct args *args, int argc, char **argv)
 	RB_FOREACH(entry, args_tree, &args->tree) {
 		if (TAILQ_EMPTY(&entry->values)) {
 			for (i = 0; i < entry->count; i++)
-				args_set(new_args, entry->flag, NULL);
+				args_set(new_args, entry->flag, NULL, 0);
 			continue;
 		}
 		TAILQ_FOREACH(value, &entry->values, entry) {
 			new_value = xcalloc(1, sizeof *new_value);
 			args_copy_copy_value(new_value, value, argc, argv);
-			args_set(new_args, entry->flag, new_value);
+			args_set(new_args, entry->flag, new_value, 0);
 		}
 	}
 	if (args->count == 0)
@@ -487,6 +519,7 @@ args_print(struct args *args)
 	char			*buf;
 	u_int			 i, j;
 	struct args_entry	*entry;
+	struct args_entry	*last = NULL;
 	struct args_value	*value;
 
 	len = 1;
@@ -494,6 +527,8 @@ args_print(struct args *args)
 
 	/* Process the flags first. */
 	RB_FOREACH(entry, args_tree, &args->tree) {
+		if (entry->flags & ARGS_ENTRY_OPTIONAL_VALUE)
+			continue;
 		if (!TAILQ_EMPTY(&entry->values))
 			continue;
 
@@ -505,6 +540,16 @@ args_print(struct args *args)
 
 	/* Then the flags with arguments. */
 	RB_FOREACH(entry, args_tree, &args->tree) {
+		if (entry->flags & ARGS_ENTRY_OPTIONAL_VALUE) {
+			if (*buf != '\0')
+				args_print_add(&buf, &len, " -%c", entry->flag);
+			else
+				args_print_add(&buf, &len, "-%c", entry->flag);
+			last = entry;
+			continue;
+		}
+		if (TAILQ_EMPTY(&entry->values))
+			continue;
 		TAILQ_FOREACH(value, &entry->values, entry) {
 			if (*buf != '\0')
 				args_print_add(&buf, &len, " -%c", entry->flag);
@@ -512,7 +557,10 @@ args_print(struct args *args)
 				args_print_add(&buf, &len, "-%c", entry->flag);
 			args_print_add_value(&buf, &len, value);
 		}
+		last = entry;
 	}
+	if (last && (last->flags & ARGS_ENTRY_OPTIONAL_VALUE))
+		args_print_add(&buf, &len, " --");
 
 	/* And finally the argument vector. */
 	for (i = 0; i < args->count; i++)
@@ -582,7 +630,7 @@ args_has(struct args *args, u_char flag)
 
 /* Set argument value in the arguments tree. */
 void
-args_set(struct args *args, u_char flag, struct args_value *value)
+args_set(struct args *args, u_char flag, struct args_value *value, int flags)
 {
 	struct args_entry	*entry;
 
@@ -591,6 +639,7 @@ args_set(struct args *args, u_char flag, struct args_value *value)
 		entry = xcalloc(1, sizeof *entry);
 		entry->flag = flag;
 		entry->count = 1;
+		entry->flags = flags;
 		TAILQ_INIT(&entry->values);
 		RB_INSERT(args_tree, &args->tree, entry);
 	} else

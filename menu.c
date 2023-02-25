@@ -64,6 +64,8 @@ menu_add_item(struct menu *menu, const struct menu_item *item,
 	line = (item == NULL || item->name == NULL || *item->name == '\0');
 	if (line && menu->count == 0)
 		return;
+	if (line && menu->items[menu->count - 1].name == NULL)
+		return;
 
 	menu->items = xreallocarray(menu->items, menu->count + 1,
 	    sizeof *menu->items);
@@ -427,12 +429,12 @@ chosen:
 }
 
 struct menu_data *
-menu_prepare(struct menu *menu, int flags, struct cmdq_item *item, u_int px,
-    u_int py, struct client *c, struct cmd_find_state *fs, menu_choice_cb cb,
-    void *data)
+menu_prepare(struct menu *menu, int flags, int starting_choice,
+    struct cmdq_item *item, u_int px, u_int py, struct client *c,
+    struct cmd_find_state *fs, menu_choice_cb cb, void *data)
 {
 	struct menu_data	*md;
-	u_int			 i;
+	int			 choice;
 	const char		*name;
 
 	if (c->tty.sx < menu->width + 4 || c->tty.sy < menu->count + 2)
@@ -457,18 +459,38 @@ menu_prepare(struct menu *menu, int flags, struct cmdq_item *item, u_int px,
 	md->py = py;
 
 	md->menu = menu;
+	md->choice = -1;
+
 	if (md->flags & MENU_NOMOUSE) {
-		for (i = 0; i < menu->count; i++) {
-			name = menu->items[i].name;
-			if (name != NULL && *name != '-')
-				break;
+		if (starting_choice >= (int)menu->count) {
+			starting_choice = menu->count - 1;
+			choice = starting_choice + 1;
+			for (;;) {
+				name = menu->items[choice - 1].name;
+				if (name != NULL && *name != '-') {
+					md->choice = choice - 1;
+					break;
+				}
+				if (--choice == 0)
+					choice = menu->count;
+				if (choice == starting_choice + 1)
+					break;
+			}
+		} else if (starting_choice >= 0) {
+			choice = starting_choice;
+			for (;;) {
+				name = menu->items[choice].name;
+				if (name != NULL && *name != '-') {
+					md->choice = choice;
+					break;
+				}
+				if (++choice == (int)menu->count)
+					choice = 0;
+				if (choice == starting_choice)
+					break;
+			}
 		}
-		if (i != menu->count)
-			md->choice = i;
-		else
-			md->choice = -1;
-	} else
-		md->choice = -1;
+	}
 
 	md->cb = cb;
 	md->data = data;
@@ -476,13 +498,14 @@ menu_prepare(struct menu *menu, int flags, struct cmdq_item *item, u_int px,
 }
 
 int
-menu_display(struct menu *menu, int flags, struct cmdq_item *item, u_int px,
-    u_int py, struct client *c, struct cmd_find_state *fs, menu_choice_cb cb,
-    void *data)
+menu_display(struct menu *menu, int flags, int starting_choice,
+    struct cmdq_item *item, u_int px, u_int py, struct client *c,
+    struct cmd_find_state *fs, menu_choice_cb cb, void *data)
 {
 	struct menu_data	*md;
 
-	md = menu_prepare(menu, flags, item, px, py, c, fs, cb, data);
+	md = menu_prepare(menu, flags, starting_choice, item, px, py, c, fs, cb,
+	    data);
 	if (md == NULL)
 		return (-1);
 	server_client_set_overlay(c, 0, NULL, menu_mode_cb, menu_draw_cb,

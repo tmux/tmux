@@ -462,6 +462,8 @@ out:
 			strlcat(out, "B", sizeof out);
 		if (saved & KEYC_EXTENDED)
 			strlcat(out, "E", sizeof out);
+		if (saved & KEYC_SENT)
+			strlcat(out, "S", sizeof out);
 		strlcat(out, "]", sizeof out);
 	}
 	return (out);

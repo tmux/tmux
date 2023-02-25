@@ -825,67 +825,7 @@ cmdq_guard(struct cmdq_item *item, const char *guard, int flags)
 void
 cmdq_print_data(struct cmdq_item *item, int parse, struct evbuffer *evb)
 {
-	struct client			*c = item->client;
-	void				*data = EVBUFFER_DATA(evb);
-	size_t				 size = EVBUFFER_LENGTH(evb);
-	struct window_pane		*wp;
-	struct window_mode_entry	*wme;
-	char				*sanitized, *msg, *line;
-
-	if (!parse) {
-		utf8_stravisx(&msg, data, size, VIS_OCTAL|VIS_CSTYLE|VIS_TAB);
-		log_debug("%s: %s", __func__, msg);
-	} else {
-		msg = EVBUFFER_DATA(evb);
-		if (msg[size - 1] != '\0')
-			evbuffer_add(evb, "", 1);
-	}
-
-	if (c == NULL)
-		goto out;
-
-	if (c->session == NULL || (c->flags & CLIENT_CONTROL)) {
-		if (~c->flags & CLIENT_UTF8) {
-			sanitized = utf8_sanitize(msg);
-			if (c->flags & CLIENT_CONTROL)
-				control_write(c, "%s", sanitized);
-			else
-				file_print(c, "%s\n", sanitized);
-			free(sanitized);
-		} else {
-			if (c->flags & CLIENT_CONTROL)
-				control_write(c, "%s", msg);
-			else
-				file_print(c, "%s\n", msg);
-		}
-		goto out;
-	}
-
-	wp = server_client_get_pane(c);
-	wme = TAILQ_FIRST(&wp->modes);
-	if (wme == NULL || wme->mode != &window_view_mode)
-		window_pane_set_mode(wp, NULL, &window_view_mode, NULL, NULL);
-	if (parse) {
-		do {
-			line = evbuffer_readln(evb, NULL, EVBUFFER_EOL_LF);
-			if (line != NULL) {
-				window_copy_add(wp, 1, "%s", line);
-				free(line);
-			}
-		} while (line != NULL);
-
-		size = EVBUFFER_LENGTH(evb);
-		if (size != 0) {
-			line = EVBUFFER_DATA(evb);
-			window_copy_add(wp, 1, "%.*s", (int)size, line);
-		}
-	} else
-		window_copy_add(wp, 0, "%s", msg);
-
-out:
-	if (!parse)
-		free(msg);
-
+	server_client_print(item->client, parse, evb);
 }
 
 /* Show message from command. */

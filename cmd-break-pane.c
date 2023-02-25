@@ -115,6 +115,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 
 	layout_init(w, wp);
 	wp->flags |= PANE_CHANGED;
+	colour_palette_from_option(&wp->palette, wp->options);
 
 	if (idx == -1)
 		idx = -1 - options_get_number(dst_s->options, "base-index");

@@ -42,6 +42,7 @@ static void	server_client_check_modes(struct client *);
 static void	server_client_set_title(struct client *);
 static void	server_client_set_path(struct client *);
 static void	server_client_reset_state(struct client *);
+static int 	server_client_is_bracket_pasting(struct client *, key_code);
 static int	server_client_assume_paste(struct session *);
 static void	server_client_update_latest(struct client *);
 
@@ -1754,6 +1755,25 @@ out:
 	return (key);
 }
 
+/* Is this a bracket paste key? */
+static int
+server_client_is_bracket_pasting(struct client *c, key_code key)
+{
+	if (key == KEYC_PASTE_START) {
+		c->flags |= CLIENT_BRACKETPASTING;
+		log_debug("%s: bracket paste on", c->name);
+		return (1);
+	}
+
+	if (key == KEYC_PASTE_END) {
+		c->flags &= ~CLIENT_BRACKETPASTING;
+		log_debug("%s: bracket paste off", c->name);
+		return (1);
+	}
+
+	return !!(c->flags & CLIENT_BRACKETPASTING);
+}
+
 /* Is this fast enough to probably be a paste? */
 static int
 server_client_assume_paste(struct session *s)
@@ -1862,8 +1882,14 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 	if (KEYC_IS_MOUSE(key) && !options_get_number(s->options, "mouse"))
 		goto forward_key;
 
+	/* Forward if bracket pasting. */
+	if (server_client_is_bracket_pasting(c, key))
+		goto forward_key;
+
 	/* Treat everything as a regular key when pasting is detected. */
-	if (!KEYC_IS_MOUSE(key) && server_client_assume_paste(s))
+	if (!KEYC_IS_MOUSE(key) &&
+	    (~key & KEYC_SENT) &&
+	    server_client_assume_paste(s))
 		goto forward_key;
 
 	/*
@@ -3213,4 +3239,70 @@ server_client_remove_pane(struct window_pane *wp)
 			free(cw);
 		}
 	}
+}
+
+/* Print to a client. */
+void
+server_client_print(struct client *c, int parse, struct evbuffer *evb)
+{
+	void				*data = EVBUFFER_DATA(evb);
+	size_t				 size = EVBUFFER_LENGTH(evb);
+	struct window_pane		*wp;
+	struct window_mode_entry	*wme;
+	char				*sanitized, *msg, *line;
+
+	if (!parse) {
+		utf8_stravisx(&msg, data, size,
+		    VIS_OCTAL|VIS_CSTYLE|VIS_NOSLASH);
+		log_debug("%s: %s", __func__, msg);
+	} else {
+		msg = EVBUFFER_DATA(evb);
+		if (msg[size - 1] != '\0')
+			evbuffer_add(evb, "", 1);
+	}
+
+	if (c == NULL)
+		goto out;
+
+	if (c->session == NULL || (c->flags & CLIENT_CONTROL)) {
+		if (~c->flags & CLIENT_UTF8) {
+			sanitized = utf8_sanitize(msg);
+			if (c->flags & CLIENT_CONTROL)
+				control_write(c, "%s", sanitized);
+			else
+				file_print(c, "%s\n", sanitized);
+			free(sanitized);
+		} else {
+			if (c->flags & CLIENT_CONTROL)
+				control_write(c, "%s", msg);
+			else
+				file_print(c, "%s\n", msg);
+		}
+		goto out;
+	}
+
+	wp = server_client_get_pane(c);
+	wme = TAILQ_FIRST(&wp->modes);
+	if (wme == NULL || wme->mode != &window_view_mode)
+		window_pane_set_mode(wp, NULL, &window_view_mode, NULL, NULL);
+	if (parse) {
+		do {
+			line = evbuffer_readln(evb, NULL, EVBUFFER_EOL_LF);
+			if (line != NULL) {
+				window_copy_add(wp, 1, "%s", line);
+				free(line);
+			}
+		} while (line != NULL);
+
+		size = EVBUFFER_LENGTH(evb);
+		if (size != 0) {
+			line = EVBUFFER_DATA(evb);
+			window_copy_add(wp, 1, "%.*s", (int)size, line);
+		}
+	} else
+		window_copy_add(wp, 0, "%s", msg);
+
+out:
+	if (!parse)
+		free(msg);
 }

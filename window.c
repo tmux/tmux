@@ -64,6 +64,7 @@ static u_int	next_active_point;
 struct window_pane_input_data {
 	struct cmdq_item	*item;
 	u_int			 wp;
+	struct client_file	*file;
 };
 
 static struct window_pane *window_pane_create(struct window *, u_int, u_int,
@@ -1543,18 +1544,18 @@ window_pane_input_callback(struct client *c, __unused const char *path,
 	size_t				 len = EVBUFFER_LENGTH(buffer);
 
 	wp = window_pane_find_by_id(cdata->wp);
-	if (wp == NULL || closed || error != 0 || (c->flags & CLIENT_DEAD)) {
-		if (wp == NULL)
+	if (cdata->file != NULL && (wp == NULL || c->flags & CLIENT_DEAD)) {
+		if (wp == NULL) {
+			c->retval = 1;
 			c->flags |= CLIENT_EXIT;
-
-		evbuffer_drain(buffer, len);
+		}
+		file_cancel(cdata->file);
+	} else if (cdata->file == NULL || closed || error != 0) {
 		cmdq_continue(cdata->item);
-
 		server_client_unref(c);
 		free(cdata);
-		return;
-	}
-	input_parse_buffer(wp, buf, len);
+	} else
+		input_parse_buffer(wp, buf, len);
 	evbuffer_drain(buffer, len);
 }
 
@@ -1577,9 +1578,8 @@ window_pane_start_input(struct window_pane *wp, struct cmdq_item *item,
 	cdata = xmalloc(sizeof *cdata);
 	cdata->item = item;
 	cdata->wp = wp->id;
-
+	cdata->file = file_read(c, "-", window_pane_input_callback, cdata);
 	c->references++;
-	file_read(c, "-", window_pane_input_callback, cdata);
 
 	return (0);
 }

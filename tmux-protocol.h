@@ -66,7 +66,8 @@ enum msgtype {
 	MSG_WRITE_OPEN,
 	MSG_WRITE,
 	MSG_WRITE_READY,
-	MSG_WRITE_CLOSE
+	MSG_WRITE_CLOSE,
+	MSG_READ_CANCEL
 };
 
 /*
@@ -90,6 +91,10 @@ struct msg_read_data {
 struct msg_read_done {
 	int	stream;
 	int	error;
+};
+
+struct msg_read_cancel {
+	int	stream;
 };
 
 struct msg_write_open {
