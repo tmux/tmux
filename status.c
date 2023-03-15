@@ -1431,7 +1431,7 @@ process_key:
 		s = utf8_tocstr(c->prompt_buffer);
 		if (*s != '\0')
 			status_prompt_add_history(s, c->prompt_type);
-		if (c->prompt_inputcb(c, c->prompt_data, s, 1) == 0)
+		if (c->prompt_inputcb(c, c->prompt_data, (*s == '\0')?"\n":s, 1) == 0)
 			status_prompt_clear(c);
 		free(s);
 		break;

@@ -41,8 +41,8 @@ const struct cmd_entry cmd_confirm_before_entry = {
 	.name = "confirm-before",
 	.alias = "confirm",
 
-	.args = { "bp:t:", 1, 1, cmd_confirm_before_args_parse },
-	.usage = "[-b] [-p prompt] " CMD_TARGET_CLIENT_USAGE " command",
+	.args = { "bep:t:", 1, 1, cmd_confirm_before_args_parse },
+	.usage = "[-b] [-e] [-p prompt] " CMD_TARGET_CLIENT_USAGE " command",
 
 	.flags = CMD_CLIENT_TFLAG,
 	.exec = cmd_confirm_before_exec
@@ -51,6 +51,7 @@ const struct cmd_entry cmd_confirm_before_entry = {
 struct cmd_confirm_before_data {
 	struct cmdq_item	*item;
 	struct cmd_list		*cmdlist;
+	int			enter_to_confirm;
 };
 
 static enum args_parse_type
@@ -78,6 +79,8 @@ cmd_confirm_before_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (wait)
 		cdata->item = item;
+
+	cdata->enter_to_confirm = args_has(args, 'e');
 
 	if ((prompt = args_get(args, 'p')) != NULL)
 		xasprintf(&new_prompt, "%s ", prompt);
@@ -109,7 +112,7 @@ cmd_confirm_before_callback(struct client *c, void *data, const char *s,
 
 	if (s == NULL || *s == '\0')
 		goto out;
-	if (tolower((u_char)s[0]) != 'y' || s[1] != '\0')
+	if (!(tolower((u_char)s[0]) == 'y' || (cdata->enter_to_confirm && s[0] == '\n')) || s[1] != '\0')
 		goto out;
 	retcode = 0;
 
