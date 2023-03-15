@@ -276,6 +276,7 @@ cmd_display_menu_get_position(struct client *tc, struct cmdq_item *item,
 	log_debug("%s: -y: %s = %s = %u (-h %u)", __func__, yp, p, *py, h);
 	free(p);
 
+	format_free(ft);
 	return (1);
 }
 
@@ -470,11 +471,13 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 		cmd_free_argv(argc, argv);
 		if (env != NULL)
 			environ_free(env);
+		free(cwd);
 		free(title);
 		return (CMD_RETURN_NORMAL);
 	}
 	if (env != NULL)
 		environ_free(env);
+	free(cwd);
 	free(title);
 	cmd_free_argv(argc, argv);
 	return (CMD_RETURN_WAIT);
