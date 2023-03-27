@@ -132,6 +132,12 @@ screen_write_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 {
 	struct window_pane	*wp = ttyctx->arg;
 
+	if (ttyctx->allow_invisible_panes) {
+		if (session_has(c->session, wp->window))
+			return (1);
+		return (0);
+	}
+
 	if (c->session->curw->window != wp->window)
 		return (0);
 	if (wp->layout_cell == NULL)
