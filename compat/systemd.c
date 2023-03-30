@@ -166,6 +166,14 @@ systemd_move_pid_to_new_cgroup(pid_t pid, char **cause)
 		goto finish;
 	}
 
+	/* clean up the scope even if it fails */
+	r = sd_bus_message_append(m, "(sv)", "CollectMode", "s", "inactive-or-failed");
+	if (r < 0) {
+		xasprintf(cause, "failed to append to properties: %s",
+		    strerror(-r));
+		goto finish;
+	}
+
 	/* end properties array */
 	r = sd_bus_message_close_container(m);
 	if (r < 0) {
