@@ -1615,13 +1615,24 @@ yylex_token(int ch)
 
 	for (;;) {
 		/* EOF or \n are always the end of the token. */
-		if (ch == EOF || (state == NONE && ch == '\n'))
+		if (ch == EOF) {
+			log_debug("%s: end at EOF", __func__);
 			break;
+		}
+		if (state == NONE && ch == '\n') {
+			log_debug("%s: end at EOL", __func__);
+			break;
+		}
 
 		/* Whitespace or ; or } ends a token unless inside quotes. */
-		if ((ch == ' ' || ch == '\t' || ch == ';' || ch == '}') &&
-		    state == NONE)
+		if (state == NONE && (ch == ' ' || ch == '\t')) {
+			log_debug("%s: end at WS", __func__);
 			break;
+		}
+		if (state == NONE && (ch == ';' || ch == '}')) {
+			log_debug("%s: end at %c", __func__, ch);
+			break;
+		}
 
 		/*
 		 * Spaces and comments inside quotes after \n are removed but
