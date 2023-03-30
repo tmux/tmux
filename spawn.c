@@ -381,7 +381,7 @@ spawn_pane(struct spawn_context *sc, char **cause)
 
 	/* In the parent process, everything is done now. */
 	if (new_wp->pid != 0) {
-#ifdef HAVE_SYSTEMD
+#if defined(HAVE_SYSTEMD) && defined(ENABLE_CGROUPS)
 		/*
 		 * Move the child process into a new cgroup for systemd-oomd
 		 * isolation.
