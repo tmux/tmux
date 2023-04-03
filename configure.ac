@@ -420,6 +420,21 @@ if test x"$enable_systemd" = xyes; then
 	fi
 fi
 AM_CONDITIONAL(HAVE_SYSTEMD, [test "x$found_systemd" = xyes])
+AC_ARG_ENABLE(
+	cgroups,
+	AS_HELP_STRING(--disable-cgroups, disable adding panes to new cgroups with systemd)
+)
+if test "x$enable_cgroups" = x; then
+	# Default to the same as $enable_systemd.
+	enable_cgroups=$enable_systemd
+fi
+if test "x$enable_cgroups" = xyes; then
+	if test "x$found_systemd" = xyes; then
+		AC_DEFINE(ENABLE_CGROUPS)
+	else
+		AC_MSG_ERROR("cgroups requires systemd to be enabled")
+	fi
+fi
 
 # Check for b64_ntop. If we have b64_ntop, we assume b64_pton as well.
 AC_MSG_CHECKING(for b64_ntop)

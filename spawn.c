@@ -380,8 +380,20 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	}
 
 	/* In the parent process, everything is done now. */
-	if (new_wp->pid != 0)
+	if (new_wp->pid != 0) {
+#if defined(HAVE_SYSTEMD) && defined(ENABLE_CGROUPS)
+		/*
+		 * Move the child process into a new cgroup for systemd-oomd
+		 * isolation.
+		 */
+		if (systemd_move_pid_to_new_cgroup(new_wp->pid, cause) < 0) {
+			log_debug("%s: moving pane to new cgroup failed: %s",
+			    __func__, *cause);
+			free (*cause);
+		}
+#endif
 		goto complete;
+	}
 
 	/*
 	 * Child process. Change to the working directory or home if that
