@@ -1587,12 +1587,11 @@ tty_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 	if (wp->layout_cell == NULL)
 		return (0);
 
+	/* Set the properties relevant to the current client. */
 	ttyctx->bigger = tty_window_offset(&c->tty, &ttyctx->wox, &ttyctx->woy,
 	    &ttyctx->wsx, &ttyctx->wsy);
 
-	ttyctx->xoff = ttyctx->rxoff = wp->xoff;
 	ttyctx->yoff = ttyctx->ryoff = wp->yoff;
-
 	if (status_at_line(c) == 0)
 		ttyctx->yoff += status_line_size(c);
 
@@ -1602,27 +1601,22 @@ tty_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 void
 tty_draw_images(struct tty *tty, struct window_pane *wp, struct screen *s)
 {
-	struct client	*c = tty->client;
 	struct image	*im;
 	struct tty_ctx	 ttyctx;
 
 	TAILQ_FOREACH(im, &s->images, entry) {
 		memset(&ttyctx, 0, sizeof ttyctx);
 
+		/* Set the client independent properties. */
 		ttyctx.ocx = im->px;
 		ttyctx.ocy = im->py;
 
 		ttyctx.orlower = s->rlower;
 		ttyctx.orupper = s->rupper;
 
-		ttyctx.bigger = tty_window_offset(&c->tty, &ttyctx.xoff,
-		    &ttyctx.yoff, &ttyctx.sx, &ttyctx.sy);
-
-		ttyctx.xoff = wp->xoff;
-		ttyctx.yoff = wp->yoff;
-
-		if (status_at_line(c) == 0)
-			ttyctx.yoff += status_line_size(c);
+		ttyctx.xoff = ttyctx.rxoff = wp->xoff;
+		ttyctx.sx = wp->sx;
+		ttyctx.sy = wp->sy;
 
 		ttyctx.ptr = im;
 		ttyctx.arg = wp;

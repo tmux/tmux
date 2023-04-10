@@ -1385,6 +1385,7 @@ struct tty {
 
 	u_int		 sx;
 	u_int		 sy;
+        /* Cell size in pixels. */
 	u_int		 xpixel;
 	u_int		 ypixel;
 
@@ -1393,6 +1394,8 @@ struct tty {
 	enum screen_cursor_style cstyle;
 	int		 ccolour;
 
+        /* Properties of the area being drawn on. */
+        /* When true, the drawing area is bigger than the terminal. */
 	int		 oflag;
 	u_int		 oox;
 	u_int		 ooy;
