@@ -81,6 +81,9 @@ struct winlink;
 #ifndef TMUX_TERM
 #define TMUX_TERM "screen"
 #endif
+#ifndef TMUX_LOCK_CMD
+#define TMUX_LOCK_CMD "lock -np"
+#endif
 
 /* Minimum layout cell size, NOT including border lines. */
 #define PANE_MINIMUM 1
