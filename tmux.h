@@ -157,7 +157,9 @@ struct winlink;
 #define KEYC_IS_UNICODE(key) \
 	(((key) & KEYC_MASK_KEY) > 0x7f && \
 	 (((key) & KEYC_MASK_KEY) < KEYC_BASE || \
-	  ((key) & KEYC_MASK_KEY) >= KEYC_BASE_END))
+	  ((key) & KEYC_MASK_KEY) >= KEYC_BASE_END) && \
+	 (((key) & KEYC_MASK_KEY) < KEYC_USER || \
+	  ((key) & KEYC_MASK_KEY) >= KEYC_USER + KEYC_NUSER))
 
 /* Multiple click timeout. */
 #define KEYC_CLICK_TIMEOUT 300
