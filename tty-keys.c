@@ -1008,7 +1008,8 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 
 /*
  * Handle mouse key input. Returns 0 for success, -1 for failure, 1 for partial
- * (probably a mouse sequence but need more data).
+ * (probably a mouse sequence but need more data), -2 if an invalid mouse
+ * sequence.
  */
 static int
 tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size,
@@ -1069,7 +1070,7 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size,
 		if (b < MOUSE_PARAM_BTN_OFF ||
 		    x < MOUSE_PARAM_POS_OFF ||
 		    y < MOUSE_PARAM_POS_OFF)
-			return (-1);
+			return (-2);
 		b -= MOUSE_PARAM_BTN_OFF;
 		x -= MOUSE_PARAM_POS_OFF;
 		y -= MOUSE_PARAM_POS_OFF;
@@ -1111,7 +1112,7 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size,
 
 		/* Check and return the mouse input. */
 		if (x < 1 || y < 1)
-			return (-1);
+			return (-2);
 		x--;
 		y--;
 		b = sgr_b;
