@@ -5037,6 +5037,7 @@ window_copy_copy_line(struct window_mode_entry *wme, char **buf, size_t *off,
 	struct window_copy_mode_data	*data = wme->data;
 	struct grid			*gd = data->backing->grid;
 	struct grid_cell		 gc;
+	struct grid_cell        *lastgc = NULL;
 	struct grid_line		*gl;
 	struct utf8_data		 ud;
 	u_int				 i, xx, wrapped = 0;
@@ -5050,7 +5051,7 @@ window_copy_copy_line(struct window_mode_entry *wme, char **buf, size_t *off,
 
 	if (raw)
 	{
-		raws = grid_string_cells(gd, sx, sy, (ex - sx), NULL, 0, NULL);
+		raws = grid_string_cells(gd, sx, sy, (ex - sx + 1), &lastgc, GRID_STRING_WITH_SEQUENCES, wme->screen);
 		rawlen = strlen(raws);
 		memcpy(*buf + *off, raws, rawlen);
 		*off += rawlen;
