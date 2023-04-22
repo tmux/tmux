@@ -5040,24 +5040,12 @@ window_copy_copy_line(struct window_mode_entry *wme, char **buf, size_t *off,
 	struct grid_cell        *lastgc = NULL;
 	struct grid_line		*gl;
 	struct utf8_data		 ud;
-	u_int				 i, xx, wrapped = 0;
-	const char			*s;
-	char				*raws;
-	u_int				 rawlen;
+	u_int				 i, xx, wrapped = 0, rawlen;
+	const char			*s, *raws;
 
 
 	if (sx > ex)
 		return;
-
-	if (raw)
-	{
-		raws = grid_string_cells(gd, sx, sy, (ex - sx + 1), &lastgc, GRID_STRING_WITH_SEQUENCES, wme->screen);
-		rawlen = strlen(raws);
-		memcpy(*buf + *off, raws, rawlen);
-		*off += rawlen;
-		free(raws);
-		return;
-	}
 
 	/*
 	 * Work out if the line was wrapped at the screen edge and all of it is
@@ -5079,7 +5067,18 @@ window_copy_copy_line(struct window_mode_entry *wme, char **buf, size_t *off,
 
 	if (sx < ex) {
 		for (i = sx; i < ex; i++) {
+			if (raw) {
+				raws = grid_string_cells(gd, i, sy, 1, &lastgc, GRID_STRING_WITH_SEQUENCES, wme->screen);
+				rawlen = strlen(raws);
+				*buf = xrealloc(*buf, (*off) + rawlen);
+				memcpy(*buf + *off, raws, rawlen);
+				*off += rawlen;
+
+				continue;
+			}
+
 			grid_get_cell(gd, i, sy, &gc);
+
 			if (gc.flags & GRID_FLAG_PADDING)
 				continue;
 			utf8_copy(&ud, &gc.data);
