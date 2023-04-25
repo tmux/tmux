@@ -482,6 +482,8 @@ tty_update_features(struct tty *tty)
 		tty_puts(tty, tty_term_string(tty->term, TTYC_ENFCS));
 	if (tty->term->flags & TERM_VT100LIKE)
 		tty_puts(tty, "\033[?7727h");
+
+	tty_invalidate(tty);
 }
 
 void
