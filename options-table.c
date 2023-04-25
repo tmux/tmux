@@ -530,7 +530,7 @@ const struct options_table_entry options_table[] = {
 	{ .name = "lock-command",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_str = "lock -np",
+	  .default_str = TMUX_LOCK_CMD,
 	  .text = "Shell command to run to lock a client."
 	},
 
