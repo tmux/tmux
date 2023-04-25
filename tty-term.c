@@ -754,35 +754,60 @@ tty_term_string(struct tty_term *term, enum tty_code_code code)
 }
 
 const char *
-tty_term_string1(struct tty_term *term, enum tty_code_code code, int a)
+tty_term_string_i(struct tty_term *term, enum tty_code_code code, int a)
 {
-	return (tparm((char *) tty_term_string(term, code), a));
+	const char	*x = tty_term_string(term, code), *s;
+
+	s = tparm((char *)x, a);
+	if (s == NULL)
+		fatalx("could not expand %s", tty_term_codes[code].name);
+	return (s);
 }
 
 const char *
-tty_term_string2(struct tty_term *term, enum tty_code_code code, int a, int b)
+tty_term_string_ii(struct tty_term *term, enum tty_code_code code, int a, int b)
 {
-	return (tparm((char *) tty_term_string(term, code), a, b));
+	const char	*x = tty_term_string(term, code), *s;
+
+	s = tparm((char *)x, a, b);
+	if (s == NULL)
+		fatalx("could not expand %s", tty_term_codes[code].name);
+	return (s);
 }
 
 const char *
-tty_term_string3(struct tty_term *term, enum tty_code_code code, int a, int b,
+tty_term_string_iii(struct tty_term *term, enum tty_code_code code, int a, int b,
     int c)
 {
-	return (tparm((char *) tty_term_string(term, code), a, b, c));
+	const char	*x = tty_term_string(term, code), *s;
+
+	s = tparm((char *)x, a, b, c);
+	if (s == NULL)
+		fatalx("could not expand %s", tty_term_codes[code].name);
+	return (s);
 }
 
 const char *
-tty_term_ptr1(struct tty_term *term, enum tty_code_code code, const void *a)
+tty_term_string_s(struct tty_term *term, enum tty_code_code code, const char *a)
 {
-	return (tparm((char *) tty_term_string(term, code), a));
+	const char	*x = tty_term_string(term, code), *s;
+
+	s = tparm((char *)x, (long)a);
+	if (s == NULL)
+		fatalx("could not expand %s", tty_term_codes[code].name);
+	return (s);
 }
 
 const char *
-tty_term_ptr2(struct tty_term *term, enum tty_code_code code, const void *a,
-    const void *b)
+tty_term_string_ss(struct tty_term *term, enum tty_code_code code, const char *a,
+    const char *b)
 {
-	return (tparm((char *) tty_term_string(term, code), a, b));
+	const char	*x = tty_term_string(term, code), *s;
+
+	s = tparm((char *)x, (long)a, (long)b);
+	if (s == NULL)
+		fatalx("could not expand %s", tty_term_codes[code].name);
+	return (s);
 }
 
 int
