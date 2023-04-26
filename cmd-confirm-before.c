@@ -41,8 +41,9 @@ const struct cmd_entry cmd_confirm_before_entry = {
 	.name = "confirm-before",
 	.alias = "confirm",
 
-	.args = { "bp:t:", 1, 1, cmd_confirm_before_args_parse },
-	.usage = "[-b] [-p prompt] " CMD_TARGET_CLIENT_USAGE " command",
+	.args = { "byc:p:t:", 1, 1, cmd_confirm_before_args_parse },
+	.usage = "[-b] [-y] [-c confirm_key] [-p prompt] "
+        CMD_TARGET_CLIENT_USAGE " command",
 
 	.flags = CMD_CLIENT_TFLAG,
 	.exec = cmd_confirm_before_exec
@@ -51,6 +52,8 @@ const struct cmd_entry cmd_confirm_before_entry = {
 struct cmd_confirm_before_data {
 	struct cmdq_item	*item;
 	struct cmd_list		*cmdlist;
+    u_char              confirm_key;
+    int                 default_yes;
 };
 
 static enum args_parse_type
@@ -68,6 +71,7 @@ cmd_confirm_before_exec(struct cmd *self, struct cmdq_item *item)
 	struct client			*tc = cmdq_get_target_client(item);
 	struct cmd_find_state		*target = cmdq_get_target(item);
 	char				*new_prompt;
+    const char          *confirm_key_ptr;
 	const char			*prompt, *cmd;
 	int				 wait = !args_has(args, 'b');
 
@@ -79,11 +83,25 @@ cmd_confirm_before_exec(struct cmd *self, struct cmdq_item *item)
 	if (wait)
 		cdata->item = item;
 
+    cdata->default_yes = args_has(args, 'y');
+
+    if ((confirm_key_ptr = args_get(args, 'c')) != NULL){
+        if(confirm_key_ptr[1] == '\0' &&
+                confirm_key_ptr[0] > 31 && confirm_key_ptr[0] < 127)
+            cdata->confirm_key = confirm_key_ptr[0];
+        else
+         return (CMD_RETURN_ERROR);
+    }
+    else {
+        cdata->confirm_key = 'y';
+    }
+
 	if ((prompt = args_get(args, 'p')) != NULL)
 		xasprintf(&new_prompt, "%s ", prompt);
 	else {
 		cmd = cmd_get_entry(cmd_list_first(cdata->cmdlist))->name;
-		xasprintf(&new_prompt, "Confirm '%s'? (y/n) ", cmd);
+		xasprintf(&new_prompt, "Confirm '%s'? (%c/n) ",
+                cmd, cdata->confirm_key);
 	}
 
 	status_prompt_set(tc, target, new_prompt, NULL,
@@ -107,9 +125,9 @@ cmd_confirm_before_callback(struct client *c, void *data, const char *s,
 	if (c->flags & CLIENT_DEAD)
 		goto out;
 
-	if (s == NULL || *s == '\0')
+	if (s == NULL)
 		goto out;
-	if (tolower((u_char)s[0]) != 'y' || s[1] != '\0')
+	if (s[0] != cdata->confirm_key && (s[0] != '\0' || !cdata->default_yes))
 		goto out;
 	retcode = 0;
 
