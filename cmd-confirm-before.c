@@ -52,8 +52,8 @@ const struct cmd_entry cmd_confirm_before_entry = {
 struct cmd_confirm_before_data {
 	struct cmdq_item	*item;
 	struct cmd_list		*cmdlist;
-    u_char              confirm_key;
-    int                 default_yes;
+        u_char                  confirm_key;
+        int                     default_yes;
 };
 
 static enum args_parse_type
@@ -71,7 +71,7 @@ cmd_confirm_before_exec(struct cmd *self, struct cmdq_item *item)
 	struct client			*tc = cmdq_get_target_client(item);
 	struct cmd_find_state		*target = cmdq_get_target(item);
 	char				*new_prompt;
-    const char          *confirm_key_ptr;
+        const char                      *confirm_key_ptr;
 	const char			*prompt, *cmd;
 	int				 wait = !args_has(args, 'b');
 
@@ -83,18 +83,18 @@ cmd_confirm_before_exec(struct cmd *self, struct cmdq_item *item)
 	if (wait)
 		cdata->item = item;
 
-    cdata->default_yes = args_has(args, 'y');
+        cdata->default_yes = args_has(args, 'y');
 
-    if ((confirm_key_ptr = args_get(args, 'c')) != NULL){
-        if(confirm_key_ptr[1] == '\0' &&
-                confirm_key_ptr[0] > 31 && confirm_key_ptr[0] < 127)
-            cdata->confirm_key = confirm_key_ptr[0];
-        else
-         return (CMD_RETURN_ERROR);
-    }
-    else {
-        cdata->confirm_key = 'y';
-    }
+        if ((confirm_key_ptr = args_get(args, 'c')) != NULL){
+            if(confirm_key_ptr[1] == '\0' &&
+                    confirm_key_ptr[0] > 31 && confirm_key_ptr[0] < 127)
+                cdata->confirm_key = confirm_key_ptr[0];
+            else
+                return (CMD_RETURN_ERROR);
+        }
+        else {
+            cdata->confirm_key = 'y';
+        }
 
 	if ((prompt = args_get(args, 'p')) != NULL)
 		xasprintf(&new_prompt, "%s ", prompt);
