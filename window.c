@@ -1130,6 +1130,7 @@ window_pane_reset_mode(struct window_pane *wp)
 
 	next = TAILQ_FIRST(&wp->modes);
 	if (next == NULL) {
+		wp->flags &= ~PANE_UNSEENCHANGES;
 		log_debug("%s: no next mode", __func__);
 		wp->screen = &wp->base;
 	} else {

@@ -174,9 +174,9 @@ file_fire_read(struct client_file *cf)
 int
 file_can_print(struct client *c)
 {
-	if (c == NULL)
-		return (0);
-	if (c->session != NULL && (~c->flags & CLIENT_CONTROL))
+	if (c == NULL ||
+	    (c->flags & CLIENT_ATTACHED) ||
+	    (c->flags & CLIENT_CONTROL))
 		return (0);
 	return (1);
 }
