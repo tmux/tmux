@@ -350,6 +350,10 @@ else
 		AC_MSG_ERROR("curses not found")
 	fi
 fi
+AC_CHECK_FUNCS([ \
+	tiparm \
+	tiparm_s \
+])
 
 # Look for utempter.
 AC_ARG_ENABLE(
