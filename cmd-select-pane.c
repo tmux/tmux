@@ -98,7 +98,11 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct options_entry	*o;
 
 	if (entry == &cmd_last_pane_entry || args_has(args, 'l')) {
-		lastwp = w->last;
+		lastwp = TAILQ_FIRST(&w->last_visited_panes);
+		/*
+		 * check for no last pane found in case the other pane
+		 * was spawned without being visited (e.g., split-window -d)
+		 */
 		if (lastwp == NULL && window_count_panes(w) == 2) {
 			lastwp = TAILQ_PREV(w->active, window_panes, entry);
 			if (lastwp == NULL)

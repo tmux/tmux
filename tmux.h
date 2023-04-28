@@ -1052,6 +1052,7 @@ struct window_pane {
 #define PANE_EMPTY 0x800
 #define PANE_STYLECHANGED 0x1000
 #define PANE_UNSEENCHANGES 0x2000
+#define PANE_VISITED 0x4000
 
 	int		 argc;
 	char	       **argv;
@@ -1096,7 +1097,8 @@ struct window_pane {
 	int		 border_gc_set;
 	struct grid_cell border_gc;
 
-	TAILQ_ENTRY(window_pane) entry;
+	TAILQ_ENTRY(window_pane) entry;  /* link in list of all panes */
+	TAILQ_ENTRY(window_pane) sentry; /* link in list of last visited */
 	RB_ENTRY(window_pane) tree_entry;
 };
 TAILQ_HEAD(window_panes, window_pane);
@@ -1117,7 +1119,7 @@ struct window {
 	struct timeval		 activity_time;
 
 	struct window_pane	*active;
-	struct window_pane	*last;
+	struct window_panes 	 last_visited_panes;
 	struct window_panes	 panes;
 
 	int			 lastlayout;
@@ -1170,6 +1172,7 @@ struct winlink {
 #define WINLINK_ACTIVITY 0x2
 #define WINLINK_SILENCE 0x4
 #define WINLINK_ALERTFLAGS (WINLINK_BELL|WINLINK_ACTIVITY|WINLINK_SILENCE)
+#define WINLINK_VISITED 0x8
 
 	RB_ENTRY(winlink) entry;
 	TAILQ_ENTRY(winlink) wentry;
@@ -3045,6 +3048,10 @@ struct window_pane *window_pane_find_up(struct window_pane *);
 struct window_pane *window_pane_find_down(struct window_pane *);
 struct window_pane *window_pane_find_left(struct window_pane *);
 struct window_pane *window_pane_find_right(struct window_pane *);
+void		 window_pane_stack_push(struct window_panes *,
+		     struct window_pane *);
+void		 window_pane_stack_remove(struct window_panes *,
+		     struct window_pane *);
 void		 window_set_name(struct window *, const char *);
 void		 window_add_ref(struct window *, const char *);
 void		 window_remove_ref(struct window *, const char *);
