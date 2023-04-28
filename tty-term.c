@@ -777,8 +777,10 @@ tty_term_string_i(struct tty_term *term, enum tty_code_code code, int a)
 #else
 	s = tparm((char *)x, a, 0, 0, 0, 0, 0, 0, 0, 0);
 #endif
-	if (s == NULL)
-		fatalx("could not expand %s", tty_term_codes[code].name);
+	if (s == NULL) {
+		log_debug("could not expand %s", tty_term_codes[code].name);
+		return ("");
+	}
 	return (s);
 }
 
@@ -794,8 +796,10 @@ tty_term_string_ii(struct tty_term *term, enum tty_code_code code, int a, int b)
 #else
 	s = tparm((char *)x, a, b, 0, 0, 0, 0, 0, 0, 0);
 #endif
-	if (s == NULL)
-		fatalx("could not expand %s", tty_term_codes[code].name);
+	if (s == NULL) {
+		log_debug("could not expand %s", tty_term_codes[code].name);
+		return ("");
+	}
 	return (s);
 }
 
@@ -812,8 +816,10 @@ tty_term_string_iii(struct tty_term *term, enum tty_code_code code, int a,
 #else
 	s = tparm((char *)x, a, b, c, 0, 0, 0, 0, 0, 0);
 #endif
-	if (s == NULL)
-		fatalx("could not expand %s", tty_term_codes[code].name);
+	if (s == NULL) {
+		log_debug("could not expand %s", tty_term_codes[code].name);
+		return ("");
+	}
 	return (s);
 }
 
@@ -829,8 +835,10 @@ tty_term_string_s(struct tty_term *term, enum tty_code_code code, const char *a)
 #else
 	s = tparm((char *)x, (long)a, 0, 0, 0, 0, 0, 0, 0, 0);
 #endif
-	if (s == NULL)
-		fatalx("could not expand %s", tty_term_codes[code].name);
+	if (s == NULL) {
+		log_debug("could not expand %s", tty_term_codes[code].name);
+		return ("");
+	}
 	return (s);
 }
 
@@ -847,8 +855,10 @@ tty_term_string_ss(struct tty_term *term, enum tty_code_code code,
 #else
 	s = tparm((char *)x, (long)a, (long)b, 0, 0, 0, 0, 0, 0, 0);
 #endif
-	if (s == NULL)
-		fatalx("could not expand %s", tty_term_codes[code].name);
+	if (s == NULL) {
+		log_debug("could not expand %s", tty_term_codes[code].name);
+		return ("");
+	}
 	return (s);
 }
 

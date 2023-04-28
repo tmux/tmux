@@ -5810,7 +5810,8 @@ the prompt is shown in the background and the invoking client does not exit
 until it is dismissed.
 .Tg confirm
 .It Xo Ic confirm-before
-.Op Fl b
+.Op Fl by
+.Op Fl c Ar confirm-key
 .Op Fl p Ar prompt
 .Op Fl t Ar target-client
 .Ar command
@@ -5831,6 +5832,14 @@ With
 .Fl b ,
 the prompt is shown in the background and the invoking client does not exit
 until it is dismissed.
+.Fl y
+changes the default behaviour (if Enter alone is pressed) of the prompt to
+run the command.
+.Fl c
+changes the confirmation key to
+.Ar confirm-key ;
+the default is
+.Ql y .
 .Tg menu
 .It Xo Ic display-menu
 .Op Fl O
