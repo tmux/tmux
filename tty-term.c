@@ -766,35 +766,100 @@ tty_term_string(struct tty_term *term, enum tty_code_code code)
 }
 
 const char *
-tty_term_string1(struct tty_term *term, enum tty_code_code code, int a)
+tty_term_string_i(struct tty_term *term, enum tty_code_code code, int a)
 {
-	return (tparm((char *) tty_term_string(term, code), a, 0, 0, 0, 0, 0, 0, 0, 0));
+	const char	*x = tty_term_string(term, code), *s;
+
+#if defined(HAVE_TIPARM_S)
+	s = tiparm_s(1, 0, x, a);
+#elif defined(HAVE_TIPARM)
+	s = tiparm(x, a);
+#else
+	s = tparm((char *)x, a, 0, 0, 0, 0, 0, 0, 0, 0);
+#endif
+	if (s == NULL) {
+		log_debug("could not expand %s", tty_term_codes[code].name);
+		return ("");
+	}
+	return (s);
 }
 
 const char *
-tty_term_string2(struct tty_term *term, enum tty_code_code code, int a, int b)
+tty_term_string_ii(struct tty_term *term, enum tty_code_code code, int a, int b)
 {
-	return (tparm((char *) tty_term_string(term, code), a, b, 0, 0, 0, 0, 0, 0, 0));
+	const char	*x = tty_term_string(term, code), *s;
+
+#if defined(HAVE_TIPARM_S)
+	s = tiparm_s(2, 0, x, a, b);
+#elif defined(HAVE_TIPARM)
+	s = tiparm(x, a, b);
+#else
+	s = tparm((char *)x, a, b, 0, 0, 0, 0, 0, 0, 0);
+#endif
+	if (s == NULL) {
+		log_debug("could not expand %s", tty_term_codes[code].name);
+		return ("");
+	}
+	return (s);
 }
 
 const char *
-tty_term_string3(struct tty_term *term, enum tty_code_code code, int a, int b,
-    int c)
+tty_term_string_iii(struct tty_term *term, enum tty_code_code code, int a,
+    int b, int c)
 {
-	return (tparm((char *) tty_term_string(term, code), a, b, c, 0, 0, 0, 0, 0, 0));
+	const char	*x = tty_term_string(term, code), *s;
+
+#if defined(HAVE_TIPARM_S)
+	s = tiparm_s(3, 0, x, a, b, c);
+#elif defined(HAVE_TIPARM)
+	s = tiparm(x, a, b, c);
+#else
+	s = tparm((char *)x, a, b, c, 0, 0, 0, 0, 0, 0);
+#endif
+	if (s == NULL) {
+		log_debug("could not expand %s", tty_term_codes[code].name);
+		return ("");
+	}
+	return (s);
 }
 
 const char *
-tty_term_ptr1(struct tty_term *term, enum tty_code_code code, const void *a)
+tty_term_string_s(struct tty_term *term, enum tty_code_code code, const char *a)
 {
-	return (tparm((char *) tty_term_string(term, code), (long)a, 0, 0, 0, 0, 0, 0, 0, 0));
+	const char	*x = tty_term_string(term, code), *s;
+
+#if defined(HAVE_TIPARM_S)
+	s = tiparm_s(1, 1, x, a);
+#elif defined(HAVE_TIPARM)
+	s = tiparm(x, a);
+#else
+	s = tparm((char *)x, (long)a, 0, 0, 0, 0, 0, 0, 0, 0);
+#endif
+	if (s == NULL) {
+		log_debug("could not expand %s", tty_term_codes[code].name);
+		return ("");
+	}
+	return (s);
 }
 
 const char *
-tty_term_ptr2(struct tty_term *term, enum tty_code_code code, const void *a,
-    const void *b)
+tty_term_string_ss(struct tty_term *term, enum tty_code_code code,
+    const char *a, const char *b)
 {
-	return (tparm((char *) tty_term_string(term, code), (long)a, (long)b, 0, 0, 0, 0, 0, 0, 0));
+	const char	*x = tty_term_string(term, code), *s;
+
+#if defined(HAVE_TIPARM_S)
+	s = tiparm_s(2, 3, x, a, b);
+#elif defined(HAVE_TIPARM)
+	s = tiparm(x, a, b);
+#else
+	s = tparm((char *)x, (long)a, (long)b, 0, 0, 0, 0, 0, 0, 0);
+#endif
+	if (s == NULL) {
+		log_debug("could not expand %s", tty_term_codes[code].name);
+		return ("");
+	}
+	return (s);
 }
 
 int

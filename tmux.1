@@ -1281,7 +1281,10 @@ behave like
 .Ic attach-session
 if
 .Ar session-name
-already exists; in this case,
+already exists;
+if
+.Fl A
+is given,
 .Fl D
 behaves like
 .Fl d
@@ -5260,6 +5263,7 @@ The following variables are available, where appropriate:
 .It Li "pane_title" Ta "#T" Ta "Title of pane (can be set by application)"
 .It Li "pane_top" Ta "" Ta "Top of pane"
 .It Li "pane_tty" Ta "" Ta "Pseudo terminal of pane"
+.It Li "pane_unseen_changes" Ta "" Ta "1 if there were changes in pane while in mode"
 .It Li "pane_width" Ta "" Ta "Width of pane"
 .It Li "pid" Ta "" Ta "Server PID"
 .It Li "rectangle_toggle" Ta "" Ta "1 if rectangle selection is activated"
@@ -5806,7 +5810,8 @@ the prompt is shown in the background and the invoking client does not exit
 until it is dismissed.
 .Tg confirm
 .It Xo Ic confirm-before
-.Op Fl b
+.Op Fl by
+.Op Fl c Ar confirm-key
 .Op Fl p Ar prompt
 .Op Fl t Ar target-client
 .Ar command
@@ -5827,6 +5832,14 @@ With
 .Fl b ,
 the prompt is shown in the background and the invoking client does not exit
 until it is dismissed.
+.Fl y
+changes the default behaviour (if Enter alone is pressed) of the prompt to
+run the command.
+.Fl c
+changes the confirmation key to
+.Ar confirm-key ;
+the default is
+.Ql y .
 .Tg menu
 .It Xo Ic display-menu
 .Op Fl O

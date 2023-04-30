@@ -350,6 +350,10 @@ else
 		AC_MSG_ERROR("curses not found")
 	fi
 fi
+AC_CHECK_FUNCS([ \
+	tiparm \
+	tiparm_s \
+])
 
 # Look for utempter.
 AC_ARG_ENABLE(
@@ -420,6 +424,21 @@ if test x"$enable_systemd" = xyes; then
 	fi
 fi
 AM_CONDITIONAL(HAVE_SYSTEMD, [test "x$found_systemd" = xyes])
+AC_ARG_ENABLE(
+	cgroups,
+	AS_HELP_STRING(--disable-cgroups, disable adding panes to new cgroups with systemd)
+)
+if test "x$enable_cgroups" = x; then
+	# Default to the same as $enable_systemd.
+	enable_cgroups=$enable_systemd
+fi
+if test "x$enable_cgroups" = xyes; then
+	if test "x$found_systemd" = xyes; then
+		AC_DEFINE(ENABLE_CGROUPS)
+	else
+		AC_MSG_ERROR("cgroups requires systemd to be enabled")
+	fi
+fi
 
 # Check for b64_ntop. If we have b64_ntop, we assume b64_pton as well.
 AC_MSG_CHECKING(for b64_ntop)
@@ -920,6 +939,19 @@ AM_CONDITIONAL(IS_SUNOS, test "x$PLATFORM" = xsunos)
 AM_CONDITIONAL(IS_HPUX, test "x$PLATFORM" = xhpux)
 AM_CONDITIONAL(IS_HAIKU, test "x$PLATFORM" = xhaiku)
 AM_CONDITIONAL(IS_UNKNOWN, test "x$PLATFORM" = xunknown)
+
+# Set the default lock command
+DEFAULT_LOCK_CMD="lock -np"
+AC_MSG_CHECKING(lock-command)
+if test "x$PLATFORM" = xlinux; then
+	AC_CHECK_PROG(found_vlock, vlock, yes, no)
+	if test "x$found_vlock" = xyes; then
+		DEFAULT_LOCK_CMD="vlock"
+	fi
+fi
+AC_MSG_RESULT($DEFAULT_LOCK_CMD)
+AC_SUBST(DEFAULT_LOCK_CMD)
+
 
 # Save our CFLAGS/CPPFLAGS/LDFLAGS for the Makefile and restore the old user
 # variables.

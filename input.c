@@ -971,6 +971,10 @@ input_parse_buffer(struct window_pane *wp, u_char *buf, size_t len)
 	window_update_activity(wp->window);
 	wp->flags |= PANE_CHANGED;
 
+	/* Flag new input while in a mode. */
+	if (!TAILQ_EMPTY(&wp->modes))
+		wp->flags |= PANE_UNSEENCHANGES;
+
 	/* NULL wp if there is a mode set as don't want to update the tty. */
 	if (TAILQ_EMPTY(&wp->modes))
 		screen_write_start_pane(sctx, wp, &wp->base);

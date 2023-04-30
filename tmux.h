@@ -82,6 +82,9 @@ struct winlink;
 #ifndef TMUX_TERM
 #define TMUX_TERM "screen"
 #endif
+#ifndef TMUX_LOCK_CMD
+#define TMUX_LOCK_CMD "lock -np"
+#endif
 
 /* Minimum layout cell size, NOT including border lines. */
 #define PANE_MINIMUM 1
@@ -159,7 +162,9 @@ struct winlink;
 #define KEYC_IS_UNICODE(key) \
 	(((key) & KEYC_MASK_KEY) > 0x7f && \
 	 (((key) & KEYC_MASK_KEY) < KEYC_BASE || \
-	  ((key) & KEYC_MASK_KEY) >= KEYC_BASE_END))
+	  ((key) & KEYC_MASK_KEY) >= KEYC_BASE_END) && \
+	 (((key) & KEYC_MASK_KEY) < KEYC_USER || \
+	  ((key) & KEYC_MASK_KEY) >= KEYC_USER + KEYC_NUSER))
 
 /* Multiple click timeout. */
 #define KEYC_CLICK_TIMEOUT 300
@@ -1064,6 +1069,7 @@ struct window_pane {
 #define PANE_STATUSDRAWN 0x400
 #define PANE_EMPTY 0x800
 #define PANE_STYLECHANGED 0x1000
+#define PANE_UNSEENCHANGES 0x2000
 
 	int		 argc;
 	char	       **argv;
@@ -2316,12 +2322,12 @@ void	tty_margin_off(struct tty *);
 void	tty_cursor(struct tty *, u_int, u_int);
 void	tty_clipboard_query(struct tty *);
 void	tty_putcode(struct tty *, enum tty_code_code);
-void	tty_putcode1(struct tty *, enum tty_code_code, int);
-void	tty_putcode2(struct tty *, enum tty_code_code, int, int);
-void	tty_putcode3(struct tty *, enum tty_code_code, int, int, int);
-void	tty_putcode_ptr1(struct tty *, enum tty_code_code, const void *);
-void	tty_putcode_ptr2(struct tty *, enum tty_code_code, const void *,
-	    const void *);
+void	tty_putcode_i(struct tty *, enum tty_code_code, int);
+void	tty_putcode_ii(struct tty *, enum tty_code_code, int, int);
+void	tty_putcode_iii(struct tty *, enum tty_code_code, int, int, int);
+void	tty_putcode_s(struct tty *, enum tty_code_code, const char *);
+void	tty_putcode_ss(struct tty *, enum tty_code_code, const char *,
+	    const char *);
 void	tty_puts(struct tty *, const char *);
 void	tty_putc(struct tty *, u_char);
 void	tty_putn(struct tty *, const void *, size_t, u_int);
@@ -2387,15 +2393,15 @@ int		 tty_term_read_list(const char *, int, char ***, u_int *,
 void		 tty_term_free_list(char **, u_int);
 int		 tty_term_has(struct tty_term *, enum tty_code_code);
 const char	*tty_term_string(struct tty_term *, enum tty_code_code);
-const char	*tty_term_string1(struct tty_term *, enum tty_code_code, int);
-const char	*tty_term_string2(struct tty_term *, enum tty_code_code, int,
+const char	*tty_term_string_i(struct tty_term *, enum tty_code_code, int);
+const char	*tty_term_string_ii(struct tty_term *, enum tty_code_code, int,
 		     int);
-const char	*tty_term_string3(struct tty_term *, enum tty_code_code, int,
+const char	*tty_term_string_iii(struct tty_term *, enum tty_code_code, int,
 		     int, int);
-const char	*tty_term_ptr1(struct tty_term *, enum tty_code_code,
-		     const void *);
-const char	*tty_term_ptr2(struct tty_term *, enum tty_code_code,
-		     const void *, const void *);
+const char	*tty_term_string_s(struct tty_term *, enum tty_code_code,
+		     const char *);
+const char	*tty_term_string_ss(struct tty_term *, enum tty_code_code,
+		     const char *, const char *);
 int		 tty_term_number(struct tty_term *, enum tty_code_code);
 int		 tty_term_flag(struct tty_term *, enum tty_code_code);
 const char	*tty_term_describe(struct tty_term *, enum tty_code_code);
