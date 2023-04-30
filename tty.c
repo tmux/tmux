@@ -71,6 +71,8 @@ static void	tty_default_attributes(struct tty *, const struct grid_cell *,
 static int	tty_check_overlay(struct tty *, u_int, u_int);
 static void	tty_check_overlay_range(struct tty *, u_int, u_int, u_int,
 		    struct overlay_ranges *);
+static void	tty_write_sixel(void (*)(struct tty *, const struct tty_ctx *),
+		    struct tty_ctx *);
 
 #define tty_use_margin(tty) \
 	(tty->term->flags & TERM_DECSLRM)
@@ -484,7 +486,7 @@ tty_update_features(struct tty *tty)
 		tty_puts(tty, "\033[?7727h");
 
 	/* tty features might have changed since the first draw during attach.
-	 * TODO AM: Is this still needed?
+	 * For example, this happens when DA responses are received.
 	 */
 	c->flags |= CLIENT_REDRAWWINDOW;
 
@@ -1626,7 +1628,7 @@ tty_draw_images(struct tty *tty, struct window_pane *wp, struct screen *s)
 		ttyctx.ptr = im;
 		ttyctx.arg = wp;
 		ttyctx.set_client_cb = tty_set_client_cb;
-		tty_write(tty_cmd_sixelimage, &ttyctx);
+		tty_write_sixel(tty_cmd_sixelimage, &ttyctx);
 	}
 }
 
@@ -1675,7 +1677,6 @@ tty_client_ready(const struct tty_ctx *ctx, struct client *c)
 	if (ctx->allow_invisible_panes)
 		return (1);
 
-	/* TODO AM: Check if we still need to drop this for sixel. */
 	if (c->flags & CLIENT_REDRAWWINDOW)
 		return (0);
 	if (c->tty.flags & TTY_FREEZE)
@@ -1694,6 +1695,47 @@ tty_write(void (*cmdfn)(struct tty *, const struct tty_ctx *),
 		return;
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (tty_client_ready(ctx, c)) {
+			state = ctx->set_client_cb(ctx, c);
+			if (state == -1)
+				break;
+			if (state == 0)
+				continue;
+			cmdfn(&c->tty, ctx);
+		}
+	}
+}
+
+static int
+tty_client_ready_sixel(const struct tty_ctx *ctx, struct client *c)
+{
+	if (c->session == NULL || c->tty.term == NULL)
+		return (0);
+	if (c->flags & CLIENT_SUSPENDED)
+		return (0);
+
+	/*
+	 * If invisible panes are allowed (used for passthrough), don't care if
+	 * redrawing or frozen.
+	 */
+	if (ctx->allow_invisible_panes)
+		return (1);
+
+	if (c->tty.flags & TTY_FREEZE)
+		return (0);
+	return (1);
+}
+
+static void
+tty_write_sixel(void (*cmdfn)(struct tty *, const struct tty_ctx *),
+    struct tty_ctx *ctx)
+{
+	struct client	*c;
+	int		 state;
+
+	if (ctx->set_client_cb == NULL)
+		return;
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (tty_client_ready_sixel(ctx, c)) {
 			state = ctx->set_client_cb(ctx, c);
 			if (state == -1)
 				break;
