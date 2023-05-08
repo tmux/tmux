@@ -727,7 +727,6 @@ struct grid_extd_entry {
 
 /* Grid cell entry. */
 struct grid_cell_entry {
-	u_char			flags;
 	union {
 		u_int		offset;
 		struct {
@@ -737,6 +736,7 @@ struct grid_cell_entry {
 			u_char	data;
 		} data;
 	};
+	u_char			flags;
 } __packed;
 
 /* Grid line. */

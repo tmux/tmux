@@ -53,7 +53,7 @@ static const struct grid_cell grid_cleared_cell = {
 	{ { ' ' }, 0, 1, 1 }, 0, GRID_FLAG_CLEARED, 8, 8, 0, 0
 };
 static const struct grid_cell_entry grid_cleared_entry = {
-	GRID_FLAG_CLEARED, { .data = { 0, 8, 8, ' ' } }
+	{ .data = { 0, 8, 8, ' ' } }, GRID_FLAG_CLEARED
 };
 
 /* Store cell in entry. */
