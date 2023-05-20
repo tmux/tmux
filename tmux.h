@@ -2345,7 +2345,7 @@ void	tty_set_path(struct tty *, const char *);
 void	tty_update_mode(struct tty *, int, struct screen *);
 void	tty_draw_line(struct tty *, struct screen *, u_int, u_int, u_int,
 	    u_int, u_int, const struct grid_cell *, struct colour_palette *);
-void	tty_draw_images(struct tty *, struct window_pane *, struct screen *);
+void	tty_draw_images(struct client *, struct window_pane *, struct screen *);
 void	tty_sync_start(struct tty *);
 void	tty_sync_end(struct tty *);
 int	tty_open(struct tty *, char **);

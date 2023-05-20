@@ -71,6 +71,8 @@ static void	tty_default_attributes(struct tty *, const struct grid_cell *,
 static int	tty_check_overlay(struct tty *, u_int, u_int);
 static void	tty_check_overlay_range(struct tty *, u_int, u_int, u_int,
 		    struct overlay_ranges *);
+static void	tty_write_one(void (*)(struct tty *, const struct tty_ctx *),
+	    	    struct client *, struct tty_ctx *);
 
 #define tty_use_margin(tty) \
 	(tty->term->flags & TERM_DECSLRM)
@@ -1604,7 +1606,7 @@ tty_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 }
 
 void
-tty_draw_images(struct tty *tty, struct window_pane *wp, struct screen *s)
+tty_draw_images(struct client *c, struct window_pane *wp, struct screen *s)
 {
 	struct image	*im;
 	struct tty_ctx	 ttyctx;
@@ -1627,7 +1629,7 @@ tty_draw_images(struct tty *tty, struct window_pane *wp, struct screen *s)
 		ttyctx.arg = wp;
 		ttyctx.set_client_cb = tty_set_client_cb;
 		ttyctx.allow_invisible_panes = 1;
-		tty_write(tty_cmd_sixelimage, &ttyctx);
+		tty_write_one(tty_cmd_sixelimage, c, &ttyctx);
 	}
 }
 
@@ -1702,6 +1704,17 @@ tty_write(void (*cmdfn)(struct tty *, const struct tty_ctx *),
 			cmdfn(&c->tty, ctx);
 		}
 	}
+}
+
+/* Only write to the incoming tty instead of every client. */
+static void
+tty_write_one(void (*cmdfn)(struct tty *, const struct tty_ctx *),
+    struct client *c, struct tty_ctx *ctx)
+{
+	if (ctx->set_client_cb == NULL)
+		return;
+	if ((ctx->set_client_cb(ctx, c)) == 1)
+		cmdfn(&c->tty, ctx);
 }
 
 void
