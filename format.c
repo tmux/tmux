@@ -2077,6 +2077,18 @@ format_cb_scroll_region_upper(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for server_sessions. */
+static void *
+format_cb_server_sessions(__unused struct format_tree *ft)
+{
+	struct session	*s;
+	u_int		 n = 0;
+
+	RB_FOREACH(s, sessions, &sessions)
+		n++;
+	return (format_printf("%u", n));
+}
+
 /* Callback for session_attached. */
 static void *
 format_cb_session_attached(struct format_tree *ft)
@@ -2979,6 +2991,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "scroll_region_upper", FORMAT_TABLE_STRING,
 	  format_cb_scroll_region_upper
+	},
+	{ "server_sessions", FORMAT_TABLE_STRING,
+	  format_cb_server_sessions
 	},
 	{ "session_activity", FORMAT_TABLE_TIME,
 	  format_cb_session_activity
