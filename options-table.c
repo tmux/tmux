@@ -93,6 +93,9 @@ static const char *options_table_extended_keys_list[] = {
 static const char *options_table_allow_passthrough_list[] = {
 	"off", "on", "all", NULL
 };
+static const char *options_table_enable_sixel_list[] = {
+	"off", "on", NULL
+};
 
 /* Status line format. */
 #define OPTIONS_TABLE_STATUS_FORMAT1 \
@@ -898,6 +901,15 @@ const struct options_table_entry options_table[] = {
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
 	  .text = "Style of the marked line in copy mode."
+	},
+
+	{ .name = "enable-sixel",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
+	  .choices = options_table_enable_sixel_list,
+	  .default_num = 0,
+	  .text = "Whether sixel sequences are allowed "
+		  "Can be 'off' (disallowed), or 'on' (allowed)."
 	},
 
 	{ .name = "fill-character",

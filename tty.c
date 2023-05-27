@@ -2231,7 +2231,7 @@ tty_cmd_sixelimage(struct tty *tty, const struct tty_ctx *ctx)
 	int			 fallback = 0;
 
 	if ((~tty->term->flags & TERM_SIXEL) &&
-        !tty_term_has(tty->term, TTYC_SXL))
+                !tty_term_has(tty->term, TTYC_SXL))
 		fallback = 1;
 	if (tty->xpixel == 0 || tty->ypixel == 0)
 		fallback = 1;
