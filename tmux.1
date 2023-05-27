@@ -21,7 +21,7 @@
 .Nm tmux
 .Nd terminal multiplexer
 .Sh SYNOPSIS
-.Nm tmux
+.Nm
 .Bk -words
 .Op Fl 2CDlNuVv
 .Op Fl c Ar shell-command
@@ -4546,6 +4546,13 @@ Available styles are:
 .Ic underline ,
 .Ic blinking-bar ,
 .Ic bar .
+.Pp
+.It Xo Ic enable-sixel
+.Op Ic on | off
+.Xc
+Allow sixel sequences. This needs
+.Ic allow-passthrough
+to be enabled.
 .Pp
 .It Xo Ic remain-on-exit
 .Op Ic on | off | failed
