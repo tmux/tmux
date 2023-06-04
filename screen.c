@@ -88,7 +88,10 @@ screen_init(struct screen *s, u_int sx, u_int sy, u_int hlimit)
 	s->tabs = NULL;
 	s->sel = NULL;
 
+#ifdef ENABLE_SIXEL
 	TAILQ_INIT(&s->images);
+#endif
+
 	s->write_list = NULL;
 	s->hyperlinks = NULL;
 
@@ -120,7 +123,11 @@ screen_reinit(struct screen *s)
 
 	screen_clear_selection(s);
 	screen_free_titles(s);
+
+#ifdef ENABLE_SIXEL
 	image_free_all(s);
+#endif
+
 	screen_reset_hyperlinks(s);
 }
 
@@ -153,7 +160,10 @@ screen_free(struct screen *s)
 	if (s->hyperlinks != NULL)
 		hyperlinks_free(s->hyperlinks);
 	screen_free_titles(s);
+
+#ifdef ENABLE_SIXEL
 	image_free_all(s);
+#endif
 }
 
 /* Reset tabs to default, eight spaces apart. */
@@ -298,7 +308,9 @@ screen_resize_cursor(struct screen *s, u_int sx, u_int sy, int reflow,
 		screen_resize_y(s, sy, eat_empty, &cy);
 
 	if (reflow) {
+#ifdef ENABLE_SIXEL
 		image_free_all(s);
+#endif
 		screen_reflow(s, sx, &cx, &cy, cursor);
 	}
 

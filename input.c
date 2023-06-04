@@ -2237,14 +2237,16 @@ input_dcs_dispatch(struct input_ctx *ictx)
 {
 	struct window_pane	*wp = ictx->wp;
 	struct screen_write_ctx	*sctx = &ictx->ctx;
-	struct window		*w = wp->window;
 	u_char			*buf = ictx->input_buf;
 	size_t			 len = ictx->input_len;
 	const char		 prefix[] = "tmux;";
 	const u_int		 prefixlen = (sizeof prefix) - 1;
-	struct sixel_image	*si;
 	long long		 allow_passthrough = 0;
+#ifdef ENABLE_SIXEL
+	struct window		*w = wp->window;
+	struct sixel_image	*si;
 	long long		 enable_sixel = 0;
+#endif
 
 	if (wp == NULL)
 		return (0);
@@ -2261,6 +2263,7 @@ input_dcs_dispatch(struct input_ctx *ictx)
 		    allow_passthrough == 2);
 	}
 
+#ifdef ENABLE_SIXEL
 	enable_sixel = options_get_number(wp->options, "enable-sixel");
 	if (enable_sixel && buf[0] == 'q') {
 		si = sixel_parse(buf, len, w->xpixel, w->ypixel);
@@ -2269,6 +2272,7 @@ input_dcs_dispatch(struct input_ctx *ictx)
 			screen_write_sixelimage(sctx, si, ictx->cell.cell.bg);
 		}
 	}
+#endif
 
 	return (0);
 }

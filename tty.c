@@ -71,8 +71,11 @@ static void	tty_default_attributes(struct tty *, const struct grid_cell *,
 static int	tty_check_overlay(struct tty *, u_int, u_int);
 static void	tty_check_overlay_range(struct tty *, u_int, u_int, u_int,
 		    struct overlay_ranges *);
+
+#ifdef ENABLE_SIXEL
 static void	tty_write_one(void (*)(struct tty *, const struct tty_ctx *),
 	    	    struct client *, struct tty_ctx *);
+#endif
 
 #define tty_use_margin(tty) \
 	(tty->term->flags & TERM_DECSLRM)
@@ -1583,6 +1586,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	tty_update_mode(tty, tty->mode, s);
 }
 
+#ifdef ENABLE_SIXEL
 /* Update context for client. */
 static int
 tty_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
@@ -1632,6 +1636,7 @@ tty_draw_images(struct client *c, struct window_pane *wp, struct screen *s)
 		tty_write_one(tty_cmd_sixelimage, c, &ttyctx);
 	}
 }
+#endif
 
 void
 tty_sync_start(struct tty *tty)
@@ -1706,6 +1711,7 @@ tty_write(void (*cmdfn)(struct tty *, const struct tty_ctx *),
 	}
 }
 
+#ifdef ENABLE_SIXEL
 /* Only write to the incoming tty instead of every client. */
 static void
 tty_write_one(void (*cmdfn)(struct tty *, const struct tty_ctx *),
@@ -1716,6 +1722,7 @@ tty_write_one(void (*cmdfn)(struct tty *, const struct tty_ctx *),
 	if ((ctx->set_client_cb(ctx, c)) == 1)
 		cmdfn(&c->tty, ctx);
 }
+#endif
 
 void
 tty_cmd_insertcharacter(struct tty *tty, const struct tty_ctx *ctx)
@@ -2218,6 +2225,7 @@ tty_cmd_rawstring(struct tty *tty, const struct tty_ctx *ctx)
 	tty_invalidate(tty);
 }
 
+#ifdef ENABLE_SIXEL
 void
 tty_cmd_sixelimage(struct tty *tty, const struct tty_ctx *ctx)
 {
@@ -2267,6 +2275,7 @@ tty_cmd_sixelimage(struct tty *tty, const struct tty_ctx *ctx)
 	if (fallback == 0)
 		sixel_free(new);
 }
+#endif
 
 void
 tty_cmd_syncstart(struct tty *tty, const struct tty_ctx *ctx)
