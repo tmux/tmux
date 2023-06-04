@@ -154,7 +154,6 @@ dist_tmux_SOURCES = \
 	hyperlinks.c \
 	input-keys.c \
 	input.c \
-	image.c \
 	job.c \
 	key-bindings.c \
 	key-string.c \
@@ -181,7 +180,6 @@ dist_tmux_SOURCES = \
 	server-fn.c \
 	server.c \
 	session.c \
-	sixel.c \
 	spawn.c \
 	status.c \
 	style.c \
@@ -218,6 +216,12 @@ endif
 # Add compat file for utf8proc.
 if HAVE_UTF8PROC
 nodist_tmux_SOURCES += compat/utf8proc.c
+endif
+
+# Enable sixel support.
+if ENABLE_SIXEL
+dist_tmux_SOURCES += sixel/sixel.c
+dist_tmux_SOURCES += sixel/image.c
 endif
 
 if NEED_FUZZING
