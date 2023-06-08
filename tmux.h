@@ -2895,8 +2895,8 @@ void	 screen_write_hline(struct screen_write_ctx *, u_int, int, int);
 void	 screen_write_vline(struct screen_write_ctx *, u_int, int, int);
 void	 screen_write_menu(struct screen_write_ctx *, struct menu *, int,
 	     const struct grid_cell *);
-void	 screen_write_box(struct screen_write_ctx *, u_int, u_int, int,
-	     const struct grid_cell *, const char *);
+void	 screen_write_box(struct screen_write_ctx *, u_int, u_int,
+             enum box_lines, const struct grid_cell *, const char *);
 void	 screen_write_preview(struct screen_write_ctx *, struct screen *, u_int,
 	     u_int);
 void	 screen_write_backspace(struct screen_write_ctx *);
@@ -3322,11 +3322,11 @@ int		 menu_key_cb(struct client *, void *, struct key_event *);
 #define POPUP_INTERNAL 0x4
 typedef void (*popup_close_cb)(int, void *);
 typedef void (*popup_finish_edit_cb)(char *, size_t, void *);
-int		 popup_display(int, int, struct cmdq_item *, u_int, u_int,
-		    u_int, u_int, struct environ *, const char *, int, char **,
-		    const char *, const char *, struct client *,
-		    struct session *, const char *, const char *,
-		    popup_close_cb, void *);
+int		 popup_display(int, enum box_lines, struct cmdq_item *, u_int,
+                    u_int, u_int, u_int, struct environ *, const char *, int,
+                    char **, const char *, const char *, struct client *,
+                    struct session *, const char *, const char *,
+                    popup_close_cb, void *);
 int		 popup_editor(struct client *, const char *, size_t,
 		    popup_finish_edit_cb, void *);
 
