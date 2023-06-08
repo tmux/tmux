@@ -126,7 +126,7 @@ sixel_parse_attributes(struct sixel_image *si, const char *cp, const char *end)
 {
 	const char	*last;
 	char		*endptr;
-	u_int		 d, x, y;
+	u_int		 x, y;
 
 	last = cp;
 	while (last != end) {
@@ -134,10 +134,10 @@ sixel_parse_attributes(struct sixel_image *si, const char *cp, const char *end)
 			break;
 		last++;
 	}
-	d = strtoul(cp, &endptr, 10);
+	strtoul(cp, &endptr, 10);
 	if (endptr == last || *endptr != ';')
 		return (last);
-	d = strtoul(endptr + 1, &endptr, 10);
+	strtoul(endptr + 1, &endptr, 10);
 	if (endptr == last || *endptr != ';')
 		return (NULL);
 
@@ -442,7 +442,7 @@ sixel_print_repeat(char **buf, size_t *len, size_t *used, u_int count, char ch)
 char *
 sixel_print(struct sixel_image *si, struct sixel_image *map, size_t *size)
 {
-	char			*buf, tmp[64], *contains, data, last;
+	char			*buf, tmp[64], *contains, data, last = 0;
 	size_t			 len, used = 0, tmplen;
 	u_int			*colours, ncolours, i, c, x, y, count;
 	struct sixel_line	*sl;
