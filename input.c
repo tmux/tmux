@@ -2245,7 +2245,6 @@ input_dcs_dispatch(struct input_ctx *ictx)
 #ifdef ENABLE_SIXEL
 	struct window		*w = wp->window;
 	struct sixel_image	*si;
-	long long		 enable_sixel = 0;
 #endif
 
 	if (wp == NULL)
@@ -2264,8 +2263,7 @@ input_dcs_dispatch(struct input_ctx *ictx)
 	}
 
 #ifdef ENABLE_SIXEL
-	enable_sixel = options_get_number(wp->options, "enable-sixel");
-	if (enable_sixel && buf[0] == 'q') {
+	if (buf[0] == 'q') {
 		si = sixel_parse(buf, len, w->xpixel, w->ypixel);
 		if (si != NULL) {
 			sixel_log(si);
