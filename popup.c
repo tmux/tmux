@@ -787,6 +787,8 @@ popup_editor(struct client *c, const char *buf, size_t len,
 	if (fd == -1)
 		return (-1);
 	f = fdopen(fd, "w");
+	if (f == NULL)
+		return (-1);
 	if (fwrite(buf, len, 1, f) != 1) {
 		fclose(f);
 		return (-1);
