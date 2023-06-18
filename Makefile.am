@@ -220,8 +220,8 @@ endif
 
 # Enable sixel support.
 if ENABLE_SIXEL
-dist_tmux_SOURCES += sixel/sixel.c
-dist_tmux_SOURCES += sixel/image.c
+dist_tmux_SOURCES += image.c
+dist_tmux_SOURCES += image-sixel.c
 endif
 
 if NEED_FUZZING
