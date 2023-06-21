@@ -14,3 +14,7 @@ for f in `ls $submodule_path`; do
     sudo cmake --build $submodule_path/build --target install --parallel 4
     rm -rf $submodule_path/build
 done
+
+./autogen.sh
+./configure --enable-utf8proc
+sudo make -j 4
