@@ -1,0 +1,6 @@
+[submodule "modules/utf8proc"]
+	path = modules/utf8proc
+	url = https://github.com/JuliaStrings/utf8proc
+[submodule "modules/libevent"]
+	path = modules/libevent
+	url = https://github.com/libevent/libevent
