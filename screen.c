@@ -625,7 +625,7 @@ screen_alternate_off(struct screen *s, struct grid_cell *gc, int cursor)
 	 * before copying back.
 	 */
 	if (s->saved_grid != NULL)
-		screen_resize(s, s->saved_grid->sx, s->saved_grid->sy, 1);
+		screen_resize(s, s->saved_grid->sx, s->saved_grid->sy, 0);
 
 	/*
 	 * Restore the cursor position and cell. This happens even if not
