@@ -77,6 +77,7 @@ style_parse(struct style *sy, const struct grid_cell *base, const char *in)
 		if (strcasecmp(tmp, "default") == 0) {
 			sy->gc.fg = base->fg;
 			sy->gc.bg = base->bg;
+			sy->gc.us = base->us;
 			sy->gc.attr = base->attr;
 			sy->gc.flags = base->flags;
 		} else if (strcasecmp(tmp, "ignore") == 0)
@@ -162,6 +163,13 @@ style_parse(struct style *sy, const struct grid_cell *base, const char *in)
 					sy->gc.bg = base->bg;
 			} else
 				goto error;
+		} else if (end > 3 && strncasecmp(tmp, "us=", 3) == 0) {
+			if ((value = colour_fromstring(tmp + 3)) == -1)
+				goto error;
+			if (value != 8)
+				sy->gc.us = value;
+			else
+				sy->gc.us = base->us;
 		} else if (strcasecmp(tmp, "none") == 0)
 			sy->gc.attr = 0;
 		else if (end > 2 && strncasecmp(tmp, "no", 2) == 0) {
@@ -258,6 +266,11 @@ style_tostring(struct style *sy)
 		    colour_tostring(gc->bg));
 		comma = ",";
 	}
+	if (gc->us != 8) {
+		off += xsnprintf(s + off, sizeof s - off, "%sus=%s", comma,
+		    colour_tostring(gc->us));
+		comma = ",";
+	}
 	if (gc->attr != 0) {
 		xsnprintf(s + off, sizeof s - off, "%s%s", comma,
 		    attributes_tostring(gc->attr));
@@ -287,6 +300,8 @@ style_add(struct grid_cell *gc, struct options *oo, const char *name,
 		gc->fg = sy->gc.fg;
 	if (sy->gc.bg != 8)
 		gc->bg = sy->gc.bg;
+	if (sy->gc.us != 8)
+		gc->us = sy->gc.us;
 	gc->attr |= sy->gc.attr;
 
 	if (ft0 != NULL)
