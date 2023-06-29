@@ -315,7 +315,7 @@ fi
 if test "x$found_ncurses" = xno; then
 	AC_SEARCH_LIBS(
 		setupterm,
-		[tinfo ncurses ncursesw],
+		[tinfo terminfo ncurses ncursesw],
 		found_ncurses=yes,
 		found_ncurses=no
 	)
