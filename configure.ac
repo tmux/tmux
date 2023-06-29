@@ -315,7 +315,7 @@ fi
 if test "x$found_ncurses" = xno; then
 	AC_SEARCH_LIBS(
 		setupterm,
-		[tinfo ncurses ncursesw],
+		[tinfo terminfo ncurses ncursesw],
 		found_ncurses=yes,
 		found_ncurses=no
 	)
@@ -451,7 +451,7 @@ fi
 
 # Check for b64_ntop. If we have b64_ntop, we assume b64_pton as well.
 AC_MSG_CHECKING(for b64_ntop)
-	AC_LINK_IFELSE([AC_LANG_PROGRAM(
+AC_LINK_IFELSE([AC_LANG_PROGRAM(
 	[
 		#include <sys/types.h>
 		#include <netinet/in.h>
