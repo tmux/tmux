@@ -709,7 +709,7 @@ tty_term_read_list(const char *name, int fd, char ***caps, u_int *ncaps,
 			s = tmp;
 			break;
 		case TTYCODE_FLAG:
-			n = tigetflag((char *) ent->name);
+			n = tigetflag((char *)ent->name);
 			if (n == -1)
 				continue;
 			if (n)
@@ -717,6 +717,8 @@ tty_term_read_list(const char *name, int fd, char ***caps, u_int *ncaps,
 			else
 				s = "0";
 			break;
+		default:
+			fatalx("unknown capability type");
 		}
 		*caps = xreallocarray(*caps, (*ncaps) + 1, sizeof **caps);
 		xasprintf(&(*caps)[*ncaps], "%s=%s", ent->name, s);

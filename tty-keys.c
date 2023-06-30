@@ -1160,7 +1160,7 @@ tty_keys_clipboard(struct tty *tty, const char *buf, size_t len, size_t *size)
 {
 	struct client		*c = tty->client;
 	struct window_pane	*wp;
-	size_t			 end, terminator, needed;
+	size_t			 end, terminator = 0, needed;
 	char			*copy, *out;
 	int			 outlen;
 	u_int			 i;

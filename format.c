@@ -3813,7 +3813,7 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 		argc = 0;
 
 		/* Single argument with no wrapper character. */
-		if (!ispunct(cp[1]) || cp[1] == '-') {
+		if (!ispunct((u_char)cp[1]) || cp[1] == '-') {
 			end = format_skip(cp + 1, ":;");
 			if (end == NULL)
 				break;
