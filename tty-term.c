@@ -674,7 +674,7 @@ tty_term_read_list(const char *name, int fd, char ***caps, u_int *ncaps,
 	const struct tty_term_code_entry	*ent;
 	int					 error, n;
 	u_int					 i;
-	const char				*s;
+	const char				*s = NULL;
 	char					 tmp[11];
 
 	if (setupterm((char *)name, fd, &error) != OK) {
