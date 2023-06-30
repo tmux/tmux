@@ -189,7 +189,7 @@ out:
 /* Parse flags argument. */
 static int
 args_parse_flags(const struct args_parse *parse, struct args_value *values,
-    u_int count, char **cause, struct args *args, int *i)
+    u_int count, char **cause, struct args *args, u_int *i)
 {
 	struct args_value	*value;
 	u_char			 flag;
