@@ -2842,7 +2842,7 @@ input_reply_clipboard(struct bufferevent *bev, const char *buf, size_t len,
     const char *end)
 {
 	char	*out = NULL;
-	size_t	 outlen = 0;
+	int	 outlen = 0;
 
 	if (buf != NULL && len != 0) {
 		outlen = 4 * ((len + 2) / 3) + 1;
