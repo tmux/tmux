@@ -42,7 +42,7 @@
 
 #define MAX_HYPERLINKS 5000
 
-static uint64_t hyperlinks_next_external_id = 1;
+static long long hyperlinks_next_external_id = 1;
 static u_int global_hyperlinks_count;
 
 struct hyperlinks_uri {
