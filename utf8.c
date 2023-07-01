@@ -94,7 +94,7 @@ utf8_item_by_index(u_int index)
 
 /* Add a UTF-8 item. */
 static int
-utf8_put_item(const char *data, size_t size, u_int *index)
+utf8_put_item(const u_char *data, size_t size, u_int *index)
 {
 	struct utf8_item	*ui;
 

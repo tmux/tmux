@@ -671,9 +671,9 @@ window_tree_draw_window(struct window_tree_modedata *data, struct session *s,
 	struct window_pane	*wp;
 	u_int			 cx = ctx->s->cx, cy = ctx->s->cy;
 	u_int			 loop, total, visible, each, width, offset;
-	u_int			 current, start, end, remaining, i;
+	u_int			 current, start, end, remaining, i, pane_idx;
 	struct grid_cell	 gc;
-	int			 colour, active_colour, left, right, pane_idx;
+	int			 colour, active_colour, left, right;
 	char			*label;
 
 	total = window_count_panes(w);
