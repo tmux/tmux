@@ -131,6 +131,7 @@ static void	window_copy_cursor_previous_word_pos(struct window_mode_entry *,
 		    const char *, u_int *, u_int *);
 static void	window_copy_cursor_previous_word(struct window_mode_entry *,
 		    const char *, int);
+static void	window_copy_cursor_prompt(struct window_mode_entry *, int);
 static void	window_copy_scroll_up(struct window_mode_entry *, u_int);
 static void	window_copy_scroll_down(struct window_mode_entry *, u_int);
 static void	window_copy_rectangle_set(struct window_mode_entry *, int);
@@ -2241,6 +2242,24 @@ window_copy_cmd_jump_to_mark(struct window_copy_cmd_state *cs)
 }
 
 static enum window_copy_cmd_action
+window_copy_cmd_next_prompt(struct window_copy_cmd_state *cs)
+{
+	struct window_mode_entry	*wme = cs->wme;
+
+	window_copy_cursor_prompt(wme, 1);
+	return (WINDOW_COPY_CMD_NOTHING);
+}
+
+static enum window_copy_cmd_action
+window_copy_cmd_previous_prompt(struct window_copy_cmd_state *cs)
+{
+	struct window_mode_entry	*wme = cs->wme;
+
+	window_copy_cursor_prompt(wme, 0);
+	return (WINDOW_COPY_CMD_NOTHING);
+}
+
+static enum window_copy_cmd_action
 window_copy_cmd_search_backward(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
@@ -2693,6 +2712,18 @@ static const struct {
 	  .maxargs = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_jump_to_mark
+	},
+	{ .command = "next-prompt",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_next_prompt
+	},
+	{ .command = "previous-prompt",
+	  .minargs = 0,
+	  .maxargs = 0,
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_previous_prompt
 	},
 	{ .command = "middle-line",
 	  .minargs = 0,
@@ -5355,6 +5386,48 @@ window_copy_cursor_previous_word(struct window_mode_entry *wme,
 	grid_reader_cursor_previous_word(&gr, separators, already, stop_at_eol);
 	grid_reader_get_cursor(&gr, &px, &py);
 	window_copy_acquire_cursor_up(wme, hsize, data->oy, oldy, px, py);
+}
+
+static void
+window_copy_cursor_prompt(struct window_mode_entry *wme, int direction)
+{
+	struct window_copy_mode_data	*data = wme->data;
+	struct screen			*s = data->backing;
+	struct grid			*gd = s->grid;
+	u_int				 end_line;
+	u_int				 line = gd->hsize - data->oy + data->cy;
+	int				 add;
+
+	if (direction == 0) { /* up */
+		add = -1;
+		end_line = 0;
+	} else { /* down */
+		add = 1;
+		end_line = gd->hsize + gd->sy - 1;
+	}
+
+	if (line == end_line)
+		return;
+	for (;;) {
+		if (line == end_line)
+			return;
+		line += add;
+
+		if (grid_get_line(gd, line)->flags & GRID_LINE_START_PROMPT)
+			break;
+	}
+
+	data->cx = 0;
+	if (line > gd->hsize) {
+		data->cy = line - gd->hsize;
+		data->oy = 0;
+	} else {
+		data->cy = 0;
+		data->oy = gd->hsize - line;
+	}
+
+	window_copy_update_selection(wme, 1, 0);
+	window_copy_redraw_screen(wme);
 }
 
 static void

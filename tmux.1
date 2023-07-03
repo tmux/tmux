@@ -1790,6 +1790,7 @@ The following commands are supported in copy mode:
 .It Li "middle-line" Ta "M" Ta "M-r"
 .It Li "next-matching-bracket" Ta "%" Ta "M-C-f"
 .It Li "next-paragraph" Ta "}" Ta "M-}"
+.It Li "next-prompt" Ta "" Ta ""
 .It Li "next-space" Ta "W" Ta ""
 .It Li "next-space-end" Ta "E" Ta ""
 .It Li "next-word" Ta "w" Ta ""
@@ -1803,6 +1804,7 @@ The following commands are supported in copy mode:
 .It Li "pipe-and-cancel [<command>] [<prefix>]" Ta "" Ta ""
 .It Li "previous-matching-bracket" Ta "" Ta "M-C-b"
 .It Li "previous-paragraph" Ta "{" Ta "M-{"
+.It Li "previous-prompt" Ta "" Ta ""
 .It Li "previous-space" Ta "B" Ta ""
 .It Li "previous-word" Ta "b" Ta "M-b"
 .It Li "rectangle-on" Ta "" Ta ""
@@ -1851,6 +1853,16 @@ repeats the last search and
 .Ql search-reverse
 does the same but reverses the direction (forward becomes backward and backward
 becomes forward).
+.Pp
+The
+.Ql next-prompt
+and
+.Ql previous-prompt
+move between shell prompts, but require the shell to emit an escape sequence
+(\e033]133;A\e033\e\e) to tell
+.Nm
+where the prompts are located; if the shell does not do this, these commands
+will do nothing.
 .Pp
 Copy commands may take an optional buffer prefix argument which is used
 to generate the buffer name (the default is

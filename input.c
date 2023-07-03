@@ -144,6 +144,7 @@ static void	input_osc_104(struct input_ctx *, const char *);
 static void	input_osc_110(struct input_ctx *, const char *);
 static void	input_osc_111(struct input_ctx *, const char *);
 static void	input_osc_112(struct input_ctx *, const char *);
+static void	input_osc_133(struct input_ctx *, const char *);
 
 /* Transition entry/exit handlers. */
 static void	input_clear(struct input_ctx *);
@@ -2347,6 +2348,9 @@ input_exit_osc(struct input_ctx *ictx)
 	case 112:
 		input_osc_112(ictx, p);
 		break;
+	case 133:
+		input_osc_133(ictx, p);
+		break;
 	default:
 		log_debug("%s: unknown '%u'", __func__, option);
 		break;
@@ -2736,6 +2740,24 @@ input_osc_112(struct input_ctx *ictx, const char *p)
 		screen_set_cursor_colour(ictx->ctx.s, -1);
 }
 
+/* Handle the OSC 133 sequence. */
+static void
+input_osc_133(struct input_ctx *ictx, const char *p)
+{
+	struct grid		*gd = ictx->ctx.s->grid;
+	u_int			 line = ictx->ctx.s->cy + gd->hsize;
+	struct grid_line	*gl;
+
+	if (line > gd->hsize + gd->sy - 1)
+		return;
+	gl = grid_get_line(gd, line);
+
+	switch (*p) {
+	case 'A':
+		gl->flags |= GRID_LINE_START_PROMPT;
+		break;
+	}
+}
 
 /* Handle the OSC 52 sequence for setting the clipboard. */
 static void
