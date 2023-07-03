@@ -63,11 +63,11 @@ grid_store_cell(struct grid_cell_entry *gce, const struct grid_cell *gc,
 {
 	gce->flags = (gc->flags & ~GRID_FLAG_CLEARED);
 
-	gce->data.fg = gc->fg & 0xff;
+	gce->data.fg = gc->fg & 0xffff;
 	if (gc->fg & COLOUR_FLAG_256)
 		gce->flags |= GRID_FLAG_FG256;
 
-	gce->data.bg = gc->bg & 0xff;
+	gce->data.bg = gc->bg & 0xffff;
 	if (gc->bg & COLOUR_FLAG_256)
 		gce->flags |= GRID_FLAG_BG256;
 
@@ -739,7 +739,7 @@ grid_string_cells_fg(const struct grid_cell *gc, int *values)
 	if (gc->fg & COLOUR_FLAG_256) {
 		values[n++] = 38;
 		values[n++] = 5;
-		values[n++] = gc->fg & 0xff;
+		values[n++] = gc->fg & 0xffff;
 	} else if (gc->fg & COLOUR_FLAG_RGB) {
 		values[n++] = 38;
 		values[n++] = 2;
@@ -788,7 +788,7 @@ grid_string_cells_bg(const struct grid_cell *gc, int *values)
 	if (gc->bg & COLOUR_FLAG_256) {
 		values[n++] = 48;
 		values[n++] = 5;
-		values[n++] = gc->bg & 0xff;
+		values[n++] = gc->bg & 0xffff;
 	} else if (gc->bg & COLOUR_FLAG_RGB) {
 		values[n++] = 48;
 		values[n++] = 2;
@@ -837,7 +837,7 @@ grid_string_cells_us(const struct grid_cell *gc, int *values)
 	if (gc->us & COLOUR_FLAG_256) {
 		values[n++] = 58;
 		values[n++] = 5;
-		values[n++] = gc->us & 0xff;
+		values[n++] = gc->us & 0xffff;
 	} else if (gc->us & COLOUR_FLAG_RGB) {
 		values[n++] = 58;
 		values[n++] = 2;

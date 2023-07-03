@@ -2858,9 +2858,9 @@ tty_try_colour(struct tty *tty, int colour, const char *type)
 
 	if (colour & COLOUR_FLAG_256) {
 		if (*type == '3' && tty_term_has(tty->term, TTYC_SETAF))
-			tty_putcode1(tty, TTYC_SETAF, colour & 0xff);
+			tty_putcode1(tty, TTYC_SETAF, colour & 0xffff);
 		else if (tty_term_has(tty->term, TTYC_SETAB))
-			tty_putcode1(tty, TTYC_SETAB, colour & 0xff);
+			tty_putcode1(tty, TTYC_SETAB, colour & 0xffff);
 		return (0);
 	}
 

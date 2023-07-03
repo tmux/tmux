@@ -1914,7 +1914,7 @@ input_csi_dispatch_sgr_256_do(struct input_ctx *ictx, int fgbg, int c)
 {
 	struct grid_cell	*gc = &ictx->cell.cell;
 
-	if (c == -1 || c > 255) {
+	if (c == -1 || c > (0xffff-1)) {
 		if (fgbg == 38)
 			gc->fg = 8;
 		else if (fgbg == 48)

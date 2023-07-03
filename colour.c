@@ -137,7 +137,7 @@ colour_tostring(int c)
 	}
 
 	if (c & COLOUR_FLAG_256) {
-		xsnprintf(s, sizeof s, "colour%u", c & 0xff);
+		xsnprintf(s, sizeof s, "colour%u", c & 0xffff);
 		return (s);
 	}
 
@@ -203,13 +203,13 @@ colour_fromstring(const char *s)
 	}
 
 	if (strncasecmp(s, "colour", (sizeof "colour") - 1) == 0) {
-		n = strtonum(s + (sizeof "colour") - 1, 0, 255, &errstr);
+		n = strtonum(s + (sizeof "colour") - 1, 0, 0xffff, &errstr);
 		if (errstr != NULL)
 			return (-1);
 		return (n | COLOUR_FLAG_256);
 	}
 	if (strncasecmp(s, "color", (sizeof "color") - 1) == 0) {
-		n = strtonum(s + (sizeof "color") - 1, 0, 255, &errstr);
+		n = strtonum(s + (sizeof "color") - 1, 0, 0xffff, &errstr);
 		if (errstr != NULL)
 			return (-1);
 		return (n | COLOUR_FLAG_256);
@@ -1029,8 +1029,8 @@ colour_palette_set(struct colour_palette *p, int n, int c)
 
 	if (c != -1 && p->palette == NULL) {
 		if (p->palette == NULL)
-			p->palette = xcalloc(256, sizeof *p->palette);
-		for (i = 0; i < 256; i++)
+			p->palette = xcalloc(0xffff, sizeof *p->palette);
+		for (i = 0; i < 0xffff; i++)
 			p->palette[i] = -1;
 	}
 	p->palette[n] = c;
