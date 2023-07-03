@@ -3664,7 +3664,9 @@ format_skip(const char *s, const char *end)
 	for (; *s != '\0'; s++) {
 		if (*s == '#' && s[1] == '{')
 			brackets++;
-		if (*s == '#' && strchr(",#{}:", s[1]) != NULL) {
+		if (*s == '#' &&
+		    s[1] != '\0' &&
+		    strchr(",#{}:", s[1]) != NULL) {
 			s++;
 			continue;
 		}
