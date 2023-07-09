@@ -415,8 +415,8 @@ spawn_pane(struct spawn_context *sc, char **cause)
 		_exit(1);
 
 	/* Clean up file descriptors and signals and update the environment. */
-	closefrom(STDERR_FILENO + 1);
 	proc_clear_signals(server_proc, 1);
+	closefrom(STDERR_FILENO + 1);
 	sigprocmask(SIG_SETMASK, &oldset, NULL);
 	log_close();
 	environ_push(child);
