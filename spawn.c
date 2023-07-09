@@ -427,9 +427,12 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	if (tcsetattr(STDIN_FILENO, TCSANOW, &now) != 0)
 		_exit(1);
 
+	/* In newer version of libevent (since 2.2) it may use signalfd(), which
+	 * has real fds under it, so firstly you need to remove/close those fds and
+	 * only after execute closefrom() */
+	proc_clear_signals(server_proc, 1);
 	/* Clean up file descriptors and signals and update the environment. */
 	closefrom(STDERR_FILENO + 1);
-	proc_clear_signals(server_proc, 1);
 	sigprocmask(SIG_SETMASK, &oldset, NULL);
 	log_close();
 	environ_push(child);
