@@ -582,7 +582,7 @@ cmd_find_get_pane_with_window(struct cmd_find_state *fs, const char *pane)
 
 	/* Try special characters. */
 	if (strcmp(pane, "!") == 0) {
-		fs->wp = fs->w->last;
+		fs->wp = TAILQ_FIRST(&fs->w->last_panes);
 		if (fs->wp == NULL)
 			return (-1);
 		return (0);

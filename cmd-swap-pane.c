@@ -128,10 +128,8 @@ cmd_swap_pane_exec(struct cmd *self, struct cmdq_item *item)
 			window_set_active_pane(dst_w, src_wp, 1);
 	}
 	if (src_w != dst_w) {
-		if (src_w->last == src_wp)
-			src_w->last = NULL;
-		if (dst_w->last == dst_wp)
-			dst_w->last = NULL;
+		window_pane_stack_remove(&src_w->last_panes, src_wp);
+		window_pane_stack_remove(&dst_w->last_panes, dst_wp);
 		colour_palette_from_option(&src_wp->palette, src_wp->options);
 		colour_palette_from_option(&dst_wp->palette, dst_wp->options);
 	}
