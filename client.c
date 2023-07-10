@@ -245,9 +245,6 @@ client_main(struct event_base *base, int argc, char **argv, uint64_t flags,
 	u_int			 ncaps = 0;
 	struct args_value	*values;
 
-	/* Ignore SIGCHLD now or daemon() in the server will leave a zombie. */
-	signal(SIGCHLD, SIG_IGN);
-
 	/* Set up the initial command. */
 	if (shell_command != NULL) {
 		msg = MSG_SHELL;
