@@ -1909,6 +1909,11 @@ Move to the next matching bracket
 .Xc
 Move to the next paragraph
 .It Xo
+.Nm next-prompt
+.Ns
+.Xc
+Move to the next prompt in the buffer
+.It Xo
 .Nm next-word
 .Ns
 .Li (vi: w)
@@ -1938,6 +1943,11 @@ Move to the previous matching bracket
 .Li (vi: {) (emacs: M-{)
 .Xc
 Move to the previous paragraph
+.It Xo
+.Nm previous-prompt
+.Ns
+.Xc
+Move to the previous prompt in the buffer
 .It Xo
 .Nm previous-word
 .Ns
@@ -1997,6 +2007,18 @@ Move the cursor to the start of the line
 .Li (vi: H) (emacs: M-R)
 .Xc
 Move to the top line of the buffer
+.It Xo
+.Nm next-prompt
+.Ns
+.Li (vi: C-n) (emacs: C-n)
+.Xc
+Move to the next prompt in the buffer
+.It Xo
+.Nm previous-prompt
+.Ns
+.Li (vi: C-p) (emacs: C-p)
+.Xc
+Move to the previous prompt in the buffer
 .El
 .Pp
 The search commands come in several varieties:
