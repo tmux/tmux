@@ -1902,7 +1902,7 @@ static void *
 format_cb_pane_last(struct format_tree *ft)
 {
 	if (ft->wp != NULL) {
-		if (ft->wp == ft->wp->window->last)
+		if (ft->wp == TAILQ_FIRST(&ft->wp->window->last_panes))
 			return (xstrdup("1"));
 		return (xstrdup("0"));
 	}

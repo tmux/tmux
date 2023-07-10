@@ -115,6 +115,7 @@ spawn_window(struct spawn_context *sc, char **cause)
 		window_pane_resize(sc->wp0, w->sx, w->sy);
 
 		layout_init(w, sc->wp0);
+		w->active = NULL;
 		window_set_active_pane(w, sc->wp0, 0);
 	}
 
