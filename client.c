@@ -526,11 +526,22 @@ client_signal(int sig)
 {
 	struct sigaction sigact;
 	int		 status;
+	pid_t		 pid;
 
 	log_debug("%s: %s", __func__, strsignal(sig));
-	if (sig == SIGCHLD)
-		waitpid(WAIT_ANY, &status, WNOHANG);
-	else if (!client_attached) {
+	if (sig == SIGCHLD) {
+		for (;;) {
+			pid = waitpid(WAIT_ANY, &status, WNOHANG);
+			if (pid == 0)
+				break;
+			if (pid == -1) {
+				if (errno == ECHILD)
+					break;
+				log_debug("waitpid failed: %s",
+				    strerror(errno));
+			}
+		}
+	} else if (!client_attached) {
 		if (sig == SIGTERM || sig == SIGHUP)
 			proc_exit(client_proc);
 	} else {
