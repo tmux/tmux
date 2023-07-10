@@ -190,7 +190,7 @@ server_start(struct tmuxproc *client, int flags, struct event_base *base,
 			return (fd);
 		}
 	}
-	proc_clear_signals(client, 0);
+	proc_clear_signals(client);
 	server_client_flags = flags;
 
 	if (event_reinit(base) != 0)

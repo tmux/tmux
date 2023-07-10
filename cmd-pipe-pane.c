@@ -132,7 +132,7 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_ERROR);
 	case 0:
 		/* Child process. */
-		proc_clear_signals(server_proc, 1);
+		proc_clear_signals(server_proc);
 		sigprocmask(SIG_SETMASK, &oldset, NULL);
 		close(pipe_fd[0]);
 

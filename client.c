@@ -516,7 +516,7 @@ client_exec(const char *shell, const char *shellcmd)
 		xasprintf(&argv0, "%s", name);
 	setenv("SHELL", shell, 1);
 
-	proc_clear_signals(client_proc, 1);
+	proc_clear_signals(client_proc);
 
 	setblocking(STDIN_FILENO, 1);
 	setblocking(STDOUT_FILENO, 1);

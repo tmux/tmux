@@ -119,7 +119,7 @@ job_run(const char *cmd, int argc, char **argv, struct environ *e, struct sessio
 		}
 		goto fail;
 	case 0:
-		proc_clear_signals(server_proc, 1);
+		proc_clear_signals(server_proc);
 		sigprocmask(SIG_SETMASK, &oldset, NULL);
 
 		if ((cwd == NULL || chdir(cwd) != 0) &&
