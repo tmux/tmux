@@ -535,9 +535,15 @@ client_signal(int sig)
 	int		 status;
 
 	log_debug("%s: %s", __func__, strsignal(sig));
-	if (sig == SIGCHLD)
-		waitpid(WAIT_ANY, &status, WNOHANG);
-	else if (!client_attached) {
+	if (sig == SIGCHLD) {
+		for (;;) {
+			pid_t pid = waitpid(WAIT_ANY, &status, WNOHANG);
+			if (pid == 0)
+				break;
+			if (pid == -1)
+				log_debug("waitpid failed: %s", strerror(errno));
+		}
+	} else if (!client_attached) {
 		if (sig == SIGTERM || sig == SIGHUP)
 			proc_exit(client_proc);
 	} else {
