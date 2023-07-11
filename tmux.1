@@ -1744,278 +1744,262 @@ command.
 The following commands are supported in copy mode:
 .Bl -tag -width Ds
 .It Xo
-.Nm append-selection
-.Ns
+.Ic append-selection
 .Xc
 Append the selection to the top paste buffer.
 .It Xo
-.Nm append-selection-and-cancel
-.Ns
-.Li (vi: A)
+.Ic append-selection-and-cancel
+(vi: A)
 .Xc
 Append the selection to the top paste buffer and exit copy mode.
 .It Xo
-.Nm back-to-indentation
-.Ns
-.Li (vi: ^) (emacs: M-m)
+.Ic back-to-indentation
+(vi: ^)
+(emacs: M-m)
 .Xc
 Move the cursor back to the indentation.
 .It Xo
-.Nm begin-selection
-.Ns
-.Li (vi: Space) (emacs: C-Space)
+.Ic begin-selection
+(vi: Space)
+(emacs: C-Space)
 .Xc
 Begin selection.
 .It Xo
-.Nm bottom-line
-.Ns
-.Li (vi: L)
+.Ic bottom-line
+(vi: L)
 .Xc
 Move to the bottom line.
 .It Xo
-.Nm cancel
-.Ns
-.Li (vi: q) (emacs: Escape)
+.Ic cancel
+(vi: q)
+(emacs: Escape)
 .Xc
 Exit copy mode.
 .It Xo
-.Nm clear-selection
-.Ns
-.Li (vi: Escape) (emacs: C-g)
+.Ic clear-selection
+(vi: Escape)
+(emacs: C-g)
 .Xc
 Clear the current selection.
 .It Xo
-.Nm copy-end-of-line [<prefix>]
-.Ns
+.Ic copy-end-of-line [<prefix>]
 .Xc
 Copy from the cursor position to the end of the line.
 .Ar prefix
 is used to name the new paste buffer.
 .It Xo
-.Nm copy-end-of-line-and-cancel [<prefix>]
-.Ns
+.Ic copy-end-of-line-and-cancel [<prefix>]
 .Xc
 Copy from the cursor position and exit copy mode.
 .It Xo
-.Nm copy-line [<prefix>]
-.Ns
+.Ic copy-line [<prefix>]
 .Xc
 Copy the entire line.
 .It Xo
-.Nm copy-line-and-cancel [<prefix>]
-.Ns
+.Ic copy-line-and-cancel [<prefix>]
 .Xc
 Copy the entire line and exit copy mode.
 .It Xo
-.Nm copy-selection [<prefix>]
-.Ns
+.Ic copy-selection [<prefix>]
 .Xc
 Copies the current selection.
 .It Xo
-.Nm copy-selection-and-cancel [<prefix>]
-.Ns
-.Li (vi: Enter) (emacs: M-w)
+.Ic copy-selection-and-cancel [<prefix>]
+(vi: Enter)
+(emacs: M-w)
 .Xc
 Copy the current selection and exit copy mode.
 .It Xo
-.Nm cursor-down
-.Ns
-.Li (vi: j) (emacs: Down)
+.Ic cursor-down
+(vi: j)
+(emacs: Down)
 .Xc
 Move the cursor down.
 .It Xo
-.Nm cursor-left
-.Ns
-.Li (vi: h) (emacs: Left)
+.Ic cursor-left
+(vi: h)
+(emacs: Left)
 .Xc
 Move the cursor left.
 .It Xo
-.Nm cursor-right
-.Ns
-.Li (vi: l) (emacs: Right)
+.Ic cursor-right
+(vi: l)
+(emacs: Right)
 .Xc
 Move the cursor right.
 .It Xo
-.Nm cursor-up
-.Ns
-.Li (vi: k) (emacs: Up)
+.Ic cursor-up
+(vi: k)
+(emacs: Up)
 .Xc
 Move the cursor up.
 .It Xo
-.Nm end-of-line
-.Ns
-.Li (vi: $) (emacs: C-e)
+.Ic end-of-line
+(vi: $)
+(emacs: C-e)
 .Xc
 Move the cursor to the end of the line.
 .It Xo
-.Nm goto-line <line>
-.Ns
-.Li (vi: :) (emacs: g)
+.Ic goto-line <line>
+(vi: :)
+(emacs: g)
 .Xc
 Move the cursor to a specific line.
 .It Xo
-.Nm history-bottom
-.Ns
-.Li (vi: G) (emacs: M->)
+.Ic history-bottom
+(vi: G)
+(emacs: M->)
 .Xc
 Scroll to the bottom of the history.
 .It Xo
-.Nm history-top
-.Ns
-.Li (vi: g) (emacs: M-<)
+.Ic history-top
+(vi: g)
+(emacs: M-<)
 .Xc
 Scroll to the top of the history.
 .It Xo
-.Nm jump-again
-.Ns
-.Li (vi: ;) (emacs: ;)
+.Ic jump-again
+(vi: ;)
+(emacs: ;)
 .Xc
 Repeat the last jump.
 .It Xo
-.Nm jump-backward <to>
-.Ns
-.Li (vi: F) (emacs: F)
+.Ic jump-backward <to>
+(vi: F)
+(emacs: F)
 .Xc
 Jump backwards to the specified text.
 .It Xo
-.Nm jump-forward <to>
-.Ns
-.Li (vi: f) (emacs: f)
+.Ic jump-forward <to>
+(vi: f)
+(emacs: f)
 .Xc
 Jump forward to the specified text.
 .It Xo
-.Nm jump-to-mark
-.Ns
-.Li (vi: M-x) (emacs: M-x)
+.Ic jump-to-mark
+(vi: M-x)
+(emacs: M-x)
 .Xc
 Jump to the last mark.
 .It Xo
-.Nm middle-line
-.Ns
-.Li (vi: M) (emacs: M-r)
+.Ic middle-line
+(vi: M)
+(emacs: M-r)
 .Xc
 Move to the middle line.
 .It Xo
-.Nm next-matching-bracket
-.Ns
-.Li (vi: %) (emacs: M-C-f)
+.Ic next-matching-bracket
+(vi: %)
+(emacs: M-C-f)
 .Xc
 Move to the next matching bracket.
 .It Xo
-.Nm next-paragraph
-.Ns
-.Li (vi: }) (emacs: M-})
+.Ic next-paragraph
+(vi: })
+(emacs: M-})
 .Xc
 Move to the next paragraph.
 .It Xo
-.Nm next-prompt
-.Ns
+.Ic next-prompt
 .Xc
 Move to the next prompt.
 .It Xo
-.Nm next-word
-.Ns
-.Li (vi: w)
+.Ic next-word
+(vi: w)
 .Xc
 Move to the next word.
 .It Xo
-.Nm page-down
-.Ns
-.Li (vi: C-f) (emacs: PageDown)
+.Ic page-down
+(vi: C-f)
+(emacs: PageDown)
 .Xc
 Scroll down by one page.
 .It Xo
-.Nm page-up
-.Ns
-.Li (vi: C-b) (emacs: PageUp)
+.Ic page-up
+(vi: C-b)
+(emacs: PageUp)
 .Xc
 Scroll up by one page.
 .It Xo
-.Nm previous-matching-bracket
-.Ns
-.Li (emacs: M-C-b)
+.Ic previous-matching-bracket
+(emacs: M-C-b)
 .Xc
 Move to the previous matching bracket.
 .It Xo
-.Nm previous-paragraph
-.Ns
-.Li (vi: {) (emacs: M-{)
+.Ic previous-paragraph
+(vi: {)
+(emacs: M-{)
 .Xc
 Move to the previous paragraph.
 .It Xo
-.Nm previous-prompt
-.Ns
+.Ic previous-prompt
 .Xc
 Move to the previous prompt.
 .It Xo
-.Nm previous-word
-.Ns
-.Li (vi: b) (emacs: M-b)
+.Ic previous-word
+(vi: b)
+(emacs: M-b)
 .Xc
 Move to the previous word.
 .It Xo
-.Nm rectangle-toggle
-.Ns
-.Li (vi: v) (emacs: R)
+.Ic rectangle-toggle
+(vi: v)
+(emacs: R)
 .Xc
 Toggle rectangle selection mode.
 .It Xo
-.Nm refresh-from-pane
-.Ns
-.Li (vi: r) (emacs: r)
+.Ic refresh-from-pane
+(vi: r)
+(emacs: r)
 .Xc
 Refresh the content from the pane.
 .It Xo
-.Nm search-again
-.Ns
-.Li (vi: n) (emacs: n)
+.Ic search-again
+(vi: n)
+(emacs: n)
 .Xc
 Repeat the last search.
 .It Xo
-.Nm search-backward <for>
-.Ns
-.Li (vi: ?)
+.Ic search-backward <for>
+(vi: ?)
 .Xc
 Search backwards for the specified text.
 .It Xo
-.Nm search-forward <for>
-.Ns
-.Li (vi: /)
+.Ic search-forward <for>
+(vi: /)
 .Xc
 Search forward for the specified text.
 .It Xo
-.Nm select-line
-.Ns
-.Li (vi: V)
+.Ic select-line
+(vi: V)
 .Xc
 Select the current line.
 .It Xo
-.Nm select-word
-.Ns
+.Ic select-word
 .Xc
 Select the current word.
 .It Xo
-.Nm start-of-line
-.Ns
-.Li (vi: 0) (emacs: C-a)
+.Ic start-of-line
+(vi: 0)
+(emacs: C-a)
 .Xc
 Move the cursor to the start of the line.
 .It Xo
-.Nm top-line
-.Ns
-.Li (vi: H) (emacs: M-R)
+.Ic top-line
+(vi: H)
+(emacs: M-R)
 .Xc
 Move to the top line.
 .It Xo
-.Nm next-prompt
-.Ns
-.Li (vi: C-n) (emacs: C-n)
+.Ic next-prompt
+(vi: C-n)
+(emacs: C-n)
 .Xc
 Move to the next prompt.
 .It Xo
-.Nm previous-prompt
-.Ns
-.Li (vi: C-p) (emacs: C-p)
+.Ic previous-prompt
+(vi: C-p)
+(emacs: C-p)
 .Xc
 Move to the previous prompt.
 .El
