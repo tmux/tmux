@@ -1742,93 +1742,282 @@ Key tables may be viewed with the
 command.
 .Pp
 The following commands are supported in copy mode:
-.Bl -column "CommandXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" "viXXXXXXXXXX" "emacs" -offset indent
-.It Sy "Command" Ta Sy "vi" Ta Sy "emacs"
-.It Li "append-selection" Ta "" Ta ""
-.It Li "append-selection-and-cancel" Ta "A" Ta ""
-.It Li "back-to-indentation" Ta "^" Ta "M-m"
-.It Li "begin-selection" Ta "Space" Ta "C-Space"
-.It Li "bottom-line" Ta "L" Ta ""
-.It Li "cancel" Ta "q" Ta "Escape"
-.It Li "clear-selection" Ta "Escape" Ta "C-g"
-.It Li "copy-end-of-line [<prefix>]" Ta "" Ta ""
-.It Li "copy-end-of-line-and-cancel [<prefix>]" Ta "" Ta ""
-.It Li "copy-pipe-end-of-line [<command>] [<prefix>]" Ta "" Ta ""
-.It Li "copy-pipe-end-of-line-and-cancel [<command>] [<prefix>]" Ta "D" Ta "C-k"
-.It Li "copy-line [<prefix>]" Ta "" Ta ""
-.It Li "copy-line-and-cancel [<prefix>]" Ta "" Ta ""
-.It Li "copy-pipe-line [<command>] [<prefix>]" Ta "" Ta ""
-.It Li "copy-pipe-line-and-cancel [<command>] [<prefix>]" Ta "" Ta ""
-.It Li "copy-pipe [<command>] [<prefix>]" Ta "" Ta ""
-.It Li "copy-pipe-no-clear [<command>] [<prefix>]" Ta "" Ta ""
-.It Li "copy-pipe-and-cancel [<command>] [<prefix>]" Ta "" Ta ""
-.It Li "copy-selection [<prefix>]" Ta "" Ta ""
-.It Li "copy-selection-no-clear [<prefix>]" Ta "" Ta ""
-.It Li "copy-selection-and-cancel [<prefix>]" Ta "Enter" Ta "M-w"
-.It Li "cursor-down" Ta "j" Ta "Down"
-.It Li "cursor-down-and-cancel" Ta "" Ta ""
-.It Li "cursor-left" Ta "h" Ta "Left"
-.It Li "cursor-right" Ta "l" Ta "Right"
-.It Li "cursor-up" Ta "k" Ta "Up"
-.It Li "end-of-line" Ta "$" Ta "C-e"
-.It Li "goto-line <line>" Ta ":" Ta "g"
-.It Li "halfpage-down" Ta "C-d" Ta "M-Down"
-.It Li "halfpage-down-and-cancel" Ta "" Ta ""
-.It Li "halfpage-up" Ta "C-u" Ta "M-Up"
-.It Li "history-bottom" Ta "G" Ta "M->"
-.It Li "history-top" Ta "g" Ta "M-<"
-.It Li "jump-again" Ta ";" Ta ";"
-.It Li "jump-backward <to>" Ta "F" Ta "F"
-.It Li "jump-forward <to>" Ta "f" Ta "f"
-.It Li "jump-reverse" Ta "," Ta ","
-.It Li "jump-to-backward <to>" Ta "T" Ta ""
-.It Li "jump-to-forward <to>" Ta "t" Ta ""
-.It Li "jump-to-mark" Ta "M-x" Ta "M-x"
-.It Li "middle-line" Ta "M" Ta "M-r"
-.It Li "next-matching-bracket" Ta "%" Ta "M-C-f"
-.It Li "next-paragraph" Ta "}" Ta "M-}"
-.It Li "next-prompt" Ta "" Ta ""
-.It Li "next-space" Ta "W" Ta ""
-.It Li "next-space-end" Ta "E" Ta ""
-.It Li "next-word" Ta "w" Ta ""
-.It Li "next-word-end" Ta "e" Ta "M-f"
-.It Li "other-end" Ta "o" Ta ""
-.It Li "page-down" Ta "C-f" Ta "PageDown"
-.It Li "page-down-and-cancel" Ta "" Ta ""
-.It Li "page-up" Ta "C-b" Ta "PageUp"
-.It Li "pipe [<command>] [<prefix>]" Ta "" Ta ""
-.It Li "pipe-no-clear [<command>] [<prefix>]" Ta "" Ta ""
-.It Li "pipe-and-cancel [<command>] [<prefix>]" Ta "" Ta ""
-.It Li "previous-matching-bracket" Ta "" Ta "M-C-b"
-.It Li "previous-paragraph" Ta "{" Ta "M-{"
-.It Li "previous-prompt" Ta "" Ta ""
-.It Li "previous-space" Ta "B" Ta ""
-.It Li "previous-word" Ta "b" Ta "M-b"
-.It Li "rectangle-on" Ta "" Ta ""
-.It Li "rectangle-off" Ta "" Ta ""
-.It Li "rectangle-toggle" Ta "v" Ta "R"
-.It Li "refresh-from-pane" Ta "r" Ta "r"
-.It Li "scroll-down" Ta "C-e" Ta "C-Down"
-.It Li "scroll-down-and-cancel" Ta "" Ta ""
-.It Li "scroll-up" Ta "C-y" Ta "C-Up"
-.It Li "search-again" Ta "n" Ta "n"
-.It Li "search-backward <for>" Ta "?" Ta ""
-.It Li "search-backward-incremental <for>" Ta "" Ta "C-r"
-.It Li "search-backward-text <for>" Ta "" Ta ""
-.It Li "search-forward <for>" Ta "/" Ta ""
-.It Li "search-forward-incremental <for>" Ta "" Ta "C-s"
-.It Li "search-forward-text <for>" Ta "" Ta ""
-.It Li "scroll-bottom" Ta "" Ta ""
-.It Li "scroll-middle" Ta "z" Ta ""
-.It Li "scroll-top" Ta "" Ta ""
-.It Li "search-reverse" Ta "N" Ta "N"
-.It Li "select-line" Ta "V" Ta ""
-.It Li "select-word" Ta "" Ta ""
-.It Li "set-mark" Ta "X" Ta "X"
-.It Li "start-of-line" Ta "0" Ta "C-a"
-.It Li "stop-selection" Ta "" Ta ""
-.It Li "toggle-position" Ta "P" Ta "P"
-.It Li "top-line" Ta "H" Ta "M-R"
+.Bl -tag -width Ds
+.It Xo
+.Nm append-selection
+.Ns
+.Xc
+Append the selection to the top paste buffer.
+.It Xo
+.Nm append-selection-and-cancel
+.Ns
+.Li (vi: A)
+.Xc
+Append the selection to the top paste buffer and exit copy mode.
+.It Xo
+.Nm back-to-indentation
+.Ns
+.Li (vi: ^) (emacs: M-m)
+.Xc
+Move the cursor back to the indentation.
+.It Xo
+.Nm begin-selection
+.Ns
+.Li (vi: Space) (emacs: C-Space)
+.Xc
+Begin selection.
+.It Xo
+.Nm bottom-line
+.Ns
+.Li (vi: L)
+.Xc
+Move to the bottom line.
+.It Xo
+.Nm cancel
+.Ns
+.Li (vi: q) (emacs: Escape)
+.Xc
+Exit copy mode.
+.It Xo
+.Nm clear-selection
+.Ns
+.Li (vi: Escape) (emacs: C-g)
+.Xc
+Clear the current selection.
+.It Xo
+.Nm copy-end-of-line [<prefix>]
+.Ns
+.Xc
+Copy from the cursor position to the end of the line.
+.Ar prefix
+is used to name the new paste buffer.
+.It Xo
+.Nm copy-end-of-line-and-cancel [<prefix>]
+.Ns
+.Xc
+Copy from the cursor position and exit copy mode.
+.It Xo
+.Nm copy-line [<prefix>]
+.Ns
+.Xc
+Copy the entire line.
+.It Xo
+.Nm copy-line-and-cancel [<prefix>]
+.Ns
+.Xc
+Copy the entire line and exit copy mode.
+.It Xo
+.Nm copy-selection [<prefix>]
+.Ns
+.Xc
+Copies the current selection.
+.It Xo
+.Nm copy-selection-and-cancel [<prefix>]
+.Ns
+.Li (vi: Enter) (emacs: M-w)
+.Xc
+Copy the current selection and exit copy mode.
+.It Xo
+.Nm cursor-down
+.Ns
+.Li (vi: j) (emacs: Down)
+.Xc
+Move the cursor down.
+.It Xo
+.Nm cursor-left
+.Ns
+.Li (vi: h) (emacs: Left)
+.Xc
+Move the cursor left.
+.It Xo
+.Nm cursor-right
+.Ns
+.Li (vi: l) (emacs: Right)
+.Xc
+Move the cursor right.
+.It Xo
+.Nm cursor-up
+.Ns
+.Li (vi: k) (emacs: Up)
+.Xc
+Move the cursor up.
+.It Xo
+.Nm end-of-line
+.Ns
+.Li (vi: $) (emacs: C-e)
+.Xc
+Move the cursor to the end of the line.
+.It Xo
+.Nm goto-line <line>
+.Ns
+.Li (vi: :) (emacs: g)
+.Xc
+Move the cursor to a specific line.
+.It Xo
+.Nm history-bottom
+.Ns
+.Li (vi: G) (emacs: M->)
+.Xc
+Scroll to the bottom of the history.
+.It Xo
+.Nm history-top
+.Ns
+.Li (vi: g) (emacs: M-<)
+.Xc
+Scroll to the top of the history.
+.It Xo
+.Nm jump-again
+.Ns
+.Li (vi: ;) (emacs: ;)
+.Xc
+Repeat the last jump.
+.It Xo
+.Nm jump-backward <to>
+.Ns
+.Li (vi: F) (emacs: F)
+.Xc
+Jump backwards to the specified text.
+.It Xo
+.Nm jump-forward <to>
+.Ns
+.Li (vi: f) (emacs: f)
+.Xc
+Jump forward to the specified text.
+.It Xo
+.Nm jump-to-mark
+.Ns
+.Li (vi: M-x) (emacs: M-x)
+.Xc
+Jump to the last mark.
+.It Xo
+.Nm middle-line
+.Ns
+.Li (vi: M) (emacs: M-r)
+.Xc
+Move to the middle line.
+.It Xo
+.Nm next-matching-bracket
+.Ns
+.Li (vi: %) (emacs: M-C-f)
+.Xc
+Move to the next matching bracket.
+.It Xo
+.Nm next-paragraph
+.Ns
+.Li (vi: }) (emacs: M-})
+.Xc
+Move to the next paragraph.
+.It Xo
+.Nm next-prompt
+.Ns
+.Xc
+Move to the next prompt.
+.It Xo
+.Nm next-word
+.Ns
+.Li (vi: w)
+.Xc
+Move to the next word.
+.It Xo
+.Nm page-down
+.Ns
+.Li (vi: C-f) (emacs: PageDown)
+.Xc
+Scroll down by one page.
+.It Xo
+.Nm page-up
+.Ns
+.Li (vi: C-b) (emacs: PageUp)
+.Xc
+Scroll up by one page.
+.It Xo
+.Nm previous-matching-bracket
+.Ns
+.Li (emacs: M-C-b)
+.Xc
+Move to the previous matching bracket.
+.It Xo
+.Nm previous-paragraph
+.Ns
+.Li (vi: {) (emacs: M-{)
+.Xc
+Move to the previous paragraph.
+.It Xo
+.Nm previous-prompt
+.Ns
+.Xc
+Move to the previous prompt.
+.It Xo
+.Nm previous-word
+.Ns
+.Li (vi: b) (emacs: M-b)
+.Xc
+Move to the previous word.
+.It Xo
+.Nm rectangle-toggle
+.Ns
+.Li (vi: v) (emacs: R)
+.Xc
+Toggle rectangle selection mode.
+.It Xo
+.Nm refresh-from-pane
+.Ns
+.Li (vi: r) (emacs: r)
+.Xc
+Refresh the content from the pane.
+.It Xo
+.Nm search-again
+.Ns
+.Li (vi: n) (emacs: n)
+.Xc
+Repeat the last search.
+.It Xo
+.Nm search-backward <for>
+.Ns
+.Li (vi: ?)
+.Xc
+Search backwards for the specified text.
+.It Xo
+.Nm search-forward <for>
+.Ns
+.Li (vi: /)
+.Xc
+Search forward for the specified text.
+.It Xo
+.Nm select-line
+.Ns
+.Li (vi: V)
+.Xc
+Select the current line.
+.It Xo
+.Nm select-word
+.Ns
+.Xc
+Select the current word.
+.It Xo
+.Nm start-of-line
+.Ns
+.Li (vi: 0) (emacs: C-a)
+.Xc
+Move the cursor to the start of the line.
+.It Xo
+.Nm top-line
+.Ns
+.Li (vi: H) (emacs: M-R)
+.Xc
+Move to the top line.
+.It Xo
+.Nm next-prompt
+.Ns
+.Li (vi: C-n) (emacs: C-n)
+.Xc
+Move to the next prompt.
+.It Xo
+.Nm previous-prompt
+.Ns
+.Li (vi: C-p) (emacs: C-p)
+.Xc
+Move to the previous prompt.
 .El
 .Pp
 The search commands come in several varieties:
