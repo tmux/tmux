@@ -2186,7 +2186,7 @@ input_csi_dispatch_sgr(struct input_ctx *ictx)
 			gc->attr &= ~GRID_ATTR_OVERLINE;
 			break;
 		case 59:
-			gc->us = 0;
+			gc->us = 8;
 			break;
 		case 90:
 		case 91:

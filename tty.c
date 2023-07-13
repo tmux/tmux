@@ -2815,9 +2815,10 @@ tty_check_us(__unused struct tty *tty, struct colour_palette *palette,
 	}
 
 	/* Underscore colour is set as RGB so convert. */
-	gc->us = colour_force_rgb (gc->us);
-	if (gc->us == -1)
+	if ((c = colour_force_rgb (gc->us)) == -1)
 		gc->us = 8;
+	else
+		gc->us = c;
 }
 
 static void
@@ -2892,7 +2893,7 @@ tty_colours_us(struct tty *tty, const struct grid_cell *gc)
 	u_char			 r, g, b;
 
 	/* Clear underline colour. */
-	if (gc->us == 0) {
+	if (COLOUR_DEFAULT(gc->us)) {
 		tty_putcode(tty, TTYC_OL);
 		goto save;
 	}
