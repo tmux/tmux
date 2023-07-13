@@ -37,7 +37,7 @@
 
 /* Default grid cell data. */
 const struct grid_cell grid_default_cell = {
-	{ { ' ' }, 0, 1, 1 }, 0, 0, 8, 8, 0, 0
+	{ { ' ' }, 0, 1, 1 }, 0, 0, 8, 8, 8, 0
 };
 
 /*
@@ -45,12 +45,12 @@ const struct grid_cell grid_default_cell = {
  * appears in the grid - because of this, they are always extended cells.
  */
 static const struct grid_cell grid_padding_cell = {
-	{ { '!' }, 0, 0, 0 }, 0, GRID_FLAG_PADDING, 8, 8, 0, 0
+	{ { '!' }, 0, 0, 0 }, 0, GRID_FLAG_PADDING, 8, 8, 8, 0
 };
 
 /* Cleared grid cell data. */
 static const struct grid_cell grid_cleared_cell = {
-	{ { ' ' }, 0, 1, 1 }, 0, GRID_FLAG_CLEARED, 8, 8, 0, 0
+	{ { ' ' }, 0, 1, 1 }, 0, GRID_FLAG_CLEARED, 8, 8, 8, 0
 };
 static const struct grid_cell_entry grid_cleared_entry = {
 	{ .data = { 0, 8, 8, ' ' } }, GRID_FLAG_CLEARED
@@ -528,7 +528,7 @@ grid_get_cell1(struct grid_line *gl, u_int px, struct grid_cell *gc)
 	gc->bg = gce->data.bg;
 	if (gce->flags & GRID_FLAG_BG256)
 		gc->bg |= COLOUR_FLAG_256;
-	gc->us = 0;
+	gc->us = 8;
 	utf8_set(&gc->data, gce->data.data);
 	gc->link = 0;
 }
@@ -956,7 +956,7 @@ grid_string_cells_code(const struct grid_cell *lastgc,
 	for (i = 0; i < nitems(attrs); i++) {
 		if (((~attr & attrs[i].mask) &&
 		    (lastattr & attrs[i].mask)) ||
-		    (lastgc->us != 0 && gc->us == 0)) {
+		    (lastgc->us != 8 && gc->us == 8)) {
 			s[n++] = 0;
 			lastattr &= GRID_ATTR_CHARSET;
 			break;
