@@ -1131,19 +1131,33 @@ format_cb_mouse_word(struct format_tree *ft)
 	if (!ft->m.valid)
 		return (NULL);
 	wp = cmd_mouse_pane(&ft->m, NULL, NULL);
-	if (wp == NULL)
-		return (NULL);
-	if (cmd_mouse_at(wp, &ft->m, &x, &y, 0) != 0)
-		return (NULL);
+	if (wp != NULL) {
+		if (cmd_mouse_at(wp, &ft->m, &x, &y, 0) != 0)
+			return (NULL);
 
-	if (!TAILQ_EMPTY(&wp->modes)) {
-		if (TAILQ_FIRST(&wp->modes)->mode == &window_copy_mode ||
-		    TAILQ_FIRST(&wp->modes)->mode == &window_view_mode)
-			return (s = window_copy_get_word(wp, x, y));
-		return (NULL);
+		if (!TAILQ_EMPTY(&wp->modes)) {
+			if (TAILQ_FIRST(&wp->modes)->mode == &window_copy_mode ||
+			    TAILQ_FIRST(&wp->modes)->mode == &window_view_mode)
+				return (s = window_copy_get_word(wp, x, y));
+			return (NULL);
+		}
+		gd = wp->base.grid;
+		return (format_grid_word(gd, x, gd->hsize + y));
 	}
-	gd = wp->base.grid;
-	return (format_grid_word(gd, x, gd->hsize + y));
+	if (ft->c != NULL && (ft->c->tty.flags & TTY_STARTED)) {
+		int x, y; 
+		if (ft->m.statusat == 0 && ft->m.y < ft->m.statuslines) {
+			x = ft->m.x;
+			y = ft->m.y;
+		}
+		if (ft->m.statusat > 0 && ft->m.y >= (u_int)ft->m.statusat) {
+			x = ft->m.x;
+			y = ft->m.y - ft->m.statusat;
+		}
+		gd = ft->c->status.screen.grid;
+		return (format_grid_word(gd, x, gd->hsize + y));
+	}
+	return (NULL);
 }
 
 /* Callback for mouse_hyperlink. */
