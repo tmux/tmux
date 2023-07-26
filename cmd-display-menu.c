@@ -38,10 +38,15 @@ const struct cmd_entry cmd_display_menu_entry = {
 	.name = "display-menu",
 	.alias = "menu",
 
-	.args = { "c:t:s:S:OT:x:y:", 1, -1, cmd_display_menu_args_parse },
-	.usage = "[-O] [-c target-client] [-s style] [-S starting-choice] "
-		 CMD_TARGET_PANE_USAGE " [-T title] [-x position] "
-		 "[-y position] name key command ...",
+	.args = { "c:C:t:s:S:OT:x:y:", 1, -1, cmd_display_menu_args_parse },
+	/* TODO: For consistency with display-popup the -S flag could be used
+	 * to specify the border-style rather than the selection choice.
+	 * Yet this can be considered a breaking change, which might not be
+	 * acceptable.
+	 */
+	.usage = "[-O] [-c target-client] [-C starting-choice] "
+		 "[-s style] [-S border-style] " CMD_TARGET_PANE_USAGE
+		 "[-T title] [-x position] [-y position] name key command ...",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -290,6 +295,7 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	struct menu_item	 menu_item;
 	const char		*key, *name;
 	const char		*style = args_get(args, 's');
+	const char		*border_style = args_get(args, 'S');
 	char			*title, *cause;
 	int			 flags = 0, starting_choice = 0;
 	u_int			 px, py, i, count = args_count(args);
@@ -297,11 +303,11 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	if (tc->overlay_draw != NULL)
 		return (CMD_RETURN_NORMAL);
 
-	if (args_has(args, 'S')) {
-		if (strcmp(args_get(args, 'S'), "-") == 0)
+	if (args_has(args, 'C')) {
+		if (strcmp(args_get(args, 'C'), "-") == 0)
 			starting_choice = -1;
 		else {
-			starting_choice = args_strtonum(args, 'S', 0, UINT_MAX,
+			starting_choice = args_strtonum(args, 'C', 0, UINT_MAX,
 			    &cause);
 			if (cause != NULL) {
 				cmdq_error(item, "starting choice %s", cause);
@@ -358,7 +364,7 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	if (!event->m.valid)
 		flags |= MENU_NOMOUSE;
 	if (menu_display(menu, flags, starting_choice, item, px, py, tc, style,
-	    target, NULL, NULL) != 0)
+	    border_style, target, NULL, NULL) != 0)
 		return (CMD_RETURN_NORMAL);
 	return (CMD_RETURN_WAIT);
 }

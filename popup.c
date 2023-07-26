@@ -575,7 +575,7 @@ menu:
 	else
 		x = 0;
 	pd->md = menu_prepare(pd->menu, 0, 0, NULL, x, m->y, c, NULL, NULL,
-	    popup_menu_done, pd);
+	    NULL, popup_menu_done, pd);
 	c->flags |= CLIENT_REDRAWOVERLAY;
 
 out:

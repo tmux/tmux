@@ -335,6 +335,15 @@ const struct options_table_entry options_table[] = {
 	  .text = "Default style of menu."
 	},
 
+	{ .name = "menu-border-style",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "default",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ",",
+	  .text = "Default style of menu borders."
+	},
+
 	{ .name = "message-limit",
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .scope = OPTIONS_TABLE_SERVER,

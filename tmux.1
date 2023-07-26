@@ -4083,6 +4083,13 @@ See the
 section on how to specify
 .Ar style .
 Attributes are ignored.
+.It Ic menu-border-style Ar style
+Set the menu border style.
+See the
+.Sx STYLES
+section on how to specify
+.Ar style .
+Attributes are ignored.
 .It Ic message-command-style Ar style
 Set status line message command style.
 This is used for the command prompt with
@@ -6038,8 +6045,9 @@ the default is
 .Op Fl O
 .Op Fl c Ar target-client
 .Op Fl s Ar style
+.Op Fl S Ar style
 .Op Fl t Ar target-pane
-.Op Fl S Ar starting-choice
+.Op Fl C Ar starting-choice
 .Op Fl T Ar title
 .Op Fl x Ar position
 .Op Fl y Ar position
@@ -6067,14 +6075,16 @@ The name may be empty for a separator line, in which case both the key and
 command should be omitted.
 .Pp
 .Fl s
-sets the style for the menu (see
+sets the style for the menu and
+.Fl S
+sets the style for the menu border (see
 .Sx STYLES ) .
 .Pp
 .Fl T
 is a format for the menu title (see
 .Sx FORMATS ) .
 .Pp
-.Fl S
+.Fl C
 sets the menu item selected by default, if the menu is not bound to a mouse key
 binding.
 .Pp
