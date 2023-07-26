@@ -27,6 +27,8 @@ struct menu_data {
 	struct cmdq_item	*item;
 	int			 flags;
 
+	struct grid_cell	 style;
+
 	struct cmd_find_state	 fs;
 	struct screen		 s;
 
@@ -203,7 +205,7 @@ menu_draw_cb(struct client *c, void *data,
 
 	screen_write_start(&ctx, s);
 	screen_write_clearscreen(&ctx, 8);
-	screen_write_menu(&ctx, menu, md->choice, &gc);
+	screen_write_menu(&ctx, menu, md->choice, &md->style, &gc);
 	screen_write_stop(&ctx);
 
 	for (i = 0; i < screen_size_y(&md->s); i++) {
@@ -431,11 +433,13 @@ chosen:
 struct menu_data *
 menu_prepare(struct menu *menu, int flags, int starting_choice,
     struct cmdq_item *item, u_int px, u_int py, struct client *c,
-    struct cmd_find_state *fs, menu_choice_cb cb, void *data)
+    const char *style, struct cmd_find_state *fs, menu_choice_cb cb, void *data)
 {
 	struct menu_data	*md;
 	int			 choice;
 	const char		*name;
+	struct style		 sytmp;
+	struct options		*o = c->session->curw->window->options;
 
 	if (c->tty.sx < menu->width + 4 || c->tty.sy < menu->count + 2)
 		return (NULL);
@@ -447,6 +451,17 @@ menu_prepare(struct menu *menu, int flags, int starting_choice,
 	md = xcalloc(1, sizeof *md);
 	md->item = item;
 	md->flags = flags;
+
+	memcpy(&md->style, &grid_default_cell, sizeof md->style);
+	style_apply(&md->style, o, "menu-style", NULL);
+	if (style != NULL) {
+		style_set(&sytmp, &grid_default_cell);
+		if (style_parse(&sytmp, &md->style, style) == 0) {
+			md->style.fg = sytmp.gc.fg;
+			md->style.bg = sytmp.gc.bg;
+		}
+	}
+	md->style.attr = 0;
 
 	if (fs != NULL)
 		cmd_find_copy_state(&md->fs, fs);
@@ -500,12 +515,12 @@ menu_prepare(struct menu *menu, int flags, int starting_choice,
 int
 menu_display(struct menu *menu, int flags, int starting_choice,
     struct cmdq_item *item, u_int px, u_int py, struct client *c,
-    struct cmd_find_state *fs, menu_choice_cb cb, void *data)
+    const char *style, struct cmd_find_state *fs, menu_choice_cb cb, void *data)
 {
 	struct menu_data	*md;
 
-	md = menu_prepare(menu, flags, starting_choice, item, px, py, c, fs, cb,
-	    data);
+	md = menu_prepare(menu, flags, starting_choice, item, px, py, c, style,
+	    fs, cb, data);
 	if (md == NULL)
 		return (-1);
 	server_client_set_overlay(c, 0, NULL, menu_mode_cb, menu_draw_cb,

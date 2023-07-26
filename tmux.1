@@ -4076,6 +4076,13 @@ The default is to run
 .Xr lock 1
 with
 .Fl np .
+.It Ic menu-style Ar style
+Set the menu style.
+See the
+.Sx STYLES
+section on how to specify
+.Ar style .
+Attributes are ignored.
 .It Ic message-command-style Ar style
 Set status line message command style.
 This is used for the command prompt with
@@ -4543,20 +4550,18 @@ Attributes are ignored.
 .Pp
 .It Ic popup-style Ar style
 Set the popup style.
-For how to specify
-.Ar style ,
-see the
+See the
 .Sx STYLES
-section.
+section on how to specify
+.Ar style .
 Attributes are ignored.
 .Pp
 .It Ic popup-border-style Ar style
 Set the popup border style.
-For how to specify
-.Ar style ,
-see the
+See the
 .Sx STYLES
-section.
+section on how to specify
+.Ar style .
 Attributes are ignored.
 .Pp
 .It Ic popup-border-lines Ar type
@@ -6032,6 +6037,7 @@ the default is
 .It Xo Ic display-menu
 .Op Fl O
 .Op Fl c Ar target-client
+.Op Fl s Ar style
 .Op Fl t Ar target-pane
 .Op Fl S Ar starting-choice
 .Op Fl T Ar title
@@ -6060,9 +6066,14 @@ may not be chosen.
 The name may be empty for a separator line, in which case both the key and
 command should be omitted.
 .Pp
+.Fl s
+sets the style for the menu (see
+.Sx STYLES ) .
+.Pp
 .Fl T
 is a format for the menu title (see
 .Sx FORMATS ) .
+.Pp
 .Fl S
 sets the menu item selected by default, if the menu is not bound to a mouse key
 binding.
@@ -6173,13 +6184,13 @@ forwards any input read from stdin to the empty pane given by
 .Tg popup
 .It Xo Ic display-popup
 .Op Fl BCE
-.Op Fl b Ar border-lines
+.Op Fl b Ar type
 .Op Fl c Ar target-client
 .Op Fl d Ar start-directory
 .Op Fl e Ar environment
 .Op Fl h Ar height
 .Op Fl s Ar style
-.Op Fl S Ar border-style
+.Op Fl S Ar style
 .Op Fl t Ar target-pane
 .Op Fl T Ar title
 .Op Fl w Ar width
@@ -6231,7 +6242,7 @@ option is ignored.
 See
 .Ic popup-border-lines
 for possible values for
-.Ar border-lines .
+.Ar type .
 .Pp
 .Fl s
 sets the style for the popup and

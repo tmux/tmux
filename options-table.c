@@ -326,6 +326,15 @@ const struct options_table_entry options_table[] = {
 		  "Empty does not write a history file."
 	},
 
+	{ .name = "menu-style",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .default_str = "default",
+	  .separator = ",",
+	  .text = "Default style of menu."
+	},
+
 	{ .name = "message-limit",
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .scope = OPTIONS_TABLE_SERVER,
