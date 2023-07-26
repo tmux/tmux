@@ -315,6 +315,7 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	else
 		title = xstrdup("");
 	menu = menu_create(title);
+	free(title);
 
 	for (i = 0; i != count; /* nothing */) {
 		name = args_string(args, i++);
@@ -325,7 +326,6 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 
 		if (count - i < 2) {
 			cmdq_error(item, "not enough arguments");
-			free(title);
 			menu_free(menu);
 			return (CMD_RETURN_ERROR);
 		}
@@ -337,7 +337,6 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 
 		menu_add_item(menu, &menu_item, item, tc, target);
 	}
-	free(title);
 	if (menu == NULL) {
 		cmdq_error(item, "invalid menu arguments");
 		return (CMD_RETURN_ERROR);
