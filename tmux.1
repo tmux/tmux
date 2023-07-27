@@ -4090,6 +4090,12 @@ See the
 section on how to specify
 .Ar style .
 Attributes are ignored.
+.It Ic menu-border-lines Ar type
+Set the type of characters used for drawing menu borders.
+See
+.Ic popup-border-lines
+for possible values for
+.Ar type .
 .It Ic message-command-style Ar style
 Set status line message command style.
 This is used for the command prompt with
@@ -6043,6 +6049,7 @@ the default is
 .Tg menu
 .It Xo Ic display-menu
 .Op Fl O
+.Op Fl b Ar type
 .Op Fl c Ar target-client
 .Op Fl s Ar style
 .Op Fl S Ar style
@@ -6073,6 +6080,13 @@ If the name begins with a hyphen (-), then the item is disabled (shown dim) and
 may not be chosen.
 The name may be empty for a separator line, in which case both the key and
 command should be omitted.
+.Pp
+.Fl b
+sets the type of characters used for drawing menu borders.
+See
+.Ic popup-border-lines
+for possible values for
+.Ar type .
 .Pp
 .Fl s
 sets the style for the menu and
@@ -6243,7 +6257,7 @@ If omitted, half of the terminal size is used.
 does not surround the popup by a border.
 .Pp
 .Fl b
-sets the type of border line for the popup.
+sets the type of characters used for drawing popup borders.
 When
 .Fl B
 is specified, the

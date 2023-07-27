@@ -38,15 +38,16 @@ const struct cmd_entry cmd_display_menu_entry = {
 	.name = "display-menu",
 	.alias = "menu",
 
-	.args = { "c:C:t:s:S:OT:x:y:", 1, -1, cmd_display_menu_args_parse },
+	.args = { "b:c:C:t:s:S:OT:x:y:", 1, -1, cmd_display_menu_args_parse },
 	/* TODO: For consistency with display-popup the -S flag could be used
 	 * to specify the border-style rather than the selection choice.
 	 * Yet this can be considered a breaking change, which might not be
 	 * acceptable.
 	 */
-	.usage = "[-O] [-c target-client] [-C starting-choice] "
-		 "[-s style] [-S border-style] " CMD_TARGET_PANE_USAGE
-		 "[-T title] [-x position] [-y position] name key command ...",
+	.usage = "[-O] [-b border-lines] [-c target-client] "
+		 "[-C starting-choice] [-s style] [-S border-style] "
+		 CMD_TARGET_PANE_USAGE "[-T title] [-x position] [-y position] "
+		 "name key command ...",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -293,12 +294,16 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	struct client		*tc = cmdq_get_target_client(item);
 	struct menu		*menu = NULL;
 	struct menu_item	 menu_item;
-	const char		*key, *name;
+	const char		*key, *name, *value;
 	const char		*style = args_get(args, 's');
 	const char		*border_style = args_get(args, 'S');
+	enum box_lines		 lines = BOX_LINES_DEFAULT;
 	char			*title, *cause;
 	int			 flags = 0, starting_choice = 0;
 	u_int			 px, py, i, count = args_count(args);
+	struct options		*o = target->s->curw->window->options;
+	struct options_entry	*oe;
+
 
 	if (tc->overlay_draw != NULL)
 		return (CMD_RETURN_NORMAL);
@@ -359,12 +364,24 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 	}
 
+	value = args_get(args, 'b');
+	if (value != NULL) {
+		oe = options_get(o, "menu-border-lines");
+		lines = options_find_choice(options_table_entry(oe), value,
+		    &cause);
+		if (lines == -1) {
+			cmdq_error(item, "menu-border-lines %s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
+		}
+	}
+
 	if (args_has(args, 'O'))
 		flags |= MENU_STAYOPEN;
 	if (!event->m.valid)
 		flags |= MENU_NOMOUSE;
-	if (menu_display(menu, flags, starting_choice, item, px, py, tc, style,
-	    border_style, target, NULL, NULL) != 0)
+	if (menu_display(menu, flags, starting_choice, item, px, py, tc, lines,
+	    style, border_style, target, NULL, NULL) != 0)
 		return (CMD_RETURN_NORMAL);
 	return (CMD_RETURN_WAIT);
 }

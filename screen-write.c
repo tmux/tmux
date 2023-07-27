@@ -597,7 +597,8 @@ screen_write_fast_copy(struct screen_write_ctx *ctx, struct screen *src,
 /* Draw a horizontal line on screen. */
 void
 screen_write_hline(struct screen_write_ctx *ctx, u_int nx, int left, int right,
-   const struct grid_cell *menu_gc, const struct grid_cell *border_gc)
+   enum box_lines l, const struct grid_cell *menu_gc,
+   const struct grid_cell *border_gc)
 {
 	struct screen		*s = ctx->s;
 	struct grid_cell	 gc, edge_gc;
@@ -610,14 +611,25 @@ screen_write_hline(struct screen_write_ctx *ctx, u_int nx, int left, int right,
 	    sizeof gc);
 	gc.attr |= GRID_ATTR_CHARSET;
 
+	// DEV: default to &gc instead of &grid_default_cell?
 	memcpy(&edge_gc, (border_gc != NULL) ? border_gc : &grid_default_cell,
 	    sizeof edge_gc);
 	edge_gc.attr |= GRID_ATTR_CHARSET;
 
-	screen_write_putc(ctx, &edge_gc, left ? 't' : 'q');
+	screen_write_box_border_set(l, left ? CELL_LEFTJOIN : CELL_RIGHTJOIN,
+	    &edge_gc);
+	screen_write_cell(ctx, &edge_gc);
+
+	// TODO: Should the hline be drawn in the style of the menu entries
+	// (use &gc) or rather in the style of the border (use &edge_gc)?
+	screen_write_box_border_set(l, CELL_LEFTRIGHT, &gc);
 	for (i = 1; i < nx - 1; i++)
-		screen_write_putc(ctx, &gc, 'q');
-	screen_write_putc(ctx, &edge_gc, right ? 'u' : 'q');
+		screen_write_cell(ctx, &gc);
+	// ENDTODO
+
+	screen_write_box_border_set(l, right ? CELL_RIGHTJOIN : CELL_LEFTJOIN,
+	    &edge_gc);
+	screen_write_cell(ctx, &edge_gc);
 
 	screen_write_set_cursor(ctx, cx, cy);
 }
@@ -650,8 +662,8 @@ screen_write_vline(struct screen_write_ctx *ctx, u_int ny, int top, int bottom)
 /* Draw a menu on screen. */
 void
 screen_write_menu(struct screen_write_ctx *ctx, struct menu *menu, int choice,
-    const struct grid_cell *menu_gc, const struct grid_cell *border_gc,
-    const struct grid_cell *choice_gc)
+    enum box_lines l, const struct grid_cell *menu_gc,
+    const struct grid_cell *border_gc, const struct grid_cell *choice_gc)
 {
 	struct screen		*s = ctx->s;
 	struct grid_cell	 default_gc;
@@ -664,15 +676,15 @@ screen_write_menu(struct screen_write_ctx *ctx, struct menu *menu, int choice,
 
 	memcpy(&default_gc, menu_gc, sizeof default_gc);
 
-	screen_write_box(ctx, menu->width + 4, menu->count + 2,
-	    BOX_LINES_DEFAULT, border_gc, menu->title);
+	screen_write_box(ctx, menu->width + 4, menu->count + 2, l, border_gc,
+	    menu->title);
 
 	for (i = 0; i < menu->count; i++) {
 		name = menu->items[i].name;
 		if (name == NULL) {
 			/* Draw separator line */
 			screen_write_cursormove(ctx, cx, cy + 1 + i, 0);
-			screen_write_hline(ctx, menu->width + 4, 1, 1,
+			screen_write_hline(ctx, menu->width + 4, 1, 1, l,
 			    // TODO: Are separator lines considered to be part
 			    // of the menu or rather the menu border? In the
 			    // latter case they need be drawn with border_gc
