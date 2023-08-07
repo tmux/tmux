@@ -441,7 +441,7 @@ chosen:
 struct menu_data *
 menu_prepare(struct menu *menu, int flags, int starting_choice,
     struct cmdq_item *item, u_int px, u_int py, struct client *c,
-    enum box_lines l, const char *style, const char *border_style,
+    enum box_lines lines, const char *style, const char *border_style,
     struct cmd_find_state *fs, menu_choice_cb cb, void *data)
 {
 	struct menu_data	*md;
@@ -449,7 +449,6 @@ menu_prepare(struct menu *menu, int flags, int starting_choice,
 	const char		*name;
 	struct style		 sytmp;
 	struct options		*o = c->session->curw->window->options;
-	enum box_lines		 lines = l;
 
 	if (c->tty.sx < menu->width + 4 || c->tty.sy < menu->count + 2)
 		return (NULL);
@@ -458,9 +457,8 @@ menu_prepare(struct menu *menu, int flags, int starting_choice,
 	if (py + menu->count + 2 > c->tty.sy)
 		py = c->tty.sy - menu->count - 2;
 
-	if (lines == BOX_LINES_DEFAULT) {
+	if (lines == BOX_LINES_DEFAULT)
 		lines = options_get_number(o, "menu-border-lines");
-	}
 
 	md = xcalloc(1, sizeof *md);
 	md->item = item;
