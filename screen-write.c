@@ -30,9 +30,6 @@ static void	screen_write_collect_clear(struct screen_write_ctx *, u_int,
 static void	screen_write_collect_scroll(struct screen_write_ctx *, u_int);
 static void	screen_write_collect_flush(struct screen_write_ctx *, int,
 		    const char *);
-static void	screen_write_box_border_set(enum box_lines, int,
-		    struct grid_cell *);
-
 static int	screen_write_overwrite(struct screen_write_ctx *,
 		    struct grid_cell *, u_int);
 static const struct grid_cell *screen_write_combine(struct screen_write_ctx *,
@@ -597,27 +594,23 @@ screen_write_fast_copy(struct screen_write_ctx *ctx, struct screen *src,
 /* Draw a horizontal line on screen. */
 void
 screen_write_hline(struct screen_write_ctx *ctx, u_int nx, int left, int right,
-   const struct grid_cell *menu_gc, const struct grid_cell *border_gc)
+   const struct grid_cell *border_gc)
 {
 	struct screen		*s = ctx->s;
-	struct grid_cell	 gc, edge_gc;
+	struct grid_cell	 gc;
 	u_int			 cx, cy, i;
 
 	cx = s->cx;
 	cy = s->cy;
 
-	memcpy(&gc, (menu_gc != NULL) ? menu_gc : &grid_default_cell,
+	memcpy(&gc, (border_gc != NULL) ? border_gc : &grid_default_cell,
 	    sizeof gc);
 	gc.attr |= GRID_ATTR_CHARSET;
 
-	memcpy(&edge_gc, (border_gc != NULL) ? border_gc : &grid_default_cell,
-	    sizeof edge_gc);
-	edge_gc.attr |= GRID_ATTR_CHARSET;
-
-	screen_write_putc(ctx, &edge_gc, left ? 't' : 'q');
+	screen_write_putc(ctx, &gc, left ? 't' : 'q');
 	for (i = 1; i < nx - 1; i++)
 		screen_write_putc(ctx, &gc, 'q');
-	screen_write_putc(ctx, &edge_gc, right ? 'u' : 'q');
+	screen_write_putc(ctx, &gc, right ? 'u' : 'q');
 
 	screen_write_set_cursor(ctx, cx, cy);
 }
@@ -673,11 +666,7 @@ screen_write_menu(struct screen_write_ctx *ctx, struct menu *menu, int choice,
 			/* Draw separator line */
 			screen_write_cursormove(ctx, cx, cy + 1 + i, 0);
 			screen_write_hline(ctx, menu->width + 4, 1, 1,
-			    // TODO: Are separator lines considered to be part
-			    // of the menu or rather the menu border? In the
-			    // latter case they need be drawn with border_gc
-			    // rather than &default_gc?
-			    &default_gc, border_gc);
+			    &default_gc);
 			continue;
 		}
 
@@ -706,6 +695,7 @@ screen_write_menu(struct screen_write_ctx *ctx, struct menu *menu, int choice,
 	screen_write_set_cursor(ctx, cx, cy);
 }
 
+/* Select character set for drawing border lines */
 static void
 screen_write_box_border_set(enum box_lines box_lines, int cell_type,
     struct grid_cell *gc)
