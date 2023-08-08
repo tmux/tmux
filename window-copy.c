@@ -131,7 +131,8 @@ static void	window_copy_cursor_previous_word_pos(struct window_mode_entry *,
 		    const char *, u_int *, u_int *);
 static void	window_copy_cursor_previous_word(struct window_mode_entry *,
 		    const char *, int);
-static void	window_copy_cursor_prompt(struct window_mode_entry *, int);
+static void	window_copy_cursor_prompt(struct window_mode_entry *, int,
+		    const char *);
 static void	window_copy_scroll_up(struct window_mode_entry *, u_int);
 static void	window_copy_scroll_down(struct window_mode_entry *, u_int);
 static void	window_copy_rectangle_set(struct window_mode_entry *, int);
@@ -2245,8 +2246,9 @@ static enum window_copy_cmd_action
 window_copy_cmd_next_prompt(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
+	const char			*arg1 = args_string(cs->args, 1);
 
-	window_copy_cursor_prompt(wme, 1);
+	window_copy_cursor_prompt(wme, 1, arg1);
 	return (WINDOW_COPY_CMD_NOTHING);
 }
 
@@ -2254,8 +2256,9 @@ static enum window_copy_cmd_action
 window_copy_cmd_previous_prompt(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
+	const char			*arg1 = args_string(cs->args, 1);
 
-	window_copy_cursor_prompt(wme, 0);
+	window_copy_cursor_prompt(wme, 0, arg1);
 	return (WINDOW_COPY_CMD_NOTHING);
 }
 
@@ -2721,7 +2724,7 @@ static const struct {
 	},
 	{ .command = "previous-prompt",
 	  .minargs = 0,
-	  .maxargs = 0,
+	  .maxargs = 1,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_previous_prompt
 	},
@@ -5389,14 +5392,20 @@ window_copy_cursor_previous_word(struct window_mode_entry *wme,
 }
 
 static void
-window_copy_cursor_prompt(struct window_mode_entry *wme, int direction)
+window_copy_cursor_prompt(struct window_mode_entry *wme, int direction,
+    const char *args)
 {
 	struct window_copy_mode_data	*data = wme->data;
 	struct screen			*s = data->backing;
 	struct grid			*gd = s->grid;
 	u_int				 end_line;
 	u_int				 line = gd->hsize - data->oy + data->cy;
-	int				 add;
+	int				 add, line_flag;
+
+	if (args != NULL && strcmp(args, "-o") == 0)
+		line_flag = GRID_LINE_START_OUTPUT;
+	else
+		line_flag = GRID_LINE_START_PROMPT;
 
 	if (direction == 0) { /* up */
 		add = -1;
@@ -5413,7 +5422,7 @@ window_copy_cursor_prompt(struct window_mode_entry *wme, int direction)
 			return;
 		line += add;
 
-		if (grid_get_line(gd, line)->flags & GRID_LINE_START_PROMPT)
+		if (grid_get_line(gd, line)->flags & line_flag)
 			break;
 	}
 

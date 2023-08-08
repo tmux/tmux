@@ -672,6 +672,7 @@ struct colour_palette {
 #define GRID_LINE_EXTENDED 0x2
 #define GRID_LINE_DEAD 0x4
 #define GRID_LINE_START_PROMPT 0x8
+#define GRID_LINE_START_OUTPUT 0x10
 
 /* Grid string flags. */
 #define GRID_STRING_WITH_SEQUENCES 0x1
@@ -3306,11 +3307,13 @@ void		 menu_add_item(struct menu *, const struct menu_item *,
 		    struct cmd_find_state *);
 void		 menu_free(struct menu *);
 struct menu_data *menu_prepare(struct menu *, int, int, struct cmdq_item *,
-		    u_int, u_int, struct client *, struct cmd_find_state *,
-		    menu_choice_cb, void *);
+		    u_int, u_int, struct client *, enum box_lines, const char *,
+		    const char *, struct cmd_find_state *, menu_choice_cb,
+		    void *);
 int		 menu_display(struct menu *, int, int, struct cmdq_item *,
-		    u_int, u_int, struct client *, struct cmd_find_state *,
-		    menu_choice_cb, void *);
+		    u_int, u_int, struct client *, enum box_lines, const char *,
+		    const char *, struct cmd_find_state *, menu_choice_cb,
+		    void *);
 struct screen	*menu_mode_cb(struct client *, void *, u_int *, u_int *);
 void		 menu_check_cb(struct client *, void *, u_int, u_int, u_int,
 		    struct overlay_ranges *);
