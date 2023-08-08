@@ -30,7 +30,6 @@ static void	screen_write_collect_clear(struct screen_write_ctx *, u_int,
 static void	screen_write_collect_scroll(struct screen_write_ctx *, u_int);
 static void	screen_write_collect_flush(struct screen_write_ctx *, int,
 		    const char *);
-
 static int	screen_write_overwrite(struct screen_write_ctx *,
 		    struct grid_cell *, u_int);
 static const struct grid_cell *screen_write_combine(struct screen_write_ctx *,
@@ -592,9 +591,46 @@ screen_write_fast_copy(struct screen_write_ctx *ctx, struct screen *src,
 	}
 }
 
+/* Select character set for drawing border lines. */
+static void
+screen_write_box_border_set(enum box_lines lines, int cell_type,
+    struct grid_cell *gc)
+{
+	switch (lines) {
+        case BOX_LINES_NONE:
+		break;
+        case BOX_LINES_DOUBLE:
+                gc->attr &= ~GRID_ATTR_CHARSET;
+                utf8_copy(&gc->data, tty_acs_double_borders(cell_type));
+		break;
+        case BOX_LINES_HEAVY:
+                gc->attr &= ~GRID_ATTR_CHARSET;
+                utf8_copy(&gc->data, tty_acs_heavy_borders(cell_type));
+		break;
+        case BOX_LINES_ROUNDED:
+                gc->attr &= ~GRID_ATTR_CHARSET;
+                utf8_copy(&gc->data, tty_acs_rounded_borders(cell_type));
+		break;
+        case BOX_LINES_SIMPLE:
+                gc->attr &= ~GRID_ATTR_CHARSET;
+                utf8_set(&gc->data, SIMPLE_BORDERS[cell_type]);
+                break;
+        case BOX_LINES_PADDED:
+                gc->attr &= ~GRID_ATTR_CHARSET;
+                utf8_set(&gc->data, PADDED_BORDERS[cell_type]);
+                break;
+	case BOX_LINES_SINGLE:
+	case BOX_LINES_DEFAULT:
+		gc->attr |= GRID_ATTR_CHARSET;
+		utf8_set(&gc->data, CELL_BORDERS[cell_type]);
+		break;
+	}
+}
+
 /* Draw a horizontal line on screen. */
 void
-screen_write_hline(struct screen_write_ctx *ctx, u_int nx, int left, int right)
+screen_write_hline(struct screen_write_ctx *ctx, u_int nx, int left, int right,
+   enum box_lines lines, const struct grid_cell *border_gc)
 {
 	struct screen		*s = ctx->s;
 	struct grid_cell	 gc;
@@ -603,13 +639,27 @@ screen_write_hline(struct screen_write_ctx *ctx, u_int nx, int left, int right)
 	cx = s->cx;
 	cy = s->cy;
 
-	memcpy(&gc, &grid_default_cell, sizeof gc);
+	if (border_gc != NULL)
+		memcpy(&gc, border_gc, sizeof gc);
+	else
+		memcpy(&gc, &grid_default_cell, sizeof gc);
 	gc.attr |= GRID_ATTR_CHARSET;
 
-	screen_write_putc(ctx, &gc, left ? 't' : 'q');
+	if (left)
+		screen_write_box_border_set(lines, CELL_LEFTJOIN, &gc);
+	else
+		screen_write_box_border_set(lines, CELL_LEFTRIGHT, &gc);
+	screen_write_cell(ctx, &gc);
+
+	screen_write_box_border_set(lines, CELL_LEFTRIGHT, &gc);
 	for (i = 1; i < nx - 1; i++)
-		screen_write_putc(ctx, &gc, 'q');
-	screen_write_putc(ctx, &gc, right ? 'u' : 'q');
+		screen_write_cell(ctx, &gc);
+
+	if (right)
+		screen_write_box_border_set(lines, CELL_RIGHTJOIN, &gc);
+	else
+		screen_write_box_border_set(lines, CELL_LEFTRIGHT, &gc);
+	screen_write_cell(ctx, &gc);
 
 	screen_write_set_cursor(ctx, cx, cy);
 }
@@ -641,84 +691,52 @@ screen_write_vline(struct screen_write_ctx *ctx, u_int ny, int top, int bottom)
 
 /* Draw a menu on screen. */
 void
-screen_write_menu(struct screen_write_ctx *ctx, struct menu *menu,
-    int choice, const struct grid_cell *choice_gc)
+screen_write_menu(struct screen_write_ctx *ctx, struct menu *menu, int choice,
+    enum box_lines lines, const struct grid_cell *menu_gc,
+    const struct grid_cell *border_gc, const struct grid_cell *choice_gc)
 {
 	struct screen		*s = ctx->s;
 	struct grid_cell	 default_gc;
 	const struct grid_cell	*gc = &default_gc;
-	u_int			 cx, cy, i, j;
+	u_int			 cx, cy, i, j, width = menu->width;
 	const char		*name;
 
 	cx = s->cx;
 	cy = s->cy;
 
-	memcpy(&default_gc, &grid_default_cell, sizeof default_gc);
+	memcpy(&default_gc, menu_gc, sizeof default_gc);
 
-	screen_write_box(ctx, menu->width + 4, menu->count + 2,
-	    BOX_LINES_DEFAULT, &default_gc, menu->title);
+	screen_write_box(ctx, menu->width + 4, menu->count + 2, lines,
+	    border_gc, menu->title);
 
 	for (i = 0; i < menu->count; i++) {
 		name = menu->items[i].name;
 		if (name == NULL) {
 			screen_write_cursormove(ctx, cx, cy + 1 + i, 0);
-			screen_write_hline(ctx, menu->width + 4, 1, 1);
-		} else {
-			if (choice >= 0 && i == (u_int)choice && *name != '-')
-				gc = choice_gc;
-			screen_write_cursormove(ctx, cx + 2, cy + 1 + i, 0);
-			for (j = 0; j < menu->width; j++)
-				screen_write_putc(ctx, gc, ' ');
-			screen_write_cursormove(ctx, cx + 2, cy + 1 + i, 0);
-			if (*name == '-') {
-				name++;
-				default_gc.attr |= GRID_ATTR_DIM;
-				format_draw(ctx, gc, menu->width, name, NULL,
-				    0);
-				default_gc.attr &= ~GRID_ATTR_DIM;
-			} else
-				format_draw(ctx, gc, menu->width, name, NULL,
-				    gc == choice_gc);
-			gc = &default_gc;
+			screen_write_hline(ctx, width + 4, 1, 1, lines, gc);
+			continue;
 		}
+
+		if (choice >= 0 && i == (u_int)choice && *name != '-')
+			gc = choice_gc;
+
+		screen_write_cursormove(ctx, cx + 2, cy + 1 + i, 0);
+		for (j = 0; j < width; j++)
+			screen_write_putc(ctx, gc, ' ');
+
+		screen_write_cursormove(ctx, cx + 2, cy + 1 + i, 0);
+		if (*name == '-') {
+			default_gc.attr |= GRID_ATTR_DIM;
+			format_draw(ctx, gc, width, name + 1, NULL, 0);
+			default_gc.attr &= ~GRID_ATTR_DIM;
+			continue;
+		}
+
+		format_draw(ctx, gc, width, name, NULL, gc == choice_gc);
+		gc = &default_gc;
 	}
 
 	screen_write_set_cursor(ctx, cx, cy);
-}
-
-static void
-screen_write_box_border_set(enum box_lines box_lines, int cell_type,
-    struct grid_cell *gc)
-{
-	switch (box_lines) {
-        case BOX_LINES_NONE:
-		break;
-        case BOX_LINES_DOUBLE:
-                gc->attr &= ~GRID_ATTR_CHARSET;
-                utf8_copy(&gc->data, tty_acs_double_borders(cell_type));
-		break;
-        case BOX_LINES_HEAVY:
-                gc->attr &= ~GRID_ATTR_CHARSET;
-                utf8_copy(&gc->data, tty_acs_heavy_borders(cell_type));
-		break;
-        case BOX_LINES_ROUNDED:
-                gc->attr &= ~GRID_ATTR_CHARSET;
-                utf8_copy(&gc->data, tty_acs_rounded_borders(cell_type));
-		break;
-        case BOX_LINES_SIMPLE:
-                gc->attr &= ~GRID_ATTR_CHARSET;
-                utf8_set(&gc->data, SIMPLE_BORDERS[cell_type]);
-                break;
-        case BOX_LINES_PADDED:
-                gc->attr &= ~GRID_ATTR_CHARSET;
-                utf8_set(&gc->data, PADDED_BORDERS[cell_type]);
-                break;
-	case BOX_LINES_SINGLE:
-	case BOX_LINES_DEFAULT:
-		gc->attr |= GRID_ATTR_CHARSET;
-		utf8_set(&gc->data, CELL_BORDERS[cell_type]);
-		break;
-	}
 }
 
 /* Draw a box on screen. */
