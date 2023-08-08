@@ -326,6 +326,33 @@ const struct options_table_entry options_table[] = {
 		  "Empty does not write a history file."
 	},
 
+	{ .name = "menu-style",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .default_str = "default",
+	  .separator = ",",
+	  .text = "Default style of menu."
+	},
+
+	{ .name = "menu-border-style",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "default",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ",",
+	  .text = "Default style of menu borders."
+	},
+
+	{ .name = "menu-border-lines",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .choices = options_table_popup_border_lines_list,
+	  .default_num = BOX_LINES_SINGLE,
+	  .text = "Type of characters used to draw menu border lines. Some of "
+	          "these are only supported on terminals with UTF-8 support."
+	},
+
 	{ .name = "message-limit",
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .scope = OPTIONS_TABLE_SERVER,
