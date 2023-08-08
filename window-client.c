@@ -242,7 +242,7 @@ window_client_draw(__unused void *modedata, void *itemdata,
 		screen_write_cursormove(ctx, cx, cy + 2, 0);
 	else
 		screen_write_cursormove(ctx, cx, cy + sy - 1 - lines, 0);
-	screen_write_hline(ctx, sx, 0, 0);
+	screen_write_hline(ctx, sx, 0, 0, BOX_LINES_DEFAULT, NULL);
 
 	if (at != 0)
 		screen_write_cursormove(ctx, cx, cy, 0);
