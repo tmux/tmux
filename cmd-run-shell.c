@@ -44,8 +44,8 @@ const struct cmd_entry cmd_run_shell_entry = {
 	.name = "run-shell",
 	.alias = "run",
 
-	.args = { "bd:Ct:", 0, 1, cmd_run_shell_args_parse },
-	.usage = "[-bC] [-d delay] " CMD_TARGET_PANE_USAGE " [shell-command]",
+	.args = { "bd:Ct:c:", 0, 2, cmd_run_shell_args_parse },
+	.usage = "[-bC] [-d delay] [-c start-directory]" CMD_TARGET_PANE_USAGE " [shell-command]",
 
 	.target = { 't', CMD_FIND_PANE, CMD_FIND_CANFAIL },
 
@@ -145,8 +145,11 @@ cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	if (cdata->client != NULL)
 		cdata->client->references++;
-
-	cdata->cwd = xstrdup(server_client_get_cwd(cmdq_get_client(item), s));
+	if (args_has(args, 'c')) {
+		cdata->cwd = xstrdup(args_get(args, 'c'));
+	} else{
+		cdata->cwd = xstrdup(server_client_get_cwd(cmdq_get_client(item), s));
+	}
 
 	cdata->s = s;
 	if (s != NULL)

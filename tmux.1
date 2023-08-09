@@ -6600,6 +6600,7 @@ option.
 .Op Fl bC
 .Op Fl d Ar delay
 .Op Fl t Ar target-pane
+.Op Fl c Ar start-directory
 .Op Ar shell-command
 .Xc
 .D1 Pq alias: Ic run
@@ -6624,6 +6625,11 @@ the command is run in the background.
 waits for
 .Ar delay
 seconds before starting the command.
+If 
+.Fl c
+is given, the current working directory is set to
+.Ar start-directory
+in which command will run.
 If
 .Fl C
 is not given, any output to stdout is displayed in view mode (in the pane
