@@ -732,7 +732,7 @@ screen_write_menu(struct screen_write_ctx *ctx, struct menu *menu, int choice,
 			continue;
 		}
 
-		format_draw(ctx, gc, width, name, NULL, gc == choice_gc);
+		format_draw(ctx, gc, width, name, NULL, 0);
 		gc = &default_gc;
 	}
 
