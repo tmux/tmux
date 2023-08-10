@@ -29,6 +29,7 @@ struct menu_data {
 
 	struct grid_cell	 style;
 	struct grid_cell	 border_style;
+	struct grid_cell	 selected_style;
 	enum box_lines		 border_lines;
 
 	struct cmd_find_state	 fs;
@@ -201,7 +202,6 @@ menu_draw_cb(struct client *c, void *data,
 	struct menu		*menu = md->menu;
 	struct screen_write_ctx	 ctx;
 	u_int			 i, px = md->px, py = md->py;
-	struct grid_cell	 gc;
 
 	screen_write_start(&ctx, s);
 	screen_write_clearscreen(&ctx, 8);
@@ -210,10 +210,9 @@ menu_draw_cb(struct client *c, void *data,
 		screen_write_box(&ctx, menu->width + 4, menu->count + 2,
 		    md->border_lines, &md->border_style, menu->title);
 	}
-	style_apply(&gc, c->session->curw->window->options, "mode-style", NULL);
 
 	screen_write_menu(&ctx, menu, md->choice, md->border_lines,
-	    &md->style, &md->border_style, &gc);
+	    &md->style, &md->border_style, &md->selected_style);
 	screen_write_stop(&ctx);
 
 	for (i = 0; i < screen_size_y(&md->s); i++) {
@@ -441,8 +440,9 @@ chosen:
 struct menu_data *
 menu_prepare(struct menu *menu, int flags, int starting_choice,
     struct cmdq_item *item, u_int px, u_int py, struct client *c,
-    enum box_lines lines, const char *style, const char *border_style,
-    struct cmd_find_state *fs, menu_choice_cb cb, void *data)
+    enum box_lines lines, const char *style, const char *selected_style,
+    const char *border_style, struct cmd_find_state *fs, menu_choice_cb cb,
+    void *data)
 {
 	struct menu_data	*md;
 	int			 choice;
@@ -475,6 +475,18 @@ menu_prepare(struct menu *menu, int flags, int starting_choice,
 		}
 	}
 	md->style.attr = 0;
+
+	memcpy(&md->selected_style, &grid_default_cell, sizeof md->selected_style);
+	style_apply(&md->selected_style, o, "menu-selected-style", NULL);
+	if (selected_style != NULL) {
+		style_set(&sytmp, &grid_default_cell);
+		if (style_parse(&sytmp, &md->selected_style, selected_style)
+		    == 0) {
+			md->selected_style.fg = sytmp.gc.fg;
+			md->selected_style.bg = sytmp.gc.bg;
+		}
+	}
+	md->selected_style.attr = 0;
 
 	memcpy(&md->border_style, &grid_default_cell, sizeof md->border_style);
 	style_apply(&md->border_style, o, "menu-border-style", NULL);
@@ -539,13 +551,14 @@ menu_prepare(struct menu *menu, int flags, int starting_choice,
 int
 menu_display(struct menu *menu, int flags, int starting_choice,
     struct cmdq_item *item, u_int px, u_int py, struct client *c,
-    enum box_lines lines, const char *style, const char *border_style,
-    struct cmd_find_state *fs, menu_choice_cb cb, void *data)
+    enum box_lines lines, const char *style, const char *selected_style,
+    const char *border_style, struct cmd_find_state *fs, menu_choice_cb cb,
+    void *data)
 {
 	struct menu_data	*md;
 
 	md = menu_prepare(menu, flags, starting_choice, item, px, py, c, lines,
-	    style, border_style, fs, cb, data);
+	    style, selected_style, border_style, fs, cb, data);
 	if (md == NULL)
 		return (-1);
 	server_client_set_overlay(c, 0, NULL, menu_mode_cb, menu_draw_cb,
