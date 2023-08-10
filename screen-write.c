@@ -591,12 +591,12 @@ screen_write_fast_copy(struct screen_write_ctx *ctx, struct screen *src,
 	}
 }
 
-/* Select character set for drawing border lines */
+/* Select character set for drawing border lines. */
 static void
-screen_write_box_border_set(enum box_lines box_lines, int cell_type,
+screen_write_box_border_set(enum box_lines lines, int cell_type,
     struct grid_cell *gc)
 {
-	switch (box_lines) {
+	switch (lines) {
         case BOX_LINES_NONE:
 		break;
         case BOX_LINES_DOUBLE:
@@ -639,20 +639,26 @@ screen_write_hline(struct screen_write_ctx *ctx, u_int nx, int left, int right,
 	cx = s->cx;
 	cy = s->cy;
 
-	memcpy(&gc, (border_gc != NULL) ? border_gc : &grid_default_cell,
-	    sizeof gc);
+	if (border_gc != NULL)
+		memcpy(&gc, border_gc, sizeof gc);
+	else
+		memcpy(&gc, &grid_default_cell, sizeof gc);
 	gc.attr |= GRID_ATTR_CHARSET;
 
-	screen_write_box_border_set(lines, left ? CELL_LEFTJOIN :
-	    CELL_LEFTRIGHT, &gc);
+	if (left)
+		screen_write_box_border_set(lines, CELL_LEFTJOIN, &gc);
+	else
+		screen_write_box_border_set(lines, CELL_LEFTRIGHT, &gc);
 	screen_write_cell(ctx, &gc);
 
 	screen_write_box_border_set(lines, CELL_LEFTRIGHT, &gc);
 	for (i = 1; i < nx - 1; i++)
 		screen_write_cell(ctx, &gc);
 
-	screen_write_box_border_set(lines, right ? CELL_RIGHTJOIN :
-	    CELL_LEFTRIGHT, &gc);
+	if (right)
+		screen_write_box_border_set(lines, CELL_RIGHTJOIN, &gc);
+	else
+		screen_write_box_border_set(lines, CELL_LEFTRIGHT, &gc);
 	screen_write_cell(ctx, &gc);
 
 	screen_write_set_cursor(ctx, cx, cy);
@@ -692,7 +698,7 @@ screen_write_menu(struct screen_write_ctx *ctx, struct menu *menu, int choice,
 	struct screen		*s = ctx->s;
 	struct grid_cell	 default_gc;
 	const struct grid_cell	*gc = &default_gc;
-	u_int			 cx, cy, i, j;
+	u_int			 cx, cy, i, j, width = menu->width;
 	const char		*name;
 
 	cx = s->cx;
@@ -706,33 +712,28 @@ screen_write_menu(struct screen_write_ctx *ctx, struct menu *menu, int choice,
 	for (i = 0; i < menu->count; i++) {
 		name = menu->items[i].name;
 		if (name == NULL) {
-			/* Draw separator line */
 			screen_write_cursormove(ctx, cx, cy + 1 + i, 0);
-			screen_write_hline(ctx, menu->width + 4, 1, 1, lines,
-			    &default_gc);
+			screen_write_hline(ctx, width + 4, 1, 1, lines,
+			    border_gc);
 			continue;
 		}
 
 		if (choice >= 0 && i == (u_int)choice && *name != '-')
 			gc = choice_gc;
-		screen_write_cursormove(ctx, cx + 2, cy + 1 + i, 0);
-		for (j = 0; j <= menu->width; j++)
-			screen_write_putc(ctx, gc, ' ');
 		screen_write_cursormove(ctx, cx + 1, cy + 1 + i, 0);
-		screen_write_putc(ctx, gc, ' ');
+		for (j = 0; j < width + 2; j++)
+			screen_write_putc(ctx, gc, ' ');
+
+		screen_write_cursormove(ctx, cx + 2, cy + 1 + i, 0);
 		if (*name == '-') {
-			name++;
 			default_gc.attr |= GRID_ATTR_DIM;
-			format_draw(ctx, gc, menu->width, name, NULL, 0);
+			format_draw(ctx, gc, width, name + 1, NULL, 0);
 			default_gc.attr &= ~GRID_ATTR_DIM;
-		} else
-			format_draw(ctx, gc, menu->width, name, NULL,
-			    // TODO: Should the following be 0 to always show
-			    // inline style even when the menu item is selected?
-			    gc == choice_gc);
-		// TODO: Is the conditional assignment a performance improvement?
-		if (gc == choice_gc)
-			gc = &default_gc;
+			continue;
+		}
+
+		format_draw(ctx, gc, width, name, NULL, gc == choice_gc);
+		gc = &default_gc;
 	}
 
 	screen_write_set_cursor(ctx, cx, cy);

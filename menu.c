@@ -206,10 +206,10 @@ menu_draw_cb(struct client *c, void *data,
 	screen_write_start(&ctx, s);
 	screen_write_clearscreen(&ctx, 8);
 
-	if (md->border_lines != BOX_LINES_NONE)
+	if (md->border_lines != BOX_LINES_NONE) {
 		screen_write_box(&ctx, menu->width + 4, menu->count + 2,
 		    md->border_lines, &md->border_style, menu->title);
-
+	}
 	style_apply(&gc, c->session->curw->window->options, "mode-style", NULL);
 
 	screen_write_menu(&ctx, menu, md->choice, md->border_lines,

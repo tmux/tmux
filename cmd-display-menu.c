@@ -39,11 +39,6 @@ const struct cmd_entry cmd_display_menu_entry = {
 	.alias = "menu",
 
 	.args = { "b:c:C:t:s:S:OT:x:y:", 1, -1, cmd_display_menu_args_parse },
-	/* TODO: For consistency with display-popup the -S flag could be used
-	 * to specify the border-style rather than the selection choice.
-	 * Yet this can be considered a breaking change, which might not be
-	 * acceptable.
-	 */
 	.usage = "[-O] [-b border-lines] [-c target-client] "
 		 "[-C starting-choice] [-s style] [-S border-style] "
 		 CMD_TARGET_PANE_USAGE "[-T title] [-x position] [-y position] "
@@ -327,6 +322,7 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	else
 		title = xstrdup("");
 	menu = menu_create(title);
+	free(title);
 
 	for (i = 0; i != count; /* nothing */) {
 		name = args_string(args, i++);
@@ -337,7 +333,6 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 
 		if (count - i < 2) {
 			cmdq_error(item, "not enough arguments");
-			free(title);
 			menu_free(menu);
 			return (CMD_RETURN_ERROR);
 		}
@@ -349,7 +344,6 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 
 		menu_add_item(menu, &menu_item, item, tc, target);
 	}
-	free(title);
 	if (menu == NULL) {
 		cmdq_error(item, "invalid menu arguments");
 		return (CMD_RETURN_ERROR);

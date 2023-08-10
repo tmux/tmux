@@ -676,6 +676,7 @@ struct colour_palette {
 #define GRID_LINE_EXTENDED 0x2
 #define GRID_LINE_DEAD 0x4
 #define GRID_LINE_START_PROMPT 0x8
+#define GRID_LINE_START_OUTPUT 0x10
 
 /* Grid string flags. */
 #define GRID_STRING_WITH_SEQUENCES 0x1
@@ -2895,7 +2896,7 @@ void	 screen_write_putc(struct screen_write_ctx *, const struct grid_cell *,
 void	 screen_write_fast_copy(struct screen_write_ctx *, struct screen *,
 	     u_int, u_int, u_int, u_int);
 void	 screen_write_hline(struct screen_write_ctx *, u_int, int, int,
-             enum box_lines, const struct grid_cell *);
+	     enum box_lines, const struct grid_cell *);
 void	 screen_write_vline(struct screen_write_ctx *, u_int, int, int);
 void	 screen_write_menu(struct screen_write_ctx *, struct menu *, int,
 	     enum box_lines, const struct grid_cell *, const struct grid_cell *,

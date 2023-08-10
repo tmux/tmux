@@ -1083,7 +1083,7 @@ format_trim_left(const char *expanded, u_int limit)
 	struct utf8_data	 ud;
 	enum utf8_state		 more;
 
-	out = copy = xcalloc(1, strlen(expanded) + 1);
+	out = copy = xcalloc(2, strlen(expanded) + 1);
 	while (*cp != '\0') {
 		if (width >= limit)
 			break;
@@ -1150,7 +1150,7 @@ format_trim_right(const char *expanded, u_int limit)
 		return (xstrdup(expanded));
 	skip = total_width - limit;
 
-	out = copy = xcalloc(1, strlen(expanded) + 1);
+	out = copy = xcalloc(2, strlen(expanded) + 1);
 	while (*cp != '\0') {
 		if (*cp == '#') {
 			end = format_leading_hashes(cp, &n, &leading_width);

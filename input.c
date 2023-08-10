@@ -2756,6 +2756,9 @@ input_osc_133(struct input_ctx *ictx, const char *p)
 	case 'A':
 		gl->flags |= GRID_LINE_START_PROMPT;
 		break;
+	case 'C':
+		gl->flags |= GRID_LINE_START_OUTPUT;
+		break;
 	}
 }
 
