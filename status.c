@@ -1765,8 +1765,8 @@ status_prompt_complete_list_menu(struct client *c, char **list, u_int size,
 		offset = 0;
 
 	if (menu_display(menu, MENU_NOMOUSE|MENU_TAB, 0, NULL, offset, py, c,
-	    BOX_LINES_DEFAULT, NULL, NULL, NULL, status_prompt_menu_callback,
-	    spm) != 0) {
+	    BOX_LINES_DEFAULT, NULL, NULL, NULL, NULL,
+	    status_prompt_menu_callback, spm) != 0) {
 		menu_free(menu);
 		free(spm);
 		return (0);
@@ -1859,8 +1859,8 @@ status_prompt_complete_window_menu(struct client *c, struct session *s,
 		offset = 0;
 
 	if (menu_display(menu, MENU_NOMOUSE|MENU_TAB, 0, NULL, offset, py, c,
-	    BOX_LINES_DEFAULT, NULL, NULL, NULL, status_prompt_menu_callback,
-	    spm) != 0) {
+	    BOX_LINES_DEFAULT, NULL, NULL, NULL, NULL,
+	    status_prompt_menu_callback, spm) != 0) {
 		menu_free(menu);
 		free(spm);
 		return (NULL);
