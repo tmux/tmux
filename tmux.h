@@ -3314,12 +3314,12 @@ void		 menu_add_item(struct menu *, const struct menu_item *,
 void		 menu_free(struct menu *);
 struct menu_data *menu_prepare(struct menu *, int, int, struct cmdq_item *,
 		    u_int, u_int, struct client *, enum box_lines, const char *,
-		    const char *, struct cmd_find_state *, menu_choice_cb,
-		    void *);
+		    const char *, const char *, struct cmd_find_state *,
+		    menu_choice_cb, void *);
 int		 menu_display(struct menu *, int, int, struct cmdq_item *,
 		    u_int, u_int, struct client *, enum box_lines, const char *,
-		    const char *, struct cmd_find_state *, menu_choice_cb,
-		    void *);
+		    const char *, const char *, struct cmd_find_state *,
+		    menu_choice_cb, void *);
 struct screen	*menu_mode_cb(struct client *, void *, u_int *, u_int *);
 void		 menu_check_cb(struct client *, void *, u_int, u_int, u_int,
 		    struct overlay_ranges *);

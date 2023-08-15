@@ -4099,6 +4099,13 @@ See the
 section on how to specify
 .Ar style .
 Attributes are ignored.
+.It Ic menu-selected-style Ar style
+Set the selected menu item style.
+See the
+.Sx STYLES
+section on how to specify
+.Ar style .
+Attributes are ignored.
 .It Ic menu-border-style Ar style
 Set the menu border style.
 See the
@@ -4111,7 +4118,7 @@ Set the type of characters used for drawing menu borders.
 See
 .Ic popup-border-lines
 for possible values for
-.Ar type .
+.Ar border-lines .
 .It Ic message-command-style Ar style
 Set status line message command style.
 This is used for the command prompt with
@@ -6067,10 +6074,11 @@ the default is
 .Op Fl O
 .Op Fl b Ar border-lines
 .Op Fl c Ar target-client
+.Op Fl C Ar starting-choice
+.Op Fl H Ar selected-style
 .Op Fl s Ar style
 .Op Fl S Ar border-style
 .Op Fl t Ar target-pane
-.Op Fl C Ar starting-choice
 .Op Fl T Ar title
 .Op Fl x Ar position
 .Op Fl y Ar position
@@ -6103,6 +6111,10 @@ See
 .Ic popup-border-lines
 for possible values for
 .Ar border-lines .
+.Pp
+.Fl H
+sets the style for the selected menu item (see
+.Sx STYLES ) .
 .Pp
 .Fl s
 sets the style for the menu and

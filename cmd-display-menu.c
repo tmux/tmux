@@ -38,11 +38,11 @@ const struct cmd_entry cmd_display_menu_entry = {
 	.name = "display-menu",
 	.alias = "menu",
 
-	.args = { "b:c:C:t:s:S:OT:x:y:", 1, -1, cmd_display_menu_args_parse },
+	.args = { "b:c:C:H:s:S:Ot:T:x:y:", 1, -1, cmd_display_menu_args_parse },
 	.usage = "[-O] [-b border-lines] [-c target-client] "
-		 "[-C starting-choice] [-s style] [-S border-style] "
-		 CMD_TARGET_PANE_USAGE "[-T title] [-x position] [-y position] "
-		 "name key command ...",
+		 "[-C starting-choice] [-H selected-style] [-s style] "
+		 "[-S border-style] " CMD_TARGET_PANE_USAGE "[-T title] "
+		 "[-x position] [-y position] name key command ...",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -292,6 +292,7 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	const char		*key, *name, *value;
 	const char		*style = args_get(args, 's');
 	const char		*border_style = args_get(args, 'S');
+	const char		*selected_style = args_get(args, 'H');
 	enum box_lines		 lines = BOX_LINES_DEFAULT;
 	char			*title, *cause;
 	int			 flags = 0, starting_choice = 0;
@@ -375,7 +376,7 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	if (!event->m.valid)
 		flags |= MENU_NOMOUSE;
 	if (menu_display(menu, flags, starting_choice, item, px, py, tc, lines,
-	    style, border_style, target, NULL, NULL) != 0)
+	    style, selected_style, border_style, target, NULL, NULL) != 0)
 		return (CMD_RETURN_NORMAL);
 	return (CMD_RETURN_WAIT);
 }
