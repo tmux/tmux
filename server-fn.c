@@ -27,7 +27,6 @@
 
 #include "tmux.h"
 
-static struct session	*server_next_session(struct session *);
 static void		 server_destroy_session_group(struct session *);
 
 void
@@ -396,7 +395,7 @@ server_destroy_session_group(struct session *s)
 }
 
 static struct session *
-server_next_session(struct session *s)
+server_recent_session(struct session *s)
 {
 	struct session *s_loop, *s_out = NULL;
 
@@ -434,7 +433,7 @@ server_destroy_session(struct session *s)
 
 	detach_on_destroy = options_get_number(s->options, "detach-on-destroy");
 	if (detach_on_destroy == 0)
-		s_new = server_next_session(s);
+		s_new = server_recent_session(s);
 	else if (detach_on_destroy == 2)
 		s_new = server_next_detached_session(s);
 	else
