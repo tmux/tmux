@@ -38,8 +38,8 @@ const struct cmd_entry cmd_display_menu_entry = {
 	.name = "display-menu",
 	.alias = "menu",
 
-	.args = { "b:c:C:H:s:S:Ot:T:x:y:", 1, -1, cmd_display_menu_args_parse },
-	.usage = "[-O] [-b border-lines] [-c target-client] "
+	.args = { "Bb:c:C:H:s:S:Ot:T:x:y:", 1, -1, cmd_display_menu_args_parse },
+	.usage = "[-BO] [-b border-lines] [-c target-client] "
 		 "[-C starting-choice] [-H selected-style] [-s style] "
 		 "[-S border-style] " CMD_TARGET_PANE_USAGE "[-T title] "
 		 "[-x position] [-y position] name key command ...",
@@ -299,7 +299,7 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	u_int			 px, py, i, count = args_count(args);
 	struct options		*o = target->s->curw->window->options;
 	struct options_entry	*oe;
-
+	u_short			 bw;
 
 	if (tc->overlay_draw != NULL)
 		return (CMD_RETURN_NORMAL);
@@ -353,14 +353,11 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 		menu_free(menu);
 		return (CMD_RETURN_NORMAL);
 	}
-	if (!cmd_display_menu_get_position(tc, item, args, &px, &py,
-	    menu->width + 4, menu->count + 2)) {
-		menu_free(menu);
-		return (CMD_RETURN_NORMAL);
-	}
 
 	value = args_get(args, 'b');
-	if (value != NULL) {
+	if (args_has(args, 'B'))
+		lines = BOX_LINES_NONE;
+	else if (value != NULL) {
 		oe = options_get(o, "menu-border-lines");
 		lines = options_find_choice(options_table_entry(oe), value,
 		    &cause);
@@ -369,6 +366,13 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
+	}
+
+	bw = ((lines != BOX_LINES_NONE) ? 2 : 2);
+	if (!cmd_display_menu_get_position(tc, item, args, &px, &py,
+	    menu->width + 2 + bw, menu->count + bw)) {
+		menu_free(menu);
+		return (CMD_RETURN_NORMAL);
 	}
 
 	if (args_has(args, 'O'))

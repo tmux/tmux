@@ -6071,6 +6071,7 @@ the default is
 .Ql y .
 .Tg menu
 .It Xo Ic display-menu
+.Op Fl B
 .Op Fl O
 .Op Fl b Ar border-lines
 .Op Fl c Ar target-client
@@ -6104,6 +6105,11 @@ If the name begins with a hyphen (-), then the item is disabled (shown dim) and
 may not be chosen.
 The name may be empty for a separator line, in which case both the key and
 command should be omitted.
+.Pp
+.Fl B
+sets menu-border-lines to none regardless of any session options and the
+.Fl b
+flag.
 .Pp
 .Fl b
 sets the type of characters used for drawing menu borders.

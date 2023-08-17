@@ -639,27 +639,29 @@ screen_write_hline(struct screen_write_ctx *ctx, u_int nx, int left, int right,
 	cx = s->cx;
 	cy = s->cy;
 
-	if (border_gc != NULL)
-		memcpy(&gc, border_gc, sizeof gc);
-	else
-		memcpy(&gc, &grid_default_cell, sizeof gc);
-	gc.attr |= GRID_ATTR_CHARSET;
+	if (lines != BOX_LINES_NONE) {
+		if (border_gc != NULL)
+			memcpy(&gc, border_gc, sizeof gc);
+		else
+			memcpy(&gc, &grid_default_cell, sizeof gc);
+		gc.attr |= GRID_ATTR_CHARSET;
 
-	if (left)
-		screen_write_box_border_set(lines, CELL_LEFTJOIN, &gc);
-	else
-		screen_write_box_border_set(lines, CELL_LEFTRIGHT, &gc);
-	screen_write_cell(ctx, &gc);
-
-	screen_write_box_border_set(lines, CELL_LEFTRIGHT, &gc);
-	for (i = 1; i < nx - 1; i++)
+		if (left)
+			screen_write_box_border_set(lines, CELL_LEFTJOIN, &gc);
+		else
+			screen_write_box_border_set(lines, CELL_LEFTRIGHT, &gc);
 		screen_write_cell(ctx, &gc);
 
-	if (right)
-		screen_write_box_border_set(lines, CELL_RIGHTJOIN, &gc);
-	else
 		screen_write_box_border_set(lines, CELL_LEFTRIGHT, &gc);
-	screen_write_cell(ctx, &gc);
+		for (i = 1; i < nx - 1; i++)
+			screen_write_cell(ctx, &gc);
+
+		if (right)
+			screen_write_box_border_set(lines, CELL_RIGHTJOIN, &gc);
+		else
+			screen_write_box_border_set(lines, CELL_LEFTRIGHT, &gc);
+		screen_write_cell(ctx, &gc);
+	}
 
 	screen_write_set_cursor(ctx, cx, cy);
 }
@@ -698,34 +700,43 @@ screen_write_menu(struct screen_write_ctx *ctx, struct menu *menu, int choice,
 	struct screen		*s = ctx->s;
 	struct grid_cell	 default_gc;
 	const struct grid_cell	*gc = &default_gc;
-	u_int			 cx, cy, i, j, width = menu->width;
+	u_int			 cx, cy, co, i, j, width = menu->width;
 	const char		*name;
+	u_short			 bw;
 
 	cx = s->cx;
 	cy = s->cy;
+	if (lines != BOX_LINES_NONE) {
+		bw = 2;
+		co = 1;
+	} else {
+		bw = 0;
+		co = (strlen(menu->title) == 0) ? 0 : 1;
+	}
 
 	memcpy(&default_gc, menu_gc, sizeof default_gc);
 
-	screen_write_box(ctx, menu->width + 4, menu->count + 2, lines,
+	screen_write_box(ctx, width + 4, menu->count + 2, lines,
 	    border_gc, menu->title);
 
 	for (i = 0; i < menu->count; i++) {
 		name = menu->items[i].name;
 		if (name == NULL) {
-			screen_write_cursormove(ctx, cx, cy + 1 + i, 0);
-			screen_write_hline(ctx, width + 4, 1, 1, lines,
+			screen_write_cursormove(ctx, cx, cy + co + i, 0);
+			screen_write_hline(ctx, width + 2 + bw, 1, 1, lines,
 			    border_gc);
 			continue;
 		}
 
 		if (choice >= 0 && i == (u_int)choice && *name != '-')
 			gc = choice_gc;
-
-		screen_write_cursormove(ctx, cx + 1, cy + 1 + i, 0);
-		for (j = 0; j < width + 2; j++)
+		// cx+2 ?
+		screen_write_cursormove(ctx, cx + 2, cy + co + i, 0);
+		for (j = 0; j <= width; j++)
 			screen_write_putc(ctx, gc, ' ');
-
-		screen_write_cursormove(ctx, cx + 2, cy + 1 + i, 0);
+		// cx+1 ?
+		screen_write_cursormove(ctx, cx + 1, cy + co + i, 0);
+		screen_write_putc(ctx, gc, ' ');
 		if (*name == '-') {
 			default_gc.attr |= GRID_ATTR_DIM;
 			format_draw(ctx, gc, width, name + 1, NULL, 0);
@@ -760,34 +771,38 @@ screen_write_box(struct screen_write_ctx *ctx, u_int nx, u_int ny,
 	gc.attr |= GRID_ATTR_CHARSET;
 	gc.flags |= GRID_FLAG_NOPALETTE;
 
-	/* Draw top border */
-	screen_write_box_border_set(lines, CELL_TOPLEFT, &gc);
-	screen_write_cell(ctx, &gc);
-	screen_write_box_border_set(lines, CELL_LEFTRIGHT, &gc);
-	for (i = 1; i < nx - 1; i++)
+	if (lines != BOX_LINES_NONE || title != NULL) {
+		/* Draw top border */
+		screen_write_box_border_set(lines, CELL_TOPLEFT, &gc);
 		screen_write_cell(ctx, &gc);
-	screen_write_box_border_set(lines, CELL_TOPRIGHT, &gc);
-	screen_write_cell(ctx, &gc);
+		screen_write_box_border_set(lines, CELL_LEFTRIGHT, &gc);
+		for (i = 1; i < nx - 1; i++)
+			screen_write_cell(ctx, &gc);
+		screen_write_box_border_set(lines, CELL_TOPRIGHT, &gc);
+		screen_write_cell(ctx, &gc);
+	}
 
-	/* Draw bottom border */
-	screen_write_set_cursor(ctx, cx, cy + ny - 1);
-	screen_write_box_border_set(lines, CELL_BOTTOMLEFT, &gc);
-	screen_write_cell(ctx, &gc);
-	screen_write_box_border_set(lines, CELL_LEFTRIGHT, &gc);
-	for (i = 1; i < nx - 1; i++)
+	if (lines != BOX_LINES_NONE) {
+		/* Draw bottom border */
+		screen_write_set_cursor(ctx, cx, cy + ny - 1);
+		screen_write_box_border_set(lines, CELL_BOTTOMLEFT, &gc);
 		screen_write_cell(ctx, &gc);
-	screen_write_box_border_set(lines, CELL_BOTTOMRIGHT, &gc);
-	screen_write_cell(ctx, &gc);
+		screen_write_box_border_set(lines, CELL_LEFTRIGHT, &gc);
+		for (i = 1; i < nx - 1; i++)
+			screen_write_cell(ctx, &gc);
+		screen_write_box_border_set(lines, CELL_BOTTOMRIGHT, &gc);
+		screen_write_cell(ctx, &gc);
 
-	/* Draw sides */
-	screen_write_box_border_set(lines, CELL_TOPBOTTOM, &gc);
-	for (i = 1; i < ny - 1; i++) {
-		/* left side */
-		screen_write_set_cursor(ctx, cx, cy + i);
-		screen_write_cell(ctx, &gc);
-		/* right side */
-		screen_write_set_cursor(ctx, cx + nx - 1, cy + i);
-		screen_write_cell(ctx, &gc);
+		/* Draw sides */
+		screen_write_box_border_set(lines, CELL_TOPBOTTOM, &gc);
+		for (i = 1; i < ny - 1; i++) {
+			/* left side */
+			screen_write_set_cursor(ctx, cx, cy + i);
+			screen_write_cell(ctx, &gc);
+			/* right side */
+			screen_write_set_cursor(ctx, cx + nx - 1, cy + i);
+			screen_write_cell(ctx, &gc);
+		}
 	}
 
 	if (title != NULL) {

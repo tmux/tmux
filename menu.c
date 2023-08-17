@@ -187,9 +187,11 @@ menu_check_cb(__unused struct client *c, void *data, u_int px, u_int py,
 {
 	struct menu_data	*md = data;
 	struct menu		*menu = md->menu;
+	u_short			 bw;
 
-	server_client_overlay_range(md->px, md->py, menu->width + 4,
-	    menu->count + 2, px, py, nx, r);
+	bw = (md->border_lines != BOX_LINES_NONE) ? 2 : 0;
+	server_client_overlay_range(md->px, md->py, menu->width + 2 + bw,
+	    menu->count + bw, px, py, nx, r);
 }
 
 void
@@ -201,22 +203,29 @@ menu_draw_cb(struct client *c, void *data,
 	struct screen		*s = &md->s;
 	struct menu		*menu = md->menu;
 	struct screen_write_ctx	 ctx;
-	u_int			 i, px = md->px, py = md->py;
+	u_int			 i, bx, px = md->px, py = md->py;
+	u_short			 bw;
+
+	if (md->border_lines != BOX_LINES_NONE) {
+		bw = 2;
+		bx = 0;
+	} else {
+		bw = 0;
+		bx = 1;
+	}
 
 	screen_write_start(&ctx, s);
 	screen_write_clearscreen(&ctx, 8);
 
-	if (md->border_lines != BOX_LINES_NONE) {
-		screen_write_box(&ctx, menu->width + 4, menu->count + 2,
-		    md->border_lines, &md->border_style, menu->title);
-	}
+	screen_write_box(&ctx, menu->width + 2 + bw, menu->count + bw,
+		md->border_lines, &md->border_style, menu->title);
 
 	screen_write_menu(&ctx, menu, md->choice, md->border_lines,
 	    &md->style, &md->border_style, &md->selected_style);
 	screen_write_stop(&ctx);
 
 	for (i = 0; i < screen_size_y(&md->s); i++) {
-		tty_draw_line(tty, s, 0, i, menu->width + 4, px, py + i,
+		tty_draw_line(tty, s, bx, i, menu->width + 2 + bw, px, py + i,
 		    &grid_default_cell, NULL);
 	}
 }
@@ -250,6 +259,7 @@ menu_key_cb(struct client *c, void *data, struct key_event *event)
 	struct cmdq_state		*state;
 	enum cmd_parse_status		 status;
 	char				*error;
+	u_short				 bw;
 
 	if (KEYC_IS_MOUSE(event->key)) {
 		if (md->flags & MENU_NOMOUSE) {
@@ -257,8 +267,9 @@ menu_key_cb(struct client *c, void *data, struct key_event *event)
 				return (1);
 			return (0);
 		}
+		bw = (md->border_lines != BOX_LINES_NONE) ? 2 : 0;
 		if (m->x < md->px ||
-		    m->x > md->px + 4 + menu->width ||
+		    m->x > md->px + 2 + bw + menu->width ||
 		    m->y < md->py + 1 ||
 		    m->y > md->py + 1 + count - 1) {
 			if (~md->flags & MENU_STAYOPEN) {
@@ -467,13 +478,16 @@ menu_prepare(struct menu *menu, int flags, int starting_choice,
 	int			 choice;
 	const char		*name;
 	struct options		*o = c->session->curw->window->options;
+	u_short			 bw;
 
-	if (c->tty.sx < menu->width + 4 || c->tty.sy < menu->count + 2)
+	u_short two = 2;
+	bw = (lines != BOX_LINES_NONE) ? 2 : 0;
+	if (c->tty.sx < menu->width + 2 + bw || c->tty.sy < menu->count + bw)
 		return (NULL);
-	if (px + menu->width + 4 > c->tty.sx)
-		px = c->tty.sx - menu->width - 4;
-	if (py + menu->count + 2 > c->tty.sy)
-		py = c->tty.sy - menu->count - 2;
+	if (px + menu->width + 2 + bw > c->tty.sx)
+		px = c->tty.sx - menu->width - 2 - bw;
+	if (py + menu->count + bw > c->tty.sy)
+		py = c->tty.sy - menu->count - bw;
 
 	if (lines == BOX_LINES_DEFAULT)
 		lines = options_get_number(o, "menu-border-lines");
@@ -490,7 +504,7 @@ menu_prepare(struct menu *menu, int flags, int starting_choice,
 
 	if (fs != NULL)
 		cmd_find_copy_state(&md->fs, fs);
-	screen_init(&md->s, menu->width + 4, menu->count + 2, 0);
+	screen_init(&md->s, menu->width + 2 + bw, menu->count + two, 0);
 	if (~md->flags & MENU_NOMOUSE)
 		md->s.mode |= (MODE_MOUSE_ALL|MODE_MOUSE_BUTTON);
 	md->s.mode &= ~MODE_CURSOR;
