@@ -1191,6 +1191,72 @@ format_cb_mouse_line(struct format_tree *ft)
 	return (format_grid_line(gd, gd->hsize + y));
 }
 
+/* Callback for mouse_status_line. */
+static void *
+format_cb_mouse_status_line(struct format_tree *ft)
+{
+	char	*value;
+	u_int	 y;
+
+	if (!ft->m.valid)
+		return (NULL);
+	if (ft->c == NULL || (~ft->c->tty.flags & TTY_STARTED))
+		return (NULL);
+
+	if (ft->m.statusat == 0 && ft->m.y < ft->m.statuslines) {
+		y = ft->m.y;
+	} else if (ft->m.statusat > 0 && ft->m.y >= (u_int)ft->m.statusat) {
+		y = ft->m.y - ft->m.statusat;
+	} else
+		return (NULL);
+	xasprintf(&value, "%u", y);
+	return (value);
+
+}
+
+/* Callback for mouse_status_range. */
+static void *
+format_cb_mouse_status_range(struct format_tree *ft)
+{
+	struct style_range	*sr;
+	u_int			 x, y;
+
+	if (!ft->m.valid)
+		return (NULL);
+	if (ft->c == NULL || (~ft->c->tty.flags & TTY_STARTED))
+		return (NULL);
+
+	if (ft->m.statusat == 0 && ft->m.y < ft->m.statuslines) {
+		x = ft->m.x;
+		y = ft->m.y;
+	} else if (ft->m.statusat > 0 && ft->m.y >= (u_int)ft->m.statusat) {
+		x = ft->m.x;
+		y = ft->m.y - ft->m.statusat;
+	} else
+		return (NULL);
+
+	sr = status_get_range(ft->c, x, y);
+	if (sr == NULL)
+		return (NULL);
+	switch (sr->type) {
+	case STYLE_RANGE_NONE:
+		return (NULL);
+	case STYLE_RANGE_LEFT:
+		return (xstrdup("left"));
+	case STYLE_RANGE_RIGHT:
+		return (xstrdup("right"));
+	case STYLE_RANGE_PANE:
+		return (xstrdup("pane"));
+	case STYLE_RANGE_WINDOW:
+		return (xstrdup("window"));
+	case STYLE_RANGE_SESSION:
+		return (xstrdup("session"));
+	case STYLE_RANGE_USER:
+		return (xstrdup(sr->string));
+	}
+	return (NULL);
+}
+
 /* Callback for alternate_on. */
 static void *
 format_cb_alternate_on(struct format_tree *ft)
@@ -2847,6 +2913,12 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "mouse_standard_flag", FORMAT_TABLE_STRING,
 	  format_cb_mouse_standard_flag
+	},
+	{ "mouse_status_line", FORMAT_TABLE_STRING,
+	  format_cb_mouse_status_line
+	},
+	{ "mouse_status_range", FORMAT_TABLE_STRING,
+	  format_cb_mouse_status_range
 	},
 	{ "mouse_utf8_flag", FORMAT_TABLE_STRING,
 	  format_cb_mouse_utf8_flag
