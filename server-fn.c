@@ -419,8 +419,8 @@ static int
 server_newer_detached_session(struct session *s_loop, struct session *s_out)
 {
 	if (s_loop->attached)
-		return 0
-	return server_recent_filter(s_loop, s_out)
+		return 0;
+	return server_newer_session(s_loop, s_out);
 }
 
 static int
