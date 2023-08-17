@@ -299,7 +299,7 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	u_int			 px, py, i, count = args_count(args);
 	struct options		*o = target->s->curw->window->options;
 	struct options_entry	*oe;
-	u_short			 bw;
+	u_int			 bw;
 
 	if (tc->overlay_draw != NULL)
 		return (CMD_RETURN_NORMAL);
@@ -368,7 +368,7 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 		}
 	}
 
-	bw = ((lines != BOX_LINES_NONE) ? 2 : 2);
+	bw = ((lines != BOX_LINES_NONE) ? 2 : 0);
 	if (!cmd_display_menu_get_position(tc, item, args, &px, &py,
 	    menu->width + 2 + bw, menu->count + bw)) {
 		menu_free(menu);

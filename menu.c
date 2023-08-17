@@ -187,7 +187,7 @@ menu_check_cb(__unused struct client *c, void *data, u_int px, u_int py,
 {
 	struct menu_data	*md = data;
 	struct menu		*menu = md->menu;
-	u_short			 bw;
+	u_int			 bw;
 
 	bw = (md->border_lines != BOX_LINES_NONE) ? 2 : 0;
 	server_client_overlay_range(md->px, md->py, menu->width + 2 + bw,
@@ -204,7 +204,7 @@ menu_draw_cb(struct client *c, void *data,
 	struct menu		*menu = md->menu;
 	struct screen_write_ctx	 ctx;
 	u_int			 i, bx, px = md->px, py = md->py;
-	u_short			 bw;
+	u_int			 bw;
 
 	if (md->border_lines != BOX_LINES_NONE) {
 		bw = 2;
@@ -259,7 +259,7 @@ menu_key_cb(struct client *c, void *data, struct key_event *event)
 	struct cmdq_state		*state;
 	enum cmd_parse_status		 status;
 	char				*error;
-	u_short				 bw;
+	u_int				 bw;
 
 	if (KEYC_IS_MOUSE(event->key)) {
 		if (md->flags & MENU_NOMOUSE) {
@@ -478,9 +478,8 @@ menu_prepare(struct menu *menu, int flags, int starting_choice,
 	int			 choice;
 	const char		*name;
 	struct options		*o = c->session->curw->window->options;
-	u_short			 bw;
+	u_int			 bw;
 
-	u_short two = 2;
 	bw = (lines != BOX_LINES_NONE) ? 2 : 0;
 	if (c->tty.sx < menu->width + 2 + bw || c->tty.sy < menu->count + bw)
 		return (NULL);
@@ -504,7 +503,8 @@ menu_prepare(struct menu *menu, int flags, int starting_choice,
 
 	if (fs != NULL)
 		cmd_find_copy_state(&md->fs, fs);
-	screen_init(&md->s, menu->width + 2 + bw, menu->count + two, 0);
+	// TODO: Should menu->count really be + 2 for border-line none?
+	screen_init(&md->s, menu->width + 2 + bw, menu->count + 2, 0);
 	if (~md->flags & MENU_NOMOUSE)
 		md->s.mode |= (MODE_MOUSE_ALL|MODE_MOUSE_BUTTON);
 	md->s.mode &= ~MODE_CURSOR;

@@ -702,7 +702,7 @@ screen_write_menu(struct screen_write_ctx *ctx, struct menu *menu, int choice,
 	const struct grid_cell	*gc = &default_gc;
 	u_int			 cx, cy, co, i, j, width = menu->width;
 	const char		*name;
-	u_short			 bw;
+	u_int			 bw;
 
 	cx = s->cx;
 	cy = s->cy;
