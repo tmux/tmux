@@ -560,9 +560,9 @@ static key_code
 server_client_check_mouse(struct client *c, struct key_event *event)
 {
 	struct mouse_event	*m = &event->m;
-	struct session		*s = c->session;
-	struct winlink		*wl;
-	struct window_pane	*wp;
+	struct session		*s = c->session, *fs;
+	struct winlink		*fwl;
+	struct window_pane	*wp, *fwp;
 	u_int			 x, y, b, sx, sy, px, py;
 	int			 ignore = 0;
 	key_code		 key;
@@ -668,6 +668,7 @@ have_event:
 	/* Save the session. */
 	m->s = s->id;
 	m->w = -1;
+	m->wp = -1;
 	m->ignore = ignore;
 
 	/* Is this on the status line? */
@@ -684,18 +685,42 @@ have_event:
 			case STYLE_RANGE_NONE:
 				return (KEYC_UNKNOWN);
 			case STYLE_RANGE_LEFT:
+				log_debug("mouse range: left");
 				where = STATUS_LEFT;
 				break;
 			case STYLE_RANGE_RIGHT:
+				log_debug("mouse range: right");
 				where = STATUS_RIGHT;
 				break;
-			case STYLE_RANGE_WINDOW:
-				wl = winlink_find_by_index(&s->windows,
-				    sr->argument);
-				if (wl == NULL)
+			case STYLE_RANGE_PANE:
+				fwp = window_pane_find_by_id(sr->argument);
+				if (fwp == NULL)
 					return (KEYC_UNKNOWN);
-				m->w = wl->window->id;
+				m->wp = sr->argument;
 
+				log_debug("mouse range: pane %%%u", m->wp);
+				where = STATUS;
+				break;
+			case STYLE_RANGE_WINDOW:
+				fwl = winlink_find_by_index(&s->windows,
+				    sr->argument);
+				if (fwl == NULL)
+					return (KEYC_UNKNOWN);
+				m->w = fwl->window->id;
+
+				log_debug("mouse range: window @%u", m->w);
+				where = STATUS;
+				break;
+			case STYLE_RANGE_SESSION:
+				fs = session_find_by_id(sr->argument);
+				if (fs == NULL)
+					return (KEYC_UNKNOWN);
+				m->s = sr->argument;
+
+				log_debug("mouse range: session $%u", m->s);
+				where = STATUS;
+				break;
+			case STYLE_RANGE_USER:
 				where = STATUS;
 				break;
 			}

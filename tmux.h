@@ -799,11 +799,15 @@ enum style_range_type {
 	STYLE_RANGE_NONE,
 	STYLE_RANGE_LEFT,
 	STYLE_RANGE_RIGHT,
-	STYLE_RANGE_WINDOW
+	STYLE_RANGE_PANE,
+	STYLE_RANGE_WINDOW,
+	STYLE_RANGE_SESSION,
+	STYLE_RANGE_USER
 };
 struct style_range {
 	enum style_range_type	 type;
 	u_int			 argument;
+	char			 string[16];
 
 	u_int			 start;
 	u_int			 end; /* not included */
@@ -830,6 +834,7 @@ struct style {
 
 	enum style_range_type	range_type;
 	u_int			range_argument;
+	char			range_string[16];
 
 	enum style_default_type	default_type;
 };
