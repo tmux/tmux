@@ -395,15 +395,13 @@ server_destroy_session_group(struct session *s)
 }
 
 static struct session *
-server_filtered_session(struct session *s, int attached,
+server_find_session(struct session *s,
     int (*f)(struct session *, struct session *))
 {
 	struct session *s_loop, *s_out = NULL;
 
 	RB_FOREACH(s_loop, sessions, &sessions) {
 		if (s_loop == s)
-			continue;
-		if (attached && s_loop->attached)
 			continue;
 		if (s_out == NULL || f(s_loop, s_out))
 			s_out = s_loop;
@@ -412,19 +410,27 @@ server_filtered_session(struct session *s, int attached,
 }
 
 static int
-timercmp_filter(struct session *s_loop, struct session *s_out)
+server_newer_session(struct session *s_loop, struct session *s_out)
 {
 	return timercmp(&s_loop->activity_time, &s_out->activity_time, <);
 }
 
 static int
-preceding_filter(struct session *s_loop, struct session *s_out)
+server_newer_detached_session(struct session *s_loop, struct session *s_out)
+{
+	if (s_loop->attached)
+		return 0
+	return server_recent_filter(s_loop, s_out)
+}
+
+static int
+server_previous_session(struct session *s_loop, struct session *s_out)
 {
 	return strncmp(s_loop->name, s_out->name, strlen(s_loop->name)) < 0;
 }
 
 static int
-following_filter(struct session *s_loop, struct session *s_out)
+server_next_session(struct session *s_loop, struct session *s_out)
 {
 	return strncmp(s_loop->name, s_out->name, strlen(s_loop->name)) > 0;
 }
@@ -438,13 +444,13 @@ server_destroy_session(struct session *s)
 
 	detach_on_destroy = options_get_number(s->options, "detach-on-destroy");
 	if (detach_on_destroy == 0)
-		s_new = server_filtered_session(s, 0, timercmp_filter);
+		s_new = server_find_session(s, server_newer_session);
 	else if (detach_on_destroy == 2)
-		s_new = server_filtered_session(s, 1, timercmp_filter);
+		s_new = server_find_session(s, server_newer_detached_session);
 	else if (detach_on_destroy == 3)
-		s_new = server_filtered_session(s, 0, preceding_filter);
+		s_new = server_find_session(s, server_previous_session);
 	else if (detach_on_destroy == 4)
-		s_new = server_filtered_session(s, 0, following_filter);
+		s_new = server_find_session(s, server_next_session);
 	else
 		s_new = NULL;
 	TAILQ_FOREACH(c, &clients, entry) {

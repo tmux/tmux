@@ -4042,7 +4042,7 @@ The default is 80x24.
 If enabled and the session is no longer attached to any clients, it is
 destroyed.
 .It Xo Ic detach-on-destroy
-.Op Ic off | on | no-detached | preceding | following
+.Op Ic off | on | no-detached | previous | next
 .Xc
 If
 .Ic on
@@ -4055,12 +4055,12 @@ If
 the client is detached only if there are no detached sessions; if detached
 sessions exist, the client is switched to the most recently active.
 If
-.Ic preceding ,
-the client is switched to the session preceding the current one in alphabetical
+.Ic previous ,
+the client is switched to the session previous the current one in alphabetical
 order.
 If
-.Ic following ,
-the client is switched to the session following the current one in alphabetical
+.Ic next ,
+the client is switched to the session next the current one in alphabetical
 order.
 .It Ic display-panes-active-colour Ar colour
 Set the colour used by the
