@@ -395,33 +395,38 @@ server_destroy_session_group(struct session *s)
 }
 
 static struct session *
-server_recent_session(struct session *s)
+server_filtered_session(struct session *s, int attached,
+    int (*f)(struct session *, struct session *))
 {
 	struct session *s_loop, *s_out = NULL;
 
 	RB_FOREACH(s_loop, sessions, &sessions) {
 		if (s_loop == s)
 			continue;
-		if (s_out == NULL ||
-		    timercmp(&s_loop->activity_time, &s_out->activity_time, <))
+		if (attached && s_loop->attached)
+			continue;
+		if (s_out == NULL || f(s_loop, s_out))
 			s_out = s_loop;
 	}
 	return (s_out);
 }
 
-static struct session *
-server_next_detached_session(struct session *s)
+static int
+timercmp_filter(struct session *s_loop, struct session *s_out)
 {
-	struct session *s_loop, *s_out = NULL;
+	return timercmp(&s_loop->activity_time, &s_out->activity_time, <);
+}
 
-	RB_FOREACH(s_loop, sessions, &sessions) {
-		if (s_loop == s || s_loop->attached)
-			continue;
-		if (s_out == NULL ||
-		    timercmp(&s_loop->activity_time, &s_out->activity_time, <))
-			s_out = s_loop;
-	}
-	return (s_out);
+static int
+preceding_filter(struct session *s_loop, struct session *s_out)
+{
+	return strncmp(s_loop->name, s_out->name, strlen(s_loop->name)) < 0;
+}
+
+static int
+following_filter(struct session *s_loop, struct session *s_out)
+{
+	return strncmp(s_loop->name, s_out->name, strlen(s_loop->name)) > 0;
 }
 
 void
@@ -433,9 +438,13 @@ server_destroy_session(struct session *s)
 
 	detach_on_destroy = options_get_number(s->options, "detach-on-destroy");
 	if (detach_on_destroy == 0)
-		s_new = server_recent_session(s);
+		s_new = server_filtered_session(s, 0, timercmp_filter);
 	else if (detach_on_destroy == 2)
-		s_new = server_next_detached_session(s);
+		s_new = server_filtered_session(s, 1, timercmp_filter);
+	else if (detach_on_destroy == 3)
+		s_new = server_filtered_session(s, 0, preceding_filter);
+	else if (detach_on_destroy == 4)
+		s_new = server_filtered_session(s, 0, following_filter);
 	else
 		s_new = NULL;
 	TAILQ_FOREACH(c, &clients, entry) {
