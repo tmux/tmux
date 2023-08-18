@@ -33,6 +33,7 @@ struct format_range {
 
 	enum style_range_type		 type;
 	u_int				 argument;
+	char                             string[16];
 
 	TAILQ_ENTRY(format_range)	 entry;
 };
@@ -44,9 +45,18 @@ format_is_type(struct format_range *fr, struct style *sy)
 {
 	if (fr->type != sy->range_type)
 		return (0);
-	if (fr->type == STYLE_RANGE_WINDOW &&
-	    fr->argument != sy->range_argument)
-		return (0);
+	switch (fr->type) {
+	case STYLE_RANGE_NONE:
+	case STYLE_RANGE_LEFT:
+	case STYLE_RANGE_RIGHT:
+		return (1);
+	case STYLE_RANGE_PANE:
+	case STYLE_RANGE_WINDOW:
+	case STYLE_RANGE_SESSION:
+		return (fr->argument == sy->range_argument);
+	case STYLE_RANGE_USER:
+		return (strcmp(fr->string, sy->range_string) == 0);
+	}
 	return (1);
 }
 
@@ -942,6 +952,8 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 
 				fr->type = sy.range_type;
 				fr->argument = sy.range_argument;
+				strlcpy(fr->string, sy.range_string,
+				    sizeof fr->string);
 			}
 		}
 
@@ -1013,13 +1025,39 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 		sr = xcalloc(1, sizeof *sr);
 		sr->type = fr->type;
 		sr->argument = fr->argument;
+		strlcpy(sr->string, fr->string, sizeof sr->string);
 		sr->start = fr->start;
 		sr->end = fr->end;
 		TAILQ_INSERT_TAIL(srs, sr, entry);
 
-		log_debug("%s: range %d|%u at %u-%u", __func__, sr->type,
-		    sr->argument, sr->start, sr->end);
-
+		switch (sr->type) {
+		case STYLE_RANGE_NONE:
+			break;
+		case STYLE_RANGE_LEFT:
+			log_debug("%s: range left at %u-%u", __func__,
+			    sr->start, sr->end);
+			break;
+		case STYLE_RANGE_RIGHT:
+			log_debug("%s: range right at %u-%u", __func__,
+			    sr->start, sr->end);
+			break;
+		case STYLE_RANGE_PANE:
+			log_debug("%s: range pane|%%%u at %u-%u", __func__,
+			    sr->argument, sr->start, sr->end);
+			break;
+		case STYLE_RANGE_WINDOW:
+			log_debug("%s: range window|%u at %u-%u", __func__,
+			    sr->argument, sr->start, sr->end);
+			break;
+		case STYLE_RANGE_SESSION:
+			log_debug("%s: range session|$%u at %u-%u", __func__,
+			    sr->argument, sr->start, sr->end);
+			break;
+		case STYLE_RANGE_USER:
+			log_debug("%s: range user|%u at %u-%u", __func__,
+			    sr->argument, sr->start, sr->end);
+			break;
+		}
 		format_free_range(&frs, fr);
 	}
 

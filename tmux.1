@@ -5456,6 +5456,8 @@ The following variables are available, where appropriate:
 .It Li "mouse_line" Ta "" Ta "Line under mouse, if any"
 .It Li "mouse_sgr_flag" Ta "" Ta "Pane mouse SGR flag"
 .It Li "mouse_standard_flag" Ta "" Ta "Pane mouse standard flag"
+.It Li "mouse_status_line" Ta "" Ta "Status line on which mouse event took place"
+.It Li "mouse_status_range" Ta "" Ta "Range type or argument of mouse event on status line"
 .It Li "mouse_utf8_flag" Ta "" Ta "Pane mouse UTF-8 flag"
 .It Li "mouse_word" Ta "" Ta "Word under mouse, if any"
 .It Li "mouse_x" Ta "" Ta "Mouse X position, if any"
@@ -5694,26 +5696,56 @@ Only one default may be pushed (each
 replaces the previous saved default).
 .It Xo Ic range=left ,
 .Ic range=right ,
+.Ic range=session|X ,
 .Ic range=window|X ,
+.Ic range=pane|X ,
+.Ic range=user|X ,
 .Ic norange
 .Xc
-Mark a range in the
+Mark a range for mouse events in the
 .Ic status-format
 option.
+When a mouse event occurs in the
 .Ic range=left
-and
+or
 .Ic range=right
-are the text used for the
+range, the
 .Ql StatusLeft
 and
 .Ql StatusRight
-mouse keys.
+key bindings are triggered.
+.Pp
+.Ic range=session|X ,
 .Ic range=window|X
-is the range for a window passed to the
+and
+.Ic range=pane|X
+are ranges for a session, window or pane.
+These trigger the
 .Ql Status
-mouse key, where
+mouse key with the target session, window or pane given by the
 .Ql X
-is a window index.
+argument.
+.Ql X
+is a session ID, window index in the current session or a pane ID.
+For these, the
+.Ic mouse_status_range
+format variable will be set to
+.Ql session ,
+.Ql window
+or
+.Ql pane .
+.Pp
+.Ic range=user|X
+is a user-defined range; it triggers the
+.Ql Status
+mouse key.
+The argument
+.Ql X
+will be available in the
+.Ic mouse_status_range
+format variable.
+.Ql X
+must be at most 15 bytes in length.
 .El
 .Pp
 Examples are:
