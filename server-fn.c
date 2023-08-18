@@ -423,18 +423,6 @@ server_newer_detached_session(struct session *s_loop, struct session *s_out)
 	return server_newer_session(s_loop, s_out);
 }
 
-static int
-server_previous_session(struct session *s_loop, struct session *s_out)
-{
-	return strncmp(s_loop->name, s_out->name, strlen(s_loop->name)) < 0;
-}
-
-static int
-server_next_session(struct session *s_loop, struct session *s_out)
-{
-	return strncmp(s_loop->name, s_out->name, strlen(s_loop->name)) > 0;
-}
-
 void
 server_destroy_session(struct session *s)
 {
@@ -448,9 +436,9 @@ server_destroy_session(struct session *s)
 	else if (detach_on_destroy == 2)
 		s_new = server_find_session(s, server_newer_detached_session);
 	else if (detach_on_destroy == 3)
-		s_new = server_find_session(s, server_previous_session);
+		s_new = session_previous_session(s);
 	else if (detach_on_destroy == 4)
-		s_new = server_find_session(s, server_next_session);
+		s_new = session_next_session(s);
 	else
 		s_new = NULL;
 	TAILQ_FOREACH(c, &clients, entry) {
