@@ -1443,7 +1443,11 @@ input_csi_dispatch(struct input_ctx *ictx)
 		case -1:
 			break;
 		case 0:
+#ifdef ENABLE_SIXEL
+			input_reply(ictx, "\033[?1;2;4c");
+#else
 			input_reply(ictx, "\033[?1;2c");
+#endif
 			break;
 		default:
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);
@@ -2245,13 +2249,25 @@ input_dcs_dispatch(struct input_ctx *ictx)
 	const char		 prefix[] = "tmux;";
 	const u_int		 prefixlen = (sizeof prefix) - 1;
 	long long		 allow_passthrough = 0;
+#ifdef ENABLE_SIXEL
+	struct window		*w = wp->window;
+	struct sixel_image	*si;
+#endif
 
 	if (wp == NULL)
 		return (0);
 	if (ictx->flags & INPUT_DISCARD)
 		return (0);
-	allow_passthrough = options_get_number(wp->options,
-	    "allow-passthrough");
+
+#ifdef ENABLE_SIXEL
+	if (buf[0] == 'q') {
+		si = sixel_parse(buf, len, w->xpixel, w->ypixel);
+		if (si != NULL)
+			screen_write_sixelimage(sctx, si, ictx->cell.cell.bg);
+	}
+#endif
+
+	allow_passthrough = options_get_number(wp->options, "allow-passthrough");
 	if (!allow_passthrough)
 		return (0);
 	log_debug("%s: \"%s\"", __func__, buf);

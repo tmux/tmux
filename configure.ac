@@ -449,6 +449,16 @@ if test "x$enable_cgroups" = xyes; then
 	fi
 fi
 
+# Enable sixel support.
+AC_ARG_ENABLE(
+	sixel,
+	AS_HELP_STRING(--enable-sixel, enable sixel images)
+)
+if test "x$enable_sixel" = xyes; then
+	AC_DEFINE(ENABLE_SIXEL)
+fi
+AM_CONDITIONAL(ENABLE_SIXEL, [test "x$enable_sixel" = xyes])
+
 # Check for b64_ntop. If we have b64_ntop, we assume b64_pton as well.
 AC_MSG_CHECKING(for b64_ntop)
 AC_LINK_IFELSE([AC_LANG_PROGRAM(
