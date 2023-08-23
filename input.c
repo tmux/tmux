@@ -2266,6 +2266,7 @@ input_dcs_dispatch(struct input_ctx *ictx)
 			screen_write_sixelimage(sctx, si, ictx->cell.cell.bg);
 	}
 #endif
+	}
 
 	allow_passthrough = options_get_number(wp->options, "allow-passthrough");
 	if (!allow_passthrough)
