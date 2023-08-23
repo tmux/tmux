@@ -138,19 +138,29 @@ sixel_parse_attributes(struct sixel_image *si, const char *cp, const char *end)
 	if (endptr == last || *endptr != ';')
 		return (last);
 	strtoul(endptr + 1, &endptr, 10);
-	if (endptr == last || *endptr != ';')
+	if (endptr == last || *endptr != ';') {
+		log_debug("%s: missing ;", __func__);
 		return (NULL);
+	}
 
 	x = strtoul(endptr + 1, &endptr, 10);
-	if (endptr == last || *endptr != ';')
+	if (endptr == last || *endptr != ';') {
+		log_debug("%s: missing ;", __func__);
 		return (NULL);
-	if (x > SIXEL_WIDTH_LIMIT)
+	}
+	if (x > SIXEL_WIDTH_LIMIT) {
+		log_debug("%s: image is too wide", __func__);
 		return (NULL);
+	}
 	y = strtoul(endptr + 1, &endptr, 10);
-	if (endptr != last)
+	if (endptr != last) {
+		log_debug("%s: extra ;", __func__);
 		return (NULL);
-	if (y > SIXEL_HEIGHT_LIMIT)
+	}
+	if (y > SIXEL_HEIGHT_LIMIT) {
+		log_debug("%s: image is too tall", __func__);
 		return (NULL);
+	}
 
 	si->x = x;
 	sixel_parse_expand_lines(si, y);
@@ -173,27 +183,39 @@ sixel_parse_colour(struct sixel_image *si, const char *cp, const char *end)
 	}
 
 	c = strtoul(cp, &endptr, 10);
-	if (c > SIXEL_COLOUR_REGISTERS)
+	if (c > SIXEL_COLOUR_REGISTERS) {
+		log_debug("%s: too many colours", __func__);
 		return (NULL);
+	}
 	si->dc = c + 1;
 	if (endptr == last || *endptr != ';')
 		return (last);
 
 	type = strtoul(endptr + 1, &endptr, 10);
-	if (endptr == last || *endptr != ';')
+	if (endptr == last || *endptr != ';') {
+		log_debug("%s: missing ;", __func__);
 		return (NULL);
+	}
 	r = strtoul(endptr + 1, &endptr, 10);
-	if (endptr == last || *endptr != ';')
+	if (endptr == last || *endptr != ';') {
+		log_debug("%s: missing ;", __func__);
 		return (NULL);
+	}
 	g = strtoul(endptr + 1, &endptr, 10);
-	if (endptr == last || *endptr != ';')
+	if (endptr == last || *endptr != ';') {
+		log_debug("%s: missing ;", __func__);
 		return (NULL);
+	}
 	b = strtoul(endptr + 1, &endptr, 10);
-	if (endptr != last)
+	if (endptr != last) {
+		log_debug("%s: missing ;", __func__);
 		return (NULL);
+	}
 
-	if (type != 1 && type != 2)
+	if (type != 1 && type != 2) {
+		log_debug("%s: invalid type %d", __func__, type);
 		return (NULL);
+	}
 	if (c + 1 > si->ncolours) {
 		si->colours = xrecallocarray(si->colours, si->ncolours, c + 1,
 		    sizeof *si->colours);
@@ -216,21 +238,29 @@ sixel_parse_repeat(struct sixel_image *si, const char *cp, const char *end)
 		if (*last < '0' || *last > '9')
 			break;
 		tmp[n++] = *last++;
-		if (n == (sizeof tmp) - 1)
+		if (n == (sizeof tmp) - 1) {
+			log_debug("%s: repeat not terminated", __func__);
 			return (NULL);
+		}
 	}
-	if (n == 0 || last == end)
+	if (n == 0 || last == end) {
+		log_debug("%s: repeat not terminated", __func__);
 		return (NULL);
+	}
 	tmp[n] = '\0';
 
 	n = strtonum(tmp, 1, SIXEL_WIDTH_LIMIT, &errstr);
-	if (n == 0 || errstr != NULL)
+	if (n == 0 || errstr != NULL) {
+		log_debug("%s: repeat too wide", __func__);
 		return (NULL);
+	}
 
 	ch = (*last++) - 0x3f;
 	for (i = 0; i < n; i++) {
-		if (sixel_parse_write(si, ch) != 0)
+		if (sixel_parse_write(si, ch) != 0) {
+			log_debug("%s: width limit reached", __func__);
 			return (NULL);
+		}
 		si->dx++;
 	}
 	return (last);
@@ -243,8 +273,10 @@ sixel_parse(const char *buf, size_t len, u_int xpixel, u_int ypixel)
 	const char		*cp = buf, *end = buf + len;
 	char			 ch;
 
-	if (len == 0 || len == 1 || *cp++ != 'q')
+	if (len == 0 || len == 1 || *cp++ != 'q') {
+		log_debug("%s: empty image", __func__);
 		return (NULL);
+	}
 
 	si = xcalloc (1, sizeof *si);
 	si->xpixel = xpixel;
@@ -280,8 +312,10 @@ sixel_parse(const char *buf, size_t len, u_int xpixel, u_int ypixel)
 				break;
 			if (ch < 0x3f || ch > 0x7e)
 				goto bad;
-			if (sixel_parse_write(si, ch - 0x3f) != 0)
+			if (sixel_parse_write(si, ch - 0x3f) != 0) {
+				log_debug("%s: width limit reached", __func__);
 				goto bad;
+			}
 			si->dx++;
 			break;
 		}
