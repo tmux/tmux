@@ -2248,10 +2248,13 @@ input_dcs_dispatch(struct input_ctx *ictx)
 
 	if (wp == NULL)
 		return (0);
-	if (ictx->flags & INPUT_DISCARD)
+	if (ictx->flags & INPUT_DISCARD) {
+		log_debug("%s: %zu bytes (discard)", __func__, len);
 		return (0);
-	allow_passthrough = options_get_number(wp->options,
-	    "allow-passthrough");
+	}
+	log_debug("%s: %zu bytes", __func__, len);
+
+	allow_passthrough = options_get_number(wp->options, "allow-passthrough");
 	if (!allow_passthrough)
 		return (0);
 	log_debug("%s: \"%s\"", __func__, buf);
