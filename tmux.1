@@ -6642,6 +6642,7 @@ option.
 .Tg run
 .It Xo Ic run-shell
 .Op Fl bC
+.Op Fl c Ar start-directory
 .Op Fl d Ar delay
 .Op Fl t Ar target-pane
 .Op Ar shell-command
@@ -6668,6 +6669,10 @@ the command is run in the background.
 waits for
 .Ar delay
 seconds before starting the command.
+If
+.Fl c
+is given, the current working directory is set to
+.Ar start-directory .
 If
 .Fl C
 is not given, any output to stdout is displayed in view mode (in the pane

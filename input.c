@@ -2256,9 +2256,9 @@ input_dcs_dispatch(struct input_ctx *ictx)
 
 	if (wp == NULL)
 		return (0);
-	if (ictx->flags & INPUT_DISCARD)
+	if (ictx->flags & INPUT_DISCARD) {
+		log_debug("%s: %zu bytes (discard)", __func__, len);
 		return (0);
-
 #ifdef ENABLE_SIXEL
 	if (buf[0] == 'q') {
 		si = sixel_parse(buf, len, w->xpixel, w->ypixel);
