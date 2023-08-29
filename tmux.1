@@ -4048,20 +4048,19 @@ If
 .Ic on
 (the default), the client is detached when the session it is attached to
 is destroyed.
-If off, the client is switched to the most recently active of the remaining
+If
+.Ic off ,
+the client is switched to the most recently active of the remaining
 sessions.
 If
 .Ic no-detached ,
 the client is detached only if there are no detached sessions; if detached
 sessions exist, the client is switched to the most recently active.
 If
-.Ic previous ,
-the client is switched to the session previous the current one in alphabetical
-order.
-If
+.Ic previous
+or
 .Ic next ,
-the client is switched to the session next the current one in alphabetical
-order.
+the client is switched to the previous or next session in alphabetical order.
 .It Ic display-panes-active-colour Ar colour
 Set the colour used by the
 .Ic display-panes
