@@ -1792,6 +1792,8 @@ screen_write_collect_add(struct screen_write_ctx *ctx,
 	u_int				 sx = screen_size_x(s);
 	int				 collect;
 
+	ctx->flags &= ~SCREEN_WRITE_COMBINE;
+
 	/*
 	 * Don't need to check that the attributes and whatnot are still the
 	 * same - input_parse will end the collection when anything that isn't
