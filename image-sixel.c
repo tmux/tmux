@@ -24,8 +24,8 @@
 #include "tmux.h"
 
 #define SIXEL_COLOUR_REGISTERS 1024
-#define SIXEL_WIDTH_LIMIT 2016
-#define SIXEL_HEIGHT_LIMIT 2016
+#define SIXEL_WIDTH_LIMIT 10000
+#define SIXEL_HEIGHT_LIMIT 10000
 
 struct sixel_line {
 	u_int		 x;
