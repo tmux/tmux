@@ -39,7 +39,7 @@ const struct cmd_entry cmd_capture_pane_entry = {
 	.name = "capture-pane",
 	.alias = "capturep",
 
-	.args = { "ab:CeE:JNpPqS:t:", 0, 0, NULL },
+	.args = { "ab:CeE:JNpPqS:Tt:", 0, 0, NULL },
 	.usage = "[-aCeJNpPqT] " CMD_BUFFER_USAGE " [-E end-line] "
 		 "[-S start-line] " CMD_TARGET_PANE_USAGE,
 
