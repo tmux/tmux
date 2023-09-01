@@ -308,6 +308,10 @@ grid_destroy(struct grid *gd)
 	free(gd->linedata);
 
 	free(gd);
+
+#ifdef HAVE_MALLOC_TRIM
+	malloc_trim(0);
+#endif
 }
 
 /* Compare grids. */
@@ -419,6 +423,10 @@ grid_clear_history(struct grid *gd)
 
 	gd->linedata = xreallocarray(gd->linedata, gd->sy,
 	    sizeof *gd->linedata);
+
+#ifdef HAVE_MALLOC_TRIM
+	malloc_trim(0);
+#endif
 }
 
 /* Scroll a region up, moving the top line into the history. */
