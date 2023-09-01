@@ -60,7 +60,7 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct session		*s = target->s;
 	struct winlink		*wl = target->wl, *new_wl = NULL;
 	int			 idx = target->idx, before;
-	char			*cause = NULL, *cp;
+	char			*cause = NULL, *cp, *expanded;
 	const char		*template, *name;
 	struct cmd_find_state	 fs;
 	struct args_value	*av;
@@ -71,16 +71,19 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	 */
 	name = args_get(args, 'n');
 	if (args_has(args, 'S') && name != NULL && target->idx == -1) {
+		expanded = format_single(item, name, c, s, NULL, NULL);
 		RB_FOREACH(wl, winlinks, &s->windows) {
-			if (strcmp(wl->window->name, name) != 0)
+			if (strcmp(wl->window->name, expanded) != 0)
 				continue;
 			if (new_wl == NULL) {
 				new_wl = wl;
 				continue;
 			}
 			cmdq_error(item, "multiple windows named %s", name);
+			free(expanded);
 			return (CMD_RETURN_ERROR);
 		}
+		free(expanded);
 		if (new_wl != NULL) {
 			if (args_has(args, 'd'))
 				return (CMD_RETURN_NORMAL);
