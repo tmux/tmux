@@ -121,6 +121,7 @@ SRCS=	alerts.c \
 	tty-term.c \
 	tty.c \
 	utf8.c \
+	utf8-combined.c \
 	window-buffer.c \
 	window-client.c \
 	window-clock.c \

@@ -3763,8 +3763,7 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 			}
 		}
 		endline = gd->hsize + gd->sy - 1;
-	}
-	else {
+	} else {
 		window_copy_move_left(s, &fx, &fy, wrapflag);
 		endline = 0;
 	}
@@ -3806,8 +3805,7 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 				data->cy = fy - screen_hsize(data->backing) +
 				    data-> oy;
 			}
-		}
-		else {
+		} else {
 			/*
 			 * When searching backward, position the cursor at the
 			 * beginning of the mark.
