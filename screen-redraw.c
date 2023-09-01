@@ -856,4 +856,8 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 		tty_default_colours(&defaults, wp);
 		tty_draw_line(tty, s, i, j, width, x, y, &defaults, palette);
 	}
+
+#ifdef ENABLE_SIXEL
+	tty_draw_images(c, wp, s);
+#endif
 }
