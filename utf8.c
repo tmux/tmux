@@ -229,10 +229,10 @@ utf8_width(struct utf8_data *ud, int *width)
 	case 0:
 		return (UTF8_ERROR);
 	}
-	log_debug("UTF-8 %.*s is %08X", (int)ud->size, ud->data, (u_int)wc);
+	log_debug("UTF-8 %.*s is %05X", (int)ud->size, ud->data, (u_int)wc);
 #ifdef HAVE_UTF8PROC
 	*width = utf8proc_wcwidth(wc);
-	log_debug("utf8proc_wcwidth(%08X) returned %d", (u_int)wc, *width);
+	log_debug("utf8proc_wcwidth(%05X) returned %d", (u_int)wc, *width);
 #else
 	*width = wcwidth(wc);
 	log_debug("wcwidth(%05X) returned %d", (u_int)wc, *width);

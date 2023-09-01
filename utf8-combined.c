@@ -1035,7 +1035,7 @@ utf8_build_combined(void)
 		wc = utf8_combined_table[i].first;
 		mlen = wctomb(first.data, wc);
 		if (mlen <= 0 || mlen > UTF8_SIZE) {
-			log_debug("invalid combined character %08X", wc);
+			log_debug("invalid combined character %05X", wc);
 			continue;
 		}
 		first.size = mlen;
