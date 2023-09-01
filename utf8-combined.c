@@ -962,7 +962,7 @@ utf8_combined_first_cmp(struct utf8_combined_first *uf1,
 		return (-1);
 	if (ud1->size > ud2->size)
 		return (1);
-	return (memcmp(ud1->data, ud2->data, sizeof *ud1->data));
+	return (memcmp(ud1->data, ud2->data, ud1->size));
 }
 RB_HEAD(utf8_combined_tree, utf8_combined_first);
 RB_GENERATE_STATIC(utf8_combined_tree, utf8_combined_first, entry,
@@ -979,7 +979,7 @@ utf8_combined_second_cmp(const void *vp1, const void *vp2)
 		return (-1);
 	if (ud1->size > ud2->size)
 		return (1);
-	return (memcmp(ud1->data, ud2->data, sizeof *ud1->data));
+	return (memcmp(ud1->data, ud2->data, ud1->size));
 }
 
 static int
