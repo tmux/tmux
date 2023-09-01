@@ -27,8 +27,7 @@
 
 #include "tmux.h"
 
-static struct session	*server_next_session(struct session *);
-static void		 server_destroy_session_group(struct session *);
+static void	server_destroy_session_group(struct session *);
 
 void
 server_redraw_client(struct client *c)
@@ -207,8 +206,8 @@ server_kill_window(struct window *w, int renumber)
 			if (session_detach(s, wl)) {
 				server_destroy_session_group(s);
 				break;
-			} else
-				server_redraw_session_group(s);
+			}
+			server_redraw_session_group(s);
 		}
 
 		if (renumber)
@@ -385,9 +384,10 @@ server_destroy_session_group(struct session *s)
 	struct session_group	*sg;
 	struct session		*s1;
 
-	if ((sg = session_group_contains(s)) == NULL)
+	if ((sg = session_group_contains(s)) == NULL) {
 		server_destroy_session(s);
-	else {
+		session_destroy(s, 1, __func__);
+	} else {
 		TAILQ_FOREACH_SAFE(s, &sg->sessions, gentry, s1) {
 			server_destroy_session(s);
 			session_destroy(s, 1, __func__);
@@ -396,52 +396,55 @@ server_destroy_session_group(struct session *s)
 }
 
 static struct session *
-server_next_session(struct session *s)
+server_find_session(struct session *s,
+    int (*f)(struct session *, struct session *))
 {
 	struct session *s_loop, *s_out = NULL;
 
 	RB_FOREACH(s_loop, sessions, &sessions) {
-		if (s_loop == s)
-			continue;
-		if (s_out == NULL ||
-		    timercmp(&s_loop->activity_time, &s_out->activity_time, <))
+		if (s_loop != s && (s_out == NULL || f(s_loop, s_out)))
 			s_out = s_loop;
 	}
 	return (s_out);
 }
 
-static struct session *
-server_next_detached_session(struct session *s)
+static int
+server_newer_session(struct session *s_loop, struct session *s_out)
 {
-	struct session *s_loop, *s_out = NULL;
+	return (timercmp(&s_loop->activity_time, &s_out->activity_time, <));
+}
 
-	RB_FOREACH(s_loop, sessions, &sessions) {
-		if (s_loop == s || s_loop->attached)
-			continue;
-		if (s_out == NULL ||
-		    timercmp(&s_loop->activity_time, &s_out->activity_time, <))
-			s_out = s_loop;
-	}
-	return (s_out);
+static int
+server_newer_detached_session(struct session *s_loop, struct session *s_out)
+{
+	if (s_loop->attached)
+		return (0);
+	return (server_newer_session(s_loop, s_out));
 }
 
 void
 server_destroy_session(struct session *s)
 {
 	struct client	*c;
-	struct session	*s_new;
+	struct session	*s_new = NULL;
 	int		 detach_on_destroy;
 
 	detach_on_destroy = options_get_number(s->options, "detach-on-destroy");
 	if (detach_on_destroy == 0)
-		s_new = server_next_session(s);
+		s_new = server_find_session(s, server_newer_session);
 	else if (detach_on_destroy == 2)
-		s_new = server_next_detached_session(s);
-	else
+		s_new = server_find_session(s, server_newer_detached_session);
+	else if (detach_on_destroy == 3)
+		s_new = session_previous_session(s);
+	else if (detach_on_destroy == 4)
+		s_new = session_next_session(s);
+	if (s_new == s)
 		s_new = NULL;
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (c->session != s)
 			continue;
+		c->session = NULL;
+		c->last_session = NULL;
 		server_client_set_session(c, s_new);
 		if (s_new == NULL)
 			c->flags |= CLIENT_EXIT;

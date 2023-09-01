@@ -1,4 +1,4 @@
-# Makefile.am
+ Makefile.am
 
 # Obvious program stuff.
 bin_PROGRAMS = tmux
@@ -191,6 +191,7 @@ dist_tmux_SOURCES = \
 	tty-keys.c \
 	tty-term.c \
 	tty.c \
+	utf8-combined.c \
 	utf8.c \
 	window-buffer.c \
 	window-client.c \

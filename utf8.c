@@ -135,8 +135,8 @@ utf8_from_data(const struct utf8_data *ud, utf8_char *uc)
 		goto fail;
 	if (ud->size <= 3) {
 		index = (((utf8_char)ud->data[2] << 16)|
-		          ((utf8_char)ud->data[1] << 8)|
-		          ((utf8_char)ud->data[0]));
+			  ((utf8_char)ud->data[1] << 8)|
+			  ((utf8_char)ud->data[0]));
 	} else if (utf8_put_item(ud->data, ud->size, &index) != 0)
 		goto fail;
 	*uc = UTF8_SET_SIZE(ud->size)|UTF8_SET_WIDTH(ud->width)|index;
@@ -235,7 +235,7 @@ utf8_width(struct utf8_data *ud, int *width)
 	log_debug("utf8proc_wcwidth(%08X) returned %d", (u_int)wc, *width);
 #else
 	*width = wcwidth(wc);
-	log_debug("wcwidth(%08X) returned %d", (u_int)wc, *width);
+	log_debug("wcwidth(%05X) returned %d", (u_int)wc, *width);
 	if (*width < 0) {
 		/*
 		 * C1 control characters are nonprintable, so they are always
