@@ -1,5 +1,3 @@
- Makefile.am
-
 # Obvious program stuff.
 bin_PROGRAMS = tmux
 CLEANFILES = tmux.1.mdoc tmux.1.man cmd-parse.c
