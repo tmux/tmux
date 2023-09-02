@@ -2814,11 +2814,13 @@ tty_check_us(__unused struct tty *tty, struct colour_palette *palette,
 			gc->us = c;
 	}
 
-	/* Underscore colour is set as RGB so convert. */
-	if ((c = colour_force_rgb (gc->us)) == -1)
-		gc->us = 8;
-	else
-		gc->us = c;
+	/* Convert underscore colour if only RGB can be supported. */
+	if (!tty_term_has(tty->term, TTYC_SETULC1)) {
+		    if ((c = colour_force_rgb (gc->us)) == -1)
+			    gc->us = 8;
+		    else
+			    gc->us = c;
+	}
 }
 
 static void
@@ -2898,9 +2900,17 @@ tty_colours_us(struct tty *tty, const struct grid_cell *gc)
 		goto save;
 	}
 
-	/* Must be an RGB colour - this should never happen. */
-	if (~gc->us & COLOUR_FLAG_RGB)
+	/*
+	 * If this is not an RGB colour, use Setulc1 if it exists, otherwise
+	 * convert.
+	 */
+	if (~gc->us & COLOUR_FLAG_RGB) {
+		c = gc->us;
+		if ((~c & COLOUR_FLAG_256) && (c >= 90 && c <= 97))
+			c -= 82;
+		tty_putcode_i(tty, TTYC_SETULC1, c & ~COLOUR_FLAG_256);
 		return;
+	}
 
 	/*
 	 * Setulc and setal follows the ncurses(3) one argument "direct colour"

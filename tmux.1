@@ -6802,9 +6802,15 @@ Set a styled underscore.
 The single parameter is one of: 0 for no underscore, 1 for normal
 underscore, 2 for double underscore, 3 for curly underscore, 4 for dotted
 underscore and 5 for dashed underscore.
-.It Em \&Setulc , \&ol
+.It Em \&Setulc , \&Setulc1, \&ol
 Set the underscore colour or reset to the default.
-The argument is (red * 65536) + (green * 256) + blue where each is between 0
+.Em Setulc
+is for RGB colours and
+.Em Setulc1
+for ANSI or 256 colours.
+The
+.Em Setulc
+argument is (red * 65536) + (green * 256) + blue where each is between 0
 and 255.
 .It Em \&Ss , Se
 Set or reset the cursor style.
