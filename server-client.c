@@ -2766,6 +2766,7 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 			break;
 		server_client_update_latest(c);
 		tty_resize(&c->tty);
+		tty_repeat_requests(&c->tty);
 		recalculate_sizes();
 		if (c->overlay_resize == NULL)
 			server_client_clear_overlay(c);

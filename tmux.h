@@ -1417,6 +1417,7 @@ struct tty {
 	struct client	*client;
 	struct event	 start_timer;
 	struct event	 clipboard_timer;
+	time_t		 last_requests;
 
 	u_int		 sx;
 	u_int		 sy;
@@ -1471,10 +1472,8 @@ struct tty {
 #define TTY_HAVEXDA 0x200
 #define TTY_SYNCING 0x400
 #define TTY_HAVEDA2 0x800 /* Secondary DA. */
-#define TTY_HAVEFG 0x1000
-#define TTY_HAVEBG 0x2000
 #define TTY_ALL_REQUEST_FLAGS \
-	(TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA|TTY_HAVEFG|TTY_HAVEBG)
+	(TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA)
 	int		 flags;
 
 	struct tty_term	*term;
@@ -2367,6 +2366,7 @@ void	tty_resize(struct tty *);
 void	tty_set_size(struct tty *, u_int, u_int, u_int, u_int);
 void	tty_start_tty(struct tty *);
 void	tty_send_requests(struct tty *);
+void	tty_repeat_requests(struct tty *);
 void	tty_stop_tty(struct tty *);
 void	tty_set_title(struct tty *, const char *);
 void	tty_set_path(struct tty *, const char *);
