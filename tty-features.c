@@ -155,6 +155,7 @@ static const struct tty_feature tty_feature_overline = {
 static const char *const tty_feature_usstyle_capabilities[] = {
 	"Smulx=\\E[4::%p1%dm",
 	"Setulc=\\E[58::2::%p1%{65536}%/%d::%p1%{256}%/%{255}%&%d::%p1%{255}%&%d%;m",
+	"Setulc1=\\E[58::5::%p1%dm",
 	"ol=\\E[59m",
 	NULL
 };

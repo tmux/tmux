@@ -685,8 +685,10 @@ session_group_synchronize1(struct session *target, struct session *s)
 	TAILQ_INIT(&s->lastw);
 	TAILQ_FOREACH(wl, &old_lastw, sentry) {
 		wl2 = winlink_find_by_index(&s->windows, wl->idx);
-		if (wl2 != NULL)
+		if (wl2 != NULL) {
 			TAILQ_INSERT_TAIL(&s->lastw, wl2, sentry);
+			wl2->flags |= WINLINK_VISITED;
+		}
 	}
 
 	/* Then free the old winlinks list. */
