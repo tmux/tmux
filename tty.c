@@ -82,6 +82,7 @@ static void	tty_check_overlay_range(struct tty *, u_int, u_int, u_int,
 #define TTY_BLOCK_STOP(tty) (1 + ((tty)->sx * (tty)->sy) / 8)
 
 #define TTY_QUERY_TIMEOUT 5
+#define TTY_REQUEST_LIMIT 30
 
 void
 tty_create_log(void)
@@ -369,12 +370,29 @@ tty_send_requests(struct tty *tty)
 			tty_puts(tty, "\033[>c");
 		if (~tty->flags & TTY_HAVEXDA)
 			tty_puts(tty, "\033[>q");
-		if (~tty->flags & TTY_HAVEFG)
-			tty_puts(tty, "\033]10;?\033\\");
-		if (~tty->flags & TTY_HAVEBG)
-			tty_puts(tty, "\033]11;?\033\\");
+		tty_puts(tty, "\033]10;?\033\\");
+		tty_puts(tty, "\033]11;?\033\\");
 	} else
 		tty->flags |= TTY_ALL_REQUEST_FLAGS;
+	tty->last_requests = time (NULL);
+}
+
+void
+tty_repeat_requests(struct tty *tty)
+{
+	time_t	t = time (NULL);
+
+	if (~tty->flags & TTY_STARTED)
+		return;
+
+	if (t - tty->last_requests <= TTY_REQUEST_LIMIT)
+		return;
+	tty->last_requests = t;
+
+	if (tty->term->flags & TERM_VT100LIKE) {
+		tty_puts(tty, "\033]10;?\033\\");
+		tty_puts(tty, "\033]11;?\033\\");
+	}
 }
 
 void
