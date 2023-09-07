@@ -1396,6 +1396,9 @@ tty_keys_device_attributes2(struct tty *tty, const char *buf, size_t len,
 	/* Add terminal features. */
 	switch (p[0]) {
 	case 41: /* VT420 */
+	case 61: /* VT510 */
+	case 64: /* VT520 */
+	case 65: /* VT525 */
 		tty_add_features(features, "margins,rectfill", ",");
 		break;
 	case 'M': /* mintty */
