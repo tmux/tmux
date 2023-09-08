@@ -1315,15 +1315,21 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 	}
 
 	/*
-	 * Add terminal features. Technically, VT420 and VT525 do not support
-	 * SIXEL, but some modern terminals report it anyway so we accept it
-	 * here too.
+	 * Add terminal features. Hardware level 5 does not offer SIXEL but
+	 * some terminal emulators report it anyway and it does not harm
+	 * to check it here.
+	 *
+	 * DECSLRM and DECFRA should be supported by level 5 as well as level
+	 * 4, but VTE has rather ruined it by advertising level 5 despite not
+	 * supporting them.
 	 */
 	switch (p[0]) {
-	case 62: /* VT220 */
-	case 63: /* VT320 */
-	case 64: /* VT420 */
-	case 65: /* VT525 */
+	case 64: /* level 4 */
+		tty_add_features(features, "margins,rectfill", ",");
+		/* FALLTHROUGH */
+	case 62: /* level 2 */
+	case 63: /* level 3 */
+	case 65: /* level 5 */
 		for (i = 1; i < n; i++) {
 			log_debug("%s: DA feature: %d", c->name, p[i]);
 			if (p[i] == 4)
@@ -1395,12 +1401,6 @@ tty_keys_device_attributes2(struct tty *tty, const char *buf, size_t len,
 
 	/* Add terminal features. */
 	switch (p[0]) {
-	case 41: /* VT420 */
-	case 61: /* VT510 */
-	case 64: /* VT520 */
-	case 65: /* VT525 */
-		tty_add_features(features, "margins,rectfill", ",");
-		break;
 	case 'M': /* mintty */
 		tty_default_features(features, "mintty", 0);
 		break;

@@ -1126,7 +1126,6 @@ format_cb_mouse_word(struct format_tree *ft)
 	struct window_pane	*wp;
 	struct grid		*gd;
 	u_int			 x, y;
-	char			*s;
 
 	if (!ft->m.valid)
 		return (NULL);
@@ -1139,7 +1138,7 @@ format_cb_mouse_word(struct format_tree *ft)
 	if (!TAILQ_EMPTY(&wp->modes)) {
 		if (TAILQ_FIRST(&wp->modes)->mode == &window_copy_mode ||
 		    TAILQ_FIRST(&wp->modes)->mode == &window_view_mode)
-			return (s = window_copy_get_word(wp, x, y));
+			return (window_copy_get_word(wp, x, y));
 		return (NULL);
 	}
 	gd = wp->base.grid;
@@ -4185,7 +4184,7 @@ static char *
 format_loop_clients(struct format_expand_state *es, const char *fmt)
 {
 	struct format_tree		*ft = es->ft;
-	struct client			*c = ft->client;
+	struct client			*c;
 	struct cmdq_item		*item = ft->item;
 	struct format_tree		*nft;
 	struct format_expand_state	 next;
