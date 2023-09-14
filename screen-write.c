@@ -1742,6 +1742,7 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 
 	if (ci->used == 0)
 		return;
+	ctx->flags &= ~SCREEN_WRITE_COMBINE;
 
 	before = screen_write_collect_trim(ctx, s->cy, s->cx, ci->used,
 	    &wrapped);
@@ -1791,8 +1792,6 @@ screen_write_collect_add(struct screen_write_ctx *ctx,
 	struct screen_write_citem	*ci;
 	u_int				 sx = screen_size_x(s);
 	int				 collect;
-
-	ctx->flags &= ~SCREEN_WRITE_COMBINE;
 
 	/*
 	 * Don't need to check that the attributes and whatnot are still the
@@ -1873,7 +1872,7 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 		screen_write_collect_flush(ctx, 0, __func__);
 		gc = screen_write_combine(ctx, combine, &xx, &cx);
 		if (gc != NULL) {
-			cy = s->cy;
+			cx = s->cx; cy = s->cy;
 			screen_write_set_cursor(ctx, xx, s->cy);
 			screen_write_initctx(ctx, &ttyctx, 0);
 			ttyctx.cell = gc;
