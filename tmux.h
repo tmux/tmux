@@ -3432,6 +3432,7 @@ int		 image_check_area(struct screen *, u_int, u_int, u_int, u_int);
 int		 image_scroll_up(struct screen *, u_int);
 
 /* image-sixel.c */
+#define SIXEL_COLOUR_REGISTERS 1024
 struct sixel_image *sixel_parse(const char *, size_t, u_int, u_int);
 void		 sixel_free(struct sixel_image *);
 void		 sixel_log(struct sixel_image *);

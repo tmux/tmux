@@ -1839,8 +1839,22 @@ input_csi_dispatch_sm_private(struct input_ctx *ictx)
 
 /* Handle CSI graphics SM. */
 static void
-input_csi_dispatch_sm_graphics(__unused struct input_ctx *ictx)
+input_csi_dispatch_sm_graphics(struct input_ctx *ictx)
 {
+#ifdef ENABLE_SIXEL
+	int	n, m, o;
+
+	if (ictx->param_list_len > 3)
+		return;
+	n = input_get(ictx, 0, 0, 0);
+	m = input_get(ictx, 1, 0, 0);
+	o = input_get(ictx, 2, 0, 0);
+
+	if (n == 1 && (m == 1 || m == 2 || m == 4))
+		input_reply(ictx, "\033[?%d;0;%uS", n, SIXEL_COLOUR_REGISTERS);
+	else
+		input_reply(ictx, "\033[?%d;3;%dS", n, o);
+#endif
 }
 
 /* Handle CSI window operations. */

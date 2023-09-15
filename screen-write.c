@@ -1418,7 +1418,9 @@ screen_write_linefeed(struct screen_write_ctx *ctx, int wrapped, u_int bg)
 	struct screen		*s = ctx->s;
 	struct grid		*gd = s->grid;
 	struct grid_line	*gl;
+#ifdef ENABLE_SIXEL
 	int			 redraw = 0;
+#endif
 	u_int			 rupper = s->rupper, rlower = s->rlower;
 
 	gl = grid_get_line(gd, gd->hsize + s->cy);
