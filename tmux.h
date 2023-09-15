@@ -30,6 +30,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <termios.h>
+#include <wchar.h>
 
 #include "tmux-protocol.h"
 #include "xmalloc.h"
@@ -619,15 +620,6 @@ enum utf8_state {
 	UTF8_ERROR
 };
 
-/* UTF-8 combine state. */
-enum utf8_combine_state {
-	UTF8_DISCARD_NOW,	   /* discard immediately */
-	UTF8_WRITE_NOW,            /* do not combine, write immediately */
-	UTF8_COMBINE_NOW,          /* combine immediately */
-	UTF8_WRITE_MAYBE_COMBINE,  /* write but try to combine the next */
-	UTF8_DISCARD_MAYBE_COMBINE /* discard but try to combine the next */
-};
-
 /* Colour flags. */
 #define COLOUR_FLAG_256 0x01000000
 #define COLOUR_FLAG_RGB 0x02000000
@@ -900,7 +892,6 @@ struct screen_write_ctx {
 
 	int				 flags;
 #define SCREEN_WRITE_SYNC 0x1
-#define SCREEN_WRITE_COMBINE 0x2
 
 	screen_write_init_ctx_cb	 init_ctx_cb;
 	void				*arg;
@@ -908,7 +899,6 @@ struct screen_write_ctx {
 	struct screen_write_citem	*item;
 	u_int				 scrolled;
 	u_int				 bg;
-	struct utf8_data		 previous;
 };
 
 /* Box border lines option. */
@@ -3277,6 +3267,8 @@ u_int		 session_group_attached_count(struct session_group *);
 void		 session_renumber_windows(struct session *);
 
 /* utf8.c */
+enum utf8_state	 utf8_towc (const struct utf8_data *, wchar_t *);
+int		 utf8_in_table(wchar_t, const wchar_t *, u_int);
 utf8_char	 utf8_build_one(u_char);
 enum utf8_state	 utf8_from_data(const struct utf8_data *, utf8_char *);
 void		 utf8_to_data(utf8_char, struct utf8_data *);
@@ -3299,10 +3291,10 @@ char		*utf8_rpadcstr(const char *, u_int);
 int		 utf8_cstrhas(const char *, const struct utf8_data *);
 
 /* utf8-combined.c */
-void		 utf8_build_combined(void);
-int		 utf8_try_combined(const struct utf8_data *,
-		     const struct utf8_data *, const struct utf8_data **,
-		     u_int *width);
+int		 utf8_has_zwj(const struct utf8_data *);
+int		 utf8_is_zwj(const struct utf8_data *);
+int		 utf8_is_vs(const struct utf8_data *);
+int		 utf8_is_modifier(const struct utf8_data *);
 
 /* procname.c */
 char   *get_proc_name(int, char *);

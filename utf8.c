@@ -23,9 +23,173 @@
 #include <stdlib.h>
 #include <string.h>
 #include <vis.h>
-#include <wchar.h>
 
 #include "tmux.h"
+
+static const wchar_t utf8_force_wide[] = {
+	0x0261D,
+	0x026F9,
+	0x0270A,
+	0x0270B,
+	0x0270C,
+	0x0270D,
+	0x1F1E6,
+	0x1F1E7,
+	0x1F1E8,
+	0x1F1E9,
+	0x1F1EA,
+	0x1F1EB,
+	0x1F1EC,
+	0x1F1ED,
+	0x1F1EE,
+	0x1F1EF,
+	0x1F1F0,
+	0x1F1F1,
+	0x1F1F2,
+	0x1F1F3,
+	0x1F1F4,
+	0x1F1F5,
+	0x1F1F6,
+	0x1F1F7,
+	0x1F1F8,
+	0x1F1F9,
+	0x1F1FA,
+	0x1F1FB,
+	0x1F1FC,
+	0x1F1FD,
+	0x1F1FE,
+	0x1F1FF,
+	0x1F385,
+	0x1F3C2,
+	0x1F3C3,
+	0x1F3C4,
+	0x1F3C7,
+	0x1F3CA,
+	0x1F3CB,
+	0x1F3CC,
+	0x1F3FB,
+	0x1F3FC,
+	0x1F3FD,
+	0x1F3FE,
+	0x1F3FF,
+	0x1F442,
+	0x1F443,
+	0x1F446,
+	0x1F447,
+	0x1F448,
+	0x1F449,
+	0x1F44A,
+	0x1F44B,
+	0x1F44C,
+	0x1F44D,
+	0x1F44E,
+	0x1F44F,
+	0x1F450,
+	0x1F466,
+	0x1F467,
+	0x1F468,
+	0x1F469,
+	0x1F46B,
+	0x1F46C,
+	0x1F46D,
+	0x1F46E,
+	0x1F470,
+	0x1F471,
+	0x1F472,
+	0x1F473,
+	0x1F474,
+	0x1F475,
+	0x1F476,
+	0x1F477,
+	0x1F478,
+	0x1F47C,
+	0x1F481,
+	0x1F482,
+	0x1F483,
+	0x1F485,
+	0x1F486,
+	0x1F487,
+	0x1F48F,
+	0x1F491,
+	0x1F4AA,
+	0x1F574,
+	0x1F575,
+	0x1F57A,
+	0x1F590,
+	0x1F595,
+	0x1F596,
+	0x1F645,
+	0x1F646,
+	0x1F647,
+	0x1F64B,
+	0x1F64C,
+	0x1F64D,
+	0x1F64E,
+	0x1F64F,
+	0x1F6A3,
+	0x1F6B4,
+	0x1F6B5,
+	0x1F6B6,
+	0x1F6C0,
+	0x1F6CC,
+	0x1F90C,
+	0x1F90F,
+	0x1F918,
+	0x1F919,
+	0x1F91A,
+	0x1F91B,
+	0x1F91C,
+	0x1F91D,
+	0x1F91E,
+	0x1F91F,
+	0x1F926,
+	0x1F930,
+	0x1F931,
+	0x1F932,
+	0x1F933,
+	0x1F934,
+	0x1F935,
+	0x1F936,
+	0x1F937,
+	0x1F938,
+	0x1F939,
+	0x1F93D,
+	0x1F93E,
+	0x1F977,
+	0x1F9B5,
+	0x1F9B6,
+	0x1F9B8,
+	0x1F9B9,
+	0x1F9BB,
+	0x1F9CD,
+	0x1F9CE,
+	0x1F9CF,
+	0x1F9D1,
+	0x1F9D2,
+	0x1F9D3,
+	0x1F9D4,
+	0x1F9D5,
+	0x1F9D6,
+	0x1F9D7,
+	0x1F9D8,
+	0x1F9D9,
+	0x1F9DA,
+	0x1F9DB,
+	0x1F9DC,
+	0x1F9DD,
+	0x1FAC3,
+	0x1FAC4,
+	0x1FAC5,
+	0x1FAF0,
+	0x1FAF1,
+	0x1FAF2,
+	0x1FAF3,
+	0x1FAF4,
+	0x1FAF5,
+	0x1FAF6,
+	0x1FAF7,
+	0x1FAF8
+};
 
 struct utf8_item {
 	RB_ENTRY(utf8_item)	index_entry;
@@ -123,6 +287,28 @@ utf8_put_item(const u_char *data, size_t size, u_int *index)
 	return (0);
 }
 
+static int
+utf8_table_cmp(const void *vp1, const void *vp2)
+{
+	const wchar_t	*wc1 = vp1, *wc2 = vp2;
+
+	if (*wc1 < *wc2)
+		return (-1);
+	if (*wc1 > *wc2)
+		return (1);
+	return (0);
+}
+
+/* Check if character in table. */
+int
+utf8_in_table(wchar_t find, const wchar_t *table, u_int count)
+{
+	wchar_t	*found;
+
+	found = bsearch(&find, table, count, sizeof *table, utf8_table_cmp);
+	return (found != NULL);
+}
+
 /* Get UTF-8 character from data. */
 enum utf8_state
 utf8_from_data(const struct utf8_data *ud, utf8_char *uc)
@@ -217,16 +403,13 @@ utf8_width(struct utf8_data *ud, int *width)
 {
 	wchar_t	wc;
 
-	switch (mbtowc(&wc, ud->data, ud->size)) {
-	case -1:
-		log_debug("UTF-8 %.*s, mbtowc() %d", (int)ud->size, ud->data,
-		    errno);
-		mbtowc(NULL, NULL, MB_CUR_MAX);
+	if (utf8_towc(ud, &wc) != UTF8_DONE)
 		return (UTF8_ERROR);
-	case 0:
-		return (UTF8_ERROR);
+	if (utf8_in_table(wc, utf8_force_wide, nitems(utf8_force_wide))) {
+		*width = 2;
+		return (UTF8_DONE);
 	}
-	log_debug("UTF-8 %.*s is %05X", (int)ud->size, ud->data, (u_int)wc);
+
 	*width = wcwidth(wc);
 	log_debug("wcwidth(%05X) returned %d", (u_int)wc, *width);
 	if (*width < 0) {
@@ -239,6 +422,23 @@ utf8_width(struct utf8_data *ud, int *width)
 	if (*width >= 0 && *width <= 0xff)
 		return (UTF8_DONE);
 	return (UTF8_ERROR);
+}
+
+/* Convert UTF-8 character to wide character. */
+enum utf8_state
+utf8_towc(const struct utf8_data *ud, wchar_t *wc)
+{
+	switch (mbtowc(wc, ud->data, ud->size)) {
+	case -1:
+		log_debug("UTF-8 %.*s, mbtowc() %d", (int)ud->size, ud->data,
+		    errno);
+		mbtowc(NULL, NULL, MB_CUR_MAX);
+		return (UTF8_ERROR);
+	case 0:
+		return (UTF8_ERROR);
+	}
+	log_debug("UTF-8 %.*s is %05X", (int)ud->size, ud->data, (u_int)*wc);
+	return (UTF8_DONE);
 }
 
 /*

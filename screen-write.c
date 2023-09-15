@@ -32,8 +32,8 @@ static void	screen_write_collect_flush(struct screen_write_ctx *, int,
 		    const char *);
 static int	screen_write_overwrite(struct screen_write_ctx *,
 		    struct grid_cell *, u_int);
-static const struct grid_cell *screen_write_combine(struct screen_write_ctx *,
-		    const struct utf8_data *, u_int *, u_int *);
+static int	screen_write_combine(struct screen_write_ctx *,
+		    const struct grid_cell *);
 
 struct screen_write_citem {
 	u_int				x;
@@ -1742,7 +1742,6 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 
 	if (ci->used == 0)
 		return;
-	ctx->flags &= ~SCREEN_WRITE_COMBINE;
 
 	before = screen_write_collect_trim(ctx, s->cy, s->cx, ci->used,
 	    &wrapped);
@@ -1841,65 +1840,22 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 {
 	struct screen		*s = ctx->s;
 	struct grid		*gd = s->grid;
-	struct grid_cell	 copy;
-	const struct utf8_data	*ud = &gc->data, *previous = NULL, *combine;
+	const struct utf8_data	*ud = &gc->data;
 	struct grid_line	*gl;
 	struct grid_cell_entry	*gce;
 	struct grid_cell 	 tmp_gc, now_gc;
 	struct tty_ctx		 ttyctx;
 	u_int			 sx = screen_size_x(s), sy = screen_size_y(s);
-	u_int		 	 width = ud->width, xx, last, cx, cy;
+	u_int		 	 width = ud->width, xx, not_wrap;
 	int			 selected, skip = 1;
 
 	/* Ignore padding cells. */
 	if (gc->flags & GRID_FLAG_PADDING)
 		return;
 
-	/* Check if this cell needs to be combined with the previous cell. */
-	if (ctx->flags & SCREEN_WRITE_COMBINE)
-		previous = &ctx->previous;
-	switch (utf8_try_combined(ud, previous, &combine, &width)) {
-	case UTF8_DISCARD_NOW:
-		log_debug("%s: UTF8_DISCARD_NOW (width %u)", __func__, width);
-		ctx->flags &= ~SCREEN_WRITE_COMBINE;
+	/* Get the previous cell to check for combining. */
+	if (screen_write_combine(ctx, gc) != 0)
 		return;
-	case UTF8_WRITE_NOW:
-		log_debug("%s: UTF8_WRITE_NOW (width %u)", __func__, width);
-		ctx->flags &= ~SCREEN_WRITE_COMBINE;
-		break;
-	case UTF8_COMBINE_NOW:
-		log_debug("%s: UTF8_COMBINE_NOW (width %u)", __func__, width);
-		screen_write_collect_flush(ctx, 0, __func__);
-		gc = screen_write_combine(ctx, combine, &xx, &cx);
-		if (gc != NULL) {
-			cx = s->cx; cy = s->cy;
-			screen_write_set_cursor(ctx, xx, s->cy);
-			screen_write_initctx(ctx, &ttyctx, 0);
-			ttyctx.cell = gc;
-			tty_write(tty_cmd_cell, &ttyctx);
-			s->cx = cx; s->cy = cy;
-		}
-		ctx->flags &= ~SCREEN_WRITE_COMBINE;
-		return;
-	case UTF8_WRITE_MAYBE_COMBINE:
-		log_debug("%s: UTF8_WRITE_MAYBE_COMBINE (width %u)", __func__,
-		    width);
-		utf8_copy(&ctx->previous, ud);
-		ctx->flags |= SCREEN_WRITE_COMBINE;
-		break;
-	case UTF8_DISCARD_MAYBE_COMBINE:
-		log_debug("%s: UTF8_DISCARD_MAYBE_COMBINE (width %u)", __func__,
-		    width);
-		utf8_copy(&ctx->previous, ud);
-		ctx->flags |= SCREEN_WRITE_COMBINE;
-		return;
-	}
-	if (width != ud->width) {
-		memcpy(&copy, gc, sizeof copy);
-		copy.data.width = width;
-		gc = &copy;
-	}
-	ud = NULL;
 
 	/* Flush any existing scrolling. */
 	screen_write_collect_flush(ctx, 1, __func__);
@@ -1991,11 +1947,11 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	 * Move the cursor. If not wrapping, stick at the last character and
 	 * replace it.
 	 */
-	last = !(s->mode & MODE_WRAP);
-	if (s->cx <= sx - last - width)
+	not_wrap = !(s->mode & MODE_WRAP);
+	if (s->cx <= sx - not_wrap - width)
 		screen_write_set_cursor(ctx, s->cx + width, -1);
 	else
-		screen_write_set_cursor(ctx,  sx - last, -1);
+		screen_write_set_cursor(ctx,  sx - not_wrap, -1);
 
 	/* Create space for character in insert mode. */
 	if (s->mode & MODE_INSERT) {
@@ -2015,65 +1971,98 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	}
 }
 
-/* Combine a UTF-8 zero-width character onto the previous. */
-static const struct grid_cell *
-screen_write_combine(struct screen_write_ctx *ctx, const struct utf8_data *ud,
-    u_int *xx, u_int *cx)
+/* Combine a UTF-8 zero-width character onto the previous if necessary. */
+static int
+screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 {
 	struct screen		*s = ctx->s;
 	struct grid		*gd = s->grid;
-	static struct grid_cell	 gc;
-	u_int			 n, width;
+	const struct utf8_data	*ud = &gc->data;
+	u_int			 n, cx = s->cx, cy = s->cy;
+	struct grid_cell	 last;
+	struct tty_ctx		 ttyctx;
+	int			 force_wide = 0, zero_width = 0;
 
-	/* Can't combine if at 0. */
-	if (s->cx == 0) {
-		*xx = 0;
-		return (NULL);
+	/*
+	 * Is this character which makes no sense without being combined? If
+	 * this is true then flag it here and discard the character (return 1)
+	 * if we cannot combine it.
+	 */
+	if (utf8_is_zwj(ud))
+		zero_width = 1;
+	else if (utf8_is_vs(ud))
+		zero_width = force_wide = 1;
+	else if (ud->width == 0)
+		zero_width = 1;
+
+	/* Cannot combine empty character or at left. */
+	if (ud->size < 2 || cx == 0)
+		return (zero_width);
+	log_debug("%s: character %.*s at %u,%u (width %u)", __func__,
+	    (int)ud->size, ud->data, cx, cy, ud->width);
+
+	/* Find the cell to combine with. */
+	n = 1;
+	grid_view_get_cell(gd, cx - n, cy, &last);
+	if (cx != 1 && (last.flags & GRID_FLAG_PADDING)) {
+		n = 2;
+		grid_view_get_cell(gd, cx - n, cy, &last);
 	}
-	*xx = s->cx;
+	if (n != last.data.width || (last.flags & GRID_FLAG_PADDING))
+		return (zero_width);
 
-	/* Empty data is out. */
-	if (ud->size == 0)
-		fatalx("UTF-8 data empty");
-
-	/* Retrieve the previous cell. */
-	for (n = 1; n <= s->cx; n++) {
-		grid_view_get_cell(gd, s->cx - n, s->cy, &gc);
-		if (~gc.flags & GRID_FLAG_PADDING)
-			break;
+	/*
+	 * Check if we need to combine characters. This could be zero width
+	 * (zet above), a modifier character (with an existing Unicode
+	 * character) or a previous ZWJ.
+	 */
+	if (!zero_width) {
+		if (utf8_is_modifier(ud)) {
+			if (last.data.size < 2)
+				return (0);
+			force_wide = 1;
+		} else if (!utf8_has_zwj(&last.data))
+			return (0);
 	}
-	if (n > s->cx)
-		return (NULL);
 
-	/* Check there is enough space. */
-	if (gc.data.size + ud->size > sizeof gc.data.data)
-		return (NULL);
-	(*xx) -= n;
+	/* Combining; flush any pending output. */
+	screen_write_collect_flush(ctx, 0, __func__);
 
-	log_debug("%s: %.*s onto %.*s at %u,%u (width %u)", __func__,
-	    (int)ud->size, ud->data, (int)gc.data.size, gc.data.data, *xx,
-	    s->cy, gc.data.width);
+	log_debug("%s: %.*s -> %.*s at %u,%u (offset %u, width %u)", __func__,
+	    (int)ud->size, ud->data, (int)last.data.size, last.data.data,
+	    cx - n, cy, n, last.data.width);
 
 	/* Append the data. */
-	memcpy(gc.data.data + gc.data.size, ud->data, ud->size);
-	gc.data.size += ud->size;
-	width = gc.data.width;
+	memcpy(last.data.data + last.data.size, ud->data, ud->size);
+	last.data.size += ud->size;
 
-	/* If this is U+FE0F VARIATION SELECTOR-16, force the width to 2. */
-	if (gc.data.width == 1 &&
-	    ud->size == 3 &&
-	    memcmp(ud->data, "\357\270\217", 3) == 0) {
-		grid_view_set_padding(gd, (*xx) + 1, s->cy);
-		gc.data.width = 2;
-		width += 2;
-	}
+	/* Force the width to 2 for modifiers and variation selector. */
+	if (last.data.width == 1 && force_wide) {
+		last.data.width = 2;
+		n = 2;
+		cx++;
+	} else
+		force_wide = 0;
 
 	/* Set the new cell. */
-	grid_view_set_cell(gd, *xx, s->cy, &gc);
+	grid_view_set_cell(gd, cx - n, cy, &last);
+	if (force_wide)
+		grid_view_set_padding(gd, cx, cy);
 
-	*cx = (*xx) + width;
-	log_debug("%s: character at %u; cursor at %u", __func__, *xx, *cx);
-	return (&gc);
+	/*
+	 * Redraw the combined cell. If forcing the cell to width 2, reset the
+	 * cached cursor position in the tty, since we don't really know
+	 * whether the terminal thought the character was width 1 or width 2
+	 * and what it is going to do now.
+	 */
+	screen_write_set_cursor(ctx, cx - n, cy);
+	screen_write_initctx(ctx, &ttyctx, 0);
+	ttyctx.cell = &last;
+	ttyctx.num = force_wide; /* reset cached cursor position */
+	tty_write(tty_cmd_cell, &ttyctx);
+	screen_write_set_cursor(ctx, cx, cy);
+
+	return (1);
 }
 
 /*
