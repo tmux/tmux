@@ -169,6 +169,7 @@ static void	input_csi_dispatch_rm(struct input_ctx *);
 static void	input_csi_dispatch_rm_private(struct input_ctx *);
 static void	input_csi_dispatch_sm(struct input_ctx *);
 static void	input_csi_dispatch_sm_private(struct input_ctx *);
+static void	input_csi_dispatch_sm_graphics(struct input_ctx *);
 static void	input_csi_dispatch_winops(struct input_ctx *);
 static void	input_csi_dispatch_sgr_256(struct input_ctx *, int, u_int *);
 static void	input_csi_dispatch_sgr_rgb(struct input_ctx *, int, u_int *);
@@ -203,7 +204,7 @@ enum input_esc_type {
 	INPUT_ESC_SCSG0_ON,
 	INPUT_ESC_SCSG1_OFF,
 	INPUT_ESC_SCSG1_ON,
-	INPUT_ESC_ST,
+	INPUT_ESC_ST
 };
 
 /* Escape command table. */
@@ -259,11 +260,12 @@ enum input_csi_type {
 	INPUT_CSI_SGR,
 	INPUT_CSI_SM,
 	INPUT_CSI_SM_PRIVATE,
+	INPUT_CSI_SM_GRAPHICS,
 	INPUT_CSI_SU,
 	INPUT_CSI_TBC,
 	INPUT_CSI_VPA,
 	INPUT_CSI_WINOPS,
-	INPUT_CSI_XDA,
+	INPUT_CSI_XDA
 };
 
 /* Control (CSI) command table. */
@@ -283,6 +285,7 @@ static const struct input_table_entry input_csi_table[] = {
 	{ 'M', "",  INPUT_CSI_DL },
 	{ 'P', "",  INPUT_CSI_DCH },
 	{ 'S', "",  INPUT_CSI_SU },
+	{ 'S', "?", INPUT_CSI_SM_GRAPHICS },
 	{ 'T', "",  INPUT_CSI_SD },
 	{ 'X', "",  INPUT_CSI_ECH },
 	{ 'Z', "",  INPUT_CSI_CBT },
@@ -306,7 +309,7 @@ static const struct input_table_entry input_csi_table[] = {
 	{ 'r', "",  INPUT_CSI_DECSTBM },
 	{ 's', "",  INPUT_CSI_SCP },
 	{ 't', "",  INPUT_CSI_WINOPS },
-	{ 'u', "",  INPUT_CSI_RCP },
+	{ 'u', "",  INPUT_CSI_RCP }
 };
 
 /* Input transition. */
@@ -1595,6 +1598,9 @@ input_csi_dispatch(struct input_ctx *ictx)
 	case INPUT_CSI_SM_PRIVATE:
 		input_csi_dispatch_sm_private(ictx);
 		break;
+	case INPUT_CSI_SM_GRAPHICS:
+		input_csi_dispatch_sm_graphics(ictx);
+		break;
 	case INPUT_CSI_SU:
 		n = input_get(ictx, 0, 1, 1);
 		if (n != -1)
@@ -1827,6 +1833,12 @@ input_csi_dispatch_sm_private(struct input_ctx *ictx)
 	}
 }
 
+/* Handle CSI graphics SM. */
+static void
+input_csi_dispatch_sm_graphics(__unused struct input_ctx *ictx)
+{
+}
+
 /* Handle CSI window operations. */
 static void
 input_csi_dispatch_winops(struct input_ctx *ictx)
@@ -1834,6 +1846,7 @@ input_csi_dispatch_winops(struct input_ctx *ictx)
 	struct screen_write_ctx	*sctx = &ictx->ctx;
 	struct screen		*s = sctx->s;
 	struct window_pane	*wp = ictx->wp;
+	struct window		*w = wp->window;
 	u_int			 x = screen_size_x(s), y = screen_size_y(s);
 	int			 n, m;
 
@@ -1847,8 +1860,6 @@ input_csi_dispatch_winops(struct input_ctx *ictx)
 		case 7:
 		case 11:
 		case 13:
-		case 14:
-		case 19:
 		case 20:
 		case 21:
 		case 24:
@@ -1865,6 +1876,21 @@ input_csi_dispatch_winops(struct input_ctx *ictx)
 			m++;
 			if (input_get(ictx, m, 0, -1) == -1)
 				return;
+			break;
+		case 14:
+			input_reply(ictx, "\033[4;%u;%ut", y * w->ypixel, x * w->xpixel);
+			break;
+		case 15:
+			input_reply(ictx, "\033[5;%u;%ut", y * w->ypixel, x * w->xpixel);
+			break;
+		case 16:
+			input_reply(ictx, "\033[6;%u;%ut", w->ypixel, w->xpixel);
+			break;
+		case 18:
+			input_reply(ictx, "\033[8;%u;%ut", y, x);
+			break;
+		case 19:
+			input_reply(ictx, "\033[9;%u;%ut", y, x);
 			break;
 		case 22:
 			m++;
@@ -1892,9 +1918,6 @@ input_csi_dispatch_winops(struct input_ctx *ictx)
 				server_status_window(wp->window);
 				break;
 			}
-			break;
-		case 18:
-			input_reply(ictx, "\033[8;%u;%ut", y, x);
 			break;
 		default:
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);
