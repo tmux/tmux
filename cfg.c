@@ -66,6 +66,7 @@ start_cfg(void)
 {
 	struct client	 *c;
 	u_int		  i;
+	int		  flags = 0;
 
 	/*
 	 * Configuration files are loaded without a client, so commands are run
@@ -83,19 +84,17 @@ start_cfg(void)
 		cmdq_append(c, cfg_item);
 	}
 
-	for (i = 0; i < cfg_nfiles; i++) {
-		if (cfg_quiet)
-			load_cfg(cfg_files[i], c, NULL, CMD_PARSE_QUIET, NULL);
-		else
-			load_cfg(cfg_files[i], c, NULL, 0, NULL);
-	}
+	if (cfg_quiet)
+		flags = CMD_PARSE_QUIET;
+	for (i = 0; i < cfg_nfiles; i++)
+		load_cfg(cfg_files[i], c, NULL, NULL, flags, NULL);
 
 	cmdq_append(NULL, cmdq_get_callback(cfg_done, NULL));
 }
 
 int
-load_cfg(const char *path, struct client *c, struct cmdq_item *item, int flags,
-    struct cmdq_item **new_item)
+load_cfg(const char *path, struct client *c, struct cmdq_item *item,
+    struct cmd_find_state *current, int flags, struct cmdq_item **new_item)
 {
 	FILE			*f;
 	struct cmd_parse_input	 pi;
@@ -134,7 +133,7 @@ load_cfg(const char *path, struct client *c, struct cmdq_item *item, int flags,
 	}
 
 	if (item != NULL)
-		state = cmdq_copy_state(cmdq_get_state(item));
+		state = cmdq_copy_state(cmdq_get_state(item), current);
 	else
 		state = cmdq_new_state(NULL, NULL, 0);
 	cmdq_add_format(state, "current_file", "%s", pi.file);
@@ -154,8 +153,8 @@ load_cfg(const char *path, struct client *c, struct cmdq_item *item, int flags,
 
 int
 load_cfg_from_buffer(const void *buf, size_t len, const char *path,
-    struct client *c, struct cmdq_item *item, int flags,
-    struct cmdq_item **new_item)
+    struct client *c, struct cmdq_item *item, struct cmd_find_state *current,
+    int flags, struct cmdq_item **new_item)
 {
 	struct cmd_parse_input	 pi;
 	struct cmd_parse_result	*pr;
@@ -186,7 +185,7 @@ load_cfg_from_buffer(const void *buf, size_t len, const char *path,
 	}
 
 	if (item != NULL)
-		state = cmdq_copy_state(cmdq_get_state(item));
+		state = cmdq_copy_state(cmdq_get_state(item), current);
 	else
 		state = cmdq_new_state(NULL, NULL, 0);
 	cmdq_add_format(state, "current_file", "%s", pi.file);

@@ -236,8 +236,10 @@ cmdq_link_state(struct cmdq_state *state)
 
 /* Make a copy of a state. */
 struct cmdq_state *
-cmdq_copy_state(struct cmdq_state *state)
+cmdq_copy_state(struct cmdq_state *state, struct cmd_find_state *current)
 {
+	if (current != NULL)
+		return (cmdq_new_state(current, &state->event, state->flags));
 	return (cmdq_new_state(&state->current, &state->event, state->flags));
 }
 

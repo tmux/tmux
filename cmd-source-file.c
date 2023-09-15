@@ -35,8 +35,10 @@ const struct cmd_entry cmd_source_file_entry = {
 	.name = "source-file",
 	.alias = "source",
 
-	.args = { "Fnqv", 1, -1, NULL },
-	.usage = "[-Fnqv] path ...",
+	.args = { "t:Fnqv", 1, -1, NULL },
+	.usage = "[-Fnqv] " CMD_TARGET_PANE_USAGE " path ...",
+
+	.target = { 't', CMD_FIND_PANE, CMD_FIND_CANFAIL },
 
 	.flags = 0,
 	.exec = cmd_source_file_exec
@@ -92,6 +94,7 @@ cmd_source_file_done(struct client *c, const char *path, int error,
 	size_t				 bsize = EVBUFFER_LENGTH(buffer);
 	u_int				 n;
 	struct cmdq_item		*new_item;
+	struct cmd_find_state		*target = cmdq_get_target(item);
 
 	if (!closed)
 		return;
@@ -100,7 +103,7 @@ cmd_source_file_done(struct client *c, const char *path, int error,
 		cmdq_error(item, "%s: %s", path, strerror(error));
 	else if (bsize != 0) {
 		if (load_cfg_from_buffer(bdata, bsize, path, c, cdata->after,
-		    cdata->flags, &new_item) < 0)
+		    target, cdata->flags, &new_item) < 0)
 			cdata->retval = CMD_RETURN_ERROR;
 		else if (new_item != NULL)
 			cdata->after = new_item;
