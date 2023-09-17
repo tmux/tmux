@@ -2161,6 +2161,9 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 
 	tty_cell(tty, ctx->cell, &ctx->defaults, ctx->palette,
 	    ctx->s->hyperlinks);
+
+	if (ctx->num == 1)
+		tty_invalidate(tty);
 }
 
 void
