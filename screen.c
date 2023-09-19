@@ -700,9 +700,9 @@ screen_mode_to_string(int mode)
 	if (mode & MODE_CURSOR_VERY_VISIBLE)
 		strlcat(tmp, "CURSOR_VERY_VISIBLE,", sizeof tmp);
 	if (mode & MODE_MOUSE_UTF8)
-		strlcat(tmp, "UTF8,", sizeof tmp);
+		strlcat(tmp, "MOUSE_UTF8,", sizeof tmp);
 	if (mode & MODE_MOUSE_SGR)
-		strlcat(tmp, "SGR,", sizeof tmp);
+		strlcat(tmp, "MOUSE_SGR,", sizeof tmp);
 	if (mode & MODE_BRACKETPASTE)
 		strlcat(tmp, "BRACKETPASTE,", sizeof tmp);
 	if (mode & MODE_FOCUSON)
