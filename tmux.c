@@ -43,20 +43,20 @@ const char	*socket_path;
 int		 ptm_fd = -1;
 const char	*shell_command;
 
-static __dead void	 usage(void);
+static __dead void	 usage(const int);
 static char		*make_label(const char *, char **);
 
 static int		 areshell(const char *);
 static const char	*getshell(void);
 
 static __dead void
-usage(void)
+usage(const int exit_status)
 {
 	fprintf(stderr,
 	    "usage: %s [-2CDlNuVv] [-c shell-command] [-f file] [-L socket-name]\n"
 	    "            [-S socket-path] [-T features] [command [flags]]\n",
 	    getprogname());
-	exit(1);
+	exit(exit_status);
 }
 
 static const char *
@@ -361,7 +361,7 @@ main(int argc, char **argv)
 		environ_set(global_environ, "PWD", 0, "%s", cwd);
 	expand_paths(TMUX_CONF, &cfg_files, &cfg_nfiles, 1);
 
-	while ((opt = getopt(argc, argv, "2c:CDdf:lL:NqS:T:uUvV")) != -1) {
+	while ((opt = getopt(argc, argv, "2c:CDdf:lL:NqS:T:uUvVh")) != -1) {
 		switch (opt) {
 		case '2':
 			tty_add_features(&feat, "256", ":,");
@@ -418,17 +418,19 @@ main(int argc, char **argv)
 		case 'v':
 			log_add_level();
 			break;
+		case 'h':
+			usage(0);
 		default:
-			usage();
+			usage(1);
 		}
 	}
 	argc -= optind;
 	argv += optind;
 
 	if (shell_command != NULL && argc != 0)
-		usage();
+		usage(1);
 	if ((flags & CLIENT_NOFORK) && argc != 0)
-		usage();
+		usage(1);
 
 	if ((ptm_fd = getptmfd()) == -1)
 		err(1, "getptmfd");
