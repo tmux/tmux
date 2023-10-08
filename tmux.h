@@ -1943,6 +1943,7 @@ struct client {
 	char			*exit_message;
 
 	struct key_table	*keytable;
+	key_code		 last_key;
 
 	uint64_t		 redraw_panes;
 

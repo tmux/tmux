@@ -571,6 +571,18 @@ const struct options_table_entry options_table[] = {
 		  "If changed, the new value applies only to new panes."
 	},
 
+	{ .name = "initial-repeat-time",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .minimum = 0,
+	  .maximum = 10000,
+	  .default_num = 900,
+	  .unit = "milliseconds",
+	  .text = "Time to wait for a key binding to repeat the first time the "
+	          "key is pressed, if it is bound with the '-r' flag. "
+	          "Subsequent presses use the 'repeat-time' option."
+	},
+
 	{ .name = "key-table",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SESSION,
@@ -658,8 +670,8 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .scope = OPTIONS_TABLE_SESSION,
 	  .minimum = 0,
-	  .maximum = SHRT_MAX,
-	  .default_num = 500,
+	  .maximum = 10000,
+	  .default_num = 350,
 	  .unit = "milliseconds",
 	  .text = "Time to wait for a key binding to repeat, if it is bound "
 		  "with the '-r' flag."
