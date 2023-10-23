@@ -2013,7 +2013,7 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 
 	/*
 	 * Check if we need to combine characters. This could be zero width
-	 * (zet above), a modifier character (with an existing Unicode
+	 * (set above), a modifier character (with an existing Unicode
 	 * character) or a previous ZWJ.
 	 */
 	if (!zero_width) {
