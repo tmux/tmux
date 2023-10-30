@@ -2025,6 +2025,10 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 			return (0);
 	}
 
+	/* Check if this combined character would be too long. */
+	if (last.data.size + ud->size > sizeof last.data.data)
+		return (0);
+
 	/* Combining; flush any pending output. */
 	screen_write_collect_flush(ctx, 0, __func__);
 
