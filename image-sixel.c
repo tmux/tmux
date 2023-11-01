@@ -137,7 +137,9 @@ sixel_parse_attributes(struct sixel_image *si, const char *cp, const char *end)
 	if (endptr == last || *endptr != ';')
 		return (last);
 	strtoul(endptr + 1, &endptr, 10);
-	if (endptr == last || *endptr != ';') {
+	if (endptr == last)
+		return (last);
+	if (*endptr != ';') {
 		log_debug("%s: missing ;", __func__);
 		return (NULL);
 	}
