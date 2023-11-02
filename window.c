@@ -338,6 +338,7 @@ window_destroy(struct window *w)
 {
 	log_debug("window @%u destroyed (%d references)", w->id, w->references);
 
+	window_unzoom(w);
 	RB_REMOVE(windows, &windows, w);
 
 	if (w->layout_root != NULL)

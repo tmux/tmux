@@ -2719,7 +2719,7 @@ static const struct {
 	},
 	{ .command = "next-prompt",
 	  .minargs = 0,
-	  .maxargs = 0,
+	  .maxargs = 1,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_next_prompt
 	},
