@@ -226,7 +226,7 @@ static const struct tty_feature tty_feature_strikethrough = {
 
 /* Terminal supports synchronized updates. */
 static const char *const tty_feature_sync_capabilities[] = {
-	"Sync=\\EP=%p1%ds\\E\\\\",
+	"Sync=\\E[?2026%?%p1%{1}%-%tl%eh%;",
 	NULL
 };
 static const struct tty_feature tty_feature_sync = {
