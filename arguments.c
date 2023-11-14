@@ -789,7 +789,8 @@ args_make_commands_prepare(struct cmd *self, struct cmdq_item *item, u_int idx,
 	if (wait)
 		state->pi.item = item;
 	cmd_get_source(self, &file, &state->pi.line);
-	state->pi.file = xstrdup(file);
+	if (file != NULL)
+		state->pi.file = xstrdup(file);
 	state->pi.c = tc;
 	if (state->pi.c != NULL)
 		state->pi.c->references++;
