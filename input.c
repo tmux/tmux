@@ -1864,7 +1864,7 @@ input_csi_dispatch_winops(struct input_ctx *ictx)
 	struct screen_write_ctx	*sctx = &ictx->ctx;
 	struct screen		*s = sctx->s;
 	struct window_pane	*wp = ictx->wp;
-	struct window		*w = wp->window;
+	struct window		*w = wp == NULL ? NULL : wp->window;
 	u_int			 x = screen_size_x(s), y = screen_size_y(s);
 	int			 n, m;
 
@@ -1896,12 +1896,18 @@ input_csi_dispatch_winops(struct input_ctx *ictx)
 				return;
 			break;
 		case 14:
+			if (w == NULL)
+				break;
 			input_reply(ictx, "\033[4;%u;%ut", y * w->ypixel, x * w->xpixel);
 			break;
 		case 15:
+			if (w == NULL)
+				break;
 			input_reply(ictx, "\033[5;%u;%ut", y * w->ypixel, x * w->xpixel);
 			break;
 		case 16:
+			if (w == NULL)
+				break;
 			input_reply(ictx, "\033[6;%u;%ut", w->ypixel, w->xpixel);
 			break;
 		case 18:
@@ -1932,8 +1938,8 @@ input_csi_dispatch_winops(struct input_ctx *ictx)
 				if (wp == NULL)
 					break;
 				notify_pane("pane-title-changed", wp);
-				server_redraw_window_borders(wp->window);
-				server_status_window(wp->window);
+				server_redraw_window_borders(w);
+				server_status_window(w);
 				break;
 			}
 			break;
@@ -2287,7 +2293,7 @@ input_dcs_dispatch(struct input_ctx *ictx)
 	const u_int		 prefixlen = (sizeof prefix) - 1;
 	long long		 allow_passthrough = 0;
 #ifdef ENABLE_SIXEL
-	struct window		*w = wp->window;
+	struct window		*w;
 	struct sixel_image	*si;
 #endif
 
@@ -2299,6 +2305,7 @@ input_dcs_dispatch(struct input_ctx *ictx)
 	}
 #ifdef ENABLE_SIXEL
 	if (buf[0] == 'q') {
+		w = wp->window;
 		si = sixel_parse(buf, len, w->xpixel, w->ypixel);
 		if (si != NULL)
 			screen_write_sixelimage(sctx, si, ictx->cell.cell.bg);
