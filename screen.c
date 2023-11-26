@@ -82,6 +82,7 @@ screen_init(struct screen *s, u_int sx, u_int sy, u_int hlimit)
 
 	s->cstyle = SCREEN_CURSOR_DEFAULT;
 	s->default_cstyle = SCREEN_CURSOR_DEFAULT;
+	s->mode = MODE_CURSOR;
 	s->default_mode = 0;
 	s->ccolour = -1;
 	s->default_ccolour = -1;
