@@ -2287,16 +2287,19 @@ input_dcs_dispatch(struct input_ctx *ictx)
 	const u_int		 prefixlen = (sizeof prefix) - 1;
 	long long		 allow_passthrough = 0;
 #ifdef ENABLE_SIXEL
-	struct window		*w = wp->window;
+	struct window		*w;
 	struct sixel_image	*si;
 #endif
 
 	if (wp == NULL)
 		return (0);
+	w = wp->window;
+
 	if (ictx->flags & INPUT_DISCARD) {
 		log_debug("%s: %zu bytes (discard)", __func__, len);
 		return (0);
 	}
+
 #ifdef ENABLE_SIXEL
 	if (buf[0] == 'q') {
 		si = sixel_parse(buf, len, w->xpixel, w->ypixel);
