@@ -1863,7 +1863,7 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 	struct key_binding		*bd;
 	int				 xtimeout, flags;
 	struct cmd_find_state		 fs;
-	key_code			 key0;
+	key_code			 key0, prefix, prefix2;
 
 	/* Check the client is good to accept input. */
 	if (s == NULL || (c->flags & CLIENT_UNATTACHEDFLAGS))
@@ -1935,9 +1935,11 @@ table_changed:
 	 * The prefix always takes precedence and forces a switch to the prefix
 	 * table, unless we are already there.
 	 */
+	prefix = (key_code)options_get_number(s->options, "prefix");
+	prefix2 = (key_code)options_get_number(s->options, "prefix2");
 	key0 = (key & (KEYC_MASK_KEY|KEYC_MASK_MODIFIERS));
-	if ((key0 == (key_code)options_get_number(s->options, "prefix") ||
-	    key0 == (key_code)options_get_number(s->options, "prefix2")) &&
+	if ((key0 == (prefix & (KEYC_MASK_KEY|KEYC_MASK_MODIFIERS)) ||
+	    key0 == (prefix2 & (KEYC_MASK_KEY|KEYC_MASK_MODIFIERS))) &&
 	    strcmp(table->name, "prefix") != 0) {
 		server_client_set_key_table(c, "prefix");
 		server_status_client(c);

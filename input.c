@@ -1864,9 +1864,12 @@ input_csi_dispatch_winops(struct input_ctx *ictx)
 	struct screen_write_ctx	*sctx = &ictx->ctx;
 	struct screen		*s = sctx->s;
 	struct window_pane	*wp = ictx->wp;
-	struct window		*w = wp->window;
+	struct window		*w = NULL;
 	u_int			 x = screen_size_x(s), y = screen_size_y(s);
 	int			 n, m;
+
+	if (wp != NULL)
+		w = wp->window;
 
 	m = 0;
 	while ((n = input_get(ictx, m, 0, -1)) != -1) {
@@ -1896,13 +1899,22 @@ input_csi_dispatch_winops(struct input_ctx *ictx)
 				return;
 			break;
 		case 14:
-			input_reply(ictx, "\033[4;%u;%ut", y * w->ypixel, x * w->xpixel);
+			if (w == NULL)
+				break;
+			input_reply(ictx, "\033[4;%u;%ut", y * w->ypixel,
+			    x * w->xpixel);
 			break;
 		case 15:
-			input_reply(ictx, "\033[5;%u;%ut", y * w->ypixel, x * w->xpixel);
+			if (w == NULL)
+				break;
+			input_reply(ictx, "\033[5;%u;%ut", y * w->ypixel,
+			    x * w->xpixel);
 			break;
 		case 16:
-			input_reply(ictx, "\033[6;%u;%ut", w->ypixel, w->xpixel);
+			if (w == NULL)
+				break;
+			input_reply(ictx, "\033[6;%u;%ut", w->ypixel,
+			    w->xpixel);
 			break;
 		case 18:
 			input_reply(ictx, "\033[8;%u;%ut", y, x);
@@ -1932,8 +1944,8 @@ input_csi_dispatch_winops(struct input_ctx *ictx)
 				if (wp == NULL)
 					break;
 				notify_pane("pane-title-changed", wp);
-				server_redraw_window_borders(wp->window);
-				server_status_window(wp->window);
+				server_redraw_window_borders(w);
+				server_status_window(w);
 				break;
 			}
 			break;

@@ -140,10 +140,10 @@ By default,
 loads the system configuration file from
 .Pa @SYSCONFDIR@/tmux.conf ,
 if present, then looks for a user configuration file at
-.Pa ~/.tmux.conf,
+.Pa \[ti]/.tmux.conf,
 .Pa $XDG_CONFIG_HOME/tmux/tmux.conf
 or
-.Pa ~/.config/tmux/tmux.conf .
+.Pa \[ti]/.tmux.conf .
 .Pp
 The configuration file is a set of
 .Nm
@@ -290,7 +290,7 @@ Rename the current session.
 Split the current pane into two, left and right.
 .It &
 Kill the current window.
-.It '
+.It \[aq]
 Prompt for a window index to select.
 .It \&(
 Switch the attached client to the previous session.
@@ -362,7 +362,7 @@ Toggle zoom state of the current pane.
 Swap the current pane with the previous pane.
 .It }
 Swap the current pane with the next pane.
-.It ~
+.It \[ti]
 Show previous messages from
 .Nm ,
 if any.
@@ -408,7 +408,7 @@ the command prompt.
 For example, the same
 .Ic set-option
 command run from the shell prompt, from
-.Pa ~/.tmux.conf
+.Pa \[ti]/.tmux.conf
 and bound to a key may look like:
 .Bd -literal -offset indent
 $ tmux set-option -g status-style bg=cyan
@@ -461,7 +461,7 @@ To execute commands, each client has a
 .Ql command queue .
 A global command queue not attached to any client is used on startup
 for configuration files like
-.Pa ~/.tmux.conf .
+.Pa \[ti]/.tmux.conf .
 Parsed commands added to the queue are executed in order.
 Some commands, like
 .Ic if-shell
@@ -533,7 +533,7 @@ $ tmux neww \\; splitw
 .Pp
 Or:
 .Bd -literal -offset indent
-$ tmux neww ';' splitw
+$ tmux neww \[aq];\[aq] splitw
 .Ed
 .Pp
 Or from the tmux command prompt:
@@ -551,7 +551,7 @@ $ tmux neww\e; splitw
 .Pp
 Or:
 .Bd -literal -offset indent
-$ tmux 'neww;' splitw
+$ tmux \[aq]neww;\[aq] splitw
 .Ed
 .Pp
 As in these examples, when running tmux from the shell extra care must be taken
@@ -563,7 +563,7 @@ should be escaped according to the shell conventions.
 For
 .Xr sh 1
 this typically means quoted (such as
-.Ql neww ';' splitw )
+.Ql neww \[aq];\[aq] splitw )
 or escaped (such as
 .Ql neww \e\e\e\e; splitw ) .
 .It
@@ -573,14 +573,14 @@ a second time for
 .Nm ;
 for example:
 .Bd -literal -offset indent
-$ tmux neww 'foo\e\e;' bar
+$ tmux neww \[aq]foo\e\e;\[aq] bar
 $ tmux neww foo\e\e\e\e; bar
 .Ed
 .It
 Semicolons that are not individual tokens or trailing another token should only
 be escaped once according to shell conventions; for example:
 .Bd -literal -offset indent
-$ tmux neww 'foo-;-bar'
+$ tmux neww \[aq]foo-;-bar\[aq]
 $ tmux neww foo-\e\e;-bar
 .Ed
 .El
@@ -593,8 +593,8 @@ line (the \e and the newline are completely removed).
 This is called line continuation and applies both inside and outside quoted
 strings and in comments, but not inside braces.
 .Pp
-Command arguments may be specified as strings surrounded by single (') quotes,
-double quotes (") or braces ({}).
+Command arguments may be specified as strings surrounded by single (\[aq])
+quotes, double quotes (\[dq]) or braces ({}).
 .\" "
 This is required when the argument contains any special character.
 Single and double quoted strings cannot span multiple lines except with line
@@ -609,7 +609,7 @@ global environment (see the
 .Sx GLOBAL AND SESSION ENVIRONMENT
 section).
 .It
-A leading ~ or ~user is expanded to the home directory of the current or
+A leading \[ti] or \[ti]user is expanded to the home directory of the current or
 specified user.
 .It
 \euXXXX or \euXXXXXXXX is replaced by the Unicode codepoint corresponding to
@@ -641,10 +641,10 @@ These two examples produce an identical command - note that no escaping is
 needed when using {}:
 .Bd -literal -offset indent
 if-shell true {
-    display -p 'brace-dollar-foo: }$foo'
+    display -p \[aq]brace-dollar-foo: }$foo\[aq]
 }
 
-if-shell true "display -p 'brace-dollar-foo: }\e$foo'"
+if-shell true "display -p \[aq]brace-dollar-foo: }\e$foo\[aq]"
 .Ed
 .Pp
 Braces may be enclosed inside braces, for example:
@@ -895,7 +895,7 @@ section)
 or
 .Ql {marked}
 (alternative form
-.Ql ~ )
+.Ql \[ti] )
 to specify the marked pane (see
 .Ic select-pane
 .Fl m ) .
@@ -935,12 +935,12 @@ arguments are
 commands.
 This may be a single argument passed to the shell, for example:
 .Bd -literal -offset indent
-new-window 'vi ~/.tmux.conf'
+new-window \[aq]vi \[ti]/.tmux.conf\[aq]
 .Ed
 .Pp
 Will run:
 .Bd -literal -offset indent
-/bin/sh -c 'vi ~/.tmux.conf'
+/bin/sh -c \[aq]vi \[ti]/.tmux.conf\[aq]
 .Ed
 .Pp
 Additionally, the
@@ -957,7 +957,7 @@ to be given as multiple arguments and executed directly (without
 This can avoid issues with shell quoting.
 For example:
 .Bd -literal -offset indent
-$ tmux new-window vi ~/.tmux.conf
+$ tmux new-window vi \[ti]/.tmux.conf
 .Ed
 .Pp
 Will run
@@ -992,7 +992,7 @@ set-option -wt:0 monitor-activity on
 
 new-window ; split-window -d
 
-bind-key R source-file ~/.tmux.conf \e; \e
+bind-key R source-file \[ti]/.tmux.conf \e; \e
 	display-message "source-file done"
 .Ed
 .Pp
@@ -1003,7 +1003,7 @@ $ tmux kill-window -t :1
 
 $ tmux new-window \e; split-window -d
 
-$ tmux new-session -d 'vi ~/.tmux.conf' \e; split-window -d \e; attach
+$ tmux new-session -d \[aq]vi \[ti]/.tmux.conf\[aq] \e; split-window -d \e; attach
 .Ed
 .Sh CLIENTS AND SESSIONS
 The
@@ -1584,7 +1584,7 @@ Note that as by default the
 .Nm
 server will exit with no sessions, this is only useful if a session is created
 in
-.Pa ~/.tmux.conf ,
+.Pa \[ti]/.tmux.conf ,
 .Ic exit-empty
 is turned off, or another command is run as part of the same command sequence.
 For example:
@@ -2174,7 +2174,7 @@ For example:
 $ tmux list-windows
 0: ksh [159x48]
     layout: bb62,159x48,0,0{79x48,0,0,79x48,80,0}
-$ tmux select-layout 'bb62,159x48,0,0{79x48,0,0,79x48,80,0}'
+$ tmux select-layout \[aq]bb62,159x48,0,0{79x48,0,0,79x48,80,0}\[aq]
 .Ed
 .Pp
 .Nm
@@ -2314,7 +2314,7 @@ is replaced by the client name in
 and the result executed as a command.
 If
 .Ar template
-is not given, "detach-client -t '%%'" is used.
+is not given, "detach-client -t \[aq]%%\[aq]" is used.
 .Pp
 .Fl O
 specifies the initial sort field: one of
@@ -2399,7 +2399,7 @@ are replaced by the target in
 and the result executed as a command.
 If
 .Ar template
-is not given, "switch-client -t '%%'" is used.
+is not given, "switch-client -t \[aq]%%\[aq]" is used.
 .Pp
 .Fl O
 specifies the initial sort field: one of
@@ -2511,7 +2511,7 @@ to be executed as a command with
 substituted by the pane ID.
 The default
 .Ar template
-is "select-pane -t '%%'".
+is "select-pane -t \[aq]%%\[aq]".
 With
 .Fl b ,
 other commands are not blocked from running until the indicator is closed.
@@ -2873,7 +2873,7 @@ The
 option only opens a new pipe if no previous pipe exists, allowing a pipe to
 be toggled with a single key, for example:
 .Bd -literal -offset indent
-bind-key C-p pipe-pane -o 'cat >>~/output.#I-#P'
+bind-key C-p pipe-pane -o \[aq]cat >>\[ti]/output.#I-#P\[aq]
 .Ed
 .Tg prevl
 .It Xo Ic previous-layout
@@ -3177,7 +3177,7 @@ zooms if the window is not zoomed, or keeps it zoomed if already zoomed.
 .Pp
 An empty
 .Ar shell-command
-('') will create a pane with no command running in it.
+(\[aq]\[aq]) will create a pane with no command running in it.
 Output can be sent to such a pane with the
 .Ic display-message
 command.
@@ -3304,11 +3304,11 @@ and
 Note that to bind the
 .Ql \&"
 or
-.Ql '
+.Ql \[aq]
 keys, quotation marks are necessary, for example:
 .Bd -literal -offset indent
-bind-key '"' split-window
-bind-key "'" new-window
+bind-key \[aq]"\[aq] split-window
+bind-key "\[aq]" new-window
 .Ed
 .Pp
 A command bound to the
@@ -3704,7 +3704,7 @@ it is replaced with
 .Ar value .
 For example, after:
 .Pp
-.Dl set -s command-alias[100] zoom='resize-pane -Z'
+.Dl set -s command-alias[100] zoom=\[aq]resize-pane -Z\[aq]
 .Pp
 Using:
 .Pp
@@ -3942,7 +3942,7 @@ and so on.
 .Pp
 For example:
 .Bd -literal -offset indent
-set -s user-keys[0] "\ee[5;30012~"
+set -s user-keys[0] "\ee[5;30012\[ti]"
 bind User0 resize-pane -L 3
 .Ed
 .El
@@ -4841,8 +4841,8 @@ or
 .Fl H .
 The following two commands are equivalent:
 .Bd -literal -offset indent.
-set-hook -g pane-mode-changed[42] 'set -g status-left-style bg=red'
-set-option -g pane-mode-changed[42] 'set -g status-left-style bg=red'
+set-hook -g pane-mode-changed[42] \[aq]set -g status-left-style bg=red\[aq]
+set-option -g pane-mode-changed[42] \[aq]set -g status-left-style bg=red\[aq]
 .Ed
 .Pp
 Setting a hook without specifying an array index clears the hook and sets the
@@ -5781,7 +5781,7 @@ An escape sequence (if the
 .Ic allow-rename
 option is turned on):
 .Bd -literal -offset indent
-$ printf '\e033kWINDOW_NAME\e033\e\e'
+$ printf \[aq]\e033kWINDOW_NAME\e033\e\e\[aq]
 .Ed
 .It
 Automatic renaming, which sets the name to the active command in the window's
@@ -5794,7 +5794,7 @@ option.
 When a pane is first created, its title is the hostname.
 A pane's title can be set via the title setting escape sequence, for example:
 .Bd -literal -offset indent
-$ printf '\e033]2;My Title\e033\e\e'
+$ printf \[aq]\e033]2;My Title\e033\e\e\[aq]
 .Ed
 .Pp
 It can also be modified with the
@@ -5919,7 +5919,7 @@ The flag is one of the following symbols appended to the window name:
 .It Li "-" Ta "Marks the last window (previously selected)."
 .It Li "#" Ta "Window activity is monitored and activity has been detected."
 .It Li "\&!" Ta "Window bells are monitored and a bell has occurred in the window."
-.It Li "~" Ta "The window has been silent for the monitor-silence interval."
+.It Li "\[ti]" Ta "The window has been silent for the monitor-silence interval."
 .It Li "M" Ta "The window contains the marked pane."
 .It Li "Z" Ta "The window's active pane is zoomed."
 .El
@@ -6454,7 +6454,7 @@ is replaced by the buffer name in
 and the result executed as a command.
 If
 .Ar template
-is not given, "paste-buffer -b '%%'" is used.
+is not given, "paste-buffer -b \[aq]%%\[aq]" is used.
 .Pp
 .Fl O
 specifies the initial sort field: one of
@@ -6753,7 +6753,7 @@ If set, a sequence such as this may be used
 to change the cursor colour from inside
 .Nm :
 .Bd -literal -offset indent
-$ printf '\e033]12;red\e033\e\e'
+$ printf \[aq]\e033]12;red\e033\e\e\[aq]
 .Ed
 .Pp
 The colour is an
@@ -6809,7 +6809,7 @@ Set or reset the cursor style.
 If set, a sequence such as this may be used
 to change the cursor to an underline:
 .Bd -literal -offset indent
-$ printf '\e033[4 q'
+$ printf \[aq]\e033[4 q\[aq]
 .Ed
 .Pp
 If
@@ -7128,9 +7128,9 @@ options.
 .El
 .Sh FILES
 .Bl -tag -width "@SYSCONFDIR@/tmux.confXXX" -compact
-.It Pa ~/.tmux.conf
+.It Pa \[ti]/.tmux.conf
 .It Pa $XDG_CONFIG_HOME/tmux/tmux.conf
-.It Pa ~/.config/tmux/tmux.conf
+.It Pa \[ti]/.config/tmux/tmux.conf
 Default
 .Nm
 configuration file.
@@ -7196,7 +7196,7 @@ to exit from it.
 Commands to be run when the
 .Nm
 server is started may be placed in the
-.Pa ~/.tmux.conf
+.Pa \[ti]/.tmux.conf
 configuration file.
 Common examples include:
 .Pp
@@ -7223,8 +7223,8 @@ set-option -g lock-after-time 1800
 Creating new key bindings:
 .Bd -literal -offset indent
 bind-key b set-option status
-bind-key / command-prompt "split-window 'exec man %%'"
-bind-key S command-prompt "new-window -n %1 'ssh %1'"
+bind-key / command-prompt "split-window \[aq]exec man %%\[aq]"
+bind-key S command-prompt "new-window -n %1 \[aq]ssh %1\[aq]"
 .Ed
 .Sh SEE ALSO
 .Xr pty 4
