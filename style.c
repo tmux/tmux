@@ -33,6 +33,7 @@ static struct style style_default = {
 	{ { { ' ' }, 0, 1, 1 }, 0, 0, 8, 8, 0, 0 },
 	0,
 
+	2,
 	8,
 	STYLE_ALIGN_DEFAULT,
 	STYLE_LIST_OFF,
@@ -186,6 +187,11 @@ style_parse(struct style *sy, const struct grid_cell *base, const char *in)
 				sy->align = STYLE_ALIGN_ABSOLUTE_CENTRE;
 			else
 				goto error;
+		} else if (end > 4 && strncasecmp(tmp, "pad=", 4) == 0) {
+			value = strtol(tmp + 4, NULL, 10);
+			if (errno == ERANGE)
+				goto error;
+			sy->pad = value;
 		} else if (end > 5 && strncasecmp(tmp, "fill=", 5) == 0) {
 			if ((value = colour_fromstring(tmp + 5)) == -1)
 				goto error;
@@ -301,6 +307,11 @@ style_tostring(struct style *sy)
 		else if (sy->default_type == STYLE_DEFAULT_POP)
 			tmp = "pop-default";
 		off += xsnprintf(s + off, sizeof s - off, "%s%s", comma, tmp);
+		comma = ",";
+	}
+	if (sy->pad != 2) {
+		off += xsnprintf(s + off, sizeof s - off, "%spad=%d", comma,
+		    sy->pad);
 		comma = ",";
 	}
 	if (sy->fill != 8) {
