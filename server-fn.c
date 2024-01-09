@@ -464,8 +464,23 @@ server_check_unattached(void)
 	RB_FOREACH(s, sessions, &sessions) {
 		if (s->attached != 0)
 			continue;
-		if (options_get_number (s->options, "destroy-unattached"))
+		switch (options_get_number(s->options, "destroy-unattached")) {
+		case 0:
+			continue;
+		case 2:
+			struct session_group	*sg;
+			sg = session_group_contains(s);
+			/*
+			 * Keep the session only if it is in a group and is the
+			 * last one in the group.
+			 */
+			if (session_group_count(sg) == 1)
+				continue;
+			/* FALLTHROUGH */
+		case 1:
 			session_destroy(s, 1, __func__);
+			break;
+		}
 	}
 }
 
