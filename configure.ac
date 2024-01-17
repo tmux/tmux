@@ -148,7 +148,7 @@ AC_CHECK_FUNCS([ \
 	prctl \
 	proc_pidinfo \
 	getpeerucred \
-	sysconf \
+	sysconf
 ])
 
 # Check for functions with a compatibility implementation.
@@ -165,7 +165,9 @@ AC_REPLACE_FUNCS([ \
 	getpeereid \
 	getline \
 	getprogname \
+	htonll \
 	memmem \
+	ntohll \
 	setenv \
 	setproctitle \
 	strcasestr \

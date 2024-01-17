@@ -334,6 +334,16 @@ char		*strndup(const char *, size_t);
 void		*memmem(const void *, size_t, const void *, size_t);
 #endif
 
+#ifndef HAVE_HTONLL
+/* htonll.c */
+uint64_t	 htonll(uint64_t);
+#endif
+
+#ifndef HAVE_NTOHLL
+/* ntohll.c */
+uint64_t	 ntohll(uint64_t);
+#endif
+
 #ifndef HAVE_GETPEEREID
 /* getpeereid.c */
 int		getpeereid(int, uid_t *, gid_t *);

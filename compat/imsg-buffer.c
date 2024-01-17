@@ -20,6 +20,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
+#include <arpa/inet.h>
 
 #include <limits.h>
 #include <errno.h>
@@ -31,11 +32,17 @@
 #include "compat.h"
 #include "imsg.h"
 
+#undef htobe16
 #define htobe16 htons
+#undef htobe32
 #define htobe32 htonl
+#undef htobe64
 #define htobe64 htonll
+#undef be16toh
 #define be16toh ntohs
+#undef be32toh
 #define be32toh ntohl
+#undef be64toh
 #define be64toh ntohll
 
 static int	ibuf_realloc(struct ibuf *, size_t);
