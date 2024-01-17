@@ -23,7 +23,6 @@
 
 #include <limits.h>
 #include <errno.h>
-#include <endian.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,6 +30,13 @@
 
 #include "compat.h"
 #include "imsg.h"
+
+#define htobe16 htons
+#define htobe32 htonl
+#define htobe64 htonll
+#define be16toh ntohs
+#define be32toh ntohl
+#define be64toh ntohll
 
 static int	ibuf_realloc(struct ibuf *, size_t);
 static void	ibuf_enqueue(struct msgbuf *, struct ibuf *);
