@@ -242,7 +242,7 @@ style_tostring(struct style *sy)
 	int			 off = 0;
 	const char		*comma = "", *tmp = "";
 	static char		 s[256];
-	char			 b[16];
+	char			 b[21];
 
 	*s = '\0';
 
