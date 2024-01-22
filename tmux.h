@@ -835,6 +835,7 @@ struct style {
 	struct grid_cell	gc;
 	int			ignore;
 
+	int			pad;
 	int			fill;
 	enum style_align	align;
 	enum style_list		list;

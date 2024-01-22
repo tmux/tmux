@@ -301,7 +301,7 @@ screen_redraw_check_cell(struct client *c, u_int px, u_int py, int pane_status,
 	struct window		*w = c->session->curw->window;
 	struct window_pane	*wp, *active;
 	int			 border;
-	u_int			 right, line;
+	u_int			 right, line, indent;
 
 	*wpp = NULL;
 
@@ -309,6 +309,8 @@ screen_redraw_check_cell(struct client *c, u_int px, u_int py, int pane_status,
 		return (CELL_OUTSIDE);
 	if (px == w->sx || py == w->sy) /* window border */
 		return (screen_redraw_type_of_cell(c, px, py, pane_status));
+
+	indent = options_get_number(w->options, "pane-border-indent");
 
 	if (pane_status != PANE_STATUS_OFF) {
 		active = wp = server_client_get_pane(c);
@@ -320,9 +322,9 @@ screen_redraw_check_cell(struct client *c, u_int px, u_int py, int pane_status,
 				line = wp->yoff - 1;
 			else
 				line = wp->yoff + wp->sy;
-			right = wp->xoff + 2 + wp->status_size - 1;
+			right = wp->xoff + indent + wp->status_size - 1;
 
-			if (py == line && px >= wp->xoff + 2 && px <= right)
+			if (py == line && px >= wp->xoff + indent && px <= right)
 				return (CELL_INSIDE);
 
 		next1:
@@ -382,7 +384,7 @@ screen_redraw_make_pane_status(struct client *c, struct window_pane *wp,
 	struct format_tree	*ft;
 	char			*expanded;
 	int			 pane_status = rctx->pane_status;
-	u_int			 width, i, cell_type, px, py;
+	u_int			 width, i, cell_type, px, py, indent;
 	struct screen_write_ctx	 ctx;
 	struct screen		 old;
 
@@ -396,10 +398,12 @@ screen_redraw_make_pane_status(struct client *c, struct window_pane *wp,
 	fmt = options_get_string(wp->options, "pane-border-format");
 
 	expanded = format_expand_time(ft, fmt);
-	if (wp->sx < 4)
+
+	indent = options_get_number(w->options, "pane-border-indent");
+	if (wp->sx < 2 * indent)
 		wp->status_size = width = 0;
 	else
-		wp->status_size = width = wp->sx - 4;
+		wp->status_size = width = wp->sx - 2 * indent;
 
 	memcpy(&old, &wp->status_screen, sizeof old);
 	screen_init(&wp->status_screen, width, 1, 0);
@@ -408,7 +412,7 @@ screen_redraw_make_pane_status(struct client *c, struct window_pane *wp,
 	screen_write_start(&ctx, &wp->status_screen);
 
 	for (i = 0; i < width; i++) {
-		px = wp->xoff + 2 + i;
+		px = wp->xoff + indent + i;
 		if (rctx->pane_status == PANE_STATUS_TOP)
 			py = wp->yoff - 1;
 		else
@@ -443,9 +447,11 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 	struct tty		*tty = &c->tty;
 	struct window_pane	*wp;
 	struct screen		*s;
-	u_int			 i, x, width, xoff, yoff, size;
+	u_int			 i, x, width, xoff, yoff, size, indent;
 
 	log_debug("%s: %s @%u", __func__, c->name, w->id);
+
+	indent = options_get_number(w->options, "pane-border-indent");
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if (!window_pane_visible(wp))
@@ -457,7 +463,7 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 			yoff = wp->yoff - 1;
 		else
 			yoff = wp->yoff + wp->sy;
-		xoff = wp->xoff + 2;
+		xoff = wp->xoff + indent;
 
 		if (xoff + size <= ctx->ox ||
 		    xoff >= ctx->ox + ctx->sx ||

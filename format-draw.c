@@ -717,7 +717,7 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 					   RIGHT,
 					   ABSOLUTE_CENTRE };
 	int			 focus_start = -1, focus_end = -1;
-	int			 list_state = -1, fill = -1, even;
+	int			 list_state = -1, pad = 0, fill = -1, even;
 	enum style_align	 list_align = STYLE_ALIGN_DEFAULT;
 	struct grid_cell	 gc, current_default;
 	struct style		 sy, saved_sy;
@@ -834,6 +834,10 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 			sy.gc.bg = base->bg;
 			sy.gc.fg = base->fg;
 		}
+
+		/* If this style has padding, store it for later. */
+		if (sy.pad > 0)
+			pad = sy.pad;
 
 		/* If this style has a fill colour, store it for later. */
 		if (sy.fill != 8)
@@ -970,6 +974,15 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 	TAILQ_FOREACH(fr, &frs, entry) {
 		log_debug("%s: range %d|%u is %s %u-%u", __func__, fr->type,
 		    fr->argument, names[fr->index], fr->start, fr->end);
+	}
+
+	if (pad > 0) {
+		log_debug("%s: pad greater than 0 %d", __func__, pad);
+		// uncertain what i'd have to change here
+		ocx += pad;
+		available -= pad;
+		focus_start += pad;
+		focus_end -= pad;
 	}
 
 	/* Clear the available area. */

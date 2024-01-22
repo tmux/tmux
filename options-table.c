@@ -1043,6 +1043,15 @@ const struct options_table_entry options_table[] = {
 	  .text = "Format of text in the pane status lines."
 	},
 
+	{ .name = "pane-border-indent",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .minimum = 0,
+	  .maximum = USHRT_MAX,
+	  .default_num = 2,
+	  .text = "Indent of the pane border."
+	},
+
 	{ .name = "pane-border-indicators",
 	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_WINDOW,
