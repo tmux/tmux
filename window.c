@@ -1214,6 +1214,12 @@ window_pane_visible(struct window_pane *wp)
 	return (wp == wp->window->active);
 }
 
+int
+window_pane_exited(struct window_pane *wp)
+{
+	return (wp->fd == -1 || (wp->flags & PANE_EXITED));
+}
+
 u_int
 window_pane_search(struct window_pane *wp, const char *term, int regex,
     int ignore)

@@ -68,7 +68,7 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmdq_item *item)
 	sigset_t			 set, oldset;
 
 	/* Do nothing if pane is dead. */
-	if (wp->fd == -1 || (wp->flags & PANE_EXITED)) {
+	if (window_pane_exited(wp)) {
 		cmdq_error(item, "target pane has exited");
 		return (CMD_RETURN_ERROR);
 	}
