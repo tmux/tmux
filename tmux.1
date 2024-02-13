@@ -4026,10 +4026,20 @@ The value is the width and height separated by an
 character.
 The default is 80x24.
 .It Xo Ic destroy-unattached
-.Op Ic on | off
+.Op Ic off | on | keep-last | keep-group
 .Xc
-If enabled and the session is no longer attached to any clients, it is
-destroyed.
+If
+.Ic on ,
+destroy the session after the last client has detached.
+If
+.Ic off
+(the default), leave the session orphaned.
+If
+.Ic keep-last ,
+destroy the session only if it is in a group and has other sessions in that group.
+If
+.Ic keep-group ,
+destroy the session unless it is in a group and is the only session in that group.
 .It Xo Ic detach-on-destroy
 .Op Ic off | on | no-detached | previous | next
 .Xc

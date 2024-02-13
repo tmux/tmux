@@ -84,6 +84,9 @@ static const char *options_table_window_size_list[] = {
 static const char *options_table_remain_on_exit_list[] = {
 	"off", "on", "failed", NULL
 };
+static const char *options_table_destroy_unattached_list[] = {
+	"off", "on", "keep-last", "keep-group", NULL
+};
 static const char *options_table_detach_on_destroy_list[] = {
 	"off", "on", "no-detached", "previous", "next", NULL
 };
@@ -483,11 +486,12 @@ const struct options_table_entry options_table[] = {
 	},
 
 	{ .name = "destroy-unattached",
-	  .type = OPTIONS_TABLE_FLAG,
+	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_SESSION,
+	  .choices = options_table_destroy_unattached_list,
 	  .default_num = 0,
 	  .text = "Whether to destroy sessions when they have no attached "
-		  "clients."
+		  "clients, or keep the last session whether in the group."
 	},
 
 	{ .name = "detach-on-destroy",
