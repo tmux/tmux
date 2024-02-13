@@ -1,3 +1,116 @@
+CHANGES FROM 3.3a to 3.4
+
+* Add options keep-last and keep-group to destroy-unattached to keep the last
+  session whether in a group.
+
+* Don't allow paste-buffer into dead panes.
+
+* Add -t to source-file.
+
+* Rewrite combined character handling to be more consistent and to support
+  newer Unicode combined characters.
+
+* Add basic support for SIXEL if built with --enable-sixel.
+
+* Add a session, pane and user mouse range types for the status line and add
+  format variables for mouse_status_line and mouse_status_range so they can be
+  associated with different commands in the key bindings.
+
+* Add flag (-o) to next-prompt/previous-prompt to go to OSC 133 command output.
+
+* Add options and flags for menu styles (menu-style, menu-border-style) similar
+  to those existing for popups.
+
+* Add support for marking lines with a shell prompt based on the OSC 133 extension.
+
+* Check for libterminfo for NetBSD.
+
+* Add "us" to styles for underscore colour.
+
+* Add flags (-c and -y) to change the confirm key and default behaviour of
+  confirm-before.
+
+* Use ncurses' new tparm_s function (added in 6.4-20230424) instead of tparm so
+  it does not object to string arguments in c apabilities it doesn't already
+  know. Also ignore errors from tparm if using previous ncurses versions.
+
+* Set default lock command to vlock on Linux if present at build time.
+
+* Discard mouse sequences that have the right form but actually are invalid.
+
+* Add support for spawning panes in separate cgroups with systemd and a
+  configure flag (--disable-cgroups) to turn off.
+
+* Add a format (pane_unseen_changes) to show if there are unseen changes while
+  in a mode.
+
+* Remove old buffer when renaming rather than complaining.
+
+* Add an L modifier like P, W, S to loop over clients.
+
+* Add -f to list-clients like the other list commands.
+
+* Extend display-message to work for control clients.
+
+* Add a flag to display-menu to select the manu item selected when the menu is
+  open.
+
+* Have tmux recognise pasted text wrapped in bracket paste sequences, rather
+  than only forwarding them to the program inside.
+
+* Have client return 1 if process is interrupted to an input pane.
+
+* Query the client terminal for foreground and background colours and if OSC 10
+  or 11 is received but no colour has been set inside tmux, return the colour
+  from the first attached client.
+
+* Add send-keys -K to handle keys directly as if typed (so look up in key
+  table).
+
+* Process escape sequences in show-buffer.
+
+* Add a -l flag to display-message to disable format expansion.
+
+* Add paste-buffer-deleted notification and fix name of paste-buffer-changed.
+
+* Do not attempt to connect to the socket as a client if systemd is active.
+
+* Add scroll-top and scroll-bottom commands to scroll so cursor is at top or
+  bottom.
+
+* Add a -T flag to capture-pane to stop at the last used cell instead of the
+  full width. Restore the previous behaviour by making it default to off unless
+  -J is used.
+
+* Add message-line option to control where message and prompt go.
+
+* Notification when a when a paste buffer is deleted.
+
+* Add a Nobr terminfo(5) capability to tell tmux the terminal does not use bright
+  colours for bold.
+
+* Change g and G to go to top and bottom in menus.
+
+* Add a third state "all" to allow-passthrough to work even in invisible panes.
+
+* Add support for OSC 8 hyperlinks.
+
+* Store the time lines are scrolled into history and display in copy mode.
+
+* Add a %config-error reply to control mode for configuration file errors since
+  reporting them in view mode is useless.
+
+* A new feature flag (ignorefkeys) to ignore terminfo(5) function key
+  definitions for rxvt.
+
+* Pass through first argument to OSC 52 (which clipboards to set) if the
+  application provides it.
+
+* Expand arguments to send-keys, capture-pane, split-window, join-pane where it
+  makes sense to do so.
+
+* Ignore named buffers when choosing a buffer if one is not specified by the user.
+
 CHANGES FROM 3.3 TO 3.3a
 
 * Do not crash when run-shell produces output from a config file.
