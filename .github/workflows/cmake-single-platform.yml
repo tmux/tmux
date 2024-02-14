@@ -5,7 +5,7 @@ name: CMake on a single platform
 on:
   push:
     branches: [ "master" ]
-  pull_request:
+  pull_request: 1
     branches: [ "master" ]
 
 env:
