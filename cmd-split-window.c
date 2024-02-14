@@ -95,7 +95,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		size = args_percentage_and_expand(args, 'l', 0, INT_MAX, curval,
 			   item, &cause);
 	} else if (args_has(args, 'p')) {
-		size = args_strtonum_and_expand(args, 'l', 0, 100, item,
+		size = args_strtonum_and_expand(args, 'p', 0, 100, item,
 			    &cause);
 		if (cause == NULL)
 			size = curval * size / 100;
