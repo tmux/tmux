@@ -87,7 +87,7 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (args_has(args, 'Z')) {
 		if (w->flags & WINDOW_ZOOMED)
-			window_unzoom(w);
+			window_unzoom(w, 1);
 		else
 			window_zoom(wp);
 		server_redraw_window(w);

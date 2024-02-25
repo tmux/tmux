@@ -345,7 +345,7 @@ popup_make_pane(struct popup_data *pd, enum layout_type type)
 	u_int			 hlimit;
 	const char		*shell;
 
-	window_unzoom(w);
+	window_unzoom(w, 1);
 
 	lc = layout_split_pane(wp, type, -1, 0);
 	hlimit = options_get_number(s->options, "history-limit");
