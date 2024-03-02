@@ -795,7 +795,7 @@ window_copy_formats(struct window_mode_entry *wme, struct format_tree *ft)
 	format_add(ft, "copy_cursor_x", "%d", data->cx);
 	format_add(ft, "copy_cursor_y", "%d", data->cy);
 
-	format_add(ft, "selection_present", "%d", data->screen.sel != NULL);
+	format_add(ft, "selection_present", "%d", (data->screen.sel != NULL) && (data->endselx-data->selx) && (data->endsely-data->sely));
 	if (data->screen.sel != NULL) {
 		format_add(ft, "selection_start_x", "%d", data->selx);
 		format_add(ft, "selection_start_y", "%d", data->sely);
