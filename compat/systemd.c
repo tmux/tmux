@@ -24,7 +24,9 @@
 #include <systemd/sd-login.h>
 #include <systemd/sd-id128.h>
 
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "tmux.h"
 
