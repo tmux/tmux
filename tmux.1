@@ -1036,9 +1036,17 @@ The following commands are available to manage clients and sessions:
 .D1 Pq alias: Ic attach
 If run from outside
 .Nm ,
-create a new client in the current terminal and attach it to
+attach to
+.Ar target-session
+in the current terminal.
+.Ar target-session
+must already exist - to create a new session, see the
+.Ic new-session
+command (with
+.Fl A
+to create or attach).
+If used from inside, switch the currently attached session to
 .Ar target-session .
-If used from inside, switch the current client.
 If
 .Fl d
 is specified, any other clients attached to the session are detached.
