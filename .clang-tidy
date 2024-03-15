@@ -1,0 +1,4 @@
+Checks: '*, -llvm-header-guard, -readability-magic-numbers'
+WarningsAsErrors: '*'
+HeaderFilterRegex: '.*'
+FormatStyle: file
