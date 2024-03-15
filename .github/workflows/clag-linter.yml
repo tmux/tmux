@@ -34,4 +34,4 @@ jobs:
             - name: Run clang-tidy
               run: |
                   clang-tidy --version
-                  find . -path ./external -prune -o -name '*.c' -exec clang-tidy {} + -p $(pwd)
+                  find . -path ./external -prune -o -name '*.c' -print | xargs clang-tidy -p $(pwd)
