@@ -15,10 +15,22 @@ jobs:
             - name: Checkout code
               uses: actions/checkout@v2
 
-            - name: Install clang-tidy
-              run: sudo apt-get update && sudo apt-get install -y clang-tidy
+            - name: Install dependencies
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y clang-tidy
+                  sudo apt-get install -y bear # Install bear to generate compile_commands.json
+
+            - name: Autotools setup
+              run: |
+                  autoreconf -i
+                  ./configure
+
+            - name: Generate compile_commands.json
+              run: |
+                  bear -- make
 
             - name: Run clang-tidy
               run: |
                   clang-tidy --version
-                  find . -path ./external -prune -o -name '*.c' -exec clang-tidy {} +
+                  find . -path ./external -prune -o -name '*.c' -exec clang-tidy {} + -p $(pwd)
