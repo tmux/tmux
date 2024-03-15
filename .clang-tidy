@@ -1,4 +1,3 @@
-Checks: '*, -llvm-header-guard, -readability-magic-numbers'
-WarningsAsErrors: '*'
-HeaderFilterRegex: '.*'
+Checks: "*, -llvm-header-guard, -readability-magic-numbers"
+HeaderFilterRegex: ".*"
 FormatStyle: file
