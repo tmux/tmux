@@ -19,7 +19,8 @@ jobs:
               run: |
                   sudo apt-get update
                   sudo apt-get install -y clang-tidy
-                  sudo apt-get install -y bear # Install bear to generate compile_commands.json
+                  sudo apt-get install -y bear
+                  sudo apt-get install -y libevent-dev # Install libevent development headers
 
             - name: Autotools setup
               run: |
