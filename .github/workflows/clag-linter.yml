@@ -1,0 +1,24 @@
+name: C++ Lint with clang-tidy
+
+on:
+    push:
+        branches: [master]
+    pull_request:
+        branches: [master]
+
+jobs:
+    clang-tidy:
+        name: Run clang-tidy
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v2
+
+            - name: Install clang-tidy
+              run: sudo apt-get update && sudo apt-get install -y clang-tidy
+
+            - name: Run clang-tidy
+              run: |
+                  clang-tidy --version
+                  find . -path ./external -prune -o -name '*.c' -exec clang-tidy {} +
