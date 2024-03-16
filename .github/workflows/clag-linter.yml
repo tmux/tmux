@@ -35,3 +35,22 @@ jobs:
               run: |
                   clang-tidy --version
                   find . -path ./external -prune -o -name '*.c' -print | xargs clang-tidy -p $(pwd)
+
+    comment-on-failure:
+        name: Comment on PR if clang-tidy fails
+        needs: [clang-tidy]
+        if: ${{ always() && needs.clang-tidy.result == 'failure' }}
+        runs-on: ubuntu-latest
+        steps:
+            - name: Comment on PR
+              uses: actions/github-script@v5
+              with:
+                  script: |
+                      const issue_number = context.payload.pull_request.number;
+                      const comment_body = 'The linting workflow failed. Please check the clang-tidy output for details.';
+                      github.rest.issues.createComment({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        issue_number: issue_number,
+                        body: comment_body
+                      });
