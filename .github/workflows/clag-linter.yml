@@ -2,9 +2,7 @@ name: C++ Lint with clang-tidy
 
 on:
     push:
-        branches: [master]
     pull_request:
-        branches: [master]
 
 jobs:
     clang-tidy:
@@ -42,7 +40,13 @@ jobs:
         if: ${{ always() && needs.clang-tidy.result == 'failure' }}
         runs-on: ubuntu-latest
         steps:
+            - name: Check if triggered by a PR
+              id: check-pr
+              run: echo "::set-output name=is_pr::${{ github.event.pull_request != null }}"
+              shell: bash
+
             - name: Comment on PR
+              if: steps.check-pr.outputs.is_pr == 'true'
               uses: actions/github-script@v5
               with:
                   script: |
