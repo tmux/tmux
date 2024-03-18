@@ -22,6 +22,7 @@ jobs:
     # Prepare for build (for version control source)
     - name: Run autogen.sh (for version control)
       run: |
+        cd ../..
         chmod +x autogen.sh
         ./autogen.sh
 
