@@ -1,0 +1,90 @@
+name: Travis CI test
+
+language: c
+
+os:
+  - linux
+  - freebsd
+  - osx
+
+compiler:
+  - gcc
+  - clang
+
+arch:
+  - amd64
+  - arm64
+
+env:
+  - BUILD=
+  - BUILD=static
+  - BUILD=all
+  - BUILD=musl
+  - BUILD=musl-static
+
+jobs:
+  exclude:
+    # Static builds are broken on OS X (by Apple)
+    - os: osx
+      compiler: gcc
+      env: BUILD=static
+    - os: osx
+      compiler: clang
+      env: BUILD=static
+    # No musl on FreeBSD
+    - os: freebsd
+      compiler: gcc
+      env: BUILD=musl
+    - os: freebsd
+      compiler: clang
+      env: BUILD=musl
+    - os: freebsd
+      compiler: gcc
+      env: BUILD=musl-static
+    - os: freebsd
+      compiler: clang
+      env: BUILD=musl-static
+    # No musl on OS X
+    - os: osx
+      compiler: gcc
+      env: BUILD=musl
+    - os: osx
+      compiler: clang
+      env: BUILD=musl
+    - os: osx
+      compiler: gcc
+      env: BUILD=musl-static
+    - os: osx
+      compiler: clang
+      env: BUILD=musl-static
+    # arm64 doesn't link ncurses
+    - os: linux
+      compiler: gcc
+      arch: arm64
+      env: BUILD=all
+    - os: linux
+      compiler: clang
+      arch: arm64
+      env: BUILD=all
+    - os: linux
+      compiler: gcc
+      arch: arm64
+      env: BUILD=musl
+    - os: linux
+      compiler: clang
+      arch: arm64
+      env: BUILD=musl
+    - os: linux
+      compiler: gcc
+      arch: arm64
+      env: BUILD=musl-static
+    - os: linux
+      compiler: clang
+      arch: arm64
+      env: BUILD=musl-static
+
+before_install:
+  - sh .github/travis/before-install.sh
+
+script:
+  - sh .github/travis/build.sh
