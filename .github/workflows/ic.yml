@@ -21,8 +21,8 @@ jobs:
     # Prepare for build (for version control source)
     - name: Run autogen.sh (for version control)
       run: |
-        sh autogen.sh || echo "Skipping autogen.sh for release tarball build"
-
+        sh autogen.sh
+        
     # Configure and Build tmux
     - name: Configure and Build tmux
       run: |
