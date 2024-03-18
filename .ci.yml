@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    
+    # Install dependencies
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libevent-dev ncurses-dev gcc make pkg-config byacc autoconf automake
+
+    # Prepare for build (for version control source)
+    - name: Run autogen.sh (for version control)
+      run: |
+        sh autogen.sh || echo "Skipping autogen.sh for release tarball build"
+
+    # Configure and Build tmux
+    - name: Configure and Build tmux
+      run: |
+        ./configure && make
+
+    # Optionally, include additional steps for testing or installation
+    - name: Install tmux
+      run: |
+        sudo make install
+        
+    # Add additional steps for running tests if applicable.
