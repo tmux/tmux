@@ -26,7 +26,8 @@ jobs:
     # Configure and Build tmux
     - name: Configure and Build tmux
       run: |
-        ./configure && make
+        ./configure --disable-utf8proc
+        make
 
     # Optionally, include additional steps for testing or installation
     - name: Install tmux
