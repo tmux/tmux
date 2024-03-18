@@ -22,7 +22,7 @@ jobs:
     # Prepare for build (for version control source)
     - name: Run autogen.sh (for version control)
       run: |
-        sh autogen.sh
+        sh autogen.sh || echo "Skipping autogen.sh for release tarball build"
 
     # Configure and Build tmux
     - name: Configure and Build tmux
