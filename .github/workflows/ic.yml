@@ -10,7 +10,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: dessant/lock-threads@v5
+    - uses: dessant/lock-threads@v2
     
     # Install dependencies
     - name: Install dependencies
