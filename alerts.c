@@ -17,7 +17,7 @@
  */
 
 #include <sys/types.h>
-
+/*small and non-functonal change*/
 #include <stdlib.h>
 
 #include "tmux.h"
