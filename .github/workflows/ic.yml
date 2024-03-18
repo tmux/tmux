@@ -1,41 +1,35 @@
-name: 'CI Tests'
+name: Build and Test
 
-on:
-  push:
-    branches: [ "master" ]
-  pull_request:
-    branches: [ "master" ]
+on: [push, pull_request]
 
 jobs:
-  build:
+  build-and-test:
     runs-on: ubuntu-latest
     steps:
-    - uses: dessant/lock-threads@v2
-    
-    # Install dependencies
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y automake libevent-dev ncurses-dev gcc make pkg-config byacc autoconf automake
+      - uses: actions/checkout@v2
+      
+      - name: Install dependencies for Linux
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get -y install bison \
+              autotools-dev \
+              libncurses5-dev \
+              libevent-dev \
+              pkg-config \
+              libutempter-dev \
+              build-essential
+          if [ "${{ matrix.build }}" == "musl" ] || [ "${{ matrix.build }}" == "musl-static" ]; then
+            sudo apt-get -y install musl-dev \
+                        musl-tools
+          fi
+          
+      # Add steps for other operating systems if needed, similar to the Linux steps above.
 
+      - name: Build tmux
+        run: |
+          sh autogen.sh
+          ./configure
+          make
 
-    # Prepare for build (for version control source)
-    - name: Run autogen.sh (for version control)
-      run: |
-        cd ../..
-        chmod +x autogen.sh
-        ./autogen.sh
-
-
-    # Configure and Build tmux
-    - name: Configure and Build tmux
-      run: |
-        ./configure --enable-utf8proc
-        make
-
-    # Optionally, include additional steps for testing or installation
-    - name: Install tmux
-      run: |
-        sudo make install
-        
-    # Add additional steps for running tests if applicable.
+      # Add additional steps for running tests if applicable.
