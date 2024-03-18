@@ -16,14 +16,15 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install automake
-        sudo apt-get install -y libevent-dev ncurses-dev gcc make pkg-config byacc autoconf automake
+        sudo apt-get install -y automake libevent-dev ncurses-dev gcc make pkg-config byacc autoconf automake
+
 
     # Prepare for build (for version control source)
     - name: Run autogen.sh (for version control)
       run: |
         chmod +x autogen.sh
-        sh autogen.sh
+        ./autogen.sh
+
 
     # Configure and Build tmux
     - name: Configure and Build tmux
