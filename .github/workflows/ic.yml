@@ -22,12 +22,12 @@ jobs:
     # Prepare for build (for version control source)
     - name: Run autogen.sh (for version control)
       run: |
-        sh autogen.sh || echo "Skipping autogen.sh for release tarball build"
+        sh autogen.sh
 
     # Configure and Build tmux
     - name: Configure and Build tmux
       run: |
-        ./configure --disable-utf8proc
+        ./configure --enable-utf8proc
         make
 
     # Optionally, include additional steps for testing or installation
