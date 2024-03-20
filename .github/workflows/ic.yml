@@ -48,9 +48,10 @@ jobs:
           sh conf-syntax.sh
           chmod +x control-client-sanity.sh
           sh control-client-sanity.sh
-
-          chmod +x copy-mode-test-emacs.sh
-          sh copy-mode-test-emacs.sh
+          chmod +x copy-mode-test-vi.sh
+          sh copy-mode-test-vi.sh
+        #  chmod +x copy-mode-test-emacs.sh
+        #  sh copy-mode-test-emacs.sh
         #  chmod +x control-client-size.sh
         #  sh control-client-size.sh
         #sh copy-mode-test-vi.sh
