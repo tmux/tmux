@@ -10,13 +10,12 @@ jobs:
   create_issue:
     runs-on: ubuntu-latest
     steps:
-      - name: Create new documentation review issue
+      - name: Create Documentation Review Issue
         run: |
-          issue_body=$(cat .github/ISSUE_TEMPLATE/documentation_review.md)
           new_issue_url=$(gh issue create \
-            --title "Documentation Review Reminder" \
-            --label "documentation" \
-            --body "$issue_body")
+            --title "Biannual Documentation Review" \
+            --label "documentation, review" \
+            --body "It's time for our biannual review of the documentation. @Documentation_Reviewers\n\nPlease go over the following:\n\n- Are all docs up to date?\n- Is any information missing?\n- Are there any new features or changes that need to be documented?")
           echo "New issue created: $new_issue_url"
           echo "ISSUE_URL=$new_issue_url" >> $GITHUB_ENV
         env:
