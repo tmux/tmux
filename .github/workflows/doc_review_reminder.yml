@@ -20,7 +20,6 @@ jobs:
         run: |
           new_issue_url=$(gh issue create \
             --title "Biannual Documentation Review" \
-            --label "documentation, review" \
             --body "It's time for our biannual review of the documentation. @Documentation_Reviewers\n\nPlease go over the following:\n\n- Are all docs up to date?\n- Is any information missing?\n- Are there any new features or changes that need to be documented?")
           echo "New issue created: $new_issue_url"
           echo "ISSUE_URL=$new_issue_url" >> $GITHUB_ENV
