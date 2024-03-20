@@ -60,7 +60,8 @@ jobs:
           sh has-session-return.sh
           chmod +x if-shell-error.sh
           sh if-shell-error.sh
-        #sh if-shell-nested.sh
+          chmod +x if-shell-nested.sh
+          sh if-shell-nested.sh
         #sh if-shell-TERM.sh
         #sh input-key.sh
         #sh kill-session-process-exit.sh
