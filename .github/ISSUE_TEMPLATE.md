@@ -1,22 +1,33 @@
-### Issue description
+# Issue description | DD/MM/YY 
 
-Please read https://github.com/tmux/tmux/blob/master/.github/CONTRIBUTING.md
-before opening an issue.
+## Checklist Before Opening an Issue
+- [ ] Read https://github.com/tmux/tmux/blob/master/.github/CONTRIBUTING.md
+- [ ] Your Issue is specific and actionable.
+- [ ] `$TERM` is appropriate (`echo $TERM` inside tmux).
+- [ ] Issue persists in the latest tmux release or Git master build.
+- [ ] Not covered in [tmux manual](https://man.openbsd.org/tmux.1) or [CHANGES file](https://raw.githubusercontent.com/tmux/tmux/master/CHANGES).
+- [ ] Issue is not previously reported.
+- [ ] Do not report bugs (crashes, incorrect behaviour) without reproducing on a tmux built from the latest code in Git.
 
-If you have upgraded, make sure your issue is not covered in the CHANGES file
-for your version: https://raw.githubusercontent.com/tmux/tmux/master/CHANGES
 
-Describe the problem and the steps to reproduce. Add a minimal tmux config if
-necessary. Screenshots can be helpful, but no more than one or two.
+## Information to Include
+- tmux version (`tmux -V`).
+- system version (`uname -sp`).
+- $TERM inside and outside of tmux (`echo $TERM`).
+- Logs from tmux (`tmux kill-server; tmux -vv new`).
+- Minimal tmux config (if relevant).
+- Attach tmux logs with `-vv` and up to two screenshots.
 
-Do not report bugs (crashes, incorrect behaviour) without reproducing on a tmux
-built from the latest code in Git.
+## Steps to Reproduce
+1. Step 1
+2. Step 2
+3. Step 3
 
-### Required information
+## Expected Behavior
+Describe what you expected to happen.
 
-Please provide the following information:
+## Actual Behavior
+Describe what actually happened.
 
-* tmux version (`tmux -V`).
-* Platform (`uname -sp`).
-* $TERM inside and outside of tmux (`echo $TERM`).
-* Logs from tmux (`tmux kill-server; tmux -vv new`).
+## Additional Information
+Add any other context or screenshots about the issue here.
