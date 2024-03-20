@@ -76,8 +76,8 @@ jobs:
           sh osc-11colours.sh
           chmod +x style-trim.sh
           sh style-trim.sh
-
-         
+          chmod +x new-session-environment.sh
+          sh new-session-environment.sh
           chmod +x control-client-size.sh
           sh control-client-size.sh
         ##  chmod +x format-strings.sh
@@ -86,10 +86,6 @@ jobs:
         ##  sh copy-mode-test-emacs.sh 
         ## chmod +x copy-mode-test-vi.sh
         ##  sh copy-mode-test-vi.sh
-        #  chmod +x control-client-size.sh
-        #  sh control-client-size.sh
-        # chmod +x new-session-environment.sh
-        # sh new-session-environment.sh
         # chmod +x new-session-no-client.sh
         #  sh new-session-no-client.sh
         #  chmod +x new-session-size.sh
