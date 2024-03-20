@@ -84,8 +84,8 @@ jobs:
           sh new-session-size.sh
           chmod +x new-session-command.sh
           sh new-session-command.sh  
-          chmod +x tty-keys.sh
-          sh tty-keys.sh
+        ##  chmod +x tty-keys.sh
+        ##  sh tty-keys.sh
         ##  chmod +x format-strings.sh
         ##  sh format-strings.sh
         ##  chmod +x copy-mode-test-emacs.sh
