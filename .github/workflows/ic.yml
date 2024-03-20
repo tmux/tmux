@@ -56,10 +56,8 @@ jobs:
           sh cursor-test3.sh
           chmod +x cursor-test4.sh
           sh cursor-test4.sh
-          chmod +x format-strings.sh
-          sh format-strings.sh
-        #sh format-strings.sh
-        #sh has-session-return.sh
+          chmod +x has-session-return.sh
+          sh has-session-return.sh
         #sh if-shell-error.sh
         #sh if-shell-nested.sh
         #sh if-shell-TERM.sh
@@ -80,7 +78,9 @@ jobs:
         #  sh copy-mode-test-emacs.sh
         #  chmod +x control-client-size.sh
         #  sh control-client-size.sh
-
+        #  chmod +x format-strings.sh
+        #  sh format-strings.sh
+        
 
 
 
