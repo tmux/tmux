@@ -1,4 +1,4 @@
-name: Documentation Review Reminder
+name: "Documentation-Review-Reminder"
 
 on:
   schedule:
@@ -6,14 +6,18 @@ on:
     - cron: '0 0 1 1,7 *'
   workflow_dispatch:
 
-
 jobs:
   create_issue:
     runs-on: ubuntu-latest
     steps:
-      - name: Create Issue
-        uses: JasonEtco/create-an-issue@v2
+      - name: Create new documentation review issue
+        run: |
+          issue_body=$(cat .github/ISSUE_TEMPLATE/documentation_review.md)
+          new_issue_url=$(gh issue create \
+            --title "Documentation Review Reminder" \
+            --label "documentation" \
+            --body "$issue_body")
+          echo "New issue created: $new_issue_url"
+          echo "ISSUE_URL=$new_issue_url" >> $GITHUB_ENV
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          filename: .github/ISSUE_TEMPLATE/documentation_review.md
