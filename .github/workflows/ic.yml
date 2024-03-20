@@ -33,7 +33,8 @@ jobs:
           make
 
       # Explicitly declare an array of scripts to execute
-      - name: Build tmux
+      - name: run tests
+       working-directory: ./regress
         run: |
           declare -a scripts=(
             "am-terminal.sh"
@@ -61,16 +62,14 @@ jobs:
             "new-session-size.sh"
             "new-session-command.sh"
             "copy-mode-test-emacs.sh"
-        )
+          )
 
-      # Add additional steps for running tests if applicable.
-      - name: Run Tests
-        working-directory: ./regress
-        run: |
           for script in "${scripts[@]}"; do
             chmod +x "$script"
-            sh "$script"
+            ./"$script"
           done
+
+      # Add additional steps for running tests if applicable.
         ##  chmod +x tty-keys.sh
         ##  sh tty-keys.sh
         ##  chmod +x format-strings.sh
