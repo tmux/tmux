@@ -60,7 +60,7 @@ $TMUX send-keys -X next-word
 $TMUX send-keys -X begin-selection
 $TMUX send-keys -X next-word
 $TMUX send-keys -X copy-selection
-[ "$($TMUX show-buffer)" = "$(echo -e "line\n")" ] || exit 1
+[ "$($TMUX show-buffer)" = "$(printf "line\n")" ] || exit 1
 
 # Test that `next-word-end` treats periods as letters.
 $TMUX send-keys -X next-word
@@ -74,14 +74,14 @@ $TMUX send-keys -X previous-word
 $TMUX send-keys -X begin-selection
 $TMUX send-keys -X next-word
 $TMUX send-keys -X copy-selection
-[ "$($TMUX show-buffer)" = "$(echo -e "line...\n")" ] || exit 1
+[ "$($TMUX show-buffer)" = "$(printf "line...\n")" ] || exit 1
 
 # Test that `previous-space` and `next-space` treat periods as letters.
 $TMUX send-keys -X previous-space
 $TMUX send-keys -X begin-selection
 $TMUX send-keys -X next-space
 $TMUX send-keys -X copy-selection
-[ "$($TMUX show-buffer)" = "$(echo -e "line...\n")" ] || exit 1
+[ "$($TMUX show-buffer)" = "$(printf "line...\n")" ] || exit 1
 
 # Test that `next-word` and `next-word-end` treat other symbols as letters.
 $TMUX send-keys -X begin-selection
