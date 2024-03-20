@@ -56,9 +56,8 @@ jobs:
           sh cursor-test3.sh
           chmod +x cursor-test4.sh
           sh cursor-test4.sh
-        #sh cursor-test2.sh
-        #sh cursor-test3.sh
-        #sh cursor-test4.sh
+          chmod +x format-strings.sh
+          sh format-strings.sh
         #sh format-strings.sh
         #sh has-session-return.sh
         #sh if-shell-error.sh
