@@ -1,0 +1,60 @@
+name: C++ Lint with clang-tidy
+
+on:
+    push:
+    pull_request:
+
+jobs:
+    clang-tidy:
+        name: Run clang-tidy
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v2
+
+            - name: Install dependencies
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y clang-tidy
+                  sudo apt-get install -y bear
+                  sudo apt-get install -y libevent-dev # Install libevent development headers
+
+            - name: Autotools setup
+              run: |
+                  autoreconf -i
+                  ./configure
+
+            - name: Generate compile_commands.json
+              run: |
+                  bear -- make
+
+            - name: Run clang-tidy
+              run: |
+                  clang-tidy --version
+                  find . -path ./external -prune -o -name '*.c' -print | xargs clang-tidy -p $(pwd)
+
+    comment-on-failure:
+        name: Comment on PR if clang-tidy fails
+        needs: [clang-tidy]
+        if: ${{ always() && needs.clang-tidy.result == 'failure' }}
+        runs-on: ubuntu-latest
+        steps:
+            - name: Check if triggered by a PR
+              id: check-pr
+              run: echo "::set-output name=is_pr::${{ github.event.pull_request != null }}"
+              shell: bash
+
+            - name: Comment on PR
+              if: steps.check-pr.outputs.is_pr == 'true'
+              uses: actions/github-script@v5
+              with:
+                  script: |
+                      const issue_number = context.payload.pull_request.number;
+                      const comment_body = 'The linting workflow failed. Please check the clang-tidy output for details.';
+                      github.rest.issues.createComment({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        issue_number: issue_number,
+                        body: comment_body
+                      });
