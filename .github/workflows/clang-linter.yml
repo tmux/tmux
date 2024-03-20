@@ -32,14 +32,7 @@ jobs:
             - name: Run clang-tidy
               run: |
                   clang-tidy --version
-                  find . -path ./external -prune -o -name '*.c' -print | xargs clang-tidy -p $(pwd) > clang-tidy-output.txt
-
-            - name: Count errors and warnings
-              id: count-errors
-              run: |
-                  error_count=$(grep -oP "error generated" clang-tidy-output.txt | wc -l)
-                  echo "error_count=$error_count" >> $GITHUB_ENV
-                  echo "::set-output name=error_count::$error_count"
+                  find . -path ./external -prune -o -name '*.c' -print | xargs clang-tidy -p $(pwd)
 
     comment-on-failure:
         name: Comment on PR if clang-tidy fails
@@ -58,8 +51,7 @@ jobs:
               with:
                   script: |
                       const issue_number = context.payload.pull_request.number;
-                      const errorCount = '${{ env.error_count }}';
-                      const comment_body = `The linting workflow failed with ${errorCount} errors. Please check the clang-tidy output for details.`;
+                      const comment_body = 'The linting workflow failed. Please check the clang-tidy output for details.';
                       github.rest.issues.createComment({
                         owner: context.repo.owner,
                         repo: context.repo.repo,
