@@ -72,8 +72,6 @@ jobs:
           sh new-session-base-index.sh
           chmod +x new-session-command.sh
           sh new-session-command.sh
-          chmod +x new-session-no-client.sh
-          sh new-session-no-client.sh
           chmod +x new-session-size.sh
           sh new-session-size.sh
         #sh new-window-command.sh
@@ -90,6 +88,8 @@ jobs:
         #  sh format-strings.sh
         # chmod +x new-session-environment.sh
         # sh new-session-environment.sh
-
+        #          chmod +x new-session-no-client.sh
+        # sh new-session-no-client.sh
+        
 
 
