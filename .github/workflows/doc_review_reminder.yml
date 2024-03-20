@@ -9,6 +9,10 @@ on:
 jobs:
   create_issue:
     runs-on: ubuntu-latest
+
+    permissions:
+      issues: write
+      
     steps:
       - name: "Checkout source code"
         uses: "actions/checkout@v2.3.4"
