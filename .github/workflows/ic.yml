@@ -32,6 +32,9 @@ jobs:
           ./configure
           make
 
+      - name: Change directory
+        run: cd regress
+
       # Add additional steps for running tests if applicable.
       - name: Run Tests
         run: |
