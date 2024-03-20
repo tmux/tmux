@@ -32,8 +32,9 @@ jobs:
           ./configure
           make
       - name: Print current working directory
+        working-directory: ./regress
         run: pwd
-
+        
       - name: change directory
         run: cd regress
 
