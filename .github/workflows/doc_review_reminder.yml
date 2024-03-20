@@ -1,0 +1,19 @@
+name: Documentation Review Reminder
+
+on:
+  schedule:
+    # Schedule to run at 00:00 on the 1st day of January and July (every 6 months)
+    - cron: '0 0 1 1,7 *'
+  workflow_dispatch:
+
+
+jobs:
+  create_issue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Issue
+        uses: JasonEtco/create-an-issue@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          filename: .github/ISSUE_TEMPLATE/documentation_review.md
