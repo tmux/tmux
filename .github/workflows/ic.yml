@@ -35,6 +35,7 @@ jobs:
       # Add additional steps for running tests if applicable.
       - name: Run Tests
         run: |
+          cd regress
           sh am-terminal.sh
           sh capture-pane-hyperlink.sh
           sh capture-pane-sgr0.sh
