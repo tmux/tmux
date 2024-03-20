@@ -38,4 +38,5 @@ jobs:
         run: |
           chmod +x am-terminal.sh
           ./am-terminal.sh
-          
+          chmod +x capture-pane-hyperlink.sh
+          ./capture-pane-hyperlink.sh
