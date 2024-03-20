@@ -35,6 +35,18 @@ jobs:
       - name: Change directory
         run: cd regress
 
+      - name: Print current working directory
+        run: pwd
+
+      - name: List files in current directory
+        run: ls -lah
+  
+      - name: List files in regress directory
+        run: ls -lah regress/
+
+      - name: Execute the script with full path
+        run: sh $GITHUB_WORKSPACE/regress/am-terminal.sh
+
       # Add additional steps for running tests if applicable.
       - name: Run Tests
         run: |
