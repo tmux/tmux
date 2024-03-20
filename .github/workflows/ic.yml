@@ -44,3 +44,5 @@ jobs:
           sh combine-test.sh
           chmod +x command-order.sh
           sh sh command-order.sh
+          chmod +x conf-syntax.sh
+          sh conf-syntax.sh
