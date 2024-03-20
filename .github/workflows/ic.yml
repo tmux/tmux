@@ -31,26 +31,13 @@ jobs:
           sh autogen.sh
           ./configure
           make
-      - name: Print current working directory
-        working-directory: ./regress
-        run: pwd
-        
-      - name: change directory
-        run: cd regress
 
-      - name: Print current working directory
-        run: pwd
-
-      - name: List files in current directory
-        run: ls -lah
-      
-      - name: List files in regress directory
-        run: ls -lah regress/
       # Add additional steps for running tests if applicable.
       - name: Run Tests
+        working-directory: ./regress
         run: |
-          chmod +x regress/am-terminal.sh
-          ./regress/am-terminal.sh
+          chmod +x am-terminal.sh
+          ./am-terminal.sh
           sh capture-pane-hyperlink.sh
           sh capture-pane-sgr0.sh
           sh combine-test.sh
