@@ -76,10 +76,9 @@ jobs:
           sh osc-11colours.sh
           chmod +x style-trim.sh
           sh style-trim.sh
-          chmod +x tty-keys.sh
-          sh tty-keys.sh
-        #  chmod +x copy-mode-test-vi.sh
-        #  sh copy-mode-test-vi.sh
+
+          chmod +x copy-mode-test-vi.sh
+          sh copy-mode-test-vi.sh
         #  chmod +x copy-mode-test-emacs.sh
         #  sh copy-mode-test-emacs.sh
         #  chmod +x control-client-size.sh
@@ -94,5 +93,7 @@ jobs:
         #  sh new-session-size.sh
         #  chmod +x new-session-command.sh
         #  sh new-session-command.sh        
-
+        # chmod +x tty-keys.sh
+        # sh tty-keys.sh
+      
 
