@@ -53,7 +53,6 @@ then
       echo $expected
       exit 1
 fi
-#[ "$($TMUX show-buffer)" = "$(echo -e "words\n        Indented")" ] || exit 1
 
 # Test that `next-word` wraps around un-indented line breaks.
 $TMUX send-keys -X next-word
