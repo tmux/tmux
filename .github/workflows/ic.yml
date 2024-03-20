@@ -32,13 +32,42 @@ jobs:
           ./configure
           make
 
+      # Explicitly declare an array of scripts to execute
+        declare -a scripts=(
+          "am-terminal.sh"
+          "capture-pane-hyperlink.sh"
+          "combine-test.sh"
+          "command-order.sh"
+          "conf-syntax.sh"
+          "control-client-sanity.sh"
+          "cursor-test1.sh"
+          "cursor-test2.sh"
+          "cursor-test3.sh"
+          "cursor-test4.sh"
+          "has-session-return.sh"
+          "if-shell-error.sh"
+          "if-shell-nested.sh"
+          "if-shell-TERM.sh"
+          "input-keys.sh"
+          "kill-session-process-exit.sh"
+          "new-session-base-index.sh"
+          "new-window-command.sh"
+          "osc-11colours.sh"
+          "style-trim.sh"
+          "control-client-size.sh"
+          "new-session-no-client.sh"
+          "new-session-size.sh"
+          "new-session-command.sh"
+          "copy-mode-test-emacs.sh"
+        )
+
       # Add additional steps for running tests if applicable.
       - name: Run Tests
         working-directory: ./regress
         run: |
-          for script in am-terminal.sh capture-pane-hyperlink.sh combine-test.sh command-order.sh conf-syntax.sh control-client-sanity.sh cursor-test{1..4}.sh has-session-return.sh if-shell-{error,nested,TERM}.sh input-keys.sh kill-session-process-exit.sh new-{session-base-index,window-command}.sh osc-11colours.sh style-trim.sh control-client-size.sh new-session-{no-client,size,command}.sh copy-mode-test-emacs.sh; do
-            chmod +x $script
-            ./$script
+          for script in "${scripts[@]}"; do
+            chmod +x "$script"
+            sh "$script"
           done
         ##  chmod +x tty-keys.sh
         ##  sh tty-keys.sh
