@@ -64,7 +64,8 @@ jobs:
           sh if-shell-nested.sh
           chmod +x if-shell-TERM.sh
           sh if-shell-TERM.sh
-        #sh input-key.sh
+          chmod +x input-key.sh
+          sh input-key.sh
         #sh kill-session-process-exit.sh
         #sh new-session-base-index.sh
         #sh new-session-command.sh
