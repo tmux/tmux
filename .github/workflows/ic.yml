@@ -74,7 +74,8 @@ jobs:
           sh new-window-command.sh
           chmod +x osc-11colours.sh
           sh osc-11colours.sh
-        #sh style-trim.sh
+          chmod +x style-trim.sh
+          sh style-trim.sh
         #sh tty-keys.sh
         #  chmod +x copy-mode-test-vi.sh
         #  sh copy-mode-test-vi.sh
