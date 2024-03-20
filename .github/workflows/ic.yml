@@ -76,7 +76,8 @@ jobs:
           sh osc-11colours.sh
           chmod +x style-trim.sh
           sh style-trim.sh
-        #sh tty-keys.sh
+          chmod +x tty-keys.sh
+          sh tty-keys.sh
         #  chmod +x copy-mode-test-vi.sh
         #  sh copy-mode-test-vi.sh
         #  chmod +x copy-mode-test-emacs.sh
