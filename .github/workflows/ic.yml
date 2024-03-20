@@ -40,16 +40,15 @@ jobs:
           ./am-terminal.sh
           chmod +x capture-pane-hyperlink.sh
           ./capture-pane-hyperlink.sh
-        #chmod +x capture-pane-sgr0.sh
-        #sh capture-pane-sgr0.sh
+          chmod +x capture-pane-sgr0.sh
+          sh capture-pane-sgr0.sh
           chmod +x combine-test.sh
           sh combine-test.sh
           chmod +x command-order.sh
           sh command-order.sh
           chmod +x conf-syntax.sh
           sh conf-syntax.sh
-        #  chmod +x control-client-sanity.sh
-        #  sh control-client-sanity.sh
+
         #sh control-client-sanity.sh
         #sh control-client-size.sh
         #sh copy-mode-test-emacs.sh
