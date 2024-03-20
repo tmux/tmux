@@ -50,7 +50,12 @@ jobs:
           sh control-client-sanity.sh
           chmod +x cursor-test1.sh
           sh cursor-test1.sh
-        #sh cursor-test1.sh
+          chmod +x cursor-test2.sh
+          sh cursor-test2.sh
+          chmod +x cursor-test3.sh
+          sh cursor-test3.sh
+          chmod +x cursor-test4.sh
+          sh cursor-test4.sh
         #sh cursor-test2.sh
         #sh cursor-test3.sh
         #sh cursor-test4.sh
