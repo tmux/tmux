@@ -66,8 +66,10 @@ jobs:
           sh if-shell-TERM.sh
           chmod +x input-keys.sh
           sh input-keys.sh
-        #sh kill-session-process-exit.sh
-        #sh new-session-base-index.sh
+          chmod +x kill-session-process-exit.sh
+          sh kill-session-process-exit.sh
+          chmod +x new-session-base-index.sh
+          sh new-session-base-index.sh
         #sh new-session-command.sh
         #sh new-session.envirnment.sh
         #sh new-session-no-client.sh
