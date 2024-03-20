@@ -40,3 +40,4 @@ jobs:
           ./am-terminal.sh
           chmod +x capture-pane-hyperlink.sh
           ./capture-pane-hyperlink.sh
+          sh capture-pane-sgr0.sh
