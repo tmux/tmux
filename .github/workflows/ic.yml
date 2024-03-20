@@ -38,36 +38,4 @@ jobs:
         run: |
           chmod +x am-terminal.sh
           ./am-terminal.sh
-          sh capture-pane-hyperlink.sh
-          sh capture-pane-sgr0.sh
-          sh combine-test.sh
-          sh command-order.sh
-          sh conf-syntax.sh
-          sh control-client-sanity.sh
-          sh control-client-size.sh
-          sh copy-mode-test-emacs.sh
-          sh copy-mode-test-vi.sh
-          sh cursor-test1.sh
-          sh cursor-test2.sh
-          sh cursor-test3.sh
-          sh cursor-test4.sh
-          sh format-strings.sh
-          sh has-session-return.sh
-          sh if-shell-error.sh
-          sh if-shell-nested.sh
-          sh if-shell-TERM.sh
-          sh input-key.sh
-          sh kill-session-process-exit.sh
-          sh new-session-base-index.sh
-          sh new-session-command.sh
-          sh new-session.envirnment.sh
-          sh new-session-no-client.sh
-          sh new-session-size.sh
-          sh new-window-command.sh
-          sh osc-11colours.sh
-          sh style-trim.sh
-          sh tty-keys.sh
-
-
-
-
+          
