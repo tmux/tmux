@@ -48,13 +48,8 @@ jobs:
           sh conf-syntax.sh
           chmod +x control-client-sanity.sh
           sh control-client-sanity.sh
-        #  chmod +x copy-mode-test-vi.sh
-        #  sh copy-mode-test-vi.sh
-        #  chmod +x copy-mode-test-emacs.sh
-        #  sh copy-mode-test-emacs.sh
-        #  chmod +x control-client-size.sh
-        #  sh control-client-size.sh
-        #sh copy-mode-test-vi.sh
+          chmod +x cursor-test1.sh
+          sh cursor-test1.sh
         #sh cursor-test1.sh
         #sh cursor-test2.sh
         #sh cursor-test3.sh
@@ -75,6 +70,12 @@ jobs:
         #sh osc-11colours.sh
         #sh style-trim.sh
         #sh tty-keys.sh
+        #  chmod +x copy-mode-test-vi.sh
+        #  sh copy-mode-test-vi.sh
+        #  chmod +x copy-mode-test-emacs.sh
+        #  sh copy-mode-test-emacs.sh
+        #  chmod +x control-client-size.sh
+        #  sh control-client-size.sh
 
 
 
