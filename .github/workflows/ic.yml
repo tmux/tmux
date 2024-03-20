@@ -35,11 +35,16 @@ jobs:
         run: pwd
 
       - name: change directory
-        run: cd ../regress
+        run: cd regress
 
       - name: Print current working directory
         run: pwd
 
+      - name: List files in current directory
+        run: ls -lah
+      
+      - name: List files in regress directory
+        run: ls -lah regress/
       # Add additional steps for running tests if applicable.
       - name: Run Tests
         run: |
