@@ -58,7 +58,8 @@ jobs:
           sh cursor-test4.sh
           chmod +x has-session-return.sh
           sh has-session-return.sh
-        #sh if-shell-error.sh
+          chmod +x if-shell-error.sh
+          sh if-shell-error.sh
         #sh if-shell-nested.sh
         #sh if-shell-TERM.sh
         #sh input-key.sh
