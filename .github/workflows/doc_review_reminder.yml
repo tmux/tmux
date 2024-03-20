@@ -10,12 +10,12 @@ jobs:
   create_issue:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - name: "Checkout source code"
+        uses: "actions/checkout@v2.3.4"
         with:
+          lfs: true
           fetch-depth: 0
-
-          
+    
       - name: Create Documentation Review Issue
         run: |
           new_issue_url=$(gh issue create \
