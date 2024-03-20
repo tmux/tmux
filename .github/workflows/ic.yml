@@ -31,6 +31,7 @@ jobs:
           sh autogen.sh
           ./configure
           make
+          
       # List of test scripts to execute
       scripts=(
         am-terminal.sh
