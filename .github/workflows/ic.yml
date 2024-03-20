@@ -48,8 +48,10 @@ jobs:
           sh conf-syntax.sh
           chmod +x control-client-sanity.sh
           sh control-client-sanity.sh
-        #sh control-client-size.sh
-        #sh copy-mode-test-emacs.sh
+          chmod +x control-client-size.sh
+          sh control-client-size.sh
+          chmod +x copy-mode-test-emacs.sh
+          sh copy-mode-test-emacs.sh
         #sh copy-mode-test-vi.sh
         #sh cursor-test1.sh
         #sh cursor-test2.sh
