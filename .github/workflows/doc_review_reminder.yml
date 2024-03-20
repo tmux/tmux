@@ -31,10 +31,13 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           BODY: |
-            It's time for our biannual review of the documentation. @Documentation_Reviewers
+            Hello, it's time for the biannual documentation review. Please review the documentation and update it if necessary. @documentation-reviewers
 
             Please go over the following:
 
             - Are all docs up to date?
             - Is any information missing?
             - Are there any new features or changes that need to be documented?
+
+
+    
