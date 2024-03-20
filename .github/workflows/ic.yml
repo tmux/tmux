@@ -40,5 +40,5 @@ jobs:
           ./am-terminal.sh
           chmod +x capture-pane-hyperlink.sh
           ./capture-pane-hyperlink.sh
-          chmod +x capture-pane-sgr0.sh
-          sh capture-pane-sgr0.sh
+           chmod +x combine-test.sh
+          sh combine-test.sh
