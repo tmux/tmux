@@ -31,30 +31,20 @@ jobs:
           sh autogen.sh
           ./configure
           make
-
       - name: Print current working directory
         run: pwd
 
-      - name: Change directory
-        run: cd regress
+      - name: change directory
+        run: cd ../regress
 
       - name: Print current working directory
         run: pwd
-
-      - name: List files in current directory
-        run: ls -lah
-  
-      - name: List files in regress directory
-        run: ls -lah regress/
-
-      - name: Execute the terminal script
-        run: ${{ github.workspace }}/regress/am-terminal.sh
-
 
       # Add additional steps for running tests if applicable.
       - name: Run Tests
         run: |
-          ./am-terminal.sh
+          chmod +x regress/am-terminal.sh
+          ./regress/am-terminal.sh
           sh capture-pane-hyperlink.sh
           sh capture-pane-sgr0.sh
           sh combine-test.sh
