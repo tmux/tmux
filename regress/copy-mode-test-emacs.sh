@@ -59,7 +59,17 @@ $TMUX send-keys -X next-word
 $TMUX send-keys -X begin-selection
 $TMUX send-keys -X next-word
 $TMUX send-keys -X copy-selection
-[ "$($TMUX show-buffer)" = "$(printf "line\n")" ] || exit 1
+if [ "$($TMUX show-buffer)" = "$(printf "line\n")" ]
+then 
+      actual=$($TMUX show-buffer)
+      expected=$(printf "words\n        Indented")
+
+      echo "actual: "
+      echo $actual
+      echo "expected: "
+      echo $expected
+      exit 1
+fi
 
 # Test that `next-word-end` treats periods as letters.
 $TMUX send-keys -X next-word
@@ -73,14 +83,34 @@ $TMUX send-keys -X previous-word
 $TMUX send-keys -X begin-selection
 $TMUX send-keys -X next-word
 $TMUX send-keys -X copy-selection
-[ "$($TMUX show-buffer)" = "$(printf "line...\n")" ] || exit 1
+if [ "$($TMUX show-buffer)" = "$(printf "line...\n")" ]
+then 
+      actual=$($TMUX show-buffer)
+      expected=$(printf "words\n        Indented")
+
+      echo "actual: "
+      echo $actual
+      echo "expected: "
+      echo $expected
+      exit 1
+fi
 
 # Test that `previous-space` and `next-space` treat periods as letters.
 $TMUX send-keys -X previous-space
 $TMUX send-keys -X begin-selection
 $TMUX send-keys -X next-space
 $TMUX send-keys -X copy-selection
-[ "$($TMUX show-buffer)" = "$(printf "line...\n")" ] || exit 1
+if [ "$($TMUX show-buffer)" = "$(printf "line...\n")" ]
+then 
+      actual=$($TMUX show-buffer)
+      expected=$(printf "words\n        Indented")
+
+      echo "actual: "
+      echo $actual
+      echo "expected: "
+      echo $expected
+      exit 1
+fi
 
 # Test that `next-word` and `next-word-end` treat other symbols as letters.
 $TMUX send-keys -X begin-selection
@@ -89,7 +119,17 @@ $TMUX send-keys -X next-word
 $TMUX send-keys -X next-word-end
 $TMUX send-keys -X next-word-end
 $TMUX send-keys -X copy-selection
-[ "$($TMUX show-buffer)" = "... @nd then \$ym_bols[]{}" ] || exit 1
+if [ "$($TMUX show-buffer)" = "... @nd then \$ym_bols[]{}" ]
+then 
+      actual=$($TMUX show-buffer)
+      expected=$(printf "words\n        Indented")
+
+      echo "actual: "
+      echo $actual
+      echo "expected: "
+      echo $expected
+      exit 1
+fi
 
 # Test that `previous-word` treats other symbols as letters
 # and `next-word` wraps around for indented symbols
@@ -97,20 +137,50 @@ $TMUX send-keys -X previous-word
 $TMUX send-keys -X begin-selection
 $TMUX send-keys -X next-word
 $TMUX send-keys -X copy-selection
-[ "$($TMUX show-buffer)" = "$(printf "\$ym_bols[]{}\n ")" ] || exit 1
+if [ "$($TMUX show-buffer)" = "$(printf "\$ym_bols[]{}\n ")" ]
+then 
+      actual=$($TMUX show-buffer)
+      expected=$(printf "words\n        Indented")
+
+      echo "actual: "
+      echo $actual
+      echo "expected: "
+      echo $expected
+      exit 1
+fi
 
 # Test that `next-word-end` treats digits as letters
 $TMUX send-keys -X next-word-end
 $TMUX send-keys -X begin-selection
 $TMUX send-keys -X next-word-end
 $TMUX send-keys -X copy-selection
-[ "$($TMUX show-buffer)" = " 500xyz" ] || exit 1
+if [ "$($TMUX show-buffer)" = " 500xyz" ]
+then 
+      actual=$($TMUX show-buffer)
+      expected=$(printf "words\n        Indented")
+
+      echo "actual: "
+      echo $actual
+      echo "expected: "
+      echo $expected
+      exit 1
+fi
 
 # Test that `previous-word` treats digits as letters
 $TMUX send-keys -X begin-selection
 $TMUX send-keys -X previous-word
 $TMUX send-keys -X copy-selection
-[ "$($TMUX show-buffer)" = "500xyz" ] || exit 1
+if [ "$($TMUX show-buffer)" = "500xyz" ]
+then 
+      actual=$($TMUX show-buffer)
+      expected=$(printf "words\n        Indented")
+
+      echo "actual: "
+      echo $actual
+      echo "expected: "
+      echo $expected
+      exit 1
+fi
 
 # Test that `next-word` and `next-word-end` stop at the end of text.
 $TMUX send-keys -X begin-selection
@@ -120,7 +190,17 @@ $TMUX send-keys -X next-word
 $TMUX send-keys -X next-space
 $TMUX send-keys -X next-space-end
 $TMUX send-keys -X copy-selection
-[ "$($TMUX show-buffer)" = "500xyz" ] || exit 1
+if [ "$($TMUX show-buffer)" = "500xyz" ]
+then 
+      actual=$($TMUX show-buffer)
+      expected=$(printf "words\n        Indented")
+
+      echo "actual: "
+      echo $actual
+      echo "expected: "
+      echo $expected
+      exit 1
+fi
 
 $TMUX kill-server 2>/dev/null
 exit 0
