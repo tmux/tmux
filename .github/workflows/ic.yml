@@ -40,14 +40,7 @@ jobs:
             echo Running test $test_script
             ./$test_script
           done
-        ##  chmod +x tty-keys.sh
-        ##  sh tty-keys.sh
-        ##  chmod +x format-strings.sh
-        ##  sh format-strings.sh
-        ##  chmod +x copy-mode-test-vi.sh
-        ##  sh copy-mode-test-vi.sh
-        ##  chmod +x new-session-environment.sh
-        ##  sh new-session-environment.sh
+
 
       
 
