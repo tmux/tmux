@@ -25,14 +25,34 @@ $TMUX send-keys -X previous-word
 $TMUX send-keys -X previous-space
 $TMUX send-keys -X previous-word
 $TMUX send-keys -X copy-selection
-[ "$($TMUX show-buffer 2>/dev/null)" = "" ] || exit 1
+if [ "$($TMUX show-buffer 2>/dev/null)" = "" ]
+then 
+      actual=$($TMUX show-buffer)
+      expected=$(printf "words\n        Indented")
+
+      echo "actual: "
+      echo $actual
+      echo "expected: "
+      echo $expected
+      exit 1
+fi
 
 # Test that `next-word-end` does not skip single-letter words.
 $TMUX send-keys -X next-word-end
 $TMUX send-keys -X begin-selection
 $TMUX send-keys -X previous-word
 $TMUX send-keys -X copy-selection
-[ "$($TMUX show-buffer)" = "A" ] || exit 1
+if [ "$($TMUX show-buffer)" = "A" ]
+then 
+      actual=$($TMUX show-buffer)
+      expected=$(printf "words\n        Indented")
+
+      echo "actual: "
+      echo $actual
+      echo "expected: "
+      echo $expected
+      exit 1
+fi
 
 # Test that `next-word-end` wraps around indented line breaks.
 $TMUX send-keys -X next-word
