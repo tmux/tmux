@@ -62,7 +62,7 @@ $TMUX send-keys -X begin-selection
 $TMUX send-keys -X next-word-end
 $TMUX send-keys -X next-word-end
 $TMUX send-keys -X copy-selection
-if [ "$($TMUX show-buffer)" != "$(printf "words\n        Indented")" ] 
+if [ "$($TMUX show-buffer)" != "$(printf "words\n        Indented")" ]
 then 
       actual=$($TMUX show-buffer)
       expected=$(printf "words\n        Indented")
