@@ -1,0 +1,144 @@
+name: "tagged-release"
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  gh_tagged_release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Build
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get -y install bison \
+            autotools-dev \
+            libncurses5-dev \
+            libevent-dev \
+            pkg-config \
+            libutempter-dev \
+            build-essential
+          sh .github/travis/before-install.sh
+          sh .github/travis/build.sh
+
+      - name: Run tests
+        if: ${{ !contains(github.event.head_commit.message, '[SKIP-RELEASE-TESTS]') }}
+        run: |
+          # if commit message does not contain [SKIP-RELEASE-TESTS], the tests are not run
+          cd regress/
+          for test_script in *.sh; do
+            chmod +x $test_script
+            echo Running test $test_script
+            ./$test_script
+          done
+
+      - name: "Remove next- prefix from version in configure.ac"
+        run: |
+          sed -i '/AC_INIT(\[tmux\], /s/next-//' configure.ac
+          make dist
+
+      - name: Setup
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+
+          # release version
+          VERSION=$(grep 'AC_INIT(\[tmux\],' configure.ac | sed -n 's/.*AC_INIT(\[tmux\], \([0-9]*\.[0-9]*\.[0-9]*\)).*/\1/p')
+          echo "Current version: $VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+          NEW_TAG="v$VERSION"
+          echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
+
+          BASE_URL=`git config --get remote.origin.url | sed 's/\.git//g'`
+          echo "BASE_URL=$BASE_URL" >> $GITHUB_ENV
+
+      - name: Add to CHANGES
+        id: add_to_changes
+        run: |
+          PREV_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
+
+          # get all committed changes since last release
+          git log --pretty=format:'%s' $PREV_TAG..HEAD > /tmp/tmux-tagged-release
+
+          # format the commit messages and add to CHANGES file
+          sed 's/^/* /' /tmp/tmux-tagged-release > /tmp/tmp_file
+          echo CHANGES FROM $PREV_TAG to $NEW_TAG | cat - /tmp/tmp_file > /tmp/tmux-tagged-release
+          sed G /tmp/tmux-tagged-release > /tmp/tmp_file
+          cat /tmp/tmp_file | cat - CHANGES > /tmp/tmux-tagged-release
+          cat /tmp/tmux-tagged-release > CHANGES
+
+          git add CHANGES
+          git commit -m "Add to CHANGES for new release"
+          git push
+
+      - name: "Create and push tag"
+        run: |
+          git tag -a "v$VERSION" -m "Release v$VERSION"
+          git push origin "v$VERSION"
+
+      - uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          prerelease: false
+          automatic_release_tag: "${{ env.NEW_TAG }}"
+          files: |
+            *.tar.gz
+        id: "automatic_releases"
+
+      - name: Create new release issue
+        run: |
+          previous_issue_number=$(gh issue list \
+            --label "$LABELS" \
+            --json number \
+            --jq '.[0].number')
+
+          if [[ -n $previous_issue_number ]]; then
+            gh issue close "$previous_issue_number"
+            gh issue unpin "$previous_issue_number"
+          fi
+
+          new_issue_url=$(gh issue create \
+            --title "$NEW_TAG questions and comments" \
+            --label "release" \
+            --body "$BODY")
+
+          echo "ISSUE_URL=$new_issue_url" >> $GITHUB_ENV
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          BODY: |
+            Ask or discuss any quick questions about ${{ env.NEW_TAG }} here please.
+            Do not use this issue for bug reports, please open a new issue with full information, see [CONTRIBUTING](${{ env.BASE_URL }}/blob/master/.github/CONTRIBUTING.md).
+
+            [The ${{ env.NEW_TAG }} CHANGES file is here](${{ env.BASE_URL }}/blob/master/CHANGES).
+
+            As always, thanks to the many people who contributed to both this and to previous releases.
+
+      - name: "Update Release Notes"
+        run: |
+          gh release edit $NEW_TAG -n "$RELEASE_NOTE"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_NOTE: |
+            For a list of changes [please read the CHANGES file](${{ env.BASE_URL }}/blob/master/CHANGES); for release notes [please see this issue](${{ env.ISSUE_URL }})
+
+      - name: "Update next version number"
+        run: |
+          IFS='.' read -ra VER <<< "$VERSION"
+          NEW_PATCH=$((VER[2]+1))
+          NEW_VERSION="${VER[0]}.${VER[1]}.$NEW_PATCH"
+
+          # Write back to file
+          sed -i "s/AC_INIT(\[tmux\], $VERSION)/AC_INIT([tmux], next-$NEW_VERSION)/" configure.ac
+
+          git add configure.ac
+          git commit -m "Bump version to next-$NEW_VERSION"
+          git push origin HEAD
