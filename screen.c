@@ -384,7 +384,7 @@ screen_resize_y(struct screen *s, u_int sy, int eat_empty, u_int *cy)
 
 		/*
 		 * Try to pull as much as possible out of scrolled history, if
-		 * is is enabled.
+		 * it is enabled.
 		 */
 		available = gd->hscrolled;
 		if (gd->flags & GRID_HISTORY && available > 0) {
