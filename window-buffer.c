@@ -36,7 +36,7 @@ static void		 window_buffer_key(struct window_mode_entry *,
 			     struct client *, struct session *,
 			     struct winlink *, key_code, struct mouse_event *);
 
-#define WINDOW_BUFFER_DEFAULT_COMMAND "paste-buffer -b '%%'"
+#define WINDOW_BUFFER_DEFAULT_COMMAND "paste-buffer -p -b '%%'"
 
 #define WINDOW_BUFFER_DEFAULT_FORMAT \
 	"#{t/p:buffer_created}: #{buffer_sample}"
