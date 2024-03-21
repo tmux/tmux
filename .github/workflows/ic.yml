@@ -25,7 +25,6 @@ jobs:
           fi
           
       # Add steps for other operating systems if needed, similar to the Linux steps above.
-
       - name: Build tmux
         run: |
           sh autogen.sh
@@ -36,56 +35,11 @@ jobs:
       - name: Run Tests
         working-directory: ./regress
         run: |
-          chmod +x am-terminal.sh
-          ./am-terminal.sh
-          chmod +x capture-pane-hyperlink.sh
-          ./capture-pane-hyperlink.sh
-          chmod +x combine-test.sh
-          sh combine-test.sh
-          chmod +x command-order.sh
-          sh command-order.sh
-          chmod +x conf-syntax.sh
-          sh conf-syntax.sh
-          chmod +x control-client-sanity.sh
-          sh control-client-sanity.sh
-          chmod +x cursor-test1.sh
-          sh cursor-test1.sh
-          chmod +x cursor-test2.sh
-          sh cursor-test2.sh
-          chmod +x cursor-test3.sh
-          sh cursor-test3.sh
-          chmod +x cursor-test4.sh
-          sh cursor-test4.sh
-          chmod +x has-session-return.sh
-          sh has-session-return.sh
-          chmod +x if-shell-error.sh
-          sh if-shell-error.sh
-          chmod +x if-shell-nested.sh
-          sh if-shell-nested.sh
-          chmod +x if-shell-TERM.sh
-          sh if-shell-TERM.sh
-          chmod +x input-keys.sh
-          sh input-keys.sh
-          chmod +x kill-session-process-exit.sh
-          sh kill-session-process-exit.sh
-          chmod +x new-session-base-index.sh
-          sh new-session-base-index.sh
-          chmod +x new-window-command.sh
-          sh new-window-command.sh
-          chmod +x osc-11colours.sh
-          sh osc-11colours.sh
-          chmod +x style-trim.sh
-          sh style-trim.sh
-          chmod +x control-client-size.sh
-          sh control-client-size.sh
-          chmod +x new-session-no-client.sh
-          sh new-session-no-client.sh
-          chmod +x new-session-size.sh
-          sh new-session-size.sh
-          chmod +x new-session-command.sh
-          sh new-session-command.sh  
-          chmod +x copy-mode-test-emacs.sh
-          sh copy-mode-test-emacs.sh 
+          for test_script in *.sh; do
+            chmod +x $test_script
+            echo Running test $test_script
+            ./$test_script
+          done
         ##  chmod +x tty-keys.sh
         ##  sh tty-keys.sh
         ##  chmod +x format-strings.sh
