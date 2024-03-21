@@ -3747,7 +3747,6 @@ Set the time in milliseconds for which
 .Nm
 waits after an escape is input to determine if it is part of a function or meta
 key sequences.
-The default is 500 milliseconds.
 .It Ic editor Ar shell-command
 Set the command used when
 .Nm
@@ -6118,7 +6117,7 @@ the default is
 .Ql y .
 .Tg menu
 .It Xo Ic display-menu
-.Op Fl O
+.Op Fl OM
 .Op Fl b Ar border-lines
 .Op Fl c Ar target-client
 .Op Fl C Ar starting-choice
@@ -6225,7 +6224,13 @@ changes this behaviour so that the menu does not close when the mouse button is
 released without an item selected the menu is not closed and a mouse button
 must be clicked to choose an item.
 .Pp
-The following keys are also available:
+.Fl M
+tells
+.Nm
+the menu should handle mouse events; by default only menus opened from mouse
+key bindings do so.
+.Pp
+The following keys are available in menus:
 .Bl -column "Key" "Function" -offset indent
 .It Sy "Key" Ta Sy "Function"
 .It Li "Enter" Ta "Choose selected item"
@@ -6471,7 +6476,7 @@ is replaced by the buffer name in
 and the result executed as a command.
 If
 .Ar template
-is not given, "paste-buffer -b \[aq]%%\[aq]" is used.
+is not given, "paste-buffer -p -b \[aq]%%\[aq]" is used.
 .Pp
 .Fl O
 specifies the initial sort field: one of

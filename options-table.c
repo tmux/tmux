@@ -285,7 +285,7 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_SERVER,
 	  .minimum = 0,
 	  .maximum = INT_MAX,
-	  .default_num = 500,
+	  .default_num = 10,
 	  .unit = "milliseconds",
 	  .text = "Time to wait before assuming a key is Escape."
 	},

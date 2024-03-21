@@ -38,8 +38,8 @@ const struct cmd_entry cmd_display_menu_entry = {
 	.name = "display-menu",
 	.alias = "menu",
 
-	.args = { "b:c:C:H:s:S:Ot:T:x:y:", 1, -1, cmd_display_menu_args_parse },
-	.usage = "[-O] [-b border-lines] [-c target-client] "
+	.args = { "b:c:C:H:s:S:MOt:T:x:y:", 1, -1, cmd_display_menu_args_parse },
+	.usage = "[-MO] [-b border-lines] [-c target-client] "
 		 "[-C starting-choice] [-H selected-style] [-s style] "
 		 "[-S border-style] " CMD_TARGET_PANE_USAGE "[-T title] "
 		 "[-x position] [-y position] name key command ...",
@@ -373,7 +373,7 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (args_has(args, 'O'))
 		flags |= MENU_STAYOPEN;
-	if (!event->m.valid)
+	if (!event->m.valid && !args_has(args, 'M'))
 		flags |= MENU_NOMOUSE;
 	if (menu_display(menu, flags, starting_choice, item, px, py, tc, lines,
 	    style, selected_style, border_style, target, NULL, NULL) != 0)

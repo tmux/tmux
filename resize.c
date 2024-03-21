@@ -40,7 +40,7 @@ resize_window(struct window *w, u_int sx, u_int sy, int xpixel, int ypixel)
 	/* If the window is zoomed, unzoom. */
 	zoomed = w->flags & WINDOW_ZOOMED;
 	if (zoomed)
-		window_unzoom(w);
+		window_unzoom(w, 1);
 
 	/* Resize the layout first. */
 	layout_resize(w, sx, sy);

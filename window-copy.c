@@ -795,16 +795,24 @@ window_copy_formats(struct window_mode_entry *wme, struct format_tree *ft)
 	format_add(ft, "copy_cursor_x", "%d", data->cx);
 	format_add(ft, "copy_cursor_y", "%d", data->cy);
 
-	format_add(ft, "selection_present", "%d", data->screen.sel != NULL);
 	if (data->screen.sel != NULL) {
 		format_add(ft, "selection_start_x", "%d", data->selx);
 		format_add(ft, "selection_start_y", "%d", data->sely);
 		format_add(ft, "selection_end_x", "%d", data->endselx);
 		format_add(ft, "selection_end_y", "%d", data->endsely);
-		format_add(ft, "selection_active", "%d",
-		    data->cursordrag != CURSORDRAG_NONE);
-	} else
-		format_add(ft, "selection_active", "%d", 0);
+
+		if (data->cursordrag != CURSORDRAG_NONE)
+			format_add(ft, "selection_active", "1");
+		else
+			format_add(ft, "selection_active", "0");
+		if (data->endselx != data->selx && data->endsely != data->sely)
+			format_add(ft, "selection_present", "1");
+		else
+			format_add(ft, "selection_present", "0");
+	} else {
+		format_add(ft, "selection_active", "0");
+		format_add(ft, "selection_present", "0");
+	}
 
 	format_add(ft, "search_present", "%d", data->searchmark != NULL);
 	format_add_cb(ft, "search_match", window_copy_search_match_cb);

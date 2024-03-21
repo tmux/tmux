@@ -338,7 +338,7 @@ window_destroy(struct window *w)
 {
 	log_debug("window @%u destroyed (%d references)", w->id, w->references);
 
-	window_unzoom(w);
+	window_unzoom(w, 0);
 	RB_REMOVE(windows, &windows, w);
 
 	if (w->layout_root != NULL)
@@ -673,7 +673,7 @@ window_zoom(struct window_pane *wp)
 }
 
 int
-window_unzoom(struct window *w)
+window_unzoom(struct window *w, int notify)
 {
 	struct window_pane	*wp;
 
@@ -690,7 +690,9 @@ window_unzoom(struct window *w)
 		wp->saved_layout_cell = NULL;
 	}
 	layout_fix_panes(w, NULL);
-	notify_window("window-layout-changed", w);
+
+	if (notify)
+		notify_window("window-layout-changed", w);
 
 	return (0);
 }
@@ -704,7 +706,7 @@ window_push_zoom(struct window *w, int always, int flag)
 		w->flags |= WINDOW_WASZOOMED;
 	else
 		w->flags &= ~WINDOW_WASZOOMED;
-	return (window_unzoom(w) == 0);
+	return (window_unzoom(w, 1) == 0);
 }
 
 int
