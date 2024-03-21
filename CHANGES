@@ -84,7 +84,7 @@ CHANGES FROM 3.3a to 3.4
 
 * Add message-line option to control where message and prompt go.
 
-* Notification when a when a paste buffer is deleted.
+* Notification when a paste buffer is deleted.
 
 * Add a Nobr terminfo(5) capability to tell tmux the terminal does not use bright
   colours for bold.
