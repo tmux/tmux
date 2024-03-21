@@ -246,7 +246,7 @@ cmd_display_panes_key(struct client *c, void *data, struct key_event *event)
 	wp = window_pane_at_index(w, index);
 	if (wp == NULL)
 		return (1);
-	window_unzoom(w);
+	window_unzoom(w, 1);
 
 	xasprintf(&expanded, "%%%u", wp->id);
 
