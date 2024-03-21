@@ -1839,7 +1839,7 @@ input_csi_dispatch_sm_private(struct input_ctx *ictx)
 
 /* Handle CSI graphics SM. */
 static void
-input_csi_dispatch_sm_graphics(struct input_ctx *ictx)
+input_csi_dispatch_sm_graphics(__unused struct input_ctx *ictx)
 {
 #ifdef ENABLE_SIXEL
 	int	n, m, o;

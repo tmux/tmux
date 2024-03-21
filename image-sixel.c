@@ -489,6 +489,9 @@ sixel_print(struct sixel_image *si, struct sixel_image *map, size_t *size)
 		colours = si->colours;
 		ncolours = si->ncolours;
 	}
+
+	if (ncolours == 0)
+		return (NULL);
 	contains = xcalloc(1, ncolours);
 
 	len = 8192;

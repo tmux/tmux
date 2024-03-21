@@ -2283,6 +2283,10 @@ screen_write_sixelimage(struct screen_write_ctx *ctx, struct sixel_image *si,
 		new = sixel_scale(si, 0, 0, 0, y - sy, sx, sy, 1);
 		sixel_free(si);
 		si = new;
+
+		/* Bail out if the image cannot be scaled. */
+		if (si == NULL)
+			return;
 		sixel_size_in_cells(si, &x, &y);
 	}
 
