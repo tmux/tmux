@@ -2051,7 +2051,7 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	/* Set the new cell. */
 	grid_view_set_cell(gd, cx - n, cy, &last);
 	if (force_wide)
-		grid_view_set_padding(gd, cx, cy);
+		grid_view_set_padding(gd, cx - 1, cy);
 
 	/*
 	 * Redraw the combined cell. If forcing the cell to width 2, reset the
