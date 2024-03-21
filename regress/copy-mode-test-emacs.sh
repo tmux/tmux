@@ -42,14 +42,24 @@ $TMUX send-keys -X begin-selection
 $TMUX send-keys -X next-word-end
 $TMUX send-keys -X next-word-end
 $TMUX send-keys -X copy-selection
-[ "$($TMUX show-buffer)" = "$(echo -e "words\n        Indented")" ] || exit 1
+if [ "$($TMUX show-buffer)" != "$(printf "words\n        Indented")" ] 
+then 
+      actual=$($TMUX show-buffer)
+      expected=$(printf "words\n        Indented")
+
+      echo "actual: "
+      echo $actual
+      echo "expected: "
+      echo $expected
+      exit 1
+fi
 
 # Test that `next-word` wraps around un-indented line breaks.
 $TMUX send-keys -X next-word
 $TMUX send-keys -X begin-selection
 $TMUX send-keys -X next-word
 $TMUX send-keys -X copy-selection
-[ "$($TMUX show-buffer)" = "$(echo -e "line\n")" ] || exit 1
+[ "$($TMUX show-buffer)" = "$(printf "line\n")" ] || exit 1
 
 # Test that `next-word-end` treats periods as letters.
 $TMUX send-keys -X next-word
@@ -63,14 +73,14 @@ $TMUX send-keys -X previous-word
 $TMUX send-keys -X begin-selection
 $TMUX send-keys -X next-word
 $TMUX send-keys -X copy-selection
-[ "$($TMUX show-buffer)" = "$(echo -e "line...\n")" ] || exit 1
+[ "$($TMUX show-buffer)" = "$(printf "line...\n")" ] || exit 1
 
 # Test that `previous-space` and `next-space` treat periods as letters.
 $TMUX send-keys -X previous-space
 $TMUX send-keys -X begin-selection
 $TMUX send-keys -X next-space
 $TMUX send-keys -X copy-selection
-[ "$($TMUX show-buffer)" = "$(echo -e "line...\n")" ] || exit 1
+[ "$($TMUX show-buffer)" = "$(printf "line...\n")" ] || exit 1
 
 # Test that `next-word` and `next-word-end` treat other symbols as letters.
 $TMUX send-keys -X begin-selection
@@ -87,7 +97,7 @@ $TMUX send-keys -X previous-word
 $TMUX send-keys -X begin-selection
 $TMUX send-keys -X next-word
 $TMUX send-keys -X copy-selection
-[ "$($TMUX show-buffer)" = "$(echo -e "\$ym_bols[]{}\n ")" ] || exit 1
+[ "$($TMUX show-buffer)" = "$(printf "\$ym_bols[]{}\n ")" ] || exit 1
 
 # Test that `next-word-end` treats digits as letters
 $TMUX send-keys -X next-word-end

@@ -1,0 +1,48 @@
+name: Build and Test
+
+on: [push, pull_request]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Install dependencies for Linux
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get -y install bison \
+              autotools-dev \
+              libncurses5-dev \
+              libevent-dev \
+              pkg-config \
+              libutempter-dev \
+              build-essential
+          if [ "${{ matrix.build }}" == "musl" ] || [ "${{ matrix.build }}" == "musl-static" ]; then
+            sudo apt-get -y install musl-dev \
+                        musl-tools
+          fi
+          
+      # Add steps for other operating systems if needed, similar to the Linux steps above.
+      - name: Build tmux
+        run: |
+          sh autogen.sh
+          ./configure
+          make
+
+      # Add additional steps for running tests if applicable.
+      - name: Run Tests
+        working-directory: ./regress
+        run: |
+          for test_script in *.sh; do
+            chmod +x $test_script
+            echo Running test $test_script
+            ./$test_script
+          done
+
+
+      
+
+      
+
