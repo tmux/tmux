@@ -25,7 +25,6 @@ jobs:
           fi
           
       # Add steps for other operating systems if needed, similar to the Linux steps above.
-
       - name: Build tmux
         run: |
           sh autogen.sh
@@ -36,20 +35,8 @@ jobs:
       - name: Run Tests
         working-directory: ./regress
         run: |
-          chmod +x *.sh
-          sh *.sh
-        ##  chmod +x tty-keys.sh
-        ##  sh tty-keys.sh
-        ##  chmod +x format-strings.sh
-        ##  sh format-strings.sh
-        ##  chmod +x copy-mode-test-emacs.sh
-        ##  sh copy-mode-test-emacs.sh 
-        ##  chmod +x copy-mode-test-vi.sh
-        ##  sh copy-mode-test-vi.sh
-        ##  chmod +x new-session-environment.sh
-        ##  sh new-session-environment.sh
-
-      
-
-      
-
+          for test_script in *.sh; do
+            chmod +x $test_script
+            echo Running test $test_script
+            ./$test_script
+          done

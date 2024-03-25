@@ -17,7 +17,6 @@
  */
 
 #include <sys/types.h>
-/*small and non-functional change*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
