@@ -19,7 +19,6 @@
 #include <sys/types.h>
 
 #include <stdlib.h>
-
 #include "tmux.h"
 
 static int	alerts_fired;
