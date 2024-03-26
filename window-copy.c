@@ -805,7 +805,7 @@ window_copy_formats(struct window_mode_entry *wme, struct format_tree *ft)
 			format_add(ft, "selection_active", "1");
 		else
 			format_add(ft, "selection_active", "0");
-		if (data->endselx != data->selx && data->endsely != data->sely)
+		if (data->endselx != data->selx || data->endsely != data->sely)
 			format_add(ft, "selection_present", "1");
 		else
 			format_add(ft, "selection_present", "0");
