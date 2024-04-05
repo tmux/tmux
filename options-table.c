@@ -66,6 +66,12 @@ static const char *options_table_cursor_style_list[] = {
 static const char *options_table_pane_status_list[] = {
 	"off", "top", "bottom", NULL
 };
+static const char *options_table_pane_scrollbars_list[] = {
+	"off", "copy-mode", "always", NULL
+};
+static const char *options_table_pane_vertical_scrollbars_position_list[] = {
+	"right", "left", NULL
+};
 static const char *options_table_pane_border_indicators_list[] = {
 	"off", "colour", "arrows", "both", NULL
 };
@@ -1088,6 +1094,22 @@ const struct options_table_entry options_table[] = {
 	  .default_str = "",
 	  .flags = OPTIONS_TABLE_IS_ARRAY,
 	  .text = "The default colour palette for colours zero to 255."
+	},
+
+	{ .name = "pane-scrollbars",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .choices = options_table_pane_scrollbars_list,
+	  .default_num = PANE_SCROLLBARS_OFF,
+	  .text = "Pane scrollbars"
+	},
+
+	{ .name = "pane-vertical-scrollbars-position",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .choices = options_table_pane_vertical_scrollbars_position_list,
+	  .default_num = PANE_VERTICAL_SCROLLBARS_RIGHT,
+	  .text = "Pane vertical scrollbars position"
 	},
 
 	{ .name = "popup-style",
