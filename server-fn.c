@@ -411,7 +411,7 @@ server_find_session(struct session *s,
 static int
 server_newer_session(struct session *s_loop, struct session *s_out)
 {
-	return (timercmp(&s_loop->activity_time, &s_out->activity_time, <));
+	return (timercmp(&s_loop->activity_time, &s_out->activity_time, >));
 }
 
 static int
