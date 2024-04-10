@@ -877,7 +877,7 @@ struct screen_sel;
 struct screen_titles;
 struct screen {
 	char				*title;
-	char				*path;
+	char *path;
 	struct screen_titles		*titles;
 
 	struct grid			*grid;	  /* grid data */

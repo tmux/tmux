@@ -875,6 +875,14 @@ const struct options_table_entry options_table[] = {
 		  "to rename windows."
 	},
 
+	{ .name = "allow-set-title",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
+	  .default_num = 1,
+	  .text = "Whether applications are allowed to use the escape sequence "
+		  "to set the pane title."
+	},
+
 	{ .name = "alternate-screen",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,

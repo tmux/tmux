@@ -622,6 +622,8 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 	} else if (MOUSE_RELEASE(m->b)) {
 		type = UP;
 		x = m->x, y = m->y, b = m->lb;
+		if (m->sgr_type == 'm')
+			b = m->sgr_b;
 		log_debug("up at %u,%u", x, y);
 	} else {
 		if (c->flags & CLIENT_DOUBLECLICK) {
@@ -642,7 +644,10 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 				log_debug("triple-click at %u,%u", x, y);
 				goto have_event;
 			}
-		} else {
+		}
+
+		/* DOWN is the only remaining event type. */
+		if (type == NOTYPE) {
 			type = DOWN;
 			x = m->x, y = m->y, b = m->b;
 			log_debug("down at %u,%u", x, y);

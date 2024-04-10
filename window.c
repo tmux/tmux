@@ -481,7 +481,7 @@ window_pane_update_focus(struct window_pane *wp)
 	struct client	*c;
 	int		 focused = 0;
 
-	if (wp != NULL) {
+	if (wp != NULL && (~wp->flags & PANE_EXITED)) {
 		if (wp != wp->window->active)
 			focused = 0;
 		else {
