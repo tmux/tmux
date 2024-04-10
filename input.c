@@ -2372,7 +2372,8 @@ input_exit_osc(struct input_ctx *ictx)
 	switch (option) {
 	case 0:
 	case 2:
-		if ( sctx->s->ignore_osc_2 == 0 && screen_set_title(sctx->s, p) && wp != NULL) {
+		if (options_get_number(ictx->wp->options, "allow-rename-pane") == 1 &&
+				screen_set_title(sctx->s, p) && wp != NULL) {
 			notify_pane("pane-title-changed", wp);
 			server_redraw_window_borders(wp->window);
 			server_status_window(wp->window);
