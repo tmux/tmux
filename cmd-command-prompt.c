@@ -143,6 +143,7 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 		cdata->prompt_type = status_prompt_type(type);
 		if (cdata->prompt_type == PROMPT_TYPE_INVALID) {
 			cmdq_error(item, "unknown type: %s", type);
+			cmd_command_prompt_free(cdata);
 			return (CMD_RETURN_ERROR);
 		}
 	} else
