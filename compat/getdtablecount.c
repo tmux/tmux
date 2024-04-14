@@ -18,13 +18,28 @@
 
 #include <glob.h>
 #include <unistd.h>
+#if defined(HAVE_LIBPROC_H)
+# include <libproc.h>
+#endif
 
 #include "compat.h"
 
 void fatal(const char *, ...);
 void fatalx(const char *, ...);
 
-#ifdef HAVE_PROC_PID
+#if defined(HAVE_LIBPROC_H) && defined(HAVE_PROC_PIDINFO)
+int
+getdtablecount(void)
+{
+	int sz;
+	pid_t pid = getpid();
+
+	sz = proc_pidinfo(pid, PROC_PIDLISTFDS, 0, NULL, 0);
+	if (sz == -1)
+		return (0);
+	return (sz / PROC_PIDLISTFD_SIZE);
+}
+#elif defined(HAVE_PROC_PID)
 int
 getdtablecount(void)
 {
