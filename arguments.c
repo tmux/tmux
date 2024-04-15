@@ -171,6 +171,8 @@ args_parse_flag_argument(struct args_value *values, u_int count, char **cause,
 		if (optional_argument) {
 			log_debug("%s: -%c (optional)", __func__, flag);
 			args_set(args, flag, NULL, ARGS_ENTRY_OPTIONAL_VALUE);
+			args_free_value(new);
+			free(new);
 			return (0); /* either - or end */
 		}
 		xasprintf(cause, "-%c expects an argument", flag);
@@ -662,6 +664,8 @@ args_set(struct args *args, u_char flag, struct args_value *value, int flags)
 		entry->count++;
 	if (value != NULL && value->type != ARGS_NONE)
 		TAILQ_INSERT_TAIL(&entry->values, value, entry);
+	else
+		free(value);
 }
 
 /* Get argument value. Will be NULL if it isn't present. */
