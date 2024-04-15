@@ -230,7 +230,7 @@ layout_parse(struct window *w, const char *layout, char **cause)
 	/* Check the new layout. */
 	if (!layout_check(lc)) {
 		*cause = xstrdup("size mismatch after applying layout");
-		return (-1);
+		goto fail;
 	}
 
 	/* Resize to the layout size. */

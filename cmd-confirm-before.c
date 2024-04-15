@@ -76,8 +76,10 @@ cmd_confirm_before_exec(struct cmd *self, struct cmdq_item *item)
 
 	cdata = xcalloc(1, sizeof *cdata);
 	cdata->cmdlist = args_make_commands_now(self, item, 0, 1);
-	if (cdata->cmdlist == NULL)
+	if (cdata->cmdlist == NULL) {
+		free(cdata);
 		return (CMD_RETURN_ERROR);
+	}
 
 	if (wait)
 		cdata->item = item;
