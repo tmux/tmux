@@ -145,6 +145,17 @@ systemd_move_pid_to_new_cgroup(pid_t pid, char **cause)
 	}
 
 	/*
+	 * Make sure that the session shells are terminated with SIGHUP since
+	 * bash and friends tend to ignore SIGTERM.
+	 */
+	r = sd_bus_message_append(m, "(sv)", "SendSIGHUP", "b", 1);
+	if (r < 0) {
+		xasprintf(cause, "failed to append to properties: %s",
+		    strerror(-r));
+		goto finish;
+	}
+
+	/*
 	 * Inherit the slice from the parent process, or default to
 	 * "app-tmux.slice" if that fails.
 	 */
