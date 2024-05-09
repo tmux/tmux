@@ -1325,6 +1325,7 @@ const struct options_table_entry options_table[] = {
 	OPTIONS_TABLE_HOOK("client-focus-out", ""),
 	OPTIONS_TABLE_HOOK("client-resized", ""),
 	OPTIONS_TABLE_HOOK("client-session-changed", ""),
+	OPTIONS_TABLE_HOOK("command-error", ""),
 	OPTIONS_TABLE_PANE_HOOK("pane-died", ""),
 	OPTIONS_TABLE_PANE_HOOK("pane-exited", ""),
 	OPTIONS_TABLE_PANE_HOOK("pane-focus-in", ""),

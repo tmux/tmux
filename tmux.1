@@ -4883,6 +4883,13 @@ layout after every
 set-hook -g after-split-window "selectl even-vertical"
 .Ed
 .Pp
+If a command fails for whatever reason, there is a hook named
+.Ql command-error
+that you can you. For example you could run a shell command when a command fails with the following:
+.Bd -literal -offset indent
+set-hook -g command-error "run-shell \\"notify-send 'a tmux command failed'\\""
+.Ed
+.Pp
 All the notifications listed in the
 .Sx CONTROL MODE
 section are hooks (without any arguments), except
