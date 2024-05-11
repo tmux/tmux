@@ -3797,6 +3797,17 @@ each client.
 .It Ic prompt-history-limit Ar number
 Set the number of history items to save in the history file for each type of
 command prompt.
+.It Xo Ic search-wrapped-lines
+.Op Ic on | off
+.Xc
+Defines how
+.Nm
+handles wrapped lines when searching in copy mode.
+.Pp
+When disabled (the default) lines are truncated, performance is faster, some
+matches may be missing.
+.Pp
+When enabled lines are read in full, performance is slower, all matches found.
 .It Xo Ic set-clipboard
 .Op Ic on | external | off
 .Xc
