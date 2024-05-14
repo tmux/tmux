@@ -3615,10 +3615,12 @@ window_copy_search_jump(struct window_mode_entry *wme, struct grid *gd,
     int direction, int regex)
 {
 	u_int			 i, px, sx, ssize = 1;
-	int			 found = 0, cflags = REG_EXTENDED;
+	int			 wrapped, found = 0, cflags = REG_EXTENDED;
 	char			*sbuf;
 	regex_t			 reg;
 	struct grid_line	*gl;
+
+	wrapped = options_get_number(global_options, "search-wrapped-lines");
 
 	if (regex) {
 		sbuf = xmalloc(ssize);
@@ -3636,7 +3638,9 @@ window_copy_search_jump(struct window_mode_entry *wme, struct grid *gd,
 	if (direction) {
 		for (i = fy; i <= endline; i++) {
 			gl = grid_get_line(gd, i);
-			if (i != endline && gl->flags & GRID_LINE_WRAPPED)
+			if (!wrapped &&
+			    i != endline &&
+			    gl->flags & GRID_LINE_WRAPPED)
 				continue;
 			if (regex) {
 				found = window_copy_search_lr_regex(gd,
@@ -3652,7 +3656,9 @@ window_copy_search_jump(struct window_mode_entry *wme, struct grid *gd,
 	} else {
 		for (i = fy + 1; endline < i; i--) {
 			gl = grid_get_line(gd, i - 1);
-			if (i != endline && gl->flags & GRID_LINE_WRAPPED)
+			if (!wrapped &&
+			    i != endline &&
+			    gl->flags & GRID_LINE_WRAPPED)
 				continue;
 			if (regex) {
 				found = window_copy_search_rl_regex(gd,
