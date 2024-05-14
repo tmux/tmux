@@ -264,7 +264,7 @@ server_loop(void)
 	struct client	*c;
 	u_int		 items;
 
-	current_time = time (NULL);
+	current_time = time(NULL);
 
 	do {
 		items = cmdq_next(NULL);
