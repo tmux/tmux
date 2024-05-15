@@ -92,6 +92,7 @@ cmd_confirm_before_exec(struct cmd *self, struct cmdq_item *item)
 			cdata->confirm_key = confirm_key[0];
 		else {
 			cmdq_error(item, "invalid confirm key");
+			free(cdata);
 			return (CMD_RETURN_ERROR);
 		}
 	}
@@ -102,8 +103,8 @@ cmd_confirm_before_exec(struct cmd *self, struct cmdq_item *item)
 		xasprintf(&new_prompt, "%s ", prompt);
 	else {
 		cmd = cmd_get_entry(cmd_list_first(cdata->cmdlist))->name;
-		xasprintf(&new_prompt, "Confirm '%s'? (%c/n) ",
-		cmd, cdata->confirm_key);
+		xasprintf(&new_prompt, "Confirm '%s'? (%c/n) ", cmd,
+		    cdata->confirm_key);
 	}
 
 	status_prompt_set(tc, target, new_prompt, NULL,
