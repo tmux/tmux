@@ -235,6 +235,24 @@ fail:
 	return (NULL);
 }
 
+char *
+shell_argv0(const char *shell, int is_login)
+{
+	const char	*slash, *name;
+	char		*argv0;
+
+	slash = strrchr(shell, '/');
+	if (slash != NULL && slash[1] != '\0')
+		name = slash + 1;
+	else
+		name = shell;
+	if (is_login)
+		xasprintf(&argv0, "-%s", name);
+	else
+		xasprintf(&argv0, "%s", name);
+	return (argv0);
+}
+
 void
 setblocking(int fd, int state)
 {

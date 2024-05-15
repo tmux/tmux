@@ -77,18 +77,27 @@ job_run(const char *cmd, int argc, char **argv, struct environ *e, struct sessio
 	struct environ	 *env;
 	pid_t		  pid;
 	int		  nullfd, out[2], master;
-	const char	 *home;
+	const char	 *home, *shell;
 	sigset_t	  set, oldset;
 	struct winsize	  ws;
-	char		**argvp, tty[TTY_NAME_MAX];
+	char		**argvp, tty[TTY_NAME_MAX], *argv0;
 
 	/*
-	 * Do not set TERM during .tmux.conf, it is nice to be able to use
-	 * if-shell to decide on default-terminal based on outside TERM.
+	 * Do not set TERM during .tmux.conf (second argument here), it is nice
+	 * to be able to use if-shell to decide on default-terminal based on
+	 * outside TERM.
 	 */
 	env = environ_for_session(s, !cfg_finished);
 	if (e != NULL)
 		environ_copy(e, env);
+
+	if (s != NULL)
+		shell = options_get_string(s->options, "default-shell");
+	else
+		shell = options_get_string(global_s_options, "default-shell");
+	if (!checkshell(shell))
+		shell = _PATH_BSHELL;
+	argv0 = shell_argv0(shell, 0);
 
 	sigfillset(&set);
 	sigprocmask(SIG_BLOCK, &set, &oldset);
@@ -105,10 +114,11 @@ job_run(const char *cmd, int argc, char **argv, struct environ *e, struct sessio
 	}
 	if (cmd == NULL) {
 		cmd_log_argv(argc, argv, "%s:", __func__);
-		log_debug("%s: cwd=%s", __func__, cwd == NULL ? "" : cwd);
+		log_debug("%s: cwd=%s, shell=%s", __func__,
+		    cwd == NULL ? "" : cwd, shell);
 	} else {
-		log_debug("%s: cmd=%s, cwd=%s", __func__, cmd,
-		    cwd == NULL ? "" : cwd);
+		log_debug("%s: cmd=%s, cwd=%s, shell=%s", __func__, cmd,
+		    cwd == NULL ? "" : cwd, shell);
 	}
 
 	switch (pid) {
@@ -150,7 +160,8 @@ job_run(const char *cmd, int argc, char **argv, struct environ *e, struct sessio
 		closefrom(STDERR_FILENO + 1);
 
 		if (cmd != NULL) {
-			execl(_PATH_BSHELL, "sh", "-c", cmd, (char *) NULL);
+			setenv("SHELL", shell, 1);
+			execl(shell, argv0, "-c", cmd, (char *)NULL);
 			fatal("execl failed");
 		} else {
 			argvp = cmd_copy_argv(argc, argv);
@@ -161,6 +172,7 @@ job_run(const char *cmd, int argc, char **argv, struct environ *e, struct sessio
 
 	sigprocmask(SIG_SETMASK, &oldset, NULL);
 	environ_free(env);
+	free(argv0);
 
 	job = xmalloc(sizeof *job);
 	job->state = JOB_RUNNING;
@@ -194,12 +206,13 @@ job_run(const char *cmd, int argc, char **argv, struct environ *e, struct sessio
 		fatalx("out of memory");
 	bufferevent_enable(job->event, EV_READ|EV_WRITE);
 
-	log_debug("run job %p: %s, pid %ld", job, job->cmd, (long) job->pid);
+	log_debug("run job %p: %s, pid %ld", job, job->cmd, (long)job->pid);
 	return (job);
 
 fail:
 	sigprocmask(SIG_SETMASK, &oldset, NULL);
 	environ_free(env);
+	free(argv0);
 	return (NULL);
 }
 
