@@ -994,8 +994,7 @@ status_prompt_paste(struct client *c)
 		if ((pb = paste_get_top(NULL)) == NULL)
 			return (0);
 		bufdata = paste_buffer_data(pb, &bufsize);
-		ud = xreallocarray(NULL, bufsize + 1, sizeof *ud);
-		udp = ud;
+		ud = udp = xreallocarray(NULL, bufsize + 1, sizeof *ud);
 		for (i = 0; i != bufsize; /* nothing */) {
 			more = utf8_open(udp, bufdata[i]);
 			if (more == UTF8_MORE) {
@@ -1016,25 +1015,24 @@ status_prompt_paste(struct client *c)
 		udp->size = 0;
 		n = udp - ud;
 	}
-	if (n == 0)
-		return (0);
-
-	c->prompt_buffer = xreallocarray(c->prompt_buffer, size + n + 1,
-	    sizeof *c->prompt_buffer);
-	if (c->prompt_index == size) {
-		memcpy(c->prompt_buffer + c->prompt_index, ud,
-		    n * sizeof *c->prompt_buffer);
-		c->prompt_index += n;
-		c->prompt_buffer[c->prompt_index].size = 0;
-	} else {
-		memmove(c->prompt_buffer + c->prompt_index + n,
-		    c->prompt_buffer + c->prompt_index,
-		    (size + 1 - c->prompt_index) * sizeof *c->prompt_buffer);
-		memcpy(c->prompt_buffer + c->prompt_index, ud,
-		    n * sizeof *c->prompt_buffer);
-		c->prompt_index += n;
+	if (n != 0) {
+		c->prompt_buffer = xreallocarray(c->prompt_buffer, size + n + 1,
+		    sizeof *c->prompt_buffer);
+		if (c->prompt_index == size) {
+			memcpy(c->prompt_buffer + c->prompt_index, ud,
+			    n * sizeof *c->prompt_buffer);
+			c->prompt_index += n;
+			c->prompt_buffer[c->prompt_index].size = 0;
+		} else {
+			memmove(c->prompt_buffer + c->prompt_index + n,
+			    c->prompt_buffer + c->prompt_index,
+			    (size + 1 - c->prompt_index) *
+			    sizeof *c->prompt_buffer);
+			memcpy(c->prompt_buffer + c->prompt_index, ud,
+			    n * sizeof *c->prompt_buffer);
+			c->prompt_index += n;
+		}
 	}
-
 	if (ud != c->prompt_saved)
 		free(ud);
 	return (1);
@@ -1839,6 +1837,7 @@ status_prompt_complete_window_menu(struct client *c, struct session *s,
 	}
 	if (size == 0) {
 		menu_free(menu);
+		free(spm);
 		return (NULL);
 	}
 	if (size == 1) {
@@ -1849,6 +1848,7 @@ status_prompt_complete_window_menu(struct client *c, struct session *s,
 		} else
 			tmp = list[0];
 		free(list);
+		free(spm);
 		return (tmp);
 	}
 	if (height > size)
