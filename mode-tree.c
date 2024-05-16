@@ -68,6 +68,7 @@ struct mode_tree_data {
 	char			 *search;
 	char			 *filter;
 	int			  no_matches;
+    enum search_dir sd;
 };
 
 struct mode_tree_item {
@@ -785,6 +786,50 @@ done:
 	screen_write_stop(&ctx);
 }
 
+
+static struct mode_tree_item *
+mode_tree_search_bw(struct mode_tree_data *mtd) {
+    struct mode_tree_item *mti, *last, *prev;
+    if (mtd->search == NULL)
+        return NULL;
+
+    /* current item in the line */
+    mti = last = mtd->line_list[mtd->current].item;
+    for (;;) {
+        if ((prev = TAILQ_PREV(mti, mode_tree_list, entry)) != NULL) {
+            /* point to the last child in the previous sub-tree */
+            while (!TAILQ_EMPTY(&prev->children)) {
+                prev = TAILQ_LAST(&prev->children, mode_tree_list);
+            }
+            mti = prev;
+        } else {
+            /* if prev is NULL jump to the parent */
+            mti = mti->parent;
+        }
+
+		if (mti == NULL) {
+            /* point to the last child in the last "root"'s sub-tree */
+			prev = TAILQ_LAST(&mtd->children, mode_tree_list);
+            while (!TAILQ_EMPTY(&prev->children)) {
+                prev = TAILQ_LAST(&prev->children, mode_tree_list);
+            }
+            mti = prev;
+        }
+		if (mti == last)
+			break;
+
+		if (mtd->searchcb == NULL) {
+			if (strstr(mti->name, mtd->search) != NULL)
+				return (mti);
+			continue;
+		}
+		if (mtd->searchcb(mtd->modedata, mti->itemdata, mtd->search))
+			return (mti);
+    }
+    return NULL;
+}
+
+
 static struct mode_tree_item *
 mode_tree_search_for(struct mode_tree_data *mtd)
 {
@@ -832,7 +877,7 @@ mode_tree_search_set(struct mode_tree_data *mtd)
 	struct mode_tree_item	*mti, *loop;
 	uint64_t		 tag;
 
-	mti = mode_tree_search_for(mtd);
+	mti = mtd->sd == SEARCH_FORWARD ? mode_tree_search_for(mtd) : mode_tree_search_bw(mtd);
 	if (mti == NULL)
 		return;
 	tag = mti->tag;
@@ -1165,8 +1210,13 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 		    PROMPT_NOFORMAT, PROMPT_TYPE_SEARCH);
 		break;
 	case 'n':
+        mtd->sd = SEARCH_FORWARD;
 		mode_tree_search_set(mtd);
 		break;
+    case 'N':
+        mtd->sd = SEARCH_BACKWARD;
+        mode_tree_search_set(mtd);
+        break;
 	case 'f':
 		mtd->references++;
 		status_prompt_set(c, NULL, "(filter) ", mtd->filter,

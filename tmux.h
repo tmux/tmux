@@ -3206,6 +3206,12 @@ int	 mode_tree_key(struct mode_tree_data *, struct client *, key_code *,
 void	 mode_tree_run_command(struct client *, struct cmd_find_state *,
 	     const char *, const char *);
 
+/* mode-tree search direction */
+enum search_dir {
+    SEARCH_FORWARD,
+    SEARCH_BACKWARD
+};
+
 /* window-buffer.c */
 extern const struct window_mode window_buffer_mode;
 
