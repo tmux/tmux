@@ -25,6 +25,11 @@
 
 #include "tmux.h"
 
+enum mode_tree_search_dir {
+	MODE_TREE_SEARCH_FORWARD,
+	MODE_TREE_SEARCH_BACKWARD
+};
+
 struct mode_tree_item;
 TAILQ_HEAD(mode_tree_list, mode_tree_item);
 
@@ -68,6 +73,7 @@ struct mode_tree_data {
 	char			 *search;
 	char			 *filter;
 	int			  no_matches;
+	enum mode_tree_search_dir search_dir;
 };
 
 struct mode_tree_item {
@@ -786,7 +792,49 @@ done:
 }
 
 static struct mode_tree_item *
-mode_tree_search_for(struct mode_tree_data *mtd)
+mode_tree_search_backward(struct mode_tree_data *mtd)
+{
+    struct mode_tree_item	*mti, *last, *prev;
+
+    if (mtd->search == NULL)
+	    return (NULL);
+
+    mti = last = mtd->line_list[mtd->current].item;
+    for (;;) {
+        if ((prev = TAILQ_PREV(mti, mode_tree_list, entry)) != NULL) {
+		/* Point to the last child in the previous subtree. */
+		while (!TAILQ_EMPTY(&prev->children))
+			prev = TAILQ_LAST(&prev->children, mode_tree_list);
+		mti = prev;
+        } else {
+		/* If prev is NULL, jump to the parent. */
+		mti = mti->parent;
+        }
+
+	if (mti == NULL) {
+		/* Point to the last child in the last root subtree. */
+		prev = TAILQ_LAST(&mtd->children, mode_tree_list);
+		while (!TAILQ_EMPTY(&prev->children))
+			prev = TAILQ_LAST(&prev->children, mode_tree_list);
+		mti = prev;
+	}
+	if (mti == last)
+		break;
+
+	if (mtd->searchcb == NULL) {
+		if (strstr(mti->name, mtd->search) != NULL)
+			return (mti);
+		continue;
+	}
+	if (mtd->searchcb(mtd->modedata, mti->itemdata, mtd->search))
+		return (mti);
+    }
+    return (NULL);
+}
+
+
+static struct mode_tree_item *
+mode_tree_search_forward(struct mode_tree_data *mtd)
 {
 	struct mode_tree_item	*mti, *last, *next;
 
@@ -832,7 +880,10 @@ mode_tree_search_set(struct mode_tree_data *mtd)
 	struct mode_tree_item	*mti, *loop;
 	uint64_t		 tag;
 
-	mti = mode_tree_search_for(mtd);
+	if (mtd->search_dir == MODE_TREE_SEARCH_FORWARD)
+		mti = mode_tree_search_forward(mtd);
+	else
+		mti = mode_tree_search_backward(mtd);
 	if (mti == NULL)
 		return;
 	tag = mti->tag;
@@ -1165,6 +1216,11 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 		    PROMPT_NOFORMAT, PROMPT_TYPE_SEARCH);
 		break;
 	case 'n':
+		mtd->search_dir = MODE_TREE_SEARCH_FORWARD;
+		mode_tree_search_set(mtd);
+		break;
+	case 'N':
+		mtd->search_dir = MODE_TREE_SEARCH_BACKWARD;
 		mode_tree_search_set(mtd);
 		break;
 	case 'f':
