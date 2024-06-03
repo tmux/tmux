@@ -14,7 +14,6 @@ tmux depends on
 page](https://github.com/libevent/libevent/releases/latest).
 - [ncurses](https://www.gnu.org/software/ncurses/), available
 from [this page](https://invisible-mirror.net/archives/ncurses/).
-- yacc available from [tuhs.org](https://www.tuhs.org/cgi-bin/utree.pl?file=V6/usr/source/yacc)
 
 To build tmux you will need: 
 
