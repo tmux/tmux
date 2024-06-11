@@ -237,7 +237,7 @@ static const struct tty_feature tty_feature_sync = {
 
 /* Terminal supports extended keys. */
 static const char *const tty_feature_extkeys_capabilities[] = {
-	"Eneks=\\E[>4;1m",
+	"Eneks=\\E[>4;2m",
 	"Dseks=\\E[>4m",
 	NULL
 };
