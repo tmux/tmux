@@ -203,6 +203,12 @@ static const struct tty_default_key_raw tty_default_raw_keys[] = {
 	{ "\033[23@", KEYC_F11|KEYC_CTRL|KEYC_SHIFT },
 	{ "\033[24@", KEYC_F12|KEYC_CTRL|KEYC_SHIFT },
 
+	/* iTerm2 CSI u mode function keys. */
+	{ "\033[P", KEYC_F1 },
+	{ "\033[Q", KEYC_F2 },
+	{ "\033[R", KEYC_F3 },
+	{ "\033[S", KEYC_F4 },
+
 	/* Focus tracking. */
 	{ "\033[I", KEYC_FOCUS_IN },
 	{ "\033[O", KEYC_FOCUS_OUT },
