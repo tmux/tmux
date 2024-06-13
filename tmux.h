@@ -196,6 +196,42 @@ struct winlink;
  */
 typedef unsigned long long key_code;
 
+/* C0 control characters */
+enum {
+	C0_NUL,
+	C0_SOH,
+	C0_STX,
+	C0_ETX,
+	C0_EOT,
+	C0_ENQ,
+	C0_ASC,
+	C0_BEL,
+	C0_BS,
+	C0_HT,
+	C0_LF,
+	C0_VT,
+	C0_FF,
+	C0_CR,
+	C0_SO,
+	C0_SI,
+	C0_DLE,
+	C0_DC1,
+	C0_DC2,
+	C0_DC3,
+	C0_DC4,
+	C0_NAK,
+	C0_SYN,
+	C0_ETB,
+	C0_CAN,
+	C0_EM,
+	C0_SUB,
+	C0_ESC,
+	C0_FS,
+	C0_GS,
+	C0_RS,
+	C0_US
+};
+
 /* Special key codes. */
 enum {
 	/* Focus events. */

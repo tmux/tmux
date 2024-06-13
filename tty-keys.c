@@ -664,7 +664,7 @@ tty_keys_next(struct tty *tty)
 	size_t			 len, size;
 	cc_t			 bspace;
 	int			 delay, expired = 0, n;
-	key_code		 key;
+	key_code		 key, onlykey;
 	struct mouse_event	 m = { 0 };
 	struct key_event	*event;
 
@@ -801,6 +801,25 @@ first_key:
 		key = (u_char)buf[0];
 		size = 1;
 	}
+
+	/* `Ctrl-<SPACE>` is special. */
+	if ((key & KEYC_MASK_KEY) == C0_NUL)
+		key = ' ' | KEYC_CTRL | (key & KEYC_META);
+
+	/* Fix up all C0 control codes that don't have a dedicated key
+	 * into corresponding `Ctrl-` keys. Convert characters in the A-Z
+	 * range into lowercase to prevent mixing up with CSI u keys.
+	 */
+	onlykey = key & KEYC_MASK_KEY;
+	if (onlykey < 0x10 && onlykey != C0_BS &&
+	    onlykey != C0_HT && onlykey != C0_CR &&
+	    onlykey != C0_ESC) {
+		onlykey |= 0x40;
+		if (onlykey >= 'A' && onlykey <= 'Z')
+			onlykey |= 0x20;
+		key = onlykey | KEYC_CTRL | (key & KEYC_META);
+	}
+
 	goto complete_key;
 
 partial_key:
@@ -910,7 +929,6 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 	char		 tmp[64];
 	cc_t		 bspace;
 	key_code	 nkey;
-	key_code	 onlykey;
 	struct utf8_data ud;
 	utf8_char        uc;
 
@@ -974,7 +992,13 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 	/* Update the modifiers. */
 	if (modifiers > 0) {
 		modifiers--;
-		if (modifiers & 1)
+		/*
+		 * iTerm2 does not report the Shift modifier in CSI u mode,
+		 * which is unfortunate, as in general case determining if a
+		 * character is shifted or not requires knowing the input
+		 * keyboard layout. So we only fix up the trivial case.
+		 */
+		if (modifiers & 1 || (nkey >= 'A' && nkey <= 'Z'))
 			nkey |= KEYC_SHIFT;
 		if (modifiers & 2)
 			nkey |= (KEYC_META|KEYC_IMPLIED_META); /* Alt */
@@ -984,34 +1008,11 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 			nkey |= (KEYC_META|KEYC_IMPLIED_META); /* Meta */
 	}
 
-	/*
-	 * Don't allow both KEYC_CTRL and as an implied modifier. Also convert
-	 * C-X into C-x and so on.
-	 */
-	if (nkey & KEYC_CTRL) {
-		onlykey = (nkey & KEYC_MASK_KEY);
-		if (onlykey < 32 &&
-		    onlykey != 9 &&
-		    onlykey != 13 &&
-		    onlykey != 27)
-			/* nothing */;
-		else if (onlykey >= 97 && onlykey <= 122)
-			onlykey -= 96;
-		else if (onlykey >= 64 && onlykey <= 95)
-			onlykey -= 64;
-		else if (onlykey == 32)
-			onlykey = 0;
-		else if (onlykey == 63)
-			onlykey = 127;
-		else
-			onlykey |= KEYC_CTRL;
-		nkey = onlykey|((nkey & KEYC_MASK_MODIFIERS) & ~KEYC_CTRL);
-	}
-
 	if (log_get_level() != 0) {
 		log_debug("%s: extended key %.*s is %llx (%s)", c->name,
 		    (int)*size, buf, nkey, key_string_lookup_key(nkey, 1));
 	}
+
 	*key = nkey;
 	return (0);
 }
