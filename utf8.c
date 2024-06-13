@@ -24,6 +24,7 @@
 #include <string.h>
 #include <wchar.h>
 
+#include "compat.h"
 #include "tmux.h"
 
 static const wchar_t utf8_force_wide[] = {
@@ -447,6 +448,31 @@ utf8_towc(const struct utf8_data *ud, wchar_t *wc)
 	}
 	log_debug("UTF-8 %.*s is %05X", (int)ud->size, ud->data, (u_int)*wc);
 	return (UTF8_DONE);
+}
+
+/* Convert wide character to UTF-8 character. */
+enum utf8_state
+utf8_fromwc(wchar_t wc, struct utf8_data *ud)
+{
+	int size, width;
+#ifdef HAVE_UTF8PROC
+	size = utf8proc_wctomb(ud->data, wc);
+#else
+	size = wctomb(ud->data, wc);
+#endif
+	if (size < 0) {
+		log_debug("UTF-8 %d, wctomb() %d", wc, errno);
+		wctomb(NULL, 0);
+		return (UTF8_ERROR);
+	}
+	if (size == 0)
+		return (UTF8_ERROR);
+	ud->size = ud->have = size;
+	if (utf8_width(ud, &width) == UTF8_DONE) {
+		ud->width = width;
+		return (UTF8_DONE);
+	}
+	return (UTF8_ERROR);
 }
 
 /*
