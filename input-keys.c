@@ -482,7 +482,7 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 		key &= ~KEYC_KEYPAD;
 	if (~s->mode & MODE_KCURSOR)
 		key &= ~KEYC_CURSOR;
-	if (s->mode & MODE_KEXTENDED)
+	if (s->mode & MODE_KEYS_EXTENDED)
 		ike = input_key_get(key|KEYC_EXTENDED);
 	if (ike == NULL)
 		ike = input_key_get(key);
@@ -506,7 +506,7 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 	}
 
 	/* No builtin key sequence; construct an extended key sequence. */
-	if (~s->mode & MODE_KEXTENDED) {
+	if (~s->mode & MODE_KEYS_EXTENDED) {
 		if ((key & KEYC_MASK_MODIFIERS) != KEYC_CTRL)
 			goto missing;
 		justkey = (key & KEYC_MASK_KEY);

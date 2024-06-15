@@ -111,7 +111,7 @@ screen_reinit(struct screen *s)
 
 	s->mode = MODE_CURSOR|MODE_WRAP|(s->mode & MODE_CRLF);
 	if (options_get_number(global_options, "extended-keys") == 2)
-		s->mode |= MODE_KEXTENDED;
+		s->mode = (s->mode & ~EXTENDED_KEY_MODES) | MODE_KEYS_CSI_U;
 
 	if (s->saved_grid != NULL)
 		screen_alternate_off(s, NULL, 0);
@@ -730,8 +730,12 @@ screen_mode_to_string(int mode)
 		strlcat(tmp, "ORIGIN,", sizeof tmp);
 	if (mode & MODE_CRLF)
 		strlcat(tmp, "CRLF,", sizeof tmp);
-	if (mode & MODE_KEXTENDED)
-		strlcat(tmp, "KEXTENDED,", sizeof tmp);
+	if (mode & MODE_KEYS_EXTENDED)
+		strlcat(tmp, "KEYS_EXTENDED,", sizeof tmp);
+	if (mode & MODE_KEYS_EXTENDED_2)
+		strlcat(tmp, "KEYS_EXTENDED_2,", sizeof tmp);
+	if (mode & MODE_KEYS_CSI_U)
+		strlcat(tmp, "KEYS_CSI_U,", sizeof tmp);
 	tmp[strlen(tmp) - 1] = '\0';
 	return (tmp);
 }
