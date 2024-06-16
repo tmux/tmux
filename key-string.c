@@ -460,8 +460,6 @@ out:
 			strlcat(out, "I", sizeof out);
 		if (saved & KEYC_BUILD_MODIFIERS)
 			strlcat(out, "B", sizeof out);
-		if (saved & KEYC_EXTENDED)
-			strlcat(out, "E", sizeof out);
 		if (saved & KEYC_SENT)
 			strlcat(out, "S", sizeof out);
 		strlcat(out, "]", sizeof out);
