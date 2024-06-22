@@ -1359,6 +1359,7 @@ specified multiple times.
 .Op Fl B Ar name:what:format
 .Op Fl C Ar size
 .Op Fl f Ar flags
+.Op Fl r Ar report
 .Op Fl l Op Ar target-pane
 .Op Fl t Ar target-client
 .Op Ar adjustment
@@ -1469,6 +1470,11 @@ for all windows in the attached session.
 .Fl f
 sets a comma-separated list of client flags, see
 .Ic attach-session .
+.Fl r
+allows a control mode client to provide information about a pane via a report
+(such as the response to OSC 10). The argument is a pane ID (with a leading
+.Ql % ) ,
+a colon, then a control sequence.
 .Pp
 .Fl l
 requests the clipboard from the client using the

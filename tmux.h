@@ -1131,6 +1131,9 @@ struct window_pane {
 	int		 border_gc_set;
 	struct grid_cell border_gc;
 
+        int		 control_bg;
+        int		 control_fg;
+
 	TAILQ_ENTRY(window_pane) entry;  /* link in list of all panes */
 	TAILQ_ENTRY(window_pane) sentry; /* link in list of last visited */
 	RB_ENTRY(window_pane) tree_entry;
@@ -2451,6 +2454,8 @@ const struct utf8_data *tty_acs_rounded_borders(int);
 void		tty_keys_build(struct tty *);
 void		tty_keys_free(struct tty *);
 int		tty_keys_next(struct tty *);
+int		tty_keys_colours(struct tty *, const char *, size_t, size_t *,
+		     int *, int *);
 
 /* arguments.c */
 void		 args_set(struct args *, u_char, struct args_value *, int);
