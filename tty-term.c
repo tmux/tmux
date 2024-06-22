@@ -897,7 +897,7 @@ tty_term_describe(struct tty_term *term, enum tty_code_code code)
 		    code, tty_term_codes[code].name);
 		break;
 	case TTYCODE_STRING:
-		strnvis(out, term->codes[code].value.string, sizeof out,
+		strnvis(out, sizeof out, term->codes[code].value.string,
 		    VIS_OCTAL|VIS_CSTYLE|VIS_TAB|VIS_NL);
 		xsnprintf(s, sizeof s, "%4u: %s: (string) %s",
 		    code, tty_term_codes[code].name,
