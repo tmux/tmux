@@ -2683,6 +2683,44 @@ input_get_bg_client(struct window_pane *wp)
 	return (-1);
 }
 
+/*
+ * If any control mode client exists that has provided a bg color, return it.
+ * Otherwise, return -1.
+ */
+static int
+input_get_bg_control_client(struct window_pane *wp)
+{
+	struct client	*c;
+
+	if (wp->control_bg == -1)
+		return (-1);
+
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (c->flags & CLIENT_CONTROL)
+			return (wp->control_bg);
+	}
+	return (-1);
+}
+
+/*
+ * If any control mode client exists that has provided a fg color, return it.
+ * Otherwise, return -1.
+ */
+static int
+input_get_fg_control_client(struct window_pane *wp)
+{
+	struct client	*c;
+
+	if (wp->control_fg == -1)
+		return (-1);
+
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (c->flags & CLIENT_CONTROL)
+			return (wp->control_fg);
+	}
+	return (-1);
+}
+
 /* Handle the OSC 10 sequence for setting and querying foreground colour. */
 static void
 input_osc_10(struct input_ctx *ictx, const char *p)
@@ -2694,11 +2732,14 @@ input_osc_10(struct input_ctx *ictx, const char *p)
 	if (strcmp(p, "?") == 0) {
 		if (wp == NULL)
 			return;
-		tty_default_colours(&defaults, wp);
-		if (COLOUR_DEFAULT(defaults.fg))
-			c = input_get_fg_client(wp);
-		else
-			c = defaults.fg;
+		c = input_get_fg_control_client(wp);
+		if (c == -1) {
+			tty_default_colours(&defaults, wp);
+			if (COLOUR_DEFAULT(defaults.fg))
+				c = input_get_fg_client(wp);
+			else
+				c = defaults.fg;
+		}
 		input_osc_colour_reply(ictx, 10, c);
 		return;
 	}
@@ -2742,11 +2783,14 @@ input_osc_11(struct input_ctx *ictx, const char *p)
 	if (strcmp(p, "?") == 0) {
 		if (wp == NULL)
 			return;
-		tty_default_colours(&defaults, wp);
-		if (COLOUR_DEFAULT(defaults.bg))
-			c = input_get_bg_client(wp);
-		else
-			c = defaults.bg;
+		c = input_get_bg_control_client(wp);
+		if (c == -1) {
+			tty_default_colours(&defaults, wp);
+			if (COLOUR_DEFAULT(defaults.bg))
+				c = input_get_bg_client(wp);
+			else
+				c = defaults.bg;
+		}
 		input_osc_colour_reply(ictx, 11, c);
 		return;
 	}
