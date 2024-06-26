@@ -1962,6 +1962,27 @@ format_cb_pane_unseen_changes(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for pane_key_mode */
+static void *
+format_cb_pane_key_mode(struct format_tree *ft)
+{
+	if (ft->wp != NULL && ft->wp->screen != NULL) {
+		switch (ft->wp->screen->mode & EXTENDED_KEY_MODES) {
+		case MODE_KEYS_EXTENDED:
+		case MODE_KEYS_EXTENDED | MODE_KEYS_CSI_U:
+			return (xstrdup("1"));
+		case MODE_KEYS_EXTENDED_2:
+		case MODE_KEYS_EXTENDED_2 | MODE_KEYS_CSI_U:
+			return (xstrdup("2"));
+		case MODE_KEYS_CSI_U:
+			return (xstrdup("3"));
+		default:
+			return (xstrdup("0"));
+		}
+	}
+	return (NULL);
+}
+
 /* Callback for pane_last. */
 static void *
 format_cb_pane_last(struct format_tree *ft)
@@ -2996,6 +3017,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "pane_input_off", FORMAT_TABLE_STRING,
 	  format_cb_pane_input_off
+	},
+	{ "pane_key_mode", FORMAT_TABLE_STRING,
+	  format_cb_pane_key_mode
 	},
 	{ "pane_last", FORMAT_TABLE_STRING,
 	  format_cb_pane_last
