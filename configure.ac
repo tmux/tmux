@@ -926,8 +926,13 @@ case "$host_os" in
 				MANFORMAT=mdoc
 				;;
 			*)
-				# Solaris 2.0 to 11.3 use AT&T nroff.
-				MANFORMAT=man
+				if test `uname -o 2>/dev/null` = illumos; then
+					# Illumos uses mandoc.
+					MANFORMAT=mdoc
+				else
+					# Solaris 2.0 to 11.3 use AT&T nroff.
+					MANFORMAT=man
+				fi
 				;;
 		esac
 		;;
