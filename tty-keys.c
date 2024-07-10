@@ -817,7 +817,7 @@ first_key:
 	 * range into lowercase to prevent mixing up with CSI u keys.
 	 */
 	onlykey = key & KEYC_MASK_KEY;
-	if (onlykey < 0x10 && onlykey != C0_BS &&
+	if (onlykey < 0x20 && onlykey != C0_BS &&
 	    onlykey != C0_HT && onlykey != C0_CR &&
 	    onlykey != C0_ESC) {
 		onlykey |= 0x40;

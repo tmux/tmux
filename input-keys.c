@@ -575,7 +575,7 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 	if (key & ~KEYC_MASK_KEY) {
 		if (key == C0_BS || key == C0_HT ||
 		    key == C0_CR || key == C0_ESC ||
-		    (key >= 0x10 && key <= 0x7f)) {
+		    (key >= 0x20 && key <= 0x7f)) {
 			ud.data[0] = key;
 			input_key_write(__func__, bev, &ud.data[0], 1);
 			return (0);

@@ -206,7 +206,6 @@ key_string_get_modifiers(const char **string)
 key_code
 key_string_lookup_string(const char *string)
 {
-	static const char	*other = "!#()+,-.0123456789:;<=>'\r\t\177`/";
 	key_code		 key, modifiers;
 	u_int			 u, i;
 	struct utf8_data	 ud, *udp;
@@ -279,26 +278,6 @@ key_string_lookup_string(const char *string)
 			return (KEYC_UNKNOWN);
 		if (~modifiers & KEYC_META)
 			key &= ~KEYC_IMPLIED_META;
-	}
-
-	/* Convert the standard control keys. */
-	if (key <= 127 &&
-	    (modifiers & KEYC_CTRL) &&
-	    strchr(other, key) == NULL &&
-	    key != 9 &&
-	    key != 13 &&
-	    key != 27) {
-		if (key >= 97 && key <= 122)
-			key -= 96;
-		else if (key >= 64 && key <= 95)
-                       key -= 64;
-		else if (key == 32)
-			key = 0;
-		else if (key == 63)
-			key = 127;
-		else
-			return (KEYC_UNKNOWN);
-		modifiers &= ~KEYC_CTRL;
 	}
 
 	return (key|modifiers);
