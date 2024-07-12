@@ -911,6 +911,8 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 	cc_t		 bspace;
 	key_code	 nkey;
 	key_code	 onlykey;
+	struct utf8_data ud;
+	utf8_char        uc;
 
 	*size = 0;
 
@@ -959,6 +961,15 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 		nkey = KEYC_BSPACE;
 	else
 		nkey = number;
+
+	/* Convert UTF-32 codepoint into internal representation. */
+	if (nkey & ~0x7f) {
+		if (utf8_fromwc(nkey, &ud) == UTF8_DONE &&
+		    utf8_from_data(&ud, &uc) == UTF8_DONE)
+			nkey = uc;
+		else
+			return (-1);
+	}
 
 	/* Update the modifiers. */
 	if (modifiers > 0) {
