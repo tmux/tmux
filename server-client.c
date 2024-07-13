@@ -3042,6 +3042,7 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 
 #ifdef __CYGWIN__
 	c->fd = open(c->ttyname, O_RDWR|O_NOCTTY);
+	c->out_fd = dup(c->fd);
 #endif
 
 	if (c->flags & CLIENT_CONTROL)
