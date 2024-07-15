@@ -1,0 +1,5 @@
+root = true
+
+[{*.c,*.h,Makefile.am,configure.ac}]
+indent_style = tab
+indent_size = 8
