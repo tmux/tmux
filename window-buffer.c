@@ -409,7 +409,14 @@ window_buffer_do_delete(void *modedata, void *itemdata,
 	struct paste_buffer		*pb;
 
 	if (item == mode_tree_get_current(data->data))
-		mode_tree_down(data->data, 0);
+		if (!mode_tree_down(data->data, 0))
+			/* If we were unable to select the item further down we are at
+			 * the end of the list. Move one element up instead, to make
+			 * sure that we preserve a valid selection or we risk having the
+			 * tree build logic reset it to the first item.
+			 */
+			mode_tree_up(data->data, 0);
+
 	if ((pb = paste_get_name(item->name)) != NULL)
 		paste_free(pb);
 }
