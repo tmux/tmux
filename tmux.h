@@ -969,6 +969,8 @@ struct screen_redraw_ctx {
 	int		 pane_status;
 	enum pane_lines	 pane_lines;
 
+        int		 pane_scrollbars;
+
 	struct grid_cell no_pane_gc;
 	int		 no_pane_gc_set;
 
@@ -1227,11 +1229,12 @@ TAILQ_HEAD(winlink_stack, winlink);
 #define PANE_STATUS_BOTTOM 2
 
 /* Pane scrollbars option. */
+#define PANE_SCROLLBARS_THICKNESS 1
 #define PANE_SCROLLBARS_OFF 0
 #define PANE_SCROLLBARS_COPY_MODE 1
 #define PANE_SCROLLBARS_ALWAYS 2
 #define PANE_VERTICAL_SCROLLBARS_RIGHT 0
-#define PANE_VERTICAL_SCROLLBARS_LEFT 0
+#define PANE_VERTICAL_SCROLLBARS_LEFT 1
 
 /* Layout direction. */
 enum layout_type {
