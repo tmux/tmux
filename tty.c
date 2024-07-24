@@ -71,7 +71,6 @@ static void	tty_default_attributes(struct tty *, const struct grid_cell *,
 static int	tty_check_overlay(struct tty *, u_int, u_int);
 static void	tty_check_overlay_range(struct tty *, u_int, u_int, u_int,
 		    struct overlay_ranges *);
-
 #ifdef ENABLE_SIXEL
 static void	tty_write_one(void (*)(struct tty *, const struct tty_ctx *),
 		    struct client *, struct tty_ctx *);
@@ -1603,6 +1602,19 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 
 	tty->flags = (tty->flags & ~TTY_NOCURSOR) | flags;
 	tty_update_mode(tty, tty->mode, s);
+}
+
+
+void
+tty_draw_scrollbar(struct tty *tty, struct screen *s, u_int px, u_int py, u_int sy, u_int viewable, u_int total)
+{
+        u_int j;
+        static const char a[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz_!\"£$%^&*(";
+        
+        for(j=0; j<sy; j++) {
+                tty_cursor(tty, px, py+j);
+                tty_putn(tty, &a[j], 1, 1);
+        }
 }
 
 #ifdef ENABLE_SIXEL

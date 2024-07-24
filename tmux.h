@@ -706,6 +706,7 @@ struct colour_palette {
 #define CELL_RIGHTJOIN 10
 #define CELL_JOIN 11
 #define CELL_OUTSIDE 12
+#define CELL_SCROLLBAR 13
 
 /* Cell borders. */
 #define CELL_BORDERS " xqlkmjwvtun~"
@@ -2374,6 +2375,9 @@ void	tty_set_path(struct tty *, const char *);
 void	tty_update_mode(struct tty *, int, struct screen *);
 void	tty_draw_line(struct tty *, struct screen *, u_int, u_int, u_int,
 	    u_int, u_int, const struct grid_cell *, struct colour_palette *);
+void	tty_draw_scrollbar(struct tty *tty, struct screen *s,
+                                   u_int px, u_int py, u_int sy,
+                                   u_int viewable, u_int total);
 
 #ifdef ENABLE_SIXEL
 void	tty_draw_images(struct client *, struct window_pane *, struct screen *);

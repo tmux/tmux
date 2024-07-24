@@ -338,6 +338,25 @@ screen_redraw_check_cell(struct client *c, u_int px, u_int py, int pane_status, 
 			goto next2;
 		*wpp = wp;
 
+                /* If point is within a scrollbar, return */
+                if (pane_scrollbars) {
+                        /* check if px lies within a scroller
+                         * if scrollbar side of pane on edge of window then if px is window edge
+                         * if scrollbar side of pane not on the window edge then if pane size + 1
+                         */
+                        if (px >= w->sx-1 || px == wp->xoff + wp->sx + 1) {
+                                /* check if py lies within a scroller
+                                 * if pane at the top then py==0 included
+                                 * if pane not at the top, then not
+                                 */
+                                if (wp->yoff == 0 && py < wp->sy)
+                                        return (CELL_SCROLLBAR);
+                                else
+                                        if (py >= wp->yoff && py < wp->yoff + wp->sy)
+                                                return (CELL_SCROLLBAR);
+                        }
+                }
+                
 		/*
 		 * If definitely inside, return. If not on border, skip.
 		 * Otherwise work out the cell.
@@ -680,7 +699,7 @@ screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j)
 	}
 
 	cell_type = screen_redraw_check_cell(c, x, y, pane_status, pane_scrollbars, &wp);
-	if (cell_type == CELL_INSIDE)
+	if (cell_type == CELL_INSIDE || cell_type == CELL_SCROLLBAR)
 		return;
 
 	if (wp == NULL) {
@@ -870,6 +889,8 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 		tty_default_colours(&defaults, wp);
 		tty_draw_line(tty, s, i, j, width, x, y, &defaults, palette);
 	}
+        if(ctx->pane_scrollbars != 0)
+                tty_draw_scrollbar(tty, s, wp->xoff+wp->sx+1, wp->yoff, wp->sy, wp->screen->grid->hsize+(wp->sy-1), wp->screen->grid->hsize);
 
 #ifdef ENABLE_SIXEL
 	tty_draw_images(c, wp, s);
