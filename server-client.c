@@ -22,6 +22,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -2898,6 +2899,11 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 	case MSG_READ_DONE:
 		file_read_done(&c->files, imsg);
 		break;
+#ifdef TTY_OVER_SOCKET
+	case MSG_TTY_WRITE:
+		write(c->fd, imsg->data, datalen);
+		break;
+#endif
 	}
 }
 
@@ -3069,6 +3075,7 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 			c->cwd = xstrdup("/");
 		log_debug("client %p IDENTIFY_CWD %s", c, data);
 		break;
+#ifndef TTY_OVER_SOCKET
 	case MSG_IDENTIFY_STDIN:
 		if (datalen != 0)
 			fatalx("bad MSG_IDENTIFY_STDIN size");
@@ -3081,6 +3088,7 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 		c->out_fd = imsg_get_fd(imsg);
 		log_debug("client %p IDENTIFY_STDOUT %d", c, c->out_fd);
 		break;
+#endif
 	case MSG_IDENTIFY_ENVIRON:
 		if (datalen == 0 || data[datalen - 1] != '\0')
 			fatalx("bad MSG_IDENTIFY_ENVIRON string");
@@ -3109,8 +3117,8 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 	c->name = name;
 	log_debug("client %p name is %s", c, c->name);
 
-#ifdef __CYGWIN__
-	c->fd = open(c->ttyname, O_RDWR|O_NOCTTY);
+#ifdef TTY_OVER_SOCKET
+	c->fd = open("/dev/ptmx", O_RDWR|O_NOCTTY);
 	c->out_fd = dup(c->fd);
 #endif
 

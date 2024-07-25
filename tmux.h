@@ -2461,6 +2461,11 @@ void	tty_cmd_sixelimage(struct tty *, const struct tty_ctx *);
 void	tty_cmd_syncstart(struct tty *, const struct tty_ctx *);
 void	tty_default_colours(struct grid_cell *, struct window_pane *);
 
+#ifdef TTY_OVER_SOCKET
+int		tty_attach_stdin_to_socket(struct tty *, struct tmuxpeer *);
+int		tty_attach_out_to_socket(struct tty *, struct client *);
+#endif
+
 /* tty-term.c */
 extern struct tty_terms tty_terms;
 u_int		 tty_term_ncodes(void);

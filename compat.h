@@ -69,6 +69,11 @@
 #define __weak __attribute__ ((__weak__))
 #endif
 
+#if defined(_WIN32) || defined(__CYGWIN__) || defined(__MSYS__)
+#define WIN32_PLATFORM
+#define TTY_OVER_SOCKET
+#endif
+
 #ifndef ECHOPRT
 #define ECHOPRT 0
 #endif
