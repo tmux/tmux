@@ -2575,7 +2575,8 @@ server_client_check_redraw(struct client *c)
 		    (c->flags & CLIENT_REDRAWSTATUS) ? " status" : "",
 		    (c->flags & CLIENT_REDRAWBORDERS) ? " borders" : "",
 		    (c->flags & CLIENT_REDRAWOVERLAY) ? " overlay" : "",
-		    (c->flags & CLIENT_REDRAWPANES) ? " panes" : "");
+                    (c->flags & CLIENT_REDRAWPANES) ? " panes" : "",
+		    (c->flags & CLIENT_REDRAWSCROLLBARS) ? " scrollbars" : "");
 	}
 
 	/*
@@ -2595,6 +2596,15 @@ server_client_check_redraw(struct client *c)
 		}
 		if (needed)
 			new_flags |= CLIENT_REDRAWPANES;
+
+		TAILQ_FOREACH(wp, &w->panes, entry) {
+			if (wp->flags & PANE_REDRAW_SCROLLBARS) {
+				needed = 1;
+				break;
+			}
+		}
+		if (needed)
+			new_flags |= CLIENT_REDRAWSCROLLBARS;
 	}
 	if (needed && (left = EVBUFFER_LENGTH(tty->out)) != 0) {
 		log_debug("%s: redraw deferred (%zu left)", c->name, left);

@@ -1084,6 +1084,8 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme != NULL && wme->mode->resize != NULL)
 		wme->mode->resize(wme, sx, sy);
+
+        wp->flags |= PANE_REDRAW_SCROLLBARS;
 }
 
 int

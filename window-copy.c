@@ -4216,6 +4216,17 @@ window_copy_write_one(struct window_mode_entry *wme,
 	}
 }
 
+void
+window_copy_mode_current_offset(struct window_pane *wp, u_int *pos, u_int *size) {
+        struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
+	struct window_copy_mode_data	*data = wme->data;
+	struct screen			*s = wp->screen;
+	u_int				 hsize = screen_hsize(data->backing);
+
+        *pos = hsize - data->oy;
+        *size = hsize;
+}
+                                
 static void
 window_copy_write_line(struct window_mode_entry *wme,
     struct screen_write_ctx *ctx, u_int py)
@@ -4281,6 +4292,8 @@ window_copy_write_line(struct window_mode_entry *wme,
 		screen_write_cursormove(ctx, screen_size_x(s) - 1, py, 0);
 		screen_write_putc(ctx, &grid_default_cell, '$');
 	}
+
+        wp->flags |= PANE_REDRAW_SCROLLBARS;
 }
 
 static void

@@ -1606,14 +1606,17 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 
 
 void
-tty_draw_scrollbar(struct tty *tty, struct screen *s, u_int px, u_int py, u_int sy, u_int viewable, u_int total)
+tty_draw_scrollbar(struct tty *tty, struct screen *s, u_int px, u_int py, u_int sbheight, u_int elevatorheight, u_int elevatorpos)
 {
         u_int j;
         static const char a[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz_!\"£$%^&*(";
         
-        for(j=0; j<sy; j++) {
+        for(j=0; j<sbheight; j++) {
                 tty_cursor(tty, px, py+j);
-                tty_putn(tty, &a[j], 1, 1);
+                if (j>=elevatorpos && j<=elevatorpos+elevatorheight)
+                        tty_putn(tty, &a[j], 1, 1);
+                else
+                        tty_putn(tty, " ", 1, 1);
         }
 }
 

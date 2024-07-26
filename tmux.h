@@ -1090,6 +1090,7 @@ struct window_pane {
 #define PANE_EMPTY 0x800
 #define PANE_STYLECHANGED 0x1000
 #define PANE_UNSEENCHANGES 0x2000
+#define PANE_REDRAW_SCROLLBARS 0x4000
 
 	int		 argc;
 	char	       **argv;
@@ -1870,13 +1871,15 @@ struct client {
 #define CLIENT_WINDOWSIZECHANGED 0x400000000ULL
 #define CLIENT_CLIPBOARDBUFFER 0x800000000ULL
 #define CLIENT_BRACKETPASTING 0x1000000000ULL
+#define CLIENT_REDRAWSCROLLBARS 0x2000000000ULL
 #define CLIENT_ALLREDRAWFLAGS		\
 	(CLIENT_REDRAWWINDOW|		\
 	 CLIENT_REDRAWSTATUS|		\
 	 CLIENT_REDRAWSTATUSALWAYS|	\
 	 CLIENT_REDRAWBORDERS|		\
 	 CLIENT_REDRAWOVERLAY|		\
-	 CLIENT_REDRAWPANES)
+	 CLIENT_REDRAWPANES|		\
+	 CLIENT_REDRAWSCROLLBARS)
 #define CLIENT_UNATTACHEDFLAGS	\
 	(CLIENT_DEAD|		\
 	 CLIENT_SUSPENDED|	\
@@ -2375,9 +2378,8 @@ void	tty_set_path(struct tty *, const char *);
 void	tty_update_mode(struct tty *, int, struct screen *);
 void	tty_draw_line(struct tty *, struct screen *, u_int, u_int, u_int,
 	    u_int, u_int, const struct grid_cell *, struct colour_palette *);
-void	tty_draw_scrollbar(struct tty *tty, struct screen *s,
-                                   u_int px, u_int py, u_int sy,
-                                   u_int viewable, u_int total);
+void    tty_draw_scrollbar(struct tty *tty, struct screen *s, u_int px, u_int py,
+                           u_int sbheight, u_int elevatorheight, u_int elevatorpos);
 
 #ifdef ENABLE_SIXEL
 void	tty_draw_images(struct client *, struct window_pane *, struct screen *);
@@ -3244,7 +3246,7 @@ void		 window_copy_pageup(struct window_pane *, int);
 void		 window_copy_start_drag(struct client *, struct mouse_event *);
 char		*window_copy_get_word(struct window_pane *, u_int, u_int);
 char		*window_copy_get_line(struct window_pane *, u_int);
-
+void window_copy_mode_current_offset(struct window_pane *wp, u_int *pos, u_int *size);
 /* window-option.c */
 extern const struct window_mode window_customize_mode;
 

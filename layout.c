@@ -364,6 +364,7 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
                         if (scrollbars_pos == PANE_VERTICAL_SCROLLBARS_LEFT)
                                 wp->xoff = wp->xoff + PANE_SCROLLBARS_THICKNESS + 1;
                         sx = sx - PANE_SCROLLBARS_THICKNESS - 1;
+                        wp->flags |= PANE_REDRAW_SCROLLBARS;
                 }
 
                 window_pane_resize(wp, sx, sy);

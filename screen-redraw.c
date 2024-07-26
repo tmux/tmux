@@ -30,6 +30,8 @@ static void	screen_redraw_draw_pane(struct screen_redraw_ctx *,
 		    struct window_pane *);
 static void	screen_redraw_set_context(struct client *,
 		    struct screen_redraw_ctx *);
+static void	screen_redraw_draw_pane_scrollbars(struct screen_redraw_ctx *ctx);
+static void	screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx, struct window_pane *wp);
 
 #define START_ISOLATE "\342\201\246"
 #define END_ISOLATE   "\342\201\251"
@@ -347,7 +349,7 @@ screen_redraw_check_cell(struct client *c, u_int px, u_int py, int pane_status, 
                         if (px >= w->sx-1 || px == wp->xoff + wp->sx + 1) {
                                 /* check if py lies within a scroller
                                  * if pane at the top then py==0 included
-                                 * if pane not at the top, then not
+                                 * if pane not at the top, then yoff to yoff+sy
                                  */
                                 if (wp->yoff == 0 && py < wp->sy)
                                         return (CELL_SCROLLBAR);
@@ -616,6 +618,11 @@ screen_redraw_screen(struct client *c)
 	    (flags & (CLIENT_REDRAWSTATUS|CLIENT_REDRAWSTATUSALWAYS))) {
 		log_debug("%s: redrawing status", c->name);
 		screen_redraw_draw_status(&ctx);
+	}
+	if (ctx.pane_scrollbars != 0 &&
+	    (c->flags & CLIENT_REDRAWSCROLLBARS)) {
+		log_debug("%s: redrawing scrollbars", c->name);
+		screen_redraw_draw_pane_scrollbars(&ctx);
 	}
 	if (c->overlay_draw != NULL && (flags & CLIENT_REDRAWOVERLAY)) {
 		log_debug("%s: redrawing overlay", c->name);
@@ -889,10 +896,70 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 		tty_default_colours(&defaults, wp);
 		tty_draw_line(tty, s, i, j, width, x, y, &defaults, palette);
 	}
-        if(ctx->pane_scrollbars != 0)
-                tty_draw_scrollbar(tty, s, wp->xoff+wp->sx+1, wp->yoff, wp->sy, wp->screen->grid->hsize+(wp->sy-1), wp->screen->grid->hsize);
-
+        if (wp->flags & PANE_REDRAW_SCROLLBARS)
+                screen_redraw_draw_pane_scrollbar(ctx, wp);
+        
 #ifdef ENABLE_SIXEL
 	tty_draw_images(c, wp, s);
 #endif
+}
+
+/* Draw the panes. */
+static void
+screen_redraw_draw_pane_scrollbars(struct screen_redraw_ctx *ctx)
+{
+	struct client		*c = ctx->c;
+	struct window		*w = c->session->curw->window;
+	struct window_pane	*wp;
+
+	log_debug("%s: %s @%u", __func__, c->name, w->id);
+
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (window_pane_visible(wp) && wp->flags & PANE_REDRAW_SCROLLBARS)
+			screen_redraw_draw_pane_scrollbar(ctx, wp);
+	}
+}
+
+static void
+screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx, struct window_pane *wp) {
+        u_int			cm;
+	struct screen		*s = wp->screen;
+	struct client		*c = ctx->c;
+	struct tty		*tty = &c->tty;
+        u_int			sbx = wp->xoff+wp->sx+1; /* px and py of where to write to screen */
+        u_int			sby = wp->yoff;
+        u_int			sbheight = wp->sy; /* height of scrollbar */
+        u_int			totalheight = screen_size_y(s) + screen_hsize(s);
+        u_int			elevatorheight;
+        u_int			elevatorpos;
+        double			percentview;
+
+        if (TAILQ_FIRST(&wp->modes))
+                cm = (TAILQ_FIRST(&wp->modes)->mode == &window_copy_mode ||
+                      TAILQ_FIRST(&wp->modes)->mode == &window_view_mode);
+        if (cm != 1) {
+                /* not copy-mode */
+                percentview = (double)sbheight / totalheight;
+                elevatorheight = (u_int)((double)sbheight * percentview);
+                elevatorpos = sbheight - elevatorheight - 1; /* because it's at the bottom */
+                
+                log_debug("%s: %s %%%u flags=%u sx=%u sy=%u  hscrolled=%u hsize=%u hlimit=%u  cm=%u totalheight=%u sbheight=%u eheight=%u epos=%u",
+                          __func__, c->name, wp->id, wp->screen->grid->flags, wp->screen->grid->sx, wp->screen->grid->sy,
+                          wp->screen->grid->hscrolled, wp->screen->grid->hsize, wp->screen->grid->hlimit,
+                          cm, totalheight, sbheight, elevatorheight, elevatorpos);
+        } else {
+                u_int pos, size;
+                
+                window_copy_mode_current_offset(wp, &pos, &size);
+                percentview = (double)sbheight / (size + sbheight);
+                elevatorheight = (u_int)((double)sbheight * percentview);
+                elevatorpos = (u_int)sbheight * ((float)pos / (size + sbheight));
+                log_debug("%s: %s %%%u flags=%u sx=%u sy=%u  hscrolled=%u hsize=%u hlimit=%u  cm=%u totalheight=%u sbheight=%u pos=%u sz=%u eheight=%u epos=%u",
+                          __func__, c->name, wp->id, wp->screen->grid->flags, wp->screen->grid->sx, wp->screen->grid->sy,
+                          wp->screen->grid->hscrolled, wp->screen->grid->hsize, wp->screen->grid->hlimit,
+                          cm, totalheight, sbheight, pos, size, elevatorheight, elevatorpos);
+        }
+
+        tty_draw_scrollbar(tty, s, sbx, sby, sbheight, elevatorheight, elevatorpos);
+        wp->flags &= PANE_REDRAW_SCROLLBARS;
 }
