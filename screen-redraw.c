@@ -518,8 +518,8 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 }
 
 /* Update status line and change flags if unchanged. */
-static int
-screen_redraw_update(struct client *c, int flags)
+static uint64_t
+screen_redraw_update(struct client *c, uint64_t flags)
 {
 	struct window			*w = c->session->curw->window;
 	struct window_pane		*wp;
@@ -591,7 +591,7 @@ void
 screen_redraw_screen(struct client *c)
 {
 	struct screen_redraw_ctx	ctx;
-	int				flags;
+	uint64_t			flags;
 
 	if (c->flags & CLIENT_SUSPENDED)
 		return;
@@ -614,15 +614,15 @@ screen_redraw_screen(struct client *c)
 		log_debug("%s: redrawing panes", c->name);
 		screen_redraw_draw_panes(&ctx);
 	}
+	if (ctx.pane_scrollbars != 0 &&
+	    (flags & CLIENT_REDRAWSCROLLBARS)) {
+		log_debug("%s: redrawing scrollbars", c->name);
+		screen_redraw_draw_pane_scrollbars(&ctx);
+	}
 	if (ctx.statuslines != 0 &&
 	    (flags & (CLIENT_REDRAWSTATUS|CLIENT_REDRAWSTATUSALWAYS))) {
 		log_debug("%s: redrawing status", c->name);
 		screen_redraw_draw_status(&ctx);
-	}
-	if (ctx.pane_scrollbars != 0 &&
-	    (c->flags & CLIENT_REDRAWSCROLLBARS)) {
-		log_debug("%s: redrawing scrollbars", c->name);
-		screen_redraw_draw_pane_scrollbars(&ctx);
 	}
 	if (c->overlay_draw != NULL && (flags & CLIENT_REDRAWOVERLAY)) {
 		log_debug("%s: redrawing overlay", c->name);
@@ -646,6 +646,9 @@ screen_redraw_pane(struct client *c, struct window_pane *wp)
 	tty_update_mode(&c->tty, c->tty.mode, NULL);
 
 	screen_redraw_draw_pane(&ctx, wp);
+
+        if (wp->flags & PANE_REDRAW_SCROLLBARS)
+                screen_redraw_draw_pane_scrollbar(&ctx, wp);
 
 	tty_reset(&c->tty);
 }
@@ -896,9 +899,7 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 		tty_default_colours(&defaults, wp);
 		tty_draw_line(tty, s, i, j, width, x, y, &defaults, palette);
 	}
-        if (wp->flags & PANE_REDRAW_SCROLLBARS)
-                screen_redraw_draw_pane_scrollbar(ctx, wp);
-        
+
 #ifdef ENABLE_SIXEL
 	tty_draw_images(c, wp, s);
 #endif
@@ -961,5 +962,5 @@ screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx, struct window_p
         }
 
         tty_draw_scrollbar(tty, s, sbx, sby, sbheight, elevatorheight, elevatorpos);
-        wp->flags &= PANE_REDRAW_SCROLLBARS;
+        wp->flags &= ~PANE_REDRAW_SCROLLBARS;
 }

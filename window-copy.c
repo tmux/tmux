@@ -4220,7 +4220,6 @@ void
 window_copy_mode_current_offset(struct window_pane *wp, u_int *pos, u_int *size) {
         struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
 	struct window_copy_mode_data	*data = wme->data;
-	struct screen			*s = wp->screen;
 	u_int				 hsize = screen_hsize(data->backing);
 
         *pos = hsize - data->oy;

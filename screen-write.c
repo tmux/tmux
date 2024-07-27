@@ -1779,6 +1779,9 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 		ttyctx.num = ctx->scrolled;
 		ttyctx.bg = ctx->bg;
 		tty_write(tty_cmd_scrollup, &ttyctx);
+
+                if (ctx->wp)
+                        ctx->wp->flags |= PANE_REDRAW_SCROLLBARS;
 	}
 	ctx->scrolled = 0;
 	ctx->bg = 8;
