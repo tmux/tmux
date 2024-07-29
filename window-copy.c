@@ -3614,11 +3614,10 @@ window_copy_search_jump(struct window_mode_entry *wme, struct grid *gd,
     struct grid *sgd, u_int fx, u_int fy, u_int endline, int cis, int wrap,
     int direction, int regex)
 {
-	u_int			 i, px, sx, ssize = 1;
-	int			 found = 0, cflags = REG_EXTENDED;
-	char			*sbuf;
-	regex_t			 reg;
-	struct grid_line	*gl;
+	u_int	 i, px, sx, ssize = 1;
+	int	 found = 0, cflags = REG_EXTENDED;
+	char	*sbuf;
+	regex_t	 reg;
 
 	if (regex) {
 		sbuf = xmalloc(ssize);
@@ -3635,9 +3634,6 @@ window_copy_search_jump(struct window_mode_entry *wme, struct grid *gd,
 
 	if (direction) {
 		for (i = fy; i <= endline; i++) {
-			gl = grid_get_line(gd, i);
-			if (i != endline && gl->flags & GRID_LINE_WRAPPED)
-				continue;
 			if (regex) {
 				found = window_copy_search_lr_regex(gd,
 				    &px, &sx, i, fx, gd->sx, &reg);
@@ -3651,9 +3647,6 @@ window_copy_search_jump(struct window_mode_entry *wme, struct grid *gd,
 		}
 	} else {
 		for (i = fy + 1; endline < i; i--) {
-			gl = grid_get_line(gd, i - 1);
-			if (i != endline && gl->flags & GRID_LINE_WRAPPED)
-				continue;
 			if (regex) {
 				found = window_copy_search_rl_regex(gd,
 				    &px, &sx, i - 1, 0, fx + 1, &reg);
@@ -4715,7 +4708,7 @@ window_copy_get_selection(struct window_mode_entry *wme, size_t *len)
 	if (keys == MODEKEY_EMACS || lastex <= ey_last) {
 		if (~grid_get_line(data->backing->grid, ey)->flags &
 		    GRID_LINE_WRAPPED || lastex != ey_last)
-		off -= 1;
+			off -= 1;
 	}
 	*len = off;
 	return (buf);

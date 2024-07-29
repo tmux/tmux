@@ -88,7 +88,7 @@ grid_need_extended_cell(const struct grid_cell_entry *gce,
 		return (1);
 	if ((gc->fg & COLOUR_FLAG_RGB) || (gc->bg & COLOUR_FLAG_RGB))
 		return (1);
-	if (gc->us != 0) /* only supports 256 or RGB */
+	if (gc->us != 8) /* only supports 256 or RGB */
 		return (1);
 	if (gc->link != 0)
 		return (1);

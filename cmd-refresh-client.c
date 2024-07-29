@@ -34,9 +34,10 @@ const struct cmd_entry cmd_refresh_client_entry = {
 	.name = "refresh-client",
 	.alias = "refresh",
 
-	.args = { "A:B:cC:Df:F:l::LRSt:U", 0, 1, NULL },
+	.args = { "A:B:cC:Df:r:F:l::LRSt:U", 0, 1, NULL },
 	.usage = "[-cDlLRSU] [-A pane:state] [-B name:what:format] "
-		 "[-C XxY] [-f flags] " CMD_TARGET_CLIENT_USAGE " [adjustment]",
+		 "[-C XxY] [-f flags] [-r pane:report]" CMD_TARGET_CLIENT_USAGE
+		 " [adjustment]",
 
 	.flags = CMD_AFTERHOOK|CMD_CLIENT_TFLAG,
 	.exec = cmd_refresh_client_exec
@@ -193,6 +194,34 @@ cmd_refresh_client_clipboard(struct cmd *self, struct cmdq_item *item)
 	return (CMD_RETURN_NORMAL);
 }
 
+static void
+cmd_refresh_report(struct tty *tty, const char *value)
+{
+	struct window_pane	*wp;
+	u_int			 pane;
+	size_t			 size = 0;
+	char			*copy, *split;
+
+	if (*value != '%')
+		return;
+	copy = xstrdup(value);
+	if ((split = strchr(copy, ':')) == NULL)
+		goto out;
+	*split++ = '\0';
+
+	if (sscanf(copy, "%%%u", &pane) != 1)
+		goto out;
+	wp = window_pane_find_by_id(pane);
+	if (wp == NULL)
+		goto out;
+
+	tty_keys_colours(tty, split, strlen(split), &size, &wp->control_fg,
+	    &wp->control_bg);
+
+out:
+	free(copy);
+}
+
 static enum cmd_retval
 cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 {
@@ -262,6 +291,8 @@ cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 		server_client_set_flags(tc, args_get(args, 'F'));
 	if (args_has(args, 'f'))
 		server_client_set_flags(tc, args_get(args, 'f'));
+	if (args_has(args, 'r'))
+		cmd_refresh_report(tty, args_get(args, 'r'));
 
 	if (args_has(args, 'A')) {
 		if (~tc->flags & CLIENT_CONTROL)

@@ -289,6 +289,11 @@ void		 explicit_bzero(void *, size_t);
 int		 getdtablecount(void);
 #endif
 
+#ifndef HAVE_GETDTABLESIZE
+/* getdtablesize.c */
+int		 getdtablesize(void);
+#endif
+
 #ifndef HAVE_CLOSEFROM
 /* closefrom.c */
 void		 closefrom(int);

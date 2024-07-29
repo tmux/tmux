@@ -59,7 +59,6 @@ static int	tty_keys_device_attributes2(struct tty *, const char *, size_t,
 		    size_t *);
 static int	tty_keys_extended_device_attributes(struct tty *, const char *,
 		    size_t, size_t *);
-static int	tty_keys_colours(struct tty *, const char *, size_t, size_t *);
 
 /* A key tree entry. */
 struct tty_key {
@@ -721,7 +720,7 @@ tty_keys_next(struct tty *tty)
 	}
 
 	/* Is this a colours response? */
-	switch (tty_keys_colours(tty, buf, len, &size)) {
+	switch (tty_keys_colours(tty, buf, len, &size, &tty->fg, &tty->bg)) {
 	case 0:		/* yes */
 		key = KEYC_UNKNOWN;
 		goto complete_key;
@@ -912,6 +911,8 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 	cc_t		 bspace;
 	key_code	 nkey;
 	key_code	 onlykey;
+	struct utf8_data ud;
+	utf8_char        uc;
 
 	*size = 0;
 
@@ -960,6 +961,15 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 		nkey = KEYC_BSPACE;
 	else
 		nkey = number;
+
+	/* Convert UTF-32 codepoint into internal representation. */
+	if (nkey & ~0x7f) {
+		if (utf8_fromwc(nkey, &ud) == UTF8_DONE &&
+		    utf8_from_data(&ud, &uc) == UTF8_DONE)
+			nkey = uc;
+		else
+			return (-1);
+	}
 
 	/* Update the modifiers. */
 	if (modifiers > 0) {
@@ -1490,8 +1500,9 @@ tty_keys_extended_device_attributes(struct tty *tty, const char *buf,
  * Handle foreground or background input. Returns 0 for success, -1 for
  * failure, 1 for partial.
  */
-static int
-tty_keys_colours(struct tty *tty, const char *buf, size_t len, size_t *size)
+int
+tty_keys_colours(struct tty *tty, const char *buf, size_t len, size_t *size,
+    int *fg, int *bg)
 {
 	struct client	*c = tty->client;
 	u_int		 i;
@@ -1542,11 +1553,17 @@ tty_keys_colours(struct tty *tty, const char *buf, size_t len, size_t *size)
 
 	n = colour_parseX11(tmp);
 	if (n != -1 && buf[3] == '0') {
-		log_debug("%s: foreground is %s", c->name, colour_tostring(n));
-		tty->fg = n;
+		if (c != NULL)
+			log_debug("%s fg is %s", c->name, colour_tostring(n));
+		else
+			log_debug("fg is %s", colour_tostring(n));
+		*fg = n;
 	} else if (n != -1) {
-		log_debug("%s: background is %s", c->name, colour_tostring(n));
-		tty->bg = n;
+		if (c != NULL)
+			log_debug("%s bg is %s", c->name, colour_tostring(n));
+		else
+			log_debug("bg is %s", colour_tostring(n));
+		*bg = n;
 	}
 
 	return (0);

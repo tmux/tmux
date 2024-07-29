@@ -1359,6 +1359,7 @@ specified multiple times.
 .Op Fl B Ar name:what:format
 .Op Fl C Ar size
 .Op Fl f Ar flags
+.Op Fl r Ar pane:report
 .Op Fl l Op Ar target-pane
 .Op Fl t Ar target-client
 .Op Ar adjustment
@@ -1469,6 +1470,12 @@ for all windows in the attached session.
 .Fl f
 sets a comma-separated list of client flags, see
 .Ic attach-session .
+.Fl r
+allows a control mode client to provide information about a pane via a report
+(such as the response to OSC 10).
+The argument is a pane ID (with a leading
+.Ql % ) ,
+a colon, then a report escape sequence.
 .Pp
 .Fl l
 requests the clipboard from the client using the
@@ -2297,7 +2304,8 @@ The following keys may be used in client mode:
 .It Li "Up" Ta "Select previous client"
 .It Li "Down" Ta "Select next client"
 .It Li "C-s" Ta "Search by name"
-.It Li "n" Ta "Repeat last search"
+.It Li "n" Ta "Repeat last search forwards"
+.It Li "N" Ta "Repeat last search backwards"
 .It Li "t" Ta "Toggle if client is tagged"
 .It Li "T" Ta "Tag no clients"
 .It Li "C-t" Ta "Tag all clients"
@@ -2384,7 +2392,8 @@ The following keys may be used in tree mode:
 .It Li "C-s" Ta "Search by name"
 .It Li "m" Ta "Set the marked pane"
 .It Li "M" Ta "Clear the marked pane"
-.It Li "n" Ta "Repeat last search"
+.It Li "n" Ta "Repeat last search forwards"
+.It Li "N" Ta "Repeat last search backwards"
 .It Li "t" Ta "Toggle if item is tagged"
 .It Li "T" Ta "Tag no items"
 .It Li "C-t" Ta "Tag all items"
@@ -2462,7 +2471,8 @@ The following keys may be used in customize mode:
 .It Li "u" Ta "Unset an option (set to default value if global) or unbind a key"
 .It Li "U" Ta "Unset tagged options and unbind tagged keys"
 .It Li "C-s" Ta "Search by name"
-.It Li "n" Ta "Repeat last search"
+.It Li "n" Ta "Repeat last search forwards"
+.It Li "N" Ta "Repeat last search backwards"
 .It Li "t" Ta "Toggle if item is tagged"
 .It Li "T" Ta "Tag no items"
 .It Li "C-t" Ta "Tag all items"
@@ -4752,6 +4762,12 @@ they will be allowed even if the pane is invisible.
 Allow programs in the pane to change the window name using a terminal escape
 sequence (\eek...\ee\e\e).
 .Pp
+.It Xo Ic allow-set-title
+.Op Ic on | off
+.Xc
+Allow programs in the pane to change the title using the terminal escape
+sequences (\ee]2;...\ee\e\e or \ee]0;...\ee\e\e).
+.Pp
 .It Xo Ic alternate-screen
 .Op Ic on | off
 .Xc
@@ -4877,6 +4893,14 @@ layout after every
 set-hook -g after-split-window "selectl even-vertical"
 .Ed
 .Pp
+If a command fails, the
+.Ql command-error
+hook will be fired.
+For example, this could be used to write to a log file:
+.Bd -literal -offset indent
+set-hook -g command-error "run-shell \\"echo 'a tmux command failed' >>/tmp/log\\""
+.Ed
+.Pp
 All the notifications listed in the
 .Sx CONTROL MODE
 section are hooks (without any arguments), except
@@ -4909,6 +4933,8 @@ Run when focus exits a client
 Run when a client is resized.
 .It client-session-changed
 Run when a client's attached session is changed.
+.It command-error
+Run when a command fails.
 .It pane-died
 Run when the program running in a pane exits, but
 .Ic remain-on-exit
@@ -6453,7 +6479,8 @@ The following keys may be used in buffer mode:
 .It Li "Up" Ta "Select previous buffer"
 .It Li "Down" Ta "Select next buffer"
 .It Li "C-s" Ta "Search by name or content"
-.It Li "n" Ta "Repeat last search"
+.It Li "n" Ta "Repeat last search forwards"
+.It Li "N" Ta "Repeat last search backwards"
 .It Li "t" Ta "Toggle if buffer is tagged"
 .It Li "T" Ta "Tag no buffers"
 .It Li "C-t" Ta "Tag all buffers"
