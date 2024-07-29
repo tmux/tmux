@@ -2378,8 +2378,6 @@ void	tty_set_path(struct tty *, const char *);
 void	tty_update_mode(struct tty *, int, struct screen *);
 void	tty_draw_line(struct tty *, struct screen *, u_int, u_int, u_int,
 	    u_int, u_int, const struct grid_cell *, struct colour_palette *);
-void    tty_draw_scrollbar(struct tty *tty, struct screen *s, u_int px, u_int py,
-                           u_int sbheight, u_int elevatorheight, u_int elevatorpos);
 
 #ifdef ENABLE_SIXEL
 void	tty_draw_images(struct client *, struct window_pane *, struct screen *);

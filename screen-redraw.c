@@ -32,6 +32,8 @@ static void	screen_redraw_set_context(struct client *,
 		    struct screen_redraw_ctx *);
 static void	screen_redraw_draw_pane_scrollbars(struct screen_redraw_ctx *ctx, int force);
 static void	screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx, struct window_pane *wp);
+static void	screen_redraw_draw_scrollbar(struct tty *tty, struct window_pane *wp, u_int px, u_int py, u_int sbheight, u_int elevatorheight, u_int elevatorpos);
+
 
 #define START_ISOLATE "\342\201\246"
 #define END_ISOLATE   "\342\201\251"
@@ -939,11 +941,12 @@ screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx, struct window_p
         u_int			elevatorpos;
         double			percentview;
 
-        if (TAILQ_FIRST(&wp->modes))
+        if (TAILQ_FIRST(&wp->modes)) 
                 cm = (TAILQ_FIRST(&wp->modes)->mode == &window_copy_mode ||
                       TAILQ_FIRST(&wp->modes)->mode == &window_view_mode);
+
         if (cm != 1) {
-                /* not copy-mode */
+                /* view-mode */
                 percentview = (double)sbheight / totalheight;
                 elevatorheight = (u_int)((double)sbheight * percentview);
                 elevatorpos = sbheight - elevatorheight; /* because it's at the bottom */
@@ -953,7 +956,11 @@ screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx, struct window_p
                           wp->screen->grid->hscrolled, wp->screen->grid->hsize, wp->screen->grid->hlimit,
                           cm, totalheight, sbheight, elevatorheight, elevatorpos);
         } else {
+                /* copy-mode */
                 u_int pos, size;
+
+                if (! TAILQ_FIRST(&wp->modes))
+                        return;
                 
                 window_copy_mode_current_offset(wp, &pos, &size);
                 percentview = (double)sbheight / (size + sbheight);
@@ -965,6 +972,33 @@ screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx, struct window_p
                           cm, totalheight, sbheight, pos, size, elevatorheight, elevatorpos);
         }
 
-        tty_draw_scrollbar(tty, s, sbx, sby, sbheight, elevatorheight, elevatorpos);
+        screen_redraw_draw_scrollbar(tty, wp, sbx, sby, sbheight, elevatorheight, elevatorpos);
         wp->flags &= ~PANE_REDRAW_SCROLLBARS;
 }
+
+static void
+screen_redraw_draw_scrollbar(struct tty *tty, struct window_pane *wp, u_int px, u_int py, u_int sbheight, u_int elevatorheight, u_int elevatorpos)
+{
+        u_int j;
+	struct window		*w = wp->window;
+        struct grid_cell	 gc;
+        int			 fg, bg;
+
+        /* Set up default colour. */
+	style_apply(&gc, w->options, "scrollbar-style", NULL);
+        fg = gc.fg;
+        bg = gc.bg;
+        utf8_set(&gc.data, ' ');
+        
+        gc.bg = fg;
+        for(j=0; j<sbheight; j++) {
+                tty_cursor(tty, px, py+j);
+                if (j>=elevatorpos && j<elevatorpos+elevatorheight) {
+                        gc.bg = bg;
+                } else {
+                        gc.bg = fg;
+                }
+                tty_cell(tty, &gc, &grid_default_cell, NULL, NULL);
+        }
+}
+
