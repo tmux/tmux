@@ -346,6 +346,7 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 	status = options_get_number(w->options, "pane-border-status");
 	scrollbars = options_get_number(w->options, "pane-scrollbars");
 	scrollbars_pos = options_get_number(w->options, "pane-vertical-scrollbars-position");
+
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if ((lc = wp->layout_cell) == NULL || wp == skip)
 			continue;

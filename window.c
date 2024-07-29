@@ -724,11 +724,15 @@ window_add_pane(struct window *w, struct window_pane *other, u_int hlimit,
     int flags)
 {
 	struct window_pane	*wp;
+	int			 scrollbars;
+
+	scrollbars = options_get_number(w->options, "pane-scrollbars");
 
 	if (other == NULL)
 		other = w->active;
 
 	wp = window_pane_create(w, w->sx, w->sy, hlimit);
+
 	if (TAILQ_EMPTY(&w->panes)) {
 		log_debug("%s: @%u at start", __func__, w->id);
 		TAILQ_INSERT_HEAD(&w->panes, wp, entry);
@@ -745,6 +749,10 @@ window_add_pane(struct window *w, struct window_pane *other, u_int hlimit,
 		else
 			TAILQ_INSERT_AFTER(&w->panes, other, wp, entry);
 	}
+
+        if (scrollbars != 0)
+                wp->flags |= PANE_REDRAW_SCROLLBARS;
+
 	return (wp);
 }
 

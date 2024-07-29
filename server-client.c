@@ -2560,7 +2560,8 @@ server_client_check_redraw(struct client *c)
 	struct tty		*tty = &c->tty;
 	struct window		*w = c->session->curw->window;
 	struct window_pane	*wp;
-	int			 needed, flags, mode = tty->mode, new_flags = 0;
+	uint64_t		 flags, new_flags = 0;
+	int			 needed, mode = tty->mode;
 	int			 redraw;
 	u_int			 bit = 0;
 	struct timeval		 tv = { .tv_usec = 1000 };
@@ -2570,7 +2571,7 @@ server_client_check_redraw(struct client *c)
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
 		return;
 	if (c->flags & CLIENT_ALLREDRAWFLAGS) {
-		log_debug("%s: redraw%s%s%s%s%s", c->name,
+		log_debug("%s: redraw%s%s%s%s%s%s", c->name,
 		    (c->flags & CLIENT_REDRAWWINDOW) ? " window" : "",
 		    (c->flags & CLIENT_REDRAWSTATUS) ? " status" : "",
 		    (c->flags & CLIENT_REDRAWBORDERS) ? " borders" : "",
@@ -2603,8 +2604,9 @@ server_client_check_redraw(struct client *c)
 				break;
 			}
 		}
-		if (needed)
+		if (needed) {
 			new_flags |= CLIENT_REDRAWSCROLLBARS;
+                }
 	}
 	if (needed && (left = EVBUFFER_LENGTH(tty->out)) != 0) {
 		log_debug("%s: redraw deferred (%zu left)", c->name, left);
@@ -2661,7 +2663,7 @@ server_client_check_redraw(struct client *c)
 			screen_redraw_pane(c, wp);
 		}
 		c->redraw_panes = 0;
-		c->flags &= ~CLIENT_REDRAWPANES;
+		c->flags &= ~(CLIENT_REDRAWPANES|CLIENT_REDRAWSCROLLBARS);
 	}
 
 	if (c->flags & CLIENT_ALLREDRAWFLAGS) {

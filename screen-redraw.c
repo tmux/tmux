@@ -942,7 +942,7 @@ screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx, struct window_p
                 /* not copy-mode */
                 percentview = (double)sbheight / totalheight;
                 elevatorheight = (u_int)((double)sbheight * percentview);
-                elevatorpos = sbheight - elevatorheight - 1; /* because it's at the bottom */
+                elevatorpos = sbheight - elevatorheight; /* because it's at the bottom */
                 
                 log_debug("%s: %s %%%u flags=%u sx=%u sy=%u  hscrolled=%u hsize=%u hlimit=%u  cm=%u totalheight=%u sbheight=%u eheight=%u epos=%u",
                           __func__, c->name, wp->id, wp->screen->grid->flags, wp->screen->grid->sx, wp->screen->grid->sy,

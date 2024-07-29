@@ -1613,7 +1613,7 @@ tty_draw_scrollbar(struct tty *tty, struct screen *s, u_int px, u_int py, u_int 
         
         for(j=0; j<sbheight; j++) {
                 tty_cursor(tty, px, py+j);
-                if (j>=elevatorpos && j<=elevatorpos+elevatorheight)
+                if (j>=elevatorpos && j<elevatorpos+elevatorheight)
                         tty_putn(tty, &a[j], 1, 1);
                 else
                         tty_putn(tty, " ", 1, 1);
