@@ -4216,14 +4216,22 @@ window_copy_write_one(struct window_mode_entry *wme,
 	}
 }
 
-void
-window_copy_mode_current_offset(struct window_pane *wp, u_int *pos, u_int *size) {
+int
+window_copy_mode_get_current_offset_and_size(struct window_pane *wp, u_int *offset, u_int *size) {
         struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
-	struct window_copy_mode_data	*data = wme->data;
-	u_int				 hsize = screen_hsize(data->backing);
+	struct window_copy_mode_data	*data;
+	u_int				 hsize;
 
-        *pos = hsize - data->oy;
+        data  = wme->data;
+        if (! data)
+                return(0);
+        
+        hsize = screen_hsize(data->backing);
+
+        *offset = hsize - data->oy;
         *size = hsize;
+
+        return(1);
 }
                                 
 static void

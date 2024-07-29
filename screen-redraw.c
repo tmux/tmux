@@ -929,55 +929,56 @@ screen_redraw_draw_pane_scrollbars(struct screen_redraw_ctx *ctx, int force)
 
 static void
 screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx, struct window_pane *wp) {
-        u_int			cm;
+        u_int			mode;
 	struct screen		*s = wp->screen;
 	struct client		*c = ctx->c;
 	struct tty		*tty = &c->tty;
-        u_int			sbx = wp->xoff+wp->sx+1; /* px and py of where to write to screen */
-        u_int			sby = wp->yoff;
-        u_int			sbheight = wp->sy; /* height of scrollbar */
-        u_int			totalheight = screen_size_y(s) + screen_hsize(s);
-        u_int			elevatorheight;
-        u_int			elevatorpos;
-        double			percentview;
+        u_int			sb_x = wp->xoff + wp->sx + 1; /* px and py of where to write to screen */
+        u_int			sb_y = wp->yoff;
+        u_int			sb_height = wp->sy; /* height of scrollbar */
+        u_int			total_height = screen_size_y(s) + screen_hsize(s);
+        u_int			elevator_height;
+        u_int			elevator_pos;
+        double			percent_view;
 
         if (TAILQ_FIRST(&wp->modes)) 
-                cm = (TAILQ_FIRST(&wp->modes)->mode == &window_copy_mode ||
-                      TAILQ_FIRST(&wp->modes)->mode == &window_view_mode);
+                mode = (TAILQ_FIRST(&wp->modes)->mode == &window_copy_mode ||
+                        TAILQ_FIRST(&wp->modes)->mode == &window_view_mode);
 
-        if (cm != 1) {
-                /* view-mode */
-                percentview = (double)sbheight / totalheight;
-                elevatorheight = (u_int)((double)sbheight * percentview);
-                elevatorpos = sbheight - elevatorheight; /* because it's at the bottom */
+        if (mode != 1) {
+                /* view-mode (normal mode) */
+                percent_view = (double)sb_height / total_height;
+                elevator_height = (u_int)((double)sb_height * percent_view);
+                elevator_pos = sb_height - elevator_height; /* because it's at the bottom */
                 
-                log_debug("%s: %s %%%u flags=%u sx=%u sy=%u  hscrolled=%u hsize=%u hlimit=%u  cm=%u totalheight=%u sbheight=%u eheight=%u epos=%u",
+                log_debug("%s: %s %%%u flags=%u sx=%u sy=%u  hscrolled=%u hsize=%u hlimit=%u  mode=%u total_height=%u sb_height=%u eheight=%u epos=%u",
                           __func__, c->name, wp->id, wp->screen->grid->flags, wp->screen->grid->sx, wp->screen->grid->sy,
                           wp->screen->grid->hscrolled, wp->screen->grid->hsize, wp->screen->grid->hlimit,
-                          cm, totalheight, sbheight, elevatorheight, elevatorpos);
+                          mode, total_height, sb_height, elevator_height, elevator_pos);
         } else {
                 /* copy-mode */
-                u_int pos, size;
+                u_int cm_y_pos, cm_size;
 
-                if (! TAILQ_FIRST(&wp->modes))
+                if (TAILQ_FIRST(&wp->modes) == NULL ||
+                    window_copy_mode_get_current_offset_and_size(wp, &cm_y_pos, &cm_size) == 0)
                         return;
                 
-                window_copy_mode_current_offset(wp, &pos, &size);
-                percentview = (double)sbheight / (size + sbheight);
-                elevatorheight = (u_int)((double)sbheight * percentview);
-                elevatorpos = (u_int)sbheight * ((float)pos / (size + sbheight));
-                log_debug("%s: %s %%%u flags=%u sx=%u sy=%u  hscrolled=%u hsize=%u hlimit=%u  cm=%u totalheight=%u sbheight=%u pos=%u sz=%u eheight=%u epos=%u",
+                percent_view = (double)sb_height / (cm_size + sb_height);
+                elevator_height = (u_int)((double)sb_height * percent_view);
+                elevator_pos = (u_int)sb_height * ((float)cm_y_pos / (cm_size + sb_height));
+                
+                log_debug("%s: %s %%%u flags=%u sx=%u sy=%u  hscrolled=%u hsize=%u hlimit=%u  mode=%u total_height=%u sb_height=%u pos=%u sz=%u eheight=%u epos=%u",
                           __func__, c->name, wp->id, wp->screen->grid->flags, wp->screen->grid->sx, wp->screen->grid->sy,
                           wp->screen->grid->hscrolled, wp->screen->grid->hsize, wp->screen->grid->hlimit,
-                          cm, totalheight, sbheight, pos, size, elevatorheight, elevatorpos);
+                          mode, total_height, sb_height, cm_y_pos, cm_size, elevator_height, elevator_pos);
         }
 
-        screen_redraw_draw_scrollbar(tty, wp, sbx, sby, sbheight, elevatorheight, elevatorpos);
+        screen_redraw_draw_scrollbar(tty, wp, sb_x, sb_y, sb_height, elevator_height, elevator_pos);
         wp->flags &= ~PANE_REDRAW_SCROLLBARS;
 }
 
 static void
-screen_redraw_draw_scrollbar(struct tty *tty, struct window_pane *wp, u_int px, u_int py, u_int sbheight, u_int elevatorheight, u_int elevatorpos)
+screen_redraw_draw_scrollbar(struct tty *tty, struct window_pane *wp, u_int px, u_int py, u_int sb_height, u_int elevator_height, u_int elevator_pos)
 {
         u_int j;
 	struct window		*w = wp->window;
@@ -991,9 +992,9 @@ screen_redraw_draw_scrollbar(struct tty *tty, struct window_pane *wp, u_int px, 
         utf8_set(&gc.data, ' ');
         
         gc.bg = fg;
-        for(j=0; j<sbheight; j++) {
+        for(j = 0; j < sb_height; j++) {
                 tty_cursor(tty, px, py+j);
-                if (j>=elevatorpos && j<elevatorpos+elevatorheight) {
+                if (j >= elevator_pos && j < elevator_pos + elevator_height) {
                         gc.bg = bg;
                 } else {
                         gc.bg = fg;
