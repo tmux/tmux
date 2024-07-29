@@ -4292,7 +4292,8 @@ window_copy_write_line(struct window_mode_entry *wme,
 		screen_write_putc(ctx, &grid_default_cell, '$');
 	}
 
-        wp->flags |= PANE_REDRAW_SCROLLBARS;
+	if (options_get_number(oo, "pane-scrollbars") != 0)
+                wp->flags |= PANE_REDRAW_SCROLLBARS;
 }
 
 static void

@@ -30,7 +30,7 @@ static void	screen_redraw_draw_pane(struct screen_redraw_ctx *,
 		    struct window_pane *);
 static void	screen_redraw_set_context(struct client *,
 		    struct screen_redraw_ctx *);
-static void	screen_redraw_draw_pane_scrollbars(struct screen_redraw_ctx *ctx);
+static void	screen_redraw_draw_pane_scrollbars(struct screen_redraw_ctx *ctx, int force);
 static void	screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx, struct window_pane *wp);
 
 #define START_ISOLATE "\342\201\246"
@@ -592,6 +592,7 @@ screen_redraw_screen(struct client *c)
 {
 	struct screen_redraw_ctx	ctx;
 	uint64_t			flags;
+        int				force = 0;
 
 	if (c->flags & CLIENT_SUSPENDED)
 		return;
@@ -604,6 +605,14 @@ screen_redraw_screen(struct client *c)
 	tty_sync_start(&c->tty);
 	tty_update_mode(&c->tty, c->tty.mode, NULL);
 
+	if (ctx.pane_scrollbars != 0 &&
+	    (flags & (CLIENT_REDRAWSCROLLBARS|CLIENT_REDRAWWINDOW|CLIENT_REDRAWBORDERS))) {
+                if (flags & (CLIENT_REDRAWWINDOW|CLIENT_REDRAWBORDERS)) {
+                        force = 1;
+                }
+		log_debug("%s: redrawing scrollbars", c->name);
+		screen_redraw_draw_pane_scrollbars(&ctx, force);
+	}
 	if (flags & (CLIENT_REDRAWWINDOW|CLIENT_REDRAWBORDERS)) {
 		log_debug("%s: redrawing borders", c->name);
 		if (ctx.pane_status != PANE_STATUS_OFF)
@@ -613,11 +622,6 @@ screen_redraw_screen(struct client *c)
 	if (flags & CLIENT_REDRAWWINDOW) {
 		log_debug("%s: redrawing panes", c->name);
 		screen_redraw_draw_panes(&ctx);
-	}
-	if (ctx.pane_scrollbars != 0 &&
-	    (flags & CLIENT_REDRAWSCROLLBARS)) {
-		log_debug("%s: redrawing scrollbars", c->name);
-		screen_redraw_draw_pane_scrollbars(&ctx);
 	}
 	if (ctx.statuslines != 0 &&
 	    (flags & (CLIENT_REDRAWSTATUS|CLIENT_REDRAWSTATUSALWAYS))) {
@@ -907,7 +911,7 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 
 /* Draw the panes. */
 static void
-screen_redraw_draw_pane_scrollbars(struct screen_redraw_ctx *ctx)
+screen_redraw_draw_pane_scrollbars(struct screen_redraw_ctx *ctx, int force)
 {
 	struct client		*c = ctx->c;
 	struct window		*w = c->session->curw->window;
@@ -916,7 +920,7 @@ screen_redraw_draw_pane_scrollbars(struct screen_redraw_ctx *ctx)
 	log_debug("%s: %s @%u", __func__, c->name, w->id);
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (window_pane_visible(wp) && wp->flags & PANE_REDRAW_SCROLLBARS)
+		if (force || (ctx->pane_scrollbars != 0 && wp->flags & PANE_REDRAW_SCROLLBARS && window_pane_visible(wp)))
 			screen_redraw_draw_pane_scrollbar(ctx, wp);
 	}
 }
