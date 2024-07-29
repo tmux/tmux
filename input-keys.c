@@ -537,6 +537,31 @@ input_key_vt10x(struct bufferevent *bev, key_code key)
 	return (0);
 }
 
+/*
+ * Deal with keys like C-1 or C-S-~, which would require remapping in
+ * the standard mode (so C-S-~ becomes just `), or have to be reported
+ * as an extended key in modifyOtherKeys=1 mode. Will return either
+ * the remapped key, or KEYC_UNKNOWN, if the key does not belong to
+ * the set of special keys.
+ */
+static key_code
+input_key_special(key_code key)
+{
+	static const char	*special = "1!9(0)=+`~,<.>'\"";
+	static const char	*remapped = "119900==``,,..''";
+	char			*p;
+
+	if (key & KEYC_CTRL) {
+		p = strchr(special, key & 0x7f);
+		if (p)
+			return (remapped[p - special] |
+			    (key & KEYC_MASK_MODIFIERS &
+				~(KEYC_SHIFT | KEYC_CTRL)));
+	}
+
+	return (KEYC_UNKNOWN);
+}
+
 /* Translate a key code into an output key sequence. */
 int
 input_key(struct screen *s, struct bufferevent *bev, key_code key)
@@ -562,29 +587,6 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 		if (newkey >= 0x7f)
 			newkey = '\177';
 		key = newkey|(key & (KEYC_MASK_MODIFIERS|KEYC_MASK_FLAGS));
-	}
-
-	/*
-	 * A trivial case, that is a 7-bit key, excluding C0 control characters
-	 * that can't be entered from the keyboard, and no modifiers; or a UTF-8
-	 * key and no modifiers.
-	 *
-	 * The rest of C0 control characters were translated into corresponding
-	 * `Ctrl-` keys and can never reach here.
-	 */
-	if (key & ~KEYC_MASK_KEY) {
-		if (key == C0_BS || key == C0_HT ||
-		    key == C0_CR || key == C0_ESC ||
-		    (key >= 0x20 && key <= 0x7f)) {
-			ud.data[0] = key;
-			input_key_write(__func__, bev, &ud.data[0], 1);
-			return (0);
-		}
-		if (KEYC_IS_UNICODE(key)) {
-			utf8_to_data(key, &ud);
-			input_key_write(__func__, bev, ud.data, ud.size);
-			return (0);
-		}
 	}
 
 	/*
@@ -616,6 +618,29 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 	}
 
 	/*
+	 * A trivial case, that is a 7-bit key, excluding C0 control characters
+	 * that can't be entered from the keyboard, and no modifiers; or a UTF-8
+	 * key and no modifiers.
+	 *
+	 * The rest of C0 control characters were translated into corresponding
+	 * `Ctrl-` keys and can never reach here.
+	 */
+	if (!(key & ~KEYC_MASK_KEY)) {
+		if (key == C0_BS || key == C0_HT ||
+		    key == C0_CR || key == C0_ESC ||
+		    (key >= 0x20 && key <= 0x7f)) {
+			ud.data[0] = key;
+			input_key_write(__func__, bev, &ud.data[0], 1);
+			return (0);
+		}
+		if (KEYC_IS_UNICODE(key)) {
+			utf8_to_data(key, &ud);
+			input_key_write(__func__, bev, ud.data, ud.size);
+			return (0);
+		}
+	}
+
+	/*
 	 * No builtin key sequence; construct an extended key sequence
 	 * depending on the client mode.
 	 *
@@ -640,25 +665,37 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 		return input_key_extended(s, bev, key);
         case MODE_KEYS_EXTENDED:
         case MODE_KEYS_EXTENDED | MODE_KEYS_CSI_U:
+		/*
+		 * Like the standard mode, except the special keys (like `Ctrl-1`)
+		 * that are reported in the extended form.
+		 */
+		if (input_key_special(key) != KEYC_UNKNOWN)
+			return input_key_extended(s, bev, key);
+
+		return input_key_vt10x(bev, key);
 	case MODE_KEYS_CSI_U:
 		/*
-		 * Our attempt to extract some generalization from
-		 * the lengthy prose and examples at
-		 * https://invisible-island.net/xterm/modified-keys.html
-		 *
-		 * All keys with META modifier and keys with CTRL modifier
-		 * that don't translate to C0 control codes are reported
-		 * in the extended form. Keys with CTRL modifier that do
-		 * translate to C0 codes lose SHIFT.
-		 *
-		 * CSI u mode is like `modifyOtherKeys=1` apart from the
-		 * format of the extended sequences.
+		 * Report unambiguous `Ctrl-[A-Z]` keys as C0 codes, and the rest
+		 * in the extended form.
+		 * So `Ctrl-I` becomes `^[[105;5u`, but `Ctrl-A` becomes `^A`.
 		 */
-		if (key & KEYC_META || input_key_vt10x(bev, key) == -1)
-			return input_key_extended(s, bev, key);
-		return (0);
+		newkey = key & 0x7f;
+		if ((key & KEYC_MASK_MODIFIERS) == KEYC_CTRL &&
+		    ((newkey >= 'a' && newkey <= 'z') || newkey == ' ') &&
+		    newkey != 'i' && newkey != 'm' && newkey != 'j')
+			return input_key_vt10x(bev, key);
+
+		return input_key_extended(s, bev, key);
 	default:
-		/* The standard mode. */
+		/*
+		 * The standard mode. Some extended keys need to be remapped
+		 * in order to emulate the quirks of keyboards long retired
+		 * to museums.
+		 */
+		newkey = input_key_special(key);
+		if (newkey != KEYC_UNKNOWN)
+			return input_key(s, bev, newkey);
+
 		return input_key_vt10x(bev, key);
 	}
 }
