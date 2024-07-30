@@ -2595,23 +2595,13 @@ server_client_check_redraw(struct client *c)
 		needed = 1;
 	else {
 		TAILQ_FOREACH(wp, &w->panes, entry) {
-			if (wp->flags & PANE_REDRAW) {
+                        if (wp->flags & (PANE_REDRAW|PANE_REDRAW_SCROLLBARS)) {
 				needed = 1;
 				break;
 			}
 		}
 		if (needed)
 			new_flags |= CLIENT_REDRAWPANES;
-
-		TAILQ_FOREACH(wp, &w->panes, entry) {
-			if (wp->flags & PANE_REDRAW_SCROLLBARS) {
-				needed = 1;
-				break;
-			}
-		}
-		if (needed) {
-			new_flags |= CLIENT_REDRAWSCROLLBARS;
-                }
 	}
 	if (needed && (left = EVBUFFER_LENGTH(tty->out)) != 0) {
 		log_debug("%s: redraw deferred (%zu left)", c->name, left);
@@ -2657,7 +2647,7 @@ server_client_check_redraw(struct client *c)
 		 */
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			redraw = 0;
-			if (wp->flags & PANE_REDRAW)
+			if (wp->flags & (PANE_REDRAW|PANE_REDRAW_SCROLLBARS))
 				redraw = 1;
 			else if (c->flags & CLIENT_REDRAWPANES)
 				redraw = !!(c->redraw_panes & (1 << bit));
@@ -2668,7 +2658,7 @@ server_client_check_redraw(struct client *c)
 			screen_redraw_pane(c, wp);
 		}
 		c->redraw_panes = 0;
-		c->flags &= ~(CLIENT_REDRAWPANES|CLIENT_REDRAWSCROLLBARS);
+		c->flags &= ~CLIENT_REDRAWPANES;
 	}
 
 	if (c->flags & CLIENT_ALLREDRAWFLAGS) {

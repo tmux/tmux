@@ -4348,6 +4348,8 @@ window_copy_redraw_lines(struct window_mode_entry *wme, u_int py, u_int ny)
 		window_copy_write_line(wme, &ctx, i);
 	screen_write_cursormove(&ctx, data->cx, data->cy, 0);
 	screen_write_stop(&ctx);
+
+        wp->flags |= PANE_REDRAW_SCROLLBARS;
 }
 
 static void
