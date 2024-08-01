@@ -176,30 +176,46 @@ key_string_search_table(const char *string)
 static key_code
 key_string_get_modifiers(const char **string)
 {
-	key_code	modifiers;
-
-	modifiers = 0;
-	while (((*string)[0] != '\0') && (*string)[1] == '-') {
-		switch ((*string)[0]) {
-		case 'C':
-		case 'c':
-			modifiers |= KEYC_CTRL;
-			break;
-		case 'M':
-		case 'm':
-			modifiers |= KEYC_META;
-			break;
-		case 'S':
-		case 's':
-			modifiers |= KEYC_SHIFT;
-			break;
-		default:
-			*string = NULL;
-			return (0);
-		}
-		*string += 2;
-	}
-	return (modifiers);
+  key_code	modifiers;
+  modifiers =0;
+  while (**string != '\0') {
+    if (strncasecmp(*string, "C-",2) ==0) {
+      modifiers |=    KEYC_CTRL;
+      *string +=2;
+    } else if (strncasecmp(*string, "M-",2) ==0) {
+      modifiers |= KEYC_META;
+      *string +=2;
+    } else if (strncasecmp(*string, "A-",2) ==0) {
+      modifiers |= KEYC_META;
+      *string +=2;
+    } else if (strncasecmp(*string, "S-",2) ==0) {
+      modifiers |= KEYC_SHIFT;
+      *string
+        +=2;
+    } else if (strncasecmp(*string, "H-",2) ==0) {
+      modifiers |= KEYC_HYPER;
+      *string
+        +=2;
+    } else if (strncasecmp(*string, "Super-",6) ==0) {
+      modifiers |= KEYC_SUPER;
+      *string +=6;
+    } else if (strncasecmp(*string, "Hyper-",6) ==0) {
+      modifiers |= KEYC_HYPER;
+      *string +=6;
+    } else if (strncasecmp(*string, "Control-",6) ==0) {
+      modifiers |= KEYC_CTRL;
+      *string +=8;
+    } else if (strncasecmp(*string, "Meta-",6) ==0) {
+      modifiers |= KEYC_REAL_META;
+      *string +=5;
+    } else if (strncasecmp(*string, "Alt-",6) ==0) {
+      modifiers |= KEYC_META;
+      *string +=4;
+    } else {
+      break;
+    }
+  }
+  return (modifiers);
 }
 
 /* Lookup a string and convert to a key value. */
@@ -213,7 +229,7 @@ key_string_lookup_string(const char *string)
 	enum utf8_state		 more;
 	utf8_char		 uc;
 	char			 m[MB_LEN_MAX + 1];
-	int			 mlen;
+	int			 mlen, kitty_keys;
 
 	/* Is this no key or any key? */
 	if (strcasecmp(string, "None") == 0)
@@ -254,6 +270,7 @@ key_string_lookup_string(const char *string)
 	if (string == NULL || string[0] == '\0')
 		return (KEYC_UNKNOWN);
 
+	kitty_keys = options_get_number(global_options, "kitty-keys");
 	/* Is this a standard ASCII key? */
 	if (string[1] == '\0' && (u_char)string[0] <= 127) {
 		key = (u_char)string[0];
@@ -282,7 +299,8 @@ key_string_lookup_string(const char *string)
 	}
 
 	/* Convert the standard control keys. */
-	if (key <= 127 &&
+	if (!kitty_keys &&
+		key <= 127 &&
 	    (modifiers & KEYC_CTRL) &&
 	    strchr(other, key) == NULL &&
 	    key != 9 &&
@@ -331,8 +349,14 @@ key_string_lookup_key(key_code key, int with_flags)
 	/* Fill in the modifiers. */
 	if (key & KEYC_CTRL)
 		strlcat(out, "C-", sizeof out);
+	if (key & KEYC_SUPER)
+		strlcat(out, "Super-", sizeof out);
+	if (key & KEYC_HYPER)
+		strlcat(out, "H-", sizeof out);
 	if (key & KEYC_META)
 		strlcat(out, "M-", sizeof out);
+	if (key & KEYC_REAL_META)
+		strlcat(out, "Meta-", sizeof out);
 	if (key & KEYC_SHIFT)
 		strlcat(out, "S-", sizeof out);
 	key &= KEYC_MASK_KEY;
