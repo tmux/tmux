@@ -1075,6 +1075,10 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 {
 	struct window_mode_entry	*wme;
 	struct window_pane_resize	*r;
+	struct window			*w = wp->window;
+	int			 	scrollbars;
+
+	scrollbars = options_get_number(w->options, "pane-scrollbars");
 
 	if (sx == wp->sx && sy == wp->sy)
 		return;
@@ -1096,7 +1100,8 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 	if (wme != NULL && wme->mode->resize != NULL)
 		wme->mode->resize(wme, sx, sy);
 
-        wp->flags |= PANE_REDRAW_SCROLLBARS;
+        if (scrollbars)
+                wp->flags |= PANE_REDRAW_SCROLLBARS;
 }
 
 int

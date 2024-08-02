@@ -286,6 +286,10 @@ layout_cell_is_left(struct window *w, struct layout_cell *lc)
 	return (1);
 }
 
+/*
+ * Returns 1 if we need to add extra column(s) for the pane scrollbars. This is
+ * the case for the rightmost panes only.
+ */
 /* Is this a rightmost cell? */
 static int
 layout_cell_is_right(struct window *w, struct layout_cell *lc)
@@ -316,22 +320,16 @@ layout_add_horizontal_border(struct window *w, struct layout_cell *lc, int statu
 	return (0);
 }
 
-/*
- * Returns 1 if we need to add extra column(s) for the pane scrollbars. This is
- * the case for the rightmost panes only.
- */
 static int
 layout_add_vertical_border(struct window *w, struct layout_cell *lc, int scrollbars, int scrollbars_position)
 {
-	if (scrollbars != PANE_SCROLLBARS_OFF) {
-                if (PANE_SCROLLBARS_THICKNESS > 0)
-                        return (1);
+   if (scrollbars != PANE_SCROLLBARS_OFF) {
                 if (scrollbars_position == PANE_VERTICAL_SCROLLBARS_RIGHT)
                         return (layout_cell_is_right(w, lc));
                 if (scrollbars_position == PANE_VERTICAL_SCROLLBARS_LEFT)
                         return (layout_cell_is_left(w, lc));
         }
-	return (0);
+   return (0);
 }
 
 /* Update pane offsets and sizes based on their cells. */
@@ -361,10 +359,25 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 				wp->yoff++;
 			sy = sy - 1;
 		}
-                if (layout_add_vertical_border(w, lc, scrollbars, scrollbars_pos)) {
-                        if (scrollbars_pos == PANE_VERTICAL_SCROLLBARS_LEFT)
-                                wp->xoff = wp->xoff + PANE_SCROLLBARS_THICKNESS + 1;
-                        sx = sx - PANE_SCROLLBARS_THICKNESS - 1;
+                if (scrollbars) {
+                        if (scrollbars_pos == PANE_VERTICAL_SCROLLBARS_LEFT) {
+                                if (lc->sx == w->sx) {
+                                        /* single pane across */
+                                        sx = sx - PANE_SCROLLBARS_THICKNESS;
+                                        wp->xoff = wp->xoff + PANE_SCROLLBARS_THICKNESS;
+                                } else {
+                                        if (layout_add_vertical_border(w, lc, scrollbars, scrollbars_pos)) {
+                                                /* if pane on left then shrink it to accomodate scroller and border */
+                                                sx = sx - PANE_SCROLLBARS_THICKNESS - 1;
+                                                wp->xoff = wp->xoff + PANE_SCROLLBARS_THICKNESS;
+                                        } else {
+                                                /* if pane on right, no border */
+                                                sx = sx - PANE_SCROLLBARS_THICKNESS + 1;
+                                        }
+                                }
+                        } else {
+                                        sx = sx - PANE_SCROLLBARS_THICKNESS;
+                        }
                         wp->flags |= PANE_REDRAW_SCROLLBARS;
                 }
 
@@ -400,17 +413,17 @@ layout_resize_check(struct window *w, struct layout_cell *lc,
 {
 	struct layout_cell	*lcchild;
 	u_int			 available, minimum;
-	int			 status, scrollbars, scrollbars_pos;
+	int			 status, scrollbars;
 
 	status = options_get_number(w->options, "pane-border-status");
 	scrollbars = options_get_number(w->options, "pane-scrollbars");
-	scrollbars_pos = options_get_number(w->options, "pane-vertical-scrollbars-position");
+
 	if (lc->type == LAYOUT_WINDOWPANE) {
 		/* Space available in this cell only. */
 		if (type == LAYOUT_LEFTRIGHT) {
 			available = lc->sx;
-                        if (layout_add_vertical_border(w, lc, scrollbars, scrollbars_pos))
-                                minimum = PANE_MINIMUM + PANE_SCROLLBARS_THICKNESS + 1;
+                        if (scrollbars)
+                                minimum = PANE_MINIMUM + PANE_SCROLLBARS_THICKNESS;
                         else
                                 minimum = PANE_MINIMUM;
 		} else {
@@ -940,7 +953,7 @@ layout_split_pane(struct window_pane *wp, enum layout_type type, int size,
 	struct layout_cell     *lc, *lcparent, *lcnew, *lc1, *lc2;
 	u_int			sx, sy, xoff, yoff, size1, size2, minimum;
 	u_int			new_size, saved_size, resize_first = 0;
-	int			full_size = (flags & SPAWN_FULLSIZE), status, scrollbars, scrollbars_pos;
+	int			full_size = (flags & SPAWN_FULLSIZE), status, scrollbars;
 
 	/*
 	 * If full_size is specified, add a new cell at the top of the window
@@ -952,7 +965,6 @@ layout_split_pane(struct window_pane *wp, enum layout_type type, int size,
 		lc = wp->layout_cell;
 	status = options_get_number(wp->window->options, "pane-border-status");
 	scrollbars = options_get_number(wp->window->options, "pane-scrollbars");
-	scrollbars_pos = options_get_number(wp->options, "pane-vertical-scrollbars-position");
 
 	/* Copy the old cell size. */
 	sx = lc->sx;
@@ -963,8 +975,8 @@ layout_split_pane(struct window_pane *wp, enum layout_type type, int size,
 	/* Check there is enough space for the two new panes. */
 	switch (type) {
 	case LAYOUT_LEFTRIGHT:
-		if (layout_add_vertical_border(wp->window, lc, scrollbars, scrollbars_pos))
-			minimum = PANE_MINIMUM * 2 + PANE_SCROLLBARS_THICKNESS + 2;
+                if (scrollbars)
+			minimum = PANE_MINIMUM * 2 + PANE_SCROLLBARS_THICKNESS;
 		else
 			minimum = PANE_MINIMUM * 2 + 1;
 		if (sx < minimum)
@@ -1128,7 +1140,7 @@ layout_spread_cell(struct window *w, struct layout_cell *parent)
 {
 	struct layout_cell	*lc;
 	u_int			 number, each, size, this;
-	int			 change, changed, status, scrollbars, scrollbars_pos;
+	int			 change, changed, status, scrollbars;
 
 	number = 0;
 	TAILQ_FOREACH (lc, &parent->cells, entry)
@@ -1137,11 +1149,10 @@ layout_spread_cell(struct window *w, struct layout_cell *parent)
 		return (0);
 	status = options_get_number(w->options, "pane-border-status");
 	scrollbars = options_get_number(w->options, "pane-scrollbars");
-	scrollbars_pos = options_get_number(w->options, "pane-vertical-scrollbars-position");
 
 	if (parent->type == LAYOUT_LEFTRIGHT) {
-                if (layout_add_vertical_border(w, parent, scrollbars, scrollbars_pos))
-                        size = parent->sx - PANE_SCROLLBARS_THICKNESS - 1;
+                if (scrollbars)
+                        size = parent->sx - PANE_SCROLLBARS_THICKNESS;
                 else
                         size = parent->sx;
         }

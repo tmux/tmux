@@ -4349,7 +4349,11 @@ window_copy_redraw_lines(struct window_mode_entry *wme, u_int py, u_int ny)
 	screen_write_cursormove(&ctx, data->cx, data->cy, 0);
 	screen_write_stop(&ctx);
 
-        wp->flags |= PANE_REDRAW_SCROLLBARS;
+	/*
+	 * this isn't necessary at the moment because we force scrollbar redraw on screen redraws
+	if (options_get_number(wp->options, "pane-scrollbars") != 0)
+		wp->flags |= PANE_REDRAW_SCROLLBARS;
+	*/
 }
 
 static void

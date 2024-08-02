@@ -971,6 +971,7 @@ struct screen_redraw_ctx {
 	enum pane_lines	 pane_lines;
 
         int		 pane_scrollbars;
+        int		 pane_scrollbars_pos;
 
 	struct grid_cell no_pane_gc;
 	int		 no_pane_gc_set;

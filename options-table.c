@@ -806,7 +806,7 @@ const struct options_table_entry options_table[] = {
 	{ .name = "scrollbar-style",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
-	  .default_str = "bg=white,fg=black",
+	  .default_str = "fg=WhiteSmoke,bg=DarkSlateGray", /* MS Windows is fg=cdcdcd,bg=f0f0f0 */
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
 	  .text = "Style of the scrollbar."
