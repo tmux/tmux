@@ -1129,7 +1129,16 @@ const struct options_table_entry options_table[] = {
 	  .text = "Pane vertical scrollbars position"
 	},
 
-	{ .name = "popup-style",
+	{ .name = "pane-vertical-scrollbars-width",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_WINDOW,
+          .minimum = 1,
+          .maximum = INT_MAX,
+	  .default_num = PANE_VERTICAL_SCROLLBARS_WIDTH,
+	  .text = "Pane vertical scrollbars width"
+	},
+
+        { .name = "popup-style",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,
 	  .default_str = "default",
