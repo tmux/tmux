@@ -143,15 +143,16 @@ screen_redraw_pane_border(struct window_pane *wp, u_int px, u_int py,
                                 return (SCREEN_REDRAW_BORDER_LEFT);
 		} else {
                         if ((wp->yoff == 0 || py >= wp->yoff - 1) && py <= ey) {
-                                if (pane_scrollbars_pos == PANE_VERTICAL_SCROLLBARS_RIGHT) {
+                                if (pane_scrollbars_pos == PANE_VERTICAL_SCROLLBARS_LEFT) {
+                                        if (px == wp->xoff - pane_scrollbars_width - 1)
+                                                return (SCREEN_REDRAW_BORDER_LEFT);
+                                        if (px == ex - pane_scrollbars_width)
+                                                return (SCREEN_REDRAW_BORDER_RIGHT);
+                                } else {
+                                        /* pane_scrollbars_pos == PANE_VERTICAL_SCROLLBARS_RIGHT */
                                         if (wp->xoff != 0 && px == wp->xoff - 1)
                                                 return (SCREEN_REDRAW_BORDER_LEFT);
                                         if (wp->xoff == 0 && px == ex + pane_scrollbars_width)
-                                                return (SCREEN_REDRAW_BORDER_RIGHT);
-                                } else {
-                                        if (wp->xoff > 0 && px == wp->xoff - 2)
-                                                return (SCREEN_REDRAW_BORDER_LEFT);
-                                        if (px == ex - 1)
                                                 return (SCREEN_REDRAW_BORDER_RIGHT);
                                 }
                         }
@@ -352,13 +353,11 @@ screen_redraw_check_cell(struct client *c, u_int px, u_int py, int pane_status,
                 /* If point is within a scrollbar, return */
                 if (pane_scrollbars) {
                         /* check if px lies within a scroller
-                         * if scrollbar side of pane on edge of window then if px is window edge
-                         * if scrollbar side of pane not on the window edge then if pane size + 1
                          */
                         if ((pane_scrollbars_pos == PANE_VERTICAL_SCROLLBARS_RIGHT &&
-                             (px > w->sx-pane_scrollbars_width || px >= wp->xoff + wp->sx)) ||
+                             (px > w->sx - pane_scrollbars_width || px >= wp->xoff + wp->sx)) ||
                             (pane_scrollbars_pos == PANE_VERTICAL_SCROLLBARS_LEFT &&
-                             px >= wp->xoff-pane_scrollbars_width && px < wp->xoff))
+                             (px >= wp->xoff - pane_scrollbars_width && px < wp->xoff)))
                                 {
                                 /* check if py lies within a scroller
                                  * if pane at the top then py==0 included
@@ -1013,7 +1012,7 @@ screen_redraw_draw_scrollbar(struct tty *tty, struct window_pane *wp, u_int px, 
         int			 fg, bg;
 
         /* Set up default colour. */
-	style_apply(&gc, w->options, "scrollbar-style", NULL);
+	style_apply(&gc, w->options, "pane-scrollbar-style", NULL);
         fg = gc.fg;
         bg = gc.bg;
         utf8_set(&gc.data, ' ');

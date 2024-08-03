@@ -803,7 +803,7 @@ const struct options_table_entry options_table[] = {
 	  .text = "Style of the status line."
 	},
 
-	{ .name = "scrollbar-style",
+	{ .name = "pane-scrollbar-style",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
 	  .default_str = "fg=WhiteSmoke,bg=DarkSlateGray", /* MS Windows is fg=cdcdcd,bg=f0f0f0 */
@@ -1133,7 +1133,7 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .scope = OPTIONS_TABLE_WINDOW,
           .minimum = 1,
-          .maximum = INT_MAX,
+          .maximum = UINT_MAX,
 	  .default_num = PANE_VERTICAL_SCROLLBARS_WIDTH,
 	  .text = "Pane vertical scrollbars width"
 	},

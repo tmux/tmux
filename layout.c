@@ -362,21 +362,10 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 		}
                 if (scrollbars) {
                         if (scrollbars_pos == PANE_VERTICAL_SCROLLBARS_LEFT) {
-                                if (lc->sx == w->sx) {
-                                        /* single pane across */
-                                        sx = sx - scrollbars_width;
-                                        wp->xoff = wp->xoff + scrollbars_width;
-                                } else {
-                                        if (layout_add_vertical_border(w, lc, scrollbars, scrollbars_pos)) {
-                                                /* if pane on left then shrink it to accomodate scroller and border */
-                                                sx = sx - scrollbars_width - 1;
-                                                wp->xoff = wp->xoff + scrollbars_width;
-                                        } else {
-                                                /* if pane on right, no border */
-                                                sx = sx - scrollbars_width + 2;
-                                        }
-                                }
+                                sx = sx - scrollbars_width;
+                                wp->xoff = wp->xoff + scrollbars_width;
                         } else {
+                                /* PANE_VERTICAL_SCROLLBARS_RIGHT */
                                 sx = sx - scrollbars_width;
                         }
                         wp->flags |= PANE_REDRAW_SCROLLBARS;
