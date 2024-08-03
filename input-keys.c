@@ -473,17 +473,31 @@ input_key_extended(struct screen *s, struct bufferevent *bev, key_code key)
 	return (0);
 }
 
+/*
+ * Outputs the key in the "standard" mode. This is by far the most
+ * complicated output mode, with a lot of remappting in order to
+ * emulate quirks of terminals that today can be only found in museums.
+ */
 static int
 input_key_vt10x(struct bufferevent *bev, key_code key)
 {
 	struct utf8_data	 ud;
 	key_code		 onlykey;
+	char			*p;
+	static const char	*standard_map[2] = {
+		"1!9(0)=+;:'\",<.>/-8? 2",
+		"119900=+;;'',,..\x1f\x1f\x7f\x7f\0\0",
+	};
 
 	log_debug("%s: key in %llx", __func__, key);
 
 	if (key & KEYC_META)
 		input_key_write(__func__, bev, "\033", 1);
 
+	/*
+	 * There's no way to report modifiers for unicode keys in standard mode
+	 * so lose the modifiers.
+	 */
 	if (KEYC_IS_UNICODE(key)) {
 		utf8_to_data(key, &ud);
                 input_key_write(__func__, bev, ud.data, ud.size);
@@ -491,43 +505,26 @@ input_key_vt10x(struct bufferevent *bev, key_code key)
 	}
 
 	/*
-	 * Convert keys with modifiers, such as `2|CTRL` or `A|CTRL|SHIFT` into
-	 * corresponding C0 control codes.
+	 * Convert keys with `Ctrl` modifier into corresponding C0 control codes,
+	 * with the exception of *some* keys, which are remapped into printable
+	 * ASCII characters.
 	 *
-	 * There is no special handling for SHIFT modifier, which is pretty
+	 * There is no special handling for `Shift` modifier, which is pretty
 	 * much redundant anyway, as no terminal will send `<base key>|SHIFT`,
-	 * but only `<shifted key>|SHIFT`. And of course we would need to know
-	 * the keyboard layout to shift the base key if we were do do it here.
+	 * but only `<shifted key>|SHIFT`.
 	 */
 	if (key & KEYC_CTRL) {
 		onlykey = key & KEYC_MASK_KEY;
-		switch (onlykey) {
-		case ' ':
-		case '2':
-			key = C0_NUL;
-                        break;
-		case '|':
-			key = C0_FS;
-			break;
-		case '-':
-		case '/':
-			key = C0_US;
-			break;
-                case '8':
-		case '?':
-			key = 127;
-			break;
-		default:
-			if (onlykey >= '3' && onlykey <= 7)
-				key = onlykey - '\030';
-			else if (onlykey >= '@' && onlykey <= '_')
-				key = onlykey & 0x3f;
-			else if (onlykey >= 'a' && onlykey <= '~')
-				key = onlykey - 96;
-			else
-				return (-1);
-			break;
-		}
+
+		p = strchr(standard_map[0], onlykey);
+		if (p)
+			key = standard_map[1][p - standard_map[0]];
+		else if (onlykey >= '3' && onlykey <= '7')
+			key = onlykey - '\030';
+		else if (onlykey >= '@' && onlykey <= '~')
+			key = onlykey & 0x1f;
+		else
+			return (-1);
 	}
 
 	log_debug("%s: key out %llx", __func__, key);
@@ -537,29 +534,48 @@ input_key_vt10x(struct bufferevent *bev, key_code key)
 	return (0);
 }
 
-/*
- * Deal with keys like C-1 or C-S-~, which would require remapping in
- * the standard mode (so C-S-~ becomes just `), or have to be reported
- * as an extended key in modifyOtherKeys=1 mode. Will return either
- * the remapped key, or KEYC_UNKNOWN, if the key does not belong to
- * the set of special keys.
- */
-static key_code
-input_key_special(key_code key)
+/* Pick keys that are reported as vt10x keys in modifyOtherKeys=1 mode. */
+static int
+input_key_mode1(struct bufferevent *bev, key_code key)
 {
-	static const char	*special = "1!9(0)=+`~,<.>'\"";
-	static const char	*remapped = "119900==``,,..''";
-	char			*p;
+	key_code	 onlykey;
 
-	if (key & KEYC_CTRL) {
-		p = strchr(special, key & 0x7f);
-		if (p)
-			return (remapped[p - special] |
-			    (key & KEYC_MASK_MODIFIERS &
-				~(KEYC_SHIFT | KEYC_CTRL)));
-	}
+	log_debug("%s: key in %llx", __func__, key);
 
-	return (KEYC_UNKNOWN);
+	/* As per https://invisible-island.net/xterm/modified-keys-us-pc105.html */
+	onlykey = key & KEYC_MASK_KEY;
+	if ((key & (KEYC_META | KEYC_CTRL)) == KEYC_CTRL &&
+	    (onlykey == '/' || onlykey == '@' || onlykey == '^' ||
+	     (onlykey >= '2' && onlykey <= '8') ||
+	     (onlykey >= '@' && onlykey <= '~')))
+		return input_key_vt10x(bev, key);
+
+	return (-1);
+}
+
+/* Pick keys that are reported as vt10x keys in CSI u mode. */
+static int
+input_key_csi_u(struct bufferevent *bev, key_code key)
+{
+	key_code	 onlykey;
+
+	log_debug("%s: key in %llx", __func__, key);
+
+	/* A regular or shifted ASCII key + `Meta`. */
+	if ((key & (KEYC_CTRL | KEYC_META)) == KEYC_META)
+		return input_key_vt10x(bev, key);
+
+	/*
+	 * An unshifted letter key + `Ctrl`, except `Ctrl-I`, `Ctrl-M`,
+	 * and `Ctrl-J`, in order to disambiguate with `TAB` and `RET`.
+	 */
+	onlykey = key & KEYC_MASK_KEY;
+	if ((key & KEYC_MASK_MODIFIERS) == KEYC_CTRL &&
+	    ((onlykey >= 'a' && onlykey <= 'z') || onlykey == ' ') &&
+	    onlykey != 'i' && onlykey != 'm' && onlykey != 'j')
+		return input_key_vt10x(bev, key);
+
+	return (-1);
 }
 
 /* Translate a key code into an output key sequence. */
@@ -590,7 +606,7 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 	}
 
 	/*
-	 * Look up the standard VT100 keys in the tree. Those don't depend on extended
+	 * Look up the standard VT10x keys in the tree. Those don't depend on extended
 	 * key reporting modes. If not in application keypad or cursor mode, remove
 	 * the respective flags from the key.
 	 */
@@ -621,9 +637,6 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 	 * A trivial case, that is a 7-bit key, excluding C0 control characters
 	 * that can't be entered from the keyboard, and no modifiers; or a UTF-8
 	 * key and no modifiers.
-	 *
-	 * The rest of C0 control characters were translated into corresponding
-	 * `Ctrl-` keys and can never reach here.
 	 */
 	if (!(key & ~KEYC_MASK_KEY)) {
 		if (key == C0_BS || key == C0_HT ||
@@ -665,37 +678,17 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 		return input_key_extended(s, bev, key);
         case MODE_KEYS_EXTENDED:
         case MODE_KEYS_EXTENDED | MODE_KEYS_CSI_U:
-		/*
-		 * Like the standard mode, except the special keys (like `Ctrl-1`)
-		 * that are reported in the extended form.
-		 */
-		if (input_key_special(key) != KEYC_UNKNOWN)
+		if (input_key_mode1(bev, key) == -1)
 			return input_key_extended(s, bev, key);
 
-		return input_key_vt10x(bev, key);
+		return (0);
 	case MODE_KEYS_CSI_U:
-		/*
-		 * Report unambiguous `Ctrl-[A-Z]` keys as C0 codes, and the rest
-		 * in the extended form.
-		 * So `Ctrl-I` becomes `^[[105;5u`, but `Ctrl-A` becomes `^A`.
-		 */
-		newkey = key & 0x7f;
-		if ((key & KEYC_MASK_MODIFIERS) == KEYC_CTRL &&
-		    ((newkey >= 'a' && newkey <= 'z') || newkey == ' ') &&
-		    newkey != 'i' && newkey != 'm' && newkey != 'j')
-			return input_key_vt10x(bev, key);
+		if (input_key_csi_u(bev, key) == -1)
+			return input_key_extended(s, bev, key);
 
-		return input_key_extended(s, bev, key);
+		return (0);
 	default:
-		/*
-		 * The standard mode. Some extended keys need to be remapped
-		 * in order to emulate the quirks of keyboards long retired
-		 * to museums.
-		 */
-		newkey = input_key_special(key);
-		if (newkey != KEYC_UNKNOWN)
-			return input_key(s, bev, newkey);
-
+		/* The standard mode. */
 		return input_key_vt10x(bev, key);
 	}
 }
