@@ -4650,6 +4650,50 @@ and
 .Ql heavy
 will fall back to standard ACS line drawing when UTF-8 is not supported.
 .Pp
+.It Xo Ic pane-scrollbars
+.Op Ic off | copy-mode | always
+.Xc
+Enable pane scrollbars.  When lines scroll off the screen, they are
+added to history.  You can see these lines in
+.Ic copy-mode .
+The scrollbars allow you to see what portion of the history you are
+currently viewing.  Taken together, the current terminal window plus
+the history is like having a local scrolling window with a scrollbar,
+excpet that the history is that of the remote pane.
+.Pp
+The
+.Ic always-on
+option enables the scrollbars in both normal and copy-mode.
+.Pp
+The
+.Ic copy-mode
+option only shows the scrollbars only when the pane is
+in copy-mode.
+.Pp
+It may be desirable to set
+.Ic mouse
+mode on with scrollbars enabled.
+.Pp
+.It Ic pane-scrollbar-style Ar style
+Set the pane scrollbar style for the currently active pane.
+The default style is
+\[aq]fg=WhiteSmoke,bg=DarkSlateGray\[aq].
+For how to specify
+.Ar style ,
+see the
+.Sx STYLES
+section.
+Attributes are ignored.
+.Pp
+.It Xo Ic pane-vertical-scrollbars-position
+.Op Ic left | right
+.Xc
+Sets which side of the pane to display the pane scrollbars on.  The
+default is right.
+.Pp
+.It Ic pane-vertical-scrollbars-width Ar width
+Set the width of the pane scrollbars in characters.
+.Pp
 .It Ic window-status-activity-style Ar style
 Set status line style for windows with an activity alert.
 For how to specify
