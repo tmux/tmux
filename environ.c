@@ -264,6 +264,12 @@ environ_for_session(struct session *s, int no_TERM)
 		environ_set(env, "TERM_PROGRAM_VERSION", 0, "%s", getversion());
 	}
 
+#ifdef HAVE_SYSTEMD
+	environ_clear(env, "LISTEN_PID");
+	environ_clear(env, "LISTEN_FDS");
+	environ_clear(env, "LISTEN_FDNAMES");
+#endif
+
 	if (s != NULL)
 		idx = s->id;
 	else
