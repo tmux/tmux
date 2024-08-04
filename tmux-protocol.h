@@ -68,6 +68,11 @@ enum msgtype {
 	MSG_WRITE_READY,
 	MSG_WRITE_CLOSE,
 	MSG_READ_CANCEL
+#ifdef TTY_OVER_SOCKET
+	,
+	MSG_TTY_READ,
+	MSG_TTY_WRITE
+#endif
 };
 
 /*
