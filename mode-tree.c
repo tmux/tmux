@@ -1088,22 +1088,22 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 	switch (*key) {
 	case 'q':
 	case '\033': /* Escape */
-	case '\007': /* C-g */
+	case 'g'|KEYC_CTRL:
 		return (1);
 	case KEYC_UP:
 	case 'k':
 	case KEYC_WHEELUP_PANE:
-	case '\020': /* C-p */
+	case 'p'|KEYC_CTRL:
 		mode_tree_up(mtd, 1);
 		break;
 	case KEYC_DOWN:
 	case 'j':
 	case KEYC_WHEELDOWN_PANE:
-	case '\016': /* C-n */
+	case 'n'|KEYC_CTRL:
 		mode_tree_down(mtd, 1);
 		break;
 	case KEYC_PPAGE:
-	case '\002': /* C-b */
+	case 'b'|KEYC_CTRL:
 		for (i = 0; i < mtd->height; i++) {
 			if (mtd->current == 0)
 				break;
@@ -1111,7 +1111,7 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 		}
 		break;
 	case KEYC_NPAGE:
-	case '\006': /* C-f */
+	case 'f'|KEYC_CTRL:
 		for (i = 0; i < mtd->height; i++) {
 			if (mtd->current == mtd->line_size - 1)
 				break;
@@ -1155,7 +1155,7 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 		for (i = 0; i < mtd->line_size; i++)
 			mtd->line_list[i].item->tagged = 0;
 		break;
-	case '\024': /* C-t */
+	case 't'|KEYC_CTRL:
 		for (i = 0; i < mtd->line_size; i++) {
 			if ((mtd->line_list[i].item->parent == NULL &&
 			    !mtd->line_list[i].item->no_tag) ||
@@ -1211,7 +1211,7 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 		break;
 	case '?':
 	case '/':
-	case '\023': /* C-s */
+	case 's'|KEYC_CTRL:
 		mtd->references++;
 		status_prompt_set(c, NULL, "(search) ", "",
 		    mode_tree_search_callback, mode_tree_search_free, mtd,

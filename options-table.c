@@ -613,7 +613,7 @@ const struct options_table_entry options_table[] = {
 	{ .name = "prefix",
 	  .type = OPTIONS_TABLE_KEY,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_num = '\002',
+	  .default_num = 'b'|KEYC_CTRL,
 	  .text = "The prefix key."
 	},
 
