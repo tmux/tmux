@@ -1273,6 +1273,16 @@ yylex(void)
 			continue;
 		}
 
+		if (ch == '\r') {
+			/*
+			 * Treat \r\n as \n.
+			 */
+			ch = yylex_getc();
+			if (ch != '\n') {
+				yylex_ungetc(ch);
+				ch = '\r';
+			}
+		}
 		if (ch == '\n') {
 			/*
 			 * End of line. Update the line number.
@@ -1618,6 +1628,13 @@ yylex_token(int ch)
 		if (ch == EOF) {
 			log_debug("%s: end at EOF", __func__);
 			break;
+		}
+		if (state == NONE && ch == '\r') {
+			ch = yylex_getc();
+			if (ch != '\n') {
+				yylex_ungetc(ch);
+				ch = '\r';
+			}
 		}
 		if (state == NONE && ch == '\n') {
 			log_debug("%s: end at EOL", __func__);

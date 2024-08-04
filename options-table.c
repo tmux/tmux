@@ -397,7 +397,7 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SERVER,
 	  .flags = OPTIONS_TABLE_IS_ARRAY,
-	  .default_str = "",
+	  .default_str = "linux*:AX@",
 	  .separator = ",",
 	  .text = "List of terminal capabilities overrides."
 	},
