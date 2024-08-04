@@ -1970,14 +1970,14 @@ format_cb_pane_key_mode(struct format_tree *ft)
 		switch (ft->wp->screen->mode & EXTENDED_KEY_MODES) {
 		case MODE_KEYS_EXTENDED:
 		case MODE_KEYS_EXTENDED | MODE_KEYS_CSI_U:
-			return (xstrdup("1"));
+			return (xstrdup("Ext 1"));
 		case MODE_KEYS_EXTENDED_2:
 		case MODE_KEYS_EXTENDED_2 | MODE_KEYS_CSI_U:
-			return (xstrdup("2"));
+			return (xstrdup("Ext 2"));
 		case MODE_KEYS_CSI_U:
-			return (xstrdup("3"));
+			return (xstrdup("CSI u"));
 		default:
-			return (xstrdup("0"));
+			return (xstrdup("VT10x"));
 		}
 	}
 	return (NULL);
