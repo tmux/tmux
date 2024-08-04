@@ -115,6 +115,9 @@ static struct input_key_entry input_key_defaults[] = {
 	{ .key = KEYC_BTAB,
 	  .data = "\033[Z"
 	},
+	{ .key = KEYC_BTAB|KEYC_CSI_U,
+	  .data = "\033[Z"
+	},
 
 	/* Arrow keys. */
 	{ .key = KEYC_UP|KEYC_CURSOR,
@@ -308,13 +311,10 @@ static struct input_key_entry input_key_defaults[] = {
 	  .data = "\033[3;_~"
 	},
 
-	/* Tab and modifiers. */
-	{ .key = '\011'|KEYC_CTRL,
-	  .data = "\011"
+	/* Backtab with modifiers is a CSI u extension. */
+	{ .key = KEYC_BTAB|KEYC_CSI_U|KEYC_BUILD_MODIFIERS,
+	  .data = "\033[1;_Z"
 	},
-	{ .key = '\011'|KEYC_CTRL|KEYC_SHIFT,
-	  .data = "\033[Z"
-	}
 };
 static const key_code input_key_modifiers[] = {
 	0,
@@ -504,6 +504,12 @@ input_key_vt10x(struct bufferevent *bev, key_code key)
 		return (0);
 	}
 
+	onlykey = key & KEYC_MASK_KEY;
+
+	/* Prevent TAB and RET from being swallowed by C0 remapping logic. */
+	if (onlykey == '\r' || onlykey == '\t')
+		key &= ~KEYC_CTRL;
+
 	/*
 	 * Convert keys with `Ctrl` modifier into corresponding C0 control codes,
 	 * with the exception of *some* keys, which are remapped into printable
@@ -514,8 +520,6 @@ input_key_vt10x(struct bufferevent *bev, key_code key)
 	 * but only `<shifted key>|SHIFT`.
 	 */
 	if (key & KEYC_CTRL) {
-		onlykey = key & KEYC_MASK_KEY;
-
 		p = strchr(standard_map[0], onlykey);
 		if (p)
 			key = standard_map[1][p - standard_map[0]];
@@ -605,10 +609,42 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 		key = newkey|(key & (KEYC_MASK_MODIFIERS|KEYC_MASK_FLAGS));
 	}
 
+	/* Is this backtab? */
+	if ((key & KEYC_MASK_KEY) == KEYC_BTAB) {
+		/* When in CSI u modea, add a flag to enable lookup of CSI u extensions. */
+		if ((s->mode & EXTENDED_KEY_MODES) == MODE_KEYS_CSI_U)
+			key |= KEYC_CSI_U;
+		/* When in xterm extended mode, remap into `S-Tab`. */
+		else if (s->mode & EXTENDED_KEY_MODES)
+			key = '\011' | (key & ~KEYC_MASK_KEY) | KEYC_SHIFT;
+		/* Otherwise clear modifiers. */
+		else
+			key &= ~KEYC_MASK_MODIFIERS;
+	}
+
 	/*
-	 * Look up the standard VT10x keys in the tree. Those don't depend on extended
-	 * key reporting modes. If not in application keypad or cursor mode, remove
-	 * the respective flags from the key.
+	 * A trivial case, that is a 7-bit key, excluding C0 control characters
+	 * that can't be entered from the keyboard, and no modifiers; or a UTF-8
+	 * key and no modifiers.
+	 */
+	if (!(key & ~KEYC_MASK_KEY)) {
+		if (key == C0_BS || key == C0_HT ||
+		    key == C0_CR || key == C0_ESC ||
+		    (key >= 0x20 && key <= 0x7f)) {
+			ud.data[0] = key;
+			input_key_write(__func__, bev, &ud.data[0], 1);
+			return (0);
+		}
+		if (KEYC_IS_UNICODE(key)) {
+			utf8_to_data(key, &ud);
+			input_key_write(__func__, bev, ud.data, ud.size);
+			return (0);
+		}
+	}
+
+	/*
+	 * Look up the standard VT10x keys in the tree. If not in application
+	 * keypad or cursor mode, remove the respective flags from the key.
 	 */
 	if (~s->mode & MODE_KKEYPAD)
 		key &= ~KEYC_KEYPAD;
@@ -631,26 +667,6 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 			input_key_write(__func__, bev, "\033", 1);
 		input_key_write(__func__, bev, ike->data, strlen(ike->data));
 		return (0);
-	}
-
-	/*
-	 * A trivial case, that is a 7-bit key, excluding C0 control characters
-	 * that can't be entered from the keyboard, and no modifiers; or a UTF-8
-	 * key and no modifiers.
-	 */
-	if (!(key & ~KEYC_MASK_KEY)) {
-		if (key == C0_BS || key == C0_HT ||
-		    key == C0_CR || key == C0_ESC ||
-		    (key >= 0x20 && key <= 0x7f)) {
-			ud.data[0] = key;
-			input_key_write(__func__, bev, &ud.data[0], 1);
-			return (0);
-		}
-		if (KEYC_IS_UNICODE(key)) {
-			utf8_to_data(key, &ud);
-			input_key_write(__func__, bev, ud.data, ud.size);
-			return (0);
-		}
 	}
 
 	/*
@@ -678,11 +694,15 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 		return input_key_extended(s, bev, key);
         case MODE_KEYS_EXTENDED:
         case MODE_KEYS_EXTENDED | MODE_KEYS_CSI_U:
+		/* Some keys are still reported in standard mode, to maintain
+		 * compatibility with applications unaware of extended keys. */
 		if (input_key_mode1(bev, key) == -1)
 			return input_key_extended(s, bev, key);
 
 		return (0);
 	case MODE_KEYS_CSI_U:
+		/* Some keys are still reported in standard mode, to maintain
+		 * compatibility with applications unaware of extended keys. */
 		if (input_key_csi_u(bev, key) == -1)
 			return input_key_extended(s, bev, key);
 

@@ -257,6 +257,9 @@ static const struct tty_default_key_xterm tty_default_xterm_keys[] = {
 	{ "\033[6;_~", KEYC_NPAGE },
 	{ "\033[2;_~", KEYC_IC },
 	{ "\033[3;_~", KEYC_DC },
+
+	/* Backtab with modifiers is a CSI u extension. */
+	{ "\033[1;_Z", KEYC_BTAB },
 };
 static const key_code tty_default_xterm_modifiers[] = {
 	0,
@@ -1013,6 +1016,10 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 		if (modifiers & 8)
 			nkey |= (KEYC_META|KEYC_IMPLIED_META); /* Meta */
 	}
+
+	/* Convert S-Tab into Backtab. */
+	if ((nkey & KEYC_MASK_KEY) == '\011' && (nkey & KEYC_SHIFT))
+		nkey = KEYC_BTAB | (nkey & ~KEYC_MASK_KEY & ~KEYC_SHIFT);
 
 	if (log_get_level() != 0) {
 		log_debug("%s: extended key %.*s is %llx (%s)", c->name,

@@ -205,7 +205,7 @@ assert_key 'PageUp' '^[[5~'
 assert_key 'PgUp' '^[[5~'
 
 assert_key 'BTab' '^[[Z'
-assert_key 'C-S-Tab' '^[[Z'
+assert_key 'C-BTab' '^[[Z'
 
 assert_key 'Up' '^[[A'
 assert_key 'Down' '^[[B'
@@ -292,7 +292,7 @@ assert_extended_key 'DC' '^[[3;_~'
 assert_extended_key 'Delete' '^[[3;_~'
 
 assert_key 'C-Tab' "^[[9;5u"
-assert_key 'C-S-Tab' "^[[1;5Z"
+assert_key 'C-BTab' "^[[1;5Z"
 
 $TMUX kill-server 2>/dev/null
 
