@@ -427,7 +427,9 @@ input_key_write(const char *from, struct bufferevent *bev, const char *data,
 static int
 input_key_extended(struct screen *s, struct bufferevent *bev, key_code key)
 {
-	char	 tmp[64], modifier;
+	char		 tmp[64], modifier;
+	struct utf8_data ud;
+	wchar_t		 wc;
 
 	switch (key & KEYC_MASK_MODIFIERS) {
 	case KEYC_SHIFT:
@@ -455,15 +457,24 @@ input_key_extended(struct screen *s, struct bufferevent *bev, key_code key)
 		return (-1);
 	}
 
+	if (KEYC_IS_UNICODE(key)) {
+		utf8_to_data(key & KEYC_MASK_KEY, &ud);
+		if (utf8_towc(&ud, &wc) == UTF8_DONE)
+			key = wc;
+		else
+			return (-1);
+	} else
+		key &= KEYC_MASK_KEY;
+
 	switch (s->mode & EXTENDED_KEY_MODES) {
 	case MODE_KEYS_EXTENDED:
 	case MODE_KEYS_EXTENDED | MODE_KEYS_CSI_U:
 	case MODE_KEYS_EXTENDED_2:
 	case MODE_KEYS_EXTENDED_2 | MODE_KEYS_CSI_U:
-		xsnprintf(tmp, sizeof tmp, "\033[27;%c;%llu~", modifier, key & KEYC_MASK_KEY);
+		xsnprintf(tmp, sizeof tmp, "\033[27;%c;%llu~", modifier, key);
 		break;
 	case MODE_KEYS_CSI_U:
-		xsnprintf(tmp, sizeof tmp, "\033[%llu;%cu", key & KEYC_MASK_KEY, modifier);
+		xsnprintf(tmp, sizeof tmp, "\033[%llu;%cu", key, modifier);
 		break;
 	default:
 		return (-1);
@@ -554,6 +565,14 @@ input_key_mode1(struct bufferevent *bev, key_code key)
 	     (onlykey >= '@' && onlykey <= '~')))
 		return input_key_vt10x(bev, key);
 
+	/*
+	 * A regular or shifted Unicode key + `Meta`.  In the absense of
+	 * a standard to back this, we mimic what iTerm 2 does.
+	 */
+	if ((key & (KEYC_CTRL | KEYC_META)) == KEYC_META &&
+	    KEYC_IS_UNICODE(key))
+		return input_key_vt10x(bev, key);
+
 	return (-1);
 }
 
@@ -611,7 +630,7 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 
 	/* Is this backtab? */
 	if ((key & KEYC_MASK_KEY) == KEYC_BTAB) {
-		/* When in CSI u modea, add a flag to enable lookup of CSI u extensions. */
+		/* When in CSI u mode, add a flag to enable lookup of CSI u extensions. */
 		if ((s->mode & EXTENDED_KEY_MODES) == MODE_KEYS_CSI_U)
 			key |= KEYC_CSI_U;
 		/* When in xterm extended mode, remap into `S-Tab`. */
