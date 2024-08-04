@@ -542,7 +542,7 @@ popup_key_cb(struct client *c, void *data, struct key_event *event)
 	}
 	if ((((pd->flags & (POPUP_CLOSEEXIT|POPUP_CLOSEEXITZERO)) == 0) ||
 	    pd->job == NULL) &&
-	    (event->key == '\033' || event->key == '\003'))
+	    (event->key == '\033' || event->key == ('c'|KEYC_CTRL)))
 		return (1);
 	if (pd->job != NULL) {
 		if (KEYC_IS_MOUSE(event->key)) {
