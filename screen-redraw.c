@@ -174,7 +174,7 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
         }
 
 	/* Left/right borders. */
-	if (pane_status == PANE_STATUS_OFF) {
+
 		if (screen_redraw_two_panes(wp->window, 0) && split) {
                         /* The wp->sy / 2 test is used to show half the active window's border
                          * and the other half the other window.  It's easy to do this when
@@ -211,14 +211,6 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
                                 }
                         }
 		}
-	} else {
-		if ((wp->yoff == 0 || py >= wp->yoff - 1) && py <= ey) {
-			if (wp->xoff != 0 && px == wp->xoff - sb_w)
-				return (SCREEN_REDRAW_BORDER_LEFT);
-			if (px == ex)
-				return (SCREEN_REDRAW_BORDER_RIGHT);
-		}
-	}
 
 	/* Top/bottom borders. */
 	if (pane_status == PANE_STATUS_OFF) {
@@ -247,17 +239,24 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
                                 }
 			}
 		}
-	} else if (pane_status == PANE_STATUS_TOP) {
-		if ((wp->xoff == 0 || px >= wp->xoff - 1) && px <= ex) {
-			if (wp->yoff != 0 && py == wp->yoff - 1)
-				return (SCREEN_REDRAW_BORDER_TOP);
-		}
-	} else {
-		if ((wp->xoff == 0 || px >= wp->xoff - 1) && px <= ex) {
-			if (py == ey)
-				return (SCREEN_REDRAW_BORDER_BOTTOM);
-		}
-	}
+	} else if (pane_status != PANE_STATUS_OFF) {
+                if (sb_pos == PANE_VERTICAL_SCROLLBARS_LEFT) {
+                        if ((wp->xoff - sb_w == 0 || px >= wp->xoff - sb_w - 1) && px <= ex) {
+                                if (wp->yoff != 0 && py == wp->yoff - 1)
+                                        return (SCREEN_REDRAW_BORDER_TOP);
+                                if (py == ey)
+                                        return (SCREEN_REDRAW_BORDER_BOTTOM);
+                        }
+                } else {
+                        /* sb_pos == PANE_VERTICAL_SCROLLBARS_RIGHT */
+                        if ((wp->xoff == 0 || px >= wp->xoff - 1) && px <= ex + sb_w) {
+                                if (wp->yoff != 0 && py == wp->yoff - 1)
+                                        return (SCREEN_REDRAW_BORDER_TOP);
+                                if (py == ey)
+                                        return (SCREEN_REDRAW_BORDER_BOTTOM);
+                        }
+                }
+        }
 
 	/* Outside pane. */
 	return (SCREEN_REDRAW_OUTSIDE);
@@ -427,22 +426,28 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py, stru
                 /* If point is within a scrollbar, return */
                 if (pane_scrollbars == PANE_SCROLLBARS_ALWAYS ||
                     (pane_scrollbars == PANE_SCROLLBARS_MODAL && window_pane_mode(wp) != WINDOW_PANE_TERMINAL_MODE)) {
-                        /* check if px lies within a scroller
+
+			if (pane_status == PANE_STATUS_TOP)
+				line = wp->yoff - 1;
+			else
+				line = wp->yoff + wp->sy;
+
+                        /* check if py could lie within a scroller
+                         * if pane at the top then py==0 included
+                         * if pane not at the top, then yoff to yoff+sy
                          */
-                        if ((sb_pos == PANE_VERTICAL_SCROLLBARS_RIGHT &&
-                             (px >= wp->xoff + wp->sx && px < wp->xoff + wp->sx + sb_w)) ||
-                            (sb_pos == PANE_VERTICAL_SCROLLBARS_LEFT &&
-                             (px >= wp->xoff - sb_w && px < wp->xoff)))
-                                {
-                                /* check if py lies within a scroller
-                                 * if pane at the top then py==0 included
-                                 * if pane not at the top, then yoff to yoff+sy
+                        if ((pane_status && py != line) ||
+                            (wp->yoff == 0 && py < wp->sy) ||
+                             (py >= wp->yoff && py < wp->yoff + wp->sy)) {
+
+                                /* check if px lies within a scroller
                                  */
-                                if (wp->yoff == 0 && py < wp->sy)
-                                        return (CELL_SCROLLBAR);
-                                else
-                                        if (py >= wp->yoff && py < wp->yoff + wp->sy)
+                                if ((sb_pos == PANE_VERTICAL_SCROLLBARS_RIGHT &&
+                                     (px >= wp->xoff + wp->sx && px < wp->xoff + wp->sx + sb_w)) ||
+                                    (sb_pos == PANE_VERTICAL_SCROLLBARS_LEFT &&
+                                     (px >= wp->xoff - sb_w && px < wp->xoff))) {
                                                 return (CELL_SCROLLBAR);
+                                }
                         }
                 }
                 
