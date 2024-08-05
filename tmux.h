@@ -977,7 +977,8 @@ struct screen_redraw_ctx {
 
         int		 pane_scrollbars;
         int		 pane_scrollbars_pos;
-        int		 pane_scrollbars_width;
+        u_int		 pane_scrollbars_width;
+        u_int		 pane_scrollbars_pad;
 
 	struct grid_cell no_pane_gc;
 	int		 no_pane_gc_set;
@@ -1244,7 +1245,8 @@ TAILQ_HEAD(winlink_stack, winlink);
 #define PANE_SCROLLBARS_OFF 0
 #define PANE_SCROLLBARS_MODAL 1
 #define PANE_SCROLLBARS_ALWAYS 2
-#define PANE_VERTICAL_SCROLLBARS_WIDTH 2
+#define PANE_VERTICAL_SCROLLBARS_WIDTH 3
+#define PANE_VERTICAL_SCROLLBARS_PAD 1
 #define PANE_VERTICAL_SCROLLBARS_RIGHT 0
 #define PANE_VERTICAL_SCROLLBARS_LEFT 1
 

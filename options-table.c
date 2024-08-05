@@ -1138,6 +1138,15 @@ const struct options_table_entry options_table[] = {
 	  .text = "Pane vertical scrollbars width"
 	},
 
+	{ .name = "pane-vertical-scrollbars-pad",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_WINDOW,
+          .minimum = 0,
+          .maximum = 1,
+	  .default_num = PANE_VERTICAL_SCROLLBARS_PAD,
+	  .text = "Pane vertical scrollbars pad"
+	},
+
         { .name = "popup-style",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,

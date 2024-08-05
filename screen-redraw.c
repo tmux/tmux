@@ -32,7 +32,8 @@ static void	screen_redraw_set_context(struct client *,
 		    struct screen_redraw_ctx *);
 static void	screen_redraw_draw_pane_scrollbars(struct screen_redraw_ctx *ctx, int force);
 static void	screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx, struct window_pane *wp);
-static void	screen_redraw_draw_scrollbar(struct tty *tty, struct window_pane *wp, u_int px, u_int py, u_int sbheight, u_int sbwidth, u_int elevatorheight, u_int elevatorpos);
+static void	screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx, struct window_pane *wp,
+                                             u_int px, u_int py, u_int sb_height, u_int elevator_height, u_int elevator_pos);
 
 
 #define START_ISOLATE "\342\201\246"
@@ -670,6 +671,7 @@ screen_redraw_set_context(struct client *c, struct screen_redraw_ctx *ctx)
 	ctx->pane_scrollbars = options_get_number(wo, "pane-scrollbars");
 	ctx->pane_scrollbars_pos = options_get_number(wo, "pane-vertical-scrollbars-position");
 	ctx->pane_scrollbars_width = options_get_number(wo, "pane-vertical-scrollbars-width");
+	ctx->pane_scrollbars_pad = options_get_number(wo, "pane-vertical-scrollbars-pad");
 
 	tty_window_offset(&c->tty, &ctx->ox, &ctx->oy, &ctx->sx, &ctx->sy);
 
@@ -1035,17 +1037,15 @@ screen_redraw_draw_pane_scrollbars(struct screen_redraw_ctx *ctx, int force)
 
 static void
 screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx, struct window_pane *wp) {
-        u_int			mode;
-	struct screen		*s = wp->screen;
-	struct client		*c = ctx->c;
-	struct tty		*tty = &c->tty;
-        u_int			sb_x = wp->xoff + wp->sx; /* px and py of where to write to screen */
-        u_int			sb_y = wp->yoff;
-        u_int			sb_height = wp->sy; /* height of scrollbar */
-        u_int			total_height = screen_size_y(s) + screen_hsize(s);
-        u_int			elevator_height;
-        u_int			elevator_pos;
-        double			percent_view;
+        u_int			 mode;
+        u_int			 sb_x = wp->xoff + wp->sx; /* px and py of where to write to screen */
+        u_int			 sb_y = wp->yoff;
+        u_int			 sb_height = wp->sy; /* height of scrollbar */
+        struct screen		*s = wp->screen;
+        u_int			 total_height = screen_size_y(s) + screen_hsize(s);
+        u_int			 elevator_height;
+        u_int			 elevator_pos;
+        double			 percent_view;
 
         mode = window_pane_mode(wp);
 
@@ -1064,11 +1064,6 @@ screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx, struct window_p
                         elevator_height = (u_int)((double)sb_height * percent_view);
                         elevator_pos = sb_height - elevator_height; /* because it's at the bottom */
                 }
-
-                log_debug("%s: %s %%%u flags=%u sx=%u sy=%u  hscrolled=%u hsize=%u hlimit=%u  mode=%u total_height=%u sb_height=%u eheight=%u epos=%u",
-                          __func__, c->name, wp->id, wp->screen->grid->flags, wp->screen->grid->sx, wp->screen->grid->sy,
-                          wp->screen->grid->hscrolled, wp->screen->grid->hsize, wp->screen->grid->hlimit,
-                          mode, total_height, sb_height, elevator_height, elevator_pos);
         } else {
                 /* copy-mode or view-mode */
                 u_int cm_y_pos, cm_size;
@@ -1080,21 +1075,22 @@ screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx, struct window_p
                 percent_view = (double)sb_height / (cm_size + sb_height);
                 elevator_height = (u_int)((double)sb_height * percent_view);
                 elevator_pos = (u_int)sb_height * ((float)cm_y_pos / (cm_size + sb_height));
-                
-                log_debug("%s: %s %%%u flags=%u sx=%u sy=%u  hscrolled=%u hsize=%u hlimit=%u  mode=%u total_height=%u sb_height=%u pos=%u sz=%u eheight=%u epos=%u",
-                          __func__, c->name, wp->id, wp->screen->grid->flags, wp->screen->grid->sx, wp->screen->grid->sy,
-                          wp->screen->grid->hscrolled, wp->screen->grid->hsize, wp->screen->grid->hlimit,
-                          mode, total_height, sb_height, cm_y_pos, cm_size, elevator_height, elevator_pos);
         }
 
-        screen_redraw_draw_scrollbar(tty, wp, sb_x, sb_y, sb_height, ctx->pane_scrollbars_width, elevator_height, elevator_pos);
+        screen_redraw_draw_scrollbar(ctx, wp, sb_x, sb_y, sb_height, elevator_height, elevator_pos);
 
         wp->flags &= ~PANE_REDRAW_SCROLLBARS;
 }
 
 static void
-screen_redraw_draw_scrollbar(struct tty *tty, struct window_pane *wp, u_int px, u_int py, u_int sb_height, u_int sb_width, u_int elevator_height, u_int elevator_pos)
+screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx, struct window_pane *wp, u_int px, u_int py, u_int sb_height, u_int elevator_height, u_int elevator_pos)
 {
+	struct client		*c = ctx->c;
+	struct tty		*tty = &c->tty;
+        int			sb_pos = ctx->pane_scrollbars_pos;
+        u_int			sb_width = ctx->pane_scrollbars_width;
+        u_int			sb_pad = ctx->pane_scrollbars_pad;
+        u_int			pad_col;
         u_int i,j;
 	struct window		*w = wp->window;
         struct grid_cell	 gc;
@@ -1105,18 +1101,29 @@ screen_redraw_draw_scrollbar(struct tty *tty, struct window_pane *wp, u_int px, 
         fg = gc.fg;
         bg = gc.bg;
         utf8_set(&gc.data, ' ');
+
+        if (sb_pad) {
+                if (sb_pos == PANE_VERTICAL_SCROLLBARS_RIGHT)
+                        pad_col = 0;
+                else
+                        pad_col = sb_width - 1;
+        }
         
         gc.bg = bg;
         for (i = 0; i < sb_width; i++) {
                 for (j = 0; j < sb_height; j++) {
                         tty_cursor(tty, px+i, py+j);
-                        if (j >= elevator_pos && j < elevator_pos + elevator_height) {
-                                gc.bg = fg;
+
+                        if (sb_pad && i==pad_col) {
+                                tty_cell(tty, &grid_default_cell, &grid_default_cell, NULL, NULL);
                         } else {
-                                gc.bg = bg;
+                                if (j >= elevator_pos && j < elevator_pos + elevator_height) {
+                                        gc.bg = fg;
+                                } else {
+                                        gc.bg = bg;
+                                }
+                                tty_cell(tty, &gc, &grid_default_cell, NULL, NULL);
                         }
-                        tty_cell(tty, &gc, &grid_default_cell, NULL, NULL);
                 }
         }
 }
-
