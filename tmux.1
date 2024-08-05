@@ -4651,24 +4651,44 @@ and
 will fall back to standard ACS line drawing when UTF-8 is not supported.
 .Pp
 .It Xo Ic pane-scrollbars
-.Op Ic off | copy-mode | always
+.Op Ic off | modal | on
 .Xc
-Enable pane scrollbars.  When lines scroll off the screen, they are
-added to history.  You can see these lines in
+Enable character-based pane scrollbars.
+.Pp
+When lines scroll off the
+screen, they are added to the history.  You can see these lines in
 .Ic copy-mode .
-The scrollbars allow you to see what portion of the history you are
-currently viewing.  Taken together, the current terminal window plus
-the history is like having a local scrolling window with a scrollbar,
-excpet that the history is that of the remote pane.
+Taken together, the current terminal and the history is like a tall
+terminal window.  Scrollbars visually show you which portion of
+this tall terminal you are currently viewing.  It's often useful to
+scroll up and look at things which scrolled off the screen.  It's easy
+to visually get lost, scrollbars provide both a visual clue as to
+where you are and an easy way to scroll around.  Local terminal
+windows often have scrollbars for this purpose.  However, in tmux, you
+can have multiple panes, hence in tmux, it's not always easy or
+possible to rely on your local terminal's scrollbars.
+.Pp
+Furthermore, if you change windows in tmux, or re-attach, your local
+window's scrollback will not be preserved.  But tmux maintains this
+history.  The tmux pane scrollbars attempts to give you roughly a
+similar user experience on remote panes as using a local scrollbar
+with a single window.
 .Pp
 The
-.Ic always-on
-option enables the scrollbars in both normal and copy-mode.
+.Ic on
+option enables the scrollbars in the terminal as well as in copy-mode
+and view-mode.
 .Pp
 The
-.Ic copy-mode
-option only shows the scrollbars only when the pane is
-in copy-mode.
+.Ic modal
+option only shows the scrollbar when a pane is in copy-mode or
+view-mode.  The scrollbar won't appear in the terminal, however, if
+you scroll up, page up, or go into copy-mode or a tmux command outputs
+something in view-mode, the scrollbar appears.  In the terminal, the
+space for the scrollbar is not reserved.  When the pane is in
+copy-mode or view-mode, the pane is shrunk by the
+.Ic pane-vertical-scrollbars-width .
+Long lines may wrap which were not wrapped in the terminal.
 .Pp
 It may be desirable to set
 .Ic mouse

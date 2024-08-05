@@ -67,7 +67,7 @@ static const char *options_table_pane_status_list[] = {
 	"off", "top", "bottom", NULL
 };
 static const char *options_table_pane_scrollbars_list[] = {
-	"off", "copy-mode", "always", NULL
+	"off", "modal", "on", NULL
 };
 static const char *options_table_pane_vertical_scrollbars_position_list[] = {
 	"right", "left", NULL

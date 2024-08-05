@@ -1075,10 +1075,9 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 {
 	struct window_mode_entry	*wme;
 	struct window_pane_resize	*r;
-	struct window			*w = wp->window;
-	int			 	scrollbars;
-
-	scrollbars = options_get_number(w->options, "pane-scrollbars");
+        /*
+	int			 	pane_scrollbars = options_get_number(wp->window->options, "pane-scrollbars");
+        */
 
 	if (sx == wp->sx && sy == wp->sy)
 		return;
@@ -1100,8 +1099,10 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 	if (wme != NULL && wme->mode->resize != NULL)
 		wme->mode->resize(wme, sx, sy);
 
-        if (scrollbars)
+        /* may not need this PANE_REDRAW_SCROLLBARS now
+        if (pane_scrollbars)
                 wp->flags |= PANE_REDRAW_SCROLLBARS;
+        */
 }
 
 int
@@ -1110,10 +1111,11 @@ window_pane_set_mode(struct window_pane *wp, struct window_pane *swp,
     struct args *args)
 {
 	struct window_mode_entry	*wme;
+	struct window			*w = wp->window;
+        u_int				 pane_scrollbars;
 
 	if (!TAILQ_EMPTY(&wp->modes) && TAILQ_FIRST(&wp->modes)->mode == mode)
 		return (1);
-
 	TAILQ_FOREACH(wme, &wp->modes, entry) {
 		if (wme->mode == mode)
 			break;
@@ -1134,6 +1136,10 @@ window_pane_set_mode(struct window_pane *wp, struct window_pane *swp,
 	wp->screen = wme->screen;
 	wp->flags |= (PANE_REDRAW|PANE_CHANGED);
 
+        pane_scrollbars = options_get_number(w->options, "pane-scrollbars");
+        if (pane_scrollbars == PANE_SCROLLBARS_MODAL)
+                layout_fix_panes(w, NULL);
+
 	server_redraw_window_borders(wp->window);
 	server_status_window(wp->window);
 	notify_pane("pane-mode-changed", wp);
@@ -1145,6 +1151,8 @@ void
 window_pane_reset_mode(struct window_pane *wp)
 {
 	struct window_mode_entry	*wme, *next;
+        struct window			*w = wp->window;
+        u_int				 pane_scrollbars;
 
 	if (TAILQ_EMPTY(&wp->modes))
 		return;
@@ -1165,6 +1173,11 @@ window_pane_reset_mode(struct window_pane *wp)
 		if (next->mode->resize != NULL)
 			next->mode->resize(next, wp->sx, wp->sy);
 	}
+
+        pane_scrollbars = options_get_number(w->options, "pane-scrollbars");
+        if (pane_scrollbars == PANE_SCROLLBARS_MODAL)
+                layout_fix_panes(w, NULL);
+
 	wp->flags |= (PANE_REDRAW|PANE_CHANGED);
 
 	server_redraw_window_borders(wp->window);
@@ -1687,3 +1700,16 @@ window_pane_default_cursor(struct window_pane *wp)
 	s->default_mode = 0;
 	screen_set_cursor_style(c, &s->default_cstyle, &s->default_mode);
 }
+
+int
+window_pane_mode(struct window_pane *wp) {
+        if (TAILQ_FIRST(&wp->modes)) {
+                if (TAILQ_FIRST(&wp->modes)->mode == &window_copy_mode)
+                        return WINDOW_PANE_COPY_MODE;
+                if (TAILQ_FIRST(&wp->modes)->mode == &window_view_mode)
+                        return WINDOW_PANE_VIEW_MODE;
+        }
+
+        return (WINDOW_PANE_TERMINAL_MODE);
+}
+
