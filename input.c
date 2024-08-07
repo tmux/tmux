@@ -170,6 +170,10 @@ static void	input_csi_dispatch_rm_private(struct input_ctx *);
 static void	input_csi_dispatch_sm(struct input_ctx *);
 static void	input_csi_dispatch_sm_private(struct input_ctx *);
 static void	input_csi_dispatch_sm_graphics(struct input_ctx *);
+static void	input_csi_dispatch_kitk_query(struct input_ctx *);
+static void	input_csi_dispatch_kitk_push(struct input_ctx *);
+static void	input_csi_dispatch_kitk_pop(struct input_ctx *);
+static void	input_csi_dispatch_kitk_set(struct input_ctx *);
 static void	input_csi_dispatch_winops(struct input_ctx *);
 static void	input_csi_dispatch_sgr_256(struct input_ctx *, int, u_int *);
 static void	input_csi_dispatch_sgr_rgb(struct input_ctx *, int, u_int *);
@@ -265,7 +269,12 @@ enum input_csi_type {
 	INPUT_CSI_TBC,
 	INPUT_CSI_VPA,
 	INPUT_CSI_WINOPS,
-	INPUT_CSI_XDA
+	INPUT_CSI_XDA,
+	INPUT_CSI_KITK_QUERY,
+	INPUT_CSI_KITK_PUSH,
+	INPUT_CSI_KITK_POP,
+	INPUT_CSI_KITK_SET
+
 };
 
 /* Control (CSI) command table. */
@@ -309,7 +318,12 @@ static const struct input_table_entry input_csi_table[] = {
 	{ 'r', "",  INPUT_CSI_DECSTBM },
 	{ 's', "",  INPUT_CSI_SCP },
 	{ 't', "",  INPUT_CSI_WINOPS },
-	{ 'u', "",  INPUT_CSI_RCP }
+	{ 'u', "",  INPUT_CSI_RCP },
+	{ 'u', "<", INPUT_CSI_KITK_POP },
+	{ 'u', "=", INPUT_CSI_KITK_SET },
+	{ 'u', ">", INPUT_CSI_KITK_PUSH },
+	{ 'u', "?", INPUT_CSI_KITK_QUERY }
+
 };
 
 /* Input transition. */
@@ -1565,6 +1579,18 @@ input_csi_dispatch(struct input_ctx *ictx)
 		if (n != -1)
 			screen_write_insertline(sctx, n, bg);
 		break;
+	case INPUT_CSI_KITK_QUERY:
+		  input_csi_dispatch_kitk_query(ictx);
+		break;
+	case INPUT_CSI_KITK_PUSH:
+		  input_csi_dispatch_kitk_push(ictx);
+		break;
+	case INPUT_CSI_KITK_POP:
+		  input_csi_dispatch_kitk_pop(ictx);
+		break;
+	case INPUT_CSI_KITK_SET:
+		  input_csi_dispatch_kitk_set(ictx);
+		break;
 	case INPUT_CSI_REP:
 		n = input_get(ictx, 0, 1, 1);
 		if (n == -1)
@@ -1856,6 +1882,97 @@ input_csi_dispatch_sm_graphics(__unused struct input_ctx *ictx)
 		input_reply(ictx, "\033[?%d;3;%dS", n, o);
 #endif
 }
+/* Handle CSI kitty keyboard protocol. :for query */
+static void
+input_csi_dispatch_kitk_query(struct input_ctx *ictx)
+{
+	enum kitty_kbd_flags flags =
+		ictx->ctx.s->kitty_kbd.flags[ictx->ctx.s->kitty_kbd.idx];
+	input_reply(ictx, "\033[?%uu", flags);
+	log_debug("%s kitty kbd: query flags: %u ", __func__,flags);
+}
+
+/* Handle CSI kitty keyboard protocol. :for push */
+static void
+input_csi_dispatch_kitk_push(struct input_ctx *ictx)
+{
+	/* CSI > flags u  # for push, if flags omitted default to zero   */
+    uint8_t idx;
+	int flags;
+	flags = input_get(ictx, 0, 0, 0) & KITTY_KBD_SUPPORTED;
+	idx = ictx->ctx.s->kitty_kbd.idx;
+
+	if (idx + 1 >= nitems(ictx->ctx.s->kitty_kbd.flags)) {
+		/* Stack full, evict oldest by wrapping around */
+		idx = 0;
+	} else
+		idx++;
+
+	ictx->ctx.s->kitty_kbd.flags[idx] = flags;
+	ictx->ctx.s->kitty_kbd.idx = idx;
+
+	log_debug("%s kitty kbd: pushed new flags: 0x%03x", __func__,flags);
+
+}
+
+/* Handle CSI kitty keyboard protocol. :for push */
+static void
+input_csi_dispatch_kitk_pop(struct input_ctx *ictx)
+{
+	/* CSI < number u # to pop number entries, defaulting to 1 if unspecified */
+    uint8_t idx;
+	int i,count;
+	count = input_get(ictx, 0, 1, 1);
+	log_debug("%s kitty kbd: popping %d levels of flags", __func__,count);
+
+    idx = ictx->ctx.s->kitty_kbd.idx;
+	for (i = 0; i < count; i++) {
+		/* Reset flags. This ensures we get flags=0 when
+		 * over-popping */
+		ictx->ctx.s->kitty_kbd.flags[idx] = 0;
+		if (idx == 0)
+			idx = nitems(ictx->ctx.s->kitty_kbd.flags) - 1;
+		else
+			idx--;
+	}
+	ictx->ctx.s->kitty_kbd.idx = idx;
+
+	log_debug("kitty kbd: flags after pop: 0x%03x",
+			  ictx->ctx.s->kitty_kbd.flags[idx]);
+}
+static void
+input_csi_dispatch_kitk_set(struct input_ctx *ictx)
+{
+    struct screen *s;
+    uint8_t idx;
+    int flag_set;
+    int mode;
+	/* CSI = flags ; mode u */
+    flag_set = input_get(ictx, 0, 0, 0) & KITTY_KBD_SUPPORTED;
+	mode = input_get(ictx, 1,1, 1);
+	s = ictx->ctx.s;
+	idx = s->kitty_kbd.idx;
+
+	switch (mode) {
+	case 1:
+		/* set bits are set, unset bits are reset */
+		s->kitty_kbd.flags[idx] = flag_set;
+		break;
+	case 2:
+		/* set bits are set, unset bits are left unchanged */
+		s->kitty_kbd.flags[idx] |= flag_set;
+		break;
+	case 3:
+		/* set bits are reset, unset bits are left unchanged */
+		s->kitty_kbd.flags[idx] &= ~flag_set;
+		break;
+	default:
+		break;
+	}
+	log_debug("%s kitty kbd: flags after update: 0x%03x",
+			  __func__,s->kitty_kbd.flags[idx]);
+}
+
 
 /* Handle CSI window operations. */
 static void
