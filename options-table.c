@@ -93,6 +93,10 @@ static const char *options_table_detach_on_destroy_list[] = {
 static const char *options_table_extended_keys_list[] = {
 	"off", "on", "always", NULL
 };
+static const char *options_table_kitty_keys_list[] = {
+	"off", "on", "always", NULL
+};
+
 static const char *options_table_allow_passthrough_list[] = {
 	"off", "on", "all", NULL
 };
@@ -311,6 +315,14 @@ const struct options_table_entry options_table[] = {
 	  .choices = options_table_extended_keys_list,
 	  .default_num = 0,
 	  .text = "Whether to request extended key sequences from terminals "
+		  "that support it."
+	},
+	{ .name = "kitty-keys",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .choices = options_table_kitty_keys_list,
+	  .default_num = 0,
+	  .text = "Whether to request kitty key sequences from terminals "
 		  "that support it."
 	},
 

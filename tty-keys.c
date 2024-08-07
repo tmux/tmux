@@ -49,6 +49,8 @@ static int	tty_keys_next1(struct tty *, const char *, size_t, key_code *,
 static void	tty_keys_callback(int, short, void *);
 static int	tty_keys_extended_key(struct tty *, const char *, size_t,
 		    size_t *, key_code *);
+static int	tty_keys_kitty_key(struct tty *, const char *, size_t,
+		    size_t *, key_code *);
 static int	tty_keys_mouse(struct tty *, const char *, size_t, size_t *,
 		    struct mouse_event *);
 static int	tty_keys_clipboard(struct tty *, const char *, size_t,
@@ -59,6 +61,7 @@ static int	tty_keys_device_attributes2(struct tty *, const char *, size_t,
 		    size_t *);
 static int	tty_keys_extended_device_attributes(struct tty *, const char *,
 		    size_t, size_t *);
+key_code set_modifier(key_code key ,u_int modifiers);
 
 /* A key tree entry. */
 struct tty_key {
@@ -71,6 +74,22 @@ struct tty_key {
 	struct tty_key	*next;
 };
 
+/* kitty : CSI 1; modifier [~ABCDEFHPQS] */
+static const key_code kitty_ascii_keys[] ={
+    KEYC_UP,                    /* A */
+    KEYC_DOWN,                   /* B */
+    KEYC_RIGHT,                  /* C */
+    KEYC_LEFT,                   /* D */
+    KEYC_KP_BEGIN,                /* E */
+    KEYC_END,                     /* F */
+    0,
+    KEYC_HOME,                  /* H */
+    0,0,0,0,0,0,0,
+    KEYC_F1,                 /* P */
+    KEYC_F2,                    /* Q */
+    0,
+    KEYC_F4/* S  */
+};
 /* Default raw keys. */
 struct tty_default_key_raw {
 	const char	       *string;
@@ -744,6 +763,19 @@ tty_keys_next(struct tty *tty)
 		goto partial_key;
 	}
 
+	/* Is this an kitty key press? */
+    if( tty->kitty_state){
+      switch (tty_keys_kitty_key(tty, buf, len, &size, &key)) {
+      case 0:		/* yes */
+		goto complete_key;
+      case -1:	/* no, or not valid */
+		break;
+	  case -2:
+		  goto discard_key;
+      case 1:		/* partial */
+		goto partial_key;
+      }
+    }
 	/* Is this an extended key press? */
 	switch (tty_keys_extended_key(tty, buf, len, &size, &key)) {
 	case 0:		/* yes */
@@ -894,6 +926,320 @@ tty_keys_callback(__unused int fd, __unused short events, void *data)
 			;
 	}
 }
+key_code
+set_modifier(key_code key ,u_int modifiers)
+{
+	if (modifiers > 0) {
+		modifiers--;
+		if (modifiers & 0x1)
+			key |= KEYC_SHIFT;
+		if (modifiers & 0x2)
+			key |= (KEYC_META|KEYC_IMPLIED_META); /* Alt */
+		if (modifiers & 0x4)
+			key |= KEYC_CTRL;
+		if (modifiers & 0x8)
+			key |= (KEYC_SUPER);
+		if (modifiers & 0x10)
+			key |= (KEYC_HYPER);
+		if (modifiers & 0x20)
+			key |= (KEYC_REAL_META); /* Meta */
+		if (modifiers & 0x40)
+			key |= (KEYC_CAPS_LOCK);
+		if (modifiers & 0x80)
+			key |= (KEYC_KEYPAD);
+	}
+	return key;
+}
+
+/*
+ * Handle kitty key input. This has two forms:
+ CSI unicode-key-code:alternate-key-codes ; modifiers:event-type ; text-as-codepoints u
+ * https://sw.kovidgoyal.net/kitty/keyboard-protocol/#an-overview
+ * where k is key as a number and m is a modifier. Returns 0 for success, -1
+ * for failure, 1 for partial, -2:discard key;
+ */
+static int
+tty_keys_kitty_key(struct tty *tty, const char *buf, size_t len,
+				   size_t *size, key_code *key)
+{
+	struct client	*c = tty->client;
+	size_t	i, j, end;
+	u_int	number, shiftnum, basenum, modifiers, evtype, txt[5];
+	char	final, *cp, *next, *subnext, *subcp, tmp[64];
+	cc_t		 bspace;
+	key_code	 nkey;
+
+	*size = txt[0] = number = shiftnum = basenum = evtype = 0;
+	/* modifiers: 1:no modifiers */
+	/* evtype: 1:press, 2:repeat,3:release */
+	modifiers = evtype = 1;
+
+	/* First two bytes are always \033[. */
+	if (buf[0] != '\033')
+		return (-1);
+	if (len == 1)
+		return (1);
+	if (buf[1] != '[')
+		return (-1);
+	if (len == 2)
+		return (1);
+
+	/*
+	 * Look for a terminator. Stop at either 'u' '~' or
+     * one of ABCDEFHPQS
+	 */
+	for (end = 2; end < len && end != sizeof tmp; end++) {
+        final = buf[end];
+		if (buf[end] == 'u' ||buf[end] == '~'||
+            /* ABCDEFHPQS */
+            (final>='A' && final <= 'S' && kitty_ascii_keys[final - 'A']))
+			break;
+	}
+	if (end == len)
+		return (1);
+	if (end == sizeof tmp || (buf[end] != '~' &&
+							  buf[end] != 'u' &&
+                              /* ABCDEFHPQS */
+                              !(final>='A' && final <= 'S' &&
+                                kitty_ascii_keys[final - 'A'])))
+		return (-1);
+
+	/* Copy to the buffer. */
+	memcpy(tmp, buf + 2, end);
+	tmp[end-1] = '\0';
+    final = buf[end];
+
+	/* Try to parse either form of key. */
+	switch (final){
+	case 'u':
+        /* CSI unicode-key-code:alternate-key-codes ;
+           modifiers:event-type ; text-as-codepoints u */
+        i=0;
+        cp = tmp;
+        while ((next = strsep(&cp, ";")) != NULL) {
+            i++;
+            switch (i){
+            case 1:           /* Key codes */
+				/* number
+				   number:shiftnum
+				   number::basenum
+				   number:shiftnum:basenum */
+                j=0;
+                subcp=next;
+                while ((subnext = strsep(&subcp, ":")) != NULL) {
+                    switch (j){
+                    case 0:           /* unicode-key-code */
+                        number = strtoul(subnext, NULL, 10);
+                        continue;
+                    case 1:           /* shift key code */
+                        shiftnum = strtoul(subnext, NULL, 10);
+                        continue;
+                    case 2:           /* base-layout-key */
+                        basenum = strtoul(subnext, NULL, 10);
+                        continue;
+                    }
+                    j++;
+                }
+				continue;
+            case 2:           /* modifier or modifier:eventtype */
+                j=0;
+                subcp=next;
+                while ((subnext = strsep(&subcp, ":")) != NULL) {
+                    switch (j){
+                    case 0:           /* modifier */
+                        modifiers = strtoul(subnext, NULL, 10);
+                        continue;
+                    case 1:           /* eventtype code */
+                        evtype = strtoul(subnext, NULL, 10);
+                        continue;
+                    }
+                    j++;
+                }
+				continue;
+			case 3:           /* Text as code points */
+				j = 0;
+				subcp = next;
+				while ((subnext = strsep(&subcp, ":")) != NULL) {
+					if(j<nitems(txt) - 1){
+						txt[j] = strtoul(subnext, NULL, 10);
+						txt[j+1] = 0;
+					}
+					j++;
+				}
+            }
+        }
+
+		switch (evtype){
+		case 2:
+			evtype = 1;			/* repeat as press */
+			break;
+		case 3:					/* TODO: handle release event */
+			return -2;			/* discard key of release now */
+		}
+
+		/*  TODO: don't known how to handle
+         *	alternate keys and associated text
+         *  just ignore them now.
+        */
+		switch (number){
+		case 9:		number = 9; break; /* tab */
+		case 27:	number = 27; break; /* esc */
+		case 127:	number = KEYC_BSPACE; break; /* BACKSPACE */
+		case ' ':	number = ' '; break;
+		case 57358:	number = KEYC_CAPLOCK; break;
+		case 57359:	number = KEYC_SCROLL_LOCK; break;
+		case 57360:	number = KEYC_KP_NUMLOCK; break;
+		case 57361:	number = KEYC_PRINT; break;
+		case 57362:	number = KEYC_PAUSE; break;
+		case 57363:	number = KEYC_MENU; break;
+		case 57376: number = KEYC_F13; break;
+		case 57377: number = KEYC_F14; break;
+		case 57378: number = KEYC_F15; break;
+		case 57379: number = KEYC_F16; break;
+		case 57380: number = KEYC_F17; break;
+		case 57381: number = KEYC_F18; break;
+		case 57382: number = KEYC_F19; break;
+		case 57383: number = KEYC_F20; break;
+		case 57384: number = KEYC_F21; break;
+		case 57385: number = KEYC_F22; break;
+		case 57386: number = KEYC_F23; break;
+		case 57387: number = KEYC_F24; break;
+		case 57388: number = KEYC_F25; break;
+		case 57389: number = KEYC_F26; break;
+		case 57390: number = KEYC_F27; break;
+		case 57391: number = KEYC_F28; break;
+		case 57392: number = KEYC_F29; break;
+		case 57393: number = KEYC_F30; break;
+		case 57394: number = KEYC_F31; break;
+		case 57395: number = KEYC_F32; break;
+		case 57396: number = KEYC_F33; break;
+		case 57397: number = KEYC_F34; break;
+		case 57398: number = KEYC_F35; break;
+		case 57399: number = KEYC_KP_ZERO; break;
+		case 57400: number = KEYC_KP_ONE; break;
+		case 57401: number = KEYC_KP_TWO; break;
+		case 57402: number = KEYC_KP_THREE; break;
+		case 57403: number = KEYC_KP_FOUR; break;
+		case 57404: number = KEYC_KP_FIVE; break;
+		case 57405: number = KEYC_KP_SIX; break;
+		case 57406: number = KEYC_KP_SEVEN; break;
+		case 57407: number = KEYC_KP_EIGHT; break;
+		case 57408: number = KEYC_KP_NINE; break;
+		case 57409: number = KEYC_KP_PERIOD; break;
+		case 57410: number = KEYC_KP_SLASH; break;
+		case 57411: number = KEYC_KP_STAR; break;
+		case 57412: number = KEYC_KP_MINUS; break;
+		case 57413: number = KEYC_KP_PLUS; break;
+		case 57414: number = KEYC_KP_ENTER; break;
+		case 57415: number = KEYC_KP_EQUAL; break;
+		case 57416: number = KEYC_KP_SEPARATOR; break;
+		case 57417: number = KEYC_KP_LEFT; break;
+		case 57418: number = KEYC_KP_RIGHT; break;
+		case 57419: number = KEYC_KP_UP; break;
+		case 57420: number = KEYC_KP_DOWN; break;
+		case 57421: number = KEYC_KP_PAGE_UP; break;
+		case 57422: number = KEYC_KP_PAGE_DOWN; break;
+		case 57423: number = KEYC_KP_HOME; break;
+		case 57424: number = KEYC_KP_END; break;
+		case 57425: number = KEYC_KP_INSERT; break;
+		case 57426: number = KEYC_KP_DELETE; break;
+        case 57428: number = KEYC_MEDIA_PLAY; break;
+        case 57429: number = KEYC_MEDIA_PAUSE; break;
+        case 57430: number = KEYC_MEDIA_PLAY_PAUSE; break;
+        case 57431: number = KEYC_MEDIA_REVERSE; break;
+        case 57432: number = KEYC_MEDIA_STOP; break;
+        case 57433: number = KEYC_MEDIA_FAST_FORWARD; break;
+        case 57434: number = KEYC_MEDIA_REWIND; break;
+        case 57435: number = KEYC_MEDIA_NEXT; break;
+        case 57436: number = KEYC_MEDIA_PREVIOUS; break;
+        case 57437: number = KEYC_MEDIA_RECORD; break;
+        case 57438: number = KEYC_VOLUME_DOWN; break;
+        case 57439: number = KEYC_VOLUME_UP; break;
+        case 57440: number = KEYC_VOLUME_MUTE; break;
+        case 57441: number = KEYC_SHIFT_L; break;
+        case 57442: number = KEYC_CONTROL_L; break;
+        case 57443: number = KEYC_ALT_L; break;
+        case 57444: number = KEYC_SUPER_L; break;
+        case 57445: number = KEYC_HYPER_L; break;
+        case 57446: number = KEYC_META_L; break;
+        case 57447: number = KEYC_SHIFT_R; break;
+        case 57448: number = KEYC_CONTROL_R; break;
+        case 57449: number = KEYC_ALT_R; break;
+        case 57450: number = KEYC_SUPER_R; break;
+        case 57451: number = KEYC_HYPER_R; break;
+        case 57452: number = KEYC_META_R; break;
+        case 57453: number = KEYC_ISO_LEVEL3_SHIFT; break;
+        case 57454: number = KEYC_ISO_LEVEL5_SHIFT; break;
+		}
+		break;
+	case '~':
+		if (sscanf(tmp, "%u;%u~", &number, &modifiers) != 2)
+			if (sscanf(tmp, "%u~",  &number) != 1)
+				return (-1);
+		switch (number){
+		case 2:				number=KEYC_IC; break;
+		case 3:				number=KEYC_DC; break;
+		case 5:				number=KEYC_PPAGE; break;
+		case 6:				number=KEYC_NPAGE; break;
+		case 7:				number=KEYC_HOME; break;
+		case 8:				number=KEYC_END; break;
+		case 11:			number=KEYC_F1; break;
+		case 12:			number=KEYC_F2; break;
+		case 13:			number=KEYC_F3; break;
+		case 14:			number=KEYC_F4; break;
+		case 15:			number=KEYC_F5; break;
+		case 17:			number=KEYC_F6; break;
+		case 18:			number=KEYC_F7; break;
+		case 19:			number=KEYC_F8; break;
+		case 20:			number=KEYC_F9; break;
+		case 21:			number=KEYC_F10; break;
+		case 23:			number=KEYC_F11; break;
+		case 24:			number=KEYC_F12 ; break;
+		case 57427:			number=KEYC_KP_BEGIN ; break;
+		}
+		break;
+	case 'A':					/* CSI 1; modifiers [ABCDEFHPQS] */
+	case 'B':
+	case 'C':
+	case 'D':
+	case 'E':
+	case 'F':
+	case 'H':
+	case 'P':
+	case 'Q':
+	case 'S':
+			number=kitty_ascii_keys[final - 'A'];
+		/* if no modifiers are present the parameters are omitted entirely
+		   giving an escape code of the form CSI [ABCDEFHPQS]			 */
+		if(end>2){ 			/* has modifiers: CSI 1; modifiers [ABCDEFHPQS]  */
+			if (sscanf(tmp ,"1;%u",  &modifiers) != 1)
+				return (-1);
+		}
+		break;
+	default:
+		/* if (sscanf(tmp ,"%llu;%llu", &number, &modifiers) != 2) */
+		return (-1);
+
+	}
+	*size = end + 1;
+
+	/* Store the key. */
+	bspace = tty->tio.c_cc[VERASE];
+	if (bspace != _POSIX_VDISABLE && number == bspace)
+		nkey = KEYC_BSPACE;
+	else
+		nkey = number;
+
+	/* Update the modifiers. */
+	nkey=set_modifier(nkey,modifiers);
+
+	if (log_get_level() != 0) {
+		log_debug("%s: kitty key %.*s is %llx (%s)", c->name,
+				  (int)*size, buf, nkey, key_string_lookup_key(nkey, 1));
+	}
+	*key = nkey;
+	return (0);
+}
 
 /*
  * Handle extended key input. This has two forms: \033[27;m;k~ and \033[k;mu,
@@ -972,17 +1318,7 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 	}
 
 	/* Update the modifiers. */
-	if (modifiers > 0) {
-		modifiers--;
-		if (modifiers & 1)
-			nkey |= KEYC_SHIFT;
-		if (modifiers & 2)
-			nkey |= (KEYC_META|KEYC_IMPLIED_META); /* Alt */
-		if (modifiers & 4)
-			nkey |= KEYC_CTRL;
-		if (modifiers & 8)
-			nkey |= (KEYC_META|KEYC_IMPLIED_META); /* Meta */
-	}
+	nkey=set_modifier(nkey, modifiers);
 
 	/*
 	 * Don't allow both KEYC_CTRL and as an implied modifier. Also convert
@@ -1281,11 +1617,9 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 	struct client	*c = tty->client;
 	int		*features = &c->term_features;
 	u_int		 i, n = 0;
-	char		 tmp[128], *endptr, p[32] = { 0 }, *cp, *next;
+	char		 tmp[128], *endptr, p[32] = { 0 }, *cp, *next ,final;
 
 	*size = 0;
-	if (tty->flags & TTY_HAVEDA)
-		return (-1);
 
 	/* First three bytes are always \033[?. */
 	if (buf[0] != '\033')
@@ -1301,12 +1635,13 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 	if (len == 3)
 		return (1);
 
-	/* Copy the rest up to a c. */
+	/* Copy the rest up to a c or u. */
 	for (i = 0; i < (sizeof tmp); i++) {
 		if (3 + i == len)
 			return (1);
-		if (buf[3 + i] == 'c')
-			break;
+        final=buf[3 + i];
+		if (final == 'c' || final == 'u')
+          break;
 		tmp[i] = buf[3 + i];
 	}
 	if (i == (sizeof tmp))
@@ -1314,38 +1649,58 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 	tmp[i] = '\0';
 	*size = 4 + i;
 
-	/* Convert all arguments to numbers. */
-	cp = tmp;
-	while ((next = strsep(&cp, ";")) != NULL) {
-		p[n] = strtoul(next, &endptr, 10);
-		if (*endptr != '\0')
-			p[n] = 0;
-		if (++n == nitems(p))
-			break;
-	}
 
-	/* Add terminal features. */
-	switch (p[0]) {
-	case 61: /* level 1 */
-	case 62: /* level 2 */
-	case 63: /* level 3 */
-	case 64: /* level 4 */
-	case 65: /* level 5 */
-		for (i = 1; i < n; i++) {
-			log_debug("%s: DA feature: %d", c->name, p[i]);
-			if (p[i] == 4)
+    switch (final){
+        case 'u':
+            tty->kitty_state = strtoul(tmp, &endptr, 10);
+          if (tty->flags & TTY_HAVEDA_KITTY ){
+			  break;
+          }
+          tty_add_features(features, "kitkeys", ",");
+          /* kitty keys: push 1 entries */
+		  if (options_get_number(global_options, "kitty-keys")){
+			  tty_puts(tty, tty_term_string(tty->term, TTYC_ENKITK));
+			  tty_puts(tty, "\033[?u"); /* query flag again to update tty->kitty_state.*/
+		  }
+          tty_update_features(tty);
+          tty->flags |= TTY_HAVEDA_KITTY;
+          break;
+        case 'c':
+          if (tty->flags & TTY_HAVEDA ){
+            return (-1);
+          }
+          /* Convert all arguments to numbers. */
+          cp = tmp;
+          while ((next = strsep(&cp, ";")) != NULL) {
+            p[n] = strtoul(next, &endptr, 10);
+            if (*endptr != '\0')
+              p[n] = 0;
+            if (++n == nitems(p))
+              break;
+          }
+
+          /* Add terminal features. */
+          switch (p[0]) {
+          case 61: /* level 1 */
+          case 62: /* level 2 */
+          case 63: /* level 3 */
+          case 64: /* level 4 */
+          case 65: /* level 5 */
+            for (i = 1; i < n; i++) {
+              log_debug("%s: DA feature: %d", c->name, p[i]);
+              if (p[i] == 4)
 				tty_add_features(features, "sixel", ",");
-			if (p[i] == 21)
+              if (p[i] == 21)
 				tty_add_features(features, "margins", ",");
-			if (p[i] == 28)
+              if (p[i] == 28)
 				tty_add_features(features, "rectfill", ",");
-		}
-		break;
-	}
-	log_debug("%s: received primary DA %.*s", c->name, (int)*size, buf);
-
-	tty_update_features(tty);
-	tty->flags |= TTY_HAVEDA;
+            }
+            break;
+          }
+          log_debug("%s: received primary DA %.*s", c->name, (int)*size, buf);
+          tty_update_features(tty);
+          tty->flags |= TTY_HAVEDA;
+      }
 
 	return (0);
 }

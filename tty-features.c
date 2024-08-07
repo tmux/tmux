@@ -246,6 +246,16 @@ static const struct tty_feature tty_feature_extkeys = {
 	tty_feature_extkeys_capabilities,
 	0
 };
+static const char *const tty_feature_kitty_capabilities[] = {
+	"Enkitk=\\E[>1;1u",
+	"DsKitk=\\E[>1;1u",
+	NULL
+};
+static const struct tty_feature tty_feature_kitty = {
+	"kitkeys",
+	tty_feature_kitty_capabilities,
+	0
+};
 
 /* Terminal supports DECSLRM margins. */
 static const char *const tty_feature_margins_capabilities[] = {
@@ -366,6 +376,7 @@ static const struct tty_feature *const tty_features[] = {
 	&tty_feature_hyperlinks,
 	&tty_feature_cstyle,
 	&tty_feature_extkeys,
+	&tty_feature_kitty,
 	&tty_feature_focus,
 	&tty_feature_ignorefkeys,
 	&tty_feature_margins,
