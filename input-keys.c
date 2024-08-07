@@ -31,6 +31,10 @@
  */
 
 static void	 input_key_mouse(struct window_pane *, struct mouse_event *);
+static int input_key_kitty(struct screen *s,
+						   struct bufferevent *bev,key_code key);
+u_int get_modifier(key_code key);
+u_int get_legacy_modifier(key_code key);
 
 /* Entry in the key tree. */
 struct input_key_entry {
@@ -425,6 +429,240 @@ input_key_write(const char *from, struct bufferevent *bev, const char *data,
 	log_debug("%s: %.*s", from, (int)size, data);
 	bufferevent_write(bev, data, size);
 }
+u_int
+get_modifier(key_code key)
+{
+	char modifier=0;
+	if (key & KEYC_SHIFT)
+		modifier |= 0x1;
+	if (key & KEYC_META)
+		modifier |= 0x2;
+	if (key & KEYC_CTRL)
+		modifier |= 0x4;
+	if (key & KEYC_SUPER)
+		modifier |= 0x8;
+	if (key & KEYC_HYPER)
+		modifier |= 0x10;
+	if (key & KEYC_REAL_META)
+		modifier |= 0x20;
+	if (key & KEYC_CAPS_LOCK)
+		modifier |= 0x40;
+	if (key & KEYC_KEYPAD)
+		modifier |= 0x80;
+	modifier++;
+	return modifier;
+}
+u_int
+get_legacy_modifier(key_code key)
+{
+	char modifier=0;
+	if (key & KEYC_SHIFT)
+		modifier |= 0x1;
+	if (key & (KEYC_META|KEYC_SUPER|
+			   KEYC_HYPER|KEYC_REAL_META))
+		modifier |= 0x2;
+	if (key & KEYC_CTRL)
+		modifier |= 0x4;
+	modifier++;
+	return modifier;
+}
+
+
+/* 0:succ,-1 fail */
+static int
+input_key_kitty(struct screen *s, struct bufferevent *bev,key_code key)
+{
+	key_code onlykey;
+	char		final,	 tmp[64];
+	u_int number,modifier;
+	struct utf8_data	 ud;
+	int disambiguate,all_as_escapes;
+	enum kitty_kbd_flags flags;
+
+	number = 0;
+	flags = s->kitty_kbd.flags[s->kitty_kbd.idx];
+	disambiguate = flags & KITTY_KBD_DISAMBIGUATE;
+	all_as_escapes = flags & KITTY_KBD_REPORT_ALL;
+	onlykey = (key & KEYC_MASK_KEY);
+	modifier = get_modifier(key);
+
+    if (!disambiguate) return (-1);
+
+	/*
+	 * If this is a normal 7-bit key, just send it,
+	 * If it is a UTF-8 key, split it and send it.
+	 */
+	if (key <= 0x7f) {
+		ud.data[0] = key;
+		input_key_write(__func__, bev, &ud.data[0], 1);
+		return (0);
+	}
+	if (KEYC_IS_UNICODE(key)) {
+		utf8_to_data(key, &ud);
+		input_key_write(__func__, bev, ud.data, ud.size);
+		return (0);
+	}
+	if(all_as_escapes)
+        goto emit_escapes;
+
+	switch(key & ~(KEYC_META|KEYC_IMPLIED_META|
+				   KEYC_CAPS_LOCK|KEYC_MASK_FLAGS)){
+	case '\t':
+	case '\r':
+	case KEYC_BSPACE:
+		return -1;
+	}
+emit_escapes:
+	/* CSI 1; modifiers [ABCDEFHPQS] */
+	/* CSI [ABCDEFHPQS] */
+	/* CSI number ; modifiers ~ */
+	/* CSI number ; modifiers u */
+	switch(key & (KEYC_MASK_KEY)){
+	case KEYC_UP:			number=1;      final='A';break;
+	case KEYC_DOWN:			number=1;      final='B';break;
+	case KEYC_RIGHT:		number=1;      final='C';break;
+	case KEYC_LEFT:			number=1;      final='D';break;
+	case KEYC_KP_BEGIN:		number=1;      final='E';break;
+	case KEYC_END:			number=1;      final='F';break;
+	case KEYC_HOME:			number=1;      final='H';break;
+	case KEYC_F1:			number=1;      final='P';break;
+	case KEYC_F2:			number=1;      final='Q';break;
+	case KEYC_F4:			number=1;      final='S';break;
+    case KEYC_IC:           number=2;      final='~'; break;
+    case KEYC_DC:           number=3;      final='~'; break;
+    case KEYC_PPAGE:        number=5;      final='~'; break;
+    case KEYC_NPAGE:        number=6;      final='~'; break;
+		/* case KEYC_HOME:         number=7;      final='~'; break; */
+		/* case KEYC_END:          number=8;      final='~'; break; */
+		/* case KEYC_F1:           number=11;     final='~'; break; */
+		/* case KEYC_F2:           number=12;     final='~'; break; */
+    case KEYC_F3:           number=13;     final='~'; break;
+		/* case KEYC_F4:           number=14;     final='~'; break; */
+    case KEYC_F5:           number=15;     final='~'; break;
+    case KEYC_F6:           number=17;     final='~'; break;
+    case KEYC_F7:           number=18;     final='~'; break;
+    case KEYC_F8:           number=19;     final='~'; break;
+    case KEYC_F9:           number=20;     final='~'; break;
+    case KEYC_F10:          number=21;     final='~'; break;
+    case KEYC_F11:          number=23;     final='~'; break;
+    case KEYC_F12:          number=24;     final='~'; break;
+		/* case KEYC_KP_BEGIN:     number=57427;  final='~'; break; */
+	case 9:		            number=9;      final='u'; break;
+	case 27:		        number=27;     final='u'; break; /* esc */
+	case KEYC_BSPACE:	    number=127;    final='u'; break;
+	case ' ':	            number=' ';    final='u'; break;
+	case KEYC_CAPLOCK:	    number=57358; final='u'; break;
+	case KEYC_SCROLL_LOCK:	number=57359; final='u'; break;
+	case KEYC_KP_NUMLOCK:	number=57360; final='u'; break;
+	case KEYC_PRINT:	    number=57361; final='u'; break;
+	case KEYC_PAUSE:	    number=57362; final='u'; break;
+	case KEYC_MENU:	        number=57363; final='u'; break;
+	case KEYC_F13:	        number=57376; final='u'; break;
+	case KEYC_F14:	        number=57377; final='u'; break;
+	case KEYC_F15:	        number=57378; final='u'; break;
+	case KEYC_F16:	        number=57379; final='u'; break;
+	case KEYC_F17:	        number=57380; final='u'; break;
+	case KEYC_F18:	        number=57381; final='u'; break;
+	case KEYC_F19:	        number=57382; final='u'; break;
+	case KEYC_F20:	        number=57383; final='u'; break;
+	case KEYC_F21:	        number=57384; final='u'; break;
+	case KEYC_F22:	        number=57385; final='u'; break;
+	case KEYC_F23:	        number=57386; final='u'; break;
+	case KEYC_F24:	        number=57387; final='u'; break;
+	case KEYC_F25:	        number=57388; final='u'; break;
+	case KEYC_F26:	        number=57389; final='u'; break;
+	case KEYC_F27:	        number=57390; final='u'; break;
+	case KEYC_F28:	        number=57391; final='u'; break;
+	case KEYC_F29:	        number=57392; final='u'; break;
+	case KEYC_F30:	        number=57393; final='u'; break;
+	case KEYC_F31:	        number=57394; final='u'; break;
+	case KEYC_F32:	        number=57395; final='u'; break;
+	case KEYC_F33:	        number=57396; final='u'; break;
+	case KEYC_F34:	        number=57397; final='u'; break;
+	case KEYC_F35:	        number=57398; final='u'; break;
+	case KEYC_KP_ZERO:	    number=57399; final='u'; break;
+	case KEYC_KP_ONE:	    number=57400; final='u'; break;
+	case KEYC_KP_TWO:	    number=57401; final='u'; break;
+	case KEYC_KP_THREE:	    number=57402; final='u'; break;
+	case KEYC_KP_FOUR:	    number=57403; final='u'; break;
+	case KEYC_KP_FIVE:	    number=57404; final='u'; break;
+	case KEYC_KP_SIX:	    number=57405; final='u'; break;
+	case KEYC_KP_SEVEN:	    number=57406; final='u'; break;
+	case KEYC_KP_EIGHT:	    number=57407; final='u'; break;
+	case KEYC_KP_NINE:	    number=57408; final='u'; break;
+	case KEYC_KP_PERIOD:	number=57409; final='u'; break;
+	case KEYC_KP_SLASH:	    number=57410; final='u'; break;
+	case KEYC_KP_STAR:	    number=57411; final='u'; break;
+	case KEYC_KP_MINUS:	    number=57412; final='u'; break;
+	case KEYC_KP_PLUS:	    number=57413; final='u'; break;
+	case KEYC_KP_ENTER:	    number=57414; final='u'; break;
+	case KEYC_KP_EQUAL:	    number=57415; final='u'; break;
+	case KEYC_KP_SEPARATOR:	number=57416; final='u'; break;
+	case KEYC_KP_LEFT:	    number=57417; final='u'; break;
+	case KEYC_KP_RIGHT:	    number=57418; final='u'; break;
+	case KEYC_KP_UP:	    number=57419; final='u'; break;
+	case KEYC_KP_DOWN:	    number=57420; final='u'; break;
+	case KEYC_KP_PAGE_UP:	number=57421; final='u'; break;
+	case KEYC_KP_PAGE_DOWN:	number=57422; final='u'; break;
+	case KEYC_KP_HOME:	    number=57423; final='u'; break;
+	case KEYC_KP_END:	    number=57424; final='u'; break;
+	case KEYC_KP_INSERT:	number=57425; final='u'; break;
+	case KEYC_KP_DELETE:	number=57426; final='u'; break;
+    case KEYC_MEDIA_PLAY:		number = 57428; final='u';break;
+    case KEYC_MEDIA_PAUSE:		number = 57429; final='u';break;
+    case KEYC_MEDIA_PLAY_PAUSE:	number = 57430; final='u';break;
+    case KEYC_MEDIA_REVERSE:	number = 57431; final='u';break;
+    case KEYC_MEDIA_STOP:		number = 57432; final='u';break;
+    case KEYC_MEDIA_FAST_FORWARD:number = 57433; final='u';break;
+    case KEYC_MEDIA_REWIND:		number = 57434; final='u';break;
+    case KEYC_MEDIA_NEXT:		number = 57435; final='u';break;
+    case KEYC_MEDIA_PREVIOUS:	number = 57436; final='u';break;
+    case KEYC_MEDIA_RECORD:		number = 57437; final='u';break;
+    case KEYC_VOLUME_DOWN:		number = 57438; final='u';break;
+    case KEYC_VOLUME_UP:		number = 57439; final='u';break;
+    case KEYC_VOLUME_MUTE:		number = 57440; final='u';break;
+    case KEYC_SHIFT_L:			number = 57441; final='u';break;
+    case KEYC_CONTROL_L:		number = 57442; final='u';break;
+    case KEYC_ALT_L:			number = 57443; final='u';break;
+    case KEYC_SUPER_L:			number = 57444; final='u';break;
+    case KEYC_HYPER_L:			number = 57445; final='u';break;
+    case KEYC_META_L:			number = 57446; final='u';break;
+    case KEYC_SHIFT_R:			number = 57447; final='u';break;
+    case KEYC_CONTROL_R:		number = 57448; final='u';break;
+    case KEYC_ALT_R:			number = 57449; final='u';break;
+    case KEYC_SUPER_R:			number = 57450; final='u';break;
+    case KEYC_HYPER_R:			number = 57451; final='u';break;
+    case KEYC_META_R:			number = 57452; final='u';break;
+    case KEYC_ISO_LEVEL3_SHIFT:	number = 57453; final='u';break;
+    case KEYC_ISO_LEVEL5_SHIFT:	number = 57454; final='u';break;
+	default:
+		number=onlykey;
+		final='u';
+	}
+    if (final == 'u' || final == '~') {
+		/* CSI number ; modifiers ~ */
+		/* CSI number ; modifiers u */
+		if(modifier==1){
+			xsnprintf(tmp, sizeof tmp, "\033[%u%c",number,final);
+		}else{
+			xsnprintf(tmp, sizeof tmp, "\033[%u;%u%c",number,modifier,final);
+		}
+		input_key_write(__func__, bev, tmp, strlen(tmp));
+		return 0;
+	}else{
+		/* CSI 1; modifiers [ABCDEFHPQS] */
+		/* CSI [ABCDEFHPQS] */
+		if(modifier==1){
+			xsnprintf(tmp, sizeof tmp, "\033[%c",final);
+		}else{
+			xsnprintf(tmp, sizeof tmp, "\033[%u;%u%c",number,modifier,final);
+		}
+		input_key_write(__func__, bev, tmp, strlen(tmp));
+		return 0;
+	}
+	return -1;
+}
+
 
 /* Translate a key code into an output key sequence. */
 int
@@ -434,10 +672,24 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 	key_code		 justkey, newkey, outkey, modifiers;
 	struct utf8_data	 ud;
 	char			 tmp[64], modifier;
+	enum kitty_kbd_flags kitty_flags ;
 
 	/* Mouse keys need a pane. */
 	if (KEYC_IS_MOUSE(key))
 		return (0);
+    kitty_flags = s->kitty_kbd.flags[s->kitty_kbd.idx];
+	if (kitty_flags){
+		if(input_key_kitty(s,bev,key) == 0)
+			return (0);
+	}
+	/* legacy encoding key events */
+	/* treat these modifers as alt */
+	if(key & (KEYC_SUPER|KEYC_HYPER|KEYC_REAL_META))
+		/* treat super/hyper/meta as alt */
+		key |= KEYC_META|KEYC_IMPLIED_META;
+	key &= ~(KEYC_SUPER|KEYC_HYPER|KEYC_REAL_META);
+	log_debug("legacy key 0x%llx (%s) to %%", key,
+			  key_string_lookup_key(key, 1) );
 
 	/* Literal keys go as themselves (can't be more than eight bits). */
 	if (key & KEYC_LITERAL) {
@@ -545,32 +797,10 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 		outkey = 64 + outkey;
 		modifiers |= KEYC_CTRL;
 	}
-	switch (modifiers) {
-	case KEYC_SHIFT:
-		modifier = '2';
-		break;
-	case KEYC_META:
-		modifier = '3';
-		break;
-	case KEYC_SHIFT|KEYC_META:
-		modifier = '4';
-		break;
-	case KEYC_CTRL:
-		modifier = '5';
-		break;
-	case KEYC_SHIFT|KEYC_CTRL:
-		modifier = '6';
-		break;
-	case KEYC_META|KEYC_CTRL:
-		modifier = '7';
-		break;
-	case KEYC_SHIFT|KEYC_META|KEYC_CTRL:
-		modifier = '8';
-		break;
-	default:
+	modifier=get_legacy_modifier(key);
+	if(modifier==1)
 		goto missing;
-	}
-	xsnprintf(tmp, sizeof tmp, "\033[%llu;%cu", outkey, modifier);
+	xsnprintf(tmp, sizeof tmp, "\033[%llu;%uu", outkey, modifier);
 	input_key_write(__func__, bev, tmp, strlen(tmp));
 	return (0);
 
