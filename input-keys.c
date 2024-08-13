@@ -115,6 +115,9 @@ static struct input_key_entry input_key_defaults[] = {
 	{ .key = KEYC_BTAB,
 	  .data = "\033[Z"
 	},
+	{ .key = KEYC_BTAB|KEYC_CSI_U,
+	  .data = "\033[Z"
+	},
 
 	/* Arrow keys. */
 	{ .key = KEYC_UP|KEYC_CURSOR,
@@ -307,6 +310,11 @@ static struct input_key_entry input_key_defaults[] = {
 	{ .key = KEYC_DC|KEYC_BUILD_MODIFIERS,
 	  .data = "\033[3;_~"
 	},
+
+	/* Backtab with modifiers is a CSI u extension. */
+	{ .key = KEYC_BTAB|KEYC_CSI_U|KEYC_BUILD_MODIFIERS,
+	  .data = "\033[1;_Z"
+	},
 };
 static const key_code input_key_modifiers[] = {
 	0,
@@ -417,7 +425,7 @@ input_key_write(const char *from, struct bufferevent *bev, const char *data,
  * possible formats, depending on the configured output mode.
  */
 static int
-input_key_extended(struct bufferevent *bev, key_code key)
+input_key_extended(struct screen *s, struct bufferevent *bev, key_code key)
 {
 	char		 tmp[64], modifier;
 	struct utf8_data ud;
@@ -458,10 +466,22 @@ input_key_extended(struct bufferevent *bev, key_code key)
 	} else
 		key &= KEYC_MASK_KEY;
 
-	if (options_get_number(global_options, "extended-keys-format") == 1)
-		xsnprintf(tmp, sizeof tmp, "\033[27;%c;%llu~", modifier, key);
-	else
+	switch (s->mode & EXTENDED_KEY_MODES) {
+	case MODE_KEYS_EXTENDED:
+	case MODE_KEYS_EXTENDED | MODE_KEYS_CSI_U:
+	case MODE_KEYS_EXTENDED_2:
+	case MODE_KEYS_EXTENDED_2 | MODE_KEYS_CSI_U:
+		if (options_get_number(global_options, "extended-keys-format") == 1) {
+			xsnprintf(tmp, sizeof tmp, "\033[27;%c;%llu~", modifier, key);
+			break;
+		}
+		/* Fall-through is intentional. */
+	case MODE_KEYS_CSI_U:
 		xsnprintf(tmp, sizeof tmp, "\033[%llu;%cu", key, modifier);
+		break;
+	default:
+		return (-1);
+	}
 
 	input_key_write(__func__, bev, tmp, strlen(tmp));
 	return (0);
@@ -563,6 +583,31 @@ input_key_mode1(struct bufferevent *bev, key_code key)
 	return (-1);
 }
 
+/* Pick keys that are reported as vt10x keys in CSI u mode. */
+static int
+input_key_csi_u(struct bufferevent *bev, key_code key)
+{
+	key_code	 onlykey;
+
+	log_debug("%s: key in %llx", __func__, key);
+
+	/* A regular or shifted ASCII key + Meta. */
+	if ((key & (KEYC_CTRL | KEYC_META)) == KEYC_META)
+		return (input_key_vt10x(bev, key));
+
+	/*
+	 * An unshifted letter key + Ctrl, except Ctrl-I, Ctrl-M,
+	 * and Ctrl-J, in order to disambiguate with TAB and RET.
+	 */
+	onlykey = key & KEYC_MASK_KEY;
+	if ((key & KEYC_MASK_MODIFIERS) == KEYC_CTRL &&
+	    ((onlykey >= 'a' && onlykey <= 'z') || onlykey == ' ') &&
+	    onlykey != 'i' && onlykey != 'm' && onlykey != 'j')
+		return (input_key_vt10x(bev, key));
+
+	return (-1);
+}
+
 /* Translate a key code into an output key sequence. */
 int
 input_key(struct screen *s, struct bufferevent *bev, key_code key)
@@ -592,7 +637,13 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 
 	/* Is this backtab? */
 	if ((key & KEYC_MASK_KEY) == KEYC_BTAB) {
-		if ((s->mode & EXTENDED_KEY_MODES) != 0) {
+		if ((s->mode & EXTENDED_KEY_MODES) == MODE_KEYS_CSI_U) {
+			/*
+			 * When in CSI u mode, add a flag to enable lookup of
+			 * CSI u extensions.
+			 */
+			key |= KEYC_CSI_U;
+		} else if ((s->mode & EXTENDED_KEY_MODES) != 0) {
 			/* When in xterm extended mode, remap into S-Tab. */
 			key = '\011' | (key & ~KEYC_MASK_KEY) | KEYC_SHIFT;
 		} else {
@@ -665,21 +716,37 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 	 * produced. For example Ctrl-Shift-2 is invalid (as there's
 	 * no way to enter it). The correct form is Ctrl-Shift-@, at
 	 * least in US English keyboard layout.
+	 *
+	 * On top of that, there's no way for us to add the missing Shift
+	 * modifier. So if the user presses Ctrl-Shift-2 in US English
+	 * keyboard layout, iTerm 2 will send @|CTRL in CSI u mode, and
+	 * we are forced to send this out, even if the "correct" sequence
+	 * would have been @|CTRL|SHIFT.
 	 */
 	switch (s->mode & EXTENDED_KEY_MODES) {
 	case MODE_KEYS_EXTENDED_2:
+	case MODE_KEYS_EXTENDED_2 | MODE_KEYS_CSI_U:
 		/*
 		 * The simplest mode to handle - *all* modified keys are
 		 * reported in the extended form.
 		 */
-		return (input_key_extended(bev, key));
+		return (input_key_extended(s, bev, key));
         case MODE_KEYS_EXTENDED:
+        case MODE_KEYS_EXTENDED | MODE_KEYS_CSI_U:
 		/*
 		 * Some keys are still reported in standard mode, to maintain
 		 * compatibility with applications unaware of extended keys.
 		 */
 		if (input_key_mode1(bev, key) == -1)
-			return (input_key_extended(bev, key));
+			return (input_key_extended(s, bev, key));
+		return (0);
+	case MODE_KEYS_CSI_U:
+		/*
+		 * Some keys are still reported in standard mode, to maintain
+		 * compatibility with applications unaware of extended keys.
+		 */
+		if (input_key_csi_u(bev, key) == -1)
+			return (input_key_extended(s, bev, key));
 		return (0);
 	default:
 		/* The standard mode. */

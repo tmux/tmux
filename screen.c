@@ -103,6 +103,8 @@ screen_init(struct screen *s, u_int sx, u_int sy, u_int hlimit)
 void
 screen_reinit(struct screen *s)
 {
+	int	 extkeys;
+
 	s->cx = 0;
 	s->cy = 0;
 
@@ -111,8 +113,11 @@ screen_reinit(struct screen *s)
 
 	s->mode = MODE_CURSOR|MODE_WRAP|(s->mode & MODE_CRLF);
 
-	if (options_get_number(global_options, "extended-keys") == 2)
+	extkeys = options_get_number(global_options, "extended-keys");
+	if (extkeys == 2)
 		s->mode = (s->mode & ~EXTENDED_KEY_MODES)|MODE_KEYS_EXTENDED;
+	if (extkeys == 3)
+		s->mode = (s->mode & ~EXTENDED_KEY_MODES)|MODE_KEYS_CSI_U;
 
 	if (s->saved_grid != NULL)
 		screen_alternate_off(s, NULL, 0);
@@ -735,6 +740,8 @@ screen_mode_to_string(int mode)
 		strlcat(tmp, "KEYS_EXTENDED,", sizeof tmp);
 	if (mode & MODE_KEYS_EXTENDED_2)
 		strlcat(tmp, "KEYS_EXTENDED_2,", sizeof tmp);
+	if (mode & MODE_KEYS_CSI_U)
+		strlcat(tmp, "KEYS_CSI_U,", sizeof tmp);
 	tmp[strlen(tmp) - 1] = '\0';
 	return (tmp);
 }

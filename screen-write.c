@@ -321,14 +321,18 @@ void
 screen_write_reset(struct screen_write_ctx *ctx)
 {
 	struct screen	*s = ctx->s;
+	int		 extkeys;
 
 	screen_reset_tabs(s);
 	screen_write_scrollregion(ctx, 0, screen_size_y(s) - 1);
 
 	s->mode = MODE_CURSOR|MODE_WRAP;
 
-	if (options_get_number(global_options, "extended-keys") == 2)
+	extkeys = options_get_number(global_options, "extended-keys");
+	if (extkeys == 2)
 		s->mode = (s->mode & ~EXTENDED_KEY_MODES)|MODE_KEYS_EXTENDED;
+	if (extkeys == 3)
+		s->mode = (s->mode & ~EXTENDED_KEY_MODES)|MODE_KEYS_CSI_U;
 
 	screen_write_clearscreen(ctx, 8);
 	screen_write_set_cursor(ctx, 0, 0);

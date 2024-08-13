@@ -1411,6 +1411,12 @@ input_csi_dispatch(struct input_ctx *ictx)
 		/*
 		 * Set the extended key reporting mode as per the client request,
 		 * unless "extended-keys always" forces us into mode 1.
+		 *
+		 * Note that having both MODE_KEYS_CSI_U and MODE_KEYS_EXTENDED
+		 * or MODE_KEYS_EXTENDED_2 set is valid, as CSI u mode is an
+		 * extension to the standard mode, meaning that setting an
+		 * extended mode overrides it, and clearing an extended mode
+		 * reverts back to it.
 		 */
 		if (options_get_number(global_options, "extended-keys") != 1)
 			break;
@@ -1426,6 +1432,8 @@ input_csi_dispatch(struct input_ctx *ictx)
 		/*
 		 * Clear the extended key reporting mode as per the client request,
 		 * unless "extended-keys always" forces us into mode 1.
+		 *
+		 * Same as above, MODE_KEYS_CSI_U is untouched.
 		 */
 		if (n == 4) {
 			screen_write_mode_clear(sctx,

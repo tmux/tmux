@@ -91,7 +91,7 @@ static const char *options_table_detach_on_destroy_list[] = {
 	"off", "on", "no-detached", "previous", "next", NULL
 };
 static const char *options_table_extended_keys_list[] = {
-	"off", "on", "always", NULL
+	"off", "on", "always", "kkp", NULL
 };
 static const char *options_table_extended_keys_format_list[] = {
 	"csi-u", "xterm", NULL
