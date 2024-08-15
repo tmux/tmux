@@ -40,8 +40,9 @@ static void	window_copy_free(struct window_mode_entry *);
 static void	window_copy_resize(struct window_mode_entry *, u_int, u_int);
 static void	window_copy_formats(struct window_mode_entry *,
 		    struct format_tree *);
+static void	window_copy_scroll1(struct window_mode_entry *, struct window_pane *wp, int, u_int, int);
 static void	window_copy_pageup1(struct window_mode_entry *, int);
-static int	window_copy_pagedown(struct window_mode_entry *, int, int);
+static int	window_copy_pagedown1(struct window_mode_entry *, int, int);
 static void	window_copy_next_paragraph(struct window_mode_entry *);
 static void	window_copy_previous_paragraph(struct window_mode_entry *);
 static void	window_copy_redraw_selection(struct window_mode_entry *, u_int);
@@ -594,6 +595,105 @@ window_copy_vadd(struct window_pane *wp, int parse, const char *fmt, va_list ap)
 }
 
 void
+window_copy_scroll(struct window_pane *wp, int mouse_scrollbar_elevator_grip, u_int mouse_y)
+{
+	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
+	struct window_copy_mode_data	*data;
+
+        window_set_active_pane(wp->window, wp, 0);
+
+        if (wme != NULL) {
+                data =  wme->data;
+                window_copy_scroll1(TAILQ_FIRST(&wp->modes), wp, mouse_scrollbar_elevator_grip, mouse_y, data->scroll_exit);
+        }
+}
+
+static void
+window_copy_scroll1(struct window_mode_entry *wme, struct window_pane *wp, int mouse_scrollbar_elevator_grip, u_int mouse_y, int scroll_exit)
+{
+	struct window_copy_mode_data	*data = wme->data;
+	u_int				 ox, oy, px, py, n;
+        u_int				 elevator_pos = wp->sb_epos;
+        u_int				 elevator_height = wp->sb_eh;
+        u_int				 sb_height = wp->sb_h;
+        u_int				 sb_top = wp->yoff;
+        int				 new_elevator_pos;
+        int				 delta;
+        u_int				 cm_y_pos, cm_size, new_cm_y_pos;
+
+	log_debug("%s: elevator %u mouse %u", __func__, elevator_pos, mouse_y);
+
+        if (mouse_y < sb_top + mouse_scrollbar_elevator_grip)
+                new_elevator_pos = sb_top - wp->yoff;
+        else if (mouse_y > sb_top + (sb_height - (elevator_height - mouse_scrollbar_elevator_grip)))
+                new_elevator_pos = sb_top  - wp->yoff + (sb_height - elevator_height);
+        else
+                new_elevator_pos = mouse_y - wp->yoff - mouse_scrollbar_elevator_grip;
+
+	log_debug("%s: new elevator %u mouse %u", __func__, new_elevator_pos, mouse_y);
+
+        if (TAILQ_FIRST(&wp->modes) == NULL ||
+            window_copy_mode_get_current_offset_and_size(wp, &cm_y_pos, &cm_size) == 0)
+                return;
+        
+        new_cm_y_pos = (u_int)(new_elevator_pos) * ((float)(cm_size + sb_height) / sb_height);
+
+        delta = (int)cm_y_pos - new_cm_y_pos;
+        log_debug("%s: delta %d mouse %u", __func__, delta, mouse_y);
+
+        oy = screen_hsize(data->backing) + data->cy - data->oy;
+	ox = window_copy_find_length(wme, oy);
+
+	if (data->cx != ox) {
+		data->lastcx = data->cx;
+		data->lastsx = ox;
+	}
+	data->cx = data->lastcx;
+
+        if (delta >= 0) {
+                n = (u_int)delta;
+                if (data->oy + n > screen_hsize(data->backing)) {
+                        data->oy = screen_hsize(data->backing);
+                        if (data->cy < n)
+                                data->cy = 0;
+                        else
+                                data->cy -= n;
+                } else
+                        data->oy += n;
+        } else {
+                n = (u_int)-delta;
+                if (data->oy < n) {
+                        data->oy = 0;
+                        if (data->cy + (n - data->oy) >= screen_size_y(data->backing))
+                                data->cy = screen_size_y(data->backing) - 1;
+                        else
+                                data->cy += n - data->oy;
+                } else
+                        data->oy -= n;
+        }
+
+	if (data->screen.sel == NULL || !data->rectflag) {
+		py = screen_hsize(data->backing) + data->cy - data->oy;
+		px = window_copy_find_length(wme, py);
+		if ((data->cx >= data->lastsx && data->cx != px) ||
+		    data->cx > px)
+			window_copy_cursor_end_of_line(wme);
+	}
+        
+	if (scroll_exit && data->oy == 0) {
+		window_pane_reset_mode(wp);
+                return;
+        }
+
+	if (data->searchmark != NULL && !data->timeout)
+		window_copy_search_marks(wme, NULL, data->searchregex, 1);
+	window_copy_update_selection(wme, 1, 0);
+	window_copy_redraw_screen(wme);
+
+        return;
+}
+
+void
 window_copy_pageup(struct window_pane *wp, int half_page)
 {
 	window_copy_pageup1(TAILQ_FIRST(&wp->modes), half_page);
@@ -646,8 +746,18 @@ window_copy_pageup1(struct window_mode_entry *wme, int half_page)
 	window_copy_redraw_screen(wme);
 }
 
+void
+window_copy_pagedown(struct window_pane *wp, int half_page, int scroll_exit)
+{
+	if (window_copy_pagedown1(TAILQ_FIRST(&wp->modes), half_page, scroll_exit)) {
+                window_pane_reset_mode(wp);
+                return;
+        }
+
+}
+
 static int
-window_copy_pagedown(struct window_mode_entry *wme, int half_page,
+window_copy_pagedown1(struct window_mode_entry *wme, int half_page,
     int scroll_exit)
 {
 	struct window_copy_mode_data	*data = wme->data;
@@ -1347,7 +1457,7 @@ window_copy_cmd_halfpage_down(struct window_copy_cmd_state *cs)
 	u_int				 np = wme->prefix;
 
 	for (; np != 0; np--) {
-		if (window_copy_pagedown(wme, 1, data->scroll_exit))
+		if (window_copy_pagedown1(wme, 1, data->scroll_exit))
 			return (WINDOW_COPY_CMD_CANCEL);
 	}
 	return (WINDOW_COPY_CMD_NOTHING);
@@ -1361,7 +1471,7 @@ window_copy_cmd_halfpage_down_and_cancel(struct window_copy_cmd_state *cs)
 	u_int				 np = wme->prefix;
 
 	for (; np != 0; np--) {
-		if (window_copy_pagedown(wme, 1, 1))
+		if (window_copy_pagedown1(wme, 1, 1))
 			return (WINDOW_COPY_CMD_CANCEL);
 	}
 	return (WINDOW_COPY_CMD_NOTHING);
@@ -1789,7 +1899,7 @@ window_copy_cmd_page_down(struct window_copy_cmd_state *cs)
 	u_int				 np = wme->prefix;
 
 	for (; np != 0; np--) {
-		if (window_copy_pagedown(wme, 0, data->scroll_exit))
+		if (window_copy_pagedown1(wme, 0, data->scroll_exit))
 			return (WINDOW_COPY_CMD_CANCEL);
 	}
 	return (WINDOW_COPY_CMD_NOTHING);
@@ -1802,7 +1912,7 @@ window_copy_cmd_page_down_and_cancel(struct window_copy_cmd_state *cs)
 	u_int				 np = wme->prefix;
 
 	for (; np != 0; np--) {
-		if (window_copy_pagedown(wme, 0, 1))
+		if (window_copy_pagedown1(wme, 0, 1))
 			return (WINDOW_COPY_CMD_CANCEL);
 	}
 	return (WINDOW_COPY_CMD_NOTHING);

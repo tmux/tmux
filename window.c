@@ -590,11 +590,31 @@ struct window_pane *
 window_get_active_at(struct window *w, u_int x, u_int y)
 {
 	struct window_pane	*wp;
+        int			 pane_scrollbars;
+        u_int			 sb_pos, sb_w, xoff, sx;
+
+        pane_scrollbars = options_get_number(w->options, "pane-scrollbars");
+	sb_pos = options_get_number(w->options, "pane-vertical-scrollbars-position");
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
+                if (pane_scrollbars == PANE_SCROLLBARS_ALWAYS ||
+                    (pane_scrollbars == PANE_SCROLLBARS_MODAL && window_pane_mode(wp) != WINDOW_PANE_TERMINAL_MODE))
+                        sb_w = options_get_number(w->options, "pane-vertical-scrollbars-width");
+                else
+                        sb_w = 0;
+
 		if (!window_pane_visible(wp))
 			continue;
-		if (x < wp->xoff || x > wp->xoff + wp->sx)
+
+                if (sb_pos == PANE_VERTICAL_SCROLLBARS_LEFT) {
+                        xoff = wp->xoff - sb_w;
+                        sx = wp->sx + sb_w;
+                } else {
+                	/* sb_pos == PANE_VERTICAL_SCROLLBARS_RIGHT */
+                        xoff = wp->xoff;
+                        sx = wp->sx + sb_w;
+                }
+		if (x < xoff || x > xoff + sx)
 			continue;
 		if (y < wp->yoff || y > wp->yoff + wp->sy)
 			continue;

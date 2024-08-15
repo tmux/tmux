@@ -1079,6 +1079,11 @@ screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx, struct window_p
 
         screen_redraw_draw_scrollbar(ctx, wp, sb_x, sb_y, sb_height, elevator_height, elevator_pos);
 
+        wp->sb_epos = elevator_pos;   /* top of elevator y position in scrollbar */
+        wp->sb_eh = elevator_height;  /* height of scrollbar "elevator car"   */
+        wp->sb_h = sb_height;         /* height of scrollbar "elevator shaft" */
+        /* wp->y_off = top of scrollbar */
+
         wp->flags &= ~PANE_REDRAW_SCROLLBARS;
 }
 

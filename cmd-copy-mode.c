@@ -30,7 +30,7 @@ const struct cmd_entry cmd_copy_mode_entry = {
 	.name = "copy-mode",
 	.alias = NULL,
 
-	.args = { "eHMs:t:uq", 0, 0, NULL },
+	.args = { "eHMs:t:udqS", 0, 0, NULL },
 	.usage = "[-eHMuq] [-s src-pane] " CMD_TARGET_PANE_USAGE,
 
 	.source =  { 's', CMD_FIND_PANE, 0 },
@@ -91,6 +91,14 @@ cmd_copy_mode_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	if (args_has(args, 'u'))
 		window_copy_pageup(wp, 0);
+
+	if (args_has(args, 'd'))
+                window_copy_pagedown(wp, 0, args_has(args, 'e'));
+
+	if (args_has(args, 'S')) {
+                window_copy_scroll(wp, event->m.sb_grip, event->m.y);
+		return (CMD_RETURN_NORMAL);
+	}
 
 	return (CMD_RETURN_NORMAL);
 }

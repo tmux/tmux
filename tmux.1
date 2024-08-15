@@ -2108,14 +2108,23 @@ The synopsis for the
 command is:
 .Bl -tag -width Ds
 .It Xo Ic copy-mode
-.Op Fl eHMqu
+.Op Fl eHMqudS
 .Op Fl s Ar src-pane
 .Op Fl t Ar target-pane
 .Xc
 Enter copy mode.
 The
 .Fl u
-option scrolls one page up.
+option scrolls one page up, useful when bound to
+.Ar mouseDown1ScrollbarUp .
+The
+.Fl d
+option scrolls one page down, useful when bound to
+.Ar mouseDown1ScrollbarDown .
+The
+.Fl S
+option scrolls when bound to a draggable button, e.g.
+.Ar mouseDrag1ScrollbarElevator .
 .Fl M
 begins a mouse drag (only valid if bound to a mouse key binding, see
 .Sx MOUSE SUPPORT ) .
