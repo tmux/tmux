@@ -672,6 +672,9 @@ window_copy_scroll1(struct window_mode_entry *wme, struct window_pane *wp, int m
                         data->oy -= n;
         }
 
+        /* don't also drag tail when dragging a scrollbar */
+        data->cursordrag = CURSORDRAG_NONE;
+
 	if (data->screen.sel == NULL || !data->rectflag) {
 		py = screen_hsize(data->backing) + data->cy - data->oy;
 		px = window_copy_find_length(wme, py);
