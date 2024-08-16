@@ -258,7 +258,7 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
                                     (px <= ex || (pane_scrollbars && px-1==ex))) {
                                         if (wp->yoff != 0 && py == wp->yoff - 1)
                                                 return (SCREEN_REDRAW_BORDER_TOP);
-                                        if (py == ey - sb_w)
+                                        if (py == ey) /* xxx */
                                                 return (SCREEN_REDRAW_BORDER_BOTTOM);
                                 }
                         } else {
