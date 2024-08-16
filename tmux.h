@@ -1405,8 +1405,6 @@ struct mouse_event {
 
 	u_int		sgr_type;
 	u_int		sgr_b;
-
-	int		sb_grip;
 };
 
 /* Key event. */
@@ -1509,6 +1507,7 @@ struct tty {
 	u_int		 mouse_last_b;
 	int		 mouse_drag_flag;
 	int		 mouse_scrolling_flag;
+	int		 mouse_sb_grip;
 
 	void		(*mouse_drag_update)(struct client *,
 			    struct mouse_event *);

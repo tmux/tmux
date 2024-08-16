@@ -619,28 +619,35 @@ window_copy_scroll1(struct window_mode_entry *wme, struct window_pane *wp, int m
         u_int				 sb_top = wp->yoff;
         int				 new_elevator_pos;
         int				 delta;
-        u_int				 cm_y_pos, cm_size, new_cm_y_pos;
+        u_int				 offset, size, new_offset;
 
 	log_debug("%s: elevator %u mouse %u", __func__, elevator_pos, mouse_y);
 
+        /* grip is where in elevator user is dragging around, mouse is dragging this y point */
         if (mouse_y < sb_top + mouse_scrollbar_elevator_grip)
+                /* elevator banged into top of shaft */
                 new_elevator_pos = sb_top - wp->yoff;
-        else if (mouse_y > sb_top + (sb_height - (elevator_height - mouse_scrollbar_elevator_grip)))
+        else if (mouse_y - mouse_scrollbar_elevator_grip > sb_top + sb_height - elevator_height)
+                /* elevator banged into bottom of shaft */
                 new_elevator_pos = sb_top  - wp->yoff + (sb_height - elevator_height);
         else
+                /* elevator is somewhere in the middle of the shaft */
                 new_elevator_pos = mouse_y - wp->yoff - mouse_scrollbar_elevator_grip;
 
 	log_debug("%s: new elevator %u mouse %u", __func__, new_elevator_pos, mouse_y);
 
         if (TAILQ_FIRST(&wp->modes) == NULL ||
-            window_copy_mode_get_current_offset_and_size(wp, &cm_y_pos, &cm_size) == 0)
+            window_copy_mode_get_current_offset_and_size(wp, &offset, &size) == 0)
                 return;
-        
-        new_cm_y_pos = (u_int)(new_elevator_pos) * ((float)(cm_size + sb_height) / sb_height);
 
-        delta = (int)cm_y_pos - new_cm_y_pos;
+        /* see screen_redraw_draw_pane_scrollbar(), this is the inverse formula used there */
+        new_offset = (u_int)(new_elevator_pos) * ((float)(size + sb_height) / sb_height);
+
+        delta = (int)offset - new_offset;
+
         log_debug("%s: delta %d mouse %u", __func__, delta, mouse_y);
 
+        /* move pane view around based on delta relative to the cursor, maintaining the selection */
         oy = screen_hsize(data->backing) + data->cy - data->oy;
 	ox = window_copy_find_length(wme, oy);
 
@@ -672,7 +679,7 @@ window_copy_scroll1(struct window_mode_entry *wme, struct window_pane *wp, int m
                         data->oy -= n;
         }
 
-        /* don't also drag tail when dragging a scrollbar */
+        /* don't also drag tail when dragging a scrollbar, it looks weird */
         data->cursordrag = CURSORDRAG_NONE;
 
 	if (data->screen.sel == NULL || !data->rectflag) {

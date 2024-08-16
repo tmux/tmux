@@ -96,7 +96,7 @@ cmd_copy_mode_exec(struct cmd *self, struct cmdq_item *item)
                 window_copy_pagedown(wp, 0, args_has(args, 'e'));
 
 	if (args_has(args, 'S')) {
-                window_copy_scroll(wp, event->m.sb_grip, event->m.y);
+                window_copy_scroll(wp, c->tty.mouse_sb_grip, event->m.y);
 		return (CMD_RETURN_NORMAL);
 	}
 

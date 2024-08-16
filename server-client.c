@@ -1002,7 +1002,7 @@ have_event:
 			break;
 		}
 		c->tty.mouse_drag_flag = 0;
-                m->sb_grip = -1;
+                c->tty.mouse_sb_grip = -1;
 		goto out;
 	}
 
@@ -1222,7 +1222,7 @@ have_event:
 		c->tty.mouse_drag_flag = MOUSE_BUTTONS(b) + 1;
                 if (c->tty.mouse_scrolling_flag == 0 && where == SCROLLBAR_ELEVATOR) {
                         c->tty.mouse_scrolling_flag = 1;
-                        m->sb_grip = where_in_elevator;
+                        c->tty.mouse_sb_grip = where_in_elevator;
                 }
 		break;
 	case WHEEL:
