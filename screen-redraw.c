@@ -123,23 +123,54 @@ screen_redraw_two_panes(struct window *w, int direction)
  *      |         sb_w^  |         sb_w^
  *      ^wp->xoff        ^wp->xoff
  *
- *   sb_pos == PANE_VERTICAL_SCROLLBARS_LEFT
+ *   sb_pos == PANE_VERTICAL_SCROLLBARS_LEFT:
  *
  *     .0...................o...........X.
- *     :SSSa           zBSSSa           z:
+ *     :SSSa           zBSSSa           z: <- Notes, see below
  *      |_||___wp->sx___||_||___wp->sx___|
- *   sb_w^ ^wp->xoff  sb_w^ ^wp->xoff
+ *   sb_w^ |          sb_w^ |
+ *         ^wp->xoff        ^wp->xoff
  *
  * Terminal window tmux runs inide is X+1 characters wide
  * 0 is the first column of the terminal
- * a is the first column of the pane
- * z is the last column of the pane
+ * X is the last column of the terminal, so 0-79 is 80 chars wide (px is [0..X])
+ * o is the offset of righthand pane in diagram (not a variable)
+ * a is the first column of each pane
+ * z is the last column of each pane
  * wp->xoff (rel to terminal) is character offset of the pane,
  *   it will be 0 for left pane and o for right pane above.
- * wp->sx is usable character width of pane (size of x axis)
+ * wp->sx is size of pane (usable width of pane in characters)
  * sb_w is the width of the scrollbar in characters
- * S is the scrollbar
- * B is the pane border, there is a right and left and they are superimposed
+ * S is the scrollbar, (in this example sb_w would be 3)
+ * B is the pane border, if there is a right and left and they are superimposed
+ *
+ * The vertical situation looks like this:
+ *  .....
+ *  :Border (if pane-border-status==top)
+ * 0:  | <-  wp->yoff
+ *  :  |
+ *  :  |
+ *  :  wp->sy
+ *  :  |
+ *  :  |
+ *  :Border
+ * o:  | <-  wp->yoff
+ *  :  |
+ *  :  |
+ *  :  wp->sy
+ *  :  |
+ *  :  |
+ *  :Border (if pane-border-status==bottom)
+ * Y:Status line(s)
+ *  .....
+ *
+ * 0 is first line of terminal
+ * Y is last line of terminal (py is [0..Y])
+ * o is the offset of the lower window in diagram (not a variable)
+ * wp->yoff (rel to terminal) is first line of pane
+ * wp->sy is usable size of pane in lines (6 in above example)
+ * There can be zero to 5 status lines
+ * Panes can have an optional border status
  *
  */
 
@@ -175,43 +206,42 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
         }
 
 	/* Left/right borders. */
-
-		if (screen_redraw_two_panes(wp->window, 0) && split) {
-                        /* The wp->sy / 2 test is used to show half the active window's border
-                         * and the other half the other window.  It's easy to do this when
-                         * 1 windows vertically, so this feature only works when there's exactly
-                         * 2 side-by-side panes.  This could be genralised in the future.
-                         */
-                        if ((wp->yoff == 0 || py >= wp->yoff - 1) && py <= ey) {
-                                if (sb_pos == PANE_VERTICAL_SCROLLBARS_LEFT) {
-                                        if (wp->xoff - sb_w == 0 && px == wp->sx + sb_w && py <= wp->sy / 2)
-                                                return (SCREEN_REDRAW_BORDER_RIGHT);
-                                        if (wp->xoff - sb_w != 0 && px == wp->xoff - sb_w - 1 && py > wp->sy / 2)
-                                                return (SCREEN_REDRAW_BORDER_LEFT);
-                                } else {
-                                        /* sb_pos == PANE_VERTICAL_SCROLLBARS_RIGHT */
-                                        if (wp->xoff == 0 && px == wp->sx + sb_w && py <= wp->sy / 2)
-                                                return (SCREEN_REDRAW_BORDER_RIGHT);
-                                        if (wp->xoff != 0 && px == wp->xoff - 1 && py > wp->sy / 2)
-                                                return (SCREEN_REDRAW_BORDER_LEFT);
-                                }
+        if (screen_redraw_two_panes(wp->window, 0) && split) {
+                /* The wp->sy / 2 test is used to show half the active window's border
+                 * and the other half the other window.  It's easy to do this when
+                 * 1 window vertically, so this feature only works when there's exactly
+                 * 2 side-by-side panes.  This could be genralised in the future.
+                 */
+                if ((wp->yoff == 0 || py >= wp->yoff - 1) && py <= ey) {
+                        if (sb_pos == PANE_VERTICAL_SCROLLBARS_LEFT) {
+                                if (wp->xoff - sb_w == 0 && px == wp->sx + sb_w && py <= wp->sy / 2)
+                                        return (SCREEN_REDRAW_BORDER_RIGHT);
+                                if (wp->xoff - sb_w != 0 && px == wp->xoff - sb_w - 1 && py > wp->sy / 2)
+                                        return (SCREEN_REDRAW_BORDER_LEFT);
+                        } else {
+                                /* sb_pos == PANE_VERTICAL_SCROLLBARS_RIGHT */
+                                if (wp->xoff == 0 && px == wp->sx + sb_w && py <= wp->sy / 2)
+                                        return (SCREEN_REDRAW_BORDER_RIGHT);
+                                if (wp->xoff != 0 && px == wp->xoff - 1 && py > wp->sy / 2)
+                                        return (SCREEN_REDRAW_BORDER_LEFT);
                         }
-		} else {
-                        if ((wp->yoff == 0 || py >= wp->yoff - 1) && py <= ey) {
-                                if (sb_pos == PANE_VERTICAL_SCROLLBARS_LEFT) {
-                                        if (wp->xoff - sb_w == 0 && px == wp->sx + sb_w)
-                                                return (SCREEN_REDRAW_BORDER_RIGHT);
-                                        if (wp->xoff - sb_w != 0 && px == wp->xoff - sb_w - 1)
-                                                return (SCREEN_REDRAW_BORDER_LEFT);
-                                } else {
-                                        /* sb_pos == PANE_VERTICAL_SCROLLBARS_RIGHT */
-                                        if (wp->xoff == 0 && px == wp->sx + sb_w)
-                                                return (SCREEN_REDRAW_BORDER_RIGHT);
-                                        if (wp->xoff != 0 && px == wp->xoff - 1)
-                                                return (SCREEN_REDRAW_BORDER_LEFT);
-                                }
+                }
+        } else {
+                if ((wp->yoff == 0 || py >= wp->yoff - 1) && py <= ey) {
+                        if (sb_pos == PANE_VERTICAL_SCROLLBARS_LEFT) {
+                                if (wp->xoff - sb_w == 0 && px == wp->sx + sb_w)
+                                        return (SCREEN_REDRAW_BORDER_RIGHT);
+                                if (wp->xoff - sb_w != 0 && px == wp->xoff - sb_w - 1)
+                                        return (SCREEN_REDRAW_BORDER_LEFT);
+                        } else {
+                                /* sb_pos == PANE_VERTICAL_SCROLLBARS_RIGHT */
+                                if (wp->xoff == 0 && px == wp->sx + sb_w)
+                                        return (SCREEN_REDRAW_BORDER_RIGHT);
+                                if (wp->xoff != 0 && px == wp->xoff - 1)
+                                        return (SCREEN_REDRAW_BORDER_LEFT);
                         }
-		}
+                }
+        }
 
 	/* Top/bottom borders. */
 	if (pane_status == PANE_STATUS_OFF) {
@@ -224,7 +254,8 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
 				return (SCREEN_REDRAW_BORDER_TOP);
 		} else {
                         if (sb_pos == PANE_VERTICAL_SCROLLBARS_LEFT) {
-                                if ((wp->xoff == 0 || px >= wp->xoff - sb_w) && (px <= ex || (pane_scrollbars && px-1==ex))) {
+                                if ((wp->xoff == 0 || px >= wp->xoff - sb_w) &&
+                                    (px <= ex || (pane_scrollbars && px-1==ex))) {
                                         if (wp->yoff != 0 && py == wp->yoff - 1)
                                                 return (SCREEN_REDRAW_BORDER_TOP);
                                         if (py == ey - sb_w)
@@ -232,7 +263,8 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
                                 }
                         } else {
                                 /* sb_pos == PANE_VERTICAL_SCROLLBARS_RIGHT */
-                                if ((wp->xoff == 0 || px >= wp->xoff) && (px <= ex || (pane_scrollbars && px-1==ex))) {
+                                if ((wp->xoff == 0 || px >= wp->xoff) &&
+                                    (px <= ex || (pane_scrollbars && px-1==ex))) {
                                         if (wp->yoff != 0 && py == wp->yoff - 1)
                                                 return (SCREEN_REDRAW_BORDER_TOP);
                                         if (py == ey)
@@ -424,7 +456,7 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py, stru
 			goto next2;
 		*wpp = wp;
 
-                /* If point is within a scrollbar, return */
+                /* If point is within a scrollbar, if so, return CELL_SCROLLBAR */
                 if (pane_scrollbars == PANE_SCROLLBARS_ALWAYS ||
                     (pane_scrollbars == PANE_SCROLLBARS_MODAL && window_pane_mode(wp) != WINDOW_PANE_TERMINAL_MODE)) {
 
@@ -1035,6 +1067,17 @@ screen_redraw_draw_pane_scrollbars(struct screen_redraw_ctx *ctx, int force)
 	}
 }
 
+/* Draw scrollbar
+ *
+ * sb_x and sb_y are the upper left character of the scrollbar
+ * sb_height is the number of lines in the scrollbar
+ * elevator_height is the number of lines tall the "elevator car"
+ * elevator_pos is the line within the sb_height of the current vertical position
+ * The height and position of the elevator are proportional to the number of lines
+ * in the scroll back buffer + number of lines on the screen (total_height) and the
+ * percentage of the number of visible lines to the total height (percent_view).
+ */
+
 static void
 screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx, struct window_pane *wp) {
         u_int			 mode;
@@ -1088,7 +1131,9 @@ screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx, struct window_p
 }
 
 static void
-screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx, struct window_pane *wp, u_int px, u_int py, u_int sb_height, u_int elevator_height, u_int elevator_pos)
+screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx, struct window_pane *wp,
+                             u_int px, u_int py, u_int sb_height,
+                             u_int elevator_height, u_int elevator_pos)
 {
 	struct client		*c = ctx->c;
 	struct tty		*tty = &c->tty;
