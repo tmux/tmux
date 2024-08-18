@@ -1212,7 +1212,7 @@ tty_keys_clipboard(struct tty *tty, const char *buf, size_t len, size_t *size)
 	}
 	if (end == len)
 		return (1);
-	*size = end + terminator;
+	*size = end + 1;
 
 	/* Skip the initial part. */
 	buf += 5;
