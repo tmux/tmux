@@ -109,10 +109,11 @@ struct input_ctx {
 	int			utf8started;
 
 	int			ch;
-	int			last;
+	struct utf8_data	last;
 
 	int			flags;
 #define INPUT_DISCARD 0x1
+#define INPUT_LAST 0x2
 
 	const struct input_state *state;
 
@@ -867,8 +868,6 @@ input_reset(struct input_ctx *ictx, int clear)
 
 	input_clear(ictx);
 
-	ictx->last = -1;
-
 	ictx->state = &input_state_ground;
 	ictx->flags = 0;
 }
@@ -1149,7 +1148,9 @@ input_print(struct input_ctx *ictx)
 
 	utf8_set(&ictx->cell.cell.data, ictx->ch);
 	screen_write_collect_add(sctx, &ictx->cell.cell);
-	ictx->last = ictx->ch;
+
+	utf8_copy(&ictx->last, &ictx->cell.cell.data);
+	ictx->flags |= INPUT_LAST;
 
 	ictx->cell.cell.attr &= ~GRID_ATTR_CHARSET;
 
@@ -1261,7 +1262,7 @@ input_c0_dispatch(struct input_ctx *ictx)
 		break;
 	}
 
-	ictx->last = -1;
+	ictx->flags &= ~INPUT_LAST;
 	return (0);
 }
 
@@ -1337,7 +1338,7 @@ input_esc_dispatch(struct input_ctx *ictx)
 		break;
 	}
 
-	ictx->last = -1;
+	ictx->flags &= ~INPUT_LAST;
 	return (0);
 }
 
@@ -1570,12 +1571,12 @@ input_csi_dispatch(struct input_ctx *ictx)
 		if (n > m)
 			n = m;
 
-		if (ictx->last == -1)
+		if (~ictx->flags & INPUT_LAST)
 			break;
-		ictx->ch = ictx->last;
 
+		utf8_copy(&ictx->cell.cell.data, &ictx->last);
 		for (i = 0; i < n; i++)
-			input_print(ictx);
+			screen_write_collect_add(sctx, &ictx->cell.cell);
 		break;
 	case INPUT_CSI_RCP:
 		input_restore_state(ictx);
@@ -1645,7 +1646,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 
 	}
 
-	ictx->last = -1;
+	ictx->flags &= ~INPUT_LAST;
 	return (0);
 }
 
@@ -2266,7 +2267,7 @@ input_enter_dcs(struct input_ctx *ictx)
 
 	input_clear(ictx);
 	input_start_timer(ictx);
-	ictx->last = -1;
+	ictx->flags &= ~INPUT_LAST;
 }
 
 /* DCS terminator (ST) received. */
@@ -2310,7 +2311,7 @@ input_enter_osc(struct input_ctx *ictx)
 
 	input_clear(ictx);
 	input_start_timer(ictx);
-	ictx->last = -1;
+	ictx->flags &= ~INPUT_LAST;
 }
 
 /* OSC terminator (ST) received. */
@@ -2405,7 +2406,7 @@ input_enter_apc(struct input_ctx *ictx)
 
 	input_clear(ictx);
 	input_start_timer(ictx);
-	ictx->last = -1;
+	ictx->flags &= ~INPUT_LAST;
 }
 
 /* APC terminator (ST) received. */
@@ -2434,7 +2435,7 @@ input_enter_rename(struct input_ctx *ictx)
 
 	input_clear(ictx);
 	input_start_timer(ictx);
-	ictx->last = -1;
+	ictx->flags &= ~INPUT_LAST;
 }
 
 /* Rename terminator (ST) received. */
@@ -2478,7 +2479,7 @@ input_top_bit_set(struct input_ctx *ictx)
 	struct screen_write_ctx	*sctx = &ictx->ctx;
 	struct utf8_data	*ud = &ictx->utf8data;
 
-	ictx->last = -1;
+	ictx->flags &= ~INPUT_LAST;
 
 	if (!ictx->utf8started) {
 		if (utf8_open(ud, ictx->ch) != UTF8_MORE)
@@ -2503,6 +2504,9 @@ input_top_bit_set(struct input_ctx *ictx)
 
 	utf8_copy(&ictx->cell.cell.data, ud);
 	screen_write_collect_add(sctx, &ictx->cell.cell);
+
+	utf8_copy(&ictx->last, &ictx->cell.cell.data);
+	ictx->flags |= INPUT_LAST;
 
 	return (0);
 }
