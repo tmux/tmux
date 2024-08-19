@@ -1627,7 +1627,7 @@ status_prompt_complete_list(u_int *size, const char *s, int at_start)
 	struct options_array_item		 *a;
 	const char				 *layouts[] = {
 		"even-horizontal", "even-vertical", "main-horizontal",
-		"main-vertical", "tiled", NULL
+		"main-vertical", "main-vertical-right", "tiled", NULL
 	};
 
 	*size = 0;
