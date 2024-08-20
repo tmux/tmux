@@ -6559,7 +6559,7 @@ section.
 .Op Fl w
 .Op Fl b Ar buffer-name
 .Op Fl t Ar target-client
-.Ar path
+.Op Ar path | -
 .Xc
 .Tg loadb
 .D1 Pq alias: Ic loadb
@@ -6572,6 +6572,9 @@ is given, the buffer is also sent to the clipboard for
 using the
 .Xr xterm 1
 escape sequence, if possible.
+If
+.Ar -
+is given, the contents are read from stdin.
 .Tg pasteb
 .It Xo Ic paste-buffer
 .Op Fl dpr
@@ -6601,7 +6604,7 @@ buffer if the application has requested bracketed paste mode.
 .It Xo Ic save-buffer
 .Op Fl a
 .Op Fl b Ar buffer-name
-.Ar path
+.Op Ar path | -
 .Xc
 .D1 Pq alias: Ic saveb
 Save the contents of the specified paste buffer to
@@ -6609,6 +6612,9 @@ Save the contents of the specified paste buffer to
 The
 .Fl a
 option appends to rather than overwriting the file.
+If
+.Ar -
+is given, the contents are read from stdin.
 .It Xo Ic set-buffer
 .Op Fl aw
 .Op Fl b Ar buffer-name
