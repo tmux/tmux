@@ -6616,6 +6616,11 @@ is given, the buffer is also sent to the clipboard for
 using the
 .Xr xterm 1
 escape sequence, if possible.
+If
+.Ar path
+is
+.Ql - ,
+the contents are read from stdin.
 .Tg pasteb
 .It Xo Ic paste-buffer
 .Op Fl dpr
@@ -6653,6 +6658,11 @@ Save the contents of the specified paste buffer to
 The
 .Fl a
 option appends to rather than overwriting the file.
+If
+.Ar path
+is
+.Ql - ,
+the contents are read from stdin.
 .It Xo Ic set-buffer
 .Op Fl aw
 .Op Fl b Ar buffer-name
