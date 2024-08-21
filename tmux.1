@@ -372,8 +372,10 @@ Enter copy mode and scroll one page up.
 Change to the pane above, below, to the left, or to the right of the current
 pane.
 .It M-1 to M-5
-Arrange panes in one of the five preset layouts: even-horizontal,
-even-vertical, main-horizontal, main-vertical, or tiled.
+Arrange panes in one of the seven preset layouts:
+even-horizontal, even-vertical,
+main-horizontal, main-horizontal-mirrored,
+main-vertical, main-vertical, or tiled.
 .It Space
 Arrange the current window in the next preset layout.
 .It M-n
@@ -2164,14 +2166,20 @@ are spread from left to right in the leftover space at the bottom.
 Use the
 .Em main-pane-height
 window option to specify the height of the top pane.
-.It Ic main-vertical
-Similar to
+.It Ic main-horizontal-mirrored
+The same as
 .Ic main-horizontal
-but the large pane is placed on the left and the others spread from top to
-bottom along the right.
-See the
+but mirrored so the main pane is at the bottom of the window.
+.It Ic main-vertical
+A large (main) pane is shown on the left of the window and the remaining panes
+are spread from top to bottom in the leftover space on the right.
+Use the
 .Em main-pane-width
-window option.
+window option to specify the width of the left pane.
+.It Ic main-vertical-mirrored
+The same as
+.Ic main-vertical
+but mirrored so the main pane is on the right of the window.
 .It Ic tiled
 Panes are spread out as evenly as possible over the window in both rows and
 columns.
@@ -3735,6 +3743,10 @@ Note that aliases are expanded when a command is parsed rather than when it is
 executed, so binding an alias with
 .Ic bind-key
 will bind the expanded form.
+.It Ic copy-command Ar shell-command
+Give the command to pipe to if the
+.Ic copy-pipe
+copy mode command is used without arguments.
 .It Ic default-terminal Ar terminal
 Set the default terminal for new windows created in this session - the
 default value of the
@@ -3748,10 +3760,6 @@ be set to
 .Ql screen ,
 .Ql tmux
 or a derivative of them.
-.It Ic copy-command Ar shell-command
-Give the command to pipe to if the
-.Ic copy-pipe
-copy mode command is used without arguments.
 .It Ic escape-time Ar time
 Set the time in milliseconds for which
 .Nm
@@ -3773,22 +3781,53 @@ If enabled, the server will exit when there are no attached clients.
 .It Xo Ic extended-keys
 .Op Ic on | off | always
 .Xc
-When
-.Ic on
-or
-.Ic always ,
-the escape sequence to enable extended keys is sent to the terminal, if
-.Nm
-knows that it is supported.
-.Nm
-always recognises extended keys itself.
-If this option is
+Controls how modified keys (keys pressed together with Control, Meta, or Shift)
+are reported.
+This is the equivalent of the
+.Ic modifyOtherKeys
+.Xr xterm 1
+resource.
+.Pp
+When set to
 .Ic on ,
-.Nm
-will only forward extended keys to applications when they request them; if
+the program inside the pane can request one of two modes: mode 1 which changes
+the sequence for only keys which lack an existing well-known representation; or
+mode 2 which changes the sequence for all keys.
+When set to
 .Ic always ,
+mode 1 output is forced and the program cannot change it.
+When set to
+.Ic off ,
+this feature is disabled and only standard keys are reported.
+.Pp
 .Nm
-will always forward the keys.
+will always request extended keys itself if the terminal supports them.
+See also the
+.Ic extkeys
+feature for the
+.Ic terminal-features
+option, the
+.Ic extended-keys-format
+option and the
+.Ic pane_key_mode
+variable.
+.It Xo Ic extended-keys-format
+.Op Ic csi-u | xterm
+.Xc
+Selects one of the two possible formats for reporting modified keys to
+applications.
+This is the equivalent of the
+.Ic formatOtherKeys
+.Xr xterm 1
+resource.
+For example, C-S-a will be reported as
+.Ql ^[[27;6;65~
+when set to
+.Ic xterm ,
+and as
+.Ql ^[[65;6u
+when set to
+.Ic csi-u .
 .It Xo Ic focus-events
 .Op Ic on | off
 .Xc
@@ -4454,9 +4493,11 @@ Set the character used to fill areas of the terminal unused by a window.
 .It Ic main-pane-height Ar height
 .It Ic main-pane-width Ar width
 Set the width or height of the main (left or top) pane in the
-.Ic main-horizontal
+.Ic main-horizontal,
+.Ic main-horizontal-mirrored,
+.Ic main-vertical,
 or
-.Ic main-vertical
+.Ic main-vertical-mirrored
 layouts.
 If suffixed by
 .Ql % ,
@@ -4530,7 +4571,9 @@ An interval of zero disables the monitoring.
 .It Ic other-pane-height Ar height
 Set the height of the other panes (not the main pane) in the
 .Ic main-horizontal
-layout.
+and
+.Ic main-horizontal-mirrored
+layouts.
 If this option is set to 0 (the default), it will have no effect.
 If both the
 .Ic main-pane-height
@@ -4547,7 +4590,9 @@ Like
 .Ic other-pane-height ,
 but set the width of other panes in the
 .Ic main-vertical
-layout.
+and
+.Ic main-vertical-mirrored
+layouts.
 .Pp
 .It Ic pane-active-border-style Ar style
 Set the pane border style for the currently active pane.
@@ -5514,6 +5559,7 @@ The following variables are available, where appropriate:
 .It Li "pane_in_mode" Ta "" Ta "1 if pane is in a mode"
 .It Li "pane_index" Ta "#P" Ta "Index of pane"
 .It Li "pane_input_off" Ta "" Ta "1 if input to pane is disabled"
+.It Li "pane_key_mode" Ta "" Ta "Extended key reporting mode in this pane"
 .It Li "pane_last" Ta "" Ta "1 if last pane"
 .It Li "pane_left" Ta "" Ta "Left of pane"
 .It Li "pane_marked" Ta "" Ta "1 if this is the marked pane"
@@ -6572,6 +6618,11 @@ is given, the buffer is also sent to the clipboard for
 using the
 .Xr xterm 1
 escape sequence, if possible.
+If
+.Ar path
+is
+.Ql - ,
+the contents are read from stdin.
 .Tg pasteb
 .It Xo Ic paste-buffer
 .Op Fl dpr
@@ -6609,6 +6660,11 @@ Save the contents of the specified paste buffer to
 The
 .Fl a
 option appends to rather than overwriting the file.
+If
+.Ar path
+is
+.Ql - ,
+the contents are read from stdin.
 .It Xo Ic set-buffer
 .Op Fl aw
 .Op Fl b Ar buffer-name
