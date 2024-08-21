@@ -370,8 +370,10 @@ Enter copy mode and scroll one page up.
 Change to the pane above, below, to the left, or to the right of the current
 pane.
 .It M-1 to M-5
-Arrange panes in one of the five preset layouts: even-horizontal,
-even-vertical, main-horizontal, main-vertical, or tiled.
+Arrange panes in one of the seven preset layouts:
+even-horizontal, even-vertical,
+main-horizontal, main-horizontal-mirrored,
+main-vertical, main-vertical, or tiled.
 .It Space
 Arrange the current window in the next preset layout.
 .It M-n
@@ -2162,14 +2164,20 @@ are spread from left to right in the leftover space at the bottom.
 Use the
 .Em main-pane-height
 window option to specify the height of the top pane.
-.It Ic main-vertical
-Similar to
+.It Ic main-horizontal-mirrored
+The same as
 .Ic main-horizontal
-but the large pane is placed on the left and the others spread from top to
-bottom along the right.
-See the
+but mirrored so the main pane is at the bottom of the window.
+.It Ic main-vertical
+A large (main) pane is shown on the left of the window and the remaining panes
+are spread from top to bottom in the leftover space on the right.
+Use the
 .Em main-pane-width
-window option.
+window option to specify the width of the left pane.
+.It Ic main-vertical-mirrored
+The same as
+.Ic main-vertical
+but mirrored so the main pane is on the right of the window.
 .It Ic tiled
 Panes are spread out as evenly as possible over the window in both rows and
 columns.
@@ -4483,9 +4491,11 @@ Set the character used to fill areas of the terminal unused by a window.
 .It Ic main-pane-height Ar height
 .It Ic main-pane-width Ar width
 Set the width or height of the main (left or top) pane in the
-.Ic main-horizontal
+.Ic main-horizontal,
+.Ic main-horizontal-mirrored,
+.Ic main-vertical,
 or
-.Ic main-vertical
+.Ic main-vertical-mirrored
 layouts.
 If suffixed by
 .Ql % ,
@@ -4559,7 +4569,9 @@ An interval of zero disables the monitoring.
 .It Ic other-pane-height Ar height
 Set the height of the other panes (not the main pane) in the
 .Ic main-horizontal
-layout.
+and
+.Ic main-horizontal-mirrored
+layouts.
 If this option is set to 0 (the default), it will have no effect.
 If both the
 .Ic main-pane-height
@@ -4576,7 +4588,9 @@ Like
 .Ic other-pane-height ,
 but set the width of other panes in the
 .Ic main-vertical
-layout.
+and
+.Ic main-vertical-mirrored
+layouts.
 .Pp
 .It Ic pane-active-border-style Ar style
 Set the pane border style for the currently active pane.
