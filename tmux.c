@@ -377,6 +377,12 @@ main(int argc, char **argv)
 		environ_put(global_environ, *var, 0);
 	if ((cwd = find_cwd()) != NULL)
 		environ_set(global_environ, "PWD", 0, "%s", cwd);
+#ifdef HAVE_SYSTEMD
+	/* Avoid passing systemd socket info to sessions */
+	environ_unset(global_environ, "LISTEN_FDNAMES");
+	environ_unset(global_environ, "LISTEN_FDS");
+	environ_unset(global_environ, "LISTEN_PID");
+#endif
 	expand_paths(TMUX_CONF, &cfg_files, &cfg_nfiles, 1);
 
 	while ((opt = getopt(argc, argv, "2c:CDdf:lL:NqS:T:uUvV")) != -1) {
