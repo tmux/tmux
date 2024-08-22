@@ -277,7 +277,6 @@ key_string_lookup_string(const char *string)
 		}
 		free(udp);
 		return (uc);
-
 	}
 
 	/* Check for short Ctrl key. */
