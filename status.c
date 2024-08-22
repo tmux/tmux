@@ -607,6 +607,8 @@ status_prompt_set(struct client *c, struct cmd_find_state *fs,
 	struct format_tree	*ft;
 	char			*tmp;
 
+	server_client_clear_overlay(c);
+
 	if (fs != NULL)
 		ft = format_create_from_state(NULL, c, fs);
 	else
