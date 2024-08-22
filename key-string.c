@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 #include <wchar.h>
@@ -241,7 +242,7 @@ key_string_get_modifiers(const char **string)
 key_code
 key_string_lookup_string(const char *string)
 {
-	key_code		 key, modifiers;
+	key_code		 key, modifiers = 0;
 	u_int			 u, i;
 	struct utf8_data	 ud, *udp;
 	enum utf8_state		 more;
@@ -276,14 +277,18 @@ key_string_lookup_string(const char *string)
 		}
 		free(udp);
 		return (uc);
+
 	}
 
-	/* Check for modifiers. */
-	modifiers = 0;
+	/* Check for short Ctrl key. */
 	if (string[0] == '^' && string[1] != '\0') {
+		if (string[2] == '\0')
+			return (tolower((u_char)string[1])|KEYC_CTRL);
 		modifiers |= KEYC_CTRL;
 		string++;
 	}
+
+	/* Check for modifiers. */
 	modifiers |= key_string_get_modifiers(&string);
 	if (string == NULL || string[0] == '\0')
 		return (KEYC_UNKNOWN);
