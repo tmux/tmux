@@ -498,9 +498,8 @@ input_key_vt10x(struct bufferevent *bev, key_code key)
 		return (0);
 	}
 
-	onlykey = key & KEYC_MASK_KEY;
-
 	/* Prevent TAB and RET from being swallowed by C0 remapping logic. */
+	onlykey = key & KEYC_MASK_KEY;
 	if (onlykey == '\r' || onlykey == '\t')
 		key &= ~KEYC_CTRL;
 
@@ -593,7 +592,7 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 
 	/* Is this backtab? */
 	if ((key & KEYC_MASK_KEY) == KEYC_BTAB) {
-		if (s->mode & EXTENDED_KEY_MODES) {
+		if ((s->mode & EXTENDED_KEY_MODES) != 0) {
 			/* When in xterm extended mode, remap into S-Tab. */
 			key = '\011' | (key & ~KEYC_MASK_KEY) | KEYC_SHIFT;
 		} else {
@@ -647,6 +646,13 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 		if ((key & KEYC_META) && (~key & KEYC_IMPLIED_META))
 			input_key_write(__func__, bev, "\033", 1);
 		input_key_write(__func__, bev, ike->data, strlen(ike->data));
+		return (0);
+	}
+
+	/* Ignore internal function key codes. */
+	if ((key >= KEYC_BASE && key < KEYC_BASE_END) ||
+	    (key >= KEYC_USER && key < KEYC_USER_END)) {
+		log_debug("%s: ignoring key 0x%llx", __func__, key);
 		return (0);
 	}
 

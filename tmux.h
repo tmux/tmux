@@ -134,6 +134,7 @@ struct winlink;
  */
 #define KEYC_BASE            0x0000000010e000ULL
 #define KEYC_USER            0x0000000010f000ULL
+#define KEYC_USER_END	     (KEYC_USER + KEYC_NUSER)
 
 /* Key modifier bits. */
 #define KEYC_META            0x00100000000000ULL
@@ -168,7 +169,7 @@ struct winlink;
 	 (((key) & KEYC_MASK_KEY) < KEYC_BASE || \
 	  ((key) & KEYC_MASK_KEY) >= KEYC_BASE_END) && \
 	 (((key) & KEYC_MASK_KEY) < KEYC_USER || \
-	  ((key) & KEYC_MASK_KEY) >= KEYC_USER + KEYC_NUSER))
+	  ((key) & KEYC_MASK_KEY) >= KEYC_USER_END))
 
 /* Multiple click timeout. */
 #define KEYC_CLICK_TIMEOUT 300
