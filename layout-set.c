@@ -56,6 +56,10 @@ layout_set_lookup(const char *name)
 	int	matched = -1;
 
 	for (i = 0; i < nitems(layout_sets); i++) {
+		if (strcmp(layout_sets[i].name, name) == 0)
+			return (i);
+	}
+	for (i = 0; i < nitems(layout_sets); i++) {
 		if (strncmp(layout_sets[i].name, name, strlen(name)) == 0) {
 			if (matched != -1)	/* ambiguous */
 				return (-1);
