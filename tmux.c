@@ -65,7 +65,7 @@ getshell(void)
 	struct passwd	*pw;
 	const char	*shell;
 
-	shell = getenv("SHELL");
+	shell = GETENV_SHELL();
 	if (checkshell(shell))
 		return (shell);
 
@@ -328,7 +328,7 @@ find_home(void)
 	if (home != NULL)
 		return (home);
 
-	home = getenv("HOME");
+	home = GETENV_HOME();
 	if (home == NULL || *home == '\0') {
 		pw = getpwuid(getuid());
 		if (pw != NULL)
@@ -377,7 +377,7 @@ main(int argc, char **argv)
 		environ_put(global_environ, *var, 0);
 	if ((cwd = find_cwd()) != NULL)
 		environ_set(global_environ, "PWD", 0, "%s", cwd);
-	expand_paths(TMUX_CONF, &cfg_files, &cfg_nfiles, 1);
+	expand_paths(TMUX_CONF_SEARCH_PATH(), &cfg_files, &cfg_nfiles, 1);
 
 	while ((opt = getopt(argc, argv, "2c:CDdf:lL:NqS:T:uUvV")) != -1) {
 		switch (opt) {

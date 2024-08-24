@@ -3,11 +3,12 @@
 AC_INIT([tmux], next-3.6)
 AC_PREREQ([2.60])
 
+AC_CANONICAL_HOST
+AC_CANONICAL_TARGET
+
 AC_CONFIG_AUX_DIR(etc)
 AC_CONFIG_LIBOBJ_DIR(compat)
 AM_INIT_AUTOMAKE([foreign subdir-objects])
-
-AC_CANONICAL_HOST
 
 # When CFLAGS isn't set at this stage and gcc is detected by the macro below,
 # autoconf will automatically use CFLAGS="-O2 -g". Prevent that by using an
@@ -41,10 +42,136 @@ if test "x$enable_fuzzing" = xyes; then
 		AM_CFLAGS="-g -fsanitize=fuzzer-no-link,address"
 fi
 
+AC_ARG_ENABLE(
+	utf8proc,
+	AS_HELP_STRING(--enable-utf8proc, use utf8proc if it is installed)
+)
+
+# Figure out the platform.
+AC_MSG_CHECKING(platform)
+case "$target_os" in
+	*aix*)
+		AC_MSG_RESULT(aix)
+		PLATFORM=aix
+		;;
+	*darwin*)
+		AC_MSG_RESULT(darwin)
+		PLATFORM=darwin
+		#
+		# macOS uses __dead2 instead of __dead, like FreeBSD. But it defines
+		# __dead away so it needs to be removed before we can replace it.
+		#
+		AC_DEFINE(BROKEN___DEAD)
+		#
+		# macOS CMSG_FIRSTHDR is broken, so redefine it with a working one.
+		# daemon works but has some stupid side effects, so use our internal
+		# version which has a workaround.
+		#
+		AC_DEFINE(BROKEN_CMSG_FIRSTHDR)
+		AC_LIBOBJ(daemon)
+		AC_LIBOBJ(daemon-darwin)
+		#
+		# macOS wcwidth(3) is bad, so complain and suggest using utf8proc
+		# instead.
+		#
+		if test "x$enable_utf8proc" = x; then
+			AC_MSG_NOTICE([])
+			AC_MSG_NOTICE([	   macOS library support for Unicode is very poor,])
+			AC_MSG_NOTICE([	   particularly for complex codepoints like emojis;])
+			AC_MSG_NOTICE([	   to use these correctly, configuring with])
+			AC_MSG_NOTICE([	   --enable-utf8proc is recommended. To build])
+			AC_MSG_NOTICE([	   without anyway, use --disable-utf8proc])
+			AC_MSG_NOTICE([])
+			AC_MSG_ERROR([must give --enable-utf8proc or --disable-utf8proc])
+		fi
+		;;
+	*dragonfly*)
+		AC_MSG_RESULT(dragonfly)
+		PLATFORM=dragonfly
+		;;
+	*linux*)
+		AC_MSG_RESULT(linux)
+		PLATFORM=linux
+		;;
+	*freebsd*)
+		AC_MSG_RESULT(freebsd)
+		PLATFORM=freebsd
+		;;
+	*netbsd*)
+		AC_MSG_RESULT(netbsd)
+		PLATFORM=netbsd
+		;;
+	*openbsd*)
+		AC_MSG_RESULT(openbsd)
+		PLATFORM=openbsd
+		;;
+	*sunos*)
+		AC_MSG_RESULT(sunos)
+		PLATFORM=sunos
+		;;
+	*solaris*)
+		AC_MSG_RESULT(sunos)
+		PLATFORM=sunos
+		case `/usr/bin/nroff --version 2>&1` in
+			*GNU*)
+				# Solaris 11.4 and later use GNU groff.
+				MANFORMAT=mdoc
+				;;
+			*)
+				if test `uname -o 2>/dev/null` = illumos; then
+					# Illumos uses mandoc.
+					MANFORMAT=mdoc
+				else
+					# Solaris 2.0 to 11.3 use AT&T nroff.
+					MANFORMAT=man
+				fi
+				;;
+		esac
+		;;
+	*hpux*)
+		AC_MSG_RESULT(hpux)
+		PLATFORM=hpux
+		;;
+	*cygwin*|*msys*)
+		AC_MSG_RESULT(cygwin)
+		PLATFORM=cygwin
+		TARGET_WIN32=yes
+		AC_DEFINE(TARGET_WIN32)
+		AM_CONDITIONAL(TARGET_WIN32, test "x$TARGET_WIN32" = xyes)
+		;;
+	*haiku*)
+		AC_MSG_RESULT(haiku)
+		PLATFORM=haiku
+		;;
+	*)
+		AC_MSG_RESULT(unknown)
+		PLATFORM=unknown
+		;;
+esac
+AC_SUBST(PLATFORM)
+AM_CONDITIONAL(IS_AIX, test "x$PLATFORM" = xaix)
+AM_CONDITIONAL(IS_DARWIN, test "x$PLATFORM" = xdarwin)
+AM_CONDITIONAL(IS_DRAGONFLY, test "x$PLATFORM" = xdragonfly)
+AM_CONDITIONAL(IS_LINUX, test "x$PLATFORM" = xlinux)
+AM_CONDITIONAL(IS_FREEBSD, test "x$PLATFORM" = xfreebsd)
+AM_CONDITIONAL(IS_NETBSD, test "x$PLATFORM" = xnetbsd)
+AM_CONDITIONAL(IS_OPENBSD, test "x$PLATFORM" = xopenbsd)
+AM_CONDITIONAL(IS_SUNOS, test "x$PLATFORM" = xsunos)
+AM_CONDITIONAL(IS_HPUX, test "x$PLATFORM" = xhpux)
+AM_CONDITIONAL(IS_CYGWIN, test "x$PLATFORM" = xcygwin)
+AM_CONDITIONAL(IS_HAIKU, test "x$PLATFORM" = xhaiku)
+AM_CONDITIONAL(IS_UNKNOWN, test "x$PLATFORM" = xunknown)
+
+
 # Set up the compiler in two different ways and say yes we may want to install.
-AC_PROG_CC
-AM_PROG_CC_C_O
 m4_version_prereq(2.70, [AC_PROG_CC], [AC_PROG_CC_C99])
+
+if test "x$TARGET_WIN32" = xyes; then
+	AC_PROG_CXX
+	CFLAGS="$CFLAGS -isystem $(dirname $(readlink -f $0))/third_party/mingw_headers"
+	CXXFLAGS="$CXXFLAGS -std=c++17 -isystem $(dirname $(readlink -f $0))/third_party/mingw_headers -O2 -fpermissive -Wno-write-strings -Wno-class-conversion"
+fi
+
 AC_PROG_CPP
 AC_PROG_EGREP
 AC_PROG_INSTALL
@@ -381,10 +508,6 @@ if test "x$enable_utempter" = xyes; then
 fi
 
 # Look for utf8proc.
-AC_ARG_ENABLE(
-	utf8proc,
-	AS_HELP_STRING(--enable-utf8proc, use utf8proc if it is installed)
-)
 if test "x$enable_utf8proc" = xyes; then
 	PKG_CHECK_MODULES(
 		LIBUTF8PROC,
@@ -873,118 +996,6 @@ AC_SUBST(DEFAULT_TERM)
 # Man page defaults to mdoc.
 MANFORMAT=mdoc
 AC_SUBST(MANFORMAT)
-
-# Figure out the platform.
-AC_MSG_CHECKING(platform)
-case "$host_os" in
-	*aix*)
-		AC_MSG_RESULT(aix)
-		PLATFORM=aix
-		;;
-	*darwin*)
-		AC_MSG_RESULT(darwin)
-		PLATFORM=darwin
-		#
-		# macOS uses __dead2 instead of __dead, like FreeBSD. But it defines
-		# __dead away so it needs to be removed before we can replace it.
-		#
-		AC_DEFINE(BROKEN___DEAD)
-		#
-		# macOS CMSG_FIRSTHDR is broken, so redefine it with a working one.
-		# daemon works but has some stupid side effects, so use our internal
-		# version which has a workaround.
-		#
-		AC_DEFINE(BROKEN_CMSG_FIRSTHDR)
-		AC_LIBOBJ(daemon)
-		AC_LIBOBJ(daemon-darwin)
-		#
-		# macOS wcwidth(3) is bad, so complain and suggest using utf8proc
-		# instead.
-		#
-		if test "x$enable_utf8proc" = x; then
-			AC_MSG_NOTICE([])
-			AC_MSG_NOTICE([	   macOS library support for Unicode is very poor,])
-			AC_MSG_NOTICE([	   particularly for complex codepoints like emojis;])
-			AC_MSG_NOTICE([	   to use these correctly, configuring with])
-			AC_MSG_NOTICE([	   --enable-utf8proc is recommended. To build])
-			AC_MSG_NOTICE([	   without anyway, use --disable-utf8proc])
-			AC_MSG_NOTICE([])
-			AC_MSG_ERROR([must give --enable-utf8proc or --disable-utf8proc])
-		fi
-		;;
-	*dragonfly*)
-		AC_MSG_RESULT(dragonfly)
-		PLATFORM=dragonfly
-		;;
-	*linux*)
-		AC_MSG_RESULT(linux)
-		PLATFORM=linux
-		;;
-	*freebsd*)
-		AC_MSG_RESULT(freebsd)
-		PLATFORM=freebsd
-		;;
-	*netbsd*)
-		AC_MSG_RESULT(netbsd)
-		PLATFORM=netbsd
-		;;
-	*openbsd*)
-		AC_MSG_RESULT(openbsd)
-		PLATFORM=openbsd
-		;;
-	*sunos*)
-		AC_MSG_RESULT(sunos)
-		PLATFORM=sunos
-		;;
-	*solaris*)
-		AC_MSG_RESULT(sunos)
-		PLATFORM=sunos
-		case `/usr/bin/nroff --version 2>&1` in
-			*GNU*)
-				# Solaris 11.4 and later use GNU groff.
-				MANFORMAT=mdoc
-				;;
-			*)
-				if test `uname -o 2>/dev/null` = illumos; then
-					# Illumos uses mandoc.
-					MANFORMAT=mdoc
-				else
-					# Solaris 2.0 to 11.3 use AT&T nroff.
-					MANFORMAT=man
-				fi
-				;;
-		esac
-		;;
-	*hpux*)
-		AC_MSG_RESULT(hpux)
-		PLATFORM=hpux
-		;;
-	*cygwin*|*msys*)
-		AC_MSG_RESULT(cygwin)
-		PLATFORM=cygwin
-		;;
-	*haiku*)
-		AC_MSG_RESULT(haiku)
-		PLATFORM=haiku
-		;;
-	*)
-		AC_MSG_RESULT(unknown)
-		PLATFORM=unknown
-		;;
-esac
-AC_SUBST(PLATFORM)
-AM_CONDITIONAL(IS_AIX, test "x$PLATFORM" = xaix)
-AM_CONDITIONAL(IS_DARWIN, test "x$PLATFORM" = xdarwin)
-AM_CONDITIONAL(IS_DRAGONFLY, test "x$PLATFORM" = xdragonfly)
-AM_CONDITIONAL(IS_LINUX, test "x$PLATFORM" = xlinux)
-AM_CONDITIONAL(IS_FREEBSD, test "x$PLATFORM" = xfreebsd)
-AM_CONDITIONAL(IS_NETBSD, test "x$PLATFORM" = xnetbsd)
-AM_CONDITIONAL(IS_OPENBSD, test "x$PLATFORM" = xopenbsd)
-AM_CONDITIONAL(IS_SUNOS, test "x$PLATFORM" = xsunos)
-AM_CONDITIONAL(IS_HPUX, test "x$PLATFORM" = xhpux)
-AM_CONDITIONAL(IS_CYGWIN, test "x$PLATFORM" = xcygwin)
-AM_CONDITIONAL(IS_HAIKU, test "x$PLATFORM" = xhaiku)
-AM_CONDITIONAL(IS_UNKNOWN, test "x$PLATFORM" = xunknown)
 
 # Set the default lock command
 DEFAULT_LOCK_CMD="lock -np"

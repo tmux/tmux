@@ -11,9 +11,14 @@ dist_EXTRA_tmux_SOURCES = compat/*.[ch]
 # Preprocessor flags.
 AM_CPPFLAGS += @XOPEN_DEFINES@ \
 	-DTMUX_VERSION='"@VERSION@"' \
-	-DTMUX_CONF='"$(sysconfdir)/tmux.conf:~/.tmux.conf:$$XDG_CONFIG_HOME/tmux/tmux.conf:~/.config/tmux/tmux.conf"' \
 	-DTMUX_LOCK_CMD='"@DEFAULT_LOCK_CMD@"' \
 	-DTMUX_TERM='"@DEFAULT_TERM@"'
+
+AM_CPPFLAGS += -DTMUX_CONF='"$(sysconfdir)/tmux.conf:~/.tmux.conf:$$XDG_CONFIG_HOME/tmux/tmux.conf:~/.config/tmux/tmux.conf"'
+
+if TARGET_WIN32
+AM_CPPFLAGS += -DTMUX_CONF_WIN32='"/c/ProgramData/tmux/tmux.conf:~/.tmux.conf:$$LOCALAPPDATA/tmux/tmux.conf"'
+endif
 
 # Additional object files.
 LDADD = $(LIBOBJS)
@@ -67,7 +72,7 @@ AM_CPPFLAGS += -D_BSD_SOURCE
 endif
 
 # Set flags for Cygwin.
-if IS_CYGWIN
+if TARGET_WIN32
 AM_CPPFLAGS += -DTMUX_SOCK_PERM=0
 endif
 
@@ -225,6 +230,12 @@ endif
 # Enable sixel support.
 if ENABLE_SIXEL
 dist_tmux_SOURCES += image.c image-sixel.c
+endif
+
+# Windows-specific support.
+if TARGET_WIN32
+dist_tmux_SOURCES += osdep-win32.c osdep-win32-cpp.cpp
+LDADD += -lole32 -loleaut32 -lwbemuuid
 endif
 
 if NEED_FUZZING
