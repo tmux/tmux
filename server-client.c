@@ -2935,7 +2935,7 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 	const char	*data, *home;
 	size_t		 datalen;
 	int		 feat;
-	uint		 flags;
+	int		 flags;
 	uint64_t	 longflags;
 	char		*name;
 
