@@ -1866,7 +1866,8 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 	struct timeval			 tv;
 	struct key_table		*table, *first;
 	struct key_binding		*bd;
-	int				 xtimeout, flags;
+	int				 xtimeout;
+        uint64_t			 flags;
 	struct cmd_find_state		 fs;
 	key_code			 key0, prefix, prefix2;
 
@@ -2565,7 +2566,8 @@ server_client_check_redraw(struct client *c)
 	struct tty		*tty = &c->tty;
 	struct window		*w = c->session->curw->window;
 	struct window_pane	*wp;
-	int			 needed, flags, mode = tty->mode, new_flags = 0;
+	int			 needed, flags, mode = tty->mode;
+        uint64_t		 new_cflags = 0;
 	int			 redraw;
 	u_int			 bit = 0;
 	struct timeval		 tv = { .tv_usec = 1000 };
@@ -2599,7 +2601,7 @@ server_client_check_redraw(struct client *c)
 			}
 		}
 		if (needed)
-			new_flags |= CLIENT_REDRAWPANES;
+			new_cflags |= CLIENT_REDRAWPANES;
 	}
 	if (needed && (left = EVBUFFER_LENGTH(tty->out)) != 0) {
 		log_debug("%s: redraw deferred (%zu left)", c->name, left);
@@ -2622,15 +2624,15 @@ server_client_check_redraw(struct client *c)
 					 * If more that 64 panes, give up and
 					 * just redraw the window.
 					 */
-					new_flags &= CLIENT_REDRAWPANES;
-					new_flags |= CLIENT_REDRAWWINDOW;
+					new_cflags &= CLIENT_REDRAWPANES;
+					new_cflags |= CLIENT_REDRAWWINDOW;
 					break;
 				}
 			}
 			if (c->redraw_panes != 0)
 				c->flags |= CLIENT_REDRAWPANES;
 		}
-		c->flags |= new_flags;
+		c->flags |= new_cflags;
 		return;
 	} else if (needed)
 		log_debug("%s: redraw needed", c->name);
@@ -2932,7 +2934,8 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 {
 	const char	*data, *home;
 	size_t		 datalen;
-	int		 flags, feat;
+	int		 feat;
+	uint		 flags;
 	uint64_t	 longflags;
 	char		*name;
 

@@ -2742,11 +2742,11 @@ void	 server_clear_marked(void);
 int	 server_is_marked(struct session *, struct winlink *,
 	     struct window_pane *);
 int	 server_check_marked(void);
-int	 server_start(struct tmuxproc *, int, struct event_base *, int, char *);
+int	 server_start(struct tmuxproc *, uint64_t, struct event_base *, int, char *);
 void	 server_update_socket(void);
 void	 server_add_accept(int);
 void printflike(1, 2) server_add_message(const char *, ...);
-int	 server_create_socket(int, char **);
+int	 server_create_socket(uint64_t flags, char **cause);
 
 /* server-client.c */
 RB_PROTOTYPE(client_windows, client_window, entry, server_client_window_cmp);
