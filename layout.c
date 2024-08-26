@@ -270,6 +270,38 @@ layout_cell_is_bottom(struct window *w, struct layout_cell *lc)
 	return (1);
 }
 
+/* Is this a leftmost cell? */
+static int
+layout_cell_is_left(struct window *w, struct layout_cell *lc)
+{
+	struct layout_cell	*next;
+
+	while (lc != w->layout_root) {
+		next = lc->parent;
+		if (next->type == LAYOUT_LEFTRIGHT &&
+		    lc != TAILQ_FIRST(&next->cells))
+			return (0);
+		lc = next;
+	}
+	return (1);
+}
+
+/* Is this a rightmost cell? */
+static int
+layout_cell_is_right(struct window *w, struct layout_cell *lc)
+{
+	struct layout_cell	*next;
+
+	while (lc != w->layout_root) {
+		next = lc->parent;
+		if (next->type == LAYOUT_LEFTRIGHT &&
+		    lc != TAILQ_LAST(&next->cells, layout_cells))
+			return (0);
+		lc = next;
+	}
+	return (1);
+}
+
 /*
  * Returns 1 if we need to add an extra line for the pane status line. This is
  * the case for the most upper or lower panes only.
