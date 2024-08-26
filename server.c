@@ -104,8 +104,8 @@ server_check_marked(void)
 }
 
 /* Create server socket. */
-static int
-server_create_socket(int flags, char **cause)
+int
+server_create_socket(uint64_t flags, char **cause)
 {
 	struct sockaddr_un	sa;
 	size_t			size;
@@ -170,7 +170,7 @@ server_tidy_event(__unused int fd, __unused short events, __unused void *data)
 
 /* Fork new server. */
 int
-server_start(struct tmuxproc *client, int flags, struct event_base *base,
+server_start(struct tmuxproc *client, uint64_t flags, struct event_base *base,
     int lockfd, char *lockfile)
 {
 	int		 fd;

@@ -1870,7 +1870,8 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 	struct timeval			 tv;
 	struct key_table		*table, *first;
 	struct key_binding		*bd;
-	int				 xtimeout, flags;
+	int				 xtimeout;
+	uint64_t			 flags;
 	struct cmd_find_state		 fs;
 	key_code			 key0, prefix, prefix2;
 
@@ -2569,7 +2570,8 @@ server_client_check_redraw(struct client *c)
 	struct tty		*tty = &c->tty;
 	struct window		*w = c->session->curw->window;
 	struct window_pane	*wp;
-	int			 needed, flags, mode = tty->mode, new_flags = 0;
+	int			 needed, tty_flags, mode = tty->mode;
+	uint64_t		 client_flags = 0;
 	int			 redraw;
 	u_int			 bit = 0;
 	struct timeval		 tv = { .tv_usec = 1000 };
@@ -2603,7 +2605,7 @@ server_client_check_redraw(struct client *c)
 			}
 		}
 		if (needed)
-			new_flags |= CLIENT_REDRAWPANES;
+			client_flags |= CLIENT_REDRAWPANES;
 	}
 	if (needed && (left = EVBUFFER_LENGTH(tty->out)) != 0) {
 		log_debug("%s: redraw deferred (%zu left)", c->name, left);
@@ -2626,20 +2628,20 @@ server_client_check_redraw(struct client *c)
 					 * If more that 64 panes, give up and
 					 * just redraw the window.
 					 */
-					new_flags &= CLIENT_REDRAWPANES;
-					new_flags |= CLIENT_REDRAWWINDOW;
+					client_flags &= CLIENT_REDRAWPANES;
+					client_flags |= CLIENT_REDRAWWINDOW;
 					break;
 				}
 			}
 			if (c->redraw_panes != 0)
 				c->flags |= CLIENT_REDRAWPANES;
 		}
-		c->flags |= new_flags;
+		c->flags |= client_flags;
 		return;
 	} else if (needed)
 		log_debug("%s: redraw needed", c->name);
 
-	flags = tty->flags & (TTY_BLOCK|TTY_FREEZE|TTY_NOCURSOR);
+	tty_flags = tty->flags & (TTY_BLOCK|TTY_FREEZE|TTY_NOCURSOR);
 	tty->flags = (tty->flags & ~(TTY_BLOCK|TTY_FREEZE))|TTY_NOCURSOR;
 
 	if (~c->flags & CLIENT_REDRAWWINDOW) {
@@ -2671,9 +2673,10 @@ server_client_check_redraw(struct client *c)
 		screen_redraw_screen(c);
 	}
 
-	tty->flags = (tty->flags & ~TTY_NOCURSOR)|(flags & TTY_NOCURSOR);
+	tty->flags = (tty->flags & ~TTY_NOCURSOR)|(tty_flags & TTY_NOCURSOR);
 	tty_update_mode(tty, mode, NULL);
-	tty->flags = (tty->flags & ~(TTY_BLOCK|TTY_FREEZE|TTY_NOCURSOR))|flags;
+	tty->flags = (tty->flags & ~(TTY_BLOCK|TTY_FREEZE|TTY_NOCURSOR))|
+	    tty_flags;
 
 	c->flags &= ~(CLIENT_ALLREDRAWFLAGS|CLIENT_STATUSFORCE);
 
