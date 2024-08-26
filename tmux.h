@@ -997,6 +997,11 @@ enum pane_lines {
 #define PANE_BORDER_ARROWS 2
 #define PANE_BORDER_BOTH 3
 
+/* Mode returned by window_pane_mode */
+#define WINDOW_PANE_NO_MODE 0
+#define WINDOW_PANE_COPY_MODE 1
+#define WINDOW_PANE_VIEW_MODE 2
+
 /* Screen redraw context. */
 struct screen_redraw_ctx {
 	struct client	*c;
@@ -3161,6 +3166,7 @@ void		 window_pane_update_used_data(struct window_pane *,
 		     struct window_pane_offset *, size_t);
 void		 window_set_fill_character(struct window *);
 void		 window_pane_default_cursor(struct window_pane *);
+int		 window_pane_mode(struct window_pane *wp);
 
 /* layout.c */
 u_int		 layout_count_cells(struct layout_cell *);

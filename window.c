@@ -1672,3 +1672,15 @@ window_pane_default_cursor(struct window_pane *wp)
 	s->default_mode = 0;
 	screen_set_cursor_style(c, &s->default_cstyle, &s->default_mode);
 }
+
+int
+window_pane_mode(struct window_pane *wp) {
+	if (TAILQ_FIRST(&wp->modes)) {
+		if (TAILQ_FIRST(&wp->modes)->mode == &window_copy_mode)
+			return WINDOW_PANE_COPY_MODE;
+		if (TAILQ_FIRST(&wp->modes)->mode == &window_view_mode)
+			return WINDOW_PANE_VIEW_MODE;
+	}
+
+	return (WINDOW_PANE_NO_MODE);
+}
