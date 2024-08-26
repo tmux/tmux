@@ -812,8 +812,9 @@ first_key:
 	 * lowercase, so ^A becomes a|CTRL.
 	 */
 	onlykey = key & KEYC_MASK_KEY;
-	if (onlykey < 0x20 && onlykey != C0_BS &&
-	    onlykey != C0_HT && onlykey != C0_CR &&
+	if (onlykey < 0x20 &&
+	    onlykey != C0_HT &&
+	    onlykey != C0_CR &&
 	    onlykey != C0_ESC) {
 		onlykey |= 0x40;
 		if (onlykey >= 'A' && onlykey <= 'Z')
