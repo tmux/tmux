@@ -41,7 +41,7 @@ static void	window_copy_resize(struct window_mode_entry *, u_int, u_int);
 static void	window_copy_formats(struct window_mode_entry *,
 		    struct format_tree *);
 static void	window_copy_pageup1(struct window_mode_entry *, int);
-static int	window_copy_pagedown(struct window_mode_entry *, int, int);
+static int	window_copy_pagedown1(struct window_mode_entry *, int, int);
 static void	window_copy_next_paragraph(struct window_mode_entry *);
 static void	window_copy_previous_paragraph(struct window_mode_entry *);
 static void	window_copy_redraw_selection(struct window_mode_entry *, u_int);
@@ -646,8 +646,17 @@ window_copy_pageup1(struct window_mode_entry *wme, int half_page)
 	window_copy_redraw_screen(wme);
 }
 
+void
+window_copy_pagedown(struct window_pane *wp, int half_page, int scroll_exit)
+{
+	if (window_copy_pagedown1(TAILQ_FIRST(&wp->modes), half_page, scroll_exit)) {
+		window_pane_reset_mode(wp);
+		return;
+	}
+}
+
 static int
-window_copy_pagedown(struct window_mode_entry *wme, int half_page,
+window_copy_pagedown1(struct window_mode_entry *wme, int half_page,
     int scroll_exit)
 {
 	struct window_copy_mode_data	*data = wme->data;
@@ -1347,7 +1356,7 @@ window_copy_cmd_halfpage_down(struct window_copy_cmd_state *cs)
 	u_int				 np = wme->prefix;
 
 	for (; np != 0; np--) {
-		if (window_copy_pagedown(wme, 1, data->scroll_exit))
+		if (window_copy_pagedown1(wme, 1, data->scroll_exit))
 			return (WINDOW_COPY_CMD_CANCEL);
 	}
 	return (WINDOW_COPY_CMD_NOTHING);
@@ -1361,7 +1370,7 @@ window_copy_cmd_halfpage_down_and_cancel(struct window_copy_cmd_state *cs)
 	u_int				 np = wme->prefix;
 
 	for (; np != 0; np--) {
-		if (window_copy_pagedown(wme, 1, 1))
+		if (window_copy_pagedown1(wme, 1, 1))
 			return (WINDOW_COPY_CMD_CANCEL);
 	}
 	return (WINDOW_COPY_CMD_NOTHING);
@@ -1789,7 +1798,7 @@ window_copy_cmd_page_down(struct window_copy_cmd_state *cs)
 	u_int				 np = wme->prefix;
 
 	for (; np != 0; np--) {
-		if (window_copy_pagedown(wme, 0, data->scroll_exit))
+		if (window_copy_pagedown1(wme, 0, data->scroll_exit))
 			return (WINDOW_COPY_CMD_CANCEL);
 	}
 	return (WINDOW_COPY_CMD_NOTHING);
@@ -1802,7 +1811,7 @@ window_copy_cmd_page_down_and_cancel(struct window_copy_cmd_state *cs)
 	u_int				 np = wme->prefix;
 
 	for (; np != 0; np--) {
-		if (window_copy_pagedown(wme, 0, 1))
+		if (window_copy_pagedown1(wme, 0, 1))
 			return (WINDOW_COPY_CMD_CANCEL);
 	}
 	return (WINDOW_COPY_CMD_NOTHING);
