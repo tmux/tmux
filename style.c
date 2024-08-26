@@ -58,10 +58,11 @@ int
 style_parse(struct style *sy, const struct grid_cell *base, const char *in)
 {
 	struct style	saved;
-	const char	delimiters[] = " ,\n", *cp;
+	const char	delimiters[] = " ,\n", *errstr;
 	char		tmp[256], *found;
 	int		value;
 	size_t		end;
+	u_int		n;
 
 	if (*in == '\0')
 		return (0);
@@ -137,34 +138,31 @@ style_parse(struct style *sy, const struct grid_cell *base, const char *in)
 					goto error;
 				if (*found != '%' || found[1] == '\0')
 					goto error;
-				for (cp = found + 1; *cp != '\0'; cp++) {
-					if (!isdigit((u_char)*cp))
-						goto error;
-				}
+				n = strtonum(found + 1, 0, UINT_MAX, &errstr);
+				if (errstr != NULL)
+					goto error;
 				sy->range_type = STYLE_RANGE_PANE;
-				sy->range_argument = atoi(found + 1);
+				sy->range_argument = n;
 				style_set_range_string(sy, "");
 			} else if (strcasecmp(tmp + 6, "window") == 0) {
 				if (found == NULL)
 					goto error;
-				for (cp = found; *cp != '\0'; cp++) {
-					if (!isdigit((u_char)*cp))
-						goto error;
-				}
+				n = strtonum(found, 0, UINT_MAX, &errstr);
+				if (errstr != NULL)
+					goto error;
 				sy->range_type = STYLE_RANGE_WINDOW;
-				sy->range_argument = atoi(found);
+				sy->range_argument = n;
 				style_set_range_string(sy, "");
 			} else if (strcasecmp(tmp + 6, "session") == 0) {
 				if (found == NULL)
 					goto error;
 				if (*found != '$' || found[1] == '\0')
 					goto error;
-				for (cp = found + 1; *cp != '\0'; cp++) {
-					if (!isdigit((u_char)*cp))
-						goto error;
-				}
+				n = strtonum(found + 1, 0, UINT_MAX, &errstr);
+				if (errstr != NULL)
+					goto error;
 				sy->range_type = STYLE_RANGE_SESSION;
-				sy->range_argument = atoi(found + 1);
+				sy->range_argument = n;
 				style_set_range_string(sy, "");
 			} else if (strcasecmp(tmp + 6, "user") == 0) {
 				if (found == NULL)
