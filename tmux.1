@@ -2108,14 +2108,15 @@ The synopsis for the
 command is:
 .Bl -tag -width Ds
 .It Xo Ic copy-mode
-.Op Fl eHMqu
+.Op Fl deHMqu
 .Op Fl s Ar src-pane
 .Op Fl t Ar target-pane
 .Xc
 Enter copy mode.
-The
 .Fl u
-option scrolls one page up.
+also scrolls one page up after entering and
+.Fl d
+one page down if already in copy mode.
 .Fl M
 begins a mouse drag (only valid if bound to a mouse key binding, see
 .Sx MOUSE SUPPORT ) .
@@ -2138,6 +2139,7 @@ This is intended to allow fast scrolling through a pane's history, for
 example with:
 .Bd -literal -offset indent
 bind PageUp copy-mode -eu
+bind PageDown copy-mode -ed
 .Ed
 .El
 .Pp
