@@ -1136,8 +1136,7 @@ format_cb_mouse_word(struct format_tree *ft)
 		return (NULL);
 
 	if (!TAILQ_EMPTY(&wp->modes)) {
-		if (TAILQ_FIRST(&wp->modes)->mode == &window_copy_mode ||
-		    TAILQ_FIRST(&wp->modes)->mode == &window_view_mode)
+		if (window_pane_mode(wp) != WINDOW_PANE_NO_MODE)
 			return (window_copy_get_word(wp, x, y));
 		return (NULL);
 	}
@@ -1181,8 +1180,7 @@ format_cb_mouse_line(struct format_tree *ft)
 		return (NULL);
 
 	if (!TAILQ_EMPTY(&wp->modes)) {
-		if (TAILQ_FIRST(&wp->modes)->mode == &window_copy_mode ||
-		    TAILQ_FIRST(&wp->modes)->mode == &window_view_mode)
+		if (window_pane_mode(wp) != WINDOW_PANE_NO_MODE)
 			return (window_copy_get_line(wp, y));
 		return (NULL);
 	}
