@@ -783,8 +783,7 @@ have_event:
 			log_debug("mouse on pane %%%u border", wp->id);
 		m->wp = wp->id;
 		m->w = wp->window->id;
-	} else
-		m->wp = -1;
+	}
 
 	/* Stop dragging if needed. */
 	if (type != DRAG && type != WHEEL && c->tty.mouse_drag_flag != 0) {
