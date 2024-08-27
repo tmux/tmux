@@ -3434,6 +3434,7 @@ u_int	 		 hyperlinks_put(struct hyperlinks *, const char *,
 int			 hyperlinks_get(struct hyperlinks *, u_int,
 			     const char **, const char **, const char **);
 struct hyperlinks	*hyperlinks_init(void);
+struct hyperlinks	*hyperlinks_copy(struct hyperlinks *);
 void			 hyperlinks_reset(struct hyperlinks *);
 void			 hyperlinks_free(struct hyperlinks *);
 
