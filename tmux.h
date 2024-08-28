@@ -997,6 +997,11 @@ enum pane_lines {
 #define PANE_BORDER_ARROWS 2
 #define PANE_BORDER_BOTH 3
 
+/* Mode returned by window_pane_mode function. */
+#define WINDOW_PANE_NO_MODE 0
+#define WINDOW_PANE_COPY_MODE 1
+#define WINDOW_PANE_VIEW_MODE 2
+
 /* Screen redraw context. */
 struct screen_redraw_ctx {
 	struct client	*c;
@@ -2742,11 +2747,12 @@ void	 server_clear_marked(void);
 int	 server_is_marked(struct session *, struct winlink *,
 	     struct window_pane *);
 int	 server_check_marked(void);
-int	 server_start(struct tmuxproc *, int, struct event_base *, int, char *);
+int	 server_start(struct tmuxproc *, uint64_t, struct event_base *, int,
+	     char *);
 void	 server_update_socket(void);
 void	 server_add_accept(int);
 void printflike(1, 2) server_add_message(const char *, ...);
-int	 server_create_socket(int, char **);
+int	 server_create_socket(uint64_t, char **);
 
 /* server-client.c */
 RB_PROTOTYPE(client_windows, client_window, entry, server_client_window_cmp);
@@ -3161,6 +3167,7 @@ void		 window_pane_update_used_data(struct window_pane *,
 		     struct window_pane_offset *, size_t);
 void		 window_set_fill_character(struct window *);
 void		 window_pane_default_cursor(struct window_pane *);
+int		 window_pane_mode(struct window_pane *);
 
 /* layout.c */
 u_int		 layout_count_cells(struct layout_cell *);
@@ -3267,6 +3274,7 @@ void printflike(3, 4) window_copy_add(struct window_pane *, int, const char *,
 void printflike(3, 0) window_copy_vadd(struct window_pane *, int, const char *,
 		     va_list);
 void		 window_copy_pageup(struct window_pane *, int);
+void		 window_copy_pagedown(struct window_pane *, int, int);
 void		 window_copy_start_drag(struct client *, struct mouse_event *);
 char		*window_copy_get_word(struct window_pane *, u_int, u_int);
 char		*window_copy_get_line(struct window_pane *, u_int);
@@ -3500,6 +3508,7 @@ u_int	 		 hyperlinks_put(struct hyperlinks *, const char *,
 int			 hyperlinks_get(struct hyperlinks *, u_int,
 			     const char **, const char **, const char **);
 struct hyperlinks	*hyperlinks_init(void);
+struct hyperlinks	*hyperlinks_copy(struct hyperlinks *);
 void			 hyperlinks_reset(struct hyperlinks *);
 void			 hyperlinks_free(struct hyperlinks *);
 
