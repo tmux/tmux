@@ -1178,7 +1178,7 @@ screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx,
         int			sb_pos = ctx->pane_scrollbars_pos;
         u_int			sb_width = ctx->pane_scrollbars_width;
         u_int			sb_pad = ctx->pane_scrollbars_pad;
-        u_int			pad_col;
+        u_int			pad_col = 0;
         u_int i,j;
 	struct window		*w = wp->window;
         struct grid_cell	 gc;

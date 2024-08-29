@@ -570,8 +570,8 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 	struct timeval		 tv;
 	struct style_range	*sr;
         int			 pane_scrollbars, sb_w, pane_status;
-        u_int			 line, sb_pos;
-        u_int			 where_in_elevator;
+        u_int			 line = 0, sb_pos;
+        u_int			 where_in_elevator = 0;
 	enum { NOTYPE,
 	       MOVE,
 	       DOWN,
