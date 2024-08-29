@@ -286,10 +286,6 @@ layout_cell_is_left(struct window *w, struct layout_cell *lc)
 	return (1);
 }
 
-/*
- * Returns 1 if we need to add extra column(s) for the pane scrollbars. This is
- * the case for the rightmost panes only.
- */
 /* Is this a rightmost cell? */
 static int
 layout_cell_is_right(struct window *w, struct layout_cell *lc)
