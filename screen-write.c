@@ -1780,9 +1780,11 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 		ttyctx.bg = ctx->bg;
 		tty_write(tty_cmd_scrollup, &ttyctx);
 
-                /*
-                 * this isn't necessary at the moment because we force scrollbar redraw on screen redraws
-                if (ctx->wp && options_get_number(ctx->wp->options, "pane-scrollbars") != 0)
+		/*
+		 * this isn't necessary at the moment because we force
+		 * scrollbar redraw on screen redraws:
+		if (ctx->wp &&
+		    options_get_number(ctx->wp->options, "pane-scrollbars") != 0)
                         ctx->wp->flags |= PANE_REDRAW_SCROLLBARS;
                 */
 	}

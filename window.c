@@ -598,7 +598,8 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
                 if (pane_scrollbars == PANE_SCROLLBARS_ALWAYS ||
-                    (pane_scrollbars == PANE_SCROLLBARS_MODAL && window_pane_mode(wp) != WINDOW_PANE_TERMINAL_MODE))
+                    (pane_scrollbars == PANE_SCROLLBARS_MODAL &&
+                     window_pane_mode(wp) != WINDOW_PANE_TERMINAL_MODE))
                         sb_w = options_get_number(w->options, "pane-vertical-scrollbars-width");
                 else
                         sb_w = 0;

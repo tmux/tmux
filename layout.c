@@ -307,7 +307,8 @@ layout_cell_is_right(struct window *w, struct layout_cell *lc)
  * the case for the most upper or lower panes only.
  */
 static int
-layout_add_horizontal_border(struct window *w, struct layout_cell *lc, int status)
+layout_add_horizontal_border(struct window *w, struct layout_cell *lc,
+    int status)
 {
 	if (status == PANE_STATUS_TOP)
 		return (layout_cell_is_top(w, lc));
@@ -317,7 +318,8 @@ layout_add_horizontal_border(struct window *w, struct layout_cell *lc, int statu
 }
 
 static int
-layout_add_vertical_border(struct window *w, struct layout_cell *lc, int scrollbars, int scrollbars_position)
+layout_add_vertical_border(struct window *w, struct layout_cell *lc,
+    int scrollbars, int scrollbars_position)
 {
    if (scrollbars != PANE_SCROLLBARS_OFF) {
                 if (scrollbars_position == PANE_VERTICAL_SCROLLBARS_RIGHT)
@@ -361,7 +363,8 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
                 mode = window_pane_mode(wp);
 
                 if ((scrollbars == PANE_SCROLLBARS_ALWAYS) ||
-                    (scrollbars == PANE_SCROLLBARS_MODAL && mode != WINDOW_PANE_TERMINAL_MODE)) {
+                    (scrollbars == PANE_SCROLLBARS_MODAL &&
+                     mode != WINDOW_PANE_TERMINAL_MODE)) {
                         if (sb_pos == PANE_VERTICAL_SCROLLBARS_LEFT) {
                                 sx = sx - sb_w;
                                 wp->xoff = wp->xoff + sb_w;

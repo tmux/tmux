@@ -561,6 +561,7 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 {
 	struct mouse_event	*m = &event->m;
 	struct session		*s = c->session, *fs;
+        struct options		*wo = s->curw->window->options;
 	struct winlink		*fwl;
 	struct window_pane	*wp, *fwp;
 	u_int			 x, y, b, sx, sy, px, py;
@@ -766,17 +767,17 @@ have_event:
                         if (wp == NULL)
                                 return (KEYC_UNKNOWN);
 
-                        /* Try the pane scrollbar which is actually next to a pane */
-                        pane_scrollbars = options_get_number(s->curw->window->options, "pane-scrollbars");
-                        sb_pos = options_get_number(s->curw->window->options, "pane-vertical-scrollbars-position");
+                        /* Try the scrollbar which is actually next to a pane */
+                        pane_scrollbars = options_get_number(wo, "pane-scrollbars");
+                        sb_pos = options_get_number(wo, "pane-vertical-scrollbars-position");
                         if (pane_scrollbars == PANE_SCROLLBARS_ALWAYS ||
                             (pane_scrollbars == PANE_SCROLLBARS_MODAL &&
                              window_pane_mode(wp) != WINDOW_PANE_TERMINAL_MODE))
-                                sb_w = options_get_number(s->curw->window->options, "pane-vertical-scrollbars-width");
+                                sb_w = options_get_number(wo, "pane-vertical-scrollbars-width");
                         else
                                 sb_w = 0;
 
-                        pane_status = options_get_number(s->curw->window->options, "pane-border-status");
+                        pane_status = options_get_number(wo, "pane-border-status");
 
                         if (pane_status == PANE_STATUS_TOP)
                                 line = wp->yoff - 1;
@@ -792,20 +793,26 @@ have_event:
                             (py >= wp->yoff && py < wp->yoff + wp->sy)) {
 
                                 /* check if px lies within a scroller
-                                   log_debug("wps @%u at %u,%u (%ux%u)", wp->id, m->ox, m->oy, px, py);
+                                   log_debug("wps @%u at %u,%u (%ux%u)", wp->id,
+					     m->ox, m->oy, px, py);
                                 */
                                 if ((sb_pos == PANE_VERTICAL_SCROLLBARS_RIGHT &&
-                                     (px >= wp->xoff + wp->sx && px < wp->xoff + wp->sx + sb_w)) ||
+                                     (px >= wp->xoff + wp->sx &&
+                                      px < wp->xoff + wp->sx + sb_w)) ||
                                     (sb_pos == PANE_VERTICAL_SCROLLBARS_LEFT &&
-                                     (px >= wp->xoff - sb_w && px < wp->xoff))) {
+                                     (px >= wp->xoff - sb_w &&
+                                      px < wp->xoff))) {
 
                                         /* definitely in the scrollbar */
                                         if (py < wp->yoff +  wp->sb_epos)
                                                 where = SCROLLBAR_UP;
-                                        else if (py >= wp->yoff +  wp->sb_epos && py <= wp->yoff + wp->sb_epos + wp->sb_eh) {
+                                        else if (py >= wp->yoff +  wp->sb_epos &&
+                                                 py <= wp->yoff + wp->sb_epos + wp->sb_eh) {
                                                 where = SCROLLBAR_ELEVATOR;
                                                 where_in_elevator = py - wp->sb_epos - wp->yoff;
-                                        } else /* py > wp->yoff + wp->epos + wp->eh && py <= wp->yoff + wp->epos + wp->sbh */
+                                        } else
+						/* py > wp->yoff + wp->epos + wp->eh &&
+						 * py <= wp->yoff + wp->epos + wp->sbh */
                                                 where = SCROLLBAR_DOWN;
                                 } else {
                                         where = PANE;
@@ -831,7 +838,9 @@ have_event:
                                 log_debug("mouse %u,%u on pane %%%u", x, y, wp->id);
                         else if (where == BORDER)
                                 log_debug("mouse on pane %%%u border", wp->id);
-                        else if (where == SCROLLBAR_UP || where == SCROLLBAR_ELEVATOR || where == SCROLLBAR_DOWN)
+                        else if (where == SCROLLBAR_UP ||
+                                 where == SCROLLBAR_ELEVATOR ||
+                                 where == SCROLLBAR_DOWN)
                                 log_debug("mouse on pane %%%u scrollbar", wp->id);
                         m->wp = wp->id;
                         m->w = wp->window->id;
@@ -1220,7 +1229,8 @@ have_event:
                  * elevator where the user grabed.
 		 */
 		c->tty.mouse_drag_flag = MOUSE_BUTTONS(b) + 1;
-                if (c->tty.mouse_scrolling_flag == 0 && where == SCROLLBAR_ELEVATOR) {
+                if (c->tty.mouse_scrolling_flag == 0 &&
+                    where == SCROLLBAR_ELEVATOR) {
                         c->tty.mouse_scrolling_flag = 1;
                         c->tty.mouse_sb_grip = where_in_elevator;
                 }
