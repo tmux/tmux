@@ -364,7 +364,7 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 
                 if ((scrollbars == PANE_SCROLLBARS_ALWAYS) ||
                     (scrollbars == PANE_SCROLLBARS_MODAL &&
-                     mode != WINDOW_PANE_TERMINAL_MODE)) {
+                     mode != WINDOW_PANE_NO_MODE)) {
                         if (sb_pos == PANE_VERTICAL_SCROLLBARS_LEFT) {
                                 sx = sx - sb_w;
                                 wp->xoff = wp->xoff + sb_w;

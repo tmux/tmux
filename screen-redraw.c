@@ -204,7 +204,7 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
 
         if (pane_scrollbars == PANE_SCROLLBARS_ALWAYS ||
             (pane_scrollbars == PANE_SCROLLBARS_MODAL &&
-             window_pane_mode(wp) != WINDOW_PANE_TERMINAL_MODE)) {
+             window_pane_mode(wp) != WINDOW_PANE_NO_MODE)) {
                 pane_scrollbars = 1;
         } else {
                 sb_w = 0;
@@ -448,7 +448,6 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 	int			 pane_status = ctx->pane_status;
 	int			 border;
 	u_int			 right, line;
-        int			 pane_status = ctx->pane_status;
         int			 pane_scrollbars = ctx->pane_scrollbars;
         int			 sb_pos = ctx->pane_scrollbars_pos;
         int			 sb_w = ctx->pane_scrollbars_width;
@@ -491,7 +490,7 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
                 /* If point is within a scrollbar, if so, return CELL_SCROLLBAR */
                 if (pane_scrollbars == PANE_SCROLLBARS_ALWAYS ||
                     (pane_scrollbars == PANE_SCROLLBARS_MODAL &&
-                     window_pane_mode(wp) != WINDOW_PANE_TERMINAL_MODE)) {
+                     window_pane_mode(wp) != WINDOW_PANE_NO_MODE)) {
 
 			if (pane_status == PANE_STATUS_TOP)
 				line = wp->yoff - 1;
@@ -815,7 +814,7 @@ screen_redraw_pane(struct client *c, struct window_pane *wp)
 
         pane_scrollbars = ctx.pane_scrollbars;
         if (pane_scrollbars == PANE_SCROLLBARS_MODAL &&
-            window_pane_mode(wp) == WINDOW_PANE_TERMINAL_MODE) {
+            window_pane_mode(wp) == WINDOW_PANE_NO_MODE) {
                 pane_scrollbars = 0;
                 wp->flags &= ~PANE_REDRAW_SCROLLBARS;
         }
@@ -1086,7 +1085,7 @@ screen_redraw_draw_pane_scrollbars(struct screen_redraw_ctx *ctx, int force)
                 case PANE_SCROLLBARS_OFF:
                         return;
                 case PANE_SCROLLBARS_MODAL:
-                        if (window_pane_mode(wp) == WINDOW_PANE_TERMINAL_MODE)
+                        if (window_pane_mode(wp) == WINDOW_PANE_NO_MODE)
                                 return;
                         break;
                 case PANE_SCROLLBARS_ALWAYS:
@@ -1128,7 +1127,7 @@ screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx,
                 sb_x = wp->xoff - ctx->pane_scrollbars_width;
         }
 
-        if (mode == WINDOW_PANE_TERMINAL_MODE) {
+        if (mode == WINDOW_PANE_NO_MODE) {
                 /* no mode */
                 if (ctx->pane_scrollbars != PANE_SCROLLBARS_ALWAYS) {
                         elevator_height = 0;

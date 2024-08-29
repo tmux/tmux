@@ -772,7 +772,7 @@ have_event:
                         sb_pos = options_get_number(wo, "pane-vertical-scrollbars-position");
                         if (pane_scrollbars == PANE_SCROLLBARS_ALWAYS ||
                             (pane_scrollbars == PANE_SCROLLBARS_MODAL &&
-                             window_pane_mode(wp) != WINDOW_PANE_TERMINAL_MODE))
+                             window_pane_mode(wp) != WINDOW_PANE_NO_MODE))
                                 sb_w = options_get_number(wo, "pane-vertical-scrollbars-width");
                         else
                                 sb_w = 0;
