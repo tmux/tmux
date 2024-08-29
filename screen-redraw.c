@@ -1041,26 +1041,22 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 			i = 0;
 			x = wp->xoff - ctx->ox;
 			width = wp->sx;
-                        log_debug("%s: all vis",__func__);
 		} else if (wp->xoff < ctx->ox &&
 		    wp->xoff + wp->sx > ctx->ox + ctx->sx) {
 			/* Both left and right not visible. */
 			i = ctx->ox;
 			x = 0;
 			width = ctx->sx;
-                        log_debug("%s: l&r not vis",__func__);
 		} else if (wp->xoff < ctx->ox) {
 			/* Left not visible. */
 			i = ctx->ox - wp->xoff;
 			x = 0;
 			width = wp->sx - i;
-                        log_debug("%s: l not vis",__func__);
 		} else {
 			/* Right not visible. */
 			i = 0;
 			x = wp->xoff - ctx->ox;
 			width = ctx->sx - x;
-                        log_debug("%s: r not vis",__func__);
 		}
 		log_debug("%s: %s %%%u line %u,%u at %u,%u, width %u",
 		    __func__, c->name, wp->id, i, j, x, y, width);
