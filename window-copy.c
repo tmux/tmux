@@ -632,7 +632,7 @@ window_copy_scroll1(struct window_mode_entry *wme, struct window_pane *wp, int m
                 new_elevator_pos = sb_top  - wp->yoff + (sb_height - elevator_height);
         else
                 /* elevator is somewhere in the middle of the shaft */
-                new_elevator_pos = mouse_y - wp->yoff - mouse_scrollbar_elevator_grip;
+                new_elevator_pos = mouse_y - wp->yoff - mouse_scrollbar_elevator_grip + 1;
 
 	log_debug("%s: new elevator %u mouse %u", __func__, new_elevator_pos, mouse_y);
 

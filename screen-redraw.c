@@ -779,7 +779,8 @@ screen_redraw_pane(struct client *c, struct window_pane *wp)
 	screen_redraw_draw_pane(&ctx, wp);
 
         pane_scrollbars = ctx.pane_scrollbars;
-        if (pane_scrollbars == PANE_SCROLLBARS_MODAL && ! window_pane_mode(wp) != WINDOW_PANE_TERMINAL_MODE) {
+        if (pane_scrollbars == PANE_SCROLLBARS_MODAL &&
+            window_pane_mode(wp) == WINDOW_PANE_TERMINAL_MODE) {
                 pane_scrollbars = 0;
                 wp->flags &= ~PANE_REDRAW_SCROLLBARS;
         }
@@ -932,10 +933,8 @@ screen_redraw_draw_borders(struct screen_redraw_ctx *ctx)
 		wp->border_gc_set = 0;
 
 	for (j = 0; j < c->tty.sy - ctx->statuslines; j++) {
-                log_debug("%s: %s %u %u", __func__, c->name, i,j);
-		for (i = 0; i < c->tty.sx; i++) {
+		for (i = 0; i < c->tty.sx; i++)
 			screen_redraw_draw_borders_cell(ctx, i, j);
-                }
 	}
 }
 
@@ -1118,6 +1117,12 @@ screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx, struct window_p
                 percent_view = (double)sb_height / (cm_size + sb_height);
                 elevator_height = (u_int)((double)sb_height * percent_view);
                 elevator_pos = (u_int)sb_height * ((float)cm_y_pos / (cm_size + sb_height));
+        }
+
+        if (elevator_height < 1) {
+		elevator_height = 1;
+                if (elevator_pos == elevator_height)
+                        elevator_pos--;
         }
 
         screen_redraw_draw_scrollbar(ctx, wp, sb_x, sb_y, sb_height, elevator_height, elevator_pos);
