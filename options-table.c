@@ -63,14 +63,14 @@ static const char *options_table_cursor_style_list[] = {
 	"default", "blinking-block", "block", "blinking-underline", "underline",
 	"blinking-bar", "bar", NULL
 };
-static const char *options_table_pane_status_list[] = {
-	"off", "top", "bottom", NULL
-};
 static const char *options_table_pane_scrollbars_list[] = {
 	"off", "modal", "on", NULL
 };
 static const char *options_table_pane_vertical_scrollbars_position_list[] = {
 	"right", "left", NULL
+};
+static const char *options_table_pane_status_list[] = {
+	"off", "top", "bottom", NULL
 };
 static const char *options_table_pane_border_indicators_list[] = {
 	"off", "colour", "arrows", "both", NULL
@@ -803,15 +803,6 @@ const struct options_table_entry options_table[] = {
 	  .text = "Style of the status line."
 	},
 
-	{ .name = "pane-scrollbar-style",
-	  .type = OPTIONS_TABLE_STRING,
-	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
-	  .default_str = "fg=WhiteSmoke,bg=DarkSlateGray", /* MS Windows is fg=cdcdcd,bg=f0f0f0 */
-	  .flags = OPTIONS_TABLE_IS_STYLE,
-	  .separator = ",",
-	  .text = "Style of the scrollbar."
-	},
-
 	{ .name = "update-environment",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SESSION,
@@ -1119,6 +1110,15 @@ const struct options_table_entry options_table[] = {
 	  .choices = options_table_pane_scrollbars_list,
 	  .default_num = PANE_SCROLLBARS_OFF,
 	  .text = "Pane scrollbars"
+	},
+
+	{ .name = "pane-scrollbar-style",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
+	  .default_str = "bg=black,fg=white",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ",",
+	  .text = "Style of the scrollbar."
 	},
 
 	{ .name = "pane-vertical-scrollbars-position",
