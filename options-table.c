@@ -99,6 +99,9 @@ static const char *options_table_detach_on_destroy_list[] = {
 static const char *options_table_extended_keys_list[] = {
 	"off", "on", "always", NULL
 };
+static const char *options_table_extended_keys_format_list[] = {
+	"csi-u", "xterm", NULL
+};
 static const char *options_table_allow_passthrough_list[] = {
 	"off", "on", "all", NULL
 };
@@ -320,6 +323,14 @@ const struct options_table_entry options_table[] = {
 		  "that support it."
 	},
 
+	{ .name = "extended-keys-format",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .choices = options_table_extended_keys_format_list,
+	  .default_num = 1,
+	  .text = "The format of emitted extended key sequences."
+	},
+
 	{ .name = "focus-events",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .scope = OPTIONS_TABLE_SERVER,
@@ -403,7 +414,7 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SERVER,
 	  .flags = OPTIONS_TABLE_IS_ARRAY,
-	  .default_str = "",
+	  .default_str = "linux*:AX@",
 	  .separator = ",",
 	  .text = "List of terminal capabilities overrides."
 	},
@@ -619,7 +630,7 @@ const struct options_table_entry options_table[] = {
 	{ .name = "prefix",
 	  .type = OPTIONS_TABLE_KEY,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_num = '\002',
+	  .default_num = 'b'|KEYC_CTRL,
 	  .text = "The prefix key."
 	},
 

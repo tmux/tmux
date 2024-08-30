@@ -607,6 +607,8 @@ status_prompt_set(struct client *c, struct cmd_find_state *fs,
 	struct format_tree	*ft;
 	char			*tmp;
 
+	server_client_clear_overlay(c);
+
 	if (fs != NULL)
 		ft = format_create_from_state(NULL, c, fs);
 	else
@@ -839,19 +841,19 @@ status_prompt_translate_key(struct client *c, key_code key, key_code *new_key)
 {
 	if (c->prompt_mode == PROMPT_ENTRY) {
 		switch (key) {
-		case '\001': /* C-a */
-		case '\003': /* C-c */
-		case '\005': /* C-e */
-		case '\007': /* C-g */
-		case '\010': /* C-h */
+		case 'a'|KEYC_CTRL:
+		case 'c'|KEYC_CTRL:
+		case 'e'|KEYC_CTRL:
+		case 'g'|KEYC_CTRL:
+		case 'h'|KEYC_CTRL:
 		case '\011': /* Tab */
-		case '\013': /* C-k */
-		case '\016': /* C-n */
-		case '\020': /* C-p */
-		case '\024': /* C-t */
-		case '\025': /* C-u */
-		case '\027': /* C-w */
-		case '\031': /* C-y */
+		case 'k'|KEYC_CTRL:
+		case 'n'|KEYC_CTRL:
+		case 'p'|KEYC_CTRL:
+		case 't'|KEYC_CTRL:
+		case 'u'|KEYC_CTRL:
+		case 'w'|KEYC_CTRL:
+		case 'y'|KEYC_CTRL:
 		case '\n':
 		case '\r':
 		case KEYC_LEFT|KEYC_CTRL:
@@ -890,7 +892,7 @@ status_prompt_translate_key(struct client *c, key_code key, key_code *new_key)
 	case 'S':
 		c->prompt_mode = PROMPT_ENTRY;
 		c->flags |= CLIENT_REDRAWSTATUS;
-		*new_key = '\025'; /* C-u */
+		*new_key = 'u'|KEYC_CTRL;
 		return (1);
 	case 'i':
 	case '\033': /* Escape */
@@ -911,7 +913,7 @@ status_prompt_translate_key(struct client *c, key_code key, key_code *new_key)
 		return (1);
 	case 'C':
 	case 'D':
-		*new_key = '\013'; /* C-k */
+		*new_key = 'k'|KEYC_CTRL;
 		return (1);
 	case KEYC_BSPACE:
 	case 'X':
@@ -924,7 +926,7 @@ status_prompt_translate_key(struct client *c, key_code key, key_code *new_key)
 		*new_key = 'B'|KEYC_VI;
 		return (1);
 	case 'd':
-		*new_key = '\025'; /* C-u */
+		*new_key = 'u'|KEYC_CTRL;
 		return (1);
 	case 'e':
 		*new_key = 'e'|KEYC_VI;
@@ -939,10 +941,10 @@ status_prompt_translate_key(struct client *c, key_code key, key_code *new_key)
 		*new_key = 'W'|KEYC_VI;
 		return (1);
 	case 'p':
-		*new_key = '\031'; /* C-y */
+		*new_key = 'y'|KEYC_CTRL;
 		return (1);
 	case 'q':
-		*new_key = '\003'; /* C-c */
+		*new_key = 'c'|KEYC_CTRL;
 		return (1);
 	case 's':
 	case KEYC_DC:
@@ -966,8 +968,8 @@ status_prompt_translate_key(struct client *c, key_code key, key_code *new_key)
 	case 'k':
 		*new_key = KEYC_UP;
 		return (1);
-	case '\010' /* C-h */:
-	case '\003' /* C-c */:
+	case 'h'|KEYC_CTRL:
+	case 'c'|KEYC_CTRL:
 	case '\n':
 	case '\r':
 		return (1);
@@ -1263,28 +1265,28 @@ status_prompt_key(struct client *c, key_code key)
 process_key:
 	switch (key) {
 	case KEYC_LEFT:
-	case '\002': /* C-b */
+	case 'b'|KEYC_CTRL:
 		if (c->prompt_index > 0) {
 			c->prompt_index--;
 			break;
 		}
 		break;
 	case KEYC_RIGHT:
-	case '\006': /* C-f */
+	case 'f'|KEYC_CTRL:
 		if (c->prompt_index < size) {
 			c->prompt_index++;
 			break;
 		}
 		break;
 	case KEYC_HOME:
-	case '\001': /* C-a */
+	case 'a'|KEYC_CTRL:
 		if (c->prompt_index != 0) {
 			c->prompt_index = 0;
 			break;
 		}
 		break;
 	case KEYC_END:
-	case '\005': /* C-e */
+	case 'e'|KEYC_CTRL:
 		if (c->prompt_index != size) {
 			c->prompt_index = size;
 			break;
@@ -1295,7 +1297,7 @@ process_key:
 			goto changed;
 		break;
 	case KEYC_BSPACE:
-	case '\010': /* C-h */
+	case 'h'|KEYC_CTRL:
 		if (c->prompt_index != 0) {
 			if (c->prompt_index == size)
 				c->prompt_buffer[--c->prompt_index].size = 0;
@@ -1310,7 +1312,7 @@ process_key:
 		}
 		break;
 	case KEYC_DC:
-	case '\004': /* C-d */
+	case 'd'|KEYC_CTRL:
 		if (c->prompt_index != size) {
 			memmove(c->prompt_buffer + c->prompt_index,
 			    c->prompt_buffer + c->prompt_index + 1,
@@ -1319,17 +1321,17 @@ process_key:
 			goto changed;
 		}
 		break;
-	case '\025': /* C-u */
+	case 'u'|KEYC_CTRL:
 		c->prompt_buffer[0].size = 0;
 		c->prompt_index = 0;
 		goto changed;
-	case '\013': /* C-k */
+	case 'k'|KEYC_CTRL:
 		if (c->prompt_index < size) {
 			c->prompt_buffer[c->prompt_index].size = 0;
 			goto changed;
 		}
 		break;
-	case '\027': /* C-w */
+	case 'w'|KEYC_CTRL:
 		separators = options_get_string(oo, "word-separators");
 		idx = c->prompt_index;
 
@@ -1397,7 +1399,7 @@ process_key:
 		status_prompt_backward_word(c, separators);
 		goto changed;
 	case KEYC_UP:
-	case '\020': /* C-p */
+	case 'p'|KEYC_CTRL:
 		histstr = status_prompt_up_history(c->prompt_hindex,
 		    c->prompt_type);
 		if (histstr == NULL)
@@ -1407,7 +1409,7 @@ process_key:
 		c->prompt_index = utf8_strlen(c->prompt_buffer);
 		goto changed;
 	case KEYC_DOWN:
-	case '\016': /* C-n */
+	case 'n'|KEYC_CTRL:
 		histstr = status_prompt_down_history(c->prompt_hindex,
 		    c->prompt_type);
 		if (histstr == NULL)
@@ -1416,11 +1418,11 @@ process_key:
 		c->prompt_buffer = utf8_fromcstr(histstr);
 		c->prompt_index = utf8_strlen(c->prompt_buffer);
 		goto changed;
-	case '\031': /* C-y */
+	case 'y'|KEYC_CTRL:
 		if (status_prompt_paste(c))
 			goto changed;
 		break;
-	case '\024': /* C-t */
+	case 't'|KEYC_CTRL:
 		idx = c->prompt_index;
 		if (idx < size)
 			idx++;
@@ -1443,12 +1445,12 @@ process_key:
 		free(s);
 		break;
 	case '\033': /* Escape */
-	case '\003': /* C-c */
-	case '\007': /* C-g */
+	case 'c'|KEYC_CTRL:
+	case 'g'|KEYC_CTRL:
 		if (c->prompt_inputcb(c, c->prompt_data, NULL, 1) == 0)
 			status_prompt_clear(c);
 		break;
-	case '\022': /* C-r */
+	case 'r'|KEYC_CTRL:
 		if (~c->prompt_flags & PROMPT_INCREMENTAL)
 			break;
 		if (c->prompt_buffer[0].size == 0) {
@@ -1459,7 +1461,7 @@ process_key:
 		} else
 			prefix = '-';
 		goto changed;
-	case '\023': /* C-s */
+	case 's'|KEYC_CTRL:
 		if (~c->prompt_flags & PROMPT_INCREMENTAL)
 			break;
 		if (c->prompt_buffer[0].size == 0) {
@@ -1626,8 +1628,9 @@ status_prompt_complete_list(u_int *size, const char *s, int at_start)
 	struct options_entry			 *o;
 	struct options_array_item		 *a;
 	const char				 *layouts[] = {
-		"even-horizontal", "even-vertical", "main-horizontal",
-		"main-vertical", "tiled", NULL
+		"even-horizontal", "even-vertical",
+		"main-horizontal", "main-horizontal-mirrored",
+		"main-vertical", "main-vertical-mirrored", "tiled", NULL
 	};
 
 	*size = 0;

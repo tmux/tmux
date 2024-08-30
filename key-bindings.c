@@ -413,6 +413,8 @@ key_bindings_init(void)
 		"bind -N 'Set the main-horizontal layout' M-3 { select-layout main-horizontal }",
 		"bind -N 'Set the main-vertical layout' M-4 { select-layout main-vertical }",
 		"bind -N 'Select the tiled layout' M-5 { select-layout tiled }",
+		"bind -N 'Set the main-horizontal-mirrored layout' M-6 { select-layout main-horizontal-mirrored }",
+		"bind -N 'Set the main-vertical-mirrored layout' M-7 { select-layout main-vertical-mirrored }",
 		"bind -N 'Select the next window with an alert' M-n { next-window -a }",
 		"bind -N 'Rotate through the panes in reverse' M-o { rotate-window -D }",
 		"bind -N 'Select the previous window with an alert' M-p { previous-window -a }",

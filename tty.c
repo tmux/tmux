@@ -2777,7 +2777,6 @@ static void
 tty_colours(struct tty *tty, const struct grid_cell *gc)
 {
 	struct grid_cell	*tc = &tty->cell;
-	int			 have_ax;
 
 	/* No changes? Nothing is necessary. */
 	if (gc->fg == tc->fg && gc->bg == tc->bg && gc->us == tc->us)
@@ -2791,28 +2790,18 @@ tty_colours(struct tty *tty, const struct grid_cell *gc)
 	 */
 	if (COLOUR_DEFAULT(gc->fg) || COLOUR_DEFAULT(gc->bg)) {
 		/*
-		 * If don't have AX but do have op, send sgr0 (op can't
-		 * actually be used because it is sometimes the same as sgr0
-		 * and sometimes isn't). This resets both colours to default.
-		 *
+		 * If don't have AX, send sgr0. This resets both colours to default.
 		 * Otherwise, try to set the default colour only as needed.
 		 */
-		have_ax = tty_term_flag(tty->term, TTYC_AX);
-		if (!have_ax && tty_term_has(tty->term, TTYC_OP))
+		if (!tty_term_flag(tty->term, TTYC_AX))
 			tty_reset(tty);
 		else {
 			if (COLOUR_DEFAULT(gc->fg) && !COLOUR_DEFAULT(tc->fg)) {
-				if (have_ax)
-					tty_puts(tty, "\033[39m");
-				else if (tc->fg != 7)
-					tty_putcode_i(tty, TTYC_SETAF, 7);
+				tty_puts(tty, "\033[39m");
 				tc->fg = gc->fg;
 			}
 			if (COLOUR_DEFAULT(gc->bg) && !COLOUR_DEFAULT(tc->bg)) {
-				if (have_ax)
-					tty_puts(tty, "\033[49m");
-				else if (tc->bg != 0)
-					tty_putcode_i(tty, TTYC_SETAB, 0);
+				tty_puts(tty, "\033[49m");
 				tc->bg = gc->bg;
 			}
 		}
@@ -2824,7 +2813,7 @@ tty_colours(struct tty *tty, const struct grid_cell *gc)
 
 	/*
 	 * Set the background colour. This must come after the foreground as
-	 * tty_colour_fg() can call tty_reset().
+	 * tty_colours_fg() can call tty_reset().
 	 */
 	if (!COLOUR_DEFAULT(gc->bg) && gc->bg != tc->bg)
 		tty_colours_bg(tty, gc);
@@ -2971,6 +2960,15 @@ tty_colours_fg(struct tty *tty, const struct grid_cell *gc)
 {
 	struct grid_cell	*tc = &tty->cell;
 	char			 s[32];
+
+	/*
+	 * If the current colour is an aixterm bright colour and the new is not,
+	 * reset because some terminals do not clear bright correctly.
+	 */
+	if (tty->cell.fg >= 90 &&
+	    tty->cell.bg <= 97 &&
+	    (gc->fg < 90 || gc->fg > 97))
+		tty_reset(tty);
 
 	/* Is this a 24-bit or 256-colour colour? */
 	if (gc->fg & COLOUR_FLAG_RGB || gc->fg & COLOUR_FLAG_256) {

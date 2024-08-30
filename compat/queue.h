@@ -32,8 +32,8 @@
  *	@(#)queue.h	8.5 (Berkeley) 8/20/94
  */
 
-#ifndef	_SYS_QUEUE_H_
-#define	_SYS_QUEUE_H_
+#ifndef	_COMPAT_QUEUE_H_
+#define	_COMPAT_QUEUE_H_
 
 /*
  * This file defines five types of data structures: singly-linked lists,
@@ -530,4 +530,4 @@ struct {								\
 	}								\
 } while (0)
 
-#endif	/* !_SYS_QUEUE_H_ */
+#endif	/* !_COMPAT_QUEUE_H_ */

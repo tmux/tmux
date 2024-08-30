@@ -307,20 +307,6 @@ static struct input_key_entry input_key_defaults[] = {
 	{ .key = KEYC_DC|KEYC_BUILD_MODIFIERS,
 	  .data = "\033[3;_~"
 	},
-
-	/* Tab and modifiers. */
-	{ .key = '\011'|KEYC_CTRL,
-	  .data = "\011"
-	},
-	{ .key = '\011'|KEYC_CTRL|KEYC_EXTENDED,
-	  .data = "\033[9;5u"
-	},
-	{ .key = '\011'|KEYC_CTRL|KEYC_SHIFT,
-	  .data = "\033[Z"
-	},
-	{ .key = '\011'|KEYC_CTRL|KEYC_SHIFT|KEYC_EXTENDED,
-	  .data = "\033[1;5Z"
-	}
 };
 static const key_code input_key_modifiers[] = {
 	0,
@@ -426,126 +412,18 @@ input_key_write(const char *from, struct bufferevent *bev, const char *data,
 	bufferevent_write(bev, data, size);
 }
 
-/* Translate a key code into an output key sequence. */
-int
-input_key(struct screen *s, struct bufferevent *bev, key_code key)
+/*
+ * Encode and write an extended key escape sequence in one of the two
+ * possible formats, depending on the configured output mode.
+ */
+static int
+input_key_extended(struct bufferevent *bev, key_code key)
 {
-	struct input_key_entry	*ike = NULL;
-	key_code		 justkey, newkey, outkey, modifiers;
-	struct utf8_data	 ud;
-	char			 tmp[64], modifier;
+	char		 tmp[64], modifier;
+	struct utf8_data ud;
+	wchar_t		 wc;
 
-	/* Mouse keys need a pane. */
-	if (KEYC_IS_MOUSE(key))
-		return (0);
-
-	/* Literal keys go as themselves (can't be more than eight bits). */
-	if (key & KEYC_LITERAL) {
-		ud.data[0] = (u_char)key;
-		input_key_write(__func__, bev, &ud.data[0], 1);
-		return (0);
-	}
-
-	/* Is this backspace? */
-	if ((key & KEYC_MASK_KEY) == KEYC_BSPACE) {
-		newkey = options_get_number(global_options, "backspace");
-		if (newkey >= 0x7f)
-			newkey = '\177';
-		key = newkey|(key & (KEYC_MASK_MODIFIERS|KEYC_MASK_FLAGS));
-	}
-
-	/*
-	 * If this is a normal 7-bit key, just send it, with a leading escape
-	 * if necessary. If it is a UTF-8 key, split it and send it.
-	 */
-	justkey = (key & ~(KEYC_META|KEYC_IMPLIED_META));
-	if (justkey <= 0x7f) {
-		if (key & KEYC_META)
-			input_key_write(__func__, bev, "\033", 1);
-		ud.data[0] = justkey;
-		input_key_write(__func__, bev, &ud.data[0], 1);
-		return (0);
-	}
-	if (KEYC_IS_UNICODE(justkey)) {
-		if (key & KEYC_META)
-			input_key_write(__func__, bev, "\033", 1);
-		utf8_to_data(justkey, &ud);
-		input_key_write(__func__, bev, ud.data, ud.size);
-		return (0);
-	}
-
-	/*
-	 * Look up in the tree. If not in application keypad or cursor mode,
-	 * remove the flags from the key.
-	 */
-	if (~s->mode & MODE_KKEYPAD)
-		key &= ~KEYC_KEYPAD;
-	if (~s->mode & MODE_KCURSOR)
-		key &= ~KEYC_CURSOR;
-	if (s->mode & MODE_KEXTENDED)
-		ike = input_key_get(key|KEYC_EXTENDED);
-	if (ike == NULL)
-		ike = input_key_get(key);
-	if (ike == NULL && (key & KEYC_META) && (~key & KEYC_IMPLIED_META))
-		ike = input_key_get(key & ~KEYC_META);
-	if (ike == NULL && (key & KEYC_CURSOR))
-		ike = input_key_get(key & ~KEYC_CURSOR);
-	if (ike == NULL && (key & KEYC_KEYPAD))
-		ike = input_key_get(key & ~KEYC_KEYPAD);
-	if (ike == NULL && (key & KEYC_EXTENDED))
-		ike = input_key_get(key & ~KEYC_EXTENDED);
-	if (ike != NULL) {
-		log_debug("found key 0x%llx: \"%s\"", key, ike->data);
-		if ((key == KEYC_PASTE_START || key == KEYC_PASTE_END) &&
-		    (~s->mode & MODE_BRACKETPASTE))
-			return (0);
-		if ((key & KEYC_META) && (~key & KEYC_IMPLIED_META))
-			input_key_write(__func__, bev, "\033", 1);
-		input_key_write(__func__, bev, ike->data, strlen(ike->data));
-		return (0);
-	}
-
-	/* No builtin key sequence; construct an extended key sequence. */
-	if (~s->mode & MODE_KEXTENDED) {
-		if ((key & KEYC_MASK_MODIFIERS) != KEYC_CTRL)
-			goto missing;
-		justkey = (key & KEYC_MASK_KEY);
-		switch (justkey) {
-		case ' ':
-		case '2':
-			key = 0|(key & ~KEYC_MASK_KEY);
-			break;
-		case '|':
-			key = 28|(key & ~KEYC_MASK_KEY);
-			break;
-		case '6':
-			key = 30|(key & ~KEYC_MASK_KEY);
-			break;
-		case '-':
-		case '/':
-			key = 31|(key & ~KEYC_MASK_KEY);
-			break;
-		case '?':
-			key = 127|(key & ~KEYC_MASK_KEY);
-			break;
-		default:
-			if (justkey >= 'A' && justkey <= '_')
-				key = (justkey - 'A')|(key & ~KEYC_MASK_KEY);
-			else if (justkey >= 'a' && justkey <= '~')
-				key = (justkey - 96)|(key & ~KEYC_MASK_KEY);
-			else
-				return (0);
-			break;
-		}
-		return (input_key(s, bev, key & ~KEYC_CTRL));
-	}
-	outkey = (key & KEYC_MASK_KEY);
-	modifiers = (key & KEYC_MASK_MODIFIERS);
-	if (outkey < 32 && outkey != 9 && outkey != 13 && outkey != 27) {
-		outkey = 64 + outkey;
-		modifiers |= KEYC_CTRL;
-	}
-	switch (modifiers) {
+	switch (key & KEYC_MASK_MODIFIERS) {
 	case KEYC_SHIFT:
 		modifier = '2';
 		break;
@@ -568,15 +446,245 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 		modifier = '8';
 		break;
 	default:
-		goto missing;
+		return (-1);
 	}
-	xsnprintf(tmp, sizeof tmp, "\033[%llu;%cu", outkey, modifier);
+
+	if (KEYC_IS_UNICODE(key)) {
+		utf8_to_data(key & KEYC_MASK_KEY, &ud);
+		if (utf8_towc(&ud, &wc) == UTF8_DONE)
+			key = wc;
+		else
+			return (-1);
+	} else
+		key &= KEYC_MASK_KEY;
+
+	if (options_get_number(global_options, "extended-keys-format") == 1)
+		xsnprintf(tmp, sizeof tmp, "\033[27;%c;%llu~", modifier, key);
+	else
+		xsnprintf(tmp, sizeof tmp, "\033[%llu;%cu", key, modifier);
+
 	input_key_write(__func__, bev, tmp, strlen(tmp));
 	return (0);
+}
 
-missing:
-	log_debug("key 0x%llx missing", key);
+/*
+ * Outputs the key in the "standard" mode. This is by far the most
+ * complicated output mode, with a lot of remapping in order to
+ * emulate quirks of terminals that today can be only found in museums.
+ */
+static int
+input_key_vt10x(struct bufferevent *bev, key_code key)
+{
+	struct utf8_data	 ud;
+	key_code		 onlykey;
+	char			*p;
+	static const char	*standard_map[2] = {
+		"1!9(0)=+;:'\",<.>/-8? 2",
+		"119900=+;;'',,..\x1f\x1f\x7f\x7f\0\0",
+	};
+
+	log_debug("%s: key in %llx", __func__, key);
+
+	if (key & KEYC_META)
+		input_key_write(__func__, bev, "\033", 1);
+
+	/*
+	 * There's no way to report modifiers for unicode keys in standard mode
+	 * so lose the modifiers.
+	 */
+	if (KEYC_IS_UNICODE(key)) {
+		utf8_to_data(key, &ud);
+                input_key_write(__func__, bev, ud.data, ud.size);
+		return (0);
+	}
+
+	/* Prevent TAB and RET from being swallowed by C0 remapping logic. */
+	onlykey = key & KEYC_MASK_KEY;
+	if (onlykey == '\r' || onlykey == '\t')
+		key &= ~KEYC_CTRL;
+
+	/*
+	 * Convert keys with Ctrl modifier into corresponding C0 control codes,
+	 * with the exception of *some* keys, which are remapped into printable
+	 * ASCII characters.
+	 *
+	 * There is no special handling for Shift modifier, which is pretty
+	 * much redundant anyway, as no terminal will send <base key>|SHIFT,
+	 * but only <shifted key>|SHIFT.
+	 */
+	if (key & KEYC_CTRL) {
+		p = strchr(standard_map[0], onlykey);
+		if (p != NULL)
+			key = standard_map[1][p - standard_map[0]];
+		else if (onlykey >= '3' && onlykey <= '7')
+			key = onlykey - '\030';
+		else if (onlykey >= '@' && onlykey <= '~')
+			key = onlykey & 0x1f;
+		else
+			return (-1);
+	}
+
+	log_debug("%s: key out %llx", __func__, key);
+
+	ud.data[0] = key & 0x7f;
+	input_key_write(__func__, bev, &ud.data[0], 1);
+	return (0);
+}
+
+/* Pick keys that are reported as vt10x keys in modifyOtherKeys=1 mode. */
+static int
+input_key_mode1(struct bufferevent *bev, key_code key)
+{
+	key_code	 onlykey;
+
+	log_debug("%s: key in %llx", __func__, key);
+
+	/*
+	 * As per
+	 * https://invisible-island.net/xterm/modified-keys-us-pc105.html.
+	 */
+	onlykey = key & KEYC_MASK_KEY;
+	if ((key & (KEYC_META | KEYC_CTRL)) == KEYC_CTRL &&
+	    (onlykey == ' ' ||
+	     onlykey == '/' ||
+	     onlykey == '@' ||
+	     onlykey == '^' ||
+	     (onlykey >= '2' && onlykey <= '8') ||
+	     (onlykey >= '@' && onlykey <= '~')))
+		return (input_key_vt10x(bev, key));
+
+	/*
+	 * A regular key + Meta. In the absence of a standard to back this, we
+	 * mimic what iTerm 2 does.
+	 */
+	if ((key & (KEYC_CTRL | KEYC_META)) == KEYC_META)
+		return (input_key_vt10x(bev, key));
+
 	return (-1);
+}
+
+/* Translate a key code into an output key sequence. */
+int
+input_key(struct screen *s, struct bufferevent *bev, key_code key)
+{
+	struct input_key_entry	*ike = NULL;
+	key_code		 newkey;
+	struct utf8_data	 ud;
+
+	/* Mouse keys need a pane. */
+	if (KEYC_IS_MOUSE(key))
+		return (0);
+
+	/* Literal keys go as themselves (can't be more than eight bits). */
+	if (key & KEYC_LITERAL) {
+		ud.data[0] = (u_char)key;
+		input_key_write(__func__, bev, &ud.data[0], 1);
+		return (0);
+	}
+
+	/* Is this backspace? */
+	if ((key & KEYC_MASK_KEY) == KEYC_BSPACE) {
+		newkey = options_get_number(global_options, "backspace");
+		if (newkey >= 0x7f)
+			newkey = '\177';
+		key = newkey|(key & (KEYC_MASK_MODIFIERS|KEYC_MASK_FLAGS));
+	}
+
+	/* Is this backtab? */
+	if ((key & KEYC_MASK_KEY) == KEYC_BTAB) {
+		if ((s->mode & EXTENDED_KEY_MODES) != 0) {
+			/* When in xterm extended mode, remap into S-Tab. */
+			key = '\011' | (key & ~KEYC_MASK_KEY) | KEYC_SHIFT;
+		} else {
+			/* Otherwise clear modifiers. */
+			key &= ~KEYC_MASK_MODIFIERS;
+		}
+	}
+
+	/*
+	 * A trivial case, that is a 7-bit key, excluding C0 control characters
+	 * that can't be entered from the keyboard, and no modifiers; or a UTF-8
+	 * key and no modifiers.
+	 */
+	if (!(key & ~KEYC_MASK_KEY)) {
+		if (key == C0_HT ||
+		    key == C0_CR ||
+		    key == C0_ESC ||
+		    (key >= 0x20 && key <= 0x7f)) {
+			ud.data[0] = key;
+			input_key_write(__func__, bev, &ud.data[0], 1);
+			return (0);
+		}
+		if (KEYC_IS_UNICODE(key)) {
+			utf8_to_data(key, &ud);
+			input_key_write(__func__, bev, ud.data, ud.size);
+			return (0);
+		}
+	}
+
+	/*
+	 * Look up the standard VT10x keys in the tree. If not in application
+	 * keypad or cursor mode, remove the respective flags from the key.
+	 */
+	if (~s->mode & MODE_KKEYPAD)
+		key &= ~KEYC_KEYPAD;
+	if (~s->mode & MODE_KCURSOR)
+		key &= ~KEYC_CURSOR;
+	if (ike == NULL)
+		ike = input_key_get(key);
+	if (ike == NULL && (key & KEYC_META) && (~key & KEYC_IMPLIED_META))
+		ike = input_key_get(key & ~KEYC_META);
+	if (ike == NULL && (key & KEYC_CURSOR))
+		ike = input_key_get(key & ~KEYC_CURSOR);
+	if (ike == NULL && (key & KEYC_KEYPAD))
+		ike = input_key_get(key & ~KEYC_KEYPAD);
+	if (ike != NULL) {
+		log_debug("%s: found key 0x%llx: \"%s\"", __func__, key,
+		    ike->data);
+		if ((key == KEYC_PASTE_START || key == KEYC_PASTE_END) &&
+		    (~s->mode & MODE_BRACKETPASTE))
+			return (0);
+		if ((key & KEYC_META) && (~key & KEYC_IMPLIED_META))
+			input_key_write(__func__, bev, "\033", 1);
+		input_key_write(__func__, bev, ike->data, strlen(ike->data));
+		return (0);
+	}
+
+	/* Ignore internal function key codes. */
+	if ((key >= KEYC_BASE && key < KEYC_BASE_END) ||
+	    (key >= KEYC_USER && key < KEYC_USER_END)) {
+		log_debug("%s: ignoring key 0x%llx", __func__, key);
+		return (0);
+	}
+
+	/*
+	 * No builtin key sequence; construct an extended key sequence
+	 * depending on the client mode.
+	 *
+	 * If something invalid reaches here, an invalid output may be
+	 * produced. For example Ctrl-Shift-2 is invalid (as there's
+	 * no way to enter it). The correct form is Ctrl-Shift-@, at
+	 * least in US English keyboard layout.
+	 */
+	switch (s->mode & EXTENDED_KEY_MODES) {
+	case MODE_KEYS_EXTENDED_2:
+		/*
+		 * The simplest mode to handle - *all* modified keys are
+		 * reported in the extended form.
+		 */
+		return (input_key_extended(bev, key));
+        case MODE_KEYS_EXTENDED:
+		/*
+		 * Some keys are still reported in standard mode, to maintain
+		 * compatibility with applications unaware of extended keys.
+		 */
+		if (input_key_mode1(bev, key) == -1)
+			return (input_key_extended(bev, key));
+		return (0);
+	default:
+		/* The standard mode. */
+		return (input_key_vt10x(bev, key));
+	}
 }
 
 /* Get mouse event string. */

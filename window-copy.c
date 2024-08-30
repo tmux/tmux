@@ -452,6 +452,8 @@ window_copy_init(struct window_mode_entry *wme,
 	data->scroll_exit = args_has(args, 'e');
 	data->hide_position = args_has(args, 'H');
 
+	if (base->hyperlinks != NULL)
+		data->screen.hyperlinks = hyperlinks_copy(base->hyperlinks);
 	data->screen.cx = data->cx;
 	data->screen.cy = data->cy;
 	data->mx = data->cx;
@@ -773,11 +775,11 @@ window_copy_pageup1(struct window_mode_entry *wme, int half_page)
 void
 window_copy_pagedown(struct window_pane *wp, int half_page, int scroll_exit)
 {
-	if (window_copy_pagedown1(TAILQ_FIRST(&wp->modes), half_page, scroll_exit)) {
-                window_pane_reset_mode(wp);
-                return;
-        }
-
+	if (window_copy_pagedown1(TAILQ_FIRST(&wp->modes), half_page,
+	    scroll_exit)) {
+		window_pane_reset_mode(wp);
+		return;
+	}
 }
 
 static int
@@ -889,6 +891,18 @@ window_copy_get_line(struct window_pane *wp, u_int y)
 }
 
 static void *
+window_copy_cursor_hyperlink_cb(struct format_tree *ft)
+{
+	struct window_pane		*wp = format_get_pane(ft);
+	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
+	struct window_copy_mode_data	*data = wme->data;
+	struct grid			*gd = data->screen.grid;
+
+	return (format_grid_hyperlink(gd, data->cx, gd->hsize + data->cy,
+	    &data->screen));
+}
+
+static void *
 window_copy_cursor_word_cb(struct format_tree *ft)
 {
 	struct window_pane		*wp = format_get_pane(ft);
@@ -949,10 +963,16 @@ window_copy_formats(struct window_mode_entry *wme, struct format_tree *ft)
 	}
 
 	format_add(ft, "search_present", "%d", data->searchmark != NULL);
+	if (data->searchcount != -1) {
+		format_add(ft, "search_count", "%d", data->searchcount);
+		format_add(ft, "search_count_partial", "%d", data->searchmore);
+	}
 	format_add_cb(ft, "search_match", window_copy_search_match_cb);
 
 	format_add_cb(ft, "copy_cursor_word", window_copy_cursor_word_cb);
 	format_add_cb(ft, "copy_cursor_line", window_copy_cursor_line_cb);
+	format_add_cb(ft, "copy_cursor_hyperlink",
+	    window_copy_cursor_hyperlink_cb);
 }
 
 static void
@@ -2606,7 +2626,8 @@ window_copy_cmd_refresh_from_pane(struct window_copy_cmd_state *cs)
 
 	screen_free(data->backing);
 	free(data->backing);
-	data->backing = window_copy_clone_screen(&wp->base, &data->screen, NULL,   NULL, wme->swp != wme->wp);
+	data->backing = window_copy_clone_screen(&wp->base, &data->screen, NULL,
+	    NULL, wme->swp != wme->wp);
 
 	window_copy_size_changed(wme);
 	return (WINDOW_COPY_CMD_REDRAW);

@@ -363,7 +363,7 @@ static int
 screen_redraw_type_of_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py)
 {
 	struct client	*c = ctx->c;
-        int		 pane_status = ctx->pane_status;
+	int		 pane_status = ctx->pane_status;
 	struct window	*w = c->session->curw->window;
 	u_int		 sx = w->sx, sy = w->sy;
 	int		 borders = 0;
@@ -445,6 +445,7 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 	struct client		*c = ctx->c;
 	struct window		*w = c->session->curw->window;
 	struct window_pane	*wp, *active;
+	int			 pane_status = ctx->pane_status;
 	int			 border;
 	u_int			 right, line;
         int			 pane_status = ctx->pane_status;
@@ -752,7 +753,7 @@ screen_redraw_screen(struct client *c)
 {
 	struct screen_redraw_ctx	ctx;
 	uint64_t			flags;
-        int				force = 0;
+  int				    force = 0;
 
 	if (c->flags & CLIENT_SUSPENDED)
 		return;
@@ -844,12 +845,12 @@ screen_redraw_draw_borders_style(struct screen_redraw_ctx *ctx, u_int x,
 
 	ft = format_create_defaults(NULL, c, s, s->curw, wp);
 	if (screen_redraw_check_is(ctx, x, y, active)) {
-                log_debug("%s: %s y:%u active", __func__, c->name, y);
-		style_apply(&wp->border_gc, oo, "pane-active-border-style", ft);
+      log_debug("%s: %s y:%u active", __func__, c->name, y);
+	    style_apply(&wp->border_gc, oo, "pane-active-border-style", ft);
 	} else {
-                log_debug("%s: %s y:%u", __func__, c->name, y);
+    log_debug("%s: %s y:%u", __func__, c->name, y);
 		style_apply(&wp->border_gc, oo, "pane-border-style", ft);
-        }
+  }
 	format_free(ft);
 
 	return (&wp->border_gc);
@@ -959,7 +960,7 @@ screen_redraw_draw_borders(struct screen_redraw_ctx *ctx)
 	struct session		*s = c->session;
 	struct window		*w = s->curw->window;
 	struct window_pane	*wp;
-	u_int		 	 i, j;
+	u_int			 i, j;
 
 	log_debug("%s: %s @%u", __func__, c->name, w->id);
 

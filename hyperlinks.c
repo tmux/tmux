@@ -68,6 +68,7 @@ struct hyperlinks {
 	u_int				next_inner;
 	struct hyperlinks_by_inner_tree	by_inner;
 	struct hyperlinks_by_uri_tree	by_uri;
+	u_int				references;
 };
 
 static int
@@ -205,6 +206,15 @@ hyperlinks_init(void)
 	hl->next_inner = 1;
 	RB_INIT(&hl->by_uri);
 	RB_INIT(&hl->by_inner);
+	hl->references = 1;
+	return (hl);
+}
+
+/* Copy hyperlink set. */
+struct hyperlinks *
+hyperlinks_copy(struct hyperlinks *hl)
+{
+	hl->references++;
 	return (hl);
 }
 
@@ -222,6 +232,8 @@ hyperlinks_reset(struct hyperlinks *hl)
 void
 hyperlinks_free(struct hyperlinks *hl)
 {
-	hyperlinks_reset(hl);
-	free(hl);
+	if (--hl->references == 0) {
+		hyperlinks_reset(hl);
+		free(hl);
+	}
 }

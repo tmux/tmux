@@ -1136,8 +1136,7 @@ format_cb_mouse_word(struct format_tree *ft)
 		return (NULL);
 
 	if (!TAILQ_EMPTY(&wp->modes)) {
-		if (TAILQ_FIRST(&wp->modes)->mode == &window_copy_mode ||
-		    TAILQ_FIRST(&wp->modes)->mode == &window_view_mode)
+		if (window_pane_mode(wp) != WINDOW_PANE_NO_MODE)
 			return (window_copy_get_word(wp, x, y));
 		return (NULL);
 	}
@@ -1181,8 +1180,7 @@ format_cb_mouse_line(struct format_tree *ft)
 		return (NULL);
 
 	if (!TAILQ_EMPTY(&wp->modes)) {
-		if (TAILQ_FIRST(&wp->modes)->mode == &window_copy_mode ||
-		    TAILQ_FIRST(&wp->modes)->mode == &window_view_mode)
+		if (window_pane_mode(wp) != WINDOW_PANE_NO_MODE)
 			return (window_copy_get_line(wp, y));
 		return (NULL);
 	}
@@ -1958,6 +1956,23 @@ format_cb_pane_unseen_changes(struct format_tree *ft)
 		if (ft->wp->flags & PANE_UNSEENCHANGES)
 			return (xstrdup("1"));
 		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
+/* Callback for pane_key_mode. */
+static void *
+format_cb_pane_key_mode(struct format_tree *ft)
+{
+	if (ft->wp != NULL && ft->wp->screen != NULL) {
+		switch (ft->wp->screen->mode & EXTENDED_KEY_MODES) {
+		case MODE_KEYS_EXTENDED:
+			return (xstrdup("Ext 1"));
+		case MODE_KEYS_EXTENDED_2:
+			return (xstrdup("Ext 2"));
+		default:
+			return (xstrdup("VT10x"));
+		}
 	}
 	return (NULL);
 }
@@ -2996,6 +3011,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "pane_input_off", FORMAT_TABLE_STRING,
 	  format_cb_pane_input_off
+	},
+	{ "pane_key_mode", FORMAT_TABLE_STRING,
+	  format_cb_pane_key_mode
 	},
 	{ "pane_last", FORMAT_TABLE_STRING,
 	  format_cb_pane_last

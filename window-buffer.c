@@ -408,8 +408,17 @@ window_buffer_do_delete(void *modedata, void *itemdata,
 	struct window_buffer_itemdata	*item = itemdata;
 	struct paste_buffer		*pb;
 
-	if (item == mode_tree_get_current(data->data))
-		mode_tree_down(data->data, 0);
+	if (item == mode_tree_get_current(data->data) &&
+	    !mode_tree_down(data->data, 0)) {
+		/*
+		 *If we were unable to select the item further down we are at
+		 * the end of the list. Move one element up instead, to make
+		 * sure that we preserve a valid selection or we risk having
+		 * the tree build logic reset it to the first item.
+		 */
+		mode_tree_up(data->data, 0);
+	}
+
 	if ((pb = paste_get_name(item->name)) != NULL)
 		paste_free(pb);
 }
@@ -508,7 +517,7 @@ window_buffer_key(struct window_mode_entry *wme, struct client *c,
 	struct window_buffer_itemdata	*item;
 	int				 finished;
 
-	if (paste_get_top(NULL) == NULL) {
+	if (paste_is_empty()) {
 		finished = 1;
 		goto out;
 	}
@@ -541,7 +550,7 @@ window_buffer_key(struct window_mode_entry *wme, struct client *c,
 	}
 
 out:
-	if (finished || paste_get_top(NULL) == NULL)
+	if (finished || paste_is_empty())
 		window_pane_reset_mode(wp);
 	else {
 		mode_tree_draw(mtd);

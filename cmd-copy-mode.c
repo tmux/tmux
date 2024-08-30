@@ -32,7 +32,6 @@ const struct cmd_entry cmd_copy_mode_entry = {
 
 	.args = { "deHMs:t:uqS", 0, 0, NULL },
 	.usage = "[-deHMuqS] [-s src-pane] " CMD_TARGET_PANE_USAGE,
-
 	.source =  { 's', CMD_FIND_PANE, 0 },
 	.target = { 't', CMD_FIND_PANE, 0 },
 
@@ -91,6 +90,8 @@ cmd_copy_mode_exec(struct cmd *self, struct cmdq_item *item)
 	}
 	if (args_has(args, 'u'))
 		window_copy_pageup(wp, 0);
+	if (args_has(args, 'd'))
+                window_copy_pagedown(wp, 0, args_has(args, 'e'));
 
 	if (args_has(args, 'd'))
                 window_copy_pagedown(wp, 0, args_has(args, 'e'));
