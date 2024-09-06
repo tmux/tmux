@@ -385,6 +385,17 @@ const struct options_table_entry options_table[] = {
 	  .text = "Maximum number of server messages to keep."
 	},
 
+	{ .name = "prefix-timeout",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .minimum = 0,
+	  .maximum = INT_MAX,
+	  .default_num = 0,
+	  .unit = "milliseconds",
+	  .text = "The timeout after pressing the prefix key if no subsequent key is pressed. "
+	             "'0' indicates that the timeout feature is disabled."
+	},
+
 	{ .name = "prompt-history-limit",
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .scope = OPTIONS_TABLE_SERVER,
