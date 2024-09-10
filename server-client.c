@@ -2392,7 +2392,8 @@ server_client_reset_state(struct client *c)
 				cy = tty->sy - n;
 		}
 		cx = c->prompt_cursor;
-		mode &= ~MODE_CURSOR;
+		if (options_get_number(global_options, "status-emulate-cursor"))
+			mode &= ~MODE_CURSOR;
 	} else if (c->overlay_draw == NULL) {
 		cursor = 0;
 		tty_window_offset(tty, &ox, &oy, &sx, &sy);

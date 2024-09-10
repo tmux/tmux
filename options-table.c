@@ -808,6 +808,13 @@ const struct options_table_entry options_table[] = {
 	  .text = "Style of the status line."
 	},
 
+	{ .name = "status-emulate-cursor",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .default_num = 1,
+	  .text = "Whether to emulate the status line cursor."
+	},
+
 	{ .name = "update-environment",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SESSION,
