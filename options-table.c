@@ -207,6 +207,7 @@ const struct options_name_map options_other_names[] = {
 	{ "display-panes-active-color", "display-panes-active-colour" },
 	{ "clock-mode-color", "clock-mode-colour" },
 	{ "cursor-color", "cursor-colour" },
+	{ "prompt-cursor-color", "prompt-cursor-colour" },
 	{ "pane-colors", "pane-colours" },
 	{ NULL, NULL }
 };
@@ -808,11 +809,19 @@ const struct options_table_entry options_table[] = {
 	  .text = "Style of the status line."
 	},
 
-	{ .name = "status-emulate-cursor",
-	  .type = OPTIONS_TABLE_FLAG,
-	  .scope = OPTIONS_TABLE_SERVER,
-	  .default_num = 1,
-	  .text = "Whether to emulate the status line cursor."
+	{ .name = "prompt-cursor-colour",
+	  .type = OPTIONS_TABLE_COLOUR,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_num = -1,
+	  .text = "Colour of the cursor when in prompt."
+	},
+
+	{ .name = "prompt-cursor-style",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .choices = options_table_cursor_style_list,
+	  .default_num = 0,
+	  .text = "Style of the cursor when in prompt."
 	},
 
 	{ .name = "update-environment",

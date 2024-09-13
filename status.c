@@ -646,11 +646,8 @@ status_prompt_set(struct client *c, struct cmd_find_state *fs,
 	c->prompt_type = prompt_type;
 	c->prompt_mode = PROMPT_ENTRY;
 
-	if (~flags & PROMPT_INCREMENTAL) {
-		if (options_get_number(global_options, "status-emulate-cursor"))
-			c->tty.flags |= TTY_NOCURSOR;
+	if (~flags & PROMPT_INCREMENTAL)
 		c->tty.flags |= TTY_FREEZE;
-	}
 	c->flags |= CLIENT_REDRAWSTATUS;
 
 	if (flags & PROMPT_INCREMENTAL)
@@ -749,8 +746,6 @@ status_prompt_redraw(struct client *c)
 	format_free(ft);
 
 	memcpy(&cursorgc, &gc, sizeof cursorgc);
-	if (options_get_number(global_options, "status-emulate-cursor"))
-		cursorgc.attr ^= GRID_ATTR_REVERSE;
 
 	start = format_width(c->prompt_string);
 	if (start > c->tty.sx)

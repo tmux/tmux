@@ -2392,23 +2392,33 @@ server_client_reset_state(struct client *c)
 				cy = tty->sy - n;
 		}
 		cx = c->prompt_cursor;
-		if (options_get_number(global_options, "status-emulate-cursor"))
-			mode &= ~MODE_CURSOR;
-	} else if (c->overlay_draw == NULL) {
-		cursor = 0;
-		tty_window_offset(tty, &ox, &oy, &sx, &sy);
-		if (wp->xoff + s->cx >= ox && wp->xoff + s->cx <= ox + sx &&
-		    wp->yoff + s->cy >= oy && wp->yoff + s->cy <= oy + sy) {
-			cursor = 1;
 
-			cx = wp->xoff + s->cx - ox;
-			cy = wp->yoff + s->cy - oy;
+		n = options_get_number(c->session->options, "prompt-cursor-colour");
+		s->default_ccolour = n;
+		n = options_get_number(c->session->options, "prompt-cursor-style");
+		screen_set_cursor_style(n, &s->default_cstyle, &s->default_mode);
+	} else {
+		n = options_get_number(wp->options, "cursor-colour");
+		s->default_ccolour = n;
+		n = options_get_number(wp->options, "cursor-style");
+		screen_set_cursor_style(n, &s->default_cstyle, &s->default_mode);
 
-			if (status_at_line(c) == 0)
-				cy += status_line_size(c);
+		if (c->overlay_draw == NULL) {
+			cursor = 0;
+			tty_window_offset(tty, &ox, &oy, &sx, &sy);
+			if (wp->xoff + s->cx >= ox && wp->xoff + s->cx <= ox + sx &&
+			    wp->yoff + s->cy >= oy && wp->yoff + s->cy <= oy + sy) {
+				cursor = 1;
+
+				cx = wp->xoff + s->cx - ox;
+				cy = wp->yoff + s->cy - oy;
+
+				if (status_at_line(c) == 0)
+					cy += status_line_size(c);
+			}
+			if (!cursor)
+				mode &= ~MODE_CURSOR;
 		}
-		if (!cursor)
-			mode &= ~MODE_CURSOR;
 	}
 	log_debug("%s: cursor to %u,%u", __func__, cx, cy);
 	tty_cursor(tty, cx, cy);
