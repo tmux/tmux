@@ -1151,11 +1151,10 @@ screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx,
                 elevator_pos = (u_int)sb_height * ((float)cm_y_pos / (cm_size + sb_height));
         }
 
-        if (elevator_height < 1) {
+        if (elevator_height < 1)
 		elevator_height = 1;
-                if (elevator_pos == elevator_height)
-                        elevator_pos--;
-        }
+        if (elevator_pos >= sb_height)
+                elevator_pos = sb_height-1;
 
         screen_redraw_draw_scrollbar(ctx, wp, sb_x, sb_y, sb_height,
                                      elevator_height, elevator_pos);

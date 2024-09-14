@@ -634,7 +634,7 @@ window_copy_scroll1(struct window_mode_entry *wme, struct window_pane *wp,
 	 * mouse_scrollbar_elevator_grip is where in elevator user is
 	 * dragging around, mouse is dragging this y point
 	 */
-        if (mouse_y < sb_top + mouse_scrollbar_elevator_grip)
+        if (mouse_y <= sb_top + mouse_scrollbar_elevator_grip)
                 /* elevator banged into top of shaft */
                 new_elevator_pos = sb_top - wp->yoff;
         else if (mouse_y - mouse_scrollbar_elevator_grip > sb_top + sb_height - elevator_height)
@@ -823,6 +823,8 @@ window_copy_pagedown1(struct window_mode_entry *wme, int half_page,
 		    data->cx > px)
 			window_copy_cursor_end_of_line(wme);
 	}
+
+	log_debug("%s: scrolldown oy %d cy %d py %u n %d", __func__,oy,data->cy,py,n);
 
 	if (scroll_exit && data->oy == 0)
 		return (1);
