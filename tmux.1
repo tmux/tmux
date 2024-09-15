@@ -1814,6 +1814,23 @@ is used to name the new paste buffer.
 .Xc
 Copy from the cursor position and exit copy mode.
 .It Xo
+.Ic copy-pipe-end-of-line
+.Op Ar command
+.Op Ar prefix
+.Xc
+Copy from the cursor position to the end of the line and pipe the text to
+.Ar command .
+.Ar prefix
+is used to name the new paste buffer.
+.It Xo
+.Ic copy-pipe-end-of-line-and-cancel
+.Op Ar command
+.Op Ar prefix
+.Xc
+Same as
+.Ic copy-pipe-end-of-line
+but also exit copy mode.
+.It Xo
 .Ic copy-line
 .Op Ar prefix
 .Xc
@@ -1824,10 +1841,59 @@ Copy the entire line.
 .Xc
 Copy the entire line and exit copy mode.
 .It Xo
+.Ic copy-pipe-line
+.Op Ar command
+.Op Ar prefix
+.Xc
+Copy the entire line and pipe the text to
+.Ar command .
+.Ar prefix
+is used to name the new paste buffer.
+.It Xo
+.Ic copy-pipe-line-and-cancel
+.Op Ar command
+.Op Ar prefix
+.Xc
+Same as
+.Ic copy-pipe-line
+but also exit copy mode.
+.It Xo
+.Ic copy-pipe
+.Op Ar command
+.Op Ar prefix
+.Xc
+Copy the selection, clear it and pipe its text to
+.Ar command .
+.Ar prefix
+is used to name the new paste buffer.
+.It Xo
+.Ic copy-pipe-no-clear
+.Op Ar command
+.Op Ar prefix
+.Xc
+Same as
+.Ic copy-pipe
+but do not clear the selection.
+.It Xo
+.Ic copy-pipe-and-cancel
+.Op Ar command
+.Op Ar prefix
+.Xc
+Same as
+.Ic copy-pipe
+but also exit copy mode.
+.It Xo
 .Ic copy-selection
 .Op Ar prefix
 .Xc
 Copies the current selection.
+.It Xo
+.Ic copy-selection-no-clear
+.Op Ar prefix
+.Xc
+Same as
+.Ic copy-selection
+but do not clear the selection.
 .It Xo
 .Ic copy-selection-and-cancel
 .Op Ar prefix
@@ -1841,6 +1907,12 @@ Copy the current selection and exit copy mode.
 (emacs: Down)
 .Xc
 Move the cursor down.
+.It Xo
+.Ic cursor-down-and-cancel
+.Xc
+Same as
+.Ic cursor-down
+but also exit copy mode if reaching the bottom.
 .It Xo
 .Ic cursor-left
 (vi: h)
@@ -1873,6 +1945,24 @@ Move the cursor to the end of the line.
 .Xc
 Move the cursor to a specific line.
 .It Xo
+.Ic halfpage-down
+(vi: C-d)
+(emacs: M-Down)
+.Xc
+Scroll down by half a page.
+.It Xo
+.Ic halfpage-down-and-cancel
+.Xc
+Same as
+.Ic halfpage-down
+but also exit copy mode if reaching the bottom.
+.It Xo
+.Ic halfpage-up
+(vi: C-u)
+(emacs: M-Up)
+.Xc
+Scroll up by half a page.
+.It Xo
 .Ic history-bottom
 (vi: G)
 (emacs: M->)
@@ -1904,6 +1994,27 @@ Jump backwards to the specified text.
 (emacs: f)
 .Xc
 Jump forward to the specified text.
+.It Xo
+.Ic jump-reverse
+(vi: ,)
+(emacs: ,)
+.Xc
+Repeat the last jump in the reverse direction (forward becomes backward and
+backward becomes forward).
+.It Xo
+.Ic jump-to-backward
+.Ar to
+(vi: T)
+.Xc
+Jump backwards, but one character less, placing the cursor on the character
+after the target.
+.It Xo
+.Ic jump-to-forward
+.Ar to
+(vi: t)
+.Xc
+Jump forward, but one character less, placing the cursor on the character
+before the target.
 .It Xo
 .Ic jump-to-mark
 (vi: M-x)
@@ -1939,17 +2050,70 @@ Move to the next prompt.
 .Xc
 Move to the next word.
 .It Xo
+.Ic next-word-end
+(vi: e)
+(emacs: M-f)
+.Xc
+Move to the end of the next word.
+.It Xo
+.Ic next-space
+(vi: W)
+.Xc
+Same as
+.Ic next-word
+but use a space alone as the word separator.
+.It Xo
+.Ic next-space-end
+(vi: E)
+.Xc
+Same as
+.Ic next-word-end
+but use a space alone as the word separator.
+.It Xo
+.Ic other-end
+(vi: o)
+.Xc
+Switch at which end of the selection the cursor sits.
+.It Xo
 .Ic page-down
 (vi: C-f)
 (emacs: PageDown)
 .Xc
 Scroll down by one page.
 .It Xo
+.Ic page-down-and-cancel
+.Xc
+Same as
+.Ic page-down
+but also exit copy mode if reaching the bottom.
+.It Xo
 .Ic page-up
 (vi: C-b)
 (emacs: PageUp)
 .Xc
 Scroll up by one page.
+.It Xo
+.Ic pipe
+.Op Ar command
+.Xc
+Pipe the selected text to
+.Ar command
+and clear the selection.
+.It Xo
+.Ic pipe-no-clear
+.Op Ar command
+.Xc
+Same as
+.Ic pipe
+but do not clear the selection.
+.It Xo
+.Ic pipe-and-cancel
+.Op Ar command
+.Op Ar prefix
+.Xc
+Same as
+.Ic pipe
+but also exit copy mode.
 .It Xo
 .Ic previous-matching-bracket
 (emacs: M-C-b)
@@ -1973,6 +2137,21 @@ Move to the previous prompt.
 .Xc
 Move to the previous word.
 .It Xo
+.Ic previous-space
+(vi: B)
+.Xc
+Same as
+.Ic previous-word
+but use a space alone as the word separator.
+.It Xo
+.Ic rectangle-on
+.Xc
+Turn on rectangle selection mode.
+.It Xo
+.Ic rectangle-off
+.Xc
+Turn off rectangle selection mode.
+.It Xo
 .Ic rectangle-toggle
 (vi: v)
 (emacs: R)
@@ -1984,6 +2163,40 @@ Toggle rectangle selection mode.
 (emacs: r)
 .Xc
 Refresh the content from the pane.
+.It Xo
+.Ic scroll-bottom
+.Xc
+Scroll up until the current line is at the bottom while keeping the cursor on
+that line.
+.It Xo
+.Ic scroll-down
+(vi: C-e)
+(emacs: C-Down)
+.Xc
+Scroll down.
+.It Xo
+.Ic scroll-down-and-cancel
+.Xc
+Same as
+.Ic scroll-down
+but also exit copy mode if the cursor reaches the bottom.
+.It Xo
+.Ic scroll-middle
+(vi: z)
+.Xc
+Scroll so that the current line becomes the middle one while keeping the
+cursor on that line.
+.It Xo
+.Ic scroll-top
+.Xc
+Scroll down until the current line is at the top while keeping the cursor on
+that line.
+.It Xo
+.Ic scroll-up
+(vi: C-y)
+(emacs: C-Up)
+.Xc
+Scroll up.
 .It Xo
 .Ic search-again
 (vi: n)
@@ -1997,11 +2210,50 @@ Repeat the last search.
 .Xc
 Search backwards for the specified text.
 .It Xo
+.Ic search-backward-incremental
+.Ar text
+(emacs: C-r)
+.Xc
+Search backwards incrementally for the specified text. Is expected to be used
+with the
+.Fl i
+flag to the
+.Ic command-prompt
+command.
+.It Xo
+.Ic search-backward-text
+.Ar text
+.Xc
+Search backwards for the specified plain text.
+.It Xo
 .Ic search-forward
 .Ar text
 (vi: /)
 .Xc
 Search forward for the specified text.
+.It Xo
+.Ic search-forward-incremental
+.Ar text
+(emacs: C-s)
+.Xc
+Search forward incrementally for the specified text. Is expected to be used
+with the
+.Fl i
+flag to the
+.Ic command-prompt
+command.
+.It Xo
+.Ic search-forward-text
+.Ar text
+.Xc
+Search forward for the specified plain text.
+.It Xo
+.Ic search-reverse
+(vi: N)
+(emacs: N)
+.Xc
+Repeat the last search in the reverse direction (forward becomes backward and
+backward becomes forward).
 .It Xo
 .Ic select-line
 (vi: V)
@@ -2012,11 +2264,27 @@ Select the current line.
 .Xc
 Select the current word.
 .It Xo
+.Ic set-mark
+(vi: X)
+(emacs: X)
+.Xc
+Mark the current line.
+.It Xo
 .Ic start-of-line
 (vi: 0)
 (emacs: C-a)
 .Xc
 Move the cursor to the start of the line.
+.It Xo
+.Ic stop-selection
+.Xc
+Stop selecting without clearing the current selection.
+.It Xo
+.Ic toggle-position
+(vi: P)
+(emacs: P)
+.Xc
+Toggle the visibility of the position indicator in the top right.
 .It Xo
 .Ic top-line
 (vi: H)
