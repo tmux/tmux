@@ -30,13 +30,9 @@ static void	screen_redraw_draw_pane(struct screen_redraw_ctx *,
 		    struct window_pane *);
 static void	screen_redraw_set_context(struct client *,
 		    struct screen_redraw_ctx *);
-static void	screen_redraw_draw_pane_scrollbars(struct screen_redraw_ctx *ctx,
-		    int force);
-static void	screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx,
-		    struct window_pane *wp);
-static void	screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx,
-		    struct window_pane *wp, u_int px, u_int py, u_int sb_height,
-                    u_int elevator_height, u_int elevator_pos);
+static void	screen_redraw_draw_pane_scrollbars(struct screen_redraw_ctx *);
+static void	screen_redraw_draw_scrollbar(struct client *, struct window_pane *,
+                    int, u_int, u_int, u_int, u_int, u_int, u_int, u_int);
 
 
 #define START_ISOLATE "\342\201\246"
@@ -737,7 +733,6 @@ screen_redraw_set_context(struct client *c, struct screen_redraw_ctx *ctx)
 	ctx->pane_scrollbars = options_get_number(wo, "pane-scrollbars");
 	ctx->pane_scrollbars_pos = options_get_number(wo, "pane-vertical-scrollbars-position");
 	ctx->pane_scrollbars_width = options_get_number(wo, "pane-vertical-scrollbars-width");
-	ctx->pane_scrollbars_pad = options_get_number(wo, "pane-vertical-scrollbars-pad");
 
 	tty_window_offset(&c->tty, &ctx->ox, &ctx->oy, &ctx->sx, &ctx->sy);
 
@@ -752,7 +747,6 @@ screen_redraw_screen(struct client *c)
 {
 	struct screen_redraw_ctx	ctx;
 	uint64_t			flags;
-        int				force = 0;
 
 	if (c->flags & CLIENT_SUSPENDED)
 		return;
@@ -766,12 +760,9 @@ screen_redraw_screen(struct client *c)
 	tty_update_mode(&c->tty, c->tty.mode, NULL);
 
 	if (ctx.pane_scrollbars != 0 &&
-	    (flags & (CLIENT_REDRAWSCROLLBARS|CLIENT_REDRAWWINDOW|CLIENT_REDRAWBORDERS))) {
-                if (flags & (CLIENT_REDRAWWINDOW|CLIENT_REDRAWBORDERS)) {
-                        force = 1;
-                }
-		log_debug("%s: redrawing scrollbars", c->name);
-		screen_redraw_draw_pane_scrollbars(&ctx, force);
+	    (flags & (CLIENT_REDRAWWINDOW|CLIENT_REDRAWBORDERS))) {
+                log_debug("%s: redrawing scrollbars", c->name);
+                screen_redraw_draw_pane_scrollbars(&ctx);
 	}
 	if (flags & (CLIENT_REDRAWWINDOW|CLIENT_REDRAWBORDERS)) {
 		log_debug("%s: redrawing borders", c->name);
@@ -816,11 +807,10 @@ screen_redraw_pane(struct client *c, struct window_pane *wp)
         if (pane_scrollbars == PANE_SCROLLBARS_MODAL &&
             window_pane_mode(wp) == WINDOW_PANE_NO_MODE) {
                 pane_scrollbars = 0;
-                wp->flags &= ~PANE_REDRAW_SCROLLBARS;
         }
 
-        if (pane_scrollbars != 0 && wp->flags & PANE_REDRAW_SCROLLBARS) {
-                screen_redraw_draw_pane_scrollbar(&ctx, wp);
+        if (pane_scrollbars != 0) {
+                screen_redraw_draw_pane_scrollbar(c, wp);
         }
 
 	tty_reset(&c->tty);
@@ -1072,7 +1062,7 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 
 /* Draw the panes scrollbars */
 static void
-screen_redraw_draw_pane_scrollbars(struct screen_redraw_ctx *ctx, int force)
+screen_redraw_draw_pane_scrollbars(struct screen_redraw_ctx *ctx)
 {
 	struct client		*c = ctx->c;
 	struct window		*w = c->session->curw->window;
@@ -1091,9 +1081,8 @@ screen_redraw_draw_pane_scrollbars(struct screen_redraw_ctx *ctx, int force)
                 case PANE_SCROLLBARS_ALWAYS:
                         break;
                 }
-                if ((force || wp->flags & PANE_REDRAW_SCROLLBARS) &&
-                    window_pane_visible(wp))
-                        screen_redraw_draw_pane_scrollbar(ctx, wp);
+                if (window_pane_visible(wp))
+                        screen_redraw_draw_pane_scrollbar(c, wp);
 	}
 }
 
@@ -1108,10 +1097,15 @@ screen_redraw_draw_pane_scrollbars(struct screen_redraw_ctx *ctx, int force)
  * (total_height) and the percentage of the number of visible lines to the
  * total height (percent_view).
  */
-static void
-screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx,
-    struct window_pane *wp) {
+void
+screen_redraw_draw_pane_scrollbar(struct client *c, struct window_pane *wp) {
         u_int		 mode;
+	struct window	*w = c->session->curw->window;
+	struct options	*wo = w->options;
+        u_int		 pane_scrollbars = options_get_number(wo, "pane-scrollbars");
+        u_int		 sb_pos = options_get_number(wo, "pane-vertical-scrollbars-position");
+        u_int		 sb_width = options_get_number(wo, "pane-vertical-scrollbars-width");
+        u_int		 sb_pad = options_get_number(wo, "pane-vertical-scrollbars-pad");
         u_int		 sb_x = wp->xoff + wp->sx; /* px and py of where */
         u_int		 sb_y = wp->yoff;          /* to write to screen */
         u_int		 sb_height = wp->sy; /* height of scrollbar */
@@ -1123,20 +1117,20 @@ screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx,
 
         mode = window_pane_mode(wp);
 
-        if (ctx->pane_scrollbars_pos == PANE_VERTICAL_SCROLLBARS_LEFT) {
-                sb_x = wp->xoff - ctx->pane_scrollbars_width;
+        if (sb_pos == PANE_VERTICAL_SCROLLBARS_LEFT) {
+                sb_x = wp->xoff - sb_width;
         }
 
         if (mode == WINDOW_PANE_NO_MODE) {
-                /* no mode */
-                if (ctx->pane_scrollbars != PANE_SCROLLBARS_ALWAYS) {
-                        elevator_height = 0;
-                        elevator_pos = 0;
-                } else {
-			/* show scrollbar at the bottom */
+                /* not in a mode */
+                if (pane_scrollbars == PANE_SCROLLBARS_ALWAYS) {
+			/* show scrollbar an elevator at the bottom of the scrollbar */
                         percent_view = (double)sb_height / total_height;
                         elevator_height = (u_int)((double)sb_height * percent_view);
                         elevator_pos = sb_height - elevator_height;
+                } else {
+                        elevator_height = 0;
+                        elevator_pos = 0;
                 }
         } else {
                 /* copy-mode or view-mode */
@@ -1156,27 +1150,21 @@ screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx,
         if (elevator_pos >= sb_height)
                 elevator_pos = sb_height-1;
 
-        screen_redraw_draw_scrollbar(ctx, wp, sb_x, sb_y, sb_height,
+        screen_redraw_draw_scrollbar(c, wp, sb_pos, sb_width, sb_pad, sb_x, sb_y, sb_height,
                                      elevator_height, elevator_pos);
 
         wp->sb_epos = elevator_pos;  /* top of elevator y pos in scrollbar */
         wp->sb_eh = elevator_height; /* height of scrollbar "elevator car" */
         wp->sb_h = sb_height;        /* height of scrollbar "elevator shaft" */
         /* wp->y_off = top of scrollbar */
-
-        wp->flags &= ~PANE_REDRAW_SCROLLBARS;
 }
 
 static void
-screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx,
-    struct window_pane *wp, u_int px, u_int py, u_int sb_height,
+screen_redraw_draw_scrollbar(struct client *c, struct window_pane *wp, int sb_pos,
+    u_int sb_width, u_int sb_pad, u_int px, u_int py, u_int sb_height,
     u_int elevator_height, u_int elevator_pos)
 {
-	struct client		*c = ctx->c;
 	struct tty		*tty = &c->tty;
-        int			sb_pos = ctx->pane_scrollbars_pos;
-        u_int			sb_width = ctx->pane_scrollbars_width;
-        u_int			sb_pad = ctx->pane_scrollbars_pad;
         u_int			pad_col = 0;
         u_int i,j;
 	struct window		*w = wp->window;

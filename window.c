@@ -745,9 +745,6 @@ window_add_pane(struct window *w, struct window_pane *other, u_int hlimit,
     int flags)
 {
 	struct window_pane	*wp;
-	int			 scrollbars;
-
-	scrollbars = options_get_number(w->options, "pane-scrollbars");
 
 	if (other == NULL)
 		other = w->active;
@@ -770,9 +767,6 @@ window_add_pane(struct window *w, struct window_pane *other, u_int hlimit,
 		else
 			TAILQ_INSERT_AFTER(&w->panes, other, wp, entry);
 	}
-
-        if (scrollbars != 0)
-                wp->flags |= PANE_REDRAW_SCROLLBARS;
 
 	return (wp);
 }
@@ -1119,11 +1113,6 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme != NULL && wme->mode->resize != NULL)
 		wme->mode->resize(wme, sx, sy);
-
-        /* may not need this PANE_REDRAW_SCROLLBARS now
-        if (pane_scrollbars)
-                wp->flags |= PANE_REDRAW_SCROLLBARS;
-        */
 }
 
 int

@@ -4449,19 +4449,25 @@ window_copy_write_line(struct window_mode_entry *wme,
 		screen_write_cursormove(ctx, screen_size_x(s) - 1, py, 0);
 		screen_write_putc(ctx, &grid_default_cell, '$');
 	}
-
-	if (options_get_number(oo, "pane-scrollbars") != 0)
-                wp->flags |= PANE_REDRAW_SCROLLBARS;
 }
 
 static void
 window_copy_write_lines(struct window_mode_entry *wme,
     struct screen_write_ctx *ctx, u_int py, u_int ny)
 {
-	u_int	yy;
+	u_int			 yy;
+        struct client		*c;
+	struct window_pane	*wp = wme->wp;
+	struct options		*oo = wp->window->options;
 
 	for (yy = py; yy < py + ny; yy++)
 		window_copy_write_line(wme, ctx, py);
+
+        if (window_pane_visible(wp) &&
+            options_get_number(oo, "pane-scrollbars") != 0) {
+                TAILQ_FOREACH(c, &clients, entry)
+                        screen_redraw_draw_pane_scrollbar(c, wp);
+        }
 }
 
 static void
@@ -4497,6 +4503,8 @@ window_copy_redraw_lines(struct window_mode_entry *wme, u_int py, u_int ny)
 {
 	struct window_pane		*wp = wme->wp;
 	struct window_copy_mode_data	*data = wme->data;
+        struct client			*c;
+	struct options			*oo = wp->window->options;
 	struct screen_write_ctx	 	 ctx;
 	u_int				 i;
 
@@ -4506,11 +4514,11 @@ window_copy_redraw_lines(struct window_mode_entry *wme, u_int py, u_int ny)
 	screen_write_cursormove(&ctx, data->cx, data->cy, 0);
 	screen_write_stop(&ctx);
 
-	/*
-	 * this isn't necessary at the moment because we force scrollbar redraw on screen redraws
-	if (options_get_number(wp->options, "pane-scrollbars") != 0)
-		wp->flags |= PANE_REDRAW_SCROLLBARS;
-	*/
+        if (window_pane_visible(wp) &&
+            options_get_number(oo, "pane-scrollbars") != 0) {
+                TAILQ_FOREACH(c, &clients, entry)
+                        screen_redraw_draw_pane_scrollbar(c, wp);
+        }
 }
 
 static void

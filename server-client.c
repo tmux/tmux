@@ -2994,13 +2994,12 @@ server_client_check_redraw(struct client *c)
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
 		return;
 	if (c->flags & CLIENT_ALLREDRAWFLAGS) {
-		log_debug("%s: redraw%s%s%s%s%s%s", c->name,
+		log_debug("%s: redraw%s%s%s%s%s", c->name,
 		    (c->flags & CLIENT_REDRAWWINDOW) ? " window" : "",
 		    (c->flags & CLIENT_REDRAWSTATUS) ? " status" : "",
 		    (c->flags & CLIENT_REDRAWBORDERS) ? " borders" : "",
 		    (c->flags & CLIENT_REDRAWOVERLAY) ? " overlay" : "",
-                    (c->flags & CLIENT_REDRAWPANES) ? " panes" : "",
-		    (c->flags & CLIENT_REDRAWSCROLLBARS) ? " scrollbars" : "");
+                    (c->flags & CLIENT_REDRAWPANES) ? " panes" : "");
 	}
 
 	/*
@@ -3013,7 +3012,7 @@ server_client_check_redraw(struct client *c)
 		needed = 1;
 	else {
 		TAILQ_FOREACH(wp, &w->panes, entry) {
-                        if (wp->flags & (PANE_REDRAW|PANE_REDRAW_SCROLLBARS)) {
+                        if (wp->flags & (PANE_REDRAW)) {
 				needed = 1;
 				break;
 			}
@@ -3065,7 +3064,7 @@ server_client_check_redraw(struct client *c)
 		 */
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			redraw = 0;
-			if (wp->flags & (PANE_REDRAW|PANE_REDRAW_SCROLLBARS))
+			if (wp->flags & (PANE_REDRAW))
 				redraw = 1;
 			else if (c->flags & CLIENT_REDRAWPANES)
 				redraw = !!(c->redraw_panes & (1 << bit));

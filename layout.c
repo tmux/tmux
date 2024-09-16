@@ -372,7 +372,6 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
                                 /* sb_pos == PANE_VERTICAL_SCROLLBARS_RIGHT */
                                 sx = sx - sb_w;
                         }
-                        wp->flags |= PANE_REDRAW_SCROLLBARS;
                 }
 
                 window_pane_resize(wp, sx, sy);

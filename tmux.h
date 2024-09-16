@@ -1022,7 +1022,6 @@ struct screen_redraw_ctx {
         int		 pane_scrollbars;
         int		 pane_scrollbars_pos;
         u_int		 pane_scrollbars_width;
-        u_int		 pane_scrollbars_pad;
 
 	struct grid_cell no_pane_gc;
 	int		 no_pane_gc_set;
@@ -1142,7 +1141,6 @@ struct window_pane {
 #define PANE_EMPTY 0x800
 #define PANE_STYLECHANGED 0x1000
 #define PANE_UNSEENCHANGES 0x2000
-#define PANE_REDRAW_SCROLLBARS 0x4000
 
 	u_int		 sb_epos;
 	u_int		 sb_eh;
@@ -1934,15 +1932,13 @@ struct client {
 #define CLIENT_WINDOWSIZECHANGED 0x400000000ULL
 #define CLIENT_CLIPBOARDBUFFER 0x800000000ULL
 #define CLIENT_BRACKETPASTING 0x1000000000ULL
-#define CLIENT_REDRAWSCROLLBARS 0x2000000000ULL
 #define CLIENT_ALLREDRAWFLAGS		\
 	(CLIENT_REDRAWWINDOW|		\
 	 CLIENT_REDRAWSTATUS|		\
 	 CLIENT_REDRAWSTATUSALWAYS|	\
 	 CLIENT_REDRAWBORDERS|		\
 	 CLIENT_REDRAWOVERLAY|		\
-	 CLIENT_REDRAWPANES|		\
-	 CLIENT_REDRAWSCROLLBARS)
+	 CLIENT_REDRAWPANES)
 #define CLIENT_UNATTACHEDFLAGS	\
 	(CLIENT_DEAD|		\
 	 CLIENT_SUSPENDED|	\
@@ -3078,6 +3074,8 @@ void	 screen_write_alternateoff(struct screen_write_ctx *,
 /* screen-redraw.c */
 void	 screen_redraw_screen(struct client *);
 void	 screen_redraw_pane(struct client *, struct window_pane *);
+void	 screen_redraw_draw_pane_scrollbar(struct client *c,
+	     struct window_pane *wp);
 
 /* screen.c */
 void	 screen_init(struct screen *, u_int, u_int, u_int);
