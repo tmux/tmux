@@ -222,6 +222,17 @@ server_client_set_key_table(struct client *c, const char *name)
 	key_bindings_unref_table(c->keytable);
 	c->keytable = key_bindings_get_table(name, 1);
 	c->keytable->references++;
+	if (gettimeofday(&c->keytable->activity_time, NULL) != 0)
+		fatal("gettimeofday failed");
+}
+
+static uint64_t
+server_client_key_table_activity_diff(struct client *c)
+{
+	struct timeval	diff;
+
+	timersub(&c->activity_time, &c->keytable->activity_time, &diff);
+	return ((diff.tv_sec * 1000ULL) + (diff.tv_usec / 1000ULL));
 }
 
 /* Get default key table. */
@@ -1866,7 +1877,7 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 	struct key_table		*table, *first;
 	struct key_binding		*bd;
 	int				 xtimeout;
-	uint64_t			 flags;
+	uint64_t			 flags, prefix_delay;
 	struct cmd_find_state		 fs;
 	key_code			 key0, prefix, prefix2;
 
@@ -1961,8 +1972,34 @@ try_again:
 	if (c->flags & CLIENT_REPEAT)
 		log_debug("currently repeating");
 
-	/* Try to see if there is a key binding in the current table. */
 	bd = key_bindings_get(table, key0);
+
+	/*
+	 * If prefix-timeout is enabled and we're in the prefix table, see if
+	 * the timeout has been exceeded. Revert to the root table if so.
+	 */
+	prefix_delay = options_get_number(global_options, "prefix-timeout");
+	if (prefix_delay > 0 &&
+	    strcmp(table->name, "prefix") == 0 &&
+	    server_client_key_table_activity_diff(c) > prefix_delay) {
+		/*
+		 * If repeating is active and this is a repeating binding,
+		 * ignore the timeout.
+		 */
+		if (bd != NULL &&
+		    (c->flags & CLIENT_REPEAT) &&
+		    (bd->flags & KEY_BINDING_REPEAT)) {
+			log_debug("prefix timeout ignored, repeat is active");
+		} else {
+			log_debug("prefix timeout exceeded");
+			server_client_set_key_table(c, NULL);
+			first = table = c->keytable;
+			server_status_client(c);
+			goto table_changed;
+		}
+	}
+
+	/* Try to see if there is a key binding in the current table. */
 	if (bd != NULL) {
 		/*
 		 * Key was matched in this table. If currently repeating but a

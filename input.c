@@ -1349,7 +1349,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 	struct screen_write_ctx	       *sctx = &ictx->ctx;
 	struct screen		       *s = sctx->s;
 	struct input_table_entry       *entry;
-	int				i, n, m;
+	int				i, n, m, ek;
 	u_int				cx, bg = ictx->cell.cell.bg;
 
 	if (ictx->flags & INPUT_DISCARD)
@@ -1407,30 +1407,36 @@ input_csi_dispatch(struct input_ctx *ictx)
 		break;
 	case INPUT_CSI_MODSET:
 		n = input_get(ictx, 0, 0, 0);
-		m = input_get(ictx, 1, 0, 0);
-		/*
-		 * Set the extended key reporting mode as per the client request,
-		 * unless "extended-keys always" forces us into mode 1.
-		 */
-		if (options_get_number(global_options, "extended-keys") != 1)
+		if (n != 4)
 			break;
-		screen_write_mode_clear(sctx,
-		    MODE_KEYS_EXTENDED|MODE_KEYS_EXTENDED_2);
-		if (n == 4 && m == 1)
-			screen_write_mode_set(sctx, MODE_KEYS_EXTENDED);
-		if (n == 4 && m == 2)
+		m = input_get(ictx, 1, 0, 0);
+
+		/*
+		 * Set the extended key reporting mode as per the client
+		 * request, unless "extended-keys" is set to "off".
+		 */
+		ek = options_get_number(global_options, "extended-keys");
+		if (ek == 0)
+			break;
+		screen_write_mode_clear(sctx, EXTENDED_KEY_MODES);
+		if (m == 2)
 			screen_write_mode_set(sctx, MODE_KEYS_EXTENDED_2);
+		else if (m == 1 || ek == 2)
+			screen_write_mode_set(sctx, MODE_KEYS_EXTENDED);
 		break;
 	case INPUT_CSI_MODOFF:
 		n = input_get(ictx, 0, 0, 0);
+		if (n != 4)
+			break;
+
 		/*
-		 * Clear the extended key reporting mode as per the client request,
-		 * unless "extended-keys always" forces us into mode 1.
+		 * Clear the extended key reporting mode as per the client
+		 * request, unless "extended-keys always" forces into mode 1.
 		 */
-		if (n == 4) {
-			screen_write_mode_clear(sctx,
-			    MODE_KEYS_EXTENDED|MODE_KEYS_EXTENDED_2);
-		}
+		screen_write_mode_clear(sctx,
+		    MODE_KEYS_EXTENDED|MODE_KEYS_EXTENDED_2);
+		if (options_get_number(global_options, "extended-keys") == 2)
+			screen_write_mode_set(sctx, MODE_KEYS_EXTENDED);
 		break;
 	case INPUT_CSI_WINOPS:
 		input_csi_dispatch_winops(ictx);
