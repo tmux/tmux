@@ -1982,6 +1982,7 @@ RB_HEAD(key_bindings, key_binding);
 
 struct key_table {
 	const char		*name;
+	struct timeval		 activity_time;
 	struct key_bindings	 key_bindings;
 	struct key_bindings	 default_key_bindings;
 
