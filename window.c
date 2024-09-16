@@ -1090,9 +1090,6 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 {
 	struct window_mode_entry	*wme;
 	struct window_pane_resize	*r;
-        /*
-	int			 	pane_scrollbars = options_get_number(wp->window->options, "pane-scrollbars");
-        */
 
 	if (sx == wp->sx && sy == wp->sy)
 		return;
@@ -1126,6 +1123,7 @@ window_pane_set_mode(struct window_pane *wp, struct window_pane *swp,
 
 	if (!TAILQ_EMPTY(&wp->modes) && TAILQ_FIRST(&wp->modes)->mode == mode)
 		return (1);
+
 	TAILQ_FOREACH(wme, &wp->modes, entry) {
 		if (wme->mode == mode)
 			break;

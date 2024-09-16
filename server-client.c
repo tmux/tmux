@@ -739,7 +739,7 @@ have_event:
 			}
 		}
 	}
-        
+
 	/* Not on status line. Adjust position and check for border or pane. */
 	if (where == NOWHERE) {
                 if (c->tty.mouse_scrolling_flag) {
