@@ -752,7 +752,7 @@ screen_redraw_screen(struct client *c)
 {
 	struct screen_redraw_ctx	ctx;
 	uint64_t			flags;
-  int				    force = 0;
+        int				force = 0;
 
 	if (c->flags & CLIENT_SUSPENDED)
 		return;
@@ -1207,8 +1207,10 @@ screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx,
                         } else {
                                 if (j >= elevator_pos && j < elevator_pos + elevator_height) {
                                         gc.bg = fg;
+                                        gc.fg = bg;
                                 } else {
                                         gc.bg = bg;
+                                        gc.fg = fg;
                                 }
                                 tty_cell(tty, &gc,
                                          &grid_default_cell, NULL, NULL);
