@@ -38,7 +38,7 @@ autoconf, automake and pkg-config:
 	$ sh autogen.sh
 	$ ./configure && make
 
-    #to install from build replace the above command line with:
+    // To install from build replace the above command line with:
 	// Linux
 	$ ./configure && make install
 
