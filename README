@@ -38,11 +38,13 @@ autoconf, automake and pkg-config:
 	$ sh autogen.sh
 	$ ./configure && make
 
-    // To install from build replace the above command line with:
+    // To install from build replace the above ./configure 
+	// command with:
+	
 	// Linux
 	$ ./configure && make install
 
-    // Mac
+	// Mac
 	$ ./configure --enable-utf8proc && make install
 
 * Contributing
