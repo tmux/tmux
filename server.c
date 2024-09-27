@@ -195,7 +195,7 @@ server_start(struct tmuxproc *client, uint64_t flags, struct event_base *base,
 
 	if (event_reinit(base) != 0)
 		fatalx("event_reinit failed");
-	server_proc = proc_start("server");
+	server_proc = proc_start("server", base);
 
 	proc_set_signals(server_proc, server_signal);
 	sigprocmask(SIG_SETMASK, &oldset, NULL);

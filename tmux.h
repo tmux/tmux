@@ -2153,7 +2153,7 @@ const char	*getversion(void);
 /* proc.c */
 struct imsg;
 int	proc_send(struct tmuxpeer *, enum msgtype, int, const void *, size_t);
-struct tmuxproc *proc_start(const char *);
+struct tmuxproc *proc_start(const char *, struct event_base *);
 void	proc_loop(struct tmuxproc *, int (*)(void));
 void	proc_exit(struct tmuxproc *);
 void	proc_set_signals(struct tmuxproc *, void(*)(int));

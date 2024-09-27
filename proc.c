@@ -180,7 +180,7 @@ proc_send(struct tmuxpeer *peer, enum msgtype type, int fd, const void *buf,
 }
 
 struct tmuxproc *
-proc_start(const char *name)
+proc_start(const char *name, struct event_base *event)
 {
 	struct tmuxproc	*tp;
 	struct utsname	 u;
@@ -194,7 +194,7 @@ proc_start(const char *name)
 	log_debug("%s started (%ld): version %s, socket %s, protocol %d", name,
 	    (long)getpid(), getversion(), socket_path, PROTOCOL_VERSION);
 	log_debug("on %s %s %s", u.sysname, u.release, u.version);
-	log_debug("using libevent %s %s", event_get_version(), event_get_method());
+	log_debug("using libevent %s %s", event_get_version(), event_base_get_method(event));
 #ifdef HAVE_UTF8PROC
 	log_debug("using utf8proc %s", utf8proc_version());
 #endif
