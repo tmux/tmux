@@ -273,7 +273,7 @@ client_main(struct event_base *base, int argc, char **argv, uint64_t flags,
 	}
 
 	/* Create client process structure (starts logging). */
-	client_proc = proc_start("client");
+	client_proc = proc_start("client", base);
 	proc_set_signals(client_proc, client_signal);
 
 	/* Save the flags. */
