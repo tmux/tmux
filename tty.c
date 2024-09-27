@@ -33,6 +33,7 @@
 
 #include "tmux.h"
 
+extern struct event_base *event;
 static int	tty_log_fd = -1;
 
 static void	tty_set_italics(struct tty *);
@@ -278,13 +279,13 @@ tty_open(struct tty *tty, char **cause)
 
 	tty->flags &= ~(TTY_NOCURSOR|TTY_FREEZE|TTY_BLOCK|TTY_TIMER);
 
-	event_set(&tty->event_in, c->fd, EV_PERSIST|EV_READ,
+	event_assign(&tty->event_in, event, c->fd, EV_PERSIST|EV_READ,
 	    tty_read_callback, tty);
 	tty->in = evbuffer_new();
 	if (tty->in == NULL)
 		fatal("out of memory");
 
-	event_set(&tty->event_out, c->fd, EV_WRITE, tty_write_callback, tty);
+	event_assign(&tty->event_out, event, c->fd, EV_WRITE, tty_write_callback, tty);
 	tty->out = evbuffer_new();
 	if (tty->out == NULL)
 		fatal("out of memory");

@@ -96,7 +96,7 @@ osdep_event_init(void)
 	/* On Linux, epoll doesn't work on /dev/null (yes, really). */
 	setenv("EVENT_NOEPOLL", "1", 1);
 
-	base = event_init();
+	base = event_base_new();
 	unsetenv("EVENT_NOEPOLL");
 	return (base);
 }

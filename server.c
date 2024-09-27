@@ -39,6 +39,7 @@
  * Main server functions.
  */
 
+extern struct event_base *event;
 struct clients		 clients;
 
 struct tmuxproc		*server_proc;
@@ -414,11 +415,11 @@ server_add_accept(int timeout)
 		event_del(&server_ev_accept);
 
 	if (timeout == 0) {
-		event_set(&server_ev_accept, server_fd, EV_READ, server_accept,
+		event_assign(&server_ev_accept, event, server_fd, EV_READ, server_accept,
 		    NULL);
 		event_add(&server_ev_accept, NULL);
 	} else {
-		event_set(&server_ev_accept, server_fd, EV_TIMEOUT,
+		event_assign(&server_ev_accept, event, server_fd, EV_TIMEOUT,
 		    server_accept, NULL);
 		event_add(&server_ev_accept, &tv);
 	}

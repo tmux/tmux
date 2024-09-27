@@ -202,7 +202,7 @@ osdep_event_init(void)
 	 */
 	setenv("EVENT_NOKQUEUE", "1", 1);
 
-	base = event_init();
+	base = event_base_new();
 	unsetenv("EVENT_NOKQUEUE");
 	return (base);
 }

@@ -33,6 +33,7 @@
 
 #include "tmux.h"
 
+extern struct event_base *event;
 struct tmuxproc {
 	const char	 *name;
 	int		  exit;
@@ -155,7 +156,7 @@ proc_update_event(struct tmuxpeer *peer)
 	events = EV_READ;
 	if (peer->ibuf.w.queued > 0)
 		events |= EV_WRITE;
-	event_set(&peer->event, peer->ibuf.fd, events, proc_event_cb, peer);
+	event_assign(&peer->event, event, peer->ibuf.fd, events, proc_event_cb, peer);
 
 	event_add(&peer->event, NULL);
 }
@@ -314,7 +315,7 @@ proc_add_peer(struct tmuxproc *tp, int fd,
 	peer->arg = arg;
 
 	imsg_init(&peer->ibuf, fd);
-	event_set(&peer->event, fd, EV_READ, proc_event_cb, peer);
+	event_assign(&peer->event, event, fd, EV_READ, proc_event_cb, peer);
 
 	if (getpeereid(fd, &peer->uid, &gid) != 0)
 		peer->uid = (uid_t)-1;

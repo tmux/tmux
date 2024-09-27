@@ -106,7 +106,7 @@ osdep_event_init(void)
 	 */
 	setenv("EVENT_NOEVPORT", "1", 1);
 
-	base = event_init();
+	base = event_base_new();
 	unsetenv("EVENT_NOEVPORT");
 	return (base);
 }

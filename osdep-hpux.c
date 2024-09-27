@@ -35,5 +35,5 @@ osdep_get_cwd(__unused int fd)
 struct event_base *
 osdep_event_init(void)
 {
-	return (event_init());
+	return (event_base_new());
 }

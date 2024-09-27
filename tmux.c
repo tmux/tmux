@@ -42,6 +42,7 @@ struct timeval	 start_time;
 const char	*socket_path;
 int		 ptm_fd = -1;
 const char	*shell_command;
+struct event_base *event;
 
 static __dead void	 usage(void);
 static char		*make_label(const char *, char **);
@@ -534,5 +535,6 @@ main(int argc, char **argv)
 	free(label);
 
 	/* Pass control to the client. */
-	exit(client_main(osdep_event_init(), argc, argv, flags, feat));
+	event = osdep_event_init()
+	exit(client_main(event, argc, argv, flags, feat));
 }
