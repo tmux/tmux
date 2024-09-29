@@ -408,9 +408,9 @@ main(int argc, char **argv)
 			cfg_files[cfg_nfiles++] = xstrdup(optarg);
 			cfg_quiet = 0;
 			break;
- 		case 'V':
+		case 'V':
 			printf("tmux %s\n", getversion());
- 			exit(0);
+			exit(0);
 		case 'l':
 			flags |= CLIENT_LOGIN;
 			break;
