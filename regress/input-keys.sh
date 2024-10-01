@@ -6,10 +6,10 @@ TERM=screen
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 TMUX="$TEST_TMUX -Ltest"
 $TMUX kill-server 2>/dev/null
-
+sleep 1
 $TMUX -f/dev/null new -x20 -y2 -d || exit 1
-
-sleep 0.1
+sleep 1
+$TMUX set -g escape-time 0
 
 exit_status=0
 
@@ -17,11 +17,14 @@ assert_key () {
 	key=$1
 	expected_code=$2
 
-	$TMUX new-window -- sh -c 'stty raw -echo && cat -tv'
-	$TMUX send-keys "$key" $
+	W=$($TMUX new-window -P -- sh -c 'stty raw -echo && cat -tv')
+	$TMUX send-keys -t$W "$key" 'EOL' || exit 1
+	sleep 0.2
 
-	actual_code=$($TMUX capturep -p | head -1 | sed -e 's/\$$//')
-	$TMUX kill-window
+	actual_code=$($TMUX capturep -pt$W | \
+			      head -1 | \
+			      sed -e 's/EOL.*$//')
+	$TMUX kill-window -t$W || exit 1
 
 	if [ "$actual_code" = "$expected_code" ]; then
 		if [ -n "$VERBOSE" ]; then
@@ -205,7 +208,7 @@ assert_key 'PageUp' '^[[5~'
 assert_key 'PgUp' '^[[5~'
 
 assert_key 'BTab' '^[[Z'
-assert_key 'C-S-Tab' '^[[Z'
+assert_key 'C-S-Tab' '^I'
 
 assert_key 'Up' '^[[A'
 assert_key 'Down' '^[[B'
@@ -291,8 +294,8 @@ assert_extended_key 'Insert' '^[[2;_~'
 assert_extended_key 'DC' '^[[3;_~'
 assert_extended_key 'Delete' '^[[3;_~'
 
-assert_key 'C-Tab' "^[[9;5u"
-assert_key 'C-S-Tab' "^[[1;5Z"
+assert_key 'C-Tab' "^[[27;5;9~"
+assert_key 'C-S-Tab' "^[[27;6;9~"
 
 $TMUX kill-server 2>/dev/null
 
