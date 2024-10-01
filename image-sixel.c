@@ -37,8 +37,13 @@ struct sixel_image {
 	u_int			 xpixel;
 	u_int			 ypixel;
 
+	u_int			 set_ra;
+	u_int			 ra_x;
+	u_int			 ra_y;
+
 	u_int			*colours;
 	u_int			 ncolours;
+	u_int			 p2;
 
 	u_int			 dx;
 	u_int			 dy;
@@ -166,6 +171,10 @@ sixel_parse_attributes(struct sixel_image *si, const char *cp, const char *end)
 	si->x = x;
 	sixel_parse_expand_lines(si, y);
 
+	si->set_ra = 1;
+	si->ra_x = x;
+	si->ra_y = y;
+
 	return (last);
 }
 
@@ -268,7 +277,7 @@ sixel_parse_repeat(struct sixel_image *si, const char *cp, const char *end)
 }
 
 struct sixel_image *
-sixel_parse(const char *buf, size_t len, u_int xpixel, u_int ypixel)
+sixel_parse(const char *buf, size_t len, u_int p2, u_int xpixel, u_int ypixel)
 {
 	struct sixel_image	*si;
 	const char		*cp = buf, *end = buf + len;
@@ -282,6 +291,7 @@ sixel_parse(const char *buf, size_t len, u_int xpixel, u_int ypixel)
 	si = xcalloc (1, sizeof *si);
 	si->xpixel = xpixel;
 	si->ypixel = ypixel;
+	si->p2 = p2;
 
 	while (cp != end) {
 		ch = *cp++;
@@ -423,6 +433,7 @@ sixel_scale(struct sixel_image *si, u_int xpixel, u_int ypixel, u_int ox,
 	new = xcalloc (1, sizeof *si);
 	new->xpixel = xpixel;
 	new->ypixel = ypixel;
+	new->p2 = si->p2;
 
 	for (y = 0; y < tsy; y++) {
 		py = poy + ((double)y * psy / tsy);
@@ -497,10 +508,14 @@ sixel_print(struct sixel_image *si, struct sixel_image *map, size_t *size)
 	len = 8192;
 	buf = xmalloc(len);
 
-	sixel_print_add(&buf, &len, &used, "\033Pq", 3);
-
-	tmplen = xsnprintf(tmp, sizeof tmp, "\"1;1;%u;%u", si->x, si->y);
+	tmplen = xsnprintf(tmp, sizeof tmp, "\033P0;%uq", si->p2);
 	sixel_print_add(&buf, &len, &used, tmp, tmplen);
+
+	if (si->set_ra) {
+		tmplen = xsnprintf(tmp, sizeof tmp, "\"1;1;%u;%u", si->ra_x,
+		    si->ra_y);
+		sixel_print_add(&buf, &len, &used, tmp, tmplen);
+	}
 
 	for (i = 0; i < ncolours; i++) {
 		c = colours[i];
@@ -552,8 +567,7 @@ sixel_print(struct sixel_image *si, struct sixel_image *map, size_t *size)
 
 		if (buf[used - 1] == '$')
 			used--;
-		if (buf[used - 1] != '-')
-			sixel_print_add(&buf, &len, &used, "-", 1);
+		sixel_print_add(&buf, &len, &used, "-", 1);
 	}
 	if (buf[used - 1] == '$' || buf[used - 1] == '-')
 		used--;
