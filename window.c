@@ -1155,6 +1155,24 @@ window_pane_reset_mode_all(struct window_pane *wp)
 }
 
 static void
+window_pane_copy_paste(struct window_pane *wp, char *buf, size_t len)
+{
+ 	struct window_pane	*loop;
+
+	TAILQ_FOREACH(loop, &wp->window->panes, entry) {
+		if (loop != wp &&
+		    TAILQ_EMPTY(&loop->modes) &&
+		    loop->fd != -1 &&
+		    (~loop->flags & PANE_INPUTOFF) &&
+		    window_pane_visible(loop) &&
+		    options_get_number(loop->options, "synchronize-panes")) {
+			log_debug("%s: %.*s", __func__, (int)len, buf);
+			bufferevent_write(loop->event, buf, len);
+		}
+	}
+}
+
+static void
 window_pane_copy_key(struct window_pane *wp, key_code key)
 {
  	struct window_pane	*loop;
@@ -1168,6 +1186,22 @@ window_pane_copy_key(struct window_pane *wp, key_code key)
 		    options_get_number(loop->options, "synchronize-panes"))
 			input_key_pane(loop, key, NULL);
 	}
+}
+
+void
+window_pane_paste(struct window_pane *wp, char *buf, size_t len)
+{
+	if (!TAILQ_EMPTY(&wp->modes))
+		return;
+
+	if (wp->fd == -1 || wp->flags & PANE_INPUTOFF)
+		return;
+
+	log_debug("%s: %.*s", __func__, (int)len, buf);
+	bufferevent_write(wp->event, buf, len);
+
+	if (options_get_number(wp->options, "synchronize-panes"))
+		window_pane_copy_paste(wp, buf, len);
 }
 
 int

@@ -46,8 +46,6 @@ static void	server_client_check_modes(struct client *);
 static void	server_client_set_title(struct client *);
 static void	server_client_set_path(struct client *);
 static void	server_client_reset_state(struct client *);
-static int 	server_client_is_bracket_pasting(struct client *, key_code);
-static int	server_client_assume_paste(struct session *);
 static void	server_client_update_latest(struct client *);
 
 static void	server_client_dispatch(struct imsg *, void *);
@@ -1801,18 +1799,18 @@ out:
 
 /* Is this a bracket paste key? */
 static int
-server_client_is_bracket_pasting(struct client *c, key_code key)
+server_client_is_bracket_paste(struct client *c, key_code key)
 {
 	if (key == KEYC_PASTE_START) {
 		c->flags |= CLIENT_BRACKETPASTING;
 		log_debug("%s: bracket paste on", c->name);
-		return (1);
+		return (0);
 	}
 
 	if (key == KEYC_PASTE_END) {
-		c->flags &= ~CLIENT_BRACKETPASTING;
+ 		c->flags &= ~CLIENT_BRACKETPASTING;
 		log_debug("%s: bracket paste off", c->name);
-		return (1);
+		return (0);
 	}
 
 	return !!(c->flags & CLIENT_BRACKETPASTING);
@@ -1820,25 +1818,29 @@ server_client_is_bracket_pasting(struct client *c, key_code key)
 
 /* Is this fast enough to probably be a paste? */
 static int
-server_client_assume_paste(struct session *s)
+server_client_is_assume_paste(struct client *c)
 {
-	struct timeval	tv;
-	int		t;
+	struct session	*s = c->session;
+	struct timeval	 tv;
+	int		 t;
 
+	if (c->flags & CLIENT_BRACKETPASTING)
+		return (0);
 	if ((t = options_get_number(s->options, "assume-paste-time")) == 0)
 		return (0);
 
-	timersub(&s->activity_time, &s->last_activity_time, &tv);
+	timersub(&c->activity_time, &c->last_activity_time, &tv);
 	if (tv.tv_sec == 0 && tv.tv_usec < t * 1000) {
-		log_debug("session %s pasting (flag %d)", s->name,
-		    !!(s->flags & SESSION_PASTING));
-		if (s->flags & SESSION_PASTING)
+		if (c->flags & CLIENT_ASSUMEPASTING)
 			return (1);
-		s->flags |= SESSION_PASTING;
+		c->flags |= CLIENT_ASSUMEPASTING;
+		log_debug("%s: assume paste on", c->name);
 		return (0);
 	}
-	log_debug("session %s not pasting", s->name);
-	s->flags &= ~SESSION_PASTING;
+	if (c->flags & CLIENT_ASSUMEPASTING) {
+		c->flags &= ~CLIENT_ASSUMEPASTING;
+		log_debug("%s: assume paste off", c->name);
+	}
 	return (0);
 }
 
@@ -1891,6 +1893,8 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 	wl = s->curw;
 
 	/* Update the activity timer. */
+	memcpy(&c->last_activity_time, &c->activity_time,
+	    sizeof c->last_activity_time);
 	if (gettimeofday(&c->activity_time, NULL) != 0)
 		fatal("gettimeofday failed");
 	session_update_activity(s, &c->activity_time);
@@ -1928,14 +1932,16 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 		goto forward_key;
 
 	/* Forward if bracket pasting. */
-	if (server_client_is_bracket_pasting(c, key))
-		goto forward_key;
+	if (server_client_is_bracket_paste (c, key))
+		goto paste_key;
 
 	/* Treat everything as a regular key when pasting is detected. */
 	if (!KEYC_IS_MOUSE(key) &&
+	    key != KEYC_FOCUS_IN &&
+	    key != KEYC_FOCUS_OUT &&
 	    (~key & KEYC_SENT) &&
-	    server_client_assume_paste(s))
-		goto forward_key;
+	    server_client_is_assume_paste(c))
+		goto paste_key;
 
 	/*
 	 * Work out the current key table. If the pane is in a mode, use
@@ -2104,10 +2110,20 @@ forward_key:
 		goto out;
 	if (wp != NULL)
 		window_pane_key(wp, c, s, wl, key, m);
+	goto out;
+
+paste_key:
+	if (c->flags & CLIENT_READONLY)
+		goto out;
+	if (event->buf != NULL)
+		window_pane_paste(wp, event->buf, event->len);
+	key = KEYC_NONE;
+	goto out;
 
 out:
 	if (s != NULL && key != KEYC_FOCUS_OUT)
 		server_client_update_latest(c);
+	free(event->buf);
 	free(event);
 	return (CMD_RETURN_NORMAL);
 }
@@ -2521,11 +2537,13 @@ server_client_click_timer(__unused int fd, __unused short events, void *data)
 		 * Waiting for a third click that hasn't happened, so this must
 		 * have been a double click.
 		 */
-		event = xmalloc(sizeof *event);
+		event = xcalloc(1, sizeof *event);
 		event->key = KEYC_DOUBLECLICK;
 		memcpy(&event->m, &c->click_event, sizeof event->m);
-		if (!server_client_handle_key(c, event))
+		if (!server_client_handle_key(c, event)) {
+			free(event->buf);
 			free(event);
+		}
 	}
 	c->flags &= ~(CLIENT_DOUBLECLICK|CLIENT_TRIPLECLICK);
 }
