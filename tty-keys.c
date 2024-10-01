@@ -944,9 +944,6 @@ complete_key:
 	if (bspace != _POSIX_VDISABLE && (key & KEYC_MASK_KEY) == bspace)
 		key = (key & KEYC_MASK_MODIFIERS)|KEYC_BSPACE;
 
-	/* Remove data from buffer. */
-	evbuffer_drain(tty->in, size);
-
 	/* Remove key timer. */
 	if (event_initialized(&tty->key_timer))
 		evtimer_del(&tty->key_timer);
@@ -965,12 +962,22 @@ complete_key:
 
 	/* Fire the key. */
 	if (key != KEYC_UNKNOWN) {
-		event = xmalloc(sizeof *event);
+		event = xcalloc(1, sizeof *event);
 		event->key = key;
 		memcpy(&event->m, &m, sizeof event->m);
-		if (!server_client_handle_key(c, event))
+
+		event->buf = xmalloc(size);
+		event->len = size;
+		memcpy (event->buf, buf, event->len);
+
+		if (!server_client_handle_key(c, event)) {
+			free(event->buf);
 			free(event);
+		}
 	}
+
+	/* Remove data from buffer. */
+	evbuffer_drain(tty->in, size);
 
 	return (1);
 

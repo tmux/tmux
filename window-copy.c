@@ -417,6 +417,7 @@ window_copy_common_init(struct window_mode_entry *wme)
 	data->jumpchar = NULL;
 
 	screen_init(&data->screen, screen_size_x(base), screen_size_y(base), 0);
+	screen_set_default_cursor(&data->screen, global_w_options);
 	data->modekeys = options_get_number(wp->window->options, "mode-keys");
 
 	evtimer_set(&data->dragtimer, window_copy_scroll_timer, wme);

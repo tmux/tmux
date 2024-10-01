@@ -498,9 +498,12 @@ input_key_vt10x(struct bufferevent *bev, key_code key)
 		return (0);
 	}
 
-	/* Prevent TAB and RET from being swallowed by C0 remapping logic. */
+	/*
+	 * Prevent TAB, CR and LF from being swallowed by the C0 remapping
+	 * logic.
+	 */
 	onlykey = key & KEYC_MASK_KEY;
-	if (onlykey == '\r' || onlykey == '\t')
+	if (onlykey == '\r' || onlykey == '\n' || onlykey == '\t')
 		key &= ~KEYC_CTRL;
 
 	/*
