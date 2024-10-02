@@ -2320,7 +2320,7 @@ input_dcs_dispatch(struct input_ctx *ictx)
 #ifdef ENABLE_SIXEL
 	struct window		*w;
 	struct sixel_image	*si;
-	u_int			 p2 = 0;
+	int			 p2;
 #endif
 
 	if (wp == NULL)
@@ -2336,8 +2336,9 @@ input_dcs_dispatch(struct input_ctx *ictx)
 	if (buf[0] == 'q') {
 		if (input_split(ictx) != 0)
 			return (0);
-		if (ictx->param_list[1].type == INPUT_NUMBER)
-			p2 = ictx->param_list[1].num;
+		p2 = input_get(ictx, 1, 0, 0);
+		if (p2 == -1)
+			p2 = 0;
 		si = sixel_parse(buf, len, p2, w->xpixel, w->ypixel);
 		if (si != NULL)
 			screen_write_sixelimage(sctx, si, ictx->cell.cell.bg);
