@@ -226,7 +226,7 @@ make_label(const char *label, char **cause)
 		xasprintf(cause, "%s is not a directory", base);
 		goto fail;
 	}
-	if (sb.st_uid != uid || (sb.st_mode & S_IRWXO) != 0) {
+	if (sb.st_uid != uid || (sb.st_mode & TMUX_SOCK_PERM) != 0) {
 		xasprintf(cause, "directory %s has unsafe permissions", base);
 		goto fail;
 	}
