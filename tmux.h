@@ -84,6 +84,9 @@ struct winlink;
 #ifndef TMUX_SOCK
 #define TMUX_SOCK "$TMUX_TMPDIR:" _PATH_TMP
 #endif
+#ifndef TMUX_SOCK_PERM
+#define TMUX_SOCK_PERM (7 /* o+rwx */)
+#endif
 #ifndef TMUX_TERM
 #define TMUX_TERM "screen"
 #endif

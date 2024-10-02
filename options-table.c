@@ -823,7 +823,7 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SESSION,
 	  .flags = OPTIONS_TABLE_IS_ARRAY,
-	  .default_str = "DISPLAY KRB5CCNAME SSH_ASKPASS SSH_AUTH_SOCK "
+	  .default_str = "DISPLAY KRB5CCNAME MSYSTEM SSH_ASKPASS SSH_AUTH_SOCK "
 			 "SSH_AGENT_PID SSH_CONNECTION WINDOWID XAUTHORITY",
 	  .text = "List of environment variables to update in the session "
 		  "environment when a client is attached."
