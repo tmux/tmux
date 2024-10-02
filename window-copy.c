@@ -94,13 +94,14 @@ static int	window_copy_update_selection(struct window_mode_entry *, int,
 static void	window_copy_synchronize_cursor(struct window_mode_entry *, int);
 static void    *window_copy_get_selection(struct window_mode_entry *, size_t *);
 static void	window_copy_copy_buffer(struct window_mode_entry *,
-		    const char *, void *, size_t);
+		    const char *, void *, size_t, int, int);
 static void	window_copy_pipe(struct window_mode_entry *,
 		    struct session *, const char *);
 static void	window_copy_copy_pipe(struct window_mode_entry *,
-		    struct session *, const char *, const char *);
+		    struct session *, const char *, const char *,
+		    int, int);
 static void	window_copy_copy_selection(struct window_mode_entry *,
-		    const char *);
+		    const char *, int, int);
 static void	window_copy_append_selection(struct window_mode_entry *);
 static void	window_copy_clear_selection(struct window_mode_entry *);
 static void	window_copy_copy_line(struct window_mode_entry *, char **,
@@ -1050,6 +1051,8 @@ window_copy_do_copy_end_of_line(struct window_copy_cmd_state *cs, int pipe,
 	char				 *prefix = NULL, *command = NULL;
 	const char			 *arg0 = args_string(cs->wargs, 0);
 	const char			 *arg1 = args_string(cs->wargs, 1);
+	int				  set_paste = !args_has(cs->wargs, 'P');
+	int				  set_clip = !args_has(cs->wargs, 'C');
 
 	if (pipe) {
 		if (count == 2)
@@ -1072,9 +1075,11 @@ window_copy_do_copy_end_of_line(struct window_copy_cmd_state *cs, int pipe,
 
 	if (s != NULL) {
 		if (pipe)
-			window_copy_copy_pipe(wme, s, prefix, command);
+			window_copy_copy_pipe(wme, s, prefix, command,
+			    set_paste, set_clip);
 		else
-			window_copy_copy_selection(wme, prefix);
+			window_copy_copy_selection(wme, prefix,
+			    set_paste, set_clip);
 
 		if (cancel) {
 			free(prefix);
@@ -1132,6 +1137,8 @@ window_copy_do_copy_line(struct window_copy_cmd_state *cs, int pipe, int cancel)
 	char				 *prefix = NULL, *command = NULL;
 	const char			 *arg0 = args_string(cs->wargs, 0);
 	const char			 *arg1 = args_string(cs->wargs, 1);
+	int				  set_paste = !args_has(cs->wargs, 'P');
+	int				  set_clip = !args_has(cs->wargs, 'C');
 
 	if (pipe) {
 		if (count == 2)
@@ -1156,9 +1163,11 @@ window_copy_do_copy_line(struct window_copy_cmd_state *cs, int pipe, int cancel)
 
 	if (s != NULL) {
 		if (pipe)
-			window_copy_copy_pipe(wme, s, prefix, command);
+			window_copy_copy_pipe(wme, s, prefix, command,
+			    set_paste, set_clip);
 		else
-			window_copy_copy_selection(wme, prefix);
+			window_copy_copy_selection(wme, prefix,
+			    set_paste, set_clip);
 
 		if (cancel) {
 			free(prefix);
@@ -1211,12 +1220,14 @@ window_copy_cmd_copy_selection_no_clear(struct window_copy_cmd_state *cs)
 	struct window_pane		*wp = wme->wp;
 	char				*prefix = NULL;
 	const char			*arg0 = args_string(cs->wargs, 0);
+	int				 set_paste = !args_has(cs->wargs, 'P');
+	int				 set_clip = !args_has(cs->wargs, 'C');
 
 	if (arg0 != NULL)
 		prefix = format_single(NULL, arg0, c, s, wl, wp);
 
 	if (s != NULL)
-		window_copy_copy_selection(wme, prefix);
+		window_copy_copy_selection(wme, prefix, set_paste, set_clip);
 
 	free(prefix);
 	return (WINDOW_COPY_CMD_NOTHING);
@@ -2119,13 +2130,16 @@ window_copy_cmd_copy_pipe_no_clear(struct window_copy_cmd_state *cs)
 	char				*command = NULL, *prefix = NULL;
 	const char			*arg0 = args_string(cs->wargs, 0);
 	const char			*arg1 = args_string(cs->wargs, 1);
+	int				 set_paste = !args_has(cs->wargs, 'P');
+	int				 set_clip = !args_has(cs->wargs, 'C');
 
 	if (arg1 != NULL)
 		prefix = format_single(NULL, arg1, c, s, wl, wp);
 
 	if (s != NULL && arg0 != NULL && *arg0 != '\0')
 		command = format_single(NULL, arg0, c, s, wl, wp);
-	window_copy_copy_pipe(wme, s, prefix, command);
+	window_copy_copy_pipe(wme, s, prefix, command,
+	    set_paste, set_clip);
 	free(command);
 
 	free(prefix);
@@ -2555,72 +2569,72 @@ static const struct {
 	  .f = window_copy_cmd_clear_selection
 	},
 	{ .command = "copy-end-of-line",
-	  .args = { "", 0, 1, NULL },
+	  .args = { "CP", 0, 1, NULL },
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_copy_end_of_line
 	},
 	{ .command = "copy-end-of-line-and-cancel",
-	  .args = { "", 0, 1, NULL },
+	  .args = { "CP", 0, 1, NULL },
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_copy_end_of_line_and_cancel
 	},
 	{ .command = "copy-pipe-end-of-line",
-	  .args = { "", 0, 2, NULL },
+	  .args = { "CP", 0, 2, NULL },
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_copy_pipe_end_of_line
 	},
 	{ .command = "copy-pipe-end-of-line-and-cancel",
-	  .args = { "", 0, 2, NULL },
+	  .args = { "CP", 0, 2, NULL },
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_copy_pipe_end_of_line_and_cancel
 	},
 	{ .command = "copy-line",
-	  .args = { "", 0, 1, NULL },
+	  .args = { "CP", 0, 1, NULL },
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_copy_line
 	},
 	{ .command = "copy-line-and-cancel",
-	  .args = { "", 0, 1, NULL },
+	  .args = { "CP", 0, 1, NULL },
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_copy_line_and_cancel
 	},
 	{ .command = "copy-pipe-line",
-	  .args = { "", 0, 2, NULL },
+	  .args = { "CP", 0, 2, NULL },
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_copy_pipe_line
 	},
 	{ .command = "copy-pipe-line-and-cancel",
-	  .args = { "", 0, 2, NULL },
+	  .args = { "CP", 0, 2, NULL },
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_copy_pipe_line_and_cancel
 	},
 	{ .command = "copy-pipe-no-clear",
-	  .args = { "", 0, 2, NULL },
+	  .args = { "CP", 0, 2, NULL },
 	  .clear = WINDOW_COPY_CMD_CLEAR_NEVER,
 	  .f = window_copy_cmd_copy_pipe_no_clear
 	},
 	{ .command = "copy-pipe",
-	  .args = { "", 0, 2, NULL },
+	  .args = { "CP", 0, 2, NULL },
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_copy_pipe
 	},
 	{ .command = "copy-pipe-and-cancel",
-	  .args = { "", 0, 2, NULL },
+	  .args = { "CP", 0, 2, NULL },
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_copy_pipe_and_cancel
 	},
 	{ .command = "copy-selection-no-clear",
-	  .args = { "", 0, 1, NULL },
+	  .args = { "CP", 0, 1, NULL },
 	  .clear = WINDOW_COPY_CMD_CLEAR_NEVER,
 	  .f = window_copy_cmd_copy_selection_no_clear
 	},
 	{ .command = "copy-selection",
-	  .args = { "", 0, 1, NULL },
+	  .args = { "CP", 0, 1, NULL },
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_copy_selection
 	},
 	{ .command = "copy-selection-and-cancel",
-	  .args = { "", 0, 1, NULL },
+	  .args = { "CP", 0, 1, NULL },
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_copy_selection_and_cancel
 	},
@@ -4655,19 +4669,20 @@ window_copy_get_selection(struct window_mode_entry *wme, size_t *len)
 
 static void
 window_copy_copy_buffer(struct window_mode_entry *wme, const char *prefix,
-    void *buf, size_t len)
+    void *buf, size_t len, int set_paste, int set_clip)
 {
 	struct window_pane	*wp = wme->wp;
 	struct screen_write_ctx	 ctx;
 
-	if (options_get_number(global_options, "set-clipboard") != 0) {
+	if (set_clip && options_get_number(global_options, "set-clipboard") != 0) {
 		screen_write_start_pane(&ctx, wp, NULL);
 		screen_write_setselection(&ctx, "", buf, len);
 		screen_write_stop(&ctx);
 		notify_pane("pane-set-clipboard", wp);
 	}
 
-	paste_add(prefix, buf, len);
+	if (set_paste)
+		paste_add(prefix, buf, len);
 }
 
 static void *
@@ -4699,25 +4714,28 @@ window_copy_pipe(struct window_mode_entry *wme, struct session *s,
 
 static void
 window_copy_copy_pipe(struct window_mode_entry *wme, struct session *s,
-    const char *prefix, const char *cmd)
+    const char *prefix, const char *cmd, int set_paste, int set_clip)
 {
 	void	*buf;
 	size_t	 len;
 
 	buf = window_copy_pipe_run(wme, s, cmd, &len);
 	if (buf != NULL)
-		window_copy_copy_buffer(wme, prefix, buf, len);
+		window_copy_copy_buffer(wme, prefix, buf, len, set_paste,
+		    set_clip);
 }
 
 static void
-window_copy_copy_selection(struct window_mode_entry *wme, const char *prefix)
+window_copy_copy_selection(struct window_mode_entry *wme, const char *prefix,
+    int set_paste, int set_clip)
 {
 	char	*buf;
 	size_t	 len;
 
 	buf = window_copy_get_selection(wme, &len);
 	if (buf != NULL)
-		window_copy_copy_buffer(wme, prefix, buf, len);
+		window_copy_copy_buffer(wme, prefix, buf, len, set_paste,
+		    set_clip);
 }
 
 static void

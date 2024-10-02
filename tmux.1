@@ -1803,6 +1803,7 @@ Exit copy mode.
 Clear the current selection.
 .It Xo
 .Ic copy-end-of-line
+.Op Fl CP
 .Op Ar prefix
 .Xc
 Copy from the cursor position to the end of the line.
@@ -1810,11 +1811,13 @@ Copy from the cursor position to the end of the line.
 is used to name the new paste buffer.
 .It Xo
 .Ic copy-end-of-line-and-cancel
+.Op Fl CP
 .Op Ar prefix
 .Xc
 Copy from the cursor position and exit copy mode.
 .It Xo
 .Ic copy-pipe-end-of-line
+.Op Fl CP
 .Op Ar command
 .Op Ar prefix
 .Xc
@@ -1824,6 +1827,7 @@ Copy from the cursor position to the end of the line and pipe the text to
 is used to name the new paste buffer.
 .It Xo
 .Ic copy-pipe-end-of-line-and-cancel
+.Op Fl CP
 .Op Ar command
 .Op Ar prefix
 .Xc
@@ -1832,16 +1836,19 @@ Same as
 but also exit copy mode.
 .It Xo
 .Ic copy-line
+.Op Fl CP
 .Op Ar prefix
 .Xc
 Copy the entire line.
 .It Xo
 .Ic copy-line-and-cancel
+.Op Fl CP
 .Op Ar prefix
 .Xc
 Copy the entire line and exit copy mode.
 .It Xo
 .Ic copy-pipe-line
+.Op Fl CP
 .Op Ar command
 .Op Ar prefix
 .Xc
@@ -1851,6 +1858,7 @@ Copy the entire line and pipe the text to
 is used to name the new paste buffer.
 .It Xo
 .Ic copy-pipe-line-and-cancel
+.Op Fl CP
 .Op Ar command
 .Op Ar prefix
 .Xc
@@ -1859,6 +1867,7 @@ Same as
 but also exit copy mode.
 .It Xo
 .Ic copy-pipe
+.Op Fl CP
 .Op Ar command
 .Op Ar prefix
 .Xc
@@ -1868,6 +1877,7 @@ Copy the selection, clear it and pipe its text to
 is used to name the new paste buffer.
 .It Xo
 .Ic copy-pipe-no-clear
+.Op Fl CP
 .Op Ar command
 .Op Ar prefix
 .Xc
@@ -1876,6 +1886,7 @@ Same as
 but do not clear the selection.
 .It Xo
 .Ic copy-pipe-and-cancel
+.Op Fl CP
 .Op Ar command
 .Op Ar prefix
 .Xc
@@ -1884,11 +1895,13 @@ Same as
 but also exit copy mode.
 .It Xo
 .Ic copy-selection
+.Op Fl CP
 .Op Ar prefix
 .Xc
 Copies the current selection.
 .It Xo
 .Ic copy-selection-no-clear
+.Op Fl CP
 .Op Ar prefix
 .Xc
 Same as
@@ -1896,6 +1909,7 @@ Same as
 but do not clear the selection.
 .It Xo
 .Ic copy-selection-and-cancel
+.Op Fl CP
 .Op Ar prefix
 (vi: Enter)
 (emacs: M-w)
@@ -2343,6 +2357,15 @@ variants of some commands exit copy mode after they have completed (for copy
 commands) or when the cursor reaches the bottom (for scrolling commands).
 .Ql -no-clear
 variants do not clear the selection.
+All the copy commands can take the
+.Fl C
+and
+.Fl P
+flags. The
+.Fl C
+flag suppresses setting the terminal clipboard when copying, while the
+.Fl P
+flag suppresses adding a paste buffer with the text.
 .Pp
 The next and previous word keys skip over whitespace and treat consecutive
 runs of either word separators or other letters as words.
