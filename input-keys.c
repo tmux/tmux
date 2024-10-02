@@ -556,6 +556,10 @@ input_key_mode1(struct bufferevent *bev, key_code key)
 	     (onlykey >= '@' && onlykey <= '~')))
 		return (input_key_vt10x(bev, key));
 
+	/* Avoid reporting A as Shift-A, which is not expected in mode 1. */
+	if ((key & KEYC_MASK_MODIFIERS) == KEYC_SHIFT)
+		return (input_key_vt10x(bev, key));
+
 	/*
 	 * A regular key + Meta. In the absence of a standard to back this, we
 	 * mimic what iTerm 2 does.
