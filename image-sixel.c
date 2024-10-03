@@ -434,6 +434,9 @@ sixel_scale(struct sixel_image *si, u_int xpixel, u_int ypixel, u_int ox,
 	new->xpixel = xpixel;
 	new->ypixel = ypixel;
 	new->p2 = si->p2;
+	new->set_ra = si->set_ra;
+	new->ra_x = si->ra_x;
+	new->ra_y = si->ra_y;
 
 	for (y = 0; y < tsy; y++) {
 		py = poy + ((double)y * psy / tsy);
