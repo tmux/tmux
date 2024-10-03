@@ -930,7 +930,7 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 	u_int		 number, modifiers;
 	char		 tmp[64];
 	cc_t		 bspace;
-	key_code	 nkey;
+	key_code	 nkey, onlykey;
 	struct utf8_data ud;
 	utf8_char        uc;
 
@@ -994,13 +994,7 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 	/* Update the modifiers. */
 	if (modifiers > 0) {
 		modifiers--;
-		/*
-		 * The Shift modifier may not be reported in some input modes,
-		 * which is unfortunate, as in general case determining if a
-		 * character is shifted or not requires knowing the input
-		 * keyboard layout. So we only fix up the trivial case.
-		 */
-		if (modifiers & 1 || (nkey >= 'A' && nkey <= 'Z'))
+		if (modifiers & 1)
 			nkey |= KEYC_SHIFT;
 		if (modifiers & 2)
 			nkey |= (KEYC_META|KEYC_IMPLIED_META); /* Alt */
@@ -1013,6 +1007,26 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 	/* Convert S-Tab into Backtab. */
 	if ((nkey & KEYC_MASK_KEY) == '\011' && (nkey & KEYC_SHIFT))
 		nkey = KEYC_BTAB | (nkey & ~KEYC_MASK_KEY & ~KEYC_SHIFT);
+
+	/*
+	 * Deal with the Shift modifier when present alone. The problem is that
+	 * in mode 2 some terminals would report shifted keys, like S-a, as
+	 * just A, and some as S-A.
+	 *
+	 * Because we need an unambiguous internal representation, and because
+	 * restoring the Shift modifier when it's missing would require knowing
+	 * the keyboard layout, and because S-A would cause a lot of issues
+	 * downstream, we choose to lose the Shift for all printable
+	 * characters.
+	 *
+	 * That still leaves some ambiguity, such as C-S-A vs. C-A, but that's
+	 * OK, and applications can handle that.
+	 */
+	onlykey = nkey & KEYC_MASK_KEY;
+	if (((onlykey > 0x20 && onlykey < 0x7f) ||
+	    KEYC_IS_UNICODE(nkey)) &&
+	    (nkey & KEYC_MASK_MODIFIERS) == KEYC_SHIFT)
+		nkey &= ~KEYC_SHIFT;
 
 	if (log_get_level() != 0) {
 		log_debug("%s: extended key %.*s is %llx (%s)", c->name,
