@@ -434,9 +434,17 @@ sixel_scale(struct sixel_image *si, u_int xpixel, u_int ypixel, u_int ox,
 	new->xpixel = xpixel;
 	new->ypixel = ypixel;
 	new->p2 = si->p2;
+
 	new->set_ra = si->set_ra;
-	new->ra_x = si->ra_x;
-	new->ra_y = si->ra_y;
+	/* clamp to slice end */
+	new->ra_x = si->ra_x < psx ? si->ra_x : psx;
+	new->ra_y = si->ra_y < psy ? si->ra_y : psy;
+	/* subtract slice origin */
+	new->ra_x = new->ra_x > pox ? new->ra_x - pox : 0;
+	new->ra_y = new->ra_y > poy ? new->ra_y - poy : 0;
+	/* resize */
+	new->ra_x = new->ra_x * xpixel / si->xpixel;
+	new->ra_y = new->ra_y * ypixel / si->ypixel;
 
 	for (y = 0; y < tsy; y++) {
 		py = poy + ((double)y * psy / tsy);
