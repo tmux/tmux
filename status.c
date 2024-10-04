@@ -598,6 +598,19 @@ status_message_redraw(struct client *c)
 	return (1);
 }
 
+/* Accept prompt immediately. */
+static enum cmd_retval
+status_prompt_accept(__unused struct cmdq_item *item, void *data)
+{
+	struct client	*c = data;
+
+	if (c->prompt_string != NULL) {
+		c->prompt_inputcb(c, c->prompt_data, "y", 1);
+		status_prompt_clear(c);
+	}
+	return (CMD_RETURN_NORMAL);
+}
+
 /* Enable status line prompt. */
 void
 status_prompt_set(struct client *c, struct cmd_find_state *fs,
@@ -655,6 +668,9 @@ status_prompt_set(struct client *c, struct cmd_find_state *fs,
 
 	free(tmp);
 	format_free(ft);
+
+	if ((flags & PROMPT_SINGLE) && (flags & PROMPT_ACCEPT))
+		cmdq_append(c, cmdq_get_callback(status_prompt_accept, c));
 }
 
 /* Remove status line prompt. */
