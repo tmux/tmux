@@ -1,5 +1,9 @@
 CHANGES FROM 3.5 TO 3.5a
 
+* Do not translate BSpace as Unicode with extended keys.
+
+* Fix so that keys with Shift are represented correctly with extended keys.
+
 * Revert to using /bin/sh for #() and run-shell and if-shell; the change to use
   default-shell only applies now to popups.
 
