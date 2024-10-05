@@ -970,6 +970,18 @@ const struct options_table_entry options_table[] = {
 	  .text = "Style of the marked line in copy mode."
 	},
 
+	{ .name = "copy-mode-position-format",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
+	  .default_str = "#[align=right]"
+	                 "#{t/p:top_line_time}#{?#{e|>:#{top_line_time},0}, ,}"
+	                 "[#{scroll_position}/#{history_size}]"
+	                 "#{?search_timed_out, (timed out),"
+	                 "#{?search_count, (#{search_count}"
+	                 "#{?search_count_partial,+,} results),}}",
+	  .text = "Format of the position indicator in copy mode."
+	},
+
 	{ .name = "fill-character",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,

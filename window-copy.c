@@ -815,6 +815,11 @@ static void
 window_copy_formats(struct window_mode_entry *wme, struct format_tree *ft)
 {
 	struct window_copy_mode_data	*data = wme->data;
+	u_int				 hsize = screen_hsize(data->backing);
+	struct grid_line		*gl;
+
+	gl = grid_get_line(data->backing->grid, hsize - data->oy);
+	format_add(ft, "top_line_time", "%llu", (unsigned long long)gl->time);
 
 	format_add(ft, "scroll_position", "%d", data->oy);
 	format_add(ft, "rectangle_toggle", "%d", data->rectflag);
@@ -842,6 +847,7 @@ window_copy_formats(struct window_mode_entry *wme, struct format_tree *ft)
 	}
 
 	format_add(ft, "search_present", "%d", data->searchmark != NULL);
+	format_add(ft, "search_timed_out", "%d", data->timeout);
 	if (data->searchcount != -1) {
 		format_add(ft, "search_count", "%d", data->searchcount);
 		format_add(ft, "search_count_partial", "%d", data->searchmore);
@@ -4190,11 +4196,12 @@ window_copy_write_line(struct window_mode_entry *wme,
 	struct window_copy_mode_data	*data = wme->data;
 	struct screen			*s = &data->screen;
 	struct options			*oo = wp->window->options;
-	struct grid_line		*gl;
 	struct grid_cell		 gc, mgc, cgc, mkgc;
-	char				 hdr[512], tmp[256], *t;
-	size_t				 size = 0;
+	u_int				 sx = screen_size_x(s);
 	u_int				 hsize = screen_hsize(data->backing);
+	const char			*value;
+	char				*expanded;
+	struct format_tree		*ft;
 
 	style_apply(&gc, oo, "mode-style", NULL);
 	gc.flags |= GRID_FLAG_NOPALETTE;
@@ -4205,42 +4212,21 @@ window_copy_write_line(struct window_mode_entry *wme,
 	style_apply(&mkgc, oo, "copy-mode-mark-style", NULL);
 	mkgc.flags |= GRID_FLAG_NOPALETTE;
 
+	window_copy_write_one(wme, ctx, py, hsize - data->oy + py,
+	    screen_size_x(s), &mgc, &cgc, &mkgc);
+
 	if (py == 0 && s->rupper < s->rlower && !data->hide_position) {
-		gl = grid_get_line(data->backing->grid, hsize - data->oy);
-		if (gl->time == 0)
-			xsnprintf(tmp, sizeof tmp, "[%u/%u]", data->oy, hsize);
-		else {
-			t = format_pretty_time(gl->time, 1);
-			xsnprintf(tmp, sizeof tmp, "%s [%u/%u]", t, data->oy,
-			    hsize);
-			free(t);
-		}
-
-		if (data->searchmark == NULL) {
-			if (data->timeout) {
-				size = xsnprintf(hdr, sizeof hdr,
-				    "(timed out) %s", tmp);
-			} else
-				size = xsnprintf(hdr, sizeof hdr, "%s", tmp);
-		} else {
-			if (data->searchcount == -1)
-				size = xsnprintf(hdr, sizeof hdr, "%s", tmp);
-			else {
-				size = xsnprintf(hdr, sizeof hdr,
-				    "(%d%s results) %s", data->searchcount,
-				    data->searchmore ? "+" : "", tmp);
+		value = options_get_string(oo, "copy-mode-position-format");
+		if (*value != '\0') {
+			ft = format_create_defaults(NULL, NULL, NULL, NULL, wp);
+			expanded = format_expand(ft, value);
+			if (*expanded != '\0') {
+				screen_write_cursormove(ctx, 0, 0, 0);
+				format_draw(ctx, &gc, sx, expanded, NULL, 0);
 			}
+			free(expanded);
+			format_free(ft);
 		}
-		if (size > screen_size_x(s))
-			size = screen_size_x(s);
-		screen_write_cursormove(ctx, screen_size_x(s) - size, 0, 0);
-		screen_write_puts(ctx, &gc, "%s", hdr);
-	} else
-		size = 0;
-
-	if (size < screen_size_x(s)) {
-		window_copy_write_one(wme, ctx, py, hsize - data->oy + py,
-		    screen_size_x(s) - size, &mgc, &cgc, &mkgc);
 	}
 
 	if (py == data->cy && data->cx == screen_size_x(s)) {
@@ -4673,7 +4659,8 @@ window_copy_copy_buffer(struct window_mode_entry *wme, const char *prefix,
 	struct window_pane	*wp = wme->wp;
 	struct screen_write_ctx	 ctx;
 
-	if (set_clip && options_get_number(global_options, "set-clipboard") != 0) {
+	if (set_clip &&
+	    options_get_number(global_options, "set-clipboard") != 0) {
 		screen_write_start_pane(&ctx, wp, NULL);
 		screen_write_setselection(&ctx, "", buf, len);
 		screen_write_stop(&ctx);
