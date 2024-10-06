@@ -356,8 +356,13 @@ mode_tree_set_current(struct mode_tree_data *mtd, uint64_t tag)
 			mtd->offset = 0;
 		return (1);
 	}
-	mtd->current = 0;
-	mtd->offset = 0;
+	if (mtd->current >= mtd->line_size) {
+		mtd->current = mtd->line_size - 1;
+		if (mtd->current > mtd->height - 1)
+			mtd->offset = mtd->current - mtd->height + 1;
+		else
+			mtd->offset = 0;
+	}
 	return (0);
 }
 
