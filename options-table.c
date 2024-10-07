@@ -576,7 +576,7 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_SESSION,
 	  .minimum = 0,
 	  .maximum = 10000,
-	  .default_num = 900,
+	  .default_num = 0,
 	  .unit = "milliseconds",
 	  .text = "Time to wait for a key binding to repeat the first time the "
 	          "key is pressed, if it is bound with the '-r' flag. "
@@ -671,7 +671,7 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_SESSION,
 	  .minimum = 0,
 	  .maximum = 10000,
-	  .default_num = 350,
+	  .default_num = 500,
 	  .unit = "milliseconds",
 	  .text = "Time to wait for a key binding to repeat, if it is bound "
 		  "with the '-r' flag."
