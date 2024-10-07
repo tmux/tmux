@@ -3687,8 +3687,10 @@ command used to switch to them from a key binding.
 The
 .Fl r
 flag indicates this key may repeat, see the
+.Ic initial-repeat-time
+and
 .Ic repeat-time
-option.
+options.
 .Fl N
 attaches a note to the key (shown with
 .Ic list-keys
@@ -4436,6 +4438,20 @@ is in milliseconds.
 Set the maximum number of lines held in window history.
 This setting applies only to new windows - existing window histories are not
 resized and retain the limit at the point they were created.
+.It Ic initial-repeat-time Ar time
+Set the time in milliseconds for the initial repeat when a key is bound with the
+.Fl r
+flag.
+This allows multiple commands to be entered without pressing the prefix key
+again.
+See also the
+.Ic repeat-time
+option.
+If
+.Ic initial-repeat-time
+is zero,
+.Ic repeat-time
+is used for the first key press.
 .It Ic key-table Ar key-table
 Set the default key table to
 .Ar key-table
@@ -4544,7 +4560,7 @@ This respects the
 option if it has been set.
 If off, do not renumber the windows.
 .It Ic repeat-time Ar time
-Allow multiple commands to be entered without pressing the prefix-key again
+Allow multiple commands to be entered without pressing the prefix key again
 in the specified
 .Ar time
 milliseconds (the default is 500).
@@ -4555,6 +4571,9 @@ flag to
 Repeat is enabled for the default keys bound to the
 .Ic resize-pane
 command.
+See also the
+.Ic initial-repeat-time
+option.
 .It Xo Ic set-titles
 .Op Ic on | off
 .Xc
