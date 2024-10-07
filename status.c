@@ -660,7 +660,7 @@ status_prompt_set(struct client *c, struct cmd_find_state *fs,
 	c->prompt_mode = PROMPT_ENTRY;
 
 	if (~flags & PROMPT_INCREMENTAL)
-		c->tty.flags |= (TTY_NOCURSOR|TTY_FREEZE);
+		c->tty.flags |= TTY_FREEZE;
 	c->flags |= CLIENT_REDRAWSTATUS;
 
 	if (flags & PROMPT_INCREMENTAL)
@@ -738,7 +738,7 @@ status_prompt_redraw(struct client *c)
 	struct screen		 old_screen;
 	u_int			 i, lines, offset, left, start, width;
 	u_int			 pcursor, pwidth, promptline;
-	struct grid_cell	 gc, cursorgc;
+	struct grid_cell	 gc;
 	struct format_tree	*ft;
 
 	if (c->tty.sx == 0 || c->tty.sy == 0)
@@ -760,9 +760,6 @@ status_prompt_redraw(struct client *c)
 	else
 		style_apply(&gc, s->options, "message-style", ft);
 	format_free(ft);
-
-	memcpy(&cursorgc, &gc, sizeof cursorgc);
-	cursorgc.attr ^= GRID_ATTR_REVERSE;
 
 	start = format_width(c->prompt_string);
 	if (start > c->tty.sx)
@@ -808,16 +805,9 @@ status_prompt_redraw(struct client *c)
 		if (width > offset + pwidth)
 			break;
 
-		if (i != c->prompt_index) {
-			utf8_copy(&gc.data, &c->prompt_buffer[i]);
-			screen_write_cell(&ctx, &gc);
-		} else {
-			utf8_copy(&cursorgc.data, &c->prompt_buffer[i]);
-			screen_write_cell(&ctx, &cursorgc);
-		}
+		utf8_copy(&gc.data, &c->prompt_buffer[i]);
+		screen_write_cell(&ctx, &gc);
 	}
-	if (sl->active->cx < screen_size_x(sl->active) && c->prompt_index >= i)
-		screen_write_putc(&ctx, &cursorgc, ' ');
 
 finished:
 	screen_write_stop(&ctx);
