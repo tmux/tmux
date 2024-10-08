@@ -2454,8 +2454,10 @@ server_client_reset_state(struct client *c)
 	if (c->overlay_draw != NULL) {
 		if (c->overlay_mode != NULL)
 			s = c->overlay_mode(c, c->overlay_data, &cx, &cy);
-	} else
+	} else if (c->prompt_string == NULL)
 		s = wp->screen;
+	else
+		s = c->status.active;
 	if (s != NULL)
 		mode = s->mode;
 	if (log_get_level() != 0) {
@@ -2480,37 +2482,21 @@ server_client_reset_state(struct client *c)
 				cy = tty->sy - n;
 		}
 		cx = c->prompt_cursor;
+	} else if (c->overlay_draw == NULL) {
+		cursor = 0;
+		tty_window_offset(tty, &ox, &oy, &sx, &sy);
+		if (wp->xoff + s->cx >= ox && wp->xoff + s->cx <= ox + sx &&
+		    wp->yoff + s->cy >= oy && wp->yoff + s->cy <= oy + sy) {
+			cursor = 1;
 
-		n = options_get_number(oo, "prompt-cursor-colour");
-		s->default_ccolour = n;
-		n = options_get_number(oo, "prompt-cursor-style");
-		screen_set_cursor_style(n, &s->default_cstyle,
-		    &s->default_mode);
-	} else {
-		n = options_get_number(wp->options, "cursor-colour");
-		s->default_ccolour = n;
-		n = options_get_number(wp->options, "cursor-style");
-		screen_set_cursor_style(n, &s->default_cstyle,
-		    &s->default_mode);
+			cx = wp->xoff + s->cx - ox;
+			cy = wp->yoff + s->cy - oy;
 
-		if (c->overlay_draw == NULL) {
-			cursor = 0;
-			tty_window_offset(tty, &ox, &oy, &sx, &sy);
-			if (wp->xoff + s->cx >= ox &&
-			    wp->xoff + s->cx <= ox + sx &&
-			    wp->yoff + s->cy >= oy &&
-			    wp->yoff + s->cy <= oy + sy) {
-				cursor = 1;
-
-				cx = wp->xoff + s->cx - ox;
-				cy = wp->yoff + s->cy - oy;
-
-				if (status_at_line(c) == 0)
-					cy += status_line_size(c);
-			}
-			if (!cursor)
-				mode &= ~MODE_CURSOR;
+			if (status_at_line(c) == 0)
+				cy += status_line_size(c);
 		}
+		if (!cursor)
+			mode &= ~MODE_CURSOR;
 	}
 	log_debug("%s: cursor to %u,%u", __func__, cx, cy);
 	tty_cursor(tty, cx, cy);
