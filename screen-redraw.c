@@ -195,13 +195,17 @@ screen_redraw_cell_border(struct screen_redraw_ctx *ctx, u_int px, u_int py)
 	struct client		*c = ctx->c;
 	struct window		*w = c->session->curw->window;
 	struct window_pane	*wp;
+	u_int			 sy = w->sy;
+
+	if (ctx->pane_status == PANE_STATUS_BOTTOM)
+		sy--;
 
 	/* Outside the window? */
-	if (px > w->sx || py > w->sy)
+	if (px > w->sx || py > sy)
 		return (0);
 
 	/* On the window border? */
-	if (px == w->sx || py == w->sy)
+	if (px == w->sx || py == sy)
 		return (1);
 
 	/* Check all the panes. */
@@ -231,6 +235,9 @@ screen_redraw_type_of_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py)
 	u_int		 sx = w->sx, sy = w->sy;
 	int		 borders = 0;
 
+	if (pane_status == PANE_STATUS_BOTTOM)
+		sy--;
+
 	/* Is this outside the window? */
 	if (px > sx || py > sy)
 		return (CELL_OUTSIDE);
@@ -253,7 +260,7 @@ screen_redraw_type_of_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py)
 		if (py == 0 ||
 		    screen_redraw_cell_border(ctx, px, py - 1))
 			borders |= 2;
-		if (py != sy - 1 &&
+		if (py != sy &&
 		    screen_redraw_cell_border(ctx, px, py + 1))
 			borders |= 1;
 	} else {
@@ -305,14 +312,15 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 	struct window		*w = c->session->curw->window;
 	struct window_pane	*wp, *active;
 	int			 pane_status = ctx->pane_status;
+	u_int			 sx = w->sx, sy = w->sy;
 	int			 border;
 	u_int			 right, line;
 
 	*wpp = NULL;
 
-	if (px > w->sx || py > w->sy)
+	if (px > sx || py > sy)
 		return (CELL_OUTSIDE);
-	if (px == w->sx || py == w->sy) /* window border */
+	if (px == sx || py == sy) /* window border */
 		return (screen_redraw_type_of_cell(ctx, px, py));
 
 	if (pane_status != PANE_STATUS_OFF) {
@@ -324,7 +332,7 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 			if (pane_status == PANE_STATUS_TOP)
 				line = wp->yoff - 1;
 			else
-				line = wp->yoff + wp->sy;
+				line = wp->yoff + sy;
 			right = wp->xoff + 2 + wp->status_size - 1;
 
 			if (py == line && px >= wp->xoff + 2 && px <= right)
@@ -587,9 +595,9 @@ screen_redraw_screen(struct client *c)
 
 	if (flags & (CLIENT_REDRAWWINDOW|CLIENT_REDRAWBORDERS)) {
 		log_debug("%s: redrawing borders", c->name);
+		screen_redraw_draw_borders(&ctx);
 		if (ctx.pane_status != PANE_STATUS_OFF)
 			screen_redraw_draw_pane_status(&ctx);
-		screen_redraw_draw_borders(&ctx);
 	}
 	if (flags & CLIENT_REDRAWWINDOW) {
 		log_debug("%s: redrawing panes", c->name);
