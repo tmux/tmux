@@ -58,7 +58,7 @@ const struct cmd_entry cmd_has_session_entry = {
 	.args = { "t:", 0, 0, NULL },
 	.usage = CMD_TARGET_SESSION_USAGE,
 
-	.target = { 't', CMD_FIND_SESSION, 0 },
+	.target = { 't', CMD_FIND_SESSION, CMD_FIND_EXACT_SESSION },
 
 	.flags = 0,
 	.exec = cmd_new_session_exec
