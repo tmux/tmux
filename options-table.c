@@ -63,6 +63,12 @@ static const char *options_table_cursor_style_list[] = {
 	"default", "blinking-block", "block", "blinking-underline", "underline",
 	"blinking-bar", "bar", NULL
 };
+static const char *options_table_pane_scrollbars_list[] = {
+	"off", "modal", "on", NULL
+};
+static const char *options_table_pane_vertical_scrollbars_position_list[] = {
+	"right", "left", NULL
+};
 static const char *options_table_pane_status_list[] = {
 	"off", "top", "bottom", NULL
 };
@@ -1160,7 +1166,50 @@ const struct options_table_entry options_table[] = {
 	  .text = "The default colour palette for colours zero to 255."
 	},
 
-	{ .name = "popup-style",
+	{ .name = "pane-scrollbars",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .choices = options_table_pane_scrollbars_list,
+	  .default_num = PANE_SCROLLBARS_OFF,
+	  .text = "Pane scrollbars"
+	},
+
+	{ .name = "pane-scrollbar-style",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
+	  .default_str = "bg=black,fg=white",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ",",
+	  .text = "Style of the scrollbar."
+	},
+
+	{ .name = "pane-vertical-scrollbars-position",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .choices = options_table_pane_vertical_scrollbars_position_list,
+	  .default_num = PANE_VERTICAL_SCROLLBARS_RIGHT,
+	  .text = "Pane vertical scrollbars position"
+	},
+
+	{ .name = "pane-vertical-scrollbars-width",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_WINDOW,
+          .minimum = 1,
+          .maximum = UINT_MAX,
+	  .default_num = PANE_VERTICAL_SCROLLBARS_WIDTH,
+	  .text = "Pane vertical scrollbars width"
+	},
+
+	{ .name = "pane-vertical-scrollbars-pad",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_WINDOW,
+          .minimum = 0,
+          .maximum = 1,
+	  .default_num = PANE_VERTICAL_SCROLLBARS_PAD,
+	  .text = "Pane vertical scrollbars pad"
+	},
+
+        { .name = "popup-style",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,
 	  .default_str = "default",
