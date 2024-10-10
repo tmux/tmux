@@ -69,6 +69,11 @@
 #define __weak __attribute__ ((__weak__))
 #endif
 
+#if defined(_WIN32) || defined(__CYGWIN__) || defined(__MSYS__)
+#define WIN32_PLATFORM
+#define TTY_OVER_SOCKET
+#endif
+
 #ifndef ECHOPRT
 #define ECHOPRT 0
 #endif
@@ -96,10 +101,6 @@ void	warnx(const char *, ...);
 
 #ifndef _PATH_BSHELL
 #define _PATH_BSHELL	"/bin/sh"
-#endif
-
-#ifndef _PATH_TMP
-#define _PATH_TMP	"/tmp/"
 #endif
 
 #ifndef _PATH_DEVNULL
@@ -470,5 +471,50 @@ int	BSDgetopt(int, char *const *, const char *);
 #define optopt             BSDoptopt
 #define optreset           BSDoptreset
 #define optarg             BSDoptarg
+
+#ifndef WIN32_PLATFORM
+
+#ifndef TMUX_CONF_WIN32
+#define TMUX_CONF_WIN32 "/c/ProgramData/tmux/tmux.conf:~/.tmux.conf"
+#endif
+
+#define SHELL_CMD_SWITCH(shell) "-c"
+#define TMPDIR() "/tmp/"
+
+#ifndef TMUX_SOCK
+#define TMUX_SOCK "$TMUX_TMPDIR:" TMPDIR
+#endif
+
+#define TMPFILE_TEMPLATE() TMPDIR() "tmux.XXXXXXXX"
+
+#define GETENV_HOME()  getenv("HOME")
+#define GETENV_SHELL() getenv("SHELL")
+
+#define TMUX_CONF_SEARCH_PATH() TMUX_CONF
+
+#else
+
+void		win32_setenv_shell(void);
+const char	*win32_get_tmpdir(void);
+const char	*win32_get_tmpfile_template(void);
+const char	*win32_get_socket_dir_search_path(void);
+const char	*win32_get_conf_search_path(void);
+const char	*win32_get_shell_cmd_switch(const char *);
+
+#define SHELL_CMD_SWITCH(shell) win32_get_shell_cmd_switch(shell)
+#define TMPDIR() win32_get_tmpdir()
+
+#ifndef TMUX_SOCK
+#define TMUX_SOCK win32_get_socket_dir_search_path()
+#endif
+
+#define TMPFILE_TEMPLATE() win32_get_tmpfile_template()
+
+#define GETENV_HOME()  (getenv("HOME")  ? getenv("HOME")  : getenv("USERPROFILE"))
+#define GETENV_SHELL() (getenv("SHELL") ? getenv("SHELL") : (win32_setenv_shell(), getenv("SHELL")))
+
+#define TMUX_CONF_SEARCH_PATH() win32_get_conf_search_path()
+
+#endif
 
 #endif /* COMPAT_H */

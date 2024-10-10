@@ -775,7 +775,7 @@ popup_editor(struct client *c, const char *buf, size_t len,
 	int			 fd;
 	FILE			*f;
 	char			*cmd;
-	char			 path[] = _PATH_TMP "tmux.XXXXXXXX";
+	char			*path = (char *)TMPFILE_TEMPLATE();
 	const char		*editor;
 	u_int			 px, py, sx, sy;
 
@@ -807,7 +807,7 @@ popup_editor(struct client *c, const char *buf, size_t len,
 
 	xasprintf(&cmd, "%s %s", editor, path);
 	if (popup_display(POPUP_INTERNAL|POPUP_CLOSEEXIT, BOX_LINES_DEFAULT,
-	    NULL, px, py, sx, sy, NULL, cmd, 0, NULL, _PATH_TMP, NULL, c, NULL,
+	    NULL, px, py, sx, sy, NULL, cmd, 0, NULL, TMPDIR(), NULL, c, NULL,
 	    NULL, NULL, popup_editor_close_cb, pe) != 0) {
 		popup_editor_free(pe);
 		free(cmd);
