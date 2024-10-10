@@ -1230,9 +1230,16 @@ input_c0_dispatch(struct input_ctx *ictx)
 		screen_write_backspace(sctx);
 		break;
 	case '\011':	/* HT */
-		/* Don't tab beyond the end of the line. */
-		if (s->cx >= screen_size_x(s) - 1)
-			break;
+		/* Tab on the next line if too close to the end. */
+		if (screen_size_x(s) == 1 || s->cx >= screen_size_x(s) - 2) {
+			screen_write_linefeed(sctx, 1, ictx->cell.cell.bg);
+			screen_write_carriagereturn(sctx);
+			if (screen_size_x(s) == 1) {
+				screen_write_linefeed(sctx, 1, ictx->cell.cell.bg);
+				screen_write_carriagereturn(sctx);
+				break;
+			}
+		}
 
 		/* Find the next tab point, or use the last column if none. */
 		do {
