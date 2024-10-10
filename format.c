@@ -2324,7 +2324,11 @@ format_cb_version(__unused struct format_tree *ft)
 static void *
 format_cb_sixel_support(__unused struct format_tree *ft)
 {
+#ifdef ENABLE_SIXEL
+	return (xstrdup("1"));
+#else
 	return (xstrdup("0"));
+#endif
 }
 
 /* Callback for active_window_index. */
