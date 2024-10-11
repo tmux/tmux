@@ -124,7 +124,10 @@ grid_extended_cell(struct grid_line *gl, struct grid_cell_entry *gce,
 		fatalx("offset too big");
 	gl->flags |= GRID_LINE_EXTENDED;
 
-	utf8_from_data(&gc->data, &uc);
+	if (gc->flags & GRID_FLAG_TAB)
+		uc = gc->data.width;
+	else
+		utf8_from_data(&gc->data, &uc);
 
 	gee = &gl->extddata[gce->offset];
 	gee->data = uc;
@@ -515,7 +518,13 @@ grid_get_cell1(struct grid_line *gl, u_int px, struct grid_cell *gc)
 			gc->bg = gee->bg;
 			gc->us = gee->us;
 			gc->link = gee->link;
-			utf8_to_data(gee->data, &gc->data);
+			if (gc->flags & GRID_FLAG_TAB) {
+				memset(&gc->data, 0, sizeof gc->data);
+				gc->data.data[0] = '\t';
+				gc->data.have = gc->data.size = 1;
+				gc->data.width = gee->data;
+			} else
+				utf8_to_data(gee->data, &gc->data);
 		}
 		return;
 	}
