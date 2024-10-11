@@ -3301,6 +3301,11 @@ window_copy_cellstring(const struct grid_line *gl, u_int px, size_t *size,
 		*allocated = 0;
 		return (&gce->data.data);
 	}
+	if (gce->flags & GRID_FLAG_TAB) {
+		*size = 1;
+		*allocated = 0;
+		return ("\t");
+	}
 
 	utf8_to_data(gl->extddata[gce->offset].data, &ud);
 	if (ud.size == 0) {
