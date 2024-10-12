@@ -121,6 +121,14 @@ cmd_source_file_done(struct client *c, const char *path, int error,
 static void
 cmd_source_file_add(struct cmd_source_file_data *cdata, const char *path)
 {
+	char	resolved[PATH_MAX];
+
+	if (realpath(path, resolved) == NULL) {
+		log_debug("%s: realpath(\"%s\") failed: %s", __func__,
+			path, strerror(errno));
+	} else
+		path = resolved;
+
 	log_debug("%s: %s", __func__, path);
 	cdata->files = xreallocarray(cdata->files, cdata->nfiles + 1,
 	    sizeof *cdata->files);
