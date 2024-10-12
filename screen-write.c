@@ -151,7 +151,7 @@ screen_write_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 		 */
 		log_debug("%s: adding %%%u to deferred redraw", __func__,
 		    wp->id);
-		wp->flags |= PANE_REDRAW;
+		wp->flags |= (PANE_REDRAW|PANE_REDRAWSCROLLBAR);
 		return (-1);
 	}
 
@@ -1780,6 +1780,10 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 		ttyctx.num = ctx->scrolled;
 		ttyctx.bg = ctx->bg;
 		tty_write(tty_cmd_scrollup, &ttyctx);
+
+                if (ctx->wp) {
+                        ctx->wp->flags |= PANE_REDRAWSCROLLBAR;
+                }
 	}
 	ctx->scrolled = 0;
 	ctx->bg = 8;

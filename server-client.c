@@ -2556,7 +2556,7 @@ server_client_loop(void)
 				server_client_check_pane_resize(wp);
 				server_client_check_pane_buffer(wp);
 			}
-			wp->flags &= ~PANE_REDRAW;
+			wp->flags &= ~(PANE_REDRAW|PANE_REDRAWSCROLLBAR);
 		}
 		check_window_name(w);
 	}
@@ -3012,7 +3012,7 @@ server_client_check_redraw(struct client *c)
 		needed = 1;
 	else {
 		TAILQ_FOREACH(wp, &w->panes, entry) {
-                        if (wp->flags & (PANE_REDRAW)) {
+                        if (wp->flags & (PANE_REDRAW|PANE_REDRAWSCROLLBAR)) {
 				needed = 1;
 				break;
 			}
@@ -3031,7 +3031,7 @@ server_client_check_redraw(struct client *c)
 
 		if (~c->flags & CLIENT_REDRAWWINDOW) {
 			TAILQ_FOREACH(wp, &w->panes, entry) {
-				if (wp->flags & PANE_REDRAW) {
+				if (wp->flags & (PANE_REDRAW|PANE_REDRAWSCROLLBAR)) {
 					log_debug("%s: pane %%%u needs redraw",
 					    c->name, wp->id);
 					c->redraw_panes |= (1 << bit);

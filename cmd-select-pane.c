@@ -219,6 +219,7 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 		free(title);
 		return (CMD_RETURN_NORMAL);
 	}
+        wp->flags |= PANE_REDRAWSCROLLBAR;
 
 	if (c != NULL && c->session != NULL && (c->flags & CLIENT_ACTIVEPANE))
 		activewp = server_client_get_pane(c);

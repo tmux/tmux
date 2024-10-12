@@ -766,6 +766,8 @@ window_copy_pageup1(struct window_mode_entry *wme, int half_page)
 			window_copy_cursor_end_of_line(wme);
 	}
 
+	log_debug("%s: scrollup oy %d cy %d py %u n %d", __func__,oy,data->cy,py,n);
+
 	if (data->searchmark != NULL && !data->timeout)
 		window_copy_search_marks(wme, NULL, data->searchregex, 1);
 	window_copy_update_selection(wme, 1, 0);
@@ -4456,7 +4458,6 @@ window_copy_write_lines(struct window_mode_entry *wme,
     struct screen_write_ctx *ctx, u_int py, u_int ny)
 {
 	u_int			 yy;
-        struct client		*c;
 	struct window_pane	*wp = wme->wp;
 	struct options		*oo = wp->window->options;
 
@@ -4465,8 +4466,7 @@ window_copy_write_lines(struct window_mode_entry *wme,
 
         if (window_pane_visible(wp) &&
             options_get_number(oo, "pane-scrollbars") != 0) {
-                TAILQ_FOREACH(c, &clients, entry)
-                        screen_redraw_draw_pane_scrollbar(c, wp);
+                wp->flags |= PANE_REDRAWSCROLLBAR;
         }
 }
 
@@ -4503,7 +4503,6 @@ window_copy_redraw_lines(struct window_mode_entry *wme, u_int py, u_int ny)
 {
 	struct window_pane		*wp = wme->wp;
 	struct window_copy_mode_data	*data = wme->data;
-        struct client			*c;
 	struct options			*oo = wp->window->options;
 	struct screen_write_ctx	 	 ctx;
 	u_int				 i;
@@ -4516,8 +4515,7 @@ window_copy_redraw_lines(struct window_mode_entry *wme, u_int py, u_int ny)
 
         if (window_pane_visible(wp) &&
             options_get_number(oo, "pane-scrollbars") != 0) {
-                TAILQ_FOREACH(c, &clients, entry)
-                        screen_redraw_draw_pane_scrollbar(c, wp);
+                wp->flags |= PANE_REDRAWSCROLLBAR;
         }
 }
 
@@ -5673,6 +5671,7 @@ window_copy_scroll_up(struct window_mode_entry *wme, u_int ny)
 		window_copy_write_line(wme, &ctx, screen_size_y(s) - ny - 1);
 	screen_write_cursormove(&ctx, data->cx, data->cy, 0);
 	screen_write_stop(&ctx);
+        wp->flags |= PANE_REDRAWSCROLLBAR;
 }
 
 static void
@@ -5706,6 +5705,7 @@ window_copy_scroll_down(struct window_mode_entry *wme, u_int ny)
 		window_copy_write_line(wme, &ctx, 1);
 	screen_write_cursormove(&ctx, data->cx, data->cy, 0);
 	screen_write_stop(&ctx);
+        wp->flags |= PANE_REDRAWSCROLLBAR;
 }
 
 static void

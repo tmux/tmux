@@ -672,14 +672,13 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 
 /* Update status line and change flags if unchanged. */
 static uint64_t
-screen_redraw_update(struct client *c, uint64_t flags)
+screen_redraw_update(struct screen_redraw_ctx *ctx, uint64_t flags)
 {
+        struct client			*c = ctx->c;
 	struct window			*w = c->session->curw->window;
 	struct window_pane		*wp;
-	struct options			*wo = w->options;
 	int				 redraw;
 	enum pane_lines			 lines;
-	struct screen_redraw_ctx	 ctx;
 
 	if (c->message_string != NULL)
 		redraw = status_message_redraw(c);
@@ -693,17 +692,17 @@ screen_redraw_update(struct client *c, uint64_t flags)
 	if (c->overlay_draw != NULL)
 		flags |= CLIENT_REDRAWOVERLAY;
 
-	if (options_get_number(wo, "pane-border-status") != PANE_STATUS_OFF) {
-		screen_redraw_set_context(c, &ctx);
-		lines = options_get_number(wo, "pane-border-lines");
+	if (ctx->pane_status != PANE_STATUS_OFF) {
+		lines = ctx->pane_lines;
 		redraw = 0;
 		TAILQ_FOREACH(wp, &w->panes, entry) {
-			if (screen_redraw_make_pane_status(c, wp, &ctx, lines))
+			if (screen_redraw_make_pane_status(c, wp, ctx, lines))
 				redraw = 1;
 		}
 		if (redraw)
 			flags |= CLIENT_REDRAWBORDERS;
 	}
+
 	return (flags);
 }
 
@@ -751,19 +750,15 @@ screen_redraw_screen(struct client *c)
 	if (c->flags & CLIENT_SUSPENDED)
 		return;
 
-	flags = screen_redraw_update(c, c->flags);
+	screen_redraw_set_context(c, &ctx);
+
+	flags = screen_redraw_update(&ctx, c->flags);
 	if ((flags & CLIENT_ALLREDRAWFLAGS) == 0)
 		return;
 
-	screen_redraw_set_context(c, &ctx);
 	tty_sync_start(&c->tty);
 	tty_update_mode(&c->tty, c->tty.mode, NULL);
 
-	if (ctx.pane_scrollbars != 0 &&
-	    (flags & (CLIENT_REDRAWWINDOW|CLIENT_REDRAWBORDERS))) {
-                log_debug("%s: redrawing scrollbars", c->name);
-                screen_redraw_draw_pane_scrollbars(&ctx);
-	}
 	if (flags & (CLIENT_REDRAWWINDOW|CLIENT_REDRAWBORDERS)) {
 		log_debug("%s: redrawing borders", c->name);
 		if (ctx.pane_status != PANE_STATUS_OFF)
@@ -773,6 +768,7 @@ screen_redraw_screen(struct client *c)
 	if (flags & CLIENT_REDRAWWINDOW) {
 		log_debug("%s: redrawing panes", c->name);
 		screen_redraw_draw_panes(&ctx);
+                screen_redraw_draw_pane_scrollbars(&ctx);
 	}
 	if (ctx.statuslines != 0 &&
 	    (flags & (CLIENT_REDRAWSTATUS|CLIENT_REDRAWSTATUSALWAYS))) {
@@ -787,12 +783,13 @@ screen_redraw_screen(struct client *c)
 	tty_reset(&c->tty);
 }
 
-/* Redraw a single pane. */
+/* Redraw a single pane and its scrollbar. */
 void
 screen_redraw_pane(struct client *c, struct window_pane *wp)
 {
 	struct screen_redraw_ctx	 ctx;
-        int			 	 pane_scrollbars;
+        int				 pane_scrollbars;
+        int				 pane_mode;
 
 	if (!window_pane_visible(wp))
 		return;
@@ -803,14 +800,24 @@ screen_redraw_pane(struct client *c, struct window_pane *wp)
 
 	screen_redraw_draw_pane(&ctx, wp);
 
-        pane_scrollbars = ctx.pane_scrollbars;
-        if (pane_scrollbars == PANE_SCROLLBARS_MODAL &&
-            window_pane_mode(wp) == WINDOW_PANE_NO_MODE) {
-                pane_scrollbars = 0;
-        }
+        /* Redraw scrollbar if needed.  Always redraw scrollbar
+         * in a mode because if redrawing a pane, it's because
+         * pane has scrolled.
+         */
+        pane_mode = window_pane_mode(wp);
 
-        if (pane_scrollbars != 0) {
-                screen_redraw_draw_pane_scrollbar(c, wp);
+        if (wp->flags & PANE_REDRAWSCROLLBAR ||
+            pane_mode != WINDOW_PANE_NO_MODE) {
+
+                pane_scrollbars = ctx.pane_scrollbars;
+
+                if (pane_scrollbars == PANE_SCROLLBARS_MODAL &&
+                    pane_mode == WINDOW_PANE_NO_MODE) {
+                        pane_scrollbars = 0;
+                }
+                if (pane_scrollbars != 0) {
+                        screen_redraw_draw_pane_scrollbar(c, wp);
+                }
         }
 
 	tty_reset(&c->tty);
@@ -1170,6 +1177,9 @@ screen_redraw_draw_scrollbar(struct client *c, struct window_pane *wp, int sb_po
 	struct window		*w = wp->window;
         struct grid_cell	 gc;
         int			 fg, bg;
+
+        log_debug("%s: scrollbar pos:%d w:%u @%u,%u h:%u eh:%u ep:%u",
+                  __func__, sb_pos, sb_width, px, py, sb_height, elevator_height, elevator_pos);
 
         /* Set up default colour. */
 	style_apply(&gc, w->options, "pane-scrollbar-style", NULL);

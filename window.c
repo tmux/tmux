@@ -1186,7 +1186,7 @@ window_pane_reset_mode(struct window_pane *wp)
         if (pane_scrollbars == PANE_SCROLLBARS_MODAL)
                 layout_fix_panes(w, NULL);
 
-	wp->flags |= (PANE_REDRAW|PANE_CHANGED);
+	wp->flags |= (PANE_REDRAW|PANE_REDRAWSCROLLBAR|PANE_CHANGED);
 
 	server_redraw_window_borders(wp->window);
 	server_status_window(wp->window);

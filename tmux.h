@@ -1141,6 +1141,7 @@ struct window_pane {
 #define PANE_EMPTY 0x800
 #define PANE_STYLECHANGED 0x1000
 #define PANE_UNSEENCHANGES 0x2000
+#define PANE_REDRAWSCROLLBAR 0x4000
 
 	u_int		 sb_epos;
 	u_int		 sb_eh;
