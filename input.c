@@ -1214,7 +1214,7 @@ input_c0_dispatch(struct input_ctx *ictx)
 	struct window_pane	*wp = ictx->wp;
 	struct screen		*s = sctx->s;
 	struct grid_cell	 gc;
-	u_int			 cx = s->cx;
+	u_int			 cx = s->cx, line = s->cy + s->grid->hsize;
 	int			 has_content = 0;
 
 	ictx->utf8started = 0; /* can't be valid UTF-8 */
@@ -1238,7 +1238,7 @@ input_c0_dispatch(struct input_ctx *ictx)
 
 		/* Find the next tab point, or use the last column if none. */
 		do {
-			grid_get_cell(s->grid, cx, s->cy, &gc);
+			grid_get_cell(s->grid, cx, line, &gc);
 			if (!(gc.data.size == 1 && *gc.data.data == ' '))
 				has_content = 1;
 			cx++;
@@ -1249,15 +1249,10 @@ input_c0_dispatch(struct input_ctx *ictx)
 		if (has_content)
 			s->cx = cx;
 		else {
-			grid_get_cell(s->grid, s->cx, s->cy, &gc);
+			grid_get_cell(s->grid, s->cx, line, &gc);
 			gc.flags |= (GRID_FLAG_EXTENDED|GRID_FLAG_TAB);
 			gc.data.width = cx - s->cx;
 			screen_write_collect_add(sctx, &gc);
-		}
-
-		for (int x = 0; x < cx; x++) {
-			grid_get_cell(s->grid, x, s->cy, &gc);
-			log_debug("X: hello");
 		}
 		break;
 	case '\012':	/* LF */
