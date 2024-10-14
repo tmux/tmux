@@ -1145,7 +1145,6 @@ input_print(struct input_ctx *ictx)
 		ictx->cell.cell.attr |= GRID_ATTR_CHARSET;
 	else
 		ictx->cell.cell.attr &= ~GRID_ATTR_CHARSET;
-
 	utf8_set(&ictx->cell.cell.data, ictx->ch);
 	screen_write_collect_add(sctx, &ictx->cell.cell);
 
@@ -1349,7 +1348,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 	struct screen_write_ctx	       *sctx = &ictx->ctx;
 	struct screen		       *s = sctx->s;
 	struct input_table_entry       *entry;
-	int				i, n, m, ek;
+	int				i, n, m, ek, set;
 	u_int				cx, bg = ictx->cell.cell.bg;
 
 	if (ictx->flags & INPUT_DISCARD)
@@ -1592,6 +1591,11 @@ input_csi_dispatch(struct input_ctx *ictx)
 		if (~ictx->flags & INPUT_LAST)
 			break;
 
+		set = ictx->cell.set == 0 ? ictx->cell.g0set : ictx->cell.g1set;
+		if (set == 1)
+			ictx->cell.cell.attr |= GRID_ATTR_CHARSET;
+		else
+			ictx->cell.cell.attr &= ~GRID_ATTR_CHARSET;
 		utf8_copy(&ictx->cell.cell.data, &ictx->last);
 		for (i = 0; i < n; i++)
 			screen_write_collect_add(sctx, &ictx->cell.cell);
