@@ -683,8 +683,9 @@ tty_term_read_list(const char *name, int fd, char ***caps, u_int *ncaps,
 	u_int					 i;
 	const char				*s;
 	char					 tmp[11];
+	int					 retval = ERR;
 
-	if (setupterm((char *)name, fd, &error) != OK) {
+	if ((retval = setupterm((char *)name, fd, &error)) != OK) {
 		switch (error) {
 		case 1:
 			xasprintf(cause, "can't use hardcopy terminal: %s",
@@ -695,13 +696,25 @@ tty_term_read_list(const char *name, int fd, char ***caps, u_int *ncaps,
 			    name);
 			break;
 		case -1:
-			xasprintf(cause, "can't find terminfo database");
-			break;
+#ifdef WIN32_PLATFORM
+			if ((retval = setupterm("#win32con", fd, &error)) != OK)
+			{
+			    xasprintf(cause, "can't set up Win32 console");
+			    break;
+			}
+#else
+			{
+			    xasprintf(cause, "can't find terminfo database");
+			    break;
+			}
+#endif
 		default:
 			xasprintf(cause, "unknown error");
 			break;
 		}
-		return (-1);
+
+		if (retval != OK)
+		    return (-1);
 	}
 
 	*ncaps = 0;
