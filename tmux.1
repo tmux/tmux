@@ -4565,6 +4565,11 @@ This respects the
 .Ic base-index
 option if it has been set.
 If off, do not renumber the windows.
+.It Xo Ic forward-unrequested-escseq
+.Op Ic on | off
+.Xc
+If on, when an unrequested escape sequence is received, tmux will forward it to client.
+If off, tmux will ignore it.
 .It Ic repeat-time Ar time
 Allow multiple commands to be entered without pressing the prefix key again
 in the specified

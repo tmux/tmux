@@ -1339,8 +1339,10 @@ tty_keys_clipboard(struct tty *tty, const char *buf, size_t len, size_t *size)
 	end--;
 
 	/* If we did not request this, ignore it. */
-	if (~tty->flags & TTY_OSC52QUERY)
-		return (0);
+	if (~tty->flags & TTY_OSC52QUERY) {
+		return options_get_number(global_options,
+		    "forward-unrequested-escseq") ? (-1) : (0);
+	}
 	tty->flags &= ~TTY_OSC52QUERY;
 	evtimer_del(&tty->clipboard_timer);
 

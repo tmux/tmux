@@ -448,6 +448,14 @@ const struct options_table_entry options_table[] = {
 		  "'User0', 'User1' and so on."
 	},
 
+	{ .name = "forward-unrequested-escseq",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .default_num = 0,
+	  .text = "Whether unrequested escape sequences are forwarded to "
+		  "clients. Can be 'off' (disallowed) or 'on' (allowed)."
+	},
+
 	/* Session options. */
 	{ .name = "activity-action",
 	  .type = OPTIONS_TABLE_CHOICE,
