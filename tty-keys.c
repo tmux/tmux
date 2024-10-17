@@ -747,6 +747,7 @@ tty_keys_next(struct tty *tty)
 	switch (tty_keys_clipboard(tty, buf, len, &size)) {
 	case 0:		/* yes */
 		key = KEYC_UNKNOWN;
+	case -2:	/* yes, but leave it to the foreground program. */
 		goto complete_key;
 	case -1:	/* no, or not valid */
 		break;
@@ -1340,7 +1341,7 @@ tty_keys_clipboard(struct tty *tty, const char *buf, size_t len, size_t *size)
 
 	/* If we did not request this, ignore it. */
 	if (~tty->flags & TTY_OSC52QUERY)
-		return (0);
+		return (-2);
 	tty->flags &= ~TTY_OSC52QUERY;
 	evtimer_del(&tty->clipboard_timer);
 
