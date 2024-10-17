@@ -4478,21 +4478,18 @@ See the
 .Sx STYLES
 section on how to specify
 .Ar style .
-Attributes are ignored.
 .It Ic menu-selected-style Ar style
 Set the selected menu item style.
 See the
 .Sx STYLES
 section on how to specify
 .Ar style .
-Attributes are ignored.
 .It Ic menu-border-style Ar style
 Set the menu border style.
 See the
 .Sx STYLES
 section on how to specify
 .Ar style .
-Attributes are ignored.
 .It Ic menu-border-lines Ar type
 Set the type of characters used for drawing menu borders.
 See
@@ -5166,13 +5163,6 @@ visible before the application starts reappears unchanged after it exits.
 .It Ic cursor-colour Ar colour
 Set the colour of the cursor.
 .Pp
-.It Ic pane-colours[] Ar colour
-The default colour palette.
-Each entry in the array defines the colour
-.Nm
-uses when the colour with that index is requested.
-The index may be from zero to 255.
-.Pp
 .It Ic cursor-style Ar style
 Set the style of the cursor.
 Available styles are:
@@ -5183,6 +5173,13 @@ Available styles are:
 .Ic underline ,
 .Ic blinking-bar ,
 .Ic bar .
+.Pp
+.It Ic pane-colours[] Ar colour
+The default colour palette.
+Each entry in the array defines the colour
+.Nm
+uses when the colour with that index is requested.
+The index may be from zero to 255.
 .Pp
 .It Xo Ic remain-on-exit
 .Op Ic on | off | failed
