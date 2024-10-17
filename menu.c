@@ -453,7 +453,6 @@ menu_set_style(struct client *c, struct grid_cell *gc, const char *style,
 			gc->bg = sytmp.gc.bg;
 		}
 	}
-	gc->attr = 0;
 }
 
 struct menu_data *
