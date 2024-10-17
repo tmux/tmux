@@ -40,6 +40,8 @@ static void	window_copy_free(struct window_mode_entry *);
 static void	window_copy_resize(struct window_mode_entry *, u_int, u_int);
 static void	window_copy_formats(struct window_mode_entry *,
 		    struct format_tree *);
+static void	window_copy_scroll1(struct window_mode_entry *,
+		    struct window_pane *wp, int, u_int, int);
 static void	window_copy_pageup1(struct window_mode_entry *, int);
 static int	window_copy_pagedown1(struct window_mode_entry *, int, int);
 static void	window_copy_next_paragraph(struct window_mode_entry *);
@@ -599,6 +601,128 @@ window_copy_vadd(struct window_pane *wp, int parse, const char *fmt, va_list ap)
 }
 
 void
+window_copy_scroll(struct window_pane *wp, int mouse_scrollbar_elevator_grip,
+    u_int mouse_y)
+{
+	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
+	struct window_copy_mode_data	*data;
+
+        window_set_active_pane(wp->window, wp, 0);
+
+        if (wme != NULL) {
+                data =  wme->data;
+                window_copy_scroll1(TAILQ_FIRST(&wp->modes), wp,
+                                    mouse_scrollbar_elevator_grip, mouse_y,
+                                    data->scroll_exit);
+        }
+}
+
+static void
+window_copy_scroll1(struct window_mode_entry *wme, struct window_pane *wp,
+    int mouse_scrollbar_elevator_grip, u_int mouse_y, int scroll_exit)
+{
+	struct window_copy_mode_data	*data = wme->data;
+	u_int				 ox, oy, px, py, n;
+        u_int				 elevator_pos = wp->sb_epos;
+        u_int				 elevator_height = wp->sb_eh;
+        u_int				 sb_height = wp->sb_h;
+        u_int				 sb_top = wp->yoff;
+        int				 new_elevator_pos;
+        int				 delta;
+        u_int				 offset, size, new_offset;
+
+	log_debug("%s: elevator %u mouse %u", __func__, elevator_pos, mouse_y);
+
+        /*
+	 * mouse_scrollbar_elevator_grip is where in elevator user is
+	 * dragging around, mouse is dragging this y point
+	 */
+        if (mouse_y <= sb_top + mouse_scrollbar_elevator_grip)
+                /* elevator banged into top of shaft */
+                new_elevator_pos = sb_top - wp->yoff;
+        else if (mouse_y - mouse_scrollbar_elevator_grip > sb_top + sb_height - elevator_height)
+                /* elevator banged into bottom of shaft */
+                new_elevator_pos = sb_top - wp->yoff + (sb_height - elevator_height);
+        else
+                /* elevator is somewhere in the middle of the shaft */
+                new_elevator_pos = mouse_y - wp->yoff - mouse_scrollbar_elevator_grip + 1;
+
+	log_debug("%s: new elevator %u mouse %u", __func__, new_elevator_pos, mouse_y);
+
+        if (TAILQ_FIRST(&wp->modes) == NULL ||
+            window_copy_mode_get_current_offset_and_size(wp, &offset, &size) == 0)
+                return;
+
+        /*
+	 * see screen_redraw_draw_pane_scrollbar(), this is the
+         * inverse formula used there
+	 */
+        new_offset = (u_int)(new_elevator_pos) * ((float)(size + sb_height) / sb_height);
+
+        delta = (int)offset - new_offset;
+
+        log_debug("%s: delta %d mouse %u", __func__, delta, mouse_y);
+
+        /*
+	 * move pane view around based on delta relative to the
+         * cursor, maintaining the selection
+	 */
+        oy = screen_hsize(data->backing) + data->cy - data->oy;
+	ox = window_copy_find_length(wme, oy);
+
+	if (data->cx != ox) {
+		data->lastcx = data->cx;
+		data->lastsx = ox;
+	}
+	data->cx = data->lastcx;
+
+        if (delta >= 0) {
+                n = (u_int)delta;
+                if (data->oy + n > screen_hsize(data->backing)) {
+                        data->oy = screen_hsize(data->backing);
+                        if (data->cy < n)
+                                data->cy = 0;
+                        else
+                                data->cy -= n;
+                } else
+                        data->oy += n;
+        } else {
+                n = (u_int)-delta;
+                if (data->oy < n) {
+                        data->oy = 0;
+                        if (data->cy + (n - data->oy) >= screen_size_y(data->backing))
+                                data->cy = screen_size_y(data->backing) - 1;
+                        else
+                                data->cy += n - data->oy;
+                } else
+                        data->oy -= n;
+        }
+
+        /* don't also drag tail when dragging a scrollbar, it looks weird */
+        data->cursordrag = CURSORDRAG_NONE;
+
+	if (data->screen.sel == NULL || !data->rectflag) {
+		py = screen_hsize(data->backing) + data->cy - data->oy;
+		px = window_copy_find_length(wme, py);
+		if ((data->cx >= data->lastsx && data->cx != px) ||
+		    data->cx > px)
+			window_copy_cursor_end_of_line(wme);
+	}
+        
+	if (scroll_exit && data->oy == 0) {
+		window_pane_reset_mode(wp);
+                return;
+        }
+
+	if (data->searchmark != NULL && !data->timeout)
+		window_copy_search_marks(wme, NULL, data->searchregex, 1);
+	window_copy_update_selection(wme, 1, 0);
+	window_copy_redraw_screen(wme);
+
+        return;
+}
+
+void
 window_copy_pageup(struct window_pane *wp, int half_page)
 {
 	window_copy_pageup1(TAILQ_FIRST(&wp->modes), half_page);
@@ -644,6 +768,8 @@ window_copy_pageup1(struct window_mode_entry *wme, int half_page)
 		    data->cx > px)
 			window_copy_cursor_end_of_line(wme);
 	}
+
+	log_debug("%s: scrollup oy %d cy %d py %u n %d", __func__,oy,data->cy,py,n);
 
 	if (data->searchmark != NULL && !data->timeout)
 		window_copy_search_marks(wme, NULL, data->searchregex, 1);
@@ -702,6 +828,8 @@ window_copy_pagedown1(struct window_mode_entry *wme, int half_page,
 		    data->cx > px)
 			window_copy_cursor_end_of_line(wme);
 	}
+
+	log_debug("%s: scrolldown oy %d cy %d py %u n %d", __func__,oy,data->cy,py,n);
 
 	if (scroll_exit && data->oy == 0)
 		return (1);
@@ -4188,6 +4316,24 @@ window_copy_write_one(struct window_mode_entry *wme,
 	}
 }
 
+int
+window_copy_mode_get_current_offset_and_size(struct window_pane *wp, u_int *offset, u_int *size) {
+        struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
+	struct window_copy_mode_data	*data;
+	u_int				 hsize;
+
+        data  = wme->data;
+        if (! data)
+                return(0);
+        
+        hsize = screen_hsize(data->backing);
+
+        *offset = hsize - data->oy;
+        *size = hsize;
+
+        return(1);
+}
+                                
 static void
 window_copy_write_line(struct window_mode_entry *wme,
     struct screen_write_ctx *ctx, u_int py)
@@ -4239,10 +4385,17 @@ static void
 window_copy_write_lines(struct window_mode_entry *wme,
     struct screen_write_ctx *ctx, u_int py, u_int ny)
 {
-	u_int	yy;
+	u_int			 yy;
+	struct window_pane	*wp = wme->wp;
+	struct options		*oo = wp->window->options;
 
 	for (yy = py; yy < py + ny; yy++)
 		window_copy_write_line(wme, ctx, py);
+
+        if (window_pane_visible(wp) &&
+            options_get_number(oo, "pane-scrollbars") != 0) {
+                wp->flags |= PANE_REDRAWSCROLLBAR;
+        }
 }
 
 static void
@@ -4278,6 +4431,7 @@ window_copy_redraw_lines(struct window_mode_entry *wme, u_int py, u_int ny)
 {
 	struct window_pane		*wp = wme->wp;
 	struct window_copy_mode_data	*data = wme->data;
+	struct options			*oo = wp->window->options;
 	struct screen_write_ctx	 	 ctx;
 	u_int				 i;
 
@@ -4286,6 +4440,11 @@ window_copy_redraw_lines(struct window_mode_entry *wme, u_int py, u_int ny)
 		window_copy_write_line(wme, &ctx, i);
 	screen_write_cursormove(&ctx, data->cx, data->cy, 0);
 	screen_write_stop(&ctx);
+
+        if (window_pane_visible(wp) &&
+            options_get_number(oo, "pane-scrollbars") != 0) {
+                wp->flags |= PANE_REDRAWSCROLLBAR;
+        }
 }
 
 static void
@@ -5445,6 +5604,7 @@ window_copy_scroll_up(struct window_mode_entry *wme, u_int ny)
 		window_copy_write_line(wme, &ctx, screen_size_y(s) - ny - 1);
 	screen_write_cursormove(&ctx, data->cx, data->cy, 0);
 	screen_write_stop(&ctx);
+        wp->flags |= PANE_REDRAWSCROLLBAR;
 }
 
 static void
@@ -5478,6 +5638,7 @@ window_copy_scroll_down(struct window_mode_entry *wme, u_int ny)
 		window_copy_write_line(wme, &ctx, 1);
 	screen_write_cursormove(&ctx, data->cx, data->cy, 0);
 	screen_write_stop(&ctx);
+        wp->flags |= PANE_REDRAWSCROLLBAR;
 }
 
 static void
