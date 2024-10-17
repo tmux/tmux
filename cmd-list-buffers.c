@@ -28,7 +28,7 @@
  */
 
 #define LIST_BUFFERS_TEMPLATE						\
-	"#{buffer_name}: #{buffer_size} bytes: \"#{buffer_sample}\""
+	"#{buffer_name}: #{buffer_size} #{?#{e|>:#{buffer_size},1},bytes,byte}: \"#{buffer_sample}\""
 
 static enum cmd_retval	cmd_list_buffers_exec(struct cmd *, struct cmdq_item *);
 
