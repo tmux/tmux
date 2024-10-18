@@ -4088,9 +4088,15 @@ window_copy_match_at_cursor(struct window_copy_mode_data *data)
 		px = at - (py * sx);
 
 		grid_get_cell(gd, px, gd->hsize + py - data->oy, &gc);
-		buf = xrealloc(buf, len + gc.data.size + 1);
-		memcpy(buf + len, gc.data.data, gc.data.size);
-		len += gc.data.size;
+		if (gc.flags & GRID_FLAG_TAB) {
+			buf = xrealloc(buf, len + 2);
+			buf[len] = '\t';
+			len++;
+		} else {
+			buf = xrealloc(buf, len + gc.data.size + 1);
+			memcpy(buf + len, gc.data.data, gc.data.size);
+			len += gc.data.size;
+		}
 	}
 	if (len != 0)
 		buf[len] = '\0';
@@ -4800,7 +4806,13 @@ window_copy_copy_line(struct window_mode_entry *wme, char **buf, size_t *off,
 			grid_get_cell(gd, i, sy, &gc);
 			if (gc.flags & GRID_FLAG_PADDING)
 				continue;
-			utf8_copy(&ud, &gc.data);
+			if (gc.flags & GRID_FLAG_TAB) {
+				memset(ud.data, 0, sizeof ud.data);
+				*ud.data = '\t';
+				ud.have = ud.size = 1;
+				ud.width = gc.data.width;
+			} else
+				utf8_copy(&ud, &gc.data);
 			if (ud.size == 1 && (gc.attr & GRID_ATTR_CHARSET)) {
 				s = tty_acs_get(NULL, ud.data[0]);
 				if (s != NULL && strlen(s) <= sizeof ud.data) {
