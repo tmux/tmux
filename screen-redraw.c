@@ -31,8 +31,9 @@ static void	screen_redraw_draw_pane(struct screen_redraw_ctx *,
 static void	screen_redraw_set_context(struct client *,
 		    struct screen_redraw_ctx *);
 static void	screen_redraw_draw_pane_scrollbars(struct screen_redraw_ctx *);
-static void	screen_redraw_draw_scrollbar(struct client *, struct window_pane *,
-                    int, u_int, u_int, u_int, u_int, u_int, u_int, u_int);
+static void	screen_redraw_draw_scrollbar(struct client *,
+                    struct window_pane *, int, u_int, u_int, u_int, u_int,
+		    u_int, u_int, u_int);
 
 
 #define START_ISOLATE "\342\201\246"
@@ -1096,80 +1097,84 @@ screen_redraw_draw_pane_scrollbars(struct screen_redraw_ctx *ctx)
 /* Draw scrollbar
  *
  * sb_x and sb_y are the upper left character of the scrollbar
- * sb_height is the number of lines in the scrollbar
- * elevator_height is the number of lines tall the "elevator car"
- * elevator_pos is the line within sb_height of the current vertical position
- * The height and position of the elevator are proportional to the number of
+ * sb_h is scrollbar height, the number of lines in the scrollbar
+ * slider_h is the height of the slider in lines
+ * slider_y is the line within sb_h of the current vertical position
+ * The height and position of the slider are proportional to the number of
  * lines in the scroll back buffer + number of lines on the screen
  * (total_height) and the percentage of the number of visible lines to the
  * total height (percent_view).
  */
 void
-screen_redraw_draw_pane_scrollbar(struct client *c, struct window_pane *wp) {
+screen_redraw_draw_pane_scrollbar(struct client *c, struct window_pane *wp)
+{
         u_int		 mode;
 	struct window	*w = c->session->curw->window;
 	struct options	*wo = w->options;
+        struct screen	*s = wp->screen;
         u_int		 pane_scrollbars = options_get_number(wo, "pane-scrollbars");
         u_int		 sb_pos = options_get_number(wo, "pane-vertical-scrollbars-position");
         u_int		 sb_width = options_get_number(wo, "pane-vertical-scrollbars-width");
         u_int		 sb_pad = options_get_number(wo, "pane-vertical-scrollbars-pad");
-        u_int		 sb_x = wp->xoff + wp->sx; /* px and py of where */
-        u_int		 sb_y = wp->yoff;          /* to write to screen */
-        u_int		 sb_height = wp->sy; /* height of scrollbar */
-        struct screen	*s = wp->screen;
-        u_int		 total_height = screen_size_y(s) + screen_hsize(s);
-        u_int		 elevator_height;
-        u_int		 elevator_pos;
+        u_int		 sb_x;             /* px and py of where */
+        u_int		 sb_y = wp->yoff;  /* to write to screen */
+        u_int		 sb_h = wp->sy; /* height of scrollbar */
+        u_int		 total_height;
+        u_int		 slider_h;
+        u_int		 slider_y;
         double		 percent_view;
 
         mode = window_pane_mode(wp);
 
-        if (sb_pos == PANE_VERTICAL_SCROLLBARS_LEFT) {
-                sb_x = wp->xoff - sb_width;
-        }
-
         if (mode == WINDOW_PANE_NO_MODE) {
                 /* not in a mode */
+		total_height = screen_size_y(s) + screen_hsize(s);
+
                 if (pane_scrollbars == PANE_SCROLLBARS_ALWAYS) {
-			/* show scrollbar an elevator at the bottom of the scrollbar */
-                        percent_view = (double)sb_height / total_height;
-                        elevator_height = (u_int)((double)sb_height * percent_view);
-                        elevator_pos = sb_height - elevator_height;
+			/* show slider at the bottom of the scrollbar */
+                        percent_view = (double)sb_h / total_height;
+                        slider_h = (u_int)((double)sb_h * percent_view);
+                        slider_y = sb_h - slider_h;
                 } else {
-                        elevator_height = 0;
-                        elevator_pos = 0;
+                        slider_h = 0;
+                        slider_y = 0;
                 }
         } else {
                 /* copy-mode or view-mode */
                 u_int cm_y_pos, cm_size;
 
                 if (TAILQ_FIRST(&wp->modes) == NULL ||
-                    window_copy_mode_get_current_offset_and_size(wp, &cm_y_pos, &cm_size) == 0)
+                    window_copy_get_current_offset(wp, &cm_y_pos, &cm_size) == 0)
                         return;
-                
-                percent_view = (double)sb_height / (cm_size + sb_height);
-                elevator_height = (u_int)((double)sb_height * percent_view);
-                elevator_pos = (u_int)sb_height * ((float)cm_y_pos / (cm_size + sb_height));
+		total_height = cm_size + sb_h;
+                percent_view = (double)sb_h / (cm_size + sb_h);
+                slider_h = (u_int)((double)sb_h * percent_view);
+                slider_y = (u_int)sb_h * ((double)cm_y_pos / total_height);
         }
 
-        if (elevator_height < 1)
-		elevator_height = 1;
-        if (elevator_pos >= sb_height)
-                elevator_pos = sb_height-1;
+        if (sb_pos == PANE_VERTICAL_SCROLLBARS_LEFT)
+		sb_x = wp->xoff - sb_width;
+        else
+		sb_x = wp->xoff + wp->sx;
 
-        screen_redraw_draw_scrollbar(c, wp, sb_pos, sb_width, sb_pad, sb_x, sb_y, sb_height,
-                                     elevator_height, elevator_pos);
+        if (slider_h < 1)
+		slider_h = 1;
+        if (slider_y >= sb_h)
+                slider_y = sb_h-1;
 
-        wp->sb_epos = elevator_pos;  /* top of elevator y pos in scrollbar */
-        wp->sb_eh = elevator_height; /* height of scrollbar "elevator car" */
-        wp->sb_h = sb_height;        /* height of scrollbar "elevator shaft" */
-        /* wp->y_off = top of scrollbar */
+        screen_redraw_draw_scrollbar(c, wp, sb_pos, sb_width, sb_pad,
+				     sb_x, sb_y, sb_h,
+                                     slider_h, slider_y);
+
+        /* Store current position and height of the slider */
+        wp->sb_slider_y = slider_y;  /* top of slider y pos in scrollbar */
+        wp->sb_slider_h = slider_h;  /* height of slider */
 }
 
 static void
-screen_redraw_draw_scrollbar(struct client *c, struct window_pane *wp, int sb_pos,
-    u_int sb_width, u_int sb_pad, u_int px, u_int py, u_int sb_height,
-    u_int elevator_height, u_int elevator_pos)
+screen_redraw_draw_scrollbar(struct client *c, struct window_pane *wp,
+    int sb_pos, u_int sb_width, u_int sb_pad, u_int px, u_int py, u_int sb_h,
+    u_int slider_h, u_int slider_y)
 {
 	struct tty		*tty = &c->tty;
         u_int			pad_col = 0;
@@ -1179,7 +1184,7 @@ screen_redraw_draw_scrollbar(struct client *c, struct window_pane *wp, int sb_po
         int			 fg, bg;
 
         log_debug("%s: scrollbar pos:%d w:%u @%u,%u h:%u eh:%u ep:%u",
-                  __func__, sb_pos, sb_width, px, py, sb_height, elevator_height, elevator_pos);
+                  __func__, sb_pos, sb_width, px, py, sb_h, slider_h, slider_y);
 
         /* Set up default colour. */
 	style_apply(&gc, w->options, "pane-scrollbar-style", NULL);
@@ -1196,14 +1201,14 @@ screen_redraw_draw_scrollbar(struct client *c, struct window_pane *wp, int sb_po
         
         gc.bg = bg;
         for (i = 0; i < sb_width; i++) {
-                for (j = 0; j < sb_height; j++) {
+                for (j = 0; j < sb_h; j++) {
                         tty_cursor(tty, px+i, py+j);
 
                         if (sb_pad && i==pad_col) {
                                 tty_cell(tty, &grid_default_cell,
                                          &grid_default_cell, NULL, NULL);
                         } else {
-                                if (j >= elevator_pos && j < elevator_pos + elevator_height) {
+                                if (j >= slider_y && j < slider_y + slider_h) {
                                         gc.bg = fg;
                                         gc.fg = bg;
                                 } else {

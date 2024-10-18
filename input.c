@@ -2390,7 +2390,6 @@ input_exit_osc(struct input_ctx *ictx)
 		    screen_set_title(sctx->s, p)) {
 			notify_pane("pane-title-changed", wp);
 			server_redraw_window_borders(wp->window);
-                        wp->flags |= PANE_REDRAWSCROLLBAR;
 			server_status_window(wp->window);
 		}
 		break;

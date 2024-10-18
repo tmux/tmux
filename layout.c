@@ -270,38 +270,6 @@ layout_cell_is_bottom(struct window *w, struct layout_cell *lc)
 	return (1);
 }
 
-/* Is this a leftmost cell? */
-static int
-layout_cell_is_left(struct window *w, struct layout_cell *lc)
-{
-	struct layout_cell	*next;
-
-	while (lc != w->layout_root) {
-		next = lc->parent;
-		if (next->type == LAYOUT_LEFTRIGHT &&
-		    lc != TAILQ_FIRST(&next->cells))
-			return (0);
-		lc = next;
-	}
-	return (1);
-}
-
-/* Is this a rightmost cell? */
-static int
-layout_cell_is_right(struct window *w, struct layout_cell *lc)
-{
-	struct layout_cell	*next;
-
-	while (lc != w->layout_root) {
-		next = lc->parent;
-		if (next->type == LAYOUT_LEFTRIGHT &&
-		    lc != TAILQ_LAST(&next->cells, layout_cells))
-			return (0);
-		lc = next;
-	}
-	return (1);
-}
-
 /*
  * Returns 1 if we need to add an extra line for the pane status line. This is
  * the case for the most upper or lower panes only.
@@ -315,19 +283,6 @@ layout_add_horizontal_border(struct window *w, struct layout_cell *lc,
 	if (status == PANE_STATUS_BOTTOM)
 		return (layout_cell_is_bottom(w, lc));
 	return (0);
-}
-
-static int
-layout_add_vertical_border(struct window *w, struct layout_cell *lc,
-    int scrollbars, int scrollbars_position)
-{
-   if (scrollbars != PANE_SCROLLBARS_OFF) {
-                if (scrollbars_position == PANE_VERTICAL_SCROLLBARS_RIGHT)
-                        return (layout_cell_is_right(w, lc));
-                if (scrollbars_position == PANE_VERTICAL_SCROLLBARS_LEFT)
-                        return (layout_cell_is_left(w, lc));
-        }
-   return (0);
 }
 
 /* Update pane offsets and sizes based on their cells. */

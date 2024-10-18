@@ -642,7 +642,7 @@ key_bindings_init(void)
 		"bind -Tcopy-mode-vi C-Down { send -X scroll-down }",
                 "bind -n MouseDown1ScrollbarUp { copy-mode -ue }",
                 "bind -n MouseDown1ScrollbarDown { copy-mode -de }",
-                "bind -n MouseDrag1ScrollbarElevator { copy-mode -Se }"
+                "bind -n MouseDrag1ScrollbarSlider { copy-mode -Se }"
 	};
 	u_int			 i;
 	struct cmd_parse_result	*pr;

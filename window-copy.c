@@ -598,7 +598,7 @@ window_copy_vadd(struct window_pane *wp, int parse, const char *fmt, va_list ap)
 }
 
 void
-window_copy_scroll(struct window_pane *wp, int mouse_scrollbar_elevator_grip,
+window_copy_scroll(struct window_pane *wp, int mouse_scrollbar_slider_grip,
     u_int mouse_y)
 {
 	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
@@ -609,52 +609,52 @@ window_copy_scroll(struct window_pane *wp, int mouse_scrollbar_elevator_grip,
         if (wme != NULL) {
                 data =  wme->data;
                 window_copy_scroll1(TAILQ_FIRST(&wp->modes), wp,
-                                    mouse_scrollbar_elevator_grip, mouse_y,
+                                    mouse_scrollbar_slider_grip, mouse_y,
                                     data->scroll_exit);
         }
 }
 
 static void
 window_copy_scroll1(struct window_mode_entry *wme, struct window_pane *wp,
-    int mouse_scrollbar_elevator_grip, u_int mouse_y, int scroll_exit)
+    int mouse_scrollbar_slider_grip, u_int mouse_y, int scroll_exit)
 {
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 ox, oy, px, py, n;
-        u_int				 elevator_pos = wp->sb_epos;
-        u_int				 elevator_height = wp->sb_eh;
-        u_int				 sb_height = wp->sb_h;
+        u_int				 slider_y = wp->sb_slider_y;
+        u_int				 slider_height = wp->sb_slider_h;
+        u_int				 sb_height = wp->sy;
         u_int				 sb_top = wp->yoff;
-        int				 new_elevator_pos;
+        int				 new_slider_y;
         int				 delta;
         u_int				 offset, size, new_offset;
 
-	log_debug("%s: elevator %u mouse %u", __func__, elevator_pos, mouse_y);
+	log_debug("%s: slider %u mouse %u", __func__, slider_y, mouse_y);
 
         /*
-	 * mouse_scrollbar_elevator_grip is where in elevator user is
+	 * mouse_scrollbar_slider_grip is where in slider user is
 	 * dragging around, mouse is dragging this y point
 	 */
-        if (mouse_y <= sb_top + mouse_scrollbar_elevator_grip)
-                /* elevator banged into top of shaft */
-                new_elevator_pos = sb_top - wp->yoff;
-        else if (mouse_y - mouse_scrollbar_elevator_grip > sb_top + sb_height - elevator_height)
-                /* elevator banged into bottom of shaft */
-                new_elevator_pos = sb_top - wp->yoff + (sb_height - elevator_height);
+        if (mouse_y <= sb_top + mouse_scrollbar_slider_grip)
+                /* slider banged into top */
+                new_slider_y = sb_top - wp->yoff;
+        else if (mouse_y - mouse_scrollbar_slider_grip > sb_top + sb_height - slider_height)
+                /* slider banged into bottom */
+                new_slider_y = sb_top - wp->yoff + (sb_height - slider_height);
         else
-                /* elevator is somewhere in the middle of the shaft */
-                new_elevator_pos = mouse_y - wp->yoff - mouse_scrollbar_elevator_grip + 1;
+                /* slider is somewhere in the middle */
+                new_slider_y = mouse_y - wp->yoff - mouse_scrollbar_slider_grip + 1;
 
-	log_debug("%s: new elevator %u mouse %u", __func__, new_elevator_pos, mouse_y);
+	log_debug("%s: new slider %u mouse %u", __func__, new_slider_y, mouse_y);
 
         if (TAILQ_FIRST(&wp->modes) == NULL ||
-            window_copy_mode_get_current_offset_and_size(wp, &offset, &size) == 0)
+            window_copy_get_current_offset(wp, &offset, &size) == 0)
                 return;
 
         /*
 	 * see screen_redraw_draw_pane_scrollbar(), this is the
          * inverse formula used there
 	 */
-        new_offset = (u_int)(new_elevator_pos) * ((float)(size + sb_height) / sb_height);
+        new_offset = (u_int)(new_slider_y) * ((float)(size + sb_height) / sb_height);
 
         delta = (int)offset - new_offset;
 
@@ -4369,21 +4369,24 @@ window_copy_write_one(struct window_mode_entry *wme,
 }
 
 int
-window_copy_mode_get_current_offset_and_size(struct window_pane *wp, u_int *offset, u_int *size) {
-        struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
+window_copy_get_current_offset(struct window_pane *wp, u_int *offset,
+    u_int *size)
+{
+        struct window_mode_entry	*wme;
 	struct window_copy_mode_data	*data;
 	u_int				 hsize;
 
-        data  = wme->data;
-        if (! data)
-                return(0);
+        wme = TAILQ_FIRST(&wp->modes);
+        data = wme->data;
+        if (data == NULL)
+                return (0);
         
         hsize = screen_hsize(data->backing);
 
         *offset = hsize - data->oy;
         *size = hsize;
 
-        return(1);
+        return (1);
 }
                                 
 static void
