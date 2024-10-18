@@ -518,11 +518,16 @@ grid_get_cell1(struct grid_line *gl, u_int px, struct grid_cell *gc)
 			gc->bg = gee->bg;
 			gc->us = gee->us;
 			gc->link = gee->link;
+
 			if (gc->flags & GRID_FLAG_TAB) {
-				memset(&gc->data, 0, sizeof gc->data);
-				gc->data.data[0] = '\t';
-				gc->data.have = gc->data.size = 1;
-				gc->data.width = gee->data;
+				u_char w = gee->data;
+				u_char maxsz = sizeof gc->data;
+
+				memset(&gc->data, 0, maxsz);
+				gc->data.width = w;
+				gc->data.size = gc->data.have =
+				    w > maxsz ? maxsz : w;
+				memset(&gc->data, ' ', gc->data.size);
 			} else
 				utf8_to_data(gee->data, &gc->data);
 		}
