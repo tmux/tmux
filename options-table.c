@@ -66,7 +66,7 @@ static const char *options_table_cursor_style_list[] = {
 static const char *options_table_pane_scrollbars_list[] = {
 	"off", "modal", "on", NULL
 };
-static const char *options_table_pane_vertical_scrollbars_position_list[] = {
+static const char *options_table_pane_scrollbars_position_list[] = {
 	"right", "left", NULL
 };
 static const char *options_table_pane_status_list[] = {
@@ -1132,30 +1132,30 @@ const struct options_table_entry options_table[] = {
 	  .text = "Style of the scrollbar."
 	},
 
-	{ .name = "pane-vertical-scrollbars-position",
+	{ .name = "pane-scrollbars-position",
 	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_WINDOW,
-	  .choices = options_table_pane_vertical_scrollbars_position_list,
-	  .default_num = PANE_VERTICAL_SCROLLBARS_RIGHT,
-	  .text = "Pane vertical scrollbars position"
+	  .choices = options_table_pane_scrollbars_position_list,
+	  .default_num = PANE_SCROLLBARS_RIGHT,
+	  .text = "Pane scrollbars position"
 	},
 
-	{ .name = "pane-vertical-scrollbars-width",
+	{ .name = "pane-scrollbars-width",
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .scope = OPTIONS_TABLE_WINDOW,
           .minimum = 1,
           .maximum = UINT_MAX,
-	  .default_num = PANE_VERTICAL_SCROLLBARS_WIDTH,
-	  .text = "Pane vertical scrollbars width"
+	  .default_num = PANE_SCROLLBARS_WIDTH,
+	  .text = "Pane scrollbars width"
 	},
 
-	{ .name = "pane-vertical-scrollbars-pad",
+	{ .name = "pane-scrollbars-pad",
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .scope = OPTIONS_TABLE_WINDOW,
           .minimum = 0,
           .maximum = 1,
-	  .default_num = PANE_VERTICAL_SCROLLBARS_PAD,
-	  .text = "Pane vertical scrollbars pad"
+	  .default_num = PANE_SCROLLBARS_PAD,
+	  .text = "Pane scrollbars pad"
 	},
 
         { .name = "popup-style",

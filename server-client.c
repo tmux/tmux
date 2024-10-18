@@ -769,11 +769,11 @@ have_event:
 
                         /* Try the scrollbar which is actually next to a pane */
                         pane_scrollbars = options_get_number(wo, "pane-scrollbars");
-                        sb_pos = options_get_number(wo, "pane-vertical-scrollbars-position");
+                        sb_pos = options_get_number(wo, "pane-scrollbars-position");
                         if (pane_scrollbars == PANE_SCROLLBARS_ALWAYS ||
                             (pane_scrollbars == PANE_SCROLLBARS_MODAL &&
                              window_pane_mode(wp) != WINDOW_PANE_NO_MODE))
-                                sb_w = options_get_number(wo, "pane-vertical-scrollbars-width");
+                                sb_w = options_get_number(wo, "pane-scrollbars-width");
                         else
                                 sb_w = 0;
 
@@ -796,10 +796,10 @@ have_event:
                                    log_debug("wps @%u at %u,%u (%ux%u)", wp->id,
 					     m->ox, m->oy, px, py);
                                 */
-                                if ((sb_pos == PANE_VERTICAL_SCROLLBARS_RIGHT &&
+                                if ((sb_pos == PANE_SCROLLBARS_RIGHT &&
                                      (px >= wp->xoff + wp->sx &&
                                       px < wp->xoff + wp->sx + sb_w)) ||
-                                    (sb_pos == PANE_VERTICAL_SCROLLBARS_LEFT &&
+                                    (sb_pos == PANE_SCROLLBARS_LEFT &&
                                      (px >= wp->xoff - sb_w &&
                                       px < wp->xoff))) {
 

@@ -115,7 +115,7 @@ screen_redraw_two_panes(struct window *w, int direction)
 /*
  * This is how panes are referenced in screen_redraw_pane_border:
  *
- *   sb_pos == PANE_VERTICAL_SCROLLBARS_RIGHT:
+ *   sb_pos == PANE_SCROLLBARS_RIGHT:
  *
  *     .0................o..............X.
  *     :a           zSSSBa           zSSS: <- dotted border is outside of tmux,
@@ -123,7 +123,7 @@ screen_redraw_two_panes(struct window *w, int direction)
  *      |         sb_w^  |         sb_w^
  *      ^wp->xoff        ^wp->xoff
  *
- *   sb_pos == PANE_VERTICAL_SCROLLBARS_LEFT:
+ *   sb_pos == PANE_SCROLLBARS_LEFT:
  *
  *     .0...................o...........X.
  *     :SSSa           zBSSSa           z: <- Notes, see below
@@ -217,7 +217,7 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
                  * genralised in the future.
                  */
                 if ((wp->yoff == 0 || py >= wp->yoff - 1) && py <= ey) {
-                        if (sb_pos == PANE_VERTICAL_SCROLLBARS_LEFT) {
+                        if (sb_pos == PANE_SCROLLBARS_LEFT) {
                                 if (wp->xoff - sb_w == 0 &&
                                     px == wp->sx + sb_w &&
                                     py <= wp->sy / 2)
@@ -227,7 +227,7 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
                                     py > wp->sy / 2)
                                         return (SCREEN_REDRAW_BORDER_LEFT);
                         } else {
-                                /* sb_pos == PANE_VERTICAL_SCROLLBARS_RIGHT */
+                                /* sb_pos == PANE_SCROLLBARS_RIGHT */
                                 if (wp->xoff == 0 &&
                                     px == wp->sx + sb_w &&
                                     py <= wp->sy / 2)
@@ -240,7 +240,7 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
                 }
         } else {
                 if ((wp->yoff == 0 || py >= wp->yoff - 1) && py <= ey) {
-                        if (sb_pos == PANE_VERTICAL_SCROLLBARS_LEFT) {
+                        if (sb_pos == PANE_SCROLLBARS_LEFT) {
                                 if (wp->xoff - sb_w == 0 &&
                                     px == wp->sx + sb_w)
                                         return (SCREEN_REDRAW_BORDER_RIGHT);
@@ -248,7 +248,7 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
                                     px == wp->xoff - sb_w - 1)
                                         return (SCREEN_REDRAW_BORDER_LEFT);
                         } else {
-                                /* sb_pos == PANE_VERTICAL_SCROLLBARS_RIGHT */
+                                /* sb_pos == PANE_SCROLLBARS_RIGHT */
                                 if (wp->xoff == 0 &&
                                     px == wp->sx + sb_w)
                                         return (SCREEN_REDRAW_BORDER_RIGHT);
@@ -272,7 +272,7 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
 			    px > wp->sx / 2)
 				return (SCREEN_REDRAW_BORDER_TOP);
 		} else {
-                        if (sb_pos == PANE_VERTICAL_SCROLLBARS_LEFT) {
+                        if (sb_pos == PANE_SCROLLBARS_LEFT) {
                                 if ((wp->xoff == 0 || px >= wp->xoff - sb_w) &&
                                     (px <= ex ||
                                      (pane_scrollbars && px-1==ex))) {
@@ -283,7 +283,7 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
                                                 return (SCREEN_REDRAW_BORDER_BOTTOM);
                                 }
                         } else {
-                                /* sb_pos == PANE_VERTICAL_SCROLLBARS_RIGHT */
+                                /* sb_pos == PANE_SCROLLBARS_RIGHT */
                                 if ((wp->xoff == 0 || px >= wp->xoff) &&
                                     (px <= ex ||
                                      (pane_scrollbars && px-1==ex))) {
@@ -296,7 +296,7 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
 			}
 		}
 	} else if (pane_status != PANE_STATUS_OFF) {
-                if (sb_pos == PANE_VERTICAL_SCROLLBARS_LEFT) {
+                if (sb_pos == PANE_SCROLLBARS_LEFT) {
                         if ((wp->xoff - sb_w == 0 || px >= wp->xoff - sb_w - 1) &&
                             px <= ex) {
                                 if (wp->yoff != 0 &&
@@ -306,7 +306,7 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
                                         return (SCREEN_REDRAW_BORDER_BOTTOM);
                         }
                 } else {
-                        /* sb_pos == PANE_VERTICAL_SCROLLBARS_RIGHT */
+                        /* sb_pos == PANE_SCROLLBARS_RIGHT */
                         if ((wp->xoff == 0 || px >= wp->xoff - 1) &&
                             px <= ex + sb_w) {
                                 if (wp->yoff != 0 &&
@@ -504,10 +504,10 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 
                                 /* check if px lies within a scroller
                                  */
-                                if ((sb_pos == PANE_VERTICAL_SCROLLBARS_RIGHT &&
+                                if ((sb_pos == PANE_SCROLLBARS_RIGHT &&
                                      (px >= wp->xoff + wp->sx &&
                                       px < wp->xoff + wp->sx + sb_w)) ||
-                                    (sb_pos == PANE_VERTICAL_SCROLLBARS_LEFT &&
+                                    (sb_pos == PANE_SCROLLBARS_LEFT &&
                                      (px >= wp->xoff - sb_w && px < wp->xoff))) {
                                                 return (CELL_SCROLLBAR);
                                 }
@@ -731,8 +731,8 @@ screen_redraw_set_context(struct client *c, struct screen_redraw_ctx *ctx)
 	ctx->pane_lines = options_get_number(wo, "pane-border-lines");
 
 	ctx->pane_scrollbars = options_get_number(wo, "pane-scrollbars");
-	ctx->pane_scrollbars_pos = options_get_number(wo, "pane-vertical-scrollbars-position");
-	ctx->pane_scrollbars_width = options_get_number(wo, "pane-vertical-scrollbars-width");
+	ctx->pane_scrollbars_pos = options_get_number(wo, "pane-scrollbars-position");
+	ctx->pane_scrollbars_width = options_get_number(wo, "pane-scrollbars-width");
 
 	tty_window_offset(&c->tty, &ctx->ox, &ctx->oy, &ctx->sx, &ctx->sy);
 
@@ -1113,9 +1113,9 @@ screen_redraw_draw_pane_scrollbar(struct client *c, struct window_pane *wp)
 	struct options	*wo = w->options;
         struct screen	*s = wp->screen;
         u_int		 pane_scrollbars = options_get_number(wo, "pane-scrollbars");
-        u_int		 sb_pos = options_get_number(wo, "pane-vertical-scrollbars-position");
-        u_int		 sb_width = options_get_number(wo, "pane-vertical-scrollbars-width");
-        u_int		 sb_pad = options_get_number(wo, "pane-vertical-scrollbars-pad");
+        u_int		 sb_pos = options_get_number(wo, "pane-scrollbars-position");
+        u_int		 sb_width = options_get_number(wo, "pane-scrollbars-width");
+        u_int		 sb_pad = options_get_number(wo, "pane-scrollbars-pad");
         u_int		 sb_x;             /* px and py of where */
         u_int		 sb_y = wp->yoff;  /* to write to screen */
         u_int		 sb_h = wp->sy; /* height of scrollbar */
@@ -1152,7 +1152,7 @@ screen_redraw_draw_pane_scrollbar(struct client *c, struct window_pane *wp)
                 slider_y = (u_int)sb_h * ((double)cm_y_pos / total_height);
         }
 
-        if (sb_pos == PANE_VERTICAL_SCROLLBARS_LEFT)
+        if (sb_pos == PANE_SCROLLBARS_LEFT)
 		sb_x = wp->xoff - sb_width;
         else
 		sb_x = wp->xoff + wp->sx;
@@ -1193,7 +1193,7 @@ screen_redraw_draw_scrollbar(struct client *c, struct window_pane *wp,
         utf8_set(&gc.data, ' ');
 
         if (sb_pad) {
-                if (sb_pos == PANE_VERTICAL_SCROLLBARS_RIGHT)
+                if (sb_pos == PANE_SCROLLBARS_RIGHT)
                         pad_col = 0;
                 else
                         pad_col = sb_width - 1;
