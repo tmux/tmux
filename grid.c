@@ -92,6 +92,8 @@ grid_need_extended_cell(const struct grid_cell_entry *gce,
 		return (1);
 	if (gc->link != 0)
 		return (1);
+	if (gc->flags & GRID_FLAG_TAB)
+		return (1);
 	return (0);
 }
 
