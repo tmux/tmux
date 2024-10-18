@@ -50,6 +50,11 @@ Run a separate tmux server with `-f/dev/null` to skip loading `.tmux.conf`:
 tmux -Ltest kill-server
 tmux -Ltest -f/dev/null new
 ~~~
+If you have **alias**ed tmux, run this instead:
+~~~bash
+command -p tmux -Ltest kill-server
+command -p tmux -Ltest -f/dev/null new
+~~~
 
 ## How do I get logs from tmux?
 
