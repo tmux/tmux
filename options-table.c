@@ -1140,24 +1140,6 @@ const struct options_table_entry options_table[] = {
 	  .text = "Pane scrollbars position"
 	},
 
-	{ .name = "pane-scrollbars-width",
-	  .type = OPTIONS_TABLE_NUMBER,
-	  .scope = OPTIONS_TABLE_WINDOW,
-          .minimum = 1,
-          .maximum = UINT_MAX,
-	  .default_num = PANE_SCROLLBARS_WIDTH,
-	  .text = "Pane scrollbars width"
-	},
-
-	{ .name = "pane-scrollbars-pad",
-	  .type = OPTIONS_TABLE_NUMBER,
-	  .scope = OPTIONS_TABLE_WINDOW,
-          .minimum = 0,
-          .maximum = 1,
-	  .default_num = PANE_SCROLLBARS_PAD,
-	  .text = "Pane scrollbars pad"
-	},
-
         { .name = "popup-style",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,

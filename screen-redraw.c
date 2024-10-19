@@ -33,7 +33,7 @@ static void	screen_redraw_set_context(struct client *,
 static void	screen_redraw_draw_pane_scrollbars(struct screen_redraw_ctx *);
 static void	screen_redraw_draw_scrollbar(struct client *,
                     struct window_pane *, int, u_int, u_int, u_int, u_int,
-		    u_int, u_int, u_int);
+		    u_int);
 
 
 #define START_ISOLATE "\342\201\246"
@@ -185,7 +185,7 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
         int		 pane_status = ctx->pane_status;
         int		 pane_scrollbars = ctx->pane_scrollbars;
         int		 sb_pos = ctx->pane_scrollbars_pos;
-        int		 sb_w = ctx->pane_scrollbars_width;
+        int		 sb_w = PANE_SCROLLBARS_WIDTH;
 
 	/* Inside pane. */
 	if (px >= wp->xoff && px < ex && py >= wp->yoff && py < ey)
@@ -447,7 +447,7 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 	u_int			 right, line;
         int			 pane_scrollbars = ctx->pane_scrollbars;
         int			 sb_pos = ctx->pane_scrollbars_pos;
-        int			 sb_w = ctx->pane_scrollbars_width;
+        int			 sb_w = PANE_SCROLLBARS_WIDTH;
 
 	*wpp = NULL;
 
@@ -732,7 +732,6 @@ screen_redraw_set_context(struct client *c, struct screen_redraw_ctx *ctx)
 
 	ctx->pane_scrollbars = options_get_number(wo, "pane-scrollbars");
 	ctx->pane_scrollbars_pos = options_get_number(wo, "pane-scrollbars-position");
-	ctx->pane_scrollbars_width = options_get_number(wo, "pane-scrollbars-width");
 
 	tty_window_offset(&c->tty, &ctx->ox, &ctx->oy, &ctx->sx, &ctx->sy);
 
@@ -1114,8 +1113,7 @@ screen_redraw_draw_pane_scrollbar(struct client *c, struct window_pane *wp)
         struct screen	*s = wp->screen;
         u_int		 pane_scrollbars = options_get_number(wo, "pane-scrollbars");
         u_int		 sb_pos = options_get_number(wo, "pane-scrollbars-position");
-        u_int		 sb_width = options_get_number(wo, "pane-scrollbars-width");
-        u_int		 sb_pad = options_get_number(wo, "pane-scrollbars-pad");
+        u_int		 sb_w = PANE_SCROLLBARS_WIDTH;
         u_int		 sb_x;             /* px and py of where */
         u_int		 sb_y = wp->yoff;  /* to write to screen */
         u_int		 sb_h = wp->sy; /* height of scrollbar */
@@ -1153,7 +1151,7 @@ screen_redraw_draw_pane_scrollbar(struct client *c, struct window_pane *wp)
         }
 
         if (sb_pos == PANE_SCROLLBARS_LEFT)
-		sb_x = wp->xoff - sb_width;
+		sb_x = wp->xoff - sb_w;
         else
 		sb_x = wp->xoff + wp->sx;
 
@@ -1162,8 +1160,7 @@ screen_redraw_draw_pane_scrollbar(struct client *c, struct window_pane *wp)
         if (slider_y >= sb_h)
                 slider_y = sb_h-1;
 
-        screen_redraw_draw_scrollbar(c, wp, sb_pos, sb_width, sb_pad,
-				     sb_x, sb_y, sb_h,
+        screen_redraw_draw_scrollbar(c, wp, sb_pos, sb_x, sb_y, sb_h,
                                      slider_h, slider_y);
 
         /* Store current position and height of the slider */
@@ -1173,18 +1170,19 @@ screen_redraw_draw_pane_scrollbar(struct client *c, struct window_pane *wp)
 
 static void
 screen_redraw_draw_scrollbar(struct client *c, struct window_pane *wp,
-    int sb_pos, u_int sb_width, u_int sb_pad, u_int px, u_int py, u_int sb_h,
-    u_int slider_h, u_int slider_y)
+    int sb_pos, u_int px, u_int py, u_int sb_h, u_int slider_h, u_int slider_y)
 {
-	struct tty		*tty = &c->tty;
-        u_int			pad_col = 0;
-        u_int i,j;
 	struct window		*w = wp->window;
+	struct tty		*tty = &c->tty;
         struct grid_cell	 gc;
+        u_int			 i, j;
         int			 fg, bg;
+        u_int			 pad_col = 0;
+	u_int			 sb_w = PANE_SCROLLBARS_WIDTH;
+	u_int			 sb_pad = PANE_SCROLLBARS_PADDING;
 
         log_debug("%s: scrollbar pos:%d w:%u @%u,%u h:%u eh:%u ep:%u",
-                  __func__, sb_pos, sb_width, px, py, sb_h, slider_h, slider_y);
+                  __func__, sb_pos, sb_w, px, py, sb_h, slider_h, slider_y);
 
         /* Set up default colour. */
 	style_apply(&gc, w->options, "pane-scrollbar-style", NULL);
@@ -1196,11 +1194,11 @@ screen_redraw_draw_scrollbar(struct client *c, struct window_pane *wp,
                 if (sb_pos == PANE_SCROLLBARS_RIGHT)
                         pad_col = 0;
                 else
-                        pad_col = sb_width - 1;
+                        pad_col = sb_w - 1;
         }
         
         gc.bg = bg;
-        for (i = 0; i < sb_width; i++) {
+        for (i = 0; i < sb_w; i++) {
                 for (j = 0; j < sb_h; j++) {
                         tty_cursor(tty, px+i, py+j);
 
@@ -1215,8 +1213,8 @@ screen_redraw_draw_scrollbar(struct client *c, struct window_pane *wp,
                                         gc.bg = bg;
                                         gc.fg = fg;
                                 }
-                                tty_cell(tty, &gc,
-                                         &grid_default_cell, NULL, NULL);
+                                tty_cell(tty, &gc, &grid_default_cell, NULL,
+					 NULL);
                         }
                 }
         }

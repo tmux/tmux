@@ -600,7 +600,7 @@ window_get_active_at(struct window *w, u_int x, u_int y)
                 if (pane_scrollbars == PANE_SCROLLBARS_ALWAYS ||
                     (pane_scrollbars == PANE_SCROLLBARS_MODAL &&
                      window_pane_mode(wp) != WINDOW_PANE_NO_MODE))
-                        sb_w = options_get_number(w->options, "pane-scrollbars-width");
+			sb_w = PANE_SCROLLBARS_WIDTH;
                 else
                         sb_w = 0;
 
