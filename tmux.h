@@ -3307,8 +3307,6 @@ void		 window_copy_pagedown(struct window_pane *, int, int);
 void		 window_copy_start_drag(struct client *, struct mouse_event *);
 char		*window_copy_get_word(struct window_pane *, u_int, u_int);
 char		*window_copy_get_line(struct window_pane *, u_int);
-int		 window_copy_get_current_offset(struct window_pane *, u_int *,
-		     u_int *);
 
 /* window-option.c */
 extern const struct window_mode window_customize_mode;

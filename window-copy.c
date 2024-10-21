@@ -4368,27 +4368,6 @@ window_copy_write_one(struct window_mode_entry *wme,
 	}
 }
 
-int
-window_copy_get_current_offset(struct window_pane *wp, u_int *offset,
-    u_int *size)
-{
-        struct window_mode_entry	*wme;
-	struct window_copy_mode_data	*data;
-	u_int				 hsize;
-
-        wme = TAILQ_FIRST(&wp->modes);
-        data = wme->data;
-        if (data == NULL)
-                return (0);
-        
-        hsize = screen_hsize(data->backing);
-
-        *offset = hsize - data->oy;
-        *size = hsize;
-
-        return (1);
-}
-                                
 static void
 window_copy_write_line(struct window_mode_entry *wme,
     struct screen_write_ctx *ctx, u_int py)
