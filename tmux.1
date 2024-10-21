@@ -1803,6 +1803,7 @@ Exit copy mode.
 Clear the current selection.
 .It Xo
 .Ic copy-end-of-line
+.Op Fl CP
 .Op Ar prefix
 .Xc
 Copy from the cursor position to the end of the line.
@@ -1810,26 +1811,105 @@ Copy from the cursor position to the end of the line.
 is used to name the new paste buffer.
 .It Xo
 .Ic copy-end-of-line-and-cancel
+.Op Fl CP
 .Op Ar prefix
 .Xc
 Copy from the cursor position and exit copy mode.
 .It Xo
+.Ic copy-pipe-end-of-line
+.Op Fl CP
+.Op Ar command
+.Op Ar prefix
+.Xc
+Copy from the cursor position to the end of the line and pipe the text to
+.Ar command .
+.Ar prefix
+is used to name the new paste buffer.
+.It Xo
+.Ic copy-pipe-end-of-line-and-cancel
+.Op Fl CP
+.Op Ar command
+.Op Ar prefix
+.Xc
+Same as
+.Ic copy-pipe-end-of-line
+but also exit copy mode.
+.It Xo
 .Ic copy-line
+.Op Fl CP
 .Op Ar prefix
 .Xc
 Copy the entire line.
 .It Xo
 .Ic copy-line-and-cancel
+.Op Fl CP
 .Op Ar prefix
 .Xc
 Copy the entire line and exit copy mode.
 .It Xo
+.Ic copy-pipe-line
+.Op Fl CP
+.Op Ar command
+.Op Ar prefix
+.Xc
+Copy the entire line and pipe the text to
+.Ar command .
+.Ar prefix
+is used to name the new paste buffer.
+.It Xo
+.Ic copy-pipe-line-and-cancel
+.Op Fl CP
+.Op Ar command
+.Op Ar prefix
+.Xc
+Same as
+.Ic copy-pipe-line
+but also exit copy mode.
+.It Xo
+.Ic copy-pipe
+.Op Fl CP
+.Op Ar command
+.Op Ar prefix
+.Xc
+Copy the selection, clear it and pipe its text to
+.Ar command .
+.Ar prefix
+is used to name the new paste buffer.
+.It Xo
+.Ic copy-pipe-no-clear
+.Op Fl CP
+.Op Ar command
+.Op Ar prefix
+.Xc
+Same as
+.Ic copy-pipe
+but do not clear the selection.
+.It Xo
+.Ic copy-pipe-and-cancel
+.Op Fl CP
+.Op Ar command
+.Op Ar prefix
+.Xc
+Same as
+.Ic copy-pipe
+but also exit copy mode.
+.It Xo
 .Ic copy-selection
+.Op Fl CP
 .Op Ar prefix
 .Xc
 Copies the current selection.
 .It Xo
+.Ic copy-selection-no-clear
+.Op Fl CP
+.Op Ar prefix
+.Xc
+Same as
+.Ic copy-selection
+but do not clear the selection.
+.It Xo
 .Ic copy-selection-and-cancel
+.Op Fl CP
 .Op Ar prefix
 (vi: Enter)
 (emacs: M-w)
@@ -1841,6 +1921,12 @@ Copy the current selection and exit copy mode.
 (emacs: Down)
 .Xc
 Move the cursor down.
+.It Xo
+.Ic cursor-down-and-cancel
+.Xc
+Same as
+.Ic cursor-down
+but also exit copy mode if reaching the bottom.
 .It Xo
 .Ic cursor-left
 (vi: h)
@@ -1873,6 +1959,24 @@ Move the cursor to the end of the line.
 .Xc
 Move the cursor to a specific line.
 .It Xo
+.Ic halfpage-down
+(vi: C-d)
+(emacs: M-Down)
+.Xc
+Scroll down by half a page.
+.It Xo
+.Ic halfpage-down-and-cancel
+.Xc
+Same as
+.Ic halfpage-down
+but also exit copy mode if reaching the bottom.
+.It Xo
+.Ic halfpage-up
+(vi: C-u)
+(emacs: M-Up)
+.Xc
+Scroll up by half a page.
+.It Xo
 .Ic history-bottom
 (vi: G)
 (emacs: M->)
@@ -1904,6 +2008,27 @@ Jump backwards to the specified text.
 (emacs: f)
 .Xc
 Jump forward to the specified text.
+.It Xo
+.Ic jump-reverse
+(vi: ,)
+(emacs: ,)
+.Xc
+Repeat the last jump in the reverse direction (forward becomes backward and
+backward becomes forward).
+.It Xo
+.Ic jump-to-backward
+.Ar to
+(vi: T)
+.Xc
+Jump backwards, but one character less, placing the cursor on the character
+after the target.
+.It Xo
+.Ic jump-to-forward
+.Ar to
+(vi: t)
+.Xc
+Jump forward, but one character less, placing the cursor on the character
+before the target.
 .It Xo
 .Ic jump-to-mark
 (vi: M-x)
@@ -1939,17 +2064,70 @@ Move to the next prompt.
 .Xc
 Move to the next word.
 .It Xo
+.Ic next-word-end
+(vi: e)
+(emacs: M-f)
+.Xc
+Move to the end of the next word.
+.It Xo
+.Ic next-space
+(vi: W)
+.Xc
+Same as
+.Ic next-word
+but use a space alone as the word separator.
+.It Xo
+.Ic next-space-end
+(vi: E)
+.Xc
+Same as
+.Ic next-word-end
+but use a space alone as the word separator.
+.It Xo
+.Ic other-end
+(vi: o)
+.Xc
+Switch at which end of the selection the cursor sits.
+.It Xo
 .Ic page-down
 (vi: C-f)
 (emacs: PageDown)
 .Xc
 Scroll down by one page.
 .It Xo
+.Ic page-down-and-cancel
+.Xc
+Same as
+.Ic page-down
+but also exit copy mode if reaching the bottom.
+.It Xo
 .Ic page-up
 (vi: C-b)
 (emacs: PageUp)
 .Xc
 Scroll up by one page.
+.It Xo
+.Ic pipe
+.Op Ar command
+.Xc
+Pipe the selected text to
+.Ar command
+and clear the selection.
+.It Xo
+.Ic pipe-no-clear
+.Op Ar command
+.Xc
+Same as
+.Ic pipe
+but do not clear the selection.
+.It Xo
+.Ic pipe-and-cancel
+.Op Ar command
+.Op Ar prefix
+.Xc
+Same as
+.Ic pipe
+but also exit copy mode.
 .It Xo
 .Ic previous-matching-bracket
 (emacs: M-C-b)
@@ -1973,6 +2151,21 @@ Move to the previous prompt.
 .Xc
 Move to the previous word.
 .It Xo
+.Ic previous-space
+(vi: B)
+.Xc
+Same as
+.Ic previous-word
+but use a space alone as the word separator.
+.It Xo
+.Ic rectangle-on
+.Xc
+Turn on rectangle selection mode.
+.It Xo
+.Ic rectangle-off
+.Xc
+Turn off rectangle selection mode.
+.It Xo
 .Ic rectangle-toggle
 (vi: v)
 (emacs: R)
@@ -1984,6 +2177,40 @@ Toggle rectangle selection mode.
 (emacs: r)
 .Xc
 Refresh the content from the pane.
+.It Xo
+.Ic scroll-bottom
+.Xc
+Scroll up until the current line is at the bottom while keeping the cursor on
+that line.
+.It Xo
+.Ic scroll-down
+(vi: C-e)
+(emacs: C-Down)
+.Xc
+Scroll down.
+.It Xo
+.Ic scroll-down-and-cancel
+.Xc
+Same as
+.Ic scroll-down
+but also exit copy mode if the cursor reaches the bottom.
+.It Xo
+.Ic scroll-middle
+(vi: z)
+.Xc
+Scroll so that the current line becomes the middle one while keeping the
+cursor on that line.
+.It Xo
+.Ic scroll-top
+.Xc
+Scroll down until the current line is at the top while keeping the cursor on
+that line.
+.It Xo
+.Ic scroll-up
+(vi: C-y)
+(emacs: C-Up)
+.Xc
+Scroll up.
 .It Xo
 .Ic search-again
 (vi: n)
@@ -1997,11 +2224,50 @@ Repeat the last search.
 .Xc
 Search backwards for the specified text.
 .It Xo
+.Ic search-backward-incremental
+.Ar text
+(emacs: C-r)
+.Xc
+Search backwards incrementally for the specified text.
+Is expected to be used with the
+.Fl i
+flag to the
+.Ic command-prompt
+command.
+.It Xo
+.Ic search-backward-text
+.Ar text
+.Xc
+Search backwards for the specified plain text.
+.It Xo
 .Ic search-forward
 .Ar text
 (vi: /)
 .Xc
 Search forward for the specified text.
+.It Xo
+.Ic search-forward-incremental
+.Ar text
+(emacs: C-s)
+.Xc
+Search forward incrementally for the specified text.
+Is expected to be used with the
+.Fl i
+flag to the
+.Ic command-prompt
+command.
+.It Xo
+.Ic search-forward-text
+.Ar text
+.Xc
+Search forward for the specified plain text.
+.It Xo
+.Ic search-reverse
+(vi: N)
+(emacs: N)
+.Xc
+Repeat the last search in the reverse direction (forward becomes backward and
+backward becomes forward).
 .It Xo
 .Ic select-line
 (vi: V)
@@ -2012,11 +2278,27 @@ Select the current line.
 .Xc
 Select the current word.
 .It Xo
+.Ic set-mark
+(vi: X)
+(emacs: X)
+.Xc
+Mark the current line.
+.It Xo
 .Ic start-of-line
 (vi: 0)
 (emacs: C-a)
 .Xc
 Move the cursor to the start of the line.
+.It Xo
+.Ic stop-selection
+.Xc
+Stop selecting without clearing the current selection.
+.It Xo
+.Ic toggle-position
+(vi: P)
+(emacs: P)
+.Xc
+Toggle the visibility of the position indicator in the top right.
 .It Xo
 .Ic top-line
 (vi: H)
@@ -2075,6 +2357,16 @@ variants of some commands exit copy mode after they have completed (for copy
 commands) or when the cursor reaches the bottom (for scrolling commands).
 .Ql -no-clear
 variants do not clear the selection.
+All the copy commands can take the
+.Fl C
+and
+.Fl P
+flags.
+The
+.Fl C
+flag suppresses setting the terminal clipboard when copying, while the
+.Fl P
+flag suppresses adding a paste buffer with the text.
 .Pp
 The next and previous word keys skip over whitespace and treat consecutive
 runs of either word separators or other letters as words.
@@ -2312,7 +2604,7 @@ the end of the visible pane.
 The default is to capture only the visible contents of the pane.
 .It Xo
 .Ic choose-client
-.Op Fl NrZ
+.Op Fl NryZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl K Ar key-format
@@ -2328,6 +2620,8 @@ or the list may be navigated and an item chosen or otherwise manipulated using
 the keys below.
 .Fl Z
 zooms the pane.
+.Fl y
+disables any confirmation prompts.
 The following keys may be used in client mode:
 .Bl -column "Key" "Function" -offset indent
 .It Sy "Key" Ta Sy "Function"
@@ -2382,11 +2676,11 @@ specifies the format for each item in the list and
 .Fl K
 a format for each shortcut key; both are evaluated once for each line.
 .Fl N
-starts without the preview.
+starts without the preview or if given twice with the larger preview.
 This command works only if at least one client is attached.
 .It Xo
 .Ic choose-tree
-.Op Fl GNrswZ
+.Op Fl GNrswyZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl K Ar key-format
@@ -2406,6 +2700,8 @@ starts with sessions collapsed and
 with windows collapsed.
 .Fl Z
 zooms the pane.
+.Fl y
+disables any confirmation prompts.
 The following keys may be used in tree mode:
 .Bl -column "Key" "Function" -offset indent
 .It Sy "Key" Ta Sy "Function"
@@ -2466,7 +2762,7 @@ specifies the format for each item in the tree and
 .Fl K
 a format for each shortcut key; both are evaluated once for each line.
 .Fl N
-starts without the preview.
+starts without the preview or if given twice with the larger preview.
 .Fl G
 includes all sessions in any session groups in the tree rather than only the
 first.
@@ -3414,8 +3710,10 @@ command used to switch to them from a key binding.
 The
 .Fl r
 flag indicates this key may repeat, see the
+.Ic initial-repeat-time
+and
 .Ic repeat-time
-option.
+options.
 .Fl N
 attaches a note to the key (shown with
 .Ic list-keys
@@ -3818,7 +4116,8 @@ the sequence for only keys which lack an existing well-known representation; or
 mode 2 which changes the sequence for all keys.
 When set to
 .Ic always ,
-mode 1 output is forced and the program cannot change it.
+modes 1 and 2 can still be requested by applications, but mode 1 will be forced
+instead of the standard mode.
 When set to
 .Ic off ,
 this feature is disabled and only standard keys are reported.
@@ -4114,10 +4413,12 @@ If
 (the default), leave the session orphaned.
 If
 .Ic keep-last ,
-destroy the session only if it is in a group and has other sessions in that group.
+destroy the session only if it is in a group and has other sessions in that
+group.
 If
 .Ic keep-group ,
-destroy the session unless it is in a group and is the only session in that group.
+destroy the session unless it is in a group and is the only session in that
+group.
 .It Xo Ic detach-on-destroy
 .Op Ic off | on | no-detached | previous | next
 .Xc
@@ -4160,6 +4461,20 @@ is in milliseconds.
 Set the maximum number of lines held in window history.
 This setting applies only to new windows - existing window histories are not
 resized and retain the limit at the point they were created.
+.It Ic initial-repeat-time Ar time
+Set the time in milliseconds for the initial repeat when a key is bound with the
+.Fl r
+flag.
+This allows multiple commands to be entered without pressing the prefix key
+again.
+See also the
+.Ic repeat-time
+option.
+If
+.Ic initial-repeat-time
+is zero,
+.Ic repeat-time
+is used for the first key press.
 .It Ic key-table Ar key-table
 Set the default key table to
 .Ar key-table
@@ -4184,21 +4499,18 @@ See the
 .Sx STYLES
 section on how to specify
 .Ar style .
-Attributes are ignored.
 .It Ic menu-selected-style Ar style
 Set the selected menu item style.
 See the
 .Sx STYLES
 section on how to specify
 .Ar style .
-Attributes are ignored.
 .It Ic menu-border-style Ar style
 Set the menu border style.
 See the
 .Sx STYLES
 section on how to specify
 .Ar style .
-Attributes are ignored.
 .It Ic menu-border-lines Ar type
 Set the type of characters used for drawing menu borders.
 See
@@ -4251,6 +4563,20 @@ Like
 .Ic prefix2
 can be set to
 .Ql None .
+.It Ic prefix-timeout Ar time
+Set the time in milliseconds for which
+.Nm
+waits after
+.Ic prefix
+is input before dismissing it.
+Can be set to zero to disable any timeout.
+.It Ic prompt-cursor-colour Ar colour
+Set the colour of the cursor in the command prompt.
+.It Ic prompt-cursor-style Ar style
+Set the style of the cursor in the command prompt.
+See the
+.Ic cursor-style
+options for available styles.
 .It Xo Ic renumber-windows
 .Op Ic on | off
 .Xc
@@ -4261,7 +4587,7 @@ This respects the
 option if it has been set.
 If off, do not renumber the windows.
 .It Ic repeat-time Ar time
-Allow multiple commands to be entered without pressing the prefix-key again
+Allow multiple commands to be entered without pressing the prefix key again
 in the specified
 .Ar time
 milliseconds (the default is 500).
@@ -4272,6 +4598,9 @@ flag to
 Repeat is enabled for the default keys bound to the
 .Ic resize-pane
 command.
+See also the
+.Ic initial-repeat-time
+option.
 .It Xo Ic set-titles
 .Op Ic on | off
 .Xc
@@ -4550,6 +4879,8 @@ see the
 .Sx STYLES
 section.
 .Pp
+.It Ic copy-mode-position-format Ar format
+Format of the position indicator in copy mode.
 .It Xo Ic mode-keys
 .Op Ic vi | emacs
 .Xc
@@ -4905,13 +5236,6 @@ visible before the application starts reappears unchanged after it exits.
 .It Ic cursor-colour Ar colour
 Set the colour of the cursor.
 .Pp
-.It Ic pane-colours[] Ar colour
-The default colour palette.
-Each entry in the array defines the colour
-.Nm
-uses when the colour with that index is requested.
-The index may be from zero to 255.
-.Pp
 .It Ic cursor-style Ar style
 Set the style of the cursor.
 Available styles are:
@@ -4922,6 +5246,13 @@ Available styles are:
 .Ic underline ,
 .Ic blinking-bar ,
 .Ic bar .
+.Pp
+.It Ic pane-colours[] Ar colour
+The default colour palette.
+Each entry in the array defines the colour
+.Nm
+uses when the colour with that index is requested.
+The index may be from zero to 255.
 .Pp
 .It Xo Ic remain-on-exit
 .Op Ic on | off | failed
@@ -5079,6 +5410,8 @@ Run when a new session created.
 Run when a session closed.
 .It session-renamed
 Run when a session is renamed.
+.It window-layout-changed
+Run when a window layout is changed.
 .It window-linked
 Run when a window is linked into a session.
 .It window-renamed
@@ -5696,6 +6029,7 @@ The following variables are available, where appropriate:
 .It Li "session_stack" Ta "" Ta "Window indexes in most recent order"
 .It Li "session_windows" Ta "" Ta "Number of windows in session"
 .It Li "socket_path" Ta "" Ta "Server socket path"
+.It Li "sixel_support" Ta "" Ta "1 if server has support for SIXEL"
 .It Li "start_time" Ta "" Ta "Server start time"
 .It Li "uid" Ta "" Ta "Server UID"
 .It Li "user" Ta "" Ta "Server user"
@@ -6583,7 +6917,7 @@ The buffer commands are as follows:
 .Bl -tag -width Ds
 .It Xo
 .Ic choose-buffer
-.Op Fl NZr
+.Op Fl NryZ
 .Op Fl F Ar format
 .Op Fl f Ar filter
 .Op Fl K Ar key-format
@@ -6599,6 +6933,8 @@ or the list may be navigated and an item chosen or otherwise manipulated using
 the keys below.
 .Fl Z
 zooms the pane.
+.Fl y
+disables any confirmation prompts.
 The following keys may be used in buffer mode:
 .Bl -column "Key" "Function" -offset indent
 .It Sy "Key" Ta Sy "Function"

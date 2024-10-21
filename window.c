@@ -489,7 +489,8 @@ window_pane_update_focus(struct window_pane *wp)
 				if (c->session != NULL &&
 				    c->session->attached != 0 &&
 				    (c->flags & CLIENT_FOCUSED) &&
-				    c->session->curw->window == wp->window) {
+				    c->session->curw->window == wp->window &&
+				    c->overlay_draw == NULL) {
 					focused = 1;
 					break;
 				}
@@ -1201,6 +1202,24 @@ window_pane_reset_mode_all(struct window_pane *wp)
 }
 
 static void
+window_pane_copy_paste(struct window_pane *wp, char *buf, size_t len)
+{
+ 	struct window_pane	*loop;
+
+	TAILQ_FOREACH(loop, &wp->window->panes, entry) {
+		if (loop != wp &&
+		    TAILQ_EMPTY(&loop->modes) &&
+		    loop->fd != -1 &&
+		    (~loop->flags & PANE_INPUTOFF) &&
+		    window_pane_visible(loop) &&
+		    options_get_number(loop->options, "synchronize-panes")) {
+			log_debug("%s: %.*s", __func__, (int)len, buf);
+			bufferevent_write(loop->event, buf, len);
+		}
+	}
+}
+
+static void
 window_pane_copy_key(struct window_pane *wp, key_code key)
 {
  	struct window_pane	*loop;
@@ -1214,6 +1233,22 @@ window_pane_copy_key(struct window_pane *wp, key_code key)
 		    options_get_number(loop->options, "synchronize-panes"))
 			input_key_pane(loop, key, NULL);
 	}
+}
+
+void
+window_pane_paste(struct window_pane *wp, char *buf, size_t len)
+{
+	if (!TAILQ_EMPTY(&wp->modes))
+		return;
+
+	if (wp->fd == -1 || wp->flags & PANE_INPUTOFF)
+		return;
+
+	log_debug("%s: %.*s", __func__, (int)len, buf);
+	bufferevent_write(wp->event, buf, len);
+
+	if (options_get_number(wp->options, "synchronize-panes"))
+		window_pane_copy_paste(wp, buf, len);
 }
 
 int
@@ -1698,15 +1733,7 @@ window_set_fill_character(struct window *w)
 void
 window_pane_default_cursor(struct window_pane *wp)
 {
-	struct screen	*s = wp->screen;
-	int		 c;
-
-	c = options_get_number(wp->options, "cursor-colour");
-	s->default_ccolour = c;
-
-	c = options_get_number(wp->options, "cursor-style");
-	s->default_mode = 0;
-	screen_set_cursor_style(c, &s->default_cstyle, &s->default_mode);
+	screen_set_default_cursor(wp->screen, wp->options);
 }
 
 int

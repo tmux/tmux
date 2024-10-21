@@ -84,6 +84,9 @@ struct winlink;
 #ifndef TMUX_SOCK
 #define TMUX_SOCK "$TMUX_TMPDIR:" _PATH_TMP
 #endif
+#ifndef TMUX_SOCK_PERM
+#define TMUX_SOCK_PERM (7 /* o+rwx */)
+#endif
 #ifndef TMUX_TERM
 #define TMUX_TERM "screen"
 #endif
@@ -1365,8 +1368,7 @@ struct session {
 
 	struct options	*options;
 
-#define SESSION_PASTING 0x1
-#define SESSION_ALERTED 0x2
+#define SESSION_ALERTED 0x1
 	int		 flags;
 
 	u_int		 attached;
@@ -1444,8 +1446,11 @@ struct mouse_event {
 
 /* Key event. */
 struct key_event {
-	key_code		key;
-	struct mouse_event	m;
+	key_code		 key;
+	struct mouse_event	 m;
+
+	char			*buf;
+	size_t			 len;
 };
 
 /* Terminal definition. */
@@ -1531,6 +1536,7 @@ struct tty {
 #define TTY_HAVEXDA 0x200
 #define TTY_SYNCING 0x400
 #define TTY_HAVEDA2 0x800 /* Secondary DA. */
+#define TTY_WINSIZEQUERY 0x1000
 #define TTY_ALL_REQUEST_FLAGS \
 	(TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA)
 	int		 flags;
@@ -1865,6 +1871,7 @@ struct client {
 
 	struct timeval		 creation_time;
 	struct timeval		 activity_time;
+	struct timeval	 	 last_activity_time;
 
 	struct environ		*environ;
 	struct format_job_tree	*jobs;
@@ -1931,6 +1938,7 @@ struct client {
 #define CLIENT_WINDOWSIZECHANGED 0x400000000ULL
 #define CLIENT_CLIPBOARDBUFFER 0x800000000ULL
 #define CLIENT_BRACKETPASTING 0x1000000000ULL
+#define CLIENT_ASSUMEPASTING 0x2000000000ULL
 #define CLIENT_ALLREDRAWFLAGS		\
 	(CLIENT_REDRAWWINDOW|		\
 	 CLIENT_REDRAWSTATUS|		\
@@ -1961,6 +1969,7 @@ struct client {
 	char			*exit_message;
 
 	struct key_table	*keytable;
+	key_code		 last_key;
 
 	uint64_t		 redraw_panes;
 
@@ -1987,6 +1996,7 @@ struct client {
 #define PROMPT_INCREMENTAL 0x4
 #define PROMPT_NOFORMAT 0x8
 #define PROMPT_KEY 0x10
+#define PROMPT_ACCEPT 0x20
 	int			 prompt_flags;
 	enum prompt_type	 prompt_type;
 	int			 prompt_cursor;
@@ -2042,6 +2052,7 @@ RB_HEAD(key_bindings, key_binding);
 
 struct key_table {
 	const char		*name;
+	struct timeval		 activity_time;
 	struct key_bindings	 key_bindings;
 	struct key_bindings	 default_key_bindings;
 
@@ -2366,6 +2377,7 @@ typedef void (*job_free_cb) (void *);
 #define JOB_NOWAIT 0x1
 #define JOB_KEEPWRITE 0x2
 #define JOB_PTY 0x4
+#define JOB_DEFAULTSHELL 0x8
 struct job	*job_run(const char *, int, char **, struct environ *,
 		     struct session *, const char *, job_update_cb,
 		     job_complete_cb, job_free_cb, void *, int, int, int);
@@ -2428,6 +2440,7 @@ void	tty_cell(struct tty *, const struct grid_cell *,
 int	tty_init(struct tty *, struct client *);
 void	tty_resize(struct tty *);
 void	tty_set_size(struct tty *, u_int, u_int, u_int, u_int);
+void	tty_invalidate(struct tty *);
 void	tty_start_tty(struct tty *);
 void	tty_send_requests(struct tty *);
 void	tty_repeat_requests(struct tty *);
@@ -3082,6 +3095,7 @@ void	 screen_reinit(struct screen *);
 void	 screen_free(struct screen *);
 void	 screen_reset_tabs(struct screen *);
 void	 screen_reset_hyperlinks(struct screen *);
+void	 screen_set_default_cursor(struct screen *, struct options *);
 void	 screen_set_cursor_style(u_int, enum screen_cursor_style *, int *);
 void	 screen_set_cursor_colour(struct screen *, int);
 int	 screen_set_title(struct screen *, const char *);
@@ -3169,6 +3183,7 @@ void		 window_pane_reset_mode_all(struct window_pane *);
 int		 window_pane_key(struct window_pane *, struct client *,
 		     struct session *, struct winlink *, key_code,
 		     struct mouse_event *);
+void		 window_pane_paste(struct window_pane *, char *, size_t);
 int		 window_pane_visible(struct window_pane *);
 int		 window_pane_exited(struct window_pane *);
 u_int		 window_pane_search(struct window_pane *, const char *, int,
@@ -3307,6 +3322,8 @@ void		 window_copy_pagedown(struct window_pane *, int, int);
 void		 window_copy_start_drag(struct client *, struct mouse_event *);
 char		*window_copy_get_word(struct window_pane *, u_int, u_int);
 char		*window_copy_get_line(struct window_pane *, u_int);
+int		 window_copy_get_current_offset(struct window_pane *, u_int *,
+		     u_int *);
 
 /* window-option.c */
 extern const struct window_mode window_customize_mode;
@@ -3509,7 +3526,7 @@ int		 image_scroll_up(struct screen *, u_int);
 
 /* image-sixel.c */
 #define SIXEL_COLOUR_REGISTERS 1024
-struct sixel_image *sixel_parse(const char *, size_t, u_int, u_int);
+struct sixel_image *sixel_parse(const char *, size_t, u_int, u_int, u_int);
 void		 sixel_free(struct sixel_image *);
 void		 sixel_log(struct sixel_image *);
 void		 sixel_size_in_cells(struct sixel_image *, u_int *, u_int *);

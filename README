@@ -36,6 +36,7 @@ autoconf, automake and pkg-config:
 	$ cd tmux
 	$ sh autogen.sh
 	$ ./configure && make
+	$ sudo make install
 
 * Contributing
 

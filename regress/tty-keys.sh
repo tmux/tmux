@@ -14,7 +14,7 @@ trap "rm -f $TMP" 0 1 15
 
 $TMUX2 -f/dev/null new -d || exit 1
 $TMUX -f/dev/null new -d "$TMUX2 attach" || exit 1
-sleep 0.1
+sleep 1
 
 exit_status=0
 
@@ -60,38 +60,38 @@ assert_key () {
 
 }
 
-assert_key 0x00 'C-Space' # -- 'Escape 0x00' 'M-C-Space'
-assert_key 0x01 'C-a'	  -- 'Escape 0x01' 'M-C-a'
-assert_key 0x02 'C-b'	  -- 'Escape 0x02' 'M-C-b'
-assert_key 0x03 'C-c'	  -- 'Escape 0x03' 'M-C-c'
-assert_key 0x04 'C-d'	  -- 'Escape 0x04' 'M-C-d'
-assert_key 0x05 'C-e'	  -- 'Escape 0x05' 'M-C-e'
-assert_key 0x06 'C-f'	  -- 'Escape 0x06' 'M-C-f'
-assert_key 0x07 'C-g'	  -- 'Escape 0x07' 'M-C-g'
-assert_key 0x08 'C-h'	  -- 'Escape 0x08' 'M-C-h'
+assert_key 0x00 'C-Space' # -- 'Escape 0x00' 'C-M-Space'
+assert_key 0x01 'C-a'	  -- 'Escape 0x01' 'C-M-a'
+assert_key 0x02 'C-b'	  -- 'Escape 0x02' 'C-M-b'
+assert_key 0x03 'C-c'	  -- 'Escape 0x03' 'C-M-c'
+assert_key 0x04 'C-d'	  -- 'Escape 0x04' 'C-M-d'
+assert_key 0x05 'C-e'	  -- 'Escape 0x05' 'C-M-e'
+assert_key 0x06 'C-f'	  -- 'Escape 0x06' 'C-M-f'
+assert_key 0x07 'C-g'	  -- 'Escape 0x07' 'C-M-g'
+assert_key 0x08 'C-h'	  -- 'Escape 0x08' 'C-M-h'
 assert_key 0x09 'Tab'	  -- 'Escape 0x09' 'M-Tab'
-assert_key 0x0A 'C-j'	  -- 'Escape 0x0A' 'M-C-j'
-assert_key 0x0B 'C-k'	  -- 'Escape 0x0B' 'M-C-k'
-assert_key 0x0C 'C-l'	  -- 'Escape 0x0C' 'M-C-l'
+assert_key 0x0A 'C-j'	  -- 'Escape 0x0A' 'C-M-j'
+assert_key 0x0B 'C-k'	  -- 'Escape 0x0B' 'C-M-k'
+assert_key 0x0C 'C-l'	  -- 'Escape 0x0C' 'C-M-l'
 assert_key 0x0D 'Enter'	  -- 'Escape 0x0D' 'M-Enter'
-assert_key 0x0E 'C-n'	  -- 'Escape 0x0E' 'M-C-n'
-assert_key 0x0F 'C-o'	  -- 'Escape 0x0F' 'M-C-o'
-assert_key 0x10 'C-p'	  -- 'Escape 0x10' 'M-C-p'
-assert_key 0x11 'C-q'	  -- 'Escape 0x11' 'M-C-q'
-assert_key 0x12 'C-r'	  -- 'Escape 0x12' 'M-C-r'
-assert_key 0x13 'C-s'	  -- 'Escape 0x13' 'M-C-s'
-assert_key 0x14 'C-t'	  -- 'Escape 0x14' 'M-C-t'
-assert_key 0x15 'C-u'	  -- 'Escape 0x15' 'M-C-u'
-assert_key 0x16 'C-v'	  -- 'Escape 0x16' 'M-C-v'
-assert_key 0x17 'C-w'	  -- 'Escape 0x17' 'M-C-w'
-assert_key 0x18 'C-x'	  -- 'Escape 0x18' 'M-C-x'
-assert_key 0x19 'C-y'	  -- 'Escape 0x19' 'M-C-y'
-assert_key 0x1A 'C-z'	  -- 'Escape 0x1A' 'M-C-z'
+assert_key 0x0E 'C-n'	  -- 'Escape 0x0E' 'C-M-n'
+assert_key 0x0F 'C-o'	  -- 'Escape 0x0F' 'C-M-o'
+assert_key 0x10 'C-p'	  -- 'Escape 0x10' 'C-M-p'
+assert_key 0x11 'C-q'	  -- 'Escape 0x11' 'C-M-q'
+assert_key 0x12 'C-r'	  -- 'Escape 0x12' 'C-M-r'
+assert_key 0x13 'C-s'	  -- 'Escape 0x13' 'C-M-s'
+assert_key 0x14 'C-t'	  -- 'Escape 0x14' 'C-M-t'
+assert_key 0x15 'C-u'	  -- 'Escape 0x15' 'C-M-u'
+assert_key 0x16 'C-v'	  -- 'Escape 0x16' 'C-M-v'
+assert_key 0x17 'C-w'	  -- 'Escape 0x17' 'C-M-w'
+assert_key 0x18 'C-x'	  -- 'Escape 0x18' 'C-M-x'
+assert_key 0x19 'C-y'	  -- 'Escape 0x19' 'C-M-y'
+assert_key 0x1A 'C-z'	  -- 'Escape 0x1A' 'C-M-z'
 assert_key 0x1B 'Escape'  -- 'Escape 0x1B' 'M-Escape'
-assert_key 0x1C "C-\\"	  -- 'Escape 0x1C' "M-C-\\"
-assert_key 0x1D 'C-]'	  -- 'Escape 0x1D' 'M-C-]'
-assert_key 0x1E 'C-^'	  -- 'Escape 0x1E' 'M-C-^'
-assert_key 0x1F 'C-_'	  -- 'Escape 0x1F' 'M-C-_'
+assert_key 0x1C "C-\\"	  -- 'Escape 0x1C' "C-M-\\"
+assert_key 0x1D 'C-]'	  -- 'Escape 0x1D' 'C-M-]'
+assert_key 0x1E 'C-^'	  -- 'Escape 0x1E' 'C-M-^'
+assert_key 0x1F 'C-_'	  -- 'Escape 0x1F' 'C-M-_'
 assert_key 0x20 'Space'	  -- 'Escape 0x20' 'M-Space'
 assert_key 0x21 '!'	  -- 'Escape 0x21' 'M-!'
 assert_key 0x22 '"'	  -- 'Escape 0x22' 'M-"'
@@ -304,7 +304,7 @@ assert_extended_key () {
 	key_name=$2
 
 	assert_key "Escape [${code};5u" "C-$key_name"
-	assert_key "Escape [${code};7u" "M-C-$key_name"
+	assert_key "Escape [${code};7u" "C-M-$key_name"
 }
 
 # Extended keys

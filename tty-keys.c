@@ -654,6 +654,74 @@ tty_keys_next1(struct tty *tty, const char *buf, size_t len, key_code *key,
 	return (-1);
 }
 
+/* Process window size change escape sequences. */
+static int
+tty_keys_winsz(struct tty *tty, const char *buf, size_t len, size_t *size)
+{
+	struct client	*c = tty->client;
+	size_t		 end;
+	char		 tmp[64];
+	u_int		 sx, sy, xpixel, ypixel, char_x, char_y;
+
+	*size = 0;
+
+	/* If we did not request this, ignore it. */
+	if (!(tty->flags & TTY_WINSIZEQUERY))
+		return (-1);
+
+	/* First two bytes are always \033[. */
+	if (buf[0] != '\033')
+		return (-1);
+	if (len == 1)
+		return (1);
+	if (buf[1] != '[')
+		return (-1);
+	if (len == 2)
+		return (1);
+
+	/*
+	 * Stop at either 't' or anything that isn't a
+	 * number or ';'.
+	 */
+	for (end = 2; end < len && end != sizeof tmp; end++) {
+		if (buf[end] == 't')
+			break;
+		if (!isdigit((u_char)buf[end]) && buf[end] != ';')
+			break;
+	}
+	if (end == len)
+		return (1);
+	if (end == sizeof tmp || buf[end] != 't')
+		return (-1);
+
+	/* Copy to the buffer. */
+	memcpy(tmp, buf + 2, end - 2);
+	tmp[end - 2] = '\0';
+
+	/* Try to parse the window size sequence. */
+	if (sscanf(tmp, "8;%u;%u", &sy, &sx) == 2) {
+		/* Window size in characters. */
+		tty_set_size(tty, sx, sy, tty->xpixel, tty->ypixel);
+
+		*size = end + 1;
+		return (0);
+	} else if (sscanf(tmp, "4;%u;%u", &ypixel, &xpixel) == 2) {
+		/* Window size in pixels. */
+		char_x = (xpixel && tty->sx) ? xpixel / tty->sx : 0;
+		char_y = (ypixel && tty->sy) ? ypixel / tty->sy : 0;
+		tty_set_size(tty, tty->sx, tty->sy, char_x, char_y);
+		tty_invalidate(tty);
+
+		tty->flags &= ~TTY_WINSIZEQUERY;
+		*size = end + 1;
+		return (0);
+	}
+
+	log_debug("%s: unrecognized window size sequence: %s", c->name, tmp);
+	return (-1);
+}
+
+
 /* Process at least one key in the buffer. Return 0 if no keys present. */
 int
 tty_keys_next(struct tty *tty)
@@ -747,6 +815,17 @@ tty_keys_next(struct tty *tty)
 	/* Is this an extended key press? */
 	switch (tty_keys_extended_key(tty, buf, len, &size, &key)) {
 	case 0:		/* yes */
+		goto complete_key;
+	case -1:	/* no, or not valid */
+		break;
+	case 1:		/* partial */
+		goto partial_key;
+	}
+
+	/* Check for window size query */
+	switch (tty_keys_winsz(tty, buf, len, &size)) {
+	case 0:		/* yes */
+		key = KEYC_UNKNOWN;
 		goto complete_key;
 	case -1:	/* no, or not valid */
 		break;
@@ -865,9 +944,6 @@ complete_key:
 	if (bspace != _POSIX_VDISABLE && (key & KEYC_MASK_KEY) == bspace)
 		key = (key & KEYC_MASK_MODIFIERS)|KEYC_BSPACE;
 
-	/* Remove data from buffer. */
-	evbuffer_drain(tty->in, size);
-
 	/* Remove key timer. */
 	if (event_initialized(&tty->key_timer))
 		evtimer_del(&tty->key_timer);
@@ -886,12 +962,22 @@ complete_key:
 
 	/* Fire the key. */
 	if (key != KEYC_UNKNOWN) {
-		event = xmalloc(sizeof *event);
+		event = xcalloc(1, sizeof *event);
 		event->key = key;
 		memcpy(&event->m, &m, sizeof event->m);
-		if (!server_client_handle_key(c, event))
+
+		event->buf = xmalloc(size);
+		event->len = size;
+		memcpy (event->buf, buf, event->len);
+
+		if (!server_client_handle_key(c, event)) {
+			free(event->buf);
 			free(event);
+		}
 	}
+
+	/* Remove data from buffer. */
+	evbuffer_drain(tty->in, size);
 
 	return (1);
 
@@ -930,7 +1016,7 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 	u_int		 number, modifiers;
 	char		 tmp[64];
 	cc_t		 bspace;
-	key_code	 nkey;
+	key_code	 nkey, onlykey;
 	struct utf8_data ud;
 	utf8_char        uc;
 
@@ -983,7 +1069,7 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 		nkey = number;
 
 	/* Convert UTF-32 codepoint into internal representation. */
-	if (nkey & ~0x7f) {
+	if (nkey != KEYC_BSPACE && nkey & ~0x7f) {
 		if (utf8_fromwc(nkey, &ud) == UTF8_DONE &&
 		    utf8_from_data(&ud, &uc) == UTF8_DONE)
 			nkey = uc;
@@ -994,13 +1080,7 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 	/* Update the modifiers. */
 	if (modifiers > 0) {
 		modifiers--;
-		/*
-		 * The Shift modifier may not be reported in some input modes,
-		 * which is unfortunate, as in general case determining if a
-		 * character is shifted or not requires knowing the input
-		 * keyboard layout. So we only fix up the trivial case.
-		 */
-		if (modifiers & 1 || (nkey >= 'A' && nkey <= 'Z'))
+		if (modifiers & 1)
 			nkey |= KEYC_SHIFT;
 		if (modifiers & 2)
 			nkey |= (KEYC_META|KEYC_IMPLIED_META); /* Alt */
@@ -1013,6 +1093,26 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 	/* Convert S-Tab into Backtab. */
 	if ((nkey & KEYC_MASK_KEY) == '\011' && (nkey & KEYC_SHIFT))
 		nkey = KEYC_BTAB | (nkey & ~KEYC_MASK_KEY & ~KEYC_SHIFT);
+
+	/*
+	 * Deal with the Shift modifier when present alone. The problem is that
+	 * in mode 2 some terminals would report shifted keys, like S-a, as
+	 * just A, and some as S-A.
+	 *
+	 * Because we need an unambiguous internal representation, and because
+	 * restoring the Shift modifier when it's missing would require knowing
+	 * the keyboard layout, and because S-A would cause a lot of issues
+	 * downstream, we choose to lose the Shift for all printable
+	 * characters.
+	 *
+	 * That still leaves some ambiguity, such as C-S-A vs. C-A, but that's
+	 * OK, and applications can handle that.
+	 */
+	onlykey = nkey & KEYC_MASK_KEY;
+	if (((onlykey > 0x20 && onlykey < 0x7f) ||
+	    KEYC_IS_UNICODE(nkey)) &&
+	    (nkey & KEYC_MASK_MODIFIERS) == KEYC_SHIFT)
+		nkey &= ~KEYC_SHIFT;
 
 	if (log_get_level() != 0) {
 		log_debug("%s: extended key %.*s is %llx (%s)", c->name,

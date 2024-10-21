@@ -33,7 +33,7 @@ const struct cmd_entry cmd_choose_tree_entry = {
 	.name = "choose-tree",
 	.alias = NULL,
 
-	.args = { "F:f:GK:NO:rst:wZ", 0, 1, cmd_choose_tree_args_parse },
+	.args = { "F:f:GK:NO:rst:wyZ", 0, 1, cmd_choose_tree_args_parse },
 	.usage = "[-GNrswZ] [-F format] [-f filter] [-K key-format] "
 		 "[-O sort-order] " CMD_TARGET_PANE_USAGE " [template]",
 
@@ -47,7 +47,7 @@ const struct cmd_entry cmd_choose_client_entry = {
 	.name = "choose-client",
 	.alias = NULL,
 
-	.args = { "F:f:K:NO:rt:Z", 0, 1, cmd_choose_tree_args_parse },
+	.args = { "F:f:K:NO:rt:yZ", 0, 1, cmd_choose_tree_args_parse },
 	.usage = "[-NrZ] [-F format] [-f filter] [-K key-format] "
 		 "[-O sort-order] " CMD_TARGET_PANE_USAGE " [template]",
 
@@ -61,7 +61,7 @@ const struct cmd_entry cmd_choose_buffer_entry = {
 	.name = "choose-buffer",
 	.alias = NULL,
 
-	.args = { "F:f:K:NO:rt:Z", 0, 1, cmd_choose_tree_args_parse },
+	.args = { "F:f:K:NO:rt:yZ", 0, 1, cmd_choose_tree_args_parse },
 	.usage = "[-NrZ] [-F format] [-f filter] [-K key-format] "
 		 "[-O sort-order] " CMD_TARGET_PANE_USAGE " [template]",
 
@@ -75,7 +75,7 @@ const struct cmd_entry cmd_customize_mode_entry = {
 	.name = "customize-mode",
 	.alias = NULL,
 
-	.args = { "F:f:Nt:Z", 0, 0, NULL },
+	.args = { "F:f:Nt:yZ", 0, 0, NULL },
 	.usage = "[-NZ] [-F format] [-f filter] " CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },

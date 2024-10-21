@@ -1,4 +1,93 @@
-CHANGES FROM 3.3a to 3.4
+CHANGES FROM 3.4 TO 3.5
+
+* Revamp extended keys support to more closely match xterm and support mode 2
+  as well as mode 1. This is a substantial change to key handling which changes
+  tmux to always request mode 2 from parent terminal, changes to an unambiguous
+  internal representation of keys, and adds an option (extended-keys-format) to
+  control the format similar to the xterm(1) formatOtherKeys resource.
+
+* Clear an overlay (popup or menu) when command prompt is entered.
+
+* Add copy-mode -d flag to scroll a page down if in copy mode already (matching
+  -e).
+
+* Display hyperlinks in copy mode and add copy_cursor_hyperlink format to get
+  the hyperlink under the cursor.
+
+* Add a prefix timeout option.
+
+* Mouse move keys are not useful as key bindings because we do not turn them on
+  unless the application requests them. Ignore them so they do not cause the
+  prefix to be canceled
+
+* Add search_count and search_count_partial formats in copy mode.
+
+* Do not reset mouse pane if clicked on status line,
+
+* Add mirrored versions of the main-horizontal and main-vertical layouts where
+  the main pane is bottom or right instead of top or left.
+
+* Allow REP to work with Unicode characters.
+
+* Fix size calculation of terminators for clipboard escape sequences.
+
+* Treat CRLF as LF in config files where it is easy to do so.
+
+* The Linux console has some bugs with bright colours, so add some workarounds
+  for it.
+
+* If built with systemd, remove some environment variables it uses.
+
+* Adjust the logic when deleting last buffer to better preserve the selection:
+  if selecting the element below the deleted one fails (because as the last
+  one), select the one above it instead.
+
+* Add --enable-jemalloc to build with jemalloc memory allocator (since glibc
+  malloc is so poor).
+
+* Add a way (refresh-client -r) for control mode clients to provide OSC 10 and
+  11 responses to tmux so they can set the default foreground and background
+  colours.
+
+* Add N to search backwards in tree modes.
+
+* Use default-shell for command prompt, #() and popups.
+
+* Revert part of a change intended to improve search performance by skipping
+  parts of lines already searched, but which in fact skipped the ends of lines
+  altogether.
+
+* Add a command-error hook when a command fails.
+
+* Add an option allow-set-title to forbid applications from changing the pane
+  title.
+
+* Correct handling of mouse up events (don't ignore all but the last released
+  button), and always process down event for double click.
+
+* Fix a crash if focusing a pane that is exiting.
+
+* Pick newest session (as documented) when looking for next session for
+  detach-on-destroy.
+
+* Reduce default escape-time to 10 milliseconds.
+
+* Add display-menu -M to always turn mouse on in a menu.
+
+* Look for feature code 21 for DECSLRM and 28 for DECFRA in the device
+  attributes and also accept level 1.
+
+* Fix crash if built with SIXEL and the SIXEL colour register is invalid; also
+  remove SIXEL images before reflow.
+
+* Do not notify window-layout-changed if the window is about to be destroyed.
+
+* Do not consider a selection present if it is empty for the selection_active
+  and selection_present format variables.
+
+* Fix split-window -p.
+
+CHANGES FROM 3.3a TO 3.4
 
 * Add options keep-last and keep-group to destroy-unattached to keep the last
   session whether in a group.
