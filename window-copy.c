@@ -769,8 +769,6 @@ window_copy_pageup1(struct window_mode_entry *wme, int half_page)
 			window_copy_cursor_end_of_line(wme);
 	}
 
-	log_debug("%s: scrollup oy %d cy %d py %u n %d", __func__,oy,data->cy,py,n);
-
 	if (data->searchmark != NULL && !data->timeout)
 		window_copy_search_marks(wme, NULL, data->searchregex, 1);
 	window_copy_update_selection(wme, 1, 0);
@@ -828,8 +826,6 @@ window_copy_pagedown1(struct window_mode_entry *wme, int half_page,
 		    data->cx > px)
 			window_copy_cursor_end_of_line(wme);
 	}
-
-	log_debug("%s: scrolldown oy %d cy %d py %u n %d", __func__,oy,data->cy,py,n);
 
 	if (scroll_exit && data->oy == 0)
 		return (1);
