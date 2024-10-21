@@ -498,9 +498,12 @@ input_key_vt10x(struct bufferevent *bev, key_code key)
 		return (0);
 	}
 
-	/* Prevent TAB and RET from being swallowed by C0 remapping logic. */
+	/*
+	 * Prevent TAB, CR and LF from being swallowed by the C0 remapping
+	 * logic.
+	 */
 	onlykey = key & KEYC_MASK_KEY;
-	if (onlykey == '\r' || onlykey == '\t')
+	if (onlykey == '\r' || onlykey == '\n' || onlykey == '\t')
 		key &= ~KEYC_CTRL;
 
 	/*
@@ -539,25 +542,22 @@ input_key_mode1(struct bufferevent *bev, key_code key)
 
 	log_debug("%s: key in %llx", __func__, key);
 
+	/* A regular or shifted key + Meta. */
+	if ((key & (KEYC_CTRL | KEYC_META)) == KEYC_META)
+		return (input_key_vt10x(bev, key));
+
 	/*
 	 * As per
 	 * https://invisible-island.net/xterm/modified-keys-us-pc105.html.
 	 */
 	onlykey = key & KEYC_MASK_KEY;
-	if ((key & (KEYC_META | KEYC_CTRL)) == KEYC_CTRL &&
+	if ((key & KEYC_CTRL) &&
 	    (onlykey == ' ' ||
 	     onlykey == '/' ||
 	     onlykey == '@' ||
 	     onlykey == '^' ||
 	     (onlykey >= '2' && onlykey <= '8') ||
 	     (onlykey >= '@' && onlykey <= '~')))
-		return (input_key_vt10x(bev, key));
-
-	/*
-	 * A regular key + Meta. In the absence of a standard to back this, we
-	 * mimic what iTerm 2 does.
-	 */
-	if ((key & (KEYC_CTRL | KEYC_META)) == KEYC_META)
 		return (input_key_vt10x(bev, key));
 
 	return (-1);

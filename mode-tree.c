@@ -30,6 +30,12 @@ enum mode_tree_search_dir {
 	MODE_TREE_SEARCH_BACKWARD
 };
 
+enum mode_tree_preview {
+	MODE_TREE_PREVIEW_OFF,
+	MODE_TREE_PREVIEW_NORMAL,
+	MODE_TREE_PREVIEW_BIG
+};
+
 struct mode_tree_item;
 TAILQ_HEAD(mode_tree_list, mode_tree_item);
 
@@ -350,8 +356,13 @@ mode_tree_set_current(struct mode_tree_data *mtd, uint64_t tag)
 			mtd->offset = 0;
 		return (1);
 	}
-	mtd->current = 0;
-	mtd->offset = 0;
+	if (mtd->current >= mtd->line_size) {
+		mtd->current = mtd->line_size - 1;
+		if (mtd->current > mtd->height - 1)
+			mtd->offset = mtd->current - mtd->height + 1;
+		else
+			mtd->offset = 0;
+	}
 	return (0);
 }
 
@@ -414,7 +425,12 @@ mode_tree_start(struct window_pane *wp, struct args *args,
 	mtd->sort_list = sort_list;
 	mtd->sort_size = sort_size;
 
-	mtd->preview = !args_has(args, 'N');
+	if (args_has(args, 'N') > 1)
+		mtd->preview = MODE_TREE_PREVIEW_BIG;
+	else if (args_has(args, 'N'))
+		mtd->preview = MODE_TREE_PREVIEW_OFF;
+	else
+		mtd->preview = MODE_TREE_PREVIEW_NORMAL;
 
 	sort = args_get(args, 'O');
 	if (sort != NULL) {
@@ -470,12 +486,21 @@ mode_tree_set_height(struct mode_tree_data *mtd)
 		if (height < screen_size_y(s))
 		    mtd->height = screen_size_y(s) - height;
 	} else {
-		mtd->height = (screen_size_y(s) / 3) * 2;
-		if (mtd->height > mtd->line_size)
-			mtd->height = screen_size_y(s) / 2;
+		if (mtd->preview == MODE_TREE_PREVIEW_NORMAL) {
+			mtd->height = (screen_size_y(s) / 3) * 2;
+			if (mtd->height > mtd->line_size)
+				mtd->height = screen_size_y(s) / 2;
+			if (mtd->height < 10)
+				mtd->height = screen_size_y(s);
+		} else if (mtd->preview == MODE_TREE_PREVIEW_BIG) {
+			mtd->height = screen_size_y(s) / 4;
+			if (mtd->height > mtd->line_size)
+				mtd->height = mtd->line_size;
+			if (mtd->height < 2)
+				mtd->height = 2;
+		} else
+			mtd->height = screen_size_y(s);
 	}
-	if (mtd->height < 10)
-		mtd->height = screen_size_y(s);
 	if (screen_size_y(s) - mtd->height < 2)
 		mtd->height = screen_size_y(s);
 }
@@ -510,7 +535,7 @@ mode_tree_build(struct mode_tree_data *mtd)
 	mode_tree_set_current(mtd, tag);
 
 	mtd->width = screen_size_x(s);
-	if (mtd->preview)
+	if (mtd->preview != MODE_TREE_PREVIEW_OFF)
 		mode_tree_set_height(mtd);
 	else
 		mtd->height = screen_size_y(s);
@@ -742,8 +767,11 @@ mode_tree_draw(struct mode_tree_data *mtd)
 		}
 	}
 
+	if (mtd->preview == MODE_TREE_PREVIEW_OFF)
+		goto done;
+
 	sy = screen_size_y(s);
-	if (!mtd->preview || sy <= 4 || h <= 4 || sy - h <= 4 || w <= 4)
+	if (sy <= 4 || h < 2 || sy - h <= 4 || w <= 4)
 		goto done;
 
 	line = &mtd->line_list[mtd->current];
@@ -1041,7 +1069,7 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 		if (x > mtd->width || y > mtd->height) {
 			if (*key == KEYC_MOUSEDOWN3_PANE)
 				mode_tree_display_menu(mtd, c, x, y, 1);
-			if (!mtd->preview)
+			if (mtd->preview == MODE_TREE_PREVIEW_OFF)
 				*key = KEYC_NONE;
 			return (0);
 		}
@@ -1232,9 +1260,19 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 		    PROMPT_NOFORMAT, PROMPT_TYPE_SEARCH);
 		break;
 	case 'v':
-		mtd->preview = !mtd->preview;
+		switch (mtd->preview) {
+		case MODE_TREE_PREVIEW_OFF:
+			mtd->preview = MODE_TREE_PREVIEW_BIG;
+			break;
+		case MODE_TREE_PREVIEW_NORMAL:
+			mtd->preview = MODE_TREE_PREVIEW_OFF;
+			break;
+		case MODE_TREE_PREVIEW_BIG:
+			mtd->preview = MODE_TREE_PREVIEW_NORMAL;
+			break;
+		}
 		mode_tree_build(mtd);
-		if (mtd->preview)
+		if (mtd->preview != MODE_TREE_PREVIEW_OFF)
 			mode_tree_check_selected(mtd);
 		break;
 	}

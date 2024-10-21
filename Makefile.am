@@ -66,6 +66,11 @@ if IS_HAIKU
 AM_CPPFLAGS += -D_BSD_SOURCE
 endif
 
+# Set flags for Cygwin.
+if IS_CYGWIN
+AM_CPPFLAGS += -DTMUX_SOCK_PERM=0
+endif
+
 # List of sources.
 dist_tmux_SOURCES = \
 	alerts.c \

@@ -182,6 +182,20 @@ screen_reset_tabs(struct screen *s)
 		bit_set(s->tabs, i);
 }
 
+/* Set default cursor style and colour from options. */
+void
+screen_set_default_cursor(struct screen *s, struct options *oo)
+{
+	int	c;
+
+	c = options_get_number(oo, "cursor-colour");
+	s->default_ccolour = c;
+
+	c = options_get_number(oo, "cursor-style");
+	s->default_mode = 0;
+	screen_set_cursor_style(c, &s->default_cstyle, &s->default_mode);
+}
+
 /* Set screen cursor style and mode. */
 void
 screen_set_cursor_style(u_int style, enum screen_cursor_style *cstyle,

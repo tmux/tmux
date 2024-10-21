@@ -131,6 +131,7 @@ struct window_tree_modedata {
 	char				 *key_format;
 	char				 *command;
 	int				  squash_groups;
+	int				  prompt_flags;
 
 	struct window_tree_itemdata	**item_list;
 	u_int				  item_size;
@@ -934,6 +935,8 @@ window_tree_init(struct window_mode_entry *wme, struct cmd_find_state *fs,
 	else
 		data->command = xstrdup(args_string(args, 0));
 	data->squash_groups = !args_has(args, 'G');
+	if (args_has(args, 'y'))
+		data->prompt_flags = PROMPT_ACCEPT;
 
 	data->data = mode_tree_start(wp, args, window_tree_build,
 	    window_tree_draw, window_tree_search, window_tree_menu, NULL,
@@ -1305,7 +1308,8 @@ again:
 		data->references++;
 		status_prompt_set(c, NULL, prompt, "",
 		    window_tree_kill_current_callback, window_tree_command_free,
-		    data, PROMPT_SINGLE|PROMPT_NOFORMAT, PROMPT_TYPE_COMMAND);
+		    data, PROMPT_SINGLE|PROMPT_NOFORMAT|data->prompt_flags,
+		    PROMPT_TYPE_COMMAND);
 		free(prompt);
 		break;
 	case 'X':
@@ -1316,7 +1320,8 @@ again:
 		data->references++;
 		status_prompt_set(c, NULL, prompt, "",
 		    window_tree_kill_tagged_callback, window_tree_command_free,
-		    data, PROMPT_SINGLE|PROMPT_NOFORMAT, PROMPT_TYPE_COMMAND);
+		    data, PROMPT_SINGLE|PROMPT_NOFORMAT|data->prompt_flags,
+		    PROMPT_TYPE_COMMAND);
 		free(prompt);
 		break;
 	case ':':

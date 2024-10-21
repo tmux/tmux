@@ -172,7 +172,7 @@ test_format "#{l:#{pane_in_mode}}" "#{pane_in_mode}"
 test_format "#{l:#{?pane_in_mode,#{?#{==:#{session_name},Summer},ABC,XYZ},xyz}}" "#{?pane_in_mode,#{?#{==:#{session_name},Summer},ABC,XYZ},xyz}"
 
 # With escapes (which escape but are returned literally)
-test_format "#{l:##{}" "##{"
+test_format "#{l:##{}" "#{"
 test_format "#{l:#{#}}}" "#{#}}"
 
 # Invalid formats:

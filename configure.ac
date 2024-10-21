@@ -1,6 +1,6 @@
 # configure.ac
 
-AC_INIT([tmux], next-3.5)
+AC_INIT([tmux], next-3.6)
 AC_PREREQ([2.60])
 
 AC_CONFIG_AUX_DIR(etc)
@@ -56,10 +56,11 @@ AC_USE_SYSTEM_EXTENSIONS
 test "$sysconfdir" = '${prefix}/etc' && sysconfdir=/etc
 
 # Is this --enable-debug?
-case "x$VERSION" in xnext*) enable_debug=yes;; esac
 AC_ARG_ENABLE(
 	debug,
 	AS_HELP_STRING(--enable-debug, enable debug build flags),
+	,
+	[case "x$VERSION" in xnext*) enable_debug=yes;; esac]
 )
 AM_CONDITIONAL(IS_DEBUG, test "x$enable_debug" = xyes)
 
@@ -981,6 +982,7 @@ AM_CONDITIONAL(IS_NETBSD, test "x$PLATFORM" = xnetbsd)
 AM_CONDITIONAL(IS_OPENBSD, test "x$PLATFORM" = xopenbsd)
 AM_CONDITIONAL(IS_SUNOS, test "x$PLATFORM" = xsunos)
 AM_CONDITIONAL(IS_HPUX, test "x$PLATFORM" = xhpux)
+AM_CONDITIONAL(IS_CYGWIN, test "x$PLATFORM" = xcygwin)
 AM_CONDITIONAL(IS_HAIKU, test "x$PLATFORM" = xhaiku)
 AM_CONDITIONAL(IS_UNKNOWN, test "x$PLATFORM" = xunknown)
 

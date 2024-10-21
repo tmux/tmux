@@ -35,7 +35,7 @@ LLVMFuzzerTestOneInput(const u_char *data, size_t size)
 	int			 error;
 
 	/*
-	 * Since AFL doesn't support -max_len paramenter we have to
+	 * Since AFL doesn't support -max_len parameter we have to
 	 * discard long inputs manually.
 	 */
 	if (size > FUZZER_MAXLEN)

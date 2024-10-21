@@ -69,9 +69,10 @@ static LIST_HEAD(joblist, job) all_jobs = LIST_HEAD_INITIALIZER(all_jobs);
 
 /* Start a job running. */
 struct job *
-job_run(const char *cmd, int argc, char **argv, struct environ *e, struct session *s,
-    const char *cwd, job_update_cb updatecb, job_complete_cb completecb,
-    job_free_cb freecb, void *data, int flags, int sx, int sy)
+job_run(const char *cmd, int argc, char **argv, struct environ *e,
+    struct session *s, const char *cwd, job_update_cb updatecb,
+    job_complete_cb completecb, job_free_cb freecb, void *data, int flags,
+    int sx, int sy)
 {
 	struct job	 *job;
 	struct environ	 *env;
@@ -81,6 +82,7 @@ job_run(const char *cmd, int argc, char **argv, struct environ *e, struct sessio
 	sigset_t	  set, oldset;
 	struct winsize	  ws;
 	char		**argvp, tty[TTY_NAME_MAX], *argv0;
+	struct options	 *oo;
 
 	/*
 	 * Do not set TERM during .tmux.conf (second argument here), it is nice
@@ -91,12 +93,17 @@ job_run(const char *cmd, int argc, char **argv, struct environ *e, struct sessio
 	if (e != NULL)
 		environ_copy(e, env);
 
-	if (s != NULL)
-		shell = options_get_string(s->options, "default-shell");
-	else
-		shell = options_get_string(global_s_options, "default-shell");
-	if (!checkshell(shell))
+	if (~flags & JOB_DEFAULTSHELL)
 		shell = _PATH_BSHELL;
+	else {
+		if (s != NULL)
+			oo = s->options;
+		else
+			oo = global_s_options;
+		shell = options_get_string(oo, "default-shell");
+		if (!checkshell(shell))
+			shell = _PATH_BSHELL;
+	}
 	argv0 = shell_argv0(shell, 0);
 
 	sigfillset(&set);
