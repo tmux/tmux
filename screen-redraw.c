@@ -484,7 +484,7 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 			goto next2;
 		*wpp = wp;
 
-                /* If point is within a scrollbar, if so, return CELL_SCROLLBAR */
+                /* Check if CELL_SCROLLBAR */
                 if (pane_scrollbars == PANE_SCROLLBARS_ALWAYS ||
                     (pane_scrollbars == PANE_SCROLLBARS_MODAL &&
                      window_pane_mode(wp) != WINDOW_PANE_NO_MODE)) {
@@ -1107,24 +1107,24 @@ screen_redraw_draw_pane_scrollbars(struct screen_redraw_ctx *ctx)
 void
 screen_redraw_draw_pane_scrollbar(struct client *c, struct window_pane *wp)
 {
-        u_int		 mode;
 	struct window	*w = c->session->curw->window;
 	struct options	*wo = w->options;
         struct screen	*s = wp->screen;
-        u_int		 pane_scrollbars = options_get_number(wo, "pane-scrollbars");
-        u_int		 sb_pos = options_get_number(wo, "pane-scrollbars-position");
+        double		 percent_view;
+        u_int		 pane_scrollbars;
+        u_int		 sb_pos;
         u_int		 sb_w = PANE_SCROLLBARS_WIDTH;
-        u_int		 sb_x;             /* px and py of where */
-        u_int		 sb_y = wp->yoff;  /* to write to screen */
-        u_int		 sb_h = wp->sy; /* height of scrollbar */
-        u_int		 total_height;
+        u_int		 sb_x;
+        u_int		 sb_y = wp->yoff;
+        u_int		 sb_h = wp->sy;
         u_int		 slider_h;
         u_int		 slider_y;
-        double		 percent_view;
+        u_int		 total_height;
 
-        mode = window_pane_mode(wp);
+	pane_scrollbars = options_get_number(wo, "pane-scrollbars");
+	sb_pos = options_get_number(wo, "pane-scrollbars-position");
 
-        if (mode == WINDOW_PANE_NO_MODE) {
+        if (window_pane_mode(wp) == WINDOW_PANE_NO_MODE) {
                 /* not in a mode */
 		total_height = screen_size_y(s) + screen_hsize(s);
 
