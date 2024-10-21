@@ -1123,7 +1123,7 @@ const struct options_table_entry options_table[] = {
 	  .text = "Pane scrollbars"
 	},
 
-	{ .name = "pane-scrollbar-style",
+	{ .name = "pane-scrollbars-style",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
 	  .default_str = "bg=black,fg=white",

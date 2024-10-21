@@ -1185,7 +1185,7 @@ screen_redraw_draw_scrollbar(struct client *c, struct window_pane *wp,
                   __func__, sb_pos, sb_w, px, py, sb_h, slider_h, slider_y);
 
         /* Set up default colour. */
-	style_apply(&gc, w->options, "pane-scrollbar-style", NULL);
+	style_apply(&gc, w->options, "pane-scrollbars-style", NULL);
         fg = gc.fg;
         bg = gc.bg;
         utf8_set(&gc.data, ' ');
