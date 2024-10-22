@@ -1262,6 +1262,12 @@ status_prompt_key(struct client *c, key_code key)
 	}
 	key &= ~KEYC_MASK_FLAGS;
 
+	if (c->prompt_flags & PROMPT_SINGLE) {
+		if (key & KEYC_CTRL)
+			key = (key & ~KEYC_CTRL) & 0x1f; 
+		goto append_key;
+	}
+
 	keys = options_get_number(c->session->options, "status-keys");
 	if (keys == MODEKEY_VI) {
 		switch (status_prompt_translate_key(c, key, &key)) {
