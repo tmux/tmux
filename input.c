@@ -1239,7 +1239,7 @@ input_c0_dispatch(struct input_ctx *ictx)
 		/* Find the next tab point, or use the last column if none. */
 		do {
 			grid_get_cell(s->grid, cx, line, &gc);
-			if (!(gc.data.size == 1 && *gc.data.data == ' '))
+			if (gc.data.size != 1 || *gc.data.data != ' ')
 				has_content = 1;
 			cx++;
 			if (bit_test(s->tabs, cx))
