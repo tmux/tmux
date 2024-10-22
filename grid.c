@@ -1093,13 +1093,18 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
 		} else
 			codelen = 0;
 
-		data = gc.data.data;
-		size = gc.data.size;
-		if ((flags & GRID_STRING_ESCAPE_SEQUENCES) &&
-		    size == 1 &&
-		    *data == '\\') {
-			data = "\\\\";
-			size = 2;
+		if (gc.flags & GRID_FLAG_TAB) {
+			data = "\t";
+			size = 1;
+		} else {
+			data = gc.data.data;
+			size = gc.data.size;
+			if ((flags & GRID_STRING_ESCAPE_SEQUENCES) &&
+			    size == 1 &&
+			    *data == '\\') {
+				data = "\\\\";
+				size = 2;
+			}
 		}
 
 		while (len < off + size + codelen + 1) {
