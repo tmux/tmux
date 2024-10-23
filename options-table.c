@@ -1171,7 +1171,7 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_WINDOW,
 	  .choices = options_table_pane_scrollbars_list,
 	  .default_num = PANE_SCROLLBARS_OFF,
-	  .text = "Pane scrollbars"
+	  .text = "Pane scrollbar state."
 	},
 
 	{ .name = "pane-scrollbars-style",
@@ -1180,7 +1180,7 @@ const struct options_table_entry options_table[] = {
 	  .default_str = "bg=black,fg=white",
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
-	  .text = "Style of the scrollbar."
+	  .text = "Style of the pane scrollbar."
 	},
 
 	{ .name = "pane-scrollbars-position",
@@ -1188,7 +1188,7 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_WINDOW,
 	  .choices = options_table_pane_scrollbars_position_list,
 	  .default_num = PANE_SCROLLBARS_RIGHT,
-	  .text = "Pane scrollbars position"
+	  .text = "Pane scrollbar position."
 	},
 
         { .name = "popup-style",

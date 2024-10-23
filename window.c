@@ -591,31 +591,30 @@ struct window_pane *
 window_get_active_at(struct window *w, u_int x, u_int y)
 {
 	struct window_pane	*wp;
-        int			 pane_scrollbars;
-        u_int			 sb_pos, sb_w, xoff, sx;
+	int			 pane_scrollbars;
+	u_int			 sb_pos, sb_w, xoff, sx;
 
-        pane_scrollbars = options_get_number(w->options, "pane-scrollbars");
+	pane_scrollbars = options_get_number(w->options, "pane-scrollbars");
 	sb_pos = options_get_number(w->options, "pane-scrollbars-position");
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-                if (pane_scrollbars == PANE_SCROLLBARS_ALWAYS ||
-                    (pane_scrollbars == PANE_SCROLLBARS_MODAL &&
-                     window_pane_mode(wp) != WINDOW_PANE_NO_MODE))
-			sb_w = PANE_SCROLLBARS_WIDTH;
-                else
-                        sb_w = 0;
-
 		if (!window_pane_visible(wp))
 			continue;
 
-                if (sb_pos == PANE_SCROLLBARS_LEFT) {
-                        xoff = wp->xoff - sb_w;
-                        sx = wp->sx + sb_w;
-                } else {
-                	/* sb_pos == PANE_SCROLLBARS_RIGHT */
-                        xoff = wp->xoff;
-                        sx = wp->sx + sb_w;
-                }
+		if (pane_scrollbars == PANE_SCROLLBARS_ALWAYS ||
+		    (pane_scrollbars == PANE_SCROLLBARS_MODAL &&
+		     window_pane_mode(wp) != WINDOW_PANE_NO_MODE))
+			sb_w = PANE_SCROLLBARS_WIDTH;
+		else
+			sb_w = 0;
+
+		if (sb_pos == PANE_SCROLLBARS_LEFT) {
+			xoff = wp->xoff - sb_w;
+			sx = wp->sx + sb_w;
+		} else { /* sb_pos == PANE_SCROLLBARS_RIGHT */
+			xoff = wp->xoff;
+			sx = wp->sx + sb_w;
+		}
 		if (x < xoff || x > xoff + sx)
 			continue;
 		if (y < wp->yoff || y > wp->yoff + wp->sy)
@@ -751,7 +750,6 @@ window_add_pane(struct window *w, struct window_pane *other, u_int hlimit,
 		other = w->active;
 
 	wp = window_pane_create(w, w->sx, w->sy, hlimit);
-
 	if (TAILQ_EMPTY(&w->panes)) {
 		log_debug("%s: @%u at start", __func__, w->id);
 		TAILQ_INSERT_HEAD(&w->panes, wp, entry);
@@ -768,7 +766,6 @@ window_add_pane(struct window *w, struct window_pane *other, u_int hlimit,
 		else
 			TAILQ_INSERT_AFTER(&w->panes, other, wp, entry);
 	}
-
 	return (wp);
 }
 
@@ -1120,7 +1117,7 @@ window_pane_set_mode(struct window_pane *wp, struct window_pane *swp,
 {
 	struct window_mode_entry	*wme;
 	struct window			*w = wp->window;
-        u_int				 pane_scrollbars;
+	u_int				 pane_scrollbars;
 
 	if (!TAILQ_EMPTY(&wp->modes) && TAILQ_FIRST(&wp->modes)->mode == mode)
 		return (1);
@@ -1145,9 +1142,9 @@ window_pane_set_mode(struct window_pane *wp, struct window_pane *swp,
 	wp->screen = wme->screen;
 	wp->flags |= (PANE_REDRAW|PANE_CHANGED);
 
-        pane_scrollbars = options_get_number(w->options, "pane-scrollbars");
-        if (pane_scrollbars == PANE_SCROLLBARS_MODAL)
-                layout_fix_panes(w, NULL);
+	pane_scrollbars = options_get_number(w->options, "pane-scrollbars");
+	if (pane_scrollbars == PANE_SCROLLBARS_MODAL)
+		layout_fix_panes(w, NULL);
 
 	server_redraw_window_borders(wp->window);
 	server_status_window(wp->window);
@@ -1160,8 +1157,8 @@ void
 window_pane_reset_mode(struct window_pane *wp)
 {
 	struct window_mode_entry	*wme, *next;
-        struct window			*w = wp->window;
-        u_int				 pane_scrollbars;
+	struct window			*w = wp->window;
+	u_int				 pane_scrollbars;
 
 	if (TAILQ_EMPTY(&wp->modes))
 		return;
@@ -1182,12 +1179,11 @@ window_pane_reset_mode(struct window_pane *wp)
 		if (next->mode->resize != NULL)
 			next->mode->resize(next, wp->sx, wp->sy);
 	}
-
-        pane_scrollbars = options_get_number(w->options, "pane-scrollbars");
-        if (pane_scrollbars == PANE_SCROLLBARS_MODAL)
-                layout_fix_panes(w, NULL);
-
 	wp->flags |= (PANE_REDRAW|PANE_REDRAWSCROLLBAR|PANE_CHANGED);
+
+	pane_scrollbars = options_get_number(w->options, "pane-scrollbars");
+	if (pane_scrollbars != PANE_SCROLLBARS_MODAL)
+		layout_fix_panes(w, NULL);
 
 	server_redraw_window_borders(wp->window);
 	server_status_window(wp->window);
@@ -1204,7 +1200,7 @@ window_pane_reset_mode_all(struct window_pane *wp)
 static void
 window_pane_copy_paste(struct window_pane *wp, char *buf, size_t len)
 {
- 	struct window_pane	*loop;
+	struct window_pane	*loop;
 
 	TAILQ_FOREACH(loop, &wp->window->panes, entry) {
 		if (loop != wp &&
@@ -1222,7 +1218,7 @@ window_pane_copy_paste(struct window_pane *wp, char *buf, size_t len)
 static void
 window_pane_copy_key(struct window_pane *wp, key_code key)
 {
- 	struct window_pane	*loop;
+	struct window_pane	*loop;
 
 	TAILQ_FOREACH(loop, &wp->window->panes, entry) {
 		if (loop != wp &&

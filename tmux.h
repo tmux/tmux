@@ -188,15 +188,15 @@ struct winlink;
 	KEYC_ ## name ## _SCROLLBAR_SLIDER,			\
 	KEYC_ ## name ## _SCROLLBAR_DOWN,			\
 	KEYC_ ## name ## _BORDER
-#define KEYC_MOUSE_STRING(name, s)				\
-	{ #s "Pane", KEYC_ ## name ## _PANE },			\
-	{ #s "Status", KEYC_ ## name ## _STATUS },		\
-	{ #s "StatusLeft", KEYC_ ## name ## _STATUS_LEFT },	\
-	{ #s "StatusRight", KEYC_ ## name ## _STATUS_RIGHT },	\
-	{ #s "StatusDefault", KEYC_ ## name ## _STATUS_DEFAULT },         \
-	{ #s "ScrollbarUp", KEYC_ ## name ## _SCROLLBAR_UP },             \
+#define KEYC_MOUSE_STRING(name, s)				      \
+	{ #s "Pane", KEYC_ ## name ## _PANE },			      \
+	{ #s "Status", KEYC_ ## name ## _STATUS },		      \
+	{ #s "StatusLeft", KEYC_ ## name ## _STATUS_LEFT },	      \
+	{ #s "StatusRight", KEYC_ ## name ## _STATUS_RIGHT },	      \
+	{ #s "StatusDefault", KEYC_ ## name ## _STATUS_DEFAULT },     \
+	{ #s "ScrollbarUp", KEYC_ ## name ## _SCROLLBAR_UP },         \
 	{ #s "ScrollbarSlider", KEYC_ ## name ## _SCROLLBAR_SLIDER }, \
-	{ #s "ScrollbarDown", KEYC_ ## name ## _SCROLLBAR_DOWN },         \
+	{ #s "ScrollbarDown", KEYC_ ## name ## _SCROLLBAR_DOWN },     \
 	{ #s "Border", KEYC_ ## name ## _BORDER }
 
 /*
@@ -1022,8 +1022,8 @@ struct screen_redraw_ctx {
 	int		 pane_status;
 	enum pane_lines	 pane_lines;
 
-        int		 pane_scrollbars;
-        int		 pane_scrollbars_pos;
+	int		 pane_scrollbars;
+	int		 pane_scrollbars_pos;
 
 	struct grid_cell no_pane_gc;
 	int		 no_pane_gc_set;
@@ -1289,14 +1289,16 @@ TAILQ_HEAD(winlink_stack, winlink);
 #define PANE_STATUS_TOP 1
 #define PANE_STATUS_BOTTOM 2
 
-/* Pane scrollbars option. */
+/* Pane scrollbars options. */
 #define PANE_SCROLLBARS_OFF 0
 #define PANE_SCROLLBARS_MODAL 1
 #define PANE_SCROLLBARS_ALWAYS 2
-#define PANE_SCROLLBARS_WIDTH 1
-#define PANE_SCROLLBARS_PADDING 0
 #define PANE_SCROLLBARS_RIGHT 0
 #define PANE_SCROLLBARS_LEFT 1
+
+/* Pane scrollbars width and padding. */
+#define PANE_SCROLLBARS_WIDTH 1
+#define PANE_SCROLLBARS_PADDING 0
 
 /* Layout direction. */
 enum layout_type {
