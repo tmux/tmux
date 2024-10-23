@@ -772,6 +772,7 @@ screen_redraw_screen(struct client *c)
 		screen_redraw_draw_borders(&ctx);
 		if (ctx.pane_status != PANE_STATUS_OFF)
 			screen_redraw_draw_pane_status(&ctx);
+                screen_redraw_draw_pane_scrollbars(&ctx);
 	}
 	if (flags & CLIENT_REDRAWWINDOW) {
 		log_debug("%s: redrawing panes", c->name);
