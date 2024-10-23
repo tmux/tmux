@@ -1550,7 +1550,7 @@ struct tty {
 	u_int		 mouse_last_b;
 	int		 mouse_drag_flag;
 	int		 mouse_scrolling_flag;
-	int		 mouse_sb_grip;
+	int		 mouse_slider_mpos;
 
 	void		(*mouse_drag_update)(struct client *,
 			    struct mouse_event *);

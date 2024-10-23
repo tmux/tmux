@@ -1182,7 +1182,7 @@ window_pane_reset_mode(struct window_pane *wp)
 	wp->flags |= (PANE_REDRAW|PANE_REDRAWSCROLLBAR|PANE_CHANGED);
 
 	pane_scrollbars = options_get_number(w->options, "pane-scrollbars");
-	if (pane_scrollbars != PANE_SCROLLBARS_MODAL)
+	if (pane_scrollbars != PANE_SCROLLBARS_OFF)
 		layout_fix_panes(w, NULL);
 
 	server_redraw_window_borders(wp->window);

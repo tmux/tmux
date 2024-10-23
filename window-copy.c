@@ -601,7 +601,7 @@ window_copy_vadd(struct window_pane *wp, int parse, const char *fmt, va_list ap)
 }
 
 void
-window_copy_scroll(struct window_pane *wp, int mouse_sb_sl_pos, u_int my)
+window_copy_scroll(struct window_pane *wp, int sl_mpos, u_int my)
 {
 	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
 	struct window_copy_mode_data	*data;
@@ -610,14 +610,14 @@ window_copy_scroll(struct window_pane *wp, int mouse_sb_sl_pos, u_int my)
 
 	if (wme != NULL) {
 		data = wme->data;
-		window_copy_scroll1(wme, wp, mouse_sb_sl_pos, my,
+		window_copy_scroll1(wme, wp, sl_mpos, my,
 		    data->scroll_exit);
 	}
 }
 
 static void
 window_copy_scroll1(struct window_mode_entry *wme, struct window_pane *wp,
-    int mouse_sb_sl_pos, u_int my, int scroll_exit)
+    int sl_mpos, u_int my, int scroll_exit)
 {
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 ox, oy, px, py, n, offset, size;
@@ -630,18 +630,18 @@ window_copy_scroll1(struct window_mode_entry *wme, struct window_pane *wp,
 	log_debug("%s: slider %u mouse %u", __func__, slider_y, my);
 
 	/*
-	 * mouse_sb_sl_pos is where in the slider the user is dragging, mouse
-	 * is dragging this y point.
+	 * sl_mpos is where in the slider the user is dragging, mouse
+	 * is dragging this y point relative to top of slider.
 	 */
-	if (my <= sb_top + mouse_sb_sl_pos) {
+	if (my <= sb_top + sl_mpos) {
 		/* Slider banged into top. */
 		new_slider_y = sb_top - wp->yoff;
-	} else if (my - mouse_sb_sl_pos > sb_top + sb_height - slider_height) {
+	} else if (my - sl_mpos > sb_top + sb_height - slider_height) {
 		/* Slider banged into bottom. */
 		new_slider_y = sb_top - wp->yoff + (sb_height - slider_height);
 	} else {
 		/* Slider is somewhere in the middle. */
-		new_slider_y = my - wp->yoff - mouse_sb_sl_pos + 1;
+		new_slider_y = my - wp->yoff - sl_mpos + 1;
 	}
 
 	log_debug("%s: new slider %u mouse %u", __func__, new_slider_y, my);
