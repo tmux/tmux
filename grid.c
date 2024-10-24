@@ -72,7 +72,7 @@ grid_store_cell(struct grid_cell_entry *gce, const struct grid_cell *gc,
 		gce->flags |= GRID_FLAG_BG256;
 
 	gce->data.attr = gc->attr;
-	gce->data.data = (gc->flags & GRID_FLAG_TAB) ? gc->data.width : c;
+	gce->data.data = c;
 }
 
 /* Check if a cell should be an extended cell. */
@@ -91,6 +91,8 @@ grid_need_extended_cell(const struct grid_cell_entry *gce,
 	if (gc->us != 8) /* only supports 256 or RGB */
 		return (1);
 	if (gc->link != 0)
+		return (1);
+	if (gc->flags & GRID_FLAG_TAB)
 		return (1);
 	return (0);
 }
@@ -500,24 +502,13 @@ grid_peek_line(struct grid *gd, u_int py)
 	return (&gd->linedata[py]);
 }
 
-/* Get tab cell. */
-static void
-grid_get_tab_cell(u_char width, struct grid_cell *gc)
-{
-	u_char maxsz = sizeof gc->data;
-
-	memset(&gc->data, 0, maxsz);
-	gc->data.width = width;
-	gc->data.size = gc->data.have = width > maxsz ? maxsz : width;
-	memset(&gc->data, ' ', gc->data.size);
-}
-
 /* Get cell from line. */
 static void
 grid_get_cell1(struct grid_line *gl, u_int px, struct grid_cell *gc)
 {
 	struct grid_cell_entry	*gce = &gl->celldata[px];
 	struct grid_extd_entry	*gee;
+	u_char			 w, maxsz;
 
 	if (gce->flags & GRID_FLAG_EXTENDED) {
 		if (gce->offset >= gl->extdsize)
@@ -530,9 +521,16 @@ grid_get_cell1(struct grid_line *gl, u_int px, struct grid_cell *gc)
 			gc->bg = gee->bg;
 			gc->us = gee->us;
 			gc->link = gee->link;
-			if (gc->flags & GRID_FLAG_TAB)
-				grid_get_tab_cell(gee->data, gc);
-			else
+
+			if (gc->flags & GRID_FLAG_TAB) {
+				w = gee->data;
+				maxsz = sizeof gc->data;
+				memset(&gc->data, 0, maxsz);
+				gc->data.width = w;
+				gc->data.size = gc->data.have =
+				    w > maxsz ? maxsz : w;
+				memset(&gc->data, ' ', gc->data.size);
+			} else
 				utf8_to_data(gee->data, &gc->data);
 		}
 		return;
@@ -547,10 +545,7 @@ grid_get_cell1(struct grid_line *gl, u_int px, struct grid_cell *gc)
 	if (gce->flags & GRID_FLAG_BG256)
 		gc->bg |= COLOUR_FLAG_256;
 	gc->us = 8;
-	if (gc->flags & GRID_FLAG_TAB)
-		grid_get_tab_cell(gce->data.data, gc);
-	else
-		utf8_set(&gc->data, gce->data.data);
+	utf8_set(&gc->data, gce->data.data);
 	gc->link = 0;
 }
 
