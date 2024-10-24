@@ -1214,9 +1214,8 @@ input_c0_dispatch(struct input_ctx *ictx)
 	struct window_pane	*wp = ictx->wp;
 	struct screen		*s = sctx->s;
 	struct grid_cell	 gc;
-	u_int			 cx = s->cx, line = s->cy + s->grid->hsize;
+	u_int			 cx = s->cx, line = s->cy + s->grid->hsize, width;
 	int			 has_content = 0;
-	u_char			 width;
 
 	ictx->utf8started = 0; /* can't be valid UTF-8 */
 
