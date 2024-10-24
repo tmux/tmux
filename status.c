@@ -815,7 +815,8 @@ status_prompt_redraw(struct client *c)
 		    (*c->prompt_buffer[i].data <= 0x1f ||
 		    *c->prompt_buffer[i].data == 0x7f)) {
 			gc.data.data[0] = '^';
-			gc.data.data[1] = *c->prompt_buffer[i].data|0x40;
+			gc.data.data[1] = (*c->prompt_buffer[i].data == 0x7f) ?
+			    '?' : *c->prompt_buffer[i].data|0x40;
 			gc.data.size = gc.data.have = 2;
 			gc.data.width = 2;
 		} else
@@ -1274,7 +1275,14 @@ status_prompt_key(struct client *c, key_code key)
 
 	if (c->prompt_flags & PROMPT_SINGLE || quotenext) {
 		quotenext = 0;
-		key &= (key & KEYC_CTRL) ? 0x1f : 0xff;
+		if ((key & KEYC_MASK_KEY) == KEYC_BSPACE)
+			key = 0x7f;
+		else if ((key & KEYC_MASK_KEY) > 0x7f) {
+			if (!KEYC_IS_UNICODE(key))
+				return (0);
+			key &= KEYC_MASK_KEY;
+		} else
+			key &= (key & KEYC_CTRL) ? 0x1f : KEYC_MASK_KEY;
 		goto append_key;
 	}
 
