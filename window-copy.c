@@ -601,17 +601,15 @@ window_copy_vadd(struct window_pane *wp, int parse, const char *fmt, va_list ap)
 }
 
 void
-window_copy_scroll(struct window_pane *wp, int sl_mpos, u_int my)
+window_copy_scroll(struct window_pane *wp, int sl_mpos, u_int my,
+    int scroll_exit)
 {
 	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
-	struct window_copy_mode_data	*data;
 
 	window_set_active_pane(wp->window, wp, 0);
 
 	if (wme != NULL) {
-		data = wme->data;
-		window_copy_scroll1(wme, wp, sl_mpos, my,
-		    data->scroll_exit);
+		window_copy_scroll1(wme, wp, sl_mpos, my, scroll_exit);
 	}
 }
 

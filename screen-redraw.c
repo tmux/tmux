@@ -1156,7 +1156,7 @@ screen_redraw_draw_pane_scrollbar(struct client *c, struct window_pane *wp)
 		total_height = cm_size + sb_h;
                 percent_view = (double)sb_h / (cm_size + sb_h);
                 slider_h = (u_int)((double)sb_h * percent_view);
-                slider_y = (u_int)sb_h * ((double)cm_y_pos / total_height);
+                slider_y = (u_int)(sb_h+1) * ((double)cm_y_pos / total_height);
         }
 
         if (sb_pos == PANE_SCROLLBARS_LEFT)
@@ -1167,7 +1167,7 @@ screen_redraw_draw_pane_scrollbar(struct client *c, struct window_pane *wp)
         if (slider_h < 1)
 		slider_h = 1;
         if (slider_y >= sb_h)
-                slider_y = sb_h-1;
+                slider_y = sb_h;
 
         screen_redraw_draw_scrollbar(c, wp, sb_pos, sb_x, sb_y, sb_h,
                                      slider_h, slider_y);
