@@ -92,6 +92,8 @@ grid_need_extended_cell(const struct grid_cell_entry *gce,
 		return (1);
 	if (gc->link != 0)
 		return (1);
+	if (gc->flags & GRID_FLAG_TAB)
+		return (1);
 	return (0);
 }
 
@@ -124,7 +126,10 @@ grid_extended_cell(struct grid_line *gl, struct grid_cell_entry *gce,
 		fatalx("offset too big");
 	gl->flags |= GRID_LINE_EXTENDED;
 
-	utf8_from_data(&gc->data, &uc);
+	if (gc->flags & GRID_FLAG_TAB)
+		uc = gc->data.width;
+	else
+		utf8_from_data(&gc->data, &uc);
 
 	gee = &gl->extddata[gce->offset];
 	gee->data = uc;
@@ -515,7 +520,14 @@ grid_get_cell1(struct grid_line *gl, u_int px, struct grid_cell *gc)
 			gc->bg = gee->bg;
 			gc->us = gee->us;
 			gc->link = gee->link;
-			utf8_to_data(gee->data, &gc->data);
+
+			if (gc->flags & GRID_FLAG_TAB) {
+				memset(&gc->data, 0, sizeof gc->data);
+				gc->data.width = gc->data.size = gc->data.have =
+				    gee->data;
+				memset(&gc->data, ' ', gc->data.size);
+			} else
+				utf8_to_data(gee->data, &gc->data);
 		}
 		return;
 	}
@@ -1077,13 +1089,18 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
 		} else
 			codelen = 0;
 
-		data = gc.data.data;
-		size = gc.data.size;
-		if ((flags & GRID_STRING_ESCAPE_SEQUENCES) &&
-		    size == 1 &&
-		    *data == '\\') {
-			data = "\\\\";
-			size = 2;
+		if (gc.flags & GRID_FLAG_TAB) {
+			data = "\t";
+			size = 1;
+		} else {
+			data = gc.data.data;
+			size = gc.data.size;
+			if ((flags & GRID_STRING_ESCAPE_SEQUENCES) &&
+			    size == 1 &&
+			    *data == '\\') {
+				data = "\\\\";
+				size = 2;
+			}
 		}
 
 		while (len < off + size + codelen + 1) {
