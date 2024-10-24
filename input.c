@@ -1250,7 +1250,7 @@ input_c0_dispatch(struct input_ctx *ictx)
 			s->cx = cx;
 		else {
 			grid_get_cell(s->grid, s->cx, line, &gc);
-			gc.flags |= (GRID_FLAG_EXTENDED|GRID_FLAG_TAB);
+			gc.flags |= GRID_FLAG_TAB;
 			gc.data.width = cx - s->cx;
 			screen_write_collect_add(sctx, &gc);
 		}
