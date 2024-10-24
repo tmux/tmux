@@ -811,7 +811,16 @@ status_prompt_redraw(struct client *c)
 		if (width > offset + pwidth)
 			break;
 
-		utf8_copy(&gc.data, &c->prompt_buffer[i]);
+		if (c->prompt_buffer[i].size == 1 &&
+		    (*c->prompt_buffer[i].data <= 0x1f ||
+		    *c->prompt_buffer[i].data == 0x7f)) {
+			gc.data.data[0] = '^';
+			gc.data.data[1] = (*c->prompt_buffer[i].data == 0x7f) ?
+			    '?' : *c->prompt_buffer[i].data|0x40;
+			gc.data.size = gc.data.have = 2;
+			gc.data.width = 2;
+		} else
+			utf8_copy(&gc.data, &c->prompt_buffer[i]);
 		screen_write_cell(&ctx, &gc);
 	}
 
@@ -864,6 +873,7 @@ status_prompt_translate_key(struct client *c, key_code key, key_code *new_key)
 		case 'p'|KEYC_CTRL:
 		case 't'|KEYC_CTRL:
 		case 'u'|KEYC_CTRL:
+		case 'v'|KEYC_CTRL:
 		case 'w'|KEYC_CTRL:
 		case 'y'|KEYC_CTRL:
 		case '\n':
@@ -1262,6 +1272,20 @@ status_prompt_key(struct client *c, key_code key)
 	}
 	key &= ~KEYC_MASK_FLAGS;
 
+	if (c->prompt_flags & PROMPT_SINGLE ||
+	    c->prompt_flags & PROMPT_QUOTENEXT) {
+		c->prompt_flags &= ~PROMPT_QUOTENEXT;
+		if ((key & KEYC_MASK_KEY) == KEYC_BSPACE)
+			key = 0x7f;
+		else if ((key & KEYC_MASK_KEY) > 0x7f) {
+			if (!KEYC_IS_UNICODE(key))
+				return (0);
+			key &= KEYC_MASK_KEY;
+		} else
+			key &= (key & KEYC_CTRL) ? 0x1f : KEYC_MASK_KEY;
+		goto append_key;
+	}
+
 	keys = options_get_number(c->session->options, "status-keys");
 	if (keys == MODEKEY_VI) {
 		switch (status_prompt_translate_key(c, key, &key)) {
@@ -1484,6 +1508,9 @@ process_key:
 		} else
 			prefix = '+';
 		goto changed;
+	case 'v'|KEYC_CTRL:
+		c->prompt_flags |= PROMPT_QUOTENEXT;
+		break;
 	default:
 		goto append_key;
 	}
@@ -1492,9 +1519,11 @@ process_key:
 	return (0);
 
 append_key:
-	if (key <= 0x7f)
+	if (key <= 0x7f) {
 		utf8_set(&tmp, key);
-	else if (KEYC_IS_UNICODE(key))
+		if (key <= 0x1f || key == 0x7f)
+			tmp.width = 2;
+	} else if (KEYC_IS_UNICODE(key))
 		utf8_to_data(key, &tmp);
 	else
 		return (0);
