@@ -1252,7 +1252,6 @@ status_prompt_key(struct client *c, key_code key)
 	size_t			 size, idx;
 	struct utf8_data	 tmp;
 	int			 keys, word_is_separators;
-	static int		 quotenext = 0;
 
 	if (c->prompt_flags & PROMPT_KEY) {
 		keystring = key_string_lookup_key(key, 0);
@@ -1273,8 +1272,9 @@ status_prompt_key(struct client *c, key_code key)
 	}
 	key &= ~KEYC_MASK_FLAGS;
 
-	if (c->prompt_flags & PROMPT_SINGLE || quotenext) {
-		quotenext = 0;
+	if (c->prompt_flags & PROMPT_SINGLE ||
+	    c->prompt_flags & PROMPT_QUOTENEXT) {
+		c->prompt_flags &= ~PROMPT_QUOTENEXT;
 		if ((key & KEYC_MASK_KEY) == KEYC_BSPACE)
 			key = 0x7f;
 		else if ((key & KEYC_MASK_KEY) > 0x7f) {
@@ -1509,7 +1509,7 @@ process_key:
 			prefix = '+';
 		goto changed;
 	case 'v'|KEYC_CTRL:
-		quotenext = 1;
+		c->prompt_flags |= PROMPT_QUOTENEXT;
 		break;
 	default:
 		goto append_key;
