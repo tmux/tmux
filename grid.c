@@ -508,7 +508,6 @@ grid_get_cell1(struct grid_line *gl, u_int px, struct grid_cell *gc)
 {
 	struct grid_cell_entry	*gce = &gl->celldata[px];
 	struct grid_extd_entry	*gee;
-	u_char			 w, maxsz;
 
 	if (gce->flags & GRID_FLAG_EXTENDED) {
 		if (gce->offset >= gl->extdsize)
@@ -523,12 +522,9 @@ grid_get_cell1(struct grid_line *gl, u_int px, struct grid_cell *gc)
 			gc->link = gee->link;
 
 			if (gc->flags & GRID_FLAG_TAB) {
-				w = gee->data;
-				maxsz = sizeof gc->data;
-				memset(&gc->data, 0, maxsz);
-				gc->data.width = w;
-				gc->data.size = gc->data.have =
-				    w > maxsz ? maxsz : w;
+				memset(&gc->data, 0, sizeof gc->data);
+				gc->data.width = gc->data.size = gc->data.have =
+				    gee->data;
 				memset(&gc->data, ' ', gc->data.size);
 			} else
 				utf8_to_data(gee->data, &gc->data);

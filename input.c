@@ -1216,6 +1216,7 @@ input_c0_dispatch(struct input_ctx *ictx)
 	struct grid_cell	 gc;
 	u_int			 cx = s->cx, line = s->cy + s->grid->hsize;
 	int			 has_content = 0;
+	u_char			 width;
 
 	ictx->utf8started = 0; /* can't be valid UTF-8 */
 
@@ -1246,12 +1247,13 @@ input_c0_dispatch(struct input_ctx *ictx)
 				break;
 		} while (cx < screen_size_x(s) - 1);
 
-		if (has_content)
+		width = cx - s->cx;
+		if (has_content || width > sizeof gc.data.data)
 			s->cx = cx;
 		else {
 			grid_get_cell(s->grid, s->cx, line, &gc);
 			gc.flags |= GRID_FLAG_TAB;
-			gc.data.width = cx - s->cx;
+			gc.data.width = width;
 			screen_write_collect_add(sctx, &gc);
 		}
 		break;
