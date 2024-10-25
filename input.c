@@ -1253,10 +1253,7 @@ input_c0_dispatch(struct input_ctx *ictx)
 			s->cx = cx;
 		else {
 			grid_get_cell(s->grid, s->cx, line, &gc);
-			gc.flags |= GRID_FLAG_TAB;
-			gc.data.width = width;
-			gc.data.size = gc.data.have = width;
-			memset(gc.data.data, ' ', gc.data.size);
+			grid_set_tab(&gc, width);
 			screen_write_collect_add(sctx, &gc);
 		}
 		break;

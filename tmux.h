@@ -2906,6 +2906,7 @@ int	 attributes_fromstring(const char *);
 /* grid.c */
 extern const struct grid_cell grid_default_cell;
 void	 grid_empty_line(struct grid *, u_int, u_int);
+void	 grid_set_tab(struct grid_cell *, u_int);
 int	 grid_cells_equal(const struct grid_cell *, const struct grid_cell *);
 int	 grid_cells_look_equal(const struct grid_cell *,
 	     const struct grid_cell *);

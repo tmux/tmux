@@ -257,6 +257,16 @@ grid_cells_equal(const struct grid_cell *gc1, const struct grid_cell *gc2)
 	return (memcmp(gc1->data.data, gc2->data.data, gc1->data.size) == 0);
 }
 
+/* Set grid cell to a tab. */
+void
+grid_set_tab(struct grid_cell *gc, u_int width)
+{
+	memset(&gc->data, 0, sizeof gc->data);
+	gc->flags |= GRID_FLAG_TAB;
+	gc->data.width = gc->data.size = gc->data.have = width;
+	memset(&gc->data, ' ', gc->data.size);
+}
+
 /* Free one line. */
 static void
 grid_free_line(struct grid *gd, u_int py)
@@ -521,12 +531,9 @@ grid_get_cell1(struct grid_line *gl, u_int px, struct grid_cell *gc)
 			gc->us = gee->us;
 			gc->link = gee->link;
 
-			if (gc->flags & GRID_FLAG_TAB) {
-				memset(&gc->data, 0, sizeof gc->data);
-				gc->data.width = gc->data.size = gc->data.have =
-				    gee->data;
-				memset(&gc->data, ' ', gc->data.size);
-			} else
+			if (gc->flags & GRID_FLAG_TAB)
+				grid_set_tab(gc, gee->data);
+			else
 				utf8_to_data(gee->data, &gc->data);
 		}
 		return;
