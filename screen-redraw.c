@@ -34,6 +34,8 @@ static void	screen_redraw_draw_pane_scrollbars(struct screen_redraw_ctx *);
 static void	screen_redraw_draw_scrollbar(struct client *,
                     struct window_pane *, int, u_int, u_int, u_int, u_int,
 		    u_int);
+static void	screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *,
+		    struct window_pane *);
 
 
 #define START_ISOLATE "\342\201\246"
@@ -825,7 +827,7 @@ screen_redraw_pane(struct client *c, struct window_pane *wp)
                         pane_scrollbars = 0;
                 }
                 if (pane_scrollbars != 0) {
-                        screen_redraw_draw_pane_scrollbar(c, wp);
+                        screen_redraw_draw_pane_scrollbar(&ctx, wp);
                 }
         }
 
@@ -1098,7 +1100,7 @@ screen_redraw_draw_pane_scrollbars(struct screen_redraw_ctx *ctx)
                         break;
                 }
                 if (window_pane_visible(wp))
-                        screen_redraw_draw_pane_scrollbar(c, wp);
+                        screen_redraw_draw_pane_scrollbar(ctx, wp);
 	}
 }
 
@@ -1114,14 +1116,13 @@ screen_redraw_draw_pane_scrollbars(struct screen_redraw_ctx *ctx)
  * total height (percent_view).
  */
 void
-screen_redraw_draw_pane_scrollbar(struct client *c, struct window_pane *wp)
+screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 {
-	struct window	*w = c->session->curw->window;
-	struct options	*wo = w->options;
+	struct client	*c = ctx->c;
         struct screen	*s = wp->screen;
         double		 percent_view;
-        u_int		 pane_scrollbars;
-        u_int		 sb_pos;
+        u_int		 sb = ctx->pane_scrollbars;
+        u_int		 sb_pos = ctx->pane_scrollbars_pos;
         u_int		 sb_w = PANE_SCROLLBARS_WIDTH;
         u_int		 sb_x;
         u_int		 sb_y = wp->yoff;
@@ -1130,22 +1131,17 @@ screen_redraw_draw_pane_scrollbar(struct client *c, struct window_pane *wp)
         u_int		 slider_y;
         u_int		 total_height;
 
-	pane_scrollbars = options_get_number(wo, "pane-scrollbars");
-	sb_pos = options_get_number(wo, "pane-scrollbars-position");
-
         if (window_pane_mode(wp) == WINDOW_PANE_NO_MODE) {
-                /* not in a mode */
-		total_height = screen_size_y(s) + screen_hsize(s);
+		/* not in a mode */
+		if (sb != PANE_SCROLLBARS_ALWAYS) {
+			return;
+		}
 
-                if (pane_scrollbars == PANE_SCROLLBARS_ALWAYS) {
-			/* show slider at the bottom of the scrollbar */
-                        percent_view = (double)sb_h / total_height;
-                        slider_h = (u_int)((double)sb_h * percent_view);
-                        slider_y = sb_h - slider_h;
-                } else {
-                        slider_h = 0;
-                        slider_y = 0;
-                }
+		/* show slider at the bottom of the scrollbar */
+		total_height = screen_size_y(s) + screen_hsize(s);
+		percent_view = (double)sb_h / total_height;
+		slider_h = (u_int)((double)sb_h * percent_view);
+		slider_y = sb_h - slider_h;
         } else {
                 /* copy-mode or view-mode */
                 u_int cm_y_pos, cm_size;
