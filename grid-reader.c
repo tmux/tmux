@@ -345,6 +345,8 @@ grid_reader_cell_equals_data(const struct grid_cell *gc,
 {
 	if (gc->flags & GRID_FLAG_PADDING)
 		return (0);
+	if (gc->flags & GRID_FLAG_TAB && ud->size == 1 && *ud->data == '\t')
+		return (1);
 	if (gc->data.size != ud->size)
 		return (0);
 	return (memcmp(gc->data.data, ud->data, gc->data.size) == 0);

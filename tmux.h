@@ -718,6 +718,7 @@ struct colour_palette {
 #define GRID_FLAG_SELECTED 0x10
 #define GRID_FLAG_NOPALETTE 0x20
 #define GRID_FLAG_CLEARED 0x40
+#define GRID_FLAG_TAB 0x80
 
 /* Grid line flags. */
 #define GRID_LINE_WRAPPED 0x1
@@ -1971,6 +1972,7 @@ struct client {
 #define PROMPT_NOFORMAT 0x8
 #define PROMPT_KEY 0x10
 #define PROMPT_ACCEPT 0x20
+#define PROMPT_QUOTENEXT 0x40
 	int			 prompt_flags;
 	enum prompt_type	 prompt_type;
 	int			 prompt_cursor;
@@ -2905,6 +2907,7 @@ int	 attributes_fromstring(const char *);
 /* grid.c */
 extern const struct grid_cell grid_default_cell;
 void	 grid_empty_line(struct grid *, u_int, u_int);
+void	 grid_set_tab(struct grid_cell *, u_int);
 int	 grid_cells_equal(const struct grid_cell *, const struct grid_cell *);
 int	 grid_cells_look_equal(const struct grid_cell *,
 	     const struct grid_cell *);
