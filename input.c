@@ -1241,10 +1241,7 @@ input_c0_dispatch(struct input_ctx *ictx)
 		do {
 			grid_get_cell(s->grid, cx, line, &gc);
 			if (gc.data.size != 1 || *gc.data.data != ' ' ||
-			    gc.attr != first_gc.attr ||
-			    gc.flags != first_gc.flags ||
-			    gc.fg != first_gc.fg || gc.bg != first_gc.bg ||
-			    gc.us != first_gc.us)
+			    !grid_cells_look_equal(&gc, &first_gc))
 				has_content = 1;
 			cx++;
 			if (bit_test(s->tabs, cx))
