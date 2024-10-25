@@ -182,7 +182,8 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
     u_int px, u_int py)
 {
 	struct options	*oo = wp->window->options;
-	int		 split = 0;
+	int		 hsplit = 0;
+	int		 vsplit = 0;
 	u_int	 	 ex = wp->xoff + wp->sx, ey = wp->yoff + wp->sy;
         int		 pane_status = ctx->pane_status;
         int		 pane_scrollbars = ctx->pane_scrollbars;
@@ -197,7 +198,8 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
 	switch (options_get_number(oo, "pane-border-indicators")) {
 	case PANE_BORDER_COLOUR:
 	case PANE_BORDER_BOTH:
-		split = 1;
+		hsplit = screen_redraw_two_panes(wp->window, 0);
+		vsplit = screen_redraw_two_panes(wp->window, 1);
 		break;
 	}
 
@@ -209,116 +211,74 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
                 sb_w = 0;
         }
 
-	/* Left/right borders. */
-        if (screen_redraw_two_panes(wp->window, 0) && split) {
-                /* The wp->sy / 2 test is used to show half the active
-                 * window's border and the other half the other
-                 * window.  It's easy to do this when 1 window
-                 * vertically, so this feature only works when there's
-                 * exactly 2 side-by-side panes.  This could be
-                 * genralised in the future.
-                 */
-                if ((wp->yoff == 0 || py >= wp->yoff - 1) && py <= ey) {
-                        if (sb_pos == PANE_SCROLLBARS_LEFT) {
-                                if (wp->xoff - sb_w == 0 &&
-                                    px == wp->sx + sb_w &&
-                                    py <= wp->sy / 2)
-                                        return (SCREEN_REDRAW_BORDER_RIGHT);
-                                if (wp->xoff - sb_w != 0 &&
-                                    px == wp->xoff - sb_w - 1 &&
-                                    py > wp->sy / 2)
-                                        return (SCREEN_REDRAW_BORDER_LEFT);
-                        } else {
-                                /* sb_pos == PANE_SCROLLBARS_RIGHT */
-                                if (wp->xoff == 0 &&
-                                    px == wp->sx + sb_w &&
-                                    py <= wp->sy / 2)
-                                        return (SCREEN_REDRAW_BORDER_RIGHT);
-                                if (wp->xoff != 0 &&
-                                    px == wp->xoff - 1 &&
-                                    py > wp->sy / 2)
-                                        return (SCREEN_REDRAW_BORDER_LEFT);
-                        }
-                }
-        } else {
-                if ((wp->yoff == 0 || py >= wp->yoff - 1) && py <= ey) {
-                        if (sb_pos == PANE_SCROLLBARS_LEFT) {
-                                if (wp->xoff - sb_w == 0 &&
-                                    px == wp->sx + sb_w)
-                                        return (SCREEN_REDRAW_BORDER_RIGHT);
-                                if (wp->xoff - sb_w != 0 &&
-                                    px == wp->xoff - sb_w - 1)
-                                        return (SCREEN_REDRAW_BORDER_LEFT);
-                        } else {
-                                /* sb_pos == PANE_SCROLLBARS_RIGHT */
-                                if (wp->xoff == 0 &&
-                                    px == wp->sx + sb_w)
-                                        return (SCREEN_REDRAW_BORDER_RIGHT);
-                                if (wp->xoff != 0 &&
-                                    px == wp->xoff - 1)
-                                        return (SCREEN_REDRAW_BORDER_LEFT);
-                        }
-                }
-        }
+	/* Left/right borders.
+	 *
+	 * The wp->sy / 2 test is used to show half the active
+	 * window's border and the other half the other
+	 * window.  It's easy to do this when 1 window
+	 * vertically, so this feature only works when there's
+	 * exactly 2 side-by-side panes.  This could be
+	 * genralised in the future.
+	 */
+	if ((wp->yoff == 0 || py >= wp->yoff - 1) && py <= ey) {
+		if (sb_pos == PANE_SCROLLBARS_LEFT) {
+			if (wp->xoff - sb_w == 0 &&
+			    px == wp->sx + sb_w)
+				if (!hsplit || (hsplit && py <= wp->sy / 2))
+					return (SCREEN_REDRAW_BORDER_RIGHT);
+			if (wp->xoff - sb_w != 0 &&
+			    px == wp->xoff - sb_w - 1)
+				if (!hsplit || (hsplit && py > wp->sy / 2))
+					return (SCREEN_REDRAW_BORDER_LEFT);
+		} else {
+			/* sb_pos == PANE_SCROLLBARS_RIGHT */
+			if (wp->xoff == 0 &&
+			    px == wp->sx + sb_w)
+				if (!hsplit || (hsplit && py <= wp->sy / 2))
+					return (SCREEN_REDRAW_BORDER_RIGHT);
+			if (wp->xoff != 0 &&
+			    px == wp->xoff - 1)
+				if (!hsplit || (hsplit && py > wp->sy / 2))
+					return (SCREEN_REDRAW_BORDER_LEFT);
+		}
+	}
 
 	/* Top/bottom borders. */
-	if (pane_status == PANE_STATUS_OFF) {
-		if (screen_redraw_two_panes(wp->window, 1) &&
-                    split && ! pane_scrollbars) {
-			if (wp->yoff == 0 &&
-                            py == wp->sy &&
-                            px <= wp->sx / 2)
-				return (SCREEN_REDRAW_BORDER_BOTTOM);
-			if (wp->yoff != 0 &&
-			    py == wp->yoff - 1 &&
-			    px > wp->sx / 2)
-				return (SCREEN_REDRAW_BORDER_TOP);
+	if (vsplit &&
+	    pane_status == PANE_STATUS_OFF &&
+	    pane_scrollbars == PANE_SCROLLBARS_OFF) {
+		if (wp->yoff == 0 &&
+		    py == wp->sy &&
+		    px <= wp->sx / 2)
+			return (SCREEN_REDRAW_BORDER_BOTTOM);
+		if (wp->yoff != 0 &&
+		    py == wp->yoff - 1 &&
+		    px > wp->sx / 2)
+			return (SCREEN_REDRAW_BORDER_TOP);
+	} else {
+		if (sb_pos == PANE_SCROLLBARS_LEFT) {
+			if ((wp->xoff - sb_w == 0 || px >= wp->xoff - sb_w) &&
+			    (px <= ex ||
+			     (pane_scrollbars && px - 1 == ex))) {
+				if (wp->yoff != 0 &&
+				    py == wp->yoff - 1)
+					return (SCREEN_REDRAW_BORDER_TOP);
+				if (py == ey)
+					return (SCREEN_REDRAW_BORDER_BOTTOM);
+			}
 		} else {
-                        if (sb_pos == PANE_SCROLLBARS_LEFT) {
-                                if ((wp->xoff == 0 || px >= wp->xoff - sb_w) &&
-                                    (px <= ex ||
-                                     (pane_scrollbars && px-1==ex))) {
-                                        if (wp->yoff != 0 &&
-                                            py == wp->yoff - 1)
-                                                return (SCREEN_REDRAW_BORDER_TOP);
-                                        if (py == ey)
-                                                return (SCREEN_REDRAW_BORDER_BOTTOM);
-                                }
-                        } else {
-                                /* sb_pos == PANE_SCROLLBARS_RIGHT */
-                                if ((wp->xoff == 0 || px >= wp->xoff) &&
-                                    (px <= ex ||
-                                     (pane_scrollbars && px-1==ex))) {
-                                        if (wp->yoff != 0 &&
-                                            py == wp->yoff - 1)
-                                                return (SCREEN_REDRAW_BORDER_TOP);
-                                        if (py == ey)
-                                                return (SCREEN_REDRAW_BORDER_BOTTOM); 
-                                }
+			/* sb_pos == PANE_SCROLLBARS_RIGHT */
+			if ((wp->xoff == 0 || px >= wp->xoff) &&
+			    (px <= ex ||
+			     (pane_scrollbars && px - 1 == ex))) {
+				if (wp->yoff != 0 &&
+				    py == wp->yoff - 1)
+					return (SCREEN_REDRAW_BORDER_TOP);
+				if (py == ey)
+					return (SCREEN_REDRAW_BORDER_BOTTOM);
 			}
 		}
-	} else if (pane_status != PANE_STATUS_OFF) {
-                if (sb_pos == PANE_SCROLLBARS_LEFT) {
-                        if ((wp->xoff - sb_w == 0 || px >= wp->xoff - sb_w - 1) &&
-                            px <= ex) {
-                                if (wp->yoff != 0 &&
-                                    py == wp->yoff - 1)
-                                        return (SCREEN_REDRAW_BORDER_TOP);
-                                if (py == ey)
-                                        return (SCREEN_REDRAW_BORDER_BOTTOM);
-                        }
-                } else {
-                        /* sb_pos == PANE_SCROLLBARS_RIGHT */
-                        if ((wp->xoff == 0 || px >= wp->xoff - 1) &&
-                            px <= ex + sb_w) {
-                                if (wp->yoff != 0 &&
-                                    py == wp->yoff - 1)
-                                        return (SCREEN_REDRAW_BORDER_TOP);
-                                if (py == ey)
-                                        return (SCREEN_REDRAW_BORDER_BOTTOM);
-                        }
-                }
-        }
+	}
 
 	/* Outside pane. */
 	return (SCREEN_REDRAW_OUTSIDE);
