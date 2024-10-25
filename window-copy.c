@@ -4823,12 +4823,9 @@ window_copy_copy_line(struct window_mode_entry *wme, char **buf, size_t *off,
 			grid_get_cell(gd, i, sy, &gc);
 			if (gc.flags & GRID_FLAG_PADDING)
 				continue;
-			if (gc.flags & GRID_FLAG_TAB) {
-				memset(ud.data, 0, sizeof ud.data);
-				*ud.data = '\t';
-				ud.have = ud.size = 1;
-				ud.width = gc.data.width;
-			} else
+			if (gc.flags & GRID_FLAG_TAB)
+				utf8_set(&ud, '\t');
+			else
 				utf8_copy(&ud, &gc.data);
 			if (ud.size == 1 && (gc.attr & GRID_ATTR_CHARSET)) {
 				s = tty_acs_get(NULL, ud.data[0]);
