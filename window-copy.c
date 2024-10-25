@@ -4376,15 +4376,11 @@ window_copy_write_lines(struct window_mode_entry *wme,
 {
 	u_int			 yy;
 	struct window_pane	*wp = wme->wp;
-	struct options		*oo = wp->window->options;
 
 	for (yy = py; yy < py + ny; yy++)
 		window_copy_write_line(wme, ctx, py);
 
-	if (window_pane_visible(wp) &&
-	    options_get_number(oo, "pane-scrollbars") != 0) {
-		wp->flags |= PANE_REDRAWSCROLLBAR;
-	}
+	wp->flags |= PANE_REDRAWSCROLLBAR;
 }
 
 static void
@@ -4420,7 +4416,6 @@ window_copy_redraw_lines(struct window_mode_entry *wme, u_int py, u_int ny)
 {
 	struct window_pane		*wp = wme->wp;
 	struct window_copy_mode_data	*data = wme->data;
-	struct options			*oo = wp->window->options;
 	struct screen_write_ctx		 ctx;
 	u_int				 i;
 
@@ -4430,9 +4425,7 @@ window_copy_redraw_lines(struct window_mode_entry *wme, u_int py, u_int ny)
 	screen_write_cursormove(&ctx, data->cx, data->cy, 0);
 	screen_write_stop(&ctx);
 
-	if (window_pane_visible(wp) &&
-	    options_get_number(oo, "pane-scrollbars") != 0)
-		wp->flags |= PANE_REDRAWSCROLLBAR;
+	wp->flags |= PANE_REDRAWSCROLLBAR;
 }
 
 static void
