@@ -1213,7 +1213,7 @@ input_c0_dispatch(struct input_ctx *ictx)
 	struct screen_write_ctx	*sctx = &ictx->ctx;
 	struct window_pane	*wp = ictx->wp;
 	struct screen		*s = sctx->s;
-	struct grid_cell	 gc;
+	struct grid_cell	 gc, first_gc;
 	u_int			 cx = s->cx, line = s->cy + s->grid->hsize, width;
 	int			 has_content = 0;
 
@@ -1237,9 +1237,14 @@ input_c0_dispatch(struct input_ctx *ictx)
 			break;
 
 		/* Find the next tab point, or use the last column if none. */
+		grid_get_cell(s->grid, s->cx, line, &first_gc);
 		do {
 			grid_get_cell(s->grid, cx, line, &gc);
-			if (gc.data.size != 1 || *gc.data.data != ' ')
+			if (gc.data.size != 1 || *gc.data.data != ' ' ||
+			    gc.attr != first_gc.attr ||
+			    gc.flags != first_gc.flags ||
+			    gc.fg != first_gc.fg || gc.bg != first_gc.bg ||
+			    gc.us != first_gc.us)
 				has_content = 1;
 			cx++;
 			if (bit_test(s->tabs, cx))
