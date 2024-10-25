@@ -338,7 +338,7 @@ grid_reader_cursor_previous_word(struct grid_reader *gr, const char *separators,
 	gr->cy = oldy;
 }
 
-/* Compare grid cell to UTF8 data. Return 1 if equal, 0 if not. */
+/* Compare grid cell to UTF-8 data. Return 1 if equal, 0 if not. */
 static int
 grid_reader_cell_equals_data(const struct grid_cell *gc,
     const struct utf8_data *ud)
@@ -347,10 +347,9 @@ grid_reader_cell_equals_data(const struct grid_cell *gc,
 		return (0);
 	if (gc->flags & GRID_FLAG_TAB && ud->size == 1 && *ud->data == '\t')
 		return (1);
-	if (gc->data.size == ud->size &&
-	    memcmp(gc->data.data, ud->data, gc->data.size) == 0)
-		return (1);
-	return (0);
+	if (gc->data.size != ud->size)
+		return (0);
+	return (memcmp(gc->data.data, ud->data, gc->data.size) == 0);
 }
 
 /* Jump forward to character. */
