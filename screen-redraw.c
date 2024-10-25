@@ -1133,7 +1133,7 @@ screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx, struct window_p
 
         if (window_pane_mode(wp) == WINDOW_PANE_NO_MODE) {
 		/* not in a mode */
-		if (sb != PANE_SCROLLBARS_ALWAYS) {
+		if (sb == PANE_SCROLLBARS_MODAL) {
 			return;
 		}
 
