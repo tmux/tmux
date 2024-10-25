@@ -740,6 +740,8 @@ status_prompt_redraw(struct client *c)
 	u_int			 pcursor, pwidth, promptline;
 	struct grid_cell	 gc;
 	struct format_tree	*ft;
+	u_char			 ch;
+	struct utf8_data	*ud;
 
 	if (c->tty.sx == 0 || c->tty.sy == 0)
 		return (0);
@@ -801,17 +803,25 @@ status_prompt_redraw(struct client *c)
 
 	width = 0;
 	for (i = 0; c->prompt_buffer[i].size != 0; i++) {
+		ud = &c->prompt_buffer[i];
 		if (width < offset) {
-			width += c->prompt_buffer[i].width;
+			width += ud->width;
 			continue;
 		}
 		if (width >= offset + pwidth)
 			break;
-		width += c->prompt_buffer[i].width;
+		width += ud->width;
 		if (width > offset + pwidth)
 			break;
 
-		utf8_copy(&gc.data, &c->prompt_buffer[i]);
+		ch = *ud->data;
+		if (ud->size == 1 && (ch <= 0x1f || ch == 0x7f)) {
+			gc.data.data[0] = '^';
+			gc.data.data[1] = (ch == 0x7f) ? '?' : ch|0x40;
+			gc.data.size = gc.data.have = 2;
+			gc.data.width = 2;
+		} else
+			utf8_copy(&gc.data, ud);
 		screen_write_cell(&ctx, &gc);
 	}
 
@@ -864,6 +874,7 @@ status_prompt_translate_key(struct client *c, key_code key, key_code *new_key)
 		case 'p'|KEYC_CTRL:
 		case 't'|KEYC_CTRL:
 		case 'u'|KEYC_CTRL:
+		case 'v'|KEYC_CTRL:
 		case 'w'|KEYC_CTRL:
 		case 'y'|KEYC_CTRL:
 		case '\n':
@@ -1262,6 +1273,19 @@ status_prompt_key(struct client *c, key_code key)
 	}
 	key &= ~KEYC_MASK_FLAGS;
 
+	if (c->prompt_flags & (PROMPT_SINGLE|PROMPT_QUOTENEXT)) {
+		c->prompt_flags &= ~PROMPT_QUOTENEXT;
+		if ((key & KEYC_MASK_KEY) == KEYC_BSPACE)
+			key = 0x7f;
+		else if ((key & KEYC_MASK_KEY) > 0x7f) {
+			if (!KEYC_IS_UNICODE(key))
+				return (0);
+			key &= KEYC_MASK_KEY;
+		} else
+			key &= (key & KEYC_CTRL) ? 0x1f : KEYC_MASK_KEY;
+		goto append_key;
+	}
+
 	keys = options_get_number(c->session->options, "status-keys");
 	if (keys == MODEKEY_VI) {
 		switch (status_prompt_translate_key(c, key, &key)) {
@@ -1484,6 +1508,9 @@ process_key:
 		} else
 			prefix = '+';
 		goto changed;
+	case 'v'|KEYC_CTRL:
+		c->prompt_flags |= PROMPT_QUOTENEXT;
+		break;
 	default:
 		goto append_key;
 	}
@@ -1492,9 +1519,11 @@ process_key:
 	return (0);
 
 append_key:
-	if (key <= 0x7f)
+	if (key <= 0x7f) {
 		utf8_set(&tmp, key);
-	else if (KEYC_IS_UNICODE(key))
+		if (key <= 0x1f || key == 0x7f)
+			tmp.width = 2;
+	} else if (KEYC_IS_UNICODE(key))
 		utf8_to_data(key, &tmp);
 	else
 		return (0);
