@@ -1814,6 +1814,8 @@ screen_write_collect_add(struct screen_write_ctx *ctx,
 	collect = 1;
 	if (gc->data.width != 1 || gc->data.size != 1 || *gc->data.data >= 0x7f)
 		collect = 0;
+	else if (gc->flags & GRID_FLAG_TAB)
+		collect = 0;
 	else if (gc->attr & GRID_ATTR_CHARSET)
 		collect = 0;
 	else if (~s->mode & MODE_WRAP)
