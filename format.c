@@ -5277,10 +5277,13 @@ format_grid_line(struct grid *gd, u_int y)
 	for (x = 0; x < grid_line_length(gd, y); x++) {
 		grid_get_cell(gd, x, y, &gc);
 		if (gc.flags & GRID_FLAG_PADDING)
-			break;
+			continue;
 
 		ud = xreallocarray(ud, size + 2, sizeof *ud);
-		memcpy(&ud[size++], &gc.data, sizeof *ud);
+		if (gc.flags & GRID_FLAG_TAB)
+			utf8_set(&ud[size++], '\t');
+		else
+			memcpy(&ud[size++], &gc.data, sizeof *ud);
 	}
 	if (size != 0) {
 		ud[size].size = 0;

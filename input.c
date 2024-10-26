@@ -1214,7 +1214,8 @@ input_c0_dispatch(struct input_ctx *ictx)
 	struct window_pane	*wp = ictx->wp;
 	struct screen		*s = sctx->s;
 	struct grid_cell	 gc, first_gc;
-	u_int			 cx = s->cx, line = s->cy + s->grid->hsize, width;
+	u_int			 cx = s->cx, line = s->cy + s->grid->hsize;
+	u_int			 width;
 	int			 has_content = 0;
 
 	ictx->utf8started = 0; /* can't be valid UTF-8 */
@@ -1239,10 +1240,13 @@ input_c0_dispatch(struct input_ctx *ictx)
 		/* Find the next tab point, or use the last column if none. */
 		grid_get_cell(s->grid, s->cx, line, &first_gc);
 		do {
-			grid_get_cell(s->grid, cx, line, &gc);
-			if (gc.data.size != 1 || *gc.data.data != ' ' ||
-			    !grid_cells_look_equal(&gc, &first_gc))
-				has_content = 1;
+			if (!has_content) {
+				grid_get_cell(s->grid, cx, line, &gc);
+				if (gc.data.size != 1 ||
+				    *gc.data.data != ' ' ||
+				    !grid_cells_look_equal(&gc, &first_gc))
+					has_content = 1;
+			}
 			cx++;
 			if (bit_test(s->tabs, cx))
 				break;

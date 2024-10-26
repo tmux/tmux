@@ -3701,7 +3701,7 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 	struct screen_write_ctx		 ctx;
 	struct grid			*gd = s->grid;
 	const char			*str = data->searchstr;
-	u_int				 at, endline, fx, fy, start;
+	u_int				 at, endline, fx, fy, start, ssx;
 	int				 cis, found, keys, visible_only;
 	int				 wrapflag;
 
@@ -3728,7 +3728,9 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 	fx = data->cx;
 	fy = screen_hsize(data->backing) - data->oy + data->cy;
 
-	screen_init(&ss, screen_write_strlen("%s", str), 1, 0);
+	if ((ssx = screen_write_strlen("%s", str)) == 0)
+		return (0);
+	screen_init(&ss, ssx, 1, 0);
 	screen_write_start(&ctx, &ss);
 	screen_write_nputs(&ctx, -1, &grid_default_cell, "%s", str);
 	screen_write_stop(&ctx);
@@ -4823,12 +4825,9 @@ window_copy_copy_line(struct window_mode_entry *wme, char **buf, size_t *off,
 			grid_get_cell(gd, i, sy, &gc);
 			if (gc.flags & GRID_FLAG_PADDING)
 				continue;
-			if (gc.flags & GRID_FLAG_TAB) {
-				memset(ud.data, 0, sizeof ud.data);
-				*ud.data = '\t';
-				ud.have = ud.size = 1;
-				ud.width = gc.data.width;
-			} else
+			if (gc.flags & GRID_FLAG_TAB)
+				utf8_set(&ud, '\t');
+			else
 				utf8_copy(&ud, &gc.data);
 			if (ud.size == 1 && (gc.attr & GRID_ATTR_CHARSET)) {
 				s = tty_acs_get(NULL, ud.data[0]);
