@@ -728,6 +728,56 @@ status_prompt_update(struct client *c, const char *msg, const char *input)
 	format_free(ft);
 }
 
+/* Redraw character. Return 1 if can continue redrawing, 0 otherwise. */
+static int
+status_prompt_redraw_character(struct screen_write_ctx *ctx, u_int offset,
+    u_int pwidth, u_int *width, struct grid_cell *gc,
+    const struct utf8_data *ud)
+{
+	u_char			 ch;
+
+	if (*width < offset) {
+		*width += ud->width;
+		return (1);
+	}
+	if (*width >= offset + pwidth)
+		return (0);
+	*width += ud->width;
+	if (*width > offset + pwidth)
+		return (0);
+
+	ch = *ud->data;
+	if (ud->size == 1 && (ch <= 0x1f || ch == 0x7f)) {
+		gc->data.data[0] = '^';
+		gc->data.data[1] = (ch == 0x7f) ? '?' : ch|0x40;
+		gc->data.size = gc->data.have = 2;
+		gc->data.width = 2;
+	} else
+		utf8_copy(&gc->data, ud);
+	screen_write_cell(ctx, gc);
+	return (1);
+}
+
+/*
+ * Redraw quote indicator '^' if necessary. Return 1 if can continue redrawing,
+ * 0 otherwise.
+ */
+static int
+status_prompt_redraw_quote(const struct client *c, u_int pcursor,
+    struct screen_write_ctx *ctx, u_int offset, u_int pwidth, u_int *width,
+    struct grid_cell *gc)
+{ 
+	struct utf8_data	 ud;
+
+	if (c->prompt_flags & PROMPT_QUOTENEXT && ctx->s->cx == pcursor+1) {
+		utf8_set(&ud, '^');
+		return (status_prompt_redraw_character(ctx, offset, pwidth,
+		    width, gc, &ud));
+	}
+	return (1);
+}
+
+
 /* Draw client prompt on status line of present else on last line. */
 int
 status_prompt_redraw(struct client *c)
@@ -740,8 +790,6 @@ status_prompt_redraw(struct client *c)
 	u_int			 pcursor, pwidth, promptline;
 	struct grid_cell	 gc;
 	struct format_tree	*ft;
-	u_char			 ch;
-	struct utf8_data	*ud;
 
 	if (c->tty.sx == 0 || c->tty.sy == 0)
 		return (0);
@@ -788,6 +836,8 @@ status_prompt_redraw(struct client *c)
 
 	pcursor = utf8_strwidth(c->prompt_buffer, c->prompt_index);
 	pwidth = utf8_strwidth(c->prompt_buffer, -1);
+	if (c->prompt_flags & PROMPT_QUOTENEXT)
+		pwidth++;
 	if (pcursor >= left) {
 		/*
 		 * The cursor would be outside the screen so start drawing
@@ -803,27 +853,16 @@ status_prompt_redraw(struct client *c)
 
 	width = 0;
 	for (i = 0; c->prompt_buffer[i].size != 0; i++) {
-		ud = &c->prompt_buffer[i];
-		if (width < offset) {
-			width += ud->width;
-			continue;
-		}
-		if (width >= offset + pwidth)
+		if (!status_prompt_redraw_quote(c, pcursor, &ctx, offset, pwidth,
+		    &width, &gc))
 			break;
-		width += ud->width;
-		if (width > offset + pwidth)
+		if (!status_prompt_redraw_character(&ctx, offset, pwidth,
+		    &width, &gc, &c->prompt_buffer[i]))
 			break;
-
-		ch = *ud->data;
-		if (ud->size == 1 && (ch <= 0x1f || ch == 0x7f)) {
-			gc.data.data[0] = '^';
-			gc.data.data[1] = (ch == 0x7f) ? '?' : ch|0x40;
-			gc.data.size = gc.data.have = 2;
-			gc.data.width = 2;
-		} else
-			utf8_copy(&gc.data, ud);
-		screen_write_cell(&ctx, &gc);
 	}
+
+	status_prompt_redraw_quote(c, pcursor, &ctx, offset, pwidth, &width,
+	    &gc);
 
 finished:
 	screen_write_stop(&ctx);
