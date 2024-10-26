@@ -777,7 +777,6 @@ status_prompt_redraw_quote(const struct client *c, u_int pcursor,
 	return (1);
 }
 
-
 /* Draw client prompt on status line of present else on last line. */
 int
 status_prompt_redraw(struct client *c)
