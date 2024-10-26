@@ -640,9 +640,9 @@ key_bindings_init(void)
 		"bind -Tcopy-mode-vi M-x { send -X jump-to-mark }",
 		"bind -Tcopy-mode-vi C-Up { send -X scroll-up }",
 		"bind -Tcopy-mode-vi C-Down { send -X scroll-down }",
-                "bind -n MouseDown1ScrollbarUp { copy-mode -u }",
-                "bind -n MouseDown1ScrollbarDown { copy-mode -d }",
-                "bind -n MouseDrag1ScrollbarSlider { copy-mode -S }"
+		"bind -n MouseDown1ScrollbarUp { copy-mode -u }",
+		"bind -n MouseDown1ScrollbarDown { copy-mode -d }",
+		"bind -n MouseDrag1ScrollbarSlider { copy-mode -S }"
 	};
 	u_int			 i;
 	struct cmd_parse_result	*pr;
