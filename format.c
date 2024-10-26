@@ -5192,6 +5192,13 @@ format_defaults_paste_buffer(struct format_tree *ft, struct paste_buffer *pb)
 	ft->pb = pb;
 }
 
+static int
+format_is_word_separator(const char *ws, const struct grid_cell *gc)
+{
+	return (utf8_cstrhas(ws, &gc->data) || gc->flags & GRID_FLAG_TAB ||
+	    (gc->data.size == 1 && *gc->data.data == ' '));
+}
+
 /* Return word at given coordinates. Caller frees. */
 char *
 format_grid_word(struct grid *gd, u_int x, u_int y)
@@ -5211,8 +5218,7 @@ format_grid_word(struct grid *gd, u_int x, u_int y)
 		grid_get_cell(gd, x, y, &gc);
 		if (gc.flags & GRID_FLAG_PADDING)
 			break;
-		if (utf8_cstrhas(ws, &gc.data) ||
-		    (gc.data.size == 1 && *gc.data.data == ' ')) {
+		if (format_is_word_separator(ws, &gc)) {
 			found = 1;
 			break;
 		}
@@ -5249,8 +5255,7 @@ format_grid_word(struct grid *gd, u_int x, u_int y)
 		grid_get_cell(gd, x, y, &gc);
 		if (gc.flags & GRID_FLAG_PADDING)
 			break;
-		if (utf8_cstrhas(ws, &gc.data) ||
-		    (gc.data.size == 1 && *gc.data.data == ' '))
+		if (format_is_word_separator(ws, &gc))
 			break;
 
 		ud = xreallocarray(ud, size + 2, sizeof *ud);
