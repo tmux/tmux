@@ -1274,7 +1274,6 @@ status_prompt_key(struct client *c, key_code key)
 	key &= ~KEYC_MASK_FLAGS;
 
 	if (c->prompt_flags & (PROMPT_SINGLE|PROMPT_QUOTENEXT)) {
-		c->prompt_flags &= ~PROMPT_QUOTENEXT;
 		if ((key & KEYC_MASK_KEY) == KEYC_BSPACE)
 			key = 0x7f;
 		else if ((key & KEYC_MASK_KEY) > 0x7f) {
@@ -1283,6 +1282,7 @@ status_prompt_key(struct client *c, key_code key)
 			key &= KEYC_MASK_KEY;
 		} else
 			key &= (key & KEYC_CTRL) ? 0x1f : KEYC_MASK_KEY;
+		c->prompt_flags &= ~PROMPT_QUOTENEXT;
 		goto append_key;
 	}
 
