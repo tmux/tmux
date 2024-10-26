@@ -3082,6 +3082,9 @@ window_copy_search_compare(struct grid *gd, u_int px, u_int py,
 	grid_get_cell(sgd, spx, 0, &sgc);
 	sud = &sgc.data;
 
+	if (*sud->data == '\t' && sud->size == 1 && gc.flags & GRID_FLAG_TAB)
+		return (1);
+
 	if (ud->size != sud->size || ud->width != sud->width)
 		return (0);
 

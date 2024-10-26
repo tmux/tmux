@@ -377,7 +377,7 @@ screen_write_strlen(const char *fmt, ...)
 			if (more == UTF8_DONE)
 				size += ud.width;
 		} else {
-			if (*ptr > 0x1f && *ptr < 0x7f)
+			if (*ptr == '\t' || (*ptr > 0x1f && *ptr < 0x7f))
 				size++;
 			ptr++;
 		}
@@ -547,7 +547,7 @@ screen_write_vnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
 			else if (*ptr == '\n') {
 				screen_write_linefeed(ctx, 0, 8);
 				screen_write_carriagereturn(ctx);
-			} else if (*ptr > 0x1f && *ptr < 0x7f) {
+			} else if (*ptr == '\t' || (*ptr > 0x1f && *ptr < 0x7f)) {
 				size++;
 				screen_write_putc(ctx, &gc, *ptr);
 			}
