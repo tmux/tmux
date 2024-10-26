@@ -478,8 +478,9 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 				     (px >= wp->xoff + wp->sx &&
 				      px < wp->xoff + wp->sx + sb_w)) ||
 				    (sb_pos == PANE_SCROLLBARS_LEFT &&
-				     (px >= wp->xoff - sb_w && px < wp->xoff))) {
-						return (CELL_SCROLLBAR);
+				     (px >= wp->xoff - sb_w &&
+				      px < wp->xoff))) {
+					return (CELL_SCROLLBAR);
 				}
 			}
 		}
@@ -701,7 +702,8 @@ screen_redraw_set_context(struct client *c, struct screen_redraw_ctx *ctx)
 	ctx->pane_lines = options_get_number(wo, "pane-border-lines");
 
 	ctx->pane_scrollbars = options_get_number(wo, "pane-scrollbars");
-	ctx->pane_scrollbars_pos = options_get_number(wo, "pane-scrollbars-position");
+	ctx->pane_scrollbars_pos =
+		options_get_number(wo, "pane-scrollbars-position");
 
 	tty_window_offset(&c->tty, &ctx->ox, &ctx->oy, &ctx->sx, &ctx->sy);
 
@@ -1076,7 +1078,8 @@ screen_redraw_draw_pane_scrollbars(struct screen_redraw_ctx *ctx)
  * total height (percent_view).
  */
 void
-screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx, struct window_pane *wp)
+screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx,
+    struct window_pane *wp)
 {
 	struct client	*c = ctx->c;
 	struct screen	*s = wp->screen;

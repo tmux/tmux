@@ -903,7 +903,8 @@ layout_split_pane(struct window_pane *wp, enum layout_type type, int size,
 	struct layout_cell     *lc, *lcparent, *lcnew, *lc1, *lc2;
 	u_int			sx, sy, xoff, yoff, size1, size2, minimum;
 	u_int			new_size, saved_size, resize_first = 0;
-	int			full_size = (flags & SPAWN_FULLSIZE), status, scrollbars, sb_w;
+	int			full_size = (flags & SPAWN_FULLSIZE);
+	int			status, scrollbars, sb_w;
 
 	/*
 	 * If full_size is specified, add a new cell at the top of the window
