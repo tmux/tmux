@@ -769,7 +769,7 @@ status_prompt_redraw_quote(const struct client *c, u_int pcursor,
 { 
 	struct utf8_data	 ud;
 
-	if (c->prompt_flags & PROMPT_QUOTENEXT && ctx->s->cx == pcursor+1) {
+	if (c->prompt_flags & PROMPT_QUOTENEXT && ctx->s->cx == pcursor + 1) {
 		utf8_set(&ud, '^');
 		return (status_prompt_redraw_character(ctx, offset, pwidth,
 		    width, gc, &ud));
@@ -860,7 +860,6 @@ status_prompt_redraw(struct client *c)
 		    &width, &gc, &c->prompt_buffer[i]))
 			break;
 	}
-
 	status_prompt_redraw_quote(c, pcursor, &ctx, offset, pwidth, &width,
 	    &gc);
 
