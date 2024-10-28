@@ -5192,6 +5192,16 @@ format_defaults_paste_buffer(struct format_tree *ft, struct paste_buffer *pb)
 	ft->pb = pb;
 }
 
+static int
+format_is_word_separator(const char *ws, const struct grid_cell *gc)
+{
+	if (utf8_cstrhas(ws, &gc->data))
+		return (1);
+	if (gc->flags & GRID_FLAG_TAB)
+		return (1);
+	return gc->data.size == 1 && *gc->data.data == ' ';
+}
+
 /* Return word at given coordinates. Caller frees. */
 char *
 format_grid_word(struct grid *gd, u_int x, u_int y)
@@ -5211,8 +5221,7 @@ format_grid_word(struct grid *gd, u_int x, u_int y)
 		grid_get_cell(gd, x, y, &gc);
 		if (gc.flags & GRID_FLAG_PADDING)
 			break;
-		if (utf8_cstrhas(ws, &gc.data) ||
-		    (gc.data.size == 1 && *gc.data.data == ' ')) {
+		if (format_is_word_separator(ws, &gc)) {
 			found = 1;
 			break;
 		}
@@ -5249,8 +5258,7 @@ format_grid_word(struct grid *gd, u_int x, u_int y)
 		grid_get_cell(gd, x, y, &gc);
 		if (gc.flags & GRID_FLAG_PADDING)
 			break;
-		if (utf8_cstrhas(ws, &gc.data) ||
-		    (gc.data.size == 1 && *gc.data.data == ' '))
+		if (format_is_word_separator(ws, &gc))
 			break;
 
 		ud = xreallocarray(ud, size + 2, sizeof *ud);
@@ -5277,10 +5285,13 @@ format_grid_line(struct grid *gd, u_int y)
 	for (x = 0; x < grid_line_length(gd, y); x++) {
 		grid_get_cell(gd, x, y, &gc);
 		if (gc.flags & GRID_FLAG_PADDING)
-			break;
+			continue;
 
 		ud = xreallocarray(ud, size + 2, sizeof *ud);
-		memcpy(&ud[size++], &gc.data, sizeof *ud);
+		if (gc.flags & GRID_FLAG_TAB)
+			utf8_set(&ud[size++], '\t');
+		else
+			memcpy(&ud[size++], &gc.data, sizeof *ud);
 	}
 	if (size != 0) {
 		ud[size].size = 0;
