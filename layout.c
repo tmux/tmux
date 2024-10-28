@@ -119,7 +119,7 @@ layout_print_cell(struct layout_cell *lc, const char *hdr, u_int n)
 	case LAYOUT_LEFTRIGHT:
 	case LAYOUT_TOPBOTTOM:
 		TAILQ_FOREACH(lcchild, &lc->cells, entry)
-			layout_print_cell(lcchild, hdr, n + 1);
+		    	layout_print_cell(lcchild, hdr, n + 1);
 		break;
 	case LAYOUT_WINDOWPANE:
 		break;
@@ -230,7 +230,7 @@ layout_fix_offsets1(struct layout_cell *lc)
 void
 layout_fix_offsets(struct window *w)
 {
-	struct layout_cell	*lc = w->layout_root;
+	struct layout_cell      *lc = w->layout_root;
 
 	lc->xoff = 0;
 	lc->yoff = 0;
@@ -291,14 +291,12 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 {
 	struct window_pane	*wp;
 	struct layout_cell	*lc;
-	int			 status, scrollbars, sb_pos, sb_w;
-	u_int			 sx, sy;
-	u_int			 mode;
+	int			 status, scrollbars, sb_pos;
+	u_int			 sx, sy, mode;
 
 	status = options_get_number(w->options, "pane-border-status");
 	scrollbars = options_get_number(w->options, "pane-scrollbars");
 	sb_pos = options_get_number(w->options, "pane-scrollbars-position");
-	sb_w = PANE_SCROLLBARS_WIDTH;
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if ((lc = wp->layout_cell) == NULL || wp == skip)
@@ -312,21 +310,18 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 		if (layout_add_horizontal_border(w, lc, status)) {
 			if (status == PANE_STATUS_TOP)
 				wp->yoff++;
-			sy = sy - 1;
+			sy--;
 		}
 
 		mode = window_pane_mode(wp);
-
-		if ((scrollbars == PANE_SCROLLBARS_ALWAYS) ||
+		if (scrollbars == PANE_SCROLLBARS_ALWAYS ||
 		    (scrollbars == PANE_SCROLLBARS_MODAL &&
-		     mode != WINDOW_PANE_NO_MODE)) {
+		    mode != WINDOW_PANE_NO_MODE)) {
 			if (sb_pos == PANE_SCROLLBARS_LEFT) {
-				sx = sx - sb_w;
-				wp->xoff = wp->xoff + sb_w;
-			} else {
-				/* sb_pos == PANE_SCROLLBARS_RIGHT */
-				sx = sx - sb_w;
-			}
+				sx = sx - PANE_SCROLLBARS_WIDTH;
+				wp->xoff = wp->xoff + PANE_SCROLLBARS_WIDTH;
+			} else /* sb_pos == PANE_SCROLLBARS_RIGHT */
+				sx = sx - PANE_SCROLLBARS_WIDTH;
 			wp->flags |= PANE_REDRAWSCROLLBAR;
 		}
 
@@ -362,18 +357,17 @@ layout_resize_check(struct window *w, struct layout_cell *lc,
 {
 	struct layout_cell	*lcchild;
 	u_int			 available, minimum;
-	int			 status, scrollbars, sb_w;
+	int			 status, scrollbars;
 
 	status = options_get_number(w->options, "pane-border-status");
 	scrollbars = options_get_number(w->options, "pane-scrollbars");
-	sb_w = PANE_SCROLLBARS_WIDTH;
 
 	if (lc->type == LAYOUT_WINDOWPANE) {
 		/* Space available in this cell only. */
 		if (type == LAYOUT_LEFTRIGHT) {
 			available = lc->sx;
 			if (scrollbars)
-				minimum = PANE_MINIMUM + sb_w;
+				minimum = PANE_MINIMUM + PANE_SCROLLBARS_WIDTH;
 			else
 				minimum = PANE_MINIMUM;
 		} else {
@@ -903,8 +897,8 @@ layout_split_pane(struct window_pane *wp, enum layout_type type, int size,
 	struct layout_cell     *lc, *lcparent, *lcnew, *lc1, *lc2;
 	u_int			sx, sy, xoff, yoff, size1, size2, minimum;
 	u_int			new_size, saved_size, resize_first = 0;
-	int			full_size = (flags & SPAWN_FULLSIZE);
-	int			status, scrollbars, sb_w;
+	int			full_size = (flags & SPAWN_FULLSIZE), status;
+	int			scrollbars;
 
 	/*
 	 * If full_size is specified, add a new cell at the top of the window
@@ -916,7 +910,6 @@ layout_split_pane(struct window_pane *wp, enum layout_type type, int size,
 		lc = wp->layout_cell;
 	status = options_get_number(wp->window->options, "pane-border-status");
 	scrollbars = options_get_number(wp->window->options, "pane-scrollbars");
-	sb_w = PANE_SCROLLBARS_WIDTH;
 
 	/* Copy the old cell size. */
 	sx = lc->sx;
@@ -928,7 +921,7 @@ layout_split_pane(struct window_pane *wp, enum layout_type type, int size,
 	switch (type) {
 	case LAYOUT_LEFTRIGHT:
 		if (scrollbars)
-			minimum = PANE_MINIMUM * 2 + sb_w;
+			minimum = PANE_MINIMUM * 2 + PANE_SCROLLBARS_WIDTH;
 		else
 			minimum = PANE_MINIMUM * 2 + 1;
 		if (sx < minimum)
@@ -1092,7 +1085,7 @@ layout_spread_cell(struct window *w, struct layout_cell *parent)
 {
 	struct layout_cell	*lc;
 	u_int			 number, each, size, this;
-	int			 change, changed, status, scrollbars, sb_w;
+	int			 change, changed, status, scrollbars;
 
 	number = 0;
 	TAILQ_FOREACH (lc, &parent->cells, entry)
@@ -1101,11 +1094,10 @@ layout_spread_cell(struct window *w, struct layout_cell *parent)
 		return (0);
 	status = options_get_number(w->options, "pane-border-status");
 	scrollbars = options_get_number(w->options, "pane-scrollbars");
-	sb_w = PANE_SCROLLBARS_WIDTH;
 
 	if (parent->type == LAYOUT_LEFTRIGHT) {
 		if (scrollbars)
-			size = parent->sx - sb_w;
+			size = parent->sx - PANE_SCROLLBARS_WIDTH;
 		else
 			size = parent->sx;
 	}

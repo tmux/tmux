@@ -1117,7 +1117,6 @@ window_pane_set_mode(struct window_pane *wp, struct window_pane *swp,
 {
 	struct window_mode_entry	*wme;
 	struct window			*w = wp->window;
-	u_int				 pane_scrollbars;
 
 	if (!TAILQ_EMPTY(&wp->modes) && TAILQ_FIRST(&wp->modes)->mode == mode)
 		return (1);
@@ -1138,13 +1137,10 @@ window_pane_set_mode(struct window_pane *wp, struct window_pane *swp,
 		TAILQ_INSERT_HEAD(&wp->modes, wme, entry);
 		wme->screen = wme->mode->init(wme, fs, args);
 	}
-
 	wp->screen = wme->screen;
-	wp->flags |= (PANE_REDRAW|PANE_CHANGED);
 
-	pane_scrollbars = options_get_number(w->options, "pane-scrollbars");
-	if (pane_scrollbars == PANE_SCROLLBARS_MODAL)
-		layout_fix_panes(w, NULL);
+	wp->flags |= (PANE_REDRAW|PANE_REDRAWSCROLLBAR|PANE_CHANGED);
+	layout_fix_panes(w, NULL);
 
 	server_redraw_window_borders(wp->window);
 	server_status_window(wp->window);
@@ -1158,7 +1154,6 @@ window_pane_reset_mode(struct window_pane *wp)
 {
 	struct window_mode_entry	*wme, *next;
 	struct window			*w = wp->window;
-	u_int				 pane_scrollbars;
 
 	if (TAILQ_EMPTY(&wp->modes))
 		return;
@@ -1179,11 +1174,9 @@ window_pane_reset_mode(struct window_pane *wp)
 		if (next->mode->resize != NULL)
 			next->mode->resize(next, wp->sx, wp->sy);
 	}
-	wp->flags |= (PANE_REDRAW|PANE_REDRAWSCROLLBAR|PANE_CHANGED);
 
-	pane_scrollbars = options_get_number(w->options, "pane-scrollbars");
-	if (pane_scrollbars != PANE_SCROLLBARS_OFF)
-		layout_fix_panes(w, NULL);
+	wp->flags |= (PANE_REDRAW|PANE_REDRAWSCROLLBAR|PANE_CHANGED);
+	layout_fix_panes(w, NULL);
 
 	server_redraw_window_borders(wp->window);
 	server_status_window(wp->window);
@@ -1200,7 +1193,7 @@ window_pane_reset_mode_all(struct window_pane *wp)
 static void
 window_pane_copy_paste(struct window_pane *wp, char *buf, size_t len)
 {
-	struct window_pane	*loop;
+ 	struct window_pane	*loop;
 
 	TAILQ_FOREACH(loop, &wp->window->panes, entry) {
 		if (loop != wp &&
@@ -1218,7 +1211,7 @@ window_pane_copy_paste(struct window_pane *wp, char *buf, size_t len)
 static void
 window_pane_copy_key(struct window_pane *wp, key_code key)
 {
-	struct window_pane	*loop;
+ 	struct window_pane	*loop;
 
 	TAILQ_FOREACH(loop, &wp->window->panes, entry) {
 		if (loop != wp &&

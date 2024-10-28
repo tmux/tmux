@@ -40,8 +40,6 @@ static void	window_copy_free(struct window_mode_entry *);
 static void	window_copy_resize(struct window_mode_entry *, u_int, u_int);
 static void	window_copy_formats(struct window_mode_entry *,
 		    struct format_tree *);
-static void	window_copy_scroll1(struct window_mode_entry *,
-		    struct window_pane *wp, int, u_int, int);
 static void	window_copy_pageup1(struct window_mode_entry *, int);
 static int	window_copy_pagedown1(struct window_mode_entry *, int, int);
 static void	window_copy_next_paragraph(struct window_mode_entry *);
@@ -276,7 +274,7 @@ struct window_copy_mode_data {
 	u_int		 cx;
 	u_int		 cy;
 
-	u_int		 lastcx;	/* position in last line w/ content */
+	u_int		 lastcx; 	/* position in last line w/ content */
 	u_int		 lastsx;	/* size of last line w/ content */
 
 	u_int		 mx;		/* mark position */
@@ -548,7 +546,7 @@ window_copy_vadd(struct window_pane *wp, int parse, const char *fmt, va_list ap)
 	struct window_copy_mode_data	*data = wme->data;
 	struct screen			*backing = data->backing;
 	struct screen			*writing = data->writing;
-	struct screen_write_ctx		 writing_ctx, backing_ctx, ctx;
+	struct screen_write_ctx	 	 writing_ctx, backing_ctx, ctx;
 	struct grid_cell		 gc;
 	u_int				 old_hsize, old_cy;
 	u_int				 sx = screen_size_x(backing);
@@ -598,122 +596,6 @@ window_copy_vadd(struct window_pane *wp, int parse, const char *fmt, va_list ap)
 	window_copy_redraw_lines(wme, old_cy, backing->cy - old_cy + 1);
 
 	screen_write_stop(&ctx);
-}
-
-void
-window_copy_scroll(struct window_pane *wp, int sl_mpos, u_int my,
-    int scroll_exit)
-{
-	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
-
-	window_set_active_pane(wp->window, wp, 0);
-
-	if (wme != NULL) {
-		window_copy_scroll1(wme, wp, sl_mpos, my, scroll_exit);
-	}
-}
-
-static void
-window_copy_scroll1(struct window_mode_entry *wme, struct window_pane *wp,
-    int sl_mpos, u_int my, int scroll_exit)
-{
-	struct window_copy_mode_data	*data = wme->data;
-	u_int				 ox, oy, px, py, n, offset, size;
-	u_int				 new_offset, slider_y = wp->sb_slider_y;
-	u_int				 slider_height = wp->sb_slider_h;
-	u_int				 sb_height = wp->sy, sb_top = wp->yoff;
-	u_int				 sy = screen_size_y(data->backing);
-	int				 new_slider_y, delta;
-
-	log_debug("%s: slider %u mouse %u", __func__, slider_y, my);
-
-	/*
-	 * sl_mpos is where in the slider the user is dragging, mouse
-	 * is dragging this y point relative to top of slider.
-	 */
-	if (my <= sb_top + sl_mpos) {
-		/* Slider banged into top. */
-		new_slider_y = sb_top - wp->yoff;
-	} else if (my - sl_mpos > sb_top + sb_height - slider_height) {
-		/* Slider banged into bottom. */
-		new_slider_y = sb_top - wp->yoff + (sb_height - slider_height);
-	} else {
-		/* Slider is somewhere in the middle. */
-		new_slider_y = my - wp->yoff - sl_mpos + 1;
-	}
-
-	log_debug("%s: new slider %u mouse %u", __func__, new_slider_y, my);
-
-	if (TAILQ_FIRST(&wp->modes) == NULL ||
-	    window_copy_get_current_offset(wp, &offset, &size) == 0)
-		return;
-
-	/*
-	 * See screen_redraw_draw_pane_scrollbar(), this is the inverse of the
-	 * formula used there.
-	 */
-	new_offset = new_slider_y * ((float)(size + sb_height) / sb_height);
-	delta = (int)offset - new_offset;
-
-	log_debug("%s: delta %d mouse %u", __func__, delta, my);
-
-	/*
-	 * Move pane view around based on delta relative to the cursor,
-	 * maintaining the selection.
-	 */
-	oy = screen_hsize(data->backing) + data->cy - data->oy;
-	ox = window_copy_find_length(wme, oy);
-
-	if (data->cx != ox) {
-		data->lastcx = data->cx;
-		data->lastsx = ox;
-	}
-	data->cx = data->lastcx;
-
-	if (delta >= 0) {
-		n = (u_int)delta;
-		if (data->oy + n > screen_hsize(data->backing)) {
-			data->oy = screen_hsize(data->backing);
-			if (data->cy < n)
-				data->cy = 0;
-			else
-				data->cy -= n;
-		} else
-			data->oy += n;
-	} else {
-		n = (u_int)-delta;
-		if (data->oy < n) {
-			data->oy = 0;
-			if (data->cy + (n - data->oy) >= sy)
-				data->cy = sy - 1;
-			else
-				data->cy += n - data->oy;
-		} else
-			data->oy -= n;
-	}
-
-	/* Don't also drag tail when dragging a scrollbar, it looks weird. */
-	data->cursordrag = CURSORDRAG_NONE;
-
-	if (data->screen.sel == NULL || !data->rectflag) {
-		py = screen_hsize(data->backing) + data->cy - data->oy;
-		px = window_copy_find_length(wme, py);
-		if ((data->cx >= data->lastsx && data->cx != px) ||
-		    data->cx > px)
-			window_copy_cursor_end_of_line(wme);
-	}
-
-	if (scroll_exit && data->oy == 0) {
-		window_pane_reset_mode(wp);
-		return;
-	}
-
-	if (data->searchmark != NULL && !data->timeout)
-		window_copy_search_marks(wme, NULL, data->searchregex, 1);
-	window_copy_update_selection(wme, 1, 0);
-	window_copy_redraw_screen(wme);
-
-	return;
 }
 
 void
@@ -3921,12 +3803,12 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 			 * beginning of the mark.
 			 */
 			if (window_copy_search_mark_at(data, fx, fy,
-				&start) == 0) {
+			        &start) == 0) {
 				while (window_copy_search_mark_at(data, fx, fy,
-					   &at) == 0 &&
+				           &at) == 0 &&
 				       data->searchmark != NULL &&
 				       data->searchmark[at] ==
-					   data->searchmark[start]) {
+				           data->searchmark[start]) {
 					data->cx = fx;
 					data->cy = fy -
 					    screen_hsize(data->backing) +
@@ -4195,7 +4077,7 @@ window_copy_match_at_cursor(struct window_copy_mode_data *data)
 	/*
 	 * Cells will not be set in the marked array unless they are valid text
 	 * and wrapping will be taken care of, so we can just copy.
-	 */
+ 	 */
 	for (at = start; at <= end; at++) {
 		py = at / sx;
 		px = at - (py * sx);
@@ -4293,7 +4175,7 @@ window_copy_write_one(struct window_mode_entry *wme,
 	struct window_copy_mode_data	*data = wme->data;
 	struct grid			*gd = data->backing->grid;
 	struct grid_cell		 gc;
-	u_int				 fx;
+	u_int		 		 fx;
 
 	screen_write_cursormove(ctx, 0, py, 0);
 	for (fx = 0; fx < nx; fx++) {
@@ -4374,13 +4256,10 @@ static void
 window_copy_write_lines(struct window_mode_entry *wme,
     struct screen_write_ctx *ctx, u_int py, u_int ny)
 {
-	u_int			 yy;
-	struct window_pane	*wp = wme->wp;
+	u_int	yy;
 
 	for (yy = py; yy < py + ny; yy++)
 		window_copy_write_line(wme, ctx, py);
-
-	wp->flags |= PANE_REDRAWSCROLLBAR;
 }
 
 static void
@@ -4416,7 +4295,7 @@ window_copy_redraw_lines(struct window_mode_entry *wme, u_int py, u_int ny)
 {
 	struct window_pane		*wp = wme->wp;
 	struct window_copy_mode_data	*data = wme->data;
-	struct screen_write_ctx		 ctx;
+	struct screen_write_ctx	 	 ctx;
 	u_int				 i;
 
 	screen_write_start_pane(&ctx, wp, NULL);
@@ -4568,7 +4447,7 @@ window_copy_adjust_selection(struct window_mode_entry *wme, u_int *selx,
 {
 	struct window_copy_mode_data	*data = wme->data;
 	struct screen			*s = &data->screen;
-	u_int				 sx, sy, ty;
+	u_int 				 sx, sy, ty;
 	int				 relpos;
 
 	sx = *selx;

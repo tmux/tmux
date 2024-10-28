@@ -2402,31 +2402,22 @@ The synopsis for the
 command is:
 .Bl -tag -width Ds
 .It Xo Ic copy-mode
-.Op Fl deHMquS
+.Op Fl deHMqu
 .Op Fl s Ar src-pane
 .Op Fl t Ar target-pane
 .Xc
 Enter copy mode.
-.Pp
 .Fl u
-enters copy mode and scrolls one page up and
+also scrolls one page up after entering and
 .Fl d
-one page down.
+one page down if already in copy mode.
+.Fl M
+begins a mouse drag (only valid if bound to a mouse key binding, see
+.Sx MOUSE SUPPORT ) .
 .Fl H
 hides the position indicator in the top right.
 .Fl q
 cancels copy mode and any other modes.
-.Pp
-.Fl M
-begins a mouse drag (only valid if bound to a mouse key binding, see
-.Sx MOUSE SUPPORT ) .
-.Fl S
-scrolls when bound to a mouse drag event; for example,
-.Ic copy-mode -Se
-is bound to
-.Ar MouseDrag1ScrollbarSlider
-by default.
-.Pp
 .Fl s
 copies from
 .Ar src-pane
@@ -5045,8 +5036,6 @@ of each pane.
 A filled section of the scrollbar, known as the
 .Ql slider ,
 represents the position and size of the visible part of the pane content.
-By default dragging the scrollbar slider up will enter copy mode; in copy
-mode dragging the slider will scroll the pane.
 .Pp
 If set to
 .Ic on
@@ -5060,16 +5049,8 @@ If set to
 .Ic modal ,
 the pane is narrowed only when the scrollbar is visible.
 .Pp
-When the
-.Ic mouse
-option is on, clicking above and below the slider pages up and down and dragging
-the slider scrolls the pane.
-.Pp
 See also
-.Xr pane-scrollbar-style
-and the scrollbar mouse events in the
-.Sx MOUSE SUPPORT
-section.
+.Xr pane-scrollbar-style .
 .Pp
 .It Ic pane-scrollbar-style Ar style
 Set the pane scrollbar style for the currently active pane.
@@ -5083,8 +5064,7 @@ Attributes are ignored.
 .It Xo Ic pane-scrollbars-position
 .Op Ic left | right
 .Xc
-Sets which side of the pane to display the pane scrollbars on.  The
-default is right.
+Sets which side of the pane to display pane scrollbars on.
 .Pp
 .It Ic window-status-activity-style Ar style
 Set status line style for windows with an activity alert.
@@ -5458,9 +5438,6 @@ and a location suffix, one of the following:
 .It Li "StatusLeft" Ta "the left part of the status line"
 .It Li "StatusRight" Ta "the right part of the status line"
 .It Li "StatusDefault" Ta "any other part of the status line"
-.It Li "ScrollbarSlider" Ta "the scrollbar slider"
-.It Li "ScrollbarUp" Ta "above the scrollbar slider"
-.It Li "ScrollbarDown" Ta "below the scrollbar slider"
 .El
 .Pp
 The following mouse events are available:

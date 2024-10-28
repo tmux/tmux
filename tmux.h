@@ -184,19 +184,13 @@ struct winlink;
 	KEYC_ ## name ## _STATUS_LEFT,				\
 	KEYC_ ## name ## _STATUS_RIGHT,				\
 	KEYC_ ## name ## _STATUS_DEFAULT,			\
-	KEYC_ ## name ## _SCROLLBAR_UP,				\
-	KEYC_ ## name ## _SCROLLBAR_SLIDER,			\
-	KEYC_ ## name ## _SCROLLBAR_DOWN,			\
 	KEYC_ ## name ## _BORDER
-#define KEYC_MOUSE_STRING(name, s)				      \
-	{ #s "Pane", KEYC_ ## name ## _PANE },			      \
-	{ #s "Status", KEYC_ ## name ## _STATUS },		      \
-	{ #s "StatusLeft", KEYC_ ## name ## _STATUS_LEFT },	      \
-	{ #s "StatusRight", KEYC_ ## name ## _STATUS_RIGHT },	      \
-	{ #s "StatusDefault", KEYC_ ## name ## _STATUS_DEFAULT },     \
-	{ #s "ScrollbarUp", KEYC_ ## name ## _SCROLLBAR_UP },         \
-	{ #s "ScrollbarSlider", KEYC_ ## name ## _SCROLLBAR_SLIDER }, \
-	{ #s "ScrollbarDown", KEYC_ ## name ## _SCROLLBAR_DOWN },     \
+#define KEYC_MOUSE_STRING(name, s)				\
+	{ #s "Pane", KEYC_ ## name ## _PANE },			\
+	{ #s "Status", KEYC_ ## name ## _STATUS },		\
+	{ #s "StatusLeft", KEYC_ ## name ## _STATUS_LEFT },	\
+	{ #s "StatusRight", KEYC_ ## name ## _STATUS_RIGHT },	\
+	{ #s "StatusDefault", KEYC_ ## name ## _STATUS_DEFAULT }, \
 	{ #s "Border", KEYC_ ## name ## _BORDER }
 
 /*
@@ -1145,9 +1139,6 @@ struct window_pane {
 #define PANE_UNSEENCHANGES 0x2000
 #define PANE_REDRAWSCROLLBAR 0x4000
 
-	u_int		 sb_slider_y;
-	u_int		 sb_slider_h;
-
 	int		 argc;
 	char	       **argv;
 	char		*shell;
@@ -1289,10 +1280,12 @@ TAILQ_HEAD(winlink_stack, winlink);
 #define PANE_STATUS_TOP 1
 #define PANE_STATUS_BOTTOM 2
 
-/* Pane scrollbars options. */
+/* Pane scrollbars option. */
 #define PANE_SCROLLBARS_OFF 0
 #define PANE_SCROLLBARS_MODAL 1
 #define PANE_SCROLLBARS_ALWAYS 2
+
+/* Pane scrollbars position option. */
 #define PANE_SCROLLBARS_RIGHT 0
 #define PANE_SCROLLBARS_LEFT 1
 
@@ -1549,9 +1542,6 @@ struct tty {
 	u_int		 mouse_last_y;
 	u_int		 mouse_last_b;
 	int		 mouse_drag_flag;
-	int		 mouse_scrolling_flag;
-	int		 mouse_slider_mpos;
-
 	void		(*mouse_drag_update)(struct client *,
 			    struct mouse_event *);
 	void		(*mouse_drag_release)(struct client *,
@@ -3316,7 +3306,6 @@ void printflike(3, 4) window_copy_add(struct window_pane *, int, const char *,
 		     ...);
 void printflike(3, 0) window_copy_vadd(struct window_pane *, int, const char *,
 		     va_list);
-void		 window_copy_scroll(struct window_pane *, int, u_int, int);
 void		 window_copy_pageup(struct window_pane *, int);
 void		 window_copy_pagedown(struct window_pane *, int, int);
 void		 window_copy_start_drag(struct client *, struct mouse_event *);
