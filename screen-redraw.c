@@ -31,9 +31,8 @@ static void	screen_redraw_draw_pane(struct screen_redraw_ctx *,
 static void	screen_redraw_set_context(struct client *,
 		    struct screen_redraw_ctx *);
 static void	screen_redraw_draw_pane_scrollbars(struct screen_redraw_ctx *);
-static void	screen_redraw_draw_scrollbar(struct client *,
-		    struct window_pane *, int, u_int, u_int, u_int, u_int,
-		    u_int);
+static void	screen_redraw_draw_scrollbar(struct screen_redraw_ctx *,
+		    struct window_pane *, int, int, int, u_int, u_int, u_int);
 static void	screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *,
 		    struct window_pane *);
 
@@ -969,13 +968,12 @@ void
 screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx,
     struct window_pane *wp)
 {
-	struct client	*c = ctx->c;
 	struct screen	*s = wp->screen;
 	double		 percent_view;
 	u_int		 sb = ctx->pane_scrollbars, total_height, sb_h = wp->sy;
 	u_int		 sb_pos = ctx->pane_scrollbars_pos, slider_h, slider_y;
 	u_int		 sb_w = PANE_SCROLLBARS_WIDTH, cm_y, cm_size;
-	u_int		 sb_x, sb_y = wp->yoff; /* upper left of scrollbar */
+	int		 sb_x, sb_y = (int)(wp->yoff - ctx->oy); /* sb top*/
 
 	if (window_pane_mode(wp) == WINDOW_PANE_NO_MODE) {
 		if (sb == PANE_SCROLLBARS_MODAL)
@@ -997,28 +995,31 @@ screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx,
 	}
 
 	if (sb_pos == PANE_SCROLLBARS_LEFT)
-		sb_x = wp->xoff - sb_w;
+		sb_x = (int)wp->xoff - sb_w - ctx->ox;
 	else
-		sb_x = wp->xoff + wp->sx;
+		sb_x = (int)wp->xoff + wp->sx - ctx->ox;
 
 	if (slider_h < 1)
 		slider_h = 1;
 	if (slider_y >= sb_h)
 		slider_y = sb_h - 1;
 
-	screen_redraw_draw_scrollbar(c, wp, sb_pos, sb_x, sb_y, sb_h, slider_h,
+	screen_redraw_draw_scrollbar(ctx, wp, sb_pos, sb_x, sb_y, sb_h, slider_h,
 	    slider_y);
 }
 
 static void
-screen_redraw_draw_scrollbar(struct client *c, struct window_pane *wp,
-    int sb_pos, u_int px, u_int py, u_int sb_h, u_int slider_h, u_int slider_y)
+screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx,
+    struct window_pane *wp, int sb_pos, int px, int py, u_int sb_h,
+    u_int slider_h, u_int slider_y)
 {
+	struct client		*c = ctx->c;
 	struct window		*w = wp->window;
 	struct tty		*tty = &c->tty;
 	struct grid_cell	 gc;
 	int			 fg, bg;
-	u_int			 i, j, pad_col = 0;
+	int			 i, j;
+	u_int			 pad_col = 0;
 	u_int			 sb_w = PANE_SCROLLBARS_WIDTH;
 	u_int			 sb_pad = PANE_SCROLLBARS_PADDING;
 
@@ -1035,14 +1036,20 @@ screen_redraw_draw_scrollbar(struct client *c, struct window_pane *wp,
 			pad_col = sb_w - 1;
 	}
 
-	for (i = 0; i < sb_w; i++) {
-		for (j = 0; j < sb_h; j++) {
+	for (i = 0; (u_int)i < sb_w; i++) {
+		for (j = 0; (u_int)j < sb_h; j++) {
+			if (px+i < (int)(wp->xoff - ctx->ox - 1) ||
+			    px+i >= (int)(ctx->sx) || px+i < 0 ||
+			    py+j < (int)(wp->yoff - ctx->oy - 1) ||
+			    py+j >= (int)ctx->sy || py+j < 0)
+				continue;
 			tty_cursor(tty, px + i, py + j);
-			if (sb_pad && i == pad_col) {
+			if (sb_pad && (u_int)i == pad_col) {
 				tty_cell(tty, &grid_default_cell,
 				    &grid_default_cell, NULL, NULL);
 			} else {
-				if (j >= slider_y && j < slider_y + slider_h) {
+				if ((u_int)j >= slider_y &&
+				    (u_int)j < slider_y + slider_h) {
 					gc.bg = fg;
 					gc.fg = bg;
 				} else {
