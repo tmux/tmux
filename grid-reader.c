@@ -338,6 +338,20 @@ grid_reader_cursor_previous_word(struct grid_reader *gr, const char *separators,
 	gr->cy = oldy;
 }
 
+/* Compare grid cell to UTF-8 data. Return 1 if equal, 0 if not. */
+static int
+grid_reader_cell_equals_data(const struct grid_cell *gc,
+    const struct utf8_data *ud)
+{
+	if (gc->flags & GRID_FLAG_PADDING)
+		return (0);
+	if (gc->flags & GRID_FLAG_TAB && ud->size == 1 && *ud->data == '\t')
+		return (1);
+	if (gc->data.size != ud->size)
+		return (0);
+	return (memcmp(gc->data.data, ud->data, gc->data.size) == 0);
+}
+
 /* Jump forward to character. */
 int
 grid_reader_cursor_jump(struct grid_reader *gr, const struct utf8_data *jc)
@@ -352,9 +366,7 @@ grid_reader_cursor_jump(struct grid_reader *gr, const struct utf8_data *jc)
 		xx = grid_line_length(gr->gd, py);
 		while (px < xx) {
 			grid_get_cell(gr->gd, px, py, &gc);
-			if (!(gc.flags & GRID_FLAG_PADDING) &&
-			    gc.data.size == jc->size &&
-			    memcmp(gc.data.data, jc->data, gc.data.size) == 0) {
+			if (grid_reader_cell_equals_data(&gc, jc)) {
 				gr->cx = px;
 				gr->cy = py;
 				return (1);
@@ -382,9 +394,7 @@ grid_reader_cursor_jump_back(struct grid_reader *gr, const struct utf8_data *jc)
 	for (py = gr->cy + 1; py > 0; py--) {
 		for (px = xx; px > 0; px--) {
 			grid_get_cell(gr->gd, px - 1, py - 1, &gc);
-			if (!(gc.flags & GRID_FLAG_PADDING) &&
-			    gc.data.size == jc->size &&
-			    memcmp(gc.data.data, jc->data, gc.data.size) == 0) {
+			if (grid_reader_cell_equals_data(&gc, jc)) {
 				gr->cx = px - 1;
 				gr->cy = py - 1;
 				return (1);

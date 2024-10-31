@@ -973,8 +973,7 @@ screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx,
 	u_int		 sb = ctx->pane_scrollbars, total_height, sb_h = wp->sy;
 	u_int		 sb_pos = ctx->pane_scrollbars_pos, slider_h, slider_y;
 	u_int		 sb_w = PANE_SCROLLBARS_WIDTH, cm_y, cm_size;
-	int		 sb_x, sb_y = (int)(wp->yoff - ctx->oy); /* sb top*/
-
+	int		 sb_x, sb_y = (int)(wp->yoff - ctx->oy); /* sb top */
 	if (window_pane_mode(wp) == WINDOW_PANE_NO_MODE) {
 		if (sb == PANE_SCROLLBARS_MODAL)
 			return;
@@ -1004,8 +1003,8 @@ screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx,
 	if (slider_y >= sb_h)
 		slider_y = sb_h - 1;
 
-	screen_redraw_draw_scrollbar(ctx, wp, sb_pos, sb_x, sb_y, sb_h, slider_h,
-	    slider_y);
+	screen_redraw_draw_scrollbar(ctx, wp, sb_pos, sb_x, sb_y, sb_h,
+	    slider_h, slider_y);
 }
 
 static void
@@ -1017,15 +1016,11 @@ screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx,
 	struct window		*w = wp->window;
 	struct tty		*tty = &c->tty;
 	struct grid_cell	 gc;
-	u_int			 i, j;
-	u_int			 sb_w = PANE_SCROLLBARS_WIDTH;
+	u_int			 i, j, sb_w = PANE_SCROLLBARS_WIDTH;
 	u_int			 pad_col = 0;
-	int			 fg, bg;
-	int			 px, py;
-	int			 sb_pad = PANE_SCROLLBARS_PADDING;
-	int			 xoff = wp->xoff, yoff = wp->yoff; /* pane */
-	int			 ox = ctx->ox, oy = ctx->oy; /* screen offset */
-	int			 sx = ctx->sx, sy = ctx->sy; /* screen size */
+	int			 fg, bg, px, py, ox = ctx->ox, oy = ctx->oy;
+	int                      sb_pad = PANE_SCROLLBARS_PADDING, sx = ctx->sx;
+	int			 sy = ctx->sy, xoff = wp->xoff, yoff = wp->yoff;
 
 	/* Set up default colour. */
 	style_apply(&gc, w->options, "pane-scrollbars-style", NULL);

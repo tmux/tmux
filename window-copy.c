@@ -3082,6 +3082,9 @@ window_copy_search_compare(struct grid *gd, u_int px, u_int py,
 	grid_get_cell(sgd, spx, 0, &sgc);
 	sud = &sgc.data;
 
+	if (*sud->data == '\t' && sud->size == 1 && gc.flags & GRID_FLAG_TAB)
+		return (1);
+
 	if (ud->size != sud->size || ud->width != sud->width)
 		return (0);
 
@@ -3300,6 +3303,11 @@ window_copy_cellstring(const struct grid_line *gl, u_int px, size_t *size,
 		*size = 1;
 		*allocated = 0;
 		return (&gce->data.data);
+	}
+	if (gce->flags & GRID_FLAG_TAB) {
+		*size = 1;
+		*allocated = 0;
+		return ("\t");
 	}
 
 	utf8_to_data(gl->extddata[gce->offset].data, &ud);
@@ -3696,7 +3704,7 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 	struct screen_write_ctx		 ctx;
 	struct grid			*gd = s->grid;
 	const char			*str = data->searchstr;
-	u_int				 at, endline, fx, fy, start;
+	u_int				 at, endline, fx, fy, start, ssx;
 	int				 cis, found, keys, visible_only;
 	int				 wrapflag;
 
@@ -3723,7 +3731,9 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 	fx = data->cx;
 	fy = screen_hsize(data->backing) - data->oy + data->cy;
 
-	screen_init(&ss, screen_write_strlen("%s", str), 1, 0);
+	if ((ssx = screen_write_strlen("%s", str)) == 0)
+		return (0);
+	screen_init(&ss, ssx, 1, 0);
 	screen_write_start(&ctx, &ss);
 	screen_write_nputs(&ctx, -1, &grid_default_cell, "%s", str);
 	screen_write_stop(&ctx);
@@ -4083,9 +4093,15 @@ window_copy_match_at_cursor(struct window_copy_mode_data *data)
 		px = at - (py * sx);
 
 		grid_get_cell(gd, px, gd->hsize + py - data->oy, &gc);
-		buf = xrealloc(buf, len + gc.data.size + 1);
-		memcpy(buf + len, gc.data.data, gc.data.size);
-		len += gc.data.size;
+		if (gc.flags & GRID_FLAG_TAB) {
+			buf = xrealloc(buf, len + 2);
+			buf[len] = '\t';
+			len++;
+		} else {
+			buf = xrealloc(buf, len + gc.data.size + 1);
+			memcpy(buf + len, gc.data.data, gc.data.size);
+			len += gc.data.size;
+		}
 	}
 	if (len != 0)
 		buf[len] = '\0';
@@ -4814,7 +4830,10 @@ window_copy_copy_line(struct window_mode_entry *wme, char **buf, size_t *off,
 			grid_get_cell(gd, i, sy, &gc);
 			if (gc.flags & GRID_FLAG_PADDING)
 				continue;
-			utf8_copy(&ud, &gc.data);
+			if (gc.flags & GRID_FLAG_TAB)
+				utf8_set(&ud, '\t');
+			else
+				utf8_copy(&ud, &gc.data);
 			if (ud.size == 1 && (gc.attr & GRID_ATTR_CHARSET)) {
 				s = tty_acs_get(NULL, ud.data[0]);
 				if (s != NULL && strlen(s) <= sizeof ud.data) {

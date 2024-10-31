@@ -1366,6 +1366,8 @@ tty_check_codeset(struct tty *tty, const struct grid_cell *gc)
 	/* Characters less than 0x7f are always fine, no matter what. */
 	if (gc->data.size == 1 && *gc->data.data < 0x7f)
 		return (gc);
+	if (gc->flags & GRID_FLAG_TAB)
+		return (gc);
 
 	/* UTF-8 terminal and a UTF-8 character - fine. */
 	if (tty->client->flags & CLIENT_UTF8)
