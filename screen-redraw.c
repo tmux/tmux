@@ -666,7 +666,7 @@ screen_redraw_screen(struct client *c)
 
 /* Redraw a single pane and its scrollbar. */
 void
-screen_redraw_pane(struct client *c, struct window_pane *wp)
+screen_redraw_pane(struct client *c, struct window_pane *wp, int redraw_scrollbar_only)
 {
 	struct screen_redraw_ctx	ctx;
 	int				pane_scrollbars, mode;
@@ -678,21 +678,21 @@ screen_redraw_pane(struct client *c, struct window_pane *wp)
 	tty_sync_start(&c->tty);
 	tty_update_mode(&c->tty, c->tty.mode, NULL);
 
-	screen_redraw_draw_pane(&ctx, wp);
+	if (!redraw_scrollbar_only)
+		screen_redraw_draw_pane(&ctx, wp);
 
 	/*
 	 * Redraw scrollbar if needed. Always redraw scrollbar in a mode because
 	 * if redrawing a pane, it's because pane has scrolled.
 	 */
 	mode = window_pane_mode(wp);
-	if (wp->flags & PANE_REDRAWSCROLLBAR || mode != WINDOW_PANE_NO_MODE) {
-		pane_scrollbars = ctx.pane_scrollbars;
-		if (pane_scrollbars == PANE_SCROLLBARS_MODAL &&
-		    mode == WINDOW_PANE_NO_MODE)
-			pane_scrollbars = PANE_SCROLLBARS_OFF;
-		if (pane_scrollbars != PANE_SCROLLBARS_OFF)
-			screen_redraw_draw_pane_scrollbar(&ctx, wp);
-	}
+
+	pane_scrollbars = ctx.pane_scrollbars;
+	if (pane_scrollbars == PANE_SCROLLBARS_MODAL &&
+	    mode == WINDOW_PANE_NO_MODE)
+		pane_scrollbars = PANE_SCROLLBARS_OFF;
+	if (pane_scrollbars != PANE_SCROLLBARS_OFF)
+		screen_redraw_draw_pane_scrollbar(&ctx, wp);
 
 	tty_reset(&c->tty);
 }
