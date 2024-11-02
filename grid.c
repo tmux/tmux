@@ -237,7 +237,9 @@ grid_cells_look_equal(const struct grid_cell *gc1, const struct grid_cell *gc2)
 {
 	if (gc1->fg != gc2->fg || gc1->bg != gc2->bg)
 		return (0);
-	if (gc1->attr != gc2->attr || gc1->flags != gc2->flags)
+	if (gc1->attr != gc2->attr ||
+	    (gc1->flags & ~GRID_FLAG_CLEARED) !=
+	    (gc2->flags & ~GRID_FLAG_CLEARED))
 		return (0);
 	if (gc1->link != gc2->link)
 		return (0);
