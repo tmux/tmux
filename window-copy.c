@@ -3098,14 +3098,16 @@ static int
 window_copy_search_lr(struct grid *gd, struct grid *sgd, u_int *ppx, u_int py,
     u_int first, u_int last, int cis)
 {
-	u_int			 ax, bx, px, pywrap, endline;
+	u_int			 ax, bx, px, pywrap, endline, padding = 0;
 	int			 matched;
 	struct grid_line	*gl;
+	struct grid_cell	 gc;
 
 	endline = gd->hsize + gd->sy - 1;
 	for (ax = first; ax < last; ax++) {
+		padding = 0;
 		for (bx = 0; bx < sgd->sx; bx++) {
-			px = ax + bx;
+			px = ax + bx + padding;
 			pywrap = py;
 			/* Wrap line. */
 			while (px >= gd->sx && pywrap < endline) {
@@ -3116,8 +3118,13 @@ window_copy_search_lr(struct grid *gd, struct grid *sgd, u_int *ppx, u_int py,
 				pywrap++;
 			}
 			/* We have run off the end of the grid. */
-			if (px >= gd->sx)
+			if (px - padding >= gd->sx)
 				break;
+
+			grid_get_cell(gd, px, pywrap, &gc);
+			if (gc.flags & GRID_FLAG_TAB)
+				padding += gc.data.width - 1;
+
 			matched = window_copy_search_compare(gd, px, pywrap,
 			    sgd, bx, cis);
 			if (!matched)
@@ -3135,14 +3142,16 @@ static int
 window_copy_search_rl(struct grid *gd,
     struct grid *sgd, u_int *ppx, u_int py, u_int first, u_int last, int cis)
 {
-	u_int			 ax, bx, px, pywrap, endline;
+	u_int			 ax, bx, px, pywrap, endline, padding = 0;
 	int			 matched;
 	struct grid_line	*gl;
+	struct grid_cell	 gc;
 
 	endline = gd->hsize + gd->sy - 1;
 	for (ax = last; ax > first; ax--) {
+		padding = 0;
 		for (bx = 0; bx < sgd->sx; bx++) {
-			px = ax - 1 + bx;
+			px = ax - 1 + bx + padding;
 			pywrap = py;
 			/* Wrap line. */
 			while (px >= gd->sx && pywrap < endline) {
@@ -3153,8 +3162,13 @@ window_copy_search_rl(struct grid *gd,
 				pywrap++;
 			}
 			/* We have run off the end of the grid. */
-			if (px >= gd->sx)
+			if (px - padding >= gd->sx)
 				break;
+
+			grid_get_cell(gd, px, pywrap, &gc);
+			if (gc.flags & GRID_FLAG_TAB)
+				padding += gc.data.width - 1;
+
 			matched = window_copy_search_compare(gd, px, pywrap,
 			    sgd, bx, cis);
 			if (!matched)
@@ -3875,10 +3889,11 @@ window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
 	struct screen			*s = data->backing, ss;
 	struct screen_write_ctx		 ctx;
 	struct grid			*gd = s->grid;
+	struct grid_cell		 gc;
 	int				 found, cis, stopped = 0;
 	int				 cflags = REG_EXTENDED;
 	u_int				 px, py, i, b, nfound = 0, width;
-	u_int				 ssize = 1, start, end;
+	u_int				 tmp_width, ssize = 1, start, end;
 	char				*sbuf;
 	regex_t				 reg;
 	uint64_t			 stop = 0, tstart, t;
@@ -3930,6 +3945,9 @@ again:
 			if (regex) {
 				found = window_copy_search_lr_regex(gd,
 				    &px, &width, py, px, gd->sx, &reg);
+				grid_get_cell(gd, px + width - 1, py, &gc);
+				if (gc.data.width > 2)
+					width += gc.data.width - 1;
 				if (!found)
 					break;
 			} else {
@@ -3943,7 +3961,15 @@ again:
 			if (window_copy_search_mark_at(data, px, py, &b) == 0) {
 				if (b + width > gd->sx * gd->sy)
 					width = (gd->sx * gd->sy) - b;
-				for (i = b; i < b + width; i++) {
+				tmp_width = width;
+				for (i = b; i < b + tmp_width; i++) {
+					if (!regex) {
+						grid_get_cell(gd, px + (i-b), py, &gc);
+						if (gc.flags & GRID_FLAG_TAB)
+							tmp_width += gc.data.width - 1;
+						if (b + tmp_width > gd->sx * gd->sy)
+							tmp_width = (gd->sx * gd->sy) - b;
+					}
 					if (data->searchmark[i] != 0)
 						continue;
 					data->searchmark[i] = data->searchgen;
@@ -3953,7 +3979,7 @@ again:
 				else
 					data->searchgen++;
 			}
-			px += width;
+			px += tmp_width;
 		}
 
 		t = get_timer();
