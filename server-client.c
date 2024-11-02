@@ -292,6 +292,8 @@ server_client_create(int fd)
 	c->keytable = key_bindings_get_table("root", 1);
 	c->keytable->references++;
 
+    TAILQ_INIT(&c->aflist);
+
 	evtimer_set(&c->repeat_timer, server_client_repeat_timer, c);
 	evtimer_set(&c->click_timer, server_client_click_timer, c);
 
@@ -496,10 +498,17 @@ static void
 server_client_free(__unused int fd, __unused short events, void *arg)
 {
 	struct client	*c = arg;
+    struct active_file *f;
 
 	log_debug("free client %p (%d references)", c, c->references);
 
 	cmdq_free(c->queue);
+
+    TAILQ_FOREACH_REVERSE(f, &c->aflist, active_files, list) {
+        TAILQ_REMOVE(&c->aflist, f, list);
+        free((void*) f->file);
+        free(f);
+    }
 
 	if (c->references == 0) {
 		free((void *)c->name);
