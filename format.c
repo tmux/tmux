@@ -5195,8 +5195,11 @@ format_defaults_paste_buffer(struct format_tree *ft, struct paste_buffer *pb)
 static int
 format_is_word_separator(const char *ws, const struct grid_cell *gc)
 {
-	return (utf8_cstrhas(ws, &gc->data) || gc->flags & GRID_FLAG_TAB ||
-	    (gc->data.size == 1 && *gc->data.data == ' '));
+	if (utf8_cstrhas(ws, &gc->data))
+		return (1);
+	if (gc->flags & GRID_FLAG_TAB)
+		return (1);
+	return gc->data.size == 1 && *gc->data.data == ' ';
 }
 
 /* Return word at given coordinates. Caller frees. */
