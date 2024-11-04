@@ -2658,7 +2658,7 @@ server_client_check_redraw(struct client *c)
 	struct window_pane	*wp;
 	int			 needed, tty_flags, mode = tty->mode;
 	uint64_t		 client_flags = 0;
-	int			 redraw;
+	int			 redraw_pane, redraw_scrollbar_only;
 	u_int			 bit = 0;
 	struct timeval		 tv = { .tv_usec = 1000 };
 	static struct event	 ev;
@@ -2667,12 +2667,13 @@ server_client_check_redraw(struct client *c)
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
 		return;
 	if (c->flags & CLIENT_ALLREDRAWFLAGS) {
-		log_debug("%s: redraw%s%s%s%s%s", c->name,
+		log_debug("%s: redraw%s%s%s%s%s%s", c->name,
 		    (c->flags & CLIENT_REDRAWWINDOW) ? " window" : "",
 		    (c->flags & CLIENT_REDRAWSTATUS) ? " status" : "",
 		    (c->flags & CLIENT_REDRAWBORDERS) ? " borders" : "",
 		    (c->flags & CLIENT_REDRAWOVERLAY) ? " overlay" : "",
-		    (c->flags & CLIENT_REDRAWPANES) ? " panes" : "");
+		    (c->flags & CLIENT_REDRAWPANES) ? " panes" : "",
+		    (c->flags & CLIENT_REDRAWSCROLLBARS) ? " scrollbars" : "");
 	}
 
 	/*
@@ -2685,13 +2686,17 @@ server_client_check_redraw(struct client *c)
 		needed = 1;
 	else {
 		TAILQ_FOREACH(wp, &w->panes, entry) {
-			if (wp->flags & (PANE_REDRAW|PANE_REDRAWSCROLLBAR)) {
+			if (wp->flags & PANE_REDRAW) {
 				needed = 1;
+				client_flags |= CLIENT_REDRAWPANES;
 				break;
 			}
+			if (wp->flags & PANE_REDRAWSCROLLBAR) {
+				needed = 1;
+				client_flags |= CLIENT_REDRAWSCROLLBARS;
+				/* no break - later panes may need redraw */
+			}
 		}
-		if (needed)
-			client_flags |= CLIENT_REDRAWPANES;
 	}
 	if (needed && (left = EVBUFFER_LENGTH(tty->out)) != 0) {
 		log_debug("%s: redraw deferred (%zu left)", c->name, left);
@@ -2704,23 +2709,30 @@ server_client_check_redraw(struct client *c)
 
 		if (~c->flags & CLIENT_REDRAWWINDOW) {
 			TAILQ_FOREACH(wp, &w->panes, entry) {
-				if (wp->flags & (PANE_REDRAW|PANE_REDRAWSCROLLBAR)) {
+				if (wp->flags & (PANE_REDRAW)) {
 					log_debug("%s: pane %%%u needs redraw",
 					    c->name, wp->id);
 					c->redraw_panes |= (1 << bit);
+				} else if (wp->flags & PANE_REDRAWSCROLLBAR) {
+					log_debug("%s: pane %%%u scrollbar "
+					    "needs redraw", c->name, wp->id);
+					c->redraw_scrollbars |= (1 << bit);
 				}
 				if (++bit == 64) {
 					/*
 					 * If more that 64 panes, give up and
 					 * just redraw the window.
 					 */
-					client_flags &= CLIENT_REDRAWPANES;
+					client_flags &= ~(CLIENT_REDRAWPANES|
+					    CLIENT_REDRAWSCROLLBARS);
 					client_flags |= CLIENT_REDRAWWINDOW;
 					break;
 				}
 			}
 			if (c->redraw_panes != 0)
 				c->flags |= CLIENT_REDRAWPANES;
+			if (c->redraw_scrollbars != 0)
+				c->flags |= CLIENT_REDRAWSCROLLBARS;
 		}
 		c->flags |= client_flags;
 		return;
@@ -2736,19 +2748,32 @@ server_client_check_redraw(struct client *c)
 		 * needs to be redrawn.
 		 */
 		TAILQ_FOREACH(wp, &w->panes, entry) {
-			redraw = 0;
+			redraw_pane = 0;
+			redraw_scrollbar_only = 0;
 			if (wp->flags & PANE_REDRAW)
-				redraw = 1;
-			else if (c->flags & CLIENT_REDRAWPANES)
-				redraw = !!(c->redraw_panes & (1 << bit));
+				redraw_pane = 1;
+			else if (c->flags & CLIENT_REDRAWPANES) {
+				if (c->redraw_panes & (1 << bit))
+					redraw_pane = 1;
+			} else if (c->flags & CLIENT_REDRAWSCROLLBARS) {
+				if (c->redraw_scrollbars & (1 << bit))
+					redraw_scrollbar_only = 1;
+			}
 			bit++;
-			if (!redraw)
+			if (!redraw_pane && !redraw_scrollbar_only)
 				continue;
-			log_debug("%s: redrawing pane %%%u", __func__, wp->id);
-			screen_redraw_pane(c, wp);
+			if (redraw_scrollbar_only) {
+				log_debug("%s: redrawing (scrollbar only) pane "
+				    "%%%u", __func__, wp->id);
+			} else {
+				log_debug("%s: redrawing pane %%%u", __func__,
+				    wp->id);
+			}
+			screen_redraw_pane(c, wp, redraw_scrollbar_only);
 		}
 		c->redraw_panes = 0;
-		c->flags &= ~CLIENT_REDRAWPANES;
+		c->redraw_scrollbars = 0;
+		c->flags &= ~(CLIENT_REDRAWPANES|CLIENT_REDRAWSCROLLBARS);
 	}
 
 	if (c->flags & CLIENT_ALLREDRAWFLAGS) {

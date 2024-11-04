@@ -1932,13 +1932,15 @@ struct client {
 #define CLIENT_CLIPBOARDBUFFER 0x800000000ULL
 #define CLIENT_BRACKETPASTING 0x1000000000ULL
 #define CLIENT_ASSUMEPASTING 0x2000000000ULL
+#define CLIENT_REDRAWSCROLLBARS 0x4000000000ULL
 #define CLIENT_ALLREDRAWFLAGS		\
 	(CLIENT_REDRAWWINDOW|		\
 	 CLIENT_REDRAWSTATUS|		\
 	 CLIENT_REDRAWSTATUSALWAYS|	\
 	 CLIENT_REDRAWBORDERS|		\
 	 CLIENT_REDRAWOVERLAY|		\
-	 CLIENT_REDRAWPANES)
+	 CLIENT_REDRAWPANES|		\
+	 CLIENT_REDRAWSCROLLBARS)
 #define CLIENT_UNATTACHEDFLAGS	\
 	(CLIENT_DEAD|		\
 	 CLIENT_SUSPENDED|	\
@@ -1965,6 +1967,7 @@ struct client {
 	key_code		 last_key;
 
 	uint64_t		 redraw_panes;
+	uint64_t		 redraw_scrollbars;
 
 	int			 message_ignore_keys;
 	int			 message_ignore_styles;
@@ -3080,7 +3083,7 @@ void	 screen_write_alternateoff(struct screen_write_ctx *,
 
 /* screen-redraw.c */
 void	 screen_redraw_screen(struct client *);
-void	 screen_redraw_pane(struct client *, struct window_pane *);
+void	 screen_redraw_pane(struct client *, struct window_pane *, int);
 
 /* screen.c */
 void	 screen_init(struct screen *, u_int, u_int, u_int);
