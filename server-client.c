@@ -2686,14 +2686,15 @@ server_client_check_redraw(struct client *c)
 		needed = 1;
 	else {
 		TAILQ_FOREACH(wp, &w->panes, entry) {
-			if (wp->flags & (PANE_REDRAW)) {
+			if (wp->flags & PANE_REDRAW) {
 				needed = 1;
 				client_flags |= CLIENT_REDRAWPANES;
 				break;
 			}
-			if (wp->flags & (PANE_REDRAWSCROLLBAR)) {
+			if (wp->flags & PANE_REDRAWSCROLLBAR) {
 				needed = 1;
 				client_flags |= CLIENT_REDRAWSCROLLBARS;
+				/* no break - later panes may need redraw */
 			}
 		}
 	}
@@ -2713,8 +2714,8 @@ server_client_check_redraw(struct client *c)
 					    c->name, wp->id);
 					c->redraw_panes |= (1 << bit);
 				} else if (wp->flags & PANE_REDRAWSCROLLBAR) {
-					log_debug("%s: pane %%%u scrollbar needs redraw",
-					    c->name, wp->id);
+					log_debug("%s: pane %%%u scrollbar "
+					    "needs redraw", c->name, wp->id);
 					c->redraw_scrollbars |= (1 << bit);
 				}
 				if (++bit == 64) {
@@ -2722,7 +2723,8 @@ server_client_check_redraw(struct client *c)
 					 * If more that 64 panes, give up and
 					 * just redraw the window.
 					 */
-					client_flags &= ~(CLIENT_REDRAWPANES|CLIENT_REDRAWSCROLLBARS);
+					client_flags &= ~(CLIENT_REDRAWPANES|
+					    CLIENT_REDRAWSCROLLBARS);
 					client_flags |= CLIENT_REDRAWWINDOW;
 					break;
 				}
@@ -2750,17 +2752,23 @@ server_client_check_redraw(struct client *c)
 			redraw_scrollbar_only = 0;
 			if (wp->flags & PANE_REDRAW)
 				redraw_pane = 1;
-			else if (c->flags & CLIENT_REDRAWPANES)
-				redraw_pane = !!(c->redraw_panes & (1 << bit));
-			else if (c->flags & CLIENT_REDRAWSCROLLBARS)
-				redraw_scrollbar_only = !!(c->redraw_scrollbars & (1 << bit));
+			else if (c->flags & CLIENT_REDRAWPANES) {
+				if (c->redraw_panes & (1 << bit))
+					redraw_pane = 1;
+			} else if (c->flags & CLIENT_REDRAWSCROLLBARS) {
+				if (c->redraw_scrollbars & (1 << bit))
+					redraw_scrollbar_only = 1;
+			}
 			bit++;
 			if (!redraw_pane && !redraw_scrollbar_only)
 				continue;
-			if (redraw_scrollbar_only)
-				log_debug("%s: redrawing scrollbar only pane %%%u", __func__, wp->id);
-			else
-				log_debug("%s: redrawing scrollbar and pane %%%u", __func__, wp->id);
+			if (redraw_scrollbar_only) {
+				log_debug("%s: redrawing (scrollbar only) pane "
+				    "%%%u", __func__, wp->id);
+			} else {
+				log_debug("%s: redrawing pane %%%u", __func__,
+				    wp->id);
+			}
 			screen_redraw_pane(c, wp, redraw_scrollbar_only);
 		}
 		c->redraw_panes = 0;

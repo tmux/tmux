@@ -666,13 +666,15 @@ screen_redraw_screen(struct client *c)
 
 /* Redraw a single pane and its scrollbar. */
 void
-screen_redraw_pane(struct client *c, struct window_pane *wp, int redraw_scrollbar_only)
+screen_redraw_pane(struct client *c, struct window_pane *wp,
+    int redraw_scrollbar_only)
 {
 	struct screen_redraw_ctx	ctx;
 	int				pane_scrollbars, mode;
 
 	if (!window_pane_visible(wp))
 		return;
+	mode = window_pane_mode(wp);
 
 	screen_redraw_set_context(c, &ctx);
 	tty_sync_start(&c->tty);
@@ -686,7 +688,6 @@ screen_redraw_pane(struct client *c, struct window_pane *wp, int redraw_scrollba
 	 * if redrawing a pane, it's because pane has scrolled.
 	 */
 	mode = window_pane_mode(wp);
-
 	pane_scrollbars = ctx.pane_scrollbars;
 	if (pane_scrollbars == PANE_SCROLLBARS_MODAL &&
 	    mode == WINDOW_PANE_NO_MODE)
@@ -1015,18 +1016,20 @@ screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx,
 	struct client		*c = ctx->c;
 	struct window		*w = wp->window;
 	struct tty		*tty = &c->tty;
-	struct grid_cell	 gc;
+	struct grid_cell	 gc, slgc, *gcp;
 	u_int			 i, j, sb_w = PANE_SCROLLBARS_WIDTH;
 	u_int			 pad_col = 0;
-	int			 fg, bg, px, py, ox = ctx->ox, oy = ctx->oy;
+	int			 px, py, ox = ctx->ox, oy = ctx->oy;
 	int                      sb_pad = PANE_SCROLLBARS_PADDING, sx = ctx->sx;
 	int			 sy = ctx->sy, xoff = wp->xoff, yoff = wp->yoff;
 
-	/* Set up default colour. */
+	/* Set up default style. */
 	style_apply(&gc, w->options, "pane-scrollbars-style", NULL);
-	fg = gc.fg;
-	bg = gc.bg;
 	utf8_set(&gc.data, ' ');
+
+	/* Set up style for slider. */
+	memcpy(&slgc, &gc, sizeof slgc);
+	slgc.bg = gc.fg;
 
 	if (sb_pad != 0) {
 		if (sb_pos == PANE_SCROLLBARS_RIGHT)
@@ -1047,15 +1050,11 @@ screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx,
 				tty_cell(tty, &grid_default_cell,
 				    &grid_default_cell, NULL, NULL);
 			} else {
-				if (j >= slider_y &&
-				    j < slider_y + slider_h) {
-					gc.bg = fg;
-					gc.fg = bg;
-				} else {
-					gc.bg = bg;
-					gc.fg = fg;
-				}
-				tty_cell(tty, &gc, &grid_default_cell, NULL,
+				if (j >= slider_y && j < slider_y + slider_h)
+					gcp = &slgc;
+				else
+					gcp = &gc;
+				tty_cell(tty, gcp, &grid_default_cell, NULL,
 				    NULL);
 			}
 		}
