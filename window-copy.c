@@ -3098,7 +3098,7 @@ static int
 window_copy_search_lr(struct grid *gd, struct grid *sgd, u_int *ppx, u_int py,
     u_int first, u_int last, int cis)
 {
-	u_int			 ax, bx, px, pywrap, endline, padding = 0;
+	u_int			 ax, bx, px, pywrap, endline, padding;
 	int			 matched;
 	struct grid_line	*gl;
 	struct grid_cell	 gc;
@@ -3142,7 +3142,7 @@ static int
 window_copy_search_rl(struct grid *gd,
     struct grid *sgd, u_int *ppx, u_int py, u_int first, u_int last, int cis)
 {
-	u_int			 ax, bx, px, pywrap, endline, padding = 0;
+	u_int			 ax, bx, px, pywrap, endline, padding;
 	int			 matched;
 	struct grid_line	*gl;
 	struct grid_cell	 gc;
@@ -3958,6 +3958,7 @@ again:
 			}
 			nfound++;
 
+			tmp_width = width;
 			if (window_copy_search_mark_at(data, px, py, &b) == 0) {
 				if (b + width > gd->sx * gd->sy)
 					width = (gd->sx * gd->sy) - b;
