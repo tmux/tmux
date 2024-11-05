@@ -151,7 +151,7 @@ screen_write_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 		 */
 		log_debug("%s: adding %%%u to deferred redraw", __func__,
 		    wp->id);
-		wp->flags |= PANE_REDRAW;
+		wp->flags |= (PANE_REDRAW|PANE_REDRAWSCROLLBAR);
 		return (-1);
 	}
 
@@ -1178,13 +1178,14 @@ screen_write_deleteline(struct screen_write_ctx *ctx, u_int ny, u_int bg)
 	struct screen	*s = ctx->s;
 	struct grid	*gd = s->grid;
 	struct tty_ctx	 ttyctx;
+	u_int		 sy = screen_size_y(s);
 
 	if (ny == 0)
 		ny = 1;
 
 	if (s->cy < s->rupper || s->cy > s->rlower) {
-		if (ny > screen_size_y(s) - s->cy)
-			ny = screen_size_y(s) - s->cy;
+		if (ny > sy - s->cy)
+			ny = sy - s->cy;
 		if (ny == 0)
 			return;
 
@@ -1376,13 +1377,14 @@ screen_write_linefeed(struct screen_write_ctx *ctx, int wrapped, u_int bg)
 	struct screen		*s = ctx->s;
 	struct grid		*gd = s->grid;
 	struct grid_line	*gl;
+	u_int			 rupper = s->rupper, rlower = s->rlower;
 
 	gl = grid_get_line(gd, gd->hsize + s->cy);
 	if (wrapped)
 		gl->flags |= GRID_LINE_WRAPPED;
 
 	log_debug("%s: at %u,%u (region %u-%u)", __func__, s->cx, s->cy,
-	    s->rupper, s->rlower);
+	    rupper, rlower);
 
 	if (bg != ctx->bg) {
 		screen_write_collect_flush(ctx, 1, __func__);
@@ -1700,6 +1702,9 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 		ttyctx.num = ctx->scrolled;
 		ttyctx.bg = ctx->bg;
 		tty_write(tty_cmd_scrollup, &ttyctx);
+
+		if (ctx->wp != NULL)
+			ctx->wp->flags |= PANE_REDRAWSCROLLBAR;
 	}
 	ctx->scrolled = 0;
 	ctx->bg = 8;

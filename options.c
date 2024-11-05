@@ -1171,7 +1171,9 @@ options_push_changes(const char *name)
 		RB_FOREACH(wp, window_pane_tree, &all_window_panes)
 			colour_palette_from_option(&wp->palette, wp->options);
 	}
-	if (strcmp(name, "pane-border-status") == 0) {
+	if (strcmp(name, "pane-border-status") == 0 ||
+	    strcmp(name, "pane-scrollbars") == 0 ||
+	    strcmp(name, "pane-scrollbars-position") == 0) {
 		RB_FOREACH(w, windows, &windows)
 			layout_fix_panes(w, NULL);
 	}
