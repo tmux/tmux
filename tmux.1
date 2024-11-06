@@ -5028,6 +5028,46 @@ and
 .Ql heavy
 will fall back to standard ACS line drawing when UTF-8 is not supported.
 .Pp
+.It Xo Ic pane-scrollbars
+.Op Ic off | modal | on
+.Xc
+When enabled, a character based scrollbar appears on the left or right
+of each pane.
+A filled section of the scrollbar, known as the
+.Ql slider ,
+represents the position and size of the visible part of the pane content.
+.Pp
+If set to
+.Ic on
+the scrollbar is visible all the time.
+If set to
+.Ic modal
+the scrollbar only appears when the pane is in copy mode or view mode.
+When the scrollbar is visible, the pane is narrowed by the width of the
+scrollbar and the text in the pane is reflowed.
+If set to
+.Ic modal ,
+the pane is narrowed only when the scrollbar is visible.
+.Pp
+See also
+.Ic pane-scrollbars-style .
+.Pp
+.It Ic pane-scrollbars-style Ar style
+Set the scrollbars style.
+For how to specify
+.Ar style ,
+see the
+.Sx STYLES
+section.
+The foreground colour is used for the slider, the background for the rest of the
+scrollbar.
+Attributes are ignored.
+.Pp
+.It Xo Ic pane-scrollbars-position
+.Op Ic left | right
+.Xc
+Sets which side of the pane to display pane scrollbars on.
+.Pp
 .It Ic window-status-activity-style Ar style
 Set status line style for windows with an activity alert.
 For how to specify

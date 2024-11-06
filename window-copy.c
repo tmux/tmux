@@ -4319,6 +4319,8 @@ window_copy_redraw_lines(struct window_mode_entry *wme, u_int py, u_int ny)
 		window_copy_write_line(wme, &ctx, i);
 	screen_write_cursormove(&ctx, data->cx, data->cy, 0);
 	screen_write_stop(&ctx);
+
+	wp->flags |= PANE_REDRAWSCROLLBAR;
 }
 
 static void
@@ -5367,8 +5369,7 @@ window_copy_cursor_previous_word_pos(struct window_mode_entry *wme,
 	py = hsize + data->cy - data->oy;
 
 	grid_reader_start(&gr, back_s->grid, px, py);
-	grid_reader_cursor_previous_word(&gr, separators, /* already= */ 0,
-        /* stop_at_eol= */ 1);
+	grid_reader_cursor_previous_word(&gr, separators, 0, 1);
 	grid_reader_get_cursor(&gr, &px, &py);
 	*ppx = px;
 	*ppy = py;
@@ -5481,6 +5482,7 @@ window_copy_scroll_up(struct window_mode_entry *wme, u_int ny)
 		window_copy_write_line(wme, &ctx, screen_size_y(s) - ny - 1);
 	screen_write_cursormove(&ctx, data->cx, data->cy, 0);
 	screen_write_stop(&ctx);
+	wp->flags |= PANE_REDRAWSCROLLBAR;
 }
 
 static void
@@ -5514,6 +5516,7 @@ window_copy_scroll_down(struct window_mode_entry *wme, u_int ny)
 		window_copy_write_line(wme, &ctx, 1);
 	screen_write_cursormove(&ctx, data->cx, data->cy, 0);
 	screen_write_stop(&ctx);
+	wp->flags |= PANE_REDRAWSCROLLBAR;
 }
 
 static void

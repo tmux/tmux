@@ -748,6 +748,7 @@ struct colour_palette {
 #define CELL_RIGHTJOIN 10
 #define CELL_JOIN 11
 #define CELL_OUTSIDE 12
+#define CELL_SCROLLBAR 13
 
 /* Cell borders. */
 #define CELL_BORDERS " xqlkmjwvtun~"
@@ -1016,6 +1017,9 @@ struct screen_redraw_ctx {
 	int		 pane_status;
 	enum pane_lines	 pane_lines;
 
+	int		 pane_scrollbars;
+	int		 pane_scrollbars_pos;
+
 	struct grid_cell no_pane_gc;
 	int		 no_pane_gc_set;
 
@@ -1134,6 +1138,7 @@ struct window_pane {
 #define PANE_EMPTY 0x800
 #define PANE_STYLECHANGED 0x1000
 #define PANE_UNSEENCHANGES 0x2000
+#define PANE_REDRAWSCROLLBAR 0x4000
 
 	int		 argc;
 	char	       **argv;
@@ -1275,6 +1280,19 @@ TAILQ_HEAD(winlink_stack, winlink);
 #define PANE_STATUS_OFF 0
 #define PANE_STATUS_TOP 1
 #define PANE_STATUS_BOTTOM 2
+
+/* Pane scrollbars option. */
+#define PANE_SCROLLBARS_OFF 0
+#define PANE_SCROLLBARS_MODAL 1
+#define PANE_SCROLLBARS_ALWAYS 2
+
+/* Pane scrollbars position option. */
+#define PANE_SCROLLBARS_RIGHT 0
+#define PANE_SCROLLBARS_LEFT 1
+
+/* Pane scrollbars width and padding. */
+#define PANE_SCROLLBARS_WIDTH 1
+#define PANE_SCROLLBARS_PADDING 0
 
 /* Layout direction. */
 enum layout_type {
@@ -1914,13 +1932,15 @@ struct client {
 #define CLIENT_CLIPBOARDBUFFER 0x800000000ULL
 #define CLIENT_BRACKETPASTING 0x1000000000ULL
 #define CLIENT_ASSUMEPASTING 0x2000000000ULL
+#define CLIENT_REDRAWSCROLLBARS 0x4000000000ULL
 #define CLIENT_ALLREDRAWFLAGS		\
 	(CLIENT_REDRAWWINDOW|		\
 	 CLIENT_REDRAWSTATUS|		\
 	 CLIENT_REDRAWSTATUSALWAYS|	\
 	 CLIENT_REDRAWBORDERS|		\
 	 CLIENT_REDRAWOVERLAY|		\
-	 CLIENT_REDRAWPANES)
+	 CLIENT_REDRAWPANES|		\
+	 CLIENT_REDRAWSCROLLBARS)
 #define CLIENT_UNATTACHEDFLAGS	\
 	(CLIENT_DEAD|		\
 	 CLIENT_SUSPENDED|	\
@@ -1947,6 +1967,7 @@ struct client {
 	key_code		 last_key;
 
 	uint64_t		 redraw_panes;
+	uint64_t		 redraw_scrollbars;
 
 	int			 message_ignore_keys;
 	int			 message_ignore_styles;
@@ -3062,7 +3083,7 @@ void	 screen_write_alternateoff(struct screen_write_ctx *,
 
 /* screen-redraw.c */
 void	 screen_redraw_screen(struct client *);
-void	 screen_redraw_pane(struct client *, struct window_pane *);
+void	 screen_redraw_pane(struct client *, struct window_pane *, int);
 
 /* screen.c */
 void	 screen_init(struct screen *, u_int, u_int, u_int);
