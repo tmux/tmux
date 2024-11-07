@@ -263,7 +263,7 @@ grid_cells_equal(const struct grid_cell *gc1, const struct grid_cell *gc2)
 void
 grid_set_tab(struct grid_cell *gc, u_int width)
 {
-	memset(&gc->data.data, 0, sizeof gc->data);
+	memset(&gc->data.data, 0, sizeof gc->data.data);
 	gc->flags |= GRID_FLAG_TAB;
 	gc->data.width = gc->data.size = gc->data.have = width;
 	memset(&gc->data.data, ' ', gc->data.size);
