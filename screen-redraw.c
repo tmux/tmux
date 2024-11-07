@@ -665,14 +665,15 @@ screen_redraw_screen(struct client *c)
 
 /* Redraw a single pane and its scrollbar. */
 void
-screen_redraw_pane(struct client *c, struct window_pane *wp,
-    int redraw_scrollbar_only)
+screen_redraw_pane(struct client *c, struct window_pane *wp, int redraw_scrollbar_only)
 {
-	struct screen_redraw_ctx	ctx;
-	int				pane_scrollbars, mode;
+	struct screen_redraw_ctx	 ctx;
+	struct screen			*s = wp->screen;
+	int				 alt_screen, mode, pane_scrollbars;
 
 	if (!window_pane_visible(wp))
 		return;
+
 	mode = window_pane_mode(wp);
 
 	screen_redraw_set_context(c, &ctx);
@@ -682,13 +683,12 @@ screen_redraw_pane(struct client *c, struct window_pane *wp,
 	if (!redraw_scrollbar_only)
 		screen_redraw_draw_pane(&ctx, wp);
 
-	/*
-	 * Redraw scrollbar if needed. Always redraw scrollbar in a mode because
-	 * if redrawing a pane, it's because pane has scrolled.
-	 */
+	alt_screen = s->saved_grid != NULL;
+
 	pane_scrollbars = ctx.pane_scrollbars;
-	if (pane_scrollbars == PANE_SCROLLBARS_MODAL &&
-	    mode == WINDOW_PANE_NO_MODE)
+	if (alt_screen ||
+	    (pane_scrollbars == PANE_SCROLLBARS_MODAL &&
+	     mode == WINDOW_PANE_NO_MODE))
 		pane_scrollbars = PANE_SCROLLBARS_OFF;
 	if (pane_scrollbars != PANE_SCROLLBARS_OFF)
 		screen_redraw_draw_pane_scrollbar(&ctx, wp);
@@ -943,10 +943,16 @@ screen_redraw_draw_pane_scrollbars(struct screen_redraw_ctx *ctx)
 	struct client		*c = ctx->c;
 	struct window		*w = c->session->curw->window;
 	struct window_pane	*wp;
+	struct screen	       	*s;
+	int			 alt_screen;
 
 	log_debug("%s: %s @%u", __func__, c->name, w->id);
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
+		s = wp->screen;
+		alt_screen = s->saved_grid != NULL;
+		if (alt_screen)
+			return;
 		switch (ctx->pane_scrollbars) {
 		case PANE_SCROLLBARS_OFF:
 			return;

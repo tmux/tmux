@@ -577,7 +577,7 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 	struct window_pane	*wp, *fwp;
 	u_int			 x, y, b, sx, sy, px, py, line = 0, sb_pos;
 	u_int			 sl_top, sl_bottom, sl_mpos = 0;
-	int			 ignore = 0, sb, sb_w, pane_status;
+	int			 ignore = 0, sb, sb_w, pane_status, alt_screen;
 	key_code		 key;
 	struct timeval		 tv;
 	struct style_range	*sr;
@@ -781,9 +781,11 @@ have_event:
 			sb = options_get_number(wo, "pane-scrollbars");
 			sb_pos = options_get_number(wo,
 			    "pane-scrollbars-position");
-			if (sb == PANE_SCROLLBARS_ALWAYS ||
+			alt_screen = wp->screen->saved_grid != NULL;
+			if (!alt_screen &&
+			    (sb == PANE_SCROLLBARS_ALWAYS ||
 			    (sb == PANE_SCROLLBARS_MODAL &&
-			    window_pane_mode(wp) != WINDOW_PANE_NO_MODE))
+			    window_pane_mode(wp) != WINDOW_PANE_NO_MODE)))
 				sb_w = PANE_SCROLLBARS_WIDTH;
 			else
 				sb_w = 0;
