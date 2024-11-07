@@ -2235,7 +2235,17 @@ screen_write_overwrite(struct screen_write_ctx *ctx, struct grid_cell *gc,
 				break;
 			log_debug("%s: overwrite at %u,%u", __func__, xx,
 			    s->cy);
-			grid_view_set_cell(gd, xx, s->cy, &grid_default_cell);
+			if (gc->flags & GRID_FLAG_TAB) {
+				memcpy(&tmp_gc, gc, sizeof tmp_gc);
+				memset(tmp_gc.data.data, 0,
+				    sizeof tmp_gc.data.data);
+				*tmp_gc.data.data = ' ';
+				tmp_gc.data.width = tmp_gc.data.size =
+				    tmp_gc.data.have = 1;
+				grid_view_set_cell(gd, xx, s->cy, &tmp_gc);
+			} else
+				grid_view_set_cell(gd, xx, s->cy,
+				    &grid_default_cell);
 			done = 1;
 		}
 	}
