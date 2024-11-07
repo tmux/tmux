@@ -36,7 +36,6 @@ static void	screen_redraw_draw_scrollbar(struct screen_redraw_ctx *,
 static void	screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *,
 		    struct window_pane *);
 
-
 #define START_ISOLATE "\342\201\246"
 #define END_ISOLATE   "\342\201\251"
 
