@@ -2402,22 +2402,31 @@ The synopsis for the
 command is:
 .Bl -tag -width Ds
 .It Xo Ic copy-mode
-.Op Fl deHMqu
+.Op Fl deHMqSu
 .Op Fl s Ar src-pane
 .Op Fl t Ar target-pane
 .Xc
 Enter copy mode.
+.Pp
 .Fl u
-also scrolls one page up after entering and
+enters copy mode and scrolls one page up and
 .Fl d
-one page down if already in copy mode.
-.Fl M
-begins a mouse drag (only valid if bound to a mouse key binding, see
-.Sx MOUSE SUPPORT ) .
+one page down.
 .Fl H
 hides the position indicator in the top right.
 .Fl q
 cancels copy mode and any other modes.
+.Pp
+.Fl M
+begins a mouse drag (only valid if bound to a mouse key binding, see
+.Sx MOUSE SUPPORT ) .
+.Fl S
+scrolls when bound to a mouse drag event; for example,
+.Ic copy-mode -Se
+is bound to
+.Ar MouseDrag1ScrollbarSlider
+by default.
+.Pp
 .Fl s
 copies from
 .Ar src-pane
@@ -5440,6 +5449,9 @@ and a location suffix, one of the following:
 .It Li "StatusLeft" Ta "the left part of the status line"
 .It Li "StatusRight" Ta "the right part of the status line"
 .It Li "StatusDefault" Ta "any other part of the status line"
+.It Li "ScrollbarSlider" Ta "the scrollbar slider"
+.It Li "ScrollbarUp" Ta "above the scrollbar slider"
+.It Li "ScrollbarDown" Ta "below the scrollbar slider"
 .El
 .Pp
 The following mouse events are available:

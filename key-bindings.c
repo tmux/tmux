@@ -478,6 +478,11 @@ key_bindings_init(void)
 		"bind -n MouseDown3Pane { if -Ft= '#{||:#{mouse_any_flag},#{&&:#{pane_in_mode},#{?#{m/r:(copy|view)-mode,#{pane_mode}},0,1}}}' { select-pane -t=; send -M } { display-menu -t= -xM -yM -T '#[align=centre]#{pane_index} (#{pane_id})' " DEFAULT_PANE_MENU " } }",
 		"bind -n M-MouseDown3Pane { display-menu -t= -xM -yM -T '#[align=centre]#{pane_index} (#{pane_id})' " DEFAULT_PANE_MENU " }",
 
+		/* Mouse on scrollbar. */
+		"bind -n MouseDown1ScrollbarUp { copy-mode -u }",
+		"bind -n MouseDown1ScrollbarDown { copy-mode -d }",
+		"bind -n MouseDrag1ScrollbarSlider { copy-mode -S }",
+
 		/* Copy mode (emacs) keys. */
 		"bind -Tcopy-mode C-Space { send -X begin-selection }",
 		"bind -Tcopy-mode C-a { send -X start-of-line }",
