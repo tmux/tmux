@@ -872,6 +872,9 @@ struct style_range {
 };
 TAILQ_HEAD(style_ranges, style_range);
 
+#define STYLE_WIDTH_DEFAULT -1
+#define STYLE_PAD_DEFAULT -1
+
 /* Style default. */
 enum style_default_type {
 	STYLE_DEFAULT_BASE,
@@ -891,6 +894,9 @@ struct style {
 	enum style_range_type	range_type;
 	u_int			range_argument;
 	char			range_string[16];
+
+	int			width;
+	int			pad;
 
 	enum style_default_type	default_type;
 };
@@ -1195,6 +1201,8 @@ struct window_pane {
 	int		 control_bg;
 	int		 control_fg;
 
+	struct style	*scrollbar_style;
+
 	TAILQ_ENTRY(window_pane) entry;  /* link in list of all panes */
 	TAILQ_ENTRY(window_pane) sentry; /* link in list of last visited */
 	RB_ENTRY(window_pane) tree_entry;
@@ -1300,8 +1308,10 @@ TAILQ_HEAD(winlink_stack, winlink);
 #define PANE_SCROLLBARS_LEFT 1
 
 /* Pane scrollbars width and padding. */
-#define PANE_SCROLLBARS_WIDTH 1
-#define PANE_SCROLLBARS_PADDING 0
+#define PANE_SCROLLBARS_DEFAULT_PADDING 0
+#define PANE_SCROLLBARS_DEFAULT_WIDTH 1
+
+#define PANE_SCROLLBARS_CHARACTER ' '
 
 /* Layout direction. */
 enum layout_type {

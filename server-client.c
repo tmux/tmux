@@ -784,7 +784,7 @@ have_event:
 			if (sb == PANE_SCROLLBARS_ALWAYS ||
 			    (sb == PANE_SCROLLBARS_MODAL &&
 			    window_pane_mode(wp) != WINDOW_PANE_NO_MODE))
-				sb_w = PANE_SCROLLBARS_WIDTH;
+				 sb_w = wp->scrollbar_style->width;
 			else
 				sb_w = 0;
 			pane_status = options_get_number(wo,

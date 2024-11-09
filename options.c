@@ -1124,6 +1124,7 @@ options_push_changes(const char *name)
 	struct session		*s;
 	struct window		*w;
 	struct window_pane	*wp;
+	struct style		*sy;
 
 	log_debug("%s: %s", __func__, name);
 
@@ -1177,6 +1178,20 @@ options_push_changes(const char *name)
 		RB_FOREACH(w, windows, &windows)
 			layout_fix_panes(w, NULL);
 	}
+	if (strcmp(name, "pane-scrollbars-style") == 0) {
+		RB_FOREACH(wp, window_pane_tree, &all_window_panes) {
+			sy = options_string_to_style(wp->options, name, NULL);
+			if (sy->width < 1)
+				sy->width = PANE_SCROLLBARS_DEFAULT_WIDTH;
+			if (sy->pad < 0)
+				sy->pad = PANE_SCROLLBARS_DEFAULT_PADDING;
+			utf8_set(&sy->gc.data, PANE_SCROLLBARS_CHARACTER);
+			wp->scrollbar_style = sy;
+		}
+		RB_FOREACH(w, windows, &windows)
+			layout_fix_panes(w, NULL);
+	}
+
 	RB_FOREACH(s, sessions, &sessions)
 		status_update_cache(s);
 
