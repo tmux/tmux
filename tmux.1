@@ -4141,6 +4141,9 @@ option.
 If not empty, a file to which
 .Nm
 will write command prompt history on exit and load it from on start.
+.It Ic input-buffer-size Ar bytes
+Maximum of bytes allowed to read in escape and control sequences.
+Once reached, the sequence will be discarded.
 .It Ic message-limit Ar number
 Set the number of error or information messages to save in the message log for
 each client.
