@@ -93,7 +93,6 @@ struct input_ctx {
 	size_t			param_len;
 
 #define INPUT_BUF_START 32
-#define INPUT_BUF_LIMIT 1048576
 	u_char		       *input_buf;
 	size_t			input_len;
 	size_t			input_space;
@@ -729,6 +728,9 @@ static const struct input_transition input_state_consume_st_table[] = {
 	{ -1, -1, NULL, NULL }
 };
 
+/* Maximum of bytes allowed to read in a single input. */
+static size_t input_buffer_size = INPUT_BUF_DEFAULT_SIZE;
+
 /* Input table compare. */
 static int
 input_table_compare(const void *key, const void *value)
@@ -1193,7 +1195,7 @@ input_input(struct input_ctx *ictx)
 	available = ictx->input_space;
 	while (ictx->input_len + 1 >= available) {
 		available *= 2;
-		if (available > INPUT_BUF_LIMIT) {
+		if (available > input_buffer_size) {
 			ictx->flags |= INPUT_DISCARD;
 			return (0);
 		}
@@ -3016,4 +3018,12 @@ input_reply_clipboard(struct bufferevent *bev, const char *buf, size_t len,
 		bufferevent_write(bev, out, outlen);
 	bufferevent_write(bev, end, strlen(end));
 	free(out);
+}
+
+/* Set input buffer size. */
+void
+input_set_buffer_size(size_t buffer_size)
+{
+	log_debug("%s: %lu -> %lu", __func__, input_buffer_size, buffer_size);
+	input_buffer_size = buffer_size;
 }
