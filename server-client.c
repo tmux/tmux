@@ -572,10 +572,12 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 {
 	struct mouse_event	*m = &event->m;
 	struct session		*s = c->session, *fs;
+	struct options		*wo = s->curw->window->options;
 	struct winlink		*fwl;
 	struct window_pane	*wp, *fwp;
-	u_int			 x, y, b, sx, sy, px, py;
-	int			 ignore = 0;
+	u_int			 x, y, b, sx, sy, px, py, line = 0, sb_pos;
+	u_int			 sl_top, sl_bottom, sl_mpos = 0;
+	int			 ignore = 0, sb, sb_w, pane_status;
 	key_code		 key;
 	struct timeval		 tv;
 	struct style_range	*sr;
@@ -594,7 +596,10 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 	       STATUS_LEFT,
 	       STATUS_RIGHT,
 	       STATUS_DEFAULT,
-	       BORDER } where = NOWHERE;
+	       BORDER,
+	       SCROLLBAR_UP,
+	       SCROLLBAR_SLIDER,
+	       SCROLLBAR_DOWN } where = NOWHERE;
 
 	log_debug("%s mouse %02x at %u,%u (last %u,%u) (%d)", c->name, m->b,
 	    m->x, m->y, m->lx, m->ly, c->tty.mouse_drag_flag);
@@ -743,54 +748,114 @@ have_event:
 		}
 	}
 
-	/* Not on status line. Adjust position and check for border or pane. */
+	/*
+	 * Not on status line. Adjust position and check for border, pane, or
+	 * scrollbar.
+	 */
 	if (where == NOWHERE) {
-		px = x;
-		if (m->statusat == 0 && y >= m->statuslines)
-			py = y - m->statuslines;
-		else if (m->statusat > 0 && y >= (u_int)m->statusat)
-			py = m->statusat - 1;
-		else
-			py = y;
-
-		tty_window_offset(&c->tty, &m->ox, &m->oy, &sx, &sy);
-		log_debug("mouse window @%u at %u,%u (%ux%u)",
-		    s->curw->window->id, m->ox, m->oy, sx, sy);
-		if (px > sx || py > sy)
-			return (KEYC_UNKNOWN);
-		px = px + m->ox;
-		py = py + m->oy;
-
-		/* Try the pane borders if not zoomed. */
-		if (~s->curw->window->flags & WINDOW_ZOOMED) {
-			TAILQ_FOREACH(wp, &s->curw->window->panes, entry) {
-				if ((wp->xoff + wp->sx == px &&
-				    wp->yoff <= 1 + py &&
-				    wp->yoff + wp->sy >= py) ||
-				    (wp->yoff + wp->sy == py &&
-				    wp->xoff <= 1 + px &&
-				    wp->xoff + wp->sx >= px))
-					break;
-			}
-			if (wp != NULL)
-				where = BORDER;
-		}
-
-		/* Otherwise try inside the pane. */
-		if (where == NOWHERE) {
-			wp = window_get_active_at(s->curw->window, px, py);
-			if (wp != NULL)
-				where = PANE;
+		if (c->tty.mouse_scrolling_flag)
+			where = SCROLLBAR_SLIDER;
+		else {
+			px = x;
+			if (m->statusat == 0 && y >= m->statuslines)
+				py = y - m->statuslines;
+			else if (m->statusat > 0 && y >= (u_int)m->statusat)
+				py = m->statusat - 1;
 			else
+				py = y;
+
+			tty_window_offset(&c->tty, &m->ox, &m->oy, &sx, &sy);
+			log_debug("mouse window @%u at %u,%u (%ux%u)",
+				  s->curw->window->id, m->ox, m->oy, sx, sy);
+			if (px > sx || py > sy)
 				return (KEYC_UNKNOWN);
+			px = px + m->ox;
+			py = py + m->oy;
+
+			/* Try inside the pane. */
+			wp = window_get_active_at(s->curw->window, px, py);
+			if (wp == NULL)
+				return (KEYC_UNKNOWN);
+
+			/* Try the scrollbar next to a pane. */
+			sb = options_get_number(wo, "pane-scrollbars");
+			sb_pos = options_get_number(wo,
+			    "pane-scrollbars-position");
+			if (sb == PANE_SCROLLBARS_ALWAYS ||
+			    (sb == PANE_SCROLLBARS_MODAL &&
+			    window_pane_mode(wp) != WINDOW_PANE_NO_MODE))
+				sb_w = PANE_SCROLLBARS_WIDTH;
+			else
+				sb_w = 0;
+			pane_status = options_get_number(wo,
+			    "pane-border-status");
+			if (pane_status == PANE_STATUS_TOP)
+				line = wp->yoff - 1;
+			else if (pane_status == PANE_STATUS_BOTTOM)
+				line = wp->yoff + wp->sy;
+
+			/*
+			 * Check if py could lie within a scrollbar. If the
+			 * pane is at the top, then py is 0; if not then the
+			 * top, then yoff to yoff + sy.
+			 */
+			if ((pane_status != PANE_STATUS_OFF && py != line) ||
+			    (wp->yoff == 0 && py < wp->sy) ||
+			    (py >= wp->yoff && py < wp->yoff + wp->sy)) {
+				if ((sb_pos == PANE_SCROLLBARS_RIGHT &&
+				    (px >= wp->xoff + wp->sx &&
+				    px < wp->xoff + wp->sx + sb_w)) ||
+				    (sb_pos == PANE_SCROLLBARS_LEFT &&
+				    (px >= wp->xoff - sb_w &&
+				    px < wp->xoff))) {
+					sl_top = wp->yoff + wp->sb_slider_y;
+					sl_bottom = (wp->yoff +
+					    wp->sb_slider_y +
+					    wp->sb_slider_h - 1);
+					if (py < sl_top)
+						where = SCROLLBAR_UP;
+					else if (py >= sl_top &&
+					    py <= sl_bottom) {
+						where = SCROLLBAR_SLIDER;
+						sl_mpos = (py -
+						    wp->sb_slider_y - wp->yoff);
+					} else /* py > sl_bottom */
+						where = SCROLLBAR_DOWN;
+				} else
+					where = PANE;
+			} else {
+				/* Try the pane borders if not zoomed. */
+				if (~s->curw->window->flags & WINDOW_ZOOMED) {
+					TAILQ_FOREACH(wp,
+					    &s->curw->window->panes, entry) {
+						if ((wp->xoff + wp->sx == px &&
+						    wp->yoff <= 1 + py &&
+						    wp->yoff + wp->sy >= py) ||
+						    (wp->yoff + wp->sy == py &&
+						    wp->xoff <= 1 + px &&
+						    wp->xoff + wp->sx >= px))
+							break;
+					}
+					if (wp != NULL)
+						where = BORDER;
+				}
+			}
+			if (where == PANE) {
+				log_debug("mouse %u,%u on pane %%%u", x, y,
+				    wp->id);
+			} else if (where == BORDER)
+				log_debug("mouse on pane %%%u border", wp->id);
+			else if (where == SCROLLBAR_UP ||
+			    where == SCROLLBAR_SLIDER ||
+			    where == SCROLLBAR_DOWN) {
+				log_debug("mouse on pane %%%u scrollbar",
+				    wp->id);
+			}
+			m->wp = wp->id;
+			m->w = wp->window->id;
 		}
-		if (where == PANE)
-			log_debug("mouse %u,%u on pane %%%u", x, y, wp->id);
-		else if (where == BORDER)
-			log_debug("mouse on pane %%%u border", wp->id);
-		m->wp = wp->id;
-		m->w = wp->window->id;
-	}
+	} else
+		m->wp = -1;
 
 	/* Stop dragging if needed. */
 	if (type != DRAG && type != WHEEL && c->tty.mouse_drag_flag != 0) {
@@ -799,6 +864,7 @@ have_event:
 
 		c->tty.mouse_drag_update = NULL;
 		c->tty.mouse_drag_release = NULL;
+		c->tty.mouse_scrolling_flag = 0;
 
 		/*
 		 * End a mouse drag by passing a MouseDragEnd key corresponding
@@ -816,6 +882,8 @@ have_event:
 				key = KEYC_MOUSEDRAGEND1_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_MOUSEDRAGEND1_STATUS_DEFAULT;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_MOUSEDRAGEND1_SCROLLBAR_SLIDER;
 			if (where == BORDER)
 				key = KEYC_MOUSEDRAGEND1_BORDER;
 			break;
@@ -830,6 +898,8 @@ have_event:
 				key = KEYC_MOUSEDRAGEND2_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_MOUSEDRAGEND2_STATUS_DEFAULT;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_MOUSEDRAGEND2_SCROLLBAR_SLIDER;
 			if (where == BORDER)
 				key = KEYC_MOUSEDRAGEND2_BORDER;
 			break;
@@ -844,6 +914,8 @@ have_event:
 				key = KEYC_MOUSEDRAGEND3_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_MOUSEDRAGEND3_STATUS_DEFAULT;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_MOUSEDRAGEND3_SCROLLBAR_SLIDER;
 			if (where == BORDER)
 				key = KEYC_MOUSEDRAGEND3_BORDER;
 			break;
@@ -858,6 +930,8 @@ have_event:
 				key = KEYC_MOUSEDRAGEND6_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_MOUSEDRAGEND6_STATUS_DEFAULT;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_MOUSEDRAGEND6_SCROLLBAR_SLIDER;
 			if (where == BORDER)
 				key = KEYC_MOUSEDRAGEND6_BORDER;
 			break;
@@ -872,6 +946,8 @@ have_event:
 				key = KEYC_MOUSEDRAGEND7_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_MOUSEDRAGEND7_STATUS_DEFAULT;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_MOUSEDRAGEND7_SCROLLBAR_SLIDER;
 			if (where == BORDER)
 				key = KEYC_MOUSEDRAGEND7_BORDER;
 			break;
@@ -886,6 +962,8 @@ have_event:
 				key = KEYC_MOUSEDRAGEND8_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_MOUSEDRAGEND8_STATUS_DEFAULT;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_MOUSEDRAGEND8_SCROLLBAR_SLIDER;
 			if (where == BORDER)
 				key = KEYC_MOUSEDRAGEND8_BORDER;
 			break;
@@ -900,6 +978,8 @@ have_event:
 				key = KEYC_MOUSEDRAGEND9_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_MOUSEDRAGEND9_STATUS_DEFAULT;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_MOUSEDRAGEND9_SCROLLBAR_SLIDER;
 			if (where == BORDER)
 				key = KEYC_MOUSEDRAGEND9_BORDER;
 			break;
@@ -914,6 +994,8 @@ have_event:
 				key = KEYC_MOUSEDRAGEND10_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_MOUSEDRAGEND10_STATUS_DEFAULT;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_MOUSEDRAGEND10_SCROLLBAR_SLIDER;
 			if (where == BORDER)
 				key = KEYC_MOUSEDRAGEND10_BORDER;
 			break;
@@ -928,6 +1010,8 @@ have_event:
 				key = KEYC_MOUSEDRAGEND11_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_MOUSEDRAGEND11_STATUS_DEFAULT;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_MOUSEDRAGEND11_SCROLLBAR_SLIDER;
 			if (where == BORDER)
 				key = KEYC_MOUSEDRAGEND11_BORDER;
 			break;
@@ -936,6 +1020,7 @@ have_event:
 			break;
 		}
 		c->tty.mouse_drag_flag = 0;
+		c->tty.mouse_slider_mpos = -1;
 		goto out;
 	}
 
@@ -974,6 +1059,12 @@ have_event:
 					key = KEYC_MOUSEDRAG1_STATUS_RIGHT;
 				if (where == STATUS_DEFAULT)
 					key = KEYC_MOUSEDRAG1_STATUS_DEFAULT;
+				if (where == SCROLLBAR_UP)
+					key = KEYC_MOUSEDRAG1_SCROLLBAR_UP;
+				if (where == SCROLLBAR_SLIDER)
+					key = KEYC_MOUSEDRAG1_SCROLLBAR_SLIDER;
+				if (where == SCROLLBAR_DOWN)
+					key = KEYC_MOUSEDRAG1_SCROLLBAR_DOWN;
 				if (where == BORDER)
 					key = KEYC_MOUSEDRAG1_BORDER;
 				break;
@@ -988,6 +1079,12 @@ have_event:
 					key = KEYC_MOUSEDRAG2_STATUS_RIGHT;
 				if (where == STATUS_DEFAULT)
 					key = KEYC_MOUSEDRAG2_STATUS_DEFAULT;
+				if (where == SCROLLBAR_UP)
+					key = KEYC_MOUSEDRAG2_SCROLLBAR_UP;
+				if (where == SCROLLBAR_SLIDER)
+					key = KEYC_MOUSEDRAG2_SCROLLBAR_SLIDER;
+				if (where == SCROLLBAR_DOWN)
+					key = KEYC_MOUSEDRAG2_SCROLLBAR_DOWN;
 				if (where == BORDER)
 					key = KEYC_MOUSEDRAG2_BORDER;
 				break;
@@ -1002,6 +1099,12 @@ have_event:
 					key = KEYC_MOUSEDRAG3_STATUS_RIGHT;
 				if (where == STATUS_DEFAULT)
 					key = KEYC_MOUSEDRAG3_STATUS_DEFAULT;
+				if (where == SCROLLBAR_UP)
+					key = KEYC_MOUSEDRAG3_SCROLLBAR_UP;
+				if (where == SCROLLBAR_SLIDER)
+					key = KEYC_MOUSEDRAG3_SCROLLBAR_SLIDER;
+				if (where == SCROLLBAR_DOWN)
+					key = KEYC_MOUSEDRAG3_SCROLLBAR_DOWN;
 				if (where == BORDER)
 					key = KEYC_MOUSEDRAG3_BORDER;
 				break;
@@ -1016,6 +1119,12 @@ have_event:
 					key = KEYC_MOUSEDRAG6_STATUS_RIGHT;
 				if (where == STATUS_DEFAULT)
 					key = KEYC_MOUSEDRAG6_STATUS_DEFAULT;
+				if (where == SCROLLBAR_UP)
+					key = KEYC_MOUSEDRAG6_SCROLLBAR_UP;
+				if (where == SCROLLBAR_SLIDER)
+					key = KEYC_MOUSEDRAG6_SCROLLBAR_SLIDER;
+				if (where == SCROLLBAR_DOWN)
+					key = KEYC_MOUSEDRAG6_SCROLLBAR_DOWN;
 				if (where == BORDER)
 					key = KEYC_MOUSEDRAG6_BORDER;
 				break;
@@ -1030,6 +1139,12 @@ have_event:
 					key = KEYC_MOUSEDRAG7_STATUS_RIGHT;
 				if (where == STATUS_DEFAULT)
 					key = KEYC_MOUSEDRAG7_STATUS_DEFAULT;
+				if (where == SCROLLBAR_UP)
+					key = KEYC_MOUSEDRAG7_SCROLLBAR_UP;
+				if (where == SCROLLBAR_SLIDER)
+					key = KEYC_MOUSEDRAG7_SCROLLBAR_SLIDER;
+				if (where == SCROLLBAR_DOWN)
+					key = KEYC_MOUSEDRAG7_SCROLLBAR_DOWN;
 				if (where == BORDER)
 					key = KEYC_MOUSEDRAG7_BORDER;
 				break;
@@ -1044,6 +1159,12 @@ have_event:
 					key = KEYC_MOUSEDRAG8_STATUS_RIGHT;
 				if (where == STATUS_DEFAULT)
 					key = KEYC_MOUSEDRAG8_STATUS_DEFAULT;
+				if (where == SCROLLBAR_UP)
+					key = KEYC_MOUSEDRAG8_SCROLLBAR_UP;
+				if (where == SCROLLBAR_SLIDER)
+					key = KEYC_MOUSEDRAG8_SCROLLBAR_SLIDER;
+				if (where == SCROLLBAR_DOWN)
+					key = KEYC_MOUSEDRAG8_SCROLLBAR_DOWN;
 				if (where == BORDER)
 					key = KEYC_MOUSEDRAG8_BORDER;
 				break;
@@ -1058,6 +1179,12 @@ have_event:
 					key = KEYC_MOUSEDRAG9_STATUS_RIGHT;
 				if (where == STATUS_DEFAULT)
 					key = KEYC_MOUSEDRAG9_STATUS_DEFAULT;
+				if (where == SCROLLBAR_UP)
+					key = KEYC_MOUSEDRAG9_SCROLLBAR_UP;
+				if (where == SCROLLBAR_SLIDER)
+					key = KEYC_MOUSEDRAG9_SCROLLBAR_SLIDER;
+				if (where == SCROLLBAR_DOWN)
+					key = KEYC_MOUSEDRAG9_SCROLLBAR_DOWN;
 				if (where == BORDER)
 					key = KEYC_MOUSEDRAG9_BORDER;
 				break;
@@ -1072,6 +1199,12 @@ have_event:
 					key = KEYC_MOUSEDRAG10_STATUS_RIGHT;
 				if (where == STATUS_DEFAULT)
 					key = KEYC_MOUSEDRAG10_STATUS_DEFAULT;
+				if (where == SCROLLBAR_UP)
+					key = KEYC_MOUSEDRAG10_SCROLLBAR_UP;
+				if (where == SCROLLBAR_SLIDER)
+					key = KEYC_MOUSEDRAG10_SCROLLBAR_SLIDER;
+				if (where == SCROLLBAR_DOWN)
+					key = KEYC_MOUSEDRAG10_SCROLLBAR_DOWN;
 				if (where == BORDER)
 					key = KEYC_MOUSEDRAG10_BORDER;
 				break;
@@ -1086,6 +1219,12 @@ have_event:
 					key = KEYC_MOUSEDRAG11_STATUS_RIGHT;
 				if (where == STATUS_DEFAULT)
 					key = KEYC_MOUSEDRAG11_STATUS_DEFAULT;
+				if (where == SCROLLBAR_UP)
+					key = KEYC_MOUSEDRAG11_SCROLLBAR_UP;
+				if (where == SCROLLBAR_SLIDER)
+					key = KEYC_MOUSEDRAG11_SCROLLBAR_SLIDER;
+				if (where == SCROLLBAR_DOWN)
+					key = KEYC_MOUSEDRAG11_SCROLLBAR_DOWN;
 				if (where == BORDER)
 					key = KEYC_MOUSEDRAG11_BORDER;
 				break;
@@ -1094,9 +1233,16 @@ have_event:
 
 		/*
 		 * Begin a drag by setting the flag to a non-zero value that
-		 * corresponds to the mouse button in use.
+		 * corresponds to the mouse button in use. If starting to drag
+		 * the scrollbar, store the relative position in the slider
+		 * where the user grabbed.
 		 */
 		c->tty.mouse_drag_flag = MOUSE_BUTTONS(b) + 1;
+		if (c->tty.mouse_scrolling_flag == 0 &&
+		    where == SCROLLBAR_SLIDER) {
+			c->tty.mouse_scrolling_flag = 1;
+			c->tty.mouse_slider_mpos = sl_mpos;
+		}
 		break;
 	case WHEEL:
 		if (MOUSE_BUTTONS(b) == MOUSE_WHEEL_UP) {
@@ -1140,6 +1286,12 @@ have_event:
 				key = KEYC_MOUSEUP1_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_MOUSEUP1_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_MOUSEUP1_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_MOUSEUP1_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_MOUSEUP1_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_MOUSEUP1_BORDER;
 			break;
@@ -1154,6 +1306,12 @@ have_event:
 				key = KEYC_MOUSEUP2_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_MOUSEUP2_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_MOUSEUP2_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_MOUSEUP2_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_MOUSEUP2_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_MOUSEUP2_BORDER;
 			break;
@@ -1168,6 +1326,12 @@ have_event:
 				key = KEYC_MOUSEUP3_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_MOUSEUP3_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_MOUSEUP3_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_MOUSEUP3_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_MOUSEUP3_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_MOUSEUP3_BORDER;
 			break;
@@ -1182,6 +1346,12 @@ have_event:
 				key = KEYC_MOUSEUP6_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_MOUSEUP6_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_MOUSEUP6_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_MOUSEUP6_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_MOUSEUP6_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_MOUSEUP6_BORDER;
 			break;
@@ -1196,6 +1366,12 @@ have_event:
 				key = KEYC_MOUSEUP7_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_MOUSEUP7_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_MOUSEUP7_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_MOUSEUP7_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_MOUSEUP7_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_MOUSEUP7_BORDER;
 			break;
@@ -1210,6 +1386,12 @@ have_event:
 				key = KEYC_MOUSEUP8_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_MOUSEUP8_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_MOUSEUP8_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_MOUSEUP8_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_MOUSEUP8_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_MOUSEUP8_BORDER;
 			break;
@@ -1224,6 +1406,12 @@ have_event:
 				key = KEYC_MOUSEUP9_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_MOUSEUP9_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_MOUSEUP9_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_MOUSEUP9_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_MOUSEUP9_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_MOUSEUP9_BORDER;
 			break;
@@ -1237,7 +1425,13 @@ have_event:
 			if (where == STATUS_RIGHT)
 				key = KEYC_MOUSEUP1_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
-				key = KEYC_MOUSEUP1_STATUS_DEFAULT;
+				key = KEYC_MOUSEUP10_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_MOUSEUP10_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_MOUSEUP10_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_MOUSEUP1_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_MOUSEUP1_BORDER;
 			break;
@@ -1252,6 +1446,12 @@ have_event:
 				key = KEYC_MOUSEUP11_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_MOUSEUP11_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_MOUSEUP11_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_MOUSEUP11_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_MOUSEUP11_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_MOUSEUP11_BORDER;
 			break;
@@ -1270,6 +1470,12 @@ have_event:
 				key = KEYC_MOUSEDOWN1_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_MOUSEDOWN1_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_MOUSEDOWN1_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_MOUSEDOWN1_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_MOUSEDOWN1_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_MOUSEDOWN1_BORDER;
 			break;
@@ -1284,6 +1490,12 @@ have_event:
 				key = KEYC_MOUSEDOWN2_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_MOUSEDOWN2_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_MOUSEDOWN2_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_MOUSEDOWN2_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_MOUSEDOWN2_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_MOUSEDOWN2_BORDER;
 			break;
@@ -1298,6 +1510,12 @@ have_event:
 				key = KEYC_MOUSEDOWN3_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_MOUSEDOWN3_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_MOUSEDOWN3_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_MOUSEDOWN3_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_MOUSEDOWN3_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_MOUSEDOWN3_BORDER;
 			break;
@@ -1312,6 +1530,12 @@ have_event:
 				key = KEYC_MOUSEDOWN6_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_MOUSEDOWN6_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_MOUSEDOWN6_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_MOUSEDOWN6_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_MOUSEDOWN6_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_MOUSEDOWN6_BORDER;
 			break;
@@ -1326,6 +1550,12 @@ have_event:
 				key = KEYC_MOUSEDOWN7_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_MOUSEDOWN7_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_MOUSEDOWN7_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_MOUSEDOWN7_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_MOUSEDOWN7_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_MOUSEDOWN7_BORDER;
 			break;
@@ -1340,6 +1570,12 @@ have_event:
 				key = KEYC_MOUSEDOWN8_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_MOUSEDOWN8_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_MOUSEDOWN8_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_MOUSEDOWN8_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_MOUSEDOWN8_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_MOUSEDOWN8_BORDER;
 			break;
@@ -1354,6 +1590,12 @@ have_event:
 				key = KEYC_MOUSEDOWN9_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_MOUSEDOWN9_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_MOUSEDOWN9_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_MOUSEDOWN9_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_MOUSEDOWN9_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_MOUSEDOWN9_BORDER;
 			break;
@@ -1368,6 +1610,12 @@ have_event:
 				key = KEYC_MOUSEDOWN10_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_MOUSEDOWN10_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_MOUSEDOWN10_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_MOUSEDOWN10_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_MOUSEDOWN10_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_MOUSEDOWN10_BORDER;
 			break;
@@ -1382,6 +1630,12 @@ have_event:
 				key = KEYC_MOUSEDOWN11_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_MOUSEDOWN11_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_MOUSEDOWN11_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_MOUSEDOWN11_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_MOUSEDOWN11_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_MOUSEDOWN11_BORDER;
 			break;
@@ -1400,6 +1654,12 @@ have_event:
 				key = KEYC_SECONDCLICK1_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_SECONDCLICK1_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_SECONDCLICK1_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_SECONDCLICK1_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_SECONDCLICK1_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_SECONDCLICK1_BORDER;
 			break;
@@ -1414,6 +1674,12 @@ have_event:
 				key = KEYC_SECONDCLICK2_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_SECONDCLICK2_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_SECONDCLICK2_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_SECONDCLICK2_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_SECONDCLICK2_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_SECONDCLICK2_BORDER;
 			break;
@@ -1428,6 +1694,12 @@ have_event:
 				key = KEYC_SECONDCLICK3_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_SECONDCLICK3_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_SECONDCLICK3_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_SECONDCLICK3_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_SECONDCLICK3_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_SECONDCLICK3_BORDER;
 			break;
@@ -1442,6 +1714,12 @@ have_event:
 				key = KEYC_SECONDCLICK6_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_SECONDCLICK6_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_SECONDCLICK6_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_SECONDCLICK6_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_SECONDCLICK6_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_SECONDCLICK6_BORDER;
 			break;
@@ -1456,6 +1734,12 @@ have_event:
 				key = KEYC_SECONDCLICK7_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_SECONDCLICK7_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_SECONDCLICK7_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_SECONDCLICK7_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_SECONDCLICK7_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_SECONDCLICK7_BORDER;
 			break;
@@ -1470,6 +1754,12 @@ have_event:
 				key = KEYC_SECONDCLICK8_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_SECONDCLICK8_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_SECONDCLICK8_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_SECONDCLICK8_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_SECONDCLICK8_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_SECONDCLICK8_BORDER;
 			break;
@@ -1484,6 +1774,12 @@ have_event:
 				key = KEYC_SECONDCLICK9_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_SECONDCLICK9_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_SECONDCLICK9_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_SECONDCLICK9_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_SECONDCLICK9_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_SECONDCLICK9_BORDER;
 			break;
@@ -1498,6 +1794,12 @@ have_event:
 				key = KEYC_SECONDCLICK10_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_SECONDCLICK10_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_SECONDCLICK10_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_SECONDCLICK10_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_SECONDCLICK10_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_SECONDCLICK10_BORDER;
 			break;
@@ -1512,6 +1814,12 @@ have_event:
 				key = KEYC_SECONDCLICK11_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_SECONDCLICK11_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_SECONDCLICK11_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_SECONDCLICK11_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_SECONDCLICK11_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_SECONDCLICK11_BORDER;
 			break;
@@ -1530,6 +1838,12 @@ have_event:
 				key = KEYC_DOUBLECLICK1_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_DOUBLECLICK1_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_DOUBLECLICK1_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_DOUBLECLICK1_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_DOUBLECLICK1_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_DOUBLECLICK1_BORDER;
 			break;
@@ -1544,6 +1858,12 @@ have_event:
 				key = KEYC_DOUBLECLICK2_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_DOUBLECLICK2_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_DOUBLECLICK2_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_DOUBLECLICK2_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_DOUBLECLICK2_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_DOUBLECLICK2_BORDER;
 			break;
@@ -1558,6 +1878,12 @@ have_event:
 				key = KEYC_DOUBLECLICK3_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_DOUBLECLICK3_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_DOUBLECLICK3_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_DOUBLECLICK3_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_DOUBLECLICK3_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_DOUBLECLICK3_BORDER;
 			break;
@@ -1572,6 +1898,12 @@ have_event:
 				key = KEYC_DOUBLECLICK6_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_DOUBLECLICK6_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_DOUBLECLICK6_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_DOUBLECLICK6_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_DOUBLECLICK6_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_DOUBLECLICK6_BORDER;
 			break;
@@ -1586,6 +1918,12 @@ have_event:
 				key = KEYC_DOUBLECLICK7_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_DOUBLECLICK7_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_DOUBLECLICK7_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_DOUBLECLICK7_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_DOUBLECLICK7_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_DOUBLECLICK7_BORDER;
 			break;
@@ -1600,6 +1938,12 @@ have_event:
 				key = KEYC_DOUBLECLICK8_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_DOUBLECLICK8_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_DOUBLECLICK8_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_DOUBLECLICK8_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_DOUBLECLICK8_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_DOUBLECLICK8_BORDER;
 			break;
@@ -1614,6 +1958,12 @@ have_event:
 				key = KEYC_DOUBLECLICK9_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_DOUBLECLICK9_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_DOUBLECLICK9_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_DOUBLECLICK9_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_DOUBLECLICK9_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_DOUBLECLICK9_BORDER;
 			break;
@@ -1628,6 +1978,12 @@ have_event:
 				key = KEYC_DOUBLECLICK10_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_DOUBLECLICK10_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_DOUBLECLICK10_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_DOUBLECLICK10_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_DOUBLECLICK10_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_DOUBLECLICK10_BORDER;
 			break;
@@ -1642,6 +1998,12 @@ have_event:
 				key = KEYC_DOUBLECLICK11_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_DOUBLECLICK11_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_DOUBLECLICK11_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_DOUBLECLICK11_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_DOUBLECLICK11_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_DOUBLECLICK11_BORDER;
 			break;
@@ -1660,6 +2022,12 @@ have_event:
 				key = KEYC_TRIPLECLICK1_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_TRIPLECLICK1_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_TRIPLECLICK1_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_TRIPLECLICK1_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_TRIPLECLICK1_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_TRIPLECLICK1_BORDER;
 			break;
@@ -1674,6 +2042,12 @@ have_event:
 				key = KEYC_TRIPLECLICK2_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_TRIPLECLICK2_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_TRIPLECLICK2_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_TRIPLECLICK2_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_TRIPLECLICK2_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_TRIPLECLICK2_BORDER;
 			break;
@@ -1688,6 +2062,12 @@ have_event:
 				key = KEYC_TRIPLECLICK3_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_TRIPLECLICK3_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_TRIPLECLICK3_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_TRIPLECLICK3_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_TRIPLECLICK3_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_TRIPLECLICK3_BORDER;
 			break;
@@ -1702,6 +2082,12 @@ have_event:
 				key = KEYC_TRIPLECLICK6_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_TRIPLECLICK6_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_TRIPLECLICK6_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_TRIPLECLICK6_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_TRIPLECLICK6_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_TRIPLECLICK6_BORDER;
 			break;
@@ -1716,6 +2102,12 @@ have_event:
 				key = KEYC_TRIPLECLICK7_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_TRIPLECLICK7_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_TRIPLECLICK7_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_TRIPLECLICK7_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_TRIPLECLICK7_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_TRIPLECLICK7_BORDER;
 			break;
@@ -1730,6 +2122,12 @@ have_event:
 				key = KEYC_TRIPLECLICK8_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_TRIPLECLICK8_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_TRIPLECLICK8_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_TRIPLECLICK8_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_TRIPLECLICK8_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_TRIPLECLICK8_BORDER;
 			break;
@@ -1744,6 +2142,12 @@ have_event:
 				key = KEYC_TRIPLECLICK9_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_TRIPLECLICK9_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_TRIPLECLICK9_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_TRIPLECLICK9_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_TRIPLECLICK9_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_TRIPLECLICK9_BORDER;
 			break;
@@ -1758,6 +2162,12 @@ have_event:
 				key = KEYC_TRIPLECLICK10_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_TRIPLECLICK10_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_TRIPLECLICK10_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_TRIPLECLICK10_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_TRIPLECLICK10_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_TRIPLECLICK10_BORDER;
 			break;
@@ -1772,6 +2182,12 @@ have_event:
 				key = KEYC_TRIPLECLICK11_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_TRIPLECLICK11_STATUS_DEFAULT;
+			if (where == SCROLLBAR_UP)
+				key = KEYC_TRIPLECLICK11_SCROLLBAR_UP;
+			if (where == SCROLLBAR_SLIDER)
+				key = KEYC_TRIPLECLICK11_SCROLLBAR_SLIDER;
+			if (where == SCROLLBAR_DOWN)
+				key = KEYC_TRIPLECLICK11_SCROLLBAR_DOWN;
 			if (where == BORDER)
 				key = KEYC_TRIPLECLICK11_BORDER;
 			break;
