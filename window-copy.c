@@ -618,7 +618,7 @@ window_copy_scroll1(struct window_mode_entry *wme, struct window_pane *wp,
 {
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 ox, oy, px, py, n, offset, size;
-	u_int				 new_offset, slider_y = wp->sb_slider_y;
+	u_int				 new_offset;
 	u_int				 slider_height = wp->sb_slider_h;
 	u_int				 sb_height = wp->sy, sb_top = wp->yoff;
 	u_int				 sy = screen_size_y(data->backing);

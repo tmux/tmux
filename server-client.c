@@ -577,7 +577,7 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 	struct window_pane	*wp, *fwp;
 	u_int			 x, y, b, sx, sy, px, py, line = 0, sb_pos;
 	u_int			 sl_top, sl_bottom, sl_mpos = 0;
-	int			 ignore = 0, sb, sb_w, pane_status;
+	int			 ignore = 0, sb, sb_w, sb_pad, pane_status;
 	key_code		 key;
 	struct timeval		 tv;
 	struct style_range	*sr;
@@ -783,10 +783,13 @@ have_event:
 			    "pane-scrollbars-position");
 			if (sb == PANE_SCROLLBARS_ALWAYS ||
 			    (sb == PANE_SCROLLBARS_MODAL &&
-			    window_pane_mode(wp) != WINDOW_PANE_NO_MODE))
-				 sb_w = wp->scrollbar_style->width;
-			else
+			     window_pane_mode(wp) != WINDOW_PANE_NO_MODE)) {
+				sb_w = wp->scrollbar_style.width;
+				sb_pad = wp->scrollbar_style.pad;
+			} else {
 				sb_w = 0;
+				sb_pad = 0;
+			}
 			pane_status = options_get_number(wo,
 			    "pane-border-status");
 			if (pane_status == PANE_STATUS_TOP)
@@ -795,19 +798,20 @@ have_event:
 				line = wp->yoff + wp->sy;
 
 			/*
-			 * Check if py could lie within a scrollbar. If the
-			 * pane is at the top, then py is 0; if not then the
+			 * Check if py could lie within a scrollbar
+			 * (but not within the padding). If the pane is
+			 * at the top, then py is 0; if not then the
 			 * top, then yoff to yoff + sy.
 			 */
 			if ((pane_status != PANE_STATUS_OFF && py != line) ||
 			    (wp->yoff == 0 && py < wp->sy) ||
 			    (py >= wp->yoff && py < wp->yoff + wp->sy)) {
 				if ((sb_pos == PANE_SCROLLBARS_RIGHT &&
-				    (px >= wp->xoff + wp->sx &&
-				    px < wp->xoff + wp->sx + sb_w)) ||
+				    (px >= wp->xoff + wp->sx + sb_pad &&
+				    px < wp->xoff + wp->sx + sb_pad + sb_w)) ||
 				    (sb_pos == PANE_SCROLLBARS_LEFT &&
-				    (px >= wp->xoff - sb_w &&
-				    px < wp->xoff))) {
+				    (px >= wp->xoff - sb_pad - sb_w &&
+				    px < wp->xoff - sb_pad))) {
 					sl_top = wp->yoff + wp->sb_slider_y;
 					sl_bottom = (wp->yoff +
 					    wp->sb_slider_y +

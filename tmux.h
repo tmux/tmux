@@ -1201,7 +1201,7 @@ struct window_pane {
 	int		 control_bg;
 	int		 control_fg;
 
-	struct style	*scrollbar_style;
+	struct style	 scrollbar_style;
 
 	TAILQ_ENTRY(window_pane) entry;  /* link in list of all panes */
 	TAILQ_ENTRY(window_pane) sentry; /* link in list of last visited */
@@ -3526,6 +3526,8 @@ void		 style_apply(struct grid_cell *, struct options *,
 		     const char *, struct format_tree *);
 void		 style_set(struct style *, const struct grid_cell *);
 void		 style_copy(struct style *, struct style *);
+void		 style_set_scrollbar_style_from_option(struct style *,
+		     struct options *);
 
 /* spawn.c */
 struct winlink	*spawn_window(struct spawn_context *, char **);

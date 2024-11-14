@@ -317,8 +317,8 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 		if (scrollbars == PANE_SCROLLBARS_ALWAYS ||
 		    (scrollbars == PANE_SCROLLBARS_MODAL &&
 		    mode != WINDOW_PANE_NO_MODE)) {
-			sb_w = wp->scrollbar_style->width;
-			sb_pad = wp->scrollbar_style->pad;
+			sb_w = wp->scrollbar_style.width;
+			sb_pad = wp->scrollbar_style.pad;
 			if (sb_w < 1)
 				sb_w = 1;
 			if (sb_pad < 0)
@@ -371,7 +371,7 @@ layout_resize_check(struct window *w, struct layout_cell *lc,
     enum layout_type type)
 {
 	struct layout_cell	*lcchild;
-	struct style		*sb_style = w->active->scrollbar_style;
+	struct style		*sb_style = &w->active->scrollbar_style;
 	u_int			 available, minimum;
 	int			 status, scrollbars;
 
@@ -912,7 +912,7 @@ layout_split_pane(struct window_pane *wp, enum layout_type type, int size,
     int flags)
 {
 	struct layout_cell	*lc, *lcparent, *lcnew, *lc1, *lc2;
-	struct style		*sb_style = wp->scrollbar_style;
+	struct style		*sb_style = &wp->scrollbar_style;
 	u_int			 sx, sy, xoff, yoff, size1, size2, minimum;
 	u_int			 new_size, saved_size, resize_first = 0;
 	int			 full_size = (flags & SPAWN_FULLSIZE), status;
@@ -1103,7 +1103,7 @@ int
 layout_spread_cell(struct window *w, struct layout_cell *parent)
 {
 	struct layout_cell	*lc;
-	struct style		*sb_style = w->active->scrollbar_style;
+	struct style		*sb_style = &w->active->scrollbar_style;
 	u_int			 number, each, size, this;
 	int			 change, changed, status, scrollbars;
 

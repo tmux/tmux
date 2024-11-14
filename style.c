@@ -402,3 +402,24 @@ style_copy(struct style *dst, struct style *src)
 {
 	memcpy(dst, src, sizeof *dst);
 }
+
+void
+style_set_scrollbar_style_from_option(struct style *sb_style, struct options *oo)
+{
+	struct style	*sy;
+
+	sy = options_string_to_style(oo, "pane-scrollbars-style", NULL);
+	if (sy == NULL) {
+		style_set(sb_style, &grid_default_cell);
+		sb_style->width = PANE_SCROLLBARS_DEFAULT_WIDTH;
+		sb_style->pad = PANE_SCROLLBARS_DEFAULT_PADDING;
+		utf8_set(&sb_style->gc.data, PANE_SCROLLBARS_CHARACTER);
+	} else {
+		style_copy(sb_style, sy);
+		if (sb_style->width < 1)
+			sb_style->width = PANE_SCROLLBARS_DEFAULT_WIDTH;
+		if (sb_style->pad < 0)
+			sb_style->pad = PANE_SCROLLBARS_DEFAULT_PADDING;
+		utf8_set(&sb_style->gc.data, PANE_SCROLLBARS_CHARACTER);
+	}
+}
