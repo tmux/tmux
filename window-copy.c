@@ -147,6 +147,9 @@ static void	window_copy_acquire_cursor_up(struct window_mode_entry *,
 		    u_int, u_int, u_int, u_int, u_int);
 static void	window_copy_acquire_cursor_down(struct window_mode_entry *,
 		    u_int, u_int, u_int, u_int, u_int, u_int, int);
+static u_int	window_copy_clip_width(u_int, u_int, u_int, u_int);
+static u_int	window_copy_search_mark_match(struct window_copy_mode_data *,
+		    u_int , u_int, u_int, int);
 
 const struct window_mode window_copy_mode = {
 	.name = "copy-mode",
@@ -618,7 +621,7 @@ window_copy_scroll1(struct window_mode_entry *wme, struct window_pane *wp,
 {
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 ox, oy, px, py, n, offset, size;
-	u_int				 new_offset, slider_y = wp->sb_slider_y;
+	u_int				 new_offset;
 	u_int				 slider_height = wp->sb_slider_h;
 	u_int				 sb_height = wp->sy, sb_top = wp->yoff;
 	u_int				 sy = screen_size_y(data->backing);
@@ -3207,14 +3210,16 @@ static int
 window_copy_search_lr(struct grid *gd, struct grid *sgd, u_int *ppx, u_int py,
     u_int first, u_int last, int cis)
 {
-	u_int			 ax, bx, px, pywrap, endline;
+	u_int			 ax, bx, px, pywrap, endline, padding;
 	int			 matched;
 	struct grid_line	*gl;
+	struct grid_cell	 gc;
 
 	endline = gd->hsize + gd->sy - 1;
 	for (ax = first; ax < last; ax++) {
+		padding = 0;
 		for (bx = 0; bx < sgd->sx; bx++) {
-			px = ax + bx;
+			px = ax + bx + padding;
 			pywrap = py;
 			/* Wrap line. */
 			while (px >= gd->sx && pywrap < endline) {
@@ -3225,8 +3230,13 @@ window_copy_search_lr(struct grid *gd, struct grid *sgd, u_int *ppx, u_int py,
 				pywrap++;
 			}
 			/* We have run off the end of the grid. */
-			if (px >= gd->sx)
+			if (px - padding >= gd->sx)
 				break;
+
+			grid_get_cell(gd, px, pywrap, &gc);
+			if (gc.flags & GRID_FLAG_TAB)
+				padding += gc.data.width - 1;
+
 			matched = window_copy_search_compare(gd, px, pywrap,
 			    sgd, bx, cis);
 			if (!matched)
@@ -3244,14 +3254,16 @@ static int
 window_copy_search_rl(struct grid *gd,
     struct grid *sgd, u_int *ppx, u_int py, u_int first, u_int last, int cis)
 {
-	u_int			 ax, bx, px, pywrap, endline;
+	u_int			 ax, bx, px, pywrap, endline, padding;
 	int			 matched;
 	struct grid_line	*gl;
+	struct grid_cell	 gc;
 
 	endline = gd->hsize + gd->sy - 1;
 	for (ax = last; ax > first; ax--) {
+		padding = 0;
 		for (bx = 0; bx < sgd->sx; bx++) {
-			px = ax - 1 + bx;
+			px = ax - 1 + bx + padding;
 			pywrap = py;
 			/* Wrap line. */
 			while (px >= gd->sx && pywrap < endline) {
@@ -3262,8 +3274,13 @@ window_copy_search_rl(struct grid *gd,
 				pywrap++;
 			}
 			/* We have run off the end of the grid. */
-			if (px >= gd->sx)
+			if (px - padding >= gd->sx)
 				break;
+
+			grid_get_cell(gd, px, pywrap, &gc);
+			if (gc.flags & GRID_FLAG_TAB)
+				padding += gc.data.width - 1;
+
 			matched = window_copy_search_compare(gd, px, pywrap,
 			    sgd, bx, cis);
 			if (!matched)
@@ -3976,6 +3993,43 @@ window_copy_search_mark_at(struct window_copy_mode_data *data, u_int px,
 	return (0);
 }
 
+static u_int
+window_copy_clip_width(u_int width, u_int b, u_int sx, u_int sy)
+{
+	return ((b + width > sx * sy) ? (sx * sy) - b : width);
+}
+
+static u_int
+window_copy_search_mark_match(struct window_copy_mode_data *data, u_int px,
+    u_int py, u_int width, int regex)
+{
+	struct grid		*gd = data->backing->grid;
+	struct grid_cell	 gc;
+	u_int			 i, b, w = width, sx = gd->sx, sy = gd->sy;
+
+	if (window_copy_search_mark_at(data, px, py, &b) == 0) {
+		width = window_copy_clip_width(width, b, sx, sy);
+		w = width;
+		for (i = b; i < b + w; i++) {
+			if (!regex) {
+				grid_get_cell(gd, px + (i - b), py, &gc);
+				if (gc.flags & GRID_FLAG_TAB)
+					w += gc.data.width - 1;
+				w = window_copy_clip_width(w, b, sx, sy);
+			}
+			if (data->searchmark[i] != 0)
+				continue;
+			data->searchmark[i] = data->searchgen;
+		}
+		if (data->searchgen == UCHAR_MAX)
+			data->searchgen = 1;
+		else
+			data->searchgen++;
+	}
+
+	return (w);
+}
+
 static int
 window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
     int regex, int visible_only)
@@ -3984,10 +4038,12 @@ window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
 	struct screen			*s = data->backing, ss;
 	struct screen_write_ctx		 ctx;
 	struct grid			*gd = s->grid;
+	struct grid_cell		 gc;
 	int				 found, cis, stopped = 0;
 	int				 cflags = REG_EXTENDED;
-	u_int				 px, py, i, b, nfound = 0, width;
-	u_int				 ssize = 1, start, end;
+	u_int				 px, py, nfound = 0, width;
+	u_int				 ssize = 1, start, end, sx = gd->sx;
+	u_int				 sy = gd->sy;
 	char				*sbuf;
 	regex_t				 reg;
 	uint64_t			 stop = 0, tstart, t;
@@ -4024,13 +4080,13 @@ window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
 		window_copy_visible_lines(data, &start, &end);
 	else {
 		start = 0;
-		end = gd->hsize + gd->sy;
+		end = gd->hsize + sy;
 		stop = get_timer() + WINDOW_COPY_SEARCH_ALL_TIMEOUT;
 	}
 
 again:
 	free(data->searchmark);
-	data->searchmark = xcalloc(gd->sx, gd->sy);
+	data->searchmark = xcalloc(sx, sy);
 	data->searchgen = 1;
 
 	for (py = start; py < end; py++) {
@@ -4038,31 +4094,21 @@ again:
 		for (;;) {
 			if (regex) {
 				found = window_copy_search_lr_regex(gd,
-				    &px, &width, py, px, gd->sx, &reg);
+				    &px, &width, py, px, sx, &reg);
+				grid_get_cell(gd, px + width - 1, py, &gc);
+				if (gc.data.width > 2)
+					width += gc.data.width - 1;
 				if (!found)
 					break;
 			} else {
 				found = window_copy_search_lr(gd, ssp->grid,
-				    &px, py, px, gd->sx, cis);
+				    &px, py, px, sx, cis);
 				if (!found)
 					break;
 			}
 			nfound++;
-
-			if (window_copy_search_mark_at(data, px, py, &b) == 0) {
-				if (b + width > gd->sx * gd->sy)
-					width = (gd->sx * gd->sy) - b;
-				for (i = b; i < b + width; i++) {
-					if (data->searchmark[i] != 0)
-						continue;
-					data->searchmark[i] = data->searchgen;
-				}
-				if (data->searchgen == UCHAR_MAX)
-					data->searchgen = 1;
-				else
-					data->searchgen++;
-			}
-			px += width;
+			px += window_copy_search_mark_match(data, px, py, width,
+			    regex);
 		}
 
 		t = get_timer();

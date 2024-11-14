@@ -2899,6 +2899,7 @@ void	 recalculate_sizes(void);
 void	 recalculate_sizes_now(int);
 
 /* input.c */
+#define INPUT_BUF_DEFAULT_SIZE 1048576
 struct input_ctx *input_init(struct window_pane *, struct bufferevent *,
 	     struct colour_palette *);
 void	 input_free(struct input_ctx *);
@@ -2910,6 +2911,7 @@ void	 input_parse_screen(struct input_ctx *, struct screen *,
 	     screen_write_init_ctx_cb, void *, u_char *, size_t);
 void	 input_reply_clipboard(struct bufferevent *, const char *, size_t,
 	     const char *);
+void	 input_set_buffer_size(size_t);
 
 /* input-key.c */
 void	 input_key_build(void);

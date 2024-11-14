@@ -797,7 +797,7 @@ have_event:
 			 */
 			if ((pane_status != PANE_STATUS_OFF && py != line) ||
 			    (wp->yoff == 0 && py < wp->sy) ||
-			     (py >= wp->yoff && py < wp->yoff + wp->sy)) {
+			    (py >= wp->yoff && py < wp->yoff + wp->sy)) {
 				sb_pos = options_get_number(wo,
 				    "pane-scrollbars-position");
 				if ((sb_pos == PANE_SCROLLBARS_RIGHT &&
