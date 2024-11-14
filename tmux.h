@@ -1304,7 +1304,7 @@ TAILQ_HEAD(winlink_stack, winlink);
 #define PANE_SCROLLBARS_PADDING 0
 
 /* True if screen in alternate screen. */
-#define PANE_ALTERNATE_SCREEN(s) ((s)->saved_grid != NULL)
+#define SCREEN_IS_ALTERNATE(s) ((s)->saved_grid != NULL)
 
 /* Layout direction. */
 enum layout_type {

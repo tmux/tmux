@@ -1743,7 +1743,7 @@ window_pane_show_scrollbar(struct window_pane *wp, int sb_option)
 {
 	struct screen	*s = wp->screen;
 
-	if (PANE_ALTERNATE_SCREEN(s))
+	if (SCREEN_IS_ALTERNATE(s))
 		return (0);
 
 	if (sb_option == PANE_SCROLLBARS_ALWAYS ||
