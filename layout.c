@@ -291,8 +291,8 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 {
 	struct window_pane	*wp;
 	struct layout_cell	*lc;
-	int			 status, scrollbars, sb_pos, alt_screen;
-	u_int			 sx, sy, mode;
+	int			 status, scrollbars, sb_pos;
+	u_int			 sx, sy;
 
 	status = options_get_number(w->options, "pane-border-status");
 	scrollbars = options_get_number(w->options, "pane-scrollbars");
@@ -313,12 +313,7 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 			sy--;
 		}
 
-		alt_screen = wp->screen->saved_grid != NULL;
-		mode = window_pane_mode(wp);
-		if (!alt_screen &&
-		    (scrollbars == PANE_SCROLLBARS_ALWAYS ||
-		     (scrollbars == PANE_SCROLLBARS_MODAL &&
-		      mode != WINDOW_PANE_NO_MODE))) {
+		if (window_pane_show_scrollbar(wp, scrollbars)) {
 			if (sb_pos == PANE_SCROLLBARS_LEFT) {
 				sx = sx - PANE_SCROLLBARS_WIDTH;
 				wp->xoff = wp->xoff + PANE_SCROLLBARS_WIDTH;

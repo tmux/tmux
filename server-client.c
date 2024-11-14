@@ -577,7 +577,7 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 	struct window_pane	*wp, *fwp;
 	u_int			 x, y, b, sx, sy, px, py, line = 0, sb_pos;
 	u_int			 sl_top, sl_bottom, sl_mpos = 0;
-	int			 ignore = 0, sb, sb_w, pane_status, alt_screen;
+	int			 ignore = 0, sb, sb_w, pane_status;
 	key_code		 key;
 	struct timeval		 tv;
 	struct style_range	*sr;
@@ -779,13 +779,7 @@ have_event:
 
 			/* Try the scrollbar next to a pane. */
 			sb = options_get_number(wo, "pane-scrollbars");
-			sb_pos = options_get_number(wo,
-			    "pane-scrollbars-position");
-			alt_screen = wp->screen->saved_grid != NULL;
-			if (!alt_screen &&
-			    (sb == PANE_SCROLLBARS_ALWAYS ||
-			    (sb == PANE_SCROLLBARS_MODAL &&
-			    window_pane_mode(wp) != WINDOW_PANE_NO_MODE)))
+			if (window_pane_show_scrollbar(wp, sb))
 				sb_w = PANE_SCROLLBARS_WIDTH;
 			else
 				sb_w = 0;
@@ -803,7 +797,9 @@ have_event:
 			 */
 			if ((pane_status != PANE_STATUS_OFF && py != line) ||
 			    (wp->yoff == 0 && py < wp->sy) ||
-			    (py >= wp->yoff && py < wp->yoff + wp->sy)) {
+			     (py >= wp->yoff && py < wp->yoff + wp->sy)) {
+				sb_pos = options_get_number(wo,
+				    "pane-scrollbars-position");
 				if ((sb_pos == PANE_SCROLLBARS_RIGHT &&
 				    (px >= wp->xoff + wp->sx &&
 				    px < wp->xoff + wp->sx + sb_w)) ||

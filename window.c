@@ -1736,3 +1736,20 @@ window_pane_mode(struct window_pane *wp)
 	}
 	return (WINDOW_PANE_NO_MODE);
 }
+
+/* Return 1 if scrollbar is or should be displayed. */
+int
+window_pane_show_scrollbar(struct window_pane *wp, int sb_option)
+{
+	struct screen	*s = wp->screen;
+
+	if (PANE_ALTERNATE_SCREEN(s))
+		return (0);
+
+	if (sb_option == PANE_SCROLLBARS_ALWAYS ||
+	    (sb_option == PANE_SCROLLBARS_MODAL &&
+	    window_pane_mode(wp) != WINDOW_PANE_NO_MODE)) 
+		return (1);
+
+	return (0);
+}
