@@ -1185,6 +1185,8 @@ options_push_changes(const char *name)
 			layout_fix_panes(w, NULL);
 	}
 
+	if (strcmp(name, "input-buffer-size") == 0)
+		input_set_buffer_size(options_get_number(global_options, name));
 	RB_FOREACH(s, sessions, &sessions)
 		status_update_cache(s);
 
