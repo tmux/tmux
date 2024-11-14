@@ -147,6 +147,9 @@ static void	window_copy_acquire_cursor_up(struct window_mode_entry *,
 		    u_int, u_int, u_int, u_int, u_int);
 static void	window_copy_acquire_cursor_down(struct window_mode_entry *,
 		    u_int, u_int, u_int, u_int, u_int, u_int, int);
+static u_int	window_copy_clip_width(u_int, u_int, u_int, u_int);
+static u_int	window_copy_search_mark_match(struct window_copy_mode_data *,
+		    u_int , u_int, u_int, int);
 
 const struct window_mode window_copy_mode = {
 	.name = "copy-mode",
@@ -3990,6 +3993,43 @@ window_copy_search_mark_at(struct window_copy_mode_data *data, u_int px,
 	return (0);
 }
 
+static u_int
+window_copy_clip_width(u_int width, u_int b, u_int sx, u_int sy)
+{
+	return ((b + width > sx * sy) ? (sx * sy) - b : width);
+}
+
+static u_int
+window_copy_search_mark_match(struct window_copy_mode_data *data, u_int px,
+    u_int py, u_int width, int regex)
+{
+	struct grid		*gd = data->backing->grid;
+	struct grid_cell	 gc;
+	u_int			 i, b, w = width, sx = gd->sx, sy = gd->sy;
+
+	if (window_copy_search_mark_at(data, px, py, &b) == 0) {
+		width = window_copy_clip_width(width, b, sx, sy);
+		w = width;
+		for (i = b; i < b + w; i++) {
+			if (!regex) {
+				grid_get_cell(gd, px + (i - b), py, &gc);
+				if (gc.flags & GRID_FLAG_TAB)
+					w += gc.data.width - 1;
+				w = window_copy_clip_width(w, b, sx, sy);
+			}
+			if (data->searchmark[i] != 0)
+				continue;
+			data->searchmark[i] = data->searchgen;
+		}
+		if (data->searchgen == UCHAR_MAX)
+			data->searchgen = 1;
+		else
+			data->searchgen++;
+	}
+
+	return (w);
+}
+
 static int
 window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
     int regex, int visible_only)
@@ -4001,7 +4041,7 @@ window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
 	struct grid_cell		 gc;
 	int				 found, cis, stopped = 0;
 	int				 cflags = REG_EXTENDED;
-	u_int				 px, py, i, b, nfound = 0, width, tw;
+	u_int				 px, py, nfound = 0, width;
 	u_int				 ssize = 1, start, end, sx = gd->sx;
 	u_int				 sy = gd->sy;
 	char				*sbuf;
@@ -4067,31 +4107,8 @@ again:
 					break;
 			}
 			nfound++;
-
-			tw = width;
-			if (window_copy_search_mark_at(data, px, py, &b) == 0) {
-				if (b + width > sx * sy)
-					width = (sx * sy) - b;
-				tw = width;
-				for (i = b; i < b + tw; i++) {
-					if (!regex) {
-						grid_get_cell(gd, px + (i - b),
-						    py, &gc);
-						if (gc.flags & GRID_FLAG_TAB)
-							tw += gc.data.width - 1;
-						if (b + tw > sx * sy)
-							tw = (sx * sy) - b;
-					}
-					if (data->searchmark[i] != 0)
-						continue;
-					data->searchmark[i] = data->searchgen;
-				}
-				if (data->searchgen == UCHAR_MAX)
-					data->searchgen = 1;
-				else
-					data->searchgen++;
-			}
-			px += tw;
+			px += window_copy_search_mark_match(data, px, py, width,
+			    regex);
 		}
 
 		t = get_timer();
