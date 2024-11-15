@@ -1068,6 +1068,9 @@ The flags are:
 the client has an independent active pane
 .It ignore-size
 the client does not affect the size of other clients
+.It no-detach-on-destroy
+do not detach the client when the session it is attached to is destroyed if
+there are any other sessions
 .It no-output
 the client does not receive pane output in control mode
 .It pause-after=seconds
@@ -5075,11 +5078,9 @@ The foreground colour is used for the slider, the background for the rest of the
 scrollbar.
 The
 .Ar width
-attribute controls the width of the scrollbar, default is 1.
-The
+attribute sets the width of the scrollbar and the
 .Ar pad
-attribute controls the padding between the scrollbar and the pane, the
-default is 0.
+attribute the padding between the scrollbar and the pane.
 Other attributes are ignored.
 .Pp
 .It Xo Ic pane-scrollbars-position

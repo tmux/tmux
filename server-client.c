@@ -3684,6 +3684,8 @@ server_client_set_flags(struct client *c, const char *flags)
 			flag = CLIENT_IGNORESIZE;
 		else if (strcmp(next, "active-pane") == 0)
 			flag = CLIENT_ACTIVEPANE;
+		else if (strcmp(next, "no-detach-on-destroy") == 0)
+			flag = CLIENT_NO_DETACH_ON_DESTROY;
 		if (flag == 0)
 			continue;
 
@@ -3717,6 +3719,8 @@ server_client_get_flags(struct client *c)
 		strlcat(s, "control-mode,", sizeof s);
 	if (c->flags & CLIENT_IGNORESIZE)
 		strlcat(s, "ignore-size,", sizeof s);
+	if (c->flags & CLIENT_NO_DETACH_ON_DESTROY)
+		strlcat(s, "no-detach-on-destroy,", sizeof s);
 	if (c->flags & CLIENT_CONTROL_NOOUTPUT)
 		strlcat(s, "no-output,", sizeof s);
 	if (c->flags & CLIENT_CONTROL_WAITEXIT)

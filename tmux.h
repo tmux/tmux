@@ -872,6 +872,7 @@ struct style_range {
 };
 TAILQ_HEAD(style_ranges, style_range);
 
+/* Default style width and pad. */
 #define STYLE_WIDTH_DEFAULT -1
 #define STYLE_PAD_DEFAULT -1
 
@@ -1307,10 +1308,9 @@ TAILQ_HEAD(winlink_stack, winlink);
 #define PANE_SCROLLBARS_RIGHT 0
 #define PANE_SCROLLBARS_LEFT 1
 
-/* Pane scrollbars width and padding. */
+/* Pane scrollbars width, padding and fill character. */
 #define PANE_SCROLLBARS_DEFAULT_PADDING 0
 #define PANE_SCROLLBARS_DEFAULT_WIDTH 1
-
 #define PANE_SCROLLBARS_CHARACTER ' '
 
 /* True if screen in alternate screen. */
@@ -1958,6 +1958,7 @@ struct client {
 #define CLIENT_BRACKETPASTING 0x1000000000ULL
 #define CLIENT_ASSUMEPASTING 0x2000000000ULL
 #define CLIENT_REDRAWSCROLLBARS 0x4000000000ULL
+#define CLIENT_NO_DETACH_ON_DESTROY 0x8000000000ULL
 #define CLIENT_ALLREDRAWFLAGS		\
 	(CLIENT_REDRAWWINDOW|		\
 	 CLIENT_REDRAWSTATUS|		\

@@ -292,7 +292,7 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 	struct window_pane	*wp;
 	struct layout_cell	*lc;
 	int			 status, scrollbars, sb_pos, sb_w, sb_pad;
-	u_int			 sx, sy, mode;
+	u_int			 sx, sy;
 
 	status = options_get_number(w->options, "pane-border-status");
 	scrollbars = options_get_number(w->options, "pane-scrollbars");
@@ -313,7 +313,6 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 			sy--;
 		}
 
-		mode = window_pane_mode(wp);
 		if (window_pane_show_scrollbar(wp, scrollbars)) {
 			sb_w = wp->scrollbar_style.width;
 			sb_pad = wp->scrollbar_style.pad;
@@ -936,10 +935,10 @@ layout_split_pane(struct window_pane *wp, enum layout_type type, int size,
 	/* Check there is enough space for the two new panes. */
 	switch (type) {
 	case LAYOUT_LEFTRIGHT:
-		if (scrollbars)
+		if (scrollbars) {
 			minimum = PANE_MINIMUM * 2 + sb_style->width +
 			    sb_style->pad;
-		else
+		} else
 			minimum = PANE_MINIMUM * 2 + 1;
 		if (sx < minimum)
 			return (NULL);

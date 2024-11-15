@@ -1179,7 +1179,8 @@ options_push_changes(const char *name)
 	}
 	if (strcmp(name, "pane-scrollbars-style") == 0) {
 		RB_FOREACH(wp, window_pane_tree, &all_window_panes) {
-			style_set_scrollbar_style_from_option(&wp->scrollbar_style, wp->options);
+			style_set_scrollbar_style_from_option(
+			    &wp->scrollbar_style, wp->options);
 		}
 		RB_FOREACH(w, windows, &windows)
 			layout_fix_panes(w, NULL);
