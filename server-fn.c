@@ -426,7 +426,7 @@ void
 server_destroy_session(struct session *s)
 {
 	struct client	*c;
-	struct session	*s_new = NULL;
+	struct session	*s_new = NULL, *cs_new, *use_s;
 	int		 detach_on_destroy;
 
 	detach_on_destroy = options_get_number(s->options, "detach-on-destroy");
@@ -438,15 +438,26 @@ server_destroy_session(struct session *s)
 		s_new = session_previous_session(s);
 	else if (detach_on_destroy == 4)
 		s_new = session_next_session(s);
-	if (s_new == s)
-		s_new = NULL;
+
+	/*
+	 * If no suitable new session was found above, then look for any
+	 * session as an alternative in case a client needs it.
+	 */
+	if (s_new == NULL &&
+	    (detach_on_destroy == 1 || detach_on_destroy == 2))
+		cs_new = server_find_session(s, server_newer_session);
+
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (c->session != s)
 			continue;
+		use_s = s_new;
+		if (use_s == NULL && (c->flags & CLIENT_NO_DETACH_ON_DESTROY))
+			use_s = cs_new;
+
 		c->session = NULL;
 		c->last_session = NULL;
-		server_client_set_session(c, s_new);
-		if (s_new == NULL)
+		server_client_set_session(c, use_s);
+		if (use_s == NULL)
 			c->flags |= CLIENT_EXIT;
 	}
 	recalculate_sizes();

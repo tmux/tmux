@@ -603,9 +603,10 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 
 		if (pane_scrollbars == PANE_SCROLLBARS_ALWAYS ||
 		    (pane_scrollbars == PANE_SCROLLBARS_MODAL &&
-		     window_pane_mode(wp) != WINDOW_PANE_NO_MODE))
-			sb_w = PANE_SCROLLBARS_WIDTH;
-		else
+		     window_pane_mode(wp) != WINDOW_PANE_NO_MODE)) {
+			sb_w = wp->scrollbar_style.width +
+			    wp->scrollbar_style.pad;
+		} else
 			sb_w = 0;
 
 		if (sb_pos == PANE_SCROLLBARS_LEFT) {
@@ -967,6 +968,9 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 
 	wp->control_bg = -1;
 	wp->control_fg = -1;
+
+	style_set_scrollbar_style_from_option(&wp->scrollbar_style,
+	    wp->options);
 
 	colour_palette_init(&wp->palette);
 	colour_palette_from_option(&wp->palette, wp->options);

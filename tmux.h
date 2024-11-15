@@ -872,6 +872,10 @@ struct style_range {
 };
 TAILQ_HEAD(style_ranges, style_range);
 
+/* Default style width and pad. */
+#define STYLE_WIDTH_DEFAULT -1
+#define STYLE_PAD_DEFAULT -1
+
 /* Style default. */
 enum style_default_type {
 	STYLE_DEFAULT_BASE,
@@ -891,6 +895,9 @@ struct style {
 	enum style_range_type	range_type;
 	u_int			range_argument;
 	char			range_string[16];
+
+	int			width;
+	int			pad;
 
 	enum style_default_type	default_type;
 };
@@ -1195,6 +1202,8 @@ struct window_pane {
 	int		 control_bg;
 	int		 control_fg;
 
+	struct style	 scrollbar_style;
+
 	TAILQ_ENTRY(window_pane) entry;  /* link in list of all panes */
 	TAILQ_ENTRY(window_pane) sentry; /* link in list of last visited */
 	RB_ENTRY(window_pane) tree_entry;
@@ -1299,9 +1308,10 @@ TAILQ_HEAD(winlink_stack, winlink);
 #define PANE_SCROLLBARS_RIGHT 0
 #define PANE_SCROLLBARS_LEFT 1
 
-/* Pane scrollbars width and padding. */
-#define PANE_SCROLLBARS_WIDTH 1
-#define PANE_SCROLLBARS_PADDING 0
+/* Pane scrollbars width, padding and fill character. */
+#define PANE_SCROLLBARS_DEFAULT_PADDING 0
+#define PANE_SCROLLBARS_DEFAULT_WIDTH 1
+#define PANE_SCROLLBARS_CHARACTER ' '
 
 /* True if screen in alternate screen. */
 #define SCREEN_IS_ALTERNATE(s) ((s)->saved_grid != NULL)
@@ -1948,6 +1958,7 @@ struct client {
 #define CLIENT_BRACKETPASTING 0x1000000000ULL
 #define CLIENT_ASSUMEPASTING 0x2000000000ULL
 #define CLIENT_REDRAWSCROLLBARS 0x4000000000ULL
+#define CLIENT_NO_DETACH_ON_DESTROY 0x8000000000ULL
 #define CLIENT_ALLREDRAWFLAGS		\
 	(CLIENT_REDRAWWINDOW|		\
 	 CLIENT_REDRAWSTATUS|		\
@@ -3522,6 +3533,8 @@ void		 style_apply(struct grid_cell *, struct options *,
 		     const char *, struct format_tree *);
 void		 style_set(struct style *, const struct grid_cell *);
 void		 style_copy(struct style *, struct style *);
+void		 style_set_scrollbar_style_from_option(struct style *,
+		     struct options *);
 
 /* spawn.c */
 struct winlink	*spawn_window(struct spawn_context *, char **);

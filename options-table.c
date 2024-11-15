@@ -1186,7 +1186,7 @@ const struct options_table_entry options_table[] = {
 	{ .name = "pane-scrollbars-style",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
-	  .default_str = "bg=black,fg=white",
+	  .default_str = "bg=black,fg=white,width=1,pad=0",
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
 	  .text = "Style of the pane scrollbar."

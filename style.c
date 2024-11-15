@@ -39,6 +39,8 @@ static struct style style_default = {
 
 	STYLE_RANGE_NONE, 0, "",
 
+	STYLE_WIDTH_DEFAULT, STYLE_PAD_DEFAULT,
+
 	STYLE_DEFAULT_BASE
 };
 
@@ -216,6 +218,16 @@ style_parse(struct style *sy, const struct grid_cell *base, const char *in)
 			if ((value = attributes_fromstring(tmp + 2)) == -1)
 				goto error;
 			sy->gc.attr &= ~value;
+		} else if (end > 6 && strncasecmp(tmp, "width=", 6) == 0) {
+                        n = strtonum(tmp + 6, 0, UINT_MAX, &errstr);
+                        if (errstr != NULL)
+                                goto error;
+                        sy->width = (int)n;
+		} else if (end > 4 && strncasecmp(tmp, "pad=", 4) == 0) {
+                        n = strtonum(tmp + 4, 0, UINT_MAX, &errstr);
+                        if (errstr != NULL)
+                                goto error;
+                        sy->pad = (int)n;
 		} else {
 			if ((value = attributes_fromstring(tmp)) == -1)
 				goto error;
@@ -326,7 +338,16 @@ style_tostring(struct style *sy)
 		    attributes_tostring(gc->attr));
 		comma = ",";
 	}
-
+        if (sy->width >= 0) {
+                xsnprintf(s + off, sizeof s - off, "%swidth=%u", comma,
+		    sy->width);
+		comma = ",";
+	}
+        if (sy->pad >= 0) {
+                xsnprintf(s + off, sizeof s - off, "%spad=%u", comma,
+		    sy->pad);
+		comma = ",";
+	}
 	if (*s == '\0')
 		return ("default");
 	return (s);
@@ -380,4 +401,25 @@ void
 style_copy(struct style *dst, struct style *src)
 {
 	memcpy(dst, src, sizeof *dst);
+}
+
+void
+style_set_scrollbar_style_from_option(struct style *sb_style, struct options *oo)
+{
+	struct style	*sy;
+
+	sy = options_string_to_style(oo, "pane-scrollbars-style", NULL);
+	if (sy == NULL) {
+		style_set(sb_style, &grid_default_cell);
+		sb_style->width = PANE_SCROLLBARS_DEFAULT_WIDTH;
+		sb_style->pad = PANE_SCROLLBARS_DEFAULT_PADDING;
+		utf8_set(&sb_style->gc.data, PANE_SCROLLBARS_CHARACTER);
+	} else {
+		style_copy(sb_style, sy);
+		if (sb_style->width < 1)
+			sb_style->width = PANE_SCROLLBARS_DEFAULT_WIDTH;
+		if (sb_style->pad < 0)
+			sb_style->pad = PANE_SCROLLBARS_DEFAULT_PADDING;
+		utf8_set(&sb_style->gc.data, PANE_SCROLLBARS_CHARACTER);
+	}
 }
