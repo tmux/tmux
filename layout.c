@@ -314,9 +314,7 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 		}
 
 		mode = window_pane_mode(wp);
-		if (scrollbars == PANE_SCROLLBARS_ALWAYS ||
-		    (scrollbars == PANE_SCROLLBARS_MODAL &&
-		    mode != WINDOW_PANE_NO_MODE)) {
+		if (window_pane_show_scrollbar(wp, scrollbars)) {
 			sb_w = wp->scrollbar_style.width;
 			sb_pad = wp->scrollbar_style.pad;
 			if (sb_w < 1)

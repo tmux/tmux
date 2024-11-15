@@ -1313,6 +1313,9 @@ TAILQ_HEAD(winlink_stack, winlink);
 
 #define PANE_SCROLLBARS_CHARACTER ' '
 
+/* True if screen in alternate screen. */
+#define SCREEN_IS_ALTERNATE(s) ((s)->saved_grid != NULL)
+
 /* Layout direction. */
 enum layout_type {
 	LAYOUT_LEFTRIGHT,
@@ -3231,6 +3234,7 @@ void		 window_pane_update_used_data(struct window_pane *,
 void		 window_set_fill_character(struct window *);
 void		 window_pane_default_cursor(struct window_pane *);
 int		 window_pane_mode(struct window_pane *);
+int		 window_pane_show_scrollbar(struct window_pane *, int);
 
 /* layout.c */
 u_int		 layout_count_cells(struct layout_cell *);

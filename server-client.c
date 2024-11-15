@@ -781,9 +781,7 @@ have_event:
 			sb = options_get_number(wo, "pane-scrollbars");
 			sb_pos = options_get_number(wo,
 			    "pane-scrollbars-position");
-			if (sb == PANE_SCROLLBARS_ALWAYS ||
-			    (sb == PANE_SCROLLBARS_MODAL &&
-			     window_pane_mode(wp) != WINDOW_PANE_NO_MODE)) {
+			if (window_pane_show_scrollbar(wp, sb)) {
 				sb_w = wp->scrollbar_style.width;
 				sb_pad = wp->scrollbar_style.pad;
 			} else {
@@ -806,6 +804,8 @@ have_event:
 			if ((pane_status != PANE_STATUS_OFF && py != line) ||
 			    (wp->yoff == 0 && py < wp->sy) ||
 			    (py >= wp->yoff && py < wp->yoff + wp->sy)) {
+				sb_pos = options_get_number(wo,
+				    "pane-scrollbars-position");
 				if ((sb_pos == PANE_SCROLLBARS_RIGHT &&
 				    (px >= wp->xoff + wp->sx + sb_pad &&
 				    px < wp->xoff + wp->sx + sb_pad + sb_w)) ||
