@@ -114,7 +114,7 @@ screen_reinit(struct screen *s)
 	if (options_get_number(global_options, "extended-keys") == 2)
 		s->mode = (s->mode & ~EXTENDED_KEY_MODES)|MODE_KEYS_EXTENDED;
 
-	if (s->saved_grid != NULL)
+	if (SCREEN_IS_ALTERNATE(s))
 		screen_alternate_off(s, NULL, 0);
 	s->saved_cx = UINT_MAX;
 	s->saved_cy = UINT_MAX;
@@ -155,7 +155,7 @@ screen_free(struct screen *s)
 	if (s->write_list != NULL)
 		screen_write_free_list(s);
 
-	if (s->saved_grid != NULL)
+	if (SCREEN_IS_ALTERNATE(s))
 		grid_destroy(s->saved_grid);
 	grid_destroy(s->grid);
 
@@ -628,7 +628,7 @@ screen_alternate_on(struct screen *s, struct grid_cell *gc, int cursor)
 {
 	u_int	sx, sy;
 
-	if (s->saved_grid != NULL)
+	if (SCREEN_IS_ALTERNATE(s))
 		return;
 	sx = screen_size_x(s);
 	sy = screen_size_y(s);
@@ -657,7 +657,7 @@ screen_alternate_off(struct screen *s, struct grid_cell *gc, int cursor)
 	 * If the current size is different, temporarily resize to the old size
 	 * before copying back.
 	 */
-	if (s->saved_grid != NULL)
+	if (SCREEN_IS_ALTERNATE(s))
 		screen_resize(s, s->saved_grid->sx, s->saved_grid->sy, 0);
 
 	/*
@@ -672,7 +672,7 @@ screen_alternate_off(struct screen *s, struct grid_cell *gc, int cursor)
 	}
 
 	/* If not in the alternate screen, do nothing more. */
-	if (s->saved_grid == NULL) {
+	if (!SCREEN_IS_ALTERNATE(s)) {
 		if (s->cx > screen_size_x(s) - 1)
 			s->cx = screen_size_x(s) - 1;
 		if (s->cy > screen_size_y(s) - 1)
