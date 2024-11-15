@@ -1068,6 +1068,12 @@ The flags are:
 the client has an independent active pane
 .It ignore-size
 the client does not affect the size of other clients
+.It no-detach-on-destroy
+the client is switched to the most recently active of the remaining sessions
+instead of detaching when the session it is attached to is destroyed;
+note this flag is only in effect if session option
+.Ic detach-on-destroy
+does not produce a replacement session
 .It no-output
 the client does not receive pane output in control mode
 .It pause-after=seconds

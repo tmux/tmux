@@ -28,6 +28,11 @@
 #include "tmux.h"
 
 static void	server_destroy_session_group(struct session *);
+/*
+ * 'detach-on-destroy' session option values that should cause retry in
+ * finding new session in case client has relevant flag set
+ */
+static const unsigned sess_dod_retryable = (1 << 1) | (1 << 2);
 
 void
 server_redraw_client(struct client *c)
@@ -426,7 +431,7 @@ void
 server_destroy_session(struct session *s)
 {
 	struct client	*c;
-	struct session	*s_new = NULL;
+	struct session	*s_new, *cs_new, *s_new_effective = NULL;
 	int		 detach_on_destroy;
 
 	detach_on_destroy = options_get_number(s->options, "detach-on-destroy");
@@ -438,15 +443,31 @@ server_destroy_session(struct session *s)
 		s_new = session_previous_session(s);
 	else if (detach_on_destroy == 4)
 		s_new = session_next_session(s);
+
 	if (s_new == s)
 		s_new = NULL;
+	/*
+	 * If detach-on-destroy session option yielded no suitable new session but
+	 * option value suggests alternative replacement session might exist, try
+	 * to locate it and store it as an alternative new client session.
+	 */
+	if (s_new == NULL && (1 << detach_on_destroy) & sess_dod_retryable) {
+		cs_new = server_find_session(s, server_newer_session);  // replicate detach-on-destroy=off logic
+		if (cs_new == s)
+			cs_new = NULL;
+	}
+
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (c->session != s)
 			continue;
+		s_new_effective = s_new;
+		if (s_new_effective == NULL && c->flags & CLIENT_NO_DETACH_ON_DESTROY)
+			s_new_effective = cs_new;
+
 		c->session = NULL;
 		c->last_session = NULL;
-		server_client_set_session(c, s_new);
-		if (s_new == NULL)
+		server_client_set_session(c, s_new_effective);
+		if (s_new_effective == NULL)
 			c->flags |= CLIENT_EXIT;
 	}
 	recalculate_sizes();
