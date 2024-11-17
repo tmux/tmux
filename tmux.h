@@ -2428,6 +2428,7 @@ typedef void (*job_free_cb) (void *);
 #define JOB_KEEPWRITE 0x2
 #define JOB_PTY 0x4
 #define JOB_DEFAULTSHELL 0x8
+#define JOB_SHOWSTDERR 0x10
 struct job	*job_run(const char *, int, char **, struct environ *,
 		     struct session *, const char *, job_update_cb,
 		     job_complete_cb, job_free_cb, void *, int, int, int);
