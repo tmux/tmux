@@ -223,9 +223,16 @@ assignment	: EQUALS
 		{
 			struct cmd_parse_state	*ps = &parse_state;
 			int			 flags = ps->input->flags;
+			int			 flag = 1;
+			struct cmd_parse_scope	*scope;
 
-			if ((~flags & CMD_PARSE_PARSEONLY) &&
-			    (ps->scope == NULL || ps->scope->flag))
+			if (ps->scope != NULL) {
+				flag = ps->scope->flag;
+				TAILQ_FOREACH(scope, &ps->stack, entry)
+					flag = flag && scope->flag;
+			}
+
+			if ((~flags & CMD_PARSE_PARSEONLY) && flag)
 				environ_put(global_environ, $1, 0);
 			free($1);
 		}
@@ -234,9 +241,16 @@ hidden_assignment : HIDDEN EQUALS
 		{
 			struct cmd_parse_state	*ps = &parse_state;
 			int			 flags = ps->input->flags;
+			int			 flag = 1;
+			struct cmd_parse_scope	*scope;
 
-			if ((~flags & CMD_PARSE_PARSEONLY) &&
-			    (ps->scope == NULL || ps->scope->flag))
+			if (ps->scope != NULL) {
+				flag = ps->scope->flag;
+				TAILQ_FOREACH(scope, &ps->stack, entry)
+					flag = flag && scope->flag;
+			}
+
+			if ((~flags & CMD_PARSE_PARSEONLY) && flag)
 				environ_put(global_environ, $2, ENVIRON_HIDDEN);
 			free($2);
 		}
