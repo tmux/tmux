@@ -30,6 +30,11 @@
 
 #include "tmux.h"
 
+#ifndef SD_ID128_UUID_FORMAT_STR
+#define SD_ID128_UUID_FORMAT_STR \
+	"%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x"
+#endif
+
 int
 systemd_activated(void)
 {
