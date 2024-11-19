@@ -614,7 +614,7 @@ enum tty_code_code {
 };
 
 /* Character classes. */
-#define WHITESPACE " "
+#define WHITESPACE "\t "
 
 /* Mode keys. */
 #define MODEKEY_EMACS 0

@@ -5038,6 +5038,8 @@ window_copy_in_set(struct window_mode_entry *wme, u_int px, u_int py,
 	grid_get_cell(data->backing->grid, px, py, &gc);
 	if (gc.flags & GRID_FLAG_PADDING)
 		return (0);
+	if (gc.flags & GRID_FLAG_TAB && strchr(set, '\t'))
+		return (gc.data.width);
 	return (utf8_cstrhas(set, &gc.data));
 }
 
