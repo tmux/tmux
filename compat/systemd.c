@@ -107,6 +107,11 @@ systemd_move_pid_to_new_cgroup(pid_t pid, char **cause)
 		xasprintf(cause, "failed to generate uuid: %s", strerror(-r));
 		goto finish;
 	}
+
+	#ifndef SD_ID128_UUID_FORMAT_STR
+	#define SD_ID128_UUID_FORMAT_STR "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x"
+	#endif
+
 	xasprintf(&name, "tmux-spawn-" SD_ID128_UUID_FORMAT_STR ".scope",
 	    SD_ID128_FORMAT_VAL(uuid));
 	r = sd_bus_message_append(m, "s", name);
