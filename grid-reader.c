@@ -242,7 +242,7 @@ grid_reader_cursor_next_word(struct grid_reader *gr, const char *separators)
 	}
 	while (grid_reader_handle_wrap(gr, &xx, &yy) &&
 	    ((width = grid_reader_in_set(gr, WHITESPACE))))
-		gr->cx += n;
+		gr->cx += width;
 }
 
 /* Move cursor to the end of the next word. */
@@ -441,7 +441,9 @@ grid_reader_cursor_back_to_indentation(struct grid_reader *gr)
 		xx = grid_line_length(gr->gd, py);
 		for (px = 0; px < xx; px++) {
 			grid_get_cell(gr->gd, px, py, &gc);
-			if (gc.data.size != 1 || *gc.data.data != ' ') {
+			if ((gc.data.size != 1 || *gc.data.data != ' ') &&
+			    ~gc.flags & GRID_FLAG_TAB &&
+			    ~gc.flags & GRID_FLAG_PADDING) {
 				gr->cx = px;
 				gr->cy = py;
 				return;
