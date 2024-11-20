@@ -5033,12 +5033,8 @@ window_copy_in_set(struct window_mode_entry *wme, u_int px, u_int py,
     const char *set)
 {
 	struct window_copy_mode_data	*data = wme->data;
-	struct grid_cell		 gc;
 
-	grid_get_cell(data->backing->grid, px, py, &gc);
-	if (gc.flags & GRID_FLAG_PADDING)
-		return (0);
-	return (utf8_cstrhas(set, &gc.data));
+	return (grid_in_set(data->backing->grid, px, py, set));
 }
 
 static u_int
