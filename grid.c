@@ -1561,3 +1561,23 @@ grid_line_length(struct grid *gd, u_int py)
 	}
 	return (px);
 }
+
+/* Check if character is in set. */
+int
+grid_in_set(struct grid *gd, u_int px, u_int py, const char *set)
+{
+	struct grid_cell	gc;
+	u_int			pxx;
+
+	grid_get_cell(gd, px, py, &gc);
+	if (strchr(set, '\t')) {
+		pxx = px;
+		while (pxx > 0 && gc.flags & GRID_FLAG_PADDING)
+			grid_get_cell(gd, --pxx, py, &gc);
+		if (gc.flags & GRID_FLAG_TAB)
+			return (gc.data.width - (px - pxx));
+	}
+	if (gc.flags & GRID_FLAG_PADDING)
+		return (0);
+	return (utf8_cstrhas(set, &gc.data));
+}

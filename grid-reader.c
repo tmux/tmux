@@ -180,24 +180,7 @@ grid_reader_handle_wrap(struct grid_reader *gr, u_int *xx, u_int *yy)
 int
 grid_reader_in_set(struct grid_reader *gr, const char *set)
 {
-	struct grid_cell	gc;
-
-	grid_get_cell(gr->gd, gr->cx, gr->cy, &gc);
-	if (gc.flags & GRID_FLAG_PADDING)
-		return (0);
-	if (gc.flags & GRID_FLAG_TAB && strchr(set, '\t'))
-		return (gc.data.width);
-	return (utf8_cstrhas(set, &gc.data));
-}
-
-/* Check if character under cursor is padding. */
-static int
-grid_reader_is_padding(struct grid_reader *gr)
-{
-	struct grid_cell	gc;
-
-	grid_get_cell(gr->gd, gr->cx, gr->cy, &gc);
-	return (gc.flags & GRID_FLAG_PADDING);
+	return (grid_in_set(gr->gd, gr->cx, gr->cy, set));
 }
 
 /* Move cursor to the start of the next word. */
@@ -298,13 +281,11 @@ grid_reader_cursor_previous_word(struct grid_reader *gr, const char *separators,
 	int	oldx, oldy, at_eol, word_is_letters;
 
 	/* Move back to the previous word character. */
-	if (already || grid_reader_in_set(gr, WHITESPACE) ||
-	    grid_reader_is_padding(gr)) {
+	if (already || grid_reader_in_set(gr, WHITESPACE)) {
 		for (;;) {
 			if (gr->cx > 0) {
 				gr->cx--;
-				if (!grid_reader_in_set(gr, WHITESPACE) &&
-				    !grid_reader_is_padding(gr)) {
+				if (!grid_reader_in_set(gr, WHITESPACE)) {
 					word_is_letters =
 					    !grid_reader_in_set(gr, separators);
 					break;
@@ -320,8 +301,7 @@ grid_reader_cursor_previous_word(struct grid_reader *gr, const char *separators,
 					oldx = gr->cx;
 					gr->cx--;
 					at_eol = grid_reader_in_set(gr,
-					    WHITESPACE) ||
-					    grid_reader_is_padding(gr);
+					    WHITESPACE);
 					gr->cx = oldx;
 					if (at_eol) {
 						word_is_letters = 0;
@@ -348,7 +328,6 @@ grid_reader_cursor_previous_word(struct grid_reader *gr, const char *separators,
 		if (gr->cx > 0)
 			gr->cx--;
 	} while (!grid_reader_in_set(gr, WHITESPACE) &&
-	    !grid_reader_is_padding(gr) &&
 	    word_is_letters != grid_reader_in_set(gr, separators));
 	gr->cx = oldx;
 	gr->cy = oldy;
