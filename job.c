@@ -360,14 +360,13 @@ job_check_died(pid_t pid, int status)
 
 	job->status = status;
 
-	if (job->state == JOB_CLOSED) {
-		if (job->completecb != NULL)
-			job->completecb(job);
-		job_free(job);
-	} else {
+	if (job->state != JOB_CLOSED) {
 		job->pid = -1;
 		job->state = JOB_DEAD;
 	}
+	if (job->completecb != NULL)
+		job->completecb(job);
+	job_free(job);
 }
 
 /* Get job status. */
