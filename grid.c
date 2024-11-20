@@ -1566,16 +1566,20 @@ grid_line_length(struct grid *gd, u_int py)
 int
 grid_in_set(struct grid *gd, u_int px, u_int py, const char *set)
 {
-	struct grid_cell	gc;
+	struct grid_cell	gc, tmp_gc;
 	u_int			pxx;
 
 	grid_get_cell(gd, px, py, &gc);
 	if (strchr(set, '\t')) {
-		pxx = px;
-		while (pxx > 0 && gc.flags & GRID_FLAG_PADDING)
-			grid_get_cell(gd, --pxx, py, &gc);
-		if (gc.flags & GRID_FLAG_TAB)
-			return (gc.data.width - (px - pxx));
+		if (gc.flags & GRID_FLAG_PADDING) {
+			pxx = px;
+			do
+				grid_get_cell(gd, --pxx, py, &tmp_gc);
+			while (pxx > 0 && tmp_gc.flags & GRID_FLAG_PADDING);
+			if (tmp_gc.flags & GRID_FLAG_TAB)
+				return (tmp_gc.data.width - (px - pxx));
+		} else if (gc.flags & GRID_FLAG_TAB)
+			return (gc.data.width);
 	}
 	if (gc.flags & GRID_FLAG_PADDING)
 		return (0);
