@@ -29,6 +29,19 @@
 
 #include "tmux.h"
 
+enum mouse_where {
+	NOWHERE,
+	PANE,
+	STATUS,
+	STATUS_LEFT,
+	STATUS_RIGHT,
+	STATUS_DEFAULT,
+	BORDER,
+	SCROLLBAR_UP,
+	SCROLLBAR_SLIDER,
+	SCROLLBAR_DOWN
+};
+
 static void	server_client_free(int, short, void *);
 static void	server_client_check_pane_resize(struct window_pane *);
 static void	server_client_check_pane_buffer(struct window_pane *);
@@ -566,18 +579,97 @@ server_client_exec(struct client *c, const char *cmd)
 	free(msg);
 }
 
+static enum mouse_where
+server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
+    u_int *sl_mpos)
+{
+	struct window		*w = wp->window;
+	struct options		*wo = w->options;
+	struct window_pane	*fwp;
+	int			 pane_status, sb, sb_pos, sb_w, sb_pad;
+	u_int			 line, sl_top, sl_bottom;
+
+	sb = options_get_number(wo, "pane-scrollbars");
+	sb_pos = options_get_number(wo, "pane-scrollbars-position");
+	pane_status = options_get_number(wo, "pane-border-status");
+	sb_pos = options_get_number(wo, "pane-scrollbars-position");
+
+	if (window_pane_show_scrollbar(wp, sb)) {
+		sb_w = wp->scrollbar_style.width;
+		sb_pad = wp->scrollbar_style.pad;
+	} else {
+		sb_w = 0;
+		sb_pad = 0;
+	}
+	if (pane_status == PANE_STATUS_TOP)
+		line = wp->yoff - 1;
+	else if (pane_status == PANE_STATUS_BOTTOM)
+		line = wp->yoff + wp->sy;
+
+	/* Check if point is within the pane or scrollbar. */
+	if (((pane_status != PANE_STATUS_OFF && py != line) ||
+	    (wp->yoff == 0 && py < wp->sy) ||
+	    (py >= wp->yoff && py < wp->yoff + wp->sy)) &&
+	    ((sb_pos == PANE_SCROLLBARS_RIGHT &&
+	    px < wp->xoff + wp->sx + sb_pad + sb_w) ||
+	    (sb_pos == PANE_SCROLLBARS_LEFT &&
+	    px < wp->xoff + wp->sx - sb_pad - sb_w))) {
+		/* Check if in the scrollbar. */
+		if ((sb_pos == PANE_SCROLLBARS_RIGHT &&
+		    (px >= wp->xoff + wp->sx + sb_pad &&
+		    px < wp->xoff + wp->sx + sb_pad + sb_w)) ||
+		    (sb_pos == PANE_SCROLLBARS_LEFT &&
+		    (px >= wp->xoff - sb_pad - sb_w &&
+		    px < wp->xoff - sb_pad))) {
+			/* Check where inside the scrollbar. */
+			sl_top = wp->yoff + wp->sb_slider_y;
+			sl_bottom = (wp->yoff + wp->sb_slider_y +
+			    wp->sb_slider_h - 1);
+			if (py < sl_top)
+				return (SCROLLBAR_UP);
+			else if (py >= sl_top &&
+				 py <= sl_bottom) {
+				*sl_mpos = (py - wp->sb_slider_y - wp->yoff);
+				return (SCROLLBAR_SLIDER);
+			} else /* py > sl_bottom */
+				return (SCROLLBAR_DOWN);
+		} else {
+			/* Must be inside the pane. */
+			return (PANE);
+		}
+	} else if (~w->flags & WINDOW_ZOOMED) {
+		/* Try the pane borders if not zoomed. */
+		TAILQ_FOREACH(fwp, &w->panes, entry) {
+			if ((((sb_pos == PANE_SCROLLBARS_RIGHT &&
+			    fwp->xoff + fwp->sx + sb_pad + sb_w == px) ||
+			    (sb_pos == PANE_SCROLLBARS_LEFT &&
+			    fwp->xoff + fwp->sx == px)) &&
+			    fwp->yoff <= 1 + py &&
+			    fwp->yoff + fwp->sy >= py) ||
+			    (fwp->yoff + fwp->sy == py &&
+			    fwp->xoff <= 1 + px &&
+			    fwp->xoff + fwp->sx >= px))
+				break;
+		}
+		if (fwp != NULL) {
+			wp = fwp;
+			return (BORDER);
+		}
+	}
+	return (NOWHERE);
+}
+
 /* Check for mouse keys. */
 static key_code
 server_client_check_mouse(struct client *c, struct key_event *event)
 {
 	struct mouse_event	*m = &event->m;
 	struct session		*s = c->session, *fs;
-	struct options		*wo = s->curw->window->options;
+	struct window		*w = s->curw->window;
 	struct winlink		*fwl;
 	struct window_pane	*wp, *fwp;
-	u_int			 x, y, b, sx, sy, px, py, line = 0, sb_pos;
-	u_int			 sl_top, sl_bottom, sl_mpos = 0;
-	int			 ignore = 0, sb, sb_w, sb_pad, pane_status;
+	u_int			 x, y, b, sx, sy, px, py, sl_mpos = 0;
+	int			 ignore = 0;
 	key_code		 key;
 	struct timeval		 tv;
 	struct style_range	*sr;
@@ -590,16 +682,7 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 	       SECOND,
 	       DOUBLE,
 	       TRIPLE } type = NOTYPE;
-	enum { NOWHERE,
-	       PANE,
-	       STATUS,
-	       STATUS_LEFT,
-	       STATUS_RIGHT,
-	       STATUS_DEFAULT,
-	       BORDER,
-	       SCROLLBAR_UP,
-	       SCROLLBAR_SLIDER,
-	       SCROLLBAR_DOWN } where = NOWHERE;
+	enum mouse_where where = NOWHERE;
 
 	log_debug("%s mouse %02x at %u,%u (last %u,%u) (%d)", c->name, m->b,
 	    m->x, m->y, m->lx, m->ly, c->tty.mouse_drag_flag);
@@ -766,84 +849,19 @@ have_event:
 
 			tty_window_offset(&c->tty, &m->ox, &m->oy, &sx, &sy);
 			log_debug("mouse window @%u at %u,%u (%ux%u)",
-				  s->curw->window->id, m->ox, m->oy, sx, sy);
+				  w->id, m->ox, m->oy, sx, sy);
 			if (px > sx || py > sy)
 				return (KEYC_UNKNOWN);
 			px = px + m->ox;
 			py = py + m->oy;
 
 			/* Try inside the pane. */
-			wp = window_get_active_at(s->curw->window, px, py);
+			wp = window_get_active_at(w, px, py);
 			if (wp == NULL)
 				return (KEYC_UNKNOWN);
+			where = server_client_check_mouse_in_pane(wp, px, py,
+			    &sl_mpos);
 
-			/* Try the scrollbar next to a pane. */
-			sb = options_get_number(wo, "pane-scrollbars");
-			sb_pos = options_get_number(wo,
-			    "pane-scrollbars-position");
-			if (window_pane_show_scrollbar(wp, sb)) {
-				sb_w = wp->scrollbar_style.width;
-				sb_pad = wp->scrollbar_style.pad;
-			} else {
-				sb_w = 0;
-				sb_pad = 0;
-			}
-			pane_status = options_get_number(wo,
-			    "pane-border-status");
-			if (pane_status == PANE_STATUS_TOP)
-				line = wp->yoff - 1;
-			else if (pane_status == PANE_STATUS_BOTTOM)
-				line = wp->yoff + wp->sy;
-
-			/*
-			 * Check if py could lie within a scrollbar
-			 * (but not within the padding). If the pane is
-			 * at the top, then py is 0; if not then the
-			 * top, then yoff to yoff + sy.
-			 */
-			if ((pane_status != PANE_STATUS_OFF && py != line) ||
-			    (wp->yoff == 0 && py < wp->sy) ||
-			    (py >= wp->yoff && py < wp->yoff + wp->sy)) {
-				sb_pos = options_get_number(wo,
-				    "pane-scrollbars-position");
-				if ((sb_pos == PANE_SCROLLBARS_RIGHT &&
-				    (px >= wp->xoff + wp->sx + sb_pad &&
-				    px < wp->xoff + wp->sx + sb_pad + sb_w)) ||
-				    (sb_pos == PANE_SCROLLBARS_LEFT &&
-				    (px >= wp->xoff - sb_pad - sb_w &&
-				    px < wp->xoff - sb_pad))) {
-					sl_top = wp->yoff + wp->sb_slider_y;
-					sl_bottom = (wp->yoff +
-					    wp->sb_slider_y +
-					    wp->sb_slider_h - 1);
-					if (py < sl_top)
-						where = SCROLLBAR_UP;
-					else if (py >= sl_top &&
-					    py <= sl_bottom) {
-						where = SCROLLBAR_SLIDER;
-						sl_mpos = (py -
-						    wp->sb_slider_y - wp->yoff);
-					} else /* py > sl_bottom */
-						where = SCROLLBAR_DOWN;
-				} else
-					where = PANE;
-			} else {
-				/* Try the pane borders if not zoomed. */
-				if (~s->curw->window->flags & WINDOW_ZOOMED) {
-					TAILQ_FOREACH(wp,
-					    &s->curw->window->panes, entry) {
-						if ((wp->xoff + wp->sx == px &&
-						    wp->yoff <= 1 + py &&
-						    wp->yoff + wp->sy >= py) ||
-						    (wp->yoff + wp->sy == py &&
-						    wp->xoff <= 1 + px &&
-						    wp->xoff + wp->sx >= px))
-							break;
-					}
-					if (wp != NULL)
-						where = BORDER;
-				}
-			}
 			if (where == PANE) {
 				log_debug("mouse %u,%u on pane %%%u", x, y,
 				    wp->id);
