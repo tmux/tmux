@@ -614,7 +614,7 @@ enum tty_code_code {
 };
 
 /* Character classes. */
-#define WHITESPACE " "
+#define WHITESPACE "\t "
 
 /* Mode keys. */
 #define MODEKEY_EMACS 0
@@ -2988,6 +2988,7 @@ void	 grid_reflow(struct grid *, u_int);
 void	 grid_wrap_position(struct grid *, u_int, u_int, u_int *, u_int *);
 void	 grid_unwrap_position(struct grid *, u_int *, u_int *, u_int, u_int);
 u_int	 grid_line_length(struct grid *, u_int);
+int	 grid_in_set(struct grid *, u_int, u_int, const char *);
 
 /* grid-reader.c */
 void	 grid_reader_start(struct grid_reader *, struct grid *, u_int, u_int);
