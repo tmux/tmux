@@ -47,8 +47,8 @@ static void	server_client_check_pane_resize(struct window_pane *);
 static void	server_client_check_pane_buffer(struct window_pane *);
 static void	server_client_check_window_resize(struct window *);
 static key_code	server_client_check_mouse(struct client *, struct key_event *);
-enum mouse_where	server_cilent_check_mouse_in_pane(struct window *,
-    struct window_pane *, u_int, u_int, u_int *);
+enum mouse_where	server_cilent_check_mouse_in_pane(struct window_pane *,
+    u_int, u_int, u_int *);
 static void	server_client_repeat_timer(int, short, void *);
 static void	server_client_click_timer(int, short, void *);
 static void	server_client_check_exit(struct client *);
@@ -781,7 +781,7 @@ have_event:
 			wp = window_get_active_at(w, px, py);
 			if (wp == NULL)
 				return (KEYC_UNKNOWN);
-			where = server_cilent_check_mouse_in_pane(w, wp, px, py,
+			where = server_cilent_check_mouse_in_pane(wp, px, py,
 			    &sl_mpos);
 
 			if (where == PANE) {
@@ -2156,9 +2156,10 @@ out:
 }
 
 enum mouse_where
-server_cilent_check_mouse_in_pane(struct window *w, struct window_pane *wp,
-				  u_int px, u_int py, u_int *sl_mpos)
+server_cilent_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
+    u_int *sl_mpos)
 {
+	struct window		*w = wp->window;
 	struct options		*wo = w->options;
 	struct window_pane	*fwp;
 	int			 pane_status, sb, sb_pos, sb_w, sb_pad;
