@@ -2342,6 +2342,9 @@ will do nothing.
 The
 .Fl o
 flag jumps to the beginning of the command output instead of the shell prompt.
+Finding the beginning of command output requires the shell to emit an escape
+sequence (\e033]133;C\e033\e\e) to tell tmux where the output begins.
+If the shell does not send these escape sequences, these commands do nothing.
 .Pp
 Copy commands may take an optional buffer prefix argument which is used
 to generate the buffer name (the default is
@@ -4875,6 +4878,7 @@ section.
 .Pp
 .It Ic copy-mode-position-format Ar format
 Format of the position indicator in copy mode.
+.Pp
 .It Xo Ic mode-keys
 .Op Ic vi | emacs
 .Xc
