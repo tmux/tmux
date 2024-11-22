@@ -20,6 +20,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
+#include <arpa/inet.h>
 
 #include <limits.h>
 #include <errno.h>
