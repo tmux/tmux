@@ -835,9 +835,9 @@ cmdq_guard(struct cmdq_item *item, const char *guard, int flags)
 
 /* Show message from command. */
 void
-cmdq_print_data(struct cmdq_item *item, int parse, struct evbuffer *evb)
+cmdq_print_data(struct cmdq_item *item, struct evbuffer *evb)
 {
-	server_client_print(item->client, parse, evb);
+	server_client_print(item->client, 1, evb);
 }
 
 /* Show message from command. */
@@ -855,7 +855,7 @@ cmdq_print(struct cmdq_item *item, const char *fmt, ...)
 	evbuffer_add_vprintf(evb, fmt, ap);
 	va_end(ap);
 
-	cmdq_print_data(item, 0, evb);
+	cmdq_print_data(item, evb);
 	evbuffer_free(evb);
 }
 
