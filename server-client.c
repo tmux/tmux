@@ -3559,13 +3559,13 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 	case MSG_IDENTIFY_STDIN:
 		if (datalen != 0)
 			fatalx("bad MSG_IDENTIFY_STDIN size");
-		c->fd = imsg_get_fd(imsg);
+		c->fd = proc_get_last_fd(c->peer);
 		log_debug("client %p IDENTIFY_STDIN %d", c, c->fd);
 		break;
 	case MSG_IDENTIFY_STDOUT:
 		if (datalen != 0)
 			fatalx("bad MSG_IDENTIFY_STDOUT size");
-		c->out_fd = imsg_get_fd(imsg);
+		c->out_fd = proc_get_last_fd(c->peer);
 		log_debug("client %p IDENTIFY_STDOUT %d", c, c->out_fd);
 		break;
 	case MSG_IDENTIFY_ENVIRON:
