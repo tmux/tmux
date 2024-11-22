@@ -27,7 +27,7 @@
 #endif
 
 int
-clock_gettime(int clock, struct timespec *ts)
+clock_gettime(__unused int clock, struct timespec *ts)
 {
 	struct timeval	tv;
 
