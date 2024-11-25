@@ -3843,17 +3843,21 @@ server_client_print(struct client *c, int parse, struct evbuffer *evb)
 	size_t				 size = EVBUFFER_LENGTH(evb);
 	struct window_pane		*wp;
 	struct window_mode_entry	*wme;
-	char				*sanitized, *msg, *line;
+	char				*sanitized, *msg, *line, empty = '\0';
 
 	if (!parse) {
 		utf8_stravisx(&msg, data, size,
 		    VIS_OCTAL|VIS_CSTYLE|VIS_NOSLASH);
-		log_debug("%s: %s", __func__, msg);
 	} else {
-		msg = EVBUFFER_DATA(evb);
-		if (msg[size - 1] != '\0')
-			evbuffer_add(evb, "", 1);
+		if (size == 0)
+			msg = &empty;
+		else {
+			msg = EVBUFFER_DATA(evb);
+			if (msg[size - 1] != '\0')
+				evbuffer_add(evb, "", 1);
+		}
 	}
+	log_debug("%s: %s", __func__, msg);
 
 	if (c == NULL)
 		goto out;
