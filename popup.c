@@ -691,6 +691,7 @@ popup_display(int flags, enum box_lines lines, struct cmdq_item *item, u_int px,
 	pd->border_cell.attr = 0;
 
 	screen_init(&pd->s, jx, jy, 0);
+	screen_set_default_cursor(&pd->s, global_w_options);
 	colour_palette_init(&pd->palette);
 	colour_palette_from_option(&pd->palette, global_w_options);
 
