@@ -4391,13 +4391,15 @@ window_copy_write_line(struct window_mode_entry *wme,
 	char				*expanded;
 	struct format_tree		*ft;
 
-	style_apply(&gc, oo, "mode-style", NULL);
+	ft = format_create_defaults(NULL, NULL, NULL, NULL, wp);
+
+	style_apply(&gc, oo, "copy-mode-position-style", ft);
 	gc.flags |= GRID_FLAG_NOPALETTE;
-	style_apply(&mgc, oo, "copy-mode-match-style", NULL);
+	style_apply(&mgc, oo, "copy-mode-match-style", ft);
 	mgc.flags |= GRID_FLAG_NOPALETTE;
-	style_apply(&cgc, oo, "copy-mode-current-match-style", NULL);
+	style_apply(&cgc, oo, "copy-mode-current-match-style", ft);
 	cgc.flags |= GRID_FLAG_NOPALETTE;
-	style_apply(&mkgc, oo, "copy-mode-mark-style", NULL);
+	style_apply(&mkgc, oo, "copy-mode-mark-style", ft);
 	mkgc.flags |= GRID_FLAG_NOPALETTE;
 
 	window_copy_write_one(wme, ctx, py, hsize - data->oy + py,
@@ -4406,14 +4408,12 @@ window_copy_write_line(struct window_mode_entry *wme,
 	if (py == 0 && s->rupper < s->rlower && !data->hide_position) {
 		value = options_get_string(oo, "copy-mode-position-format");
 		if (*value != '\0') {
-			ft = format_create_defaults(NULL, NULL, NULL, NULL, wp);
 			expanded = format_expand(ft, value);
 			if (*expanded != '\0') {
 				screen_write_cursormove(ctx, 0, 0, 0);
 				format_draw(ctx, &gc, sx, expanded, NULL, 0);
 			}
 			free(expanded);
-			format_free(ft);
 		}
 	}
 
@@ -4421,6 +4421,8 @@ window_copy_write_line(struct window_mode_entry *wme,
 		screen_write_cursormove(ctx, screen_size_x(s) - 1, py, 0);
 		screen_write_putc(ctx, &grid_default_cell, '$');
 	}
+
+	format_free(ft);
 }
 
 static void
@@ -4668,6 +4670,7 @@ window_copy_set_selection(struct window_mode_entry *wme, int may_redraw,
 	struct grid_cell		 gc;
 	u_int				 sx, sy, cy, endsx, endsy;
 	int				 startrelpos, endrelpos;
+	struct format_tree		*ft;
 
 	window_copy_synchronize_cursor(wme, no_reset);
 
@@ -4689,8 +4692,10 @@ window_copy_set_selection(struct window_mode_entry *wme, int may_redraw,
 	}
 
 	/* Set colours and selection. */
-	style_apply(&gc, oo, "mode-style", NULL);
+	ft = format_create_defaults(NULL, NULL, NULL, NULL, wp);
+	style_apply(&gc, oo, "copy-mode-selection-style", ft);
 	gc.flags |= GRID_FLAG_NOPALETTE;
+	format_free(ft);
 	screen_set_selection(s, sx, sy, endsx, endsy, data->rectflag,
 	    data->modekeys, &gc);
 
