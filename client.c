@@ -230,7 +230,7 @@ client_exit(void)
 /* Client main loop. */
 int
 client_main(struct event_base *base, int argc, char **argv, uint64_t flags,
-    int feat)
+    int feat, int gift_fd)
 {
 	struct cmd_parse_result	*pr;
 	struct msg_command	*data;
@@ -388,7 +388,7 @@ client_main(struct event_base *base, int argc, char **argv, uint64_t flags,
 		size += sizeof *data;
 
 		/* Send the command. */
-		if (proc_send(client_peer, msg, -1, data, size) != 0) {
+		if (proc_send(client_peer, msg, gift_fd, data, size) != 0) {
 			fprintf(stderr, "failed to send command\n");
 			free(data);
 			return (1);

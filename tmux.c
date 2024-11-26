@@ -53,7 +53,7 @@ static __dead void
 usage(void)
 {
 	fprintf(stderr,
-	    "usage: %s [-2CDlNuVv] [-c shell-command] [-f file] [-L socket-name]\n"
+	    "usage: %s [-2CDlNuVv] [-c shell-command] [-f file] [-g fd] [-L socket-name]\n"
 	    "            [-S socket-path] [-T features] [command [flags]]\n",
 	    getprogname());
 	exit(1);
@@ -352,7 +352,7 @@ main(int argc, char **argv)
 	char					*path = NULL, *label = NULL;
 	char					*cause, **var;
 	const char				*s, *cwd;
-	int					 opt, keys, feat = 0, fflag = 0;
+	int					 opt, keys, feat = 0, fflag = 0, gift_fd = -1;
 	uint64_t				 flags = 0;
 	const struct options_table_entry	*oe;
 	u_int					 i;
@@ -379,7 +379,7 @@ main(int argc, char **argv)
 		environ_set(global_environ, "PWD", 0, "%s", cwd);
 	expand_paths(TMUX_CONF, &cfg_files, &cfg_nfiles, 1);
 
-	while ((opt = getopt(argc, argv, "2c:CDdf:lL:NqS:T:uUvV")) != -1) {
+	while ((opt = getopt(argc, argv, "2c:CDdf:lL:NqS:T:uUvVg:")) != -1) {
 		switch (opt) {
 		case '2':
 			tty_add_features(&feat, "256", ":,");
@@ -435,6 +435,9 @@ main(int argc, char **argv)
 			break;
 		case 'v':
 			log_add_level();
+			break;
+		case 'g':
+			gift_fd = atoi(optarg);
 			break;
 		default:
 			usage();
@@ -534,5 +537,5 @@ main(int argc, char **argv)
 	free(label);
 
 	/* Pass control to the client. */
-	exit(client_main(osdep_event_init(), argc, argv, flags, feat));
+	exit(client_main(osdep_event_init(), argc, argv, flags, feat, gift_fd));
 }

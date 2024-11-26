@@ -26,6 +26,7 @@
 .Op Fl 2CDlNuVv
 .Op Fl c Ar shell-command
 .Op Fl f Ar file
+.Op Fl g Ar fd
 .Op Fl L Ar socket-name
 .Op Fl S Ar socket-path
 .Op Fl T Ar features
@@ -133,6 +134,14 @@ With
 .Fl D ,
 .Ar command
 may not be specified.
+.It Fl g Ar fd
+Gift
+.Ar fd
+to the server, alongside the executed command.
+This is only useful when paired with
+.Ic new-window Fl s
+to reparent another terminal emulator's session into
+.Nm .
 .It Fl f Ar file
 Specify an alternative configuration file.
 By default,
