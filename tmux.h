@@ -2182,6 +2182,8 @@ struct spawn_context {
 #define SPAWN_FULLSIZE 0x20
 #define SPAWN_EMPTY 0x40
 #define SPAWN_ZOOM 0x80
+
+	int	*steal_master_fd;
 };
 
 /* Mode tree sort order. */
@@ -2734,7 +2736,7 @@ void printflike(2, 3) cmdq_error(struct cmdq_item *, const char *, ...);
 void	cmd_wait_for_flush(void);
 
 /* client.c */
-int	client_main(struct event_base *, int, char **, uint64_t, int);
+int	client_main(struct event_base *, int, char **, uint64_t, int, int);
 
 /* key-bindings.c */
 struct key_table *key_bindings_get_table(const char *, int);

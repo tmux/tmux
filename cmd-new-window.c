@@ -38,8 +38,8 @@ const struct cmd_entry cmd_new_window_entry = {
 	.name = "new-window",
 	.alias = "neww",
 
-	.args = { "abc:de:F:kn:PSt:", 0, -1, NULL },
-	.usage = "[-abdkPS] [-c start-directory] [-e environment] [-F format] "
+	.args = { "abc:de:F:kn:PSt:s", 0, -1, NULL },
+	.usage = "[-abdksPS] [-c start-directory] [-e environment] [-F format] "
 		 "[-n window-name] " CMD_TARGET_WINDOW_USAGE " [shell-command]",
 
 	.target = { 't', CMD_FIND_WINDOW, CMD_FIND_WINDOW_INDEX },
@@ -56,6 +56,7 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_find_state	*current = cmdq_get_current(item);
 	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct spawn_context	 sc = { 0 };
+	int	steal_master_fd;
 	struct client		*tc = cmdq_get_target_client(item);
 	struct session		*s = target->s;
 	struct winlink		*wl = target->wl, *new_wl = NULL;
@@ -125,6 +126,11 @@ cmd_new_window_exec(struct cmd *self, struct cmdq_item *item)
 		sc.flags |= SPAWN_DETACHED;
 	if (args_has(args, 'k'))
 		sc.flags |= SPAWN_KILL;
+
+	if (args_has(args, 's')) {
+		steal_master_fd = proc_get_last_fd(cmdq_get_client(item)->peer);
+		sc.steal_master_fd = &steal_master_fd;
+	}
 
 	if ((new_wl = spawn_window(&sc, &cause)) == NULL) {
 		cmdq_error(item, "create window failed: %s", cause);

@@ -366,9 +366,26 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	}
 
 	/* Fork the new process. */
-	new_wp->pid = fdforkpty(ptm_fd, &new_wp->fd, new_wp->tty, NULL, &ws);
-	if (new_wp->pid == -1) {
-		xasprintf(cause, "fork failed: %s", strerror(errno));
+	if (!sc->steal_master_fd) {
+		new_wp->pid = fdforkpty(ptm_fd, &new_wp->fd, new_wp->tty, NULL, &ws);
+		if (new_wp->pid == -1) {
+			xasprintf(cause, "fork failed: %s", strerror(errno));
+			goto nopty;
+		}
+	} else {
+		new_wp->fd = *sc->steal_master_fd;
+		if (ptsname_r(new_wp->fd, new_wp->tty, sizeof new_wp->tty)) {
+			xasprintf(cause, "stolen fd not a pty master");
+			close(new_wp->fd);
+			goto nopty;
+		}
+
+		/* tmux only cares about PIDs for reaping.
+		 * We can never wait for a child that isn't ours. */
+		new_wp->pid = -1;
+	}
+	if (0) {
+	nopty:
 		new_wp->fd = -1;
 		if (~sc->flags & SPAWN_RESPAWN) {
 			server_client_remove_pane(new_wp);

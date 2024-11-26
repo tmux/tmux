@@ -3078,7 +3078,7 @@ the
 option.
 .Tg neww
 .It Xo Ic new-window
-.Op Fl abdkPS
+.Op Fl abdksPS
 .Op Fl c Ar start-directory
 .Op Fl e Ar environment
 .Op Fl F Ar format
@@ -3124,6 +3124,14 @@ is not specified, the value of the
 option is used.
 .Fl c
 specifies the working directory in which the new window is created.
+.Pp
+If
+.Fl s ,
+instead of executing a command,
+the gifted file descriptor
+.Pq Nm Fl g ,
+which must be an open pseudoterminal master,
+is adopted and controlled in the new window.
 .Pp
 When the shell command completes, the window closes.
 See the
