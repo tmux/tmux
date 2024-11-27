@@ -38,6 +38,14 @@
 #include <event2/bufferevent_compat.h>
 #else
 #include <event.h>
+#ifndef EVBUFFER_EOL_LF
+/*
+ * This doesn't really work because evbuffer_readline is broken, but gets us to
+ * build with very old (older than 1.4.14) libevent.
+ */
+#define EVBUFFER_EOL_LF
+#define evbuffer_readln(a, b, c) evbuffer_readline(a)
+#endif
 #endif
 
 #ifdef HAVE_MALLOC_TRIM
