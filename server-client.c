@@ -79,7 +79,7 @@ RB_GENERATE(client_windows, client_window, entry, server_client_window_cmp);
 u_int
 server_client_how_many(void)
 {
-	struct client  	*c;
+	struct client	*c;
 	u_int		 n;
 
 	n = 0;
@@ -880,7 +880,11 @@ have_event:
 		m->wp = -1;
 
 	/* Stop dragging if needed. */
-	if (type != DRAG && type != WHEEL && c->tty.mouse_drag_flag != 0) {
+	if (type != DRAG &&
+	    type != WHEEL &&
+	    type != DOUBLE &&
+	    type != TRIPLE &&
+	    c->tty.mouse_drag_flag != 0) {
 		if (c->tty.mouse_drag_release != NULL)
 			c->tty.mouse_drag_release(c, m);
 
@@ -2244,7 +2248,7 @@ server_client_is_bracket_paste(struct client *c, key_code key)
 	}
 
 	if (key == KEYC_PASTE_END) {
- 		c->flags &= ~CLIENT_BRACKETPASTING;
+		c->flags &= ~CLIENT_BRACKETPASTING;
 		log_debug("%s: bracket paste off", c->name);
 		return (0);
 	}
@@ -3726,7 +3730,7 @@ const char *
 server_client_get_flags(struct client *c)
 {
 	static char	s[256];
-	char	 	tmp[32];
+	char		tmp[32];
 
 	*s = '\0';
 	if (c->flags & CLIENT_ATTACHED)
