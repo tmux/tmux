@@ -24,7 +24,6 @@
 
 #include <limits.h>
 #include <errno.h>
-#include <endian.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
