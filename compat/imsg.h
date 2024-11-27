@@ -1,4 +1,4 @@
-/*	$OpenBSD: imsg.h,v 1.18 2024/11/21 13:03:21 claudio Exp $	*/
+/*	$OpenBSD: imsg.h,v 1.19 2024/11/26 13:57:31 claudio Exp $	*/
 
 /*
  * Copyright (c) 2023 Claudio Jeker <claudio@openbsd.org>
@@ -110,8 +110,8 @@ int		 ibuf_fd_avail(struct ibuf *);
 int		 ibuf_fd_get(struct ibuf *);
 void		 ibuf_fd_set(struct ibuf *, int);
 struct msgbuf	*msgbuf_new(void);
-struct msgbuf	*msgbuf_new_reader(size_t, ssize_t (*)(struct ibuf *, void *),
-		    void *);
+struct msgbuf	*msgbuf_new_reader(size_t,
+		    struct ibuf *(*)(struct ibuf *, void *, int *), void *);
 void		 msgbuf_free(struct msgbuf *);
 void		 msgbuf_clear(struct msgbuf *);
 uint32_t	 msgbuf_queuelen(struct msgbuf *);
@@ -124,7 +124,7 @@ struct ibuf	*msgbuf_get(struct msgbuf *);
 /* imsg.c */
 int	 imsgbuf_init(struct imsgbuf *, int);
 void	 imsgbuf_allow_fdpass(struct imsgbuf *imsgbuf);
-void	 imsgbuf_set_maxsize(struct imsgbuf *, uint32_t);
+int	 imsgbuf_set_maxsize(struct imsgbuf *, uint32_t);
 int	 imsgbuf_read(struct imsgbuf *);
 int	 imsgbuf_write(struct imsgbuf *);
 int	 imsgbuf_flush(struct imsgbuf *);

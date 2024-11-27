@@ -1,4 +1,4 @@
-/*	$OpenBSD: imsg.c,v 1.36 2024/11/21 13:03:21 claudio Exp $	*/
+/*	$OpenBSD: imsg.c,v 1.37 2024/11/26 13:57:31 claudio Exp $	*/
 
 /*
  * Copyright (c) 2023 Claudio Jeker <claudio@openbsd.org>
@@ -22,6 +22,7 @@
 #include <sys/uio.h>
 
 #include <errno.h>
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -30,8 +31,9 @@
 #include "imsg.h"
 
 #define IMSG_ALLOW_FDPASS	0x01
+#define IMSG_FD_MARK		0x80000000U
 
-static ssize_t	 imsg_parse_hdr(struct ibuf *, void *);
+static struct ibuf	*imsg_parse_hdr(struct ibuf *, void *, int *);
 
 int
 imsgbuf_init(struct imsgbuf *imsgbuf, int fd)
@@ -53,12 +55,15 @@ imsgbuf_allow_fdpass(struct imsgbuf *imsgbuf)
 	imsgbuf->flags |= IMSG_ALLOW_FDPASS;
 }
 
-void
+int
 imsgbuf_set_maxsize(struct imsgbuf *imsgbuf, uint32_t maxsize)
 {
-	if (maxsize < IMSG_HEADER_SIZE)
-		return;
+	if (maxsize < IMSG_HEADER_SIZE || maxsize & IMSG_FD_MARK) {
+		errno = EINVAL;
+		return (-1);
+	}
 	imsgbuf->maxsize = maxsize;
+	return (0);
 }
 
 int
@@ -119,6 +124,7 @@ imsg_get(struct imsgbuf *imsgbuf, struct imsg *imsg)
 	else
 		m.data = NULL;
 	m.buf = buf;
+	m.hdr.len &= ~IMSG_FD_MARK;
 
 	*imsg = m;
 	return (ibuf_size(buf) + IMSG_HEADER_SIZE);
@@ -267,7 +273,7 @@ int
 imsg_forward(struct imsgbuf *imsgbuf, struct imsg *msg)
 {
 	struct ibuf	*wbuf;
-	size_t		 len = 0;
+	size_t		 len;
 
 	ibuf_rewind(msg->buf);
 	ibuf_skip(msg->buf, sizeof(msg->hdr));
@@ -277,7 +283,7 @@ imsg_forward(struct imsgbuf *imsgbuf, struct imsg *msg)
 	    msg->hdr.pid, len)) == NULL)
 		return (-1);
 
-	if (msg->buf != NULL) {
+	if (len != 0) {
 		if (ibuf_add_ibuf(wbuf, msg->buf) == -1) {
 			ibuf_free(wbuf);
 			return (-1);
@@ -329,9 +335,12 @@ void
 imsg_close(struct imsgbuf *imsgbuf, struct ibuf *msg)
 {
 	struct imsg_hdr	*hdr;
+	uint32_t len;
 
-	hdr = (struct imsg_hdr *)msg->buf;
-	hdr->len = ibuf_size(msg);
+	len = ibuf_size(msg);
+	if (ibuf_fd_avail(msg))
+		len |= IMSG_FD_MARK;
+	(void)ibuf_set_h32(msg, offsetof(struct imsg_hdr, len), len);
 	ibuf_close(imsgbuf->w, msg);
 }
 
@@ -341,18 +350,29 @@ imsg_free(struct imsg *imsg)
 	ibuf_free(imsg->buf);
 }
 
-static ssize_t
-imsg_parse_hdr(struct ibuf *buf, void *arg)
+static struct ibuf *
+imsg_parse_hdr(struct ibuf *buf, void *arg, int *fd)
 {
 	struct imsgbuf *imsgbuf = arg;
 	struct imsg_hdr hdr;
+	struct ibuf *b;
+	uint32_t len;
 
 	if (ibuf_get(buf, &hdr, sizeof(hdr)) == -1)
-		return -1;
-	if (hdr.len < IMSG_HEADER_SIZE ||
-	    hdr.len > imsgbuf->maxsize) {
+		return (NULL);
+
+	len = hdr.len & ~IMSG_FD_MARK;
+
+	if (len < IMSG_HEADER_SIZE || len > imsgbuf->maxsize) {
 		errno = ERANGE;
-		return (-1);
+		return (NULL);
 	}
-	return hdr.len;
+	if ((b = ibuf_open(len)) == NULL)
+		return (NULL);
+	if (hdr.len & IMSG_FD_MARK) {
+		ibuf_fd_set(b, *fd);
+		*fd = -1;
+	}
+
+	return b;
 }

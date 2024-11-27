@@ -1,4 +1,4 @@
-/*	$OpenBSD: imsg-buffer.c,v 1.30 2024/11/22 07:20:50 tb Exp $	*/
+/*	$OpenBSD: imsg-buffer.c,v 1.31 2024/11/26 13:57:31 claudio Exp $	*/
 
 /*
  * Copyright (c) 2023 Claudio Jeker <claudio@openbsd.org>
@@ -24,6 +24,7 @@
 
 #include <limits.h>
 #include <errno.h>
+#include <endian.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -51,7 +52,7 @@ struct msgbuf {
 	uint32_t		 queued;
 	char			*rbuf;
 	struct ibuf		*rpmsg;
-	ssize_t			(*readhdr)(struct ibuf *, void *);
+	struct ibuf		*(*readhdr)(struct ibuf *, void *, int *);
 	void			*rarg;
 	size_t			 roff;
 	size_t			 hdrsize;
@@ -587,8 +588,8 @@ msgbuf_new(void)
 }
 
 struct msgbuf *
-msgbuf_new_reader(size_t hdrsz, ssize_t (*readhdr)(struct ibuf *, void *),
-    void *arg)
+msgbuf_new_reader(size_t hdrsz,
+    struct ibuf *(*readhdr)(struct ibuf *, void *, int *), void *arg)
 {
 	struct msgbuf *msgbuf;
 	char *buf;
@@ -771,33 +772,16 @@ ibuf_read_process(struct msgbuf *msgbuf, int fd)
 
 	ibuf_from_buffer(&rbuf, msgbuf->rbuf, msgbuf->roff);
 
-	/* fds must be passed at start of message of at least hdrsize bytes */
-	if (msgbuf->rpmsg != NULL && fd != -1) {
-		close(fd);
-		fd = -1;
-	}
-
 	do {
 		if (msgbuf->rpmsg == NULL) {
-			if (ibuf_size(&rbuf) < msgbuf->hdrsize) {
-				if (fd != -1) {
-					close(fd);
-					fd = -1;
-				}
+			if (ibuf_size(&rbuf) < msgbuf->hdrsize)
 				break;
-			}
 			/* get size from header */
 			ibuf_from_buffer(&msg, ibuf_data(&rbuf),
 			    msgbuf->hdrsize);
-			sz = msgbuf->readhdr(&msg, msgbuf->rarg);
-			if (sz == -1)
+			if ((msgbuf->rpmsg = msgbuf->readhdr(&msg,
+			    msgbuf->rarg, &fd)) == NULL)
 				goto fail;
-			if ((msgbuf->rpmsg = ibuf_open(sz)) == NULL)
-				goto fail;
-			if (fd != -1) {
-				ibuf_fd_set(msgbuf->rpmsg, fd);
-				fd = -1;
-			}
 		}
 
 		if (ibuf_left(msgbuf->rpmsg) <= ibuf_size(&rbuf))
@@ -820,10 +804,14 @@ ibuf_read_process(struct msgbuf *msgbuf, int fd)
 		memmove(msgbuf->rbuf, ibuf_data(&rbuf), ibuf_size(&rbuf));
 	msgbuf->roff = ibuf_size(&rbuf);
 
+	if (fd != -1)
+		close(fd);
 	return (1);
 
  fail:
-	/* XXX cleanup */
+	/* XXX how to properly clean up is unclear */
+	if (fd != -1)
+		close(fd);
 	return (-1);
 }
 

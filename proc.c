@@ -55,7 +55,6 @@ struct tmuxpeer {
 	struct tmuxproc	*parent;
 
 	struct imsgbuf	 ibuf;
-	int		 lastfd;
 	struct event	 event;
 	uid_t		 uid;
 
@@ -72,7 +71,7 @@ static int	peer_check_version(struct tmuxpeer *, struct imsg *);
 static void	proc_update_event(struct tmuxpeer *);
 
 static void
-proc_event_cb(int fd, short events, void *arg)
+proc_event_cb(__unused int fd, short events, void *arg)
 {
 	struct tmuxpeer	*peer = arg;
 	ssize_t		 n;
@@ -90,14 +89,7 @@ proc_event_cb(int fd, short events, void *arg)
 			}
 			if (n == 0)
 				break;
-			fd = imsg_get_fd(&imsg);
-			log_debug("peer %p message %d fd %d", peer,
-			    imsg.hdr.type, fd);
-			if (fd != -1) {
-				if (peer->lastfd != -1)
-					close(peer->lastfd);
-				peer->lastfd = fd;
-			}
+			log_debug("peer %p message %d", peer, imsg.hdr.type);
 
 			if (peer_check_version(peer, &imsg) != 0) {
 				imsg_free(&imsg);
@@ -313,7 +305,6 @@ proc_add_peer(struct tmuxproc *tp, int fd,
 
 	peer = xcalloc(1, sizeof *peer);
 	peer->parent = tp;
-	peer->lastfd = -1;
 
 	peer->dispatchcb = dispatchcb;
 	peer->arg = arg;
@@ -342,8 +333,6 @@ proc_remove_peer(struct tmuxpeer *peer)
 	event_del(&peer->event);
 	imsgbuf_clear(&peer->ibuf);
 
-	if (peer->lastfd != -1)
-		close(peer->lastfd);
 	close(peer->ibuf.fd);
 	free(peer);
 }
@@ -394,13 +383,4 @@ uid_t
 proc_get_peer_uid(struct tmuxpeer *peer)
 {
 	return (peer->uid);
-}
-
-int
-proc_get_last_fd(struct tmuxpeer *peer)
-{
-	int	fd = peer->lastfd;
-
-	peer->lastfd = -1;
-	return (fd);
 }

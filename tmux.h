@@ -2225,7 +2225,6 @@ void	proc_flush_peer(struct tmuxpeer *);
 void	proc_toggle_log(struct tmuxproc *);
 pid_t	proc_fork_and_daemon(int *);
 uid_t	proc_get_peer_uid(struct tmuxpeer *);
-int	proc_get_last_fd(struct tmuxpeer *);
 
 /* cfg.c */
 extern int cfg_finished;
