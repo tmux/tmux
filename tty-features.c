@@ -488,6 +488,10 @@ tty_default_features(int *feat, const char *name, u_int version)
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM
 			      ",cstyle,extkeys,margins,usstyle,sync,osc7,hyperlinks"
 		},
+		{ .name = "foot",
+		  .features = TTY_FEATURES_BASE_MODERN_XTERM
+		              ",cstyle,extkeys"
+		},
 		{ .name = "XTerm",
 		  /*
 		   * xterm also supports DECSLRM and DECFRA, but they can be
