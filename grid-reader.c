@@ -180,19 +180,14 @@ grid_reader_handle_wrap(struct grid_reader *gr, u_int *xx, u_int *yy)
 int
 grid_reader_in_set(struct grid_reader *gr, const char *set)
 {
-	struct grid_cell	gc;
-
-	grid_get_cell(gr->gd, gr->cx, gr->cy, &gc);
-	if (gc.flags & GRID_FLAG_PADDING)
-		return (0);
-	return (utf8_cstrhas(set, &gc.data));
+	return (grid_in_set(gr->gd, gr->cx, gr->cy, set));
 }
 
 /* Move cursor to the start of the next word. */
 void
 grid_reader_cursor_next_word(struct grid_reader *gr, const char *separators)
 {
-	u_int	xx, yy;
+	u_int	xx, yy, width;
 
 	/* Do not break up wrapped words. */
 	if (grid_get_line(gr->gd, gr->cy)->flags & GRID_LINE_WRAPPED)
@@ -229,8 +224,8 @@ grid_reader_cursor_next_word(struct grid_reader *gr, const char *separators)
 		}
 	}
 	while (grid_reader_handle_wrap(gr, &xx, &yy) &&
-	    grid_reader_in_set(gr, WHITESPACE))
-		gr->cx++;
+	    (width = grid_reader_in_set(gr, WHITESPACE)))
+		gr->cx += width;
 }
 
 /* Move cursor to the end of the next word. */
@@ -425,7 +420,9 @@ grid_reader_cursor_back_to_indentation(struct grid_reader *gr)
 		xx = grid_line_length(gr->gd, py);
 		for (px = 0; px < xx; px++) {
 			grid_get_cell(gr->gd, px, py, &gc);
-			if (gc.data.size != 1 || *gc.data.data != ' ') {
+			if ((gc.data.size != 1 || *gc.data.data != ' ') &&
+			    ~gc.flags & GRID_FLAG_TAB &&
+			    ~gc.flags & GRID_FLAG_PADDING) {
 				gr->cx = px;
 				gr->cy = py;
 				return;

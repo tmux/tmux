@@ -151,7 +151,7 @@ screen_write_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 		 */
 		log_debug("%s: adding %%%u to deferred redraw", __func__,
 		    wp->id);
-		wp->flags |= PANE_REDRAW;
+		wp->flags |= (PANE_REDRAW|PANE_REDRAWSCROLLBAR);
 		return (-1);
 	}
 
@@ -377,7 +377,7 @@ screen_write_strlen(const char *fmt, ...)
 			if (more == UTF8_DONE)
 				size += ud.width;
 		} else {
-			if (*ptr > 0x1f && *ptr < 0x7f)
+			if (*ptr == '\t' || (*ptr > 0x1f && *ptr < 0x7f))
 				size++;
 			ptr++;
 		}
@@ -547,7 +547,7 @@ screen_write_vnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
 			else if (*ptr == '\n') {
 				screen_write_linefeed(ctx, 0, 8);
 				screen_write_carriagereturn(ctx);
-			} else if (*ptr > 0x1f && *ptr < 0x7f) {
+			} else if (*ptr == '\t' || (*ptr > 0x1f && *ptr < 0x7f)) {
 				size++;
 				screen_write_putc(ctx, &gc, *ptr);
 			}
@@ -1792,6 +1792,9 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 		ttyctx.num = ctx->scrolled;
 		ttyctx.bg = ctx->bg;
 		tty_write(tty_cmd_scrollup, &ttyctx);
+
+		if (ctx->wp != NULL)
+			ctx->wp->flags |= PANE_REDRAWSCROLLBAR;
 	}
 	ctx->scrolled = 0;
 	ctx->bg = 8;
@@ -2235,7 +2238,17 @@ screen_write_overwrite(struct screen_write_ctx *ctx, struct grid_cell *gc,
 				break;
 			log_debug("%s: overwrite at %u,%u", __func__, xx,
 			    s->cy);
-			grid_view_set_cell(gd, xx, s->cy, &grid_default_cell);
+			if (gc->flags & GRID_FLAG_TAB) {
+				memcpy(&tmp_gc, gc, sizeof tmp_gc);
+				memset(tmp_gc.data.data, 0,
+				    sizeof tmp_gc.data.data);
+				*tmp_gc.data.data = ' ';
+				tmp_gc.data.width = tmp_gc.data.size =
+				    tmp_gc.data.have = 1;
+				grid_view_set_cell(gd, xx, s->cy, &tmp_gc);
+			} else
+				grid_view_set_cell(gd, xx, s->cy,
+				    &grid_default_cell);
 			done = 1;
 		}
 	}
@@ -2346,6 +2359,9 @@ screen_write_alternateon(struct screen_write_ctx *ctx, struct grid_cell *gc,
 	screen_write_collect_flush(ctx, 0, __func__);
 	screen_alternate_on(ctx->s, gc, cursor);
 
+	if (wp != NULL)
+		layout_fix_panes(wp->window, NULL);
+
 	screen_write_initctx(ctx, &ttyctx, 1);
 	if (ttyctx.redraw_cb != NULL)
 		ttyctx.redraw_cb(&ttyctx);
@@ -2364,6 +2380,9 @@ screen_write_alternateoff(struct screen_write_ctx *ctx, struct grid_cell *gc,
 
 	screen_write_collect_flush(ctx, 0, __func__);
 	screen_alternate_off(ctx->s, gc, cursor);
+
+	if (wp != NULL)
+		layout_fix_panes(wp->window, NULL);
 
 	screen_write_initctx(ctx, &ttyctx, 1);
 	if (ttyctx.redraw_cb != NULL)

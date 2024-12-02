@@ -1592,6 +1592,8 @@ tty_keys_extended_device_attributes(struct tty *tty, const char *buf,
 		tty_default_features(features, "XTerm", 0);
 	else if (strncmp(tmp, "mintty ", 7) == 0)
 		tty_default_features(features, "mintty", 0);
+	else if (strncmp(tmp, "foot(", 5) == 0)
+		tty_default_features(features, "foot", 0);
 	log_debug("%s: received extended DA %.*s", c->name, (int)*size, buf);
 
 	free(c->term_type);

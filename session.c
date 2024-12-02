@@ -31,12 +31,9 @@ u_int			next_session_id;
 struct session_groups	session_groups = RB_INITIALIZER(&session_groups);
 
 static void	session_free(int, short, void *);
-
 static void	session_lock_timer(int, short, void *);
-
 static struct winlink *session_next_alert(struct winlink *);
 static struct winlink *session_previous_alert(struct winlink *);
-
 static void	session_group_remove(struct session *);
 static void	session_group_synchronize1(struct session *, struct session *);
 
@@ -47,12 +44,12 @@ session_cmp(struct session *s1, struct session *s2)
 }
 RB_GENERATE(sessions, session, entry, session_cmp);
 
-static int
+int
 session_group_cmp(struct session_group *s1, struct session_group *s2)
 {
 	return (strcmp(s1->name, s2->name));
 }
-RB_GENERATE_STATIC(session_groups, session_group, entry, session_group_cmp);
+RB_GENERATE(session_groups, session_group, entry, session_group_cmp);
 
 /*
  * Find if session is still alive. This is true if it is still on the global

@@ -1068,6 +1068,9 @@ The flags are:
 the client has an independent active pane
 .It ignore-size
 the client does not affect the size of other clients
+.It no-detach-on-destroy
+do not detach the client when the session it is attached to is destroyed if
+there are any other sessions
 .It no-output
 the client does not receive pane output in control mode
 .It pause-after=seconds
@@ -2339,6 +2342,9 @@ will do nothing.
 The
 .Fl o
 flag jumps to the beginning of the command output instead of the shell prompt.
+Finding the beginning of command output requires the shell to emit an escape
+sequence (\e033]133;C\e033\e\e) to tell tmux where the output begins.
+If the shell does not send these escape sequences, these commands do nothing.
 .Pp
 Copy commands may take an optional buffer prefix argument which is used
 to generate the buffer name (the default is
@@ -2402,22 +2408,31 @@ The synopsis for the
 command is:
 .Bl -tag -width Ds
 .It Xo Ic copy-mode
-.Op Fl deHMqu
+.Op Fl deHMqSu
 .Op Fl s Ar src-pane
 .Op Fl t Ar target-pane
 .Xc
 Enter copy mode.
+.Pp
 .Fl u
-also scrolls one page up after entering and
+enters copy mode and scrolls one page up and
 .Fl d
-one page down if already in copy mode.
-.Fl M
-begins a mouse drag (only valid if bound to a mouse key binding, see
-.Sx MOUSE SUPPORT ) .
+one page down.
 .Fl H
 hides the position indicator in the top right.
 .Fl q
 cancels copy mode and any other modes.
+.Pp
+.Fl M
+begins a mouse drag (only valid if bound to a mouse key binding, see
+.Sx MOUSE SUPPORT ) .
+.Fl S
+scrolls when bound to a mouse drag event; for example,
+.Ic copy-mode -Se
+is bound to
+.Ar MouseDrag1ScrollbarSlider
+by default.
+.Pp
 .Fl s
 copies from
 .Ar src-pane
@@ -4141,6 +4156,9 @@ option.
 If not empty, a file to which
 .Nm
 will write command prompt history on exit and load it from on start.
+.It Ic input-buffer-size Ar bytes
+Maximum of bytes allowed to read in escape and control sequences.
+Once reached, the sequence will be discarded.
 .It Ic message-limit Ar number
 Set the number of error or information messages to save in the message log for
 each client.
@@ -4860,6 +4878,7 @@ section.
 .Pp
 .It Ic copy-mode-position-format Ar format
 Format of the position indicator in copy mode.
+.Pp
 .It Xo Ic mode-keys
 .Op Ic vi | emacs
 .Xc
@@ -4870,6 +4889,22 @@ or
 .Ev EDITOR
 contains
 .Ql vi .
+.Pp
+.It Ic copy-mode-position-style Ar style
+Set the style of the position indicator in copy mode.
+For how to specify
+.Ar style ,
+see the
+.Sx STYLES
+section.
+.Pp
+.It Ic copy-mode-selection-style Ar style
+Set the style of the selection in copy mode.
+For how to specify
+.Ar style ,
+see the
+.Sx STYLES
+section.
 .Pp
 .It Ic mode-style Ar style
 Set window modes style.
@@ -5027,6 +5062,51 @@ no border
 and
 .Ql heavy
 will fall back to standard ACS line drawing when UTF-8 is not supported.
+.Pp
+.It Xo Ic pane-scrollbars
+.Op Ic off | modal | on
+.Xc
+When enabled, a character based scrollbar appears on the left or right
+of each pane.
+A filled section of the scrollbar, known as the
+.Ql slider ,
+represents the position and size of the visible part of the pane content.
+.Pp
+If set to
+.Ic on
+the scrollbar is visible all the time.
+If set to
+.Ic modal
+the scrollbar only appears when the pane is in copy mode or view mode.
+When the scrollbar is visible, the pane is narrowed by the width of the
+scrollbar and the text in the pane is reflowed.
+If set to
+.Ic modal ,
+the pane is narrowed only when the scrollbar is visible.
+.Pp
+See also
+.Ic pane-scrollbars-style .
+.Pp
+.It Ic pane-scrollbars-style Ar style
+Set the scrollbars style.
+For how to specify
+.Ar style ,
+see the
+.Sx STYLES
+section.
+The foreground colour is used for the slider, the background for the rest of the
+scrollbar.
+The
+.Ar width
+attribute sets the width of the scrollbar and the
+.Ar pad
+attribute the padding between the scrollbar and the pane.
+Other attributes are ignored.
+.Pp
+.It Xo Ic pane-scrollbars-position
+.Op Ic left | right
+.Xc
+Sets which side of the pane to display pane scrollbars on.
 .Pp
 .It Ic window-status-activity-style Ar style
 Set status line style for windows with an activity alert.
@@ -5400,6 +5480,9 @@ and a location suffix, one of the following:
 .It Li "StatusLeft" Ta "the left part of the status line"
 .It Li "StatusRight" Ta "the right part of the status line"
 .It Li "StatusDefault" Ta "any other part of the status line"
+.It Li "ScrollbarSlider" Ta "the scrollbar slider"
+.It Li "ScrollbarUp" Ta "above the scrollbar slider"
+.It Li "ScrollbarDown" Ta "below the scrollbar slider"
 .El
 .Pp
 The following mouse events are available:
@@ -7005,7 +7088,7 @@ If
 .Ar path
 is
 .Ql - ,
-the contents are read from stdin.
+the contents are written to stdout.
 .It Xo Ic set-buffer
 .Op Fl aw
 .Op Fl b Ar buffer-name

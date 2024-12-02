@@ -235,9 +235,13 @@ grid_check_y(struct grid *gd, const char *from, u_int py)
 int
 grid_cells_look_equal(const struct grid_cell *gc1, const struct grid_cell *gc2)
 {
+	int flags1 = gc1->flags, flags2 = gc2->flags;;
+
 	if (gc1->fg != gc2->fg || gc1->bg != gc2->bg)
 		return (0);
-	if (gc1->attr != gc2->attr || gc1->flags != gc2->flags)
+	if (gc1->attr != gc2->attr)
+		return (0);
+	if ((flags1 & ~GRID_FLAG_CLEARED) != (flags2 & ~GRID_FLAG_CLEARED))
 		return (0);
 	if (gc1->link != gc2->link)
 		return (0);
@@ -261,10 +265,10 @@ grid_cells_equal(const struct grid_cell *gc1, const struct grid_cell *gc2)
 void
 grid_set_tab(struct grid_cell *gc, u_int width)
 {
-	memset(&gc->data, 0, sizeof gc->data);
+	memset(gc->data.data, 0, sizeof gc->data.data);
 	gc->flags |= GRID_FLAG_TAB;
 	gc->data.width = gc->data.size = gc->data.have = width;
-	memset(&gc->data, ' ', gc->data.size);
+	memset(gc->data.data, ' ', gc->data.size);
 }
 
 /* Free one line. */
@@ -1556,4 +1560,28 @@ grid_line_length(struct grid *gd, u_int py)
 		px--;
 	}
 	return (px);
+}
+
+/* Check if character is in set. */
+int
+grid_in_set(struct grid *gd, u_int px, u_int py, const char *set)
+{
+	struct grid_cell	gc, tmp_gc;
+	u_int			pxx;
+
+	grid_get_cell(gd, px, py, &gc);
+	if (strchr(set, '\t')) {
+		if (gc.flags & GRID_FLAG_PADDING) {
+			pxx = px;
+			do
+				grid_get_cell(gd, --pxx, py, &tmp_gc);
+			while (pxx > 0 && tmp_gc.flags & GRID_FLAG_PADDING);
+			if (tmp_gc.flags & GRID_FLAG_TAB)
+				return (tmp_gc.data.width - (px - pxx));
+		} else if (gc.flags & GRID_FLAG_TAB)
+			return (gc.data.width);
+	}
+	if (gc.flags & GRID_FLAG_PADDING)
+		return (0);
+	return (utf8_cstrhas(set, &gc.data));
 }

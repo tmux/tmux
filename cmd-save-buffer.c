@@ -101,7 +101,7 @@ cmd_save_buffer_exec(struct cmd *self, struct cmdq_item *item)
 			if (evb == NULL)
 				fatalx("out of memory");
 			evbuffer_add(evb, bufdata, bufsize);
-			cmdq_print_data(item, 1, evb);
+			cmdq_print_data(item, evb);
 			evbuffer_free(evb);
 			return (CMD_RETURN_NORMAL);
 		}

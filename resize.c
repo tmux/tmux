@@ -264,16 +264,9 @@ skip:
 }
 
 static int
-default_window_size_skip_client(struct client *loop, int type,
+default_window_size_skip_client(struct client *loop, __unused int type,
     __unused int current, struct session *s, struct window *w)
 {
-	/*
-	 * Latest checks separately, so do not check here. Otherwise only
-	 * include clients where the session contains the window or where the
-	 * session is the given session.
-	 */
-	if (type == WINDOW_SIZE_LATEST)
-		return (0);
 	if (w != NULL && !session_has(loop->session, w))
 		return (1);
 	if (w == NULL && loop->session != s)
@@ -305,12 +298,12 @@ default_window_size(struct client *c, struct session *s, struct window *w,
 		goto done;
 	}
 
-        /*
-         * Ignore the given client if it is a control client - the creating
-         * client should only affect the size if it is not a control client.
-         */
-        if (c != NULL && (c->flags & CLIENT_CONTROL))
-                c = NULL;
+	/*
+	 * Ignore the given client if it is a control client - the creating
+	 * client should only affect the size if it is not a control client.
+	 */
+	if (c != NULL && (c->flags & CLIENT_CONTROL))
+		c = NULL;
 
 	/*
 	 * Look for a client to base the size on. If none exists (or the type

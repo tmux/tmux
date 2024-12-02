@@ -2494,9 +2494,20 @@ format_cb_window_last_flag(struct format_tree *ft)
 static void *
 format_cb_window_linked(struct format_tree *ft)
 {
+	struct winlink	*wl;
+	struct session	*s;
+	int		 found = 0;
+
 	if (ft->wl != NULL) {
-		if (session_is_linked(ft->wl->session, ft->wl->window))
-			return (xstrdup("1"));
+		RB_FOREACH(s, sessions, &sessions) {
+			RB_FOREACH(wl, winlinks, &s->windows) {
+				if (wl->window == ft->wl->window) {
+					if (found)
+						return (xstrdup("1"));
+					found = 1;
+				}
+			}
+		}
 		return (xstrdup("0"));
 	}
 	return (NULL);
@@ -2506,9 +2517,27 @@ format_cb_window_linked(struct format_tree *ft)
 static void *
 format_cb_window_linked_sessions(struct format_tree *ft)
 {
-	if (ft->wl != NULL)
-		return (format_printf("%u", ft->wl->window->references));
-	return (NULL);
+	struct window		*w;
+	struct session_group	*sg;
+	struct session		*s;
+	u_int			 n = 0;
+
+	if (ft->wl == NULL)
+		return (NULL);
+	w = ft->wl->window;
+
+	RB_FOREACH(sg, session_groups, &session_groups) {
+		s = TAILQ_FIRST(&sg->sessions);
+		if (winlink_find_by_window(&s->windows, w) != NULL)
+			n++;
+	}
+	RB_FOREACH(s, sessions, &sessions) {
+		if (session_group_contains(s) != NULL)
+			continue;
+		if (winlink_find_by_window(&s->windows, w) != NULL)
+			n++;
+	}
+	return (format_printf("%u", n));
 }
 
 /* Callback for window_marked_flag. */

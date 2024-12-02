@@ -1,4 +1,4 @@
-/*	$OpenBSD: imsg-buffer.c,v 1.18 2023/12/12 15:47:41 claudio Exp $	*/
+/*	$OpenBSD: imsg-buffer.c,v 1.31 2024/11/26 13:57:31 claudio Exp $	*/
 
 /*
  * Copyright (c) 2023 Claudio Jeker <claudio@openbsd.org>
@@ -45,25 +45,37 @@
 #undef be64toh
 #define be64toh ntohll
 
-static int	ibuf_realloc(struct ibuf *, size_t);
-static void	ibuf_enqueue(struct msgbuf *, struct ibuf *);
-static void	ibuf_dequeue(struct msgbuf *, struct ibuf *);
+struct msgbuf {
+	TAILQ_HEAD(, ibuf)	 bufs;
+	TAILQ_HEAD(, ibuf)	 rbufs;
+	uint32_t		 queued;
+	char			*rbuf;
+	struct ibuf		*rpmsg;
+	struct ibuf		*(*readhdr)(struct ibuf *, void *, int *);
+	void			*rarg;
+	size_t			 roff;
+	size_t			 hdrsize;
+};
+
+static void	msgbuf_read_enqueue(struct msgbuf *, struct ibuf *);
+static void	msgbuf_enqueue(struct msgbuf *, struct ibuf *);
+static void	msgbuf_dequeue(struct msgbuf *, struct ibuf *);
 static void	msgbuf_drain(struct msgbuf *, size_t);
+
+#define	IBUF_FD_MARK_ON_STACK	-2
 
 struct ibuf *
 ibuf_open(size_t len)
 {
 	struct ibuf	*buf;
 
-	if (len == 0) {
-		errno = EINVAL;
-		return (NULL);
-	}
 	if ((buf = calloc(1, sizeof(struct ibuf))) == NULL)
 		return (NULL);
-	if ((buf->buf = calloc(len, 1)) == NULL) {
-		free(buf);
-		return (NULL);
+	if (len > 0) {
+		if ((buf->buf = calloc(len, 1)) == NULL) {
+			free(buf);
+			return (NULL);
+		}
 	}
 	buf->size = buf->max = len;
 	buf->fd = -1;
@@ -96,39 +108,36 @@ ibuf_dynamic(size_t len, size_t max)
 	return (buf);
 }
 
-static int
-ibuf_realloc(struct ibuf *buf, size_t len)
-{
-	unsigned char	*b;
-
-	/* on static buffers max is eq size and so the following fails */
-	if (len > SIZE_MAX - buf->wpos || buf->wpos + len > buf->max) {
-		errno = ERANGE;
-		return (-1);
-	}
-
-	b = recallocarray(buf->buf, buf->size, buf->wpos + len, 1);
-	if (b == NULL)
-		return (-1);
-	buf->buf = b;
-	buf->size = buf->wpos + len;
-
-	return (0);
-}
-
 void *
 ibuf_reserve(struct ibuf *buf, size_t len)
 {
 	void	*b;
 
-	if (len > SIZE_MAX - buf->wpos || buf->max == 0) {
+	if (len > SIZE_MAX - buf->wpos) {
 		errno = ERANGE;
 		return (NULL);
 	}
+	if (buf->fd == IBUF_FD_MARK_ON_STACK) {
+		/* can not grow stack buffers */
+		errno = EINVAL;
+		return (NULL);
+	}
 
-	if (buf->wpos + len > buf->size)
-		if (ibuf_realloc(buf, len) == -1)
+	if (buf->wpos + len > buf->size) {
+		unsigned char	*nb;
+
+		/* check if buffer is allowed to grow */
+		if (buf->wpos + len > buf->max) {
+			errno = ERANGE;
 			return (NULL);
+		}
+		nb = realloc(buf->buf, buf->wpos + len);
+		if (nb == NULL)
+			return (NULL);
+		memset(nb + buf->size, 0, buf->wpos + len - buf->size);
+		buf->buf = nb;
+		buf->size = buf->wpos + len;
+	}
 
 	b = buf->buf + buf->wpos;
 	buf->wpos += len;
@@ -151,13 +160,6 @@ int
 ibuf_add_ibuf(struct ibuf *buf, const struct ibuf *from)
 {
 	return ibuf_add(buf, ibuf_data(from), ibuf_size(from));
-}
-
-/* remove after tree is converted */
-int
-ibuf_add_buf(struct ibuf *buf, const struct ibuf *from)
-{
-	return ibuf_add_ibuf(buf, from);
 }
 
 int
@@ -367,7 +369,8 @@ ibuf_size(const struct ibuf *buf)
 size_t
 ibuf_left(const struct ibuf *buf)
 {
-	if (buf->max == 0)
+	/* on stack buffers have no space left */
+	if (buf->fd == IBUF_FD_MARK_ON_STACK)
 		return (0);
 	return (buf->max - buf->wpos);
 }
@@ -379,8 +382,8 @@ ibuf_truncate(struct ibuf *buf, size_t len)
 		buf->wpos = buf->rpos + len;
 		return (0);
 	}
-	if (buf->max == 0) {
-		/* only allow to truncate down */
+	if (buf->fd == IBUF_FD_MARK_ON_STACK) {
+		/* only allow to truncate down for stack buffers */
 		errno = ERANGE;
 		return (-1);
 	}
@@ -396,7 +399,7 @@ ibuf_rewind(struct ibuf *buf)
 void
 ibuf_close(struct msgbuf *msgbuf, struct ibuf *buf)
 {
-	ibuf_enqueue(msgbuf, buf);
+	msgbuf_enqueue(msgbuf, buf);
 }
 
 void
@@ -405,7 +408,7 @@ ibuf_from_buffer(struct ibuf *buf, void *data, size_t len)
 	memset(buf, 0, sizeof(*buf));
 	buf->buf = data;
 	buf->size = buf->wpos = len;
-	buf->fd = -1;
+	buf->fd = IBUF_FD_MARK_ON_STACK;
 }
 
 void
@@ -438,6 +441,24 @@ ibuf_get_ibuf(struct ibuf *buf, size_t len, struct ibuf *new)
 	ibuf_from_buffer(new, ibuf_data(buf), len);
 	buf->rpos += len;
 	return (0);
+}
+
+int
+ibuf_get_h16(struct ibuf *buf, uint16_t *value)
+{
+	return ibuf_get(buf, value, sizeof(*value));
+}
+
+int
+ibuf_get_h32(struct ibuf *buf, uint32_t *value)
+{
+	return ibuf_get(buf, value, sizeof(*value));
+}
+
+int
+ibuf_get_h64(struct ibuf *buf, uint64_t *value)
+{
+	return ibuf_get(buf, value, sizeof(*value));
 }
 
 int
@@ -476,22 +497,21 @@ ibuf_get_n64(struct ibuf *buf, uint64_t *value)
 	return (rv);
 }
 
-int
-ibuf_get_h16(struct ibuf *buf, uint16_t *value)
+char *
+ibuf_get_string(struct ibuf *buf, size_t len)
 {
-	return ibuf_get(buf, value, sizeof(*value));
-}
+	char *str;
 
-int
-ibuf_get_h32(struct ibuf *buf, uint32_t *value)
-{
-	return ibuf_get(buf, value, sizeof(*value));
-}
+	if (ibuf_size(buf) < len) {
+		errno = EBADMSG;
+		return (NULL);
+	}
 
-int
-ibuf_get_h64(struct ibuf *buf, uint64_t *value)
-{
-	return ibuf_get(buf, value, sizeof(*value));
+	str = strndup(ibuf_data(buf), len);
+	if (str == NULL)
+		return (NULL);
+	buf->rpos += len;
+	return (str);
 }
 
 int
@@ -511,9 +531,10 @@ ibuf_free(struct ibuf *buf)
 {
 	if (buf == NULL)
 		return;
-	if (buf->max == 0)	/* if buf lives on the stack */
-		abort();	/* abort before causing more harm */
-	if (buf->fd != -1)
+	/* if buf lives on the stack abort before causing more harm */
+	if (buf->fd == IBUF_FD_MARK_ON_STACK)
+		abort();
+	if (buf->fd >= 0)
 		close(buf->fd);
 	freezero(buf->buf, buf->size);
 	free(buf);
@@ -522,7 +543,7 @@ ibuf_free(struct ibuf *buf)
 int
 ibuf_fd_avail(struct ibuf *buf)
 {
-	return (buf->fd != -1);
+	return (buf->fd >= 0);
 }
 
 int
@@ -530,6 +551,9 @@ ibuf_fd_get(struct ibuf *buf)
 {
 	int fd;
 
+	/* negative fds are internal use and equivalent to -1 */
+	if (buf->fd < 0)
+		return (-1);
 	fd = buf->fd;
 	buf->fd = -1;
 	return (fd);
@@ -538,15 +562,107 @@ ibuf_fd_get(struct ibuf *buf)
 void
 ibuf_fd_set(struct ibuf *buf, int fd)
 {
-	if (buf->max == 0)	/* if buf lives on the stack */
-		abort();	/* abort before causing more harm */
-	if (buf->fd != -1)
+	/* if buf lives on the stack abort before causing more harm */
+	if (buf->fd == IBUF_FD_MARK_ON_STACK)
+		abort();
+	if (buf->fd >= 0)
 		close(buf->fd);
-	buf->fd = fd;
+	buf->fd = -1;
+	if (fd >= 0)
+		buf->fd = fd;
+}
+
+struct msgbuf *
+msgbuf_new(void)
+{
+	struct msgbuf *msgbuf;
+
+	if ((msgbuf = calloc(1, sizeof(*msgbuf))) == NULL)
+		return (NULL);
+	msgbuf->queued = 0;
+	TAILQ_INIT(&msgbuf->bufs);
+	TAILQ_INIT(&msgbuf->rbufs);
+
+	return msgbuf;
+}
+
+struct msgbuf *
+msgbuf_new_reader(size_t hdrsz,
+    struct ibuf *(*readhdr)(struct ibuf *, void *, int *), void *arg)
+{
+	struct msgbuf *msgbuf;
+	char *buf;
+
+	if (hdrsz == 0 || hdrsz > IBUF_READ_SIZE / 2) {
+		errno = EINVAL;
+		return (NULL);
+	}
+
+	if ((buf = malloc(IBUF_READ_SIZE)) == NULL)
+		return (NULL);
+
+	msgbuf = msgbuf_new();
+	if (msgbuf == NULL) {
+		free(buf);
+		return (NULL);
+	}
+
+	msgbuf->rbuf = buf;
+	msgbuf->hdrsize = hdrsz;
+	msgbuf->readhdr = readhdr;
+	msgbuf->rarg = arg;
+
+	return (msgbuf);
+}
+
+void
+msgbuf_free(struct msgbuf *msgbuf)
+{
+	if (msgbuf == NULL)
+		return;
+	msgbuf_clear(msgbuf);
+	free(msgbuf->rbuf);
+	free(msgbuf);
+}
+
+uint32_t
+msgbuf_queuelen(struct msgbuf *msgbuf)
+{
+	return (msgbuf->queued);
+}
+
+void
+msgbuf_clear(struct msgbuf *msgbuf)
+{
+	struct ibuf	*buf;
+
+	/* write side */
+	while ((buf = TAILQ_FIRST(&msgbuf->bufs)) != NULL)
+		msgbuf_dequeue(msgbuf, buf);
+	msgbuf->queued = 0;
+
+	/* read side */
+	while ((buf = TAILQ_FIRST(&msgbuf->rbufs)) != NULL) {
+		TAILQ_REMOVE(&msgbuf->rbufs, buf, entry);
+		ibuf_free(buf);
+	}
+	msgbuf->roff = 0;
+	ibuf_free(msgbuf->rpmsg);
+	msgbuf->rpmsg = NULL;
+}
+
+struct ibuf *
+msgbuf_get(struct msgbuf *msgbuf)
+{
+	struct ibuf	*buf;
+
+	if ((buf = TAILQ_FIRST(&msgbuf->rbufs)) != NULL)
+		TAILQ_REMOVE(&msgbuf->rbufs, buf, entry);
+	return buf;
 }
 
 int
-ibuf_write(struct msgbuf *msgbuf)
+ibuf_write(int fd, struct msgbuf *msgbuf)
 {
 	struct iovec	 iov[IOV_MAX];
 	struct ibuf	*buf;
@@ -561,63 +677,25 @@ ibuf_write(struct msgbuf *msgbuf)
 		iov[i].iov_len = ibuf_size(buf);
 		i++;
 	}
+	if (i == 0)
+		return (0);	/* nothing queued */
 
-again:
-	if ((n = writev(msgbuf->fd, iov, i)) == -1) {
+ again:
+	if ((n = writev(fd, iov, i)) == -1) {
 		if (errno == EINTR)
 			goto again;
-		if (errno == ENOBUFS)
-			errno = EAGAIN;
+		if (errno == EAGAIN || errno == ENOBUFS)
+			/* lets retry later again */
+			return (0);
 		return (-1);
 	}
 
-	if (n == 0) {			/* connection closed */
-		errno = 0;
-		return (0);
-	}
-
 	msgbuf_drain(msgbuf, n);
-
-	return (1);
-}
-
-void
-msgbuf_init(struct msgbuf *msgbuf)
-{
-	msgbuf->queued = 0;
-	msgbuf->fd = -1;
-	TAILQ_INIT(&msgbuf->bufs);
-}
-
-static void
-msgbuf_drain(struct msgbuf *msgbuf, size_t n)
-{
-	struct ibuf	*buf, *next;
-
-	for (buf = TAILQ_FIRST(&msgbuf->bufs); buf != NULL && n > 0;
-	    buf = next) {
-		next = TAILQ_NEXT(buf, entry);
-		if (n >= ibuf_size(buf)) {
-			n -= ibuf_size(buf);
-			ibuf_dequeue(msgbuf, buf);
-		} else {
-			buf->rpos += n;
-			n = 0;
-		}
-	}
-}
-
-void
-msgbuf_clear(struct msgbuf *msgbuf)
-{
-	struct ibuf	*buf;
-
-	while ((buf = TAILQ_FIRST(&msgbuf->bufs)) != NULL)
-		ibuf_dequeue(msgbuf, buf);
+	return (0);
 }
 
 int
-msgbuf_write(struct msgbuf *msgbuf)
+msgbuf_write(int fd, struct msgbuf *msgbuf)
 {
 	struct iovec	 iov[IOV_MAX];
 	struct ibuf	*buf, *buf0 = NULL;
@@ -645,6 +723,9 @@ msgbuf_write(struct msgbuf *msgbuf)
 			buf0 = buf;
 	}
 
+	if (i == 0)
+		return (0);	/* nothing queued */
+
 	msg.msg_iov = iov;
 	msg.msg_iovlen = i;
 
@@ -658,18 +739,14 @@ msgbuf_write(struct msgbuf *msgbuf)
 		*(int *)CMSG_DATA(cmsg) = buf0->fd;
 	}
 
-again:
-	if ((n = sendmsg(msgbuf->fd, &msg, 0)) == -1) {
+ again:
+	if ((n = sendmsg(fd, &msg, 0)) == -1) {
 		if (errno == EINTR)
 			goto again;
-		if (errno == ENOBUFS)
-			errno = EAGAIN;
+		if (errno == EAGAIN || errno == ENOBUFS)
+			/* lets retry later again */
+			return (0);
 		return (-1);
-	}
-
-	if (n == 0) {			/* connection closed */
-		errno = 0;
-		return (0);
 	}
 
 	/*
@@ -683,28 +760,209 @@ again:
 
 	msgbuf_drain(msgbuf, n);
 
-	return (1);
+	return (0);
 }
 
-uint32_t
-msgbuf_queuelen(struct msgbuf *msgbuf)
+static int
+ibuf_read_process(struct msgbuf *msgbuf, int fd)
 {
-	return (msgbuf->queued);
+	struct ibuf rbuf, msg;
+	ssize_t sz;
+
+	ibuf_from_buffer(&rbuf, msgbuf->rbuf, msgbuf->roff);
+
+	do {
+		if (msgbuf->rpmsg == NULL) {
+			if (ibuf_size(&rbuf) < msgbuf->hdrsize)
+				break;
+			/* get size from header */
+			ibuf_from_buffer(&msg, ibuf_data(&rbuf),
+			    msgbuf->hdrsize);
+			if ((msgbuf->rpmsg = msgbuf->readhdr(&msg,
+			    msgbuf->rarg, &fd)) == NULL)
+				goto fail;
+		}
+
+		if (ibuf_left(msgbuf->rpmsg) <= ibuf_size(&rbuf))
+			sz = ibuf_left(msgbuf->rpmsg);
+		else
+			sz = ibuf_size(&rbuf);
+
+		/* neither call below can fail */
+		if (ibuf_get_ibuf(&rbuf, sz, &msg) == -1 ||
+		    ibuf_add_ibuf(msgbuf->rpmsg, &msg) == -1)
+			goto fail;
+
+		if (ibuf_left(msgbuf->rpmsg) == 0) {
+			msgbuf_read_enqueue(msgbuf, msgbuf->rpmsg);
+			msgbuf->rpmsg = NULL;
+		}
+	} while (ibuf_size(&rbuf) > 0);
+
+	if (ibuf_size(&rbuf) > 0)
+		memmove(msgbuf->rbuf, ibuf_data(&rbuf), ibuf_size(&rbuf));
+	msgbuf->roff = ibuf_size(&rbuf);
+
+	if (fd != -1)
+		close(fd);
+	return (1);
+
+ fail:
+	/* XXX how to properly clean up is unclear */
+	if (fd != -1)
+		close(fd);
+	return (-1);
+}
+
+int
+ibuf_read(int fd, struct msgbuf *msgbuf)
+{
+	struct iovec	iov;
+	ssize_t		n;
+
+	if (msgbuf->rbuf == NULL) {
+		errno = EINVAL;
+		return (-1);
+	}
+
+	iov.iov_base = msgbuf->rbuf + msgbuf->roff;
+	iov.iov_len = IBUF_READ_SIZE - msgbuf->roff;
+
+ again:
+	if ((n = readv(fd, &iov, 1)) == -1) {
+		if (errno == EINTR)
+			goto again;
+		if (errno == EAGAIN)
+			/* lets retry later again */
+			return (1);
+		return (-1);
+	}
+	if (n == 0)	/* connection closed */
+		return (0);
+
+	msgbuf->roff += n;
+	/* new data arrived, try to process it */
+	return (ibuf_read_process(msgbuf, -1));
+}
+
+int
+msgbuf_read(int fd, struct msgbuf *msgbuf)
+{
+	struct msghdr		 msg;
+	struct cmsghdr		*cmsg;
+	union {
+		struct cmsghdr hdr;
+		char	buf[CMSG_SPACE(sizeof(int) * 1)];
+	} cmsgbuf;
+	struct iovec		 iov;
+	ssize_t			 n;
+	int			 fdpass = -1;
+
+	if (msgbuf->rbuf == NULL) {
+		errno = EINVAL;
+		return (-1);
+	}
+
+	memset(&msg, 0, sizeof(msg));
+	memset(&cmsgbuf, 0, sizeof(cmsgbuf));
+
+	iov.iov_base = msgbuf->rbuf + msgbuf->roff;
+	iov.iov_len = IBUF_READ_SIZE - msgbuf->roff;
+	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;
+	msg.msg_control = &cmsgbuf.buf;
+	msg.msg_controllen = sizeof(cmsgbuf.buf);
+
+again:
+	if ((n = recvmsg(fd, &msg, 0)) == -1) {
+		if (errno == EINTR)
+			goto again;
+		if (errno == EMSGSIZE)
+			/*
+			 * Not enough fd slots: fd passing failed, retry
+			 * to receive the message without fd.
+			 * imsg_get_fd() will return -1 in that case.
+			 */
+			goto again;
+		if (errno == EAGAIN)
+			/* lets retry later again */
+			return (1);
+		return (-1);
+	}
+	if (n == 0)	/* connection closed */
+		return (0);
+
+	msgbuf->roff += n;
+
+	for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != NULL;
+	    cmsg = CMSG_NXTHDR(&msg, cmsg)) {
+		if (cmsg->cmsg_level == SOL_SOCKET &&
+		    cmsg->cmsg_type == SCM_RIGHTS) {
+			int i, j, f;
+
+			/*
+			 * We only accept one file descriptor.  Due to C
+			 * padding rules, our control buffer might contain
+			 * more than one fd, and we must close them.
+			 */
+			j = ((char *)cmsg + cmsg->cmsg_len -
+			    (char *)CMSG_DATA(cmsg)) / sizeof(int);
+			for (i = 0; i < j; i++) {
+				f = ((int *)CMSG_DATA(cmsg))[i];
+				if (i == 0)
+					fdpass = f;
+				else
+					close(f);
+			}
+		}
+		/* we do not handle other ctl data level */
+	}
+
+	/* new data arrived, try to process it */
+	return (ibuf_read_process(msgbuf, fdpass));
 }
 
 static void
-ibuf_enqueue(struct msgbuf *msgbuf, struct ibuf *buf)
+msgbuf_read_enqueue(struct msgbuf *msgbuf, struct ibuf *buf)
 {
-	if (buf->max == 0)	/* if buf lives on the stack */
-		abort();	/* abort before causing more harm */
+	/* if buf lives on the stack abort before causing more harm */
+	if (buf->fd == IBUF_FD_MARK_ON_STACK)
+		abort();
+	TAILQ_INSERT_TAIL(&msgbuf->rbufs, buf, entry);
+}
+
+static void
+msgbuf_enqueue(struct msgbuf *msgbuf, struct ibuf *buf)
+{
+	/* if buf lives on the stack abort before causing more harm */
+	if (buf->fd == IBUF_FD_MARK_ON_STACK)
+		abort();
 	TAILQ_INSERT_TAIL(&msgbuf->bufs, buf, entry);
 	msgbuf->queued++;
 }
 
 static void
-ibuf_dequeue(struct msgbuf *msgbuf, struct ibuf *buf)
+msgbuf_dequeue(struct msgbuf *msgbuf, struct ibuf *buf)
 {
 	TAILQ_REMOVE(&msgbuf->bufs, buf, entry);
 	msgbuf->queued--;
 	ibuf_free(buf);
+}
+
+static void
+msgbuf_drain(struct msgbuf *msgbuf, size_t n)
+{
+	struct ibuf	*buf, *next;
+
+	for (buf = TAILQ_FIRST(&msgbuf->bufs); buf != NULL && n > 0;
+	    buf = next) {
+		next = TAILQ_NEXT(buf, entry);
+		if (n >= ibuf_size(buf)) {
+			n -= ibuf_size(buf);
+			msgbuf_dequeue(msgbuf, buf);
+		} else {
+			buf->rpos += n;
+			n = 0;
+		}
+	}
 }
