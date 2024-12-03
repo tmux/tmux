@@ -371,7 +371,7 @@ Enter copy mode and scroll one page up.
 .It Left, Right
 Change to the pane above, below, to the left, or to the right of the current
 pane.
-.It M-1 to M-5
+.It M-1 to M-7
 Arrange panes in one of the seven preset layouts:
 even-horizontal, even-vertical,
 main-horizontal, main-horizontal-mirrored,
@@ -761,8 +761,8 @@ The start of a session name, for example
 would match a session named
 .Ql mysession .
 .It
-An
-.Xr fnmatch 3
+A
+.Xr glob 7
 pattern which is matched against the session name.
 .El
 .Pp
@@ -810,8 +810,8 @@ An exact window name, such as
 The start of a window name, such as
 .Ql mysession:mywin .
 .It
-As an
-.Xr fnmatch 3
+As a
+.Xr glob 7
 pattern matched against the window name.
 .El
 .Pp
@@ -2861,7 +2861,7 @@ other commands are not blocked from running until the indicator is closed.
 .Xc
 .D1 Pq alias: Ic findw
 Search for a
-.Xr fnmatch 3
+.Xr glob 7
 pattern or, with
 .Fl r ,
 regular expression
@@ -4232,8 +4232,8 @@ supports.
 .Pp
 This is an array option where each entry is a colon-separated string made up
 of a terminal type pattern (matched using
-.Xr fnmatch 3 )
-followed by a list of terminal features.
+.Xr glob 7
+patterns) followed by a list of terminal features.
 The available features are:
 .Bl -tag -width Ds
 .It 256
@@ -4289,7 +4289,8 @@ Allow terminal descriptions read using
 to be overridden.
 Each entry is a colon-separated string made up of a terminal type pattern
 (matched using
-.Xr fnmatch 3 )
+.Xr glob 7
+patterns)
 and a set of
 .Em name=value
 entries.
@@ -5627,14 +5628,14 @@ true, for example
 .Pp
 An
 .Ql m
-specifies an
-.Xr fnmatch 3
-or regular expression comparison.
+specifies a
+.Xr glob 7
+pattern or regular expression comparison.
 The first argument is the pattern and the second the string to compare.
 An optional argument specifies flags:
 .Ql r
 means the pattern is a regular expression instead of the default
-.Xr fnmatch 3
+.Xr glob 7
 pattern, and
 .Ql i
 means to ignore case.
@@ -5644,8 +5645,8 @@ or
 .Ql #{m/ri:^A,MYVAR} .
 A
 .Ql C
-performs a search for an
-.Xr fnmatch 3
+performs a search for a
+.Xr glob 7
 pattern or regular expression in the pane content and evaluates to zero if not
 found, or a line number if found.
 Like
