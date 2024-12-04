@@ -894,6 +894,7 @@ first_key:
 	if (onlykey < 0x20 &&
 	    onlykey != C0_HT &&
 	    onlykey != C0_CR &&
+	    onlykey != C0_BS &&
 	    onlykey != C0_ESC) {
 		onlykey |= 0x40;
 		if (onlykey >= 'A' && onlykey <= 'Z')
