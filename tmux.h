@@ -1872,13 +1872,6 @@ typedef int (*overlay_key_cb)(struct client *, void *, struct key_event *);
 typedef void (*overlay_free_cb)(struct client *, void *);
 typedef void (*overlay_resize_cb)(struct client *, void *);
 
-struct active_file {
-    char *file;
-    u_int dups;
-    TAILQ_ENTRY(active_file) list;
-};
-
-TAILQ_HEAD(active_files, active_file);
 
 struct client {
 	const char		*name;
@@ -2055,8 +2048,6 @@ struct client {
 
 	u_int			*clipboard_panes;
 	u_int			 clipboard_npanes;
-
-    struct active_files aflist;
 
 	TAILQ_ENTRY(client)	 entry;
 };
@@ -2807,9 +2798,6 @@ void	 file_write_ready(struct client_files *, struct imsg *);
 void	 file_read_data(struct client_files *, struct imsg *);
 void	 file_read_done(struct client_files *, struct imsg *);
 void	 file_read_cancel(struct client_files *, struct imsg *);
-void     file_remove_active(struct client *c, const char *file);
-struct active_file *file_insert_active(struct client *c, const char *file);
-struct active_file *file_get_active(struct client *c, const char *file);
 
 
 /* server.c */

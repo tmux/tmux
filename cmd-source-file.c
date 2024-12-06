@@ -29,7 +29,9 @@
  * Sources a configuration file.
  */
 
-#define FILE_NESTING_LIMIT 30
+#define NESTING_LIMIT 50
+
+static int depth = 0;
 
 static enum cmd_retval	cmd_source_file_exec(struct cmd *, struct cmdq_item *);
 
@@ -61,6 +63,7 @@ struct cmd_source_file_data {
 static enum cmd_retval
 cmd_source_file_complete_cb(struct cmdq_item *item, __unused void *data)
 {
+    depth--;
 	cfg_print_causes(item);
 	return (CMD_RETURN_NORMAL);
 }
@@ -76,8 +79,8 @@ cmd_source_file_complete(struct client *c, struct cmd_source_file_data *cdata)
 		    c != NULL &&
 		    c->session == NULL)
 			c->retval = 1;
-		new_item = cmdq_get_callback(cmd_source_file_complete_cb, NULL);
-		cmdq_insert_after(cdata->after, new_item);
+            new_item = cmdq_get_callback(cmd_source_file_complete_cb, NULL);
+            cmdq_insert_after(cdata->after, new_item);
 	}
 
 	for (i = 0; i < cdata->nfiles; i++)
@@ -111,8 +114,6 @@ cmd_source_file_done(struct client *c, const char *path, int error,
 			cdata->after = new_item;
 	}
 
-    //file_remove_active(c, path);
-
 	n = ++cdata->current;
 	if (n < cdata->nfiles)
 		file_read(c, cdata->files[n], cmd_source_file_done, cdata);
@@ -126,8 +127,6 @@ static void
 cmd_source_file_add(struct cmd_source_file_data *cdata, const char *path)
 {
 	char	resolved[PATH_MAX];
-    struct client *c = cmdq_get_client(cdata->item);
-    struct active_file *f = file_insert_active(c, path);
 
 	if (realpath(path, resolved) == NULL) {
 		log_debug("%s: realpath(\"%s\") failed: %s", __func__,
@@ -137,13 +136,9 @@ cmd_source_file_add(struct cmd_source_file_data *cdata, const char *path)
 
 	log_debug("%s: %s", __func__, path);
 
-    if (f->dups < FILE_NESTING_LIMIT) {
-        cdata->files = xreallocarray(cdata->files, cdata->nfiles + 1,
-            sizeof *cdata->files);
-        cdata->files[cdata->nfiles++] = xstrdup(path);
-    }
-    else
-        cdata->retval = CMD_RETURN_ERROR;
+    cdata->files = xreallocarray(cdata->files, cdata->nfiles + 1,
+        sizeof *cdata->files);
+    cdata->files[cdata->nfiles++] = xstrdup(path);
 
 }
 
@@ -159,6 +154,11 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 	glob_t				 g;
 	int				 result;
 	u_int				 i, j;
+
+
+    if (depth >= NESTING_LIMIT)
+        return CMD_RETURN_ERROR;
+    depth++;
 
 	cdata = xcalloc(1, sizeof *cdata);
 	cdata->item = item;
