@@ -2577,7 +2577,7 @@ paste_key:
 	if (c->flags & CLIENT_READONLY)
 		goto out;
 	if (event->buf != NULL)
-		window_pane_paste(wp, event->buf, event->len);
+		window_pane_paste(wp, key, event->buf, event->len);
 	key = KEYC_NONE;
 	goto out;
 

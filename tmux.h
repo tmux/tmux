@@ -174,6 +174,10 @@ struct winlink;
 	 (((key) & KEYC_MASK_KEY) < KEYC_USER || \
 	  ((key) & KEYC_MASK_KEY) >= KEYC_USER_END))
 
+/* Is this a paste key? */
+#define KEYC_IS_PASTE(key) \
+	((key) == KEYC_PASTE_START || (key) == KEYC_PASTE_END)
+
 /* Multiple click timeout. */
 #define KEYC_CLICK_TIMEOUT 300
 
@@ -3208,7 +3212,8 @@ void		 window_pane_reset_mode_all(struct window_pane *);
 int		 window_pane_key(struct window_pane *, struct client *,
 		     struct session *, struct winlink *, key_code,
 		     struct mouse_event *);
-void		 window_pane_paste(struct window_pane *, char *, size_t);
+void		 window_pane_paste(struct window_pane *, key_code, char *,
+		     size_t);
 int		 window_pane_visible(struct window_pane *);
 int		 window_pane_exited(struct window_pane *);
 u_int		 window_pane_search(struct window_pane *, const char *, int,
