@@ -509,6 +509,7 @@ static void
 server_client_free(__unused int fd, __unused short events, void *arg)
 {
 	struct client	*c = arg;
+    struct active_file *f;
 
 	log_debug("free client %p (%d references)", c, c->references);
 

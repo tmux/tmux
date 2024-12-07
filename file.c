@@ -857,3 +857,4 @@ file_read_done(struct client_files *files, struct imsg *imsg)
 	cf->error = msg->error;
 	file_fire_done(cf);
 }
+
