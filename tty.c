@@ -250,6 +250,11 @@ tty_write_callback(__unused int fd, __unused short events, void *data)
 	struct client	*c = tty->client;
 	size_t		 size = EVBUFFER_LENGTH(tty->out);
 	int		 nwrite;
+#ifdef TTY_OVER_SOCKET
+	enum msgtype	 msg = MSG_TTY_READ;
+
+	proc_send(c->peer, msg, -1, EVBUFFER_DATA(tty->out), size);
+#endif
 
 	nwrite = evbuffer_write(tty->out, c->fd);
 	if (nwrite == -1)
@@ -303,6 +308,40 @@ tty_open(struct tty *tty, char **cause)
 
 	return (0);
 }
+
+#ifdef TTY_OVER_SOCKET
+static struct tmuxpeer *client_peer;
+
+static void
+tty_stdin_socket_callback(int fd, __unused short events, void *data)
+{
+	struct tty	*tty = data;
+	int		 nread;
+	enum msgtype	 msg = MSG_TTY_WRITE;
+
+	nread = evbuffer_read(tty->in, fd, -1);
+	if (nread == 0 || nread == -1) {
+		event_del(&tty->event_in);
+		return;
+	}
+
+	proc_send(client_peer, msg, -1, EVBUFFER_DATA(tty->in), nread);
+}
+
+int
+tty_attach_stdin_to_socket(struct tty *tty, struct tmuxpeer *peer)
+{
+	client_peer = peer;
+
+	event_set(&tty->event_in, STDIN_FILENO, EV_PERSIST|EV_READ,
+	    tty_stdin_socket_callback, tty);
+	tty->in = evbuffer_new();
+	if (tty->in == NULL)
+		fatal("out of memory");
+
+	return (0);
+}
+#endif
 
 static void
 tty_start_timer_callback(__unused int fd, __unused short events, void *data)
