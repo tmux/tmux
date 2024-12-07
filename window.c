@@ -1229,12 +1229,15 @@ window_pane_copy_key(struct window_pane *wp, key_code key)
 }
 
 void
-window_pane_paste(struct window_pane *wp, char *buf, size_t len)
+window_pane_paste(struct window_pane *wp, key_code key, char *buf, size_t len)
 {
 	if (!TAILQ_EMPTY(&wp->modes))
 		return;
 
 	if (wp->fd == -1 || wp->flags & PANE_INPUTOFF)
+		return;
+
+	if (KEYC_IS_PASTE(key) && (~wp->screen->mode & MODE_BRACKETPASTE))
 		return;
 
 	log_debug("%s: %.*s", __func__, (int)len, buf);
