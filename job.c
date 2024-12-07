@@ -77,7 +77,7 @@ job_run(const char *cmd, int argc, char **argv, struct environ *e,
 	struct job	 *job;
 	struct environ	 *env;
 	pid_t		  pid;
-	int		  nullfd, out[2], master;
+	int		  out[2], master;
 	const char	 *home, *shell;
 	sigset_t	  set, oldset;
 	struct winsize	  ws;
@@ -152,17 +152,11 @@ job_run(const char *cmd, int argc, char **argv, struct environ *e,
 				fatal("dup2 failed");
 			if (dup2(out[1], STDOUT_FILENO) == -1)
 				fatal("dup2 failed");
-			if (out[1] != STDIN_FILENO && out[1] != STDOUT_FILENO)
+			if (dup2(out[1], STDERR_FILENO) == -1)
+				fatal("dup2 failed");
+			if (out[1] != STDIN_FILENO && out[1] != STDOUT_FILENO && out[1] != STDERR_FILENO)
 				close(out[1]);
 			close(out[0]);
-
-			nullfd = open(_PATH_DEVNULL, O_RDWR);
-			if (nullfd == -1)
-				fatal("open failed");
-			if (dup2(nullfd, STDERR_FILENO) == -1)
-				fatal("dup2 failed");
-			if (nullfd != STDERR_FILENO)
-				close(nullfd);
 		}
 		closefrom(STDERR_FILENO + 1);
 
