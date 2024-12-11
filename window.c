@@ -1756,3 +1756,157 @@ window_pane_show_scrollbar(struct window_pane *wp, int sb_option)
 		return (1);
 	return (0);
 }
+
+int
+window_pane_get_bg(struct window_pane *wp)
+{
+	int			c;
+	struct grid_cell	defaults;
+
+	c = window_pane_get_bg_control_client(wp);
+	if (c == -1) {
+		tty_default_colours(&defaults, wp);
+		if (COLOUR_DEFAULT(defaults.bg))
+			c = window_get_bg_client(wp);
+		else
+			c = defaults.bg;
+	}
+	return (c);
+}
+
+/* Get a client with a background for the pane. */
+int
+window_get_bg_client(struct window_pane *wp)
+{
+	struct window	*w = wp->window;
+	struct client	*loop;
+
+	TAILQ_FOREACH(loop, &clients, entry) {
+		if (loop->flags & CLIENT_UNATTACHEDFLAGS)
+			continue;
+		if (loop->session == NULL || !session_has(loop->session, w))
+			continue;
+		if (loop->tty.bg == -1)
+			continue;
+		return (loop->tty.bg);
+	}
+	return (-1);
+}
+
+/*
+ * If any control mode client exists that has provided a bg color, return it.
+ * Otherwise, return -1.
+ */
+int
+window_pane_get_bg_control_client(struct window_pane *wp)
+{
+	struct client	*c;
+
+	if (wp->control_bg == -1)
+		return (-1);
+
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (c->flags & CLIENT_CONTROL)
+			return (wp->control_bg);
+	}
+	return (-1);
+}
+
+/*
+ * Get a client with a foreground for the pane. There isn't much to choose
+ * between them so just use the first.
+ */
+int
+window_pane_get_fg(struct window_pane *wp)
+{
+	struct window	*w = wp->window;
+	struct client	*loop;
+
+	TAILQ_FOREACH(loop, &clients, entry) {
+		if (loop->flags & CLIENT_UNATTACHEDFLAGS)
+			continue;
+		if (loop->session == NULL || !session_has(loop->session, w))
+			continue;
+		if (loop->tty.fg == -1)
+			continue;
+		return (loop->tty.fg);
+	}
+	return (-1);
+}
+
+/*
+ * If any control mode client exists that has provided a fg color, return it.
+ * Otherwise, return -1.
+ */
+int
+window_pane_get_fg_control_client(struct window_pane *wp)
+{
+	struct client	*c;
+
+	if (wp->control_fg == -1)
+		return (-1);
+
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (c->flags & CLIENT_CONTROL)
+			return (wp->control_fg);
+	}
+	return (-1);
+}
+
+enum client_theme
+window_pane_get_theme(struct window_pane *wp)
+{
+	struct window		*w = wp->window;
+	struct client		*loop;
+	enum client_theme	 theme;
+	int			 found_light = 0, found_dark = 0;
+
+	/*
+	 * Derive theme from pane background color, if it's not the default
+	 * colour.
+	 */
+	theme = colour_totheme(window_pane_get_bg(wp));
+	if (theme != THEME_UNKNOWN)
+		return (theme);
+
+	/* Try to find a client that has a theme. */
+	TAILQ_FOREACH(loop, &clients, entry) {
+		if (loop->flags & CLIENT_UNATTACHEDFLAGS)
+			continue;
+		if (loop->session == NULL || !session_has(loop->session, w))
+			continue;
+		switch (loop->theme) {
+		case THEME_LIGHT:
+			found_light = 1;
+			break;
+		case THEME_DARK:
+			found_dark = 1;
+			break;
+		case THEME_UNKNOWN:
+			break;
+		}
+	}
+
+	if (found_dark && !found_light)
+		return (THEME_DARK);
+	if (found_light && !found_dark)
+		return (THEME_LIGHT);
+	return (THEME_UNKNOWN);
+}
+
+void
+window_pane_send_theme_update(struct window_pane *wp)
+{
+	if (~wp->screen->mode & MODE_THEME_UPDATES)
+		return;
+	switch (window_pane_get_theme(wp)) {
+	case THEME_LIGHT:
+		input_key_pane(wp, KEYC_REPORT_LIGHT_THEME, NULL);
+		break;
+	case THEME_DARK:
+		input_key_pane(wp, KEYC_REPORT_LIGHT_THEME, NULL);
+		break;
+	case THEME_UNKNOWN:
+		break;
+	}
+}
