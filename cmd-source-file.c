@@ -29,6 +29,9 @@
  * Sources a configuration file.
  */
 
+#define CMD_SOURCE_FILE_DEPTH_LIMIT 50
+static u_int cmd_source_file_depth;
+
 static enum cmd_retval	cmd_source_file_exec(struct cmd *, struct cmdq_item *);
 
 const struct cmd_entry cmd_source_file_entry = {
@@ -59,6 +62,16 @@ struct cmd_source_file_data {
 static enum cmd_retval
 cmd_source_file_complete_cb(struct cmdq_item *item, __unused void *data)
 {
+	struct client	*c = cmdq_get_client(item);
+
+	if (c == NULL) {
+		cmd_source_file_depth--;
+		log_debug("%s: depth now %u", __func__, cmd_source_file_depth);
+	} else {
+		c->source_file_depth--;
+		log_debug("%s: depth now %u", __func__, c->source_file_depth);
+	}
+
 	cfg_print_causes(item);
 	return (CMD_RETURN_NORMAL);
 }
@@ -130,6 +143,7 @@ cmd_source_file_add(struct cmd_source_file_data *cdata, const char *path)
 		path = resolved;
 
 	log_debug("%s: %s", __func__, path);
+
 	cdata->files = xreallocarray(cdata->files, cdata->nfiles + 1,
 	    sizeof *cdata->files);
 	cdata->files[cdata->nfiles++] = xstrdup(path);
@@ -147,6 +161,22 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 	glob_t				 g;
 	int				 result;
 	u_int				 i, j;
+
+	if (c == NULL) {
+		if (cmd_source_file_depth >= CMD_SOURCE_FILE_DEPTH_LIMIT) {
+			cmdq_error(item, "too many nested files");
+			return (CMD_RETURN_ERROR);
+		}
+		cmd_source_file_depth++;
+		log_debug("%s: depth now %u", __func__, cmd_source_file_depth);
+	} else {
+		if (c->source_file_depth >= CMD_SOURCE_FILE_DEPTH_LIMIT) {
+			cmdq_error(item, "too many nested files");
+			return (CMD_RETURN_ERROR);
+		}
+		c->source_file_depth++;
+		log_debug("%s: depth now %u", __func__, c->source_file_depth);
+	}
 
 	cdata = xcalloc(1, sizeof *cdata);
 	cdata->item = item;

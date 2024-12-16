@@ -2047,6 +2047,7 @@ struct client {
 	struct event		 overlay_timer;
 
 	struct client_files	 files;
+	u_int			 source_file_depth;
 
 	u_int			*clipboard_panes;
 	u_int			 clipboard_npanes;
