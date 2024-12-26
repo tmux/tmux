@@ -352,8 +352,9 @@ popup_make_pane(struct popup_data *pd, enum layout_type type)
 	new_wp = window_add_pane(wp->window, NULL, hlimit, 0);
 	layout_assign_pane(lc, new_wp, 0);
 
-	new_wp->fd = job_transfer(pd->job, &new_wp->pid, new_wp->tty,
-	    sizeof new_wp->tty);
+	if (pd->job)
+		new_wp->fd = job_transfer(pd->job, &new_wp->pid, new_wp->tty,
+		    sizeof new_wp->tty);
 	pd->job = NULL;
 
 	screen_set_title(&pd->s, new_wp->base.title);
