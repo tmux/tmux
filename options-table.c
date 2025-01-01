@@ -253,6 +253,15 @@ const struct options_table_entry options_table[] = {
 		  "Each entry is an alias and a command separated by '='."
 	},
 
+	{ .name = "codepoint-widths",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .flags = OPTIONS_TABLE_IS_ARRAY,
+	  .default_str = "",
+	  .separator = ",",
+	  .text = "Array of override widths for Unicode codepoints."
+	},
+
 	{ .name = "copy-command",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SERVER,

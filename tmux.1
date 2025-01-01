@@ -4059,6 +4059,14 @@ Note that aliases are expanded when a command is parsed rather than when it is
 executed, so binding an alias with
 .Ic bind-key
 will bind the expanded form.
+.It Ic codepoint-widths[] Ar string
+An array option allowing widths of Unicode codepoints to be overridden.
+Note the new width applies to all clients.
+Each entry is of the form
+.Em codepoint=width ,
+where codepoint may be a UTF-8 character or an identifier of the form
+.Ql U+number
+where the number is a hexadecimal number.
 .It Ic copy-command Ar shell-command
 Give the command to pipe to if the
 .Ic copy-pipe
