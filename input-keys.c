@@ -585,12 +585,24 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 	/* Is this backspace? */
 	if ((key & KEYC_MASK_KEY) == KEYC_BSPACE) {
 		newkey = options_get_number(global_options, "backspace");
-		if (newkey == KEYC_BSPACE)
-			newkey = '\b';
- 		newkey |= (key & (KEYC_MASK_FLAGS|KEYC_MASK_MODIFIERS));
-		log_debug("%s: key 0x%llx is backspace -> 0x%llx", __func__, key,
-		    newkey);
-		key = newkey;
+		log_debug("%s: key 0x%llx is backspace -> 0x%llx", __func__,
+		    key, newkey);
+		if ((key & KEYC_MASK_MODIFIERS) == 0) {
+			ud.data[0] = 255;
+			if ((newkey & KEYC_MASK_MODIFIERS) == 0)
+				ud.data[0] = newkey;
+			else if ((newkey & KEYC_MASK_MODIFIERS) == KEYC_CTRL) {
+				newkey &= KEYC_MASK_KEY;
+				if (newkey >= 'A' && newkey <= 'Z')
+					ud.data[0] = newkey - 0x40;
+				else if (newkey >= 'a' && newkey <= 'z')
+					ud.data[0] = newkey - 0x60;
+			}
+			if (ud.data[0] != 255)
+				input_key_write(__func__, bev, &ud.data[0], 1);
+			return (0);
+		}
+		key = newkey|(key & (KEYC_MASK_FLAGS|KEYC_MASK_MODIFIERS));
 	}
 
 	/* Is this backtab? */
@@ -612,7 +624,6 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 	if (!(key & ~KEYC_MASK_KEY)) {
 		if (key == C0_HT ||
 		    key == C0_CR ||
-		    key == C0_BS ||
 		    key == C0_ESC ||
 		    (key >= 0x20 && key <= 0x7f)) {
 			ud.data[0] = key;
