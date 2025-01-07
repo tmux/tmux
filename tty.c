@@ -2880,6 +2880,8 @@ tty_check_fg(struct tty *tty, struct colour_palette *palette,
 				gc->fg &= 7;
 				if (colours >= 16)
 					gc->fg += 90;
+				else if (gc->fg == 0 && gc->bg == 0)
+					gc->fg = 7;
 			}
 		}
 		return;
