@@ -1627,6 +1627,7 @@ yylex_token_tilde(char **buf, size_t *len)
 static char *
 yylex_token(int ch)
 {
+	struct cmd_parse_state	*ps = &parse_state;
 	char			*buf;
 	size_t			 len;
 	enum { START,
@@ -1650,9 +1651,12 @@ yylex_token(int ch)
 				ch = '\r';
 			}
 		}
-		if (state == NONE && ch == '\n') {
-			log_debug("%s: end at EOL", __func__);
-			break;
+		if (ch == '\n') {
+			if (state == NONE) {
+				log_debug("%s: end at EOL", __func__);
+				break;
+			}
+			ps->input->line++;
 		}
 
 		/* Whitespace or ; or } ends a token unless inside quotes. */
