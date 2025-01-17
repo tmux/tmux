@@ -155,7 +155,8 @@ server_client_clear_overlay(struct client *c)
 	c->overlay_data = NULL;
 
 	c->tty.flags &= ~(TTY_FREEZE|TTY_NOCURSOR);
-	window_update_focus(c->session->curw->window);
+	if (c->session != NULL)
+		window_update_focus(c->session->curw->window);
 	server_redraw_client(c);
 }
 
