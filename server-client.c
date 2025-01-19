@@ -2595,6 +2595,8 @@ server_client_handle_key(struct client *c, struct key_event *event)
 {
 	struct session		*s = c->session;
 	struct cmdq_item	*item;
+	struct window_pane	*wp;
+	int			done;
 
 	/* Check the client is good to accept input. */
 	if (s == NULL || (c->flags & CLIENT_UNATTACHEDFLAGS))
@@ -2612,16 +2614,16 @@ server_client_handle_key(struct client *c, struct key_event *event)
 			status_message_clear(c);
 		}
 		if (c->overlay_key != NULL) {
-			switch (c->overlay_key(c, c->overlay_data, event)) {
-			case 0:
-				return (0);
-			case 1:
-				server_client_clear_overlay(c);
-				return (0);
+			done = c->overlay_key(c, c->overlay_data, event);
+			TAILQ_FOREACH(wp, &c->session->curw->window->panes, entry) {
+				if (wp->flags & PANE_FOCUSED)
+					goto focused;
 			}
+			if (done)
+				server_client_clear_overlay(c);
+			return (0);
 		}
-		server_client_clear_overlay(c);
-		if (c->prompt_string != NULL) {
+focused:	if (c->prompt_string != NULL) {
 			if (status_prompt_key(c, event->key) == 0)
 				return (0);
 		}
@@ -2893,7 +2895,7 @@ server_client_reset_state(struct client *c)
 	tty->flags &= ~TTY_BLOCK;
 
 	/* Get mode from overlay if any, else from screen. */
-	if (c->overlay_draw != NULL) {
+	if (c->overlay_draw != NULL && ~wp->flags & PANE_FOCUSED) {
 		if (c->overlay_mode != NULL)
 			s = c->overlay_mode(c, c->overlay_data, &cx, &cy);
 	} else if (c->prompt_string == NULL)
@@ -2924,7 +2926,7 @@ server_client_reset_state(struct client *c)
 				cy = tty->sy - n;
 		}
 		cx = c->prompt_cursor;
-	} else if (c->overlay_draw == NULL) {
+	} else if (c->overlay_draw == NULL || wp->flags & PANE_FOCUSED) {
 		cursor = 0;
 		tty_window_offset(tty, &ox, &oy, &sx, &sy);
 		if (wp->xoff + s->cx >= ox && wp->xoff + s->cx <= ox + sx &&
