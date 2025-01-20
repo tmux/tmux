@@ -1,6 +1,6 @@
 ---
-name: Custom issue template
-about: Describe this issue template's purpose here.
+name: Use this issue template
+about: Please read https://github.com/tmux/tmux/blob/master/.github/CONTRIBUTING.md
 title: ''
 labels: ''
 assignees: ''
