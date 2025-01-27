@@ -321,6 +321,29 @@ out:
 	return (CMD_RETURN_NORMAL);
 }
 
+static void
+cmd_list_single_command(const struct cmd_entry *entry, struct format_tree *ft, const char *template, struct cmdq_item *item) {
+	const char *s;
+	char			 *line;
+
+	format_add(ft, "command_list_name", "%s", entry->name);
+	if (entry->alias != NULL)
+		s = entry->alias;
+	else
+		s = "";
+	format_add(ft, "command_list_alias", "%s", s);
+	if (entry->usage != NULL)
+		s = entry->usage;
+	else
+		s = "";
+	format_add(ft, "command_list_usage", "%s", s);
+
+	line = format_expand(ft, template);
+	if (*line != '\0')
+		cmdq_print(item, "%s", line);
+	free(line);
+}
+
 static enum cmd_retval
 cmd_list_keys_commands(struct cmd *self, struct cmdq_item *item)
 {
@@ -328,8 +351,7 @@ cmd_list_keys_commands(struct cmd *self, struct cmdq_item *item)
 	const struct cmd_entry	**entryp;
 	const struct cmd_entry	 *entry;
 	struct format_tree	 *ft;
-	const char		 *template, *s, *command;
-	char			 *line;
+	const char		 *template,  *command;
 
 	if ((template = args_get(args, 'F')) == NULL) {
 		template = "#{command_list_name}"
@@ -349,22 +371,7 @@ cmd_list_keys_commands(struct cmd *self, struct cmdq_item *item)
 		    strcmp(entry->alias, command) != 0)))
 		    continue;
 
-		format_add(ft, "command_list_name", "%s", entry->name);
-		if (entry->alias != NULL)
-			s = entry->alias;
-		else
-			s = "";
-		format_add(ft, "command_list_alias", "%s", s);
-		if (entry->usage != NULL)
-			s = entry->usage;
-		else
-			s = "";
-		format_add(ft, "command_list_usage", "%s", s);
-
-		line = format_expand(ft, template);
-		if (*line != '\0')
-			cmdq_print(item, "%s", line);
-		free(line);
+		cmd_list_single_command(entry, ft, template, item);
 	}
 
 	format_free(ft);
