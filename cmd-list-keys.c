@@ -352,6 +352,7 @@ cmd_list_keys_commands(struct cmd *self, struct cmdq_item *item)
 	const struct cmd_entry	 *entry;
 	struct format_tree	 *ft;
 	const char		 *template,  *command;
+	char *cause;
 
 	if ((template = args_get(args, 'F')) == NULL) {
 		template = "#{command_list_name}"
@@ -363,15 +364,16 @@ cmd_list_keys_commands(struct cmd *self, struct cmdq_item *item)
 	format_defaults(ft, NULL, NULL, NULL, NULL);
 
 	command = args_string(args, 0);
-	for (entryp = cmd_table; *entryp != NULL; entryp++) {
-		entry = *entryp;
-		if (command != NULL &&
-		    (strcmp(entry->name, command) != 0 &&
-		    (entry->alias == NULL ||
-		    strcmp(entry->alias, command) != 0)))
-		    continue;
-
-		cmd_list_single_command(entry, ft, template, item);
+	if (command == NULL) {
+		for (entryp = cmd_table; *entryp != NULL; entryp++) {
+			entry = *entryp;
+			cmd_list_single_command(entry, ft, template, item);
+		}
+	} else {
+		entry = cmd_find(command, &cause);
+		if (entry != NULL) {
+			cmd_list_single_command(entry, ft, template, item);
+		}
 	}
 
 	format_free(ft);
