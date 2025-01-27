@@ -2612,6 +2612,7 @@ long long	 args_string_percentage_and_expand(const char *, long long,
 		     long long, long long, struct cmdq_item *, char **);
 
 /* cmd-find.c */
+const struct cmd_entry *cmd_find(const char *name, char **cause);
 int		 cmd_find_target(struct cmd_find_state *, struct cmdq_item *,
 		     const char *, enum cmd_find_type, int);
 struct client	*cmd_find_best_client(struct session *);
