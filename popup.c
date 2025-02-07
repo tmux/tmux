@@ -28,6 +28,7 @@
 
 struct popup_data {
 	struct client		 *c;
+	int			  wp;	
 	struct cmdq_item	 *item;
 	int			  flags;
 	char			 *title;
@@ -614,6 +615,47 @@ popup_job_update_cb(struct job *job)
 	evbuffer_drain(evb, size);
 }
 
+// NOTE TO REVIEWER: This is a copy of cmd_capture_pane_append. I think we'd want a shared implementation but I don't know where it should go.
+static char *
+popup_append(char *buf, size_t *len, char *line, size_t linelen)
+{
+	buf = xrealloc(buf, *len + linelen + 1);
+	memcpy(buf + *len, line, linelen);
+	*len += linelen;
+	return (buf);
+}
+
+static void
+popup_notify_control(struct client *c, int status, struct screen *s, int wp)
+{
+	char			*buf = NULL;
+	struct grid_cell	*gc = NULL;
+	int			 sx = screen_size_x(s);
+	int			 sy = screen_size_y(s);
+	char			*line;
+	size_t			 linelen;
+	size_t			 len = 0;
+	int			 i;
+	struct grid		*gd = s->grid;
+	const struct grid_line	*gl;
+
+	for (i = 0; i < sy; i++) {
+		line = grid_string_cells(gd, 0, i, sx, &gc, GRID_STRING_WITH_SEQUENCES, s);
+		linelen = strlen(line);
+
+		buf = popup_append(buf, &len, line, linelen);
+
+		gl = grid_peek_line(gd, i);
+		if (!(gl->flags & GRID_LINE_WRAPPED))
+			buf[len++] = '\n';
+
+		free(line);
+	}
+
+	control_notify_popup(c, status, buf, len, wp);
+	free(buf);
+}
+
 static void
 popup_job_complete_cb(struct job *job)
 {
@@ -629,8 +671,10 @@ popup_job_complete_cb(struct job *job)
 		pd->status = 0;
 	pd->job = NULL;
 
-	if ((pd->flags & POPUP_CLOSEEXIT) ||
-	    ((pd->flags & POPUP_CLOSEEXITZERO) && pd->status == 0))
+	if (pd->c->flags & CLIENT_CONTROL)
+		popup_notify_control(pd->c, pd->status, &pd->s, pd->wp);
+	else if ((pd->flags & POPUP_CLOSEEXIT) ||
+		 ((pd->flags & POPUP_CLOSEEXITZERO) && pd->status == 0))
 		server_client_clear_overlay(pd->c);
 }
 
@@ -639,7 +683,7 @@ popup_display(int flags, enum box_lines lines, struct cmdq_item *item, u_int px,
     u_int py, u_int sx, u_int sy, struct environ *env, const char *shellcmd,
     int argc, char **argv, const char *cwd, const char *title, struct client *c,
     struct session *s, const char *style, const char *border_style,
-    popup_close_cb cb, void *arg)
+    popup_close_cb cb, void *arg, struct window_pane *wp)
 {
 	struct popup_data	*pd;
 	u_int			 jx, jy;
@@ -664,10 +708,14 @@ popup_display(int flags, enum box_lines lines, struct cmdq_item *item, u_int px,
 		jx = sx - 2;
 		jy = sy - 2;
 	}
-	if (c->tty.sx < sx || c->tty.sy < sy)
+	if (!(c->flags & CLIENT_CONTROL) && (c->tty.sx < sx || c->tty.sy < sy))
 		return (-1);
 
 	pd = xcalloc(1, sizeof *pd);
+	if (wp != NULL)
+		pd->wp = wp->id;
+	else
+		pd->wp = -1;
 	pd->item = item;
 	pd->flags = flags;
 	if (title != NULL)
@@ -723,8 +771,10 @@ popup_display(int flags, enum box_lines lines, struct cmdq_item *item, u_int px,
 	    JOB_NOWAIT|JOB_PTY|JOB_KEEPWRITE|JOB_DEFAULTSHELL, jx, jy);
 	pd->ictx = input_init(NULL, job_get_event(pd->job), &pd->palette);
 
-	server_client_set_overlay(c, 0, popup_check_cb, popup_mode_cb,
-	    popup_draw_cb, popup_key_cb, popup_free_cb, popup_resize_cb, pd);
+	if (!(c->flags & CLIENT_CONTROL)) {
+		server_client_set_overlay(c, 0, popup_check_cb, popup_mode_cb,
+		    popup_draw_cb, popup_key_cb, popup_free_cb, popup_resize_cb, pd);
+	}
 	return (0);
 }
 
@@ -811,7 +861,7 @@ popup_editor(struct client *c, const char *buf, size_t len,
 	xasprintf(&cmd, "%s %s", editor, path);
 	if (popup_display(POPUP_INTERNAL|POPUP_CLOSEEXIT, BOX_LINES_DEFAULT,
 	    NULL, px, py, sx, sy, NULL, cmd, 0, NULL, _PATH_TMP, NULL, c, NULL,
-	    NULL, NULL, popup_editor_close_cb, pe) != 0) {
+	    NULL, NULL, popup_editor_close_cb, pe, NULL) != 0) {
 		popup_editor_free(pe);
 		free(cmd);
 		return (-1);

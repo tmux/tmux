@@ -260,3 +260,19 @@ control_notify_paste_buffer_deleted(const char *name)
 		control_write(c, "%%paste-buffer-deleted %s", name);
 	}
 }
+
+void
+control_notify_popup(struct client *c, int status, char *buf, size_t len, int wp)
+{
+	struct evbuffer *message = evbuffer_new();
+
+	if (message == NULL)
+		fatalx("out of memory");
+	evbuffer_add_printf(message, "%%popup %d", status);
+	if (wp != -1)
+		evbuffer_add_printf(message, " %u", wp);
+	evbuffer_add_printf(message, " : ");
+	control_escape(message, buf, len);
+	control_write_buffer(c, message);
+	evbuffer_free(message);
+}
