@@ -43,7 +43,9 @@
  */
 struct control_block {
 	size_t				 size;
+        /* exactly one of `line` and `buffer` will be nonnull */
 	char				*line;
+	struct evbuffer			*buffer;
 	uint64_t			 t;
 
 	TAILQ_ENTRY(control_block)	 entry;
@@ -225,7 +227,10 @@ control_free_sub(struct control_state *cs, struct control_sub *csub)
 static void
 control_free_block(struct control_state *cs, struct control_block *cb)
 {
-	free(cb->line);
+	if (cb->line != NULL)
+		free(cb->line);
+	if (cb->buffer != NULL)
+		evbuffer_free(cb->buffer);
 	TAILQ_REMOVE(&cs->all_blocks, cb, all_entry);
 	free(cb);
 }
@@ -401,13 +406,63 @@ control_vwrite(struct client *c, const char *fmt, va_list ap)
 	free(s);
 }
 
+static void
+control_vwrite_buffer(struct client *c, struct evbuffer *buffer)
+{
+	struct control_state	*cs = c->control_state;
+
+	log_debug("%s: %s: writing buffer", __func__, c->name);
+
+	bufferevent_write_buffer(cs->write_event, buffer);
+	bufferevent_write(cs->write_event, "\n", 1);
+
+	bufferevent_enable(cs->write_event, EV_WRITE);
+}
+
+/* Frees line and buffer after using them asynchronously. */
+static void
+control_enqueue(struct client *c, struct control_state *cs, char *line, struct evbuffer *buffer)
+{
+	struct control_block *cb = xcalloc(1, sizeof *cb);
+
+	if (line != NULL) {
+		log_debug("%s: %s: storing line: %s", __func__, c->name, cb->line);
+		cb->line = line;
+	} else {
+		log_debug("%s: %s: storing buffer", __func__, c->name);
+		cb->buffer = buffer;
+	}
+
+	TAILQ_INSERT_TAIL(&cs->all_blocks, cb, all_entry);
+	cb->t = get_timer();
+
+	bufferevent_enable(cs->write_event, EV_WRITE);
+}
+
+void
+control_write_buffer(struct client *c, struct evbuffer *buffer)
+{
+	struct control_state	*cs = c->control_state;
+	struct control_block	*cb;
+	va_list			 ap;
+
+	if (TAILQ_EMPTY(&cs->all_blocks)) {
+		control_vwrite_buffer(c, buffer);
+		return;
+	}
+
+	control_enqueue(c, cs, NULL, buffer);
+
+	va_end(ap);
+}
+
 /* Write a line. */
 void
 control_write(struct client *c, const char *fmt, ...)
 {
 	struct control_state	*cs = c->control_state;
-	struct control_block	*cb;
 	va_list			 ap;
+	char			*line;
 
 	va_start(ap, fmt);
 
@@ -417,13 +472,8 @@ control_write(struct client *c, const char *fmt, ...)
 		return;
 	}
 
-	cb = xcalloc(1, sizeof *cb);
-	xvasprintf(&cb->line, fmt, ap);
-	TAILQ_INSERT_TAIL(&cs->all_blocks, cb, all_entry);
-	cb->t = get_timer();
-
-	log_debug("%s: %s: storing line: %s", __func__, c->name, cb->line);
-	bufferevent_enable(cs->write_event, EV_WRITE);
+	xvasprintf(&line, fmt, ap);
+	control_enqueue(c, cs, line, NULL);
 
 	va_end(ap);
 }
@@ -604,6 +654,17 @@ control_flush_all_blocks(struct client *c)
 	}
 }
 
+void
+control_escape(struct evbuffer *message, char *s, size_t size)
+{
+	for (size_t i = 0; i < size; i++) {
+		if (s[i] < ' ' || s[i] == '\\')
+			evbuffer_add_printf(message, "\\%03o", s[i]);
+		else
+			evbuffer_add_printf(message, "%c", s[i]);
+	}
+}
+
 /* Append data to buffer. */
 static struct evbuffer *
 control_append_data(struct client *c, struct control_pane *cp, uint64_t age,
@@ -611,7 +672,6 @@ control_append_data(struct client *c, struct control_pane *cp, uint64_t age,
 {
 	u_char	*new_data;
 	size_t	 new_size;
-	u_int	 i;
 
 	if (message == NULL) {
 		message = evbuffer_new();
@@ -628,12 +688,7 @@ control_append_data(struct client *c, struct control_pane *cp, uint64_t age,
 	new_data = window_pane_get_new_data(wp, &cp->offset, &new_size);
 	if (new_size < size)
 		fatalx("not enough data: %zu < %zu", new_size, size);
-	for (i = 0; i < size; i++) {
-		if (new_data[i] < ' ' || new_data[i] == '\\')
-			evbuffer_add_printf(message, "\\%03o", new_data[i]);
-		else
-			evbuffer_add_printf(message, "%c", new_data[i]);
-	}
+	control_escape(message, new_data, size);
 	window_pane_update_used_data(wp, &cp->offset, size);
 	return (message);
 }
