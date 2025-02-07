@@ -43,7 +43,9 @@
  */
 struct control_block {
 	size_t				 size;
+	/* exactly one of `line` and `buffer` must be nonnull */
 	char				*line;
+	struct evbuffer			*buffer;
 	uint64_t			 t;
 
 	TAILQ_ENTRY(control_block)	 entry;
@@ -51,8 +53,15 @@ struct control_block {
 };
 
 /* Control client pane. */
-struct control_pane {
+struct control_target {
+	/* kind determines whether pane or job is meaningful. */
+    	enum {
+	    CONTROL_TARGET_PANE,
+	    CONTROL_TARGET_JOB
+	} kind;
+
 	u_int				 pane;
+	u_int				 job;
 
 	/*
 	 * Offsets into the pane data. The first (offset) is the data we have
@@ -67,13 +76,13 @@ struct control_pane {
 #define CONTROL_PANE_PAUSED 0x2
 
 	int				 pending_flag;
-	TAILQ_ENTRY(control_pane)	 pending_entry;
+	TAILQ_ENTRY(control_target)	 pending_entry;
 
 	TAILQ_HEAD(, control_block)	 blocks;
 
-	RB_ENTRY(control_pane)		 entry;
+	RB_ENTRY(control_target)	 entry;
 };
-RB_HEAD(control_panes, control_pane);
+RB_HEAD(control_targets, control_target);
 
 /* Subscription pane. */
 struct control_sub_pane {
@@ -113,9 +122,9 @@ RB_HEAD(control_subs, control_sub);
 
 /* Control client state. */
 struct control_state {
-	struct control_panes		 panes;
+	struct control_targets		 targets;
 
-	TAILQ_HEAD(, control_pane)	 pending_list;
+	TAILQ_HEAD(, control_target)	 pending_list;
 	u_int				 pending_count;
 
 	TAILQ_HEAD(, control_block)	 all_blocks;
@@ -144,15 +153,31 @@ struct control_state {
 
 /* Compare client panes. */
 static int
-control_pane_cmp(struct control_pane *cp1, struct control_pane *cp2)
+control_target_cmp(struct control_target *ct1, struct control_target *ct2)
 {
-	if (cp1->pane < cp2->pane)
+	if (ct1->kind < ct2->kind)
 		return (-1);
-	if (cp1->pane > cp2->pane)
+	if (ct1->kind > ct2->kind)
 		return (1);
+
+	switch (ct1->kind) {
+	    case CONTROL_TARGET_PANE:
+		if (ct1->pane < ct2->pane)
+			return (-1);
+		if (ct1->pane > ct2->pane)
+			return (1);
+		break;
+	    case CONTROL_TARGET_JOB:
+		if (ct1->job < ct2->job)
+			return (-1);
+		if (ct1->job > ct2->job)
+			return (1);
+		break;
+	}
 	return (0);
 }
-RB_GENERATE_STATIC(control_panes, control_pane, entry, control_pane_cmp);
+
+RB_GENERATE_STATIC(control_targets, control_target, entry, control_target_cmp);
 
 /* Compare client subs. */
 static int
@@ -226,51 +251,86 @@ static void
 control_free_block(struct control_state *cs, struct control_block *cb)
 {
 	free(cb->line);
+	if (cb->buffer != NULL)
+		evbuffer_free(cb->buffer);
 	TAILQ_REMOVE(&cs->all_blocks, cb, all_entry);
 	free(cb);
 }
 
 /* Get pane offsets for this client. */
-static struct control_pane *
+static struct control_target *
 control_get_pane(struct client *c, struct window_pane *wp)
 {
 	struct control_state	*cs = c->control_state;
-	struct control_pane	 cp = { .pane = wp->id };
+	struct control_target	 ct = {
+		.kind = CONTROL_TARGET_PANE,
+		.pane = wp->id
+	};
 
-	return (RB_FIND(control_panes, &cs->panes, &cp));
+	return (RB_FIND(control_targets, &cs->targets, &ct));
+}
+
+/* Get job offsets for this client. */
+static struct control_target *
+control_get_job(struct client *c, u_int j)
+{
+	struct control_state	*cs = c->control_state;
+	struct control_target	 ct = {
+		.kind = CONTROL_TARGET_JOB,
+		.job = j
+	};
+
+	return (RB_FIND(control_targets, &cs->targets, &ct));
+}
+
+static struct control_target *
+control_get_target(struct client *c, struct window_pane *wp, struct job *job)
+{
+    if (wp != NULL)
+	return control_get_pane(c, wp);
+    return control_get_job(c, job->id);
 }
 
 /* Add pane offsets for this client. */
-static struct control_pane *
-control_add_pane(struct client *c, struct window_pane *wp)
+static struct control_target *
+control_add_pane_or_job(struct client *c, struct window_pane *wp,
+			struct job *job, struct window_pane_offset *offset)
 {
 	struct control_state	*cs = c->control_state;
-	struct control_pane	*cp;
+	struct control_target	*ct;
 
-	cp = control_get_pane(c, wp);
-	if (cp != NULL)
-		return (cp);
+	ct = control_get_target(c, wp, job);
+	if (ct != NULL)
+		return (ct);
 
-	cp = xcalloc(1, sizeof *cp);
-	cp->pane = wp->id;
-	RB_INSERT(control_panes, &cs->panes, cp);
+	ct = xcalloc(1, sizeof *ct);
+	if (wp != NULL) {
+		ct->kind = CONTROL_TARGET_PANE;
+		ct->pane = wp->id;
+		ct->job = 0;
+	} else {
+		ct->kind = CONTROL_TARGET_JOB;
+		ct->job = job->id;
+		ct->pane = 0;
+	}
+	RB_INSERT(control_targets, &cs->targets, ct);
 
-	memcpy(&cp->offset, &wp->offset, sizeof cp->offset);
-	memcpy(&cp->queued, &wp->offset, sizeof cp->queued);
-	TAILQ_INIT(&cp->blocks);
+	memcpy(&ct->offset, offset, sizeof ct->offset);
+	memcpy(&ct->queued, offset, sizeof ct->queued);
+	TAILQ_INIT(&ct->blocks);
 
-	return (cp);
+	return (ct);
 }
 
-/* Discard output for a pane. */
+/* Discard output for a control target. */
 static void
-control_discard_pane(struct client *c, struct control_pane *cp)
+control_discard_target(struct client *c, struct control_target *ct)
 {
 	struct control_state	*cs = c->control_state;
 	struct control_block	*cb, *cb1;
 
-	TAILQ_FOREACH_SAFE(cb, &cp->blocks, entry, cb1) {
-		TAILQ_REMOVE(&cp->blocks, cb, entry);
+	TAILQ_FOREACH_SAFE(cb, &ct->blocks, entry, cb1) {
+		TAILQ_REMOVE(&ct->blocks, cb, entry);
 		control_free_block(cs, cb);
 	}
 }
@@ -295,11 +355,11 @@ void
 control_reset_offsets(struct client *c)
 {
 	struct control_state	*cs = c->control_state;
-	struct control_pane	*cp, *cp1;
+	struct control_target	*ct, *ct1;
 
-	RB_FOREACH_SAFE(cp, control_panes, &cs->panes, cp1) {
-		RB_REMOVE(control_panes, &cs->panes, cp);
-		free(cp);
+	RB_FOREACH_SAFE(ct, control_targets, &cs->targets, ct1) {
+		RB_REMOVE(control_targets, &cs->targets, ct);
+		free(ct);
 	}
 
 	TAILQ_INIT(&cs->pending_list);
@@ -308,79 +368,105 @@ control_reset_offsets(struct client *c)
 
 /* Get offsets for client. */
 struct window_pane_offset *
-control_pane_offset(struct client *c, struct window_pane *wp, int *off)
+control_pane_or_job_offset(struct client *c, struct window_pane *wp,
+			   struct job *job, int *off)
 {
 	struct control_state	*cs = c->control_state;
-	struct control_pane	*cp;
+	struct control_target	*ct;
+
+	if ((job == NULL) == (wp == NULL))
+		fatalx("Exactly one of job and wp must be nonnull");
 
 	if (c->flags & CLIENT_CONTROL_NOOUTPUT) {
 		*off = 0;
 		return (NULL);
 	}
 
-	cp = control_get_pane(c, wp);
-	if (cp == NULL || (cp->flags & CONTROL_PANE_PAUSED)) {
+	ct = control_get_target(c, wp, job);
+	if (ct == NULL || (ct->flags & CONTROL_PANE_PAUSED)) {
 		*off = 0;
 		return (NULL);
 	}
-	if (cp->flags & CONTROL_PANE_OFF) {
+	if (ct->flags & CONTROL_PANE_OFF) {
 		*off = 1;
 		return (NULL);
 	}
 	*off = (EVBUFFER_LENGTH(cs->write_event->output) >= CONTROL_BUFFER_LOW);
-	return (&cp->offset);
+	return (&ct->offset);
 }
 
 /* Set pane as on. */
 void
-control_set_pane_on(struct client *c, struct window_pane *wp)
+control_set_pane_or_job_on(struct client *c, struct window_pane *wp,
+			   struct job *job, struct window_pane_offset *offset)
 {
-	struct control_pane	*cp;
+	struct control_target	*ct;
 
-	cp = control_get_pane(c, wp);
-	if (cp != NULL && (cp->flags & CONTROL_PANE_OFF)) {
-		cp->flags &= ~CONTROL_PANE_OFF;
-		memcpy(&cp->offset, &wp->offset, sizeof cp->offset);
-		memcpy(&cp->queued, &wp->offset, sizeof cp->queued);
+	if ((job == NULL) == (wp == NULL))
+		fatalx("Exactly one of job and wp must be nonnull");
+
+	ct = control_get_target(c, wp, job);
+	if (ct != NULL && (ct->flags & CONTROL_PANE_OFF)) {
+		ct->flags &= ~CONTROL_PANE_OFF;
+		memcpy(&ct->offset, offset, sizeof ct->offset);
+		memcpy(&ct->queued, offset, sizeof ct->queued);
 	}
 }
 
 /* Set pane as off. */
 void
-control_set_pane_off(struct client *c, struct window_pane *wp)
+control_set_pane_or_job_off(struct client *c, struct window_pane *wp,
+			    struct job *job, struct window_pane_offset *offset)
 {
-	struct control_pane	*cp;
+	struct control_target	*ct;
 
-	cp = control_add_pane(c, wp);
-	cp->flags |= CONTROL_PANE_OFF;
+	if ((job == NULL) == (wp == NULL))
+		fatalx("Exactly one of job and wp must be nonnull");
+
+	ct = control_add_pane_or_job(c, wp, job, offset);
+	ct->flags |= CONTROL_PANE_OFF;
 }
 
-/* Continue a paused pane. */
+/* Continue a paused pane/job. */
 void
-control_continue_pane(struct client *c, struct window_pane *wp)
+control_continue_pane_or_job(struct client *c, struct window_pane *wp,
+			     struct job *job, struct window_pane_offset *offset)
 {
-	struct control_pane	*cp;
+	struct control_target	*ct;
 
-	cp = control_get_pane(c, wp);
-	if (cp != NULL && (cp->flags & CONTROL_PANE_PAUSED)) {
-		cp->flags &= ~CONTROL_PANE_PAUSED;
-		memcpy(&cp->offset, &wp->offset, sizeof cp->offset);
-		memcpy(&cp->queued, &wp->offset, sizeof cp->queued);
-		control_write(c, "%%continue %%%u", wp->id);
+	if ((job == NULL) == (wp == NULL))
+		fatalx("Exactly one of job and wp must be nonnull");
+
+	ct = control_get_target(c, wp, job);
+	if (ct != NULL && (ct->flags & CONTROL_PANE_PAUSED)) {
+		ct->flags &= ~CONTROL_PANE_PAUSED;
+		memcpy(&ct->offset, offset, sizeof ct->offset);
+		memcpy(&ct->queued, offset, sizeof ct->queued);
+		if (wp != NULL)
+			control_write(c, "%%continue %%%u", wp->id);
+		else if (c->flags & CLIENT_CONTROL_REPORTPOPUPS)
+			control_write(c, "%%continue ^%u", job->id);
 	}
 }
 
 /* Pause a pane. */
 void
-control_pause_pane(struct client *c, struct window_pane *wp)
+control_pause_pane_or_job(struct client *c, struct window_pane *wp,
+			  struct job *job, struct window_pane_offset *offset)
 {
-	struct control_pane	*cp;
+	struct control_target	*ct;
 
-	cp = control_add_pane(c, wp);
-	if (~cp->flags & CONTROL_PANE_PAUSED) {
-		cp->flags |= CONTROL_PANE_PAUSED;
-		control_discard_pane(c, cp);
-		control_write(c, "%%pause %%%u", wp->id);
+	if ((job == NULL) == (wp == NULL))
+		fatalx("Exactly one of job and wp must be nonnull");
+
+	ct = control_add_pane_or_job(c, wp, job, offset);
+	if (~ct->flags & CONTROL_PANE_PAUSED) {
+		ct->flags |= CONTROL_PANE_PAUSED;
+		control_discard_target(c, ct);
+		if (wp != NULL)
+			control_write(c, "%%pause %%%u", wp->id);
+		else if (c->flags & CLIENT_CONTROL_REPORTPOPUPS)
+			control_write(c, "%%pause ^%u", job->id);
 	}
 }
 
@@ -401,13 +487,62 @@ control_vwrite(struct client *c, const char *fmt, va_list ap)
 	free(s);
 }
 
+static void
+control_vwrite_buffer(struct client *c, struct evbuffer *buffer)
+{
+	struct control_state	*cs = c->control_state;
+
+	log_debug("%s: %s: writing buffer", __func__, c->name);
+
+	bufferevent_write_buffer(cs->write_event, buffer);
+	bufferevent_write(cs->write_event, "\n", 1);
+
+	bufferevent_enable(cs->write_event, EV_WRITE);
+}
+
+/* Frees line and buffer after using them asynchronously. If non-null, line
+ * will be freed eventually. */
+static void
+control_enqueue(struct client *c, struct control_state *cs, char *line,
+		struct evbuffer *buffer)
+{
+	struct control_block *cb = xcalloc(1, sizeof *cb);
+
+	if (line != NULL) {
+		cb->line = line;
+		log_debug("%s: %s: storing line: %s", __func__, c->name, cb->line);
+	} else {
+		log_debug("%s: %s: storing buffer", __func__, c->name);
+		cb->buffer = buffer;
+	}
+
+	TAILQ_INSERT_TAIL(&cs->all_blocks, cb, all_entry);
+	cb->t = get_timer();
+
+	bufferevent_enable(cs->write_event, EV_WRITE);
+}
+
+/* Write a buffer. */
+void
+control_write_buffer(struct client *c, struct evbuffer *buffer)
+{
+	struct control_state	*cs = c->control_state;
+
+	if (TAILQ_EMPTY(&cs->all_blocks)) {
+		control_vwrite_buffer(c, buffer);
+		return;
+	}
+
+	control_enqueue(c, cs, NULL, buffer);
+}
+
 /* Write a line. */
 void
 control_write(struct client *c, const char *fmt, ...)
 {
 	struct control_state	*cs = c->control_state;
-	struct control_block	*cb;
 	va_list			 ap;
+	char			*line;
 
 	va_start(ap, fmt);
 
@@ -417,26 +552,24 @@ control_write(struct client *c, const char *fmt, ...)
 		return;
 	}
 
-	cb = xcalloc(1, sizeof *cb);
-	xvasprintf(&cb->line, fmt, ap);
-	TAILQ_INSERT_TAIL(&cs->all_blocks, cb, all_entry);
-	cb->t = get_timer();
-
-	log_debug("%s: %s: storing line: %s", __func__, c->name, cb->line);
-	bufferevent_enable(cs->write_event, EV_WRITE);
+	xvasprintf(&line, fmt, ap);
+	control_enqueue(c, cs, line, NULL);
 
 	va_end(ap);
 }
 
-/* Check age for this pane. */
+/* Check age for this pane/job. */
 static int
 control_check_age(struct client *c, struct window_pane *wp,
-    struct control_pane *cp)
+		  struct job *job, struct control_target *ct)
 {
 	struct control_block	*cb;
 	uint64_t		 t, age;
 
-	cb = TAILQ_FIRST(&cp->blocks);
+	if ((job == NULL) == (wp == NULL))
+		fatalx("Exactly one of job and wp must be nonnull");
+
+	cb = TAILQ_FIRST(&ct->blocks);
 	if (cb == NULL)
 		return (0);
 	t = get_timer();
@@ -444,15 +577,22 @@ control_check_age(struct client *c, struct window_pane *wp,
 		return (0);
 
 	age = t - cb->t;
-	log_debug("%s: %s: %%%u is %llu behind", __func__, c->name, wp->id,
-	    (unsigned long long)age);
+	if (wp != NULL)
+		log_debug("%s: %s: %%%u is %llu behind", __func__, c->name, wp->id,
+		    (unsigned long long)age);
+	else
+		log_debug("%s: %s: job ^%u is %llu behind", __func__, c->name, job->id,
+		    (unsigned long long)age);
 
 	if (c->flags & CLIENT_CONTROL_PAUSEAFTER) {
 		if (age < c->pause_age)
 			return (0);
-		cp->flags |= CONTROL_PANE_PAUSED;
-		control_discard_pane(c, cp);
-		control_write(c, "%%pause %%%u", wp->id);
+		ct->flags |= CONTROL_PANE_PAUSED;
+		control_discard_target(c, ct);
+		if (wp != NULL)
+		    control_write(c, "%%pause %%%u", wp->id);
+		else if (c->flags & CLIENT_CONTROL_REPORTPOPUPS)
+		    control_write(c, "%%pause ^%u", job->id);
 	} else {
 		if (age < CONTROL_MAXIMUM_AGE)
 			return (0);
@@ -463,58 +603,83 @@ control_check_age(struct client *c, struct window_pane *wp,
 	return (1);
 }
 
-/* Write output from a pane. */
+/* Write output from a pane/job. */
 void
-control_write_output(struct client *c, struct window_pane *wp)
+control_write_output(struct client *c, struct window_pane *wp, struct job *job,
+		     struct window_pane_offset *offset)
 {
 	struct control_state	*cs = c->control_state;
-	struct control_pane	*cp;
+	struct control_target	*ct;
 	struct control_block	*cb;
 	size_t			 new_size;
 
-	if (winlink_find_by_window(&c->session->windows, wp->window) == NULL)
+	if ((job == NULL) == (wp == NULL))
+		fatalx("Exactly one of job and wp must be nonnull");
+
+	if (wp != NULL &&
+	    winlink_find_by_window(&c->session->windows, wp->window) == NULL)
 		return;
 
 	if (c->flags & CONTROL_IGNORE_FLAGS) {
-		cp = control_get_pane(c, wp);
-		if (cp != NULL)
+		ct = control_get_target(c, wp, job);
+		if (ct != NULL)
 			goto ignore;
 		return;
 	}
-	cp = control_add_pane(c, wp);
-	if (cp->flags & (CONTROL_PANE_OFF|CONTROL_PANE_PAUSED))
+	ct = control_add_pane_or_job(c, wp, job, offset);
+	if (ct->flags & (CONTROL_PANE_OFF|CONTROL_PANE_PAUSED))
 		goto ignore;
-	if (control_check_age(c, wp, cp))
+	if (control_check_age(c, wp, job, ct))
 		return;
 
-	window_pane_get_new_data(wp, &cp->queued, &new_size);
+	if (wp != NULL)
+		window_pane_get_new_data(wp, &ct->queued, &new_size);
+	else
+		job_get_new_data(job, &ct->queued, &new_size);
 	if (new_size == 0)
 		return;
-	window_pane_update_used_data(wp, &cp->queued, new_size);
+	if (wp != NULL)
+		window_pane_update_used_data(wp, &ct->queued, new_size);
+	else
+		job_update_used_data(job, &ct->queued, new_size);
 
 	cb = xcalloc(1, sizeof *cb);
 	cb->size = new_size;
 	TAILQ_INSERT_TAIL(&cs->all_blocks, cb, all_entry);
 	cb->t = get_timer();
 
-	TAILQ_INSERT_TAIL(&cp->blocks, cb, entry);
-	log_debug("%s: %s: new output block of %zu for %%%u", __func__, c->name,
-	    cb->size, wp->id);
+	TAILQ_INSERT_TAIL(&ct->blocks, cb, entry);
+	if (wp != NULL)
+		log_debug("%s: %s: new output block of %zu for %%%u", __func__, c->name,
+	    	cb->size, wp->id);
+	else
+		log_debug("%s: %s: new output block of %zu for job ^%u", __func__, c->name,
+	    	cb->size, job->id);
 
-	if (!cp->pending_flag) {
-		log_debug("%s: %s: %%%u now pending", __func__, c->name,
-		    wp->id);
-		TAILQ_INSERT_TAIL(&cs->pending_list, cp, pending_entry);
-		cp->pending_flag = 1;
+	if (!ct->pending_flag) {
+		if (wp != NULL)
+			log_debug("%s: %s: %%%u now pending", __func__, c->name,
+		    	wp->id);
+		else
+			log_debug("%s: %s: job ^%u now pending", __func__, c->name,
+		    	job->id);
+		TAILQ_INSERT_TAIL(&cs->pending_list, ct, pending_entry);
+		ct->pending_flag = 1;
 		cs->pending_count++;
 	}
 	bufferevent_enable(cs->write_event, EV_WRITE);
 	return;
 
 ignore:
-	log_debug("%s: %s: ignoring pane %%%u", __func__, c->name, wp->id);
-	window_pane_update_used_data(wp, &cp->offset, SIZE_MAX);
-	window_pane_update_used_data(wp, &cp->queued, SIZE_MAX);
+	if (wp != NULL) {
+		log_debug("%s: %s: ignoring pane %%%u", __func__, c->name, wp->id);
+		window_pane_update_used_data(wp, &ct->offset, SIZE_MAX);
+		window_pane_update_used_data(wp, &ct->queued, SIZE_MAX);
+	} else {
+		log_debug("%s: %s: ignoring pane job ^%u", __func__, c->name, job->id);
+		job_update_used_data(job, &ct->offset, SIZE_MAX);
+		job_update_used_data(job, &ct->queued, SIZE_MAX);
+	}
 }
 
 /* Control client error callback. */
@@ -604,37 +769,70 @@ control_flush_all_blocks(struct client *c)
 	}
 }
 
-/* Append data to buffer. */
+void
+control_escape(struct evbuffer *message, char *s, size_t size)
+{
+	for (size_t i = 0; i < size; i++) {
+		if (s[i] < ' ' || s[i] == '\\')
+			evbuffer_add_printf(message, "\\%03o", s[i]);
+		else
+			evbuffer_add_printf(message, "%c", s[i]);
+	}
+}
+
+/* Append data to buffer. If wp is NULL use job. */
 static struct evbuffer *
-control_append_data(struct client *c, struct control_pane *cp, uint64_t age,
-    struct evbuffer *message, struct window_pane *wp, size_t size)
+control_append_data(struct client *c, struct control_target *ct, uint64_t age,
+    struct evbuffer *message, struct window_pane *wp, struct job *job,
+    size_t size)
 {
 	u_char	*new_data;
 	size_t	 new_size;
-	u_int	 i;
+
+	if ((job == NULL) == (wp == NULL))
+		fatalx("Exactly one of job and wp must be nonnull");
 
 	if (message == NULL) {
 		message = evbuffer_new();
 		if (message == NULL)
 			fatalx("out of memory");
 		if (c->flags & CLIENT_CONTROL_PAUSEAFTER) {
-			evbuffer_add_printf(message,
-			    "%%extended-output %%%u %llu : ", wp->id,
-			    (unsigned long long)age);
-		} else
+			if (wp != NULL) {
+			    evbuffer_add_printf(message,
+				"%%extended-output %%%u %llu : ", wp->id,
+				(unsigned long long)age);
+			} else if (c->flags & CLIENT_CONTROL_REPORTPOPUPS) {
+			    evbuffer_add_printf(message,
+				"%%extended-output ^%u %llu : ", job->id,
+				(unsigned long long)age);
+			} else {
+				evbuffer_free(message);
+				message = NULL;
+			}
+		} else if (wp != NULL)
 			evbuffer_add_printf(message, "%%output %%%u ", wp->id);
+		else if (c->flags & CLIENT_CONTROL_REPORTPOPUPS)
+			evbuffer_add_printf(message, "%%output ^%u ", job->id);
+		else {
+			evbuffer_free(message);
+			message = NULL;
+		}
 	}
 
-	new_data = window_pane_get_new_data(wp, &cp->offset, &new_size);
+	if (wp != NULL)
+		new_data = window_pane_get_new_data(wp, &ct->offset, &new_size);
+	else {
+		new_data = job_get_new_data(job, &ct->offset, &new_size);
+	}
 	if (new_size < size)
 		fatalx("not enough data: %zu < %zu", new_size, size);
-	for (i = 0; i < size; i++) {
-		if (new_data[i] < ' ' || new_data[i] == '\\')
-			evbuffer_add_printf(message, "\\%03o", new_data[i]);
-		else
-			evbuffer_add_printf(message, "%c", new_data[i]);
-	}
-	window_pane_update_used_data(wp, &cp->offset, size);
+	if (message != NULL)
+		control_escape(message, new_data, size);
+	if (wp != NULL)
+		window_pane_update_used_data(wp, &ct->offset, size);
+	else
+		job_update_used_data(job, &ct->offset, size);
+
 	return (message);
 }
 
@@ -654,7 +852,7 @@ control_write_data(struct client *c, struct evbuffer *message)
 
 /* Write output to client. */
 static int
-control_write_pending(struct client *c, struct control_pane *cp, size_t limit)
+control_write_pending(struct client *c, struct control_target *ct, size_t limit)
 {
 	struct control_state	*cs = c->control_state;
 	struct window_pane	*wp = NULL;
@@ -662,49 +860,78 @@ control_write_pending(struct client *c, struct control_pane *cp, size_t limit)
 	size_t			 used = 0, size;
 	struct control_block	*cb, *cb1;
 	uint64_t		 age, t = get_timer();
+	int			 valid;
+	struct job		*job;
 
-	wp = control_window_pane(c, cp->pane);
-	if (wp == NULL || wp->fd == -1) {
-		TAILQ_FOREACH_SAFE(cb, &cp->blocks, entry, cb1) {
-			TAILQ_REMOVE(&cp->blocks, cb, entry);
+	switch (ct->kind) {
+	    case CONTROL_TARGET_PANE:
+		wp = control_window_pane(c, ct->pane);
+		job = NULL;
+		if (wp == NULL || wp->fd == -1)
+			valid = 0;
+		else
+			valid = 1;
+		break;
+
+	    case CONTROL_TARGET_JOB:
+		if (c->session == NULL)
+			valid = 0;
+		else {
+			job = job_find_by_id(ct->job);
+			valid = (job != NULL);
+			wp = NULL;
+		}
+		break;
+	}
+	if (!valid) {
+		TAILQ_FOREACH_SAFE(cb, &ct->blocks, entry, cb1) {
+			TAILQ_REMOVE(&ct->blocks, cb, entry);
 			control_free_block(cs, cb);
 		}
 		control_flush_all_blocks(c);
 		return (0);
 	}
 
-	while (used != limit && !TAILQ_EMPTY(&cp->blocks)) {
-		if (control_check_age(c, wp, cp)) {
+	if ((job == NULL) == (wp == NULL))
+		fatalx("Exactly one of job and wp must be nonnull");
+
+	while (used != limit && !TAILQ_EMPTY(&ct->blocks)) {
+		if (control_check_age(c, wp, job, ct)) {
 			if (message != NULL)
 				evbuffer_free(message);
 			message = NULL;
 			break;
 		}
 
-		cb = TAILQ_FIRST(&cp->blocks);
+		cb = TAILQ_FIRST(&ct->blocks);
 		if (cb->t < t)
 			age = t - cb->t;
 		else
 			age = 0;
-		log_debug("%s: %s: output block %zu (age %llu) for %%%u "
-		    "(used %zu/%zu)", __func__, c->name, cb->size,
-		    (unsigned long long)age, cp->pane, used, limit);
+		if (wp != NULL)
+			log_debug("%s: %s: output block %zu (age %llu) for %%%u "
+		    	"(used %zu/%zu)", __func__, c->name, cb->size,
+		    	(unsigned long long)age, ct->pane, used, limit);
+		else
+		    	log_debug("%s: %s: output block %zu (age %llu) for job ^%u "
+		    	"(used %zu/%zu)", __func__, c->name, cb->size,
+		    	(unsigned long long)age, ct->job, used, limit);
 
 		size = cb->size;
 		if (size > limit - used)
 			size = limit - used;
 		used += size;
 
-		message = control_append_data(c, cp, age, message, wp, size);
+		message = control_append_data(c, ct, age, message, wp, job, size);
 
 		cb->size -= size;
 		if (cb->size == 0) {
-			TAILQ_REMOVE(&cp->blocks, cb, entry);
+			TAILQ_REMOVE(&ct->blocks, cb, entry);
 			control_free_block(cs, cb);
 
 			cb = TAILQ_FIRST(&cs->all_blocks);
 			if (cb != NULL && cb->size == 0) {
-				if (wp != NULL && message != NULL) {
+				if (message != NULL) {
 					control_write_data(c, message);
 					message = NULL;
 				}
@@ -714,7 +941,7 @@ control_write_pending(struct client *c, struct control_pane *cp, size_t limit)
 	}
 	if (message != NULL)
 		control_write_data(c, message);
-	return (!TAILQ_EMPTY(&cp->blocks));
+	return (!TAILQ_EMPTY(&ct->blocks));
 }
 
 /* Control client write callback. */
@@ -723,7 +950,7 @@ control_write_callback(__unused struct bufferevent *bufev, void *data)
 {
 	struct client		*c = data;
 	struct control_state	*cs = c->control_state;
-	struct control_pane	*cp, *cp1;
+	struct control_target	*ct, *ct1;
 	struct evbuffer		*evb = cs->write_event->output;
 	size_t			 space, limit;
 
@@ -740,13 +967,13 @@ control_write_callback(__unused struct bufferevent *bufev, void *data)
 		if (limit < CONTROL_WRITE_MINIMUM)
 			limit = CONTROL_WRITE_MINIMUM;
 
-		TAILQ_FOREACH_SAFE(cp, &cs->pending_list, pending_entry, cp1) {
+		TAILQ_FOREACH_SAFE(ct, &cs->pending_list, pending_entry, ct1) {
 			if (EVBUFFER_LENGTH(evb) >= CONTROL_BUFFER_HIGH)
 				break;
-			if (control_write_pending(c, cp, limit))
+			if (control_write_pending(c, ct, limit))
 				continue;
-			TAILQ_REMOVE(&cs->pending_list, cp, pending_entry);
-			cp->pending_flag = 0;
+			TAILQ_REMOVE(&cs->pending_list, ct, pending_entry);
+			ct->pending_flag = 0;
 			cs->pending_count--;
 		}
 	}
@@ -768,7 +995,7 @@ control_start(struct client *c)
 	setblocking(c->fd, 0);
 
 	cs = c->control_state = xcalloc(1, sizeof *cs);
-	RB_INIT(&cs->panes);
+	RB_INIT(&cs->targets);
 	TAILQ_INIT(&cs->pending_list);
 	TAILQ_INIT(&cs->all_blocks);
 	RB_INIT(&cs->subs);
@@ -807,10 +1034,10 @@ void
 control_discard(struct client *c)
 {
 	struct control_state	*cs = c->control_state;
-	struct control_pane	*cp;
+	struct control_target	*ct;
 
-	RB_FOREACH(cp, control_panes, &cs->panes)
-		control_discard_pane(c, cp);
+	RB_FOREACH(ct, control_targets, &cs->targets)
+		control_discard_target(c, ct);
 	bufferevent_disable(cs->read_event, EV_READ);
 }
 

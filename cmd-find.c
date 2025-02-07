@@ -36,6 +36,7 @@ static const char *cmd_find_map_table(const char *[][2], const char *);
 
 static void	cmd_find_log_state(const char *, struct cmd_find_state *);
 static int	cmd_find_get_session(struct cmd_find_state *, const char *);
+static int	cmd_find_get_popup(struct cmd_find_state *, const char *);
 static int	cmd_find_get_window(struct cmd_find_state *, const char *, int);
 static int	cmd_find_get_window_with_session(struct cmd_find_state *,
 		    const char *);
@@ -241,6 +242,15 @@ cmd_find_map_table(const char *table[][2], const char *s)
 			return (table[i][1]);
 	}
 	return (s);
+}
+
+static int
+cmd_find_get_popup(struct cmd_find_state *fs, const char *popup)
+{
+	fs->pd = popup_find(popup);
+	if (fs->pd == NULL)
+		return (-1);
+	return (0);
 }
 
 /* Find session from string. Fills in s. */
@@ -654,7 +664,8 @@ cmd_find_clear_state(struct cmd_find_state *fs, int flags)
 int
 cmd_find_empty_state(struct cmd_find_state *fs)
 {
-	if (fs->s == NULL && fs->wl == NULL && fs->w == NULL && fs->wp == NULL)
+	if (fs->s == NULL && fs->wl == NULL && fs->w == NULL && fs->wp == NULL &&
+	    fs->pd == NULL)
 		return (1);
 	return (0);
 }
@@ -664,6 +675,9 @@ int
 cmd_find_valid_state(struct cmd_find_state *fs)
 {
 	struct winlink	*wl;
+
+	if (fs->pd != NULL)
+		return (1);
 
 	if (fs->s == NULL || fs->wl == NULL || fs->w == NULL || fs->wp == NULL)
 		return (0);
@@ -693,6 +707,7 @@ cmd_find_copy_state(struct cmd_find_state *dst, struct cmd_find_state *src)
 	dst->idx = src->idx;
 	dst->w = src->w;
 	dst->wp = src->wp;
+	dst->pd = src->pd;
 }
 
 /* Log the result. */
@@ -716,6 +731,8 @@ cmd_find_log_state(const char *prefix, struct cmd_find_state *fs)
 		log_debug("%s: idx=%d", prefix, fs->idx);
 	else
 		log_debug("%s: idx=none", prefix);
+	if (fs->pd != NULL)
+		log_debug("%s: pd=%%%u", prefix, fs->pd->id);
 }
 
 /* Find state from a session. */
@@ -915,6 +932,17 @@ unknown_pane:
 	return (cmd_find_from_nothing(fs, flags));
 }
 
+/* Find state from a popup. */
+int
+cmd_find_from_popup(struct cmd_find_state *fs, struct popup_data *pd)
+{
+	cmd_find_clear_state(fs, 0);
+	fs->pd = pd;
+
+	cmd_find_log_state(__func__, fs);
+	return (0);
+}
+
 /*
  * Split target into pieces and resolve for the given type. Fills in the given
  * state. Returns 0 on success or -1 on error.
@@ -926,7 +954,7 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 	struct mouse_event	*m;
 	struct cmd_find_state	 current;
 	char			*colon, *period, *copy = NULL, tmp[256];
-	const char		*session, *window, *pane, *s;
+	const char		*session, *window, *pane, *s, *popup;
 	int			 window_only = 0, pane_only = 0;
 
 	/* Can fail flag implies quiet. */
@@ -940,6 +968,8 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 		s = "window";
 	else if (type == CMD_FIND_SESSION)
 		s = "session";
+	else if (type == CMD_FIND_PANE_OR_POPUP)
+		s = "pane_or_popup";
 	else
 		s = "unknown";
 	*tmp = '\0';
@@ -994,6 +1024,7 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 	if (strcmp(target, "=") == 0 || strcmp(target, "{mouse}") == 0) {
 		m = &cmdq_get_event(item)->m;
 		switch (type) {
+		case CMD_FIND_PANE_OR_POPUP:
 		case CMD_FIND_PANE:
 			fs->wp = cmd_mouse_pane(m, &fs->s, &fs->wl);
 			if (fs->wp != NULL) {
@@ -1044,7 +1075,7 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 		*period++ = '\0';
 
 	/* Set session, window and pane parts. */
-	session = window = pane = NULL;
+	session = window = pane = popup = NULL;
 	if (colon != NULL && period != NULL) {
 		session = copy;
 		window = colon;
@@ -1066,6 +1097,8 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 			window = copy;
 		else if (*copy == '%')
 			pane = copy;
+		else if (*copy == '^' && type == CMD_FIND_PANE_OR_POPUP)
+			popup = copy;
 		else {
 			switch (type) {
 			case CMD_FIND_SESSION:
@@ -1075,6 +1108,7 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 				window = copy;
 				break;
 			case CMD_FIND_PANE:
+			case CMD_FIND_PANE_OR_POPUP:
 				pane = copy;
 				break;
 			}
@@ -1108,14 +1142,16 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 		pane = cmd_find_map_table(cmd_find_pane_table, pane);
 
 	if (session != NULL || window != NULL || pane != NULL) {
-		log_debug("%s: target %s is %s%s%s%s%s%s",
+		log_debug("%s: target %s is %s%s%s%s%s%s%s%s",
 		    __func__, target,
 		    session == NULL ? "" : "session ",
 		    session == NULL ? "" : session,
 		    window == NULL ? "" : "window ",
 		    window == NULL ? "" : window,
 		    pane == NULL ? "" : "pane ",
-		    pane == NULL ? "" : pane);
+		    pane == NULL ? "" : pane,
+		    popup == NULL ? "" : "popup ",
+		    popup == NULL ? "" : popup);
 	}
 
 	/* No pane is allowed if want an index. */
@@ -1123,6 +1159,12 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 		if (~flags & CMD_FIND_QUIET)
 			cmdq_error(item, "can't specify pane here");
 		goto error;
+	}
+
+	if (popup != NULL) {
+		if (cmd_find_get_popup(fs, popup) != 0)
+			goto no_popup;
+		goto found;
 	}
 
 	/* If the session isn't NULL, look it up. */
@@ -1235,6 +1277,10 @@ no_window:
 no_pane:
 	if (~flags & CMD_FIND_QUIET)
 		cmdq_error(item, "can't find pane: %s", pane);
+	goto error;
+no_popup:
+	if (~flags & CMD_FIND_QUIET)
+		cmdq_error(item, "can't find popup: %s", popup);
 	goto error;
 }
 

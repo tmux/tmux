@@ -20,6 +20,7 @@
 #include <sys/types.h>
 
 #include <stdlib.h>
+#include <string.h>
 
 #include "tmux.h"
 
@@ -259,4 +260,58 @@ control_notify_paste_buffer_deleted(const char *name)
 
 		control_write(c, "%%paste-buffer-deleted %s", name);
 	}
+}
+
+void
+control_notify_popup_created(struct popup_data *pd)
+{
+	struct evbuffer	*message;
+
+	if (!CONTROL_SHOULD_NOTIFY_CLIENT(pd->c))
+		return;
+
+	message = evbuffer_new();
+	if (message == NULL)
+		fatalx("out of memory");
+
+	evbuffer_add_printf(message,"%%popup-created ^%u %ux%u,%u,%u : ", pd->id,
+		      pd->px, pd->py, pd->sx, pd->sy);
+	control_escape(message, pd->title, strlen(pd->title));
+	control_write_buffer(pd->c, message);
+	evbuffer_free(message);
+}
+
+void
+control_notify_popup_closed(struct popup_data *pd)
+{
+	if (!CONTROL_SHOULD_NOTIFY_CLIENT(pd->c))
+		return;
+	control_write(pd->c, "%%popup-closed ^%u", pd->id);
+}
+
+void
+control_notify_popup_changed(struct popup_data *pd)
+{
+	struct evbuffer	*message;
+
+	if (!CONTROL_SHOULD_NOTIFY_CLIENT(pd->c))
+		return;
+
+	message = evbuffer_new();
+	if (message == NULL)
+		fatalx("out of memory");
+
+	evbuffer_add_printf(message,"%%popup-changed ^%u %ux%u,%u,%u : ", pd->id,
+		      pd->px, pd->py, pd->sx, pd->sy);
+	control_escape(message, pd->title, strlen(pd->title));
+	control_write_buffer(pd->c, message);
+	evbuffer_free(message);
+}
+
+void
+control_notify_popup_status(struct popup_data *pd)
+{
+	if (!CONTROL_SHOULD_NOTIFY_CLIENT(pd->c))
+		return;
+	control_write(pd->c, "%%popup-status ^%u %d", pd->id, pd->status);
 }

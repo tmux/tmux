@@ -133,31 +133,46 @@ cmd_refresh_client_control_client_size(struct cmd *self, struct cmdq_item *item)
 static void
 cmd_refresh_client_update_offset(struct client *tc, const char *value)
 {
-	struct window_pane	*wp;
-	char			*copy, *split;
-	u_int			 pane;
+	struct window_pane		*wp;
+	u_int				 j;
+	char				*copy, *split;
+	u_int				 pane;
+	struct window_pane_offset	*wpo;
+	struct job			 *job;
 
-	if (*value != '%')
+	if (*value != '%' && *value != '^')
 		return;
 	copy = xstrdup(value);
 	if ((split = strchr(copy, ':')) == NULL)
 		goto out;
 	*split++ = '\0';
 
-	if (sscanf(copy, "%%%u", &pane) != 1)
-		goto out;
-	wp = window_pane_find_by_id(pane);
-	if (wp == NULL)
-		goto out;
+	if (*value == '%') {
+		if (sscanf(copy, "%%%u", &pane) != 1)
+			goto out;
+		wp = window_pane_find_by_id(pane);
+		if (wp == NULL)
+			goto out;
+		wpo = &wp->offset;
+		job = NULL;
+	} else {
+		if (sscanf(copy, "^%u", &j) != 1)
+			goto out;
+		job = job_find_by_id(j);
+		if (job == NULL)
+			goto out;
+		wpo = &job->offset;
+		wp = NULL;
+	}
 
 	if (strcmp(split, "on") == 0)
-		control_set_pane_on(tc, wp);
+		control_set_pane_or_job_on(tc, wp, job, wpo);
 	else if (strcmp(split, "off") == 0)
-		control_set_pane_off(tc, wp);
+		control_set_pane_or_job_off(tc, wp, job, wpo);
 	else if (strcmp(split, "continue") == 0)
-		control_continue_pane(tc, wp);
+		control_continue_pane_or_job(tc, wp, job, wpo);
 	else if (strcmp(split, "pause") == 0)
-		control_pause_pane(tc, wp);
+		control_pause_pane_or_job(tc, wp, job, wpo);
 
 out:
 	free(copy);

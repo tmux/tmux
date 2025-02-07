@@ -37,7 +37,7 @@ const struct cmd_entry cmd_send_keys_entry = {
 	.usage = "[-FHKlMRX] [-c target-client] [-N repeat-count] "
 	         CMD_TARGET_PANE_USAGE " key ...",
 
-	.target = { 't', CMD_FIND_PANE, 0 },
+	.target = { 't', CMD_FIND_PANE_OR_POPUP, 0 },
 
 	.flags = CMD_AFTERHOOK|CMD_CLIENT_CFLAG|CMD_CLIENT_CANFAIL,
 	.exec = cmd_send_keys_exec
@@ -83,7 +83,13 @@ cmd_send_keys_inject_key(struct cmdq_item *item, struct cmdq_item *after,
 		return (item);
 	}
 
-	wme = TAILQ_FIRST(&wp->modes);
+        if (wp != NULL)
+		wme = TAILQ_FIRST(&wp->modes);
+        else {
+                popup_key(target->pd, key);
+                return (item);
+        }
+
 	if (wme == NULL || wme->mode->key_table == NULL) {
 		if (window_pane_key(wp, tc, s, wl, key, NULL) != 0)
 			return (NULL);
@@ -160,12 +166,18 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 	struct window_pane		*wp = target->wp;
 	struct key_event		*event = cmdq_get_event(item);
 	struct mouse_event		*m = &event->m;
-	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
+	struct window_mode_entry	*wme;
 	struct cmdq_item		*after = item;
 	key_code			 key;
 	u_int				 i, np = 1;
 	u_int				 count = args_count(args);
 	char				*cause = NULL;
+
+        if (wp != NULL)
+        	wme = TAILQ_FIRST(&wp->modes);
+        else
+                wme = NULL;
+
 
 	if (args_has(args, 'N')) {
 		np = args_strtonum_and_expand(args, 'N', 1, UINT_MAX, item,

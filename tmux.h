@@ -1693,6 +1693,7 @@ enum cmd_find_type {
 	CMD_FIND_PANE,
 	CMD_FIND_WINDOW,
 	CMD_FIND_SESSION,
+        CMD_FIND_PANE_OR_POPUP
 };
 struct cmd_find_state {
 	int			 flags;
@@ -1702,6 +1703,7 @@ struct cmd_find_state {
 	struct winlink		*wl;
 	struct window		*w;
 	struct window_pane	*wp;
+        struct popup_data       *pd;
 	int			 idx;
 };
 
@@ -1963,6 +1965,7 @@ struct client {
 #define CLIENT_ASSUMEPASTING 0x2000000000ULL
 #define CLIENT_REDRAWSCROLLBARS 0x4000000000ULL
 #define CLIENT_NO_DETACH_ON_DESTROY 0x8000000000ULL
+#define CLIENT_CONTROL_REPORTPOPUPS 0x10000000000ULL
 #define CLIENT_ALLREDRAWFLAGS		\
 	(CLIENT_REDRAWWINDOW|		\
 	 CLIENT_REDRAWSTATUS|		\
@@ -2195,6 +2198,91 @@ struct mode_tree_sort_criteria {
 	int	reversed;
 };
 
+typedef void (*job_update_cb) (struct job *);
+typedef void (*job_complete_cb) (struct job *);
+typedef void (*job_free_cb) (void *);
+
+/* A single job. */
+struct job {
+	enum {
+		JOB_RUNNING,
+		JOB_DEAD,
+		JOB_CLOSED
+	} state;
+
+	u_int			 id;
+	int			 flags;
+
+	char			*cmd;
+	pid_t			 pid;
+	char			 tty[TTY_NAME_MAX];
+	int			 status;
+
+	int			 fd;
+	struct bufferevent	*event;
+	struct window_pane_offset offset;
+        size_t           	base_offset;
+
+
+	job_update_cb		 updatecb;
+	job_complete_cb		 completecb;
+	job_free_cb		 freecb;
+	void			*data;
+
+	LIST_ENTRY(job)		 entry;
+};
+extern LIST_HEAD(joblist, job) all_jobs;
+
+typedef void (*popup_close_cb)(int, void *);
+
+/* A single popup. */
+struct popup_data {
+	u_int			  id;
+	struct client		 *c;
+	struct cmdq_item	 *item;
+	int			  flags;
+	char			 *title;
+
+	struct grid_cell	  border_cell;
+	enum box_lines		  border_lines;
+
+	struct screen		  s;
+	struct grid_cell	  defaults;
+	struct colour_palette	  palette;
+
+	struct job		 *job;
+	struct input_ctx	 *ictx;
+	int			  status;
+	popup_close_cb		  cb;
+	void			 *arg;
+
+	struct menu		 *menu;
+	struct menu_data	 *md;
+	int			  close;
+
+	/* Current position and size. */
+	u_int			  px;
+	u_int			  py;
+	u_int			  sx;
+	u_int			  sy;
+
+	/* Preferred position and size. */
+	u_int			  ppx;
+	u_int			  ppy;
+	u_int			  psx;
+	u_int			  psy;
+
+	enum { OFF, MOVE, SIZE }  dragging;
+	u_int			  dx;
+	u_int			  dy;
+
+	u_int			  lx;
+	u_int			  ly;
+	u_int			  lb;
+
+        u_int			  references;
+};
+
 /* tmux.c */
 extern struct options	*global_options;
 extern struct options	*global_s_options;
@@ -2335,6 +2423,7 @@ void	notify_session_window(const char *, struct session *, struct window *);
 void	notify_window(const char *, struct window *);
 void	notify_pane(const char *, struct window_pane *);
 void	notify_paste_buffer(const char *, int);
+void	notify_popup(const char *, struct popup_data *);
 
 /* options.c */
 struct options	*options_create(struct options *);
@@ -2399,9 +2488,6 @@ extern const struct options_table_entry	options_table[];
 extern const struct options_name_map	options_other_names[];
 
 /* job.c */
-typedef void (*job_update_cb) (struct job *);
-typedef void (*job_complete_cb) (struct job *);
-typedef void (*job_free_cb) (void *);
 #define JOB_NOWAIT 0x1
 #define JOB_KEEPWRITE 0x2
 #define JOB_PTY 0x4
@@ -2419,6 +2505,9 @@ struct bufferevent *job_get_event(struct job *);
 void		 job_kill_all(void);
 int		 job_still_running(void);
 void		 job_print_summary(struct cmdq_item *, int);
+struct job	*job_find_by_id(u_int);
+void		*job_get_new_data(struct job *, struct window_pane_offset *, size_t *);
+void		 job_update_used_data(struct job *, struct window_pane_offset *, size_t);
 
 /* environ.c */
 struct environ *environ_create(void);
@@ -2638,6 +2727,7 @@ int		 cmd_find_from_client(struct cmd_find_state *, struct client *,
 int		 cmd_find_from_mouse(struct cmd_find_state *,
 		     struct mouse_event *, int);
 int		 cmd_find_from_nothing(struct cmd_find_state *, int);
+int		 cmd_find_from_popup(struct cmd_find_state *, struct popup_data *);
 
 /* cmd.c */
 extern const struct cmd_entry *cmd_table[];
@@ -3371,19 +3461,28 @@ void	control_discard(struct client *);
 void	control_start(struct client *);
 void	control_ready(struct client *);
 void	control_stop(struct client *);
-void	control_set_pane_on(struct client *, struct window_pane *);
-void	control_set_pane_off(struct client *, struct window_pane *);
-void	control_continue_pane(struct client *, struct window_pane *);
-void	control_pause_pane(struct client *, struct window_pane *);
-struct window_pane_offset *control_pane_offset(struct client *,
-	   struct window_pane *, int *);
+void	control_set_pane_or_job_on(struct client *, struct window_pane *,
+				   struct job *, struct window_pane_offset *);
+void	control_set_pane_or_job_off(struct client *, struct window_pane *,
+				    struct job *, struct window_pane_offset *);
+void	control_continue_pane_or_job(struct client *, struct window_pane *,
+				     struct job *, struct window_pane_offset *);
+void	control_pause_pane_or_job(struct client *, struct window_pane *,
+				  struct job *, struct window_pane_offset *);
+struct window_pane_offset *control_pane_or_job_offset(struct client *,
+						      struct window_pane *,
+						      struct job *, int *);
 void	control_reset_offsets(struct client *);
 void printflike(2, 3) control_write(struct client *, const char *, ...);
-void	control_write_output(struct client *, struct window_pane *);
+void	control_write_buffer(struct client *c, struct evbuffer *buffer);
+void	control_write_output(struct client *, struct window_pane *, struct job *,
+			     struct window_pane_offset *offset);
+void	control_write_job_output(struct client *, struct job *);
 int	control_all_done(struct client *);
 void	control_add_sub(struct client *, const char *, enum control_sub_type,
     	   int, const char *);
 void	control_remove_sub(struct client *, const char *);
+void	control_escape(struct evbuffer *, char *, size_t);
 
 /* control-notify.c */
 void	control_notify_pane_mode_changed(int);
@@ -3400,6 +3499,10 @@ void	control_notify_session_closed(struct session *);
 void	control_notify_session_window_changed(struct session *);
 void	control_notify_paste_buffer_changed(const char *);
 void	control_notify_paste_buffer_deleted(const char *);
+void	control_notify_popup_created(struct popup_data *);
+void	control_notify_popup_closed(struct popup_data *);
+void	control_notify_popup_changed(struct popup_data *);
+void	control_notify_popup_status(struct popup_data *);
 
 /* session.c */
 extern struct sessions sessions;
@@ -3525,7 +3628,6 @@ int		 menu_key_cb(struct client *, void *, struct key_event *);
 #define POPUP_CLOSEEXIT 0x1
 #define POPUP_CLOSEEXITZERO 0x2
 #define POPUP_INTERNAL 0x4
-typedef void (*popup_close_cb)(int, void *);
 typedef void (*popup_finish_edit_cb)(char *, size_t, void *);
 int		 popup_display(int, enum box_lines, struct cmdq_item *, u_int,
                     u_int, u_int, u_int, struct environ *, const char *, int,
@@ -3534,6 +3636,9 @@ int		 popup_display(int, enum box_lines, struct cmdq_item *, u_int,
                     popup_close_cb, void *);
 int		 popup_editor(struct client *, const char *, size_t,
 		    popup_finish_edit_cb, void *);
+void		 popup_unref(struct popup_data *);
+struct popup_data	*popup_find(const char *);
+int		 popup_key(struct popup_data *, key_code);
 
 /* style.c */
 int		 style_parse(struct style *,const struct grid_cell *,

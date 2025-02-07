@@ -38,34 +38,10 @@ static void	job_read_callback(struct bufferevent *, void *);
 static void	job_write_callback(struct bufferevent *, void *);
 static void	job_error_callback(struct bufferevent *, short, void *);
 
-/* A single job. */
-struct job {
-	enum {
-		JOB_RUNNING,
-		JOB_DEAD,
-		JOB_CLOSED
-	} state;
-
-	int			 flags;
-
-	char			*cmd;
-	pid_t			 pid;
-	char		         tty[TTY_NAME_MAX];
-	int			 status;
-
-	int			 fd;
-	struct bufferevent	*event;
-
-	job_update_cb		 updatecb;
-	job_complete_cb		 completecb;
-	job_free_cb		 freecb;
-	void			*data;
-
-	LIST_ENTRY(job)		 entry;
-};
-
 /* All jobs list. */
-static LIST_HEAD(joblist, job) all_jobs = LIST_HEAD_INITIALIZER(all_jobs);
+struct joblist all_jobs = LIST_HEAD_INITIALIZER(all_jobs);
+
+static u_int	next_job_id = 1;
 
 /* Start a job running. */
 struct job *
@@ -184,6 +160,7 @@ job_run(const char *cmd, int argc, char **argv, struct environ *e,
 	job = xmalloc(sizeof *job);
 	job->state = JOB_RUNNING;
 	job->flags = flags;
+	job->id = next_job_id++;
 
 	if (cmd != NULL)
 		job->cmd = xstrdup(cmd);
@@ -211,6 +188,9 @@ job_run(const char *cmd, int argc, char **argv, struct environ *e,
 	    job_write_callback, job_error_callback, job);
 	if (job->event == NULL)
 		fatalx("out of memory");
+	job->base_offset = 0;
+	job->offset.used = 0;
+
 	bufferevent_enable(job->event, EV_READ|EV_WRITE);
 
 	log_debug("run job %p: %s, pid %ld", job, job->cmd, (long)job->pid);
@@ -433,3 +413,42 @@ job_print_summary(struct cmdq_item *item, int blank)
 		n++;
 	}
 }
+
+struct job *
+job_find_by_id(u_int j)
+{
+        struct job	*job;
+	LIST_FOREACH(job, &all_jobs, entry) {
+		if (job->id == j)
+			 return job;
+	}
+	return NULL;
+}
+
+void *
+job_get_new_data(struct job *job, struct window_pane_offset *wpo, size_t *size)
+{
+        size_t		 used;
+        void		*data;
+
+        used = wpo->used - job->base_offset;
+
+        *size = EVBUFFER_LENGTH(job->event->input) - used;
+        data = (EVBUFFER_DATA(job->event->input) + used);
+        return data;
+}
+
+void
+job_update_used_data(struct job *job, struct window_pane_offset *wpo,
+		     size_t size)
+{
+        size_t		 used;
+
+        used = wpo->used - job->base_offset;
+
+        if (size > EVBUFFER_LENGTH(job->event->input) - used)
+                size = EVBUFFER_LENGTH(job->event->input) - used;
+        wpo->used += size;
+
+}
+

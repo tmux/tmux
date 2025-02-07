@@ -1054,7 +1054,7 @@ window_pane_read_callback(__unused struct bufferevent *bufev, void *data)
 	log_debug("%%%u has %zu bytes", wp->id, size);
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (c->session != NULL && (c->flags & CLIENT_CONTROL))
-			control_write_output(c, wp);
+			control_write_output(c, wp, NULL, &wp->offset);
 	}
 	input_parse_pane(wp);
 	bufferevent_disable(wp->event, EV_READ);

@@ -432,7 +432,16 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 		w = tty->sx;
 	if (h > tty->sy)
 		h = tty->sy;
-	if (!cmd_display_menu_get_position(tc, item, args, &px, &py, w, h))
+	if (tc->flags & CLIENT_CONTROL) {
+		/* Control clients may not have a window size, so provide a
+		 * reasonable default so popups can still work. */
+		if (w == 0)
+			w = 80;
+		if (h == 0)
+			h = 25;
+                px = 0;
+                py = 0;
+	} else if (!cmd_display_menu_get_position(tc, item, args, &px, &py, w, h))
 		return (CMD_RETURN_NORMAL);
 
 	value = args_get(args, 'b');
@@ -498,5 +507,7 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	free(cwd);
 	free(title);
 	cmd_free_argv(argc, argv);
+	if (tc->flags & CLIENT_CONTROL)
+		return (CMD_RETURN_NORMAL);
 	return (CMD_RETURN_WAIT);
 }

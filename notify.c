@@ -33,6 +33,7 @@ struct notify_entry {
 	struct window		*window;
 	int			 pane;
 	const char		*pbname;
+        struct popup_data	*pd;
 };
 
 static struct cmdq_item *
@@ -154,6 +155,14 @@ notify_callback(struct cmdq_item *item, void *data)
 		control_notify_paste_buffer_changed(ne->pbname);
 	if (strcmp(ne->name, "paste-buffer-deleted") == 0)
 		control_notify_paste_buffer_deleted(ne->pbname);
+	if (strcmp(ne->name, "popup-created") == 0)
+		control_notify_popup_created(ne->pd);
+	if (strcmp(ne->name, "popup-closed") == 0)
+		control_notify_popup_closed(ne->pd);
+	if (strcmp(ne->name, "popup-changed") == 0)
+		control_notify_popup_changed(ne->pd);
+	if (strcmp(ne->name, "popup-status") == 0)
+		control_notify_popup_status(ne->pd);
 
 	notify_insert_hook(item, ne);
 
@@ -166,6 +175,8 @@ notify_callback(struct cmdq_item *item, void *data)
 
 	if (ne->fs.s != NULL)
 		session_remove_ref(ne->fs.s, __func__);
+        if (ne->fs.pd != NULL)
+                popup_unref(ne->fs.pd);
 
 	format_free(ne->formats);
 	free((void *)ne->name);
@@ -178,7 +189,7 @@ notify_callback(struct cmdq_item *item, void *data)
 static void
 notify_add(const char *name, struct cmd_find_state *fs, struct client *c,
     struct session *s, struct window *w, struct window_pane *wp,
-    const char *pbname)
+    const char *pbname, struct popup_data *pd)
 {
 	struct notify_entry	*ne;
 	struct cmdq_item	*item;
@@ -195,6 +206,7 @@ notify_add(const char *name, struct cmd_find_state *fs, struct client *c,
 	ne->window = w;
 	ne->pane = (wp != NULL ? (int)wp->id : -1);
 	ne->pbname = (pbname != NULL ? xstrdup(pbname) : NULL);
+        ne->pd = pd;
 
 	ne->formats = format_create(NULL, NULL, 0, FORMAT_NOJOBS);
 	format_add(ne->formats, "hook", "%s", name);
@@ -218,6 +230,8 @@ notify_add(const char *name, struct cmd_find_state *fs, struct client *c,
 		session_add_ref(s, __func__);
 	if (w != NULL)
 		window_add_ref(w, __func__);
+        if (pd != NULL)
+        	pd->references++;
 
 	cmd_find_copy_state(&ne->fs, fs);
 	if (ne->fs.s != NULL) /* cmd_find_valid_state needs session */
@@ -256,7 +270,7 @@ notify_client(const char *name, struct client *c)
 	struct cmd_find_state	fs;
 
 	cmd_find_from_client(&fs, c, 0);
-	notify_add(name, &fs, c, NULL, NULL, NULL, NULL);
+	notify_add(name, &fs, c, NULL, NULL, NULL, NULL, NULL);
 }
 
 void
@@ -268,7 +282,7 @@ notify_session(const char *name, struct session *s)
 		cmd_find_from_session(&fs, s, 0);
 	else
 		cmd_find_from_nothing(&fs, 0);
-	notify_add(name, &fs, NULL, s, NULL, NULL, NULL);
+	notify_add(name, &fs, NULL, s, NULL, NULL, NULL, NULL);
 }
 
 void
@@ -277,7 +291,7 @@ notify_winlink(const char *name, struct winlink *wl)
 	struct cmd_find_state	fs;
 
 	cmd_find_from_winlink(&fs, wl, 0);
-	notify_add(name, &fs, NULL, wl->session, wl->window, NULL, NULL);
+	notify_add(name, &fs, NULL, wl->session, wl->window, NULL, NULL, NULL);
 }
 
 void
@@ -286,7 +300,7 @@ notify_session_window(const char *name, struct session *s, struct window *w)
 	struct cmd_find_state	fs;
 
 	cmd_find_from_session_window(&fs, s, w, 0);
-	notify_add(name, &fs, NULL, s, w, NULL, NULL);
+	notify_add(name, &fs, NULL, s, w, NULL, NULL, NULL);
 }
 
 void
@@ -295,7 +309,7 @@ notify_window(const char *name, struct window *w)
 	struct cmd_find_state	fs;
 
 	cmd_find_from_window(&fs, w, 0);
-	notify_add(name, &fs, NULL, NULL, w, NULL, NULL);
+	notify_add(name, &fs, NULL, NULL, w, NULL, NULL, NULL);
 }
 
 void
@@ -304,7 +318,7 @@ notify_pane(const char *name, struct window_pane *wp)
 	struct cmd_find_state	fs;
 
 	cmd_find_from_pane(&fs, wp, 0);
-	notify_add(name, &fs, NULL, NULL, NULL, wp, NULL);
+	notify_add(name, &fs, NULL, NULL, NULL, wp, NULL, NULL);
 }
 
 void
@@ -315,9 +329,18 @@ notify_paste_buffer(const char *pbname, int deleted)
 	cmd_find_clear_state(&fs, 0);
 	if (deleted) {
 		notify_add("paste-buffer-deleted", &fs, NULL, NULL, NULL, NULL,
-		    pbname);
+		    pbname, NULL);
 	} else {
 		notify_add("paste-buffer-changed", &fs, NULL, NULL, NULL, NULL,
-		    pbname);
+		    pbname, NULL);
 	}
+}
+
+void
+notify_popup(const char *name, struct popup_data *pd)
+{
+	struct cmd_find_state	fs;
+
+	cmd_find_from_popup(&fs, pd);
+        notify_add(name, &fs, NULL, NULL, NULL, NULL, NULL, pd);
 }

@@ -44,7 +44,8 @@ enum mouse_where {
 
 static void	server_client_free(int, short, void *);
 static void	server_client_check_pane_resize(struct window_pane *);
-static void	server_client_check_pane_buffer(struct window_pane *);
+static void	server_client_check_pane_or_job_buffer(struct window_pane *,
+						       struct job *);
 static void	server_client_check_window_resize(struct window *);
 static key_code	server_client_check_mouse(struct client *, struct key_event *);
 static void	server_client_repeat_timer(int, short, void *);
@@ -2644,6 +2645,7 @@ server_client_loop(void)
 	struct client		*c;
 	struct window		*w;
 	struct window_pane	*wp;
+        struct job		*job;
 
 	/* Check for window resize. This is done before redrawing. */
 	RB_FOREACH(w, windows, &windows)
@@ -2667,12 +2669,15 @@ server_client_loop(void)
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (wp->fd != -1) {
 				server_client_check_pane_resize(wp);
-				server_client_check_pane_buffer(wp);
+				server_client_check_pane_or_job_buffer(wp, NULL);
 			}
 			wp->flags &= ~(PANE_REDRAW|PANE_REDRAWSCROLLBAR);
 		}
 		check_window_name(w);
 	}
+	LIST_FOREACH(job, &all_jobs, entry) {
+                server_client_check_pane_or_job_buffer(NULL, job);
+        }
 }
 
 /* Check if window needs to be resized. */
@@ -2777,11 +2782,16 @@ server_client_check_pane_resize(struct window_pane *wp)
 	evtimer_add(&wp->resize_timer, &tv);
 }
 
-/* Check pane buffer size. */
 static void
-server_client_check_pane_buffer(struct window_pane *wp)
+server_client_check_buffer(struct window_pane *wp,
+                           struct job *job,
+                           struct bufferevent *event,
+                           struct window_pane_offset *offset,
+                           int pipe_fd,
+                           struct window_pane_offset *pipe_offset,
+                           size_t *base_offset_ptr)
 {
-	struct evbuffer			*evb = wp->event->input;
+	struct evbuffer			*evb = event->input;
 	size_t				 minimum;
 	struct client			*c;
 	struct window_pane_offset	*wpo;
@@ -2789,13 +2799,16 @@ server_client_check_pane_buffer(struct window_pane *wp)
 	u_int				 attached_clients = 0;
 	size_t				 new_size;
 
+        if ((job == NULL) == (wp == NULL))
+                fatalx("Exactly one of job and wp must be nonnull");
+
 	/*
 	 * Work out the minimum used size. This is the most that can be removed
 	 * from the buffer.
 	 */
-	minimum = wp->offset.used;
-	if (wp->pipe_fd != -1 && wp->pipe_offset.used < minimum)
-		minimum = wp->pipe_offset.used;
+	minimum = offset->used;
+	if (pipe_fd != -1 && pipe_offset->used < minimum)
+		minimum = pipe_offset->used;
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (c->session == NULL)
 			continue;
@@ -2805,7 +2818,7 @@ server_client_check_pane_buffer(struct window_pane *wp)
 			off = 0;
 			continue;
 		}
-		wpo = control_pane_offset(c, wp, &flag);
+		wpo = control_pane_or_job_offset(c, wp, job, &flag);
 		if (wpo == NULL) {
 			if (!flag)
 				off = 0;
@@ -2814,43 +2827,58 @@ server_client_check_pane_buffer(struct window_pane *wp)
 		if (!flag)
 			off = 0;
 
-		window_pane_get_new_data(wp, wpo, &new_size);
-		log_debug("%s: %s has %zu bytes used and %zu left for %%%u",
-		    __func__, c->name, wpo->used - wp->base_offset, new_size,
-		    wp->id);
+                if (wp != NULL) {
+			window_pane_get_new_data(wp, wpo, &new_size);
+			log_debug("%s: %s has %zu bytes used and %zu left for %%%u",
+		    	__func__, c->name, wpo->used - *base_offset_ptr, new_size,
+		    	wp->id);
+                } else {
+                        job_get_new_data(job, wpo, &new_size);
+			log_debug("%s: %s has %zu bytes used and %zu left for job %u",
+		    	__func__, c->name, wpo->used - *base_offset_ptr, new_size,
+		    	job->id);
+                }
+
 		if (wpo->used < minimum)
 			minimum = wpo->used;
 	}
 	if (attached_clients == 0)
 		off = 0;
-	minimum -= wp->base_offset;
+	minimum -= *base_offset_ptr;
 	if (minimum == 0)
 		goto out;
 
 	/* Drain the buffer. */
-	log_debug("%s: %%%u has %zu minimum (of %zu) bytes used", __func__,
-	    wp->id, minimum, EVBUFFER_LENGTH(evb));
+        if (wp != NULL)
+		log_debug("%s: %%%u has %zu minimum (of %zu) bytes used", __func__,
+	    	wp->id, minimum, EVBUFFER_LENGTH(evb));
+        else
+		log_debug("%s: job %u has %zu minimum (of %zu) bytes used", __func__,
+	    	job->id, minimum, EVBUFFER_LENGTH(evb));
 	evbuffer_drain(evb, minimum);
 
 	/*
 	 * Adjust the base offset. If it would roll over, all the offsets into
 	 * the buffer need to be adjusted.
 	 */
-	if (wp->base_offset > SIZE_MAX - minimum) {
-		log_debug("%s: %%%u base offset has wrapped", __func__, wp->id);
-		wp->offset.used -= wp->base_offset;
-		if (wp->pipe_fd != -1)
-			wp->pipe_offset.used -= wp->base_offset;
+	if (*base_offset_ptr > SIZE_MAX - minimum) {
+                if (wp != NULL)
+			log_debug("%s: %%%u base offset has wrapped", __func__, wp->id);
+                else
+			log_debug("%s: job %u base offset has wrapped", __func__, job->id);
+		offset->used -= *base_offset_ptr;
+		if (pipe_fd != -1)
+			pipe_offset->used -= *base_offset_ptr;
 		TAILQ_FOREACH(c, &clients, entry) {
 			if (c->session == NULL || (~c->flags & CLIENT_CONTROL))
 				continue;
-			wpo = control_pane_offset(c, wp, &flag);
+			wpo = control_pane_or_job_offset(c, wp, job, &flag);
 			if (wpo != NULL && !flag)
-				wpo->used -= wp->base_offset;
+				wpo->used -= *base_offset_ptr;
 		}
-		wp->base_offset = minimum;
+		*base_offset_ptr = minimum;
 	} else
-		wp->base_offset += minimum;
+		*base_offset_ptr += minimum;
 
 out:
 	/*
@@ -2859,12 +2887,41 @@ out:
 	 * clients, all of which are control clients which are not able to
 	 * accept any more data.
 	 */
-	log_debug("%s: pane %%%u is %s", __func__, wp->id, off ? "off" : "on");
+        if (wp != NULL)
+		log_debug("%s: pane %%%u is %s", __func__, wp->id, off ? "off" : "on");
+        else
+		log_debug("%s: pane job %u is %s", __func__, job->id, off ? "off" : "on");
 	if (off)
-		bufferevent_disable(wp->event, EV_READ);
+		bufferevent_disable(event, EV_READ);
 	else
-		bufferevent_enable(wp->event, EV_READ);
+		bufferevent_enable(event, EV_READ);
 }
+
+/* Check pane buffer size. */
+static void
+server_client_check_pane_or_job_buffer(struct window_pane *wp, struct job *job)
+{
+        if ((job == NULL) == (wp == NULL))
+                fatalx("Exactly one of job and wp must be nonnull");
+
+        if (wp != NULL)
+                server_client_check_buffer(wp,
+                                           NULL,
+                                           wp->event,
+                                           &wp->offset,
+                                           wp->pipe_fd,
+                                           &wp->pipe_offset,
+                                           &wp->base_offset);
+        else
+                server_client_check_buffer(NULL,
+                                           job,
+                                           job->event,
+                                           &job->offset,
+                                           -1,
+                                           NULL,
+                                           &job->base_offset);
+}
+
 
 /*
  * Update cursor position and mode settings. The scroll region and attributes
@@ -3680,6 +3737,8 @@ server_client_control_flags(struct client *c, const char *next)
 		return (CLIENT_CONTROL_NOOUTPUT);
 	if (strcmp(next, "wait-exit") == 0)
 		return (CLIENT_CONTROL_WAITEXIT);
+	if (strcmp(next, "report-popups") == 0)
+		return (CLIENT_CONTROL_REPORTPOPUPS);
 	return (0);
 }
 

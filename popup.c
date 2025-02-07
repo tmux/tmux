@@ -26,50 +26,6 @@
 
 #include "tmux.h"
 
-struct popup_data {
-	struct client		 *c;
-	struct cmdq_item	 *item;
-	int			  flags;
-	char			 *title;
-
-	struct grid_cell	  border_cell;
-	enum box_lines		  border_lines;
-
-	struct screen		  s;
-	struct grid_cell	  defaults;
-	struct colour_palette	  palette;
-
-	struct job		 *job;
-	struct input_ctx	 *ictx;
-	int			  status;
-	popup_close_cb		  cb;
-	void			 *arg;
-
-	struct menu		 *menu;
-	struct menu_data	 *md;
-	int			  close;
-
-	/* Current position and size. */
-	u_int			  px;
-	u_int			  py;
-	u_int			  sx;
-	u_int			  sy;
-
-	/* Preferred position and size. */
-	u_int			  ppx;
-	u_int			  ppy;
-	u_int			  psx;
-	u_int			  psy;
-
-	enum { OFF, MOVE, SIZE }  dragging;
-	u_int			  dx;
-	u_int			  dy;
-
-	u_int			  lx;
-	u_int			  ly;
-	u_int			  lb;
-};
-
 struct popup_editor {
 	char			*path;
 	popup_finish_edit_cb	 cb;
@@ -263,13 +219,12 @@ popup_draw_cb(struct client *c, void *data, struct screen_redraw_ctx *rctx)
 }
 
 static void
-popup_free_cb(struct client *c, void *data)
+popup_free(struct popup_data *pd)
 {
-	struct popup_data	*pd = data;
 	struct cmdq_item	*item = pd->item;
 
 	if (pd->md != NULL)
-		menu_free_cb(c, pd->md);
+		menu_free_cb(pd->c, pd->md);
 
 	if (pd->cb != NULL)
 		pd->cb(pd->status, pd->arg);
@@ -292,6 +247,24 @@ popup_free_cb(struct client *c, void *data)
 	free(pd->title);
 	free(pd);
 }
+
+void
+popup_unref(struct popup_data *pd)
+{
+        pd->references--;
+        if (pd->references == 0)
+                popup_free(pd);
+}
+
+static void
+popup_overlay_closed_cb(__unused struct client *c, void *data)
+{
+	struct popup_data	*pd = data;
+
+        notify_popup("popup-closed", pd);
+        popup_unref(pd);
+}
+
 
 static void
 popup_resize_cb(__unused struct client *c, void *data)
@@ -332,6 +305,7 @@ popup_resize_cb(__unused struct client *c, void *data)
 		if (pd->job != NULL)
 			job_resize(pd->job, pd->sx - 2, pd->sy - 2);
 	}
+        notify_popup("popup-changed", pd);
 }
 
 static void
@@ -450,6 +424,7 @@ popup_handle_drag(struct client *c, struct popup_data *pd,
 		pd->ppx = px;
 		pd->ppy = py;
 		server_redraw_client(c);
+        	notify_popup("popup-changed", pd);
 	} else if (pd->dragging == SIZE) {
 		if (pd->border_lines == BOX_LINES_NONE) {
 			if (m->x < pd->px + 1)
@@ -477,7 +452,14 @@ popup_handle_drag(struct client *c, struct popup_data *pd,
 				job_resize(pd->job, pd->sx - 2, pd->sy - 2);
 		}
 		server_redraw_client(c);
+        	notify_popup("popup-changed", pd);
 	}
+}
+
+int
+popup_key(struct popup_data *pd, key_code key)
+{
+	return (input_key(&pd->s, job_get_event(pd->job), key));
 }
 
 static int
@@ -591,14 +573,22 @@ static void
 popup_job_update_cb(struct job *job)
 {
 	struct popup_data	*pd = job_get_data(job);
-	struct evbuffer		*evb = job_get_event(job)->input;
 	struct client		*c = pd->c;
 	struct screen		*s = &pd->s;
-	void			*data = EVBUFFER_DATA(evb);
-	size_t			 size = EVBUFFER_LENGTH(evb);
+	void			*data;
+	size_t			 size;
 
+        if (c->flags & CLIENT_CONTROL) {
+        	if (c->session != NULL) {
+                	control_write_output(c, NULL, job, &job->offset);
+                }
+                return;
+        }
+
+        data = job_get_new_data(job, &job->offset, &size);
 	if (size == 0)
 		return;
+        job_update_used_data(job, &job->offset, size);
 
 	if (pd->md != NULL) {
 		c->overlay_check = menu_check_cb;
@@ -610,8 +600,6 @@ popup_job_update_cb(struct job *job)
 	input_parse_screen(pd->ictx, s, popup_init_ctx_cb, pd, data, size);
 	c->overlay_check = popup_check_cb;
 	c->overlay_data = pd;
-
-	evbuffer_drain(evb, size);
 }
 
 static void
@@ -629,17 +617,20 @@ popup_job_complete_cb(struct job *job)
 		pd->status = 0;
 	pd->job = NULL;
 
-	if ((pd->flags & POPUP_CLOSEEXIT) ||
-	    ((pd->flags & POPUP_CLOSEEXITZERO) && pd->status == 0))
+	if (!(pd->c->flags & CLIENT_CONTROL) &&
+	    ((pd->flags & POPUP_CLOSEEXIT) ||
+	     ((pd->flags & POPUP_CLOSEEXITZERO) && pd->status == 0)))
 		server_client_clear_overlay(pd->c);
+
+        notify_popup("popup-status", pd);
 }
 
 int
-popup_display(int flags, enum box_lines lines, struct cmdq_item *item, u_int px,
-    u_int py, u_int sx, u_int sy, struct environ *env, const char *shellcmd,
-    int argc, char **argv, const char *cwd, const char *title, struct client *c,
-    struct session *s, const char *style, const char *border_style,
-    popup_close_cb cb, void *arg)
+popup_display(int flags, enum box_lines lines, struct cmdq_item *item,
+    u_int px, u_int py, u_int sx, u_int sy, struct environ *env,
+    const char *shellcmd, int argc, char **argv, const char *cwd,
+    const char *title, struct client *c, struct session *s, const char *style,
+    const char *border_style, popup_close_cb cb, void *arg)
 {
 	struct popup_data	*pd;
 	u_int			 jx, jy;
@@ -664,10 +655,11 @@ popup_display(int flags, enum box_lines lines, struct cmdq_item *item, u_int px,
 		jx = sx - 2;
 		jy = sy - 2;
 	}
-	if (c->tty.sx < sx || c->tty.sy < sy)
+	if (!(c->flags & CLIENT_CONTROL) && (c->tty.sx < sx || c->tty.sy < sy))
 		return (-1);
 
 	pd = xcalloc(1, sizeof *pd);
+        pd->references = 1;
 	pd->item = item;
 	pd->flags = flags;
 	if (title != NULL)
@@ -721,11 +713,36 @@ popup_display(int flags, enum box_lines lines, struct cmdq_item *item, u_int px,
 	pd->job = job_run(shellcmd, argc, argv, env, s, cwd,
 	    popup_job_update_cb, popup_job_complete_cb, NULL, pd,
 	    JOB_NOWAIT|JOB_PTY|JOB_KEEPWRITE|JOB_DEFAULTSHELL, jx, jy);
+        pd->id = pd->job->id;
 	pd->ictx = input_init(NULL, job_get_event(pd->job), &pd->palette);
 
-	server_client_set_overlay(c, 0, popup_check_cb, popup_mode_cb,
-	    popup_draw_cb, popup_key_cb, popup_free_cb, popup_resize_cb, pd);
+	if (c->flags & CLIENT_CONTROL_REPORTPOPUPS)
+		notify_popup("popup-created", pd);
+        server_client_set_overlay(c, 0, popup_check_cb, popup_mode_cb,
+            popup_draw_cb, popup_key_cb, popup_overlay_closed_cb,
+	    popup_resize_cb, pd);
 	return (0);
+}
+
+struct popup_data *
+popup_find(const char *name)
+{
+        struct client		*c;
+        struct popup_data	*pd;
+        u_int			 id;
+
+        if (sscanf(name, "^%u", &id) != 1 || id == 0)
+                return (NULL);
+
+        TAILQ_FOREACH(c, &clients, entry) {
+                /* TODO: Maybe there is a nicer way to do this? */
+                if (c->overlay_draw == popup_draw_cb) {
+                    pd = (struct popup_data *)c->overlay_data;
+                    if (pd->id == id)
+                            return (pd);
+                }
+        }
+        return (NULL);
 }
 
 static void
