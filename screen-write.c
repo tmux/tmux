@@ -2022,6 +2022,10 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	if (skip) {
 		if (s->cx >= gl->cellsize)
 			skip = grid_cells_equal(gc, &grid_default_cell);
+#ifdef ENABLE_SIXEL
+		else if (image_intersect_area(s, s->cx, s->cy, width, 1))
+			skip = 0;
+#endif
 		else {
 			gce = &gl->celldata[s->cx];
 			if (gce->flags & GRID_FLAG_EXTENDED)
