@@ -39,8 +39,8 @@ const struct cmd_entry cmd_display_message_entry = {
 	.name = "display-message",
 	.alias = "display",
 
-	.args = { "ac:d:lINpt:F:v", 0, 1, NULL },
-	.usage = "[-aIlNpv] [-c target-client] [-d delay] [-F format] "
+	.args = { "aCc:d:lINpt:F:v", 0, 1, NULL },
+	.usage = "[-aCIlNpv] [-c target-client] [-d delay] [-F format] "
 		 CMD_TARGET_PANE_USAGE " [message]",
 
 	.target = { 't', CMD_FIND_PANE, CMD_FIND_CANFAIL },
@@ -69,6 +69,7 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 	const char		*template;
 	char			*msg, *cause;
 	int			 delay = -1, flags, Nflag = args_has(args, 'N');
+	int			 Cflag = args_has(args, 'C');
 	struct format_tree	*ft;
 	u_int			 count = args_count(args);
 	struct evbuffer		*evb;
@@ -150,7 +151,7 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 		server_client_print(tc, 0, evb);
 		evbuffer_free(evb);
 	} else if (tc != NULL)
-		status_message_set(tc, delay, 0, Nflag, "%s", msg);
+		status_message_set(tc, delay, 0, Nflag, Cflag, "%s", msg);
 	free(msg);
 
 	format_free(ft);

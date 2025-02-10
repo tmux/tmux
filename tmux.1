@@ -6744,7 +6744,7 @@ The following keys are available in menus:
 .El
 .Tg display
 .It Xo Ic display-message
-.Op Fl aIlNpv
+.Op Fl aCIlNpv
 .Op Fl c Ar target-client
 .Op Fl d Ar delay
 .Op Fl t Ar target-pane
@@ -6766,6 +6766,9 @@ is not given, the
 option is used; a delay of zero waits for a key press.
 .Ql N
 ignores key presses and closes only after the delay expires.
+If
+.Fl C
+given, the pane will continue to be updated while the message is displayed.
 If
 .Fl l
 is given,
