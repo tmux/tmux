@@ -227,8 +227,7 @@ control_free_sub(struct control_state *cs, struct control_sub *csub)
 static void
 control_free_block(struct control_state *cs, struct control_block *cb)
 {
-	if (cb->line != NULL)
-		free(cb->line);
+	free(cb->line);
 	if (cb->buffer != NULL)
 		evbuffer_free(cb->buffer);
 	TAILQ_REMOVE(&cs->all_blocks, cb, all_entry);
@@ -421,7 +420,8 @@ control_vwrite_buffer(struct client *c, struct evbuffer *buffer)
 
 /* Frees line and buffer after using them asynchronously. */
 static void
-control_enqueue(struct client *c, struct control_state *cs, char *line, struct evbuffer *buffer)
+control_enqueue(struct client *c, struct control_state *cs, char *line,
+		struct evbuffer *buffer)
 {
 	struct control_block *cb = xcalloc(1, sizeof *cb);
 
@@ -444,7 +444,6 @@ control_write_buffer(struct client *c, struct evbuffer *buffer)
 {
 	struct control_state	*cs = c->control_state;
 	struct control_block	*cb;
-	va_list			 ap;
 
 	if (TAILQ_EMPTY(&cs->all_blocks)) {
 		control_vwrite_buffer(c, buffer);
@@ -452,8 +451,6 @@ control_write_buffer(struct client *c, struct evbuffer *buffer)
 	}
 
 	control_enqueue(c, cs, NULL, buffer);
-
-	va_end(ap);
 }
 
 /* Write a line. */

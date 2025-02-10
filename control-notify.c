@@ -262,7 +262,8 @@ control_notify_paste_buffer_deleted(const char *name)
 }
 
 void
-control_notify_popup(struct client *c, int status, char *buf, size_t len, int wp)
+control_notify_popup(struct client *c, int status, char *buf, size_t len,
+                     int wp)
 {
 	struct evbuffer *message = evbuffer_new();
 

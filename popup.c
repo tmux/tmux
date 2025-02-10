@@ -615,16 +615,6 @@ popup_job_update_cb(struct job *job)
 	evbuffer_drain(evb, size);
 }
 
-// NOTE TO REVIEWER: This is a copy of cmd_capture_pane_append. I think we'd want a shared implementation but I don't know where it should go.
-static char *
-popup_append(char *buf, size_t *len, char *line, size_t linelen)
-{
-	buf = xrealloc(buf, *len + linelen + 1);
-	memcpy(buf + *len, line, linelen);
-	*len += linelen;
-	return (buf);
-}
-
 static void
 popup_notify_control(struct client *c, int status, struct screen *s, int wp)
 {
@@ -643,7 +633,7 @@ popup_notify_control(struct client *c, int status, struct screen *s, int wp)
 		line = grid_string_cells(gd, 0, i, sx, &gc, GRID_STRING_WITH_SEQUENCES, s);
 		linelen = strlen(line);
 
-		buf = popup_append(buf, &len, line, linelen);
+		buf = append_string(buf, &len, line, linelen);
 
 		gl = grid_peek_line(gd, i);
 		if (!(gl->flags & GRID_LINE_WRAPPED))
@@ -679,11 +669,12 @@ popup_job_complete_cb(struct job *job)
 }
 
 int
-popup_display(int flags, enum box_lines lines, struct cmdq_item *item, u_int px,
-    u_int py, u_int sx, u_int sy, struct environ *env, const char *shellcmd,
-    int argc, char **argv, const char *cwd, const char *title, struct client *c,
-    struct session *s, const char *style, const char *border_style,
-    popup_close_cb cb, void *arg, struct window_pane *wp)
+popup_display(int flags, enum box_lines lines, struct cmdq_item *item,
+    u_int px, u_int py, u_int sx, u_int sy, struct environ *env,
+    const char *shellcmd, int argc, char **argv, const char *cwd,
+    const char *title, struct client *c, struct session *s, const char *style,
+    const char *border_style, popup_close_cb cb, void *arg,
+    struct window_pane *wp)
 {
 	struct popup_data	*pd;
 	u_int			 jx, jy;

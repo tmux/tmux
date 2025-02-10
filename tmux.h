@@ -2213,6 +2213,7 @@ const char	*sig2name(int);
 const char	*find_cwd(void);
 const char	*find_home(void);
 const char	*getversion(void);
+char		*append_string(char *buf, size_t *len, char *line, size_t linelen);
 
 /* proc.c */
 struct imsg;

@@ -433,7 +433,8 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	if (h > tty->sy)
 		h = tty->sy;
 	if (tc->flags & CLIENT_CONTROL) {
-		/* Control clients may not have a window size, so provide a reasonable default so popups can still work. */
+		/* Control clients may not have a window size, so provide a
+		 * reasonable default so popups can still work. */
 		if (w == 0)
 			w = 80;
 		if (h == 0)
@@ -493,7 +494,8 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	else if (args_has(args, 'E'))
 		flags |= POPUP_CLOSEEXIT;
 	if (popup_display(flags, lines, item, px, py, w, h, env, shellcmd, argc,
-	    argv, cwd, title, tc, s, style, border_style, NULL, NULL, target->wp) != 0) {
+	    argv, cwd, title, tc, s, style, border_style, NULL, NULL,
+	    target->wp) != 0) {
 		cmd_free_argv(argc, argv);
 		if (env != NULL)
 			environ_free(env);

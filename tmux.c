@@ -319,6 +319,15 @@ find_cwd(void)
 	return (pwd);
 }
 
+char *
+append_string(char *buf, size_t *len, char *line, size_t linelen)
+{
+	buf = xrealloc(buf, *len + linelen + 1);
+	memcpy(buf + *len, line, linelen);
+	*len += linelen;
+	return (buf);
+}
+
 const char *
 find_home(void)
 {
