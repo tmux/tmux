@@ -2331,6 +2331,15 @@ repeats the last search and
 does the same but reverses the direction (forward becomes backward and backward
 becomes forward).
 .Pp
+The default incremental search key bindings,
+.Ql C-r
+and
+.Ql C-s ,
+are designed to emulate
+.Xr emacs 1 .
+When first pressed they allow a new search term to be entered; if pressed with
+an empty search term they repeat the previously used search term.
+.Pp
 The
 .Ql next-prompt
 and
@@ -6768,7 +6777,7 @@ option is used; a delay of zero waits for a key press.
 ignores key presses and closes only after the delay expires.
 If
 .Fl C
-given, the pane will continue to be updated while the message is displayed.
+is given, the pane will continue to be updated while the message is displayed.
 If
 .Fl l
 is given,
