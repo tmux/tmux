@@ -3561,6 +3561,7 @@ int		 image_free_all(struct screen *);
 struct image	*image_store(struct screen *, struct sixel_image *);
 int		 image_check_line(struct screen *, u_int, u_int);
 int		 image_check_area(struct screen *, u_int, u_int, u_int, u_int);
+int		 image_intersect_area(struct screen *, u_int, u_int, u_int, u_int);
 int		 image_scroll_up(struct screen *, u_int);
 
 /* image-sixel.c */

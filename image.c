@@ -150,6 +150,28 @@ image_check_area(struct screen *s, u_int px, u_int py, u_int nx, u_int ny)
 }
 
 int
+image_intersect_area(struct screen *s, u_int px, u_int py, u_int nx, u_int ny)
+{
+	struct image	*im, *im1;
+	int		 isect = 0;
+
+	TAILQ_FOREACH_SAFE(im, &s->images, entry, im1) {
+		log_debug ("%s: image %p (%d,%d %dx%d) isect with (%d,%d %dx%d)?",
+			   __func__, im, im->px, im->py, im->sx, im->sy,
+			   px, py, nx, ny);
+
+		if (py + ny <= im->py || py >= im->py + im->sy)
+			continue;
+		if (px + nx <= im->px || px >= im->px + im->sx)
+			continue;
+		log_debug("%s: image %p intersected", __func__, im);
+		isect = 1;
+		break;
+	}
+	return (isect);
+}
+
+int
 image_scroll_up(struct screen *s, u_int lines)
 {
 	struct image		*im, *im1;
