@@ -150,6 +150,21 @@ image_check_area(struct screen *s, u_int px, u_int py, u_int nx, u_int ny)
 }
 
 int
+image_intersect_area(struct screen *s, u_int px, u_int py, u_int nx, u_int ny)
+{
+	struct image	*im;
+
+	TAILQ_FOREACH(im, &s->images, entry) {
+		if (py + ny <= im->py || py >= im->py + im->sy)
+			continue;
+		if (px + nx <= im->px || px >= im->px + im->sx)
+			continue;
+		return (1);
+	}
+	return (0);
+}
+
+int
 image_scroll_up(struct screen *s, u_int lines)
 {
 	struct image		*im, *im1;
