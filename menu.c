@@ -437,6 +437,30 @@ chosen:
 	return (1);
 }
 
+void
+menu_resize_cb(struct client *c, void *data) {
+	int nx, ny, w, h;
+	struct tty *tty = &c->tty;
+	struct menu_data *md = data;
+
+	w = md->menu->width + 4;
+	h = md->menu->count + 2;
+
+	nx = tty->sx / 2 - w/2;
+	ny = tty->sy / 2 - h/2;
+
+	if (nx + w >= tty->sx || ny + h >= tty->sy) {
+		c->overlay_resize = NULL;
+		server_client_clear_overlay(c);
+		return;
+	}
+
+	md->px = nx;
+	md->py = ny;
+
+	menu_draw_cb(c, data, NULL);
+}
+
 static void
 menu_set_style(struct client *c, struct grid_cell *gc, const char *style,
     const char *option)
@@ -550,6 +574,6 @@ menu_display(struct menu *menu, int flags, int starting_choice,
 	if (md == NULL)
 		return (-1);
 	server_client_set_overlay(c, 0, NULL, menu_mode_cb, menu_draw_cb,
-	    menu_key_cb, menu_free_cb, NULL, md);
+	    menu_key_cb, menu_free_cb, menu_resize_cb, md);
 	return (0);
 }
