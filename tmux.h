@@ -1090,6 +1090,7 @@ struct window_mode {
 			     struct mouse_event *);
 	void		 (*formats)(struct window_mode_entry *,
 			     struct format_tree *);
+	struct screen	*(*get_screen)(struct window_mode_entry *);
 };
 
 /* Active window mode. */

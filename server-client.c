@@ -152,6 +152,7 @@ server_client_clear_overlay(struct client *c)
 	c->overlay_draw = NULL;
 	c->overlay_key = NULL;
 	c->overlay_free = NULL;
+	c->overlay_resize = NULL;
 	c->overlay_data = NULL;
 
 	c->tty.flags &= ~(TTY_FREEZE|TTY_NOCURSOR);

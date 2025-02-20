@@ -2556,7 +2556,7 @@ but a different format may be specified with
 .Fl F .
 .Tg capturep
 .It Xo Ic capture-pane
-.Op Fl aAepPqCJN
+.Op Fl aepPqCJMN
 .Op Fl b Ar buffer-name
 .Op Fl E Ar end-line
 .Op Fl S Ar start-line
@@ -2575,6 +2575,9 @@ is given, the alternate screen is used, and the history is not accessible.
 If no alternate screen exists, an error will be returned unless
 .Fl q
 is given.
+Similarly, if the pane is in a mode,
+.Fl M
+uses the screen for the mode.
 If
 .Fl e
 is given, the output includes escape sequences for text and background
