@@ -40,6 +40,7 @@ static void	window_copy_free(struct window_mode_entry *);
 static void	window_copy_resize(struct window_mode_entry *, u_int, u_int);
 static void	window_copy_formats(struct window_mode_entry *,
 		    struct format_tree *);
+static struct screen *window_copy_get_screen(struct window_mode_entry *);
 static void	window_copy_scroll1(struct window_mode_entry *,
 		    struct window_pane *wp, int, u_int, int);
 static void	window_copy_pageup1(struct window_mode_entry *, int);
@@ -160,6 +161,7 @@ const struct window_mode window_copy_mode = {
 	.key_table = window_copy_key_table,
 	.command = window_copy_command,
 	.formats = window_copy_formats,
+	.get_screen = window_copy_get_screen
 };
 
 const struct window_mode window_view_mode = {
@@ -171,6 +173,7 @@ const struct window_mode window_view_mode = {
 	.key_table = window_copy_key_table,
 	.command = window_copy_command,
 	.formats = window_copy_formats,
+	.get_screen = window_copy_get_screen
 };
 
 enum {
@@ -970,6 +973,14 @@ window_copy_formats(struct window_mode_entry *wme, struct format_tree *ft)
 	format_add_cb(ft, "copy_cursor_line", window_copy_cursor_line_cb);
 	format_add_cb(ft, "copy_cursor_hyperlink",
 	    window_copy_cursor_hyperlink_cb);
+}
+
+static struct screen *
+window_copy_get_screen(struct window_mode_entry *wme)
+{
+	struct window_copy_mode_data	*data = wme->data;
+
+	return (data->backing);
 }
 
 static void
