@@ -1090,6 +1090,7 @@ struct window_mode {
 			     struct mouse_event *);
 	void		 (*formats)(struct window_mode_entry *,
 			     struct format_tree *);
+	struct screen	*(*get_screen)(struct window_mode_entry *);
 };
 
 /* Active window mode. */
@@ -2641,6 +2642,7 @@ int		 cmd_find_from_nothing(struct cmd_find_state *, int);
 
 /* cmd.c */
 extern const struct cmd_entry *cmd_table[];
+const struct cmd_entry *cmd_find(const char *, char **);
 void printflike(3, 4) cmd_log_argv(int, char **, const char *, ...);
 void		 cmd_prepend_argv(int *, char ***, const char *);
 void		 cmd_append_argv(int *, char ***, const char *);
@@ -2890,7 +2892,7 @@ struct style_range *status_get_range(struct client *, u_int, u_int);
 void	 status_init(struct client *);
 void	 status_free(struct client *);
 int	 status_redraw(struct client *);
-void printflike(5, 6) status_message_set(struct client *, int, int, int,
+void printflike(6, 7) status_message_set(struct client *, int, int, int, int,
 	     const char *, ...);
 void	 status_message_clear(struct client *);
 int	 status_message_redraw(struct client *);
@@ -3445,6 +3447,7 @@ void		 session_renumber_windows(struct session *);
 enum utf8_state	 utf8_towc (const struct utf8_data *, wchar_t *);
 enum utf8_state	 utf8_fromwc(wchar_t wc, struct utf8_data *);
 int		 utf8_in_table(wchar_t, const wchar_t *, u_int);
+void		 utf8_update_width_cache(void);
 utf8_char	 utf8_build_one(u_char);
 enum utf8_state	 utf8_from_data(const struct utf8_data *, utf8_char *);
 void		 utf8_to_data(utf8_char, struct utf8_data *);

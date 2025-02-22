@@ -91,7 +91,7 @@ cmd_list_keys_print_notes(struct cmdq_item *item, struct args *args,
 	struct key_binding	*bd;
 	const char		*key;
 	char			*tmp, *note;
-	int	                 found = 0;
+	int			 found = 0;
 
 	table = key_bindings_get_table(tablename, 0);
 	if (table == NULL)
@@ -114,8 +114,8 @@ cmd_list_keys_print_notes(struct cmdq_item *item, struct args *args,
 			note = xstrdup(bd->note);
 		tmp = utf8_padcstr(key, keywidth + 1);
 		if (args_has(args, '1') && tc != NULL) {
-			status_message_set(tc, -1, 1, 0, "%s%s%s", prefix, tmp,
-			    note);
+			status_message_set(tc, -1, 1, 0, 0, "%s%s%s", prefix,
+			    tmp, note);
 		} else
 			cmdq_print(item, "%s%s%s", prefix, tmp, note);
 		free(tmp);
@@ -298,8 +298,8 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 			free(cp);
 
 			if (args_has(args, '1') && tc != NULL) {
-				status_message_set(tc, -1, 1, 0, "bind-key %s",
-				    tmp);
+				status_message_set(tc, -1, 1, 0, 0,
+				    "bind-key %s", tmp);
 			} else
 				cmdq_print(item, "bind-key %s", tmp);
 			free(key);
@@ -321,6 +321,31 @@ out:
 	return (CMD_RETURN_NORMAL);
 }
 
+static void
+cmd_list_single_command(const struct cmd_entry *entry, struct format_tree *ft,
+    const char *template, struct cmdq_item *item)
+{
+	const char	*s;
+	char		*line;
+
+	format_add(ft, "command_list_name", "%s", entry->name);
+	if (entry->alias != NULL)
+		s = entry->alias;
+	else
+		s = "";
+	format_add(ft, "command_list_alias", "%s", s);
+	if (entry->usage != NULL)
+		s = entry->usage;
+	else
+		s = "";
+	format_add(ft, "command_list_usage", "%s", s);
+
+	line = format_expand(ft, template);
+	if (*line != '\0')
+		cmdq_print(item, "%s", line);
+	free(line);
+}
+
 static enum cmd_retval
 cmd_list_keys_commands(struct cmd *self, struct cmdq_item *item)
 {
@@ -328,8 +353,8 @@ cmd_list_keys_commands(struct cmd *self, struct cmdq_item *item)
 	const struct cmd_entry	**entryp;
 	const struct cmd_entry	 *entry;
 	struct format_tree	 *ft;
-	const char		 *template, *s, *command;
-	char			 *line;
+	const char		 *template,  *command;
+	char			 *cause;
 
 	if ((template = args_get(args, 'F')) == NULL) {
 		template = "#{command_list_name}"
@@ -341,30 +366,19 @@ cmd_list_keys_commands(struct cmd *self, struct cmdq_item *item)
 	format_defaults(ft, NULL, NULL, NULL, NULL);
 
 	command = args_string(args, 0);
-	for (entryp = cmd_table; *entryp != NULL; entryp++) {
-		entry = *entryp;
-		if (command != NULL &&
-		    (strcmp(entry->name, command) != 0 &&
-		    (entry->alias == NULL ||
-		    strcmp(entry->alias, command) != 0)))
-		    continue;
-
-		format_add(ft, "command_list_name", "%s", entry->name);
-		if (entry->alias != NULL)
-			s = entry->alias;
-		else
-			s = "";
-		format_add(ft, "command_list_alias", "%s", s);
-		if (entry->usage != NULL)
-			s = entry->usage;
-		else
-			s = "";
-		format_add(ft, "command_list_usage", "%s", s);
-
-		line = format_expand(ft, template);
-		if (*line != '\0')
-			cmdq_print(item, "%s", line);
-		free(line);
+	if (command == NULL) {
+		for (entryp = cmd_table; *entryp != NULL; entryp++)
+			cmd_list_single_command(*entryp, ft, template, item);
+	} else {
+		entry = cmd_find(command, &cause);
+		if (entry != NULL)
+			cmd_list_single_command(entry, ft, template, item);
+		else {
+			cmdq_error(item, "%s", cause);
+			free(cause);
+			format_free(ft);
+			return (CMD_RETURN_ERROR);
+		}
 	}
 
 	format_free(ft);

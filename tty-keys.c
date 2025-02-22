@@ -886,6 +886,17 @@ first_key:
 		key = ' ' | KEYC_CTRL | (key & KEYC_META);
 
 	/*
+	 * Check for backspace key using termios VERASE - the terminfo
+	 * kbs entry is extremely unreliable, so cannot be safely
+	 * used. termios should have a better idea.
+	 */
+	bspace = tty->tio.c_cc[VERASE];
+	if (bspace != _POSIX_VDISABLE && key == bspace) {
+		log_debug("%s: key %#llx is backspace", c->name, key);
+		key = KEYC_BSPACE;
+	}
+
+	/*
 	 * Fix up all C0 control codes that don't have a dedicated key into
 	 * corresponding Ctrl keys. Convert characters in the A-Z range into
 	 * lowercase, so ^A becomes a|CTRL.
@@ -894,7 +905,6 @@ first_key:
 	if (onlykey < 0x20 &&
 	    onlykey != C0_HT &&
 	    onlykey != C0_CR &&
-	    onlykey != C0_BS &&
 	    onlykey != C0_ESC) {
 		onlykey |= 0x40;
 		if (onlykey >= 'A' && onlykey <= 'Z')
@@ -935,15 +945,6 @@ partial_key:
 
 complete_key:
 	log_debug("%s: complete key %.*s %#llx", c->name, (int)size, buf, key);
-
-	/*
-	 * Check for backspace key using termios VERASE - the terminfo
-	 * kbs entry is extremely unreliable, so cannot be safely
-	 * used. termios should have a better idea.
-	 */
-	bspace = tty->tio.c_cc[VERASE];
-	if (bspace != _POSIX_VDISABLE && (key & KEYC_MASK_KEY) == bspace)
-		key = (key & KEYC_MASK_MODIFIERS)|KEYC_BSPACE;
 
 	/* Remove key timer. */
 	if (event_initialized(&tty->key_timer))

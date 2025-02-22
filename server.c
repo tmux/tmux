@@ -207,6 +207,7 @@ server_start(struct tmuxproc *client, uint64_t flags, struct event_base *base,
 		fatal("pledge failed");
 
 	input_key_build();
+	utf8_update_width_cache();
 	RB_INIT(&windows);
 	RB_INIT(&all_window_panes);
 	TAILQ_INIT(&clients);

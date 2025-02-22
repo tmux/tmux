@@ -39,8 +39,8 @@ const struct cmd_entry cmd_capture_pane_entry = {
 	.name = "capture-pane",
 	.alias = "capturep",
 
-	.args = { "ab:CeE:JNpPqS:Tt:", 0, 0, NULL },
-	.usage = "[-aCeJNpPqT] " CMD_BUFFER_USAGE " [-E end-line] "
+	.args = { "ab:CeE:JMNpPqS:Tt:", 0, 0, NULL },
+	.usage = "[-aCeJMNpPqT] " CMD_BUFFER_USAGE " [-E end-line] "
 		 "[-S start-line] " CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -107,14 +107,16 @@ static char *
 cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
     struct window_pane *wp, size_t *len)
 {
-	struct grid		*gd;
-	const struct grid_line	*gl;
-	struct grid_cell	*gc = NULL;
-	int			 n, join_lines, flags = 0;
-	u_int			 i, sx, top, bottom, tmp;
-	char			*cause, *buf, *line;
-	const char		*Sflag, *Eflag;
-	size_t			 linelen;
+	struct grid			*gd;
+	const struct grid_line		*gl;
+	struct screen			*s;
+	struct grid_cell		*gc = NULL;
+	struct window_mode_entry	*wme;
+	int				 n, join_lines, flags = 0;
+	u_int				 i, sx, top, bottom, tmp;
+	char				*cause, *buf, *line;
+	const char			*Sflag, *Eflag;
+	size_t				 linelen;
 
 	sx = screen_size_x(&wp->base);
 	if (args_has(args, 'a')) {
@@ -126,8 +128,20 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 			}
 			return (xstrdup(""));
 		}
-	} else
+		s = &wp->base;
+	} else if (args_has(args, 'M')) {
+		wme = TAILQ_FIRST(&wp->modes);
+		if (wme != NULL && wme->mode->get_screen != NULL) {
+			s = wme->mode->get_screen (wme);
+			gd = s->grid;
+		} else {
+			s = &wp->base;
+			gd = wp->base.grid;
+		}
+	} else {
+		s = &wp->base;
 		gd = wp->base.grid;
+	}
 
 	Sflag = args_get(args, 'S');
 	if (Sflag != NULL && strcmp(Sflag, "-") == 0)
@@ -181,7 +195,7 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 
 	buf = NULL;
 	for (i = top; i <= bottom; i++) {
-		line = grid_string_cells(gd, 0, i, sx, &gc, flags, wp->screen);
+		line = grid_string_cells(gd, 0, i, sx, &gc, flags, s);
 		linelen = strlen(line);
 
 		buf = cmd_capture_pane_append(buf, len, line, linelen);

@@ -1,3 +1,12 @@
+---
+name: Use this issue template
+about: Please read https://github.com/tmux/tmux/blob/master/.github/CONTRIBUTING.md
+title: ''
+labels: ''
+assignees: ''
+
+---
+
 ### Issue description
 
 Please read https://github.com/tmux/tmux/blob/master/.github/CONTRIBUTING.md
