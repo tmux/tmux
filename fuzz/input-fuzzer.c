@@ -1,4 +1,4 @@
-/*
+/*.
  * Copyright (c) 2020 Sergey Nizovtsev <snizovtsev@gmail.com>
  *
  * Permission to use, copy, modify, and distribute this software for any
