@@ -81,9 +81,6 @@ struct winlink;
 #ifndef TMUX_CONF
 #define TMUX_CONF "/etc/tmux.conf:~/.tmux.conf"
 #endif
-#ifndef TMUX_SOCK
-#define TMUX_SOCK "$TMUX_TMPDIR:" _PATH_TMP
-#endif
 #ifndef TMUX_SOCK_PERM
 #define TMUX_SOCK_PERM (7 /* o+rwx */)
 #endif
