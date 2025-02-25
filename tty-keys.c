@@ -59,7 +59,7 @@ static int	tty_keys_device_attributes2(struct tty *, const char *, size_t,
 		    size_t *);
 static int	tty_keys_extended_device_attributes(struct tty *, const char *,
 		    size_t, size_t *);
-static void	tty_keys_send_theme_updates(struct tty *);
+static void	tty_keys_theme_changed(struct tty *);
 
 /* A key tree entry. */
 struct tty_key {
@@ -796,12 +796,12 @@ tty_keys_next(struct tty *tty)
 	switch (tty_keys_colours(tty, buf, len, &size, &tty->fg, &tty->bg)) {
 	case 0:		/* yes */
 		key = KEYC_UNKNOWN;
-		tty_keys_send_theme_updates(tty);
+		tty_keys_theme_changed(tty);
 		goto complete_key;
 	case -1:	/* no, or not valid */
 		break;
 	case 1:		/* partial */
-		tty_keys_send_theme_updates(tty);
+		tty_keys_theme_changed(tty);
 		goto partial_key;
 	}
 
@@ -1687,15 +1687,15 @@ tty_keys_colours(struct tty *tty, const char *buf, size_t len, size_t *size,
 	return (0);
 }
 
-/* Update theme in every pane for client's session. */
+/* Set the PANE_THEMECHANGED flag for every pane for client's session. */
 static void
-tty_keys_send_theme_updates(struct tty *tty)
+tty_keys_theme_changed(struct tty *tty)
 {
 	struct window_pane	*wp;
 	struct winlink		*wl;
 
 	RB_FOREACH(wl, winlinks, &tty->client->session->windows) {
 		TAILQ_FOREACH(wp, &wl->window->panes, entry)
-			window_pane_send_theme_update(wp);
+			wp->flags |= PANE_THEMECHANGED;
 	}
 }

@@ -950,7 +950,7 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	wp = xcalloc(1, sizeof *wp);
 	wp->window = w;
 	wp->options = options_create(w->options);
-	wp->flags = PANE_STYLECHANGED;
+	wp->flags = (PANE_STYLECHANGED|PANE_THEMECHANGED);
 
 	wp->id = next_window_pane_id++;
 	RB_INSERT(window_pane_tree, &all_window_panes, wp);
@@ -1897,8 +1897,12 @@ window_pane_get_theme(struct window_pane *wp)
 void
 window_pane_send_theme_update(struct window_pane *wp)
 {
+	if (~wp->flags & PANE_THEMECHANGED)
+		return;
+
 	if (~wp->screen->mode & MODE_THEME_UPDATES)
 		return;
+
 	switch (window_pane_get_theme(wp)) {
 	case THEME_LIGHT:
 		input_key_pane(wp, KEYC_REPORT_LIGHT_THEME, NULL);
@@ -1909,4 +1913,6 @@ window_pane_send_theme_update(struct window_pane *wp)
 	case THEME_UNKNOWN:
 		break;
 	}
+
+	wp->flags &= ~PANE_THEMECHANGED;
 }

@@ -2684,6 +2684,13 @@ server_client_loop(void)
 		}
 		check_window_name(w);
 	}
+
+	/* Send theme updates. */
+	RB_FOREACH(w, windows, &windows) {
+		TAILQ_FOREACH(wp, &w->panes, entry) {
+			window_pane_send_theme_update(wp);
+		}
+	}
 }
 
 /* Check if window needs to be resized. */

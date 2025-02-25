@@ -878,9 +878,6 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 
 	log_debug("%s: %s @%u %%%u", __func__, c->name, w->id, wp->id);
 
-	if (wp->flags & PANE_STYLECHANGED)
-		window_pane_send_theme_update(wp);
-
 	if (wp->xoff + wp->sx <= ctx->ox || wp->xoff >= ctx->ox + ctx->sx)
 		return;
 	if (ctx->statustop)

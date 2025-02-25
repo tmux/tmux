@@ -1159,8 +1159,9 @@ struct window_pane {
 #define PANE_STATUSDRAWN 0x400
 #define PANE_EMPTY 0x800
 #define PANE_STYLECHANGED 0x1000
-#define PANE_UNSEENCHANGES 0x2000
-#define PANE_REDRAWSCROLLBAR 0x4000
+#define PANE_THEMECHANGED 0x2000
+#define PANE_UNSEENCHANGES 0x4000
+#define PANE_REDRAWSCROLLBAR 0x8000
 
 	u_int		 sb_slider_y;
 	u_int		 sb_slider_h;

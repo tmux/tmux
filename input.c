@@ -2795,7 +2795,7 @@ input_osc_11(struct input_ctx *ictx, const char *p)
 	if (ictx->palette != NULL) {
 		ictx->palette->bg = c;
 		if (wp != NULL)
-			wp->flags |= PANE_STYLECHANGED;
+			wp->flags |= (PANE_STYLECHANGED|PANE_THEMECHANGED);
 		screen_write_fullredraw(&ictx->ctx);
 	}
 }
@@ -2811,7 +2811,7 @@ input_osc_111(struct input_ctx *ictx, const char *p)
 	if (ictx->palette != NULL) {
 		ictx->palette->bg = 8;
 		if (wp != NULL)
-			wp->flags |= PANE_STYLECHANGED;
+			wp->flags |= (PANE_STYLECHANGED|PANE_THEMECHANGED);
 		screen_write_fullredraw(&ictx->ctx);
 	}
 }
