@@ -208,8 +208,8 @@ static const struct tty_default_key_raw tty_default_raw_keys[] = {
 	{ "\033[O", KEYC_FOCUS_OUT },
 
 	/* Paste keys. */
-	{ "\033[200~", KEYC_PASTE_START },
-	{ "\033[201~", KEYC_PASTE_END },
+	{ "\033[200~", KEYC_PASTE_START|KEYC_IMPLIED_META },
+	{ "\033[201~", KEYC_PASTE_END|KEYC_IMPLIED_META },
 
 	/* Extended keys. */
 	{ "\033[1;5Z", '\011'|KEYC_CTRL|KEYC_SHIFT },

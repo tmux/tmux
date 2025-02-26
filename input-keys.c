@@ -53,7 +53,13 @@ static struct input_key_entry input_key_defaults[] = {
 	{ .key = KEYC_PASTE_START,
 	  .data = "\033[200~"
 	},
+	{ .key = KEYC_PASTE_START|KEYC_IMPLIED_META,
+	  .data = "\033[200~"
+	},
 	{ .key = KEYC_PASTE_END,
+	  .data = "\033[201~"
+	},
+	{ .key = KEYC_PASTE_END|KEYC_IMPLIED_META,
 	  .data = "\033[201~"
 	},
 

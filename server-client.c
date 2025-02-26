@@ -2243,13 +2243,13 @@ out:
 static int
 server_client_is_bracket_paste(struct client *c, key_code key)
 {
-	if (key == KEYC_PASTE_START) {
+	if ((key & KEYC_MASK_KEY) == KEYC_PASTE_START) {
 		c->flags |= CLIENT_BRACKETPASTING;
 		log_debug("%s: bracket paste on", c->name);
 		return (0);
 	}
 
-	if (key == KEYC_PASTE_END) {
+	if ((key & KEYC_MASK_KEY) == KEYC_PASTE_END) {
 		c->flags &= ~CLIENT_BRACKETPASTING;
 		log_debug("%s: bracket paste off", c->name);
 		return (0);

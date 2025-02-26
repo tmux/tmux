@@ -266,8 +266,13 @@ client_main(struct event_base *base, int argc, char **argv, uint64_t flags,
 			if (cmd_list_any_have(pr->cmdlist, CMD_STARTSERVER))
 				flags |= CLIENT_STARTSERVER;
 			cmd_list_free(pr->cmdlist);
-		} else
+		} else {
+			fprintf(stderr, "%s\n", pr->error);
+			args_free_values(values, argc);
+			free(values);
 			free(pr->error);
+			return 1;
+		}
 		args_free_values(values, argc);
 		free(values);
 	}

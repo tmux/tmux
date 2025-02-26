@@ -1360,6 +1360,36 @@ window_pane_choose_best(struct window_pane **list, u_int size)
 }
 
 /*
+ * Get full size and offset of a window pane including the area of the
+ * scrollbars if they were visible but not including the border(s).
+ */
+static void
+window_pane_full_size_offset(struct window_pane *wp, u_int *xoff, u_int *yoff,
+    u_int *sx, u_int *sy)
+{
+	struct window		*w = wp->window;
+	int			 pane_scrollbars;
+	u_int			 sb_w, sb_pos;
+
+	pane_scrollbars = options_get_number(w->options, "pane-scrollbars");
+	sb_pos = options_get_number(w->options, "pane-scrollbars-position");
+
+	if (window_pane_show_scrollbar(wp, pane_scrollbars))
+		sb_w = wp->scrollbar_style.width + wp->scrollbar_style.pad;
+	else
+		sb_w = 0;
+	if (sb_pos == PANE_SCROLLBARS_LEFT) {
+		*xoff = wp->xoff - sb_w;
+		*sx = wp->sx + sb_w;
+	} else { /* sb_pos == PANE_SCROLLBARS_RIGHT */
+		*xoff = wp->xoff;
+		*sx = wp->sx + sb_w;
+	}
+	*yoff = wp->yoff;
+	*sy = wp->sy;
+}
+
+/*
  * Find the pane directly above another. We build a list of those adjacent to
  * top edge and then choose the best.
  */
@@ -1370,6 +1400,7 @@ window_pane_find_up(struct window_pane *wp)
 	struct window_pane	*next, *best, **list;
 	u_int			 edge, left, right, end, size;
 	int			 status, found;
+	u_int			 xoff, yoff, sx, sy;
 
 	if (wp == NULL)
 		return (NULL);
@@ -1379,7 +1410,9 @@ window_pane_find_up(struct window_pane *wp)
 	list = NULL;
 	size = 0;
 
-	edge = wp->yoff;
+	window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
+
+	edge = yoff;
 	if (status == PANE_STATUS_TOP) {
 		if (edge == 1)
 			edge = w->sy + 1;
@@ -1391,20 +1424,21 @@ window_pane_find_up(struct window_pane *wp)
 			edge = w->sy + 1;
 	}
 
-	left = wp->xoff;
-	right = wp->xoff + wp->sx;
+	left = xoff;
+	right = xoff + sx;
 
 	TAILQ_FOREACH(next, &w->panes, entry) {
+		window_pane_full_size_offset(next, &xoff, &yoff, &sx, &sy);
 		if (next == wp)
 			continue;
-		if (next->yoff + next->sy + 1 != edge)
+		if (yoff + sy + 1 != edge)
 			continue;
-		end = next->xoff + next->sx - 1;
+		end = xoff + sx - 1;
 
 		found = 0;
-		if (next->xoff < left && end > right)
+		if (xoff < left && end > right)
 			found = 1;
-		else if (next->xoff >= left && next->xoff <= right)
+		else if (xoff >= left && xoff <= right)
 			found = 1;
 		else if (end >= left && end <= right)
 			found = 1;
@@ -1427,6 +1461,7 @@ window_pane_find_down(struct window_pane *wp)
 	struct window_pane	*next, *best, **list;
 	u_int			 edge, left, right, end, size;
 	int			 status, found;
+	u_int			 xoff, yoff, sx, sy;
 
 	if (wp == NULL)
 		return (NULL);
@@ -1436,7 +1471,9 @@ window_pane_find_down(struct window_pane *wp)
 	list = NULL;
 	size = 0;
 
-	edge = wp->yoff + wp->sy + 1;
+	window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
+
+	edge = yoff + sy + 1;
 	if (status == PANE_STATUS_TOP) {
 		if (edge >= w->sy)
 			edge = 1;
@@ -1452,16 +1489,17 @@ window_pane_find_down(struct window_pane *wp)
 	right = wp->xoff + wp->sx;
 
 	TAILQ_FOREACH(next, &w->panes, entry) {
+		window_pane_full_size_offset(next, &xoff, &yoff, &sx, &sy);
 		if (next == wp)
 			continue;
-		if (next->yoff != edge)
+		if (yoff != edge)
 			continue;
-		end = next->xoff + next->sx - 1;
+		end = xoff + sx - 1;
 
 		found = 0;
-		if (next->xoff < left && end > right)
+		if (xoff < left && end > right)
 			found = 1;
-		else if (next->xoff >= left && next->xoff <= right)
+		else if (xoff >= left && xoff <= right)
 			found = 1;
 		else if (end >= left && end <= right)
 			found = 1;
@@ -1484,6 +1522,7 @@ window_pane_find_left(struct window_pane *wp)
 	struct window_pane	*next, *best, **list;
 	u_int			 edge, top, bottom, end, size;
 	int			 found;
+	u_int			 xoff, yoff, sx, sy;
 
 	if (wp == NULL)
 		return (NULL);
@@ -1492,24 +1531,27 @@ window_pane_find_left(struct window_pane *wp)
 	list = NULL;
 	size = 0;
 
-	edge = wp->xoff;
+	window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
+
+	edge = xoff;
 	if (edge == 0)
 		edge = w->sx + 1;
 
-	top = wp->yoff;
-	bottom = wp->yoff + wp->sy;
+	top = yoff;
+	bottom = yoff + sy;
 
 	TAILQ_FOREACH(next, &w->panes, entry) {
+		window_pane_full_size_offset(next, &xoff, &yoff, &sx, &sy);
 		if (next == wp)
 			continue;
-		if (next->xoff + next->sx + 1 != edge)
+		if (xoff + sx + 1 != edge)
 			continue;
-		end = next->yoff + next->sy - 1;
+		end = yoff + sy - 1;
 
 		found = 0;
-		if (next->yoff < top && end > bottom)
+		if (yoff < top && end > bottom)
 			found = 1;
-		else if (next->yoff >= top && next->yoff <= bottom)
+		else if (yoff >= top && yoff <= bottom)
 			found = 1;
 		else if (end >= top && end <= bottom)
 			found = 1;
@@ -1532,6 +1574,7 @@ window_pane_find_right(struct window_pane *wp)
 	struct window_pane	*next, *best, **list;
 	u_int			 edge, top, bottom, end, size;
 	int			 found;
+	u_int			 xoff, yoff, sx, sy;
 
 	if (wp == NULL)
 		return (NULL);
@@ -1540,7 +1583,9 @@ window_pane_find_right(struct window_pane *wp)
 	list = NULL;
 	size = 0;
 
-	edge = wp->xoff + wp->sx + 1;
+	window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
+
+	edge = xoff + sx + 1;
 	if (edge >= w->sx)
 		edge = 0;
 
@@ -1548,16 +1593,17 @@ window_pane_find_right(struct window_pane *wp)
 	bottom = wp->yoff + wp->sy;
 
 	TAILQ_FOREACH(next, &w->panes, entry) {
+		window_pane_full_size_offset(next, &xoff, &yoff, &sx, &sy);
 		if (next == wp)
 			continue;
-		if (next->xoff != edge)
+		if (xoff != edge)
 			continue;
-		end = next->yoff + next->sy - 1;
+		end = yoff + sy - 1;
 
 		found = 0;
-		if (next->yoff < top && end > bottom)
+		if (yoff < top && end > bottom)
 			found = 1;
-		else if (next->yoff >= top && next->yoff <= bottom)
+		else if (yoff >= top && yoff <= bottom)
 			found = 1;
 		else if (end >= top && end <= bottom)
 			found = 1;
