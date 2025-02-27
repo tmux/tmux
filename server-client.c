@@ -401,6 +401,7 @@ server_client_set_session(struct client *c, struct session *s)
 		recalculate_sizes();
 		window_update_focus(s->curw->window);
 		session_update_activity(s, NULL);
+		session_theme_changed(s);
 		gettimeofday(&s->last_attached_time, NULL);
 		s->curw->flags &= ~WINLINK_ALERTFLAGS;
 		s->curw->window->latest = c;

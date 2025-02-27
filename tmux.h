@@ -3464,6 +3464,7 @@ void		 session_group_synchronize_from(struct session *);
 u_int		 session_group_count(struct session_group *);
 u_int		 session_group_attached_count(struct session_group *);
 void		 session_renumber_windows(struct session *);
+void		 session_theme_changed(struct session *);
 
 /* utf8.c */
 enum utf8_state	 utf8_towc (const struct utf8_data *, wchar_t *);

@@ -751,3 +751,16 @@ session_renumber_windows(struct session *s)
 	RB_FOREACH_SAFE(wl, winlinks, &old_wins, wl1)
 		winlink_remove(&old_wins, wl);
 }
+
+/* Set the PANE_THEMECHANGED flag for every pane in this session. */
+void
+session_theme_changed(struct session *s)
+{
+	struct window_pane	*wp;
+	struct winlink		*wl;
+
+	RB_FOREACH(wl, winlinks, &s->windows) {
+		TAILQ_FOREACH(wp, &wl->window->panes, entry)
+			wp->flags |= PANE_THEMECHANGED;
+	}
+}
