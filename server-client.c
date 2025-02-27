@@ -3940,7 +3940,7 @@ server_client_report_theme(struct client *c, enum client_theme theme)
 	}
 
 	/*
-	 * Request foregroundand background colour again. Don't forward 2031 to
+	 * Request foreground and background colour again. Don't forward 2031 to
 	 * panes until a response is received.
 	 */
 	tty_puts(&c->tty, "\033]10;?\033\\\033]11;?\033\\");
