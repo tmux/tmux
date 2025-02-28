@@ -1908,7 +1908,7 @@ window_pane_send_theme_update(struct window_pane *wp)
 		input_key_pane(wp, KEYC_REPORT_LIGHT_THEME, NULL);
 		break;
 	case THEME_DARK:
-		input_key_pane(wp, KEYC_REPORT_LIGHT_THEME, NULL);
+		input_key_pane(wp, KEYC_REPORT_DARK_THEME, NULL);
 		break;
 	case THEME_UNKNOWN:
 		break;
