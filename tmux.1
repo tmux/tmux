@@ -5869,6 +5869,12 @@ with
 .Ql bar/
 throughout.
 .Pp
+Multiple modifiers may be separated with a semicolon (;) as in
+.Ql #{T;=10:status-left} ,
+which limits the resulting
+.Xr strftime 3 -expanded
+string to at most 10 characters.
+.Pp
 In addition, the last line of a shell command's output may be inserted using
 .Ql #() .
 For example,
