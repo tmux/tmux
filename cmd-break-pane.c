@@ -99,7 +99,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 
 	w = wp->window = window_create(w->sx, w->sy, w->xpixel, w->ypixel);
 	options_set_parent(wp->options, w->options);
-	wp->flags |= PANE_STYLECHANGED;
+	wp->flags |= (PANE_STYLECHANGED|PANE_THEMECHANGED);
 	TAILQ_INSERT_HEAD(&w->panes, wp, entry);
 	w->active = wp;
 	w->latest = tc;

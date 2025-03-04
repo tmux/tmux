@@ -149,12 +149,14 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 		markedwp = marked_pane.wp;
 
 		if (lastwp != NULL) {
-			lastwp->flags |= (PANE_REDRAW|PANE_STYLECHANGED);
+			lastwp->flags |= (PANE_REDRAW|PANE_STYLECHANGED|
+			    PANE_THEMECHANGED);
 			server_redraw_window_borders(lastwp->window);
 			server_status_window(lastwp->window);
 		}
 		if (markedwp != NULL) {
-			markedwp->flags |= (PANE_REDRAW|PANE_STYLECHANGED);
+			markedwp->flags |= (PANE_REDRAW|PANE_STYLECHANGED|
+			    PANE_THEMECHANGED);
 			server_redraw_window_borders(markedwp->window);
 			server_status_window(markedwp->window);
 		}
@@ -169,7 +171,7 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 			return (CMD_RETURN_ERROR);
 		}
 		options_set_string(oo, "window-active-style", 0, "%s", style);
-		wp->flags |= (PANE_REDRAW|PANE_STYLECHANGED);
+		wp->flags |= (PANE_REDRAW|PANE_STYLECHANGED|PANE_THEMECHANGED);
 	}
 	if (args_has(args, 'g')) {
 		cmdq_print(item, "%s", options_get_string(oo, "window-style"));

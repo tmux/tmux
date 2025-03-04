@@ -356,6 +356,11 @@ tty_start_tty(struct tty *tty)
 	if (tty_term_has(tty->term, TTYC_ENBP))
 		tty_putcode(tty, TTYC_ENBP);
 
+	if (tty->term->flags & TERM_VT100LIKE) {
+		/* Subscribe to theme changes and request theme now. */
+		tty_puts(tty, "\033[?2031h\033[?996n");
+	}
+
 	evtimer_set(&tty->start_timer, tty_start_timer_callback, tty);
 	evtimer_add(&tty->start_timer, &tv);
 
@@ -467,6 +472,9 @@ tty_stop_tty(struct tty *tty)
 	if (tty_use_margin(tty))
 		tty_raw(tty, tty_term_string(tty->term, TTYC_DSMG));
 	tty_raw(tty, tty_term_string(tty->term, TTYC_RMCUP));
+
+	if (tty->term->flags & TERM_VT100LIKE)
+		tty_raw(tty, "\033[?2031l");
 
 	setblocking(c->fd, 1);
 }

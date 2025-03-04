@@ -133,7 +133,7 @@ static void printflike(2, 3) input_reply(struct input_ctx *, const char *, ...);
 static void	input_set_state(struct input_ctx *,
 		    const struct input_transition *);
 static void	input_reset_cell(struct input_ctx *);
-
+static void	input_report_current_theme(struct input_ctx *);
 static void	input_osc_4(struct input_ctx *, const char *);
 static void	input_osc_8(struct input_ctx *, const char *);
 static void	input_osc_10(struct input_ctx *, const char *);
@@ -243,6 +243,7 @@ enum input_csi_type {
 	INPUT_CSI_DECSTBM,
 	INPUT_CSI_DL,
 	INPUT_CSI_DSR,
+	INPUT_CSI_DSR_PRIVATE,
 	INPUT_CSI_ECH,
 	INPUT_CSI_ED,
 	INPUT_CSI_EL,
@@ -251,6 +252,7 @@ enum input_csi_type {
 	INPUT_CSI_IL,
 	INPUT_CSI_MODOFF,
 	INPUT_CSI_MODSET,
+	INPUT_CSI_QUERY_PRIVATE,
 	INPUT_CSI_RCP,
 	INPUT_CSI_REP,
 	INPUT_CSI_RM,
@@ -259,8 +261,8 @@ enum input_csi_type {
 	INPUT_CSI_SD,
 	INPUT_CSI_SGR,
 	INPUT_CSI_SM,
-	INPUT_CSI_SM_PRIVATE,
 	INPUT_CSI_SM_GRAPHICS,
+	INPUT_CSI_SM_PRIVATE,
 	INPUT_CSI_SU,
 	INPUT_CSI_TBC,
 	INPUT_CSI_VPA,
@@ -304,6 +306,8 @@ static const struct input_table_entry input_csi_table[] = {
 	{ 'm', ">", INPUT_CSI_MODSET },
 	{ 'n', "",  INPUT_CSI_DSR },
 	{ 'n', ">", INPUT_CSI_MODOFF },
+	{ 'n', "?", INPUT_CSI_DSR_PRIVATE },
+	{ 'p', "?$", INPUT_CSI_QUERY_PRIVATE },
 	{ 'q', " ", INPUT_CSI_DECSCUSR },
 	{ 'q', ">", INPUT_CSI_XDA },
 	{ 'r', "",  INPUT_CSI_DECSTBM },
@@ -1531,6 +1535,20 @@ input_csi_dispatch(struct input_ctx *ictx)
 		if (n != -1)
 			screen_write_deleteline(sctx, n, bg);
 		break;
+	case INPUT_CSI_DSR_PRIVATE:
+		switch (input_get(ictx, 0, 0, 0)) {
+		case 996:
+			input_report_current_theme(ictx);
+			break;
+		}
+		break;
+	case INPUT_CSI_QUERY_PRIVATE:
+		switch (input_get(ictx, 0, 0, 0)) {
+		case 2031:
+			input_reply(ictx, "\033[?2031;2$y");
+			break;
+		}
+		break;
 	case INPUT_CSI_DSR:
 		switch (input_get(ictx, 0, 0, 0)) {
 		case -1:
@@ -1781,6 +1799,9 @@ input_csi_dispatch_rm_private(struct input_ctx *ictx)
 		case 2004:
 			screen_write_mode_clear(sctx, MODE_BRACKETPASTE);
 			break;
+		case 2031:
+			screen_write_mode_clear(sctx, MODE_THEME_UPDATES);
+			break;
 		default:
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);
 			break;
@@ -1875,6 +1896,9 @@ input_csi_dispatch_sm_private(struct input_ctx *ictx)
 			break;
 		case 2004:
 			screen_write_mode_set(sctx, MODE_BRACKETPASTE);
+			break;
+		case 2031:
+			screen_write_mode_set(sctx, MODE_THEME_UPDATES);
 			break;
 		default:
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);
@@ -2697,84 +2721,6 @@ bad:
 	free(id);
 }
 
-/*
- * Get a client with a foreground for the pane. There isn't much to choose
- * between them so just use the first.
- */
-static int
-input_get_fg_client(struct window_pane *wp)
-{
-	struct window	*w = wp->window;
-	struct client	*loop;
-
-	TAILQ_FOREACH(loop, &clients, entry) {
-		if (loop->flags & CLIENT_UNATTACHEDFLAGS)
-			continue;
-		if (loop->session == NULL || !session_has(loop->session, w))
-			continue;
-		if (loop->tty.fg == -1)
-			continue;
-		return (loop->tty.fg);
-	}
-	return (-1);
-}
-
-/* Get a client with a background for the pane. */
-static int
-input_get_bg_client(struct window_pane *wp)
-{
-	struct window	*w = wp->window;
-	struct client	*loop;
-
-	TAILQ_FOREACH(loop, &clients, entry) {
-		if (loop->flags & CLIENT_UNATTACHEDFLAGS)
-			continue;
-		if (loop->session == NULL || !session_has(loop->session, w))
-			continue;
-		if (loop->tty.bg == -1)
-			continue;
-		return (loop->tty.bg);
-	}
-	return (-1);
-}
-
-/*
- * If any control mode client exists that has provided a bg color, return it.
- * Otherwise, return -1.
- */
-static int
-input_get_bg_control_client(struct window_pane *wp)
-{
-	struct client	*c;
-
-	if (wp->control_bg == -1)
-		return (-1);
-
-	TAILQ_FOREACH(c, &clients, entry) {
-		if (c->flags & CLIENT_CONTROL)
-			return (wp->control_bg);
-	}
-	return (-1);
-}
-
-/*
- * If any control mode client exists that has provided a fg color, return it.
- * Otherwise, return -1.
- */
-static int
-input_get_fg_control_client(struct window_pane *wp)
-{
-	struct client	*c;
-
-	if (wp->control_fg == -1)
-		return (-1);
-
-	TAILQ_FOREACH(c, &clients, entry) {
-		if (c->flags & CLIENT_CONTROL)
-			return (wp->control_fg);
-	}
-	return (-1);
-}
 
 /* Handle the OSC 10 sequence for setting and querying foreground colour. */
 static void
@@ -2787,11 +2733,11 @@ input_osc_10(struct input_ctx *ictx, const char *p)
 	if (strcmp(p, "?") == 0) {
 		if (wp == NULL)
 			return;
-		c = input_get_fg_control_client(wp);
+		c = window_pane_get_fg_control_client(wp);
 		if (c == -1) {
 			tty_default_colours(&defaults, wp);
 			if (COLOUR_DEFAULT(defaults.fg))
-				c = input_get_fg_client(wp);
+				c = window_pane_get_fg(wp);
 			else
 				c = defaults.fg;
 		}
@@ -2832,20 +2778,12 @@ static void
 input_osc_11(struct input_ctx *ictx, const char *p)
 {
 	struct window_pane	*wp = ictx->wp;
-	struct grid_cell	 defaults;
 	int			 c;
 
 	if (strcmp(p, "?") == 0) {
 		if (wp == NULL)
 			return;
-		c = input_get_bg_control_client(wp);
-		if (c == -1) {
-			tty_default_colours(&defaults, wp);
-			if (COLOUR_DEFAULT(defaults.bg))
-				c = input_get_bg_client(wp);
-			else
-				c = defaults.bg;
-		}
+		c = window_pane_get_bg(wp);
 		input_osc_colour_reply(ictx, 11, c);
 		return;
 	}
@@ -2857,7 +2795,7 @@ input_osc_11(struct input_ctx *ictx, const char *p)
 	if (ictx->palette != NULL) {
 		ictx->palette->bg = c;
 		if (wp != NULL)
-			wp->flags |= PANE_STYLECHANGED;
+			wp->flags |= (PANE_STYLECHANGED|PANE_THEMECHANGED);
 		screen_write_fullredraw(&ictx->ctx);
 	}
 }
@@ -2873,7 +2811,7 @@ input_osc_111(struct input_ctx *ictx, const char *p)
 	if (ictx->palette != NULL) {
 		ictx->palette->bg = 8;
 		if (wp != NULL)
-			wp->flags |= PANE_STYLECHANGED;
+			wp->flags |= (PANE_STYLECHANGED|PANE_THEMECHANGED);
 		screen_write_fullredraw(&ictx->ctx);
 	}
 }
@@ -3063,4 +3001,19 @@ input_set_buffer_size(size_t buffer_size)
 {
 	log_debug("%s: %lu -> %lu", __func__, input_buffer_size, buffer_size);
 	input_buffer_size = buffer_size;
+}
+
+static void
+input_report_current_theme(struct input_ctx *ictx)
+{
+	switch (window_pane_get_theme(ictx->wp)) {
+		case THEME_DARK:
+			input_reply(ictx, "\033[?997;1n");
+			break;
+		case THEME_LIGHT:
+			input_reply(ictx, "\033[?997;2n");
+			break;
+		case THEME_UNKNOWN:
+			break;
+	}
 }

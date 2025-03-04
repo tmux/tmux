@@ -378,6 +378,10 @@ enum {
 	KEYC_KP_ZERO,
 	KEYC_KP_PERIOD,
 
+	/* Theme reporting. */
+	KEYC_REPORT_DARK_THEME,
+	KEYC_REPORT_LIGHT_THEME,
+
 	/* End of special keys. */
 	KEYC_BASE_END
 };
@@ -645,6 +649,7 @@ enum tty_code_code {
 #define MODE_CURSOR_VERY_VISIBLE 0x10000
 #define MODE_CURSOR_BLINKING_SET 0x20000
 #define MODE_KEYS_EXTENDED_2 0x40000
+#define MODE_THEME_UPDATES 0x80000
 
 #define ALL_MODES 0xffffff
 #define ALL_MOUSE_MODES (MODE_MOUSE_STANDARD|MODE_MOUSE_BUTTON|MODE_MOUSE_ALL)
@@ -1156,8 +1161,9 @@ struct window_pane {
 #define PANE_STATUSDRAWN 0x400
 #define PANE_EMPTY 0x800
 #define PANE_STYLECHANGED 0x1000
-#define PANE_UNSEENCHANGES 0x2000
-#define PANE_REDRAWSCROLLBAR 0x4000
+#define PANE_THEMECHANGED 0x2000
+#define PANE_UNSEENCHANGES 0x4000
+#define PANE_REDRAWSCROLLBAR 0x8000
 
 	u_int		 sb_slider_y;
 	u_int		 sb_slider_h;
@@ -1865,6 +1871,16 @@ struct overlay_ranges {
 	u_int	nx[OVERLAY_MAX_RANGES];
 };
 
+/*
+ * Client theme, this is worked out from the background colour if not reported
+ * by terminal.
+ */
+enum client_theme {
+	THEME_UNKNOWN,
+	THEME_LIGHT,
+	THEME_DARK
+};
+
 /* Client connection. */
 typedef int (*prompt_input_cb)(struct client *, void *, const char *, int);
 typedef void (*prompt_free_cb)(void *);
@@ -1924,6 +1940,7 @@ struct client {
 	struct mouse_event	 click_event;
 
 	struct status_line	 status;
+	enum client_theme	 theme;
 
 #define CLIENT_TERMINAL 0x1
 #define CLIENT_LOGIN 0x2
@@ -2931,6 +2948,8 @@ void	 input_parse_screen(struct input_ctx *, struct screen *,
 void	 input_reply_clipboard(struct bufferevent *, const char *, size_t,
 	     const char *);
 void	 input_set_buffer_size(size_t);
+int 	 input_get_bg_client(struct window_pane *);
+int 	 input_get_bg_control_client(struct window_pane *);
 
 /* input-key.c */
 void	 input_key_build(void);
@@ -2945,7 +2964,8 @@ int	 colour_join_rgb(u_char, u_char, u_char);
 void	 colour_split_rgb(int, u_char *, u_char *, u_char *);
 int	 colour_force_rgb(int);
 const char *colour_tostring(int);
-int	 colour_fromstring(const char *s);
+enum client_theme colour_totheme(int);
+int	 colour_fromstring(const char *);
 int	 colour_256toRGB(int);
 int	 colour_256to16(int);
 int	 colour_byname(const char *);
@@ -3246,6 +3266,13 @@ void		 window_set_fill_character(struct window *);
 void		 window_pane_default_cursor(struct window_pane *);
 int		 window_pane_mode(struct window_pane *);
 int		 window_pane_show_scrollbar(struct window_pane *, int);
+int		 window_pane_get_bg(struct window_pane *);
+int		 window_pane_get_fg(struct window_pane *);
+int		 window_pane_get_fg_control_client(struct window_pane *);
+int		 window_pane_get_bg_control_client(struct window_pane *);
+int		 window_get_bg_client(struct window_pane *);
+enum client_theme window_pane_get_theme(struct window_pane *);
+void		 window_pane_send_theme_update(struct window_pane *);
 
 /* layout.c */
 u_int		 layout_count_cells(struct layout_cell *);
@@ -3443,6 +3470,7 @@ void		 session_group_synchronize_from(struct session *);
 u_int		 session_group_count(struct session_group *);
 u_int		 session_group_attached_count(struct session_group *);
 void		 session_renumber_windows(struct session *);
+void		 session_theme_changed(struct session *);
 
 /* utf8.c */
 enum utf8_state	 utf8_towc (const struct utf8_data *, wchar_t *);
