@@ -1759,6 +1759,8 @@ window_set_fill_character(struct window *w)
 		ud = utf8_fromcstr(value);
 		if (ud != NULL && ud[0].width == 1)
 			w->fill_character = ud;
+		else
+			free(ud);
 	}
 }
 
