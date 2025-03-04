@@ -213,6 +213,10 @@ static const struct tty_default_key_raw tty_default_raw_keys[] = {
 
 	/* Extended keys. */
 	{ "\033[1;5Z", '\011'|KEYC_CTRL|KEYC_SHIFT },
+
+	/* Theme reporting. */
+	{ "\033[?997;1n", KEYC_REPORT_DARK_THEME },
+	{ "\033[?997;2n", KEYC_REPORT_LIGHT_THEME },
 };
 
 /* Default xterm keys. */
@@ -791,10 +795,12 @@ tty_keys_next(struct tty *tty)
 	switch (tty_keys_colours(tty, buf, len, &size, &tty->fg, &tty->bg)) {
 	case 0:		/* yes */
 		key = KEYC_UNKNOWN;
+		session_theme_changed(tty->client->session);
 		goto complete_key;
 	case -1:	/* no, or not valid */
 		break;
 	case 1:		/* partial */
+		session_theme_changed(tty->client->session);
 		goto partial_key;
 	}
 

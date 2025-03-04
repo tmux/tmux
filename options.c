@@ -1165,7 +1165,7 @@ options_push_changes(const char *name)
 	if (strcmp(name, "window-style") == 0 ||
 	    strcmp(name, "window-active-style") == 0) {
 		RB_FOREACH(wp, window_pane_tree, &all_window_panes)
-			wp->flags |= PANE_STYLECHANGED;
+			wp->flags |= (PANE_STYLECHANGED|PANE_THEMECHANGED);
 	}
 	if (strcmp(name, "pane-colours") == 0) {
 		RB_FOREACH(wp, window_pane_tree, &all_window_panes)
