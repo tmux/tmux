@@ -70,6 +70,8 @@ struct window_pane_input_data {
 static struct window_pane *window_pane_create(struct window *, u_int, u_int,
 		    u_int);
 static void	window_pane_destroy(struct window_pane *);
+static void	window_pane_full_size_offset(struct window_pane *wp,
+		    u_int *xoff, u_int *yoff, u_int *sx, u_int *sy);
 
 RB_GENERATE(windows, window, entry, window_cmp);
 RB_GENERATE(winlinks, winlink, entry, winlink_cmp);
@@ -591,34 +593,15 @@ struct window_pane *
 window_get_active_at(struct window *w, u_int x, u_int y)
 {
 	struct window_pane	*wp;
-	int			 pane_scrollbars;
-	u_int			 sb_pos, sb_w, xoff, sx;
-
-	pane_scrollbars = options_get_number(w->options, "pane-scrollbars");
-	sb_pos = options_get_number(w->options, "pane-scrollbars-position");
+	u_int			 xoff, yoff, sx, sy;
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if (!window_pane_visible(wp))
 			continue;
-
-		if (pane_scrollbars == PANE_SCROLLBARS_ALWAYS ||
-		    (pane_scrollbars == PANE_SCROLLBARS_MODAL &&
-		     window_pane_mode(wp) != WINDOW_PANE_NO_MODE)) {
-			sb_w = wp->scrollbar_style.width +
-			    wp->scrollbar_style.pad;
-		} else
-			sb_w = 0;
-
-		if (sb_pos == PANE_SCROLLBARS_LEFT) {
-			xoff = wp->xoff - sb_w;
-			sx = wp->sx + sb_w;
-		} else { /* sb_pos == PANE_SCROLLBARS_RIGHT */
-			xoff = wp->xoff;
-			sx = wp->sx + sb_w;
-		}
+		window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
 		if (x < xoff || x > xoff + sx)
 			continue;
-		if (y < wp->yoff || y > wp->yoff + wp->sy)
+		if (y < yoff || y > yoff + sy)
 			continue;
 		return (wp);
 	}
