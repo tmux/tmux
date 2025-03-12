@@ -2887,6 +2887,23 @@ out:
 		bufferevent_enable(wp->event, EV_READ);
 }
 
+
+static int
+server_client_check_overlay(struct client *c, u_int px, u_int py)
+{
+	struct overlay_ranges	r;
+
+	/*
+	 * A unit width range will always return nx[2] == 0 from a check, even
+	 * with multiple overlays, so it's sufficient to check just the first
+	 * two entries.
+	 */
+	c->overlay_check(c, c->overlay_data, px, py, 1, &r);
+	if (r.nx[0] + r.nx[1] == 0)
+		return (0);
+	return (1);
+}
+
 /*
  * Update cursor position and mode settings. The scroll region and attributes
  * are cleared when idle (waiting for an event) as this is the most likely time
@@ -2896,6 +2913,7 @@ out:
  * tty_region/tty_reset/tty_update_mode already take care of not resetting
  * things that are already in their default state.
  */
+
 static void
 server_client_reset_state(struct client *c)
 {
@@ -2951,13 +2969,17 @@ server_client_reset_state(struct client *c)
 		tty_window_offset(tty, &ox, &oy, &sx, &sy);
 		if (wp->xoff + s->cx >= ox && wp->xoff + s->cx <= ox + sx &&
 		    wp->yoff + s->cy >= oy && wp->yoff + s->cy <= oy + sy) {
-			cursor = 1;
-
 			cx = wp->xoff + s->cx - ox;
 			cy = wp->yoff + s->cy - oy;
 
 			if (status_at_line(c) == 0)
 				cy += status_line_size(c);
+
+			if (c->overlay_draw != NULL &&
+			    !server_client_check_overlay(c, cx, cy))
+				cursor = 0;
+			else
+				cursor = 1;
 		}
 		if (!cursor)
 			mode &= ~MODE_CURSOR;
