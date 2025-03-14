@@ -374,7 +374,7 @@ grid_collect_history(struct grid *gd)
 {
 	u_int	ny;
 
-	if (gd->hsize == 0 || gd->hsize < gd->hlimit)
+	if (gd->hlimit < 0 || gd->hsize == 0 || gd->hsize < gd->hlimit)
 		return;
 
 	ny = gd->hlimit / 10;
