@@ -937,6 +937,16 @@ partial_key:
 	delay = options_get_number(global_options, "escape-time");
 	if (delay == 0)
 		delay = 1;
+	/* During startup, we request the Device Attributes from the terminal.
+	 * When connecting via ssh, the response is sometimes broken over multiple TCP packets,
+	 * and the delay would cause us to treat the escape code as user input.
+	 * See https://github.com/PowerShell/Win32-OpenSSH/issues/2275 for more information.
+	 * Raise the delay temporarily until we see a response. */
+	if (delay < 500 && (tty->flags & TTY_ALL_REQUEST_FLAGS) != TTY_ALL_REQUEST_FLAGS) {
+		log_debug("%s: increase delay for DA query", c->name);
+		delay = 500;
+	}
+
 	tv.tv_sec = delay / 1000;
 	tv.tv_usec = (delay % 1000) * 1000L;
 
