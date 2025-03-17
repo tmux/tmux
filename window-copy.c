@@ -4263,6 +4263,8 @@ window_copy_match_at_cursor(struct window_copy_mode_data *data)
 			buf = xrealloc(buf, len + 2);
 			buf[len] = '\t';
 			len++;
+		} else if (gc.flags & GRID_FLAG_PADDING) {
+			/* nothing to do */
 		} else {
 			buf = xrealloc(buf, len + gc.data.size + 1);
 			memcpy(buf + len, gc.data.data, gc.data.size);
