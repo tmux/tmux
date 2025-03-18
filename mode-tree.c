@@ -58,6 +58,7 @@ struct mode_tree_data {
 	mode_tree_menu_cb         menucb;
 	mode_tree_height_cb       heightcb;
 	mode_tree_key_cb	  keycb;
+	mode_tree_swap_cb	  swapcb;
 
 	struct mode_tree_list	  children;
 	struct mode_tree_list	  saved;
@@ -287,6 +288,35 @@ mode_tree_down(struct mode_tree_data *mtd, int wrap)
 	return (1);
 }
 
+static void
+mode_tree_swap(struct mode_tree_data *mtd, int direction)
+{
+	u_int	current_depth = mtd->line_list[mtd->current].depth;
+	u_int	swap_with, swap_with_depth;
+
+	if (mtd->swapcb == NULL)
+		return;
+
+	/* Find the next line at the same depth with the same parent . */
+	swap_with = mtd->current;
+	do {
+		if (direction < 0 && swap_with < (u_int)-direction)
+			return;
+		if (direction > 0 && swap_with + direction >= mtd->line_size)
+			return;
+		swap_with += direction;
+		swap_with_depth = mtd->line_list[swap_with].depth;
+	} while (swap_with_depth > current_depth);
+	if (swap_with_depth != current_depth)
+		return;
+
+	if (mtd->swapcb(mtd->line_list[mtd->current].item->itemdata,
+	    mtd->line_list[swap_with].item->itemdata)) {
+		mtd->current = swap_with;
+		mode_tree_build(mtd);
+	}
+}
+
 void *
 mode_tree_get_current(struct mode_tree_data *mtd)
 {
@@ -410,9 +440,9 @@ struct mode_tree_data *
 mode_tree_start(struct window_pane *wp, struct args *args,
     mode_tree_build_cb buildcb, mode_tree_draw_cb drawcb,
     mode_tree_search_cb searchcb, mode_tree_menu_cb menucb,
-    mode_tree_height_cb heightcb, mode_tree_key_cb keycb, void *modedata,
-    const struct menu_item *menu, const char **sort_list, u_int sort_size,
-    struct screen **s)
+    mode_tree_height_cb heightcb, mode_tree_key_cb keycb,
+    mode_tree_swap_cb swapcb, void *modedata, const struct menu_item *menu,
+    const char **sort_list, u_int sort_size, struct screen **s)
 {
 	struct mode_tree_data	*mtd;
 	const char		*sort;
@@ -455,6 +485,7 @@ mode_tree_start(struct window_pane *wp, struct args *args,
 	mtd->menucb = menucb;
 	mtd->heightcb = heightcb;
 	mtd->keycb = keycb;
+	mtd->swapcb = swapcb;
 
 	TAILQ_INIT(&mtd->children);
 
@@ -1146,6 +1177,14 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 	case KEYC_WHEELDOWN_PANE:
 	case 'n'|KEYC_CTRL:
 		mode_tree_down(mtd, 1);
+		break;
+	case KEYC_UP|KEYC_SHIFT:
+	case 'K':
+		mode_tree_swap(mtd, -1);
+		break;
+	case KEYC_DOWN|KEYC_SHIFT:
+	case 'J':
+		mode_tree_swap(mtd, 1);
 		break;
 	case KEYC_PPAGE:
 	case 'b'|KEYC_CTRL:
