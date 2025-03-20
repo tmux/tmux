@@ -373,7 +373,6 @@ window_tree_build_window(struct session *s, struct winlink *wl,
 	if (TAILQ_NEXT(wp, entry) == NULL) {
 		if (!window_tree_filter_pane(s, wl, wp, filter))
 			goto empty;
-		return (1);
 	}
 
 	l = NULL;
