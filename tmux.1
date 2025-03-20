@@ -6835,7 +6835,9 @@ forwards any input read from stdin to the empty pane given by
 .D1 Pq alias: Ic popup
 Display a popup running
 .Ar shell-command
-on
+(or
+.Ar default-command
+when omitted) on
 .Ar target-client .
 A popup is a rectangular box drawn over the top of any panes.
 Panes are not updated while a popup is present.
