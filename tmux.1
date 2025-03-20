@@ -3850,13 +3850,45 @@ option prevents errors being returned.
 .Sh OPTIONS
 The appearance and behaviour of
 .Nm
-may be modified by changing the value of various options.
-There are four types of option:
-.Em server options ,
-.Em session options ,
-.Em window options ,
+may be modified by changing the value of various options. Each option belongs to
+one or multiple scopes
+.Po
+.Em server ,
+.Em session ,
+.Em window ,
 and
-.Em pane options .
+.Em pane
+.Pc and has a type
+.Po
+.Em string ,
+.Em number ,
+.Em key ,
+.Em colour ,
+.Em flag ,
+.Em choice ,
+or
+.Em command
+.Pc . Values of
+.Em flag Ns -type
+options may be one of:
+.Ic 1 ,
+.Ic on ,
+.Ic yes ,
+.Ic 0 ,
+.Ic off ,
+or
+.Ic no ;
+for possible
+.Em choice
+values, see the respective option; for
+.Em key
+options, the
+.Sx KEY BINDINGS
+section; and for
+.Em colour
+options, the
+.Sx STYLES
+section.
 .Pp
 The
 .Nm
@@ -3920,7 +3952,7 @@ $ tmux show -wv @foo
 abc123
 .Ed
 .Pp
-Commands which set options are as follows:
+Options are managed with these commands:
 .Bl -tag -width Ds
 .Tg set
 .It Xo Ic set-option
@@ -3943,7 +3975,7 @@ or
 .Fl s
 may be unnecessary -
 .Nm
-will infer the type from the option name, assuming
+will infer the scope from the option name, assuming
 .Fl w
 for pane options.
 If
@@ -3964,8 +3996,9 @@ unsets an option (like
 but if the option is a pane option also unsets the option on any panes in the
 window.
 .Ar value
-depends on the option and may be a number, a string, or a flag (on, off, or
-omitted to toggle).
+depends on the option and its type and can be omitted for flag and choice
+options to toggle it's value (choice options toggle between the first two
+choices).
 .Pp
 The
 .Fl o
@@ -4020,7 +4053,7 @@ or
 .Fl s
 may be unnecessary -
 .Nm
-will infer the type from the option name, assuming
+will infer the scope from the option name, assuming
 .Fl w
 for pane options.
 Global session or window options are listed if
