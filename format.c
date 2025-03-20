@@ -5084,11 +5084,17 @@ format_create_defaults(struct cmdq_item *item, struct client *c,
     struct session *s, struct winlink *wl, struct window_pane *wp)
 {
 	struct format_tree	*ft;
+	int			 tag;
+
+	if (wp == NULL)
+		tag = FORMAT_NONE;
+	else
+		tag = FORMAT_PANE|wp->id;
 
 	if (item != NULL)
-		ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
+		ft = format_create(cmdq_get_client(item), item, tag, 0);
 	else
-		ft = format_create(NULL, item, FORMAT_NONE, 0);
+		ft = format_create(NULL, item, tag, 0);
 	format_defaults(ft, c, s, wl, wp);
 	return (ft);
 }
