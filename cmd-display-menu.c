@@ -41,7 +41,7 @@ const struct cmd_entry cmd_display_menu_entry = {
 	.args = { "b:c:C:H:s:S:MOt:T:x:y:", 1, -1, cmd_display_menu_args_parse },
 	.usage = "[-MO] [-b border-lines] [-c target-client] "
 		 "[-C starting-choice] [-H selected-style] [-s style] "
-		 "[-S border-style] " CMD_TARGET_PANE_USAGE "[-T title] "
+		 "[-S border-style] " CMD_TARGET_PANE_USAGE " [-T title] "
 		 "[-x position] [-y position] name key command ...",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -58,7 +58,7 @@ const struct cmd_entry cmd_display_popup_entry = {
 	.usage = "[-BCE] [-b border-lines] [-c target-client] "
 		 "[-d start-directory] [-e environment] [-h height] "
 		 "[-s style] [-S border-style] " CMD_TARGET_PANE_USAGE
-		 "[-T title] [-w width] [-x position] [-y position] "
+		 " [-T title] [-w width] [-x position] [-y position] "
 		 "[shell-command]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },

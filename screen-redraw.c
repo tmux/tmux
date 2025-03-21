@@ -433,10 +433,14 @@ screen_redraw_make_pane_status(struct client *c, struct window_pane *wp,
 	const char		*fmt;
 	struct format_tree	*ft;
 	char			*expanded;
-	int			 pane_status = rctx->pane_status;
+	int			 pane_status = rctx->pane_status, sb_w = 0;
+	int			 pane_scrollbars = rctx->pane_scrollbars;
 	u_int			 width, i, cell_type, px, py;
 	struct screen_write_ctx	 ctx;
 	struct screen		 old;
+
+	if (window_pane_show_scrollbar(wp, pane_scrollbars))
+		sb_w = wp->scrollbar_style.width + wp->scrollbar_style.pad;
 
 	ft = format_create(c, NULL, FORMAT_PANE|wp->id, FORMAT_STATUS);
 	format_defaults(ft, c, c->session, c->session->curw, wp);
@@ -451,7 +455,7 @@ screen_redraw_make_pane_status(struct client *c, struct window_pane *wp,
 	if (wp->sx < 4)
 		wp->status_size = width = 0;
 	else
-		wp->status_size = width = wp->sx - 4;
+		wp->status_size = width = wp->sx + sb_w - 2;
 
 	memcpy(&old, &wp->status_screen, sizeof old);
 	screen_init(&wp->status_screen, width, 1, 0);

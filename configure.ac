@@ -638,9 +638,9 @@ else
 	AC_LIBOBJ(err)
 fi
 
-# Look for imsg_init in libutil.
-AC_SEARCH_LIBS(imsg_init, util, found_imsg_init=yes, found_imsg_init=no)
-if test "x$found_imsg_init" = xyes; then
+# Look for imsg_add in libutil.
+AC_SEARCH_LIBS(imsg_add, util, found_imsg_add=yes, found_imsg_add=no)
+if test "x$found_imsg_add" = xyes; then
 	AC_DEFINE(HAVE_IMSG)
 else
 	AC_LIBOBJ(imsg)

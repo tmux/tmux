@@ -208,11 +208,15 @@ static const struct tty_default_key_raw tty_default_raw_keys[] = {
 	{ "\033[O", KEYC_FOCUS_OUT },
 
 	/* Paste keys. */
-	{ "\033[200~", KEYC_PASTE_START },
-	{ "\033[201~", KEYC_PASTE_END },
+	{ "\033[200~", KEYC_PASTE_START|KEYC_IMPLIED_META },
+	{ "\033[201~", KEYC_PASTE_END|KEYC_IMPLIED_META },
 
 	/* Extended keys. */
 	{ "\033[1;5Z", '\011'|KEYC_CTRL|KEYC_SHIFT },
+
+	/* Theme reporting. */
+	{ "\033[?997;1n", KEYC_REPORT_DARK_THEME },
+	{ "\033[?997;2n", KEYC_REPORT_LIGHT_THEME },
 };
 
 /* Default xterm keys. */
@@ -791,10 +795,12 @@ tty_keys_next(struct tty *tty)
 	switch (tty_keys_colours(tty, buf, len, &size, &tty->fg, &tty->bg)) {
 	case 0:		/* yes */
 		key = KEYC_UNKNOWN;
+		session_theme_changed(tty->client->session);
 		goto complete_key;
 	case -1:	/* no, or not valid */
 		break;
 	case 1:		/* partial */
+		session_theme_changed(tty->client->session);
 		goto partial_key;
 	}
 
@@ -931,6 +937,11 @@ partial_key:
 	delay = options_get_number(global_options, "escape-time");
 	if (delay == 0)
 		delay = 1;
+	if ((tty->flags & TTY_ALL_REQUEST_FLAGS) != TTY_ALL_REQUEST_FLAGS) {
+		log_debug("%s: increasing delay for active DA query", c->name);
+		if (delay < 500)
+			delay = 500;
+	}
 	tv.tv_sec = delay / 1000;
 	tv.tv_usec = (delay % 1000) * 1000L;
 
