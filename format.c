@@ -1173,6 +1173,12 @@ format_cb_mouse_hyperlink(struct format_tree *ft)
 		return (NULL);
 	if (cmd_mouse_at(wp, &ft->m, &x, &y, 0) != 0)
 		return (NULL);
+
+	if (!TAILQ_EMPTY(&wp->modes)) {
+		if (window_pane_mode(wp) != WINDOW_PANE_NO_MODE)
+			return (window_copy_get_hyperlink(wp, x, y));
+		return (NULL);
+	}
 	gd = wp->base.grid;
 	return (format_grid_hyperlink(gd, x, gd->hsize + y, wp->screen));
 }
