@@ -44,7 +44,7 @@ const struct cmd_entry cmd_run_shell_entry = {
 	.name = "run-shell",
 	.alias = "run",
 
-	.args = { "bd:Ct:c:", 0, 2, cmd_run_shell_args_parse },
+	.args = { "bd:Ct:c:", 0, 1, cmd_run_shell_args_parse },
 	.usage = "[-bC] [-c start-directory] [-d delay] " CMD_TARGET_PANE_USAGE
 	         " [shell-command]",
 
