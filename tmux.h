@@ -2948,8 +2948,6 @@ void	 input_parse_screen(struct input_ctx *, struct screen *,
 void	 input_reply_clipboard(struct bufferevent *, const char *, size_t,
 	     const char *);
 void	 input_set_buffer_size(size_t);
-int 	 input_get_bg_client(struct window_pane *);
-int 	 input_get_bg_control_client(struct window_pane *);
 
 /* input-key.c */
 void	 input_key_build(void);
@@ -3475,7 +3473,6 @@ void		 session_theme_changed(struct session *);
 /* utf8.c */
 enum utf8_state	 utf8_towc (const struct utf8_data *, wchar_t *);
 enum utf8_state	 utf8_fromwc(wchar_t wc, struct utf8_data *);
-int		 utf8_in_table(wchar_t, const wchar_t *, u_int);
 void		 utf8_update_width_cache(void);
 utf8_char	 utf8_build_one(u_char);
 enum utf8_state	 utf8_from_data(const struct utf8_data *, utf8_char *);
