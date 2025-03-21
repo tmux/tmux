@@ -2393,10 +2393,13 @@ struct options_entry *options_match_get(struct options *, const char *, int *,
 		     int, int *);
 const char	*options_get_string(struct options *, const char *);
 long long	 options_get_number(struct options *, const char *);
+const struct cmd_list *options_get_command(struct options *, const char *);
 struct options_entry * printflike(4, 5) options_set_string(struct options *,
 		     const char *, int, const char *, ...);
 struct options_entry *options_set_number(struct options *, const char *,
 		     long long);
+struct options_entry *options_set_command(struct options *, const char *,
+		     struct cmd_list *);
 int		 options_scope_from_name(struct args *, int,
 		     const char *, struct cmd_find_state *, struct options **,
 		     char **);
@@ -2680,12 +2683,12 @@ struct cmd	*cmd_copy(struct cmd *, int, char **);
 void		 cmd_free(struct cmd *);
 char		*cmd_print(struct cmd *);
 struct cmd_list	*cmd_list_new(void);
-struct cmd_list	*cmd_list_copy(struct cmd_list *, int, char **);
+struct cmd_list	*cmd_list_copy(const struct cmd_list *, int, char **);
 void		 cmd_list_append(struct cmd_list *, struct cmd *);
 void		 cmd_list_append_all(struct cmd_list *, struct cmd_list *);
 void		 cmd_list_move(struct cmd_list *, struct cmd_list *);
 void		 cmd_list_free(struct cmd_list *);
-char		*cmd_list_print(struct cmd_list *, int);
+char		*cmd_list_print(const struct cmd_list *, int);
 struct cmd	*cmd_list_first(struct cmd_list *);
 struct cmd	*cmd_list_next(struct cmd *);
 int		 cmd_list_all_have(struct cmd_list *, int);

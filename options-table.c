@@ -285,6 +285,13 @@ const struct options_table_entry options_table[] = {
 	  .text = "Style of the cursor."
 	},
 
+	{ .name = "default-client-command",
+	  .type = OPTIONS_TABLE_COMMAND,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .default_str = "new-session",
+	  .text = "Default command to run when tmux is run without a command."
+	},
+
 	{ .name = "default-terminal",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SERVER,

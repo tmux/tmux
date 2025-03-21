@@ -260,6 +260,7 @@ options_default(struct options *oo, const struct options_table_entry *oe)
 	struct options_entry	*o;
 	union options_value	*ov;
 	u_int			 i;
+	struct cmd_parse_result	*pr;
 
 	o = options_empty(oo, oe);
 	ov = &o->value;
@@ -277,6 +278,17 @@ options_default(struct options *oo, const struct options_table_entry *oe)
 	switch (oe->type) {
 	case OPTIONS_TABLE_STRING:
 		ov->string = xstrdup(oe->default_str);
+		break;
+	case OPTIONS_TABLE_COMMAND:
+		pr = cmd_parse_from_string(oe->default_str, NULL);
+		switch (pr->status) {
+		case CMD_PARSE_ERROR:
+			free(pr->error);
+			break;
+		case CMD_PARSE_SUCCESS:
+			ov->cmdlist = pr->cmdlist;
+			break;
+		}
 		break;
 	default:
 		ov->number = oe->default_num;
@@ -737,6 +749,19 @@ options_get_number(struct options *oo, const char *name)
 	return (o->value.number);
 }
 
+const struct cmd_list *
+options_get_command(struct options *oo, const char *name)
+{
+	struct options_entry	*o;
+
+	o = options_get(oo, name);
+	if (o == NULL)
+		fatalx("missing option %s", name);
+	if (!OPTIONS_IS_COMMAND(o))
+		fatalx("option %s is not a command", name);
+	return (o->value.cmdlist);
+}
+
 struct options_entry *
 options_set_string(struct options *oo, const char *name, int append,
     const char *fmt, ...)
@@ -795,6 +820,30 @@ options_set_number(struct options *oo, const char *name, long long value)
 	if (!OPTIONS_IS_NUMBER(o))
 		fatalx("option %s is not a number", name);
 	o->value.number = value;
+	return (o);
+}
+
+struct options_entry *
+options_set_command(struct options *oo, const char *name,
+    struct cmd_list *value)
+{
+	struct options_entry	*o;
+
+	if (*name == '@')
+		fatalx("user option %s must be a string", name);
+
+	o = options_get_only(oo, name);
+	if (o == NULL) {
+		o = options_default(oo, options_parent_table_entry(oo, name));
+		if (o == NULL)
+			return (NULL);
+	}
+
+	if (!OPTIONS_IS_COMMAND(o))
+		fatalx("option %s is not a command", name);
+	if (o->value.cmdlist != NULL)
+		cmd_list_free(o->value.cmdlist);
+	o->value.cmdlist = value;
 	return (o);
 }
 
@@ -1054,6 +1103,7 @@ options_from_string(struct options *oo, const struct options_table_entry *oe,
 	const char		*errstr, *new;
 	char			*old;
 	key_code		 key;
+	struct cmd_parse_result	*pr;
 
 	if (oe != NULL) {
 		if (value == NULL &&
@@ -1112,6 +1162,15 @@ options_from_string(struct options *oo, const struct options_table_entry *oe,
 	case OPTIONS_TABLE_CHOICE:
 		return (options_from_string_choice(oe, oo, name, value, cause));
 	case OPTIONS_TABLE_COMMAND:
+		pr = cmd_parse_from_string(value, NULL);
+		switch (pr->status) {
+		case CMD_PARSE_ERROR:
+			*cause = pr->error;
+			return (-1);
+		case CMD_PARSE_SUCCESS:
+			options_set_command(oo, name, pr->cmdlist);
+			return (0);
+		}
 		break;
 	}
 	return (-1);

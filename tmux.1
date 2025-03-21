@@ -254,9 +254,10 @@ was given) and off.
 This specifies one of a set of commands used to control
 .Nm ,
 as described in the following sections.
-If no commands are specified, the
-.Ic new-session
-command is assumed.
+If no commands are specified, the command in
+.Ic default-client-command
+is assumed, which defaults to
+.Ic new-session .
 .El
 .Sh DEFAULT KEY BINDINGS
 .Nm
@@ -4085,6 +4086,10 @@ where the number is a hexadecimal number.
 Give the command to pipe to if the
 .Ic copy-pipe
 copy mode command is used without arguments.
+.It Ic default-client-command Ar command
+Set the default command to run when tmux is called without a command.
+The default is
+.Ic new-session .
 .It Ic default-terminal Ar terminal
 Set the default terminal for new windows created in this session - the
 default value of the
