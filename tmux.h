@@ -3324,6 +3324,7 @@ typedef int (*mode_tree_search_cb)(void *, void *, const char *);
 typedef void (*mode_tree_menu_cb)(void *, struct client *, key_code);
 typedef u_int (*mode_tree_height_cb)(void *, u_int);
 typedef key_code (*mode_tree_key_cb)(void *, void *, u_int);
+typedef int (*mode_tree_swap_cb)(void *, void *);
 typedef void (*mode_tree_each_cb)(void *, void *, struct client *, key_code);
 u_int	 mode_tree_count_tagged(struct mode_tree_data *);
 void	*mode_tree_get_current(struct mode_tree_data *);
@@ -3338,8 +3339,9 @@ void	 mode_tree_up(struct mode_tree_data *, int);
 int	 mode_tree_down(struct mode_tree_data *, int);
 struct mode_tree_data *mode_tree_start(struct window_pane *, struct args *,
 	     mode_tree_build_cb, mode_tree_draw_cb, mode_tree_search_cb,
-	     mode_tree_menu_cb, mode_tree_height_cb, mode_tree_key_cb, void *,
-	     const struct menu_item *, const char **, u_int, struct screen **);
+	     mode_tree_menu_cb, mode_tree_height_cb, mode_tree_key_cb,
+	     mode_tree_swap_cb, void *, const struct menu_item *, const char **,
+	     u_int, struct screen **);
 void	 mode_tree_zoom(struct mode_tree_data *, struct args *);
 void	 mode_tree_build(struct mode_tree_data *);
 void	 mode_tree_free(struct mode_tree_data *);
@@ -3384,6 +3386,7 @@ char		*window_copy_get_word(struct window_pane *, u_int, u_int);
 char		*window_copy_get_line(struct window_pane *, u_int);
 int		 window_copy_get_current_offset(struct window_pane *, u_int *,
 		     u_int *);
+char		*window_copy_get_hyperlink(struct window_pane *, u_int, u_int);
 
 /* window-option.c */
 extern const struct window_mode window_customize_mode;

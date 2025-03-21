@@ -1119,6 +1119,20 @@ format_cb_cursor_character(struct format_tree *ft)
 	return (value);
 }
 
+/* Callback for cursor_colour. */
+static void *
+format_cb_cursor_colour(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+
+	if (wp == NULL || wp->screen == NULL)
+		return (NULL);
+
+	if (wp->screen->ccolour != -1)
+		return (xstrdup(colour_tostring(wp->screen->ccolour)));
+	return (xstrdup(colour_tostring(wp->screen->default_ccolour)));
+}
+
 /* Callback for mouse_word. */
 static void *
 format_cb_mouse_word(struct format_tree *ft)
@@ -1159,6 +1173,12 @@ format_cb_mouse_hyperlink(struct format_tree *ft)
 		return (NULL);
 	if (cmd_mouse_at(wp, &ft->m, &x, &y, 0) != 0)
 		return (NULL);
+
+	if (!TAILQ_EMPTY(&wp->modes)) {
+		if (window_pane_mode(wp) != WINDOW_PANE_NO_MODE)
+			return (window_copy_get_hyperlink(wp, x, y));
+		return (NULL);
+	}
 	gd = wp->base.grid;
 	return (format_grid_hyperlink(gd, x, gd->hsize + y, wp->screen));
 }
@@ -1593,6 +1613,37 @@ format_cb_cursor_flag(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for cursor_shape. */
+static void *
+format_cb_cursor_shape(struct format_tree *ft)
+{
+	if (ft->wp != NULL && ft->wp->screen != NULL) {
+		switch (ft->wp->screen->cstyle) {
+		case SCREEN_CURSOR_BLOCK:
+			return (xstrdup("block"));
+    		case SCREEN_CURSOR_UNDERLINE:
+			return (xstrdup("underline"));
+    		case SCREEN_CURSOR_BAR:
+			return (xstrdup("bar"));
+    		default:
+			return (xstrdup("default"));
+		}
+	}
+	return (NULL);
+}
+
+/* Callback for cursor_very_visible. */
+static void *
+format_cb_cursor_very_visible(struct format_tree *ft)
+{
+	if (ft->wp != NULL && ft->wp->screen != NULL) {
+		if (ft->wp->screen->mode & MODE_CURSOR_VERY_VISIBLE)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
 /* Callback for cursor_x. */
 static void *
 format_cb_cursor_x(struct format_tree *ft)
@@ -1608,6 +1659,18 @@ format_cb_cursor_y(struct format_tree *ft)
 {
 	if (ft->wp != NULL)
 		return (format_printf("%u", ft->wp->base.cy));
+	return (NULL);
+}
+
+/* Callback for cursor_blinking. */
+static void *
+format_cb_cursor_blinking(struct format_tree *ft)
+{
+	if (ft->wp != NULL && ft->wp->screen != NULL) {
+		if (ft->wp->screen->mode & MODE_CURSOR_BLINKING)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
 	return (NULL);
 }
 
@@ -2922,11 +2985,23 @@ static const struct format_table_entry format_table[] = {
 	{ "config_files", FORMAT_TABLE_STRING,
 	  format_cb_config_files
 	},
+	{ "cursor_blinking", FORMAT_TABLE_STRING,
+	  format_cb_cursor_blinking
+	},
 	{ "cursor_character", FORMAT_TABLE_STRING,
 	  format_cb_cursor_character
 	},
+	{ "cursor_colour", FORMAT_TABLE_STRING,
+	  format_cb_cursor_colour
+	},
 	{ "cursor_flag", FORMAT_TABLE_STRING,
 	  format_cb_cursor_flag
+	},
+	{ "cursor_shape", FORMAT_TABLE_STRING,
+	  format_cb_cursor_shape
+	},
+	{ "cursor_very_visible", FORMAT_TABLE_STRING,
+	  format_cb_cursor_very_visible
 	},
 	{ "cursor_x", FORMAT_TABLE_STRING,
 	  format_cb_cursor_x
