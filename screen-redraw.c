@@ -1005,6 +1005,7 @@ screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx,
 	struct tty		*tty = &c->tty;
 	struct grid_cell	 gc, slgc, *gcp;
 	struct style		*sb_style = &wp->scrollbar_style;
+	struct overlay_ranges	 r;
 	u_int			 i, j, imax, jmax;
 	u_int			 sb_w = sb_style->width, sb_pad = sb_style->pad;
 	int			 px, py, ox = ctx->ox, oy = ctx->oy;
@@ -1033,6 +1034,11 @@ screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx,
 			    py < yoff - oy - 1 ||
 			    py >= sy || py < 0)
 				continue;
+			if (c->overlay_check != NULL) {
+				c->overlay_check(c, c->overlay_data, px, py, 1, &r);
+				if (r.nx[0] + r.nx[1] == 0)
+					continue;
+			}
 			tty_cursor(tty, px, py);
 			if ((sb_pos == PANE_SCROLLBARS_LEFT &&
 			    i >= sb_w && i < sb_w + sb_pad) ||
