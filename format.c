@@ -5432,9 +5432,14 @@ format_grid_hyperlink(struct grid *gd, u_int x, u_int y, struct screen* s)
 	const char		*uri;
 	struct grid_cell	 gc;
 
-	grid_get_cell(gd, x, y, &gc);
-	if (gc.flags & GRID_FLAG_PADDING)
-		return (NULL);
+	for (;;) {
+		grid_get_cell(gd, x, y, &gc);
+		if (~gc.flags & GRID_FLAG_PADDING)
+			break;
+		if (x == 0)
+			return (NULL);
+		x--;
+	}
 	if (s->hyperlinks == NULL || gc.link == 0)
 		return (NULL);
 	if (!hyperlinks_get(s->hyperlinks, gc.link, &uri, NULL, NULL))

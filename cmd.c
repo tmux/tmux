@@ -636,7 +636,7 @@ cmd_list_free(struct cmd_list *cmdlist)
 
 /* Copy a command list, expanding %s in arguments. */
 struct cmd_list *
-cmd_list_copy(struct cmd_list *cmdlist, int argc, char **argv)
+cmd_list_copy(const struct cmd_list *cmdlist, int argc, char **argv)
 {
 	struct cmd	*cmd;
 	struct cmd_list	*new_cmdlist;
@@ -667,7 +667,7 @@ cmd_list_copy(struct cmd_list *cmdlist, int argc, char **argv)
 
 /* Get a command list as a string. */
 char *
-cmd_list_print(struct cmd_list *cmdlist, int escaped)
+cmd_list_print(const struct cmd_list *cmdlist, int escaped)
 {
 	struct cmd	*cmd, *next;
 	char		*buf, *this;

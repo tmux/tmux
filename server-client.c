@@ -3448,6 +3448,7 @@ server_client_dispatch_command(struct client *c, struct imsg *imsg)
 	struct cmd_parse_result	 *pr;
 	struct args_value	 *values;
 	struct cmdq_item	 *new_item;
+	struct cmd_list		 *cmdlist;
 
 	if (c->flags & CLIENT_EXIT)
 		return;
@@ -3468,33 +3469,33 @@ server_client_dispatch_command(struct client *c, struct imsg *imsg)
 	}
 
 	if (argc == 0) {
-		argc = 1;
-		argv = xcalloc(1, sizeof *argv);
-		*argv = xstrdup("new-session");
+		cmdlist = cmd_list_copy(options_get_command(global_options,
+		    "default-client-command"), 0, NULL);
+	} else {
+		values = args_from_vector(argc, argv);
+		pr = cmd_parse_from_arguments(values, argc, NULL);
+		switch (pr->status) {
+		case CMD_PARSE_ERROR:
+			cause = pr->error;
+			goto error;
+		case CMD_PARSE_SUCCESS:
+			break;
+		}
+		args_free_values(values, argc);
+		free(values);
+		cmd_free_argv(argc, argv);
+		cmdlist = pr->cmdlist;
 	}
-
-	values = args_from_vector(argc, argv);
-	pr = cmd_parse_from_arguments(values, argc, NULL);
-	switch (pr->status) {
-	case CMD_PARSE_ERROR:
-		cause = pr->error;
-		goto error;
-	case CMD_PARSE_SUCCESS:
-		break;
-	}
-	args_free_values(values, argc);
-	free(values);
-	cmd_free_argv(argc, argv);
 
 	if ((c->flags & CLIENT_READONLY) &&
-	    !cmd_list_all_have(pr->cmdlist, CMD_READONLY))
+	    !cmd_list_all_have(cmdlist, CMD_READONLY))
 		new_item = cmdq_get_callback(server_client_read_only, NULL);
 	else
-		new_item = cmdq_get_command(pr->cmdlist, NULL);
+		new_item = cmdq_get_command(cmdlist, NULL);
 	cmdq_append(c, new_item);
 	cmdq_append(c, cmdq_get_callback(server_client_command_done, NULL));
 
-	cmd_list_free(pr->cmdlist);
+	cmd_list_free(cmdlist);
 	return;
 
 error:
