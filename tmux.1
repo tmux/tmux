@@ -254,9 +254,10 @@ was given) and off.
 This specifies one of a set of commands used to control
 .Nm ,
 as described in the following sections.
-If no commands are specified, the
-.Ic new-session
-command is assumed.
+If no commands are specified, the command in
+.Ic default-client-command
+is assumed, which defaults to
+.Ic new-session .
 .El
 .Sh DEFAULT KEY BINDINGS
 .Nm
@@ -2715,6 +2716,8 @@ The following keys may be used in tree mode:
 .It Li "Enter" Ta "Choose selected item"
 .It Li "Up" Ta "Select previous item"
 .It Li "Down" Ta "Select next item"
+.It Li "S-Up" Ta "Swap the current window with the previous one"
+.It Li "S-Down" Ta "Swap the current window with the next one"
 .It Li "+" Ta "Expand selected item"
 .It Li "-" Ta "Collapse selected item"
 .It Li "M-+" Ta "Expand all items"
@@ -4083,6 +4086,10 @@ where the number is a hexadecimal number.
 Give the command to pipe to if the
 .Ic copy-pipe
 copy mode command is used without arguments.
+.It Ic default-client-command Ar command
+Set the default command to run when tmux is called without a command.
+The default is
+.Ic new-session .
 .It Ic default-terminal Ar terminal
 Set the default terminal for new windows created in this session - the
 default value of the
@@ -5944,6 +5951,7 @@ The following variables are available, where appropriate:
 .It Li "command_list_name" Ta "" Ta "Command name if listing commands"
 .It Li "command_list_usage" Ta "" Ta "Command usage if listing commands"
 .It Li "config_files" Ta "" Ta "List of configuration files loaded"
+.It Li "cursor_blinking" Ta "" Ta "1 if the cursor is blinking"
 .It Li "copy_cursor_hyperlink" Ta "" Ta "Hyperlink under cursor in copy mode"
 .It Li "copy_cursor_line" Ta "" Ta "Line the cursor is on in copy mode"
 .It Li "copy_cursor_word" Ta "" Ta "Word under cursor in copy mode"
@@ -5951,7 +5959,10 @@ The following variables are available, where appropriate:
 .It Li "copy_cursor_y" Ta "" Ta "Cursor Y position in copy mode"
 .It Li "current_file" Ta "" Ta "Current configuration file"
 .It Li "cursor_character" Ta "" Ta "Character at cursor in pane"
+.It Li "cursor_colour" Ta "" Ta "Cursor colour in pane"
 .It Li "cursor_flag" Ta "" Ta "Pane cursor flag"
+.It Li "cursor_shape" Ta "" Ta "Cursor shape in pane"
+.It Li "cursor_very_visible" Ta "" Ta "1 if the cursor is in very visible mode"
 .It Li "cursor_x" Ta "" Ta "Cursor X position in pane"
 .It Li "cursor_y" Ta "" Ta "Cursor Y position in pane"
 .It Li "history_bytes" Ta "" Ta "Number of bytes in window history"
