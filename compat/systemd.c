@@ -76,7 +76,7 @@ fail:
 }
 
 int
-systemd_move_pid_to_new_cgroup(pid_t pid, char **cause)
+systemd_move_to_new_cgroup(char **cause)
 {
 	sd_bus_error	 error = SD_BUS_ERROR_NULL;
 	sd_bus_message	*m = NULL, *reply = NULL;
@@ -84,7 +84,7 @@ systemd_move_pid_to_new_cgroup(pid_t pid, char **cause)
 	char		*name, *desc, *slice;
 	sd_id128_t	 uuid;
 	int		 r;
-	pid_t		 parent_pid;
+	pid_t		 pid, parent_pid;
 
 	/* Connect to the session bus. */
 	r = sd_bus_default_user(&bus);
@@ -138,7 +138,8 @@ systemd_move_pid_to_new_cgroup(pid_t pid, char **cause)
 		goto finish;
 	}
 
-	parent_pid = getpid();
+	pid = getpid();
+	parent_pid = getppid();
 	xasprintf(&desc, "tmux child pane %ld launched by process %ld",
 	    (long)pid, (long)parent_pid);
 	r = sd_bus_message_append(m, "(sv)", "Description", "s", desc);
