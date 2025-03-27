@@ -1061,8 +1061,8 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 		return (-1);
 
 	/* Copy to the buffer. */
-	memcpy(tmp, buf + 2, end);
-	tmp[end] = '\0';
+	memcpy(tmp, buf + 2, end - 2);
+	tmp[end - 2] = '\0';
 
 	/* Try to parse either form of key. */
 	if (buf[end] == '~') {
