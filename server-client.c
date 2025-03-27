@@ -2630,7 +2630,7 @@ server_client_handle_key(struct client *c, struct key_event *event)
 		if (c->overlay_key != NULL) {
 			done = c->overlay_key(c, c->overlay_data, event);
 			TAILQ_FOREACH(wp, &c->session->curw->window->panes, entry) {
-				if (~c->flags & CLIENT_OVERLAYPOPUP_FOCUSED)
+				if (~c->flags & CLIENT_OVERLAYFOCUSED)
 					goto focused;
 			}
 			if (done)
@@ -2933,7 +2933,7 @@ server_client_reset_state(struct client *c)
 	tty->flags &= ~TTY_BLOCK;
 
 	/* Get mode from overlay if any, else from screen. */
-	if (c->overlay_draw != NULL && c->flags & CLIENT_OVERLAYPOPUP_FOCUSED) {
+	if (c->overlay_draw != NULL && c->flags & CLIENT_OVERLAYFOCUSED) {
 		if (c->overlay_mode != NULL)
 			s = c->overlay_mode(c, c->overlay_data, &cx, &cy);
 	} else if (c->prompt_string == NULL)
@@ -2964,7 +2964,7 @@ server_client_reset_state(struct client *c)
 				cy = tty->sy - n;
 		}
 		cx = c->prompt_cursor;
-	} else if (c->overlay_draw == NULL || ~c->flags & CLIENT_OVERLAYPOPUP_FOCUSED) {
+	} else if (c->overlay_draw == NULL || ~c->flags & CLIENT_OVERLAYFOCUSED) {
 		cursor = 0;
 		tty_window_offset(tty, &ox, &oy, &sx, &sy);
 		if (wp->xoff + s->cx >= ox && wp->xoff + s->cx <= ox + sx &&

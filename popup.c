@@ -513,10 +513,10 @@ popup_key_cb(struct client *c, void *data, struct key_event *event)
 		    m->y > pd->py + pd->sy - 1) {
 			if (MOUSE_BUTTONS(m->b) == MOUSE_BUTTON_3)
 				goto menu;
-			c->flags &= ~CLIENT_OVERLAYPOPUP_FOCUSED;
+			c->flags &= ~CLIENT_OVERLAYFOCUSED;
 			return (0);
 		}
-		c->flags |= CLIENT_OVERLAYPOPUP_FOCUSED;
+		c->flags |= CLIENT_OVERLAYFOCUSED;
 		if (pd->border_lines != BOX_LINES_NONE) {
 			if (m->x == pd->px)
 				border = LEFT;
@@ -563,7 +563,7 @@ popup_key_cb(struct client *c, void *data, struct key_event *event)
 			bufferevent_write(job_get_event(pd->job), buf, len);
 			return (0);
 		}
-		if (c->flags & CLIENT_OVERLAYPOPUP_FOCUSED)
+		if (c->flags & CLIENT_OVERLAYFOCUSED)
 			input_key(&pd->s, job_get_event(pd->job), event->key);
 	}
 	return (0);
@@ -728,7 +728,7 @@ popup_display(int flags, enum box_lines lines, struct cmdq_item *item, u_int px,
 
 	server_client_set_overlay(c, 0, popup_check_cb, popup_mode_cb,
 	    popup_draw_cb, popup_key_cb, popup_free_cb, popup_resize_cb, pd);
-	c->flags |= CLIENT_OVERLAYPOPUP_FOCUSED;
+	c->flags |= CLIENT_OVERLAYFOCUSED;
 	return (0);
 }
 
