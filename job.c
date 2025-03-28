@@ -181,7 +181,7 @@ job_run(const char *cmd, int argc, char **argv, struct environ *e,
 	environ_free(env);
 	free(argv0);
 
-	job = xmalloc(sizeof *job);
+	job = xcalloc(1, sizeof *job);
 	job->state = JOB_RUNNING;
 	job->flags = flags;
 
@@ -190,7 +190,8 @@ job_run(const char *cmd, int argc, char **argv, struct environ *e,
 	else
 		job->cmd = cmd_stringify_argv(argc, argv);
 	job->pid = pid;
-	strlcpy(job->tty, tty, sizeof job->tty);
+	if (flags & JOB_PTY)
+		strlcpy(job->tty, tty, sizeof job->tty);
 	job->status = 0;
 
 	LIST_INSERT_HEAD(&all_jobs, job, entry);
