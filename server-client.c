@@ -2609,6 +2609,8 @@ server_client_handle_key(struct client *c, struct key_event *event)
 {
 	struct session		*s = c->session;
 	struct cmdq_item	*item;
+	struct window_pane	*wp;
+	int			done;
 
 	/* Check the client is good to accept input. */
 	if (s == NULL || (c->flags & CLIENT_UNATTACHEDFLAGS))
@@ -2626,16 +2628,16 @@ server_client_handle_key(struct client *c, struct key_event *event)
 			status_message_clear(c);
 		}
 		if (c->overlay_key != NULL) {
-			switch (c->overlay_key(c, c->overlay_data, event)) {
-			case 0:
-				return (0);
-			case 1:
-				server_client_clear_overlay(c);
-				return (0);
+			done = c->overlay_key(c, c->overlay_data, event);
+			TAILQ_FOREACH(wp, &c->session->curw->window->panes, entry) {
+				if (~c->flags & CLIENT_OVERLAYPOPUP_FOCUSED)
+					goto focused;
 			}
+			if (done)
+				server_client_clear_overlay(c);
+			return (0);
 		}
-		server_client_clear_overlay(c);
-		if (c->prompt_string != NULL) {
+focused:	if (c->prompt_string != NULL) {
 			if (status_prompt_key(c, event->key) == 0)
 				return (0);
 		}
@@ -2885,6 +2887,23 @@ out:
 		bufferevent_enable(wp->event, EV_READ);
 }
 
+
+static int
+server_client_check_overlay(struct client *c, u_int px, u_int py)
+{
+	struct overlay_ranges	r;
+
+	/*
+	 * A unit width range will always return nx[2] == 0 from a check, even
+	 * with multiple overlays, so it's sufficient to check just the first
+	 * two entries.
+	 */
+	c->overlay_check(c, c->overlay_data, px, py, 1, &r);
+	if (r.nx[0] + r.nx[1] == 0)
+		return (0);
+	return (1);
+}
+
 /*
  * Update cursor position and mode settings. The scroll region and attributes
  * are cleared when idle (waiting for an event) as this is the most likely time
@@ -2894,6 +2913,7 @@ out:
  * tty_region/tty_reset/tty_update_mode already take care of not resetting
  * things that are already in their default state.
  */
+
 static void
 server_client_reset_state(struct client *c)
 {
@@ -2913,7 +2933,7 @@ server_client_reset_state(struct client *c)
 	tty->flags &= ~TTY_BLOCK;
 
 	/* Get mode from overlay if any, else from screen. */
-	if (c->overlay_draw != NULL) {
+	if (c->overlay_draw != NULL && c->flags & CLIENT_OVERLAYPOPUP_FOCUSED) {
 		if (c->overlay_mode != NULL)
 			s = c->overlay_mode(c, c->overlay_data, &cx, &cy);
 	} else if (c->prompt_string == NULL)
@@ -2944,18 +2964,22 @@ server_client_reset_state(struct client *c)
 				cy = tty->sy - n;
 		}
 		cx = c->prompt_cursor;
-	} else if (c->overlay_draw == NULL) {
+	} else if (c->overlay_draw == NULL || ~c->flags & CLIENT_OVERLAYPOPUP_FOCUSED) {
 		cursor = 0;
 		tty_window_offset(tty, &ox, &oy, &sx, &sy);
 		if (wp->xoff + s->cx >= ox && wp->xoff + s->cx <= ox + sx &&
 		    wp->yoff + s->cy >= oy && wp->yoff + s->cy <= oy + sy) {
-			cursor = 1;
-
 			cx = wp->xoff + s->cx - ox;
 			cy = wp->yoff + s->cy - oy;
 
 			if (status_at_line(c) == 0)
 				cy += status_line_size(c);
+
+			if (c->overlay_draw != NULL &&
+			    !server_client_check_overlay(c, cx, cy))
+				cursor = 0;
+			else
+				cursor = 1;
 		}
 		if (!cursor)
 			mode &= ~MODE_CURSOR;
