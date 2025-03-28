@@ -65,7 +65,7 @@ const struct cmd_entry cmd_show_hooks_entry = {
 	.alias = NULL,
 
 	.args = { "gpt:w", 0, 1, NULL },
-	.usage = "[-gpw] " CMD_TARGET_PANE_USAGE,
+	.usage = "[-gpw] " CMD_TARGET_PANE_USAGE " [hook]",
 
 	.target = { 't', CMD_FIND_PANE, CMD_FIND_CANFAIL },
 

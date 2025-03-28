@@ -43,7 +43,7 @@ const struct cmd_entry cmd_new_session_entry = {
 	.usage = "[-AdDEPX] [-c start-directory] [-e environment] [-F format] "
 		 "[-f flags] [-n window-name] [-s session-name] "
 		 CMD_TARGET_SESSION_USAGE " [-x width] [-y height] "
-		 "[shell-command]",
+		 "[shell-command [argument ...]]",
 
 	.target = { 't', CMD_FIND_SESSION, CMD_FIND_CANFAIL },
 
