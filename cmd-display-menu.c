@@ -54,7 +54,7 @@ const struct cmd_entry cmd_display_popup_entry = {
 	.name = "display-popup",
 	.alias = "popup",
 
-	.args = { "Bb:Cc:d:e:Eh:s:S:t:T:w:x:y:", 0, -1, NULL },
+	.args = { "Bb:Cc:Dd:e:Eh:s:S:t:T:w:x:y:", 0, -1, NULL },
 	.usage = "[-BCE] [-b border-lines] [-c target-client] "
 		 "[-d start-directory] [-e environment] [-h height] "
 		 "[-s style] [-S border-style] " CMD_TARGET_PANE_USAGE
@@ -498,5 +498,8 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	free(cwd);
 	free(title);
 	cmd_free_argv(argc, argv);
-	return (CMD_RETURN_WAIT);
+	if (args_has(args, 'D'))
+		return (CMD_RETURN_NORMAL);
+	else
+		return (CMD_RETURN_WAIT);
 }
