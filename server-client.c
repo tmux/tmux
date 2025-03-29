@@ -2629,12 +2629,14 @@ server_client_handle_key(struct client *c, struct key_event *event)
 		}
 		if (c->overlay_key != NULL) {
 			done = c->overlay_key(c, c->overlay_data, event);
-			TAILQ_FOREACH(wp, &c->session->curw->window->panes, entry) {
-				if (~c->flags & CLIENT_OVERLAYFOCUSED)
-					goto focused;
-			}
 			if (done)
 				server_client_clear_overlay(c);
+			else {
+				TAILQ_FOREACH(wp, &c->session->curw->window->panes, entry) {
+					if (~c->flags & CLIENT_OVERLAYFOCUSED)
+						goto focused;
+				}
+			}
 			return (0);
 		}
 focused:	if (c->prompt_string != NULL) {
