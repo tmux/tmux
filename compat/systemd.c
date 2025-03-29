@@ -75,21 +75,72 @@ fail:
 	return (-1);
 }
 
+struct job_watch {
+	const char*	 path;
+	int		 done;
+};
+
+static int
+job_removed_handler(sd_bus_message *m, void *userdata, sd_bus_error *ret_error)
+{
+	struct job_watch *watch = userdata;
+	const char*	 path = NULL;
+	uint32_t	 id;
+	int		 r;
+	(void)ret_error;
+
+	/* This handler could be called during sd_bus_call. */
+	if (watch->path == NULL) {
+		return 0;
+	}
+
+	r = sd_bus_message_read(m, "uo", &id, &path);
+	if (r < 0) {
+		return (r);
+	}
+
+	if (strcmp(path, watch->path) == 0) {
+		watch->done = 1;
+	}
+
+	return (0);
+}
+
 int
-systemd_move_pid_to_new_cgroup(pid_t pid, char **cause)
+systemd_move_to_new_cgroup(char **cause)
 {
 	sd_bus_error	 error = SD_BUS_ERROR_NULL;
 	sd_bus_message	*m = NULL, *reply = NULL;
 	sd_bus 		*bus = NULL;
+	sd_bus_slot	*slot = NULL;
 	char		*name, *desc, *slice;
 	sd_id128_t	 uuid;
 	int		 r;
-	pid_t		 parent_pid;
+	uint64_t	 elapsed_usec;
+	pid_t		 pid, parent_pid;
+	struct job_watch watch = {};
+	struct timeval	 start, now;
+
+	gettimeofday(&start, NULL);
 
 	/* Connect to the session bus. */
 	r = sd_bus_default_user(&bus);
 	if (r < 0) {
 		xasprintf(cause, "failed to connect to session bus: %s",
+		    strerror(-r));
+		goto finish;
+	}
+
+	/* Start watching for JobRemoved events */
+	r = sd_bus_match_signal(bus, &slot,
+	    "org.freedesktop.systemd1",
+	    "/org/freedesktop/systemd1",
+	    "org.freedesktop.systemd1.Manager",
+	    "JobRemoved",
+	    job_removed_handler,
+	    &watch);
+	if (r < 0) {
+		xasprintf(cause, "failed to create match signal: %s",
 		    strerror(-r));
 		goto finish;
 	}
@@ -138,7 +189,8 @@ systemd_move_pid_to_new_cgroup(pid_t pid, char **cause)
 		goto finish;
 	}
 
-	parent_pid = getpid();
+	pid = getpid();
+	parent_pid = getppid();
 	xasprintf(&desc, "tmux child pane %ld launched by process %ld",
 	    (long)pid, (long)parent_pid);
 	r = sd_bus_message_append(m, "(sv)", "Description", "s", desc);
@@ -223,10 +275,49 @@ systemd_move_pid_to_new_cgroup(pid_t pid, char **cause)
 		goto finish;
 	}
 
+	/* Get the job (object path) from the reply */
+	r = sd_bus_message_read(reply, "o", &watch.path);
+	if (r < 0) {
+		xasprintf(cause, "failed to parse method reply: %s",
+		    strerror(-r));
+		goto finish;
+	}
+
+	while (!watch.done) {
+		/* Process events, invoking callbacks that may set watch.done */
+		r = sd_bus_process(bus, NULL);
+		if (r < 0) {
+			xasprintf(cause, "failed waiting for cgroup allocation: %s",
+			    strerror(-r));
+			goto finish;
+		}
+
+		/* A zero return means we should wait for events */
+		if (r != 0) {
+			continue;
+		}
+
+		gettimeofday(&now, NULL);
+		elapsed_usec = (now.tv_sec - start.tv_sec) * 1000000 + now.tv_usec - start.tv_usec;
+
+		if (elapsed_usec >= 1000000) {
+			xasprintf(cause, "timeout waiting for cgroup allocation");
+			goto finish;
+		}
+
+		r = sd_bus_wait(bus, 1000000 - elapsed_usec);
+		if (r < 0) {
+			xasprintf(cause, "failed waiting for cgroup allocation: %s",
+			    strerror(-r));
+			goto finish;
+		}
+	}
+
 finish:
 	sd_bus_error_free(&error);
 	sd_bus_message_unref(m);
 	sd_bus_message_unref(reply);
+	sd_bus_slot_unref(slot);
 	sd_bus_unref(bus);
 
 	return (r);
