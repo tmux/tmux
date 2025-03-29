@@ -694,6 +694,7 @@ mode_tree_draw(struct mode_tree_data *mtd)
 	const char		*tag, *symbol;
 	size_t			 size, n;
 	int			 keylen, pad, namelen[mtd->maxdepth + 1];
+	int			 names_all_digits[mtd->maxdepth + 1];
 
 	if (mtd->line_size == 0)
 		return;
@@ -717,13 +718,20 @@ mode_tree_draw(struct mode_tree_data *mtd)
 			keylen = mti->keylen + 3;
 	}
 
-	for (i = 0; i < mtd->maxdepth + 1; i++)
+	for (i = 0; i < mtd->maxdepth + 1; i++) {
 		namelen[i] = 0;
+		names_all_digits[i] = 1;
+	}
 	for (i = 0; i < mtd->line_size; i++) {
 		line = &mtd->line_list[i];
 		mti = line->item;
 		if ((int)strlen(mti->name) > namelen[line->depth])
 			namelen[line->depth] = strlen(mti->name);
+		for (j = 0; mti->name[j] && names_all_digits[line->depth];
+		    j++) {
+			if (mti->name[j] < '0' || mti->name[j] > '9')
+				names_all_digits[line->depth] = 0;
+		}
 	}
 
 	for (i = 0; i < mtd->line_size; i++) {
@@ -776,8 +784,8 @@ mode_tree_draw(struct mode_tree_data *mtd)
 		else
 			tag = "";
 		xasprintf(&text, "%-*s%s%*s%s%s", keylen, key, start,
-		    namelen[line->depth], mti->name, tag,
-		    (mti->text != NULL) ? ": " : "" );
+		    names_all_digits[line->depth] ? namelen[line->depth] : 0,
+		    mti->name, tag, (mti->text != NULL) ? ": " : "" );
 		width = utf8_cstrwidth(text);
 		if (width > w)
 			width = w;
