@@ -77,3 +77,8 @@ The log files are:
 - `tmux-out*.log`: output log file.
 
 Please attach the log files to your issue.
+
+## What does it mean if an issue is closed?
+
+All it means is that work on the issue is not planned for the near future. See
+the issue's comments to find out if contributions would be welcome.
