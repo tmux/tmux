@@ -795,12 +795,12 @@ tty_keys_next(struct tty *tty)
 	switch (tty_keys_colours(tty, buf, len, &size, &tty->fg, &tty->bg)) {
 	case 0:		/* yes */
 		key = KEYC_UNKNOWN;
-		session_theme_changed(tty->client->session);
+		session_theme_changed(c->session);
 		goto complete_key;
 	case -1:	/* no, or not valid */
 		break;
 	case 1:		/* partial */
-		session_theme_changed(tty->client->session);
+		session_theme_changed(c->session);
 		goto partial_key;
 	}
 
