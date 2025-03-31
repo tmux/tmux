@@ -36,7 +36,7 @@ const struct cmd_entry cmd_refresh_client_entry = {
 
 	.args = { "A:B:cC:Df:r:F:l::LRSt:U", 0, 1, NULL },
 	.usage = "[-cDlLRSU] [-A pane:state] [-B name:what:format] "
-		 "[-C XxY] [-f flags] [-r pane:report]" CMD_TARGET_CLIENT_USAGE
+		 "[-C XxY] [-f flags] [-r pane:report] " CMD_TARGET_CLIENT_USAGE
 		 " [adjustment]",
 
 	.flags = CMD_AFTERHOOK|CMD_CLIENT_TFLAG,

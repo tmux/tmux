@@ -361,7 +361,7 @@ session_detach(struct session *s, struct winlink *wl)
 
 	if (RB_EMPTY(&s->windows))
 		return (1);
-       	return (0);
+	return (0);
 }
 
 /* Return if session has window. */
@@ -759,8 +759,10 @@ session_theme_changed(struct session *s)
 	struct window_pane	*wp;
 	struct winlink		*wl;
 
-	RB_FOREACH(wl, winlinks, &s->windows) {
-		TAILQ_FOREACH(wp, &wl->window->panes, entry)
-			wp->flags |= PANE_THEMECHANGED;
+	if (s != NULL) {
+		RB_FOREACH(wl, winlinks, &s->windows) {
+			TAILQ_FOREACH(wp, &wl->window->panes, entry)
+			    wp->flags |= PANE_THEMECHANGED;
+		}
 	}
 }

@@ -795,12 +795,12 @@ tty_keys_next(struct tty *tty)
 	switch (tty_keys_colours(tty, buf, len, &size, &tty->fg, &tty->bg)) {
 	case 0:		/* yes */
 		key = KEYC_UNKNOWN;
-		session_theme_changed(tty->client->session);
+		session_theme_changed(c->session);
 		goto complete_key;
 	case -1:	/* no, or not valid */
 		break;
 	case 1:		/* partial */
-		session_theme_changed(tty->client->session);
+		session_theme_changed(c->session);
 		goto partial_key;
 	}
 
@@ -1061,8 +1061,8 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 		return (-1);
 
 	/* Copy to the buffer. */
-	memcpy(tmp, buf + 2, end);
-	tmp[end] = '\0';
+	memcpy(tmp, buf + 2, end - 2);
+	tmp[end - 2] = '\0';
 
 	/* Try to parse either form of key. */
 	if (buf[end] == '~') {
