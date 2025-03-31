@@ -3354,6 +3354,7 @@ struct mode_tree_item *mode_tree_add(struct mode_tree_data *,
 	     const char *, int);
 void	 mode_tree_draw_as_parent(struct mode_tree_item *);
 void	 mode_tree_no_tag(struct mode_tree_item *);
+void	 mode_tree_align(struct mode_tree_item *, int);
 void	 mode_tree_remove(struct mode_tree_data *, struct mode_tree_item *);
 void	 mode_tree_draw(struct mode_tree_data *);
 int	 mode_tree_key(struct mode_tree_data *, struct client *, key_code *,
