@@ -102,6 +102,7 @@ struct mode_tree_item {
 
 	int				 draw_as_parent;
 	int				 no_tag;
+	int				 align;
 
 	struct mode_tree_list		 children;
 	TAILQ_ENTRY(mode_tree_item)	 entry;
@@ -667,6 +668,16 @@ mode_tree_no_tag(struct mode_tree_item *mti)
 	mti->no_tag = 1;
 }
 
+/*
+ * Set the alignment of mti->name: -1 to align left, 0 (default) to not align,
+ * or 1 to align right.
+ */
+void
+mode_tree_align(struct mode_tree_item *mti, int align)
+{
+	mti->align = align;
+}
+
 void
 mode_tree_remove(struct mode_tree_data *mtd, struct mode_tree_item *mti)
 {
@@ -693,7 +704,7 @@ mode_tree_draw(struct mode_tree_data *mtd)
 	char			*text, *start, *key;
 	const char		*tag, *symbol;
 	size_t			 size, n;
-	int			 keylen, pad, namelen[mtd->maxdepth + 1];
+	int			 keylen, pad, alignlen[mtd->maxdepth + 1];
 
 	if (mtd->line_size == 0)
 		return;
@@ -718,12 +729,13 @@ mode_tree_draw(struct mode_tree_data *mtd)
 	}
 
 	for (i = 0; i < mtd->maxdepth + 1; i++)
-		namelen[i] = 0;
+		alignlen[i] = 0;
 	for (i = 0; i < mtd->line_size; i++) {
 		line = &mtd->line_list[i];
 		mti = line->item;
-		if ((int)strlen(mti->name) > namelen[line->depth])
-			namelen[line->depth] = strlen(mti->name);
+		if (mti->align &&
+		    (int)strlen(mti->name) > alignlen[line->depth])
+			alignlen[line->depth] = strlen(mti->name);
 	}
 
 	for (i = 0; i < mtd->line_size; i++) {
@@ -776,7 +788,7 @@ mode_tree_draw(struct mode_tree_data *mtd)
 		else
 			tag = "";
 		xasprintf(&text, "%-*s%s%*s%s%s", keylen, key, start,
-		    namelen[line->depth], mti->name, tag,
+		    mti->align * alignlen[line->depth], mti->name, tag,
 		    (mti->text != NULL) ? ": " : "" );
 		width = utf8_cstrwidth(text);
 		if (width > w)
