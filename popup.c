@@ -530,7 +530,7 @@ popup_key_cb(struct client *c, void *data, struct key_event *event)
 		    (border == LEFT || border == TOP))
 		    goto menu;
 		if (((m->b & MOUSE_MASK_MODIFIERS) == MOUSE_MASK_META) ||
-		    border != NONE) {
+		    (border != NONE && !MOUSE_DRAG(m->lb))) {
 			if (!MOUSE_DRAG(m->b))
 				goto out;
 			if (MOUSE_BUTTONS(m->lb) == MOUSE_BUTTON_1)
