@@ -484,6 +484,8 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 		flags |= POPUP_CLOSEEXITZERO;
 	else if (args_has(args, 'E'))
 		flags |= POPUP_CLOSEEXIT;
+	if (args_has(args, 'D'))
+		item = NULL;
 	if (popup_display(flags, lines, item, px, py, w, h, env, shellcmd, argc,
 	    argv, cwd, title, tc, s, style, border_style, NULL, NULL) != 0) {
 		cmd_free_argv(argc, argv);
