@@ -450,7 +450,7 @@ void		*recallocarray(void *, size_t, size_t, size_t);
 /* systemd.c */
 int		 systemd_activated(void);
 int		 systemd_create_socket(int, char **);
-int		 systemd_move_pid_to_new_cgroup(pid_t, char **);
+int		 systemd_move_to_new_cgroup(char **);
 #endif
 
 #ifdef HAVE_UTF8PROC
