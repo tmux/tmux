@@ -29,7 +29,6 @@
 
 static enum cmd_retval	cmd_capture_pane_exec(struct cmd *, struct cmdq_item *);
 
-static char	*cmd_capture_pane_append(char *, size_t *, char *, size_t);
 static char	*cmd_capture_pane_pending(struct args *, struct window_pane *,
 		     size_t *);
 static char	*cmd_capture_pane_history(struct args *, struct cmdq_item *,
@@ -63,15 +62,6 @@ const struct cmd_entry cmd_clear_history_entry = {
 };
 
 static char *
-cmd_capture_pane_append(char *buf, size_t *len, char *line, size_t linelen)
-{
-	buf = xrealloc(buf, *len + linelen + 1);
-	memcpy(buf + *len, line, linelen);
-	*len += linelen;
-	return (buf);
-}
-
-static char *
 cmd_capture_pane_pending(struct args *args, struct window_pane *wp,
     size_t *len)
 {
@@ -95,11 +85,11 @@ cmd_capture_pane_pending(struct args *args, struct window_pane *wp,
 				tmp[1] = '\0';
 			} else
 				xsnprintf(tmp, sizeof tmp, "\\%03hho", line[i]);
-			buf = cmd_capture_pane_append(buf, len, tmp,
+			buf = append_string(buf, len, tmp,
 			    strlen(tmp));
 		}
 	} else
-		buf = cmd_capture_pane_append(buf, len, line, linelen);
+		buf = append_string(buf, len, line, linelen);
 	return (buf);
 }
 
@@ -198,7 +188,7 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 		line = grid_string_cells(gd, 0, i, sx, &gc, flags, s);
 		linelen = strlen(line);
 
-		buf = cmd_capture_pane_append(buf, len, line, linelen);
+		buf = append_string(buf, len, line, linelen);
 
 		gl = grid_peek_line(gd, i);
 		if (!join_lines || !(gl->flags & GRID_LINE_WRAPPED))
