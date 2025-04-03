@@ -5339,9 +5339,8 @@ format_grid_word(struct grid *gd, u_int x, u_int y)
 
 	for (;;) {
 		grid_get_cell(gd, x, y, &gc);
-		if (gc.flags & GRID_FLAG_PADDING)
-			break;
-		if (format_is_word_separator(ws, &gc)) {
+		if ((~gc.flags & GRID_FLAG_PADDING) &&
+		    format_is_word_separator(ws, &gc)) {
 			found = 1;
 			break;
 		}
@@ -5377,7 +5376,7 @@ format_grid_word(struct grid *gd, u_int x, u_int y)
 
 		grid_get_cell(gd, x, y, &gc);
 		if (gc.flags & GRID_FLAG_PADDING)
-			break;
+			continue;
 		if (format_is_word_separator(ws, &gc))
 			break;
 
