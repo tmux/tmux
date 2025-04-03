@@ -39,7 +39,7 @@ const struct cmd_entry cmd_show_environment_entry = {
 	.alias = "showenv",
 
 	.args = { "hgst:", 0, 1, NULL },
-	.usage = "[-hgs] " CMD_TARGET_SESSION_USAGE " [name]",
+	.usage = "[-hgs] " CMD_TARGET_SESSION_USAGE " [variable]",
 
 	.target = { 't', CMD_FIND_SESSION, CMD_FIND_CANFAIL },
 

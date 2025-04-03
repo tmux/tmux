@@ -35,7 +35,7 @@ const struct cmd_entry cmd_set_environment_entry = {
 	.alias = "setenv",
 
 	.args = { "Fhgrt:u", 1, 2, NULL },
-	.usage = "[-Fhgru] " CMD_TARGET_SESSION_USAGE " name [value]",
+	.usage = "[-Fhgru] " CMD_TARGET_SESSION_USAGE " variable [value]",
 
 	.target = { 't', CMD_FIND_SESSION, CMD_FIND_CANFAIL },
 

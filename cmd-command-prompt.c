@@ -44,7 +44,7 @@ const struct cmd_entry cmd_command_prompt_entry = {
 
 	.args = { "1bFkiI:Np:t:T:", 0, 1, cmd_command_prompt_args_parse },
 	.usage = "[-1bFkiN] [-I inputs] [-p prompts] " CMD_TARGET_CLIENT_USAGE
-		 " [-T type] [template]",
+		 " [-T prompt-type] [template]",
 
 	.flags = CMD_CLIENT_TFLAG,
 	.exec = cmd_command_prompt_exec
