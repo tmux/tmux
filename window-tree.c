@@ -300,6 +300,7 @@ window_tree_build_pane(struct session *s, struct winlink *wl,
 {
 	struct window_tree_modedata	*data = modedata;
 	struct window_tree_itemdata	*item;
+	struct mode_tree_item		*mti;
 	char				*name, *text;
 	u_int				 idx;
 	struct format_tree		*ft;
@@ -318,9 +319,11 @@ window_tree_build_pane(struct session *s, struct winlink *wl,
 	xasprintf(&name, "%u", idx);
 	format_free(ft);
 
-	mode_tree_add(data->data, parent, item, (uint64_t)wp, name, text, -1);
+	mti = mode_tree_add(data->data, parent, item, (uint64_t)wp, name, text,
+	    -1);
 	free(text);
 	free(name);
+	mode_tree_align(mti, 1);
 }
 
 static int
@@ -375,6 +378,7 @@ window_tree_build_window(struct session *s, struct winlink *wl,
 	    expanded);
 	free(text);
 	free(name);
+	mode_tree_align(mti, 1);
 
 	if ((wp = TAILQ_FIRST(&wl->window->panes)) == NULL)
 		goto empty;

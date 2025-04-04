@@ -1887,10 +1887,14 @@ window_pane_get_fg_control_client(struct window_pane *wp)
 enum client_theme
 window_pane_get_theme(struct window_pane *wp)
 {
-	struct window		*w = wp->window;
+	struct window		*w;
 	struct client		*loop;
 	enum client_theme	 theme;
 	int			 found_light = 0, found_dark = 0;
+
+	if (wp == NULL)
+		return (THEME_UNKNOWN);
+	w = wp->window;
 
 	/*
 	 * Derive theme from pane background color, if it's not the default
