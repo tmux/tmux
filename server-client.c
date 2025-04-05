@@ -2900,6 +2900,8 @@ server_client_check_overlay(struct client *c, u_int px, u_int py)
 	 * with multiple overlays, so it's sufficient to check just the first
 	 * two entries.
 	 */
+	if (c->overlay_check == NULL)
+		return (0);
 	c->overlay_check(c, c->overlay_data, px, py, 1, &r);
 	if (r.nx[0] + r.nx[1] == 0)
 		return (0);
