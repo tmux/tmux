@@ -456,7 +456,7 @@ spawn_pane(struct spawn_context *sc, char **cause)
 			xasprintf(&argv0, "%s", cp + 1);
 		else
 			xasprintf(&argv0, "%s", new_wp->shell);
-		execl(new_wp->shell, argv0, "-c", tmp, (char *)NULL);
+		execl(new_wp->shell, argv0, SHELL_CMD_SWITCH(new_wp->shell), tmp, (char *)NULL);
 		_exit(1);
 	}
 	if (cp != NULL && cp[1] != '\0')
