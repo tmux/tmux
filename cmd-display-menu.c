@@ -301,7 +301,7 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	struct options_entry	*oe;
 
 
-	if (tc->overlay_draw != NULL)
+	if ((tc->overlay_draw != NULL) && (tc->flags & CLIENT_OVERLAYFOCUSED))
 		return (CMD_RETURN_NORMAL);
 
 	if (args_has(args, 'C')) {
