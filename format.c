@@ -4518,7 +4518,8 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 {
 	struct format_tree		 *ft = es->ft;
 	struct window_pane		 *wp = ft->wp;
-	const char			 *errstr, *copy, *cp, *marker = NULL;
+	const char			 *errstr, *copy, *cp, *cp2;
+	const char			 *marker = NULL;
 	const char			 *time_format = NULL;
 	char				 *copy0, *condition, *found, *new;
 	char				 *value, *left, *right;
@@ -4781,53 +4782,81 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 		free(right);
 		free(left);
 	} else if (*copy == '?') {
-		/* Conditional: check first and choose second or third. */
-		cp = format_skip(copy + 1, ",");
-		if (cp == NULL) {
-			format_log(es, "condition syntax error: %s", copy + 1);
-			goto fail;
-		}
-		condition = xstrndup(copy + 1, cp - (copy + 1));
-		format_log(es, "condition is: %s", condition);
-
-		found = format_find(ft, condition, modifiers, time_format);
-		if (found == NULL) {
-			/*
-			 * If the condition not found, try to expand it. If
-			 * the expansion doesn't have any effect, then assume
-			 * false.
-			 */
-			found = format_expand1(es, condition);
-			if (strcmp(found, condition) == 0) {
-				free(found);
-				found = xstrdup("");
+		/*
+		 * Conditional: For each pair of (condition, value), check the
+		 * condition and return the value if true. If no condition
+		 * matches, return the last unpaired arg if there is one, or the
+		 * empty string if not.
+		 */
+		cp = copy + 1;
+		while (1) {
+			cp2 = format_skip(cp, ",");
+			if (cp2 == NULL) {
 				format_log(es,
-				    "condition '%s' not found; assuming false",
+				    "no condition matched in '%s'; using last "
+				    "arg", copy + 1);
+				value = format_expand1(es, cp);
+				break;
+			}
+
+			condition = xstrndup(cp, cp2 - cp);
+			format_log(es, "condition is: %s", condition);
+
+			found = format_find(ft, condition, modifiers,
+			    time_format);
+			if (found == NULL) {
+				/*
+				 * If the condition not found, try to expand it.
+				 * If the expansion doesn't have any effect,
+				 * then assume false.
+				 */
+				found = format_expand1(es, condition);
+				if (strcmp(found, condition) == 0) {
+					free(found);
+					found = xstrdup("");
+					format_log(es,
+					    "condition '%s' not found; "
+					    "assuming false",
+					    condition);
+				}
+			} else {
+				format_log(es, "condition '%s' found: %s",
+				    condition, found);
+			}
+
+			cp = cp2 + 1;
+			cp2 = format_skip(cp, ",");
+			if (format_true(found)) {
+				format_log(es, "condition '%s' is true",
+				    condition);
+				if (cp2 == NULL)
+					value = format_expand1(es, cp);
+				else {
+					right = xstrndup(cp, cp2 - cp);
+					value = format_expand1(es, right);
+					free(right);
+				}
+				free(condition);
+				free(found);
+				break;
+			} else {
+				format_log(es, "condition '%s' is false",
 				    condition);
 			}
-		} else {
-			format_log(es, "condition '%s' found: %s", condition,
-			    found);
-		}
 
-		if (format_choose(es, cp + 1, &left, &right, 0) != 0) {
-			format_log(es, "condition '%s' syntax error: %s",
-			    condition, cp + 1);
+			free(condition);
 			free(found);
-			goto fail;
-		}
-		if (format_true(found)) {
-			format_log(es, "condition '%s' is true", condition);
-			value = format_expand1(es, left);
-		} else {
-			format_log(es, "condition '%s' is false", condition);
-			value = format_expand1(es, right);
-		}
-		free(right);
-		free(left);
 
-		free(condition);
-		free(found);
+			if (cp2 == NULL) {
+				format_log(es,
+				    "no condition matched in '%s'; using empty "
+				    "string", copy + 1);
+				value = xstrdup("");
+				break;
+			}
+
+			cp = cp2 + 1;
+		}
 	} else if (mexp != NULL) {
 		value = format_replace_expression(mexp, es, copy);
 		if (value == NULL)
