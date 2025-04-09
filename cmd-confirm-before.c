@@ -42,7 +42,7 @@ const struct cmd_entry cmd_confirm_before_entry = {
 	.alias = "confirm",
 
 	.args = { "bc:p:t:y", 1, 1, cmd_confirm_before_args_parse },
-	.usage = "[-by] [-c confirm_key] [-p prompt] " CMD_TARGET_CLIENT_USAGE
+	.usage = "[-by] [-c confirm-key] [-p prompt] " CMD_TARGET_CLIENT_USAGE
 		 " command",
 
 	.flags = CMD_CLIENT_TFLAG,
