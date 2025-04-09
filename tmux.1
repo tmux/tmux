@@ -23,7 +23,7 @@
 .Sh SYNOPSIS
 .Nm tmux
 .Bk -words
-.Op Fl 2CDlNuVv
+.Op Fl 2CDhlNuVv
 .Op Fl c Ar shell-command
 .Op Fl f Ar file
 .Op Fl L Ar socket-name
@@ -154,6 +154,8 @@ command may be used to load a file later.
 .Nm
 shows any error messages from commands in configuration files in the first
 session created, and continues to process the rest of the configuration file.
+.It Fl h
+Print usage information and exit.
 .It Fl L Ar socket-name
 .Nm
 stores the server socket in a directory under
@@ -5576,7 +5578,8 @@ for example
 .Ql #{session_name} .
 The possible variables are listed in the table below, or the name of a
 .Nm
-option may be used for an option's value.
+option may be used for an option's value, or the name of an environment
+variable.
 Some variables have a shorter alias such as
 .Ql #S ;
 .Ql ##
@@ -6384,7 +6387,7 @@ Commands to alter and view the environment are:
 .It Xo Ic set-environment
 .Op Fl Fhgru
 .Op Fl t Ar target-session
-.Ar name Op Ar value
+.Ar variable Op Ar value
 .Xc
 .D1 Pq alias: Ic setenv
 Set or unset an environment variable.
