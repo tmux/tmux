@@ -23,7 +23,7 @@
 .Sh SYNOPSIS
 .Nm tmux
 .Bk -words
-.Op Fl 2CDlNuVv
+.Op Fl 2CDhlNuVv
 .Op Fl c Ar shell-command
 .Op Fl f Ar file
 .Op Fl L Ar socket-name
@@ -156,6 +156,8 @@ command may be used to load a file later.
 .Nm
 shows any error messages from commands in configuration files in the first
 session created, and continues to process the rest of the configuration file.
+.It Fl h
+Print usage information and exit.
 .It Fl L Ar socket-name
 .Nm
 stores the server socket in a directory under
@@ -1248,7 +1250,7 @@ Lock all clients attached to
 .Op Fl t Ar group-name
 .Op Fl x Ar width
 .Op Fl y Ar height
-.Op Ar shell-command
+.Op Ar shell-command Op Ar argument ...
 .Xc
 .D1 Pq alias: Ic new
 Create a new session with name
@@ -3091,7 +3093,7 @@ option.
 .Op Fl F Ar format
 .Op Fl n Ar window-name
 .Op Fl t Ar target-window
-.Op Ar shell-command
+.Op Ar shell-command Op Ar argument ...
 .Xc
 .D1 Pq alias: Ic neww
 Create a new window.
@@ -3339,7 +3341,7 @@ to manual in the window options.
 .Op Fl c Ar start-directory
 .Op Fl e Ar environment
 .Op Fl t Ar target-pane
-.Op Ar shell-command
+.Op Ar shell-command Op Ar argument ...
 .Xc
 .D1 Pq alias: Ic respawnp
 Reactivate a pane in which the command has exited (see the
@@ -3365,7 +3367,7 @@ command.
 .Op Fl c Ar start-directory
 .Op Fl e Ar environment
 .Op Fl t Ar target-window
-.Op Ar shell-command
+.Op Ar shell-command Op Ar argument ...
 .Xc
 .D1 Pq alias: Ic respawnw
 Reactivate a window in which the command has exited (see the
@@ -3493,10 +3495,10 @@ the command behaves like
 .Op Fl bdfhIvPZ
 .Op Fl c Ar start-directory
 .Op Fl e Ar environment
+.Op Fl F Ar format
 .Op Fl l Ar size
 .Op Fl t Ar target-pane
-.Op Ar shell-command
-.Op Fl F Ar format
+.Op Ar shell-command Op Ar argument ...
 .Xc
 .D1 Pq alias: Ic splitw
 Create a new pane by splitting
@@ -3676,7 +3678,8 @@ Commands related to key bindings are as follows:
 .Op Fl nr
 .Op Fl N Ar note
 .Op Fl T Ar key-table
-.Ar key command Op Ar argument ...
+.Ar key
+.Op Ar command Op Ar argument ...
 .Xc
 .D1 Pq alias: Ic bind
 Bind key
@@ -3735,7 +3738,8 @@ command.
 .Tg lsk
 .It Xo Ic list-keys
 .Op Fl 1aN
-.Op Fl P Ar prefix-string Fl T Ar key-table
+.Op Fl P Ar prefix-string
+.Op Fl T Ar key-table
 .Op Ar key
 .Xc
 .D1 Pq alias: Ic lsk
@@ -3774,7 +3778,7 @@ lists the command for keys that do not have a note rather than skipping them.
 .Op Fl c Ar target-client
 .Op Fl N Ar repeat-count
 .Op Fl t Ar target-pane
-.Ar key ...
+.Op Ar key ...
 .Xc
 .D1 Pq alias: Ic send
 Send a key or keys to a window or client.
@@ -3852,12 +3856,44 @@ option prevents errors being returned.
 The appearance and behaviour of
 .Nm
 may be modified by changing the value of various options.
-There are four types of option:
-.Em server options ,
-.Em session options ,
-.Em window options ,
+Each option belongs to one or multiple scopes
+.Po
+.Em server ,
+.Em session ,
+.Em window ,
 and
-.Em pane options .
+.Em pane
+.Pc and has a type
+.Po
+.Em string ,
+.Em number ,
+.Em key ,
+.Em colour ,
+.Em flag ,
+.Em choice ,
+or
+.Em command
+.Pc . Values of
+.Em flag Ns -type
+options may be one of:
+.Ic 1 ,
+.Ic on ,
+.Ic yes ,
+.Ic 0 ,
+.Ic off ,
+or
+.Ic no ;
+for possible
+.Em choice
+values, see the respective option; for
+.Em key
+options, the
+.Sx KEY BINDINGS
+section; and for
+.Em colour
+options, the
+.Sx STYLES
+section.
 .Pp
 The
 .Nm
@@ -3921,13 +3957,14 @@ $ tmux show -wv @foo
 abc123
 .Ed
 .Pp
-Commands which set options are as follows:
+Options are managed with these commands:
 .Bl -tag -width Ds
 .Tg set
 .It Xo Ic set-option
 .Op Fl aFgopqsuUw
 .Op Fl t Ar target-pane
-.Ar option Ar value
+.Ar option
+.Op Ar value
 .Xc
 .D1 Pq alias: Ic set
 Set a pane option with
@@ -3943,7 +3980,7 @@ or
 .Fl s
 may be unnecessary -
 .Nm
-will infer the type from the option name, assuming
+will infer the scope from the option name, assuming
 .Fl w
 for pane options.
 If
@@ -3964,8 +4001,9 @@ unsets an option (like
 but if the option is a pane option also unsets the option on any panes in the
 window.
 .Ar value
-depends on the option and may be a number, a string, or a flag (on, off, or
-omitted to toggle).
+depends on the option and its type and can be omitted for flag and choice
+options to toggle its value (choice options toggle between the first two
+choices).
 .Pp
 The
 .Fl o
@@ -4020,7 +4058,7 @@ or
 .Fl s
 may be unnecessary -
 .Nm
-will infer the type from the option name, assuming
+will infer the scope from the option name, assuming
 .Fl w
 for pane options.
 Global session or window options are listed if
@@ -5467,7 +5505,7 @@ Hooks are managed with these commands:
 .Op Fl agpRuw
 .Op Fl t Ar target-pane
 .Ar hook-name
-.Ar command
+.Op Ar command
 .Xc
 Without
 .Fl R ,
@@ -5488,6 +5526,7 @@ immediately.
 .It Xo Ic show-hooks
 .Op Fl gpw
 .Op Fl t Ar target-pane
+.Op Ar hook
 .Xc
 Shows hooks.
 The flags are the same as for
@@ -5578,7 +5617,8 @@ for example
 .Ql #{session_name} .
 The possible variables are listed in the table below, or the name of a
 .Nm
-option may be used for an option's value.
+option may be used for an option's value, or the name of an environment
+variable.
 Some variables have a shorter alias such as
 .Ql #S ;
 .Ql ##
@@ -6148,9 +6188,10 @@ The colour is one of:
 .Ic cyan ,
 .Ic white ;
 if supported the bright variants
+.Ic brightblack ,
 .Ic brightred ,
-.Ic brightgreen ,
-.Ic brightyellow ;
+.Eo ...;
+.Ec
 .Ic colour0
 to
 .Ic colour255
@@ -6386,7 +6427,7 @@ Commands to alter and view the environment are:
 .It Xo Ic set-environment
 .Op Fl Fhgru
 .Op Fl t Ar target-session
-.Ar name Op Ar value
+.Ar variable Op Ar value
 .Xc
 .D1 Pq alias: Ic setenv
 Set or unset an environment variable.
@@ -6663,7 +6704,8 @@ the default is
 .Op Fl y Ar position
 .Ar name
 .Ar key
-.Ar command Op Ar argument ...
+.Ar command
+.Op Ar name key command ...
 .Xc
 .D1 Pq alias: Ic menu
 Display a menu on
@@ -6836,12 +6878,14 @@ forwards any input read from stdin to the empty pane given by
 .Op Fl w Ar width
 .Op Fl x Ar position
 .Op Fl y Ar position
-.Op Ar shell-command
+.Op Ar shell-command Op Ar argument ...
 .Xc
 .D1 Pq alias: Ic popup
 Display a popup running
 .Ar shell-command
-on
+(or
+.Ar default-command
+when omitted) on
 .Ar target-client .
 A popup is a rectangular box drawn over the top of any panes.
 Panes are not updated while a popup is present.

@@ -38,7 +38,7 @@ const struct cmd_entry cmd_bind_key_entry = {
 
 	.args = { "nrN:T:", 1, -1, cmd_bind_key_args_parse },
 	.usage = "[-nr] [-T key-table] [-N note] key "
-	         "[command [arguments]]",
+	         "[command [argument ...]]",
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_bind_key_exec

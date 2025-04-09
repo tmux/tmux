@@ -35,7 +35,7 @@ const struct cmd_entry cmd_set_buffer_entry = {
 
 	.args = { "ab:t:n:w", 0, 1, NULL },
 	.usage = "[-aw] " CMD_BUFFER_USAGE " [-n new-buffer-name] "
-	         CMD_TARGET_CLIENT_USAGE " data",
+	         CMD_TARGET_CLIENT_USAGE " [data]",
 
 	.flags = CMD_AFTERHOOK|CMD_CLIENT_TFLAG|CMD_CLIENT_CANFAIL,
 	.exec = cmd_set_buffer_exec

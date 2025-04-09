@@ -35,7 +35,7 @@ const struct cmd_entry cmd_send_keys_entry = {
 
 	.args = { "c:FHKlMN:Rt:X", 0, -1, NULL },
 	.usage = "[-FHKlMRX] [-c target-client] [-N repeat-count] "
-	         CMD_TARGET_PANE_USAGE " key ...",
+	         CMD_TARGET_PANE_USAGE " [key ...]",
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
