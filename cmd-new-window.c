@@ -40,7 +40,8 @@ const struct cmd_entry cmd_new_window_entry = {
 
 	.args = { "abc:de:F:kn:PSt:", 0, -1, NULL },
 	.usage = "[-abdkPS] [-c start-directory] [-e environment] [-F format] "
-		 "[-n window-name] " CMD_TARGET_WINDOW_USAGE " [shell-command]",
+		 "[-n window-name] " CMD_TARGET_WINDOW_USAGE
+		 " [shell-command [argument ...]]",
 
 	.target = { 't', CMD_FIND_WINDOW, CMD_FIND_WINDOW_INDEX },
 
