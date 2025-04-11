@@ -201,6 +201,8 @@ key_bindings_add(const char *name, key_code key, const char *note, int repeat,
 				free((void *)bd->note);
 				bd->note = xstrdup(note);
 			}
+			if (repeat)
+				bd->flags |= KEY_BINDING_REPEAT;
 		}
 		return;
 	}
