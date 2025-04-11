@@ -197,11 +197,10 @@ key_bindings_add(const char *name, key_code key, const char *note, int repeat,
 	bd = key_bindings_get(table, key & ~KEYC_MASK_FLAGS);
 	if (cmdlist == NULL) {
 		if (bd != NULL) {
-			free((void *)bd->note);
-			if (note != NULL)
+			if (note != NULL) {
+				free((void *)bd->note);
 				bd->note = xstrdup(note);
-			else
-				bd->note = NULL;
+			}
 		}
 		return;
 	}
