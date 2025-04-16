@@ -3831,6 +3831,27 @@ expands formats in arguments where appropriate.
 Send the prefix key, or with
 .Fl 2
 the secondary prefix key, to a window as if it was pressed.
+.It Xo Ic trigger-bind
+.Op Fl n
+.Op Fl T Ar key-table
+.Ar key
+.Xc
+Trigger the command bound to
+.Ar key
+as if the key had been pressed.
+By default, the key is looked up in the
+.Em prefix
+table.
+If
+.Fl n
+is given, the
+.Em root
+table is used instead.
+If
+.Fl T
+is given, the key is looked up in
+.Ar key-table .
+If the key is found and has a command list bound, the command list is executed.
 .Tg unbind
 .It Xo Ic unbind-key
 .Op Fl anq
