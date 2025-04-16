@@ -2453,6 +2453,8 @@ void printflike(4, 5) environ_set(struct environ *, const char *, int,
 	    const char *, ...);
 void	environ_clear(struct environ *, const char *);
 void	environ_put(struct environ *, const char *, int);
+char   **environ_get_envp(struct environ *);
+void	environ_free_envp(char **);
 void	environ_unset(struct environ *, const char *);
 void	environ_update(struct options *, struct environ *, struct environ *);
 void	environ_push(struct environ *);

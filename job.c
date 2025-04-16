@@ -21,8 +21,10 @@
 #include <sys/socket.h>
 #include <sys/wait.h>
 
+#include <errno.h> /* Added for errno */
 #include <fcntl.h>
 #include <signal.h>
+#include <spawn.h> /* Added for posix_spawn */
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -109,6 +111,158 @@ job_run(const char *cmd, int argc, char **argv, struct environ *e,
 	sigfillset(&set);
 	sigprocmask(SIG_BLOCK, &set, &oldset);
 
+	/* Use posix_spawn for non-PTY NOWAIT jobs. */
+	if ((flags & JOB_NOWAIT) && !(flags & JOB_PTY)) {
+		posix_spawnattr_t	 attr;
+		posix_spawn_file_actions_t file_actions;
+		int			 status, saved_errno;
+		const char		*spawn_path;
+		int			 spawn_argc = 0; /* For cmd_free_argv */
+		char		       **envp = NULL; /* For posix_spawn env */
+		int			 pipefd[2] = { -1, -1 }; /* Pipe for stdout */
+
+		log_debug("%s: using posix_spawn for NOWAIT job (cwd=%s, ignored)",
+		    __func__, cwd == NULL ? "default" : cwd);
+
+		/* Create pipe for stdout. */
+		if (pipe(pipefd) != 0) {
+			log_debug("%s: pipe failed: %s", __func__, strerror(errno));
+			goto fail_spawn; /* errno set by pipe */
+		}
+
+		/* Prepare arguments. */
+		if (cmd != NULL) {
+			spawn_argc = 3; /* shell, -c, cmd */
+			argvp = xcalloc(spawn_argc + 1, sizeof *argvp);
+			argvp[0] = argv0;
+			argvp[1] = (char *)"-c";
+			argvp[2] = (char *)cmd;
+			argvp[3] = NULL;
+			spawn_path = shell;
+		} else {
+			spawn_argc = argc;
+			argvp = cmd_copy_argv(argc, argv);
+			if (argc == 0 || argvp == NULL || argvp[0] == NULL) {
+				log_debug("%s: posix_spawn requires argv[0]", __func__);
+				goto fail_spawn;
+			}
+			spawn_path = argvp[0];
+		}
+
+		/* Prepare attributes and file actions. */
+		if ((status = posix_spawnattr_init(&attr)) != 0 ||
+		    (status = posix_spawnattr_setsigmask(&attr, &oldset)) != 0 ||
+		    (status = posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETSIGMASK)) != 0 ||
+		    (status = posix_spawn_file_actions_init(&file_actions)) != 0 ||
+		    /* Redirect stdin from /dev/null */
+		    (status = posix_spawn_file_actions_addopen(&file_actions, STDIN_FILENO, _PATH_DEVNULL, O_RDONLY, 0)) != 0 ||
+		    /* Duplicate pipe write end to stdout */
+		    (status = posix_spawn_file_actions_adddup2(&file_actions, pipefd[1], STDOUT_FILENO)) != 0 ||
+		    /* Redirect stderr to /dev/null */
+		    (status = posix_spawn_file_actions_addopen(&file_actions, STDERR_FILENO, _PATH_DEVNULL, O_WRONLY | O_CREAT | O_TRUNC, 0644)) != 0 ||
+		    /* Close pipe read end in child */
+		    (status = posix_spawn_file_actions_addclose(&file_actions, pipefd[0])) != 0 ||
+		    /* Close original pipe write end in child (after dup) */
+		    (status = posix_spawn_file_actions_addclose(&file_actions, pipefd[1])) != 0) {
+			log_debug("%s: posix_spawn prep failed: %s", __func__, strerror(status));
+			if (status == 0) /* Only destroy actions if attr init failed */
+			    posix_spawn_file_actions_destroy(&file_actions);
+			posix_spawnattr_destroy(&attr);
+			goto fail_spawn;
+		}
+
+		/* Prepare environment array. */
+		envp = environ_get_envp(env);
+
+		/* Log the envp array before spawning */
+		log_debug("%s: spawning with envp:", __func__);
+		for (int j = 0; envp[j] != NULL; j++)
+			log_debug("%s: envp[%d] = %s", __func__, j, envp[j]);
+
+		/* Spawn the process. */
+		status = posix_spawn(&pid, spawn_path, &file_actions, &attr, argvp, envp);
+		saved_errno = errno;
+
+		/* Clean up spawn resources (parent side). */
+		posix_spawn_file_actions_destroy(&file_actions);
+		posix_spawnattr_destroy(&attr);
+		environ_free_envp(envp); /* Free the envp array */
+		close(pipefd[1]); /* Close write end in parent */
+		pipefd[1] = -1; /* Mark as closed */
+
+		if (status != 0) {
+			log_debug("%s: posix_spawn failed for %s: %s", __func__, spawn_path, strerror(status));
+			errno = saved_errno;
+			close(pipefd[0]); /* Close read end on failure */
+			pipefd[0] = -1;
+			goto fail_spawn;
+		}
+		log_debug("%s: posix_spawn succeeded, pid %ld, fd %d", __func__, (long)pid, pipefd[0]);
+
+		/* Job struct setup. */
+		sigprocmask(SIG_SETMASK, &oldset, NULL);
+		environ_free(env);
+		free(argv0);
+		if (cmd != NULL)
+			free(argvp);
+		else
+			cmd_free_argv(spawn_argc, argvp);
+
+		job = xcalloc(1, sizeof *job);
+		job->state = JOB_RUNNING;
+		job->flags = flags;
+		if (cmd != NULL)
+			job->cmd = xstrdup(cmd);
+		else
+			job->cmd = cmd_stringify_argv(argc, argv);
+		job->pid = pid;
+		job->fd = pipefd[0]; /* Store read end of pipe */
+		job->status = 0;
+		job->updatecb = updatecb;
+		job->completecb = completecb;
+		job->freecb = freecb;
+		job->data = data;
+
+		/* Set fd non-blocking and create bufferevent. */
+		setblocking(job->fd, 0);
+		job->event = bufferevent_new(job->fd, job_read_callback,
+		    job_write_callback, job_error_callback, job);
+		if (job->event == NULL) {
+			log_debug("%s: bufferevent_new failed", __func__);
+			close(job->fd); /* Close fd before failing */
+			job->fd = -1;
+			/* Need to free job struct partially created */
+			free(job->cmd);
+			free(job);
+			/* Restore errno? Maybe not needed as we return NULL */
+			goto fail_spawn_post_job; /* Special fail path */
+		}
+		bufferevent_enable(job->event, EV_READ|EV_WRITE);
+
+		LIST_INSERT_HEAD(&all_jobs, job, entry);
+		log_debug("run job %p: %s, pid %ld (NOWAIT)", job, job->cmd, (long)job->pid);
+		return (job);
+
+	fail_spawn: /* Failure before or during posix_spawn */
+		if (pipefd[0] != -1)
+			close(pipefd[0]);
+		if (pipefd[1] != -1)
+			close(pipefd[1]);
+		/* Fall through */
+
+	fail_spawn_post_job: /* Failure after job struct allocated */
+		sigprocmask(SIG_SETMASK, &oldset, NULL);
+		environ_free(env);
+		free(argv0);
+		if (cmd != NULL)
+			free(argvp);
+		else
+			cmd_free_argv(spawn_argc, argvp);
+		environ_free_envp(envp);
+		return (NULL);
+	}
+
+	/* Original fork/pty logic for other cases. */
 	if (flags & JOB_PTY) {
 		memset(&ws, 0, sizeof ws);
 		ws.ws_col = sx;
@@ -135,7 +289,7 @@ job_run(const char *cmd, int argc, char **argv, struct environ *e,
 			close(out[1]);
 		}
 		goto fail;
-	case 0:
+	case 0: /* Child process (fork/pty path) */
 		proc_clear_signals(server_proc, 1);
 		sigprocmask(SIG_SETMASK, &oldset, NULL);
 
@@ -144,8 +298,9 @@ job_run(const char *cmd, int argc, char **argv, struct environ *e,
 		    chdir("/") != 0)
 			fatal("chdir failed");
 
-		environ_push(env);
-		environ_free(env);
+		environ_push(env); /* Environment for fork/pty child */
+		environ_log(env, "%s: fork child env after push: ", __func__); /* Log env */
+		environ_free(env); /* Free child's copy */
 
 		if (~flags & JOB_PTY) {
 			if (dup2(out[1], STDIN_FILENO) == -1)
@@ -172,13 +327,16 @@ job_run(const char *cmd, int argc, char **argv, struct environ *e,
 			fatal("execl failed");
 		} else {
 			argvp = cmd_copy_argv(argc, argv);
+			if (argc == 0 || argvp == NULL || argvp[0] == NULL)
+				fatal("execvp requires arguments");
 			execvp(argvp[0], argvp);
 			fatal("execvp failed");
 		}
 	}
 
+	/* Parent process (fork/pty path) */
 	sigprocmask(SIG_SETMASK, &oldset, NULL);
-	environ_free(env);
+	environ_free(env); /* Free parent's copy */
 	free(argv0);
 
 	job = xcalloc(1, sizeof *job);
@@ -217,7 +375,7 @@ job_run(const char *cmd, int argc, char **argv, struct environ *e,
 	log_debug("run job %p: %s, pid %ld", job, job->cmd, (long)job->pid);
 	return (job);
 
-fail:
+fail: /* General failure path */
 	sigprocmask(SIG_SETMASK, &oldset, NULL);
 	environ_free(env);
 	free(argv0);
