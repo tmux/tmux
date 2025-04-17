@@ -228,7 +228,13 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	 */
 	if (sc->cwd != NULL) {
 		cwd = format_single(item, sc->cwd, c, target->s, NULL, NULL);
-		if (*cwd != '/') {
+		switch (*cwd) {
+		case '/':
+			break;
+		case '\0':
+			cwd = xstrdup(server_client_get_cwd(c, target->s));
+			break;
+		default:
 			xasprintf(&new_cwd, "%s/%s", server_client_get_cwd(c,
 			    target->s), cwd);
 			free(cwd);
