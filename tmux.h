@@ -1224,6 +1224,13 @@ TAILQ_HEAD(window_panes, window_pane);
 RB_HEAD(window_pane_tree, window_pane);
 
 /* Window structure. */
+struct key_event;
+typedef struct screen *(*window_menu_mode_cb)(struct client *, void *, u_int *,
+	    u_int *);
+typedef void (*window_menu_draw_cb)(struct client *, void *,
+	    struct screen_redraw_ctx *);
+typedef int (*window_menu_key_cb)(struct client *, void *, struct key_event *);
+typedef void (*window_menu_free_cb)(struct client *, void *);
 struct window {
 	u_int			 id;
 	void			*latest;
@@ -1245,6 +1252,12 @@ struct window {
 	struct layout_cell	*layout_root;
 	struct layout_cell	*saved_layout_root;
 	char			*old_layout;
+
+	struct menu_data	*md;
+	window_menu_mode_cb	 menu_mode_cb;
+	window_menu_draw_cb	 menu_draw_cb;
+	window_menu_key_cb	 menu_key_cb;
+	window_menu_free_cb	 menu_free_cb;
 
 	u_int			 sx;
 	u_int			 sy;

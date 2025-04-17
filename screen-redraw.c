@@ -844,6 +844,9 @@ screen_redraw_draw_panes(struct screen_redraw_ctx *ctx)
 		if (window_pane_visible(wp))
 			screen_redraw_draw_pane(ctx, wp);
 	}
+
+	if (w->md != NULL)
+		w->menu_draw_cb(c, w->md, ctx);
 }
 
 /* Draw the status line. */
@@ -1036,6 +1039,11 @@ screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx,
 				continue;
 			if (c->overlay_check != NULL) {
 				c->overlay_check(c, c->overlay_data, px, py, 1, &r);
+				if (r.nx[0] + r.nx[1] == 0)
+					continue;
+			}
+			if (wp->window->md != NULL) {
+				menu_check_cb(c, wp->window->md, px, py, 1, &r);
 				if (r.nx[0] + r.nx[1] == 0)
 					continue;
 			}

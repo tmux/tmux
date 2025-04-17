@@ -218,6 +218,7 @@ popup_draw_cb(struct client *c, void *data, struct screen_redraw_ctx *rctx)
 	u_int			 i, px = pd->px, py = pd->py;
 	struct colour_palette	*palette = &pd->palette;
 	struct grid_cell	 defaults;
+	struct window		*w = c->session->curw->window;
 
 	screen_init(&s, pd->sx, pd->sy, 0);
 	screen_write_start(&ctx, &s);
@@ -244,6 +245,9 @@ popup_draw_cb(struct client *c, void *data, struct screen_redraw_ctx *rctx)
 	if (pd->md != NULL) {
 		c->overlay_check = menu_check_cb;
 		c->overlay_data = pd->md;
+	} else if (w->md != NULL) {
+		c->overlay_check = menu_check_cb;
+		c->overlay_data = w->md;
 	} else {
 		c->overlay_check = NULL;
 		c->overlay_data = NULL;
@@ -257,6 +261,10 @@ popup_draw_cb(struct client *c, void *data, struct screen_redraw_ctx *rctx)
 		c->overlay_check = NULL;
 		c->overlay_data = NULL;
 		menu_draw_cb(c, pd->md, rctx);
+	} else	if (w->md != NULL) {
+		c->overlay_check = NULL;
+		c->overlay_data = NULL;
+		menu_draw_cb(c, w->md, rctx);
 	}
 	c->overlay_check = popup_check_cb;
 	c->overlay_data = pd;
