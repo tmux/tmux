@@ -3730,7 +3730,15 @@ options.
 .Fl N
 attaches a note to the key (shown with
 .Ic list-keys
-.Fl N ) .
+.Fl N ) ,
+which can be cleared by passing an empty string.
+The
+.Fl r
+and
+.Fl N
+flags can be used without
+.Ar command
+to alter an existing binding.
 .Pp
 To view the default bindings and possible commands, see the
 .Ic list-keys
@@ -5633,10 +5641,12 @@ by a
 .Ql } .
 .Pp
 Conditionals are available by prefixing with
-.Ql \&?
-and separating two alternatives with a comma;
-if the specified variable exists and is not zero, the first alternative
-is chosen, otherwise the second is used.
+.Ql \&? .
+For each pair of two arguments, if the variable in the first of the pair exists
+and is not zero, the second of the pair is chosen, otherwise it continues.
+If no condition from paired arguments matches, the default value is chosen.
+If there's an unpaired final argument, that is the default.
+If not, the default is the empty string.
 For example
 .Ql #{?session_attached,attached,not attached}
 will include the string
@@ -5652,6 +5662,12 @@ if
 is enabled, or
 .Ql no
 if not.
+.Ql #{?#{n:window_name},#{window_name} - }
+will include the window name with a dash separator if there is a window name, or
+the empty string if the window name is empty.
+.Ql #{?session_format,format1,window_format,format2,format3}
+will include format1 for a session format, format2 for a window format, or
+format3 for neither a session nor a window format.
 Conditionals can be nested arbitrarily.
 Inside a conditional,
 .Ql \&,
@@ -6054,7 +6070,7 @@ The following variables are available, where appropriate:
 .It Li "pane_format" Ta "" Ta "1 if format is for a pane"
 .It Li "pane_height" Ta "" Ta "Height of pane"
 .It Li "pane_id" Ta "#D" Ta "Unique pane ID"
-.It Li "pane_in_mode" Ta "" Ta "1 if pane is in a mode"
+.It Li "pane_in_mode" Ta "" Ta "Number of modes pane is in"
 .It Li "pane_index" Ta "#P" Ta "Index of pane"
 .It Li "pane_input_off" Ta "" Ta "1 if input to pane is disabled"
 .It Li "pane_key_mode" Ta "" Ta "Extended key reporting mode in this pane"

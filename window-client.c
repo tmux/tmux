@@ -43,12 +43,8 @@ static void		 window_client_key(struct window_mode_entry *,
 #define WINDOW_CLIENT_DEFAULT_KEY_FORMAT \
 	"#{?#{e|<:#{line},10}," \
 		"#{line}" \
-	"," \
-		"#{?#{e|<:#{line},36},"	\
-	        	"M-#{a:#{e|+:97,#{e|-:#{line},10}}}" \
-		"," \
-	        	"" \
-		"}" \
+	",#{e|<:#{line},36},"	\
+		"M-#{a:#{e|+:97,#{e|-:#{line},10}}}" \
 	"}"
 
 static const struct menu_item window_client_menu_items[] = {
