@@ -60,7 +60,13 @@ test_conditional_with_session_name()
 
 $TMUX kill-server 2>/dev/null
 $TMUX -f/dev/null new-session -d || exit 1
-$TMUX rename-session "Summer" || exit 1 # used later in conditionals
+
+# used later in conditionals
+$TMUX rename-session "Summer" || exit 1
+$TMUX set @true 1 || exit 1
+$TMUX set @false 0 || exit 1
+$TMUX set @warm Summer || exit 1
+$TMUX set @cold Winter || exit 1
 
 # Plain string without substitutions et al
 test_format "abc xyz" "abc xyz"
@@ -77,13 +83,21 @@ test_format "###}" "#}" # not a "basic" one but interesting nevertheless
 test_format "#{pane_in_mode}" "0"
 
 # Simple conditionals
+test_format "#{?}" ""
+test_format "#{?abc}" "abc"
+test_conditional_with_pane_in_mode "#{?pane_in_mode,abc}" "abc" ""
 test_conditional_with_pane_in_mode "#{?pane_in_mode,abc,xyz}" "abc" "xyz"
+test_conditional_with_pane_in_mode "#{?pane_in_mode,abc,@true,xyz}" "abc" "xyz"
+test_format "#{?@false,abc,@false,xyz}" ""
+test_format "#{?@false,abc,@false,xyz,default}" "default"
 
 # Expansion in conditionals
-test_conditional_with_pane_in_mode "#{?pane_in_mode,#{session_name},xyz}" "Summer" "xyz"
+test_format "#{?#{@warm}}" "Summer"
+test_conditional_with_pane_in_mode "#{?#{pane_in_mode},#{@warm}}" "Summer" ""
+test_conditional_with_pane_in_mode "#{?#{pane_in_mode},#{@warm},#{@cold}}" "Summer" "Winter"
 
 # Basic escapes in conditionals
-# First argument
+# Value of an (else-)if-condition
 test_conditional_with_pane_in_mode "#{?pane_in_mode,##,xyz}" "#" "xyz"
 test_conditional_with_pane_in_mode "#{?pane_in_mode,#,,xyz}" "," "xyz"
 test_conditional_with_pane_in_mode "#{?pane_in_mode,{,xyz}" "{" "xyz"
@@ -91,7 +105,7 @@ test_conditional_with_pane_in_mode "#{?pane_in_mode,##{,xyz}" "#{" "xyz"
 test_conditional_with_pane_in_mode "#{?pane_in_mode,#},xyz}" "}" "xyz"
 # not a "basic" one but interesting nevertheless
 test_conditional_with_pane_in_mode "#{?pane_in_mode,###},xyz}" "#}" "xyz"
-# Second argument
+# Default value if no condition matches
 test_conditional_with_pane_in_mode "#{?pane_in_mode,abc,##}" "abc" "#"
 test_conditional_with_pane_in_mode "#{?pane_in_mode,abc,#,}" "abc" ","
 test_conditional_with_pane_in_mode "#{?pane_in_mode,abc,{}" "abc" "{"
@@ -105,9 +119,6 @@ test_conditional_with_pane_in_mode "#{?pane_in_mode,#},{}" "}" "{"
 test_conditional_with_pane_in_mode "#{?pane_in_mode,##{,###}}" "#{" "#}"
 test_conditional_with_pane_in_mode "#{?pane_in_mode,###},##{}" "#}" "#{"
 
-# Conditionals split on the second comma (this is not documented)
-test_conditional_with_pane_in_mode "#{?pane_in_mode,abc,xyz,bonus}" "abc" "xyz,bonus"
-
 # Curly brackets {...} do not capture a comma inside of conditionals as the
 # conditional ends on the first '}'
 test_conditional_with_pane_in_mode "#{?pane_in_mode,{abc,xyz},bonus}" "{abc,bonus}" "xyz,bonus}"
@@ -116,12 +127,12 @@ test_conditional_with_pane_in_mode "#{?pane_in_mode,{abc,xyz},bonus}" "{abc,bonu
 # invalid format: #{abc,xyz} is not a known variable name.
 #test_conditional_with_pane_in_mode "#{?pane_in_mode,#{abc,xyz},bonus}" "" "bonus"
 
-# Parenthesis (...) do not captura a comma
-test_conditional_with_pane_in_mode "#{?pane_in_mode,(abc,xyz),bonus}" "(abc" "xyz),bonus"
+# Parenthesis (...) do not captura a comma, and "xyz)" is a false condition
+test_conditional_with_pane_in_mode "#{?pane_in_mode,(abc,xyz),bonus}" "(abc" ""
 test_conditional_with_pane_in_mode "#{?pane_in_mode,(abc#,xyz),bonus}" "(abc,xyz)" "bonus"
 
-# Brackets [...] do not captura a comma
-test_conditional_with_pane_in_mode "#{?pane_in_mode,[abc,xyz],bonus}" "[abc" "xyz],bonus"
+# Brackets [...] do not captura a comma, and "xyz]" is a false condition
+test_conditional_with_pane_in_mode "#{?pane_in_mode,[abc,xyz],bonus}" "[abc" ""
 test_conditional_with_pane_in_mode "#{?pane_in_mode,[abc#,xyz],bonus}" "[abc,xyz]" "bonus"
 
 
@@ -138,12 +149,12 @@ test_conditional_with_pane_in_mode "#{?pane_in_mode,#(echo #,),xyz}" "" "xyz"
 #test_conditional_with_pane_in_mode "#{?pane_in_mode,#(echo #,),xyz}" "," "xyz"
 
 # invalid format: '#(' is not closed in the first argument of #{?,,}.
-#test_conditional_with_pane_in_mode "#{?pane_in_mode,#(echo ,),xyz}" "" "),xyz"
+test_conditional_with_pane_in_mode "#{?pane_in_mode,#(echo ,)xyz}" "" ")xyz"
 
 # Escape comma inside of #[...]
 test_conditional_with_pane_in_mode "#{?pane_in_mode,#[fg=default#,bg=default]abc,xyz}" "#[fg=default,bg=default]abc" "xyz"
-# invalid format: '#[' is not closed in the first argument of #{?,,}
-#test_conditional_with_pane_in_mode "#{?pane_in_mode,#[fg=default,bg=default]abc,xyz}" "" "bg=default]abc,xyz"
+# invalid style: '#[' is not closed in the first argument of #{?,,}
+test_conditional_with_pane_in_mode "#{?pane_in_mode,#[fg=default,bg=default]abc}" "#[fg=default" "bg=default]abc"
 
 # Conditionals with comparison
 test_conditional_with_session_name "#{?#{==:#{session_name},Summer},abc,xyz}" "abc" "xyz"
