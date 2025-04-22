@@ -41,30 +41,24 @@ static void		 window_tree_key(struct window_mode_entry *,
 		"#{?pane_marked,#[reverse],}" \
 		"#{pane_current_command}#{?pane_active,*,}#{?pane_marked,M,}" \
 		"#{?#{&&:#{pane_title},#{!=:#{pane_title},#{host_short}}},: \"#{pane_title}\",}" \
+	",window_format," \
+		"#{?window_marked_flag,#[reverse],}" \
+		"#{window_name}#{window_flags}" \
+		"#{?#{&&:#{==:#{window_panes},1},#{&&:#{pane_title},#{!=:#{pane_title},#{host_short}}}},: \"#{pane_title}\",}" \
 	"," \
-		"#{?window_format," \
-			"#{?window_marked_flag,#[reverse],}" \
-			"#{window_name}#{window_flags}" \
-			"#{?#{&&:#{==:#{window_panes},1},#{&&:#{pane_title},#{!=:#{pane_title},#{host_short}}}},: \"#{pane_title}\",}" \
-		"," \
-			"#{session_windows} windows" \
-			"#{?session_grouped, " \
-				"(group #{session_group}: " \
-				"#{session_group_list})," \
-			"}" \
-			"#{?session_attached, (attached),}" \
+		"#{session_windows} windows" \
+		"#{?session_grouped, " \
+			"(group #{session_group}: " \
+			"#{session_group_list})," \
 		"}" \
+		"#{?session_attached, (attached),}" \
 	"}"
 
 #define WINDOW_TREE_DEFAULT_KEY_FORMAT \
 	"#{?#{e|<:#{line},10}," \
 		"#{line}" \
-	"," \
-		"#{?#{e|<:#{line},36},"	\
-	        	"M-#{a:#{e|+:97,#{e|-:#{line},10}}}" \
-		"," \
-	        	"" \
-		"}" \
+	",#{e|<:#{line},36},"	\
+	        "M-#{a:#{e|+:97,#{e|-:#{line},10}}}" \
 	"}"
 
 static const struct menu_item window_tree_menu_items[] = {
