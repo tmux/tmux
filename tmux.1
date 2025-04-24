@@ -570,7 +570,7 @@ For
 this typically means quoted (such as
 .Ql neww \[aq];\[aq] splitw )
 or escaped (such as
-.Ql neww \e\e\e\e; splitw ) .
+.Ql neww \e; splitw ) .
 .It
 Individual semicolons or trailing semicolons that should be interpreted as
 arguments should be escaped twice: once according to the shell conventions and
@@ -578,15 +578,15 @@ a second time for
 .Nm ;
 for example:
 .Bd -literal -offset indent
-$ tmux neww \[aq]foo\e\e;\[aq] bar
-$ tmux neww foo\e\e\e\e; bar
+$ tmux neww \[aq]foo\e;\[aq] bar
+$ tmux neww foo\e\e\e; bar
 .Ed
 .It
 Semicolons that are not individual tokens or trailing another token should only
 be escaped once according to shell conventions; for example:
 .Bd -literal -offset indent
 $ tmux neww \[aq]foo-;-bar\[aq]
-$ tmux neww foo-\e\e;-bar
+$ tmux neww foo-\e;-bar
 .Ed
 .El
 .Pp
