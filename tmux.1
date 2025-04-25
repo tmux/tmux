@@ -5706,9 +5706,17 @@ otherwise by
 .Ql ||
 and
 .Ql &&
-evaluate to true if either or both of two comma-separated alternatives are
+evaluate to true if any or all of the comma-separated alternatives are
 true, for example
 .Ql #{||:#{pane_in_mode},#{alternate_on}} .
+.Ql \&!
+evaluates to true if the value is false and vice versa, for example
+.Ql #{!:#{pane_in_mode}} .
+.Ql !!
+converts a value to a canonical boolean form, 1 for true and 0 for false, for
+example
+.Ql #{!!:non-empty string}
+evaluates to 1.
 .Pp
 An
 .Ql m
