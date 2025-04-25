@@ -175,6 +175,47 @@ test_conditional_with_pane_in_mode "#{?#{==:#{?pane_in_mode,#{session_name},#(ec
 
 
 
+# Tests for boolean expressions
+
+# "0" and the empty string are false, everything else is true.
+test_format "#{!!:0}" "0"
+test_format "#{!!:}" "0"
+test_format "#{!!:1}" "1"
+test_format "#{!!:2}" "1"
+test_format "#{!!:non-empty string}" "1"
+test_format "#{!!:-0}" "1"
+test_format "#{!!:0.0}" "1"
+
+# Logical operators
+test_format "#{!:0}" "1"
+test_format "#{!:1}" "0"
+
+test_format "#{&&:0}" "0"
+test_format "#{&&:1}" "1"
+test_format "#{&&:0,0}" "0"
+test_format "#{&&:0,1}" "0"
+test_format "#{&&:1,0}" "0"
+test_format "#{&&:1,1}" "1"
+test_format "#{&&:0,0,0}" "0"
+test_format "#{&&:0,1,1}" "0"
+test_format "#{&&:1,0,1}" "0"
+test_format "#{&&:1,1,0}" "0"
+test_format "#{&&:1,1,1}" "1"
+
+test_format "#{||:0}" "0"
+test_format "#{||:1}" "1"
+test_format "#{||:0,0}" "0"
+test_format "#{||:0,1}" "1"
+test_format "#{||:1,0}" "1"
+test_format "#{||:1,1}" "1"
+test_format "#{||:0,0,0}" "0"
+test_format "#{||:1,0,0}" "1"
+test_format "#{||:0,1,0}" "1"
+test_format "#{||:0,0,1}" "1"
+test_format "#{||:1,1,1}" "1"
+
+
+
 # Format test for the literal option
 # Note: The behavior for #{l:...} with escapes is sometimes weird as #{l:...}
 # respects the escapes.
