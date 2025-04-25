@@ -2384,7 +2384,7 @@ input_dcs_dispatch(struct input_ctx *ictx)
 
 #ifdef ENABLE_SIXEL
 	w = wp->window;
-	if (buf[0] == 'q') {
+	if (buf[0] == 'q' && ictx->interm_len == 0) {
 		if (input_split(ictx) != 0)
 			return (0);
 		p2 = input_get(ictx, 1, 0, 0);
