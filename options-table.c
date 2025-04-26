@@ -173,8 +173,45 @@ static const char *options_table_allow_passthrough_list[] = {
 	"#[pop-default]" \
 	"#[norange default]"
 #define OPTIONS_TABLE_STATUS_FORMAT2 \
+    "#[align=left list=on]" \
+    " -> " \
+    "#[norange default]" \
+    "#[list=on align=#{status-justify}]"		      \
+    "#[list=left-marker]<#[list=right-marker]>#[list=on]"     \
+    "#{S:" \
+        "#[range=session|#{session_id} " \
+            "#{E:session-style}" \
+            "#{?#{!=:#{E:session-current-style},default}," \
+                "#{E:session-current-style}," \
+                "#{E:session-style}" \
+            "}" \
+        "]" \
+        "#[push-default]" \
+        "#{session_index}:#S  " \
+        "#[pop-default]" \
+        "#[norange list=on default]" \
+    "," \
+        "#[range=session|#{session_id} list=focus " \
+            "#{E:session-style}" \
+            "#{?#{!=:#{E:session-current-style},default}," \
+                "#{E:session-current-style}," \
+                "#{E:session-style}" \
+            "}" \
+        "]" \
+        "#[push-default]" \
+        "#{session_index}:#S* " \
+        "#[pop-default]" \
+        "#[norange list=on default]" \
+    "}" \
+    "#[nolist align=right]" \
+    "#{P:#{?pane_active,#[reverse],}" \
+    "#{pane_index}[#{pane_width}x#{pane_height}]#[default] }"
+
+/*
+#define OPTIONS_TABLE_STATUS_FORMAT2 \
 	"#[align=centre]#{P:#{?pane_active,#[reverse],}" \
 	"#{pane_index}[#{pane_width}x#{pane_height}]#[default] }"
+*/
 static const char *options_table_status_format_default[] = {
 	OPTIONS_TABLE_STATUS_FORMAT1, OPTIONS_TABLE_STATUS_FORMAT2, NULL
 };
