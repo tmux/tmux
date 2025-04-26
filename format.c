@@ -2337,6 +2337,15 @@ format_cb_session_id(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for session_index which is id without $. */
+static void *
+format_cb_session_index(struct format_tree *ft)
+{
+	if (ft->s != NULL)
+		return (format_printf("%u", ft->s->id));
+	return (NULL);
+}
+
 /* Callback for session_many_attached. */
 static void *
 format_cb_session_many_attached(struct format_tree *ft)
@@ -3262,6 +3271,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "session_id", FORMAT_TABLE_STRING,
 	  format_cb_session_id
+	},
+	{ "session_index", FORMAT_TABLE_STRING,
+	  format_cb_session_index
 	},
 	{ "session_last_attached", FORMAT_TABLE_TIME,
 	  format_cb_session_last_attached
@@ -4236,20 +4248,29 @@ format_loop_sessions(struct format_expand_state *es, const char *fmt)
 	struct cmdq_item		*item = ft->item;
 	struct format_tree		*nft;
 	struct format_expand_state	 next;
-	char				*expanded, *value;
+	char				*all, *active, *use, *expanded, *value;
 	size_t				 valuelen;
 	struct session			*s;
+
+	if (format_choose(es, fmt, &all, &active, 0) != 0) {
+		all = xstrdup(fmt);
+		active = NULL;
+	}
 
 	value = xcalloc(1, 1);
 	valuelen = 1;
 
 	RB_FOREACH(s, sessions, &sessions) {
 		format_log(es, "session loop: $%u", s->id);
+		if (active != NULL && s->id == ft->c->session->id)
+			use = active;
+		else
+			use = all;
 		nft = format_create(c, item, FORMAT_NONE, ft->flags);
 		format_defaults(nft, ft->c, s, NULL, NULL);
 		format_copy_state(&next, es, 0);
 		next.ft = nft;
-		expanded = format_expand1(&next, fmt);
+		expanded = format_expand1(&next, use);
 		format_free(next.ft);
 
 		valuelen += strlen(expanded);
