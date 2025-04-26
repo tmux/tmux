@@ -460,7 +460,7 @@ key_bindings_init(void)
 		"bind -n MouseDrag1Border { resize-pane -M }",
 
 		/* Mouse button 1 down on status line. */
-		"bind -n MouseDown1Status { select-window -t= }",
+		"bind -n MouseDown1Status { switch -t= }",
 
 		/* Mouse wheel down on status line. */
 		"bind -n WheelDownStatus { next-window }",
