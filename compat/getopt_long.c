@@ -52,7 +52,45 @@
  */
 
 /* OPENBSD ORIGINAL: lib/libc/stdlib/getopt_long.c */
-#include "includes.h"
+#include "compat.h"
+
+/* The following macro constants are taken from getopt.h of OpenSSH:
+ *   Repository: https://github.com/openssh/openssh-portable
+ *   Commit: b5b405fee7f3e79d44e2d2971a4b6b4cc53f112e
+ *   File: /openbsd-compat/getopt.h
+ *
+ * ---- BEGIN - Copyright notice and license of getopt.h ----
+ * Copyright (c) 2000 The NetBSD Foundation, Inc.
+ * All rights reserved.
+ *
+ * This code is derived from software contributed to The NetBSD Foundation
+ * by Dieter Baron and Thomas Klausner.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
+ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FOUNDATION OR CONTRIBUTORS
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ * ---- END ----
+ */
+#define no_argument        0
+#define required_argument  1
+#define optional_argument  2
 
 #if !defined(HAVE_GETOPT) || !defined(HAVE_GETOPT_OPTRESET)
 
@@ -72,7 +110,15 @@
 #include <string.h>
 #include <stdarg.h>
 
-#include "log.h"
+static void logit(const char *fmt, ...) {
+	va_list va;
+	(void)fprintf(stderr, "%s: ", getprogname());
+	va_start(va, fmt);
+	(void)vfprintf(stderr, fmt, va);
+	va_end(va);
+	(void)fputc('\n', stderr);
+	(void)fflush(stderr);
+}
 
 struct option {
 	/* name of long option */
@@ -92,7 +138,7 @@ int	opterr = 1;		/* if error message should be printed */
 int	optind = 1;		/* index into parent argv vector */
 int	optopt = '?';		/* character checked for validity */
 int	optreset;		/* reset getopt */
-char    *optarg;		/* argument associated with option */
+const char *optarg;		/* argument associated with option */
 
 #define PRINT_ERROR	((opterr) && (*options != ':'))
 
@@ -114,7 +160,7 @@ static int parse_long_options(char * const *, const char *,
 static int gcd(int, int);
 static void permute_args(int, int, int, char * const *);
 
-static char *place = EMSG; /* option letter processing */
+static const char *place = EMSG; /* option letter processing */
 
 /* XXX: set optreset to 1 rather than these two */
 static int nonopt_start = -1; /* first non option argument (for permute) */
@@ -192,7 +238,7 @@ static int
 parse_long_options(char * const *nargv, const char *options,
 	const struct option *long_options, int *idx, int short_too)
 {
-	char *current_argv, *has_equal;
+	const char *current_argv, *has_equal;
 	size_t current_argv_len;
 	int i, match;
 
