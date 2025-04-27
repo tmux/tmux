@@ -173,8 +173,9 @@ static const char *options_table_allow_passthrough_list[] = {
 	"#[pop-default]" \
 	"#[norange default]"
 #define OPTIONS_TABLE_STATUS_FORMAT2 \
-    "#[align=left list=on]" \
-    " -> " \
+    "#[align=left list=on acs]" \
+    " mq> " \
+    "#[noacs]" \
     "#[norange default]" \
     "#[list=on align=#{status-justify}]"		      \
     "#[list=left-marker]<#[list=right-marker]>#[list=on]"     \
