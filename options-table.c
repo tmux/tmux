@@ -187,7 +187,7 @@ static const char *options_table_allow_passthrough_list[] = {
             "}" \
         "]" \
         "#[push-default]" \
-        "#{session_index}:#S  " \
+        "#S  " \
         "#[pop-default]" \
         "#[norange list=on default]" \
     "," \
@@ -199,7 +199,7 @@ static const char *options_table_allow_passthrough_list[] = {
             "}" \
         "]" \
         "#[push-default]" \
-        "#{session_index}:#S* " \
+        "#S* " \
         "#[pop-default]" \
         "#[norange list=on default]" \
     "}" \

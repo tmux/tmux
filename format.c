@@ -2337,15 +2337,6 @@ format_cb_session_id(struct format_tree *ft)
 	return (NULL);
 }
 
-/* Callback for session_index which is id without $. */
-static void *
-format_cb_session_index(struct format_tree *ft)
-{
-	if (ft->s != NULL)
-		return (format_printf("%u", ft->s->id));
-	return (NULL);
-}
-
 /* Callback for session_many_attached. */
 static void *
 format_cb_session_many_attached(struct format_tree *ft)
@@ -3271,9 +3262,6 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "session_id", FORMAT_TABLE_STRING,
 	  format_cb_session_id
-	},
-	{ "session_index", FORMAT_TABLE_STRING,
-	  format_cb_session_index
 	},
 	{ "session_last_attached", FORMAT_TABLE_TIME,
 	  format_cb_session_last_attached
