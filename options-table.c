@@ -187,10 +187,9 @@ static const char *options_table_allow_passthrough_list[] = {
         "#[norange list=on default]" \
     "," \
         "#[range=session|#{session_id} list=focus " \
-            "#{E:session-status-style}" \
-            "#{?#{!=:#{E:session-status-current-style},default}," \
-                "#{E:session-status-current-style}," \
-                "#{E:session-status-style}" \
+    		"#{?#{!=:#{E:session-status-current-style},default},"	\
+                	"#{E:session-status-current-style}," \
+                	"#{E:session-status-style}" \
             "}" \
         "]" \
         "#[push-default]" \
