@@ -173,19 +173,13 @@ static const char *options_table_allow_passthrough_list[] = {
 	"#[pop-default]" \
 	"#[norange default]"
 #define OPTIONS_TABLE_STATUS_FORMAT2 \
-    "#[align=left list=on acs]" \
-    " mq> " \
-    "#[noacs]" \
+    "#[align=left acs] mq> #[noacs]" \
     "#[norange default]" \
     "#[list=on align=#{status-justify}]"		      \
     "#[list=left-marker]<#[list=right-marker]>#[list=on]"     \
     "#{S:" \
         "#[range=session|#{session_id} " \
-            "#{E:session-style}" \
-            "#{?#{!=:#{E:session-current-style},default}," \
-                "#{E:session-current-style}," \
-                "#{E:session-style}" \
-            "}" \
+            "#{E:session-status-style}" \
         "]" \
         "#[push-default]" \
         "#S  " \
@@ -193,10 +187,10 @@ static const char *options_table_allow_passthrough_list[] = {
         "#[norange list=on default]" \
     "," \
         "#[range=session|#{session_id} list=focus " \
-            "#{E:session-style}" \
-            "#{?#{!=:#{E:session-current-style},default}," \
-                "#{E:session-current-style}," \
-                "#{E:session-style}" \
+            "#{E:session-status-style}" \
+            "#{?#{!=:#{E:session-status-current-style},default}," \
+                "#{E:session-status-current-style}," \
+                "#{E:session-status-style}" \
             "}" \
         "]" \
         "#[push-default]" \
