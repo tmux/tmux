@@ -470,7 +470,7 @@ extern int	BSDopterr;
 extern int	BSDoptind;
 extern int	BSDoptopt;
 extern int	BSDoptreset;
-extern char    *BSDoptarg;
+extern const char *BSDoptarg;
 int	BSDgetopt(int, char *const *, const char *);
 #define getopt(ac, av, o)  BSDgetopt(ac, av, o)
 #define opterr             BSDopterr
