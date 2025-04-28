@@ -177,7 +177,7 @@ static const char *options_table_allow_passthrough_list[] = {
     "#[norange default]" \
     "#[list=on align=#{status-justify}]"		      \
     "#[list=left-marker]<#[list=right-marker]>#[list=on]"     \
-    "#{S:" \
+    "#{S/n:" \
         "#[range=session|#{session_id} " \
             "#{E:session-status-style}" \
         "]" \
