@@ -42,7 +42,7 @@ $TMUX send-keys -X begin-selection
 $TMUX send-keys -X next-word-end
 $TMUX send-keys -X next-word-end
 $TMUX send-keys -X copy-selection
-[ "$($TMUX show-buffer)" = "$(printf "words\n        Indented")" ] || exit 1
+[ "$($TMUX show-buffer)" = "$(printf "words\n\tIndented")" ] || exit 1
 
 # Test that `next-word` wraps around un-indented line breaks.
 $TMUX send-keys -X next-word
