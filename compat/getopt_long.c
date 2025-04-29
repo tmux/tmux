@@ -94,13 +94,6 @@
 
 #if !defined(HAVE_GETOPT) || !defined(HAVE_GETOPT_OPTRESET)
 
-/*
- * Some defines to make it easier to keep the code in sync with upstream.
- * getopt opterr optind optopt optreset optarg are all in defines.h which is
- * pulled in by includes.h.
- */
-#define warnx		logit
-
 #if 0
 #include <err.h>
 #include <getopt.h>
@@ -109,16 +102,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
-
-static void logit(const char *fmt, ...) {
-	va_list va;
-	(void)fprintf(stderr, "%s: ", getprogname());
-	va_start(va, fmt);
-	(void)vfprintf(stderr, fmt, va);
-	va_end(va);
-	(void)fputc('\n', stderr);
-	(void)fflush(stderr);
-}
 
 struct option {
 	/* name of long option */
