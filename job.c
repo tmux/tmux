@@ -148,21 +148,29 @@ job_run(const char *cmd, int argc, char **argv, struct environ *e,
 		environ_free(env);
 
 		if (~flags & JOB_PTY) {
+			int success = 0;
 			if (dup2(out[1], STDIN_FILENO) == -1)
 				fatal("dup2 failed");
+			success |= out[1] == STDIN_FILENO;
 			if (dup2(out[1], STDOUT_FILENO) == -1)
 				fatal("dup2 failed");
-			if (out[1] != STDIN_FILENO && out[1] != STDOUT_FILENO)
+			success |= out[1] == STDOUT_FILENO;
+			if (flags & JOB_SHOWSTDERR) {
+				if (dup2(out[1], STDERR_FILENO) == -1)
+					fatal("dup2 failed");
+				success |= out[1] == STDERR_FILENO;
+			} else {
+				nullfd = open(_PATH_DEVNULL, O_RDWR);
+				if (nullfd == -1)
+					fatal("open failed");
+				if (dup2(nullfd, STDERR_FILENO) == -1)
+					fatal("dup2 failed");
+				if (nullfd != STDERR_FILENO)
+					close(nullfd);
+			}
+			if (!success)
 				close(out[1]);
 			close(out[0]);
-
-			nullfd = open(_PATH_DEVNULL, O_RDWR);
-			if (nullfd == -1)
-				fatal("open failed");
-			if (dup2(nullfd, STDERR_FILENO) == -1)
-				fatal("dup2 failed");
-			if (nullfd != STDERR_FILENO)
-				close(nullfd);
 		}
 		closefrom(STDERR_FILENO + 1);
 
