@@ -466,11 +466,11 @@ int		 utf8proc_wctomb(char *, wchar_t);
 #endif
 
 /* getopt.c */
-extern int	BSDopterr;
-extern int	BSDoptind;
-extern int	BSDoptopt;
-extern int	BSDoptreset;
-extern const char *BSDoptarg;
+extern int	 BSDopterr;
+extern int	 BSDoptind;
+extern int	 BSDoptopt;
+extern int	 BSDoptreset;
+extern char	*BSDoptarg;
 int	BSDgetopt(int, char *const *, const char *);
 #define getopt(ac, av, o)  BSDgetopt(ac, av, o)
 #define opterr             BSDopterr
