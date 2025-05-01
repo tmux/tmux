@@ -120,6 +120,10 @@ window_get_border_cell(struct window_pane *wp, enum pane_lines pane_lines,
 		gc->attr &= ~GRID_ATTR_CHARSET;
 		utf8_copy(&gc->data, tty_acs_heavy_borders(cell_type));
 		break;
+	case PANE_LINES_ROUNDED:
+		gc->attr &= ~GRID_ATTR_CHARSET;
+		utf8_copy(&gc->data, tty_acs_rounded_borders(cell_type));
+		break;
 	case PANE_LINES_SIMPLE:
 		gc->attr &= ~GRID_ATTR_CHARSET;
 		utf8_set(&gc->data, SIMPLE_BORDERS[cell_type]);
