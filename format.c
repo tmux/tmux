@@ -553,6 +553,31 @@ format_cb_session_attached_list(struct format_tree *ft)
 	return (value);
 }
 
+/* Callback for session_alert. */
+static void *
+format_cb_session_alert(struct format_tree *ft)
+{
+	struct session	*s = ft->s;
+	struct winlink	*wl;
+	char		 alerts[1024];
+
+	if (s == NULL)
+		return (NULL);
+
+	*alerts = '\0';
+	RB_FOREACH(wl, winlinks, &s->windows) {
+		if ((wl->flags & WINLINK_ALERTFLAGS) == 0)
+			continue;
+		if (wl->flags & WINLINK_ACTIVITY)
+			strlcat(alerts, "#", sizeof alerts);
+		if (wl->flags & WINLINK_BELL)
+			strlcat(alerts, "!", sizeof alerts);
+		if (wl->flags & WINLINK_SILENCE)
+			strlcat(alerts, "~", sizeof alerts);
+	}
+	return (xstrdup(alerts));
+}
+
 /* Callback for session_alerts. */
 static void *
 format_cb_session_alerts(struct format_tree *ft)
@@ -2483,6 +2508,22 @@ format_cb_window_bell_flag(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for session_bell_flag. */
+static void *
+format_cb_session_bell_flag(struct format_tree *ft)
+{
+	struct winlink		*wl;
+
+	if (ft->s != NULL) {
+		RB_FOREACH(wl, winlinks, &ft->s->windows) {
+			if (wl->flags & WINLINK_BELL)
+				return (xstrdup("1"));
+			return (xstrdup("0"));
+		}
+	}
+	return (NULL);
+}
+
 /* Callback for window_bigger. */
 static void *
 format_cb_window_bigger(struct format_tree *ft)
@@ -3236,6 +3277,9 @@ static const struct format_table_entry format_table[] = {
 	{ "session_activity", FORMAT_TABLE_TIME,
 	  format_cb_session_activity
 	},
+	{ "session_alert", FORMAT_TABLE_STRING,
+	  format_cb_session_alert
+	},
 	{ "session_alerts", FORMAT_TABLE_STRING,
 	  format_cb_session_alerts
 	},
@@ -3340,6 +3384,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "window_bell_flag", FORMAT_TABLE_STRING,
 	  format_cb_window_bell_flag
+	},
+	{ "session_bell_flag", FORMAT_TABLE_STRING,
+	  format_cb_session_bell_flag
 	},
 	{ "window_bigger", FORMAT_TABLE_STRING,
 	  format_cb_window_bigger

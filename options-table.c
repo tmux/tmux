@@ -173,18 +173,25 @@ static const char *options_table_allow_passthrough_list[] = {
 	"#[pop-default]" \
 	"#[norange default]"
 #define OPTIONS_TABLE_STATUS_FORMAT2 \
-    "#[align=left acs] mq> #[noacs]" \
+	"#{?#{>:#{status},2}," \
+	    "#[align=left acs] x  #[noacs]," \
+	    "#[align=left acs]    #[noacs]" \
+	"}" \
+	"#[align=centre]#{P:#{?pane_active,#[reverse],}" \
+	"#{pane_index}[#{pane_width}x#{pane_height}]#[default] }"
+#define OPTIONS_TABLE_STATUS_FORMAT3 \
+    "#[align=left acs] m> #[noacs]" \
     "#[norange default]" \
     "#[list=on align=#{status-justify}]"		      \
     "#[list=left-marker]<#[list=right-marker]>#[list=on]"     \
-    "#{S/n:" \
+    "#{S:" \
         "#[range=session|#{session_id} " \
             "#{E:session-status-style}" \
         "]" \
         "#[push-default]" \
-        "#S  " \
+        "#S#{session_alert}" \
         "#[pop-default]" \
-        "#[norange list=on default]" \
+        "#[norange list=on default]  " \
     "," \
         "#[range=session|#{session_id} list=focus " \
     		"#{?#{!=:#{E:session-status-current-style},default},"	\
@@ -193,21 +200,15 @@ static const char *options_table_allow_passthrough_list[] = {
             "}" \
         "]" \
         "#[push-default]" \
-        "#S* " \
+        "#S*#{session_alert}" \
         "#[pop-default]" \
-        "#[norange list=on default]" \
+        "#[norange list=on default] " \
     "}" \
     "#[nolist align=right]" \
     "#{P:#{?pane_active,#[reverse],}" \
     "#{pane_index}[#{pane_width}x#{pane_height}]#[default] }"
-
-/*
-#define OPTIONS_TABLE_STATUS_FORMAT2 \
-	"#[align=centre]#{P:#{?pane_active,#[reverse],}" \
-	"#{pane_index}[#{pane_width}x#{pane_height}]#[default] }"
-*/
 static const char *options_table_status_format_default[] = {
-	OPTIONS_TABLE_STATUS_FORMAT1, OPTIONS_TABLE_STATUS_FORMAT2, NULL
+	OPTIONS_TABLE_STATUS_FORMAT1, OPTIONS_TABLE_STATUS_FORMAT2, OPTIONS_TABLE_STATUS_FORMAT3, NULL
 };
 
 /* Helpers for hook options. */
@@ -907,6 +908,25 @@ const struct options_table_entry options_table[] = {
 	  .choices = options_table_cursor_style_list,
 	  .default_num = 0,
 	  .text = "Style of the cursor when in the command prompt."
+	},
+
+	{ .name = "session-status-current-style",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "default",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ",",
+	  .text = "Style of the current session in the status line."
+	},
+
+	{ .name = "session-status-style",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "default",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ",",
+	  .text = "Style of sessions in the status line, except the current "
+		  "session."
 	},
 
 	{ .name = "update-environment",
