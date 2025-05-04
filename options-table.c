@@ -405,7 +405,7 @@ const struct options_table_entry options_table[] = {
 	  .choices = options_table_popup_border_lines_list,
 	  .default_num = BOX_LINES_SINGLE,
 	  .text = "Type of characters used to draw menu border lines. Some of "
-	          "these are only supported on terminals with UTF-8 support."
+		  "these are only supported on terminals with UTF-8 support."
 	},
 
 	{ .name = "message-limit",
@@ -425,7 +425,7 @@ const struct options_table_entry options_table[] = {
 	  .default_num = 0,
 	  .unit = "milliseconds",
 	  .text = "The timeout for the prefix key if no subsequent key is "
-	          "pressed. Zero means disabled."
+		  "pressed. Zero means disabled."
 	},
 
 	{ .name = "prompt-history-limit",
@@ -462,7 +462,7 @@ const struct options_table_entry options_table[] = {
 	  .flags = OPTIONS_TABLE_IS_ARRAY,
 	  .default_str = "xterm*:clipboard:ccolour:cstyle:focus:title,"
 			 "screen*:title,"
-	                 "rxvt*:ignorefkeys",
+			 "rxvt*:ignorefkeys",
 	  .separator = ",",
 	  .text = "List of terminal features, used if they cannot be "
 		  "automatically detected."
@@ -477,6 +477,14 @@ const struct options_table_entry options_table[] = {
 	  .text = "User key assignments. "
 		  "Each sequence in the list is translated into a key: "
 		  "'User0', 'User1' and so on."
+	},
+
+	{ .name = "variation-selector-always-wide",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .default_num = 1,
+	  .text = "If the Unicode VS16 codepoint should always be treated as a "
+		  "wide character."
 	},
 
 	/* Session options. */
@@ -611,8 +619,8 @@ const struct options_table_entry options_table[] = {
 	  .default_num = 0,
 	  .unit = "milliseconds",
 	  .text = "Time to wait for a key binding to repeat the first time the "
-	          "key is pressed, if it is bound with the '-r' flag. "
-	          "Subsequent presses use the 'repeat-time' option."
+		  "key is pressed, if it is bound with the '-r' flag. "
+		  "Subsequent presses use the 'repeat-time' option."
 	},
 
 	{ .name = "key-table",
@@ -1033,11 +1041,11 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
 	  .default_str = "#[align=right]"
-	                 "#{t/p:top_line_time}#{?#{e|>:#{top_line_time},0}, ,}"
-	                 "[#{scroll_position}/#{history_size}]"
-	                 "#{?search_timed_out, (timed out),"
-	                 "#{?search_count, (#{search_count}"
-	                 "#{?search_count_partial,+,} results),}}",
+			 "#{t/p:top_line_time}#{?#{e|>:#{top_line_time},0}, ,}"
+			 "[#{scroll_position}/#{history_size}]"
+			 "#{?search_timed_out, (timed out),"
+			 "#{?search_count, (#{search_count}"
+			 "#{?search_count_partial,+,} results),}}",
 	  .text = "Format of the position indicator in copy mode."
 	},
 
@@ -1234,7 +1242,7 @@ const struct options_table_entry options_table[] = {
 	  .text = "Pane scrollbar position."
 	},
 
-        { .name = "popup-style",
+	{ .name = "popup-style",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,
 	  .default_str = "default",
@@ -1275,12 +1283,12 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
 	  .default_str = "Pane is dead ("
 			 "#{?#{!=:#{pane_dead_status},},"
-	                 "status #{pane_dead_status},}"
+			 "status #{pane_dead_status},}"
 			 "#{?#{!=:#{pane_dead_signal},},"
-	                 "signal #{pane_dead_signal},}, "
+			 "signal #{pane_dead_signal},}, "
 			 "#{t:pane_dead_time})",
 	  .text = "Message shown after the program in a pane has exited, if "
-	          "remain-on-exit is enabled."
+		  "remain-on-exit is enabled."
 	},
 
 	{ .name = "scroll-on-clear",

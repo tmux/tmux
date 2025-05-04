@@ -3,16 +3,16 @@
 # new session environment
 
 PATH=/bin:/usr/bin
-TERM=screen
 
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 TMUX="$TEST_TMUX -Ltest"
 $TMUX kill-server 2>/dev/null
 
+TERM=$($TMUX start \; show -gv default-terminal)
 TMP=$(mktemp)
 OUT=$(mktemp)
 SCRIPT=$(mktemp)
-trap "rm -f $TMP $OUT $SCRIPT" 0 1 15
+#trap "rm -f $TMP $OUT $SCRIPT" 0 1 15
 
 cat <<EOF >$SCRIPT
 (
@@ -32,7 +32,7 @@ EOF
 	$TMUX -f$TMP start) || exit 1
 sleep 1
 (cat <<EOF|cmp -s - $OUT) || exit 1
-TERM=screen
+TERM=$TERM
 PWD=/
 PATH=1
 SHELL=/bin/sh
@@ -43,7 +43,7 @@ EOF
 	$TMUX -f$TMP new -d -- /bin/sh $SCRIPT) || exit 1
 sleep 1
 (cat <<EOF|cmp -s - $OUT) || exit 1
-TERM=screen
+TERM=$TERM
 PWD=/
 PATH=2
 SHELL=/bin/sh
@@ -54,7 +54,7 @@ EOF
 	$TMUX -f/dev/null new -d source $TMP) || exit 1
 sleep 1
 (cat <<EOF|cmp -s - $OUT) || exit 1
-TERM=screen
+TERM=$TERM
 PWD=/
 PATH=2
 SHELL=/bin/sh
