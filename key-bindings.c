@@ -197,11 +197,12 @@ key_bindings_add(const char *name, key_code key, const char *note, int repeat,
 	bd = key_bindings_get(table, key & ~KEYC_MASK_FLAGS);
 	if (cmdlist == NULL) {
 		if (bd != NULL) {
-			free((void *)bd->note);
-			if (note != NULL)
+			if (note != NULL) {
+				free((void *)bd->note);
 				bd->note = xstrdup(note);
-			else
-				bd->note = NULL;
+			}
+			if (repeat)
+				bd->flags |= KEY_BINDING_REPEAT;
 		}
 		return;
 	}
@@ -433,8 +434,9 @@ key_bindings_init(void)
 		"bind -N 'Resize the pane right' -r C-Right { resize-pane -R }",
 
 		/* Menu keys */
-		"bind < { display-menu -xW -yW -T '#[align=centre]#{window_index}:#{window_name}' " DEFAULT_WINDOW_MENU " }",
-		"bind > { display-menu -xP -yP -T '#[align=centre]#{pane_index} (#{pane_id})' " DEFAULT_PANE_MENU " }",
+		"bind -N 'Display window menu' < { display-menu -xW -yW -T '#[align=centre]#{window_index}:#{window_name}' " DEFAULT_WINDOW_MENU " }",
+		"bind -N 'Display pane menu' > { display-menu -xP -yP -T '#[align=centre]#{pane_index} (#{pane_id})' " DEFAULT_PANE_MENU " }",
+
 
 		/* Mouse button 1 down on pane. */
 		"bind -n MouseDown1Pane { select-pane -t=; send -M }",

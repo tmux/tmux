@@ -570,7 +570,7 @@ For
 this typically means quoted (such as
 .Ql neww \[aq];\[aq] splitw )
 or escaped (such as
-.Ql neww \e\e\e\e; splitw ) .
+.Ql neww \e; splitw ) .
 .It
 Individual semicolons or trailing semicolons that should be interpreted as
 arguments should be escaped twice: once according to the shell conventions and
@@ -578,15 +578,15 @@ a second time for
 .Nm ;
 for example:
 .Bd -literal -offset indent
-$ tmux neww \[aq]foo\e\e;\[aq] bar
-$ tmux neww foo\e\e\e\e; bar
+$ tmux neww \[aq]foo\e;\[aq] bar
+$ tmux neww foo\e\e\e; bar
 .Ed
 .It
 Semicolons that are not individual tokens or trailing another token should only
 be escaped once according to shell conventions; for example:
 .Bd -literal -offset indent
 $ tmux neww \[aq]foo-;-bar\[aq]
-$ tmux neww foo-\e\e;-bar
+$ tmux neww foo-\e;-bar
 .Ed
 .El
 .Pp
@@ -3730,7 +3730,15 @@ options.
 .Fl N
 attaches a note to the key (shown with
 .Ic list-keys
-.Fl N ) .
+.Fl N ) ,
+which can be cleared by passing an empty string.
+The
+.Fl r
+and
+.Fl N
+flags can be used without
+.Ar command
+to alter an existing binding.
 .Pp
 To view the default bindings and possible commands, see the
 .Ic list-keys
@@ -4386,6 +4394,11 @@ For example:
 set -s user-keys[0] "\ee[5;30012\[ti]"
 bind User0 resize-pane -L 3
 .Ed
+.It Xo Ic variation-selector-always-wide
+.Op Ic on | off
+.Xc
+Always treat Unicode variation selector 16 as marking a wide character.
+This is a feature of some terminals as part of their Unicode 14 support.
 .El
 .Pp
 Available session options are:
@@ -5633,10 +5646,12 @@ by a
 .Ql } .
 .Pp
 Conditionals are available by prefixing with
-.Ql \&?
-and separating two alternatives with a comma;
-if the specified variable exists and is not zero, the first alternative
-is chosen, otherwise the second is used.
+.Ql \&? .
+For each pair of two arguments, if the variable in the first of the pair exists
+and is not zero, the second of the pair is chosen, otherwise it continues.
+If no condition from paired arguments matches, the default value is chosen.
+If there's an unpaired final argument, that is the default.
+If not, the default is the empty string.
 For example
 .Ql #{?session_attached,attached,not attached}
 will include the string
@@ -5652,6 +5667,12 @@ if
 is enabled, or
 .Ql no
 if not.
+.Ql #{?#{n:window_name},#{window_name} - }
+will include the window name with a dash separator if there is a window name, or
+the empty string if the window name is empty.
+.Ql #{?session_format,format1,window_format,format2,format3}
+will include format1 for a session format, format2 for a window format, or
+format3 for neither a session nor a window format.
 Conditionals can be nested arbitrarily.
 Inside a conditional,
 .Ql \&,
@@ -5666,7 +5687,7 @@ unless they are part of a
 replacement.
 For example:
 .Bd -literal -offset indent
-#{?pane_in_mode,#[fg=white#,bg=red],#[fg=red#,bg=white]}#W .
+#{?pane_in_mode,#[fg=white#,bg=red],#[fg=red#,bg=white]}#W
 .Ed
 .Pp
 String comparisons may be expressed by prefixing two comma-separated
@@ -5690,9 +5711,17 @@ otherwise by
 .Ql ||
 and
 .Ql &&
-evaluate to true if either or both of two comma-separated alternatives are
+evaluate to true if any or all of the comma-separated alternatives are
 true, for example
 .Ql #{||:#{pane_in_mode},#{alternate_on}} .
+.Ql \&!
+evaluates to true if the value is false and vice versa, for example
+.Ql #{!:#{pane_in_mode}} .
+.Ql !!
+converts a value to a canonical boolean form, 1 for true and 0 for false, for
+example
+.Ql #{!!:non-empty string}
+evaluates to 1.
 .Pp
 An
 .Ql m
@@ -6054,7 +6083,7 @@ The following variables are available, where appropriate:
 .It Li "pane_format" Ta "" Ta "1 if format is for a pane"
 .It Li "pane_height" Ta "" Ta "Height of pane"
 .It Li "pane_id" Ta "#D" Ta "Unique pane ID"
-.It Li "pane_in_mode" Ta "" Ta "1 if pane is in a mode"
+.It Li "pane_in_mode" Ta "" Ta "Number of modes pane is in"
 .It Li "pane_index" Ta "#P" Ta "Index of pane"
 .It Li "pane_input_off" Ta "" Ta "1 if input to pane is disabled"
 .It Li "pane_key_mode" Ta "" Ta "Extended key reporting mode in this pane"

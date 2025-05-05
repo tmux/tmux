@@ -219,7 +219,7 @@ AC_SEARCH_LIBS(clock_gettime, rt)
 # musl does not set optarg to NULL for flags without arguments (although it is
 # not required to, but it is helpful) 3) there are probably other weird
 # implementations.
-AC_LIBOBJ(getopt)
+AC_LIBOBJ(getopt_long)
 
 # Look for libevent. Try libevent_core or libevent with pkg-config first then
 # look for the library.

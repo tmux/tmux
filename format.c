@@ -104,6 +104,8 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 #define FORMAT_CHARACTER 0x10000
 #define FORMAT_COLOUR 0x20000
 #define FORMAT_CLIENTS 0x40000
+#define FORMAT_NOT 0x80000
+#define FORMAT_NOT_NOT 0x100000
 
 /* Limit on recursion. */
 #define FORMAT_LOOP_LIMIT 100
@@ -4007,7 +4009,7 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 			cp++;
 
 		/* Check single character modifiers with no arguments. */
-		if (strchr("labcdnwETSWPL<>", cp[0]) != NULL &&
+		if (strchr("labcdnwETSWPL!<>", cp[0]) != NULL &&
 		    format_is_end(cp[1])) {
 			format_add_modifier(&list, count, cp, 1, NULL, 0);
 			cp++;
@@ -4017,6 +4019,7 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 		/* Then try double character with no arguments. */
 		if ((memcmp("||", cp, 2) == 0 ||
 		    memcmp("&&", cp, 2) == 0 ||
+		    memcmp("!!", cp, 2) == 0 ||
 		    memcmp("!=", cp, 2) == 0 ||
 		    memcmp("==", cp, 2) == 0 ||
 		    memcmp("<=", cp, 2) == 0 ||
@@ -4150,6 +4153,60 @@ format_search(struct format_modifier *fm, struct window_pane *wp, const char *s)
 	}
 	xasprintf(&value, "%u", window_pane_search(wp, s, regex, ignore));
 	return (value);
+}
+
+/* Handle unary boolean operators, "!" and "!!". */
+static char *
+format_bool_op_1(struct format_expand_state *es, const char *fmt, int not)
+{
+	int	 result;
+	char	*expanded;
+
+	expanded = format_expand1(es, fmt);
+	result = format_true(expanded);
+	if (not)
+		result = !result;
+	free(expanded);
+
+	return (xstrdup(result ? "1" : "0"));
+}
+
+/* Handle n-ary boolean operators, "&&" and "||". */
+static char *
+format_bool_op_n(struct format_expand_state *es, const char *fmt, int and)
+{
+	int		 result;
+	const char	*cp1, *cp2;
+	char		*raw, *expanded;
+
+	result = and ? 1 : 0;
+	cp1 = fmt;
+
+	while (and ? result : !result) {
+		cp2 = format_skip(cp1, ",");
+
+		if (cp2 == NULL)
+			raw = xstrdup(cp1);
+		else
+			raw = xstrndup(cp1, cp2 - cp1);
+		expanded = format_expand1(es, raw);
+		free(raw);
+		format_log(es, "operator %s has operand: %s",
+		    and ? "&&" : "||", expanded);
+
+		if (and)
+			result = result && format_true(expanded);
+		else
+			result = result || format_true(expanded);
+		free(expanded);
+
+		if (cp2 == NULL)
+			break;
+		else
+			cp1 = cp2 + 1;
+	}
+
+	return (xstrdup(result ? "1" : "0"));
 }
 
 /* Does session name exist? */
@@ -4518,7 +4575,8 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 {
 	struct format_tree		 *ft = es->ft;
 	struct window_pane		 *wp = ft->wp;
-	const char			 *errstr, *copy, *cp, *marker = NULL;
+	const char			 *errstr, *copy, *cp, *cp2;
+	const char			 *marker = NULL;
 	const char			 *time_format = NULL;
 	char				 *copy0, *condition, *found, *new;
 	char				 *value, *left, *right;
@@ -4527,6 +4585,7 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 	int				  j, c;
 	struct format_modifier		 *list, *cmp = NULL, *search = NULL;
 	struct format_modifier		**sub = NULL, *mexp = NULL, *fm;
+	struct format_modifier		 *bool_op_n = NULL;
 	u_int				  i, count, nsub = 0;
 	struct format_expand_state	  next;
 
@@ -4550,6 +4609,9 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 			case '<':
 			case '>':
 				cmp = fm;
+				break;
+			case '!':
+				modifiers |= FORMAT_NOT;
 				break;
 			case 'C':
 				search = fm;
@@ -4649,8 +4711,11 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 			}
 		} else if (fm->size == 2) {
 			if (strcmp(fm->modifier, "||") == 0 ||
-			    strcmp(fm->modifier, "&&") == 0 ||
-			    strcmp(fm->modifier, "==") == 0 ||
+			    strcmp(fm->modifier, "&&") == 0)
+				bool_op_n = fm;
+			else if (strcmp(fm->modifier, "!!") == 0)
+				modifiers |= FORMAT_NOT_NOT;
+			else if (strcmp(fm->modifier, "==") == 0 ||
 			    strcmp(fm->modifier, "!=") == 0 ||
 			    strcmp(fm->modifier, ">=") == 0 ||
 			    strcmp(fm->modifier, "<=") == 0)
@@ -4689,7 +4754,7 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 		goto done;
 	}
 
-	/* Is this a loop, comparison or condition? */
+	/* Is this a loop, operator, comparison or condition? */
 	if (modifiers & FORMAT_SESSIONS) {
 		value = format_loop_sessions(es, copy);
 		if (value == NULL)
@@ -4725,6 +4790,16 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 			value = format_search(search, wp, new);
 		}
 		free(new);
+	} else if (modifiers & FORMAT_NOT) {
+		value = format_bool_op_1(es, copy, 1);
+	} else if (modifiers & FORMAT_NOT_NOT) {
+		value = format_bool_op_1(es, copy, 0);
+	} else if (bool_op_n != NULL) {
+		/* n-ary boolean operator. */
+		if (strcmp(bool_op_n->modifier, "||") == 0)
+			value = format_bool_op_n(es, copy, 0);
+		else if (strcmp(bool_op_n->modifier, "&&") == 0)
+			value = format_bool_op_n(es, copy, 1);
 	} else if (cmp != NULL) {
 		/* Comparison of left and right. */
 		if (format_choose(es, copy, &left, &right, 1) != 0) {
@@ -4735,17 +4810,7 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 		format_log(es, "compare %s left is: %s", cmp->modifier, left);
 		format_log(es, "compare %s right is: %s", cmp->modifier, right);
 
-		if (strcmp(cmp->modifier, "||") == 0) {
-			if (format_true(left) || format_true(right))
-				value = xstrdup("1");
-			else
-				value = xstrdup("0");
-		} else if (strcmp(cmp->modifier, "&&") == 0) {
-			if (format_true(left) && format_true(right))
-				value = xstrdup("1");
-			else
-				value = xstrdup("0");
-		} else if (strcmp(cmp->modifier, "==") == 0) {
+		if (strcmp(cmp->modifier, "==") == 0) {
 			if (strcmp(left, right) == 0)
 				value = xstrdup("1");
 			else
@@ -4781,53 +4846,81 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 		free(right);
 		free(left);
 	} else if (*copy == '?') {
-		/* Conditional: check first and choose second or third. */
-		cp = format_skip(copy + 1, ",");
-		if (cp == NULL) {
-			format_log(es, "condition syntax error: %s", copy + 1);
-			goto fail;
-		}
-		condition = xstrndup(copy + 1, cp - (copy + 1));
-		format_log(es, "condition is: %s", condition);
-
-		found = format_find(ft, condition, modifiers, time_format);
-		if (found == NULL) {
-			/*
-			 * If the condition not found, try to expand it. If
-			 * the expansion doesn't have any effect, then assume
-			 * false.
-			 */
-			found = format_expand1(es, condition);
-			if (strcmp(found, condition) == 0) {
-				free(found);
-				found = xstrdup("");
+		/*
+		 * Conditional: For each pair of (condition, value), check the
+		 * condition and return the value if true. If no condition
+		 * matches, return the last unpaired arg if there is one, or the
+		 * empty string if not.
+		 */
+		cp = copy + 1;
+		while (1) {
+			cp2 = format_skip(cp, ",");
+			if (cp2 == NULL) {
 				format_log(es,
-				    "condition '%s' not found; assuming false",
+				    "no condition matched in '%s'; using last "
+				    "arg", copy + 1);
+				value = format_expand1(es, cp);
+				break;
+			}
+
+			condition = xstrndup(cp, cp2 - cp);
+			format_log(es, "condition is: %s", condition);
+
+			found = format_find(ft, condition, modifiers,
+			    time_format);
+			if (found == NULL) {
+				/*
+				 * If the condition not found, try to expand it.
+				 * If the expansion doesn't have any effect,
+				 * then assume false.
+				 */
+				found = format_expand1(es, condition);
+				if (strcmp(found, condition) == 0) {
+					free(found);
+					found = xstrdup("");
+					format_log(es,
+					    "condition '%s' not found; "
+					    "assuming false",
+					    condition);
+				}
+			} else {
+				format_log(es, "condition '%s' found: %s",
+				    condition, found);
+			}
+
+			cp = cp2 + 1;
+			cp2 = format_skip(cp, ",");
+			if (format_true(found)) {
+				format_log(es, "condition '%s' is true",
+				    condition);
+				if (cp2 == NULL)
+					value = format_expand1(es, cp);
+				else {
+					right = xstrndup(cp, cp2 - cp);
+					value = format_expand1(es, right);
+					free(right);
+				}
+				free(condition);
+				free(found);
+				break;
+			} else {
+				format_log(es, "condition '%s' is false",
 				    condition);
 			}
-		} else {
-			format_log(es, "condition '%s' found: %s", condition,
-			    found);
-		}
 
-		if (format_choose(es, cp + 1, &left, &right, 0) != 0) {
-			format_log(es, "condition '%s' syntax error: %s",
-			    condition, cp + 1);
+			free(condition);
 			free(found);
-			goto fail;
-		}
-		if (format_true(found)) {
-			format_log(es, "condition '%s' is true", condition);
-			value = format_expand1(es, left);
-		} else {
-			format_log(es, "condition '%s' is false", condition);
-			value = format_expand1(es, right);
-		}
-		free(right);
-		free(left);
 
-		free(condition);
-		free(found);
+			if (cp2 == NULL) {
+				format_log(es,
+				    "no condition matched in '%s'; using empty "
+				    "string", copy + 1);
+				value = xstrdup("");
+				break;
+			}
+
+			cp = cp2 + 1;
+		}
 	} else if (mexp != NULL) {
 		value = format_replace_expression(mexp, es, copy);
 		if (value == NULL)
