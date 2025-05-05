@@ -515,11 +515,15 @@ popup_key_cb(struct client *c, void *data, struct key_event *event)
 			popup_handle_drag(c, pd, m);
 			goto out;
 		}
+		if (!(c->flags & CLIENT_OVERLAYFOCUSED) &&
+		    (MOUSE_BUTTONS(m->b) & MOUSE_BUTTON_3))
+			return (0);
 		if (m->x < pd->px ||
 		    m->x > pd->px + pd->sx - 1 ||
 		    m->y < pd->py ||
 		    m->y > pd->py + pd->sy - 1) {
-			if ((c->flags & CLIENT_OVERLAYFOCUSED) && (MOUSE_BUTTONS(m->b) == MOUSE_BUTTON_3))
+			if ((c->flags & CLIENT_OVERLAYFOCUSED) &&
+			    (MOUSE_BUTTONS(m->b) & MOUSE_BUTTON_3))
 				goto menu;
 			c->flags &= ~CLIENT_OVERLAYFOCUSED;
 			return (0);
