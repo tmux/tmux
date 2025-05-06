@@ -2637,7 +2637,7 @@ server_client_handle_key(struct client *c, struct key_event *event)
 			}
 			c->flags |= CLIENT_REDRAWWINDOW;
 		}
-		if (c->overlay_key != NULL) {
+		else if (c->overlay_key != NULL) {
 			done = c->overlay_key(c, c->overlay_data, event);
 			if (done)
 				server_client_clear_overlay(c);
