@@ -2634,8 +2634,8 @@ server_client_handle_key(struct client *c, struct key_event *event)
 			if (done) {
 				w->menu_free_cb(c, w->md);
 				w->md = NULL;
+				c->flags |= CLIENT_REDRAWWINDOW;
 			}
-			c->flags |= CLIENT_REDRAWWINDOW;
 		}
 		else if (c->overlay_key != NULL) {
 			done = c->overlay_key(c, c->overlay_data, event);
