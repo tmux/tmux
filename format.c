@@ -106,6 +106,7 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 #define FORMAT_CLIENTS 0x40000
 #define FORMAT_NOT 0x80000
 #define FORMAT_NOT_NOT 0x100000
+#define FORMAT_REPEAT 0x200000
 
 /* Limit on recursion. */
 #define FORMAT_LOOP_LIMIT 100
@@ -205,7 +206,7 @@ static const char *format_upper[] = {
 	"window_name",	/* W */
 	NULL,		/* X */
 	NULL,		/* Y */
-	NULL 		/* Z */
+	NULL		/* Z */
 };
 
 /* Single-character lowercase aliases. */
@@ -865,7 +866,7 @@ format_cb_history_bytes(struct format_tree *ft)
 	struct window_pane	*wp = ft->wp;
 	struct grid		*gd;
 	struct grid_line	*gl;
-	size_t		         size = 0;
+	size_t			 size = 0;
 	u_int			 i;
 	char			*value;
 
@@ -1623,11 +1624,11 @@ format_cb_cursor_shape(struct format_tree *ft)
 		switch (ft->wp->screen->cstyle) {
 		case SCREEN_CURSOR_BLOCK:
 			return (xstrdup("block"));
-    		case SCREEN_CURSOR_UNDERLINE:
+		case SCREEN_CURSOR_UNDERLINE:
 			return (xstrdup("underline"));
-    		case SCREEN_CURSOR_BAR:
+		case SCREEN_CURSOR_BAR:
 			return (xstrdup("bar"));
-    		default:
+		default:
 			return (xstrdup("default"));
 		}
 	}
@@ -3672,7 +3673,7 @@ format_quote_style(const char *s)
 char *
 format_pretty_time(time_t t, int seconds)
 {
-	struct tm       now_tm, tm;
+	struct tm	now_tm, tm;
 	time_t		now, age;
 	char		s[9];
 
@@ -3850,7 +3851,7 @@ format_unescape(const char *s)
 		    *s == '#' &&
 		    strchr(",#{}:", s[1]) != NULL) {
 			*cp++ = *++s;
- 			continue;
+			continue;
 		}
 		if (*s == '}')
 			brackets--;
@@ -3992,10 +3993,10 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 
 	/*
 	 * Modifiers are a ; separated list of the forms:
-	 *      l,m,C,a,b,c,d,n,t,w,q,E,T,S,W,P,<,>
+	 *	l,m,C,a,b,c,d,n,t,w,q,E,T,S,W,P,R,<,>
 	 *	=a
 	 *	=/a
-	 *      =/a/
+	 *	=/a/
 	 *	s/a/b/
 	 *	s/a/b
 	 *	||,&&,!=,==,<=,>=
@@ -4031,7 +4032,7 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 		}
 
 		/* Now try single character with arguments. */
-		if (strchr("mCNst=peq", cp[0]) == NULL)
+		if (strchr("mCNst=pReq", cp[0]) == NULL)
 			break;
 		c = cp[0];
 
@@ -4586,7 +4587,7 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 	struct format_modifier		 *list, *cmp = NULL, *search = NULL;
 	struct format_modifier		**sub = NULL, *mexp = NULL, *fm;
 	struct format_modifier		 *bool_op_n = NULL;
-	u_int				  i, count, nsub = 0;
+	u_int				  i, count, nsub = 0, nrep;
 	struct format_expand_state	  next;
 
 	/* Make a copy of the key. */
@@ -4708,6 +4709,9 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 			case 'L':
 				modifiers |= FORMAT_CLIENTS;
 				break;
+			case 'R':
+				modifiers |= FORMAT_REPEAT;
+				break;
 			}
 		} else if (fm->size == 2) {
 			if (strcmp(fm->modifier, "||") == 0 ||
@@ -4790,7 +4794,26 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 			value = format_search(search, wp, new);
 		}
 		free(new);
-	} else if (modifiers & FORMAT_NOT) {
+    } else if (modifiers & FORMAT_REPEAT) {
+		/* Repeat multiple times. */
+		if (format_choose(es, copy, &left, &right, 1) != 0) {
+			format_log(es, "repeat syntax error: %s", copy);
+			goto fail;
+		}
+		nrep = strtonum(right, 1, 10000, &errstr);
+		if (errstr != NULL)
+			value = xstrdup("");
+		else {
+			value = xstrdup("");
+			for (i = 0; i < nrep; i++) {
+				xasprintf(&new, "%s%s", value, left);
+				free(value);
+				value = new;
+			}
+		}
+		free(right);
+		free(left);
+    } else if (modifiers & FORMAT_NOT) {
 		value = format_bool_op_1(es, copy, 1);
 	} else if (modifiers & FORMAT_NOT_NOT) {
 		value = format_bool_op_1(es, copy, 0);
@@ -5050,7 +5073,7 @@ format_expand1(struct format_expand_state *es, const char *fmt)
 	char			*buf, *out, *name;
 	const char		*ptr, *s, *style_end = NULL;
 	size_t			 off, len, n, outlen;
-	int     		 ch, brackets;
+	int			 ch, brackets;
 	char			 expanded[8192];
 
 	if (fmt == NULL || *fmt == '\0')

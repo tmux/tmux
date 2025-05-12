@@ -631,17 +631,18 @@ status_prompt_set(struct client *c, struct cmd_find_state *fs,
 
 	if (input == NULL)
 		input = "";
-	if (flags & PROMPT_NOFORMAT)
-		tmp = xstrdup(input);
-	else
-		tmp = format_expand_time(ft, input);
 
 	status_message_clear(c);
 	status_prompt_clear(c);
 	status_push_screen(c);
 
-	c->prompt_string = format_expand_time(ft, msg);
+	c->prompt_formats = ft;
+	c->prompt_string = xstrdup (msg);
 
+	if (flags & PROMPT_NOFORMAT)
+		tmp = xstrdup(input);
+	else
+		tmp = format_expand_time(ft, input);
 	if (flags & PROMPT_INCREMENTAL) {
 		c->prompt_last = xstrdup(tmp);
 		c->prompt_buffer = utf8_fromcstr("");
@@ -650,6 +651,7 @@ status_prompt_set(struct client *c, struct cmd_find_state *fs,
 		c->prompt_buffer = utf8_fromcstr(tmp);
 	}
 	c->prompt_index = utf8_strlen(c->prompt_buffer);
+	free(tmp);
 
 	c->prompt_inputcb = inputcb;
 	c->prompt_freecb = freecb;
@@ -668,9 +670,6 @@ status_prompt_set(struct client *c, struct cmd_find_state *fs,
 	if (flags & PROMPT_INCREMENTAL)
 		c->prompt_inputcb(c, c->prompt_data, "=", 0);
 
-	free(tmp);
-	format_free(ft);
-
 	if ((flags & PROMPT_SINGLE) && (flags & PROMPT_ACCEPT))
 		cmdq_append(c, cmdq_get_callback(status_prompt_accept, c));
 }
@@ -687,6 +686,9 @@ status_prompt_clear(struct client *c)
 
 	free(c->prompt_last);
 	c->prompt_last = NULL;
+
+	format_free(c->prompt_formats);
+	c->prompt_formats = NULL;
 
 	free(c->prompt_string);
 	c->prompt_string = NULL;
@@ -707,27 +709,20 @@ status_prompt_clear(struct client *c)
 void
 status_prompt_update(struct client *c, const char *msg, const char *input)
 {
-	struct format_tree	*ft;
-	char			*tmp;
-
-	ft = format_create(c, NULL, FORMAT_NONE, 0);
-	format_defaults(ft, c, NULL, NULL, NULL);
-
-	tmp = format_expand_time(ft, input);
+	char	*tmp;
 
 	free(c->prompt_string);
-	c->prompt_string = format_expand_time(ft, msg);
+	c->prompt_string = xstrdup(msg);
 
 	free(c->prompt_buffer);
+	tmp = format_expand_time(c->prompt_formats, input);
 	c->prompt_buffer = utf8_fromcstr(tmp);
 	c->prompt_index = utf8_strlen(c->prompt_buffer);
+	free(tmp);
 
 	memset(c->prompt_hindex, 0, sizeof c->prompt_hindex);
 
 	c->flags |= CLIENT_REDRAWSTATUS;
-
-	free(tmp);
-	format_free(ft);
 }
 
 /* Redraw character. Return 1 if can continue redrawing, 0 otherwise. */
@@ -790,7 +785,8 @@ status_prompt_redraw(struct client *c)
 	u_int			 i, lines, offset, left, start, width, n;
 	u_int			 pcursor, pwidth, promptline;
 	struct grid_cell	 gc;
-	struct format_tree	*ft;
+	struct format_tree	*ft = c->prompt_formats;
+	char			*prompt, *tmp;
 
 	if (c->tty.sx == 0 || c->tty.sy == 0)
 		return (0);
@@ -811,14 +807,17 @@ status_prompt_redraw(struct client *c)
 	if (promptline > lines - 1)
 		promptline = lines - 1;
 
-	ft = format_create_defaults(NULL, c, NULL, NULL, NULL);
 	if (c->prompt_mode == PROMPT_COMMAND)
 		style_apply(&gc, s->options, "message-command-style", ft);
 	else
 		style_apply(&gc, s->options, "message-style", ft);
-	format_free(ft);
 
-	start = format_width(c->prompt_string);
+	tmp = utf8_tocstr(c->prompt_buffer);
+	format_add(c->prompt_formats, "prompt-input", "%s", tmp);
+	prompt = format_expand_time(c->prompt_formats, c->prompt_string);
+	free (tmp);
+
+	start = format_width(prompt);
 	if (start > c->tty.sx)
 		start = c->tty.sx;
 
@@ -828,7 +827,7 @@ status_prompt_redraw(struct client *c)
 	for (offset = 0; offset < c->tty.sx; offset++)
 		screen_write_putc(&ctx, &gc, ' ');
 	screen_write_cursormove(&ctx, 0, promptline, 0);
-	format_draw(&ctx, &gc, start, c->prompt_string, NULL, 0);
+	format_draw(&ctx, &gc, start, prompt, NULL, 0);
 	screen_write_cursormove(&ctx, start, promptline, 0);
 
 	left = c->tty.sx - start;
