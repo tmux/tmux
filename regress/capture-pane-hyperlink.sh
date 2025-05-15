@@ -16,7 +16,7 @@ do_test() {
   $TMUX -f/dev/null new -d "
   printf '$1'
   $TMUX capturep -peS0 -E1 >$TMP"
-  echo $2 > $TMP2
+  printf "$2\n" > $TMP2
   sleep 1
   cmp $TMP $TMP2 || exit 1
   return 0

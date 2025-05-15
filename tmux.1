@@ -4394,6 +4394,11 @@ For example:
 set -s user-keys[0] "\ee[5;30012\[ti]"
 bind User0 resize-pane -L 3
 .Ed
+.It Xo Ic variation-selector-always-wide
+.Op Ic on | off
+.Xc
+Always treat Unicode variation selector 16 as marking a wide character.
+This is a feature of some terminals as part of their Unicode 14 support.
 .El
 .Pp
 Available session options are:
@@ -5830,6 +5835,12 @@ expands to the length of the variable and
 .Ql w
 to its width when displayed, for example
 .Ql #{n:window_name} .
+.Ql R
+repeats the first argument by a number of times given by the second argument,
+so
+.Ql #{R:a,3}
+will result in
+.Ql aaa .
 .Pp
 Prefixing a time variable with
 .Ql t:\&
@@ -7278,7 +7289,7 @@ Lock each client individually by running the command specified by the
 option.
 .Tg run
 .It Xo Ic run-shell
-.Op Fl bC
+.Op Fl bCE
 .Op Fl c Ar start-directory
 .Op Fl d Ar delay
 .Op Fl t Ar target-pane
@@ -7306,6 +7317,8 @@ the command is run in the background.
 waits for
 .Ar delay
 seconds before starting the command.
+.Fl E
+redirects the command's stderr to stdout instead of ignoring it.
 If
 .Fl c
 is given, the current working directory is set to

@@ -2756,8 +2756,7 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
 	if (changed & GRID_ATTR_ITALICS)
 		tty_set_italics(tty);
 	if (changed & GRID_ATTR_ALL_UNDERSCORE) {
-		if ((changed & GRID_ATTR_UNDERSCORE) ||
-		    !tty_term_has(tty->term, TTYC_SMULX))
+		if (changed & GRID_ATTR_UNDERSCORE)
 			tty_putcode(tty, TTYC_SMUL);
 		else if (changed & GRID_ATTR_UNDERSCORE_2)
 			tty_putcode_i(tty, TTYC_SMULX, 2);
@@ -2882,15 +2881,23 @@ tty_check_fg(struct tty *tty, struct colour_palette *palette,
 	/* Is this a 256-colour colour? */
 	if (gc->fg & COLOUR_FLAG_256) {
 		/* And not a 256 colour mode? */
-		if (colours < 256) {
-			gc->fg = colour_256to16(gc->fg);
-			if (gc->fg & 8) {
-				gc->fg &= 7;
-				if (colours >= 16)
-					gc->fg += 90;
-				else if (gc->fg == 0 && gc->bg == 0)
-					gc->fg = 7;
-			}
+		if (colours >= 256)
+			return;
+		gc->fg = colour_256to16(gc->fg);
+		if (~gc->fg & 8)
+			return;
+		gc->fg &= 7;
+		if (colours >= 16)
+			gc->fg += 90;
+		else {
+			/*
+			 * Mapping to black-on-black or white-on-white is not
+			 * much use, so change the foreground.
+			 */
+			if (gc->fg == 0 && gc->bg == 0)
+				gc->fg = 7;
+			else if (gc->fg == 7 && gc->bg == 7)
+				gc->fg = 0;
 		}
 		return;
 	}
@@ -2938,14 +2945,14 @@ tty_check_bg(struct tty *tty, struct colour_palette *palette,
 		 * palette. Bold background doesn't exist portably, so just
 		 * discard the bold bit if set.
 		 */
-		if (colours < 256) {
-			gc->bg = colour_256to16(gc->bg);
-			if (gc->bg & 8) {
-				gc->bg &= 7;
-				if (colours >= 16)
-					gc->bg += 90;
-			}
-		}
+		if (colours >= 256)
+			return;
+		gc->bg = colour_256to16(gc->bg);
+		if (~gc->bg & 8)
+			return;
+		gc->bg &= 7;
+		if (colours >= 16)
+			gc->bg += 90;
 		return;
 	}
 

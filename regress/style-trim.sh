@@ -3,13 +3,26 @@
 PATH=/bin:/usr/bin
 TERM=screen
 
+shell=
+if command -v bash >/dev/null 2>&1; then
+	# If Bash is available, we start a plain Bash session (without any user
+	# configuration files) for testing.
+	#
+	# Note: We disable the command history by passing "+o history". If an
+	# interactive Bash session is started without any configuration files,
+	# the user's command history may be truncated to the default maximum
+	# size of 500. To avoid breaking the user's command history, we disable
+	# the command history.
+	shell='bash --noprofile --norc +o history'
+fi
+
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
 TMUX="$TEST_TMUX -Ltest"
 $TMUX kill-server 2>/dev/null
 TMUX2="$TEST_TMUX -Ltest2"
 $TMUX2 kill-server 2>/dev/null
 
-$TMUX2 -f/dev/null new -d "$TMUX -f/dev/null new"
+$TMUX2 -f/dev/null new -d "$TMUX -f/dev/null new -- $shell"
 sleep 2
 $TMUX set -g status-style fg=default,bg=default
 
