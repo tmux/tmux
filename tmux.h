@@ -2233,6 +2233,7 @@ const char	*sig2name(int);
 const char	*find_cwd(void);
 const char	*find_home(void);
 const char	*getversion(void);
+char		*append_string(char *buf, size_t *len, char *line, size_t linelen);
 
 /* proc.c */
 struct imsg;
@@ -3415,11 +3416,13 @@ struct window_pane_offset *control_pane_offset(struct client *,
 	   struct window_pane *, int *);
 void	control_reset_offsets(struct client *);
 void printflike(2, 3) control_write(struct client *, const char *, ...);
+void	control_write_buffer(struct client *c, struct evbuffer *buffer);
 void	control_write_output(struct client *, struct window_pane *);
 int	control_all_done(struct client *);
 void	control_add_sub(struct client *, const char *, enum control_sub_type,
     	   int, const char *);
 void	control_remove_sub(struct client *, const char *);
+void	control_escape(struct evbuffer *, char *, size_t);
 
 /* control-notify.c */
 void	control_notify_pane_mode_changed(int);
@@ -3436,6 +3439,7 @@ void	control_notify_session_closed(struct session *);
 void	control_notify_session_window_changed(struct session *);
 void	control_notify_paste_buffer_changed(const char *);
 void	control_notify_paste_buffer_deleted(const char *);
+void	control_notify_popup(struct client *c, int status, char *buf, size_t len, int wp);
 
 /* session.c */
 extern struct sessions sessions;
@@ -3567,7 +3571,7 @@ int		 popup_display(int, enum box_lines, struct cmdq_item *, u_int,
                     u_int, u_int, u_int, struct environ *, const char *, int,
                     char **, const char *, const char *, struct client *,
                     struct session *, const char *, const char *,
-                    popup_close_cb, void *);
+                    popup_close_cb, void *, struct window_pane *);
 int		 popup_editor(struct client *, const char *, size_t,
 		    popup_finish_edit_cb, void *);
 
