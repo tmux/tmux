@@ -651,6 +651,7 @@ popup_job_complete_cb(struct job *job)
 {
 	struct popup_data	*pd = job_get_data(job);
 	int			 status;
+	struct client		*c;
 
 	status = job_get_status(pd->job);
 	if (WIFEXITED(status))
@@ -661,10 +662,15 @@ popup_job_complete_cb(struct job *job)
 		pd->status = 0;
 	pd->job = NULL;
 
-	if (pd->c->flags & CLIENT_CONTROL)
-		popup_notify_control(pd->c, pd->status, &pd->s, pd->wp);
-	else if ((pd->flags & POPUP_CLOSEEXIT) ||
-		 ((pd->flags & POPUP_CLOSEEXITZERO) && pd->status == 0))
+	/* Notify all control clients attached to this session. */
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (c->flags & CLIENT_CONTROL && c->session == pd->c->session) {
+		    popup_notify_control(c, pd->status, &pd->s, pd->wp);
+		}
+	}
+	if (!(pd->c->flags & CLIENT_CONTROL) &&
+	    ((pd->flags & POPUP_CLOSEEXIT) ||
+	     ((pd->flags & POPUP_CLOSEEXITZERO) && pd->status == 0)))
 		server_client_clear_overlay(pd->c);
 }
 
