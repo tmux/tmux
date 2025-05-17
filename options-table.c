@@ -172,11 +172,72 @@ static const char *options_table_allow_passthrough_list[] = {
 	"#{T;=/#{status-right-length}:status-right}" \
 	"#[pop-default]" \
 	"#[norange default]"
+/*
 #define OPTIONS_TABLE_STATUS_FORMAT2 \
+	"#{?#{>:#{status},2}," \
+	    "#[align=left acs] x  #[noacs]," \
+	    "#[align=left acs]    #[noacs]" \
+	"}" \
 	"#[align=centre]#{P:#{?pane_active,#[reverse],}" \
 	"#{pane_index}[#{pane_width}x#{pane_height}]#[default] }"
+*/
+#define OPTIONS_TABLE_STATUS_FORMAT2 \
+	"#[#{pane-status-style}]#[set-default]" \
+	"#{?#{>:#{status},2}," \
+		"#[align=left acs] x   #[noacs]," \
+		"#[align=left acs]     #[noacs]" \
+	"}" \
+	"#[norange default]"				      \
+	"#[list=on align=#{status-justify}]"		      \
+	"#[list=left-marker]<#[list=right-marker]>#[list=on]" \
+	"#{P:"						      \
+		"#[range=pane|#{pane_id} " \
+			"#{E:pane-status-style}" \
+		"]" \
+		"#[push-default]" \
+		"#P[#{pane_width}x#{pane_height}]" \
+		"#[pop-default]" \
+		"#[norange list=on default]  " \
+	"," \
+		"#[range=pane|#{pane_id} list=focus " \
+			"#{?#{!=:#{E:pane-status-current-style},default}," \
+				"#{E:pane-status-current-style}," \
+				"#{E:pane-status-style}" \
+			"}" \
+		"]" \
+		"#[push-default]" \
+		"#P[#{pane_width}x#{pane_height}]*" \
+		"#[pop-default]" \
+		"#[norange list=on default] " \
+	"}"
+#define OPTIONS_TABLE_STATUS_FORMAT3 \
+	"#[#{session-status-style}]#[set-default]" \
+	"#[align=left acs] m>   #[noacs]" \
+	"#[norange default]" \
+	"#[list=on align=#{status-justify}]" \
+	"#[list=left-marker]<#[list=right-marker]>#[list=on]" \
+	"#{S:" \
+		"#[range=session|#{session_id} " \
+			"#{E:session-status-style}" \
+		"]" \
+		"#[push-default]" \
+		"#S#{session_alert}" \
+		"#[pop-default]" \
+		"#[norange list=on default]  " \
+	"," \
+		"#[range=session|#{session_id} list=focus " \
+			"#{?#{!=:#{E:session-status-current-style},default}," \
+					"#{E:session-status-current-style}," \
+					"#{E:session-status-style}" \
+			"}" \
+		"]" \
+		"#[push-default]" \
+		"#S*#{session_alert}" \
+		"#[pop-default]" \
+		"#[norange list=on default] " \
+	"}"
 static const char *options_table_status_format_default[] = {
-	OPTIONS_TABLE_STATUS_FORMAT1, OPTIONS_TABLE_STATUS_FORMAT2, NULL
+	OPTIONS_TABLE_STATUS_FORMAT1, OPTIONS_TABLE_STATUS_FORMAT2, OPTIONS_TABLE_STATUS_FORMAT3, NULL
 };
 
 /* Helpers for hook options. */
@@ -871,6 +932,25 @@ const struct options_table_entry options_table[] = {
 	  .text = "Style of the status line."
 	},
 
+	{ .name = "pane-status-current-style",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "default",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ",",
+	  .text = "Style of the current pane in the status line."
+	},
+
+	{ .name = "pane-status-style",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "default",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ",",
+	  .text = "Style of panes in the status line, except the current "
+		  "pane."
+	},
+
 	{ .name = "prompt-cursor-colour",
 	  .type = OPTIONS_TABLE_COLOUR,
 	  .scope = OPTIONS_TABLE_SESSION,
@@ -884,6 +964,25 @@ const struct options_table_entry options_table[] = {
 	  .choices = options_table_cursor_style_list,
 	  .default_num = 0,
 	  .text = "Style of the cursor when in the command prompt."
+	},
+
+	{ .name = "session-status-current-style",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "default",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ",",
+	  .text = "Style of the current session in the status line."
+	},
+
+	{ .name = "session-status-style",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "default",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ",",
+	  .text = "Style of sessions in the status line, except the current "
+		  "session."
 	},
 
 	{ .name = "update-environment",

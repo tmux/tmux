@@ -719,7 +719,7 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 	int			 focus_start = -1, focus_end = -1;
 	int			 list_state = -1, fill = -1, even;
 	enum style_align	 list_align = STYLE_ALIGN_DEFAULT;
-	struct grid_cell	 gc, current_default;
+	struct grid_cell	 gc, current_default, base_default;
 	struct style		 sy, saved_sy;
 	struct utf8_data	*ud = &sy.gc.data;
 	const char		*cp, *end;
@@ -729,7 +729,9 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 	struct format_ranges	 frs;
 	struct style_range	*sr;
 
+	memcpy(&base_default, base, sizeof base_default);
 	memcpy(&current_default, base, sizeof current_default);
+	base = &base_default;
 	style_set(&sy, &current_default);
 	TAILQ_INIT(&frs);
 	log_debug("%s: %s", __func__, expanded);
@@ -846,6 +848,12 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 			sy.default_type = STYLE_DEFAULT_BASE;
 		} else if (sy.default_type == STYLE_DEFAULT_POP) {
 			memcpy(&current_default, base, sizeof current_default);
+			sy.default_type = STYLE_DEFAULT_BASE;
+		} else if (sy.default_type == STYLE_DEFAULT_SET) {
+			memcpy(&base_default, &saved_sy.gc,
+			    sizeof base_default);
+			memcpy(&current_default, &saved_sy.gc,
+			    sizeof current_default);
 			sy.default_type = STYLE_DEFAULT_BASE;
 		}
 
@@ -1042,6 +1050,7 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 			    sr->start, sr->end);
 			break;
 		case STYLE_RANGE_PANE:
+			sr->end--;  /* Compensate for undisplayed '%' char */
 			log_debug("%s: range pane|%%%u at %u-%u", __func__,
 			    sr->argument, sr->start, sr->end);
 			break;
@@ -1050,6 +1059,7 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 			    sr->argument, sr->start, sr->end);
 			break;
 		case STYLE_RANGE_SESSION:
+			sr->end--;  /* Compensate for undislayed '$' char */
 			log_debug("%s: range session|$%u at %u-%u", __func__,
 			    sr->argument, sr->start, sr->end);
 			break;
