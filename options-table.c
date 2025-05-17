@@ -108,6 +108,7 @@ static const char *options_table_allow_passthrough_list[] = {
 
 /* Status line format. */
 #define OPTIONS_TABLE_STATUS_FORMAT1 \
+	"#[#{status-style}]#[set-default]" \
 	"#[align=left range=left #{E:status-left-style}]" \
 	"#[push-default]" \
 	"#{T;=/#{status-left-length}:status-left}" \
@@ -172,6 +173,7 @@ static const char *options_table_allow_passthrough_list[] = {
 	"#{T;=/#{status-right-length}:status-right}" \
 	"#[pop-default]" \
 	"#[norange default]"
+/*
 #define OPTIONS_TABLE_STATUS_FORMAT2 \
 	"#{?#{>:#{status},2}," \
 	    "#[align=left acs] x  #[noacs]," \
@@ -179,34 +181,62 @@ static const char *options_table_allow_passthrough_list[] = {
 	"}" \
 	"#[align=centre]#{P:#{?pane_active,#[reverse],}" \
 	"#{pane_index}[#{pane_width}x#{pane_height}]#[default] }"
+*/
+#define OPTIONS_TABLE_STATUS_FORMAT2 \
+	"#[#{pane-status-style}]#[set-default]" \
+	"#{?#{>:#{status},2}," \
+		"#[align=left acs] x   #[noacs]," \
+		"#[align=left acs]     #[noacs]" \
+	"}" \
+	"#[norange default]"				      \
+	"#[list=on align=#{status-justify}]"		      \
+	"#[list=left-marker]<#[list=right-marker]>#[list=on]" \
+	"#{P:"						      \
+		"#[range=pane|#{pane_id} " \
+			"#{E:pane-status-style}" \
+		"]" \
+		"#[push-default]" \
+		"#P[#{pane_width}x#{pane_height}]" \
+		"#[pop-default]" \
+		"#[norange list=on default]  " \
+	"," \
+		"#[range=pane|#{pane_id} list=focus " \
+			"#{?#{!=:#{E:pane-status-current-style},default}," \
+				"#{E:pane-status-current-style}," \
+				"#{E:pane-status-style}" \
+			"}" \
+		"]" \
+		"#[push-default]" \
+		"#P[#{pane_width}x#{pane_height}]*" \
+		"#[pop-default]" \
+		"#[norange list=on default] " \
+	"}"
 #define OPTIONS_TABLE_STATUS_FORMAT3 \
-    "#[align=left acs] m> #[noacs]" \
-    "#[norange default]" \
-    "#[list=on align=#{status-justify}]"		      \
-    "#[list=left-marker]<#[list=right-marker]>#[list=on]"     \
-    "#{S:" \
-        "#[range=session|#{session_id} " \
-            "#{E:session-status-style}" \
-        "]" \
-        "#[push-default]" \
-        "#S#{session_alert}" \
-        "#[pop-default]" \
-        "#[norange list=on default]  " \
-    "," \
-        "#[range=session|#{session_id} list=focus " \
-    		"#{?#{!=:#{E:session-status-current-style},default},"	\
-                	"#{E:session-status-current-style}," \
-                	"#{E:session-status-style}" \
-            "}" \
-        "]" \
-        "#[push-default]" \
-        "#S*#{session_alert}" \
-        "#[pop-default]" \
-        "#[norange list=on default] " \
-    "}" \
-    "#[nolist align=right]" \
-    "#{P:#{?pane_active,#[reverse],}" \
-    "#{pane_index}[#{pane_width}x#{pane_height}]#[default] }"
+	"#[#{session-status-style}]#[set-default]" \
+	"#[align=left acs] m>   #[noacs]" \
+	"#[norange default]" \
+	"#[list=on align=#{status-justify}]" \
+	"#[list=left-marker]<#[list=right-marker]>#[list=on]" \
+	"#{S:" \
+		"#[range=session|#{session_id} " \
+			"#{E:session-status-style}" \
+		"]" \
+		"#[push-default]" \
+		"#S#{session_alert}" \
+		"#[pop-default]" \
+		"#[norange list=on default]  " \
+	"," \
+		"#[range=session|#{session_id} list=focus " \
+			"#{?#{!=:#{E:session-status-current-style},default}," \
+					"#{E:session-status-current-style}," \
+					"#{E:session-status-style}" \
+			"}" \
+		"]" \
+		"#[push-default]" \
+		"#S*#{session_alert}" \
+		"#[pop-default]" \
+		"#[norange list=on default] " \
+	"}"
 static const char *options_table_status_format_default[] = {
 	OPTIONS_TABLE_STATUS_FORMAT1, OPTIONS_TABLE_STATUS_FORMAT2, OPTIONS_TABLE_STATUS_FORMAT3, NULL
 };
@@ -901,6 +931,25 @@ const struct options_table_entry options_table[] = {
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
 	  .text = "Style of the status line."
+	},
+
+	{ .name = "pane-status-current-style",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "default",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ",",
+	  .text = "Style of the current pane in the status line."
+	},
+
+	{ .name = "pane-status-style",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "default",
+	  .flags = OPTIONS_TABLE_IS_STYLE,
+	  .separator = ",",
+	  .text = "Style of panes in the status line, except the current "
+		  "pane."
 	},
 
 	{ .name = "prompt-cursor-colour",
