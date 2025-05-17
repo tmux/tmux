@@ -108,7 +108,6 @@ static const char *options_table_allow_passthrough_list[] = {
 
 /* Status line format. */
 #define OPTIONS_TABLE_STATUS_FORMAT1 \
-	"#[#{status-style}]#[set-default]" \
 	"#[align=left range=left #{E:status-left-style}]" \
 	"#[push-default]" \
 	"#{T;=/#{status-left-length}:status-left}" \
