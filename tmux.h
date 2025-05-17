@@ -890,7 +890,8 @@ TAILQ_HEAD(style_ranges, style_range);
 enum style_default_type {
 	STYLE_DEFAULT_BASE,
 	STYLE_DEFAULT_PUSH,
-	STYLE_DEFAULT_POP
+	STYLE_DEFAULT_POP,
+	STYLE_DEFAULT_SET
 };
 
 /* Style option. */
