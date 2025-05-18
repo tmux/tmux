@@ -186,10 +186,10 @@ static const char *options_table_allow_passthrough_list[] = {
 		"#[align=left acs] x   #[noacs]," \
 		"#[align=left acs]     #[noacs]" \
 	"}" \
-	"#[norange default]"				      \
-	"#[list=on align=#{status-justify}]"		      \
+	"#[norange default]" \
+	"#[list=on align=#{status-justify}]" \
 	"#[list=left-marker]<#[list=right-marker]>#[list=on]" \
-	"#{P:"						      \
+	"#{P:" \
 		"#[range=pane|#{pane_id} " \
 			"#{E:pane-status-style}" \
 		"]" \
