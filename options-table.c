@@ -182,7 +182,6 @@ static const char *options_table_allow_passthrough_list[] = {
 	"#{pane_index}[#{pane_width}x#{pane_height}]#[default] }"
 */
 #define OPTIONS_TABLE_STATUS_FORMAT2 \
-	"#[#{pane-status-style}]#[set-default]" \
 	"#{?#{>:#{status},2}," \
 		"#[align=left acs] x   #[noacs]," \
 		"#[align=left acs]     #[noacs]" \
@@ -211,7 +210,6 @@ static const char *options_table_allow_passthrough_list[] = {
 		"#[norange list=on default] " \
 	"}"
 #define OPTIONS_TABLE_STATUS_FORMAT3 \
-	"#[#{session-status-style}]#[set-default]" \
 	"#[align=left acs] m>   #[noacs]" \
 	"#[norange default]" \
 	"#[list=on align=#{status-justify}]" \
