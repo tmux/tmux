@@ -155,9 +155,9 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
 				if (!hsplit || (hsplit && py <= wp->sy / 2))
 					return (SCREEN_REDRAW_BORDER_RIGHT);
 			if (wp->xoff - sb_w != 0) {
-				if (px == wp->xoff - sb_w - 1)
-					if (!hsplit || (hsplit && py > wp->sy / 2))
-						return (SCREEN_REDRAW_BORDER_LEFT);
+				if (px == wp->xoff - sb_w - 1 &&
+				    (!hsplit || (hsplit && py > wp->sy / 2)))
+					return (SCREEN_REDRAW_BORDER_LEFT);
 				if (px == wp->xoff + wp->sx + sb_w - 1)
 					return (SCREEN_REDRAW_BORDER_RIGHT);
 			}
@@ -166,9 +166,9 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
 				if (!hsplit || (hsplit && py <= wp->sy / 2))
 					return (SCREEN_REDRAW_BORDER_RIGHT);
 			if (wp->xoff != 0) {
-				if (px == wp->xoff - 1)
-					if (!hsplit || (hsplit && py > wp->sy / 2))
-						return (SCREEN_REDRAW_BORDER_LEFT);
+				if (px == wp->xoff - 1 &&
+				    (!hsplit || (hsplit && py > wp->sy / 2)))
+					return (SCREEN_REDRAW_BORDER_LEFT);
 				if (px == wp->xoff + wp->sx + sb_w)
 					return (SCREEN_REDRAW_BORDER_RIGHT);
 			}
