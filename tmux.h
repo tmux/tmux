@@ -671,7 +671,7 @@ typedef u_int utf8_char;
  * characters as well. It can't be more than 32 bytes without changes to how
  * characters are stored.
  */
-#define UTF8_SIZE 21
+#define UTF8_SIZE 32
 struct utf8_data {
 	u_char	data[UTF8_SIZE];
 
