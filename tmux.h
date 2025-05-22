@@ -671,7 +671,7 @@ typedef u_int utf8_char;
  * characters as well. It can't be more than 32 bytes without changes to how
  * characters are stored.
  */
-#define UTF8_SIZE 21
+#define UTF8_SIZE 32
 struct utf8_data {
 	u_char	data[UTF8_SIZE];
 
@@ -890,7 +890,8 @@ TAILQ_HEAD(style_ranges, style_range);
 enum style_default_type {
 	STYLE_DEFAULT_BASE,
 	STYLE_DEFAULT_PUSH,
-	STYLE_DEFAULT_POP
+	STYLE_DEFAULT_POP,
+	STYLE_DEFAULT_SET
 };
 
 /* Style option. */
@@ -2024,6 +2025,7 @@ struct client {
 	struct event		 message_timer;
 
 	char			*prompt_string;
+	struct format_tree	*prompt_formats;
 	struct utf8_data	*prompt_buffer;
 	char			*prompt_last;
 	size_t			 prompt_index;
@@ -2428,6 +2430,7 @@ typedef void (*job_free_cb) (void *);
 #define JOB_KEEPWRITE 0x2
 #define JOB_PTY 0x4
 #define JOB_DEFAULTSHELL 0x8
+#define JOB_SHOWSTDERR 0x10
 struct job	*job_run(const char *, int, char **, struct environ *,
 		     struct session *, const char *, job_update_cb,
 		     job_complete_cb, job_free_cb, void *, int, int, int);

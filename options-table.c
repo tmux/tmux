@@ -369,7 +369,7 @@ const struct options_table_entry options_table[] = {
 	  .minimum = INPUT_BUF_DEFAULT_SIZE,
 	  .maximum = UINT_MAX,
 	  .default_num = INPUT_BUF_DEFAULT_SIZE,
-	  .text = "Number of byte accpted in a single input before dropping."
+	  .text = "Number of bytes accepted in a single input before dropping."
 	},
 
 	{ .name = "menu-style",
