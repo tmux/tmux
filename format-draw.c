@@ -1059,7 +1059,7 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 			    sr->argument, sr->start, sr->end);
 			break;
 		case STYLE_RANGE_SESSION:
-			sr->end--;  /* Compensate for undislayed '$' char */
+			sr->end--;  /* Compensate for undisplayed '$' char */
 			log_debug("%s: range session|$%u at %u-%u", __func__,
 			    sr->argument, sr->start, sr->end);
 			break;
