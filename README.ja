@@ -38,7 +38,7 @@ tmuxのドキュメントについてはtmux.1マニュアルをご覧くださ�
 サンプル設定は本リポジトリのexample_tmux.confに
 また、bash-completionファイルは下記にあります。
 
-	https://github.com/imomaliev/tmux-bash-completion
+	https://github.com/scop/bash-completion/blob/main/completions/tmux
 
 「-v」や「-vv」を指定することでデバッグモードでの起動が可能です。カレントディレクトリにサーバーやクライアントのログファイルが生成されます。
 
