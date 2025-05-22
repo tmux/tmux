@@ -389,7 +389,7 @@ CHANGES FROM 3.2 TO 3.2a
 * Do not expand the filename given to -f so it can contain colons.
 
 * Fixes for problems with extended keys and modifiers, scroll region,
-  source-file, crosscompiling, format modifiers and other minor issues.
+  source-file, cross compiling, format modifiers and other minor issues.
 
 CHANGES FROM 3.1c TO 3.2
 
