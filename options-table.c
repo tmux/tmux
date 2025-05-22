@@ -854,7 +854,7 @@ const struct options_table_entry options_table[] = {
 	{ .name = "status-left",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_str = "#{?#{>:#{status},2},,[#{session_name}]} ",
+	  .default_str = "#{?#{<=:#{?#{==:#{status},on},1,#{status}},2},[#{session_name}],} ",
 	  .text = "Contents of the left side of the status line."
 	},
 
