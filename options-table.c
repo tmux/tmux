@@ -172,19 +172,10 @@ static const char *options_table_allow_passthrough_list[] = {
 	"#{T;=/#{status-right-length}:status-right}" \
 	"#[pop-default]" \
 	"#[norange default]"
-/*
 #define OPTIONS_TABLE_STATUS_FORMAT2 \
 	"#{?#{>:#{status},2}," \
-	    "#[align=left acs] x  #[noacs]," \
-	    "#[align=left acs]    #[noacs]" \
-	"}" \
-	"#[align=centre]#{P:#{?pane_active,#[reverse],}" \
-	"#{pane_index}[#{pane_width}x#{pane_height}]#[default] }"
-*/
-#define OPTIONS_TABLE_STATUS_FORMAT2 \
-	"#{?#{>:#{status},2}," \
-		"#[align=left acs] x   #[noacs]," \
-		"#[align=left acs]     #[noacs]" \
+		"#[align=left]  ," \
+		"#[align=left]  " \
 	"}" \
 	"#[norange default]" \
 	"#[list=on align=#{status-justify}]" \
@@ -210,7 +201,7 @@ static const char *options_table_allow_passthrough_list[] = {
 		"#[norange list=on default] " \
 	"}"
 #define OPTIONS_TABLE_STATUS_FORMAT3 \
-	"#[align=left acs] m>   #[noacs]" \
+	"#[align=left]   " \
 	"#[norange default]" \
 	"#[list=on align=#{status-justify}]" \
 	"#[list=left-marker]<#[list=right-marker]>#[list=on]" \
@@ -863,7 +854,7 @@ const struct options_table_entry options_table[] = {
 	{ .name = "status-left",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_str = "[#{session_name}] ",
+	  .default_str = "#{?#{>:#{status},2},,[#{session_name}]} ",
 	  .text = "Contents of the left side of the status line."
 	},
 
