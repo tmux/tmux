@@ -1510,6 +1510,14 @@ See the
 .Ic window-size
 option.
 .Tg rename
+.It Xo Ic rename-client
+.Op Fl c Ar target-client
+.Ar new-name
+.Xc
+.D1 Pq alias: Ic renamec
+Rename the client to
+.Ar new-name .
+.Tg rename
 .It Xo Ic rename-session
 .Op Fl t Ar target-session
 .Ar new-name
@@ -6377,10 +6385,10 @@ bg=black,fg=default,noreverse
 .Sh NAMES AND TITLES
 .Nm
 distinguishes between names and titles.
-Windows and sessions have names, which may be used to specify them in targets
+Windows, sessions, and clients have names, which may be used to specify them in targets
 and are displayed in the status line and various lists: the name is the
 .Nm
-identifier for a window or session.
+identifier for a window, session, or client.
 Only panes have titles.
 A pane's title is typically set by the program running inside the pane using
 an escape sequence (like it would set the
@@ -6400,6 +6408,9 @@ A session's name is set with the
 and
 .Ic rename-session
 commands.
+A client's name is set automatically at launch and with the
+.Ic rename-client
+command.
 A window's name is set with one of:
 .Bl -enum -width Ds
 .It
