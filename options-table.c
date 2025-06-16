@@ -369,7 +369,7 @@ const struct options_table_entry options_table[] = {
 	  .minimum = INPUT_BUF_DEFAULT_SIZE,
 	  .maximum = UINT_MAX,
 	  .default_num = INPUT_BUF_DEFAULT_SIZE,
-	  .text = "Number of byte accpted in a single input before dropping."
+	  .text = "Number of bytes accepted in a single input before dropping."
 	},
 
 	{ .name = "menu-style",
@@ -1052,7 +1052,7 @@ const struct options_table_entry options_table[] = {
 	{ .name = "copy-mode-position-style",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_str = "#{mode-style}",
+	  .default_str = "#{E:mode-style}",
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
 	  .text = "Style of position indicator in copy mode."
@@ -1061,7 +1061,7 @@ const struct options_table_entry options_table[] = {
 	{ .name = "copy-mode-selection-style",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_str = "#{mode-style}",
+	  .default_str = "#{E:mode-style}",
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
 	  .text = "Style of selection in copy mode."

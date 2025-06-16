@@ -174,7 +174,8 @@ job_run(const char *cmd, int argc, char **argv, struct environ *e,
 		closefrom(STDERR_FILENO + 1);
 
 		if (cmd != NULL) {
-			setenv("SHELL", shell, 1);
+			if (flags & JOB_DEFAULTSHELL)
+				setenv("SHELL", shell, 1);
 			execl(shell, argv0, "-c", cmd, (char *)NULL);
 			fatal("execl failed");
 		} else {

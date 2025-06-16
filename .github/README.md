@@ -79,7 +79,7 @@ A small example configuration is in `example_tmux.conf`.
 
 And a bash(1) completion file at:
 
-https://github.com/imomaliev/tmux-bash-completion
+https://github.com/scop/bash-completion/blob/main/completions/tmux
 
 For debugging, run tmux with `-v` or `-vv` to generate server and client log
 files in the current directory.

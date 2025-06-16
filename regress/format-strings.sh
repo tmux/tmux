@@ -127,11 +127,11 @@ test_conditional_with_pane_in_mode "#{?pane_in_mode,{abc,xyz},bonus}" "{abc,bonu
 # invalid format: #{abc,xyz} is not a known variable name.
 #test_conditional_with_pane_in_mode "#{?pane_in_mode,#{abc,xyz},bonus}" "" "bonus"
 
-# Parenthesis (...) do not captura a comma, and "xyz)" is a false condition
+# Parenthesis (...) do not capture a comma, and "xyz)" is a false condition
 test_conditional_with_pane_in_mode "#{?pane_in_mode,(abc,xyz),bonus}" "(abc" ""
 test_conditional_with_pane_in_mode "#{?pane_in_mode,(abc#,xyz),bonus}" "(abc,xyz)" "bonus"
 
-# Brackets [...] do not captura a comma, and "xyz]" is a false condition
+# Brackets [...] do not capture a comma, and "xyz]" is a false condition
 test_conditional_with_pane_in_mode "#{?pane_in_mode,[abc,xyz],bonus}" "[abc" ""
 test_conditional_with_pane_in_mode "#{?pane_in_mode,[abc#,xyz],bonus}" "[abc,xyz]" "bonus"
 

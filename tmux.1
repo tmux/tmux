@@ -5471,6 +5471,10 @@ Run when focus exits a client
 Run when a client is resized.
 .It client-session-changed
 Run when a client's attached session is changed.
+.It client-light-theme
+Run when a client switches to a light theme.
+.It client-dark-theme
+Run when a client switches to a dark theme.
 .It command-error
 Run when a command fails.
 .It pane-died
@@ -6359,6 +6363,10 @@ will be available in the
 format variable.
 .Ql X
 must be at most 15 bytes in length.
+.It Ic set-default
+Set the current colours and attributes as the default, overwriting any previous
+default.
+The previous default cannot be restored.
 .El
 .Pp
 Examples are:
