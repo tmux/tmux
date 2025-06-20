@@ -132,6 +132,18 @@ enum format_type {
 	FORMAT_TYPE_PANE
 };
 
+/* Format loop sort type. */
+enum format_loop_sort_type {
+	FORMAT_LOOP_BY_INDEX,
+	FORMAT_LOOP_BY_NAME,
+	FORMAT_LOOP_BY_TIME,
+};
+
+static struct format_loop_sort_criteria {
+	u_int	field;
+	int	reversed;
+} format_loop_sort_criteria;
+
 struct format_tree {
 	enum format_type	 type;
 
@@ -4032,7 +4044,7 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 		}
 
 		/* Now try single character with arguments. */
-		if (strchr("mCNst=pReq", cp[0]) == NULL)
+		if (strchr("mCNSst=pReq", cp[0]) == NULL)
 			break;
 		c = cp[0];
 
@@ -4228,29 +4240,86 @@ format_session_name(struct format_expand_state *es, const char *fmt)
 	return (xstrdup("0"));
 }
 
+static int
+format_cmp_session(const void *a0, const void *b0)
+{
+	const struct session *const	*a = a0;
+	const struct session *const	*b = b0;
+	const struct session		*sa = *a;
+	const struct session		*sb = *b;
+	int				 result = 0;
+
+	switch (format_loop_sort_criteria.field) {
+	case FORMAT_LOOP_BY_INDEX:
+		result = sa->id - sb->id;
+		break;
+	case FORMAT_LOOP_BY_TIME:
+		if (timercmp(&sa->activity_time, &sb->activity_time, >)) {
+			result = -1;
+			break;
+		}
+		if (timercmp(&sa->activity_time, &sb->activity_time, <)) {
+			result = 1;
+			break;
+		}
+		/* FALLTHROUGH */
+	case FORMAT_LOOP_BY_NAME:
+		result = strcmp(sa->name, sb->name);
+		break;
+	}
+
+	if (format_loop_sort_criteria.reversed)
+		result = -result;
+	return (result);
+}
+
 /* Loop over sessions. */
 static char *
 format_loop_sessions(struct format_expand_state *es, const char *fmt)
 {
-	struct format_tree		*ft = es->ft;
-	struct client			*c = ft->client;
-	struct cmdq_item		*item = ft->item;
-	struct format_tree		*nft;
-	struct format_expand_state	 next;
-	char				*expanded, *value;
-	size_t				 valuelen;
-	struct session			*s;
+	struct format_tree		 *ft = es->ft;
+	struct client			 *c = ft->client;
+	struct cmdq_item		 *item = ft->item;
+	struct format_tree		 *nft;
+	struct format_expand_state	  next;
+	char				 *all, *active, *use, *expanded, *value;
+	size_t				  valuelen;
+	struct session			 *s;
+	int				  i, n;
+	static struct session		**l = NULL;
+	static int			  lsz = 0;
+
+	if (format_choose(es, fmt, &all, &active, 0) != 0) {
+		all = xstrdup(fmt);
+		active = NULL;
+	}
+
+	n = 0;
+	RB_FOREACH(s, sessions, &sessions) {
+		if (lsz <= n) {
+			lsz += 100;
+			l = xreallocarray(l, lsz, sizeof *l);
+		}
+		l[n++] = s;
+        }
+
+        qsort(l, n, sizeof *l, format_cmp_session);
 
 	value = xcalloc(1, 1);
 	valuelen = 1;
 
-	RB_FOREACH(s, sessions, &sessions) {
+        for (i = 0; i < n; i++) {
+		s = l[i];
 		format_log(es, "session loop: $%u", s->id);
+		if (active != NULL && s->id == ft->c->session->id)
+			use = active;
+		else
+			use = all;
 		nft = format_create(c, item, FORMAT_NONE, ft->flags);
 		format_defaults(nft, ft->c, s, NULL, NULL);
 		format_copy_state(&next, es, 0);
 		next.ft = nft;
-		expanded = format_expand1(&next, fmt);
+		expanded = format_expand1(&next, use);
 		format_free(next.ft);
 
 		valuelen += strlen(expanded);
@@ -4589,6 +4658,7 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 	struct format_modifier		 *bool_op_n = NULL;
 	u_int				  i, count, nsub = 0, nrep;
 	struct format_expand_state	  next;
+	struct format_loop_sort_criteria *sc = &format_loop_sort_criteria;
 
 	/* Make a copy of the key. */
 	copy = copy0 = xstrndup(key, keylen);
@@ -4699,6 +4769,19 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 				break;
 			case 'S':
 				modifiers |= FORMAT_SESSIONS;
+				if (fm->argc < 1)
+					break;
+				if (strchr(fm->argv[0], 'i') != NULL)
+					sc->field = FORMAT_LOOP_BY_INDEX;
+				else if (strchr(fm->argv[0], 'n') != NULL)
+					sc->field = FORMAT_LOOP_BY_NAME;
+				else if (strchr(fm->argv[0], 't') != NULL)
+					sc->field = FORMAT_LOOP_BY_TIME;
+				else sc->field = FORMAT_LOOP_BY_INDEX;
+				if (strchr(fm->argv[0], 'r') != NULL)
+					sc->reversed = 1;
+				else
+					sc->reversed = 0;
 				break;
 			case 'W':
 				modifiers |= FORMAT_WINDOWS;
