@@ -561,6 +561,7 @@ format_cb_session_alert(struct format_tree *ft)
 	struct session	*s = ft->s;
 	struct winlink	*wl;
 	char		 alerts[1024];
+	int		 alerted = 0;
 
 	if (s == NULL)
 		return (NULL);
@@ -569,12 +570,18 @@ format_cb_session_alert(struct format_tree *ft)
 	RB_FOREACH(wl, winlinks, &s->windows) {
 		if ((wl->flags & WINLINK_ALERTFLAGS) == 0)
 			continue;
-		if (wl->flags & WINLINK_ACTIVITY)
+		if (~alerted & wl->flags & WINLINK_ACTIVITY) {
 			strlcat(alerts, "#", sizeof alerts);
-		if (wl->flags & WINLINK_BELL)
+			alerted |= WINLINK_ACTIVITY;
+		}
+		if (~alerted & wl->flags & WINLINK_BELL) {
 			strlcat(alerts, "!", sizeof alerts);
-		if (wl->flags & WINLINK_SILENCE)
+			alerted |= WINLINK_BELL;
+		}
+		if (~alerted & wl->flags & WINLINK_SILENCE) {
 			strlcat(alerts, "~", sizeof alerts);
+			alerted |= WINLINK_SILENCE;
+		}
 	}
 	return (xstrdup(alerts));
 }
