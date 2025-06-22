@@ -5471,6 +5471,10 @@ Run when focus exits a client
 Run when a client is resized.
 .It client-session-changed
 Run when a client's attached session is changed.
+.It client-light-theme
+Run when a client switches to a light theme.
+.It client-dark-theme
+Run when a client switches to a dark theme.
 .It command-error
 Run when a command fails.
 .It pane-died
@@ -5912,9 +5916,9 @@ can take an optional sort argument
 .Ql /i\& ,
 .Ql /n\& ,
 .Ql /t\&
-to sort by index, name, or time, and optionally you can add
+to sort by index, name, or time; or
 .Ql /r\&
-to sort in reverse order, for example
+to sort in reverse order. For example,
 .Ql S/nr:\&
 to sort sessions by name in reverse order.
 For each, two comma-separated formats may be given:
@@ -6303,6 +6307,8 @@ and
 .Ic list=right-marker
 mark the text to be used to mark that text has been trimmed from the left or
 right of the list if there is not enough space.
+.It Ic noattr
+Do not copy attributes from the default style.
 .It Xo Ic push-default ,
 .Ic pop-default
 .Xc

@@ -4324,17 +4324,17 @@ format_cmp_session(const void *a0, const void *b0)
 static char *
 format_loop_sessions(struct format_expand_state *es, const char *fmt)
 {
-	struct format_tree		*ft = es->ft;
-	struct client			*c = ft->client;
-	struct cmdq_item		*item = ft->item;
-	struct format_tree		*nft;
-	struct format_expand_state	 next;
-	char				*all, *active, *use, *expanded, *value;
-	size_t				 valuelen;
-	struct session			*s;
-	int				 i, n;
+	struct format_tree		 *ft = es->ft;
+	struct client			 *c = ft->client;
+	struct cmdq_item		 *item = ft->item;
+	struct format_tree		 *nft;
+	struct format_expand_state	  next;
+	char				 *all, *active, *use, *expanded, *value;
+	size_t				  valuelen;
+	struct session			 *s;
+	int				  i, n;
 	static struct session		**l = NULL;
-	static int			lsz = 0;
+	static int			  lsz = 0;
 
 	if (format_choose(es, fmt, &all, &active, 0) != 0) {
 		all = xstrdup(fmt);
@@ -4705,6 +4705,7 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 	struct format_modifier		 *bool_op_n = NULL;
 	u_int				  i, count, nsub = 0, nrep;
 	struct format_expand_state	  next;
+	struct format_loop_sort_criteria *sc = &format_loop_sort_criteria;
 
 	/* Make a copy of the key. */
 	copy = copy0 = xstrndup(key, keylen);
@@ -4818,16 +4819,16 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 				if (fm->argc < 1)
 					break;
 				if (strchr(fm->argv[0], 'i') != NULL)
-					format_loop_sort_criteria.field = FORMAT_LOOP_BY_INDEX;
+					sc->field = FORMAT_LOOP_BY_INDEX;
 				else if (strchr(fm->argv[0], 'n') != NULL)
-					format_loop_sort_criteria.field = FORMAT_LOOP_BY_NAME;
+					sc->field = FORMAT_LOOP_BY_NAME;
 				else if (strchr(fm->argv[0], 't') != NULL)
-					format_loop_sort_criteria.field = FORMAT_LOOP_BY_TIME;
-				else format_loop_sort_criteria.field = FORMAT_LOOP_BY_INDEX;
+					sc->field = FORMAT_LOOP_BY_TIME;
+				else sc->field = FORMAT_LOOP_BY_INDEX;
 				if (strchr(fm->argv[0], 'r') != NULL)
-					format_loop_sort_criteria.reversed = 1;
+					sc->reversed = 1;
 				else
-					format_loop_sort_criteria.reversed = 0;
+					sc->reversed = 0;
 				break;
 			case 'W':
 				modifiers |= FORMAT_WINDOWS;
