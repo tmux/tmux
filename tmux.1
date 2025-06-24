@@ -5911,14 +5911,23 @@ or
 .Ql L:\&
 will loop over each session, window, pane or client and insert the format once
 for each.
-.Ql S:\& ,
+.Ql L:\& ,
+.Ql S:\&
+and
+.Ql W:\&
 can take an optional sort argument
 .Ql /i\& ,
 .Ql /n\& ,
+or
 .Ql /t\&
-to sort by index, name, or time; or
+to sort by index, name, or last activity time; additionally
 .Ql /r\&
-to sort in reverse order. For example,
+to sort in reverse order.
+.Ql P:\&
+can take an option argument
+.Ql /r\&
+to sort by pane index in reverse order.
+For example,
 .Ql S/nr:\&
 to sort sessions by name in reverse order.
 For each, two comma-separated formats may be given:
@@ -6071,6 +6080,7 @@ The following variables are available, where appropriate:
 .It Li "keypad_flag" Ta "" Ta "Pane keypad flag"
 .It Li "last_window_index" Ta "" Ta "Index of last window in session"
 .It Li "line" Ta "" Ta "Line number in the list"
+.It Li "loop_last_flag" Ta "" Ta "1 if last window, pane, session, client in the W:, P:, S:, or L: loop"
 .It Li "mouse_all_flag" Ta "" Ta "Pane mouse all flag"
 .It Li "mouse_any_flag" Ta "" Ta "Pane mouse any flag"
 .It Li "mouse_button_flag" Ta "" Ta "Pane mouse button flag"
