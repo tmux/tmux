@@ -3309,6 +3309,9 @@ static const struct format_table_entry format_table[] = {
 	{ "session_attached_list", FORMAT_TABLE_STRING,
 	  format_cb_session_attached_list
 	},
+	{ "session_bell_flag", FORMAT_TABLE_STRING,
+	  format_cb_session_bell_flag
+	},
 	{ "session_created", FORMAT_TABLE_TIME,
 	  format_cb_session_created
 	},
@@ -3404,9 +3407,6 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "window_bell_flag", FORMAT_TABLE_STRING,
 	  format_cb_window_bell_flag
-	},
-	{ "session_bell_flag", FORMAT_TABLE_STRING,
-	  format_cb_session_bell_flag
 	},
 	{ "window_bigger", FORMAT_TABLE_STRING,
 	  format_cb_window_bigger
