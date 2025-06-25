@@ -139,7 +139,7 @@ enum format_loop_sort_type {
 	FORMAT_LOOP_BY_TIME,
 };
 
-struct format_loop_sort {
+static struct format_loop_sort {
 	u_int	field;
 	int	reversed;
 } sc;
@@ -2305,19 +2305,6 @@ format_cb_server_sessions(__unused struct format_tree *ft)
 	return (format_printf("%u", n));
 }
 
-/* Callback for last_session_index. */
-static void *
-format_cb_last_session_index(struct format_tree *ft)
-{
-	struct session	*s;
-
-	if (ft->s != NULL) {
-		s = RB_MAX(sessions, &sessions);
-		return (format_printf("%u", s->id));
-	}
-	return (NULL);
-}
-
 /* Callback for session_active. */
 static void *
 format_cb_session_active(struct format_tree *ft)
@@ -2461,15 +2448,6 @@ format_cb_session_id(struct format_tree *ft)
 {
 	if (ft->s != NULL)
 		return (format_printf("$%u", ft->s->id));
-	return (NULL);
-}
-
-/* Callback for session_index. */
-static void *
-format_cb_session_index(struct format_tree *ft)
-{
-	if (ft->s != NULL)
-		return (format_printf("%u", ft->s->id));
 	return (NULL);
 }
 
@@ -3174,9 +3152,6 @@ static const struct format_table_entry format_table[] = {
 	{ "keypad_flag", FORMAT_TABLE_STRING,
 	  format_cb_keypad_flag
 	},
-	{ "last_session_index", FORMAT_TABLE_STRING,
-	  format_cb_last_session_index
-	},
 	{ "last_window_index", FORMAT_TABLE_STRING,
 	  format_cb_last_window_index
 	},
@@ -3416,9 +3391,6 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "session_id", FORMAT_TABLE_STRING,
 	  format_cb_session_id
-	},
-	{ "session_index", FORMAT_TABLE_STRING,
-	  format_cb_session_index
 	},
 	{ "session_last_attached", FORMAT_TABLE_TIME,
 	  format_cb_session_last_attached
