@@ -142,7 +142,7 @@ enum format_loop_sort_type {
 struct format_loop_sort {
 	u_int	field;
 	int	reversed;
-};
+} sc;
 
 struct format_tree {
 	enum format_type	 type;
@@ -4388,16 +4388,15 @@ format_session_name(struct format_expand_state *es, const char *fmt)
 }
 
 static int
-format_cmp_session(const void *a0, const void *b0, void *data)
+format_cmp_session(const void *a0, const void *b0)
 {
-	struct format_loop_sort		*sc = data;
 	const struct session *const	*a = a0;
 	const struct session *const	*b = b0;
 	const struct session		*sa = *a;
 	const struct session		*sb = *b;
 	int				 result = 0;
 
-	switch (sc->field) {
+	switch (sc.field) {
 	case FORMAT_LOOP_BY_INDEX:
 		result = sa->id - sb->id;
 		break;
@@ -4416,15 +4415,14 @@ format_cmp_session(const void *a0, const void *b0, void *data)
 		break;
 	}
 
-	if (sc->reversed)
+	if (sc.reversed)
 		result = -result;
 	return (result);
 }
 
 /* Loop over sessions. */
 static char *
-format_loop_sessions(struct format_expand_state *es, const char *fmt,
-   struct format_loop_sort *sc)
+format_loop_sessions(struct format_expand_state *es, const char *fmt)
 {
 	struct format_tree		 *ft = es->ft;
 	struct client			 *c = ft->client;
@@ -4452,7 +4450,7 @@ format_loop_sessions(struct format_expand_state *es, const char *fmt,
 		l[n++] = s;
         }
 
-        qsort_r(l, n, sizeof *l, format_cmp_session, sc);
+        qsort(l, n, sizeof *l, format_cmp_session);
 
 	value = xcalloc(1, 1);
 	valuelen = 1;
@@ -4508,16 +4506,15 @@ format_window_name(struct format_expand_state *es, const char *fmt)
 }
 
 static int
-format_cmp_window(const void *a0, const void *b0, void *data)
+format_cmp_window(const void *a0, const void *b0)
 {
-	struct format_loop_sort		*sc = data;
 	const struct winlink *const	*a = a0;
 	const struct winlink *const	*b = b0;
 	const struct window		*wa = (*a)->window;
 	const struct window		*wb = (*b)->window;
 	int				 result = 0;
 
-	switch (sc->field) {
+	switch (sc.field) {
 	case FORMAT_LOOP_BY_INDEX:
 		result = wa->id - wb->id;
 		break;
@@ -4536,15 +4533,14 @@ format_cmp_window(const void *a0, const void *b0, void *data)
 		break;
 	}
 
-	if (sc->reversed)
+	if (sc.reversed)
 		result = -result;
 	return (result);
 }
 
 /* Loop over windows. */
 static char *
-format_loop_windows(struct format_expand_state *es, const char *fmt,
-   struct format_loop_sort *sc)
+format_loop_windows(struct format_expand_state *es, const char *fmt)
 {
 	struct format_tree		*ft = es->ft;
 	struct client			*c = ft->client;
@@ -4578,7 +4574,7 @@ format_loop_windows(struct format_expand_state *es, const char *fmt,
 		l[n++] = wl;
         }
 
-        qsort_r(l, n, sizeof *l, format_cmp_window, sc);
+        qsort(l, n, sizeof *l, format_cmp_window);
 
 	value = xcalloc(1, 1);
 	valuelen = 1;
@@ -4615,9 +4611,8 @@ format_loop_windows(struct format_expand_state *es, const char *fmt,
 }
 
 static int
-format_cmp_pane(const void *a0, const void *b0, void *data)
+format_cmp_pane(const void *a0, const void *b0)
 {
-	struct format_loop_sort			*sc = data;
 	const struct window_pane  *const	*a = a0;
 	const struct window_pane *const		*b = b0;
 	const struct window_pane		*wpa = *a;
@@ -4626,7 +4621,7 @@ format_cmp_pane(const void *a0, const void *b0, void *data)
 
 	result = wpa->id - wpb->id;
 
-	if (sc->reversed)
+	if (sc.reversed)
 		result = wpb->id - wpa->id;
 	else
 		result = wpa->id - wpb->id;
@@ -4635,8 +4630,7 @@ format_cmp_pane(const void *a0, const void *b0, void *data)
 
 /* Loop over panes. */
 static char *
-format_loop_panes(struct format_expand_state *es, const char *fmt,
-   struct format_loop_sort *sc)
+format_loop_panes(struct format_expand_state *es, const char *fmt)
 {
 	struct format_tree		*ft = es->ft;
 	struct client			*c = ft->client;
@@ -4669,7 +4663,7 @@ format_loop_panes(struct format_expand_state *es, const char *fmt,
 		l[n++] = wp;
         }
 
-        qsort_r(l, n, sizeof *l, format_cmp_pane, sc);
+        qsort(l, n, sizeof *l, format_cmp_pane);
 
 	value = xcalloc(1, 1);
 	valuelen = 1;
@@ -4705,16 +4699,15 @@ format_loop_panes(struct format_expand_state *es, const char *fmt,
 }
 
 static int
-format_cmp_client(const void *a0, const void *b0, void *data)
+format_cmp_client(const void *a0, const void *b0)
 {
-	struct format_loop_sort		*sc = data;
 	const struct client *const	*a = a0;
 	const struct client *const	*b = b0;
 	const struct client		*ca = *a;
 	const struct client		*cb = *b;
 	int				 result = 0;
 
-	switch (sc->field) {
+	switch (sc.field) {
 	case FORMAT_LOOP_BY_INDEX:
 		break;
 	case FORMAT_LOOP_BY_TIME:
@@ -4732,15 +4725,14 @@ format_cmp_client(const void *a0, const void *b0, void *data)
 		break;
 	}
 
-	if (sc->reversed)
+	if (sc.reversed)
 		result = -result;
 	return (result);
 }
 
 /* Loop over clients. */
 static char *
-format_loop_clients(struct format_expand_state *es, const char *fmt,
-   struct format_loop_sort *sc)
+format_loop_clients(struct format_expand_state *es, const char *fmt)
 {
 	struct format_tree		 *ft = es->ft;
 	struct client			 *c;
@@ -4765,11 +4757,11 @@ format_loop_clients(struct format_expand_state *es, const char *fmt,
 		l[n++] = c;
         }
 
-	if (sc->field != FORMAT_LOOP_BY_INDEX)
-		qsort_r(l, n, sizeof *l, format_cmp_client, sc);
+	if (sc.field != FORMAT_LOOP_BY_INDEX)
+		qsort(l, n, sizeof *l, format_cmp_client);
 	else {
 		/* Use order in the TAILQ as "index" order. */
-		if (sc->reversed) {
+		if (sc.reversed) {
 			for (i = 0; i < n/2; i++) {
 				c = l[i];
 				l[i] = l[n - 1 - i];
@@ -4962,7 +4954,6 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 	struct format_modifier		 *bool_op_n = NULL;
 	u_int				  i, count, nsub = 0, nrep;
 	struct format_expand_state	  next;
-	struct format_loop_sort		  sc;
 
 	/* Make a copy of the key. */
 	copy = copy0 = xstrndup(key, keylen);
@@ -5179,19 +5170,19 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 
 	/* Is this a loop, operator, comparison or condition? */
 	if (modifiers & FORMAT_SESSIONS) {
-		value = format_loop_sessions(es, copy, &sc);
+		value = format_loop_sessions(es, copy);
 		if (value == NULL)
 			goto fail;
 	} else if (modifiers & FORMAT_WINDOWS) {
-		value = format_loop_windows(es, copy, &sc);
+		value = format_loop_windows(es, copy);
 		if (value == NULL)
 			goto fail;
 	} else if (modifiers & FORMAT_PANES) {
-		value = format_loop_panes(es, copy, &sc);
+		value = format_loop_panes(es, copy);
 		if (value == NULL)
 			goto fail;
 	} else if (modifiers & FORMAT_CLIENTS) {
-		value = format_loop_clients(es, copy, &sc);
+		value = format_loop_clients(es, copy);
 		if (value == NULL)
 			goto fail;
 	} else if (modifiers & FORMAT_WINDOW_NAME) {
