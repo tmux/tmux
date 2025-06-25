@@ -2305,6 +2305,79 @@ format_cb_server_sessions(__unused struct format_tree *ft)
 	return (format_printf("%u", n));
 }
 
+/* Callback for last_session_index. */
+static void *
+format_cb_last_session_index(struct format_tree *ft)
+{
+	struct session	*s;
+
+	if (ft->s != NULL) {
+		s = RB_MAX(sessions, &sessions);
+		return (format_printf("%u", s->id));
+	}
+	return (NULL);
+}
+
+/* Callback for session_active. */
+static void *
+format_cb_session_active(struct format_tree *ft)
+{
+	if (ft->s == NULL || ft->c == NULL)
+		return (NULL);
+
+	if (ft->c->session == ft->s)
+		return (xstrdup("1"));
+	return (xstrdup("0"));
+}
+
+/* Callback for session_activity_flag. */
+static void *
+format_cb_session_activity_flag(struct format_tree *ft)
+{
+	struct winlink		*wl;
+
+	if (ft->s != NULL) {
+		RB_FOREACH(wl, winlinks, &ft->s->windows) {
+			if (ft->wl->flags & WINLINK_ACTIVITY)
+				return (xstrdup("1"));
+			return (xstrdup("0"));
+		}
+	}
+	return (NULL);
+}
+
+/* Callback for session_bell_flag. */
+static void *
+format_cb_session_bell_flag(struct format_tree *ft)
+{
+	struct winlink		*wl;
+
+	if (ft->s != NULL) {
+		RB_FOREACH(wl, winlinks, &ft->s->windows) {
+			if (wl->flags & WINLINK_BELL)
+				return (xstrdup("1"));
+			return (xstrdup("0"));
+		}
+	}
+	return (NULL);
+}
+
+/* Callback for session_silence_flag. */
+static void *
+format_cb_session_silence_flag(struct format_tree *ft)
+{
+	struct winlink		*wl;
+
+	if (ft->s != NULL) {
+		RB_FOREACH(wl, winlinks, &ft->s->windows) {
+			if (ft->wl->flags & WINLINK_SILENCE)
+				return (xstrdup("1"));
+			return (xstrdup("0"));
+		}
+	}
+	return (NULL);
+}
+
 /* Callback for session_attached. */
 static void *
 format_cb_session_attached(struct format_tree *ft)
@@ -2388,6 +2461,15 @@ format_cb_session_id(struct format_tree *ft)
 {
 	if (ft->s != NULL)
 		return (format_printf("$%u", ft->s->id));
+	return (NULL);
+}
+
+/* Callback for session_index. */
+static void *
+format_cb_session_index(struct format_tree *ft)
+{
+	if (ft->s != NULL)
+		return (format_printf("%u", ft->s->id));
 	return (NULL);
 }
 
@@ -2521,22 +2603,6 @@ format_cb_window_bell_flag(struct format_tree *ft)
 		if (ft->wl->flags & WINLINK_BELL)
 			return (xstrdup("1"));
 		return (xstrdup("0"));
-	}
-	return (NULL);
-}
-
-/* Callback for session_bell_flag. */
-static void *
-format_cb_session_bell_flag(struct format_tree *ft)
-{
-	struct winlink		*wl;
-
-	if (ft->s != NULL) {
-		RB_FOREACH(wl, winlinks, &ft->s->windows) {
-			if (wl->flags & WINLINK_BELL)
-				return (xstrdup("1"));
-			return (xstrdup("0"));
-		}
 	}
 	return (NULL);
 }
@@ -3108,6 +3174,9 @@ static const struct format_table_entry format_table[] = {
 	{ "keypad_flag", FORMAT_TABLE_STRING,
 	  format_cb_keypad_flag
 	},
+	{ "last_session_index", FORMAT_TABLE_STRING,
+	  format_cb_last_session_index
+	},
 	{ "last_window_index", FORMAT_TABLE_STRING,
 	  format_cb_last_window_index
 	},
@@ -3294,8 +3363,14 @@ static const struct format_table_entry format_table[] = {
 	{ "server_sessions", FORMAT_TABLE_STRING,
 	  format_cb_server_sessions
 	},
+	{ "session_active", FORMAT_TABLE_STRING,
+	  format_cb_session_active
+	},
 	{ "session_activity", FORMAT_TABLE_TIME,
 	  format_cb_session_activity
+	},
+	{ "session_activity_flag", FORMAT_TABLE_STRING,
+	  format_cb_session_activity_flag
 	},
 	{ "session_alert", FORMAT_TABLE_STRING,
 	  format_cb_session_alert
@@ -3342,6 +3417,9 @@ static const struct format_table_entry format_table[] = {
 	{ "session_id", FORMAT_TABLE_STRING,
 	  format_cb_session_id
 	},
+	{ "session_index", FORMAT_TABLE_STRING,
+	  format_cb_session_index
+	},
 	{ "session_last_attached", FORMAT_TABLE_TIME,
 	  format_cb_session_last_attached
 	},
@@ -3356,6 +3434,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "session_path", FORMAT_TABLE_STRING,
 	  format_cb_session_path
+	},
+	{ "session_silence_flag", FORMAT_TABLE_STRING,
+	  format_cb_session_silence_flag
 	},
 	{ "session_stack", FORMAT_TABLE_STRING,
 	  format_cb_session_stack
