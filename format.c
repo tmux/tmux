@@ -4589,7 +4589,6 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 	struct format_modifier		 *bool_op_n = NULL;
 	u_int				  i, count, nsub = 0, nrep;
 	struct format_expand_state	  next;
-	struct format_loop_sort_criteria *sc = &format_loop_sort_criteria;
 
 	/* Make a copy of the key. */
 	copy = copy0 = xstrndup(key, keylen);
