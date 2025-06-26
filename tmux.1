@@ -5943,8 +5943,18 @@ or
 .Ql L:\&
 will loop over each session, window, pane or client and insert the format once
 for each.
-For windows and panes, two comma-separated formats may be given:
-the second is used for the current window or active pane.
+.Ql S:\& ,
+can take an optional sort argument
+.Ql /i\& ,
+.Ql /n\& ,
+.Ql /t\&
+to sort by index, name, or time; or
+.Ql /r\&
+to sort in reverse order. For example,
+.Ql S/nr:\&
+to sort sessions by name in reverse order.
+For each, two comma-separated formats may be given:
+the second is used for the current window, active pane, or active session.
 For example, to get a list of windows formatted like the status line:
 .Bd -literal -offset indent
 #{W:#{E:window-status-format} ,#{E:window-status-current-format} }
@@ -6329,6 +6339,8 @@ and
 .Ic list=right-marker
 mark the text to be used to mark that text has been trimmed from the left or
 right of the list if there is not enough space.
+.It Ic noattr
+Do not copy attributes from the default style.
 .It Xo Ic push-default ,
 .Ic pop-default
 .Xc

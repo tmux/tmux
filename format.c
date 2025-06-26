@@ -4032,7 +4032,7 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 		}
 
 		/* Now try single character with arguments. */
-		if (strchr("mCNst=pReq", cp[0]) == NULL)
+		if (strchr("mCNSst=pReq", cp[0]) == NULL)
 			break;
 		c = cp[0];
 
@@ -4589,6 +4589,7 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 	struct format_modifier		 *bool_op_n = NULL;
 	u_int				  i, count, nsub = 0, nrep;
 	struct format_expand_state	  next;
+	struct format_loop_sort_criteria *sc = &format_loop_sort_criteria;
 
 	/* Make a copy of the key. */
 	copy = copy0 = xstrndup(key, keylen);
