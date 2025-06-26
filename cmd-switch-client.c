@@ -65,7 +65,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 		type = CMD_FIND_PANE;
 		flags = 0;
 	} else {
-		type = CMD_FIND_PANE;
+		type = CMD_FIND_SESSION;
 		flags = CMD_FIND_PREFER_UNATTACHED;
 	}
 	if (cmd_find_target(&target, item, tflag, type, flags) != 0)
