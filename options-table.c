@@ -173,10 +173,7 @@ static const char *options_table_allow_passthrough_list[] = {
 	"#[pop-default]" \
 	"#[norange default]"
 #define OPTIONS_TABLE_STATUS_FORMAT2 \
-	"#{?#{>:#{status},2}," \
-		"#[align=left]  ," \
-		"#[align=left]  " \
-	"}" \
+	"#[align=left] P: "	     \
 	"#[norange default]" \
 	"#[list=on align=#{status-justify}]" \
 	"#[list=left-marker]<#[list=right-marker]>#[list=on]" \
@@ -201,7 +198,7 @@ static const char *options_table_allow_passthrough_list[] = {
 		"#[norange list=on default] " \
 	"}"
 #define OPTIONS_TABLE_STATUS_FORMAT3 \
-	"#[align=left]   " \
+	"#[align=left] S: " \
 	"#[norange default]" \
 	"#[list=on align=#{status-justify}]" \
 	"#[list=left-marker]<#[list=right-marker]>#[list=on]" \
@@ -854,7 +851,7 @@ const struct options_table_entry options_table[] = {
 	{ .name = "status-left",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_str = "#{?#{<=:#{?#{==:#{status},on},1,#{status}},2},[#{session_name}],} ",
+	  .default_str = "[#{session_name}] ",
 	  .text = "Contents of the left side of the status line."
 	},
 
