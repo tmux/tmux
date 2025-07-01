@@ -880,8 +880,7 @@ have_event:
 			m->wp = wp->id;
 			m->w = wp->window->id;
 		}
-	} else
-		m->wp = -1;
+	}
 
 	/* Stop dragging if needed. */
 	if (type != DRAG &&
