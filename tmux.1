@@ -5911,14 +5911,21 @@ or
 .Ql L:\&
 will loop over each session, window, pane or client and insert the format once
 for each.
-.Ql S:\& ,
+.Ql L:\& ,
+.Ql S:\&
+and
+.Ql W:\&
 can take an optional sort argument
 .Ql /i\& ,
 .Ql /n\& ,
 .Ql /t\&
-to sort by index, name, or time; or
+to sort by index, name, or last activity time; additionally
 .Ql /r\&
 to sort in reverse order.
+.Ql /r\&
+can also be used with
+.Ql P:\&
+to reverse the sort order by pane index.
 For example,
 .Ql S/nr:\&
 to sort sessions by name in reverse order.
@@ -6070,8 +6077,10 @@ The following variables are available, where appropriate:
 .It Li "insert_flag" Ta "" Ta "Pane insert flag"
 .It Li "keypad_cursor_flag" Ta "" Ta "Pane keypad cursor flag"
 .It Li "keypad_flag" Ta "" Ta "Pane keypad flag"
+.It Li "last_session_index" Ta "" Ta "Index of last session"
 .It Li "last_window_index" Ta "" Ta "Index of last window in session"
 .It Li "line" Ta "" Ta "Line number in the list"
+.It Li "loop_last_flag" Ta "" Ta "1 if last window, pane, session, client in the W:, P:, S:, or L: loop"
 .It Li "mouse_all_flag" Ta "" Ta "Pane mouse all flag"
 .It Li "mouse_any_flag" Ta "" Ta "Pane mouse any flag"
 .It Li "mouse_button_flag" Ta "" Ta "Pane mouse button flag"
@@ -6143,10 +6152,13 @@ The following variables are available, where appropriate:
 .It Li "selection_start_x" Ta "" Ta "X position of the start of the selection"
 .It Li "selection_start_y" Ta "" Ta "Y position of the start of the selection"
 .It Li "server_sessions" Ta "" Ta "Number of sessions"
+.It Li "session_active" Ta "" Ta "1 if session active"
 .It Li "session_activity" Ta "" Ta "Time of session last activity"
+.It Li "session_activity_flag" Ta "" Ta "1 if any window in session has activity"
 .It Li "session_alerts" Ta "" Ta "List of window indexes with alerts"
 .It Li "session_attached" Ta "" Ta "Number of clients session is attached to"
 .It Li "session_attached_list" Ta "" Ta "List of clients session is attached to"
+.It Li "session_bell_flag" Ta "" Ta "1 if any window in session has bell"
 .It Li "session_created" Ta "" Ta "Time session created"
 .It Li "session_format" Ta "" Ta "1 if format is for a session"
 .It Li "session_group" Ta "" Ta "Name of session group"
@@ -6157,11 +6169,13 @@ The following variables are available, where appropriate:
 .It Li "session_group_size" Ta "" Ta "Size of session group"
 .It Li "session_grouped" Ta "" Ta "1 if session in a group"
 .It Li "session_id" Ta "" Ta "Unique session ID"
+.It Li "session_index" Ta "" Ta "Index of session"
 .It Li "session_last_attached" Ta "" Ta "Time session last attached"
 .It Li "session_many_attached" Ta "" Ta "1 if multiple clients attached"
 .It Li "session_marked" Ta "" Ta "1 if this session contains the marked pane"
 .It Li "session_name" Ta "#S" Ta "Name of session"
 .It Li "session_path" Ta "" Ta "Working directory of session"
+.It Li "session_silence_flag" Ta "" Ta "1 if any window in session has silence alert"
 .It Li "session_stack" Ta "" Ta "Window indexes in most recent order"
 .It Li "session_windows" Ta "" Ta "Number of windows in session"
 .It Li "socket_path" Ta "" Ta "Server socket path"

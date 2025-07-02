@@ -2290,6 +2290,7 @@ char		*paste_make_sample(struct paste_buffer *);
 #define FORMAT_FORCE 0x2
 #define FORMAT_NOJOBS 0x4
 #define FORMAT_VERBOSE 0x8
+#define FORMAT_LAST 0x10
 #define FORMAT_NONE 0
 #define FORMAT_PANE 0x80000000U
 #define FORMAT_WINDOW 0x40000000U
