@@ -2583,14 +2583,8 @@ input_exit_rename(struct input_ctx *ictx)
 	server_status_window(w);
 }
 
-#define HANGULJAMO_TO_CODEPOINT(p) \
-    (((((u_char*)(p))[0] & 0x0F) << 12) | \
-     ((((u_char*)(p))[1] & 0x3F) << 6)  | \
-     (((u_char*)(p))[2] & 0x3F))
-
 static void
 set_width_chosung(struct input_ctx *ictx, struct utf8_data *ud) {
-	log_debug("HangulJamo: U+%04X[%.3s] width:%d: Chosung set width 2", HANGULJAMO_TO_CODEPOINT(ud->data), ud->data, ud->width);
 	ud->width = 2;
 	ictx->flags &= ~INPUT_UTF8_HANGULJAMO;
 	ictx->flags |= INPUT_UTF8_HANGULJAMO_CHOSEONG;
@@ -2599,10 +2593,8 @@ set_width_chosung(struct input_ctx *ictx, struct utf8_data *ud) {
 static void
 set_width_jungseong(struct input_ctx *ictx, struct utf8_data *ud) {
 	if (ictx->flags & INPUT_UTF8_HANGULJAMO_CHOSEONG) {
-		log_debug("HangulJamo: U+%04X[%.3s] width:%d: Jungseong set width 0", HANGULJAMO_TO_CODEPOINT(ud->data),ud->data, ud->width);
 		ud->width = 0;
-	} else {
-		log_debug("HangulJamo: U+%04X[%.3s] width:%d: Jungseong without Choseong set width 2", HANGULJAMO_TO_CODEPOINT(ud->data), ud->data, ud->width);
+	} else { // Jungseong without Choseong
 		ud->width = 2;
 	}
 	ictx->flags |= INPUT_UTF8_HANGULJAMO_JUNGSEONG;
@@ -2611,10 +2603,8 @@ set_width_jungseong(struct input_ctx *ictx, struct utf8_data *ud) {
 static void
 set_width_jongseong(struct input_ctx *ictx, struct utf8_data *ud) {
 	if (ictx->flags & INPUT_UTF8_HANGULJAMO_CHOSEONG && ictx->flags & INPUT_UTF8_HANGULJAMO_JUNGSEONG) {
-		log_debug("HangulJamo: U+%04X[%.3s] width:%d: Jongseong set width 0", HANGULJAMO_TO_CODEPOINT(ud->data), ud->data, ud->width);
 		ud->width = 0;
-	} else {
-		log_debug("HangulJamo: U+%04X[%.3s] width:%d: Jongseong without Choseong and Jungseong set width 2", HANGULJAMO_TO_CODEPOINT(ud->data), ud->data, ud->width);
+	} else { // Jongseong without Choseong and Jungseong
 		ud->width = 2;
 	}
 	ictx->flags &= ~INPUT_UTF8_HANGULJAMO;
@@ -2623,7 +2613,6 @@ set_width_jongseong(struct input_ctx *ictx, struct utf8_data *ud) {
 static void
 handle_hanguljamo(struct input_ctx *ictx, struct utf8_data *ud) {
     if (ud->size != 3 || ud->data[0] != 0xE1) { // not Hangul Jamo
-		log_debug("HangulJamo: U+%04X[%.3s] width:%d: Not HangulJamo", HANGULJAMO_TO_CODEPOINT(ud->data), ud->data, ud->width);
 		ictx->flags &= ~INPUT_UTF8_HANGULJAMO;
 		return ;
 	}
