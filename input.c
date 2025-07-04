@@ -113,6 +113,9 @@ struct input_ctx {
 	int			flags;
 #define INPUT_DISCARD 0x1
 #define INPUT_LAST 0x2
+#define INPUT_UTF8_HANGULJAMO_CHOSEONG 0x4
+#define INPUT_UTF8_HANGULJAMO_JUNGSEONG 0x8
+#define INPUT_UTF8_HANGULJAMO (INPUT_UTF8_HANGULJAMO_CHOSEONG | INPUT_UTF8_HANGULJAMO_JUNGSEONG)
 
 	const struct input_state *state;
 
@@ -1145,6 +1148,7 @@ input_print(struct input_ctx *ictx)
 	int			 set;
 
 	ictx->utf8started = 0; /* can't be valid UTF-8 */
+	ictx->flags &= ~INPUT_UTF8_HANGULJAMO;
 
 	set = ictx->cell.set == 0 ? ictx->cell.g0set : ictx->cell.g1set;
 	if (set == 1)
@@ -1225,6 +1229,7 @@ input_c0_dispatch(struct input_ctx *ictx)
 	int			 has_content = 0;
 
 	ictx->utf8started = 0; /* can't be valid UTF-8 */
+	ictx->flags &= ~INPUT_UTF8_HANGULJAMO;
 
 	log_debug("%s: '%c'", __func__, ictx->ch);
 
@@ -2578,6 +2583,74 @@ input_exit_rename(struct input_ctx *ictx)
 	server_status_window(w);
 }
 
+#define HANGULJAMO_TO_CODEPOINT(p) \
+    (((((u_char*)(p))[0] & 0x0F) << 12) | \
+     ((((u_char*)(p))[1] & 0x3F) << 6)  | \
+     (((u_char*)(p))[2] & 0x3F))
+
+static void
+set_width_chosung(struct input_ctx *ictx, struct utf8_data *ud) {
+	log_debug("HangulJamo: U+%04X[%.3s] width:%d: Chosung set width 2", HANGULJAMO_TO_CODEPOINT(ud->data), ud->data, ud->width);
+	ud->width = 2;
+	ictx->flags &= ~INPUT_UTF8_HANGULJAMO;
+	ictx->flags |= INPUT_UTF8_HANGULJAMO_CHOSEONG;
+}
+
+static void
+set_width_jungseong(struct input_ctx *ictx, struct utf8_data *ud) {
+	if (ictx->flags & INPUT_UTF8_HANGULJAMO_CHOSEONG) {
+		log_debug("HangulJamo: U+%04X[%.3s] width:%d: Jungseong set width 0", HANGULJAMO_TO_CODEPOINT(ud->data),ud->data, ud->width);
+		ud->width = 0;
+	} else {
+		log_debug("HangulJamo: U+%04X[%.3s] width:%d: Jungseong without Choseong set width 2", HANGULJAMO_TO_CODEPOINT(ud->data), ud->data, ud->width);
+		ud->width = 2;
+	}
+	ictx->flags |= INPUT_UTF8_HANGULJAMO_JUNGSEONG;
+}
+
+static void
+set_width_jongseong(struct input_ctx *ictx, struct utf8_data *ud) {
+	if (ictx->flags & INPUT_UTF8_HANGULJAMO_CHOSEONG && ictx->flags & INPUT_UTF8_HANGULJAMO_JUNGSEONG) {
+		log_debug("HangulJamo: U+%04X[%.3s] width:%d: Jongseong set width 0", HANGULJAMO_TO_CODEPOINT(ud->data), ud->data, ud->width);
+		ud->width = 0;
+	} else {
+		log_debug("HangulJamo: U+%04X[%.3s] width:%d: Jongseong without Choseong and Jungseong set width 2", HANGULJAMO_TO_CODEPOINT(ud->data), ud->data, ud->width);
+		ud->width = 2;
+	}
+	ictx->flags &= ~INPUT_UTF8_HANGULJAMO;
+}
+
+static void
+handle_hanguljamo(struct input_ctx *ictx, struct utf8_data *ud) {
+    if (ud->size != 3 || ud->data[0] != 0xE1) { // not Hangul Jamo
+		log_debug("HangulJamo: U+%04X[%.3s] width:%d: Not HangulJamo", HANGULJAMO_TO_CODEPOINT(ud->data), ud->data, ud->width);
+		ictx->flags &= ~INPUT_UTF8_HANGULJAMO;
+		return ;
+	}
+
+    if (ud->data[1] == 0x84 && ud->data[2] >= 0x80 && ud->data[2] <= 0x92) { // Choseong U+1100 ~ U+1112
+		set_width_chosung(ictx, ud);
+		return;
+	}
+    if (ud->data[1] == 0x85) {
+        if (ud->data[2] >= 0xA0 && ud->data[2] <= 0xB5) { // Jungseong U+1160 ~ U+1175
+			set_width_jungseong(ictx, ud);
+			return;
+		}
+		if (ud->data[2] == 0x9F) { // HCF U+115F
+			set_width_chosung(ictx, ud);
+			return;
+		}
+		return;
+    }
+    if ((ud->data[1] == 0x86 && ud->data[2] >= 0xA8) || (ud->data[1] == 0x87 && ud->data[2] <= 0x82)) { // Jeongsung U+11A8 ~ U+11C2
+		set_width_jongseong(ictx, ud);
+		return;
+	}
+	// not Hangul Jamo
+	ictx->flags &= ~INPUT_UTF8_HANGULJAMO;
+}
+
 /* Open UTF-8 character. */
 static int
 input_top_bit_set(struct input_ctx *ictx)
@@ -2599,8 +2672,10 @@ input_top_bit_set(struct input_ctx *ictx)
 		return (0);
 	case UTF8_ERROR:
 		ictx->utf8started = 0;
+		ictx->flags &= ~INPUT_UTF8_HANGULJAMO;
 		return (0);
 	case UTF8_DONE:
+		handle_hanguljamo(ictx, ud);
 		break;
 	}
 	ictx->utf8started = 0;
