@@ -2090,6 +2090,12 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	}
 }
 
+static inline wchar_t
+hanguljamo_to_codepoint(const u_char *s)
+{
+    return ((s[0] & 0x0F) << 12) | ((s[1] & 0x3F) << 6) | (s[2] & 0x3F);
+}
+
 /* Combine a UTF-8 zero-width character onto the previous if necessary. */
 static int
 screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
@@ -2138,12 +2144,32 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	 * character) or a previous ZWJ.
 	 */
 	if (!zero_width) {
-		if (utf8_is_modifier(ud)) {
-			if (last.data.size < 2)
-				return (0);
-			force_wide = 1;
-		} else if (!utf8_has_zwj(&last.data))
+		switch (hanguljamo_check_state(&last.data, ud)) {
+		case HANGULJAMO_STATE_NOT_COMPOSABLE:
+			log_debug("HANGULJAMO_NOT_COMPOSABLE: U+%04X[%.*s] size[%d] width[%d], LAST: [%.*s] size[%d] width[%d]",
+				hanguljamo_to_codepoint(ud->data), ud->size, ud->data, ud->size, ud->width,
+				last.data.size, last.data.data, last.data.size, last.data.width);
+			return (1);
+		case HANGULJAMO_STATE_CHOSEONG:
+			log_debug("HANGULJAMO_CHOSEONG: U+%04X[%.*s] size[%d] width[%d]",
+				hanguljamo_to_codepoint(ud->data), ud->size, ud->data, ud->size, ud->width);
 			return (0);
+		case HANGULJAMO_STATE_COMPOSABLE:
+			log_debug("HANGULJAMO_COMPOSABLE: U+%04X[%.*s] size[%d] width[%d], LAST: [%.*s] size[%d] width[%d]",
+				hanguljamo_to_codepoint(ud->data), ud->size, ud->data, ud->size, ud->width,
+				last.data.size, last.data.data, last.data.size, last.data.width);
+			break;
+		case HANGULJAMO_STATE_NOT_HANGULJAMO:
+			log_debug("HANGULJAMO_NOT_HANGULJAMO: [%.*s] size[%d] width[%d]",
+				ud->size, ud->data, ud->size, ud->width);
+			if (utf8_is_modifier(ud)) {
+				if (last.data.size < 2)
+					return (0);
+				force_wide = 1;
+			} else if (!utf8_has_zwj(&last.data))
+				return (0);
+			break;
+		}
 	}
 
 	/* Check if this combined character would be too long. */
