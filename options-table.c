@@ -173,7 +173,7 @@ static const char *options_table_allow_passthrough_list[] = {
 	"#[pop-default]" \
 	"#[norange default]"
 #define OPTIONS_TABLE_STATUS_FORMAT2 \
-	"#[align=left] P: "	     \
+	"#[align=left][#{n:#{P:x}} pane#{?#{>:#{n:#{P:x}},1},s}] " \
 	"#[norange default]" \
 	"#[list=on align=#{status-justify}]" \
 	"#[list=left-marker]<#[list=right-marker]>#[list=on]" \
@@ -198,7 +198,7 @@ static const char *options_table_allow_passthrough_list[] = {
 		"#[norange list=on default] " \
 	"}"
 #define OPTIONS_TABLE_STATUS_FORMAT3 \
-	"#[align=left] S: " \
+	"#[align=left][#{n:#{S:x}} session#{?#{>:#{n:#{S:x}},1},s}] " \
 	"#[norange default]" \
 	"#[list=on align=#{status-justify}]" \
 	"#[list=left-marker]<#[list=right-marker]>#[list=on]" \
