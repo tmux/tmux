@@ -4490,7 +4490,6 @@ format_cmp_window(const void *a0, const void *b0)
 
 	switch (sc->field) {
 	case FORMAT_LOOP_BY_INDEX:
-		result = wa->id - wb->id;
 		break;
 	case FORMAT_LOOP_BY_TIME:
 		if (timercmp(&wa->activity_time, &wb->activity_time, >)) {
