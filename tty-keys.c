@@ -938,7 +938,7 @@ partial_key:
 	if (delay == 0)
 		delay = 1;
 	if ((tty->flags & TTY_ALL_REQUEST_FLAGS) != TTY_ALL_REQUEST_FLAGS) {
-		log_debug("%s: increasing delay for active DA query", c->name);
+		log_debug("%s: increasing delay for active query", c->name);
 		if (delay < 500)
 			delay = 500;
 	}
@@ -1031,7 +1031,7 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 	cc_t		 bspace;
 	key_code	 nkey, onlykey;
 	struct utf8_data ud;
-	utf8_char        uc;
+	utf8_char	 uc;
 
 	*size = 0;
 
@@ -1682,12 +1682,14 @@ tty_keys_colours(struct tty *tty, const char *buf, size_t len, size_t *size,
 		else
 			log_debug("fg is %s", colour_tostring(n));
 		*fg = n;
+		tty->flags |= TTY_HAVEFG;
 	} else if (n != -1) {
 		if (c != NULL)
 			log_debug("%s bg is %s", c->name, colour_tostring(n));
 		else
 			log_debug("bg is %s", colour_tostring(n));
 		*bg = n;
+		tty->flags |= TTY_HAVEBG;
 	}
 
 	return (0);

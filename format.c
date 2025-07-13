@@ -4490,7 +4490,6 @@ format_cmp_window(const void *a0, const void *b0)
 
 	switch (sc->field) {
 	case FORMAT_LOOP_BY_INDEX:
-		result = wa->id - wb->id;
 		break;
 	case FORMAT_LOOP_BY_TIME:
 		if (timercmp(&wa->activity_time, &wb->activity_time, >)) {
@@ -4516,15 +4515,16 @@ format_cmp_window(const void *a0, const void *b0)
 static char *
 format_loop_windows(struct format_expand_state *es, const char *fmt)
 {
-	struct format_tree		*ft = es->ft;
-	struct client			*c = ft->client;
-	struct cmdq_item		*item = ft->item;
-	struct format_tree		*nft;
-	struct format_expand_state	 next;
-	char				*all, *active, *use, *expanded, *value;
-	size_t				 valuelen;
-	struct winlink			*wl;
-	struct window			*w;
+	struct format_loop_sort_criteria *sc = &format_loop_sort_criteria;
+	struct format_tree		 *ft = es->ft;
+	struct client			 *c = ft->client;
+	struct cmdq_item		 *item = ft->item;
+	struct format_tree		 *nft;
+	struct format_expand_state	  next;
+	char				 *all, *active, *use, *expanded, *value;
+	size_t				  valuelen;
+	struct winlink			 *wl;
+	struct window			 *w;
 	int				  i, n, last = 0;
 	static struct winlink		**l = NULL;
 	static int			  lsz = 0;
@@ -4548,7 +4548,18 @@ format_loop_windows(struct format_expand_state *es, const char *fmt)
 		l[n++] = wl;
         }
 
-        qsort(l, n, sizeof *l, format_cmp_window);
+	if (sc->field != FORMAT_LOOP_BY_INDEX)
+		qsort(l, n, sizeof *l, format_cmp_window);
+	else {
+		/* Use order in the tree as index order. */
+		if (sc->reversed) {
+			for (i = 0; i < n / 2; i++) {
+				wl = l[i];
+				l[i] = l[n - 1 - i];
+				l[n - 1 - i] = wl;
+			}
+		}
+	}
 
 	value = xcalloc(1, 1);
 	valuelen = 1;
@@ -4735,7 +4746,7 @@ format_loop_clients(struct format_expand_state *es, const char *fmt)
 	if (sc->field != FORMAT_LOOP_BY_INDEX)
 		qsort(l, n, sizeof *l, format_cmp_client);
 	else {
-		/* Use order in the TAILQ as "index" order. */
+		/* Use order in the list as index order. */
 		if (sc->reversed) {
 			for (i = 0; i < n / 2; i++) {
 				c = l[i];
