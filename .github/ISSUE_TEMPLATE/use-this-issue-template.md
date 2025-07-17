@@ -23,9 +23,11 @@ built from the latest code in Git.
 
 ### Required information
 
-Please provide the following information:
+Please provide the following information. These are **required**. Bug reports without logs may be closed without comment.
 
 * tmux version (`tmux -V`).
 * Platform (`uname -sp`).
-* $TERM inside and outside of tmux (`echo $TERM`).
+* Terminal in use (xterm, rxvt, etc).
+* $TERM *inside* tmux (`echo $TERM`).
+* * $TERM *outside* tmux (`echo $TERM`).
 * Logs from tmux (`tmux kill-server; tmux -vv new`).
