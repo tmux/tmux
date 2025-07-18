@@ -267,6 +267,7 @@ grid_set_tab(struct grid_cell *gc, u_int width)
 {
 	memset(gc->data.data, 0, sizeof gc->data.data);
 	gc->flags |= GRID_FLAG_TAB;
+	gc->flags &= ~GRID_FLAG_PADDING;
 	gc->data.width = gc->data.size = gc->data.have = width;
 	memset(gc->data.data, ' ', gc->data.size);
 }
