@@ -1063,7 +1063,7 @@ colour_palette_clear(struct colour_palette *p)
 	if (p != NULL) {
 		p->fg = 8;
 		p->bg = 8;
- 		free(p->palette);
+		free(p->palette);
 		p->palette = NULL;
 	}
 }

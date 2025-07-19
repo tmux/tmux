@@ -310,7 +310,7 @@ notify_pane(const char *name, struct window_pane *wp)
 void
 notify_paste_buffer(const char *pbname, int deleted)
 {
-  	struct cmd_find_state	fs;
+	struct cmd_find_state	fs;
 
 	cmd_find_clear_state(&fs, 0);
 	if (deleted) {

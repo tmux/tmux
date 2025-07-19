@@ -207,7 +207,7 @@ window_clock_draw_screen(struct window_mode_entry *wme)
 {
 	struct window_pane		*wp = wme->wp;
 	struct window_clock_mode_data	*data = wme->data;
-	struct screen_write_ctx	 	 ctx;
+	struct screen_write_ctx		 ctx;
 	int				 colour, style;
 	struct screen			*s = &data->screen;
 	struct grid_cell		 gc;

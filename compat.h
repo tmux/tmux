@@ -324,12 +324,12 @@ long long	 strtonum(const char *, long long, long long, const char **);
 
 #ifndef HAVE_STRLCPY
 /* strlcpy.c */
-size_t	 	 strlcpy(char *, const char *, size_t);
+size_t		 strlcpy(char *, const char *, size_t);
 #endif
 
 #ifndef HAVE_STRLCAT
 /* strlcat.c */
-size_t	 	 strlcat(char *, const char *, size_t);
+size_t		 strlcat(char *, const char *, size_t);
 #endif
 
 #ifndef HAVE_STRNLEN
@@ -366,7 +366,7 @@ int		getpeereid(int, uid_t *, gid_t *);
 
 #ifndef HAVE_DAEMON
 /* daemon.c */
-int	 	 daemon(int, int);
+int		 daemon(int, int);
 #endif
 
 #ifndef HAVE_GETPROGNAME

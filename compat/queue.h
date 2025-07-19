@@ -396,7 +396,7 @@ struct {								\
 	if (((elm)->field.sqx_next = XSIMPLEQ_XOR(head,			\
 	    (elm)->field.sqx_next)->field.sqx_next)			\
 	    == XSIMPLEQ_XOR(head, NULL))				\
-		(head)->sqx_last = 					\
+		(head)->sqx_last =					\
 		    XSIMPLEQ_XOR(head, &(elm)->field.sqx_next);		\
 } while (0)
 

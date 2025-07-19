@@ -806,7 +806,7 @@ cmd_mouse_pane(struct mouse_event *m, struct session **sp,
     struct winlink **wlp)
 {
 	struct winlink		*wl;
-	struct window_pane     	*wp;
+	struct window_pane	*wp;
 
 	if ((wl = cmd_mouse_window(m, sp)) == NULL)
 		return (NULL);

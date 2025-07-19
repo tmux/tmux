@@ -352,9 +352,9 @@ size_t
 screen_write_strlen(const char *fmt, ...)
 {
 	va_list			ap;
-	char   	       	       *msg;
+	char		       *msg;
 	struct utf8_data	ud;
-	u_char 	      	       *ptr;
+	u_char		       *ptr;
 	size_t			left, size = 0;
 	enum utf8_state		more;
 
@@ -507,9 +507,9 @@ screen_write_vnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
 {
 	struct grid_cell	gc;
 	struct utf8_data       *ud = &gc.data;
-	char   		       *msg;
-	u_char 		       *ptr;
-	size_t		 	left, size = 0;
+	char		       *msg;
+	u_char		       *ptr;
+	size_t			left, size = 0;
 	enum utf8_state		more;
 
 	memcpy(&gc, gcp, sizeof gc);
@@ -568,10 +568,10 @@ screen_write_fast_copy(struct screen_write_ctx *ctx, struct screen *src,
 {
 	struct screen		*s = ctx->s;
 	struct window_pane	*wp = ctx->wp;
-	struct tty_ctx	 	 ttyctx;
+	struct tty_ctx		 ttyctx;
 	struct grid		*gd = src->grid;
 	struct grid_cell	 gc;
-	u_int		 	 xx, yy, cx = s->cx, cy = s->cy;
+	u_int			 xx, yy, cx = s->cx, cy = s->cy;
 
 	if (nx == 0 || ny == 0)
 		return;
@@ -1017,8 +1017,8 @@ void
 screen_write_alignmenttest(struct screen_write_ctx *ctx)
 {
 	struct screen		*s = ctx->s;
-	struct tty_ctx	 	 ttyctx;
-	struct grid_cell       	 gc;
+	struct tty_ctx		 ttyctx;
+	struct grid_cell	 gc;
 	u_int			 xx, yy;
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
@@ -1306,7 +1306,7 @@ screen_write_clearendofline(struct screen_write_ctx *ctx, u_int bg)
 
 	grid_view_clear(s->grid, s->cx, s->cy, sx - s->cx, 1, bg);
 
- 	before = screen_write_collect_trim(ctx, s->cy, s->cx, sx - s->cx, NULL);
+	before = screen_write_collect_trim(ctx, s->cy, s->cx, sx - s->cx, NULL);
 	ci->x = s->cx;
 	ci->used = sx - s->cx;
 	ci->type = CLEAR;
@@ -1962,10 +1962,10 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	const struct utf8_data	*ud = &gc->data;
 	struct grid_line	*gl;
 	struct grid_cell_entry	*gce;
-	struct grid_cell 	 tmp_gc, now_gc;
+	struct grid_cell	 tmp_gc, now_gc;
 	struct tty_ctx		 ttyctx;
 	u_int			 sx = screen_size_x(s), sy = screen_size_y(s);
-	u_int		 	 width = ud->width, xx, not_wrap;
+	u_int			 width = ud->width, xx, not_wrap;
 	int			 selected, skip = 1;
 
 	/* Ignore padding cells. */

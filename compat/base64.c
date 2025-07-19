@@ -207,7 +207,7 @@ b64_pton(src, target, targsize)
 			break;
 
 		pos = strchr(Base64, ch);
-		if (pos == 0) 		/* A non-base64 character. */
+		if (pos == 0)		/* A non-base64 character. */
 			return (-1);
 
 		switch (state) {

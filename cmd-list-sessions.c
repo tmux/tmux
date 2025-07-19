@@ -54,7 +54,7 @@ cmd_list_sessions_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
 	struct session		*s;
-	u_int		 	 n;
+	u_int			 n;
 	struct format_tree	*ft;
 	const char		*template, *filter;
 	char			*line, *expanded;

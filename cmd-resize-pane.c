@@ -57,7 +57,7 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct window		*w = wl->window;
 	struct client		*c = cmdq_get_client(item);
 	struct session		*s = target->s;
-	const char	       	*errstr;
+	const char		*errstr;
 	char			*cause;
 	u_int			 adjust;
 	int			 x, y, status;

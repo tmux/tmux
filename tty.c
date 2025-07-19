@@ -44,11 +44,11 @@ static void	tty_cursor_pane_unless_wrap(struct tty *,
 		    const struct tty_ctx *, u_int, u_int);
 static void	tty_colours(struct tty *, const struct grid_cell *);
 static void	tty_check_fg(struct tty *, struct colour_palette *,
-    		    struct grid_cell *);
+		    struct grid_cell *);
 static void	tty_check_bg(struct tty *, struct colour_palette *,
-    		    struct grid_cell *);
+		    struct grid_cell *);
 static void	tty_check_us(struct tty *, struct colour_palette *,
-    		    struct grid_cell *);
+		    struct grid_cell *);
 static void	tty_colours_fg(struct tty *, const struct grid_cell *);
 static void	tty_colours_bg(struct tty *, const struct grid_cell *);
 static void	tty_colours_us(struct tty *, const struct grid_cell *);
@@ -1700,7 +1700,7 @@ tty_sync_end(struct tty *tty)
 	tty->flags &= ~TTY_SYNCING;
 
 	if (tty_term_has(tty->term, TTYC_SYNC)) {
- 		log_debug("%s sync end", tty->client->name);
+		log_debug("%s sync end", tty->client->name);
 		tty_putcode_i(tty, TTYC_SYNC, 2);
 	}
 }
