@@ -2587,6 +2587,13 @@ int		 tty_acs_reverse_get(struct tty *, const char *, size_t);
 const struct utf8_data *tty_acs_double_borders(int);
 const struct utf8_data *tty_acs_heavy_borders(int);
 const struct utf8_data *tty_acs_rounded_borders(int);
+enum hanguljamo_state {
+	HANGULJAMO_STATE_NOT_HANGULJAMO,
+	HANGULJAMO_STATE_CHOSEONG,
+	HANGULJAMO_STATE_COMPOSABLE,
+	HANGULJAMO_STATE_NOT_COMPOSABLE
+};
+enum hanguljamo_state hanguljamo_check_state(const struct utf8_data *, const struct utf8_data *);
 
 /* tty-keys.c */
 void		tty_keys_build(struct tty *);
