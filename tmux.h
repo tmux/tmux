@@ -686,6 +686,14 @@ enum utf8_state {
 	UTF8_ERROR
 };
 
+/* State for processing of Korean characters. */
+enum hanguljamo_state {
+	HANGULJAMO_STATE_NOT_HANGULJAMO,
+	HANGULJAMO_STATE_CHOSEONG,
+	HANGULJAMO_STATE_COMPOSABLE,
+	HANGULJAMO_STATE_NOT_COMPOSABLE
+};
+
 /* Colour flags. */
 #define COLOUR_FLAG_256 0x01000000
 #define COLOUR_FLAG_RGB 0x02000000
@@ -3518,6 +3526,8 @@ int		 utf8_has_zwj(const struct utf8_data *);
 int		 utf8_is_zwj(const struct utf8_data *);
 int		 utf8_is_vs(const struct utf8_data *);
 int		 utf8_is_modifier(const struct utf8_data *);
+enum hanguljamo_state hanguljamo_check_state(const struct utf8_data *,
+		    const struct utf8_data *);
 
 /* procname.c */
 char   *get_proc_name(int, char *);
