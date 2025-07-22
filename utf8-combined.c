@@ -201,12 +201,6 @@ hanguljamo_get_class(const u_char *s)
 	return (HANGULJAMO_CLASS_NOT_HANGULJAMO);
 }
 
-static inline wchar_t
-hanguljamo_to_codepoint(const u_char *s)
-{
-    return ((s[0] & 0x0F) << 12) | ((s[1] & 0x3F) << 6) | (s[2] & 0x3F);
-}
-
 enum hanguljamo_state
 hanguljamo_check_state(const struct utf8_data *p_ud, const struct utf8_data *ud)
 {
@@ -215,37 +209,24 @@ hanguljamo_check_state(const struct utf8_data *p_ud, const struct utf8_data *ud)
 
 	switch (hanguljamo_get_class(ud->data)) {
 	case HANGULJAMO_CLASS_CHOSEONG:
-		log_debug("HANGULJAMO: U+%04X[%.3s] width[%d] Choseong", hanguljamo_to_codepoint(ud->data), ud->data, ud->width);
 		return (HANGULJAMO_STATE_CHOSEONG);
 
 	case HANGULJAMO_CLASS_JUNGSEONG:
 		if (p_ud->size >= 3) {
 			const u_char *s = p_ud->data + p_ud->size - 3;
 			if (hanguljamo_get_class(s) == HANGULJAMO_CLASS_CHOSEONG) {
-				log_debug("HANGULJAMO: U+%04X[%.3s] width[%d] Jungseong following Choseong U+%04X[%.3s] width[%d], size[%d]",
-				       hanguljamo_to_codepoint(ud->data), ud->data, ud->width,
-				       hanguljamo_to_codepoint(s), s, p_ud->width, p_ud->size);
 				return (HANGULJAMO_STATE_COMPOSABLE);
 			}
 		}
-		log_debug("HANGULJAMO: U+%04X[%.3s] width[%d] Uncombinable Jungseong following [%.*s] width[%d] size[%d]",
-			hanguljamo_to_codepoint(ud->data), ud->data, ud->width,
-			p_ud->size, p_ud->data, p_ud->width, p_ud->size);
 		return (HANGULJAMO_STATE_NOT_COMPOSABLE);
 
 	case HANGULJAMO_CLASS_JONGSEONG:
 		if (p_ud->size >= 3) {
 			const u_char *s = p_ud->data + p_ud->size - 3;
 			if (hanguljamo_get_class(s) == HANGULJAMO_CLASS_JUNGSEONG) {
-				log_debug("HANGULJAMO: U+%04X[%.3s] width[%d] Jongseong following Jungseong U+%04X[%.3s] width[%d] size[%d]",
-				       hanguljamo_to_codepoint(ud->data), ud->data, ud->width,
-				       hanguljamo_to_codepoint(s), s, p_ud->width, p_ud->size);
 				return (HANGULJAMO_STATE_COMPOSABLE);
 			}
 		}
-		log_debug("HANGULJAMO: U+%04X[%.3s] width[%d] Uncombinable Jongseong following [%.*s] width[%d] size[%d]",
-			hanguljamo_to_codepoint(ud->data), ud->data, ud->width,
-			p_ud->size, p_ud->data, p_ud->width, p_ud->size);
 		return (HANGULJAMO_STATE_NOT_COMPOSABLE);
 	case HANGULJAMO_CLASS_NOT_HANGULJAMO:
 		return (HANGULJAMO_STATE_NOT_HANGULJAMO);
