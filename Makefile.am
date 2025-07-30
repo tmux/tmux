@@ -31,6 +31,7 @@ AM_CFLAGS += -Wdeclaration-after-statement -Wno-pointer-sign -Wno-attributes
 AM_CFLAGS += -Wno-unused-result -Wno-format-y2k
 if IS_DARWIN
 AM_CFLAGS += -Wno-deprecated-declarations -Wno-cast-align -Wno-macro-redefined
+AM_LDFLAGS += -Wl,-rpath,/usr/local/lib
 endif
 AM_CPPFLAGS += -DDEBUG
 endif
