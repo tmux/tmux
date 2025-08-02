@@ -4428,7 +4428,7 @@ format_loop_sessions(struct format_expand_state *es, const char *fmt)
 	value = xcalloc(1, 1);
 	valuelen = 1;
 
-        for (i = 0; i < n; i++) {
+	for (i = 0; i < n; i++) {
 		s = l[i];
 		format_log(es, "session loop: $%u", s->id);
 		if (active != NULL && s->id == ft->c->session->id)
