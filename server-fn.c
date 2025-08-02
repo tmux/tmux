@@ -318,6 +318,7 @@ server_destroy_pane(struct window_pane *wp, int notify)
 	if (wp->fd != -1) {
 #ifdef HAVE_UTEMPTER
 		utempter_remove_record(wp->fd);
+		kill(getpid(), SIGCHLD);
 #endif
 		bufferevent_free(wp->event);
 		wp->event = NULL;
