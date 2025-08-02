@@ -4428,7 +4428,8 @@ format_loop_sessions(struct format_expand_state *es, const char *fmt)
 	value = xcalloc(1, 1);
 	valuelen = 1;
 
-	RB_FOREACH(s, sessions, &sessions) {
+	for (i = 0; i < n; i++) {
+		s = l[i];
 		format_log(es, "session loop: $%u", s->id);
 		if (active != NULL && s->id == ft->c->session->id)
 			use = active;
@@ -4440,7 +4441,7 @@ format_loop_sessions(struct format_expand_state *es, const char *fmt)
 		format_defaults(nft, ft->c, s, NULL, NULL);
 		format_copy_state(&next, es, 0);
 		next.ft = nft;
-		expanded = format_expand1(&next, fmt);
+		expanded = format_expand1(&next, use);
 		format_free(next.ft);
 
 		valuelen += strlen(expanded);
