@@ -392,17 +392,20 @@ file_read(struct client *c, const char *path, client_file_cb cb, void *cbdata)
 			size = fread(buffer, 1, sizeof buffer, f);
 			if (evbuffer_add(cf->buffer, buffer, size) != 0) {
 				cf->error = ENOMEM;
-				goto done;
+				goto cleanup;
 			}
 			if (size != sizeof buffer)
 				break;
 		}
 		if (ferror(f)) {
 			cf->error = EIO;
-			goto done;
+			goto cleanup;
 		}
-		fclose(f);
-		goto done;
+		goto cleanup;
+
+                cleanup:
+                if (f != NULL)
+                    fclose(f);
 	}
 
 skip:
