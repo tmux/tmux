@@ -363,7 +363,7 @@ menu_key_cb(struct client *c, void *data, struct key_event *event)
 				name = menu->items[md->choice].name;
 				if (md->choice != count - 1 &&
 				    (name != NULL && *name != '-'))
-					i++;
+					i--;
 				else if (md->choice == count - 1)
 					break;
 			}
