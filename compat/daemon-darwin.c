@@ -49,12 +49,12 @@
 
 #include <mach/mach.h>
 
-#include <Availability.h>
+#include <AvailabilityMacros.h>
 #include <unistd.h>
 
 void daemon_darwin(void);
 
-#ifdef __MAC_10_10
+#if MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
 
 extern kern_return_t	bootstrap_look_up_per_user(mach_port_t, const char *,
 			    uid_t, mach_port_t *);

@@ -40,7 +40,7 @@ osdep_get_name(int fd, __unused char *tty)
 }
 
 char *
-osdep_get_cwd(int fd)
+osdep_get_cwd(__unused int fd)
 {
 	return (NULL);
 }

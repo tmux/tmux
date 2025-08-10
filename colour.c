@@ -986,7 +986,8 @@ colour_byname(const char *name)
 	int		 c;
 	const char	*errstr;
 
-	if (strncmp(name, "grey", 4) == 0 || strncmp(name, "gray", 4) == 0) {
+	if (strncasecmp(name, "grey", 4) == 0 ||
+	    strncasecmp(name, "gray", 4) == 0) {
 		if (name[4] == '\0')
 			return (0xbebebe|COLOUR_FLAG_RGB);
 		c = strtonum(name + 4, 0, 100, &errstr);

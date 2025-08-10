@@ -938,7 +938,7 @@ partial_key:
 	if (delay == 0)
 		delay = 1;
 	if ((tty->flags & TTY_ALL_REQUEST_FLAGS) != TTY_ALL_REQUEST_FLAGS) {
-		log_debug("%s: increasing delay for active DA query", c->name);
+		log_debug("%s: increasing delay for active query", c->name);
 		if (delay < 500)
 			delay = 500;
 	}
@@ -1031,7 +1031,7 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 	cc_t		 bspace;
 	key_code	 nkey, onlykey;
 	struct utf8_data ud;
-	utf8_char        uc;
+	utf8_char	 uc;
 
 	*size = 0;
 
@@ -1422,14 +1422,16 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 		return (1);
 
 	/* Copy the rest up to a c. */
-	for (i = 0; i < (sizeof tmp); i++) {
+	for (i = 0; i < sizeof tmp; i++) {
 		if (3 + i == len)
 			return (1);
-		if (buf[3 + i] == 'c')
+		if (buf[3 + i] >= 'a' && buf[3 + i] <= 'z')
 			break;
 		tmp[i] = buf[3 + i];
 	}
-	if (i == (sizeof tmp))
+	if (i == sizeof tmp)
+		return (-1);
+	if (buf[3 + i] != 'c')
 		return (-1);
 	tmp[i] = '\0';
 	*size = 4 + i;
@@ -1459,6 +1461,8 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 				tty_add_features(features, "margins", ",");
 			if (p[i] == 28)
 				tty_add_features(features, "rectfill", ",");
+			if (p[i] == 52)
+				tty_add_features(features, "clipboard", ",");
 		}
 		break;
 	}
@@ -1502,14 +1506,16 @@ tty_keys_device_attributes2(struct tty *tty, const char *buf, size_t len,
 		return (1);
 
 	/* Copy the rest up to a c. */
-	for (i = 0; i < (sizeof tmp); i++) {
+	for (i = 0; i < sizeof tmp; i++) {
 		if (3 + i == len)
 			return (1);
-		if (buf[3 + i] == 'c')
+		if (buf[3 + i] >= 'a' && buf[3 + i] <= 'z')
 			break;
 		tmp[i] = buf[3 + i];
 	}
-	if (i == (sizeof tmp))
+	if (i == sizeof tmp)
+		return (-1);
+	if (buf[3 + i] != 'c')
 		return (-1);
 	tmp[i] = '\0';
 	*size = 4 + i;
@@ -1680,12 +1686,14 @@ tty_keys_colours(struct tty *tty, const char *buf, size_t len, size_t *size,
 		else
 			log_debug("fg is %s", colour_tostring(n));
 		*fg = n;
+		tty->flags |= TTY_HAVEFG;
 	} else if (n != -1) {
 		if (c != NULL)
 			log_debug("%s bg is %s", c->name, colour_tostring(n));
 		else
 			log_debug("bg is %s", colour_tostring(n));
 		*bg = n;
+		tty->flags |= TTY_HAVEBG;
 	}
 
 	return (0);

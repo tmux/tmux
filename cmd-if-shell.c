@@ -124,7 +124,7 @@ cmd_if_shell_exec(struct cmd *self, struct cmdq_item *item)
 	    -1) == NULL) {
 		cmdq_error(item, "failed to run command: %s", shellcmd);
 		free(shellcmd);
-		free(cdata);
+		cmd_if_shell_free(cdata);
 		return (CMD_RETURN_ERROR);
 	}
 	free(shellcmd);

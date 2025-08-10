@@ -4887,6 +4887,8 @@ window_copy_copy_buffer(struct window_mode_entry *wme, const char *prefix,
 
 	if (set_paste)
 		paste_add(prefix, buf, len);
+	else
+		free(buf);
 }
 
 static void *
@@ -4911,9 +4913,11 @@ static void
 window_copy_pipe(struct window_mode_entry *wme, struct session *s,
     const char *cmd)
 {
+	void	*buf;
 	size_t	len;
 
-	window_copy_pipe_run(wme, s, cmd, &len);
+	buf = window_copy_pipe_run(wme, s, cmd, &len);
+	free (buf);
 }
 
 static void
@@ -4924,9 +4928,10 @@ window_copy_copy_pipe(struct window_mode_entry *wme, struct session *s,
 	size_t	 len;
 
 	buf = window_copy_pipe_run(wme, s, cmd, &len);
-	if (buf != NULL)
+	if (buf != NULL) {
 		window_copy_copy_buffer(wme, prefix, buf, len, set_paste,
 		    set_clip);
+	}
 }
 
 static void
@@ -4937,9 +4942,10 @@ window_copy_copy_selection(struct window_mode_entry *wme, const char *prefix,
 	size_t	 len;
 
 	buf = window_copy_get_selection(wme, &len);
-	if (buf != NULL)
+	if (buf != NULL) {
 		window_copy_copy_buffer(wme, prefix, buf, len, set_paste,
 		    set_clip);
+	}
 }
 
 static void
