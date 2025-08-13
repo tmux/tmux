@@ -1,0 +1,18 @@
+{
+    "name": "C Development Container",
+    "image": "mcr.microsoft.com/vscode/devcontainers/base:alpine",
+    "features": {
+        "ghcr.io/devcontainers/features/common-utils:2": {},
+        "ghcr.io/devcontainers/features/git:1": {}
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-vscode.cpptools",
+                "ms-vscode.makefile-tools"
+            ]
+        }
+    },
+    "postCreateCommand": "sudo apk add --no-cache gcc musl-dev make libevent-dev autoconf automake",
+    "remoteUser": "vscode"
+}
