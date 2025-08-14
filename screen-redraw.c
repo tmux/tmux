@@ -87,6 +87,10 @@ screen_redraw_border_set(struct window *w, struct window_pane *wp,
 		gc->attr &= ~GRID_ATTR_CHARSET;
 		utf8_set(&gc->data, SIMPLE_BORDERS[cell_type]);
 		break;
+	case PANE_LINES_SPACES:
+		gc->attr &= ~GRID_ATTR_CHARSET;
+		utf8_set(&gc->data, ' ');
+		break;
 	default:
 		gc->attr |= GRID_ATTR_CHARSET;
 		utf8_set(&gc->data, CELL_BORDERS[cell_type]);
