@@ -364,7 +364,7 @@ file_read(struct client *c, const char *path, client_file_cb cb, void *cbdata)
 	size_t			 msglen;
 	int			 fd = -1;
 	u_int			 stream = file_next_stream++;
-	FILE			*f;
+	FILE			*f = NULL;
 	size_t			 size;
 	char			 buffer[BUFSIZ];
 
@@ -404,7 +404,6 @@ file_read(struct client *c, const char *path, client_file_cb cb, void *cbdata)
 			cf->error = EIO;
 			goto done;
 		}
-		fclose(f);
 		goto done;
 	}
 
@@ -427,6 +426,8 @@ skip:
 	return cf;
 
 done:
+	if (f != NULL)
+		fclose(f);
 	file_fire_done(cf);
 	return NULL;
 }
