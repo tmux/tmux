@@ -370,7 +370,7 @@ mode_tree_expand(struct mode_tree_data *mtd, uint64_t tag)
 	u_int	found;
 
 	if (!mode_tree_get_tag(mtd, tag, &found))
-	    return;
+		return;
 	if (!mtd->line_list[found].item->expanded) {
 		mtd->line_list[found].item->expanded = 1;
 		mode_tree_build(mtd);

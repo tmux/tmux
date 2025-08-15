@@ -4809,7 +4809,7 @@ format_replace_expression(struct format_modifier *mexp,
 	else if (strcmp(mexp->argv[0], "/") == 0)
 		operator = DIVIDE;
 	else if (strcmp(mexp->argv[0], "%") == 0 ||
-	    strcmp(mexp->argv[0], "m") == 0)
+		 strcmp(mexp->argv[0], "m") == 0)
 		operator = MODULUS;
 	else if (strcmp(mexp->argv[0], "==") == 0)
 		operator = EQUAL;

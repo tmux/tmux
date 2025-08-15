@@ -941,7 +941,7 @@ screen_write_cursordown(struct screen_write_ctx *ctx, u_int ny)
 			ny = s->rlower - cy;
 	}
 	if (cx == screen_size_x(s))
-	    cx--;
+		cx--;
 	else if (ny == 0)
 		return;
 
