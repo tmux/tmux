@@ -3530,10 +3530,6 @@ int		 utf8_is_modifier(const struct utf8_data *);
 enum hanguljamo_state hanguljamo_check_state(const struct utf8_data *,
 		    const struct utf8_data *);
 
-/* procname.c */
-char   *get_proc_name(int, char *);
-char   *get_proc_cwd(int);
-
 /* log.c */
 void	log_add_level(void);
 int	log_get_level(void);
