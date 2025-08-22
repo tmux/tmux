@@ -859,9 +859,11 @@ window_tree_search(__unused void *modedata, void *itemdata, const char *ss)
 	case WINDOW_TREE_PANE:
 		if (s == NULL || wl == NULL || wp == NULL)
 			break;
-		cmd = osdep_get_name(wp->fd, wp->tty);
-		if (cmd == NULL || *cmd == '\0')
+		cmd = get_proc_name(wp->fd, wp->tty);
+		if (cmd == NULL || *cmd == '\0') {
+			free(cmd);
 			return (0);
+		}
 		retval = (strstr(cmd, ss) != NULL);
 		free(cmd);
 		return (retval);

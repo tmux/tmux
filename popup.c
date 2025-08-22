@@ -348,6 +348,8 @@ popup_make_pane(struct popup_data *pd, enum layout_type type)
 	window_unzoom(w, 1);
 
 	lc = layout_split_pane(wp, type, -1, 0);
+	if (lc == NULL)
+		return;
 	hlimit = options_get_number(s->options, "history-limit");
 	new_wp = window_add_pane(wp->window, NULL, hlimit, 0);
 	layout_assign_pane(lc, new_wp, 0);

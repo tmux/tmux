@@ -5080,6 +5080,8 @@ heavy lines using UTF-8 characters
 simple ASCII characters
 .It number
 the pane number
+.It spaces
+space characters
 .El
 .Pp
 .Ql double
@@ -5187,6 +5189,38 @@ Other attributes are ignored.
 .Op Ic left | right
 .Xc
 Sets which side of the pane to display pane scrollbars on.
+.Pp
+.It Ic pane-status-current-style Ar style
+Set status line style for the currently active pane.
+For how to specify
+.Ar style ,
+see the
+.Sx STYLES
+section.
+.Pp
+.It Ic pane-status-style Ar style
+Set status line style for a single pane.
+For how to specify
+.Ar style ,
+see the
+.Sx STYLES
+section.
+.Pp
+.It Ic session-status-current-style Ar style
+Set status line style for the currently active session.
+For how to specify
+.Ar style ,
+see the
+.Sx STYLES
+section.
+.Pp
+.It Ic session-status-style Ar style
+Set status line style for a single session.
+For how to specify
+.Ar style ,
+see the
+.Sx STYLES
+section.
 .Pp
 .It Ic window-status-activity-style Ar style
 Set status line style for windows with an activity alert.

@@ -298,6 +298,7 @@ menu_key_cb(struct client *c, void *data, struct key_event *event)
 		}
 	}
 	switch (event->key & ~KEYC_MASK_FLAGS) {
+	case KEYC_BTAB:
 	case KEYC_UP:
 	case 'k':
 		if (old == -1)
@@ -363,7 +364,7 @@ menu_key_cb(struct client *c, void *data, struct key_event *event)
 				name = menu->items[md->choice].name;
 				if (md->choice != count - 1 &&
 				    (name != NULL && *name != '-'))
-					i++;
+					i--;
 				else if (md->choice == count - 1)
 					break;
 			}

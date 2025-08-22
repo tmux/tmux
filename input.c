@@ -747,6 +747,20 @@ input_table_compare(const void *key, const void *value)
 	return (strcmp(ictx->interm_buf, entry->interm));
 }
 
+/* Stop UTF-8 and enter an invalid character. */
+static void
+input_stop_utf8(struct input_ctx *ictx)
+{
+	struct screen_write_ctx	*sctx = &ictx->ctx;
+	static struct utf8_data	 rc = { "\357\277\275", 3, 3, 1 };
+
+	if (ictx->utf8started) {
+		utf8_copy(&ictx->cell.cell.data, &rc);
+		screen_write_collect_add(sctx, &ictx->cell.cell);
+	}
+	ictx->utf8started = 0;
+}
+
 /*
  * Timer - if this expires then have been waiting for a terminator for too
  * long, so reset to ground.
@@ -1144,7 +1158,7 @@ input_print(struct input_ctx *ictx)
 	struct screen_write_ctx	*sctx = &ictx->ctx;
 	int			 set;
 
-	ictx->utf8started = 0; /* can't be valid UTF-8 */
+	input_stop_utf8(ictx); /* can't be valid UTF-8 */
 
 	set = ictx->cell.set == 0 ? ictx->cell.g0set : ictx->cell.g1set;
 	if (set == 1)
@@ -1224,7 +1238,7 @@ input_c0_dispatch(struct input_ctx *ictx)
 	u_int			 width;
 	int			 has_content = 0;
 
-	ictx->utf8started = 0; /* can't be valid UTF-8 */
+	input_stop_utf8(ictx); /* can't be valid UTF-8 */
 
 	log_debug("%s: '%c'", __func__, ictx->ch);
 
@@ -2588,9 +2602,9 @@ input_top_bit_set(struct input_ctx *ictx)
 	ictx->flags &= ~INPUT_LAST;
 
 	if (!ictx->utf8started) {
-		if (utf8_open(ud, ictx->ch) != UTF8_MORE)
-			return (0);
 		ictx->utf8started = 1;
+		if (utf8_open(ud, ictx->ch) != UTF8_MORE)
+			input_stop_utf8(ictx);
 		return (0);
 	}
 
@@ -2598,7 +2612,7 @@ input_top_bit_set(struct input_ctx *ictx)
 	case UTF8_MORE:
 		return (0);
 	case UTF8_ERROR:
-		ictx->utf8started = 0;
+		input_stop_utf8(ictx);
 		return (0);
 	case UTF8_DONE:
 		break;

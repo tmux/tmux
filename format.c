@@ -4421,14 +4421,14 @@ format_loop_sessions(struct format_expand_state *es, const char *fmt)
 			l = xreallocarray(l, lsz, sizeof *l);
 		}
 		l[n++] = s;
-        }
+	}
 
-        qsort(l, n, sizeof *l, format_cmp_session);
+	qsort(l, n, sizeof *l, format_cmp_session);
 
 	value = xcalloc(1, 1);
 	valuelen = 1;
 
-        for (i = 0; i < n; i++) {
+	for (i = 0; i < n; i++) {
 		s = l[i];
 		format_log(es, "session loop: $%u", s->id);
 		if (active != NULL && s->id == ft->c->session->id)
@@ -4546,7 +4546,7 @@ format_loop_windows(struct format_expand_state *es, const char *fmt)
 			l = xreallocarray(l, lsz, sizeof *l);
 		}
 		l[n++] = wl;
-        }
+	}
 
 	if (sc->field != FORMAT_LOOP_BY_INDEX)
 		qsort(l, n, sizeof *l, format_cmp_window);
@@ -4645,9 +4645,9 @@ format_loop_panes(struct format_expand_state *es, const char *fmt)
 			l = xreallocarray(l, lsz, sizeof *l);
 		}
 		l[n++] = wp;
-        }
+	}
 
-        qsort(l, n, sizeof *l, format_cmp_pane);
+	qsort(l, n, sizeof *l, format_cmp_pane);
 
 	value = xcalloc(1, 1);
 	valuelen = 1;
@@ -4741,7 +4741,7 @@ format_loop_clients(struct format_expand_state *es, const char *fmt)
 			l = xreallocarray(l, lsz, sizeof *l);
 		}
 		l[n++] = c;
-        }
+	}
 
 	if (sc->field != FORMAT_LOOP_BY_INDEX)
 		qsort(l, n, sizeof *l, format_cmp_client);
@@ -4756,7 +4756,7 @@ format_loop_clients(struct format_expand_state *es, const char *fmt)
 		}
 	}
 
-        for (i = 0; i < n; i++) {
+	for (i = 0; i < n; i++) {
 		c = l[i];
 		format_log(es, "client loop: %s", c->name);
 		if (i == n - 1)
