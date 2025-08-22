@@ -4926,7 +4926,7 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 	struct window_pane		 *wp = ft->wp;
 	const char			 *errstr, *copy, *cp, *cp2;
 	const char			 *marker = NULL;
-	const char			 *time_format = NULL;
+	char				 *time_format = NULL;
 	char				 *copy0, *condition, *found, *new;
 	char				 *value, *left, *right;
 	size_t				  valuelen;
@@ -5461,6 +5461,7 @@ done:
 	free(sub);
 	format_free_modifiers(list, count);
 	free(copy0);
+	free(time_format);
 	return (0);
 
 fail:
@@ -5469,6 +5470,7 @@ fail:
 	free(sub);
 	format_free_modifiers(list, count);
 	free(copy0);
+	free(time_format);
 	return (-1);
 }
 
