@@ -248,8 +248,8 @@ cmd_capture_pane_exec(struct cmd *self, struct cmdq_item *item)
 			}
 			file_print_buffer(c, buf, len);
 			file_print(c, "\n");
-			free(buf);
 		}
+		free(buf);
 	} else {
 		bufname = NULL;
 		if (args_has(args, 'b'))
