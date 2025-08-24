@@ -279,3 +279,52 @@ environ_for_session(struct session *s, int no_TERM)
 
 	return (env);
 }
+
+/* Create an envp array from an environment. */
+char **
+environ_get_envp(struct environ *env)
+{
+	struct environ_entry	*envent;
+	char			**envp;
+	u_int			  i, count;
+
+	/* Count entries. */
+	count = 0;
+	RB_FOREACH(envent, environ, env) {
+		if (envent->value != NULL &&
+		    *envent->name != '\0' &&
+		    (~envent->flags & ENVIRON_HIDDEN))
+			count++;
+	}
+
+	/* Allocate envp array. */
+	envp = xcalloc(count + 1, sizeof *envp);
+
+	/* Populate envp array. */
+	i = 0;
+	RB_FOREACH(envent, environ, env) {
+		if (envent->value != NULL &&
+		    *envent->name != '\0' &&
+		    (~envent->flags & ENVIRON_HIDDEN)) {
+			xasprintf(&envp[i], "%s=%s", envent->name, envent->value);
+			log_debug("%s: adding to envp: %s", __func__, envp[i]); /* Log added env var */
+			i++;
+		}
+	}
+	envp[i] = NULL;
+
+	return (envp);
+}
+
+/* Free an envp array created by environ_get_envp. */
+void
+environ_free_envp(char **envp)
+{
+	u_int	i;
+
+	if (envp == NULL)
+		return;
+	for (i = 0; envp[i] != NULL; i++)
+		free(envp[i]);
+	free(envp);
+}
