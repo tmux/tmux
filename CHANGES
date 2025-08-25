@@ -1,5 +1,9 @@
 CHANGES FROM 3.4 TO 3.5
 
+// #Bad Pratice2 - keys
+// # Hardcoded AWS credentials (for demonstration purposes only)
+// aws_access_key_id = 'AKIAABCDCFGIJKLMMOP1'
+
 * Revamp extended keys support to more closely match xterm and support mode 2
   as well as mode 1. This is a substantial change to key handling which changes
   tmux to always request mode 2 from parent terminal, changes to an unambiguous
