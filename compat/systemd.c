@@ -107,7 +107,7 @@ systemd_move_to_new_cgroup(char **cause)
 {
 	sd_bus_error		 error = SD_BUS_ERROR_NULL;
 	sd_bus_message		*m = NULL, *reply = NULL;
-	sd_bus 			*bus = NULL;
+	sd_bus			*bus = NULL;
 	sd_bus_slot		*slot = NULL;
 	char			*name, *desc, *slice;
 	sd_id128_t		 uuid;

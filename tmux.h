@@ -1248,7 +1248,7 @@ struct window {
 	struct timeval		 activity_time;
 
 	struct window_pane	*active;
-	struct window_panes 	 last_panes;
+	struct window_panes	 last_panes;
 	struct window_panes	 panes;
 
 	int			 lastlayout;
@@ -1923,7 +1923,7 @@ struct client {
 
 	struct timeval		 creation_time;
 	struct timeval		 activity_time;
-	struct timeval	 	 last_activity_time;
+	struct timeval		 last_activity_time;
 
 	struct environ		*environ;
 	struct format_job_tree	*jobs;
@@ -2239,7 +2239,7 @@ extern int		 ptm_fd;
 extern const char	*shell_command;
 int		 checkshell(const char *);
 void		 setblocking(int, int);
-char 		*shell_argv0(const char *, int);
+char		*shell_argv0(const char *, int);
 uint64_t	 get_timer(void);
 const char	*sig2name(int);
 const char	*find_cwd(void);
@@ -2273,7 +2273,7 @@ void	start_cfg(void);
 int	load_cfg(const char *, struct client *, struct cmdq_item *,
             struct cmd_find_state *, int, struct cmdq_item **);
 int	load_cfg_from_buffer(const void *, size_t, const char *,
-  	    struct client *, struct cmdq_item *, struct cmd_find_state *,
+	    struct client *, struct cmdq_item *, struct cmd_find_state *,
 	    int, struct cmdq_item **);
 void printflike(1, 2) cfg_add_cause(const char *, ...);
 void	cfg_print_causes(struct cmdq_item *);
@@ -2424,7 +2424,7 @@ struct style	*options_string_to_style(struct options *, const char *,
 int		 options_from_string(struct options *,
 		     const struct options_table_entry *, const char *,
 		     const char *, int, char **);
-int	 	 options_find_choice(const struct options_table_entry *,
+int		 options_find_choice(const struct options_table_entry *,
 		     const char *, char **);
 void		 options_push_changes(const char *);
 int		 options_remove_or_default(struct options_entry *, int,
@@ -2606,7 +2606,7 @@ int		tty_keys_colours(struct tty *, const char *, size_t, size_t *,
 
 /* arguments.c */
 void		 args_set(struct args *, u_char, struct args_value *, int);
-struct args 	*args_create(void);
+struct args	*args_create(void);
 struct args	*args_parse(const struct args_parse *, struct args_value *,
 		     u_int, char **);
 struct args	*args_copy(struct args *, int, char **);
@@ -2769,7 +2769,7 @@ u_int		 cmdq_next(struct client *);
 struct cmdq_item *cmdq_running(struct client *);
 void		 cmdq_guard(struct cmdq_item *, const char *, int);
 void printflike(2, 3) cmdq_print(struct cmdq_item *, const char *, ...);
-void 		 cmdq_print_data(struct cmdq_item *, struct evbuffer *);
+void		 cmdq_print_data(struct cmdq_item *, struct evbuffer *);
 void printflike(2, 3) cmdq_error(struct cmdq_item *, const char *, ...);
 
 /* cmd-wait-for.c */
@@ -3431,7 +3431,7 @@ void printflike(2, 3) control_write(struct client *, const char *, ...);
 void	control_write_output(struct client *, struct window_pane *);
 int	control_all_done(struct client *);
 void	control_add_sub(struct client *, const char *, enum control_sub_type,
-    	   int, const char *);
+	   int, const char *);
 void	control_remove_sub(struct client *, const char *);
 
 /* control-notify.c */
@@ -3626,7 +3626,7 @@ struct screen	*sixel_to_screen(struct sixel_image *);
 /* server-acl.c */
 void			 server_acl_init(void);
 struct server_acl_user	*server_acl_user_find(uid_t);
-void 			 server_acl_display(struct cmdq_item *);
+void			 server_acl_display(struct cmdq_item *);
 void			 server_acl_user_allow(uid_t);
 void			 server_acl_user_deny(uid_t);
 void			 server_acl_user_allow_write(uid_t);
@@ -3635,7 +3635,7 @@ int			 server_acl_join(struct client *);
 uid_t			 server_acl_get_uid(struct server_acl_user *);
 
 /* hyperlink.c */
-u_int	 		 hyperlinks_put(struct hyperlinks *, const char *,
+u_int			 hyperlinks_put(struct hyperlinks *, const char *,
 			     const char *);
 int			 hyperlinks_get(struct hyperlinks *, u_int,
 			     const char **, const char **, const char **);

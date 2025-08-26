@@ -437,7 +437,7 @@ options_array_set(struct options_entry *o, u_int idx, const char *value,
 	struct options_array_item	*a;
 	char				*new;
 	struct cmd_parse_result		*pr;
-	long long		 	 number;
+	long long			 number;
 
 	if (!OPTIONS_IS_ARRAY(o)) {
 		if (cause != NULL)

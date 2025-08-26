@@ -31,7 +31,7 @@ LLVMFuzzerTestOneInput(const u_char *data, size_t size)
 {
 	struct bufferevent	*vpty[2];
 	struct window		*w;
-	struct window_pane 	*wp;
+	struct window_pane	*wp;
 	int			 error;
 
 	/*

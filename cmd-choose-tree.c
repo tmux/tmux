@@ -27,7 +27,7 @@
 static enum args_parse_type	cmd_choose_tree_args_parse(struct args *args,
 				    u_int idx, char **cause);
 static enum cmd_retval		cmd_choose_tree_exec(struct cmd *,
-    				    struct cmdq_item *);
+				    struct cmdq_item *);
 
 const struct cmd_entry cmd_choose_tree_entry = {
 	.name = "choose-tree",

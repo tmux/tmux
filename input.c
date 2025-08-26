@@ -2637,21 +2637,21 @@ input_top_bit_set(struct input_ctx *ictx)
 static void
 input_osc_colour_reply(struct input_ctx *ictx, u_int n, int c)
 {
-    u_char	 r, g, b;
-    const char	*end;
+	u_char	 r, g, b;
+	const char	*end;
 
-    if (c != -1)
-	    c = colour_force_rgb(c);
-    if (c == -1)
-	    return;
-    colour_split_rgb(c, &r, &g, &b);
+	if (c != -1)
+		c = colour_force_rgb(c);
+	if (c == -1)
+		return;
+	colour_split_rgb(c, &r, &g, &b);
 
-    if (ictx->input_end == INPUT_END_BEL)
-	    end = "\007";
-    else
-	    end = "\033\\";
-    input_reply(ictx, "\033]%u;rgb:%02hhx%02hhx/%02hhx%02hhx/%02hhx%02hhx%s",
-	n, r, r, g, g, b, b, end);
+	if (ictx->input_end == INPUT_END_BEL)
+		end = "\007";
+	else
+		end = "\033\\";
+	input_reply(ictx, "\033]%u;rgb:%02hhx%02hhx/%02hhx%02hhx/%02hhx%02hhx%s",
+	    n, r, r, g, g, b, b, end);
 }
 
 /* Handle the OSC 4 sequence for setting (multiple) palette entries. */
