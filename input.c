@@ -1234,7 +1234,7 @@ input_c0_dispatch(struct input_ctx *ictx)
 	struct window_pane	*wp = ictx->wp;
 	struct screen		*s = sctx->s;
 	struct grid_cell	 gc, first_gc;
-	u_int			 cx = s->cx, line = s->cy + s->grid->hsize;
+	u_int			 cx, line;
 	u_int			 width;
 	int			 has_content = 0;
 
@@ -1254,11 +1254,13 @@ input_c0_dispatch(struct input_ctx *ictx)
 		break;
 	case '\011':	/* HT */
 		/* Don't tab beyond the end of the line. */
-		if (s->cx >= screen_size_x(s) - 1)
+		cx = s->cx;
+		if (cx >= screen_size_x(s) - 1)
 			break;
 
 		/* Find the next tab point, or use the last column if none. */
-		grid_get_cell(s->grid, s->cx, line, &first_gc);
+		line = s->cy + s->grid->hsize;
+		grid_get_cell(s->grid, cx, line, &first_gc);
 		do {
 			if (!has_content) {
 				grid_get_cell(s->grid, cx, line, &gc);
@@ -2701,7 +2703,7 @@ input_osc_8(struct input_ctx *ictx, const char *p)
 	struct hyperlinks	*hl = ictx->ctx.s->hyperlinks;
 	struct grid_cell	*gc = &ictx->cell.cell;
 	const char		*start, *end, *uri;
-	char	    		*id = NULL;
+	char			*id = NULL;
 
 	for (start = p; (end = strpbrk(start, ":;")) != NULL; start = end + 1) {
 		if (end - start >= 4 && strncmp(start, "id=", 3) == 0) {
@@ -2896,8 +2898,8 @@ input_osc_52(struct input_ctx *ictx, const char *p)
 	int			 outlen, state;
 	struct screen_write_ctx	 ctx;
 	struct paste_buffer	*pb;
-	const char*              allow = "cpqs01234567";
-	char                     flags[sizeof "cpqs01234567"] = "";
+	const char*		 allow = "cpqs01234567";
+	char			 flags[sizeof "cpqs01234567"] = "";
 	u_int			 i, j = 0;
 
 	if (wp == NULL)
