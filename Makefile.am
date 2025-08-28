@@ -20,9 +20,9 @@ LDADD = $(LIBOBJS)
 
 # Set flags for gcc.
 if IS_GCC
-AM_CFLAGS += -std=gnu99 -O2
+AM_CFLAGS += -std=gnu99
 if IS_DEBUG
-AM_CFLAGS += -g
+AM_CFLAGS += -g -O0
 AM_CFLAGS += -Wno-long-long -Wall -W -Wformat=2
 AM_CFLAGS += -Wmissing-prototypes -Wstrict-prototypes -Wmissing-declarations
 AM_CFLAGS += -Wwrite-strings -Wshadow -Wpointer-arith -Wsign-compare
@@ -33,6 +33,8 @@ if IS_DARWIN
 AM_CFLAGS += -Wno-deprecated-declarations -Wno-cast-align -Wno-macro-redefined
 endif
 AM_CPPFLAGS += -DDEBUG
+else
+AM_CFLAGS += -O2
 endif
 AM_CPPFLAGS += -iquote.
 endif
