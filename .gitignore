@@ -22,3 +22,4 @@ fuzz/*-fuzzer
 tags
 tmux
 tmux.1.*
+.idea
