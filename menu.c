@@ -422,10 +422,6 @@ chosen:
 	    return (1);
 	}
 
-	if (md->item != NULL)
-		event = cmdq_get_event(md->item);
-	else
-		event = NULL;
 	state = cmdq_new_state(&md->fs, event, 0);
 
 	status = cmd_parse_and_append(item->command, NULL, c, state, &error);
@@ -545,12 +541,17 @@ menu_display(struct menu *menu, int flags, int starting_choice,
     void *data)
 {
 	struct menu_data	*md;
+	struct window		*w = c->session->curw->window;
 
 	md = menu_prepare(menu, flags, starting_choice, item, px, py, c, lines,
 	    style, selected_style, border_style, fs, cb, data);
 	if (md == NULL)
 		return (-1);
+	w->md = md;
+	c->flags |= CLIENT_REDRAWWINDOW;
+	/*
 	server_client_set_overlay(c, 0, NULL, menu_mode_cb, menu_draw_cb,
 	    menu_key_cb, menu_free_cb, NULL, md);
-	return (0);
+	*/
+	return (1);
 }
