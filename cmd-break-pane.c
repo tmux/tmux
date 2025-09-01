@@ -85,7 +85,10 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 			options_set_number(w->options, "automatic-rename", 0);
 		}
 		server_unlink_window(src_s, wl);
-		return (CMD_RETURN_NORMAL);
+		wl = winlink_find_by_window(&dst_s->windows, w);
+		if (wl == NULL)
+			return (CMD_RETURN_ERROR);
+		goto out;
 	}
 	if (idx != -1 && winlink_find_by_index(&dst_s->windows, idx) != NULL) {
 		cmdq_error(item, "index in use: %d", idx);
@@ -132,6 +135,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (src_s != dst_s)
 		server_status_session_group(dst_s);
 
+out:
 	if (args_has(args, 'P')) {
 		if ((template = args_get(args, 'F')) == NULL)
 			template = BREAK_PANE_TEMPLATE;
