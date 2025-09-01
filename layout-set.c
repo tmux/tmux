@@ -38,7 +38,7 @@ static void	layout_set_tiled(struct window *);
 
 static const struct {
 	const char	*name;
-	void	      	(*arrange)(struct window *);
+	void		(*arrange)(struct window *);
 } layout_sets[] = {
 	{ "even-horizontal", layout_set_even_h },
 	{ "even-vertical", layout_set_even_v },

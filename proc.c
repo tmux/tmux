@@ -221,7 +221,7 @@ proc_exit(struct tmuxproc *tp)
 	struct tmuxpeer	*peer;
 
 	TAILQ_FOREACH(peer, &tp->peers, entry)
-	    imsgbuf_flush(&peer->ibuf);
+		imsgbuf_flush(&peer->ibuf);
 	tp->exit = 1;
 }
 

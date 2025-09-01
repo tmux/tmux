@@ -53,7 +53,7 @@ const struct cmd_entry cmd_list_clients_entry = {
 static enum cmd_retval
 cmd_list_clients_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args 		*args = cmd_get_args(self);
+	struct args		*args = cmd_get_args(self);
 	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct client		*c;
 	struct session		*s;

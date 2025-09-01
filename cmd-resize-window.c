@@ -51,7 +51,7 @@ cmd_resize_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct winlink		*wl = target->wl;
 	struct window		*w = wl->window;
 	struct session		*s = target->s;
-	const char	       	*errstr;
+	const char		*errstr;
 	char			*cause;
 	u_int			 adjust, sx, sy, xpixel = 0, ypixel = 0;
 

@@ -282,7 +282,7 @@ struct window_copy_mode_data {
 	u_int		 cx;
 	u_int		 cy;
 
-	u_int		 lastcx; 	/* position in last line w/ content */
+	u_int		 lastcx;	/* position in last line w/ content */
 	u_int		 lastsx;	/* size of last line w/ content */
 
 	u_int		 mx;		/* mark position */
@@ -554,7 +554,7 @@ window_copy_vadd(struct window_pane *wp, int parse, const char *fmt, va_list ap)
 	struct window_copy_mode_data	*data = wme->data;
 	struct screen			*backing = data->backing;
 	struct screen			*writing = data->writing;
-	struct screen_write_ctx	 	 writing_ctx, backing_ctx, ctx;
+	struct screen_write_ctx		 writing_ctx, backing_ctx, ctx;
 	struct grid_cell		 gc;
 	u_int				 old_hsize, old_cy;
 	u_int				 sx = screen_size_x(backing);
@@ -4263,7 +4263,7 @@ window_copy_match_at_cursor(struct window_copy_mode_data *data)
 	/*
 	 * Cells will not be set in the marked array unless they are valid text
 	 * and wrapping will be taken care of, so we can just copy.
- 	 */
+	 */
 	for (at = start; at <= end; at++) {
 		py = at / sx;
 		px = at - (py * sx);
@@ -4369,7 +4369,7 @@ window_copy_write_one(struct window_mode_entry *wme,
 	struct window_copy_mode_data	*data = wme->data;
 	struct grid			*gd = data->backing->grid;
 	struct grid_cell		 gc;
-	u_int		 		 fx;
+	u_int				 fx;
 
 	screen_write_cursormove(ctx, 0, py, 0);
 	for (fx = 0; fx < nx; fx++) {
@@ -4491,7 +4491,7 @@ window_copy_redraw_lines(struct window_mode_entry *wme, u_int py, u_int ny)
 {
 	struct window_pane		*wp = wme->wp;
 	struct window_copy_mode_data	*data = wme->data;
-	struct screen_write_ctx	 	 ctx;
+	struct screen_write_ctx		 ctx;
 	u_int				 i;
 
 	screen_write_start_pane(&ctx, wp, NULL);
@@ -4643,7 +4643,7 @@ window_copy_adjust_selection(struct window_mode_entry *wme, u_int *selx,
 {
 	struct window_copy_mode_data	*data = wme->data;
 	struct screen			*s = &data->screen;
-	u_int 				 sx, sy, ty;
+	u_int				 sx, sy, ty;
 	int				 relpos;
 
 	sx = *selx;

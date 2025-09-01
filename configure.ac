@@ -91,7 +91,7 @@ case "x$DEFAULT_TERM" in
 	xscreen*|xtmux*|x)
 	;;
 	*)
-		AC_MSG_ERROR("unsuitable TERM (must be screen* or tmux*)")
+		AC_MSG_ERROR([unsuitable TERM (must be screen* or tmux*)])
 	;;
 esac
 
