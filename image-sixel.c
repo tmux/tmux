@@ -196,7 +196,7 @@ sixel_parse_colour(struct sixel_image *si, const char *cp, const char *end)
 {
 	const char	*last;
 	char		*endptr;
-	u_int		 c, type, r, g, b;
+	u_int		 c, type, c1, c2, c3;
 
 	last = cp;
 	while (last != end) {
@@ -219,32 +219,36 @@ sixel_parse_colour(struct sixel_image *si, const char *cp, const char *end)
 		log_debug("%s: missing ;", __func__);
 		return (NULL);
 	}
-	r = strtoul(endptr + 1, &endptr, 10);
+	c1 = strtoul(endptr + 1, &endptr, 10);
 	if (endptr == last || *endptr != ';') {
 		log_debug("%s: missing ;", __func__);
 		return (NULL);
 	}
-	g = strtoul(endptr + 1, &endptr, 10);
+	c2 = strtoul(endptr + 1, &endptr, 10);
 	if (endptr == last || *endptr != ';') {
 		log_debug("%s: missing ;", __func__);
 		return (NULL);
 	}
-	b = strtoul(endptr + 1, &endptr, 10);
+	c3 = strtoul(endptr + 1, &endptr, 10);
 	if (endptr != last) {
 		log_debug("%s: missing ;", __func__);
 		return (NULL);
 	}
 
-	if (type != 1 && type != 2) {
-		log_debug("%s: invalid type %d", __func__, type);
+	if ((type != 1 && type != 2) ||
+	    (type == 1 && (c1 > 360 || c2 > 100 || c3 > 100)) ||
+	    (type == 2 && (c1 > 100 || c2 > 100 || c3 > 100))) {
+		log_debug("%s: invalid color %u;%u;%u;%u", __func__, type,
+		    c1, c2, c3);
 		return (NULL);
 	}
+
 	if (c + 1 > si->ncolours) {
 		si->colours = xrecallocarray(si->colours, si->ncolours, c + 1,
 		    sizeof *si->colours);
 		si->ncolours = c + 1;
 	}
-	si->colours[c] = (type << 24) | (r << 16) | (g << 8) | b;
+	si->colours[c] = (type << 25) | (c1 << 16) | (c2 << 8) | c3;
 	return (last);
 }
 
@@ -598,7 +602,7 @@ sixel_print(struct sixel_image *si, struct sixel_image *map, size_t *size)
 	for (i = 0; i < ncolours; i++) {
 		c = colours[i];
 		tmplen = xsnprintf(tmp, sizeof tmp, "#%u;%u;%u;%u;%u",
-		    i, c >> 24, (c >> 16) & 0xff, (c >> 8) & 0xff, c & 0xff);
+		    i, c >> 25, (c >> 16) & 0x1ff, (c >> 8) & 0xff, c & 0xff);
 		sixel_print_add(&buf, &len, &used, tmp, tmplen);
 
 		chunk = &chunks[i];
