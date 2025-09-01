@@ -6969,7 +6969,7 @@ forwards any input read from stdin to the empty pane given by
 .Ar target-pane .
 .Tg popup
 .It Xo Ic display-popup
-.Op Fl BCE
+.Op Fl BCEk
 .Op Fl b Ar border-lines
 .Op Fl c Ar target-client
 .Op Fl d Ar start-directory
@@ -7003,6 +7003,11 @@ Two
 closes the popup only if
 .Ar shell-command
 exited with success.
+.Fl k
+allows any key to dismiss the popup instead of only
+.Ql Escape
+or
+.Ql C-c .
 .Pp
 .Fl x
 and

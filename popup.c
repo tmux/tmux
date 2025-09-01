@@ -548,6 +548,9 @@ popup_key_cb(struct client *c, void *data, struct key_event *event)
 	    pd->job == NULL) &&
 	    (event->key == '\033' || event->key == ('c'|KEYC_CTRL)))
 		return (1);
+	if (pd->job == NULL && (pd->flags & POPUP_CLOSEANYKEY) &&
+            !KEYC_IS_MOUSE(event->key) && !KEYC_IS_PASTE(event->key))
+		return (1);
 	if (pd->job != NULL) {
 		if (KEYC_IS_MOUSE(event->key)) {
 			/* Must be inside, checked already. */

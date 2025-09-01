@@ -1577,10 +1577,10 @@ struct tty {
 #define TTY_SYNCING 0x400
 #define TTY_HAVEDA2 0x800
 #define TTY_WINSIZEQUERY 0x1000
-#define TTY_HAVEFG 0x2000
-#define TTY_HAVEBG 0x4000
+#define TTY_WAITFG 0x2000
+#define TTY_WAITBG 0x4000
 #define TTY_ALL_REQUEST_FLAGS \
-	(TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA|TTY_HAVEFG|TTY_HAVEBG)
+	(TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA)
 	int		 flags;
 
 	struct tty_term	*term;
@@ -2508,7 +2508,7 @@ void	tty_set_size(struct tty *, u_int, u_int, u_int, u_int);
 void	tty_invalidate(struct tty *);
 void	tty_start_tty(struct tty *);
 void	tty_send_requests(struct tty *);
-void	tty_repeat_requests(struct tty *);
+void	tty_repeat_requests(struct tty *, int);
 void	tty_stop_tty(struct tty *);
 void	tty_set_title(struct tty *, const char *);
 void	tty_set_path(struct tty *, const char *);
@@ -3572,6 +3572,7 @@ int		 menu_key_cb(struct client *, void *, struct key_event *);
 #define POPUP_CLOSEEXIT 0x1
 #define POPUP_CLOSEEXITZERO 0x2
 #define POPUP_INTERNAL 0x4
+#define POPUP_CLOSEANYKEY 0x8
 typedef void (*popup_close_cb)(int, void *);
 typedef void (*popup_finish_edit_cb)(char *, size_t, void *);
 int		 popup_display(int, enum box_lines, struct cmdq_item *, u_int,
