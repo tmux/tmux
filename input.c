@@ -2635,32 +2635,41 @@ input_top_bit_set(struct input_ctx *ictx)
 
 /* Reply to a colour request. */
 static void
-input_osc_colour_reply(struct input_ctx *ictx, u_int n, int c)
+input_osc_colour_reply(struct input_ctx *ictx, u_int n, int idx, int c)
 {
-    u_char	 r, g, b;
-    const char	*end;
+	u_char		 r, g, b;
+	const char	*end;
 
-    if (c != -1)
-	    c = colour_force_rgb(c);
-    if (c == -1)
+	if (c != -1)
+		c = colour_force_rgb(c);
+	if (c == -1)
 	    return;
-    colour_split_rgb(c, &r, &g, &b);
+	colour_split_rgb(c, &r, &g, &b);
 
-    if (ictx->input_end == INPUT_END_BEL)
-	    end = "\007";
-    else
-	    end = "\033\\";
-    input_reply(ictx, "\033]%u;rgb:%02hhx%02hhx/%02hhx%02hhx/%02hhx%02hhx%s",
-	n, r, r, g, g, b, b, end);
+	if (ictx->input_end == INPUT_END_BEL)
+		end = "\007";
+	else
+		end = "\033\\";
+
+	if (n == 4) {
+		input_reply(ictx,
+		    "\033]%u;%d;rgb:%02hhx%02hhx/%02hhx%02hhx/%02hhx%02hhx%s",
+		    n, idx, r, r, g, g, b, b, end);
+	} else {
+		input_reply(ictx,
+		    "\033]%u;rgb:%02hhx%02hhx/%02hhx%02hhx/%02hhx%02hhx%s",
+		    n, r, r, g, g, b, b, end);
+	}
 }
 
 /* Handle the OSC 4 sequence for setting (multiple) palette entries. */
 static void
 input_osc_4(struct input_ctx *ictx, const char *p)
 {
-	char	*copy, *s, *next = NULL;
-	long	 idx;
-	int	 c, bad = 0, redraw = 0;
+	char			*copy, *s, *next = NULL;
+	long			 idx;
+	int			 c, bad = 0, redraw = 0;
+	struct colour_palette	*palette = ictx->palette;
 
 	copy = s = xstrdup(p);
 	while (s != NULL && *s != '\0') {
@@ -2676,16 +2685,17 @@ input_osc_4(struct input_ctx *ictx, const char *p)
 
 		s = strsep(&next, ";");
 		if (strcmp(s, "?") == 0) {
-			c = colour_palette_get(ictx->palette, idx);
+			c = colour_palette_get(palette, idx|COLOUR_FLAG_256);
 			if (c != -1)
-				input_osc_colour_reply(ictx, 4, c);
+				input_osc_colour_reply(ictx, 4, idx, c);
+			s = next;
 			continue;
 		}
 		if ((c = colour_parseX11(s)) == -1) {
 			s = next;
 			continue;
 		}
-		if (colour_palette_set(ictx->palette, idx, c))
+		if (colour_palette_set(palette, idx, c))
 			redraw = 1;
 		s = next;
 	}
@@ -2757,7 +2767,7 @@ input_osc_10(struct input_ctx *ictx, const char *p)
 			else
 				c = defaults.fg;
 		}
-		input_osc_colour_reply(ictx, 10, c);
+		input_osc_colour_reply(ictx, 10, 0, c);
 		return;
 	}
 
@@ -2800,7 +2810,7 @@ input_osc_11(struct input_ctx *ictx, const char *p)
 		if (wp == NULL)
 			return;
 		c = window_pane_get_bg(wp);
-		input_osc_colour_reply(ictx, 11, c);
+		input_osc_colour_reply(ictx, 11, 0, c);
 		return;
 	}
 
@@ -2844,7 +2854,7 @@ input_osc_12(struct input_ctx *ictx, const char *p)
 			c = ictx->ctx.s->ccolour;
 			if (c == -1)
 				c = ictx->ctx.s->default_ccolour;
-			input_osc_colour_reply(ictx, 12, c);
+			input_osc_colour_reply(ictx, 12, 0, c);
 		}
 		return;
 	}
