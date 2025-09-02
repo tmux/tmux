@@ -2488,14 +2488,7 @@ input_dcs_dispatch(struct input_ctx *ictx)
 				input_reply(ictx, "\033P1$r q%d q\033\\", ps);
 				return (0);
 			}
-			/* 
-			 * Unrecognized DECRQSS ($ q Pt): DCS 0 $ r ST
-			 * Note that the VT510 manual states that the terminal should echo
-			 *`Pt` in the failure reply (`DCS 0 $ r Pt ST`). In practice, xterm
-			 * (and kitty, wezterm, etc) *do not* echo `Pt`; they reply just
-			 * `DCS 0 $ r ST`. We decided to omit `Pt` in order to match xterm
-			 * (and what most apps expect).
-			 */	
+			/* Unrecognized DECRQSS ($ q Pt): DCS 0 $ r ST */	
 			input_reply(ictx, "\033P0$r\033\\");
 			return (0);
 		}
