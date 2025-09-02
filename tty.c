@@ -326,6 +326,7 @@ tty_start_start_timer(struct tty *tty)
 	struct timeval	 tv = { .tv_sec = TTY_QUERY_TIMEOUT };
 
 	log_debug("%s: start timer started", c->name);
+	evtimer_del(&tty->start_timer);
 	evtimer_set(&tty->start_timer, tty_start_timer_callback, tty);
 	evtimer_add(&tty->start_timer, &tv);
 }
