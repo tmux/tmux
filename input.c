@@ -1560,6 +1560,33 @@ input_csi_dispatch(struct input_ctx *ictx)
 		break;
 	case INPUT_CSI_QUERY_PRIVATE:
 		switch (input_get(ictx, 0, 0, 0)) {
+		case 12:  /* cursor blink */
+			/* 1=set(blink), 2=reset(steady) */
+			if (s->mode & MODE_CURSOR_BLINKING_SET) {
+				n = (s->mode & MODE_CURSOR_BLINKING) ? 1 : 2;
+			} else {
+				int opt_ps;
+				if (ictx->wp != NULL)
+					opt_ps = (int)options_get_number(ictx->wp->options, "cursor-style");
+				else
+					opt_ps = (int)options_get_number(global_options, "cursor-style");
+				/* blink for 1,3,5; steady for 0,2,4,6 */
+				n = (opt_ps == 1 || opt_ps == 3 || opt_ps == 5) ? 1 : 2;
+			}
+			input_reply(ictx, "\033[?12;%d$y", n);
+			break;
+		case 2004:  /* bracketed paste */
+			n = (s->mode & MODE_BRACKETPASTE) ? 1 : 2;
+			input_reply(ictx, "\033[?2004;%d$y", n);
+			break;
+		case 1004:  /* focus reporting */
+			n = (s->mode & MODE_FOCUSON) ? 1 : 2;
+			input_reply(ictx, "\033[?1004;%d$y", n);
+			break;
+		case 1006:  /* SGR mouse */
+			n = (s->mode & MODE_MOUSE_SGR) ? 1 : 2;
+			input_reply(ictx, "\033[?1006;%d$y", n);
+			break;
 		case 2031:
 			input_reply(ictx, "\033[?2031;2$y");
 			break;
@@ -2396,6 +2423,89 @@ input_dcs_dispatch(struct input_ctx *ictx)
 	if (ictx->flags & INPUT_DISCARD) {
 		log_debug("%s: %zu bytes (discard)", __func__, len);
 		return (0);
+	}
+
+	/* Dispatch DCS sequences with intermediate byte '$' (includes DECRQSS). */
+	if (ictx->interm_len == 1 && ictx->interm_buf[0] == '$') {
+
+		/* DECRQSS: DCS $ q Pt ST */
+		if (len >= 1 && buf[0] == 'q') {
+			/*
+			 * Recognized: $ q SP q  (cursor style query)
+			 * Reply: DCS 1 $ r SP q <Ps> SP q ST
+			 */
+			if (len >= 3 && buf[1] == ' ' && buf[2] == 'q') {
+				struct screen	*scr = sctx->s;
+				int		 ps = 0;
+				int		 explicit_style, blinking;
+
+				explicit_style =
+				    (scr->cstyle == SCREEN_CURSOR_BLOCK) ||
+				    (scr->cstyle == SCREEN_CURSOR_UNDERLINE) ||
+				    (scr->cstyle == SCREEN_CURSOR_BAR);
+
+				if (explicit_style) {
+					if (scr->mode & MODE_CURSOR_BLINKING_SET)
+						blinking = (scr->mode & MODE_CURSOR_BLINKING) != 0;
+					else
+						blinking = 0; /* treat unspecified as steady */
+
+					switch (scr->cstyle) {
+					case SCREEN_CURSOR_BLOCK:
+						ps = blinking ? 1 : 2;
+						break;
+					case SCREEN_CURSOR_UNDERLINE:
+						ps = blinking ? 3 : 4;
+						break;
+					case SCREEN_CURSOR_BAR:
+						ps = blinking ? 5 : 6;
+						break;
+					default:
+						ps = 0;
+						break;
+					}
+				} else {
+					/*
+					 * No explicit runtime style: fall back to the configured
+					 * cursor-style option (integer Ps 0..6). Pane options inherit.
+					 */
+					int opt_ps;
+
+					if (wp != NULL)
+						opt_ps = (int)options_get_number(wp->options, "cursor-style");
+					else
+						opt_ps = (int)options_get_number(global_options, "cursor-style");
+
+					/* Sanity clamp: valid Ps are 0..6 per DECSCUSR. */
+					if (opt_ps < 0 || opt_ps > 6)
+						opt_ps = 0;
+					ps = opt_ps;
+				}
+
+				log_debug("%s: DECRQSS cursor -> Ps=%d (cstyle=%d mode=%#x)",
+				    __func__, ps, scr->cstyle, scr->mode);
+
+				input_reply(ictx, "\033P1$r q%d q\033\\", ps);
+				return (0);
+			}
+			/* 
+			 * Unrecognized DECRQSS ($ q Pt): DCS 0 $ r Pt ST
+			 * kitty, wezterm, and possibly other terminals omit Pt and
+			 * simply reply DCS 0 $ r ST. We closely follow ctlseqs,
+			 * thus returning Pt as well.
+			 */
+			if (len > 1)
+				input_reply(ictx, "\033P0$r%.*s\033\\", (int)(len - 1), buf + 1);
+			else
+				input_reply(ictx, "\033P0$r\033\\");
+			return (0);
+		}
+
+		/*
+		 * Not a DECRQSS ($ q ...). In the current ctlseqs, DCS '$' is only
+		 * used by DECRQSS, but leave other '$' DCS (if any appear in future)
+		 * to existing handlers.
+		 */
 	}
 
 #ifdef ENABLE_SIXEL
