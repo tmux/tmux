@@ -2489,15 +2489,14 @@ input_dcs_dispatch(struct input_ctx *ictx)
 				return (0);
 			}
 			/* 
-			 * Unrecognized DECRQSS ($ q Pt): DCS 0 $ r Pt ST
-			 * kitty, wezterm, and possibly other terminals omit Pt and
-			 * simply reply DCS 0 $ r ST. We closely follow ctlseqs,
-			 * thus returning Pt as well.
-			 */
-			if (len > 1)
-				input_reply(ictx, "\033P0$r%.*s\033\\", (int)(len - 1), buf + 1);
-			else
-				input_reply(ictx, "\033P0$r\033\\");
+			 * Unrecognized DECRQSS ($ q Pt): DCS 0 $ r ST
+			 * Note that the VT510 manual states that the terminal should echo
+			 *`Pt` in the failure reply (`DCS 0 $ r Pt ST`). In practice, xterm
+			 * (and kitty, wezterm, etc) *do not* echo `Pt`; they reply just
+			 * `DCS 0 $ r ST`. We decided to omit `Pt` in order to match xterm
+			 * (and what most apps expect).
+			 */	
+			input_reply(ictx, "\033P0$r\033\\");
 			return (0);
 		}
 
