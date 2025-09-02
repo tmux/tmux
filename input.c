@@ -1391,7 +1391,8 @@ input_csi_dispatch(struct input_ctx *ictx)
 	struct screen_write_ctx	       *sctx = &ictx->ctx;
 	struct screen		       *s = sctx->s;
 	struct input_table_entry       *entry;
-	int				i, n, m, ek, set;
+	struct options		       *oo;
+	int				i, n, m, ek, set, p;
 	u_int				cx, bg = ictx->cell.cell.bg;
 
 	if (ictx->flags & INPUT_DISCARD)
@@ -1560,6 +1561,33 @@ input_csi_dispatch(struct input_ctx *ictx)
 		break;
 	case INPUT_CSI_QUERY_PRIVATE:
 		switch (input_get(ictx, 0, 0, 0)) {
+		case 12: /* cursor blink: 1 = blink, 2 = steady */
+			if (s->mode & MODE_CURSOR_BLINKING_SET)
+				n = (s->mode & MODE_CURSOR_BLINKING) ? 1 : 2;
+			else {
+				if (ictx->wp != NULL)
+					oo = ictx->wp->options;
+				else
+					oo = global_options;
+				p = options_get_number(oo, "cursor-style");
+
+				/* blink for 1,3,5; steady for 0,2,4,6 */
+ 				n = (p == 1 || p == 3 || p == 5) ? 1 : 2;
+			}
+			input_reply(ictx, "\033[?12;%d$y", n);
+			break;
+		case 2004: /* bracketed paste */
+			n = (s->mode & MODE_BRACKETPASTE) ? 1 : 2;
+			input_reply(ictx, "\033[?2004;%d$y", n);
+			break;
+		case 1004: /* focus reporting */
+			n = (s->mode & MODE_FOCUSON) ? 1 : 2;
+			input_reply(ictx, "\033[?1004;%d$y", n);
+			break;
+		case 1006: /* SGR mouse */
+			n = (s->mode & MODE_MOUSE_SGR) ? 1 : 2;
+			input_reply(ictx, "\033[?1006;%d$y", n);
+			break;
 		case 2031:
 			input_reply(ictx, "\033[?2031;2$y");
 			break;
@@ -2373,11 +2401,78 @@ input_enter_dcs(struct input_ctx *ictx)
 	ictx->flags &= ~INPUT_LAST;
 }
 
+/* Handle DECRQSS query. */
+static int
+input_handle_decrqss(struct input_ctx *ictx)
+{
+	struct window_pane	*wp = ictx->wp;
+	struct options		*oo;
+	struct screen_write_ctx	*sctx = &ictx->ctx;
+	u_char			*buf = ictx->input_buf;
+	size_t			 len = ictx->input_len;
+	struct screen		*s = sctx->s;
+	int			 ps, opt_ps, blinking;
+
+	if (len < 3 || buf[1] != ' ' || buf[2] != 'q')
+		goto not_recognized;
+
+	/*
+	 * Cursor style query: DCS $ q SP q
+	 * Reply: DCS 1 $ r SP q <Ps> SP q ST
+	 */
+	if (s->cstyle == SCREEN_CURSOR_BLOCK ||
+	    s->cstyle == SCREEN_CURSOR_UNDERLINE ||
+	    s->cstyle == SCREEN_CURSOR_BAR) {
+		blinking = (s->mode & MODE_CURSOR_BLINKING) != 0;
+		switch (s->cstyle) {
+		case SCREEN_CURSOR_BLOCK:
+			ps = blinking ? 1 : 2;
+			break;
+		case SCREEN_CURSOR_UNDERLINE:
+			ps = blinking ? 3 : 4;
+			break;
+		case SCREEN_CURSOR_BAR:
+			ps = blinking ? 5 : 6;
+			break;
+		default:
+			ps = 0;
+			break;
+		}
+	} else {
+		/*
+		 * No explicit runtime style: fall back to the configured
+		 * cursor-style option (integer Ps 0..6). Pane options inherit.
+		 */
+		if (wp != NULL)
+			oo = wp->options;
+		else
+			oo = global_options;
+		opt_ps = options_get_number(oo, "cursor-style");
+
+		/* Sanity clamp: valid Ps are 0..6 per DECSCUSR. */
+		if (opt_ps < 0 || opt_ps > 6)
+			opt_ps = 0;
+		ps = opt_ps;
+	}
+
+	log_debug("%s: DECRQSS cursor -> Ps=%d (cstyle=%d mode=%#x)", __func__,
+	    ps, s->cstyle, s->mode);
+
+	input_reply(ictx, "\033P1$r q%d q\033\\", ps);
+	return (0);
+
+not_recognized:
+	/* Unrecognized DECRQSS: send DCS 0 $ r Pt ST. */
+	input_reply(ictx, "\033P0$r\033\\");
+	return (0);
+}
+
 /* DCS terminator (ST) received. */
 static int
 input_dcs_dispatch(struct input_ctx *ictx)
 {
 	struct window_pane	*wp = ictx->wp;
+	struct options		*oo;
 	struct screen_write_ctx	*sctx = &ictx->ctx;
 	u_char			*buf = ictx->input_buf;
 	size_t			 len = ictx->input_len;
@@ -2392,6 +2487,7 @@ input_dcs_dispatch(struct input_ctx *ictx)
 
 	if (wp == NULL)
 		return (0);
+	oo = wp->options;
 
 	if (ictx->flags & INPUT_DISCARD) {
 		log_debug("%s: %zu bytes (discard)", __func__, len);
@@ -2412,7 +2508,20 @@ input_dcs_dispatch(struct input_ctx *ictx)
 	}
 #endif
 
-	allow_passthrough = options_get_number(wp->options, "allow-passthrough");
+	/* DCS sequences with intermediate byte '$' (includes DECRQSS). */
+	if (ictx->interm_len == 1 && ictx->interm_buf[0] == '$') {
+		/* DECRQSS is DCS $ q Pt ST. */
+		if (len >= 1 && buf[0] == 'q')
+			return (input_handle_decrqss(ictx));
+
+		/*
+		 * Not DECRQSS. DCS '$' is currently only used by DECRQSS, but
+		 * leave other '$' DCS (if any appear in future) to existing
+		 * handlers.
+		 */
+	}
+
+	allow_passthrough = options_get_number(oo, "allow-passthrough");
 	if (!allow_passthrough)
 		return (0);
 	log_debug("%s: \"%s\"", __func__, buf);
