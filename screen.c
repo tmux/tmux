@@ -208,26 +208,32 @@ screen_set_cursor_style(u_int style, enum screen_cursor_style *cstyle,
 	case 1:
 		*cstyle = SCREEN_CURSOR_BLOCK;
 		*mode |= MODE_CURSOR_BLINKING;
+		*mode |= MODE_CURSOR_BLINKING_SET;
 		break;
 	case 2:
 		*cstyle = SCREEN_CURSOR_BLOCK;
 		*mode &= ~MODE_CURSOR_BLINKING;
+		*mode |= MODE_CURSOR_BLINKING_SET;
 		break;
 	case 3:
 		*cstyle = SCREEN_CURSOR_UNDERLINE;
 		*mode |= MODE_CURSOR_BLINKING;
+		*mode |= MODE_CURSOR_BLINKING_SET;
 		break;
 	case 4:
 		*cstyle = SCREEN_CURSOR_UNDERLINE;
 		*mode &= ~MODE_CURSOR_BLINKING;
+		*mode |= MODE_CURSOR_BLINKING_SET;
 		break;
 	case 5:
 		*cstyle = SCREEN_CURSOR_BAR;
 		*mode |= MODE_CURSOR_BLINKING;
+		*mode |= MODE_CURSOR_BLINKING_SET;
 		break;
 	case 6:
 		*cstyle = SCREEN_CURSOR_BAR;
 		*mode &= ~MODE_CURSOR_BLINKING;
+		*mode |= MODE_CURSOR_BLINKING_SET;
 		break;
 	}
 }
