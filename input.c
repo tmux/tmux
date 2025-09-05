@@ -1562,7 +1562,8 @@ input_csi_dispatch(struct input_ctx *ictx)
 	case INPUT_CSI_QUERY_PRIVATE:
 		switch (input_get(ictx, 0, 0, 0)) {
 		case 12: /* cursor blink: 1 = blink, 2 = steady */
-			if (s->mode & MODE_CURSOR_BLINKING_SET)
+			if (s->cstyle != SCREEN_CURSOR_DEFAULT ||
+			    s->mode & MODE_CURSOR_BLINKING_SET)
 				n = (s->mode & MODE_CURSOR_BLINKING) ? 1 : 2;
 			else {
 				if (ictx->wp != NULL)
@@ -1746,8 +1747,13 @@ input_csi_dispatch(struct input_ctx *ictx)
 		break;
 	case INPUT_CSI_DECSCUSR:
 		n = input_get(ictx, 0, 0, 0);
-		if (n != -1)
-			screen_set_cursor_style(n, &s->cstyle, &s->mode);
+		if (n == -1)
+			break;
+		screen_set_cursor_style(n, &s->cstyle, &s->mode);
+		if (n == 0) {
+			/* Go back to default blinking state. */
+			screen_write_mode_clear(sctx, MODE_CURSOR_BLINKING_SET);
+		}
 		break;
 	case INPUT_CSI_XDA:
 		n = input_get(ictx, 0, 0, 0);
