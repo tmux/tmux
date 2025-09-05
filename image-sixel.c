@@ -420,8 +420,7 @@ sixel_scale(struct sixel_image *si, u_int xpixel, u_int ypixel, u_int ox,
 
 	/*
 	 * We want to get the section of the image at ox,oy in image cells and
-	 * map it onto the same size in terminal cells, remembering that we
-	 * can only draw vertical sections of six pixels.
+	 * map it onto the same size in terminal cells.
 	 */
 
 	sixel_size_in_cells(si, &cx, &cy);
@@ -445,7 +444,7 @@ sixel_scale(struct sixel_image *si, u_int xpixel, u_int ypixel, u_int ox,
 	psy = sy * si->ypixel;
 
 	tsx = sx * xpixel;
-	tsy = ((sy * ypixel) / 6) * 6;
+	tsy = sy * ypixel;
 
 	new = xcalloc (1, sizeof *si);
 	new->xpixel = xpixel;
