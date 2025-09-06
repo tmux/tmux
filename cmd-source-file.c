@@ -149,6 +149,22 @@ cmd_source_file_add(struct cmd_source_file_data *cdata, const char *path)
 	cdata->files[cdata->nfiles++] = xstrdup(path);
 }
 
+static char *quote_for_glob(const char *path)
+{
+	char *const   quoted = xmalloc(2 * strlen(path) + 1);
+	const char   *p = path;
+	char         *q = quoted;
+
+	while (*p != '\0') {
+		if ((u_char)*p < 128 && !isalnum(*p) && *p != '/') {
+			*q++ = '\\';
+		}
+		*q++ = *p++;
+	}
+	*q = '\0';
+	return quoted;
+}
+
 static enum cmd_retval
 cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 {
@@ -188,7 +204,7 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'v'))
 		cdata->flags |= CMD_PARSE_VERBOSE;
 
-	utf8_stravis(&cwd, server_client_get_cwd(c, NULL), VIS_GLOB);
+	cwd = quote_for_glob(server_client_get_cwd(c, NULL));
 
 	for (i = 0; i < args_count(args); i++) {
 		path = args_string(args, i);
