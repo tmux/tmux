@@ -587,7 +587,7 @@ layout_set_tiled(struct window *w)
 	struct window_pane	*wp;
 	struct layout_cell	*lc, *lcrow, *lcchild;
 	u_int			 n, width, height, used, sx, sy;
-	u_int			 i, j, columns, rows;
+	u_int			 i, j, columns, rows, max_columns;
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
@@ -596,11 +596,14 @@ layout_set_tiled(struct window *w)
 	if (n <= 1)
 		return;
 
+	/* Get maximum columns from window option. */
+	max_columns = options_get_number(w->options, "tiled-layout-max-columns");
+
 	/* How many rows and columns are wanted? */
 	rows = columns = 1;
 	while (rows * columns < n) {
 		rows++;
-		if (rows * columns < n)
+		if (rows * columns < n && (max_columns == 0 || columns < max_columns))
 			columns++;
 	}
 

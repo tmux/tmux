@@ -5222,6 +5222,14 @@ see the
 .Sx STYLES
 section.
 .Pp
+.It Ic tiled-layout-max-columns Ar number
+Set the maximum number of columns in the
+.Ic tiled
+layout.
+A value of 0 (the default) means no limit.
+When a limit is set, panes are arranged to not exceed this number of columns,
+with additional panes stacked in extra rows.
+.Pp
 .It Ic window-status-activity-style Ar style
 Set status line style for windows with an activity alert.
 For how to specify

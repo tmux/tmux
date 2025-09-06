@@ -1394,6 +1394,16 @@ const struct options_table_entry options_table[] = {
 	  .text = "Whether typing should be sent to all panes simultaneously."
 	},
 
+	{ .name = "tiled-layout-max-columns",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .minimum = 0,
+	  .maximum = USHRT_MAX,
+	  .default_num = 0,
+	  .text = "Maximum number of columns in the 'tiled' layout. "
+		  "A value of 0 means no limit."
+	},
+
 	{ .name = "window-active-style",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW|OPTIONS_TABLE_PANE,
