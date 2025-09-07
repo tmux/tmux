@@ -998,7 +998,6 @@ fi
 AC_MSG_RESULT($DEFAULT_LOCK_CMD)
 AC_SUBST(DEFAULT_LOCK_CMD)
 
-
 # Save our CFLAGS/CPPFLAGS/LDFLAGS for the Makefile and restore the old user
 # variables.
 AC_SUBST(AM_CPPFLAGS)
