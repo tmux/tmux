@@ -2294,7 +2294,7 @@ void		 paste_add(const char *, char *, size_t);
 int		 paste_rename(const char *, const char *, char **);
 int		 paste_set(char *, size_t, const char *, char **);
 void		 paste_replace(struct paste_buffer *, char *, size_t);
-char		*paste_make_sample(struct paste_buffer *);
+char		*paste_make_sample(struct paste_buffer *, size_t);
 
 /* format.c */
 #define FORMAT_STATUS 0x1
