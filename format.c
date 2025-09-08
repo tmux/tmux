@@ -1369,6 +1369,19 @@ format_cb_buffer_sample(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for buffer_raw. */
+static void *
+format_cb_buffer_raw(struct format_tree *ft)
+{
+	if (ft->pb != NULL) {
+    size_t sz;
+    const char *s = paste_buffer_data(ft->pb, &sz);
+    if (s)
+      return strndup(s, sz);
+  }
+	return (NULL);
+}
+
 /* Callback for buffer_size. */
 static void *
 format_cb_buffer_size(struct format_tree *ft)
@@ -3013,6 +3026,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "buffer_name", FORMAT_TABLE_STRING,
 	  format_cb_buffer_name
+	},
+	{ "buffer_raw", FORMAT_TABLE_STRING,
+	  format_cb_buffer_raw
 	},
 	{ "buffer_sample", FORMAT_TABLE_STRING,
 	  format_cb_buffer_sample
