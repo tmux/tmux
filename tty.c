@@ -427,9 +427,9 @@ tty_repeat_requests(struct tty *tty, int force)
 
 	if (tty->term->flags & TERM_VT100LIKE) {
 		tty_puts(tty, "\033]10;?\033\\\033]11;?\033\\");
-	tty->flags |= (TTY_WAITBG|TTY_WAITFG);
-    }
-    tty_start_start_timer(tty);
+		tty->flags |= (TTY_WAITBG|TTY_WAITFG);
+	}
+	tty_start_start_timer(tty);
 }
 
 void
