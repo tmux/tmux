@@ -201,7 +201,7 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 		cdata->flags |= CMD_PARSE_QUIET;
 	if (args_has(args, 'n'))
 		cdata->flags |= CMD_PARSE_PARSEONLY;
-	if (args_has(args, 'v'))
+	if (args_has(args, 'v') && (~c->flags & CLIENT_CONTROL))
 		cdata->flags |= CMD_PARSE_VERBOSE;
 
 	cwd = cmd_source_file_quote_for_glob(server_client_get_cwd(c, NULL));
