@@ -427,7 +427,7 @@ void
 server_destroy_session(struct session *s)
 {
 	struct client	*c;
-	struct session	*s_new = NULL, *cs_new, *use_s;
+	struct session	*s_new = NULL, *cs_new = NULL, *use_s;
 	int		 detach_on_destroy;
 
 	detach_on_destroy = options_get_number(s->options, "detach-on-destroy");

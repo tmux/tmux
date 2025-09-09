@@ -596,7 +596,6 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 	sb = options_get_number(wo, "pane-scrollbars");
 	sb_pos = options_get_number(wo, "pane-scrollbars-position");
 	pane_status = options_get_number(wo, "pane-border-status");
-	sb_pos = options_get_number(wo, "pane-scrollbars-position");
 
 	if (window_pane_show_scrollbar(wp, sb)) {
 		sb_w = wp->scrollbar_style.width;
@@ -655,10 +654,8 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 			    fwp->xoff + fwp->sx >= px))
 				break;
 		}
-		if (fwp != NULL) {
-			wp = fwp;
+		if (fwp != NULL)
 			return (BORDER);
-		}
 	}
 	return (NOWHERE);
 }
