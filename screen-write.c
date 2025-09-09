@@ -576,7 +576,6 @@ screen_write_fast_copy(struct screen_write_ctx *ctx, struct screen *src,
 	if (nx == 0 || ny == 0)
 		return;
 
-	cy = s->cy;
 	for (yy = py; yy < py + ny; yy++) {
 		if (yy >= gd->hsize + gd->sy)
 			break;

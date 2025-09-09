@@ -158,7 +158,7 @@ window_buffer_build(void *modedata, struct mode_tree_sort_criteria *sort_crit,
 	struct window_buffer_modedata	*data = modedata;
 	struct window_buffer_itemdata	*item;
 	u_int				 i;
-	struct paste_buffer		*pb;
+	struct paste_buffer		*pb = NULL;
 	char				*text, *cp;
 	struct format_tree		*ft;
 	struct session			*s = NULL;
@@ -171,7 +171,6 @@ window_buffer_build(void *modedata, struct mode_tree_sort_criteria *sort_crit,
 	data->item_list = NULL;
 	data->item_size = 0;
 
-	pb = NULL;
 	while ((pb = paste_walk(pb)) != NULL) {
 		item = window_buffer_add_item(data);
 		item->name = xstrdup(paste_buffer_name(pb));
