@@ -325,12 +325,13 @@ paste_replace(struct paste_buffer *pb, char *data, size_t size)
 
 /* Convert start of buffer into a nice string. */
 char *
-paste_make_sample(struct paste_buffer *pb)
+paste_make_sample(struct paste_buffer *pb, size_t width)
 {
 	char		*buf;
 	size_t		 len, used;
 	const int	 flags = VIS_OCTAL|VIS_CSTYLE|VIS_TAB|VIS_NL;
-	const size_t	 width = 200;
+
+	width = width ? width : pb->size;
 
 	len = pb->size;
 	if (len > width)

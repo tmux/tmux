@@ -1365,7 +1365,16 @@ static void *
 format_cb_buffer_sample(struct format_tree *ft)
 {
 	if (ft->pb != NULL)
-		return (paste_make_sample(ft->pb));
+		return (paste_make_sample(ft->pb, 200));
+	return (NULL);
+}
+
+/* Callback for buffer_full. */
+static void *
+format_cb_buffer_full(struct format_tree *ft)
+{
+	if (ft->pb != NULL)
+		return (paste_make_sample(ft->pb, 0));
 	return (NULL);
 }
 
@@ -3007,6 +3016,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "buffer_created", FORMAT_TABLE_TIME,
 	  format_cb_buffer_created
+	},
+	{ "buffer_full", FORMAT_TABLE_STRING,
+	  format_cb_buffer_full
 	},
 	{ "buffer_mode_format", FORMAT_TABLE_STRING,
 	  format_cb_buffer_mode_format
