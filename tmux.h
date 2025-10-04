@@ -1174,6 +1174,7 @@ struct window_pane {
 #define PANE_THEMECHANGED 0x2000
 #define PANE_UNSEENCHANGES 0x4000
 #define PANE_REDRAWSCROLLBAR 0x8000
+#define PANE_FLOATING 0x10000
 
 	u_int		 sb_slider_y;
 	u_int		 sb_slider_h;
@@ -2201,6 +2202,10 @@ struct spawn_context {
 
 	struct window_pane	 *wp0;
 	struct layout_cell	 *lc;
+	u_int			  xoff;
+	u_int			  yoff;
+	u_int			  sx;
+	u_int			  sy;
 
 	const char		 *name;
 	char			**argv;
@@ -2219,6 +2224,7 @@ struct spawn_context {
 #define SPAWN_FULLSIZE 0x20
 #define SPAWN_EMPTY 0x40
 #define SPAWN_ZOOM 0x80
+#define SPAWN_FLOATING 0x100
 };
 
 /* Mode tree sort order. */

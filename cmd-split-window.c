@@ -34,6 +34,8 @@
 
 static enum cmd_retval	cmd_split_window_exec(struct cmd *,
 			    struct cmdq_item *);
+static enum cmd_retval	cmd_new_floating_window_exec(struct cmd *,
+			    struct cmdq_item *);
 
 const struct cmd_entry cmd_split_window_entry = {
 	.name = "split-window",
@@ -49,6 +51,22 @@ const struct cmd_entry cmd_split_window_entry = {
 	.flags = 0,
 	.exec = cmd_split_window_exec
 };
+
+const struct cmd_entry cmd_new_floating_window_entry = {
+	.name = "new-floating-window",
+	.alias = "floatw",
+
+	.args = { "bc:de:fF:hIl:p:Pt:vZ", 0, -1, NULL },
+	.usage = "[-bdefhIPvZ] [-c start-directory] [-e environment] "
+		 "[-F format] [-l size] " CMD_TARGET_PANE_USAGE
+		 " [shell-command [argument ...]]",
+
+	.target = { 't', CMD_FIND_PANE, 0 },
+
+	.flags = 0,
+	.exec = cmd_new_floating_window_exec
+};
+
 
 static enum cmd_retval
 cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
@@ -161,6 +179,141 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		case -1:
 			server_client_remove_pane(new_wp);
 			layout_close_pane(new_wp);
+			window_remove_pane(wp->window, new_wp);
+			cmdq_error(item, "%s", cause);
+			free(cause);
+			if (sc.argv != NULL)
+				cmd_free_argv(sc.argc, sc.argv);
+			environ_free(sc.environ);
+			return (CMD_RETURN_ERROR);
+		case 1:
+			input = 0;
+			break;
+		}
+	}
+	if (!args_has(args, 'd'))
+		cmd_find_from_winlink_pane(current, wl, new_wp, 0);
+	window_pop_zoom(wp->window);
+	server_redraw_window(wp->window);
+	server_status_session(s);
+
+	if (args_has(args, 'P')) {
+		if ((template = args_get(args, 'F')) == NULL)
+			template = SPLIT_WINDOW_TEMPLATE;
+		cp = format_single(item, template, tc, s, wl, new_wp);
+		cmdq_print(item, "%s", cp);
+		free(cp);
+	}
+
+	cmd_find_from_winlink_pane(&fs, wl, new_wp, 0);
+	cmdq_insert_hook(s, item, &fs, "after-split-window");
+
+	if (sc.argv != NULL)
+		cmd_free_argv(sc.argc, sc.argv);
+	environ_free(sc.environ);
+	if (input)
+		return (CMD_RETURN_WAIT);
+	return (CMD_RETURN_NORMAL);
+}
+
+static enum cmd_retval
+cmd_new_floating_window_exec(struct cmd *self, struct cmdq_item *item)
+{
+	struct args		*args = cmd_get_args(self);
+	struct cmd_find_state	*current = cmdq_get_current(item);
+	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct spawn_context	 sc = { 0 };
+	struct client		*tc = cmdq_get_target_client(item);
+	struct session		*s = target->s;
+	struct winlink		*wl = target->wl;
+	struct window		*w = wl->window;
+	struct window_pane	*wp = target->wp, *new_wp;
+	struct cmd_find_state	 fs;
+	int			 flags, input;
+	const char		*template;
+	char			*cause = NULL, *cp;
+	struct args_value	*av;
+	u_int			 count = args_count(args);
+	u_int			 sx, sy, pct;
+
+	if (args_has(args, 'f')) {
+		sx = w->sx;
+		sy = w->sy;
+	} else {
+		if (args_has(args, 'l')) {
+			sx = args_percentage_and_expand(args, 'l', 0, INT_MAX, w->sx,
+			    item, &cause);
+			sy = args_percentage_and_expand(args, 'l', 0, INT_MAX, w->sy,
+			    item, &cause);
+		} else if (args_has(args, 'p')) {
+			pct = args_strtonum_and_expand(args, 'p', 0, 100, item,
+			    &cause);
+			if (cause == NULL) {
+				sx = w->sx * pct / 100;
+				sy = w->sy * pct / 100;
+			}
+		} else {
+			sx = w->sx / 2;
+			sy = w->sy / 2;
+		}
+		if (cause != NULL) {
+			cmdq_error(item, "size %s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
+		}
+	}
+	sc.xoff = 0;
+	sc.yoff = 0;
+	sc.sx = sx;
+	sc.sy = sy;
+
+	input = (args_has(args, 'I') && count == 0);
+
+	flags = SPAWN_FLOATING;
+	if (args_has(args, 'b'))
+		flags |= SPAWN_BEFORE;
+	if (args_has(args, 'f'))
+		flags |= SPAWN_FULLSIZE;
+	if (input || (count == 1 && *args_string(args, 0) == '\0'))
+		flags |= SPAWN_EMPTY;
+
+	sc.item = item;
+	sc.s = s;
+	sc.wl = wl;
+
+	sc.wp0 = wp;
+	sc.lc = NULL;
+
+	args_to_vector(args, &sc.argc, &sc.argv);
+	sc.environ = environ_create();
+
+	av = args_first_value(args, 'e');
+	while (av != NULL) {
+		environ_put(sc.environ, av->string, 0);
+		av = args_next_value(av);
+	}
+
+	sc.idx = -1;
+	sc.cwd = args_get(args, 'c');
+
+	sc.flags = flags;
+	if (args_has(args, 'd'))
+		sc.flags |= SPAWN_DETACHED;
+	if (args_has(args, 'Z'))
+		sc.flags |= SPAWN_ZOOM;
+
+	if ((new_wp = spawn_pane(&sc, &cause)) == NULL) {
+		cmdq_error(item, "create pane failed: %s", cause);
+		free(cause);
+		if (sc.argv != NULL)
+			cmd_free_argv(sc.argc, sc.argv);
+		environ_free(sc.environ);
+		return (CMD_RETURN_ERROR);
+	}
+	if (input) {
+		switch (window_pane_start_input(new_wp, item, &cause)) {
+		case -1:
+			server_client_remove_pane(new_wp);
 			window_remove_pane(wp->window, new_wp);
 			cmdq_error(item, "%s", cause);
 			free(cause);

@@ -265,7 +265,14 @@ spawn_pane(struct spawn_context *sc, char **cause)
 		new_wp->flags &= ~(PANE_STATUSREADY|PANE_STATUSDRAWN);
 	} else if (sc->lc == NULL) {
 		new_wp = window_add_pane(w, NULL, hlimit, sc->flags);
-		layout_init(w, new_wp);
+		if (sc->flags & SPAWN_FLOATING) {
+			new_wp->flags |= PANE_FLOATING;
+			window_pane_resize(new_wp, sc->sx, sc->sy);
+			new_wp->xoff = sc->xoff;
+			new_wp->yoff = sc->yoff;
+		} else {
+			layout_init(w, new_wp);
+		}
 	} else {
 		new_wp = window_add_pane(w, sc->wp0, hlimit, sc->flags);
 		if (sc->flags & SPAWN_ZOOM)
