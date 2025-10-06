@@ -885,6 +885,76 @@ screen_redraw_draw_status(struct screen_redraw_ctx *ctx)
 	}
 }
 
+struct visual_range {
+	u_int px;
+	u_int nx;
+};
+
+static void
+screen_redraw_get_visual_ranges(u_int px, u_int py, u_int width,
+    struct window_pane *base_wp, struct window *w,
+    struct visual_range **vr_p, int *vr_count_p) {
+	struct visual_range	         *vr;
+	int				  found_self, r, s;
+	int				  vr_len, vr_count;
+	struct window_pane		 *wp;
+
+	vr = xcalloc(4, sizeof(struct visual_range *));
+	vr_len = 4;  // 4 initial slots
+	vr[0].px = px;  // initialise first slot
+	vr[0].nx = width;
+	vr_count = 1;
+
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (wp == base_wp) { // wp == current pane
+			found_self = 1;
+			continue;
+		}
+		if (found_self && wp->layout_cell == NULL &&
+		    !(wp->flags & PANE_MINIMISED) &&
+		    (wp->yoff >= py && py <= wp->yoff + wp->sy)) {
+			for (r=0; r<vr_count; r++) {
+				/* if the left edge of wp
+				   falls inside this range and right
+				   edge greater than this range, 
+				   then shrink nx */
+				if (wp->xoff > vr[r].px &&
+				    wp->xoff < vr[r].px + vr[r].nx &&
+				    wp->xoff + wp->sx > vr[r].px + vr[r].nx)
+					vr[r].nx = wp->xoff;
+				/* else if the right edge of wp
+				   falls inside of this range and left
+				   edge is less than the start of the range,
+				   then move px forward */
+				else if (wp->xoff + wp->sx > vr[r].px &&
+					 wp->xoff + wp->sx < vr[r].px + vr[r].nx &&
+					 wp->xoff < vr[r].px + vr[r].nx)
+					vr[r].px = wp->xoff + wp->sx;
+				/* else if wp fully inside range
+				   then split range into 2 ranges */
+				else if (wp->xoff > vr[r].px &&
+					 wp->xoff + wp->sx < vr[r].px + vr[r].nx) {
+					/* make space */
+					if (vr_len == vr_count) {
+						vr = xreallocarray(vr, vr_len +
+						    4, sizeof *vr);
+						vr_len += 4;
+					}
+					for (s=vr_count; s>r; s--) {
+						vr[s].px = vr[s-1].px;
+						vr[s].nx = vr[s-1].nx;
+					}
+					vr[r].nx = wp->xoff;
+					vr[r+1].px = wp->xoff + wp->sx;
+				}
+			}
+		}
+	}
+	*vr_p = vr;
+	*vr_count_p = vr_count;
+}
+
+
 /* Draw one pane. */
 static void
 screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
@@ -895,6 +965,8 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 	struct screen		*s = wp->screen;
 	struct colour_palette	*palette = &wp->palette;
 	struct grid_cell	 defaults;
+	struct visual_range	*vr;
+	int			 vr_count, r;
 	u_int			 i, j, top, x, y, width;
 
 	log_debug("%s: %s @%u %%%u", __func__, c->name, w->id, wp->id);
@@ -905,6 +977,7 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 		top = ctx->statuslines;
 	else
 		top = 0;
+
 	for (j = 0; j < wp->sy; j++) {
 		if (wp->yoff + j < ctx->oy || wp->yoff + j >= ctx->oy + ctx->sy)
 			continue;
@@ -936,8 +1009,13 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 		log_debug("%s: %s %%%u line %u,%u at %u,%u, width %u",
 		    __func__, c->name, wp->id, i, j, x, y, width);
 
+		screen_redraw_get_visual_ranges(x, y, width, wp, w, &vr, &vr_count);
+
 		tty_default_colours(&defaults, wp);
-		tty_draw_line(tty, s, i, j, width, x, y, &defaults, palette);
+
+		for (r=0; r<vr_count; r++)
+			tty_draw_line(tty, s, i, j, vr[r].nx, vr[r].px, y, &defaults, palette);
+		free(vr);
 	}
 
 #ifdef ENABLE_SIXEL
