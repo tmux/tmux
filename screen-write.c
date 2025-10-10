@@ -1745,30 +1745,72 @@ screen_write_collect_clear(struct screen_write_ctx *ctx, u_int y, u_int n)
 static void
 screen_write_collect_scroll(struct screen_write_ctx *ctx, u_int bg)
 {
-	struct screen			*s = ctx->s;
-	struct screen_write_cline	*cl;
-	u_int				 y;
-	char				*saved;
-	struct screen_write_citem	*ci;
+	struct screen				*s = ctx->s;
+	struct screen_write_cline		*cl_src, *cl_dst;
+	u_int					 y, r_start, r_end;
+	u_int					 ci_start, ci_end, new_end;
+	char					*saved;
+	struct screen_write_citem		*ci, *new_ci;
+	struct window_pane			*wp = ctx->wp;
+	struct visible_range			*vr;
+	int					 vr_count, r;
 
 	log_debug("%s: at %u,%u (region %u-%u)", __func__, s->cx, s->cy,
 	    s->rupper, s->rlower);
 
 	screen_write_collect_clear(ctx, s->rupper, 1);
-	saved = ctx->s->write_list[s->rupper].data;
-	for (y = s->rupper; y < s->rlower; y++) {
-		cl = &ctx->s->write_list[y + 1];
-		TAILQ_CONCAT(&ctx->s->write_list[y].items, &cl->items, entry);
-		ctx->s->write_list[y].data = cl->data;
-	}
-	ctx->s->write_list[s->rlower].data = saved;
+	saved = s->write_list[s->rupper].data;
 
-	ci = screen_write_get_citem();
-	ci->x = 0;
-	ci->used = screen_size_x(s);
-	ci->type = CLEAR;
-	ci->bg = bg;
-	TAILQ_INSERT_TAIL(&ctx->s->write_list[s->rlower].items, ci, entry);
+	/* For each line being scrolled, copy visible ranges from the line 
+	   below to the line above. */
+	for (y = s->rupper; y < s->rlower; y++) {
+		cl_src = &s->write_list[y + 1];
+		cl_dst = &s->write_list[y];
+		vr = NULL;
+		vr_count = 0;
+
+		screen_redraw_get_visible_ranges(0, y, screen_size_x(s), wp,
+		    &vr, &vr_count);
+
+		TAILQ_INIT(&cl_dst->items);
+
+		if (cl_dst->data == NULL)
+			cl_dst->data = xmalloc(screen_size_x(s));
+
+		/* For each visible range, copy corresponding items from cl_src
+		   to cl_dst. */
+		for (r = 0; r < vr_count; r++) {
+			r_start = vr[r].px;
+			r_end = vr[r].px + vr[r].nx;
+
+			TAILQ_FOREACH(ci, &cl_src->items, entry) {
+				ci_start = ci->x;
+				ci_end = ci->x + ci->used;
+
+				if (ci_end <= r_start || ci_start >= r_end)
+					continue;
+
+				new_ci = screen_write_get_citem();
+				new_ci->x = (ci_start < r_start) ? r_start :
+				    ci_start;
+				new_end = (ci_end > r_end) ? r_end : ci_end;
+				new_ci->used = new_end - new_ci->x;
+				new_ci->type = ci->type;
+				new_ci->wrapped = ci->wrapped;
+				new_ci->bg = bg;
+				memcpy(&new_ci->gc, &ci->gc, sizeof(ci->gc));
+				if (ci->type == TEXT)
+					memcpy(cl_dst->data, cl_src->data,
+					    screen_size_x(s));
+				TAILQ_INSERT_TAIL(&cl_dst->items, new_ci,
+				    entry);
+			}
+		}
+		free(vr);
+	}
+	s->write_list[s->rlower].data = saved;
+
+	screen_write_collect_clear(ctx, s->rlower, 1);
 }
 
 /* Flush collected lines. */
@@ -1780,7 +1822,12 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 	struct screen_write_citem	*ci, *tmp;
 	struct screen_write_cline	*cl;
 	u_int				 y, cx, cy, last, items = 0;
+	u_int				 r_start, r_end, ci_start, ci_end;
+	u_int				 wr_start, wr_end, wr_length;
 	struct tty_ctx			 ttyctx;
+        struct visible_range		*vr = NULL;
+        int				 vr_count = 0;
+	struct window_pane		*wp = ctx->wp;
 
 	if (ctx->scrolled != 0) {
 		log_debug("%s: scrolled %u (region %u-%u)", __func__,
@@ -1803,34 +1850,57 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 		return;
 
 	cx = s->cx; cy = s->cy;
+
 	for (y = 0; y < screen_size_y(s); y++) {
 		cl = &ctx->s->write_list[y];
+
+		screen_redraw_get_visible_ranges(0, y, screen_size_x(s), wp,
+		    &vr, &vr_count);
+
 		last = UINT_MAX;
 		TAILQ_FOREACH_SAFE(ci, &cl->items, entry, tmp) {
 			if (last != UINT_MAX && ci->x <= last) {
 				fatalx("collect list not in order: %u <= %u",
 				    ci->x, last);
 			}
-			screen_write_set_cursor(ctx, ci->x, y);
-			if (ci->type == CLEAR) {
-				screen_write_initctx(ctx, &ttyctx, 1);
-				ttyctx.bg = ci->bg;
-				ttyctx.num = ci->used;
-				tty_write(tty_cmd_clearcharacter, &ttyctx);
-			} else {
-				screen_write_initctx(ctx, &ttyctx, 0);
-				ttyctx.cell = &ci->gc;
-				ttyctx.wrapped = ci->wrapped;
-				ttyctx.ptr = cl->data + ci->x;
-				ttyctx.num = ci->used;
-				tty_write(tty_cmd_cells, &ttyctx);
-			}
-			items++;
+			for (int r = 0; r < vr_count; r++) {
+				r_start = vr[r].px;
+				r_end = vr[r].px + vr[r].nx;
+				ci_start = ci->x;
+				ci_end = ci->x + ci->used;
 
+				if (ci_end <= r_start || ci_start >= r_end)
+					continue;
+
+				wr_start = (ci_start < r_start) ? r_start :
+				    ci_start;
+				wr_end = (ci_end > r_end) ? r_end : ci_end;
+				wr_length = wr_end - wr_start;
+				if (wr_length == 0)
+					continue;
+
+				screen_write_set_cursor(ctx, wr_start, y);
+				if (ci->type == CLEAR) {
+					screen_write_initctx(ctx, &ttyctx, 1);
+					ttyctx.bg = ci->bg;
+					ttyctx.num = wr_length;
+					tty_write(tty_cmd_clearcharacter,
+					    &ttyctx);
+				} else {
+					screen_write_initctx(ctx, &ttyctx, 0);
+					ttyctx.cell = &ci->gc;
+					ttyctx.wrapped = ci->wrapped;
+					ttyctx.ptr = cl->data + wr_start;
+					ttyctx.num = wr_length;
+					tty_write(tty_cmd_cells, &ttyctx);
+				}
+				items++;
+			}
 			TAILQ_REMOVE(&cl->items, ci, entry);
 			screen_write_free_citem(ci);
 			last = ci->x;
 		}
+		free(vr);
 	}
 	s->cx = cx; s->cy = cy;
 
@@ -1967,6 +2037,27 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	u_int			 sx = screen_size_x(s), sy = screen_size_y(s);
 	u_int		 	 width = ud->width, xx, not_wrap;
 	int			 selected, skip = 1;
+	struct window_pane	*base_wp = ctx->wp, *wp;
+	struct window		*w;
+	u_int			 found_self, px, py;
+
+
+	if (base_wp != NULL) {
+		w = base_wp->window;
+		px = ctx->s->cx;
+		py = ctx->s->cy;
+		TAILQ_FOREACH(wp, &w->panes, entry) {
+			if (wp == base_wp) {
+				found_self = 1;
+				continue;
+			}
+			if (found_self && wp->layout_cell == NULL &&
+			    !(wp->flags & PANE_MINIMISED) &&
+			    (py >= wp->yoff && py <= wp->yoff + wp->sy) &&
+			    (px >= wp->xoff && px <= wp->xoff + wp->sx))
+				return;
+		}
+	}		
 
 	/* Ignore padding cells. */
 	if (gc->flags & GRID_FLAG_PADDING)
