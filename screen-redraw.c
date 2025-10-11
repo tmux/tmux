@@ -887,28 +887,30 @@ screen_redraw_draw_status(struct screen_redraw_ctx *ctx)
 
 /* Construct ranges of line at px,py of width cells of base_wp that are
    unobsructed. */
-void
+struct visible_ranges *
 screen_redraw_get_visible_ranges(u_int px, u_int py, u_int width,
-    struct window_pane *base_wp, struct visible_range **vr_p,
-    int *vr_count_p) {
-	struct window_pane	*wp;
-	struct window		*w;
-	struct visible_range	*vr;
-	int			 found_self, r, s;
-	int			 vr_len, vr_count;
+    struct window_pane *base_wp) {
+	struct window_pane		*wp;
+	struct window			*w;
+	static struct visible_ranges	 ranges = { NULL, 0, 0 };
+	static struct visible_range	*vr;
+	int				found_self;
+	u_int				r, s;
 
-	/* Caller must call free(vr). */
-	vr = xcalloc(4, sizeof(struct visible_range *));
-	vr_len = 4;
+	/* For efficiency ranges is static and space reused. */
+	if (ranges.array == NULL) {
+		ranges.array = xcalloc(4, sizeof(struct visible_range *));
+		ranges.size = 4;
+	}
+
+	/* Start with the entire width of the range. */
+	vr = ranges.array;
 	vr[0].px = px;
 	vr[0].nx = width;
-	vr_count = 1;
+	ranges.n = 1;
 
-	if (base_wp == NULL) {
-		*vr_p = vr;
-		*vr_count_p = vr_count;
-		return;
-	}
+	if (base_wp == NULL)
+		return (&ranges);
 
 	w = base_wp->window;
 
@@ -917,50 +919,59 @@ screen_redraw_get_visible_ranges(u_int px, u_int py, u_int width,
 			found_self = 1;
 			continue;
 		}
-		if (found_self && wp->layout_cell == NULL &&
-		    !(wp->flags & PANE_MINIMISED) &&
-		    (py >= wp->yoff && py <= wp->yoff + wp->sy)) {
-			for (r=0; r<vr_count; r++) {
-				/* if the left edge of wp
-				   falls inside this range and right
-				   edge greater than this range, 
-				   then shrink nx */
-				if (wp->xoff > vr[r].px &&
-				    wp->xoff < vr[r].px + vr[r].nx &&
-				    wp->xoff + wp->sx > vr[r].px + vr[r].nx) {
-					vr[r].nx = wp->xoff;
-				/* else if the right edge of wp
-				   falls inside of this range and left
-				   edge is less than the start of the range,
-				   then move px forward */
-				} else if (wp->xoff + wp->sx > vr[r].px &&
-					 wp->xoff + wp->sx < vr[r].px + vr[r].nx &&
-					   wp->xoff < vr[r].px) {
-					vr[r].px = vr[r].px + (wp->xoff + wp->sx);
-					vr[r].nx = vr[r].nx - (wp->xoff + wp->sx);
-				/* else if wp fully inside range
-				   then split range into 2 ranges */
-				} else if (wp->xoff > vr[r].px &&
-					 wp->xoff + wp->sx < vr[r].px + vr[r].nx) {
-					/* make space */
-					if (vr_len == vr_count) {
-						vr = xreallocarray(vr, vr_len +
-						    4, sizeof *vr);
-						vr_len += 4;
-					}
-					for (s=vr_count; s>r; s--) {
-						vr[s].px = vr[s-1].px;
-						vr[s].nx = vr[s-1].nx;
-					}
-					vr[r].nx = wp->xoff;
-					vr[r+1].px = wp->xoff + wp->sx;
-					vr_count++;
-				} /* XXX what if it's completely obscured? */
+
+		if (!found_self || wp->layout_cell != NULL ||
+		    (wp->flags & PANE_MINIMISED) ||
+		    (py < wp->yoff || py > wp->yoff + wp->sy))
+			continue;
+
+		for (r=0; r<ranges.n; r++) {
+			/* If the left edge of floating wp
+			   falls inside this range and right
+			   edge covers up to right of range, 
+			   then shrink left edge of range. */
+			if (wp->xoff > vr[r].px &&
+			    wp->xoff < vr[r].px + vr[r].nx &&
+			    wp->xoff + wp->sx >= vr[r].px + vr[r].nx) {
+				vr[r].nx = wp->xoff;
 			}
+			/* Else if the right edge of floating wp
+			   falls inside of this range and left
+			   edge covers the left of range,
+			   then move px forward to right edge of wp. */
+			else if (wp->xoff + wp->sx > vr[r].px &&
+				   wp->xoff + wp->sx < vr[r].px + vr[r].nx &&
+				   wp->xoff <= vr[r].px) {
+				vr[r].px = vr[r].px + (wp->xoff + wp->sx);
+				vr[r].nx = vr[r].nx - (wp->xoff + wp->sx);
+			}
+			/* Else if wp fully inside range
+			   then split range into 2 ranges. */
+			else if (wp->xoff > vr[r].px &&
+				   wp->xoff + wp->sx < vr[r].px + vr[r].nx) {
+				if (ranges.size == ranges.n) {
+					ranges.array = xreallocarray(vr,
+					    ranges.size += 4, sizeof *vr);
+					ranges.array = vr;
+				}
+				for (s=ranges.n; s>r; s--) {
+					vr[s].px = vr[s-1].px;
+					vr[s].nx = vr[s-1].nx;
+				}
+				vr[r].nx = wp->xoff;
+				vr[r+1].px = wp->xoff + wp->sx;
+				ranges.n++;
+			}
+			/* If floating wp completely covers this range
+			   then delete it (make it 0 length). */
+			else if (wp->xoff <= vr[r].px &&
+				   wp->xoff+wp->sx >= vr[r].px+vr[r].nx) {
+				vr[r].nx = 0;
+			}
+			/* Else the range is already obscured, do nothing. */
 		}
 	}
-	*vr_p = vr;
-	*vr_count_p = vr_count;
+	return (&ranges);
 }
 
 
@@ -974,9 +985,9 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 	struct screen		*s = wp->screen;
 	struct colour_palette	*palette = &wp->palette;
 	struct grid_cell	 defaults;
+	struct visible_ranges	*visible_ranges;
 	struct visible_range	*vr;
-	int			 vr_count, r;
-	u_int			 i, j, top, x, y, width;
+	u_int			 i, j, top, x, y, width, r;
 
 	log_debug("%s: %s @%u %%%u", __func__, c->name, w->id, wp->id);
 
@@ -1019,15 +1030,21 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 		    __func__, c->name, wp->id, i, j, x, y, width);
 
 		/* Get visible ranges of line before we draw it. */
-		screen_redraw_get_visible_ranges(x, y, width, wp,
-		    &vr, &vr_count);
+		visible_ranges = screen_redraw_get_visible_ranges(x, y, width,
+		    wp);
+		vr = visible_ranges->array;
 
 		tty_default_colours(&defaults, wp);
 
-		for (r=0; r<vr_count; r++)
-			tty_draw_line(tty, s, i + vr[r].px, j,
+		for (r=0; r<visible_ranges->n; r++) {
+			if (vr[r].nx == 0)
+				continue;
+			/* i is px of cell, add px of region, sub the
+			   pane offset. If you don't sub offset,
+			   contents of pane shifted. */
+			tty_draw_line(tty, s, i+vr[r].px-wp->xoff, j,
 			    vr[r].nx, vr[r].px, y, &defaults, palette);
-		free(vr);
+		}
 	}
 
 #ifdef ENABLE_SIXEL

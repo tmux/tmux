@@ -2235,8 +2235,13 @@ struct mode_tree_sort_criteria {
 };
 
 struct visible_range {
-	u_int px;
-	u_int nx;
+	u_int px;	/* Start */
+	u_int nx;	/* Length */
+};
+struct visible_ranges {
+	struct visible_range	*array;
+	size_t			 n;	/* Elements used */
+	size_t			 size;	/* Array size */
 };
 
 /* tmux.c */
@@ -3169,8 +3174,8 @@ void	 screen_write_alternateoff(struct screen_write_ctx *,
 /* screen-redraw.c */
 void	 screen_redraw_screen(struct client *);
 void	 screen_redraw_pane(struct client *, struct window_pane *, int);
-void	 screen_redraw_get_visible_ranges(u_int, u_int, u_int,
-	     struct window_pane *, struct visible_range **, int *);
+struct visible_ranges *screen_redraw_get_visible_ranges(u_int, u_int, u_int,
+	     struct window_pane *);
 
 
 /* screen.c */

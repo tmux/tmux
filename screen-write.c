@@ -1747,13 +1747,13 @@ screen_write_collect_scroll(struct screen_write_ctx *ctx, u_int bg)
 {
 	struct screen				*s = ctx->s;
 	struct screen_write_cline		*cl_src, *cl_dst;
-	u_int					 y, r_start, r_end;
+	u_int					 y, r, r_start, r_end;
 	u_int					 ci_start, ci_end, new_end;
 	char					*saved;
 	struct screen_write_citem		*ci, *new_ci;
 	struct window_pane			*wp = ctx->wp;
+	struct visible_ranges			*visible_ranges;
 	struct visible_range			*vr;
-	int					 vr_count, r;
 
 	log_debug("%s: at %u,%u (region %u-%u)", __func__, s->cx, s->cy,
 	    s->rupper, s->rlower);
@@ -1766,11 +1766,10 @@ screen_write_collect_scroll(struct screen_write_ctx *ctx, u_int bg)
 	for (y = s->rupper; y < s->rlower; y++) {
 		cl_src = &s->write_list[y + 1];
 		cl_dst = &s->write_list[y];
-		vr = NULL;
-		vr_count = 0;
 
-		screen_redraw_get_visible_ranges(0, y, screen_size_x(s), wp,
-		    &vr, &vr_count);
+		visible_ranges = screen_redraw_get_visible_ranges(0, y,
+		    screen_size_x(s), wp);
+		vr = visible_ranges->array;
 
 		TAILQ_INIT(&cl_dst->items);
 
@@ -1779,7 +1778,8 @@ screen_write_collect_scroll(struct screen_write_ctx *ctx, u_int bg)
 
 		/* For each visible range, copy corresponding items from cl_src
 		   to cl_dst. */
-		for (r = 0; r < vr_count; r++) {
+		for (r = 0; r < visible_ranges->n; r++) {
+			if (vr[r].nx == 0) continue;
 			r_start = vr[r].px;
 			r_end = vr[r].px + vr[r].nx;
 
@@ -1806,7 +1806,6 @@ screen_write_collect_scroll(struct screen_write_ctx *ctx, u_int bg)
 				    entry);
 			}
 		}
-		free(vr);
 	}
 	s->write_list[s->rlower].data = saved;
 
@@ -1821,12 +1820,12 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 	struct screen			*s = ctx->s;
 	struct screen_write_citem	*ci, *tmp;
 	struct screen_write_cline	*cl;
-	u_int				 y, cx, cy, last, items = 0;
+	u_int				 y, cx, cy, last, items = 0, r;
 	u_int				 r_start, r_end, ci_start, ci_end;
 	u_int				 wr_start, wr_end, wr_length;
 	struct tty_ctx			 ttyctx;
-        struct visible_range		*vr = NULL;
-        int				 vr_count = 0;
+	struct visible_ranges		*visible_ranges;
+        struct visible_range		*vr;
 	struct window_pane		*wp = ctx->wp;
 
 	if (ctx->scrolled != 0) {
@@ -1854,8 +1853,9 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 	for (y = 0; y < screen_size_y(s); y++) {
 		cl = &ctx->s->write_list[y];
 
-		screen_redraw_get_visible_ranges(0, y, screen_size_x(s), wp,
-		    &vr, &vr_count);
+		visible_ranges = screen_redraw_get_visible_ranges(0, y,
+		    screen_size_x(s), wp);
+		vr = visible_ranges->array;
 
 		last = UINT_MAX;
 		TAILQ_FOREACH_SAFE(ci, &cl->items, entry, tmp) {
@@ -1863,7 +1863,8 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 				fatalx("collect list not in order: %u <= %u",
 				    ci->x, last);
 			}
-			for (int r = 0; r < vr_count; r++) {
+			for (r = 0; r < visible_ranges->n; r++) {
+				if (vr[r].nx == 0) continue;
 				r_start = vr[r].px;
 				r_end = vr[r].px + vr[r].nx;
 				ci_start = ci->x;
@@ -1900,7 +1901,6 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 			screen_write_free_citem(ci);
 			last = ci->x;
 		}
-		free(vr);
 	}
 	s->cx = cx; s->cy = cy;
 
