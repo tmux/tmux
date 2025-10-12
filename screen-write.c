@@ -1750,7 +1750,7 @@ screen_write_collect_scroll(struct screen_write_ctx *ctx, u_int bg)
 	u_int					 y, r, r_start, r_end;
 	u_int					 ci_start, ci_end, new_end;
 	char					*saved;
-	struct screen_write_citem		*ci, *new_ci;
+	struct screen_write_citem		*ci, *ci_tmp, *new_ci;
 	struct window_pane			*wp = ctx->wp;
 	struct visible_ranges			*visible_ranges;
 	struct visible_range			*vr;
@@ -1760,9 +1760,6 @@ screen_write_collect_scroll(struct screen_write_ctx *ctx, u_int bg)
 
 	screen_write_collect_clear(ctx, s->rupper, 1);
 	saved = s->write_list[s->rupper].data;
-
-	/* For each line being scrolled, copy visible ranges from the line 
-	   below to the line above. */
 	for (y = s->rupper; y < s->rlower; y++) {
 		cl_src = &s->write_list[y + 1];
 		cl_dst = &s->write_list[y];
@@ -1771,8 +1768,6 @@ screen_write_collect_scroll(struct screen_write_ctx *ctx, u_int bg)
 		    screen_size_x(s), wp);
 		vr = visible_ranges->array;
 
-		TAILQ_INIT(&cl_dst->items);
-
 		/* For each visible range, copy corresponding items from cl_src
 		   to cl_dst. */
 		for (r = 0; r < visible_ranges->n; r++) {
@@ -1780,7 +1775,7 @@ screen_write_collect_scroll(struct screen_write_ctx *ctx, u_int bg)
 			r_start = vr[r].px;
 			r_end = vr[r].px + vr[r].nx;
 
-			TAILQ_FOREACH(ci, &cl_src->items, entry) {
+			TAILQ_FOREACH_SAFE(ci, &cl_src->items, entry, ci_tmp) {
 				ci_start = ci->x;
 				ci_end = ci->x + ci->used;
 
@@ -1788,25 +1783,31 @@ screen_write_collect_scroll(struct screen_write_ctx *ctx, u_int bg)
 					continue;
 
 				new_ci = screen_write_get_citem();
-				new_ci->x = (ci_start < r_start) ? r_start :
-				    ci_start;
-				new_end = (ci_end > r_end) ? r_end : ci_end;
+				new_ci->x = (ci_start < r_start) ?
+				    r_start : ci_start;
+				new_end = (ci_end > r_end) ?
+				    r_end : ci_end;
 				new_ci->used = new_end - new_ci->x;
 				new_ci->type = ci->type;
 				new_ci->wrapped = ci->wrapped;
 				new_ci->bg = bg;
 				memcpy(&new_ci->gc, &ci->gc, sizeof(ci->gc));
+
 				TAILQ_INSERT_TAIL(&cl_dst->items, new_ci, entry);
-				if (cl_dst->data == NULL)
-					cl_dst->data = xmalloc(screen_size_x(s));
-				memcpy(cl_dst->data, cl_src->data,
-				    screen_size_x(s));
+				TAILQ_REMOVE(&cl_src->items, ci, entry);
 			}
 		}
+		ctx->s->write_list[y].data = cl_src->data;
 	}
 	s->write_list[s->rlower].data = saved;
 
-	screen_write_collect_clear(ctx, s->rlower, 1);
+	/* Also worked without this clear, is this needed? */
+	ci = screen_write_get_citem();
+	ci->x = 0;
+	ci->used = screen_size_x(s);
+	ci->type = CLEAR;
+	ci->bg = bg;
+	TAILQ_INSERT_TAIL(&ctx->s->write_list[s->rlower].items, ci, entry);
 }
 
 /* Flush collected lines. */
