@@ -1773,9 +1773,6 @@ screen_write_collect_scroll(struct screen_write_ctx *ctx, u_int bg)
 
 		TAILQ_INIT(&cl_dst->items);
 
-		if (cl_dst->data == NULL)
-			cl_dst->data = xmalloc(screen_size_x(s));
-
 		/* For each visible range, copy corresponding items from cl_src
 		   to cl_dst. */
 		for (r = 0; r < visible_ranges->n; r++) {
@@ -1799,11 +1796,11 @@ screen_write_collect_scroll(struct screen_write_ctx *ctx, u_int bg)
 				new_ci->wrapped = ci->wrapped;
 				new_ci->bg = bg;
 				memcpy(&new_ci->gc, &ci->gc, sizeof(ci->gc));
-				if (ci->type == TEXT)
-					memcpy(cl_dst->data, cl_src->data,
-					    screen_size_x(s));
-				TAILQ_INSERT_TAIL(&cl_dst->items, new_ci,
-				    entry);
+				TAILQ_INSERT_TAIL(&cl_dst->items, new_ci, entry);
+				if (cl_dst->data == NULL)
+					cl_dst->data = xmalloc(screen_size_x(s));
+				memcpy(cl_dst->data, cl_src->data,
+				    screen_size_x(s));
 			}
 		}
 	}
@@ -1873,9 +1870,10 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 				if (ci_end <= r_start || ci_start >= r_end)
 					continue;
 
-				wr_start = (ci_start < r_start) ? r_start :
-				    ci_start;
-				wr_end = (ci_end > r_end) ? r_end : ci_end;
+				wr_start = (ci_start < r_start) ?
+				    r_start : ci_start;
+				wr_end = (ci_end > r_end) ?
+				    r_end : ci_end;
 				wr_length = wr_end - wr_start;
 				if (wr_length == 0)
 					continue;
