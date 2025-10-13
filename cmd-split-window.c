@@ -262,8 +262,8 @@ cmd_new_floating_window_exec(struct cmd *self, struct cmdq_item *item)
 			return (CMD_RETURN_ERROR);
 		}
 	}
-	sc.xoff = 10;
-	sc.yoff = 10;
+	sc.xoff = 20;
+	sc.yoff = 20;
 	sc.sx = sx;
 	sc.sy = sy;
 

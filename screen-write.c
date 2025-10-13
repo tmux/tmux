@@ -1797,10 +1797,14 @@ screen_write_collect_scroll(struct screen_write_ctx *ctx, u_int bg)
 				TAILQ_REMOVE(&cl_src->items, ci, entry);
 			}
 		}
+		if (! TAILQ_EMPTY(&cl_src->items)) {
+			screen_write_collect_clear(ctx, y+1, 1);
+			TAILQ_INIT(&cl_src->items);
+		}
 		ctx->s->write_list[y].data = cl_src->data;
 	}
 	s->write_list[s->rlower].data = saved;
-
+	return;
 	/* Also worked without this clear, is this needed? */
 	ci = screen_write_get_citem();
 	ci->x = 0;
