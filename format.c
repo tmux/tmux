@@ -1369,6 +1369,21 @@ format_cb_buffer_sample(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for buffer_full. */
+static void *
+format_cb_buffer_full(struct format_tree *ft)
+{
+	size_t		 size;
+	const char	*s;
+
+	if (ft->pb != NULL) {
+		s = paste_buffer_data(ft->pb, &size);
+		if (s != NULL)
+			return (xstrndup(s, size));
+	}
+	return (NULL);
+}
+
 /* Callback for buffer_size. */
 static void *
 format_cb_buffer_size(struct format_tree *ft)
@@ -3007,6 +3022,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "buffer_created", FORMAT_TABLE_TIME,
 	  format_cb_buffer_created
+	},
+	{ "buffer_full", FORMAT_TABLE_STRING,
+	  format_cb_buffer_full
 	},
 	{ "buffer_mode_format", FORMAT_TABLE_STRING,
 	  format_cb_buffer_mode_format

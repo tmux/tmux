@@ -412,8 +412,8 @@ void
 tty_repeat_requests(struct tty *tty, int force)
 {
 	struct client	*c = tty->client;
-	time_t	t = time(NULL);
-	u_int	n = t - tty->last_requests;
+	time_t		 t = time(NULL);
+	u_int		 n = t - tty->last_requests;
 
 	if (~tty->flags & TTY_STARTED)
 		return;
