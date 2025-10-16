@@ -57,9 +57,9 @@ static void	server_client_set_path(struct client *);
 static void	server_client_reset_state(struct client *);
 static void	server_client_update_latest(struct client *);
 static void	server_client_dispatch(struct imsg *, void *);
-static void	server_client_dispatch_command(struct client *, struct imsg *);
-static void	server_client_dispatch_identify(struct client *, struct imsg *);
-static void	server_client_dispatch_shell(struct client *);
+static int	server_client_dispatch_command(struct client *, struct imsg *);
+static int	server_client_dispatch_identify(struct client *, struct imsg *);
+static int	server_client_dispatch_shell(struct client *);
 static void	server_client_report_theme(struct client *, enum client_theme);
 
 /* Compare client windows. */
@@ -596,7 +596,6 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 	sb = options_get_number(wo, "pane-scrollbars");
 	sb_pos = options_get_number(wo, "pane-scrollbars-position");
 	pane_status = options_get_number(wo, "pane-border-status");
-	sb_pos = options_get_number(wo, "pane-scrollbars-position");
 
 	if (window_pane_show_scrollbar(wp, sb)) {
 		sb_w = wp->scrollbar_style.width;
@@ -655,10 +654,8 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 			    fwp->xoff + fwp->sx >= px))
 				break;
 		}
-		if (fwp != NULL) {
-			wp = fwp;
+		if (fwp != NULL)
 			return (BORDER);
-		}
 	}
 	return (NOWHERE);
 }
@@ -880,8 +877,7 @@ have_event:
 			m->wp = wp->id;
 			m->w = wp->window->id;
 		}
-	} else
-		m->wp = -1;
+	}
 
 	/* Stop dragging if needed. */
 	if (type != DRAG &&
@@ -3380,20 +3376,22 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 	case MSG_IDENTIFY_TERMINFO:
 	case MSG_IDENTIFY_TTYNAME:
 	case MSG_IDENTIFY_DONE:
-		server_client_dispatch_identify(c, imsg);
+		if (server_client_dispatch_identify(c, imsg) != 0)
+			goto bad;
 		break;
 	case MSG_COMMAND:
-		server_client_dispatch_command(c, imsg);
+		if (server_client_dispatch_command(c, imsg) != 0)
+			goto bad;
 		break;
 	case MSG_RESIZE:
 		if (datalen != 0)
-			fatalx("bad MSG_RESIZE size");
+			goto bad;
 
 		if (c->flags & CLIENT_CONTROL)
 			break;
 		server_client_update_latest(c);
 		tty_resize(&c->tty);
-		tty_repeat_requests(&c->tty);
+		tty_repeat_requests(&c->tty, 0);
 		recalculate_sizes();
 		if (c->overlay_resize == NULL)
 			server_client_clear_overlay(c);
@@ -3405,7 +3403,7 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 		break;
 	case MSG_EXITING:
 		if (datalen != 0)
-			fatalx("bad MSG_EXITING size");
+			goto bad;
 		server_client_set_session(c, NULL);
 		recalculate_sizes();
 		tty_close(&c->tty);
@@ -3414,7 +3412,7 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 	case MSG_WAKEUP:
 	case MSG_UNLOCK:
 		if (datalen != 0)
-			fatalx("bad MSG_WAKEUP size");
+			goto bad;
 
 		if (!(c->flags & CLIENT_SUSPENDED))
 			break;
@@ -3436,9 +3434,9 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 		break;
 	case MSG_SHELL:
 		if (datalen != 0)
-			fatalx("bad MSG_SHELL size");
-
-		server_client_dispatch_shell(c);
+			goto bad;
+		if (server_client_dispatch_shell(c) != 0)
+			goto bad;
 		break;
 	case MSG_WRITE_READY:
 		file_write_ready(&c->files, imsg);
@@ -3450,6 +3448,12 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 		file_read_done(&c->files, imsg);
 		break;
 	}
+
+	return;
+
+bad:
+	log_debug("client %p invalid message type %d", c, imsg->hdr.type);
+	proc_kill_peer(c->peer);
 }
 
 /* Callback when command is not allowed. */
@@ -3477,13 +3481,13 @@ server_client_command_done(struct cmdq_item *item, __unused void *data)
 }
 
 /* Handle command message. */
-static void
+static int
 server_client_dispatch_command(struct client *c, struct imsg *imsg)
 {
 	struct msg_command	  data;
 	char			 *buf;
 	size_t			  len;
-	int			  argc;
+	int			  argc = 0;
 	char			**argv, *cause;
 	struct cmd_parse_result	 *pr;
 	struct args_value	 *values;
@@ -3491,23 +3495,23 @@ server_client_dispatch_command(struct client *c, struct imsg *imsg)
 	struct cmd_list		 *cmdlist;
 
 	if (c->flags & CLIENT_EXIT)
-		return;
+		return (0);
 
 	if (imsg->hdr.len - IMSG_HEADER_SIZE < sizeof data)
-		fatalx("bad MSG_COMMAND size");
+		return (-1);
 	memcpy(&data, imsg->data, sizeof data);
 
 	buf = (char *)imsg->data + sizeof data;
-	len = imsg->hdr.len  - IMSG_HEADER_SIZE - sizeof data;
+	len = imsg->hdr.len - IMSG_HEADER_SIZE - sizeof data;
 	if (len > 0 && buf[len - 1] != '\0')
-		fatalx("bad MSG_COMMAND string");
+		return (-1);
 
-	argc = data.argc;
-	if (cmd_unpack_argv(buf, len, argc, &argv) != 0) {
+	if (cmd_unpack_argv(buf, len, data.argc, &argv) != 0) {
 		cause = xstrdup("command too long");
 		goto error;
 	}
 
+	argc = data.argc;
 	if (argc == 0) {
 		cmdlist = cmd_list_copy(options_get_command(global_options,
 		    "default-client-command"), 0, NULL);
@@ -3536,7 +3540,7 @@ server_client_dispatch_command(struct client *c, struct imsg *imsg)
 	cmdq_append(c, cmdq_get_callback(server_client_command_done, NULL));
 
 	cmd_list_free(cmdlist);
-	return;
+	return (0);
 
 error:
 	cmd_free_argv(argc, argv);
@@ -3545,10 +3549,11 @@ error:
 	free(cause);
 
 	c->flags |= CLIENT_EXIT;
+	return (0);
 }
 
 /* Handle identify message. */
-static void
+static int
 server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 {
 	const char	*data, *home;
@@ -3558,7 +3563,7 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 	char		*name;
 
 	if (c->flags & CLIENT_IDENTIFIED)
-		fatalx("out-of-order identify message");
+		return (-1);
 
 	data = imsg->data;
 	datalen = imsg->hdr.len - IMSG_HEADER_SIZE;
@@ -3566,7 +3571,7 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 	switch (imsg->hdr.type)	{
 	case MSG_IDENTIFY_FEATURES:
 		if (datalen != sizeof feat)
-			fatalx("bad MSG_IDENTIFY_FEATURES size");
+			return (-1);
 		memcpy(&feat, data, sizeof feat);
 		c->term_features |= feat;
 		log_debug("client %p IDENTIFY_FEATURES %s", c,
@@ -3574,14 +3579,14 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 		break;
 	case MSG_IDENTIFY_FLAGS:
 		if (datalen != sizeof flags)
-			fatalx("bad MSG_IDENTIFY_FLAGS size");
+			return (-1);
 		memcpy(&flags, data, sizeof flags);
 		c->flags |= flags;
 		log_debug("client %p IDENTIFY_FLAGS %#x", c, flags);
 		break;
 	case MSG_IDENTIFY_LONGFLAGS:
 		if (datalen != sizeof longflags)
-			fatalx("bad MSG_IDENTIFY_LONGFLAGS size");
+			return (-1);
 		memcpy(&longflags, data, sizeof longflags);
 		c->flags |= longflags;
 		log_debug("client %p IDENTIFY_LONGFLAGS %#llx", c,
@@ -3589,16 +3594,13 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 		break;
 	case MSG_IDENTIFY_TERM:
 		if (datalen == 0 || data[datalen - 1] != '\0')
-			fatalx("bad MSG_IDENTIFY_TERM string");
-		if (*data == '\0')
-			c->term_name = xstrdup("unknown");
-		else
-			c->term_name = xstrdup(data);
+			return (-1);
+		c->term_name = xstrdup(data);
 		log_debug("client %p IDENTIFY_TERM %s", c, data);
 		break;
 	case MSG_IDENTIFY_TERMINFO:
 		if (datalen == 0 || data[datalen - 1] != '\0')
-			fatalx("bad MSG_IDENTIFY_TERMINFO string");
+			return (-1);
 		c->term_caps = xreallocarray(c->term_caps, c->term_ncaps + 1,
 		    sizeof *c->term_caps);
 		c->term_caps[c->term_ncaps++] = xstrdup(data);
@@ -3606,13 +3608,13 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 		break;
 	case MSG_IDENTIFY_TTYNAME:
 		if (datalen == 0 || data[datalen - 1] != '\0')
-			fatalx("bad MSG_IDENTIFY_TTYNAME string");
+			return (-1);
 		c->ttyname = xstrdup(data);
 		log_debug("client %p IDENTIFY_TTYNAME %s", c, data);
 		break;
 	case MSG_IDENTIFY_CWD:
 		if (datalen == 0 || data[datalen - 1] != '\0')
-			fatalx("bad MSG_IDENTIFY_CWD string");
+			return (-1);
 		if (access(data, X_OK) == 0)
 			c->cwd = xstrdup(data);
 		else if ((home = find_home()) != NULL)
@@ -3623,26 +3625,26 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 		break;
 	case MSG_IDENTIFY_STDIN:
 		if (datalen != 0)
-			fatalx("bad MSG_IDENTIFY_STDIN size");
+			return (-1);
 		c->fd = imsg_get_fd(imsg);
 		log_debug("client %p IDENTIFY_STDIN %d", c, c->fd);
 		break;
 	case MSG_IDENTIFY_STDOUT:
 		if (datalen != 0)
-			fatalx("bad MSG_IDENTIFY_STDOUT size");
+			return (-1);
 		c->out_fd = imsg_get_fd(imsg);
 		log_debug("client %p IDENTIFY_STDOUT %d", c, c->out_fd);
 		break;
 	case MSG_IDENTIFY_ENVIRON:
 		if (datalen == 0 || data[datalen - 1] != '\0')
-			fatalx("bad MSG_IDENTIFY_ENVIRON string");
+			return (-1);
 		if (strchr(data, '=') != NULL)
 			environ_put(c->environ, data, 0);
 		log_debug("client %p IDENTIFY_ENVIRON %s", c, data);
 		break;
 	case MSG_IDENTIFY_CLIENTPID:
 		if (datalen != sizeof c->pid)
-			fatalx("bad MSG_IDENTIFY_CLIENTPID size");
+			return (-1);
 		memcpy(&c->pid, data, sizeof c->pid);
 		log_debug("client %p IDENTIFY_CLIENTPID %ld", c, (long)c->pid);
 		break;
@@ -3651,10 +3653,15 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 	}
 
 	if (imsg->hdr.type != MSG_IDENTIFY_DONE)
-		return;
+		return (0);
 	c->flags |= CLIENT_IDENTIFIED;
 
-	if (*c->ttyname != '\0')
+	if (c->term_name == NULL || *c->term_name == '\0') {
+		free(c->term_name);
+		c->term_name = xstrdup("unknown");
+	}
+
+	if (c->ttyname == NULL || *c->ttyname != '\0')
 		name = xstrdup(c->ttyname);
 	else
 		xasprintf(&name, "client-%ld", (long)c->pid);
@@ -3676,7 +3683,8 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 			tty_resize(&c->tty);
 			c->flags |= CLIENT_TERMINAL;
 		}
-		close(c->out_fd);
+		if (c->out_fd != -1)
+			close(c->out_fd);
 		c->out_fd = -1;
 	}
 
@@ -3689,10 +3697,12 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 	     !cfg_finished &&
 	     c == TAILQ_FIRST(&clients))
 		start_cfg();
+
+	return (0);
 }
 
 /* Handle shell message. */
-static void
+static int
 server_client_dispatch_shell(struct client *c)
 {
 	const char	*shell;
@@ -3703,6 +3713,7 @@ server_client_dispatch_shell(struct client *c)
 	proc_send(c->peer, MSG_SHELL, -1, shell, strlen(shell) + 1);
 
 	proc_kill_peer(c->peer);
+	return (0);
 }
 
 /* Get client working directory. */
@@ -3985,5 +3996,5 @@ server_client_report_theme(struct client *c, enum client_theme theme)
 	 * Request foreground and background colour again. Don't forward 2031 to
 	 * panes until a response is received.
 	 */
-	tty_puts(&c->tty, "\033]10;?\033\\\033]11;?\033\\");
+	tty_repeat_requests(&c->tty, 1);
 }

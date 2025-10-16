@@ -61,7 +61,8 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 	const char		*tablename;
 	struct key_table	*table;
 
-	if (tflag != NULL && tflag[strcspn(tflag, ":.%")] != '\0') {
+	if (tflag != NULL &&
+	    (tflag[strcspn(tflag, ":.%")] != '\0' || strcmp(tflag, "=") == 0)) {
 		type = CMD_FIND_PANE;
 		flags = 0;
 	} else {

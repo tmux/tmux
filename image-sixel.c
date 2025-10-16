@@ -43,6 +43,7 @@ struct sixel_image {
 
 	u_int			*colours;
 	u_int			 ncolours;
+	u_int			 used_colours;
 	u_int			 p2;
 
 	u_int			 dx;
@@ -196,7 +197,7 @@ sixel_parse_colour(struct sixel_image *si, const char *cp, const char *end)
 {
 	const char	*last;
 	char		*endptr;
-	u_int		 c, type, r, g, b;
+	u_int		 c, type, c1, c2, c3;
 
 	last = cp;
 	while (last != end) {
@@ -210,6 +211,8 @@ sixel_parse_colour(struct sixel_image *si, const char *cp, const char *end)
 		log_debug("%s: too many colours", __func__);
 		return (NULL);
 	}
+	if (si->used_colours <= c)
+		si->used_colours = c + 1;
 	si->dc = c + 1;
 	if (endptr == last || *endptr != ';')
 		return (last);
@@ -219,32 +222,36 @@ sixel_parse_colour(struct sixel_image *si, const char *cp, const char *end)
 		log_debug("%s: missing ;", __func__);
 		return (NULL);
 	}
-	r = strtoul(endptr + 1, &endptr, 10);
+	c1 = strtoul(endptr + 1, &endptr, 10);
 	if (endptr == last || *endptr != ';') {
 		log_debug("%s: missing ;", __func__);
 		return (NULL);
 	}
-	g = strtoul(endptr + 1, &endptr, 10);
+	c2 = strtoul(endptr + 1, &endptr, 10);
 	if (endptr == last || *endptr != ';') {
 		log_debug("%s: missing ;", __func__);
 		return (NULL);
 	}
-	b = strtoul(endptr + 1, &endptr, 10);
+	c3 = strtoul(endptr + 1, &endptr, 10);
 	if (endptr != last) {
 		log_debug("%s: missing ;", __func__);
 		return (NULL);
 	}
 
-	if (type != 1 && type != 2) {
-		log_debug("%s: invalid type %d", __func__, type);
+	if ((type != 1 && type != 2) ||
+	    (type == 1 && (c1 > 360 || c2 > 100 || c3 > 100)) ||
+	    (type == 2 && (c1 > 100 || c2 > 100 || c3 > 100))) {
+		log_debug("%s: invalid color %u;%u;%u;%u", __func__, type,
+		    c1, c2, c3);
 		return (NULL);
 	}
+
 	if (c + 1 > si->ncolours) {
 		si->colours = xrecallocarray(si->colours, si->ncolours, c + 1,
 		    sizeof *si->colours);
 		si->ncolours = c + 1;
 	}
-	si->colours[c] = (type << 24) | (r << 16) | (g << 8) | b;
+	si->colours[c] = (type << 25) | (c1 << 16) | (c2 << 8) | c3;
 	return (last);
 }
 
@@ -416,8 +423,7 @@ sixel_scale(struct sixel_image *si, u_int xpixel, u_int ypixel, u_int ox,
 
 	/*
 	 * We want to get the section of the image at ox,oy in image cells and
-	 * map it onto the same size in terminal cells, remembering that we
-	 * can only draw vertical sections of six pixels.
+	 * map it onto the same size in terminal cells.
 	 */
 
 	sixel_size_in_cells(si, &cx, &cy);
@@ -441,7 +447,7 @@ sixel_scale(struct sixel_image *si, u_int xpixel, u_int ypixel, u_int ox,
 	psy = sy * si->ypixel;
 
 	tsx = sx * xpixel;
-	tsy = ((sy * ypixel) / 6) * 6;
+	tsy = sy * ypixel;
 
 	new = xcalloc (1, sizeof *si);
 	new->xpixel = xpixel;
@@ -459,6 +465,7 @@ sixel_scale(struct sixel_image *si, u_int xpixel, u_int ypixel, u_int ox,
 	new->ra_x = new->ra_x * xpixel / si->xpixel;
 	new->ra_y = new->ra_y * ypixel / si->ypixel;
 
+	new->used_colours = si->used_colours;
 	for (y = 0; y < tsy; y++) {
 		py = poy + ((double)y * psy / tsy);
 		for (x = 0; x < tsx; x++) {
@@ -566,7 +573,8 @@ sixel_print(struct sixel_image *si, struct sixel_image *map, size_t *size)
 {
 	char			*buf, tmp[64];
 	size_t			 len, used = 0, tmplen;
-	u_int			*colours, ncolours, i, c, y, *active, nactive;
+	u_int			*colours, ncolours, used_colours, i, c, y;
+	u_int			*active, nactive;
 	struct sixel_chunk	*chunks, *chunk;
 
 	if (map != NULL) {
@@ -577,7 +585,8 @@ sixel_print(struct sixel_image *si, struct sixel_image *map, size_t *size)
 		ncolours = si->ncolours;
 	}
 
-	if (ncolours == 0)
+	used_colours = si->used_colours;
+	if (used_colours == 0)
 		return (NULL);
 
 	len = 8192;
@@ -592,15 +601,17 @@ sixel_print(struct sixel_image *si, struct sixel_image *map, size_t *size)
 		sixel_print_add(&buf, &len, &used, tmp, tmplen);
 	}
 
-	chunks = xcalloc(ncolours, sizeof *chunks);
-	active = xcalloc(ncolours, sizeof *active);
+	chunks = xcalloc(used_colours, sizeof *chunks);
+	active = xcalloc(used_colours, sizeof *active);
 
 	for (i = 0; i < ncolours; i++) {
 		c = colours[i];
 		tmplen = xsnprintf(tmp, sizeof tmp, "#%u;%u;%u;%u;%u",
-		    i, c >> 24, (c >> 16) & 0xff, (c >> 8) & 0xff, c & 0xff);
+		    i, c >> 25, (c >> 16) & 0x1ff, (c >> 8) & 0xff, c & 0xff);
 		sixel_print_add(&buf, &len, &used, tmp, tmplen);
+	}
 
+	for (i = 0; i < used_colours; i++) {
 		chunk = &chunks[i];
 		chunk->len = 8;
 		chunk->data = xmalloc(chunk->len);
@@ -636,7 +647,7 @@ sixel_print(struct sixel_image *si, struct sixel_image *map, size_t *size)
 	if (size != NULL)
 		*size = used;
 
-	for (i = 0; i < ncolours; i++)
+	for (i = 0; i < used_colours; i++)
 		free(chunks[i].data);
 	free(active);
 	free(chunks);

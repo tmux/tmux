@@ -5080,6 +5080,8 @@ heavy lines using UTF-8 characters
 simple ASCII characters
 .It number
 the pane number
+.It spaces
+space characters
 .El
 .Pp
 .Ql double
@@ -5187,6 +5189,46 @@ Other attributes are ignored.
 .Op Ic left | right
 .Xc
 Sets which side of the pane to display pane scrollbars on.
+.Pp
+.It Ic pane-status-current-style Ar style
+Set status line style for the currently active pane.
+For how to specify
+.Ar style ,
+see the
+.Sx STYLES
+section.
+.Pp
+.It Ic pane-status-style Ar style
+Set status line style for a single pane.
+For how to specify
+.Ar style ,
+see the
+.Sx STYLES
+section.
+.Pp
+.It Ic session-status-current-style Ar style
+Set status line style for the currently active session.
+For how to specify
+.Ar style ,
+see the
+.Sx STYLES
+section.
+.Pp
+.It Ic session-status-style Ar style
+Set status line style for a single session.
+For how to specify
+.Ar style ,
+see the
+.Sx STYLES
+section.
+.Pp
+.It Ic tiled-layout-max-columns Ar number
+Set the maximum number of columns in the
+.Ic tiled
+layout.
+A value of 0 (the default) means no limit.
+When a limit is set, panes are arranged to not exceed this number of columns,
+with additional panes stacked in extra rows.
 .Pp
 .It Ic window-status-activity-style Ar style
 Set status line style for windows with an activity alert.
@@ -6016,6 +6058,7 @@ The following variables are available, where appropriate:
 .It Li "alternate_saved_x" Ta "" Ta "Saved cursor X in alternate screen"
 .It Li "alternate_saved_y" Ta "" Ta "Saved cursor Y in alternate screen"
 .It Li "buffer_created" Ta "" Ta "Time buffer created"
+.It Li "buffer_full" Ta "" Ta "Full buffer content"
 .It Li "buffer_name" Ta "" Ta "Name of buffer"
 .It Li "buffer_sample" Ta "" Ta "Sample of start of buffer"
 .It Li "buffer_size" Ta "" Ta "Size of the specified buffer in bytes"
@@ -6935,7 +6978,7 @@ forwards any input read from stdin to the empty pane given by
 .Ar target-pane .
 .Tg popup
 .It Xo Ic display-popup
-.Op Fl BCDE
+.Op Fl BCDEk
 .Op Fl b Ar border-lines
 .Op Fl c Ar target-client
 .Op Fl d Ar start-directory
@@ -6968,6 +7011,11 @@ Two
 closes the popup only if
 .Ar shell-command
 exited with success.
+.Fl k
+allows any key to dismiss the popup instead of only
+.Ql Escape
+or
+.Ql C-c .
 .Pp
 .Fl x
 and

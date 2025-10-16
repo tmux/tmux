@@ -21,3 +21,10 @@ EOF
 $TMUX -f$TMP -C new <<EOF >$OUT
 EOF
 grep -q "^%config-error $TMP:1: $TMP:1: unknown command: wibble$" $OUT
+
+cat <<EOF >$TMP
+wibble wobble
+EOF
+
+echo "source $TMP" | $TMUX -C new  >$OUT
+grep -q "^%config-error $TMP:1: unknown command: wibble$" $OUT

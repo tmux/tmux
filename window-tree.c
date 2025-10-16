@@ -657,8 +657,10 @@ window_tree_draw_session(struct window_tree_modedata *data, struct session *s,
 		screen_write_preview(ctx, &w->active->base, width, sy);
 
 		xasprintf(&label, " %u:%s ", wl->idx, w->name);
-		if (strlen(label) > width)
+		if (strlen(label) > width) {
+			free(label);
 			xasprintf(&label, " %u ", wl->idx);
+		}
 		window_tree_draw_label(ctx, cx + offset, cy, width, sy, &gc,
 		    label);
 		free(label);
@@ -860,8 +862,10 @@ window_tree_search(__unused void *modedata, void *itemdata, const char *ss)
 		if (s == NULL || wl == NULL || wp == NULL)
 			break;
 		cmd = osdep_get_name(wp->fd, wp->tty);
-		if (cmd == NULL || *cmd == '\0')
+		if (cmd == NULL || *cmd == '\0') {
+			free(cmd);
 			return (0);
+		}
 		retval = (strstr(cmd, ss) != NULL);
 		free(cmd);
 		return (retval);

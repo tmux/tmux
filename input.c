@@ -747,6 +747,20 @@ input_table_compare(const void *key, const void *value)
 	return (strcmp(ictx->interm_buf, entry->interm));
 }
 
+/* Stop UTF-8 and enter an invalid character. */
+static void
+input_stop_utf8(struct input_ctx *ictx)
+{
+	struct screen_write_ctx	*sctx = &ictx->ctx;
+	static struct utf8_data	 rc = { "\357\277\275", 3, 3, 1 };
+
+	if (ictx->utf8started) {
+		utf8_copy(&ictx->cell.cell.data, &rc);
+		screen_write_collect_add(sctx, &ictx->cell.cell);
+	}
+	ictx->utf8started = 0;
+}
+
 /*
  * Timer - if this expires then have been waiting for a terminator for too
  * long, so reset to ground.
@@ -1144,7 +1158,7 @@ input_print(struct input_ctx *ictx)
 	struct screen_write_ctx	*sctx = &ictx->ctx;
 	int			 set;
 
-	ictx->utf8started = 0; /* can't be valid UTF-8 */
+	input_stop_utf8(ictx); /* can't be valid UTF-8 */
 
 	set = ictx->cell.set == 0 ? ictx->cell.g0set : ictx->cell.g1set;
 	if (set == 1)
@@ -1220,11 +1234,11 @@ input_c0_dispatch(struct input_ctx *ictx)
 	struct window_pane	*wp = ictx->wp;
 	struct screen		*s = sctx->s;
 	struct grid_cell	 gc, first_gc;
-	u_int			 cx = s->cx, line = s->cy + s->grid->hsize;
+	u_int			 cx, line;
 	u_int			 width;
 	int			 has_content = 0;
 
-	ictx->utf8started = 0; /* can't be valid UTF-8 */
+	input_stop_utf8(ictx); /* can't be valid UTF-8 */
 
 	log_debug("%s: '%c'", __func__, ictx->ch);
 
@@ -1240,11 +1254,13 @@ input_c0_dispatch(struct input_ctx *ictx)
 		break;
 	case '\011':	/* HT */
 		/* Don't tab beyond the end of the line. */
-		if (s->cx >= screen_size_x(s) - 1)
+		cx = s->cx;
+		if (cx >= screen_size_x(s) - 1)
 			break;
 
 		/* Find the next tab point, or use the last column if none. */
-		grid_get_cell(s->grid, s->cx, line, &first_gc);
+		line = s->cy + s->grid->hsize;
+		grid_get_cell(s->grid, cx, line, &first_gc);
 		do {
 			if (!has_content) {
 				grid_get_cell(s->grid, cx, line, &gc);
@@ -1375,7 +1391,8 @@ input_csi_dispatch(struct input_ctx *ictx)
 	struct screen_write_ctx	       *sctx = &ictx->ctx;
 	struct screen		       *s = sctx->s;
 	struct input_table_entry       *entry;
-	int				i, n, m, ek, set;
+	struct options		       *oo;
+	int				i, n, m, ek, set, p;
 	u_int				cx, bg = ictx->cell.cell.bg;
 
 	if (ictx->flags & INPUT_DISCARD)
@@ -1544,6 +1561,34 @@ input_csi_dispatch(struct input_ctx *ictx)
 		break;
 	case INPUT_CSI_QUERY_PRIVATE:
 		switch (input_get(ictx, 0, 0, 0)) {
+		case 12: /* cursor blink: 1 = blink, 2 = steady */
+			if (s->cstyle != SCREEN_CURSOR_DEFAULT ||
+			    s->mode & MODE_CURSOR_BLINKING_SET)
+				n = (s->mode & MODE_CURSOR_BLINKING) ? 1 : 2;
+			else {
+				if (ictx->wp != NULL)
+					oo = ictx->wp->options;
+				else
+					oo = global_options;
+				p = options_get_number(oo, "cursor-style");
+
+				/* blink for 1,3,5; steady for 0,2,4,6 */
+ 				n = (p == 1 || p == 3 || p == 5) ? 1 : 2;
+			}
+			input_reply(ictx, "\033[?12;%d$y", n);
+			break;
+		case 2004: /* bracketed paste */
+			n = (s->mode & MODE_BRACKETPASTE) ? 1 : 2;
+			input_reply(ictx, "\033[?2004;%d$y", n);
+			break;
+		case 1004: /* focus reporting */
+			n = (s->mode & MODE_FOCUSON) ? 1 : 2;
+			input_reply(ictx, "\033[?1004;%d$y", n);
+			break;
+		case 1006: /* SGR mouse */
+			n = (s->mode & MODE_MOUSE_SGR) ? 1 : 2;
+			input_reply(ictx, "\033[?1006;%d$y", n);
+			break;
 		case 2031:
 			input_reply(ictx, "\033[?2031;2$y");
 			break;
@@ -1702,8 +1747,13 @@ input_csi_dispatch(struct input_ctx *ictx)
 		break;
 	case INPUT_CSI_DECSCUSR:
 		n = input_get(ictx, 0, 0, 0);
-		if (n != -1)
-			screen_set_cursor_style(n, &s->cstyle, &s->mode);
+		if (n == -1)
+			break;
+		screen_set_cursor_style(n, &s->cstyle, &s->mode);
+		if (n == 0) {
+			/* Go back to default blinking state. */
+			screen_write_mode_clear(sctx, MODE_CURSOR_BLINKING_SET);
+		}
 		break;
 	case INPUT_CSI_XDA:
 		n = input_get(ictx, 0, 0, 0);
@@ -2357,11 +2407,78 @@ input_enter_dcs(struct input_ctx *ictx)
 	ictx->flags &= ~INPUT_LAST;
 }
 
+/* Handle DECRQSS query. */
+static int
+input_handle_decrqss(struct input_ctx *ictx)
+{
+	struct window_pane	*wp = ictx->wp;
+	struct options		*oo;
+	struct screen_write_ctx	*sctx = &ictx->ctx;
+	u_char			*buf = ictx->input_buf;
+	size_t			 len = ictx->input_len;
+	struct screen		*s = sctx->s;
+	int			 ps, opt_ps, blinking;
+
+	if (len < 3 || buf[1] != ' ' || buf[2] != 'q')
+		goto not_recognized;
+
+	/*
+	 * Cursor style query: DCS $ q SP q
+	 * Reply: DCS 1 $ r SP q <Ps> SP q ST
+	 */
+	if (s->cstyle == SCREEN_CURSOR_BLOCK ||
+	    s->cstyle == SCREEN_CURSOR_UNDERLINE ||
+	    s->cstyle == SCREEN_CURSOR_BAR) {
+		blinking = (s->mode & MODE_CURSOR_BLINKING) != 0;
+		switch (s->cstyle) {
+		case SCREEN_CURSOR_BLOCK:
+			ps = blinking ? 1 : 2;
+			break;
+		case SCREEN_CURSOR_UNDERLINE:
+			ps = blinking ? 3 : 4;
+			break;
+		case SCREEN_CURSOR_BAR:
+			ps = blinking ? 5 : 6;
+			break;
+		default:
+			ps = 0;
+			break;
+		}
+	} else {
+		/*
+		 * No explicit runtime style: fall back to the configured
+		 * cursor-style option (integer Ps 0..6). Pane options inherit.
+		 */
+		if (wp != NULL)
+			oo = wp->options;
+		else
+			oo = global_options;
+		opt_ps = options_get_number(oo, "cursor-style");
+
+		/* Sanity clamp: valid Ps are 0..6 per DECSCUSR. */
+		if (opt_ps < 0 || opt_ps > 6)
+			opt_ps = 0;
+		ps = opt_ps;
+	}
+
+	log_debug("%s: DECRQSS cursor -> Ps=%d (cstyle=%d mode=%#x)", __func__,
+	    ps, s->cstyle, s->mode);
+
+	input_reply(ictx, "\033P1$r q%d q\033\\", ps);
+	return (0);
+
+not_recognized:
+	/* Unrecognized DECRQSS: send DCS 0 $ r Pt ST. */
+	input_reply(ictx, "\033P0$r\033\\");
+	return (0);
+}
+
 /* DCS terminator (ST) received. */
 static int
 input_dcs_dispatch(struct input_ctx *ictx)
 {
 	struct window_pane	*wp = ictx->wp;
+	struct options		*oo;
 	struct screen_write_ctx	*sctx = &ictx->ctx;
 	u_char			*buf = ictx->input_buf;
 	size_t			 len = ictx->input_len;
@@ -2376,6 +2493,7 @@ input_dcs_dispatch(struct input_ctx *ictx)
 
 	if (wp == NULL)
 		return (0);
+	oo = wp->options;
 
 	if (ictx->flags & INPUT_DISCARD) {
 		log_debug("%s: %zu bytes (discard)", __func__, len);
@@ -2396,7 +2514,20 @@ input_dcs_dispatch(struct input_ctx *ictx)
 	}
 #endif
 
-	allow_passthrough = options_get_number(wp->options, "allow-passthrough");
+	/* DCS sequences with intermediate byte '$' (includes DECRQSS). */
+	if (ictx->interm_len == 1 && ictx->interm_buf[0] == '$') {
+		/* DECRQSS is DCS $ q Pt ST. */
+		if (len >= 1 && buf[0] == 'q')
+			return (input_handle_decrqss(ictx));
+
+		/*
+		 * Not DECRQSS. DCS '$' is currently only used by DECRQSS, but
+		 * leave other '$' DCS (if any appear in future) to existing
+		 * handlers.
+		 */
+	}
+
+	allow_passthrough = options_get_number(oo, "allow-passthrough");
 	if (!allow_passthrough)
 		return (0);
 	log_debug("%s: \"%s\"", __func__, buf);
@@ -2526,7 +2657,9 @@ input_exit_apc(struct input_ctx *ictx)
 		return;
 	log_debug("%s: \"%s\"", __func__, ictx->input_buf);
 
-	if (screen_set_title(sctx->s, ictx->input_buf) && wp != NULL) {
+	if (wp != NULL &&
+	    options_get_number(wp->options, "allow-set-title") &&
+	    screen_set_title(sctx->s, ictx->input_buf)) {
 		notify_pane("pane-title-changed", wp);
 		server_redraw_window_borders(wp->window);
 		server_status_window(wp->window);
@@ -2588,9 +2721,9 @@ input_top_bit_set(struct input_ctx *ictx)
 	ictx->flags &= ~INPUT_LAST;
 
 	if (!ictx->utf8started) {
-		if (utf8_open(ud, ictx->ch) != UTF8_MORE)
-			return (0);
 		ictx->utf8started = 1;
+		if (utf8_open(ud, ictx->ch) != UTF8_MORE)
+			input_stop_utf8(ictx);
 		return (0);
 	}
 
@@ -2598,7 +2731,7 @@ input_top_bit_set(struct input_ctx *ictx)
 	case UTF8_MORE:
 		return (0);
 	case UTF8_ERROR:
-		ictx->utf8started = 0;
+		input_stop_utf8(ictx);
 		return (0);
 	case UTF8_DONE:
 		break;
@@ -2619,32 +2752,41 @@ input_top_bit_set(struct input_ctx *ictx)
 
 /* Reply to a colour request. */
 static void
-input_osc_colour_reply(struct input_ctx *ictx, u_int n, int c)
+input_osc_colour_reply(struct input_ctx *ictx, u_int n, int idx, int c)
 {
-    u_char	 r, g, b;
-    const char	*end;
+	u_char		 r, g, b;
+	const char	*end;
 
-    if (c != -1)
-	    c = colour_force_rgb(c);
-    if (c == -1)
+	if (c != -1)
+		c = colour_force_rgb(c);
+	if (c == -1)
 	    return;
-    colour_split_rgb(c, &r, &g, &b);
+	colour_split_rgb(c, &r, &g, &b);
 
-    if (ictx->input_end == INPUT_END_BEL)
-	    end = "\007";
-    else
-	    end = "\033\\";
-    input_reply(ictx, "\033]%u;rgb:%02hhx%02hhx/%02hhx%02hhx/%02hhx%02hhx%s",
-	n, r, r, g, g, b, b, end);
+	if (ictx->input_end == INPUT_END_BEL)
+		end = "\007";
+	else
+		end = "\033\\";
+
+	if (n == 4) {
+		input_reply(ictx,
+		    "\033]%u;%d;rgb:%02hhx%02hhx/%02hhx%02hhx/%02hhx%02hhx%s",
+		    n, idx, r, r, g, g, b, b, end);
+	} else {
+		input_reply(ictx,
+		    "\033]%u;rgb:%02hhx%02hhx/%02hhx%02hhx/%02hhx%02hhx%s",
+		    n, r, r, g, g, b, b, end);
+	}
 }
 
 /* Handle the OSC 4 sequence for setting (multiple) palette entries. */
 static void
 input_osc_4(struct input_ctx *ictx, const char *p)
 {
-	char	*copy, *s, *next = NULL;
-	long	 idx;
-	int	 c, bad = 0, redraw = 0;
+	char			*copy, *s, *next = NULL;
+	long			 idx;
+	int			 c, bad = 0, redraw = 0;
+	struct colour_palette	*palette = ictx->palette;
 
 	copy = s = xstrdup(p);
 	while (s != NULL && *s != '\0') {
@@ -2660,16 +2802,17 @@ input_osc_4(struct input_ctx *ictx, const char *p)
 
 		s = strsep(&next, ";");
 		if (strcmp(s, "?") == 0) {
-			c = colour_palette_get(ictx->palette, idx);
+			c = colour_palette_get(palette, idx|COLOUR_FLAG_256);
 			if (c != -1)
-				input_osc_colour_reply(ictx, 4, c);
+				input_osc_colour_reply(ictx, 4, idx, c);
+			s = next;
 			continue;
 		}
 		if ((c = colour_parseX11(s)) == -1) {
 			s = next;
 			continue;
 		}
-		if (colour_palette_set(ictx->palette, idx, c))
+		if (colour_palette_set(palette, idx, c))
 			redraw = 1;
 		s = next;
 	}
@@ -2687,7 +2830,7 @@ input_osc_8(struct input_ctx *ictx, const char *p)
 	struct hyperlinks	*hl = ictx->ctx.s->hyperlinks;
 	struct grid_cell	*gc = &ictx->cell.cell;
 	const char		*start, *end, *uri;
-	char	    		*id = NULL;
+	char			*id = NULL;
 
 	for (start = p; (end = strpbrk(start, ":;")) != NULL; start = end + 1) {
 		if (end - start >= 4 && strncmp(start, "id=", 3) == 0) {
@@ -2741,7 +2884,7 @@ input_osc_10(struct input_ctx *ictx, const char *p)
 			else
 				c = defaults.fg;
 		}
-		input_osc_colour_reply(ictx, 10, c);
+		input_osc_colour_reply(ictx, 10, 0, c);
 		return;
 	}
 
@@ -2784,7 +2927,7 @@ input_osc_11(struct input_ctx *ictx, const char *p)
 		if (wp == NULL)
 			return;
 		c = window_pane_get_bg(wp);
-		input_osc_colour_reply(ictx, 11, c);
+		input_osc_colour_reply(ictx, 11, 0, c);
 		return;
 	}
 
@@ -2828,7 +2971,7 @@ input_osc_12(struct input_ctx *ictx, const char *p)
 			c = ictx->ctx.s->ccolour;
 			if (c == -1)
 				c = ictx->ctx.s->default_ccolour;
-			input_osc_colour_reply(ictx, 12, c);
+			input_osc_colour_reply(ictx, 12, 0, c);
 		}
 		return;
 	}
@@ -2882,8 +3025,8 @@ input_osc_52(struct input_ctx *ictx, const char *p)
 	int			 outlen, state;
 	struct screen_write_ctx	 ctx;
 	struct paste_buffer	*pb;
-	const char*              allow = "cpqs01234567";
-	char                     flags[sizeof "cpqs01234567"] = "";
+	const char*		 allow = "cpqs01234567";
+	char			 flags[sizeof "cpqs01234567"] = "";
 	u_int			 i, j = 0;
 
 	if (wp == NULL)

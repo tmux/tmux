@@ -221,10 +221,14 @@ cfg_add_cause(const char *fmt, ...)
 void
 cfg_print_causes(struct cmdq_item *item)
 {
-	u_int	 i;
+	struct client	*c = cmdq_get_client(item);
+	u_int		 i;
 
 	for (i = 0; i < cfg_ncauses; i++) {
-		cmdq_print(item, "%s", cfg_causes[i]);
+		if (c != NULL && (c->flags & CLIENT_CONTROL))
+			control_write(c, "%%config-error %s", cfg_causes[i]);
+		else
+			cmdq_print(item, "%s", cfg_causes[i]);
 		free(cfg_causes[i]);
 	}
 
