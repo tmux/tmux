@@ -217,7 +217,7 @@ menu_draw_cb(struct client *c, void *data,
 
 	for (i = 0; i < screen_size_y(&md->s); i++) {
 		tty_draw_line(tty, s, 0, i, menu->width + 4, px, py + i,
-		    &grid_default_cell, NULL);
+		    &grid_default_cell, NULL, NULL);
 	}
 }
 

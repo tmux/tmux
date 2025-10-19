@@ -1745,67 +1745,24 @@ screen_write_collect_clear(struct screen_write_ctx *ctx, u_int y, u_int n)
 static void
 screen_write_collect_scroll(struct screen_write_ctx *ctx, u_int bg)
 {
-	struct screen				*s = ctx->s;
-	struct screen_write_cline		*cl_src, *cl_dst;
-	u_int					 y, r, r_start, r_end;
-	u_int					 ci_start, ci_end, new_end;
-	char					*saved;
-	struct screen_write_citem		*ci, *ci_tmp, *new_ci;
-	struct window_pane			*wp = ctx->wp;
-	struct visible_ranges			*visible_ranges;
-	struct visible_range			*vr;
+	struct screen			*s = ctx->s;
+	struct screen_write_cline	*cl;
+	u_int				 y;
+	char				*saved;
+	struct screen_write_citem	*ci;
 
 	log_debug("%s: at %u,%u (region %u-%u)", __func__, s->cx, s->cy,
 	    s->rupper, s->rlower);
 
 	screen_write_collect_clear(ctx, s->rupper, 1);
-	saved = s->write_list[s->rupper].data;
+	saved = ctx->s->write_list[s->rupper].data;
 	for (y = s->rupper; y < s->rlower; y++) {
-		cl_src = &s->write_list[y + 1];
-		cl_dst = &s->write_list[y];
-
-		visible_ranges = screen_redraw_get_visible_ranges(0, y,
-		    screen_size_x(s), wp);
-		vr = visible_ranges->array;
-
-		/* For each visible range, copy corresponding items from cl_src
-		   to cl_dst. */
-		for (r = 0; r < visible_ranges->n; r++) {
-			if (vr[r].nx == 0) continue;
-			r_start = vr[r].px;
-			r_end = vr[r].px + vr[r].nx;
-
-			TAILQ_FOREACH_SAFE(ci, &cl_src->items, entry, ci_tmp) {
-				ci_start = ci->x;
-				ci_end = ci->x + ci->used;
-
-				if (ci_end <= r_start || ci_start >= r_end)
-					continue;
-
-				new_ci = screen_write_get_citem();
-				new_ci->x = (ci_start < r_start) ?
-				    r_start : ci_start;
-				new_end = (ci_end > r_end) ?
-				    r_end : ci_end;
-				new_ci->used = new_end - new_ci->x;
-				new_ci->type = ci->type;
-				new_ci->wrapped = ci->wrapped;
-				new_ci->bg = bg;
-				memcpy(&new_ci->gc, &ci->gc, sizeof(ci->gc));
-
-				TAILQ_INSERT_TAIL(&cl_dst->items, new_ci, entry);
-				TAILQ_REMOVE(&cl_src->items, ci, entry);
-			}
-		}
-		if (! TAILQ_EMPTY(&cl_src->items)) {
-			screen_write_collect_clear(ctx, y+1, 1);
-			TAILQ_INIT(&cl_src->items);
-		}
-		ctx->s->write_list[y].data = cl_src->data;
+		cl = &ctx->s->write_list[y + 1];
+		TAILQ_CONCAT(&ctx->s->write_list[y].items, &cl->items, entry);
+		ctx->s->write_list[y].data = cl->data;
 	}
-	s->write_list[s->rlower].data = saved;
-	return;
-	/* Also worked without this clear, is this needed? */
+	ctx->s->write_list[s->rlower].data = saved;
+
 	ci = screen_write_get_citem();
 	ci->x = 0;
 	ci->used = screen_size_x(s);
@@ -1855,8 +1812,8 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 	for (y = 0; y < screen_size_y(s); y++) {
 		cl = &ctx->s->write_list[y];
 
-		visible_ranges = screen_redraw_get_visible_ranges(0, y,
-		    screen_size_x(s), wp);
+		visible_ranges = screen_redraw_get_visible_ranges(wp, 0, y,
+		    screen_size_x(s));
 		vr = visible_ranges->array;
 
 		last = UINT_MAX;
@@ -1865,6 +1822,7 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 				fatalx("collect list not in order: %u <= %u",
 				    ci->x, last);
 			}
+			wr_length = 0;
 			for (r = 0; r < visible_ranges->n; r++) {
 				if (vr[r].nx == 0) continue;
 				r_start = vr[r].px;
@@ -1880,6 +1838,7 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 				wr_end = (ci_end > r_end) ?
 				    r_end : ci_end;
 				wr_length = wr_end - wr_start;
+
 				if (wr_length == 0)
 					continue;
 
@@ -1889,7 +1848,7 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 					ttyctx.bg = ci->bg;
 					ttyctx.num = wr_length;
 					tty_write(tty_cmd_clearcharacter,
-					    &ttyctx);
+						  &ttyctx);
 				} else {
 					screen_write_initctx(ctx, &ttyctx, 0);
 					ttyctx.cell = &ci->gc;
@@ -1899,10 +1858,11 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 					tty_write(tty_cmd_cells, &ttyctx);
 				}
 				items++;
+
+				TAILQ_REMOVE(&cl->items, ci, entry);
+				screen_write_free_citem(ci);
+				last = ci->x;
 			}
-			TAILQ_REMOVE(&cl->items, ci, entry);
-			screen_write_free_citem(ci);
-			last = ci->x;
 		}
 	}
 	s->cx = cx; s->cy = cy;

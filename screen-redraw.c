@@ -104,7 +104,11 @@ screen_redraw_two_panes(struct window *w, int direction)
 {
 	struct window_pane	*wp;
 
-	wp = TAILQ_NEXT(TAILQ_FIRST(&w->panes), entry);
+	wp = TAILQ_FIRST(&w->panes);
+	do {
+		wp = TAILQ_NEXT(wp, entry);
+	} while (wp && wp->layout_cell == NULL);
+
 	if (wp == NULL)
 		return (0); /* one pane */
 	if (TAILQ_NEXT(wp, entry) != NULL)
@@ -230,7 +234,7 @@ screen_redraw_cell_border(struct screen_redraw_ctx *ctx, u_int px, u_int py)
 		return (1);
 
 	/* Check all the panes. */
-	TAILQ_FOREACH(wp, &w->panes, entry) {
+	TAILQ_FOREACH_REVERSE(wp, &w->panes, window_panes, entry) {
 		if (!window_pane_visible(wp))
 			continue;
 		switch (screen_redraw_pane_border(ctx, wp, px, py)) {
@@ -335,7 +339,7 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 {
 	struct client		*c = ctx->c;
 	struct window		*w = c->session->curw->window;
-	struct window_pane	*wp, *active;
+	struct window_pane	*wp, *start;
 	int			 pane_status = ctx->pane_status;
 	u_int			 sx = w->sx, sy = w->sy;
 	int			 border, pane_scrollbars = ctx->pane_scrollbars;
@@ -351,7 +355,18 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 		return (screen_redraw_type_of_cell(ctx, px, py));
 
 	if (pane_status != PANE_STATUS_OFF) {
-		active = wp = server_client_get_pane(c);
+		/* Look for higest z-index window at px,py.  xxxx scrollbars? */
+		TAILQ_FOREACH_REVERSE(wp, &w->panes, window_panes, entry) {
+			if (! (wp->flags & PANE_MINIMISED) &&
+			    (px >= wp->xoff - 1 && px<= wp->xoff + wp->sx + 1) &&
+			    (py >= wp->yoff - 1 && py<= wp->yoff + wp->sy + 1))
+				break;
+		}
+		if (wp != NULL)
+			start = wp;
+		else
+			start = wp = server_client_get_pane(c);
+
 		do {
 			if (!window_pane_visible(wp))
 				goto next1;
@@ -369,10 +384,22 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 			wp = TAILQ_NEXT(wp, entry);
 			if (wp == NULL)
 				wp = TAILQ_FIRST(&w->panes);
-		} while (wp != active);
+		} while (wp != start);
 	}
 
-	active = wp = server_client_get_pane(c);
+
+	/* Look for higest z-index window at px,py.  xxxx scrollbars? */
+	TAILQ_FOREACH_REVERSE(wp, &w->panes, window_panes, entry) {
+		if (! (wp->flags & PANE_MINIMISED) &&
+		    (px >= wp->xoff-1 && px<= wp->xoff+wp->sx+1) &&
+		    (py >= wp->yoff-1 && py<= wp->yoff+wp->sy+1))
+			break;
+	}
+	if (wp == NULL)
+		start = wp = server_client_get_pane(c);
+	else
+		start = wp;
+
 	do {
 		if (!window_pane_visible(wp))
 			goto next2;
@@ -422,7 +449,7 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 		wp = TAILQ_NEXT(wp, entry);
 		if (wp == NULL)
 			wp = TAILQ_FIRST(&w->panes);
-	} while (wp != active);
+	} while (wp != start);
 
 	return (CELL_OUTSIDE);
 }
@@ -516,6 +543,7 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 	struct tty		*tty = &c->tty;
 	struct window_pane	*wp;
 	struct screen		*s;
+	struct visible_ranges	*visible_ranges;
 	u_int			 i, x, width, xoff, yoff, size;
 
 	log_debug("%s: %s @%u", __func__, c->name, w->id);
@@ -562,8 +590,11 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 
 		if (ctx->statustop)
 			yoff += ctx->statuslines;
+		visible_ranges = screen_redraw_get_visible_ranges(wp, i, 0,
+		    width);
+
 		tty_draw_line(tty, s, i, 0, width, x, yoff - ctx->oy,
-		    &grid_default_cell, NULL);
+		    &grid_default_cell, NULL, visible_ranges);
 	}
 	tty_cursor(tty, 0, 0);
 }
@@ -722,6 +753,7 @@ screen_redraw_draw_borders_style(struct screen_redraw_ctx *ctx, u_int x,
 	wp->border_gc_set = 1;
 
 	ft = format_create_defaults(NULL, c, s, s->curw, wp);
+
 	if (screen_redraw_check_is(ctx, x, y, active))
 		style_apply(&wp->border_gc, oo, "pane-active-border-style", ft);
 	else
@@ -881,21 +913,22 @@ screen_redraw_draw_status(struct screen_redraw_ctx *ctx)
 		y = c->tty.sy - ctx->statuslines;
 	for (i = 0; i < ctx->statuslines; i++) {
 		tty_draw_line(tty, s, 0, i, UINT_MAX, 0, y + i,
-		    &grid_default_cell, NULL);
+		    &grid_default_cell, NULL, NULL);
 	}
 }
 
 /* Construct ranges of line at px,py of width cells of base_wp that are
    unobsructed. */
 struct visible_ranges *
-screen_redraw_get_visible_ranges(u_int px, u_int py, u_int width,
-    struct window_pane *base_wp) {
+screen_redraw_get_visible_ranges(struct window_pane *base_wp, u_int px,
+    u_int py, u_int width) {
 	struct window_pane		*wp;
 	struct window			*w;
 	static struct visible_ranges	 ranges = { NULL, 0, 0 };
 	static struct visible_range	*vr;
-	int				found_self;
-	u_int				r, s;
+	int				found_self, sb_w;
+	u_int				r, s, lb, rb, tb, bb;
+	int				pane_scrollbars;
 
 	/* For efficiency ranges is static and space reused. */
 	if (ranges.array == NULL) {
@@ -913,6 +946,7 @@ screen_redraw_get_visible_ranges(u_int px, u_int py, u_int width,
 		return (&ranges);
 
 	w = base_wp->window;
+	pane_scrollbars = options_get_number(w->options, "pane-scrollbars");
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if (wp == base_wp) {
@@ -920,35 +954,43 @@ screen_redraw_get_visible_ranges(u_int px, u_int py, u_int width,
 			continue;
 		}
 
+		tb = wp->yoff-1;
+		bb = wp->yoff + wp->sy;
 		if (!found_self || wp->layout_cell != NULL ||
 		    (wp->flags & PANE_MINIMISED) ||
-		    (py < wp->yoff || py > wp->yoff + wp->sy))
+		    (py < tb || py > bb))
 			continue;
 
+		/* Are scrollbars enabled? */
+		if (window_pane_show_scrollbar(wp, pane_scrollbars))
+			sb_w = wp->scrollbar_style.width + wp->scrollbar_style.pad;
+
 		for (r=0; r<ranges.n; r++) {
+			lb = wp->xoff - 1;
+			rb = wp->xoff + wp->sx + sb_w + 1;
 			/* If the left edge of floating wp
 			   falls inside this range and right
 			   edge covers up to right of range, 
 			   then shrink left edge of range. */
-			if (wp->xoff > vr[r].px &&
-			    wp->xoff < vr[r].px + vr[r].nx &&
-			    wp->xoff + wp->sx >= vr[r].px + vr[r].nx) {
-				vr[r].nx = wp->xoff;
+			if (lb > vr[r].px &&
+			    lb < vr[r].px + vr[r].nx &&
+			    rb >= vr[r].px + vr[r].nx) {
+				vr[r].nx = lb;
 			}
 			/* Else if the right edge of floating wp
 			   falls inside of this range and left
 			   edge covers the left of range,
 			   then move px forward to right edge of wp. */
-			else if (wp->xoff + wp->sx > vr[r].px &&
-				   wp->xoff + wp->sx < vr[r].px + vr[r].nx &&
-				   wp->xoff <= vr[r].px) {
-				vr[r].px = vr[r].px + (wp->xoff + wp->sx);
-				vr[r].nx = vr[r].nx - (wp->xoff + wp->sx);
+			else if (rb > vr[r].px &&
+				   rb < vr[r].px + vr[r].nx &&
+				   lb <= vr[r].px) {
+				vr[r].px = vr[r].px + rb;
+				vr[r].nx = vr[r].nx - rb;
 			}
 			/* Else if wp fully inside range
 			   then split range into 2 ranges. */
-			else if (wp->xoff > vr[r].px &&
-				   wp->xoff + wp->sx < vr[r].px + vr[r].nx) {
+			else if (lb > vr[r].px &&
+				   rb < vr[r].px + vr[r].nx) {
 				if (ranges.size == ranges.n) {
 					ranges.array = xreallocarray(vr,
 					    ranges.size += 4, sizeof *vr);
@@ -958,14 +1000,14 @@ screen_redraw_get_visible_ranges(u_int px, u_int py, u_int width,
 					vr[s].px = vr[s-1].px;
 					vr[s].nx = vr[s-1].nx;
 				}
-				vr[r].nx = wp->xoff;
-				vr[r+1].px = wp->xoff + wp->sx;
+				vr[r].nx = lb;
+				vr[r+1].px = rb;
 				ranges.n++;
 			}
 			/* If floating wp completely covers this range
 			   then delete it (make it 0 length). */
-			else if (wp->xoff <= vr[r].px &&
-				   wp->xoff+wp->sx >= vr[r].px+vr[r].nx) {
+			else if (lb <= vr[r].px &&
+				 rb >= vr[r].px+vr[r].nx) {
 				vr[r].nx = 0;
 			}
 			/* Else the range is already obscured, do nothing. */
@@ -1030,11 +1072,13 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 		    __func__, c->name, wp->id, i, j, x, y, width);
 
 		/* Get visible ranges of line before we draw it. */
-		visible_ranges = screen_redraw_get_visible_ranges(x, y, width,
-		    wp);
+		visible_ranges = screen_redraw_get_visible_ranges(wp, x, y,
+		    width);
 		vr = visible_ranges->array;
 
 		tty_default_colours(&defaults, wp);
+		/* xxxx tty_draw_line should drawn only visible ranges.  see xxxx commment in tty_draw_line. */
+		/*tty_draw_line(tty, s, i, j, width, x, y, &defaults, palette, visible_ranges); */
 
 		for (r=0; r<visible_ranges->n; r++) {
 			if (vr[r].nx == 0)
@@ -1043,7 +1087,8 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 			   pane offset. If you don't sub offset,
 			   contents of pane shifted. */
 			tty_draw_line(tty, s, i+vr[r].px-wp->xoff, j,
-			    vr[r].nx, vr[r].px, y, &defaults, palette);
+			    vr[r].nx, vr[r].px, y, &defaults, palette,
+			    visible_ranges);
 		}
 	}
 

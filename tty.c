@@ -1365,22 +1365,30 @@ tty_clear_pane_area(struct tty *tty, const struct tty_ctx *ctx, u_int py,
 		tty_clear_area(tty, &ctx->defaults, y, ry, x, rx, bg);
 }
 
+/* Redraw a line at py of a screen taking into account obscured ranges.
+ * Menus and popups are always on top, ctx->arg == NULL.
+ */
 static void
 tty_draw_pane(struct tty *tty, const struct tty_ctx *ctx, u_int py)
 {
-	struct screen	*s = ctx->s;
-	u_int		 nx = ctx->sx, i, x, rx, ry;
+	struct screen		*s = ctx->s;
+	struct window_pane	*wp = ctx->arg;
+	struct visible_ranges	*visible_ranges = NULL;
+	u_int			 nx = ctx->sx, i, x, rx, ry;
 
 	log_debug("%s: %s %u %d", __func__, tty->client->name, py, ctx->bigger);
 
+	if (wp)
+		visible_ranges = screen_redraw_get_visible_ranges(wp, 0, py, nx);
+
 	if (!ctx->bigger) {
 		tty_draw_line(tty, s, 0, py, nx, ctx->xoff, ctx->yoff + py,
-		    &ctx->defaults, ctx->palette);
+		    &ctx->defaults, ctx->palette, visible_ranges);
 		return;
 	}
 	if (tty_clamp_line(tty, ctx, 0, py, nx, &i, &x, &rx, &ry)) {
 		tty_draw_line(tty, s, i, py, rx, x, ry, &ctx->defaults,
-		    ctx->palette);
+		    ctx->palette, visible_ranges);
 	}
 }
 
@@ -1457,10 +1465,38 @@ tty_check_overlay_range(struct tty *tty, u_int px, u_int py, u_int nx,
 	c->overlay_check(c, c->overlay_data, px, py, nx, r);
 }
 
+/* Check if a single character is within a visible range (not obscured by a
+ * floating window pane). Returns a boolean.
+ */
+static int
+tty_check_in_visible_range(struct visible_ranges *visible_ranges, u_int px)
+{
+	struct visible_range	*vr;
+	u_int			 r;
+
+	/* No visible_ranges if called from a popup or menu. Always on top. */
+	if (visible_ranges == NULL)
+		return (0);
+
+	vr = visible_ranges->array;
+
+	/* Verify if px is in a visible range. */
+	for (r=0; r<visible_ranges->n; r++) {
+		if (vr[r].nx == 0)
+			continue;
+		if (px >= vr[r].px &&
+		    px <= (vr[r].px + vr[r].nx))
+			return (0);
+	}
+
+	/* px not found in any visible range, it is obscured by a pane. */
+	return (1);
+}
+
 void
 tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
     u_int atx, u_int aty, const struct grid_cell *defaults,
-    struct colour_palette *palette)
+    struct colour_palette *palette, struct visible_ranges *visible_ranges)
 {
 	struct grid		*gd = s->grid;
 	struct grid_cell	 gc, last;
@@ -1517,6 +1553,10 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	    atx != 0 ||
 	    tty->cx < tty->sx ||
 	    nx < tty->sx) {
+		/* Do I need to check
+		   !tty_is_obstructed(c->session->curw->window->active
+		   here too? It's not certain that the active pane is
+		   the one being drawn in. (delete this comment) */
 		if (nx < tty->sx &&
 		    atx == 0 &&
 		    px + sx != nx &&
@@ -1543,6 +1583,8 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 		gcp = tty_check_codeset(tty, &gc);
 		if (len != 0 &&
 		    (!tty_check_overlay(tty, atx + ux + width, aty) ||
+		     !tty_check_in_visible_range(visible_ranges,
+		         atx + ux + width) ||
 		    (gcp->attr & GRID_ATTR_CHARSET) ||
 		    gcp->flags != last.flags ||
 		    gcp->attr != last.attr ||
@@ -1577,7 +1619,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 
 		tty_check_overlay_range(tty, atx + ux, aty, gcp->data.width,
 		    &r);
-		hidden = 0;
+		hidden = 0; /* need to check visible_ranges too? xxxx */
 		for (j = 0; j < OVERLAY_MAX_RANGES; j++)
 			hidden += r.nx[j];
 		hidden = gcp->data.width - hidden;
@@ -1997,11 +2039,40 @@ tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 	tty_putc(tty, '\n');
 }
 
+/* Return 1 if there is a floating window pane overlapping this pane. */
+static int
+tty_is_obscured(const struct tty_ctx *ctx)
+{
+	struct window_pane	*base_wp = ctx->arg, *wp;
+	struct window		*w;
+	int			 found_self = 0;
+
+	if (base_wp == NULL)
+		return(0);
+	w = base_wp->window;
+
+	/* Check if there is a floating pane. xxxx borders? scrollbars? */
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (wp == base_wp) {
+			found_self = 1;
+			continue;
+		}
+		if (found_self && wp->layout_cell == NULL &&
+		    ! (wp->flags & PANE_MINIMISED) &&
+		    (wp->yoff > base_wp->yoff &&
+		     wp->yoff + wp->sy < base_wp->yoff + base_wp->sy) &&
+		    (wp->xoff > base_wp->xoff &&
+		     wp->xoff + wp->sx < base_wp->xoff + base_wp->sx))
+			return (1);
+		}
+	return (0);
+}
+
 void
 tty_cmd_scrollup(struct tty *tty, const struct tty_ctx *ctx)
 {
-	struct client	*c = tty->client;
-	u_int		 i;
+	struct client		*c = tty->client;
+	u_int			 i;
 
 	if (ctx->bigger ||
 	    (!tty_full_width(tty, ctx) && !tty_use_margin(tty)) ||
@@ -2009,7 +2080,8 @@ tty_cmd_scrollup(struct tty *tty, const struct tty_ctx *ctx)
 	    !tty_term_has(tty->term, TTYC_CSR) ||
 	    ctx->sx == 1 ||
 	    ctx->sy == 1 ||
-	    c->overlay_check != NULL) {
+	    c->overlay_check != NULL ||
+	    tty_is_obscured(ctx)) {
 		tty_redraw_region(tty, ctx);
 		return;
 	}
@@ -2168,6 +2240,8 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 	const struct grid_cell	*gcp = ctx->cell;
 	struct screen		*s = ctx->s;
 	struct overlay_ranges	 r;
+	struct window_pane	 *wp = ctx->arg;
+	struct visible_ranges	 *visible_ranges;
 	u_int			 px, py, i, vis = 0;
 
 	px = ctx->xoff + ctx->ocx - ctx->wox;
@@ -2176,6 +2250,9 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 	    (gcp->data.width == 1 && !tty_check_overlay(tty, px, py)))
 		return;
 
+	if (wp)
+		visible_ranges = screen_redraw_get_visible_ranges(wp, px, py, 1);
+
 	/* Handle partially obstructed wide characters. */
 	if (gcp->data.width > 1) {
 		tty_check_overlay_range(tty, px, py, gcp->data.width, &r);
@@ -2183,7 +2260,8 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 			vis += r.nx[i];
 		if (vis < gcp->data.width) {
 			tty_draw_line(tty, s, s->cx, s->cy, gcp->data.width,
-			    px, py, &ctx->defaults, ctx->palette);
+			    px, py, &ctx->defaults, ctx->palette,
+			    visible_ranges);
 			return;
 		}
 	}
