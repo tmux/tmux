@@ -403,7 +403,7 @@ server_find_session(struct session *s,
 	struct session *s_loop, *s_out = NULL;
 
 	RB_FOREACH(s_loop, sessions, &sessions) {
-		if (s_loop != s && (s_out == NULL || f(s_loop, s_out)))
+		if (s_loop != s && f(s_loop, s_out))
 			s_out = s_loop;
 	}
 	return (s_out);
@@ -412,6 +412,8 @@ server_find_session(struct session *s,
 static int
 server_newer_session(struct session *s_loop, struct session *s_out)
 {
+	if (s_out == NULL)
+		return (1);
 	return (timercmp(&s_loop->activity_time, &s_out->activity_time, >));
 }
 
