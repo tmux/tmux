@@ -917,6 +917,22 @@ screen_redraw_draw_status(struct screen_redraw_ctx *ctx)
 	}
 }
 
+static int
+screen_redraw_is_visible(struct visible_ranges *ranges, u_int px)
+{
+	struct visible_range	*vr;
+	u_int			 r;
+
+	vr = ranges->array;
+	for (r=0; r<ranges->n; r++) {
+		if (vr[r].nx == 0)
+			continue;
+		if ((px >= vr[r].px) && (px <= vr[r].px + vr[r].nx))
+			return (1);
+	}
+	return (0);
+}
+
 /* Construct ranges of line at px,py of width cells of base_wp that are
    unobsructed. */
 struct visible_ranges *
@@ -1179,6 +1195,7 @@ screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx,
 	int			 px, py, ox = ctx->ox, oy = ctx->oy;
 	int			 sx = ctx->sx, sy = ctx->sy, xoff = wp->xoff;
 	int			 yoff = wp->yoff;
+	struct visible_ranges	*visible_ranges;
 
 	/* Set up style for slider. */
 	gc = sb_style->gc;
@@ -1195,12 +1212,15 @@ screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx,
 
 	for (j = 0; j < jmax; j++) {
 		py = sb_y + j;
+		visible_ranges = screen_redraw_get_visible_ranges(wp, sb_x, py,
+		   imax);
 		for (i = 0; i < imax; i++) {
 			px = sb_x + i;
 			if (px < xoff - ox - (int)sb_w - (int)sb_pad ||
 			    px >= sx || px < 0 ||
 			    py < yoff - oy - 1 ||
-			    py >= sy || py < 0)
+			    py >= sy || py < 0 ||
+			    ! screen_redraw_is_visible(visible_ranges, px))
 				continue;
 			tty_cursor(tty, px, py);
 			if ((sb_pos == PANE_SCROLLBARS_LEFT &&
