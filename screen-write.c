@@ -1781,7 +1781,7 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 	struct screen_write_cline	*cl;
 	u_int				 y, cx, cy, last, items = 0, r;
 	u_int				 r_start, r_end, ci_start, ci_end;
-	u_int				 wr_start, wr_end, wr_length, sx, xoff;
+	u_int				 wr_start, wr_end, wr_length, sx, xoff, yoff;
 	struct tty_ctx			 ttyctx;
 	struct visible_ranges		*visible_ranges;
         struct visible_range		*vr;
@@ -1814,15 +1814,17 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 	if (wp != NULL) {
 		sx = wp->window->sx;
 		xoff = wp->xoff;
+		yoff = wp->yoff;
 	} else {
 		sx = screen_size_x(s);
 		xoff = 0;
+		yoff = 0;
 	}
 
 	for (y = 0; y < screen_size_y(s); y++) {
 		cl = &ctx->s->write_list[y];
 
-		visible_ranges = screen_redraw_get_visible_ranges(wp, 0, y,
+		visible_ranges = screen_redraw_get_visible_ranges(wp, 0, y + yoff,
 		    sx);
 		vr = visible_ranges->array;
 
