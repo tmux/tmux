@@ -917,11 +917,18 @@ screen_redraw_draw_status(struct screen_redraw_ctx *ctx)
 	}
 }
 
-static int
+/* Check if a single character is within a visible range (not obscured by a
+ * floating window pane). Returns a boolean.
+ */
+int
 screen_redraw_is_visible(struct visible_ranges *ranges, u_int px)
 {
 	struct visible_range	*vr;
 	u_int			 r;
+
+	/* No visible_ranges if called from a popup or menu. Always visible. */
+	if (ranges == NULL)
+		return (1);
 
 	vr = ranges->array;
 	for (r=0; r<ranges->n; r++) {
@@ -1000,8 +1007,8 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, u_int px,
 			else if (rb > vr[r].px &&
 				   rb < vr[r].px + vr[r].nx &&
 				   lb <= vr[r].px) {
-				vr[r].px = vr[r].px + rb;
-				vr[r].nx = vr[r].nx - rb;
+				vr[r].px = vr[r].px + (rb - vr[r].px);
+				vr[r].nx = vr[r].nx - (rb - vr[r].px);
 			}
 			/* Else if wp fully inside range
 			   then split range into 2 ranges. */

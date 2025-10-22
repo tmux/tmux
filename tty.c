@@ -1465,34 +1465,6 @@ tty_check_overlay_range(struct tty *tty, u_int px, u_int py, u_int nx,
 	c->overlay_check(c, c->overlay_data, px, py, nx, r);
 }
 
-/* Check if a single character is within a visible range (not obscured by a
- * floating window pane). Returns a boolean.
- */
-static int
-tty_check_in_visible_range(struct visible_ranges *visible_ranges, u_int px)
-{
-	struct visible_range	*vr;
-	u_int			 r;
-
-	/* No visible_ranges if called from a popup or menu. Always on top. */
-	if (visible_ranges == NULL)
-		return (0);
-
-	vr = visible_ranges->array;
-
-	/* Verify if px is in a visible range. */
-	for (r=0; r<visible_ranges->n; r++) {
-		if (vr[r].nx == 0)
-			continue;
-		if (px >= vr[r].px &&
-		    px <= (vr[r].px + vr[r].nx))
-			return (0);
-	}
-
-	/* px not found in any visible range, it is obscured by a pane. */
-	return (1);
-}
-
 void
 tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
     u_int atx, u_int aty, const struct grid_cell *defaults,
@@ -1583,7 +1555,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 		gcp = tty_check_codeset(tty, &gc);
 		if (len != 0 &&
 		    (!tty_check_overlay(tty, atx + ux + width, aty) ||
-		     !tty_check_in_visible_range(visible_ranges,
+		     screen_redraw_is_visible(visible_ranges,
 		         atx + ux + width) ||
 		    (gcp->attr & GRID_ATTR_CHARSET) ||
 		    gcp->flags != last.flags ||
@@ -2059,10 +2031,14 @@ tty_is_obscured(const struct tty_ctx *ctx)
 		}
 		if (found_self && wp->layout_cell == NULL &&
 		    ! (wp->flags & PANE_MINIMISED) &&
-		    (wp->yoff > base_wp->yoff &&
-		     wp->yoff + wp->sy < base_wp->yoff + base_wp->sy) &&
-		    (wp->xoff > base_wp->xoff &&
-		     wp->xoff + wp->sx < base_wp->xoff + base_wp->sx))
+		    ((wp->yoff >= base_wp->yoff &&
+		    wp->yoff <= base_wp->yoff + base_wp->sy) ||
+		    (wp->yoff + wp->sy >= base_wp->yoff &&
+		    wp->yoff + wp->sy <= base_wp->yoff + base_wp->sy)) &&
+		    ((wp->xoff >= base_wp->xoff &&
+		    wp->xoff <= base_wp->xoff + base_wp->sx) ||
+		    (wp->xoff + wp->sx >= base_wp->xoff &&
+		    wp->xoff + wp->sx <= base_wp->xoff + base_wp->sx)))
 			return (1);
 		}
 	return (0);

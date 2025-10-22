@@ -3175,6 +3175,7 @@ void	 screen_write_alternateoff(struct screen_write_ctx *,
 /* screen-redraw.c */
 void	 screen_redraw_screen(struct client *);
 void	 screen_redraw_pane(struct client *, struct window_pane *, int);
+int	 screen_redraw_is_visible(struct visible_ranges *ranges, u_int px);
 struct visible_ranges *screen_redraw_get_visible_ranges(struct window_pane *,
 	     u_int, u_int, u_int);
 

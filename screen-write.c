@@ -1781,7 +1781,7 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 	struct screen_write_cline	*cl;
 	u_int				 y, cx, cy, last, items = 0, r;
 	u_int				 r_start, r_end, ci_start, ci_end;
-	u_int				 wr_start, wr_end, wr_length;
+	u_int				 wr_start, wr_end, wr_length, sx, xoff;
 	struct tty_ctx			 ttyctx;
 	struct visible_ranges		*visible_ranges;
         struct visible_range		*vr;
@@ -1809,11 +1809,21 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 
 	cx = s->cx; cy = s->cy;
 
+	/* The xoff and width of window pane relative to the window we
+	 * are writing to relative to the visible_ranges array. */
+	if (wp != NULL) {
+		sx = wp->window->sx;
+		xoff = wp->xoff;
+	} else {
+		sx = screen_size_x(s);
+		xoff = 0;
+	}
+
 	for (y = 0; y < screen_size_y(s); y++) {
 		cl = &ctx->s->write_list[y];
 
 		visible_ranges = screen_redraw_get_visible_ranges(wp, 0, y,
-		    screen_size_x(s));
+		    sx);
 		vr = visible_ranges->array;
 
 		last = UINT_MAX;
@@ -1830,16 +1840,20 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 				ci_start = ci->x;
 				ci_end = ci->x + ci->used;
 
-				if (ci_end <= r_start || ci_start >= r_end)
+				if (ci_start + xoff > r_end || ci_end + xoff < r_start)
 					continue;
 
-				wr_start = (ci_start < r_start) ?
-				    r_start : ci_start;
-				wr_end = (ci_end > r_end) ?
-				    r_end : ci_end;
+				if (r_start > ci_start + xoff)
+					wr_start = ci_start + (r_start - (ci_start + xoff));
+				else
+					wr_start = ci_start;
+				if (ci_end + xoff > r_end)
+					wr_end = ci_end - ((ci_end + xoff) - r_end);
+				else
+					wr_end = ci_end;
 				wr_length = wr_end - wr_start;
 
-				if (wr_length == 0)
+				if (wr_length <= 0)
 					continue;
 
 				screen_write_set_cursor(ctx, wr_start, y);
