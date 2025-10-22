@@ -89,6 +89,11 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct args_value	*av;
 	u_int			 count = args_count(args), curval = 0;
 
+	if (wp->layout_cell == NULL) {
+		cmdq_error(item, "can't split a floating pane");
+		return (CMD_RETURN_ERROR);
+	}
+
 	type = LAYOUT_TOPBOTTOM;
 	if (args_has(args, 'h'))
 		type = LAYOUT_LEFTRIGHT;
