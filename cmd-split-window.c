@@ -56,7 +56,7 @@ const struct cmd_entry cmd_new_floating_window_entry = {
 	.name = "new-floating-window",
 	.alias = "floatw",
 
-	.args = { "bc:de:fF:hIl:p:Pt:vZ", 0, -1, NULL },
+	.args = { "bc:de:fF:h:Il:p:Pt:w:x:y:Z", 0, -1, NULL },
 	.usage = "[-bdefhIPvZ] [-c start-directory] [-e environment] "
 		 "[-F format] [-l size] " CMD_TARGET_PANE_USAGE
 		 " [shell-command [argument ...]]",
@@ -239,7 +239,7 @@ cmd_new_floating_window_exec(struct cmd *self, struct cmdq_item *item)
 	char			*cause = NULL, *cp;
 	struct args_value	*av;
 	u_int			 count = args_count(args);
-	u_int			 sx, sy, pct;
+	u_int			 sx, sy, pct, x, y;
 
 	if (args_has(args, 'f')) {
 		sx = w->sx;
@@ -257,7 +257,7 @@ cmd_new_floating_window_exec(struct cmd *self, struct cmdq_item *item)
 				sx = w->sx * pct / 100;
 				sy = w->sy * pct / 100;
 			}
-		} else {
+		} else if (cause == NULL) {
 			sx = w->sx / 2;
 			sy = w->sy / 2;
 		}
@@ -267,8 +267,47 @@ cmd_new_floating_window_exec(struct cmd *self, struct cmdq_item *item)
 			return (CMD_RETURN_ERROR);
 		}
 	}
-	sc.xoff = 10;
-	sc.yoff = 10;
+	if (args_has(args, 'w')) {
+		sx = args_strtonum_and_expand(args, 'w', 0, w->sx, item,
+		    &cause);
+		if (cause != NULL) {
+			cmdq_error(item, "size %s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
+		}
+	}
+	if (args_has(args, 'h')) {
+		sy = args_strtonum_and_expand(args, 'h', 0, w->sy, item,
+		    &cause);
+		if (cause != NULL) {
+			cmdq_error(item, "size %s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
+		}
+	}
+	if (args_has(args, 'x')) {
+		x = args_strtonum_and_expand(args, 'x', 0, w->sx, item,
+		    &cause);
+		if (cause != NULL) {
+			cmdq_error(item, "size %s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
+		}
+	} else
+		x = 10;
+	if (args_has(args, 'y')) {
+		y = args_strtonum_and_expand(args, 'y', 0, w->sx, item,
+		    &cause);
+		if (cause != NULL) {
+			cmdq_error(item, "size %s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
+		}
+	} else
+		y = 10;
+
+	sc.xoff = x;
+	sc.yoff = y;
 	sc.sx = sx;
 	sc.sy = sy;
 
