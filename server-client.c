@@ -2953,6 +2953,10 @@ server_client_reset_state(struct client *c)
 			if (status_at_line(c) == 0)
 				cy += status_line_size(c);
 		}
+		if (!screen_redraw_is_visible(
+		    screen_redraw_get_visible_ranges(wp, cx, cy, 1), cx))
+			cursor = 0;
+
 		if (!cursor)
 			mode &= ~MODE_CURSOR;
 	}
