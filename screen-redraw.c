@@ -391,8 +391,8 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 	/* Look for higest z-index window at px,py.  xxxx scrollbars? */
 	TAILQ_FOREACH_REVERSE(wp, &w->panes, window_panes, entry) {
 		if (! (wp->flags & PANE_MINIMISED) &&
-		    (px >= wp->xoff-1 && px<= wp->xoff+wp->sx+1) &&
-		    (py >= wp->yoff-1 && py<= wp->yoff+wp->sy+1))
+		    (px >= wp->xoff - 1 && px <= wp->xoff + wp->sx + 1) &&
+		    (py >= wp->yoff - 1 && py <= wp->yoff + wp->sy)) /* + 1? */
 			break;
 	}
 	if (wp == NULL)
