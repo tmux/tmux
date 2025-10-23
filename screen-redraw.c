@@ -940,6 +940,15 @@ screen_redraw_is_visible(struct visible_ranges *ranges, u_int px)
 	return (0);
 }
 
+static void
+screen_redraw_print_panes(struct window *w) {
+	struct window_pane *wp;
+
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		printf("id=%u %ux%u @%u,%u\n", wp->id, wp->sx, wp->sy, wp->xoff, wp->yoff);
+	}
+}
+
 /* Construct ranges of line at px,py of width cells of base_wp that are
    unobsructed. */
 struct visible_ranges *
@@ -971,6 +980,7 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, u_int px,
 	w = base_wp->window;
 	pane_scrollbars = options_get_number(w->options, "pane-scrollbars");
 
+	found_self = 0;
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if (wp == base_wp) {
 			found_self = 1;
@@ -979,7 +989,7 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, u_int px,
 
 		tb = wp->yoff-1;
 		bb = wp->yoff + wp->sy;
-		if (!found_self || wp->layout_cell != NULL ||
+		if (!found_self ||
 		    (wp->flags & PANE_MINIMISED) ||
 		    (py < tb || py > bb))
 			continue;
@@ -1007,8 +1017,8 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, u_int px,
 			else if (rb > vr[r].px &&
 				   rb < vr[r].px + vr[r].nx &&
 				   lb <= vr[r].px) {
-				vr[r].px = vr[r].px + (rb - vr[r].px);
 				vr[r].nx = vr[r].nx - (rb - vr[r].px);
+				vr[r].px = vr[r].px + (rb - vr[r].px);
 			}
 			/* Else if wp fully inside range
 			   then split range into 2 ranges. */
