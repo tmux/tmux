@@ -388,11 +388,13 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 	}
 
 
-	/* Look for higest z-index window at px,py.  xxxx scrollbars? */
+	/* Look for higest z-index window at px,py. */
 	TAILQ_FOREACH_REVERSE(wp, &w->panes, window_panes, entry) {
+		sb_w = wp->scrollbar_style.width +
+			wp->scrollbar_style.pad;
 		if (! (wp->flags & PANE_MINIMISED) &&
-		    (px >= wp->xoff - 1 && px <= wp->xoff + wp->sx + 1) &&
-		    (py >= wp->yoff - 1 && py <= wp->yoff + wp->sy)) /* + 1? */
+		    (px >= wp->xoff - 1 && px <= wp->xoff + wp->sx + sb_w) &&
+		    (py >= wp->yoff - 1 && py <= wp->yoff + wp->sy))
 			break;
 	}
 	if (wp == NULL)
@@ -938,15 +940,6 @@ screen_redraw_is_visible(struct visible_ranges *ranges, u_int px)
 			return (1);
 	}
 	return (0);
-}
-
-static void
-screen_redraw_print_panes(struct window *w) {
-	struct window_pane *wp;
-
-	TAILQ_FOREACH(wp, &w->panes, entry) {
-		printf("id=%u %ux%u @%u,%u\n", wp->id, wp->sx, wp->sy, wp->xoff, wp->yoff);
-	}
 }
 
 /* Construct ranges of line at px,py of width cells of base_wp that are
