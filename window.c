@@ -585,6 +585,11 @@ window_redraw_active_switch(struct window *w, struct window_pane *wp)
 		}
 		if (wp == w->active)
 			break;
+		if (wp->layout_cell == NULL) {
+			TAILQ_REMOVE(&w->panes, wp, entry);
+			TAILQ_INSERT_TAIL(&w->panes, wp, entry);
+			wp->flags |= PANE_REDRAW;
+		}
 		wp = w->active;
 	}
 }
@@ -595,7 +600,7 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 	struct window_pane	*wp;
 	u_int			 xoff, yoff, sx, sy;
 
-	TAILQ_FOREACH(wp, &w->panes, entry) {
+	TAILQ_FOREACH_REVERSE(wp, &w->panes, window_panes, entry) {
 		if (!window_pane_visible(wp))
 			continue;
 		window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
@@ -745,7 +750,7 @@ window_add_pane(struct window *w, struct window_pane *other, u_int hlimit,
 			TAILQ_INSERT_BEFORE(other, wp, entry);
 	} else {
 		log_debug("%s: @%u after %%%u", __func__, w->id, wp->id);
-		if (flags & SPAWN_FULLSIZE|SPAWN_FLOATING)
+		if (flags & (SPAWN_FULLSIZE|SPAWN_FLOATING))
 			TAILQ_INSERT_TAIL(&w->panes, wp, entry);
 		else
 			TAILQ_INSERT_AFTER(&w->panes, other, wp, entry);
