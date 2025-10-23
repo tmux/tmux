@@ -592,6 +592,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 	struct window_pane	*fwp;
 	int			 pane_status, sb, sb_pos, sb_w, sb_pad;
 	u_int			 line, sl_top, sl_bottom;
+	u_int			 bdr_bottom, bdr_top, bdr_left, bdr_right;
 
 	sb = options_get_number(wo, "pane-scrollbars");
 	sb_pos = options_get_number(wo, "pane-scrollbars-position");
@@ -643,16 +644,40 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 	} else if (~w->flags & WINDOW_ZOOMED) {
 		/* Try the pane borders if not zoomed. */
 		TAILQ_FOREACH(fwp, &w->panes, entry) {
-			if ((((sb_pos == PANE_SCROLLBARS_RIGHT &&
-			    fwp->xoff + fwp->sx + sb_pad + sb_w == px) ||
-			    (sb_pos == PANE_SCROLLBARS_LEFT &&
-			    fwp->xoff + fwp->sx == px)) &&
-			    fwp->yoff <= 1 + py &&
-			    fwp->yoff + fwp->sy >= py) ||
+			if (sb_pos == PANE_SCROLLBARS_LEFT)
+				bdr_right = fwp->xoff + fwp->sx;
+			else
+				/* PANE_SCROLLBARS_RIGHT or none. */
+				bdr_right = fwp->xoff + fwp->sx + sb_pad + sb_w;
+			if (py >= fwp->yoff - 1 && py <= fwp->yoff + fwp->sy) {
+				if (px ==  bdr_right)
+					break;
+				if (wp->layout_cell == NULL) {
+					/* Floating pane, check if left border. */
+					bdr_left = fwp->xoff - 1;
+					if (px == bdr_left)
+						break;
+				}
+			}
+			if (px >= fwp->xoff - 1 && px <= fwp->xoff + fwp->sx) {
+				bdr_bottom = fwp->yoff + fwp->sy;
+				if (py == bdr_bottom)
+					break;
+				if (wp->layout_cell == NULL) {
+					/* Floating pane, check if top border. */
+					bdr_top = fwp->yoff - 1;
+					if (py == bdr_top)
+						break;
+				}
+			}
+			/*
+			if ((((sb_pos == PANE_SCROLLBARS_RIGHT && fwp->xoff + fwp->sx + sb_pad + sb_w == px) ||
+			      (sb_pos == PANE_SCROLLBARS_LEFT && fwp->xoff + fwp->sx == px)) &&
+			     fwp->yoff <= 1 + py && fwp->yoff + fwp->sy >= py) ||
 			    (fwp->yoff + fwp->sy == py &&
-			    fwp->xoff <= 1 + px &&
-			    fwp->xoff + fwp->sx >= px))
+			     fwp->xoff <= 1 + px && fwp->xoff + fwp->sx >= px))
 				break;
+			*/
 		}
 		if (fwp != NULL)
 			return (BORDER);

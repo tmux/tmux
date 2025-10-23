@@ -604,10 +604,20 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 		if (!window_pane_visible(wp))
 			continue;
 		window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
-		if (x < xoff || x > xoff + sx)
-			continue;
-		if (y < yoff || y > yoff + sy)
-			continue;
+		if (wp->layout_cell != NULL) {
+			/* Tiled, select up to including bottom or
+			   right border. */
+			if (x < xoff || x > xoff + sx)
+				continue;
+			if (y < yoff || y > yoff + sy)
+				continue;
+		} else {
+			/* Floating, include top or or left border. */
+			if (x < xoff - 1 || x > xoff + sx)
+				continue;
+			if (y < yoff - 1 || y > yoff + sy)
+				continue;
+		}
 		return (wp);
 	}
 	return (NULL);
