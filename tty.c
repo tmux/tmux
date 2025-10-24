@@ -1373,22 +1373,22 @@ tty_draw_pane(struct tty *tty, const struct tty_ctx *ctx, u_int py)
 {
 	struct screen		*s = ctx->s;
 	struct window_pane	*wp = ctx->arg;
-	struct visible_ranges	*visible_ranges = NULL;
+	struct visible_range	*vr = NULL;
 	u_int			 nx = ctx->sx, i, x, rx, ry;
 
 	log_debug("%s: %s %u %d", __func__, tty->client->name, py, ctx->bigger);
 
 	if (wp)
-		visible_ranges = screen_redraw_get_visible_ranges(wp, 0, py, nx);
+		vr = screen_redraw_get_visible_ranges(wp, 0, py, nx);
 
 	if (!ctx->bigger) {
 		tty_draw_line(tty, s, 0, py, nx, ctx->xoff, ctx->yoff + py,
-		    &ctx->defaults, ctx->palette, visible_ranges);
+		    &ctx->defaults, ctx->palette, vr);
 		return;
 	}
 	if (tty_clamp_line(tty, ctx, 0, py, nx, &i, &x, &rx, &ry)) {
 		tty_draw_line(tty, s, i, py, rx, x, ry, &ctx->defaults,
-		    ctx->palette, visible_ranges);
+		    ctx->palette, vr);
 	}
 }
 
@@ -1468,7 +1468,7 @@ tty_check_overlay_range(struct tty *tty, u_int px, u_int py, u_int nx,
 void
 tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
     u_int atx, u_int aty, const struct grid_cell *defaults,
-    struct colour_palette *palette, struct visible_ranges *visible_ranges)
+    struct colour_palette *palette, struct visible_range *vr)
 {
 	struct grid		*gd = s->grid;
 	struct grid_cell	 gc, last;
@@ -1555,8 +1555,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 		gcp = tty_check_codeset(tty, &gc);
 		if (len != 0 &&
 		    (!tty_check_overlay(tty, atx + ux + width, aty) ||
-		     screen_redraw_is_visible(visible_ranges,
-		         atx + ux + width) ||
+		     screen_redraw_is_visible(vr, atx + ux + width) ||
 		    (gcp->attr & GRID_ATTR_CHARSET) ||
 		    gcp->flags != last.flags ||
 		    gcp->attr != last.attr ||
@@ -2217,7 +2216,7 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 	struct screen		*s = ctx->s;
 	struct overlay_ranges	 r;
 	struct window_pane	 *wp = ctx->arg;
-	struct visible_ranges	 *visible_ranges;
+	struct visible_range	 *vr;
 	u_int			 px, py, i, vis = 0;
 
 	px = ctx->xoff + ctx->ocx - ctx->wox;
@@ -2227,7 +2226,7 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 		return;
 
 	if (wp)
-		visible_ranges = screen_redraw_get_visible_ranges(wp, px, py, 1);
+		vr = screen_redraw_get_visible_ranges(wp, px, py, 1);
 
 	/* Handle partially obstructed wide characters. */
 	if (gcp->data.width > 1) {
@@ -2236,8 +2235,7 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 			vis += r.nx[i];
 		if (vis < gcp->data.width) {
 			tty_draw_line(tty, s, s->cx, s->cy, gcp->data.width,
-			    px, py, &ctx->defaults, ctx->palette,
-			    visible_ranges);
+			    px, py, &ctx->defaults, ctx->palette, vr);
 			return;
 		}
 	}

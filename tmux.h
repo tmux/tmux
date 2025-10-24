@@ -2234,14 +2234,10 @@ struct mode_tree_sort_criteria {
 	int	reversed;
 };
 
+/* Visible range array element.  nx==-1 is end of array mark. */
 struct visible_range {
-	u_int px;	/* Start */
-	u_int nx;	/* Length */
-};
-struct visible_ranges {
-	struct visible_range	*array;
-	size_t			 n;	/* Elements used */
-	size_t			 size;	/* Array size */
+	u_int	px;	/* Start */
+	int	nx;	/* Length */
 };
 
 /* tmux.c */
@@ -2532,7 +2528,7 @@ void	tty_set_path(struct tty *, const char *);
 void	tty_update_mode(struct tty *, int, struct screen *);
 void	tty_draw_line(struct tty *, struct screen *, u_int, u_int, u_int,
 	    u_int, u_int, const struct grid_cell *, struct colour_palette *,
-	    struct visible_ranges *);
+	    struct visible_range *);
 
 #ifdef ENABLE_SIXEL
 void	tty_draw_images(struct client *, struct window_pane *, struct screen *);
@@ -3175,8 +3171,8 @@ void	 screen_write_alternateoff(struct screen_write_ctx *,
 /* screen-redraw.c */
 void	 screen_redraw_screen(struct client *);
 void	 screen_redraw_pane(struct client *, struct window_pane *, int);
-int	 screen_redraw_is_visible(struct visible_ranges *ranges, u_int px);
-struct visible_ranges *screen_redraw_get_visible_ranges(struct window_pane *,
+int	 screen_redraw_is_visible(struct visible_range *, u_int px);
+struct visible_range *screen_redraw_get_visible_ranges(struct window_pane *,
 	     u_int, u_int, u_int);
 
 

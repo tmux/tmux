@@ -670,14 +670,6 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 						break;
 				}
 			}
-			/*
-			if ((((sb_pos == PANE_SCROLLBARS_RIGHT && fwp->xoff + fwp->sx + sb_pad + sb_w == px) ||
-			      (sb_pos == PANE_SCROLLBARS_LEFT && fwp->xoff + fwp->sx == px)) &&
-			     fwp->yoff <= 1 + py && fwp->yoff + fwp->sy >= py) ||
-			    (fwp->yoff + fwp->sy == py &&
-			     fwp->xoff <= 1 + px && fwp->xoff + fwp->sx >= px))
-				break;
-			*/
 		}
 		if (fwp != NULL)
 			return (BORDER);
