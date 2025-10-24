@@ -26,20 +26,16 @@
 
 #include "tmux.h"
 
-/*
- * Split a window (add a new pane).
- */
+#define NEW_WINDOW_TEMPLATE "#{session_name}:#{window_index}.#{pane_index}"
 
-#define SPLIT_WINDOW_TEMPLATE "#{session_name}:#{window_index}.#{pane_index}"
-
-static enum cmd_retval	cmd_split_window_exec(struct cmd *,
+static enum cmd_retval	cmd_new_floating_window_exec(struct cmd *,
 			    struct cmdq_item *);
 
-const struct cmd_entry cmd_split_window_entry = {
-	.name = "split-window",
-	.alias = "splitw",
+const struct cmd_entry cmd_new_floating_window_entry = {
+	.name = "new-floating-window",
+	.alias = "floatw",
 
-	.args = { "bc:de:fF:hIl:p:Pt:vZ", 0, -1, NULL },
+	.args = { "bc:de:fF:h:Il:p:Pt:w:x:y:Z", 0, -1, NULL },
 	.usage = "[-bdefhIPvZ] [-c start-directory] [-e environment] "
 		 "[-F format] [-l size] " CMD_TARGET_PANE_USAGE
 		 " [shell-command [argument ...]]",
@@ -47,11 +43,12 @@ const struct cmd_entry cmd_split_window_entry = {
 	.target = { 't', CMD_FIND_PANE, 0 },
 
 	.flags = 0,
-	.exec = cmd_split_window_exec
+	.exec = cmd_new_floating_window_exec
 };
 
+
 static enum cmd_retval
-cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
+cmd_new_floating_window_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
 	struct cmd_find_state	*current = cmdq_get_current(item);
@@ -62,59 +59,87 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	struct winlink		*wl = target->wl;
 	struct window		*w = wl->window;
 	struct window_pane	*wp = target->wp, *new_wp;
-	enum layout_type	 type;
-	struct layout_cell	*lc;
 	struct cmd_find_state	 fs;
-	int			 size, flags, input;
+	int			 flags, input;
 	const char		*template;
 	char			*cause = NULL, *cp;
 	struct args_value	*av;
-	u_int			 count = args_count(args), curval = 0;
+	u_int			 count = args_count(args);
+	u_int			 sx, sy, pct, x, y;
 
-	if (wp->layout_cell == NULL) {
-		cmdq_error(item, "can't split a floating pane");
-		return (CMD_RETURN_ERROR);
-	}
-
-	type = LAYOUT_TOPBOTTOM;
-	if (args_has(args, 'h'))
-		type = LAYOUT_LEFTRIGHT;
-
-	/* If the 'p' flag is dropped then this bit can be moved into 'l'. */
-	if (args_has(args, 'l') || args_has(args, 'p')) {
-		if (args_has(args, 'f')) {
-			if (type == LAYOUT_TOPBOTTOM)
-				curval = w->sy;
-			else
-				curval = w->sx;
-		} else {
-			if (type == LAYOUT_TOPBOTTOM)
-				curval = wp->sy;
-			else
-				curval = wp->sx;
+	if (args_has(args, 'f')) {
+		sx = w->sx;
+		sy = w->sy;
+	} else {
+		if (args_has(args, 'l')) {
+			sx = args_percentage_and_expand(args, 'l', 0, INT_MAX, w->sx,
+			    item, &cause);
+			sy = args_percentage_and_expand(args, 'l', 0, INT_MAX, w->sy,
+			    item, &cause);
+		} else if (args_has(args, 'p')) {
+			pct = args_strtonum_and_expand(args, 'p', 0, 100, item,
+			    &cause);
+			if (cause == NULL) {
+				sx = w->sx * pct / 100;
+				sy = w->sy * pct / 100;
+			}
+		} else if (cause == NULL) {
+			sx = w->sx / 2;
+			sy = w->sy / 2;
+		}
+		if (cause != NULL) {
+			cmdq_error(item, "size %s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
 		}
 	}
-
-	size = -1;
-	if (args_has(args, 'l')) {
-		size = args_percentage_and_expand(args, 'l', 0, INT_MAX, curval,
-		    item, &cause);
-	} else if (args_has(args, 'p')) {
-		size = args_strtonum_and_expand(args, 'p', 0, 100, item,
+	if (args_has(args, 'w')) {
+		sx = args_strtonum_and_expand(args, 'w', 0, w->sx, item,
 		    &cause);
-		if (cause == NULL)
-			size = curval * size / 100;
+		if (cause != NULL) {
+			cmdq_error(item, "size %s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
+		}
 	}
-	if (cause != NULL) {
-		cmdq_error(item, "size %s", cause);
-		free(cause);
-		return (CMD_RETURN_ERROR);
+	if (args_has(args, 'h')) {
+		sy = args_strtonum_and_expand(args, 'h', 0, w->sy, item,
+		    &cause);
+		if (cause != NULL) {
+			cmdq_error(item, "size %s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
+		}
 	}
+	if (args_has(args, 'x')) {
+		x = args_strtonum_and_expand(args, 'x', 0, w->sx, item,
+		    &cause);
+		if (cause != NULL) {
+			cmdq_error(item, "size %s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
+		}
+	} else
+		x = 10;
+	if (args_has(args, 'y')) {
+		y = args_strtonum_and_expand(args, 'y', 0, w->sx, item,
+		    &cause);
+		if (cause != NULL) {
+			cmdq_error(item, "size %s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
+		}
+	} else
+		y = 10;
 
-	window_push_zoom(wp->window, 1, args_has(args, 'Z'));
+	sc.xoff = x;
+	sc.yoff = y;
+	sc.sx = sx;
+	sc.sy = sy;
+
 	input = (args_has(args, 'I') && count == 0);
 
-	flags = 0;
+	flags = SPAWN_FLOATING;
 	if (args_has(args, 'b'))
 		flags |= SPAWN_BEFORE;
 	if (args_has(args, 'f'))
@@ -122,18 +147,12 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (input || (count == 1 && *args_string(args, 0) == '\0'))
 		flags |= SPAWN_EMPTY;
 
-	lc = layout_split_pane(wp, type, size, flags);
-	if (lc == NULL) {
-		cmdq_error(item, "no space for new pane");
-		return (CMD_RETURN_ERROR);
-	}
-
 	sc.item = item;
 	sc.s = s;
 	sc.wl = wl;
 
 	sc.wp0 = wp;
-	sc.lc = lc;
+	sc.lc = NULL;
 
 	args_to_vector(args, &sc.argc, &sc.argv);
 	sc.environ = environ_create();
@@ -165,7 +184,6 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		switch (window_pane_start_input(new_wp, item, &cause)) {
 		case -1:
 			server_client_remove_pane(new_wp);
-			layout_close_pane(new_wp);
 			window_remove_pane(wp->window, new_wp);
 			cmdq_error(item, "%s", cause);
 			free(cause);
@@ -186,7 +204,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (args_has(args, 'P')) {
 		if ((template = args_get(args, 'F')) == NULL)
-			template = SPLIT_WINDOW_TEMPLATE;
+			template = NEW_WINDOW_TEMPLATE;
 		cp = format_single(item, template, tc, s, wl, new_wp);
 		cmdq_print(item, "%s", cp);
 		free(cp);
