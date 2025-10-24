@@ -26,14 +26,14 @@
 
 #include "tmux.h"
 
-#define NEW_WINDOW_TEMPLATE "#{session_name}:#{window_index}.#{pane_index}"
+#define NEW_PANE_TEMPLATE "#{session_name}:#{window_index}.#{pane_index}"
 
-static enum cmd_retval	cmd_new_floating_window_exec(struct cmd *,
+static enum cmd_retval	cmd_new_pane_exec(struct cmd *,
 			    struct cmdq_item *);
 
-const struct cmd_entry cmd_new_floating_window_entry = {
-	.name = "new-floating-window",
-	.alias = "floatw",
+const struct cmd_entry cmd_new_pane_entry = {
+	.name = "new-pane",
+	.alias = "newp",
 
 	.args = { "bc:de:fF:h:Il:p:Pt:w:x:y:Z", 0, -1, NULL },
 	.usage = "[-bdefhIPvZ] [-c start-directory] [-e environment] "
@@ -43,12 +43,12 @@ const struct cmd_entry cmd_new_floating_window_entry = {
 	.target = { 't', CMD_FIND_PANE, 0 },
 
 	.flags = 0,
-	.exec = cmd_new_floating_window_exec
+	.exec = cmd_new_pane_exec
 };
 
 
 static enum cmd_retval
-cmd_new_floating_window_exec(struct cmd *self, struct cmdq_item *item)
+cmd_new_pane_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
 	struct cmd_find_state	*current = cmdq_get_current(item);
@@ -204,7 +204,7 @@ cmd_new_floating_window_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (args_has(args, 'P')) {
 		if ((template = args_get(args, 'F')) == NULL)
-			template = NEW_WINDOW_TEMPLATE;
+			template = NEW_PANE_TEMPLATE;
 		cp = format_single(item, template, tc, s, wl, new_wp);
 		cmdq_print(item, "%s", cp);
 		free(cp);
