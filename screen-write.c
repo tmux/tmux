@@ -1783,7 +1783,7 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 	u_int				 r_start, r_end, ci_start, ci_end;
 	u_int				 wr_start, wr_end, wr_length, sx, xoff, yoff;
 	struct tty_ctx			 ttyctx;
-        struct visible_range		*vr;
+        struct visible_ranges		*vr;
 	struct window_pane		*wp = ctx->wp;
 
 	if (ctx->scrolled != 0) {
@@ -1833,10 +1833,10 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 				    ci->x, last);
 			}
 			wr_length = 0;
-			for (r = 0; vr[r].nx != -1; r++) {
-				if (vr[r].nx == 0) continue;
-				r_start = vr[r].px;
-				r_end = vr[r].px + vr[r].nx;
+			for (r = 0; r < vr->used; r++) {
+				if (vr->nx[r] == 0) continue;
+				r_start = vr->px[r];
+				r_end = vr->px[r] + vr->nx[r];
 				ci_start = ci->x;
 				ci_end = ci->x + ci->used;
 

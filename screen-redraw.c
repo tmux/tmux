@@ -545,7 +545,7 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 	struct tty		*tty = &c->tty;
 	struct window_pane	*wp;
 	struct screen		*s;
-	struct visible_range	*vr;
+	struct visible_ranges	*vr;
 	u_int			 i, x, width, xoff, yoff, size;
 
 	log_debug("%s: %s @%u", __func__, c->name, w->id);
@@ -922,7 +922,7 @@ screen_redraw_draw_status(struct screen_redraw_ctx *ctx)
  * floating window pane). Returns a boolean.
  */
 int
-screen_redraw_is_visible(struct visible_range *vr, u_int px)
+screen_redraw_is_visible(struct visible_ranges *vr, u_int px)
 {
 	u_int			 r;
 
@@ -930,10 +930,10 @@ screen_redraw_is_visible(struct visible_range *vr, u_int px)
 	if (vr == NULL)
 		return (1);
 
-	for (r=0; vr[r].nx != -1; r++) {
-		if (vr[r].nx == 0)
+	for (r=0; r < vr->used; r++) {
+		if (vr->nx[r] == 0)
 			continue;
-		if ((px >= vr[r].px) && (px <= vr[r].px + vr[r].nx))
+		if ((px >= vr->px[r]) && (px <= vr->px[r] + vr->nx[r]))
 			return (1);
 	}
 	return (0);
@@ -941,30 +941,30 @@ screen_redraw_is_visible(struct visible_range *vr, u_int px)
 
 /* Construct ranges array for the line at starting at px,py of width
    cells of base_wp that are unobsructed. */
-struct visible_range *
+struct visible_ranges *
 screen_redraw_get_visible_ranges(struct window_pane *base_wp, u_int px,
     u_int py, u_int width) {
 	struct window_pane		*wp;
 	struct window			*w;
-	static struct visible_range	*vr = NULL;
-	static size_t			 size = 0, last;
+	static struct visible_ranges	 vr = {NULL, NULL, 0, 0};
 	int				 found_self, sb_w;
 	u_int				 r, s, lb, rb, tb, bb;
 	int				 pane_scrollbars;
 
-	/* For efficiency ranges is static and space reused. */
-	if (vr == NULL) {
-		vr = xcalloc(4, sizeof(struct visible_range *));
-		size = 4;
+	/* For efficiency vr is static and space reused. */
+	if (vr.size == 0) {
+		vr.px = xcalloc(1, sizeof(u_int));
+		vr.nx = xcalloc(1, sizeof(u_int));
+		vr.size = 1;
 	}
 
 	/* Start with the entire width of the range. */
-	vr[0].px = px;
-	vr[0].nx = width;
-	last = 1;
+	vr.px[0] = px;
+	vr.nx[0] = width;
+	vr.used = 1;
 
 	if (base_wp == NULL)
-		return (vr);
+		return (&vr);
 
 	w = base_wp->window;
 	pane_scrollbars = options_get_number(w->options, "pane-scrollbars");
@@ -987,62 +987,58 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, u_int px,
 		if (window_pane_show_scrollbar(wp, pane_scrollbars))
 			sb_w = wp->scrollbar_style.width + wp->scrollbar_style.pad;
 
-		for (r=0; r<last; r++) {
+		for (r=0; r < vr.used; r++) {
 			lb = wp->xoff - 1;
 			rb = wp->xoff + wp->sx + sb_w + 1;
 			/* If the left edge of floating wp
 			   falls inside this range and right
 			   edge covers up to right of range, 
 			   then shrink left edge of range. */
-			if (lb > vr[r].px &&
-			    lb < vr[r].px + vr[r].nx &&
-			    rb >= vr[r].px + vr[r].nx) {
-				vr[r].nx = lb;
+			if (lb > vr.px[r] &&
+			    lb < vr.px[r] + vr.nx[r] &&
+			    rb >= vr.px[r] + vr.nx[r]) {
+				vr.nx[r] = lb;
 			}
 			/* Else if the right edge of floating wp
 			   falls inside of this range and left
 			   edge covers the left of range,
 			   then move px forward to right edge of wp. */
-			else if (rb > vr[r].px &&
-				   rb < vr[r].px + vr[r].nx &&
-				   lb <= vr[r].px) {
-				vr[r].nx = vr[r].nx - (rb - vr[r].px);
-				vr[r].px = vr[r].px + (rb - vr[r].px);
+			else if (rb > vr.px[r] &&
+				   rb < vr.px[r] + vr.nx[r] &&
+				   lb <= vr.px[r]) {
+				vr.nx[r] = vr.nx[r] - (rb - vr.px[r]);
+				vr.px[r] = vr.px[r] + (rb - vr.px[r]);
 			}
 			/* Else if wp fully inside range
 			   then split range into 2 ranges. */
-			else if (lb > vr[r].px &&
-				   rb < vr[r].px + vr[r].nx) {
-				if (size == last) {
-					vr = xreallocarray(vr,
-					    size += 4, sizeof *vr);
+			else if (lb > vr.px[r] &&
+				   rb < vr.px[r] + vr.nx[r]) {
+				if (vr.size == vr.used) {
+					vr.size++;
+					vr.px = xreallocarray(vr.px,
+					    vr.size, sizeof (u_int));
+					vr.nx = xreallocarray(vr.nx,
+					vr.size, sizeof (u_int));
 				}
-				for (s=last; s>r; s--) {
-					vr[s].px = vr[s-1].px;
-					vr[s].nx = vr[s-1].nx;
+				for (s=vr.used; s>r; s--) {
+					vr.px[s] = vr.px[s-1];
+					vr.nx[s] = vr.nx[s-1];
 				}
-				last++;
-				vr[r].nx = lb;
-				vr[r+1].px = rb;
+				vr.used++;
+				vr.nx[r] = lb;
+				vr.px[r+1] = rb;
 			}
 			/* If floating wp completely covers this range
 			   then delete it (make it 0 length). */
-			else if (lb <= vr[r].px &&
-				 rb >= vr[r].px+vr[r].nx) {
-				vr[r].nx = 0;
+			else if (lb <= vr.px[r] &&
+				 rb >= vr.px[r] + vr.nx[r]) {
+				vr.nx[r] = 0;
 			}
 			/* Else the range is already obscured, do nothing. */
 		}
 	}
 
-	/* Tie off array. */
-	if (size == last) {
-		vr = xreallocarray(vr, size += 4, sizeof *vr);
-	}
-	vr[last].px = 0;
-	vr[last].nx = -1;
-
-	return (vr);
+	return (&vr);
 }
 
 
@@ -1056,7 +1052,7 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 	struct screen		*s = wp->screen;
 	struct colour_palette	*palette = &wp->palette;
 	struct grid_cell	 defaults;
-	struct visible_range	*vr;
+	struct visible_ranges	*vr;
 	u_int			 i, j, top, x, y, width, r;
 
 	log_debug("%s: %s @%u %%%u", __func__, c->name, w->id, wp->id);
@@ -1104,14 +1100,14 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 
 		tty_default_colours(&defaults, wp);
 
-		for (r=0; vr[r].nx != -1; r++) {
-			if (vr[r].nx == 0)
+		for (r=0; r < vr->used; r++) {
+			if (vr->nx[r] == 0)
 				continue;
 			/* i is px of cell, add px of region, sub the
 			   pane offset. If you don't sub offset,
 			   contents of pane shifted. */
-			tty_draw_line(tty, s, i+vr[r].px-wp->xoff, j,
-			    vr[r].nx, vr[r].px, y, &defaults, palette,
+			tty_draw_line(tty, s, i + vr->px[r] - wp->xoff, j,
+			    vr->nx[r], vr->px[r], y, &defaults, palette,
 			    vr);
 		}
 	}
@@ -1203,7 +1199,7 @@ screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx,
 	int			 px, py, ox = ctx->ox, oy = ctx->oy;
 	int			 sx = ctx->sx, sy = ctx->sy, xoff = wp->xoff;
 	int			 yoff = wp->yoff;
-	struct visible_range	*vr;
+	struct visible_ranges	*vr;
 
 	/* Set up style for slider. */
 	gc = sb_style->gc;
