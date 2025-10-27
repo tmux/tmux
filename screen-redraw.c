@@ -371,6 +371,7 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 			if (!window_pane_visible(wp))
 				goto next1;
 
+			/* xxxx Isn't this only true if pane at the top of the window? */
 			if (pane_status == PANE_STATUS_TOP)
 				line = wp->yoff - 1;
 			else
@@ -419,8 +420,7 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 			 */
 			sb_w = wp->scrollbar_style.width +
 			    wp->scrollbar_style.pad;
-			if ((pane_status && py != line) ||
-			    (wp->yoff == 0 && py < wp->sy) ||
+			if ((wp->yoff == 0 && py < wp->sy) ||
 			     (py >= wp->yoff && py < wp->yoff + wp->sy)) {
 				/* Check if px lies within a scrollbar. */
 				if ((sb_pos == PANE_SCROLLBARS_RIGHT &&
@@ -792,7 +792,7 @@ screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j)
 	if (cell_type == CELL_INSIDE || cell_type == CELL_SCROLLBAR)
 		return;
 
-	if (wp == NULL) {
+	if (wp == NULL || cell_type == CELL_OUTSIDE) {
 		if (!ctx->no_pane_gc_set) {
 			ft = format_create_defaults(NULL, c, s, s->curw, NULL);
 			memcpy(&ctx->no_pane_gc, &grid_default_cell, sizeof gc);
