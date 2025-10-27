@@ -546,7 +546,7 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 	struct window_pane	*wp;
 	struct screen		*s;
 	struct visible_ranges	*vr;
-	u_int			 i, x, width, xoff, yoff, size;
+	u_int			 i, x, width, xoff, yoff, size, r;
 
 	log_debug("%s: %s @%u", __func__, c->name, w->id);
 
@@ -592,10 +592,14 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 
 		if (ctx->statustop)
 			yoff += ctx->statuslines;
-		vr = screen_redraw_get_visible_ranges(wp, i, 0, width);
+		vr = screen_redraw_get_visible_ranges(wp, x, yoff - ctx->oy, width);
 
-		tty_draw_line(tty, s, i, 0, width, x, yoff - ctx->oy,
-		    &grid_default_cell, NULL, vr);
+		for (r=0; r < vr->used; r++) {
+			if (vr->nx[r] == 0)
+				continue;
+			tty_draw_line(tty, s, i + (vr->px[r] - x), 0, vr->nx[r], vr->px[r], yoff - ctx->oy,
+			    &grid_default_cell, NULL, vr);
+		}
 	}
 	tty_cursor(tty, 0, 0);
 }
