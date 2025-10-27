@@ -1373,22 +1373,40 @@ tty_draw_pane(struct tty *tty, const struct tty_ctx *ctx, u_int py)
 {
 	struct screen		*s = ctx->s;
 	struct window_pane	*wp = ctx->arg;
-	struct visible_range	*vr = NULL;
-	u_int			 nx = ctx->sx, i, x, rx, ry;
+	struct visible_ranges	*vr = NULL;
+	u_int			 nx = ctx->sx, i, x, rx, ry, r;
 
 	log_debug("%s: %s %u %d", __func__, tty->client->name, py, ctx->bigger);
 
-	if (wp)
-		vr = screen_redraw_get_visible_ranges(wp, 0, py, nx);
-
 	if (!ctx->bigger) {
-		tty_draw_line(tty, s, 0, py, nx, ctx->xoff, ctx->yoff + py,
-		    &ctx->defaults, ctx->palette, vr);
+		if (wp) {
+			vr = screen_redraw_get_visible_ranges(wp, 0, py, nx);
+			for (r=0; r < vr->used; r++) {
+				if (vr->nx[r] == 0)
+					continue;
+				tty_draw_line(tty, s, vr->px[r], py, vr->nx[r],
+					      ctx->xoff + vr->px[r], ctx->yoff + py,
+					      &ctx->defaults, ctx->palette, vr);
+			}
+		} else {
+			tty_draw_line(tty, s, 0, py, nx, ctx->xoff, ctx->yoff + py,
+					      &ctx->defaults, ctx->palette, vr);
+		}
 		return;
 	}
 	if (tty_clamp_line(tty, ctx, 0, py, nx, &i, &x, &rx, &ry)) {
-		tty_draw_line(tty, s, i, py, rx, x, ry, &ctx->defaults,
-		    ctx->palette, vr);
+		if (wp) {
+			vr = screen_redraw_get_visible_ranges(wp, i, py, rx);
+			for (r=0; r < vr->used; r++) {
+				if (vr->nx[r] == 0)
+					continue;
+				tty_draw_line(tty, s, i, py, vr->nx[r], x + vr->px[r], ry, &ctx->defaults,
+				    ctx->palette, vr);
+			}
+		} else {
+			tty_draw_line(tty, s, i, py, rx, x, ry, &ctx->defaults,
+			    ctx->palette, vr);
+		}
 	}
 }
 
@@ -1468,7 +1486,7 @@ tty_check_overlay_range(struct tty *tty, u_int px, u_int py, u_int nx,
 void
 tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
     u_int atx, u_int aty, const struct grid_cell *defaults,
-    struct colour_palette *palette, struct visible_range *vr)
+    struct colour_palette *palette, struct visible_ranges *vr)
 {
 	struct grid		*gd = s->grid;
 	struct grid_cell	 gc, last;
@@ -2216,7 +2234,7 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 	struct screen		*s = ctx->s;
 	struct overlay_ranges	 r;
 	struct window_pane	 *wp = ctx->arg;
-	struct visible_range	 *vr;
+	struct visible_ranges	 *vr;
 	u_int			 px, py, i, vis = 0;
 
 	px = ctx->xoff + ctx->ocx - ctx->wox;
