@@ -410,10 +410,7 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 		/* Check if CELL_SCROLLBAR */
 		if (window_pane_show_scrollbar(wp, pane_scrollbars)) {
 
-			if (pane_status == PANE_STATUS_TOP)
-				line = wp->yoff - 1;
-			else
-				line = wp->yoff + wp->sy;
+			line = wp->yoff + wp->sy;
 
 			/*
 			 * Check if py could lie within a scrollbar. If the
