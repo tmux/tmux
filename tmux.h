@@ -1545,6 +1545,7 @@ struct tty {
 	int		 mode;
 	int              fg;
 	int              bg;
+	int		 palette[8];
 
 	u_int		 rlower;
 	u_int		 rupper;
@@ -1579,6 +1580,7 @@ struct tty {
 #define TTY_WINSIZEQUERY 0x1000
 #define TTY_WAITFG 0x2000
 #define TTY_WAITBG 0x4000
+#define TTY_WAITPALETTE 0x8000
 #define TTY_ALL_REQUEST_FLAGS \
 	(TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA)
 	int		 flags;
@@ -2991,6 +2993,8 @@ void	 colour_palette_clear(struct colour_palette *);
 void	 colour_palette_free(struct colour_palette *);
 int	 colour_palette_get(struct colour_palette *, int);
 int	 colour_palette_set(struct colour_palette *, int, int);
+int	 colour_palette_set_default(struct colour_palette *, int, int);
+void	 colour_palette_from_client(struct colour_palette *, struct client *);
 void	 colour_palette_from_option(struct colour_palette *, struct options *);
 
 /* attributes.c */
@@ -3284,6 +3288,7 @@ int		 window_pane_mode(struct window_pane *);
 int		 window_pane_show_scrollbar(struct window_pane *, int);
 int		 window_pane_get_bg(struct window_pane *);
 int		 window_pane_get_fg(struct window_pane *);
+int		 window_pane_get_palette_client(struct window_pane *, int);
 int		 window_pane_get_fg_control_client(struct window_pane *);
 int		 window_pane_get_bg_control_client(struct window_pane *);
 int		 window_get_bg_client(struct window_pane *);

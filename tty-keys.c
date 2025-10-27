@@ -59,6 +59,8 @@ static int	tty_keys_device_attributes2(struct tty *, const char *, size_t,
 		    size_t *);
 static int	tty_keys_extended_device_attributes(struct tty *, const char *,
 		    size_t, size_t *);
+static int	tty_keys_palette(struct tty *, const char *, size_t, size_t *,
+		    struct colour_palette *);
 
 /* A key tree entry. */
 struct tty_key {
@@ -739,6 +741,7 @@ tty_keys_next(struct tty *tty)
 	key_code		 key, onlykey;
 	struct mouse_event	 m = { 0 };
 	struct key_event	*event;
+	struct window_pane	*wp;
 
 	/* Get key buffer. */
 	buf = EVBUFFER_DATA(tty->in);
@@ -802,6 +805,22 @@ tty_keys_next(struct tty *tty)
 	case 1:		/* partial */
 		session_theme_changed(c->session);
 		goto partial_key;
+	}
+
+	/* Is this a palette response? */
+	if (c->session != NULL && c->session->curw != NULL) {
+		wp = c->session->curw->window->active;
+		if (wp != NULL) {
+			switch (tty_keys_palette(tty, buf, len, &size, &wp->palette)) {
+			case 0:		/* yes */
+				key = KEYC_UNKNOWN;
+				goto complete_key;
+			case -1:	/* no, or not valid */
+				break;
+			case 1:		/* partial */
+				goto partial_key;
+			}
+		}
 	}
 
 	/* Is this a mouse key press? */
@@ -937,7 +956,7 @@ partial_key:
 	delay = options_get_number(global_options, "escape-time");
 	if (delay == 0)
 		delay = 1;
-	if ((tty->flags & (TTY_WAITFG|TTY_WAITBG) ||
+	if ((tty->flags & (TTY_WAITFG|TTY_WAITBG|TTY_WAITPALETTE) ||
 	    (tty->flags & TTY_ALL_REQUEST_FLAGS) != TTY_ALL_REQUEST_FLAGS)) {
 		log_debug("%s: increasing delay for active query", c->name);
 		if (delay < 500)
@@ -1695,6 +1714,81 @@ tty_keys_colours(struct tty *tty, const char *buf, size_t len, size_t *size,
 			log_debug("bg is %s", colour_tostring(n));
 		*bg = n;
 		tty->flags &= ~TTY_WAITBG;
+	}
+
+	return (0);
+}
+
+/* Handle OSC 4 palette colour responses. */
+static int
+tty_keys_palette(struct tty *tty, const char *buf, size_t len, size_t *size,
+    struct colour_palette *palette)
+{
+	struct client	*c = tty->client;
+	u_int		 i;
+	char		 tmp[128], *endptr;
+	int		 n, idx;
+
+	*size = 0;
+
+	/* First three bytes are always \033]4. */
+	if (buf[0] != '\033')
+		return (-1);
+	if (len == 1)
+		return (1);
+	if (buf[1] != ']')
+		return (-1);
+	if (len == 2)
+		return (1);
+	if (buf[2] != '4')
+		return (-1);
+	if (len == 3)
+		return (1);
+	if (buf[3] != ';')
+		return (-1);
+	if (len == 4)
+		return (1);
+
+	/* Parse index. */
+	idx = strtol(buf + 4, &endptr, 10);
+	if (endptr == buf + 4 || *endptr != ';')
+		return (-1);
+	if (idx < 0 || idx > 7)
+		return (-1);
+	
+	i = (endptr - buf) + 1;
+	if (i >= len)
+		return (1);
+
+	/* Copy the rest up to \033\ or \007. */
+	for (; i < len && (i - (endptr - buf) - 1) < (sizeof tmp) - 1; i++) {
+		if (buf[i - 1] == '\033' && buf[i] == '\\')
+			break;
+		if (buf[i] == '\007')
+			break;
+		tmp[i - (endptr - buf) - 1] = buf[i];
+	}
+	if (i - (endptr - buf) - 1 >= (sizeof tmp) - 1)
+		return (-1);
+	if (i > 0 && buf[i - 1] == '\033')
+		tmp[i - (endptr - buf) - 2] = '\0';
+	else
+		tmp[i - (endptr - buf) - 1] = '\0';
+	*size = i + 1;
+
+	n = colour_parseX11(tmp);
+	if (n != -1) {
+		u_int	j;
+
+		tty->palette[idx] = n;
+		if (c != NULL)
+			log_debug("%s palette[%d] is %s", c->name, idx, colour_tostring(n));
+		for (j = 0; j < 8; j++) {
+			if (tty->palette[j] == -1)
+				break;
+		}
+		if (j == 8)
+			tty->flags &= ~TTY_WAITPALETTE;
 	}
 
 	return (0);

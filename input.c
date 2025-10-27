@@ -2803,6 +2803,8 @@ input_osc_4(struct input_ctx *ictx, const char *p)
 		s = strsep(&next, ";");
 		if (strcmp(s, "?") == 0) {
 			c = colour_palette_get(palette, idx|COLOUR_FLAG_256);
+			if (c == -1 && idx >= 0 && idx < 8)
+				c = window_pane_get_palette_client(ictx->wp, idx);
 			if (c != -1)
 				input_osc_colour_reply(ictx, 4, idx, c);
 			s = next;

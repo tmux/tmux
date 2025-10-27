@@ -1123,6 +1123,48 @@ colour_palette_set(struct colour_palette *p, int n, int c)
 	return (1);
 }
 
+/* Set a default colour in a palette. */
+int
+colour_palette_set_default(struct colour_palette *p, int n, int c)
+{
+	u_int	i;
+
+	if (p == NULL || n > 255)
+		return (0);
+
+	if (c == -1 && p->default_palette == NULL)
+		return (0);
+
+	if (c != -1 && p->default_palette == NULL) {
+		p->default_palette = xcalloc(256, sizeof *p->default_palette);
+		for (i = 0; i < 256; i++)
+			p->default_palette[i] = -1;
+	}
+	p->default_palette[n] = c;
+	return (1);
+}
+
+/* Populate default palette from client tty palette. */
+void
+colour_palette_from_client(struct colour_palette *p, struct client *c)
+{
+	u_int	i;
+
+	if (p == NULL || c == NULL)
+		return;
+
+	if (p->default_palette == NULL) {
+		p->default_palette = xcalloc(256, sizeof *p->default_palette);
+		for (i = 0; i < 256; i++)
+			p->default_palette[i] = -1;
+	}
+
+	for (i = 0; i < 8; i++) {
+		if (c->tty.palette[i] != -1)
+			p->default_palette[i] = c->tty.palette[i];
+	}
+}
+
 /* Build palette defaults from an option. */
 void
 colour_palette_from_option(struct colour_palette *p, struct options *oo)

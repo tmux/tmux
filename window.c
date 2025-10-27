@@ -1866,6 +1866,27 @@ window_pane_get_fg(struct window_pane *wp)
 	return (-1);
 }
 
+int
+window_pane_get_palette_client(struct window_pane *wp, int idx)
+{
+	struct window	*w = wp->window;
+	struct client	*c;
+
+	if (idx < 0 || idx >= 8)
+		return (-1);
+
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (c->flags & CLIENT_UNATTACHEDFLAGS)
+			continue;
+		if (c->session == NULL || !session_has(c->session, w))
+			continue;
+		if (c->tty.palette[idx] == -1)
+			continue;
+		return (c->tty.palette[idx]);
+	}
+	return (-1);
+}
+
 /*
  * If any control mode client exists that has provided a fg color, return it.
  * Otherwise, return -1.

@@ -104,6 +104,8 @@ tty_create_log(void)
 int
 tty_init(struct tty *tty, struct client *c)
 {
+	u_int	i;
+
 	if (!isatty(c->fd))
 		return (-1);
 
@@ -113,6 +115,9 @@ tty_init(struct tty *tty, struct client *c)
 	tty->cstyle = SCREEN_CURSOR_DEFAULT;
 	tty->ccolour = -1;
 	tty->fg = tty->bg = -1;
+	for (i = 0; i < 8; i++)
+		tty->palette[i] = -1;
+
 
 	if (tcgetattr(c->fd, &tty->tio) != 0)
 		return (-1);
@@ -316,7 +321,7 @@ tty_start_timer_callback(__unused int fd, __unused short events, void *data)
 		tty_update_features(tty);
 	tty->flags |= TTY_ALL_REQUEST_FLAGS;
 
-	tty->flags &= ~(TTY_WAITBG|TTY_WAITFG);
+	tty->flags &= ~(TTY_WAITBG|TTY_WAITFG|TTY_WAITPALETTE);
 }
 
 static void
@@ -388,6 +393,18 @@ tty_start_tty(struct tty *tty)
 	tty->mouse_drag_release = NULL;
 }
 
+static void
+tty_request_palette(struct tty *tty)
+{
+	u_int	i;
+	char	s[64];
+
+	for (i = 0; i < 8; i++) {
+		xsnprintf(s, sizeof s, "\033]4;%u;?\033\\", i);
+		tty_puts(tty, s);
+	}
+}
+
 void
 tty_send_requests(struct tty *tty)
 {
@@ -403,6 +420,8 @@ tty_send_requests(struct tty *tty)
 			tty_puts(tty, "\033[>q");
 		tty_puts(tty, "\033]10;?\033\\\033]11;?\033\\");
 		tty->flags |= (TTY_WAITBG|TTY_WAITFG);
+		tty_request_palette(tty);
+		tty->flags |= TTY_WAITPALETTE;
 	} else
 		tty->flags |= TTY_ALL_REQUEST_FLAGS;
 	tty->last_requests = time(NULL);
@@ -428,6 +447,8 @@ tty_repeat_requests(struct tty *tty, int force)
 	if (tty->term->flags & TERM_VT100LIKE) {
 		tty_puts(tty, "\033]10;?\033\\\033]11;?\033\\");
 		tty->flags |= (TTY_WAITBG|TTY_WAITFG);
+		tty_request_palette(tty);
+		tty->flags |= TTY_WAITPALETTE;
 	}
 	tty_start_start_timer(tty);
 }
