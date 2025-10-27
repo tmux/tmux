@@ -234,7 +234,6 @@ struct window_copy_mode_data {
 
 	struct screen	*backing;
 	int		 backing_written; /* backing display started */
-	struct screen	*writing;
 	struct input_ctx *ictx;
 
 	int		 viewmode;	/* view mode entered */
@@ -492,8 +491,6 @@ window_copy_view_init(struct window_mode_entry *wme,
 
 	data->backing = xmalloc(sizeof *data->backing);
 	screen_init(data->backing, sx, screen_size_y(base), UINT_MAX);
-	data->writing = xmalloc(sizeof *data->writing);
-	screen_init(data->writing, sx, screen_size_y(base), 0);
 	data->ictx = input_init(NULL, NULL, NULL);
 	data->mx = data->cx;
 	data->my = screen_hsize(data->backing) + data->cy - data->oy;
@@ -513,10 +510,6 @@ window_copy_free(struct window_mode_entry *wme)
 	free(data->searchstr);
 	free(data->jumpchar);
 
-	if (data->writing != NULL) {
-		screen_free(data->writing);
-		free(data->writing);
-	}
 	if (data->ictx != NULL)
 		input_free(data->ictx);
 	screen_free(data->backing);
@@ -553,21 +546,10 @@ window_copy_vadd(struct window_pane *wp, int parse, const char *fmt, va_list ap)
 	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
 	struct window_copy_mode_data	*data = wme->data;
 	struct screen			*backing = data->backing;
-	struct screen			*writing = data->writing;
-	struct screen_write_ctx	 	 writing_ctx, backing_ctx, ctx;
+	struct screen_write_ctx	 	 backing_ctx, ctx;
 	struct grid_cell		 gc;
 	u_int				 old_hsize, old_cy;
-	u_int				 sx = screen_size_x(backing);
 	char				*text;
-
-	if (parse) {
-		vasprintf(&text, fmt, ap);
-		screen_write_start(&writing_ctx, writing);
-		screen_write_reset(&writing_ctx);
-		input_parse_screen(data->ictx, writing, window_copy_init_ctx_cb,
-		    data, text, strlen(text));
-		free(text);
-	}
 
 	old_hsize = screen_hsize(data->backing);
 	screen_write_start(&backing_ctx, backing);
@@ -581,9 +563,12 @@ window_copy_vadd(struct window_pane *wp, int parse, const char *fmt, va_list ap)
 	} else
 		data->backing_written = 1;
 	old_cy = backing->cy;
-	if (parse)
-		screen_write_fast_copy(&backing_ctx, writing, 0, 0, sx, 1);
-	else {
+	if (parse) {
+		vasprintf(&text, fmt, ap);
+		input_parse_screen(data->ictx, backing, window_copy_init_ctx_cb,
+		    data, text, strlen(text));
+        free(text);
+    } else {
 		memcpy(&gc, &grid_default_cell, sizeof gc);
 		screen_write_vnputs(&backing_ctx, 0, &gc, fmt, ap);
 	}
