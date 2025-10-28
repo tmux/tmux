@@ -836,7 +836,8 @@ window_tree_draw(void *modedata, void *itemdata, struct screen_write_ctx *ctx,
 }
 
 static int
-window_tree_search(__unused void *modedata, void *itemdata, const char *ss)
+window_tree_search(__unused void *modedata, void *itemdata, const char *ss,
+    int icase)
 {
 	struct window_tree_itemdata	*item = itemdata;
 	struct session			*s;
@@ -853,10 +854,14 @@ window_tree_search(__unused void *modedata, void *itemdata, const char *ss)
 	case WINDOW_TREE_SESSION:
 		if (s == NULL)
 			return (0);
-		return (strstr(s->name, ss) != NULL);
+		if (icase)
+			return (strcasestr(s->name, ss) != NULL);
+ 		return (strstr(s->name, ss) != NULL);
 	case WINDOW_TREE_WINDOW:
 		if (s == NULL || wl == NULL)
 			return (0);
+		if (icase)
+			return (strcasestr(wl->window->name, ss) != NULL);
 		return (strstr(wl->window->name, ss) != NULL);
 	case WINDOW_TREE_PANE:
 		if (s == NULL || wl == NULL || wp == NULL)
@@ -866,7 +871,10 @@ window_tree_search(__unused void *modedata, void *itemdata, const char *ss)
 			free(cmd);
 			return (0);
 		}
-		retval = (strstr(cmd, ss) != NULL);
+		if (icase)
+			retval = (strcasestr(cmd, ss) != NULL);
+		else
+			retval = (strstr(cmd, ss) != NULL);
 		free(cmd);
 		return (retval);
 	}
