@@ -114,7 +114,7 @@ cmd_source_file_done(struct client *c, const char *path, int error,
 		return;
 
 	if (error != 0)
-		cmdq_error(item, "%s: %s", path, strerror(error));
+		cmdq_error(item, "%s: %s", strerror(error), path);
 	else if (bsize != 0) {
 		if (load_cfg_from_buffer(bdata, bsize, path, c, cdata->after,
 		    target, cdata->flags, &new_item) < 0)
@@ -233,7 +233,7 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 					error = strerror(ENOMEM);
 				else
 					error = strerror(EINVAL);
-				cmdq_error(item, "%s: %s", path, error);
+				cmdq_error(item, "%s: %s", error, path);
 				retval = CMD_RETURN_ERROR;
 			}
 			globfree(&g);
