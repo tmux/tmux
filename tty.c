@@ -2235,7 +2235,7 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 	struct overlay_ranges	 r;
 	struct window_pane	 *wp = ctx->arg;
 	struct visible_ranges	 *vr;
-	u_int			 px, py, i, vis = 0;
+	u_int			 px, py, i, vis = 0, vis2 = 0;
 
 	px = ctx->xoff + ctx->ocx - ctx->wox;
 	py = ctx->yoff + ctx->ocy - ctx->woy;
@@ -2243,15 +2243,17 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 	    (gcp->data.width == 1 && !tty_check_overlay(tty, px, py)))
 		return;
 
-	if (wp)
-		vr = screen_redraw_get_visible_ranges(wp, px, py, 1);
-
 	/* Handle partially obstructed wide characters. */
 	if (gcp->data.width > 1) {
+		vr = screen_redraw_get_visible_ranges(wp, px, py,
+		    gcp->data.width);
+		for (i = 0; i < vr->used; i++)
+			vis2 += vr->nx[i];
 		tty_check_overlay_range(tty, px, py, gcp->data.width, &r);
 		for (i = 0; i < OVERLAY_MAX_RANGES; i++)
 			vis += r.nx[i];
-		if (vis < gcp->data.width) {
+		if (vis < gcp->data.width  ||
+		    vis2 < gcp->data.width) {
 			tty_draw_line(tty, s, s->cx, s->cy, gcp->data.width,
 			    px, py, &ctx->defaults, ctx->palette, vr);
 			return;
