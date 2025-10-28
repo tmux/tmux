@@ -19,6 +19,7 @@
 #include <sys/types.h>
 
 #include <stdio.h>
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -255,7 +256,30 @@ window_buffer_draw(__unused void *modedata, void *itemdata,
 }
 
 static int
-window_buffer_search(__unused void *modedata, void *itemdata, const char *ss)
+window_buffer_find(const void *data, size_t datalen, const void *find,
+    size_t findlen, int icase)
+{
+	const u_char	*udata = data, *ufind = find;
+	size_t	 	 i, j;
+
+	if (findlen == 0 || datalen < findlen)
+		return (0);
+	for (i = 0; i + findlen <= datalen; i++) {
+		for (j = 0; j < findlen; j++) {
+			if (!icase && udata[i + j] != ufind[j])
+				break;
+			if (icase && tolower(udata[i + j]) != tolower(ufind[j]))
+				break;
+		}
+		if (j == findlen)
+			return (1);
+	}
+	return (0);
+}
+
+static int
+window_buffer_search(__unused void *modedata, void *itemdata, const char *ss,
+    int icase)
 {
 	struct window_buffer_itemdata	*item = itemdata;
 	struct paste_buffer		*pb;
@@ -264,10 +288,19 @@ window_buffer_search(__unused void *modedata, void *itemdata, const char *ss)
 
 	if ((pb = paste_get_name(item->name)) == NULL)
 		return (0);
-	if (strstr(item->name, ss) != NULL)
-		return (1);
-	bufdata = paste_buffer_data(pb, &bufsize);
-	return (memmem(bufdata, bufsize, ss, strlen(ss)) != NULL);
+	if (icase) {
+		if (strcasestr(item->name, ss) != NULL)
+			return (1);
+		bufdata = paste_buffer_data(pb, &bufsize);
+		return (window_buffer_find(bufdata, bufsize, ss, strlen(ss),
+		    icase));
+	} else {
+		if (strstr(item->name, ss) != NULL)
+			return (1);
+		bufdata = paste_buffer_data(pb, &bufsize);
+		return (window_buffer_find(bufdata, bufsize, ss, strlen(ss),
+		    icase));
+	}
 }
 
 static void
