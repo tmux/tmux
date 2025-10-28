@@ -104,9 +104,9 @@ screen_redraw_two_panes(struct window *w, int direction)
 {
 	struct window_pane	*wp;
 
-	wp = TAILQ_FIRST(&w->panes);
+	wp = TAILQ_FIRST(&w->z_index);
 	do {
-		wp = TAILQ_NEXT(wp, entry);
+		wp = TAILQ_NEXT(wp, zentry);
 	} while (wp && wp->layout_cell == NULL);
 
 	if (wp == NULL)
@@ -234,7 +234,7 @@ screen_redraw_cell_border(struct screen_redraw_ctx *ctx, u_int px, u_int py)
 		return (1);
 
 	/* Check all the panes. */
-	TAILQ_FOREACH_REVERSE(wp, &w->panes, window_panes, entry) {
+	TAILQ_FOREACH(wp, &w->z_index, zentry) {
 		if (!window_pane_visible(wp))
 			continue;
 		switch (screen_redraw_pane_border(ctx, wp, px, py)) {
@@ -356,7 +356,7 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 
 	if (pane_status != PANE_STATUS_OFF) {
 		/* Look for higest z-index window at px,py.  xxxx scrollbars? */
-		TAILQ_FOREACH_REVERSE(wp, &w->panes, window_panes, entry) {
+		TAILQ_FOREACH(wp, &w->z_index, zentry) {
 			if (! (wp->flags & PANE_MINIMISED) &&
 			    (px >= wp->xoff - 1 && px<= wp->xoff + wp->sx + 1) &&
 			    (py >= wp->yoff - 1 && py<= wp->yoff + wp->sy + 1))
@@ -390,7 +390,7 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 
 
 	/* Look for higest z-index window at px,py. */
-	TAILQ_FOREACH_REVERSE(wp, &w->panes, window_panes, entry) {
+	TAILQ_FOREACH(wp, &w->z_index, zentry) {
 		sb_w = wp->scrollbar_style.width +
 			wp->scrollbar_style.pad;
 		if (! (wp->flags & PANE_MINIMISED) &&
@@ -971,7 +971,7 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, u_int px,
 	pane_scrollbars = options_get_number(w->options, "pane-scrollbars");
 
 	found_self = 0;
-	TAILQ_FOREACH(wp, &w->panes, entry) {
+	TAILQ_FOREACH_REVERSE(wp, &w->z_index, window_panes_zindex, zentry) {
 		if (wp == base_wp) {
 			found_self = 1;
 			continue;

@@ -1230,9 +1230,11 @@ struct window_pane {
 
 	TAILQ_ENTRY(window_pane) entry;  /* link in list of all panes */
 	TAILQ_ENTRY(window_pane) sentry; /* link in list of last visited */
+	TAILQ_ENTRY(window_pane) zentry; /* z-index link in list of all panes */
 	RB_ENTRY(window_pane) tree_entry;
 };
 TAILQ_HEAD(window_panes, window_pane);
+TAILQ_HEAD(window_panes_zindex, window_pane);
 RB_HEAD(window_pane_tree, window_pane);
 
 /* Window structure. */
@@ -1251,6 +1253,7 @@ struct window {
 
 	struct window_pane	*active;
 	struct window_panes 	 last_panes;
+	struct window_panes	 z_index;
 	struct window_panes	 panes;
 
 	int			 lastlayout;

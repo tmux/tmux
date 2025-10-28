@@ -2041,7 +2041,7 @@ tty_is_obscured(const struct tty_ctx *ctx)
 	w = base_wp->window;
 
 	/* Check if there is a floating pane. xxxx borders? scrollbars? */
-	TAILQ_FOREACH(wp, &w->panes, entry) {
+	TAILQ_FOREACH_REVERSE(wp, &w->z_index, window_panes_zindex, zentry) {
 		if (wp == base_wp) {
 			found_self = 1;
 			continue;

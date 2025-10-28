@@ -1783,7 +1783,7 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 	u_int				 r_start, r_end, ci_start, ci_end;
 	u_int				 wr_start, wr_end, wr_length, sx, xoff, yoff;
 	struct tty_ctx			 ttyctx;
-        struct visible_ranges		*vr;
+	struct visible_ranges		*vr;
 	struct window_pane		*wp = ctx->wp;
 
 	if (ctx->scrolled != 0) {
@@ -2023,7 +2023,7 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 		w = base_wp->window;
 		px = ctx->s->cx;
 		py = ctx->s->cy;
-		TAILQ_FOREACH(wp, &w->panes, entry) {
+		TAILQ_FOREACH(wp, &w->panes, zentry) {
 			if (wp == base_wp) {
 				found_self = 1;
 				continue;
