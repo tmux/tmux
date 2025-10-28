@@ -1513,7 +1513,7 @@ window_copy_cmd_cursor_up(struct window_copy_cmd_state *cs)
 }
 
 static enum window_copy_cmd_action
-window_copy_cmd_vcenter(struct window_copy_cmd_state *cs)
+window_copy_cmd_centre_vertical(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
 	struct window_copy_mode_data	*data = wme->data;
@@ -1524,7 +1524,7 @@ window_copy_cmd_vcenter(struct window_copy_cmd_state *cs)
 }
 
 static enum window_copy_cmd_action
-window_copy_cmd_hcenter(struct window_copy_cmd_state *cs)
+window_copy_cmd_centre_horizontal(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
 	struct window_copy_mode_data	*data = wme->data;
@@ -2822,15 +2822,15 @@ static const struct {
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_cursor_up
 	},
-	{ .command = "cursor-vcenter",
+	{ .command = "cursor-centre-vertical",
 	  .args = { "", 0, 0, NULL },
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
-	  .f = window_copy_cmd_vcenter,
+	  .f = window_copy_cmd_centre_vertical,
 	},
-	{ .command = "cursor-hcenter",
+	{ .command = "cursor-centre-horizontal",
 	  .args = { "", 0, 0, NULL },
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
-	  .f = window_copy_cmd_hcenter,
+	  .f = window_copy_cmd_centre_horizontal,
 	},
 	{ .command = "end-of-line",
 	  .args = { "", 0, 0, NULL },
