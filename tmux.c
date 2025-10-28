@@ -139,7 +139,7 @@ expand_path(const char *path, const char *home)
 }
 
 static void
-expand_paths(const char *s, char ***paths, u_int *n, int ignore_errors)
+expand_paths(const char *s, char ***paths, u_int *n, int no_realpath)
 {
 	const char	*home = find_home();
 	char		*copy, *next, *tmp, resolved[PATH_MAX], *expanded;
@@ -156,15 +156,15 @@ expand_paths(const char *s, char ***paths, u_int *n, int ignore_errors)
 			log_debug("%s: invalid path: %s", __func__, next);
 			continue;
 		}
-		if (realpath(expanded, resolved) == NULL) {
-			log_debug("%s: realpath(\"%s\") failed: %s", __func__,
-			    expanded, strerror(errno));
-			if (ignore_errors) {
+		if (no_realpath)
+			path = expanded;
+		else {
+			if (realpath(expanded, resolved) == NULL) {
+				log_debug("%s: realpath(\"%s\") failed: %s", __func__,
+			  expanded, strerror(errno));
 				free(expanded);
 				continue;
 			}
-			path = expanded;
-		} else {
 			path = xstrdup(resolved);
 			free(expanded);
 		}
@@ -196,7 +196,7 @@ make_label(const char *label, char **cause)
 		label = "default";
 	uid = getuid();
 
-	expand_paths(TMUX_SOCK, &paths, &n, 1);
+	expand_paths(TMUX_SOCK, &paths, &n, 0);
 	if (n == 0) {
 		xasprintf(cause, "no suitable socket path");
 		return (NULL);
