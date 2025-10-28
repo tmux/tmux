@@ -1304,7 +1304,7 @@ grid_reflow_join(struct grid *target, struct grid *gd, u_int sx, u_int yy,
 		if (!wrapped || want != from->cellused || width == sx)
 			break;
 	}
-	if (lines == 0)
+	if (lines == 0 || from == NULL)
 		return;
 
 	/*
