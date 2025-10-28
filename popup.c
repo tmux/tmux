@@ -250,7 +250,7 @@ popup_draw_cb(struct client *c, void *data, struct screen_redraw_ctx *rctx)
 	}
 	for (i = 0; i < pd->sy; i++) {
 		tty_draw_line(tty, &s, 0, i, pd->sx, px, py + i, &defaults,
-		    palette, NULL);
+		    palette);
 	}
 	screen_free(&s);
 	if (pd->md != NULL) {

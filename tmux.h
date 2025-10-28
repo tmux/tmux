@@ -2532,8 +2532,7 @@ void	tty_set_title(struct tty *, const char *);
 void	tty_set_path(struct tty *, const char *);
 void	tty_update_mode(struct tty *, int, struct screen *);
 void	tty_draw_line(struct tty *, struct screen *, u_int, u_int, u_int,
-	    u_int, u_int, const struct grid_cell *, struct colour_palette *,
-	    struct visible_ranges *);
+	    u_int, u_int, const struct grid_cell *, struct colour_palette *);
 
 #ifdef ENABLE_SIXEL
 void	tty_draw_images(struct client *, struct window_pane *, struct screen *);

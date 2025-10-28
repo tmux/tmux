@@ -1385,12 +1385,12 @@ tty_draw_pane(struct tty *tty, const struct tty_ctx *ctx, u_int py)
 				if (vr->nx[r] == 0)
 					continue;
 				tty_draw_line(tty, s, vr->px[r], py, vr->nx[r],
-					      ctx->xoff + vr->px[r], ctx->yoff + py,
-					      &ctx->defaults, ctx->palette, vr);
+				    ctx->xoff + vr->px[r], ctx->yoff + py,
+				    &ctx->defaults, ctx->palette);
 			}
 		} else {
-			tty_draw_line(tty, s, 0, py, nx, ctx->xoff, ctx->yoff + py,
-					      &ctx->defaults, ctx->palette, vr);
+			tty_draw_line(tty, s, 0, py, nx, ctx->xoff,
+			    ctx->yoff + py, &ctx->defaults, ctx->palette);
 		}
 		return;
 	}
@@ -1400,12 +1400,13 @@ tty_draw_pane(struct tty *tty, const struct tty_ctx *ctx, u_int py)
 			for (r=0; r < vr->used; r++) {
 				if (vr->nx[r] == 0)
 					continue;
-				tty_draw_line(tty, s, i, py, vr->nx[r], x + vr->px[r], ry, &ctx->defaults,
-				    ctx->palette, vr);
+				tty_draw_line(tty, s, i, py, vr->nx[r],
+				    x + vr->px[r], ry, &ctx->defaults,
+				    ctx->palette);
 			}
 		} else {
 			tty_draw_line(tty, s, i, py, rx, x, ry, &ctx->defaults,
-			    ctx->palette, vr);
+			    ctx->palette);
 		}
 	}
 }
@@ -1486,7 +1487,7 @@ tty_check_overlay_range(struct tty *tty, u_int px, u_int py, u_int nx,
 void
 tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
     u_int atx, u_int aty, const struct grid_cell *defaults,
-    struct colour_palette *palette, struct visible_ranges *vr)
+    struct colour_palette *palette)
 {
 	struct grid		*gd = s->grid;
 	struct grid_cell	 gc, last;
@@ -1573,7 +1574,6 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 		gcp = tty_check_codeset(tty, &gc);
 		if (len != 0 &&
 		    (!tty_check_overlay(tty, atx + ux + width, aty) ||
-		     screen_redraw_is_visible(vr, atx + ux + width) ||
 		    (gcp->attr & GRID_ATTR_CHARSET) ||
 		    gcp->flags != last.flags ||
 		    gcp->attr != last.attr ||
@@ -2255,7 +2255,7 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 		if (vis < gcp->data.width  ||
 		    vis2 < gcp->data.width) {
 			tty_draw_line(tty, s, s->cx, s->cy, gcp->data.width,
-			    px, py, &ctx->defaults, ctx->palette, vr);
+			    px, py, &ctx->defaults, ctx->palette);
 			return;
 		}
 	}

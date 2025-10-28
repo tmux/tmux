@@ -595,7 +595,7 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 			if (vr->nx[r] == 0)
 				continue;
 			tty_draw_line(tty, s, i + (vr->px[r] - x), 0, vr->nx[r], vr->px[r], yoff - ctx->oy,
-			    &grid_default_cell, NULL, vr);
+			    &grid_default_cell, NULL);
 		}
 	}
 	tty_cursor(tty, 0, 0);
@@ -915,7 +915,7 @@ screen_redraw_draw_status(struct screen_redraw_ctx *ctx)
 		y = c->tty.sy - ctx->statuslines;
 	for (i = 0; i < ctx->statuslines; i++) {
 		tty_draw_line(tty, s, 0, i, UINT_MAX, 0, y + i,
-		    &grid_default_cell, NULL, NULL);
+		    &grid_default_cell, NULL);
 	}
 }
 
@@ -990,7 +990,7 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, u_int px,
 
 		for (r=0; r < vr.used; r++) {
 			lb = wp->xoff - 1;
-			rb = wp->xoff + wp->sx + sb_w + 1;
+			rb = wp->xoff + wp->sx + sb_w;
 			/* If the left edge of floating wp
 			   falls inside this range and right
 			   edge covers up to right of range, 
@@ -1028,6 +1028,7 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, u_int px,
 				vr.used++;
 				vr.nx[r] = lb;
 				vr.px[r+1] = rb;
+				vr.nx[r+1] = vr.nx[r+1] - rb - 1;
 			}
 			/* If floating wp completely covers this range
 			   then delete it (make it 0 length). */
@@ -1108,8 +1109,7 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 			   pane offset. If you don't sub offset,
 			   contents of pane shifted. */
 			tty_draw_line(tty, s, i + vr->px[r] - wp->xoff, j,
-			    vr->nx[r], vr->px[r], y, &defaults, palette,
-			    vr);
+			    vr->nx[r], vr->px[r], y, &defaults, palette);
 		}
 	}
 
