@@ -48,7 +48,7 @@ utf8proc_mbtowc(wchar_t *pwc, const char *s, size_t n)
 	 * *pwc == -1 indicates invalid codepoint
 	 * slen < 0 indicates an error
 	 */
-	slen = utf8proc_iterate(s, n, pwc);
+	slen = utf8proc_iterate(s, n, (utf8proc_int32_t*)pwc);
 	if (*pwc == (wchar_t)-1 || slen < 0)
 		return (-1);
 	return (slen);
