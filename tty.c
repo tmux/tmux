@@ -419,10 +419,12 @@ tty_repeat_requests(struct tty *tty, int force)
 		return;
 
 	if (!force && n <= TTY_REQUEST_LIMIT) {
-		log_debug("%s: not repeating requests (%u seconds)", c->name, n);
+		log_debug("%s: not repeating requests (%u seconds)", c->name,
+		    n);
 		return;
 	}
-	log_debug("%s: %srepeating requests (%u seconds)", c->name, force ? "(force) " : "" , n);
+	log_debug("%s: %srepeating requests (%u seconds)", c->name,
+	    force ? "(force) " : "" , n);
 	tty->last_requests = t;
 
 	if (tty->term->flags & TERM_VT100LIKE) {

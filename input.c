@@ -51,6 +51,20 @@
  *   be passed to the underlying terminals.
  */
 
+/* Request sent by a pane. */
+struct input_request {
+	struct client			*c;
+	struct input_ctx		*ictx;
+
+	enum input_request_type		 type;
+	int				 idx;
+	time_t				 t;
+
+	TAILQ_ENTRY(input_request)	 entry;
+	TAILQ_ENTRY(input_request)	 centry;
+};
+#define INPUT_REQUEST_TIMEOUT 5
+
 /* Input parser cell. */
 struct input_cell {
 	struct grid_cell	cell;
@@ -72,61 +86,69 @@ struct input_param {
 	};
 };
 
+/* Type of terminator. */
+enum input_end_type {
+	INPUT_END_ST,
+	INPUT_END_BEL
+};
+
 /* Input parser context. */
 struct input_ctx {
-	struct window_pane     *wp;
-	struct bufferevent     *event;
-	struct screen_write_ctx ctx;
-	struct colour_palette  *palette;
+	struct window_pane	       *wp;
+	struct bufferevent	       *event;
+	struct screen_write_ctx		ctx;
+	struct colour_palette	       *palette;
 
-	struct input_cell	cell;
+	struct input_cell		cell;
+	struct input_cell		old_cell;
+	u_int				old_cx;
+	u_int				old_cy;
+	int				old_mode;
 
-	struct input_cell	old_cell;
-	u_int			old_cx;
-	u_int			old_cy;
-	int			old_mode;
+	u_char				interm_buf[4];
+	size_t				interm_len;
 
-	u_char			interm_buf[4];
-	size_t			interm_len;
-
-	u_char			param_buf[64];
-	size_t			param_len;
+	u_char				param_buf[64];
+	size_t				param_len;
 
 #define INPUT_BUF_START 32
-	u_char		       *input_buf;
-	size_t			input_len;
-	size_t			input_space;
-	enum {
-		INPUT_END_ST,
-		INPUT_END_BEL
-	}			input_end;
+	u_char			       *input_buf;
+	size_t				input_len;
+	size_t				input_space;
+	enum input_end_type		input_end;
 
-	struct input_param	param_list[24];
-	u_int			param_list_len;
+	struct input_param		param_list[24];
+	u_int				param_list_len;
 
-	struct utf8_data	utf8data;
-	int			utf8started;
+	struct utf8_data		utf8data;
+	int				utf8started;
 
-	int			ch;
-	struct utf8_data	last;
+	int				ch;
+	struct utf8_data		last;
 
-	int			flags;
+	const struct input_state       *state;
+	int				flags;
 #define INPUT_DISCARD 0x1
 #define INPUT_LAST 0x2
 
-	const struct input_state *state;
-
-	struct event		timer;
+	struct input_requests		 requests[INPUT_REQUEST_TYPES];
+	u_int				 request_count;
+	struct event			 request_timer;
 
 	/*
 	 * All input received since we were last in the ground state. Sent to
 	 * control clients on connection.
 	 */
-	struct evbuffer		*since_ground;
+	struct evbuffer			*since_ground;
+	struct event			 ground_timer;
 };
 
 /* Helper functions. */
 struct input_transition;
+static void 	input_request_timer_callback(int, short, void *);
+static void	input_start_request_timer(struct input_ctx *);
+static int	input_add_request(struct input_ctx *, enum input_request_type,
+		    int);
 static int	input_split(struct input_ctx *);
 static int	input_get(struct input_ctx *, u_int, int, int);
 static void printflike(2, 3) input_reply(struct input_ctx *, const char *, ...);
@@ -766,7 +788,7 @@ input_stop_utf8(struct input_ctx *ictx)
  * long, so reset to ground.
  */
 static void
-input_timer_callback(__unused int fd, __unused short events, void *arg)
+input_ground_timer_callback(__unused int fd, __unused short events, void *arg)
 {
 	struct input_ctx	*ictx = arg;
 
@@ -776,12 +798,12 @@ input_timer_callback(__unused int fd, __unused short events, void *arg)
 
 /* Start the timer. */
 static void
-input_start_timer(struct input_ctx *ictx)
+input_start_ground_timer(struct input_ctx *ictx)
 {
 	struct timeval	tv = { .tv_sec = 5, .tv_usec = 0 };
 
-	event_del(&ictx->timer);
-	event_add(&ictx->timer, &tv);
+	event_del(&ictx->ground_timer);
+	event_add(&ictx->ground_timer, &tv);
 }
 
 /* Reset cell state to default. */
@@ -830,6 +852,7 @@ input_init(struct window_pane *wp, struct bufferevent *bev,
     struct colour_palette *palette)
 {
 	struct input_ctx	*ictx;
+	u_int			 i;
 
 	ictx = xcalloc(1, sizeof *ictx);
 	ictx->wp = wp;
@@ -842,8 +865,11 @@ input_init(struct window_pane *wp, struct bufferevent *bev,
 	ictx->since_ground = evbuffer_new();
 	if (ictx->since_ground == NULL)
 		fatalx("out of memory");
+	evtimer_set(&ictx->ground_timer, input_ground_timer_callback, ictx);
 
-	evtimer_set(&ictx->timer, input_timer_callback, ictx);
+	for (i = 0; i < INPUT_REQUEST_TYPES; i++)
+		TAILQ_INIT(&ictx->requests[i]);
+	evtimer_set(&ictx->request_timer, input_request_timer_callback, ictx);
 
 	input_reset(ictx, 0);
 	return (ictx);
@@ -853,17 +879,30 @@ input_init(struct window_pane *wp, struct bufferevent *bev,
 void
 input_free(struct input_ctx *ictx)
 {
-	u_int	i;
+	struct input_request_list	*irl;
+	struct input_request		*ir, *ir1;
+	u_int				 i;
 
 	for (i = 0; i < ictx->param_list_len; i++) {
 		if (ictx->param_list[i].type == INPUT_STRING)
 			free(ictx->param_list[i].str);
 	}
 
-	event_del(&ictx->timer);
+	for (i = 0; i < INPUT_REQUEST_TYPES; i++) {
+		TAILQ_FOREACH_SAFE(ir, &ictx->requests[i], entry, ir1) {
+			log_debug("%s: req %p: client %s, pane %%%u, type %d",
+			    __func__, ir, ir->c->name, ictx->wp->id, i);
+			irl = &ir->c->input_requests[i];
+			TAILQ_REMOVE(&ictx->requests[i], ir, entry);
+			TAILQ_REMOVE(&irl->requests, ir, centry);
+			free(ir);
+		}
+	}
+	event_del(&ictx->request_timer);
 
 	free(ictx->input_buf);
 	evbuffer_free(ictx->since_ground);
+	event_del(&ictx->ground_timer);
 
 	free(ictx);
 }
@@ -1122,7 +1161,7 @@ input_reply(struct input_ctx *ictx, const char *fmt, ...)
 static void
 input_clear(struct input_ctx *ictx)
 {
-	event_del(&ictx->timer);
+	event_del(&ictx->ground_timer);
 
 	*ictx->interm_buf = '\0';
 	ictx->interm_len = 0;
@@ -1142,7 +1181,7 @@ input_clear(struct input_ctx *ictx)
 static void
 input_ground(struct input_ctx *ictx)
 {
-	event_del(&ictx->timer);
+	event_del(&ictx->ground_timer);
 	evbuffer_drain(ictx->since_ground, EVBUFFER_LENGTH(ictx->since_ground));
 
 	if (ictx->input_space > INPUT_BUF_START) {
@@ -2403,7 +2442,7 @@ input_enter_dcs(struct input_ctx *ictx)
 	log_debug("%s", __func__);
 
 	input_clear(ictx);
-	input_start_timer(ictx);
+	input_start_ground_timer(ictx);
 	ictx->flags &= ~INPUT_LAST;
 }
 
@@ -2547,7 +2586,7 @@ input_enter_osc(struct input_ctx *ictx)
 	log_debug("%s", __func__);
 
 	input_clear(ictx);
-	input_start_timer(ictx);
+	input_start_ground_timer(ictx);
 	ictx->flags &= ~INPUT_LAST;
 }
 
@@ -2642,7 +2681,7 @@ input_enter_apc(struct input_ctx *ictx)
 	log_debug("%s", __func__);
 
 	input_clear(ictx);
-	input_start_timer(ictx);
+	input_start_ground_timer(ictx);
 	ictx->flags &= ~INPUT_LAST;
 }
 
@@ -2673,7 +2712,7 @@ input_enter_rename(struct input_ctx *ictx)
 	log_debug("%s", __func__);
 
 	input_clear(ictx);
-	input_start_timer(ictx);
+	input_start_ground_timer(ictx);
 	ictx->flags &= ~INPUT_LAST;
 }
 
@@ -2803,8 +2842,12 @@ input_osc_4(struct input_ctx *ictx, const char *p)
 		s = strsep(&next, ";");
 		if (strcmp(s, "?") == 0) {
 			c = colour_palette_get(palette, idx|COLOUR_FLAG_256);
-			if (c != -1)
+			if (c != -1) {
 				input_osc_colour_reply(ictx, 4, idx, c);
+				s = next;
+				continue;
+			}
+			input_add_request(ictx, INPUT_REQUEST_PALETTE, idx);
 			s = next;
 			continue;
 		}
@@ -3146,6 +3189,143 @@ input_set_buffer_size(size_t buffer_size)
 	input_buffer_size = buffer_size;
 }
 
+/* Request timer. Remove any requests that are too old. */
+static void
+input_request_timer_callback(__unused int fd, __unused short events, void *arg)
+{
+	struct input_ctx		*ictx = arg;
+	struct input_request		*ir, *ir1;
+	struct input_request_list	*irl;
+	u_int				 i;
+	time_t				 t = time(NULL);
+
+	for (i = 0; i < INPUT_REQUEST_TYPES; i++) {
+		TAILQ_FOREACH_SAFE(ir, &ictx->requests[i], entry, ir1) {
+			if (ir->t >= t - INPUT_REQUEST_TIMEOUT)
+				continue;
+			log_debug("%s: req %p: client %s, pane %%%u, type %d",
+			    __func__, ir, ir->c->name, ictx->wp->id, ir->type);
+			irl = &ir->c->input_requests[i];
+			TAILQ_REMOVE(&ictx->requests[i], ir, entry);
+			TAILQ_REMOVE(&irl->requests, ir, centry);
+			ictx->request_count--;
+			free(ir);
+		}
+	}
+	if (ictx->request_count != 0)
+		input_start_request_timer(ictx);
+}
+
+/* Start the request timer. */
+static void
+input_start_request_timer(struct input_ctx *ictx)
+{
+	struct timeval	tv = { .tv_sec = 1, .tv_usec = 0 };
+
+	event_del(&ictx->request_timer);
+	event_add(&ictx->request_timer, &tv);
+}
+
+/* Add a request. */
+static int
+input_add_request(struct input_ctx *ictx, enum input_request_type type, int idx)
+{
+	struct window_pane	*wp = ictx->wp;
+	struct window		*w;
+	struct client		*c = NULL, *loop;
+	struct input_request	*ir;
+	char			 s[64];
+
+	if (wp == NULL)
+		return (-1);
+	w = wp->window;
+
+	TAILQ_FOREACH(loop, &clients, entry) {
+		if (loop->flags & CLIENT_UNATTACHEDFLAGS)
+			continue;
+		if (loop->session == NULL || !session_has(loop->session, w))
+			continue;
+		if (~loop->tty.flags & TTY_STARTED)
+			continue;
+		if (c == NULL)
+			c = loop;
+		else if (timercmp(&loop->activity_time, &c->activity_time, >))
+			c = loop;
+	}
+	if (c == NULL)
+		return (-1);
+
+	ir = xcalloc (1, sizeof *ir);
+	ir->c = c;
+	ir->ictx = ictx;
+	ir->type = type;
+	ir->idx = idx;
+	ir->t = time(NULL);
+	TAILQ_INSERT_TAIL(&ictx->requests[type], ir, entry);
+	TAILQ_INSERT_TAIL(&c->input_requests[type].requests, ir, centry);
+	if (++ictx->request_count == 1)
+		input_start_request_timer(ictx);
+	log_debug("%s: req %p: client %s, pane %%%u, type %d", __func__, ir,
+	    c->name, wp->id, type);
+
+	switch (type) {
+	case INPUT_REQUEST_PALETTE:
+		xsnprintf(s, sizeof s, "\033]4;%d;?\033\\", idx);
+		tty_puts(&c->tty, s);
+		break;
+	}
+
+	return (0);
+}
+
+/* Handle a reply to a request. */
+void
+input_request_reply(struct client *c, enum input_request_type type, void *data)
+{
+	struct input_request_list		*irl = &c->input_requests[type];
+	struct input_request			*ir, *ir1;
+	struct input_request_palette_data	*pd = data;
+
+	TAILQ_FOREACH_SAFE(ir, &irl->requests, centry, ir1) {
+		log_debug("%s: req %p: client %s, pane %%%u, type %d",
+		    __func__, ir, c->name, ir->ictx->wp->id, ir->type);
+		switch (type) {
+		case INPUT_REQUEST_PALETTE:
+			if (pd->idx != ir->idx)
+				continue;
+			input_osc_colour_reply(ir->ictx, 4, pd->idx, pd->c);
+			break;
+		}
+		TAILQ_REMOVE(&ir->ictx->requests[type], ir, entry);
+		TAILQ_REMOVE(&irl->requests, ir, centry);
+		ir->ictx->request_count--;
+		free(ir);
+		break;
+	}
+}
+
+/* Cancel pending requests for client. */
+void
+input_cancel_requests(struct client *c)
+{
+	struct input_request_list	*irl;
+	struct input_request		*ir, *ir1;
+	u_int				 i;
+
+	for (i = 0; i < INPUT_REQUEST_TYPES; i++) {
+		irl = &c->input_requests[i];
+		TAILQ_FOREACH_SAFE(ir, &irl->requests, entry, ir1) {
+			log_debug("%s: req %p: client %s, pane %%%u, type %d",
+			    __func__, ir, c->name, ir->ictx->wp->id, ir->type);
+			TAILQ_REMOVE(&ir->ictx->requests[i], ir, entry);
+			TAILQ_REMOVE(&irl->requests, ir, centry);
+			ir->ictx->request_count--;
+			free(ir);
+		}
+	}
+}
+
+/* Report current theme. */
 static void
 input_report_current_theme(struct input_ctx *ictx)
 {

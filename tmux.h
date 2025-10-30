@@ -54,6 +54,8 @@ struct format_tree;
 struct hyperlinks_uri;
 struct hyperlinks;
 struct input_ctx;
+struct input_request;
+struct input_requests;
 struct job;
 struct menu_data;
 struct mode_tree_data;
@@ -1123,6 +1125,26 @@ struct window_mode_entry {
 	TAILQ_ENTRY(window_mode_entry)	 entry;
 };
 
+/* Type of request to client. */
+enum input_request_type {
+	INPUT_REQUEST_PALETTE
+};
+#define INPUT_REQUEST_TYPES (1)
+
+/* Palette request reply data. */
+struct input_request_palette_data {
+	int	idx;
+	int	c;
+};
+
+/* Request sent to client on behalf of pane. */
+TAILQ_HEAD(input_requests, input_request);
+struct input_request_list {
+	struct client	       *c;
+	enum input_request_type	type;
+	struct input_requests	requests;
+};
+
 /* Offsets into pane buffer. */
 struct window_pane_offset {
 	size_t	used;
@@ -1953,6 +1975,8 @@ struct client {
 
 	struct status_line	 status;
 	enum client_theme	 theme;
+
+	struct input_request_list input_requests[INPUT_REQUEST_TYPES];
 
 #define CLIENT_TERMINAL 0x1
 #define CLIENT_LOGIN 0x2
@@ -2966,6 +2990,8 @@ void	 input_parse_screen(struct input_ctx *, struct screen *,
 void	 input_reply_clipboard(struct bufferevent *, const char *, size_t,
 	     const char *);
 void	 input_set_buffer_size(size_t);
+void	 input_request_reply(struct client *, enum input_request_type, void *);
+void	 input_cancel_requests(struct client *);
 
 /* input-key.c */
 void	 input_key_build(void);
