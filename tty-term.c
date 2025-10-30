@@ -532,6 +532,7 @@ tty_term_create(struct tty *tty, char *name, char **caps, u_int ncaps,
 	size_t					 offset, namelen;
 	char					*first;
 	int					 n;
+	struct environ_entry			*envent;
 
 	log_debug("adding term %s", name);
 
@@ -593,6 +594,17 @@ tty_term_create(struct tty *tty, char *name, char **caps, u_int ncaps,
 		if (first != NULL && fnmatch(first, term->name, 0) == 0)
 			tty_add_features(feat, s + offset, ":");
 		a = options_array_next(a);
+	}
+
+	/* Check for COLORTERM. */
+	envent = environ_find(tty->client->environ, "COLORTERM");
+	if (envent != NULL) {
+		log_debug("%s COLORTERM=%s", tty->client->name, envent->value);
+		if (strcasecmp(envent->value, "truecolor") == 0 ||
+		    strcasecmp(envent->value, "24bit") == 0)
+			tty_add_features(feat, "RGB", ",");
+ 		else if (strstr(s, "256") != NULL)
+			tty_add_features(feat, "256", ",");
 	}
 
 	/* Apply overrides so any capabilities used for features are changed. */
