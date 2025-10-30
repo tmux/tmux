@@ -104,7 +104,11 @@ screen_redraw_two_panes(struct window *w, int direction)
 {
 	struct window_pane	*wp;
 
-	wp = TAILQ_NEXT(TAILQ_FIRST(&w->panes), entry);
+	wp = TAILQ_FIRST(&w->z_index);
+	do {
+		wp = TAILQ_NEXT(wp, zentry);
+	} while (wp && wp->layout_cell == NULL);
+
 	if (wp == NULL)
 		return (0); /* one pane */
 	if (TAILQ_NEXT(wp, entry) != NULL)
@@ -230,7 +234,7 @@ screen_redraw_cell_border(struct screen_redraw_ctx *ctx, u_int px, u_int py)
 		return (1);
 
 	/* Check all the panes. */
-	TAILQ_FOREACH(wp, &w->panes, entry) {
+	TAILQ_FOREACH(wp, &w->z_index, zentry) {
 		if (!window_pane_visible(wp))
 			continue;
 		switch (screen_redraw_pane_border(ctx, wp, px, py)) {
@@ -335,7 +339,7 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 {
 	struct client		*c = ctx->c;
 	struct window		*w = c->session->curw->window;
-	struct window_pane	*wp, *active;
+	struct window_pane	*wp, *start;
 	int			 pane_status = ctx->pane_status;
 	u_int			 sx = w->sx, sy = w->sy;
 	int			 border, pane_scrollbars = ctx->pane_scrollbars;
@@ -351,11 +355,23 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 		return (screen_redraw_type_of_cell(ctx, px, py));
 
 	if (pane_status != PANE_STATUS_OFF) {
-		active = wp = server_client_get_pane(c);
+		/* Look for higest z-index window at px,py.  xxxx scrollbars? */
+		TAILQ_FOREACH(wp, &w->z_index, zentry) {
+			if (! (wp->flags & PANE_MINIMISED) &&
+			    (px >= wp->xoff - 1 && px<= wp->xoff + wp->sx + 1) &&
+			    (py >= wp->yoff - 1 && py<= wp->yoff + wp->sy + 1))
+				break;
+		}
+		if (wp != NULL)
+			start = wp;
+		else
+			start = wp = server_client_get_pane(c);
+
 		do {
 			if (!window_pane_visible(wp))
 				goto next1;
 
+			/* xxxx Isn't this only true if pane at the top of the window? */
 			if (pane_status == PANE_STATUS_TOP)
 				line = wp->yoff - 1;
 			else
@@ -369,10 +385,24 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 			wp = TAILQ_NEXT(wp, entry);
 			if (wp == NULL)
 				wp = TAILQ_FIRST(&w->panes);
-		} while (wp != active);
+		} while (wp != start);
 	}
 
-	active = wp = server_client_get_pane(c);
+
+	/* Look for higest z-index window at px,py. */
+	TAILQ_FOREACH(wp, &w->z_index, zentry) {
+		sb_w = wp->scrollbar_style.width +
+			wp->scrollbar_style.pad;
+		if (! (wp->flags & PANE_MINIMISED) &&
+		    (px >= wp->xoff - 1 && px <= wp->xoff + wp->sx + sb_w) &&
+		    (py >= wp->yoff - 1 && py <= wp->yoff + wp->sy))
+			break;
+	}
+	if (wp == NULL)
+		start = wp = server_client_get_pane(c);
+	else
+		start = wp;
+
 	do {
 		if (!window_pane_visible(wp))
 			goto next2;
@@ -381,10 +411,7 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 		/* Check if CELL_SCROLLBAR */
 		if (window_pane_show_scrollbar(wp, pane_scrollbars)) {
 
-			if (pane_status == PANE_STATUS_TOP)
-				line = wp->yoff - 1;
-			else
-				line = wp->yoff + wp->sy;
+			line = wp->yoff + wp->sy;
 
 			/*
 			 * Check if py could lie within a scrollbar. If the
@@ -393,8 +420,7 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 			 */
 			sb_w = wp->scrollbar_style.width +
 			    wp->scrollbar_style.pad;
-			if ((pane_status && py != line) ||
-			    (wp->yoff == 0 && py < wp->sy) ||
+			if ((wp->yoff == 0 && py < wp->sy) ||
 			     (py >= wp->yoff && py < wp->yoff + wp->sy)) {
 				/* Check if px lies within a scrollbar. */
 				if ((sb_pos == PANE_SCROLLBARS_RIGHT &&
@@ -422,7 +448,7 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 		wp = TAILQ_NEXT(wp, entry);
 		if (wp == NULL)
 			wp = TAILQ_FIRST(&w->panes);
-	} while (wp != active);
+	} while (wp != start);
 
 	return (CELL_OUTSIDE);
 }
@@ -516,7 +542,8 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 	struct tty		*tty = &c->tty;
 	struct window_pane	*wp;
 	struct screen		*s;
-	u_int			 i, x, width, xoff, yoff, size;
+	struct visible_ranges	*vr;
+	u_int			 i, x, width, xoff, yoff, size, r;
 
 	log_debug("%s: %s @%u", __func__, c->name, w->id);
 
@@ -562,8 +589,14 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 
 		if (ctx->statustop)
 			yoff += ctx->statuslines;
-		tty_draw_line(tty, s, i, 0, width, x, yoff - ctx->oy,
-		    &grid_default_cell, NULL);
+		vr = screen_redraw_get_visible_ranges(wp, x, yoff - ctx->oy, width);
+
+		for (r=0; r < vr->used; r++) {
+			if (vr->nx[r] == 0)
+				continue;
+			tty_draw_line(tty, s, i + (vr->px[r] - x), 0, vr->nx[r], vr->px[r], yoff - ctx->oy,
+			    &grid_default_cell, NULL);
+		}
 	}
 	tty_cursor(tty, 0, 0);
 }
@@ -722,6 +755,7 @@ screen_redraw_draw_borders_style(struct screen_redraw_ctx *ctx, u_int x,
 	wp->border_gc_set = 1;
 
 	ft = format_create_defaults(NULL, c, s, s->curw, wp);
+
 	if (screen_redraw_check_is(ctx, x, y, active))
 		style_apply(&wp->border_gc, oo, "pane-active-border-style", ft);
 	else
@@ -758,7 +792,7 @@ screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j)
 	if (cell_type == CELL_INSIDE || cell_type == CELL_SCROLLBAR)
 		return;
 
-	if (wp == NULL) {
+	if (wp == NULL || cell_type == CELL_OUTSIDE) {
 		if (!ctx->no_pane_gc_set) {
 			ft = format_create_defaults(NULL, c, s, s->curw, NULL);
 			memcpy(&ctx->no_pane_gc, &grid_default_cell, sizeof gc);
@@ -885,6 +919,131 @@ screen_redraw_draw_status(struct screen_redraw_ctx *ctx)
 	}
 }
 
+/* Check if a single character is within a visible range (not obscured by a
+ * floating window pane). Returns a boolean.
+ */
+int
+screen_redraw_is_visible(struct visible_ranges *vr, u_int px)
+{
+	u_int			 r;
+
+	/* No visible_ranges if called from a popup or menu. Always visible. */
+	if (vr == NULL)
+		return (1);
+
+	for (r=0; r < vr->used; r++) {
+		if (vr->nx[r] == 0)
+			continue;
+		if ((px >= vr->px[r]) && (px <= vr->px[r] + vr->nx[r]))
+			return (1);
+	}
+	return (0);
+}
+
+/* Construct ranges array for the line at starting at px,py of width
+   cells of base_wp that are unobsructed. */
+struct visible_ranges *
+screen_redraw_get_visible_ranges(struct window_pane *base_wp, u_int px,
+    u_int py, u_int width) {
+	struct window_pane		*wp;
+	struct window			*w;
+	static struct visible_ranges	 vr = {NULL, NULL, 0, 0};
+	int				 found_self, sb_w;
+	u_int				 r, s, lb, rb, tb, bb;
+	int				 pane_scrollbars;
+
+	/* For efficiency vr is static and space reused. */
+	if (vr.size == 0) {
+		vr.px = xcalloc(1, sizeof(u_int));
+		vr.nx = xcalloc(1, sizeof(u_int));
+		vr.size = 1;
+	}
+
+	/* Start with the entire width of the range. */
+	vr.px[0] = px;
+	vr.nx[0] = width;
+	vr.used = 1;
+
+	if (base_wp == NULL)
+		return (&vr);
+
+	w = base_wp->window;
+	pane_scrollbars = options_get_number(w->options, "pane-scrollbars");
+
+	found_self = 0;
+	TAILQ_FOREACH_REVERSE(wp, &w->z_index, window_panes_zindex, zentry) {
+		if (wp == base_wp) {
+			found_self = 1;
+			continue;
+		}
+
+		tb = wp->yoff-1;
+		bb = wp->yoff + wp->sy;
+		if (!found_self ||
+		    (wp->flags & PANE_MINIMISED) ||
+		    (py < tb || py > bb))
+			continue;
+
+		/* Are scrollbars enabled? */
+		if (window_pane_show_scrollbar(wp, pane_scrollbars))
+			sb_w = wp->scrollbar_style.width + wp->scrollbar_style.pad;
+
+		for (r=0; r < vr.used; r++) {
+			lb = wp->xoff - 1;
+			rb = wp->xoff + wp->sx + sb_w;
+			/* If the left edge of floating wp
+			   falls inside this range and right
+			   edge covers up to right of range, 
+			   then shrink left edge of range. */
+			if (lb > vr.px[r] &&
+			    lb < vr.px[r] + vr.nx[r] &&
+			    rb >= vr.px[r] + vr.nx[r]) {
+				vr.nx[r] = lb;
+			}
+			/* Else if the right edge of floating wp
+			   falls inside of this range and left
+			   edge covers the left of range,
+			   then move px forward to right edge of wp. */
+			else if (rb > vr.px[r] &&
+				   rb < vr.px[r] + vr.nx[r] &&
+				   lb <= vr.px[r]) {
+				vr.nx[r] = vr.nx[r] - (rb - vr.px[r]);
+				vr.px[r] = vr.px[r] + (rb - vr.px[r]);
+			}
+			/* Else if wp fully inside range
+			   then split range into 2 ranges. */
+			else if (lb > vr.px[r] &&
+				   rb < vr.px[r] + vr.nx[r]) {
+				if (vr.size == vr.used) {
+					vr.size++;
+					vr.px = xreallocarray(vr.px,
+					    vr.size, sizeof (u_int));
+					vr.nx = xreallocarray(vr.nx,
+					vr.size, sizeof (u_int));
+				}
+				for (s=vr.used; s>r; s--) {
+					vr.px[s] = vr.px[s-1];
+					vr.nx[s] = vr.nx[s-1];
+				}
+				vr.used++;
+				vr.nx[r] = lb;
+				vr.px[r+1] = rb;
+				vr.nx[r+1] = vr.nx[r+1] - rb - 1;
+			}
+			/* If floating wp completely covers this range
+			   then delete it (make it 0 length). */
+			else if (lb <= vr.px[r] &&
+				 rb >= vr.px[r] + vr.nx[r]) {
+				vr.nx[r] = 0;
+			}
+			/* Else the range is already obscured, do nothing. */
+		}
+	}
+
+	return (&vr);
+}
+
+
 /* Draw one pane. */
 static void
 screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
@@ -895,7 +1054,8 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 	struct screen		*s = wp->screen;
 	struct colour_palette	*palette = &wp->palette;
 	struct grid_cell	 defaults;
-	u_int			 i, j, top, x, y, width;
+	struct visible_ranges	*vr;
+	u_int			 i, j, top, x, y, width, r;
 
 	log_debug("%s: %s @%u %%%u", __func__, c->name, w->id, wp->id);
 
@@ -905,6 +1065,7 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 		top = ctx->statuslines;
 	else
 		top = 0;
+
 	for (j = 0; j < wp->sy; j++) {
 		if (wp->yoff + j < ctx->oy || wp->yoff + j >= ctx->oy + ctx->sy)
 			continue;
@@ -936,8 +1097,20 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 		log_debug("%s: %s %%%u line %u,%u at %u,%u, width %u",
 		    __func__, c->name, wp->id, i, j, x, y, width);
 
+		/* Get visible ranges of line before we draw it. */
+		vr = screen_redraw_get_visible_ranges(wp, x, y, width);
+
 		tty_default_colours(&defaults, wp);
-		tty_draw_line(tty, s, i, j, width, x, y, &defaults, palette);
+
+		for (r=0; r < vr->used; r++) {
+			if (vr->nx[r] == 0)
+				continue;
+			/* i is px of cell, add px of region, sub the
+			   pane offset. If you don't sub offset,
+			   contents of pane shifted. */
+			tty_draw_line(tty, s, i + vr->px[r] - wp->xoff, j,
+			    vr->nx[r], vr->px[r], y, &defaults, palette);
+		}
 	}
 
 #ifdef ENABLE_SIXEL
@@ -1027,6 +1200,7 @@ screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx,
 	int			 px, py, ox = ctx->ox, oy = ctx->oy;
 	int			 sx = ctx->sx, sy = ctx->sy, xoff = wp->xoff;
 	int			 yoff = wp->yoff;
+	struct visible_ranges	*vr;
 
 	/* Set up style for slider. */
 	gc = sb_style->gc;
@@ -1043,12 +1217,14 @@ screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx,
 
 	for (j = 0; j < jmax; j++) {
 		py = sb_y + j;
+		vr = screen_redraw_get_visible_ranges(wp, sb_x, py, imax);
 		for (i = 0; i < imax; i++) {
 			px = sb_x + i;
 			if (px < xoff - ox - (int)sb_w - (int)sb_pad ||
 			    px >= sx || px < 0 ||
 			    py < yoff - oy - 1 ||
-			    py >= sy || py < 0)
+			    py >= sy || py < 0 ||
+			    ! screen_redraw_is_visible(vr, px))
 				continue;
 			tty_cursor(tty, px, py);
 			if ((sb_pos == PANE_SCROLLBARS_LEFT &&

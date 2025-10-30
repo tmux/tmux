@@ -1196,6 +1196,8 @@ struct window_pane {
 #define PANE_THEMECHANGED 0x2000
 #define PANE_UNSEENCHANGES 0x4000
 #define PANE_REDRAWSCROLLBAR 0x8000
+#define PANE_FLOATING 0x10000
+#define PANE_MINIMISED 0x20000
 
 	u_int		 sb_slider_y;
 	u_int		 sb_slider_h;
@@ -1250,9 +1252,11 @@ struct window_pane {
 
 	TAILQ_ENTRY(window_pane) entry;  /* link in list of all panes */
 	TAILQ_ENTRY(window_pane) sentry; /* link in list of last visited */
+	TAILQ_ENTRY(window_pane) zentry; /* z-index link in list of all panes */
 	RB_ENTRY(window_pane) tree_entry;
 };
 TAILQ_HEAD(window_panes, window_pane);
+TAILQ_HEAD(window_panes_zindex, window_pane);
 RB_HEAD(window_pane_tree, window_pane);
 
 /* Window structure. */
@@ -1271,6 +1275,7 @@ struct window {
 
 	struct window_pane	*active;
 	struct window_panes 	 last_panes;
+	struct window_panes	 z_index;
 	struct window_panes	 panes;
 
 	int			 lastlayout;
@@ -1613,7 +1618,7 @@ struct tty {
 	int		 mouse_drag_flag;
 	int		 mouse_scrolling_flag;
 	int		 mouse_slider_mpos;
-
+	struct window_pane *mouse_wp;
 	void		(*mouse_drag_update)(struct client *,
 			    struct mouse_event *);
 	void		(*mouse_drag_release)(struct client *,
@@ -2225,6 +2230,10 @@ struct spawn_context {
 
 	struct window_pane	 *wp0;
 	struct layout_cell	 *lc;
+	u_int			  xoff;
+	u_int			  yoff;
+	u_int			  sx;
+	u_int			  sy;
 
 	const char		 *name;
 	char			**argv;
@@ -2243,12 +2252,21 @@ struct spawn_context {
 #define SPAWN_FULLSIZE 0x20
 #define SPAWN_EMPTY 0x40
 #define SPAWN_ZOOM 0x80
+#define SPAWN_FLOATING 0x100
 };
 
 /* Mode tree sort order. */
 struct mode_tree_sort_criteria {
 	u_int	field;
 	int	reversed;
+};
+
+/* Visible range array element.  nx==-1 is end of array mark. */
+struct visible_ranges {
+	u_int	 *px;	/* Start */
+	u_int	 *nx;	/* Length */
+	size_t	used;
+	size_t	size;
 };
 
 /* tmux.c */
@@ -3183,6 +3201,10 @@ void	 screen_write_alternateoff(struct screen_write_ctx *,
 /* screen-redraw.c */
 void	 screen_redraw_screen(struct client *);
 void	 screen_redraw_pane(struct client *, struct window_pane *, int);
+int	 screen_redraw_is_visible(struct visible_ranges *, u_int px);
+struct visible_ranges *screen_redraw_get_visible_ranges(struct window_pane *,
+	     u_int, u_int, u_int);
+
 
 /* screen.c */
 void	 screen_init(struct screen *, u_int, u_int, u_int);
@@ -3270,6 +3292,7 @@ struct window_pane *window_pane_find_by_id_str(const char *);
 struct window_pane *window_pane_find_by_id(u_int);
 int		 window_pane_destroy_ready(struct window_pane *);
 void		 window_pane_resize(struct window_pane *, u_int, u_int);
+void		 window_pane_move(struct window_pane *, u_int, u_int);
 int		 window_pane_set_mode(struct window_pane *,
 		     struct window_pane *, const struct window_mode *,
 		     struct cmd_find_state *, struct args *);

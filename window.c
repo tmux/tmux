@@ -306,6 +306,7 @@ window_create(u_int sx, u_int sy, u_int xpixel, u_int ypixel)
 	w->flags = 0;
 
 	TAILQ_INIT(&w->panes);
+	TAILQ_INIT(&w->z_index);
 	TAILQ_INIT(&w->last_panes);
 	w->active = NULL;
 
@@ -585,6 +586,11 @@ window_redraw_active_switch(struct window *w, struct window_pane *wp)
 		}
 		if (wp == w->active)
 			break;
+		if (wp->layout_cell == NULL) {
+			TAILQ_REMOVE(&w->z_index, wp, zentry);
+			TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
+			wp->flags |= PANE_REDRAW;
+		}
 		wp = w->active;
 	}
 }
@@ -595,14 +601,24 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 	struct window_pane	*wp;
 	u_int			 xoff, yoff, sx, sy;
 
-	TAILQ_FOREACH(wp, &w->panes, entry) {
+	TAILQ_FOREACH(wp, &w->z_index, zentry) {
 		if (!window_pane_visible(wp))
 			continue;
 		window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
-		if (x < xoff || x > xoff + sx)
-			continue;
-		if (y < yoff || y > yoff + sy)
-			continue;
+		if (wp->layout_cell != NULL) {
+			/* Tiled, select up to including bottom or
+			   right border. */
+			if (x < xoff || x > xoff + sx)
+				continue;
+			if (y < yoff || y > yoff + sy)
+				continue;
+		} else {
+			/* Floating, include top or or left border. */
+			if (x < xoff - 1 || x > xoff + sx)
+				continue;
+			if (y < yoff - 1 || y > yoff + sy)
+				continue;
+		}
 		return (wp);
 	}
 	return (NULL);
@@ -745,11 +761,12 @@ window_add_pane(struct window *w, struct window_pane *other, u_int hlimit,
 			TAILQ_INSERT_BEFORE(other, wp, entry);
 	} else {
 		log_debug("%s: @%u after %%%u", __func__, w->id, wp->id);
-		if (flags & SPAWN_FULLSIZE)
+		if (flags & (SPAWN_FULLSIZE|SPAWN_FLOATING))
 			TAILQ_INSERT_TAIL(&w->panes, wp, entry);
 		else
 			TAILQ_INSERT_AFTER(&w->panes, other, wp, entry);
 	}
+	TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
 	return (wp);
 }
 
@@ -784,6 +801,7 @@ window_remove_pane(struct window *w, struct window_pane *wp)
 	window_lost_pane(w, wp);
 
 	TAILQ_REMOVE(&w->panes, wp, entry);
+	TAILQ_REMOVE(&w->z_index, wp, zentry);
 	window_pane_destroy(wp);
 }
 
@@ -867,6 +885,7 @@ window_destroy_panes(struct window *w)
 	while (!TAILQ_EMPTY(&w->panes)) {
 		wp = TAILQ_FIRST(&w->panes);
 		TAILQ_REMOVE(&w->panes, wp, entry);
+		TAILQ_REMOVE(&w->z_index, wp, zentry);
 		window_pane_destroy(wp);
 	}
 }
@@ -1096,6 +1115,18 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme != NULL && wme->mode->resize != NULL)
 		wme->mode->resize(wme, sx, sy);
+}
+
+void
+window_pane_move(struct window_pane *wp, u_int xoff, u_int yoff)
+{
+	if (xoff == wp->xoff && yoff == wp->yoff)
+		return;
+
+	wp->xoff = xoff;
+	wp->yoff = yoff;
+
+	log_debug("%s: %%%u resize %ux%u", __func__, wp->id, xoff, yoff);
 }
 
 int

@@ -1085,6 +1085,9 @@ layout_close_pane(struct window_pane *wp)
 {
 	struct window	*w = wp->window;
 
+	if (wp->layout_cell == NULL)
+		return;
+
 	/* Remove the cell. */
 	layout_destroy_cell(w, wp->layout_cell, &w->layout_root);
 
