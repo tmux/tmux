@@ -1117,6 +1117,18 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 		wme->mode->resize(wme, sx, sy);
 }
 
+void
+window_pane_move(struct window_pane *wp, u_int xoff, u_int yoff)
+{
+	if (xoff == wp->xoff && yoff == wp->yoff)
+		return;
+
+	wp->xoff = xoff;
+	wp->yoff = yoff;
+
+	log_debug("%s: %%%u resize %ux%u", __func__, wp->id, xoff, yoff);
+}
+
 int
 window_pane_set_mode(struct window_pane *wp, struct window_pane *swp,
     const struct window_mode *mode, struct cmd_find_state *fs,

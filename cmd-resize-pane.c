@@ -29,7 +29,9 @@
 
 static enum cmd_retval	cmd_resize_pane_exec(struct cmd *, struct cmdq_item *);
 
-static void	cmd_resize_pane_mouse_update(struct client *,
+static void	cmd_resize_pane_mouse_update_floating(struct client *,
+		    struct mouse_event *);
+static void	cmd_resize_pane_mouse_update_tiled(struct client *,
 		    struct mouse_event *);
 
 const struct cmd_entry cmd_resize_pane_entry = {
@@ -80,8 +82,13 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 			return (CMD_RETURN_NORMAL);
 		if (c == NULL || c->session != s)
 			return (CMD_RETURN_NORMAL);
-		c->tty.mouse_drag_update = cmd_resize_pane_mouse_update;
-		cmd_resize_pane_mouse_update(c, &event->m);
+		if (c->tty.mouse_wp->layout_cell != NULL) {
+			c->tty.mouse_drag_update = cmd_resize_pane_mouse_update_tiled;
+			cmd_resize_pane_mouse_update_tiled(c, &event->m);
+		} else {
+			c->tty.mouse_drag_update = cmd_resize_pane_mouse_update_floating;
+			cmd_resize_pane_mouse_update_floating(c, &event->m);
+		}
 		return (CMD_RETURN_NORMAL);
 	}
 
@@ -149,7 +156,125 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 }
 
 static void
-cmd_resize_pane_mouse_update(struct client *c, struct mouse_event *m)
+cmd_resize_pane_mouse_update_floating(struct client *c, struct mouse_event *m)
+{
+	struct winlink		*wl;
+	struct window		*w;
+	struct window_pane	*wp;
+	u_int			 y, ly, x, lx, new_sx, new_sy;
+
+	wl = cmd_mouse_window(m, NULL);
+	if (wl == NULL) {
+		c->tty.mouse_drag_update = NULL;
+		return;
+	}
+	w = wl->window;
+
+	y = m->y + m->oy; x = m->x + m->ox;
+	if (m->statusat == 0 && y >= m->statuslines)
+		y -= m->statuslines;
+	else if (m->statusat > 0 && y >= (u_int)m->statusat)
+		y = m->statusat - 1;
+	ly = m->ly + m->oy; lx = m->lx + m->ox;
+	if (m->statusat == 0 && ly >= m->statuslines)
+		ly -= m->statuslines;
+	else if (m->statusat > 0 && ly >= (u_int)m->statusat)
+		ly = m->statusat - 1;
+
+	wp = c->tty.mouse_wp;
+
+	log_debug("%s: %%%u resize_pane xoff=%u sx=%u xy=%ux%u lxy=%ux%u",
+	    __func__, wp->id, wp->xoff, wp->sx, x, y, lx, ly);
+	if (((m->lx == wp->xoff - 1) || (m->lx == wp->xoff)) &&
+	    (m->ly == wp->yoff - 1)) {
+		/* Top left border */
+		new_sx = wp->sx + (lx - x);
+		if (new_sx < PANE_MINIMUM)
+			new_sx = PANE_MINIMUM;
+		new_sy = wp->sy + (ly - y);
+		if (new_sy < PANE_MINIMUM)
+			new_sy = PANE_MINIMUM;
+		window_pane_move(wp, x + 1, y + 1);
+		window_pane_resize(wp, new_sx, new_sy);
+		server_redraw_window(w);
+	} else if (((m->lx == wp->xoff + wp->sx + 1) ||
+		    (m->lx == wp->xoff + wp->sx)) &&
+		   (m->ly == wp->yoff - 1)) {
+		/* Top right border */
+		new_sx = x - wp->xoff - 1;
+		if (new_sx < PANE_MINIMUM)
+			new_sx = PANE_MINIMUM;
+		new_sy = wp->sy + (ly - y);
+		if (new_sy < PANE_MINIMUM)
+			new_sy = PANE_MINIMUM;
+		window_pane_move(wp, wp->xoff, y + 1);
+		window_pane_resize(wp, new_sx, new_sy);
+		server_redraw_window(w);
+	} else if (((m->lx == wp->xoff - 1) || (m->lx == wp->xoff)) &&
+		   (m->ly == wp->yoff + wp->sy)) {
+		/* Bottom left border */
+		new_sx = wp->sx + (lx - x);
+		if (new_sx < PANE_MINIMUM)
+			new_sx = PANE_MINIMUM;
+		new_sy = y - wp->yoff;
+		if (new_sy < PANE_MINIMUM)
+			return;
+		window_pane_move(wp, x + 1, wp->yoff);
+		window_pane_resize(wp, new_sx, new_sy);
+		server_redraw_window(w);
+	} else if (((m->lx == wp->xoff + wp->sx + 1) ||
+		    (m->lx == wp->xoff + wp->sx)) &&
+		   (m->ly == wp->yoff + wp->sy)) {
+		/* Bottom right corner */
+		new_sx = x - wp->xoff - 1;
+		if (new_sx < PANE_MINIMUM)
+			new_sx = PANE_MINIMUM;
+		new_sy = y - wp->yoff;
+		if (new_sy < PANE_MINIMUM)
+			new_sy = PANE_MINIMUM;
+		window_pane_resize(wp, new_sx, new_sy);
+		server_redraw_window(w);
+	} else if (m->lx == wp->xoff + wp->sx + 1) {
+		/* Right border */
+		new_sx = x - wp->xoff - 1;
+		if (new_sx < PANE_MINIMUM)
+			return;
+		window_pane_resize(wp, new_sx, wp->sy);
+		server_redraw_window(w);
+	} else if (m->lx == wp->xoff - 1) {
+		/* Left border */
+		new_sx = wp->sx + (lx - x);
+		if (new_sx < PANE_MINIMUM)
+			return;
+		window_pane_move(wp, x + 1, wp->yoff);
+		window_pane_resize(wp, new_sx, wp->sy);
+		server_redraw_window(w);
+	} else if (m->ly == wp->yoff + wp->sy) {
+		/* Bottom border */
+		new_sy = y - wp->yoff;
+		if (new_sy < PANE_MINIMUM)
+			return;
+		window_pane_resize(wp, wp->sx, new_sy);
+		server_redraw_window(w);
+	} else if (m->ly == wp->yoff - 1) {
+		/* Top border */
+		window_pane_move(wp, wp->xoff + (x - lx), y + 1);
+		/*
+		  new_sy = wp->sy + (ly - y);
+		  if (new_sy < PANE_MINIMUM)
+			return;
+		  window_pane_move(wp, wp->xoff, y + 1);
+		  window_pane_resize(wp, wp->sx, new_sy);
+		*/
+		server_redraw_window(w);
+	} else {
+		log_debug("%s: %%%u resize_pane xoff=%u sx=%u xy=%ux%u lxy=%ux%u  <else>",
+		    __func__, wp->id, wp->xoff, wp->sx, x, y, lx, ly);
+	}
+}
+
+static void
+cmd_resize_pane_mouse_update_tiled(struct client *c, struct mouse_event *m)
 {
 	struct winlink		*wl;
 	struct window		*w;

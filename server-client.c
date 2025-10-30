@@ -637,6 +637,10 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 				return (SCROLLBAR_SLIDER);
 			} else /* py > sl_bottom */
 				return (SCROLLBAR_DOWN);
+		} else if (wp->layout_cell == NULL &&
+			   (px == wp->xoff - 1 || py == wp->yoff -1)) {
+			/* Floating pane left or top border. */
+			return (BORDER);
 		} else {
 			/* Must be inside the pane. */
 			return (PANE);
@@ -1063,6 +1067,7 @@ have_event:
 			break;
 		}
 		c->tty.mouse_drag_flag = 0;
+		c->tty.mouse_wp = NULL;
 		c->tty.mouse_slider_mpos = -1;
 		goto out;
 	}
@@ -1281,6 +1286,10 @@ have_event:
 		 * where the user grabbed.
 		 */
 		c->tty.mouse_drag_flag = MOUSE_BUTTONS(b) + 1;
+		/* Only change pane if not already dragging a pane border. */
+		if (c->tty.mouse_wp == NULL) {
+			c->tty.mouse_wp = wp;
+		}
 		if (c->tty.mouse_scrolling_flag == 0 &&
 		    where == SCROLLBAR_SLIDER) {
 			c->tty.mouse_scrolling_flag = 1;
