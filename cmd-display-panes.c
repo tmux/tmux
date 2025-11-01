@@ -70,10 +70,10 @@ cmd_display_panes_draw_pane(struct screen_redraw_ctx *ctx,
 	char			 buf[16], lbuf[16], rbuf[16], *ptr;
 	size_t			 len, llen, rlen;
 
-	if (wp->xoff + wp->sx <= ctx->ox ||
-	    wp->xoff >= ctx->ox + ctx->sx ||
-	    wp->yoff + wp->sy <= ctx->oy ||
-	    wp->yoff >= ctx->oy + ctx->sy)
+	if (wp->xoff + (int)wp->sx <= ctx->ox ||
+	    wp->xoff >= ctx->ox + (int)ctx->sx ||
+	    wp->yoff + (int)wp->sy <= ctx->oy ||
+	    wp->yoff >= ctx->oy + (int)ctx->sy)
 		return;
 
 	if (wp->xoff >= ctx->ox && wp->xoff + wp->sx <= ctx->ox + ctx->sx) {

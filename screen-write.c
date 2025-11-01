@@ -2030,8 +2030,8 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 			}
 			if (found_self && wp->layout_cell == NULL &&
 			    !(wp->flags & PANE_MINIMISED) &&
-			    (py >= wp->yoff && py <= wp->yoff + wp->sy) &&
-			    (px >= wp->xoff && px <= wp->xoff + wp->sx))
+			    ((int)py >= wp->yoff && (int)py <= wp->yoff + (int)wp->sy) &&
+			    ((int)px >= wp->xoff && (int)px <= wp->xoff + (int)wp->sx))
 				return;
 		}
 	}		

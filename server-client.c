@@ -613,7 +613,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 	/* Check if point is within the pane or scrollbar. */
 	if (((pane_status != PANE_STATUS_OFF && py != line) ||
 	    (wp->yoff == 0 && py < wp->sy) ||
-	    (py >= wp->yoff && py < wp->yoff + wp->sy)) &&
+	    ((int)py >= wp->yoff && py < wp->yoff + wp->sy)) &&
 	    ((sb_pos == PANE_SCROLLBARS_RIGHT &&
 	    px < wp->xoff + wp->sx + sb_pad + sb_w) ||
 	    (sb_pos == PANE_SCROLLBARS_LEFT &&
@@ -623,8 +623,8 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 		    (px >= wp->xoff + wp->sx + sb_pad &&
 		    px < wp->xoff + wp->sx + sb_pad + sb_w)) ||
 		    (sb_pos == PANE_SCROLLBARS_LEFT &&
-		    (px >= wp->xoff - sb_pad - sb_w &&
-		    px < wp->xoff - sb_pad))) {
+		    ((int)px >= wp->xoff - sb_pad - sb_w &&
+		    (int)px < wp->xoff - sb_pad))) {
 			/* Check where inside the scrollbar. */
 			sl_top = wp->yoff + wp->sb_slider_y;
 			sl_bottom = (wp->yoff + wp->sb_slider_y +
@@ -638,7 +638,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 			} else /* py > sl_bottom */
 				return (SCROLLBAR_DOWN);
 		} else if (wp->layout_cell == NULL &&
-			   (px == wp->xoff - 1 || py == wp->yoff -1)) {
+			   ((int)px == wp->xoff - 1 || (int)py == wp->yoff -1)) {
 			/* Floating pane left or top border. */
 			return (BORDER);
 		} else {
@@ -653,7 +653,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 			else
 				/* PANE_SCROLLBARS_RIGHT or none. */
 				bdr_right = fwp->xoff + fwp->sx + sb_pad + sb_w;
-			if (py >= fwp->yoff - 1 && py <= fwp->yoff + fwp->sy) {
+			if ((int)py >= fwp->yoff - 1 && py <= fwp->yoff + fwp->sy) {
 				if (px ==  bdr_right)
 					break;
 				if (wp->layout_cell == NULL) {
@@ -663,7 +663,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 						break;
 				}
 			}
-			if (px >= fwp->xoff - 1 && px <= fwp->xoff + fwp->sx) {
+			if ((int)px >= fwp->xoff - 1 && px <= fwp->xoff + fwp->sx) {
 				bdr_bottom = fwp->yoff + fwp->sy;
 				if (py == bdr_bottom)
 					break;

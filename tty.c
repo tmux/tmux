@@ -2049,12 +2049,12 @@ tty_is_obscured(const struct tty_ctx *ctx)
 		if (found_self && wp->layout_cell == NULL &&
 		    ! (wp->flags & PANE_MINIMISED) &&
 		    ((wp->yoff >= base_wp->yoff &&
-		    wp->yoff <= base_wp->yoff + base_wp->sy) ||
-		    (wp->yoff + wp->sy >= base_wp->yoff &&
+		    wp->yoff <= base_wp->yoff + (int)base_wp->sy) ||
+		    (wp->yoff + (int)wp->sy >= base_wp->yoff &&
 		    wp->yoff + wp->sy <= base_wp->yoff + base_wp->sy)) &&
 		    ((wp->xoff >= base_wp->xoff &&
-		    wp->xoff <= base_wp->xoff + base_wp->sx) ||
-		    (wp->xoff + wp->sx >= base_wp->xoff &&
+		    wp->xoff <= base_wp->xoff + (int)base_wp->sx) ||
+		    (wp->xoff + (int)wp->sx >= base_wp->xoff &&
 		    wp->xoff + wp->sx <= base_wp->xoff + base_wp->sx)))
 			return (1);
 		}

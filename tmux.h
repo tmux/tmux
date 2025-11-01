@@ -1058,8 +1058,8 @@ struct screen_redraw_ctx {
 
 	u_int		 sx;
 	u_int		 sy;
-	u_int		 ox;
-	u_int		 oy;
+	int		 ox;
+	int		 oy;
 };
 
 /* Screen size. */
@@ -1154,8 +1154,8 @@ struct window_pane {
 	u_int		 sx;
 	u_int		 sy;
 
-	u_int		 xoff;
-	u_int		 yoff;
+	int		 xoff;
+	int		 yoff;
 
 	int		 flags;
 #define PANE_REDRAW 0x1
@@ -3266,7 +3266,7 @@ struct window_pane *window_pane_find_by_id_str(const char *);
 struct window_pane *window_pane_find_by_id(u_int);
 int		 window_pane_destroy_ready(struct window_pane *);
 void		 window_pane_resize(struct window_pane *, u_int, u_int);
-void		 window_pane_move(struct window_pane *, u_int, u_int);
+void		 window_pane_move(struct window_pane *, int, int);
 int		 window_pane_set_mode(struct window_pane *,
 		     struct window_pane *, const struct window_mode *,
 		     struct cmd_find_state *, struct args *);
