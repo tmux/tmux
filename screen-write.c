@@ -2018,7 +2018,7 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	struct window		*w;
 	u_int			 found_self, px, py;
 
-
+	/* early attempt.
 	if (base_wp != NULL) {
 		w = base_wp->window;
 		px = ctx->s->cx;
@@ -2035,7 +2035,7 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 				return;
 		}
 	}		
-
+	*/
 	/* Ignore padding cells. */
 	if (gc->flags & GRID_FLAG_PADDING)
 		return;

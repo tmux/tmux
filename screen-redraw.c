@@ -1084,6 +1084,7 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 			continue;
 		y = top + wp->yoff + j - ctx->oy;
 
+		/* xxx i apparenty unneeded now that the vr array returns where in s to read from. */
 		if (wp->xoff >= ctx->ox &&
 		    wp->xoff + wp->sx <= ctx->ox + ctx->sx) {
 			/* All visible. */
@@ -1120,8 +1121,8 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 				continue;
 			/* i is px of cell, add px of region, sub the
 			   pane offset. If you don't sub offset,
-			   contents of pane shifted. */
-			tty_draw_line(tty, s, i + vr->px[r] - wp->xoff, j,
+			   contents of pane shifted. note: i apparently unnec. */
+			tty_draw_line(tty, s, /* i + */ vr->px[r] - wp->xoff, j,
 			    vr->nx[r], vr->px[r], y, &defaults, palette);
 		}
 	}
