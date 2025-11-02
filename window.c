@@ -1121,9 +1121,6 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 void
 window_pane_move(struct window_pane *wp, int xoff, int yoff)
 {
-	if (xoff == wp->xoff && yoff == wp->yoff)
-		return;
-
 	wp->xoff = xoff;
 	wp->yoff = yoff;
 
