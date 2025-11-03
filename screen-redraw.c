@@ -126,7 +126,7 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
     u_int px, u_int py)
 {
 	struct options	*oo = wp->window->options;
-	u_int		 ex = wp->xoff + wp->sx, ey = wp->yoff + wp->sy;
+	int		 ex = wp->xoff + wp->sx, ey = wp->yoff + wp->sy;
 	int		 hsplit = 0, vsplit = 0, pane_status = ctx->pane_status;
 	int		 pane_scrollbars = ctx->pane_scrollbars, sb_w = 0;
 	int		 sb_pos;
@@ -137,7 +137,7 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
 		sb_pos = 0;
 
 	/* Inside pane. */
-	if ((int)px >= wp->xoff && px < ex && (int)py >= wp->yoff && py < ey)
+	if ((int)px >= wp->xoff && (int)px < ex && (int)py >= wp->yoff && (int)py < ey)
 		return (SCREEN_REDRAW_INSIDE);
 
 	/* Get pane indicator. */
@@ -157,7 +157,7 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
 	 * Left/right borders. The wp->sy / 2 test is to colour only half the
 	 * active window's border when there are two panes.
 	 */
-	if ((wp->yoff == 0 || (int)py >= wp->yoff - 1) && py <= ey) {
+	if ((wp->yoff == 0 || (int)py >= wp->yoff - 1) && (int)py <= ey) {
 		if (sb_pos == PANE_SCROLLBARS_LEFT) {
 			if (wp->xoff - sb_w == 0 && px == wp->sx + sb_w)
 				if (!hsplit || (hsplit && py <= wp->sy / 2))
@@ -192,18 +192,18 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
 	} else {
 		if (sb_pos == PANE_SCROLLBARS_LEFT) {
 			if ((wp->xoff - sb_w == 0 || (int)px >= wp->xoff - sb_w) &&
-			    (px <= ex || (sb_w != 0 && px < ex + sb_w))) {
+			    ((int)px <= ex || (sb_w != 0 && (int)px < ex + sb_w))) {
 				if (wp->yoff != 0 && (int)py == wp->yoff - 1)
 					return (SCREEN_REDRAW_BORDER_TOP);
-				if (py == ey)
+				if ((int)py == ey)
 					return (SCREEN_REDRAW_BORDER_BOTTOM);
 			}
 		} else { /* sb_pos == PANE_SCROLLBARS_RIGHT */
 			if ((wp->xoff == 0 || (int)px >= wp->xoff) &&
-			    (px <= ex || (sb_w != 0 && px < ex + sb_w))) {
+			    ((int)px <= ex || (sb_w != 0 && (int)px < ex + sb_w))) {
 				if (wp->yoff != 0 && (int)py == wp->yoff - 1)
 					return (SCREEN_REDRAW_BORDER_TOP);
-				if (py == ey)
+				if ((int)py == ey)
 					return (SCREEN_REDRAW_BORDER_BOTTOM);
 			}
 		}
@@ -950,7 +950,8 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, u_int px,
 	struct window			*w;
 	static struct visible_ranges	 vr = {NULL, NULL, 0, 0};
 	int				 found_self, sb_w;
-	u_int				 r, s, lb, rb, tb, bb;
+	u_int				 lb, rb, tb, bb;
+	u_int				 r, s;
 	int				 pane_scrollbars;
 
 	/* For efficiency vr is static and space reused. */

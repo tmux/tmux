@@ -1642,10 +1642,10 @@ struct tty_ctx {
 	u_int			 orlower;
 
 	/* Target region (usually pane) offset and size. */
-	u_int			 xoff;
-	u_int			 yoff;
-	u_int			 rxoff;
-	u_int			 ryoff;
+	int			 xoff;
+	int			 yoff;
+	int			 rxoff;
+	int			 ryoff;
 	u_int			 sx;
 	u_int			 sy;
 

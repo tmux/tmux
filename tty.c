@@ -1121,23 +1121,23 @@ static int
 tty_clamp_line(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
     u_int nx, u_int *i, u_int *x, u_int *rx, u_int *ry)
 {
-	u_int	xoff = ctx->rxoff + px;
+	int	xoff = ctx->rxoff + px;
 
 	if (!tty_is_visible(tty, ctx, px, py, nx, 1))
 		return (0);
 	*ry = ctx->yoff + py - ctx->woy;
 
-	if (xoff >= ctx->wox && xoff + nx <= ctx->wox + ctx->wsx) {
+	if (xoff >= (int)ctx->wox && xoff + nx <= ctx->wox + ctx->wsx) {
 		/* All visible. */
 		*i = 0;
 		*x = ctx->xoff + px - ctx->wox;
 		*rx = nx;
-	} else if (xoff < ctx->wox && xoff + nx > ctx->wox + ctx->wsx) {
+	} else if (xoff < (int)ctx->wox && xoff + nx > ctx->wox + ctx->wsx) {
 		/* Both left and right not visible. */
 		*i = ctx->wox;
 		*x = 0;
 		*rx = ctx->wsx;
-	} else if (xoff < ctx->wox) {
+	} else if (xoff < (int)ctx->wox) {
 		/* Left not visible. */
 		*i = ctx->wox - (ctx->xoff + px);
 		*x = 0;
@@ -2065,7 +2065,7 @@ void
 tty_cmd_scrollup(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct client		*c = tty->client;
-	u_int			 i;
+	u_int			 i, rlower;
 
 	if (ctx->bigger ||
 	    (!tty_full_width(tty, ctx) && !tty_use_margin(tty)) ||
@@ -2085,11 +2085,16 @@ tty_cmd_scrollup(struct tty *tty, const struct tty_ctx *ctx)
 	tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
 	tty_margin_pane(tty, ctx);
 
+	if (tty->rlower < ctx->wsy)
+		rlower = tty->rlower;
+	else
+		rlower = ctx->wsy - 1;
+
 	if (ctx->num == 1 || !tty_term_has(tty->term, TTYC_INDN)) {
 		if (!tty_use_margin(tty))
-			tty_cursor(tty, 0, tty->rlower);
+			tty_cursor(tty, 0, rlower);
 		else
-			tty_cursor(tty, tty->rright, tty->rlower);
+			tty_cursor(tty, tty->rright, rlower);
 		for (i = 0; i < ctx->num; i++)
 			tty_putc(tty, '\n');
 	} else {
@@ -2558,8 +2563,15 @@ tty_margin_off(struct tty *tty)
 static void
 tty_margin_pane(struct tty *tty, const struct tty_ctx *ctx)
 {
-	tty_margin(tty, ctx->xoff - ctx->wox,
-	    ctx->xoff + ctx->sx - 1 - ctx->wox);
+	int l, r;
+
+	l = ctx->xoff - ctx->wox;
+	r = ctx->xoff + ctx->sx - 1 - ctx->wox;
+
+	if (l < 0) l = 0;
+	if (r < 0) r = 0;
+
+	tty_margin(tty, l, r);
 }
 
 /* Set margin at absolute position. */

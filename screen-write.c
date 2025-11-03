@@ -1780,8 +1780,9 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 	struct screen_write_citem	*ci, *tmp;
 	struct screen_write_cline	*cl;
 	u_int				 y, cx, cy, last, items = 0, r;
-	u_int				 r_start, r_end, ci_start, ci_end;
-	u_int				 wr_start, wr_end, wr_length, sx, xoff, yoff;
+	u_int				 wr_start, wr_end, wr_length, wsx, wsy;
+	int				 r_start, r_end, ci_start, ci_end;
+	int				 xoff, yoff;
 	struct tty_ctx			 ttyctx;
 	struct visible_ranges		*vr;
 	struct window_pane		*wp = ctx->wp;
@@ -1793,6 +1794,8 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 			ctx->scrolled = s->rlower - s->rupper + 1;
 
 		screen_write_initctx(ctx, &ttyctx, 1);
+		if (wp->yoff + wp->sy > wp->window->sy)
+			 ttyctx.orlower -= (wp->yoff + wp->sy - wp->window->sy);
 		ttyctx.num = ctx->scrolled;
 		ttyctx.bg = ctx->bg;
 		tty_write(tty_cmd_scrollup, &ttyctx);
@@ -1811,20 +1814,24 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 	/* The xoff and width of window pane relative to the window we
 	 * are writing to relative to the visible_ranges array. */
 	if (wp != NULL) {
-		sx = wp->window->sx;
+		wsx = wp->window->sx;
+		wsy = wp->window->sy;
 		xoff = wp->xoff;
 		yoff = wp->yoff;
 	} else {
-		sx = screen_size_x(s);
+		wsx = screen_size_x(s);
+		wsy = screen_size_y(s);
 		xoff = 0;
 		yoff = 0;
 	}
 
 	for (y = 0; y < screen_size_y(s); y++) {
+		if (y + yoff >= wsy)
+			continue;
 		cl = &ctx->s->write_list[y];
 
 		vr = screen_redraw_get_visible_ranges(wp, 0, y + yoff,
-		    sx);
+		    wsx);
 
 		last = UINT_MAX;
 		TAILQ_FOREACH_SAFE(ci, &cl->items, entry, tmp) {
@@ -1855,7 +1862,6 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 
 				if (wr_length <= 0)
 					continue;
-
 				screen_write_set_cursor(ctx, wr_start, y);
 				if (ci->type == CLEAR) {
 					screen_write_initctx(ctx, &ttyctx, 1);
@@ -1879,6 +1885,7 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 			}
 		}
 	}
+
 	s->cx = cx; s->cy = cy;
 
 	log_debug("%s: flushed %u items (%s)", __func__, items, from);
@@ -2014,28 +2021,7 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	u_int			 sx = screen_size_x(s), sy = screen_size_y(s);
 	u_int		 	 width = ud->width, xx, not_wrap;
 	int			 selected, skip = 1;
-	struct window_pane	*base_wp = ctx->wp, *wp;
-	struct window		*w;
-	u_int			 found_self, px, py;
 
-	/* early attempt.
-	if (base_wp != NULL) {
-		w = base_wp->window;
-		px = ctx->s->cx;
-		py = ctx->s->cy;
-		TAILQ_FOREACH(wp, &w->panes, zentry) {
-			if (wp == base_wp) {
-				found_self = 1;
-				continue;
-			}
-			if (found_self && wp->layout_cell == NULL &&
-			    !(wp->flags & PANE_MINIMISED) &&
-			    ((int)py >= wp->yoff && (int)py <= wp->yoff + (int)wp->sy) &&
-			    ((int)px >= wp->xoff && (int)px <= wp->xoff + (int)wp->sx))
-				return;
-		}
-	}		
-	*/
 	/* Ignore padding cells. */
 	if (gc->flags & GRID_FLAG_PADDING)
 		return;

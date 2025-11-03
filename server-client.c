@@ -605,6 +605,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 		sb_w = 0;
 		sb_pad = 0;
 	}
+	/* xxxx isn't this only for tiled panes at the top or bottom of the window? */
 	if (pane_status == PANE_STATUS_TOP)
 		line = wp->yoff - 1;
 	else if (pane_status == PANE_STATUS_BOTTOM)
