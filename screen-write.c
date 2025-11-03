@@ -2145,11 +2145,9 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 		case HANGULJAMO_STATE_COMPOSABLE:
 			break;
 		case HANGULJAMO_STATE_NOT_HANGULJAMO:
-			if (utf8_is_modifier(ud)) {
-				if (last.data.size < 2)
-					return (0);
+			if (utf8_should_combine(&last.data, ud))
 				force_wide = 1;
-			} else if (!utf8_has_zwj(&last.data))
+			else if (!utf8_has_zwj(&last.data))
 				return (0);
 			break;
 		}
