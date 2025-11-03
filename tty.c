@@ -2569,7 +2569,9 @@ tty_margin_pane(struct tty *tty, const struct tty_ctx *ctx)
 	r = ctx->xoff + ctx->sx - 1 - ctx->wox;
 
 	if (l < 0) l = 0;
+	if (l > (int)ctx->wsx) l = ctx->wsx;
 	if (r < 0) r = 0;
+	if (r > (int)ctx->wsx) r = ctx->wsx;
 
 	tty_margin(tty, l, r);
 }
