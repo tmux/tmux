@@ -55,7 +55,7 @@ utf8_has_zwj(const struct utf8_data *ud)
 	return (memcmp(ud->data + ud->size - 3, "\342\200\215", 3) == 0);
 }
 
-/* Is this a zero width joiner? */
+/* Is this zero width joiner U+200D? */
 int
 utf8_is_zwj(const struct utf8_data *ud)
 {
@@ -64,13 +64,22 @@ utf8_is_zwj(const struct utf8_data *ud)
 	return (memcmp(ud->data, "\342\200\215", 3) == 0);
 }
 
-/* Is this a variation selector? */
+/* Is this variation selector U+FE0F? */
 int
 utf8_is_vs(const struct utf8_data *ud)
 {
 	if (ud->size != 3)
 		return (0);
 	return (memcmp(ud->data, "\357\270\217", 3) == 0);
+}
+
+/* Is this Hangul filler U+3164? */
+int
+utf8_is_hangul_filler(const struct utf8_data *ud)
+{
+	if (ud->size != 3)
+		return (0);
+	return (memcmp(ud->data, "\343\205\244", 3) == 0);
 }
 
 /* Should these two characters combine? */

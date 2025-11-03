@@ -2101,6 +2101,10 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	struct tty_ctx		 ttyctx;
 	int			 force_wide = 0, zero_width = 0;
 
+	/* Ignore U+3164 HANGUL_FILLER entirely. */
+	if (utf8_is_hangul_filler(ud))
+		return (1);
+
 	/*
 	 * Is this character which makes no sense without being combined? If
 	 * this is true then flag it here and discard the character (return 1)
