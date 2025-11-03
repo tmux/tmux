@@ -3499,6 +3499,7 @@ int		 utf8_cstrhas(const char *, const struct utf8_data *);
 int		 utf8_has_zwj(const struct utf8_data *);
 int		 utf8_is_zwj(const struct utf8_data *);
 int		 utf8_is_vs(const struct utf8_data *);
+int		 utf8_is_hangul_filler(const struct utf8_data *);
 int		 utf8_should_combine(const struct utf8_data *,
 		    const struct utf8_data *);
 enum hanguljamo_state hanguljamo_check_state(const struct utf8_data *,
