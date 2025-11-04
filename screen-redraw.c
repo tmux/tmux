@@ -100,23 +100,22 @@ screen_redraw_border_set(struct window *w, struct window_pane *wp,
 
 /* Return if window has only two panes. */
 static int
-screen_redraw_two_panes(struct window *w, int direction)
+screen_redraw_two_panes(struct window *w, enum layout_type *type)
 {
 	struct window_pane	*wp;
+	u_int			 count = 0;
 
-	wp = TAILQ_FIRST(&w->z_index);
-	do {
-		wp = TAILQ_NEXT(wp, zentry);
-	} while (wp && wp->layout_cell == NULL);
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (wp->layout_cell == NULL)
+			continue;
+		count++;
+		if (count > 2 || wp->layout_cell->parent == NULL)
+			return (0);
+		*type = wp->layout_cell->parent->type;
+	}
+	if (count <= 1)
+		return (0);
 
-	if (wp == NULL)
-		return (0); /* one pane */
-	if (TAILQ_NEXT(wp, entry) != NULL)
-		return (0); /* more than two panes */
-	if (direction == 0 && wp->xoff == 0)
-		return (0);
-	if (direction == 1 && wp->yoff == 0)
-		return (0);
 	return (1);
 }
 
@@ -130,6 +129,7 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
 	int		 hsplit = 0, vsplit = 0, pane_status = ctx->pane_status;
 	int		 pane_scrollbars = ctx->pane_scrollbars, sb_w = 0;
 	int		 sb_pos;
+	enum layout_type split_type;
 
 	if (pane_scrollbars != 0)
 		sb_pos = ctx->pane_scrollbars_pos;
@@ -144,8 +144,10 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
 	switch (options_get_number(oo, "pane-border-indicators")) {
 	case PANE_BORDER_COLOUR:
 	case PANE_BORDER_BOTH:
-		hsplit = screen_redraw_two_panes(wp->window, 0);
-		vsplit = screen_redraw_two_panes(wp->window, 1);
+		if (screen_redraw_two_panes(wp->window, &split_type)) {
+			hsplit = (split_type == LAYOUT_LEFTRIGHT);
+			vsplit = (split_type == LAYOUT_TOPBOTTOM);
+		}
 		break;
 	}
 
@@ -371,7 +373,9 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 			if (!window_pane_visible(wp))
 				goto next1;
 
-			/* xxxx Isn't this only true if pane at the top of the window? */
+			/* Pane border status inside top/bottom border
+			 * is CELL_INSIDE so it doesn't get overdrawn.
+			 */
 			if (pane_status == PANE_STATUS_TOP)
 				line = wp->yoff - 1;
 			else
