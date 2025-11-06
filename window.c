@@ -586,11 +586,17 @@ window_redraw_active_switch(struct window *w, struct window_pane *wp)
 		}
 		if (wp == w->active)
 			break;
+
+		/* If you want tiled planes to be able to bury
+		 * floating planes then do this regardless of
+		 * wp->layout_cell==NULL or not.  A new option?
+		 */
 		if (wp->layout_cell == NULL) {
 			TAILQ_REMOVE(&w->z_index, wp, zentry);
 			TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
 			wp->flags |= PANE_REDRAW;
 		}
+
 		wp = w->active;
 	}
 }
@@ -767,7 +773,11 @@ window_add_pane(struct window *w, struct window_pane *other, u_int hlimit,
 		else
 			TAILQ_INSERT_AFTER(&w->panes, other, wp, entry);
 	}
-	TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
+	/* Floating panes are created above tiled planes. */
+	if (flags & (SPAWN_FLOATING))
+		TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
+	else
+		TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
 	return (wp);
 }
 
