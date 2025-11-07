@@ -1092,7 +1092,7 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, u_int px,
 				vr.used++;
 			}
 			/* If floating wp completely covers this range
-			   then delete it (make it 0 length). */
+			 * then delete it (make it 0 length). */
 			else if (lb <= vr.px[r] &&
 				 rb >= vr.px[r] + vr.nx[r]) {
 				vr.nx[r] = 0;
@@ -1177,8 +1177,9 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 			if (vr->nx[r] == 0)
 				continue;
 			/* i is px of cell, add px of region, sub the
-			   pane offset. If you don't sub offset,
-			   contents of pane shifted. note: i apparently unnec. */
+			 * pane offset. If you don't sub offset,
+			 * contents of pane shifted. note: i apparently unnec. 
+			 */
 			tty_draw_line(tty, s, /* i + */ vr->px[r] - wp->xoff, j,
 			    vr->nx[r], vr->px[r], y, &defaults, palette);
 		}
