@@ -2248,10 +2248,11 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 	    (gcp->data.width == 1 && !tty_check_overlay(tty, px, py)))
 		return;
 
+	vr = screen_redraw_get_visible_ranges(wp, px, py,
+	    gcp->data.width);
+
 	/* Handle partially obstructed wide characters. */
 	if (gcp->data.width > 1) {
-		vr = screen_redraw_get_visible_ranges(wp, px, py,
-		    gcp->data.width);
 		for (i = 0; i < vr->used; i++)
 			vis2 += vr->nx[i];
 		tty_check_overlay_range(tty, px, py, gcp->data.width, &r);
@@ -2273,8 +2274,9 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 	tty_margin_off(tty);
 	tty_cursor_pane_unless_wrap(tty, ctx, ctx->ocx, ctx->ocy);
 
-	tty_cell(tty, ctx->cell, &ctx->defaults, ctx->palette,
-	    ctx->s->hyperlinks);
+	if (screen_redraw_is_visible(vr, px))
+	    tty_cell(tty, ctx->cell, &ctx->defaults, ctx->palette,
+		ctx->s->hyperlinks);
 
 	if (ctx->num == 1)
 		tty_invalidate(tty);
