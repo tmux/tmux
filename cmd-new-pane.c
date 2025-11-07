@@ -65,7 +65,8 @@ cmd_new_pane_exec(struct cmd *self, struct cmdq_item *item)
 	char			*cause = NULL, *cp;
 	struct args_value	*av;
 	u_int			 count = args_count(args);
-	u_int			 sx, sy, pct, x, y;
+	u_int			 x, y, sx, sy, pct;
+	static u_int		 last_x = 0, last_y = 0;
 
 	if (args_has(args, 'f')) {
 		sx = w->sx;
@@ -119,8 +120,15 @@ cmd_new_pane_exec(struct cmd *self, struct cmdq_item *item)
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
-	} else
-		x = 10;
+	} else {
+		if (last_x == 0) {
+			x = 5;
+		} else {
+			x = (last_x += 5);
+			if (last_x > w->sx)
+				x = 5;
+		}
+	}
 	if (args_has(args, 'y')) {
 		y = args_strtonum_and_expand(args, 'y', 0, w->sx, item,
 		    &cause);
@@ -129,11 +137,20 @@ cmd_new_pane_exec(struct cmd *self, struct cmdq_item *item)
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
-	} else
-		y = 10;
+	} else {
+		if (last_y == 0) {
+			y = 5;
+		} else {
+			y = (last_y += 5);
+			if (last_y > w->sy)
+				y = 5;
+		}
+	}
 
 	sc.xoff = x;
 	sc.yoff = y;
+	last_x = x;
+	last_y = y;
 	sc.sx = sx;
 	sc.sy = sy;
 
