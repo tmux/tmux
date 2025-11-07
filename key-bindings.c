@@ -455,6 +455,9 @@ key_bindings_init(void)
 		/* Mouse button 1 triple click on pane. */
 		"bind -n TripleClick1Pane { select-pane -t=; if -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' { send -M } { copy-mode -H; send -X select-line; run -d0.3; send -X copy-pipe-and-cancel } }",
 
+		/* Mouse button 1 on border. */
+		"bind -n MouseDown1Border { select-pane -M }",
+
 		/* Mouse button 1 drag on border. */
 		"bind -n MouseDrag1Border { resize-pane -M }",
 

@@ -86,6 +86,8 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 			c->tty.mouse_drag_update = cmd_resize_pane_mouse_update_tiled;
 			cmd_resize_pane_mouse_update_tiled(c, &event->m);
 		} else {
+			window_redraw_active_switch(w, c->tty.mouse_wp);
+			window_set_active_pane(w, c->tty.mouse_wp, 1);
 			c->tty.mouse_drag_update = cmd_resize_pane_mouse_update_floating;
 			cmd_resize_pane_mouse_update_floating(c, &event->m);
 		}

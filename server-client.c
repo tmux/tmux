@@ -606,7 +606,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 		sb_pad = 0;
 	}
 	/* xxxx isn't this only for tiled panes at the top or bottom of the window? */
-	if (pane_status == PANE_STATUS_TOP)
+	if (pane_status == PANE_STATUS_TOP && wp->layout_cell != NULL)
 		line = wp->yoff - 1;
 	else if (pane_status == PANE_STATUS_BOTTOM)
 		line = wp->yoff + wp->sy;
@@ -639,8 +639,10 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 			} else /* py > sl_bottom */
 				return (SCROLLBAR_DOWN);
 		} else if (wp->layout_cell == NULL &&
-			   ((int)px == wp->xoff - 1 || (int)py == wp->yoff -1)) {
-			/* Floating pane left or top border. */
+			   ((int)px == wp->xoff - 1 ||
+			    (int)py == wp->yoff -1 ||
+			    (int)py == wp->yoff + (int)wp->sy)) {
+			/* Floating pane left, bottom or top border. */
 			return (BORDER);
 		} else {
 			/* Must be inside the pane. */
