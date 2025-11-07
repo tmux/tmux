@@ -528,6 +528,7 @@ screen_redraw_make_pane_status(struct client *c, struct window_pane *wp,
 	char			*expanded;
 	int			 pane_status = rctx->pane_status, sb_w = 0;
 	int			 pane_scrollbars = rctx->pane_scrollbars;
+	int			 max_width;
 	u_int			 width, i, cell_type, px, py;
 	struct screen_write_ctx	 ctx;
 	struct screen		 old;
@@ -549,6 +550,9 @@ screen_redraw_make_pane_status(struct client *c, struct window_pane *wp,
 		wp->status_size = width = 0;
 	else
 		wp->status_size = width = wp->sx + sb_w - 2;
+	max_width = (int)w->sx - (wp->xoff + 2) - sb_w;
+	if (max_width < 0) max_width = 0;
+	if (width > (u_int)max_width) width = (u_int)max_width;
 
 	memcpy(&old, &wp->status_screen, sizeof old);
 	screen_init(&wp->status_screen, width, 1, 0);
