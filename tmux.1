@@ -7083,6 +7083,59 @@ is a format for the popup title (see
 The
 .Fl C
 flag closes any popup on the client.
+.Tg modpopup
+.It Xo Ic modify-popup
+.Op Fl BEkN
+.Op Fl b Ar border-lines
+.Op Fl s Ar style
+.Op Fl S Ar border-style
+.Op Fl T Ar title
+.Xc
+.D1 Pq alias: Ic modpopup
+Changes the border and style settings when executed inside a popup.
+.Pp
+.Fl E
+closes the popup automatically when
+.Ar shell-command
+exits.
+Two
+.Fl E
+closes the popup only if
+.Ar shell-command
+exited with success.
+.Fl k
+allows any key to dismiss the popup instead of only
+.Ql Escape
+or
+.Ql C-c .
+.Pp
+.Fl B
+does not surround the popup by a border.
+.Pp
+.Fl b
+sets the type of characters used for drawing popup borders.
+When
+.Fl B
+is specified, the
+.Fl b
+option is ignored.
+See
+.Ic popup-border-lines
+for possible values for
+.Ar border-lines .
+.Pp
+.Fl s
+sets the style for the popup and
+.Fl S
+sets the style for the popup border (see
+.Sx STYLES ) .
+.Pp
+.Fl T
+is a format for the popup title (see
+.Sx FORMATS ) .
+.Pp
+.Fl N
+Disables any previously specified -E, -EE, or -k option.
 .Tg showphist
 .It Xo Ic show-prompt-history
 .Op Fl T Ar prompt-type

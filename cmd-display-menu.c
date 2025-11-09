@@ -33,6 +33,8 @@ static enum cmd_retval		cmd_display_menu_exec(struct cmd *,
 				    struct cmdq_item *);
 static enum cmd_retval		cmd_display_popup_exec(struct cmd *,
 				    struct cmdq_item *);
+static enum cmd_retval		cmd_modify_popup_exec(struct cmd *,
+				    struct cmdq_item *);
 
 const struct cmd_entry cmd_display_menu_entry = {
 	.name = "display-menu",
@@ -65,6 +67,18 @@ const struct cmd_entry cmd_display_popup_entry = {
 
 	.flags = CMD_AFTERHOOK|CMD_CLIENT_CFLAG,
 	.exec = cmd_display_popup_exec
+};
+
+const struct cmd_entry cmd_modify_popup_entry = {
+	.name = "modify-popup",
+	.alias = "modpopup",
+
+	.args = { "Bb:Eks:S:T:N", 0, -1, NULL },
+	.usage = "[-BEkN] [-b border-lines] [-s style] "
+		 "[-S border-style] [-T title] ",
+
+	.flags = CMD_AFTERHOOK|CMD_CLIENT_CFLAG,
+	.exec = cmd_modify_popup_exec
 };
 
 static enum args_parse_type
@@ -379,6 +393,61 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	    style, selected_style, border_style, target, NULL, NULL) != 0)
 		return (CMD_RETURN_NORMAL);
 	return (CMD_RETURN_WAIT);
+}
+
+static enum cmd_retval
+cmd_modify_popup_exec(struct cmd *self, struct cmdq_item *item)
+{
+	struct args		*args = cmd_get_args(self);
+	struct cmd_find_state	*target = cmdq_get_target(item);
+	struct session		*s = target->s;
+	struct client		*c = cmdq_get_target_client(item);
+	char		*cause = NULL;
+	char		*title = NULL;
+	struct options		*o = s->curw->window->options;
+	struct options_entry	*oe;
+	const char		*style = args_get(args, 's');
+	const char		*border_style = args_get(args, 'S');
+	enum box_lines		 lines = BOX_LINES_DEFAULT;
+	const char		*value;
+	int		flags = -1;
+
+	value = args_get(args, 'b');
+	if (args_has(args, 'B'))
+		lines = BOX_LINES_NONE;
+	else if (value != NULL) {
+		oe = options_get(o, "popup-border-lines");
+		lines = options_find_choice(options_table_entry(oe), value,
+		    &cause);
+		if (cause != NULL) {
+			cmdq_error(item, "popup-border-lines %s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
+		}
+	}
+	if (args_has(args, 'T'))
+		title = format_single_from_target(item, args_get(args, 'T'));
+	if (!args_has(args, 'N')) {
+		if (args_has(args, 'E') > 1) {
+			if (flags == -1)
+				flags = 0;
+			flags |= POPUP_CLOSEEXITZERO;
+		} else if (args_has(args, 'E')) {
+			if (flags == -1)
+				flags = 0;
+			flags |= POPUP_CLOSEEXIT;
+		}
+		if (args_has(args, 'k')) {
+			if (flags == -1)
+				flags = 0;
+			flags |= POPUP_CLOSEANYKEY;
+		}
+	} else
+		flags = 0;
+
+	popup_modify(c, title, style, border_style, lines, flags);
+
+	return (CMD_RETURN_NORMAL);
 }
 
 static enum cmd_retval
