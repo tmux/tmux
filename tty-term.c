@@ -611,7 +611,7 @@ tty_term_create(struct tty *tty, char *name, char **caps, u_int ncaps,
 		if (strcasecmp(envent->value, "truecolor") == 0 ||
 		    strcasecmp(envent->value, "24bit") == 0)
 			tty_add_features(feat, "RGB", ",");
- 		else if (strstr(s, "256") != NULL)
+ 		else if (strstr(envent->value, "256") != NULL)
 			tty_add_features(feat, "256", ",");
 	}
 

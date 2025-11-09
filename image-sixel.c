@@ -474,7 +474,7 @@ sixel_scale(struct sixel_image *si, u_int xpixel, u_int ypixel, u_int ox,
 		}
 	}
 
-	if (colours) {
+	if (colours && si->ncolours != 0) {
 		new->colours = xmalloc(si->ncolours * sizeof *new->colours);
 		for (i = 0; i < si->ncolours; i++)
 			new->colours[i] = si->colours[i];

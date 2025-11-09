@@ -567,8 +567,8 @@ window_copy_vadd(struct window_pane *wp, int parse, const char *fmt, va_list ap)
 		vasprintf(&text, fmt, ap);
 		input_parse_screen(data->ictx, backing, window_copy_init_ctx_cb,
 		    data, text, strlen(text));
-        free(text);
-    } else {
+		free(text);
+	} else {
 		memcpy(&gc, &grid_default_cell, sizeof gc);
 		screen_write_vnputs(&backing_ctx, 0, &gc, fmt, ap);
 	}
