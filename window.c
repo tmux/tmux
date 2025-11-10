@@ -605,8 +605,10 @@ struct window_pane *
 window_get_active_at(struct window *w, u_int x, u_int y)
 {
 	struct window_pane	*wp;
-	int			 xoff, yoff;
+	int			 status, xoff, yoff;
 	u_int			 sx, sy;
+
+	status = options_get_number(w->options, "pane-border-status");
 
 	TAILQ_FOREACH(wp, &w->z_index, zentry) {
 		if (!window_pane_visible(wp))
@@ -617,8 +619,13 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 			   right border. */
 			if ((int)x < xoff || x > xoff + sx)
 				continue;
-			if ((int)y < yoff || y > yoff + sy)
-				continue;
+			if (status == PANE_STATUS_TOP) {
+				if ((int)y < yoff - 1 || y > yoff + sy)
+					continue;
+			} else {
+				if ((int)y < yoff || y > yoff + sy)
+					continue;
+			}
 		} else {
 			/* Floating, include top or or left border. */
 			if ((int)x < xoff - 1 || x > xoff + sx)
