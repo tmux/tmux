@@ -640,15 +640,16 @@ popup_job_complete_cb(struct job *job)
 }
 
 int
+isapopup(struct client *c) {
+	return (c->overlay_draw == popup_draw_cb);
+}
+
+int
 popup_modify(struct client *c, const char *title, const char *style,
 	const char *border_style, enum box_lines lines, int flags)
 {
 	struct popup_data		*pd = c->overlay_data;
 	struct style		sytmp;
-
-	if (c->overlay_draw != popup_draw_cb) {
-		return (-1);
-	}
 
 	if (title != NULL) {
 		if (pd->title != NULL)

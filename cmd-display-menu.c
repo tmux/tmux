@@ -33,8 +33,6 @@ static enum cmd_retval		cmd_display_menu_exec(struct cmd *,
 				    struct cmdq_item *);
 static enum cmd_retval		cmd_display_popup_exec(struct cmd *,
 				    struct cmdq_item *);
-static enum cmd_retval		cmd_modify_popup_exec(struct cmd *,
-				    struct cmdq_item *);
 
 const struct cmd_entry cmd_display_menu_entry = {
 	.name = "display-menu",
@@ -56,8 +54,8 @@ const struct cmd_entry cmd_display_popup_entry = {
 	.name = "display-popup",
 	.alias = "popup",
 
-	.args = { "Bb:Cc:d:e:Eh:ks:S:t:T:w:x:y:", 0, -1, NULL },
-	.usage = "[-BCEk] [-b border-lines] [-c target-client] "
+	.args = { "Bb:Cc:d:e:Eh:kNs:S:t:T:w:x:y:", 0, -1, NULL },
+	.usage = "[-BCEkN] [-b border-lines] [-c target-client] "
 		 "[-d start-directory] [-e environment] [-h height] "
 		 "[-s style] [-S border-style] " CMD_TARGET_PANE_USAGE
 		 " [-T title] [-w width] [-x position] [-y position] "
@@ -67,18 +65,6 @@ const struct cmd_entry cmd_display_popup_entry = {
 
 	.flags = CMD_AFTERHOOK|CMD_CLIENT_CFLAG,
 	.exec = cmd_display_popup_exec
-};
-
-const struct cmd_entry cmd_modify_popup_entry = {
-	.name = "modify-popup",
-	.alias = "modpopup",
-
-	.args = { "Bb:Eks:S:T:N", 0, -1, NULL },
-	.usage = "[-BEkN] [-b border-lines] [-s style] "
-		 "[-S border-style] [-T title] ",
-
-	.flags = CMD_AFTERHOOK|CMD_CLIENT_CFLAG,
-	.exec = cmd_modify_popup_exec
 };
 
 static enum args_parse_type
@@ -396,61 +382,6 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 }
 
 static enum cmd_retval
-cmd_modify_popup_exec(struct cmd *self, struct cmdq_item *item)
-{
-	struct args		*args = cmd_get_args(self);
-	struct cmd_find_state	*target = cmdq_get_target(item);
-	struct session		*s = target->s;
-	struct client		*c = cmdq_get_target_client(item);
-	char		*cause = NULL;
-	char		*title = NULL;
-	struct options		*o = s->curw->window->options;
-	struct options_entry	*oe;
-	const char		*style = args_get(args, 's');
-	const char		*border_style = args_get(args, 'S');
-	enum box_lines		 lines = BOX_LINES_DEFAULT;
-	const char		*value;
-	int		flags = -1;
-
-	value = args_get(args, 'b');
-	if (args_has(args, 'B'))
-		lines = BOX_LINES_NONE;
-	else if (value != NULL) {
-		oe = options_get(o, "popup-border-lines");
-		lines = options_find_choice(options_table_entry(oe), value,
-		    &cause);
-		if (cause != NULL) {
-			cmdq_error(item, "popup-border-lines %s", cause);
-			free(cause);
-			return (CMD_RETURN_ERROR);
-		}
-	}
-	if (args_has(args, 'T'))
-		title = format_single_from_target(item, args_get(args, 'T'));
-	if (!args_has(args, 'N')) {
-		if (args_has(args, 'E') > 1) {
-			if (flags == -1)
-				flags = 0;
-			flags |= POPUP_CLOSEEXITZERO;
-		} else if (args_has(args, 'E')) {
-			if (flags == -1)
-				flags = 0;
-			flags |= POPUP_CLOSEEXIT;
-		}
-		if (args_has(args, 'k')) {
-			if (flags == -1)
-				flags = 0;
-			flags |= POPUP_CLOSEANYKEY;
-		}
-	} else
-		flags = 0;
-
-	popup_modify(c, title, style, border_style, lines, flags);
-
-	return (CMD_RETURN_NORMAL);
-}
-
-static enum cmd_retval
 cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args		*args = cmd_get_args(self);
@@ -461,7 +392,7 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	const char		*value, *shell, *shellcmd = NULL;
 	const char		*style = args_get(args, 's');
 	const char		*border_style = args_get(args, 'S');
-	char			*cwd, *cause = NULL, **argv = NULL, *title;
+	char			*cwd = NULL, *cause = NULL, **argv = NULL, *title;
 	int			 flags = 0, argc = 0;
 	enum box_lines		 lines = BOX_LINES_DEFAULT;
 	u_int			 px, py, w, h, count = args_count(args);
@@ -469,16 +400,17 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	struct environ		*env = NULL;
 	struct options		*o = s->curw->window->options;
 	struct options_entry	*oe;
+	int				modify = isapopup(tc);
 
 	if (args_has(args, 'C')) {
 		server_client_clear_overlay(tc);
 		return (CMD_RETURN_NORMAL);
 	}
-	if (tc->overlay_draw != NULL)
+	if (!modify && tc->overlay_draw != NULL)
 		return (CMD_RETURN_NORMAL);
 
 	h = tty->sy / 2;
-	if (args_has(args, 'h')) {
+	if (!modify && args_has(args, 'h')) {
 		h = args_percentage(args, 'h', 1, tty->sy, tty->sy, &cause);
 		if (cause != NULL) {
 			cmdq_error(item, "height %s", cause);
@@ -488,7 +420,7 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	w = tty->sx / 2;
-	if (args_has(args, 'w')) {
+	if (!modify && args_has(args, 'w')) {
 		w = args_percentage(args, 'w', 1, tty->sx, tty->sx, &cause);
 		if (cause != NULL) {
 			cmdq_error(item, "width %s", cause);
@@ -501,7 +433,7 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 		w = tty->sx;
 	if (h > tty->sy)
 		h = tty->sy;
-	if (!cmd_display_menu_get_position(tc, item, args, &px, &py, w, h))
+	if (!modify && !cmd_display_menu_get_position(tc, item, args, &px, &py, w, h))
 		return (CMD_RETURN_NORMAL);
 
 	value = args_get(args, 'b');
@@ -518,43 +450,61 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 		}
 	}
 
-	value = args_get(args, 'd');
-	if (value != NULL)
-		cwd = format_single_from_target(item, value);
-	else
-		cwd = xstrdup(server_client_get_cwd(tc, s));
-	if (count == 0)
-		shellcmd = options_get_string(s->options, "default-command");
-	else if (count == 1)
-		shellcmd = args_string(args, 0);
-	if (count <= 1 && (shellcmd == NULL || *shellcmd == '\0')) {
-		shellcmd = NULL;
-		shell = options_get_string(s->options, "default-shell");
-		if (!checkshell(shell))
-			shell = _PATH_BSHELL;
-		cmd_append_argv(&argc, &argv, shell);
-	} else
-		args_to_vector(args, &argc, &argv);
+	if (!modify) {
+		value = args_get(args, 'd');
+		if (value != NULL)
+			cwd = format_single_from_target(item, value);
+		else
+			cwd = xstrdup(server_client_get_cwd(tc, s));
+		if (count == 0)
+			shellcmd = options_get_string(s->options, "default-command");
+		else if (count == 1)
+			shellcmd = args_string(args, 0);
+		if (count <= 1 && (shellcmd == NULL || *shellcmd == '\0')) {
+			shellcmd = NULL;
+			shell = options_get_string(s->options, "default-shell");
+			if (!checkshell(shell))
+				shell = _PATH_BSHELL;
+			cmd_append_argv(&argc, &argv, shell);
+		} else
+			args_to_vector(args, &argc, &argv);
 
-	if (args_has(args, 'e') >= 1) {
-		env = environ_create();
-		av = args_first_value(args, 'e');
-		while (av != NULL) {
-			environ_put(env, av->string, 0);
-			av = args_next_value(av);
+		if (args_has(args, 'e') >= 1) {
+			env = environ_create();
+			av = args_first_value(args, 'e');
+			while (av != NULL) {
+				environ_put(env, av->string, 0);
+				av = args_next_value(av);
+			}
 		}
-	}
+	} else
+		flags = -1;
+
+	if (args_has(args, 'N'))
+		flags = 0;
 
 	if (args_has(args, 'T'))
 		title = format_single_from_target(item, args_get(args, 'T'));
 	else
 		title = xstrdup("");
-	if (args_has(args, 'E') > 1)
+	if (args_has(args, 'E') > 1) {
+		if (flags == -1)
+			flags = 0;
 		flags |= POPUP_CLOSEEXITZERO;
-	else if (args_has(args, 'E'))
+	} else if (args_has(args, 'E')) {
+		if (flags == -1)
+			flags = 0;
 		flags |= POPUP_CLOSEEXIT;
-	if (args_has(args, 'k'))
+	} if (args_has(args, 'k')) {
+		if (flags == -1)
+			flags = 0;
 		flags |= POPUP_CLOSEANYKEY;
+	}
+	if (modify) {
+		popup_modify(tc, title, style, border_style, lines, flags);
+		free(title);
+		return (CMD_RETURN_NORMAL);
+	}
 	if (popup_display(flags, lines, item, px, py, w, h, env, shellcmd, argc,
 	    argv, cwd, title, tc, s, style, border_style, NULL, NULL) != 0) {
 		cmd_free_argv(argc, argv);

@@ -3613,6 +3613,8 @@ int		 popup_editor(struct client *, const char *, size_t,
 int		 popup_modify(struct client *, const char *, const char *, const char *,
 					enum box_lines, int);
 
+int		isapopup(struct client *);
+
 /* style.c */
 int		 style_parse(struct style *,const struct grid_cell *,
 		     const char *);
