@@ -2259,7 +2259,7 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 		for (i = 0; i < OVERLAY_MAX_RANGES; i++)
 			vis += r.nx[i];
 		if (vis < gcp->data.width  ||
-		    vis2 < gcp->data.width) {
+		    vis2 < gcp->data.width) {  /* xxxx check visible range */
 			tty_draw_line(tty, s, s->cx, s->cy, gcp->data.width,
 			    px, py, &ctx->defaults, ctx->palette);
 			return;

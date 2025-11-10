@@ -247,29 +247,32 @@ screen_redraw_cell_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
 	u_int			 sy = w->sy;
 	int			 sb_w, floating = 0;
 
+	floating = (wp->layout_cell == NULL);
+
 	sb_w = wp->scrollbar_style.width +
 	    wp->scrollbar_style.pad;
 
 	if (ctx->pane_status == PANE_STATUS_BOTTOM)
 		sy--;
 
-	/* Outside the window? */
-	if (px > w->sx || py > sy)
-		return (0);
+	if (! floating) {
+		/* Outside the window? */
+		if (px > w->sx || py > sy)
+			return (0);
 
-	/* On the window border? */
-	if (px == w->sx || py == sy)
-		return (1);
+		/* On the window border? */
+		if (px == w->sx || py == sy)
+			return (1);
+	}
 
 	/* If checking a cell from a tiled pane, ignore floating panes
 	 * because 2 side-by-side or top-bottom panes share a border
-	 * which is used to do split coulering. Essentially treat all
+	 * which is used to do split colouring. Essentially treat all
 	 * non-floating panes as being in a single z-index.
 	 *
 	 * If checking a cell from a floating pane, only check cells
 	 * from this floating pane, again, essentially only this z-index.
 	 */
-	floating = (wp->layout_cell == NULL);
 
 	/* Check all the panes. */
 	TAILQ_FOREACH(wp2, &w->z_index, zentry) {
@@ -305,7 +308,7 @@ screen_redraw_type_of_cell(struct screen_redraw_ctx *ctx,
 	int		 pane_status = ctx->pane_status;
 	struct window	*w = c->session->curw->window;
 	u_int		 sx = w->sx, sy = w->sy;
-	int		 borders = 0;
+	int		 borders = 0, floating;
 
 	if (pane_status == PANE_STATUS_BOTTOM)
 		sy--;
@@ -313,6 +316,8 @@ screen_redraw_type_of_cell(struct screen_redraw_ctx *ctx,
 	/* Is this outside the window? */
 	if (px > sx || py > sy)
 		return (CELL_OUTSIDE);
+
+	floating = (wp->layout_cell == NULL);
 
 	/*
 	 * Construct a bitmask of whether the cells to the left (bit 8), right,
@@ -322,29 +327,54 @@ screen_redraw_type_of_cell(struct screen_redraw_ctx *ctx,
 	 *		   8 + 4
 	 *		     1
 	 */
-	if (px == 0 || screen_redraw_cell_border(ctx, wp, px - 1, py))
-		borders |= 8;
-	if (px <= sx && screen_redraw_cell_border(ctx, wp, px + 1, py))
-		borders |= 4;
-	if (pane_status == PANE_STATUS_TOP) {
-		if (py != 0 &&
-		    screen_redraw_cell_border(ctx, wp, px, py - 1))
-			borders |= 2;
-		if (screen_redraw_cell_border(ctx, wp, px, py + 1))
-			borders |= 1;
-	} else if (pane_status == PANE_STATUS_BOTTOM) {
-		if (py == 0 ||
-		    screen_redraw_cell_border(ctx, wp, px, py - 1))
-			borders |= 2;
-		if (py != sy &&
-		    screen_redraw_cell_border(ctx, wp, px, py + 1))
-			borders |= 1;
+	if (! floating) {
+		if (px == 0 || screen_redraw_cell_border(ctx, wp, px - 1, py))
+			borders |= 8;
+		if (px <= sx && screen_redraw_cell_border(ctx, wp, px + 1, py))
+			borders |= 4;
+		if (pane_status == PANE_STATUS_TOP) {
+			if (py != 0 &&
+			    screen_redraw_cell_border(ctx, wp, px, py - 1))
+				borders |= 2;
+			if (screen_redraw_cell_border(ctx, wp, px, py + 1))
+				borders |= 1;
+		} else if (pane_status == PANE_STATUS_BOTTOM) {
+			if (py == 0 ||
+			    screen_redraw_cell_border(ctx, wp, px, py - 1))
+				borders |= 2;
+			if (py != sy &&
+			    screen_redraw_cell_border(ctx, wp, px, py + 1))
+				borders |= 1;
+		} else {
+			if (py == 0 ||
+			    screen_redraw_cell_border(ctx, wp, px, py - 1))
+				borders |= 2;
+			if (screen_redraw_cell_border(ctx, wp, px, py + 1))
+				borders |= 1;
+		}
 	} else {
-		if (py == 0 ||
-		    screen_redraw_cell_border(ctx, wp, px, py - 1))
-			borders |= 2;
-		if (screen_redraw_cell_border(ctx, wp, px, py + 1))
-			borders |= 1;
+		if (screen_redraw_cell_border(ctx, wp, px - 1, py))
+			borders |= 8;
+		if (px <= sx && screen_redraw_cell_border(ctx, wp, px + 1, py))
+			borders |= 4;
+		if (pane_status == PANE_STATUS_TOP) {
+			if (py != 0 &&
+			    screen_redraw_cell_border(ctx, wp, px, py - 1))
+				borders |= 2;
+			if (screen_redraw_cell_border(ctx, wp, px, py + 1))
+				borders |= 1;
+		} else if (pane_status == PANE_STATUS_BOTTOM) {
+			if (screen_redraw_cell_border(ctx, wp, px, py - 1))
+				borders |= 2;
+			if (py != sy &&
+			    screen_redraw_cell_border(ctx, wp, px, py + 1))
+				borders |= 1;
+		} else {
+			if (screen_redraw_cell_border(ctx, wp, px, py - 1))
+				borders |= 2;
+			if (screen_redraw_cell_border(ctx, wp, px, py + 1))
+				borders |= 1;
+		}
 	}
 
 	/*
@@ -399,7 +429,7 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 	if (px > sx || py > sy)
 		return (CELL_OUTSIDE);
 
-	/* Look through panes in z-index order starting with active pane. */
+	/* Find pane higest in z-index at this point. */
 	TAILQ_FOREACH(wp, &w->z_index, zentry) {
 		sb_w = wp->scrollbar_style.width +
 			wp->scrollbar_style.pad;
@@ -547,12 +577,13 @@ screen_redraw_make_pane_status(struct client *c, struct window_pane *wp,
 
 	expanded = format_expand_time(ft, fmt);
 	if (wp->sx < 4)
-		wp->status_size = width = 0;
+		width = 0;
 	else
-		wp->status_size = width = wp->sx + sb_w - 2;
+		width = wp->sx + sb_w - 2;
 	max_width = (int)w->sx - (wp->xoff + 2) - sb_w;
 	if (max_width < 0) max_width = 0;
 	if (width > (u_int)max_width) width = (u_int)max_width;
+	wp->status_size = width;
 
 	memcpy(&old, &wp->status_screen, sizeof old);
 	screen_init(&wp->status_screen, width, 1, 0);
@@ -644,6 +675,7 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 
 		if (ctx->statustop)
 			yoff += ctx->statuslines;
+
 		vr = screen_redraw_get_visible_ranges(wp, x, yoff - ctx->oy,
 		    width);
 
@@ -1038,8 +1070,10 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, u_int px,
 		tb = wp->yoff-1;
 		bb = wp->yoff + wp->sy;
 		if (!found_self ||
-		    (wp->flags & PANE_MINIMISED) ||
-		    (py < tb || py > bb))
+		   (wp->flags & PANE_MINIMISED) ||
+		   py < tb ||
+		   (wp->layout_cell == NULL && py > bb) ||
+		   (wp->layout_cell != NULL && py >= bb))
 			continue;
 
 		/* Are scrollbars enabled? */
@@ -1068,7 +1102,7 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, u_int px,
 			   falls inside of this range and left
 			   edge covers the left of range,
 			   then move px forward to right edge of wp. */
-			else if (rb > vr.px[r] &&
+			else if (rb >= vr.px[r] &&
 				   rb < vr.px[r] + vr.nx[r] &&
 				   lb <= vr.px[r]) {
 				vr.nx[r] = vr.nx[r] - (rb + 1 - vr.px[r]);
