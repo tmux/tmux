@@ -2023,9 +2023,7 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 
 	/* If no change, do not draw. */
 	if (skip) {
-		if (s->cx >= gl->cellsize)
-			skip = grid_cells_equal(gc, &grid_default_cell);
-		else {
+		if (s->cx < gl->cellsize) {
 			gce = &gl->celldata[s->cx];
 			if (gce->flags & GRID_FLAG_EXTENDED)
 				skip = 0;
@@ -2043,7 +2041,10 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 				skip = 0;
 			else if (gce->data.data != gc->data.data[0])
 				skip = 0;
-		}
+		} else if (ctx->flags & SCREEN_WRITE_DEFAULT_CELL)
+			skip = 0;
+		else
+			skip = grid_cells_equal(gc, &grid_default_cell);
 	}
 
 	/* Update the selected flag and set the cell. */

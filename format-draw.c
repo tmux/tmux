@@ -745,6 +745,7 @@ format_draw(struct screen_write_ctx *octx, const struct grid_cell *base,
 		screen_init(&s[i], size, 1, 0);
 		screen_write_start(&ctx[i], &s[i]);
 		screen_write_clearendofline(&ctx[i], current_default.bg);
+		ctx[i].flags |= SCREEN_WRITE_DEFAULT_CELL;
 		width[i] = 0;
 	}
 
