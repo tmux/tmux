@@ -1971,6 +1971,24 @@ window_copy_cmd_other_end(struct window_copy_cmd_state *cs)
 }
 
 static enum window_copy_cmd_action
+window_copy_cmd_selection_mode(struct window_copy_cmd_state *cs)
+{
+	struct window_mode_entry	*wme = cs->wme;
+	struct options			*so = cs->s->options;
+	struct window_copy_mode_data	*data = wme->data;
+	const char			*s = args_string(cs->wargs, 0);
+
+	if (s == NULL || strcasecmp(s, "char") == 0 || strcasecmp(s, "c") == 0)
+		data->selflag = SEL_CHAR;
+	else if (strcasecmp(s, "word") == 0 || strcasecmp(s, "w") == 0) {
+		data->separators = options_get_string(so, "word-separators");
+		data->selflag = SEL_WORD;
+	} else if (strcasecmp(s, "line") == 0 || strcasecmp(s, "l") == 0)
+		data->selflag = SEL_LINE;
+	return (WINDOW_COPY_CMD_NOTHING);
+}
+
+static enum window_copy_cmd_action
 window_copy_cmd_page_down(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
@@ -2186,7 +2204,7 @@ static enum window_copy_cmd_action
 window_copy_cmd_select_word(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
-	struct options			*session_options = cs->s->options;
+	struct options			*so = cs->s->options;
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 px, py, nextx, nexty;
 
@@ -2196,8 +2214,7 @@ window_copy_cmd_select_word(struct window_copy_cmd_state *cs)
 	data->dx = data->cx;
 	data->dy = screen_hsize(data->backing) + data->cy - data->oy;
 
-	data->separators = options_get_string(session_options,
-	    "word-separators");
+	data->separators = options_get_string(so, "word-separators");
 	window_copy_cursor_previous_word(wme, data->separators, 0);
 	px = data->cx;
 	py = screen_hsize(data->backing) + data->cy - data->oy;
@@ -3086,6 +3103,11 @@ static const struct {
 	  .args = { "", 0, 0, NULL },
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_select_word
+	},
+	{ .command = "selection-mode",
+	  .args = { "", 0, 1, NULL },
+	  .clear = 0,
+	  .f = window_copy_cmd_selection_mode
 	},
 	{ .command = "set-mark",
 	  .args = { "", 0, 0, NULL },
