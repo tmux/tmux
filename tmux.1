@@ -7001,7 +7001,7 @@ forwards any input read from stdin to the empty pane given by
 .Ar target-pane .
 .Tg popup
 .It Xo Ic display-popup
-.Op Fl BCEk
+.Op Fl BCEkN
 .Op Fl b Ar border-lines
 .Op Fl c Ar target-client
 .Op Fl d Ar start-directory
@@ -7025,6 +7025,20 @@ when omitted) on
 .Ar target-client .
 A popup is a rectangular box drawn over the top of any panes.
 Panes are not updated while a popup is present.
+If the command is run inside an existing popup, that popup is modified.
+Only the
+.Fl b ,
+.Fl B ,
+.Fl C ,
+.Fl E ,
+.Fl EE ,
+.Fl K ,
+.Fl N ,
+.Fl s ,
+and
+.Fl S
+options are accepted in this case;
+all others are ignored.
 .Pp
 .Fl E
 closes the popup automatically when
@@ -7088,6 +7102,9 @@ is a format for the popup title (see
 The
 .Fl C
 flag closes any popup on the client.
+.Pp
+.Fl N
+disables any previously specified -E, -EE, or -k option.
 .Tg showphist
 .It Xo Ic show-prompt-history
 .Op Fl T Ar prompt-type
