@@ -984,6 +984,7 @@ struct screen {
 
 #ifdef ENABLE_SIXEL
 	struct images			 images;
+	struct images			 saved_images;
 #endif
 
 	struct screen_write_cline	*write_list;
