@@ -218,6 +218,7 @@ popup_draw_cb(struct client *c, void *data, struct screen_redraw_ctx *rctx)
 	u_int			 i, px = pd->px, py = pd->py;
 	struct colour_palette	*palette = &pd->palette;
 	struct grid_cell	 defaults;
+	struct window		*w = c->session->curw->window;
 
 	screen_init(&s, pd->sx, pd->sy, 0);
 	screen_write_start(&ctx, &s);
@@ -244,6 +245,9 @@ popup_draw_cb(struct client *c, void *data, struct screen_redraw_ctx *rctx)
 	if (pd->md != NULL) {
 		c->overlay_check = menu_check_cb;
 		c->overlay_data = pd->md;
+	} else if (w->md != NULL) {
+		c->overlay_check = menu_check_cb;
+		c->overlay_data = w->md;
 	} else {
 		c->overlay_check = NULL;
 		c->overlay_data = NULL;
@@ -257,6 +261,10 @@ popup_draw_cb(struct client *c, void *data, struct screen_redraw_ctx *rctx)
 		c->overlay_check = NULL;
 		c->overlay_data = NULL;
 		menu_draw_cb(c, pd->md, rctx);
+	} else	if (w->md != NULL) {
+		c->overlay_check = NULL;
+		c->overlay_data = NULL;
+		menu_draw_cb(c, w->md, rctx);
 	}
 	c->overlay_check = popup_check_cb;
 	c->overlay_data = pd;
@@ -513,10 +521,13 @@ popup_key_cb(struct client *c, void *data, struct key_event *event)
 		    m->x > pd->px + pd->sx - 1 ||
 		    m->y < pd->py ||
 		    m->y > pd->py + pd->sy - 1) {
-			if (MOUSE_BUTTONS(m->b) == MOUSE_BUTTON_3)
+			if ((c->flags & CLIENT_OVERLAYFOCUSED) &&
+			    (MOUSE_BUTTONS(m->b) & MOUSE_BUTTON_3))
 				goto menu;
+			c->flags &= ~CLIENT_OVERLAYFOCUSED;
 			return (0);
 		}
+		c->flags |= CLIENT_OVERLAYFOCUSED;
 		if (pd->border_lines != BOX_LINES_NONE) {
 			if (m->x == pd->px)
 				border = LEFT;
@@ -566,7 +577,8 @@ popup_key_cb(struct client *c, void *data, struct key_event *event)
 			bufferevent_write(job_get_event(pd->job), buf, len);
 			return (0);
 		}
-		input_key(&pd->s, job_get_event(pd->job), event->key);
+		if (c->flags & CLIENT_OVERLAYFOCUSED)
+			input_key(&pd->s, job_get_event(pd->job), event->key);
 	}
 	return (0);
 
@@ -730,6 +742,7 @@ popup_display(int flags, enum box_lines lines, struct cmdq_item *item, u_int px,
 
 	server_client_set_overlay(c, 0, popup_check_cb, popup_mode_cb,
 	    popup_draw_cb, popup_key_cb, popup_free_cb, popup_resize_cb, pd);
+	c->flags |= CLIENT_OVERLAYFOCUSED;
 	return (0);
 }
 

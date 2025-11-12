@@ -54,8 +54,8 @@ const struct cmd_entry cmd_display_popup_entry = {
 	.name = "display-popup",
 	.alias = "popup",
 
-	.args = { "Bb:Cc:d:e:Eh:ks:S:t:T:w:x:y:", 0, -1, NULL },
-	.usage = "[-BCEk] [-b border-lines] [-c target-client] "
+	.args = { "Bb:Cc:Dd:e:Eh:ks:S:t:T:w:x:y:", 0, -1, NULL },
+	.usage = "[-BCE] [-b border-lines] [-c target-client] "
 		 "[-d start-directory] [-e environment] [-h height] "
 		 "[-s style] [-S border-style] " CMD_TARGET_PANE_USAGE
 		 " [-T title] [-w width] [-x position] [-y position] "
@@ -301,7 +301,7 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	struct options_entry	*oe;
 
 
-	if (tc->overlay_draw != NULL)
+	if ((tc->overlay_draw != NULL) && (tc->flags & CLIENT_OVERLAYFOCUSED))
 		return (CMD_RETURN_NORMAL);
 
 	if (args_has(args, 'C')) {
@@ -484,6 +484,8 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 		flags |= POPUP_CLOSEEXITZERO;
 	else if (args_has(args, 'E'))
 		flags |= POPUP_CLOSEEXIT;
+	if (args_has(args, 'D'))
+		item = NULL;
 	if (args_has(args, 'k'))
 		flags |= POPUP_CLOSEANYKEY;
 	if (popup_display(flags, lines, item, px, py, w, h, env, shellcmd, argc,
@@ -500,5 +502,8 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	free(cwd);
 	free(title);
 	cmd_free_argv(argc, argv);
-	return (CMD_RETURN_WAIT);
+	if (args_has(args, 'D'))
+		return (CMD_RETURN_NORMAL);
+	else
+		return (CMD_RETURN_WAIT);
 }

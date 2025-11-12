@@ -319,6 +319,12 @@ window_create(u_int sx, u_int sy, u_int xpixel, u_int ypixel)
 	w->xpixel = xpixel;
 	w->ypixel = ypixel;
 
+	w->md = NULL;
+	w->menu_mode_cb = menu_mode_cb;
+	w->menu_draw_cb = menu_draw_cb;
+	w->menu_key_cb = menu_key_cb;
+	w->menu_free_cb = menu_free_cb;
+
 	w->options = options_create(global_w_options);
 
 	w->references = 0;
