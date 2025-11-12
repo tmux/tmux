@@ -278,7 +278,6 @@ struct client *
 server_client_create(int fd)
 {
 	struct client	*c;
-	u_int		 i;
 
 	setblocking(fd, 0);
 
@@ -312,11 +311,7 @@ server_client_create(int fd)
 	evtimer_set(&c->repeat_timer, server_client_repeat_timer, c);
 	evtimer_set(&c->click_timer, server_client_click_timer, c);
 
-	for (i = 0; i < INPUT_REQUEST_TYPES; i++) {
-		c->input_requests[i].c = c;
-		c->input_requests[i].type = i;
-		TAILQ_INIT(&c->input_requests[i].requests);
-	}
+	TAILQ_INIT(&c->input_requests);
 
 	TAILQ_INSERT_TAIL(&clients, c, entry);
 	log_debug("new client %p", c);

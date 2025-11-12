@@ -1128,9 +1128,9 @@ struct window_mode_entry {
 
 /* Type of request to client. */
 enum input_request_type {
-	INPUT_REQUEST_PALETTE
+	INPUT_REQUEST_PALETTE,
+	INPUT_REQUEST_QUEUE
 };
-#define INPUT_REQUEST_TYPES (1)
 
 /* Palette request reply data. */
 struct input_request_palette_data {
@@ -1140,11 +1140,6 @@ struct input_request_palette_data {
 
 /* Request sent to client on behalf of pane. */
 TAILQ_HEAD(input_requests, input_request);
-struct input_request_list {
-	struct client	       *c;
-	enum input_request_type	type;
-	struct input_requests	requests;
-};
 
 /* Offsets into pane buffer. */
 struct window_pane_offset {
@@ -1977,7 +1972,7 @@ struct client {
 	struct status_line	 status;
 	enum client_theme	 theme;
 
-	struct input_request_list input_requests[INPUT_REQUEST_TYPES];
+	struct input_requests	 input_requests;
 
 #define CLIENT_TERMINAL 0x1
 #define CLIENT_LOGIN 0x2
