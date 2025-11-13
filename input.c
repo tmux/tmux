@@ -2017,10 +2017,11 @@ input_csi_dispatch_sm_graphics(__unused struct input_ctx *ictx)
 	m = input_get(ictx, 1, 0, 0);
 	o = input_get(ictx, 2, 0, 0);
 
-	if (n == 1 && (m == 1 || m == 2 || m == 4))
-		input_reply(ictx, "\033[?%d;0;%uS", n, SIXEL_COLOUR_REGISTERS);
-	else
-		input_reply(ictx, "\033[?%d;3;%dS", n, o);
+	if (n == 1 && (m == 1 || m == 2 || m == 4)) {
+		input_reply(ictx, 1, "\033[?%d;0;%uS", n,
+		    SIXEL_COLOUR_REGISTERS);
+	} else
+		input_reply(ictx, 1, "\033[?%d;3;%dS", n, o);
 #endif
 }
 
