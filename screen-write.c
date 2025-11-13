@@ -583,7 +583,8 @@ screen_write_fast_copy(struct screen_write_ctx *ctx, struct screen *src,
 		if (wp != NULL)
 			screen_write_initctx(ctx, &ttyctx, 0);
 		for (xx = px; xx < px + nx; xx++) {
-			if (xx >= grid_get_line(gd, yy)->cellsize)
+			if (xx >= grid_get_line(gd, yy)->cellsize &&
+			    s->cx >= grid_get_line(ctx->s->grid, s->cy)->cellsize)
 				break;
 			grid_get_cell(gd, xx, yy, &gc);
 			if (xx + gc.data.width > px + nx)
