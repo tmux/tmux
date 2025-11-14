@@ -114,7 +114,7 @@ cmd_source_file_done(struct client *c, const char *path, int error,
 		return;
 
 	if (error != 0)
-		cmdq_error(item, "%s: %s", path, strerror(error));
+		cmdq_error(item, "%s: %s", strerror(error), path);
 	else if (bsize != 0) {
 		if (load_cfg_from_buffer(bdata, bsize, path, c, cdata->after,
 		    target, cdata->flags, &new_item) < 0)
@@ -135,16 +135,7 @@ cmd_source_file_done(struct client *c, const char *path, int error,
 static void
 cmd_source_file_add(struct cmd_source_file_data *cdata, const char *path)
 {
-	char	resolved[PATH_MAX];
-
-	if (realpath(path, resolved) == NULL) {
-		log_debug("%s: realpath(\"%s\") failed: %s", __func__,
-			path, strerror(errno));
-	} else
-		path = resolved;
-
 	log_debug("%s: %s", __func__, path);
-
 	cdata->files = xreallocarray(cdata->files, cdata->nfiles + 1,
 	    sizeof *cdata->files);
 	cdata->files[cdata->nfiles++] = xstrdup(path);
@@ -233,7 +224,7 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 					error = strerror(ENOMEM);
 				else
 					error = strerror(EINVAL);
-				cmdq_error(item, "%s: %s", path, error);
+				cmdq_error(item, "%s: %s", error, path);
 				retval = CMD_RETURN_ERROR;
 			}
 			globfree(&g);

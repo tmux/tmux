@@ -262,6 +262,12 @@ environ_for_session(struct session *s, int no_TERM)
 		environ_set(env, "TERM", 0, "%s", value);
 		environ_set(env, "TERM_PROGRAM", 0, "%s", "tmux");
 		environ_set(env, "TERM_PROGRAM_VERSION", 0, "%s", getversion());
+		environ_set(env, "COLORTERM", 0, "truecolor");
+	} else {
+		environ_unset(env, "TERM");
+		environ_unset(env, "TERM_PROGRAM");
+		environ_unset(env, "TERM_PROGRAM_VERSION");
+		environ_unset(env, "COLORTERM");
 	}
 
 #ifdef HAVE_SYSTEMD

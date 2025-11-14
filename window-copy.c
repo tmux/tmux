@@ -234,7 +234,6 @@ struct window_copy_mode_data {
 
 	struct screen	*backing;
 	int		 backing_written; /* backing display started */
-	struct screen	*writing;
 	struct input_ctx *ictx;
 
 	int		 viewmode;	/* view mode entered */
@@ -492,8 +491,6 @@ window_copy_view_init(struct window_mode_entry *wme,
 
 	data->backing = xmalloc(sizeof *data->backing);
 	screen_init(data->backing, sx, screen_size_y(base), UINT_MAX);
-	data->writing = xmalloc(sizeof *data->writing);
-	screen_init(data->writing, sx, screen_size_y(base), 0);
 	data->ictx = input_init(NULL, NULL, NULL);
 	data->mx = data->cx;
 	data->my = screen_hsize(data->backing) + data->cy - data->oy;
@@ -513,10 +510,6 @@ window_copy_free(struct window_mode_entry *wme)
 	free(data->searchstr);
 	free(data->jumpchar);
 
-	if (data->writing != NULL) {
-		screen_free(data->writing);
-		free(data->writing);
-	}
 	if (data->ictx != NULL)
 		input_free(data->ictx);
 	screen_free(data->backing);
@@ -553,21 +546,10 @@ window_copy_vadd(struct window_pane *wp, int parse, const char *fmt, va_list ap)
 	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
 	struct window_copy_mode_data	*data = wme->data;
 	struct screen			*backing = data->backing;
-	struct screen			*writing = data->writing;
-	struct screen_write_ctx	 	 writing_ctx, backing_ctx, ctx;
+	struct screen_write_ctx	 	 backing_ctx, ctx;
 	struct grid_cell		 gc;
 	u_int				 old_hsize, old_cy;
-	u_int				 sx = screen_size_x(backing);
 	char				*text;
-
-	if (parse) {
-		vasprintf(&text, fmt, ap);
-		screen_write_start(&writing_ctx, writing);
-		screen_write_reset(&writing_ctx);
-		input_parse_screen(data->ictx, writing, window_copy_init_ctx_cb,
-		    data, text, strlen(text));
-		free(text);
-	}
 
 	old_hsize = screen_hsize(data->backing);
 	screen_write_start(&backing_ctx, backing);
@@ -581,9 +563,12 @@ window_copy_vadd(struct window_pane *wp, int parse, const char *fmt, va_list ap)
 	} else
 		data->backing_written = 1;
 	old_cy = backing->cy;
-	if (parse)
-		screen_write_fast_copy(&backing_ctx, writing, 0, 0, sx, 1);
-	else {
+	if (parse) {
+		vasprintf(&text, fmt, ap);
+		input_parse_screen(data->ictx, backing, window_copy_init_ctx_cb,
+		    data, text, strlen(text));
+		free(text);
+	} else {
 		memcpy(&gc, &grid_default_cell, sizeof gc);
 		screen_write_vnputs(&backing_ctx, 0, &gc, fmt, ap);
 	}
@@ -1513,6 +1498,28 @@ window_copy_cmd_cursor_up(struct window_copy_cmd_state *cs)
 }
 
 static enum window_copy_cmd_action
+window_copy_cmd_centre_vertical(struct window_copy_cmd_state *cs)
+{
+	struct window_mode_entry	*wme = cs->wme;
+	struct window_copy_mode_data	*data = wme->data;
+
+	window_copy_update_cursor(wme, data->cx,  wme->wp->sy / 2);
+	window_copy_update_selection(wme, 1, 0);
+	return (WINDOW_COPY_CMD_REDRAW);
+}
+
+static enum window_copy_cmd_action
+window_copy_cmd_centre_horizontal(struct window_copy_cmd_state *cs)
+{
+	struct window_mode_entry	*wme = cs->wme;
+	struct window_copy_mode_data	*data = wme->data;
+
+	window_copy_update_cursor(wme, wme->wp->sx / 2, data->cy);
+	window_copy_update_selection(wme, 1, 0);
+	return (WINDOW_COPY_CMD_REDRAW);
+}
+
+static enum window_copy_cmd_action
 window_copy_cmd_end_of_line(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
@@ -1964,6 +1971,24 @@ window_copy_cmd_other_end(struct window_copy_cmd_state *cs)
 }
 
 static enum window_copy_cmd_action
+window_copy_cmd_selection_mode(struct window_copy_cmd_state *cs)
+{
+	struct window_mode_entry	*wme = cs->wme;
+	struct options			*so = cs->s->options;
+	struct window_copy_mode_data	*data = wme->data;
+	const char			*s = args_string(cs->wargs, 0);
+
+	if (s == NULL || strcasecmp(s, "char") == 0 || strcasecmp(s, "c") == 0)
+		data->selflag = SEL_CHAR;
+	else if (strcasecmp(s, "word") == 0 || strcasecmp(s, "w") == 0) {
+		data->separators = options_get_string(so, "word-separators");
+		data->selflag = SEL_WORD;
+	} else if (strcasecmp(s, "line") == 0 || strcasecmp(s, "l") == 0)
+		data->selflag = SEL_LINE;
+	return (WINDOW_COPY_CMD_NOTHING);
+}
+
+static enum window_copy_cmd_action
 window_copy_cmd_page_down(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
@@ -2179,7 +2204,7 @@ static enum window_copy_cmd_action
 window_copy_cmd_select_word(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
-	struct options			*session_options = cs->s->options;
+	struct options			*so = cs->s->options;
 	struct window_copy_mode_data	*data = wme->data;
 	u_int				 px, py, nextx, nexty;
 
@@ -2189,8 +2214,7 @@ window_copy_cmd_select_word(struct window_copy_cmd_state *cs)
 	data->dx = data->cx;
 	data->dy = screen_hsize(data->backing) + data->cy - data->oy;
 
-	data->separators = options_get_string(session_options,
-	    "word-separators");
+	data->separators = options_get_string(so, "word-separators");
 	window_copy_cursor_previous_word(wme, data->separators, 0);
 	px = data->cx;
 	py = screen_hsize(data->backing) + data->cy - data->oy;
@@ -2800,6 +2824,16 @@ static const struct {
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_cursor_up
 	},
+	{ .command = "cursor-centre-vertical",
+	  .args = { "", 0, 0, NULL },
+	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+	  .f = window_copy_cmd_centre_vertical,
+	},
+	{ .command = "cursor-centre-horizontal",
+	  .args = { "", 0, 0, NULL },
+	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+	  .f = window_copy_cmd_centre_horizontal,
+	},
 	{ .command = "end-of-line",
 	  .args = { "", 0, 0, NULL },
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
@@ -3069,6 +3103,11 @@ static const struct {
 	  .args = { "", 0, 0, NULL },
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_select_word
+	},
+	{ .command = "selection-mode",
+	  .args = { "", 0, 1, NULL },
+	  .clear = 0,
+	  .f = window_copy_cmd_selection_mode
 	},
 	{ .command = "set-mark",
 	  .args = { "", 0, 0, NULL },

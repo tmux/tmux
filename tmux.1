@@ -599,7 +599,7 @@ This is called line continuation and applies both inside and outside quoted
 strings and in comments, but not inside braces.
 .Pp
 Command arguments may be specified as strings surrounded by single (\[aq])
-quotes, double quotes (\[dq]) or braces ({}).
+quotes or double quotes (\[dq]), or as command lists surrounded by braces ({}).
 .\" "
 This is required when the argument contains any special character.
 Single and double quoted strings cannot span multiple lines except with line
@@ -1953,6 +1953,16 @@ Move the cursor right.
 .Xc
 Move the cursor up.
 .It Xo
+.Ic cursor-centre-vertical
+(emacs: C-l)
+.Xc
+Moves the cursor to the vertical centre of the pane.
+.It Xo
+.Ic cursor-centre-horizontal
+(emacs: M-l)
+.Xc
+Moves the cursor to the horizontal centre of the pane.
+.It Xo
 .Ic end-of-line
 (vi: $)
 (emacs: C-e)
@@ -2284,6 +2294,11 @@ Select the current line.
 .Ic select-word
 .Xc
 Select the current word.
+.It Xo
+.Ic selection-mode
+.Op Ic char | word | line
+.Xc
+Change the selection mode.
 .It Xo
 .Ic set-mark
 (vi: X)
@@ -6662,7 +6677,7 @@ See
 for possible values for
 .Ar prompt-type .
 .It Xo Ic command-prompt
-.Op Fl 1bFikN
+.Op Fl 1bFiklN
 .Op Fl I Ar inputs
 .Op Fl p Ar prompts
 .Op Fl t Ar target-client
@@ -6682,8 +6697,10 @@ With
 .Ar template
 is expanded as a format.
 .Pp
-If present,
+If
 .Fl I
+is present,
+.Ar inputs
 is a comma-separated list of the initial text for each prompt.
 If
 .Fl p
@@ -6695,6 +6712,12 @@ a single prompt is displayed, constructed from
 if it is present, or
 .Ql \&:
 if not.
+.Fl l
+disables splitting of
+.Ar inputs
+and
+.Ar prompts
+at commas and treats them literally.
 .Pp
 Before the command is executed, the first occurrence of the string
 .Ql %%
@@ -6978,7 +7001,7 @@ forwards any input read from stdin to the empty pane given by
 .Ar target-pane .
 .Tg popup
 .It Xo Ic display-popup
-.Op Fl BCEk
+.Op Fl BCEkN
 .Op Fl b Ar border-lines
 .Op Fl c Ar target-client
 .Op Fl d Ar start-directory
@@ -7002,6 +7025,20 @@ when omitted) on
 .Ar target-client .
 A popup is a rectangular box drawn over the top of any panes.
 Panes are not updated while a popup is present.
+If the command is run inside an existing popup, that popup is modified.
+Only the
+.Fl b ,
+.Fl B ,
+.Fl C ,
+.Fl E ,
+.Fl EE ,
+.Fl K ,
+.Fl N ,
+.Fl s ,
+and
+.Fl S
+options are accepted in this case;
+all others are ignored.
 .Pp
 .Fl E
 closes the popup automatically when
@@ -7065,6 +7102,9 @@ is a format for the popup title (see
 The
 .Fl C
 flag closes any popup on the client.
+.Pp
+.Fl N
+disables any previously specified -E, -EE, or -k option.
 .Tg showphist
 .It Xo Ic show-prompt-history
 .Op Fl T Ar prompt-type

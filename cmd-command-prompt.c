@@ -42,8 +42,8 @@ const struct cmd_entry cmd_command_prompt_entry = {
 	.name = "command-prompt",
 	.alias = NULL,
 
-	.args = { "1bFkiI:Np:t:T:", 0, 1, cmd_command_prompt_args_parse },
-	.usage = "[-1bFkiN] [-I inputs] [-p prompts] " CMD_TARGET_CLIENT_USAGE
+	.args = { "1bFkliI:Np:t:T:", 0, 1, cmd_command_prompt_args_parse },
+	.usage = "[-1bFkliN] [-I inputs] [-p prompts] " CMD_TARGET_CLIENT_USAGE
 		 " [-T prompt-type] [template]",
 
 	.flags = CMD_CLIENT_TFLAG,
@@ -117,27 +117,33 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 		next_input = inputs = xstrdup(s);
 	else
 		next_input = NULL;
-	while ((prompt = strsep(&next_prompt, ",")) != NULL) {
-		cdata->prompts = xreallocarray(cdata->prompts, cdata->count + 1,
-		    sizeof *cdata->prompts);
-		if (!space)
-			tmp = xstrdup(prompt);
-		else
-			xasprintf(&tmp, "%s ", prompt);
-		cdata->prompts[cdata->count].prompt = tmp;
+	if (args_has(args, 'l')) {
+		cdata->prompts = xcalloc(1, sizeof *cdata->prompts);
+		cdata->prompts[0].prompt = prompts;
+		cdata->prompts[0].input = inputs;
+		cdata->count = 1;
+	} else {
+		while ((prompt = strsep(&next_prompt, ",")) != NULL) {
+			cdata->prompts = xreallocarray(cdata->prompts,
+			    cdata->count + 1, sizeof *cdata->prompts);
+			if (!space)
+				tmp = xstrdup(prompt);
+			else
+				xasprintf(&tmp, "%s ", prompt);
+			cdata->prompts[cdata->count].prompt = tmp;
 
-		if (next_input != NULL) {
-			input = strsep(&next_input, ",");
-			if (input == NULL)
+			if (next_input != NULL) {
+				input = strsep(&next_input, ",");
+				if (input == NULL)
+					input = "";
+			} else
 				input = "";
-		} else
-			input = "";
-		cdata->prompts[cdata->count].input = xstrdup(input);
-
-		cdata->count++;
+			cdata->prompts[cdata->count].input = xstrdup(input);
+			cdata->count++;
+		}
+		free(inputs);
+		free(prompts);
 	}
-	free(inputs);
-	free(prompts);
 
 	if ((type = args_get(args, 'T')) != NULL) {
 		cdata->prompt_type = status_prompt_type(type);

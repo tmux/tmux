@@ -54,6 +54,8 @@ struct format_tree;
 struct hyperlinks_uri;
 struct hyperlinks;
 struct input_ctx;
+struct input_request;
+struct input_requests;
 struct job;
 struct menu_data;
 struct mode_tree_data;
@@ -982,6 +984,7 @@ struct screen {
 
 #ifdef ENABLE_SIXEL
 	struct images			 images;
+	struct images			 saved_images;
 #endif
 
 	struct screen_write_cline	*write_list;
@@ -1122,6 +1125,21 @@ struct window_mode_entry {
 
 	TAILQ_ENTRY(window_mode_entry)	 entry;
 };
+
+/* Type of request to client. */
+enum input_request_type {
+	INPUT_REQUEST_PALETTE,
+	INPUT_REQUEST_QUEUE
+};
+
+/* Palette request reply data. */
+struct input_request_palette_data {
+	int	idx;
+	int	c;
+};
+
+/* Request sent to client on behalf of pane. */
+TAILQ_HEAD(input_requests, input_request);
 
 /* Offsets into pane buffer. */
 struct window_pane_offset {
@@ -1958,6 +1976,8 @@ struct client {
 
 	struct status_line	 status;
 	enum client_theme	 theme;
+
+	struct input_requests	 input_requests;
 
 #define CLIENT_TERMINAL 0x1
 #define CLIENT_LOGIN 0x2
@@ -2984,6 +3004,8 @@ void	 input_parse_screen(struct input_ctx *, struct screen *,
 void	 input_reply_clipboard(struct bufferevent *, const char *, size_t,
 	     const char *);
 void	 input_set_buffer_size(size_t);
+void	 input_request_reply(struct client *, enum input_request_type, void *);
+void	 input_cancel_requests(struct client *);
 
 /* input-key.c */
 void	 input_key_build(void);
@@ -3361,7 +3383,7 @@ typedef void (*mode_tree_build_cb)(void *, struct mode_tree_sort_criteria *,
 				   uint64_t *, const char *);
 typedef void (*mode_tree_draw_cb)(void *, void *, struct screen_write_ctx *,
 	     u_int, u_int);
-typedef int (*mode_tree_search_cb)(void *, void *, const char *);
+typedef int (*mode_tree_search_cb)(void *, void *, const char *, int);
 typedef void (*mode_tree_menu_cb)(void *, struct client *, key_code);
 typedef u_int (*mode_tree_height_cb)(void *, u_int);
 typedef key_code (*mode_tree_key_cb)(void *, void *, u_int);
@@ -3549,7 +3571,9 @@ struct event_base *osdep_event_init(void);
 int		 utf8_has_zwj(const struct utf8_data *);
 int		 utf8_is_zwj(const struct utf8_data *);
 int		 utf8_is_vs(const struct utf8_data *);
-int		 utf8_is_modifier(const struct utf8_data *);
+int		 utf8_is_hangul_filler(const struct utf8_data *);
+int		 utf8_should_combine(const struct utf8_data *,
+		    const struct utf8_data *);
 enum hanguljamo_state hanguljamo_check_state(const struct utf8_data *,
 		    const struct utf8_data *);
 
@@ -3605,6 +3629,9 @@ int		 popup_display(int, enum box_lines, struct cmdq_item *, u_int,
                     popup_close_cb, void *);
 int		 popup_editor(struct client *, const char *, size_t,
 		    popup_finish_edit_cb, void *);
+int		 popup_present(struct client *);
+int		 popup_modify(struct client *, const char *, const char *,
+		    const char *, enum box_lines, int);
 
 /* style.c */
 int		 style_parse(struct style *,const struct grid_cell *,

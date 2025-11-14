@@ -605,7 +605,9 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 				ud.data[0] = newkey;
 			else if ((newkey & KEYC_MASK_MODIFIERS) == KEYC_CTRL) {
 				newkey &= KEYC_MASK_KEY;
-				if (newkey >= 'A' && newkey <= 'Z')
+				if (newkey == '?')
+					ud.data[0] = 0x7f;
+				else if (newkey >= '@' && newkey <= '_')
 					ud.data[0] = newkey - 0x40;
 				else if (newkey >= 'a' && newkey <= 'z')
 					ud.data[0] = newkey - 0x60;

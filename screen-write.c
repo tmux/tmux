@@ -584,7 +584,8 @@ screen_write_fast_copy(struct screen_write_ctx *ctx, struct screen *src,
 		if (wp != NULL)
 			screen_write_initctx(ctx, &ttyctx, 0);
 		for (xx = px; xx < px + nx; xx++) {
-			if (xx >= grid_get_line(gd, yy)->cellsize)
+			if (xx >= grid_get_line(gd, yy)->cellsize &&
+			    s->cx >= grid_get_line(ctx->s->grid, s->cy)->cellsize)
 				break;
 			grid_get_cell(gd, xx, yy, &gc);
 			if (xx + gc.data.width > px + nx)
@@ -2156,6 +2157,10 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	struct tty_ctx		 ttyctx;
 	int			 force_wide = 0, zero_width = 0;
 
+	/* Ignore U+3164 HANGUL_FILLER entirely. */
+	if (utf8_is_hangul_filler(ud))
+		return (1);
+
 	/*
 	 * Is this character which makes no sense without being combined? If
 	 * this is true then flag it here and discard the character (return 1)
@@ -2200,11 +2205,9 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 		case HANGULJAMO_STATE_COMPOSABLE:
 			break;
 		case HANGULJAMO_STATE_NOT_HANGULJAMO:
-			if (utf8_is_modifier(ud)) {
-				if (last.data.size < 2)
-					return (0);
+			if (utf8_should_combine(&last.data, ud))
 				force_wide = 1;
-			} else if (!utf8_has_zwj(&last.data))
+			else if (!utf8_has_zwj(&last.data))
 				return (0);
 			break;
 		}

@@ -55,7 +55,7 @@ utf8_has_zwj(const struct utf8_data *ud)
 	return (memcmp(ud->data + ud->size - 3, "\342\200\215", 3) == 0);
 }
 
-/* Is this a zero width joiner? */
+/* Is this zero width joiner U+200D? */
 int
 utf8_is_zwj(const struct utf8_data *ud)
 {
@@ -64,7 +64,7 @@ utf8_is_zwj(const struct utf8_data *ud)
 	return (memcmp(ud->data, "\342\200\215", 3) == 0);
 }
 
-/* Is this a variation selector? */
+/* Is this variation selector U+FE0F? */
 int
 utf8_is_vs(const struct utf8_data *ud)
 {
@@ -73,49 +73,108 @@ utf8_is_vs(const struct utf8_data *ud)
 	return (memcmp(ud->data, "\357\270\217", 3) == 0);
 }
 
-/* Is this in the modifier table? */
+/* Is this Hangul filler U+3164? */
 int
-utf8_is_modifier(const struct utf8_data *ud)
+utf8_is_hangul_filler(const struct utf8_data *ud)
 {
-	wchar_t	wc;
-
-	if (utf8_towc(ud, &wc) != UTF8_DONE)
+	if (ud->size != 3)
 		return (0);
-	switch (wc) {
-	case 0x1F1E6:
-	case 0x1F1E7:
-	case 0x1F1E8:
-	case 0x1F1E9:
-	case 0x1F1EA:
-	case 0x1F1EB:
-	case 0x1F1EC:
-	case 0x1F1ED:
-	case 0x1F1EE:
-	case 0x1F1EF:
-	case 0x1F1F0:
-	case 0x1F1F1:
-	case 0x1F1F2:
-	case 0x1F1F3:
-	case 0x1F1F4:
-	case 0x1F1F5:
-	case 0x1F1F6:
-	case 0x1F1F7:
-	case 0x1F1F8:
-	case 0x1F1F9:
-	case 0x1F1FA:
-	case 0x1F1FB:
-	case 0x1F1FC:
-	case 0x1F1FD:
-	case 0x1F1FE:
-	case 0x1F1FF:
-	case 0x1F3FB:
-	case 0x1F3FC:
-	case 0x1F3FD:
-	case 0x1F3FE:
-	case 0x1F3FF:
+	return (memcmp(ud->data, "\343\205\244", 3) == 0);
+}
+
+/* Should these two characters combine? */
+int
+utf8_should_combine(const struct utf8_data *with, const struct utf8_data *add)
+{
+	wchar_t	w, a;
+
+	if (utf8_towc(with, &w) != UTF8_DONE)
+		return (0);
+	if (utf8_towc(add, &a) != UTF8_DONE)
+		return (0);
+
+	/* Regional indicators. */
+	if ((a >= 0x1F1E6 && a <= 0x1F1FF) && (w >= 0x1F1E6 && w <= 0x1F1FF))
 		return (1);
+
+	/* Emoji skin tone modifiers. */
+	switch (a) {
+	case 0x1F44B:
+	case 0x1F44C:
+	case 0x1F44D:
+	case 0x1F44E:
+	case 0x1F44F:
+	case 0x1F450:
+	case 0x1F466:
+	case 0x1F467:
+	case 0x1F468:
+	case 0x1F469:
+	case 0x1F46E:
+	case 0x1F470:
+	case 0x1F471:
+	case 0x1F472:
+	case 0x1F473:
+	case 0x1F474:
+	case 0x1F475:
+	case 0x1F476:
+	case 0x1F477:
+	case 0x1F478:
+	case 0x1F47C:
+	case 0x1F481:
+	case 0x1F482:
+	case 0x1F485:
+	case 0x1F486:
+	case 0x1F487:
+	case 0x1F4AA:
+	case 0x1F575:
+	case 0x1F57A:
+	case 0x1F590:
+	case 0x1F595:
+	case 0x1F596:
+	case 0x1F645:
+	case 0x1F646:
+	case 0x1F647:
+	case 0x1F64B:
+	case 0x1F64C:
+	case 0x1F64D:
+	case 0x1F64E:
+	case 0x1F64F:
+	case 0x1F6B4:
+	case 0x1F6B5:
+	case 0x1F6B6:
+	case 0x1F926:
+	case 0x1F937:
+	case 0x1F938:
+	case 0x1F939:
+	case 0x1F93D:
+	case 0x1F93E:
+	case 0x1F9B5:
+	case 0x1F9B6:
+	case 0x1F9B8:
+	case 0x1F9B9:
+	case 0x1F9CD:
+	case 0x1F9CE:
+	case 0x1F9CF:
+	case 0x1F9D1:
+	case 0x1F9D2:
+	case 0x1F9D3:
+	case 0x1F9D4:
+	case 0x1F9D5:
+	case 0x1F9D6:
+	case 0x1F9D7:
+	case 0x1F9D8:
+	case 0x1F9D9:
+	case 0x1F9DA:
+	case 0x1F9DB:
+	case 0x1F9DC:
+	case 0x1F9DD:
+	case 0x1F9DE:
+	case 0x1F9DF:
+		if (w >= 0x1F3FB && w <= 0x1F3FF)
+			return (1);
+		break;
 	}
-	return (0);
+	return 0;
 }
 
 static enum hanguljamo_subclass

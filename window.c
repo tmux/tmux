@@ -1979,6 +1979,8 @@ window_pane_get_theme(struct window_pane *wp)
 void
 window_pane_send_theme_update(struct window_pane *wp)
 {
+	if (wp == NULL || window_pane_exited(wp))
+		return;
 	if (~wp->flags & PANE_THEMECHANGED)
 		return;
 	if (~wp->screen->mode & MODE_THEME_UPDATES)

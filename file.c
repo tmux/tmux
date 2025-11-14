@@ -41,13 +41,21 @@ RB_GENERATE(client_files, client_file, entry, file_cmp);
 static char *
 file_get_path(struct client *c, const char *file)
 {
-	char	*path;
+	const char	*home;
+	char		*path, *full_path;
 
-	if (*file == '/')
+	if (strncmp(file, "~/", 2) != 0)
 		path = xstrdup(file);
-	else
-		xasprintf(&path, "%s/%s", server_client_get_cwd(c, NULL), file);
-	return (path);
+	else {
+		home = find_home();
+		if (home == NULL)
+			home = "";
+		xasprintf(&path, "%s%s", home, file + 1);
+	}
+	if (*path == '/')
+		return (path);
+	xasprintf(&full_path, "%s/%s", server_client_get_cwd(c, NULL), path);
+	return (full_path);
 }
 
 /* Tree comparison function. */
