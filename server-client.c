@@ -594,7 +594,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 	struct options		*wo = w->options;
 	struct window_pane	*fwp;
 	int			 pane_status, sb, sb_pos, sb_w, sb_pad;
-	u_int			 line, sl_top, sl_bottom;
+	u_int			 pane_status_line, sl_top, sl_bottom;
 	u_int			 bdr_bottom, bdr_top, bdr_left, bdr_right;
 
 	sb = options_get_number(wo, "pane-scrollbars");
@@ -608,14 +608,16 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 		sb_w = 0;
 		sb_pad = 0;
 	}
-	/* xxxx isn't this only for tiled panes at the top or bottom of the window? */
-	if (pane_status == PANE_STATUS_TOP && wp->layout_cell != NULL)
-		line = wp->yoff - 1;
+
+	if (pane_status == PANE_STATUS_TOP)
+		pane_status_line = wp->yoff - 1;
 	else if (pane_status == PANE_STATUS_BOTTOM)
-		line = wp->yoff + wp->sy;
+		pane_status_line = wp->yoff + wp->sy;
+	else
+		pane_status_line = -1; /* not used */
 
 	/* Check if point is within the pane or scrollbar. */
-	if (((pane_status != PANE_STATUS_OFF && py != line) ||
+	if (((pane_status != PANE_STATUS_OFF && py != pane_status_line) ||
 	    (wp->yoff == 0 && py < wp->sy) ||
 	    ((int)py >= wp->yoff && py < wp->yoff + wp->sy)) &&
 	    ((sb_pos == PANE_SCROLLBARS_RIGHT &&
@@ -1294,6 +1296,7 @@ have_event:
 		c->tty.mouse_drag_flag = MOUSE_BUTTONS(b) + 1;
 		/* Only change pane if not already dragging a pane border. */
 		if (c->tty.mouse_wp == NULL) {
+			wp = window_get_active_at(w, x, y);
 			c->tty.mouse_wp = wp;
 		}
 		if (c->tty.mouse_scrolling_flag == 0 &&
