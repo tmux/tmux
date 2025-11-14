@@ -51,14 +51,22 @@
  *   be passed to the underlying terminals.
  */
 
+/* Type of terminator. */
+enum input_end_type {
+	INPUT_END_ST,
+	INPUT_END_BEL
+};
+
 /* Request sent by a pane. */
 struct input_request {
 	struct client			*c;
 	struct input_ctx		*ictx;
 
 	enum input_request_type		 type;
-	int				 idx;
 	time_t				 t;
+	enum input_end_type              end;
+
+	int				 idx;
 	void				*data;
 
 	TAILQ_ENTRY(input_request)	 entry;
@@ -85,12 +93,6 @@ struct input_param {
 		int		num;
 		char	       *str;
 	};
-};
-
-/* Type of terminator. */
-enum input_end_type {
-	INPUT_END_ST,
-	INPUT_END_BEL
 };
 
 /* Input parser context. */
@@ -2800,7 +2802,8 @@ input_top_bit_set(struct input_ctx *ictx)
 
 /* Reply to a colour request. */
 static void
-input_osc_colour_reply(struct input_ctx *ictx, int add, u_int n, int idx, int c)
+input_osc_colour_reply(struct input_ctx *ictx, int add, u_int n, int idx, int c,
+    enum input_end_type end_type)
 {
 	u_char		 r, g, b;
 	const char	*end;
@@ -2811,7 +2814,7 @@ input_osc_colour_reply(struct input_ctx *ictx, int add, u_int n, int idx, int c)
 	    return;
 	colour_split_rgb(c, &r, &g, &b);
 
-	if (ictx->input_end == INPUT_END_BEL)
+	if (end_type == INPUT_END_BEL)
 		end = "\007";
 	else
 		end = "\033\\";
@@ -2852,7 +2855,8 @@ input_osc_4(struct input_ctx *ictx, const char *p)
 		if (strcmp(s, "?") == 0) {
 			c = colour_palette_get(palette, idx|COLOUR_FLAG_256);
 			if (c != -1) {
-				input_osc_colour_reply(ictx, 1, 4, idx, c);
+				input_osc_colour_reply(ictx, 1, 4, idx, c,
+				    ictx->input_end);
 				s = next;
 				continue;
 			}
@@ -2936,7 +2940,7 @@ input_osc_10(struct input_ctx *ictx, const char *p)
 			else
 				c = defaults.fg;
 		}
-		input_osc_colour_reply(ictx, 1, 10, 0, c);
+		input_osc_colour_reply(ictx, 1, 10, 0, c, ictx->input_end);
 		return;
 	}
 
@@ -2979,7 +2983,7 @@ input_osc_11(struct input_ctx *ictx, const char *p)
 		if (wp == NULL)
 			return;
 		c = window_pane_get_bg(wp);
-		input_osc_colour_reply(ictx, 1, 11, 0, c);
+		input_osc_colour_reply(ictx, 1, 11, 0, c, ictx->input_end);
 		return;
 	}
 
@@ -3023,7 +3027,7 @@ input_osc_12(struct input_ctx *ictx, const char *p)
 			c = ictx->ctx.s->ccolour;
 			if (c == -1)
 				c = ictx->ctx.s->default_ccolour;
-			input_osc_colour_reply(ictx, 1, 12, 0, c);
+			input_osc_colour_reply(ictx, 1, 12, 0, c, ictx->input_end);
 		}
 		return;
 	}
@@ -3293,6 +3297,7 @@ input_add_request(struct input_ctx *ictx, enum input_request_type type, int idx)
 	ir = input_make_request(ictx, type);
 	ir->c = c;
 	ir->idx = idx;
+	ir->end = ictx->input_end;
 	TAILQ_INSERT_TAIL(&c->input_requests, ir, centry);
 
 	switch (type) {
@@ -3331,7 +3336,7 @@ input_request_reply(struct client *c, enum input_request_type type, void *data)
 		if (ir->type == INPUT_REQUEST_QUEUE)
 			input_send_reply(ir->ictx, ir->data);
 		else if (ir == found && ir->type == INPUT_REQUEST_PALETTE) {
-			input_osc_colour_reply(ir->ictx, 0, 4, pd->idx, pd->c);
+			input_osc_colour_reply(ir->ictx, 0, 4, pd->idx, pd->c, ir->end);
 			complete = 1;
 		}
 		input_free_request(ir);
