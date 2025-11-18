@@ -849,7 +849,7 @@ cmd_parse_build_command(struct cmd_parse_command *cmd,
 		count++;
 	}
 
-	add = cmd_parse(values, count, pi->file, pi->line, &cause);
+	add = cmd_parse(values, count, pi->file, pi->line, pi->flags, &cause);
 	if (add == NULL) {
 		pr->status = CMD_PARSE_ERROR;
 		pr->error = cmd_parse_get_error(pi->file, pi->line, cause);
