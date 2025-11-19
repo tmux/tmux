@@ -160,6 +160,10 @@ cmd_select_pane_exec(struct cmd *self, struct cmdq_item *item)
 			server_redraw_window_borders(markedwp->window);
 			server_status_window(markedwp->window);
 		}
+		if (wp->layout_cell == NULL) {
+			window_redraw_active_switch(w, wp);
+			window_set_active_pane(w, wp, 1);
+		}
 		return (CMD_RETURN_NORMAL);
 	}
 

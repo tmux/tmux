@@ -109,6 +109,7 @@ extern const struct cmd_entry cmd_show_prompt_history_entry;
 extern const struct cmd_entry cmd_show_window_options_entry;
 extern const struct cmd_entry cmd_source_file_entry;
 extern const struct cmd_entry cmd_split_window_entry;
+extern const struct cmd_entry cmd_new_pane_entry;
 extern const struct cmd_entry cmd_start_server_entry;
 extern const struct cmd_entry cmd_suspend_client_entry;
 extern const struct cmd_entry cmd_swap_pane_entry;
@@ -201,6 +202,7 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_show_window_options_entry,
 	&cmd_source_file_entry,
 	&cmd_split_window_entry,
+	&cmd_new_pane_entry,
 	&cmd_start_server_entry,
 	&cmd_suspend_client_entry,
 	&cmd_swap_pane_entry,
@@ -773,9 +775,9 @@ cmd_mouse_at(struct window_pane *wp, struct mouse_event *m, u_int *xp,
 	if (m->statusat == 0 && y >= m->statuslines)
 		y -= m->statuslines;
 
-	if (x < wp->xoff || x >= wp->xoff + wp->sx)
+	if ((int)x < wp->xoff || (int)x >= wp->xoff + (int)wp->sx)
 		return (-1);
-	if (y < wp->yoff || y >= wp->yoff + wp->sy)
+	if ((int)y < wp->yoff || (int)y >= wp->yoff + (int)wp->sy)
 		return (-1);
 
 	if (xp != NULL)
