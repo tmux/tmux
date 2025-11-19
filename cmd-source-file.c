@@ -166,7 +166,7 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 	char				*pattern, *cwd, *expanded = NULL;
 	const char			*path, *error;
 	glob_t				 g;
-	int				 result;
+	int				 result, parse_flags;
 	u_int				 i, j;
 
 	if (c == NULL) {
@@ -192,8 +192,11 @@ cmd_source_file_exec(struct cmd *self, struct cmdq_item *item)
 		cdata->flags |= CMD_PARSE_QUIET;
 	if (args_has(args, 'n'))
 		cdata->flags |= CMD_PARSE_PARSEONLY;
-	if (args_has(args, 'v') && (c == NULL || ~c->flags & CLIENT_CONTROL))
-		cdata->flags |= CMD_PARSE_VERBOSE;
+	if (c == NULL || ~c->flags & CLIENT_CONTROL) {
+		parse_flags = cmd_get_parse_flags(self);
+		if (args_has(args, 'v') || (parse_flags & CMD_PARSE_VERBOSE))
+			cdata->flags |= CMD_PARSE_VERBOSE;
+	}
 
 	cwd = cmd_source_file_quote_for_glob(server_client_get_cwd(c, NULL));
 

@@ -222,6 +222,7 @@ struct cmd {
 
 	char			 *file;
 	u_int			  line;
+	int			  parse_flags;
 
 	TAILQ_ENTRY(cmd)	  qentry;
 };
@@ -414,6 +415,13 @@ cmd_get_source(struct cmd *cmd, const char **file, u_int *line)
 		*line = cmd->line;
 }
 
+/* Get parse flags for command. */
+int
+cmd_get_parse_flags(struct cmd *cmd)
+{
+	return (cmd->parse_flags);
+}
+
 /* Look for an alias for a command. */
 char *
 cmd_get_alias(const char *name)
@@ -498,7 +506,7 @@ ambiguous:
 /* Parse a single command from an argument vector. */
 struct cmd *
 cmd_parse(struct args_value *values, u_int count, const char *file, u_int line,
-    char **cause)
+    int parse_flags, char **cause)
 {
 	const struct cmd_entry	*entry;
 	struct cmd		*cmd;
@@ -527,6 +535,7 @@ cmd_parse(struct args_value *values, u_int count, const char *file, u_int line,
 	cmd = xcalloc(1, sizeof *cmd);
 	cmd->entry = entry;
 	cmd->args = args;
+	cmd->parse_flags = parse_flags;
 
 	if (file != NULL)
 		cmd->file = xstrdup(file);
