@@ -1,5 +1,8 @@
 CHANGES FROM 3.5a TO 3.6
 
+* Add a resize callback for menus so that they are correctly moved on resize
+  (issue 4696).
+
 * Make -v to source-file pass through to subsequent source-file commands (issue
   4216).
 
