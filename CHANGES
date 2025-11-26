@@ -1,3 +1,7 @@
+CHANGES FROM 3.6 TO 3.6a
+
+* Fix compile error on FreeBSD (from Yasuhiro Kimura, issue 4701).
+
 CHANGES FROM 3.5a TO 3.6
 
 * Add seconds options for clock mode (issue 4697).
