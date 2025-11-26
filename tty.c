@@ -35,6 +35,8 @@
 
 static int	tty_log_fd = -1;
 
+static void	tty_start_timer_callback(int, short, void *);
+static void	tty_clipboard_query_callback(int, short, void *);
 static void	tty_set_italics(struct tty *);
 static int	tty_try_colour(struct tty *, int, const char *);
 static void	tty_force_cursor_colour(struct tty *, int);
@@ -296,6 +298,8 @@ tty_open(struct tty *tty, char **cause)
 	if (tty->out == NULL)
 		fatal("out of memory");
 
+	evtimer_set(&tty->clipboard_timer, tty_clipboard_query_callback, tty);
+	evtimer_set(&tty->start_timer, tty_start_timer_callback, tty);
 	evtimer_set(&tty->timer, tty_timer_callback, tty);
 
 	tty_start_tty(tty);
@@ -327,7 +331,6 @@ tty_start_start_timer(struct tty *tty)
 
 	log_debug("%s: start timer started", c->name);
 	evtimer_del(&tty->start_timer);
-	evtimer_set(&tty->start_timer, tty_start_timer_callback, tty);
 	evtimer_add(&tty->start_timer, &tv);
 }
 
@@ -445,6 +448,7 @@ tty_stop_tty(struct tty *tty)
 	tty->flags &= ~TTY_STARTED;
 
 	evtimer_del(&tty->start_timer);
+	evtimer_del(&tty->clipboard_timer);
 
 	event_del(&tty->timer);
 	tty->flags &= ~TTY_BLOCK;
@@ -3228,6 +3232,5 @@ tty_clipboard_query(struct tty *tty)
 	tty_putcode_ss(tty, TTYC_MS, "", "?");
 
 	tty->flags |= TTY_OSC52QUERY;
-	evtimer_set(&tty->clipboard_timer, tty_clipboard_query_callback, tty);
 	evtimer_add(&tty->clipboard_timer, &tv);
 }
