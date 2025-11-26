@@ -97,6 +97,7 @@ struct image*
 image_store(struct screen *s, struct sixel_image *si)
 {
 	struct image	*im;
+	u_int		 limit;
 
 	im = xcalloc(1, sizeof *im);
 	im->s = s;
@@ -111,7 +112,8 @@ image_store(struct screen *s, struct sixel_image *si)
 	TAILQ_INSERT_TAIL(&s->images, im, entry);
 
 	TAILQ_INSERT_TAIL(&all_images, im, all_entry);
-	if (++all_images_count == 10/*XXX*/)
+	limit = options_get_number(global_options, "image-limit");
+	if (++all_images_count == limit)
 		image_free(TAILQ_FIRST(&all_images));
 
 	return (im);

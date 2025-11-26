@@ -422,6 +422,16 @@ const struct options_table_entry options_table[] = {
 	  .text = "Number of bytes accepted in a single input before dropping."
 	},
 
+	{ .name = "image-limit",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .minimum = 1,
+	  .maximum = INT_MAX,
+	  .default_num = 10,
+	  .text = "Maximum number of sixel images to keep. "
+		  "When this is reached, the oldest image is deleted."
+	},
+
 	{ .name = "menu-style",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,
