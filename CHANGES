@@ -1,5 +1,7 @@
 CHANGES FROM 3.5a TO 3.6
 
+* Add seconds options for clock mode (issue 4697).
+
 * Add a resize callback for menus so that they are correctly moved on resize
   (issue 4696).
 
