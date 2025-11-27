@@ -1,5 +1,9 @@
 CHANGES FROM 3.6 TO 3.6a
 
+* Newer libevents do not allow event_del on a zero'd event (issue 4706).
+
+* Place cursor on correct line if message-line is not 0 (issue 4707)).
+
 * Fix compile error on FreeBSD (from Yasuhiro Kimura, issue 4701).
 
 CHANGES FROM 3.5a TO 3.6
