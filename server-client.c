@@ -613,7 +613,8 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 		line = wp->yoff + wp->sy;
 
 	/* Check if point is within the pane or scrollbar. */
-	if (((pane_status != PANE_STATUS_OFF && py != line) ||
+	if (((pane_status != PANE_STATUS_OFF &&
+	    py != line && py != wp->yoff + wp->sy) ||
 	    (wp->yoff == 0 && py < wp->sy) ||
 	    (py >= wp->yoff && py < wp->yoff + wp->sy)) &&
 	    ((sb_pos == PANE_SCROLLBARS_RIGHT &&
