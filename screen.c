@@ -594,8 +594,12 @@ screen_select_cell(struct screen *s, struct grid_cell *dst,
 	if (COLOUR_DEFAULT(dst->bg))
 		dst->bg = src->bg;
 	utf8_copy(&dst->data, &src->data);
-	dst->attr = src->attr;
 	dst->flags = src->flags;
+
+	if (dst->attr & GRID_ATTR_NOATTR)
+		dst->attr |= (src->attr & GRID_ATTR_CHARSET);
+	else
+		dst->attr |= src->attr;
 }
 
 /* Reflow wrapped lines. */
