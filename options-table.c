@@ -84,6 +84,9 @@ static const char *options_table_popup_border_lines_list[] = {
 static const char *options_table_set_clipboard_list[] = {
 	"off", "external", "on", NULL
 };
+static const char *options_table_get_clipboard_list[] = {
+	"off", "buffer", "request", "both", NULL
+};
 static const char *options_table_window_size_list[] = {
 	"largest", "smallest", "manual", "latest", NULL
 };
@@ -403,6 +406,18 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_SERVER,
 	  .default_num = 0,
 	  .text = "Whether to send focus events to applications."
+	},
+
+	{ .name = "get-clipboard",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_SERVER,
+	  .choices = options_table_get_clipboard_list,
+	  .default_num = 1,
+	  .text = "When an application requests the clipboard, whether to "
+	          "ignore the request ('off'); respond with the newest buffer "
+	          "('buffer'); request the clipboard from the most recently "
+	          "used terminal ('request'); or to request the clipboard, "
+	          "create a buffer, and send it to the application ('both')."
 	},
 
 	{ .name = "history-file",

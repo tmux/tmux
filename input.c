@@ -3069,18 +3069,41 @@ input_osc_133(struct input_ctx *ictx, const char *p)
 	}
 }
 
+/* Handle OSC 52 reply. */
+static void
+input_osc_52_reply(struct input_ctx *ictx)
+{
+	struct paste_buffer	*pb;
+	int			 state;
+	const char		*buf;
+	size_t			 len;
+
+	state = options_get_number(global_options, "get-clipboard");
+	if (state == 0)
+		return;
+	if (state == 1) {
+		if ((pb = paste_get_top(NULL)) == NULL)
+			return;
+		buf = paste_buffer_data(pb, &len);
+		if (ictx->input_end == INPUT_END_BEL)
+			input_reply_clipboard(ictx->event, buf, len, "\007");
+		else
+			input_reply_clipboard(ictx->event, buf, len, "\033\\");
+		return;
+	}
+	input_add_request(ictx, INPUT_REQUEST_CLIPBOARD, ictx->input_end);
+}
+
 /* Handle the OSC 52 sequence for setting the clipboard. */
 static void
 input_osc_52(struct input_ctx *ictx, const char *p)
 {
 	struct window_pane	*wp = ictx->wp;
+	size_t			 len;
 	char			*end;
-	const char		*buf = NULL;
-	size_t			 len = 0;
 	u_char			*out;
 	int			 outlen, state;
 	struct screen_write_ctx	 ctx;
-	struct paste_buffer	*pb;
 	const char*		 allow = "cpqs01234567";
 	char			 flags[sizeof "cpqs01234567"] = "";
 	u_int			 i, j = 0;
@@ -3105,12 +3128,7 @@ input_osc_52(struct input_ctx *ictx, const char *p)
 	log_debug("%s: %.*s %s", __func__, (int)(end - p - 1), p, flags);
 
 	if (strcmp(end, "?") == 0) {
-		if ((pb = paste_get_top(NULL)) != NULL)
-			buf = paste_buffer_data(pb, &len);
-		if (ictx->input_end == INPUT_END_BEL)
-			input_reply_clipboard(ictx->event, buf, len, "\007");
-		else
-			input_reply_clipboard(ictx->event, buf, len, "\033\\");
+		input_osc_52_reply(ictx);
 		return;
 	}
 
@@ -3169,6 +3187,7 @@ input_osc_104(struct input_ctx *ictx, const char *p)
 	free(copy);
 }
 
+/* Send a clipboard reply. */
 void
 input_reply_clipboard(struct bufferevent *bev, const char *buf, size_t len,
     const char *end)
@@ -3305,11 +3324,47 @@ input_add_request(struct input_ctx *ictx, enum input_request_type type, int idx)
 		xsnprintf(s, sizeof s, "\033]4;%d;?\033\\", idx);
 		tty_puts(&c->tty, s);
 		break;
+	case INPUT_REQUEST_CLIPBOARD:
+		tty_putcode_ss(&c->tty, TTYC_MS, "", "?");
+		break;
 	case INPUT_REQUEST_QUEUE:
 		break;
 	}
 
 	return (0);
+}
+
+/* Handle a palette reply. */
+static void
+input_request_palette_reply(struct input_request *ir, void *data)
+{
+	struct input_request_palette_data	*pd = data;
+
+	input_osc_colour_reply(ir->ictx, 0, 4, pd->idx, pd->c, ir->end);
+}
+
+/* Handle a clipboard reply. */
+static void
+input_request_clipboard_reply(struct input_request *ir, void *data)
+{
+	struct input_ctx			*ictx = ir->ictx;
+	struct input_request_clipboard_data	*cd = data;
+	int					 state;
+	char					*copy;
+
+	state = options_get_number(global_options, "get-clipboard");
+	if (state == 0 || state == 1)
+		return;
+	if (state == 3) {
+		copy = xmalloc(cd->len);
+		memcpy(copy, cd->buf, cd->len);
+		paste_add(NULL, copy, cd->len);
+	}
+
+	if (ir->idx == INPUT_END_BEL)
+		input_reply_clipboard(ictx->event, cd->buf, cd->len, "\007");
+	else
+		input_reply_clipboard(ictx->event, cd->buf, cd->len, "\033\\");
 }
 
 /* Handle a reply to a request. */
@@ -3321,11 +3376,18 @@ input_request_reply(struct client *c, enum input_request_type type, void *data)
 	int					 complete = 0;
 
 	TAILQ_FOREACH_SAFE(ir, &c->input_requests, centry, ir1) {
-		if (ir->type == type && pd->idx == ir->idx) {
+		if (ir->type != type) {
+			input_free_request(ir);
+			continue;
+		}
+		if (type == INPUT_REQUEST_PALETTE && pd->idx == ir->idx) {
 			found = ir;
 			break;
 		}
-		input_free_request(ir);
+		if (type == INPUT_REQUEST_CLIPBOARD) {
+			found = ir;
+			break;
+		}
 	}
 	if (found == NULL)
 		return;
@@ -3335,8 +3397,11 @@ input_request_reply(struct client *c, enum input_request_type type, void *data)
 			break;
 		if (ir->type == INPUT_REQUEST_QUEUE)
 			input_send_reply(ir->ictx, ir->data);
-		else if (ir == found && ir->type == INPUT_REQUEST_PALETTE) {
-			input_osc_colour_reply(ir->ictx, 0, 4, pd->idx, pd->c, ir->end);
+		else if (ir == found) {
+			if (ir->type == INPUT_REQUEST_PALETTE)
+				input_request_palette_reply(ir, data);
+			else if (ir->type == INPUT_REQUEST_CLIPBOARD)
+				input_request_clipboard_reply(ir, data);
 			complete = 1;
 		}
 		input_free_request(ir);

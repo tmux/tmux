@@ -1130,6 +1130,7 @@ struct window_mode_entry {
 /* Type of request to client. */
 enum input_request_type {
 	INPUT_REQUEST_PALETTE,
+	INPUT_REQUEST_CLIPBOARD,
 	INPUT_REQUEST_QUEUE
 };
 
@@ -1137,6 +1138,12 @@ enum input_request_type {
 struct input_request_palette_data {
 	int	idx;
 	int	c;
+};
+
+/* Clipboard request reply data. */
+struct input_request_clipboard_data {
+	char	*buf;
+	size_t	 len;
 };
 
 /* Request sent to client on behalf of pane. */
@@ -2010,7 +2017,7 @@ struct client {
 #define CLIENT_CONTROL_PAUSEAFTER 0x100000000ULL
 #define CLIENT_CONTROL_WAITEXIT 0x200000000ULL
 #define CLIENT_WINDOWSIZECHANGED 0x400000000ULL
-#define CLIENT_CLIPBOARDBUFFER 0x800000000ULL
+/* 0x800000000ULL unused */
 #define CLIENT_BRACKETPASTING 0x1000000000ULL
 #define CLIENT_ASSUMEPASTING 0x2000000000ULL
 #define CLIENT_REDRAWSCROLLBARS 0x4000000000ULL

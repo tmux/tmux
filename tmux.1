@@ -1363,12 +1363,11 @@ and sets an environment variable for the newly created session; it may be
 specified multiple times.
 .Tg refresh
 .It Xo Ic refresh-client
-.Op Fl cDLRSU
+.Op Fl cDlLRSU
 .Op Fl A Ar pane:state
 .Op Fl B Ar name:what:format
 .Op Fl C Ar size
 .Op Fl f Ar flags
-.Op Fl l Op Ar target-pane
 .Op Fl r Ar pane:report
 .Op Fl t Ar target-client
 .Op Ar adjustment
@@ -1489,11 +1488,7 @@ a colon, then a report escape sequence.
 .Fl l
 requests the clipboard from the client using the
 .Xr xterm 1
-escape sequence.
-If
-.Ar target-pane
-is given, the clipboard is sent (in encoded form), otherwise it is stored in a
-new paste buffer.
+escape sequence and stores it in a new paste buffer.
 .Pp
 .Fl L ,
 .Fl R ,
@@ -4240,6 +4235,32 @@ When enabled, focus events are requested from the terminal if supported and
 passed through to applications running in
 .Nm .
 Attached clients should be detached and attached again after changing this
+option.
+.It Xo Ic get-clipboard
+.Op Ic both | request | buffer | off
+.Xc
+Controls the behaviour when an application requests the clipboard from
+.Nm .
+.Pp
+If
+.Ic off ,
+the request is ignored;
+if
+.Ic buffer ,
+.Nm
+responds with the newest paste buffer;
+.Ic request
+causes
+.Nm
+to request the clipboard from the most recently used client (if possible) and
+send the reply (if any) back to the application;
+.Ic buffer
+is the same as
+.Ic request
+but also creates a paste buffer.
+.Pp
+See also the
+.Ic set-clipboard
 option.
 .It Ic history-file Ar path
 If not empty, a file to which
