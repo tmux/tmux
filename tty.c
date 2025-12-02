@@ -3090,12 +3090,6 @@ static void
 tty_clipboard_query_callback(__unused int fd, __unused short events, void *data)
 {
 	struct tty	*tty = data;
-	struct client	*c = tty->client;
-
-	c->flags &= ~CLIENT_CLIPBOARDBUFFER;
-	free(c->clipboard_panes);
-	c->clipboard_panes = NULL;
-	c->clipboard_npanes = 0;
 
 	tty->flags &= ~TTY_OSC52QUERY;
 }
@@ -3105,10 +3099,9 @@ tty_clipboard_query(struct tty *tty)
 {
 	struct timeval	 tv = { .tv_sec = TTY_QUERY_TIMEOUT };
 
-	if ((~tty->flags & TTY_STARTED) || (tty->flags & TTY_OSC52QUERY))
-		return;
-	tty_putcode_ss(tty, TTYC_MS, "", "?");
-
-	tty->flags |= TTY_OSC52QUERY;
-	evtimer_add(&tty->clipboard_timer, &tv);
+	if ((tty->flags & TTY_STARTED) && (~tty->flags & TTY_OSC52QUERY)) {
+		tty_putcode_ss(tty, TTYC_MS, "", "?");
+		tty->flags |= TTY_OSC52QUERY;
+		evtimer_add(&tty->clipboard_timer, &tv);
+	}
 }
