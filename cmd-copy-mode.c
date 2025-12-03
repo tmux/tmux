@@ -85,7 +85,9 @@ cmd_copy_mode_exec(struct cmd *self, struct cmdq_item *item)
 		swp = source->wp;
 	else
 		swp = wp;
-	if (!window_pane_set_mode(wp, swp, &window_copy_mode, NULL, args)) {
+
+	if (!TAILQ_EMPTY(&wp->modes) ||
+	    !window_pane_set_mode(wp, swp, &window_copy_mode, NULL, args)) {
 		if (args_has(args, 'M'))
 			window_copy_start_drag(c, &event->m);
 	}
