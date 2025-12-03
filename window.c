@@ -1106,8 +1106,8 @@ window_pane_set_mode(struct window_pane *wp, struct window_pane *swp,
 	struct window_mode_entry	*wme;
 	struct window			*w = wp->window;
 
-        if (!TAILQ_EMPTY(&wp->modes) && TAILQ_FIRST(&wp->modes)->mode == mode)
-                return (1);
+	if (!TAILQ_EMPTY(&wp->modes) && TAILQ_FIRST(&wp->modes)->mode == mode)
+		return (1);
 
 	TAILQ_FOREACH(wme, &wp->modes, entry) {
 		if (wme->mode == mode)
