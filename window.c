@@ -1105,9 +1105,18 @@ window_pane_set_mode(struct window_pane *wp, struct window_pane *swp,
 {
 	struct window_mode_entry	*wme;
 	struct window			*w = wp->window;
+	const struct window_mode	*cur_mode;
 
-	if (!TAILQ_EMPTY(&wp->modes) && TAILQ_FIRST(&wp->modes)->mode == mode)
+	if (!TAILQ_EMPTY(&wp->modes)) {
+		/* Already in a mode.
+		 * If already in desired mode, return 1.
+		 * Don't go into copy-mode from a different mode.
+		 */
+		cur_mode = TAILQ_FIRST(&wp->modes)->mode;
+		if ((mode == cur_mode) ||
+		    (mode == &window_copy_mode))
 		return (1);
+	}
 
 	TAILQ_FOREACH(wme, &wp->modes, entry) {
 		if (wme->mode == mode)
