@@ -1780,7 +1780,7 @@ window_pane_mode(struct window_pane *wp)
 int
 window_pane_show_scrollbar(struct window_pane *wp, int sb_option)
 {
-	if (SCREEN_IS_ALTERNATE(wp->screen))
+	if (SCREEN_IS_ALTERNATE(&wp->base))
 		return (0);
 	if (sb_option == PANE_SCROLLBARS_ALWAYS ||
 	    (sb_option == PANE_SCROLLBARS_MODAL &&
