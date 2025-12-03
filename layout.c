@@ -1100,9 +1100,8 @@ int
 layout_spread_cell(struct window *w, struct layout_cell *parent)
 {
 	struct layout_cell	*lc;
-	struct style		*sb_style = &w->active->scrollbar_style;
 	u_int			 number, each, size, this, remainder;
-	int			 change, changed, status, scrollbars;
+	int			 change, changed, status;
 
 	number = 0;
 	TAILQ_FOREACH (lc, &parent->cells, entry)
@@ -1110,14 +1109,9 @@ layout_spread_cell(struct window *w, struct layout_cell *parent)
 	if (number <= 1)
 		return (0);
 	status = options_get_number(w->options, "pane-border-status");
-	scrollbars = options_get_number(w->options, "pane-scrollbars");
 
-	if (parent->type == LAYOUT_LEFTRIGHT) {
-		if (scrollbars)
-			size = parent->sx - sb_style->width + sb_style->pad;
-		else
-			size = parent->sx;
-	}
+	if (parent->type == LAYOUT_LEFTRIGHT)
+		size = parent->sx;
 	else if (parent->type == LAYOUT_TOPBOTTOM) {
 		if (layout_add_horizontal_border(w, parent, status))
 			size = parent->sy - 1;
