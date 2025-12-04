@@ -1,5 +1,10 @@
 CHANGES FROM 3.6 TO 3.6a
 
+* Add a missing skin tone (from Jake Stewart, issue 4736).
+
+* Allow characters to be combined in either order (issue 4726, reported by Jake
+  Stewart).
+
 * Fix horizontal mouse resizing when pane status lines are on (from Michael
   Grant, issue 4720).
 
