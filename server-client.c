@@ -1271,7 +1271,11 @@ have_event:
 		if (c->tty.mouse_scrolling_flag == 0 &&
 		    where == SCROLLBAR_SLIDER) {
 			c->tty.mouse_scrolling_flag = 1;
-			c->tty.mouse_slider_mpos = sl_mpos;
+			if (m->statusat == 0) {
+				c->tty.mouse_slider_mpos = sl_mpos +
+				    m->statuslines;
+			} else
+				c->tty.mouse_slider_mpos = sl_mpos;
 		}
 		break;
 	case WHEEL:
