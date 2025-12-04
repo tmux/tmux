@@ -122,6 +122,7 @@ utf8_should_combine(const struct utf8_data *with, const struct utf8_data *add)
 	case 0x1F47C:
 	case 0x1F481:
 	case 0x1F482:
+	case 0x1F483:
 	case 0x1F485:
 	case 0x1F486:
 	case 0x1F487:
