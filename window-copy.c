@@ -627,7 +627,7 @@ window_copy_scroll1(struct window_mode_entry *wme, struct window_pane *wp,
 		new_slider_y = sb_top - wp->yoff + (sb_height - slider_height);
 	} else {
 		/* Slider is somewhere in the middle. */
-		new_slider_y = my - wp->yoff - sl_mpos + 1;
+		new_slider_y = my - wp->yoff - sl_mpos;
 	}
 
 	if (TAILQ_FIRST(&wp->modes) == NULL ||
