@@ -1,5 +1,12 @@
 CHANGES FROM 3.6 TO 3.6a
 
+* Fix a buffer overread and an infinite loop in format processing (reported by
+  Giorgi Kobakhia, issue 4735).
+
+* Allow drag in alternate screen again (issue 4743 reported by Brad King).
+
+* Fix y offset of mouse if status at top (issue 4738 from Michael Grant).
+
 * Add a missing skin tone (from Jake Stewart, issue 4736).
 
 * Allow characters to be combined in either order (issue 4726, reported by Jake
