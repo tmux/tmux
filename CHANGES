@@ -1,3 +1,29 @@
+CHANGES FROM 3.6 TO 3.6a
+
+* Fix a buffer overread and an infinite loop in format processing (reported by
+  Giorgi Kobakhia, issue 4735).
+
+* Allow drag in alternate screen again (issue 4743 reported by Brad King).
+
+* Fix y offset of mouse if status at top (issue 4738 from Michael Grant).
+
+* Add a missing skin tone (from Jake Stewart, issue 4736).
+
+* Allow characters to be combined in either order (issue 4726, reported by Jake
+  Stewart).
+
+* Fix horizontal mouse resizing when pane status lines are on (from Michael
+  Grant, issue 4720).
+
+* Fix noattr so it does not delete attributes set in the style itself (issue
+  4713).
+
+* Newer libevents do not allow event_del on a zero'd event (issue 4706).
+
+* Place cursor on correct line if message-line is not 0 (issue 4707).
+
+* Fix compile error on FreeBSD (from Yasuhiro Kimura, issue 4701).
+
 CHANGES FROM 3.5a TO 3.6
 
 * Add seconds options for clock mode (issue 4697).
