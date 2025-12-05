@@ -2636,9 +2636,14 @@ server_client_handle_key(struct client *c, struct key_event *event)
 			case 1:
 				server_client_clear_overlay(c);
 				return (0);
+			case -1:
+				break; /* passthrough to underlying pane */
+			default:
+				server_client_clear_overlay(c);
+				break;
 			}
-		}
-		server_client_clear_overlay(c);
+		} else
+			server_client_clear_overlay(c);
 		if (c->prompt_string != NULL) {
 			if (status_prompt_key(c, event->key) == 0)
 				return (0);
@@ -2920,6 +2925,8 @@ server_client_reset_state(struct client *c)
 	if (c->overlay_draw != NULL) {
 		if (c->overlay_mode != NULL)
 			s = c->overlay_mode(c, c->overlay_data, &cx, &cy);
+		if (s == NULL && c->prompt_string == NULL)
+			s = wp->screen;
 	} else if (c->prompt_string == NULL)
 		s = wp->screen;
 	else
@@ -2948,7 +2955,7 @@ server_client_reset_state(struct client *c)
 				cy = tty->sy - 1;
 		}
 		cx = c->prompt_cursor;
-	} else if (c->overlay_draw == NULL) {
+	} else if (c->overlay_draw == NULL || s == wp->screen) {
 		cursor = 0;
 		tty_window_offset(tty, &ox, &oy, &sx, &sy);
 		if (wp->xoff + s->cx >= ox && wp->xoff + s->cx <= ox + sx &&

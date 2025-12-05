@@ -54,8 +54,8 @@ const struct cmd_entry cmd_display_popup_entry = {
 	.name = "display-popup",
 	.alias = "popup",
 
-	.args = { "Bb:Cc:d:e:Eh:kNs:S:t:T:w:x:y:", 0, -1, NULL },
-	.usage = "[-BCEkN] [-b border-lines] [-c target-client] "
+	.args = { "Bb:Cc:d:e:Eh:kNPs:S:t:T:w:x:y:", 0, -1, NULL },
+	.usage = "[-BCEkNP] [-b border-lines] [-c target-client] "
 		 "[-d start-directory] [-e environment] [-h height] "
 		 "[-s style] [-S border-style] " CMD_TARGET_PANE_USAGE
 		 " [-T title] [-w width] [-x position] [-y position] "
@@ -503,6 +503,11 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 		if (flags == -1)
 			flags = 0;
 		flags |= POPUP_CLOSEANYKEY;
+	}
+	if (args_has(args, 'P')) {
+		if (flags == -1)
+			flags = 0;
+		flags |= POPUP_PASSTHROUGH;
 	}
 
 	if (modify) {

@@ -153,6 +153,10 @@ popup_mode_cb(__unused struct client *c, void *data, u_int *cx, u_int *cy)
 	if (pd->md != NULL)
 		return (menu_mode_cb(c, pd->md, cx, cy));
 
+	/* In passthrough mode, keep cursor in underlying pane. */
+	if (pd->flags & POPUP_PASSTHROUGH)
+		return (NULL);
+
 	if (pd->border_lines == BOX_LINES_NONE) {
 		*cx = pd->px + pd->s.cx;
 		*cy = pd->py + pd->s.cy;
@@ -502,6 +506,14 @@ popup_key_cb(struct client *c, void *data, struct key_event *event)
 				server_redraw_client(c);
 		}
 		return (0);
+	}
+
+	/* Passthrough mode: pass non-mouse keys to underlying pane. */
+	if ((pd->flags & POPUP_PASSTHROUGH) && !KEYC_IS_MOUSE(event->key)) {
+		/* Still allow Escape and Ctrl-C to close the popup. */
+		if (event->key == '\033' || event->key == ('c'|KEYC_CTRL))
+			return (1);
+		return (-1);
 	}
 
 	if (KEYC_IS_MOUSE(event->key)) {
