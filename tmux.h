@@ -652,6 +652,7 @@ enum tty_code_code {
 #define MODE_CURSOR_BLINKING_SET 0x20000
 #define MODE_KEYS_EXTENDED_2 0x40000
 #define MODE_THEME_UPDATES 0x80000
+#define MODE_SYNC 0x100000
 
 #define ALL_MODES 0xffffff
 #define ALL_MOUSE_MODES (MODE_MOUSE_STANDARD|MODE_MOUSE_BUTTON|MODE_MOUSE_ALL)
@@ -1222,6 +1223,7 @@ struct window_pane {
 
 	struct window_pane_resizes resize_queue;
 	struct event	 resize_timer;
+	struct event	 sync_timer;
 
 	struct input_ctx *ictx;
 

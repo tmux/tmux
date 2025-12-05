@@ -897,6 +897,10 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 	struct grid_cell	 defaults;
 	u_int			 i, j, top, x, y, width;
 
+	/* Defer redraw if synchronized output mode is in effect. */
+	if (wp->base.mode & MODE_SYNC)
+		return;
+
 	log_debug("%s: %s @%u %%%u", __func__, c->name, w->id, wp->id);
 
 	if (wp->xoff + wp->sx <= ctx->ox || wp->xoff >= ctx->ox + ctx->sx)
