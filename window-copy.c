@@ -1479,6 +1479,20 @@ window_copy_cmd_scroll_middle(struct window_copy_cmd_state *cs)
 	return (window_copy_cmd_scroll_to(cs, mid_value));
 }
 
+/* Scroll the pane to the mouse in the scrollbar. xyz*/
+static enum window_copy_cmd_action
+window_copy_cmd_scroll(struct window_copy_cmd_state *cs)
+{
+	struct window_mode_entry	*wme = cs->wme;
+	struct window_pane		*wp = wme->wp;
+	struct client			*c = cs->c;
+	struct mouse_event		*m = cs->m;
+	int				 scroll_exit = args_has(cs->wargs, 'e');
+
+	window_copy_scroll(wp, c->tty.mouse_slider_mpos, m->y, scroll_exit);
+	return (WINDOW_COPY_CMD_NOTHING);
+}
+
 /* Scroll line containing the cursor to the top. */
 static enum window_copy_cmd_action
 window_copy_cmd_scroll_top(struct window_copy_cmd_state *cs)
@@ -3043,6 +3057,11 @@ static const struct {
 	  .args = { "", 0, 0, NULL },
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_scroll_middle
+	},
+	{ .command = "scroll-to-mouse",
+	  .args = { "e", 0, 0, NULL },
+	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+	  .f = window_copy_cmd_scroll
 	},
 	{ .command = "scroll-top",
 	  .args = { "", 0, 0, NULL },
