@@ -1782,6 +1782,10 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 	u_int				 y, cx, cy, last, items = 0;
 	struct tty_ctx			 ttyctx;
 
+	/* Defer flush if synchronized output mode is in effect. */
+	if (s->mode & MODE_SYNC)
+		return;
+
 	if (ctx->scrolled != 0) {
 		log_debug("%s: scrolled %u (region %u-%u)", __func__,
 		    ctx->scrolled, s->rupper, s->rlower);
@@ -2080,7 +2084,7 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	}
 
 	/* Write to the screen. */
-	if (!skip) {
+	if (!skip && !(s->mode & MODE_SYNC)) {
 		if (selected) {
 			screen_select_cell(s, &tmp_gc, gc);
 			ttyctx.cell = &tmp_gc;

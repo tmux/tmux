@@ -208,6 +208,9 @@ static int	input_end_bel(struct input_ctx *);
 /* Command table comparison function. */
 static int	input_table_compare(const void *, const void *);
 
+/* Sync timer callback. */
+static void	input_sync_timer(int, short, void *);
+
 /* Command table entry. */
 struct input_table_entry {
 	int		ch;
@@ -999,6 +1002,21 @@ input_parse(struct input_ctx *ictx, u_char *buf, size_t len)
 		/* If not in ground state, save input. */
 		if (ictx->state != &input_state_ground)
 			evbuffer_add(ictx->since_ground, &ictx->ch, 1);
+	}
+}
+
+/* Sync timer callback - clear MODE_SYNC after timeout. */
+static void
+input_sync_timer(__unused int fd, __unused short events, void *arg)
+{
+	struct window_pane	*wp = arg;
+
+	log_debug("%s: %%%u sync timer expired", __func__, wp->id);
+	evtimer_del(&wp->sync_timer);
+
+	if (wp->base.mode & MODE_SYNC) {
+		wp->base.mode &= ~MODE_SYNC;
+		wp->flags |= PANE_REDRAW;
 	}
 }
 
@@ -1901,6 +1919,13 @@ input_csi_dispatch_rm_private(struct input_ctx *ictx)
 		case 2031:
 			screen_write_mode_clear(sctx, MODE_THEME_UPDATES);
 			break;
+		case 2026:	/* synchronized output */
+			screen_write_mode_clear(sctx, MODE_SYNC);
+			if (ictx->wp != NULL) {
+				evtimer_del(&ictx->wp->sync_timer);
+				ictx->wp->flags |= PANE_REDRAW;
+			}
+			break;
 		default:
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);
 			break;
@@ -1998,6 +2023,16 @@ input_csi_dispatch_sm_private(struct input_ctx *ictx)
 			break;
 		case 2031:
 			screen_write_mode_set(sctx, MODE_THEME_UPDATES);
+			break;
+		case 2026:	/* synchronized output */
+			screen_write_mode_set(sctx, MODE_SYNC);
+			if (ictx->wp != NULL) {
+				struct timeval	tv = { .tv_sec = 1, .tv_usec = 0 };
+				if (!event_initialized(&ictx->wp->sync_timer))
+					evtimer_set(&ictx->wp->sync_timer,
+					    input_sync_timer, ictx->wp);
+				evtimer_add(&ictx->wp->sync_timer, &tv);
+			}
 			break;
 		default:
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);
