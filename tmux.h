@@ -1038,6 +1038,7 @@ enum pane_lines {
 #define PANE_BORDER_COLOUR 1
 #define PANE_BORDER_ARROWS 2
 #define PANE_BORDER_BOTH 3
+#define PANE_BORDER_BOX 4
 
 /* Mode returned by window_pane_mode function. */
 #define WINDOW_PANE_NO_MODE 0
@@ -3258,6 +3259,7 @@ struct window_pane *window_add_pane(struct window *, struct window_pane *,
 		     u_int, int);
 void		 window_resize(struct window *, u_int, u_int, int, int);
 void		 window_pane_send_resize(struct window_pane *, u_int, u_int);
+int		 window_pane_box_mode(struct window_pane *);
 int		 window_zoom(struct window_pane *);
 int		 window_unzoom(struct window *, int);
 int		 window_push_zoom(struct window *, int, int);
