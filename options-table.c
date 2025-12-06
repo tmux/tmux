@@ -73,7 +73,7 @@ static const char *options_table_pane_status_list[] = {
 	"off", "top", "bottom", NULL
 };
 static const char *options_table_pane_border_indicators_list[] = {
-	"off", "colour", "arrows", "both", NULL
+	"off", "colour", "arrows", "both", "box", NULL
 };
 static const char *options_table_pane_border_lines_list[] = {
 	"single", "double", "heavy", "simple", "number", "spaces", NULL
@@ -1282,8 +1282,9 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_WINDOW,
 	  .choices = options_table_pane_border_indicators_list,
 	  .default_num = PANE_BORDER_COLOUR,
-	  .text = "Whether to indicate the active pane by colouring border or "
-		  "displaying arrow markers."
+	  .text = "Whether to indicate the active pane by colouring border, "
+		  "displaying arrow markers, or drawing a box around the "
+		  "active pane."
 	},
 
 	{ .name = "pane-border-lines",
