@@ -986,6 +986,37 @@ screen_redraw_draw_active_box(struct screen_redraw_ctx *ctx)
 				tty_cell(tty, &blank_gc, &grid_default_cell, NULL, NULL);
 			}
 		}
+
+		/*
+		 * Clear separator column to the right of this pane. This is
+		 * the column that normally holds the pane separator border.
+		 */
+		if (wp->xoff + wp->sx < w->sx) {
+			for (i = top; i <= bottom; i++) {
+				tty_cursor(tty, wp->xoff + wp->sx, tty_top + i);
+				tty_cell(tty, &blank_gc, &grid_default_cell,
+				    NULL, NULL);
+			}
+		}
+
+		/*
+		 * Clear separator row below this pane. This is the row that
+		 * normally holds the pane separator border.
+		 */
+		if (wp->yoff + wp->sy < w->sy) {
+			for (i = left; i <= right; i++) {
+				tty_cursor(tty, i, tty_top + wp->yoff + wp->sy);
+				tty_cell(tty, &blank_gc, &grid_default_cell,
+				    NULL, NULL);
+			}
+			/* Also clear the corner where separators meet. */
+			if (wp->xoff + wp->sx < w->sx) {
+				tty_cursor(tty, wp->xoff + wp->sx,
+				    tty_top + wp->yoff + wp->sy);
+				tty_cell(tty, &blank_gc, &grid_default_cell,
+				    NULL, NULL);
+			}
+		}
 	}
 }
 
