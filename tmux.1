@@ -5096,10 +5096,17 @@ but set the starting index for pane numbers.
 Set the text shown in pane border status lines.
 .Pp
 .It Xo Ic pane-border-indicators
-.Op Ic off | colour | arrows | both
+.Op Ic off | colour | arrows | both | box
 .Xc
 Indicate active pane by colouring only half of the border in windows with
-exactly two panes, by displaying arrow markers, by drawing both or neither.
+exactly two panes, by displaying arrow markers, by drawing both, by drawing
+a complete box around the active pane, or neither.
+When
+.Ic box
+is used, all panes display content inset by one character from each edge
+to prevent content reflow when switching between panes.
+The box border is only drawn around the active pane.
+Panes smaller than 3x3 do not show a box border.
 .Pp
 .It Ic pane-border-lines Ar type
 Set the type of characters used for drawing pane borders.
