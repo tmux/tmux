@@ -617,7 +617,8 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 		pane_status_line = -1; /* not used */
 
 	/* Check if point is within the pane or scrollbar. */
-	if (((pane_status != PANE_STATUS_OFF && py != pane_status_line) ||
+	if (((pane_status != PANE_STATUS_OFF &&
+      py != pane_status_line && py != wp->yoff + wp->sy) ||
 	    (wp->yoff == 0 && py < wp->sy) ||
 	    ((int)py >= wp->yoff && py < wp->yoff + wp->sy)) &&
 	    ((sb_pos == PANE_SCROLLBARS_RIGHT &&
@@ -1302,7 +1303,11 @@ have_event:
 		if (c->tty.mouse_scrolling_flag == 0 &&
 		    where == SCROLLBAR_SLIDER) {
 			c->tty.mouse_scrolling_flag = 1;
-			c->tty.mouse_slider_mpos = sl_mpos;
+			if (m->statusat == 0) {
+				c->tty.mouse_slider_mpos = sl_mpos +
+				    m->statuslines;
+			} else
+				c->tty.mouse_slider_mpos = sl_mpos;
 		}
 		break;
 	case WHEEL:

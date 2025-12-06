@@ -1312,6 +1312,11 @@ screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx,
 	int			 yoff = wp->yoff;
 	struct visible_ranges	*vr;
 
+	if (ctx->statustop) {
+		sb_y += ctx->statuslines;
+		sy += ctx->statuslines;
+	}
+
 	/* Set up style for slider. */
 	gc = sb_style->gc;
 	memcpy(&slgc, &gc, sizeof slgc);
