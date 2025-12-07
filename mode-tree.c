@@ -133,6 +133,37 @@ static const struct menu_item mode_tree_menu_items[] = {
 	{ NULL, KEYC_NONE, NULL }
 };
 
+static const struct menu_item mode_tree_help_items[] = {
+	{ "Exit", 'q', NULL },
+	{ "", KEYC_NONE, NULL },
+	{ "Up", KEYC_UP, NULL },
+	{ "Down", KEYC_DOWN, NULL },
+	{ "Top", 'g', NULL },
+	{ "Bottom", 'G', NULL },
+	{ "Page Up", KEYC_PPAGE, NULL },
+	{ "Page Down", KEYC_NPAGE, NULL },
+	{ "", KEYC_NONE, NULL },
+	{ "Collapse", KEYC_LEFT, NULL },
+	{ "Expand", KEYC_RIGHT, NULL },
+	{ "Collapse All", '-'|KEYC_META, NULL },
+	{ "Expand All", '+'|KEYC_META, NULL },
+	{ "", KEYC_NONE, NULL },
+	{ "Tag", 't', NULL },
+	{ "Tag None", 'T', NULL },
+	{ "Tag All", 't'|KEYC_CTRL, NULL },
+	{ "", KEYC_NONE, NULL },
+	{ "Search", '/', NULL },
+	{ "Search Again", 'n', NULL },
+	{ "Search Reverse", 'N', NULL },
+	{ "Filter", 'f', NULL },
+	{ "", KEYC_NONE, NULL },
+	{ "Cycle Sort", 'O', NULL },
+	{ "Reverse Sort", 'r', NULL },
+	{ "Preview", 'v', NULL },
+
+	{ NULL, KEYC_NONE, NULL }
+};
+
 static int
 mode_tree_is_lowercase(const char *ptr)
 {
@@ -1132,6 +1163,30 @@ mode_tree_display_menu(struct mode_tree_data *mtd, struct client *c, u_int x,
 	}
 }
 
+static void
+mode_tree_help_callback(__unused struct menu *menu, __unused u_int idx,
+    __unused key_code key, void *data)
+{
+	mode_tree_remove_ref(data);
+}
+
+static void
+mode_tree_display_help(struct mode_tree_data *mtd, struct client *c)
+{
+	struct menu	*menu;
+
+	menu = menu_create("#[align=centre]Key Bindings");
+	menu_add_items(menu, mode_tree_help_items, NULL, c, NULL);
+
+	mtd->references++;
+
+	if (menu_display(menu, MENU_NOMOUSE, 0, NULL, 0, 0, c, BOX_LINES_DEFAULT,
+	    NULL, NULL, NULL, NULL, mode_tree_help_callback, mtd) != 0) {
+		mode_tree_remove_ref(mtd);
+		menu_free(menu);
+	}
+}
+
 int
 mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
     struct mouse_event *m, u_int *xp, u_int *yp)
@@ -1202,6 +1257,9 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 	case '\033': /* Escape */
 	case 'g'|KEYC_CTRL:
 		return (1);
+	case KEYC_F1:
+		mode_tree_display_help(mtd, c);
+		break;
 	case KEYC_UP:
 	case 'k':
 	case KEYC_WHEELUP_PANE:
