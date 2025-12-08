@@ -617,7 +617,8 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 		pane_status_line = -1; /* not used */
 
 	/* Check if point is within the pane or scrollbar. */
-	if (((pane_status != PANE_STATUS_OFF && py != pane_status_line) ||
+	if (((pane_status != PANE_STATUS_OFF &&
+      py != pane_status_line && py != wp->yoff + wp->sy) ||
 	    (wp->yoff == 0 && py < wp->sy) ||
 	    ((int)py >= wp->yoff && py < wp->yoff + wp->sy)) &&
 	    ((sb_pos == PANE_SCROLLBARS_RIGHT &&
@@ -1307,7 +1308,11 @@ have_event:
 		if (c->tty.mouse_scrolling_flag == 0 &&
 		    where == SCROLLBAR_SLIDER) {
 			c->tty.mouse_scrolling_flag = 1;
-			c->tty.mouse_slider_mpos = sl_mpos;
+			if (m->statusat == 0) {
+				c->tty.mouse_slider_mpos = sl_mpos +
+				    m->statuslines;
+			} else
+				c->tty.mouse_slider_mpos = sl_mpos;
 		}
 		break;
 	case WHEEL:
@@ -2938,8 +2943,8 @@ server_client_reset_state(struct client *c)
 	struct window_pane	*wp = server_client_get_pane(c), *loop;
 	struct screen		*s = NULL;
 	struct options		*oo = c->session->options;
-	int			 mode = 0, cursor, flags, n;
-	u_int			 cx = 0, cy = 0, ox, oy, sx, sy;
+	int			 mode = 0, cursor, flags;
+	u_int			 cx = 0, cy = 0, ox, oy, sx, sy, n;
 
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
 		return;
@@ -2971,13 +2976,13 @@ server_client_reset_state(struct client *c)
 	if (c->prompt_string != NULL) {
 		n = options_get_number(oo, "status-position");
 		if (n == 0)
-			cy = 0;
+			cy = status_prompt_line_at(c);
 		else {
-			n = status_line_size(c);
-			if (n == 0)
-				cy = tty->sy - 1;
-			else
+			n = status_line_size(c) - status_prompt_line_at(c);
+			if (n <= tty->sy)
 				cy = tty->sy - n;
+			else
+				cy = tty->sy - 1;
 		}
 		cx = c->prompt_cursor;
 	} else if (c->overlay_draw == NULL) {

@@ -1104,8 +1104,6 @@ format_width(const char *expanded)
 				more = utf8_append(&ud, *cp);
 			if (more == UTF8_DONE)
 				width += ud.width;
-			else
-				cp -= ud.have;
 		} else if (*cp > 0x1f && *cp < 0x7f) {
 			width++;
 			cp++;

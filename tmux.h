@@ -727,6 +727,7 @@ struct colour_palette {
 #define GRID_ATTR_UNDERSCORE_4 0x800
 #define GRID_ATTR_UNDERSCORE_5 0x1000
 #define GRID_ATTR_OVERLINE 0x2000
+#define GRID_ATTR_NOATTR 0x4000
 
 /* All underscore attributes. */
 #define GRID_ATTR_ALL_UNDERSCORE \
@@ -1129,6 +1130,7 @@ struct window_mode_entry {
 /* Type of request to client. */
 enum input_request_type {
 	INPUT_REQUEST_PALETTE,
+	INPUT_REQUEST_CLIPBOARD,
 	INPUT_REQUEST_QUEUE
 };
 
@@ -1136,6 +1138,12 @@ enum input_request_type {
 struct input_request_palette_data {
 	int	idx;
 	int	c;
+};
+
+/* Clipboard request reply data. */
+struct input_request_clipboard_data {
+	char	*buf;
+	size_t	 len;
 };
 
 /* Request sent to client on behalf of pane. */
@@ -2016,7 +2024,7 @@ struct client {
 #define CLIENT_CONTROL_PAUSEAFTER 0x100000000ULL
 #define CLIENT_CONTROL_WAITEXIT 0x200000000ULL
 #define CLIENT_WINDOWSIZECHANGED 0x400000000ULL
-#define CLIENT_CLIPBOARDBUFFER 0x800000000ULL
+/* 0x800000000ULL unused */
 #define CLIENT_BRACKETPASTING 0x1000000000ULL
 #define CLIENT_ASSUMEPASTING 0x2000000000ULL
 #define CLIENT_REDRAWSCROLLBARS 0x4000000000ULL
@@ -2959,6 +2967,7 @@ extern u_int	  status_prompt_hsize[];
 void	 status_timer_start(struct client *);
 void	 status_timer_start_all(void);
 void	 status_update_cache(struct session *);
+u_int	 status_prompt_line_at(struct client *);
 int	 status_at_line(struct client *);
 u_int	 status_line_size(struct client *);
 struct style_range *status_get_range(struct client *, u_int, u_int);
