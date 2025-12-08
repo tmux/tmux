@@ -643,9 +643,9 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 				return (SCROLLBAR_SLIDER);
 			} else /* py > sl_bottom */
 				return (SCROLLBAR_DOWN);
-		} else if (wp->layout_cell == NULL &&
+		} else if (wp->flags & PANE_FLOATING &&
 			   ((int)px == wp->xoff - 1 ||
-			    (int)py == wp->yoff -1 ||
+			    (int)py == wp->yoff - 1 ||
 			    (int)py == wp->yoff + (int)wp->sy)) {
 			/* Floating pane left, bottom or top border. */
 			return (BORDER);
@@ -664,7 +664,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 			if ((int)py >= fwp->yoff - 1 && py <= fwp->yoff + fwp->sy) {
 				if (px ==  bdr_right)
 					break;
-				if (wp->layout_cell == NULL) {
+				if (wp->flags & PANE_FLOATING) {
 					/* Floating pane, check if left border. */
 					bdr_left = fwp->xoff - 1;
 					if (px == bdr_left)
@@ -675,7 +675,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 				bdr_bottom = fwp->yoff + fwp->sy;
 				if (py == bdr_bottom)
 					break;
-				if (wp->layout_cell == NULL) {
+				if (wp->flags & PANE_FLOATING) {
 					/* Floating pane, check if top border. */
 					bdr_top = fwp->yoff - 1;
 					if (py == bdr_top)
@@ -885,8 +885,13 @@ have_event:
 			px = px + m->ox;
 			py = py + m->oy;
 
-			/* Try inside the pane. */
-			wp = window_get_active_at(w, px, py);
+			if (type == DRAG &&
+			    c->tty.mouse_wp != NULL)
+				/* Use pane from last mouse event. */
+				wp = c->tty.mouse_wp;
+			else
+				/* Try inside the pane. */
+				wp = window_get_active_at(w, px, py);
 			if (wp == NULL)
 				return (KEYC_UNKNOWN);
 			where = server_client_check_mouse_in_pane(wp, px, py,

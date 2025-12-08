@@ -59,6 +59,7 @@ cmd_new_pane_exec(struct cmd *self, struct cmdq_item *item)
 	struct winlink		*wl = target->wl;
 	struct window		*w = wl->window;
 	struct window_pane	*wp = target->wp, *new_wp;
+	struct layout_cell	*lc;
 	struct cmd_find_state	 fs;
 	int			 flags, input;
 	const char		*template;
@@ -147,13 +148,6 @@ cmd_new_pane_exec(struct cmd *self, struct cmdq_item *item)
 		}
 	}
 
-	sc.xoff = x;
-	sc.yoff = y;
-	last_x = x;
-	last_y = y;
-	sc.sx = sx;
-	sc.sy = sy;
-
 	input = (args_has(args, 'I') && count == 0);
 
 	flags = SPAWN_FLOATING;
@@ -169,7 +163,19 @@ cmd_new_pane_exec(struct cmd *self, struct cmdq_item *item)
 	sc.wl = wl;
 
 	sc.wp0 = wp;
-	sc.lc = NULL;
+
+	/* Floating panes sit in layout cells which are not in the layout_root
+	 * tree so we call it with parent == NULL.
+	 */
+	lc = layout_create_cell(NULL);
+	lc->xoff = x;
+	lc->yoff = y;
+	lc->sx = sx;
+	lc->sy = sy;
+	sc.lc = lc;
+
+	last_x = x;	/* Statically save last xoff & yoff so that new */
+	last_y = y;	/* floating panes offset so they don't overlap. */
 
 	args_to_vector(args, &sc.argc, &sc.argv);
 	sc.environ = environ_create();

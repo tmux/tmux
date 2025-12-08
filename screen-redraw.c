@@ -106,7 +106,7 @@ screen_redraw_two_panes(struct window *w, enum layout_type *type)
 	u_int			 count = 0;
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (wp->layout_cell == NULL)
+		if (wp->flags & PANE_FLOATING || wp->layout_cell == NULL)
 			continue;
 		count++;
 		if (count > 2 || wp->layout_cell->parent == NULL)
@@ -146,7 +146,7 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
 		sb_w = wp->scrollbar_style.width + wp->scrollbar_style.pad;
 
 	/* Floating pane borders */
-	if (wp->layout_cell == NULL) {
+	if (wp->flags & PANE_FLOATING) {
 		if ((int)px == wp->xoff - 1 &&
 		    (int)py >= wp->yoff - 1 && (int)py <= wp->yoff + (int)wp->sy)
 			return (SCREEN_REDRAW_BORDER_LEFT);
@@ -247,7 +247,7 @@ screen_redraw_cell_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
 	u_int			 sy = w->sy;
 	int			 sb_w, floating = 0;
 
-	floating = (wp->layout_cell == NULL);
+	floating = (wp->flags & PANE_FLOATING);
 
 	sb_w = wp->scrollbar_style.width +
 	    wp->scrollbar_style.pad;
@@ -268,7 +268,7 @@ screen_redraw_cell_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
 	/* If checking a cell from a tiled pane, ignore floating panes
 	 * because 2 side-by-side or top-bottom panes share a border
 	 * which is used to do split colouring. Essentially treat all
-	 * non-floating panes as being in a single z-index.
+	 * tiled panes as being in a single z-index.
 	 *
 	 * If checking a cell from a floating pane, only check cells
 	 * from this floating pane, again, essentially only this z-index.
@@ -277,8 +277,7 @@ screen_redraw_cell_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
 	/* Check all the panes. */
 	TAILQ_FOREACH(wp2, &w->z_index, zentry) {
 		if (!window_pane_visible(wp2) ||
-		    (wp->flags & PANE_MINIMISED) ||
-		    (!floating && wp2->layout_cell==NULL) ||
+		    (!floating && (wp2->flags & PANE_FLOATING)) ||
 		    (floating && wp2 != wp))
 			continue;
 		if (((int)px < wp2->xoff - 1 ||
@@ -317,7 +316,7 @@ screen_redraw_type_of_cell(struct screen_redraw_ctx *ctx,
 	if (px > sx || py > sy)
 		return (CELL_OUTSIDE);
 
-	floating = (wp->layout_cell == NULL);
+	floating = (wp->flags & PANE_FLOATING);
 
 	/*
 	 * Construct a bitmask of whether the cells to the left (bit 8), right,
@@ -433,7 +432,7 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 	TAILQ_FOREACH(wp, &w->z_index, zentry) {
 		sb_w = wp->scrollbar_style.width +
 			wp->scrollbar_style.pad;
-		if (! (wp->flags & PANE_MINIMISED) &&
+		if (~wp->flags & PANE_MINIMISED &&
 		    ((int)px >= wp->xoff - 1 &&
 		    (int)px <= wp->xoff + (int)wp->sx + sb_w) &&
 		    ((int)py >= wp->yoff - 1 &&
@@ -453,14 +452,13 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 	 * top-bottom windows with a shared border and half the shared
 	 * border is the active border.
 	 */
-	if (wp->layout_cell != NULL)
+	if (~wp->flags & PANE_FLOATING)
 		tiled_only = 1;
 
 	do { /* Loop until back to wp==start.*/
 
 		if (!window_pane_visible(wp) ||
-		    (wp->flags & PANE_MINIMISED) ||
-		    (tiled_only && wp->layout_cell==NULL))
+		    (tiled_only && (wp->flags & PANE_FLOATING)))
 			goto next;
 		*wpp = wp;
 
@@ -1067,13 +1065,13 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, u_int px,
 			continue;
 		}
 
-		tb = wp->yoff-1;
-		bb = wp->yoff + wp->sy;
+		tb = wp->yoff - 1;
+		bb = wp->yoff + wp->sy + 1;
 		if (!found_self ||
-		   (wp->flags & PANE_MINIMISED) ||
-		   py < tb ||
-		   (wp->layout_cell == NULL && py > bb) ||
-		   (wp->layout_cell != NULL && py >= bb))
+		    !window_pane_visible(wp) ||
+		    py < tb ||
+		    ((wp->flags & PANE_FLOATING) && py > bb) ||
+		    (~(wp->flags & PANE_FLOATING) && py >= bb))
 			continue;
 
 		/* Are scrollbars enabled? */
@@ -1283,6 +1281,9 @@ screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx,
 	else
 		sb_x = xoff + wp->sx - ox;
 
+	if (ctx->statustop)
+		sb_y += ctx->statuslines;
+
 	if (slider_h < 1)
 		slider_h = 1;
 	if (slider_y >= sb_h)
@@ -1311,6 +1312,9 @@ screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx,
 	int			 sx = ctx->sx, sy = ctx->sy, xoff = wp->xoff;
 	int			 yoff = wp->yoff;
 	struct visible_ranges	*vr;
+
+	if (ctx->statustop)
+		sy += ctx->statuslines;
 
 	/* Set up style for slider. */
 	gc = sb_style->gc;

@@ -1382,7 +1382,7 @@ tty_draw_pane(struct tty *tty, const struct tty_ctx *ctx, u_int py)
 
 	if (!ctx->bigger) {
 		if (wp) {
-			vr = screen_redraw_get_visible_ranges(wp, 0, py, nx);
+			vr = screen_redraw_get_visible_ranges(wp, 0, ctx->yoff + py, nx);
 			for (r=0; r < vr->used; r++) {
 				if (vr->nx[r] == 0)
 					continue;
@@ -2048,7 +2048,7 @@ tty_is_obscured(const struct tty_ctx *ctx)
 			found_self = 1;
 			continue;
 		}
-		if (found_self && wp->layout_cell == NULL &&
+		if (found_self && wp->flags & PANE_FLOATING &&
 		    ! (wp->flags & PANE_MINIMISED) &&
 		    ((wp->yoff >= base_wp->yoff &&
 		    wp->yoff <= base_wp->yoff + (int)base_wp->sy) ||

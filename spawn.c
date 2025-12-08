@@ -265,14 +265,7 @@ spawn_pane(struct spawn_context *sc, char **cause)
 		new_wp->flags &= ~(PANE_STATUSREADY|PANE_STATUSDRAWN);
 	} else if (sc->lc == NULL) {
 		new_wp = window_add_pane(w, NULL, hlimit, sc->flags);
-		if (sc->flags & SPAWN_FLOATING) {
-			new_wp->flags |= PANE_FLOATING;
-			window_pane_resize(new_wp, sc->sx, sc->sy);
-			new_wp->xoff = sc->xoff;
-			new_wp->yoff = sc->yoff;
-		} else {
-			layout_init(w, new_wp);
-		}
+		layout_init(w, new_wp);
 	} else {
 		new_wp = window_add_pane(w, sc->wp0, hlimit, sc->flags);
 		if (sc->flags & SPAWN_ZOOM)
@@ -280,6 +273,13 @@ spawn_pane(struct spawn_context *sc, char **cause)
 		else
 			layout_assign_pane(sc->lc, new_wp, 0);
 	}
+
+	/*
+	 * If window currently zoomed, window_set_active_pane calls
+	 * window_unzoom which it copies back the saved_layout_cell.
+	 */
+	if (w->flags & WINDOW_ZOOMED)
+		new_wp->saved_layout_cell = new_wp->layout_cell;
 
 	/*
 	 * Now we have a pane with nothing running in it ready for the new

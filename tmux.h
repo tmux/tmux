@@ -1176,6 +1176,7 @@ struct window_pane {
 	int		 yoff;
 
 	int		 flags;
+	int		 saved_flags;
 #define PANE_REDRAW 0x1
 #define PANE_DROP 0x2
 #define PANE_FOCUSED 0x4
@@ -1365,6 +1366,7 @@ TAILQ_HEAD(winlink_stack, winlink);
 enum layout_type {
 	LAYOUT_LEFTRIGHT,
 	LAYOUT_TOPBOTTOM,
+	LAYOUT_FLOATING,
 	LAYOUT_WINDOWPANE
 };
 
@@ -2226,10 +2228,6 @@ struct spawn_context {
 
 	struct window_pane	 *wp0;
 	struct layout_cell	 *lc;
-	u_int			  xoff;
-	u_int			  yoff;
-	u_int			  sx;
-	u_int			  sy;
 
 	const char		 *name;
 	char			**argv;
@@ -3350,6 +3348,7 @@ void		 layout_set_size(struct layout_cell *, u_int, u_int, u_int,
 		     u_int);
 void		 layout_make_leaf(struct layout_cell *, struct window_pane *);
 void		 layout_make_node(struct layout_cell *, enum layout_type);
+void		 layout_fix_zindexes(struct window *, struct layout_cell *);
 void		 layout_fix_offsets(struct window *);
 void		 layout_fix_panes(struct window *, struct window_pane *);
 void		 layout_resize_adjust(struct window *, struct layout_cell *,
@@ -3370,7 +3369,7 @@ int		 layout_spread_cell(struct window *, struct layout_cell *);
 void		 layout_spread_out(struct window_pane *);
 
 /* layout-custom.c */
-char		*layout_dump(struct layout_cell *);
+char		*layout_dump(struct window *, struct layout_cell *);
 int		 layout_parse(struct window *, const char *, char **);
 
 /* layout-set.c */

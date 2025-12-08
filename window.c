@@ -525,6 +525,8 @@ window_set_active_pane(struct window *w, struct window_pane *wp, int notify)
 
 	if (wp == w->active)
 		return (0);
+	if (w->flags & WINDOW_ZOOMED)
+		window_unzoom(w, 1);
 	lastwp = w->active;
 
 	window_pane_stack_remove(&w->last_panes, wp);
@@ -589,9 +591,9 @@ window_redraw_active_switch(struct window *w, struct window_pane *wp)
 
 		/* If you want tiled planes to be able to bury
 		 * floating planes then do this regardless of
-		 * wp->layout_cell==NULL or not.  A new option?
+		 * wp->flags & PANE_FLOATING or not.  A new option?
 		 */
-		if (wp->layout_cell == NULL) {
+		if (wp->flags & PANE_FLOATING) {
 			TAILQ_REMOVE(&w->z_index, wp, zentry);
 			TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
 			wp->flags |= PANE_REDRAW;
@@ -614,7 +616,7 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 		if (!window_pane_visible(wp))
 			continue;
 		window_pane_full_size_offset(wp, &xoff, &yoff, &sx, &sy);
-		if (wp->layout_cell != NULL) {
+		if (~wp->flags & PANE_FLOATING) {
 			/* Tiled, select up to including bottom or
 			   right border. */
 			if ((int)x < xoff || x > xoff + sx)
@@ -688,11 +690,23 @@ window_zoom(struct window_pane *wp)
 	if (w->flags & WINDOW_ZOOMED)
 		return (-1);
 
-	if (window_count_panes(w) == 1)
-		return (-1);
-
 	if (w->active != wp)
 		window_set_active_pane(w, wp, 1);
+
+	/* Bring pane above other tiled panes and minimise floating panes. */
+	TAILQ_FOREACH(wp1, &w->z_index, zentry) {
+		if (wp1 == wp) {
+			wp1->saved_flags |= (wp1->flags & PANE_MINIMISED);
+			wp1->flags &= ~PANE_MINIMISED;
+			continue;
+		}
+		if (wp1->flags & PANE_FLOATING) {
+			wp1->saved_flags |= (wp1->flags & PANE_MINIMISED);
+			wp1->flags |= PANE_MINIMISED;
+			continue;
+		}
+		break;
+	}
 
 	TAILQ_FOREACH(wp1, &w->panes, entry) {
 		wp1->saved_layout_cell = wp1->layout_cell;
@@ -719,6 +733,14 @@ window_unzoom(struct window *w, int notify)
 	layout_free(w);
 	w->layout_root = w->saved_layout_root;
 	w->saved_layout_root = NULL;
+
+	TAILQ_FOREACH(wp, &w->z_index, zentry) {
+		if (wp->flags & PANE_FLOATING) {
+			wp->flags &= ~PANE_MINIMISED | (wp->saved_flags & PANE_MINIMISED);
+			continue;
+		}
+		break;
+	}
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		wp->layout_cell = wp->saved_layout_cell;
@@ -781,9 +803,10 @@ window_add_pane(struct window *w, struct window_pane *other, u_int hlimit,
 			TAILQ_INSERT_AFTER(&w->panes, other, wp, entry);
 	}
 	/* Floating panes are created above tiled planes. */
-	if (flags & (SPAWN_FLOATING))
+	if (flags & SPAWN_FLOATING) {
+		wp->flags |= PANE_FLOATING;
 		TAILQ_INSERT_HEAD(&w->z_index, wp, zentry);
-	else
+	} else
 		TAILQ_INSERT_TAIL(&w->z_index, wp, zentry);
 	return (wp);
 }
@@ -1311,8 +1334,10 @@ window_pane_key(struct window_pane *wp, struct client *c, struct session *s,
 int
 window_pane_visible(struct window_pane *wp)
 {
-	if (~wp->window->flags & WINDOW_ZOOMED)
+	if (~wp->window->flags & WINDOW_ZOOMED &&
+	    ~wp->flags & PANE_MINIMISED)
 		return (1);
+
 	return (wp == wp->window->active);
 }
 

@@ -90,7 +90,7 @@ cmd_select_layout_exec(struct cmd *self, struct cmdq_item *item)
 		previous = 1;
 
 	oldlayout = w->old_layout;
-	w->old_layout = layout_dump(w->layout_root);
+	w->old_layout = layout_dump(w, w->layout_root);
 
 	if (next || previous) {
 		if (next)

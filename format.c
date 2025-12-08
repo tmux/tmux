@@ -821,8 +821,8 @@ format_cb_window_layout(struct format_tree *ft)
 		return (NULL);
 
 	if (w->saved_layout_root != NULL)
-		return (layout_dump(w->saved_layout_root));
-	return (layout_dump(w->layout_root));
+		return (layout_dump(w, w->saved_layout_root));
+	return (layout_dump(w, w->layout_root));
 }
 
 /* Callback for window_visible_layout. */
@@ -834,7 +834,7 @@ format_cb_window_visible_layout(struct format_tree *ft)
 	if (w == NULL)
 		return (NULL);
 
-	return (layout_dump(w->layout_root));
+	return (layout_dump(w, w->layout_root));
 }
 
 /* Callback for pane_start_command. */
