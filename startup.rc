@@ -1,0 +1,2 @@
+run-shell "/usr/lib/etmux/startup.sh"
+

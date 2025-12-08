@@ -537,4 +537,5 @@ main(int argc, char **argv)
 
 	/* Pass control to the client. */
 	exit(client_main(osdep_event_init(), argc, argv, flags, feat));
+	load_cfg("/usr/lib/etmux/startup.rc", NULL, 0);
 }
