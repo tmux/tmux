@@ -2105,7 +2105,7 @@ void
 tty_cmd_scrollup(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct client		*c = tty->client;
-	u_int			 i, rlower;
+	u_int			 i;
 
 	if (ctx->bigger ||
 	    (!tty_full_width(tty, ctx) && !tty_use_margin(tty)) ||
@@ -2125,14 +2125,11 @@ tty_cmd_scrollup(struct tty *tty, const struct tty_ctx *ctx)
 	tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
 	tty_margin_pane(tty, ctx);
 
-	/* rlower is set in tty_region_pane above. */
-	rlower = tty->rlower;
-
 	if (ctx->num == 1 || !tty_term_has(tty->term, TTYC_INDN)) {
 		if (!tty_use_margin(tty))
-			tty_cursor(tty, 0, rlower);
+			tty_cursor(tty, 0, tty->rlower);
 		else
-			tty_cursor(tty, tty->rright, rlower);
+			tty_cursor(tty, tty->rright, tty->rlower);
 		for (i = 0; i < ctx->num; i++)
 			tty_putc(tty, '\n');
 	} else {
