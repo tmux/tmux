@@ -2125,13 +2125,8 @@ tty_cmd_scrollup(struct tty *tty, const struct tty_ctx *ctx)
 	tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
 	tty_margin_pane(tty, ctx);
 
-	if (tty->rlower < ctx->wsy)
-		rlower = tty->rlower;
-	else
-		rlower = ctx->wsy - 1;
-
-	if (tty->client->session->statusat == 0)
-		rlower += tty->client->session->statuslines;
+	/* rlower is set in tty_region_pane above. */
+	rlower = tty->rlower;
 
 	if (ctx->num == 1 || !tty_term_has(tty->term, TTYC_INDN)) {
 		if (!tty_use_margin(tty))
