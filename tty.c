@@ -1217,13 +1217,21 @@ static void
 tty_clear_pane_line(struct tty *tty, const struct tty_ctx *ctx, u_int py,
     u_int px, u_int nx, u_int bg)
 {
-	struct client	*c = tty->client;
-	u_int		 i, x, rx, ry;
+	struct client		*c = tty->client;
+	struct window_pane	*wp = ctx->arg;
+	struct visible_ranges	*vr = NULL;
+	u_int			 r, i, x, rx, ry, oy = 0;
 
 	log_debug("%s: %s, %u at %u,%u", __func__, c->name, nx, px, py);
 
-	if (tty_clamp_line(tty, ctx, px, py, nx, &i, &x, &rx, &ry))
-		tty_clear_line(tty, &ctx->defaults, ry, x, rx, bg);
+	if (tty_clamp_line(tty, ctx, px, py, nx, &i, &x, &rx, &ry)) {
+		vr = screen_redraw_get_visible_ranges(wp, x, ry, rx);
+		for (r=0; r < vr->used; r++) {
+			if (vr->nx[r] == 0)
+				continue;
+			tty_clear_line(tty, &ctx->defaults, ry, vr->px[r], vr->nx[r], bg);
+		}
+	}
 }
 
 /* Clamp area position to visible part of pane. */
@@ -1290,12 +1298,16 @@ tty_clamp_area(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
 
 /* Clear an area, adjusting to visible part of pane. */
 static void
-tty_clear_area(struct tty *tty, const struct grid_cell *defaults, u_int py,
+tty_clear_area(struct tty *tty, const struct tty_ctx *ctx, u_int py,
     u_int ny, u_int px, u_int nx, u_int bg)
 {
-	struct client	*c = tty->client;
-	u_int		 yy;
-	char		 tmp[64];
+	struct client		*c = tty->client;
+	const struct grid_cell	*defaults = &ctx->defaults;
+	struct window		*w = c->session->curw->window;
+	struct window_pane	*wpl, *wp = ctx->arg;
+	struct visible_ranges	*vr = NULL;
+	u_int			 r, yy, overlap = 0, oy = 0;
+	char			 tmp[64];
 
 	log_debug("%s: %s, %u,%u at %u,%u", __func__, c->name, nx, ny, px, py);
 
@@ -1303,8 +1315,21 @@ tty_clear_area(struct tty *tty, const struct grid_cell *defaults, u_int py,
 	if (nx == 0 || ny == 0)
 		return;
 
+	/* Verify there's nothing overlapping in z-index before using BCE. */
+	TAILQ_FOREACH(wpl, &w->z_index, zentry) {
+		if (wpl == wp || ~wpl->flags & PANE_FLOATING)
+			continue;
+		if (wpl->xoff - 1 > (int)(px + nx) || wpl->xoff + wpl->sx + 1 < px)
+			continue;
+		if (wpl->yoff - 1 > (int)(py + ny) || wpl->yoff + wpl->sy + 1 < py)
+			continue;
+		overlap++;
+		if (overlap > 1) break;
+	}
+
 	/* If genuine BCE is available, can try escape sequences. */
-	if (c->overlay_check == NULL && !tty_fake_bce(tty, defaults, bg)) {
+	if (!overlap && c->overlay_check == NULL &&
+	    !tty_fake_bce(tty, defaults, bg)) {
 		/* Use ED if clearing off the bottom of the terminal. */
 		if (px == 0 &&
 		    px + nx >= tty->sx &&
@@ -1355,9 +1380,18 @@ tty_clear_area(struct tty *tty, const struct grid_cell *defaults, u_int py,
 		}
 	}
 
+	if (c->session->statusat == 0)
+		oy = c->session->statuslines;
+
 	/* Couldn't use an escape sequence, loop over the lines. */
-	for (yy = py; yy < py + ny; yy++)
-		tty_clear_line(tty, defaults, yy, px, nx, bg);
+	for (yy = py; yy < py + ny; yy++) {
+		vr = screen_redraw_get_visible_ranges(wp, px, yy - oy, nx);
+		for (r=0; r < vr->used; r++) {
+			if (vr->nx[r] == 0)
+				continue;
+			tty_clear_line(tty, defaults, yy, vr->px[r], vr->nx[r], bg);
+		}
+	}
 }
 
 /* Clear an area in a pane. */
@@ -1365,10 +1399,10 @@ static void
 tty_clear_pane_area(struct tty *tty, const struct tty_ctx *ctx, u_int py,
     u_int ny, u_int px, u_int nx, u_int bg)
 {
-	u_int	i, j, x, y, rx, ry;
+	u_int			 i, j, x, y, rx, ry;
 
 	if (tty_clamp_area(tty, ctx, px, py, nx, ny, &i, &j, &x, &y, &rx, &ry))
-		tty_clear_area(tty, &ctx->defaults, y, ry, x, rx, bg);
+		tty_clear_area(tty, ctx, y, ry, x, rx, bg);
 }
 
 /* Redraw a line at py of a screen taking into account obscured ranges.
