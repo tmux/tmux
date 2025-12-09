@@ -25,6 +25,7 @@
 
 static struct images	all_images = TAILQ_HEAD_INITIALIZER(all_images);
 static u_int		all_images_count;
+#define MAX_IMAGE_COUNT 20
 
 static void
 image_free(struct image *im)
@@ -111,7 +112,7 @@ image_store(struct screen *s, struct sixel_image *si)
 	TAILQ_INSERT_TAIL(&s->images, im, entry);
 
 	TAILQ_INSERT_TAIL(&all_images, im, all_entry);
-	if (++all_images_count == 10/*XXX*/)
+	if (++all_images_count == MAX_IMAGE_COUNT)
 		image_free(TAILQ_FIRST(&all_images));
 
 	return (im);
