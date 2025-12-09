@@ -43,7 +43,7 @@ For more detailed instructions on building and installing tmux, see
 ### From version control
 
 To get and build the latest from version control - note that this requires
-`autoconf`, `automake` and `pkg-config`:
+`autoconf`, `automake`, `libncurses-dev` and `pkg-config`:
 
 ~~~bash
 git clone https://github.com/tmux/tmux.git
