@@ -173,7 +173,9 @@ alerts_queue(struct window *w, int flags)
 
 		if (!alerts_fired) {
 			log_debug("alerts check queued (by @%u)", w->id);
-			event_once(-1, EV_TIMEOUT, alerts_callback, NULL, NULL);
+			struct timeval tv = {0, 0};
+			evtimer_once(alerts_callback, NULL, &tv);
+
 			alerts_fired = 1;
 		}
 	}
