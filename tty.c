@@ -2096,6 +2096,9 @@ tty_cmd_scrollup(struct tty *tty, const struct tty_ctx *ctx)
 	else
 		rlower = ctx->wsy - 1;
 
+	if (tty->client->session->statusat == 0)
+		rlower += tty->client->session->statuslines;
+
 	if (ctx->num == 1 || !tty_term_has(tty->term, TTYC_INDN)) {
 		if (!tty_use_margin(tty))
 			tty_cursor(tty, 0, rlower);

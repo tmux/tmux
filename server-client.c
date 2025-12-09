@@ -1302,7 +1302,7 @@ have_event:
 		c->tty.mouse_drag_flag = MOUSE_BUTTONS(b) + 1;
 		/* Only change pane if not already dragging a pane border. */
 		if (c->tty.mouse_wp == NULL) {
-			wp = window_get_active_at(w, x, y);
+			wp = window_get_active_at(w, px, py);
 			c->tty.mouse_wp = wp;
 		}
 		if (c->tty.mouse_scrolling_flag == 0 &&

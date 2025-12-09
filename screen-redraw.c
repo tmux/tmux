@@ -671,11 +671,11 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 			width = size - x;
 		}
 
-		if (ctx->statustop)
-			yoff += ctx->statuslines;
-
 		vr = screen_redraw_get_visible_ranges(wp, x, yoff - ctx->oy,
 		    width);
+
+		if (ctx->statustop)
+			yoff += ctx->statuslines;
 
 		for (r=0; r < vr->used; r++) {
 			if (vr->nx[r] == 0)
@@ -1173,7 +1173,7 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 		if (wp->yoff + (int)j < ctx->oy ||
 		    wp->yoff + j >= ctx->oy + ctx->sy)
 			continue;
-		y = top + wp->yoff + j - ctx->oy;
+		y = wp->yoff + j - ctx->oy;
 
 		/* Note: i is apparenty not used now that the vr array
 		 *  returns where in s to read from.
@@ -1217,7 +1217,7 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 			 * contents of pane shifted. note: i apparently unnec. 
 			 */
 			tty_draw_line(tty, s, /* i + */ vr->px[r] - wp->xoff, j,
-			    vr->nx[r], vr->px[r], y, &defaults, palette);
+			    vr->nx[r], vr->px[r], top + y, &defaults, palette);
 		}
 	}
 
@@ -1281,9 +1281,6 @@ screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx,
 	else
 		sb_x = xoff + wp->sx - ox;
 
-	if (ctx->statustop)
-		sb_y += ctx->statuslines;
-
 	if (slider_h < 1)
 		slider_h = 1;
 	if (slider_y >= sb_h)
@@ -1313,8 +1310,11 @@ screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx,
 	int			 yoff = wp->yoff;
 	struct visible_ranges	*vr;
 
-	if (ctx->statustop)
+	if (ctx->statustop) {
+		sb_y += ctx->statuslines;
 		sy += ctx->statuslines;
+	}
+
 
 	/* Set up style for slider. */
 	gc = sb_style->gc;
