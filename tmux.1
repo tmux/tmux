@@ -2213,6 +2213,13 @@ but also exit copy mode if the cursor reaches the bottom.
 Scroll so that the current line becomes the middle one while keeping the
 cursor on that line.
 .It Xo
+.Ic scroll-to-mouse
+.Xc
+Scroll pane in copy-mode when bound to a mouse drag event.
+.Fl e
+causes copy mode to exit when at the bottom.
+.Pp
+.It Xo
 .Ic scroll-top
 .Xc
 Scroll down until the current line is at the top while keeping the cursor on
@@ -2449,12 +2456,10 @@ cancels copy mode and any other modes.
 .Fl M
 begins a mouse drag (only valid if bound to a mouse key binding, see
 .Sx MOUSE SUPPORT ) .
+.Pp
 .Fl S
-scrolls when bound to a mouse drag event; for example,
-.Ic copy-mode -Se
-is bound to
-.Ar MouseDrag1ScrollbarSlider
-by default.
+enters copy-mode and scrolls when bound to a mouse drag event; See
+.Ic scroll-to-mouse .
 .Pp
 .Fl s
 copies from

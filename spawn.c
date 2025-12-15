@@ -211,7 +211,9 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	struct environ		 *child;
 	struct environ_entry	 *ee;
 	char			**argv, *cp, **argvp, *argv0, *cwd, *new_cwd;
-	const char		 *cmd, *tmp;
+	char			  path[PATH_MAX];
+	const char		 *cmd, *tmp, *home = find_home();
+	const char		 *actual_cwd = NULL;
 	int			  argc;
 	u_int			  idx;
 	struct termios		  now;
@@ -366,6 +368,16 @@ spawn_pane(struct spawn_context *sc, char **cause)
 		goto complete;
 	}
 
+    /* Store current working directory and change to new one. */
+	if (getcwd(path, sizeof path) != NULL) {
+		if (chdir(new_wp->cwd) == 0)
+			actual_cwd = new_wp->cwd;
+		else if (home != NULL && chdir(home) == 0)
+			actual_cwd = home;
+		else if (chdir("/") == 0)
+			actual_cwd = "/";
+	}
+
 	/* Fork the new process. */
 	new_wp->pid = fdforkpty(ptm_fd, &new_wp->fd, new_wp->tty, NULL, &ws);
 	if (new_wp->pid == -1) {
@@ -381,8 +393,15 @@ spawn_pane(struct spawn_context *sc, char **cause)
 		return (NULL);
 	}
 
-	/* In the parent process, everything is done now. */
+	/*
+	 * In the parent process, everything is done now. Change the working
+	 * directory back.
+	 */
 	if (new_wp->pid != 0) {
+		if (actual_cwd != NULL &&
+		    chdir(path) != 0 &&
+		    (home == NULL || chdir(home) != 0))
+			chdir("/");
 		goto complete;
 	}
 
@@ -397,17 +416,10 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	}
 #endif
 	/*
-	 * Child process. Change to the working directory or home if that
-	 * fails.
+	 * Child process. Set PWD to the working directory.
 	 */
-	if (chdir(new_wp->cwd) == 0)
-		environ_set(child, "PWD", 0, "%s", new_wp->cwd);
-	else if ((tmp = find_home()) != NULL && chdir(tmp) == 0)
-		environ_set(child, "PWD", 0, "%s", tmp);
-	else if (chdir("/") == 0)
-		environ_set(child, "PWD", 0, "/");
-	else
-		fatal("chdir failed");
+	if (actual_cwd != NULL)
+		environ_set(child, "PWD", 0, "%s", actual_cwd);
 
 	/*
 	 * Update terminal escape characters from the session if available and
