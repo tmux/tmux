@@ -1663,9 +1663,10 @@ is used,
 option will not be applied.
 .Pp
 .Fl T
-sets the client's key table; the next key from the client will be interpreted
-from
+sets the client's key table; the next key will be looked up using
 .Ar key-table .
+After that key, the client is returned to its default key table (normally
+.Em root ) .
 This may be used to configure multiple prefix keys, or to bind commands to
 sequences of keys.
 For example, to make typing
