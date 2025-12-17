@@ -958,7 +958,7 @@ const struct options_table_entry options_table[] = {
 	{ .name = "prompt-cursor-colour",
 	  .type = OPTIONS_TABLE_COLOUR,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_num = 6,
+	  .default_num = -1,
 	  .text = "Colour of the cursor when in the command prompt."
 	},
 
