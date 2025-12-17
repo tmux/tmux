@@ -432,15 +432,26 @@ window_pane_send_resize(struct window_pane *wp, u_int sx, u_int sy)
 {
 	struct window	*w = wp->window;
 	struct winsize	 ws;
+	u_int		 pty_sx, pty_sy;
 
 	if (wp->fd == -1)
 		return;
 
-	log_debug("%s: %%%u resize to %u,%u", __func__, wp->id, sx, sy);
+	/* Reduce PTY size if box mode is active. */
+	if (window_pane_box_mode(wp)) {
+		pty_sx = sx - 2;
+		pty_sy = sy - 2;
+	} else {
+		pty_sx = sx;
+		pty_sy = sy;
+	}
+
+	log_debug("%s: %%%u resize to %u,%u (pty %u,%u)", __func__, wp->id,
+	    sx, sy, pty_sx, pty_sy);
 
 	memset(&ws, 0, sizeof ws);
-	ws.ws_col = sx;
-	ws.ws_row = sy;
+	ws.ws_col = pty_sx;
+	ws.ws_row = pty_sy;
 	ws.ws_xpixel = w->xpixel * ws.ws_col;
 	ws.ws_ypixel = w->ypixel * ws.ws_row;
 	if (ioctl(wp->fd, TIOCSWINSZ, &ws) == -1)
@@ -454,6 +465,27 @@ window_pane_send_resize(struct window_pane *wp, u_int sx, u_int sy)
 		if (errno != EINVAL && errno != ENXIO)
 #endif
 		fatal("ioctl failed");
+}
+
+int
+window_pane_box_mode(struct window_pane *wp)
+{
+	struct window	*w = wp->window;
+
+	/* Must have box mode enabled. */
+	if (options_get_number(w->options, "pane-border-indicators") !=
+	    PANE_BORDER_BOX)
+		return (0);
+
+	/* Must have more than one pane. */
+	if (TAILQ_NEXT(TAILQ_FIRST(&w->panes), entry) == NULL)
+		return (0);
+
+	/* Pane must be at least 3x3 to fit content inside border. */
+	if (wp->sx < 3 || wp->sy < 3)
+		return (0);
+
+	return (1);
 }
 
 int
@@ -1076,6 +1108,7 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 {
 	struct window_mode_entry	*wme;
 	struct window_pane_resize	*r;
+	u_int				 screen_sx, screen_sy;
 
 	if (sx == wp->sx && sy == wp->sy)
 		return;
@@ -1090,12 +1123,25 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 	wp->sx = sx;
 	wp->sy = sy;
 
-	log_debug("%s: %%%u resize %ux%u", __func__, wp->id, sx, sy);
-	screen_resize(&wp->base, sx, sy, wp->base.saved_grid == NULL);
+	/*
+	 * Reduce screen buffer size for box mode so content cannot
+	 * overwrite the border area.
+	 */
+	if (window_pane_box_mode(wp) && sx >= 3 && sy >= 3) {
+		screen_sx = sx - 2;
+		screen_sy = sy - 2;
+	} else {
+		screen_sx = sx;
+		screen_sy = sy;
+	}
+
+	log_debug("%s: %%%u resize %ux%u (screen %ux%u)", __func__, wp->id,
+	    sx, sy, screen_sx, screen_sy);
+	screen_resize(&wp->base, screen_sx, screen_sy, wp->base.saved_grid == NULL);
 
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme != NULL && wme->mode->resize != NULL)
-		wme->mode->resize(wme, sx, sy);
+		wme->mode->resize(wme, screen_sx, screen_sy);
 }
 
 int

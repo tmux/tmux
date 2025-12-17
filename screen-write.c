@@ -161,6 +161,12 @@ screen_write_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 	ttyctx->xoff = ttyctx->rxoff = wp->xoff;
 	ttyctx->yoff = ttyctx->ryoff = wp->yoff;
 
+	/* Apply box mode offset for content positioning. */
+	if (window_pane_box_mode(wp)) {
+		ttyctx->xoff += 1;
+		ttyctx->yoff += 1;
+	}
+
 	if (status_at_line(c) == 0)
 		ttyctx->yoff += status_line_size(c);
 
