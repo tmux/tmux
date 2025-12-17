@@ -898,6 +898,8 @@ input_free(struct input_ctx *ictx)
 	evbuffer_free(ictx->since_ground);
 	event_del(&ictx->ground_timer);
 
+	screen_write_stop_sync(ictx->wp);
+
 	free(ictx);
 }
 
@@ -1901,6 +1903,11 @@ input_csi_dispatch_rm_private(struct input_ctx *ictx)
 		case 2031:
 			screen_write_mode_clear(sctx, MODE_THEME_UPDATES);
 			break;
+		case 2026:	/* synchronized output */
+			screen_write_stop_sync(ictx->wp);
+			if (ictx->wp != NULL)
+				ictx->wp->flags |= PANE_REDRAW;
+			break;
 		default:
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);
 			break;
@@ -1998,6 +2005,9 @@ input_csi_dispatch_sm_private(struct input_ctx *ictx)
 			break;
 		case 2031:
 			screen_write_mode_set(sctx, MODE_THEME_UPDATES);
+			break;
+		case 2026:	/* synchronized output */
+			screen_write_start_sync(ictx->wp);
 			break;
 		default:
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);

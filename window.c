@@ -1001,6 +1001,8 @@ window_pane_destroy(struct window_pane *wp)
 
 	if (event_initialized(&wp->resize_timer))
 		event_del(&wp->resize_timer);
+	if (event_initialized(&wp->sync_timer))
+		event_del(&wp->sync_timer);
 	TAILQ_FOREACH_SAFE(r, &wp->resize_queue, entry, r1) {
 		TAILQ_REMOVE(&wp->resize_queue, r, entry);
 		free(r);
@@ -1079,6 +1081,8 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 
 	if (sx == wp->sx && sy == wp->sy)
 		return;
+
+	screen_write_stop_sync(wp);
 
 	r = xmalloc(sizeof *r);
 	r->sx = sx;
