@@ -2367,8 +2367,11 @@ screen_write_sixelimage(struct screen_write_ctx *ctx, struct sixel_image *si,
 	u_int			 x, y, sx, sy, cx = s->cx, cy = s->cy, i, lines;
 	struct sixel_image	*new;
 
+	if (screen_size_y(s) == 1)
+		return;
+
 	sixel_size_in_cells(si, &x, &y);
-	if (x > screen_size_x(s) || y > screen_size_y(s)) {
+	if (x > screen_size_x(s) || y > screen_size_y(s) - 1) {
 		if (x > screen_size_x(s) - cx)
 			sx = screen_size_x(s) - cx;
 		else
@@ -2379,12 +2382,10 @@ screen_write_sixelimage(struct screen_write_ctx *ctx, struct sixel_image *si,
 			sy = y;
 		new = sixel_scale(si, 0, 0, 0, y - sy, sx, sy, 1);
 		sixel_free(si);
-		si = new;
-
-		/* Bail out if the image cannot be scaled. */
-		if (si == NULL)
+		if (new == NULL)
 			return;
-		sixel_size_in_cells(si, &x, &y);
+		sixel_size_in_cells(new, &x, &y);
+		si = new;
 	}
 
 	sy = screen_size_y(s) - cy;
