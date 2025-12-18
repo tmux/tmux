@@ -347,6 +347,10 @@ key_bindings_init(void)
 {
 	static const char *const defaults[] = {
 		/* Prefix keys. */
+		"bind -N 'Minimise pane' _ { minimise-pane }",
+		/* Mouse button 1 double click on status line. */
+		"bind -n DoubleClick1Status { minimise-pane -t= }",
+
 		"bind -N 'Send the prefix key' C-b { send-prefix }",
 		"bind -N 'Rotate through the panes' C-o { rotate-window }",
 		"bind -N 'Suspend the current client' C-z { suspend-client }",

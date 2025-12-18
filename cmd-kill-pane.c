@@ -62,6 +62,11 @@ cmd_kill_pane_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 	}
 
+	if (wp == NULL) {
+		/* No active window pane. */
+		cmdq_error(item, "No active pane to kill.");
+		return (CMD_RETURN_ERROR);
+	}
 	server_kill_pane(wp);
 	return (CMD_RETURN_NORMAL);
 }

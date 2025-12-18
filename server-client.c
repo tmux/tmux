@@ -2957,7 +2957,7 @@ server_client_reset_state(struct client *c)
 	if (c->overlay_draw != NULL) {
 		if (c->overlay_mode != NULL)
 			s = c->overlay_mode(c, c->overlay_data, &cx, &cy);
-	} else if (c->prompt_string == NULL)
+	} else if (wp != NULL && c->prompt_string == NULL)
 		s = wp->screen;
 	else
 		s = c->status.active;
@@ -2985,7 +2985,7 @@ server_client_reset_state(struct client *c)
 				cy = tty->sy - 1;
 		}
 		cx = c->prompt_cursor;
-	} else if (c->overlay_draw == NULL) {
+	} else if (wp != NULL && c->overlay_draw == NULL) {
 		cursor = 0;
 		tty_window_offset(tty, &ox, &oy, &sx, &sy);
 		if (wp->xoff + s->cx >= ox && wp->xoff + s->cx <= ox + sx &&
@@ -3004,7 +3004,9 @@ server_client_reset_state(struct client *c)
 
 		if (!cursor)
 			mode &= ~MODE_CURSOR;
-	}
+	} else
+		mode &= ~MODE_CURSOR;
+
 	log_debug("%s: cursor to %u,%u", __func__, cx, cy);
 	tty_cursor(tty, cx, cy);
 

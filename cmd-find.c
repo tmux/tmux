@@ -977,15 +977,20 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 	} else if (cmd_find_from_client(&current, cmdq_get_client(item),
 	    flags) == 0) {
 		fs->current = &current;
+		/* No active pane, window empty, return the window instead. */
+		if (current.wp == NULL) {
+			type = CMD_FIND_WINDOW;
+		}
 		log_debug("%s: current is from client", __func__);
 	} else {
 		if (~flags & CMD_FIND_QUIET)
 			cmdq_error(item, "no current target");
 		goto error;
 	}
+	/*
 	if (!cmd_find_valid_state(fs->current))
 		fatalx("invalid current find state");
-
+	*/
 	/* An empty or NULL target is the current. */
 	if (target == NULL || *target == '\0')
 		goto current;
@@ -1010,7 +1015,7 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 				fs->w = fs->wl->window;
 				fs->wp = fs->w->active;
 			}
-			break;
+			goto found;
 		}
 		if (fs->wp == NULL) {
 			if (~flags & CMD_FIND_QUIET)

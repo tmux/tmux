@@ -439,10 +439,13 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 		    (int)py <= wp->yoff + (int)wp->sy))
 			break;
 	}
-	if (wp == NULL)
+	if (wp == NULL) {
 		start = wp = server_client_get_pane(c);
-	else
+		if (wp == NULL)
+			return (CELL_OUTSIDE);
+	} else {
 		start = wp;
+	}
 
 	if (px == sx || py == sy) /* window border */
 		return (screen_redraw_type_of_cell(ctx, wp, px, py));
@@ -538,6 +541,8 @@ screen_redraw_check_is(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 {
 	enum screen_redraw_border_type	border;
 
+	if (wp == NULL)
+		return (0); /* No active pane. */
 	border = screen_redraw_pane_border(ctx, wp, px, py);
 	if (border != SCREEN_REDRAW_INSIDE && border != SCREEN_REDRAW_OUTSIDE)
 		return (1);

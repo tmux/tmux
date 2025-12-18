@@ -536,9 +536,50 @@ window_set_active_pane(struct window *w, struct window_pane *wp, int notify)
 	w->active->active_point = next_active_point++;
 	w->active->flags |= PANE_CHANGED;
 
+	if (wp->flags & PANE_MINIMISED) {
+		wp->flags &= ~PANE_MINIMISED;
+		if (w->layout_root != NULL) {
+			wp->layout_cell = wp->saved_layout_cell;
+			wp->saved_layout_cell = NULL;
+			layout_unminimise_cell(w, wp->layout_cell);
+			layout_fix_offsets(w);
+			layout_fix_panes(w, NULL);
+		}
+	}
+	notify_window("window-layout-changed", w);
+	server_redraw_window(w);
+
+
 	if (options_get_number(global_options, "focus-events")) {
 		window_pane_update_focus(lastwp);
 		window_pane_update_focus(w->active);
+	}
+
+	tty_update_window_offset(w);
+
+	if (notify)
+		notify_window("window-pane-changed", w);
+	return (1);
+}
+
+int
+window_deactivate_pane(struct window *w, struct window_pane *wp, int notify)
+{
+	struct window_pane *lastwp;
+
+	log_debug("%s: pane %%%u", __func__, wp->id);
+
+	if (w->flags & WINDOW_ZOOMED)
+		window_unzoom(w, 1);
+	lastwp = w->active;
+
+	window_pane_stack_remove(&w->last_panes, wp);
+	window_pane_stack_push(&w->last_panes, lastwp);
+
+	w->active = NULL;
+
+	if (options_get_number(global_options, "focus-events")) {
+		window_pane_update_focus(lastwp);
 	}
 
 	tty_update_window_offset(w);
@@ -600,6 +641,8 @@ window_redraw_active_switch(struct window *w, struct window_pane *wp)
 		}
 
 		wp = w->active;
+		if (wp == NULL)
+			break;
 	}
 }
 

@@ -254,6 +254,9 @@ layout_fix_offsets1(struct layout_cell *lc)
 	if (lc->type == LAYOUT_LEFTRIGHT) {
 		xoff = lc->xoff;
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
+			if (lcchild->type == LAYOUT_WINDOWPANE &&
+			    lcchild->wp->flags & PANE_MINIMISED)
+				continue;
 			lcchild->xoff = xoff;
 			lcchild->yoff = lc->yoff;
 			if (lcchild->type != LAYOUT_WINDOWPANE)
@@ -263,6 +266,8 @@ layout_fix_offsets1(struct layout_cell *lc)
 	} else {
 		yoff = lc->yoff;
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
+			if (lcchild->wp->flags & PANE_MINIMISED)
+				continue;
 			lcchild->xoff = lc->xoff;
 			lcchild->yoff = yoff;
 			if (lcchild->type != LAYOUT_WINDOWPANE)
@@ -526,8 +531,7 @@ layout_destroy_cell(struct window *w, struct layout_cell *lc,
 	if (lcparent == NULL) {
 		if (lc->wp != NULL && ~lc->wp->flags & PANE_FLOATING)
 			*lcroot = NULL;
-		/* xxx		if (lc->type == LAYOUT_WINDOWPANE) */
-			layout_free_cell(lc);
+		layout_free_cell(lc);
 		return;
 	}
 
@@ -566,6 +570,70 @@ layout_destroy_cell(struct window *w, struct layout_cell *lc,
 			TAILQ_REPLACE(&lc->parent->cells, lcparent, lc, entry);
 
 		layout_free_cell(lcparent);
+	}
+}
+
+/* Minimise a cell and redistribute the space in tiled cells. */
+void
+layout_minimise_cell(struct window *w, struct layout_cell *lc)
+{
+	struct layout_cell     *lcother, *lcparent, *lcchild;
+	u_int			space = 0;
+
+	lcparent = lc->parent;
+	if (lcparent == NULL ||
+	    lcparent->type == LAYOUT_FLOATING) {
+		return;
+	}
+
+	/* Merge the space into the previous or next cell. */
+	if (lc == TAILQ_FIRST(&lcparent->cells))
+		lcother = TAILQ_NEXT(lc, entry);
+	else
+		lcother = TAILQ_PREV(lc, layout_cells, entry);
+	if (lcother != NULL && lcparent->type == LAYOUT_LEFTRIGHT)
+		layout_resize_adjust(w, lcother, lcparent->type, lc->sx + 1);
+	else if (lcother != NULL)
+		layout_resize_adjust(w, lcother, lcparent->type, lc->sy + 1);
+
+	/* If the parent cells are all minimised, minimise it too. */
+	if (lcparent != NULL) {
+		TAILQ_FOREACH(lcchild, &lcparent->cells, entry) {
+			if (lcchild->wp == NULL ||
+			    lcchild->wp->flags & PANE_MINIMISED)
+				continue;
+			if (lcparent->type == LAYOUT_LEFTRIGHT) {
+				space += lcchild->sx;
+			} else if (lcparent->type == LAYOUT_TOPBOTTOM) {
+				space += lcchild->sy;
+			}
+		}
+		if (space == 0)
+			layout_minimise_cell(w, lcparent);
+	}
+}
+
+/* Unminimise a cell and redistribute the space in tiled cells. */
+void
+layout_unminimise_cell(struct window *w, struct layout_cell *lc)
+{
+	struct layout_cell     *lcother, *lcparent;
+
+	lcparent = lc->parent;
+	if (lcparent == NULL) {
+		return;
+	}
+
+	/* In tiled layouts, merge the space into the previous or next cell. */
+	if (lcparent->type != LAYOUT_FLOATING) {
+		if (lc == TAILQ_FIRST(&lcparent->cells))
+			lcother = TAILQ_NEXT(lc, entry);
+		else
+			lcother = TAILQ_PREV(lc, layout_cells, entry);
+		if (lcother != NULL && lcparent->type == LAYOUT_LEFTRIGHT)
+			layout_resize_adjust(w, lcother, lcparent->type, -(lc->sx + 1));
+		else if (lcother != NULL)
+			layout_resize_adjust(w, lcother, lcparent->type, -(lc->sy + 1));
 	}
 }
 
