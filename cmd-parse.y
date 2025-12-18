@@ -758,7 +758,7 @@ static int
 cmd_parse_expand_alias(struct cmd_parse_command *cmd,
     struct cmd_parse_input *pi, struct cmd_parse_result *pr)
 {
-	struct cmd_parse_argument	*arg, *arg1, *first;
+	struct cmd_parse_argument	*first;
 	struct cmd_parse_commands	*cmds;
 	struct cmd_parse_command	*last;
 	char				*alias, *name, *cause;
@@ -798,10 +798,7 @@ cmd_parse_expand_alias(struct cmd_parse_command *cmd,
 	TAILQ_REMOVE(&cmd->arguments, first, entry);
 	cmd_parse_free_argument(first);
 
-	TAILQ_FOREACH_SAFE(arg, &cmd->arguments, entry, arg1) {
-		TAILQ_REMOVE(&cmd->arguments, arg, entry);
-		TAILQ_INSERT_TAIL(&last->arguments, arg, entry);
-	}
+	TAILQ_CONCAT(&last->arguments, &cmd->arguments, entry);
 	cmd_parse_log_commands(cmds, __func__);
 
 	pi->flags |= CMD_PARSE_NOALIAS;

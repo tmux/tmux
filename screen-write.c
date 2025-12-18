@@ -894,6 +894,52 @@ screen_write_mode_clear(struct screen_write_ctx *ctx, int mode)
 		log_debug("%s: %s", __func__, screen_mode_to_string(mode));
 }
 
+/* Sync timeout callback. */
+static void
+screen_write_sync_callback(__unused int fd, __unused short events, void *arg)
+{
+	struct window_pane	*wp = arg;
+
+	log_debug("%s: %%%u sync timer expired", __func__, wp->id);
+	evtimer_del(&wp->sync_timer);
+
+	if (wp->base.mode & MODE_SYNC) {
+		wp->base.mode &= ~MODE_SYNC;
+		wp->flags |= PANE_REDRAW;
+	}
+}
+
+/* Start sync mode. */
+void
+screen_write_start_sync(struct window_pane *wp)
+{
+	struct timeval	tv = { .tv_sec = 1, .tv_usec = 0 };
+
+	if (wp == NULL)
+		return;
+
+	wp->base.mode |= MODE_SYNC;
+	if (!event_initialized(&wp->sync_timer))
+		evtimer_set(&wp->sync_timer, screen_write_sync_callback, wp);
+	evtimer_add(&wp->sync_timer, &tv);
+
+	log_debug("%s: %%%u started sync mode", __func__, wp->id);
+}
+
+/* Stop sync mode. */
+void
+screen_write_stop_sync(struct window_pane *wp)
+{
+	if (wp == NULL)
+		return;
+
+	if (event_initialized(&wp->sync_timer))
+		evtimer_del(&wp->sync_timer);
+	wp->base.mode &= ~MODE_SYNC;
+
+	log_debug("%s: %%%u stopped sync mode", __func__, wp->id);
+}
+
 /* Cursor up by ny. */
 void
 screen_write_cursorup(struct screen_write_ctx *ctx, u_int ny)
@@ -1787,6 +1833,9 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 	struct visible_ranges		*vr;
 	struct window_pane		*wp = ctx->wp;
 
+	if (s->mode & MODE_SYNC)
+		return;
+
 	if (ctx->scrolled != 0) {
 		log_debug("%s: scrolled %u (region %u-%u)", __func__,
 		    ctx->scrolled, s->rupper, s->rlower);
@@ -2134,7 +2183,7 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	}
 
 	/* Write to the screen. */
-	if (!skip) {
+	if (!skip && !(s->mode & MODE_SYNC)) {
 		if (selected) {
 			screen_select_cell(s, &tmp_gc, gc);
 			ttyctx.cell = &tmp_gc;
@@ -2372,8 +2421,11 @@ screen_write_sixelimage(struct screen_write_ctx *ctx, struct sixel_image *si,
 	u_int			 x, y, sx, sy, cx = s->cx, cy = s->cy, i, lines;
 	struct sixel_image	*new;
 
+	if (screen_size_y(s) == 1)
+		return;
+
 	sixel_size_in_cells(si, &x, &y);
-	if (x > screen_size_x(s) || y > screen_size_y(s)) {
+	if (x > screen_size_x(s) || y > screen_size_y(s) - 1) {
 		if (x > screen_size_x(s) - cx)
 			sx = screen_size_x(s) - cx;
 		else
@@ -2384,16 +2436,14 @@ screen_write_sixelimage(struct screen_write_ctx *ctx, struct sixel_image *si,
 			sy = y;
 		new = sixel_scale(si, 0, 0, 0, y - sy, sx, sy, 1);
 		sixel_free(si);
-		si = new;
-
-		/* Bail out if the image cannot be scaled. */
-		if (si == NULL)
+		if (new == NULL)
 			return;
-		sixel_size_in_cells(si, &x, &y);
+		sixel_size_in_cells(new, &x, &y);
+		si = new;
 	}
 
 	sy = screen_size_y(s) - cy;
-	if (sy < y) {
+	if (sy <= y) {
 		lines = y - sy + 1;
 		if (image_scroll_up(s, lines) && ctx->wp != NULL)
 			ctx->wp->flags |= PANE_REDRAW;

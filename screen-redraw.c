@@ -224,9 +224,10 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
 			if ((wp->xoff == 0 || (int)px >= wp->xoff) &&
 			    ((int)px <= ex ||
 			    (sb_w != 0 && (int)px < ex + sb_w))) {
-				if (wp->yoff != 0 && (int)py == wp->yoff - 1)
+				if (pane_status != PANE_STATUS_BOTTOM && 
+            wp->yoff != 0 && (int)py == wp->yoff - 1)
 					return (SCREEN_REDRAW_BORDER_TOP);
-				if ((int)py == ey)
+				if (pane_status != PANE_STATUS_TOP && (int)py == ey)
 					return (SCREEN_REDRAW_BORDER_BOTTOM);
 			}
 		}
@@ -1163,6 +1164,9 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 	struct grid_cell	 defaults;
 	struct visible_ranges	*vr;
 	u_int			 i, j, top, x, y, width, r;
+
+	if (wp->base.mode & MODE_SYNC)
+		screen_write_stop_sync(wp);
 
 	log_debug("%s: %s @%u %%%u", __func__, c->name, w->id, wp->id);
 

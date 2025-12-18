@@ -27,10 +27,35 @@ static struct images	all_images = TAILQ_HEAD_INITIALIZER(all_images);
 static u_int		all_images_count;
 #define MAX_IMAGE_COUNT 20
 
+static void printflike(3, 4)
+image_log(struct image *im, const char* from, const char* fmt, ...)
+{
+	va_list	ap;
+	char	s[128];
+
+	if (log_get_level() == 0)
+		return;
+
+	if (fmt == NULL) {
+		log_debug("%s: %p (%ux%u %u,%u)", from, im, im->sx, im->sy,
+		    im->px, im->py);
+		return;
+	}
+
+	va_start(ap, fmt);
+	vsnprintf(s, sizeof s, fmt, ap);
+	va_end(ap);
+
+	log_debug("%s: %p (%ux%u %u,%u): %s", from, im, im->sx, im->sy,
+	    im->px, im->py, s);
+}
+
 static void
 image_free(struct image *im)
 {
 	struct screen	*s = im->s;
+
+	image_log(im, __func__, NULL);
 
 	TAILQ_REMOVE(&all_images, im, all_entry);
 	all_images_count--;
@@ -47,6 +72,8 @@ image_free_all(struct screen *s)
 	struct image	*im, *im1;
 	int		 redraw = !TAILQ_EMPTY(&s->images);
 
+	if (redraw)
+		log_debug ("%s", __func__);
 	TAILQ_FOREACH_SAFE(im, &s->images, entry, im1)
 		image_free(im);
 	return (redraw);
@@ -109,6 +136,7 @@ image_store(struct screen *s, struct sixel_image *si)
 
 	image_fallback(&im->fallback, im->sx, im->sy);
 
+	image_log(im, __func__, NULL);
 	TAILQ_INSERT_TAIL(&s->images, im, entry);
 
 	TAILQ_INSERT_TAIL(&all_images, im, all_entry);
@@ -122,10 +150,12 @@ int
 image_check_line(struct screen *s, u_int py, u_int ny)
 {
 	struct image	*im, *im1;
-	int		 redraw = 0;
+	int		 redraw = 0, in;
 
 	TAILQ_FOREACH_SAFE(im, &s->images, entry, im1) {
-		if (py + ny > im->py && py < im->py + im->sy) {
+		in = (py + ny > im->py && py < im->py + im->sy);
+		image_log(im, __func__, "py=%u, ny=%u, in=%d", py, ny, in);
+		if (in) {
 			image_free(im);
 			redraw = 1;
 		}
@@ -137,15 +167,18 @@ int
 image_check_area(struct screen *s, u_int px, u_int py, u_int nx, u_int ny)
 {
 	struct image	*im, *im1;
-	int		 redraw = 0;
+	int		 redraw = 0, in;
 
 	TAILQ_FOREACH_SAFE(im, &s->images, entry, im1) {
-		if (py + ny <= im->py || py >= im->py + im->sy)
-			continue;
-		if (px + nx <= im->px || px >= im->px + im->sx)
-			continue;
-		image_free(im);
-		redraw = 1;
+		in = (py < im->py + im->sy &&
+		    py + ny > im->py &&
+		    px < im->px + im->sx &&
+		    px + nx > im->px);
+		image_log(im, __func__, "py=%u, ny=%u, in=%d", py, ny, in);
+		if (in) {
+			image_free(im);
+			redraw = 1;
+		}
 	}
 	return (redraw);
 }
@@ -160,17 +193,20 @@ image_scroll_up(struct screen *s, u_int lines)
 
 	TAILQ_FOREACH_SAFE(im, &s->images, entry, im1) {
 		if (im->py >= lines) {
+			image_log(im, __func__, "1, lines=%u", lines);
 			im->py -= lines;
 			redraw = 1;
 			continue;
 		}
 		if (im->py + im->sy <= lines) {
+			image_log(im, __func__, "2, lines=%u", lines);
 			image_free(im);
 			redraw = 1;
 			continue;
 		}
 		sx = im->sx;
 		sy = (im->py + im->sy) - lines;
+		image_log(im, __func__, "3, lines=%u, sy=%u", lines, sy);
 
 		new = sixel_scale(im->data, 0, 0, 0, im->sy - sy, sx, sy, 1);
 		sixel_free(im->data);
