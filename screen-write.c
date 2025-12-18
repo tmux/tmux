@@ -2388,7 +2388,7 @@ screen_write_sixelimage(struct screen_write_ctx *ctx, struct sixel_image *si,
 	}
 
 	sy = screen_size_y(s) - cy;
-	if (sy < y) {
+	if (sy <= y) {
 		lines = y - sy + 1;
 		if (image_scroll_up(s, lines) && ctx->wp != NULL)
 			ctx->wp->flags |= PANE_REDRAW;
