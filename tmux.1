@@ -1365,12 +1365,11 @@ and sets an environment variable for the newly created session; it may be
 specified multiple times.
 .Tg refresh
 .It Xo Ic refresh-client
-.Op Fl cDLRSU
+.Op Fl cDlLRSU
 .Op Fl A Ar pane:state
 .Op Fl B Ar name:what:format
 .Op Fl C Ar size
 .Op Fl f Ar flags
-.Op Fl l Op Ar target-pane
 .Op Fl r Ar pane:report
 .Op Fl t Ar target-client
 .Op Ar adjustment
@@ -1491,11 +1490,7 @@ a colon, then a report escape sequence.
 .Fl l
 requests the clipboard from the client using the
 .Xr xterm 1
-escape sequence.
-If
-.Ar target-pane
-is given, the clipboard is sent (in encoded form), otherwise it is stored in a
-new paste buffer.
+escape sequence and stores it in a new paste buffer.
 .Pp
 .Fl L ,
 .Fl R ,
@@ -1670,9 +1665,10 @@ is used,
 option will not be applied.
 .Pp
 .Fl T
-sets the client's key table; the next key from the client will be interpreted
-from
+sets the client's key table; the next key will be looked up using
 .Ar key-table .
+After that key, the client is returned to its default key table (normally
+.Em root ) .
 This may be used to configure multiple prefix keys, or to bind commands to
 sequences of keys.
 For example, to make typing
@@ -2220,6 +2216,13 @@ but also exit copy mode if the cursor reaches the bottom.
 Scroll so that the current line becomes the middle one while keeping the
 cursor on that line.
 .It Xo
+.Ic scroll-to-mouse
+.Xc
+Scroll pane in copy-mode when bound to a mouse drag event.
+.Fl e
+causes copy mode to exit when at the bottom.
+.Pp
+.It Xo
 .Ic scroll-top
 .Xc
 Scroll down until the current line is at the top while keeping the cursor on
@@ -2456,12 +2459,10 @@ cancels copy mode and any other modes.
 .Fl M
 begins a mouse drag (only valid if bound to a mouse key binding, see
 .Sx MOUSE SUPPORT ) .
+.Pp
 .Fl S
-scrolls when bound to a mouse drag event; for example,
-.Ic copy-mode -Se
-is bound to
-.Ar MouseDrag1ScrollbarSlider
-by default.
+enters copy-mode and scrolls when bound to a mouse drag event; See
+.Ic scroll-to-mouse .
 .Pp
 .Fl s
 copies from
@@ -4242,6 +4243,32 @@ When enabled, focus events are requested from the terminal if supported and
 passed through to applications running in
 .Nm .
 Attached clients should be detached and attached again after changing this
+option.
+.It Xo Ic get-clipboard
+.Op Ic both | request | buffer | off
+.Xc
+Controls the behaviour when an application requests the clipboard from
+.Nm .
+.Pp
+If
+.Ic off ,
+the request is ignored;
+if
+.Ic buffer ,
+.Nm
+responds with the newest paste buffer;
+.Ic request
+causes
+.Nm
+to request the clipboard from the most recently used client (if possible) and
+send the reply (if any) back to the application;
+.Ic buffer
+is the same as
+.Ic request
+but also creates a paste buffer.
+.Pp
+See also the
+.Ic set-clipboard
 option.
 .It Ic history-file Ar path
 If not empty, a file to which
@@ -6239,6 +6266,7 @@ The following variables are available, where appropriate:
 .It Li "socket_path" Ta "" Ta "Server socket path"
 .It Li "sixel_support" Ta "" Ta "1 if server has support for SIXEL"
 .It Li "start_time" Ta "" Ta "Server start time"
+.It Li "synchronized_output_flag" Ta "" Ta "1 if pane has synchronized output enabled"
 .It Li "uid" Ta "" Ta "Server UID"
 .It Li "user" Ta "" Ta "Server user"
 .It Li "version" Ta "" Ta "Server version"
