@@ -473,10 +473,14 @@ tty_term_apply_overrides(struct tty_term *term)
 	 * Set or clear the DECSLRM flag if the terminal has the margin
 	 * capabilities.
 	 */
+#ifdef __CYGWIN__
+	term->flags &= ~TERM_DECSLRM;
+#else
 	if (tty_term_has(term, TTYC_CMG) && tty_term_has(term, TTYC_CLMG))
 		term->flags |= TERM_DECSLRM;
 	else
 		term->flags &= ~TERM_DECSLRM;
+#endif
 	log_debug("DECSLRM flag is %d", !!(term->flags & TERM_DECSLRM));
 
 	/*
