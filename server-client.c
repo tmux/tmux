@@ -1060,8 +1060,16 @@ have_event:
 	case NOTYPE:
 		break;
 	case MOVE:
-		if (where == PANE)
+		if (where == PANE) {
 			key = KEYC_MOUSEMOVE_PANE;
+			if (wp != NULL &&
+			    wp != w->active &&
+			    options_get_number(s->options, "focus-follows-mouse")) {
+				window_set_active_pane(w, wp, 1);
+				server_redraw_window_borders(w);
+				server_status_window(w);
+			}
+		}
 		if (where == STATUS)
 			key = KEYC_MOUSEMOVE_STATUS;
 		if (where == STATUS_LEFT)
@@ -2969,7 +2977,8 @@ server_client_reset_state(struct client *c)
 
 	/*
 	 * Set mouse mode if requested. To support dragging, always use button
-	 * mode.
+	 * mode. For focus-follows-mouse, we need all-motion mode to receive
+	 * movement events.
 	 */
 	if (options_get_number(oo, "mouse")) {
 		if (c->overlay_draw == NULL) {
@@ -2979,7 +2988,9 @@ server_client_reset_state(struct client *c)
 					mode |= MODE_MOUSE_ALL;
 			}
 		}
-		if (~mode & MODE_MOUSE_ALL)
+		if (options_get_number(oo, "focus-follows-mouse"))
+			mode |= MODE_MOUSE_ALL;
+		else if (~mode & MODE_MOUSE_ALL)
 			mode |= MODE_MOUSE_BUTTON;
 	}
 
