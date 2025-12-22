@@ -841,6 +841,7 @@ Each has a single-character alternative form.
 .It Li "{last}" Ta "!" Ta "The last (previously current) window"
 .It Li "{next}" Ta "+" Ta "The next window by number"
 .It Li "{previous}" Ta "-" Ta "The previous window by number"
+.It Li "{current}" Ta "@" Ta "The current window"
 .El
 .Pp
 .Ar target-pane
@@ -873,6 +874,7 @@ The following special tokens are available for the pane index:
 .It Li "{down-of}" Ta "" Ta "The pane below the active pane"
 .It Li "{left-of}" Ta "" Ta "The pane to the left of the active pane"
 .It Li "{right-of}" Ta "" Ta "The pane to the right of the active pane"
+.It Li "{active}" Ta "@" Ta "The active pane"
 .El
 .Pp
 The tokens
@@ -4693,6 +4695,12 @@ Can be set to zero to disable any timeout.
 Set the colour of the cursor in the command prompt.
 .It Ic prompt-cursor-style Ar style
 Set the style of the cursor in the command prompt.
+See the
+.Ic cursor-style
+options for available styles.
+.It Ic prompt-command-cursor-style Ar style
+Set the style of the cursor in the command prompt when vi keys are enabled and
+the prompt is in command mode.
 See the
 .Ic cursor-style
 options for available styles.

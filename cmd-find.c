@@ -924,6 +924,7 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
     const char *target, enum cmd_find_type type, int flags)
 {
 	struct mouse_event	*m;
+	struct client		*c;
 	struct cmd_find_state	 current;
 	char			*colon, *period, *copy = NULL, tmp[256];
 	const char		*session, *window, *pane, *s;
@@ -989,6 +990,20 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 	/* An empty or NULL target is the current. */
 	if (target == NULL || *target == '\0')
 		goto current;
+
+	if (strcmp(target, "@") == 0 ||
+	    strcmp(target, "{active}") == 0 ||
+	    strcmp(target, "{current}") == 0) {
+		c = cmdq_get_client(item);
+		if (c == NULL) {
+			cmdq_error(item, "no current client");
+			goto error;
+		}
+		fs->wl = c->session->curw;
+		fs->wp = c->session->curw->window->active;
+		fs->w = c->session->curw->window;
+		goto found;
+	}
 
 	/* Mouse target is a plain = or {mouse}. */
 	if (strcmp(target, "=") == 0 || strcmp(target, "{mouse}") == 0) {

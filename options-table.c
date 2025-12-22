@@ -970,6 +970,15 @@ const struct options_table_entry options_table[] = {
 	  .text = "Style of the cursor when in the command prompt."
 	},
 
+	{ .name = "prompt-command-cursor-style",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .choices = options_table_cursor_style_list,
+	  .default_num = 0,
+	  .text = "Style of the cursor in the command prompt when in command "
+		  "mode, if 'status-keys' is set to 'vi'."
+	},
+
 	{ .name = "session-status-current-style",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,
