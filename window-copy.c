@@ -956,6 +956,18 @@ window_copy_formats(struct window_mode_entry *wme, struct format_tree *ft)
 		format_add(ft, "selection_present", "0");
 	}
 
+	switch (data->selflag) {
+	case SEL_CHAR:
+		format_add(ft, "selection_mode", "char");
+		break;
+	case SEL_WORD:
+		format_add(ft, "selection_mode", "word");
+		break;
+	case SEL_LINE:
+		format_add(ft, "selection_mode", "line");
+		break;
+	}
+
 	format_add(ft, "search_present", "%d", data->searchmark != NULL);
 	format_add(ft, "search_timed_out", "%d", data->timeout);
 	if (data->searchcount != -1) {
