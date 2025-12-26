@@ -695,17 +695,10 @@ cmd_list_print(const struct cmd_list *cmdlist, int escaped)
 
 		next = TAILQ_NEXT(cmd, qentry);
 		if (next != NULL) {
-			if (cmd->group != next->group) {
-				if (escaped)
-					strlcat(buf, " \\;\\; ", len);
-				else
-					strlcat(buf, " ;; ", len);
-			} else {
-				if (escaped)
-					strlcat(buf, " \\; ", len);
-				else
-					strlcat(buf, " ; ", len);
-			}
+			if (escaped)
+				strlcat(buf, " \\; ", len);
+			else
+				strlcat(buf, " ; ", len);
 		}
 
 		free(this);
