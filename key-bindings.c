@@ -347,6 +347,10 @@ key_bindings_init(void)
 {
 	static const char *const defaults[] = {
 		/* Prefix keys. */
+		"bind -N 'Minimise pane' _ { minimise-pane }",
+		/* Mouse button 1 double click on status line. */
+		"bind -n DoubleClick1Status { minimise-pane -t= }",
+
 		"bind -N 'Send the prefix key' C-b { send-prefix }",
 		"bind -N 'Rotate through the panes' C-o { rotate-window }",
 		"bind -N 'Suspend the current client' C-z { suspend-client }",
@@ -358,6 +362,7 @@ key_bindings_init(void)
 		"bind -N 'Split window horizontally' % { split-window -h }",
 		"bind -N 'Kill current window' & { confirm-before -p\"kill-window #W? (y/n)\" kill-window }",
 		"bind -N 'Prompt for window index to select' \"'\" { command-prompt -T window-target -pindex { select-window -t ':%%' } }",
+		"bind -N 'New floating pane' * { new-pane }",
 		"bind -N 'Switch to previous client' ( { switch-client -p }",
 		"bind -N 'Switch to next client' ) { switch-client -n }",
 		"bind -N 'Rename current window' , { command-prompt -I'#W' { rename-window -- '%%' } }",
@@ -455,6 +460,9 @@ key_bindings_init(void)
 
 		/* Mouse button 1 triple click on pane. */
 		"bind -n TripleClick1Pane { select-pane -t=; if -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' { send -M } { copy-mode -H; send -X select-line; run -d0.3; send -X copy-pipe-and-cancel } }",
+
+		/* Mouse button 1 on border. */
+		"bind -n MouseDown1Border { select-pane -M }",
 
 		/* Mouse button 1 drag on border. */
 		"bind -n MouseDrag1Border { resize-pane -M }",

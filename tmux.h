@@ -1063,8 +1063,8 @@ struct screen_redraw_ctx {
 
 	u_int		 sx;
 	u_int		 sy;
-	u_int		 ox;
-	u_int		 oy;
+	int		 ox;
+	int		 oy;
 };
 
 /* Screen size. */
@@ -1181,10 +1181,11 @@ struct window_pane {
 	u_int		 sx;
 	u_int		 sy;
 
-	u_int		 xoff;
-	u_int		 yoff;
+	int		 xoff;
+	int		 yoff;
 
 	int		 flags;
+	int		 saved_flags;
 #define PANE_REDRAW 0x1
 #define PANE_DROP 0x2
 #define PANE_FOCUSED 0x4
@@ -1201,6 +1202,8 @@ struct window_pane {
 #define PANE_THEMECHANGED 0x2000
 #define PANE_UNSEENCHANGES 0x4000
 #define PANE_REDRAWSCROLLBAR 0x8000
+#define PANE_FLOATING 0x10000
+#define PANE_MINIMISED 0x20000
 
 	u_int		 sb_slider_y;
 	u_int		 sb_slider_h;
@@ -1256,9 +1259,11 @@ struct window_pane {
 
 	TAILQ_ENTRY(window_pane) entry;  /* link in list of all panes */
 	TAILQ_ENTRY(window_pane) sentry; /* link in list of last visited */
+	TAILQ_ENTRY(window_pane) zentry; /* z-index link in list of all panes */
 	RB_ENTRY(window_pane) tree_entry;
 };
 TAILQ_HEAD(window_panes, window_pane);
+TAILQ_HEAD(window_panes_zindex, window_pane);
 RB_HEAD(window_pane_tree, window_pane);
 
 /* Window structure. */
@@ -1277,6 +1282,7 @@ struct window {
 
 	struct window_pane	*active;
 	struct window_panes 	 last_panes;
+	struct window_panes	 z_index;
 	struct window_panes	 panes;
 
 	int			 lastlayout;
@@ -1370,6 +1376,7 @@ TAILQ_HEAD(winlink_stack, winlink);
 enum layout_type {
 	LAYOUT_LEFTRIGHT,
 	LAYOUT_TOPBOTTOM,
+	LAYOUT_FLOATING,
 	LAYOUT_WINDOWPANE
 };
 
@@ -1619,7 +1626,7 @@ struct tty {
 	int		 mouse_drag_flag;
 	int		 mouse_scrolling_flag;
 	int		 mouse_slider_mpos;
-
+	struct window_pane *mouse_wp;
 	void		(*mouse_drag_update)(struct client *,
 			    struct mouse_event *);
 	void		(*mouse_drag_release)(struct client *,
@@ -1665,10 +1672,10 @@ struct tty_ctx {
 	u_int			 orlower;
 
 	/* Target region (usually pane) offset and size. */
-	u_int			 xoff;
-	u_int			 yoff;
-	u_int			 rxoff;
-	u_int			 ryoff;
+	int			 xoff;
+	int			 yoff;
+	int			 rxoff;
+	int			 ryoff;
 	u_int			 sx;
 	u_int			 sy;
 
@@ -2249,12 +2256,21 @@ struct spawn_context {
 #define SPAWN_FULLSIZE 0x20
 #define SPAWN_EMPTY 0x40
 #define SPAWN_ZOOM 0x80
+#define SPAWN_FLOATING 0x100
 };
 
 /* Mode tree sort order. */
 struct mode_tree_sort_criteria {
 	u_int	field;
 	int	reversed;
+};
+
+/* Visible range array element.  nx==-1 is end of array mark. */
+struct visible_ranges {
+	u_int	 *px;	/* Start */
+	u_int	 *nx;	/* Length */
+	size_t	used;
+	size_t	size;
 };
 
 /* tmux.c */
@@ -3193,6 +3209,10 @@ void	 screen_write_alternateoff(struct screen_write_ctx *,
 /* screen-redraw.c */
 void	 screen_redraw_screen(struct client *);
 void	 screen_redraw_pane(struct client *, struct window_pane *, int);
+int	 screen_redraw_is_visible(struct visible_ranges *, u_int px);
+struct visible_ranges *screen_redraw_get_visible_ranges(struct window_pane *,
+	     u_int, u_int, u_int);
+
 
 /* screen.c */
 void	 screen_init(struct screen *, u_int, u_int, u_int);
@@ -3254,6 +3274,8 @@ struct window_pane *window_find_string(struct window *, const char *);
 int		 window_has_pane(struct window *, struct window_pane *);
 int		 window_set_active_pane(struct window *, struct window_pane *,
 		     int);
+int		 window_deactivate_pane(struct window *, struct window_pane *,
+		     int);
 void		 window_update_focus(struct window *);
 void		 window_pane_update_focus(struct window_pane *);
 void		 window_redraw_active_switch(struct window *,
@@ -3280,6 +3302,7 @@ struct window_pane *window_pane_find_by_id_str(const char *);
 struct window_pane *window_pane_find_by_id(u_int);
 int		 window_pane_destroy_ready(struct window_pane *);
 void		 window_pane_resize(struct window_pane *, u_int, u_int);
+void		 window_pane_move(struct window_pane *, int, int);
 int		 window_pane_set_mode(struct window_pane *,
 		     struct window_pane *, const struct window_mode *,
 		     struct cmd_find_state *, struct args *);
@@ -3333,6 +3356,8 @@ void		 layout_free_cell(struct layout_cell *);
 void		 layout_print_cell(struct layout_cell *, const char *, u_int);
 void		 layout_destroy_cell(struct window *, struct layout_cell *,
 		     struct layout_cell **);
+void		 layout_minimise_cell(struct window *, struct layout_cell *);
+void		 layout_unminimise_cell(struct window *, struct layout_cell *);
 void		 layout_resize_layout(struct window *, struct layout_cell *,
 		     enum layout_type, int, int);
 struct layout_cell *layout_search_by_border(struct layout_cell *, u_int, u_int);
@@ -3340,6 +3365,7 @@ void		 layout_set_size(struct layout_cell *, u_int, u_int, u_int,
 		     u_int);
 void		 layout_make_leaf(struct layout_cell *, struct window_pane *);
 void		 layout_make_node(struct layout_cell *, enum layout_type);
+void		 layout_fix_zindexes(struct window *, struct layout_cell *);
 void		 layout_fix_offsets(struct window *);
 void		 layout_fix_panes(struct window *, struct window_pane *);
 void		 layout_resize_adjust(struct window *, struct layout_cell *,
@@ -3360,7 +3386,7 @@ int		 layout_spread_cell(struct window *, struct layout_cell *);
 void		 layout_spread_out(struct window_pane *);
 
 /* layout-custom.c */
-char		*layout_dump(struct layout_cell *);
+char		*layout_dump(struct window *, struct layout_cell *);
 int		 layout_parse(struct window *, const char *, char **);
 
 /* layout-set.c */

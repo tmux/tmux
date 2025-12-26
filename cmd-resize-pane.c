@@ -29,7 +29,9 @@
 
 static enum cmd_retval	cmd_resize_pane_exec(struct cmd *, struct cmdq_item *);
 
-static void	cmd_resize_pane_mouse_update(struct client *,
+static void	cmd_resize_pane_mouse_update_floating(struct client *,
+		    struct mouse_event *);
+static void	cmd_resize_pane_mouse_update_tiled(struct client *,
 		    struct mouse_event *);
 
 const struct cmd_entry cmd_resize_pane_entry = {
@@ -80,8 +82,15 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 			return (CMD_RETURN_NORMAL);
 		if (c == NULL || c->session != s)
 			return (CMD_RETURN_NORMAL);
-		c->tty.mouse_drag_update = cmd_resize_pane_mouse_update;
-		cmd_resize_pane_mouse_update(c, &event->m);
+		if (c->tty.mouse_wp->flags & PANE_FLOATING) {
+			window_redraw_active_switch(w, c->tty.mouse_wp);
+			window_set_active_pane(w, c->tty.mouse_wp, 1);
+			c->tty.mouse_drag_update = cmd_resize_pane_mouse_update_floating;
+			cmd_resize_pane_mouse_update_floating(c, &event->m);
+		} else {
+			c->tty.mouse_drag_update = cmd_resize_pane_mouse_update_tiled;
+			cmd_resize_pane_mouse_update_tiled(c, &event->m);
+		}
 		return (CMD_RETURN_NORMAL);
 	}
 
@@ -149,7 +158,136 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 }
 
 static void
-cmd_resize_pane_mouse_update(struct client *c, struct mouse_event *m)
+cmd_resize_pane_mouse_update_floating(struct client *c, struct mouse_event *m)
+{
+	struct winlink		*wl;
+	struct window		*w;
+	struct window_pane	*wp;
+	struct layout_cell	*lc;
+	u_int			 y, ly, x, lx, new_sx, new_sy;
+	int			 new_xoff, new_yoff, resizes = 0;
+
+	wl = cmd_mouse_window(m, NULL);
+	if (wl == NULL) {
+		c->tty.mouse_drag_update = NULL;
+		return;
+	}
+	w = wl->window;
+
+	y = m->y + m->oy; x = m->x + m->ox;
+	if (m->statusat == 0 && y >= m->statuslines)
+		y -= m->statuslines;
+	else if (m->statusat > 0 && y >= (u_int)m->statusat)
+		y = m->statusat - 1;
+	ly = m->ly + m->oy; lx = m->lx + m->ox;
+	if (m->statusat == 0 && ly >= (u_int)m->statuslines)
+		ly -= m->statuslines;
+	else if (m->statusat > 0 && ly >= (u_int)m->statusat)
+		ly = m->statusat - 1;
+
+	wp = c->tty.mouse_wp;
+	lc = wp->layout_cell;
+
+	log_debug("%s: %%%u resize_pane xoff=%u sx=%u xy=%ux%u lxy=%ux%u",
+	    __func__, wp->id, wp->xoff, wp->sx, x, y, lx, ly);
+	if ((((int)lx == wp->xoff - 1) || ((int)lx == wp->xoff)) &&
+	    ((int)ly == wp->yoff - 1)) {
+		/* Top left corner */
+		new_sx = lc->sx + (lx - x);
+		if (new_sx < PANE_MINIMUM)
+			new_sx = PANE_MINIMUM;
+		new_sy = lc->sy + (ly - y);
+		if (new_sy < PANE_MINIMUM)
+			new_sy = PANE_MINIMUM;
+		new_xoff = x + 1;  /* Because mouse is on border at xoff - 1 */
+		new_yoff = y + 1;
+		layout_set_size(lc, new_sx, new_sy, new_xoff, new_yoff);
+		resizes++;
+	} else if ((((int)lx == wp->xoff + (int)wp->sx + 1) ||
+		    ((int)lx == wp->xoff + (int)wp->sx)) &&
+		   ((int)ly == wp->yoff - 1)) {
+		/* Top right corner */
+		new_sx = x - lc->xoff;
+		if (new_sx < PANE_MINIMUM)
+			new_sx = PANE_MINIMUM;
+		new_sy = lc->sy + (ly - y);
+		if (new_sy < PANE_MINIMUM)
+			new_sy = PANE_MINIMUM;
+		new_yoff = y + 1;
+		layout_set_size(lc, new_sx, new_sy, lc->xoff, new_yoff);
+		resizes++;
+	} else if ((((int)lx == wp->xoff - 1) || ((int)lx == wp->xoff)) &&
+		   ((int)ly == wp->yoff + (int)wp->sy)) {
+		/* Bottom left corner */
+		new_sx = lc->sx + (lx - x);
+		if (new_sx < PANE_MINIMUM)
+			new_sx = PANE_MINIMUM;
+		new_sy = y - lc->yoff;
+		if (new_sy < PANE_MINIMUM)
+			return;
+		new_xoff = x + 1;
+		layout_set_size(lc, new_sx, new_sy, new_xoff, lc->yoff);
+		resizes++;
+	} else if ((((int)lx == wp->xoff + (int)wp->sx + 1) ||
+		    ((int)lx == wp->xoff + (int)wp->sx)) &&
+		   ((int)ly == wp->yoff + (int)wp->sy)) {
+		/* Bottom right corner */
+		new_sx = x - lc->xoff;
+		if (new_sx < PANE_MINIMUM)
+			new_sx = PANE_MINIMUM;
+		new_sy = y - lc->yoff;
+		if (new_sy < PANE_MINIMUM)
+			new_sy = PANE_MINIMUM;
+		layout_set_size(lc, new_sx, new_sy, lc->xoff, lc->yoff);
+		resizes++;
+	} else if ((int)lx == wp->xoff + (int)wp->sx + 1) {
+		/* Right border */
+		new_sx = x - lc->xoff;
+		if (new_sx < PANE_MINIMUM)
+			return;
+		layout_set_size(lc, new_sx, lc->sy, lc->xoff, lc->yoff);
+		resizes++;
+	} else if ((int)lx == wp->xoff - 1) {
+		/* Left border */
+		new_sx = lc->sx + (lx - x);
+		if (new_sx < PANE_MINIMUM)
+			return;
+		new_xoff = x + 1;
+		layout_set_size(lc, new_sx, lc->sy, new_xoff, lc->yoff);
+		resizes++;
+	} else if ((int)ly == wp->yoff + (int)wp->sy) {
+		/* Bottom border */
+		new_sy = y - lc->yoff;
+		if (new_sy < PANE_MINIMUM)
+			return;
+		layout_set_size(lc, lc->sx, new_sy, lc->xoff, lc->yoff);
+		resizes++;
+	} else if ((int)ly == wp->yoff - 1) {
+		/* Top border (move instead of resize) */
+		new_xoff = lc->xoff + (x - lx);
+		new_yoff = y + 1;
+		layout_set_size(lc, lc->sx, lc->sy, new_xoff, new_yoff);
+		/*  To resize instead of move:
+		  new_sy = wp->sy + (ly - y);
+		  if (new_sy < PANE_MINIMUM)
+			return;
+		  new_yoff = y + 1;
+		  layout_set_size(lc, lc->sx, new_sy, lc->xoff, new_yoff);
+		*/
+		resizes++;
+	} else {
+		log_debug("%s: %%%u resize_pane xoff=%u sx=%u xy=%ux%u lxy=%ux%u  <else>",
+		    __func__, wp->id, wp->xoff, wp->sx, x, y, lx, ly);
+	}
+	if (resizes != 0) {
+		layout_fix_panes(w, NULL);
+		server_redraw_window(w);
+		server_redraw_window_borders(w);
+	}
+}
+
+static void
+cmd_resize_pane_mouse_update_tiled(struct client *c, struct mouse_event *m)
 {
 	struct winlink		*wl;
 	struct window		*w;

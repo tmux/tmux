@@ -277,6 +277,13 @@ spawn_pane(struct spawn_context *sc, char **cause)
 	}
 
 	/*
+	 * If window currently zoomed, window_set_active_pane calls
+	 * window_unzoom which it copies back the saved_layout_cell.
+	 */
+	if (w->flags & WINDOW_ZOOMED)
+		new_wp->saved_layout_cell = new_wp->layout_cell;
+
+	/*
 	 * Now we have a pane with nothing running in it ready for the new
 	 * process. Work out the command and arguments and store the working
 	 * directory.
