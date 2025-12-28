@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <ctype.h>
 #include <regex.h>
 #include <string.h>
 
@@ -34,11 +35,42 @@ regsub_copy(char **buf, ssize_t *len, const char *text, size_t start, size_t end
 }
 
 static void
+regsub_case_cat(char **buf, ssize_t *len, char cfirst, char crest,
+    const char *text, size_t start, size_t end)
+{
+	int (*casemod)(int);
+	u_int i;
+
+	regsub_copy(buf, len, text, start, end);
+
+	if (cfirst == 'l') {
+		(*buf)[start] = tolower((unsigned char)(*buf)[start]);
+		start++;
+	} else if (cfirst == 'u') {
+		(*buf)[start] = toupper((unsigned char)(*buf)[start]);
+		start++;
+	}
+
+	if (crest == 'L') {
+		casemod = tolower;
+	} else if (crest == 'U') {
+		casemod = toupper;
+	} else {
+		return;
+	}
+
+	for (i = start; i < end; i++) {
+		(*buf)[i] = (*casemod)((unsigned char)(*buf)[i]);
+	}
+}
+
+static void
 regsub_expand(char **buf, ssize_t *len, const char *with, const char *text,
     regmatch_t *m, u_int n)
 {
 	const char	*cp;
 	u_int		 i;
+	char		 cfirst = 0, crest = 0;
 
 	for (cp = with; *cp != '\0'; cp++) {
 		if (*cp == '\\') {
@@ -46,14 +78,44 @@ regsub_expand(char **buf, ssize_t *len, const char *with, const char *text,
 			if (*cp >= '0' && *cp <= '9') {
 				i = *cp - '0';
 				if (i < n && m[i].rm_so != m[i].rm_eo) {
-					regsub_copy(buf, len, text, m[i].rm_so,
-					    m[i].rm_eo);
+					regsub_case_cat(buf, len, cfirst, crest,
+					    text, m[i].rm_so, m[i].rm_eo);
+					cfirst = 0;
 					continue;
 				}
+			} else if (*cp == 'l') {
+				cfirst = 'l';
+				continue;
+			} else if (*cp == 'u') {
+				cfirst = 'u';
+				continue;
+			} else if (*cp == 'L') {
+				crest = 'L';
+				continue;
+			} else if (*cp == 'U') {
+				crest = 'U';
+				continue;
+			} else if (*cp == 'E') {
+				crest = 0;
+				continue;
 			}
 		}
+
 		*buf = xrealloc(*buf, (*len) + 2);
-		(*buf)[(*len)++] = *cp;
+
+		if (cfirst == 'l') {
+			(*buf)[(*len)++] = tolower((unsigned char)*cp);
+			cfirst = 0;
+		} else if (cfirst == 'u') {
+			(*buf)[(*len)++] = toupper((unsigned char)*cp);
+			cfirst = 0;
+		} else if (crest == 'L') {
+			(*buf)[(*len)++] = tolower((unsigned char)*cp);
+		} else if (crest == 'U') {
+			(*buf)[(*len)++] = toupper((unsigned char)*cp);
+		} else {
+			(*buf)[(*len)++] = *cp;
+		}
 	}
 }
 
