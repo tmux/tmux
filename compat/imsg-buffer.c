@@ -699,8 +699,6 @@ msgbuf_queuelen(struct msgbuf *msgbuf)
 void
 msgbuf_clear(struct msgbuf *msgbuf)
 {
-	struct ibuf	*buf;
-
 	/* write side */
 	ibufq_flush(&msgbuf->bufs);
 
