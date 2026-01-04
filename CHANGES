@@ -1,3 +1,7 @@
+CHANGES FROM 3.6a TO next-3.7
+
+* Redraw borders after alternate screen goes on (Mike Jonkmans).
+
 CHANGES FROM 3.6 TO 3.6a
 
 * Fix a buffer overread and an infinite loop in format processing (reported by
