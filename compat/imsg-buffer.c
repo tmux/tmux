@@ -1,4 +1,4 @@
-/*	$OpenBSD: imsg-buffer.c,v 1.35 2025/06/04 09:06:56 claudio Exp $	*/
+/*	$OpenBSD: imsg-buffer.c,v 1.36 2025/08/25 08:29:49 claudio Exp $	*/
 
 /*
  * Copyright (c) 2023 Claudio Jeker <claudio@openbsd.org>
@@ -699,8 +699,6 @@ msgbuf_queuelen(struct msgbuf *msgbuf)
 void
 msgbuf_clear(struct msgbuf *msgbuf)
 {
-	struct ibuf	*buf;
-
 	/* write side */
 	ibufq_flush(&msgbuf->bufs);
 
