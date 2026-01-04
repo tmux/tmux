@@ -1943,17 +1943,18 @@ window_pane_send_theme_update(struct window_pane *wp)
 		return;
 	if (~wp->screen->mode & MODE_THEME_UPDATES)
 		return;
-
 	switch (window_pane_get_theme(wp)) {
 	case THEME_LIGHT:
+		log_debug("%s: %%%u light theme", __func__, wp->id);
 		input_key_pane(wp, KEYC_REPORT_LIGHT_THEME, NULL);
 		break;
 	case THEME_DARK:
+		log_debug("%s: %%%u dark theme", __func__, wp->id);
 		input_key_pane(wp, KEYC_REPORT_DARK_THEME, NULL);
 		break;
 	case THEME_UNKNOWN:
+		log_debug("%s: %%%u unknown theme", __func__, wp->id);
 		break;
 	}
-
 	wp->flags &= ~PANE_THEMECHANGED;
 }
