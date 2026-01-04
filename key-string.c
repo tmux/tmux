@@ -382,6 +382,14 @@ key_string_lookup_key(key_code key, int with_flags)
 		s = "PasteEnd";
 		goto append;
 	}
+	if (key == KEYC_REPORT_DARK_THEME) {
+		s = "ReportDarkTheme";
+		goto append;
+	}
+	if (key == KEYC_REPORT_LIGHT_THEME) {
+		s = "ReportLightTheme";
+		goto append;
+	}
 	if (key == KEYC_MOUSE) {
 		s = "Mouse";
 		goto append;
