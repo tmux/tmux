@@ -38,7 +38,6 @@ static void
 regsub_case_cat(char **buf, ssize_t *len, char cfirst, char crest,
     const char *text, size_t start, size_t end)
 {
-	int (*casemod)(int);
 	u_int i;
 
 	regsub_copy(buf, len, text, start, end);
@@ -52,15 +51,13 @@ regsub_case_cat(char **buf, ssize_t *len, char cfirst, char crest,
 	}
 
 	if (crest == 'L') {
-		casemod = tolower;
+		for (i = start; i < end; i++)
+			(*buf)[i] = tolower((unsigned char)(*buf)[i]);
 	} else if (crest == 'U') {
-		casemod = toupper;
+		for (i = start; i < end; i++)
+			(*buf)[i] = toupper((unsigned char)(*buf)[i]);
 	} else {
 		return;
-	}
-
-	for (i = start; i < end; i++) {
-		(*buf)[i] = (*casemod)((unsigned char)(*buf)[i]);
 	}
 }
 
