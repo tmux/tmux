@@ -1902,6 +1902,8 @@ input_csi_dispatch_rm_private(struct input_ctx *ictx)
 			break;
 		case 2031:
 			screen_write_mode_clear(sctx, MODE_THEME_UPDATES);
+			if (ictx->wp != NULL)
+				ictx->wp->flags &= ~PANE_THEMECHANGED;
 			break;
 		case 2026:	/* synchronized output */
 			screen_write_stop_sync(ictx->wp);
@@ -2005,6 +2007,10 @@ input_csi_dispatch_sm_private(struct input_ctx *ictx)
 			break;
 		case 2031:
 			screen_write_mode_set(sctx, MODE_THEME_UPDATES);
+			if (ictx->wp != NULL) {
+				ictx->wp->last_theme = window_pane_get_theme(ictx->wp);
+				ictx->wp->flags &= ~PANE_THEMECHANGED;
+			}
 			break;
 		case 2026:	/* synchronized output */
 			screen_write_start_sync(ictx->wp);
@@ -3434,9 +3440,11 @@ input_report_current_theme(struct input_ctx *ictx)
 {
 	struct window_pane	*wp = ictx->wp;
 
-	if (wp == NULL)
-		return;
-	switch (window_pane_get_theme(wp)) {
+	if (wp != NULL) {
+		wp->last_theme = window_pane_get_theme(wp);
+		wp->flags &= ~PANE_THEMECHANGED;
+
+		switch (wp->last_theme) {
 		case THEME_DARK:
 			log_debug("%s: %%%u dark theme", __func__, wp->id);
 			input_reply(ictx, 0, "\033[?997;1n");
@@ -3448,5 +3456,6 @@ input_report_current_theme(struct input_ctx *ictx)
 		case THEME_UNKNOWN:
 			log_debug("%s: %%%u unknown theme", __func__, wp->id);
 			break;
+		}
 	}
 }
