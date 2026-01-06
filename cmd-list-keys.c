@@ -109,7 +109,8 @@ cmd_list_keys_print_notes(struct cmdq_item *item, struct args *args,
 		key = key_string_lookup_key(bd->key, 0);
 
 		if (bd->note == NULL || *bd->note == '\0')
-			note = cmd_list_print(bd->cmdlist, 1);
+			note = cmd_list_print(bd->cmdlist,
+			    CMD_LIST_PRINT_ESCAPED|CMD_LIST_PRINT_NO_GROUPS);
 		else
 			note = xstrdup(bd->note);
 		tmp = utf8_padcstr(key, keywidth + 1);
@@ -288,7 +289,8 @@ cmd_list_keys_exec(struct cmd *self, struct cmdq_item *item)
 			tmpused = strlcat(tmp, " ", tmpsize);
 			free(cp);
 
-			cp = cmd_list_print(bd->cmdlist, 1);
+			cp = cmd_list_print(bd->cmdlist,
+			    CMD_LIST_PRINT_ESCAPED|CMD_LIST_PRINT_NO_GROUPS);
 			cplen = strlen(cp);
 			while (tmpused + cplen + 1 >= tmpsize) {
 				tmpsize *= 2;
