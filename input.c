@@ -3434,6 +3434,8 @@ input_report_current_theme(struct input_ctx *ictx)
 {
 	struct window_pane	*wp = ictx->wp;
 
+	if (wp == NULL)
+		return;
 	switch (window_pane_get_theme(wp)) {
 		case THEME_DARK:
 			log_debug("%s: %%%u dark theme", __func__, wp->id);
