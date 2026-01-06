@@ -1750,7 +1750,9 @@ tty_keys_palette(struct tty *tty, const char *buf, size_t len, size_t *size)
 
 	/* Copy the rest up to \033\ or \007. */
 	start = (endptr - buf) + 1;
-	for (i = start; i < len && i - start < sizeof tmp; i++) {
+	for (i = start; i - start < sizeof tmp; i++) {
+		if (i == len)
+			return (1);
 		if (buf[i - 1] == '\033' && buf[i] == '\\')
 			break;
 		if (buf[i] == '\007')
