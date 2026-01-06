@@ -361,9 +361,13 @@ grid_compare(struct grid *ga, struct grid *gb)
 static void
 grid_trim_history(struct grid *gd, u_int ny)
 {
+	u_int	remaining;
+
 	grid_free_lines(gd, 0, ny);
+	remaining = gd->hsize + gd->sy - ny;
 	memmove(&gd->linedata[0], &gd->linedata[ny],
-	    (gd->hsize + gd->sy - ny) * (sizeof *gd->linedata));
+	    remaining * (sizeof *gd->linedata));
+	memset(&gd->linedata[remaining], 0, ny * (sizeof *gd->linedata));
 }
 
 /*
