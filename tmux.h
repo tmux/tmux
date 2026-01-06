@@ -1135,6 +1135,16 @@ struct window_pane_resize {
 };
 TAILQ_HEAD(window_pane_resizes, window_pane_resize);
 
+/*
+ * Client theme, this is worked out from the background colour if not reported
+ * by terminal.
+ */
+enum client_theme {
+	THEME_UNKNOWN,
+	THEME_LIGHT,
+	THEME_DARK
+};
+
 /* Child window structure. */
 struct window_pane {
 	u_int		 id;
@@ -1198,6 +1208,7 @@ struct window_pane {
 	struct grid_cell cached_gc;
 	struct grid_cell cached_active_gc;
 	struct colour_palette palette;
+	enum client_theme last_theme;
 
 	int		 pipe_fd;
 	struct bufferevent *pipe_event;
@@ -1874,16 +1885,6 @@ RB_HEAD(client_windows, client_window);
 struct overlay_ranges {
 	u_int	px[OVERLAY_MAX_RANGES];
 	u_int	nx[OVERLAY_MAX_RANGES];
-};
-
-/*
- * Client theme, this is worked out from the background colour if not reported
- * by terminal.
- */
-enum client_theme {
-	THEME_UNKNOWN,
-	THEME_LIGHT,
-	THEME_DARK
 };
 
 /* Client connection. */
