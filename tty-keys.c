@@ -956,7 +956,8 @@ partial_key:
 	if (delay == 0)
 		delay = 1;
 	if ((tty->flags & (TTY_WAITFG|TTY_WAITBG) ||
-	    (tty->flags & TTY_ALL_REQUEST_FLAGS) != TTY_ALL_REQUEST_FLAGS)) {
+	    (tty->flags & TTY_ALL_REQUEST_FLAGS) != TTY_ALL_REQUEST_FLAGS) ||
+	    !TAILQ_EMPTY(&c->input_requests)) {
 		log_debug("%s: increasing delay for active query", c->name);
 		if (delay < 500)
 			delay = 500;
