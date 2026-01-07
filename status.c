@@ -804,7 +804,10 @@ status_prompt_redraw(struct client *c)
 
 	n = options_get_number(s->options, "prompt-cursor-colour");
 	sl->active->default_ccolour = n;
-	n = options_get_number(s->options, "prompt-cursor-style");
+	if (c->prompt_mode == PROMPT_COMMAND)
+		n = options_get_number(s->options, "prompt-command-cursor-style");
+	else
+		n = options_get_number(s->options, "prompt-cursor-style");
 	screen_set_cursor_style(n, &sl->active->default_cstyle,
 	    &sl->active->default_mode);
 
@@ -936,6 +939,8 @@ status_prompt_translate_key(struct client *c, key_code key, key_code *new_key)
 			return (1);
 		case '\033': /* Escape */
 			c->prompt_mode = PROMPT_COMMAND;
+			if (c->prompt_index != 0)
+				c->prompt_index--;
 			c->flags |= CLIENT_REDRAWSTATUS;
 			return (0);
 		}
@@ -961,9 +966,10 @@ status_prompt_translate_key(struct client *c, key_code key, key_code *new_key)
 		*new_key = 'u'|KEYC_CTRL;
 		return (1);
 	case 'i':
-	case '\033': /* Escape */
 		c->prompt_mode = PROMPT_ENTRY;
 		c->flags |= CLIENT_REDRAWSTATUS;
+		return (0);
+	case '\033': /* Escape */
 		return (0);
 	}
 

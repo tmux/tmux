@@ -313,12 +313,6 @@ static struct input_key_entry input_key_defaults[] = {
 	{ .key = KEYC_DC|KEYC_BUILD_MODIFIERS,
 	  .data = "\033[3;_~"
 	},
-	{ .key = KEYC_REPORT_DARK_THEME,
-	  .data = "\033[?997;1n"
-	},
-	{ .key = KEYC_REPORT_LIGHT_THEME,
-	  .data = "\033[?997;2n"
-	},
 };
 static const key_code input_key_modifiers[] = {
 	0,

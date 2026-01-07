@@ -4464,7 +4464,9 @@ format_loop_sessions(struct format_expand_state *es, const char *fmt)
 	for (i = 0; i < n; i++) {
 		s = l[i];
 		format_log(es, "session loop: $%u", s->id);
-		if (active != NULL && s->id == ft->c->session->id)
+		if (active != NULL &&
+		    ft->c != NULL &&
+		    s->id == ft->c->session->id)
 			use = active;
 		else
 			use = all;

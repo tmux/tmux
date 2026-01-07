@@ -1167,6 +1167,16 @@ struct window_pane_resize {
 };
 TAILQ_HEAD(window_pane_resizes, window_pane_resize);
 
+/*
+ * Client theme, this is worked out from the background colour if not reported
+ * by terminal.
+ */
+enum client_theme {
+	THEME_UNKNOWN,
+	THEME_LIGHT,
+	THEME_DARK
+};
+
 /* Child window structure. */
 struct window_pane {
 	u_int		 id;
@@ -1233,6 +1243,7 @@ struct window_pane {
 	struct grid_cell cached_gc;
 	struct grid_cell cached_active_gc;
 	struct colour_palette palette;
+	enum client_theme last_theme;
 
 	int		 pipe_fd;
 	struct bufferevent *pipe_event;
@@ -1918,16 +1929,6 @@ struct overlay_ranges {
 	u_int	nx[OVERLAY_MAX_RANGES];
 };
 
-/*
- * Client theme, this is worked out from the background colour if not reported
- * by terminal.
- */
-enum client_theme {
-	THEME_UNKNOWN,
-	THEME_LIGHT,
-	THEME_DARK
-};
-
 /* Client connection. */
 typedef int (*prompt_input_cb)(struct client *, void *, const char *, int);
 typedef void (*prompt_free_cb)(void *);
@@ -2453,7 +2454,7 @@ struct options_entry *options_match_get(struct options *, const char *, int *,
 		     int, int *);
 const char	*options_get_string(struct options *, const char *);
 long long	 options_get_number(struct options *, const char *);
-const struct cmd_list *options_get_command(struct options *, const char *);
+struct cmd_list *options_get_command(struct options *, const char *);
 struct options_entry * printflike(4, 5) options_set_string(struct options *,
 		     const char *, int, const char *, ...);
 struct options_entry *options_set_number(struct options *, const char *,
@@ -2750,6 +2751,8 @@ void		 cmd_list_append(struct cmd_list *, struct cmd *);
 void		 cmd_list_append_all(struct cmd_list *, struct cmd_list *);
 void		 cmd_list_move(struct cmd_list *, struct cmd_list *);
 void		 cmd_list_free(struct cmd_list *);
+#define CMD_LIST_PRINT_ESCAPED 0x1
+#define CMD_LIST_PRINT_NO_GROUPS 0x2
 char		*cmd_list_print(const struct cmd_list *, int);
 struct cmd	*cmd_list_first(struct cmd_list *);
 struct cmd	*cmd_list_next(struct cmd *);

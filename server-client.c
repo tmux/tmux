@@ -1092,8 +1092,16 @@ have_event:
 	case NOTYPE:
 		break;
 	case MOVE:
-		if (where == PANE)
+		if (where == PANE) {
 			key = KEYC_MOUSEMOVE_PANE;
+			if (wp != NULL &&
+			    wp != w->active &&
+			    options_get_number(s->options, "focus-follows-mouse")) {
+				window_set_active_pane(w, wp, 1);
+				server_redraw_window_borders(w);
+				server_status_window(w);
+			}
+		}
 		if (where == STATUS)
 			key = KEYC_MOUSEMOVE_STATUS;
 		if (where == STATUS_LEFT)
@@ -3012,7 +3020,8 @@ server_client_reset_state(struct client *c)
 
 	/*
 	 * Set mouse mode if requested. To support dragging, always use button
-	 * mode.
+	 * mode. For focus-follows-mouse, we need all-motion mode to receive
+	 * movement events.
 	 */
 	if (options_get_number(oo, "mouse")) {
 		if (c->overlay_draw == NULL) {
@@ -3022,7 +3031,9 @@ server_client_reset_state(struct client *c)
 					mode |= MODE_MOUSE_ALL;
 			}
 		}
-		if (~mode & MODE_MOUSE_ALL)
+		if (options_get_number(oo, "focus-follows-mouse"))
+			mode |= MODE_MOUSE_ALL;
+		else if (~mode & MODE_MOUSE_ALL)
 			mode |= MODE_MOUSE_BUTTON;
 	}
 
@@ -3475,6 +3486,24 @@ server_client_read_only(struct cmdq_item *item, __unused void *data)
 	return (CMD_RETURN_ERROR);
 }
 
+/* Callback for default command. */
+static enum cmd_retval
+server_client_default_command(struct cmdq_item *item, __unused void *data)
+{
+	struct client		*c = cmdq_get_client(item);
+	struct cmd_list		*cmdlist;
+	struct cmdq_item	*new_item;
+
+	cmdlist = options_get_command(global_options, "default-client-command");
+	if ((c->flags & CLIENT_READONLY) &&
+	    !cmd_list_all_have(cmdlist, CMD_READONLY))
+		new_item = cmdq_get_callback(server_client_read_only, NULL);
+	else
+		new_item = cmdq_get_command(cmdlist, NULL);
+	cmdq_insert_after(item, new_item);
+	return (CMD_RETURN_NORMAL);
+}
+
 /* Callback when command is done. */
 static enum cmd_retval
 server_client_command_done(struct cmdq_item *item, __unused void *data)
@@ -3503,7 +3532,6 @@ server_client_dispatch_command(struct client *c, struct imsg *imsg)
 	struct cmd_parse_result	 *pr;
 	struct args_value	 *values;
 	struct cmdq_item	 *new_item;
-	struct cmd_list		 *cmdlist;
 
 	if (c->flags & CLIENT_EXIT)
 		return (0);
@@ -3524,8 +3552,8 @@ server_client_dispatch_command(struct client *c, struct imsg *imsg)
 
 	argc = data.argc;
 	if (argc == 0) {
-		cmdlist = cmd_list_copy(options_get_command(global_options,
-		    "default-client-command"), 0, NULL);
+		new_item = cmdq_get_callback(server_client_default_command,
+		    NULL);
 	} else {
 		values = args_from_vector(argc, argv);
 		pr = cmd_parse_from_arguments(values, argc, NULL);
@@ -3539,18 +3567,17 @@ server_client_dispatch_command(struct client *c, struct imsg *imsg)
 		args_free_values(values, argc);
 		free(values);
 		cmd_free_argv(argc, argv);
-		cmdlist = pr->cmdlist;
+		if ((c->flags & CLIENT_READONLY) &&
+		    !cmd_list_all_have(pr->cmdlist, CMD_READONLY)) {
+			new_item = cmdq_get_callback(server_client_read_only,
+			    NULL);
+		} else
+			new_item = cmdq_get_command(pr->cmdlist, NULL);
+		cmd_list_free(pr->cmdlist);
 	}
-
-	if ((c->flags & CLIENT_READONLY) &&
-	    !cmd_list_all_have(cmdlist, CMD_READONLY))
-		new_item = cmdq_get_callback(server_client_read_only, NULL);
-	else
-		new_item = cmdq_get_command(cmdlist, NULL);
 	cmdq_append(c, new_item);
 	cmdq_append(c, cmdq_get_callback(server_client_command_done, NULL));
 
-	cmd_list_free(cmdlist);
 	return (0);
 
 error:

@@ -749,7 +749,7 @@ options_get_number(struct options *oo, const char *name)
 	return (o->value.number);
 }
 
-const struct cmd_list *
+struct cmd_list *
 options_get_command(struct options *oo, const char *name)
 {
 	struct options_entry	*o;

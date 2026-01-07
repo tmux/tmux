@@ -61,9 +61,9 @@ screen_write_get_citem(void)
 
     ci = TAILQ_FIRST(&screen_write_citem_freelist);
     if (ci != NULL) {
-        TAILQ_REMOVE(&screen_write_citem_freelist, ci, entry);
-        memset(ci, 0, sizeof *ci);
-        return (ci);
+	    TAILQ_REMOVE(&screen_write_citem_freelist, ci, entry);
+	    memset(ci, 0, sizeof *ci);
+	    return (ci);
     }
     return (xcalloc(1, sizeof *ci));
 }
@@ -71,7 +71,7 @@ screen_write_get_citem(void)
 static void
 screen_write_free_citem(struct screen_write_citem *ci)
 {
-    TAILQ_INSERT_TAIL(&screen_write_citem_freelist, ci, entry);
+	TAILQ_INSERT_TAIL(&screen_write_citem_freelist, ci, entry);
 }
 
 static void
@@ -1833,8 +1833,16 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 	struct visible_ranges		*vr;
 	struct window_pane		*wp = ctx->wp;
 
-	if (s->mode & MODE_SYNC)
+	if (s->mode & MODE_SYNC) {
+		for (y = 0; y < screen_size_y(s); y++) {
+			cl = &ctx->s->write_list[y];
+			TAILQ_FOREACH_SAFE(ci, &cl->items, entry, tmp) {
+				TAILQ_REMOVE(&cl->items, ci, entry);
+				screen_write_free_citem(ci);
+			}
+		}
 		return;
+	}
 
 	if (ctx->scrolled != 0) {
 		log_debug("%s: scrolled %u (region %u-%u)", __func__,
@@ -1945,7 +1953,7 @@ void
 screen_write_collect_end(struct screen_write_ctx *ctx)
 {
 	struct screen			*s = ctx->s;
-	struct screen_write_citem	*ci = ctx->item, *before;
+	struct screen_write_citem	*ci = ctx->item, *nci, *before;
 	struct screen_write_cline	*cl = &s->write_list[s->cy];
 	struct grid_cell		 gc;
 	u_int				 xx;
@@ -1974,6 +1982,8 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 				break;
 			grid_view_set_cell(s->grid, xx, s->cy,
 			    &grid_default_cell);
+			log_debug("%s: padding erased (before) at %u",
+			    __func__, xx);
 		}
 		if (xx != s->cx) {
 			if (xx == 0)
@@ -1981,7 +1991,18 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 			if (gc.data.width > 1) {
 				grid_view_set_cell(s->grid, xx, s->cy,
 				    &grid_default_cell);
+				log_debug("%s: padding erased (before) at %u",
+				    __func__, xx);
 			}
+		}
+		if (xx != s->cx) {
+			nci = ctx->item;
+			nci->type = CLEAR;
+			nci->x = xx;
+			nci->bg = 8;
+			nci->used = s->cx - xx;
+			TAILQ_INSERT_BEFORE(ci, nci, entry);
+			ctx->item = screen_write_get_citem();
 		}
 	}
 
@@ -1999,6 +2020,16 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 		if (~gc.flags & GRID_FLAG_PADDING)
 			break;
 		grid_view_set_cell(s->grid, xx, s->cy, &grid_default_cell);
+		log_debug("%s: padding erased (after) at %u", __func__, xx);
+	}
+	if (xx != s->cx) {
+		nci = ctx->item;
+		nci->type = CLEAR;
+		nci->x = s->cx;
+		nci->bg = 8;
+		nci->used = xx - s->cx;
+		TAILQ_INSERT_AFTER(&cl->items, ci, nci, entry);
+		ctx->item = screen_write_get_citem();
 	}
 }
 
@@ -2069,7 +2100,7 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	struct tty_ctx		 ttyctx;
 	u_int			 sx = screen_size_x(s), sy = screen_size_y(s);
 	u_int		 	 width = ud->width, xx, not_wrap;
-	int			 selected, skip = 1;
+	int			 selected, skip = 1, redraw = 0;
 
 	/* Ignore padding cells. */
 	if (gc->flags & GRID_FLAG_PADDING)
@@ -2111,8 +2142,10 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	gl = grid_get_line(s->grid, s->grid->hsize + s->cy);
 	if (gl->flags & GRID_LINE_EXTENDED) {
 		grid_view_get_cell(gd, s->cx, s->cy, &now_gc);
-		if (screen_write_overwrite(ctx, &now_gc, width))
+		if (screen_write_overwrite(ctx, &now_gc, width)) {
+			redraw = 1;
 			skip = 0;
+		}
 	}
 
 	/*
@@ -2189,6 +2222,7 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 			ttyctx.cell = &tmp_gc;
 		} else
 			ttyctx.cell = gc;
+		ttyctx.num = redraw ? 2 : 0;
 		tty_write(tty_cmd_cell, &ttyctx);
 	}
 }
@@ -2483,8 +2517,10 @@ screen_write_alternateon(struct screen_write_ctx *ctx, struct grid_cell *gc,
 	screen_write_collect_flush(ctx, 0, __func__);
 	screen_alternate_on(ctx->s, gc, cursor);
 
-	if (wp != NULL)
+	if (wp != NULL) {
 		layout_fix_panes(wp->window, NULL);
+		server_redraw_window_borders(wp->window);
+	}
 
 	screen_write_initctx(ctx, &ttyctx, 1);
 	if (ttyctx.redraw_cb != NULL)
@@ -2505,8 +2541,10 @@ screen_write_alternateoff(struct screen_write_ctx *ctx, struct grid_cell *gc,
 	screen_write_collect_flush(ctx, 0, __func__);
 	screen_alternate_off(ctx->s, gc, cursor);
 
-	if (wp != NULL)
+	if (wp != NULL) {
 		layout_fix_panes(wp->window, NULL);
+		server_redraw_window_borders(wp->window);
+	}
 
 	screen_write_initctx(ctx, &ttyctx, 1);
 	if (ttyctx.redraw_cb != NULL)

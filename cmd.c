@@ -682,11 +682,16 @@ cmd_list_copy(const struct cmd_list *cmdlist, int argc, char **argv)
 
 /* Get a command list as a string. */
 char *
-cmd_list_print(const struct cmd_list *cmdlist, int escaped)
+cmd_list_print(const struct cmd_list *cmdlist, int flags)
 {
 	struct cmd	*cmd, *next;
 	char		*buf, *this;
 	size_t		 len;
+	const char	*separator;
+	int		 escaped = flags & CMD_LIST_PRINT_ESCAPED;
+	int		 no_groups = flags & CMD_LIST_PRINT_NO_GROUPS;
+	const char	*single_separator = escaped ? " \\; " : " ; ";
+	const char	*double_separator = escaped ? " \\;\\; " : " ;; ";
 
 	len = 1;
 	buf = xcalloc(1, len);
@@ -701,17 +706,11 @@ cmd_list_print(const struct cmd_list *cmdlist, int escaped)
 
 		next = TAILQ_NEXT(cmd, qentry);
 		if (next != NULL) {
-			if (cmd->group != next->group) {
-				if (escaped)
-					strlcat(buf, " \\;\\; ", len);
-				else
-					strlcat(buf, " ;; ", len);
-			} else {
-				if (escaped)
-					strlcat(buf, " \\; ", len);
-				else
-					strlcat(buf, " ; ", len);
-			}
+			if (!no_groups && cmd->group != next->group)
+				separator = double_separator;
+			else
+				separator = single_separator;
+			strlcat(buf, separator, len);
 		}
 
 		free(this);

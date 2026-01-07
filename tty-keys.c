@@ -956,7 +956,8 @@ partial_key:
 	if (delay == 0)
 		delay = 1;
 	if ((tty->flags & (TTY_WAITFG|TTY_WAITBG) ||
-	    (tty->flags & TTY_ALL_REQUEST_FLAGS) != TTY_ALL_REQUEST_FLAGS)) {
+	    (tty->flags & TTY_ALL_REQUEST_FLAGS) != TTY_ALL_REQUEST_FLAGS) ||
+	    !TAILQ_EMPTY(&c->input_requests)) {
 		log_debug("%s: increasing delay for active query", c->name);
 		if (delay < 500)
 			delay = 500;
@@ -1750,7 +1751,9 @@ tty_keys_palette(struct tty *tty, const char *buf, size_t len, size_t *size)
 
 	/* Copy the rest up to \033\ or \007. */
 	start = (endptr - buf) + 1;
-	for (i = start; i < len && i - start < sizeof tmp; i++) {
+	for (i = start; i - start < sizeof tmp; i++) {
+		if (i == len)
+			return (1);
 		if (buf[i - 1] == '\033' && buf[i] == '\\')
 			break;
 		if (buf[i] == '\007')

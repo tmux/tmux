@@ -2288,6 +2288,13 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 
 	vr = screen_redraw_get_visible_ranges(wp, px, py,
 	    gcp->data.width);
+  
+	if (ctx->num == 2) {
+    /* xxxx need to check visible range */
+		tty_draw_line(tty, s, 0, s->cy, screen_size_x(s),
+		    ctx->xoff - ctx->wox, py, &ctx->defaults, ctx->palette);
+		return;
+	}
 
 	/* Handle partially obstructed wide characters. */
 	if (gcp->data.width > 1) {
@@ -2297,7 +2304,7 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 		for (i = 0; i < OVERLAY_MAX_RANGES; i++)
 			vis += r.nx[i];
 		if (vis < gcp->data.width  ||
-		    vis2 < gcp->data.width) {  /* xxxx check visible range */
+		    vis2 < gcp->data.width) {  /* xxxx need to check visible range */
 			tty_draw_line(tty, s, s->cx, s->cy, gcp->data.width,
 			    px, py, &ctx->defaults, ctx->palette);
 			return;

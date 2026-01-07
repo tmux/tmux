@@ -63,7 +63,7 @@ struct input_request {
 	struct input_ctx		*ictx;
 
 	enum input_request_type		 type;
-	time_t				 t;
+	uint64_t			 t;
 	enum input_end_type              end;
 
 	int				 idx;
@@ -72,7 +72,7 @@ struct input_request {
 	TAILQ_ENTRY(input_request)	 entry;
 	TAILQ_ENTRY(input_request)	 centry;
 };
-#define INPUT_REQUEST_TIMEOUT 2
+#define INPUT_REQUEST_TIMEOUT 500
 
 /* Input parser cell. */
 struct input_cell {
@@ -1902,6 +1902,8 @@ input_csi_dispatch_rm_private(struct input_ctx *ictx)
 			break;
 		case 2031:
 			screen_write_mode_clear(sctx, MODE_THEME_UPDATES);
+			if (ictx->wp != NULL)
+				ictx->wp->flags &= ~PANE_THEMECHANGED;
 			break;
 		case 2026:	/* synchronized output */
 			screen_write_stop_sync(ictx->wp);
@@ -2005,6 +2007,10 @@ input_csi_dispatch_sm_private(struct input_ctx *ictx)
 			break;
 		case 2031:
 			screen_write_mode_set(sctx, MODE_THEME_UPDATES);
+			if (ictx->wp != NULL) {
+				ictx->wp->last_theme = window_pane_get_theme(ictx->wp);
+				ictx->wp->flags &= ~PANE_THEMECHANGED;
+			}
 			break;
 		case 2026:	/* synchronized output */
 			screen_write_start_sync(ictx->wp);
@@ -3237,7 +3243,7 @@ input_request_timer_callback(__unused int fd, __unused short events, void *arg)
 {
 	struct input_ctx	*ictx = arg;
 	struct input_request	*ir, *ir1;
-	time_t			 t = time(NULL);
+	uint64_t		 t = get_timer();
 
 	TAILQ_FOREACH_SAFE(ir, &ictx->requests, entry, ir1) {
 		if (ir->t >= t - INPUT_REQUEST_TIMEOUT)
@@ -3254,7 +3260,7 @@ input_request_timer_callback(__unused int fd, __unused short events, void *arg)
 static void
 input_start_request_timer(struct input_ctx *ictx)
 {
-	struct timeval	tv = { .tv_sec = 0, .tv_usec = 500000 };
+	struct timeval	tv = { .tv_sec = 0, .tv_usec = 100000 };
 
 	event_del(&ictx->request_timer);
 	event_add(&ictx->request_timer, &tv);
@@ -3269,7 +3275,7 @@ input_make_request(struct input_ctx *ictx, enum input_request_type type)
 	ir = xcalloc (1, sizeof *ir);
 	ir->type = type;
 	ir->ictx = ictx;
-	ir->t = time(NULL);
+	ir->t = get_timer();
 
 	if (++ictx->request_count == 1)
 		input_start_request_timer(ictx);
@@ -3390,7 +3396,11 @@ input_request_reply(struct client *c, enum input_request_type type, void *data)
 			input_free_request(ir);
 			continue;
 		}
-		if (type == INPUT_REQUEST_PALETTE && pd->idx == ir->idx) {
+		if (type == INPUT_REQUEST_PALETTE) {
+			if (pd->idx != ir->idx) {
+				input_free_request(ir);
+				continue;
+			}
 			found = ir;
 			break;
 		}
@@ -3432,14 +3442,24 @@ input_cancel_requests(struct client *c)
 static void
 input_report_current_theme(struct input_ctx *ictx)
 {
-	switch (window_pane_get_theme(ictx->wp)) {
+	struct window_pane	*wp = ictx->wp;
+
+	if (wp != NULL) {
+		wp->last_theme = window_pane_get_theme(wp);
+		wp->flags &= ~PANE_THEMECHANGED;
+
+		switch (wp->last_theme) {
 		case THEME_DARK:
+			log_debug("%s: %%%u dark theme", __func__, wp->id);
 			input_reply(ictx, 0, "\033[?997;1n");
 			break;
 		case THEME_LIGHT:
+			log_debug("%s: %%%u light theme", __func__, wp->id);
 			input_reply(ictx, 0, "\033[?997;2n");
 			break;
 		case THEME_UNKNOWN:
+			log_debug("%s: %%%u unknown theme", __func__, wp->id);
 			break;
+		}
 	}
 }
