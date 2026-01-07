@@ -1007,7 +1007,10 @@ tty_window_offset1(struct tty *tty, u_int *ox, u_int *oy, u_int *sx, u_int *sy)
 		else if (cy > w->sy - *sy)
 			*oy = w->sy - *sy;
 		else
-			*oy = cy - *sy / 2;
+			/* cy-sy/2 was causing panned panes to scroll
+			 * when the cursor was half way down the pane.
+			 */
+			*oy = cy - *sy + 1; /* cy - *sy / 2; */
 	}
 
 	c->pan_window = NULL;
@@ -1220,7 +1223,7 @@ tty_clear_pane_line(struct tty *tty, const struct tty_ctx *ctx, u_int py,
 	struct client		*c = tty->client;
 	struct window_pane	*wp = ctx->arg;
 	struct visible_ranges	*vr = NULL;
-	u_int			 r, i, x, rx, ry, oy = 0;
+	u_int			 r, i, x, rx, ry;
 
 	log_debug("%s: %s, %u at %u,%u", __func__, c->name, nx, px, py);
 
