@@ -101,6 +101,7 @@ struct input_ctx {
 	struct bufferevent	       *event;
 	struct screen_write_ctx		ctx;
 	struct colour_palette	       *palette;
+	struct client		       *c;
 
 	struct input_cell		cell;
 	struct input_cell		old_cell;
@@ -854,7 +855,7 @@ input_restore_state(struct input_ctx *ictx)
 /* Initialise input parser. */
 struct input_ctx *
 input_init(struct window_pane *wp, struct bufferevent *bev,
-    struct colour_palette *palette)
+    struct colour_palette *palette, struct client *c)
 {
 	struct input_ctx	*ictx;
 
@@ -862,6 +863,7 @@ input_init(struct window_pane *wp, struct bufferevent *bev,
 	ictx->wp = wp;
 	ictx->event = bev;
 	ictx->palette = palette;
+	ictx->c = c;
 
 	ictx->input_space = INPUT_BUF_START;
 	ictx->input_buf = xmalloc(INPUT_BUF_START);
@@ -3124,8 +3126,48 @@ input_osc_52(struct input_ctx *ictx, const char *p)
 	char			 flags[sizeof "cpqs01234567"] = "";
 	u_int			 i, j = 0;
 
-	if (wp == NULL)
+	/* Handle popup case (wp == NULL but client is set) */
+	if (wp == NULL) {
+		if (ictx->c == NULL)
+			return;
+		state = options_get_number(global_options, "set-clipboard");
+		if (state != 2)
+			return;
+
+		if ((end = strchr(p, ';')) == NULL)
+			return;
+		end++;
+		if (*end == '\0')
+			return;
+		log_debug("%s: %s", __func__, end);
+
+		for (i = 0; p + i != end; i++) {
+			if (strchr(allow, p[i]) != NULL && strchr(flags, p[i]) == NULL)
+				flags[j++] = p[i];
+		}
+		log_debug("%s: %.*s %s", __func__, (int)(end - p - 1), p, flags);
+
+		if (strcmp(end, "?") == 0) {
+			input_osc_52_reply(ictx);
+			return;
+		}
+
+		len = (strlen(end) / 4) * 3;
+		if (len == 0)
+			return;
+
+		out = xmalloc(len);
+		if ((outlen = b64_pton(end, out, len)) == -1) {
+			free(out);
+			return;
+		}
+
+		/* Directly set clipboard for popup client */
+		tty_set_selection(&ictx->c->tty, flags, out, outlen);
+		paste_add(NULL, out, outlen);
 		return;
+	}
+
 	state = options_get_number(global_options, "set-clipboard");
 	if (state != 2)
 		return;
