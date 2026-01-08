@@ -127,7 +127,7 @@ clients_calculate_size(int type, int current, struct client *c,
 	if (type == WINDOW_SIZE_LARGEST) {
 		*sx = 0;
 		*sy = 0;
-	} else if (type == WINDOW_SIZE_MANUAL) {
+	} else if (w != NULL && type == WINDOW_SIZE_MANUAL) {
 		*sx = w->manual_sx;
 		*sy = w->manual_sy;
 		log_debug("%s: manual size %ux%u", __func__, *sx, *sy);
