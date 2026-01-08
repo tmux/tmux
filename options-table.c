@@ -756,6 +756,17 @@ const struct options_table_entry options_table[] = {
 		  "Applications inside panes can use the mouse even when 'off'."
 	},
 
+	{ .name = "click-position-tolerance",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .minimum = 0,
+	  .maximum = INT_MAX,
+	  .default_num = 5,
+	  .text = "Maximum distance in cells from the original click position "
+		  "for a mouse click to be considered part of the same click. "
+		  "Used to detect multiple-clicks mouse events."
+	},
+
 	{ .name = "prefix",
 	  .type = OPTIONS_TABLE_KEY,
 	  .scope = OPTIONS_TABLE_SESSION,
