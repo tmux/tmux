@@ -25,6 +25,8 @@
 
 static struct screen_write_citem *screen_write_collect_trim(
 		    struct screen_write_ctx *, u_int, u_int, u_int, int *);
+static void	screen_write_collect_insert(struct screen_write_ctx *,
+		    struct screen_write_citem *);
 static void	screen_write_collect_clear(struct screen_write_ctx *, u_int,
 		    u_int);
 static void	screen_write_collect_scroll(struct screen_write_ctx *, u_int);
@@ -1334,7 +1336,7 @@ screen_write_clearendofline(struct screen_write_ctx *ctx, u_int bg)
 	struct screen			*s = ctx->s;
 	struct grid_line		*gl;
 	u_int				 sx = screen_size_x(s);
-	struct screen_write_citem	*ci = ctx->item, *before;
+	struct screen_write_citem	*ci = ctx->item;
 
 	if (s->cx == 0) {
 		screen_write_clearline(ctx, bg);
@@ -1352,16 +1354,11 @@ screen_write_clearendofline(struct screen_write_ctx *ctx, u_int bg)
 
 	grid_view_clear(s->grid, s->cx, s->cy, sx - s->cx, 1, bg);
 
- 	before = screen_write_collect_trim(ctx, s->cy, s->cx, sx - s->cx, NULL);
 	ci->x = s->cx;
 	ci->used = sx - s->cx;
 	ci->type = CLEAR;
 	ci->bg = bg;
-	if (before == NULL)
-		TAILQ_INSERT_TAIL(&ctx->s->write_list[s->cy].items, ci, entry);
-	else
-		TAILQ_INSERT_BEFORE(before, ci, entry);
-	ctx->item = screen_write_get_citem();
+	screen_write_collect_insert(ctx, ci);
 }
 
 /* Clear to start of line from cursor. */
@@ -1370,7 +1367,7 @@ screen_write_clearstartofline(struct screen_write_ctx *ctx, u_int bg)
 {
 	struct screen			 *s = ctx->s;
 	u_int				 sx = screen_size_x(s);
-	struct screen_write_citem	*ci = ctx->item, *before;
+	struct screen_write_citem	*ci = ctx->item;
 
 	if (s->cx >= sx - 1) {
 		screen_write_clearline(ctx, bg);
@@ -1387,16 +1384,11 @@ screen_write_clearstartofline(struct screen_write_ctx *ctx, u_int bg)
 	else
 		grid_view_clear(s->grid, 0, s->cy, s->cx + 1, 1, bg);
 
-	before = screen_write_collect_trim(ctx, s->cy, 0, s->cx + 1, NULL);
 	ci->x = 0;
 	ci->used = s->cx + 1;
 	ci->type = CLEAR;
 	ci->bg = bg;
-	if (before == NULL)
-		TAILQ_INSERT_TAIL(&ctx->s->write_list[s->cy].items, ci, entry);
-	else
-		TAILQ_INSERT_BEFORE(before, ci, entry);
-	ctx->item = screen_write_get_citem();
+	screen_write_collect_insert(ctx, ci);
 }
 
 /* Move cursor to px,py. */
@@ -1864,6 +1856,8 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 		cl = &ctx->s->write_list[y];
 		last = UINT_MAX;
 		TAILQ_FOREACH_SAFE(ci, &cl->items, entry, tmp) {
+			log_debug("collect list: x=%u (last %u), y=%u, used=%u",
+			    ci->x, last, y, ci->used);
 			if (last != UINT_MAX && ci->x <= last) {
 				fatalx("collect list not in order: %u <= %u",
 				    ci->x, last);
@@ -1894,29 +1888,39 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 	log_debug("%s: flushed %u items (%s)", __func__, items, from);
 }
 
-/* Finish and store collected cells. */
+/* Insert an item on current line. */
 void
-screen_write_collect_end(struct screen_write_ctx *ctx)
+screen_write_collect_insert(struct screen_write_ctx *ctx,
+    struct screen_write_citem *ci)
 {
 	struct screen			*s = ctx->s;
-	struct screen_write_citem	*ci = ctx->item, *nci, *before;
 	struct screen_write_cline	*cl = &s->write_list[s->cy];
-	struct grid_cell		 gc;
-	u_int				 xx;
-	int				 wrapped = ci->wrapped;
+	struct screen_write_citem	*before;
 
-	if (ci->used == 0)
-		return;
-
-	before = screen_write_collect_trim(ctx, s->cy, s->cx, ci->used,
-	    &wrapped);
-	ci->x = s->cx;
-	ci->wrapped = wrapped;
+	before = screen_write_collect_trim(ctx, s->cy, ci->x, ci->used,
+	    &ci->wrapped);
 	if (before == NULL)
 		TAILQ_INSERT_TAIL(&cl->items, ci, entry);
 	else
 		TAILQ_INSERT_BEFORE(before, ci, entry);
 	ctx->item = screen_write_get_citem();
+}
+
+/* Finish and store collected cells. */
+void
+screen_write_collect_end(struct screen_write_ctx *ctx)
+{
+	struct screen			*s = ctx->s;
+	struct screen_write_citem	*ci = ctx->item, *bci = NULL, *aci;
+	struct screen_write_cline	*cl = &s->write_list[s->cy];
+	struct grid_cell		 gc;
+	u_int				 xx;
+
+	if (ci->used == 0)
+		return;
+
+	ci->x = s->cx;
+	screen_write_collect_insert(ctx, ci);
 
 	log_debug("%s: %u %.*s (at %u,%u)", __func__, ci->used,
 	    (int)ci->used, cl->data + ci->x, s->cx, s->cy);
@@ -1928,27 +1932,28 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 				break;
 			grid_view_set_cell(s->grid, xx, s->cy,
 			    &grid_default_cell);
-			log_debug("%s: padding erased (before) at %u",
-			    __func__, xx);
+			log_debug("%s: padding erased (before) at %u (cx %u)",
+			    __func__, xx, s->cx);
 		}
 		if (xx != s->cx) {
 			if (xx == 0)
 				grid_view_get_cell(s->grid, 0, s->cy, &gc);
-			if (gc.data.width > 1) {
+			if (gc.data.width > 1 ||
+			    (gc.flags & GRID_FLAG_PADDING)) {
 				grid_view_set_cell(s->grid, xx, s->cy,
 				    &grid_default_cell);
-				log_debug("%s: padding erased (before) at %u",
-				    __func__, xx);
+				log_debug("%s: padding erased (before) at %u "
+				    "(cx %u)", __func__, xx, s->cx);
 			}
 		}
 		if (xx != s->cx) {
-			nci = ctx->item;
-			nci->type = CLEAR;
-			nci->x = xx;
-			nci->bg = 8;
-			nci->used = s->cx - xx;
-			TAILQ_INSERT_BEFORE(ci, nci, entry);
-			ctx->item = screen_write_get_citem();
+			bci = ctx->item;
+			bci->type = CLEAR;
+			bci->x = xx;
+			bci->bg = 8;
+			bci->used = s->cx - xx;
+			log_debug("%s: padding erased (before): from %u, "
+			    "size %u", __func__, bci->x, bci->used);
 		}
 	}
 
@@ -1959,6 +1964,8 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 
 	grid_view_set_cells(s->grid, s->cx, s->cy, &ci->gc, cl->data + ci->x,
 	    ci->used);
+	if (bci != NULL)
+		screen_write_collect_insert(ctx, bci);
 	screen_write_set_cursor(ctx, s->cx + ci->used, -1);
 
 	for (xx = s->cx; xx < screen_size_x(s); xx++) {
@@ -1966,16 +1973,18 @@ screen_write_collect_end(struct screen_write_ctx *ctx)
 		if (~gc.flags & GRID_FLAG_PADDING)
 			break;
 		grid_view_set_cell(s->grid, xx, s->cy, &grid_default_cell);
-		log_debug("%s: padding erased (after) at %u", __func__, xx);
+		log_debug("%s: padding erased (after) at %u (cx %u)",
+		    __func__, xx, s->cx);
 	}
 	if (xx != s->cx) {
-		nci = ctx->item;
-		nci->type = CLEAR;
-		nci->x = s->cx;
-		nci->bg = 8;
-		nci->used = xx - s->cx;
-		TAILQ_INSERT_AFTER(&cl->items, ci, nci, entry);
-		ctx->item = screen_write_get_citem();
+		aci = ctx->item;
+		aci->type = CLEAR;
+		aci->x = s->cx;
+		aci->bg = 8;
+		aci->used = xx - s->cx;
+		log_debug("%s: padding erased (after): from %u, size %u",
+		    __func__, aci->x, aci->used);
+		screen_write_collect_insert(ctx, aci);
 	}
 }
 
