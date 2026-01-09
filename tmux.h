@@ -1977,6 +1977,10 @@ struct client {
 	struct event		 repeat_timer;
 
 	struct event		 click_timer;
+	u_int			 click_x;
+	u_int			 click_y;
+	int			 click_where;
+	int			 click_wp;
 	u_int			 click_button;
 	struct mouse_event	 click_event;
 
