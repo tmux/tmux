@@ -1692,6 +1692,7 @@ tty_keys_colours(struct tty *tty, const char *buf, size_t len, size_t *size,
 		tmp[i] = '\0';
 	*size = 6 + i;
 
+	/* Work out the colour. */
 	n = colour_parseX11(tmp);
 	if (n != -1 && buf[3] == '0') {
 		if (c != NULL)
@@ -1717,7 +1718,7 @@ static int
 tty_keys_palette(struct tty *tty, const char *buf, size_t len, size_t *size)
 {
 	struct client			 *c = tty->client;
-	u_int				  i, start;
+	u_int				  i;
 	char				  tmp[128], *endptr;
 	int				  idx;
 	struct input_request_palette_data pd;
@@ -1742,34 +1743,33 @@ tty_keys_palette(struct tty *tty, const char *buf, size_t len, size_t *size)
 	if (len == 4)
 		return (1);
 
+	/* Copy the rest up to \033\ or \007. */
+	for (i = 0; i < (sizeof tmp) - 1; i++) {
+		if (4 + i == len)
+			return (1);
+		if (buf[4 + i - 1] == '\033' && buf[4 + i] == '\\')
+			break;
+		if (buf[4 + i] == '\007')
+			break;
+		tmp[i] = buf[4 + i];
+	}
+	if (i == (sizeof tmp) - 1)
+		return (-1);
+	if (tmp[i - 1] == '\033')
+		tmp[i - 1] = '\0';
+	else
+		tmp[i] = '\0';
+	*size = 5 + i;
+
 	/* Parse index. */
-	idx = strtol(buf + 4, &endptr, 10);
-	if (endptr == buf + 4 || *endptr != ';')
+	idx = strtol(tmp, &endptr, 10);
+	if (*endptr != ';')
 		return (-1);
 	if (idx < 0 || idx > 255)
 		return (-1);
 
-	/* Copy the rest up to \033\ or \007. */
-	start = (endptr - buf) + 1;
-	for (i = start; i - start < sizeof tmp; i++) {
-		if (i == len)
-			return (1);
-		if (buf[i - 1] == '\033' && buf[i] == '\\')
-			break;
-		if (buf[i] == '\007')
-			break;
-		tmp[i - start] = buf[i];
-	}
-	if (i - start == sizeof tmp)
-		return (-1);
-	if (i > 0 && buf[i - 1] == '\033')
-		tmp[i - start - 1] = '\0';
-	else
-		tmp[i - start] = '\0';
-	*size = i + 1;
-
 	/* Work out the colour. */
-	pd.c = colour_parseX11(tmp);
+	pd.c = colour_parseX11(endptr + 1);
 	if (pd.c == -1)
 		return (0);
 	pd.idx = idx;
