@@ -44,9 +44,9 @@ const struct cmd_entry cmd_run_shell_entry = {
 	.name = "run-shell",
 	.alias = "run",
 
-	.args = { "bd:Ct:Es:c:", 0, 1, cmd_run_shell_args_parse },
+	.args = { "bd:Ct:Es:c:", 0, -1, cmd_run_shell_args_parse },
 	.usage = "[-bCE] [-c start-directory] [-d delay] " CMD_TARGET_PANE_USAGE
-	         " [shell-command]",
+	         " [shell-command [argument ...]]",
 
 	.target = { 't', CMD_FIND_PANE, CMD_FIND_CANFAIL },
 
@@ -131,9 +131,34 @@ cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 
 	cdata = xcalloc(1, sizeof *cdata);
 	if (!args_has(args, 'C')) {
-		cmd = args_string(args, 0);
-		if (cmd != NULL)
-			cdata->cmd = format_single_from_target(item, cmd);
+		if (args_count(args) != 0) {
+			int	 argc;
+			char	**argv;
+			char	*formatted_cmd, *used_arg;
+			u_int	 i;
+			size_t	 len;
+
+			args_to_vector(args, &argc, &argv);
+			for (i = 0; i < (u_int)argc; i++) {
+				used_arg = argv[i];
+				argv[i] = format_single_from_target(item, used_arg);
+				free(used_arg);
+			}
+
+			len = 0;
+			for (i = 0; i < (u_int)argc; i++)
+				len += strlen(argv[i]) + 1;
+
+			formatted_cmd = xmalloc(len);
+			*formatted_cmd = '\0';
+			for (i = 0; i < (u_int)argc; i++) {
+				if (i > 0)
+					strlcat(formatted_cmd, " ", len);
+				strlcat(formatted_cmd, argv[i], len);
+			}
+			cdata->cmd = formatted_cmd;
+			cmd_free_argv(argc, argv);
+		}
 	} else {
 		cdata->state = args_make_commands_prepare(self, item, 0, NULL,
 		    wait, 1);
