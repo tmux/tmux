@@ -3112,71 +3112,26 @@ input_osc_52_reply(struct input_ctx *ictx)
 	input_add_request(ictx, INPUT_REQUEST_CLIPBOARD, ictx->input_end);
 }
 
-/* Handle the OSC 52 sequence for setting the clipboard. */
-static void
-input_osc_52(struct input_ctx *ictx, const char *p)
+/* Parse and decode OSC 52 clipboard data. Returns 0 on failure or if handled
+ * as a query. On success, returns 1 and sets *out, *outlen, and *flags (caller
+ * must free *out). */
+static int
+input_osc_52_parse(struct input_ctx *ictx, const char *p, u_char **out,
+    int *outlen, char *flags)
 {
-	struct window_pane	*wp = ictx->wp;
-	size_t			 len;
-	char			*end;
-	u_char			*out;
-	int			 outlen, state;
-	struct screen_write_ctx	 ctx;
-	const char*		 allow = "cpqs01234567";
-	char			 flags[sizeof "cpqs01234567"] = "";
-	u_int			 i, j = 0;
+	char		*end;
+	size_t		  len;
+	const char	 *allow = "cpqs01234567";
+	u_int		  i, j = 0;
 
-	/* Handle popup case (wp == NULL but client is set) */
-	if (wp == NULL) {
-		if (ictx->c == NULL)
-			return;
-		state = options_get_number(global_options, "set-clipboard");
-		if (state != 2)
-			return;
-
-		if ((end = strchr(p, ';')) == NULL)
-			return;
-		end++;
-		if (*end == '\0')
-			return;
-		log_debug("%s: %s", __func__, end);
-
-		for (i = 0; p + i != end; i++) {
-			if (strchr(allow, p[i]) != NULL && strchr(flags, p[i]) == NULL)
-				flags[j++] = p[i];
-		}
-		log_debug("%s: %.*s %s", __func__, (int)(end - p - 1), p, flags);
-
-		if (strcmp(end, "?") == 0) {
-			input_osc_52_reply(ictx);
-			return;
-		}
-
-		len = (strlen(end) / 4) * 3;
-		if (len == 0)
-			return;
-
-		out = xmalloc(len);
-		if ((outlen = b64_pton(end, out, len)) == -1) {
-			free(out);
-			return;
-		}
-
-		/* Directly set clipboard for popup client */
-		tty_set_selection(&ictx->c->tty, flags, out, outlen);
-		paste_add(NULL, out, outlen);
-		return;
-	}
-
-	state = options_get_number(global_options, "set-clipboard");
-	if (state != 2)
-		return;
+	if (options_get_number(global_options, "set-clipboard") != 2)
+		return (0);
 
 	if ((end = strchr(p, ';')) == NULL)
-		return;
+		return (0);
 	end++;
 	if (*end == '\0')
-		return;
+		return (0);
 	log_debug("%s: %s", __func__, end);
 
 	for (i = 0; p + i != end; i++) {
@@ -3187,25 +3142,54 @@ input_osc_52(struct input_ctx *ictx, const char *p)
 
 	if (strcmp(end, "?") == 0) {
 		input_osc_52_reply(ictx);
-		return;
+		return (0);
 	}
 
 	len = (strlen(end) / 4) * 3;
 	if (len == 0)
-		return;
+		return (0);
 
-	out = xmalloc(len);
-	if ((outlen = b64_pton(end, out, len)) == -1) {
-		free(out);
-		return;
+	*out = xmalloc(len);
+	if ((*outlen = b64_pton(end, *out, len)) == -1) {
+		free(*out);
+		*out = NULL;
+		return (0);
 	}
 
-	screen_write_start_pane(&ctx, wp, NULL);
-	screen_write_setselection(&ctx, flags, out, outlen);
-	screen_write_stop(&ctx);
-	notify_pane("pane-set-clipboard", wp);
+	return (1);
+}
 
-	paste_add(NULL, out, outlen);
+/* Handle the OSC 52 sequence for setting the clipboard. */
+static void
+input_osc_52(struct input_ctx *ictx, const char *p)
+{
+	struct window_pane	*wp = ictx->wp;
+	u_char			*out;
+	int			 outlen;
+	char			 flags[sizeof "cpqs01234567"] = "";
+
+	if (!input_osc_52_parse(ictx, p, &out, &outlen, flags))
+		return;
+
+	if (wp == NULL) {
+		/* Popup window case */
+		if (ictx->c == NULL) {
+			free(out);
+			return;
+		}
+		tty_set_selection(&ictx->c->tty, flags, out, outlen);
+		paste_add(NULL, out, outlen);
+	} else {
+		/* Normal window case */
+		struct screen_write_ctx ctx;
+
+		screen_write_start_pane(&ctx, wp, NULL);
+		screen_write_setselection(&ctx, flags, out, outlen);
+		screen_write_stop(&ctx);
+		notify_pane("pane-set-clipboard", wp);
+		paste_add(NULL, out, outlen);
+	}
+	free(out);
 }
 
 /* Handle the OSC 104 sequence for unsetting (multiple) palette entries. */
