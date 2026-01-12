@@ -165,7 +165,7 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
 				if (px == wp->xoff + wp->sx + sb_w - 1)
 					return (SCREEN_REDRAW_BORDER_RIGHT);
 			}
-		} else { /* sb_pos == PANE_SCROLLBARS_RIGHT or disabled*/
+		} else { /* sb_pos == PANE_SCROLLBARS_RIGHT or disabled */
 			if (wp->xoff == 0 && px == wp->sx + sb_w)
 				if (!hsplit || (hsplit && py <= wp->sy / 2))
 					return (SCREEN_REDRAW_BORDER_RIGHT);
@@ -732,6 +732,78 @@ screen_redraw_draw_borders_style(struct screen_redraw_ctx *ctx, u_int x,
 	return (&wp->border_gc);
 }
 
+/* Draw arrow indicator if enabled. */
+static void
+screen_redraw_draw_border_arrows(struct screen_redraw_ctx *ctx, u_int i,
+    u_int j, u_int cell_type, struct window_pane *wp,
+    struct window_pane *active, struct grid_cell *gc)
+{
+	struct client		*c = ctx->c;
+	struct session		*s = c->session;
+	struct window		*w = s->curw->window;
+	struct options		*oo = w->options;
+	u_int			 x = ctx->ox + i, y = ctx->oy + j;
+	int			 value, arrows = 0, border;
+
+	if (wp == NULL)
+		return;
+	if (i != wp->xoff + 1 && j != wp->yoff + 1)
+		return;
+
+	value = options_get_number(oo, "pane-border-indicators");
+	if (value != PANE_BORDER_ARROWS && value != PANE_BORDER_BOTH)
+		return;
+
+	border = screen_redraw_pane_border(ctx, active, x, y);
+	if (border == SCREEN_REDRAW_INSIDE)
+		return;
+
+	if (i == wp->xoff + 1) {
+		if (border == SCREEN_REDRAW_OUTSIDE) {
+			if (screen_redraw_two_panes(wp->window, 1)) {
+				if (active == TAILQ_FIRST(&w->panes))
+					border = SCREEN_REDRAW_BORDER_BOTTOM;
+				else
+					border = SCREEN_REDRAW_BORDER_TOP;
+				arrows = 1;
+			}
+		} else {
+			if (cell_type == CELL_LEFTRIGHT)
+				arrows = 1;
+			else if (cell_type == CELL_TOPJOIN &&
+			    border == SCREEN_REDRAW_BORDER_BOTTOM)
+				arrows = 1;
+			else if (cell_type == CELL_BOTTOMJOIN &&
+			    border == SCREEN_REDRAW_BORDER_TOP)
+				arrows = 1;
+		}
+	}
+	if (j == wp->yoff + 1) {
+		if (border == SCREEN_REDRAW_OUTSIDE) {
+			if (screen_redraw_two_panes(wp->window, 0)) {
+				if (active == TAILQ_FIRST(&w->panes))
+					border = SCREEN_REDRAW_BORDER_RIGHT;
+				else
+					border = SCREEN_REDRAW_BORDER_LEFT;
+				arrows = 1;
+			}
+		} else {
+			if (cell_type == CELL_TOPBOTTOM)
+				arrows = 1;
+			else if (cell_type == CELL_LEFTJOIN &&
+			    border == SCREEN_REDRAW_BORDER_RIGHT)
+				arrows = 1;
+			else if (cell_type == CELL_RIGHTJOIN &&
+			    border == SCREEN_REDRAW_BORDER_LEFT)
+				arrows = 1;
+		}
+	}
+	if (arrows) {
+		gc->attr |= GRID_ATTR_CHARSET;
+		utf8_set(&gc->data, BORDER_MARKERS[border]);
+	}
+}
+
 /* Draw a border cell. */
 static void
 screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j)
@@ -747,7 +819,7 @@ screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j)
 	const struct grid_cell	*tmp;
 	struct overlay_ranges	 r;
 	u_int			 cell_type, x = ctx->ox + i, y = ctx->oy + j;
-	int			 arrows = 0, border, isolates;
+	int			 isolates;
 
 	if (c->overlay_check != NULL) {
 		c->overlay_check(c, c->overlay_data, x, y, 1, &r);
@@ -795,32 +867,7 @@ screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j)
 	if (isolates)
 		tty_puts(tty, END_ISOLATE);
 
-	switch (options_get_number(oo, "pane-border-indicators")) {
-	case PANE_BORDER_ARROWS:
-	case PANE_BORDER_BOTH:
-		arrows = 1;
-		break;
-	}
-
-	if (wp != NULL && arrows) {
-		border = screen_redraw_pane_border(ctx, active, x, y);
-		if (((i == wp->xoff + 1 &&
-		    (cell_type == CELL_LEFTRIGHT ||
-		    (cell_type == CELL_TOPJOIN &&
-		    border == SCREEN_REDRAW_BORDER_BOTTOM) ||
-		    (cell_type == CELL_BOTTOMJOIN &&
-		    border == SCREEN_REDRAW_BORDER_TOP))) ||
-		    (j == wp->yoff + 1 &&
-		    (cell_type == CELL_TOPBOTTOM ||
-		    (cell_type == CELL_LEFTJOIN &&
-		    border == SCREEN_REDRAW_BORDER_RIGHT) ||
-		    (cell_type == CELL_RIGHTJOIN &&
-		    border == SCREEN_REDRAW_BORDER_LEFT)))) &&
-		    screen_redraw_check_is(ctx, x, y, active)) {
-			gc.attr |= GRID_ATTR_CHARSET;
-			utf8_set(&gc.data, BORDER_MARKERS[border]);
-		}
-	}
+	screen_redraw_draw_border_arrows(ctx, i, j, cell_type, wp, active, &gc);
 
 	tty_cell(tty, &gc, &grid_default_cell, NULL, NULL);
 	if (isolates)
