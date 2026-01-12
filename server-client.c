@@ -315,6 +315,8 @@ server_client_create(int fd)
 	evtimer_set(&c->repeat_timer, server_client_repeat_timer, c);
 	evtimer_set(&c->click_timer, server_client_click_timer, c);
 
+	c->click_wp = -1;
+
 	TAILQ_INIT(&c->input_requests);
 
 	TAILQ_INSERT_TAIL(&clients, c, entry);
@@ -737,21 +739,17 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 		if (c->flags & CLIENT_DOUBLECLICK) {
 			evtimer_del(&c->click_timer);
 			c->flags &= ~CLIENT_DOUBLECLICK;
-			if (m->b == c->click_button) {
-				type = SECOND;
-				x = m->x, y = m->y, b = m->b;
-				log_debug("second-click at %u,%u", x, y);
-				c->flags |= CLIENT_TRIPLECLICK;
-			}
+			type = SECOND;
+			x = m->x, y = m->y, b = m->b;
+			log_debug("second-click at %u,%u", x, y);
+			c->flags |= CLIENT_TRIPLECLICK;
 		} else if (c->flags & CLIENT_TRIPLECLICK) {
 			evtimer_del(&c->click_timer);
 			c->flags &= ~CLIENT_TRIPLECLICK;
-			if (m->b == c->click_button) {
-				type = TRIPLE;
-				x = m->x, y = m->y, b = m->b;
-				log_debug("triple-click at %u,%u", x, y);
-				goto have_event;
-			}
+			type = TRIPLE;
+			x = m->x, y = m->y, b = m->b;
+			log_debug("triple-click at %u,%u", x, y);
+			goto have_event;
 		}
 
 		/* DOWN is the only remaining event type. */
@@ -760,17 +758,6 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 			x = m->x, y = m->y, b = m->b;
 			log_debug("down at %u,%u", x, y);
 			c->flags |= CLIENT_DOUBLECLICK;
-		}
-
-		if (KEYC_CLICK_TIMEOUT != 0) {
-			memcpy(&c->click_event, m, sizeof c->click_event);
-			c->click_button = m->b;
-
-			log_debug("click timer started");
-			tv.tv_sec = KEYC_CLICK_TIMEOUT / 1000;
-			tv.tv_usec = (KEYC_CLICK_TIMEOUT % 1000) * 1000L;
-			evtimer_del(&c->click_timer);
-			evtimer_add(&c->click_timer, &tv);
 		}
 	}
 
@@ -884,6 +871,34 @@ have_event:
 			}
 			m->wp = wp->id;
 			m->w = wp->window->id;
+		}
+	}
+
+	/* Reset click type or add a click timer if needed. */
+	if (type == DOWN ||
+	    type == SECOND ||
+	    type == TRIPLE) {
+		if (type != DOWN &&
+		    (m->b != c->click_button ||
+		    where != (enum mouse_where)c->click_where ||
+		    m->wp != c->click_wp)) {
+			type = DOWN;
+			log_debug("click sequence reset at %u,%u", x, y);
+			c->flags &= ~CLIENT_TRIPLECLICK;
+			c->flags |= CLIENT_DOUBLECLICK;
+		}
+
+		if (type != TRIPLE && KEYC_CLICK_TIMEOUT != 0) {
+			memcpy(&c->click_event, m, sizeof c->click_event);
+			c->click_button = m->b;
+			c->click_where = where;
+			c->click_wp = m->wp;
+
+			log_debug("click timer started");
+			tv.tv_sec = KEYC_CLICK_TIMEOUT / 1000;
+			tv.tv_usec = (KEYC_CLICK_TIMEOUT % 1000) * 1000L;
+			evtimer_del(&c->click_timer);
+			evtimer_add(&c->click_timer, &tv);
 		}
 	}
 
