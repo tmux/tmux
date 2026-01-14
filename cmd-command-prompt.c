@@ -42,8 +42,8 @@ const struct cmd_entry cmd_command_prompt_entry = {
 	.name = "command-prompt",
 	.alias = NULL,
 
-	.args = { "1bFkliI:Np:t:T:", 0, 1, cmd_command_prompt_args_parse },
-	.usage = "[-1bFkliN] [-I inputs] [-p prompts] " CMD_TARGET_CLIENT_USAGE
+	.args = { "1beFiklI:Np:t:T:", 0, 1, cmd_command_prompt_args_parse },
+	.usage = "[-1beFiklN] [-I inputs] [-p prompts] " CMD_TARGET_CLIENT_USAGE
 		 " [-T prompt-type] [template]",
 
 	.flags = CMD_CLIENT_TFLAG,
@@ -84,7 +84,7 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 	struct client			*tc = cmdq_get_target_client(item);
 	struct cmd_find_state		*target = cmdq_get_target(item);
 	const char			*type, *s, *input;
-	struct cmd_command_prompt_cdata	*cdata;
+	struct cmd_command_prompt_cdata *cdata;
 	char				*tmp, *prompts, *prompt, *next_prompt;
 	char				*inputs = NULL, *next_input;
 	u_int				 count = args_count(args);
@@ -163,6 +163,8 @@ cmd_command_prompt_exec(struct cmd *self, struct cmdq_item *item)
 		cdata->flags |= PROMPT_INCREMENTAL;
 	else if (args_has(args, 'k'))
 		cdata->flags |= PROMPT_KEY;
+	else if (args_has(args, 'e'))
+		cdata->flags |= PROMPT_BSPACE_EXIT;
 	status_prompt_set(tc, target, cdata->prompts[0].prompt,
 	    cdata->prompts[0].input, cmd_command_prompt_callback,
 	    cmd_command_prompt_free, cdata, cdata->flags, cdata->prompt_type);
@@ -234,7 +236,7 @@ out:
 static void
 cmd_command_prompt_free(void *data)
 {
-	struct cmd_command_prompt_cdata	*cdata = data;
+	struct cmd_command_prompt_cdata *cdata = data;
 	u_int				 i;
 
 	for (i = 0; i < cdata->count; i++) {
