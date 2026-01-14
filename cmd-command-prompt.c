@@ -42,8 +42,8 @@ const struct cmd_entry cmd_command_prompt_entry = {
 	.name = "command-prompt",
 	.alias = NULL,
 
-	.args = { "1ebFkliI:Np:t:T:", 0, 1, cmd_command_prompt_args_parse },
-	.usage = "[-1ebFkliN] [-I inputs] [-p prompts] " CMD_TARGET_CLIENT_USAGE
+	.args = { "1beFiklI:Np:t:T:", 0, 1, cmd_command_prompt_args_parse },
+	.usage = "[-1beFiklN] [-I inputs] [-p prompts] " CMD_TARGET_CLIENT_USAGE
 		 " [-T prompt-type] [template]",
 
 	.flags = CMD_CLIENT_TFLAG,
