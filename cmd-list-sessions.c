@@ -49,23 +49,6 @@ const struct cmd_entry cmd_list_sessions_entry = {
 	.exec = cmd_list_sessions_exec
 };
 
-enum list_sessions_sort_type {
-    SESSION_BY_NAME,
-    SESSION_BY_CREATION_TIME,
-    SESSION_BY_ACIVITY_TIME,
-};
-static const char *list_session_sort_list[] = {
-    "name",
-    "creation",
-    "activity",
-};
-
-struct list_session_sort_criteria {
-    u_int mode;
-    int reversed;
-};
-static struct list_session_sort_criteria list_session_sort_crit = {0};
-
 static int
 session_list_cmp_session(const void *a0, const void *b0)
 {
@@ -75,16 +58,19 @@ session_list_cmp_session(const void *a0, const void *b0)
     const struct session        *sb = *b;
     int result = 0;
 
-    switch (list_session_sort_crit.field) {
-        case SESSION_BY_CREATION_TIME:
-            break;
-        case SESSION_BY_ACIVITY_TIME:
-            break;
-        case SESSION_BY_NAME:
+    switch (global_sort_crit.order) {
+        case SORT_CREATION_TIME:
+            //
+        case SORT_ACIVITY_TIME:
+            //
+        case SORT_NAME:
             result = strcmp(sa->name, sb->name);
+            break;
+        default:
+            log_debug("unsupported_sort_order");
     }
 
-    if (list_session_sort_crit.reversed)
+    if (global_sort_crit.reversed)
         result = -result;
     return (result);
 }
@@ -120,23 +106,20 @@ cmd_list_sessions_print(struct session *s, u_int n, struct cmdq_item* item,
 static enum cmd_retval
 cmd_list_sessions_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = cmd_get_args(self);
+	struct args	    	*args = cmd_get_args(self);
 	struct session		*s, **l;
-	u_int		 	 n;
-	const char		*template, *filter;
+	const char		    *template, *filter;
+	u_int		 	    n, order;
+    int                 reversed;
+    struct sort_criteria sc;
 
 	if ((template = args_get(args, 'F')) == NULL)
 		template = LIST_SESSIONS_TEMPLATE;
 	filter = args_get(args, 'f');
 
-	sort = args_get(args, 'O');
-	if (sort != NULL) {
-		for (i = 0; i < sort_size; i++) {
-			if (strcasecmp(sort, list_session_sort_list[i]) == 0)
-				list_session_sort_crit.field = i;
-		}
-	}
-	list_session_sort_crit.reversed = args_has(args, 'r');
+	order = args_get(args, 'O');
+	reversed = args_has(args, 'r');
+    sc = sort_criteria_create(order, reversed, sessions_list_cmp_session);
 
     l = NULL;
 	n = 0;
@@ -144,7 +127,7 @@ cmd_list_sessions_exec(struct cmd *self, struct cmdq_item *item)
 		l = xreallocarray(l, n + 1, sizeof *l);
 		l[n++] = s;
     }
-	qsort(l, n, sizeof *l, session_list_cmp_session);
+    sort_list(l, n, sc);
 
 	for (i = 0; i < n; i++)
         cmd_list_sessions_print(l[i], i, item, template, filter);
