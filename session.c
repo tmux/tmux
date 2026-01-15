@@ -293,35 +293,51 @@ session_update_activity(struct session *s, struct timeval *from)
 
 /* Find the next usable session. */
 struct session *
-session_next_session(struct session *s)
+session_next_session(struct session *s, struct sort_criteria *sort_crit)
 {
-	struct session *s2;
+	struct session	*s2, **l = NULL;
+	u_int		n, i;
 
 	if (RB_EMPTY(&sessions) || !session_alive(s))
 		return (NULL);
 
-	s2 = RB_NEXT(sessions, &sessions, s);
-	if (s2 == NULL)
-		s2 = RB_MIN(sessions, &sessions);
-	if (s2 == s)
-		return (NULL);
+	l = sort_get_sessions(&n, sort_crit);
+	for (i = 0; i < n; i++)
+		if (l[i] == s)
+			break;
+
+	if (i == n) fatalx("-%s session alive but not found.", s->name);
+
+	i++;
+	if (i == n) i = 0;
+
+	s2 = l[i];
+
 	return (s2);
 }
 
 /* Find the previous usable session. */
 struct session *
-session_previous_session(struct session *s)
+session_previous_session(struct session *s, struct sort_criteria *sort_crit)
 {
-	struct session *s2;
+	struct session	*s2, **l = NULL;
+	u_int		 n, i;
 
 	if (RB_EMPTY(&sessions) || !session_alive(s))
 		return (NULL);
 
-	s2 = RB_PREV(sessions, &sessions, s);
-	if (s2 == NULL)
-		s2 = RB_MAX(sessions, &sessions);
-	if (s2 == s)
-		return (NULL);
+	l = sort_get_sessions(&n, sort_crit);
+	for (i = 0; i < n; i++)
+		if (l[i] == s)
+			break;
+
+	if (i == n) fatalx("-%s session alive, but not found", s->name);
+
+	if (i == 0) i = n;
+	i--;
+
+	s2 = l[i];
+
 	return (s2);
 }
 
