@@ -42,57 +42,34 @@ const struct cmd_entry cmd_list_sessions_entry = {
 	.name = "list-sessions",
 	.alias = "ls",
 
-	.args = { "F:f:", 0, 0, NULL },
-	.usage = "[-F format] [-f filter]",
+	.args = { "F:f:O:r", 0, 0, NULL },
+	.usage = "[-r] [-F format] [-f filter] [-O order]",
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_list_sessions_exec
 };
 
-static void
-cmd_list_sessions_print(struct session *s, u_int n, struct cmdq_item* item,
-        const char* template, const char* filter)
-{
-	struct format_tree	*ft;
-	char		        *line, *expanded;
-	int		            flag;
-
-    ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
-    format_add(ft, "line", "%u", n);
-    format_defaults(ft, NULL, s, NULL, NULL);
-
-    if (filter != NULL) {
-        expanded = format_expand(ft, filter);
-        flag = format_true(expanded);
-        free(expanded);
-    } else
-        flag = 1;
-    if (flag) {
-        line = format_expand(ft, template);
-        cmdq_print(item, "%s", line);
-        free(line);
-    }
-
-    format_free(ft);
-}
-
 static enum cmd_retval
 cmd_list_sessions_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args	    	*args = cmd_get_args(self);
-	struct session		*s, **l;
-	const char		    *template, *filter;
-	u_int		 	    n, order;
-    int                 reversed;
-    struct sort_criteria sc;
+	struct args		        *args = cmd_get_args(self);
+	struct session		    *s, **l;
+	u_int		 	        n, i;
+	struct format_tree	    *ft;
+	const char		        *template, *filter, *order;
+	char			        *line, *expanded;
+	int			            flag, reversed;
+    struct sort_criteria    sc = {0};
 
 	if ((template = args_get(args, 'F')) == NULL)
 		template = LIST_SESSIONS_TEMPLATE;
 	filter = args_get(args, 'f');
 
 	order = args_get(args, 'O');
-	reversed = args_has(args, 'r');
-    sc = sort_criteria_create(order, reversed);
+    if (order != NULL) {
+        reversed = args_has(args, 'r');
+        sort_criteria_init(&sc, order, reversed);
+    }
 
     l = NULL;
 	n = 0;
@@ -102,9 +79,26 @@ cmd_list_sessions_exec(struct cmd *self, struct cmdq_item *item)
     }
     sort_list_sessions(l, n, sc);
 
-	for (i = 0; i < n; i++)
-        cmd_list_sessions_print(l[i], i, item, template, filter);
-	free(l);
+    for (i = 0; i < n; i++) {
+		ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
+		format_add(ft, "line", "%u", i);
+		format_defaults(ft, NULL, l[i], NULL, NULL);
+
+		if (filter != NULL) {
+			expanded = format_expand(ft, filter);
+			flag = format_true(expanded);
+			free(expanded);
+		} else
+			flag = 1;
+		if (flag) {
+			line = format_expand(ft, template);
+			cmdq_print(item, "%s", line);
+			free(line);
+		}
+
+		format_free(ft);
+	}
+    free(l);
 
 	return (CMD_RETURN_NORMAL);
 }

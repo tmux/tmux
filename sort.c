@@ -1,6 +1,9 @@
+// TODO:
+
+#include <stdlib.h>
+#include <string.h>
+
 #include "tmux.h"
-#include "string.h"
-#include "strings.h"
 
 static struct sort_criteria sort_criteria = {0};
 
@@ -23,12 +26,9 @@ static const char *sort_list[] = {
 static enum sort_order
 sort_order_from_string(const char* sort)
 {
-    int i;
+    u_int i;
 
-    if (sort == NULL)
-        return SORT_NONE;
-
-    for (i = 0; i < ARRAY_LEN(sort_list); i++) {
+    for (i = 0; i < nitems(sort_list); i++) {
         if (strcasecmp(sort, sort_list[i]) == 0) {
             return (i);
         }
@@ -37,31 +37,26 @@ sort_order_from_string(const char* sort)
     return (SORT_INVALID);
 }
 
-struct sort_criteria
-sort_criteria_create(const char* order, int reversed)
+void
+sort_criteria_init(struct sort_criteria* sc, const char* order, int reversed)
 {
-    struct sort_criteria sc;
-
-    sc.order = sort_order_from_string(order)
-    sc.reversed = reversed;
-    
-    return (sc);
+    sc->order = sort_order_from_string(order);
+    sc->reversed = reversed;
 }
 
-void 
-sort_list(void **list, u_int len, struct sort_criteria sc, xcompar cmp)
+static void 
+xsort(void **list, u_int len, struct sort_criteria sc, xcompar cmp)
 {
-    if (sc.order = SORT_NONE || sc_init.compar == NULL)
+    if (sc.order == SORT_NONE)
         return;
 
-    if (sc.sort_order == SORT_INVALID) {
-        log_debug("-%s invalid sort order", order);
+    if (sc.order == SORT_INVALID) {
+        log_debug("-%u invalid sort order", sc.order);
         return;
     }
 
     sort_criteria = sc;
 	qsort(list, len, sizeof *list, cmp);
-    memset(&sort_criteria, 0, sizeof sort_criteria);
 }
 
 static int
@@ -91,7 +86,7 @@ session_list_cmp_session(const void *a0, const void *b0)
 }
 
 void
-sort_list_sessions(void **list, u_int len, struct sort_criteria sc)
+sort_list_sessions(struct session **list, u_int len, struct sort_criteria sc)
 {
-    sort_list(list, len, sc, session_list_cmp_session);
+    xsort((void**)list, len, sc, session_list_cmp_session);
 }
