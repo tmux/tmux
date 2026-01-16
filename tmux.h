@@ -3692,4 +3692,16 @@ struct hyperlinks	*hyperlinks_copy(struct hyperlinks *);
 void			 hyperlinks_reset(struct hyperlinks *);
 void			 hyperlinks_free(struct hyperlinks *);
 
+/* sort.c */
+#define ARRAY_LEN(arr) (sizeof(arr) / sizeof(arr[0])) // helpful?
+typedef int (*xcompar)(const void *, const void *);   // 
+
+struct sort_criteria {
+    u_int      order;
+    int        reversed;
+};
+
+struct sort_criteria sort_criteria_create(const char*, int , xcompar);
+void sort_list(void **, u_int, struct sort_criteria);
+
 #endif /* TMUX_H */

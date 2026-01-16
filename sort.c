@@ -2,27 +2,7 @@
 #include "string.h"
 #include "strings.h"
 
-/*************
- * tmux.h
-*/
-#define ARRAY_LEN(arr) (sizeof(arr) / sizeof(arr[0])) // helpful?
-typedef int (*xcompar)(const void *, const void *);   // 
-
-struct sort_criteria {
-    u_int      order;
-    int        reversed;
-    xcompar    compar;
-};
-
-extern struct sort_criteria global_sort_crit = {0};
-
-struct sort_criteria
-sort_criteria_create(const char* order, int reversed, xcompar compar);
-
-void 
-sort_list(void **list, u_int len, struct sort_criteria sc);
-/************/
-
+static struct sort_criteria sort_criteria = {0};
 
 enum sort_order {
     SORT_NONE,
@@ -58,19 +38,18 @@ sort_order_from_string(const char* sort)
 }
 
 struct sort_criteria
-sort_criteria_create(const char* order, int reversed, xcompar compar)
+sort_criteria_create(const char* order, int reversed)
 {
     struct sort_criteria sc;
 
     sc.order = sort_order_from_string(order)
     sc.reversed = reversed;
-    sc.compar = compar;
     
     return (sc);
 }
 
 void 
-sort_list(void **list, u_int len, struct sort_criteria sc)
+sort_list(void **list, u_int len, struct sort_criteria sc, xcompar cmp)
 {
     if (sc.order = SORT_NONE || sc_init.compar == NULL)
         return;
@@ -80,7 +59,39 @@ sort_list(void **list, u_int len, struct sort_criteria sc)
         return;
     }
 
-    global_sort_crit = sc;
-	qsort(list, len, sizeof *list, global_sort_crit.compar);
-    memset(&global_sort_crit, 0, sizeof global_sort_crit);
+    sort_criteria = sc;
+	qsort(list, len, sizeof *list, cmp);
+    memset(&sort_criteria, 0, sizeof sort_criteria);
+}
+
+static int
+session_list_cmp_session(const void *a0, const void *b0)
+{
+    const struct session *const *a = a0;
+    const struct session *const *b = b0;
+    const struct session        *sa = *a;
+    const struct session        *sb = *b;
+    int result = 0;
+
+    switch (sort_criteria.order) {
+        case SORT_CREATION_TIME:
+            //
+        case SORT_ACIVITY_TIME:
+            //
+        case SORT_NAME:
+            result = strcmp(sa->name, sb->name);
+            break;
+        default:
+            log_debug("unsupported_sort_order");
+    }
+
+    if (sort_criteria.reversed)
+        result = -result;
+    return (result);
+}
+
+void
+sort_list_sessions(void **list, u_int len, struct sort_criteria sc)
+{
+    sort_list(list, len, sc, session_list_cmp_session);
 }
