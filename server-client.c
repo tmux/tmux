@@ -403,13 +403,13 @@ server_client_set_session(struct client *c, struct session *s)
 	if (old != NULL && old->curw != NULL)
 		window_update_focus(old->curw->window);
 	if (s != NULL) {
+		s->curw->window->latest = c;
 		recalculate_sizes();
 		window_update_focus(s->curw->window);
 		session_update_activity(s, NULL);
 		session_theme_changed(s);
 		gettimeofday(&s->last_attached_time, NULL);
 		s->curw->flags &= ~WINLINK_ALERTFLAGS;
-		s->curw->window->latest = c;
 		alerts_check_session(s);
 		tty_update_client_offset(c);
 		status_timer_start(c);
