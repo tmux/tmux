@@ -164,20 +164,19 @@ popup_mode_cb(__unused struct client *c, void *data, u_int *cx, u_int *cy)
 }
 
 /* Return parts of the input range which are not obstructed by the popup. */
-static void
-popup_check_cb(struct client* c, void *data, u_int px, u_int py, u_int nx,
-    struct overlay_ranges *r)
+static struct visible_ranges *
+popup_check_cb(struct client* c, void *data, u_int px, u_int py, u_int nx)
 {
 	struct popup_data	*pd = data;
-	struct overlay_ranges	 or[2];
+	struct visible_ranges	*or[2], *r;
 	u_int			 i, j, k = 0;
 
 	if (pd->md != NULL) {
 		/* Check each returned range for the menu against the popup. */
-		menu_check_cb(c, pd->md, px, py, nx, r);
-		for (i = 0; i < 2; i++) {
-			server_client_overlay_range(pd->px, pd->py, pd->sx,
-			    pd->sy, r->px[i], py, r->nx[i], &or[i]);
+		r = menu_check_cb(c, pd->md, px, py, nx);
+		for (i = 0; i < r->used; i++) {
+			or[i] = server_client_overlay_range(pd->px, pd->py, pd->sx,
+			    pd->sy, r->px[i], py, r->nx[i]);
 		}
 
 		/*
@@ -185,27 +184,21 @@ popup_check_cb(struct client* c, void *data, u_int px, u_int py, u_int nx,
 		 * ordered from left to right. Collect them in the output.
 		 */
 		for (i = 0; i < 2; i++) {
-			/* Each or[i] only has 2 ranges. */
-			for (j = 0; j < 2; j++) {
-				if (or[i].nx[j] > 0) {
-					r->px[k] = or[i].px[j];
-					r->nx[k] = or[i].nx[j];
+			/* Each vr[i] only has 2 ranges. */
+			for (j = 0; j < r->used; j++) {
+				if (or[i]->nx[j] > 0) {
+					r->px[k] = or[i]->px[j];
+					r->nx[k] = or[i]->nx[j];
 					k++;
 				}
 			}
 		}
 
-		/* Zero remaining ranges if any. */
-		for (i = k; i < OVERLAY_MAX_RANGES; i++) {
-			r->px[i] = 0;
-			r->nx[i] = 0;
-		}
-
-		return;
+		return (r);
 	}
 
-	server_client_overlay_range(pd->px, pd->py, pd->sx, pd->sy, px, py, nx,
-	    r);
+	return (server_client_overlay_range(pd->px, pd->py, pd->sx, pd->sy, px, py,
+	    nx));
 }
 
 static void
