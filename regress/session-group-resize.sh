@@ -3,6 +3,8 @@
 # Test that window-size=latest resizes windows correctly when switching
 # windows in session groups. When a client switches to a window, it should
 # resize immediately to match that client's size.
+#
+# Tests both switch-client and select-window, which use different code paths.
 
 PATH=/bin:/usr/bin
 TERM=screen
@@ -13,7 +15,8 @@ $TMUX kill-server 2>/dev/null
 
 TMP1=$(mktemp)
 TMP2=$(mktemp)
-trap "rm -f $TMP1 $TMP2" 0 1 15
+TMP3=$(mktemp)
+trap "rm -f $TMP1 $TMP2 $TMP3" 0 1 15
 
 # Create a session with two windows, staying on window 0.
 $TMUX -f/dev/null new -d -s test -x 20 -y 6 || exit 1
@@ -43,13 +46,25 @@ done
 # Wait briefly for the switch-client command to execute, then check.
 # The resize should happen immediately (within 0.2s).
 sleep 0.2
-OUT=$($TMUX display -t test:1 -p '#{window_width}x#{window_height}' 2>/dev/null)
+OUT1=$($TMUX display -t test:1 -p '#{window_width}x#{window_height}' 2>/dev/null)
+
+# Also test selectw (select-window) which uses a different code path.
+# Create a third grouped session with a 25x8 client, switch to window 1
+# using selectw instead of switch-client.
+(echo "refresh-client -C 25,8"; echo "selectw -t :1"; sleep 5) |
+	$TMUX -f/dev/null -C new -t test -x 25 -y 8 >$TMP3 2>&1 &
+
+sleep 0.2
+OUT2=$($TMUX display -t test:1 -p '#{window_width}x#{window_height}' 2>/dev/null)
 
 # Clean up - kill server (terminates clients). Don't wait for background
 # sleeps; they'll be orphaned but harmless.
 $TMUX kill-server 2>/dev/null
 
 # Window 1 should have resized to 30x10 (the second client's size).
-[ "$OUT" = "30x10" ] || exit 1
+[ "$OUT1" = "30x10" ] || { echo "switch-client resize failed: $OUT1"; exit 1; }
+
+# Window 1 should have resized to 25x8 (the third client's size).
+[ "$OUT2" = "25x8" ] || { echo "selectw resize failed: $OUT2"; exit 1; }
 
 exit 0
