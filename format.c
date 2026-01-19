@@ -5554,7 +5554,36 @@ format_expand1(struct format_expand_state *es, const char *fmt)
 	off = 0;
 
 	while (*fmt != '\0') {
+		if (*fmt == '%') {
+			if (ft->flags & FORMAT_ARGS) {
+				char *value;
+				size_t valuelen;
+
+				if (fmt[1] == '%') {
+					fmt++;
+					goto copy;
+				}
+				if (isdigit((u_char)fmt[1])) {
+					char key[2] = { fmt[1], '\0' };
+					value = format_find(ft, key, 0, NULL);
+					if (value != NULL) {
+						valuelen = strlen(value);
+						while (len - off < valuelen + 1) {
+							buf = xreallocarray(buf, 2, len);
+							len *= 2;
+						}
+						memcpy(buf + off, value, valuelen);
+						off += valuelen;
+						free(value);
+						fmt += 2;
+						continue;
+					}
+				}
+			}
+		}
+
 		if (*fmt != '#') {
+		copy:
 			while (len - off < 2) {
 				buf = xreallocarray(buf, 2, len);
 				len *= 2;
@@ -6009,4 +6038,11 @@ format_grid_hyperlink(struct grid *gd, u_int x, u_int y, struct screen* s)
 	if (!hyperlinks_get(s->hyperlinks, gc.link, &uri, NULL, NULL))
 		return (NULL);
 	return (xstrdup(uri));
+}
+
+/* Set flags on format tree. */
+void
+format_set_flags(struct format_tree *ft, int flags)
+{
+	ft->flags |= flags;
 }

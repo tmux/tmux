@@ -133,14 +133,16 @@ cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 	if (!args_has(args, 'C')) {
 		cmd = args_string(args, 0);
 		if (cmd != NULL) {
-			char *interpolated_cmd = xstrdup(cmd);
+			struct format_tree *ft = format_create_from_target(item);
+			char key[16];
+
+			format_set_flags(ft, FORMAT_ARGS);
 			for (u_int i = 1; i < args_count(args); i++) {
-				char *new_cmd = cmd_template_replace(interpolated_cmd, args_string(args, i), i);
-				free(interpolated_cmd);
-				interpolated_cmd = new_cmd;
+				snprintf(key, sizeof key, "%u", i);
+				format_add(ft, key, "%s", args_string(args, i));
 			}
-			cdata->cmd = format_single_from_target(item, interpolated_cmd);
-			free(interpolated_cmd);
+			cdata->cmd = format_expand(ft, cmd);
+			format_free(ft);
 		}
 	} else {
 		cdata->state = args_make_commands_prepare(self, item, 0, NULL,

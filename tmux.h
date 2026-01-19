@@ -2333,6 +2333,7 @@ char		*paste_make_sample(struct paste_buffer *);
 #define FORMAT_NOJOBS 0x4
 #define FORMAT_VERBOSE 0x8
 #define FORMAT_LAST 0x10
+#define FORMAT_ARGS 0x20
 #define FORMAT_NONE 0
 #define FORMAT_PANE 0x80000000U
 #define FORMAT_WINDOW 0x40000000U
@@ -2381,6 +2382,7 @@ char		*format_grid_word(struct grid *, u_int, u_int);
 char		*format_grid_hyperlink(struct grid *, u_int, u_int,
 		     struct screen *);
 char		*format_grid_line(struct grid *, u_int);
+void		 format_set_flags(struct format_tree *, int);
 
 /* format-draw.c */
 void		 format_draw(struct screen_write_ctx *,
