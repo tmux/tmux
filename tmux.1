@@ -6718,7 +6718,7 @@ See
 for possible values for
 .Ar prompt-type .
 .It Xo Ic command-prompt
-.Op Fl 1bFiklN
+.Op Fl 1beFiklN
 .Op Fl I Ar inputs
 .Op Fl p Ar prompts
 .Op Fl t Ar target-client
@@ -6791,6 +6791,10 @@ makes the prompt only accept numeric key presses.
 .Fl i
 executes the command every time the prompt input changes instead of when the
 user exits the command prompt.
+.Fl e
+makes
+.Em BSpace
+cancel an empty prompt.
 .Pp
 .Fl T
 tells
