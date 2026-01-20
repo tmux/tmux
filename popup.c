@@ -183,9 +183,9 @@ popup_check_cb(struct client* c, void *data, u_int px, u_int py, u_int nx)
 		 * or has up to OVERLAY_MAX_RANGES non-overlapping ranges,
 		 * ordered from left to right. Collect them in the output.
 		 */
-		for (i = 0; i < 2; i++) {
+		for (i = 0; i < r->used; i++) {
 			/* Each vr[i] only has 2 ranges. */
-			for (j = 0; j < r->used; j++) {
+			for (j = 0; j < or[i]->used; j++) {
 				if (or[i]->nx[j] > 0) {
 					r->px[k] = or[i]->px[j];
 					r->nx[k] = or[i]->nx[j];
