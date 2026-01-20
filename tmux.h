@@ -3176,6 +3176,7 @@ void	 screen_select_cell(struct screen *, struct grid_cell *,
 void	 screen_alternate_on(struct screen *, struct grid_cell *, int);
 void	 screen_alternate_off(struct screen *, struct grid_cell *, int);
 const char *screen_mode_to_string(int);
+const char *screen_print(struct screen *);
 
 /* window.c */
 extern struct windows windows;
