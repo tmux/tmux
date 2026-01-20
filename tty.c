@@ -1569,8 +1569,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 		grid_view_get_cell(gd, px + i, py, &gc);
 		gcp = tty_check_codeset(tty, &gc);
 		if (len != 0 &&
-		    (!tty_check_overlay(tty, atx + ux + width, aty) ||
-		    (gcp->attr & GRID_ATTR_CHARSET) ||
+		    ((gcp->attr & GRID_ATTR_CHARSET) ||
 		    gcp->flags != last.flags ||
 		    gcp->attr != last.attr ||
 		    gcp->fg != last.fg ||
