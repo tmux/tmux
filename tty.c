@@ -1423,6 +1423,20 @@ tty_check_codeset(struct tty *tty, const struct grid_cell *gc)
 }
 
 /*
+ * Compute the effective display width (in terminal columns) of a grid cell
+ * when it will be drawn at terminal column atcol.
+ */
+u_int
+tty_cell_width(const struct grid_cell *gcp, u_int atcol)
+{
+	/* Tabs expand to the next tab stop (tab width = 8). */
+	if (gcp->flags & GRID_FLAG_TAB)
+		return (8 - (atcol % 8));
+	/* Normal characters: width stored in cell (1 or 2 usually). */
+	return (gcp->data.width);
+}
+
+/*
  * Check if a single character is obstructed by the overlay and return a
  * boolean.
  */

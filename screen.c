@@ -770,3 +770,85 @@ screen_mode_to_string(int mode)
 	tmp[strlen(tmp) - 1] = '\0';
 	return (tmp);
 }
+
+/* Debug function. Usage in gdb:
+ * printf "%S",screen_print(s)
+ */
+__unused char *
+screen_print(struct screen *s) {
+	static char		*buf = NULL, linum[16];
+	static size_t		 bufsz = 0;
+	const char		*acs;
+	u_int			 x, y;
+	size_t			 last = 0, n;
+	struct utf8_data	 ud;
+	struct grid_line	*gl;
+	struct grid_cell_entry	*gce;
+
+	if (buf == NULL) {
+		buf = xcalloc(1024, sizeof(char));
+		bufsz = 1024;
+	}
+
+	for (y = 0; y < screen_hsize(s)+s->grid->sy; y++) {
+		if (bufsz < last + 10)
+			buf = xreallocarray(buf, bufsz *= 2, sizeof(char));
+		sprintf(linum, "%.4d ", y);
+		memcpy(buf + last, linum, strlen(linum));
+		last += strlen(linum);
+		buf[last++] = '"';
+		gl = &s->grid->linedata[y];
+
+		for (x = 0; x < gl->cellused; x++) {
+			gce = &gl->celldata[x];
+
+			if (gce->flags & GRID_FLAG_PADDING)
+				continue;
+
+			if (~gce->flags & GRID_FLAG_EXTENDED) {
+				/* single-byte cell stored inline */
+				if (bufsz < last + 1)
+					buf = xreallocarray(buf, bufsz *= 2,
+					    sizeof(char));
+				buf[last++] = gce->data.data;
+			} else if (gce->flags & GRID_FLAG_TAB) {
+				if (bufsz < last + 1)
+					buf = xreallocarray(buf, bufsz *= 2,
+					    sizeof(char));
+				buf[last++] = '\t';
+			} else if ((gce->data.data & 0xff) &&
+				  (gce->flags & GRID_ATTR_CHARSET)) {
+				/* single-byte ACS inline: try to map */
+				acs = tty_acs_get(NULL, gce->data.data);
+				if (acs != NULL) {
+					n = strlen(acs);
+					memcpy(buf + last, acs, n);
+					last += n;
+					continue;
+				}
+				buf[last++] = gce->data.data;
+			} else {
+				/* extended cell: convert utf8_char -> bytes */
+				utf8_to_data(gl->extddata[gce->offset].data,
+				    &ud);
+				if (ud.size > 0) {
+					if (bufsz < last + ud.size)
+						buf = xreallocarray(buf,
+						      bufsz *= 2, sizeof(char));
+					memcpy(buf + last, ud.data, ud.size);
+					last += ud.size;
+				}
+			}
+		}
+
+		if (bufsz < last + 3)
+			buf = xreallocarray(buf, bufsz *= 2, sizeof(char));
+		buf[last++] = '"';
+		buf[last++] = '\n';
+	}
+
+	if (bufsz < last + 1)
+		buf = xreallocarray(buf, bufsz *= 2, sizeof(char));
+	buf[last] = '\0';
+	return (buf);
+}

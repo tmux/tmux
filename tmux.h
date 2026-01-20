@@ -2554,6 +2554,8 @@ void	tty_stop_tty(struct tty *);
 void	tty_set_title(struct tty *, const char *);
 void	tty_set_path(struct tty *, const char *);
 void	tty_update_mode(struct tty *, int, struct screen *);
+struct visible_ranges *tty_check_overlay_range(struct tty *, u_int, u_int,
+	    u_int);
 void	tty_draw_line(struct tty *, struct screen *, u_int, u_int, u_int,
 	    u_int, u_int, const struct grid_cell *, struct colour_palette *);
 
@@ -2568,6 +2570,7 @@ void	tty_close(struct tty *);
 void	tty_free(struct tty *);
 void	tty_update_features(struct tty *);
 void	tty_set_selection(struct tty *, const char *, const char *, size_t);
+u_int	tty_cell_width(const struct grid_cell *, u_int);
 void	tty_write(void (*)(struct tty *, const struct tty_ctx *),
 	    struct tty_ctx *);
 void	tty_cmd_alignmenttest(struct tty *, const struct tty_ctx *);
@@ -3232,6 +3235,7 @@ void	 screen_select_cell(struct screen *, struct grid_cell *,
 void	 screen_alternate_on(struct screen *, struct grid_cell *, int);
 void	 screen_alternate_off(struct screen *, struct grid_cell *, int);
 const char *screen_mode_to_string(int);
+__unused char * screen_print(struct screen *s);
 
 /* window.c */
 extern struct windows windows;
