@@ -771,13 +771,13 @@ screen_mode_to_string(int mode)
 	return (tmp);
 }
 
+#ifdef DEBUG
 /* Debug function. Usage in gdb:
  * printf "%S",screen_print(s)
  */
 __unused char *
 screen_print(struct screen *s) {
-	static char		*buf = NULL, linum[16];
-	static size_t		 bufsz = 0;
+	static char		 buf[16384];
 	const char		*acs;
 	u_int			 x, y;
 	size_t			 last = 0, n;
@@ -785,17 +785,10 @@ screen_print(struct screen *s) {
 	struct grid_line	*gl;
 	struct grid_cell_entry	*gce;
 
-	if (buf == NULL) {
-		buf = xcalloc(1024, sizeof(char));
-		bufsz = 1024;
-	}
-
 	for (y = 0; y < screen_hsize(s)+s->grid->sy; y++) {
-		if (bufsz < last + 10)
-			buf = xreallocarray(buf, bufsz *= 2, sizeof(char));
-		sprintf(linum, "%.4d ", y);
-		memcpy(buf + last, linum, strlen(linum));
-		last += strlen(linum);
+		if (last + 6 > sizeof buf) goto out;
+		n = snprintf(buf + last, sizeof buf - last, "%.4d ", y);
+		last += n;
 		buf[last++] = '"';
 		gl = &s->grid->linedata[y];
 
@@ -807,14 +800,10 @@ screen_print(struct screen *s) {
 
 			if (~gce->flags & GRID_FLAG_EXTENDED) {
 				/* single-byte cell stored inline */
-				if (bufsz < last + 1)
-					buf = xreallocarray(buf, bufsz *= 2,
-					    sizeof(char));
+				if (last + 2 > sizeof buf) goto out;
 				buf[last++] = gce->data.data;
 			} else if (gce->flags & GRID_FLAG_TAB) {
-				if (bufsz < last + 1)
-					buf = xreallocarray(buf, bufsz *= 2,
-					    sizeof(char));
+				if (last + 2 > sizeof buf) goto out;
 				buf[last++] = '\t';
 			} else if ((gce->data.data & 0xff) &&
 				  (gce->flags & GRID_ATTR_CHARSET)) {
@@ -822,6 +811,7 @@ screen_print(struct screen *s) {
 				acs = tty_acs_get(NULL, gce->data.data);
 				if (acs != NULL) {
 					n = strlen(acs);
+					if (last + n + 1 > sizeof buf) goto out;
 					memcpy(buf + last, acs, n);
 					last += n;
 					continue;
@@ -832,23 +822,20 @@ screen_print(struct screen *s) {
 				utf8_to_data(gl->extddata[gce->offset].data,
 				    &ud);
 				if (ud.size > 0) {
-					if (bufsz < last + ud.size)
-						buf = xreallocarray(buf,
-						      bufsz *= 2, sizeof(char));
+					if (last + ud.size + 1 > sizeof buf)
+						goto out;
 					memcpy(buf + last, ud.data, ud.size);
 					last += ud.size;
 				}
 			}
 		}
 
-		if (bufsz < last + 3)
-			buf = xreallocarray(buf, bufsz *= 2, sizeof(char));
+		if (last + 3 > sizeof buf) goto out;
 		buf[last++] = '"';
 		buf[last++] = '\n';
 	}
 
-	if (bufsz < last + 1)
-		buf = xreallocarray(buf, bufsz *= 2, sizeof(char));
-	buf[last] = '\0';
+out:	buf[last] = '\0';
 	return (buf);
 }
+#endif
