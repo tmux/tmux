@@ -61,15 +61,10 @@ static void	tty_region(struct tty *, u_int, u_int);
 static void	tty_margin_pane(struct tty *, const struct tty_ctx *);
 static void	tty_margin(struct tty *, u_int, u_int);
 static int	tty_large_region(struct tty *, const struct tty_ctx *);
-static int	tty_fake_bce(const struct tty *, const struct grid_cell *,
-		    u_int);
 static void	tty_redraw_region(struct tty *, const struct tty_ctx *);
 static void	tty_emulate_repeat(struct tty *, enum tty_code_code,
 		    enum tty_code_code, u_int);
-static void	tty_repeat_space(struct tty *, u_int);
 static void	tty_draw_pane(struct tty *, const struct tty_ctx *, u_int);
-static void	tty_default_attributes(struct tty *, const struct grid_cell *,
-		    struct colour_palette *, u_int, struct hyperlinks *);
 static int	tty_check_overlay(struct tty *, u_int, u_int);
 static void	tty_check_overlay_range(struct tty *, u_int, u_int, u_int,
 		    struct overlay_ranges *);
@@ -912,7 +907,7 @@ tty_emulate_repeat(struct tty *tty, enum tty_code_code code,
 	}
 }
 
-static void
+void
 tty_repeat_space(struct tty *tty, u_int n)
 {
 	static char s[500];
@@ -1071,7 +1066,7 @@ tty_large_region(__unused struct tty *tty, const struct tty_ctx *ctx)
  * Return if BCE is needed but the terminal doesn't have it - it'll need to be
  * emulated.
  */
-static int
+int
 tty_fake_bce(const struct tty *tty, const struct grid_cell *gc, u_int bg)
 {
 	if (tty_term_flag(tty->term, TTYC_BCE))
@@ -1461,191 +1456,6 @@ tty_check_overlay_range(struct tty *tty, u_int px, u_int py, u_int nx,
 	}
 
 	c->overlay_check(c, c->overlay_data, px, py, nx, r);
-}
-
-void
-tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
-    u_int atx, u_int aty, const struct grid_cell *defaults,
-    struct colour_palette *palette)
-{
-	struct grid		*gd = s->grid;
-	struct grid_cell	 gc, last;
-	const struct grid_cell	*gcp;
-	struct grid_line	*gl;
-	struct client		*c = tty->client;
-	struct overlay_ranges	 r;
-	u_int			 i, j, ux, sx, width, hidden, eux, nxx;
-	u_int			 cellsize;
-	int			 flags, cleared = 0, wrapped = 0;
-	char			 buf[512];
-	size_t			 len;
-
-	log_debug("%s: px=%u py=%u nx=%u atx=%u aty=%u", __func__,
-	    px, py, nx, atx, aty);
-	log_debug("%s: defaults: fg=%d, bg=%d", __func__, defaults->fg,
-	    defaults->bg);
-
-	/*
-	 * py is the line in the screen to draw.
-	 * px is the start x and nx is the width to draw.
-	 * atx,aty is the line on the terminal to draw it.
-	 */
-
-	flags = (tty->flags & TTY_NOCURSOR);
-	tty->flags |= TTY_NOCURSOR;
-	tty_update_mode(tty, tty->mode, s);
-
-	tty_region_off(tty);
-	tty_margin_off(tty);
-
-	/*
-	 * Clamp the width to cellsize - note this is not cellused, because
-	 * there may be empty background cells after it (from BCE).
-	 */
-	sx = screen_size_x(s);
-	if (nx > sx)
-		nx = sx;
-	cellsize = grid_get_line(gd, gd->hsize + py)->cellsize;
-	if (sx > cellsize)
-		sx = cellsize;
-	if (sx > tty->sx)
-		sx = tty->sx;
-	if (sx > nx)
-		sx = nx;
-	ux = 0;
-
-	if (py == 0)
-		gl = NULL;
-	else
-		gl = grid_get_line(gd, gd->hsize + py - 1);
-	if (gl == NULL ||
-	    (~gl->flags & GRID_LINE_WRAPPED) ||
-	    atx != 0 ||
-	    tty->cx < tty->sx ||
-	    nx < tty->sx) {
-		if (nx < tty->sx &&
-		    atx == 0 &&
-		    px + sx != nx &&
-		    tty_term_has(tty->term, TTYC_EL1) &&
-		    !tty_fake_bce(tty, defaults, 8) &&
-		    c->overlay_check == NULL) {
-			tty_default_attributes(tty, defaults, palette, 8,
-			    s->hyperlinks);
-			tty_cursor(tty, nx - 1, aty);
-			tty_putcode(tty, TTYC_EL1);
-			cleared = 1;
-		}
-	} else {
-		log_debug("%s: wrapped line %u", __func__, aty);
-		wrapped = 1;
-	}
-
-	memcpy(&last, &grid_default_cell, sizeof last);
-	len = 0;
-	width = 0;
-
-	for (i = 0; i < sx; i++) {
-		grid_view_get_cell(gd, px + i, py, &gc);
-		gcp = tty_check_codeset(tty, &gc);
-		if (len != 0 &&
-		    (!tty_check_overlay(tty, atx + ux + width, aty) ||
-		    (gcp->attr & GRID_ATTR_CHARSET) ||
-		    gcp->flags != last.flags ||
-		    gcp->attr != last.attr ||
-		    gcp->fg != last.fg ||
-		    gcp->bg != last.bg ||
-		    gcp->us != last.us ||
-		    gcp->link != last.link ||
-		    ux + width + gcp->data.width > nx ||
-		    (sizeof buf) - len < gcp->data.size)) {
-			tty_attributes(tty, &last, defaults, palette,
-			    s->hyperlinks);
-			if (last.flags & GRID_FLAG_CLEARED) {
-				log_debug("%s: %zu cleared", __func__, len);
-				tty_clear_line(tty, defaults, aty, atx + ux,
-				    width, last.bg);
-			} else {
-				if (!wrapped || atx != 0 || ux != 0)
-					tty_cursor(tty, atx + ux, aty);
-				tty_putn(tty, buf, len, width);
-			}
-			ux += width;
-
-			len = 0;
-			width = 0;
-			wrapped = 0;
-		}
-
-		if (gcp->flags & GRID_FLAG_SELECTED)
-			screen_select_cell(s, &last, gcp);
-		else
-			memcpy(&last, gcp, sizeof last);
-
-		tty_check_overlay_range(tty, atx + ux, aty, gcp->data.width,
-		    &r);
-		hidden = 0;
-		for (j = 0; j < OVERLAY_MAX_RANGES; j++)
-			hidden += r.nx[j];
-		hidden = gcp->data.width - hidden;
-		if (hidden != 0 && hidden == gcp->data.width) {
-			if (~gcp->flags & GRID_FLAG_PADDING)
-				ux += gcp->data.width;
-		} else if (hidden != 0 || ux + gcp->data.width > nx) {
-			if (~gcp->flags & GRID_FLAG_PADDING) {
-				tty_attributes(tty, &last, defaults, palette,
-				    s->hyperlinks);
-				for (j = 0; j < OVERLAY_MAX_RANGES; j++) {
-					if (r.nx[j] == 0)
-						continue;
-					/* Effective width drawn so far. */
-					eux = r.px[j] - atx;
-					if (eux < nx) {
-						tty_cursor(tty, r.px[j], aty);
-						nxx = nx - eux;
-						if (r.nx[j] > nxx)
-							r.nx[j] = nxx;
-						tty_repeat_space(tty, r.nx[j]);
-						ux = eux + r.nx[j];
-					}
-				}
-			}
-		} else if (gcp->attr & GRID_ATTR_CHARSET) {
-			tty_attributes(tty, &last, defaults, palette,
-			    s->hyperlinks);
-			tty_cursor(tty, atx + ux, aty);
-			for (j = 0; j < gcp->data.size; j++)
-				tty_putc(tty, gcp->data.data[j]);
-			ux += gcp->data.width;
-		} else if (~gcp->flags & GRID_FLAG_PADDING) {
-			memcpy(buf + len, gcp->data.data, gcp->data.size);
-			len += gcp->data.size;
-			width += gcp->data.width;
-		}
-	}
-	if (len != 0 && ((~last.flags & GRID_FLAG_CLEARED) || last.bg != 8)) {
-		tty_attributes(tty, &last, defaults, palette, s->hyperlinks);
-		if (last.flags & GRID_FLAG_CLEARED) {
-			log_debug("%s: %zu cleared (end)", __func__, len);
-			tty_clear_line(tty, defaults, aty, atx + ux, width,
-			    last.bg);
-		} else {
-			if (!wrapped || atx != 0 || ux != 0)
-				tty_cursor(tty, atx + ux, aty);
-			tty_putn(tty, buf, len, width);
-		}
-		ux += width;
-	}
-
-	if (!cleared && ux < nx) {
-		log_debug("%s: %u to end of line (%zu cleared)", __func__,
-		    nx - ux, len);
-		tty_default_attributes(tty, defaults, palette, 8,
-		    s->hyperlinks);
-		tty_clear_line(tty, defaults, aty, atx + ux, nx - ux, 8);
-	}
-
-	tty->flags = (tty->flags & ~TTY_NOCURSOR) | flags;
-	tty_update_mode(tty, tty->mode, s);
 }
 
 #ifdef ENABLE_SIXEL
@@ -3203,7 +3013,7 @@ tty_default_colours(struct grid_cell *gc, struct window_pane *wp)
 	}
 }
 
-static void
+void
 tty_default_attributes(struct tty *tty, const struct grid_cell *defaults,
     struct colour_palette *palette, u_int bg, struct hyperlinks *hl)
 {

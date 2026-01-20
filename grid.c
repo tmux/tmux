@@ -235,7 +235,7 @@ grid_check_y(struct grid *gd, const char *from, u_int py)
 int
 grid_cells_look_equal(const struct grid_cell *gc1, const struct grid_cell *gc2)
 {
-	int flags1 = gc1->flags, flags2 = gc2->flags;;
+	int flags1 = gc1->flags, flags2 = gc2->flags;
 
 	if (gc1->fg != gc2->fg || gc1->bg != gc2->bg)
 		return (0);
