@@ -20,7 +20,12 @@ LDADD = $(LIBOBJS)
 
 # Set flags for gcc.
 if IS_GCC
-AM_CFLAGS += -std=gnu99 -O2
+AM_CFLAGS += -std=gnu99
+if IS_OPTIMIZED
+AM_CFLAGS += -O2
+else
+AM_CFLAGS += -O0
+endif
 if IS_DEBUG
 AM_CFLAGS += -g
 AM_CFLAGS += -Wno-long-long -Wall -W -Wformat=2
