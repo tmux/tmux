@@ -184,7 +184,7 @@ popup_check_cb(struct client* c, void *data, u_int px, u_int py, u_int nx)
 		 * ordered from left to right. Collect them in the output.
 		 */
 		for (i = 0; i < r->used; i++) {
-			/* Each vr[i] only has 2 ranges. */
+			/* Each or[i] only has up to 2 ranges. */
 			for (j = 0; j < or[i]->used; j++) {
 				if (or[i]->nx[j] > 0) {
 					r->px[k] = or[i]->px[j];
