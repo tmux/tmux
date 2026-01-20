@@ -988,7 +988,6 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 		log_debug("%s: %s %%%u line %u,%u at %u,%u, width %u",
 		    __func__, c->name, wp->id, i, j, x, y, width);
 
-		/* xxxx Breaking up the tty_draw_line like this isn't fully working. */
 		vr = tty_check_overlay_range(tty, x, y, width);
 
 		tty_default_colours(&defaults, wp);
