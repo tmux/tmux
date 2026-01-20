@@ -817,13 +817,13 @@ screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j)
 	struct window_pane	*wp, *active = server_client_get_pane(c);
 	struct grid_cell	 gc;
 	const struct grid_cell	*tmp;
-	struct overlay_ranges	 r;
+	struct visible_ranges	*r;
 	u_int			 cell_type, x = ctx->ox + i, y = ctx->oy + j;
 	int			 isolates;
 
 	if (c->overlay_check != NULL) {
-		c->overlay_check(c, c->overlay_data, x, y, 1, &r);
-		if (r.nx[0] + r.nx[1] == 0)
+		r = c->overlay_check(c, c->overlay_data, x, y, 1);
+		if (r->nx[0] + r->nx[1] == 0)
 			return;
 	}
 
@@ -943,7 +943,8 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 	struct screen		*s = wp->screen;
 	struct colour_palette	*palette = &wp->palette;
 	struct grid_cell	 defaults;
-	u_int			 i, j, top, x, y, width;
+	struct visible_ranges	*vr;
+	u_int			 i, j, top, x, y, px, width, r;
 
 	if (wp->base.mode & MODE_SYNC)
 		screen_write_stop_sync(wp);
@@ -987,8 +988,22 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 		log_debug("%s: %s %%%u line %u,%u at %u,%u, width %u",
 		    __func__, c->name, wp->id, i, j, x, y, width);
 
+		vr = tty_check_overlay_range(tty, x, y, width);
+
 		tty_default_colours(&defaults, wp);
-		tty_draw_line(tty, s, i, j, width, x, y, &defaults, palette);
+
+		for (r=0; r < vr->used; r++) {
+			if (vr->nx[r] == 0)
+				continue;
+			/* Convert window coordinates to tty coordinates. */
+			px = vr->px[r];
+			/* i is px of cell, add px of region, sub the
+			 * pane offset. If you don't sub offset,
+			 * contents of pane shifted. note: i apparently unnec. 
+			 */
+			tty_draw_line(tty, s, /* i + */ vr->px[r] - wp->xoff, j,
+			    vr->nx[r], px, y, &defaults, palette);
+		}
 	}
 
 #ifdef ENABLE_SIXEL
