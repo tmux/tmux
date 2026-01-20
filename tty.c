@@ -1202,6 +1202,9 @@ tty_clear_line(struct tty *tty, const struct grid_cell *defaults, u_int py,
 	 * Couldn't use an escape sequence, use spaces. Clear only the visible
 	 * bit if there is an overlay.
 	 */
+	tty_cursor(tty, px, py);
+	tty_repeat_space(tty, nx);
+	/*
 	r = tty_check_overlay_range(tty, px, py, nx);
 	for (i = 0; i < r->used; i++) {
 		if (r->nx[i] == 0)
@@ -1209,6 +1212,7 @@ tty_clear_line(struct tty *tty, const struct grid_cell *defaults, u_int py,
 		tty_cursor(tty, r->px[i], py);
 		tty_repeat_space(tty, r->nx[i]);
 	}
+	*/
 }
 
 /* Clear a line, adjusting to visible part of pane. */
@@ -1491,9 +1495,9 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	struct grid_line	*gl;
 	struct client		*c = tty->client;
 	struct visible_ranges	 *r;
-	u_int			 i, j, ux, sx, width, hidden, eux, nxx;
+	u_int			 i, j, ux, sx, width, eux, nxx;
 	u_int			 cellsize;
-	int			 flags, cleared = 0, wrapped = 0;
+	int			 flags, cleared = 0, wrapped = 0, hidden;
 	char			 buf[512];
 	size_t			 len;
 
@@ -1598,19 +1602,16 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 		else
 			memcpy(&last, gcp, sizeof last);
 
-		r = tty_check_overlay_range(tty, atx + ux, aty,
-		    gcp->data.width);
-		hidden = 0;
-		for (j = 0; j < r->used; j++)
-			hidden += r->nx[j];
-		hidden = gcp->data.width - hidden;
-		if (hidden != 0 && hidden == gcp->data.width) {
+		hidden = tty_cell_width(gcp, px + i) - (sx - i);
+		if (hidden > 0 && hidden == gcp->data.width) {
 			if (~gcp->flags & GRID_FLAG_PADDING)
 				ux += gcp->data.width;
-		} else if (hidden != 0 || ux + gcp->data.width > nx) {
+		} else if (hidden > 0 || ux + gcp->data.width > nx) {
 			if (~gcp->flags & GRID_FLAG_PADDING) {
 				tty_attributes(tty, &last, defaults, palette,
 				    s->hyperlinks);
+				tty_repeat_space(tty, sx - i);
+#if 0
 				for (j = 0; j < r->used; j++) {
 					if (r->nx[j] == 0)
 						continue;
@@ -1625,6 +1626,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 						ux = eux + r->nx[j];
 					}
 				}
+#endif
 			}
 		} else if (gcp->attr & GRID_ATTR_CHARSET) {
 			tty_attributes(tty, &last, defaults, palette,
