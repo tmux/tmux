@@ -2255,12 +2255,6 @@ struct spawn_context {
 #define SPAWN_ZOOM 0x80
 };
 
-/* Mode tree sort order. */
-struct mode_tree_sort_criteria {
-	u_int	field;
-	int	reversed;
-};
-
 /* tmux.c */
 extern struct options	*global_options;
 extern struct options	*global_s_options;
@@ -2329,6 +2323,39 @@ int		 paste_rename(const char *, const char *, char **);
 int		 paste_set(char *, size_t, const char *, char **);
 void		 paste_replace(struct paste_buffer *, char *, size_t);
 char		*paste_make_sample(struct paste_buffer *);
+
+/* sort.c */
+typedef int (*xcompar)(const void *, const void *); // helpful?
+
+enum sort_order {
+    SORT_NONE,
+    SORT_INDEX,
+    SORT_ORDER,
+    SORT_SIZE,
+    SORT_NAME,
+    SORT_CREATION,
+    SORT_ACTIVITY,
+    SORT_INVALID,
+};
+
+struct sort_ordering {
+    enum sort_order *data;
+    u_int           len;
+};
+
+struct sort_criteria {
+    enum sort_order      order;
+    int                  reversed;
+    xcompar              cmp;
+    struct sort_ordering ordering;
+};
+extern struct sort_criteria sort_criteria;
+
+void sort_criteria_init(struct sort_criteria *, const char *, int, xcompar, struct sort_ordering *);
+void sort_run(void *, u_int, u_int, struct sort_criteria *);
+const char *sort_order_to_string(enum sort_order);
+void sort_ordering_next(struct sort_criteria *);
+
 
 /* format.c */
 #define FORMAT_STATUS 0x1
@@ -3376,7 +3403,7 @@ u_int		 layout_set_next(struct window *);
 u_int		 layout_set_previous(struct window *);
 
 /* mode-tree.c */
-typedef void (*mode_tree_build_cb)(void *, struct mode_tree_sort_criteria *,
+typedef void (*mode_tree_build_cb)(void *, struct sort_criteria *,
 				   uint64_t *, const char *);
 typedef void (*mode_tree_draw_cb)(void *, void *, struct screen_write_ctx *,
 	     u_int, u_int);
@@ -3384,7 +3411,7 @@ typedef int (*mode_tree_search_cb)(void *, void *, const char *, int);
 typedef void (*mode_tree_menu_cb)(void *, struct client *, key_code);
 typedef u_int (*mode_tree_height_cb)(void *, u_int);
 typedef key_code (*mode_tree_key_cb)(void *, void *, u_int);
-typedef int (*mode_tree_swap_cb)(void *, void *);
+typedef int (*mode_tree_swap_cb)(void *, void *, enum sort_order);
 typedef void (*mode_tree_each_cb)(void *, void *, struct client *, key_code);
 u_int	 mode_tree_count_tagged(struct mode_tree_data *);
 void	*mode_tree_get_current(struct mode_tree_data *);
@@ -3400,8 +3427,8 @@ int	 mode_tree_down(struct mode_tree_data *, int);
 struct mode_tree_data *mode_tree_start(struct window_pane *, struct args *,
 	     mode_tree_build_cb, mode_tree_draw_cb, mode_tree_search_cb,
 	     mode_tree_menu_cb, mode_tree_height_cb, mode_tree_key_cb,
-	     mode_tree_swap_cb, void *, const struct menu_item *, const char **,
-	     u_int, struct screen **);
+	     mode_tree_swap_cb, void *, const struct menu_item *, xcompar,
+	     struct sort_ordering *, struct screen **);
 void	 mode_tree_zoom(struct mode_tree_data *, struct args *);
 void	 mode_tree_build(struct mode_tree_data *);
 void	 mode_tree_free(struct mode_tree_data *);
@@ -3691,16 +3718,5 @@ struct hyperlinks	*hyperlinks_init(void);
 struct hyperlinks	*hyperlinks_copy(struct hyperlinks *);
 void			 hyperlinks_reset(struct hyperlinks *);
 void			 hyperlinks_free(struct hyperlinks *);
-
-/* sort.c */
-typedef int (*xcompar)(const void *, const void *); // helpful?
-
-struct sort_criteria {
-    u_int      order;
-    int        reversed;
-};
-
-void sort_criteria_init(struct sort_criteria *, const char *, int);
-void sort_list_sessions(struct session **, u_int , struct sort_criteria);
 
 #endif /* TMUX_H */

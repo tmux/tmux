@@ -76,17 +76,16 @@ const struct window_mode window_buffer_mode = {
 	.key = window_buffer_key,
 };
 
-enum window_buffer_sort_type {
-	WINDOW_BUFFER_BY_TIME,
-	WINDOW_BUFFER_BY_NAME,
-	WINDOW_BUFFER_BY_SIZE,
+
+static enum sort_order window_buffer_ordering[] = {
+	SORT_ORDER,
+	SORT_NAME,
+	SORT_SIZE,
 };
-static const char *window_buffer_sort_list[] = {
-	"time",
-	"name",
-	"size"
+static struct sort_ordering window_buffer_sort_ordering = {
+    .data = window_buffer_ordering,
+    .len  = nitems(window_buffer_ordering),
 };
-static struct mode_tree_sort_criteria *window_buffer_sort;
 
 struct window_buffer_itemdata {
 	const char	*name;
@@ -138,22 +137,22 @@ window_buffer_cmp(const void *a0, const void *b0)
 	const struct window_buffer_itemdata *const	*b = b0;
 	int						 result = 0;
 
-	if (window_buffer_sort->field == WINDOW_BUFFER_BY_TIME)
+	if (sort_criteria.order == SORT_ORDER)
 		result = (*b)->order - (*a)->order;
-	else if (window_buffer_sort->field == WINDOW_BUFFER_BY_SIZE)
+	else if (sort_criteria.order == SORT_SIZE)
 		result = (*b)->size - (*a)->size;
 
 	/* Use WINDOW_BUFFER_BY_NAME as default order and tie breaker. */
 	if (result == 0)
 		result = strcmp((*a)->name, (*b)->name);
 
-	if (window_buffer_sort->reversed)
+	if (sort_criteria.reversed)
 		result = -result;
 	return (result);
 }
 
 static void
-window_buffer_build(void *modedata, struct mode_tree_sort_criteria *sort_crit,
+window_buffer_build(void *modedata, struct sort_criteria *sort_crit,
     __unused uint64_t *tag, const char *filter)
 {
 	struct window_buffer_modedata	*data = modedata;
@@ -179,9 +178,8 @@ window_buffer_build(void *modedata, struct mode_tree_sort_criteria *sort_crit,
 		item->order = paste_buffer_order(pb);
 	}
 
-	window_buffer_sort = sort_crit;
-	qsort(data->item_list, data->item_size, sizeof *data->item_list,
-	    window_buffer_cmp);
+	sort_run(data->item_list, data->item_size, sizeof *data->item_list,
+	    sort_crit);
 
 	if (cmd_find_valid_state(&data->fs)) {
 		s = data->fs.s;
@@ -379,7 +377,7 @@ window_buffer_init(struct window_mode_entry *wme, struct cmd_find_state *fs,
 	data->data = mode_tree_start(wp, args, window_buffer_build,
 	    window_buffer_draw, window_buffer_search, window_buffer_menu, NULL,
 	    window_buffer_get_key, NULL, data, window_buffer_menu_items,
-	    window_buffer_sort_list, nitems(window_buffer_sort_list), &s);
+	    window_buffer_cmp, &window_buffer_sort_ordering, &s);
 	mode_tree_zoom(data->data, args);
 
 	mode_tree_build(data->data);

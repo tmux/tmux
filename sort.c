@@ -1,92 +1,91 @@
-// TODO:
+// TODO: dj
 
 #include <stdlib.h>
 #include <string.h>
 
 #include "tmux.h"
 
-static struct sort_criteria sort_criteria = {0};
+struct sort_criteria sort_criteria;
 
-enum sort_order {
-    SORT_NONE,
-    SORT_NAME,
-    SORT_CREATION_TIME,
-    SORT_ACIVITY_TIME,
-    SORT_INVALID,
+static struct sort_ordering default_sort_ordering = {
+    .data = NULL,
+    .len  = 0,
 };
-
-static const char *sort_list[] = {
-    "",
-    "name",
-    "creation",
-    "activity",
-};
-
 
 static enum sort_order
-sort_order_from_string(const char* sort)
+sort_order_from_string(const char* order)
 {
-    u_int i;
+    if (order == NULL) return (SORT_NONE);
 
-    for (i = 0; i < nitems(sort_list); i++) {
-        if (strcasecmp(sort, sort_list[i]) == 0) {
-            return (i);
-        }
-    }
+    if (strcasecmp(order, "index") == 0)
+        return SORT_INDEX;
+    if (strcasecmp(order, "name") == 0)
+        return SORT_NAME;
+    if (strcasecmp(order, "order") == 0)
+        return SORT_ORDER;
+    if (strcasecmp(order, "size") == 0)
+        return SORT_SIZE;
+    if (strcasecmp(order, "creation") == 0)
+        return SORT_CREATION;
+    if (strcasecmp(order, "activity") == 0)
+        return SORT_ACTIVITY;
 
     return (SORT_INVALID);
 }
 
-void
-sort_criteria_init(struct sort_criteria* sc, const char* order, int reversed)
+void sort_criteria_init(struct sort_criteria *sc, const char *orderstr, int reversed,
+        xcompar cmp, struct sort_ordering *ordering)
 {
-    sc->order = sort_order_from_string(order);
+    sc->order    = sort_order_from_string(orderstr);
     sc->reversed = reversed;
-}
-
-static void 
-xsort(void **list, u_int len, struct sort_criteria sc, xcompar cmp)
-{
-    if (sc.order == SORT_NONE)
-        return;
-
-    if (sc.order == SORT_INVALID) {
-        log_debug("-%u invalid sort order", sc.order);
-        return;
-    }
-
-    sort_criteria = sc;
-	qsort(list, len, sizeof *list, cmp);
-}
-
-static int
-session_list_cmp_session(const void *a0, const void *b0)
-{
-    const struct session *const *a = a0;
-    const struct session *const *b = b0;
-    const struct session        *sa = *a;
-    const struct session        *sb = *b;
-    int result = 0;
-
-    switch (sort_criteria.order) {
-        case SORT_CREATION_TIME:
-            //
-        case SORT_ACIVITY_TIME:
-            //
-        case SORT_NAME:
-            result = strcmp(sa->name, sb->name);
-            break;
-        default:
-            log_debug("unsupported_sort_order");
-    }
-
-    if (sort_criteria.reversed)
-        result = -result;
-    return (result);
+    sc->cmp = cmp;
+    if (ordering == NULL) 
+        ordering = &default_sort_ordering;
+    sc->ordering = *ordering;
 }
 
 void
-sort_list_sessions(struct session **list, u_int len, struct sort_criteria sc)
+sort_run(void *list, u_int len, u_int size, struct sort_criteria *sc)
 {
-    xsort((void**)list, len, sc, session_list_cmp_session);
+    if (sc->order == SORT_NONE || sc->order == SORT_INVALID  || sc->cmp == NULL)
+        return;
+
+    sort_criteria = *sc;
+	qsort(list, len, size, sort_criteria.cmp);
 }
+
+const char *sort_order_to_string(enum sort_order order)
+{
+    if (order == SORT_INDEX)
+        return "index";
+    if (order == SORT_NAME)
+        return "name";
+    if (order == SORT_ORDER)
+        return "order";
+    if (order == SORT_SIZE)
+        return "size";
+    if (order == SORT_CREATION)
+        return "creation";
+    if (order == SORT_ACTIVITY)
+        return "activity";
+
+    return "\0";
+}
+
+void sort_ordering_next(struct sort_criteria * sc)
+{
+    u_int i;
+
+    if (sc->ordering.len == 1) return;
+
+    for (i = 0; i < sc->ordering.len; i++) {
+        if (sc->order == sc->ordering.data[i]) {
+            break;
+        }
+    }
+
+    i++;
+    if (i >= sc->ordering.len) i = 0;
+    sc->order = sc->ordering.data[i];
+}
+

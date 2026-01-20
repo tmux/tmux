@@ -49,6 +49,32 @@ const struct cmd_entry cmd_list_sessions_entry = {
 	.exec = cmd_list_sessions_exec
 };
 
+static int
+list_session_cmp_session(const void *a0, const void *b0)
+{
+    const struct session *const *a = a0;
+    const struct session *const *b = b0;
+    const struct session        *sa = *a;
+    const struct session        *sb = *b;
+    int result = 0;
+
+    switch (sort_criteria.order) {
+    case SORT_CREATION:
+        //
+    case SORT_ACTIVITY:
+        //
+    case SORT_NAME:
+        result = strcmp(sa->name, sb->name);
+        break;
+    default:
+        log_debug("unsupported_sort_order");
+    }
+
+    if (sort_criteria.reversed)
+        result = -result;
+    return (result);
+}
+
 static enum cmd_retval
 cmd_list_sessions_exec(struct cmd *self, struct cmdq_item *item)
 {
@@ -56,20 +82,17 @@ cmd_list_sessions_exec(struct cmd *self, struct cmdq_item *item)
 	struct session		    *s, **l;
 	u_int		 	        n, i;
 	struct format_tree	    *ft;
-	const char		        *template, *filter, *order;
+	const char		        *template, *filter;
 	char			        *line, *expanded;
-	int			            flag, reversed;
-    struct sort_criteria    sc = {0};
+	int			            flag;
+    struct sort_criteria    sc;
 
 	if ((template = args_get(args, 'F')) == NULL)
 		template = LIST_SESSIONS_TEMPLATE;
 	filter = args_get(args, 'f');
 
-	order = args_get(args, 'O');
-    if (order != NULL) {
-        reversed = args_has(args, 'r');
-        sort_criteria_init(&sc, order, reversed);
-    }
+    sort_criteria_init(&sc, args_get(args, 'O'), args_has(args, 'r'),
+            list_session_cmp_session, NULL);
 
     l = NULL;
 	n = 0;
@@ -77,7 +100,7 @@ cmd_list_sessions_exec(struct cmd *self, struct cmdq_item *item)
 		l = xreallocarray(l, n + 1, sizeof *l);
 		l[n++] = s;
     }
-    sort_list_sessions(l, n, sc);
+    sort_run(l, n, sizeof *l, &sc);
 
     for (i = 0; i < n; i++) {
 		ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
