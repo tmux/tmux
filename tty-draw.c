@@ -113,7 +113,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
     struct colour_palette *palette)
 {
 	struct grid		*gd = s->grid;
-	struct grid_cell	 gc, last;
+	struct grid_cell	 gc, *gcp, ngc, last;
 	struct grid_line	*gl;
 	u_int			 i, j, last_i, cx, ex, width;
 	u_int			 cellsize, bg;
@@ -169,6 +169,8 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 		}
 		if (i == 0)
 			bg = gc.bg;
+		else if (screen_select_cell(s, &ngc, &gc))
+			bg = ngc.bg;
 		else
 			bg = defaults->bg;
 		tty_attributes(tty, &last, defaults, palette, s->hyperlinks);
@@ -220,6 +222,13 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 			/* Get the current cell. */
 			grid_view_get_cell(gd, px + i, py, &gc);
 
+			/* Update for codeset if needed. */
+			gcp = tty_check_codeset(tty, &gc);
+
+			/* And for selection. */
+			if (screen_select_cell(s, &ngc, gcp))
+				gcp = &ngc;
+
 			/* Work out the the empty width. */
 			if (i >= ex)
 				empty = 1;
@@ -231,10 +240,10 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 				next_state = TTY_DRAW_LINE_EMPTY;
 			else if (current_state == TTY_DRAW_LINE_FIRST)
 				next_state = TTY_DRAW_LINE_SAME;
-			else if (gc.flags & GRID_FLAG_PADDING)
+			else if (gcp->flags & GRID_FLAG_PADDING)
 				next_state = TTY_DRAW_LINE_PAD;
 			else if (grid_cells_look_equal(&gc, &last)) {
-				if (gc.data.size > (sizeof buf) - len)
+				if (gcp->data.size > (sizeof buf) - len)
 					next_state = TTY_DRAW_LINE_FLUSH;
 				else
 					next_state = TTY_DRAW_LINE_SAME;
@@ -244,7 +253,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 				next_state = TTY_DRAW_LINE_NEW1;
 		}
 		log_debug("%s: cell %u empty %u, bg %u; state: current %s, "
-		    "next %s", __func__, px + i, empty, gc.bg,
+		    "next %s", __func__, px + i, empty, gcp->bg,
 		    tty_draw_line_states[current_state],
 		    tty_draw_line_states[next_state]);
 
@@ -278,9 +287,9 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 		/* Append the cell if it is not empty and not padding. */
 		if (next_state != TTY_DRAW_LINE_EMPTY &&
 		    next_state != TTY_DRAW_LINE_PAD) {
-			memcpy(buf + len, gc.data.data, gc.data.size);
-			len += gc.data.size;
-			width += gc.data.width;
+			memcpy(buf + len, gcp->data.data, gcp->data.size);
+			len += gcp->data.size;
+			width += gcp->data.width;
 		}
 
 		/* If this is the last cell, we are done. */
@@ -289,7 +298,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 
 		/* Otherwise move to the next. */
 		current_state = next_state;
-		memcpy(&last, &gc, sizeof last);
+		memcpy(&last, gcp, sizeof last);
 		if (empty != 0)
 			i += empty;
 		else
