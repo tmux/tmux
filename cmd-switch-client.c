@@ -96,7 +96,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 	}
 
-	sort_criteria_init(&sc, args_get(args, 'O'), 0, session_sort_cmp, NULL);
+	sort_criteria_init(&sc, args_get(args, 'O'), 0, NULL, NULL);
 	if (args_has(args, 'n')) { // TODO: dj
 		if ((s = session_next_session(tc->session, &sc)) == NULL) {
 			cmdq_error(item, "can't find next session");

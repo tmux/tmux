@@ -37,13 +37,6 @@ static struct winlink *session_previous_alert(struct winlink *);
 static void	session_group_remove(struct session *);
 static void	session_group_synchronize1(struct session *, struct session *);
 
-static struct sort_criteria session_default_sort_criteria = {
-	.order = SORT_INDEX,
-	.reversed = 0,
-	.cmp = session_sort_cmp,
-	.ordering = NULL,
-};
-
 int
 session_cmp(struct session *s1, struct session *s2)
 {
@@ -57,64 +50,6 @@ session_group_cmp(struct session_group *s1, struct session_group *s2)
 	return (strcmp(s1->name, s2->name));
 }
 RB_GENERATE(session_groups, session_group, entry, session_group_cmp);
-
-int
-session_sort_cmp(const void *a0, const void *b0)
-{
-	const struct session *const	*a = a0;
-	const struct session *const	*b = b0;
-	const struct session		*sa = *a;
-	const struct session		*sb = *b;
-	int				 result = 0;
-	
-	switch (sort_criteria->order) {
-	case SORT_INDEX:
-		result = sa->id - sb->id;
-		break;
-	case SORT_CREATION:
-		if (timercmp(&sa->creation_time, &sb->creation_time, >)) {
-			result = -1;
-			break;
-		}
-		if (timercmp(&sa->creation_time, &sb->creation_time, <)) {
-			result = 1;
-			break;
-		}
-		break;
-	case SORT_ACTIVITY:
-		if (timercmp(&sa->activity_time, &sb->activity_time, >)) {
-			result = -1;
-			break;
-		}
-		if (timercmp(&sa->activity_time, &sb->activity_time, <)) {
-			result = 1;
-			break;
-		}
-		/* FALLTHROUGH */
-	case SORT_NAME:
-		result = strcmp(sa->name, sb->name);
-		break;
-	default:
-		log_debug("unsupported sort order");
-	}
-	
-	if (sort_criteria->reversed)
-		result = -result;
-	return (result);
-}
-
-struct session **
-session_list_all(u_int *n)
-{
-	struct session	*s, **l = NULL;
-
-	*n = 0;
-	RB_FOREACH(s, sessions, &sessions) {
-		l = xreallocarray(l, *n + 1, sizeof *l);
-		l[(*n)++] = s;
-	}
-	return (l);
-}
 
 /*
  * Find if session is still alive. This is true if it is still on the global
@@ -366,18 +301,15 @@ session_next_session(struct session *s, struct sort_criteria *sc)
 	if (RB_EMPTY(&sessions) || !session_alive(s))
 		return (NULL);
 
-	if (sc == NULL) sc = &session_default_sort_criteria;
-	l = session_list_all(&n);
-	sort_run(l, n, sizeof *l, sc);
-
-	if (n == 1) return (NULL);
-
+	l = sort_get_sessions(&n, sc);
 	for (i = 0; i < n; i++)
 		if (l[i] == s)
 			break;
 
-	i++;
-	if (i >= n) i = 0;
+	if (i == n) fatalx("-%s session alive but not found.", s->name);
+
+	if (i == n - 1) i = 0;
+	else i++;
 
 	s2 = l[i];
 	free(l);
@@ -395,18 +327,15 @@ session_previous_session(struct session *s, struct sort_criteria *sc)
 	if (RB_EMPTY(&sessions) || !session_alive(s))
 		return (NULL);
 
-	if (sc == NULL) sc = &session_default_sort_criteria;
-	l = session_list_all(&n);
-	sort_run(l, n, sizeof *l, sc);
-
-	if (n == 1) return (NULL);
-
+	l = sort_get_sessions(&n, sc);
 	for (i = 0; i < n; i++)
 		if (l[i] == s)
 			break;
 
-	i--;
-	if (i >= n) i = n - 1;
+	if (i == n) fatalx("-%s session alive, but not found", s->name);
+
+	if (i == 0) i = n - 1;
+	else i--;
 
 	s2 = l[i];
 	free(l);

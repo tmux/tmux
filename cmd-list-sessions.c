@@ -66,11 +66,9 @@ cmd_list_sessions_exec(struct cmd *self, struct cmdq_item *item)
 	filter = args_get(args, 'f');
 
 	sort_criteria_init(&sc, args_get(args, 'O'), args_has(args, 'r'),
-	    session_sort_cmp, NULL);
+	    NULL, NULL);
 	
-	l = session_list_all(&n);
-	sort_run(l, n, sizeof *l, &sc);
-	
+	l = sort_get_sessions(&n, &sc);
 	for (i = 0; i < n; i++) {
 		ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
 		format_add(ft, "line", "%u", i);

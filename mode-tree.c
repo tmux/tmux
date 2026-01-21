@@ -1276,7 +1276,7 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 		}
 		break;
 	case 'O':
-		sort_ordering_next(&mtd->sort_crit);
+		sort_next_order(&mtd->sort_crit);
 		mode_tree_build(mtd);
 		break;
 	case 'r':

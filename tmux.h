@@ -2326,14 +2326,13 @@ char		*paste_make_sample(struct paste_buffer *);
 
 /* sort.c */
 enum sort_order {
-	SORT_NONE,
 	SORT_INDEX,
 	SORT_ORDER,
 	SORT_SIZE,
 	SORT_NAME,
 	SORT_CREATION,
 	SORT_ACTIVITY,
-	SORT_INVALID,
+	SORT_END,
 };
 
 struct sort_ordering {
@@ -2344,7 +2343,7 @@ struct sort_ordering {
 struct sort_criteria {
 	enum sort_order		 order;
 	int			 reversed;
-	int		       (*cmp)(const void *, const void*);
+	int		       (*cmp)(const void *, const void *);
 	struct sort_ordering	*ordering;
 };
 extern struct sort_criteria	*sort_criteria;
@@ -2354,7 +2353,8 @@ void		 sort_criteria_init(struct sort_criteria *, const char *, int,
 void		 sort_run(void *, u_int, u_int, struct sort_criteria *);
 enum sort_order	 sort_order_from_string(const char* order);
 const char	*sort_order_to_string(enum sort_order);
-void		 sort_ordering_next(struct sort_criteria *);
+struct session	**sort_get_sessions(u_int *, struct sort_criteria *);
+void		 sort_next_order(struct sort_criteria *);
 
 
 /* format.c */
@@ -3528,9 +3528,7 @@ int	session_cmp(struct session *, struct session *);
 RB_PROTOTYPE(sessions, session, entry, session_cmp);
 int	session_group_cmp(struct session_group *, struct session_group *s2);
 RB_PROTOTYPE(session_groups, session_group, entry, session_group_cmp);
-int	session_sort_cmp(const void *, const void *);
 int		 session_alive(struct session *);
-struct session	**session_list_all(u_int *);
 struct session	*session_find(const char *);
 struct session	*session_find_by_id_str(const char *);
 struct session	*session_find_by_id(u_int);
