@@ -137,16 +137,16 @@ window_buffer_cmp(const void *a0, const void *b0)
 	const struct window_buffer_itemdata *const	*b = b0;
 	int						 result = 0;
 
-	if (sort_criteria.order == SORT_ORDER)
+	if (sort_criteria->order == SORT_ORDER)
 		result = (*b)->order - (*a)->order;
-	else if (sort_criteria.order == SORT_SIZE)
+	else if (sort_criteria->order == SORT_SIZE)
 		result = (*b)->size - (*a)->size;
 
 	/* Use WINDOW_BUFFER_BY_NAME as default order and tie breaker. */
 	if (result == 0)
 		result = strcmp((*a)->name, (*b)->name);
 
-	if (sort_criteria.reversed)
+	if (sort_criteria->reversed)
 		result = -result;
 	return (result);
 }

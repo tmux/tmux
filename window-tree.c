@@ -102,8 +102,8 @@ static enum sort_order window_tree_ordering[] = {
 	SORT_ACTIVITY,
 };
 static struct sort_ordering window_tree_sort_ordering = {
-    .data = window_tree_ordering,
-    .len  = nitems(window_tree_ordering),
+	.data = window_tree_ordering,
+	.len  = nitems(window_tree_ordering),
 };
 
 struct window_tree_itemdata {
@@ -203,7 +203,7 @@ window_tree_cmp_session(const void *a0, const void *b0)
 	const struct session		*sb = *b;
 	int				 result = 0;
 
-	switch (sort_criteria.order) {
+	switch (sort_criteria->order) {
 	case SORT_INDEX:
 		result = sa->id - sb->id;
 		break;
@@ -220,11 +220,11 @@ window_tree_cmp_session(const void *a0, const void *b0)
 	case SORT_NAME:
 		result = strcmp(sa->name, sb->name);
 		break;
-    default:
-        // TODO: dj
+	default:
+		// TODO: dj
 	}
 
-	if (sort_criteria.reversed)
+	if (sort_criteria->reversed)
 		result = -result;
 	return (result);
 }
@@ -240,7 +240,7 @@ window_tree_cmp_window(const void *a0, const void *b0)
 	struct window			*wb = wlb->window;
 	int				 result = 0;
 
-	switch (sort_criteria.order) {
+	switch (sort_criteria->order) {
 	case SORT_INDEX:
 		result = wla->idx - wlb->idx;
 		break;
@@ -257,11 +257,11 @@ window_tree_cmp_window(const void *a0, const void *b0)
 	case SORT_NAME:
 		result = strcmp(wa->name, wb->name);
 		break;
-    default:
-        // TODO: dj
+	default:
+		// TODO: dj
 	}
 
-	if (sort_criteria.reversed)
+	if (sort_criteria->reversed)
 		result = -result;
 	return (result);
 }
@@ -274,7 +274,7 @@ window_tree_cmp_pane(const void *a0, const void *b0)
 	int			  result;
 	u_int			  ai, bi;
 
-	if (sort_criteria.order == SORT_ACTIVITY)
+	if (sort_criteria->order == SORT_ACTIVITY)
 		result = (*a)->active_point - (*b)->active_point;
 	else {
 		/*
@@ -285,7 +285,7 @@ window_tree_cmp_pane(const void *a0, const void *b0)
 		window_pane_index(*b, &bi);
 		result = ai - bi;
 	}
-	if (sort_criteria.reversed)
+	if (sort_criteria->reversed)
 		result = -result;
 	return (result);
 }
@@ -494,7 +494,7 @@ window_tree_build(void *modedata, struct sort_criteria *sort_crit,
 		l = xreallocarray(l, n + 1, sizeof *l);
 		l[n++] = s;
 	}
-    sort_crit->cmp = window_tree_cmp_session;
+	sort_crit->cmp = window_tree_cmp_session;
 	sort_run(l, n, sizeof *l, sort_crit);
 
 	for (i = 0; i < n; i++)

@@ -78,8 +78,8 @@ static enum sort_order window_client_ordering[] = {
 	SORT_ACTIVITY,
 };
 static struct sort_ordering window_client_sort_ordering = {
-    .data = window_client_ordering,
-    .len  = nitems(window_client_ordering),
+	.data = window_client_ordering,
+	.len  = nitems(window_client_ordering),
 };
 
 struct window_client_itemdata {
@@ -127,7 +127,7 @@ window_client_cmp(const void *a0, const void *b0)
 	struct client					*cb = itemb->c;
 	int						 result = 0;
 
-	switch (sort_criteria.order) {
+	switch (sort_criteria->order) {
 	case SORT_SIZE:
 		result = ca->tty.sx - cb->tty.sx;
 		if (result == 0)
@@ -145,15 +145,15 @@ window_client_cmp(const void *a0, const void *b0)
 		else if (timercmp(&ca->activity_time, &cb->activity_time, <))
 			result = 1;
 		break;
-    default:
-        // TODO:
+	default:
+		// TODO:
 	}
 
 	/* Use WINDOW_CLIENT_BY_NAME as default order and tie breaker. */
 	if (result == 0)
 		result = strcmp(ca->name, cb->name);
 
-	if (sort_criteria.reversed)
+	if (sort_criteria->reversed)
 		result = -result;
 	return (result);
 }

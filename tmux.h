@@ -2277,7 +2277,7 @@ const char	*getversion(void);
 /* proc.c */
 struct imsg;
 int	proc_send(struct tmuxpeer *, enum msgtype, int, const void *, size_t);
-struct tmuxproc *proc_start(const char *);
+struct tmuxproc	*proc_start(const char *);
 void	proc_loop(struct tmuxproc *, int (*)(void));
 void	proc_exit(struct tmuxproc *);
 void	proc_set_signals(struct tmuxproc *, void(*)(int));
@@ -2325,36 +2325,36 @@ void		 paste_replace(struct paste_buffer *, char *, size_t);
 char		*paste_make_sample(struct paste_buffer *);
 
 /* sort.c */
-typedef int (*xcompar)(const void *, const void *); // helpful?
-
 enum sort_order {
-    SORT_NONE,
-    SORT_INDEX,
-    SORT_ORDER,
-    SORT_SIZE,
-    SORT_NAME,
-    SORT_CREATION,
-    SORT_ACTIVITY,
-    SORT_INVALID,
+	SORT_NONE,
+	SORT_INDEX,
+	SORT_ORDER,
+	SORT_SIZE,
+	SORT_NAME,
+	SORT_CREATION,
+	SORT_ACTIVITY,
+	SORT_INVALID,
 };
 
 struct sort_ordering {
-    enum sort_order *data;
-    u_int           len;
+	enum sort_order	*data;
+	u_int		 len;
 };
 
 struct sort_criteria {
-    enum sort_order      order;
-    int                  reversed;
-    xcompar              cmp;
-    struct sort_ordering ordering;
+	enum sort_order		 order;
+	int			 reversed;
+	int		       (*cmp)(const void *, const void*);
+	struct sort_ordering	*ordering;
 };
-extern struct sort_criteria sort_criteria;
+extern struct sort_criteria	*sort_criteria;
 
-void sort_criteria_init(struct sort_criteria *, const char *, int, xcompar, struct sort_ordering *);
-void sort_run(void *, u_int, u_int, struct sort_criteria *);
-const char *sort_order_to_string(enum sort_order);
-void sort_ordering_next(struct sort_criteria *);
+void		 sort_criteria_init(struct sort_criteria *, const char *, int,
+		     int (*)(const void*, const void*), struct sort_ordering *);
+void		 sort_run(void *, u_int, u_int, struct sort_criteria *);
+enum sort_order	 sort_order_from_string(const char* order);
+const char	*sort_order_to_string(enum sort_order);
+void		 sort_ordering_next(struct sort_criteria *);
 
 
 /* format.c */
@@ -3427,8 +3427,9 @@ int	 mode_tree_down(struct mode_tree_data *, int);
 struct mode_tree_data *mode_tree_start(struct window_pane *, struct args *,
 	     mode_tree_build_cb, mode_tree_draw_cb, mode_tree_search_cb,
 	     mode_tree_menu_cb, mode_tree_height_cb, mode_tree_key_cb,
-	     mode_tree_swap_cb, void *, const struct menu_item *, xcompar,
-	     struct sort_ordering *, struct screen **);
+	     mode_tree_swap_cb, void *, const struct menu_item *,
+	     int (*)(const void *, const void *), struct sort_ordering *,
+	     struct screen **);
 void	 mode_tree_zoom(struct mode_tree_data *, struct args *);
 void	 mode_tree_build(struct mode_tree_data *);
 void	 mode_tree_free(struct mode_tree_data *);
@@ -3527,7 +3528,9 @@ int	session_cmp(struct session *, struct session *);
 RB_PROTOTYPE(sessions, session, entry, session_cmp);
 int	session_group_cmp(struct session_group *, struct session_group *s2);
 RB_PROTOTYPE(session_groups, session_group, entry, session_group_cmp);
+int	session_sort_cmp(const void *, const void *);
 int		 session_alive(struct session *);
+struct session	**session_list_all(u_int *);
 struct session	*session_find(const char *);
 struct session	*session_find_by_id_str(const char *);
 struct session	*session_find_by_id(u_int);
@@ -3538,8 +3541,9 @@ void		 session_add_ref(struct session *, const char *);
 void		 session_remove_ref(struct session *, const char *);
 char		*session_check_name(const char *);
 void		 session_update_activity(struct session *, struct timeval *);
-struct session	*session_next_session(struct session *);
-struct session	*session_previous_session(struct session *);
+struct session	*session_next_session(struct session *, struct sort_criteria *);
+struct session	*session_previous_session(struct session *,
+		     struct sort_criteria *);
 struct winlink	*session_attach(struct session *, struct window *, int,
 		     char **);
 int		 session_detach(struct session *, struct winlink *);

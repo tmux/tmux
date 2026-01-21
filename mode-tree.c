@@ -48,7 +48,7 @@ struct mode_tree_data {
 	void			 *modedata;
 	const struct menu_item	 *menu;
 
-	struct sort_criteria sort_crit;
+	struct sort_criteria	  sort_crit;
 
 	mode_tree_build_cb        buildcb;
 	mode_tree_draw_cb         drawcb;
@@ -323,7 +323,7 @@ mode_tree_swap(struct mode_tree_data *mtd, int direction)
 
 	if (mtd->swapcb(mtd->line_list[mtd->current].item->itemdata,
 	    mtd->line_list[swap_with].item->itemdata,
-        mtd->sort_crit.order)) {
+	    mtd->sort_crit.order)) {
 		mtd->current = swap_with;
 		mode_tree_build(mtd);
 	}
@@ -381,7 +381,7 @@ mode_tree_expand(struct mode_tree_data *mtd, uint64_t tag)
 	u_int	found;
 
 	if (!mode_tree_get_tag(mtd, tag, &found))
-	    return;
+		return;
 	if (!mtd->line_list[found].item->expanded) {
 		mtd->line_list[found].item->expanded = 1;
 		mode_tree_build(mtd);
@@ -454,7 +454,8 @@ mode_tree_start(struct window_pane *wp, struct args *args,
     mode_tree_search_cb searchcb, mode_tree_menu_cb menucb,
     mode_tree_height_cb heightcb, mode_tree_key_cb keycb,
     mode_tree_swap_cb swapcb, void *modedata, const struct menu_item *menu,
-    xcompar cmp, struct sort_ordering *sort_ordering, struct screen **s)
+    int (*cmp)(const void *, const void *), struct sort_ordering *sort_ordering,
+    struct screen **s)
 {
 	struct mode_tree_data	*mtd;
 
@@ -472,13 +473,8 @@ mode_tree_start(struct window_pane *wp, struct args *args,
 	else
 		mtd->preview = MODE_TREE_PREVIEW_NORMAL;
 
-    sort_criteria_init(
-            &mtd->sort_crit,
-            args_get(args, 'O'),
-            args_has(args, 'r'),
-            cmp,
-            sort_ordering
-    );
+	sort_criteria_init(&mtd->sort_crit, args_get(args, 'O'),
+	    args_has(args, 'r'), cmp, sort_ordering);
 
 	if (args_has(args, 'f'))
 		mtd->filter = xstrdup(args_get(args, 'f'));
@@ -844,9 +840,9 @@ mode_tree_draw(struct mode_tree_data *mtd)
 	screen_write_cursormove(&ctx, 0, h, 0);
 	screen_write_box(&ctx, w, sy - h, BOX_LINES_DEFAULT, NULL, NULL);
 
-	if (mtd->sort_crit.ordering.data != NULL) { // TODO: dj
+	if (mtd->sort_crit.ordering->data != NULL) { // FIXME: dj
 		xasprintf(&text, " %s (sort: %s%s)", mti->name,
-            sort_order_to_string(mtd->sort_crit.order),
+		    sort_order_to_string(mtd->sort_crit.order),
 		    mtd->sort_crit.reversed ? ", reversed" : "");
 	} else
 		xasprintf(&text, " %s", mti->name);
@@ -1280,7 +1276,7 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 		}
 		break;
 	case 'O':
-        sort_ordering_next(&mtd->sort_crit);
+		sort_ordering_next(&mtd->sort_crit);
 		mode_tree_build(mtd);
 		break;
 	case 'r':
