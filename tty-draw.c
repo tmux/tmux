@@ -89,7 +89,7 @@ tty_draw_line_clear(struct tty *tty, u_int px, u_int py, u_int nx,
 
 /* Is this cell empty? */
 static u_int
-tty_draw_line_get_empty(struct grid_cell *gc, u_int nx)
+tty_draw_line_get_empty(const struct grid_cell *gc, u_int nx)
 {
 	u_int	empty = 0;
 
@@ -113,7 +113,8 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
     struct colour_palette *palette)
 {
 	struct grid		*gd = s->grid;
-	struct grid_cell	 gc, *gcp, ngc, last;
+	struct grid_cell	 gc, ngc, last;
+	const struct grid_cell	*gcp;
 	struct grid_line	*gl;
 	u_int			 i, j, last_i, cx, ex, width;
 	u_int			 cellsize, bg;
@@ -233,7 +234,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 			if (i >= ex)
 				empty = 1;
 			else
-				empty = tty_draw_line_get_empty(&gc, nx - i);
+				empty = tty_draw_line_get_empty(gcp, nx - i);
 
 			/* Work out the next state. */
 			if (empty != 0)
@@ -242,7 +243,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 				next_state = TTY_DRAW_LINE_SAME;
 			else if (gcp->flags & GRID_FLAG_PADDING)
 				next_state = TTY_DRAW_LINE_PAD;
-			else if (grid_cells_look_equal(&gc, &last)) {
+			else if (grid_cells_look_equal(gcp, &last)) {
 				if (gcp->data.size > (sizeof buf) - len)
 					next_state = TTY_DRAW_LINE_FLUSH;
 				else
