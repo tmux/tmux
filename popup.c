@@ -32,6 +32,8 @@ struct popup_data {
 	int			  flags;
 	char			 *title;
 
+	char			 *style;
+	char			 *border_style;
 	struct grid_cell	  border_cell;
 	enum box_lines		  border_lines;
 
@@ -97,6 +99,48 @@ static const struct menu_item popup_internal_menu_items[] = {
 
 	{ NULL, KEYC_NONE, NULL }
 };
+
+static void
+popup_reapply_styles(struct popup_data *pd)
+{
+	struct client		*c = pd->c;
+	struct session		*s = c->session;
+	struct options		*o;
+	struct format_tree	*ft;
+	struct style		 sytmp;
+
+	if (s == NULL)
+		return;
+	o = s->curw->window->options;
+
+	ft = format_create_defaults(NULL, c, s, s->curw, NULL);
+
+	/* Re-apply popup style from options. */
+	memcpy(&pd->defaults, &grid_default_cell, sizeof pd->defaults);
+	style_apply(&pd->defaults, o, "popup-style", ft);
+	if (pd->style != NULL) {
+		style_set(&sytmp, &grid_default_cell);
+		if (style_parse(&sytmp, &pd->defaults, pd->style) == 0) {
+			pd->defaults.fg = sytmp.gc.fg;
+			pd->defaults.bg = sytmp.gc.bg;
+		}
+	}
+	pd->defaults.attr = 0;
+
+	/* Re-apply border style from options. */
+	memcpy(&pd->border_cell, &grid_default_cell, sizeof pd->border_cell);
+	style_apply(&pd->border_cell, o, "popup-border-style", ft);
+	if (pd->border_style != NULL) {
+		style_set(&sytmp, &grid_default_cell);
+		if (style_parse(&sytmp, &pd->border_cell, pd->border_style) == 0) {
+			pd->border_cell.fg = sytmp.gc.fg;
+			pd->border_cell.bg = sytmp.gc.bg;
+		}
+	}
+	pd->border_cell.attr = 0;
+
+	format_free(ft);
+}
 
 static void
 popup_redraw_cb(const struct tty_ctx *ttyctx)
@@ -219,6 +263,8 @@ popup_draw_cb(struct client *c, void *data, struct screen_redraw_ctx *rctx)
 	struct colour_palette	*palette = &pd->palette;
 	struct grid_cell	 defaults;
 
+	popup_reapply_styles(pd);
+
 	screen_init(&s, pd->sx, pd->sy, 0);
 	screen_write_start(&ctx, &s);
 	screen_write_clearscreen(&ctx, 8);
@@ -290,6 +336,8 @@ popup_free_cb(struct client *c, void *data)
 	colour_palette_free(&pd->palette);
 
 	free(pd->title);
+	free(pd->style);
+	free(pd->border_style);
 	free(pd);
 }
 
@@ -658,6 +706,8 @@ popup_modify(struct client *c, const char *title, const char *style,
 		pd->title = xstrdup(title);
 	}
 	if (border_style != NULL) {
+		free(pd->border_style);
+		pd->border_style = xstrdup(border_style);
 		style_set(&sytmp, &pd->border_cell);
 		if (style_parse(&sytmp, &pd->border_cell, border_style) == 0) {
 			pd->border_cell.fg = sytmp.gc.fg;
@@ -665,6 +715,8 @@ popup_modify(struct client *c, const char *title, const char *style,
 		}
 	}
 	if (style != NULL) {
+		free(pd->style);
+		pd->style = xstrdup(style);
 		style_set(&sytmp, &pd->defaults);
 		if (style_parse(&sytmp, &pd->defaults, style) == 0) {
 			pd->defaults.fg = sytmp.gc.fg;
@@ -727,6 +779,10 @@ popup_display(int flags, enum box_lines lines, struct cmdq_item *item, u_int px,
 	pd->flags = flags;
 	if (title != NULL)
 		pd->title = xstrdup(title);
+	if (style != NULL)
+		pd->style = xstrdup(style);
+	if (border_style != NULL)
+		pd->border_style = xstrdup(border_style);
 
 	pd->c = c;
 	pd->c->references++;
