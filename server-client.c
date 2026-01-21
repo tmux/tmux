@@ -165,37 +165,36 @@ server_client_clear_overlay(struct client *c)
  * Given overlay position and dimensions, return parts of the input range which
  * are visible.
  */
-struct visible_ranges *
+void
 server_client_overlay_range(u_int x, u_int y, u_int sx, u_int sy, u_int px,
-    u_int py, u_int nx)
+    u_int py, u_int nx, struct visible_ranges *r)
 {
 	u_int				ox, onx;
-	static struct visible_ranges	r = {NULL, NULL, 0, 0};
 
-	/* For efficiency vr is static and space reused. */
-	if (r.size == 0) {
-		r.px = xcalloc(2, sizeof(u_int));
-		r.nx = xcalloc(2, sizeof(u_int));
-		r.size = 2;
+	/* Caller must free when no longer used. */
+	if (r->size == 0) {
+		r->ranges = xcalloc(2, sizeof(struct visible_range));
+		r->size = 2;
+		r->used = 0;
 	}
 
 	/* Trivial case of no overlap in the y direction. */
 	if (py < y || py > y + sy - 1) {
-		r.px[0] = px;
-		r.nx[0] = nx;
-		r.used = 1;
-		return (&r);
+		r->ranges[0].px = px;
+		r->ranges[0].nx = nx;
+		r->used = 1;
+		return;
 	}
 
 	/* Visible bit to the left of the popup. */
 	if (px < x) {
-		r.px[0] = px;
-		r.nx[0] = x - px;
-		if (r.nx[0] > nx)
-			r.nx[0] = nx;
+		r->ranges[0].px = px;
+		r->ranges[0].nx = x - px;
+		if (r->ranges[0].nx > nx)
+			r->ranges[0].nx = nx;
 	} else {
-		r.px[0] = 0;
-		r.nx[0] = 0;
+		r->ranges[0].px = 0;
+		r->ranges[0].nx = 0;
 	}
 
 	/* Visible bit to the right of the popup. */
@@ -204,14 +203,13 @@ server_client_overlay_range(u_int x, u_int y, u_int sx, u_int sy, u_int px,
 		ox = px;
 	onx = px + nx;
 	if (onx > ox) {
-		r.px[1] = ox;
-		r.nx[1] = onx - ox;
+		r->ranges[1].px = ox;
+		r->ranges[1].nx = onx - ox;
 	} else {
-		r.px[1] = 0;
-		r.nx[1] = 0;
+		r->ranges[1].px = 0;
+		r->ranges[1].nx = 0;
 	}
-	r.used = 2;
-	return (&r);
+	r->used = 2;
 }
 
 /* Check if this client is inside this server. */

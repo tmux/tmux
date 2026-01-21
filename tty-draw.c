@@ -113,7 +113,8 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
     struct colour_palette *palette)
 {
 	struct grid		*gd = s->grid;
-	struct grid_cell	 gc, *gcp, ngc, last;
+	const struct grid_cell	*gcp;
+	struct grid_cell	 gc, ngc, last;
 	struct grid_line	*gl;
 	u_int			 i, j, last_i, cx, ex, width;
 	u_int			 cellsize, bg;

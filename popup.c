@@ -164,19 +164,27 @@ popup_mode_cb(__unused struct client *c, void *data, u_int *cx, u_int *cy)
 }
 
 /* Return parts of the input range which are not obstructed by the popup. */
-static struct visible_ranges *
-popup_check_cb(struct client* c, void *data, u_int px, u_int py, u_int nx)
+static void
+popup_check_cb(struct client* c, void *data, u_int px, u_int py, u_int nx,
+    struct visible_ranges *r)
 {
-	struct popup_data	*pd = data;
-	struct visible_ranges	*or[2], *r;
-	u_int			 i, j, k = 0;
+	struct popup_data		*pd = data;
+	static struct visible_ranges	 or[2] = { { NULL, 0, 0 }, { NULL, 0, 0 } };
+	u_int				 i, j, k = 0;
 
 	if (pd->md != NULL) {
 		/* Check each returned range for the menu against the popup. */
-		r = menu_check_cb(c, pd->md, px, py, nx);
+		menu_check_cb(c, pd->md, px, py, nx, r);
 		for (i = 0; i < r->used; i++) {
-			or[i] = server_client_overlay_range(pd->px, pd->py, pd->sx,
-			    pd->sy, r->px[i], py, r->nx[i]);
+			server_client_overlay_range(pd->px, pd->py, pd->sx,
+			    pd->sy, r->ranges[i].px, py, r->ranges[i].nx, &or[i]);
+		}
+
+		/* Caller must free when no longer used. */
+		if (r->size == 0) {
+			r->ranges = xcalloc(2, sizeof(struct visible_range));
+			r->size = 2;
+			r->used = 0;
 		}
 
 		/*
@@ -185,20 +193,21 @@ popup_check_cb(struct client* c, void *data, u_int px, u_int py, u_int nx)
 		 */
 		for (i = 0; i < r->used; i++) {
 			/* Each or[i] only has up to 2 ranges. */
-			for (j = 0; j < or[i]->used; j++) {
-				if (or[i]->nx[j] > 0) {
-					r->px[k] = or[i]->px[j];
-					r->nx[k] = or[i]->nx[j];
+			for (j = 0; j < or[i].used; j++) {
+				if (or[i].ranges[j].nx > 0) {
+					r->ranges[k].px = or[i].ranges[j].px;
+					r->ranges[k].nx = or[i].ranges[j].nx;
 					k++;
 				}
 			}
 		}
-
-		return (r);
+		return;
 	}
 
-	return (server_client_overlay_range(pd->px, pd->py, pd->sx, pd->sy, px, py,
-	    nx));
+	server_client_overlay_range(pd->px, pd->py, pd->sx, pd->sy,
+	    px, py, nx, r);
+
+	return;
 }
 
 static void

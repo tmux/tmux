@@ -1915,26 +1915,24 @@ struct client_window {
 };
 RB_HEAD(client_windows, client_window);
 
-/* Visible areas not obstructed by overlays. */
-#define OVERLAY_MAX_RANGES 3
-struct overlay_ranges {
-	u_int	px[OVERLAY_MAX_RANGES];
-	u_int	nx[OVERLAY_MAX_RANGES];
+/* Visible range array element. */
+struct visible_range {
+	u_int	px;	/* Start */
+	u_int	nx;	/* Length */
 };
 
-/* Visible range array element. */
+/* Visible areas not obstructed. */
 struct visible_ranges {
-	u_int    *px;   /* Start */
-	u_int    *nx;   /* Length */
-	size_t  used;
-	size_t  size;
+	struct visible_range	*ranges;  /* dynamically allocated array */
+	size_t			 used;    /* number of entries in ranges */
+	size_t			 size;    /* allocated capacity of ranges */
 };
 
 /* Client connection. */
 typedef int (*prompt_input_cb)(struct client *, void *, const char *, int);
 typedef void (*prompt_free_cb)(void *);
-typedef struct visible_ranges *(*overlay_check_cb)(struct client*, void *,
-	    u_int, u_int, u_int);
+typedef void (*overlay_check_cb)(struct client*, void *, u_int, u_int, u_int,
+	    struct visible_ranges *);
 typedef struct screen *(*overlay_mode_cb)(struct client *, void *, u_int *,
 	    u_int *);
 typedef void (*overlay_draw_cb)(struct client *, void *,
@@ -2561,8 +2559,8 @@ void	tty_default_attributes(struct tty *, const struct grid_cell *,
 void	tty_update_mode(struct tty *, int, struct screen *);
 const struct grid_cell *tty_check_codeset(struct tty *,
 	    const struct grid_cell *);
-struct visible_ranges *tty_check_overlay_range(struct tty *, u_int, u_int,
-	    u_int);
+void	tty_check_overlay_range(struct tty *, u_int, u_int, u_int,
+	    struct visible_ranges *);
 
 /* tty-draw.c */
 void	tty_draw_line(struct tty *, struct screen *, u_int, u_int, u_int,
@@ -2922,8 +2920,8 @@ void	 server_client_set_overlay(struct client *, u_int, overlay_check_cb,
 	     overlay_mode_cb, overlay_draw_cb, overlay_key_cb,
 	     overlay_free_cb, overlay_resize_cb, void *);
 void	 server_client_clear_overlay(struct client *);
-struct visible_ranges	*server_client_overlay_range(u_int, u_int, u_int, u_int, u_int, u_int,
-	     u_int);
+void	 server_client_overlay_range(u_int, u_int, u_int, u_int, u_int, u_int,
+	     u_int, struct visible_ranges *);
 void	 server_client_set_key_table(struct client *, const char *);
 const char *server_client_get_key_table(struct client *);
 int	 server_client_check_nested(struct client *);
@@ -3625,7 +3623,8 @@ int		 menu_display(struct menu *, int, int, struct cmdq_item *,
 		    const char *, const char *, struct cmd_find_state *,
 		    menu_choice_cb, void *);
 struct screen	*menu_mode_cb(struct client *, void *, u_int *, u_int *);
-struct visible_ranges	*menu_check_cb(struct client *, void *, u_int, u_int, u_int);
+void		 menu_check_cb(struct client *, void *, u_int, u_int, u_int,
+		     struct visible_ranges *);
 void		 menu_draw_cb(struct client *, void *,
 		    struct screen_redraw_ctx *);
 void		 menu_free_cb(struct client *, void *);
