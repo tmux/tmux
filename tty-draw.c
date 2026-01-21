@@ -169,11 +169,15 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 				break;
 		}
 		if (i == 0)
-			bg = gc.bg;
-		else if (screen_select_cell(s, &ngc, &gc))
-			bg = ngc.bg;
-		else
 			bg = defaults->bg;
+		else {
+			bg = gc.bg;
+			if (gc.flags & GRID_FLAG_SELECTED) {
+				memcpy(&ngc, &gc, sizeof ngc);
+				if (screen_select_cell(s, &ngc, &gc))
+					bg = ngc.bg;
+			}
+		}
 		tty_attributes(tty, &last, defaults, palette, s->hyperlinks);
 		log_debug("%s: clearing %u padding cells", __func__, cx);
 		tty_draw_line_clear(tty, atx, aty, cx, defaults, bg, 0);
@@ -227,8 +231,11 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 			gcp = tty_check_codeset(tty, &gc);
 
 			/* And for selection. */
-			if (screen_select_cell(s, &ngc, gcp))
-				gcp = &ngc;
+			if (gcp->flags & GRID_FLAG_SELECTED) {
+				memcpy(&ngc, gcp, sizeof ngc);
+				if (screen_select_cell(s, &ngc, gcp))
+					gcp = &ngc;
+			}
 
 			/* Work out the the empty width. */
 			if (i >= ex)
@@ -303,7 +310,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 		if (empty != 0)
 			i += empty;
 		else
-			i++;
+			i += gcp->data.width;
 	}
 
 	tty->flags = (tty->flags & ~TTY_NOCURSOR)|flags;
