@@ -808,23 +808,23 @@ screen_redraw_draw_border_arrows(struct screen_redraw_ctx *ctx, u_int i,
 static void
 screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j)
 {
-	struct client			*c = ctx->c;
-	struct session			*s = c->session;
-	struct window			*w = s->curw->window;
-	struct options			*oo = w->options;
-	struct tty			*tty = &c->tty;
-	struct format_tree		*ft;
-	struct window_pane		*wp, *active = server_client_get_pane(c);
-	struct grid_cell		 gc;
-	const struct grid_cell		*tmp;
-	static struct visible_ranges	 r = { NULL, 0, 0 };
-	u_int				 cell_type;
-	u_int				 x = ctx->ox + i, y = ctx->oy + j;
-	int				 isolates;
+	struct client		*c = ctx->c;
+	struct session		*s = c->session;
+	struct window		*w = s->curw->window;
+	struct options		*oo = w->options;
+	struct tty		*tty = &c->tty;
+	struct format_tree	*ft;
+	struct window_pane	*wp, *active = server_client_get_pane(c);
+	struct grid_cell	 gc;
+	const struct grid_cell	*tmp;
+	u_int			 cell_type;
+	u_int			 x = ctx->ox + i, y = ctx->oy + j;
+	int			 isolates;
+	struct visible_ranges	*r;
 
 	if (c->overlay_check != NULL) {
-		c->overlay_check(c, c->overlay_data, x, y, 1, &r);
-		if (r.ranges[0].nx + r.ranges[1].nx == 0)
+		r = c->overlay_check(c, c->overlay_data, x, y, 1);
+		if (server_client_ranges_is_empty(r))
 			return;
 	}
 
@@ -938,14 +938,15 @@ screen_redraw_draw_status(struct screen_redraw_ctx *ctx)
 static void
 screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 {
-	struct client			*c = ctx->c;
-	struct window			*w = c->session->curw->window;
-	struct tty			*tty = &c->tty;
-	struct screen			*s = wp->screen;
-	struct colour_palette		*palette = &wp->palette;
-	struct grid_cell		 defaults;
-	static struct visible_ranges	 vr;
-	u_int				 i, j, top, x, y, px, width, r;
+	struct client		*c = ctx->c;
+	struct window		*w = c->session->curw->window;
+	struct tty		*tty = &c->tty;
+	struct screen		*s = wp->screen;
+	struct colour_palette	*palette = &wp->palette;
+	struct grid_cell	 defaults;
+	struct visible_ranges	*r;
+	struct visible_range	*rr;
+	u_int			 i, j, k, top, x, y, width;
 
 	if (wp->base.mode & MODE_SYNC)
 		screen_write_stop_sync(wp);
@@ -989,22 +990,15 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 		log_debug("%s: %s %%%u line %u,%u at %u,%u, width %u",
 		    __func__, c->name, wp->id, i, j, x, y, width);
 
-		/* xxxx Breaking up the tty_draw_line like this isn't fully working. */
-		tty_check_overlay_range(tty, x, y, width, &vr);
-
 		tty_default_colours(&defaults, wp);
 
-		for (r=0; r < vr.used; r++) {
-			if (vr.ranges[r].nx == 0)
-				continue;
-			/* Convert window coordinates to tty coordinates. */
-			px = vr.ranges[r].px;
-			/* i is px of cell, add px of region, sub the
-			 * pane offset. If you don't sub offset,
-			 * contents of pane shifted. note: i apparently unnec. 
-			 */
-			tty_draw_line(tty, s, /* i + */ vr.ranges[r].px - wp->xoff, j,
-			    vr.ranges[r].nx, px, y, &defaults, palette);
+		r = tty_check_overlay_range(tty, x, y, width);
+		for (k = 0; k < r->used; k++) {
+			rr = &r->ranges[k];
+			if (rr->nx != 0) {
+				tty_draw_line(tty, s, rr->px - wp->xoff, j,
+				    rr->nx, rr->px, y, &defaults, palette);
+			}
 		}
 	}
 

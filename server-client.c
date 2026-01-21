@@ -161,6 +161,29 @@ server_client_clear_overlay(struct client *c)
 	server_redraw_client(c);
 }
 
+/* Are these ranges empty? That is, nothing is visible. */
+int
+server_client_ranges_is_empty(struct visible_ranges *r)
+{
+	u_int	i;
+
+	for (i = 0; i < r->used; i++) {
+		if (r->ranges[i].nx != 0)
+			return (0);
+	}
+	return (1);
+}
+
+/* Ensure we have space for at least n ranges. */
+void
+server_client_ensure_ranges(struct visible_ranges *r, u_int n)
+{
+	if (r->size >= n)
+		return;
+	r->ranges = xrecallocarray(r->ranges, r->size, n, sizeof *r->ranges);
+	r->size = n;
+}
+
 /*
  * Given overlay position and dimensions, return parts of the input range which
  * are visible.
@@ -169,22 +192,17 @@ void
 server_client_overlay_range(u_int x, u_int y, u_int sx, u_int sy, u_int px,
     u_int py, u_int nx, struct visible_ranges *r)
 {
-	u_int				ox, onx;
-
-	/* Caller must free when no longer used. */
-	if (r->size == 0) {
-		r->ranges = xcalloc(2, sizeof(struct visible_range));
-		r->size = 2;
-		r->used = 0;
-	}
+	u_int	ox, onx;
 
 	/* Trivial case of no overlap in the y direction. */
 	if (py < y || py > y + sy - 1) {
+		server_client_ensure_ranges(r, 1);
 		r->ranges[0].px = px;
 		r->ranges[0].nx = nx;
 		r->used = 1;
 		return;
 	}
+	server_client_ensure_ranges(r, 2);
 
 	/* Visible bit to the left of the popup. */
 	if (px < x) {

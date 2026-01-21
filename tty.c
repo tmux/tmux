@@ -66,8 +66,6 @@ static void	tty_emulate_repeat(struct tty *, enum tty_code_code,
 		    enum tty_code_code, u_int);
 static void	tty_draw_pane(struct tty *, const struct tty_ctx *, u_int);
 static int	tty_check_overlay(struct tty *, u_int, u_int);
-void		tty_check_overlay_range(struct tty *, u_int, u_int, u_int,
-		    struct visible_ranges *);
 
 #ifdef ENABLE_SIXEL
 static void	tty_write_one(void (*)(struct tty *, const struct tty_ctx *),
@@ -523,6 +521,8 @@ void
 tty_free(struct tty *tty)
 {
 	tty_close(tty);
+
+	free(tty->r.ranges);
 }
 
 void
@@ -1411,66 +1411,34 @@ tty_check_codeset(struct tty *tty, const struct grid_cell *gc)
 	return (&new);
 }
 
-/*
- * Compute the effective display width (in terminal columns) of a grid cell
- * when it will be drawn at terminal column atcol.
- */
-u_int
-tty_cell_width(const struct grid_cell *gcp, u_int atcol)
-{
-	/* Tabs expand to the next tab stop (tab width = 8). */
-	if (gcp->flags & GRID_FLAG_TAB)
-		return (8 - (atcol % 8));
-	/* Normal characters: width stored in cell (1 or 2 usually). */
-	return (gcp->data.width);
-}
-
-/*
- * Check if a single character is obstructed by the overlay and return a
- * boolean.
- */
+/* Check if a single character is covered by the overlay. */
 static int
 tty_check_overlay(struct tty *tty, u_int px, u_int py)
 {
-	static struct visible_ranges	r = { NULL, 0, 0 };
+	struct visible_ranges	*r;
 
 	/*
-	 * A unit width range will always return nx[2] == 0 from a check, even
-	 * with multiple overlays, so it's sufficient to check just the first
-	 * two entries.
+	 * With a single character, if there is anything visible (that is, the
+	 * range is not empty), it must be that character.
 	 */
-	if (r.size == 0) {
-		r.ranges = xcalloc(2, sizeof(struct visible_range));
-		r.size = 2;
-	}
-
-	tty_check_overlay_range(tty, px, py, 1, &r);
-	if (r.ranges[0].nx + r.ranges[1].nx == 0)
-		return (0);
-	return (1);
+	r = tty_check_overlay_range(tty, px, py, 1);
+	return (!server_client_ranges_is_empty(r));
 }
 
 /* Return parts of the input range which are visible. */
-void
-tty_check_overlay_range(struct tty *tty, u_int px, u_int py, u_int nx,
-    struct visible_ranges *r)
+struct visible_ranges *
+tty_check_overlay_range(struct tty *tty, u_int px, u_int py, u_int nx)
 {
 	struct client	*c = tty->client;
 
-	if (r->size == 0) {
-		r->ranges = xcalloc(2, sizeof(struct visible_range));
-		r->size = 2;
-	}
-
 	if (c->overlay_check == NULL) {
-		r->ranges[0].px = px;
-		r->ranges[0].nx = nx;
-		r->used = 1;
-		return;
+		server_client_ensure_ranges(&tty->r, 1);
+		tty->r.ranges[0].px = px;
+		tty->r.ranges[0].nx = nx;
+		tty->r.used = 1;
+		return (&tty->r);
 	}
-
-	c->overlay_check(c, c->overlay_data, px, py, nx, r);
-	return;
+	return (c->overlay_check(c, c->overlay_data, px, py, nx));
 }
 
 #ifdef ENABLE_SIXEL
@@ -1998,7 +1966,7 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 {
 	const struct grid_cell	*gcp = ctx->cell;
 	struct screen		*s = ctx->s;
-	static struct visible_ranges	r = { NULL, 0, 0 };
+	struct visible_ranges	*r;
 	u_int			 px, py, i, vis = 0;
 
 	px = ctx->xoff + ctx->ocx - ctx->wox;
@@ -2015,9 +1983,9 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 
 	/* Handle partially obstructed wide characters. */
 	if (gcp->data.width > 1) {
-		tty_check_overlay_range(tty, px, py, gcp->data.width, &r);
-		for (i = 0; i < r.used; i++)
-			vis += r.ranges[i].nx;
+		r = tty_check_overlay_range(tty, px, py, gcp->data.width);
+		for (i = 0; i < r->used; i++)
+			vis += r->ranges[i].nx;
 		if (vis < gcp->data.width) {
 			tty_draw_line(tty, s, s->cx, s->cy, gcp->data.width,
 			    px, py, &ctx->defaults, ctx->palette);
@@ -2043,7 +2011,8 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cmd_cells(struct tty *tty, const struct tty_ctx *ctx)
 {
-	struct visible_ranges	 r = { NULL, 0, 0 };
+	struct visible_ranges	*r;
+	struct visible_range	*rr;
 	u_int			 i, px, py, cx;
 	char			*cp = ctx->ptr;
 
@@ -2068,20 +2037,21 @@ tty_cmd_cells(struct tty *tty, const struct tty_ctx *ctx)
 
 	tty_margin_off(tty);
 	tty_cursor_pane_unless_wrap(tty, ctx, ctx->ocx, ctx->ocy);
-	tty_attributes(tty, ctx->cell, &ctx->defaults, ctx->palette, ctx->s->hyperlinks);
+	tty_attributes(tty, ctx->cell, &ctx->defaults, ctx->palette,
+	    ctx->s->hyperlinks);
 
 	/* Get tty position from pane position for overlay check. */
 	px = ctx->xoff + ctx->ocx - ctx->wox;
 	py = ctx->yoff + ctx->ocy - ctx->woy;
 
-	tty_check_overlay_range(tty, px, py, ctx->num, &r);
-	for (i = 0; i < r.used; i++) {
-		if (r.ranges[i].nx == 0)
-			continue;
-		/* Convert back to pane position for printing. */
-		cx = r.ranges[i].px - ctx->xoff + ctx->wox;
-		tty_cursor_pane_unless_wrap(tty, ctx, cx, ctx->ocy);
-		tty_putn(tty, cp + r.ranges[i].px - px, r.ranges[i].nx, r.ranges[i].nx);
+	r = tty_check_overlay_range(tty, px, py, ctx->num);
+	for (i = 0; i < r->used; i++) {
+		rr = &r->ranges[i];
+		if (rr->nx != 0) {
+			cx = rr->px - ctx->xoff + ctx->wox;
+			tty_cursor_pane_unless_wrap(tty, ctx, cx, ctx->ocy);
+			tty_putn(tty, cp + rr->px - px, rr->nx, rr->nx);
+		}
 	}
 }
 

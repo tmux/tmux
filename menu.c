@@ -34,6 +34,7 @@ struct menu_data {
 
 	struct cmd_find_state	 fs;
 	struct screen		 s;
+	struct visible_ranges	 r;
 
 	u_int			 px;
 	u_int			 py;
@@ -181,15 +182,16 @@ menu_mode_cb(__unused struct client *c, void *data, u_int *cx, u_int *cy)
 }
 
 /* Return parts of the input range which are not obstructed by the menu. */
-void
+struct visible_ranges *
 menu_check_cb(__unused struct client *c, void *data, u_int px, u_int py,
-    u_int nx, struct visible_ranges *r)
+    u_int nx)
 {
 	struct menu_data	*md = data;
 	struct menu		*menu = md->menu;
 
 	server_client_overlay_range(md->px, md->py, menu->width + 4,
-	    menu->count + 2, px, py, nx, r);
+	    menu->count + 2, px, py, nx, &md->r);
+	return (&md->r);
 }
 
 void
@@ -232,7 +234,9 @@ menu_free_cb(__unused struct client *c, void *data)
 	if (md->cb != NULL)
 		md->cb(md->menu, UINT_MAX, KEYC_NONE, md->data);
 
+	free(md->r.ranges);
 	screen_free(&md->s);
+
 	menu_free(md->menu);
 	free(md);
 }
