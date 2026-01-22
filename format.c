@@ -454,14 +454,13 @@ format_job_tidy(struct format_job_tree *jobs, int force)
 	}
 }
 
-/* Workaround this needless gcc warning:
- * warning: format not a string literal, format string not checked [-Wformat-nonliteral]
- */
+/* Work around needless -Wformat-nonliteral gcc warning. */
 static size_t
-format_strftime(char *s, size_t max, const char *time_format, const struct tm *tm) {
+format_strftime(char *s, size_t max, const char *fmt, const struct tm *tm)
+{
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wformat-nonliteral"
-    return strftime(s, max, time_format, tm);
+	return (strftime(s, max, fmt, tm));
 #pragma GCC diagnostic pop
 }
 
@@ -5551,7 +5550,8 @@ format_expand1(struct format_expand_state *es, const char *fmt)
 			es->time = time(NULL);
 			localtime_r(&es->time, &es->tm);
 		}
-		if (format_strftime(expanded, sizeof expanded, fmt, &es->tm) == 0) {
+		if (format_strftime(expanded, sizeof expanded, fmt,
+		    &es->tm) == 0) {
 			format_log(es, "format is too long");
 			return (xstrdup(""));
 		}
