@@ -228,7 +228,6 @@ window_clock_draw_screen(struct window_mode_entry *wme)
 	struct screen			*s = &data->screen;
 	struct grid_cell		 gc;
 	char				 tim[64], *ptr;
-	const char			 *timeformat;
 	time_t				 t;
 	struct tm			*tm;
 	u_int				 i, j, x, y, idx;
@@ -242,20 +241,18 @@ window_clock_draw_screen(struct window_mode_entry *wme)
 	tm = localtime(&t);
 	if (style == 0 || style == 2) {
 		if (style == 2)
-			timeformat = "%l:%M:%S ";
+			strftime(tim, sizeof tim, "%l:%M:%S ", localtime(&t));
 		else
-			timeformat = "%l:%M ";
-		strftime(tim, sizeof tim, timeformat, localtime(&t));
+			strftime(tim, sizeof tim, "%l:%M ", localtime(&t));
 		if (tm->tm_hour >= 12)
 			strlcat(tim, "PM", sizeof tim);
 		else
 			strlcat(tim, "AM", sizeof tim);
 	} else {
 		if (style == 3)
-			timeformat = "%H:%M:%S";
+			strftime(tim, sizeof tim, "%H:%M:%S", tm);
 		else
-			timeformat = "%H:%M";
-		strftime(tim, sizeof tim, timeformat, tm);
+			strftime(tim, sizeof tim, "%H:%M", tm);
 	}
 
 	screen_write_clearscreen(&ctx, 8);
