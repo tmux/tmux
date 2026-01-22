@@ -375,14 +375,17 @@ grid_trim_history(struct grid *gd, u_int ny)
  * and shift up.
  */
 void
-grid_collect_history(struct grid *gd)
+grid_collect_history(struct grid *gd, int all)
 {
 	u_int	ny;
 
 	if (gd->hsize == 0 || gd->hsize < gd->hlimit)
 		return;
 
-	ny = gd->hlimit / 10;
+	if (all)
+		ny = gd->hsize - gd->hlimit;
+	else
+		ny = gd->hlimit / 10;
 	if (ny < 1)
 		ny = 1;
 	if (ny > gd->hsize)

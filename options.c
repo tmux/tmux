@@ -1252,6 +1252,10 @@ options_push_changes(const char *name)
 		utf8_update_width_cache();
 	if (strcmp(name, "input-buffer-size") == 0)
 		input_set_buffer_size(options_get_number(global_options, name));
+	if (strcmp(name, "history-limit") == 0) {
+		RB_FOREACH(s, sessions, &sessions)
+			session_update_history(s);
+	}
 	RB_FOREACH(s, sessions, &sessions)
 		status_update_cache(s);
 
