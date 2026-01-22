@@ -60,7 +60,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 	struct window_pane	*wp;
 	const char		*tablename;
 	struct key_table	*table;
-	struct sort_criteria	 sc;
+	struct sort_criteria	 sort_crit;
 
 	if (tflag != NULL &&
 	    (tflag[strcspn(tflag, ":.%")] != '\0' || strcmp(tflag, "=") == 0)) {
@@ -96,14 +96,16 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 	}
 
-	sort_criteria_init(&sc, args_get(args, 'O'), 0, NULL, NULL);
+	sort_criteria_init(&sort_crit, args_get(args, 'O'), 0, NULL);
 	if (args_has(args, 'n')) { // TODO: dj
-		if ((s = session_next_session(tc->session, &sc)) == NULL) {
+		if ((s = session_next_session(tc->session, &sort_crit))
+		    == NULL) {
 			cmdq_error(item, "can't find next session");
 			return (CMD_RETURN_ERROR);
 		}
 	} else if (args_has(args, 'p')) {
-		if ((s = session_previous_session(tc->session, &sc)) == NULL) {
+		if ((s = session_previous_session(tc->session, &sort_crit))
+		    == NULL) {
 			cmdq_error(item, "can't find previous session");
 			return (CMD_RETURN_ERROR);
 		}

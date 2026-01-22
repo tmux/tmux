@@ -77,33 +77,11 @@ const struct window_mode window_buffer_mode = {
 };
 
 
-static enum sort_order window_buffer_ordering[] = {
+static enum sort_order window_buffer_sort_order_seq[] = {
 	SORT_ORDER,
 	SORT_NAME,
 	SORT_SIZE,
-};
-static struct sort_ordering window_buffer_sort_ordering = {
-    .data = window_buffer_ordering,
-    .len  = nitems(window_buffer_ordering),
-};
-
-struct window_buffer_itemdata {
-	const char	*name;
-	u_int		 order;
-	size_t		 size;
-};
-
-struct window_buffer_modedata {
-	struct window_pane		 *wp;
-	struct cmd_find_state		  fs;
-
-	struct mode_tree_data		 *data;
-	char				 *command;
-	char				 *format;
-	char				 *key_format;
-
-	struct window_buffer_itemdata	**item_list;
-	u_int				  item_size;
+	SORT_END,
 };
 
 struct window_buffer_editdata {
@@ -130,34 +108,13 @@ window_buffer_free_item(struct window_buffer_itemdata *item)
 	free(item);
 }
 
-static int
-window_buffer_cmp(const void *a0, const void *b0)
-{
-	const struct window_buffer_itemdata *const	*a = a0;
-	const struct window_buffer_itemdata *const	*b = b0;
-	int						 result = 0;
-
-	if (sort_criteria->order == SORT_ORDER)
-		result = (*b)->order - (*a)->order;
-	else if (sort_criteria->order == SORT_SIZE)
-		result = (*b)->size - (*a)->size;
-
-	/* Use WINDOW_BUFFER_BY_NAME as default order and tie breaker. */
-	if (result == 0)
-		result = strcmp((*a)->name, (*b)->name);
-
-	if (sort_criteria->reversed)
-		result = -result;
-	return (result);
-}
-
 static void
 window_buffer_build(void *modedata, struct sort_criteria *sort_crit,
     __unused uint64_t *tag, const char *filter)
 {
 	struct window_buffer_modedata	*data = modedata;
-	struct window_buffer_itemdata	*item;
-	u_int				 i;
+	struct window_buffer_itemdata	*item, **l;
+	u_int				 i, n;
 	struct paste_buffer		*pb = NULL;
 	char				*text, *cp;
 	struct format_tree		*ft;
@@ -178,17 +135,15 @@ window_buffer_build(void *modedata, struct sort_criteria *sort_crit,
 		item->order = paste_buffer_order(pb);
 	}
 
-	sort_run(data->item_list, data->item_size, sizeof *data->item_list,
-	    sort_crit);
-
 	if (cmd_find_valid_state(&data->fs)) {
 		s = data->fs.s;
 		wl = data->fs.wl;
 		wp = data->fs.wp;
 	}
 
-	for (i = 0; i < data->item_size; i++) {
-		item = data->item_list[i];
+	l = sort_get_window_buffer_itemdata(data, &n, sort_crit);
+	for (i = 0; i < n; i++) {
+		item = l[i];
 
 		pb = paste_get_name(item->name);
 		if (pb == NULL)
@@ -376,8 +331,8 @@ window_buffer_init(struct window_mode_entry *wme, struct cmd_find_state *fs,
 
 	data->data = mode_tree_start(wp, args, window_buffer_build,
 	    window_buffer_draw, window_buffer_search, window_buffer_menu, NULL,
-	    window_buffer_get_key, NULL, data, window_buffer_menu_items,
-	    window_buffer_cmp, &window_buffer_sort_ordering, &s);
+	    window_buffer_get_key, NULL, NULL, data, window_buffer_menu_items,
+	    window_buffer_sort_order_seq, &s);
 	mode_tree_zoom(data->data, args);
 
 	mode_tree_build(data->data);

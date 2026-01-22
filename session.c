@@ -293,7 +293,7 @@ session_update_activity(struct session *s, struct timeval *from)
 
 /* Find the next usable session. */
 struct session *
-session_next_session(struct session *s, struct sort_criteria *sc)
+session_next_session(struct session *s, struct sort_criteria *sort_crit)
 {
 	struct session	*s2, **l = NULL;
 	u_int		n, i;
@@ -301,7 +301,7 @@ session_next_session(struct session *s, struct sort_criteria *sc)
 	if (RB_EMPTY(&sessions) || !session_alive(s))
 		return (NULL);
 
-	l = sort_get_sessions(&n, sc);
+	l = sort_get_sessions(&n, sort_crit);
 	for (i = 0; i < n; i++)
 		if (l[i] == s)
 			break;
@@ -319,7 +319,7 @@ session_next_session(struct session *s, struct sort_criteria *sc)
 
 /* Find the previous usable session. */
 struct session *
-session_previous_session(struct session *s, struct sort_criteria *sc)
+session_previous_session(struct session *s, struct sort_criteria *sort_crit)
 {
 	struct session	*s2, **l = NULL;
 	u_int		n, i;
@@ -327,7 +327,7 @@ session_previous_session(struct session *s, struct sort_criteria *sc)
 	if (RB_EMPTY(&sessions) || !session_alive(s))
 		return (NULL);
 
-	l = sort_get_sessions(&n, sc);
+	l = sort_get_sessions(&n, sort_crit);
 	for (i = 0; i < n; i++)
 		if (l[i] == s)
 			break;

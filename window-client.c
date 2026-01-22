@@ -71,31 +71,12 @@ const struct window_mode window_client_mode = {
 	.key = window_client_key,
 };
 
-static enum sort_order window_client_ordering[] = {
+static enum sort_order window_client_sort_order_seq[] = {
 	SORT_NAME,
 	SORT_SIZE,
 	SORT_CREATION,
 	SORT_ACTIVITY,
-};
-static struct sort_ordering window_client_sort_ordering = {
-	.data = window_client_ordering,
-	.len  = nitems(window_client_ordering),
-};
-
-struct window_client_itemdata {
-	struct client	*c;
-};
-
-struct window_client_modedata {
-	struct window_pane		 *wp;
-
-	struct mode_tree_data		 *data;
-	char				 *format;
-	char				 *key_format;
-	char				 *command;
-
-	struct window_client_itemdata	**item_list;
-	u_int				  item_size;
+	SORT_END,
 };
 
 static struct window_client_itemdata *
@@ -116,55 +97,13 @@ window_client_free_item(struct window_client_itemdata *item)
 	free(item);
 }
 
-static int
-window_client_cmp(const void *a0, const void *b0)
-{
-	const struct window_client_itemdata *const	*a = a0;
-	const struct window_client_itemdata *const	*b = b0;
-	const struct window_client_itemdata		*itema = *a;
-	const struct window_client_itemdata		*itemb = *b;
-	struct client					*ca = itema->c;
-	struct client					*cb = itemb->c;
-	int						 result = 0;
-
-	switch (sort_criteria->order) {
-	case SORT_SIZE:
-		result = ca->tty.sx - cb->tty.sx;
-		if (result == 0)
-			result = ca->tty.sy - cb->tty.sy;
-		break;
-	case SORT_CREATION:
-		if (timercmp(&ca->creation_time, &cb->creation_time, >))
-			result = -1;
-		else if (timercmp(&ca->creation_time, &cb->creation_time, <))
-			result = 1;
-		break;
-	case SORT_ACTIVITY:
-		if (timercmp(&ca->activity_time, &cb->activity_time, >))
-			result = -1;
-		else if (timercmp(&ca->activity_time, &cb->activity_time, <))
-			result = 1;
-		break;
-	default:
-		// TODO:
-	}
-
-	/* Use WINDOW_CLIENT_BY_NAME as default order and tie breaker. */
-	if (result == 0)
-		result = strcmp(ca->name, cb->name);
-
-	if (sort_criteria->reversed)
-		result = -result;
-	return (result);
-}
-
 static void
 window_client_build(void *modedata, struct sort_criteria *sort_crit,
     __unused uint64_t *tag, const char *filter)
 {
 	struct window_client_modedata	*data = modedata;
-	struct window_client_itemdata	*item;
-	u_int				 i;
+	struct window_client_itemdata	*item, **l;
+	u_int				 i, n;
 	struct client			*c;
 	char				*text, *cp;
 
@@ -184,11 +123,9 @@ window_client_build(void *modedata, struct sort_criteria *sort_crit,
 		c->references++;
 	}
 
-	sort_run(data->item_list, data->item_size, sizeof *data->item_list,
-	    sort_crit);
-
-	for (i = 0; i < data->item_size; i++) {
-		item = data->item_list[i];
+	l = sort_get_window_client_itemdata(data, &n, sort_crit);
+	for (i = 0; i < n; i++) {
+		item = l[i];
 		c = item->c;
 
 		if (filter != NULL) {
@@ -205,6 +142,7 @@ window_client_build(void *modedata, struct sort_criteria *sort_crit,
 		    text, -1);
 		free(text);
 	}
+	free(l);
 }
 
 static void
@@ -304,8 +242,8 @@ window_client_init(struct window_mode_entry *wme,
 
 	data->data = mode_tree_start(wp, args, window_client_build,
 	    window_client_draw, NULL, window_client_menu, NULL,
-	    window_client_get_key, NULL, data, window_client_menu_items,
-	    window_client_cmp, &window_client_sort_ordering, &s);
+	    window_client_get_key, NULL, NULL, data, window_client_menu_items,
+	    window_client_sort_order_seq, &s);
 	mode_tree_zoom(data->data, args);
 
 	mode_tree_build(data->data);

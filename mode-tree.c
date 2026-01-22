@@ -57,6 +57,7 @@ struct mode_tree_data {
 	mode_tree_height_cb       heightcb;
 	mode_tree_key_cb	  keycb;
 	mode_tree_swap_cb	  swapcb;
+	mode_tree_sort_cb	  sortcb;
 
 	struct mode_tree_list	  children;
 	struct mode_tree_list	  saved;
@@ -323,7 +324,7 @@ mode_tree_swap(struct mode_tree_data *mtd, int direction)
 
 	if (mtd->swapcb(mtd->line_list[mtd->current].item->itemdata,
 	    mtd->line_list[swap_with].item->itemdata,
-	    mtd->sort_crit.order)) {
+	    &mtd->sort_crit)) {
 		mtd->current = swap_with;
 		mode_tree_build(mtd);
 	}
@@ -453,8 +454,8 @@ mode_tree_start(struct window_pane *wp, struct args *args,
     mode_tree_build_cb buildcb, mode_tree_draw_cb drawcb,
     mode_tree_search_cb searchcb, mode_tree_menu_cb menucb,
     mode_tree_height_cb heightcb, mode_tree_key_cb keycb,
-    mode_tree_swap_cb swapcb, void *modedata, const struct menu_item *menu,
-    int (*cmp)(const void *, const void *), struct sort_ordering *sort_ordering,
+    mode_tree_swap_cb swapcb, mode_tree_sort_cb sortcb, void *modedata,
+    const struct menu_item *menu, enum sort_order *sort_order_seq,
     struct screen **s)
 {
 	struct mode_tree_data	*mtd;
@@ -474,7 +475,7 @@ mode_tree_start(struct window_pane *wp, struct args *args,
 		mtd->preview = MODE_TREE_PREVIEW_NORMAL;
 
 	sort_criteria_init(&mtd->sort_crit, args_get(args, 'O'),
-	    args_has(args, 'r'), cmp, sort_ordering);
+	    args_has(args, 'r'), sort_order_seq);
 
 	if (args_has(args, 'f'))
 		mtd->filter = xstrdup(args_get(args, 'f'));
@@ -488,6 +489,7 @@ mode_tree_start(struct window_pane *wp, struct args *args,
 	mtd->heightcb = heightcb;
 	mtd->keycb = keycb;
 	mtd->swapcb = swapcb;
+	mtd->sortcb = sortcb;
 
 	TAILQ_INIT(&mtd->children);
 
@@ -555,6 +557,8 @@ mode_tree_build(struct mode_tree_data *mtd)
 	TAILQ_CONCAT(&mtd->saved, &mtd->children, entry);
 	TAILQ_INIT(&mtd->children);
 
+	if (mtd->sortcb != NULL)
+		mtd->sortcb(&mtd->sort_crit);
 	mtd->buildcb(mtd->modedata, &mtd->sort_crit, &tag, mtd->filter);
 	mtd->no_matches = TAILQ_EMPTY(&mtd->children);
 	if (mtd->no_matches)
@@ -840,7 +844,7 @@ mode_tree_draw(struct mode_tree_data *mtd)
 	screen_write_cursormove(&ctx, 0, h, 0);
 	screen_write_box(&ctx, w, sy - h, BOX_LINES_DEFAULT, NULL, NULL);
 
-	if (mtd->sort_crit.ordering->data != NULL) { // FIXME: dj
+	if (mtd->sort_crit.order_seq != NULL) { // FIXME: dj
 		xasprintf(&text, " %s (sort: %s%s)", mti->name,
 		    sort_order_to_string(mtd->sort_crit.order),
 		    mtd->sort_crit.reversed ? ", reversed" : "");
