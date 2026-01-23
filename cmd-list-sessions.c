@@ -52,23 +52,22 @@ const struct cmd_entry cmd_list_sessions_entry = {
 static enum cmd_retval
 cmd_list_sessions_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = cmd_get_args(self);
-	struct session		*s, **l = NULL;
-	u_int		 	 n, i;
-	struct format_tree	*ft;
-	const char		*template, *filter;
-	char			*line, *expanded;
-	int			 flag;
-	struct sort_criteria	 sort_crit;
+	struct args		 *args = cmd_get_args(self);
+	struct session		**l = NULL;
+	u_int		 	  n, i;
+	struct format_tree	 *ft;
+	const char		 *template, *filter;
+	char			 *line, *expanded;
+	int			  flag;
+	struct sort_criteria	  sort_crit;
 
 	if ((template = args_get(args, 'F')) == NULL)
 		template = LIST_SESSIONS_TEMPLATE;
 	filter = args_get(args, 'f');
 
-	sort_criteria_init(&sort_crit, args_get(args, 'O'), args_has(args, 'r'),
-	    NULL);
-	
+	sort_criteria_init(&sort_crit, args);
 	l = sort_get_sessions(&n, &sort_crit);
+
 	for (i = 0; i < n; i++) {
 		ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
 		format_add(ft, "line", "%u", i);

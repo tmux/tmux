@@ -67,8 +67,6 @@ struct screen_write_citem;
 struct screen_write_cline;
 struct screen_write_ctx;
 struct session;
-struct window_buffer_modedata;
-struct window_client_modedata;
 
 #ifdef ENABLE_SIXEL
 struct sixel_image;
@@ -2310,7 +2308,20 @@ void	cfg_print_causes(struct cmdq_item *);
 void	cfg_show_causes(struct session *);
 
 /* paste.c */
-struct paste_buffer;
+// struct paste_buffer;
+struct paste_buffer {
+	char		*data;
+	size_t		 size;
+
+	char		*name;
+	time_t		 created;
+	int		 automatic;
+	u_int		 order;
+
+	RB_ENTRY(paste_buffer) name_entry;
+	RB_ENTRY(paste_buffer) time_entry;
+};
+
 const char	*paste_buffer_name(struct paste_buffer *);
 u_int		 paste_buffer_order(struct paste_buffer *);
 time_t		 paste_buffer_created(struct paste_buffer *);
@@ -2328,12 +2339,11 @@ char		*paste_make_sample(struct paste_buffer *);
 
 /* sort.c */
 enum sort_order {
-	SORT_INDEX,
-	SORT_ORDER,
-	SORT_SIZE,
-	SORT_NAME,
-	SORT_CREATION,
 	SORT_ACTIVITY,
+	SORT_CREATION,
+	SORT_INDEX,
+	SORT_NAME,
+	SORT_SIZE,
 	SORT_END,
 };
 
@@ -2343,26 +2353,20 @@ struct sort_criteria {
 	enum sort_order	*order_seq;
 };
 
-void		 sort_criteria_init(struct sort_criteria *, const char *, int,
-		     enum sort_order *);
+int		 sort_criteria_init(struct sort_criteria *, struct args *);
+void		 sort_next_order(struct sort_criteria *);
 enum sort_order	 sort_order_from_string(const char *);
 const char	*sort_order_to_string(enum sort_order);
-void		 sort_next_order(struct sort_criteria *);
 int		 sort_would_window_tree_swap_indices(struct sort_criteria *,
 		     struct winlink *, struct winlink *);
 
-struct session			**sort_get_sessions(u_int *,
-				    struct sort_criteria *);
-struct window_pane		**sort_get_window_panes(struct winlink *,
-				    u_int *, struct sort_criteria *);
-struct winlink			**sort_get_winlinks(struct session *, u_int *,
-				    struct sort_criteria *);
-struct window_client_itemdata	**sort_get_window_client_itemdata(
-				    struct window_client_modedata *md, u_int *n,
-				    struct sort_criteria *sort_crit);
-struct window_buffer_itemdata	**sort_get_window_buffer_itemdata(
-				    struct window_buffer_modedata *md, u_int *n,
-				    struct sort_criteria *sort_crit);
+struct paste_buffer	**sort_get_buffers(u_int *, struct sort_criteria *);
+struct client		**sort_get_clients(u_int *, struct sort_criteria *);
+struct session		**sort_get_sessions(u_int *, struct sort_criteria *);
+struct window_pane	**sort_get_panes(struct winlink *, u_int *,
+			      struct sort_criteria *);
+struct winlink		**sort_get_winlinks(struct session *, u_int *,
+			      struct sort_criteria *);
 
 /* format.c */
 #define FORMAT_STATUS 0x1
@@ -3436,7 +3440,7 @@ struct mode_tree_data *mode_tree_start(struct window_pane *, struct args *,
 	     mode_tree_build_cb, mode_tree_draw_cb, mode_tree_search_cb,
 	     mode_tree_menu_cb, mode_tree_height_cb, mode_tree_key_cb,
 	     mode_tree_swap_cb, mode_tree_sort_cb, void *, 
-	     const struct menu_item *, enum sort_order *, struct screen **);
+	     const struct menu_item *, struct screen **);
 void	 mode_tree_zoom(struct mode_tree_data *, struct args *);
 void	 mode_tree_build(struct mode_tree_data *);
 void	 mode_tree_free(struct mode_tree_data *);
@@ -3456,25 +3460,6 @@ void	 mode_tree_run_command(struct client *, struct cmd_find_state *,
 
 /* window-buffer.c */
 extern const struct window_mode window_buffer_mode;
-struct window_buffer_itemdata {
-	const char	*name;
-	u_int		 order; // FIXME: should be index?
-	size_t		 size;
-};
-
-struct window_buffer_modedata {
-	struct window_pane		 *wp;
-	struct cmd_find_state		  fs;
-
-	struct mode_tree_data		 *data;
-	char				 *command;
-	char				 *format;
-	char				 *key_format;
-
-	struct window_buffer_itemdata	**item_list;
-	u_int				  item_size;
-};
-
 
 /* window-tree.c */
 extern const struct window_mode window_tree_mode;
@@ -3485,23 +3470,6 @@ extern const char window_clock_table[14][5][5];
 
 /* window-client.c */
 extern const struct window_mode window_client_mode;
-
-struct window_client_itemdata {
-	struct client	*c;
-};
-
-struct window_client_modedata {
-	struct window_pane		 *wp;
-
-	struct mode_tree_data		 *data;
-	char				 *format;
-	char				 *key_format;
-	char				 *command;
-
-	struct window_client_itemdata	**item_list;
-	u_int				  item_size;
-};
-
 
 /* window-copy.c */
 extern const struct window_mode window_copy_mode;

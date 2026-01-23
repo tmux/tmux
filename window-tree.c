@@ -96,13 +96,6 @@ enum window_tree_type {
 	WINDOW_TREE_PANE,
 };
 
-static enum sort_order window_tree_sort_order_seq[] = {
-	SORT_INDEX,
-	SORT_NAME,
-	SORT_ACTIVITY,
-	SORT_END,
-};
-
 struct window_tree_itemdata {
 	enum window_tree_type	type;
 	int			session;
@@ -249,7 +242,7 @@ window_tree_build_window(struct session *s, struct winlink *wl,
 	struct window_tree_itemdata	*item;
 	struct mode_tree_item		*mti;
 	char				*name, *text;
-	struct window_pane		*wp, **l;
+	struct window_pane		*wp, **l = NULL;
 	u_int				 n, i;
 	int				 expanded;
 	struct format_tree		*ft;
@@ -284,7 +277,7 @@ window_tree_build_window(struct session *s, struct winlink *wl,
 			goto empty;
 	}
 
-	l = sort_get_window_panes(wl, &n, sort_crit);
+	l = sort_get_panes(wl, &n, sort_crit);
 	if (n == 0)
 		goto empty;
 
@@ -311,7 +304,7 @@ window_tree_build_session(struct session *s, void *modedata,
 	struct window_tree_itemdata	*item;
 	struct mode_tree_item		*mti;
 	char				*text;
-	struct winlink			*wl = s->curw, **l;
+	struct winlink			*wl = s->curw, **l = NULL;
 	u_int				 n, i, empty;
 	int				 expanded;
 	struct format_tree		*ft;
@@ -355,7 +348,7 @@ window_tree_build(void *modedata, struct sort_criteria *sort_crit,
     uint64_t *tag, const char *filter)
 {
 	struct window_tree_modedata	*data = modedata;
-	struct session			*s, **l;
+	struct session			*s, **l = NULL;
 	struct session_group		*sg, *current;
 	u_int				 n, i;
 
@@ -865,11 +858,19 @@ window_tree_swap(void *cur_itemdata, void *other_itemdata,
 	return (1);
 }
 
+static enum sort_order window_tree_order_seq[] = {
+	SORT_INDEX,
+	SORT_NAME,
+	SORT_ACTIVITY,
+	SORT_CREATION,
+	SORT_END,
+};
 static void
 window_tree_sort(struct sort_criteria *sort_crit)
 {
+	sort_crit->order_seq = window_tree_order_seq;
 	if (sort_crit->order == SORT_END)
-		sort_crit->order = SORT_INDEX;
+		sort_crit->order = sort_crit->order_seq[0];
 }
 
 static struct screen *
@@ -911,7 +912,7 @@ window_tree_init(struct window_mode_entry *wme, struct cmd_find_state *fs,
 	data->data = mode_tree_start(wp, args, window_tree_build,
 	    window_tree_draw, window_tree_search, window_tree_menu, NULL,
 	    window_tree_get_key, window_tree_swap, window_tree_sort, data,
-	    window_tree_menu_items, window_tree_sort_order_seq, &s);
+	    window_tree_menu_items, &s);
 	mode_tree_zoom(data->data, args);
 
 	mode_tree_build(data->data);

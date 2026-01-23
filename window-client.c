@@ -71,12 +71,20 @@ const struct window_mode window_client_mode = {
 	.key = window_client_key,
 };
 
-static enum sort_order window_client_sort_order_seq[] = {
-	SORT_NAME,
-	SORT_SIZE,
-	SORT_CREATION,
-	SORT_ACTIVITY,
-	SORT_END,
+struct window_client_itemdata {
+	struct client	*c;
+};
+
+struct window_client_modedata {
+	struct window_pane		 *wp;
+
+	struct mode_tree_data		 *data;
+	char				 *format;
+	char				 *key_format;
+	char				 *command;
+
+	struct window_client_itemdata	**item_list;
+	u_int				  item_size;
 };
 
 static struct window_client_itemdata *
@@ -102,9 +110,9 @@ window_client_build(void *modedata, struct sort_criteria *sort_crit,
     __unused uint64_t *tag, const char *filter)
 {
 	struct window_client_modedata	*data = modedata;
-	struct window_client_itemdata	*item, **l;
+	struct window_client_itemdata	*item;
 	u_int				 i, n;
-	struct client			*c;
+	struct client			*c, **l = NULL;
 	char				*text, *cp;
 
 	for (i = 0; i < data->item_size; i++)
@@ -113,19 +121,22 @@ window_client_build(void *modedata, struct sort_criteria *sort_crit,
 	data->item_list = NULL;
 	data->item_size = 0;
 
-	TAILQ_FOREACH(c, &clients, entry) {
-		if (c->session == NULL || (c->flags & CLIENT_UNATTACHEDFLAGS))
+	l = sort_get_clients(&n, sort_crit);
+	for (i = 0; i < n; i++) {
+		if (l[i]->session == NULL ||
+		    (l[i]->flags & CLIENT_UNATTACHEDFLAGS))
 			continue;
 
 		item = window_client_add_item(data);
-		item->c = c;
+		item->c = l[i];
 
-		c->references++;
+		l[i]->references++;
 	}
+	if (l != NULL)
+		free(l);
 
-	l = sort_get_window_client_itemdata(data, &n, sort_crit);
-	for (i = 0; i < n; i++) {
-		item = l[i];
+	for (i = 0; i < data->item_size; i++) {
+		item = data->item_list[i];
 		c = item->c;
 
 		if (filter != NULL) {
@@ -142,7 +153,6 @@ window_client_build(void *modedata, struct sort_criteria *sort_crit,
 		    text, -1);
 		free(text);
 	}
-	free(l);
 }
 
 static void
@@ -216,6 +226,21 @@ window_client_get_key(void *modedata, void *itemdata, u_int line)
 	return (key);
 }
 
+static enum sort_order window_client_order_seq[] = {
+	SORT_NAME,
+	SORT_SIZE,
+	SORT_CREATION,
+	SORT_ACTIVITY,
+	SORT_END,
+};
+static void
+window_client_sort(struct sort_criteria *sort_crit)
+{
+	sort_crit->order_seq = window_client_order_seq;
+	if (sort_crit->order == SORT_END)
+		sort_crit->order = sort_crit->order_seq[0];
+}
+
 static struct screen *
 window_client_init(struct window_mode_entry *wme,
     __unused struct cmd_find_state *fs, struct args *args)
@@ -242,8 +267,8 @@ window_client_init(struct window_mode_entry *wme,
 
 	data->data = mode_tree_start(wp, args, window_client_build,
 	    window_client_draw, NULL, window_client_menu, NULL,
-	    window_client_get_key, NULL, NULL, data, window_client_menu_items,
-	    window_client_sort_order_seq, &s);
+	    window_client_get_key, NULL, window_client_sort, data,
+	    window_client_menu_items, &s);
 	mode_tree_zoom(data->data, args);
 
 	mode_tree_build(data->data);

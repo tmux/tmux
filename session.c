@@ -308,8 +308,8 @@ session_next_session(struct session *s, struct sort_criteria *sort_crit)
 
 	if (i == n) fatalx("-%s session alive but not found.", s->name);
 
-	if (i == n - 1) i = 0;
-	else i++;
+	i++;
+	if (i == n) i = 0;
 
 	s2 = l[i];
 	free(l);
@@ -322,7 +322,7 @@ struct session *
 session_previous_session(struct session *s, struct sort_criteria *sort_crit)
 {
 	struct session	*s2, **l = NULL;
-	u_int		n, i;
+	u_int		 n, i;
 
 	if (RB_EMPTY(&sessions) || !session_alive(s))
 		return (NULL);
@@ -334,8 +334,8 @@ session_previous_session(struct session *s, struct sort_criteria *sort_crit)
 
 	if (i == n) fatalx("-%s session alive, but not found", s->name);
 
-	if (i == 0) i = n - 1;
-	else i--;
+	if (i == 0) i = n;
+	i--;
 
 	s2 = l[i];
 	free(l);

@@ -455,8 +455,7 @@ mode_tree_start(struct window_pane *wp, struct args *args,
     mode_tree_search_cb searchcb, mode_tree_menu_cb menucb,
     mode_tree_height_cb heightcb, mode_tree_key_cb keycb,
     mode_tree_swap_cb swapcb, mode_tree_sort_cb sortcb, void *modedata,
-    const struct menu_item *menu, enum sort_order *sort_order_seq,
-    struct screen **s)
+    const struct menu_item *menu, struct screen **s)
 {
 	struct mode_tree_data	*mtd;
 
@@ -474,8 +473,7 @@ mode_tree_start(struct window_pane *wp, struct args *args,
 	else
 		mtd->preview = MODE_TREE_PREVIEW_NORMAL;
 
-	sort_criteria_init(&mtd->sort_crit, args_get(args, 'O'),
-	    args_has(args, 'r'), sort_order_seq);
+	sort_criteria_init(&mtd->sort_crit, args);
 
 	if (args_has(args, 'f'))
 		mtd->filter = xstrdup(args_get(args, 'f'));
