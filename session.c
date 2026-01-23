@@ -766,3 +766,29 @@ session_theme_changed(struct session *s)
 		}
 	}
 }
+
+/* Update history for all panes. */
+void
+session_update_history(struct session *s)
+{
+	struct winlink		*wl;
+	struct window_pane	*wp;
+	struct grid		*gd;
+	u_int			 limit, osize;
+
+	limit = options_get_number(s->options, "history-limit");
+	RB_FOREACH(wl, winlinks, &s->windows) {
+		TAILQ_FOREACH(wp, &wl->window->panes, entry) {
+			gd = wp->base.grid;
+
+			osize = gd->hsize;
+			gd->hlimit = limit;
+			grid_collect_history(gd, 1);
+
+			if (gd->hsize != osize) {
+				log_debug("%s: %%%u %u -> %u", __func__, wp->id,
+				    osize, gd->hsize);
+			}
+		}
+	}
+}

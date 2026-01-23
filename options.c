@@ -1226,6 +1226,10 @@ options_push_changes(const char *name)
 		RB_FOREACH(wp, window_pane_tree, &all_window_panes)
 			wp->flags |= (PANE_STYLECHANGED|PANE_THEMECHANGED);
 	}
+	if (*name == '@') {
+		RB_FOREACH(wp, window_pane_tree, &all_window_panes)
+			wp->flags |= PANE_STYLECHANGED;
+	}
 	if (strcmp(name, "pane-colours") == 0) {
 		RB_FOREACH(wp, window_pane_tree, &all_window_panes)
 			colour_palette_from_option(&wp->palette, wp->options);
@@ -1248,6 +1252,10 @@ options_push_changes(const char *name)
 		utf8_update_width_cache();
 	if (strcmp(name, "input-buffer-size") == 0)
 		input_set_buffer_size(options_get_number(global_options, name));
+	if (strcmp(name, "history-limit") == 0) {
+		RB_FOREACH(s, sessions, &sessions)
+			session_update_history(s);
+	}
 	RB_FOREACH(s, sessions, &sessions)
 		status_update_cache(s);
 

@@ -27,9 +27,13 @@ struct menu_data {
 	struct cmdq_item	*item;
 	int			 flags;
 
-	struct grid_cell	 style;
-	struct grid_cell	 border_style;
-	struct grid_cell	 selected_style;
+	char			*style;
+	char			*border_style;
+	char			*selected_style;
+
+	struct grid_cell	 style_gc;
+	struct grid_cell	 border_style_gc;
+	struct grid_cell	 selected_style_gc;
 	enum box_lines		 border_lines;
 
 	struct cmd_find_state	 fs;
@@ -192,6 +196,60 @@ menu_check_cb(__unused struct client *c, void *data, u_int px, u_int py,
 	    menu->count + 2, px, py, nx, r);
 }
 
+static void
+menu_reapply_styles(struct menu_data *md, struct client *c)
+{
+	struct session		*s = c->session;
+	struct options		*o;
+	struct format_tree	*ft;
+	struct style		 sytmp;
+
+	if (s == NULL)
+		return;
+	o = s->curw->window->options;
+
+	ft = format_create_defaults(NULL, c, s, s->curw, NULL);
+
+	/* Reapply menu style from options. */
+	memcpy(&md->style_gc, &grid_default_cell, sizeof md->style_gc);
+	style_apply(&md->style_gc, o, "menu-style", ft);
+	if (md->style != NULL) {
+		style_set(&sytmp, &grid_default_cell);
+		if (style_parse(&sytmp, &md->style_gc, md->style) == 0) {
+			md->style_gc.fg = sytmp.gc.fg;
+			md->style_gc.bg = sytmp.gc.bg;
+		}
+	}
+
+	/* Reapply selected style from options. */
+	memcpy(&md->selected_style_gc, &grid_default_cell,
+	    sizeof md->selected_style_gc);
+	style_apply(&md->selected_style_gc, o, "menu-selected-style", ft);
+	if (md->selected_style != NULL) {
+		style_set(&sytmp, &grid_default_cell);
+		if (style_parse(&sytmp, &md->selected_style_gc,
+		    md->selected_style) == 0) {
+			md->selected_style_gc.fg = sytmp.gc.fg;
+			md->selected_style_gc.bg = sytmp.gc.bg;
+		}
+	}
+
+	/* Reapply border style from options. */
+	memcpy(&md->border_style_gc, &grid_default_cell,
+	    sizeof md->border_style_gc);
+	style_apply(&md->border_style_gc, o, "menu-border-style", ft);
+	if (md->border_style != NULL) {
+		style_set(&sytmp, &grid_default_cell);
+		if (style_parse(&sytmp, &md->border_style_gc,
+		    md->border_style) == 0) {
+			md->border_style_gc.fg = sytmp.gc.fg;
+			md->border_style_gc.bg = sytmp.gc.bg;
+		}
+	}
+
+	format_free(ft);
+}
+
 void
 menu_draw_cb(struct client *c, void *data,
     __unused struct screen_redraw_ctx *rctx)
@@ -203,16 +261,18 @@ menu_draw_cb(struct client *c, void *data,
 	struct screen_write_ctx	 ctx;
 	u_int			 i, px = md->px, py = md->py;
 
+	menu_reapply_styles(md, c);
+
 	screen_write_start(&ctx, s);
 	screen_write_clearscreen(&ctx, 8);
 
 	if (md->border_lines != BOX_LINES_NONE) {
 		screen_write_box(&ctx, menu->width + 4, menu->count + 2,
-		    md->border_lines, &md->border_style, menu->title);
+		    md->border_lines, &md->border_style_gc, menu->title);
 	}
 
 	screen_write_menu(&ctx, menu, md->choice, md->border_lines,
-	    &md->style, &md->border_style, &md->selected_style);
+	    &md->style_gc, &md->border_style_gc, &md->selected_style_gc);
 	screen_write_stop(&ctx);
 
 	for (i = 0; i < screen_size_y(&md->s); i++) {
@@ -234,6 +294,9 @@ menu_free_cb(__unused struct client *c, void *data)
 
 	screen_free(&md->s);
 	menu_free(md->menu);
+	free(md->style);
+	free(md->selected_style);
+	free(md->border_style);
 	free(md);
 }
 
@@ -470,24 +533,6 @@ menu_resize_cb(struct client *c, void *data)
 	md->py = ny;
 }
 
-static void
-menu_set_style(struct client *c, struct grid_cell *gc, const char *style,
-    const char *option)
-{
-	struct style	 sytmp;
-	struct options	*o = c->session->curw->window->options;
-
-	memcpy(gc, &grid_default_cell, sizeof *gc);
-	style_apply(gc, o, option, NULL);
-	if (style != NULL) {
-		style_set(&sytmp, &grid_default_cell);
-		if (style_parse(&sytmp, gc, style) == 0) {
-			gc->fg = sytmp.gc.fg;
-			gc->bg = sytmp.gc.bg;
-		}
-	}
-}
-
 struct menu_data *
 menu_prepare(struct menu *menu, int flags, int starting_choice,
     struct cmdq_item *item, u_int px, u_int py, struct client *c,
@@ -515,10 +560,12 @@ menu_prepare(struct menu *menu, int flags, int starting_choice,
 	md->flags = flags;
 	md->border_lines = lines;
 
-	menu_set_style(c, &md->style, style, "menu-style");
-	menu_set_style(c, &md->selected_style, selected_style,
-	    "menu-selected-style");
-	menu_set_style(c, &md->border_style, border_style, "menu-border-style");
+	if (style != NULL)
+		md->style = xstrdup(style);
+	if (selected_style != NULL)
+		md->selected_style = xstrdup(selected_style);
+	if (border_style != NULL)
+		md->border_style = xstrdup(border_style);
 
 	if (fs != NULL)
 		cmd_find_copy_state(&md->fs, fs);

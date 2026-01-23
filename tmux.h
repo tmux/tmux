@@ -3047,7 +3047,7 @@ int	 grid_cells_look_equal(const struct grid_cell *,
 struct grid *grid_create(u_int, u_int, u_int);
 void	 grid_destroy(struct grid *);
 int	 grid_compare(struct grid *, struct grid *);
-void	 grid_collect_history(struct grid *);
+void	 grid_collect_history(struct grid *, int);
 void	 grid_remove_history(struct grid *, u_int );
 void	 grid_scroll_history(struct grid *, u_int);
 void	 grid_scroll_history_region(struct grid *, u_int, u_int, u_int);
@@ -3225,6 +3225,7 @@ void	 screen_select_cell(struct screen *, struct grid_cell *,
 void	 screen_alternate_on(struct screen *, struct grid_cell *, int);
 void	 screen_alternate_off(struct screen *, struct grid_cell *, int);
 const char *screen_mode_to_string(int);
+const char *screen_print(struct screen *);
 
 /* window.c */
 extern struct windows windows;
@@ -3533,6 +3534,7 @@ u_int		 session_group_count(struct session_group *);
 u_int		 session_group_attached_count(struct session_group *);
 void		 session_renumber_windows(struct session *);
 void		 session_theme_changed(struct session *);
+void		 session_update_history(struct session *);
 
 /* utf8.c */
 enum utf8_state	 utf8_towc (const struct utf8_data *, wchar_t *);
