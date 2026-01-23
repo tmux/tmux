@@ -1984,6 +1984,8 @@ struct client {
 	struct event		 repeat_timer;
 
 	struct event		 click_timer;
+	int			 click_where;
+	int			 click_wp;
 	u_int			 click_button;
 	struct mouse_event	 click_event;
 
@@ -2094,6 +2096,7 @@ struct client {
 #define PROMPT_KEY 0x10
 #define PROMPT_ACCEPT 0x20
 #define PROMPT_QUOTENEXT 0x40
+#define PROMPT_BSPACE_EXIT 0x80
 	int			 prompt_flags;
 	enum prompt_type	 prompt_type;
 	int			 prompt_cursor;

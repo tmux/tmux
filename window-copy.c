@@ -3237,6 +3237,15 @@ window_copy_command(struct window_mode_entry *wme, struct client *c,
 		window_pane_reset_mode(wp);
 	else if (action == WINDOW_COPY_CMD_REDRAW)
 		window_copy_redraw_screen(wme);
+	else if (action == WINDOW_COPY_CMD_NOTHING) {
+		/*
+		 * Nothing is not actually nothing - most commands at least
+		 * move the cursor (what would be the point of a command that
+		 * literally does nothing?) and in that case we need to redraw
+		 * the first line to update the indicator.
+		 */
+		window_copy_redraw_lines(wme, 0, 1);
+	}
 }
 
 static void

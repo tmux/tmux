@@ -1383,6 +1383,11 @@ process_key:
 		break;
 	case KEYC_BSPACE:
 	case 'h'|KEYC_CTRL:
+		if (c->prompt_flags & PROMPT_BSPACE_EXIT && size == 0) {
+			if (c->prompt_inputcb(c, c->prompt_data, NULL, 1) == 0)
+				status_prompt_clear(c);
+			break;
+		}
 		if (c->prompt_index != 0) {
 			if (c->prompt_index == size)
 				c->prompt_buffer[--c->prompt_index].size = 0;
