@@ -564,12 +564,12 @@ screen_check_selection(struct screen *s, u_int px, u_int py)
 }
 
 /* Get selected grid cell. */
-void
+int
 screen_select_cell(struct screen *s, struct grid_cell *dst,
     const struct grid_cell *src)
 {
 	if (s->sel == NULL || s->sel->hidden)
-		return;
+		return (0);
 
 	memcpy(dst, &s->sel->cell, sizeof *dst);
 	if (COLOUR_DEFAULT(dst->fg))
@@ -583,6 +583,7 @@ screen_select_cell(struct screen *s, struct grid_cell *dst,
 		dst->attr |= (src->attr & GRID_ATTR_CHARSET);
 	else
 		dst->attr |= src->attr;
+	return (1);
 }
 
 /* Reflow wrapped lines. */
