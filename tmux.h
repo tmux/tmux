@@ -2372,10 +2372,6 @@ struct winlink		**sort_get_winlinks(u_int *, struct sort_criteria *);
 struct winlink		**sort_get_winlinks_session(struct session *, u_int *,
 			      struct sort_criteria *);
 
-int	sort_is_pane_from_session(struct session*, struct window *);
-int	sort_is_pane_from_window(struct window_pane *, struct window *);
-int	sort_is_winlink_from_session(struct winlink *, struct session *);
-
 /* format.c */
 #define FORMAT_STATUS 0x1
 #define FORMAT_FORCE 0x2
