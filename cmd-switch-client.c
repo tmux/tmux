@@ -96,7 +96,8 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 	}
 
-	sort_criteria_init(&sort_crit, args);
+	sort_crit.order = sort_order_from_string(args_get(args, 'O'));
+	sort_crit.reversed = args_has(args, 'r');
 	if (args_has(args, 'n')) {
 		if ((s = session_next_session(tc->session, &sort_crit))
 		    == NULL) {

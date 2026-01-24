@@ -32,22 +32,6 @@ static int	sort_session_cmp(const void *a0, const void *b0);
 static int	sort_pane_cmp(const void *a0, const void *b0);
 static int	sort_winlink_cmp(const void *a0, const void *b0);
 
-int
-sort_criteria_init(struct sort_criteria *sort_crit, struct args *args)
-{
-	const char	*order_str;
-	int		 reversed, result = 0;
-
-	if ((order_str = args_get(args, 'O')) == NULL)
-		result = 1;
-	reversed = args_has(args, 'r');
-
-	sort_crit->order     = sort_order_from_string(order_str);
-	sort_crit->reversed  = reversed;
-
-	return result;
-}
-
 void 
 sort_next_order(struct sort_criteria *sort_crit)
 {
@@ -192,10 +176,68 @@ sort_get_sessions(u_int *n, struct sort_criteria *sort_crit)
 }
 
 struct window_pane **
-sort_get_window_panes(struct window *w, u_int *n, 
+sort_get_panes(u_int *n, struct sort_criteria *sort_crit)
+{
+	struct session			 *s = NULL;
+	struct winlink			 *wl = NULL;
+	struct window			 *w = NULL;
+	struct window_pane		 *wp = NULL;
+	u_int		 		  i;
+	static struct window_pane	**l = NULL;
+	static u_int			  lsz = 0;
+
+	i = 0;
+	RB_FOREACH(s, sessions, &sessions) {
+		RB_FOREACH(wl, winlinks, &s->windows)  {
+			TAILQ_FOREACH(wp, &w->panes, entry) {
+				if (lsz <= i) {
+					lsz += 100;
+					l = xreallocarray(l, lsz, sizeof *l);
+				}
+				l[i++] = wp;
+			}
+		}
+	}
+
+	sort_safe(l, i, sizeof *l, sort_pane_cmp, sort_crit);
+	*n = i;
+
+	return l;
+}
+
+struct window_pane **
+sort_get_panes_session(struct session *s, u_int *n,
     struct sort_criteria *sort_crit)
 {
-	struct window_pane		 *wp;
+	struct winlink			 *wl = NULL;
+	struct window			 *w = NULL;
+	struct window_pane		 *wp = NULL;
+	u_int		 		  i;
+	static struct window_pane	**l = NULL;
+	static u_int			  lsz = 0;
+
+	i = 0;
+	RB_FOREACH(wl, winlinks, &s->windows)  {
+		TAILQ_FOREACH(wp, &w->panes, entry) {
+			if (lsz <= i) {
+				lsz += 100;
+				l = xreallocarray(l, lsz, sizeof *l);
+			}
+			l[i++] = wp;
+		}
+	}
+
+	sort_safe(l, i, sizeof *l, sort_pane_cmp, sort_crit);
+	*n = i;
+
+	return l;
+}
+
+struct window_pane **
+sort_get_panes_window(struct window *w, u_int *n,
+    struct sort_criteria *sort_crit)
+{
+	struct window_pane		 *wp = NULL;
 	u_int		 		  i;
 	static struct window_pane	**l = NULL;
 	static u_int			  lsz = 0;
@@ -214,17 +256,18 @@ sort_get_window_panes(struct window *w, u_int *n,
 
 	return l;
 }
-
+ 
 struct winlink **
-sort_get_winlinks(struct session *s, u_int *n, struct sort_criteria *sort_crit)
+sort_get_winlinks(u_int *n, struct sort_criteria *sort_crit)
 {
+	struct session		 *s;
 	struct winlink		 *wl;
 	u_int			  i;
 	static struct winlink	**l = NULL;
 	static u_int		  lsz = 0;
 
 	i = 0;
-	if (s != NULL) {
+	RB_FOREACH(s, sessions, &sessions) {
 		RB_FOREACH(wl, winlinks, &s->windows) {
 			if (lsz <= i) {
 				lsz += 100;
@@ -232,23 +275,35 @@ sort_get_winlinks(struct session *s, u_int *n, struct sort_criteria *sort_crit)
 			}
 			l[i++] = wl;
 		}
-
-		sort_safe(l, i, sizeof *l, sort_winlink_cmp, sort_crit);
-	} else {
-		RB_FOREACH(s, sessions, &sessions) {
-			RB_FOREACH(wl, winlinks, &s->windows) {
-				if (lsz <= i) {
-					lsz += 100;
-					l = xreallocarray(l, lsz, sizeof *l);
-				}
-				l[i++] = wl;
-			}
-		}
-
-		sort_safe(l, i, sizeof *l, sort_winlink_cmp, sort_crit);
 	}
 
+	sort_safe(l, i, sizeof *l, sort_winlink_cmp, sort_crit);
 	*n = i;
+
+	return l;
+}
+
+struct winlink **
+sort_get_winlinks_session(struct session *s, u_int *n, struct sort_criteria
+    *sort_crit)
+{
+	struct winlink		 *wl;
+	u_int			  i;
+	static struct winlink	**l = NULL;
+	static u_int		  lsz = 0;
+
+	i = 0;
+	RB_FOREACH(wl, winlinks, &s->windows) {
+		if (lsz <= i) {
+			lsz += 100;
+			l = xreallocarray(l, lsz, sizeof *l);
+		}
+		l[i++] = wl;
+	}
+
+	sort_safe(l, i, sizeof *l, sort_winlink_cmp, sort_crit);
+	*n = i;
+
 	return l;
 }
 
@@ -263,12 +318,14 @@ sort_safe(void *l, u_int len, u_int size, int(*cmp)(const void *, const void*),
 		return;
 	}
 
-	if (sort_crit->order = SORT_ORDER && sort_crit->reversed) {
-		ll = (void **)l;
-		for (i = 0; i < len / 2; i++) {
-			tmp = ll[i];
-			ll[i] = ll[len - 1 - i];
-			ll[len - 1 - i] = tmp;
+	if (sort_crit->order == SORT_ORDER) {
+		if (sort_crit->reversed) {
+			ll = (void **)l;
+			for (i = 0; i < len / 2; i++) {
+				tmp = ll[i];
+				ll[i] = ll[len - 1 - i];
+				ll[len - 1 - i] = tmp;
+			}
 		}
 	} else {
 		sort_criteria = sort_crit;
@@ -403,22 +460,30 @@ sort_session_cmp(const void *a0, const void *b0)
 static int
 sort_pane_cmp(const void *a0, const void *b0)
 {
-	struct window_pane	**a = (struct window_pane **)a0;
-	struct window_pane	**b = (struct window_pane **)b0;
-	int			  result;
-	u_int			  ai, bi;
+	struct window_pane	*a = *(struct window_pane **)a0;
+	struct window_pane	*b = *(struct window_pane **)b0;
+	int			 result = 0;
+	u_int			 ai, bi;
 
-	if (sort_criteria->order == SORT_ACTIVITY)
-		result = (*a)->active_point - (*b)->active_point;
-	else {
+	switch (sort_criteria->order) {
+	case SORT_ACTIVITY:
+		result = a->active_point - b->active_point;
+		break;
+	case SORT_CREATION:
+		result = a->id - b->id;
+		break;
+	}
+
+	if (result == 0) {
 		/*
 		 * Panes don't have names, so use number order for any other
 		 * sort field.
 		 */
-		window_pane_index(*a, &ai);
-		window_pane_index(*b, &bi);
+		window_pane_index(a, &ai);
+		window_pane_index(b, &bi);
 		result = ai - bi;
 	}
+
 	if (sort_criteria->reversed)
 		result = -result;
 	return (result);

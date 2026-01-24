@@ -473,7 +473,8 @@ mode_tree_start(struct window_pane *wp, struct args *args,
 	else
 		mtd->preview = MODE_TREE_PREVIEW_NORMAL;
 
-	sort_criteria_init(&mtd->sort_crit, args);
+	mtd->sort_crit.order = sort_order_from_string(args_get(args, 'O'));
+	mtd->sort_crit.reversed = args_has(args, 'r');
 
 	if (args_has(args, 'f'))
 		mtd->filter = xstrdup(args_get(args, 'f'));

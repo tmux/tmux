@@ -277,7 +277,7 @@ window_tree_build_window(struct session *s, struct winlink *wl,
 			goto empty;
 	}
 
-	l = sort_get_window_panes(wl->window, &n, sort_crit);
+	l = sort_get_panes_window(wl->window, &n, sort_crit);
 	if (n == 0)
 		goto empty;
 
@@ -327,7 +327,7 @@ window_tree_build_session(struct session *s, void *modedata,
 	    expanded);
 	free(text);
 
-	l = sort_get_winlinks(s, &n, sort_crit);
+	l = sort_get_winlinks_session(s, &n, sort_crit);
 	empty = 0;
 	for (i = 0; i < n; i++) {
 		if (!window_tree_build_window(s, l[i], modedata, sort_crit, mti,

@@ -2354,7 +2354,6 @@ struct sort_criteria {
 	enum sort_order	*order_seq;
 };
 
-int		 sort_criteria_init(struct sort_criteria *, struct args *);
 void		 sort_next_order(struct sort_criteria *);
 enum sort_order	 sort_order_from_string(const char *);
 const char	*sort_order_to_string(enum sort_order);
@@ -2364,10 +2363,18 @@ int		 sort_would_window_tree_swap(struct sort_criteria *,
 struct paste_buffer	**sort_get_buffers(u_int *, struct sort_criteria *);
 struct client		**sort_get_clients(u_int *, struct sort_criteria *);
 struct session		**sort_get_sessions(u_int *, struct sort_criteria *);
-struct window_pane	**sort_get_window_panes(struct window *, u_int *,
+struct window_pane	**sort_get_panes(u_int *, struct sort_criteria *);
+struct window_pane	**sort_get_panes_session(struct session *, u_int *,
 			      struct sort_criteria *);
-struct winlink		**sort_get_winlinks(struct session *, u_int *,
+struct window_pane	**sort_get_panes_window(struct window *, u_int *,
 			      struct sort_criteria *);
+struct winlink		**sort_get_winlinks(u_int *, struct sort_criteria *);
+struct winlink		**sort_get_winlinks_session(struct session *, u_int *,
+			      struct sort_criteria *);
+
+int	sort_is_pane_from_session(struct session*, struct window *);
+int	sort_is_pane_from_window(struct window_pane *, struct window *);
+int	sort_is_winlink_from_session(struct winlink *, struct session *);
 
 /* format.c */
 #define FORMAT_STATUS 0x1

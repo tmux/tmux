@@ -65,7 +65,8 @@ cmd_list_sessions_exec(struct cmd *self, struct cmdq_item *item)
 		template = LIST_SESSIONS_TEMPLATE;
 	filter = args_get(args, 'f');
 
-	sort_criteria_init(&sort_crit, args);
+	sort_crit.order = sort_order_from_string(args_get(args, 'O'));
+	sort_crit.reversed = args_has(args, 'r');
 	l = sort_get_sessions(&n, &sort_crit);
 
 	for (i = 0; i < n; i++) {

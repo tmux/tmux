@@ -72,13 +72,14 @@ cmd_list_windows_exec(struct cmd *self, struct cmdq_item *item)
 	template = args_get(args, 'F');
 	filter = args_get(args, 'f');
 
-	sort_criteria_init(&sort_crit, args);
+	sort_crit.order = sort_order_from_string(args_get(args, 'O'));
+	sort_crit.reversed = args_has(args, 'r');
 	if (args_has(args, 'a')) {
-		l = sort_get_winlinks(NULL, &n, &sort_crit);
+		l = sort_get_winlinks(&n, &sort_crit);
 		if (template == NULL)
 			template = LIST_WINDOWS_WITH_SESSION_TEMPLATE;
 	} else {
-		l = sort_get_winlinks(target->s, &n, &sort_crit);
+		l = sort_get_winlinks_session(target->s, &n, &sort_crit);
 		if (template == NULL)
 			template = LIST_WINDOWS_TEMPLATE;
 	}

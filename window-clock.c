@@ -233,7 +233,7 @@ window_clock_draw_screen(struct window_mode_entry *wme)
 	struct tm			*tm;
 	u_int				 i, j, x, y, idx;
 
-	colour = options_getlkjk_number(wp->window->options, "clock-mode-colour");
+	colour = options_get_number(wp->window->options, "clock-mode-colour");
 	style = options_get_number(wp->window->options, "clock-mode-style");
 
 	screen_write_start(&ctx, s);
