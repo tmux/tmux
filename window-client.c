@@ -132,8 +132,6 @@ window_client_build(void *modedata, struct sort_criteria *sort_crit,
 
 		l[i]->references++;
 	}
-	if (l != NULL)
-		free(l);
 
 	for (i = 0; i < data->item_size; i++) {
 		item = data->item_list[i];

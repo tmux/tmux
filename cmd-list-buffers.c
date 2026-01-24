@@ -80,7 +80,6 @@ cmd_list_buffers_exec(struct cmd *self, struct cmdq_item *item)
 
 		format_free(ft);
 	}
-	free(l);
 
 	return (CMD_RETURN_NORMAL);
 }

@@ -277,7 +277,7 @@ window_tree_build_window(struct session *s, struct winlink *wl,
 			goto empty;
 	}
 
-	l = sort_get_panes(wl, &n, sort_crit);
+	l = sort_get_window_panes(wl->window, &n, sort_crit);
 	if (n == 0)
 		goto empty;
 
@@ -286,7 +286,6 @@ window_tree_build_window(struct session *s, struct winlink *wl,
 			continue;
 		window_tree_build_pane(s, wl, l[i], modedata, mti);
 	}
-	free(l);
 	return (1);
 
 empty:
@@ -340,7 +339,6 @@ window_tree_build_session(struct session *s, void *modedata,
 		data->item_size--;
 		mode_tree_remove(data->data, mti);
 	}
-	free(l);
 }
 
 static void
@@ -371,7 +369,6 @@ window_tree_build(void *modedata, struct sort_criteria *sort_crit,
 		}
 		window_tree_build_session(l[i], modedata, sort_crit, filter);
 	}
-	free(l);
 
 	switch (data->type) {
 	case WINDOW_TREE_NONE:
@@ -824,18 +821,9 @@ window_tree_swap(void *cur_itemdata, void *other_itemdata,
 	 * Swapping indexes would not swap positions in the tree, so
 	 * prevent swapping to avoid confusing the user.
 	 */
-	if (sort_would_window_tree_swap_indices(sort_crit, cur_winlink,
+	if (sort_would_window_tree_swap(sort_crit, cur_winlink,
 	    other_winlink))
 		return (0);
-
-	// if (order != SORT_INDEX &&
-	//     window_tree_cmp_window(&cur_winlink, &other_winlink) != 0) {
-	// 	/*
-	// 	 * Swapping indexes would not swap positions in the tree, so
-	// 	 * prevent swapping to avoid confusing the user.
-	// 	 */
-	// 	return (0);
-	// }
 
 	other_window = other_winlink->window;
 	TAILQ_REMOVE(&other_window->winlinks, other_winlink, wentry);
@@ -862,7 +850,6 @@ static enum sort_order window_tree_order_seq[] = {
 	SORT_INDEX,
 	SORT_NAME,
 	SORT_ACTIVITY,
-	SORT_CREATION,
 	SORT_END,
 };
 static void

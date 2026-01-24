@@ -312,7 +312,6 @@ session_next_session(struct session *s, struct sort_criteria *sort_crit)
 	if (i == n) i = 0;
 
 	s2 = l[i];
-	free(l);
 
 	return (s2);
 }
@@ -338,7 +337,6 @@ session_previous_session(struct session *s, struct sort_criteria *sort_crit)
 	i--;
 
 	s2 = l[i];
-	free(l);
 
 	return (s2);
 }

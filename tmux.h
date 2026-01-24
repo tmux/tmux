@@ -2343,6 +2343,7 @@ enum sort_order {
 	SORT_CREATION,
 	SORT_INDEX,
 	SORT_NAME,
+	SORT_ORDER,
 	SORT_SIZE,
 	SORT_END,
 };
@@ -2357,13 +2358,13 @@ int		 sort_criteria_init(struct sort_criteria *, struct args *);
 void		 sort_next_order(struct sort_criteria *);
 enum sort_order	 sort_order_from_string(const char *);
 const char	*sort_order_to_string(enum sort_order);
-int		 sort_would_window_tree_swap_indices(struct sort_criteria *,
+int		 sort_would_window_tree_swap(struct sort_criteria *,
 		     struct winlink *, struct winlink *);
 
 struct paste_buffer	**sort_get_buffers(u_int *, struct sort_criteria *);
 struct client		**sort_get_clients(u_int *, struct sort_criteria *);
 struct session		**sort_get_sessions(u_int *, struct sort_criteria *);
-struct window_pane	**sort_get_panes(struct winlink *, u_int *,
+struct window_pane	**sort_get_window_panes(struct window *, u_int *,
 			      struct sort_criteria *);
 struct winlink		**sort_get_winlinks(struct session *, u_int *,
 			      struct sort_criteria *);

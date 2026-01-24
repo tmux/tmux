@@ -146,8 +146,6 @@ window_buffer_build(void *modedata, struct sort_criteria *sort_crit,
 		paste_buffer_data(l[i], &item->size);
 		item->order = paste_buffer_order(l[i]);
 	}
-	if (l != NULL)
-		free(l);
 
 	if (cmd_find_valid_state(&data->fs)) {
 		s = data->fs.s;

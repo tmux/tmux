@@ -23,7 +23,7 @@
 
 static struct sort_criteria *sort_criteria;
 
-static void	sort1(void *, u_int, u_int, int(*)(const void *, const void *),
+static void	sort_safe(void *, u_int, u_int, int(*)(const void *, const void *),
 		    struct sort_criteria *);
 
 static int	sort_buffer_cmp(const void *a0, const void *b0);
@@ -86,6 +86,8 @@ sort_order_from_string(const char* order)
 		return (SORT_INDEX);
 	if (strcasecmp(order, "name") == 0)
 		return (SORT_NAME);
+	if (strcasecmp(order, "order") == 0)
+		return (SORT_ORDER);
 	if (strcasecmp(order, "size") == 0)
 		return (SORT_SIZE);
 
@@ -103,6 +105,8 @@ sort_order_to_string(enum sort_order order)
 		return "index";
 	if (order == SORT_NAME)
 		return "name";
+	if (order == SORT_ORDER)
+		return "order";
 	if (order == SORT_SIZE)
 		return "size";
 
@@ -110,7 +114,7 @@ sort_order_to_string(enum sort_order order)
 }
 
 int
-sort_would_window_tree_swap_indices(struct sort_criteria *sort_crit,
+sort_would_window_tree_swap(struct sort_criteria *sort_crit,
     struct winlink *wla, struct winlink *wlb)
 {
 	sort_criteria = sort_crit;
@@ -121,15 +125,21 @@ sort_would_window_tree_swap_indices(struct sort_criteria *sort_crit,
 struct paste_buffer **
 sort_get_buffers(u_int *n, struct sort_criteria *sort_crit)
 {
-	struct paste_buffer	*pb = NULL, **l = NULL;
-	u_int			 i = 0;
+	struct paste_buffer		 *pb = NULL;
+	u_int				  i;
+	static struct paste_buffer	**l = NULL;
+	static u_int			  lsz = 0;
 
+	i = 0;
 	while((pb = paste_walk(pb)) != NULL) {
-		l = xreallocarray(l, i + 1, sizeof *l);
+		if (lsz <= i) {
+			lsz += 100;
+			l = xreallocarray(l, lsz, sizeof *l);
+		}
 		l[i++] = pb;
 	}
 
-	sort1(l, i, sizeof *l, sort_buffer_cmp, sort_crit);
+	sort_safe(l, i, sizeof *l, sort_buffer_cmp, sort_crit);
 	*n = i;
 
 	return l;
@@ -138,15 +148,21 @@ sort_get_buffers(u_int *n, struct sort_criteria *sort_crit)
 struct client **
 sort_get_clients(u_int *n, struct sort_criteria *sort_crit)
 {
-	struct client	*c, **l = NULL;
-	u_int		 i = 0;
+	struct client		 *c;
+	u_int			  i;
+	static struct client	**l = NULL;
+	static u_int		  lsz = 0;
 
+	i = 0;
 	TAILQ_FOREACH(c, &clients, entry) {
-		l = xreallocarray(l, i + 1, sizeof *l);
+		if (lsz <= i) {
+			lsz += 100;
+			l = xreallocarray(l, lsz, sizeof *l);
+		}
 		l[i++] = c;
 	}
 
-	sort1(l, i, sizeof *l, sort_client_cmp, sort_crit);
+	sort_safe(l, i, sizeof *l, sort_client_cmp, sort_crit);
 	*n = i;
 
 	return l;
@@ -155,33 +171,45 @@ sort_get_clients(u_int *n, struct sort_criteria *sort_crit)
 struct session **
 sort_get_sessions(u_int *n, struct sort_criteria *sort_crit)
 {
-	struct session	*s, **l = NULL;
-	u_int		 i = 0;
+	struct session		 *s;
+	u_int			  i;
+	static struct session	**l = NULL;
+	static u_int		  lsz = 0;
 
+	i = 0;
 	RB_FOREACH(s, sessions, &sessions) {
-		l = xreallocarray(l, i + 1, sizeof *l);
+		if (lsz <= i) {
+			lsz += 100;
+			l = xreallocarray(l, lsz, sizeof *l);
+		}
 		l[i++] = s;
 	}
 
-	sort1(l, i, sizeof *l, sort_session_cmp, sort_crit);
+	sort_safe(l, i, sizeof *l, sort_session_cmp, sort_crit);
 	*n = i;
 
 	return l;
 }
 
 struct window_pane **
-sort_get_panes(struct winlink *wl, u_int *n, 
+sort_get_window_panes(struct window *w, u_int *n, 
     struct sort_criteria *sort_crit)
 {
-	struct window_pane	*wp, **l = NULL;
-	u_int		 	 i = 0;
+	struct window_pane		 *wp;
+	u_int		 		  i;
+	static struct window_pane	**l = NULL;
+	static u_int			  lsz = 0;
 
-	TAILQ_FOREACH(wp, &wl->window->panes, entry) {
-		l = xreallocarray(l, i + 1, sizeof *l);
+	i = 0;
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (lsz <= i) {
+			lsz += 100;
+			l = xreallocarray(l, lsz, sizeof *l);
+		}
 		l[i++] = wp;
 	}
 
-	sort1(l, i, sizeof *l, sort_pane_cmp, sort_crit);
+	sort_safe(l, i, sizeof *l, sort_pane_cmp, sort_crit);
 	*n = i;
 
 	return l;
@@ -190,25 +218,59 @@ sort_get_panes(struct winlink *wl, u_int *n,
 struct winlink **
 sort_get_winlinks(struct session *s, u_int *n, struct sort_criteria *sort_crit)
 {
-	struct winlink	*wl, **l = NULL;
-	u_int		 i = 0;
+	struct winlink		 *wl;
+	u_int			  i;
+	static struct winlink	**l = NULL;
+	static u_int		  lsz = 0;
 
-	RB_FOREACH(wl, winlinks, &s->windows) {
-		l = xreallocarray(l, i + 1, sizeof *l);
-		l[i++] = wl;
+	i = 0;
+	if (s != NULL) {
+		RB_FOREACH(wl, winlinks, &s->windows) {
+			if (lsz <= i) {
+				lsz += 100;
+				l = xreallocarray(l, lsz, sizeof *l);
+			}
+			l[i++] = wl;
+		}
+
+		sort_safe(l, i, sizeof *l, sort_winlink_cmp, sort_crit);
+	} else {
+		RB_FOREACH(s, sessions, &sessions) {
+			RB_FOREACH(wl, winlinks, &s->windows) {
+				if (lsz <= i) {
+					lsz += 100;
+					l = xreallocarray(l, lsz, sizeof *l);
+				}
+				l[i++] = wl;
+			}
+		}
+
+		sort_safe(l, i, sizeof *l, sort_winlink_cmp, sort_crit);
 	}
 
-	sort1(l, i, sizeof *l, sort_winlink_cmp, sort_crit);
 	*n = i;
-
 	return l;
 }
 
 static void
-sort1(void *l, u_int len, u_int size, int(*cmp)(const void *, const void*),
+sort_safe(void *l, u_int len, u_int size, int(*cmp)(const void *, const void*),
     struct sort_criteria *sort_crit)
 {
-	if (l != NULL && sort_crit != NULL && sort_crit->order != SORT_END) {
+	u_int	 i;
+	void	*tmp, **ll;
+
+	if (l == NULL || sort_crit == NULL || sort_crit->order == SORT_END) {
+		return;
+	}
+
+	if (sort_crit->order = SORT_ORDER && sort_crit->reversed) {
+		ll = (void **)l;
+		for (i = 0; i < len / 2; i++) {
+			tmp = ll[i];
+			ll[i] = ll[len - 1 - i];
+			ll[len - 1 - i] = tmp;
+		}
+	} else {
 		sort_criteria = sort_crit;
 		qsort(l, len, size, cmp);
 	}
@@ -266,9 +328,9 @@ sort_client_cmp(const void *a0, const void *b0)
 		break;
 	case SORT_CREATION:
 		if (timercmp(&ca->creation_time, &cb->creation_time, >))
-			result = -1;
-		else if (timercmp(&ca->creation_time, &cb->creation_time, <))
 			result = 1;
+		else if (timercmp(&ca->creation_time, &cb->creation_time, <))
+			result = -1;
 		break;
 	case SORT_ACTIVITY:
 		if (timercmp(&ca->activity_time, &cb->activity_time, >))
