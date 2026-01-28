@@ -574,6 +574,7 @@ screen_write_fast_copy(struct screen_write_ctx *ctx, struct screen *src,
 	struct grid		*gd = src->grid;
 	struct grid_cell	 gc;
 	u_int		 	 xx, yy, cx = s->cx, cy = s->cy;
+	struct visible_ranges	*r;
 
 	if (nx == 0 || ny == 0)
 		return;
@@ -584,15 +585,19 @@ screen_write_fast_copy(struct screen_write_ctx *ctx, struct screen *src,
 		s->cx = cx;
 		if (wp != NULL)
 			screen_write_initctx(ctx, &ttyctx, 0);
+		r = screen_redraw_get_visible_ranges(wp, px, py, nx, NULL);
 		for (xx = px; xx < px + nx; xx++) {
 			if (xx >= grid_get_line(gd, yy)->cellsize &&
-			    s->cx >= grid_get_line(ctx->s->grid, s->cy)->cellsize)
+			    s->cx >= grid_get_line(ctx->s->grid,
+			    s->cy)->cellsize)
 				break;
 			grid_get_cell(gd, xx, yy, &gc);
 			if (xx + gc.data.width > px + nx)
 				break;
 			grid_view_set_cell(ctx->s->grid, s->cx, s->cy, &gc);
 			if (wp != NULL) {
+				if (! screen_redraw_is_visible(r, px))
+					break;
 				ttyctx.cell = &gc;
 				tty_write(tty_cmd_cell, &ttyctx);
 				ttyctx.ocx++;
@@ -1817,12 +1822,13 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 	struct screen			*s = ctx->s;
 	struct screen_write_citem	*ci, *tmp;
 	struct screen_write_cline	*cl;
-	u_int				 y, cx, cy, last, items = 0, r;
+	u_int				 y, cx, cy, last, items = 0, i;
 	u_int				 wr_start, wr_end, wr_length, wsx, wsy;
 	int				 r_start, r_end, ci_start, ci_end;
 	int				 xoff, yoff;
 	struct tty_ctx			 ttyctx;
-	struct visible_ranges		*vr;
+	struct visible_ranges		*r;
+	struct visible_range		*ri;
 	struct window_pane		*wp = ctx->wp;
 
 	if (s->mode & MODE_SYNC) {
@@ -1879,8 +1885,8 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 			continue;
 		cl = &ctx->s->write_list[y];
 
-		vr = screen_redraw_get_visible_ranges(wp, 0, y + yoff,
-		    wsx);
+		r = screen_redraw_get_visible_ranges(wp, 0, y + yoff, wsx,
+		    NULL);
 
 		last = UINT_MAX;
 		TAILQ_FOREACH_SAFE(ci, &cl->items, entry, tmp) {
@@ -1891,22 +1897,26 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 				    ci->x, last);
 			}
 			wr_length = 0;
-			for (r = 0; r < vr->used; r++) {
-				if (vr->nx[r] == 0) continue;
-				r_start = vr->px[r];
-				r_end = vr->px[r] + vr->nx[r];
+			for (i = 0; i < r->used; i++) {
+				ri = &r->ranges[i];
+				if (ri->nx == 0) continue;
+				r_start = ri->px;
+				r_end = ri->px + ri->nx;
 				ci_start = ci->x;
 				ci_end = ci->x + ci->used;
 
-				if (ci_start + xoff > r_end || ci_end + xoff < r_start)
+				if (ci_start + xoff > r_end ||
+				    ci_end + xoff < r_start)
 					continue;
 
 				if (r_start > ci_start + xoff)
-					wr_start = ci_start + (r_start - (ci_start + xoff));
+					wr_start = ci_start +
+					    (r_start - (ci_start + xoff));
 				else
 					wr_start = ci_start;
 				if (ci_end + xoff > r_end)
-					wr_end = ci_end - ((ci_end + xoff) - r_end);
+					wr_end = ci_end -
+					    ((ci_end + xoff) - r_end);
 				else
 					wr_end = ci_end;
 				wr_length = wr_end - wr_start;
@@ -2101,6 +2111,7 @@ void
 screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 {
 	struct screen		*s = ctx->s;
+	struct window_pane	*wp = ctx->wp;
 	struct grid		*gd = s->grid;
 	const struct utf8_data	*ud = &gc->data;
 	struct grid_line	*gl;
@@ -2108,8 +2119,10 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	struct grid_cell 	 tmp_gc, now_gc;
 	struct tty_ctx		 ttyctx;
 	u_int			 sx = screen_size_x(s), sy = screen_size_y(s);
-	u_int		 	 width = ud->width, xx, not_wrap;
+	u_int		 	 width = ud->width, xx, not_wrap, i, n, vis;
 	int			 selected, skip = 1, redraw = 0;
+	struct visible_ranges	*r;
+	struct visible_range	*ri;
 
 	/* Ignore padding cells. */
 	if (gc->flags & GRID_FLAG_PADDING)
@@ -2228,11 +2241,33 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	if (!skip && !(s->mode & MODE_SYNC)) {
 		if (selected) {
 			screen_select_cell(s, &tmp_gc, gc);
-			ttyctx.cell = &tmp_gc;
 		} else
-			ttyctx.cell = gc;
+			memcpy(&tmp_gc, gc, sizeof tmp_gc);
+		ttyctx.cell = &tmp_gc;
 		ttyctx.num = redraw ? 2 : 0;
-		tty_write(tty_cmd_cell, &ttyctx);
+		/* xxx to be cached in wp */
+		r = screen_redraw_get_visible_ranges(wp, s->cx, s->cy, width,
+		    NULL);
+		for (i=0; i < r->used; i++) vis += r->ranges[i].nx;
+		if (vis < width) {
+			/* Wide character or tab partly obscured. Write
+			 * spaces one by one in unobscured region(s).
+			 */
+			*tmp_gc.data.data = ' ';
+			tmp_gc.data.width = tmp_gc.data.size =
+			    tmp_gc.data.have = 1;
+			for (i=0; i < r->used; i++) {
+				ri = &r->ranges[i];
+				if (ri->nx == 0) continue;
+				for (n = 0; n < ri->nx; n++) {
+					screen_write_set_cursor(ctx, ri->px + n,
+					    -1);
+					tty_write(tty_cmd_cell, &ttyctx);
+				}
+			}
+		} else {
+			tty_write(tty_cmd_cell, &ttyctx);
+		}
 	}
 }
 
@@ -2241,12 +2276,14 @@ static int
 screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 {
 	struct screen		*s = ctx->s;
+	struct window_pane	*wp = ctx->wp;
 	struct grid		*gd = s->grid;
 	const struct utf8_data	*ud = &gc->data;
-	u_int			 n, cx = s->cx, cy = s->cy;
+	u_int			 i, n, cx = s->cx, cy = s->cy, vis;
 	struct grid_cell	 last;
 	struct tty_ctx		 ttyctx;
 	int			 force_wide = 0, zero_width = 0;
+	struct visible_ranges	*r;
 
 	/* Ignore U+3164 HANGUL_FILLER entirely. */
 	if (utf8_is_hangul_filler(ud))
@@ -2333,6 +2370,21 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	grid_view_set_cell(gd, cx - n, cy, &last);
 	if (force_wide)
 		grid_view_set_padding(gd, cx - 1, cy);
+
+	/*
+	 * Check if all of this character is visible.  No character will
+	 * be obscured in the middle, only on left or right, but there
+	 * could be an empty range in the visible ranges so we add them all up.
+	 */
+	r = screen_redraw_get_visible_ranges(wp, cx - n, cy, n, NULL);
+	for (i=0; i < r->used; i++) vis += r->ranges[i].nx;
+	if (vis < n) {
+		/*
+		 * Part of this character is obscured. Return 1
+		 * and let screen_write_cell write a space.
+		 */
+		return (1);
+	}
 
 	/*
 	 * Redraw the combined cell. If forcing the cell to width 2, reset the

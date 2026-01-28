@@ -581,12 +581,12 @@ screen_check_selection(struct screen *s, u_int px, u_int py)
 }
 
 /* Get selected grid cell. */
-void
+int
 screen_select_cell(struct screen *s, struct grid_cell *dst,
     const struct grid_cell *src)
 {
 	if (s->sel == NULL || s->sel->hidden)
-		return;
+		return (0);
 
 	memcpy(dst, &s->sel->cell, sizeof *dst);
 	if (COLOUR_DEFAULT(dst->fg))
@@ -600,6 +600,7 @@ screen_select_cell(struct screen *s, struct grid_cell *dst,
 		dst->attr |= (src->attr & GRID_ATTR_CHARSET);
 	else
 		dst->attr |= src->attr;
+	return (1);
 }
 
 /* Reflow wrapped lines. */
@@ -770,3 +771,72 @@ screen_mode_to_string(int mode)
 	tmp[strlen(tmp) - 1] = '\0';
 	return (tmp);
 }
+
+#ifdef DEBUG
+/* Debug function. Usage in gdb:
+ * printf "%S",screen_print(s)
+ */
+__unused char *
+screen_print(struct screen *s) {
+	static char		 buf[16384];
+	const char		*acs;
+	u_int			 x, y;
+	size_t			 last = 0, n;
+	struct utf8_data	 ud;
+	struct grid_line	*gl;
+	struct grid_cell_entry	*gce;
+
+	for (y = 0; y < screen_hsize(s)+s->grid->sy; y++) {
+		if (last + 6 > sizeof buf) goto out;
+		n = snprintf(buf + last, sizeof buf - last, "%.4d ", y);
+		last += n;
+		buf[last++] = '"';
+		gl = &s->grid->linedata[y];
+
+		for (x = 0; x < gl->cellused; x++) {
+			gce = &gl->celldata[x];
+
+			if (gce->flags & GRID_FLAG_PADDING)
+				continue;
+
+			if (~gce->flags & GRID_FLAG_EXTENDED) {
+				/* single-byte cell stored inline */
+				if (last + 2 > sizeof buf) goto out;
+				buf[last++] = gce->data.data;
+			} else if (gce->flags & GRID_FLAG_TAB) {
+				if (last + 2 > sizeof buf) goto out;
+				buf[last++] = '\t';
+			} else if ((gce->data.data & 0xff) &&
+				  (gce->flags & GRID_ATTR_CHARSET)) {
+				/* single-byte ACS inline: try to map */
+				acs = tty_acs_get(NULL, gce->data.data);
+				if (acs != NULL) {
+					n = strlen(acs);
+					if (last + n + 1 > sizeof buf) goto out;
+					memcpy(buf + last, acs, n);
+					last += n;
+					continue;
+				}
+				buf[last++] = gce->data.data;
+			} else {
+				/* extended cell: convert utf8_char -> bytes */
+				utf8_to_data(gl->extddata[gce->offset].data,
+				    &ud);
+				if (ud.size > 0) {
+					if (last + ud.size + 1 > sizeof buf)
+						goto out;
+					memcpy(buf + last, ud.data, ud.size);
+					last += ud.size;
+				}
+			}
+		}
+
+		if (last + 3 > sizeof buf) goto out;
+		buf[last++] = '"';
+		buf[last++] = '\n';
+	}
+
+out:	buf[last] = '\0';
+	return (buf);
+}
+#endif

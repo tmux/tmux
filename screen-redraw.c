@@ -674,8 +674,9 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 	struct tty		*tty = &c->tty;
 	struct window_pane	*wp;
 	struct screen		*s;
-	struct visible_ranges	*vr;
-	u_int			 i, x, width, size, r;
+	struct visible_ranges	*r;
+	struct visible_range	*ri;
+	u_int			 i, l, x, width, size;
 	int			 xoff, yoff;
 
 	log_debug("%s: %s @%u", __func__, c->name, w->id);
@@ -700,36 +701,38 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 
 		if (xoff >= ctx->ox && xoff + size <= ctx->ox + ctx->sx) {
 			/* All visible. */
-			i = 0;
+			l = 0;
 			x = xoff - ctx->ox;
 			width = size;
 		} else if (xoff < ctx->ox && xoff + size > ctx->ox + ctx->sx) {
 			/* Both left and right not visible. */
-			i = ctx->ox;
+			l = ctx->ox;
 			x = 0;
 			width = ctx->sx;
 		} else if (xoff < ctx->ox) {
 			/* Left not visible. */
-			i = ctx->ox - xoff;
+			l = ctx->ox - xoff;
 			x = 0;
 			width = size - i;
 		} else {
 			/* Right not visible. */
-			i = 0;
+			l = 0;
 			x = xoff - ctx->ox;
 			width = size - x;
 		}
 
-		vr = screen_redraw_get_visible_ranges(wp, x, yoff, width);
+		r = tty_check_overlay_range(&c->tty, x, yoff, width);
+		r = screen_redraw_get_visible_ranges(wp, x, yoff, width, r);
 
 		if (ctx->statustop)
 			yoff += ctx->statuslines;
 
-		for (r=0; r < vr->used; r++) {
-			if (vr->nx[r] == 0)
+		for (i=0; i < r->used; i++) {
+			ri = &r->ranges[i];
+			if (ri->nx == 0)
 				continue;
-			tty_draw_line(tty, s, i + (vr->px[r] - x), 0, vr->nx[r],
-			    vr->px[r], yoff - ctx->oy,
+			tty_draw_line(tty, s, l + (ri->px - x), 0, ri->nx,
+			    ri->px, yoff - ctx->oy,
 			    &grid_default_cell, NULL);
 		}
 	}
@@ -986,13 +989,14 @@ screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j)
 	struct window_pane	*wp, *active = server_client_get_pane(c);
 	struct grid_cell	 gc;
 	const struct grid_cell	*tmp;
-	struct overlay_ranges	 r;
-	u_int			 cell_type, x = ctx->ox + i, y = ctx->oy + j;
+	u_int			 cell_type;
+	u_int			 x = ctx->ox + i, y = ctx->oy + j;
 	int			 isolates;
+	struct visible_ranges	*r;
 
 	if (c->overlay_check != NULL) {
-		c->overlay_check(c, c->overlay_data, x, y, 1, &r);
-		if (r.nx[0] + r.nx[1] == 0)
+		r = c->overlay_check(c, c->overlay_data, x, y, 1);
+		if (server_client_ranges_is_empty(r))
 			return;
 	}
 
@@ -1106,18 +1110,20 @@ screen_redraw_draw_status(struct screen_redraw_ctx *ctx)
  * floating window pane). Returns a boolean.
  */
 int
-screen_redraw_is_visible(struct visible_ranges *vr, u_int px)
+screen_redraw_is_visible(struct visible_ranges *r, u_int px)
 {
-	u_int			 r;
+	u_int			 i;
+	struct visible_range	*ri;
 
 	/* No visible_ranges if called from a popup or menu. Always visible. */
-	if (vr == NULL)
+	if (r == NULL)
 		return (1);
 
-	for (r=0; r < vr->used; r++) {
-		if (vr->nx[r] == 0)
+	for (i=0; i < r->used; i++) {
+		ri = &r->ranges[i];
+		if (ri->nx == 0)
 			continue;
-		if ((px >= vr->px[r]) && (px <= vr->px[r] + vr->nx[r]))
+		if ((px >= ri->px) && (px <= ri->px + ri->nx))
 			return (1);
 	}
 	return (0);
@@ -1127,33 +1133,26 @@ screen_redraw_is_visible(struct visible_ranges *vr, u_int px)
    cells of base_wp that are unobsructed. */
 struct visible_ranges *
 screen_redraw_get_visible_ranges(struct window_pane *base_wp, u_int px,
-    u_int py, u_int width) {
+    u_int py, u_int width, struct visible_ranges *r) {
 	struct window_pane		*wp;
 	struct window			*w;
-	static struct visible_ranges	 vr = {NULL, NULL, 0, 0};
+	struct visible_range		*ri;
 	int				 found_self, sb_w, sb_pos;
 	u_int				 lb, rb, tb, bb;
-	u_int				 r, s;
+	u_int				 i, s;
 
-	/* For efficiency vr is static and space reused. */
-	if (vr.size == 0) {
-		vr.px = xcalloc(1, sizeof(u_int));
-		vr.nx = xcalloc(1, sizeof(u_int));
-		vr.size = 1;
+	if (r == NULL) {
+		server_client_ensure_ranges(&base_wp->r, 1);
+		r = &base_wp->r;
+
+		/* Start with the entire width of the range. */
+		r->ranges[0].px = px;
+		r->ranges[0].nx = width;
+		r->used = 1;
 	}
 
-	/* debugging:
-	 * display *vr.px@vr.used
-	 * display *vr.nx@vr.used
-	 */
-
-	/* Start with the entire width of the range. */
-	vr.px[0] = px;
-	vr.nx[0] = width;
-	vr.used = 1;
-
 	if (base_wp == NULL)
-		return (&vr);
+		return (r);
 
 	w = base_wp->window;
 	sb_pos = options_get_number(w->options, "pane-scrollbars-position");
@@ -1184,7 +1183,8 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, u_int px,
 			sb_pos = 0;
 		}
 
-		for (r=0; r < vr.used; r++) {
+		for (i=0; i < r->used; i++) {
+			ri = &r->ranges[i];
 			if (sb_pos == PANE_SCROLLBARS_LEFT) {
 				if (wp->xoff > sb_w)
 					lb = wp->xoff - 1 - sb_w;
@@ -1204,60 +1204,54 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, u_int px,
 				rb = w->sx - 1;
 			/* If the left edge of floating wp
 			   falls inside this range and right
-			   edge covers up to right of range, 
+			   edge covers up to right of range,
 			   then shrink left edge of range. */
-			if (lb > vr.px[r] &&
-			    lb < vr.px[r] + vr.nx[r] &&
-			    rb >= vr.px[r] + vr.nx[r]) {
-				vr.nx[r] = lb - vr.px[r];
+			if (lb > ri->px &&
+			    lb < ri->px + ri->nx &&
+			    rb >= ri->px + ri->nx) {
+				ri->nx = lb - ri->px;
 			}
 			/* Else if the right edge of floating wp
 			   falls inside of this range and left
 			   edge covers the left of range,
 			   then move px forward to right edge of wp. */
-			else if (rb >= vr.px[r] &&
-				   rb < vr.px[r] + vr.nx[r] &&
-				   lb <= vr.px[r]) {
-				vr.nx[r] = vr.nx[r] - (rb + 1 - vr.px[r]);
-				vr.px[r] = vr.px[r] + (rb + 1 - vr.px[r]);
+			else if (rb >= ri->px &&
+				   rb < ri->px + ri->nx &&
+				   lb <= ri->px) {
+				ri->nx = ri->nx - (rb + 1 - ri->px);
+				ri->px = ri->px + (rb + 1 - ri->px);
 			}
 			/* Else if wp fully inside range
 			   then split range into 2 ranges. */
-			else if (lb > vr.px[r] &&
-				   rb < vr.px[r] + vr.nx[r]) {
-				if (vr.size == vr.used) {
-					vr.size++;
-					vr.px = xreallocarray(vr.px,
-					    vr.size, sizeof (u_int));
-					vr.nx = xreallocarray(vr.nx,
-					vr.size, sizeof (u_int));
-				}
-				for (s=vr.used; s>r; s--) {
-					vr.px[s] = vr.px[s-1];
-					vr.nx[s] = vr.nx[s-1];
-				}
-				vr.px[r+1] = rb + 1;
-				vr.nx[r+1] = (vr.px[r] + vr.nx[r]) - (rb + 1);
-				/* vr.px[r] was copied, unchanged. */
-				vr.nx[r] = lb - vr.px[r];
-				vr.used++;
+			else if (lb > ri->px &&
+				   rb < ri->px + ri->nx) {
+				server_client_ensure_ranges(r, r->size + 1);
+				for (s=r->used; s>i; s--)
+					memcpy(&r->ranges[s-1], &r->ranges[s],
+					    sizeof (struct visible_range));
+				r->ranges[i+1].px = rb + 1;
+				r->ranges[i+1].nx = ri->px + ri->nx - (rb + 1);
+				/* ri->px was copied, unchanged. */
+				ri->nx = lb - ri->px;
+				r->used++;
 			}
 			/* If floating wp completely covers this range
 			 * then delete it (make it 0 length). */
-			else if (lb <= vr.px[r] &&
-				 rb >= vr.px[r] + vr.nx[r]) {
-				vr.nx[r] = 0;
+			else if (lb <= ri->px &&
+				 rb >= ri->px + ri->nx) {
+				ri->nx = 0;
 			}
 			/* Else the range is already obscured, do nothing. */
 		}
 	}
-	for (r=0; r<vr.used; r++) {
-		log_debug("%s: %%%u visible_range py=%u %u: [px=%u nx=%u]",
-			  __func__, base_wp->id, py, r, vr.px[r], vr.nx[r]);
+	for (i=0; i<r->used; i++) {
+		ri = &r->ranges[i];
+		log_debug("%s: %%%u visible_range py=%u r[%u]: [px=%u nx=%u]",
+			  __func__, base_wp->id, py, i, ri->px, ri->nx);
 
 	}
 
-	return (&vr);
+	return (r);
 }
 
 
@@ -1271,8 +1265,9 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 	struct screen		*s = wp->screen;
 	struct colour_palette	*palette = &wp->palette;
 	struct grid_cell	 defaults;
-	struct visible_ranges	*vr;
-	u_int			 i, j, woy, wx, wy, px, py, width, r;
+	u_int			 i, j, woy, wx, wy, px, py, width;
+	struct visible_ranges	*r;
+	struct visible_range	*ri;
 
 	if (wp->base.mode & MODE_SYNC)
 		screen_write_stop_sync(wp);
@@ -1329,21 +1324,18 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 		    __func__, c->name, wp->id, i, j, wx, wy, width);
 
 		/* Get visible ranges of line before we draw it. */
-		vr = screen_redraw_get_visible_ranges(wp, wx, wy, width);
+		r = tty_check_overlay_range(tty, px, py, width);
+		r = screen_redraw_get_visible_ranges(wp, wx, wy, width, r);
 
 		tty_default_colours(&defaults, wp);
 
-		for (r=0; r < vr->used; r++) {
-			if (vr->nx[r] == 0)
+		for (i=0; i < r->used; i++) {
+			ri = &r->ranges[i];
+			if (ri->nx == 0)
 				continue;
-			/* Convert window coordinates to tty coordinates. */
-			px = vr->px[r];
-			/* i is px of cell, add px of region, sub the
-			 * pane offset. If you don't sub offset,
-			 * contents of pane shifted. note: i apparently unnec. 
-			 */
-			tty_draw_line(tty, s, /* i + */ vr->px[r] - wp->xoff, j,
-			    vr->nx[r], px, py, &defaults, palette);
+			px = ri->px;
+			tty_draw_line(tty, s, ri->px - wp->xoff, j,
+			    ri->nx, px, py, &defaults, palette);
 		}
 	}
 
@@ -1435,7 +1427,7 @@ screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx,
 	int			 px, py, wx, wy, ox, oy, sx, sy;
 	int			 xoff = wp->xoff;
 	int			 yoff = wp->yoff;
-	struct visible_ranges	*vr;
+	struct visible_ranges	*r;
 
 	/*
 	 * Size and offset of window relative to tty.
@@ -1487,7 +1479,8 @@ screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx,
 	for (j = jmin; j < jmax; j++) {
 		py = sb_y + j;		/* tty y coordinate. */
 		wy = sb_y + j + oy;	/* window y coordinate. */
-		vr = screen_redraw_get_visible_ranges(wp, sb_x, wy, imax);
+		r = tty_check_overlay_range(tty, sb_x, wy, imax);
+		r = screen_redraw_get_visible_ranges(wp, sb_x, wy, imax, r);
 		for (i = imin; i < imax; i++) {
 			px = sb_x + ox + i;	/* tty x coordinate. */
 			wx = sb_x + i;		/* window x coordinate. */
@@ -1495,7 +1488,7 @@ screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx,
 			    px >= sx || px < 0 ||
 			    wy < yoff - 1 ||
 			    py >= sy || py < 0 ||
-			    ! screen_redraw_is_visible(vr, wx))
+			    ! screen_redraw_is_visible(r, wx))
 				continue;
 			tty_cursor(tty, px, py);
 			if ((sb_pos == PANE_SCROLLBARS_LEFT &&
