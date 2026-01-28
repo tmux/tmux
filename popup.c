@@ -41,6 +41,9 @@ struct popup_data {
 	struct grid_cell	  defaults;
 	struct colour_palette	  palette;
 
+	struct visible_ranges	  r;
+	struct visible_ranges	  or[2];
+
 	struct job		 *job;
 	struct input_ctx	 *ictx;
 	int			  status;
@@ -209,48 +212,57 @@ popup_mode_cb(__unused struct client *c, void *data, u_int *cx, u_int *cy)
 }
 
 /* Return parts of the input range which are not obstructed by the popup. */
-static void
-popup_check_cb(struct client* c, void *data, u_int px, u_int py, u_int nx,
-    struct overlay_ranges *r)
+static struct visible_ranges *
+popup_check_cb(struct client* c, void *data, u_int px, u_int py, u_int nx)
 {
 	struct popup_data	*pd = data;
-	struct overlay_ranges	 or[2];
+	struct visible_ranges	*r = &pd->r;
+	struct visible_ranges	*mr;
 	u_int			 i, j, k = 0;
 
 	if (pd->md != NULL) {
-		/* Check each returned range for the menu against the popup. */
-		menu_check_cb(c, pd->md, px, py, nx, r);
-		for (i = 0; i < 2; i++) {
+	       /*
+		* Work out the visible ranges for the menu (that is, the
+		* ranges not covered by the menu). A menu should have at most
+		* two ranges and we rely on this being the case.
+		*/
+		mr = menu_check_cb(c, pd->md, px, py, nx);
+		if (mr->used > 2)
+			fatalx("too many menu ranges");
+
+	       /*
+		* Walk the ranges still visible under the menu and check if
+		* each is visible under the popup as well. At most there can be
+		* three total ranges if popup and menu do not intersect.
+		*/
+		for (i = 0; i < mr->used; i++) {
 			server_client_overlay_range(pd->px, pd->py, pd->sx,
-			    pd->sy, r->px[i], py, r->nx[i], &or[i]);
+			    pd->sy, r->ranges[i].px, py, r->ranges[i].nx,
+			    &pd->or[i]);
 		}
 
 		/*
-		 * or has up to OVERLAY_MAX_RANGES non-overlapping ranges,
-		 * ordered from left to right. Collect them in the output.
+		 * We now have nonoverlapping ranges from left to right.
+		 * Combine them together into the output.
 		 */
-		for (i = 0; i < 2; i++) {
-			/* Each or[i] only has 2 ranges. */
-			for (j = 0; j < 2; j++) {
-				if (or[i].nx[j] > 0) {
-					r->px[k] = or[i].px[j];
-					r->nx[k] = or[i].nx[j];
-					k++;
-				}
+		server_client_ensure_ranges(r, 3);
+		for (i = 0; i < mr->used; i++) {
+			for (j = 0; j < pd->or[i].used; j++) {
+				if (pd->or[i].ranges[j].nx == 0)
+					continue;
+				if (k >= 3)
+					fatalx("too many popup & menu ranges");
+				r->ranges[k].px = pd->or[i].ranges[j].px;
+				r->ranges[k].nx = pd->or[i].ranges[j].nx;
+				k++;
 			}
 		}
-
-		/* Zero remaining ranges if any. */
-		for (i = k; i < OVERLAY_MAX_RANGES; i++) {
-			r->px[i] = 0;
-			r->nx[i] = 0;
-		}
-
-		return;
+		return (r);
 	}
 
 	server_client_overlay_range(pd->px, pd->py, pd->sx, pd->sy, px, py, nx,
 	    r);
+	return (r);
 }
 
 static void
@@ -333,6 +345,9 @@ popup_free_cb(struct client *c, void *data)
 		job_free(pd->job);
 	input_free(pd->ictx);
 
+	free(pd->or[0].ranges);
+	free(pd->or[1].ranges);
+	free(pd->r.ranges);
 	screen_free(&pd->s);
 	colour_palette_free(&pd->palette);
 

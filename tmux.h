@@ -956,7 +956,7 @@ struct screen_sel;
 struct screen_titles;
 struct screen {
 	char				*title;
-	char *path;
+	char				*path;
 	struct screen_titles		*titles;
 
 	struct grid			*grid;	  /* grid data */
@@ -1532,6 +1532,19 @@ struct key_event {
 	size_t			 len;
 };
 
+/* Visible range array element. */
+struct visible_range {
+	u_int	px;	/* start */
+	u_int	nx;	/* length */
+};
+
+/* Visible areas not obstructed. */
+struct visible_ranges {
+	struct visible_range	*ranges;  /* dynamically allocated array */
+	u_int			 used;    /* number of entries in ranges */
+	u_int			 size;    /* allocated capacity of ranges */
+};
+
 /* Terminal definition. */
 struct tty_term {
 	char		*name;
@@ -1599,6 +1612,7 @@ struct tty {
 	size_t		 discarded;
 
 	struct termios	 tio;
+	struct visible_ranges r;
 
 	struct grid_cell cell;
 	struct grid_cell last_cell;
@@ -1915,22 +1929,15 @@ struct client_window {
 };
 RB_HEAD(client_windows, client_window);
 
-/* Visible areas not obstructed by overlays. */
-#define OVERLAY_MAX_RANGES 3
-struct overlay_ranges {
-	u_int	px[OVERLAY_MAX_RANGES];
-	u_int	nx[OVERLAY_MAX_RANGES];
-};
-
 /* Client connection. */
 typedef int (*prompt_input_cb)(struct client *, void *, const char *, int);
 typedef void (*prompt_free_cb)(void *);
-typedef void (*overlay_check_cb)(struct client*, void *, u_int, u_int, u_int,
-	    struct overlay_ranges *);
+typedef struct visible_ranges *(*overlay_check_cb)(struct client*, void *,
+    u_int, u_int, u_int);
 typedef struct screen *(*overlay_mode_cb)(struct client *, void *, u_int *,
-	    u_int *);
+    u_int *);
 typedef void (*overlay_draw_cb)(struct client *, void *,
-	    struct screen_redraw_ctx *);
+    struct screen_redraw_ctx *);
 typedef int (*overlay_key_cb)(struct client *, void *, struct key_event *);
 typedef void (*overlay_free_cb)(struct client *, void *);
 typedef void (*overlay_resize_cb)(struct client *, void *);
@@ -2522,6 +2529,8 @@ void	tty_reset(struct tty *);
 void	tty_region_off(struct tty *);
 void	tty_margin_off(struct tty *);
 void	tty_cursor(struct tty *, u_int, u_int);
+int	tty_fake_bce(const struct tty *, const struct grid_cell *, u_int);
+void	tty_repeat_space(struct tty *, u_int);
 void	tty_clipboard_query(struct tty *);
 void	tty_putcode(struct tty *, enum tty_code_code);
 void	tty_putcode_i(struct tty *, enum tty_code_code, int);
@@ -2546,7 +2555,15 @@ void	tty_repeat_requests(struct tty *, int);
 void	tty_stop_tty(struct tty *);
 void	tty_set_title(struct tty *, const char *);
 void	tty_set_path(struct tty *, const char *);
+void	tty_default_attributes(struct tty *, const struct grid_cell *,
+	    struct colour_palette *, u_int, struct hyperlinks *);
 void	tty_update_mode(struct tty *, int, struct screen *);
+const struct grid_cell *tty_check_codeset(struct tty *,
+	    const struct grid_cell *);
+struct visible_ranges *tty_check_overlay_range(struct tty *, u_int, u_int,
+	    u_int);
+
+/* tty-draw.c */
 void	tty_draw_line(struct tty *, struct screen *, u_int, u_int, u_int,
 	    u_int, u_int, const struct grid_cell *, struct colour_palette *);
 
@@ -2903,8 +2920,10 @@ void	 server_client_set_overlay(struct client *, u_int, overlay_check_cb,
 	     overlay_mode_cb, overlay_draw_cb, overlay_key_cb,
 	     overlay_free_cb, overlay_resize_cb, void *);
 void	 server_client_clear_overlay(struct client *);
+void	 server_client_ensure_ranges(struct visible_ranges *, u_int);
+int	 server_client_ranges_is_empty(struct visible_ranges *);
 void	 server_client_overlay_range(u_int, u_int, u_int, u_int, u_int, u_int,
-	     u_int, struct overlay_ranges *);
+	     u_int, struct visible_ranges *);
 void	 server_client_set_key_table(struct client *, const char *);
 const char *server_client_get_key_table(struct client *);
 int	 server_client_check_nested(struct client *);
@@ -3220,7 +3239,7 @@ void	 screen_set_selection(struct screen *, u_int, u_int, u_int, u_int,
 void	 screen_clear_selection(struct screen *);
 void	 screen_hide_selection(struct screen *);
 int	 screen_check_selection(struct screen *, u_int, u_int);
-void	 screen_select_cell(struct screen *, struct grid_cell *,
+int	 screen_select_cell(struct screen *, struct grid_cell *,
 	     const struct grid_cell *);
 void	 screen_alternate_on(struct screen *, struct grid_cell *, int);
 void	 screen_alternate_off(struct screen *, struct grid_cell *, int);
@@ -3607,8 +3626,8 @@ int		 menu_display(struct menu *, int, int, struct cmdq_item *,
 		    const char *, const char *, struct cmd_find_state *,
 		    menu_choice_cb, void *);
 struct screen	*menu_mode_cb(struct client *, void *, u_int *, u_int *);
-void		 menu_check_cb(struct client *, void *, u_int, u_int, u_int,
-		    struct overlay_ranges *);
+struct visible_ranges *menu_check_cb(struct client *, void *, u_int, u_int,
+		    u_int);
 void		 menu_draw_cb(struct client *, void *,
 		    struct screen_redraw_ctx *);
 void		 menu_free_cb(struct client *, void *);
