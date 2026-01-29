@@ -1137,9 +1137,22 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, u_int px,
 	struct window_pane		*wp;
 	struct window			*w;
 	struct visible_range		*ri;
+	static struct visible_range	 sr0 = { 0, 0 };
+	static struct visible_ranges	 sr = { &sr0, 1, 1 };
 	int				 found_self, sb_w, sb_pos;
 	u_int				 lb, rb, tb, bb;
 	u_int				 i, s;
+
+	if (base_wp == NULL) {
+		if (r != NULL) {
+			return (r);
+		} else {
+			/* Return static range as last resort. */
+			sr.ranges[0].px = px;
+			sr.ranges[0].nx = width;
+			return (&sr);
+		}
+	}
 
 	if (r == NULL) {
 		server_client_ensure_ranges(&base_wp->r, 1);
@@ -1150,9 +1163,6 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, u_int px,
 		r->ranges[0].nx = width;
 		r->used = 1;
 	}
-
-	if (base_wp == NULL)
-		return (r);
 
 	w = base_wp->window;
 	sb_pos = options_get_number(w->options, "pane-scrollbars-position");
