@@ -82,7 +82,7 @@ grid_view_clear_history(struct grid *gd, u_int bg)
 
 	/* Scroll the lines into the history. */
 	for (yy = 0; yy < last; yy++) {
-		grid_collect_history(gd);
+		grid_collect_history(gd, 0);
 		grid_scroll_history(gd, bg);
 	}
 	if (last < gd->sy)
@@ -107,7 +107,7 @@ grid_view_scroll_region_up(struct grid *gd, u_int rupper, u_int rlower,
     u_int bg)
 {
 	if (gd->flags & GRID_HISTORY) {
-		grid_collect_history(gd);
+		grid_collect_history(gd, 0);
 		if (rupper == 0 && rlower == gd->sy - 1)
 			grid_scroll_history(gd, bg);
 		else {

@@ -772,58 +772,59 @@ screen_mode_to_string(int mode)
 	return (tmp);
 }
 
-#ifdef DEBUG
-/* Debug function. Usage in gdb:
- * printf "%S",screen_print(s)
- */
-__unused char *
-screen_print(struct screen *s) {
-	static char		 buf[16384];
+const char *
+screen_print(struct screen *s)
+{
+	static char		*buf;
+	static size_t		 len = 16384;
 	const char		*acs;
 	u_int			 x, y;
-	size_t			 last = 0, n;
+	int			 n;
+	size_t			 last = 0;
 	struct utf8_data	 ud;
 	struct grid_line	*gl;
 	struct grid_cell_entry	*gce;
 
-	for (y = 0; y < screen_hsize(s)+s->grid->sy; y++) {
-		if (last + 6 > sizeof buf) goto out;
-		n = snprintf(buf + last, sizeof buf - last, "%.4d ", y);
-		last += n;
-		buf[last++] = '"';
-		gl = &s->grid->linedata[y];
+	if (buf == NULL)
+		buf = xmalloc(len);
 
+	for (y = 0; y < screen_hsize(s) + s->grid->sy; y++) {
+		n = snprintf(buf + last, len - last, "%.4d \"", y);
+		if (n <= 0 || (u_int)n >= len - last)
+			goto out;
+		last += n;
+
+		gl = &s->grid->linedata[y];
 		for (x = 0; x < gl->cellused; x++) {
 			gce = &gl->celldata[x];
-
 			if (gce->flags & GRID_FLAG_PADDING)
 				continue;
 
 			if (~gce->flags & GRID_FLAG_EXTENDED) {
-				/* single-byte cell stored inline */
-				if (last + 2 > sizeof buf) goto out;
+				if (last + 2 >= len)
+					goto out;
 				buf[last++] = gce->data.data;
 			} else if (gce->flags & GRID_FLAG_TAB) {
-				if (last + 2 > sizeof buf) goto out;
+				if (last + 2 >= len)
+					goto out;
 				buf[last++] = '\t';
-			} else if ((gce->data.data & 0xff) &&
-				  (gce->flags & GRID_ATTR_CHARSET)) {
-				/* single-byte ACS inline: try to map */
+			} else if (gce->flags & GRID_ATTR_CHARSET) {
 				acs = tty_acs_get(NULL, gce->data.data);
-				if (acs != NULL) {
+				if (acs != NULL)
 					n = strlen(acs);
-					if (last + n + 1 > sizeof buf) goto out;
-					memcpy(buf + last, acs, n);
-					last += n;
-					continue;
+				else {
+					acs = &gce->data.data;
+					n = 1;
 				}
-				buf[last++] = gce->data.data;
+				if (last + n + 1 >= len)
+					goto out;
+				memcpy(buf + last, acs, n);
+				last += n;
 			} else {
-				/* extended cell: convert utf8_char -> bytes */
 				utf8_to_data(gl->extddata[gce->offset].data,
 				    &ud);
 				if (ud.size > 0) {
-					if (last + ud.size + 1 > sizeof buf)
+					if (last + ud.size + 1 >= len)
 						goto out;
 					memcpy(buf + last, ud.data, ud.size);
 					last += ud.size;
@@ -831,12 +832,13 @@ screen_print(struct screen *s) {
 			}
 		}
 
-		if (last + 3 > sizeof buf) goto out;
+		if (last + 3 >= len)
+			goto out;
 		buf[last++] = '"';
 		buf[last++] = '\n';
 	}
 
-out:	buf[last] = '\0';
+out:
+	buf[last] = '\0';
 	return (buf);
 }
-#endif
