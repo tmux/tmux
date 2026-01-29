@@ -1849,13 +1849,13 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 			ctx->scrolled = s->rlower - s->rupper + 1;
 
 		screen_write_initctx(ctx, &ttyctx, 1);
-		if (wp->yoff + wp->sy > wp->window->sy)
+		if (wp != NULL && wp->yoff + wp->sy > wp->window->sy)
 			 ttyctx.orlower -= (wp->yoff + wp->sy - wp->window->sy);
 		ttyctx.num = ctx->scrolled;
 		ttyctx.bg = ctx->bg;
 		tty_write(tty_cmd_scrollup, &ttyctx);
 
-		if (ctx->wp != NULL)
+		if (wp != NULL)
 			ctx->wp->flags |= PANE_REDRAWSCROLLBAR;
 	}
 	ctx->scrolled = 0;

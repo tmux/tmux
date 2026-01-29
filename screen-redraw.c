@@ -1137,8 +1137,7 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, u_int px,
 	struct window_pane		*wp;
 	struct window			*w;
 	struct visible_range		*ri;
-	static struct visible_range	 sr0 = { 0, 0 };
-	static struct visible_ranges	 sr = { &sr0, 1, 1 };
+	static struct visible_ranges	 sr = { NULL, 0, 0 };
 	int				 found_self, sb_w, sb_pos;
 	u_int				 lb, rb, tb, bb;
 	u_int				 i, s;
@@ -1148,8 +1147,13 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, u_int px,
 			return (r);
 		} else {
 			/* Return static range as last resort. */
+			if (sr.ranges == NULL)
+				sr.ranges = xcalloc(1,
+				    sizeof (struct visible_range));
 			sr.ranges[0].px = px;
 			sr.ranges[0].nx = width;
+			sr.size = 1;
+			sr.used = 1;
 			return (&sr);
 		}
 	}
