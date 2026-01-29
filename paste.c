@@ -29,19 +29,6 @@
  * string!
  */
 
-struct paste_buffer {
-	char		*data;
-	size_t		 size;
-
-	char		*name;
-	time_t		 created;
-	int		 automatic;
-	u_int		 order;
-
-	RB_ENTRY(paste_buffer) name_entry;
-	RB_ENTRY(paste_buffer) time_entry;
-};
-
 static u_int	paste_next_index;
 static u_int	paste_next_order;
 static u_int	paste_num_automatic;
