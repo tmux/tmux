@@ -132,17 +132,7 @@ enum format_type {
 	FORMAT_TYPE_PANE
 };
 
-/* Format loop sort type. */
-enum format_loop_sort_type {
-	FORMAT_LOOP_BY_INDEX,
-	FORMAT_LOOP_BY_NAME,
-	FORMAT_LOOP_BY_TIME,
-};
-
-static struct format_loop_sort_criteria {
-	enum format_loop_sort_type	field;
-	int				reversed;
-} format_loop_sort_criteria;
+static struct sort_criteria sort_crit;
 
 struct format_tree {
 	enum format_type	 type;
@@ -4406,44 +4396,11 @@ format_session_name(struct format_expand_state *es, const char *fmt)
 	return (xstrdup("0"));
 }
 
-static int
-format_cmp_session(const void *a0, const void *b0)
-{
-	struct format_loop_sort_criteria *sc = &format_loop_sort_criteria;
-	const struct session *const	 *a = a0;
-	const struct session *const	 *b = b0;
-	const struct session		 *sa = *a;
-	const struct session		 *sb = *b;
-	int				  result = 0;
-
-	switch (sc->field) {
-	case FORMAT_LOOP_BY_INDEX:
-		result = sa->id - sb->id;
-		break;
-	case FORMAT_LOOP_BY_TIME:
-		if (timercmp(&sa->activity_time, &sb->activity_time, >)) {
-			result = -1;
-			break;
-		}
-		if (timercmp(&sa->activity_time, &sb->activity_time, <)) {
-			result = 1;
-			break;
-		}
-		/* FALLTHROUGH */
-	case FORMAT_LOOP_BY_NAME:
-		result = strcmp(sa->name, sb->name);
-		break;
-	}
-
-	if (sc->reversed)
-		result = -result;
-	return (result);
-}
-
 /* Loop over sessions. */
 static char *
 format_loop_sessions(struct format_expand_state *es, const char *fmt)
 {
+	struct sort_criteria		 *sc = &sort_crit;
 	struct format_tree		 *ft = es->ft;
 	struct client			 *c = ft->client;
 	struct cmdq_item		 *item = ft->item;
@@ -4451,30 +4408,18 @@ format_loop_sessions(struct format_expand_state *es, const char *fmt)
 	struct format_expand_state	  next;
 	char				 *all, *active, *use, *expanded, *value;
 	size_t				  valuelen;
-	struct session			 *s;
+	struct session			 *s, **l;
 	int				  i, n, last = 0;
-	static struct session		**l = NULL;
-	static int			  lsz = 0;
 
 	if (format_choose(es, fmt, &all, &active, 0) != 0) {
 		all = xstrdup(fmt);
 		active = NULL;
 	}
 
-	n = 0;
-	RB_FOREACH(s, sessions, &sessions) {
-		if (lsz <= n) {
-			lsz += 100;
-			l = xreallocarray(l, lsz, sizeof *l);
-		}
-		l[n++] = s;
-	}
-
-	qsort(l, n, sizeof *l, format_cmp_session);
-
 	value = xcalloc(1, 1);
 	valuelen = 1;
 
+	l = sort_get_sessions(&n, sc);
 	for (i = 0; i < n; i++) {
 		s = l[i];
 		format_log(es, "session loop: $%u", s->id);
@@ -4527,44 +4472,11 @@ format_window_name(struct format_expand_state *es, const char *fmt)
 	return (xstrdup("0"));
 }
 
-static int
-format_cmp_window(const void *a0, const void *b0)
-{
-	struct format_loop_sort_criteria *sc = &format_loop_sort_criteria;
-	const struct winlink *const	 *a = a0;
-	const struct winlink *const	 *b = b0;
-	const struct window		 *wa = (*a)->window;
-	const struct window		 *wb = (*b)->window;
-	int				  result = 0;
-
-	switch (sc->field) {
-	case FORMAT_LOOP_BY_INDEX:
-		break;
-	case FORMAT_LOOP_BY_TIME:
-		if (timercmp(&wa->activity_time, &wb->activity_time, >)) {
-			result = -1;
-			break;
-		}
-		if (timercmp(&wa->activity_time, &wb->activity_time, <)) {
-			result = 1;
-			break;
-		}
-		/* FALLTHROUGH */
-	case FORMAT_LOOP_BY_NAME:
-		result = strcmp(wa->name, wb->name);
-		break;
-	}
-
-	if (sc->reversed)
-		result = -result;
-	return (result);
-}
-
 /* Loop over windows. */
 static char *
 format_loop_windows(struct format_expand_state *es, const char *fmt)
 {
-	struct format_loop_sort_criteria *sc = &format_loop_sort_criteria;
+	struct sort_criteria		 *sc = &sort_crit;
 	struct format_tree		 *ft = es->ft;
 	struct client			 *c = ft->client;
 	struct cmdq_item		 *item = ft->item;
@@ -4572,11 +4484,9 @@ format_loop_windows(struct format_expand_state *es, const char *fmt)
 	struct format_expand_state	  next;
 	char				 *all, *active, *use, *expanded, *value;
 	size_t				  valuelen;
-	struct winlink			 *wl;
+	struct winlink			 *wl, **l;
 	struct window			 *w;
 	int				  i, n, last = 0;
-	static struct winlink		**l = NULL;
-	static int			  lsz = 0;
 
 	if (ft->s == NULL) {
 		format_log(es, "window loop but no session");
@@ -4588,31 +4498,10 @@ format_loop_windows(struct format_expand_state *es, const char *fmt)
 		active = NULL;
 	}
 
-	n = 0;
-	RB_FOREACH(wl, winlinks, &ft->s->windows) {
-		if (lsz <= n) {
-			lsz += 100;
-			l = xreallocarray(l, lsz, sizeof *l);
-		}
-		l[n++] = wl;
-	}
-
-	if (sc->field != FORMAT_LOOP_BY_INDEX)
-		qsort(l, n, sizeof *l, format_cmp_window);
-	else {
-		/* Use order in the tree as index order. */
-		if (sc->reversed) {
-			for (i = 0; i < n / 2; i++) {
-				wl = l[i];
-				l[i] = l[n - 1 - i];
-				l[n - 1 - i] = wl;
-			}
-		}
-	}
-
 	value = xcalloc(1, 1);
 	valuelen = 1;
 
+	l = sort_get_winlinks_session(ft->s, &n, sc);
 	for (i = 0; i < n; i++) {
 		wl = l[i];
 		w = wl->window;
@@ -4644,27 +4533,11 @@ format_loop_windows(struct format_expand_state *es, const char *fmt)
 	return (value);
 }
 
-static int
-format_cmp_pane(const void *a0, const void *b0)
-{
-	struct format_loop_sort_criteria *sc = &format_loop_sort_criteria;
-	const struct window_pane *const	 *a = a0;
-	const struct window_pane *const	 *b = b0;
-	const struct window_pane	 *wpa = *a;
-	const struct window_pane	 *wpb = *b;
-	int				  result = 0;
-
-	if (sc->reversed)
-		result = wpb->id - wpa->id;
-	else
-		result = wpa->id - wpb->id;
-	return (result);
-}
-
 /* Loop over panes. */
 static char *
 format_loop_panes(struct format_expand_state *es, const char *fmt)
 {
+	struct sort_criteria		*sc = &sort_crit;
 	struct format_tree		*ft = es->ft;
 	struct client			*c = ft->client;
 	struct cmdq_item		*item = ft->item;
@@ -4672,10 +4545,8 @@ format_loop_panes(struct format_expand_state *es, const char *fmt)
 	struct format_expand_state	 next;
 	char				*all, *active, *use, *expanded, *value;
 	size_t				 valuelen;
-	struct window_pane		*wp;
+	struct window_pane		*wp, **l;
 	int				  i, n, last = 0;
-	static struct window_pane	**l = NULL;
-	static int			  lsz = 0;
 
 	if (ft->w == NULL) {
 		format_log(es, "pane loop but no window");
@@ -4687,20 +4558,10 @@ format_loop_panes(struct format_expand_state *es, const char *fmt)
 		active = NULL;
 	}
 
-	n = 0;
-	TAILQ_FOREACH(wp, &ft->w->panes, entry) {
-		if (lsz <= n) {
-			lsz += 100;
-			l = xreallocarray(l, lsz, sizeof *l);
-		}
-		l[n++] = wp;
-	}
-
-	qsort(l, n, sizeof *l, format_cmp_pane);
-
 	value = xcalloc(1, 1);
 	valuelen = 1;
 
+	l = sort_get_panes_window(ft->w, &n, sc);
 	for (i = 0; i < n; i++) {
 		wp = l[i];
 		format_log(es, "pane loop: %%%u", wp->id);
@@ -4731,80 +4592,24 @@ format_loop_panes(struct format_expand_state *es, const char *fmt)
 	return (value);
 }
 
-static int
-format_cmp_client(const void *a0, const void *b0)
-{
-	struct format_loop_sort_criteria *sc = &format_loop_sort_criteria;
-	const struct client *const	 *a = a0;
-	const struct client *const	 *b = b0;
-	const struct client		 *ca = *a;
-	const struct client		 *cb = *b;
-	int				  result = 0;
-
-	switch (sc->field) {
-	case FORMAT_LOOP_BY_INDEX:
-		break;
-	case FORMAT_LOOP_BY_TIME:
-		if (timercmp(&ca->activity_time, &cb->activity_time, >)) {
-			result = -1;
-			break;
-		}
-		if (timercmp(&ca->activity_time, &cb->activity_time, <)) {
-			result = 1;
-			break;
-		}
-		/* FALLTHROUGH */
-	case FORMAT_LOOP_BY_NAME:
-		result = strcmp(ca->name, cb->name);
-		break;
-	}
-
-	if (sc->reversed)
-		result = -result;
-	return (result);
-}
-
 /* Loop over clients. */
 static char *
 format_loop_clients(struct format_expand_state *es, const char *fmt)
 {
-	struct format_loop_sort_criteria *sc = &format_loop_sort_criteria;
+	struct sort_criteria		 *sc = &sort_crit;
 	struct format_tree		 *ft = es->ft;
-	struct client			 *c;
+	struct client			 *c, **l;
 	struct cmdq_item		 *item = ft->item;
 	struct format_tree		 *nft;
 	struct format_expand_state	  next;
 	char				 *expanded, *value;
 	size_t				  valuelen;
 	int				  i, n, last = 0;
-	static struct client		**l = NULL;
-	static int			  lsz = 0;
 
 	value = xcalloc(1, 1);
 	valuelen = 1;
 
-	n = 0;
-	TAILQ_FOREACH(c, &clients, entry) {
-		if (lsz <= n) {
-			lsz += 100;
-			l = xreallocarray(l, lsz, sizeof *l);
-		}
-		l[n++] = c;
-	}
-
-	if (sc->field != FORMAT_LOOP_BY_INDEX)
-		qsort(l, n, sizeof *l, format_cmp_client);
-	else {
-		/* Use order in the list as index order. */
-		if (sc->reversed) {
-			for (i = 0; i < n / 2; i++) {
-				c = l[i];
-				l[i] = l[n - 1 - i];
-				l[n - 1 - i] = c;
-			}
-		}
-	}
-
+	l = sort_get_clients(&n, sc);
 	for (i = 0; i < n; i++) {
 		c = l[i];
 		format_log(es, "client loop: %s", c->name);
@@ -4974,7 +4779,7 @@ static int
 format_replace(struct format_expand_state *es, const char *key, size_t keylen,
     char **buf, size_t *len, size_t *off)
 {
-	struct format_loop_sort_criteria *sc = &format_loop_sort_criteria;
+	struct sort_criteria		 *sc = &sort_crit;
 	struct format_tree		 *ft = es->ft;
 	struct window_pane		 *wp = ft->wp;
 	const char			 *errstr, *copy, *cp, *cp2;
@@ -4990,6 +4795,10 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 	struct format_modifier		 *bool_op_n = NULL;
 	u_int				  i, count, nsub = 0, nrep;
 	struct format_expand_state	  next;
+
+	/* Set sorting defaults. */
+	sc->order = SORT_ORDER;
+	sc->reversed = 0;
 
 	/* Make a copy of the key. */
 	copy = copy0 = xstrndup(key, keylen);
@@ -5101,18 +4910,18 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 			case 'S':
 				modifiers |= FORMAT_SESSIONS;
 				if (fm->argc < 1) {
-					sc->field = FORMAT_LOOP_BY_INDEX;
+					sc->order= SORT_INDEX;
 					sc->reversed = 0;
 					break;
 				}
 				if (strchr(fm->argv[0], 'i') != NULL)
-					sc->field = FORMAT_LOOP_BY_INDEX;
+					sc->order = SORT_INDEX;
 				else if (strchr(fm->argv[0], 'n') != NULL)
-					sc->field = FORMAT_LOOP_BY_NAME;
+					sc->order = SORT_NAME;
 				else if (strchr(fm->argv[0], 't') != NULL)
-					sc->field = FORMAT_LOOP_BY_TIME;
+					sc->order = SORT_ACTIVITY;
 				else
-					sc->field = FORMAT_LOOP_BY_INDEX;
+					sc->order = SORT_INDEX;
 				if (strchr(fm->argv[0], 'r') != NULL)
 					sc->reversed = 1;
 				else
@@ -5121,18 +4930,18 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 			case 'W':
 				modifiers |= FORMAT_WINDOWS;
 				if (fm->argc < 1) {
-					sc->field = FORMAT_LOOP_BY_INDEX;
+					sc->order = SORT_ORDER;
 					sc->reversed = 0;
 					break;
 				}
 				if (strchr(fm->argv[0], 'i') != NULL)
-					sc->field = FORMAT_LOOP_BY_INDEX;
+					sc->order = SORT_ORDER;
 				else if (strchr(fm->argv[0], 'n') != NULL)
-					sc->field = FORMAT_LOOP_BY_NAME;
+					sc->order = SORT_NAME;
 				else if (strchr(fm->argv[0], 't') != NULL)
-					sc->field = FORMAT_LOOP_BY_TIME;
+					sc->order = SORT_ACTIVITY;
 				else
-					sc->field = FORMAT_LOOP_BY_INDEX;
+					sc->order = SORT_ORDER;
 				if (strchr(fm->argv[0], 'r') != NULL)
 					sc->reversed = 1;
 				else
@@ -5140,6 +4949,7 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 				break;
 			case 'P':
 				modifiers |= FORMAT_PANES;
+				sc->order = SORT_CREATION;
 				if (fm->argc < 1) {
 					sc->reversed = 0;
 					break;
@@ -5152,18 +4962,18 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 			case 'L':
 				modifiers |= FORMAT_CLIENTS;
 				if (fm->argc < 1) {
-					sc->field = FORMAT_LOOP_BY_INDEX;
+					sc->order = SORT_ORDER;
 					sc->reversed = 0;
 					break;
 				}
 				if (strchr(fm->argv[0], 'i') != NULL)
-					sc->field = FORMAT_LOOP_BY_INDEX;
+					sc->order = SORT_ORDER;
 				else if (strchr(fm->argv[0], 'n') != NULL)
-					sc->field = FORMAT_LOOP_BY_NAME;
+					sc->order = SORT_NAME;
 				else if (strchr(fm->argv[0], 't') != NULL)
-					sc->field = FORMAT_LOOP_BY_TIME;
+					sc->order = SORT_ACTIVITY;
 				else
-					sc->field = FORMAT_LOOP_BY_INDEX;
+					sc->order = SORT_ORDER;
 				if (strchr(fm->argv[0], 'r') != NULL)
 					sc->reversed = 1;
 				else

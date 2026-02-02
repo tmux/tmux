@@ -2262,10 +2262,36 @@ struct spawn_context {
 #define SPAWN_ZOOM 0x80
 };
 
-/* Mode tree sort order. */
-struct mode_tree_sort_criteria {
-	u_int	field;
-	int	reversed;
+/* Paste buffer. */
+struct paste_buffer {
+	char		*data;
+	size_t		 size;
+
+	char		*name;
+	time_t		 created;
+	int		 automatic;
+	u_int		 order;
+
+	RB_ENTRY(paste_buffer) name_entry;
+	RB_ENTRY(paste_buffer) time_entry;
+};
+
+/* Sort orders. */
+enum sort_order {
+	SORT_ACTIVITY,
+	SORT_CREATION,
+ 	SORT_INDEX,
+	SORT_NAME,
+	SORT_ORDER,
+	SORT_SIZE,
+	SORT_END,
+};
+
+/* Sort criteria. */
+struct sort_criteria {
+	enum sort_order	 order;
+	int		 reversed;
+	enum sort_order	*order_seq; /* available sort orders */
 };
 
 /* tmux.c */
@@ -2321,7 +2347,6 @@ void	cfg_print_causes(struct cmdq_item *);
 void	cfg_show_causes(struct session *);
 
 /* paste.c */
-struct paste_buffer;
 const char	*paste_buffer_name(struct paste_buffer *);
 u_int		 paste_buffer_order(struct paste_buffer *);
 time_t		 paste_buffer_created(struct paste_buffer *);
@@ -2336,6 +2361,24 @@ int		 paste_rename(const char *, const char *, char **);
 int		 paste_set(char *, size_t, const char *, char **);
 void		 paste_replace(struct paste_buffer *, char *, size_t);
 char		*paste_make_sample(struct paste_buffer *);
+
+/* sort.c */
+void			  sort_next_order(struct sort_criteria *);
+enum sort_order		  sort_order_from_string(const char *);
+const char		 *sort_order_to_string(enum sort_order);
+int			  sort_would_window_tree_swap(struct sort_criteria *,
+			      struct winlink *, struct winlink *);
+struct paste_buffer	**sort_get_buffers(u_int *, struct sort_criteria *);
+struct client		**sort_get_clients(u_int *, struct sort_criteria *);
+struct session		**sort_get_sessions(u_int *, struct sort_criteria *);
+struct window_pane	**sort_get_panes(u_int *, struct sort_criteria *);
+struct window_pane	**sort_get_panes_session(struct session *, u_int *,
+			      struct sort_criteria *);
+struct window_pane	**sort_get_panes_window(struct window *, u_int *,
+			      struct sort_criteria *);
+struct winlink		**sort_get_winlinks(u_int *, struct sort_criteria *);
+struct winlink		**sort_get_winlinks_session(struct session *, u_int *,
+			      struct sort_criteria *);
 
 /* format.c */
 #define FORMAT_STATUS 0x1
@@ -3396,7 +3439,7 @@ u_int		 layout_set_next(struct window *);
 u_int		 layout_set_previous(struct window *);
 
 /* mode-tree.c */
-typedef void (*mode_tree_build_cb)(void *, struct mode_tree_sort_criteria *,
+typedef void (*mode_tree_build_cb)(void *, struct sort_criteria *,
 				   uint64_t *, const char *);
 typedef void (*mode_tree_draw_cb)(void *, void *, struct screen_write_ctx *,
 	     u_int, u_int);
@@ -3404,7 +3447,8 @@ typedef int (*mode_tree_search_cb)(void *, void *, const char *, int);
 typedef void (*mode_tree_menu_cb)(void *, struct client *, key_code);
 typedef u_int (*mode_tree_height_cb)(void *, u_int);
 typedef key_code (*mode_tree_key_cb)(void *, void *, u_int);
-typedef int (*mode_tree_swap_cb)(void *, void *);
+typedef int (*mode_tree_swap_cb)(void *, void *, struct sort_criteria *);
+typedef void (*mode_tree_sort_cb)(struct sort_criteria *);
 typedef void (*mode_tree_each_cb)(void *, void *, struct client *, key_code);
 u_int	 mode_tree_count_tagged(struct mode_tree_data *);
 void	*mode_tree_get_current(struct mode_tree_data *);
@@ -3420,8 +3464,8 @@ int	 mode_tree_down(struct mode_tree_data *, int);
 struct mode_tree_data *mode_tree_start(struct window_pane *, struct args *,
 	     mode_tree_build_cb, mode_tree_draw_cb, mode_tree_search_cb,
 	     mode_tree_menu_cb, mode_tree_height_cb, mode_tree_key_cb,
-	     mode_tree_swap_cb, void *, const struct menu_item *, const char **,
-	     u_int, struct screen **);
+	     mode_tree_swap_cb, mode_tree_sort_cb, void *, 
+	     const struct menu_item *, struct screen **);
 void	 mode_tree_zoom(struct mode_tree_data *, struct args *);
 void	 mode_tree_build(struct mode_tree_data *);
 void	 mode_tree_free(struct mode_tree_data *);
@@ -3531,8 +3575,9 @@ void		 session_add_ref(struct session *, const char *);
 void		 session_remove_ref(struct session *, const char *);
 char		*session_check_name(const char *);
 void		 session_update_activity(struct session *, struct timeval *);
-struct session	*session_next_session(struct session *);
-struct session	*session_previous_session(struct session *);
+struct session	*session_next_session(struct session *, struct sort_criteria *);
+struct session	*session_previous_session(struct session *,
+		     struct sort_criteria *);
 struct winlink	*session_attach(struct session *, struct window *, int,
 		     char **);
 int		 session_detach(struct session *, struct winlink *);
