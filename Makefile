@@ -114,6 +114,7 @@ SRCS=	alerts.c \
 	spawn.c \
 	status.c \
 	style.c \
+	sort.c \
 	tmux.c \
 	tty-acs.c \
 	tty-draw.c \

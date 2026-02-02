@@ -41,8 +41,8 @@ const struct cmd_entry cmd_list_clients_entry = {
 	.name = "list-clients",
 	.alias = "lsc",
 
-	.args = { "F:f:t:", 0, 0, NULL },
-	.usage = "[-F format] [-f filter] " CMD_TARGET_SESSION_USAGE,
+	.args = { "F:f:O:rt:", 0, 0, NULL },
+	.usage = "[-F format] [-f filter] [-O order]" CMD_TARGET_SESSION_USAGE,
 
 	.target = { 't', CMD_FIND_SESSION, 0 },
 
@@ -53,15 +53,16 @@ const struct cmd_entry cmd_list_clients_entry = {
 static enum cmd_retval
 cmd_list_clients_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args 		*args = cmd_get_args(self);
-	struct cmd_find_state	*target = cmdq_get_target(item);
-	struct client		*c;
-	struct session		*s;
-	struct format_tree	*ft;
-	const char		*template, *filter;
-	u_int			 idx;
-	char			*line, *expanded;
-	int			 flag;
+	struct args 		 *args = cmd_get_args(self);
+	struct cmd_find_state	 *target = cmdq_get_target(item);
+	struct client		**l;
+	struct session		 *s;
+	struct format_tree	 *ft;
+	const char		 *template, *filter;
+	u_int			  i, n;
+	char			 *line, *expanded;
+	int			  flag;
+	struct sort_criteria	  sort_crit;
 
 	if (args_has(args, 't'))
 		s = target->s;
@@ -72,14 +73,17 @@ cmd_list_clients_exec(struct cmd *self, struct cmdq_item *item)
 		template = LIST_CLIENTS_TEMPLATE;
 	filter = args_get(args, 'f');
 
-	idx = 0;
-	TAILQ_FOREACH(c, &clients, entry) {
-		if (c->session == NULL || (s != NULL && s != c->session))
+	sort_crit.order = sort_order_from_string(args_get(args, 'O'));
+	sort_crit.reversed = args_has(args, 'r');
+
+	l = sort_get_clients(&n, &sort_crit);
+	for (i = 0; i < n; i++) {
+		if (l[i]->session == NULL || (s != NULL && s != l[i]->session))
 			continue;
 
 		ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
-		format_add(ft, "line", "%u", idx);
-		format_defaults(ft, c, NULL, NULL, NULL);
+		format_add(ft, "line", "%u", i);
+		format_defaults(ft, l[i], NULL, NULL, NULL);
 
 		if (filter != NULL) {
 			expanded = format_expand(ft, filter);
@@ -94,8 +98,6 @@ cmd_list_clients_exec(struct cmd *self, struct cmdq_item *item)
 		}
 
 		format_free(ft);
-
-		idx++;
 	}
 
 	return (CMD_RETURN_NORMAL);

@@ -34,9 +34,9 @@ const struct cmd_entry cmd_switch_client_entry = {
 	.name = "switch-client",
 	.alias = "switchc",
 
-	.args = { "lc:EFnpt:rT:Z", 0, 0, NULL },
+	.args = { "c:EFlnO:pt:rT:Z", 0, 0, NULL },
 	.usage = "[-ElnprZ] [-c target-client] [-t target-session] "
-		 "[-T key-table]",
+		 "[-T key-table] [-O order]",
 
 	/* -t is special */
 
@@ -60,6 +60,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 	struct window_pane	*wp;
 	const char		*tablename;
 	struct key_table	*table;
+	struct sort_criteria	 sort_crit;
 
 	if (tflag != NULL &&
 	    (tflag[strcspn(tflag, ":.%")] != '\0' || strcmp(tflag, "=") == 0)) {
@@ -95,13 +96,18 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 	}
 
+	sort_crit.order = sort_order_from_string(args_get(args, 'O'));
+	sort_crit.reversed = args_has(args, 'r');
+
 	if (args_has(args, 'n')) {
-		if ((s = session_next_session(tc->session)) == NULL) {
+		s = session_next_session(tc->session, &sort_crit);
+		if (s == NULL) {
 			cmdq_error(item, "can't find next session");
 			return (CMD_RETURN_ERROR);
 		}
 	} else if (args_has(args, 'p')) {
-		if ((s = session_previous_session(tc->session)) == NULL) {
+		s = session_previous_session(tc->session, &sort_crit);
+		if (s == NULL) {
 			cmdq_error(item, "can't find previous session");
 			return (CMD_RETURN_ERROR);
 		}

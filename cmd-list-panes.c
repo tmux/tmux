@@ -38,8 +38,9 @@ const struct cmd_entry cmd_list_panes_entry = {
 	.name = "list-panes",
 	.alias = "lsp",
 
-	.args = { "asF:f:t:", 0, 0, NULL },
-	.usage = "[-as] [-F format] [-f filter] " CMD_TARGET_WINDOW_USAGE,
+	.args = { "aF:f:O:rst:", 0, 0, NULL },
+	.usage = "[-asr] [-F format] [-f filter] [-O order]"
+		 CMD_TARGET_WINDOW_USAGE,
 
 	.target = { 't', CMD_FIND_WINDOW, 0 },
 
@@ -89,12 +90,13 @@ cmd_list_panes_window(struct cmd *self, struct session *s, struct winlink *wl,
     struct cmdq_item *item, int type)
 {
 	struct args		*args = cmd_get_args(self);
-	struct window_pane	*wp;
-	u_int			 n;
+	struct window_pane	*wp, **l;
+	u_int			 i, n;
 	struct format_tree	*ft;
 	const char		*template, *filter;
 	char			*line, *expanded;
 	int			 flag;
+	struct sort_criteria	 sort_crit;
 
 	template = args_get(args, 'F');
 	if (template == NULL) {
@@ -124,8 +126,12 @@ cmd_list_panes_window(struct cmd *self, struct session *s, struct winlink *wl,
 	}
 	filter = args_get(args, 'f');
 
-	n = 0;
-	TAILQ_FOREACH(wp, &wl->window->panes, entry) {
+	sort_crit.order = sort_order_from_string(args_get(args, 'O'));
+	sort_crit.reversed = args_has(args, 'r');
+
+	l = sort_get_panes_window(wl->window, &n, &sort_crit);
+	for (i = 0; i < n; i++) {
+		wp = l[i];
 		ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
 		format_add(ft, "line", "%u", n);
 		format_defaults(ft, NULL, s, wl, wp);
@@ -143,6 +149,5 @@ cmd_list_panes_window(struct cmd *self, struct session *s, struct winlink *wl,
 		}
 
 		format_free(ft);
-		n++;
 	}
 }

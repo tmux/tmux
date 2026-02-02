@@ -48,9 +48,7 @@ struct mode_tree_data {
 	void			 *modedata;
 	const struct menu_item	 *menu;
 
-	const char		**sort_list;
-	u_int			  sort_size;
-	struct mode_tree_sort_criteria sort_crit;
+	struct sort_criteria	  sort_crit;
 
 	mode_tree_build_cb        buildcb;
 	mode_tree_draw_cb         drawcb;
@@ -59,6 +57,7 @@ struct mode_tree_data {
 	mode_tree_height_cb       heightcb;
 	mode_tree_key_cb	  keycb;
 	mode_tree_swap_cb	  swapcb;
+	mode_tree_sort_cb	  sortcb;
 
 	struct mode_tree_list	  children;
 	struct mode_tree_list	  saved;
@@ -324,7 +323,7 @@ mode_tree_swap(struct mode_tree_data *mtd, int direction)
 		return;
 
 	if (mtd->swapcb(mtd->line_list[mtd->current].item->itemdata,
-	    mtd->line_list[swap_with].item->itemdata)) {
+	    mtd->line_list[swap_with].item->itemdata, &mtd->sort_crit)) {
 		mtd->current = swap_with;
 		mode_tree_build(mtd);
 	}
@@ -382,7 +381,7 @@ mode_tree_expand(struct mode_tree_data *mtd, uint64_t tag)
 	u_int	found;
 
 	if (!mode_tree_get_tag(mtd, tag, &found))
-	    return;
+		return;
 	if (!mtd->line_list[found].item->expanded) {
 		mtd->line_list[found].item->expanded = 1;
 		mode_tree_build(mtd);
@@ -454,12 +453,10 @@ mode_tree_start(struct window_pane *wp, struct args *args,
     mode_tree_build_cb buildcb, mode_tree_draw_cb drawcb,
     mode_tree_search_cb searchcb, mode_tree_menu_cb menucb,
     mode_tree_height_cb heightcb, mode_tree_key_cb keycb,
-    mode_tree_swap_cb swapcb, void *modedata, const struct menu_item *menu,
-    const char **sort_list, u_int sort_size, struct screen **s)
+    mode_tree_swap_cb swapcb, mode_tree_sort_cb sortcb, void *modedata,
+    const struct menu_item *menu, struct screen **s)
 {
 	struct mode_tree_data	*mtd;
-	const char		*sort;
-	u_int			 i;
 
 	mtd = xcalloc(1, sizeof *mtd);
 	mtd->references = 1;
@@ -468,9 +465,6 @@ mode_tree_start(struct window_pane *wp, struct args *args,
 	mtd->modedata = modedata;
 	mtd->menu = menu;
 
-	mtd->sort_list = sort_list;
-	mtd->sort_size = sort_size;
-
 	if (args_has(args, 'N') > 1)
 		mtd->preview = MODE_TREE_PREVIEW_BIG;
 	else if (args_has(args, 'N'))
@@ -478,13 +472,7 @@ mode_tree_start(struct window_pane *wp, struct args *args,
 	else
 		mtd->preview = MODE_TREE_PREVIEW_NORMAL;
 
-	sort = args_get(args, 'O');
-	if (sort != NULL) {
-		for (i = 0; i < sort_size; i++) {
-			if (strcasecmp(sort, sort_list[i]) == 0)
-				mtd->sort_crit.field = i;
-		}
-	}
+	mtd->sort_crit.order = sort_order_from_string(args_get(args, 'O'));
 	mtd->sort_crit.reversed = args_has(args, 'r');
 
 	if (args_has(args, 'f'))
@@ -499,6 +487,7 @@ mode_tree_start(struct window_pane *wp, struct args *args,
 	mtd->heightcb = heightcb;
 	mtd->keycb = keycb;
 	mtd->swapcb = swapcb;
+	mtd->sortcb = sortcb;
 
 	TAILQ_INIT(&mtd->children);
 
@@ -566,6 +555,8 @@ mode_tree_build(struct mode_tree_data *mtd)
 	TAILQ_CONCAT(&mtd->saved, &mtd->children, entry);
 	TAILQ_INIT(&mtd->children);
 
+	if (mtd->sortcb != NULL)
+		mtd->sortcb(&mtd->sort_crit);
 	mtd->buildcb(mtd->modedata, &mtd->sort_crit, &tag, mtd->filter);
 	mtd->no_matches = TAILQ_EMPTY(&mtd->children);
 	if (mtd->no_matches)
@@ -851,9 +842,9 @@ mode_tree_draw(struct mode_tree_data *mtd)
 	screen_write_cursormove(&ctx, 0, h, 0);
 	screen_write_box(&ctx, w, sy - h, BOX_LINES_DEFAULT, NULL, NULL);
 
-	if (mtd->sort_list != NULL) {
+	if (mtd->sort_crit.order_seq != NULL) {
 		xasprintf(&text, " %s (sort: %s%s)", mti->name,
-		    mtd->sort_list[mtd->sort_crit.field],
+		    sort_order_to_string(mtd->sort_crit.order),
 		    mtd->sort_crit.reversed ? ", reversed" : "");
 	} else
 		xasprintf(&text, " %s", mti->name);
@@ -1287,9 +1278,7 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 		}
 		break;
 	case 'O':
-		mtd->sort_crit.field++;
-		if (mtd->sort_crit.field >= mtd->sort_size)
-			mtd->sort_crit.field = 0;
+		sort_next_order(&mtd->sort_crit);
 		mode_tree_build(mtd);
 		break;
 	case 'r':

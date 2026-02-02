@@ -89,18 +89,6 @@ const struct window_mode window_tree_mode = {
 	.key = window_tree_key,
 };
 
-enum window_tree_sort_type {
-	WINDOW_TREE_BY_INDEX,
-	WINDOW_TREE_BY_NAME,
-	WINDOW_TREE_BY_TIME,
-};
-static const char *window_tree_sort_list[] = {
-	"index",
-	"name",
-	"time"
-};
-static struct mode_tree_sort_criteria *window_tree_sort;
-
 enum window_tree_type {
 	WINDOW_TREE_NONE,
 	WINDOW_TREE_SESSION,
@@ -142,6 +130,13 @@ struct window_tree_modedata {
 	u_int				  start;
 	u_int				  end;
 	u_int				  each;
+};
+
+static enum sort_order window_tree_order_seq[] = {
+	SORT_INDEX,
+	SORT_NAME,
+	SORT_ACTIVITY,
+	SORT_END,
 };
 
 static void
@@ -196,98 +191,6 @@ window_tree_free_item(struct window_tree_itemdata *item)
 	free(item);
 }
 
-static int
-window_tree_cmp_session(const void *a0, const void *b0)
-{
-	const struct session *const	*a = a0;
-	const struct session *const	*b = b0;
-	const struct session		*sa = *a;
-	const struct session		*sb = *b;
-	int				 result = 0;
-
-	switch (window_tree_sort->field) {
-	case WINDOW_TREE_BY_INDEX:
-		result = sa->id - sb->id;
-		break;
-	case WINDOW_TREE_BY_TIME:
-		if (timercmp(&sa->activity_time, &sb->activity_time, >)) {
-			result = -1;
-			break;
-		}
-		if (timercmp(&sa->activity_time, &sb->activity_time, <)) {
-			result = 1;
-			break;
-		}
-		/* FALLTHROUGH */
-	case WINDOW_TREE_BY_NAME:
-		result = strcmp(sa->name, sb->name);
-		break;
-	}
-
-	if (window_tree_sort->reversed)
-		result = -result;
-	return (result);
-}
-
-static int
-window_tree_cmp_window(const void *a0, const void *b0)
-{
-	const struct winlink *const	*a = a0;
-	const struct winlink *const	*b = b0;
-	const struct winlink		*wla = *a;
-	const struct winlink		*wlb = *b;
-	struct window			*wa = wla->window;
-	struct window			*wb = wlb->window;
-	int				 result = 0;
-
-	switch (window_tree_sort->field) {
-	case WINDOW_TREE_BY_INDEX:
-		result = wla->idx - wlb->idx;
-		break;
-	case WINDOW_TREE_BY_TIME:
-		if (timercmp(&wa->activity_time, &wb->activity_time, >)) {
-			result = -1;
-			break;
-		}
-		if (timercmp(&wa->activity_time, &wb->activity_time, <)) {
-			result = 1;
-			break;
-		}
-		/* FALLTHROUGH */
-	case WINDOW_TREE_BY_NAME:
-		result = strcmp(wa->name, wb->name);
-		break;
-	}
-
-	if (window_tree_sort->reversed)
-		result = -result;
-	return (result);
-}
-
-static int
-window_tree_cmp_pane(const void *a0, const void *b0)
-{
-	struct window_pane	**a = (struct window_pane **)a0;
-	struct window_pane	**b = (struct window_pane **)b0;
-	int			  result;
-	u_int			  ai, bi;
-
-	if (window_tree_sort->field == WINDOW_TREE_BY_TIME)
-		result = (*a)->active_point - (*b)->active_point;
-	else {
-		/*
-		 * Panes don't have names, so use number order for any other
-		 * sort field.
-		 */
-		window_pane_index(*a, &ai);
-		window_pane_index(*b, &bi);
-		result = ai - bi;
-	}
-	if (window_tree_sort->reversed)
-		result = -result;
-	return (result);
-}
-
 static void
 window_tree_build_pane(struct session *s, struct winlink *wl,
     struct window_pane *wp, void *modedata, struct mode_tree_item *parent)
@@ -339,7 +242,7 @@ window_tree_filter_pane(struct session *s, struct winlink *wl,
 
 static int
 window_tree_build_window(struct session *s, struct winlink *wl,
-    void *modedata, struct mode_tree_sort_criteria *sort_crit,
+    void *modedata, struct sort_criteria *sort_crit,
     struct mode_tree_item *parent, const char *filter)
 {
 	struct window_tree_modedata	*data = modedata;
@@ -381,24 +284,13 @@ window_tree_build_window(struct session *s, struct winlink *wl,
 			goto empty;
 	}
 
-	l = NULL;
-	n = 0;
-
-	TAILQ_FOREACH(wp, &wl->window->panes, entry) {
-		if (!window_tree_filter_pane(s, wl, wp, filter))
-			continue;
-		l = xreallocarray(l, n + 1, sizeof *l);
-		l[n++] = wp;
-	}
+	l = sort_get_panes_window(wl->window, &n, sort_crit);
 	if (n == 0)
 		goto empty;
-
-	window_tree_sort = sort_crit;
-	qsort(l, n, sizeof *l, window_tree_cmp_pane);
-
-	for (i = 0; i < n; i++)
-		window_tree_build_pane(s, wl, l[i], modedata, mti);
-	free(l);
+	for (i = 0; i < n; i++) {
+		if (window_tree_filter_pane(s, wl, l[i], filter))
+			window_tree_build_pane(s, wl, l[i], modedata, mti);
+	}
 	return (1);
 
 empty:
@@ -410,7 +302,7 @@ empty:
 
 static void
 window_tree_build_session(struct session *s, void *modedata,
-    struct mode_tree_sort_criteria *sort_crit, const char *filter)
+    struct sort_criteria *sort_crit, const char *filter)
 {
 	struct window_tree_modedata	*data = modedata;
 	struct window_tree_itemdata	*item;
@@ -440,15 +332,7 @@ window_tree_build_session(struct session *s, void *modedata,
 	    expanded);
 	free(text);
 
-	l = NULL;
-	n = 0;
-	RB_FOREACH(wl, winlinks, &s->windows) {
-		l = xreallocarray(l, n + 1, sizeof *l);
-		l[n++] = wl;
-	}
-	window_tree_sort = sort_crit;
-	qsort(l, n, sizeof *l, window_tree_cmp_window);
-
+	l = sort_get_winlinks_session(s, &n, sort_crit);
 	empty = 0;
 	for (i = 0; i < n; i++) {
 		if (!window_tree_build_window(s, l[i], modedata, sort_crit, mti,
@@ -460,11 +344,10 @@ window_tree_build_session(struct session *s, void *modedata,
 		data->item_size--;
 		mode_tree_remove(data->data, mti);
 	}
-	free(l);
 }
 
 static void
-window_tree_build(void *modedata, struct mode_tree_sort_criteria *sort_crit,
+window_tree_build(void *modedata, struct sort_criteria *sort_crit,
     uint64_t *tag, const char *filter)
 {
 	struct window_tree_modedata	*data = modedata;
@@ -480,24 +363,19 @@ window_tree_build(void *modedata, struct mode_tree_sort_criteria *sort_crit,
 	data->item_list = NULL;
 	data->item_size = 0;
 
-	l = NULL;
-	n = 0;
-	RB_FOREACH(s, sessions, &sessions) {
+	l = sort_get_sessions(&n, sort_crit);
+	if (n == 0)
+		return;
+	s = l[n - 1];
+	for (i = 0; i < n; i++) {
 		if (data->squash_groups &&
 		    (sg = session_group_contains(s)) != NULL) {
 			if ((sg == current && s != data->fs.s) ||
 			    (sg != current && s != TAILQ_FIRST(&sg->sessions)))
 				continue;
 		}
-		l = xreallocarray(l, n + 1, sizeof *l);
-		l[n++] = s;
-	}
-	window_tree_sort = sort_crit;
-	qsort(l, n, sizeof *l, window_tree_cmp_session);
-
-	for (i = 0; i < n; i++)
 		window_tree_build_session(l[i], modedata, sort_crit, filter);
-	free(l);
+	}
 
 	switch (data->type) {
 	case WINDOW_TREE_NONE:
@@ -924,7 +802,8 @@ window_tree_get_key(void *modedata, void *itemdata, u_int line)
 }
 
 static int
-window_tree_swap(void *cur_itemdata, void *other_itemdata)
+window_tree_swap(void *cur_itemdata, void *other_itemdata,
+    struct sort_criteria *sort_crit)
 {
 	struct window_tree_itemdata	*cur = cur_itemdata;
 	struct window_tree_itemdata	*other = other_itemdata;
@@ -945,14 +824,12 @@ window_tree_swap(void *cur_itemdata, void *other_itemdata)
 	if (cur_session != other_session)
 		return (0);
 
-	if (window_tree_sort->field != WINDOW_TREE_BY_INDEX &&
-	    window_tree_cmp_window(&cur_winlink, &other_winlink) != 0) {
-		/*
-		 * Swapping indexes would not swap positions in the tree, so
-		 * prevent swapping to avoid confusing the user.
-		 */
+	/*
+	 * Swapping indexes would not swap positions in the tree, so prevent
+	 * swapping to avoid confusing the user.
+	 */
+	if (sort_would_window_tree_swap(sort_crit, cur_winlink, other_winlink))
 		return (0);
-	}
 
 	other_window = other_winlink->window;
 	TAILQ_REMOVE(&other_window->winlinks, other_winlink, wentry);
@@ -973,6 +850,14 @@ window_tree_swap(void *cur_itemdata, void *other_itemdata)
 	recalculate_sizes();
 
 	return (1);
+}
+
+static void
+window_tree_sort(struct sort_criteria *sort_crit)
+{
+	sort_crit->order_seq = window_tree_order_seq;
+	if (sort_crit->order == SORT_END)
+		sort_crit->order = sort_crit->order_seq[0];
 }
 
 static struct screen *
@@ -1013,8 +898,8 @@ window_tree_init(struct window_mode_entry *wme, struct cmd_find_state *fs,
 
 	data->data = mode_tree_start(wp, args, window_tree_build,
 	    window_tree_draw, window_tree_search, window_tree_menu, NULL,
-	    window_tree_get_key, window_tree_swap, data, window_tree_menu_items,
-	    window_tree_sort_list, nitems(window_tree_sort_list), &s);
+	    window_tree_get_key, window_tree_swap, window_tree_sort, data,
+	    window_tree_menu_items, &s);
 	mode_tree_zoom(data->data, args);
 
 	mode_tree_build(data->data);
