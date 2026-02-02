@@ -1287,6 +1287,7 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 		break;
 	case KEYC_LEFT:
 	case 'h':
+	case KEYC_WHEELLEFT_PANE:
 	case '-':
 		if (line->flat || !current->expanded)
 			current = current->parent;
@@ -1300,6 +1301,7 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 		break;
 	case KEYC_RIGHT:
 	case 'l':
+	case KEYC_WHEELRIGHT_PANE:
 	case '+':
 		if (line->flat || current->expanded)
 			mode_tree_down(mtd, 0);
