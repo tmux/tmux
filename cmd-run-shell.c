@@ -44,9 +44,9 @@ const struct cmd_entry cmd_run_shell_entry = {
 	.name = "run-shell",
 	.alias = "run",
 
-	.args = { "bd:Ct:Es:c:", 0, 1, cmd_run_shell_args_parse },
+	.args = { "bd:Ct:Es:c:", 0, -1, cmd_run_shell_args_parse },
 	.usage = "[-bCE] [-c start-directory] [-d delay] " CMD_TARGET_PANE_USAGE
-	         " [shell-command]",
+	         " [shell-command [arguments]]",
 
 	.target = { 't', CMD_FIND_PANE, CMD_FIND_CANFAIL },
 
@@ -132,8 +132,18 @@ cmd_run_shell_exec(struct cmd *self, struct cmdq_item *item)
 	cdata = xcalloc(1, sizeof *cdata);
 	if (!args_has(args, 'C')) {
 		cmd = args_string(args, 0);
-		if (cmd != NULL)
-			cdata->cmd = format_single_from_target(item, cmd);
+		if (cmd != NULL) {
+			struct format_tree *ft = format_create_from_target(item);
+			char key[16];
+
+			format_set_flags(ft, FORMAT_ARGS);
+			for (u_int i = 1; i < args_count(args); i++) {
+				snprintf(key, sizeof key, "%u", i);
+				format_add(ft, key, "%s", args_string(args, i));
+			}
+			cdata->cmd = format_expand(ft, cmd);
+			format_free(ft);
+		}
 	} else {
 		cdata->state = args_make_commands_prepare(self, item, 0, NULL,
 		    wait, 1);
