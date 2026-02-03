@@ -1057,7 +1057,7 @@ window_pane_set_event(struct window_pane *wp)
 	    NULL, window_pane_error_callback, wp);
 	if (wp->event == NULL)
 		fatalx("out of memory");
-	wp->ictx = input_init(wp, wp->event, &wp->palette);
+	wp->ictx = input_init(wp, wp->event, &wp->palette, NULL);
 
 	bufferevent_enable(wp->event, EV_READ|EV_WRITE);
 }

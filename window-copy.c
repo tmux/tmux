@@ -494,7 +494,7 @@ window_copy_view_init(struct window_mode_entry *wme,
 
 	data->backing = xmalloc(sizeof *data->backing);
 	screen_init(data->backing, sx, screen_size_y(base), UINT_MAX);
-	data->ictx = input_init(NULL, NULL, NULL);
+	data->ictx = input_init(NULL, NULL, NULL, NULL);
 	data->mx = data->cx;
 	data->my = screen_hsize(data->backing) + data->cy - data->oy;
 	data->showmark = 0;
