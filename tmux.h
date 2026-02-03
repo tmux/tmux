@@ -1285,6 +1285,7 @@ struct window {
 	struct event		 offset_timer;
 
 	struct timeval		 activity_time;
+	struct timeval		 creation_time;
 
 	struct window_pane	*active;
 	struct window_panes 	 last_panes;

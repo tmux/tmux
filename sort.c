@@ -235,6 +235,16 @@ sort_winlink_cmp(const void *a0, const void *b0)
 	case SORT_INDEX:
 		result = wla->idx - wlb->idx;
 		break;
+	case SORT_CREATION:
+		if (timercmp(&wa->creation_time, &wb->creation_time, >)) {
+			result = -1;
+			break;
+		}
+		if (timercmp(&wa->creation_time, &wb->creation_time, <)) {
+			result = 1;
+			break;
+		}
+		break;
 	case SORT_ACTIVITY:
 		if (timercmp(&wa->activity_time, &wb->activity_time, >)) {
 			result = -1;
@@ -248,7 +258,6 @@ sort_winlink_cmp(const void *a0, const void *b0)
 	case SORT_NAME:
 		result = strcmp(wa->name, wb->name);
 		break;
-	case SORT_CREATION:
 	case SORT_ORDER:
 	case SORT_SIZE:
 	case SORT_END:
