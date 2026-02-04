@@ -197,10 +197,11 @@ sort_pane_cmp(const void *a0, const void *b0)
 	case SORT_CREATION:
 		result = a->id - b->id;
 		break;
+	case SORT_SIZE:
+		result = a->sx * a->sy - b->sx * b->sy;
 	case SORT_INDEX:
 	case SORT_NAME:
 	case SORT_ORDER:
-	case SORT_SIZE:
 	case SORT_END:
 		break;
 	}
@@ -258,8 +259,10 @@ sort_winlink_cmp(const void *a0, const void *b0)
 	case SORT_NAME:
 		result = strcmp(wa->name, wb->name);
 		break;
-	case SORT_ORDER:
 	case SORT_SIZE:
+		result = wa->xpixel * wa->ypixel - wb->xpixel * wb->ypixel;
+		break;
+	case SORT_ORDER:
 	case SORT_END:
 		break;
 	}
