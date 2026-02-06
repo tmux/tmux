@@ -827,6 +827,7 @@ struct grid_line {
 
 	struct grid_extd_entry	*extddata;
 	u_int			 extdsize;
+	u_int			 extdalloc;
 
 	int			 flags;
 	time_t			 time;
@@ -844,6 +845,7 @@ struct grid {
 	u_int			 hsize;
 	u_int			 hlimit;
 
+	u_int			 linealloc;
 	struct grid_line	*linedata;
 };
 
