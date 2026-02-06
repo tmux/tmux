@@ -4271,6 +4271,9 @@ window_copy_clear_marks(struct window_mode_entry *wme)
 {
 	struct window_copy_mode_data	*data = wme->data;
 
+	data->searchcount = -1;
+	data->searchmore = 0;
+
 	free(data->searchmark);
 	data->searchmark = NULL;
 }
