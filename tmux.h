@@ -2143,6 +2143,7 @@ struct key_binding {
 	key_code		 key;
 	struct cmd_list		*cmdlist;
 	const char		*note;
+	const char		*tablename;
 
 	int			 flags;
 #define KEY_BINDING_REPEAT 0x1
@@ -2281,6 +2282,7 @@ enum sort_order {
 	SORT_ACTIVITY,
 	SORT_CREATION,
  	SORT_INDEX,
+	SORT_MODIFIER,
 	SORT_NAME,
 	SORT_ORDER,
 	SORT_SIZE,
@@ -2379,6 +2381,10 @@ struct window_pane	**sort_get_panes_window(struct window *, u_int *,
 struct winlink		**sort_get_winlinks(u_int *, struct sort_criteria *);
 struct winlink		**sort_get_winlinks_session(struct session *, u_int *,
 			      struct sort_criteria *);
+struct key_binding	**sort_get_key_bindings(key_code, u_int *,
+			      struct sort_criteria *);
+struct key_binding	**sort_get_key_bindings_table(struct key_table *,
+			      key_code, int, int, u_int *, struct sort_criteria *);
 
 /* format.c */
 #define FORMAT_STATUS 0x1
@@ -2891,6 +2897,7 @@ void	 key_bindings_reset(const char *, key_code);
 void	 key_bindings_remove_table(const char *);
 void	 key_bindings_reset_table(const char *);
 void	 key_bindings_init(void);
+int	 key_bindings_has_repeat(struct key_binding **, u_int);
 struct cmdq_item *key_bindings_dispatch(struct key_binding *,
 	     struct cmdq_item *, struct client *, struct key_event *,
 	     struct cmd_find_state *);
