@@ -355,7 +355,7 @@ window_copy_clone_screen(struct screen *src, struct screen *hint, u_int *cx,
 	if (trim) {
 		while (sy > screen_hsize(src)) {
 			gl = grid_peek_line(src->grid, sy - 1);
-			if (gl->cellused != 0)
+			if (gl == NULL || gl->cellused != 0)
 				break;
 			sy--;
 		}
@@ -3625,6 +3625,10 @@ window_copy_stringify(struct grid *gd, u_int py, u_int first, u_int last,
 	buf = xrealloc(buf, bufsize);
 
 	gl = grid_peek_line(gd, py);
+	if (gl == NULL) {
+		buf[*size - 1] = '\0';
+		return (buf);
+	}
 	bx = *size - 1;
 	for (ax = first; ax < last; ax++) {
 		d = window_copy_cellstring(gl, ax, &dlen, &allocated);
@@ -3670,6 +3674,10 @@ window_copy_cstrtocellpos(struct grid *gd, u_int ncells, u_int *ppx, u_int *ppy,
 	px = *ppx;
 	pywrap = *ppy;
 	gl = grid_peek_line(gd, pywrap);
+	if (gl == NULL) {
+		free(cells);
+		return;
+	}
 	while (cell < ncells) {
 		cells[cell].d = window_copy_cellstring(gl, px,
 		    &cells[cell].dlen, &cells[cell].allocated);
@@ -3679,6 +3687,8 @@ window_copy_cstrtocellpos(struct grid *gd, u_int ncells, u_int *ppx, u_int *ppy,
 			px = 0;
 			pywrap++;
 			gl = grid_peek_line(gd, pywrap);
+			if (gl == NULL)
+				break;
 		}
 	}
 
@@ -4080,7 +4090,7 @@ window_copy_visible_lines(struct window_copy_mode_data *data, u_int *start,
 
 	for (*start = gd->hsize - data->oy; *start > 0; (*start)--) {
 		gl = grid_peek_line(gd, (*start) - 1);
-		if (~gl->flags & GRID_LINE_WRAPPED)
+		if (gl == NULL || ~gl->flags & GRID_LINE_WRAPPED)
 			break;
 	}
 	*end = gd->hsize - data->oy + gd->sy;
