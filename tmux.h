@@ -2143,6 +2143,7 @@ struct key_binding {
 	key_code		 key;
 	struct cmd_list		*cmdlist;
 	const char		*note;
+	const char		*tablename;
 
 	int			 flags;
 #define KEY_BINDING_REPEAT 0x1
@@ -2379,6 +2380,9 @@ struct window_pane	**sort_get_panes_window(struct window *, u_int *,
 struct winlink		**sort_get_winlinks(u_int *, struct sort_criteria *);
 struct winlink		**sort_get_winlinks_session(struct session *, u_int *,
 			      struct sort_criteria *);
+struct key_binding	**sort_get_key_bindings(u_int *, struct sort_criteria *);
+struct key_binding	**sort_get_key_bindings_table(struct key_table *,
+			      u_int *, struct sort_criteria *);
 
 /* format.c */
 #define FORMAT_STATUS 0x1
