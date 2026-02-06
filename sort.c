@@ -263,6 +263,34 @@ sort_winlink_cmp(const void *a0, const void *b0)
 	return (result);
 }
 
+static int
+sort_key_binding_cmp(const void *a0, const void *b0)
+{
+	struct sort_criteria		*sort_crit = sort_criteria;
+	const struct key_binding	*a = *(struct key_binding **)a0;
+	const struct key_binding	*b = *(struct key_binding **)b0;
+	int				 result = 0;
+
+	switch (sort_crit->order) {
+	case SORT_INDEX:
+	case SORT_ACTIVITY:
+	case SORT_NAME:
+	case SORT_CREATION:
+	case SORT_ORDER:
+	case SORT_SIZE:
+	case SORT_END:
+		break;
+	}
+
+
+	if (result == 0)
+		result = a->key - b->key;
+
+	if (sort_crit->reversed)
+		result = -result;
+	return (result);
+}
+
 void
 sort_next_order(struct sort_criteria *sort_crit)
 {
@@ -530,6 +558,60 @@ sort_get_winlinks_session(struct session *s, u_int *n,
 	}
 
 	sort_qsort(l, i, sizeof *l, sort_winlink_cmp, sort_crit);
+	*n = i;
+
+	return (l);
+}
+
+struct key_binding **
+sort_get_key_bindings(u_int *n, struct sort_criteria *sort_crit)
+{
+	struct key_table		 *table;
+	struct key_binding		 *bd;
+	u_int				  i = 0;
+	static struct key_binding	**l = NULL;
+	static u_int			  lsz = 0;
+
+	table = key_bindings_first_table();
+	while (table != NULL) {
+		bd = key_bindings_first(table);
+		while (bd != NULL) {
+			if (lsz <= i) {
+				lsz += 100;
+				l = xreallocarray(l, lsz, sizeof *l);
+			}
+			l[i++] = bd;
+			bd = key_bindings_next(table, bd);
+		}
+		table = key_bindings_next_table(table);
+	}
+
+	sort_qsort(l, i, sizeof *l, sort_key_binding_cmp, sort_crit);
+	*n = i;
+
+	return (l);
+}
+
+struct key_binding **
+sort_get_key_bindings_table(struct key_table *table, u_int *n,
+    struct sort_criteria *sort_crit)
+{
+	struct key_binding		 *bd;
+	u_int				  i = 0;
+	static struct key_binding	**l = NULL;
+	static u_int			  lsz = 0;
+
+	bd = key_bindings_first(table);
+	while (bd != NULL) {
+		if (lsz <= i) {
+			lsz += 100;
+			l = xreallocarray(l, lsz, sizeof *l);
+		}
+		l[i++] = bd;
+		bd = key_bindings_next(table, bd);
+	}
+
+	sort_qsort(l, i, sizeof *l, sort_key_binding_cmp, sort_crit);
 	*n = i;
 
 	return (l);

@@ -215,6 +215,7 @@ key_bindings_add(const char *name, key_code key, const char *note, int repeat,
 
 	bd = xcalloc(1, sizeof *bd);
 	bd->key = (key & ~KEYC_MASK_FLAGS);
+	bd->tablename = table->name;
 	if (note != NULL)
 		bd->note = xstrdup(note);
 	RB_INSERT(key_bindings, &table->key_bindings, bd);
