@@ -610,7 +610,7 @@ control_append_data(struct client *c, struct control_pane *cp, uint64_t age,
     struct evbuffer *message, struct window_pane *wp, size_t size)
 {
 	u_char	*new_data;
-	size_t	 new_size;
+	size_t	 new_size, start;
 	u_int	 i;
 
 	if (message == NULL) {
@@ -629,10 +629,16 @@ control_append_data(struct client *c, struct control_pane *cp, uint64_t age,
 	if (new_size < size)
 		fatalx("not enough data: %zu < %zu", new_size, size);
 	for (i = 0; i < size; i++) {
-		if (new_data[i] < ' ' || new_data[i] == '\\')
+		if (new_data[i] < ' ' || new_data[i] == '\\') {
 			evbuffer_add_printf(message, "\\%03o", new_data[i]);
-		else
-			evbuffer_add_printf(message, "%c", new_data[i]);
+		} else {
+			start = i;
+			while (i + 1 < size &&
+			    new_data[i + 1] >= ' ' &&
+			    new_data[i + 1] != '\\')
+				i++;
+			evbuffer_add(message, new_data + start, i - start + 1);
+		}
 	}
 	window_pane_update_used_data(wp, &cp->offset, size);
 	return (message);
