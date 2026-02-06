@@ -104,7 +104,13 @@ grid_get_extended_cell(struct grid_line *gl, struct grid_cell_entry *gce,
 {
 	u_int at = gl->extdsize + 1;
 
-	gl->extddata = xreallocarray(gl->extddata, at, sizeof *gl->extddata);
+	if (at > gl->extdalloc) {
+		gl->extdalloc = (gl->extdalloc == 0) ? 8 : gl->extdalloc * 2;
+		if (gl->extdalloc < at)
+			gl->extdalloc = at;
+		gl->extddata = xreallocarray(gl->extddata, gl->extdalloc,
+		    sizeof *gl->extddata);
+	}
 	gl->extdsize = at;
 
 	gce->offset = at - 1;
@@ -165,6 +171,7 @@ grid_compact_line(struct grid_line *gl)
 		free(gl->extddata);
 		gl->extddata = NULL;
 		gl->extdsize = 0;
+		gl->extdalloc = 0;
 		return;
 	}
 	new_extddata = xreallocarray(NULL, new_extdsize, sizeof *gl->extddata);
@@ -182,6 +189,21 @@ grid_compact_line(struct grid_line *gl)
 	free(gl->extddata);
 	gl->extddata = new_extddata;
 	gl->extdsize = new_extdsize;
+	gl->extdalloc = new_extdsize;
+}
+
+/* Ensure linedata has enough space. */
+static void
+grid_ensure_linedata(struct grid *gd, u_int needed)
+{
+	if (needed <= gd->linealloc)
+		return;
+	if (gd->linealloc == 0)
+		gd->linealloc = gd->sy;
+	while (gd->linealloc < needed)
+		gd->linealloc = (gd->linealloc < 64) ? 64 : gd->linealloc * 2;
+	gd->linedata = xreallocarray(gd->linedata, gd->linealloc,
+	    sizeof *gd->linedata);
 }
 
 /* Get line data. */
@@ -196,6 +218,7 @@ void
 grid_adjust_lines(struct grid *gd, u_int lines)
 {
 	gd->linedata = xreallocarray(gd->linedata, lines, sizeof *gd->linedata);
+	gd->linealloc = lines;
 }
 
 /* Copy default into a cell. */
@@ -311,10 +334,13 @@ grid_create(u_int sx, u_int sy, u_int hlimit)
 	gd->hsize = 0;
 	gd->hlimit = hlimit;
 
-	if (gd->sy != 0)
+	gd->linealloc = 0;
+	if (gd->sy != 0) {
 		gd->linedata = xcalloc(gd->sy, sizeof *gd->linedata);
-	else
+		gd->linealloc = gd->sy;
+	} else {
 		gd->linedata = NULL;
+	}
 
 	return (gd);
 }
@@ -425,8 +451,7 @@ grid_scroll_history(struct grid *gd, u_int bg)
 	u_int	yy;
 
 	yy = gd->hsize + gd->sy;
-	gd->linedata = xreallocarray(gd->linedata, yy + 1,
-	    sizeof *gd->linedata);
+	grid_ensure_linedata(gd, yy + 1);
 	grid_empty_line(gd, yy, bg);
 
 	gd->hscrolled++;
@@ -446,6 +471,7 @@ grid_clear_history(struct grid *gd)
 
 	gd->linedata = xreallocarray(gd->linedata, gd->sy,
 	    sizeof *gd->linedata);
+	gd->linealloc = gd->sy;
 }
 
 /* Scroll a region up, moving the top line into the history. */
@@ -457,8 +483,7 @@ grid_scroll_history_region(struct grid *gd, u_int upper, u_int lower, u_int bg)
 
 	/* Create a space for a new line. */
 	yy = gd->hsize + gd->sy;
-	gd->linedata = xreallocarray(gd->linedata, yy + 1,
-	    sizeof *gd->linedata);
+	grid_ensure_linedata(gd, yy + 1);
 
 	/* Move the entire screen down to free a space for this line. */
 	gl_history = &gd->linedata[gd->hsize];
@@ -1218,7 +1243,7 @@ grid_reflow_add(struct grid *gd, u_int n)
 	struct grid_line	*gl;
 	u_int			 sy = gd->sy + n;
 
-	gd->linedata = xreallocarray(gd->linedata, sy, sizeof *gd->linedata);
+	grid_ensure_linedata(gd, sy);
 	gl = &gd->linedata[gd->sy];
 	memset(gl, 0, n * (sizeof *gl));
 	gd->sy = sy;
@@ -1495,6 +1520,7 @@ grid_reflow(struct grid *gd, u_int sx)
 		gd->hscrolled = gd->hsize;
 	free(gd->linedata);
 	gd->linedata = target->linedata;
+	gd->linealloc = target->linealloc;
 	free(target);
 }
 
