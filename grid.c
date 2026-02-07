@@ -649,6 +649,18 @@ grid_set_cells(struct grid *gd, u_int px, u_int py, const struct grid_cell *gc,
 	if (px + slen > gl->cellused)
 		gl->cellused = px + slen;
 
+	/* Grow extended data. */
+	if (grid_need_extended_cell(&gl->celldata[px], gc)) {
+		if (gl->extdsize + slen > gl->extdalloc) {
+			if (gl->extdalloc == 0)
+				gl->extdalloc = 8;
+			while (gl->extdalloc < gl->extdsize + slen)
+				gl->extdalloc *= 2;
+			gl->extddata = xreallocarray(gl->extddata,
+			    gl->extdalloc, sizeof *gl->extddata);
+		}
+	}
+
 	for (i = 0; i < slen; i++) {
 		gce = &gl->celldata[px + i];
 		if (grid_need_extended_cell(gce, gc)) {
