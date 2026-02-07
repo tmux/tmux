@@ -633,7 +633,8 @@ tty_add(struct tty *tty, const char *buf, size_t len)
 
 	if (tty_log_fd != -1)
 		write(tty_log_fd, buf, len);
-	if (tty->flags & TTY_STARTED)
+	if ((tty->flags & TTY_STARTED) &&
+	    !event_pending(&tty->event_out, EV_WRITE, NULL))
 		event_add(&tty->event_out, NULL);
 }
 
@@ -2185,7 +2186,6 @@ tty_cell(struct tty *tty, const struct grid_cell *gc,
 
 	/* If it is a single character, write with putc to handle ACS. */
 	if (gcp->data.size == 1) {
-		tty_attributes(tty, gcp, defaults, palette, hl);
 		if (*gcp->data.data < 0x20 || *gcp->data.data == 0x7f)
 			return;
 		tty_putc(tty, *gcp->data.data);
