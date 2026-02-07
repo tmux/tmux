@@ -926,10 +926,22 @@ grid_string_cells_us(const struct grid_cell *gc, int *values)
 	return (n);
 }
 
+static inline void
+grid_string_cells_cat(char *buf, size_t len, size_t *off, const char *s)
+{
+	size_t	slen = strlen(s);
+
+	if (*off + slen < len) {
+		memcpy(buf + *off, s, slen);
+		*off += slen;
+	}
+	buf[*off] = '\0';
+}
+
 /* Add on SGR code. */
 static void
-grid_string_cells_add_code(char *buf, size_t len, u_int n, int *s, int *newc,
-    int *oldc, size_t nnewc, size_t noldc, int flags)
+grid_string_cells_add_code(char *buf, size_t len, size_t *off, u_int n,
+    int *s, int *newc, int *oldc, size_t nnewc, size_t noldc, int flags)
 {
 	u_int	i;
 	char	tmp[64];
@@ -945,43 +957,43 @@ grid_string_cells_add_code(char *buf, size_t len, u_int n, int *s, int *newc,
 		return; /* reset and colour default */
 
 	if (flags & GRID_STRING_ESCAPE_SEQUENCES)
-		strlcat(buf, "\\033[", len);
+		grid_string_cells_cat(buf, len, off, "\\033[");
 	else
-		strlcat(buf, "\033[", len);
+		grid_string_cells_cat(buf, len, off, "\033[");
 	for (i = 0; i < nnewc; i++) {
 		if (i + 1 < nnewc)
 			xsnprintf(tmp, sizeof tmp, "%d;", newc[i]);
 		else
 			xsnprintf(tmp, sizeof tmp, "%d", newc[i]);
-		strlcat(buf, tmp, len);
+		grid_string_cells_cat(buf, len, off, tmp);
 	}
-	strlcat(buf, "m", len);
+	grid_string_cells_cat(buf, len, off, "m");
 }
 
 static int
-grid_string_cells_add_hyperlink(char *buf, size_t len, const char *id,
-    const char *uri, int flags)
+grid_string_cells_add_hyperlink(char *buf, size_t len, size_t *off,
+    const char *id, const char *uri, int flags)
 {
 	char	*tmp;
 
-	if (strlen(uri) + strlen(id) + 17 >= len)
+	if (*off + strlen(uri) + strlen(id) + 17 >= len)
 		return (0);
 
 	if (flags & GRID_STRING_ESCAPE_SEQUENCES)
-		strlcat(buf, "\\033]8;", len);
+		grid_string_cells_cat(buf, len, off, "\\033]8;");
 	else
-		strlcat(buf, "\033]8;", len);
+		grid_string_cells_cat(buf, len, off, "\033]8;");
 	if (*id != '\0') {
 		xasprintf(&tmp, "id=%s;", id);
-		strlcat(buf, tmp, len);
+		grid_string_cells_cat(buf, len, off, tmp);
 		free(tmp);
 	} else
-		strlcat(buf, ";", len);
-	strlcat(buf, uri, len);
+		grid_string_cells_cat(buf, len, off, ";");
+	grid_string_cells_cat(buf, len, off, uri);
 	if (flags & GRID_STRING_ESCAPE_SEQUENCES)
-		strlcat(buf, "\\033\\\\", len);
+		grid_string_cells_cat(buf, len, off, "\\033\\\\");
 	else
-		strlcat(buf, "\033\\", len);
+		grid_string_cells_cat(buf, len, off, "\033\\");
 	return (1);
 }
 
@@ -995,7 +1007,7 @@ grid_string_cells_code(const struct grid_cell *lastgc,
     struct screen *sc, int *has_link)
 {
 	int			 oldc[64], newc[64], s[128];
-	size_t			 noldc, nnewc, n, i;
+	size_t			 noldc, nnewc, n, i, off = 0;
 	u_int			 attr = gc->attr, lastattr = lastgc->attr;
 	char			 tmp[64];
 	const char		*uri, *id;
@@ -1037,12 +1049,13 @@ grid_string_cells_code(const struct grid_cell *lastgc,
 	}
 
 	/* Write the attributes. */
-	*buf = '\0';
+	off = 0;
+	buf[0] = '\0';
 	if (n > 0) {
 		if (flags & GRID_STRING_ESCAPE_SEQUENCES)
-			strlcat(buf, "\\033[", len);
+			grid_string_cells_cat(buf, len, &off, "\\033[");
 		else
-			strlcat(buf, "\033[", len);
+			grid_string_cells_cat(buf, len, &off, "\033[");
 		for (i = 0; i < n; i++) {
 			if (s[i] < 10)
 				xsnprintf(tmp, sizeof tmp, "%d", s[i]);
@@ -1050,52 +1063,52 @@ grid_string_cells_code(const struct grid_cell *lastgc,
 				xsnprintf(tmp, sizeof tmp, "%d:%d", s[i] / 10,
 				    s[i] % 10);
 			}
-			strlcat(buf, tmp, len);
+			grid_string_cells_cat(buf, len, &off, tmp);
 			if (i + 1 < n)
-				strlcat(buf, ";", len);
+				grid_string_cells_cat(buf, len, &off, ";");
 		}
-		strlcat(buf, "m", len);
+		grid_string_cells_cat(buf, len, &off, "m");
 	}
 
 	/* If the foreground colour changed, write its parameters. */
 	nnewc = grid_string_cells_fg(gc, newc);
 	noldc = grid_string_cells_fg(lastgc, oldc);
-	grid_string_cells_add_code(buf, len, n, s, newc, oldc, nnewc, noldc,
-	    flags);
+	grid_string_cells_add_code(buf, len, &off, n, s, newc, oldc, nnewc,
+	    noldc, flags);
 
 	/* If the background colour changed, append its parameters. */
 	nnewc = grid_string_cells_bg(gc, newc);
 	noldc = grid_string_cells_bg(lastgc, oldc);
-	grid_string_cells_add_code(buf, len, n, s, newc, oldc, nnewc, noldc,
-	    flags);
+	grid_string_cells_add_code(buf, len, &off, n, s, newc, oldc, nnewc,
+	    noldc, flags);
 
 	/* If the underscore colour changed, append its parameters. */
 	nnewc = grid_string_cells_us(gc, newc);
 	noldc = grid_string_cells_us(lastgc, oldc);
-	grid_string_cells_add_code(buf, len, n, s, newc, oldc, nnewc, noldc,
-	    flags);
+	grid_string_cells_add_code(buf, len, &off, n, s, newc, oldc, nnewc,
+	    noldc, flags);
 
 	/* Append shift in/shift out if needed. */
 	if ((attr & GRID_ATTR_CHARSET) && !(lastattr & GRID_ATTR_CHARSET)) {
 		if (flags & GRID_STRING_ESCAPE_SEQUENCES)
-			strlcat(buf, "\\016", len); /* SO */
+			grid_string_cells_cat(buf, len, &off, "\\016"); /* SO */
 		else
-			strlcat(buf, "\016", len);  /* SO */
+			grid_string_cells_cat(buf, len, &off, "\016");  /* SO */
 	}
 	if (!(attr & GRID_ATTR_CHARSET) && (lastattr & GRID_ATTR_CHARSET)) {
 		if (flags & GRID_STRING_ESCAPE_SEQUENCES)
-			strlcat(buf, "\\017", len); /* SI */
+			grid_string_cells_cat(buf, len, &off, "\\017"); /* SI */
 		else
-			strlcat(buf, "\017", len);  /* SI */
+			grid_string_cells_cat(buf, len, &off, "\017");  /* SI */
 	}
 
 	/* Add hyperlink if changed. */
 	if (sc != NULL && sc->hyperlinks != NULL && lastgc->link != gc->link) {
 		if (hyperlinks_get(sc->hyperlinks, gc->link, &uri, &id, NULL)) {
 			*has_link = grid_string_cells_add_hyperlink(buf, len,
-			    id, uri, flags);
+			    &off, id, uri, flags);
 		} else if (*has_link) {
-			grid_string_cells_add_hyperlink(buf, len, "", "",
+			grid_string_cells_add_hyperlink(buf, len, &off, "", "",
 			    flags);
 			*has_link = 0;
 		}
@@ -1177,9 +1190,9 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
 	}
 
 	if (has_link) {
-		grid_string_cells_add_hyperlink(code, sizeof code, "", "",
-		    flags);
-		codelen = strlen(code);
+		codelen = 0;
+		grid_string_cells_add_hyperlink(code, sizeof code, &codelen,
+		    "", "", flags);
 		while (len < off + size + codelen + 1) {
 			buf = xreallocarray(buf, 2, len);
 			len *= 2;
