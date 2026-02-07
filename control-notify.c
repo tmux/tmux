@@ -65,8 +65,11 @@ control_notify_window_layout_changed(struct window *w)
 		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c) || c->session == NULL)
 			continue;
 		s = c->session;
-		if (winlink_find_by_window_id(&s->windows, w->id) != NULL)
-			control_write(c, "%s", cp);
+
+		if (winlink_find_by_window_id(&s->windows, w->id) == NULL)
+			continue;
+
+		control_write(c, "%s", cp);
 	}
 	free(cp);
 }
