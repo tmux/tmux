@@ -1081,9 +1081,7 @@ control_check_subs_timer(__unused int fd, __unused short events, void *data)
 		case CONTROL_SUB_WINDOW:
 			control_check_subs_window(c, csub);
 			break;
-		case CONTROL_SUB_SESSION:
-		case CONTROL_SUB_ALL_PANES:
-		case CONTROL_SUB_ALL_WINDOWS:
+		default:
 			break;
 		}
 	}
@@ -1095,10 +1093,9 @@ control_check_subs_timer(__unused int fd, __unused short events, void *data)
 				ft = format_create_defaults(NULL, c, s, wl, wp);
 				RB_FOREACH_SAFE(csub, control_subs, &cs->subs,
 				    csub1) {
-					if (csub->type != CONTROL_SUB_ALL_PANES)
-						continue;
-					control_check_subs_all_panes_one(c,
-					    csub, ft, wl, wp);
+					if (csub->type == CONTROL_SUB_ALL_PANES)
+						control_check_subs_all_panes_one(
+						    c, csub, ft, wl, wp);
 				}
 				format_free(ft);
 			}
@@ -1111,10 +1108,9 @@ control_check_subs_timer(__unused int fd, __unused short events, void *data)
 			ft = format_create_defaults(NULL, c, s, wl, NULL);
 			RB_FOREACH_SAFE(csub, control_subs, &cs->subs,
 			    csub1) {
-				if (csub->type != CONTROL_SUB_ALL_WINDOWS)
-					continue;
-				control_check_subs_all_windows_one(c, csub, ft,
-				    wl);
+				if (csub->type == CONTROL_SUB_ALL_WINDOWS)
+					control_check_subs_all_windows_one(c,
+					    csub, ft, wl);
 			}
 			format_free(ft);
 		}
