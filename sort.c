@@ -200,19 +200,18 @@ sort_pane_cmp(const void *a0, const void *b0)
 	case SORT_SIZE:
 		result = a->sx * a->sy - b->sx * b->sy;
 	case SORT_INDEX:
+		window_pane_index(a, &ai);
+		window_pane_index(b, &bi);
+		result = ai - bi;
 	case SORT_NAME:
+		result = strcmp(a->screen->title, b->screen->title);
 	case SORT_ORDER:
 	case SORT_END:
 		break;
 	}
+
 	if (result == 0) {
-		/*
-		 * Panes don't have names, so use number order for any other
-		 * sort field.
-		 */
-		window_pane_index(a, &ai);
-		window_pane_index(b, &bi);
-		result = ai - bi;
+		result = strcmp(a->screen->title, b->screen->title);
 	}
 
 	if (sort_crit->reversed)
@@ -307,7 +306,8 @@ sort_order_from_string(const char* order)
 			return (SORT_CREATION);
 		if (strcasecmp(order, "index") == 0)
 			return (SORT_INDEX);
-		if (strcasecmp(order, "name") == 0)
+		if (strcasecmp(order, "name") == 0 ||
+		    strcasecmp(order, "title") == 0)
 			return (SORT_NAME);
 		if (strcasecmp(order, "order") == 0)
 			return (SORT_ORDER);
