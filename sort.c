@@ -197,22 +197,24 @@ sort_pane_cmp(const void *a0, const void *b0)
 	case SORT_CREATION:
 		result = a->id - b->id;
 		break;
-	case SORT_INDEX:
-	case SORT_NAME:
-	case SORT_ORDER:
 	case SORT_SIZE:
-	case SORT_END:
+		result = a->sx * a->sy - b->sx * b->sy;
 		break;
-	}
-	if (result == 0) {
-		/*
-		 * Panes don't have names, so use number order for any other
-		 * sort field.
-		 */
+	case SORT_INDEX:
 		window_pane_index(a, &ai);
 		window_pane_index(b, &bi);
 		result = ai - bi;
+		break;
+	case SORT_NAME:
+		result = strcmp(a->screen->title, b->screen->title);
+		break;
+	case SORT_ORDER:
+	case SORT_END:
+		break;
 	}
+
+	if (result == 0)
+		result = strcmp(a->screen->title, b->screen->title);
 
 	if (sort_crit->reversed)
 		result = -result;
@@ -235,6 +237,16 @@ sort_winlink_cmp(const void *a0, const void *b0)
 	case SORT_INDEX:
 		result = wla->idx - wlb->idx;
 		break;
+	case SORT_CREATION:
+		if (timercmp(&wa->creation_time, &wb->creation_time, >)) {
+			result = -1;
+			break;
+		}
+		if (timercmp(&wa->creation_time, &wb->creation_time, <)) {
+			result = 1;
+			break;
+		}
+		break;
 	case SORT_ACTIVITY:
 		if (timercmp(&wa->activity_time, &wb->activity_time, >)) {
 			result = -1;
@@ -248,9 +260,10 @@ sort_winlink_cmp(const void *a0, const void *b0)
 	case SORT_NAME:
 		result = strcmp(wa->name, wb->name);
 		break;
-	case SORT_CREATION:
-	case SORT_ORDER:
 	case SORT_SIZE:
+		result = wa->sx * wa->sy - wb->sx * wb->sy;
+		break;
+	case SORT_ORDER:
 	case SORT_END:
 		break;
 	}
@@ -295,7 +308,8 @@ sort_order_from_string(const char* order)
 			return (SORT_CREATION);
 		if (strcasecmp(order, "index") == 0)
 			return (SORT_INDEX);
-		if (strcasecmp(order, "name") == 0)
+		if (strcasecmp(order, "name") == 0 ||
+		    strcasecmp(order, "title") == 0)
 			return (SORT_NAME);
 		if (strcasecmp(order, "order") == 0)
 			return (SORT_ORDER);
