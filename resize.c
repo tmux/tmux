@@ -250,7 +250,7 @@ skip:
 	/* Return whether a suitable size was found. */
 	if (type == WINDOW_SIZE_MANUAL) {
 		log_debug("%s: type is manual", __func__);
-		return (1);
+		return (w != NULL);
 	}
 	if (type == WINDOW_SIZE_LARGEST) {
 		log_debug("%s: type is largest", __func__);
