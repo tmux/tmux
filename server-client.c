@@ -2723,7 +2723,8 @@ server_client_loop(void)
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (wp->flags & PANE_STYLECHANGED) {
 				wme = TAILQ_FIRST(&wp->modes);
-				if (wme != NULL && wme->mode->style_changed != NULL)
+				if (wme != NULL &&
+				    wme->mode->style_changed != NULL)
 					wme->mode->style_changed(wme);
 			}
 		}
@@ -2732,7 +2733,7 @@ server_client_loop(void)
 	/* Check clients. */
 	TAILQ_FOREACH(c, &clients, entry) {
 		server_client_check_exit(c);
-		if (c->session != NULL) {
+		if (c->session != NULL && c->session->curw != NULL) {
 			server_client_check_modes(c);
 			server_client_check_redraw(c);
 			server_client_reset_state(c);
