@@ -3424,7 +3424,7 @@ input_cancel_requests(struct client *c)
 {
 	struct input_request	*ir, *ir1;
 
-	TAILQ_FOREACH_SAFE(ir, &c->input_requests, entry, ir1)
+	TAILQ_FOREACH_SAFE(ir, &c->input_requests, centry, ir1)
 		input_free_request(ir);
 }
 
