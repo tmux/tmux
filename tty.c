@@ -2064,7 +2064,6 @@ tty_cell(struct tty *tty, const struct grid_cell *gc,
 
 	/* If it is a single character, write with putc to handle ACS. */
 	if (gcp->data.size == 1) {
-		tty_attributes(tty, gcp, defaults, palette, hl);
 		if (*gcp->data.data < 0x20 || *gcp->data.data == 0x7f)
 			return;
 		tty_putc(tty, *gcp->data.data);
