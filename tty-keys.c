@@ -1377,6 +1377,10 @@ tty_keys_clipboard(struct tty *tty, const char *buf, size_t len, size_t *size)
 
 	/* Convert from base64. */
 	needed = (end / 4) * 3;
+	if (needed == 0) {
+		free(copy);
+		return (0);
+	}
 	out = xmalloc(needed);
 	if ((outlen = b64_pton(copy, out, len)) == -1) {
 		free(out);
@@ -1612,8 +1616,10 @@ tty_keys_extended_device_attributes(struct tty *tty, const char *buf,
 	}
 	if (i == (sizeof tmp) - 1)
 		return (-1);
-	tmp[i - 1] = '\0';
 	*size = 5 + i;
+	if (i == 0)
+		return (0);
+	tmp[i - 1] = '\0';
 
 	/* Add terminal features. */
 	if (strncmp(tmp, "iTerm2 ", 7) == 0)
@@ -1686,11 +1692,13 @@ tty_keys_colours(struct tty *tty, const char *buf, size_t len, size_t *size,
 	}
 	if (i == (sizeof tmp) - 1)
 		return (-1);
+	*size = 6 + i;
+	if (i == 0)
+		return (0);
 	if (tmp[i - 1] == '\033')
 		tmp[i - 1] = '\0';
 	else
 		tmp[i] = '\0';
-	*size = 6 + i;
 
 	/* Work out the colour. */
 	n = colour_parseX11(tmp);
@@ -1755,11 +1763,13 @@ tty_keys_palette(struct tty *tty, const char *buf, size_t len, size_t *size)
 	}
 	if (i == (sizeof tmp) - 1)
 		return (-1);
+	*size = 5 + i;
+	if (i == 0)
+		return (0);
 	if (tmp[i - 1] == '\033')
 		tmp[i - 1] = '\0';
 	else
 		tmp[i] = '\0';
-	*size = 5 + i;
 
 	/* Parse index. */
 	idx = strtol(tmp, &endptr, 10);
