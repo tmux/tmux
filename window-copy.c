@@ -5052,9 +5052,9 @@ static void
 window_copy_append_selection(struct window_mode_entry *wme)
 {
 	struct window_pane		*wp = wme->wp;
-	char				*buf;
+	char				*buf, *bufname = NULL;
 	struct paste_buffer		*pb;
-	const char			*bufdata, *bufname = NULL;
+	const char			*bufdata;
 	size_t				 len, bufsize;
 	struct screen_write_ctx		 ctx;
 
@@ -5079,6 +5079,7 @@ window_copy_append_selection(struct window_mode_entry *wme)
 	}
 	if (paste_set(buf, len, bufname, NULL) != 0)
 		free(buf);
+	free(bufname);
 }
 
 static void

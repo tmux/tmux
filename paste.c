@@ -107,7 +107,7 @@ paste_is_empty(void)
 
 /* Get the most recent automatic buffer. */
 struct paste_buffer *
-paste_get_top(const char **name)
+paste_get_top(char **name)
 {
 	struct paste_buffer	*pb;
 
@@ -117,7 +117,7 @@ paste_get_top(const char **name)
 	if (pb == NULL)
 		return (NULL);
 	if (name != NULL)
-		*name = pb->name;
+		*name = xstrdup(pb->name);
 	return (pb);
 }
 
