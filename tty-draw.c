@@ -122,7 +122,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	char			 buf[1000];
 	size_t			 len;
 	enum tty_draw_line_state current_state, next_state;
-
+/* xxx maybe check overlay here? */
 	/*
 	 * py is the line in the screen to draw. px is the start x and nx is
 	 * the width to draw. atx,aty is the line on the terminal to draw it.

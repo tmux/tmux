@@ -1209,7 +1209,6 @@ tty_clear_pane_line(struct tty *tty, const struct tty_ctx *ctx, u_int py,
     u_int px, u_int nx, u_int bg)
 {
 	struct client		*c = tty->client;
-	struct window_pane	*wp = ctx->arg;
 	struct visible_ranges	*r;
 	struct visible_range	*ri;
 	u_int			 i, l, x, rx, ry;
@@ -1218,7 +1217,6 @@ tty_clear_pane_line(struct tty *tty, const struct tty_ctx *ctx, u_int py,
 
 	if (tty_clamp_line(tty, ctx, px, py, nx, &l, &x, &rx, &ry)) {
 		r = tty_check_overlay_range(tty, x, ry, rx);
-		r = screen_redraw_get_visible_ranges(wp, x, ry, rx, r);
 		for (i=0; i < r->used; i++) {
 			ri = &r->ranges[i];
 			if (ri->nx == 0)
@@ -1382,7 +1380,6 @@ tty_clear_area(struct tty *tty, const struct tty_ctx *ctx, u_int py,
 	/* Couldn't use an escape sequence, loop over the lines. */
 	for (yy = py; yy < py + ny; yy++) {
 		r = tty_check_overlay_range(tty, px, yy - oy, nx);
-		r = screen_redraw_get_visible_ranges(wp, px, yy - oy, nx, r);
 		for (i=0; i < r->used; i++) {
 			ri = &r->ranges[i];
 			if (ri->nx == 0) continue;
@@ -1419,8 +1416,6 @@ tty_draw_pane(struct tty *tty, const struct tty_ctx *ctx, u_int py)
 	if (!ctx->bigger) {
 		if (wp) {
 			r = tty_check_overlay_range(tty, 0, ctx->yoff + py, nx);
-			r = screen_redraw_get_visible_ranges(wp, 0, ctx->yoff +
-			    py, nx, r);
 			for (i=0; i < r->used; i++) {
 				ri = &r->ranges[i];
 				if (ri->nx == 0) continue;
@@ -1437,7 +1432,6 @@ tty_draw_pane(struct tty *tty, const struct tty_ctx *ctx, u_int py)
 	if (tty_clamp_line(tty, ctx, 0, py, nx, &px, &x, &rx, &ry)) {
 		if (wp) {
 			r = tty_check_overlay_range(tty, i, py, rx);
-			r = screen_redraw_get_visible_ranges(wp, i, py, rx, r);
 			for (i=0; i < r->used; i++) {
 				ri = &r->ranges[i];
 				if (ri->nx == 0)
@@ -1916,8 +1910,7 @@ tty_cmd_scrollup(struct tty *tty, const struct tty_ctx *ctx)
 	    !tty_term_has(tty->term, TTYC_CSR) ||
 	    ctx->sx == 1 ||
 	    ctx->sy == 1 ||
-	    c->overlay_check != NULL ||
-	    tty_is_obscured(ctx)) {
+	    c->overlay_check != NULL) {
 		tty_redraw_region(tty, ctx);
 		return;
 	}

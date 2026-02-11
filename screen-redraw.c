@@ -1239,10 +1239,11 @@ screen_redraw_get_visible_ranges(struct window_pane *base_wp, u_int px,
 			   then split range into 2 ranges. */
 			else if (lb > ri->px &&
 				   rb < ri->px + ri->nx) {
-				server_client_ensure_ranges(r, r->size + 1);
+				server_client_ensure_ranges(r, r->used + 1);
 				for (s=r->used; s>i; s--)
-					memcpy(&r->ranges[s-1], &r->ranges[s],
+					memcpy(&r->ranges[s], &r->ranges[s-1],
 					    sizeof (struct visible_range));
+				ri = &r->ranges[i];
 				r->ranges[i+1].px = rb + 1;
 				r->ranges[i+1].nx = ri->px + ri->nx - (rb + 1);
 				/* ri->px was copied, unchanged. */
@@ -1338,8 +1339,7 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 		    __func__, c->name, wp->id, i, j, wx, wy, width);
 
 		/* Get visible ranges of line before we draw it. */
-		r = tty_check_overlay_range(tty, px, py, width);
-		r = screen_redraw_get_visible_ranges(wp, wx, wy, width, r);
+		r = screen_redraw_get_visible_ranges(wp, wx, wy, width, NULL);
 
 		tty_default_colours(&defaults, wp);
 
