@@ -1185,8 +1185,10 @@ flag clears alerts (bell, activity, or silence) in all windows linked to the
 session.
 .Tg lsc
 .It Xo Ic list-clients
+.Op Fl r
 .Op Fl F Ar format
 .Op Fl f Ar filter
+.Op Fl O Ar sort-order
 .Op Fl t Ar target-session
 .Xc
 .D1 Pq alias: Ic lsc
@@ -1199,6 +1201,16 @@ Only clients for which the filter is true are shown.
 See the
 .Sx FORMATS
 section.
+.Fl O
+specifies the sort order: one of
+.Ql name ,
+.Ql size ,
+.Ql creation
+(time), or
+.Ql activity
+(time).
+.Fl r
+reverses the sort order.
 If
 .Ar target-session
 is specified, list only clients connected to that session.
@@ -1214,8 +1226,10 @@ or - if omitted - of all commands supported by
 .Nm .
 .Tg ls
 .It Xo Ic list-sessions
+.Op Fl r
 .Op Fl F Ar format
 .Op Fl f Ar filter
+.Op Fl O Ar sort-order
 .Xc
 .D1 Pq alias: Ic ls
 List all sessions managed by the server.
@@ -1227,6 +1241,16 @@ Only sessions for which the filter is true are shown.
 See the
 .Sx FORMATS
 section.
+.Fl O
+specifies the sort order: one of
+.Ql index ,
+.Ql name ,
+.Ql creation
+(time), or
+.Ql activity
+(time).
+.Fl r
+reverses the sort order.
 .Tg lockc
 .It Ic lock-client Op Fl t Ar target-client
 .D1 Pq alias: Ic lockc
@@ -1623,6 +1647,7 @@ Suspend a client by sending
 .It Xo Ic switch-client
 .Op Fl ElnprZ
 .Op Fl c Ar target-client
+.Op Fl O Ar sort-order
 .Op Fl t Ar target-session
 .Op Fl T Ar key-table
 .Xc
@@ -1649,6 +1674,18 @@ or
 .Fl p
 is used, the client is moved to the last, next or previous session
 respectively.
+.Fl O
+may be used with
+.Fl n
+and
+.Fl p
+to specify the field to sort on: one of
+.Ql name ,
+.Ql size ,
+.Ql creation
+(time), or
+.Ql activity
+(time).
 .Fl r
 toggles the client
 .Ic read-only
@@ -2669,7 +2706,7 @@ The following keys may be used in client mode:
 .It Li "z" Ta "Suspend selected client"
 .It Li "Z" Ta "Suspend tagged clients"
 .It Li "f" Ta "Enter a format to filter items"
-.It Li "O" Ta "Change sort field"
+.It Li "O" Ta "Change sort order"
 .It Li "r" Ta "Reverse sort order"
 .It Li "v" Ta "Toggle preview"
 .It Li "q" Ta "Exit mode"
@@ -2685,12 +2722,11 @@ If
 is not given, "detach-client -t \[aq]%%\[aq]" is used.
 .Pp
 .Fl O
-specifies the initial sort field: one of
+specifies the initial sort order: one of
 .Ql name ,
 .Ql size ,
 .Ql creation
-(time),
-or
+(time), or
 .Ql activity
 (time).
 .Fl r
@@ -2757,7 +2793,7 @@ The following keys may be used in tree mode:
 .It Li "\&:" Ta "Run a command for each tagged item"
 .It Li "f" Ta "Enter a format to filter items"
 .It Li "H" Ta "Jump to the starting pane"
-.It Li "O" Ta "Change sort field"
+.It Li "O" Ta "Change sort order"
 .It Li "r" Ta "Reverse sort order"
 .It Li "v" Ta "Toggle preview"
 .It Li "q" Ta "Exit mode"
@@ -2775,12 +2811,12 @@ If
 is not given, "switch-client -t \[aq]%%\[aq]" is used.
 .Pp
 .Fl O
-specifies the initial sort field: one of
+specifies the initial sort order: one of
 .Ql index ,
 .Ql name ,
 or
-.Ql time
-(activity).
+.Ql activity
+(time).
 .Fl r
 reverses the sort order.
 .Fl f
@@ -3026,9 +3062,10 @@ If
 is given, the newly linked window is not selected.
 .Tg lsp
 .It Xo Ic list-panes
-.Op Fl as
+.Op Fl ars
 .Op Fl F Ar format
 .Op Fl f Ar filter
+.Op Fl O Ar sort-order
 .Op Fl t Ar target
 .Xc
 .D1 Pq alias: Ic lsp
@@ -3053,11 +3090,21 @@ Only panes for which the filter is true are shown.
 See the
 .Sx FORMATS
 section.
+.Fl O
+specifies the sort order: one of
+.Ql name ,
+.Ql creation
+(time), or
+.Ql activity
+(time).
+.Fl r
+reverses the sort order.
 .Tg lsw
 .It Xo Ic list-windows
-.Op Fl a
+.Op Fl ar
 .Op Fl F Ar format
 .Op Fl f Ar filter
+.Op Fl O Ar sort-order
 .Op Fl t Ar target-session
 .Xc
 .D1 Pq alias: Ic lsw
@@ -3074,6 +3121,15 @@ Only windows for which the filter is true are shown.
 See the
 .Sx FORMATS
 section.
+.Fl O
+specifies the sort order: one of
+.Ql index ,
+.Ql name ,
+or
+.Ql activity
+(time).
+.Fl r
+reverses the sort order.
 .Tg movep
 .It Xo Ic move-pane
 .Op Fl bdfhv
@@ -7247,7 +7303,7 @@ The following keys may be used in buffer mode:
 .It Li "D" Ta "Delete tagged buffers"
 .It Li "e" Ta "Open the buffer in an editor"
 .It Li "f" Ta "Enter a format to filter items"
-.It Li "O" Ta "Change sort field"
+.It Li "O" Ta "Change sort order"
 .It Li "r" Ta "Reverse sort order"
 .It Li "v" Ta "Toggle preview"
 .It Li "q" Ta "Exit mode"
@@ -7263,10 +7319,10 @@ If
 is not given, "paste-buffer -p -b \[aq]%%\[aq]" is used.
 .Pp
 .Fl O
-specifies the initial sort field: one of
-.Ql time
-(creation),
-.Ql name
+specifies the initial sort order: one of
+.Ql creation
+(time),
+.Ql name ,
 or
 .Ql size .
 .Fl r
@@ -7299,8 +7355,10 @@ Delete the buffer named
 or the most recently added automatically named buffer if not specified.
 .Tg lsb
 .It Xo Ic list-buffers
+.Op Fl r
 .Op Fl F Ar format
 .Op Fl f Ar filter
+.Op Fl O Ar sort-order
 .Xc
 .D1 Pq alias: Ic lsb
 List the global buffers.
@@ -7312,6 +7370,15 @@ Only buffers for which the filter is true are shown.
 See the
 .Sx FORMATS
 section.
+.Fl O
+specifies the sort order: one of
+.Ql name ,
+.Ql size ,
+or
+.Ql creation
+(time).
+.Fl r
+reverses the sort order.
 .It Xo Ic load-buffer
 .Op Fl w
 .Op Fl b Ar buffer-name

@@ -71,20 +71,6 @@ const struct window_mode window_client_mode = {
 	.key = window_client_key,
 };
 
-enum window_client_sort_type {
-	WINDOW_CLIENT_BY_NAME,
-	WINDOW_CLIENT_BY_SIZE,
-	WINDOW_CLIENT_BY_CREATION_TIME,
-	WINDOW_CLIENT_BY_ACTIVITY_TIME,
-};
-static const char *window_client_sort_list[] = {
-	"name",
-	"size",
-	"creation",
-	"activity"
-};
-static struct mode_tree_sort_criteria *window_client_sort;
-
 struct window_client_itemdata {
 	struct client	*c;
 };
@@ -99,6 +85,14 @@ struct window_client_modedata {
 
 	struct window_client_itemdata	**item_list;
 	u_int				  item_size;
+};
+
+static enum sort_order window_client_order_seq[] = {
+	SORT_NAME,
+	SORT_SIZE,
+	SORT_CREATION,
+	SORT_ACTIVITY,
+	SORT_END,
 };
 
 static struct window_client_itemdata *
@@ -119,54 +113,14 @@ window_client_free_item(struct window_client_itemdata *item)
 	free(item);
 }
 
-static int
-window_client_cmp(const void *a0, const void *b0)
-{
-	const struct window_client_itemdata *const	*a = a0;
-	const struct window_client_itemdata *const	*b = b0;
-	const struct window_client_itemdata		*itema = *a;
-	const struct window_client_itemdata		*itemb = *b;
-	struct client					*ca = itema->c;
-	struct client					*cb = itemb->c;
-	int						 result = 0;
-
-	switch (window_client_sort->field) {
-	case WINDOW_CLIENT_BY_SIZE:
-		result = ca->tty.sx - cb->tty.sx;
-		if (result == 0)
-			result = ca->tty.sy - cb->tty.sy;
-		break;
-	case WINDOW_CLIENT_BY_CREATION_TIME:
-		if (timercmp(&ca->creation_time, &cb->creation_time, >))
-			result = -1;
-		else if (timercmp(&ca->creation_time, &cb->creation_time, <))
-			result = 1;
-		break;
-	case WINDOW_CLIENT_BY_ACTIVITY_TIME:
-		if (timercmp(&ca->activity_time, &cb->activity_time, >))
-			result = -1;
-		else if (timercmp(&ca->activity_time, &cb->activity_time, <))
-			result = 1;
-		break;
-	}
-
-	/* Use WINDOW_CLIENT_BY_NAME as default order and tie breaker. */
-	if (result == 0)
-		result = strcmp(ca->name, cb->name);
-
-	if (window_client_sort->reversed)
-		result = -result;
-	return (result);
-}
-
 static void
-window_client_build(void *modedata, struct mode_tree_sort_criteria *sort_crit,
+window_client_build(void *modedata, struct sort_criteria *sort_crit,
     __unused uint64_t *tag, const char *filter)
 {
 	struct window_client_modedata	*data = modedata;
 	struct window_client_itemdata	*item;
-	u_int				 i;
-	struct client			*c;
+	u_int				 i, n;
+	struct client			*c, **l;
 	char				*text, *cp;
 
 	for (i = 0; i < data->item_size; i++)
@@ -175,19 +129,17 @@ window_client_build(void *modedata, struct mode_tree_sort_criteria *sort_crit,
 	data->item_list = NULL;
 	data->item_size = 0;
 
-	TAILQ_FOREACH(c, &clients, entry) {
-		if (c->session == NULL || (c->flags & CLIENT_UNATTACHEDFLAGS))
+	l = sort_get_clients(&n, sort_crit);
+	for (i = 0; i < n; i++) {
+		if (l[i]->session == NULL ||
+		    (l[i]->flags & CLIENT_UNATTACHEDFLAGS))
 			continue;
 
 		item = window_client_add_item(data);
-		item->c = c;
+		item->c = l[i];
 
-		c->references++;
+		l[i]->references++;
 	}
-
-	window_client_sort = sort_crit;
-	qsort(data->item_list, data->item_size, sizeof *data->item_list,
-	    window_client_cmp);
 
 	for (i = 0; i < data->item_size; i++) {
 		item = data->item_list[i];
@@ -280,6 +232,14 @@ window_client_get_key(void *modedata, void *itemdata, u_int line)
 	return (key);
 }
 
+static void
+window_client_sort(struct sort_criteria *sort_crit)
+{
+	sort_crit->order_seq = window_client_order_seq;
+	if (sort_crit->order == SORT_END)
+		sort_crit->order = sort_crit->order_seq[0];
+}
+
 static struct screen *
 window_client_init(struct window_mode_entry *wme,
     __unused struct cmd_find_state *fs, struct args *args)
@@ -306,8 +266,8 @@ window_client_init(struct window_mode_entry *wme,
 
 	data->data = mode_tree_start(wp, args, window_client_build,
 	    window_client_draw, NULL, window_client_menu, NULL,
-	    window_client_get_key, NULL, data, window_client_menu_items,
-	    window_client_sort_list, nitems(window_client_sort_list), &s);
+	    window_client_get_key, NULL, window_client_sort, data,
+	    window_client_menu_items, &s);
 	mode_tree_zoom(data->data, args);
 
 	mode_tree_build(data->data);

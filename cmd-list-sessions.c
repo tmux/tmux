@@ -42,8 +42,8 @@ const struct cmd_entry cmd_list_sessions_entry = {
 	.name = "list-sessions",
 	.alias = "ls",
 
-	.args = { "F:f:", 0, 0, NULL },
-	.usage = "[-F format] [-f filter]",
+	.args = { "F:f:O:r", 0, 0, NULL },
+	.usage = "[-r] [-F format] [-f filter] [-O order]",
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_list_sessions_exec
@@ -52,23 +52,27 @@ const struct cmd_entry cmd_list_sessions_entry = {
 static enum cmd_retval
 cmd_list_sessions_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = cmd_get_args(self);
-	struct session		*s;
-	u_int		 	 n;
-	struct format_tree	*ft;
-	const char		*template, *filter;
-	char			*line, *expanded;
-	int			 flag;
+	struct args		 *args = cmd_get_args(self);
+	struct session		**l;
+	u_int		 	  n, i;
+	struct format_tree	 *ft;
+	const char		 *template, *filter;
+	char			 *line, *expanded;
+	int			  flag;
+	struct sort_criteria	  sort_crit;
 
 	if ((template = args_get(args, 'F')) == NULL)
 		template = LIST_SESSIONS_TEMPLATE;
 	filter = args_get(args, 'f');
 
-	n = 0;
-	RB_FOREACH(s, sessions, &sessions) {
+	sort_crit.order = sort_order_from_string(args_get(args, 'O'));
+	sort_crit.reversed = args_has(args, 'r');
+
+	l = sort_get_sessions(&n, &sort_crit);
+	for (i = 0; i < n; i++) {
 		ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
-		format_add(ft, "line", "%u", n);
-		format_defaults(ft, NULL, s, NULL, NULL);
+		format_add(ft, "line", "%u", i);
+		format_defaults(ft, NULL, l[i], NULL, NULL);
 
 		if (filter != NULL) {
 			expanded = format_expand(ft, filter);
@@ -83,7 +87,6 @@ cmd_list_sessions_exec(struct cmd *self, struct cmdq_item *item)
 		}
 
 		format_free(ft);
-		n++;
 	}
 
 	return (CMD_RETURN_NORMAL);

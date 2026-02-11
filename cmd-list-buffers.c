@@ -36,8 +36,8 @@ const struct cmd_entry cmd_list_buffers_entry = {
 	.name = "list-buffers",
 	.alias = "lsb",
 
-	.args = { "F:f:", 0, 0, NULL },
-	.usage = "[-F format] [-f filter]",
+	.args = { "F:f:O:r", 0, 0, NULL },
+	.usage = "[-F format] [-f filter] [-O order]",
 
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_list_buffers_exec
@@ -46,21 +46,26 @@ const struct cmd_entry cmd_list_buffers_entry = {
 static enum cmd_retval
 cmd_list_buffers_exec(struct cmd *self, struct cmdq_item *item)
 {
-	struct args		*args = cmd_get_args(self);
-	struct paste_buffer	*pb;
-	struct format_tree	*ft;
-	const char		*template, *filter;
-	char			*line, *expanded;
-	int			 flag;
+	struct args		 *args = cmd_get_args(self);
+	struct paste_buffer	**l;
+	struct format_tree	 *ft;
+	const char		 *template, *filter;
+	char			 *line, *expanded;
+	int			  flag;
+	u_int			  i, n;
+	struct sort_criteria	  sort_crit;
 
 	if ((template = args_get(args, 'F')) == NULL)
 		template = LIST_BUFFERS_TEMPLATE;
 	filter = args_get(args, 'f');
 
-	pb = NULL;
-	while ((pb = paste_walk(pb)) != NULL) {
+	sort_crit.order = sort_order_from_string(args_get(args, 'O'));
+	sort_crit.reversed = args_has(args, 'r');
+
+	l = sort_get_buffers(&n, &sort_crit);
+	for (i = 0; i < n; i++) {
 		ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, 0);
-		format_defaults_paste_buffer(ft, pb);
+		format_defaults_paste_buffer(ft, l[i]);
 
 		if (filter != NULL) {
 			expanded = format_expand(ft, filter);
