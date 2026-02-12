@@ -1088,7 +1088,7 @@ screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx,
 	u_int			 sb_w = sb_style->width, sb_pad = sb_style->pad;
 	int			 px, py, ox = ctx->ox, oy = ctx->oy;
 	int			 sx = ctx->sx, sy = ctx->sy, xoff = wp->xoff;
-	int			 yoff = wp->yoff;
+	int			 yoff = wp->yoff, need_cursor;
 
 	if (ctx->statustop) {
 		sb_y += ctx->statuslines;
@@ -1110,14 +1110,20 @@ screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx,
 
 	for (j = 0; j < jmax; j++) {
 		py = sb_y + j;
+		need_cursor = 1;
 		for (i = 0; i < imax; i++) {
 			px = sb_x + i;
 			if (px < xoff - ox - (int)sb_w - (int)sb_pad ||
 			    px >= sx || px < 0 ||
 			    py < yoff - oy - 1 ||
-			    py >= sy || py < 0)
+			    py >= sy || py < 0) {
+				need_cursor = 1;
 				continue;
-			tty_cursor(tty, px, py);
+			}
+			if (need_cursor) {
+				tty_cursor(tty, px, py);
+				need_cursor = 0;
+			}
 			if ((sb_pos == PANE_SCROLLBARS_LEFT &&
 			    i >= sb_w && i < sb_w + sb_pad) ||
 			    (sb_pos == PANE_SCROLLBARS_RIGHT &&
