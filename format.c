@@ -4484,10 +4484,15 @@ format_loop_windows(struct format_expand_state *es, const char *fmt)
 	struct cmdq_item		 *item = ft->item;
 	struct format_tree		 *nft;
 	struct format_expand_state	  next;
+	struct format_expand_state	  sep_es;
 	char				 *all, *active, *use, *expanded, *value;
+	char				 *sep_expanded;
 	size_t				  valuelen;
 	struct winlink			 *wl, **l;
 	struct window			 *w;
+	struct options_entry		 *o;
+	const char			 *oname, *sep;
+	char				 *prefixed, *oval;
 	int				  i, n, last = 0;
 
 	if (ft->s == NULL) {
@@ -4517,6 +4522,62 @@ format_loop_windows(struct format_expand_state *es, const char *fmt)
 		nft = format_create(c, item, FORMAT_WINDOW|w->id,
 		    ft->flags|last);
 		format_defaults(nft, ft->c, ft->s, wl, NULL);
+
+		/* Add neighbor window data to the format tree. */
+		format_add(nft, "window_after_active", "%d",
+		    i > 0 && l[i - 1] == ft->s->curw);
+		format_add(nft, "window_before_active", "%d",
+		    i + 1 < n && l[i + 1] == ft->s->curw);
+		if (i + 1 < n) {
+			format_add(nft, "next_window_index", "%u",
+			    l[i + 1]->idx);
+			format_add(nft, "next_window_active", "%d",
+			    l[i + 1] == ft->s->curw);
+			o = options_first(l[i + 1]->window->options);
+			while (o != NULL) {
+				oname = options_name(o);
+				if (*oname == '@') {
+					xasprintf(&prefixed, "next_%s",
+					    oname + 1);
+					oval = options_to_string(o, -1, 1);
+					format_add(nft, prefixed, "%s", oval);
+					free(oval);
+					free(prefixed);
+				}
+				o = options_next(o);
+			}
+		}
+
+		if (i > 0) {
+			format_add(nft, "prev_window_index", "%u",
+			    l[i - 1]->idx);
+			format_add(nft, "prev_window_active", "%d",
+			    l[i - 1] == ft->s->curw);
+			o = options_first(l[i - 1]->window->options);
+			while (o != NULL) {
+				oname = options_name(o);
+				if (*oname == '@') {
+					xasprintf(&prefixed, "prev_%s",
+					    oname + 1);
+					oval = options_to_string(o, -1, 1);
+					format_add(nft, prefixed, "%s", oval);
+					free(oval);
+					free(prefixed);
+				}
+				o = options_next(o);
+			}
+		}
+
+		/* Pre-expand the separator with neighbor data. */
+		sep = options_get_string(wl->window->options,
+		    "window-status-separator");
+		format_copy_state(&sep_es, es, FORMAT_EXPAND_NOJOBS);
+		sep_es.ft = nft;
+		sep_expanded = format_expand1(&sep_es, sep);
+		format_add(nft, "window_status_separator", "%s",
+		    sep_expanded);
+		free(sep_expanded);
+
 		format_copy_state(&next, es, 0);
 		next.ft = nft;
 		expanded = format_expand1(&next, use);
