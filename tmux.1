@@ -7534,7 +7534,7 @@ option.
 .Op Fl c Ar start-directory
 .Op Fl d Ar delay
 .Op Fl t Ar target-pane
-.Op Ar shell-command
+.Op Ar shell-command Op Ar arguments
 .Xc
 .D1 Pq alias: Ic run
 Execute
@@ -7551,6 +7551,16 @@ Before being executed,
 is expanded using the rules specified in the
 .Sx FORMATS
 section.
+If additional
+.Ar arguments
+are provided, they are interpolated into the shell command:
+.Ql %1
+is replaced by the first argument,
+.Ql %2
+by the second, and so on.
+Standard format syntax (such as
+.Ql #{1} )
+may also be used.
 With
 .Fl b ,
 the command is run in the background.
