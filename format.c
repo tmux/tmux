@@ -4474,6 +4474,37 @@ format_window_name(struct format_expand_state *es, const char *fmt)
 	return (xstrdup("0"));
 }
 
+/* Add neighbor window variables to the format tree. */
+static void
+format_add_window_neighbor(struct format_tree *nft, struct winlink *wl,
+    struct session *s, const char *prefix)
+{
+	struct options_entry	*o;
+	const char		*oname;
+	char			*key, *prefixed, *oval;
+
+	xasprintf(&key, "%s_window_index", prefix);
+	format_add(nft, key, "%u", wl->idx);
+	free(key);
+
+	xasprintf(&key, "%s_window_active", prefix);
+	format_add(nft, key, "%d", wl == s->curw);
+	free(key);
+
+	o = options_first(wl->window->options);
+	while (o != NULL) {
+		oname = options_name(o);
+		if (*oname == '@') {
+			xasprintf(&prefixed, "%s_%s", prefix, oname + 1);
+			oval = options_to_string(o, -1, 1);
+			format_add(nft, prefixed, "%s", oval);
+			free(oval);
+			free(prefixed);
+		}
+		o = options_next(o);
+	}
+}
+
 /* Loop over windows. */
 static char *
 format_loop_windows(struct format_expand_state *es, const char *fmt)
@@ -4490,9 +4521,7 @@ format_loop_windows(struct format_expand_state *es, const char *fmt)
 	size_t				  valuelen;
 	struct winlink			 *wl, **l;
 	struct window			 *w;
-	struct options_entry		 *o;
-	const char			 *oname, *sep;
-	char				 *prefixed, *oval;
+	const char			 *sep;
 	int				  i, n, last = 0;
 
 	if (ft->s == NULL) {
@@ -4528,45 +4557,10 @@ format_loop_windows(struct format_expand_state *es, const char *fmt)
 		    i > 0 && l[i - 1] == ft->s->curw);
 		format_add(nft, "window_before_active", "%d",
 		    i + 1 < n && l[i + 1] == ft->s->curw);
-		if (i + 1 < n) {
-			format_add(nft, "next_window_index", "%u",
-			    l[i + 1]->idx);
-			format_add(nft, "next_window_active", "%d",
-			    l[i + 1] == ft->s->curw);
-			o = options_first(l[i + 1]->window->options);
-			while (o != NULL) {
-				oname = options_name(o);
-				if (*oname == '@') {
-					xasprintf(&prefixed, "next_%s",
-					    oname + 1);
-					oval = options_to_string(o, -1, 1);
-					format_add(nft, prefixed, "%s", oval);
-					free(oval);
-					free(prefixed);
-				}
-				o = options_next(o);
-			}
-		}
-
-		if (i > 0) {
-			format_add(nft, "prev_window_index", "%u",
-			    l[i - 1]->idx);
-			format_add(nft, "prev_window_active", "%d",
-			    l[i - 1] == ft->s->curw);
-			o = options_first(l[i - 1]->window->options);
-			while (o != NULL) {
-				oname = options_name(o);
-				if (*oname == '@') {
-					xasprintf(&prefixed, "prev_%s",
-					    oname + 1);
-					oval = options_to_string(o, -1, 1);
-					format_add(nft, prefixed, "%s", oval);
-					free(oval);
-					free(prefixed);
-				}
-				o = options_next(o);
-			}
-		}
+		if (i + 1 < n)
+			format_add_window_neighbor(nft, l[i + 1], ft->s, "next");
+		if (i > 0)
+			format_add_window_neighbor(nft, l[i - 1], ft->s, "prev");
 
 		/* Pre-expand the separator with neighbor data. */
 		sep = options_get_string(wl->window->options,
