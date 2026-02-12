@@ -58,29 +58,31 @@ cmd_set_buffer_exec(struct cmd *self, struct cmdq_item *item)
 	struct args		*args = cmd_get_args(self);
 	struct client		*tc = cmdq_get_target_client(item);
 	struct paste_buffer	*pb;
-	char			*bufdata, *cause;
-	const char		*bufname, *olddata;
-	size_t			 bufsize, newsize;
+	char			*bufname, *bufdata = NULL, *cause = NULL;
+	const char		*olddata;
+	size_t			 bufsize = 0, newsize;
 
-	bufname = args_get(args, 'b');
-	if (bufname == NULL)
+	if (args_get(args, 'b') == NULL)
 		pb = NULL;
-	else
+	else {
+		bufname = xstrdup(args_get(args, 'b'));
 		pb = paste_get_name(bufname);
+	}
 
 	if (cmd_get_entry(self) == &cmd_delete_buffer_entry) {
 		if (pb == NULL) {
 			if (bufname != NULL) {
 				cmdq_error(item, "unknown buffer: %s", bufname);
-				return (CMD_RETURN_ERROR);
+				goto fail;
 			}
 			pb = paste_get_top(&bufname);
 		}
 		if (pb == NULL) {
 			cmdq_error(item, "no buffer");
-			return (CMD_RETURN_ERROR);
+			goto fail;
 		}
 		paste_free(pb);
+		free(bufname);
 		return (CMD_RETURN_NORMAL);
 	}
 
@@ -88,31 +90,27 @@ cmd_set_buffer_exec(struct cmd *self, struct cmdq_item *item)
 		if (pb == NULL) {
 			if (bufname != NULL) {
 				cmdq_error(item, "unknown buffer: %s", bufname);
-				return (CMD_RETURN_ERROR);
+				goto fail;
 			}
 			pb = paste_get_top(&bufname);
 		}
 		if (pb == NULL) {
 			cmdq_error(item, "no buffer");
-			return (CMD_RETURN_ERROR);
+			goto fail;
 		}
 		if (paste_rename(bufname, args_get(args, 'n'), &cause) != 0) {
 			cmdq_error(item, "%s", cause);
-			free(cause);
-			return (CMD_RETURN_ERROR);
+			goto fail;
 		}
 		return (CMD_RETURN_NORMAL);
 	}
 
 	if (args_count(args) != 1) {
 		cmdq_error(item, "no data specified");
-		return (CMD_RETURN_ERROR);
+		goto fail;
 	}
 	if ((newsize = strlen(args_string(args, 0))) == 0)
 		return (CMD_RETURN_NORMAL);
-
-	bufsize = 0;
-	bufdata = NULL;
 
 	if (args_has(args, 'a') && pb != NULL) {
 		olddata = paste_buffer_data(pb, &bufsize);
@@ -126,12 +124,16 @@ cmd_set_buffer_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (paste_set(bufdata, bufsize, bufname, &cause) != 0) {
 		cmdq_error(item, "%s", cause);
-		free(bufdata);
-		free(cause);
-		return (CMD_RETURN_ERROR);
+		goto fail;
 	}
 	if (args_has(args, 'w') && tc != NULL)
  		tty_set_selection(&tc->tty, "", bufdata, bufsize);
 
 	return (CMD_RETURN_NORMAL);
+
+fail:
+	free(bufdata);
+	free(bufname);
+	free(cause);
+	return (CMD_RETURN_ERROR);
 }

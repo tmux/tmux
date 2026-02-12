@@ -51,6 +51,7 @@ static void	window_copy_redraw_selection(struct window_mode_entry *, u_int);
 static void	window_copy_redraw_lines(struct window_mode_entry *, u_int,
 		    u_int);
 static void	window_copy_redraw_screen(struct window_mode_entry *);
+static void	window_copy_style_changed(struct window_mode_entry *);
 static void	window_copy_write_line(struct window_mode_entry *,
 		    struct screen_write_ctx *, u_int);
 static void	window_copy_write_lines(struct window_mode_entry *,
@@ -158,6 +159,7 @@ const struct window_mode window_copy_mode = {
 	.init = window_copy_init,
 	.free = window_copy_free,
 	.resize = window_copy_resize,
+	.style_changed = window_copy_style_changed,
 	.key_table = window_copy_key_table,
 	.command = window_copy_command,
 	.formats = window_copy_formats,
@@ -170,6 +172,7 @@ const struct window_mode window_view_mode = {
 	.init = window_copy_view_init,
 	.free = window_copy_free,
 	.resize = window_copy_resize,
+	.style_changed = window_copy_style_changed,
 	.key_table = window_copy_key_table,
 	.command = window_copy_command,
 	.formats = window_copy_formats,
@@ -491,7 +494,7 @@ window_copy_view_init(struct window_mode_entry *wme,
 
 	data->backing = xmalloc(sizeof *data->backing);
 	screen_init(data->backing, sx, screen_size_y(base), UINT_MAX);
-	data->ictx = input_init(NULL, NULL, NULL);
+	data->ictx = input_init(NULL, NULL, NULL, NULL);
 	data->mx = data->cx;
 	data->my = screen_hsize(data->backing) + data->cy - data->oy;
 	data->showmark = 0;
@@ -4268,6 +4271,9 @@ window_copy_clear_marks(struct window_mode_entry *wme)
 {
 	struct window_copy_mode_data	*data = wme->data;
 
+	data->searchcount = -1;
+	data->searchmore = 0;
+
 	free(data->searchmark);
 	data->searchmark = NULL;
 }
@@ -4593,6 +4599,16 @@ window_copy_redraw_screen(struct window_mode_entry *wme)
 	struct window_copy_mode_data	*data = wme->data;
 
 	window_copy_redraw_lines(wme, 0, screen_size_y(&data->screen));
+}
+
+static void
+window_copy_style_changed(struct window_mode_entry *wme)
+{
+	struct window_copy_mode_data	*data = wme->data;
+
+	if (data->screen.sel != NULL)
+		window_copy_set_selection(wme, 0, 1);
+	window_copy_redraw_screen(wme);
 }
 
 static void
@@ -5036,9 +5052,9 @@ static void
 window_copy_append_selection(struct window_mode_entry *wme)
 {
 	struct window_pane		*wp = wme->wp;
-	char				*buf;
+	char				*buf, *bufname = NULL;
 	struct paste_buffer		*pb;
-	const char			*bufdata, *bufname = NULL;
+	const char			*bufdata;
 	size_t				 len, bufsize;
 	struct screen_write_ctx		 ctx;
 
@@ -5063,6 +5079,7 @@ window_copy_append_selection(struct window_mode_entry *wme)
 	}
 	if (paste_set(buf, len, bufname, NULL) != 0)
 		free(buf);
+	free(bufname);
 }
 
 static void

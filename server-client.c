@@ -2705,18 +2705,31 @@ server_client_handle_key(struct client *c, struct key_event *event)
 void
 server_client_loop(void)
 {
-	struct client		*c;
-	struct window		*w;
-	struct window_pane	*wp;
+	struct client			*c;
+	struct window			*w;
+	struct window_pane		*wp;
+	struct window_mode_entry	*wme;
 
 	/* Check for window resize. This is done before redrawing. */
 	RB_FOREACH(w, windows, &windows)
 		server_client_check_window_resize(w);
 
+	/* Notify modes that pane styles may have changed. */
+	RB_FOREACH(w, windows, &windows) {
+		TAILQ_FOREACH(wp, &w->panes, entry) {
+			if (wp->flags & PANE_STYLECHANGED) {
+				wme = TAILQ_FIRST(&wp->modes);
+				if (wme != NULL &&
+				    wme->mode->style_changed != NULL)
+					wme->mode->style_changed(wme);
+			}
+		}
+	}
+
 	/* Check clients. */
 	TAILQ_FOREACH(c, &clients, entry) {
 		server_client_check_exit(c);
-		if (c->session != NULL) {
+		if (c->session != NULL && c->session->curw != NULL) {
 			server_client_check_modes(c);
 			server_client_check_redraw(c);
 			server_client_reset_state(c);

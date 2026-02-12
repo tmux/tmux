@@ -328,6 +328,9 @@ window_create(u_int sx, u_int sy, u_int xpixel, u_int ypixel)
 	RB_INSERT(windows, &windows, w);
 
 	window_set_fill_character(w);
+
+	if (gettimeofday(&w->creation_time, NULL) != 0)
+		fatal("gettimeofday failed");
 	window_update_activity(w);
 
 	log_debug("%s: @%u create %ux%u (%ux%u)", __func__, w->id, sx, sy,
@@ -1068,7 +1071,7 @@ window_pane_set_event(struct window_pane *wp)
 	    NULL, window_pane_error_callback, wp);
 	if (wp->event == NULL)
 		fatalx("out of memory");
-	wp->ictx = input_init(wp, wp->event, &wp->palette);
+	wp->ictx = input_init(wp, wp->event, &wp->palette, NULL);
 
 	bufferevent_enable(wp->event, EV_READ|EV_WRITE);
 }
