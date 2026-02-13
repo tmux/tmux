@@ -102,31 +102,26 @@ cmd_list_keys_get_table_width(struct key_binding **l, u_int n)
 static struct key_binding **
 cmd_get_root_and_prefix(u_int *n, struct sort_criteria *sort_crit)
 {
-	struct key_table		 *r, *p;
-	struct key_binding		**lr, **lp;
-	u_int				  ir, ip, i = 0;
+	const char			 *tables[] = {"prefix", "root"};
+	struct key_table		 *t;
+	struct key_binding		**lt;
+	u_int				  i, ltsz, len = 0, offset = 0;
 	static struct key_binding	**l = NULL;
 	static u_int			  lsz = 0;
 
-	p = key_bindings_get_table("prefix", 0);
-	lp = sort_get_key_bindings_table(p, &ip, sort_crit);
-	i += ip;
-	if (lsz <= i) {
-		lsz = i + 100;
-		l = xreallocarray(l, lsz, sizeof *l);
+	for (i = 0; i < nitems(tables); i++) {
+		t = key_bindings_get_table(tables[i], 0);
+		lt = sort_get_key_bindings_table(t, &ltsz, sort_crit);
+		len += ltsz;
+		if (lsz <= len) {
+			lsz = len + 100;
+			l = xreallocarray(l, lsz, sizeof *l);
+		}
+		memcpy(l + offset, lt, ltsz * sizeof *l);
+		offset += ltsz;
 	}
-	memcpy(l, lp, ip * sizeof *l);
 
-	r = key_bindings_get_table("root", 0);
-	lr = sort_get_key_bindings_table(r, &ir, sort_crit);
-	i += ir;
-	if (lsz <= i) {
-		lsz = i + 100;
-		l = xreallocarray(l, lsz, sizeof *l);
-	}
-	memcpy(l + ip, lr, ir * sizeof *l);
-
-	*n = i;
+	*n = len;
 	return (l);
 }
 
