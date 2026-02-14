@@ -1336,7 +1336,7 @@ have_event:
 				key = KEYC_WHEELUP_STATUS_DEFAULT;
 			if (where == BORDER)
 				key = KEYC_WHEELUP_BORDER;
-		} else {
+		} else if (MOUSE_BUTTONS(b) == MOUSE_WHEEL_DOWN) {
 			if (where == PANE)
 				key = KEYC_WHEELDOWN_PANE;
 			if (where == STATUS)
@@ -1349,6 +1349,32 @@ have_event:
 				key = KEYC_WHEELDOWN_STATUS_DEFAULT;
 			if (where == BORDER)
 				key = KEYC_WHEELDOWN_BORDER;
+		} else if (MOUSE_BUTTONS(b) == MOUSE_WHEEL_LEFT) {
+			if (where == PANE)
+				key = KEYC_WHEELLEFT_PANE;
+			if (where == STATUS)
+				key = KEYC_WHEELLEFT_STATUS;
+			if (where == STATUS_LEFT)
+				key = KEYC_WHEELLEFT_STATUS_LEFT;
+			if (where == STATUS_RIGHT)
+				key = KEYC_WHEELLEFT_STATUS_RIGHT;
+			if (where == STATUS_DEFAULT)
+				key = KEYC_WHEELLEFT_STATUS_DEFAULT;
+			if (where == BORDER)
+				key = KEYC_WHEELLEFT_BORDER;
+		} else if (MOUSE_BUTTONS(b) == MOUSE_WHEEL_RIGHT) {
+			if (where == PANE)
+				key = KEYC_WHEELRIGHT_PANE;
+			if (where == STATUS)
+				key = KEYC_WHEELRIGHT_STATUS;
+			if (where == STATUS_RIGHT)
+				key = KEYC_WHEELRIGHT_STATUS_LEFT;
+			if (where == STATUS_RIGHT)
+				key = KEYC_WHEELRIGHT_STATUS_RIGHT;
+			if (where == STATUS_DEFAULT)
+				key = KEYC_WHEELRIGHT_STATUS_DEFAULT;
+			if (where == BORDER)
+				key = KEYC_WHEELRIGHT_BORDER;
 		}
 		break;
 	case UP:
