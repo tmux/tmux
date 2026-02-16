@@ -44,6 +44,9 @@ static const char *options_table_status_list[] = {
 static const char *options_table_message_line_list[] = {
 	"0", "1", "2", "3", "4", NULL
 };
+static const char *options_table_message_position_list[] = {
+	"left", "centre", "right", NULL
+};
 static const char *options_table_status_keys_list[] = {
 	"emacs", "vi", NULL
 };
@@ -730,12 +733,48 @@ const struct options_table_entry options_table[] = {
 		  "'mode-keys' is set to 'vi'."
 	},
 
+	{ .name = "message-format",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_str = "#{message}",
+	  .text = "Format string for the prompt and message area. "
+		  "The '#{message}' placeholder is replaced with the content."
+	},
+
 	{ .name = "message-line",
 	  .type = OPTIONS_TABLE_CHOICE,
 	  .scope = OPTIONS_TABLE_SESSION,
 	  .choices = options_table_message_line_list,
 	  .default_num = 0,
 	  .text = "Position (line) of messages and the command prompt."
+	},
+
+	{ .name = "message-margin",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .minimum = 0,
+	  .maximum = INT_MAX,
+	  .default_num = 0,
+	  .text = "Number of columns between the message area and the "
+		  "status line edge determined by 'message-position'."
+	},
+
+	{ .name = "message-min-width",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .minimum = 0,
+	  .maximum = INT_MAX,
+	  .default_num = 0,
+	  .text = "Minimum width of the message and command prompt area "
+		  "in columns."
+	},
+
+	{ .name = "message-position",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .choices = options_table_message_position_list,
+	  .default_num = 0,
+	  .text = "Horizontal position of the message and command prompt area."
 	},
 
 	{ .name = "message-style",
@@ -745,6 +784,14 @@ const struct options_table_entry options_table[] = {
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
 	  .text = "Style of messages and the command prompt."
+	},
+
+	{ .name = "message-width",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_str = "100%",
+	  .text = "Width of the message and command prompt area. "
+		  "A percentage, an absolute column count, or 'auto'."
 	},
 
 	{ .name = "mouse",
