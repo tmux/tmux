@@ -205,11 +205,17 @@ grid_clear_cell(struct grid *gd, u_int px, u_int py, u_int bg)
 	struct grid_line	*gl = &gd->linedata[py];
 	struct grid_cell_entry	*gce = &gl->celldata[px];
 	struct grid_extd_entry	*gee;
+	u_int			 old_offset = gce->offset;
+	int			 had_extended = (gce->flags & GRID_FLAG_EXTENDED);
 
 	memcpy(gce, &grid_cleared_entry, sizeof *gce);
 	if (bg != 8) {
 		if (bg & COLOUR_FLAG_RGB) {
-			grid_get_extended_cell(gl, gce, gce->flags);
+			if (had_extended && old_offset < gl->extdsize) {
+				gce->flags |= GRID_FLAG_EXTENDED;
+				gce->offset = old_offset;
+			} else
+				grid_get_extended_cell(gl, gce, gce->flags);
 			gee = grid_extended_cell(gl, gce, &grid_cleared_cell);
 			gee->bg = bg;
 		} else {
