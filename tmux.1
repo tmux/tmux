@@ -4747,10 +4747,53 @@ For how to specify
 see the
 .Sx STYLES
 section.
+.It Ic message-format Ar string
+Set the format string wrapping the prompt and message content.
+The special placeholder
+.Ql #{message}
+expands to the interactive prompt or message text.
+Everything before
+.Ql #{message}
+is drawn as a left decoration and everything after as a right
+decoration, allowing powerline-style framing of the prompt area.
+If
+.Ql #{message}
+is omitted, the entire area is used for content.
+The default is
+.Ql #{message} .
 .It Xo Ic message-line
 .Op Ic 0 | 1 | 2 | 3 | 4
 .Xc
 Set line on which status line messages and the command prompt are shown.
+.It Ic message-margin Ar columns
+Set the number of columns between the message area and the status line
+edge determined by
+.Ic message-position .
+For example, with
+.Ic message-position
+set to
+.Ic right
+and
+.Ic message-margin
+set to 20, the message area is placed 20 columns from the right edge,
+leaving room for
+.Ic status-right
+content.
+The default is 0.
+.It Ic message-min-width Ar columns
+Set the minimum width of the message and command prompt area in columns.
+If
+.Ic message-width
+resolves to fewer columns than this value, the area is expanded to
+.Ar columns .
+The default is 0 (no minimum).
+.It Xo Ic message-position
+.Op Ic left | centre | right
+.Xc
+Set the horizontal position of the message and command prompt area within
+the status line.
+The default is
+.Ic left .
 .It Ic message-style Ar style
 Set status line message style.
 This is used for messages and for the command prompt.
@@ -4759,6 +4802,19 @@ For how to specify
 see the
 .Sx STYLES
 section.
+.It Ic message-width Ar width
+Set the width of the message and command prompt area.
+.Ar width
+may be a percentage (for example
+.Ql 50% ) ,
+an absolute column count, or
+.Ql auto
+to size to fit the content.
+When the width is less than the full terminal width, the normal status
+bar content (tabs, status-left, status-right) remains visible around
+the prompt area.
+The default is
+.Ql 100% .
 .It Xo Ic mouse
 .Op Ic on | off
 .Xc
