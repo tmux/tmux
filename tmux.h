@@ -1146,6 +1146,7 @@ struct input_request_palette_data {
 struct input_request_clipboard_data {
 	char	*buf;
 	size_t	 len;
+	char	 clip;
 };
 
 /* Request sent to client on behalf of pane. */
@@ -3066,7 +3067,7 @@ void	 input_parse_buffer(struct window_pane *, u_char *, size_t);
 void	 input_parse_screen(struct input_ctx *, struct screen *,
 	     screen_write_init_ctx_cb, void *, u_char *, size_t);
 void	 input_reply_clipboard(struct bufferevent *, const char *, size_t,
-	     const char *);
+	     const char *, char);
 void	 input_set_buffer_size(size_t);
 void	 input_request_reply(struct client *, enum input_request_type, void *);
 void	 input_cancel_requests(struct client *);

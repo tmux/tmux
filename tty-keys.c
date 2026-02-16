@@ -1310,7 +1310,7 @@ tty_keys_clipboard(struct tty *tty, const char *buf, size_t len, size_t *size)
 {
 	struct client				*c = tty->client;
 	size_t					 end, terminator = 0, needed;
-	char					*copy, *out;
+	char					*copy, *out, clip = 0;
 	int					 outlen;
 	struct input_request_clipboard_data	 cd;
 
@@ -1360,6 +1360,11 @@ tty_keys_clipboard(struct tty *tty, const char *buf, size_t len, size_t *size)
 	/* Adjust end so that it points to the start of the terminator. */
 	end -= terminator - 1;
 
+	/* Save which clipboard was used */
+	if (end >= 2 && buf[0] != ';' && buf[1] == ';') {
+		clip = buf[0];
+	}
+
 	/* Get the second argument. */
 	while (end != 0 && *buf != ';') {
 		buf++;
@@ -1393,6 +1398,7 @@ tty_keys_clipboard(struct tty *tty, const char *buf, size_t len, size_t *size)
 	/* Set reply if any. */
 	cd.buf = out;
 	cd.len = outlen;
+	cd.clip = clip;
 	input_request_reply(c, INPUT_REQUEST_CLIPBOARD, &cd);
 
 	/* Create a buffer if requested. */

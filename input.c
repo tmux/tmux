@@ -3089,7 +3089,7 @@ input_osc_133(struct input_ctx *ictx, const char *p)
 
 /* Handle OSC 52 reply. */
 static void
-input_osc_52_reply(struct input_ctx *ictx)
+input_osc_52_reply(struct input_ctx *ictx, char clip)
 {
 	struct paste_buffer	*pb;
 	int			 state;
@@ -3104,9 +3104,9 @@ input_osc_52_reply(struct input_ctx *ictx)
 			return;
 		buf = paste_buffer_data(pb, &len);
 		if (ictx->input_end == INPUT_END_BEL)
-			input_reply_clipboard(ictx->event, buf, len, "\007");
+			input_reply_clipboard(ictx->event, buf, len, "\007", clip);
 		else
-			input_reply_clipboard(ictx->event, buf, len, "\033\\");
+			input_reply_clipboard(ictx->event, buf, len, "\033\\", clip);
 		return;
 	}
 	input_add_request(ictx, INPUT_REQUEST_CLIPBOARD, ictx->input_end);
@@ -3143,7 +3143,7 @@ input_osc_52_parse(struct input_ctx *ictx, const char *p, u_char **out,
 	log_debug("%s: %.*s %s", __func__, (int)(end - p - 1), p, flags);
 
 	if (strcmp(end, "?") == 0) {
-		input_osc_52_reply(ictx);
+		input_osc_52_reply(ictx, flags[0]);
 		return (0);
 	}
 
@@ -3233,7 +3233,7 @@ input_osc_104(struct input_ctx *ictx, const char *p)
 /* Send a clipboard reply. */
 void
 input_reply_clipboard(struct bufferevent *bev, const char *buf, size_t len,
-    const char *end)
+    const char *end, char clip)
 {
 	char	*out = NULL;
 	int	 outlen = 0;
@@ -3249,7 +3249,10 @@ input_reply_clipboard(struct bufferevent *bev, const char *buf, size_t len,
 		}
 	}
 
-	bufferevent_write(bev, "\033]52;;", 6);
+	bufferevent_write(bev, "\033]52;", 5);
+	if (clip != 0)
+		bufferevent_write(bev, &clip, 1);
+	bufferevent_write(bev, ";", 1);
 	if (outlen != 0)
 		bufferevent_write(bev, out, outlen);
 	bufferevent_write(bev, end, strlen(end));
@@ -3405,9 +3408,9 @@ input_request_clipboard_reply(struct input_request *ir, void *data)
 	}
 
 	if (ir->idx == INPUT_END_BEL)
-		input_reply_clipboard(ictx->event, cd->buf, cd->len, "\007");
+		input_reply_clipboard(ictx->event, cd->buf, cd->len, "\007", cd->clip);
 	else
-		input_reply_clipboard(ictx->event, cd->buf, cd->len, "\033\\");
+		input_reply_clipboard(ictx->event, cd->buf, cd->len, "\033\\", cd->clip);
 }
 
 /* Handle a reply to a request. */
