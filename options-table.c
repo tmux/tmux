@@ -44,9 +44,6 @@ static const char *options_table_status_list[] = {
 static const char *options_table_message_line_list[] = {
 	"0", "1", "2", "3", "4", NULL
 };
-static const char *options_table_message_position_list[] = {
-	"left", "centre", "right", NULL
-};
 static const char *options_table_status_keys_list[] = {
 	"emacs", "vi", NULL
 };
@@ -726,7 +723,7 @@ const struct options_table_entry options_table[] = {
 	{ .name = "message-command-style",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_str = "bg=black,fg=yellow",
+	  .default_str = "bg=black,fg=yellow,fill=black",
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
 	  .text = "Style of the command prompt when in command mode, if "
@@ -736,7 +733,7 @@ const struct options_table_entry options_table[] = {
 	{ .name = "message-format",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_str = "#{message}",
+	  .default_str = "#[#{E:message-style}]#{message}",
 	  .text = "Format string for the prompt and message area. "
 		  "The '#{message}' placeholder is replaced with the content."
 	},
@@ -749,49 +746,16 @@ const struct options_table_entry options_table[] = {
 	  .text = "Position (line) of messages and the command prompt."
 	},
 
-	{ .name = "message-margin",
-	  .type = OPTIONS_TABLE_NUMBER,
-	  .scope = OPTIONS_TABLE_SESSION,
-	  .minimum = 0,
-	  .maximum = INT_MAX,
-	  .default_num = 0,
-	  .text = "Number of columns between the message area and the "
-		  "status line edge determined by 'message-position'."
-	},
-
-	{ .name = "message-min-width",
-	  .type = OPTIONS_TABLE_NUMBER,
-	  .scope = OPTIONS_TABLE_SESSION,
-	  .minimum = 0,
-	  .maximum = INT_MAX,
-	  .default_num = 0,
-	  .text = "Minimum width of the message and command prompt area "
-		  "in columns."
-	},
-
-	{ .name = "message-position",
-	  .type = OPTIONS_TABLE_CHOICE,
-	  .scope = OPTIONS_TABLE_SESSION,
-	  .choices = options_table_message_position_list,
-	  .default_num = 0,
-	  .text = "Horizontal position of the message and command prompt area."
-	},
-
 	{ .name = "message-style",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_str = "bg=yellow,fg=black",
+	  .default_str = "bg=yellow,fg=black,fill=yellow",
 	  .flags = OPTIONS_TABLE_IS_STYLE,
 	  .separator = ",",
-	  .text = "Style of messages and the command prompt."
-	},
-
-	{ .name = "message-width",
-	  .type = OPTIONS_TABLE_STRING,
-	  .scope = OPTIONS_TABLE_SESSION,
-	  .default_str = "100%",
-	  .text = "Width of the message and command prompt area. "
-		  "A percentage, an absolute column count, or 'auto'."
+	  .text = "Style of messages and the command prompt. "
+		  "A 'fill' attribute controls background clearing and "
+		  "a 'width' attribute (fixed or percentage) constrains "
+		  "the prompt area width."
 	},
 
 	{ .name = "mouse",

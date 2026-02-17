@@ -4748,7 +4748,7 @@ see the
 .Sx STYLES
 section.
 .It Ic message-format Ar string
-Set the format string wrapping the prompt and message content.
+Set the format string for the prompt and message area.
 The special placeholder
 .Ql #{message}
 expands to the interactive prompt or message text.
@@ -4760,61 +4760,36 @@ If
 .Ql #{message}
 is omitted, the entire area is used for content.
 The default is
-.Ql #{message} .
+.Ql #[#{E:message-style}]#{message} .
 .It Xo Ic message-line
 .Op Ic 0 | 1 | 2 | 3 | 4
 .Xc
 Set line on which status line messages and the command prompt are shown.
-.It Ic message-margin Ar columns
-Set the number of columns between the message area and the status line
-edge determined by
-.Ic message-position .
-For example, with
-.Ic message-position
-set to
-.Ic right
-and
-.Ic message-margin
-set to 20, the message area is placed 20 columns from the right edge,
-leaving room for
-.Ic status-right
-content.
-The default is 0.
-.It Ic message-min-width Ar columns
-Set the minimum width of the message and command prompt area in columns.
-If
-.Ic message-width
-resolves to fewer columns than this value, the area is expanded to
-.Ar columns .
-The default is 0 (no minimum).
-.It Xo Ic message-position
-.Op Ic left | centre | right
-.Xc
-Set the horizontal position of the message and command prompt area within
-the status line.
-The default is
-.Ic left .
 .It Ic message-style Ar style
 Set status line message style.
 This is used for messages and for the command prompt.
+The message is drawn on top of the existing status line; a
+.Ic fill
+attribute controls whether the background is cleared (the default
+includes
+.Ic fill ) .
+An
+.Ic align
+attribute
+.Pq Ic left , centre , right
+sets the horizontal position and a
+.Ic width
+attribute (a fixed number of columns or a percentage such as
+.Ql 50% )
+constrains the prompt area width.
+When the width is less than the full terminal width, the normal status
+bar content (tabs, status-left, status-right) remains visible around
+the prompt area.
 For how to specify
 .Ar style ,
 see the
 .Sx STYLES
 section.
-.It Ic message-width Ar width
-Set the width of the message and command prompt area.
-.Ar width
-may be a percentage (for example
-.Ql 50% ) ,
-an absolute column count, or
-.Ql auto
-to size to fit the content.
-When the width is less than the full terminal width, the normal status
-bar content (tabs, status-left, status-right) remains visible around
-the prompt area.
-The default is
-.Ql 100% .
 .It Xo Ic mouse
 .Op Ic on | off
 .Xc
@@ -6580,6 +6555,11 @@ is the terminal alternate character set.
 Align text to the left, centre or right of the available space if appropriate.
 .It Ic fill=colour
 Fill the available space with a background colour if appropriate.
+.It Ic width=N
+Set the width of the styled area.
+.Ar N
+may be a column count or a percentage (for example
+.Ql 50% ) .
 .It Xo Ic list=on ,
 .Ic list=focus ,
 .Ic list=left-marker ,
