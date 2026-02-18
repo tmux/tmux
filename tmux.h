@@ -2648,6 +2648,8 @@ void	tty_cmd_rawstring(struct tty *, const struct tty_ctx *);
 
 #ifdef ENABLE_SIXEL
 void	tty_cmd_sixelimage(struct tty *, const struct tty_ctx *);
+void	tty_write_one(void (*)(struct tty *, const struct tty_ctx *),
+	    struct client *, struct tty_ctx *);
 #endif
 
 void	tty_cmd_syncstart(struct tty *, const struct tty_ctx *);

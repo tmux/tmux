@@ -311,6 +311,26 @@ popup_draw_cb(struct client *c, void *data, struct screen_redraw_ctx *rctx)
 		tty_draw_line(tty, &s, 0, i, pd->sx, px, py + i, &defaults,
 		    palette);
 	}
+
+#ifdef ENABLE_SIXEL
+	if (!TAILQ_EMPTY(&pd->s.images)) {
+		struct image	*im;
+		struct tty_ctx	 ttyctx;
+
+		TAILQ_FOREACH(im, &pd->s.images, entry) {
+			memset(&ttyctx, 0, sizeof ttyctx);
+			ttyctx.ocx = im->px;
+			ttyctx.ocy = im->py;
+			ttyctx.orupper = pd->s.rupper;
+			ttyctx.orlower = pd->s.rlower;
+			ttyctx.ptr = im;
+			ttyctx.arg = pd;
+			ttyctx.set_client_cb = popup_set_client_cb;
+			tty_write_one(tty_cmd_sixelimage, c, &ttyctx);
+		}
+	}
+#endif
+
 	screen_free(&s);
 	if (pd->md != NULL) {
 		c->overlay_check = NULL;
@@ -326,6 +346,17 @@ popup_free_cb(struct client *c, void *data)
 {
 	struct popup_data	*pd = data;
 	struct cmdq_item	*item = pd->item;
+
+#ifdef ENABLE_SIXEL
+	/*
+	 * If the popup had sixel images, force a full window redraw to
+	 * clear stale pixel data from the terminal. Without this, sixel
+	 * images from the popup persist on screen after close because
+	 * normal text redraws do not erase pixel-level content.
+	 */
+	if (!TAILQ_EMPTY(&pd->s.images))
+		c->flags |= CLIENT_REDRAWWINDOW;
+#endif
 
 	if (pd->md != NULL)
 		menu_free_cb(c, pd->md);
