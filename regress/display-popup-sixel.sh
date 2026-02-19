@@ -15,6 +15,9 @@
 #
 # Dependencies: script (util-linux), mktemp, grep, sh -- all standard POSIX.
 # No X11, no graphical terminal, no ImageMagick required.
+#
+# Comment style inspired by Knuth's Literate Programming (1984).
+# https://en.wikipedia.org/wiki/Literate_programming
 
 PATH=/bin:/usr/bin
 TERM=screen
