@@ -1642,6 +1642,10 @@ input_csi_dispatch(struct input_ctx *ictx)
 		case 2031:
 			input_reply(ictx, 1, "\033[?2031;2$y");
 			break;
+		case 2026: /* synchronized output */
+			n = (s->mode & MODE_SYNC) ? 1 : 2;
+			input_reply(ictx, 1, "\033[?2026;%d$y", n);
+			break;
 		}
 		break;
 	case INPUT_CSI_DSR:
