@@ -688,6 +688,7 @@ key_bindings_dispatch(struct key_binding *bd, struct cmdq_item *item,
 		readonly = 1;
 	else
 		readonly = cmd_list_all_have(bd->cmdlist, CMD_READONLY);
+
 	if (!readonly)
 		new_item = cmdq_get_callback(key_bindings_read_only, NULL);
 	else {

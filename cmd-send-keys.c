@@ -39,7 +39,8 @@ const struct cmd_entry cmd_send_keys_entry = {
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
-	.flags = CMD_AFTERHOOK|CMD_CLIENT_CFLAG|CMD_CLIENT_CANFAIL,
+	.flags = CMD_AFTERHOOK|CMD_CLIENT_CFLAG|CMD_CLIENT_CANFAIL|
+		 CMD_READONLY,
 	.exec = cmd_send_keys_exec
 };
 
