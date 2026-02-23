@@ -2702,9 +2702,12 @@ window_copy_cmd_refresh_from_pane(struct window_copy_cmd_state *cs)
 	struct window_mode_entry	*wme = cs->wme;
 	struct window_pane		*wp = wme->swp;
 	struct window_copy_mode_data	*data = wme->data;
+	u_int				 oy_from_top;
 
 	if (data->viewmode)
 		return (WINDOW_COPY_CMD_NOTHING);
+
+	oy_from_top = screen_hsize(data->backing) - data->oy;
 
 	screen_free(data->backing);
 	free(data->backing);
@@ -2714,6 +2717,8 @@ window_copy_cmd_refresh_from_pane(struct window_copy_cmd_state *cs)
 	if (data->oy > screen_hsize(data->backing)) {
 		data->cy = 0;
 		data->oy = screen_hsize(data->backing);
+	} else {
+		data->oy = screen_hsize(data->backing) - oy_from_top;
 	}
 
 	window_copy_size_changed(wme);
