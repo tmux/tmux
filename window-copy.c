@@ -2714,11 +2714,10 @@ window_copy_cmd_refresh_from_pane(struct window_copy_cmd_state *cs)
 	data->backing = window_copy_clone_screen(&wp->base, &data->screen, NULL,
 	    NULL, wme->swp != wme->wp);
 
+	data->oy = screen_hsize(data->backing) - oy_from_top;
 	if (data->oy > screen_hsize(data->backing)) {
 		data->cy = 0;
 		data->oy = screen_hsize(data->backing);
-	} else {
-		data->oy = screen_hsize(data->backing) - oy_from_top;
 	}
 
 	window_copy_size_changed(wme);
