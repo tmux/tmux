@@ -2708,6 +2708,8 @@ window_copy_cmd_refresh_from_pane(struct window_copy_cmd_state *cs)
 		return (WINDOW_COPY_CMD_NOTHING);
 
 	oy_from_top = screen_hsize(data->backing) - data->oy;
+	if (oy_from_top > screen_hsize(data->backing))
+		oy_from_top = 0;
 
 	screen_free(data->backing);
 	free(data->backing);
