@@ -223,6 +223,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 			 */
 			empty = 0;
 			next_state = TTY_DRAW_LINE_DONE;
+			gcp = &grid_default_cell;
 		} else {
 			/* Get the current cell. */
 			grid_view_get_cell(gd, px + i, py, &gc);

@@ -2254,6 +2254,9 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	if (selected)
 		skip = 0;
 
+	/* xxx cache r in wp ? */
+	r = screen_redraw_get_visible_ranges(wp, s->cx, s->cy, width, NULL);
+
 	/*
 	 * Move the cursor. If not wrapping, stick at the last character and
 	 * replace it.
@@ -2279,10 +2282,7 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 			memcpy(&tmp_gc, gc, sizeof tmp_gc);
 		ttyctx.cell = &tmp_gc;
 		ttyctx.num = redraw ? 2 : 0;
-		/* xxx to be cached in wp */
-		r = screen_redraw_get_visible_ranges(wp, s->cx, s->cy, width,
-		    NULL);
-		for (i=0; i < r->used; i++) vis += r->ranges[i].nx;
+		for (i=0, vis=0; i < r->used; i++) vis += r->ranges[i].nx;
 		if (vis < width) {
 			/* Wide character or tab partly obscured. Write
 			 * spaces one by one in unobscured region(s).
@@ -2411,7 +2411,7 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	 * could be an empty range in the visible ranges so we add them all up.
 	 */
 	r = screen_redraw_get_visible_ranges(wp, cx - n, cy, n, NULL);
-	for (i=0; i < r->used; i++) vis += r->ranges[i].nx;
+	for (i=0, vis=0; i < r->used; i++) vis += r->ranges[i].nx;
 	if (vis < n) {
 		/*
 		 * Part of this character is obscured. Return 1
