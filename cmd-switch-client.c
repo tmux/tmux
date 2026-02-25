@@ -97,6 +97,10 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	sort_crit.order = sort_order_from_string(args_get(args, 'O'));
+	if (sort_crit.order == SORT_END && args_has(args, 'O')) {
+		cmdq_error(item, "invalid sort order");
+		return (CMD_RETURN_ERROR);
+	}
 	sort_crit.reversed = args_has(args, 'r');
 
 	if (args_has(args, 'n')) {

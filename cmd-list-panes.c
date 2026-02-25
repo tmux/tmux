@@ -55,6 +55,13 @@ cmd_list_panes_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct session		*s = target->s;
 	struct winlink		*wl = target->wl;
+	enum sort_order		 order;
+
+	order = sort_order_from_string(args_get(args, 'O'));
+	if (order == SORT_END && args_has(args, 'O')) {
+		cmdq_error(item, "invalid sort order");
+		return (CMD_RETURN_ERROR);
+	}
 
 	if (args_has(args, 'a'))
 		cmd_list_panes_server(self, item);
