@@ -55,6 +55,7 @@ file_get_path(struct client *c, const char *file)
 	if (*path == '/')
 		return (path);
 	xasprintf(&full_path, "%s/%s", server_client_get_cwd(c, NULL), path);
+	free(path);
 	return (full_path);
 }
 
