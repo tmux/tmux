@@ -1004,6 +1004,20 @@ format_cb_pane_fg(struct format_tree *ft)
 	return (xstrdup(colour_tostring(gc.fg)));
 }
 
+/* Callback for pane_floating_flag. */
+static void *
+format_cb_pane_floating_flag(struct format_tree *ft)
+{
+	struct window_pane	*wp = ft->wp;
+
+	if (wp != NULL) {
+		if (wp->flags & PANE_FLOATING)
+			return (xstrdup("1"));
+		return (xstrdup("0"));
+	}
+	return (NULL);
+}
+
 /* Callback for pane_bg. */
 static void *
 format_cb_pane_bg(struct format_tree *ft)
@@ -3283,6 +3297,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "pane_fg", FORMAT_TABLE_STRING,
 	  format_cb_pane_fg
+	},
+	{ "pane_floating_flag", FORMAT_TABLE_STRING,
+	  format_cb_pane_floating_flag
 	},
 	{ "pane_format", FORMAT_TABLE_STRING,
 	  format_cb_pane_format
