@@ -72,6 +72,10 @@ struct session;
 struct sixel_image;
 #endif
 
+#ifdef ENABLE_KITTY
+struct kitty_image;
+#endif
+
 struct tty_ctx;
 struct tty_code;
 struct tty_key;
@@ -614,6 +618,7 @@ enum tty_code_code {
 	TTYC_SMULX,
 	TTYC_SMXX,
 	TTYC_SXL,
+	TTYC_KTY,
 	TTYC_SS,
 	TTYC_SWD,
 	TTYC_SYNC,
@@ -941,6 +946,44 @@ struct image {
 	TAILQ_ENTRY (image)	 entry;
 };
 TAILQ_HEAD(images, image);
+#endif
+
+#ifdef ENABLE_KITTY
+/*
+ * kitty_image stores the raw decoded pixel data and metadata from a kitty
+ * graphics protocol APC sequence.  It is used to re-emit the sequence to the
+ * outer terminal on redraw.
+ */
+struct kitty_image {
+	/* Control-data fields parsed from the APC sequence. */
+	char		 action;      /* a=: 'T'=transmit+display, 't', 'p', 'd', ... */
+	u_int		 format;      /* f=: 32=RGBA, 24=RGB, 100=PNG */
+	char		 medium;      /* t=: 'd'=direct, 'f'=file, 't'=tmp, 's'=shm */
+	u_int		 pixel_w;     /* s=: source image pixel width */
+	u_int		 pixel_h;     /* v=: source image pixel height */
+	u_int		 cols;        /* c=: display columns (0=auto) */
+	u_int		 rows;        /* r=: display rows (0=auto) */
+	u_int		 image_id;    /* i=: image id (0=unassigned) */
+	u_int		 image_num;   /* I=: image number */
+	u_int		 placement_id; /* p=: placement id */
+	u_int		 more;        /* m=: 1=more chunks coming, 0=last */
+	u_int		 quiet;       /* q=: suppress responses */
+	int		 z_index;     /* z=: z-index */
+	char		 compression; /* o=: 'z'=zlib, 0=none */
+	char		 delete_what; /* d=: delete target (used with a=d) */
+
+	/* Cell size at the time of parsing (from the owning window). */
+	u_int		 xpixel;
+	u_int		 ypixel;
+
+	/* Original base64-encoded payload (concatenated across all chunks). */
+	char		*encoded;
+	size_t		 encodedlen;
+
+	char		*ctrl;
+	size_t		 ctrllen;
+};
+
 #endif
 
 /* Cursor style. */
@@ -1566,6 +1609,7 @@ struct tty_term {
 #define TERM_RGBCOLOURS 0x10
 #define TERM_VT100LIKE 0x20
 #define TERM_SIXEL 0x40
+#define TERM_KITTY 0x80
 	int		 flags;
 
 	LIST_ENTRY(tty_term) entry;
@@ -2658,6 +2702,13 @@ void	tty_cmd_rawstring(struct tty *, const struct tty_ctx *);
 void	tty_cmd_sixelimage(struct tty *, const struct tty_ctx *);
 #endif
 
+#ifdef ENABLE_KITTY
+void	tty_kitty_delete_all(struct tty *);
+void	tty_kitty_delete_all_pane(struct window_pane *);
+void	tty_kitty_passthrough(struct window_pane *, const char *, size_t,
+	    u_int, u_int);
+#endif
+
 void	tty_cmd_syncstart(struct tty *, const struct tty_ctx *);
 void	tty_default_colours(struct grid_cell *, struct window_pane *);
 
@@ -3264,6 +3315,7 @@ void	 screen_write_rawstring(struct screen_write_ctx *, u_char *, u_int,
 void	 screen_write_sixelimage(struct screen_write_ctx *,
 	     struct sixel_image *, u_int);
 #endif
+
 void	 screen_write_alternateon(struct screen_write_ctx *,
 	     struct grid_cell *, int);
 void	 screen_write_alternateoff(struct screen_write_ctx *,
@@ -3746,6 +3798,13 @@ struct sixel_image *sixel_scale(struct sixel_image *, u_int, u_int, u_int,
 char		*sixel_print(struct sixel_image *, struct sixel_image *,
 		     size_t *);
 struct screen	*sixel_to_screen(struct sixel_image *);
+#endif
+
+#ifdef ENABLE_KITTY
+/* image-kitty.c */
+struct kitty_image *kitty_parse(const u_char *, size_t, u_int, u_int);
+void		 kitty_free(struct kitty_image *);
+char		*kitty_delete_all(size_t *);
 #endif
 
 /* server-acl.c */

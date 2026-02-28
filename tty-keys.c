@@ -60,6 +60,10 @@ static int	tty_keys_device_attributes2(struct tty *, const char *, size_t,
 static int	tty_keys_extended_device_attributes(struct tty *, const char *,
 		    size_t, size_t *);
 static int	tty_keys_palette(struct tty *, const char *, size_t, size_t *);
+#ifdef ENABLE_KITTY
+static int	tty_keys_kitty_graphics(struct tty *, const char *, size_t,
+		    size_t *);
+#endif
 
 /* A key tree entry. */
 struct tty_key {
@@ -758,6 +762,19 @@ tty_keys_next(struct tty *tty)
 	case 1:		/* partial */
 		goto partial_key;
 	}
+
+#ifdef ENABLE_KITTY
+	/* Is this a kitty graphics protocol response? ESC _ G ... ESC \ */
+	switch (tty_keys_kitty_graphics(tty, buf, len, &size)) {
+	case 0:		/* yes */
+		key = KEYC_UNKNOWN;
+		goto complete_key;
+	case -1:	/* no, or not valid */
+		break;
+	case 1:		/* partial */
+		goto partial_key;
+	}
+#endif
 
 	/* Is this a primary device attributes response? */
 	switch (tty_keys_device_attributes(tty, buf, len, &size)) {
@@ -1640,6 +1657,14 @@ tty_keys_extended_device_attributes(struct tty *tty, const char *buf,
 		tty_default_features(features, "mintty", 0);
 	else if (strncmp(tmp, "foot(", 5) == 0)
 		tty_default_features(features, "foot", 0);
+#ifdef ENABLE_KITTY
+	else if (strncmp(tmp, "kitty ", 6) == 0 ||
+	    strcmp(tmp, "kitty") == 0)
+		tty_default_features(features, "kitty", 0);
+	else if (strncmp(tmp, "ghostty ", 8) == 0 ||
+	    strcmp(tmp, "ghostty") == 0)
+		tty_default_features(features, "ghostty", 0);
+#endif
 	log_debug("%s: received extended DA %.*s", c->name, (int)*size, buf);
 
 	free(c->term_type);
@@ -1795,3 +1820,75 @@ tty_keys_palette(struct tty *tty, const char *buf, size_t len, size_t *size)
 
 	return (0);
 }
+
+#ifdef ENABLE_KITTY
+/*
+ * Handle kitty graphics protocol response from outer terminal.
+ * Format: ESC _ G <key=value,...> ; <message> ESC \
+ * The response to our capability probe (a=q) is:
+ *   ESC _ G i=31;OK ESC \    (supported)
+ *   ESC _ G i=31;ENOSYS:...  (not supported)
+ * Returns 0 for success, -1 for not a kitty response, 1 for partial.
+ */
+static int
+tty_keys_kitty_graphics(struct tty *tty, const char *buf, size_t len,
+    size_t *size)
+{
+	struct client	*c = tty->client;
+	int		*features = &c->term_features;
+	size_t		 i;
+	char		 tmp[256];
+
+	*size = 0;
+
+	/*
+	 * Kitty APC response starts with ESC _ G (3 bytes).
+	 * The 8-bit C1 equivalent 0x9f could also be used but is rare.
+	 */
+	if (buf[0] != '\033')
+		return (-1);
+	if (len == 1)
+		return (1);
+	if (buf[1] != '_')
+		return (-1);
+	if (len == 2)
+		return (1);
+	if (buf[2] != 'G')
+		return (-1);
+	if (len == 3)
+		return (1);
+
+	/* Collect body up to ESC \ (ST). */
+	for (i = 0; i < sizeof(tmp) - 1; i++) {
+		if (3 + i + 1 >= len)
+			return (1); /* partial */
+		if (buf[3 + i] == '\033' && buf[3 + i + 1] == '\\') {
+			tmp[i] = '\0';
+			*size = 3 + i + 2;
+			break;
+		}
+		tmp[i] = buf[3 + i];
+	}
+	if (i == sizeof(tmp) - 1)
+		return (-1); /* too long, not a valid response */
+
+	log_debug("%s: kitty graphics response: %s", c->name, tmp);
+
+	/*
+	 * Check if the message (after the semicolon) starts with "OK".
+	 * The format is: i=31;OK  or  i=31;ENOSYS:...
+	 */
+	{
+		const char	*semi = strchr(tmp, ';');
+		if (semi != NULL && strncmp(semi + 1, "OK", 2) == 0) {
+			log_debug("%s: kitty graphics supported", c->name);
+			tty_add_features(features, "kitty", ",");
+			tty_update_features(tty);
+		} else {
+			log_debug("%s: kitty graphics not supported", c->name);
+		}
+	}
+
+	return (0);
+}
+#endif

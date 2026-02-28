@@ -2571,6 +2571,17 @@ format_cb_sixel_support(__unused struct format_tree *ft)
 #endif
 }
 
+/* Callback for kitty_support. */
+static void *
+format_cb_kitty_support(__unused struct format_tree *ft)
+{
+#ifdef ENABLE_KITTY
+	return (xstrdup("1"));
+#else
+	return (xstrdup("0"));
+#endif
+}
+
 /* Callback for active_window_index. */
 static void *
 format_cb_active_window_index(struct format_tree *ft)
@@ -3468,6 +3479,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "sixel_support", FORMAT_TABLE_STRING,
 	  format_cb_sixel_support
+	},
+	{ "kitty_support", FORMAT_TABLE_STRING,
+	  format_cb_kitty_support
 	},
 	{ "socket_path", FORMAT_TABLE_STRING,
 	  format_cb_socket_path

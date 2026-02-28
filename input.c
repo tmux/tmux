@@ -145,6 +145,7 @@ struct input_ctx {
 	 */
 	struct evbuffer			*since_ground;
 	struct event			 ground_timer;
+
 };
 
 /* Helper functions. */
@@ -1381,6 +1382,10 @@ input_esc_dispatch(struct input_ctx *ictx)
 		input_reset_cell(ictx);
 		screen_write_reset(sctx);
 		screen_write_fullredraw(sctx);
+#ifdef ENABLE_KITTY
+		if (ictx->wp != NULL)
+			tty_kitty_delete_all_pane(ictx->wp);
+#endif
 		break;
 	case INPUT_ESC_IND:
 		screen_write_linefeed(sctx, 0, ictx->cell.cell.bg);
@@ -2722,10 +2727,64 @@ input_exit_apc(struct input_ctx *ictx)
 {
 	struct screen_write_ctx	*sctx = &ictx->ctx;
 	struct window_pane	*wp = ictx->wp;
+#ifdef ENABLE_KITTY
+	struct kitty_image	*ki;
+#endif
 
 	if (ictx->flags & INPUT_DISCARD)
 		return;
 	log_debug("%s: \"%s\"", __func__, ictx->input_buf);
+
+#ifdef ENABLE_KITTY
+	if (ictx->input_len >= 1 && ictx->input_buf[0] == 'G') {
+		if (wp == NULL)
+			return;
+
+		/*
+		 * Intercept only a=q (query) to reply OK ourselves.
+		 * Everything else — including a=T (transmit+display),
+		 * a=d (delete), a=p (place), multi-chunk sequences —
+		 * passes through verbatim to the outer terminal.
+		 * The outer terminal manages all image placement and
+		 * scrolling; tmux must not interfere.
+		 */
+		ki = kitty_parse(ictx->input_buf + 1,
+		    ictx->input_len - 1, 0, 0);
+		if (ki != NULL && ki->action == 'q') {
+			if (ki->image_id != 0)
+				input_reply(ictx, 0,
+				    "\033_Gi=%u;OK\033\\",
+				    ki->image_id);
+			else
+				input_reply(ictx, 0,
+				    "\033_Ga=q;OK\033\\");
+			kitty_free(ki);
+			return;
+		}
+		kitty_free(ki);
+
+		/* Reconstruct APC and pass through verbatim. */
+		{
+			char	*apc;
+			size_t	 apclen;
+
+			/* input_buf already starts with 'G'. */
+			apclen = 2 + ictx->input_len + 2;
+			apc = xmalloc(apclen + 1);
+			apc[0] = '\033';
+			apc[1] = '_';
+			memcpy(apc + 2, ictx->input_buf,
+			    ictx->input_len);
+			apc[2 + ictx->input_len] = '\033';
+			apc[2 + ictx->input_len + 1] = '\\';
+			apc[apclen] = '\0';
+			tty_kitty_passthrough(wp, apc, apclen,
+			    sctx->s->cx, sctx->s->cy);
+			free(apc);
+		}
+		return;
+	}
+#endif /* ENABLE_KITTY */
 
 	if (wp != NULL &&
 	    options_get_number(wp->options, "allow-set-title") &&

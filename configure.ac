@@ -471,6 +471,16 @@ if test "x$enable_sixel" = xyes; then
 fi
 AM_CONDITIONAL(ENABLE_SIXEL, [test "x$enable_sixel" = xyes])
 
+# Enable kitty graphics protocol support.
+AC_ARG_ENABLE(
+	kitty,
+	AS_HELP_STRING(--enable-kitty, enable kitty terminal graphics protocol)
+)
+if test "x$enable_kitty" = xyes; then
+	AC_DEFINE(ENABLE_KITTY)
+fi
+AM_CONDITIONAL(ENABLE_KITTY, [test "x$enable_kitty" = xyes])
+
 # Check for b64_ntop. If we have b64_ntop, we assume b64_pton as well.
 AC_MSG_CHECKING(for b64_ntop)
 AC_LINK_IFELSE([AC_LANG_PROGRAM(

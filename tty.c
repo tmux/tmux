@@ -391,6 +391,23 @@ tty_send_requests(struct tty *tty)
 		return;
 
 	if (tty->term->flags & TERM_VT100LIKE) {
+#ifdef ENABLE_KITTY
+		/*
+		 * Send the kitty graphics capability probe BEFORE the DA1
+		 * request.  Per the kitty spec, a supporting terminal sends
+		 * its APC response before processing any subsequent requests.
+		 * So the reply ordering will be:
+		 *   1. ESC _ G i=31;OK ESC \   (kitty response, if supported)
+		 *   2. ESC [ ? ... c            (DA1 response)
+		 *   3. ESC [ > ... c            (DA2 response)
+		 *   4. ESC P > | ... ESC \      (XDA response)
+		 * which is exactly what our parsers expect.
+		 * Only probe if the kitty feature isn't already enabled.
+		 */
+		if (~tty->term->flags & TERM_KITTY)
+			tty_puts(tty,
+			    "\033_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\033\\");
+#endif
 		if (~tty->flags & TTY_HAVEDA)
 			tty_puts(tty, "\033[c");
 		if (~tty->flags & TTY_HAVEDA2)
@@ -1468,6 +1485,7 @@ tty_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 void
 tty_draw_images(struct client *c, struct window_pane *wp, struct screen *s)
 {
+#ifdef ENABLE_SIXEL
 	struct image	*im;
 	struct tty_ctx	 ttyctx;
 
@@ -1491,6 +1509,9 @@ tty_draw_images(struct client *c, struct window_pane *wp, struct screen *s)
 		ttyctx.allow_invisible_panes = 1;
 		tty_write_one(tty_cmd_sixelimage, c, &ttyctx);
 	}
+#else
+	(void)c; (void)wp; (void)s;
+#endif
 }
 #endif
 
@@ -2141,6 +2162,102 @@ tty_cmd_sixelimage(struct tty *tty, const struct tty_ctx *ctx)
 
 	if (fallback == 0)
 		sixel_free(new);
+}
+#endif
+
+#ifdef ENABLE_KITTY
+static int
+tty_has_kitty(struct tty *tty)
+{
+	return ((tty->term->flags & TERM_KITTY) ||
+	    tty_term_has(tty->term, TTYC_KTY));
+}
+
+/*
+ * Pass a kitty APC sequence directly to all attached kitty-capable clients
+ * showing the given pane.  The outer terminal's cursor is first moved to
+ * the pane-relative position (cx, cy) so that images placed at "current
+ * cursor" land in the right spot.  Pass cx=cy=UINT_MAX to skip cursor
+ * positioning (e.g. for delete commands that don't depend on position).
+ */
+void
+tty_kitty_passthrough(struct window_pane *wp, const char *data, size_t len,
+    u_int cx, u_int cy)
+{
+	struct client	*c;
+	struct tty	*tty;
+	u_int		 x, y;
+
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (c->session == NULL || c->tty.term == NULL)
+			continue;
+		if (c->flags & CLIENT_SUSPENDED)
+			continue;
+		if (c->tty.flags & TTY_FREEZE)
+			continue;
+		tty = &c->tty;
+		if (!tty_has_kitty(tty))
+			continue;
+		if (c->session->curw->window != wp->window)
+			continue;
+		if (!window_pane_visible(wp))
+			continue;
+
+		/* Position cursor at the correct screen location. */
+		if (cx != UINT_MAX && cy != UINT_MAX) {
+			x = wp->xoff + cx;
+			y = wp->yoff + cy;
+			if (status_at_line(c) == 0)
+				y += status_line_size(c);
+			tty_region_off(tty);
+			tty_margin_off(tty);
+			tty_cursor(tty, x, y);
+		}
+
+		tty->flags |= TTY_NOBLOCK;
+		tty_add(tty, data, len);
+		tty_invalidate(tty);
+	}
+}
+
+/*
+ * Delete all kitty image placements from the outer terminal unconditionally.
+ * Called directly (not via tty_write) so it fires on every full window
+ * redraw regardless of whether the current window has any stored images.
+ */
+void
+tty_kitty_delete_all(struct tty *tty)
+{
+	char	*data;
+	size_t	 size;
+
+	if (!tty_has_kitty(tty))
+		return;
+
+	if ((data = kitty_delete_all(&size)) == NULL)
+		return;
+
+	tty->flags |= TTY_NOBLOCK;
+	tty_add(tty, data, size);
+	tty_invalidate(tty);
+	free(data);
+}
+
+/*
+ * Delete all kitty image placements via passthrough for a specific pane.
+ * Used on terminal reset (RIS) so images are cleared from the outer terminal.
+ */
+void
+tty_kitty_delete_all_pane(struct window_pane *wp)
+{
+	char	*data;
+	size_t	 size;
+
+	if ((data = kitty_delete_all(&size)) == NULL)
+		return;
+
+	tty_kitty_passthrough(wp, data, size, UINT_MAX, UINT_MAX);
+	free(data);
 }
 #endif
 

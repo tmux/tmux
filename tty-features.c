@@ -357,6 +357,17 @@ static const struct tty_feature tty_feature_sixel = {
 	TERM_SIXEL
 };
 
+/* Terminal has kitty graphics protocol capability. */
+static const char *const tty_feature_kitty_capabilities[] = {
+	"Kty",
+	NULL
+};
+static const struct tty_feature tty_feature_kitty = {
+	"kitty",
+	tty_feature_kitty_capabilities,
+	TERM_KITTY
+};
+
 /* Available terminal features. */
 static const struct tty_feature *const tty_features[] = {
 	&tty_feature_256,
@@ -368,6 +379,7 @@ static const struct tty_feature *const tty_features[] = {
 	&tty_feature_extkeys,
 	&tty_feature_focus,
 	&tty_feature_ignorefkeys,
+	&tty_feature_kitty,
 	&tty_feature_margins,
 	&tty_feature_mouse,
 	&tty_feature_osc7,
@@ -500,7 +512,19 @@ tty_default_features(int *feat, const char *name, u_int version)
 		   */
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM
 			      ",ccolour,cstyle,extkeys,focus"
-		}
+		},
+#ifdef ENABLE_KITTY
+		{ .name = "kitty",
+		  .features = TTY_FEATURES_BASE_MODERN_XTERM
+			      ",ccolour,cstyle,extkeys,focus,sync,hyperlinks"
+			      ",kitty"
+		},
+		{ .name = "ghostty",
+		  .features = TTY_FEATURES_BASE_MODERN_XTERM
+			      ",ccolour,cstyle,extkeys,focus,sync,hyperlinks"
+			      ",kitty"
+		},
+#endif
 	};
 	u_int	i;
 
