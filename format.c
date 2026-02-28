@@ -4446,6 +4446,9 @@ format_loop_sessions(struct format_expand_state *es, const char *fmt)
 		strlcat(value, expanded, valuelen);
 		free(expanded);
 	}
+	
+	free(active);
+	free(all);
 
 	return (value);
 }
