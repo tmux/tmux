@@ -848,19 +848,19 @@ options_set_command(struct options *oo, const char *name,
 }
 
 int
-options_scope_from_name(struct args *args, int window,
-    const char *name, struct cmd_find_state *fs, struct options **oo,
-    char **cause)
+options_scope_from_name(struct args *args, int window, const char *name,
+    struct cmdq_item *item, struct options **oo, char **cause)
 {
+	struct cmd_find_state			*fs = cmdq_get_target(item);
 	struct session				*s = fs->s;
 	struct winlink				*wl = fs->wl;
 	struct window_pane			*wp = fs->wp;
-	const char				*target = args_get(args, 't');
+	const char				*target = args_get_target(args, item);
 	const struct options_table_entry	*oe;
 	int					 scope = OPTIONS_TABLE_NONE;
 
 	if (*name == '@')
-		return (options_scope_from_flags(args, window, fs, oo, cause));
+		return (options_scope_from_flags(args, window, item, oo, cause));
 
 	for (oe = options_table; oe->name != NULL; oe++) {
 		if (strcmp(oe->name, name) == 0)
@@ -919,13 +919,14 @@ options_scope_from_name(struct args *args, int window,
 }
 
 int
-options_scope_from_flags(struct args *args, int window,
-    struct cmd_find_state *fs, struct options **oo, char **cause)
+options_scope_from_flags(struct args *args, int window, struct cmdq_item *item,
+    struct options **oo, char **cause)
 {
+	struct cmd_find_state	*fs = cmdq_get_target(item);
 	struct session		*s = fs->s;
 	struct winlink		*wl = fs->wl;
 	struct window_pane	*wp = fs->wp;
-	const char		*target = args_get(args, 't');
+	const char		*target = args_get_target(args, item);
 
 	if (args_has(args, 's')) {
 		*oo = global_options;

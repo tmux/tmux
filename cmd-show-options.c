@@ -77,7 +77,6 @@ static enum cmd_retval
 cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args			*args = cmd_get_args(self);
-	struct cmd_find_state		*target = cmdq_get_target(item);
 	struct options			*oo;
 	char				*argument, *name = NULL, *cause;
 	int				 window, idx, ambiguous, parent, scope;
@@ -86,7 +85,7 @@ cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 	window = (cmd_get_entry(self) == &cmd_show_window_options_entry);
 
 	if (args_count(args) == 0) {
-		scope = options_scope_from_flags(args, window, target, &oo,
+		scope = options_scope_from_flags(args, window, item, &oo,
 		    &cause);
 		if (scope == OPTIONS_TABLE_NONE) {
 			if (args_has(args, 'q'))
@@ -109,7 +108,7 @@ cmd_show_options_exec(struct cmd *self, struct cmdq_item *item)
 			cmdq_error(item, "invalid option: %s", argument);
 		goto fail;
 	}
-	scope = options_scope_from_name(args, window, name, target, &oo,
+	scope = options_scope_from_name(args, window, name, item, &oo,
 	    &cause);
 	if (scope == OPTIONS_TABLE_NONE) {
 		if (args_has(args, 'q'))

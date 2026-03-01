@@ -129,7 +129,7 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	}
 
 	/* Is this going to be part of a session group? */
-	group = args_get(args, 't');
+	group = args_get_target(args, item);
 	if (group != NULL) {
 		groupwith = target->s;
 		if (groupwith == NULL)

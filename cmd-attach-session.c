@@ -169,7 +169,7 @@ cmd_attach_session_exec(struct cmd *self, struct cmdq_item *item)
 {
 	struct args	*args = cmd_get_args(self);
 
-	return (cmd_attach_session(item, args_get(args, 't'),
+	return (cmd_attach_session(item, args_get_target(args, item),
 	    args_has(args, 'd'), args_has(args, 'x'), args_has(args, 'r'),
 	    args_get(args, 'c'), args_has(args, 'E'), args_get(args, 'f')));
 }
