@@ -72,7 +72,7 @@ struct session;
 struct sixel_image;
 #endif
 
-#ifdef ENABLE_KITTY
+#ifdef ENABLE_KITTY_IMAGES
 struct kitty_image;
 #endif
 
@@ -948,7 +948,7 @@ struct image {
 TAILQ_HEAD(images, image);
 #endif
 
-#ifdef ENABLE_KITTY
+#ifdef ENABLE_KITTY_IMAGES
 /*
  * kitty_image stores the raw decoded pixel data and metadata from a kitty
  * graphics protocol APC sequence.  It is used to re-emit the sequence to the
@@ -2702,7 +2702,7 @@ void	tty_cmd_rawstring(struct tty *, const struct tty_ctx *);
 void	tty_cmd_sixelimage(struct tty *, const struct tty_ctx *);
 #endif
 
-#ifdef ENABLE_KITTY
+#ifdef ENABLE_KITTY_IMAGES
 void	tty_kitty_delete_all(struct tty *);
 void	tty_kitty_delete_all_pane(struct window_pane *);
 void	tty_kitty_passthrough(struct window_pane *, const char *, size_t,
@@ -3800,7 +3800,7 @@ char		*sixel_print(struct sixel_image *, struct sixel_image *,
 struct screen	*sixel_to_screen(struct sixel_image *);
 #endif
 
-#ifdef ENABLE_KITTY
+#ifdef ENABLE_KITTY_IMAGES
 /* image-kitty.c */
 struct kitty_image *kitty_parse(const u_char *, size_t, u_int, u_int);
 void		 kitty_free(struct kitty_image *);

@@ -1382,7 +1382,7 @@ input_esc_dispatch(struct input_ctx *ictx)
 		input_reset_cell(ictx);
 		screen_write_reset(sctx);
 		screen_write_fullredraw(sctx);
-#ifdef ENABLE_KITTY
+#ifdef ENABLE_KITTY_IMAGES
 		if (ictx->wp != NULL)
 			tty_kitty_delete_all_pane(ictx->wp);
 #endif
@@ -2727,7 +2727,7 @@ input_exit_apc(struct input_ctx *ictx)
 {
 	struct screen_write_ctx	*sctx = &ictx->ctx;
 	struct window_pane	*wp = ictx->wp;
-#ifdef ENABLE_KITTY
+#ifdef ENABLE_KITTY_IMAGES
 	struct kitty_image	*ki;
 #endif
 
@@ -2735,7 +2735,7 @@ input_exit_apc(struct input_ctx *ictx)
 		return;
 	log_debug("%s: \"%s\"", __func__, ictx->input_buf);
 
-#ifdef ENABLE_KITTY
+#ifdef ENABLE_KITTY_IMAGES
 	if (ictx->input_len >= 1 && ictx->input_buf[0] == 'G') {
 		if (wp == NULL)
 			return;
@@ -2784,7 +2784,7 @@ input_exit_apc(struct input_ctx *ictx)
 		}
 		return;
 	}
-#endif /* ENABLE_KITTY */
+#endif /* ENABLE_KITTY_IMAGES */
 
 	if (wp != NULL &&
 	    options_get_number(wp->options, "allow-set-title") &&

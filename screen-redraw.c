@@ -667,7 +667,7 @@ screen_redraw_screen(struct client *c)
 	}
 	if (flags & CLIENT_REDRAWWINDOW) {
 		log_debug("%s: redrawing panes", c->name);
-#ifdef ENABLE_KITTY
+#ifdef ENABLE_KITTY_IMAGES
 		/*
 		 * Delete all kitty image placements before redrawing panes.
 		 * This must happen unconditionally — even when the new window
@@ -708,7 +708,7 @@ screen_redraw_pane(struct client *c, struct window_pane *wp,
 	tty_update_mode(&c->tty, c->tty.mode, NULL);
 
 	if (!redraw_scrollbar_only) {
-#ifdef ENABLE_KITTY
+#ifdef ENABLE_KITTY_IMAGES
 		tty_kitty_delete_all(&c->tty);
 #endif
 		screen_redraw_draw_pane(&ctx, wp);

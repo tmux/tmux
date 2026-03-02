@@ -2564,7 +2564,7 @@ format_cb_version(__unused struct format_tree *ft)
 static void *
 format_cb_image_support(__unused struct format_tree *ft)
 {
-#if defined(ENABLE_SIXEL) && defined(ENABLE_KITTY)
+#if defined(ENABLE_SIXEL) && defined(ENABLE_KITTY_IMAGES)
 	return (xstrdup("kitty,sixel"));
 #endif
 
@@ -2572,11 +2572,10 @@ format_cb_image_support(__unused struct format_tree *ft)
 	return (xstrdup("sixel"));
 #endif
 
-#ifdef ENABLE_KITTY
+#ifdef ENABLE_KITTY_IMAGES
 	return (xstrdup("kitty"));
 #endif
 	return (NULL);
-
 }
 
 /* Callback for active_window_index. */

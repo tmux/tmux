@@ -391,7 +391,7 @@ tty_send_requests(struct tty *tty)
 		return;
 
 	if (tty->term->flags & TERM_VT100LIKE) {
-#ifdef ENABLE_KITTY
+#ifdef ENABLE_KITTY_IMAGES
 		/*
 		 * Send the kitty graphics capability probe BEFORE the DA1
 		 * request.  Per the kitty spec, a supporting terminal sends
@@ -2165,7 +2165,7 @@ tty_cmd_sixelimage(struct tty *tty, const struct tty_ctx *ctx)
 }
 #endif
 
-#ifdef ENABLE_KITTY
+#ifdef ENABLE_KITTY_IMAGES
 static int
 tty_has_kitty(struct tty *tty)
 {

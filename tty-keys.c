@@ -60,7 +60,7 @@ static int	tty_keys_device_attributes2(struct tty *, const char *, size_t,
 static int	tty_keys_extended_device_attributes(struct tty *, const char *,
 		    size_t, size_t *);
 static int	tty_keys_palette(struct tty *, const char *, size_t, size_t *);
-#ifdef ENABLE_KITTY
+#ifdef ENABLE_KITTY_IMAGES
 static int	tty_keys_kitty_graphics(struct tty *, const char *, size_t,
 		    size_t *);
 #endif
@@ -763,7 +763,7 @@ tty_keys_next(struct tty *tty)
 		goto partial_key;
 	}
 
-#ifdef ENABLE_KITTY
+#ifdef ENABLE_KITTY_IMAGES
 	/* Is this a kitty graphics protocol response? ESC _ G ... ESC \ */
 	switch (tty_keys_kitty_graphics(tty, buf, len, &size)) {
 	case 0:		/* yes */
@@ -1657,7 +1657,7 @@ tty_keys_extended_device_attributes(struct tty *tty, const char *buf,
 		tty_default_features(features, "mintty", 0);
 	else if (strncmp(tmp, "foot(", 5) == 0)
 		tty_default_features(features, "foot", 0);
-#ifdef ENABLE_KITTY
+#ifdef ENABLE_KITTY_IMAGES
 	else if (strncmp(tmp, "kitty ", 6) == 0 ||
 	    strcmp(tmp, "kitty") == 0)
 		tty_default_features(features, "kitty", 0);
@@ -1821,7 +1821,7 @@ tty_keys_palette(struct tty *tty, const char *buf, size_t len, size_t *size)
 	return (0);
 }
 
-#ifdef ENABLE_KITTY
+#ifdef ENABLE_KITTY_IMAGES
 /*
  * Handle kitty graphics protocol response from outer terminal.
  * Format: ESC _ G <key=value,...> ; <message> ESC \

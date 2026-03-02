@@ -513,7 +513,7 @@ tty_default_features(int *feat, const char *name, u_int version)
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM
 			      ",ccolour,cstyle,extkeys,focus"
 		},
-#ifdef ENABLE_KITTY
+#ifdef ENABLE_KITTY_IMAGES
 		{ .name = "kitty",
 		  .features = TTY_FEATURES_BASE_MODERN_XTERM
 			      ",ccolour,cstyle,extkeys,focus,sync,hyperlinks"
