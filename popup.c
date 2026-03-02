@@ -26,29 +26,6 @@
 
 #include "tmux.h"
 
-#ifdef ENABLE_SIXEL
-/*
- * Strategies for clearing stale sixel pixels when a popup with images closes.
- * Different terminal emulators respond to different clearing methods, so
- * multiple strategies can be combined (bitwise OR).
- *
- * SCREEN (RMCUP/SMCUP toggle) is the most effective on Konsole and most
- * modern terminals -- toggling the alternate screen buffer discards the
- * graphics layer. The other strategies provide additional coverage for
- * terminals where the alternate buffer toggle alone is insufficient.
- *
- * Override at compile time: make CPPFLAGS="-DSIXEL_CLEAR_STRATEGIES=0x1"
- */
-#define SIXEL_CLEAR_SCREEN	0x1	/* RMCUP/SMCUP + ED2/DECSED/CLEAR */
-#define SIXEL_CLEAR_SPACES	0x2	/* Overwrite popup area with spaces */
-#define SIXEL_CLEAR_DECFRA	0x4	/* DECFRA rectangle fill (VT420+) */
-#define SIXEL_CLEAR_BLANK_SIXEL	0x8	/* Blank sixel with P2=2 bg erase */
-#define SIXEL_CLEAR_ALL		0xf	/* Enable all strategies */
-
-#ifndef SIXEL_CLEAR_STRATEGIES
-#define SIXEL_CLEAR_STRATEGIES	SIXEL_CLEAR_ALL
-#endif
-#endif /* ENABLE_SIXEL */
 
 struct popup_data {
 	struct client		 *c;
@@ -373,105 +350,49 @@ popup_free_cb(struct client *c, void *data)
 
 #ifdef ENABLE_SIXEL
 	/*
-	 * Clear stale sixel pixels from the popup's image region.
-	 * Multiple strategies are tried based on SIXEL_CLEAR_STRATEGIES
-	 * since different terminals respond to different methods.
+	 * If the popup had sixel images, clear stale pixels by overwriting
+	 * the popup area with spaces. Also try DECFRA rectangle fill if the
+	 * terminal supports it (note: DECFRA cannot clear to non-default
+	 * background colour). Force a full window redraw afterwards.
 	 */
 	if (!TAILQ_EMPTY(&pd->s.images)) {
 		struct tty	*tty = &c->tty;
 		struct image	*im;
-		u_int		 strategies = SIXEL_CLEAR_STRATEGIES;
+		u_int		 x, y;
 
-		/*
-		 * Strategy: toggle the alternate screen buffer and
-		 * clear. Leaving and re-entering the alternate screen
-		 * discards the graphics layer in many terminals. ED2
-		 * and DECSED are sent for additional coverage.
-		 */
-		if (strategies & SIXEL_CLEAR_SCREEN) {
-			tty_putcode(tty, TTYC_RMCUP);
-			tty_putcode(tty, TTYC_SMCUP);
-			tty_puts(tty, "\033[2J");	/* ED2 */
-			tty_puts(tty, "\033[?2J");	/* DECSED */
-			tty_putcode(tty, TTYC_CLEAR);
-			tty_invalidate(tty);
+		/* Try DECFRA per image if supported. */
+		if (tty->term->flags & TERM_DECFRA) {
+			TAILQ_FOREACH(im, &pd->s.images, entry) {
+				u_int	ox, oy, sx, sy;
+				char	tmp[64];
+
+				if (pd->border_lines == BOX_LINES_NONE) {
+					ox = pd->px + im->px;
+					oy = pd->py + im->py;
+				} else {
+					ox = pd->px + 1 + im->px;
+					oy = pd->py + 1 + im->py;
+				}
+				sx = im->sx;
+				sy = im->sy;
+
+				xsnprintf(tmp, sizeof tmp,
+				    "\033[32;%u;%u;%u;%u$x",
+				    oy + 1, ox + 1,
+				    oy + sy, ox + sx);
+				tty_puts(tty, tmp);
+			}
 		}
 
-		TAILQ_FOREACH(im, &pd->s.images, entry) {
-			u_int	ox, oy, sx, sy;
-
-			/* Image position in terminal coordinates. */
-			if (pd->border_lines == BOX_LINES_NONE) {
-				ox = pd->px + im->px;
-				oy = pd->py + im->py;
-			} else {
-				ox = pd->px + 1 + im->px;
-				oy = pd->py + 1 + im->py;
-			}
-			sx = im->sx;
-			sy = im->sy;
-
-			/*
-			 * Strategy: DECFRA rectangle fill with spaces.
-			 * Works on VT420-compatible terminals. Run before
-			 * SPACES so both have a chance to clear pixels.
-			 */
-			if (strategies & SIXEL_CLEAR_DECFRA) {
-				if (tty->term->flags & TERM_DECFRA) {
-					char	tmp[64];
-
-					xsnprintf(tmp, sizeof tmp,
-					    "\033[32;%u;%u;%u;%u$x",
-					    oy + 1, ox + 1,
-					    oy + sy, ox + sx);
-					tty_puts(tty, tmp);
-				}
-			}
-
-			/*
-			 * Strategy: send a blank sixel with background
-			 * erase (P2=2) over the image area. Uses Set
-			 * Raster Attributes to define the erasure region
-			 * in pixels. Directly addresses pixel content.
-			 */
-			if (strategies & SIXEL_CLEAR_BLANK_SIXEL) {
-				if (tty->term->flags & TERM_SIXEL) {
-					u_int	pxw, pxh;
-					char	tmp[128];
-
-					pxw = sx * tty->xpixel;
-					pxh = sy * tty->ypixel;
-					if (pxw > 0 && pxh > 0) {
-						tty_cursor(tty, ox, oy);
-						xsnprintf(tmp, sizeof tmp,
-						    "\033P0;2;0q"
-						    "\"1;1;%u;%u\033\\",
-						    pxw, pxh);
-						tty_puts(tty, tmp);
-					}
-				}
-			}
-
-		}
-
-		/*
-		 * Strategy: overwrite the ENTIRE popup area with spaces.
-		 * Covers all cells that could contain sixel pixel data,
-		 * not just the tracked image coordinates. "Glyph
-		 * annihilation" clears pixel content in most terminals.
-		 */
-		if (strategies & SIXEL_CLEAR_SPACES) {
-			u_int	x, y;
-
-			for (y = 0; y < pd->sy; y++) {
-				if (pd->py + y >= tty->sy)
+		/* Overwrite the entire popup area with spaces. */
+		for (y = 0; y < pd->sy; y++) {
+			if (pd->py + y >= tty->sy)
+				break;
+			tty_cursor(tty, pd->px, pd->py + y);
+			for (x = 0; x < pd->sx; x++) {
+				if (pd->px + x >= tty->sx)
 					break;
-				tty_cursor(tty, pd->px, pd->py + y);
-				for (x = 0; x < pd->sx; x++) {
-					if (pd->px + x >= tty->sx)
-						break;
-					tty_putc(tty, ' ');
-				}
+				tty_putc(tty, ' ');
 			}
 		}
 
