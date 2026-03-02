@@ -90,6 +90,7 @@ menu_add_item(struct menu *menu, const struct menu_item *item,
 	else
 		s = format_single(qitem, item->name, c, NULL, NULL, NULL);
 	if (*s == '\0') { /* no item if empty after format expanded */
+		free(s);
 		menu->count--;
 		return;
 	}
