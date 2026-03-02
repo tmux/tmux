@@ -477,9 +477,9 @@ AC_ARG_ENABLE(
 )
 
 if test "x$enable_sixel_images" = xyes; then
-	AC_DEFINE(ENABLE_SIXEL)
+	AC_DEFINE(ENABLE_SIXEL_IMAGES)
 fi
-AM_CONDITIONAL(ENABLE_SIXEL, [test "x$enable_sixel_images" = xyes])
+AM_CONDITIONAL(ENABLE_SIXEL_IMAGES, [test "x$enable_sixel_images" = xyes])
 
 # Enable kitty graphics protocol support.
 AC_ARG_ENABLE(

@@ -68,7 +68,7 @@ struct screen_write_cline;
 struct screen_write_ctx;
 struct session;
 
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_SIXEL_IMAGES
 struct sixel_image;
 #endif
 
@@ -930,7 +930,7 @@ struct style {
 	enum style_default_type	default_type;
 };
 
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_SIXEL_IMAGES
 /* Image. */
 struct image {
 	struct screen		*s;
@@ -1027,7 +1027,7 @@ struct screen {
 	bitstr_t			*tabs;
 	struct screen_sel		*sel;
 
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_SIXEL_IMAGES
 	struct images			 images;
 	struct images			 saved_images;
 #endif
@@ -2664,7 +2664,7 @@ struct visible_ranges *tty_check_overlay_range(struct tty *, u_int, u_int,
 void	tty_draw_line(struct tty *, struct screen *, u_int, u_int, u_int,
 	    u_int, u_int, const struct grid_cell *, struct colour_palette *);
 
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_SIXEL_IMAGES
 void	tty_draw_images(struct client *, struct window_pane *, struct screen *);
 #endif
 
@@ -2698,7 +2698,7 @@ void	tty_cmd_reverseindex(struct tty *, const struct tty_ctx *);
 void	tty_cmd_setselection(struct tty *, const struct tty_ctx *);
 void	tty_cmd_rawstring(struct tty *, const struct tty_ctx *);
 
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_SIXEL_IMAGES
 void	tty_cmd_sixelimage(struct tty *, const struct tty_ctx *);
 #endif
 
@@ -3311,7 +3311,7 @@ void	 screen_write_setselection(struct screen_write_ctx *, const char *,
 	     u_char *, u_int);
 void	 screen_write_rawstring(struct screen_write_ctx *, u_char *, u_int,
 	     int);
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_SIXEL_IMAGES
 void	 screen_write_sixelimage(struct screen_write_ctx *,
 	     struct sixel_image *, u_int);
 #endif
@@ -3779,7 +3779,7 @@ struct window_pane *spawn_pane(struct spawn_context *, char **);
 /* regsub.c */
 char		*regsub(const char *, const char *, const char *, int);
 
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_SIXEL_IMAGES
 /* image.c */
 int		 image_free_all(struct screen *);
 struct image	*image_store(struct screen *, struct sixel_image *);

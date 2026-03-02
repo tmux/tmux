@@ -1016,7 +1016,7 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 		}
 	}
 
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_SIXEL_IMAGES
 	tty_draw_images(c, wp, s);
 #endif
 }

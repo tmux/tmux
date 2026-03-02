@@ -2564,11 +2564,11 @@ format_cb_version(__unused struct format_tree *ft)
 static void *
 format_cb_image_support(__unused struct format_tree *ft)
 {
-#if defined(ENABLE_SIXEL) && defined(ENABLE_KITTY_IMAGES)
+#if defined(ENABLE_SIXEL_IMAGES) && defined(ENABLE_KITTY_IMAGES)
 	return (xstrdup("kitty,sixel"));
 #endif
 
-#ifdef ENABLE_SIXEL
+#ifdef ENABLE_SIXEL_IMAGES
 	return (xstrdup("sixel"));
 #endif
 
