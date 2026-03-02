@@ -463,13 +463,23 @@ fi
 
 # Enable sixel support.
 AC_ARG_ENABLE(
-	sixel,
-	AS_HELP_STRING(--enable-sixel, enable sixel images)
+	sixel-images,
+	AS_HELP_STRING(--enable-sixel-images, enable sixel images)
 )
-if test "x$enable_sixel" = xyes; then
+
+AC_ARG_ENABLE(
+	sixel,
+	AS_HELP_STRING(--enable-sixel, deprecated; use --enable-sixel-images),
+	[
+		AC_MSG_WARN([--enable-sixel is deprecated; use --enable-sixel-images])
+		enable_sixel_images="$enableval"
+	]
+)
+
+if test "x$enable_sixel_images" = xyes; then
 	AC_DEFINE(ENABLE_SIXEL)
 fi
-AM_CONDITIONAL(ENABLE_SIXEL, [test "x$enable_sixel" = xyes])
+AM_CONDITIONAL(ENABLE_SIXEL, [test "x$enable_sixel_images" = xyes])
 
 # Enable kitty graphics protocol support.
 AC_ARG_ENABLE(
