@@ -5224,13 +5224,11 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 done:
 	/* Expand again if required. */
 	if (modifiers & FORMAT_EXPAND) {
-		format_copy_state(&next, es, FORMAT_EXPAND_NOJOBS);
-		new = format_expand1(&next, value);
+		new = format_expand1(es, value);
 		free(value);
 		value = new;
 	} else if (modifiers & FORMAT_EXPANDTIME) {
-		format_copy_state(&next, es, FORMAT_EXPAND_TIME|
-		    FORMAT_EXPAND_NOJOBS);
+		format_copy_state(&next, es, FORMAT_EXPAND_TIME);
 		new = format_expand1(&next, value);
 		free(value);
 		value = new;
