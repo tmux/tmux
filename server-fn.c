@@ -97,7 +97,9 @@ server_redraw_window(struct window *w)
 	struct client	*c;
 
 	TAILQ_FOREACH(c, &clients, entry) {
-		if (c->session != NULL && c->session->curw->window == w)
+		if (c->session != NULL &&
+		    c->session->curw != NULL &&
+		    c->session->curw->window == w)
 			server_redraw_client(c);
 	}
 }
@@ -108,7 +110,9 @@ server_redraw_window_borders(struct window *w)
 	struct client	*c;
 
 	TAILQ_FOREACH(c, &clients, entry) {
-		if (c->session != NULL && c->session->curw->window == w)
+		if (c->session != NULL &&
+		    c->session->curw != NULL &&
+		    c->session->curw->window == w)
 			c->flags |= CLIENT_REDRAWBORDERS;
 	}
 }
