@@ -36,7 +36,7 @@ const struct cmd_entry cmd_copy_mode_entry = {
 	.source =  { 's', CMD_FIND_PANE, 0 },
 	.target = { 't', CMD_FIND_PANE, 0 },
 
-	.flags = CMD_AFTERHOOK,
+	.flags = CMD_AFTERHOOK|CMD_READONLY,
 	.exec = cmd_copy_mode_exec
 };
 

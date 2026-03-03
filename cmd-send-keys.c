@@ -39,7 +39,8 @@ const struct cmd_entry cmd_send_keys_entry = {
 
 	.target = { 't', CMD_FIND_PANE, 0 },
 
-	.flags = CMD_AFTERHOOK|CMD_CLIENT_CFLAG|CMD_CLIENT_CANFAIL,
+	.flags = CMD_AFTERHOOK|CMD_CLIENT_CFLAG|CMD_CLIENT_CANFAIL|
+		 CMD_READONLY,
 	.exec = cmd_send_keys_exec
 };
 
@@ -166,6 +167,11 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 	u_int				 i, np = 1;
 	u_int				 count = args_count(args);
 	char				*cause = NULL;
+
+	if (tc->flags & CLIENT_READONLY && !args_has(args, 'X')) {
+		cmdq_error(item, "client is read-only");
+		return (CMD_RETURN_ERROR);
+	}
 
 	if (args_has(args, 'N')) {
 		np = args_strtonum_and_expand(args, 'N', 1, UINT_MAX, item,
