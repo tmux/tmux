@@ -89,7 +89,7 @@ screen_init(struct screen *s, u_int sx, u_int sy, u_int hlimit)
 	s->tabs = NULL;
 	s->sel = NULL;
 
-#ifdef ENABLE_SIXEL_IMAGES
+#ifdef ENABLE_IMAGES
 	TAILQ_INIT(&s->images);
 	TAILQ_INIT(&s->saved_images);
 #endif
@@ -127,7 +127,7 @@ screen_reinit(struct screen *s)
 	screen_clear_selection(s);
 	screen_free_titles(s);
 
-#ifdef ENABLE_SIXEL_IMAGES
+#ifdef ENABLE_IMAGES
 	image_free_all(s);
 #endif
 
@@ -164,7 +164,7 @@ screen_free(struct screen *s)
 		hyperlinks_free(s->hyperlinks);
 	screen_free_titles(s);
 
-#ifdef ENABLE_SIXEL_IMAGES
+#ifdef ENABLE_IMAGES
 	image_free_all(s);
 #endif
 }
@@ -324,7 +324,7 @@ screen_resize_cursor(struct screen *s, u_int sx, u_int sy, int reflow,
 	if (sy != screen_size_y(s))
 		screen_resize_y(s, sy, eat_empty, &cy);
 
-#ifdef ENABLE_SIXEL_IMAGES
+#ifdef ENABLE_IMAGES
 	image_free_all(s);
 #endif
 
@@ -649,7 +649,7 @@ screen_alternate_on(struct screen *s, struct grid_cell *gc, int cursor)
 	}
 	memcpy(&s->saved_cell, gc, sizeof s->saved_cell);
 
-#ifdef ENABLE_SIXEL_IMAGES
+#ifdef ENABLE_IMAGES
 	TAILQ_CONCAT(&s->saved_images, &s->images, entry);
 #endif
 
@@ -707,7 +707,7 @@ screen_alternate_off(struct screen *s, struct grid_cell *gc, int cursor)
 	grid_destroy(s->saved_grid);
 	s->saved_grid = NULL;
 
-#ifdef ENABLE_SIXEL_IMAGES
+#ifdef ENABLE_IMAGES
 	image_free_all(s);
 	TAILQ_CONCAT(&s->images, &s->saved_images, entry);
 #endif

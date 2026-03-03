@@ -2450,11 +2450,43 @@ screen_write_sixelimage(struct screen_write_ctx *ctx, struct sixel_image *si,
 	screen_write_collect_flush(ctx, 0, __func__);
 
 	screen_write_initctx(ctx, &ttyctx, 0);
-	ttyctx.ptr = image_store(s, si);
+	ttyctx.ptr = image_store(s, IMAGE_SIXEL, si);
 
 	tty_write(tty_cmd_sixelimage, &ttyctx);
 
 	screen_write_cursormove(ctx, 0, cy + y, 0);
+}
+#endif
+
+#ifdef ENABLE_KITTY_IMAGES
+void
+screen_write_kittyimage(struct screen_write_ctx *ctx, struct kitty_image *ki)
+{
+	struct screen		*s = ctx->s;
+	struct tty_ctx		 ttyctx;
+	struct image		*im;
+
+	if (ki == NULL)
+		return;
+
+	/* Store the image in the cache */
+	im = image_store(s, IMAGE_KITTY, ki);
+
+	/* Trigger a tty write to send to all terminals */
+	if (im != NULL && ctx->wp != NULL) {
+		screen_write_collect_flush(ctx, 0, __func__);
+		screen_write_initctx(ctx, &ttyctx, 0);
+		ttyctx.ptr = im;
+		ttyctx.arg = ctx->wp;
+		ttyctx.ocx = s->cx;
+		ttyctx.ocy = s->cy;
+		ttyctx.set_client_cb = tty_set_client_cb;
+		tty_write(tty_cmd_kittyimage, &ttyctx);
+	}
+
+	/* Move cursor past the image */
+	if (ki->rows > 0)
+		screen_write_cursormove(ctx, 0, s->cy + ki->rows, 0);
 }
 #endif
 

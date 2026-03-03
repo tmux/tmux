@@ -190,6 +190,49 @@ kitty_free(struct kitty_image *ki)
 	free(ki);
 }
 
+/*
+ * Serialize a kitty_image back into an APC escape sequence for transmission
+ * to the terminal. This recreates the original command that was parsed.
+ */
+char *
+kitty_print(struct kitty_image *ki, size_t *outlen)
+{
+	char	*out;
+	size_t	 total, pos;
+
+	if (ki == NULL || ki->ctrl == NULL)
+		return (NULL);
+
+	/* Calculate total length: ESC _ G + ctrl + ; + encoded + ESC \ */
+	total = 3 + ki->ctrllen;  /* \033_G + ctrl */
+	if (ki->encoded != NULL && ki->encodedlen > 0) {
+		total += 1 + ki->encodedlen;  /* ; + encoded */
+	}
+	total += 2;  /* \033\\ */
+
+	out = xmalloc(total + 1);
+	*outlen = total;
+
+	/* Build the sequence */
+	pos = 0;
+	memcpy(out + pos, "\033_G", 3);
+	pos += 3;
+	memcpy(out + pos, ki->ctrl, ki->ctrllen);
+	pos += ki->ctrllen;
+
+	if (ki->encoded != NULL && ki->encodedlen > 0) {
+		out[pos++] = ';';
+		memcpy(out + pos, ki->encoded, ki->encodedlen);
+		pos += ki->encodedlen;
+	}
+
+	memcpy(out + pos, "\033\\", 2);
+	pos += 2;
+	out[pos] = '\0';
+
+	return (out);
+}
+
 char *
 kitty_delete_all(size_t *outlen)
 {

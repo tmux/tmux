@@ -234,6 +234,11 @@ endif
 # Enable sixel support.
 if ENABLE_SIXEL_IMAGES
 dist_tmux_SOURCES += image.c image-sixel.c
+else
+# If not sixel, still need image.c for kitty.
+if ENABLE_KITTY_IMAGES
+dist_tmux_SOURCES += image.c
+endif
 endif
 
 # Enable kitty graphics protocol support.

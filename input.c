@@ -1561,12 +1561,31 @@ input_csi_dispatch(struct input_ctx *ictx)
 		case -1:
 			break;
 		case 0:
+		{
+			/*
+			 * Report sixel support only if outer terminal supports it.
+			 * This ensures applications choose the right protocol.
+			 */
+			int has_sixel = 0;
 #ifdef ENABLE_SIXEL_IMAGES
-			input_reply(ictx, 1, "\033[?1;2;4c");
-#else
-			input_reply(ictx, 1, "\033[?1;2c");
+			if (ictx->wp != NULL) {
+				struct client *c;
+				TAILQ_FOREACH(c, &clients, entry) {
+					if (c->session != NULL &&
+					    c->session->curw->window == ictx->wp->window &&
+					    (c->tty.term->flags & TERM_SIXEL)) {
+						has_sixel = 1;
+						break;
+					}
+				}
+			}
 #endif
+			if (has_sixel)
+				input_reply(ictx, 1, "\033[?1;2;4c");
+			else
+				input_reply(ictx, 1, "\033[?1;2c");
 			break;
+		}
 		default:
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);
 			break;
@@ -2729,6 +2748,7 @@ input_exit_apc(struct input_ctx *ictx)
 	struct window_pane	*wp = ictx->wp;
 #ifdef ENABLE_KITTY_IMAGES
 	struct kitty_image	*ki;
+	struct window		*w;
 #endif
 
 	if (ictx->flags & INPUT_DISCARD)
@@ -2740,6 +2760,7 @@ input_exit_apc(struct input_ctx *ictx)
 		if (wp == NULL)
 			return;
 
+		w = wp->window;
 		/*
 		 * Intercept only a=q (query) to reply OK ourselves.
 		 * Everything else — including a=T (transmit+display),
@@ -2749,8 +2770,12 @@ input_exit_apc(struct input_ctx *ictx)
 		 * scrolling; tmux must not interfere.
 		 */
 		ki = kitty_parse(ictx->input_buf + 1,
-		    ictx->input_len - 1, 0, 0);
-		if (ki != NULL && ki->action == 'q') {
+		    ictx->input_len - 1, w->xpixel, w->ypixel);
+		if (ki == NULL)
+			return;
+
+		/* Handle query commands */
+		if (ki->action == 'q') {
 			if (ki->image_id != 0)
 				input_reply(ictx, 0,
 				    "\033_Gi=%u;OK\033\\",
@@ -2761,26 +2786,31 @@ input_exit_apc(struct input_ctx *ictx)
 			kitty_free(ki);
 			return;
 		}
-		kitty_free(ki);
 
-		/* Reconstruct APC and pass through verbatim. */
-		{
+		/*
+		 * Store the image and trigger a redraw.
+		 * Similar to sixel, we cache the image and let the
+		 * redraw mechanism handle sending it to terminals.
+		 */
+		if (ki->action == 'T' || ki->action == 't' || ki->action == 'p') {
+			screen_write_kittyimage(sctx, ki);
+		} else {
+			/* For other actions (delete, etc.), pass through */
 			char	*apc;
 			size_t	 apclen;
 
-			/* input_buf already starts with 'G'. */
 			apclen = 2 + ictx->input_len + 2;
 			apc = xmalloc(apclen + 1);
 			apc[0] = '\033';
 			apc[1] = '_';
-			memcpy(apc + 2, ictx->input_buf,
-			    ictx->input_len);
+			memcpy(apc + 2, ictx->input_buf, ictx->input_len);
 			apc[2 + ictx->input_len] = '\033';
 			apc[2 + ictx->input_len + 1] = '\\';
 			apc[apclen] = '\0';
 			tty_kitty_passthrough(wp, apc, apclen,
 			    sctx->s->cx, sctx->s->cy);
 			free(apc);
+			kitty_free(ki);
 		}
 		return;
 	}

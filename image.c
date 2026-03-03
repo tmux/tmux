@@ -61,7 +61,22 @@ image_free(struct image *im)
 	all_images_count--;
 
 	TAILQ_REMOVE(&s->images, im, entry);
-	sixel_free(im->data);
+
+	switch (im->type) {
+#ifdef ENABLE_SIXEL_IMAGES
+	case IMAGE_SIXEL:
+		sixel_free(im->data.sixel);
+		break;
+#endif
+#ifdef ENABLE_KITTY_IMAGES
+	case IMAGE_KITTY:
+		kitty_free(im->data.kitty);
+		break;
+#endif
+	default:
+		break;
+	}
+
 	free(im->fallback);
 	free(im);
 }
@@ -81,13 +96,30 @@ image_free_all(struct screen *s)
 
 /* Create text placeholder for an image. */
 static void
-image_fallback(char **ret, u_int sx, u_int sy)
+image_fallback(char **ret, enum image_type type, u_int sx, u_int sy)
 {
 	char	*buf, *label;
 	u_int	 py, size, lsize;
+	const char *type_name;
+
+	switch (type) {
+#ifdef ENABLE_SIXEL_IMAGES
+	case IMAGE_SIXEL:
+		type_name = "SIXEL";
+		break;
+#endif
+#ifdef ENABLE_KITTY_IMAGES
+	case IMAGE_KITTY:
+		type_name = "KITTY";
+		break;
+#endif
+	default:
+		type_name = "UNKNOWN";
+		break;
+	}
 
 	/* Allocate first line. */
-	lsize = xasprintf(&label, "SIXEL IMAGE (%ux%u)\r\n", sx, sy) + 1;
+	lsize = xasprintf(&label, "%s IMAGE (%ux%u)\r\n", type_name, sx, sy) + 1;
 	if (sx < lsize - 3)
 		size = lsize - 1;
 	else
@@ -122,19 +154,62 @@ image_fallback(char **ret, u_int sx, u_int sy)
 }
 
 struct image*
-image_store(struct screen *s, struct sixel_image *si)
+image_store(struct screen *s, enum image_type type, void *data)
 {
 	struct image	*im;
 
 	im = xcalloc(1, sizeof *im);
+
+	im->type = type;
 	im->s = s;
-	im->data = si;
 
 	im->px = s->cx;
 	im->py = s->cy;
-	sixel_size_in_cells(si, &im->sx, &im->sy);
 
-	image_fallback(&im->fallback, im->sx, im->sy);
+	switch (type) {
+#ifdef ENABLE_SIXEL_IMAGES
+	case IMAGE_SIXEL:
+		im->data.sixel = data;
+		sixel_size_in_cells(im->data.sixel, &im->sx, &im->sy);
+		break;
+#endif
+#ifdef ENABLE_KITTY_IMAGES
+	case IMAGE_KITTY:
+		im->data.kitty = data;
+
+		/* Kitty images have size info in the structure */
+		im->sx = im->data.kitty->cols;
+		im->sy = im->data.kitty->rows;
+
+		/*
+		 * If cols/rows are 0, they mean "auto" - calculate from
+		 * pixel dimensions. The terminal will figure out the actual
+		 * size, but we need a reasonable estimate for our cache.
+		 */
+		if (im->sx == 0 && im->data.kitty->pixel_w > 0 &&
+		    im->data.kitty->xpixel > 0) {
+			im->sx = (im->data.kitty->pixel_w +
+			    im->data.kitty->xpixel - 1) /
+				im->data.kitty->xpixel;
+		}
+		if (im->sy == 0 && im->data.kitty->pixel_h > 0 &&
+		    im->data.kitty->ypixel > 0) {
+			im->sy = (im->data.kitty->pixel_h +
+			    im->data.kitty->ypixel - 1) / im->data.kitty->ypixel;
+		}
+
+		/* If still 0, use a reasonable default */
+		if (im->sx == 0)
+			im->sx = 10;
+		if (im->sy == 0)
+			im->sy = 10;
+		break;
+#endif
+	default:
+		break;
+	}
+
+	image_fallback(&im->fallback, type, im->sx, im->sy);
 
 	image_log(im, __func__, NULL);
 	TAILQ_INSERT_TAIL(&s->images, im, entry);
@@ -188,8 +263,10 @@ image_scroll_up(struct screen *s, u_int lines)
 {
 	struct image		*im, *im1;
 	int			 redraw = 0;
-	u_int			 sx, sy;
+#ifdef ENABLE_SIXEL_IMAGES
 	struct sixel_image	*new;
+	u_int			 sx, sy;
+#endif
 
 	TAILQ_FOREACH_SAFE(im, &s->images, entry, im1) {
 		if (im->py >= lines) {
@@ -204,20 +281,46 @@ image_scroll_up(struct screen *s, u_int lines)
 			redraw = 1;
 			continue;
 		}
-		sx = im->sx;
-		sy = (im->py + im->sy) - lines;
-		image_log(im, __func__, "3, lines=%u, sy=%u", lines, sy);
 
-		new = sixel_scale(im->data, 0, 0, 0, im->sy - sy, sx, sy, 1);
-		sixel_free(im->data);
-		im->data = new;
+		/* Image is partially scrolled off - need to crop it */
+		switch (im->type) {
+#ifdef ENABLE_SIXEL_IMAGES
+		case IMAGE_SIXEL:
+			sx = im->sx;
+			sy = (im->py + im->sy) - lines;
+			image_log(im, __func__, "3 sixel, lines=%u, sy=%u",
+			    lines, sy);
 
-		im->py = 0;
-		sixel_size_in_cells(im->data, &im->sx, &im->sy);
+			new = sixel_scale(im->data.sixel, 0, 0, 0, im->sy - sy,
+			    sx, sy, 1);
+			sixel_free(im->data.sixel);
+			im->data.sixel = new;
 
-		free(im->fallback);
-		image_fallback(&im->fallback, im->sx, im->sy);
-		redraw = 1;
+			im->py = 0;
+			sixel_size_in_cells(im->data.sixel, &im->sx, &im->sy);
+
+			free(im->fallback);
+			image_fallback(&im->fallback, im->type, im->sx, im->sy);
+			redraw = 1;
+			break;
+#endif
+#ifdef ENABLE_KITTY_IMAGES
+		case IMAGE_KITTY:
+			/*
+			 * For kitty images, we can't rescale - the terminal
+			 * owns the placement. Just adjust position and let
+			 * the terminal handle clipping.
+			 */
+			image_log(im, __func__,
+			    "3 kitty, lines=%u (no rescale)", lines);
+			im->py = 0;
+			/* Height remains the same - terminal will clip */
+			redraw = 1;
+			break;
+#endif
+		default:
+			break;
+		}
 	}
 	return (redraw);
 }

@@ -67,7 +67,7 @@ static void	tty_emulate_repeat(struct tty *, enum tty_code_code,
 static void	tty_draw_pane(struct tty *, const struct tty_ctx *, u_int);
 static int	tty_check_overlay(struct tty *, u_int, u_int);
 
-#ifdef ENABLE_SIXEL_IMAGES
+#ifdef ENABLE_IMAGES
 static void	tty_write_one(void (*)(struct tty *, const struct tty_ctx *),
 		    struct client *, struct tty_ctx *);
 #endif
@@ -1459,9 +1459,9 @@ tty_check_overlay_range(struct tty *tty, u_int px, u_int py, u_int nx)
 	return (c->overlay_check(c, c->overlay_data, px, py, nx));
 }
 
-#ifdef ENABLE_SIXEL_IMAGES
+#ifdef ENABLE_IMAGES
 /* Update context for client. */
-static int
+int
 tty_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 {
 	struct window_pane	*wp = ttyctx->arg;
@@ -1485,7 +1485,6 @@ tty_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 void
 tty_draw_images(struct client *c, struct window_pane *wp, struct screen *s)
 {
-#ifdef ENABLE_SIXEL_IMAGES
 	struct image	*im;
 	struct tty_ctx	 ttyctx;
 
@@ -1507,11 +1506,23 @@ tty_draw_images(struct client *c, struct window_pane *wp, struct screen *s)
 		ttyctx.arg = wp;
 		ttyctx.set_client_cb = tty_set_client_cb;
 		ttyctx.allow_invisible_panes = 1;
-		tty_write_one(tty_cmd_sixelimage, c, &ttyctx);
-	}
-#else
-	(void)c; (void)wp; (void)s;
+
+		/* Call the appropriate rendering function based on image type */
+		switch (im->type) {
+#ifdef ENABLE_SIXEL_IMAGES
+		case IMAGE_SIXEL:
+			tty_write_one(tty_cmd_sixelimage, c, &ttyctx);
+			break;
 #endif
+#ifdef ENABLE_KITTY_IMAGES
+		case IMAGE_KITTY:
+			tty_write_one(tty_cmd_kittyimage, c, &ttyctx);
+			break;
+#endif
+		default:
+			break;
+		}
+	}
 }
 #endif
 
@@ -1588,7 +1599,7 @@ tty_write(void (*cmdfn)(struct tty *, const struct tty_ctx *),
 	}
 }
 
-#ifdef ENABLE_SIXEL_IMAGES
+#ifdef ENABLE_IMAGES
 /* Only write to the incoming tty instead of every client. */
 static void
 tty_write_one(void (*cmdfn)(struct tty *, const struct tty_ctx *),
@@ -2118,7 +2129,7 @@ void
 tty_cmd_sixelimage(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct image		*im = ctx->ptr;
-	struct sixel_image	*si = im->data;
+	struct sixel_image	*si = im->data.sixel;
 	struct sixel_image	*new;
 	char			*data;
 	size_t			 size;
@@ -2171,6 +2182,59 @@ tty_has_kitty(struct tty *tty)
 {
 	return ((tty->term->flags & TERM_KITTY) ||
 	    tty_term_has(tty->term, TTYC_KTY));
+}
+
+void
+tty_cmd_kittyimage(struct tty *tty, const struct tty_ctx *ctx)
+{
+	struct image		*im = ctx->ptr;
+	struct kitty_image	*ki;
+	char			*data;
+	size_t			 size;
+	u_int			 cx = ctx->ocx, cy = ctx->ocy;
+	int			 fallback = 0;
+
+	log_debug("%s: called, im=%p", __func__, im);
+
+	if (im == NULL) {
+		log_debug("%s: NULL image pointer", __func__);
+		return;
+	}
+
+	ki = im->data.kitty;
+	log_debug("%s: ki=%p, type=%d", __func__, ki, im->type);
+
+	if (ki == NULL) {
+		log_debug("%s: NULL kitty_image pointer", __func__);
+		return;
+	}
+
+	/* Check if this terminal supports kitty graphics */
+	if (!tty_has_kitty(tty))
+		fallback = 1;
+
+	log_debug("%s: image at %u,%u (fallback=%d)", __func__, cx, cy, fallback);
+
+	if (fallback == 1) {
+		/* Use text fallback for non-kitty terminals */
+		data = xstrdup(im->fallback);
+		size = strlen(data);
+	} else {
+		/* Re-serialize the kitty image command */
+		data = kitty_print(ki, &size);
+	}
+
+	if (data != NULL) {
+		log_debug("%s: %zu bytes", __func__, size);
+		tty_region_off(tty);
+		tty_margin_off(tty);
+		tty_cursor(tty, cx + ctx->xoff, cy + ctx->yoff);
+
+		tty->flags |= TTY_NOBLOCK;
+		tty_add(tty, data, size);
+		tty_invalidate(tty);
+		free(data);
+	}
 }
 
 /*

@@ -68,6 +68,11 @@ struct screen_write_cline;
 struct screen_write_ctx;
 struct session;
 
+/* Convenience macro: defined if any image protocol is compiled in. */
+#if defined(ENABLE_SIXEL_IMAGES) || defined(ENABLE_KITTY_IMAGES)
+#define ENABLE_IMAGES
+#endif
+
 #ifdef ENABLE_SIXEL_IMAGES
 struct sixel_image;
 #endif
@@ -930,11 +935,23 @@ struct style {
 	enum style_default_type	default_type;
 };
 
-#ifdef ENABLE_SIXEL_IMAGES
+#ifdef ENABLE_IMAGES
+/* Image types. */
+enum image_type {
+	IMAGE_SIXEL,
+	IMAGE_KITTY
+};
+
 /* Image. */
 struct image {
+	enum image_type		 type;
 	struct screen		*s;
-	struct sixel_image	*data;
+	union {
+		struct sixel_image	*sixel;
+#ifdef ENABLE_KITTY_IMAGES
+		struct kitty_image	*kitty;
+#endif
+	} data;
 	char			*fallback;
 
 	u_int			 px;
@@ -1027,7 +1044,7 @@ struct screen {
 	bitstr_t			*tabs;
 	struct screen_sel		*sel;
 
-#ifdef ENABLE_SIXEL_IMAGES
+#ifdef ENABLE_IMAGES
 	struct images			 images;
 	struct images			 saved_images;
 #endif
@@ -2664,7 +2681,7 @@ struct visible_ranges *tty_check_overlay_range(struct tty *, u_int, u_int,
 void	tty_draw_line(struct tty *, struct screen *, u_int, u_int, u_int,
 	    u_int, u_int, const struct grid_cell *, struct colour_palette *);
 
-#ifdef ENABLE_SIXEL_IMAGES
+#ifdef ENABLE_IMAGES
 void	tty_draw_images(struct client *, struct window_pane *, struct screen *);
 #endif
 
@@ -2698,11 +2715,16 @@ void	tty_cmd_reverseindex(struct tty *, const struct tty_ctx *);
 void	tty_cmd_setselection(struct tty *, const struct tty_ctx *);
 void	tty_cmd_rawstring(struct tty *, const struct tty_ctx *);
 
+#ifdef ENABLE_IMAGES
+int	tty_set_client_cb(struct tty_ctx *, struct client *);
+#endif
+
 #ifdef ENABLE_SIXEL_IMAGES
 void	tty_cmd_sixelimage(struct tty *, const struct tty_ctx *);
 #endif
 
 #ifdef ENABLE_KITTY_IMAGES
+void	tty_cmd_kittyimage(struct tty *, const struct tty_ctx *);
 void	tty_kitty_delete_all(struct tty *);
 void	tty_kitty_delete_all_pane(struct window_pane *);
 void	tty_kitty_passthrough(struct window_pane *, const char *, size_t,
@@ -3315,6 +3337,10 @@ void	 screen_write_rawstring(struct screen_write_ctx *, u_char *, u_int,
 void	 screen_write_sixelimage(struct screen_write_ctx *,
 	     struct sixel_image *, u_int);
 #endif
+#ifdef ENABLE_KITTY_IMAGES
+void	 screen_write_kittyimage(struct screen_write_ctx *,
+	     struct kitty_image *);
+#endif
 
 void	 screen_write_alternateon(struct screen_write_ctx *,
 	     struct grid_cell *, int);
@@ -3779,14 +3805,16 @@ struct window_pane *spawn_pane(struct spawn_context *, char **);
 /* regsub.c */
 char		*regsub(const char *, const char *, const char *, int);
 
-#ifdef ENABLE_SIXEL_IMAGES
+#ifdef ENABLE_IMAGES
 /* image.c */
 int		 image_free_all(struct screen *);
-struct image	*image_store(struct screen *, struct sixel_image *);
+struct image	*image_store(struct screen *, enum image_type, void *);
 int		 image_check_line(struct screen *, u_int, u_int);
 int		 image_check_area(struct screen *, u_int, u_int, u_int, u_int);
 int		 image_scroll_up(struct screen *, u_int);
+#endif
 
+#ifdef ENABLE_SIXEL_IMAGES
 /* image-sixel.c */
 #define SIXEL_COLOUR_REGISTERS 1024
 struct sixel_image *sixel_parse(const char *, size_t, u_int, u_int, u_int);
@@ -3804,6 +3832,7 @@ struct screen	*sixel_to_screen(struct sixel_image *);
 /* image-kitty.c */
 struct kitty_image *kitty_parse(const u_char *, size_t, u_int, u_int);
 void		 kitty_free(struct kitty_image *);
+char		*kitty_print(struct kitty_image *, size_t *);
 char		*kitty_delete_all(size_t *);
 #endif
 
