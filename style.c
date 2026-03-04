@@ -39,7 +39,7 @@ static struct style style_default = {
 
 	STYLE_RANGE_NONE, 0, "",
 
-	STYLE_WIDTH_DEFAULT, STYLE_PAD_DEFAULT,
+	STYLE_WIDTH_DEFAULT, 0, STYLE_PAD_DEFAULT,
 
 	STYLE_DEFAULT_BASE
 };
@@ -226,10 +226,20 @@ style_parse(struct style *sy, const struct grid_cell *base, const char *in)
 				sy->gc.attr &= ~value;
 			}
 		} else if (end > 6 && strncasecmp(tmp, "width=", 6) == 0) {
-			n = strtonum(tmp + 6, 0, UINT_MAX, &errstr);
-			if (errstr != NULL)
-				goto error;
-			sy->width = (int)n;
+			if (end > 7 && tmp[end - 1] == '%') {
+				tmp[end - 1] = '\0';
+				n = strtonum(tmp + 6, 0, 100, &errstr);
+				if (errstr != NULL)
+					goto error;
+				sy->width = (int)n;
+				sy->width_percentage = 1;
+			} else {
+				n = strtonum(tmp + 6, 0, UINT_MAX, &errstr);
+				if (errstr != NULL)
+					goto error;
+				sy->width = (int)n;
+				sy->width_percentage = 0;
+			}
 		} else if (end > 4 && strncasecmp(tmp, "pad=", 4) == 0) {
 			n = strtonum(tmp + 4, 0, UINT_MAX, &errstr);
 			if (errstr != NULL)
@@ -343,13 +353,17 @@ style_tostring(struct style *sy)
 		comma = ",";
 	}
 	if (gc->attr != 0) {
-		xsnprintf(s + off, sizeof s - off, "%s%s", comma,
+		off += xsnprintf(s + off, sizeof s - off, "%s%s", comma,
 		    attributes_tostring(gc->attr));
 		comma = ",";
 	}
 	if (sy->width >= 0) {
-		xsnprintf(s + off, sizeof s - off, "%swidth=%u", comma,
-		    sy->width);
+		if (sy->width_percentage)
+			off += xsnprintf(s + off, sizeof s - off,
+			    "%swidth=%u%%", comma, sy->width);
+		else
+			off += xsnprintf(s + off, sizeof s - off,
+			    "%swidth=%u", comma, sy->width);
 		comma = ",";
 	}
 	if (sy->pad >= 0) {
