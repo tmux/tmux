@@ -50,7 +50,7 @@ cmd_paste_buffer_paste(struct window_pane *wp, const char *buf, size_t len)
 	char	*cp;
 	size_t	 n;
 
-	n = utf8_stravisx(&cp, buf, len, VIS_SAFE);
+	n = utf8_stravisx(&cp, buf, len, VIS_SAFE|VIS_NOSLASH);
 	bufferevent_write(wp->event, cp, n);
 	free(cp);
 }
