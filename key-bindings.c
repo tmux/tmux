@@ -215,6 +215,7 @@ key_bindings_add(const char *name, key_code key, const char *note, int repeat,
 
 	bd = xcalloc(1, sizeof *bd);
 	bd->key = (key & ~KEYC_MASK_FLAGS);
+	bd->tablename = table->name;
 	if (note != NULL)
 		bd->note = xstrdup(note);
 	RB_INSERT(key_bindings, &table->key_bindings, bd);
@@ -695,6 +696,7 @@ key_bindings_dispatch(struct key_binding *bd, struct cmdq_item *item,
 		readonly = 1;
 	else
 		readonly = cmd_list_all_have(bd->cmdlist, CMD_READONLY);
+
 	if (!readonly)
 		new_item = cmdq_get_callback(key_bindings_read_only, NULL);
 	else {
@@ -709,4 +711,16 @@ key_bindings_dispatch(struct key_binding *bd, struct cmdq_item *item,
 	else
 		new_item = cmdq_append(c, new_item);
 	return (new_item);
+}
+
+int
+key_bindings_has_repeat(struct key_binding **l, u_int n)
+{
+	u_int	i;
+
+	for (i = 0; i < n; i++) {
+		if (l[i]->flags & KEY_BINDING_REPEAT)
+			return (1);
+	}
+	return (0);
 }

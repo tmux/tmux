@@ -33,8 +33,8 @@ const struct cmd_entry cmd_paste_buffer_entry = {
 	.name = "paste-buffer",
 	.alias = "pasteb",
 
-	.args = { "db:prs:t:", 0, 0, NULL },
-	.usage = "[-dpr] [-s separator] " CMD_BUFFER_USAGE " "
+	.args = { "db:prSs:t:", 0, 0, NULL },
+	.usage = "[-dprS] [-s separator] " CMD_BUFFER_USAGE " "
 		 CMD_TARGET_PANE_USAGE,
 
 	.target = { 't', CMD_FIND_PANE, 0 },
@@ -42,6 +42,17 @@ const struct cmd_entry cmd_paste_buffer_entry = {
 	.flags = CMD_AFTERHOOK,
 	.exec = cmd_paste_buffer_exec
 };
+
+static void
+cmd_paste_buffer_paste(struct window_pane *wp, const char *buf, size_t len)
+{
+	char	*cp;
+	size_t	 n;
+
+	n = utf8_stravisx(&cp, buf, len, VIS_SAFE|VIS_NOSLASH);
+	bufferevent_write(wp->event, cp, n);
+	free(cp);
+}
 
 static enum cmd_retval
 cmd_paste_buffer_exec(struct cmd *self, struct cmdq_item *item)
@@ -51,7 +62,7 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmdq_item *item)
 	struct window_pane	*wp = target->wp;
 	struct paste_buffer	*pb;
 	const char		*sepstr, *bufname, *bufdata, *bufend, *line;
-	size_t			 seplen, bufsize;
+	size_t			 seplen, bufsize, len;
 	int			 bracket = args_has(args, 'p');
 
 	if (window_pane_exited(wp)) {
@@ -93,14 +104,22 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmdq_item *item)
 			line = memchr(bufdata, '\n', bufend - bufdata);
 			if (line == NULL)
 				break;
-
-			bufferevent_write(wp->event, bufdata, line - bufdata);
+			len = line - bufdata;
+			if (args_has(args, 'S'))
+				bufferevent_write(wp->event, bufdata, len);
+			else
+				cmd_paste_buffer_paste(wp, bufdata, len);
 			bufferevent_write(wp->event, sepstr, seplen);
 
 			bufdata = line + 1;
 		}
-		if (bufdata != bufend)
-			bufferevent_write(wp->event, bufdata, bufend - bufdata);
+		if (bufdata != bufend) {
+			len = bufend - bufdata;
+			if (args_has(args, 'S'))
+				bufferevent_write(wp->event, bufdata, len);
+			else
+				cmd_paste_buffer_paste(wp, bufdata, len);
+		}
 
 		if (bracket && (wp->screen->mode & MODE_BRACKETPASTE))
 			bufferevent_write(wp->event, "\033[201~", 6);

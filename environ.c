@@ -57,6 +57,9 @@ environ_free(struct environ *env)
 {
 	struct environ_entry	*envent, *envent1;
 
+	if (env == NULL)
+		return;
+
 	RB_FOREACH_SAFE(envent, environ, env, envent1) {
 		RB_REMOVE(environ, env, envent);
 		free(envent->name);

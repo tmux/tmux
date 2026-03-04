@@ -90,6 +90,7 @@ cmd_server_access_exec(struct cmd *self, struct cmdq_item *item)
 		pw = getpwnam(name);
 	if (pw == NULL) {
 		cmdq_error(item, "unknown user: %s", name);
+		free(name);
 		return (CMD_RETURN_ERROR);
 	}
 	free(name);

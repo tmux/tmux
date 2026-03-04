@@ -98,6 +98,13 @@ cmd_choose_tree_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_find_state		*target = cmdq_get_target(item);
 	struct window_pane		*wp = target->wp;
 	const struct window_mode	*mode;
+	enum sort_order			 order;
+
+	order = sort_order_from_string(args_get(args, 'O'));
+	if (order == SORT_END && args_has(args, 'O')) {
+		cmdq_error(item, "invalid sort order");
+		return (CMD_RETURN_ERROR);
+	}
 
 	if (cmd_get_entry(self) == &cmd_choose_buffer_entry) {
 		if (paste_is_empty())

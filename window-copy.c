@@ -2128,6 +2128,36 @@ window_copy_cmd_rectangle_toggle(struct window_copy_cmd_state *cs)
 }
 
 static enum window_copy_cmd_action
+window_copy_cmd_scroll_exit_on(struct window_copy_cmd_state *cs)
+{
+	struct window_copy_mode_data	*data = cs->wme->data;
+
+	data->scroll_exit = 1;
+
+	return (WINDOW_COPY_CMD_NOTHING);
+}
+
+static enum window_copy_cmd_action
+window_copy_cmd_scroll_exit_off(struct window_copy_cmd_state *cs)
+{
+	struct window_copy_mode_data	*data = cs->wme->data;
+
+	data->scroll_exit = 0;
+
+	return (WINDOW_COPY_CMD_NOTHING);
+}
+
+static enum window_copy_cmd_action
+window_copy_cmd_scroll_exit_toggle(struct window_copy_cmd_state *cs)
+{
+	struct window_copy_mode_data	*data = cs->wme->data;
+
+	data->scroll_exit = !data->scroll_exit;
+
+	return (WINDOW_COPY_CMD_NOTHING);
+}
+
+static enum window_copy_cmd_action
 window_copy_cmd_scroll_down(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
@@ -2702,16 +2732,20 @@ window_copy_cmd_refresh_from_pane(struct window_copy_cmd_state *cs)
 	struct window_mode_entry	*wme = cs->wme;
 	struct window_pane		*wp = wme->swp;
 	struct window_copy_mode_data	*data = wme->data;
+	u_int				 oy_from_top;
 
 	if (data->viewmode)
 		return (WINDOW_COPY_CMD_NOTHING);
+	oy_from_top = screen_hsize(data->backing) - data->oy;
 
 	screen_free(data->backing);
 	free(data->backing);
 	data->backing = window_copy_clone_screen(&wp->base, &data->screen, NULL,
 	    NULL, wme->swp != wme->wp);
 
-	if (data->oy > screen_hsize(data->backing)) {
+	if (oy_from_top <= screen_hsize(data->backing))
+		data->oy = screen_hsize(data->backing) - oy_from_top;
+	else {
 		data->cy = 0;
 		data->oy = screen_hsize(data->backing);
 	}
@@ -2725,451 +2759,559 @@ static const struct {
 	u_int				  minargs;
 	u_int				  maxargs;
 	struct args_parse		  args;
+
+#define WINDOW_COPY_CMD_FLAG_READONLY 0x1
+	int				  flags;
+
 	enum window_copy_cmd_clear	  clear;
 	enum window_copy_cmd_action	(*f)(struct window_copy_cmd_state *);
 } window_copy_cmd_table[] = {
 	{ .command = "append-selection",
 	  .args = { "", 0, 0, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_append_selection
 	},
 	{ .command = "append-selection-and-cancel",
 	  .args = { "", 0, 0, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_append_selection_and_cancel
 	},
 	{ .command = "back-to-indentation",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_back_to_indentation
 	},
 	{ .command = "begin-selection",
 	  .args = { "", 0, 0, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_begin_selection
 	},
 	{ .command = "bottom-line",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_bottom_line
 	},
 	{ .command = "cancel",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_cancel
 	},
 	{ .command = "clear-selection",
 	  .args = { "", 0, 0, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_clear_selection
 	},
 	{ .command = "copy-end-of-line",
 	  .args = { "CP", 0, 1, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_copy_end_of_line
 	},
 	{ .command = "copy-end-of-line-and-cancel",
 	  .args = { "CP", 0, 1, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_copy_end_of_line_and_cancel
 	},
 	{ .command = "copy-pipe-end-of-line",
 	  .args = { "CP", 0, 2, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_copy_pipe_end_of_line
 	},
 	{ .command = "copy-pipe-end-of-line-and-cancel",
 	  .args = { "CP", 0, 2, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_copy_pipe_end_of_line_and_cancel
 	},
 	{ .command = "copy-line",
 	  .args = { "CP", 0, 1, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_copy_line
 	},
 	{ .command = "copy-line-and-cancel",
 	  .args = { "CP", 0, 1, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_copy_line_and_cancel
 	},
 	{ .command = "copy-pipe-line",
 	  .args = { "CP", 0, 2, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_copy_pipe_line
 	},
 	{ .command = "copy-pipe-line-and-cancel",
 	  .args = { "CP", 0, 2, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_copy_pipe_line_and_cancel
 	},
 	{ .command = "copy-pipe-no-clear",
 	  .args = { "CP", 0, 2, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_NEVER,
 	  .f = window_copy_cmd_copy_pipe_no_clear
 	},
 	{ .command = "copy-pipe",
 	  .args = { "CP", 0, 2, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_copy_pipe
 	},
 	{ .command = "copy-pipe-and-cancel",
 	  .args = { "CP", 0, 2, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_copy_pipe_and_cancel
 	},
 	{ .command = "copy-selection-no-clear",
 	  .args = { "CP", 0, 1, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_NEVER,
 	  .f = window_copy_cmd_copy_selection_no_clear
 	},
 	{ .command = "copy-selection",
 	  .args = { "CP", 0, 1, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_copy_selection
 	},
 	{ .command = "copy-selection-and-cancel",
 	  .args = { "CP", 0, 1, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_copy_selection_and_cancel
 	},
 	{ .command = "cursor-down",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_cursor_down
 	},
 	{ .command = "cursor-down-and-cancel",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_cursor_down_and_cancel
 	},
 	{ .command = "cursor-left",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_cursor_left
 	},
 	{ .command = "cursor-right",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_cursor_right
 	},
 	{ .command = "cursor-up",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_cursor_up
 	},
 	{ .command = "cursor-centre-vertical",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_centre_vertical,
 	},
 	{ .command = "cursor-centre-horizontal",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_centre_horizontal,
 	},
 	{ .command = "end-of-line",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_end_of_line
 	},
 	{ .command = "goto-line",
 	  .args = { "", 1, 1, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_goto_line
 	},
 	{ .command = "halfpage-down",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_halfpage_down
 	},
 	{ .command = "halfpage-down-and-cancel",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_halfpage_down_and_cancel
 	},
 	{ .command = "halfpage-up",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_halfpage_up
 	},
 	{ .command = "history-bottom",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_history_bottom
 	},
 	{ .command = "history-top",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_history_top
 	},
 	{ .command = "jump-again",
 	  .args = { "", 0, 0, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_jump_again
 	},
 	{ .command = "jump-backward",
 	  .args = { "", 1, 1, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_jump_backward
 	},
 	{ .command = "jump-forward",
 	  .args = { "", 1, 1, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_jump_forward
 	},
 	{ .command = "jump-reverse",
 	  .args = { "", 0, 0, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_jump_reverse
 	},
 	{ .command = "jump-to-backward",
 	  .args = { "", 1, 1, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_jump_to_backward
 	},
 	{ .command = "jump-to-forward",
 	  .args = { "", 1, 1, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_jump_to_forward
 	},
 	{ .command = "jump-to-mark",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_jump_to_mark
 	},
 	{ .command = "next-prompt",
 	  .args = { "o", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_next_prompt
 	},
 	{ .command = "previous-prompt",
 	  .args = { "o", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_previous_prompt
 	},
 	{ .command = "middle-line",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_middle_line
 	},
 	{ .command = "next-matching-bracket",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_next_matching_bracket
 	},
 	{ .command = "next-paragraph",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_next_paragraph
 	},
 	{ .command = "next-space",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_next_space
 	},
 	{ .command = "next-space-end",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_next_space_end
 	},
 	{ .command = "next-word",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_next_word
 	},
 	{ .command = "next-word-end",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_next_word_end
 	},
 	{ .command = "other-end",
 	  .args = { "", 0, 0, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_other_end
 	},
 	{ .command = "page-down",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_page_down
 	},
 	{ .command = "page-down-and-cancel",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_page_down_and_cancel
 	},
 	{ .command = "page-up",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_page_up
 	},
 	{ .command = "pipe-no-clear",
 	  .args = { "", 0, 1, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_NEVER,
 	  .f = window_copy_cmd_pipe_no_clear
 	},
 	{ .command = "pipe",
 	  .args = { "", 0, 1, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_pipe
 	},
 	{ .command = "pipe-and-cancel",
 	  .args = { "", 0, 1, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_pipe_and_cancel
 	},
 	{ .command = "previous-matching-bracket",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_previous_matching_bracket
 	},
 	{ .command = "previous-paragraph",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_previous_paragraph
 	},
 	{ .command = "previous-space",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_previous_space
 	},
 	{ .command = "previous-word",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_previous_word
 	},
 	{ .command = "rectangle-on",
 	  .args = { "", 0, 0, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_rectangle_on
 	},
 	{ .command = "rectangle-off",
 	  .args = { "", 0, 0, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_rectangle_off
 	},
 	{ .command = "rectangle-toggle",
 	  .args = { "", 0, 0, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_rectangle_toggle
 	},
 	{ .command = "refresh-from-pane",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_refresh_from_pane
 	},
 	{ .command = "scroll-bottom",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_scroll_bottom
 	},
 	{ .command = "scroll-down",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_scroll_down
 	},
 	{ .command = "scroll-down-and-cancel",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_scroll_down_and_cancel
 	},
+	{ .command = "scroll-exit-on",
+	  .args = { "", 0, 0, NULL },
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_scroll_exit_on
+	},
+	{ .command = "scroll-exit-off",
+	  .args = { "", 0, 0, NULL },
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_scroll_exit_off
+	},
+	{ .command = "scroll-exit-toggle",
+	  .args = { "", 0, 0, NULL },
+	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
+	  .f = window_copy_cmd_scroll_exit_toggle
+	},
 	{ .command = "scroll-middle",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_scroll_middle
 	},
 	{ .command = "scroll-to-mouse",
 	  .args = { "e", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_scroll_to_mouse
 	},
 	{ .command = "scroll-top",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_scroll_top
 	},
 	{ .command = "scroll-up",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_scroll_up
 	},
 	{ .command = "search-again",
 	  .args = { "", 0, 0, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_search_again
 	},
 	{ .command = "search-backward",
 	  .args = { "", 0, 1, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_search_backward
 	},
 	{ .command = "search-backward-text",
 	  .args = { "", 0, 1, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_search_backward_text
 	},
 	{ .command = "search-backward-incremental",
 	  .args = { "", 1, 1, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_search_backward_incremental
 	},
 	{ .command = "search-forward",
 	  .args = { "", 0, 1, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_search_forward
 	},
 	{ .command = "search-forward-text",
 	  .args = { "", 0, 1, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_search_forward_text
 	},
 	{ .command = "search-forward-incremental",
 	  .args = { "", 1, 1, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_search_forward_incremental
 	},
 	{ .command = "search-reverse",
 	  .args = { "", 0, 0, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_search_reverse
 	},
 	{ .command = "select-line",
 	  .args = { "", 0, 0, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_select_line
 	},
 	{ .command = "select-word",
 	  .args = { "", 0, 0, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_select_word
 	},
 	{ .command = "selection-mode",
 	  .args = { "", 0, 1, NULL },
+	  .flags = 0,
 	  .clear = 0,
 	  .f = window_copy_cmd_selection_mode
 	},
 	{ .command = "set-mark",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_set_mark
 	},
 	{ .command = "start-of-line",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_start_of_line
 	},
 	{ .command = "stop-selection",
 	  .args = { "", 0, 0, NULL },
+	  .flags = 0,
 	  .clear = WINDOW_COPY_CMD_CLEAR_ALWAYS,
 	  .f = window_copy_cmd_stop_selection
 	},
 	{ .command = "toggle-position",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_NEVER,
 	  .f = window_copy_cmd_toggle_position
 	},
 	{ .command = "top-line",
 	  .args = { "", 0, 0, NULL },
+	  .flags = WINDOW_COPY_CMD_FLAG_READONLY,
 	  .clear = WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
 	  .f = window_copy_cmd_top_line
 	}
@@ -3209,6 +3351,14 @@ window_copy_command(struct window_mode_entry *wme, struct client *c,
 	action = WINDOW_COPY_CMD_NOTHING;
 	for (i = 0; i < nitems(window_copy_cmd_table); i++) {
 		if (strcmp(window_copy_cmd_table[i].command, command) == 0) {
+			if (c->flags & CLIENT_READONLY &&
+			    (~window_copy_cmd_table[i].flags &
+			    WINDOW_COPY_CMD_FLAG_READONLY)) {
+				status_message_set(c, -1, 1, 0, 0,
+				    "client is read-only");
+				return;
+			}
+
 			cs.wargs = args_parse(&window_copy_cmd_table[i].args,
 			    args_values(args), count, &error);
 

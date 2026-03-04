@@ -1890,7 +1890,7 @@ status_prompt_complete_window_menu(struct client *c, struct session *s,
 	struct winlink			 *wl;
 	char				**list = NULL, *tmp;
 	u_int				  lines = status_line_size(c), height;
-	u_int				  py, size = 0;
+	u_int				  py, size = 0, i;
 
 	if (c->tty.sy - lines < 3)
 		return (NULL);
@@ -1969,6 +1969,9 @@ status_prompt_complete_window_menu(struct client *c, struct session *s,
 	    BOX_LINES_DEFAULT, NULL, NULL, NULL, NULL,
 	    status_prompt_menu_callback, spm) != 0) {
 		menu_free(menu);
+		for (i = 0; i < size; i++)
+			free(list[i]);
+		free(list);
 		free(spm);
 		return (NULL);
 	}

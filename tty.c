@@ -2135,7 +2135,7 @@ tty_cmd_setselection(struct tty *tty, const struct tty_ctx *ctx)
 }
 
 void
-tty_set_selection(struct tty *tty, const char *flags, const char *buf,
+tty_set_selection(struct tty *tty, const char *clip, const char *buf,
     size_t len)
 {
 	char	*encoded;
@@ -2151,7 +2151,7 @@ tty_set_selection(struct tty *tty, const char *flags, const char *buf,
 
 	b64_ntop(buf, len, encoded, size);
 	tty->flags |= TTY_NOBLOCK;
-	tty_putcode_ss(tty, TTYC_MS, flags, encoded);
+	tty_putcode_ss(tty, TTYC_MS, clip, encoded);
 
 	free(encoded);
 }

@@ -388,7 +388,7 @@ int		 clock_gettime(int, struct timespec *);
 /* base64.c */
 #undef b64_ntop
 #undef b64_pton
-int		 b64_ntop(const char *, size_t, char *, size_t);
+int		 b64_ntop(const u_char *, size_t, char *, size_t);
 int		 b64_pton(const char *, u_char *, size_t);
 #endif
 

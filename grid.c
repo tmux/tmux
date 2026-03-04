@@ -209,13 +209,15 @@ grid_clear_cell(struct grid *gd, u_int px, u_int py, u_int bg)
 	int			 had_extd = (gce->flags & GRID_FLAG_EXTENDED);
 
 	memcpy(gce, &grid_cleared_entry, sizeof *gce);
-	if (bg != 8) {
+	if (had_extd && old_offset < gl->extdsize) {
+		gce->flags |= GRID_FLAG_EXTENDED;
+		gce->offset = old_offset;
+		gee = grid_extended_cell(gl, gce, &grid_cleared_cell);
+		if (bg != 8)
+			gee->bg = bg;
+	} else if (bg != 8) {
 		if (bg & COLOUR_FLAG_RGB) {
-			if (had_extd && old_offset < gl->extdsize) {
-				gce->flags |= GRID_FLAG_EXTENDED;
-				gce->offset = old_offset;
-			} else
-				grid_get_extended_cell(gl, gce, gce->flags);
+			grid_get_extended_cell(gl, gce, gce->flags);
 			gee = grid_extended_cell(gl, gce, &grid_cleared_cell);
 			gee->bg = bg;
 		} else {
@@ -493,7 +495,7 @@ static void
 grid_expand_line(struct grid *gd, u_int py, u_int sx, u_int bg)
 {
 	struct grid_line	*gl;
-	u_int			 xx;
+	u_int			 xx, old_cellsize;
 
 	gl = &gd->linedata[py];
 	if (sx <= gl->cellsize)
@@ -506,8 +508,10 @@ grid_expand_line(struct grid *gd, u_int py, u_int sx, u_int bg)
 	else if (gd->sx > sx)
 		sx = gd->sx;
 
-	gl->celldata = xreallocarray(gl->celldata, sx, sizeof *gl->celldata);
-	for (xx = gl->cellsize; xx < sx; xx++)
+	old_cellsize = gl->cellsize;
+	gl->celldata = xrecallocarray(gl->celldata, old_cellsize, sx,
+	    sizeof *gl->celldata);
+	for (xx = old_cellsize; xx < sx; xx++)
 		grid_clear_cell(gd, xx, py, bg);
 	gl->cellsize = sx;
 }

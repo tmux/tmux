@@ -60,6 +60,9 @@ cmd_show_prompt_history_exec(struct cmd *self, struct cmdq_item *item)
 	if (cmd_get_entry(self) == &cmd_clear_prompt_history_entry) {
 		if (typestr == NULL) {
 			for (tidx = 0; tidx < PROMPT_NTYPES; tidx++) {
+				for (hidx = 0; hidx < status_prompt_hsize[tidx];
+				     hidx++)
+					free(status_prompt_hlist[tidx][hidx]);
 				free(status_prompt_hlist[tidx]);
 				status_prompt_hlist[tidx] = NULL;
 				status_prompt_hsize[tidx] = 0;
@@ -70,6 +73,8 @@ cmd_show_prompt_history_exec(struct cmd *self, struct cmdq_item *item)
 				cmdq_error(item, "invalid type: %s", typestr);
 				return (CMD_RETURN_ERROR);
 			}
+			for (hidx = 0; hidx < status_prompt_hsize[type]; hidx++)
+				free(status_prompt_hlist[type][hidx]);
 			free(status_prompt_hlist[type]);
 			status_prompt_hlist[type] = NULL;
 			status_prompt_hsize[type] = 0;

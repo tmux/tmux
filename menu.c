@@ -90,6 +90,7 @@ menu_add_item(struct menu *menu, const struct menu_item *item,
 	else
 		s = format_single(qitem, item->name, c, NULL, NULL, NULL);
 	if (*s == '\0') { /* no item if empty after format expanded */
+		free(s);
 		menu->count--;
 		return;
 	}
@@ -160,6 +161,9 @@ void
 menu_free(struct menu *menu)
 {
 	u_int	i;
+
+	if (menu == NULL)
+		return;
 
 	for (i = 0; i < menu->count; i++) {
 		free((void *)menu->items[i].name);

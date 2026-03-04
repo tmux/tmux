@@ -72,6 +72,7 @@ sort_buffer_cmp(const void *a0, const void *b0)
 		break;
 	case SORT_ACTIVITY:
 	case SORT_INDEX:
+	case SORT_MODIFIER:
 	case SORT_ORDER:
 	case SORT_END:
 		break;
@@ -117,6 +118,7 @@ sort_client_cmp(const void *a0, const void *b0)
 			result = 1;
 		break;
 	case SORT_INDEX:
+	case SORT_MODIFIER:
 	case SORT_ORDER:
 	case SORT_END:
 		break;
@@ -167,6 +169,7 @@ sort_session_cmp(const void *a0, const void *b0)
 	case SORT_NAME:
 		result = strcmp(sa->name, sb->name);
 		break;
+	case SORT_MODIFIER:
 	case SORT_ORDER:
 	case SORT_SIZE:
 	case SORT_END:
@@ -208,6 +211,7 @@ sort_pane_cmp(const void *a0, const void *b0)
 	case SORT_NAME:
 		result = strcmp(a->screen->title, b->screen->title);
 		break;
+	case SORT_MODIFIER:
 	case SORT_ORDER:
 	case SORT_END:
 		break;
@@ -263,6 +267,7 @@ sort_winlink_cmp(const void *a0, const void *b0)
 	case SORT_SIZE:
 		result = wa->sx * wa->sy - wb->sx * wb->sy;
 		break;
+	case SORT_MODIFIER:
 	case SORT_ORDER:
 	case SORT_END:
 		break;
@@ -270,6 +275,41 @@ sort_winlink_cmp(const void *a0, const void *b0)
 
 	if (result == 0)
 		result = strcmp(wa->name, wb->name);
+
+	if (sort_crit->reversed)
+		result = -result;
+	return (result);
+}
+
+static int
+sort_key_binding_cmp(const void *a0, const void *b0)
+{
+	struct sort_criteria		*sort_crit = sort_criteria;
+	const struct key_binding	*a = *(struct key_binding **)a0;
+	const struct key_binding	*b = *(struct key_binding **)b0;
+	int				 result = 0;
+
+	switch (sort_crit->order) {
+	case SORT_INDEX:
+		result = a->key - b->key;
+		break;
+	case SORT_MODIFIER:
+		result = (a->key & KEYC_MASK_MODIFIERS) -
+		    (b->key & KEYC_MASK_MODIFIERS);
+		break;
+	case SORT_NAME:
+		result = strcasecmp(a->tablename, b->tablename) == 0;
+		break;
+	case SORT_ACTIVITY:
+	case SORT_CREATION:
+	case SORT_ORDER:
+	case SORT_SIZE:
+	case SORT_END:
+		break;
+	}
+
+	if (result == 0)
+		result = strcasecmp(a->tablename, b->tablename) == 0;
 
 	if (sort_crit->reversed)
 		result = -result;
@@ -306,8 +346,11 @@ sort_order_from_string(const char* order)
 			return (SORT_ACTIVITY);
 		if (strcasecmp(order, "creation") == 0)
 			return (SORT_CREATION);
-		if (strcasecmp(order, "index") == 0)
+		if (strcasecmp(order, "index") == 0 ||
+		    strcasecmp(order, "key") == 0)
 			return (SORT_INDEX);
+		if (strcasecmp(order, "modifier") == 0)
+			return (SORT_MODIFIER);
 		if (strcasecmp(order, "name") == 0 ||
 		    strcasecmp(order, "title") == 0)
 			return (SORT_NAME);
@@ -328,6 +371,8 @@ sort_order_to_string(enum sort_order order)
 		return "creation";
 	if (order == SORT_INDEX)
 		return "index";
+	if (order == SORT_MODIFIER)
+		return "modifier";
 	if (order == SORT_NAME)
 		return "name";
 	if (order == SORT_ORDER)
@@ -544,6 +589,60 @@ sort_get_winlinks_session(struct session *s, u_int *n,
 	}
 
 	sort_qsort(l, i, sizeof *l, sort_winlink_cmp, sort_crit);
+	*n = i;
+
+	return (l);
+}
+
+struct key_binding **
+sort_get_key_bindings(u_int *n, struct sort_criteria *sort_crit)
+{
+	struct key_table		 *table;
+	struct key_binding		 *bd;
+	u_int				  i = 0;
+	static struct key_binding	**l = NULL;
+	static u_int			  lsz = 0;
+
+	table = key_bindings_first_table();
+	while (table != NULL) {
+		bd = key_bindings_first(table);
+		while (bd != NULL) {
+			if (lsz <= i) {
+				lsz += 100;
+				l = xreallocarray(l, lsz, sizeof *l);
+			}
+			l[i++] = bd;
+			bd = key_bindings_next(table, bd);
+		}
+		table = key_bindings_next_table(table);
+	}
+
+	sort_qsort(l, i, sizeof *l, sort_key_binding_cmp, sort_crit);
+	*n = i;
+
+	return (l);
+}
+
+struct key_binding **
+sort_get_key_bindings_table(struct key_table *table, u_int *n,
+    struct sort_criteria *sort_crit)
+{
+	struct key_binding		 *bd;
+	u_int				  i = 0;
+	static struct key_binding	**l = NULL;
+	static u_int			  lsz = 0;
+
+	bd = key_bindings_first(table);
+	while (bd != NULL) {
+		if (lsz <= i) {
+			lsz += 100;
+			l = xreallocarray(l, lsz, sizeof *l);
+		}
+		l[i++] = bd;
+		bd = key_bindings_next(table, bd);
+	}
+
+	sort_qsort(l, i, sizeof *l, sort_key_binding_cmp, sort_crit);
 	*n = i;
 
 	return (l);

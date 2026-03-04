@@ -117,8 +117,9 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 			as = target->s;
 		if (as != NULL) {
 			retval = cmd_attach_session(item, as->name,
-			    args_has(args, 'D'), args_has(args, 'X'), 0, NULL,
-			    args_has(args, 'E'), args_get(args, 'f'));
+			    args_has(args, 'D'), args_has(args, 'X'), 0,
+			    args_get(args, 'c'), args_has(args, 'E'),
+			    args_get(args, 'f'));
 			free(newname);
 			return (retval);
 		}

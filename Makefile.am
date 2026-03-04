@@ -106,6 +106,7 @@ dist_tmux_SOURCES = \
 	cmd-kill-window.c \
 	cmd-list-buffers.c \
 	cmd-list-clients.c \
+	cmd-list-commands.c \
 	cmd-list-keys.c \
 	cmd-list-panes.c \
 	cmd-list-sessions.c \

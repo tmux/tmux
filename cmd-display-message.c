@@ -131,6 +131,7 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (args_has(args, 'a')) {
 		format_each(ft, cmd_display_message_each, item);
+		format_free(ft);
 		return (CMD_RETURN_NORMAL);
 	}
 
@@ -155,6 +156,5 @@ cmd_display_message_exec(struct cmd *self, struct cmdq_item *item)
 	free(msg);
 
 	format_free(ft);
-
 	return (CMD_RETURN_NORMAL);
 }
