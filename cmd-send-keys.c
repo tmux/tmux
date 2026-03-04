@@ -168,7 +168,7 @@ cmd_send_keys_exec(struct cmd *self, struct cmdq_item *item)
 	u_int				 count = args_count(args);
 	char				*cause = NULL;
 
-	if (tc->flags & CLIENT_READONLY && !args_has(args, 'X')) {
+	if (tc != NULL && tc->flags & CLIENT_READONLY && !args_has(args, 'X')) {
 		cmdq_error(item, "client is read-only");
 		return (CMD_RETURN_ERROR);
 	}
