@@ -3712,7 +3712,7 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 		c->term_name = xstrdup("unknown");
 	}
 
-	if (c->ttyname == NULL || *c->ttyname != '\0')
+	if (c->ttyname != NULL && *c->ttyname != '\0')
 		name = xstrdup(c->ttyname);
 	else
 		xasprintf(&name, "client-%ld", (long)c->pid);
