@@ -2225,6 +2225,17 @@ format_cb_pane_pipe(struct format_tree *ft)
 	return (NULL);
 }
 
+/* Callback for pane_pipe_pid. */
+static void *
+format_cb_pane_pipe_pid(struct format_tree *ft)
+{
+	char	*value = NULL;
+
+	if (ft->wp != NULL && ft->wp->pipe_fd != -1)
+		xasprintf(&value, "%ld", (long)ft->wp->pipe_pid);
+	return (value);
+}
+
 /* Callback for pane_right. */
 static void *
 format_cb_pane_right(struct format_tree *ft)
@@ -3310,6 +3321,9 @@ static const struct format_table_entry format_table[] = {
 	},
 	{ "pane_pipe", FORMAT_TABLE_STRING,
 	  format_cb_pane_pipe
+	},
+	{ "pane_pipe_pid", FORMAT_TABLE_STRING,
+	  format_cb_pane_pipe_pid
 	},
 	{ "pane_right", FORMAT_TABLE_STRING,
 	  format_cb_pane_right
