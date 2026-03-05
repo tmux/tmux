@@ -133,21 +133,26 @@ struct winlink;
 #define KEYC_META            0x00100000000000ULL
 #define KEYC_CTRL            0x00200000000000ULL
 #define KEYC_SHIFT           0x00400000000000ULL
+#define KEYC_SUPER           0x00800000000000ULL
+#define KEYC_HYPER           0x01000000000000ULL
+#define KEYC_META_REAL       0x02000000000000ULL
+#define KEYC_CAPS_LOCK       0x04000000000000ULL
+#define KEYC_NUM_LOCK        0x08000000000000ULL
 
 /* Key flag bits. */
-#define KEYC_LITERAL	     0x01000000000000ULL
-#define KEYC_KEYPAD	     0x02000000000000ULL
-#define KEYC_CURSOR	     0x04000000000000ULL
-#define KEYC_IMPLIED_META    0x08000000000000ULL
-#define KEYC_BUILD_MODIFIERS 0x10000000000000ULL
-#define KEYC_VI		     0x20000000000000ULL
-#define KEYC_SENT	     0x40000000000000ULL
+#define KEYC_LITERAL	     0x10000000000000ULL
+#define KEYC_KEYPAD	     0x20000000000000ULL
+#define KEYC_CURSOR	     0x40000000000000ULL
+#define KEYC_IMPLIED_META    0x80000000000000ULL
+#define KEYC_BUILD_MODIFIERS 0x100000000000000ULL
+#define KEYC_VI		     0x200000000000000ULL
+#define KEYC_SENT	     0x400000000000000ULL
 
 /* Masks for key bits. */
 #define KEYC_MASK_TYPE       0x0000ff00000000ULL
-#define KEYC_MASK_MODIFIERS  0x00ff0000000000ULL
-#define KEYC_MASK_FLAGS      0xff000000000000ULL
-#define KEYC_MASK_KEY        0x0000ffffffffffULL
+#define KEYC_MASK_MODIFIERS  0x0ff00000000000ULL
+#define KEYC_MASK_FLAGS      0x7f0000000000000ULL
+#define KEYC_MASK_KEY        0x000fffffffffffULL
 
 #define KEYC_NUSER           1000
 #define KEYC_SHIFT_TYPE(t)   ((unsigned long long)(t) << 32)
@@ -395,6 +400,86 @@ enum {
 	KEYC_REPORT_DARK_THEME,
 	KEYC_REPORT_LIGHT_THEME,
 
+	/* Extended function keys (kitty keyboard protocol). */
+	KEYC_F13,
+	KEYC_F14,
+	KEYC_F15,
+	KEYC_F16,
+	KEYC_F17,
+	KEYC_F18,
+	KEYC_F19,
+	KEYC_F20,
+	KEYC_F21,
+	KEYC_F22,
+	KEYC_F23,
+	KEYC_F24,
+	KEYC_F25,
+	KEYC_F26,
+	KEYC_F27,
+	KEYC_F28,
+	KEYC_F29,
+	KEYC_F30,
+	KEYC_F31,
+	KEYC_F32,
+	KEYC_F33,
+	KEYC_F34,
+	KEYC_F35,
+
+	/* Special keys (kitty keyboard protocol). */
+	KEYC_PRINT,
+	KEYC_PAUSE,
+	KEYC_MENU,
+	KEYC_CAPS_LOCK_KEY,
+	KEYC_SCROLL_LOCK,
+	KEYC_NUM_LOCK_KEY,
+
+	/* Additional keypad keys (kitty keyboard protocol). */
+	KEYC_KP_BEGIN,
+	KEYC_KP_NUMLOCK,
+	KEYC_KP_EQUAL,
+	KEYC_KP_SEPARATOR,
+	KEYC_KP_LEFT,
+	KEYC_KP_RIGHT,
+	KEYC_KP_UP,
+	KEYC_KP_DOWN,
+	KEYC_KP_PAGE_UP,
+	KEYC_KP_PAGE_DOWN,
+	KEYC_KP_HOME,
+	KEYC_KP_END,
+	KEYC_KP_INSERT,
+	KEYC_KP_DELETE,
+
+	/* Media keys (kitty keyboard protocol). */
+	KEYC_MEDIA_PLAY,
+	KEYC_MEDIA_PAUSE,
+	KEYC_MEDIA_PLAY_PAUSE,
+	KEYC_MEDIA_REVERSE,
+	KEYC_MEDIA_STOP,
+	KEYC_MEDIA_FAST_FORWARD,
+	KEYC_MEDIA_REWIND,
+	KEYC_MEDIA_NEXT,
+	KEYC_MEDIA_PREVIOUS,
+	KEYC_MEDIA_RECORD,
+	KEYC_VOLUME_DOWN,
+	KEYC_VOLUME_UP,
+	KEYC_VOLUME_MUTE,
+
+	/* Individual modifier keys (kitty keyboard protocol). */
+	KEYC_LEFT_SHIFT,
+	KEYC_LEFT_CONTROL,
+	KEYC_LEFT_ALT,
+	KEYC_LEFT_SUPER,
+	KEYC_LEFT_HYPER,
+	KEYC_LEFT_META,
+	KEYC_RIGHT_SHIFT,
+	KEYC_RIGHT_CONTROL,
+	KEYC_RIGHT_ALT,
+	KEYC_RIGHT_SUPER,
+	KEYC_RIGHT_HYPER,
+	KEYC_RIGHT_META,
+	KEYC_ISO_LEVEL3_SHIFT,
+	KEYC_ISO_LEVEL5_SHIFT,
+
 	/* Mouse state. */
 	KEYC_MOUSE, /* unclassified mouse event */
 	KEYC_DRAGGING, /* dragging in progress */
@@ -450,6 +535,7 @@ enum tty_code_code {
 	TTYC_DSBP,
 	TTYC_DSEKS,
 	TTYC_DSFCS,
+	TTYC_DSKITK,
 	TTYC_DSMG,
 	TTYC_E3,
 	TTYC_ECH,
@@ -460,6 +546,7 @@ enum tty_code_code {
 	TTYC_ENBP,
 	TTYC_ENEKS,
 	TTYC_ENFCS,
+	TTYC_ENKITK,
 	TTYC_ENMG,
 	TTYC_FSL,
 	TTYC_HLS,
@@ -684,6 +771,21 @@ enum tty_code_code {
 #define MOTION_MOUSE_MODES (MODE_MOUSE_BUTTON|MODE_MOUSE_ALL)
 #define CURSOR_MODES (MODE_CURSOR|MODE_CURSOR_BLINKING|MODE_CURSOR_VERY_VISIBLE)
 #define EXTENDED_KEY_MODES (MODE_KEYS_EXTENDED|MODE_KEYS_EXTENDED_2)
+
+/* Kitty keyboard protocol progressive enhancement flags. */
+#define KITTY_KBD_DISAMBIGUATE		0x01
+#define KITTY_KBD_REPORT_EVENTS	0x02
+#define KITTY_KBD_REPORT_ALTERNATES	0x04
+#define KITTY_KBD_REPORT_ALL		0x08
+#define KITTY_KBD_REPORT_TEXT		0x10
+#define KITTY_KBD_ALL			0x1f
+
+/* Kitty keyboard mode stack (per screen). */
+#define KITTY_KBD_STACK_MAX 8
+struct kitty_kbd {
+	int		flags[KITTY_KBD_STACK_MAX];
+	u_int		idx;
+};
 
 /* Mouse protocol constants. */
 #define MOUSE_PARAM_MAX 0xff
@@ -1021,6 +1123,9 @@ struct screen {
 
 	int				 mode;
 	int				 default_mode;
+
+	struct kitty_kbd		 kitty_kbd;
+	struct kitty_kbd		 saved_kitty_kbd;
 
 	u_int				 saved_cx;
 	u_int				 saved_cy;
@@ -1685,9 +1790,11 @@ struct tty {
 #define TTY_WINSIZEQUERY 0x1000
 #define TTY_WAITFG 0x2000
 #define TTY_WAITBG 0x4000
+#define TTY_HAVEDA_KITTY 0x8000
 #define TTY_ALL_REQUEST_FLAGS \
-	(TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA)
+	(TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA|TTY_HAVEDA_KITTY)
 	int		 flags;
+	int		 kitty_flags;	/* kitty protocol flags from outer */
 
 	struct tty_term	*term;
 
