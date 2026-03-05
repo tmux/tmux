@@ -391,6 +391,8 @@ tty_send_requests(struct tty *tty)
 		return;
 
 	if (tty->term->flags & TERM_VT100LIKE) {
+		if (~tty->flags & TTY_HAVEDA_KITTY)
+			tty_puts(tty, "\033[?u");
 		if (~tty->flags & TTY_HAVEDA)
 			tty_puts(tty, "\033[c");
 		if (~tty->flags & TTY_HAVEDA2)
@@ -486,6 +488,8 @@ tty_stop_tty(struct tty *tty)
 		tty_raw(tty, "\033[?7727l");
 	tty_raw(tty, tty_term_string(tty->term, TTYC_DSFCS));
 	tty_raw(tty, tty_term_string(tty->term, TTYC_DSEKS));
+	if (tty_term_has(tty->term, TTYC_DSKITK))
+		tty_raw(tty, tty_term_string(tty->term, TTYC_DSKITK));
 
 	if (tty_use_margin(tty))
 		tty_raw(tty, tty_term_string(tty->term, TTYC_DSMG));
@@ -537,6 +541,19 @@ tty_update_features(struct tty *tty)
 		tty_putcode(tty, TTYC_ENMG);
 	if (options_get_number(global_options, "extended-keys"))
 		tty_puts(tty, tty_term_string(tty->term, TTYC_ENEKS));
+	if (options_get_number(global_options, "kitty-keys")) {
+		if (tty_term_has(tty->term, TTYC_ENKITK))
+			tty_puts(tty, tty_term_string(tty->term, TTYC_ENKITK));
+		/*
+		 * Activate the kitty input parser if we pushed the
+		 * capability or the option is 'always'.  The query response
+		 * will refine kitty_flags when it arrives.
+		 */
+		if (tty->kitty_flags == 0 &&
+		    (tty_term_has(tty->term, TTYC_ENKITK) ||
+		     options_get_number(global_options, "kitty-keys") == 2))
+			tty->kitty_flags = KITTY_KBD_DISAMBIGUATE;
+	}
 	if (options_get_number(global_options, "focus-events"))
 		tty_puts(tty, tty_term_string(tty->term, TTYC_ENFCS));
 	if (tty->term->flags & TERM_VT100LIKE)

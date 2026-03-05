@@ -295,7 +295,11 @@ enum input_csi_type {
 	INPUT_CSI_TBC,
 	INPUT_CSI_VPA,
 	INPUT_CSI_WINOPS,
-	INPUT_CSI_XDA
+	INPUT_CSI_XDA,
+	INPUT_CSI_KITTY_QUERY,
+	INPUT_CSI_KITTY_PUSH,
+	INPUT_CSI_KITTY_POP,
+	INPUT_CSI_KITTY_SET
 };
 
 /* Control (CSI) command table. */
@@ -341,7 +345,11 @@ static const struct input_table_entry input_csi_table[] = {
 	{ 'r', "",  INPUT_CSI_DECSTBM },
 	{ 's', "",  INPUT_CSI_SCP },
 	{ 't', "",  INPUT_CSI_WINOPS },
-	{ 'u', "",  INPUT_CSI_RCP }
+	{ 'u', "",  INPUT_CSI_RCP },
+	{ 'u', "<", INPUT_CSI_KITTY_POP },
+	{ 'u', "=", INPUT_CSI_KITTY_SET },
+	{ 'u', ">", INPUT_CSI_KITTY_PUSH },
+	{ 'u', "?", INPUT_CSI_KITTY_QUERY }
 };
 
 /* Input transition. */
@@ -1815,6 +1823,62 @@ input_csi_dispatch(struct input_ctx *ictx)
 			    getversion());
 		}
 		break;
+	case INPUT_CSI_KITTY_QUERY: {
+		int flags;
+		flags = s->kitty_kbd.flags[s->kitty_kbd.idx];
+		input_reply(ictx, 1, "\033[?%du", flags);
+		break;
+	}
+	case INPUT_CSI_KITTY_PUSH: {
+		int flags;
+		u_int idx;
+		flags = input_get(ictx, 0, 0, 0) & KITTY_KBD_ALL;
+		idx = s->kitty_kbd.idx;
+		if (idx + 1 >= KITTY_KBD_STACK_MAX) {
+			/* Stack full - shift everything down (evict oldest). */
+			memmove(&s->kitty_kbd.flags[0], &s->kitty_kbd.flags[1],
+			    (KITTY_KBD_STACK_MAX - 1) * sizeof(int));
+			s->kitty_kbd.flags[KITTY_KBD_STACK_MAX - 1] = flags;
+		} else {
+			s->kitty_kbd.idx = idx + 1;
+			s->kitty_kbd.flags[idx + 1] = flags;
+		}
+		break;
+	}
+	case INPUT_CSI_KITTY_POP: {
+		int count;
+		u_int idx;
+		count = input_get(ictx, 0, 1, 1);
+		idx = s->kitty_kbd.idx;
+		while (count > 0 && idx > 0) {
+			s->kitty_kbd.flags[idx] = 0;
+			idx--;
+			count--;
+		}
+		if (count > 0)
+			s->kitty_kbd.flags[0] = 0;
+		s->kitty_kbd.idx = idx;
+		break;
+	}
+	case INPUT_CSI_KITTY_SET: {
+		int flagset, mode;
+		u_int idx;
+		flagset = input_get(ictx, 0, 0, 0) & KITTY_KBD_ALL;
+		mode = input_get(ictx, 1, 1, 1);
+		idx = s->kitty_kbd.idx;
+		switch (mode) {
+		case 1:
+			s->kitty_kbd.flags[idx] = flagset;
+			break;
+		case 2:
+			s->kitty_kbd.flags[idx] |= flagset;
+			break;
+		case 3:
+			s->kitty_kbd.flags[idx] &= ~flagset;
+			break;
+		}
+		break;
+	}
 
 	}
 
