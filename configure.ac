@@ -469,9 +469,8 @@ AC_ARG_ENABLE(
 
 AC_ARG_ENABLE(
 	sixel,
-	AS_HELP_STRING(--enable-sixel, deprecated; use --enable-sixel-images),
+	AS_HELP_STRING(--enable-sixel support),
 	[
-		AC_MSG_WARN([--enable-sixel is deprecated; use --enable-sixel-images])
 		enable_sixel_images="$enableval"
 	]
 )

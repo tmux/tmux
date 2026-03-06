@@ -2469,10 +2469,10 @@ screen_write_kittyimage(struct screen_write_ctx *ctx, struct kitty_image *ki)
 	if (ki == NULL)
 		return;
 
-	/* Store the image in the cache */
+	/* Store the image in the cache. */
 	im = image_store(s, IMAGE_KITTY, ki);
 
-	/* Trigger a tty write to send to all terminals */
+	/* Trigger a tty write to send to all terminals. */
 	if (im != NULL && ctx->wp != NULL) {
 		screen_write_collect_flush(ctx, 0, __func__);
 		screen_write_initctx(ctx, &ttyctx, 0);
@@ -2484,9 +2484,9 @@ screen_write_kittyimage(struct screen_write_ctx *ctx, struct kitty_image *ki)
 		tty_write(tty_cmd_kittyimage, &ttyctx);
 	}
 
-	/* Move cursor past the image */
-	if (ki->rows > 0)
-		screen_write_cursormove(ctx, 0, s->cy + ki->rows, 0);
+	/* Move cursor past the image. */
+	if (kitty_get_rows(ki) > 0)
+		screen_write_cursormove(ctx, 0, s->cy + kitty_get_rows(ki), 0);
 }
 #endif
 

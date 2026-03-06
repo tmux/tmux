@@ -623,7 +623,6 @@ enum tty_code_code {
 	TTYC_SMULX,
 	TTYC_SMXX,
 	TTYC_SXL,
-	TTYC_KTY,
 	TTYC_SS,
 	TTYC_SWD,
 	TTYC_SYNC,
@@ -947,7 +946,9 @@ struct image {
 	enum image_type		 type;
 	struct screen		*s;
 	union {
+#ifdef ENABLE_SIXEL_IMAGES
 		struct sixel_image	*sixel;
+#endif
 #ifdef ENABLE_KITTY_IMAGES
 		struct kitty_image	*kitty;
 #endif
@@ -963,44 +964,6 @@ struct image {
 	TAILQ_ENTRY (image)	 entry;
 };
 TAILQ_HEAD(images, image);
-#endif
-
-#ifdef ENABLE_KITTY_IMAGES
-/*
- * kitty_image stores the raw decoded pixel data and metadata from a kitty
- * graphics protocol APC sequence.  It is used to re-emit the sequence to the
- * outer terminal on redraw.
- */
-struct kitty_image {
-	/* Control-data fields parsed from the APC sequence. */
-	char		 action;      /* a=: 'T'=transmit+display, 't', 'p', 'd', ... */
-	u_int		 format;      /* f=: 32=RGBA, 24=RGB, 100=PNG */
-	char		 medium;      /* t=: 'd'=direct, 'f'=file, 't'=tmp, 's'=shm */
-	u_int		 pixel_w;     /* s=: source image pixel width */
-	u_int		 pixel_h;     /* v=: source image pixel height */
-	u_int		 cols;        /* c=: display columns (0=auto) */
-	u_int		 rows;        /* r=: display rows (0=auto) */
-	u_int		 image_id;    /* i=: image id (0=unassigned) */
-	u_int		 image_num;   /* I=: image number */
-	u_int		 placement_id; /* p=: placement id */
-	u_int		 more;        /* m=: 1=more chunks coming, 0=last */
-	u_int		 quiet;       /* q=: suppress responses */
-	int		 z_index;     /* z=: z-index */
-	char		 compression; /* o=: 'z'=zlib, 0=none */
-	char		 delete_what; /* d=: delete target (used with a=d) */
-
-	/* Cell size at the time of parsing (from the owning window). */
-	u_int		 xpixel;
-	u_int		 ypixel;
-
-	/* Original base64-encoded payload (concatenated across all chunks). */
-	char		*encoded;
-	size_t		 encodedlen;
-
-	char		*ctrl;
-	size_t		 ctrllen;
-};
-
 #endif
 
 /* Cursor style. */
@@ -3832,6 +3795,10 @@ struct screen	*sixel_to_screen(struct sixel_image *);
 /* image-kitty.c */
 struct kitty_image *kitty_parse(const u_char *, size_t, u_int, u_int);
 void		 kitty_free(struct kitty_image *);
+void		 kitty_size_in_cells(struct kitty_image *, u_int *, u_int *);
+char		 kitty_get_action(struct kitty_image *);
+u_int		 kitty_get_image_id(struct kitty_image *);
+u_int		 kitty_get_rows(struct kitty_image *);
 char		*kitty_print(struct kitty_image *, size_t *);
 char		*kitty_delete_all(size_t *);
 #endif

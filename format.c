@@ -2566,16 +2566,13 @@ format_cb_image_support(__unused struct format_tree *ft)
 {
 #if defined(ENABLE_SIXEL_IMAGES) && defined(ENABLE_KITTY_IMAGES)
 	return (xstrdup("kitty,sixel"));
-#endif
-
-#ifdef ENABLE_SIXEL_IMAGES
+#elif defined(ENABLE_SIXEL_IMAGES)
 	return (xstrdup("sixel"));
-#endif
-
-#ifdef ENABLE_KITTY_IMAGES
+#elif defined(ENABLE_KITTY_IMAGES)
 	return (xstrdup("kitty"));
-#endif
+#else
 	return (NULL);
+#endif
 }
 
 /* Callback for active_window_index. */
