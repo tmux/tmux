@@ -403,16 +403,16 @@ tty_keys_kitty(struct tty *tty, const char *buf, size_t len,
 
 		switch (buf[end]) {
 		case 'A':
-			result |= KEYC_UP;
+			result |= KEYC_UP|KEYC_CURSOR;
 			break;
 		case 'B':
-			result |= KEYC_DOWN;
+			result |= KEYC_DOWN|KEYC_CURSOR;
 			break;
 		case 'C':
-			result |= KEYC_RIGHT;
+			result |= KEYC_RIGHT|KEYC_CURSOR;
 			break;
 		case 'D':
-			result |= KEYC_LEFT;
+			result |= KEYC_LEFT|KEYC_CURSOR;
 			break;
 		case 'E':
 			result |= KEYC_KP_BEGIN;
