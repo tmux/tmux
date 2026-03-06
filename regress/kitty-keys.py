@@ -576,6 +576,119 @@ try:
     ):
         failed = True
 
+
+    # Combined kitty+extended-keys: when extended-keys=always forces
+    # MODE_KEYS_EXTENDED on the pane screen and the inner application also
+    # requests kitty DISAMBIGUATE, unmodified keys must still reach the pane
+    # as raw bytes via VT10x fallback, not be silently dropped by the
+    # extended-keys encoder which cannot handle keys without modifiers.
+    # Uses an isolated server to avoid disturbing the main client's state.
+    _csock = f"{SOCK}_combined_{os.getpid()}"
+    def _combined_run(*args, check=True):
+        return run_socket(_csock, *args, check=check)
+    def _combined_test(label, mode_seq, tmux_key, checker):
+        code = (
+            "import os, select, sys, termios, time, tty\n"
+            f"mode = bytes.fromhex('{mode_seq.hex()}')\n"
+            "fd = sys.stdin.fileno()\n"
+            "old = termios.tcgetattr(fd)\n"
+            "try:\n"
+            "    tty.setraw(fd)\n"
+            "    if mode:\n"
+            "        os.write(sys.stdout.fileno(), mode)\n"
+            "    os.write(sys.stdout.fileno(), b'READY\\n')\n"
+            "    data = b''\n"
+            "    seen = False\n"
+            "    deadline = time.time() + 2\n"
+            "    while time.time() < deadline:\n"
+            "        r, _, _ = select.select([fd], [], [], 0.1)\n"
+            "        if not r:\n"
+            "            if seen:\n"
+            "                break\n"
+            "            continue\n"
+            "        chunk = os.read(fd, 1024)\n"
+            "        if not chunk:\n"
+            "            break\n"
+            "        data += chunk\n"
+            "        seen = True\n"
+            "    os.write(sys.stdout.fileno(),"
+            "  b'HEX:' + data.hex().encode() + b'\\n')\n"
+            "finally:\n"
+            "    termios.tcsetattr(fd, termios.TCSANOW, old)\n"
+        )
+        target = _combined_run(
+            "new-window", "-d", "-P", "-F", "#{window_id}",
+            python_command(code),
+        ).stdout.strip()
+        ok = False
+        try:
+            deadline = time.time() + 3
+            while time.time() < deadline:
+                out = _combined_run(
+                    "capture-pane", "-p", "-J", "-S", "-",
+                    "-t", target, check=False,
+                )
+                if out.returncode == 0 and "READY" in out.stdout:
+                    break
+                time.sleep(0.05)
+            else:
+                print(f"[FAIL] {label} -> probe not ready")
+                return False
+            _combined_run("send-keys", "-t", target, tmux_key)
+            deadline = time.time() + 5
+            while time.time() < deadline:
+                out = _combined_run(
+                    "display-message", "-p", "-t", target,
+                    "#{pane_dead}", check=False,
+                )
+                if out.returncode != 0 or out.stdout.strip() == "1":
+                    break
+                time.sleep(0.1)
+            else:
+                print(f"[FAIL] {label} -> probe did not exit")
+                return False
+            out = _combined_run(
+                "capture-pane", "-p", "-J", "-S", "-",
+                "-t", target, check=False,
+            )
+            data = parse_hex_line(out.stdout if out.returncode == 0 else "")
+            if data is None:
+                print(f"[FAIL] {label} -> missing HEX line")
+                return False
+            ok = checker(data)
+            if ok:
+                print(f"[PASS] {label} -> {data.hex()}")
+            else:
+                print(f"[FAIL] {label} -> unexpected bytes {data.hex()}")
+            return ok
+        finally:
+            _combined_run("kill-window", "-t", target, check=False)
+    try:
+        run_socket(_csock, "kill-server", check=False)
+        run_socket(_csock, "-f/dev/null", "new", "-d")
+        run_socket(_csock, "set", "-g", "kitty-keys", "off")
+        run_socket(_csock, "set", "-g", "extended-keys", "always")
+        run_socket(_csock, "set", "-g", "remain-on-exit", "on")
+        run_socket(_csock, "set", "-g", "status", "off")
+        for label, tmux_key, exp in [
+            ("combined kitty+extkeys printable 'a'", "a", b"a"),
+            ("combined kitty+extkeys Tab", "Tab", b"\t"),
+            ("combined kitty+extkeys Enter", "Enter", b"\r"),
+            ("combined kitty+extkeys Space", "Space", b" "),
+        ]:
+            if not _combined_test(
+                label, b"\x1b[=1u", tmux_key,
+                lambda b, e=exp: b == e,
+            ):
+                failed = True
+        if not _combined_test(
+            "combined kitty+extkeys C-c", b"\x1b[=1u", "C-c",
+            lambda b: b == b"\x1b[99;5u",
+        ):
+            failed = True
+    finally:
+        run_socket(_csock, "kill-server", check=False)
+
     # Phase 4: query replies while pushed must not clobber kitty parsing.
     for label, reply in [
         ("query reply 0 keeps kitty parsing", b"\x1b[?0u"),
