@@ -700,6 +700,16 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 	}
 
 	/*
+	 * When kitty keyboard mode is active, keys it didn't handle
+	 * (unmodified printable, Tab, CR, etc.) use VT10x raw-byte
+	 * encoding. Kitty protocol is a superset of CSI u; routing
+	 * through the extended-keys path would silently drop any key
+	 * without modifiers because that encoder has no case for it.
+	 */
+	if (s->kitty_kbd.flags != 0)
+		return (input_key_vt10x(bev, key));
+
+	/*
 	 * No builtin key sequence; construct an extended key sequence
 	 * depending on the client mode.
 	 *
