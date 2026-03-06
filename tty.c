@@ -589,8 +589,6 @@ tty_update_features(struct tty *tty)
 	if (options_get_number(global_options, "extended-keys"))
 		tty_puts(tty, tty_term_string(tty->term, TTYC_ENEKS));
 	if (options_get_number(global_options, "kitty-keys")) {
-		if (tty_term_has(tty->term, TTYC_ENKITK))
-			tty_puts(tty, tty_term_string(tty->term, TTYC_ENKITK));
 		/*
 		 * Push kitty keyboard mode onto the outer terminal once to avoid
 		 * stacking duplicate entries on repeated tty_update_features()
